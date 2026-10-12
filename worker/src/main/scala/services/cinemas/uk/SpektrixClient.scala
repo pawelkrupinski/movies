@@ -1,0 +1,205 @@
+package services.cinemas.uk
+
+import models._
+import play.api.libs.json._
+import services.cinemas.common.{CinemaScraper, ScraperParse, SlotsToMovies}
+import services.cinemas.pl.OnlyMovieEventsFilter
+import tools.{HttpFetch, HttpRead, ReadOutcome}
+
+import java.time.{LocalDate, LocalDateTime}
+import java.util.Locale
+import java.util.regex.Pattern
+import scala.util.Try
+import scala.util.matching.Regex
+
+/**
+ * Spektrix — the box office most UK arts centres sell through (the ICA, Broadway
+ * Nottingham, the Brewery Kendal, …). Flicks lists several of them with few or no times,
+ * while Spektrix publishes every client's programme as public, unauthenticated JSON
+ * keyed by the client's name:
+ *
+ *   1. `GET https://system.spektrix.com/<client>/api/v3/events?instanceStart_from=<today>`
+ *      → the events with a performance from today on: `id`, `name`, `duration`,
+ *        `imageUrl`, `webUrl`, `description`, and the client's own `attribute_*` fields.
+ *   2. `GET https://system.spektrix.com/<client>/api/v3/instances?startFrom=<today>`
+ *      → every performance from today on: `start` (venue wall-clock), `event.id`,
+ *        `cancelled`, and the client's own `attribute_*` fields (the screen, often).
+ *
+ * Two requests are the venue's whole scrape, every date it sells. Without the date
+ * filters both endpoints return the client's entire history (the ICA's is 3.4 MB of
+ * events and an instance list that does not finish in 40 s).
+ *
+ * WHICH EVENTS ARE FILMS. An arts centre sells its cinema beside gigs, talks and
+ * exhibition time-slots through the same client, and Spektrix has no standard field
+ * saying which is which: each client files events under attributes of its own naming —
+ * `attribute_Category: "Films"` (ICA), `attribute_EventType: "Cinema"` (Gala Durham),
+ * `attribute_Genre1: "Screen"` (Lowther Pavilion), a boolean `attribute_Film: true`
+ * (Broadway). So the rule is the box office's own filing, read generically: an event is
+ * a film when one of its `attribute_*` values names film, cinema or screen, or a boolean
+ * attribute so named is true. A client that files nothing that way lists nothing here —
+ * with no way to tell its films from its gigs, the venue is better served by its
+ * Flicks fallback than by a guess. The [[OnlyMovieEventsFilter]] then drops a stray live
+ * event or ticket product filed among the films.
+ *
+ * WHICH VENUE. Some clients sell several buildings (Gala Durham also sells the Consett
+ * Empire; Leeds Heritage Theatres sells Hyde Park Picture House beside two theatres).
+ * `venue` names the building as the client's own venue/site/location attribute spells
+ * it, on the performance or on its event; `None` keeps every building.
+ *
+ * Credits, year and certificate are read when the client keeps them in attributes
+ * named so (`attribute_DirectedBy`, `attribute_FilmDirector`, `attribute_YearOfRelease`,
+ * `attribute_Certificate`, …).
+ *
+ * @param client the Spektrix client name, the first path segment of its API.
+ */
+class SpektrixClient(
+  http:   HttpFetch,
+  client: String,
+  override val cinema: Cinema,
+  today:  => LocalDate,
+  venue:  Option[String] = None
+) extends CinemaScraper with OnlyMovieEventsFilter {
+
+  import SpektrixClient._
+
+  def scrapeHosts: Set[String] = CinemaScraper.hostsOf(BaseUrl)
+  override def sourceKey: Option[String] =
+    Some(s"${CinemaScraper.urlKey(BaseUrl)}/$client${venue.fold("")(v => s"#$v")}")
+
+  override protected def venueEventMarkers: Seq[Regex] = TicketProducts
+
+  protected def fetchUnfiltered(): Seq[CinemaMovie] = {
+    val day = today
+    parse(array(eventsUrl(client, day)), array(instancesUrl(client, day)), cinema, day, venue)
+  }
+
+  private def array(url: String): JsArray =
+    HttpRead.jsonArray(http, url)(ReadOutcome.Answered(_)).required
+}
+
+object SpektrixClient {
+
+  val BaseUrl = "https://system.spektrix.com"
+
+  def eventsUrl(client: String, from: LocalDate): String =
+    s"$BaseUrl/$client/api/v3/events?instanceStart_from=$from"
+
+  def instancesUrl(client: String, from: LocalDate): String =
+    s"$BaseUrl/$client/api/v3/instances?startFrom=$from"
+
+  /** A word that files an event as a film: "Film", "Films", "Cinema", "Screen",
+   *  "Screenings", "Movies". Word-bounded, so "Filmmaker Talks" is not one. */
+  private val FilmWord = """(?i)\b(films?|cinema|screens?|screenings?|movies?)\b""".r
+
+  /** The same, inside a camel-cased boolean attribute's name: `attribute_Film`,
+   *  `attribute_EventCinema` (Broadway's opera and ballet relays). */
+  private val FilmKey = """(?i)(film|cinema|screen|movie)""".r
+
+  /** Attributes naming the building a performance is in. */
+  private val VenueAttribute = """(?i)attribute_\w*(venue|site\w*|location)""".r
+
+  /** Instance attributes naming the screen a performance is in. */
+  private val RoomAttribute = """(?i)attribute_(screen\w*|auditorium|room)""".r
+  private val PlainVenueAttribute = """(?i)attribute_venue""".r
+
+  private val DirectorAttribute = """(?i)attribute_(film)?(director|directedby)""".r
+  private val CastAttribute     = """(?i)attribute_(film)?cast(details)?""".r
+  private val YearAttribute     = """(?i)attribute_(film)?year(ofproduction|ofrelease)?""".r
+  private val RatingAttribute   = """(?i)attribute_(film)?(certificate|certification|rating|agerating|certificateageguidance)""".r
+  private val Bbfc              = """(?i)(?<!\w)(12A|U|PG|12|15|18)(?!\w)""".r
+
+  /** What a box office files under its films that is not a screening: a bundle of
+   *  tickets, a voucher, a membership, a season pass, a seat dedication, the hire of
+   *  captioning glasses ("WatchWord Glasses", 48 "performances" at Old Market Hall), and
+   *  the test events staff create to try the website ("Website Test Event 2", "Test
+   *  Walker Cinema"). Matched on the lower-cased title. */
+  private val TicketProducts: Seq[Regex] = Seq(
+    """\bbundle(s)?\b""".r, """\bgift\s+(card|voucher)""".r, """\bmembership""".r, """\bseason\s+pass""".r,
+    """\bname\s+a\s+seat\b""".r, """\bglasses\b""".r, """^test\b""".r, """\btest\s+event\b""".r
+  )
+
+  private case class Slot(event: JsObject, title: String, showtime: Showtime)
+
+  def parse(events: JsArray, instances: JsArray, cinema: Cinema, today: LocalDate,
+            venue: Option[String] = None): Seq[CinemaMovie] = {
+    val byId = filmsOf(events.value.toSeq.collect { case o: JsObject => o })
+      .flatMap(e => (e \ "id").asOpt[String].map(_ -> e)).toMap
+
+    val slots = for {
+      instance <- instances.value.toSeq.collect { case o: JsObject => o }
+      if !(instance \ "cancelled").asOpt[Boolean].contains(true)
+      event    <- (instance \ "event" \ "id").asOpt[String].flatMap(byId.get).toSeq
+      if venue.forall(isIn(_, instance, event))
+      title    <- text(event, "name").map(titleOf(_, event)).filter(_.nonEmpty).toSeq
+      start    <- (instance \ "start").asOpt[String].flatMap(s => Try(LocalDateTime.parse(s)).toOption).toSeq
+      if !start.toLocalDate.isBefore(today)
+    } yield Slot(event, title, Showtime(dateTime = start, bookingUrl = webUrl(event), room = roomOf(instance, venue)))
+
+    SlotsToMovies.fold(slots, _.title, _.showtime) { (title, group, showtimes) =>
+      val event = group.head.event
+      CinemaMovie(
+        movie = Movie(
+          title          = title,
+          rawTitle       = text(event, "name").filterNot(_ == title),
+          runtimeMinutes = (event \ "duration").asOpt[Int].filter(_ > 0),
+          releaseYear    = attribute(event, YearAttribute).flatMap(ScraperParse.yearIn)
+        ),
+        cinema      = cinema,
+        posterUrl   = text(event, "imageUrl"),
+        filmUrl     = webUrl(event),
+        synopsis    = text(event, "description"),
+        cast        = names(attribute(event, CastAttribute)),
+        director    = names(attribute(event, DirectorAttribute)),
+        showtimes   = showtimes,
+        externalIds = (event \ "id").asOpt[String].map(id => Map("spektrix" -> id)).getOrElse(Map.empty),
+        ageRating   = attribute(event, RatingAttribute).flatMap(Bbfc.findFirstIn).map(_.toUpperCase(Locale.ROOT))
+      )
+    }
+  }
+
+  /** The events the box office files as films — none, when it files nothing that way
+   *  (see the class doc). */
+  def filmsOf(events: Seq[JsObject]): Seq[JsObject] = events.filter(filedAsFilm)
+
+  private def filedAsFilm(event: JsObject): Boolean =
+    event.fields.exists {
+      case (key, JsString(value)) => key.startsWith("attribute_") && FilmWord.findFirstIn(value).isDefined
+      case (key, JsTrue)          => key.startsWith("attribute_") && FilmKey.findFirstIn(key.stripPrefix("attribute_")).isDefined
+      case _                      => false
+    }
+
+  /** Whether the performance — or, when it names none, its event — is in `venue`. */
+  private def isIn(venue: String, instance: JsObject, event: JsObject): Boolean =
+    Some(venuesNamed(instance)).filter(_.nonEmpty).getOrElse(venuesNamed(event)).exists(_.equalsIgnoreCase(venue))
+
+  private def venuesNamed(o: JsObject): Seq[String] = o.fields.collect {
+    case (VenueAttribute(_), JsString(value)) if value.trim.nonEmpty => value.trim
+  }.toSeq
+
+  /** The event's name without the building tag a multi-venue box office bills it under:
+   *  Gala Durham lists "Verity (15) (Gala)" with `attribute_Sitename: "Gala"`. Left on,
+   *  the tag is noise in the title — and "(Gala)" reads to the live-event filter as a
+   *  gala night, which dropped every Gala film. */
+  private def titleOf(name: String, event: JsObject): String =
+    venuesNamed(event).foldLeft(name) { (title, site) =>
+      title.replaceAll(s"(?i)\\s*\\(${Pattern.quote(site)}\\)", "")
+    }.replaceAll("\\s+", " ").trim
+
+  private def attribute(o: JsObject, key: Regex): Option[String] =
+    o.fields.collectFirst { case (key(_*), JsString(value)) if value.trim.nonEmpty => value.trim }
+
+  private def names(value: Option[String]): Seq[String] =
+    value.toSeq.flatMap(_.split("[,;]")).map(_.trim).filter(_.nonEmpty)
+
+  private def webUrl(event: JsObject): Option[String] =
+    text(event, "webUrl").filter(_.toLowerCase(Locale.ROOT).startsWith("http"))
+
+  /** The screen, else the performance's venue attribute when that names a room inside
+   *  the building ("Cinema 2" at the ICA) rather than the building itself. */
+  private def roomOf(instance: JsObject, venue: Option[String]): Option[String] =
+    attribute(instance, RoomAttribute).orElse(
+      attribute(instance, PlainVenueAttribute).filterNot(v => venue.exists(_.equalsIgnoreCase(v))))
+
+  private def text(o: JsObject, field: String): Option[String] =
+    (o \ field).asOpt[String].map(_.trim).filter(_.nonEmpty)
+}

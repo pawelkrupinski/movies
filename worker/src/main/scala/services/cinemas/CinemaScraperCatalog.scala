@@ -6,7 +6,7 @@ import services.cinemas.common.{CinemaScraper, GatsbyBoxOfficeClient, MultiListi
 import services.cinemas.pl._
 import services.cinemas.common.{CineamoClient, FlicksClient, FlicksMarket, KinoheldClient, KinoprogrammClient}
 import services.cinemas.de.{GermanFeed, GermanSources}
-import services.cinemas.uk.{CineworldClient, OdeonClient, SavoyClient, TheOldCourtClient}
+import services.cinemas.uk.{CineworldClient, OdeonClient, SavoyClient, SpektrixClient, TheOldCourtClient}
 import services.cinemas.es.{ArtesieteClient, OcineClient, SpanishOwnSourcesData, TaquillaClient, TaquillaVenue}
 import services.cinemas.us.{AlamoDrafthouseClient, UsChainVenues}
 import services.movies.TitleNormalizer
@@ -934,6 +934,9 @@ class CinemaScraperCatalog(
   // egress directly.
   private def savoy(dllBase: String, cinema: Cinema): SavoyClient =
     new SavoyClient(http, dllBase, cinema, today = venueClock.today(UnitedKingdom))
+  // `venue` names the building, for a Spektrix client that sells several.
+  private def spektrix(client: String, cinema: Cinema, venue: Option[String] = None): SpektrixClient =
+    new SpektrixClient(http, client, cinema, today = venueClock.today(UnitedKingdom), venue)
   private val londonScrapers: Seq[CinemaScraper] = Seq(
     savoy("https://actonecinema.co.uk/ActOneCinema.dll/", ActOneActon),
     flicks("arthouse-crouch-end", ArthouseCrouchEnd),
@@ -994,9 +997,9 @@ class CinemaScraperCatalog(
     flicks("finsbury-park-picturehouse", FinsburyParkPicturehouse),
     flicks("forest-cinemas-walthamstow", ForestCinemasWalthamstow),
     flicks("genesis-tower-hamlets", GenesisTowerHamlets),
-    flicks("institute-of-contemporary-arts", InstituteOfContemporaryArts),
-    flicks("jw3-hampstead", Jw3Hampstead),
-    flicks("kiln-kilburn", KilnKilburn),
+    spektrix("ica", InstituteOfContemporaryArts),
+    spektrix("jw3", Jw3Hampstead),
+    spektrix("tricycle", KilnKilburn),
     flicks("leatherhead-theatre-cinema-leatherhead", LeatherheadTheatreCinemaLeatherhead),
     savoy("https://thelexicinema.co.uk/TheLexiCinema.dll/", LexiKensalRise),
     flicks("lumiere-romford", LumiereRomford),
@@ -1035,9 +1038,9 @@ class CinemaScraperCatalog(
     flicks("picturehouse-west-norwood", PicturehouseWestNorwood),
     flicks("prince-charles-london", PrinceCharlesLondon),
     flicks("regent-street-cinema-london", RegentStreetCinemaLondon),
-    flicks("rich-mix-bethnal-green", RichMixBethnalGreen),
+    spektrix("richmix", RichMixBethnalGreen),
     savoy("https://riocinema.org.uk/Rio.dll/", RioDalston),
-    flicks("riverside-studios-hammersmith", RiversideStudiosHammersmith),
+    spektrix("riversidestudios", RiversideStudiosHammersmith),
     flicks("rooftop-film-club-peckham-bussey-building", RooftopFilmClubPeckhamBusseyBuilding),
     flicks("rooftop-film-club-stratford-roof-east", RooftopFilmClubStratfordRoofEast),
     flicks("science-museum-london-imax", ScienceMuseumLondonImax),
@@ -1168,7 +1171,7 @@ class CinemaScraperCatalog(
     cineworld("x0vho-cineworld-cinema-birmingham-nec", CineworldNECBirmingham),
     cineworld("x06xl-cineworld-cinema-solihull", CineworldSolihull),
     everyman("X0VHE", EverymanCinemaBirmingham),
-    flicks("midlands-arts-centre-birmingham", MidlandsArtsCentreBirmingham),
+    spektrix("macbirmingham", MidlandsArtsCentreBirmingham),
     savoy("https://mockingbirdcinema.com/MockingbirdCinema.dll/", MockingbirdCinemaKitchenBirmingham),
     odeon("017", OdeonBirminghamNewStreet),
     odeon("915", OdeonCinemaDudley),
@@ -1225,12 +1228,12 @@ class CinemaScraperCatalog(
   private val centralScotlandScrapers: Seq[CinemaScraper] = Seq(
     flicks("chalmers-alloa-cinema", ChalmersAlloaCinema),
     cineworld("x06xa-cineworld-cinema-falkirk", CineworldFalkirk),
-    flicks("hippodrome-bo-ness", HippodromeBoNess),
+    spektrix("falkirkcommunitytrust", HippodromeBoNess, Some("Hippodrome")),
     flicks("macrobert-art-centre-stirling", MacrobertArtCentreStirling),
     vueUk("10064", VueCinemasStirling),
   )
   private val cheshireScrapers: Seq[CinemaScraper] = Seq(
-    flicks("buxton-cinema", BuxtonCinemaPavilionArtsCentre),
+    spektrix("buxtonoperahouse", BuxtonCinemaPavilionArtsCentre, Some("Pavilion Arts Centre")),
     flicks("cinemac-macclesfield", CinemacMacclesfield),
     cineworld("x12iv-cineworld-cinema-warrington", CineworldWarrington),
     flicks("curzon-cinema-knutsford", CurzonCinemaKnutsford),
@@ -1259,7 +1262,7 @@ class CinemaScraperCatalog(
     flicks("regal-redruth", MerlinRegalCinemaRedruth),
     flicks("savoy-penzance", MerlinSavoyPenzance),
     flicks("phoenix-falmouth", PhoenixCinemaFalmouth),
-    flicks("plymouth-arts-cinema-plymouth", PlymouthArtsCinema),
+    spektrix("plymouthartscentre", PlymouthArtsCinema),
     flicks("rebel-bude", RebelCinema),
     flicks("royal-st-ives", RoyalStIvesCinema),
     flicks("the-astra-cinema-st-mawgan", TheAstraCinemaStMawgan),
@@ -1271,19 +1274,19 @@ class CinemaScraperCatalog(
     flicks("white-river-st-austell", WTWWhiteRiverCinema),
   )
   private val countyDurhamScrapers: Seq[CinemaScraper] = Seq(
-    flicks("arc-stockton-on-tees", ARCStocktonOnTees),
+    spektrix("arcstockton", ARCStocktonOnTees),
     cineworld("x0x9f-cineworld-cinema-dalton-park", CineworldDaltonParkMurtonCounty),
-    flicks("empire-cinema-consett-county", EmpireTheatreConsett),
+    spektrix("galadurham", EmpireTheatreConsett, Some("Consett Empire")),
     everyman("G01IW", EverymanCinemaDurham),
     flicks("fuse-community-cinema-prudhoe", FuseCommunityCinemaPrudhoe),
-    flicks("gala-theatre-and-cinema-durham-county", GalaCinemaDurham),
+    spektrix("galadurham", GalaCinemaDurham, Some("Gala Theatre & Cinema")),
     odeon("859", OdeonLuxeDurham),
     showcase("X06JP", ShowcaseCinemaDeLuxTeesside),
     vueUk("10090", VueCinemasDarlington),
     vueUk("10035", VueCinemasHartlepool),
   )
   private val cumbriaScrapers: Seq[CinemaScraper] = Seq(
-    flicks("brewery-arts-centre-kendal", BreweryArtsCentreKendal),
+    spektrix("breweryarts", BreweryArtsCentreKendal),
     flicks("gaiety-cinema-whitehaven", GaietyCinemaWhitehaven),
     savoy("https://keswickalhambra.co.uk/KeswickAlhambra.dll/", KeswickAlhambra),
     savoy("https://penrithcinema.co.uk/LonsdalePenrith.dll/", LonsdaleAlhambraPenrith),
@@ -1302,13 +1305,13 @@ class CinemaScraperCatalog(
     flicks("northern-light-wirksworth", NorthernLightWirksworth),
     odeon("759", OdeonCinemaSwadlincote),
     odeon("917", OdeonLuxeDerby),
-    flicks("quad-derby", QuadDerby),
+    spektrix("derbyquad", QuadDerby),
     flicks("ritz-belper", RitzBelper),
     showcase("X08EM", ShowcaseCinemaDeLuxDerby),
   )
   private val devonScrapers: Seq[CinemaScraper] = Seq(
     flicks("alexandra-newton-abbot", AlexandraNewtonAbbot),
-    flicks("dartington-art-centre-totnes", BarnCinemaDartingtonArtCentre),
+    spektrix("dartington", BarnCinemaDartingtonArtCentre),
     flicks("central-barnstaple", CentralCinemaBarnstaple),
     flicks("embassy-ilfracombe", EmbassyCinemaIlfracombe),
     everyman("G01RJ", EverymanCinemaPlymouth),
@@ -1332,14 +1335,14 @@ class CinemaScraperCatalog(
   )
   private val dorsetScrapers: Seq[CinemaScraper] = Seq(
     flicks("colosseum-bournemouth", ColosseumBournemouth),
-    flicks("electric-palace-bridport", ElectricPalaceBridport),
+    spektrix("electricpalace", ElectricPalaceBridport),
     flicks("hilltop-cinema-shaftesbury-arts-centre", HilltopCinemaShaftesburyArtsCentre),
-    flicks("lighthouse-poole", LighthousePoole),
-    flicks("mowlem-swanage", MowlemTheatre),
+    spektrix("lighthousepoole", LighthousePoole),
+    spektrix("mowlemswanage", MowlemTheatre),
     odeon("854", OdeonCinemaBournemouthBH2),
     odeon("985", OdeonCinemaDorchester),
     flicks("plaza-cinema-dorchester", PlazaCinemaDorchester),
-    flicks("regent-christchurch", RegentChristchurch),
+    spektrix("theregentchristchurch", RegentChristchurch),
     flicks("the-new-vic-tisbury-village-hall", TheNewVicTisburyVillageHall),
     flicks("rex-wareham", TheRexCinemaWareham),
     flicks("tivoli-wimborne-minster", TivoliTheatreWimborne),
@@ -1391,8 +1394,8 @@ class CinemaScraperCatalog(
     odeon("824", OdeonCinemaBrighton),
     odeon("124", OdeonCinemaHastings),
     flicks("pavilion-hailsham", PavilionHailsham),
-    flicks("picturehouse-uckfield", PictureHouseUckfield),
-    flicks("towner-eastbourne-cinema", TownerEastbourneCinema),
+    spektrix("uckfieldpicturehouse", PictureHouseUckfield),
+    spektrix("townereastbourne", TownerEastbourneCinema),
   )
   private val eastYorkshireScrapers: Seq[CinemaScraper] = Seq(
     cineworld("x079w-cineworld-cinema-hull", CineworldHull),
@@ -1465,7 +1468,7 @@ class CinemaScraperCatalog(
     flicks("glasgow-film-theatre-glasgow", GlasgowFilmTheatre),
     flicks("grosvenor-cinema-glasgow", GrosvenorCinemaGlasgow),
     flicks("imax-glasgow", IMAXAtGlasgowScienceCentre),
-    flicks("cumbernauld-theatre-at-lanternhouse", LanternhouseCinema),
+    spektrix("cumbernauldtheatretrust", LanternhouseCinema),
     odeon("923", OdeonLuxeEastKilbride),
     odeon("530", OdeonLuxeGlasgow),
     showcase("X06KE", ShowcaseGlasgowCoatbridge),
@@ -1481,7 +1484,7 @@ class CinemaScraperCatalog(
     flicks("guildhall-cinema-gloucester", GuildhallCinemaGloucester),
     flicks("studio-coleford", MerlinStudioColeford),
     flicks("palace-cinema-cinderford", PalaceCinemaCinderford),
-    flicks("roses-theatre-tewksbury", RosesTheatreTewkesbury),
+    spektrix("rosestheatretewkesbury", RosesTheatreTewkesbury),
     flicks("sherborne-gloucester", SherborneCinemaGloucester),
     vueUk("10083", VueCinemasStroud),
   )
@@ -1533,14 +1536,14 @@ class CinemaScraperCatalog(
   )
   private val hertfordshireScrapers: Seq[CinemaScraper] = Seq(
     flicks("baldock-arts-and-heritage-centre", BaldockArtsHeritageCentre),
-    flicks("hertford-theatre", BEAMHertfordTheatre),
+    spektrix("beamhertford", BEAMHertfordTheatre),
     flicks("broadway-letchworth", BroadwayLetchworth),
     cineworld("x06sl-cineworld-cinema-hemel-hempstead", CineworldHemelHempstead),
     cineworld("x06xn-cineworld-cinema-stevenage", CineworldStevenage),
     cineworld("x11db-cineworld-cinema-watford", CineworldWatford),
     odeon("929", OdeonCinemaHatfield),
     flicks("reel-cinema-borehamwood", ReelCinemaBorehamwood),
-    flicks("garden-city-cinema-welwyn", TheCinemaCampusWest),
+    spektrix("campuswest", TheCinemaCampusWest),
     savoy("https://odysseypictures.co.uk/OdysseyPictures.dll/", TheOdysseyStAlbans),
     flicks("rex-berkhamsted", TheRexCinemaBerkhamsted),
     vueUk("10023", VueCinemasWatford),
@@ -1601,14 +1604,14 @@ class CinemaScraperCatalog(
     cineworld("x0vhp-cineworld-cinema-broughton", CineworldBroughton),
     everyman("X11NR", EverymanCinemaClitheroe),
     flicks("flower-bowl-entertainment-centre-preston", FlowerBowlEntertainmentCentrePreston),
-    flicks("lowther-pavilion-lytham", LowtherPavilionLytham),
+    spektrix("lowtherpavilion", LowtherPavilionLytham),
     odeon("925", OdeonCinemaPreston),
     odeon("843", OdeonCinemaRochdale),
     flicks("reel-cinema-blackburn", ReelCinemaBlackburn),
     flicks("reel-cinema-chorley", ReelCinemaChorley),
     flicks("reel-cinema-burnley", ReelCinemasBurnley),
     flicks("regent-blackpool", RegentBlackpool),
-    flicks("the-dukes-lancaster", TheDukesLancaster),
+    spektrix("dukeslancaster", TheDukesLancaster),
     flicks("island-cinemas-lytham-st-annes", TheIslandLythamStAnnes),
     flicks("the-light-cinemas-bolton", TheLightBolton),
     vueUk("10051", VueCinemasAccrington),
@@ -1633,7 +1636,7 @@ class CinemaScraperCatalog(
   private val lincolnshireScrapers: Seq[CinemaScraper] = Seq(
     flicks("arts-centre-stamford", ArtsCentreStamford),
     everyman("G004G", EverymanCinemaLincoln),
-    flicks("junction-goole", JunctionGoole),
+    spektrix("junctiongoole", JunctionGoole),
     flicks("kinema-in-the-woods-woodhall-spa", KinemaInTheWoods),
     savoy("https://loewencinema.com/LoewenCinema.dll/", LoewenCinema),
     odeon("568", OdeonCinemaLincoln),
@@ -1701,13 +1704,13 @@ class CinemaScraperCatalog(
     savoy("https://forumhexham.com/ForumHexham.dll/", ForumCinemaHexham),
     flicks("market-pavillion-cinema-blyth", MarketPavilionCinemaBlyth),
     flicks("phoenix-cinema-blyth", PhoenixCinemaBlyth),
-    flicks("the-maltings-berwick-upon-tweed", TheMaltingsBerwickUponTweed),
+    spektrix("maltingsberwick", TheMaltingsBerwickUponTweed),
     vueUk("10085", VueCinemasCramlington),
   )
   private val nottinghamshireScrapers: Seq[CinemaScraper] = Seq(
     flicks("arc-cinema-at-the-byron-hucknall", ArcCinemaAtTheByronHucknall),
     flicks("arc-cinema-beeston", ArcCinemaBeeston),
-    flicks("broadway-nottingham", BroadwayCinemaNottingham),
+    spektrix("broadwaynottingham", BroadwayCinemaNottingham),
     odeon("842", OdeonCinemaMansfield),
     odeon("757", OdeonCinemaNewark),
     flicks("scala-ilkeston", ReelCinemaScalaIlkeston),
@@ -1753,7 +1756,7 @@ class CinemaScraperCatalog(
     flicks("festival-drayton-centre-market-drayton", FestivalDraytonCentre),
     flicks("maona-cinema-oswestry", MaonaCinemaOswestry),
     odeon("916", OdeonLuxeTelford),
-    flicks("old-market-hall-shrewsbury", OldMarketHallShrewsbury),
+    spektrix("theatresevern", OldMarketHallShrewsbury, Some("Old Market Hall")),
     flicks("majestic-bridgnorth", ReelCinemaBridgnorthMajestic),
     flicks("wellington-orbit-wellington", WellingtonOrbit),
   )
@@ -1769,7 +1772,7 @@ class CinemaScraperCatalog(
     flicks("plaza-cinema-weston-super-mare", PlazaCinemaWestonSuperMare),
     flicks("ritz-burnham-on-sea", RitzBurnhamOnSea),
     flicks("scott-bridgwater", ScottCinemasBridgwater),
-    flicks("taunton-brewhouse", TauntonBrewhouse),
+    spektrix("brewhousetaunton", TauntonBrewhouse),
     flicks("the-avenue-cinema-minehead", TheAvenueCinemaMinehead),
     flicks("the-wells-film-centre", TheWellsFilmCentre),
     flicks("westway-frome", WestwayCinemaFrome),
@@ -1788,7 +1791,7 @@ class CinemaScraperCatalog(
     cineworld("x0weg-cineworld-cinema-stoke-on-trent", CineworldStokeOnTrent),
     cineworld("x06xr-cineworld-cinema-wolverhampton", CineworldWolverhampton),
     flicks("film-theatre-stoke-on-trent", FilmTheatreStokeOnTrent),
-    flicks("lichfield-garrick-theatre-and-studio", LichfieldGarrickTheatreStudio),
+    spektrix("lichfieldgarrick", LichfieldGarrickTheatreStudio, Some("Studio")),
     flicks("lockworks-cinema", LockworksCinemaWolverhampton),
     odeon("430", OdeonCinemaStokeOnTrent),
     odeon("930", OdeonCinemaTamworth),
@@ -1806,7 +1809,7 @@ class CinemaScraperCatalog(
     flicks("electric-picture-palace-southwold", ElectricPicturePalaceSouthwold),
     everyman("G0210", EverymanBuryStEdmunds),
     flicks("film-theatre-leiston", FilmTheatreLeiston),
-    flicks("haverhill-arts-centre-haverhill", HaverhillArtsCentre),
+    spektrix("haverhillartscentre", HaverhillArtsCentre),
     flicks("ipswich-film-theatre-ipswich", KingStreetCinema),
     savoy("https://kingscinema.co.uk/KingsCinema.dll/", KingsCinemaNewmarket),
     flicks("empire-cinema-ipswich", OmniplexIpswichFormerlyEmpire),
@@ -1830,7 +1833,7 @@ class CinemaScraperCatalog(
     flicks("birks-aberfeldy", BirksAberfeldy),
     flicks("chalmers-arbroath-cinema", ChalmersFilmhouseArbroath),
     cineworld("x07a0-cineworld-cinema-dundee", CineworldDundee),
-    flicks("dundee-contemporary-arts-dca-dundee", DundeeContemporaryArtsDCA),
+    spektrix("dundeeca", DundeeContemporaryArtsDCA),
     flicks("new-picture-house-st-andrews", NewPictureHouseStAndrews),
     odeon("044", OdeonLuxeDundee),
     flicks("playhouse-perth", PlayhouseCinemaPerth),
@@ -1883,7 +1886,7 @@ class CinemaScraperCatalog(
     everyman("X0QM5", EverymanCinemaLeeds),
     flicks("heart-centre-headingley", HeartCentreHeadingley),
     savoy("https://hebdenbridgepicturehouse.co.uk/HebdenBridgePictureHouse.dll/", HebdenBridgePicturehouse),
-    flicks("hyde-park-picture-house-leeds", HydeParkPictureHouse),
+    spektrix("leedsheritagetheatres", HydeParkPictureHouse, Some("Hyde Park Picture House")),
     flicks("ilkley-cinema-ilkley", IlkleyCinema),
     odeon("953", OdeonCinemaHuddersfield),
     odeon("860", OdeonLuxeLeedsThorpePark),

@@ -10465,6 +10465,14 @@ services.cinemas.uk.SavoyClient
 services.cinemas.uk.SavoyClient$
 services.cinemas.uk.SavoyClient$Slot
 services.cinemas.uk.SavoyClient$Slot$
+services.cinemas.uk.SpektrixClient
+services.cinemas.uk.SpektrixClient$
+services.cinemas.uk.SpektrixClient$$anon$1
+services.cinemas.uk.SpektrixClient$$anon$2
+services.cinemas.uk.SpektrixClient$$anon$3
+services.cinemas.uk.SpektrixClient$$anon$4
+services.cinemas.uk.SpektrixClient$Slot
+services.cinemas.uk.SpektrixClient$Slot$
 services.cinemas.uk.TheOldCourtClient
 services.cinemas.uk.TheOldCourtClient$
 services.cinemas.uk.TheOldCourtClient$RawSlot

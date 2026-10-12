@@ -11,7 +11,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 import services.cinemas.common.{CinemaScraper, FlicksClient, FlicksMarket, GatsbyBoxOfficeClient, MultiListingScraper}
 import services.cinemas.pl._
 import services.cinemas.us.{AlamoDrafthouseClient, UsChainVenues}
-import services.cinemas.uk.{CineworldClient, SavoyClient}
+import services.cinemas.uk.{CineworldClient, SavoyClient, SpektrixClient}
 import services.cinemas.us.{AmcClient, RegalClient}
 import _root_.tools.{CachingDetailFetch, GetOnlyHttpFetch, HttpFetch}
 import services.freshness.{Freshness, FreshnessKind}
@@ -371,6 +371,23 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     savoyVenues should have size 43
     // Every one keeps its Flicks slug, so a box-office outage falls back rather than blanks.
     savoyVenues.filterNot(c.flicksFallbackSlugs.contains) shouldBe empty
+  }
+
+  // The ICA never had a showtime from Flicks; its Spektrix box office sells two months
+  // ahead. Measured 2026-10-12, each Spektrix venue wired here lists at least as many
+  // films' showtimes on its own box office as the live read model held from Flicks.
+  it should "wire UK Spektrix venues to their own box office with flicks kept as the fallback" in {
+    val c   = catalog(direct = new FakeHttpFetch("spektrix"), today = LocalDate.of(2026, 10, 12))
+    val ica = c.all.find(_.cinema == InstituteOfContemporaryArts).value
+    ica shouldBe a [SpektrixClient]
+    ica.fetch().flatMap(_.showtimes) should have size 209
+    c.flicksFallbackSlugs.get(InstituteOfContemporaryArts).value shouldBe
+      ChainFlicksFallback.FlicksFallback(FlicksMarket.UnitedKingdom, "institute-of-contemporary-arts")
+    // The two buildings one client sells are two venues, each reading only its own.
+    c.all.find(_.cinema == EmpireTheatreConsett).value.fetch().flatMap(_.showtimes) should have size 23
+    val spektrixVenues = c.all.collect { case s: SpektrixClient => s.cinema }
+    spektrixVenues should have size 36
+    spektrixVenues.filterNot(c.flicksFallbackSlugs.contains) shouldBe empty
   }
 
   it should "wire UK chain venues to their own-site client with flicks kept as the fallback" in {
