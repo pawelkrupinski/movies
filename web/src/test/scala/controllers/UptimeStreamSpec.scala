@@ -32,7 +32,7 @@ class UptimeStreamSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll 
   override def afterAll(): Unit = Await.result(sys.terminate(), SpecTimeouts.Io)
 
   private def controller(monitor: UptimeMonitor) =
-    new UptimeController(Helpers.stubControllerComponents(), TestAdminAction(), monitor, new InMemoryFallbackStore, models.Country.Poland, clock = _root_.tools.SpecClock.Pinned)
+    new UptimeController(Helpers.stubControllerComponents(), TestAdminAction(), monitor, new InMemoryFallbackStore, new services.closure.InMemoryClosureLedger, models.Country.Poland, clock = _root_.tools.SpecClock.Pinned)
 
   private def servicesIn(frame: String): Seq[String] =
     Json.parse(frame.stripPrefix("data: ").trim).as[List[JsObject]].map(o => (o \ "service").as[String])

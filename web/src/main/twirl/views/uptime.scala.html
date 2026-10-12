@@ -1,6 +1,6 @@
-@import controllers.{FallbackRow, FlaggedRow, ServiceRow}
+@import controllers.{DroppedRow, FallbackRow, FlaggedRow, ServiceRow}
 @import services.UptimeMonitor
-@(failing: Seq[FlaggedRow], gone: Seq[FlaggedRow], zero: Seq[FlaggedRow], onFallback: Seq[FallbackRow], cinemasByCity: Seq[(String, Seq[ServiceRow])], services: Seq[ServiceRow], other: Seq[ServiceRow], hiddenHealthyCinemas: Int = 0, thin: Seq[FlaggedRow] = Seq.empty, hiddenThin: Int = 0, current: models.Country)
+@(failing: Seq[FlaggedRow], gone: Seq[FlaggedRow], zero: Seq[FlaggedRow], onFallback: Seq[FallbackRow], cinemasByCity: Seq[(String, Seq[ServiceRow])], services: Seq[ServiceRow], other: Seq[ServiceRow], hiddenHealthyCinemas: Int = 0, thin: Seq[FlaggedRow] = Seq.empty, hiddenThin: Int = 0, dropped: Seq[DroppedRow] = Seq.empty, current: models.Country)
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -224,6 +224,27 @@
     <details class="leading-gone" id="gone">
       <summary>Gone upstream — page 404s or 410s (@gone.size)</summary>
       @for(f <- gone) { @flaggedRow(f) }
+    </details>
+  }
+
+  @*  Venues every source dropped for weeks, from the closure sweep. "Open" ones are
+      coverage gaps — the venue's own site or another listing shows it still running,
+      or nothing about the venue itself is known — and are never retired; only a new
+      source brings their programme back. "Closed" ones await their retirement.  *@
+  @if(dropped.nonEmpty) {
+    <details class="leading-fallback" id="dropped">
+      <summary>Dropped by every source — coverage gaps and closures (@dropped.size)</summary>
+      <table>
+        <tr><th>Cinema</th><th>Verdict</th><th>Since</th><th>Evidence</th></tr>
+        @for(r <- dropped) {
+          <tr>
+            <td class="cinema">@r.cinema</td>
+            <td>@r.verdict</td>
+            <td>@r.since</td>
+            <td class="reason">@r.evidence</td>
+          </tr>
+        }
+      </table>
     </details>
   }
 

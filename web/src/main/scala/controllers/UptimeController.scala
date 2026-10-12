@@ -15,7 +15,8 @@ import java.util.Locale
 import scala.concurrent.ExecutionContext
 import scala.concurrent.duration._
 
-class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monitor: UptimeMonitor, filmwebFallback: FallbackStore, country: models.Country, clock: java.time.Clock)(using mat: Materializer) extends AbstractController(cc) {
+class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monitor: UptimeMonitor, filmwebFallback: FallbackStore,
+                       closures: services.closure.ClosureLedgerReader, country: models.Country, clock: java.time.Clock)(using mat: Materializer) extends AbstractController(cc) {
 
   /** Bounds the rows an anonymous `imgEvent` caller can create — see the
    *  endpoint's own comment for why it is anonymous at all. */
@@ -137,8 +138,19 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
       monitor.recentErrors(_, RecentScrapes), row)
     Ok(views.html.uptime(sections.failing, sections.gone, sections.zero, activeFallbacks(), sections.cinemasByCity,
       sections.services, sections.other, sections.hiddenHealthyCinemas, thin = sections.thin,
-      hiddenThin = sections.hiddenThin, current = country))
+      hiddenThin = sections.hiddenThin, dropped = droppedVenues(), current = country))
   }
+
+  /** The venues every source dropped, from the closure sweep's ledger: a CLOSED one awaits
+   *  its retirement; a SOURCE-DROPPED one is a venue still open that we no longer have a
+   *  programme for, which only a new source fixes. Gaps first, oldest first. */
+  private def droppedVenues(): Seq[DroppedRow] =
+    closures.entries().toSeq.sortBy { case (name, entry) => (entry.kind == services.closure.LedgerKind.Closed, entry.at, name) }.map {
+      case (name, entry) => DroppedRow(name, entry.kind match {
+        case services.closure.LedgerKind.SourceDropped => "open — needs a new source"
+        case services.closure.LedgerKind.Closed        => "closed — retirement pending"
+      }, fmtInstant(entry.at), entry.evidence)
+    }
 
   /** Cinemas CURRENTLY served by Filmweb because their own scraper is down/empty,
    *  rendered as a section ON the uptime page (below the failing / no-screenings
@@ -522,6 +534,9 @@ object UptimeBarPayload {
     out += ']'
   }
 }
+
+/** A venue every source dropped, as the closure sweep found it (`verdict`), and the evidence line it was raised on. */
+case class DroppedRow(cinema: String, verdict: String, since: String, evidence: String)
 
 case class FallbackRow(
   cinema: String, source: String, ref: String, since: String, reason: String,

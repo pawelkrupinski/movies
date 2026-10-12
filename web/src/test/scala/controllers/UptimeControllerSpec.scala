@@ -29,8 +29,9 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
   override def afterAll(): Unit = Await.result(sys.terminate(), SpecTimeouts.Io)
 
   private val fallbackStore = new InMemoryFallbackStore
+  private val closures      = new services.closure.InMemoryClosureLedger
   private def controllerFor(country: models.Country) =
-    new UptimeController(Helpers.stubControllerComponents(), TestAdminAction(), new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), fallbackStore, country, clock = _root_.tools.SpecClock.Pinned)
+    new UptimeController(Helpers.stubControllerComponents(), TestAdminAction(), new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), fallbackStore, closures, country, clock = _root_.tools.SpecClock.Pinned)
   private val controller = controllerFor(models.Country.Poland)
   private val adminSession = FakeRequest().withSession("userId" -> TestAdminAction.AdminUserId)
   private def fakeRow(n: String) = ServiceRow(n, Seq.empty)
@@ -330,6 +331,24 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
     html should include ("""title="FilmwebShowtimesClient"""") // full class on hover
   }
 
+  // A venue every source dropped but that is still open (ACME, Lambertville) must be in front of
+  // an operator as a coverage gap, apart from one that has closed and awaits its retirement.
+  "the /uptime page's dropped-venue section" should "list coverage gaps apart from closures, each with its evidence" in {
+    import services.closure.{LedgerEntry, LedgerKind}
+    val at = java.time.Instant.parse("2026-10-01T09:00:00Z")
+    closures.record("ACME Screening Room Lambertville", LedgerEntry(LedgerKind.SourceDropped, at,
+      "Aggregator page gone since 2026-08-31 (HTTP 404). Venue itself: OPEN: own site https://www.acmescreeningroom.org/ answered with no closure notice."))
+    closures.record("Kino Gone", LedgerEntry(LedgerKind.Closed, at, "Venue itself: CLOSED: own site https://kino-gone.example/ answered HTTP 410."))
+    try {
+      val html = contentAsString(controller.index(adminSession))
+      html should include ("Dropped by every source — coverage gaps and closures (2)")
+      html should include ("open — needs a new source")
+      html should include ("closed — retirement pending")
+      html should include ("OPEN: own site https://www.acmescreeningroom.org/ answered with no closure notice")
+      html.indexOf("ACME Screening Room Lambertville") should be < html.indexOf("Kino Gone")   // gaps first
+    } finally { closures.withdraw("ACME Screening Room Lambertville"); closures.withdraw("Kino Gone") }
+  }
+
   "the /uptime page's aggregator-fallback section" should "list only the cinemas currently on fallback — not recovered or by-design venues" in {
     fallbackStore.put(fallbackState("Kino Praha", active = true))
     fallbackStore.put(fallbackState("Kino Iluzjon", active = false))   // recovered (inactive, has history)
@@ -354,7 +373,7 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
 
   it should "403 a logged-in user whose email is not on the allowlist" in {
     val outsider = new UptimeController(Helpers.stubControllerComponents(),
-      TestAdminAction(allow = Set("someone-else@example.com")), new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), fallbackStore, models.Country.Poland, clock = _root_.tools.SpecClock.Pinned)
+      TestAdminAction(allow = Set("someone-else@example.com")), new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), fallbackStore, closures, models.Country.Poland, clock = _root_.tools.SpecClock.Pinned)
     status(outsider.index(adminSession)) shouldBe FORBIDDEN
   }
 
@@ -382,7 +401,7 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
   private def imgController = {
     val monitor = new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned)
     (new UptimeController(Helpers.stubControllerComponents(), TestAdminAction(), monitor,
-      fallbackStore, models.Country.Poland, clock = _root_.tools.SpecClock.Pinned), monitor)
+      fallbackStore, closures, models.Country.Poland, clock = _root_.tools.SpecClock.Pinned), monitor)
   }
 
   "the /uptime img-event endpoint" should "give each origin host its own service row" in {
@@ -440,7 +459,7 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
   it should "stop an anonymous caller growing the monitor a row at a time" in {
     val monitor = new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned)
     val ctl = new UptimeController(Helpers.stubControllerComponents(), TestAdminAction(), monitor,
-      fallbackStore, models.Country.Poland, clock = _root_.tools.SpecClock.Pinned)
+      fallbackStore, closures, models.Country.Poland, clock = _root_.tools.SpecClock.Pinned)
     // The host is client-controlled and becomes a KEY — one bucket map and one
     // Mongo document per distinct value. Past the cap they all share a row.
     val flood = (1 to ImageOriginRoster.DefaultLimit + 50).map(i =>
