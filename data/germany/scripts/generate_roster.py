@@ -26,6 +26,7 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import build_pages  # noqa: E402
+import seasonal_venues  # noqa: E402
 from town_pages import placement_problems  # noqa: E402
 
 ROOT = build_pages.ROOT
@@ -101,6 +102,8 @@ def render(roster: list, pages: list, retired: dict, kinoprogramm: dict, town_of
     lines.extend(f"    ({scala_string(slug)}, {scala_string(r['qualifiedSlug'])}, {scala_string(r['page'])}),"
                  for slug, r in sorted(retired.items()))
     lines.append("  )")
+    lines.append("")
+    lines.extend(seasonal_venues.render_scala(seasonal_venues.seasonal_names("de", venues), scala_string))
     lines.append("}")
     return "\n".join(lines) + "\n"
 

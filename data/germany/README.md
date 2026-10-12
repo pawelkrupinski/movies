@@ -218,3 +218,11 @@ filmstarts entries (keyed by page slug) and kinoprogramm.com fallbacks (keyed by
 venue), `Country.Germany` (`showtimes.cc/de`), the apps via `/api/catalog` — which
 carries each page's Bundesland as its `region`, so the two-step pick works there
 too — and the page snapshots.
+
+## Seasonal venues
+
+Open-air, summer and drive-in screens are marked seasonal by name when the roster is
+generated (`data/scripts/seasonal_venues.py`, emitted as `seasonal` in the generated
+roster); a matching name that screens all year goes in its `NOT_SEASONAL` with the
+evidence. Off the country's typical season (`models.SeasonWindow`) such a venue is kept
+out of the dead-venue pages, the content census and the closure sweep, and still scraped.

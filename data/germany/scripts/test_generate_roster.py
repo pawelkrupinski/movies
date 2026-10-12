@@ -39,6 +39,13 @@ def test_renders_each_venue_with_its_fallback_and_town_and_each_page_with_its_la
     assert '("koeln-alt", "koeln-alt-hessen", "eschborn"),' in out
 
 
+def test_renders_the_seasonal_venues_by_name():
+    roster = ROSTER + [{"theaterId": "A9", "name": "Freiluftkino", "city": "Frankfurt", "displayName": "Freiluftkino Main"}]
+    pages = [dict(PAGES[0], cinemas=["Lichtburg", "Freiluftkino Main"]), PAGES[1]]
+    out = gr.render(roster, pages, {}, {}, lambda city: city)
+    assert '  val seasonal: Set[String] = Set(\n    "Freiluftkino Main",\n  )' in out
+
+
 def main():
     tests = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for t in tests:

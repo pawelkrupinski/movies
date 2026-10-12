@@ -35,6 +35,7 @@ import sys
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parents[2] / "scripts"))
 import retired_venues  # noqa: E402
+import seasonal_venues  # noqa: E402
 from town_pages import placement_problems  # noqa: E402
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
@@ -167,6 +168,8 @@ def main() -> int:
     lines.extend(f"    ({scala_string(slug)}, {scala_string(r['qualifiedSlug'])}, {scala_string(r['page'])}),"
                  for slug, r in sorted(retired_pages.items()))
     lines.append("  )")
+    lines.append("")
+    lines.extend(seasonal_venues.render_scala(seasonal_venues.seasonal_names("es", venues), scala_string))
     lines.append("}")
 
     OUT.write_text("\n".join(lines) + "\n")

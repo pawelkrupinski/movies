@@ -287,3 +287,11 @@ it.
   to bring one back, delete its entry. Entries also arrive by PR: the worker's daily
   closure sweep (`ClosureSweep`) starts `.github/workflows/retire-venues.yml` for a
   venue confirmed closed, which re-checks it live and opens the PR adding it here.
+
+## Seasonal venues
+
+Open-air, summer and drive-in screens are marked seasonal by name when the roster is
+generated (`data/scripts/seasonal_venues.py`, emitted as `seasonal` in the generated
+roster); a matching name that screens all year goes in its `NOT_SEASONAL` with the
+evidence. Off the country's typical season (`models.SeasonWindow`) such a venue is kept
+out of the dead-venue pages, the content census and the closure sweep, and still scraped.

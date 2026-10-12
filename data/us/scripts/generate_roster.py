@@ -39,6 +39,7 @@ from zoneinfo import ZoneInfo
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
 import build_pages  # noqa: E402
+import seasonal_venues  # noqa: E402
 from town_pages import placement_problems  # noqa: E402
 
 ROOT = build_pages.ROOT
@@ -186,6 +187,9 @@ def render(pages, retired, venues, town_names):
     lines.extend(f"    ({scala_str(slug)}, {scala_str(r['qualifiedSlug'])}, {scala_str(r['page'])}),"
                  for slug, r in sorted(retired.items()))
     lines.append("  )")
+    lines.append("")
+    rostered = [name_of[c] for p in pages for c in p['cinemas']]
+    lines.extend(seasonal_venues.render_scala(seasonal_venues.seasonal_names("us", rostered), scala_str))
     lines.append("}")
     return "\n".join(lines) + "\n", len(own_zone)
 

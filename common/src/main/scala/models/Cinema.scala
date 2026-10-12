@@ -3,6 +3,15 @@ package models
 import java.time.ZoneId
 
 sealed abstract class Cinema(val displayName: String, val pillName: String) extends Source {
+  /** Whether the venue screens all year or only in a season ([[Opening]]): generated from
+   *  its name for the data-driven rosters (`data/scripts/seasonal_venues.py`), overridden
+   *  by hand for a seasonal Polish or UK venue below.
+   *
+   *  A member, NOT a defaulted constructor parameter: a default lives on the `Cinema`
+   *  companion, so every case object's initialiser would start `Cinema`'s — the roster
+   *  object `GermanRoster` reads while it builds — and two threads entering from either
+   *  end deadlock on class initialisation (seen in a parallel test run). */
+  def opening: Opening = Opening.YearRound
   /** Stable kebab-case id for per-cinema title rules (`TitleNormalizer.cinemaClean`).
    *  Derived from the case-object name so a shared portal client (Bilety24,
    *  SystemBiletowy, Ekobilet, …) can clean each venue it serves without a
@@ -997,7 +1006,11 @@ case object RichMixBethnalGreen extends Cinema("Rich Mix Shoreditch", "Rich Mix 
 case object RioDalston extends Cinema("Rio Cinema Dalston", "Rio Dalston")
 case object RiversideStudiosHammersmith extends Cinema("Riverside Studios Hammersmith", "Riverside Studios Hammersmith")
 case object RooftopFilmClubPeckhamBusseyBuilding extends Cinema("Rooftop Film Club Peckham (Bussey Building)", "Rooftop Film Club Peckham")
-case object RooftopFilmClubStratfordRoofEast extends Cinema("Rooftop Film Club Stratford (Roof East)", "Rooftop Film Club Stratford")
+// A rooftop screen, dark out of summer: its listing ran out on 2026-09-27. Peckham's (above) is
+// NOT seasonal — its listing on 2026-10-12 ran into November.
+case object RooftopFilmClubStratfordRoofEast extends Cinema("Rooftop Film Club Stratford (Roof East)", "Rooftop Film Club Stratford") {
+  override val opening: Opening = Opening.Seasonal(SeasonWindow.UnitedKingdom)
+}
 case object ScienceMuseumLondonImax extends Cinema("Science Museum London IMAX", "Science Museum London IMAX")
 case object ArchlightCinemas extends Cinema("The Arches (The Cinema in the Power Station)", "The Arches")
 case object TheArzner extends Cinema("The Arzner", "The Arzner")
@@ -1823,7 +1836,8 @@ case object VueCinemasSheffield extends Cinema("Vue Cinemas Sheffield", "Vue She
 // built ONCE in `GermanRoster` and reused everywhere (the page's cinemas,
 // `Cinema.byCity`, and the scrape catalog) — so the same `Source` instance is used
 // throughout and identity equality holds like the hand-authored `case object` cinemas did.
-final class GermanCinema(displayName: String, pillName: String) extends Cinema(displayName, pillName)
+final class GermanCinema(displayName: String, pillName: String, override val opening: Opening = Opening.YearRound)
+  extends Cinema(displayName, pillName)
 
 /** One addressable German page — Poland's and Spain's shape since 2026-10: a major
  *  city (a municipality of 100,000+) with only its own venues, a town with three or
@@ -1880,6 +1894,10 @@ object GermanRoster {
   private lazy val claimedElsewhere: Set[String] =
     (Cinema.polishAndUk.flatMap(_._2) ++ Cinema.Networks).map(_.displayName).toSet
 
+  /** A generated venue's [[Opening]]: seasonal, in Germany's window, when the generator named it so. */
+  private def opening(generatedName: String): Opening =
+    if (GermanRosterData.seasonal(generatedName)) Opening.Seasonal(SeasonWindow.Germany) else Opening.YearRound
+
   private val built: Seq[(GermanPlace, Seq[(GermanCinema, String, Option[String])])] =
     GermanRosterData.pages.map { case (slug, qualified, name, bundesland, lat, lon, multiTown, towns, cinemas) =>
       // Qualify only the venues that would collide, so the roster's names — and the wire
@@ -1887,7 +1905,7 @@ object GermanRoster {
       // Qualified with the venue's own TOWN, so a re-cluster never changes a wire key.
       val venues = cinemas.map { case (disp, pill, tid, kinoprogramm, town) =>
         val unique = if (claimedElsewhere.contains(disp)) s"$disp $town" else disp
-        (new GermanCinema(unique, pill), tid, kinoprogramm)
+        (new GermanCinema(unique, pill, opening(disp)), tid, kinoprogramm)
       }
       (GermanPlace(slug, qualified, name, bundesland, lat, lon, multiTown, towns, venues.map(_._1)), venues)
     }
@@ -1917,7 +1935,8 @@ object GermanRoster {
 // built ONCE in `UsRoster` and reused everywhere, so one `Source` instance
 // serves the page, `Cinema.byCity` and the scrape catalog, and identity
 // equality holds like the hand-authored `case object` cinemas.
-final class UsCinema(displayName: String, pillName: String) extends Cinema(displayName, pillName)
+final class UsCinema(displayName: String, pillName: String, override val opening: Opening = Opening.YearRound)
+  extends Cinema(displayName, pillName)
 
 /** One US page, as the roster sees it: a major city (a place of 100,000+) with
  *  only its own venues, a town with three or more, or a cluster of small towns a
@@ -1989,6 +2008,10 @@ object UsRoster {
   private val ownZones: Map[String, ZoneId] =
     UsRosterData.venueZones.map { case (disp, zone) => disp -> TimeZones.named(zone) }.toMap
 
+  /** A generated venue's [[Opening]]: seasonal, in the US window, when the generator named it so. */
+  private def opening(generatedName: String): Opening =
+    if (UsRosterData.seasonal(generatedName)) Opening.Seasonal(SeasonWindow.UnitedStates) else Opening.YearRound
+
   private val built: Seq[(UsPlace, Seq[Venue])] =
     UsRosterData.pages.map { case (slug, qualified, name, state, lat, lon, zone, multiTown, towns, cinemas) =>
       // Qualify only the venues that would collide, so the roster's names — and
@@ -1996,7 +2019,7 @@ object UsRoster {
       // Qualified with the venue's own STATE, so a re-cluster never moves a wire key.
       val venues = cinemas.map { case (disp, pill, flicksSlug, venueState, town) =>
         val unique = if (claimedElsewhere.contains(disp)) s"$disp ($venueState)" else disp
-        Venue(new UsCinema(unique, pill), flicksSlug, venueState, town, ownZones.get(disp))
+        Venue(new UsCinema(unique, pill, opening(disp)), flicksSlug, venueState, town, ownZones.get(disp))
       }
       val places = (name +: (towns ++ TownRanking.ranked(venues.map(_.town)))).distinct
       (UsPlace(slug, qualified, name, state, lat, lon, TimeZones.named(zone), multiTown, places,
@@ -2041,7 +2064,8 @@ object UsRoster {
 // `UsCinema`: each venue is built ONCE in `SpanishRoster` and reused everywhere, so one
 // `Source` instance serves the page, `Cinema.byCity` and the scrape catalog, and
 // identity equality holds like the hand-authored `case object` cinemas.
-final class SpanishCinema(displayName: String, pillName: String) extends Cinema(displayName, pillName)
+final class SpanishCinema(displayName: String, pillName: String, override val opening: Opening = Opening.YearRound)
+  extends Cinema(displayName, pillName)
 
 /** One addressable Spanish page — Poland's shape since 2026-10: a major city (the
  *  43 municipalities of 150,000+) with only its own venues, a town with three or
@@ -2114,6 +2138,10 @@ object SpanishRoster {
       UsRoster.byCity.flatMap(_._2) ++
       Cinema.Networks).map(_.displayName).toSet
 
+  /** A generated venue's [[Opening]]: seasonal, in Spain's window, when the generator named it so. */
+  private def opening(generatedName: String): Opening =
+    if (SpanishRosterData.seasonal(generatedName)) Opening.Seasonal(SeasonWindow.Spain) else Opening.YearRound
+
   private val built: Seq[(SpanishPlace, Seq[(SpanishCinema, Option[String], Option[String])])] =
     SpanishRosterData.pages.map { case (slug, qualified, name, province, lat, lon, zone, multiTown, towns, cinemas) =>
       // Qualify only the venues that would collide, so the roster's names — and the
@@ -2122,7 +2150,7 @@ object SpanishRoster {
       // a re-cluster never changes a venue's wire key.
       val venues = cinemas.map { case (disp, pill, theaterId, ocineServer) =>
         val unique = if (claimedElsewhere.contains(disp)) s"$disp $province" else disp
-        (new SpanishCinema(unique, pill), theaterId, ocineServer)
+        (new SpanishCinema(unique, pill, opening(disp)), theaterId, ocineServer)
       }
       (SpanishPlace(slug, qualified, name, province, lat, lon, TimeZones.named(zone), multiTown, towns,
                     venues.map(_._1)), venues)

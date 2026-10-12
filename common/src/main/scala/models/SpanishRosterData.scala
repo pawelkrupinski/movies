@@ -1121,4 +1121,38 @@ private[models] object SpanishRosterData {
     ("soria", "soria-castilla-y-leon", "golmayo"),
     ("vizcaya", "vizcaya-pais-vasco", "barakaldo"),
   )
+
+  /** The venues that screen only in season — open-air, summer and drive-in screens, by name
+   *  (data/scripts/seasonal_venues.py): their display names as generated above. */
+  val seasonal: Set[String] = Set(
+    "Autocine Getxo",
+    "Autocine Gijón",
+    "Autocine Resquitx - Golmés",
+    "Autocinema Tenerife",
+    "Centro de Arte y Cine de Verano Soto del Real",
+    "Cine Liszt Terraza de verano",
+    "Cine Terraza Avenida",
+    "Cine Terraza Charly",
+    "Cine Terraza Olimpo",
+    "Cine Terraza de Verano de Vera",
+    "Cine de Verano Abarán",
+    "Cine de Verano El Molino",
+    "Cine de Verano Juan Falco",
+    "Cine de Verano La Muralla",
+    "Cine de Verano Serra",
+    "Cine de Verano Tarancón",
+    "Cine de Verano Tugar",
+    "Cine de Verano Valdemoro",
+    "Cine de Verano de Archena",
+    "Cine de verano Aguadulce",
+    "Cine de verano el castillo",
+    "Terraza Auditorio Parque Municipal",
+    "Terraza Centro Joven",
+    "Terraza España",
+    "Terraza Imperial - Cine de Verano",
+    "Terraza Lumiere",
+    "Terraza Neptuno",
+    "Terraza de Verano",
+    "Terraza de Verano Oliva",
+  )
 }
