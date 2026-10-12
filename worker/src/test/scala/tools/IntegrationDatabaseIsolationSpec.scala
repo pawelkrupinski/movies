@@ -44,7 +44,10 @@ class IntegrationDatabaseIsolationSpec extends AnyFlatSpec with Matchers {
   private val SharedDatabaseAllowlist: Map[String, String] = Map(
     "worker/src/it/scala/IntegrationCorpusDatabaseIntegrationSpec.scala" ->
       ("reads the base MONGODB_DB only to assert the per-suite names derive from it, and to name a dead run's orphan the " +
-        "sweep must reclaim; opens no database by it"))
+        "sweep must reclaim; opens no database by it"),
+    "worker/src/it/scala/IntegrationRunClaimIntegrationSpec.scala" ->
+      ("`databasePrefix` there is a fresh RunScopedDatabaseName the spec swaps in, used only as the claim row's key in " +
+        "IntegrationRunClaim.Database; it never opens the shared database"))
 
   /** file → why it may open a database by a literal name. */
   private val LiteralDatabaseAllowlist: Map[String, String] = Map(
