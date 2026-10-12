@@ -33,6 +33,13 @@ def feed(source, venue):
         return f"k({lit(venue['kinoheld']['id'])}, {lit(venue['kinoheld']['path'])})"
     if source == "kinoprogramm":
         return f"p({lit(venue['kinoprogramm'])})"
+    if source == "ownSite":
+        site = venue["ownSite"]
+        if site["site"] == "wix-events":
+            return f"GermanFeed.WixEvents({lit(site['page'])}, {lit(site['postcode'])})"
+        if site["site"] == "rex-schifferstadt":
+            return f"GermanFeed.RexSchifferstadt({lit(site['page'])})"
+        raise ValueError(f"{venue['key']}: no client reads a {site['site']!r} site")
     raise ValueError(source)
 
 

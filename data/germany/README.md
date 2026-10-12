@@ -185,6 +185,18 @@ Neither condition held, so each venue keeps its own measured primary: of the 1,5
 venues rostered before, Cineamo 719, Filmstarts 708, kinoheld 82, kinoprogramm.com 6.
 `test_harvest_sources.py` pins the split's two numbers against the rule.
 
+A few open venues are on none of the four: a house that sells its own tickets and
+publishes a dated programme only on its own site. Those sites are kept by hand in
+`harvest_sources.py`'s `OWN_SITES` — the site's kind, its page — and lead the venue's
+chain as `ownSite`, the measured order behind them (2026-10-12: Steinhaus Bautzen's
+Wix events list, `WixEventsClient`; Rex Schifferstadt's week tables,
+`RexSchifferstadtClient`). A new kind needs its client, a `GermanFeed` case and a line
+in `generate_sources.py`. Checked and left out the same day: kinofans.com (its
+weekly page ties no showtime to a day), Lichtspiele Sassnitz (a monthly text page that
+mixes in screenings in Sellin), and the Cineweb sites of Wittingen, Einbeck and
+Überlingen (Wittingen lists nothing, Einbeck's is the rostered Welt-Theater's, and
+Überlingen's is Cinegreth's programme under one "Kinos Überlingen" name).
+
 Rerun it — `python3 data/germany/scripts/harvest_sources.py`, then
 `generate_sources.py` — to re-measure; a near-tie never flips a venue, a real gain does.
 

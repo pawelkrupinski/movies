@@ -121,6 +121,18 @@ SAME_VENUE = {
     "kinoheld:3317": "cineamo:2981",   # Lichtspieltheater Willich
 }
 
+# Venues no aggregator lists, whose own site publishes a regular dated programme a
+# client reads (checked by hand, 2026-10-12): Filmstarts theaterId -> the site. The
+# harvest does not measure these; the site leads, the measured order follows it.
+OWN_SITE_KINDS = ("wix-events", "rex-schifferstadt")
+OWN_SITES = {
+    # Film Wednesdays at 20:00 on its Wix events list, six weeks ahead, tickets at the
+    # door; the list also holds a Bischofswerda club's evenings, told apart by postcode.
+    "A2231": {"site": "wix-events", "page": "https://www.steinhaus-bautzen.de/kino", "postcode": "02625"},
+    # The programme week, Thursday to Wednesday, as one table per film; phone bookings.
+    "A1072": {"site": "rex-schifferstadt", "page": "https://rex-schifferstadt.de/"},
+}
+
 # Listed like a venue, but not one: never added.
 NOT_A_VENUE = {
     "cineamo:778",   # "Innenstadtkinos": the brand of Stuttgart's six city-centre cinemas, each rostered
@@ -577,6 +589,9 @@ def row(name, town, theater_id, handles, kp_path, shows, how, place=None, found=
         out["kinoprogramm"] = kp_path
     if how:
         out["matchedBy"] = how
+    if theater_id in OWN_SITES:
+        out["ownSite"] = OWN_SITES[theater_id]
+        primary, fallbacks = "ownSite", [s for s in [primary, *fallbacks] if s]
     out.update({"shows": shows, "primary": primary, "fallbacks": fallbacks, "rawWinner": raw})
     return out
 

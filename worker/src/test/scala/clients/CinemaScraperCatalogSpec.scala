@@ -667,6 +667,18 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     }
   }
 
+  // Two venues no aggregator lists read their own sites (harvest_sources.py's OWN_SITES),
+  // Filmstarts and kinoprogramm.com still behind them.
+  "Germany's own-site venues" should "read the venue's own page first" in {
+    val c = catalog()
+    def venue(tid: String) = models.GermanRoster.theaterIdByCinema.collectFirst { case (v, `tid`) => v }.value
+    Seq("A2231" -> "https://www.steinhaus-bautzen.de/kino", "A1072" -> "https://rex-schifferstadt.de/").foreach {
+      case (tid, page) =>
+        withClue(s"$tid: ")(c.all.filter(_.cinema == venue(tid)).map(_.sourceUrl) shouldBe Seq(Some(page)))
+        c.germanFallbackFeeds.get(venue(tid)).value.head shouldBe GermanFeed.Filmstarts(tid)
+    }
+  }
+
   "Germany's venues" should "be scraped under the town page they are on, with their fallback chain kept" in {
     // The pages were 35 km regions until 2026-10: the Main-Taunus Kinopolis was on
     // /frankfurt-am-main/; Sulzbach (Taunus) clusters with Hofheim now.

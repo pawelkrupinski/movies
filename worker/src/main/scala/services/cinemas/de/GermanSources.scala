@@ -23,6 +23,15 @@ object GermanFeed {
   final case class Kinoprogramm(path: String) extends GermanFeed {
     def label = "Kinoprogramm"; def ref = path
   }
+  /** The venue's own Wix site's events list ([[services.cinemas.common.WixEventsClient]]),
+   *  its evenings told from a partner's on the same list by their postcode. */
+  final case class WixEvents(page: String, postcode: String) extends GermanFeed {
+    def label = "Wix Events"; def ref = page
+  }
+  /** Rex Kino-Center Schifferstadt's own programme page ([[RexSchifferstadtClient]]). */
+  final case class RexSchifferstadt(page: String) extends GermanFeed {
+    def label = "rex-schifferstadt.de"; def ref = page
+  }
 }
 
 /**

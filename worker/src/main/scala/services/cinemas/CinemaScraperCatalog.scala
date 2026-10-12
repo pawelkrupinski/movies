@@ -4,8 +4,8 @@ import models._
 import tools.{CachingDetailFetch, HttpFetch}
 import services.cinemas.common.{CinemaScraper, GatsbyBoxOfficeClient, MultiListingScraper, VueCinemasPlatformClient, WebediaMarket, WebediaShowtimesClient}
 import services.cinemas.pl._
-import services.cinemas.common.{CineamoClient, FlicksClient, FlicksMarket, KinoheldClient, KinoprogrammClient}
-import services.cinemas.de.{GermanFeed, GermanSources}
+import services.cinemas.common.{CineamoClient, FlicksClient, FlicksMarket, KinoheldClient, KinoprogrammClient, WixEventsClient}
+import services.cinemas.de.{GermanFeed, GermanSources, RexSchifferstadtClient}
 import services.cinemas.uk.{CineworldClient, OdeonClient, SavoyClient, SpektrixClient, TheOldCourtClient}
 import services.cinemas.es.{ArtesieteClient, OcineClient, SpanishOwnSourcesData, TaquillaClient, TaquillaVenue}
 import services.cinemas.us.{AlamoDrafthouseClient, CinemaPlusClient, SquarespaceEventsClient, UsChainVenues, UsIndependentVenues}
@@ -1942,6 +1942,10 @@ class CinemaScraperCatalog(
     case GermanFeed.Kinoheld(venue)       => new KinoheldClient(http, venue, cinema, today = venueClock.todayAt(cinema, KinoheldClient.Zone))
     case GermanFeed.Kinoprogramm(path)    =>
       new KinoprogrammClient(http, path, cinema, today = venueClock.today(KinoprogrammClient.Zone), filmPages = kinoprogrammFilmPages)
+    case GermanFeed.WixEvents(page, postcode) =>
+      new WixEventsClient(http, page, postcode, cinema, today = venueClock.todayAt(cinema, models.TimeZones.Germany))
+    case GermanFeed.RexSchifferstadt(page) =>
+      new RexSchifferstadtClient(http, page, cinema, today = venueClock.todayAt(cinema, models.TimeZones.Germany))
   }
 
   /** Each rostered German venue's sources, primary first ([[GermanSources]]: the per-venue

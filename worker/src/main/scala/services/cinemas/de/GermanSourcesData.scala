@@ -1,5 +1,5 @@
 // GENERATED from data/germany/venue-sources.json by data/germany/scripts/generate_sources.py
-// -- do NOT edit by hand. Measured 2026-10-11: 1182 venues served other than
+// -- do NOT edit by hand. Measured 2026-10-11: 1184 venues served other than
 // Filmstarts-then-kinoprogramm.com. Regenerate after re-running harvest_sources.py; see data/germany/README.md.
 package services.cinemas.de
 
@@ -655,6 +655,7 @@ private[de] object GermanSourcesData {
     "A1063" -> Seq(c("924"), k("1087", "/kino/bad-laasphe/residenz-theater-kino"), f("A1063"), p("/kino/bad-laasphe/residenztheater-41902")),
     "A1067" -> Seq(f("A1067"), c("384"), k("1091", "/kino/langenfeld-rheinland/rex-kino"), p("/kino/langenfeld/rex-31853")),
     "A1068" -> Seq(c("1814"), k("302", "/kino/pforzheim/cineplex"), f("A1068"), p("/kino/pforzheim/rex-filmpalast-56736")),
+    "A1072" -> Seq(GermanFeed.RexSchifferstadt("https://rex-schifferstadt.de/"), f("A1072"), p("/kino/schifferstadt/rexkinocenter-85977")),
     "A1073" -> Seq(f("A1073"), c("352"), k("1093", "/kino/bonn/rex-lichtspieltheater-bonn"), p("/kino/bonn/rexlichtspieltheater-31777")),
     "A1074" -> Seq(f("A1074"), c("427"), p("/kino/dreieich/rex-palast-32013")),
     "A1078" -> Seq(f("A1078"), k("1096", "/kino/noerdlingen/ries-theater"), c("741"), p("/kino/noerdlingen/ries-theater-32904")),
@@ -767,10 +768,10 @@ private[de] object GermanSourcesData {
     "A1278" -> Seq(c("390"), k("1282", "/kino/neitersen-westerwald/wied-scala"), f("A1278"), p("/kino/neitersen-westerwald/wied-scala-31882")),
     "A1280" -> Seq(c("1031"), k("842", "/kino/regensburg/kinos-im-andreasstadel-regensburg"), f("A1280"), p("/kino/regensburg/kinos-im-andreasstadl-66757")),
     "A1282" -> Seq(c("350"), k("1283", "/kino/bonn/woki"), f("A1282"), p("/kino/bonn/woki-31772")),
-    "A1284" -> Seq(c("1271"), k("1284", "/kino/berlin/xenon-kino"), f("A1284"), p("/kino/berlin/xenon-31435")),
   )
 
   private def part3: Seq[(String, Seq[GermanFeed])] = Seq(
+    "A1284" -> Seq(c("1271"), k("1284", "/kino/berlin/xenon-kino"), f("A1284"), p("/kino/berlin/xenon-31435")),
     "A1285" -> Seq(c("981"), k("1285", "/kino/ulm/xinedome-ulm"), p("/kino/ulm/xinedome-57656"), f("A1285")),
     "A1286" -> Seq(f("A1286"), c("998"), k("1434", "/kino/halle-saale/zazie"), p("/kino/halle-saale/zazie-62577")),
     "A1287" -> Seq(c("468"), k("1287", "/kino/konstanz/zebra-kino-konstanz"), p("/kino/konstanz-universitaetsstadt/zebra-kommunales-kino-konstanz-e.v.-32128"), f("A1287")),
@@ -1009,6 +1010,7 @@ private[de] object GermanSourcesData {
     "A2142" -> Seq(c("1049"), k("1020", "/kino/goerlitz/offkino-klappe-die-zweite"), f("A2142")),
     "A2186" -> Seq(c("726"), f("A2186"), p("/kino/muenchen/cinema-32869"), k("206", "/kino/muenchen/cinema-filmtheater")),
     "A2193" -> Seq(c("1142"), f("A2193"), p("/kino/melsungen/freilichtkino-melsungen-73674")),
+    "A2231" -> Seq(GermanFeed.WixEvents("https://www.steinhaus-bautzen.de/kino", "02625"), f("A2231"), p("/kino/bautzen/steinhaus-73647")),
     "A2241" -> Seq(f("A2241"), k("717", "/kino/luebeck/kino-koki-luebeck"), c("601"), p("/kino/luebeck/kino-koki-kommunales-kino-32532")),
     "A2314" -> Seq(f("A2314"), c("409"), p("/kino/bad-brueckenau/rhoenlichtspiele-31955")),
     "A2315" -> Seq(f("A2315"), k("422", "/kino/glauchau/clubkino"), p("/kino/glauchau/clubkino-glauchau-e.v.-74299")),
@@ -1019,11 +1021,11 @@ private[de] object GermanSourcesData {
     "A2356" -> Seq(c("1127"), k("498", "/kino/chemnitz/filmclub-mittendrin"), f("A2356"), p("/kino/chemnitz-sachsen/filmclub-mittendrin-74977")),
     "A2357" -> Seq(c("1248"), k("3783", "/kino/holzkirchen/foolskino"), f("A2357")),
     "A2358" -> Seq(c("215"), k("1126", "/kino/leverkusen/scala-cinema"), f("A2358"), p("/kino/leverkusen/scala-31187")),
-    "A2363" -> Seq(c("1062"), f("A2363"), p("/kino/bielefeld/melodie-filmtheater-75017")),
-    "A2366" -> Seq(c("1063"), k("1148", "/kino/beeskow/schukurama-kino"), f("A2366"), p("/kino/beeskow/schukurama-75023")),
   )
 
   private def part4: Seq[(String, Seq[GermanFeed])] = Seq(
+    "A2363" -> Seq(c("1062"), f("A2363"), p("/kino/bielefeld/melodie-filmtheater-75017")),
+    "A2366" -> Seq(c("1063"), k("1148", "/kino/beeskow/schukurama-kino"), f("A2366"), p("/kino/beeskow/schukurama-75023")),
     "A2367" -> Seq(c("317"), k("199", "/kino/sondershausen/cinema-64-movie-and-more"), f("A2367"), p("/kino/sondershausen-thueringen/cinema-64-31672")),
     "A2368" -> Seq(f("A2368"), k("441", "/kino/achtrup/deli-kino"), p("/kino/leck/delikino-32522")),
     "A2374" -> Seq(c("1428"), k("1291", "/kino/berlin/z-inema-kino"), f("A2374"), p("/kino/berlin/zinema-im-zbar-75057")),

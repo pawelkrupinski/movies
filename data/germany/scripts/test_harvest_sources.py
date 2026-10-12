@@ -104,6 +104,24 @@ def test_a_default_order_serves_its_first_source_that_lists_anything():
     assert hs.choose({"filmstarts": [30, 30], "cineamo": [0, 0]}, order) == ("filmstarts", ["cineamo"], "filmstarts")
 
 
+def test_a_venue_s_own_site_leads_with_the_measured_order_behind_it():
+    # Steinhaus, Bautzen: no aggregator lists its film Wednesdays; its Wix page does.
+    shows = {"filmstarts": [0, 0], "kinoprogramm": [0, 0]}
+    r = hs.row("Steinhaus", "Bautzen", "A2231", {}, "/kino/bautzen/steinhaus-73647", shows, None)
+    assert r["ownSite"] == hs.OWN_SITES["A2231"]
+    assert (r["primary"], r["fallbacks"]) == ("ownSite", ["filmstarts", "kinoprogramm"])
+    # A venue with no own site keeps the measured choice.
+    plain = hs.row("Abaton", "Hamburg", "A0003", {}, None, {"filmstarts": [5, 5]}, None)
+    assert "ownSite" not in plain and plain["primary"] == "filmstarts"
+
+
+def test_every_own_site_is_a_rostered_venue_s_and_on_its_row():
+    rows = {v["key"]: v for v in json.loads((DATA / "venue-sources.json").read_text())["venues"]}
+    for tid, site in hs.OWN_SITES.items():
+        assert site["site"] in hs.OWN_SITE_KINDS, tid
+        assert rows[tid]["rostered"] and rows[tid]["ownSite"] == site and rows[tid]["primary"] == "ownSite", tid
+
+
 def test_shows_count_by_the_german_day_they_start_on():
     assert hs.berlin_day("2026-10-11T22:30:00Z") == "2026-10-12"
     # Today's shows are left out -- some sources still list the ones already past.

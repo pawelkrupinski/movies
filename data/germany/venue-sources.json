@@ -5509,6 +5509,11 @@
    "rostered": true,
    "filmstarts": "A2231",
    "kinoprogramm": "/kino/bautzen/steinhaus-73647",
+   "ownSite": {
+    "site": "wix-events",
+    "page": "https://www.steinhaus-bautzen.de/kino",
+    "postcode": "02625"
+   },
    "shows": {
     "filmstarts": [
      0,
@@ -5519,8 +5524,9 @@
      0
     ]
    },
-   "primary": "filmstarts",
+   "primary": "ownSite",
    "fallbacks": [
+    "filmstarts",
     "kinoprogramm"
    ],
    "rawWinner": "filmstarts"
@@ -48233,6 +48239,10 @@
    "rostered": true,
    "filmstarts": "A1072",
    "kinoprogramm": "/kino/schifferstadt/rexkinocenter-85977",
+   "ownSite": {
+    "site": "rex-schifferstadt",
+    "page": "https://rex-schifferstadt.de/"
+   },
    "shows": {
     "filmstarts": [
      0,
@@ -48243,8 +48253,9 @@
      0
     ]
    },
-   "primary": "filmstarts",
+   "primary": "ownSite",
    "fallbacks": [
+    "filmstarts",
     "kinoprogramm"
    ],
    "rawWinner": "filmstarts"
