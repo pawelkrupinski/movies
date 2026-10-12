@@ -9,7 +9,9 @@ when a venue opens.
 
 A venue is seasonal when its NAME says so, in its country's words (`PATTERNS`),
 unless it is listed in `NOT_SEASONAL`: a name that matches but a venue that shows
-films all year. Each of those is a judgement on evidence, so each carries it.
+films all year. A venue whose name does not say so is seasonal when it is listed in
+`SEASONAL`: a hall or garden whose only films are summer open-air nights. Each of
+those is a judgement on evidence, so each carries it.
 
 The generators emit the matches as `seasonal` beside their pages; `models.*Roster`
 gives those venues `Opening.Seasonal`. Poland's and the UK's hand-declared venues are
@@ -70,8 +72,21 @@ NOT_SEASONAL: dict[str, dict[str, str]] = {
 }
 
 
+# Names no pattern matches whose venue screens films only in summer, with the evidence.
+SEASONAL: dict[str, dict[str, str]] = {
+    "de": {
+        "Music Hall Worpswede": "a concert venue whose films are open-air nights: 21 and 22 Aug 2026 "
+                                "(weser-kurier.de), none listed outside the summer",
+    },
+    "es": {},
+    "us": {},
+}
+
+
 def is_seasonal(country: str, name: str) -> bool:
     """Is the venue called `name` in `country` ("de", "es", "us") seasonal?"""
+    if name in SEASONAL[country]:
+        return True
     return bool(PATTERNS[country].search(name)) and name not in NOT_SEASONAL[country]
 
 

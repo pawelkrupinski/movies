@@ -123,6 +123,7 @@
     "FilmRaum",
     "Hansa Studio Bergedorf",
     "Holi",
+    "Instituto Cervantes - Hamburg",
     "Kinopolis HafenCity",
     "Koralle",
     "Lichtmess",
@@ -4125,6 +4126,23 @@
    ]
   },
   {
+   "slug": "ginsheim-gustavsburg",
+   "kind": "town",
+   "name": "Ginsheim-Gustavsburg",
+   "anchor": "Ginsheim-Gustavsburg",
+   "bundesland": "Hessen",
+   "qualifiedSlug": "ginsheim-gustavsburg-hessen",
+   "lat": 49.9711,
+   "lon": 8.3453,
+   "towns": [
+    "Ginsheim-Gustavsburg"
+   ],
+   "cinemas": [
+    "Burg-Lichtspiele (Ginsheim-Gustavsburg)",
+    "Open Air Kino Ginsheim-Gustavsburg"
+   ]
+  },
+  {
    "slug": "goeppingen",
    "kind": "cluster",
    "name": "Göppingen",
@@ -4628,7 +4646,6 @@
    "lon": 8.4493,
    "towns": [
     "Hofheim am Taunus",
-    "Kelkheim",
     "Bad Soden am Taunus",
     "Eppstein",
     "Sulzbach"
@@ -4637,8 +4654,6 @@
     "CasaBlanca Art House",
     "Filmpalast Hofheim",
     "Open-Air Spielwiese neben dem Rathaus",
-    "Kino-Kelkheim",
-    "Open-Air Marktplatz Neue Stadtmitte",
     "Kinopolis Main-Taunus",
     "Open-Air auf der Burg"
    ]
@@ -4918,6 +4933,24 @@
    "cinemas": [
     "Kelheimer Lichtspiele",
     "Roxy Kino"
+   ]
+  },
+  {
+   "slug": "kelkheim",
+   "kind": "town",
+   "name": "Kelkheim",
+   "anchor": "Kelkheim",
+   "bundesland": "Hessen",
+   "qualifiedSlug": "kelkheim-hessen",
+   "lat": 50.137,
+   "lon": 8.4502,
+   "towns": [
+    "Kelkheim"
+   ],
+   "cinemas": [
+    "Kino-Kelkheim",
+    "Open Air Kelkheim",
+    "Open-Air Marktplatz Neue Stadtmitte"
    ]
   },
   {
@@ -6524,12 +6557,14 @@
    "towns": [
     "Osterholz-Scharmbeck",
     "Brake",
-    "Ritterhude"
+    "Ritterhude",
+    "Worpswede"
    ],
    "cinemas": [
     "Central Theater Osterholz-Scharmbeck",
     "Oscar Kulturspielhaus",
     "Centraltheater Brake",
+    "Music Hall Worpswede",
     "Ritterhuder-Lichtspiele"
    ]
   },
@@ -8251,11 +8286,9 @@
     "Weiterstadt",
     "Pfungstadt",
     "Gross-Gerau",
-    "Seeheim-Jugenheim",
-    "Ginsheim-Gustavsburg"
+    "Seeheim-Jugenheim"
    ],
    "cinemas": [
-    "Burg-Lichtspiele (Ginsheim-Gustavsburg)",
     "Filmseher Open Air",
     "Kommunales Kino Weiterstadt im Bürgerzentrum",
     "Lichtspielhaus Groß-Gerau",
@@ -8721,10 +8754,6 @@
    "page": "pirmasens",
    "qualifiedSlug": "fischbach-bei-dahn-rheinland-pfalz"
   },
-  "ginsheim-gustavsburg": {
-   "page": "weiterstadt",
-   "qualifiedSlug": "ginsheim-gustavsburg-hessen"
-  },
   "hachenburg": {
    "page": "asbach",
    "qualifiedSlug": "hachenburg-rheinland-pfalz"
@@ -8732,10 +8761,6 @@
   "itzehoe": {
    "page": "elmshorn",
    "qualifiedSlug": "itzehoe-schleswig-holstein"
-  },
-  "kelkheim": {
-   "page": "hofheim-am-taunus",
-   "qualifiedSlug": "kelkheim-hessen"
   },
   "korbach": {
    "page": "meschede",

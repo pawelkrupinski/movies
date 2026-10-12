@@ -1,6 +1,6 @@
 // GENERATED from data/germany/pages.json by data/germany/scripts/generate_roster.py
-// — do NOT edit by hand. Full German cinema roster: 446 pages over 16 Bundesländer /
-// 1,539 cinemas (Filmstarts, and the ones only Cineamo or kinoheld list). Regenerate after adding venues or re-clustering;
+// — do NOT edit by hand. Full German cinema roster: 448 pages over 16 Bundesländer /
+// 1,543 cinemas (Filmstarts, and the ones only Cineamo or kinoheld list). Regenerate after adding venues or re-clustering;
 // see data/germany/README.md.
 package models
 
@@ -109,6 +109,7 @@ private[models] object GermanRosterData {
     ("FilmRaum", "FilmRaum", "A2730", Some("/kino/hamburg/filmraum-88038"), "Hamburg"),
     ("Hansa Studio Bergedorf", "Hansa Studio Bergedorf", "A1449", Some("/kino/hamburg/hansafilmstudio-bergedorf-32462"), "Hamburg"),
     ("Holi", "Holi", "A0614", Some("/kino/hamburg/holi-32439"), "Hamburg"),
+    ("Instituto Cervantes - Hamburg", "Instituto Cervantes - Hamburg", "A2846", None, "Hamburg"),
     ("Kinopolis HafenCity", "Kinopolis HafenCity", "G02MI", Some("/kino/hamburg/kinopolis-hafencity-93333"), "Hamburg"),
     ("Koralle", "Koralle", "A0869", Some("/kino/hamburg/koralle-49596"), "Hamburg"),
     ("Lichtmess", "Lichtmess", "A2604", Some("/kino/hamburg/lichtmess-77077"), "Hamburg"),
@@ -1315,6 +1316,10 @@ private[models] object GermanRosterData {
   private def p_gifhorn: R = ("gifhorn", "gifhorn-niedersachsen", "Gifhorn", "Niedersachsen", 52.4777, 10.5511, false, Seq("Gifhorn"), Seq(
     ("Kinocenter am Steinweg", "Kinocenter am Steinweg", "A0574", Some("/kino/gifhorn/kinocenter-am-steinweg-71836"), "Gifhorn")
   ))
+  private def p_ginsheim_gustavsburg: R = ("ginsheim-gustavsburg", "ginsheim-gustavsburg-hessen", "Ginsheim-Gustavsburg", "Hessen", 49.9711, 8.3453, false, Seq("Ginsheim-Gustavsburg"), Seq(
+    ("Burg-Lichtspiele (Ginsheim-Gustavsburg)", "Burg-Lichtspiele (Ginsheim-Gustavsburg)", "A0868", Some("/kino/ginsheimgustavsburg/burglichtspiele-32066"), "Ginsheim-Gustavsburg"),
+    ("Open Air Kino Ginsheim-Gustavsburg", "Open Air Kino Ginsheim-Gustavsburg", "A2084", None, "Ginsheim-Gustavsburg")
+  ))
   private def p_goeppingen: R = ("goeppingen", "goeppingen-baden-wuerttemberg", "Göppingen", "Baden-Württemberg", 48.7035, 9.6521, true, Seq("Göppingen", "Geislingen an der Steige", "Plochingen", "Donzdorf", "Deggingen", "Schlat"), Seq(
     ("Gloria Kino Center Geislingen an der Steige", "Gloria Kino Center Geislingen an der Steige", "A0582", Some("/kino/geislingen-an-der-steige/gloria-kino-center-32769"), "Geislingen an der Steige"),
     ("Kinomobil Stuttgart - Bürgerhaus", "Kinomobil Stuttgart - Bürgerhaus", "A0808", None, "Schlat"),
@@ -1439,12 +1444,10 @@ private[models] object GermanRosterData {
     ("Central-Kino Hof", "Central-Kino Hof", "A1346", Some("/kino/hof/centralkino-32794"), "Hof"),
     ("Scala Filmtheater Hof", "Scala Filmtheater Hof", "A1051", Some("/kino/hof/scala-filmtheater-32793"), "Hof")
   ))
-  private def p_hofheim_am_taunus: R = ("hofheim-am-taunus", "hofheim-am-taunus-hessen", "Hofheim am Taunus", "Hessen", 50.0902, 8.4493, true, Seq("Hofheim am Taunus", "Kelkheim", "Bad Soden am Taunus", "Eppstein", "Sulzbach"), Seq(
+  private def p_hofheim_am_taunus: R = ("hofheim-am-taunus", "hofheim-am-taunus-hessen", "Hofheim am Taunus", "Hessen", 50.0902, 8.4493, true, Seq("Hofheim am Taunus", "Bad Soden am Taunus", "Eppstein", "Sulzbach"), Seq(
     ("CasaBlanca Art House", "CasaBlanca Art House", "A1531", Some("/kino/bad-soden-am-taunus/kino-casablanca-art-house-33116"), "Bad Soden am Taunus"),
     ("Filmpalast Hofheim", "Filmpalast Hofheim", "A2641", Some("/kino/hofheim-am-taunus/filmpalast-78837"), "Hofheim am Taunus"),
     ("Open-Air Spielwiese neben dem Rathaus", "Open-Air Spielwiese neben dem Rathaus", "A2458", None, "Hofheim am Taunus"),
-    ("Kino-Kelkheim", "Kino-Kelkheim", "A1510", Some("/kino/kelkheim/kinokelkheim-32123"), "Kelkheim"),
-    ("Open-Air Marktplatz Neue Stadtmitte", "Open-Air Marktplatz Neue Stadtmitte", "A2204", None, "Kelkheim"),
     ("Kinopolis Main-Taunus", "Kinopolis Main-Taunus", "A0831", None, "Sulzbach"),
     ("Open-Air auf der Burg", "Open-Air auf der Burg", "A2283", None, "Eppstein")
   ))
@@ -1514,6 +1517,11 @@ private[models] object GermanRosterData {
   private def p_kelheim: R = ("kelheim", "kelheim-bayern", "Kelheim", "Bayern", 48.9173, 11.8862, true, Seq("Kelheim", "Abensberg"), Seq(
     ("Kelheimer Lichtspiele", "Kelheimer Lichtspiele", "A1462", None, "Kelheim"),
     ("Roxy Kino", "Roxy Kino", "A1086", Some("/kino/abensberg/roxy-kino-32654"), "Abensberg")
+  ))
+  private def p_kelkheim: R = ("kelkheim", "kelkheim-hessen", "Kelkheim", "Hessen", 50.137, 8.4502, false, Seq("Kelkheim"), Seq(
+    ("Kino-Kelkheim", "Kino-Kelkheim", "A1510", Some("/kino/kelkheim/kinokelkheim-32123"), "Kelkheim"),
+    ("Open Air Kelkheim", "Open Air Kelkheim", "A2767", None, "Kelkheim"),
+    ("Open-Air Marktplatz Neue Stadtmitte", "Open-Air Marktplatz Neue Stadtmitte", "A2204", None, "Kelkheim")
   ))
   private def p_kempten_im_allgaeu: R = ("kempten-im-allgaeu", "kempten-im-allgaeu-bayern", "Kempten im Allgäu", "Bayern", 47.7267, 10.3139, true, Seq("Kempten im Allgäu", "Marktoberdorf", "Immenstadt im Allgäu"), Seq(
     ("Colosseum-Center", "Colosseum-Center", "A1382", None, "Kempten im Allgäu"),
@@ -1911,10 +1919,11 @@ private[models] object GermanRosterData {
     ("Filmpalast Oranienburg", "Filmpalast Oranienburg", "A0518", Some("/kino/oranienburg/filmpalast-31627"), "Oranienburg"),
     ("Kammerspiele Kleinmachnow", "Kammerspiele Kleinmachnow", "A0642", Some("/kino/kleinmachnow/neue-kammerspiele-31570"), "Kleinmachnow")
   ))
-  private def p_osterholz_scharmbeck: R = ("osterholz-scharmbeck", "osterholz-scharmbeck-niedersachsen", "Osterholz-Scharmbeck", "Niedersachsen", 53.2266, 8.7923, true, Seq("Osterholz-Scharmbeck", "Brake", "Ritterhude"), Seq(
+  private def p_osterholz_scharmbeck: R = ("osterholz-scharmbeck", "osterholz-scharmbeck-niedersachsen", "Osterholz-Scharmbeck", "Niedersachsen", 53.2266, 8.7923, true, Seq("Osterholz-Scharmbeck", "Brake", "Ritterhude", "Worpswede"), Seq(
     ("Central Theater Osterholz-Scharmbeck", "Central Theater Osterholz-Scharmbeck", "A1348", Some("/kino/osterholzscharmbeck/central-theater-32583"), "Osterholz-Scharmbeck"),
     ("Oscar Kulturspielhaus", "Oscar Kulturspielhaus", "A2746", Some("/kino/osterholzscharmbeck/kino-im-oscar-kulturspielhaus-88877"), "Osterholz-Scharmbeck"),
     ("Centraltheater Brake", "Centraltheater Brake", "A2694", Some("/kino/brake/centraltheater-brake-86458"), "Brake"),
+    ("Music Hall Worpswede", "Music Hall Worpswede", "A0979", Some("/kino/worpswede/music-hall-73698"), "Worpswede"),
     ("Ritterhuder-Lichtspiele", "Ritterhuder-Lichtspiele", "A1605", Some("/kino/ritterhude/ritterhuder-lichtspiele-32599"), "Ritterhude")
   ))
   private def p_ottobrunn: R = ("ottobrunn", "ottobrunn-bayern", "Ottobrunn", "Bayern", 48.0649, 11.6633, true, Seq("Ottobrunn", "Haar"), Seq(
@@ -2342,8 +2351,7 @@ private[models] object GermanRosterData {
     ("Movieworld", "Movieworld", "A0975", Some("/kino/gunzenhausen/movieworld-64637"), "Gunzenhausen"),
     ("Wemdinger Lichtspiele", "Wemdinger Lichtspiele", "A1275", Some("/kino/wemding/wemdinger-lichtspiele-33063"), "Wemding")
   ))
-  private def p_weiterstadt: R = ("weiterstadt", "weiterstadt-hessen", "Weiterstadt", "Hessen", 49.9039, 8.5887, true, Seq("Weiterstadt", "Pfungstadt", "Gross-Gerau", "Seeheim-Jugenheim", "Ginsheim-Gustavsburg"), Seq(
-    ("Burg-Lichtspiele (Ginsheim-Gustavsburg)", "Burg-Lichtspiele (Ginsheim-Gustavsburg)", "A0868", Some("/kino/ginsheimgustavsburg/burglichtspiele-32066"), "Ginsheim-Gustavsburg"),
+  private def p_weiterstadt: R = ("weiterstadt", "weiterstadt-hessen", "Weiterstadt", "Hessen", 49.9039, 8.5887, true, Seq("Weiterstadt", "Pfungstadt", "Gross-Gerau", "Seeheim-Jugenheim"), Seq(
     ("Filmseher Open Air", "Filmseher Open Air", "A2797", None, "Seeheim-Jugenheim"),
     ("Kommunales Kino Weiterstadt im Bürgerzentrum", "Kommunales Kino Weiterstadt im Bürgerzentrum", "A0858", Some("/kino/weiterstadt/kommunales-kino-im-buergerzentrum-34894"), "Weiterstadt"),
     ("Lichtspielhaus Groß-Gerau", "Lichtspielhaus Groß-Gerau", "A0913", None, "Gross-Gerau"),
@@ -2448,13 +2456,13 @@ private[models] object GermanRosterData {
   private def chunk2: Seq[R] = Seq(p_achim, p_ahaus, p_ahlen, p_aichach, p_albstadt, p_alfeld, p_alpirsbach, p_alsdorf, p_altenburg, p_amberg, p_anklam, p_annaberg_buchholz, p_ansbach, p_arnsberg, p_asbach, p_aschaffenburg, p_auerbach, p_aurich, p_backnang, p_bad_aibling, p_bad_belzig, p_bad_berleburg, p_bad_driburg, p_bad_fuessing, p_bad_hersfeld, p_bad_kissingen, p_bad_kreuznach, p_bad_mergentheim, p_bad_neuenahr_ahrweiler, p_bad_neustadt_an_der_saale, p_bad_oldesloe, p_bad_reichenhall, p_bad_saulgau, p_bad_schwalbach, p_bad_toelz, p_bad_urach, p_bad_vilbel, p_bad_wildbad, p_bad_woerishofen, p_baden_baden)
   private def chunk3: Seq[R] = Seq(p_bamberg, p_baunatal, p_bautzen, p_bayreuth, p_bernau, p_bernburg, p_besigheim, p_biberach_an_der_riss, p_bocholt, p_boeblingen, p_bramsche, p_brandenburg, p_bruchsal, p_brunsbuettel, p_buchholz_in_der_nordheide, p_buedingen, p_buende, p_burg, p_burghausen, p_butzbach, p_celle, p_cham, p_cloppenburg, p_coburg, p_cochem, p_cottbus, p_crailsheim, p_cuxhaven, p_dahme, p_daun, p_deggendorf, p_delmenhorst, p_demmin, p_dessau_rosslau, p_detmold, p_diessen_am_ammersee, p_dillenburg, p_dillingen_an_der_donau, p_dingolfing, p_dinslaken)
   private def chunk4: Seq[R] = Seq(p_donaueschingen, p_dorfen, p_dreieich, p_duderstadt, p_duelmen, p_dueren, p_ebersbach, p_eberswalde_finow, p_eckental, p_eggenfelden, p_einbeck, p_eisenach, p_elmshorn, p_emden, p_emmendingen, p_enkenbach_alsenborn, p_erbach_im_odenwald, p_erding, p_erdmannhausen, p_eschborn, p_espelkamp, p_esslingen_am_neckar, p_fehmarn, p_fellbach, p_flensburg, p_forchheim, p_frankenthal, p_frankfurt_an_der_oder, p_freiberg, p_freudenstadt, p_freyung, p_friedrichsdorf, p_friedrichshafen, p_fuerstenfeldbruck, p_fuerstenwalde_an_der_spree, p_fuessen, p_fulda, p_furtwangen_im_schwarzwald, p_garbsen, p_garmisch_partenkirchen)
-  private def chunk5: Seq[R] = Seq(p_genthin, p_germering, p_giessen, p_gifhorn, p_goeppingen, p_goerlitz, p_goslar, p_gotha, p_grafing_bei_muenchen, p_greifswald, p_grevenbroich, p_grimma, p_gronau_westf, p_gruenberg, p_gruenstadt, p_guestrow, p_guetersloh, p_gummersbach, p_halberstadt, p_hameln, p_hanau, p_hechingen, p_heide, p_heidenheim, p_heinsberg, p_helgoland, p_helmstedt, p_herford, p_herrenberg, p_hof, p_hofheim_am_taunus, p_holzkirchen, p_holzminden, p_homburg, p_hoyerswerda, p_huerth, p_husum, p_ibbenbueren, p_ilmenau, p_iserlohn)
-  private def chunk6: Seq[R] = Seq(p_juelich, p_kaiserslautern, p_kaufbeuren, p_kaufering, p_kehl, p_kelheim, p_kempten_im_allgaeu, p_kerpen, p_kirchheim_unter_teck, p_kitzingen, p_kleve, p_kloeden, p_koenigs_wusterhausen, p_koenigsbrunn, p_konstanz, p_kuehlungsborn, p_lahnstein, p_lahr_am_schwarzwald, p_landau_in_der_pfalz, p_landsberg_am_lech, p_landshut, p_langenfeld, p_lehrte, p_letschin, p_leutkirch_im_allgaeu, p_limbach_oberfrohna, p_limburg, p_lindau, p_lingen, p_lippstadt, p_loeningen, p_loerrach, p_lohr_am_main, p_luckenwalde, p_ludwigsburg, p_ludwigslust, p_luebben, p_luedenscheid, p_lueneburg, p_luenen)
-  private def chunk7: Seq[R] = Seq(p_lutherstadt_wittenberg, p_marburg, p_marktredwitz, p_marl, p_mayen, p_meiningen, p_meissen, p_memmingen, p_meppen, p_merseburg, p_merzig, p_meschede, p_minden, p_moelln, p_mosbach, p_muehlacker, p_muellheim, p_murrhardt, p_nagold, p_naumburg, p_neckarsulm, p_neresheim, p_neu_anspach, p_neu_ulm, p_neubrandenburg, p_neuburg_an_der_donau, p_neumarkt_in_der_oberpfalz, p_neumuenster, p_neunkirchen, p_neuruppin, p_neustadt_an_der_aisch, p_neustadt_an_der_weinstrasse, p_neustadt_in_holstein, p_neustrelitz, p_neuwied, p_niebuell, p_nienburg, p_noerdlingen, p_norddorf_auf_amrum, p_norderney)
-  private def chunk8: Seq[R] = Seq(p_nordhausen, p_nordhorn, p_northeim, p_nuertingen, p_oberndorf_am_neckar, p_oberstdorf, p_oberviechtach, p_oehringen, p_offenburg, p_oldenburg_in_holstein, p_oranienburg, p_osterholz_scharmbeck, p_ottobrunn, p_papenburg, p_parchim, p_passau, p_pfaffenhofen_an_der_ilm, p_pirmasens, p_pirna, p_plauen, p_plettenberg, p_preetz, p_prenzlau, p_prerow, p_prien_am_chiemsee, p_quickborn, p_rastatt, p_rathenow, p_ratingen, p_ravensburg, p_rendsburg, p_rheine, p_rheinfelden, p_riedlingen, p_riesa, p_rietschen, p_rinteln, p_rodgau, p_rothenburg, p_rottenburg_am_neckar)
-  private def chunk9: Seq[R] = Seq(p_rottweil, p_rudolstadt, p_saalfeld, p_salzwedel, p_sangerhausen, p_schleiz, p_schloss_holte_stukenbrock, p_schongau, p_schorndorf, p_schwabach, p_schwaebisch_gmuend, p_schwaebisch_hall, p_schwalmstadt, p_schwedt, p_schweinfurt, p_schwerin, p_senftenberg, p_siegburg, p_simbach_am_inn, p_sindelfingen, p_singen_am_hohentwiel, p_sinsheim, p_soest, p_speyer, p_spremberg, p_stade, p_stendal, p_stralsund, p_straubing, p_suhl, p_tauberbischofsheim, p_taucha, p_templin, p_torgau, p_traunreut, p_traunstein, p_tuebingen, p_tuttlingen, p_ueberlingen, p_ueckermuende)
-  private def chunk10: Seq[R] = Seq(p_uelzen, p_unterschleissheim, p_viersen, p_villingen_schwenningen, p_vilsbiburg, p_voelklingen, p_wadern, p_waldkraiburg, p_waldshut_tiengen, p_walsrode, p_wangen_im_allgaeu, p_warburg, p_waren_mueritz, p_warendorf, p_wasserburg_am_inn, p_weiden_in_der_oberpfalz, p_weil_am_rhein, p_weil_der_stadt, p_weilheim_in_oberbayern, p_weimar, p_weinheim, p_weissenburg, p_weiterstadt, p_werder, p_wermelskirchen, p_wertheim_am_main, p_wesenberg, p_westerland, p_wildeshausen, p_wilhelmshaven, p_winsen, p_wismar, p_witten, p_wittenberge, p_wittingen, p_wittlich, p_wittstock, p_witzenhausen, p_wolfenbuettel, p_wolfratshausen)
-  private def chunk11: Seq[R] = Seq(p_worms, p_wusterhausen, p_zeil_am_main, p_zeven, p_zittau, p_zwickau)
+  private def chunk5: Seq[R] = Seq(p_genthin, p_germering, p_giessen, p_gifhorn, p_ginsheim_gustavsburg, p_goeppingen, p_goerlitz, p_goslar, p_gotha, p_grafing_bei_muenchen, p_greifswald, p_grevenbroich, p_grimma, p_gronau_westf, p_gruenberg, p_gruenstadt, p_guestrow, p_guetersloh, p_gummersbach, p_halberstadt, p_hameln, p_hanau, p_hechingen, p_heide, p_heidenheim, p_heinsberg, p_helgoland, p_helmstedt, p_herford, p_herrenberg, p_hof, p_hofheim_am_taunus, p_holzkirchen, p_holzminden, p_homburg, p_hoyerswerda, p_huerth, p_husum, p_ibbenbueren, p_ilmenau)
+  private def chunk6: Seq[R] = Seq(p_iserlohn, p_juelich, p_kaiserslautern, p_kaufbeuren, p_kaufering, p_kehl, p_kelheim, p_kelkheim, p_kempten_im_allgaeu, p_kerpen, p_kirchheim_unter_teck, p_kitzingen, p_kleve, p_kloeden, p_koenigs_wusterhausen, p_koenigsbrunn, p_konstanz, p_kuehlungsborn, p_lahnstein, p_lahr_am_schwarzwald, p_landau_in_der_pfalz, p_landsberg_am_lech, p_landshut, p_langenfeld, p_lehrte, p_letschin, p_leutkirch_im_allgaeu, p_limbach_oberfrohna, p_limburg, p_lindau, p_lingen, p_lippstadt, p_loeningen, p_loerrach, p_lohr_am_main, p_luckenwalde, p_ludwigsburg, p_ludwigslust, p_luebben, p_luedenscheid)
+  private def chunk7: Seq[R] = Seq(p_lueneburg, p_luenen, p_lutherstadt_wittenberg, p_marburg, p_marktredwitz, p_marl, p_mayen, p_meiningen, p_meissen, p_memmingen, p_meppen, p_merseburg, p_merzig, p_meschede, p_minden, p_moelln, p_mosbach, p_muehlacker, p_muellheim, p_murrhardt, p_nagold, p_naumburg, p_neckarsulm, p_neresheim, p_neu_anspach, p_neu_ulm, p_neubrandenburg, p_neuburg_an_der_donau, p_neumarkt_in_der_oberpfalz, p_neumuenster, p_neunkirchen, p_neuruppin, p_neustadt_an_der_aisch, p_neustadt_an_der_weinstrasse, p_neustadt_in_holstein, p_neustrelitz, p_neuwied, p_niebuell, p_nienburg, p_noerdlingen)
+  private def chunk8: Seq[R] = Seq(p_norddorf_auf_amrum, p_norderney, p_nordhausen, p_nordhorn, p_northeim, p_nuertingen, p_oberndorf_am_neckar, p_oberstdorf, p_oberviechtach, p_oehringen, p_offenburg, p_oldenburg_in_holstein, p_oranienburg, p_osterholz_scharmbeck, p_ottobrunn, p_papenburg, p_parchim, p_passau, p_pfaffenhofen_an_der_ilm, p_pirmasens, p_pirna, p_plauen, p_plettenberg, p_preetz, p_prenzlau, p_prerow, p_prien_am_chiemsee, p_quickborn, p_rastatt, p_rathenow, p_ratingen, p_ravensburg, p_rendsburg, p_rheine, p_rheinfelden, p_riedlingen, p_riesa, p_rietschen, p_rinteln, p_rodgau)
+  private def chunk9: Seq[R] = Seq(p_rothenburg, p_rottenburg_am_neckar, p_rottweil, p_rudolstadt, p_saalfeld, p_salzwedel, p_sangerhausen, p_schleiz, p_schloss_holte_stukenbrock, p_schongau, p_schorndorf, p_schwabach, p_schwaebisch_gmuend, p_schwaebisch_hall, p_schwalmstadt, p_schwedt, p_schweinfurt, p_schwerin, p_senftenberg, p_siegburg, p_simbach_am_inn, p_sindelfingen, p_singen_am_hohentwiel, p_sinsheim, p_soest, p_speyer, p_spremberg, p_stade, p_stendal, p_stralsund, p_straubing, p_suhl, p_tauberbischofsheim, p_taucha, p_templin, p_torgau, p_traunreut, p_traunstein, p_tuebingen, p_tuttlingen)
+  private def chunk10: Seq[R] = Seq(p_ueberlingen, p_ueckermuende, p_uelzen, p_unterschleissheim, p_viersen, p_villingen_schwenningen, p_vilsbiburg, p_voelklingen, p_wadern, p_waldkraiburg, p_waldshut_tiengen, p_walsrode, p_wangen_im_allgaeu, p_warburg, p_waren_mueritz, p_warendorf, p_wasserburg_am_inn, p_weiden_in_der_oberpfalz, p_weil_am_rhein, p_weil_der_stadt, p_weilheim_in_oberbayern, p_weimar, p_weinheim, p_weissenburg, p_weiterstadt, p_werder, p_wermelskirchen, p_wertheim_am_main, p_wesenberg, p_westerland, p_wildeshausen, p_wilhelmshaven, p_winsen, p_wismar, p_witten, p_wittenberge, p_wittingen, p_wittlich, p_wittstock, p_witzenhausen)
+  private def chunk11: Seq[R] = Seq(p_wolfenbuettel, p_wolfratshausen, p_worms, p_wusterhausen, p_zeil_am_main, p_zeven, p_zittau, p_zwickau)
   val pages: Seq[R] = chunk0 ++ chunk1 ++ chunk2 ++ chunk3 ++ chunk4 ++ chunk5 ++ chunk6 ++ chunk7 ++ chunk8 ++ chunk9 ++ chunk10 ++ chunk11
 
   /** Pages that no longer exist — the regions Germany's pages were until 2026-10
@@ -2472,10 +2480,8 @@ private[models] object GermanRosterData {
     ("eschwege", "eschwege-hessen", "eisenach"),
     ("finsterwalde", "finsterwalde-brandenburg", "senftenberg"),
     ("fischbach-bei-dahn", "fischbach-bei-dahn-rheinland-pfalz", "pirmasens"),
-    ("ginsheim-gustavsburg", "ginsheim-gustavsburg-hessen", "weiterstadt"),
     ("hachenburg", "hachenburg-rheinland-pfalz", "asbach"),
     ("itzehoe", "itzehoe-schleswig-holstein", "elmshorn"),
-    ("kelkheim", "kelkheim-hessen", "hofheim-am-taunus"),
     ("korbach", "korbach-hessen", "meschede"),
     ("langenhagen", "langenhagen-niedersachsen", "garbsen"),
     ("langeoog", "langeoog-niedersachsen", "norderney"),
@@ -2539,6 +2545,7 @@ private[models] object GermanRosterData {
     "LOTTO Hamburg SchanzenKino Open Air",
     "Lichtburg Open Air Kino",
     "Ludwigsburger Sommernachts Open Air Kino",
+    "Music Hall Worpswede",
     "OPEN AIR KINO in der Erkenbert Ruine",
     "OPEN AIR auf dem Campus FH",
     "Odonisches Sommerkino",
@@ -2546,11 +2553,13 @@ private[models] object GermanRosterData {
     "Open Air Böblinger See",
     "Open Air Erlangen",
     "Open Air Fränkisches Museumseisenbahn",
+    "Open Air Kelkheim",
     "Open Air Kieswerk",
     "Open Air Kino",
     "Open Air Kino Burg Hohenzollern",
     "Open Air Kino Freilichtbühne Desi",
     "Open Air Kino Furtwangen",
+    "Open Air Kino Ginsheim-Gustavsburg",
     "Open Air Kino Hainbad",
     "Open Air Kino Herrenberg",
     "Open Air Kino Im Rheinauenhafen",

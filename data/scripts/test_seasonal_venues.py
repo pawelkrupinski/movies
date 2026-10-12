@@ -46,6 +46,22 @@ def test_every_exclusion_names_its_evidence_and_still_matches_a_pattern():
             assert sv.PATTERNS[country].search(name), name
 
 
+def test_a_summer_screen_whose_name_does_not_say_so_is_declared_seasonal():
+    # Worpswede's Music Hall is a concert venue; its films are open-air nights in August.
+    assert not sv.PATTERNS["de"].search("Music Hall Worpswede")
+    assert sv.is_seasonal("de", "Music Hall Worpswede")
+    assert sv.seasonal_names("de", ["Music Hall Worpswede", "Kino Central Berlin"]) == ["Music Hall Worpswede"]
+
+
+def test_every_declared_summer_screen_names_its_evidence_and_no_pattern_already_covers_it():
+    for country, names in sv.SEASONAL.items():
+        for name, evidence in names.items():
+            assert evidence, name
+            # A declaration a pattern already matches is redundant: the pattern decides it.
+            assert not sv.PATTERNS[country].search(name), name
+            assert name not in sv.NOT_SEASONAL[country], name
+
+
 def test_renders_the_sorted_seasonal_names_as_a_scala_set():
     names = sv.seasonal_names("de", ["Sommerkino Klöden", "Kino Central Berlin", "Freiluftkino Rehberge"])
     assert names == ["Freiluftkino Rehberge", "Sommerkino Klöden"]
