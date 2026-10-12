@@ -149,8 +149,9 @@ object ShareCardWiring {
 
   /** Each country's share-card budget, in MB (`KINOWO_SHARE_CARD_BUDGET_MB`): 6 GiB, raised from 3 when
    *  Germany's new venues took its current cards past 2.2 GB in a night (ShareCardBudgetSpec). Five
-   *  countries at it are under a fifth of k3s-worker-1's root; the free-space floor below, not this,
-   *  guards the node. */
+   *  countries at it (30 GiB, plus the floor below) are under a quarter of k3s-worker-1's root; the
+   *  free-space floor, not this, guards the node. A `KINOWO_SHARE_CARD_BUDGET_MB` in the gitops
+   *  worker base overrides this default for every country. */
   val DefaultBudgetMb: Long = 6144
 
   /** The free space the cards leave on their volume, in MB (`KINOWO_SHARE_CARD_MIN_FREE_MB`): 4 GiB,
