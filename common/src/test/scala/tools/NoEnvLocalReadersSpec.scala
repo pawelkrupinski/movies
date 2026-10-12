@@ -15,7 +15,8 @@ import scala.jdk.CollectionConverters._
  * came back would quietly find nothing on one laptop and a stale, stolen value on another.
  *
  * Code only: a comment may still tell the history. A line counts as a comment when, trimmed,
- * it opens with a line-comment marker, a Scaladoc star, a block-comment opener or `#`.
+ * it opens with a line-comment marker, a Scaladoc star, a block-comment opener or `#`, or
+ * sits inside a Python docstring.
  */
 class NoEnvLocalReadersSpec extends AnyFlatSpec with Matchers {
 
@@ -36,6 +37,12 @@ class NoEnvLocalReadersSpec extends AnyFlatSpec with Matchers {
     trimmed.startsWith("//") || trimmed.startsWith("*") || trimmed.startsWith("/*") || trimmed.startsWith("#")
   }
 
+  /** A Python file's docstrings blanked, keeping their line breaks so line numbers hold. */
+  private def withoutDocstrings(path: Path, text: String): String =
+    if (!path.getFileName.toString.endsWith(".py")) text
+    else "(?s)\"\"\".*?\"\"\"".r.replaceAllIn(text, found =>
+      scala.util.matching.Regex.quoteReplacement(found.matched.filter(_ == '\n')))
+
   private def sources(root: Path): Seq[Path] =
     Files.walk(root).iterator().asScala
       .filter(Files.isRegularFile(_))
@@ -48,7 +55,7 @@ class NoEnvLocalReadersSpec extends AnyFlatSpec with Matchers {
     val offenders = sources(root).flatMap { path =>
       val relative = root.relativize(path).toString
       if (Allowed.contains(relative)) Nil
-      else Files.readString(path).linesIterator.zipWithIndex.collect {
+      else withoutDocstrings(path, Files.readString(path)).linesIterator.zipWithIndex.collect {
         case (line, index) if line.contains(".env.local") && !isComment(line) => s"$relative:${index + 1}: ${line.trim}"
       }.toSeq
     }
