@@ -9766,6 +9766,9 @@ services.cinemas.es.OcineClient
 services.cinemas.es.OcineClient$
 services.cinemas.es.OcineParser
 services.cinemas.es.OcineParser$
+services.cinemas.es.SpanishFeedText
+services.cinemas.es.SpanishFeedText$
+services.cinemas.es.SpanishFeedText$$anon$1
 services.cinemas.es.SpanishOwnSourcesData
 services.cinemas.es.SpanishOwnSourcesData$
 services.cinemas.es.TaquillaClient
