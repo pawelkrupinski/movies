@@ -8,7 +8,7 @@ import services.cinemas.common.{CineamoClient, FlicksClient, FlicksMarket, Kinoh
 import services.cinemas.de.{GermanFeed, GermanSources}
 import services.cinemas.uk.{CineworldClient, OdeonClient, SavoyClient, SpektrixClient, TheOldCourtClient}
 import services.cinemas.es.{ArtesieteClient, OcineClient, SpanishOwnSourcesData, TaquillaClient, TaquillaVenue}
-import services.cinemas.us.{AlamoDrafthouseClient, SquarespaceEventsClient, UsChainVenues, UsIndependentVenues}
+import services.cinemas.us.{AlamoDrafthouseClient, CinemaPlusClient, SquarespaceEventsClient, UsChainVenues, UsIndependentVenues}
 import services.movies.TitleNormalizer
 
 import java.time.{Clock, LocalDate, ZoneId}
@@ -2015,7 +2015,7 @@ class CinemaScraperCatalog(
     }.toMap
 
   // ── United States (chain-primary, Flicks for the rest) ───────────────────
-  // Data-driven from the full UsRoster (2,001 town and cluster pages / 5,010 cinemas):
+  // Data-driven from the full UsRoster (1,995 town and cluster pages / 4,999 cinemas):
   // one scraper per cinema, keyed by the PAGE slug City.slug uses.
   //
   // A venue named in `UsChainVenues` gets its CHAIN'S OWN site as the primary and
@@ -2068,11 +2068,14 @@ class CinemaScraperCatalog(
   /** The own-site primary for a US independent Flicks no longer lists, or `None`.
    *  No Flicks fallback: see `UsIndependentVenues`. Its own site answers our
    *  datacenter egress directly (200 from the fleet, 2026-10-12), so plain `http`. */
-  private def usIndependentScraper(cinema: Cinema): Option[CinemaScraper] =
-    UsIndependentVenues.squarespace.get(cinema.displayName).map { venue =>
-      val zone = VenueClock.zoneOf(cinema, TimeZones.UsEastern)
+  private def usIndependentScraper(cinema: Cinema): Option[CinemaScraper] = {
+    val zone = VenueClock.zoneOf(cinema, TimeZones.UsEastern)
+    UsIndependentVenues.squarespace.get(cinema.displayName).map[CinemaScraper] { venue =>
       new SquarespaceEventsClient(http, venue.siteUrl, venue.eventsPath, cinema, zone, today = venueClock.today(zone))
-    }
+    }.orElse(UsIndependentVenues.cinemaPlus.get(cinema.displayName).map { venue =>
+      new CinemaPlusClient(http, venue.siteUrl, venue.venuePath, cinema, today = venueClock.today(zone))
+    })
+  }
 
   private val usBaseByCity: Map[String, Seq[CinemaScraper]] =
     models.Country.UnitedStates.cities.map { city =>
@@ -2238,7 +2241,7 @@ class CinemaScraperCatalog(
     "worcestershire" -> worcestershireScrapers,
     "yorkshire" -> yorkshireScrapers,
   ) ++ germanBaseByCity   // Germany: 436 town and cluster pages (data-driven)
-    ++ usBaseByCity       // USA: 2,001 town and cluster pages (data-driven)
+    ++ usBaseByCity       // USA: 1,995 town and cluster pages (data-driven)
     ++ spanishBaseByCity  // Spain: 240 town and cluster pages (data-driven)
 
   // Venues the 2026-09 sweeps added (Filmweb, bilety24, biletyna, the chains' own

@@ -7,11 +7,11 @@ package services.cinemas.us
  * no case object to name.
  *
  * Unlike the chain venues these keep NO flicks.us fallback. A venue lands here because
- * Flicks stopped listing it: ACME Screening Room's Flicks page has answered 404 since
- * 2026-08-31 while the cinema kept selling (October 2026: its Halloween Film Festival),
- * and the closure sweep, reading that 404, retired it. A fallback that can only 404
- * would corroborate the next false closure rather than prevent it — with none, the
- * sweep judges the venue on its own site alone, and over the longer uncorroborated
+ * Flicks stopped listing it: ACME Screening Room's and Acme Theatre Riverton's Flicks
+ * pages have answered 404 since 2026-08-31 while both cinemas kept selling (October
+ * 2026), and the closure sweep, reading that 404, retired them. A fallback that can
+ * only 404 would corroborate the next false closure rather than prevent it — with none,
+ * the sweep judges the venue on its own site alone, and over the longer uncorroborated
  * spell.
  */
 object UsIndependentVenues {
@@ -25,6 +25,16 @@ object UsIndependentVenues {
     "ACME Screening Room Lambertville" -> SquarespaceVenue("https://www.acmescreeningroom.org", "/now-playing"),
   )
 
+  /** A venue whose site runs on CinemaPlus — see [[CinemaPlusClient]]. Barry Cinemas
+   *  runs two more on the same site (Gem Theatre Riverton, Grand Theatre Lander); Flicks
+   *  still lists both, to the same furthest day as barrycinemas.com (2026-10-12), so
+   *  they stay on Flicks. */
+  final case class CinemaPlusVenue(siteUrl: String, venuePath: String)
+
+  val cinemaPlus: Map[String, CinemaPlusVenue] = Map(
+    "Acme Theatre Riverton" -> CinemaPlusVenue("https://barrycinemas.com", "/acme-theater-riverton"),
+  )
+
   /** Every display name served by an independent's own site — off the flicks.us sweep. */
-  val all: Set[String] = squarespace.keySet
+  val all: Set[String] = squarespace.keySet ++ cinemaPlus.keySet
 }

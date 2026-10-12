@@ -9,7 +9,7 @@
     "name": "Pickwick Theatre",
     "reason": "feedless",
     "retiredOn": "2026-09-23",
-    "evidence": "108 W Main St, Syracuse IN. Its Flicks sessions book on Veezi site nkjzf31nyb5bbbtbg06g01pq2g, the Pickwick Theatre in Park Ridge IL: 216/216 showtimes identical to Park Ridge's"
+    "evidence": "OPEN (rechecked 2026-10-12: Moviefone and BigScreen list its showtimes, a live event 2026-07-28 https://www.chautauquawawasee.org/blind-logic-ralph-teetor-story-pickwick-theatre/), 108 W Main St, Syracuse IN. Retired only because no source we can reach lists it: it has no own website, its Flicks sessions book on Veezi site nkjzf31nyb5bbbtbg06g01pq2g, the Pickwick Theatre in Park Ridge IL (216/216 showtimes identical to Park Ridge's), and the listings that do carry it (Moviefone, IMDb) answer a non-US client with an empty 202 bot challenge (2026-10-12)."
   },
   "amc-classic-auburn-14": {
     "name": "AMC CLASSIC Auburn 14",
@@ -119,10 +119,76 @@
     "retiredOn": "2026-10-12",
     "evidence": "Closed May 2025 after nearly 60 years: https://www.boxofficepro.com/end-of-an-era-for-malco-summer-drive-in-iconic-theater-closing-after-nearly-60-years/"
   },
-  "acme-theatre-riverton": {
-    "name": "Acme Theatre Riverton",
+  "regal-kiln-creek": {
+    "name": "Regal Kiln Creek",
     "reason": "closed",
     "retiredOn": "2026-10-12",
-    "evidence": "Closure sweep confirmed 2026-09-29: https://www.flicks.us/cinema/acme-theatre-riverton/ HTTP 404 since 2026-08-31, no listing on record. Cinema Treasures: closed 2022 https://www.cinematreasures.org/theaters/8643/comments"
+    "evidence": "Closed 2025-11-02: https://cinematreasures.org/theaters/38292 ; BigScreen \"Inactive, closed Nov 2, 2025\""
+  },
+  "regal-macarthur-center-norfolk": {
+    "name": "Regal Macarthur Center Norfolk",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closed 2026-01-29: https://www.wavy.com/news/local-news/norfolk/employees-told-macarthur-centers-regal-cinema-to-close/"
+  },
+  "regal-northstar-joplin": {
+    "name": "Regal Northstar Joplin",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closed 2026-08-20: https://www.koamnewsnow.com/news/joplin-news-first/regal-northstar-theaters-close-in-joplin/article_a58d3b36-3421-4b8b-81a2-9f869104fdae.html"
+  },
+  "regal-vancouver-plaza": {
+    "name": "Regal Vancouver Plaza",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closed 2026-02-05: https://www.bigscreen.com/j/Vancouver-WA-Vancouver-Plaza-Movie-Theater-Closed/8261"
+  },
+  "regal-cross-keys-turnersville": {
+    "name": "Regal Cross Keys Turnersville",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closed 2026-01-29: https://www.phillyvoice.com/regal-cross-keys-closed-nj-movie-theater-turnersville-washington/"
+  },
+  "regal-sonora": {
+    "name": "Regal Sonora",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closed when its lease ended at the end of December (Union Democrat; Cinema Treasures lists it closed): https://www.uniondemocrat.com/news/article_22a29b37-0d87-4c72-b2a1-e8bcef12bc35.html"
+  },
+  "amc-classic-wilson-10": {
+    "name": "AMC CLASSIC Wilson 10",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closed 2026-06-10: https://www.cinematreasures.org/theaters/37610"
+  },
+  "amc-classic-farmington-4": {
+    "name": "AMC CLASSIC Farmington 4",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closed late January 2026: https://www.cinematreasures.org/theaters/8231"
+  },
+  "amc-classic-milledgeville-6": {
+    "name": "AMC CLASSIC Milledgeville 6",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closed 2025-08-08: https://www.cinematreasures.org/theaters/31484"
+  },
+  "amc-classic-mount-vernon-8": {
+    "name": "AMC CLASSIC Mount Vernon 8",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closed 2026-08-20 (KFVS12, 2026-08-12): https://www.kfvs12.com/2026/08/12/amc-classic-mount-vernon-8-close-its-doors-aug-20/"
+  },
+  "amc-classic-salem-valley-8": {
+    "name": "AMC CLASSIC Salem Valley 8",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closed 2026-04-09 (WDBJ7, 2026-04-09): https://www.wdbj7.com/2026/04/09/salem-amc-owned-movie-theater-close-down/"
+  },
+  "amc-classic-illinois-centre-8": {
+    "name": "AMC CLASSIC Illinois Centre 8",
+    "reason": "closed",
+    "retiredOn": "2026-10-12",
+    "evidence": "Closed 2025-08-07; the building is being rehabbed as the independent Showplace 8 Marion, planned to open October 2026 (KFVS12, 2026-07-13), a new venue: https://www.kfvs12.com/2026/07/13/showplace-8-marion-set-open-october-2026/"
   }
 }

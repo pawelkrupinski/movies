@@ -10492,6 +10492,10 @@ services.cinemas.us.AmcParser
 services.cinemas.us.AmcParser$
 services.cinemas.us.AmcVenueMap
 services.cinemas.us.AmcVenueMap$
+services.cinemas.us.CinemaPlusClient
+services.cinemas.us.CinemaPlusClient$
+services.cinemas.us.CinemaPlusClient$Slot
+services.cinemas.us.CinemaPlusClient$Slot$
 services.cinemas.us.RegalClient
 services.cinemas.us.RegalClient$
 services.cinemas.us.RegalParser
@@ -10512,6 +10516,8 @@ services.cinemas.us.UsChainVenues$WebediaVenue
 services.cinemas.us.UsChainVenues$WebediaVenue$
 services.cinemas.us.UsIndependentVenues
 services.cinemas.us.UsIndependentVenues$
+services.cinemas.us.UsIndependentVenues$CinemaPlusVenue
+services.cinemas.us.UsIndependentVenues$CinemaPlusVenue$
 services.cinemas.us.UsIndependentVenues$SquarespaceVenue
 services.cinemas.us.UsIndependentVenues$SquarespaceVenue$
 services.closure.ClosureCandidate

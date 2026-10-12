@@ -116,7 +116,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // The GROUPED landing — the same page for a country whose places are found
       // through a heading (`Country.cityGroups`). Poland's is one flat list, so
       // nothing above reaches the disclosure the US and the UK render instead:
-      // 52 collapsed states over 2,001 places, and the three that are a state and
+      // 52 collapsed states over 1,995 places, and the three that are a state and
       // a single place at once. Rendered under the English bundle that host serves.
       val groupedLandingHtml: String =
         views.html.landing(models.Country.UnitedStates, isApex = false, pickerFragments)(using testsupport.TestMessages.forLang("en")).body
@@ -1122,7 +1122,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
   // ── the dynamic picker's drill-down: region → subregion → city ──────────
   //
-  // A country with 2,001 US places or 79 UK counties does not get one A-to-Z:
+  // A country with 1,995 US places or 79 UK counties does not get one A-to-Z:
   // the root level shows region headings (plus any place small enough to
   // collapse onto — `CityGroup.soleCity`), and opening one REPLACES the list
   // with that region's own rows, with a back row to return — one level per

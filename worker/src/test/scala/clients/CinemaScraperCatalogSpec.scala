@@ -10,7 +10,7 @@ import services.cinemas.de.{GermanFeed, GermanSources}
 import services.movies.SingleCountryNormalizer.titleNormalizer
 import services.cinemas.common.{CinemaScraper, FlicksClient, FlicksMarket, GatsbyBoxOfficeClient, MultiListingScraper}
 import services.cinemas.pl._
-import services.cinemas.us.{AlamoDrafthouseClient, SquarespaceEventsClient, UsChainVenues}
+import services.cinemas.us.{AlamoDrafthouseClient, CinemaPlusClient, SquarespaceEventsClient, UsChainVenues}
 import services.cinemas.uk.{CineworldClient, SavoyClient, SpektrixClient}
 import services.cinemas.us.{AmcClient, RegalClient}
 import _root_.tools.{CachingDetailFetch, GetOnlyHttpFetch, HttpFetch}
@@ -417,10 +417,10 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
 
     // A Regal location Regal's own roster no longer lists is on flicks.us for a
     // second, independent reason, and carries no fallback entry either.
-    val sonora = UsRoster.flicksSlugByCinema
-      .collectFirst { case (cinema, "regal-sonora") => cinema }.value
-    c.all.find(_.cinema == sonora).value shouldBe a [FlicksClient]
-    c.flicksFallbackSlugs.get(sonora) shouldBe None
+    val niles = UsRoster.flicksSlugByCinema
+      .collectFirst { case (cinema, "regal-boulevard-centre-niles") => cinema }.value
+    c.all.find(_.cinema == niles).value shouldBe a [FlicksClient]
+    c.flicksFallbackSlugs.get(niles) shouldBe None
     c.flicksFallbackSlugs.keys.foreach { cin =>
       val primary = c.all.find(_.cinema == cin).value
       primary should not be a [FlicksClient]      // moved off the aggregator…
@@ -460,7 +460,7 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     // with an alternative rather than a last resort, and both chains sit on the
     // aggregator until a US egress exists.
     primaryFor("AMC Town Center 20") shouldBe a [FlicksClient]
-    primaryFor("AMC CLASSIC Farmington 4") shouldBe a [FlicksClient]
+    primaryFor("AMC CLASSIC Columbus 12") shouldBe a [FlicksClient]
     c.all.count(_.isInstanceOf[AmcClient]) shouldBe 0
     c.all.count(_.isInstanceOf[RegalClient]) shouldBe 0
 
@@ -489,6 +489,19 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     primary shouldBe a [SquarespaceEventsClient]
     primary.sourceUrl shouldBe Some("https://www.acmescreeningroom.org/now-playing")
     c.flicksFallbackSlugs.get(acme) shouldBe None
+  }
+
+  // Acme Theatre Riverton was retired as closed on the same flicks.us 404 while
+  // barrycinemas.com sold its screenings. Same shape: its own CinemaPlus site, no fallback.
+  // Barry's other two houses stay on Flicks, which lists them to the same day.
+  it should "scrape Acme Theatre Riverton off Barry Cinemas' own site, with no flicks.us fallback" in {
+    val c    = catalog()
+    val acme = UsRoster.byDisplayName("Acme Theatre Riverton")
+    val primary = c.all.find(_.cinema == acme).value
+    primary shouldBe a [CinemaPlusClient]
+    primary.sourceUrl shouldBe Some("https://barrycinemas.com/acme-theater-riverton")
+    c.flicksFallbackSlugs.get(acme) shouldBe None
+    c.all.find(_.cinema == UsRoster.byDisplayName("Gem Theatre Riverton")).value shouldBe a [FlicksClient]
   }
 
   // US chain venues are matched by DISPLAY NAME, which makes a typo silent: the

@@ -1930,8 +1930,8 @@ object GermanRoster {
 
 
 // ── United States (Flicks) — data-driven from the full roster ────────────────
-// `UsRosterData` (generated from data/us/pages.json) carries 2,001 town and
-// cluster pages / 5,010 cinemas. Same shape as `GermanCinema`: each venue is
+// `UsRosterData` (generated from data/us/pages.json) carries 1,995 town and
+// cluster pages / 4,999 cinemas. Same shape as `GermanCinema`: each venue is
 // built ONCE in `UsRoster` and reused everywhere, so one `Source` instance
 // serves the page, `Cinema.byCity` and the scrape catalog, and identity
 // equality holds like the hand-authored `case object` cinemas.
@@ -2032,7 +2032,7 @@ object UsRoster {
   val places: Seq[UsPlace] = built.map(_._1)
 
   /** Every US venue under its STATE's name — one section per state on the
-   *  uptime page, and the US half of `Cinema.byCity`. Not per page: 2,001
+   *  uptime page, and the US half of `Cinema.byCity`. Not per page: 1,995
    *  sections of two cinemas each is not a page anybody reads, and a page may
    *  cross a state line where a venue never does. */
   val byCity: Seq[(String, Seq[Cinema])] =

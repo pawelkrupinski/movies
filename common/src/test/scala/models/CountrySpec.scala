@@ -115,16 +115,16 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     // a cluster of small towns a short drive apart — `data/us/scripts/build_pages.py`.
     // A state is a `CityGroup`; its name is a page only where a TOWN has it
     // (California, Maryland), never the state's listing.
-    Country.UnitedStates.cities should have size 2001
+    Country.UnitedStates.cities should have size 1995
     Country.UnitedStates.cities.map(_.slug) should contain allOf (
       "los-angeles", "new-york", "houston", "washington", "san-juan", "naples")
     Country.UnitedStates.bySlug.get("texas") shouldBe None
-    // Every place carries venues, and the roster totals 5,010 (5,031 less one feedless venue, the
-    // closed Alamo Drafthouse Naples and the 19 closures retired 2026-10-12). That corpus is ~6x the
+    // Every place carries venues, and the roster totals 4,999 (5,031 less one feedless venue, the
+    // closed Alamo Drafthouse Naples and the 30 closures retired 2026-10-12). That corpus is ~6x the
     // UK's, the fact that drives the US worker's 840-minute cadence rather than the UK's 420 (a ~10h
     // sweep has to fit inside its own cadence).
     all(Country.UnitedStates.cities.map(_.cinemas.size)) should be > 0
-    Country.UnitedStates.cities.flatMap(_.cinemas).size shouldBe 5010
+    Country.UnitedStates.cities.flatMap(_.cinemas).size shouldBe 4999
   }
 
   /** Every place in `group` in its country's own collation — the order a reader

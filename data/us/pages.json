@@ -2114,8 +2114,7 @@
    ],
    "cinemas": [
     "naro-expanded-cinema-norfolk",
-    "phoenix-main-gate-movies-norfolk",
-    "regal-macarthur-center-norfolk"
+    "phoenix-main-gate-movies-norfolk"
    ]
   },
   {
@@ -2776,8 +2775,7 @@
     "kiggins-theatre",
     "regal-cascade-vancouver",
     "regal-cinema-99-vancouver",
-    "regal-city-center-vancouver",
-    "regal-vancouver-plaza"
+    "regal-city-center-vancouver"
    ]
   },
   {
@@ -2977,8 +2975,7 @@
     "Newport News, Virginia"
    ],
    "cinemas": [
-    "cinemark-newport-news",
-    "regal-kiln-creek"
+    "cinemark-newport-news"
    ]
   },
   {
@@ -6669,6 +6666,22 @@
    ]
   },
   {
+   "slug": "angels-camp",
+   "kind": "town",
+   "name": "Angels Camp",
+   "anchor": "Angels Camp, California",
+   "state": "California",
+   "qualifiedSlug": "angels-camp-california",
+   "lat": 38.0683,
+   "lon": -120.5396,
+   "towns": [
+    "Angels Camp, California"
+   ],
+   "cinemas": [
+    "angels-theatre"
+   ]
+  },
+  {
    "slug": "annapolis",
    "kind": "cluster",
    "name": "Annapolis",
@@ -8460,7 +8473,6 @@
    "towns": [
     "Blacksburg, Virginia",
     "Christiansburg, Virginia",
-    "Salem, Virginia",
     "Radford, Virginia",
     "Fairlawn, Virginia"
    ],
@@ -8470,8 +8482,7 @@
     "radford-theatre",
     "regal-new-river-valley-christiansburg",
     "starlite-drive-in-christiansburg",
-    "scarrettes-plaza-cinema",
-    "amc-classic-salem-valley-8"
+    "scarrettes-plaza-cinema"
    ]
   },
   {
@@ -10083,24 +10094,6 @@
    ]
   },
   {
-   "slug": "carthage",
-   "kind": "cluster",
-   "name": "Carthage",
-   "anchor": "Carthage, Missouri",
-   "state": "Missouri",
-   "qualifiedSlug": "carthage-missouri",
-   "lat": 37.1765,
-   "lon": -94.3102,
-   "towns": [
-    "Carthage, Missouri",
-    "Webb City, Missouri"
-   ],
-   "cinemas": [
-    "66-drive-in-carthage",
-    "route-66-movie-theatre"
-   ]
-  },
-  {
    "slug": "casa-grande",
    "kind": "town",
    "name": "Casa Grande",
@@ -10618,8 +10611,7 @@
     "Glendora, New Jersey",
     "Flourtown, Pennsylvania",
     "Narberth, Pennsylvania",
-    "Bryn Mawr, Pennsylvania",
-    "Turnersville, New Jersey"
+    "Bryn Mawr, Pennsylvania"
    ],
    "cinemas": [
     "ambler-theater",
@@ -10634,8 +10626,7 @@
     "movie-tavern-flourtown",
     "reel-cinemas-narberth-stadium",
     "regal-plymouth-meeting",
-    "regal-washington-township",
-    "regal-cross-keys-turnersville"
+    "regal-washington-township"
    ]
   },
   {
@@ -14438,22 +14429,6 @@
    "cinemas": [
     "narrow-gauge-cinemas",
     "narrow-gauge-drive-in"
-   ]
-  },
-  {
-   "slug": "farmington-missouri",
-   "kind": "town",
-   "name": "Farmington",
-   "anchor": "Farmington, Missouri",
-   "state": "Missouri",
-   "qualifiedSlug": "farmington-missouri",
-   "lat": 37.7809,
-   "lon": -90.4218,
-   "towns": [
-    "Farmington, Missouri"
-   ],
-   "cinemas": [
-    "amc-classic-farmington-4"
    ]
   },
   {
@@ -19101,7 +19076,7 @@
   },
   {
    "slug": "joplin",
-   "kind": "town",
+   "kind": "cluster",
    "name": "Joplin",
    "anchor": "Joplin, Missouri",
    "state": "Missouri",
@@ -19109,12 +19084,17 @@
    "lat": 37.0842,
    "lon": -94.5133,
    "towns": [
-    "Joplin, Missouri"
+    "Joplin, Missouri",
+    "Carthage, Missouri",
+    "Miami, Oklahoma",
+    "Webb City, Missouri"
    ],
    "cinemas": [
+    "66-drive-in-carthage",
     "bb-theatres-joplin-7",
-    "regal-northstar-joplin",
-    "royale-cinema-lounge"
+    "royale-cinema-lounge",
+    "route-66-movie-theatre",
+    "bb-miami-cineplex"
    ]
   },
   {
@@ -22551,22 +22531,6 @@
    ]
   },
   {
-   "slug": "marion-illinois",
-   "kind": "town",
-   "name": "Marion",
-   "anchor": "Marion, Illinois",
-   "state": "Illinois",
-   "qualifiedSlug": "marion-illinois",
-   "lat": 37.7306,
-   "lon": -88.9331,
-   "towns": [
-    "Marion, Illinois"
-   ],
-   "cinemas": [
-    "amc-classic-illinois-centre-8"
-   ]
-  },
-  {
    "slug": "marion-iowa",
    "kind": "cluster",
    "name": "Marion",
@@ -23572,22 +23536,6 @@
    ]
   },
   {
-   "slug": "miami-oklahoma",
-   "kind": "town",
-   "name": "Miami",
-   "anchor": "Miami, Oklahoma",
-   "state": "Oklahoma",
-   "qualifiedSlug": "miami-oklahoma",
-   "lat": 36.8745,
-   "lon": -94.8775,
-   "towns": [
-    "Miami, Oklahoma"
-   ],
-   "cinemas": [
-    "bb-miami-cineplex"
-   ]
-  },
-  {
    "slug": "miamisburg",
    "kind": "cluster",
    "name": "Miamisburg",
@@ -23902,22 +23850,6 @@
     "blackstone-valley-14-millbury",
     "elm-draught-house-cinema-millbury",
     "sturbridge-luxury-cinemas"
-   ]
-  },
-  {
-   "slug": "milledgeville",
-   "kind": "town",
-   "name": "Milledgeville",
-   "anchor": "Milledgeville, Georgia",
-   "state": "Georgia",
-   "qualifiedSlug": "milledgeville-georgia",
-   "lat": 33.0801,
-   "lon": -83.2321,
-   "towns": [
-    "Milledgeville, Georgia"
-   ],
-   "cinemas": [
-    "amc-classic-milledgeville-6"
    ]
   },
   {
@@ -24790,22 +24722,6 @@
     "amc-cascade-mall-14",
     "anacortes-cinemas",
     "lincoln-theatre-mt-vernon"
-   ]
-  },
-  {
-   "slug": "mount-vernon-illinois",
-   "kind": "town",
-   "name": "Mount Vernon",
-   "anchor": "Mount Vernon, Illinois",
-   "state": "Illinois",
-   "qualifiedSlug": "mount-vernon-illinois",
-   "lat": 38.3173,
-   "lon": -88.9031,
-   "towns": [
-    "Mount Vernon, Illinois"
-   ],
-   "cinemas": [
-    "amc-classic-mount-vernon-8"
    ]
   },
   {
@@ -29191,6 +29107,7 @@
     "Riverton, Wyoming"
    ],
    "cinemas": [
+    "acme-theatre-riverton",
     "gem-theatre-riverton"
    ]
   },
@@ -29321,13 +29238,11 @@
    "lon": -77.7905,
    "towns": [
     "Rocky Mount, North Carolina",
-    "Wilson, North Carolina",
     "Tarboro, North Carolina"
    ],
    "cinemas": [
     "parkhill-tarboro-3",
-    "uec-theatres-rocky-mount",
-    "amc-classic-wilson-10"
+    "uec-theatres-rocky-mount"
    ]
   },
   {
@@ -31554,24 +31469,6 @@
     "showcase-chestnut-hill",
     "showcase-woburn",
     "west-newton-cinema"
-   ]
-  },
-  {
-   "slug": "sonora",
-   "kind": "cluster",
-   "name": "Sonora",
-   "anchor": "Sonora, California",
-   "state": "California",
-   "qualifiedSlug": "sonora-california",
-   "lat": 37.9841,
-   "lon": -120.3821,
-   "towns": [
-    "Sonora, California",
-    "Angels Camp, California"
-   ],
-   "cinemas": [
-    "angels-theatre",
-    "regal-sonora"
    ]
   },
   {
@@ -36508,6 +36405,11 @@
    "qualifiedSlug": "cape-cod",
    "anchor": null
   },
+  "carthage": {
+   "page": "joplin",
+   "qualifiedSlug": "carthage-missouri",
+   "anchor": "Carthage, Missouri"
+  },
   "central-coast": {
    "page": "coos-bay",
    "qualifiedSlug": "central-coast",
@@ -36617,6 +36519,11 @@
    "page": "eureka",
    "qualifiedSlug": "eureka-arcata",
    "anchor": null
+  },
+  "farmington-missouri": {
+   "page": "de-soto",
+   "qualifiedSlug": "farmington-missouri",
+   "anchor": "Farmington, Missouri"
   },
   "florida-keys": {
    "page": "key-west",
@@ -36783,6 +36690,11 @@
    "qualifiedSlug": "manchester-new-hampshire",
    "anchor": "Manchester, New Hampshire"
   },
+  "marion-illinois": {
+   "page": "carbondale",
+   "qualifiedSlug": "marion-illinois",
+   "anchor": "Marion, Illinois"
+  },
   "maui": {
    "page": "kahului",
    "qualifiedSlug": "maui",
@@ -36793,10 +36705,20 @@
    "qualifiedSlug": "memphis-mississippi",
    "anchor": "Memphis, Tennessee"
   },
+  "miami-oklahoma": {
+   "page": "joplin",
+   "qualifiedSlug": "miami-oklahoma",
+   "anchor": "Miami, Oklahoma"
+  },
   "midland-odessa": {
    "page": "midland-texas",
    "qualifiedSlug": "midland-odessa",
    "anchor": null
+  },
+  "milledgeville": {
+   "page": "macon",
+   "qualifiedSlug": "milledgeville-georgia",
+   "anchor": "Milledgeville, Georgia"
   },
   "minneapolis-st-paul": {
    "page": "minneapolis",
@@ -36822,6 +36744,11 @@
    "page": "lamoni",
    "qualifiedSlug": "mount-ayr",
    "anchor": "Mount Ayr, Iowa"
+  },
+  "mount-vernon-illinois": {
+   "page": "nashville-illinois",
+   "qualifiedSlug": "mount-vernon-illinois",
+   "anchor": "Mount Vernon, Illinois"
   },
   "new-haven": {
    "page": "washington-missouri",
@@ -37017,6 +36944,11 @@
    "page": "somerset",
    "qualifiedSlug": "somerset-kentucky",
    "anchor": "Somerset, Kentucky"
+  },
+  "sonora": {
+   "page": "angels-camp",
+   "qualifiedSlug": "sonora-california",
+   "anchor": "Sonora, California"
   },
   "south-bend-elkhart": {
    "page": "plymouth-indiana",

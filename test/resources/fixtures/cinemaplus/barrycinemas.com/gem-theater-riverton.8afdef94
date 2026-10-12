@@ -1,0 +1,839 @@
+    
+
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth ">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Showtimes - Gem Theater - Riverton</title>
+            <link rel="canonical" href="https://barrycinemas.com/gem-theater-riverton" />
+        <link href="https://fonts.googleapis.com/css2?family=Open+Sans:ital,wght@0,300;0,400;0,600;0,700;0,800;1,300;1,400;1,600;1,700;1,800&family=Roboto+Condensed:ital,wght@0,300;0,400;0,700;1,300;1,400;1,700&display=swap" rel="stylesheet" />
+
+<link rel="preload" as="style" href="https://barrycinemas.com/build/assets/cinemaplus-v2-BHWcsBwK.css" /><link rel="stylesheet" href="https://barrycinemas.com/build/assets/cinemaplus-v2-BHWcsBwK.css" />
+<link rel="preload" as="style" href="https://barrycinemas.com/build/assets/barry-cinemas-v2-CN6Ncq2u.css" /><link rel="stylesheet" href="https://barrycinemas.com/build/assets/barry-cinemas-v2-CN6Ncq2u.css" />        </head>
+<body class="cin-bg-body bg-contain" style="">
+    
+    
+    <div class="cin-base-wrapper">
+                <div class="w-full flex-1" style="background-image: none;">
+                        <div class="relative">
+                                                            <!-- Main Nav -->
+<div
+    x-data="navigationSetup()"
+    x-init="{
+                            activePage: 'showtimes'
+            }"
+    @scroll.window="navbarStuck = getNavbarStickyState(navbarOffset)"
+    :class="{ 'sticky top-0 z-50': navbarStuck }"
+    class="transition-all"
+>
+    <!-- Unstuck Navbar -->
+    <nav id="main-navbar" class="absolute z-10 w-full" :class="{ 'bg-black': navbarStuck }">
+        <!-- Main Nav -->
+        <div class="mx-4 max-w-7xl py-10 xl:mx-auto" :class="{ 'py-10': !navbarStuck, 'py-2': navbarStuck }" x-transition:enter="transform transition ease-in-out duration-300">
+            <div class="relative flex flex-col items-start justify-between md:items-center">
+                                    
+                    <div class="-mt-4 hidden w-full pr-4 text-right md:block" :class="{ 'md:hidden': navbarStuck }">
+                        <a href="/page/about" class="mr-4 font-roboto text-xs leading-5 tracking-tight text-gray-100 uppercase transition hover:text-secondary focus:text-white"> About </a>
+<a href="/page/employment" class="mr-4 font-roboto text-xs leading-5 tracking-tight text-gray-100 uppercase transition hover:text-secondary focus:text-white"> Employment </a>
+<a href="https://mailchi.mp/barrycinemas/barry-cinemas-insider" target="_blank" class="mr-4 font-roboto text-xs leading-5 tracking-tight text-gray-100 uppercase transition hover:text-secondary focus:text-white"> Newsletter </a>
+<a href="/page/refund-policy" class="font-roboto text-xs leading-5 tracking-tight text-gray-100 uppercase transition hover:text-secondary focus:text-white"> Refunds </a>
+                    </div>
+                                <div class="flex w-full flex-1 items-start sm:justify-between md:items-center">
+                    <div class="shrink-0">
+                                                    <a href="/" title="Gem Theater - Riverton Home Page">
+                                <img
+                                    class="cin-header-logo__stuck"
+                                    x-bind:class="{
+                                        'cin-header-logo': !navbarStuck,
+                                    }"
+                                    src="https://images.cinemaplus.com/hosted/barry-cinemas/barrycinemas-logo-primary-v2.png"
+                                    alt="Gem Theater - Riverton Logo"
+                                />
+                            </a>
+                                            </div>
+                    <div class="hidden md:block">
+                        <div class="flex items-center md:justify-self-end lg:space-x-1 lg:text-xl xl:space-x-4">
+        <a
+            href="/gem-theater-riverton/"
+            class="rounded-sm p-3 font-roboto leading-5 tracking-tight text-gray-100 uppercase transition duration-150 ease-in-out hover:bg-primary-800 focus:bg-gray-100 focus:bg-secondary-800 focus:text-white"
+            :class="{
+                'bg-black/25': activePage === 'showtimes',
+                'text-sm': navbarStuck,
+            }"
+        >
+            Showtimes
+        </a>
+        <a
+            href="/gem-theater-riverton/page/contact"
+            class="rounded-sm p-3 font-roboto leading-5 tracking-tight text-gray-100 uppercase transition duration-150 ease-in-out hover:bg-primary-800 focus:bg-gray-100 focus:bg-secondary-800 focus:text-white"
+            x-bind:class="{
+                'bg-black/25': activePage === 'faq',
+                'text-sm': navbarStuck,
+            }"
+        >
+            Contact
+        </a>
+    </div>
+                    </div>
+                                            <div class="hidden items-center md:flex lg:text-xl">
+    <button type="button" title="Change Location" @click="openLocations()" class="flex items-center rounded-sm p-3 font-roboto leading-5 text-gray-100 uppercase transition duration-150 ease-in-out hover:bg-primary-800 focus:bg-secondary-800 focus:text-white" x-bind:class="{ 'text-sm': navbarStuck }">
+                    Gem Theater - Riverton
+            
+                <svg class="-my-2 ml-3 h-8 w-8" x-bind:class="{ 'sm:h-6 sm:w-6': navbarStuck }" viewBox="0 0 23 31" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path d="M10.328 30.164c.527.82 1.758.82 2.285 0C21.168 17.86 22.75 16.57 22.75 12 22.75 5.79 17.71.75 11.5.75 5.23.75.25 5.79.25 12c0 4.57 1.523 5.86 10.078 18.164zM11.5 16.687c-2.637 0-4.688-2.05-4.688-4.687A4.664 4.664 0 0111.5 7.312 4.701 4.701 0 0116.188 12a4.664 4.664 0 01-4.688 4.688z" />
+</svg>
+    </button>
+</div>
+                                    </div>
+
+                <!-- Mobile menu hamburger button-->
+                <div class="absolute inset-y-0 right-0 z-20 flex items-center md:hidden">
+                    <button x-show="!menuOpen" class="cin-header-menu-btn" aria-label="Main menu" aria-expanded="false" @click="openNav()">
+                        <!-- Icon when menu is closed. -->
+                        <div class="hidden text-xs xs:block sm:text-base">
+                                                            <div class="mr-4">
+                                    Gem Theater - Riverton
+                                                                    </div>
+                                                    </div>
+                        <div><svg class="h-6 w-6" viewBox="0 0 22 14" stroke="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path stroke-width="2" d="M0 13h22M0 7h22M0 1h22" />
+</svg>
+</div>
+                    </button>
+                    <button x-show="menuOpen" class="inline-flex items-center justify-center rounded-md p-2 text-white transition duration-150 ease-in-out hover:bg-gray-100/25 hover:text-white focus:bg-gray-100/25 focus:text-white focus:outline-hidden" aria-label="Main menu" aria-expanded="false" @click="closeNav()">
+                        <!-- Icon when menu is open. -->
+                        <div><svg class="h-6 w-6" stroke="currentColor" fill="none" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+</svg>
+</div>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Mobile Nav -->
+        <div x-show.transition="menuOpen" @click.away="closeNav()" class="fixed inset-0 overflow-y-auto md:hidden" style="display: none">
+            <div class="relative z-10 h-screen bg-red-900">
+                <div class="fixed inset-0 z-0 w-full bg-cover bg-center bg-no-repeat" style="background-image: url(&quot;/popcorn.png&quot;)"></div>
+                <div class="relative z-10 px-4 py-10">
+                    
+                    <div class="inline-block">
+                                                    <a href="/" title="Gem Theater - Riverton Home Page">
+                                <img class="mx-2 w-40 sm:block md:w-48" src="https://images.cinemaplus.com/hosted/barry-cinemas/barrycinemas-logo-primary-v2.png" alt="Gem Theater - Riverton Logo" />
+                            </a>
+                                            </div>
+                    <div class="space-y-3 mt-12 px-4">
+                                                    <div class="pb-12">
+                                                                    <div class="mb-3 font-roboto text-sm text-white uppercase">Change Location</div>
+                                                                <button @click="openLocations()" class="flex w-full items-center justify-between rounded-sm bg-primary px-8 py-6 text-left font-roboto text-2xl text-white uppercase">
+                                                                            Gem Theater - Riverton
+                                                                                                                <svg class="h-6 w-6" viewBox="0 0 16 10" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path d="M7.402 9.68a.828.828 0 001.16 0l6.856-6.82c.316-.352.316-.88 0-1.196l-.809-.809c-.316-.316-.843-.316-1.195 0L8 6.27 2.55.855C2.2.54 1.673.54 1.356.855l-.808.81c-.317.315-.317.843 0 1.194l6.855 6.82z" />
+</svg>
+                                </button>
+                            </div>
+                        
+                        <a href="/gem-theater-riverton/" class="block p-0 font-roboto text-4xl tracking-tighter text-white uppercase transition duration-150 ease-in-out hover:text-primary focus:bg-gray-700 focus:text-white focus:outline-hidden">Showtimes</a>
+    <a href="/gem-theater-riverton/page/contact" class="block p-0 font-roboto text-4xl tracking-tighter text-white uppercase transition duration-150 ease-in-out hover:text-primary focus:text-secondary focus:outline-hidden">Contact</a>
+
+<a href="/page/about" class="block p-0 font-roboto text-2xl tracking-tighter text-white uppercase transition duration-150 ease-in-out hover:text-primary focus:text-secondary focus:outline-hidden">About</a>
+<a href="/page/employment" class="block p-0 font-roboto text-2xl tracking-tighter text-white uppercase transition duration-150 ease-in-out hover:text-primary focus:text-secondary focus:outline-hidden">Employment</a>
+<a href="https://mailchi.mp/barrycinemas/barry-cinemas-insider" class="block p-0 font-roboto text-2xl tracking-tighter text-white uppercase transition duration-150 ease-in-out hover:text-primary focus:text-secondary focus:outline-hidden">Newsletter</a>
+<a href="/page/refund-policy" class="block p-0 font-roboto text-2xl tracking-tighter text-white uppercase transition duration-150 ease-in-out hover:text-primary focus:text-secondary focus:outline-hidden">Refund Policy</a>
+<a href="/page/ratings-policies" class="block p-0 font-roboto text-2xl tracking-tighter text-white uppercase transition duration-150 ease-in-out hover:text-primary focus:text-secondary focus:outline-hidden">Ratings & Privacy Policy</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- end Mobile Nav -->
+
+                    <div @toggle-locations-open.window="openLocations()" @keydown.window.escape="closeLocations()" x-ref="locations-open" x-show="locationsOpen" class="fixed inset-0 z-30" style="display: none" x-cloak>
+    <div @click="closeLocations()" x-description="Background overlay, show/hide based on slide-over state." x-show="locationsOpen" x-transition:enter="ease-in-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="ease-in-out duration-300" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" class="absolute inset-0 bg-black/75 transition-opacity"></div>
+    <div class="absolute inset-0 mt-48 overflow-y-auto rounded-t-2xl bg-white md:mt-0 md:rounded-none md:bg-black" x-description="Slide-over panel, show/hide based on slide-over state." x-show="locationsOpen" x-transition:enter="transform transition ease-in-out duration-300" x-transition:enter-start="translate-y-full" x-transition:enter-end="translate-y-0" x-transition:leave="transform transition ease-in-out duration-300 sm:duration-700" x-transition:leave-start="translate-y-0" x-transition:leave-end="translate-y-full">
+        <!-- Mobile menu hamburger button-->
+        <div class="absolute top-0 right-0 z-40 hidden pt-16 pr-12 md:block">
+            <button class="" aria-label="Main menu" aria-expanded="false" @click="closeLocations()">
+                <svg class="h-8 w-8 text-white" stroke="currentColor" fill="none" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+</svg>
+            </button>
+        </div>
+        <div class="mx-auto mt-4 h-1 w-16 rounded-full bg-gray-300 md:hidden"></div>
+        <div class="safe:pb-8 py-8 md:mx-auto md:max-w-7xl md:px-6 md:pb-32">
+            <div class="hidden md:inline-block">
+                                    <a href="/" title="Barry Cinemas Home Page">
+                        <img class="mx-2 w-40 sm:block md:w-48" src="https://images.cinemaplus.com/hosted/barry-cinemas/barrycinemas-logo-primary-v2.png" alt="Gem Theater - Riverton Logo" />
+                        <span class="block pt-2 text-center text-sm font-bold text-gray-100 uppercase"> Gem Theater - Riverton, WY </span>
+                    </a>
+                            </div>
+            <h2 class="hidden font-roboto text-7xl tracking-tight text-white uppercase md:block">Locations</h2>
+
+                            <div class="relative mb-4 flex justify-end border-b pr-4 pb-4 md:border-gray-900 md:pt-8 md:pr-0">
+                    <a rel="nofollow" href="/clear-location" class="btn-outline btn-outline-danger">
+                        <svg class="mr-1 inline h-5 w-5" stroke="currentColor" fill="none" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+</svg>
+                        Clear Location
+                    </a>
+                </div>
+            
+            
+                                                                        <div class="mb-12 md:mb-0">
+                                        <ul class="grid flex-1 grid-cols-1">
+                                                                            <a href="/acme-theater-riverton">
+                                <li class="flex items-center border-b px-9 py-4 hover:bg-gray-200 md:border-primary md:hover:bg-primary-800">
+                                    <svg class="mr-4 h-6 w-6 text-primary" viewBox="0 0 23 31" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path d="M10.328 30.164c.527.82 1.758.82 2.285 0C21.168 17.86 22.75 16.57 22.75 12 22.75 5.79 17.71.75 11.5.75 5.23.75.25 5.79.25 12c0 4.57 1.523 5.86 10.078 18.164zM11.5 16.687c-2.637 0-4.688-2.05-4.688-4.687A4.664 4.664 0 0111.5 7.312 4.701 4.701 0 0116.188 12a4.664 4.664 0 01-4.688 4.688z" />
+</svg>
+                                    <div class="grid-cols-10 items-center gap-4 md:grid md:flex-1">
+                                        <div class="col-span-3 md:text-white">
+                                            <span class="block font-roboto text-sm uppercase md:text-xl">
+                                                Acme Theater - Riverton
+                                                                                            </span>
+                                        </div>
+                                        <div class="col-span-3">
+                                            <span class="block pt-0.5 font-roboto text-xs text-gray-700 uppercase md:pt-0 md:text-white"> 312 East Main Street </span>
+                                            <span class="block font-roboto text-xs text-gray-700 uppercase md:text-white"> Riverton, WY 82501 </span>
+                                        </div>
+                                        <div class="col-span-2 hidden md:block">
+                                            <span class="block font-roboto text-xs text-white uppercase">Showtimes</span>
+                                            <span class="block font-roboto text-xs text-white uppercase">(307) 856-3415</span>
+                                        </div>
+                                        <div class="col-span-2 hidden md:block">
+                                            <span class="block font-roboto text-xs text-white uppercase">Box Office</span>
+                                            <span class="block font-roboto text-xs text-white uppercase">(307) 856-1303</span>
+                                        </div>
+                                    </div>
+                                </li>
+                            </a>
+                                                                                <a href="/gem-theater-riverton">
+                                <li class="flex items-center border-b px-9 py-4 hover:bg-gray-200 md:border-primary md:hover:bg-primary-800">
+                                    <svg class="mr-4 h-6 w-6 text-primary" viewBox="0 0 23 31" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path d="M10.328 30.164c.527.82 1.758.82 2.285 0C21.168 17.86 22.75 16.57 22.75 12 22.75 5.79 17.71.75 11.5.75 5.23.75.25 5.79.25 12c0 4.57 1.523 5.86 10.078 18.164zM11.5 16.687c-2.637 0-4.688-2.05-4.688-4.687A4.664 4.664 0 0111.5 7.312 4.701 4.701 0 0116.188 12a4.664 4.664 0 01-4.688 4.688z" />
+</svg>
+                                    <div class="grid-cols-10 items-center gap-4 md:grid md:flex-1">
+                                        <div class="col-span-3 md:text-white">
+                                            <span class="block font-roboto text-sm uppercase md:text-xl">
+                                                Gem Theater - Riverton
+                                                                                            </span>
+                                        </div>
+                                        <div class="col-span-3">
+                                            <span class="block pt-0.5 font-roboto text-xs text-gray-700 uppercase md:pt-0 md:text-white"> 119 South 3rd Street East </span>
+                                            <span class="block font-roboto text-xs text-gray-700 uppercase md:text-white"> Riverton, WY 82501 </span>
+                                        </div>
+                                        <div class="col-span-2 hidden md:block">
+                                            <span class="block font-roboto text-xs text-white uppercase">Showtimes</span>
+                                            <span class="block font-roboto text-xs text-white uppercase">(307) 856-3415</span>
+                                        </div>
+                                        <div class="col-span-2 hidden md:block">
+                                            <span class="block font-roboto text-xs text-white uppercase">Box Office</span>
+                                            <span class="block font-roboto text-xs text-white uppercase">(307) 856-9589</span>
+                                        </div>
+                                    </div>
+                                </li>
+                            </a>
+                                                                                <a href="/grand-theater-lander">
+                                <li class="flex items-center border-b px-9 py-4 hover:bg-gray-200 md:border-primary md:hover:bg-primary-800">
+                                    <svg class="mr-4 h-6 w-6 text-primary" viewBox="0 0 23 31" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path d="M10.328 30.164c.527.82 1.758.82 2.285 0C21.168 17.86 22.75 16.57 22.75 12 22.75 5.79 17.71.75 11.5.75 5.23.75.25 5.79.25 12c0 4.57 1.523 5.86 10.078 18.164zM11.5 16.687c-2.637 0-4.688-2.05-4.688-4.687A4.664 4.664 0 0111.5 7.312 4.701 4.701 0 0116.188 12a4.664 4.664 0 01-4.688 4.688z" />
+</svg>
+                                    <div class="grid-cols-10 items-center gap-4 md:grid md:flex-1">
+                                        <div class="col-span-3 md:text-white">
+                                            <span class="block font-roboto text-sm uppercase md:text-xl">
+                                                Grand Theater - Lander
+                                                                                            </span>
+                                        </div>
+                                        <div class="col-span-3">
+                                            <span class="block pt-0.5 font-roboto text-xs text-gray-700 uppercase md:pt-0 md:text-white"> 250 Main Street </span>
+                                            <span class="block font-roboto text-xs text-gray-700 uppercase md:text-white"> Lander, WY 82520 </span>
+                                        </div>
+                                        <div class="col-span-2 hidden md:block">
+                                            <span class="block font-roboto text-xs text-white uppercase">Showtimes</span>
+                                            <span class="block font-roboto text-xs text-white uppercase">(307) 856-3415</span>
+                                        </div>
+                                        <div class="col-span-2 hidden md:block">
+                                            <span class="block font-roboto text-xs text-white uppercase">Box Office</span>
+                                            <span class="block font-roboto text-xs text-white uppercase">(307) 332-4437</span>
+                                        </div>
+                                    </div>
+                                </li>
+                            </a>
+                                                                        </ul>
+                    </div>
+                                        
+        </div>
+    </div>
+</div>
+<!-- end Locations Menu -->
+            </nav>
+</div>
+<!-- End Main Nav -->
+
+
+                    
+                            <!-- Theater Header -->
+
+    <div class="relative w-full bg-primary bg-cover bg-center bg-no-repeat" style="background-image: url('https://images.cinemaplus.com/ticketing/heroart/885310f7f458dcce5a5b0c5a4bd4b0ab.webp')">
+        <div class="absolute inset-0" style="background-image: linear-gradient(rgb(100, 100, 100, 0.2), rgba(0, 0, 0, 0.8))"></div>
+
+        
+        <div class="relative mx-auto grid h-screen-75 max-h-96 max-w-7xl grid-cols-16 gap-4 py-16 text-white md:h-auto md:max-h-full md:pt-32 xl:gap-8">
+            <div class="col-span-14 col-start-2 self-end">
+                <div class="grid grid-cols-12 gap-4 xl:gap-8">
+                                            <div class="col-span-12 font-roboto text-sm font-bold uppercase md:text-xl">Now Playing</div>
+                                        <img class="col-span-2 hidden rounded-sm shadow-sm md:block" src="https://images.cinemaplus.com/ticketing/posters/1b53f576bface7fe7b23b67d067545cd.webp" alt="Heart of the Beast Poster" />
+                    <div class="col-span-12 md:col-span-9 md:-mt-2 xl:col-span-10">
+                        <div class="font-roboto text-4xl leading-2 font-bold tracking-tighter uppercase md:text-7xl">Heart of the Beast</div>
+                                                    <a href="https://barrycinemas.com/gem-theater-riverton/movie/27049" class="btn btn-primary mt-2 inline-block tracking-normal"> Get Tickets </a>
+                                            </div>
+                    <div class="font-open-sans col-span-9 hidden text-lg md:block">
+                        <div x-data="{ showFullText: false }">
+    <div :class="{ 'line-clamp-3': !showFullText }">After a harrowing plane crash, Special Forces officer James Belmont (Brad Pitt) and his combat dog, Odin, find themselves stranded deep in the Alaskan wilderness. Together, they are forced into a brutal fight for survival against the elements. From acclaimed filmmaker David Ayer, Heart of the Beast is an intense adventure thriller that explores the unbreakable bond between a man and his best friend as they face their greatest battle yet.</div>
+    <button @click="showFullText = !showFullText" class="hover:text-cobalt active:text-cobalt-300 font-roboto font-bold uppercase focus:outline-hidden">
+        <span x-show="showFullText">Less</span>
+        <span x-show="!showFullText">More</span>
+    </button>
+</div>
+                    </div>
+                    <div class="md:flex-no-wrap col-span-12 flex flex-wrap items-center md:col-span-9">
+                        <div class="-mt-1 mr-8 md:shrink-0">
+                            <div class="whitespace-no-wrap -mt-0.5 flex items-center justify-center rounded-xs bg-gray-100 px-2 text-center font-roboto text-xs text-gray-900">PG-13</div>
+                        </div>
+                        <div class="order-first mb-4 flex w-full shrink-0 md:order-0 md:mb-0 md:w-auto md:shrink">
+                            <div class="mr-4 flex flex-wrap items-start justify-start font-roboto text-xs leading-none font-bold uppercase md:text-base">
+                                                                                                            <span class="mr-4 pb-2">Brad Pitt</span>
+                                                                                                                    <span class="mr-4 pb-2">J.K. Simmons</span>
+                                                                                                                    <span class="mr-4 pb-2">Anna Lambe</span>
+                                                                                                    </div>
+                        </div>
+                        <div class="md:shrink-0" x-data="{}">
+                                                            <button type="button" class="-mt-2 flex items-center rounded-sm font-roboto uppercase hover:text-secondary focus:text-secondary active:outline-hidden" @click="$dispatch('toggle-trailer-modal', { youtube_url: 'https://www.youtube.com/embed/UkMuGKqAux4?rel=0&controls=1&showinfo=0' })">
+                                    <svg class="mr-2 h-8 w-8" viewBox="0 0 34 34" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path d="M17 33.719c9.098 0 16.469-7.371 16.469-16.469S26.098.781 17 .781.531 8.152.531 17.25 7.902 33.719 17 33.719zM2.656 17.25C2.656 9.414 9.031 2.906 17 2.906c7.836 0 14.344 6.442 14.344 14.344 0 7.902-6.442 14.344-14.344 14.344-7.902 0-14.344-6.375-14.344-14.344zm21.98-1.195L12.95 8.949c-1.062-.531-2.324.2-2.324 1.395v13.812c0 1.262 1.262 1.992 2.324 1.395l11.688-6.707c1.129-.598 1.129-2.125 0-2.79zM12.75 22.563v-10.56c0-.265.332-.464.598-.331l8.898 5.445c.266.133.266.531 0 .664l-8.898 5.114c-.266.199-.598 0-.598-.332z" />
+</svg>
+                                    Play Trailer
+                                </button>
+                                                    </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+<!-- End: Theater Header -->
+                        <div class="bg-gray-100 pt-6 md:bg-gray-200 md:py-12" x-data="{}">
+                <div class="relative mx-auto flex max-w-7xl flex-col px-6 sm:space-x-8 sm:flex-row sm:items-center sm:justify-between lg:px-12">
+                                            <h2 class="font-roboto text-2xl leading-none tracking-tight uppercase md:text-6xl">
+                            Showtimes
+                            <span class="block text-sm tracking-normal">for Tuesday October 13, 2026</span>
+                        </h2>
+                                        <div class="mt-2 sm:mt-0">
+                                                    <button class="text-left" @click="$dispatch('toggle-locations-open')" type="button">
+                                                <h3 class="flex items-center font-roboto text-xl uppercase md:text-2xl">
+                            <svg class="mr-4 hidden h-8 w-8 text-primary sm:block" viewBox="0 0 23 31" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path d="M10.328 30.164c.527.82 1.758.82 2.285 0C21.168 17.86 22.75 16.57 22.75 12 22.75 5.79 17.71.75 11.5.75 5.23.75.25 5.79.25 12c0 4.57 1.523 5.86 10.078 18.164zM11.5 16.687c-2.637 0-4.688-2.05-4.688-4.687A4.664 4.664 0 0111.5 7.312 4.701 4.701 0 0116.188 12a4.664 4.664 0 01-4.688 4.688z" />
+</svg>
+                            Gem Theater - Riverton
+                                                    </h3>
+                                                    </button>
+                                                                    </div>
+                </div>
+            </div>
+                <!-- START PAGE CONTENT WRAPPER -->
+    <div>
+                        
+        
+        
+        
+        <div class="mx-6 max-w-7xl xl:mx-auto">
+                                    <div  x-data="{}" x-init="document.getElementById('js-2026-10-13').scrollIntoView(false)"  class="cin-container-calendar">
+    
+    <div class="flex flex-row items-center justify-between overflow-x-auto">
+                            <div class="cin-calendar-item" id="js-2026-10-12">
+            <a class="cin-calendar-item-link" href="?date=2026-10-12">
+
+    
+    <span class="cin-calendar-day">
+                    Today
+            </span>
+            <span class="cin-calendar-month">
+                    </span>
+        <span class="cin-calendar-date"> 12 </span>
+
+            </a>
+    </div>
+                                <div class="cin-calendar-item" id="js-2026-10-13">
+            <div class="cin-calendar-item-link-selected">
+    
+    <span class="cin-calendar-day">
+                    Tu
+            </span>
+            <span class="cin-calendar-month">
+                            Oct
+                    </span>
+        <span class="cin-calendar-date"> 13 </span>
+
+    </div>
+</div>
+                                <div class="cin-calendar-item" id="js-2026-10-14">
+            <a class="cin-calendar-item-link" href="?date=2026-10-14">
+
+    
+    <span class="cin-calendar-day">
+                    We
+            </span>
+            <span class="cin-calendar-month">
+                            Oct
+                    </span>
+        <span class="cin-calendar-date"> 14 </span>
+
+            </a>
+    </div>
+                                <div class="cin-calendar-item" id="js-2026-10-15">
+            <a class="cin-calendar-item-link" href="?date=2026-10-15">
+
+    
+    <span class="cin-calendar-day">
+                    Th
+            </span>
+            <span class="cin-calendar-month">
+                            Oct
+                    </span>
+        <span class="cin-calendar-date"> 15 </span>
+
+            </a>
+    </div>
+                        </div>
+</div>
+                                        <div class="cin-attributes-nav" x-data="">
+                        <label for="attribute" class="cin-h2 mb-2 block">Filter By</label>
+                        <script>
+    function updateUrl(param, value) {
+        const url = new URL(window.location);
+        if (value) {
+            url.searchParams.set(param, value);
+        } else {
+            url.searchParams.delete(param);
+        }
+        window.location.href = url.toString();
+    }
+</script>
+<select onchange="updateUrl('filter', this.value)" id="attribute" name="attribute" aria-label="Choose a Filter" class="cin-attributesnav-select" >
+    <option value="">Choose a Filter</option>
+            <option value="Reserved Seating" >Reserved Seating</option>
+    </select>
+                    </div>
+                                <div class="mb-12">
+                                <div x-data="window.Showtimes" class="cin-showtimes-grid" >
+                                                                                                                            <div class="flex flex-col rounded-xl bg-white shadow-lg" x-data="{}">
+    <div class="relative overflow-hidden rounded-t-xl">
+        <a href="https://barrycinemas.com/gem-theater-riverton/movie/27319?date=2026-10-13" class="group relative block aspect-[5/8] overflow-hidden rounded-t-xl bg-primary-700" style="-webkit-mask-size: cover; mask-size: cover; -webkit-mask-image: url(&quot;/poster-mask.svg&quot;); -webkit-mask-position: bottom">
+            <img class="h-full w-full object-cover group-hover:opacity-25" src="https://images.cinemaplus.com/ticketing/posters/3895bc6247ce49a45c75f27bf4bb7489.webp" alt="Other Mommy Movie Poster" />
+            <div class="absolute inset-x-0 top-0 flex flex-col p-6 text-white">
+                <div class="flex">
+                    <div class="mr-4">
+                        <div class="whitespace-no-wrap -mt-05 flex items-center justify-center rounded-xs bg-gray-100 px-2 text-center font-roboto text-xs text-gray-900 drop-shadow-sm">R</div>
+                    </div>
+                    <div class="flex-1 items-center font-roboto text-xs uppercase drop-shadow-sm">0h0m</div>
+                    <div class="space-x-4 flex items-center">
+                                                    <button type="button" class="-mt-2 flex items-center hover:text-secondary focus:text-secondary active:outline-hidden" @click.prevent="$dispatch('toggle-trailer-modal', { youtube_url: 'https://www.youtube.com/embed/-mnTITqqiT0?rel=0&controls=1&showinfo=0' })" aria-label="Play Other Mommy Trailer">
+                                <svg class="h-8 w-8 drop-shadow-sm" viewBox="0 0 34 34" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path d="M17 33.719c9.098 0 16.469-7.371 16.469-16.469S26.098.781 17 .781.531 8.152.531 17.25 7.902 33.719 17 33.719zM2.656 17.25C2.656 9.414 9.031 2.906 17 2.906c7.836 0 14.344 6.442 14.344 14.344 0 7.902-6.442 14.344-14.344 14.344-7.902 0-14.344-6.375-14.344-14.344zm21.98-1.195L12.95 8.949c-1.062-.531-2.324.2-2.324 1.395v13.812c0 1.262 1.262 1.992 2.324 1.395l11.688-6.707c1.129-.598 1.129-2.125 0-2.79zM12.75 22.563v-10.56c0-.265.332-.464.598-.331l8.898 5.445c.266.133.266.531 0 .664l-8.898 5.114c-.266.199-.598 0-.598-.332z" />
+</svg>
+                            </button>
+                                            </div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="flex flex-1 flex-col p-4 xl:p-6">
+        <div class="flex-1">
+            <h3 class="mb-2 font-roboto text-2xl leading-5 text-black uppercase">
+                <a class="hover:text-secondary" href="https://barrycinemas.com/gem-theater-riverton/movie/27319?date=2026-10-13">Other Mommy</a>
+            </h3>
+            <div class="font-roboto text-xs text-gray-800 uppercase">
+                                    <div class="">Cast: Jessica Chastain, Jay Duplass, Dichen Lachman, Arabella Olivia Clark</div>
+                                                    <div class="mt-1">Director: Rob Savage</div>
+                                                    <div class="hidden">Genre: Horror</div>
+                            </div>
+            <div class="mt-2 hidden text-sm text-gray-700">
+                <div x-data="{ showFullText: false }">
+    <div :class="{ 'line-clamp-3': !showFullText }">Bela, an 8-year-old girl living in a home with marital problems, confronts a sinister entity that comes out of her closet. The presence, whom she calls &quot;Other Mommy,&quot; becomes increasingly threatening to her and her family.</div>
+    <button @click="showFullText = !showFullText" class="hover:text-cobalt active:text-cobalt-300 font-roboto font-bold uppercase focus:outline-hidden">
+        <span x-show="showFullText">Less</span>
+        <span x-show="!showFullText">More</span>
+    </button>
+</div>
+            </div>
+        </div>
+        
+                    <div class="mt-6 border-t">
+                
+                                                                                    <div class="mt-3 mb-3 flex flex-wrap items-center justify-center font-roboto text-sm uppercase">
+                                                        Reserved Seating
+                        </div>
+                                                <div class="-mt-4 -ml-4 flex flex-wrap">
+                                                            <div class="w-1/3">
+                                    <a
+    class="cin-showtimes-button
+
+            
+                                                cin-showtimes-button-default
+                                    "
+            href="https://barrycinemas.com/gem-theater-riverton/tickets/c8cb2faf-c0c1-f111-a6a9-002248ba6662"
+    >
+    6:45p
+    </a>
+                                </div>
+                                                                                    </div>
+                                    
+                            </div>
+            </div>
+</div>
+                                                                                                                                                <div class="flex flex-col rounded-xl bg-white shadow-lg" x-data="{}">
+    <div class="relative overflow-hidden rounded-t-xl">
+        <a href="https://barrycinemas.com/gem-theater-riverton/movie/27184?date=2026-10-13" class="group relative block aspect-[5/8] overflow-hidden rounded-t-xl bg-primary-700" style="-webkit-mask-size: cover; mask-size: cover; -webkit-mask-image: url(&quot;/poster-mask.svg&quot;); -webkit-mask-position: bottom">
+            <img class="h-full w-full object-cover group-hover:opacity-25" src="https://images.cinemaplus.com/ticketing/posters/39922988d9a3719e0e67034fbf01c25e.webp" alt="Verity Movie Poster" />
+            <div class="absolute inset-x-0 top-0 flex flex-col p-6 text-white">
+                <div class="flex">
+                    <div class="mr-4">
+                        <div class="whitespace-no-wrap -mt-05 flex items-center justify-center rounded-xs bg-gray-100 px-2 text-center font-roboto text-xs text-gray-900 drop-shadow-sm">R</div>
+                    </div>
+                    <div class="flex-1 items-center font-roboto text-xs uppercase drop-shadow-sm">1h54m</div>
+                    <div class="space-x-4 flex items-center">
+                                                    <button type="button" class="-mt-2 flex items-center hover:text-secondary focus:text-secondary active:outline-hidden" @click.prevent="$dispatch('toggle-trailer-modal', { youtube_url: 'https://www.youtube.com/embed/xdPMKhjMSFs?rel=0&controls=1&showinfo=0' })" aria-label="Play Verity Trailer">
+                                <svg class="h-8 w-8 drop-shadow-sm" viewBox="0 0 34 34" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path d="M17 33.719c9.098 0 16.469-7.371 16.469-16.469S26.098.781 17 .781.531 8.152.531 17.25 7.902 33.719 17 33.719zM2.656 17.25C2.656 9.414 9.031 2.906 17 2.906c7.836 0 14.344 6.442 14.344 14.344 0 7.902-6.442 14.344-14.344 14.344-7.902 0-14.344-6.375-14.344-14.344zm21.98-1.195L12.95 8.949c-1.062-.531-2.324.2-2.324 1.395v13.812c0 1.262 1.262 1.992 2.324 1.395l11.688-6.707c1.129-.598 1.129-2.125 0-2.79zM12.75 22.563v-10.56c0-.265.332-.464.598-.331l8.898 5.445c.266.133.266.531 0 .664l-8.898 5.114c-.266.199-.598 0-.598-.332z" />
+</svg>
+                            </button>
+                                            </div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="flex flex-1 flex-col p-4 xl:p-6">
+        <div class="flex-1">
+            <h3 class="mb-2 font-roboto text-2xl leading-5 text-black uppercase">
+                <a class="hover:text-secondary" href="https://barrycinemas.com/gem-theater-riverton/movie/27184?date=2026-10-13">Verity</a>
+            </h3>
+            <div class="font-roboto text-xs text-gray-800 uppercase">
+                                    <div class="">Cast: Anne Hathaway, Dakota Johnson, Josh Hartnett, Ismael Cruz Cordóva, Brady Wagner</div>
+                                                    <div class="mt-1">Director: Michael Showalter</div>
+                                                    <div class="hidden">Genre: Thriller</div>
+                            </div>
+            <div class="mt-2 hidden text-sm text-gray-700">
+                <div x-data="{ showFullText: false }">
+    <div :class="{ 'line-clamp-3': !showFullText }">Adapted from Colleen Hoover&#039;s best-selling novel, this seductive, psychological thriller follows renowned author Verity Crawford (Anne Hathaway) and Lowen Ashleigh (Dakota Johnson), a struggling writer who relocates to the remote Crawford estate to ghostwrite for Verity. After Lowen uncovers what appears to be Verity&#039;s chilling autobiographical notes, she wrestles with the disturbing and twisted confessions about Verity’s husband Jeremy (Josh Hartnett), and finds it hard to separate fiction from reality, manipulation from attraction, and opportunity from obsession.</div>
+    <button @click="showFullText = !showFullText" class="hover:text-cobalt active:text-cobalt-300 font-roboto font-bold uppercase focus:outline-hidden">
+        <span x-show="showFullText">Less</span>
+        <span x-show="!showFullText">More</span>
+    </button>
+</div>
+            </div>
+        </div>
+        
+                    <div class="mt-6 border-t">
+                
+                                                                                    <div class="mt-3 mb-3 flex flex-wrap items-center justify-center font-roboto text-sm uppercase">
+                                                        Reserved Seating
+                        </div>
+                                                <div class="-mt-4 -ml-4 flex flex-wrap">
+                                                            <div class="w-1/3">
+                                    <a
+    class="cin-showtimes-button
+
+            
+                                                cin-showtimes-button-default
+                                    "
+            href="https://barrycinemas.com/gem-theater-riverton/tickets/d1cb2faf-c0c1-f111-a6a9-002248ba6662"
+    >
+    6:15p
+    </a>
+                                </div>
+                                                                                    </div>
+                                    
+                            </div>
+            </div>
+</div>
+                                                                                                                                                <div class="flex flex-col rounded-xl bg-white shadow-lg" x-data="{}">
+    <div class="relative overflow-hidden rounded-t-xl">
+        <a href="https://barrycinemas.com/gem-theater-riverton/movie/27185?date=2026-10-13" class="group relative block aspect-[5/8] overflow-hidden rounded-t-xl bg-primary-700" style="-webkit-mask-size: cover; mask-size: cover; -webkit-mask-image: url(&quot;/poster-mask.svg&quot;); -webkit-mask-position: bottom">
+            <img class="h-full w-full object-cover group-hover:opacity-25" src="https://images.cinemaplus.com/ticketing/posters/47b5859904f38042523be79080a4dca7.webp" alt="Digger Movie Poster" />
+            <div class="absolute inset-x-0 top-0 flex flex-col p-6 text-white">
+                <div class="flex">
+                    <div class="mr-4">
+                        <div class="whitespace-no-wrap -mt-05 flex items-center justify-center rounded-xs bg-gray-100 px-2 text-center font-roboto text-xs text-gray-900 drop-shadow-sm">R</div>
+                    </div>
+                    <div class="flex-1 items-center font-roboto text-xs uppercase drop-shadow-sm">2h8m</div>
+                    <div class="space-x-4 flex items-center">
+                                                    <button type="button" class="-mt-2 flex items-center hover:text-secondary focus:text-secondary active:outline-hidden" @click.prevent="$dispatch('toggle-trailer-modal', { youtube_url: 'https://www.youtube.com/embed/job8V254NAE?rel=0&controls=1&showinfo=0' })" aria-label="Play Digger Trailer">
+                                <svg class="h-8 w-8 drop-shadow-sm" viewBox="0 0 34 34" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path d="M17 33.719c9.098 0 16.469-7.371 16.469-16.469S26.098.781 17 .781.531 8.152.531 17.25 7.902 33.719 17 33.719zM2.656 17.25C2.656 9.414 9.031 2.906 17 2.906c7.836 0 14.344 6.442 14.344 14.344 0 7.902-6.442 14.344-14.344 14.344-7.902 0-14.344-6.375-14.344-14.344zm21.98-1.195L12.95 8.949c-1.062-.531-2.324.2-2.324 1.395v13.812c0 1.262 1.262 1.992 2.324 1.395l11.688-6.707c1.129-.598 1.129-2.125 0-2.79zM12.75 22.563v-10.56c0-.265.332-.464.598-.331l8.898 5.445c.266.133.266.531 0 .664l-8.898 5.114c-.266.199-.598 0-.598-.332z" />
+</svg>
+                            </button>
+                                            </div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="flex flex-1 flex-col p-4 xl:p-6">
+        <div class="flex-1">
+            <h3 class="mb-2 font-roboto text-2xl leading-5 text-black uppercase">
+                <a class="hover:text-secondary" href="https://barrycinemas.com/gem-theater-riverton/movie/27185?date=2026-10-13">Digger</a>
+            </h3>
+            <div class="font-roboto text-xs text-gray-800 uppercase">
+                                    <div class="">Cast: Tom Cruise, Riz Ahmed, John Goodman, Sandra Hüller, Michael Stuhlbarg, Jesse Plemons, Robert John Burke</div>
+                                                    <div class="mt-1">Director: Alejandro González Iñárritu</div>
+                                                    <div class="hidden">Genre: Comedy</div>
+                            </div>
+            <div class="mt-2 hidden text-sm text-gray-700">
+                <div x-data="{ showFullText: false }">
+    <div :class="{ 'line-clamp-3': !showFullText }">The most powerful man in the world embarks on a frantic mission to prove he is humanity&#039;s saviour before the disaster he’s unleashed destroys everything.</div>
+    <button @click="showFullText = !showFullText" class="hover:text-cobalt active:text-cobalt-300 font-roboto font-bold uppercase focus:outline-hidden">
+        <span x-show="showFullText">Less</span>
+        <span x-show="!showFullText">More</span>
+    </button>
+</div>
+            </div>
+        </div>
+        
+                    <div class="mt-6 border-t">
+                
+                                                                                    <div class="mt-3 mb-3 flex flex-wrap items-center justify-center font-roboto text-sm uppercase">
+                                                        Reserved Seating
+                        </div>
+                                                <div class="-mt-4 -ml-4 flex flex-wrap">
+                                                            <div class="w-1/3">
+                                    <a
+    class="cin-showtimes-button
+
+            
+                                                cin-showtimes-button-default
+                                    "
+            href="https://barrycinemas.com/gem-theater-riverton/tickets/cccb2faf-c0c1-f111-a6a9-002248ba6662"
+    >
+    6:00p
+    </a>
+                                </div>
+                                                                                    </div>
+                                    
+                            </div>
+            </div>
+</div>
+                                                                                                                                                <div class="flex flex-col rounded-xl bg-white shadow-lg" x-data="{}">
+    <div class="relative overflow-hidden rounded-t-xl">
+        <a href="https://barrycinemas.com/gem-theater-riverton/movie/27049?date=2026-10-13" class="group relative block aspect-[5/8] overflow-hidden rounded-t-xl bg-primary-700" style="-webkit-mask-size: cover; mask-size: cover; -webkit-mask-image: url(&quot;/poster-mask.svg&quot;); -webkit-mask-position: bottom">
+            <img class="h-full w-full object-cover group-hover:opacity-25" src="https://images.cinemaplus.com/ticketing/posters/1b53f576bface7fe7b23b67d067545cd.webp" alt="Heart of the Beast Movie Poster" />
+            <div class="absolute inset-x-0 top-0 flex flex-col p-6 text-white">
+                <div class="flex">
+                    <div class="mr-4">
+                        <div class="whitespace-no-wrap -mt-05 flex items-center justify-center rounded-xs bg-gray-100 px-2 text-center font-roboto text-xs text-gray-900 drop-shadow-sm">PG-13</div>
+                    </div>
+                    <div class="flex-1 items-center font-roboto text-xs uppercase drop-shadow-sm">1h41m</div>
+                    <div class="space-x-4 flex items-center">
+                                                    <button type="button" class="-mt-2 flex items-center hover:text-secondary focus:text-secondary active:outline-hidden" @click.prevent="$dispatch('toggle-trailer-modal', { youtube_url: 'https://www.youtube.com/embed/UkMuGKqAux4?rel=0&controls=1&showinfo=0' })" aria-label="Play Heart of the Beast Trailer">
+                                <svg class="h-8 w-8 drop-shadow-sm" viewBox="0 0 34 34" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path d="M17 33.719c9.098 0 16.469-7.371 16.469-16.469S26.098.781 17 .781.531 8.152.531 17.25 7.902 33.719 17 33.719zM2.656 17.25C2.656 9.414 9.031 2.906 17 2.906c7.836 0 14.344 6.442 14.344 14.344 0 7.902-6.442 14.344-14.344 14.344-7.902 0-14.344-6.375-14.344-14.344zm21.98-1.195L12.95 8.949c-1.062-.531-2.324.2-2.324 1.395v13.812c0 1.262 1.262 1.992 2.324 1.395l11.688-6.707c1.129-.598 1.129-2.125 0-2.79zM12.75 22.563v-10.56c0-.265.332-.464.598-.331l8.898 5.445c.266.133.266.531 0 .664l-8.898 5.114c-.266.199-.598 0-.598-.332z" />
+</svg>
+                            </button>
+                                            </div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="flex flex-1 flex-col p-4 xl:p-6">
+        <div class="flex-1">
+            <h3 class="mb-2 font-roboto text-2xl leading-5 text-black uppercase">
+                <a class="hover:text-secondary" href="https://barrycinemas.com/gem-theater-riverton/movie/27049?date=2026-10-13">Heart of the Beast</a>
+            </h3>
+            <div class="font-roboto text-xs text-gray-800 uppercase">
+                                    <div class="">Cast: Brad Pitt, J.K. Simmons, Anna Lambe</div>
+                                                    <div class="mt-1">Director: David Ayer</div>
+                                                    <div class="hidden">Genre: Adventure</div>
+                            </div>
+            <div class="mt-2 hidden text-sm text-gray-700">
+                <div x-data="{ showFullText: false }">
+    <div :class="{ 'line-clamp-3': !showFullText }">After a harrowing plane crash, Special Forces officer James Belmont (Brad Pitt) and his combat dog, Odin, find themselves stranded deep in the Alaskan wilderness. Together, they are forced into a brutal fight for survival against the elements. From acclaimed filmmaker David Ayer, Heart of the Beast is an intense adventure thriller that explores the unbreakable bond between a man and his best friend as they face their greatest battle yet.</div>
+    <button @click="showFullText = !showFullText" class="hover:text-cobalt active:text-cobalt-300 font-roboto font-bold uppercase focus:outline-hidden">
+        <span x-show="showFullText">Less</span>
+        <span x-show="!showFullText">More</span>
+    </button>
+</div>
+            </div>
+        </div>
+        
+                    <div class="mt-6 border-t">
+                
+                                                                                    <div class="mt-3 mb-3 flex flex-wrap items-center justify-center font-roboto text-sm uppercase">
+                                                        Reserved Seating
+                        </div>
+                                                <div class="-mt-4 -ml-4 flex flex-wrap">
+                                                            <div class="w-1/3">
+                                    <a
+    class="cin-showtimes-button
+
+            
+                                                cin-showtimes-button-default
+                                    "
+            href="https://barrycinemas.com/gem-theater-riverton/tickets/c0cb2faf-c0c1-f111-a6a9-002248ba6662"
+    >
+    6:30p
+    </a>
+                                </div>
+                                                                                    </div>
+                                    
+                            </div>
+            </div>
+</div>
+                                                                                            
+            
+            
+        </div>
+            
+                </div>
+                            
+            <!-- Section: Promos -->
+            <div id="promos" class="w-full py-16">
+                <div class="relative block w-full">
+                    <div id="inter-scroller" class="flex items-center justify-center px-6">
+                                                                    </div>
+                </div>
+            </div>
+            <!-- END PROMOS -->
+        </div>
+    </div>
+    <!-- end PAGE CONTENT WRAPPER -->
+            </div>
+        </div>
+        <div class="relative w-full shrink-0">                <footer class="bg-black bg-cover bg-center bg-no-repeat" >
+            <div class="mx-9 grid max-w-7xl grid-cols-1 gap-6 py-12 text-gray-100 sm:gap-16 xl:mx-auto xl:py-16">
+                <div class="grid grid-cols-1 gap-6 sm:grid-cols-12">
+                    <div class="flex items-center sm:col-span-3">
+                                                    <a href="/" title="Gem Theater - Riverton Home Page">
+                                <img class="w-48 sm:block" src="https://images.cinemaplus.com/hosted/barry-cinemas/barrycinemas-logo-primary-v2.png" alt="Gem Theater - Riverton Logo" />
+                                <span class="block pt-2 text-center text-sm font-bold uppercase">
+                                    Gem Theater - Riverton
+                                                                    </span>
+                            </a>
+                                            </div>
+                    <div class="flex flex-1 flex-col justify-center sm:col-span-9" x-data="{}">
+                        <div class="space-y-3 mb-8 flex flex-col leading-2 sm:space-y-0 sm:flex-row sm:flex-wrap">
+            <a href="/gem-theater-riverton" class="font-roboto text-2xl text-gray-100 uppercase transition duration-150 ease-in-out hover:text-primary focus:text-secondary sm:mr-6"> Showtimes </a>
+        <a href="/gem-theater-riverton/page/contact" class="font-roboto text-2xl text-gray-100 uppercase transition duration-150 ease-in-out hover:text-primary focus:text-secondary sm:mr-6"> Contact </a>
+    </div>
+<div class="space-y-3 flex flex-col flex-wrap leading-2 sm:space-y-0 sm:flex-row">
+    <a href="/page/about" class="font-roboto text-xl text-gray-100 uppercase transition duration-150 ease-in-out hover:text-primary focus:text-secondary sm:mr-6 sm:text-sm"> About Barry Cinemas </a>
+    <a href="/page/employment" class="font-roboto text-xl text-gray-100 uppercase transition duration-150 ease-in-out hover:text-primary focus:text-secondary sm:mr-6 sm:text-sm"> Employment </a>
+    <a href="https://mailchi.mp/barrycinemas/barry-cinemas-insider" target="_blank" class="font-roboto text-xl text-gray-100 uppercase transition duration-150 ease-in-out hover:text-primary focus:text-secondary sm:mr-6 sm:text-sm"> Newsletter </a>
+    <a href="/page/refund-policy" class="font-roboto text-xl text-gray-100 uppercase transition duration-150 ease-in-out hover:text-primary focus:text-secondary sm:mr-6 sm:text-sm"> Refund Policy </a>
+</div>
+                    </div>
+                </div>
+                <div class="space-y-6 flex w-full flex-col justify-between font-sans text-sm text-white sm:space-y-0 sm:flex-row">
+                    
+                                            <div class="space-x-2 sm:w-1/4">
+                                                            <a class="text-gray-400 hover:text-primary focus:text-secondary" target="_blank" href="https://www.facebook.com/BarryCinemas/">
+                                    <span class="inline-block h-8 w-8 align-middle">
+                                        <svg fill="none" class="current-color" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 114 113">
+    <path d="M114 56.846c0 28.42-20.916 52.03-48.267 56.154V73.35h13.33l2.53-16.504h-15.86V46.3c0-4.581 2.299-8.936 9.422-8.936h7.128V23.383s-6.439-1.148-12.873-1.148c-12.868 0-21.374 8.022-21.374 22.234v12.377H33.558V73.35h14.478V113C20.689 108.876 0 85.267 0 56.846.004 25.445 25.514 0 57 0s57 25.44 57 56.846Z" fill="currentColor" />
+</svg>
+                                    </span>
+                                    <span class="sr-only">Facebook</span>
+                                </a>
+                                                    </div>
+                    
+                    <div class="sm:w-2/4">
+                                                    <a href="https://cinemaplus.com/" target="_blank" class="mb-4 inline-flex items-center font-roboto uppercase hover:text-primary hover:opacity-75">
+                                <span class="mr-3 mb-1">Powered by</span>
+                                <svg class="h-7 w-auto" alt="Powered by CinemaPlus" viewBox="0 0 186 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <path d="M21.56.275h-8.837C5.696.275 0 5.97 0 12.997 0 20.024 5.696 25.72 12.723 25.72h8.836V15.033h-9.091a2.036 2.036 0 1 1 0-4.071h9.091V.275Z" fill="url(#1_a)" />
+    <path d="M25.834.275h8.838c7.026 0 12.722 5.696 12.722 12.722 0 7.027-5.696 12.723-12.722 12.723h-8.838V15.033h9.092a2.036 2.036 0 1 0 0-4.071h-9.092V.275Z" fill="url(#1_b)" />
+    <path d="M25.835 24.704H36.8v.1c0 6.057-4.91 10.966-10.965 10.966V24.704Z" fill="url(#1_c)" />
+    <path d="M71.296 15.854v5.066c0 1.224-.578 1.802-1.802 1.802h-.748c-1.224 0-1.802-.578-1.802-1.802V5.28c0-1.224.578-1.802 1.802-1.802h.68c1.224 0 1.802.578 1.802 1.802v4.352h2.652V5.348c0-2.924-1.428-4.352-4.352-4.352h-.884c-2.958 0-4.42 1.462-4.42 4.42v15.368c0 2.958 1.462 4.42 4.42 4.42h.884c2.958 0 4.42-1.462 4.42-4.42v-4.93h-2.652ZM77.603 4.77h2.72V1.88h-2.72v2.89ZM77.671 25h2.584V6.64h-2.584V25ZM84.109 25h2.584V9.802c.918-.646 1.666-.918 2.482-.918.884 0 1.326.442 1.326 1.394V25h2.584V9.734c0-2.074-.986-3.298-3.128-3.298-1.53 0-2.516.68-3.264 1.394V6.64h-2.584V25ZM105.529 16.772v-6.188c0-2.754-1.394-4.148-4.148-4.148h-.544c-2.754 0-4.148 1.394-4.148 4.148v10.472c0 2.754 1.394 4.148 4.148 4.148h.544c2.754 0 4.148-1.394 4.148-4.148V19.05h-2.516v2.108c0 1.088-.544 1.632-1.632 1.632h-.476c-1.088 0-1.632-.544-1.632-1.632v-4.386h6.256Zm-6.256-6.29c0-1.088.544-1.632 1.632-1.632h.408c1.088 0 1.632.544 1.632 1.632v3.842h-3.672v-3.842ZM117.913 9.802c.918-.646 1.666-.918 2.38-.918.782 0 1.224.408 1.224 1.326V25h2.584V9.666c0-2.006-1.02-3.23-3.026-3.23-1.496 0-2.584.714-3.502 1.496-.476-.952-1.36-1.496-2.686-1.496-1.428 0-2.414.68-3.162 1.394V6.64h-2.584V25h2.584V9.802c.918-.646 1.666-.918 2.38-.918.782 0 1.224.408 1.224 1.326V25h2.584V9.802ZM127.698 21.974c0 2.04.952 3.23 3.026 3.23 1.496 0 2.448-.68 3.162-1.36V25h2.584V10.584c0-2.754-1.394-4.148-4.148-4.148h-.272c-2.754 0-4.148 1.394-4.148 4.148v2.176h2.516v-2.278c0-1.088.544-1.666 1.632-1.666h.204c1.088 0 1.632.578 1.632 1.666v3.06l-3.468 1.19c-1.972.68-2.72 1.598-2.72 3.876v3.366Zm3.842.782c-.816 0-1.258-.442-1.258-1.326v-2.788c0-1.054.306-1.53 1.258-1.904l2.346-.816v5.984c-.85.578-1.564.85-2.346.85ZM144.57 16.738h2.21c2.958 0 4.42-1.462 4.42-4.42V5.62c0-2.958-1.462-4.42-4.42-4.42h-6.97V25h4.76v-8.262Zm1.87-10.608v5.678c0 .578-.272.85-.85.85h-1.02V5.28h1.02c.578 0 .85.272.85.85ZM153.819 25h4.488V.86h-4.488V25ZM172.034 5.96h-4.488v15.096a2.852 2.852 0 0 1-1.02.204c-.646 0-.884-.238-.884-.748V5.96h-4.488v16.15c0 2.074 1.054 3.094 2.856 3.094h.34c1.326 0 2.278-.612 3.264-1.462V25h4.42V5.96ZM180.884 12.76h4.318V9.904c0-2.754-1.394-4.148-4.148-4.148h-2.074c-2.754 0-4.148 1.394-4.148 4.148v2.652c0 1.734.646 2.55 2.04 3.434l3.468 2.142c.476.306.646.544.646 1.088v1.428c0 .51-.238.748-.748.748h-.374c-.51 0-.748-.238-.748-.748v-2.584h-4.318v2.992c0 2.754 1.394 4.148 4.148 4.148h2.142c2.754 0 4.148-1.394 4.148-4.148v-2.754c0-1.734-.646-2.55-2.04-3.434l-3.468-2.142c-.476-.306-.646-.544-.646-1.088v-1.326c0-.51.238-.748.748-.748h.306c.51 0 .748.238.748.748v2.448Z" fill="#fff" />
+    <defs>
+        <linearGradient id="1_a" x1="0" y1="11.681" x2="47.792" y2="11.681" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#9A3FF4" />
+            <stop offset="1" stop-color="#57AEFF" />
+        </linearGradient>
+        <linearGradient id="1_b" x1="0" y1="11.681" x2="47.792" y2="11.681" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#9A3FF4" />
+            <stop offset="1" stop-color="#57AEFF" />
+        </linearGradient>
+        <linearGradient id="1_c" x1="0" y1="11.681" x2="47.792" y2="11.681" gradientUnits="userSpaceOnUse">
+            <stop stop-color="#9A3FF4" />
+            <stop offset="1" stop-color="#57AEFF" />
+        </linearGradient>
+    </defs>
+</svg>
+                            </a>
+                                                <div class="text-xs">2026 &copy; Barry Cinemas</div>
+                        <div class="pt-4"><div class="cin-footernav-terms">
+    <div class="cin-footer-copyright">This website uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.</div>
+</div>
+</div>
+                    </div>
+
+                    <div class="space-x-4 sm:w-1/4 sm:text-right">
+                        <a class="hover:text-primary focus:text-secondary" href="/page/ratings-policies">Ratings</a>
+<a class="hover:text-primary focus:text-secondary" href="/page/privacy-policy">Privacy Policy</a>
+                    </div>
+                </div>
+            </div>
+        </footer>
+        </div>
+    </div>
+
+    
+    
+                        <div @toggle-trailer-modal.window="((open = !open), (document.getElementById('trailer_iframe').src = $event.detail.youtube_url))" x-ref="trailer-modal" x-cloak x-data="{ open: false, youtube_url: '' }" @keydown.window.escape="((open = false), (youtube_url = ''))" x-show="open" x-cloak style="display: none">
+    <div class="fixed inset-0 z-50 flex items-center justify-center bg-black text-gray-100 transition-opacity" @click="((open = false), (youtube_url = ''), (document.getElementById('trailer_iframe').src = ''))" x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" x-show="open">
+        <div class="flex max-w-7xl flex-1 flex-col">
+            <div @click="((open = false), (youtube_url = ''), (document.getElementById('trailer_iframe').src = ''))" class="mr-3 mb-3 flex h-10 shrink-0 cursor-pointer items-center justify-end text-right text-lg font-semibold">
+                <svg class="inline-block h-5 w-5" role="none" aria-hidden="true" stroke="currentColor" fill="none" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+</svg>
+                Close
+            </div>
+            <div class="shrink" style="max-height: calc(100vh - 8rem) !important">
+                <div class="flex justify-center sm:aspect-video">
+                    <iframe id="trailer_iframe" src="" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen" class="border border-gray-800 sm:h-full sm:w-full" frameborder="0"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+                            <section x-data="{ alertOpen: true }" x-init="alertOpen = getCookie('hide_cookie_banner') ? false : true" x-show="alertOpen" role="alert" x-cloak>
+        <div class="fixed right-0 bottom-0 z-50 text-black">
+            <div class="relative mx-4 mb-4 rounded-xl bg-white p-6 shadow-card sm:w-84">
+                <button @click="alertOpen = !alertOpen" type="button" aria-label="close cookie message" class="absolute top-0 right-0 mt-3 mr-3">
+                    <svg class="text-cobalt h-5 w-5 hover:text-red-300" stroke="currentColor" fill="none" viewBox="0 0 24 24">
+    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+</svg>
+                </button>
+                <div class="-ml-2 flex">
+                    <svg class="text-cobalt mr-3 h-5 w-5 shrink-0" viewBox="0 0 19 21" fill="currentColor" xmlns="http://www.w3.org/2000/svg">
+    <path d="M17.898 14.68c-.742-.82-2.187-2.032-2.187-6.055 0-3.008-2.11-5.43-5-6.055v-.82C10.71 1.086 10.164.5 9.5.5c-.703 0-1.25.586-1.25 1.25v.82c-2.89.625-5 3.047-5 6.055 0 4.023-1.445 5.234-2.188 6.055-.234.234-.351.547-.312.82 0 .664.469 1.25 1.25 1.25h14.96c.782 0 1.25-.586 1.29-1.25 0-.273-.117-.586-.352-.82zm-14.53.195c.82-1.055 1.718-2.89 1.757-6.21v-.04c0-2.383 1.953-4.375 4.375-4.375 2.383 0 4.375 1.992 4.375 4.375 0 .04-.04.04-.04.04.04 3.32.938 5.155 1.759 6.21H3.367zM9.5 20.5c1.367 0 2.46-1.094 2.46-2.5H7c0 1.406 1.094 2.5 2.5 2.5z" />
+</svg>
+                    <div>
+                        <span class="mb-2 font-roboto text-xl leading-5 uppercase">Cookies</span>
+                        <p class="mb-4 text-sm font-thin tracking-wide sm:pr-3">This site uses cookies to enable purchases and to enhance your viewing experience. We do not share your info with third parties. Your info is safe with us.</p>
+
+                        <div class="grid grid-cols-2 gap-8">
+                            <button @click="(createCookie('hide_cookie_banner', true, 365), (alertOpen = false))" type="button" class="btn btn-primary py-3 text-xs leading-4">Accept</button>
+                            <a class="text-link self-center font-roboto text-xs uppercase" href="/page/privacy-policy">Privacy Policy</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+        
+    <script>
+        window.deferLoadingAlpine = function (cb) {
+            document.addEventListener("DOMContentLoaded", cb);
+        };
+    </script>
+    <link rel="modulepreload" href="https://barrycinemas.com/build/assets/cinemaplus-Bh9XhXeu.js" /><link rel="modulepreload" href="https://barrycinemas.com/build/assets/index-qFyJwsfU.js" /><link rel="modulepreload" href="https://barrycinemas.com/build/assets/cart-CAVz-xt0.js" /><script type="module" src="https://barrycinemas.com/build/assets/cinemaplus-Bh9XhXeu.js"></script>        <link rel="modulepreload" href="https://barrycinemas.com/build/assets/cinemaplus-layout-v2-wLUkoUZT.js" /><script type="module" src="https://barrycinemas.com/build/assets/cinemaplus-layout-v2-wLUkoUZT.js"></script>        
+        
+    </body>
+</html>
