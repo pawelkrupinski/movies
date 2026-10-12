@@ -3,15 +3,15 @@ package tools
 import services.identity.{AgreementQuestions, FamilyAnswerStore, FamilySource}
 import services.identity.agreement.VoterFamily
 
-import java.util.concurrent.{CompletableFuture, ConcurrentHashMap}
+import java.util.concurrent.ConcurrentHashMap
 import scala.jdk.CollectionConverters._
 import scala.util.control.NonFatal
 
 /**
  * The agreement's open family questions asked of their live sources round after round — what the unmatched-cluster
  * capture and fill (`UnmatchedClustersCaptureIntegrationSpec`, `UnmatchedClustersFillIntegrationSpec`) run until the
- * stage asks nothing more: each round asks what the stage wants (at most `perFamily` at a time per family), files the
- * answers in `store`, and agrees again.
+ * stage asks nothing more: each round asks what the stage wants — at most `perFamily` at a time per family, every
+ * family at once ([[ConcurrentAsks]]) — files the answers in `store`, and agrees again.
  *
  * A question whose ask failed [[AgreementQuestionRounds.Attempts]] times is given up on as UNREACHABLE and asked no
  * more: a host that blackholes the asker for one URL (the GitHub runner's US capture of 2026-10-12: Wikidata's search
@@ -27,7 +27,9 @@ final class AgreementQuestionRounds(store: FamilyAnswerStore, sources: Map[Voter
   private val failures = new ConcurrentHashMap[(VoterFamily, String), Integer]()
 
   /** The questions given up on: asked [[attempts]] times, never answered. */
-  def unreachable: Set[(VoterFamily, String)] = failures.asScala.collect { case (question, n) if n >= attempts => question }.toSet
+  // the keys, not `collect` over the map: a question is itself a pair, so that would build a map keyed by family and keep
+  // one question of each (the PL capture of 2026-10-12 re-asked ~25 given-up questions on all 24 rounds)
+  def unreachable: Set[(VoterFamily, String)] = failures.asScala.filter(_._2 >= attempts).keySet.toSet
 
   /** Rounds from `agree()`'s outcome until it wants no question still worth asking (`wanted`, less the unreachable)
    *  and nothing else (`pending`: posters, catalogue, finds — `beside` answers those each round), or [[maxRounds]]. */
@@ -42,11 +44,7 @@ final class AgreementQuestionRounds(store: FamilyAnswerStore, sources: Map[Voter
       println(s"[$label] round $rounds: ${open.size} open family question(s)" +
         (if (unreachable.isEmpty) "" else s", ${unreachable.size} given up as unreachable"))
       beside(outcome)
-      open.groupBy(_._1).toSeq.map { case (family, asks) =>
-        CompletableFuture.runAsync { () =>
-          asks.grouped(perFamily).foreach(_.map(question => CompletableFuture.runAsync(() => ask(family, question))).foreach(_.join()))
-        }
-      }.foreach(_.join())
+      ConcurrentAsks.inLanes(open.groupBy(_._1).values, perFamily)(question => ask(question._1, question))
       outcome = agree()
     }
     val givenUp = unreachable

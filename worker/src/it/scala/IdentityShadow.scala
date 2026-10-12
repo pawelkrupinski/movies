@@ -198,19 +198,12 @@ object IdentityShadow {
                   real: HttpFetch = new RealHttpFetch()): Int = {
       val fresh = pages.distinct.filterNot(url => Files.exists(fileOf(s"GET $url")))
       val read  = new java.util.concurrent.atomic.AtomicInteger()
-      val pool  = java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor()
-      try {
-        fresh.groupBy(url => Option(java.net.URI.create(url).getHost).getOrElse(url)).toSeq.flatMap { case (host, urls) =>
-          val queue = new java.util.concurrent.ConcurrentLinkedQueue[String](urls.asJava)
-          Seq.fill(pacing.limitOf(host))(java.util.concurrent.CompletableFuture.runAsync({ () =>
-            Iterator.continually(Option(queue.poll())).takeWhile(_.isDefined).flatten.foreach { url =>
-              scala.util.Try(pacing(url)(real.get(url))).foreach { body =>
-                tools.AtomicFiles.writeString(fileOf(s"GET $url"), body); read.incrementAndGet()
-              }
-            }
-          }: Runnable, pool))
-        }.foreach(_.join())
-      } finally pool.shutdown()
+      // every host at once, `pacing` holding each to its limit
+      tools.ConcurrentAsks.each(fresh, atOnce = fresh.size) { url =>
+        scala.util.Try(pacing(url)(real.get(url))).foreach { body =>
+          tools.AtomicFiles.writeString(fileOf(s"GET $url"), body); read.incrementAndGet()
+        }
+      }
       read.get()
     }
   }

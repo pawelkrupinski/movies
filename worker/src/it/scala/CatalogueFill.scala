@@ -21,7 +21,7 @@ final class CatalogueFill(families: FamilyAnswerStore, clock: Clock, fetch: Http
     val (ids, read) = questions.toSeq.partition(_.isInstanceOf[CatalogueQuestion.Id])
     ids.groupBy { case CatalogueQuestion.Id(id) => id.source; case _ => "" }.values.flatMap(_.grouped(AgreementCatalogueQuestions.Batch)).foreach(batch =>
       Try(AgreementCatalogueQuestions.file(answers, mapping, pages, batch)).failed.foreach(e => println(s"catalogue ids: $e")))
-    read.grouped(4).foreach(_.map(page => java.util.concurrent.CompletableFuture.runAsync(() =>
-      Try(AgreementCatalogueQuestions.file(answers, mapping, pages, Seq(page))).failed.foreach(e => println(s"catalogue page: $e")))).foreach(_.join()))
+    tools.ConcurrentAsks.each(read, atOnce = 4)(page =>
+      Try(AgreementCatalogueQuestions.file(answers, mapping, pages, Seq(page))).failed.foreach(e => println(s"catalogue page: $e")))
   }
 }

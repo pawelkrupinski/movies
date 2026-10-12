@@ -118,12 +118,9 @@ object ModelTakeAnswersFill {
         val roundStart = System.nanoTime()
         val questions = open.asScala.toSeq
         println(s"[$code] round $round: ${questions.size} open question(s) ${questions.groupBy(_._1.label).view.mapValues(_.size).toMap}")
-        questions.groupBy(_._1).toSeq.map { case (family, asks) =>
-          java.util.concurrent.CompletableFuture.runAsync { () =>
-            asks.map(_._2).grouped(4).foreach(_.map(question => java.util.concurrent.CompletableFuture.runAsync(() =>
-              { Try(AgreementQuestions.file(store, family, sources(family), question)); () })).foreach(_.join()))
-          }
-        }.foreach(_.join())
+        tools.ConcurrentAsks.inLanes(questions.groupBy(_._1).values, atOnce = 4) { case (family, question) =>
+          Try(AgreementQuestions.file(store, family, sources(family), question)); ()
+        }
         asked += questions.size
         val seconds = (System.nanoTime() - roundStart) / 1e9
         println(f"[$code] round $round filed ${questions.size} in $seconds%.0fs (${questions.size / math.max(seconds, 0.001)}%.1f/s)")
@@ -142,9 +139,8 @@ object ModelTakeAnswersFill {
     val finds = new java.util.concurrent.ConcurrentHashMap[String, String]()
     if (Files.exists(findsFile)) Files.readAllLines(findsFile).asScala.map(_.split('\t')).foreach(a => finds.put(a(0), a.lift(1).getOrElse("")))
     val imdbs = verdicts.flatten.flatMap(v => v.pick.map(_.record) ++ v.leaning).flatMap(_.crossIds.get("imdb")).distinct.filterNot(finds.containsKey)
-    imdbs.grouped(8).foreach(_.map(imdb => java.util.concurrent.CompletableFuture.runAsync(() =>
-      tmdb.flatMap(client => Try(client.findByImdbId(imdb).map(_.id)).toOption).foreach(found => finds.put(imdb, found.fold("")(_.toString)))))
-      .foreach(_.join()))
+    tools.ConcurrentAsks.each(imdbs, atOnce = 8)(imdb =>
+      tmdb.flatMap(client => Try(client.findByImdbId(imdb).map(_.id)).toOption).foreach(found => finds.put(imdb, found.fold("")(_.toString))))
     Files.writeString(findsFile, finds.asScala.toSeq.sorted.map { case (k, v) => s"$k\t$v" }.mkString("", "\n", "\n"))
 
     // every venue poster and every film a poster is compared with, as the dataset compares them

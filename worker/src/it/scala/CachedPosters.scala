@@ -63,8 +63,7 @@ final class CachedPosters(dir: Path, live: Option[TmdbClient], language: String,
   def file(store: PosterAnswerStore, questions: Seq[PosterQuestion]): Unit = {
     def hashed(question: PosterQuestion): Seq[HashedPoster] =
       scala.util.Try(hashing.of(question)).orElse(scala.util.Try(hashing.of(question))).getOrElse(Nil)
-    questions.grouped(8).foreach(_.map(question => java.util.concurrent.CompletableFuture.runAsync(() => store.file(question, hashed(question))))
-      .foreach(_.join()))
+    tools.ConcurrentAsks.each(questions, atOnce = 8)(question => store.file(question, hashed(question)))
   }
 }
 
