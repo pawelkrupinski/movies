@@ -128,8 +128,11 @@ class FilmWriteFenceSpec extends AnyFlatSpec with Matchers {
     write.start()
     // The write is parked on the fence's monitor, not running. Bounded by Settle, not a few
     // seconds: on a loaded machine the write thread can sit RUNNABLE, unscheduled, past 5s.
+    // A write that ran straight through (a broken fence) is TERMINATED: stop waiting and fail
+    // now. Polled every millisecond, not spun, so the wait yields the CPU the write needs.
     val deadline = System.nanoTime() + SpecTimeouts.Settle.toNanos
-    while (write.getState != Thread.State.BLOCKED && System.nanoTime() < deadline) Thread.onSpinWait()
+    def settled  = Set(Thread.State.BLOCKED, Thread.State.TERMINATED).contains(write.getState)
+    while (!settled && System.nanoTime() < deadline) java.util.concurrent.locks.LockSupport.parkNanos(1_000_000L)
     write.getState shouldBe Thread.State.BLOCKED
     order.isEmpty shouldBe true
     release.countDown()
