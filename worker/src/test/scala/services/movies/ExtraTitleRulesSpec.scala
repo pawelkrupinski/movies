@@ -1339,7 +1339,8 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
    *  (SearchQueryMarkersSpec over the recorded UK and DE corpora): a Q&A, a special audience, a box office's
    *  certificate, running time and matinee note, a restoration's cut; a preview or Vorpremiere in a new spelling, a
    *  version tag ahead of the film, a strand and its screen format. Through the whole query path. (A certificate or
-   *  re-release mark ENDING the title comes off at ingest, FormatTags' — TitleFormatWordsSpec holds those.) */
+   *  re-release mark ENDING the title, and a box office's running time and asterisked note, come off at ingest,
+   *  FormatTags' — TitleFormatWordsSpec holds those.) */
   private val rerecordedScreeningMarkerListings: Seq[(String, String)] = Seq(
     "HeadKandy: Beyond the Chair plus Live Q&A"                             -> "HeadKandy: Beyond the Chair",
     "This Is Pete plus live Q&A"                                            -> "This Is Pete",
@@ -1360,7 +1361,6 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Silver Screen: Holy Days - Cert 12A"                                   -> "Holy Days",
     "Dracula (1958) 4K Restoration - Cert 12A"                              -> "Dracula (1958)",
     "DRACULA (Hammer 1958) 4K Restoration - Directors Cut"                  -> "DRACULA (Hammer 1958)",
-    "Pressure (15 TBC) (2026) 100 mins *SUBTITLED MATINEE*"                 -> "Pressure (2026)",
     "Dune: Part Three \"Early Fan Preview\""                                -> "Dune: Part Three",
     "Early Fan Preview | Dune: Part Three"                                  -> "Dune: Part Three",
     "Vorpremiere - Dune: Part Three"                                        -> "Dune: Part Three",
