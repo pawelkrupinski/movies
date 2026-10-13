@@ -47,6 +47,10 @@ object ExtraTitleRules {
    *  is a note even with no separator before it. */
   private val BareAudience =
     """(?:relaxed\s+screen\p{L}*|dementia\s+friendly|autism\s+friendly|parents?\s*(?:&|and)\s*(?:bab(?:y|ies)|toddlers?))"""
+  /** A special audience a strand bills ahead of or after the film: any "<who> friendly" (dementia, autism, baby, sensory,
+   *  family, dog…), a parent-and-baby or seniors' strand, and SEND (special educational needs) as a banner, a colon after
+   *  it — never the word "send" a title opens on ("Send Help"). */
+  private val AudienceStrand = """(?:Parents?\s*(?:&|and)\s*Bab(?:y|ies)|\p{L}+[-\s]Friendly|Silver\s+Screen|send(?=\s*:))"""
   /** What names a screening note outright: an audience (the seniors' "Silver Screen" too, a film's title only once
    *  set off), a Q&A, a restored print. */
   private val NoteMarker = s"""(?:$BareAudience|silver\\s+screen|q\\s*&\\s*a|4k\\s+(?:restoration|remaster(?:ed)?))"""
@@ -333,8 +337,8 @@ object ExtraTitleRules {
     // The other special-audience strands billed the same way, found by SearchQueryMarkersSpec over the UK recording of
     // 2026-10-12 (run 38251516862) — the audience labels ScreeningTokens already refuses as badges.
     prog("xtra-pp-audience-strand",
-      """(?iu)^(?:Parents?\s*(?:&|and)\s*Bab(?:y|ies)|Dementia\s+Friendly|Autism\s+Friendly|Silver\s+Screen)(?:\s+(?:Screening|Club))?\s*[:|–—-]\s*""",
-      "'Parent & Baby Screening: <film>' / 'Dementia Friendly: <film>' / 'Silver Screen: <film>' special-audience strand (Lighthouse Poole: Sense & Sensibility, White Christmas, Holy Days)"),
+      s"""(?iu)^$AudienceStrand(?:\\s+(?:Screening|Club))?\\s*[:|–—-]\\s*""",
+      "'Parent & Baby Screening: <film>' / 'Dementia Friendly: <film>' / 'BABY FRIENDLY: <film>' / 'SEND: <film>' special-audience strand (Lighthouse Poole: Sense & Sensibility, White Christmas, Holy Days; The Maltings Berwick, The Cinema Campus West)"),
     prog("xtra-pp-horror-season",     """(?i)^Horror\s+Season\s+\d{4}\s+""",         "'Horror Season 2026 <film>' Cineworld seasonal strand, no separator (Dracula)")
   )
 
@@ -483,6 +487,23 @@ object ExtraTitleRules {
     searchStrip("xtra-introduction-clause-tail",
       """(?iu)(?:\s+[-–—|]\s+(?:(?:with|plus|and|&|\+)\s+)?|\s*\+\s*|\s+(?:with|plus|and|&)\s+)(?:an?\s+)?(?:(?:recorded|live|special|director'?s?)\s+)?(?:(?:pre|post)[-\s]?(?:screening|film|show)\s+)?(?:intro(?:duction)?|q\s*&\s*a)\s+(?:by|from|with)\s+\S.*$""",
       "'<film> with Introduction by <name> AND post-screening Q&A with <names>' / '<film> - Introduction with <name>' / '<film> & post-screening Q&A with <name>' introduction clause and all after it (US 2026-10-13: ACME Screening Room Lambertville; UK: Spooked)"),
+    // A venue's decoration production saw past and the replay did not (recording 38350852334, the UK leg's per-film
+    // diff): a festival named ahead of the film ("Purbeck Film Festival - Fargo", "BFI London Film Festival 2026:
+    // Fjord"), a festival's acronym after it ("… FFFL": a capitalised tag carrying "FF", the film festival, on a title
+    // written in mixed case), a film club after it, and a certificate with the year's last two digits ("(15) 26").
+    searchStrip("xtra-film-festival-prefix",
+      """(?iu)^(?:[\p{L}\p{N}'’&+.]+\s+){1,5}Film\s+Festival(?:\s+(?:19|20)\d{2})?\s*[:–—-]\s+(?=\S)""" +
+        // …unless what follows is the festival's own event, which a bare search would match to a film of its name
+        // ("Unrestricted View Horror Film Festival 2026: Opening Night" is no Cassavetes)
+        """(?!(?:opening|closing)\s+night|.*(?<![\p{L}\p{N}])(?:shorts?|competition|programmes?|programs?|showcase|forum|talk|edition|selection|\p{L}*preis|awards?)(?![\p{L}\p{N}]))""",
+      "'<Name> Film Festival - <film>' / '<Name> Film Festival 2026: <film>' festival banner ahead of the film (UK 2026-10-13: Mowlem Theatre's Purbeck Film Festival, ICA)"),
+    searchReplace("xtra-festival-acronym-suffix",
+      """(?u)^(?=.*\p{Ll})(.*?\S)\s+(?:[-–—]\s+)?[A-Z]{0,2}FF[A-Z]{1,2}\s*$""", "$1",
+      "'<film> FFFL' / '<film> - FFFL' festival acronym after a mixed-case title (UK 2026-10-13: Ciné Lumière's French Film Festival)"),
+    searchStrip("xtra-film-club-suffix",           """(?iu)(?<=\S)\s*[-–—|]\s*Film\s+Club\s*$""",
+      "'<film> - Film Club' club screening after the film (UK 2026-10-13: Pontardawe Arts Centre: Fatherland, Kokuho, The Last Viking)"),
+    searchStrip("xtra-certificate-year-suffix",    """(?iu)\s*\((?:U|PG|12A?|15|18|TBC)\)\s+\d{2}\s*$""",
+      "'<film> (15) 26' certificate and the year's last two digits (UK 2026-10-13: Hippodrome Bo'ness)"),
     // A print tag, then a strand or festival behind a spaced dash ("[35mm] - Dirt in the Gate Movies", "4K - FFFL"),
     // and a print billed in front of the film ("4K Film: Dracula: The Cut They Tried To Bury").
     searchStrip("xtra-print-strand-tail",          """(?iu)(?:\s*\[\s*(?:16|35|70)mm\s*\]|\s+(?:4K|(?:16|35|70)mm))\s+[-–—]\s+\S.*$""",
@@ -510,8 +531,8 @@ object ExtraTitleRules {
       """(?iu)\s*(?:\+|(?<![\p{L}\p{N}])plus(?=\s))\s*(?:(?:live|in[-\s]person|recorded)\s+)?Q\s*&\s*A(?![\p{L}\p{N}])[^()]*(?:\([^()]*\)[^()]*)*$""",
       "'<film> +Q&A' / '<film> plus live Q&A' / '<film>+ Q&A' / '<film> + Q&A (zoom)' Q&A-night tail (Brewery Arts Centre Kendal, ARC Stockton, Rio Dalston, ICA, Electric Palace Bridport)"),
     searchStrip("xtra-audience-suffix",
-      """(?iu)\s*[-–—|]\s*(?:Relaxed|Parents?\s*(?:&|and)\s*Bab(?:y|ies)|Dementia\s+Friendly|Autism\s+Friendly|Silver\s+Screen)(?:\s+(?:Screening|Club))?\s*$""",
-      "'<film> - Relaxed Screening' / '<film> - Parent & Baby' special-audience screening after the film (Broadway Nottingham: Wildwood, Arrietty, Ghosts)"),
+      s"""(?iu)\\s*[-–—|]\\s*(?:Relaxed|$AudienceStrand)(?:\\s+(?:Screening|Club))?\\s*$$""",
+      "'<film> - Relaxed Screening' / '<film> - Parent & Baby' / '<film> - Sensory Friendly Screening' special-audience screening after the film (Broadway Nottingham: Wildwood, Arrietty, Ghosts; Picture House Uckfield)"),
     // Found by SearchQueryMarkersSpec over the recorded UK / US / DE / ES corpora (2026-10-04).
     // A parenthesised anniversary note, whatever else it bills ("(25th Anniversary)", "(30th Anniversary, 4K
     // Restoration)", "(50th Anniversary 4K Restoration)"): the seed anniversary suffix takes only a bare one. The

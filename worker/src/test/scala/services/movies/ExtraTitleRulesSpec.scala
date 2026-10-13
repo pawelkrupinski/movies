@@ -1461,6 +1461,45 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  /** Recording 38350852334's UK listings that production identified and the replay split off their film (the
+   *  convergence leg's per-film diff): a venue's decoration the query kept — a festival's name ahead of the film, its
+   *  acronym after it, a film club, a certificate and the year's last two digits, any "<who>-friendly" audience and
+   *  SEND. Held by shape, through the whole query path. */
+  private val venueDecorationListings: Seq[(String, String)] = Seq(
+    "Purbeck Film Festival - Fargo"                         -> "Fargo",
+    "Purbeck Film Festival - The Last Viking"               -> "The Last Viking",
+    "BFI London Film Festival 2026: Fjord"                  -> "Fjord",
+    "A Man of His Time FFFL"                                -> "A Man of His Time",
+    "Coward - FFFL"                                         -> "Coward",
+    "Fatherland - Film Club"                                -> "Fatherland",
+    "Kokuho - Film Club"                                    -> "Kokuho",
+    "De Gaulle Liberté (15) 26"                             -> "De Gaulle Liberté",
+    "Heart of the Beast (12a) 26"                           -> "Heart of the Beast",
+    "George Michael: The Faith Tour (TBC) 26"               -> "George Michael: The Faith Tour",
+    "SEND: Avengers: Doomsday"                              -> "Avengers: Doomsday",
+    "BABY FRIENDLY: Sense and Sensibility"                  -> "Sense and Sensibility",
+    "SENSORY FRIENDLY: Sense and Sensibility"               -> "Sense and Sensibility",
+    "Family-Friendly: Toy Story 5"                          -> "Toy Story 5",
+    "Sense and Sensibility - Baby Friendly"                 -> "Sense and Sensibility",
+    "Forgotten Island - Sensory Friendly Screening"         -> "Forgotten Island")
+
+  "A venue's decoration production saw past" should "leave the listing's search query" in {
+    val titles = new TitleNormalizer(withExtras)
+    venueDecorationListings.foreach { case (raw, query) =>
+      withClue(s"searchQuery of '$raw': ")(listingQuery(titles, models.KinoCentrum3D, raw) shouldBe query)
+    }
+  }
+
+  it should "leave a film whose own title holds a festival, a club, a friendly or a capitalised tag alone" in {
+    val titles = new TitleNormalizer(withExtras)
+    Seq("Fight Club", "The Breakfast Club", "Friendly Fire", "Send Help", "Send Me No Flowers", "HANDS OFF", "SIDE EFFECT",
+      "Banff Mountain Film Festival", "Folkestone Film Festival", "Bad Film Club", "Apollo 13", "Blade Runner 2049",
+      // a festival's own event behind its banner searches whole, not as a film of the event's name
+      "Unrestricted View Horror Film Festival 2026: Opening Night", "Purbeck Film Festival - Shorts Social").foreach { t =>
+      withClue(s"searchQuery of '$t': ")(listingQuery(titles, models.KinoCentrum3D, t).toLowerCase shouldBe t.toLowerCase)
+    }
+  }
+
   it should "leave a film whose own title is an introduction, or bills one with no connector, alone" in {
     Seq("An Introduction to Love", "Introduction", "The Introduction", "Introduction by Fire", "Q&A", "Romeo & Juliet",
       "Intro with Strangers").foreach { t =>
