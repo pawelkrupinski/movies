@@ -61,8 +61,14 @@ object UnifiedEvidence {
    *  `film.current`: the film released this year or last — what a fill on weak signals asks besides, as `venues.current`
    *  and `families.current` do: an older namesake fits a one-off event as well as a title (PL Kino Kosmos "Człowiek
    *  znikąd | uroczysty pokaz odrestaurowanego filmu", Kłyk's restored western: the model's and Filmweb's lean, and
-   *  IMDb's take, are the 2010 Korean film). */
-  val PinnedSignals: Seq[String] = Seq("families.current", "family.facts", "cast.venue", "film.current")
+   *  IMDb's take, are the 2010 Korean film).
+   *  `model.vetoedAbove`: TMDB's search ranked first a namesake the release veto took out ([[ReleaseVeto]]) — the film
+   *  stands only for the veto, which adds no evidence for it, and a family's take of the bare title names the namesake
+   *  its country knows just as the veto does: one signal, no corroboration (PL Kino za Rogiem Cafe's bare "Stan
+   *  wyjątkowy": TMDB's first hit, Hřebejk's 2024 film, vetoed; Filmweb and IMDb take Brešan's 2018 one under it). A
+   *  vetoed namesake deeper in a noisy search is no such sign: PL Kino Kameralne Cafe's "Bohater" is Farhadi's (19th),
+   *  beside vetoed 2017 and 2019 namesakes (12th, 17th) under the search's first hit, "Bohater roku". */
+  val PinnedSignals: Seq[String] = Seq("families.current", "family.facts", "cast.venue", "film.current", "model.vetoedAbove")
 
   /** The NON-COMPENSATORY guards: a contender one of these fires on is no film to take, whatever else speaks for it — the
    *  agreement stage's vetoes (several works billed, a stage work, another film's own title, the
@@ -192,6 +198,9 @@ object UnifiedEvidence {
       val nearest = contender.tmdb.toSeq.flatMap(id => c.posters.flatMap(_.get(id).flatten)).minOption
       // released this year or last: a current release, not a one-off event an older namesake fits
       val current = records.flatMap(_.film.year).maxOption.exists(_ >= c.thisYear - 1)
+      // [[PinnedSignals]]' model.vetoedAbove: a node's search for it ranked first a namesake the release veto took out
+      val vetoedAbove = contender.tmdb.exists(id => c.nodes.exists(node => node.candidates.exists(_.tmdbId == id) &&
+        node.candidates.exists(first => first.tmdbId != id && first.releaseVetoed && first.rank.contains(1))))
       val flags: Seq[(String, Boolean)] = Seq(
         // as the stage takes it: by the TMDB id the agreed record links (or IMDb's find of its IMDb id), else as IMDb's
         // film — an agreed record linking neither is taken as nothing (DE "André Rieus Weihnachtskonzert 2026")
@@ -238,7 +247,7 @@ object UnifiedEvidence {
         "and.posterTakers" -> and(nearest.exists(_ <= PosterEvidence.VoteBits)),
         "and.leanTakers" -> and(contender.tmdb.exists(id => c.decision.leaning.exists(_.film == id))),
         "families.current" -> (if (familiesCurrent) 1.0 else 0.0), "family.facts" -> (if (familyFacts) 1.0 else 0.0),
-        "film.current" -> (if (current) 1.0 else 0.0),
+        "film.current" -> (if (current) 1.0 else 0.0), "model.vetoedAbove" -> (if (vetoedAbove) 1.0 else 0.0),
         "cast.venue" -> castNamed.size.toDouble).filter(_._2 != 0.0)
       val signals = counts.toMap ++ flags.collect { case (name, true) => name -> 1.0 }.toMap ++
         open.map(_.probability).maxOption.map(p => "model.logit" -> logit(p)).filter(_._2 != 0.0) ++

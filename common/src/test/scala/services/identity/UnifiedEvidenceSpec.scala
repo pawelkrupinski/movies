@@ -166,12 +166,34 @@ class UnifiedEvidenceSpec extends AnyFlatSpec with Matchers {
     filled(2025) shouldBe Some("tmdb:51608" -> "model.lean&count.leaning&title.namesIt&film.current")
   }
 
+  "Filmweb's take of a film the model scored" should "fill no namesake the release veto left best by taking out the film ranked above it" in {
+    // PL Kino za Rogiem Cafe's bare "Stan wyjątkowy" (Hřebejk's 2024 film): TMDB's first hit, it dates no Polish release
+    // and the veto took it out; Brešan's 2018 namesake under it, released in Poland, is what Filmweb's and IMDb's takes of
+    // the bare title name too — the veto adds no evidence for it, and nothing else does
+    val listings  = Seq(listing(KinoMuza, "Stan wyjątkowy"))
+    val hrebejk   = IdentityMeasures.Film("Stan wyjątkowy", year = Some(2024), imdbNumber = 30000001)
+    val bresan    = IdentityMeasures.Film("Stan wyjątkowy", year = Some(2018), imdbNumber = 8246980)
+    val bresanRecord = SourceRecord(bresan.copy(imdbNumber = 0), Map("imdb" -> "tt8246980"))
+    val verdicts  = Seq(took(VoterFamily.Filmweb, bresanRecord), took(VoterFamily.Imdb, bresanRecord))
+    def filled(ranked: Seq[IdentityResolver.CandidateEvidence]) = {
+      val decision = ResolverDecision(listings.map(_.key), None, 0.88, ResolverDecision.Basis.Vetoed, Nil)()
+      UnifiedRules.resolver.filled(contenders(ClusterEvidence(listings, decision, Seq(IdentityResolver.NodeEvidence(listings.map(_.key), ranked)),
+        verdicts, Nil, _ => None, thisYear = 2026))).map { case (contender, rule) => contender.film -> rule }
+    }
+    val vetoed = candidate(1325178, hrebejk, 0.07, denied = true).copy(releaseVetoed = true)
+    filled(Seq(vetoed, candidate(581759, bresan, 0.03).copy(rank = Some(2)))) shouldBe None
+    // the vetoed namesake deeper in the search than its first hit, the film further down still (PL Kino Kameralne Cafe's
+    // "Bohater", Farhadi's 19th, a vetoed namesake 12th): the take is Filmweb's own, as before
+    filled(Seq(vetoed.copy(rank = Some(12)), candidate(581759, bresan, 0.03).copy(rank = Some(19)))) shouldBe
+      Some("tmdb:581759" -> "family.filmweb.took&!model.unscored&!model.vetoedAbove")
+  }
+
   "a pinned rule" should "fire on a conjunction of signals and absences" in {
     val signals = Map("family.filmweb.took" -> 1.0, "model.logit" -> -3.5)
     UnifiedRules.fires("family.filmweb.took&!model.unscored", signals.getOrElse(_, 0.0)) shouldBe true
     UnifiedRules.fires("family.filmweb.took&!model.unscored", (signals + ("model.unscored" -> 1.0)).getOrElse(_, 0.0)) shouldBe false
     UnifiedRules.fires("family.imdb.took", signals.getOrElse(_, 0.0)) shouldBe false
-    UnifiedRules.resolver.pinned should contain ("family.filmweb.took&!model.unscored")
+    UnifiedRules.resolver.pinned should contain ("family.filmweb.took&!model.unscored&!model.vetoedAbove")
   }
 
   "the signal list" should "name every signal once, each with a direction" in {

@@ -2654,7 +2654,12 @@ filed each under retrieval, scoring, a guard, or the agreement. What it added, e
   `measure/identity-film-search`): the one guard-passing contender Filmweb takes that the model scored too — Filmweb
   votes in Poland alone. PL "Bohater" (Farhadi's), "BEZ KOŃCA 2D PL LOLO", "NADZIEJA", "Wymarzony" (Herry's *Pupille*,
   judged from the venue's page). `UnifiedRules.fires` reads a rule as `&`-joined terms, `!` an absence. Ratchet: +4
-  listings, 4 films, 0 wrong.
+  listings, 4 films, 0 wrong. Since 2026-10-13 `&!model.vetoedAbove`: never a namesake beside TMDB's first hit when the
+  release veto took that hit out — the veto adds no evidence for the namesake, and Filmweb's take of the bare title names
+  the film Poland knows just as the veto does (PL Kino za Rogiem Cafe's "Stan wyjątkowy": Hřebejk's 2024 film, the first
+  hit, vetoed; Brešan's 2018 one filled on Filmweb's and IMDb's takes). Only the first hit: "Bohater" is Farhadi's
+  (19th), beside vetoed namesakes 12th and 17th of a noisy search. Ratchet: −1 wrong on the recapture of recording
+  38103789067, 0 right moved on it or on the checked-in fixture.
 - **Two more title shapes** (`IdentityMeasures.delimitedPieces`): what an upper-case banner of two words or more runs
   into with an unspaced colon ("KINO NA NIEDZIELE:CAMINO DLA OPORNYCH"), and the one quoted title ending a billing
   after a banner's stop ('Kino Kobiet - KLAPS! "Jak żyć żeby nie zwariować"'). The whole-corpus dump takes both films

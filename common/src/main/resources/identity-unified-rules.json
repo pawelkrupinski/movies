@@ -14,9 +14,9 @@
     "pinned.families.current.gainedListings" : 5,
     "pinned.families.current.gainedFilms" : 3,
     "pinned.families.current.wrong" : 0,
-    "pinned.family.filmweb.took&!model.unscored.gainedListings" : 4,
-    "pinned.family.filmweb.took&!model.unscored.gainedFilms" : 4,
-    "pinned.family.filmweb.took&!model.unscored.wrong" : 0,
+    "pinned.family.filmweb.took&!model.unscored&!model.vetoedAbove.gainedListings" : 4,
+    "pinned.family.filmweb.took&!model.unscored&!model.vetoedAbove.gainedFilms" : 4,
+    "pinned.family.filmweb.took&!model.unscored&!model.vetoedAbove.wrong" : 0,
     "pinned.family.facts.gainedListings" : 1,
     "pinned.family.facts.gainedFilms" : 1,
     "pinned.family.facts.wrong" : 0,
@@ -33,5 +33,5 @@
     "pinned.cast.venue.gainedFilms" : 0,
     "pinned.cast.venue.wrong" : 0
   },
-  "pinned" : [ "families.current", "family.filmweb.took&!model.unscored", "family.facts", "and.leanTakers&!family.dissent", "count.takers2&venues.current", "model.lean&count.leaning&title.namesIt&film.current", "cast.venue" ]
+  "pinned" : [ "families.current", "family.filmweb.took&!model.unscored&!model.vetoedAbove", "family.facts", "and.leanTakers&!family.dissent", "count.takers2&venues.current", "model.lean&count.leaning&title.namesIt&film.current", "cast.venue" ]
 }
