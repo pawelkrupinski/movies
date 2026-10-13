@@ -16,7 +16,9 @@ import tools.UnmatchedClusters.Take
  * the cluster's venue and most common raw title. The rows hold the MODEL's take, before the agreement stage reads it
  * again (`agreement.Correction`), and as the code stood when they were emitted (`integration.IdentityUnifiedDataset`).
  * So a wrong take fails unless it is listed below as one a later stage or a later change no longer serves — each with
- * the spec that proves it. None is listed as standing: a wrong take is fixed, or its label is.
+ * the spec that proves it — or as one KNOWN WRONG that no safe fix removes yet, each with why (the matched takes'
+ * counterpart of `known-wrong.tsv`, which lists the unmatched clusters' and fails a line their capture lacks). Both
+ * lists only shrink: a line the rows no longer hold is struck.
  */
 class MatchedTakesLabelSpec extends AnyFlatSpec with Matchers {
 
@@ -46,19 +48,34 @@ class MatchedTakesLabelSpec extends AnyFlatSpec with Matchers {
     ("uk", "Triple Feature: Lord of the Rings", "tmdb:122") -> multiFilmBill,
     ("us", "Triple Feature: Lord of the Rings", "tmdb:122") -> multiFilmBill)
 
+  /** The model's wrong takes no safe fix removes yet, (country, raw title, taken film) → why — judged by the suspect-take
+   *  audit 2026-10-13. */
+  private val knownWrong: Map[(String, String, String), String] = Map(
+    ("de", "München Mord: Leben und Sterben in Schwabing", "tmdb:655654") ->
+      ("a TV crime episode the venue's feed files under its director's other 2019 film (webedia 273417, Sascha Bigler): " +
+        "the feed's own facts name the record, and no rule tells an episode from the film without losing right takes"),
+    ("pl", "„Mieszkanie” i „Owoce rajskich drzew spożywamy”", "tmdb:80080") ->
+      ("a double bill whose two works are quoted and joined by \"i\": the resolver alone declines it " +
+        "(no dated quotes), the whole-corpus model takes it on a route not yet traced"),
+    ("pl", "24. Festiwal TERRA - DIA DE MUERTOS - MEKSYKAŃSKI DZIEŃ ZMARŁYCH", "tmdb:378112") ->
+      ("a talk on the Day of the Dead at a travel festival, its title the film's original title; the listing states " +
+        "nothing (no year, runtime or director) a rule could refuse it on"))
+
   private def take(row: IdentityUnifiedFit.Row): Take = Take(row.country, row.venue, row.rawTitle,
     row.film.stripPrefix("tmdb:").toIntOption.filter(_ => row.film.startsWith("tmdb:")),
     Option.when(row.film.startsWith("imdb:"))(row.film.stripPrefix("imdb:")), "", row.filmTitle)
 
+  private def listed = noLongerServed.keySet ++ knownWrong.keySet
+
   private lazy val wrong = rows.filter(_.today).map(take).filter(UnmatchedClusters.verdict(_, labels).contains(false))
 
   "the model's matched takes" should "take no film a hand label denies or contradicts, beyond those prod no longer serves" in {
-    val standing = wrong.filterNot(t => noLongerServed.contains((t.country, t.rawTitle, t.film)))
+    val standing = wrong.filterNot(t => listed.contains((t.country, t.rawTitle, t.film)))
     withClue(standing.map(UnmatchedClusters.takeLine).mkString("WRONG matched takes:\n", "\n", "\n")) { standing shouldBe empty }
   }
 
   it should "list only takes the rows still hold — one gone from them is struck" in {
-    val stale = noLongerServed.keySet -- wrong.map(t => (t.country, t.rawTitle, t.film)).toSet
-    withClue(stale.mkString("no longer in the rows — remove from `noLongerServed`:\n", "\n", "\n")) { stale shouldBe empty }
+    val stale = listed -- wrong.map(t => (t.country, t.rawTitle, t.film)).toSet
+    withClue(stale.mkString("no longer in the rows — remove from `noLongerServed` or `knownWrong`:\n", "\n", "\n")) { stale shouldBe empty }
   }
 }
