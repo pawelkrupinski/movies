@@ -20,7 +20,7 @@ are read off the countries' committed page data here:
     Spain) answers to, as a page, a retired page or an alias, 301s to that
     country's page; one SEVERAL answer to goes to the country whose town of that
     name is the MOST POPULOUS (a page's anchor town, an alias's town, a retired
-    page's namesake; 0 where there is none). This file lists only those
+    page's namesake, else the page it redirects to). This file lists only those
     contested slugs and their winner.
 
     python3 data/scripts/generate_slug_index.py
@@ -98,9 +98,12 @@ def index(code, data, towns, slug_of, extra_towns=None):
     answers = {}
     for p in pages:
         answers[p["slug"]] = town(p.get("anchor") or p["name"])[1]
+    # A retired slug scores as the page it redirects to — its town's population, or,
+    # where it names none (a county, a region), the page's: the UK's /somerset/ is Bath.
     for slug, r in retired.items():
+        target = r["page"] if isinstance(r, dict) else r
         anchor = r.get("anchor") if isinstance(r, dict) else None
-        pop = town(anchor)[1] if anchor else 0
+        pop = max(town(anchor)[1] if anchor else 0, answers.get(target, 0))
         for key in {slug, (r.get("qualifiedSlug") if isinstance(r, dict) else None)} - {None}:
             answers.setdefault(key, pop)
 

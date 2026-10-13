@@ -530,6 +530,20 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     Country.Poland.allJson should not include "london"
   }
 
+  "The brand front door" should "send a bare slug several countries answer to the most populous town's" in {
+    def owner(slug: String) = Country.frontDoorTarget(slug).map(_._1.code)
+    owner("york") shouldBe Some("uk")       // York, 156,000, over York, Pennsylvania, 44,000
+    owner("boston") shouldBe Some("us")     // Massachusetts over Lincolnshire
+    // A retired page scores as the page it redirects to: the UK's Somerset county page
+    // went to Bath (101,000), over Somerset, Kentucky (11,000).
+    owner("somerset") shouldBe Some("uk")
+    owner("suffolk") shouldBe Some("uk")
+    owner("northumberland") shouldBe Some("uk")
+    // A town GeoNames had no population for is not a town of none: Crosby, Merseyside
+    // (50,000) over Crosby, Texas (1,408).
+    owner("crosby") shouldBe Some("uk")
+  }
+
   "Country.switchable" should "list every deployed country (webUrl defined), Poland first" in {
     // The navbar country <select> iterates this, in this order.
     Country.switchable shouldBe

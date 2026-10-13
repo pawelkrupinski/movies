@@ -192,6 +192,24 @@ OWN_TOWNS = {
     "trefforest industrial estate": "Nantgarw",  # Showcase Cardiff, Parc Nantgarw
 }
 
+#: The population of a town GeoNames gives none for — every one a venue is in, since a
+#: town of 0 people loses every comparison it enters (the front door once sent /crosby/
+#: to Crosby, Texas, 1,408, over Crosby, Merseyside). GeoNames' own figure where it has
+#: one under another entry, else the 2011 census (ONS / StatsWales) for the built-up
+#: area or community. A town of 0 left over stops the run.
+POPULATIONS = {
+    "Beeston, Nottinghamshire": 37_000,       # 2011 census, Beeston built-up area subdivision
+    "Boldon, Tyne and Wear": 13_567,          # GeoNames, "The Boldons"
+    "Cromarty, Highland": 740,                # GeoNames (allCountries), Cromarty
+    "Crosby, Merseyside": 50_044,             # 2011 census, Crosby built-up area subdivision
+    "Hay-on-Wye, Powys": 1_598,               # 2011 census, Hay community
+    "Nantgarw, Glamorgan": 3_800,             # 2011 census, Taff's Well community (approx.)
+    "Pontardawe, Glamorgan": 5_469,           # 2011 census, Pontardawe community
+    "Port Talbot, Glamorgan": 37_276,         # 2011 census, Port Talbot built-up area subdivision
+    "Wellington, Somerset": 14_549,           # 2011 census, Wellington
+    "Ystradgynlais, Powys": 8_092,            # 2011 census, Ystradgynlais community
+}
+
 #: GeoNames' name → the one a visitor knows the town by, and so its page's name.
 DISPLAY_NAMES = {
     "Kingston upon Hull": "Hull",
@@ -322,6 +340,11 @@ def place(venues, gazetteer, venue_towns=VENUE_TOWNS):
                       "population": 0}
     if problems:
         sys.exit("\n".join(problems))
+    for key, t in towns.items():
+        t["population"] = t["population"] or POPULATIONS.get(key, 0)
+    unpeopled = sorted(k for k, t in towns.items() if not t["population"])
+    if unpeopled:
+        sys.exit(f"towns with no population (review one into POPULATIONS): {unpeopled}")
     for t in towns.values():
         island = landmass(t["county"], t["lat"], t["lon"])
         t["landmass"] = island or ("Ireland" if t["nation"] == "Northern Ireland" else "Great Britain")
@@ -333,7 +356,7 @@ def main(gazetteer_path):
     towns, town_of = place(venues, load_gazetteer(gazetteer_path))
     OUT.write_text(json.dumps({"towns": dict(sorted(towns.items())), "venues": dict(sorted(town_of.items()))},
                               ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
-    unmatched = sum(1 for t in towns.values() if not t["population"])
+    unmatched = sum(1 for k in towns if k in POPULATIONS)
     print(f"Wrote {OUT.relative_to(ROOT)}: {len(town_of)} venues in {len(towns)} towns "
           f"({unmatched} with no GeoNames population)")
 

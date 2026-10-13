@@ -183,6 +183,10 @@ def committed():
         if r["page"] not in expected:
             wrong.append(f"{slug} -> {r['page']}, but the rule says {sorted(expected)}")
     check(f"pages.json: every retired slug goes to its namesake's page, else its venues' {wrong}", not wrong)
+    # A town with no population loses every tie it enters — the front door sent
+    # /crosby/ to Crosby, Texas (1,408) over Crosby, Merseyside (50,000) for it.
+    unpeopled = sorted(t for p in pages.values() for t in p["towns"] if not towns[t]["pop"])
+    check(f"pages.json: every town a page covers has a population {unpeopled}", not unpeopled)
     missing = sorted(set(HAND_FILED) - set(pages) - set(data["retired"]))
     check(f"pages.json: every one of the 76 hand-filed regions and the 3 merged pages still answers {missing}",
           not missing)

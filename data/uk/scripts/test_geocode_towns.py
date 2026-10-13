@@ -79,9 +79,11 @@ def synthetic():
           town_of["Hull1"] == "Hull, East Riding of Yorkshire" and towns["Hull, East Riding of Yorkshire"]["population"])
     check("a postal town reaching into another council's area: Cumbernauld's 'Glasgow' venue is in Cumbernauld",
           town_of["Lanternhouse"] == "Cumbernauld, Lanarkshire")
-    check("a town GeoNames lacks is its own, centred on its venues, with no population",
-          towns[town_of["Beeston1"]]["population"] == 0
+    check("a town GeoNames lacks is its own, centred on its venues, with its reviewed population",
+          towns[town_of["Beeston1"]]["population"] == g.POPULATIONS["Beeston, Nottinghamshire"]
           and towns[town_of["Beeston1"]]["name"] == "Beeston")
+    check("a town with no population anywhere stops the run",
+          refuses(lambda: g.place([venue("Boldon1", "Boldon", 55.87, -4.26)], gaz)))
     check("an island is its own landmass: Bute, Jersey, the Isle of Wight",
           towns[town_of["Rothesay1"]]["landmass"] == "Isle of Bute"
           and towns[town_of["Jersey1"]]["landmass"] == "Jersey"

@@ -357,7 +357,7 @@
    "county": "Nottinghamshire",
    "lat": 52.92568,
    "lon": -1.21463,
-   "population": 0,
+   "population": 37000,
    "landmass": "Great Britain"
   },
   "Belfast, Belfast": {
@@ -519,7 +519,7 @@
    "county": "Tyne and Wear",
    "lat": 54.94678,
    "lon": -1.46632,
-   "population": 0,
+   "population": 13567,
    "landmass": "Great Britain"
   },
   "Bolton, Greater Manchester": {
@@ -1221,7 +1221,7 @@
    "county": "Highland",
    "lat": 57.67756,
    "lon": -4.04164,
-   "population": 0,
+   "population": 740,
    "landmass": "Great Britain"
   },
   "Cromer, Norfolk": {
@@ -1239,7 +1239,7 @@
    "county": "Merseyside",
    "lat": 53.47754,
    "lon": -3.02337,
-   "population": 0,
+   "population": 50044,
    "landmass": "Great Britain"
   },
   "Cross Hands, Dyfed": {
@@ -2013,7 +2013,7 @@
    "county": "Powys",
    "lat": 52.07049,
    "lon": -3.12741,
-   "population": 0,
+   "population": 1598,
    "landmass": "Great Britain"
   },
   "Hebden Bridge, West Yorkshire": {
@@ -2814,7 +2814,7 @@
    "county": "Glamorgan",
    "lat": 51.56551,
    "lon": -3.27453,
-   "population": 0,
+   "population": 3800,
    "landmass": "Great Britain"
   },
   "Neath, Glamorgan": {
@@ -3165,7 +3165,7 @@
    "county": "Glamorgan",
    "lat": 51.71985,
    "lon": -3.85009,
-   "population": 0,
+   "population": 5469,
    "landmass": "Great Britain"
   },
   "Poole, Dorset": {
@@ -3183,7 +3183,7 @@
    "county": "Glamorgan",
    "lat": 51.59241,
    "lon": -3.78019,
-   "population": 0,
+   "population": 37276,
    "landmass": "Great Britain"
   },
   "Portree, Highland": {
@@ -4182,7 +4182,7 @@
    "county": "Somerset",
    "lat": 50.97587,
    "lon": -3.23159,
-   "population": 0,
+   "population": 14549,
    "landmass": "Great Britain"
   },
   "Wells, Somerset": {
@@ -4488,7 +4488,7 @@
    "county": "Powys",
    "lat": 51.76667,
    "lon": -3.76667,
-   "population": 0,
+   "population": 8092,
    "landmass": "Great Britain"
   }
  },

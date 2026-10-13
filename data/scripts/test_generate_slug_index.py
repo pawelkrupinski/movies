@@ -39,8 +39,10 @@ def synthetic():
     check("a page's qualified slug is an alias of the page", aliases["leeds-wy"] == "leeds")
     check("a page slug, or a retired one, is never an alias",
           "leeds" not in aliases and "west-yorkshire" not in aliases and "harrogate" not in aliases)
-    check("every page, retired slug and alias answers, at its town's population",
-          answers["leeds"] == 536_000 and answers["west-yorkshire"] == 0 and answers["knaresborough"] == 15_000)
+    check("every page and alias answers at its town's population",
+          answers["leeds"] == 536_000 and answers["knaresborough"] == 15_000)
+    check("a retired slug naming no town answers as the page it redirects to",
+          answers["west-yorkshire"] == 536_000)
 
 
 def committed():

@@ -2300,9 +2300,9 @@
    "towns": [
     "Bridgend, Glamorgan",
     "Neath, Glamorgan",
+    "Port Talbot, Glamorgan",
     "Aberdare, Glamorgan",
-    "Nantgarw, Glamorgan",
-    "Port Talbot, Glamorgan"
+    "Nantgarw, Glamorgan"
    ],
    "cinemas": [
     "ColiseumTheatreAberdare",
@@ -3597,11 +3597,11 @@
    "lon": -1.3095,
    "towns": [
     "Ilkeston, Derbyshire",
+    "Beeston, Nottinghamshire",
     "Hucknall, Nottinghamshire",
     "Belper, Derbyshire",
     "Ashbourne, Derbyshire",
-    "Wirksworth, Derbyshire",
-    "Beeston, Nottinghamshire"
+    "Wirksworth, Derbyshire"
    ],
    "cinemas": [
     "ArcCinemaAtTheByronHucknall",
@@ -3906,8 +3906,8 @@
     "Llanelli, Dyfed",
     "Carmarthen, Dyfed",
     "Brynamman, Glamorgan",
-    "Cross Hands, Dyfed",
-    "Pontardawe, Glamorgan"
+    "Pontardawe, Glamorgan",
+    "Cross Hands, Dyfed"
    ],
    "cinemas": [
     "CrossHandsHallCinema",
@@ -5173,10 +5173,10 @@
     "Widnes, Cheshire",
     "Wallasey, Merseyside",
     "Bootle, Merseyside",
+    "Crosby, Merseyside",
     "Leigh, Greater Manchester",
     "Speke, Merseyside",
-    "Bromborough, Merseyside",
-    "Crosby, Merseyside"
+    "Bromborough, Merseyside"
    ],
    "cinemas": [
     "CineworldSpeke",
