@@ -62,6 +62,16 @@ class ConstraintSolverSpec extends AnyFlatSpec with Matchers {
       ConstraintSolver.solveAs(Seq("C", "B", "A"), cs.reverse, Presentation.AsGiven)
   }
 
+  it should "not count a component a node is cannot-linked to as a choice (H ~ X ~ Y ~ Z, H ≁ each)" in {
+    // DE's "Berliner Philharmoniker 25/26: Silvesterkonzert" (H) shares the original title of the 2026 concert's spellings
+    // and names another season than theirs: every spelling reached H and its siblings, and none joined another
+    val nodes = Seq("H", "X", "Y", "Z")
+    val cs = (for (a <- nodes; b <- nodes if a < b) yield Constraint(a, b, must = true, 3, "original-title")) ++
+      Seq("X", "Y", "Z").map(Constraint("H", _, must = false, 0, "SeasonsApart"))
+    ConstraintSolver.solve(nodes, cs) shouldBe Seq(Seq("H"), Seq("X", "Y", "Z"))
+    ConstraintSolver.solve(nodes.reverse, cs.reverse) shouldBe Seq(Seq("H"), Seq("X", "Y", "Z"))
+  }
+
   it should "never put two films in one component, though no cannot-link joins their nodes" in {
     // The PL festival chain: A holds one film, D another, and must-links run A ~ B, B ~ C, C ~ D
     // across tiers with no cannot-link between A and D — they share no key.

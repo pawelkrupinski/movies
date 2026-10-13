@@ -3686,7 +3686,7 @@
     "_id" : "f29a2428d648c793",
     "title" : "90. urodziny Pavarottiego - Koncert gwiazd z Arena di Verona",
     "posterUrl" : "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8131S2R.jpg",
-    "fallbackPosterUrls" : [ ],
+    "fallbackPosterUrls" : [ "https://www.novekino.pl/multimedia/90_urodziny_pavarottiego/plakat.jpg", "https://bilety.kino.swiebodzin.pl:4433/MSI/ImageData.ashx?id=670&mode=thumb" ],
     "runtimeMinutes" : 92,
     "releaseYear" : 2025,
     "genres" : [ ],
@@ -3701,6 +3701,29 @@
     },
     "weightedRating" : 0,
     "synopsisByCity" : { },
+    "shareCardPending" : false
+  }, {
+    "_id" : "f29a2428d648c793~90urodzinypavarottiegokoncertgwiazdzarenadiverona2025",
+    "title" : "90. urodziny Pavarottiego. Koncert gwiazd z Arena di Verona 2025",
+    "posterUrl" : "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8131S2R.jpg",
+    "fallbackPosterUrls" : [ "https://www.novekino.pl/multimedia/90_urodziny_pavarottiego/plakat.jpg", "https://bilety.kino.swiebodzin.pl:4433/MSI/ImageData.ashx?id=670&mode=thumb" ],
+    "runtimeMinutes" : 92,
+    "releaseYear" : 2025,
+    "genres" : [ ],
+    "countries" : [ "Włochy" ],
+    "directors" : [ "Luigi Antonini (reżyser)", "Matteo Parmeggiani (dyrygent)" ],
+    "cast" : [ "Andrea Bocelli", "José Carreras", "Plácido Domingo", "Il Volo", "Jonathan Tetelman", "Hauser" ],
+    "trailerUrls" : [ "https://www.youtube.com/embed/qigVesiMEQ0" ],
+    "ratings" : {
+      "metacriticUrl" : "https://www.metacritic.com/search/90.+urodziny+Pavarottiego.+Koncert+gwiazd+z+Arena+di+Verona+2025/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=90.+urodziny+Pavarottiego.+Koncert+gwiazd+z+Arena+di+Verona+2025",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=90.+urodziny+Pavarottiego.+Koncert+gwiazd+z+Arena+di+Verona+2025"
+    },
+    "weightedRating" : 0,
+    "synopsisByCity" : {
+      "warszawa" : "**Jesienią 2025 roku w słynnej Arena di Verona zebrały się największe gwiazdy opery i popu, w tym Andrea Bocelli, Jonathan Tetelman, Angela Gheorghiu i Il Volo, by dać niebywały koncert, który... przywrócił do życia Luciana Pavarottiego, króla tenorów i wielkiego śpiewaka zwykłych ludzi. Jego dwaj żyjący koledzy, Plácido Domingo i José Carreras, zaśpiewali z nim na żywo. Niemożliwe stało się faktem – Trzej Tenorzy powrócili na estradę!**\n\nNajnowszemu koncertowi ku czci jedzącego za trzech śpiewaka o niebiańskim głosie, który wciąż przywołuje na myśl skąpane w słońcu i spaghetti Włochy, nadano znaczący tytuł: „Luciano Pavarotti. Człowiek, który poruszył świat”. To prawda. Choć święcił nieprawdopodobne tryumfy na najważniejszych scenach, począwszy od mediolańskiej La Scali, a skończywszy na nowojorskiej The Metropolitan Opera, Luciano Pavarotti chciał przybliżyć muzykę klasyczną ludziom na całym świecie. To dzięki swym popularyzatorskim koncertom sprawił, że wielu z nas pokochało operę. Na jego występ w Hyde Parku, mimo ulewy, przyszło ponad 100.000 osób, a jego transmitowane przez telewizję występy z Domingiem i Carrerasem (Trzej Tenorzy) sprawiały, że w miastach i miasteczkach zamierał ruch na ulicach.\n\nKoncert z legendarnego werońskiego amfiteatru to wiązanka najsłynniejszych arii operowych i niezaprzeczalnych evergreenów w wykonaniu nie tylko klasycznych śpiewaków, ale też artystów, którzy z powodzeniem łączą muzykę poważną z popową. Oprócz wcześniej wymienionych gwiazd wystąpili również: wiolonczelista Hauser, piosenkarz Umberto Tozzi, a także Vittorio Grigolo, międzynarodowej klasy tenor, który w wieku 13 lat zaśpiewał w Operze Rzymskiej partię Pastuszka w „Tosce” Pucciniego, a rolę Cavaradossiego w tym spektaklu kreował wtedy sam Luciano Pavarotti.",
+      "plock" : "**Jesienią 2025 roku w słynnej Arena di Verona zebrały się największe gwiazdy opery i popu, w tym Andrea Bocelli, Jonathan Tetelman, Angela Gheorghiu i Il Volo, by dać niebywały koncert, który... przywrócił do życia Luciana Pavarottiego, króla tenorów i wielkiego śpiewaka zwykłych ludzi. Jego dwaj żyjący koledzy, Plácido Domingo i José Carreras, zaśpiewali z nim na żywo. Niemożliwe stało się faktem – Trzej Tenorzy powrócili na estradę!**\n\nNajnowszemu koncertowi ku czci jedzącego za trzech śpiewaka o niebiańskim głosie, który wciąż przywołuje na myśl skąpane w słońcu i spaghetti Włochy, nadano znaczący tytuł: „Luciano Pavarotti. Człowiek, który poruszył świat”. To prawda. Choć święcił nieprawdopodobne tryumfy na najważniejszych scenach, począwszy od mediolańskiej La Scali, a skończywszy na nowojorskiej The Metropolitan Opera, Luciano Pavarotti chciał przybliżyć muzykę klasyczną ludziom na całym świecie. To dzięki swym popularyzatorskim koncertom sprawił, że wielu z nas pokochało operę. Na jego występ w Hyde Parku, mimo ulewy, przyszło ponad 100.000 osób, a jego transmitowane przez telewizję występy z Domingiem i Carrerasem (Trzej Tenorzy) sprawiały, że w miastach i miasteczkach zamierał ruch na ulicach.\n\nKoncert z legendarnego werońskiego amfiteatru to wiązanka najsłynniejszych arii operowych i niezaprzeczalnych evergreenów w wykonaniu nie tylko klasycznych śpiewaków, ale też artystów, którzy z powodzeniem łączą muzykę poważną z popową. Oprócz wcześniej wymienionych gwiazd wystąpili również: wiolonczelista Hauser, piosenkarz Umberto Tozzi, a także Vittorio Grigolo, międzynarodowej klasy tenor, który w wieku 13 lat zaśpiewał w Operze Rzymskiej partię Pastuszka w „Tosce” Pucciniego, a rolę Cavaradossiego w tym spektaklu kreował wtedy sam Luciano Pavarotti."
+    },
     "shareCardPending" : false
   }, {
     "_id" : "f2aa344240f951f1",
@@ -5740,29 +5763,6 @@
     "weightedRating" : 7.35,
     "synopsisByCity" : {
       "warszawa" : "„Dobry wojak Szwejk” z 1956 roku to kultowa czeska wojenna w reżyserii Karela Steklego, będąca ekranizacją pierwszego tomu powieści „Przygody dobrego wojaka Szwejka podczas wojny światowej” autorstwa Jaroslava Haška. Film przedstawia pełne humoru i absurdu losy Józefa Szwejka – prostodusznego handlarza psami, którego niebywała poczciwość i dosłowne wykonywanie rozkazów prowadzą do serii komicznych sytuacji.\n\nAkcja rozpoczyna się w chwili wybuchu I wojny światowej. Szwejk wdaje się w rozmowę z tajnym agentem policji Bretschneiderem w gospodzie pana Palivca, przez co zostaje oskarżony o zdradę i trafia na komisariat, a następnie do domu wariatów. Wkrótce jednak austro-węgierska administracja ponownie wciela go do armii, mimo że cierpi na reumatyzm i został uznany przez lekarzy za „idiotę”.\n\nFilm Steklego jest błyskotliwą satyrą na biurokrację, wojskową dyscyplinę i bezsens wojny. Humor łączy się tu z ostrą ironią wymierzoną w absurdalne mechanizmy monarchii austro-węgierskiej. Niezapomnianą kreację tytułowego bohatera stworzył Rudolf Hrušínský, którego interpretacja Szwejka do dziś uznawana jest za jedną z najwybitniejszych ról w historii czeskiego kina. Wizualny styl filmu inspirowany był ilustracjami Josef Lada, które na stałe ukształtowały wizerunek bohatera."
-    },
-    "shareCardPending" : false
-  }, {
-    "_id" : "f43ac1636cecd4f3",
-    "title" : "90. urodziny Pavarottiego. Koncert gwiazd z Arena di Verona 2025",
-    "posterUrl" : "https://www.novekino.pl/multimedia/90_urodziny_pavarottiego/plakat.jpg",
-    "fallbackPosterUrls" : [ "https://bilety.kino.swiebodzin.pl:4433/MSI/ImageData.ashx?id=670&mode=thumb" ],
-    "runtimeMinutes" : 95,
-    "releaseYear" : 2025,
-    "genres" : [ ],
-    "countries" : [ "Włochy" ],
-    "directors" : [ "Luigi Antonini (reżyser)", "Matteo Parmeggiani (dyrygent)" ],
-    "cast" : [ "Andrea Bocelli", "José Carreras", "Plácido Domingo", "Il Volo", "Jonathan Tetelman", "Hauser" ],
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/90.+urodziny+Pavarottiego.+Koncert+gwiazd+z+Arena+di+Verona+2025/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=90.+urodziny+Pavarottiego.+Koncert+gwiazd+z+Arena+di+Verona+2025",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=90.+urodziny+Pavarottiego.+Koncert+gwiazd+z+Arena+di+Verona+2025"
-    },
-    "weightedRating" : 0,
-    "synopsisByCity" : {
-      "warszawa" : "**Jesienią 2025 roku w słynnej Arena di Verona zebrały się największe gwiazdy opery i popu, w tym Andrea Bocelli, Jonathan Tetelman, Angela Gheorghiu i Il Volo, by dać niebywały koncert, który... przywrócił do życia Luciana Pavarottiego, króla tenorów i wielkiego śpiewaka zwykłych ludzi. Jego dwaj żyjący koledzy, Plácido Domingo i José Carreras, zaśpiewali z nim na żywo. Niemożliwe stało się faktem – Trzej Tenorzy powrócili na estradę!**\n\nNajnowszemu koncertowi ku czci jedzącego za trzech śpiewaka o niebiańskim głosie, który wciąż przywołuje na myśl skąpane w słońcu i spaghetti Włochy, nadano znaczący tytuł: „Luciano Pavarotti. Człowiek, który poruszył świat”. To prawda. Choć święcił nieprawdopodobne tryumfy na najważniejszych scenach, począwszy od mediolańskiej La Scali, a skończywszy na nowojorskiej The Metropolitan Opera, Luciano Pavarotti chciał przybliżyć muzykę klasyczną ludziom na całym świecie. To dzięki swym popularyzatorskim koncertom sprawił, że wielu z nas pokochało operę. Na jego występ w Hyde Parku, mimo ulewy, przyszło ponad 100.000 osób, a jego transmitowane przez telewizję występy z Domingiem i Carrerasem (Trzej Tenorzy) sprawiały, że w miastach i miasteczkach zamierał ruch na ulicach.\n\nKoncert z legendarnego werońskiego amfiteatru to wiązanka najsłynniejszych arii operowych i niezaprzeczalnych evergreenów w wykonaniu nie tylko klasycznych śpiewaków, ale też artystów, którzy z powodzeniem łączą muzykę poważną z popową. Oprócz wcześniej wymienionych gwiazd wystąpili również: wiolonczelista Hauser, piosenkarz Umberto Tozzi, a także Vittorio Grigolo, międzynarodowej klasy tenor, który w wieku 13 lat zaśpiewał w Operze Rzymskiej partię Pastuszka w „Tosce” Pucciniego, a rolę Cavaradossiego w tym spektaklu kreował wtedy sam Luciano Pavarotti.",
-      "plock" : "**Jesienią 2025 roku w słynnej Arena di Verona zebrały się największe gwiazdy opery i popu, w tym Andrea Bocelli, Jonathan Tetelman, Angela Gheorghiu i Il Volo, by dać niebywały koncert, który... przywrócił do życia Luciana Pavarottiego, króla tenorów i wielkiego śpiewaka zwykłych ludzi. Jego dwaj żyjący koledzy, Plácido Domingo i José Carreras, zaśpiewali z nim na żywo. Niemożliwe stało się faktem – Trzej Tenorzy powrócili na estradę!**\n\nNajnowszemu koncertowi ku czci jedzącego za trzech śpiewaka o niebiańskim głosie, który wciąż przywołuje na myśl skąpane w słońcu i spaghetti Włochy, nadano znaczący tytuł: „Luciano Pavarotti. Człowiek, który poruszył świat”. To prawda. Choć święcił nieprawdopodobne tryumfy na najważniejszych scenach, począwszy od mediolańskiej La Scali, a skończywszy na nowojorskiej The Metropolitan Opera, Luciano Pavarotti chciał przybliżyć muzykę klasyczną ludziom na całym świecie. To dzięki swym popularyzatorskim koncertom sprawił, że wielu z nas pokochało operę. Na jego występ w Hyde Parku, mimo ulewy, przyszło ponad 100.000 osób, a jego transmitowane przez telewizję występy z Domingiem i Carrerasem (Trzej Tenorzy) sprawiały, że w miastach i miasteczkach zamierał ruch na ulicach.\n\nKoncert z legendarnego werońskiego amfiteatru to wiązanka najsłynniejszych arii operowych i niezaprzeczalnych evergreenów w wykonaniu nie tylko klasycznych śpiewaków, ale też artystów, którzy z powodzeniem łączą muzykę poważną z popową. Oprócz wcześniej wymienionych gwiazd wystąpili również: wiolonczelista Hauser, piosenkarz Umberto Tozzi, a także Vittorio Grigolo, międzynarodowej klasy tenor, który w wieku 13 lat zaśpiewał w Operze Rzymskiej partię Pastuszka w „Tosce” Pucciniego, a rolę Cavaradossiego w tym spektaklu kreował wtedy sam Luciano Pavarotti."
     },
     "shareCardPending" : false
   }, {
@@ -12031,26 +12031,6 @@
       "plock" : "Luca ma 16 lat i wydaje się być szczęśliwą nastolatką w sieci. Razem z rodzicami, wiedzie idealne życie niczym z galerii zdjęć na Instagramie. Kiedy Luca dowiaduje się, że jej rodzice chcą mieć kolejne dziecko, zaczyna się buntować, a starannie wykreowany wizerunek rodziny zaczyna pękać."
     },
     "ageRating" : "13",
-    "shareCardPending" : false
-  }, {
-    "_id" : "f8f0a8cc5fa989d1",
-    "title" : "Maraton horrorów",
-    "originalTitle" : "El ritual de Lily",
-    "posterUrl" : "https://img.helios.pl/pliki/film/rytual-lily/rytual-lily-plakat-833.jpg",
-    "fallbackPosterUrls" : [ ],
-    "runtimeMinutes" : 105,
-    "genres" : [ ],
-    "countries" : [ ],
-    "directors" : [ ],
-    "cast" : [ ],
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Maraton+horror%C3%B3w/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Maraton+horror%C3%B3w",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Maraton+horror%C3%B3w"
-    },
-    "weightedRating" : 0,
-    "synopsisByCity" : { },
     "shareCardPending" : false
   }, {
     "_id" : "f8f27e5aaf2b5cd9",
@@ -19733,6 +19713,26 @@
     "synopsisByCity" : {
       "warszawa" : "Film opowiada historię szefowej kartelu narkotykowego, która pragnie rozpocząć nowe życie jako kobieta.\n\nJeden z najgorętszych tytułów roku, oscarowy faworyt (13 nominacji!) i przebój ostatniego festiwalu w Cannes, skąd „Emilia Pérez” wyjechała z Nagrodą Jury i Nagrodą dla Najlepszej Aktorki, przyznaną – wyjątkowo – całej czteroosobowej kobiecej obsadzie filmu (Zoe Saldaña, Selena Gomez, Karla Sofía Gascón, Adriana Paz). Nowy film Jacques’a Audiarda („Paryż, 13. dzielnica”, „Prorok”) to rozgrywające się w Meksyku porywające widowisko, które nieustannie transformuje: z thrillera w klasyczny melodramat, z musicalu w pełną emocji opowieść w duchu Almodóvara. Bo nieustraszona i roztańczona „Emilia Pérez” jest opowieścią o wolności od wszelkich konwencji i o spektakularnej przemianie, jakiej potrzebuje dziś świat."
     },
+    "shareCardPending" : false
+  }, {
+    "_id" : "fd9942512e2bab79",
+    "title" : "Maraton horrorów",
+    "originalTitle" : "El ritual de Lily",
+    "posterUrl" : "https://img.helios.pl/pliki/film/rytual-lily/rytual-lily-plakat-833.jpg",
+    "fallbackPosterUrls" : [ ],
+    "runtimeMinutes" : 105,
+    "genres" : [ ],
+    "countries" : [ ],
+    "directors" : [ ],
+    "cast" : [ ],
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "metacriticUrl" : "https://www.metacritic.com/search/Maraton+horror%C3%B3w/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Maraton+horror%C3%B3w",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Maraton+horror%C3%B3w"
+    },
+    "weightedRating" : 0,
+    "synopsisByCity" : { },
     "shareCardPending" : false
   }, {
     "_id" : "fd9e99170a2d5828",
@@ -39050,6 +39050,81 @@
     } ],
     "listingKeys" : [ "N\u0000Cinema City Zielona Góra\u0000https://www.cinema-city.pl/filmy/90-urodziny-pavarottiego-koncert-gwiazd-z-arena-di-verona/8131s2r\u000090. urodziny Pavarottiego - Koncert gwiazd z Arena di Verona" ]
   }, {
+    "_id" : "f29a2428d648c793~90urodzinypavarottiegokoncertgwiazdzarenadiverona2025|plock|Kino Przedwiośnie",
+    "filmId" : "f29a2428d648c793~90urodzinypavarottiegokoncertgwiazdzarenadiverona2025",
+    "city" : "plock",
+    "cinema" : "Kino Przedwiośnie",
+    "filmUrl" : "https://www.novekino.pl/kina/przedwiosnie/film.php?id=19648",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-14T18:00:00",
+      "bookingUrl" : "https://przedwiosnie.novekino.pl/msi/default.aspx?event_id=109120&typetran=0&ReturnLink=https://www.novekino.pl/kina/przedwiosnie/repertuar.php",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-07-05T18:00:00",
+      "bookingUrl" : "https://przedwiosnie.novekino.pl/msi/default.aspx?event_id=109121&typetran=0&ReturnLink=https://www.novekino.pl/kina/przedwiosnie/repertuar.php",
+      "format" : [ ]
+    } ],
+    "listingKeys" : [ "N\u0000Kino Przedwiośnie\u0000https://www.novekino.pl/kina/przedwiosnie/film.php?id=19648\u000090. urodziny Pavarottiego - Koncert gwiazd z Arena di Verona 2025" ]
+  }, {
+    "_id" : "f29a2428d648c793~90urodzinypavarottiegokoncertgwiazdzarenadiverona2025|rzeszow|Kino Zorza",
+    "filmId" : "f29a2428d648c793~90urodzinypavarottiegokoncertgwiazdzarenadiverona2025",
+    "city" : "rzeszow",
+    "cinema" : "Kino Zorza",
+    "filmUrl" : "https://www.kinozorza.pl/film/90-urodziny-pavarottiego-koncert-gwiazd-z-arena-di-verona-2025-napisy-2d",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-27T18:00:00",
+      "room" : "Sala widowiskowa",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-07-12T18:00:00",
+      "room" : "Sala widowiskowa",
+      "format" : [ ]
+    } ],
+    "listingKeys" : [ "N\u0000Kino Zorza\u0000https://www.kinozorza.pl/film/90-urodziny-pavarottiego-koncert-gwiazd-z-arena-di-verona-2025-napisy-2d\u000090. urodziny Pavarottiego. Koncert gwiazd z Arena di Verona 2025" ]
+  }, {
+    "_id" : "f29a2428d648c793~90urodzinypavarottiegokoncertgwiazdzarenadiverona2025|swiebodzin|Kino ŚDK",
+    "filmId" : "f29a2428d648c793~90urodzinypavarottiegokoncertgwiazdzarenadiverona2025",
+    "city" : "swiebodzin",
+    "cinema" : "Kino ŚDK",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-19T18:00:00",
+      "bookingUrl" : "https://bilety.kino.swiebodzin.pl:4433/MSI/Default.aspx?event_id=4984&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-06-21T18:00:00",
+      "bookingUrl" : "https://bilety.kino.swiebodzin.pl:4433/MSI/Default.aspx?event_id=4985&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "format" : [ ]
+    } ],
+    "listingKeys" : [ "P\u0000Kino ŚDK\u0000\"90. urodziny Pavarottiego\" Koncert gwiazd z Arena di Verona 2025\u0000" ]
+  }, {
+    "_id" : "f29a2428d648c793~90urodzinypavarottiegokoncertgwiazdzarenadiverona2025|warszawa|Kino Atlantic",
+    "filmId" : "f29a2428d648c793~90urodzinypavarottiegokoncertgwiazdzarenadiverona2025",
+    "city" : "warszawa",
+    "cinema" : "Kino Atlantic",
+    "filmUrl" : "https://www.novekino.pl/kina/atlantic/film.php?id=19648",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-14T17:00:00",
+      "bookingUrl" : "https://atlantic.novekino.pl/msi/default.aspx?event_id=45169&typetran=0&ReturnLink=https://www.novekino.pl/kina/atlantic/dziekujemy.php",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-06-28T15:00:00",
+      "bookingUrl" : "https://atlantic.novekino.pl/msi/default.aspx?event_id=45173&typetran=0&ReturnLink=https://www.novekino.pl/kina/atlantic/dziekujemy.php",
+      "format" : [ ]
+    } ],
+    "listingKeys" : [ "N\u0000Kino Atlantic\u0000https://www.novekino.pl/kina/atlantic/film.php?id=19648\u000090. urodziny Pavarottiego - Koncert gwiazd z Arena di Verona 2025" ]
+  }, {
+    "_id" : "f29a2428d648c793~90urodzinypavarottiegokoncertgwiazdzarenadiverona2025|warszawa|Kino Wisła",
+    "filmId" : "f29a2428d648c793~90urodzinypavarottiegokoncertgwiazdzarenadiverona2025",
+    "city" : "warszawa",
+    "cinema" : "Kino Wisła",
+    "filmUrl" : "https://www.novekino.pl/kina/wisla/film.php?id=19648",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-21T16:00:00",
+      "bookingUrl" : "https://wisla.novekino.pl/msi/default.aspx?event_id=112329&typetran=0&ReturnLink=https://www.novekino.pl/kina/wisla/repertuar.php",
+      "format" : [ ]
+    } ],
+    "listingKeys" : [ "N\u0000Kino Wisła\u0000https://www.novekino.pl/kina/wisla/film.php?id=19648\u000090. urodziny Pavarottiego - Koncert gwiazd z Arena di Verona 2025" ]
+  }, {
     "_id" : "f2aa344240f951f1|tczew|Helios Tczew",
     "filmId" : "f2aa344240f951f1",
     "city" : "tczew",
@@ -53674,81 +53749,6 @@
       "format" : [ ]
     } ],
     "listingKeys" : [ "N\u0000Kinoteka\u0000https://kinoteka.pl/film/dobry-wojak-szwejk/\u0000Dobry wojak Szwejk" ]
-  }, {
-    "_id" : "f43ac1636cecd4f3|plock|Kino Przedwiośnie",
-    "filmId" : "f43ac1636cecd4f3",
-    "city" : "plock",
-    "cinema" : "Kino Przedwiośnie",
-    "filmUrl" : "https://www.novekino.pl/kina/przedwiosnie/film.php?id=19648",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-14T18:00:00",
-      "bookingUrl" : "https://przedwiosnie.novekino.pl/msi/default.aspx?event_id=109120&typetran=0&ReturnLink=https://www.novekino.pl/kina/przedwiosnie/repertuar.php",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-07-05T18:00:00",
-      "bookingUrl" : "https://przedwiosnie.novekino.pl/msi/default.aspx?event_id=109121&typetran=0&ReturnLink=https://www.novekino.pl/kina/przedwiosnie/repertuar.php",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "N\u0000Kino Przedwiośnie\u0000https://www.novekino.pl/kina/przedwiosnie/film.php?id=19648\u000090. urodziny Pavarottiego - Koncert gwiazd z Arena di Verona 2025" ]
-  }, {
-    "_id" : "f43ac1636cecd4f3|rzeszow|Kino Zorza",
-    "filmId" : "f43ac1636cecd4f3",
-    "city" : "rzeszow",
-    "cinema" : "Kino Zorza",
-    "filmUrl" : "https://www.kinozorza.pl/film/90-urodziny-pavarottiego-koncert-gwiazd-z-arena-di-verona-2025-napisy-2d",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-27T18:00:00",
-      "room" : "Sala widowiskowa",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-07-12T18:00:00",
-      "room" : "Sala widowiskowa",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "N\u0000Kino Zorza\u0000https://www.kinozorza.pl/film/90-urodziny-pavarottiego-koncert-gwiazd-z-arena-di-verona-2025-napisy-2d\u000090. urodziny Pavarottiego. Koncert gwiazd z Arena di Verona 2025" ]
-  }, {
-    "_id" : "f43ac1636cecd4f3|swiebodzin|Kino ŚDK",
-    "filmId" : "f43ac1636cecd4f3",
-    "city" : "swiebodzin",
-    "cinema" : "Kino ŚDK",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-19T18:00:00",
-      "bookingUrl" : "https://bilety.kino.swiebodzin.pl:4433/MSI/Default.aspx?event_id=4984&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-21T18:00:00",
-      "bookingUrl" : "https://bilety.kino.swiebodzin.pl:4433/MSI/Default.aspx?event_id=4985&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "P\u0000Kino ŚDK\u0000\"90. urodziny Pavarottiego\" Koncert gwiazd z Arena di Verona 2025\u0000" ]
-  }, {
-    "_id" : "f43ac1636cecd4f3|warszawa|Kino Atlantic",
-    "filmId" : "f43ac1636cecd4f3",
-    "city" : "warszawa",
-    "cinema" : "Kino Atlantic",
-    "filmUrl" : "https://www.novekino.pl/kina/atlantic/film.php?id=19648",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-14T17:00:00",
-      "bookingUrl" : "https://atlantic.novekino.pl/msi/default.aspx?event_id=45169&typetran=0&ReturnLink=https://www.novekino.pl/kina/atlantic/dziekujemy.php",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-28T15:00:00",
-      "bookingUrl" : "https://atlantic.novekino.pl/msi/default.aspx?event_id=45173&typetran=0&ReturnLink=https://www.novekino.pl/kina/atlantic/dziekujemy.php",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "N\u0000Kino Atlantic\u0000https://www.novekino.pl/kina/atlantic/film.php?id=19648\u000090. urodziny Pavarottiego - Koncert gwiazd z Arena di Verona 2025" ]
-  }, {
-    "_id" : "f43ac1636cecd4f3|warszawa|Kino Wisła",
-    "filmId" : "f43ac1636cecd4f3",
-    "city" : "warszawa",
-    "cinema" : "Kino Wisła",
-    "filmUrl" : "https://www.novekino.pl/kina/wisla/film.php?id=19648",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-21T16:00:00",
-      "bookingUrl" : "https://wisla.novekino.pl/msi/default.aspx?event_id=112329&typetran=0&ReturnLink=https://www.novekino.pl/kina/wisla/repertuar.php",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "N\u0000Kino Wisła\u0000https://www.novekino.pl/kina/wisla/film.php?id=19648\u000090. urodziny Pavarottiego - Koncert gwiazd z Arena di Verona 2025" ]
   }, {
     "_id" : "f43bdc0fc350da48|bielsko-biala|Kino Kreska",
     "filmId" : "f43bdc0fc350da48",
@@ -110194,486 +110194,6 @@
     } ],
     "listingKeys" : [ "N\u0000Helios Żory\u0000https://helios.pl/zory/kino-helios/filmy/babystar-4414\u0000Babystar" ]
   }, {
-    "_id" : "f8f0a8cc5fa989d1|bialystok|Helios Alfa",
-    "filmId" : "f8f0a8cc5fa989d1",
-    "city" : "bialystok",
-    "cinema" : "Helios Alfa",
-    "filmUrl" : "https://helios.pl/bialystok/kino-helios-alfa/wydarzenie/maraton-horrorow-26-06-2026-2634",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-26T23:00:00",
-      "bookingUrl" : "https://bilety.helios.pl/screen/33716319-4946-4159-a861-a7fbd64dbe54?cinemaId=3e616682-1048-46d8-954d-a2c8de8e7ee4",
-      "format" : [ "2D", "NAP" ]
-    } ],
-    "listingKeys" : [ "N\u0000Helios Alfa\u0000https://helios.pl/bialystok/kino-helios-alfa/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
-  }, {
-    "_id" : "f8f0a8cc5fa989d1|bialystok|Helios Biała",
-    "filmId" : "f8f0a8cc5fa989d1",
-    "city" : "bialystok",
-    "cinema" : "Helios Biała",
-    "filmUrl" : "https://helios.pl/bialystok/kino-helios-biala/wydarzenie/maraton-horrorow-26-06-2026-2634",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-26T23:00:00",
-      "bookingUrl" : "https://bilety.helios.pl/screen/3fafaa21-7384-4385-8cb6-354df4e9093a?cinemaId=d516a0dd-b0ab-4e15-85b2-0286eaf6dde6",
-      "format" : [ "2D", "NAP" ]
-    } ],
-    "listingKeys" : [ "N\u0000Helios Biała\u0000https://helios.pl/bialystok/kino-helios-biala/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
-  }, {
-    "_id" : "f8f0a8cc5fa989d1|bialystok|Helios Jurowiecka",
-    "filmId" : "f8f0a8cc5fa989d1",
-    "city" : "bialystok",
-    "cinema" : "Helios Jurowiecka",
-    "filmUrl" : "https://helios.pl/bialystok/kino-helios-jurowiecka/wydarzenie/maraton-horrorow-26-06-2026-2634",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-26T23:00:00",
-      "bookingUrl" : "https://bilety.helios.pl/screen/1b57927d-f287-467c-b013-727fbe5e1d2e?cinemaId=5c699a45-d219-4f4e-90f4-4aac0ca44a88",
-      "format" : [ "2D", "NAP" ]
-    } ],
-    "listingKeys" : [ "N\u0000Helios Jurowiecka\u0000https://helios.pl/bialystok/kino-helios-jurowiecka/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
-  }, {
-    "_id" : "f8f0a8cc5fa989d1|bielsko-biala|Helios Bielsko-Biała",
-    "filmId" : "f8f0a8cc5fa989d1",
-    "city" : "bielsko-biala",
-    "cinema" : "Helios Bielsko-Biała",
-    "filmUrl" : "https://helios.pl/bielsko-biala/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-26T23:00:00",
-      "bookingUrl" : "https://bilety.helios.pl/screen/2e59f6c9-282a-41a9-8da5-5f72474bf5e6?cinemaId=cb932ba4-3dfd-4946-b3fd-1687603f78f7",
-      "format" : [ "2D", "NAP" ]
-    } ],
-    "listingKeys" : [ "N\u0000Helios Bielsko-Biała\u0000https://helios.pl/bielsko-biala/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
-  }, {
-    "_id" : "f8f0a8cc5fa989d1|bydgoszcz|Helios Bydgoszcz",
-    "filmId" : "f8f0a8cc5fa989d1",
-    "city" : "bydgoszcz",
-    "cinema" : "Helios Bydgoszcz",
-    "filmUrl" : "https://helios.pl/bydgoszcz/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-26T23:00:00",
-      "bookingUrl" : "https://bilety.helios.pl/screen/8c6ef46b-75af-4d17-88fc-86e9205a622c?cinemaId=8acb28a0-2e4b-4beb-a13a-bb97e17085cc",
-      "format" : [ "2D", "NAP" ]
-    } ],
-    "listingKeys" : [ "N\u0000Helios Bydgoszcz\u0000https://helios.pl/bydgoszcz/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
-  }, {
-    "_id" : "f8f0a8cc5fa989d1|dabrowa-gornicza|Helios Dąbrowa Górnicza",
-    "filmId" : "f8f0a8cc5fa989d1",
-    "city" : "dabrowa-gornicza",
-    "cinema" : "Helios Dąbrowa Górnicza",
-    "filmUrl" : "https://helios.pl/dabrowa-gornicza/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-26T23:00:00",
-      "bookingUrl" : "https://bilety.helios.pl/screen/0daf0369-6501-44f4-ba56-4531cb27a9c7?cinemaId=d61fc6d9-bac1-44f0-a34a-00868e694c9b",
-      "format" : [ "2D", "NAP" ]
-    } ],
-    "listingKeys" : [ "N\u0000Helios Dąbrowa Górnicza\u0000https://helios.pl/dabrowa-gornicza/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
-  }, {
-    "_id" : "f8f0a8cc5fa989d1|gorzow-wielkopolski|Helios Gorzów Wielkopolski",
-    "filmId" : "f8f0a8cc5fa989d1",
-    "city" : "gorzow-wielkopolski",
-    "cinema" : "Helios Gorzów Wielkopolski",
-    "filmUrl" : "https://helios.pl/gorzow-wielkopolski/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-26T23:00:00",
-      "bookingUrl" : "https://bilety.helios.pl/screen/cf2b95d7-4b40-4cd5-8676-b836cc795353?cinemaId=6f51c391-4d6d-4aeb-bf78-6c61b676865f",
-      "format" : [ "2D", "NAP" ]
-    } ],
-    "listingKeys" : [ "N\u0000Helios Gorzów Wielkopolski\u0000https://helios.pl/gorzow-wielkopolski/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
-  }, {
-    "_id" : "f8f0a8cc5fa989d1|jelenia-gora|Helios Jelenia Góra",
-    "filmId" : "f8f0a8cc5fa989d1",
-    "city" : "jelenia-gora",
-    "cinema" : "Helios Jelenia Góra",
-    "filmUrl" : "https://helios.pl/jelenia-gora/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-26T23:00:00",
-      "bookingUrl" : "https://bilety.helios.pl/screen/72dc3a89-eb3d-4338-a08f-9aa09e398e64?cinemaId=88c70097-4f24-49b5-bd35-c752e3543d4e",
-      "format" : [ "2D", "NAP" ]
-    } ],
-    "listingKeys" : [ "N\u0000Helios Jelenia Góra\u0000https://helios.pl/jelenia-gora/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
-  }, {
-    "_id" : "f8f0a8cc5fa989d1|kalisz|Helios Kalisz",
-    "filmId" : "f8f0a8cc5fa989d1",
-    "city" : "kalisz",
-    "cinema" : "Helios Kalisz",
-    "filmUrl" : "https://helios.pl/kalisz/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-26T23:00:00",
-      "bookingUrl" : "https://bilety.helios.pl/screen/aa76c632-6f0d-4ff3-a602-d5b2404da76a?cinemaId=99d1a365-3dad-4c9b-a9e9-6e6177630708",
-      "format" : [ "2D", "NAP" ]
-    } ],
-    "listingKeys" : [ "N\u0000Helios Kalisz\u0000https://helios.pl/kalisz/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
-  }, {
-    "_id" : "f8f0a8cc5fa989d1|katowice|Helios Katowice",
-    "filmId" : "f8f0a8cc5fa989d1",
-    "city" : "katowice",
-    "cinema" : "Helios Katowice",
-    "filmUrl" : "https://helios.pl/katowice/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-26T23:00:00",
-      "bookingUrl" : "https://bilety.helios.pl/screen/b058c29b-f45a-4745-8bf0-1a7767d629fb?cinemaId=b661164e-04d4-41af-bdca-0f9a745c3898",
-      "format" : [ "2D", "NAP" ]
-    } ],
-    "listingKeys" : [ "N\u0000Helios Katowice\u0000https://helios.pl/katowice/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
-  }, {
-    "_id" : "f8f0a8cc5fa989d1|kedzierzyn-kozle|Helios Kędzierzyn-Koźle",
-    "filmId" : "f8f0a8cc5fa989d1",
-    "city" : "kedzierzyn-kozle",
-    "cinema" : "Helios Kędzierzyn-Koźle",
-    "filmUrl" : "https://helios.pl/kedzierzyn-kozle/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-26T23:00:00",
-      "bookingUrl" : "https://bilety.helios.pl/screen/18478bc7-79d9-4095-a92c-dc9f0338c8bb?cinemaId=cf760fa9-32ba-4541-ae07-ef14532a911d",
-      "format" : [ "2D", "NAP" ]
-    } ],
-    "listingKeys" : [ "N\u0000Helios Kędzierzyn-Koźle\u0000https://helios.pl/kedzierzyn-kozle/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
-  }, {
-    "_id" : "f8f0a8cc5fa989d1|kielce|Helios Kielce",
-    "filmId" : "f8f0a8cc5fa989d1",
-    "city" : "kielce",
-    "cinema" : "Helios Kielce",
-    "filmUrl" : "https://helios.pl/kielce/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-26T23:00:00",
-      "bookingUrl" : "https://bilety.helios.pl/screen/e8aa69c6-8fac-4a9e-b1a5-7d97e18bf63b?cinemaId=d01162e6-31a4-41b9-97cd-1ef7707522fe",
-      "format" : [ "2D", "NAP" ]
-    } ],
-    "listingKeys" : [ "N\u0000Helios Kielce\u0000https://helios.pl/kielce/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
-  }, {
-    "_id" : "f8f0a8cc5fa989d1|konin|Helios Konin",
-    "filmId" : "f8f0a8cc5fa989d1",
-    "city" : "konin",
-    "cinema" : "Helios Konin",
-    "filmUrl" : "https://helios.pl/konin/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-26T23:00:00",
-      "bookingUrl" : "https://bilety.helios.pl/screen/2f8886f9-3f78-4cd2-a82f-7c8ab0bfd796?cinemaId=0fe6ba65-dc83-49c1-8f01-bef8675b9927",
-      "format" : [ "2D", "NAP" ]
-    } ],
-    "listingKeys" : [ "N\u0000Helios Konin\u0000https://helios.pl/konin/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
-  }, {
-    "_id" : "f8f0a8cc5fa989d1|koszalin|Helios Koszalin",
-    "filmId" : "f8f0a8cc5fa989d1",
-    "city" : "koszalin",
-    "cinema" : "Helios Koszalin",
-    "filmUrl" : "https://helios.pl/koszalin/kino-helios-galeria-emka/wydarzenie/maraton-horrorow-26-06-2026-2634",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-26T23:00:00",
-      "bookingUrl" : "https://bilety.helios.pl/screen/1e51ea97-1975-42a7-8ba6-d7f82146d508?cinemaId=4b58d474-bf12-405f-b76d-f1f88cae2b07",
-      "format" : [ "2D", "NAP" ]
-    } ],
-    "listingKeys" : [ "N\u0000Helios Koszalin\u0000https://helios.pl/koszalin/kino-helios-galeria-emka/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
-  }, {
-    "_id" : "f8f0a8cc5fa989d1|krosno|Helios Krosno",
-    "filmId" : "f8f0a8cc5fa989d1",
-    "city" : "krosno",
-    "cinema" : "Helios Krosno",
-    "filmUrl" : "https://helios.pl/krosno/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-26T23:00:00",
-      "bookingUrl" : "https://bilety.helios.pl/screen/d3170088-3a0f-45d3-89aa-3b45c09a44a1?cinemaId=be832e9d-5b79-47ef-a0b0-1b465349ce89",
-      "format" : [ "2D", "NAP" ]
-    } ],
-    "listingKeys" : [ "N\u0000Helios Krosno\u0000https://helios.pl/krosno/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
-  }, {
-    "_id" : "f8f0a8cc5fa989d1|legnica|Helios Legnica",
-    "filmId" : "f8f0a8cc5fa989d1",
-    "city" : "legnica",
-    "cinema" : "Helios Legnica",
-    "filmUrl" : "https://helios.pl/legnica/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-26T23:00:00",
-      "bookingUrl" : "https://bilety.helios.pl/screen/51ca9706-a7c5-45fa-bc6c-95c4250e9b0d?cinemaId=34b23726-7c53-483b-a0e5-13dfca6075ba",
-      "format" : [ "2D", "NAP" ]
-    } ],
-    "listingKeys" : [ "N\u0000Helios Legnica\u0000https://helios.pl/legnica/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
-  }, {
-    "_id" : "f8f0a8cc5fa989d1|lodz|Helios Łódź",
-    "filmId" : "f8f0a8cc5fa989d1",
-    "city" : "lodz",
-    "cinema" : "Helios Łódź",
-    "filmUrl" : "https://helios.pl/lodz/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-26T23:00:00",
-      "bookingUrl" : "https://bilety.helios.pl/screen/377ade83-96ac-4a3e-bcdd-41cac72deb06?cinemaId=46055d88-5f34-44a0-9584-b041caa71e26",
-      "format" : [ "2D", "NAP" ]
-    } ],
-    "listingKeys" : [ "N\u0000Helios Łódź\u0000https://helios.pl/lodz/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
-  }, {
-    "_id" : "f8f0a8cc5fa989d1|lubin|Helios Lubin",
-    "filmId" : "f8f0a8cc5fa989d1",
-    "city" : "lubin",
-    "cinema" : "Helios Lubin",
-    "filmUrl" : "https://helios.pl/lubin/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-26T23:00:00",
-      "bookingUrl" : "https://bilety.helios.pl/screen/cdf03a39-c371-4889-9106-17de85da4d5c?cinemaId=71192dbe-94ef-43c0-9079-ae7c9747a2f4",
-      "format" : [ "2D", "NAP" ]
-    } ],
-    "listingKeys" : [ "N\u0000Helios Lubin\u0000https://helios.pl/lubin/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
-  }, {
-    "_id" : "f8f0a8cc5fa989d1|nowy-sacz|Helios Nowy Sącz",
-    "filmId" : "f8f0a8cc5fa989d1",
-    "city" : "nowy-sacz",
-    "cinema" : "Helios Nowy Sącz",
-    "filmUrl" : "https://helios.pl/nowy-sacz/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-26T23:00:00",
-      "bookingUrl" : "https://bilety.helios.pl/screen/91c5b95c-99c1-4524-ae67-64af85ff4502?cinemaId=223cd021-5821-481a-9d04-31511fb44042",
-      "format" : [ "2D", "NAP" ]
-    } ],
-    "listingKeys" : [ "N\u0000Helios Nowy Sącz\u0000https://helios.pl/nowy-sacz/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
-  }, {
-    "_id" : "f8f0a8cc5fa989d1|olsztyn|Helios Olsztyn",
-    "filmId" : "f8f0a8cc5fa989d1",
-    "city" : "olsztyn",
-    "cinema" : "Helios Olsztyn",
-    "filmUrl" : "https://helios.pl/olsztyn/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-26T23:00:00",
-      "bookingUrl" : "https://bilety.helios.pl/screen/1c5bdcad-1c0f-45bf-8e73-d051f325b6aa?cinemaId=6f3ef265-ef99-48e9-84f4-ed862badb756",
-      "format" : [ "2D", "NAP" ]
-    } ],
-    "listingKeys" : [ "N\u0000Helios Olsztyn\u0000https://helios.pl/olsztyn/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
-  }, {
-    "_id" : "f8f0a8cc5fa989d1|opole|Helios Karolinka",
-    "filmId" : "f8f0a8cc5fa989d1",
-    "city" : "opole",
-    "cinema" : "Helios Karolinka",
-    "filmUrl" : "https://helios.pl/opole/kino-helios-karolinka/wydarzenie/maraton-horrorow-26-06-2026-2634",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-26T23:00:00",
-      "bookingUrl" : "https://bilety.helios.pl/screen/1bcb2d1c-5cea-4a57-aa76-230269865b7a?cinemaId=ec0ba789-c70b-42e7-8adf-8c9595888672",
-      "format" : [ "2D", "NAP" ]
-    } ],
-    "listingKeys" : [ "N\u0000Helios Karolinka\u0000https://helios.pl/opole/kino-helios-karolinka/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
-  }, {
-    "_id" : "f8f0a8cc5fa989d1|opole|Helios Solaris",
-    "filmId" : "f8f0a8cc5fa989d1",
-    "city" : "opole",
-    "cinema" : "Helios Solaris",
-    "filmUrl" : "https://helios.pl/opole/kino-helios-solaris/wydarzenie/maraton-horrorow-26-06-2026-2634",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-26T23:00:00",
-      "bookingUrl" : "https://bilety.helios.pl/screen/e9ccb961-0a41-4aab-8d8c-245bcf68171a?cinemaId=d01e6010-d098-4899-951b-a7b7208df75a",
-      "format" : [ "2D", "NAP" ]
-    } ],
-    "listingKeys" : [ "N\u0000Helios Solaris\u0000https://helios.pl/opole/kino-helios-solaris/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
-  }, {
-    "_id" : "f8f0a8cc5fa989d1|ostrow-wielkopolski|Helios Ostrów Wlkp.",
-    "filmId" : "f8f0a8cc5fa989d1",
-    "city" : "ostrow-wielkopolski",
-    "cinema" : "Helios Ostrów Wlkp.",
-    "filmUrl" : "https://helios.pl/ostrow-wielkopolski/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-26T23:00:00",
-      "bookingUrl" : "https://bilety.helios.pl/screen/3b89e6a9-fc5d-412d-928a-2653139a0480?cinemaId=1a433348-f89c-4b18-bfa4-4332e3bbf0c8",
-      "format" : [ "2D", "NAP" ]
-    } ],
-    "listingKeys" : [ "N\u0000Helios Ostrów Wlkp.\u0000https://helios.pl/ostrow-wielkopolski/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
-  }, {
-    "_id" : "f8f0a8cc5fa989d1|plock|Helios Płock",
-    "filmId" : "f8f0a8cc5fa989d1",
-    "city" : "plock",
-    "cinema" : "Helios Płock",
-    "filmUrl" : "https://helios.pl/plock/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-26T23:00:00",
-      "bookingUrl" : "https://bilety.helios.pl/screen/4da319c0-55b2-4bfc-a07a-4582f196b250?cinemaId=4623d4a3-d0be-49d8-82d8-ef16a67a848c",
-      "format" : [ "2D", "NAP" ]
-    } ],
-    "listingKeys" : [ "N\u0000Helios Płock\u0000https://helios.pl/plock/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
-  }, {
-    "_id" : "f8f0a8cc5fa989d1|poznan|Helios Posnania",
-    "filmId" : "f8f0a8cc5fa989d1",
-    "city" : "poznan",
-    "cinema" : "Helios Posnania",
-    "filmUrl" : "https://helios.pl/poznan/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-26T23:00:00",
-      "bookingUrl" : "https://bilety.helios.pl/screen/5851a701-01a0-4fd4-a2a0-2587fcc998f8?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2",
-      "format" : [ "2D", "NAP" ]
-    } ],
-    "listingKeys" : [ "N\u0000Helios Posnania\u0000https://helios.pl/poznan/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
-  }, {
-    "_id" : "f8f0a8cc5fa989d1|przemysl|Helios Przemyśl",
-    "filmId" : "f8f0a8cc5fa989d1",
-    "city" : "przemysl",
-    "cinema" : "Helios Przemyśl",
-    "filmUrl" : "https://helios.pl/przemysl/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-26T23:00:00",
-      "bookingUrl" : "https://bilety.helios.pl/screen/399cfb96-8af1-4e38-9caf-63492548b5af?cinemaId=19a14011-0e44-43cd-9d12-8e8a16e9d744",
-      "format" : [ "2D", "NAP" ]
-    } ],
-    "listingKeys" : [ "N\u0000Helios Przemyśl\u0000https://helios.pl/przemysl/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
-  }, {
-    "_id" : "f8f0a8cc5fa989d1|radom|Helios Radom",
-    "filmId" : "f8f0a8cc5fa989d1",
-    "city" : "radom",
-    "cinema" : "Helios Radom",
-    "filmUrl" : "https://helios.pl/radom/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-26T23:00:00",
-      "bookingUrl" : "https://bilety.helios.pl/screen/8c6ef46b-75af-4d17-88fc-86e9205a622c?cinemaId=287fc8f4-7bee-49b4-afcd-b22b52e520b9",
-      "format" : [ "2D", "NAP" ]
-    } ],
-    "listingKeys" : [ "N\u0000Helios Radom\u0000https://helios.pl/radom/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
-  }, {
-    "_id" : "f8f0a8cc5fa989d1|rzeszow|Helios Rzeszów",
-    "filmId" : "f8f0a8cc5fa989d1",
-    "city" : "rzeszow",
-    "cinema" : "Helios Rzeszów",
-    "filmUrl" : "https://helios.pl/rzeszow/kino-helios-galeria/wydarzenie/maraton-horrorow-26-06-2026-2634",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-26T23:00:00",
-      "bookingUrl" : "https://bilety.helios.pl/screen/5057c234-f0bb-4cea-beef-ec4d9dcee771?cinemaId=409eac78-9718-4fa3-b590-d1e1fb60892d",
-      "format" : [ "2D", "NAP" ]
-    } ],
-    "listingKeys" : [ "N\u0000Helios Rzeszów\u0000https://helios.pl/rzeszow/kino-helios-galeria/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
-  }, {
-    "_id" : "f8f0a8cc5fa989d1|sosnowiec|Helios Sosnowiec",
-    "filmId" : "f8f0a8cc5fa989d1",
-    "city" : "sosnowiec",
-    "cinema" : "Helios Sosnowiec",
-    "filmUrl" : "https://helios.pl/sosnowiec/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-26T23:00:00",
-      "bookingUrl" : "https://bilety.helios.pl/screen/8c6ef46b-75af-4d17-88fc-86e9205a622c?cinemaId=880f2a3a-e9e8-447c-95ca-72c49ca38a1e",
-      "format" : [ "2D", "NAP" ]
-    } ],
-    "listingKeys" : [ "N\u0000Helios Sosnowiec\u0000https://helios.pl/sosnowiec/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
-  }, {
-    "_id" : "f8f0a8cc5fa989d1|starachowice|Helios Starachowice",
-    "filmId" : "f8f0a8cc5fa989d1",
-    "city" : "starachowice",
-    "cinema" : "Helios Starachowice",
-    "filmUrl" : "https://helios.pl/starachowice/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-26T23:00:00",
-      "bookingUrl" : "https://bilety.helios.pl/screen/679d70c8-b0b3-462c-ac2e-2c4f3504d230?cinemaId=9906f18b-ed73-41d8-a35e-bfcda930b2d3",
-      "format" : [ "2D", "NAP" ]
-    } ],
-    "listingKeys" : [ "N\u0000Helios Starachowice\u0000https://helios.pl/starachowice/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
-  }, {
-    "_id" : "f8f0a8cc5fa989d1|szczecin|Helios Kupiec",
-    "filmId" : "f8f0a8cc5fa989d1",
-    "city" : "szczecin",
-    "cinema" : "Helios Kupiec",
-    "filmUrl" : "https://helios.pl/szczecin/kino-helios-chr-kupiec/wydarzenie/maraton-horrorow-26-06-2026-2634",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-26T23:00:00",
-      "bookingUrl" : "https://bilety.helios.pl/screen/f66f520e-d9c5-4547-84de-f7ef8c2137d1?cinemaId=3e60a454-c438-4c9b-b24f-7c6feff3b5ed",
-      "format" : [ "2D", "NAP" ]
-    } ],
-    "listingKeys" : [ "N\u0000Helios Kupiec\u0000https://helios.pl/szczecin/kino-helios-chr-kupiec/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
-  }, {
-    "_id" : "f8f0a8cc5fa989d1|szczecin|Helios Outlet Park",
-    "filmId" : "f8f0a8cc5fa989d1",
-    "city" : "szczecin",
-    "cinema" : "Helios Outlet Park",
-    "filmUrl" : "https://helios.pl/szczecin/helios-outlet-park/wydarzenie/maraton-horrorow-26-06-2026-2634",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-26T23:00:00",
-      "bookingUrl" : "https://bilety.helios.pl/screen/c0047411-822a-47f9-9030-45a3e4bb8cd9?cinemaId=b898bbed-7ab6-428f-a57b-26d6b6e6a04b",
-      "format" : [ "2D", "NAP" ]
-    } ],
-    "listingKeys" : [ "N\u0000Helios Outlet Park\u0000https://helios.pl/szczecin/helios-outlet-park/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
-  }, {
-    "_id" : "f8f0a8cc5fa989d1|tczew|Helios Tczew",
-    "filmId" : "f8f0a8cc5fa989d1",
-    "city" : "tczew",
-    "cinema" : "Helios Tczew",
-    "filmUrl" : "https://helios.pl/tczew/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-26T23:00:00",
-      "bookingUrl" : "https://bilety.helios.pl/screen/92b7f50e-1fdf-49da-8c89-7b90adc1d03b?cinemaId=58fbf23b-c605-4185-b1e9-6a3c5d7878ce",
-      "format" : [ "2D", "NAP" ]
-    } ],
-    "listingKeys" : [ "N\u0000Helios Tczew\u0000https://helios.pl/tczew/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
-  }, {
-    "_id" : "f8f0a8cc5fa989d1|trojmiasto|Helios Forum",
-    "filmId" : "f8f0a8cc5fa989d1",
-    "city" : "trojmiasto",
-    "cinema" : "Helios Forum",
-    "filmUrl" : "https://helios.pl/gdansk/kino-helios-forum/wydarzenie/maraton-horrorow-26-06-2026-2634",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-26T23:00:00",
-      "bookingUrl" : "https://bilety.helios.pl/screen/c52c9ad5-c2da-4d5d-bb5e-859038eb4146?cinemaId=60cfe883-55aa-4e28-be7f-233f589a34cb",
-      "format" : [ "2D", "NAP" ]
-    } ],
-    "listingKeys" : [ "N\u0000Helios Forum\u0000https://helios.pl/gdansk/kino-helios-forum/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
-  }, {
-    "_id" : "f8f0a8cc5fa989d1|trojmiasto|Helios Metropolia",
-    "filmId" : "f8f0a8cc5fa989d1",
-    "city" : "trojmiasto",
-    "cinema" : "Helios Metropolia",
-    "filmUrl" : "https://helios.pl/gdansk/kino-helios-metropolia/wydarzenie/maraton-horrorow-26-06-2026-2634",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-26T23:00:00",
-      "bookingUrl" : "https://bilety.helios.pl/screen/951a72fd-9907-4839-bafc-7e80ce4952df?cinemaId=d09e2607-693f-479f-8deb-59a18add40eb",
-      "format" : [ "2D", "NAP" ]
-    } ],
-    "listingKeys" : [ "N\u0000Helios Metropolia\u0000https://helios.pl/gdansk/kino-helios-metropolia/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
-  }, {
-    "_id" : "f8f0a8cc5fa989d1|trojmiasto|Helios Riviera",
-    "filmId" : "f8f0a8cc5fa989d1",
-    "city" : "trojmiasto",
-    "cinema" : "Helios Riviera",
-    "filmUrl" : "https://helios.pl/gdynia/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-26T23:00:00",
-      "bookingUrl" : "https://bilety.helios.pl/screen/418b76ea-fade-43e5-a607-6137141bac89?cinemaId=0bdb21cd-cf7d-4efb-829f-d1913a666b83",
-      "format" : [ "2D", "NAP" ]
-    } ],
-    "listingKeys" : [ "N\u0000Helios Riviera\u0000https://helios.pl/gdynia/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
-  }, {
-    "_id" : "f8f0a8cc5fa989d1|warszawa|Helios Blue City",
-    "filmId" : "f8f0a8cc5fa989d1",
-    "city" : "warszawa",
-    "cinema" : "Helios Blue City",
-    "filmUrl" : "https://helios.pl/warszawa/kino-helios-blue-city/wydarzenie/maraton-horrorow-26-06-2026-2634",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-26T23:00:00",
-      "bookingUrl" : "https://bilety.helios.pl/screen/e2b1f57d-aedc-4828-9e5e-617ff37ef107?cinemaId=4ca060df-c4f2-4157-8905-bf46527aae58",
-      "format" : [ "2D", "NAP" ]
-    } ],
-    "listingKeys" : [ "N\u0000Helios Blue City\u0000https://helios.pl/warszawa/kino-helios-blue-city/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
-  }, {
-    "_id" : "f8f0a8cc5fa989d1|wroclaw|Helios Aleja Bielany",
-    "filmId" : "f8f0a8cc5fa989d1",
-    "city" : "wroclaw",
-    "cinema" : "Helios Aleja Bielany",
-    "filmUrl" : "https://helios.pl/wroclaw/kino-helios-aleja-bielany/wydarzenie/maraton-horrorow-26-06-2026-2634",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-26T23:00:00",
-      "bookingUrl" : "https://bilety.helios.pl/screen/1caf2b51-d100-4d66-88ca-3b672db4149b?cinemaId=7582cee7-2815-4897-8715-e90a5b99d2e4",
-      "format" : [ "2D", "NAP" ]
-    } ],
-    "listingKeys" : [ "N\u0000Helios Aleja Bielany\u0000https://helios.pl/wroclaw/kino-helios-aleja-bielany/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
-  }, {
-    "_id" : "f8f0a8cc5fa989d1|wroclaw|Helios Magnolia Park",
-    "filmId" : "f8f0a8cc5fa989d1",
-    "city" : "wroclaw",
-    "cinema" : "Helios Magnolia Park",
-    "filmUrl" : "https://helios.pl/wroclaw/kino-helios-magnolia/wydarzenie/maraton-horrorow-26-06-2026-2634",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-26T23:00:00",
-      "bookingUrl" : "https://bilety.helios.pl/screen/3d04f838-8d0c-4bd6-948c-12ea7cc657e6?cinemaId=c21c6e3b-874c-4432-b44e-a155ec9102cd",
-      "format" : [ "2D", "NAP" ]
-    } ],
-    "listingKeys" : [ "N\u0000Helios Magnolia Park\u0000https://helios.pl/wroclaw/kino-helios-magnolia/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
-  }, {
-    "_id" : "f8f0a8cc5fa989d1|zory|Helios Żory",
-    "filmId" : "f8f0a8cc5fa989d1",
-    "city" : "zory",
-    "cinema" : "Helios Żory",
-    "filmUrl" : "https://helios.pl/zory/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-26T23:00:00",
-      "bookingUrl" : "https://bilety.helios.pl/screen/645db05f-9000-4d1c-961c-043aa648f79f?cinemaId=d116bcc0-8675-41d8-b0b0-3e7155df9ffc",
-      "format" : [ "2D", "NAP" ]
-    } ],
-    "listingKeys" : [ "N\u0000Helios Żory\u0000https://helios.pl/zory/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
-  }, {
     "_id" : "f8f27e5aaf2b5cd9|warszawa|Kino Kultura",
     "filmId" : "f8f27e5aaf2b5cd9",
     "city" : "warszawa",
@@ -163164,6 +162684,486 @@
       "format" : [ ]
     } ],
     "listingKeys" : [ "N\u0000Służewski Dom Kultury\u0000https://sdk.waw.pl/wydarzenia/rodzaj-wydarzenia/kino/emilia-perez-kino\u0000Emilia Perez" ]
+  }, {
+    "_id" : "fd9942512e2bab79|bialystok|Helios Alfa",
+    "filmId" : "fd9942512e2bab79",
+    "city" : "bialystok",
+    "cinema" : "Helios Alfa",
+    "filmUrl" : "https://helios.pl/bialystok/kino-helios-alfa/wydarzenie/maraton-horrorow-26-06-2026-2634",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-26T23:00:00",
+      "bookingUrl" : "https://bilety.helios.pl/screen/33716319-4946-4159-a861-a7fbd64dbe54?cinemaId=3e616682-1048-46d8-954d-a2c8de8e7ee4",
+      "format" : [ "2D", "NAP" ]
+    } ],
+    "listingKeys" : [ "N\u0000Helios Alfa\u0000https://helios.pl/bialystok/kino-helios-alfa/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
+  }, {
+    "_id" : "fd9942512e2bab79|bialystok|Helios Biała",
+    "filmId" : "fd9942512e2bab79",
+    "city" : "bialystok",
+    "cinema" : "Helios Biała",
+    "filmUrl" : "https://helios.pl/bialystok/kino-helios-biala/wydarzenie/maraton-horrorow-26-06-2026-2634",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-26T23:00:00",
+      "bookingUrl" : "https://bilety.helios.pl/screen/3fafaa21-7384-4385-8cb6-354df4e9093a?cinemaId=d516a0dd-b0ab-4e15-85b2-0286eaf6dde6",
+      "format" : [ "2D", "NAP" ]
+    } ],
+    "listingKeys" : [ "N\u0000Helios Biała\u0000https://helios.pl/bialystok/kino-helios-biala/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
+  }, {
+    "_id" : "fd9942512e2bab79|bialystok|Helios Jurowiecka",
+    "filmId" : "fd9942512e2bab79",
+    "city" : "bialystok",
+    "cinema" : "Helios Jurowiecka",
+    "filmUrl" : "https://helios.pl/bialystok/kino-helios-jurowiecka/wydarzenie/maraton-horrorow-26-06-2026-2634",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-26T23:00:00",
+      "bookingUrl" : "https://bilety.helios.pl/screen/1b57927d-f287-467c-b013-727fbe5e1d2e?cinemaId=5c699a45-d219-4f4e-90f4-4aac0ca44a88",
+      "format" : [ "2D", "NAP" ]
+    } ],
+    "listingKeys" : [ "N\u0000Helios Jurowiecka\u0000https://helios.pl/bialystok/kino-helios-jurowiecka/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
+  }, {
+    "_id" : "fd9942512e2bab79|bielsko-biala|Helios Bielsko-Biała",
+    "filmId" : "fd9942512e2bab79",
+    "city" : "bielsko-biala",
+    "cinema" : "Helios Bielsko-Biała",
+    "filmUrl" : "https://helios.pl/bielsko-biala/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-26T23:00:00",
+      "bookingUrl" : "https://bilety.helios.pl/screen/2e59f6c9-282a-41a9-8da5-5f72474bf5e6?cinemaId=cb932ba4-3dfd-4946-b3fd-1687603f78f7",
+      "format" : [ "2D", "NAP" ]
+    } ],
+    "listingKeys" : [ "N\u0000Helios Bielsko-Biała\u0000https://helios.pl/bielsko-biala/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
+  }, {
+    "_id" : "fd9942512e2bab79|bydgoszcz|Helios Bydgoszcz",
+    "filmId" : "fd9942512e2bab79",
+    "city" : "bydgoszcz",
+    "cinema" : "Helios Bydgoszcz",
+    "filmUrl" : "https://helios.pl/bydgoszcz/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-26T23:00:00",
+      "bookingUrl" : "https://bilety.helios.pl/screen/8c6ef46b-75af-4d17-88fc-86e9205a622c?cinemaId=8acb28a0-2e4b-4beb-a13a-bb97e17085cc",
+      "format" : [ "2D", "NAP" ]
+    } ],
+    "listingKeys" : [ "N\u0000Helios Bydgoszcz\u0000https://helios.pl/bydgoszcz/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
+  }, {
+    "_id" : "fd9942512e2bab79|dabrowa-gornicza|Helios Dąbrowa Górnicza",
+    "filmId" : "fd9942512e2bab79",
+    "city" : "dabrowa-gornicza",
+    "cinema" : "Helios Dąbrowa Górnicza",
+    "filmUrl" : "https://helios.pl/dabrowa-gornicza/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-26T23:00:00",
+      "bookingUrl" : "https://bilety.helios.pl/screen/0daf0369-6501-44f4-ba56-4531cb27a9c7?cinemaId=d61fc6d9-bac1-44f0-a34a-00868e694c9b",
+      "format" : [ "2D", "NAP" ]
+    } ],
+    "listingKeys" : [ "N\u0000Helios Dąbrowa Górnicza\u0000https://helios.pl/dabrowa-gornicza/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
+  }, {
+    "_id" : "fd9942512e2bab79|gorzow-wielkopolski|Helios Gorzów Wielkopolski",
+    "filmId" : "fd9942512e2bab79",
+    "city" : "gorzow-wielkopolski",
+    "cinema" : "Helios Gorzów Wielkopolski",
+    "filmUrl" : "https://helios.pl/gorzow-wielkopolski/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-26T23:00:00",
+      "bookingUrl" : "https://bilety.helios.pl/screen/cf2b95d7-4b40-4cd5-8676-b836cc795353?cinemaId=6f51c391-4d6d-4aeb-bf78-6c61b676865f",
+      "format" : [ "2D", "NAP" ]
+    } ],
+    "listingKeys" : [ "N\u0000Helios Gorzów Wielkopolski\u0000https://helios.pl/gorzow-wielkopolski/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
+  }, {
+    "_id" : "fd9942512e2bab79|jelenia-gora|Helios Jelenia Góra",
+    "filmId" : "fd9942512e2bab79",
+    "city" : "jelenia-gora",
+    "cinema" : "Helios Jelenia Góra",
+    "filmUrl" : "https://helios.pl/jelenia-gora/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-26T23:00:00",
+      "bookingUrl" : "https://bilety.helios.pl/screen/72dc3a89-eb3d-4338-a08f-9aa09e398e64?cinemaId=88c70097-4f24-49b5-bd35-c752e3543d4e",
+      "format" : [ "2D", "NAP" ]
+    } ],
+    "listingKeys" : [ "N\u0000Helios Jelenia Góra\u0000https://helios.pl/jelenia-gora/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
+  }, {
+    "_id" : "fd9942512e2bab79|kalisz|Helios Kalisz",
+    "filmId" : "fd9942512e2bab79",
+    "city" : "kalisz",
+    "cinema" : "Helios Kalisz",
+    "filmUrl" : "https://helios.pl/kalisz/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-26T23:00:00",
+      "bookingUrl" : "https://bilety.helios.pl/screen/aa76c632-6f0d-4ff3-a602-d5b2404da76a?cinemaId=99d1a365-3dad-4c9b-a9e9-6e6177630708",
+      "format" : [ "2D", "NAP" ]
+    } ],
+    "listingKeys" : [ "N\u0000Helios Kalisz\u0000https://helios.pl/kalisz/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
+  }, {
+    "_id" : "fd9942512e2bab79|katowice|Helios Katowice",
+    "filmId" : "fd9942512e2bab79",
+    "city" : "katowice",
+    "cinema" : "Helios Katowice",
+    "filmUrl" : "https://helios.pl/katowice/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-26T23:00:00",
+      "bookingUrl" : "https://bilety.helios.pl/screen/b058c29b-f45a-4745-8bf0-1a7767d629fb?cinemaId=b661164e-04d4-41af-bdca-0f9a745c3898",
+      "format" : [ "2D", "NAP" ]
+    } ],
+    "listingKeys" : [ "N\u0000Helios Katowice\u0000https://helios.pl/katowice/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
+  }, {
+    "_id" : "fd9942512e2bab79|kedzierzyn-kozle|Helios Kędzierzyn-Koźle",
+    "filmId" : "fd9942512e2bab79",
+    "city" : "kedzierzyn-kozle",
+    "cinema" : "Helios Kędzierzyn-Koźle",
+    "filmUrl" : "https://helios.pl/kedzierzyn-kozle/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-26T23:00:00",
+      "bookingUrl" : "https://bilety.helios.pl/screen/18478bc7-79d9-4095-a92c-dc9f0338c8bb?cinemaId=cf760fa9-32ba-4541-ae07-ef14532a911d",
+      "format" : [ "2D", "NAP" ]
+    } ],
+    "listingKeys" : [ "N\u0000Helios Kędzierzyn-Koźle\u0000https://helios.pl/kedzierzyn-kozle/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
+  }, {
+    "_id" : "fd9942512e2bab79|kielce|Helios Kielce",
+    "filmId" : "fd9942512e2bab79",
+    "city" : "kielce",
+    "cinema" : "Helios Kielce",
+    "filmUrl" : "https://helios.pl/kielce/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-26T23:00:00",
+      "bookingUrl" : "https://bilety.helios.pl/screen/e8aa69c6-8fac-4a9e-b1a5-7d97e18bf63b?cinemaId=d01162e6-31a4-41b9-97cd-1ef7707522fe",
+      "format" : [ "2D", "NAP" ]
+    } ],
+    "listingKeys" : [ "N\u0000Helios Kielce\u0000https://helios.pl/kielce/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
+  }, {
+    "_id" : "fd9942512e2bab79|konin|Helios Konin",
+    "filmId" : "fd9942512e2bab79",
+    "city" : "konin",
+    "cinema" : "Helios Konin",
+    "filmUrl" : "https://helios.pl/konin/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-26T23:00:00",
+      "bookingUrl" : "https://bilety.helios.pl/screen/2f8886f9-3f78-4cd2-a82f-7c8ab0bfd796?cinemaId=0fe6ba65-dc83-49c1-8f01-bef8675b9927",
+      "format" : [ "2D", "NAP" ]
+    } ],
+    "listingKeys" : [ "N\u0000Helios Konin\u0000https://helios.pl/konin/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
+  }, {
+    "_id" : "fd9942512e2bab79|koszalin|Helios Koszalin",
+    "filmId" : "fd9942512e2bab79",
+    "city" : "koszalin",
+    "cinema" : "Helios Koszalin",
+    "filmUrl" : "https://helios.pl/koszalin/kino-helios-galeria-emka/wydarzenie/maraton-horrorow-26-06-2026-2634",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-26T23:00:00",
+      "bookingUrl" : "https://bilety.helios.pl/screen/1e51ea97-1975-42a7-8ba6-d7f82146d508?cinemaId=4b58d474-bf12-405f-b76d-f1f88cae2b07",
+      "format" : [ "2D", "NAP" ]
+    } ],
+    "listingKeys" : [ "N\u0000Helios Koszalin\u0000https://helios.pl/koszalin/kino-helios-galeria-emka/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
+  }, {
+    "_id" : "fd9942512e2bab79|krosno|Helios Krosno",
+    "filmId" : "fd9942512e2bab79",
+    "city" : "krosno",
+    "cinema" : "Helios Krosno",
+    "filmUrl" : "https://helios.pl/krosno/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-26T23:00:00",
+      "bookingUrl" : "https://bilety.helios.pl/screen/d3170088-3a0f-45d3-89aa-3b45c09a44a1?cinemaId=be832e9d-5b79-47ef-a0b0-1b465349ce89",
+      "format" : [ "2D", "NAP" ]
+    } ],
+    "listingKeys" : [ "N\u0000Helios Krosno\u0000https://helios.pl/krosno/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
+  }, {
+    "_id" : "fd9942512e2bab79|legnica|Helios Legnica",
+    "filmId" : "fd9942512e2bab79",
+    "city" : "legnica",
+    "cinema" : "Helios Legnica",
+    "filmUrl" : "https://helios.pl/legnica/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-26T23:00:00",
+      "bookingUrl" : "https://bilety.helios.pl/screen/51ca9706-a7c5-45fa-bc6c-95c4250e9b0d?cinemaId=34b23726-7c53-483b-a0e5-13dfca6075ba",
+      "format" : [ "2D", "NAP" ]
+    } ],
+    "listingKeys" : [ "N\u0000Helios Legnica\u0000https://helios.pl/legnica/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
+  }, {
+    "_id" : "fd9942512e2bab79|lodz|Helios Łódź",
+    "filmId" : "fd9942512e2bab79",
+    "city" : "lodz",
+    "cinema" : "Helios Łódź",
+    "filmUrl" : "https://helios.pl/lodz/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-26T23:00:00",
+      "bookingUrl" : "https://bilety.helios.pl/screen/377ade83-96ac-4a3e-bcdd-41cac72deb06?cinemaId=46055d88-5f34-44a0-9584-b041caa71e26",
+      "format" : [ "2D", "NAP" ]
+    } ],
+    "listingKeys" : [ "N\u0000Helios Łódź\u0000https://helios.pl/lodz/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
+  }, {
+    "_id" : "fd9942512e2bab79|lubin|Helios Lubin",
+    "filmId" : "fd9942512e2bab79",
+    "city" : "lubin",
+    "cinema" : "Helios Lubin",
+    "filmUrl" : "https://helios.pl/lubin/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-26T23:00:00",
+      "bookingUrl" : "https://bilety.helios.pl/screen/cdf03a39-c371-4889-9106-17de85da4d5c?cinemaId=71192dbe-94ef-43c0-9079-ae7c9747a2f4",
+      "format" : [ "2D", "NAP" ]
+    } ],
+    "listingKeys" : [ "N\u0000Helios Lubin\u0000https://helios.pl/lubin/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
+  }, {
+    "_id" : "fd9942512e2bab79|nowy-sacz|Helios Nowy Sącz",
+    "filmId" : "fd9942512e2bab79",
+    "city" : "nowy-sacz",
+    "cinema" : "Helios Nowy Sącz",
+    "filmUrl" : "https://helios.pl/nowy-sacz/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-26T23:00:00",
+      "bookingUrl" : "https://bilety.helios.pl/screen/91c5b95c-99c1-4524-ae67-64af85ff4502?cinemaId=223cd021-5821-481a-9d04-31511fb44042",
+      "format" : [ "2D", "NAP" ]
+    } ],
+    "listingKeys" : [ "N\u0000Helios Nowy Sącz\u0000https://helios.pl/nowy-sacz/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
+  }, {
+    "_id" : "fd9942512e2bab79|olsztyn|Helios Olsztyn",
+    "filmId" : "fd9942512e2bab79",
+    "city" : "olsztyn",
+    "cinema" : "Helios Olsztyn",
+    "filmUrl" : "https://helios.pl/olsztyn/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-26T23:00:00",
+      "bookingUrl" : "https://bilety.helios.pl/screen/1c5bdcad-1c0f-45bf-8e73-d051f325b6aa?cinemaId=6f3ef265-ef99-48e9-84f4-ed862badb756",
+      "format" : [ "2D", "NAP" ]
+    } ],
+    "listingKeys" : [ "N\u0000Helios Olsztyn\u0000https://helios.pl/olsztyn/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
+  }, {
+    "_id" : "fd9942512e2bab79|opole|Helios Karolinka",
+    "filmId" : "fd9942512e2bab79",
+    "city" : "opole",
+    "cinema" : "Helios Karolinka",
+    "filmUrl" : "https://helios.pl/opole/kino-helios-karolinka/wydarzenie/maraton-horrorow-26-06-2026-2634",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-26T23:00:00",
+      "bookingUrl" : "https://bilety.helios.pl/screen/1bcb2d1c-5cea-4a57-aa76-230269865b7a?cinemaId=ec0ba789-c70b-42e7-8adf-8c9595888672",
+      "format" : [ "2D", "NAP" ]
+    } ],
+    "listingKeys" : [ "N\u0000Helios Karolinka\u0000https://helios.pl/opole/kino-helios-karolinka/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
+  }, {
+    "_id" : "fd9942512e2bab79|opole|Helios Solaris",
+    "filmId" : "fd9942512e2bab79",
+    "city" : "opole",
+    "cinema" : "Helios Solaris",
+    "filmUrl" : "https://helios.pl/opole/kino-helios-solaris/wydarzenie/maraton-horrorow-26-06-2026-2634",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-26T23:00:00",
+      "bookingUrl" : "https://bilety.helios.pl/screen/e9ccb961-0a41-4aab-8d8c-245bcf68171a?cinemaId=d01e6010-d098-4899-951b-a7b7208df75a",
+      "format" : [ "2D", "NAP" ]
+    } ],
+    "listingKeys" : [ "N\u0000Helios Solaris\u0000https://helios.pl/opole/kino-helios-solaris/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
+  }, {
+    "_id" : "fd9942512e2bab79|ostrow-wielkopolski|Helios Ostrów Wlkp.",
+    "filmId" : "fd9942512e2bab79",
+    "city" : "ostrow-wielkopolski",
+    "cinema" : "Helios Ostrów Wlkp.",
+    "filmUrl" : "https://helios.pl/ostrow-wielkopolski/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-26T23:00:00",
+      "bookingUrl" : "https://bilety.helios.pl/screen/3b89e6a9-fc5d-412d-928a-2653139a0480?cinemaId=1a433348-f89c-4b18-bfa4-4332e3bbf0c8",
+      "format" : [ "2D", "NAP" ]
+    } ],
+    "listingKeys" : [ "N\u0000Helios Ostrów Wlkp.\u0000https://helios.pl/ostrow-wielkopolski/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
+  }, {
+    "_id" : "fd9942512e2bab79|plock|Helios Płock",
+    "filmId" : "fd9942512e2bab79",
+    "city" : "plock",
+    "cinema" : "Helios Płock",
+    "filmUrl" : "https://helios.pl/plock/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-26T23:00:00",
+      "bookingUrl" : "https://bilety.helios.pl/screen/4da319c0-55b2-4bfc-a07a-4582f196b250?cinemaId=4623d4a3-d0be-49d8-82d8-ef16a67a848c",
+      "format" : [ "2D", "NAP" ]
+    } ],
+    "listingKeys" : [ "N\u0000Helios Płock\u0000https://helios.pl/plock/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
+  }, {
+    "_id" : "fd9942512e2bab79|poznan|Helios Posnania",
+    "filmId" : "fd9942512e2bab79",
+    "city" : "poznan",
+    "cinema" : "Helios Posnania",
+    "filmUrl" : "https://helios.pl/poznan/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-26T23:00:00",
+      "bookingUrl" : "https://bilety.helios.pl/screen/5851a701-01a0-4fd4-a2a0-2587fcc998f8?cinemaId=815face9-2a1d-4c62-9b2f-a361574b79a2",
+      "format" : [ "2D", "NAP" ]
+    } ],
+    "listingKeys" : [ "N\u0000Helios Posnania\u0000https://helios.pl/poznan/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
+  }, {
+    "_id" : "fd9942512e2bab79|przemysl|Helios Przemyśl",
+    "filmId" : "fd9942512e2bab79",
+    "city" : "przemysl",
+    "cinema" : "Helios Przemyśl",
+    "filmUrl" : "https://helios.pl/przemysl/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-26T23:00:00",
+      "bookingUrl" : "https://bilety.helios.pl/screen/399cfb96-8af1-4e38-9caf-63492548b5af?cinemaId=19a14011-0e44-43cd-9d12-8e8a16e9d744",
+      "format" : [ "2D", "NAP" ]
+    } ],
+    "listingKeys" : [ "N\u0000Helios Przemyśl\u0000https://helios.pl/przemysl/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
+  }, {
+    "_id" : "fd9942512e2bab79|radom|Helios Radom",
+    "filmId" : "fd9942512e2bab79",
+    "city" : "radom",
+    "cinema" : "Helios Radom",
+    "filmUrl" : "https://helios.pl/radom/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-26T23:00:00",
+      "bookingUrl" : "https://bilety.helios.pl/screen/8c6ef46b-75af-4d17-88fc-86e9205a622c?cinemaId=287fc8f4-7bee-49b4-afcd-b22b52e520b9",
+      "format" : [ "2D", "NAP" ]
+    } ],
+    "listingKeys" : [ "N\u0000Helios Radom\u0000https://helios.pl/radom/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
+  }, {
+    "_id" : "fd9942512e2bab79|rzeszow|Helios Rzeszów",
+    "filmId" : "fd9942512e2bab79",
+    "city" : "rzeszow",
+    "cinema" : "Helios Rzeszów",
+    "filmUrl" : "https://helios.pl/rzeszow/kino-helios-galeria/wydarzenie/maraton-horrorow-26-06-2026-2634",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-26T23:00:00",
+      "bookingUrl" : "https://bilety.helios.pl/screen/5057c234-f0bb-4cea-beef-ec4d9dcee771?cinemaId=409eac78-9718-4fa3-b590-d1e1fb60892d",
+      "format" : [ "2D", "NAP" ]
+    } ],
+    "listingKeys" : [ "N\u0000Helios Rzeszów\u0000https://helios.pl/rzeszow/kino-helios-galeria/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
+  }, {
+    "_id" : "fd9942512e2bab79|sosnowiec|Helios Sosnowiec",
+    "filmId" : "fd9942512e2bab79",
+    "city" : "sosnowiec",
+    "cinema" : "Helios Sosnowiec",
+    "filmUrl" : "https://helios.pl/sosnowiec/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-26T23:00:00",
+      "bookingUrl" : "https://bilety.helios.pl/screen/8c6ef46b-75af-4d17-88fc-86e9205a622c?cinemaId=880f2a3a-e9e8-447c-95ca-72c49ca38a1e",
+      "format" : [ "2D", "NAP" ]
+    } ],
+    "listingKeys" : [ "N\u0000Helios Sosnowiec\u0000https://helios.pl/sosnowiec/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
+  }, {
+    "_id" : "fd9942512e2bab79|starachowice|Helios Starachowice",
+    "filmId" : "fd9942512e2bab79",
+    "city" : "starachowice",
+    "cinema" : "Helios Starachowice",
+    "filmUrl" : "https://helios.pl/starachowice/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-26T23:00:00",
+      "bookingUrl" : "https://bilety.helios.pl/screen/679d70c8-b0b3-462c-ac2e-2c4f3504d230?cinemaId=9906f18b-ed73-41d8-a35e-bfcda930b2d3",
+      "format" : [ "2D", "NAP" ]
+    } ],
+    "listingKeys" : [ "N\u0000Helios Starachowice\u0000https://helios.pl/starachowice/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
+  }, {
+    "_id" : "fd9942512e2bab79|szczecin|Helios Kupiec",
+    "filmId" : "fd9942512e2bab79",
+    "city" : "szczecin",
+    "cinema" : "Helios Kupiec",
+    "filmUrl" : "https://helios.pl/szczecin/kino-helios-chr-kupiec/wydarzenie/maraton-horrorow-26-06-2026-2634",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-26T23:00:00",
+      "bookingUrl" : "https://bilety.helios.pl/screen/f66f520e-d9c5-4547-84de-f7ef8c2137d1?cinemaId=3e60a454-c438-4c9b-b24f-7c6feff3b5ed",
+      "format" : [ "2D", "NAP" ]
+    } ],
+    "listingKeys" : [ "N\u0000Helios Kupiec\u0000https://helios.pl/szczecin/kino-helios-chr-kupiec/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
+  }, {
+    "_id" : "fd9942512e2bab79|szczecin|Helios Outlet Park",
+    "filmId" : "fd9942512e2bab79",
+    "city" : "szczecin",
+    "cinema" : "Helios Outlet Park",
+    "filmUrl" : "https://helios.pl/szczecin/helios-outlet-park/wydarzenie/maraton-horrorow-26-06-2026-2634",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-26T23:00:00",
+      "bookingUrl" : "https://bilety.helios.pl/screen/c0047411-822a-47f9-9030-45a3e4bb8cd9?cinemaId=b898bbed-7ab6-428f-a57b-26d6b6e6a04b",
+      "format" : [ "2D", "NAP" ]
+    } ],
+    "listingKeys" : [ "N\u0000Helios Outlet Park\u0000https://helios.pl/szczecin/helios-outlet-park/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
+  }, {
+    "_id" : "fd9942512e2bab79|tczew|Helios Tczew",
+    "filmId" : "fd9942512e2bab79",
+    "city" : "tczew",
+    "cinema" : "Helios Tczew",
+    "filmUrl" : "https://helios.pl/tczew/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-26T23:00:00",
+      "bookingUrl" : "https://bilety.helios.pl/screen/92b7f50e-1fdf-49da-8c89-7b90adc1d03b?cinemaId=58fbf23b-c605-4185-b1e9-6a3c5d7878ce",
+      "format" : [ "2D", "NAP" ]
+    } ],
+    "listingKeys" : [ "N\u0000Helios Tczew\u0000https://helios.pl/tczew/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
+  }, {
+    "_id" : "fd9942512e2bab79|trojmiasto|Helios Forum",
+    "filmId" : "fd9942512e2bab79",
+    "city" : "trojmiasto",
+    "cinema" : "Helios Forum",
+    "filmUrl" : "https://helios.pl/gdansk/kino-helios-forum/wydarzenie/maraton-horrorow-26-06-2026-2634",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-26T23:00:00",
+      "bookingUrl" : "https://bilety.helios.pl/screen/c52c9ad5-c2da-4d5d-bb5e-859038eb4146?cinemaId=60cfe883-55aa-4e28-be7f-233f589a34cb",
+      "format" : [ "2D", "NAP" ]
+    } ],
+    "listingKeys" : [ "N\u0000Helios Forum\u0000https://helios.pl/gdansk/kino-helios-forum/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
+  }, {
+    "_id" : "fd9942512e2bab79|trojmiasto|Helios Metropolia",
+    "filmId" : "fd9942512e2bab79",
+    "city" : "trojmiasto",
+    "cinema" : "Helios Metropolia",
+    "filmUrl" : "https://helios.pl/gdansk/kino-helios-metropolia/wydarzenie/maraton-horrorow-26-06-2026-2634",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-26T23:00:00",
+      "bookingUrl" : "https://bilety.helios.pl/screen/951a72fd-9907-4839-bafc-7e80ce4952df?cinemaId=d09e2607-693f-479f-8deb-59a18add40eb",
+      "format" : [ "2D", "NAP" ]
+    } ],
+    "listingKeys" : [ "N\u0000Helios Metropolia\u0000https://helios.pl/gdansk/kino-helios-metropolia/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
+  }, {
+    "_id" : "fd9942512e2bab79|trojmiasto|Helios Riviera",
+    "filmId" : "fd9942512e2bab79",
+    "city" : "trojmiasto",
+    "cinema" : "Helios Riviera",
+    "filmUrl" : "https://helios.pl/gdynia/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-26T23:00:00",
+      "bookingUrl" : "https://bilety.helios.pl/screen/418b76ea-fade-43e5-a607-6137141bac89?cinemaId=0bdb21cd-cf7d-4efb-829f-d1913a666b83",
+      "format" : [ "2D", "NAP" ]
+    } ],
+    "listingKeys" : [ "N\u0000Helios Riviera\u0000https://helios.pl/gdynia/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
+  }, {
+    "_id" : "fd9942512e2bab79|warszawa|Helios Blue City",
+    "filmId" : "fd9942512e2bab79",
+    "city" : "warszawa",
+    "cinema" : "Helios Blue City",
+    "filmUrl" : "https://helios.pl/warszawa/kino-helios-blue-city/wydarzenie/maraton-horrorow-26-06-2026-2634",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-26T23:00:00",
+      "bookingUrl" : "https://bilety.helios.pl/screen/e2b1f57d-aedc-4828-9e5e-617ff37ef107?cinemaId=4ca060df-c4f2-4157-8905-bf46527aae58",
+      "format" : [ "2D", "NAP" ]
+    } ],
+    "listingKeys" : [ "N\u0000Helios Blue City\u0000https://helios.pl/warszawa/kino-helios-blue-city/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
+  }, {
+    "_id" : "fd9942512e2bab79|wroclaw|Helios Aleja Bielany",
+    "filmId" : "fd9942512e2bab79",
+    "city" : "wroclaw",
+    "cinema" : "Helios Aleja Bielany",
+    "filmUrl" : "https://helios.pl/wroclaw/kino-helios-aleja-bielany/wydarzenie/maraton-horrorow-26-06-2026-2634",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-26T23:00:00",
+      "bookingUrl" : "https://bilety.helios.pl/screen/1caf2b51-d100-4d66-88ca-3b672db4149b?cinemaId=7582cee7-2815-4897-8715-e90a5b99d2e4",
+      "format" : [ "2D", "NAP" ]
+    } ],
+    "listingKeys" : [ "N\u0000Helios Aleja Bielany\u0000https://helios.pl/wroclaw/kino-helios-aleja-bielany/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
+  }, {
+    "_id" : "fd9942512e2bab79|wroclaw|Helios Magnolia Park",
+    "filmId" : "fd9942512e2bab79",
+    "city" : "wroclaw",
+    "cinema" : "Helios Magnolia Park",
+    "filmUrl" : "https://helios.pl/wroclaw/kino-helios-magnolia/wydarzenie/maraton-horrorow-26-06-2026-2634",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-26T23:00:00",
+      "bookingUrl" : "https://bilety.helios.pl/screen/3d04f838-8d0c-4bd6-948c-12ea7cc657e6?cinemaId=c21c6e3b-874c-4432-b44e-a155ec9102cd",
+      "format" : [ "2D", "NAP" ]
+    } ],
+    "listingKeys" : [ "N\u0000Helios Magnolia Park\u0000https://helios.pl/wroclaw/kino-helios-magnolia/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
+  }, {
+    "_id" : "fd9942512e2bab79|zory|Helios Żory",
+    "filmId" : "fd9942512e2bab79",
+    "city" : "zory",
+    "cinema" : "Helios Żory",
+    "filmUrl" : "https://helios.pl/zory/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-26T23:00:00",
+      "bookingUrl" : "https://bilety.helios.pl/screen/645db05f-9000-4d1c-961c-043aa648f79f?cinemaId=d116bcc0-8675-41d8-b0b0-3e7155df9ffc",
+      "format" : [ "2D", "NAP" ]
+    } ],
+    "listingKeys" : [ "N\u0000Helios Żory\u0000https://helios.pl/zory/kino-helios/wydarzenie/maraton-horrorow-26-06-2026-2634\u0000Maraton horrorów" ]
   }, {
     "_id" : "fd9e99170a2d5828|plock|Kino za Rogiem",
     "filmId" : "fd9e99170a2d5828",

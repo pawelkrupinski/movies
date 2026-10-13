@@ -2484,6 +2484,56 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     withClue(rendered(r, ls))(films(r, royal) shouldBe Seq(Some(555004)))
   }
 
+  "A concert's spellings sharing the original title its feed gives them" should "take the record of that concert" in {
+    // DE "2026 Silvesterkonzert der Berliner Philharmoniker" ×57 and its spellings ×109, recording 38363428661: joined to
+    // their siblings only by the original title "New Year’s Eve Concert with Berliner Philharmoniker", they lost 1711927
+    // once "25/26" was a season. TMDB's de-DE records as it holds them.
+    val de = models.Cinema.all.filter(c => models.City.forCinema(c).exists(_.country.language.getCountry == "DE")).take(24)
+    val records = Seq(F(1711927, "Berliner Philharmoniker: Silvesterkonzert 2026", 2026, "Kirill Petrenko", 120, 0.5618),
+      F(1500036, "Berliner Philharmoniker: Silvesterkonzert 2025", 2025, "", 120, 1.0343),
+      F(1318529, "Berliner Philharmoniker: Silvesterkonzert 2024/25", 2024, "", 0, 0.9),
+      F(1306976, "Berliner Philharmoniker – Silvesterkonzert 2024", 2024, "", 135, 0.4425,
+        alternatives = Seq("BERLINER PHILHARMONIKER - LIVE IM KINO 2024/25: SILVESTERKONZERT", "Berliner Philharmoniker: Silvesterkonzert 2024/25")),
+      F(698915, "Silvesterkonzert der Berliner Philharmoniker 2018", 2018, "", 0, 0.8), F(649505, "Silvesterkonzert der Berliner Philharmoniker 2019", 2019, "", 0, 0.8),
+      F(393237, "Silvesterkonzert der Berliner Philharmoniker 2015", 2015, "", 0, 0.7))
+    val concert = Some("New Year’s Eve Concert with Berliner Philharmoniker")
+    val titles = Seq("Berliner Philharmoniker: Silvesterkonzert 2026", "Berliner Philharmoniker: Silvesterkonzert 2026/27",
+      "BERLINER PHILHARMONIKER - SILVESTERKONZERT 2026 / 2027", "Berliner Philharmoniker Live im Kino - Silvesterkonzert 2026",
+      "2026 Silvesterkonzert der Berliner Philharmoniker", "Berliner Philharmoniker LIVE: Das Silvesterkonzert 2026-27",
+      "Die Berliner Philharmoniker LIVE: Das Silvesterkonzert 2026-27", "Silvesterkonzert Berliner Philharmoniker LIVE 2026",
+      "Silvesterkonzert Berliner Philharmoniker", "Silvesterkonzert der Berliner Philharmoniker", "BERLINER PHILHARMONIKER - DAS SILVESTERKONZERT",
+      "Berliner Philharmoniker live im Kino: Silvesterkonzert 2026/27", "Berliner Philharmoniker 25/26: Silvesterkonzert")
+    val ls = titles.zip(de).map { case (t, v) => listing(v, t, Some(2026)).copy(originalTitle = concert) } ++
+      Seq(listing(de(20), "Berliner Philharmoniker: Silvesterkonzert 2026", None, Some("Kirill Petrenko"), Some(120)))
+    // the "25/26" spelling names the 2025 concert's season beside the 2026 concert's original title: not decided here
+    val r = shipped(ls, records)
+    withClue(rendered(r, ls))(films(r, ls.filterNot(_.title.contains("25/26"))) shouldBe Seq(Some(1711927)))
+  }
+
+  "Two seasons' relays of one staging" should "each take its own season's record by the running time it bills" in {
+    // UK, recording 38363428661: Oliver Mears's Tosca, broadcast 2025/26 (1482356, 210′) and revived 2026/27 (1702784, no
+    // running time yet; every 2026/27 venue bills 195′). Plaza Liverpool's "RBO: Tosca" [195′] moved to the 2025/26
+    // record. Picture House Uckfield's "Tosca (ROH)" {Oliver Mears} [205′] — "ROH" naming no house its records spell —
+    // is left to neither season here.
+    val uk = ukVenues
+    val records = Seq(F(1702784, "Royal Ballet & Opera 2026/27: Tosca", 2027, "", 0, 0.6),
+      F(1482356, "Royal Ballet & Opera 2025/26: Tosca", 2025, "Oliver Mears", 210, 0.9),
+      F(1131, "Tosca", 1976, "Gianfranco de Bosio", 105, 3), F(56124, "Tosca", 2001, "Benoît Jacquot", 124, 2))
+    val next = uk.take(6).map(scraped(_, "RBO Cinema Season 2026-27: Tosca", Some(2027), Some("Oliver Mears"), Some(195))) ++
+      uk.slice(6, 9).map(scraped(_, "RBO 2026/27: Tosca", None, Some("Oliver Mears"), Some(195))) ++
+      Seq(scraped(uk(9), "RBO: Tosca", Some(2027), Some("Oliver Mears"), Some(195)), scraped(uk(10), "Royal Ballet & Opera 2026/27: Tosca", runtime = Some(195)))
+    val last = uk.slice(11, 15).map(scraped(_, "Royal Ballet & Opera 2025-26: Tosca", Some(2025), runtime = Some(210))) :+
+      scraped(uk(15), "Royal Ballet & Opera- Tosca", None, Some("Oliver Mears"), Some(195))
+    val plaza = scraped(uk(16), "RBO: Tosca", runtime = Some(195))
+    val uckfield = scraped(uk(17), "Tosca (ROH)", None, Some("Oliver Mears"), Some(205))
+    val ls = next ++ last ++ Seq(plaza, uckfield)
+    val r  = shipped(ls, records)
+    withClue(rendered(r, ls)) {
+      films(r, Seq(plaza)) shouldBe Seq(Some(1702784))
+      films(r, Seq(uckfield)) should not be Seq(Some(1702784))
+    }
+  }
+
   "A ballet company's relay crediting its screen director" should "not take another house's recording of its work by that director" in {
     // UK Odeon's "English National Ballet: The Sleeping Beauty" {Ross MacGibbon} [144′] ×22 took the Royal Ballet's 2017
     // recording (TMDB 446902, also his) by his credit; ENB's 2026 relay is 1760605, his too.

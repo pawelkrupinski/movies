@@ -1,6 +1,6 @@
 === 90. urodziny Pavarottiego - Koncert gwiazd z Arena di Verona ===
 displayTitle:      90. urodziny Pavarottiego - Koncert gwiazd z Arena di Verona
-cinemaTitles:      90. urodziny Pavarottiego - Koncert gwiazd z Arena di Verona
+cinemaTitles:      "90. Urodziny pavarottiego" koncert gwiazd z arena di verona 2025 | 90. urodziny Pavarottiego - Koncert gwiazd z Arena di Verona | 90. urodziny Pavarottiego - Koncert gwiazd z Arena di Verona 2025 | 90. urodziny Pavarottiego. Koncert gwiazd z Arena di Verona 2025
 runtimeMinutes:    92
 releaseYear:       2025
 countries:         Włochy
@@ -47,6 +47,11 @@ cinemaScrapes:
   Cinema City Wolność / 90. urodziny Pavarottiego - Koncert gwiazd z Arena di Verona / 2025
   Cinema City Wroclavia / 90. urodziny Pavarottiego - Koncert gwiazd z Arena di Verona / 2025
   Cinema City Zielona Góra / 90. urodziny Pavarottiego - Koncert gwiazd z Arena di Verona / 2025
+  Kino Atlantic / 90. urodziny Pavarottiego - Koncert gwiazd z Arena di Verona 2025 / 2025
+  Kino Przedwiośnie / 90. urodziny Pavarottiego - Koncert gwiazd z Arena di Verona 2025 / 2025
+  Kino Wisła / 90. urodziny Pavarottiego - Koncert gwiazd z Arena di Verona 2025 / 2025
+  Kino Zorza / 90. urodziny Pavarottiego. Koncert gwiazd z Arena di Verona 2025 / —
+  Kino ŚDK / "90. Urodziny pavarottiego" koncert gwiazd z arena di verona 2025 / —
 showings:
   2026-06-17  Cinema City Kinepolis         18:00 Sala 3 2D/NAP
   2026-06-17  Cinema City Poznań Plaza      18:00 Sala 2 2D/NAP
