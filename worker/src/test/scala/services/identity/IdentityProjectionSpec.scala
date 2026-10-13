@@ -487,6 +487,34 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     w.takes should have size 3
   }
 
+  /** A move the store declines is retried by the next projection: counted once, when it is written, not on every try. */
+  it should "count a take change only once its film is written" in {
+    var takes   = Map("Lalka" -> Option(501), "Obcy" -> Option(502), "Diuna" -> Option(503))
+    var decline = false
+    val matched: (() => Seq[Listing]) => Option[IdentityProjection.Resolved] = read => ProjectionWorld.unmatched(read).map { r =>
+      r.copy(resolution = r.resolution.copy(decisions = r.resolution.decisions.map { d =>
+        ResolverDecision(d.members, takes(d.members.head.rawTitle), 0.9, ResolverDecision.Basis.OwnMatch, Nil)()
+      }))
+    }
+    val store = new InMemoryMovieRepository(normalizer = normalizer) {
+      override def upsert(film: services.movies.FilmId, key: CacheKey, e: models.MovieRecord): services.movies.WriteOutcome =
+        if (decline && e.tmdbId.contains(602)) services.movies.WriteOutcome.Declined("store refused") else super.upsert(film, key, e)
+    }
+    val w = new ProjectionWorld(store, programme.keys.toSeq, clock, matched)
+    w.scrape(programme)
+    w.projection.tick()
+    takes = takes + ("Obcy" -> Some(602))
+    decline = true
+    w.projection.tick()
+    w.projection.tick()
+    w.takes shouldBe empty // declined twice: nothing moved on the site
+    decline = false
+    w.projection.tick()
+    w.projection.tick()
+    w.takes.map(t => (t.kind, t.listing.rawTitle)).distinct shouldBe Seq((TakeChange.Kind.Changed, "Obcy"))
+    w.takes should have size 2 // its two listings, once
+  }
+
   /** A country's first projection fetches the TMDB details of every film it matched (~2,250 on a US
    *  boot): one at a time, it waited on each in a row. */
   "A projection's TMDB details" should "be fetched side by side, each onto its own draft" in {

@@ -389,8 +389,9 @@ final class IdentityProjection(
     // every changed film whole — the hourly rewrite that puts right anything a patch could not see.
     val patchable: ProjectedFilm => Option[MovieRecord] =
       if (!patch) _ => None else f => before.get(f.id).filter(s => s.key(normalizer) == f.key).map(_.record)
-    val declined = phases("writes")(writeAll(changed, plan.retired, IdentityProjection.independent(changed, plan.films, stored, normalizer),
+    val unwritten = phases("writes")(writeAll(changed, plan.retired, IdentityProjection.independent(changed, plan.films, stored, normalizer),
       patchable))
+    val declined  = unwritten.size
     // A film now identified otherwise — by TMDB, or, one TMDB has no record of, by the fallback source's IMDb id — once
     // its TMDB answer is whole: announced while its details were still to come (TMDB failing), its IMDb-id recovery
     // searched without the film's original title or director and was never asked again once they arrived.
@@ -400,7 +401,7 @@ final class IdentityProjection(
     }
     val seconds = started.seconds
     metrics.projected(films, listings, plan.regroupings, canary, seconds)
-    reportTakes(plan, resolution, before)
+    reportTakes(plan, resolution, before, unwritten)
     val tick = ProjectionTick(Some(resolution), Some(plan), listings, changed.size - declined, plan.retired.size, declined, None, phases.all,
       changed = changed)
     logger.info(f"identity projection: $listings listings → $films films; wrote ${tick.written}, retired ${tick.retired}, " +
@@ -409,16 +410,32 @@ final class IdentityProjection(
     tick
   }
 
-  /** The listings whose TMDB film this projection moved, counted, and logged one line each (the first
+  /** Take changes a projection planned but could not write (their film declined, or parked without its TMDB id), each with
+   *  the take the site showed before: the next projection's retry of the same listing is counted against that take, once,
+   *  not against the parked film. As many as the last projection's declined films' listings — none on a healthy tick. */
+  private var heldTakes: Seq[TakeChange] = Nil
+
+  /** The listings whose TMDB film this projection moved — and wrote: a film the store declined is retried by the next
+   *  projection, which counts it then, against the take before the first try ([[heldTakes]]) — counted, and logged one
+   *  line each (the first
    *  [[IdentityProjection.TakeChangesLogged]]) for drill-down: venue, listing, the film it was on and the one it is on
    *  now, and the resolver's reason. The country is every worker log line's own field. */
-  private def reportTakes(plan: ProjectionPlan, resolution: Resolution, before: Map[FilmId, StoredMovieRecord]): Unit =
-    if (plan.takes.nonEmpty) {
-      metrics.takesChanged(plan.takes)
-      val logged  = plan.takes.take(IdentityProjection.TakeChangesLogged)
+  private def reportTakes(plan: ProjectionPlan, resolution: Resolution, before: Map[FilmId, StoredMovieRecord],
+                          unwritten: Set[FilmId]): Unit =
+    if (plan.takes.nonEmpty || heldTakes.nonEmpty) {
+      val held    = heldTakes.iterator.map(t => t.listing -> t).toMap
+      heldTakes   = Nil
+      // A retried listing is compared with what the site showed before its first try; one landing back there is no change.
+      val planned = plan.takes.map(t => held.get(t.listing).fold(t)(h => t.copy(previousFilm = h.previousFilm, before = h.before)))
+        .filter(t => t.before != t.after)
+      val moved   = planned.iterator.map(_.listing).toSet
+      val now     = plan.films.iterator.flatMap(f => f.members.iterator.filter(moved).map(_ -> f)).toMap
+      val (takes, notWritten) = planned.partition(t => now.get(t.listing).forall(f => !unwritten(f.id)))
+      heldTakes = notWritten
+      if (takes.nonEmpty) metrics.takesChanged(takes)
+      val logged  = takes.take(IdentityProjection.TakeChangesLogged)
       val wanted  = logged.iterator.map(_.listing).toSet
       val reasons = resolution.decisions.iterator.flatMap(d => d.members.iterator.filter(wanted).map(_ -> d)).toMap
-      val now     = plan.films.iterator.flatMap(f => f.members.iterator.filter(wanted).map(_ -> f)).toMap
       def film(tmdb: Option[Int], title: Option[String]) = tmdb.fold("none")(id => s"tmdb $id") + title.fold("")(t => s" ($t)")
       logged.foreach { t =>
         val was    = before.get(FilmId(t.previousFilm)).map(_.title)
@@ -428,22 +445,22 @@ final class IdentityProjection(
         logger.info(s"identity take change: ${t.kind.label} ${t.listing.venue} | ${t.listing.rawTitle}: " +
           s"${film(t.before, was)} -> ${film(t.after, now.get(t.listing).map(_.title))} (${t.previousFilm}); reason $reason")
       }
-      if (plan.takes.size > logged.size) logger.info(s"identity take change: ${plan.takes.size - logged.size} more not logged " +
-        s"(${plan.takes.groupMapReduce(_.kind.label)(_ => 1)(_ + _).toSeq.sorted.map { case (k, n) => s"$k $n" }.mkString(", ")} in all)")
+      if (takes.size > logged.size) logger.info(s"identity take change: ${takes.size - logged.size} more not logged " +
+        s"(${takes.groupMapReduce(_.kind.label)(_ => 1)(_ + _).toSeq.sorted.map { case (k, n) => s"$k $n" }.mkString(", ")} in all)")
     }
 
   /** Write `films` and retire `retired`, in the order the store's unique `key` / `tmdbId` indexes
    *  allow: a film whose key or TMDB id another document still holds waits until the retirements
    *  and the other writes have freed it; a cycle between two kept films (each holding the other's
-   *  key) is broken by parking one under a key and id of its own first. Returns how many films
-   *  could not be written; the next projection tries them again.
+   *  key) is broken by parking one under a key and id of its own first. Returns the films not written as planned
+   *  (declined, or parked without their TMDB id); the next projection tries them again.
    *
    *  The `independent` films — new ones whose key and TMDB id nothing else holds or takes — are
    *  written side by side first: no order among them, or with the rest, can decide anything, and
    *  one at a time a country's first projection waited on ~2,250 films' round-trips in a row (a US
    *  boot). The rest keep the plan's order. */
   private def writeAll(films: Seq[ProjectedFilm], retired: Seq[FilmId], independent: Set[FilmId],
-                       patchable: ProjectedFilm => Option[MovieRecord]): Int = {
+                       patchable: ProjectedFilm => Option[MovieRecord]): Set[FilmId] = {
     def write(f: ProjectedFilm): Boolean = {
       val key = CacheKey.stored(f.title, f.key)
       patchable(f).fold(cache.writeProjected(f.id, key, f.record))(cache.patchProjected(f.id, key, _, f.record, f.touched)) == WriteOutcome.Written
@@ -462,7 +479,7 @@ final class IdentityProjection(
     val last = attempt(second)
     if (last.nonEmpty) logger.warn(s"identity projection: ${last.size} film(s) not written (e.g. ${last.head.id} under ${last.head.key}); " +
       s"${parked.size} parked; the next projection retries")
-    last.size
+    last.map(_.id).toSet
   }
 }
 
