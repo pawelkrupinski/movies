@@ -295,11 +295,10 @@ class MovieController( cc: ControllerComponents,
   // behaviour lives in one place — see `ServedCity` for the country scope. The
   // unknown-city 404 renders in `deploymentMessages` (see above), not a
   // per-request resolution — except on the `showtimes.cc` front door, which speaks
-  // the brand's English ([[FrontDoorMessages]]) though Poland's deployment answers it.
+  // the brand's English ([[FrontDoorMessages]]); `ServedCity.resolve` picks which.
   private val frontDoorMessages: play.api.i18n.Messages = FrontDoorMessages(cc.messagesApi)
   private def withCity(slug: String, request: RequestHeader)(f: City => Result): Result =
-    ServedCity.resolve(slug, servingCountry)(f)(
-      using if (servingCountry.servesApex(PageMeta.host(request))) frontDoorMessages else deploymentMessages)
+    ServedCity.resolve(slug, request, servingCountry, deploymentMessages, frontDoorMessages)(f)
 
   // Persist the viewed city so the bare `/` landing can bounce a returning
   // visitor straight to it. Readable by JS (httpOnly = false) so the client can

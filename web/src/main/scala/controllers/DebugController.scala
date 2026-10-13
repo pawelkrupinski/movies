@@ -62,7 +62,10 @@ class DebugController(cc: ControllerComponents,
   private val latestYear = LatestTitleYear(clock)
 
 
-  private def withCity(slug: String)(f: City => Result): Result = ServedCity.resolve(slug, servingCountry)(f)
+  // English on the `showtimes.cc` apex, the deployment's language elsewhere — see `ServedCity.resolve`.
+  private val frontDoorMessages: play.api.i18n.Messages = FrontDoorMessages(cc.messagesApi)
+  private def withCity(slug: String, request: RequestHeader)(f: City => Result): Result =
+    ServedCity.resolve(slug, request, servingCountry, messages, frontDoorMessages)(f)
 
   private def devOnly(result: => Result): Result = DevMode.gate(environment)(result)
 
@@ -193,9 +196,11 @@ class DebugController(cc: ControllerComponents,
    *  custom properties the production card styles read. Self-contained: the
    *  sample films are built in-process so the page works regardless of cache
    *  state. */
-  def tune(city: String): Action[AnyContent] = Action {
-    withCity(city) { implicit c =>
-      devOnly {
+  def tune(city: String): Action[AnyContent] = Action { request =>
+    // The dev gate first: in production the page does not exist for ANY city, so
+    // the slug is not worth looking up (nor an "unknown city" answer worth giving).
+    devOnly {
+      withCity(city, request) { implicit c =>
         Ok(views.html.tune(DebugController.tuneSampleFilms))
       }
     }
@@ -203,9 +208,9 @@ class DebugController(cc: ControllerComponents,
 
   /** Dev-only tuning page for the film-detail view — live sliders over the real
    *  `_filmDetailContent` for the title / meta / Seanse typography. */
-  def tuneFilm(city: String): Action[AnyContent] = Action {
-    withCity(city) { implicit c =>
-      devOnly {
+  def tuneFilm(city: String): Action[AnyContent] = Action { request =>
+    devOnly {
+      withCity(city, request) { implicit c =>
         Ok(views.html.tuneFilm(DebugController.tuneSampleFilm))
       }
     }
@@ -216,8 +221,8 @@ class DebugController(cc: ControllerComponents,
    * instance whose caches drifted from the derived collections can be reconciled
    * without a redeploy — but since it runs in prod and mutates state, it's gated
    * by [[AdminAction]] (login session + ADMIN_ALLOWLIST) rather than left open. */
-  def rehydrate(city: String): Action[AnyContent] = adminAction {
-    withCity(city) { _ =>
+  def rehydrate(city: String): Action[AnyContent] = adminAction { request =>
+    withCity(city, request) { _ =>
       val count = readModel.reload()
       Ok(s"rehydrated $count rows\n").as("text/plain; charset=utf-8")
     }

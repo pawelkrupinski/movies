@@ -39,7 +39,7 @@ object TestDebugController {
     given play.api.i18n.Messages = testsupport.TestMessages.deployment
     val readModel = TestReadModel.fromRecords(records)
     val ctrl = new DebugController(
-      cc               = Helpers.stubControllerComponents(),
+      cc               = Helpers.stubControllerComponents(messagesApi = testsupport.TestMessages.messagesApi),
       debugCountries   = debugCountries.getOrElse(DebugCountries.single(new DebugStack(
         models.Country.default,
         movieRepository.getOrElse(new InMemoryMovieRepository(records, normalizer = SingleCountryNormalizer.titleNormalizer)),

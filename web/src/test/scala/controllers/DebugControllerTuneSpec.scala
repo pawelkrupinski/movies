@@ -74,6 +74,26 @@ class DebugControllerTuneSpec extends AnyFlatSpec with Matchers {
     status(result) shouldBe NOT_FOUND
   }
 
+  /** The apex is Poland's deployment, so its unknown-city 404 was the one Polish answer
+   *  `showtimes.cc` still gave: `/xyzzy/debug/tune` read "Nieznane miasto" while every
+   *  other route there says "Unknown city". kinowo.net stays Polish. */
+  it should "answer an unknown city on the showtimes.cc apex in English, on kinowo.net in Polish" in {
+    val ctrl = buildController(Mode.Dev)
+    def unknownOn(host: String) = ctrl.tune("xyzzy").apply(FakeRequest(GET, "/xyzzy/debug/tune").withHeaders("Host" -> host))
+
+    status(unknownOn("showtimes.cc"))          shouldBe NOT_FOUND
+    contentAsString(unknownOn("showtimes.cc")) shouldBe testsupport.TestMessages.forLang("en")("error.unknownCity", "xyzzy")
+    contentAsString(unknownOn("kinowo.net"))   shouldBe testsupport.TestMessages.deployment("error.unknownCity", "xyzzy")
+  }
+
+  /** A dev-only page does not exist in production — for any city, known or not — so the
+   *  dev gate answers before the slug is even looked up. */
+  it should "404 as a dev-only endpoint in production even for an unknown city" in {
+    val result = buildController(Mode.Prod).tune("xyzzy").apply(FakeRequest(GET, "/xyzzy/debug/tune").withHeaders("Host" -> "showtimes.cc"))
+    status(result)          shouldBe NOT_FOUND
+    contentAsString(result) shouldBe "dev-only endpoint"
+  }
+
   "GET /debug/tune/movie" should "render the film tuning page in dev mode" in {
     val ctrl   = buildController(Mode.Dev)
     val result = ctrl.tuneFilm("poznan").apply(FakeRequest(GET, "/debug/tune/movie"))

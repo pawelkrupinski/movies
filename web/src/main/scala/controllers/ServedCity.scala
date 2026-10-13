@@ -2,7 +2,7 @@ package controllers
 
 import models.City
 import play.api.i18n.Messages
-import play.api.mvc.{Result, Results}
+import play.api.mvc.{RequestHeader, Result, Results}
 
 /** Resolve a city slug against THIS deployment's country, 404ing anything else.
  *
@@ -29,6 +29,16 @@ object ServedCity {
       case Some(c) => f(c)
       case None    => unknown(slug)
     }
+
+  /** [[resolve]] for a city-scoped route, its 404 in the language the HOST speaks: the
+   *  `showtimes.cc` front door's English ([[FrontDoorMessages]]) on the apex — which
+   *  Poland's deployment answers — and the deployment's own everywhere else, so
+   *  `showtimes.cc/xyzzy/…` reads "Unknown city" on every route while kinowo.net stays
+   *  Polish. The one place that choice is made, for every controller with city routes. */
+  def resolve(slug: String, request: RequestHeader, servingCountry: models.Country,
+              deploymentMessages: Messages, frontDoorMessages: Messages)(f: City => Result): Result =
+    resolve(slug, servingCountry)(f)(
+      using if (servingCountry.servesApex(PageMeta.host(request))) frontDoorMessages else deploymentMessages)
 
   /** The answer for a slug this deployment does not serve — also what the
    *  `showtimes.cc` front door gives a Polish place (`FrontDoorRedirectFilter`),
