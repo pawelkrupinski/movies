@@ -133,12 +133,7 @@ object IdentityUnifiedDataset {
         if (distances.nonEmpty) count("with-posters")
         // the listings as their venues' pages state them, and as the model measures them — what the stage reads
         def page(x: Listing) = if (venues.hasDetail(x)) venues.detail(x).toOption.flatten else None
-        val stated = listings.map { x =>
-          page(x).fold(x) { detail =>
-            val e = Evidence.of(x, Some(detail))
-            x.copy(year = e.year, directors = e.directors, runtime = e.runtime, originalTitle = e.originalTitle, countries = e.countries)
-          }
-        }
+        val stated = listings.map(x => page(x).fold(x)(x.withPage))
         val contenders = UnifiedEvidence.contenders(UnifiedEvidence.ClusterEvidence(listings, model, nodes, verdicts, distances,
           imdb => finds.get(imdb).flatten, thisYear, stated, Some(x => Evidence.of(x, page(x)).measured)))
         val taken = today.film.map(id => s"tmdb:$id").orElse(today.fallback.filter(_.source == "imdb").map(f => s"imdb:${f.id}")).getOrElse("")

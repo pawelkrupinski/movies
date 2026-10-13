@@ -596,11 +596,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
    *  catalogue entry ([[services.identity.CatalogueSources.catalogueEntry]]: Flicks). */
   private def asStated(listing: Listing): Listing =
     if (!venues.hasDetail(listing)) listing
-    else venues.detail(listing).toOption.flatten.fold(listing) { page =>
-      val stated = services.identity.Evidence.of(listing, Some(page))
-      listing.copy(year = stated.year, directors = stated.directors, runtime = stated.runtime, originalTitle = stated.originalTitle,
-        countries = stated.countries, pageFacts = true)
-    }
+    else venues.detail(listing).toOption.flatten.fold(listing)(listing.withPage)
 
   /** The film the first selected FILL rule takes for a cluster the families agreed on nothing for
    *  ([[services.identity.UnifiedRules.filled]] over [[services.identity.UnifiedEvidence.contenders]]: the cluster's own

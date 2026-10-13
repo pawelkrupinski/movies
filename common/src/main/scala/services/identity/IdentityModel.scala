@@ -54,6 +54,14 @@ final case class Listing(
 ) {
   def venue: String = key.venue
 
+  /** The listing as its venue's own detail `page` states it: the page's facts merged in where the listing states none
+   *  ([[Evidence.of]]), marked as the page's ([[pageFacts]]) — what the agreement stage and the suspect-take audit read. */
+  def withPage(page: DetailFacts): Listing = {
+    val stated = Evidence.of(this, Some(page))
+    copy(year = stated.year, directors = stated.directors, runtime = stated.runtime, originalTitle = stated.originalTitle,
+      countries = stated.countries, pageFacts = true)
+  }
+
   /** Are its year, directors, running time and poster an aggregator catalogue's claim, copied by the showtimes feed that
    *  linked the screening to its entry, rather than its venue's own statement ([[CatalogueSources.feedStated]])? They are
    *  evidence FOR that entry's film, never proof that the entry is the venue's film: they never confirm the feed's own
