@@ -122,16 +122,32 @@ class KnownPlacesNeverNotFoundSpec extends AnyFlatSpec with Matchers with Before
     front.get("/leeds/", host = Country.apexHost).header.headers(LOCATION) shouldBe "/uk/leeds/"    // new, UK first
   }
 
-  it should "send every slug a country answers to somewhere that country serves" in {
+  /** The documented rule, computed here rather than through the filter's own
+   *  `Country.bareSlugTarget`: the checked-in table's owner, else the first country,
+   *  in `Country.switchable`'s order, that answers to the slug. */
+  private def expectedOwner(slug: String): Option[Country] =
+    models.LegacySlugOwners.owners.get(slug).flatMap(Country.byCode)
+      .orElse(Country.switchable.find(_.resolve(slug).isDefined))
+
+  it should "send every slug any country answers to where the table and its fallback say" in {
     val front = new Deployment(Country.Poland)
+    val others = Country.switchable.filter(_ != Country.Poland)
     val failures = for {
       country <- Country.switchable
       slug    <- everySlug(country)
-      target  <- Country.bareSlugTarget(slug).toSeq if target.country != Country.Poland
+      owner   <- expectedOwner(slug).toSeq
       result   = front.get(s"/$slug/", host = Country.apexHost)
-      expected = s"${target.country.pathPrefix}/${target.city.slug}/"
-      problem <- Option.when(result.header.headers.get(LOCATION).forall(_ != expected))(
-                   s"/$slug/ → ${result.header.status} ${result.header.headers.get(LOCATION)}, not $expected").toSeq
+      location = result.header.headers.get(LOCATION)
+      problem <- (
+        if (owner == Country.Poland)
+          // Poland's own: no front-door redirect — its page, or its own 301 onto one.
+          Option.when(location.exists(to => others.exists(c => to.startsWith(c.pathPrefix + "/"))))(
+            s"/$slug/ -> $location, but Poland keeps it")
+        else {
+          val expected = owner.resolve(slug).map(city => s"${owner.pathPrefix}/${city.slug}/")
+          Option.when(expected.isEmpty || location != expected)(
+            s"/$slug/ -> ${result.header.status} $location, not $expected")
+        }).toSeq
     } yield problem
     withClue(failures.take(20).mkString("\n")) { failures.distinct shouldBe empty }
   }
