@@ -447,6 +447,11 @@ class WebReadModel(
   // replay from (a standalone answers `Absent`), left the writes made while the streams were down
   // unread. A FAILED checkpoint sets nothing: it opens no stream, and the next tick tries again.
   private var catchUpOwed      = false
+  // A checkpoint fails every cold-retry tick for as long as Mongo is down — 120 lines an hour a
+  // pod if each logged. The first is news; after it, one line per backstop interval, counting
+  // the ticks it held back. On the injected clock, so a spec steps it.
+  private val checkpointFailureLog =
+    new tools.LogThrottle(reloadInterval.value.toNanos, () => clock.millis() * 1000000L)
   private val MaxTicksBetweenReopens =
     math.max(1L, reloadInterval.value.toSeconds / math.max(1L, coldRetryInterval.value.toSeconds))
 
@@ -465,7 +470,10 @@ class WebReadModel(
         // attempt: it cost a `hello`, not a reload, so it leaves the backoff alone and the next
         // tick takes one — the streams are back the tick after Mongo is.
         case tools.ReadOutcome.Failed(cause) =>
-          logger.warn(s"WebReadModel: no stream checkpoint to replay from (${cause.explain}) — the streams stay down; retrying next tick.")
+          checkpointFailureLog.admit().foreach { held =>
+            logger.warn(s"WebReadModel: no stream checkpoint to replay from (${cause.explain}) — the streams stay down; " +
+              s"retrying every tick${if (held > 0) s" ($held more failed since the last line)" else ""}.")
+          }
           if (!_hydrated) coldReload()
         case outcome =>
           reopenAttempts += 1

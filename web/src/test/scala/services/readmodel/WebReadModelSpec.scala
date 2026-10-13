@@ -358,6 +358,35 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     rm.stop()
   }
 
+  // Through a Mongo outage every cold-retry tick's checkpoint fails — one WARN per 30s tick
+  // (~120/h/pod) where the pod used to log about once per backstop. The first failure is
+  // news; the rest of the outage is the same line, so it logs again once a backstop's
+  // interval has passed, carrying how many it held back.
+  it should "log a failing checkpoint once, then again only after a backstop's interval" in {
+    val clock = new _root_.tools.MutableClock(java.time.Instant.parse("2026-10-13T12:00:00Z"))
+    val repository = new UnreadableReadModelRepository
+    repository.healReads()
+    val rm = new WebReadModel(repository, driftSettle = WebReadModel.DriftSettle(Duration.Zero), clock = clock)
+    rm.start()
+    repository.failingCheckpoint = true
+    repository.failMovieStream()
+
+    def checkpointWarnings(ticks: Int): Seq[String] =
+      _root_.tools.LogCapture.thisThread(classOf[WebReadModel].getName) {
+        (1 to ticks).foreach { _ =>
+          rm.coldRetryTick()
+          clock.advanceSeconds(WebReadModel.DefaultColdRetryInterval.value.toSeconds)
+        }
+      }.map(_.getFormattedMessage).filter(_.contains("no stream checkpoint"))
+
+    checkpointWarnings(10) should have size 1
+    clock.advance(java.time.Duration.ofSeconds(WebReadModel.DefaultReloadInterval.value.toSeconds))
+    val later = checkpointWarnings(1)
+    later should have size 1
+    later.head should include("9 more failed")
+    rm.stop()
+  }
+
   it should "reload when a server-side count drifts from the in-memory model" in {
     // countScreenings reports one more than was streamed in — standing in for a
     // delivered event the applier dropped, which a count-blind backstop misses.
