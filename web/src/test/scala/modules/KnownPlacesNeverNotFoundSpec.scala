@@ -23,13 +23,10 @@ import scala.concurrent.{Await, Future}
  *
  * The router here binds the three city shapes the routes file does (`/:city`,
  * `/:city/`, `/:city/api/cinemas`) to the real `MovieController`; everything a
- * request meets before them is the production filter pair. The whole walk checks
- * a listing through `/:city/api/cinemas`, which resolves the city exactly as
- * `/:city/` does (`withCity` → `ServedCity`) — rendering every one of ~12,000
- * addresses' pages would take minutes — and a second walk renders the real
- * `/:city/` page (`MovieController.index`) for a sample of every country plus
- * every slug the front door rules on and every qualified slug that 301s onto a
- * bare one, so a page that resolves but fails to render is caught too.
+ * request meets before them is the production filter pair. Every address lands
+ * on the real `/:city/` page (`MovieController.index`, through `renderIndex`), so
+ * a page that resolves but fails to render fails here too; over an empty read
+ * model all ~12,000 addresses render in a few seconds.
  */
 class KnownPlacesNeverNotFoundSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
@@ -40,7 +37,7 @@ class KnownPlacesNeverNotFoundSpec extends AnyFlatSpec with Matchers with Before
 
   /** One country's deployment: its two redirect filters over a router of the
    *  city routes, mounted at its own `mountPath`. */
-  private final class Deployment(country: Country, renderListing: Boolean = false) {
+  private final class Deployment(country: Country) {
     private val controller: MovieController = TestMovieController.build(Nil, servingCountry = country)._1
     private val mount = country.mountPath.stripSuffix("/")
 
@@ -48,7 +45,7 @@ class KnownPlacesNeverNotFoundSpec extends AnyFlatSpec with Matchers with Before
       val rest = rh.path.stripPrefix(mount + "/")
       val action: EssentialAction = rest.split("/", -1).toSeq match {
         case Seq(city)                 => controller.indexNoTrailingSlash(city)
-        case Seq(city, "")             => if (renderListing) controller.index(city) else controller.apiCinemas(city)
+        case Seq(city, "")             => controller.index(city)
         case Seq(city, "api", "cinemas") => controller.apiCinemas(city)
         case _                         => EssentialAction(_ => play.api.libs.streams.Accumulator.done(Results.NotFound))
       }
@@ -70,17 +67,6 @@ class KnownPlacesNeverNotFoundSpec extends AnyFlatSpec with Matchers with Before
   private def everySlug(country: Country): Seq[String] =
     (country.cities.map(_.slug) ++ country.renamedSlugs.keys ++ country.slugAliases.keys).distinct.sorted
 
-  /** The slugs whose real `/:city/` page is rendered: every 20th known slug, every
-   *  slug the front door rules on, and every qualified slug (`york-north-yorkshire`)
-   *  that 301s onto the bare page it qualifies. */
-  private def renderedSlugs(country: Country): Seq[String] = {
-    val all = everySlug(country)
-    val redirects = country.renamedSlugs ++ country.slugAliases
-    val qualified = redirects.collect { case (from, to) if from.startsWith(to + "-") => from }
-    val contested = Country.frontDoorContestedSlugs.filter(country.resolve(_).isDefined)
-    (all.grouped(20).map(_.head) ++ contested ++ qualified).toSeq.distinct.sorted
-  }
-
   private def walk(d: Deployment, slugs: Seq[String]): Seq[String] =
     for {
       slug  <- slugs
@@ -101,13 +87,6 @@ class KnownPlacesNeverNotFoundSpec extends AnyFlatSpec with Matchers with Before
   Country.switchable.foreach { country =>
     s"Every known slug of ${country.code}" should "answer 200, or 301 onto a page that answers 200" in {
       val failures = walk(new Deployment(country), everySlug(country))
-      withClue(failures.take(20).mkString("\n")) { failures shouldBe empty }
-    }
-
-    it should "render its real listing page for a sample, the front door's slugs and the qualified ones" in {
-      val slugs = renderedSlugs(country)
-      slugs.size should be > 10
-      val failures = walk(new Deployment(country, renderListing = true), slugs)
       withClue(failures.take(20).mkString("\n")) { failures shouldBe empty }
     }
   }
