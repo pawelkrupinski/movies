@@ -57,3 +57,8 @@ scripts/ci/close-mongo-tunnel.sh
 scripts/ci/mongo-tunnel-paths.sh
 # A recording leg's per-origin health (convergence-publish): fails a recording an origin refused.
 scripts/ci/recording_health.py
+# The identity takes check every hermetic convergence row runs after its suite: the scripts, and the file
+# that accepts a move (an acceptance re-runs the lane, which is what turns the check green again).
+scripts/ci/identity-takes-check.sh
+scripts/ci/identity_takes_diff.py
+test/resources/fixtures/identity-takes/**

@@ -198,7 +198,8 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     val convergence = RepoFile.block(leg, "convergence")
     "uses: ./.github/actions/convergence-bisect-request".r.findAllIn(leg).size shouldBe 1
     convergence should include("uses: ./.github/actions/convergence-bisect-request\n" +
-      "              if: failure() && inputs.mode == 'hermetic' && github.ref == 'refs/heads/main'")
+      "              if: failure() && inputs.mode == 'hermetic' && github.ref == 'refs/heads/main' && " +
+      "(steps.takes.outcome != 'failure' || steps.suite.outcome == 'failure')")
     convergence should include("sample-failed:  ${{ steps.sample.outcome == 'failure' }}")
   }
 
@@ -207,7 +208,8 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
   it should "ratchet a red sample's findings and a red suite's, never the suite's for a red sample" in {
     val convergence = RepoFile.block(leg, "convergence")
     convergence should include("uses: ./.github/actions/hard-clusters-ratchet\n" +
-      "              if: failure() && steps.sample.outcome != 'failure' && matrix.phase != 'sample'")
+      "              if: failure() && steps.sample.outcome != 'failure' && matrix.phase != 'sample' && " +
+      "(steps.takes.outcome != 'failure' || steps.suite.outcome == 'failure')")
     convergence should include("uses: ./.github/actions/hard-clusters-ratchet\n" +
       "              if: always() && (matrix.phase == 'convergence' || matrix.phase == 'sample') && steps.sample.outcome == 'failure'\n" +
       "              with:\n                  code:  ${{ inputs.code }}\n                  log:   convergence-sample.log")

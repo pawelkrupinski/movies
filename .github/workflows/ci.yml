@@ -204,6 +204,7 @@ jobs:
                       bash scripts/ci/prune-actions-caches-test.sh
                       bash scripts/ci/wait-for-run-artifact-test.sh
                       bash scripts/identity-measure-ci-test.sh
+                      bash scripts/ci/identity-takes-check-test.sh
                       bash scripts/vault-env-test.sh
                       bash scripts/with-prod-mongo-test.sh
                       bash scripts/identity-capture-test.sh
@@ -213,6 +214,7 @@ jobs:
                       python3 scripts/test_aot_class_list.py
                       python3 scripts/test_convergence_findings.py
                       python3 scripts/ci/recording_health_test.py
+                      python3 scripts/ci/identity_takes_diff_test.py
                       python3 scripts/ci/changed_line_coverage_test.py
                       python3 scripts/ops/jfr_rank_test.py
                       python3 scripts/ops/dumpheap_test.py
