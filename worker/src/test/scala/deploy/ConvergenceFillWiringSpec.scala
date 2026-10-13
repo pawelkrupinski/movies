@@ -103,11 +103,26 @@ class ConvergenceFillWiringSpec extends AnyFlatSpec with Matchers {
     RepoFile.step(fill, "Fetch them until the fill's minutes run out") should include(s"$option \"worker/Fixtures/runMain")
   }
 
-  it should "hold the residential proxy's credentials in the fetching step alone" in {
+  it should "hold the residential proxy's credentials in the fetching steps alone" in {
     Seq("DECODO_PROXY_USER", "DECODO_PROXY_PASS").foreach { name =>
       fillStep should include(s"$name: $${{ secrets.$name }}")
       publish should not include name
-      RepoFile.withoutComments(leg).linesIterator.count(_.contains(s"secrets.$name")) shouldBe 1
+      withClue("the fill, and a recording's sample and suite (ArchiveReplayWiring.recordingProxy): ") {
+        RepoFile.withoutComments(leg).linesIterator.count(_.contains(s"secrets.$name")) shouldBe 3
+      }
+    }
+  }
+
+  // Record scrape fixtures 38355584482: a recording asked Cineworld's detail API from the runner alone, every read 403'd,
+  // and the UK identity capture refused the country. A recording asks the origin's refusals again through the proxy,
+  // as the fill does — so its sample and suite hold the credentials when recording, and never when hermetic.
+  "a recording's sample and suite" should "hold the residential proxy's credentials, and allow its tunnels' Basic auth" in {
+    val option = "-J" + tools.ProxyTunnelAuthentication.BasicAllowed.jvmOption
+    Seq(SuiteStep, "Run the ${{ inputs.country }} sample ahead of the suite").map(RepoFile.step(leg, _)).foreach { step =>
+      Seq("DECODO_PROXY_USER", "DECODO_PROXY_PASS").foreach { name =>
+        step should include(s"$name: $${{ inputs.mode == 'record' && secrets.$name || '' }}")
+      }
+      step should include(option)
     }
   }
 

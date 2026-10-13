@@ -638,6 +638,43 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
       .proxyShardsBuilt shouldBe None
   }
 
+  /** A RECORDING wiring whose wire refuses a runner's address (403, as Cineworld's detail API answers every
+   *  GitHub-hosted runner) and whose residential proxy answers — the egress production reaches that origin over. */
+  private final class RefusedRecordingWiring(proxied: java.util.concurrent.ConcurrentLinkedQueue[String],
+                                             environment: Env = Env.of())
+      extends ArchiveReplayWiring(Country.UnitedKingdom, new InMemoryScrapeArchiveRepository, None, new FetchOnlyStorage, fixtureTree,
+        settings.FixtureRoot.RepositoryRelative, environment = environment) {
+    override protected def wire: HttpFetch = new GetOnlyHttpFetch {
+      override def get(url: String): String = throw new HttpStatusException(403, "GET", url, None)
+    }
+    override protected lazy val recordingProxy: Option[HttpFetch] = Some(new GetOnlyHttpFetch {
+      override def get(url: String): String = { proxied.add(url); "proxied body" }
+    })
+  }
+
+  // Record scrape fixtures 38355584482: every Cineworld detail read 403'd from the runner, so the UK recording held no
+  // detail page and the identity capture refused the country — while production read the same pages through the proxy.
+  "a recording wiring" should "ask what the origin refuses it again through the residential proxy, as the fill does" in {
+    val proxied = new java.util.concurrent.ConcurrentLinkedQueue[String]
+    val url     = "https://www.cineworld.co.uk/api/gatsby-source-boxofficeapi/movies?ids=HO00012345"
+
+    new RefusedRecordingWiring(proxied).httpFetch.get(url) shouldBe "proxied body"
+    proxied.toArray.toSeq shouldBe Seq(url)
+    withClue("and records the answer for the hermetic replays: ") { recordedFiles should be > 0L }
+  }
+
+  it should "build that proxy from the residential-proxy credentials it is handed, and none without them" in {
+    final class Probe(environment: Env, hermetic: Option[MissingFixtures])
+        extends ArchiveReplayWiring(Country.UnitedKingdom, new InMemoryScrapeArchiveRepository, None, new FetchOnlyStorage, fixtureTree,
+          settings.FixtureRoot.RepositoryRelative, hermetic = hermetic, environment = environment) {
+      def proxyBuilt: Boolean = recordingProxy.isDefined
+    }
+    val credentials = Env.of("DECODO_PROXY_USER" -> "user", "DECODO_PROXY_PASS" -> "pass")
+    new Probe(credentials, None).proxyBuilt shouldBe true
+    new Probe(Env.of(), None).proxyBuilt shouldBe false
+    withClue("a hermetic replay asks no wire at all: ") { new Probe(credentials, Some(new MissingFixtures)).proxyBuilt shouldBe false }
+  }
+
   // A replay's identity model builds no traces and writes none: they are the admin page's diagnostics,
   // and a US cut-over replay spent a tenth of its CPU deriving them and Mongo bulk writes that timed out
   // filing them. Asked with a database present, where the production wiring files them into it.

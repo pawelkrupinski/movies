@@ -68,7 +68,19 @@ class ArchiveReplayWiring(
    *  recording run builds it, so the two can only differ in whether a request that
    *  falls through all of them reaches the network. */
   override protected def realHttpLeaf: HttpFetch =
-    hermetic.fold(super.realHttpLeaf)(new HermeticHttpLeaf(_))
+    hermetic.fold(MissingFixtureFill.route(wire, recordingProxy))(new HermeticHttpLeaf(_))
+
+  /** The real wire a RECORDING asks first. */
+  protected def wire: HttpFetch = super.realHttpLeaf
+
+  /** Where a RECORDING asks again what the origin refused the runner's own address — the residential proxy production
+   *  reaches those origins over, built from the credentials the wiring was handed, over the same route the fill takes
+   *  ([[MissingFixtureFill.route]]). Cineworld's detail API answers every GitHub-hosted runner 403, so without it the UK
+   *  recording held no Cineworld detail page at all (run 38355584482). Not `residentialProxyShards`, which
+   *  `TestWiring` refuses: that would put the proxy FIRST on the cinema routes, paying for what the wire answers. A
+   *  hermetic run asks no wire, so builds none. */
+  protected lazy val recordingProxy: Option[HttpFetch] =
+    if (hermetic.isDefined) None else MissingFixtureFill.residentialProxy(configuration, tlsContext)
 
   /** Over a hermetic leaf no request goes out, so a paced host's slot guards nothing: the pacing
    *  layers still claim their slots and decide as production does — the fleet's aside ([[pacingFleet]]) — and only the

@@ -100,6 +100,12 @@ object MissingFixtureFill {
   def route(direct: HttpFetch, proxy: Option[HttpFetch]): HttpFetch =
     proxy.fold(direct)(p => new FallbackHttpFetch(Seq("direct" -> direct, "proxy" -> p), endsChain = FallbackHttpFetch.OriginAnswered))
 
+  /** The residential proxy [[route]] falls back to — sticky per host and path across the pool's IPs — when
+   *  `configuration` holds its credentials; None otherwise. The fill's and a recording's alike. */
+  def residentialProxy(configuration: settings.ProcessConfiguration, tls: javax.net.ssl.SSLContext): Option[HttpFetch] =
+    modules.wiring.EgressWiring.residentialShards(ResidentialProxy.fromConfiguration(configuration), tls)
+      .map(new StickyShardHttpFetch(_, StickyShardHttpFetch.hostAndPath))
+
   /** The chain a fill writes through: `ArchiveReplayWiring.recordedChain` into `tree` under `root` — the
    *  recorder's own, so a fetched page lands where a hermetic replay looks for it, and a durable verdict
    *  (a 404) is remembered beside it as a recording remembers one. A transient failure is not: the next

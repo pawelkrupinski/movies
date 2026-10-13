@@ -617,12 +617,15 @@ jobs:
                   # The runner's whole CPU beside the phase log's JVM-only number (cpu-sampler.sh).
                   scripts/ci/cpu-sampler.sh 15 & sampler=$!; trap 'kill "$sampler"' EXIT
                   read -ra jvm <<< "$JVM_OPTIONS"
-                  sbt -J-Xmx${{ inputs.heap }} "${jvm[@]}" ${{ inputs.sample-command }} 2>&1 | tee convergence-sample.log
+                  sbt -J-Xmx${{ inputs.heap }} "${jvm[@]}" -J-Djdk.http.auth.tunneling.disabledSchemes= ${{ inputs.sample-command }} 2>&1 | tee convergence-sample.log
               env:
                   JVM_OPTIONS:      ${{ inputs.jvm-options }}
                   KINOWO_COUNTRY:   ${{ inputs.code }}
                   KINOWO_COUNTRIES: ${{ inputs.code }}
                   MONGODB_URI:      mongodb://127.0.0.1:27017/?directConnection=true
+                  # As the suite's: a recording asks what the origin refuses it again through the proxy.
+                  DECODO_PROXY_USER: ${{ inputs.mode == 'record' && secrets.DECODO_PROXY_USER || '' }}
+                  DECODO_PROXY_PASS: ${{ inputs.mode == 'record' && secrets.DECODO_PROXY_PASS || '' }}
                   TMDB_API_KEY:     ${{ secrets.TMDB_API_KEY }}
                   OMDB_API_KEY:     ${{ secrets.OMDB_API_KEY }}
                   KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES: enrichment-${{ inputs.code }}
@@ -689,7 +692,7 @@ jobs:
                       profile=("-J-XX:StartFlightRecording=filename=convergence.jfr,settings=profile,dumponexit=true")
                   fi
                   read -ra jvm <<< "$JVM_OPTIONS"
-                  sbt -J-Xmx${{ inputs.heap }} "${jvm[@]}" "${profile[@]}" ${{ matrix.phase == 'convergence' && !inputs.sample-row && inputs.mode != 'record' && inputs.shape-command || '' }} ${{ matrix.phase == 'convergence' && inputs.command || inputs.order-command }} 2>&1 | tee convergence.log || suite=$?
+                  sbt -J-Xmx${{ inputs.heap }} "${jvm[@]}" "${profile[@]}" -J-Djdk.http.auth.tunneling.disabledSchemes= ${{ matrix.phase == 'convergence' && !inputs.sample-row && inputs.mode != 'record' && inputs.shape-command || '' }} ${{ matrix.phase == 'convergence' && inputs.command || inputs.order-command }} 2>&1 | tee convergence.log || suite=$?
                   # What the leg left in Mongo — the size a RAM-backed mongod would have to hold, and where its
                   # time went — on a red suite too, which is when it is read; then the suite's own verdict.
                   docker exec mongo du -sh /data/db || true
@@ -739,6 +742,12 @@ jobs:
                   KINOWO_CONVERGENCE_FILL_ONLY: ${{ inputs.mode == 'record' && matrix.phase != 'convergence' }}
                   KINOWO_IDENTITY_LOOKUPS: ${{ inputs.identity-lookups }}
                   TMDB_API_KEY:     ${{ secrets.TMDB_API_KEY }}
+                  # A RECORDING asks what an origin refuses the runner's own address (Cineworld's detail API
+                  # answers every runner 403) again through the residential proxy, as production reaches it and
+                  # as the fill does (ArchiveReplayWiring.recordingProxy); the sbt line allows the tunnel's Basic
+                  # auth. A hermetic run asks no wire, so it is handed no credentials.
+                  DECODO_PROXY_USER: ${{ inputs.mode == 'record' && secrets.DECODO_PROXY_USER || '' }}
+                  DECODO_PROXY_PASS: ${{ inputs.mode == 'record' && secrets.DECODO_PROXY_PASS || '' }}
                   # The OMDb rung of ImdbIdResolver is gated on this key
                   # (`omdb = Env.get("OMDB_API_KEY").map(...)`), so without it the
                   # ladder silently runs one rung short of production, which HAS the

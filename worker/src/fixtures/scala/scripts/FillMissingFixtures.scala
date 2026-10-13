@@ -48,8 +48,7 @@ object FillMissingFixtures {
         modules.wiring.HttpWiring.pacedWire(leaf, configuration, pace, java.time.Clock.systemUTC(), Thread.sleep)
       // The residential proxy, when the process holds its credentials: what the origin refuses directly is asked again
       // through it, as production reaches those origins (`MissingFixtureFill.route`).
-      val proxy = modules.wiring.EgressWiring.residentialShards(tools.ResidentialProxy.fromConfiguration(configuration), tls)
-        .map(shards => paced(new tools.StickyShardHttpFetch(shards, tools.StickyShardHttpFetch.hostAndPath)))
+      val proxy = MissingFixtureFill.residentialProxy(configuration, tls).map(paced)
       val live: HttpFetch = MissingFixtureFill.route(paced(new RealHttpFetch(tls = tls)), proxy)
       val fill = new MissingFixtureFill(
         MissingFixtureFill.heldIn(settings.FixtureRoot(Path.of(held)), tree),
