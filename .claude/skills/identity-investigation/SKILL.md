@@ -19,8 +19,9 @@ shared by every worktree, so the second agent to ask pays nothing.
 |---|---|
 | Why did «title» at a venue take film X (or none)? | `scripts/identity-explain de --venue cinestar --title "rückkehr des königs"` |
 | Did commit Y change that, and how? | `… --ref Y~1 --ref Y` (side by side, then the traces' diff) |
-| The same on a newer capture (a capture PR, a capture run) | `… --fixture origin/chore/identity-capture` or `--fixture <identity-capture run id>` |
-| What did a capture run's / PR's ratchet find? | `scripts/identity-ratchet-report 230` (PR) or `<run id>`; `--explain`, `--status ALL`, `--tsv` |
+| The same on a newer capture (the capture branch, a capture run) | `… --fixture origin/chore/identity-capture` or `--fixture <identity-capture run id>` |
+| What did a capture run's ratchet find? | `scripts/identity-ratchet-report <run id>` (or a capture PR's number); `--explain`, `--status ALL`, `--tsv` |
+| Land a judged capture | commit the verdicts to `chore/identity-capture`, push, then `gh workflow run identity-capture.yml -f open-pr=true` — re-runs the ratchet there and opens the PR only if it is green |
 | …a local ratchet run | `sbt "worker/testOnly services.identity.UnmatchedClustersRatchetSpec"`, then `scripts/identity-ratchet-report --local` |
 | Judge the UNJUDGED takes | `scripts/identity-judge-cards --fixtures origin/chore/identity-capture` → `target/identity-judge/` |
 | Which listings did a change move, over a WHOLE corpus (matched ones too)? | the convergence row's identity takes check (`scripts/ci/identity-takes-check.sh`, `identity_takes_diff.py`) |

@@ -2964,9 +2964,11 @@ the stage, cannot be graded until the fixture is re-captured (below).
 
    `--dry-run` prints the plan (downloads, exports, each JVM's command and variables) and touches neither prod nor the
    network. Weekly, `.github/workflows/identity-capture.yml` runs the same command (Monday 07:00 UTC, after the Sunday
-   night recording, so its PR is reviewed before Thursday's refit), one runner per country, prod read over the
-   read-only CI tunnel, and opens ONE PR with the refreshed fixture, the ratchet's unjudged and wrong takes, and the
-   re-baselined `expected-matches.tsv` for review. Then run the ratchet: every new take has to be judged into `labels.tsv`, and `expected-matches.tsv`
+   night recording, so it is judged before Thursday's refit), one runner per country, prod read over the
+   read-only CI tunnel, and pushes the refreshed fixture with the re-baselined `expected-matches.tsv` as ONE branch,
+   `chore/identity-capture`; the ratchet's unjudged and wrong takes go to the run's summary and its `identity-ratchet`
+   artifact. It opens a PR only when that ratchet is already green; otherwise judge on the branch and run
+   `gh workflow run identity-capture.yml -f open-pr=true`, which re-checks the branch and opens the PR once green. Then run the ratchet: every new take has to be judged into `labels.tsv`, and `expected-matches.tsv`
    re-baselined (takes the model now makes leave the fixture, as with Dyrygent).
 
 ### 20.15 The local review app's 60 answers: labels, and the rules they suggested (2026-10-06)

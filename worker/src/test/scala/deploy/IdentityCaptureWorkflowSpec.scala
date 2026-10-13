@@ -4,8 +4,11 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 /** The weekly unmatched-cluster recapture (`.github/workflows/identity-capture.yml`): every country captured by the
- *  same one command a laptop runs, early enough in the week that its PR is reviewed before Thursday's refit reads the
- *  fixture, and handed back as ONE bot PR — never pushed to main, and prod read only over the read-only CI route. */
+ *  same one command a laptop runs, early enough in the week that it is judged before Thursday's refit reads the
+ *  fixture, and handed back as ONE bot branch — never pushed to main, and prod read only over the read-only CI route.
+ *  The branch becomes a PR only once the ratchet over it is green: a PR is a request for a build, and a recapture's
+ *  Branch CI is red on the ratchet until its takes are judged (ten such PRs in two days, #223–#232, each closed by
+ *  the next run). */
 class IdentityCaptureWorkflowSpec extends AnyFlatSpec with Matchers {
   private lazy val workflow = RepoFile.read(".github/workflows/identity-capture.yml")
   private lazy val jobs     = RepoFile.jobs(workflow)
@@ -33,16 +36,42 @@ class IdentityCaptureWorkflowSpec extends AnyFlatSpec with Matchers {
     workflow should not include "secrets.MONGODB_URI"
   }
 
-  it should "hand the countries' refreshed fixtures to ONE pull request, never a push to main" in {
-    workflow.split("uses: peter-evans/create-pull-request@").length shouldBe 2
-    jobs("pull-request") should include("test/resources/fixtures/identity-unmatched/")
-    workflow should not include "git push"
+  private lazy val publish = jobs("publish")
+  private val Branch       = "chore/identity-capture"
+
+  it should "hand the countries' refreshed fixtures to ONE bot branch, fresh off main, never a push to main" in {
+    publish should include("test/resources/fixtures/identity-unmatched/")
+    publish should include("uses: ./.github/actions/drop-bot-branch")
+    publish.indexOf("uses: ./.github/actions/drop-bot-branch") should be < publish.indexOf("git push")
+    publish should include(s"BRANCH: $Branch")
+    val pushes = RepoFile.runSteps(workflow).flatMap(_.script.linesIterator).filter(_.contains("git push"))
+    pushes should not be empty
+    all(pushes) should include("\"HEAD:refs/heads/$BRANCH\"")
+    workflow should not include "--force"
+  }
+
+  it should "open the PR only when the ratchet over the recapture is green — never on every run" in {
+    workflow should not include "peter-evans/create-pull-request"
+    val open = RepoFile.step(workflow, "Open the PR when the ratchet is green")
+    open should include("steps.ratchet.outputs.green == 'true'")
+    open should include("gh pr create")
+    val ratchet = RepoFile.stepScript(workflow, "Run the ratchet over the recapture")
+    ratchet should include("services.identity.UnmatchedClustersRatchetSpec")
+    ratchet should include("green=true")
+    ratchet should not include "|| true"
+  }
+
+  it should "re-check the judged branch on demand and open its PR then, without capturing again" in {
+    RepoFile.block(workflow, "on") should include("open-pr:")
+    capture should include("if: ${{ !inputs.open-pr }}")
+    publish should include(s"inputs.open-pr && '$Branch' || 'main'")
+    RepoFile.step(workflow, "Put the countries' fixtures back") should include("if: ${{ !inputs.open-pr }}")
+    RepoFile.step(workflow, "Drop the old branch") should include("!inputs.open-pr")
   }
 
   it should "upload the ratchet's findings as the artifact scripts/identity-ratchet-report reads" in {
-    val pr = jobs("pull-request")
-    pr should include("name: identity-ratchet")
-    pr should include(tools.UnmatchedClusters.FindingsPath.toString)
+    publish should include("name: identity-ratchet")
+    publish should include(tools.UnmatchedClusters.FindingsPath.toString)
     RepoFile.read("scripts/identity-ratchet-report") should include("\"identity-ratchet\"")
   }
 }

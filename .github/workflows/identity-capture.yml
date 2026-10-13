@@ -2,7 +2,7 @@ name: Identity capture
 
 # Weekly RECAPTURE of the unmatched-cluster fixture (test/resources/fixtures/identity-unmatched/<cc>.json.gz)
 # that the ratchet (UnmatchedClustersRatchetSpec), the decoration discovery and the identity refit all
-# replay — proposed for hand review in ONE PR.
+# replay — published for hand review as ONE bot branch, chore/identity-capture.
 #
 # Each country runs the same one command a laptop runs (scripts/identity-capture.sh, docs/design/
 # identity-resolver.md §20.14 item 5) on a runner of its own: the newest successful "Record scrape
@@ -11,24 +11,40 @@ name: Identity capture
 # reads its corpus through), then the capture — or, when <cc>.inputs says the fixture's decisions are
 # current, only a fill. One runner per country rather than `--parallel 2` on one: a runner holds one
 # 11 GB heap beside its Mongo, not two, and runners on separate addresses spread the live reads too.
-# The PR job puts the countries' fixtures back together, runs the ratchet over them and opens the PR
-# with what it says: the takes to judge into labels.tsv, any WRONG or lost take, and the candidate
-# expected-matches.tsv it re-baselined. A country that failed keeps its old fixture and says so.
+# The publish job puts the countries' fixtures back together, runs the ratchet over them, commits the
+# result with the candidate expected-matches.tsv the ratchet re-baselined, and pushes it as a fresh
+# chore/identity-capture branch off main -- a BRANCH, not a PR. What the ratchet says (the takes to
+# judge into labels.tsv, any WRONG or lost take) goes to the run's summary and its `identity-ratchet`
+# artifact (scripts/identity-ratchet-report <run id>). A country that failed keeps its old fixture and
+# says so.
+#
+# A PR is a request for a build, so it is opened only when there is one worth running: when the
+# ratchet over the recapture is GREEN (every WRONG take listed in known-wrong.tsv, none UNJUDGED, none
+# LOST). A recapture almost always makes new takes, whose Branch CI would only be red on the ratchet
+# until someone judged them -- ten such PRs in two days (#223-#232), each closed by the next run. So
+# judging happens on the branch (commit labels.tsv / known-wrong.tsv there), and then
+#     gh workflow run identity-capture.yml -f open-pr=true
+# skips the capture, re-runs the ratchet on the judged branch, commits any re-baselined
+# expected-matches.tsv onto it, and opens the PR only if the ratchet is green.
 #
 # Monday 07:00 UTC: after the Sunday-night recording (23:31 UTC; its longest leg is capped at six
 # hours, so it is done by ~05:30) and clear of Monday's 05:00 roster audit and 06:00 cinema
-# discovery, so the PR has Monday to Wednesday for review before Thursday's 05:00 identity refit
+# discovery, so the branch has Monday to Wednesday for judging before Thursday's 05:00 identity refit
 # re-tunes on the fixture.
 #
 # Secrets (all existing repo secrets): MONGO_CI_SSH_KEY + MONGO_CI_SSH_HOST_KEY (the tunnel, as
 # record-scrape-fixtures.yml), TMDB_API_KEY (the live gaps), SYNC_PR_APP_ID + SYNC_PR_APP_PRIVATE_KEY
-# (the "Kinowo Sync Bot" App, as decoration-discovery.yml, so Branch CI runs on the PR).
-# This bot's PR is the third of three sanctioned exceptions to "no PRs" (with decoration-discovery.yml and
-# identity-refit.yml): land it by fast-forwarding main after
-# review.
+# (the "Kinowo Sync Bot" App, as decoration-discovery.yml: it pushes the branch, and opens the PR so
+# Branch CI runs on it). This bot's PR is the third of three sanctioned exceptions to "no PRs" (with
+# decoration-discovery.yml and identity-refit.yml): land it by fast-forwarding main after review.
 
 on:
     workflow_dispatch:
+        inputs:
+            open-pr:
+                description: 'Skip the capture: re-run the ratchet on the judged chore/identity-capture branch and open its PR if green'
+                type: boolean
+                default: false
 
     # Monday 07:00 UTC — see above.
     schedule:
@@ -63,6 +79,7 @@ jobs:
     capture:
         name: capture (${{ matrix.code }})
         needs: preflight
+        if: ${{ !inputs.open-pr }}
         runs-on: ubuntu-latest
         timeout-minutes: 300
         permissions:
@@ -132,8 +149,9 @@ jobs:
                       target/identity-capture/logs/
                   retention-days: 14
 
-    # ONE PR for the run: every country's refreshed fixture, and what the ratchet makes of them.
-    pull-request:
+    # ONE branch for the run: every country's refreshed fixture, and what the ratchet makes of them --
+    # and its PR only when the ratchet is green. With `open-pr`, the same job over the judged branch.
+    publish:
         needs: [preflight, capture]
         if: always() && !cancelled() && needs.preflight.result == 'success'
         runs-on: ubuntu-latest
@@ -141,20 +159,34 @@ jobs:
         permissions:
             contents: write
             pull-requests: write
+        env:
+            BRANCH: chore/identity-capture
+            OPEN_PR: ${{ inputs.open-pr && 'true' || 'false' }}
         steps:
-            # main's tip, not the triggering commit: a long run can see main gain a
-            # workflow change, and a branch built on the older commit would revert it
-            # (refused for the App). See BotPullRequestBranchSpec.
+            # The App's token pushes the branch (checkout keeps it as the push credential) and opens
+            # the PR, so Branch CI runs on it.
+            - uses: actions/create-github-app-token@v3
+              id: app-token
+              with:
+                  app-id: ${{ secrets.SYNC_PR_APP_ID }}
+                  private-key: ${{ secrets.SYNC_PR_APP_PRIVATE_KEY }}
+
+            # A recapture: main's tip, not the triggering commit -- a long run can see main gain a
+            # workflow change, and a branch built on the older commit would revert it (refused for
+            # the App; see BotPullRequestBranchSpec). `open-pr`: the judged branch itself.
             - uses: actions/checkout@v5
               with:
-                  ref: main
+                  ref: ${{ inputs.open-pr && 'chore/identity-capture' || 'main' }}
+                  token: ${{ steps.app-token.outputs.token }}
 
             - uses: actions/download-artifact@v6
+              if: ${{ !inputs.open-pr }}
               with:
                   pattern: identity-capture-*
                   path: captures
 
             - name: Put the countries' fixtures back
+              if: ${{ !inputs.open-pr }}
               run: |
                   set -euo pipefail
                   for dir in captures/identity-capture-*; do
@@ -179,13 +211,19 @@ jobs:
                   restore-keys: |
                       sbt-target-${{ runner.os }}-
 
-            # The ratchet is the review list, not a gate: a recapture is EXPECTED to make takes no label
-            # judges yet. Its findings go in the PR body; the candidate expected-matches.tsv it writes
-            # replaces the checked-in one for review.
+            # The ratchet is the review list and the PR's gate, not the job's: a recapture is EXPECTED
+            # to make takes no label judges yet, so red only means "judge on the branch first". Green
+            # (no WRONG take known-wrong.tsv does not list, none UNJUDGED, none LOST) means land-ready.
+            # The candidate expected-matches.tsv it writes replaces the checked-in one either way.
             - name: Run the ratchet over the recapture
+              id: ratchet
               run: |
                   set -o pipefail
-                  sbt "worker/testOnly services.identity.UnmatchedClustersRatchetSpec" 2>&1 | tee ratchet.log || true
+                  if sbt "worker/testOnly services.identity.UnmatchedClustersRatchetSpec" 2>&1 | tee ratchet.log; then
+                      echo "green=true" >> "$GITHUB_OUTPUT"
+                  else
+                      echo "green=false" >> "$GITHUB_OUTPUT"
+                  fi
                   if [ -f target/identity-unmatched/expected-matches.tsv ]; then
                       cp target/identity-unmatched/expected-matches.tsv test/resources/fixtures/identity-unmatched/expected-matches.tsv
                   fi
@@ -200,24 +238,36 @@ jobs:
                   if-no-files-found: warn
                   retention-days: 30
 
-            - name: Write the PR body
+            - name: Write the report
+              env:
+                  GREEN: ${{ steps.ratchet.outputs.green }}
               run: |
                   set -euo pipefail
                   {
-                      echo "The weekly recapture of the unmatched-cluster fixture ([identity-capture.yml](../blob/main/.github/workflows/identity-capture.yml), run ${GITHUB_RUN_ID})."
+                      if [ "$OPEN_PR" = true ]; then
+                          echo "The judged recapture of the unmatched-cluster fixture on \`$BRANCH\`, re-checked by [identity-capture.yml](../blob/main/.github/workflows/identity-capture.yml) run ${GITHUB_RUN_ID}."
+                      else
+                          echo "The weekly recapture of the unmatched-cluster fixture ([identity-capture.yml](../blob/main/.github/workflows/identity-capture.yml), run ${GITHUB_RUN_ID}), on \`$BRANCH\`."
+                      fi
                       echo
-                      echo "To land: judge every UNJUDGED take into \`labels.tsv\`, check \`expected-matches.tsv\`, then fast-forward main."
-                      echo
-                      echo "### Per country"
-                      echo
-                      echo '```'
-                      cat captures/identity-capture-*/identity-capture-*.txt 2>/dev/null \
-                          | grep -E '^\[identity-capture\] [a-z]{2}: (CAPTURE|FILL|FAILED)|captured [0-9]+ listings|filled after|^  [a-z ]+ +[0-9hms]+' || echo "no country reported"
-                      echo '```'
+                      if [ "$GREEN" = true ]; then
+                          echo "The ratchet is green: check \`expected-matches.tsv\`, then land it by fast-forwarding main once Branch CI passes."
+                      else
+                          echo "The ratchet is red, so no PR yet: judge every UNJUDGED take into \`labels.tsv\` (and any WRONG one into \`known-wrong.tsv\`) on \`$BRANCH\`, push, then \`gh workflow run identity-capture.yml -f open-pr=true\` -- it re-runs the ratchet there and opens the PR once it is green."
+                      fi
+                      if [ -d captures ]; then
+                          echo
+                          echo "### Per country"
+                          echo
+                          echo '```'
+                          cat captures/identity-capture-*/identity-capture-*.txt 2>/dev/null \
+                              | grep -E '^\[identity-capture\] [a-z]{2}: (CAPTURE|FILL|FAILED)|captured [0-9]+ listings|filled after|^  [a-z ]+ +[0-9hms]+' || echo "no country reported"
+                          echo '```'
+                      fi
                       echo
                       echo "### The ratchet"
                       echo
-                      echo "Every finding, untruncated and with its decision's explanation: \`scripts/identity-ratchet-report ${GITHUB_RUN_ID} --explain\`; evidence cards for the UNJUDGED takes: \`scripts/identity-judge-cards --fixtures origin/chore/identity-capture\`."
+                      echo "Every finding, untruncated and with its decision's explanation: \`scripts/identity-ratchet-report ${GITHUB_RUN_ID} --explain\`; evidence cards for the UNJUDGED takes: \`scripts/identity-judge-cards --fixtures origin/$BRANCH\`."
                       echo
                       echo '```'
                       sed -E 's/^\[info\] ?//' ratchet.log \
@@ -235,38 +285,57 @@ jobs:
                       echo "changed=true" >> "$GITHUB_OUTPUT"
                   fi
 
-            # A fresh branch off main every run, never a force-push over a stale one --
-            # see .github/actions/drop-bot-branch.
-            - uses: actions/create-github-app-token@v3
+            - name: Commit the recapture
               if: steps.changed.outputs.changed == 'true'
-              id: app-token
-              with:
-                  app-id: ${{ secrets.SYNC_PR_APP_ID }}
-                  private-key: ${{ secrets.SYNC_PR_APP_PRIVATE_KEY }}
+              run: |
+                  set -euo pipefail
+                  git config user.name 'github-actions[bot]'
+                  git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+                  git add -- test/resources/fixtures/identity-unmatched/
+                  if [ "$OPEN_PR" = true ]; then
+                      git commit -q -m 'Re-baseline expected-matches.tsv over the judged recapture'
+                  else
+                      git commit -q -m 'Recapture the unmatched-cluster fixture from the newest recording, for the labels and expected matches to be judged'
+                  fi
 
-            - uses: ./.github/actions/drop-bot-branch
-              if: steps.changed.outputs.changed == 'true'
+            # A fresh branch off main every recapture, never a rewrite of a stale one -- see
+            # .github/actions/drop-bot-branch (it also closes an open PR on it). Never on `open-pr`:
+            # the branch then holds the judging.
+            - name: Drop the old branch
+              if: ${{ !inputs.open-pr && steps.changed.outputs.changed == 'true' }}
+              uses: ./.github/actions/drop-bot-branch
               with:
                   branch: chore/identity-capture
                   token: ${{ steps.app-token.outputs.token }}
 
-            - name: Open the recapture PR
+            # A recapture creates the branch afresh; `open-pr` fast-forwards it by the re-baseline.
+            - name: Publish the chore/identity-capture branch
               if: steps.changed.outputs.changed == 'true'
-              uses: peter-evans/create-pull-request@v6
-              with:
-                  token: ${{ steps.app-token.outputs.token }}
-                  branch: chore/identity-capture
-                  delete-branch: true
-                  add-paths: |
-                      test/resources/fixtures/identity-unmatched/
-                  commit-message: 'Recapture the unmatched-cluster fixture from the newest recording, for the labels and expected matches to be judged'
-                  title: 'Identity capture: refreshed unmatched-cluster fixture'
-                  body-path: identity-capture-report.md
+              run: git push origin "HEAD:refs/heads/$BRANCH"
+
+            - name: Open the PR when the ratchet is green
+              if: steps.ratchet.outputs.green == 'true' && (inputs.open-pr || steps.changed.outputs.changed == 'true')
+              env:
+                  GH_TOKEN: ${{ steps.app-token.outputs.token }}
+                  GH_REPO: ${{ github.repository }}
+              run: |
+                  set -euo pipefail
+                  if [ -n "$(gh pr list --head "$BRANCH" --state open --json number --jq '.[].number')" ]; then
+                      gh pr edit "$BRANCH" --body-file identity-capture-report.md
+                  else
+                      gh pr create --base main --head "$BRANCH" \
+                          --title 'Identity capture: refreshed unmatched-cluster fixture' \
+                          --body-file identity-capture-report.md
+                  fi
+
+            - name: Say why there is no PR
+              if: steps.ratchet.outputs.green != 'true'
+              run: echo "::notice::The ratchet over $BRANCH is red, so no PR -- judge on the branch, then dispatch with open-pr. Findings - scripts/identity-ratchet-report ${GITHUB_RUN_ID}"
 
     # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --
     # see .github/actions/report-scheduled-run (ScheduledRunReportSpec).
     report:
-        needs: [preflight, capture, pull-request]
+        needs: [preflight, capture, publish]
         if: always() && !cancelled() && github.event_name == 'schedule'
         runs-on: ubuntu-latest
         timeout-minutes: 5

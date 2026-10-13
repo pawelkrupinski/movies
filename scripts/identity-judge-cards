@@ -9,7 +9,7 @@
 #   scripts/identity-judge-cards [--fixtures SRC] [--country cc[,cc]] [--out DIR] [--all] [--live|--offline]
 #
 #   --fixtures SRC  the capture (default: this checkout's): a directory, an "Identity capture" run id, or a git ref
-#                   (origin/chore/identity-capture — a capture PR's branch, read without checking it out). Its labels
+#                   (origin/chore/identity-capture — the weekly capture's branch, read without checking it out). Its labels
 #                   come with it (a run's: this checkout's).
 #   --out DIR       default target/identity-judge: cards.md (one card per title × film, decisive ones first),
 #                   labels-draft.tsv (the decisive suggestions as labels.tsv lines, noted "— CONFIRM"), open.tsv

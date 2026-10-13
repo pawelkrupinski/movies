@@ -8,7 +8,7 @@ the decision's explanation — from an "Identity capture" run, the PR it opened,
   run id      an identity-capture.yml run: its `identity-ratchet` artifact (ratchet-takes.tsv, written by
               UnmatchedClustersRatchetSpec). A run from before the artifact existed is read from its pull-request
               job's log instead (no explanations; a LOST take's venue is the text before its first comma).
-  PR number   the capture PR: the run its body names ("run 38389526184").
+  PR number   a capture PR (opened only once the ratchet is green): the run its body names ("run 38389526184").
   --local     target/identity-unmatched/ratchet-takes.tsv, written by a local
               `sbt "worker/testOnly services.identity.UnmatchedClustersRatchetSpec"`.
   --status    only these (default WRONG,UNJUDGED,MOVED,LOST); ALL for every finding
