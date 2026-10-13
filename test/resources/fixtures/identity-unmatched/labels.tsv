@@ -744,7 +744,8 @@ pl	Kino Pałacowe	Akademia Polskiego Filmu: Wiatr odnowy – kino epoki Paździe
 pl	Kino Światowid	ARS INDEPENDENT FESTIVAL: Konkurs Czarny Koń Filmu : REDUTA	tmdb:1141491	right	review page: confirmed
 pl	*	Basia. Humor w paski mam + Kocia Szajka - Festiwal TAURON Młode Horyzonty. Seanse HDD	tmdb:1747514	wrong	review page: double bill matches neither: Basia. Humor w paski mam (None)
 pl	Kino Pałacowe	Akademia Polskiego Filmu: Budowa przemysłu filmowego	tmdb:395021	wrong	review page: none of the candidates: Arabella (1917)
-us	*	NT Live: Hamlet	tmdb:396227	right	review page: hand label (model leaned tmdb:436484 National Theatre Live: Hamlet (2010))
+us	*	NT Live: Hamlet	tmdb:396227	wrong	judged 10-13: both venues billing it (Burns Court Sarasota, Film Streams Omaha) read one Flicks page (id 3058) still carrying Cumberbatch's 2015 year and runtime, screening 24 Nov-2 Dec 2026; Burns Court's own page bills the 2026 production (Robert Hastie, Hiran Abeysekera), the NT Live release then touring
+us	*	NT Live: Hamlet	tmdb:1507580	right	judged 10-13: the National Theatre's 2026 Hamlet (Robert Hastie, Hiran Abeysekera), what Burns Court's own page bills for the Flicks feed every venue shares
 us	*	NT Live: Hamlet	tmdb:436484	wrong	review page: must not: National Theatre Live: Hamlet (2010)
 pl	Kino Kalejdoskop	Disco mck	tmdb:1555331	wrong	review page: not a film: D.I.S.C.O. (2026)
 pl	Kino Wisła	24. Festiwal TERRA - JAPONIA - DWIE DEKADY PÓŹNIEJ	tmdb:1045986	wrong	review page: none of the candidates: Japonia (1997)
