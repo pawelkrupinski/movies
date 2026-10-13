@@ -499,7 +499,7 @@ test.describe('the apex front door lists Poland as one link to kinowo.net', { ta
     ]);
     expect(request.url()).toContain('to=https%3A%2F%2Fkinowo.net');
     expect(request.url()).toContain('pick=city');
-    expect(request.url()).not.toContain('city=poznan');
+    expect(request.url()).not.toMatch(/[?&]city=/);
   });
 });
 
