@@ -79,12 +79,14 @@ class AgreementBroadcastSpec extends AnyFlatSpec with Matchers {
     "the_metropolitan_opera_macbeth" -> SourceRecord(IdentityMeasures.Film("The Metropolitan Opera: Macbeth", runtime = Some(209),
       directors = Some(Seq("Louisa Proske")))),
     "royal_opera_macbeth" -> SourceRecord(IdentityMeasures.Film("Royal Opera House: Macbeth", year = Some(2018), directors = Some(Seq("Phyllida Lloyd")))))
-  private def credited(listing: Listing, records: Map[String, SourceRecord] = rtProductions): ResolverDecision = {
+  private def credited(listing: Listing, records: Map[String, SourceRecord] = rtProductions): ResolverDecision = creditedAll(Seq(listing), records)
+  /** The stage's decision on ONE cluster of `listings`. */
+  private def creditedAll(listings: Seq[Listing], records: Map[String, SourceRecord] = rtProductions): ResolverDecision = {
     val families = silentFamilies + (VoterFamily.RottenTomatoes -> new Productions(VoterFamily.RottenTomatoes, records))
-    val resolution = Resolution(Seq(ResolverDecision(Seq(listing.key), None, 0.1, ResolverDecision.Basis.BelowThreshold, Nil)()),
-      1, Map(listing.key -> 0), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
+    val resolution = Resolution(Seq(ResolverDecision(listings.map(_.key), None, 0.1, ResolverDecision.Basis.BelowThreshold, Nil)()),
+      listings.size, listings.map(_.key -> 0).toMap, Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
     new AgreementStage(families, table, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
-      clock = _root_.tools.SpecClock.Pinned, tmdb = Some(table)).apply(resolution, Map(listing.key -> listing).get, version = 1).decisions.head
+      clock = _root_.tools.SpecClock.Pinned, tmdb = Some(table)).apply(resolution, listings.map(l => l.key -> l).toMap.get, version = 1).decisions.head
   }
   private def rbo(work: String, director: Option[String], days: String*): Listing =
     FilmTable.listing(Multikino, s"RBO Cinema Season 2026-27: $work", director = director).copy(screenings = ScreeningDays.of(days.map(LocalDate.parse)))
@@ -106,6 +108,32 @@ class AgreementBroadcastSpec extends AnyFlatSpec with Matchers {
       Map("royal_opera_macbeth" -> SourceRecord(IdentityMeasures.Film("Royal Opera House: Macbeth", directors = Some(Seq("Louisa Proske")))))).film shouldBe None
     credited(FilmTable.listing(Multikino, "Opéra National de Paris: La fanciulla del West")
       .copy(screenings = ScreeningDays.of(Seq(LocalDate.of(2027, 1, 23))))).film shouldBe None
+  }
+
+  // UK recapture 2026-10-13 (recording 38363428661): Lighthouse Poole's "RBO: Macbeth - Cert TBC" and Pocklington's
+  // "Royal Ballet & Opera: Macbeth" credit nobody, in the cluster of Flicks' and Cineworld's "RBO Cinema Season 2026-27:
+  // Macbeth" crediting Louisa Proske — and their one listing each withheld the Met's record from all 58 (82 right takes)
+  "a relay crediting nobody in a cluster whose listings credit the production" should "take the production with them" in {
+    val poole       = FilmTable.listing(KinoMuza, "RBO: Macbeth - Cert TBC").copy(screenings = ScreeningDays.of(Seq(LocalDate.of(2026, 10, 20))))
+    val pocklington = FilmTable.listing(KinoMuza, "Royal Ballet & Opera: Macbeth").copy(screenings = ScreeningDays.of(Seq(LocalDate.of(2026, 10, 20))))
+    // …and the encore's mark is the cluster's too: The Forum Northallerton's "RBO: MACBETH (MET)" spells its houses in no word a
+    // banner reads, and alone, three days after the broadcast, says nothing of which staging it is
+    val northallerton = FilmTable.listing(KinoMuza, "RBO: MACBETH (MET)").copy(screenings = ScreeningDays.of(Seq(LocalDate.of(2026, 10, 20))))
+    val taken = creditedAll(Seq(rbo("Macbeth", Some("Louisa Proske"), "2026-10-20"), poole, pocklington, northallerton))
+    (taken.film, taken.basis) shouldBe ((Some(metMacbeth.id), ResolverDecision.Basis.Broadcast))
+    creditedAll(Seq(northallerton)).film shouldBe None
+    creditedAll(Seq(rbo("La Fanciulla Del West", Some("Richard Jones"), "2027-01-26"),
+      FilmTable.listing(KinoMuza, "RBO: La Fanciulla del West - Cert TBC").copy(screenings = ScreeningDays.of(Seq(LocalDate.of(2027, 1, 26))))))
+      .film shouldBe Some(metFanciulla.id)
+  }
+
+  it should "take none where no listing of the cluster credits it, or a listing credits another production's director" in {
+    creditedAll(Seq(rbo("Macbeth", None, "2026-10-20"),
+      FilmTable.listing(KinoMuza, "Royal Ballet & Opera: Macbeth").copy(screenings = ScreeningDays.of(Seq(LocalDate.of(2026, 10, 20)))))).film shouldBe None
+    // a listing's own credit is its own: one crediting the Royal Opera's director borrows no sibling's
+    creditedAll(Seq(rbo("Macbeth", Some("Louisa Proske"), "2026-10-20"),
+      FilmTable.listing(KinoMuza, "Royal Ballet & Opera: Macbeth", director = Some("Phyllida Lloyd"))
+        .copy(screenings = ScreeningDays.of(Seq(LocalDate.of(2026, 10, 20)))))).film shouldBe None
   }
 
   it should "take none against a fact the listing states, nor for a title billing no stage work" in {

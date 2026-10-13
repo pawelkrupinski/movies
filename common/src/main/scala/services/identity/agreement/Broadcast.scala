@@ -23,8 +23,8 @@ object Broadcast {
   /** A record the cluster's screenings take, and why. */
   final case class Taken(film: Int, line: String)
 
-  /** The one record the cluster's screenings name: broadcast on one of the days the cluster screens on, else — every
-   *  listing billing the record's house or its season — the one broadcast within [[EncoreDays]] before one. Every record
+  /** The one record the cluster's screenings name: broadcast on one of the days the cluster screens on, else — a listing
+   *  of the cluster billing the record's house or its season — the one broadcast within [[EncoreDays]] before one. Every record
    *  must bill a stage work each listing bills, and no fact a listing states may stand against it: its year, its
    *  director, its season, or a banner spelling another house — unless one of `productions` (film databases' records of
    *  the house's productions) credits the record's production with the director the listing credits. `Right(None)`: no
@@ -100,7 +100,7 @@ object Broadcast {
     def encore(film: Film) = film.released.exists(aired => days.days.exists(day => !day.isBefore(aired) && !day.isAfter(aired.plusDays(EncoreDays))))
     val chosen = onDay match {
       case Seq(one) => Some(one -> "on the day")
-      case Seq()    => Option.when(billing.forall(_.marked))(fitting.filter { case (_, film) => encore(film) }).collect { case Seq(one) => one -> "after the day" }
+      case Seq()    => Option.when(billing.exists(_.marked))(fitting.filter { case (_, film) => encore(film) }).collect { case Seq(one) => one -> "after the day" }
       case _        => None
     }
     chosen.map { case ((id, film), when) =>
@@ -118,7 +118,10 @@ object Broadcast {
     val days = listings.map(_.screenings).foldLeft(ScreeningDays.None)(_ ++ _)
     if (days.isEmpty || listings.isEmpty) None
     else {
-      val billing = listings.map(listing => Billing.of(listing, measured(listing)))
+      val own      = listings.map(listing => Billing.of(listing, measured(listing)))
+      // a listing crediting nobody is credited as its cluster's listings credit the production: the model joined it to them
+      val credited = own.flatMap(_.listing.directors).distinct
+      val billing  = own.map(b => if (b.listing.directors.isEmpty) b.copy(credited = credited) else b)
       Option.when(!billing.exists(_.works.isEmpty))(days -> billing)
     }
   }
@@ -126,7 +129,7 @@ object Broadcast {
   /** What one listing bills: the stage works its title names, its season, and its BANNER — the words of its pieces naming
    *  no work, four letters or more, no number or event word ("live", "retransmisja") among them. */
   private final case class Billing(works: Set[String], season: Option[Int], banner: Set[String], listing: IdentityMeasures.Listing,
-                                    stated: IdentityMeasures.Listing) {
+                                    stated: IdentityMeasures.Listing, credited: Seq[String]) {
     /** Does the listing name the production of a record: a record of one of its works, its season, a year and a director
      *  its facts do not deny, and a house its banner spells — or, its banner spelling another, a production of the
      *  record's house that one of `productions` (film databases' records) credits with the director the listing credits
@@ -145,12 +148,14 @@ object Broadcast {
      *  it where both are dated, and crediting the listing's director? The venue's own credit names the production where
      *  its banner names another house: UK Flicks' "RBO Cinema Season 2026-27: La Fanciulla Del West" credits Richard
      *  Jones, who staged the Met's — IMDb's and RT's records of it say so, TMDB's credits nobody. A listing crediting
-     *  nobody ("Opéra National de Paris: La fanciulla del West") is never one. */
-    def credits(film: Film, productions: Seq[Film]): Boolean = listing.directors.nonEmpty && {
+     *  nobody reads its cluster's credit (`credited`: Lighthouse Poole's "RBO: Macbeth - Cert TBC" beside Flicks' RBO
+     *  billing crediting Louisa Proske); one whose cluster credits nobody ("Opéra National de Paris: La fanciulla del
+     *  West") is never one. */
+    def credits(film: Film, productions: Seq[Film]): Boolean = credited.nonEmpty && {
       val house = Billing.bannerOf(film.titles, _ => false)
       val work  = IdentityMeasures.stageWorks(film).intersect(works)
       house.nonEmpty && productions.exists { production =>
-        FactRelations.samePerson(listing.directors, production.directors.getOrElse(Nil)) &&
+        FactRelations.samePerson(credited, production.directors.getOrElse(Nil)) &&
           IdentityMeasures.stageWorks(production).exists(work) &&
           !FactRelations.yearsApart(production.year, film.year) &&
           { val own = Billing.bannerOf(production.titles, _ => false); own.nonEmpty && Billing.spells(own, house) }
@@ -168,12 +173,18 @@ object Broadcast {
      *  linked as the listing's page ([[ListingShape.venueStated]]: Flicks links an encore to an old season's page) states
      *  the catalogue's claim, not the venue's: then only the listing's own facts are. */
     def of(listing: Listing, measured: IdentityMeasures.Listing): Billing = {
-      val titles = Seq(listing.title, listing.rawTitle).distinct
+      val titles = Seq(listing.title, listing.rawTitle).distinct.map(tagApart)
       val named  = measured.seasonYear.isDefined
       val stated = if (ListingShape.venueStated(listing)) measured else services.identity.Evidence.of(listing, None).measured
       Billing(IdentityMeasures.stageWorksBilled(titles, named), measured.seasonYear, bannerOf(titles, IdentityMeasures.billedIn(_, named).nonEmpty), measured,
-        stated)
+        stated, measured.directors)
     }
+
+    /** A title's trailing bracketed tag set apart as a piece of its own: UK "RBO: MACBETH (MET)" bills "Macbeth" beside the
+     *  house's tag as "Macbeth - Met Opera" does, where run into one piece with the work the tag hid it. */
+    private val TrailingTag = """\s*\(([^()]+)\)\s*$""".r
+    private def tagApart(title: String): String =
+      TrailingTag.replaceAllIn(title, tag => java.util.regex.Matcher.quoteReplacement(s" | ${tag.group(1)}"))
 
     /** The words of the titles' pieces that bill no stage work (`billsWork`, else the work a whole piece names), a word
      *  run together in camel case read as its parts: UK Flicks' "MetOpera" is the Met's "Opera". */
