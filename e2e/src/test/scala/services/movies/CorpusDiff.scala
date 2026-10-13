@@ -33,9 +33,9 @@ object CorpusDiff {
     val ka = a.map(r => (r.title, r.year)).toSet
     val kb = b.map(r => (r.title, r.year)).toSet
     if (ka != kb) return s"record keys differ: only$labelA=${ka -- kb} only$labelB=${kb -- ka}"
-    val byKey = b.map(r => (r.title, r.year) -> r.record).toMap
+    val namesakes = b.groupBy(r => (r.title, r.year))
     a.flatMap { ra =>
-      val ea = ra.record; val eb = byKey((ra.title, ra.year))
+      val ea = ra.record; val eb = counterpart(ra, namesakes((ra.title, ra.year))).record
       val scalars = Seq[(String, Any, Any)](
         ("tmdbId", ea.tmdbId, eb.tmdbId), ("imdbId", ea.imdbId, eb.imdbId),
         ("imdbRating", ea.imdbRating, eb.imdbRating), ("metascore", ea.metascore, eb.metascore),
@@ -66,6 +66,13 @@ object CorpusDiff {
       else Seq(s"record '${ra.title}' (${ra.year}):") ++ scalars ++ srcDiffs
     }.mkString("\n")
   }
+
+  /** `r`'s record among its `namesakes` on the other side (the records of its title and year): where
+   *  several films share both (a relay the model keeps apart per venue, two same-titled secret
+   *  screenings), the one of its id, so a diff pairs each film with itself rather than with whichever
+   *  namesake a map kept last and reports differences no film has. The first when no id matches. */
+  private def counterpart(r: StoredMovieRecord, namesakes: Seq[StoredMovieRecord]): StoredMovieRecord =
+    namesakes.find(_.id == r.id).getOrElse(namesakes.head)
 
   /**
    * The first rendered row that differs, pinpointed at the character where the two

@@ -1065,7 +1065,7 @@ abstract class CountryConvergenceBehaviour(
       // Compared on the film's stored key, never its id — the id follows arrival
       // order by design (see [[OrderIndependentIds]]).
       val ids = OrderIndependentIds(w.movieRepository.findAll(), w.titleNormalizer)
-      val records = ids.stableRecords.sortBy(r => (r.title, r.year.map(_.toString).getOrElse("")))
+      val records = ids.stableRecords
       val screenings = ids.screenings(w.screeningsRepository.findAll())
       val service = new MovieControllerService(w.webReadModel, w.clock)
       val rows = country.cities.sortBy(_.slug).flatMap(c => service.toSchedules(c, renderAt)).map(ids.row)
