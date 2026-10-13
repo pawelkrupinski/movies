@@ -488,4 +488,44 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     Agreement.namesIt(listing(KinoMuza, "Winter Warmers: Paddington Bear"), Seq(warmers)) shouldBe false
     Agreement.namesIt(listing(KinoMuza, "Paddington Bear: Winter Warmers: Live"), Seq(warmers)) shouldBe false
   }
+
+  // ── namesakes the families' popularity picks over what the billing says (DE/PL recording 38355584482) ──────────────
+
+  "A billing that says it shows a silent film" should "rule out a film of the sound era" in {
+    // DE Union Filmtheater Friedrichshagen's "STUMMFILM MIT TOBIAS RANK:NOSFERATU", a silent screening with live music:
+    // IMDb, Metacritic and RT take Eggers' 2024 "Nosferatu", Filmweb leans to it — Wikidata takes Murnau's 1922 film
+    val eggers = SourceRecord(film("Nosferatu", 2024, "Robert Eggers", 132), Map("imdb" -> "tt5040012"))
+    val murnau = SourceRecord(film("Nosferatu", 1922, "F. W. Murnau", 94), Map("imdb" -> "tt0013442"))
+    val takers = Seq(VoterFamily.Imdb, VoterFamily.Metacritic, VoterFamily.RottenTomatoes).map(f => FamilyVerdict.took(FamilyPick(f, "1", eggers)))
+    val wiki   = FamilyVerdict.took(FamilyPick(VoterFamily.Wiki, "Q151895", murnau))
+    val lean   = FamilyVerdict(VoterFamily.Filmweb, None, Seq(eggers, murnau), leaning = Some(eggers))
+    val silent = Seq(listing(KinoMuza, "STUMMFILM MIT TOBIAS RANK:NOSFERATU"))
+    Agreement.agreed(silent, takers ++ Seq(wiki, lean)) shouldBe None
+    Agreement.agreed(Seq(listing(KinoMuza, "NOSFERATU")), takers ++ Seq(lean)) should not be empty
+    // the silent film itself, the families agreeing on it
+    val murnauTakers = Seq(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Filmweb).map(f => FamilyVerdict.took(FamilyPick(f, "1", murnau)))
+    Agreement.agreed(silent, murnauTakers).map(_.record.film.year) shouldBe Some(Some(1922))
+    Seq("Stummfilm mit Live-Musik: Metropolis", "Silent film with live score: Metropolis", "Kino nieme: Metropolis",
+      "Film niemy z muzyką na żywo: Metropolis", "Cine mudo: Metropolis", "Ciné-concert, film muet : Metropolis").foreach { title =>
+      withClue(title)(ListingShape.billsASilentFilm(listing(KinoMuza, title)) shouldBe true)
+    }
+    Seq("Metropolis", "Silent Night", "The Silent Twins", "Stumm", "Niemy świadek").foreach { title =>
+      withClue(title)(ListingShape.billsASilentFilm(listing(KinoMuza, title)) shouldBe false)
+    }
+  }
+
+  "A billing that names the director of a namesake a family weighed" should "not take the namesake by another director" in {
+    // DE Babylon (Mitte)'s "Hitchcock & Chabrol: Blood Relatives", a Chabrol series: IMDb, Filmweb, Metacritic and RT take
+    // Noah Segan's 2022 "Blood Relatives"; Wikidata takes Chabrol's 1978 "Les liens de sang", which IMDb weighed too
+    val segan   = SourceRecord(film("Blood Relatives", 2022, "Noah Segan", 88), Map("imdb" -> "tt21818188"))
+    val chabrol = SourceRecord(film("Blood Relatives", 1978, "Claude Chabrol", 100).copy(originalTitle = Some("Les liens de sang")),
+      Map("imdb" -> "tt0076313"))
+    val takers  = Seq(VoterFamily.Filmweb, VoterFamily.Metacritic, VoterFamily.RottenTomatoes).map(f => FamilyVerdict.took(FamilyPick(f, "1", segan)))
+    val imdb    = FamilyVerdict(VoterFamily.Imdb, Some(FamilyPick(VoterFamily.Imdb, "tt21818188", segan)), Seq(segan, chabrol))
+    val wiki    = FamilyVerdict(VoterFamily.Wiki, Some(FamilyPick(VoterFamily.Wiki, "Q886823", chabrol)), Seq(chabrol))
+    Agreement.agreed(Seq(listing(KinoMuza, "Hitchcock & Chabrol: Blood Relatives")), takers ++ Seq(imdb, wiki)) shouldBe None
+    // the series' banner naming the director of the film the families take is the series' screening of it
+    Agreement.agreed(Seq(listing(KinoMuza, "Noah Segan: Blood Relatives")), takers ++ Seq(imdb, wiki)) should not be empty
+    Agreement.agreed(Seq(listing(KinoMuza, "Blood Relatives")), takers ++ Seq(imdb, wiki)) should not be empty
+  }
 }

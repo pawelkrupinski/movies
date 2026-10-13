@@ -227,7 +227,8 @@ object UnifiedEvidence {
         // another edition than the title numbers ("League of Legends Worlds 26" against the Worlds25 record)
         "edition.apart"       -> c.listings.exists(listing => PosterEvidence.editionsApart(listing, contender.record.film)),
         // another film's own title billed, or the film named only within another candidate's title billed whole
-        "title.anothersOwn"   -> (Agreement.anothersOwnTitle(c.listings, records, c.verdicts) ||
+        // or the billing naming a namesake's director, not the film's
+        "title.anothersOwn"   -> (Agreement.anothersOwnTitle(c.listings, records, c.verdicts) || Agreement.billsAnothersDirector(c.listings, records, c.verdicts) ||
           Agreement.namedWithinAnother(Agreement.billedSpans(c.listings, records.map(_.film)), candidateSpans)),
         "bill.several"        -> c.listings.exists(ListingShape.billsSeveralBeside(_, contender.record.film)),
         "stage.work"          -> stageWork,

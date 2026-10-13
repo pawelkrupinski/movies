@@ -23,6 +23,21 @@ object ListingShape {
   def stagesAWork(listing: Listing): Boolean =
     IdentityMeasures.billsStageWork(Seq(listing.title, listing.cleanTitle, listing.rawTitle).distinct, listing.rawTitle)
 
+  // ── a silent film ──────────────────────────────────────────────────────────────────────────
+
+  /** Does the listing bill its film as a SILENT one ("Stummfilm mit Live-Musik", "film niemy", "cine mudo", "film
+   *  muet")? Then it is a film of the silent era ([[SilentEraEnd]]), never a sound-era namesake: DE "STUMMFILM MIT TOBIAS
+   *  RANK:NOSFERATU" is Murnau's, not Eggers' 2024 film the families' searches rank first. Read on the folded words. */
+  def billsASilentFilm(listing: Listing): Boolean =
+    Seq(listing.title, listing.rawTitle).distinct.exists(title => SilentFilm.findFirstIn(TitleContainment.tokens(title).mkString(" ")).isDefined)
+
+  /** The last year a film billed as silent was made in: Chaplin's "Modern Times" (1936), the sound era's last. */
+  val SilentEraEnd = 1936
+
+  private val SilentFilm =
+    ("""\bstummfilm\w*|\bsilent\s+(?:films?|movies?|cinema|classics?)\b|\bfilm\w*\s+niem\w*|\bniem\w*\s+film\w*|\bkino\s+nieme\b|""" +
+      """\bcine\s+mudo\b|\bpeliculas?\s+mudas?\b|\bfilms?\s+muets?\b""").r
+
   /** Words a billing names a stage house, a relay or a stage show by. */
   private val HouseWords = Set("opera", "opery", "oper", "operze", "met", "metropolitan", "ballet", "balet", "baletu", "bolshoi", "bolszoj",
     "royal", "teatr", "teatru", "theatre", "theater", "nt", "live", "retransmisja", "retransmisje", "transmisja", "relay", "season", "sezon",

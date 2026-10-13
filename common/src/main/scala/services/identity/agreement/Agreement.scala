@@ -228,7 +228,8 @@ object Agreement {
    *  take and IMDb weighed and turned down for "Old"). No listing's own year or director rules out a taker's record
    *  (DE "Der kleine Maulwurf", the venues' 1968 Miler, not IMDb's and Wikidata's 2011 compilation); the listing's title
    *  names it ([[namesIt]]) — and, where leans or corroboration complete the quorum, is no other film's own
-   *  ([[anothersOwnTitle]]); the listing bills one work ([[ListingShape.billsSeveral]]) and no stage work ([[ListingShape.stagesAWork]]). The
+   *  ([[anothersOwnTitle]]); its billing names no namesake's director instead of its own ([[billsAnothersDirector]]); the
+   *  listing bills one work ([[ListingShape.billsSeveral]]) and no stage work ([[ListingShape.stagesAWork]]). The
    *  experiment's one wrong without the title guard: "Akademia Polskiego Filmu: Kino żydowskie w Polsce" → "Znachor"
    *  (1937), whose year and director fit a series' episode. */
   def agreed(listings: Seq[Listing], verdicts: Seq[FamilyVerdict], modelVote: Option[SourceRecord] = None,
@@ -248,6 +249,7 @@ object Agreement {
       // Filmstarts' feed credits Erin Li's 2014 short to a venue billing Noxon's 2017 feature)
       val catalogueDissent = if (taken.exists(contradictedByTheCatalogue(listings, _))) 1 else 0
       Option.when(film.support >= Quorum + dissent + film.turnedDown + catalogueDissent && !(film.completed && anothersOwnTitle(listings, film.records, verdicts)) &&
+        !billsAnothersDirector(listings, film.records, verdicts) &&
         !taken.exists(contradictedByTheListing(listings, _)) &&
         listings.forall(listing => !ListingShape.billsSeveralBeside(listing, film.agreed.record.film) &&
           (!ListingShape.stagesAWork(listing) || screenAdaptation(listings, film.agreed))))(film.agreed)
@@ -371,7 +373,9 @@ object Agreement {
 
   private def contradicts(listing: Listing, record: SourceRecord): Boolean =
     FactRelations.yearsApart(record.film.year, listing.year) ||
-      FactRelations.otherPeople(listing.directors, record.film.directors.getOrElse(Nil))
+      FactRelations.otherPeople(listing.directors, record.film.directors.getOrElse(Nil)) ||
+      // a billing as a silent film dates it to the silent era (DE "STUMMFILM MIT TOBIAS RANK:NOSFERATU", not Eggers' 2024 film)
+      (record.film.year.exists(_ > ListingShape.SilentEraEnd) && ListingShape.billsASilentFilm(listing))
 
   /** Is the listing's title another film's ORIGINAL title — one a family weighed — while it is none of the agreed film's
    *  records' original titles, only a translation they file? Then the venue may well bill that film by its own name:
@@ -384,6 +388,24 @@ object Agreement {
     // IMDb's record of Chajdas's film is "Imago" in the original, as is the 2025 short it weighed beside it)
     val itsOwn = records ++ weighed.filter(record => records.exists(sameFilm(_, record)))
     itsOwn.forall(original(_).isEmpty) && weighed.exists(record => original(record).nonEmpty && !records.exists(sameFilm(_, record)))
+  }
+
+  /** Does a listing's billing name — beside the film's title — the director of a namesake a family weighed (a film the
+   *  title names, not the film itself), and none of the film's own directors? A series' banner then says whose film it
+   *  shows: DE Babylon (Mitte)'s "Hitchcock & Chabrol: Blood Relatives" is Chabrol's 1978 film, which Wikidata takes and
+   *  IMDb weighed, not Noah Segan's 2022 one the four other families take. A director is named by the last word of their
+   *  name (four letters at least), a word of no title of the namesake's. */
+  private[identity] def billsAnothersDirector(listings: Seq[Listing], records: Seq[SourceRecord], verdicts: Seq[FamilyVerdict]): Boolean = {
+    def surnames(film: IdentityMeasures.Film): Set[String] = {
+      val titleWords = film.titles.flatMap(TitleContainment.tokens).toSet
+      film.directors.getOrElse(Nil).flatMap(name => TitleContainment.tokens(name).lastOption).filter(word => word.length >= 4 && !titleWords(word)).toSet
+    }
+    val namesakes = verdicts.flatMap(_.weighed).filterNot(weighed => records.exists(sameFilm(_, weighed)))
+    listings.exists { listing =>
+      val billed = TitleContainment.tokens(listing.rawTitle).toSet
+      def credited(film: IdentityMeasures.Film) = surnames(film).exists(billed)
+      !records.exists(record => credited(record.film)) && namesakes.exists(namesake => credited(namesake.film) && namesIt(listing, Seq(namesake.film)))
+    }
   }
 
   /** The picks as the films they name: a pick joins every film it [[joins]] — through ANY family's record, so a record
