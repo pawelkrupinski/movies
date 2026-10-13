@@ -65,9 +65,11 @@ a name it cannot place stops the run:
   "Leamington Spa" Royal Leamington Spa. A page shows the name a visitor uses
   (`DISPLAY_NAMES`: Hull, Londonderry, Bishop's Stortford).
 - **Greater London is London.** Its boroughs' postal towns — Croydon, Romford,
-  Kingston, Harrow — are London, as New York's boroughs are New York City; a
-  neighbourhood Flicks names (Hampstead, Maida Vale) is the place nearest it,
-  which is London too.
+  Kingston, Harrow — are London, as New York's boroughs are New York City.
+- **A venue its address misnames** (`VENUE_TOWNS`, one reviewed line each): a
+  neighbourhood Flicks files it under (Hampstead and Maida Vale are London), a
+  postal town 30 km off (Hay-on-Wye's bookshop is "Hereford"), an island's name
+  for its town (Jersey is St Helier).
 - **A postal town past its council's edge.** A venue more than 8 km from the
   town its address names, beside (3 km) a place in another council area, is in
   that area's biggest town nearby: Cumbernauld's Lanternhouse ("Glasgow G67") is

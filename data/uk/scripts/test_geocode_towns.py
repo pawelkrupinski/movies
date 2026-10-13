@@ -70,9 +70,9 @@ def synthetic():
         venue("Jersey1", "Jersey", 49.1838, -2.1143),
         venue("Belfast1", "Belfast", 54.6, -5.93),
         venue("Beeston1", "Beeston", 52.926, -1.215),
-    ], gaz)
-    check("every place in Greater London is London — a borough's postal town and a neighbourhood alike",
-          town_of["Croydon1"] == town_of["Hampstead1"] == "London, Greater London")
+    ], gaz, venue_towns={"Hampstead1": "London", "Jersey1": "Saint Helier"})
+    check("every place in Greater London is London — a borough's postal town, and a neighbourhood the "
+          "reviewed VENUE_TOWNS table names", town_of["Croydon1"] == town_of["Hampstead1"] == "London, Greater London")
     check("two towns of one name are two towns, keyed by their county",
           town_of["NewportIow"] == "Newport, Isle of Wight" and town_of["NewportGwent"] == "Newport, Gwent")
     check("a reviewed alias: Flicks' Hull is GeoNames' Kingston upon Hull, shown as Hull",
@@ -93,6 +93,12 @@ def synthetic():
           town_of["Jersey1"] == "St Helier, Jersey" and towns["St Helier, Jersey"]["nation"] == "Crown Dependencies")
     check("a venue whose town matches nothing near it stops the run",
           refuses(lambda: g.place([venue("Lost1", "Atlantis", 57.0, -9.0)], gaz)))
+    # The case that used to be guessed at: a misspelt town right beside a real
+    # place was put in that place, silently.
+    check("a name matching nothing stops the run even with a place 2 km away",
+          refuses(lambda: g.place([venue("Typo1", "Lodnon", 51.53, -0.19)], gaz, venue_towns={})))
+    check("a neighbourhood not in VENUE_TOWNS stops the run too",
+          refuses(lambda: g.place([venue("Hampstead1", "Hampstead", 51.556, -0.178)], gaz, venue_towns={})))
 
 
 def committed():
@@ -106,6 +112,9 @@ def committed():
            and o not in g.MISPLACED
            and g.town_pages.km((v["lat"], v["lon"]), (data["towns"][k]["lat"], data["towns"][k]["lon"])) > 25]
     check(f"towns.json: every venue outside London is within 25 km of its town {far}", not far)
+    for obj, town in sorted(g.VENUE_TOWNS.items()):
+        check(f"towns.json: {obj} is in {town}, as VENUE_TOWNS says",
+              data["towns"][data["venues"][obj]]["name"] == g.display(town))
     check("towns.json: no town is a county — the harvest's 'East Riding of Yorkshire' is Goole",
           data["venues"]["JunctionGoole"] == "Goole, East Riding of Yorkshire")
 

@@ -9,16 +9,17 @@ coordinates; this matches that to a GeoNames place (`cities1000.txt`, every plac
 of 1,000+ people, in Great Britain, Northern Ireland, the Isle of Man, Jersey and
 Guernsey):
 
-  1. a reviewed spelling of the name GeoNames knows it by (`ALIASES`: Flicks
-     writes "Hull", GeoNames "Kingston upon Hull");
+  1. a reviewed name for the venue itself (`VENUE_TOWNS`: Flicks files the Everyman
+     Hampstead under "Hampstead", which is London, and Hay-on-Wye's bookshop under
+     its postal town, Hereford, 30 km away), else a reviewed spelling of its town's
+     name (`ALIASES`: Flicks writes "Hull", GeoNames "Kingston upon Hull");
   2. the place of that (normalised) name within 25 km of the venue, the most
      populous where several are;
   3. a town GeoNames does not list (`OWN_TOWNS`: Beeston, Cromarty), centred on
      its venues and with no population;
-  4. failing all three, the place nearest the venue within 6 km — a venue Flicks
-     files under its neighbourhood ("Hampstead", "Maida Vale");
-  5. failing that, nothing: the run stops and names the venue, so a new spelling
-     is reviewed into one of the tables above rather than guessed at.
+  4. failing all three, nothing: the run stops and names the venue, so a new
+     spelling is reviewed into one of the tables above rather than guessed at —
+     "Yrok" is not put in whatever village happens to be nearest.
 
 A town is keyed by its name AND its county ("Newport, Isle of Wight" and
 "Newport, Newport" are two towns 102 km apart), and every place in Greater London
@@ -41,7 +42,6 @@ import json
 import pathlib
 import re
 import sys
-from decimal import ROUND_HALF_EVEN, Decimal
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 DATA = ROOT / "data" / "uk"
@@ -54,7 +54,6 @@ NATIONS = {"ENG": "England", "SCT": "Scotland", "WLS": "Wales", "NIR": "Northern
 CROWN_DEPENDENCIES = {"IM": "Isle of Man", "JE": "Jersey", "GG": "Guernsey"}
 
 NAME_MATCH_KM = 25
-NEAREST_KM = 6
 # See `place`: a venue further than this from the town its address names, with a
 # place of another council area within `BESIDE_KM`, is in that place instead.
 POSTAL_REACH_KM = 8
@@ -163,6 +162,18 @@ ALIASES = {
     "newlyn": "Penzance",  # Newlyn runs into Penzance
 }
 
+#: cinemaObject → the GeoNames name of the place a venue is in, where neither the
+#: town its address names nor an alias of that town will do. Reviewed one by one.
+VENUE_TOWNS = {
+    "EverymanCinemaHampstead": "London",       # "Hampstead": a London neighbourhood
+    "EverymanCinemaMaidaVale": "London",       # "Maida Vale": likewise
+    "ReelCinemaQuinton": "Halesowen",          # "Quinton": the B62 side of the M5, Halesowen's
+    "RichardBoothSBookshopHayOnWye": "Hay",    # "Hereford", its postal town 30 km away
+    "BeauSejourLeisureCentreGuernsey": "Saint Peter Port",   # "Guernsey": it is in St Peter Port
+    "TheMallardCinemaGuernsey": "Forest Parish",             # "Guernsey": by the airport, in Forest
+    "CineworldStHelierJersey": "Saint Helier",               # "Jersey"
+}
+
 #: Venues whose harvested coordinates are not where the venue is, so the town
 #: their address names is trusted over them: Odeon Rochdale (Sandbrook Park,
 #: Rochdale) was harvested at Bolton's coordinates, beside a "BL1" postcode.
@@ -258,14 +269,7 @@ def landmass(county, lat, lon):
     return None
 
 
-def exact_mean(values):
-    """Mean of decimal strings, rounded half-even to five places — the same answer
-    on every Python (see the US generate_roster.mean_coordinate)."""
-    values = [Decimal(str(v)) for v in values]
-    return float((sum(values, Decimal(0)) / len(values)).quantize(Decimal("0.00001"), rounding=ROUND_HALF_EVEN))
-
-
-def place(venues, gazetteer):
+def place(venues, gazetteer, venue_towns=VENUE_TOWNS):
     """(towns, cinemaObject → town key) for every venue. Refuses a venue it cannot
     place — see the module docstring for the order it tries."""
     towns, town_of, own, problems = {}, {}, collections.defaultdict(list), []
@@ -284,7 +288,7 @@ def place(venues, gazetteer):
     for v in sorted(venues, key=lambda v: v["cinemaObject"]):
         at = (float(v["lat"]), float(v["lon"]))
         name = norm(v["town"])
-        name = norm(ALIASES.get(name, name))
+        name = norm(venue_towns.get(v["cinemaObject"]) or ALIASES.get(name, name))
         named = [g for g in gazetteer if name in g[0] and town_pages.km(at, g[7]) <= NAME_MATCH_KM]
         if named:
             g = max(named, key=lambda g: (g[4], g[1]))
@@ -305,19 +309,16 @@ def place(venues, gazetteer):
             key = f"{OWN_TOWNS[name]}, {g[6]}"
             own[key].append((v, g))
             town_of[v["cinemaObject"]] = key
-        elif g := nearest(at, NEAREST_KM):
-            town_of[v["cinemaObject"]] = keep(g)
         else:
             problems.append(f"{v['cinemaObject']} ({v['town']!r}): no place of that name within "
-                            f"{NAME_MATCH_KM} km and none at all within {NEAREST_KM} km — add it to "
-                            f"ALIASES or OWN_TOWNS")
+                            f"{NAME_MATCH_KM} km — review it into VENUE_TOWNS, ALIASES or OWN_TOWNS")
     for key, vgs in own.items():
         if key in towns:
             problems.append(f"{key} is both a GeoNames place and an OWN_TOWNS entry")
             continue
         _, g = vgs[0]
         towns[key] = {"name": key.split(", ")[0], "nation": g[5], "county": g[6],
-                      "lat": exact_mean(v["lat"] for v, _ in vgs), "lon": exact_mean(v["lon"] for v, _ in vgs),
+                      "lat": town_pages.exact_mean(v["lat"] for v, _ in vgs), "lon": town_pages.exact_mean(v["lon"] for v, _ in vgs),
                       "population": 0}
     if problems:
         sys.exit("\n".join(problems))
