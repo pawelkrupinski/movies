@@ -30,14 +30,22 @@ class ListingScreeningsSpec extends AnyFlatSpec with Matchers {
     listing("Met Opera 2026-27: Manon", "2027-04-03T18:00").broadcastSeason shouldBe None
     listing("Lalka", "2026-12-05T18:00").broadcastSeason shouldBe None
     listing("Samson i Dalila").broadcastSeason shouldBe None
+    // nor one stating its running time, or crediting its director, either of which already names the staging
+    Listing.of(KinoApollo, CinemaMovie(Movie("Royal Opera House: Otello", runtimeMinutes = Some(190)), KinoApollo, None, None, None, Nil, Nil,
+      Seq(Showtime(LocalDateTime.parse("2027-04-24T19:00"), None))), SingleCountryNormalizer.titleNormalizer).broadcastSeason shouldBe None
+    Listing.of(KinoApollo, CinemaMovie(Movie("Royal Shakespeare Company: Macbeth"), KinoApollo, None, None, None, Nil, Seq("Polly Findlay"),
+      Seq(Showtime(LocalDateTime.parse("2026-10-20T19:00"), None))), SingleCountryNormalizer.titleNormalizer).broadcastSeason shouldBe None
   }
 
-  it should "be broadcast in that season whatever else it states: a credit or a running time names no season" in {
-    // UK "Royal Ballet and Opera: Tosca" {Oliver Mears} [195′] on 5 May 2027: the 2026/27 season's relay of his
-    // production, which the 2025/26 record alone credits him with
-    Listing.of(KinoApollo, CinemaMovie(Movie("Royal Ballet and Opera: Tosca", runtimeMinutes = Some(195)), KinoApollo, None, None, None, Nil,
-      Seq("Oliver Mears"), Seq(Showtime(LocalDateTime.parse("2027-05-05T19:00"), None))), SingleCountryNormalizer.titleNormalizer)
-      .broadcastSeason shouldBe Some(2026)
+  it should "be screened in that season whatever else it states, though it is searched so only stating nothing" in {
+    // UK "Royal Ballet and Opera: Tosca" {Oliver Mears} [195′] on 5 May 2027: the 2026/27 season's relay
+    val credited = Listing.of(KinoApollo, CinemaMovie(Movie("Royal Ballet and Opera: Tosca", runtimeMinutes = Some(195)), KinoApollo, None,
+      None, None, Nil, Seq("Oliver Mears"), Seq(Showtime(LocalDateTime.parse("2027-05-05T19:00"), None))), SingleCountryNormalizer.titleNormalizer)
+    credited.screenedSeason shouldBe Some(2026)
+    credited.broadcastSeason shouldBe None
+    listing("Samson i Dalila", "2026-12-05T18:55").screenedSeason shouldBe Some(2026)
+    listing("Met Opera 2026-27: Manon", "2027-04-03T18:00").screenedSeason shouldBe None
+    listing("Lalka", "2026-12-05T18:00").screenedSeason shouldBe None
     // a year behind the work hides it no more than a short one does: Gorleston's "RBO: TOSCA 2027"
     listing("RBO: TOSCA 2027", "2027-05-05T18:40").broadcastSeason shouldBe Some(2026)
   }

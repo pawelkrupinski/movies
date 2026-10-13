@@ -31,7 +31,10 @@ object IdentityMeasures {
                            decorations: TitleDecorations = TitleDecorations.None, searchTitles: Seq[String] = Nil,
                            /** The season a stage relay billing neither its season nor a year screens in
                             *  ([[services.identity.Listing.broadcastSeason]]): searched with its work, never measured. */
-                           broadcastSeason: Option[Int] = None) {
+                           broadcastSeason: Option[Int] = None,
+                           /** The season its screenings fall in, whatever it states ([[services.identity.Listing.screenedSeason]]):
+                            *  what picks among a house's records of its work's seasons, never searched. */
+                           screenedSeason: Option[Int] = None) {
     private def titles: Seq[String] = rawTitle.toSeq :+ title
     /** The directors credited beside the published `year` — one listing's own, unless a pooled
      *  read took its year and its credits from different listings (`yearCredits`). */
