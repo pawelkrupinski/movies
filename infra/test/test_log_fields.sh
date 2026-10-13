@@ -241,6 +241,41 @@ print(json.loads(line).get('level', '-') if line else '-')
   else printf '  FAILED %s\n         level was %s, wanted %s\n' "$why" "$got" "$want"; failed=1; fi
 done < <(printf '%s\n' "${journal_cases[@]}")
 
+# ------------------------------------------------------------------------------------------------
+# THE WORKER'S JSON LINE, WHOSE FIELDS ARE THE POINT
+# ------------------------------------------------------------------------------------------------
+#
+# The worker writes one JSON object per line (tools.JsonLineEncoder) so that a take change's kind,
+# basis, venue, the image's build and the projection's id are FIELDS -- `kind:lost | stats by
+# (basis) count()` -- and not text a regex digs out of _msg. That holds only while this merge
+# lifts them out: a line shipped as an opaque string would still show its text and filter on
+# nothing, which looks fine until someone queries a field.
+echo "==> a worker's JSON line arrives as fields, its message as the text"
+python3 -c "
+import json
+line = json.dumps({'level': 'INFO', 'logger': 'services.identity.IdentityProjection', 'thread': 'main',
+                   'message': 'identity take change: lost Kino Muza | Lalka: tmdb 501 -> none',
+                   'build': '0e41a4812', 'projection_id': '2026-10-13T21:24:50.290Z', 'kind': 'lost',
+                   'basis': 'Withdrawn', 'tmdb_before': 501, 'country': 'xx'})
+print(json.dumps({'message': '2026-10-13T21:24:50.000000000Z stdout F ' + line,
+                  'file': '/var/log/pods/kinowo_worker-uk-799df957c9-67594_e1b879c5-c7f2-478c-9b97-ecae569e7f7a/worker/0.log'}))
+" > "$work/json-events.jsonl"
+"${vector_cmd[@]}" vrl --print-object --quiet --input "$work/json-events.jsonl" --program "$work/program.vrl" \
+  > "$work/json-out.jsonl" 2>"$work/json.err"
+json_got="$(python3 -c "
+import json, sys
+line = open(sys.argv[1]).read().strip()
+event = json.loads(line) if line else {}
+print('|'.join(str(event.get(f, '-')) for f in ('message', 'level', 'kind', 'basis', 'build', 'projection_id', 'tmdb_before', 'country')))
+" "$work/json-out.jsonl")"
+json_want='identity take change: lost Kino Muza | Lalka: tmdb 501 -> none|INFO|lost|Withdrawn|0e41a4812|2026-10-13T21:24:50.290Z|501|uk'
+if [ "$json_got" = "$json_want" ]; then
+  echo "  ok  message is the text; kind, basis, build, projection_id are fields; the shipper's country wins"
+else
+  printf '  FAILED the JSON line came out as\n         %s\n         wanted %s\n' "$json_got" "$json_want"; failed=1
+  sed 's/^/    /' "$work/json.err" | tail -5
+fi
+
 echo "==> the pod name is shipped but never shards"
 first="$(sed -n 1p "$work/out.jsonl" | python3 -c "
 import json, sys

@@ -1,6 +1,16 @@
 <configuration>
   <include resource="logback-base.xml"/>
 
+  <!-- ONE JSON object per line (tools.JsonLineEncoder): the fleet's Vector merges
+       its fields into the VictoriaLogs row (`mergeJsonBodyVrl` in
+       infra/nix/modules/fleet/logs.nix), so `message` is `_msg` and the image's
+       `build`, a projection's `projection_id` and every key-value pair a log call
+       adds (a take change's kind, basis, venue, …) are fields LogsQL filters on,
+       not text a regex has to dig out. -->
+  <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+    <encoder class="tools.JsonLineEncoder"/>
+  </appender>
+
   <!-- Persistent log file on the volume mounted at /data (KINOWO_LOG_DIR=
        /data/logs in each worker overlay) so the worker's logs SURVIVE a restart —
        `kubectl logs` only retains a short rolling window, which loses exactly the
@@ -16,8 +26,9 @@
       <totalSizeCap>80MB</totalSizeCap>
     </rollingPolicy>
     <encoder>
-      <!-- Full date (unlike the console's HH:mm:ss): a persisted file spans days. -->
-      <pattern>%date{yyyy-MM-dd HH:mm:ss} %-5level %logger{36} - %msg%n</pattern>
+      <!-- Text with a full date: a persisted file spans days, and restarts — so the
+           build too, and a call's key-value pairs after the message. -->
+      <pattern>%date{yyyy-MM-dd HH:mm:ss} %-5level [%property{build}] %logger{36} - %msg %kvp%n</pattern>
     </encoder>
   </appender>
 

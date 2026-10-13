@@ -1,14 +1,9 @@
-<!-- Shared logback fragment included by BOTH logback.xml (prod/local: console +
-     persistent file) and logback-test.xml (tests: console only). Keeping the
-     appenders + logger levels here means the two configs can't drift; each only
-     adds its own <root> appender-refs. -->
+<!-- Shared logback fragment included by BOTH logback.xml (prod/local: JSON
+     console + persistent file) and logback-test.xml (tests: text console only).
+     Keeping the shared appenders + logger levels here means the two configs can't
+     drift; each adds its own STDOUT (JSON for Vector in prod, text for a spec's
+     output) and its own <root> appender-refs. -->
 <included>
-  <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
-    <encoder>
-      <pattern>%date{HH:mm:ss} %-5level %logger{36} - %msg%n</pattern>
-    </encoder>
-  </appender>
-
   <logger name="services" level="INFO"/>
   <logger name="clients" level="INFO"/>
   <!-- WorkerMain's boot/drain lifecycle ("Worker up — scraping…", the SIGTERM

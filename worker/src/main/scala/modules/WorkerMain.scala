@@ -36,6 +36,8 @@ object WorkerMain extends Logging {
     // place in the worker that asks the process anything; every wiring below is handed them.
     val process = ProcessConfiguration.resolve()
     val commit  = process.commit.value
+    // Before the first line: every line from here on names the image it came from (`build`), what ties it to a deploy.
+    tools.LogFields.stampBuild(process.commit)
     logger.info(s"Worker starting — commit $commit")
 
     // Bring up /health BEFORE the scrape+enrich boot. The first full scrape +
