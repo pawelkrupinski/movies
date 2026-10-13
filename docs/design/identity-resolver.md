@@ -3102,6 +3102,9 @@ Of the recapture's 101 WRONG listings, 16 were a namesake the billing's own word
 
 - **A block of shorts** (`MultiFilmBill`): "Shorts" beside other words, and any "Kurzfilm…" compound — DE "SHORTS ATTACK!
   THE KIDS ARE ALRIGHT" ×9, "Kurzfilmtag Oktober: The Kids Are Alright 2026": IMDb, Filmweb and RT took The Who's film.
+  And its banner siblings (`IdentityResolver.billingUnderBanner`): a member whose words are all a marker bill's, with a
+  word beside the film's title, is decided with the bill — DE "Pornfilmfestival: The more the merrier" beside "…
+  Warm Up: The more the merrier - shortfilms presented by Paulita Pappel" is no 1943 Stevens film.
 - **A silent film** (`ListingShape.billsASilentFilm`, `SilentEraEnd` 1936): "Stummfilm", "silent film", "film niemy",
   "cine mudo", "film muet" contradict a sound-era record (`Agreement.contradicts`) — "STUMMFILM MIT TOBIAS RANK:NOSFERATU"
   took Eggers' 2024 film.
