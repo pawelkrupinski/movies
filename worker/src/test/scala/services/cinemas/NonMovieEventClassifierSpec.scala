@@ -339,7 +339,8 @@ class NonMovieEventClassifierSpec extends AnyFlatSpec with Matchers {
       "Stand-Up Comedy Night", "Punchline Comedy Show", "Comedy LIVE!: Stefan Danziger - Neues Programm (VORPREMIERE)",
       "Karaoke LIVE", "Gottesdienst", "Tischkickerturnier", "DF Tagesticket 3.11.26", "Montags ruhetag", "Montag Ruhetag",
       "Eine unmöglich schöne Reise - Lesung zur Alpenüberquerung", "Gude, Ihr Labbe! - Lesung mit Peter Kunz", "Lesung henni nachtsheim",
-      "VORTRAG Frank Retzlaff", "PubUp-Kino-Quiz", "Ostberlin Poetry Slam Herbst", "OMV Poetry Slam", "Sneak"
+      "VORTRAG Frank Retzlaff", "PubUp-Kino-Quiz", "Ostberlin Poetry Slam Herbst", "OMV Poetry Slam", "Sneak",
+      "Schöne Aussicht - Die Slam Poetry & Songwriting Show - mit The Lake and the Wolf und Andreas Weber"
     ).foreach(t => withClue(t)(NonMovieEventClassifier.isNonScreening(t) shouldBe true))
   }
 

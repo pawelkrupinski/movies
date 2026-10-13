@@ -95,6 +95,9 @@ object NonFilmEvents {
       else Markers.collectFirst { case (reason, marker) if marker.findFirstIn(title).isDefined => reason }
         .filter(reason => reason == "no screening" || reason == "pass" || FilmAttached.findFirstIn(title).isEmpty)
         .orElse(Option.when(NonMovieEventClassifier.isPerformance(JoinedWith.split(raw).head) && FilmAttached.findFirstIn(title).isEmpty)("live event"))
+        // what the feeds' own filter reads in any language: a reading, a slam, a cabaret, a stand-up night billed as one
+        // (DE "Schöne Aussicht - Die Slam Poetry & Songwriting Show - …": no 2007 "Schöne Aussicht")
+        .orElse(Option.when(NonMovieEventClassifier.isNonScreening(raw) && FilmAttached.findFirstIn(title).isEmpty)("non-screening"))
         .orElse(liveShow(listing, title))
         .orElse(Option.when(FilmAttached.findFirstIn(title).isEmpty && TheatreCompany.findFirstIn(title).isDefined &&
           CinemaTheatre.findFirstIn(title).isEmpty)("theatre company"))

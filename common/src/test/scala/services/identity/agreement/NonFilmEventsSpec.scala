@@ -30,7 +30,10 @@ class NonFilmEventsSpec extends AnyFlatSpec with Matchers {
       "Keine Vorstellung(en)"                       -> "no screening",
       "Dziś nie gramy, wybierz inną datę."          -> "no screening",
       "Screen Hire - 2 Hours"                       -> "no screening",
-      "Unrestricted View Horror Film Festival 2026: Opening Night" -> "programme slot"
+      "Unrestricted View Horror Film Festival 2026: Opening Night" -> "programme slot",
+      // the feeds' own language-neutral filter (DE Kino in der Lagerhalle, capture #232: no 2007 "Schöne Aussicht")
+      "Schöne Aussicht - Die Slam Poetry & Songwriting Show - mit The Lake and the Wolf und Andreas Weber" -> "non-screening",
+      "Melanie Raabe liest aus: Daisy"              -> "non-screening"
     ).foreach { case (title, why) => withClue(title) { NonFilmEvents.of(titled(title)) shouldBe Some(why) } }
   }
 

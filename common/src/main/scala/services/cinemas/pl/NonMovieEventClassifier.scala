@@ -135,7 +135,7 @@ object NonMovieEventClassifier {
     // quiz night, a poetry slam — never the bare word, a film's own: "Quiz Show" (1994, DE corpus 2026-10-12), "Slam";
     // nor the Spanish "quizá(s)", which only begins like one.
     """(?<=[\p{L}-])quiz|quiz(?=\p{L})(?!á)|\bquiz[\s-]+(?:night|nacht|abend)\b""".r,
-    """\b(?:poetry|science|lyrik|dichter)[\s-]*slam\b""".r
+    """\b(?:poetry|science|lyrik|dichter)[\s-]*slam\b|\bslam[\s-]+poetry\b""".r
   )
   private val FilmMention = """film""".r
 
