@@ -479,12 +479,20 @@ class AuthControllerSpec extends AnyFlatSpec with Matchers {
     redirectLocation(result).value shouldBe s"$UkBase/london/"
   }
 
-  it should "fall back to the bare target when the picked city doesn't belong to it" in {
-    val (ctl, _, _) = fixture()
+  // The visitor named the country even when the city is not one of its own: the
+  // fallback is that country's picker (`pick=city`), not its bare landing, where
+  // a `city` cookie from an earlier visit would bounce them somewhere they did
+  // not ask for.
+  it should "fall back to the target's picker when the picked city doesn't belong to it" in {
+    val (ctl, repository, _) = fixture()
 
     val result = ctl.ssoStart()(FakeRequest("GET", s"/auth/sso/start?to=$UkBase&city=warszawa"))
+    redirectLocation(result).value shouldBe s"$UkBase/${LandingController.PickCityQuery}"
 
-    redirectLocation(result).value shouldBe s"$UkBase/"
+    val userId = signedIn(repository, "alice@example.com")
+    val signedInResult = ctl.ssoStart()(
+      FakeRequest("GET", s"/auth/sso/start?to=$UkBase&city=warszawa").withSession("userId" -> userId))
+    redirectLocation(signedInResult).value should include(s"${LandingController.PickCityParam}=${LandingController.PickCityValue}")
   }
 
   it should "carry a signed-in visitor's picked city onward to the finish leg" in {
