@@ -338,6 +338,20 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     Houses.learn(Seq(w("bolshoi ballet live", "bolshoi", "swanlake"))) shouldBe Houses(Map("bolshoiballetlive" -> "bolshoi"))
   }
 
+  "a banner abbreviating its house" should "bill the work under that house, whatever the house was learned as" in {
+    // UK recording 38351832400: one candidate filed "NT Live: …" among its alternatives, so the "NT Live" banner was
+    // learned as itself; Flicks' "NT Live: Hay Fever" ×131 then read its own record, "National Theatre Live: Hay Fever",
+    // as an overlap, and the director's "National Theatre at Home: Samira" pooled in at 49.9%.
+    val learnedAsItself = Houses(Map("ntlive" -> "ntlive"))
+    IdentityMeasures.titleRelation(Listing("NT Live: Hay Fever"), Film("National Theatre Live: Hay Fever"), learnedAsItself) should not be
+      Category("overlap")
+    // an abbreviation names one house only by its initials, never by a word two houses share
+    IdentityMeasures.titleRelation(Listing("NT Live: Samira"), Film("National Theatre at Home: Samira"), learnedAsItself) shouldBe
+      IdentityMeasures.titleRelation(Listing("NT Live: Samira"), Film("National Theatre at Home: Samira"), Houses.Unknown)
+    IdentityMeasures.titleRelation(Listing("Royal Shakespeare Company: Macbeth"), Film("Royal Ballet & Opera 2026/27: Macbeth"), Houses.Unknown) shouldBe
+      Category("overlap")
+  }
+
   "a venue dropping a film's leading article" should "still list the film's exact title — a plain title of three words or more" in {
     // US Metrograph's "Brides of Dracula" {Terence Fisher} read a `fragment` of "The Brides of Dracula" and took Fisher's "Dracula".
     def rel(l: String, f: String) = IdentityMeasures.titleRelation(Listing(l), Film(f)).value
@@ -466,7 +480,8 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     val nt = Listing("NT Live: The Importance of Being Earnest")
     val record = Film("National Theatre Live: The Importance of Being Earnest")
     val houses = Houses(Map("ntlive" -> "nationaltheatrelive"))
-    IdentityMeasures.titleRelation(nt, record) shouldBe Category("overlap")
+    // a banner abbreviating the record's house names it unlearned ("NT" the initials of "National Theatre")
+    IdentityMeasures.titleRelation(nt, record) shouldBe Category("segment")
     IdentityMeasures.titleRelation(nt, record, houses) shouldBe Category("segment")
     IdentityMeasures.titleRelation(nt, Film("RSC Live: The Importance of Being Earnest"), houses) shouldBe Category("overlap")
     IdentityMeasures.listingFilm(nt, record, None, 0, 0, houses)("title") shouldBe Category("segment")

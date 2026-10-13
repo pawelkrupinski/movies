@@ -335,6 +335,24 @@ object IdentityMeasures {
       ownA.exists(x => x.length >= 2 && x == initials(b)) || ownB.exists(y => y.length >= 2 && y == initials(a))
   }
 
+  /** A relay's own words, which a house's name is billed WITH but never abbreviated by ("NT Live" of "National Theatre
+   *  Live" is "NT"). */
+  private val RelayWords = Set("live", "hd", "kino", "cinema", "im", "in", "aus", "at", "from", "presents", "season", "saison", "sezon", "kinowy")
+  /** Is one house name the other's ABBREVIATION — one short word, its relay's words aside, the initials of the other's
+   *  several ("NT Live" of "National Theatre Live", "RBO" of "Royal Ballet & Opera")? A name, whatever house its banner
+   *  was learned as: UK "NT Live" was learned as itself, from one record filing "NT Live: …" among its alternatives, and
+   *  Flicks' "NT Live: Hay Fever" ×131 read its own record as an overlap. Initials only, never a word two houses share:
+   *  "Royal Shakespeare Company" is no "Royal Ballet & Opera", nor "National Theatre at Home" "NT Live". */
+  private[identity] def abbreviates(a: Seq[String], b: Seq[String]): Boolean = {
+    def words(name: Seq[String]) = name.filterNot(word => word.forall(_.isDigit) || RelayWords(word) || Set("the", "and", "und", "of")(word))
+    def short(name: Seq[String]) = words(name) match {
+      case Seq(one) if one.length >= 2 && one.length <= 4 => Some(one)
+      case _                                             => None
+    }
+    def initials(name: Seq[String]) = Option(words(name)).filter(_.sizeIs >= 2).map(_.flatMap(_.headOption).mkString)
+    short(a).exists(initials(b).contains) || short(b).exists(initials(a).contains)
+  }
+
   /** Does the film's record bill the listing's work under the listing's OWN house — the banner the
    *  listing puts on the work, spelt as the record spells it or learned to be it (`Houses.same`)?
    *  "NT Live: The Misanthrope" and "National Theatre Live: The Misanthrope" do — by any of the
@@ -363,7 +381,8 @@ object IdentityMeasures {
   final case class Houses(of: Map[String, String]) {
     /** Do the listing and the film bill the work under one house — the same spelling, or the house
      *  the listing's banner was learned to be? */
-    def same(b: Billing): Boolean = b.listingHouse == b.filmHouse || of.get(b.listingHouse).contains(b.filmHouse)
+    def same(b: Billing): Boolean =
+      b.listingHouse == b.filmHouse || of.get(b.listingHouse).contains(b.filmHouse) || abbreviates(b.listingWords, b.filmWords)
     /** Is the listing's banner known to be ANOTHER house than the film's — and the two names not one house's
      *  ([[namesOneHouse]])? DE's "RBO Live" banner was learned as the house records spelling it so bill, and then denied
      *  "RBO Live 2026/27: Schwanensee (Royal Ballet)" ×80 the season's record billing it "RBO 26/27": one house, two
