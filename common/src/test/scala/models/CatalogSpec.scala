@@ -14,6 +14,12 @@ import java.security.MessageDigest
  */
 class CatalogSpec extends AnyFlatSpec with Matchers {
 
+  /** A city row's three keys, in catalog order. */
+  private final case class Row(slug: String, pageSlug: String, country: String)
+  private lazy val cities: Seq[Row] =
+    """\{"slug":"([^"]+)","pageSlug":"([^"]+)",[^{}]*?"country":"([a-z]{2})"""".r
+      .findAllMatchIn(Catalog.json).map(m => Row(m.group(1), m.group(2), m.group(3))).toSeq
+
   "Catalog.json" should "list every deployed country, keyed by the server country code" in {
     val j = Catalog.json
     j should include("""{"code":"pl","name":"Polska","baseUrl":"https://kinowo.net","language":"pl","brand":"Kinowo","timezone":"Europe/Warsaw","versionTokens":{"subtitled":"NAP","dubbed":"DUB"}}""")
@@ -64,7 +70,7 @@ class CatalogSpec extends AnyFlatSpec with Matchers {
     // A single-zone country writes none at all: the field is what a client falls
     // back FROM, so emitting it where it would repeat the country's says nothing
     // and costs bytes on every city of four countries out of five.
-    j should include("""{"slug":"poznan","name":"Poznań","lat":52.4064,"lon":16.9252,"country":"pl","region":"Wielkopolskie"}""")
+    j should include("""{"slug":"poznan","pageSlug":"poznan","name":"Poznań","lat":52.4064,"lon":16.9252,"country":"pl","region":"Wielkopolskie"}""")
     j should not include """"slug":"london","name":"London","lat":51.5074,"lon":-0.1278,"country":"uk","timezone""""
     // The US spans six zones, so every page off the country's own carries its.
     // This is the whole point: an app pruning a Los Angeles showtime on the
@@ -89,11 +95,10 @@ class CatalogSpec extends AnyFlatSpec with Matchers {
     // A retired US metro, onto the page holding the town it was named after.
     cityEntry("san-francisco") should include(""""formerSlugs":["san-francisco-bay-area"]""")
     cityEntry("poznan") should not include "formerSlugs"
-    // Every former slug is a slug no current city answers at.
-    // No city's former slug is a live city of ANY country in the catalog: installed app
-    // builds map former slugs across every country, so the UK's retired `/kent/` would
-    // move a US user off Kent, Washington.
-    val live = Country.switchable.flatMap(_.cities.map(_.slug)).toSet
+    // No city's former slug is any city's `slug` in the catalog: app builds that read
+    // former slugs map them across every country onto `slug`, so a former slug that
+    // is one would move a user off the city that answers at it.
+    val live = cities.map(_.slug).toSet
     val formerOnWire = """"formerSlugs":\[([^\]]*)\]""".r.findAllMatchIn(j).flatMap(_.group(1).split(",")).map(_.trim.stripPrefix("\"").stripSuffix("\"")).toSet
     (formerOnWire intersect live) shouldBe empty
     formerOnWire should contain ("west-yorkshire")
@@ -103,19 +108,23 @@ class CatalogSpec extends AnyFlatSpec with Matchers {
 
   it should "name on each city EVERY other slug of its own country that leads to it, for current app builds" in {
     def entry(code: String, slug: String) =
-      Catalog.json.split("\\{").find(e => e.contains(s""""slug":"$slug"""") && e.contains(s""""country":"$code""""))
+      Catalog.json.split("\\{").find(e => e.contains(s""""pageSlug":"$slug"""") && e.contains(s""""country":"$code""""))
         .getOrElse(fail(s"no $code/$slug entry"))
     def listed(field: String)(code: String, slug: String) =
       s""""$field":\\[([^\\]]*)\\]""".r.findFirstMatchIn(entry(code, slug)).toSeq
         .flatMap(_.group(1).split(",")).map(_.trim.stripPrefix("\"").stripSuffix("\""))
     val otherSlugs = listed("otherSlugs")
     val formerSlugs = listed("formerSlugs")
-    // The UK's retired Kent page: a live US slug too, so `formerSlugs` (installed
-    // builds) must leave it out — and `otherSlugs` must not, or `/uk/kent/` opens
-    // the app on nothing.
+    // Potsdam, New York's slug before it took its bare one: the slug the catalog
+    // names it by again (`InstalledBuildSlugs`), so `formerSlugs` must leave it
+    // out — and `otherSlugs` must not, or `/us/potsdam-new-york/` opens the app on
+    // nothing.
+    formerSlugs("us", "potsdam") should not contain ("potsdam-new-york")
+    otherSlugs("us", "potsdam") should contain ("potsdam-new-york")
+    // The UK's retired Kent county: a US page now, but the UK's `kent` to the builds
+    // that saved it (the US page is `kent-washington` to them), so both lists carry it.
     val kentPage = Country.UnitedKingdom.redirectFor("kent").getOrElse(fail("kent is not a UK slug"))
-    Country.UnitedStates.bySlug.contains("kent") shouldBe true
-    formerSlugs("uk", kentPage) should not contain ("kent")
+    formerSlugs("uk", kentPage) should contain ("kent")
     otherSlugs("uk", kentPage) should contain ("kent")
     // A town a page covers, and the page's qualified slug: the aliases the web 301s.
     val ilkleyPage = Country.UnitedKingdom.redirectFor("ilkley").getOrElse(fail("ilkley is not a UK alias"))
@@ -137,8 +146,8 @@ class CatalogSpec extends AnyFlatSpec with Matchers {
 
   it should "carry each city with its owning country's code" in {
     val j = Catalog.json
-    j should include("""{"slug":"poznan","name":"Poznań","lat":52.4064,"lon":16.9252,"country":"pl","region":"Wielkopolskie"}""")
-    j should include("""{"slug":"london","name":"London","lat":51.5085,"lon":-0.1257,"country":"uk","region":"England","aliases":["Greater London"]""")
+    j should include("""{"slug":"poznan","pageSlug":"poznan","name":"Poznań","lat":52.4064,"lon":16.9252,"country":"pl","region":"Wielkopolskie"}""")
+    j should include("""{"slug":"london","pageSlug":"london","name":"London","lat":51.5085,"lon":-0.1257,"country":"uk","region":"England","aliases":["Greater London"]""")
   }
 
   it should "name the group a GROUPED country finds a city through, and only there" in {
@@ -154,7 +163,7 @@ class CatalogSpec extends AnyFlatSpec with Matchers {
     // The TOP level, where the web nests deeper: `region` is one string and the
     // apps' pick is two steps, so a UK city names its NATION, not the county the
     // page puts between them.
-    cityEntry("chester") should include(""""region":"England"""")
+    cityEntry("chester-cheshire") should include(""""region":"England"""")   // the UK's; `chester` is Virginia's
     cityEntry("birmingham") should include(""""region":"England"""")
     cityEntry("birmingham") should not include """"region":"West Midlands""""
     cityEntry("poznan") should include(""""region":"Wielkopolskie"""")
@@ -222,6 +231,40 @@ class CatalogSpec extends AnyFlatSpec with Matchers {
     cityEntry("los-angeles")  should not include "subregion"
     // The flat countries write neither region nor subregion.
     cityEntry("poznan") should not include "subregion"
+  }
+
+  it should "name every city by a slug unique across the catalog, its own country's beside it" in {
+    // Installed builds from before slugs were per country (2.0.11) look a city up by
+    // the first row with its `slug`: two rows of one slug send one of them to the
+    // other's country and zone.
+    cities.map(_.slug).distinct.size shouldBe cities.size
+    // Current builds key on (country, pageSlug), every city's own slug on its country.
+    cities.map(c => c.country -> c.pageSlug) shouldBe
+      Country.switchable.flatMap(c => (if (c.cityGroups.nonEmpty) c.cityGroups.flatMap(_.allCities) else c.allSorted).map(c.code -> _.slug))
+  }
+
+  it should "keep a slug two countries share bare for its old owner, and qualify the other's" in {
+    def row(code: String, page: String) = cities.find(c => c.country == code && c.pageSlug == page).getOrElse(fail(s"no $code/$page"))
+    row("us", "york").slug shouldBe "york"                       // LegacySlugOwners: Pennsylvania's
+    row("uk", "york").slug shouldBe "york-north-yorkshire"
+    row("uk", "london").slug shouldBe "london"                   // the UK's
+    row("us", "london").slug shouldBe "london-kentucky"
+    row("de", "potsdam").slug shouldBe "potsdam"
+    row("us", "potsdam").slug shouldBe "potsdam-new-york"
+    row("es", "toledo").slug shouldBe "toledo-castilla-la-mancha"
+    // A slug the UK retired is still the UK's to installed builds, which saved it.
+    row("us", "kent").slug shouldBe "kent-washington"
+    // A slug no other country has a page at is its own.
+    row("uk", "harrogate").slug shouldBe "harrogate"
+    // Every qualified one 301s to its page on its own country, API sub-paths with it.
+    val qualified = cities.filter(c => c.slug != c.pageSlug)
+    qualified.size shouldBe 45
+    qualified.foreach { c =>
+      val country = Country.byCode(c.country).getOrElse(fail(c.country))
+      withClue(s"${c.country}/${c.slug}")(country.resolve(c.slug).map(_.slug) shouldBe Some(c.pageSlug))
+    }
+    qualified.map(c => c.country -> c.pageSlug).sorted shouldBe
+      InstalledBuildSlugs.displaced.map { case (country, city) => country.code -> city.slug }.sorted
   }
 
   it should "contain exactly the switchable countries' cities" in {

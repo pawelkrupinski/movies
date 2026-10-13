@@ -41,6 +41,24 @@ def synthetic():
           "leeds" not in aliases and "west-yorkshire" not in aliases and "harrogate" not in aliases)
 
 
+def shared():
+    def country(*pages):
+        return ({"pages": [dict(slug=s, qualifiedSlug=q) for s, q in pages], "retired": {}}, {}, town_pages.slugify)
+    out = g.shared_qualified({"uk": country(("york", "york-north-yorkshire"), ("leeds", "leeds-west-yorkshire")),
+                              "us": country(("york", "york-pennsylvania"), ("boise", "boise-idaho"))})
+    check("a page whose slug another country has too is named with its qualified slug, in both countries",
+          out == {"uk": {"york": "york-north-yorkshire"}, "us": {"york": "york-pennsylvania"}})
+    retired_uk = ({"pages": [], "retired": {"kent": {"page": "chatham"}}}, {}, town_pages.slugify)
+    check("…and one whose slug another country retired",
+          g.shared_qualified({"uk": retired_uk, "us": country(("kent", "kent-washington"))}) ==
+          {"uk": {}, "us": {"kent": "kent-washington"}})
+    try:
+        g.shared_qualified({"uk": country(("york", "york")), "us": country(("york", "york-pennsylvania"))})
+        check("a shared page with no qualified slug of its own fails the generator", False)
+    except SystemExit:
+        check("a shared page with no qualified slug of its own fails the generator", True)
+
+
 def committed():
     data = g.country_data()
     check("the five countries are indexed", set(data) == {"pl", "uk", "de", "us", "es"})
@@ -50,6 +68,7 @@ def committed():
 
 def main():
     synthetic()
+    shared()
     committed()
     print("all passed")
 

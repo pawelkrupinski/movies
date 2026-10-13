@@ -13,6 +13,13 @@ A slug that is a page, or a retired slug (which `City` already 301s by its own
 record), is never an alias. Where two pages of one country cover a town of one
 slug, the MORE POPULOUS town's page has it.
 
+Also, for every page whose slug another country has too, as a page or a retired
+page's (`york`, the UK's and Pennsylvania's; `kent`, Washington's and the UK's
+retired county), the page's qualified slug — the name installed app
+builds from before slugs were per country know the page by where it is not its
+slug's old owner (`models.InstalledBuildSlugs`). TEMPORARY, with
+`models.LegacySlugOwners`.
+
 Which country a bare `showtimes.cc/{slug}/` means is not decided here: see
 `models.LegacySlugOwners`.
 
@@ -101,6 +108,25 @@ def index(code, data, towns, slug_of, extra_towns=None):
     return dict(sorted(aliases.items()))
 
 
+def shared_qualified(data):
+    """code → {page slug → its qualified slug} for every page whose slug another
+    country also has, as a page or as a retired page's."""
+    owners = collections.defaultdict(set)
+    for code, (pages_json, _, _) in data.items():
+        for slug in [p["slug"] for p in pages_json["pages"]] + list(pages_json.get("retired", {})):
+            owners[slug].add(code)
+    out = {}
+    for code, (pages_json, _, _) in data.items():
+        shared = {}
+        for p in pages_json["pages"]:
+            if len(owners[p["slug"]]) > 1:
+                if not p.get("qualifiedSlug") or p["qualifiedSlug"] == p["slug"]:
+                    raise SystemExit(f"{code} page {p['slug']} shares its slug with another country but has no qualified slug")
+                shared[p["slug"]] = p["qualifiedSlug"]
+        out[code] = dict(sorted(shared.items()))
+    return out
+
+
 def scala_string(s):
     return '"' + s.replace("\\", "\\\\").replace('"', '\\"') + '"'
 
@@ -131,9 +157,19 @@ def main():
         out.append(f"  def {code}Aliases: Map[String, String] = ("
                    + " ++ ".join(f"{code}{i}" for i in range(len(chunks))) + ").toMap")
         out.append("")
-    out[-1:] = ["}"]
+    shared = shared_qualified(data)
+    out.append("  /** Per country: page slug → its qualified slug, for every page whose slug a page of")
+    out.append("   *  another country has too. TEMPORARY, with `LegacySlugOwners`. */")
+    out.append("  def sharedPageQualifiedSlugs: Map[String, Map[String, String]] = Map(")
+    for code in data:
+        out.append(f"    {scala_string(code)} -> Map(")
+        out.extend(f"      {scala_string(a)} -> {scala_string(q)}," for a, q in shared[code].items())
+        out.append("    ),")
+    out.append("  )")
+    out.append("}")
     OUT.write_text("\n".join(out) + "\n", encoding="utf-8")
-    print(f"Wrote {OUT.relative_to(ROOT)}: aliases " + ", ".join(f"{c} {len(a)}" for c, a in aliases.items()))
+    print(f"Wrote {OUT.relative_to(ROOT)}: aliases " + ", ".join(f"{c} {len(a)}" for c, a in aliases.items())
+          + "; shared pages " + ", ".join(f"{c} {len(q)}" for c, q in shared.items()))
 
 
 if __name__ == "__main__":

@@ -10,6 +10,14 @@ package models
  * `kinowo://` links from the catalog's copy of this table on the device, and
  * nothing measures that: the drop rule speaks for web traffic only.
  *
+ * Dropped WITH this table, once the installed app builds from before slugs were per
+ * country (`mobile-ios-2.0.11`, `mobile-android-2.0.11`) are gone — the
+ * minimum-version gate can then retire them: [[InstalledBuildSlugs]] (the
+ * catalog's globally unique `slug` beside its `pageSlug`, and the
+ * `sharedPageQualifiedSlugs` table `generate_slug_index.py` writes for it), the
+ * iOS association file's excludes built from it (`WellKnownController`), the
+ * apps' fallback from `pageSlug` to `slug`, and `InstalledBuildContractSpec`.
+ *
  * Before every country owned its own slugs, all of them shared one namespace and
  * each slug had exactly one country. This is that namespace — every live and
  * every renamed slug of origin/main 7fdc618ca's catalog (3,152), by the country

@@ -16,13 +16,10 @@ package models
  */
 object Catalog {
 
-  /** Each country's live slugs, built once for the whole catalog. */
-  private lazy val liveSlugs: Map[Country, Set[String]] =
-    Country.switchable.map(c => c -> c.cities.map(_.slug).toSet).toMap
-
-  /** Slugs a city of a country other than `c` answers at live — see `formerSlugs` in [[json]]. */
-  private def liveElsewhere(c: Country): Set[String] =
-    liveSlugs.collect { case (other, slugs) if other != c => slugs }.flatten.toSet
+  /** Every city's `slug` as the catalog emits it ([[InstalledBuildSlugs]]) — see
+   *  `formerSlugs` in [[json]]. */
+  private lazy val catalogSlugs: Set[String] =
+    Country.switchable.flatMap(c => c.cities.map(InstalledBuildSlugs.of(c, _))).toSet
 
   /** The zone a country is published under — see [[Country.zone]]. */
   private def countryTimezone(c: Country): String = c.zone.getId
@@ -47,6 +44,11 @@ object Catalog {
    * web redirects older slugs onto it, those as `formerSlugs`. Each country
    * carries its `timezone` and, where it has one, the `versionTokens` pair its
    * "version" filter matches on.
+   *
+   * A city's `slug` is unique across the catalog — the name installed builds from
+   * before slugs were per country know it by — and its `pageSlug` is its slug on
+   * its own country, the key current builds read with `country`
+   * ([[InstalledBuildSlugs]]; temporary, with [[LegacySlugOwners]]).
    *
    * `bareSlugOwners` is [[LegacySlugOwners]] — slug → the country that owned it
    * before slugs were per country — which decides a link that names no country (a
@@ -96,7 +98,6 @@ object Catalog {
       .mkString("[", ",", "]")
     val cities = Country.switchable
       .flatMap { c =>
-        val elsewhere = liveElsewhere(c)
         val aliasesByPage = c.slugAliases.toSeq.groupMap(_._2)(_._1)
         // A country whose picker GROUPS its cities (the US by state, Germany by
         // Bundesland, the UK by nation) names each city's group, so the apps can
@@ -171,12 +172,14 @@ object Catalog {
           // reaches the server's redirect: without this an app rejected
           // `/miedzyrzec-podlaski/movie/…` as an unknown city and opened nothing.
           //
-          // Less any slug ANOTHER country serves as a live city. App builds from before
-          // slugs were per country read every country's former slugs as one map and
-          // apply it to the saved city of whichever country is selected: the UK's
-          // retired `/kent/` (→ Chatham) would turn a US user's Kent, Washington into a
-          // city the US does not have. Such a link still 301s on the web.
-          val formerSlugs = c.formerSlugs(city.slug).filterNot(elsewhere)
+          // Less any slug the catalog names a city by (`slug`, below). App builds from
+          // before slugs were per country read every country's former slugs as one map
+          // onto `slug` and apply it to the saved city of whichever country is
+          // selected: the UK's retired `/kent/` (→ Chatham) would turn a US user's
+          // Kent, Washington into a city the US does not have, and Potsdam, New York's
+          // former `potsdam-new-york` — its `slug` again — would map a saved city onto
+          // itself. Such a link still 301s on the web.
+          val formerSlugs = c.formerSlugs(city.slug).filterNot(catalogSlugs)
           val former = if (formerSlugs.isEmpty) "" else formerSlugs.map(s => s""""$s"""").mkString(""","formerSlugs":[""", ",", "]")
           // EVERY other slug of its own country that leads here, unfiltered — what
           // current app builds read in place of `formerSlugs`, resolving a link within
@@ -186,7 +189,12 @@ object Catalog {
           // — every URL the App Links and Universal Links claim that the web 301s here.
           val others = (c.formerSlugs(city.slug) ++ aliasesByPage.getOrElse(city.slug, Nil)).distinct.sorted
           val otherSlugs = if (others.isEmpty) "" else others.map(s => s""""$s"""").mkString(""","otherSlugs":[""", ",", "]")
-          s"""{"slug":"${city.slug}","name":"${city.labels.nominative}","lat":${city.lat},"lon":${city.lon},"country":"${c.code}"$region$subregion$aliases$tz$former$otherSlugs}"""
+          // `slug` is what installed builds from before slugs were per country know
+          // the city by — unique across the whole catalog, as they need it to be
+          // ([[InstalledBuildSlugs]]); `pageSlug` is the city's own slug on its own
+          // country, what current builds key on with `country`. TEMPORARY: once those
+          // builds are gone, `slug` goes back to being `pageSlug`.
+          s"""{"slug":"${InstalledBuildSlugs.of(c, city)}","pageSlug":"${city.slug}","name":"${city.labels.nominative}","lat":${city.lat},"lon":${city.lon},"country":"${c.code}"$region$subregion$aliases$tz$former$otherSlugs}"""
         }
       }
       .mkString("[", ",", "]")
