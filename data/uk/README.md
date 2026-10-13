@@ -1,40 +1,44 @@
-# UK venue towns
+# UK venues and pages
 
-The UK roster is the odd one out. Germany's regions, Spain's provinces and the
-US's metros are all GENERATED from a harvested `venues.json`, so each venue's
-town rides along in the generated tuple. The UK's ~840 venues are hand-written
-`case object`s in `common/src/main/scala/models/Cinema.scala` — a display name
-and a pill name, nothing else — so there was nowhere for a town to live, and
-its pages named none.
+The UK's ~840 venues are hand-written `case object`s in
+`common/src/main/scala/models/Cinema.scala` — a display name and a pill name,
+nothing else. Everything a page needs beside that lives here:
 
-That matters more here than anywhere: most UK "cities" in the roster are
-COUNTIES or travel-sheds. `/aberdeenshire/` covers Aberdeen, Peterhead,
-Banchory, Huntly and Ellon. `/cheshire/` covers Chester, Warrington and Crewe.
-Before this, none of those words appeared on the page — not in the title, the
-description, the structured data, or (for most of them) a single cinema's name.
+```
+venues.json   each venue's postal town (off its Flicks address) and coordinates
+towns.json    the town each venue is in: GeoNames centre, population, county, island
+pages.json    which page lists each venue, and where every retired slug now goes
+```
 
-So the town is kept beside the roster instead of inside it, in `venues.json`
-here, and generated into `models.VenueTowns` as a display-name → town table that
-`City.extraPlaces` reads — shared with Poland, the other hand-written roster.
+and is generated into `models.UkPages` (the pages) and `models.VenueTowns` (the
+town each venue's address names).
 
 ## Re-harvesting
 
 ```
-python3 data/uk/scripts/harvest_towns.py     # ~840 pages off Flicks, a few minutes
+python3 data/uk/scripts/harvest_towns.py --sync   # only the venues venues.json lacks
 python3 data/uk/scripts/test_harvest_towns.py
-python3 data/scripts/generate_venue_towns.py  # -> common/src/main/scala/models/VenueTowns.scala
+python3 data/scripts/generate_venue_towns.py      # -> VenueTowns.scala
+curl -sO https://download.geonames.org/export/dump/cities1000.zip && unzip cities1000.zip
+python3 data/uk/scripts/geocode_towns.py cities1000.txt   # -> towns.json
+python3 data/uk/scripts/build_pages.py                    # -> pages.json
+python3 data/uk/scripts/generate_roster.py                # -> UkPages.scala + the apps' lists
+python3 data/uk/scripts/test_geocode_towns.py
+python3 data/uk/scripts/test_build_pages.py
 ```
 
 `harvest_towns.py` needs no venue list of its own: every UK venue's Flicks slug
 is already in the repo, in the two places a venue can be wired —
 `CinemaScraperCatalog`'s `flicks("<slug>", Obj)` for the venues Flicks scrapes,
 and `ChainFlicksFallback`'s `Obj -> "<slug>"` for the chain venues that only
-fall back to it. It reads both, and reads the display names off `Cinema.scala`.
+fall back to it. A venue Flicks does not list at all (The Old Court, Windsor,
+scraped off its own site) is entered by hand with `"flicksSlug": null`, and every
+sweep keeps it. `--reparse` re-derives every town from the stored addresses with
+no network — what to run after changing the parser.
 
 Flicks throttles by STALLING rather than by returning 429, and plateaus at
 3-5 req/s however many workers you point at it, so the sweep runs 3 workers
-paced at ~2 req/s and takes a few minutes. Do not raise it; extra concurrency
-buys nothing and risks the origin dropping the sweep half-done.
+paced at ~2 req/s and takes a few minutes. Do not raise it.
 
 ## Why the town parser is trusted
 
@@ -42,34 +46,96 @@ Flicks gives a free-text postal address, not a town field. `town_of` takes the
 town off whichever part carries the POSTCODE, which is the only marker that
 survives all three shapes a UK address ends in — including
 `…, Speke Road, L24 8QB, Speke, Merseyside`, where the last part is a county
-and the obvious "take the last part" rule answers "Merseyside".
+and the obvious "take the last part" rule answers "Merseyside". A county or an
+island after the town is walked past (`COUNTIES`: "Paradise Place, Goole, East
+Riding of Yorkshire" is Goole).
 
 That rule is scored, not assumed: `test_harvest_towns.py` runs it against the
 87 UK venues in the recorded Cineworld fixture, which carry the chain's OWN
 `addressInfo.city` alongside the address. It has to agree on every one.
 
+## From a postal town to a town
+
+A postal town is a sorting office's, not always the town a venue is in.
+`geocode_towns.py` matches each to a GeoNames place (`cities1000.txt`, GB plus
+the Isle of Man, Jersey and Guernsey), and is reviewed rather than permissive —
+a name it cannot place stops the run:
+
+- **Spelling** (`ALIASES`): Flicks' "Hull" is GeoNames' Kingston upon Hull,
+  "Leamington Spa" Royal Leamington Spa. A page shows the name a visitor uses
+  (`DISPLAY_NAMES`: Hull, Londonderry, Bishop's Stortford).
+- **Greater London is London.** Its boroughs' postal towns — Croydon, Romford,
+  Kingston, Harrow — are London, as New York's boroughs are New York City; a
+  neighbourhood Flicks names (Hampstead, Maida Vale) is the place nearest it,
+  which is London too.
+- **A postal town past its council's edge.** A venue more than 8 km from the
+  town its address names, beside (3 km) a place in another council area, is in
+  that area's biggest town nearby: Cumbernauld's Lanternhouse ("Glasgow G67") is
+  Cumbernauld, Pocklington's arts centre ("York YO42") Pocklington, the NEC
+  ("Birmingham") Solihull. `MISPLACED` exempts a venue harvested at the wrong
+  coordinates (Odeon Rochdale, at Bolton's).
+- **Towns GeoNames lacks** (`OWN_TOWNS`: Beeston, Cromarty, Crosby, Wellington
+  in Somerset) are centred on their venues, with no population.
+- **A town is its name AND its county.** Newport (Isle of Wight) and Newport
+  (Gwent), 102 km apart, are two towns; so are the two Bangors and the two
+  Wellingtons.
+
+Each town carries its NATION and its picker COUNTY (England's ceremonial
+counties, Wales' preserved counties, Scotland's councils grouped the way the
+Flicks regions grouped them, Northern Ireland's councils) and its LANDMASS — the
+island it is on.
+
 ## Which page a venue is on
 
-The pages stay the Flicks regions — mostly counties — and each venue is filed
-under one by hand in `Cinema.scala`. Two straight-line (haversine) rules,
-borrowed from Poland's clustering (`data/pl/scripts/build_pages.py`), hold that
-filing to the venues' own fixes here; `UkPageGeographySpec` enforces both
-against this file and the roster's hubs (each `UkCity`'s lat/lon):
+Until 2026-10 a UK page was one of 76 Flicks REGIONS, filed by hand — mostly a
+county, so `/west-yorkshire/` listed Leeds, Bradford and Ilkley, and the
+Highlands and Islands reached 285 km from Inverness to Lerwick. Pages are now
+the rule Poland, Spain, Germany and the US share (`data/scripts/town_pages.py`),
+with Poland's and Spain's radii, since British towns are close together:
 
-- **A misfiled venue moves.** A venue more than 40 km from its page's hub that
-  is within 25 km of ANOTHER page's hub belongs to that page. Ystradgynlais's
-  Miners Welfare Hall, which Flicks files under Dyfed (47 km), is on the
-  Glamorgan page (18 km). A remote venue with no hub near it — Lerwick, 285 km
-  up the Highlands and Islands — stays where its region put it; so do Plymouth
-  (Cornwall, 56 km; Devon's hub is 45 km), Goole (Lincolnshire; South
-  Yorkshire 36 km), Wrexham (Powys; Liverpool 41 km) and King's Lynn (Norwich;
-  Cambridgeshire 45 km), none of which is within 25 km of another hub.
-- **One urban area is one page.** Two hubs under 15 km apart are halves of the
-  same town, so the smaller is folded into the larger: Dudley (13 km) and
-  Sandwell (9 km) into Birmingham, Lanarkshire (East Kilbride/Hamilton, 12 km)
-  into Glasgow. `City.ukMergedPages` is the one place that says so — the old
-  slugs 301 onto the absorbing page and stay searchable in the picker. Pairs
-  between 15 and 25 km are separate places and are left alone: Belfast/Down
-  (17.5), Belfast/Antrim (20.1), Glasgow/Renfrewshire (22.7), South
-  Yorkshire/Yorkshire (16.0), Edinburgh/Fife (21.1), Hampshire/Isle of Wight
-  (23.9).
+1. A town of 100,000+ (GeoNames' figure) is a MAJOR page with only its own
+   venues.
+2. Any other town with 3+ venues is a page of its own.
+3. 1-2 venue towns cluster: a 2-venue town takes those within 10 km, 1-venue
+   towns cluster within 25 km, a town left alone joins a cluster within 35 km.
+   A cluster is named after its biggest town ("Penrith area").
+4. **No venue is more than 40 km from the town its page is named after**
+   (`Rules.max_reach_km`). The radii are centre to centre, and a venue can sit
+   well out from its town's centre; the three that would have been further
+   (Bala, Malton, Woodbridge) were clustered again or stand alone.
+5. **No cluster crosses water.** The Isle of Wight, Bute, Orkney, Shetland, the
+   Western Isles, the Crown Dependencies and Northern Ireland are each their own
+   landmass: Ryde is 11 km from Portsmouth across the Solent.
+
+264 pages (88 major, 75 town, 101 cluster), 60 with one cinema; a page's furthest
+venue is a median 4 km from its namesake, p95 26 km, at most 35 km.
+`test_build_pages.py` and `UkPagesSpec` hold the 40 km cap over the generated
+pages.
+
+**One conurbation, many majors.** Postal towns cut a conurbation into its
+boroughs' towns, and they stay separate pages: Manchester, Salford, Stockport,
+Oldham, Bolton and Wigan; Birmingham, Wolverhampton, Dudley, Walsall, West
+Bromwich, Solihull and Sutton Coldfield. That is how Poland keeps Katowice,
+Sosnowiec and Gliwice and Germany Essen and Bochum: each is a town people name,
+its venues are its own, and a page of all of Greater Manchester is the county
+page this replaced. Greater London is the one exception, because it is one city
+(above). The old rule's merges (Dudley and Sandwell into Birmingham,
+Lanarkshire into Glasgow) are gone with it: `/dudley/` is Dudley's page again.
+
+## Slugs
+
+A page is slugged after its name. Where another page or country has the slug,
+it is qualified with its county:
+
+- a slug a UK page had before keeps meaning its town (`town_pages.reserve`);
+- of two UK towns of one name the more populous takes the bare slug;
+- a slug Poland, Germany, Spain or the US serves or redirects stays theirs —
+  the UK, re-cut after them, is the newcomer, as Spain's Toledo was:
+  `/cambridge/` is Massachusetts', the UK's is `/cambridge-cambridgeshire/`
+  (likewise York, Oxford, Reading, Derby, Plymouth, Bangor, Newport…).
+
+Every one of the 79 old slugs (the 76 regions and the three merged ones) still
+answers: as a page where its town is one (`/manchester/`, `/dudley/`), else as a
+301 (`City.renamedSlugs`) to the page holding its namesake town (`/antrim/` → the
+Lisburn area, Antrim's cluster), else to the page holding most of its venues
+(`/west-yorkshire/` → Leeds).

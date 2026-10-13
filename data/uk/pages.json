@@ -1,0 +1,5642 @@
+{
+ "pages": [
+  {
+   "slug": "london",
+   "kind": "major",
+   "name": "London",
+   "anchor": "London, Greater London",
+   "nation": "England",
+   "county": "Greater London",
+   "qualifiedSlug": "london-greater-london",
+   "lat": 51.5085,
+   "lon": -0.1257,
+   "towns": [
+    "London, Greater London"
+   ],
+   "cinemas": [
+    "ActOneActon",
+    "ArthouseCrouchEnd",
+    "BarbicanLondonCinema1",
+    "BfiLondonImax",
+    "BfiLondonSouthbank",
+    "CastleCinemaHackney",
+    "SidcupStoryteller",
+    "ChiswickCinema",
+    "CineworldGreenwich",
+    "CineworldBexleyheath",
+    "CineworldEnfield",
+    "CineworldFeltham",
+    "CineworldIlford",
+    "CineworldLeicesterSquare",
+    "CineworldLondonHounslow",
+    "CineworldSouthRuislip",
+    "CineworldWandsworth",
+    "CineworldWembley",
+    "CineworldWestIndiaQuay",
+    "CineworldWoodGreen",
+    "CineLumiereLondon",
+    "CloseUpFilmCentreShoreditch",
+    "CrouchEndPicturehouse",
+    "CurzonCinemaAldgate",
+    "CurzonCinemaBloomsbury",
+    "CurzonCinemaCamden",
+    "CurzonCinemaHoxton",
+    "CurzonCinemaKingston",
+    "CurzonCinemaMayfair",
+    "CurzonCinemaRichmond",
+    "CurzonCinemaSeaContainersMondrian",
+    "CurzonCinemaVictoria",
+    "CurzonSoho",
+    "CurzonWimbledon",
+    "DavidLeanCinemaCroydon",
+    "ElectricCinemaLondon",
+    "ElectricCinemaWhiteCity",
+    "EverymanAtTheWhiteleyLondon",
+    "EverymanBrentford",
+    "EverymanCinemaBakerStreet",
+    "EverymanCinemaBarnet",
+    "EverymanCinemaBelsizeParkHampstead",
+    "EverymanCinemaBoroughYards",
+    "EverymanCinemaBroadgate",
+    "EverymanCinemaCanaryWharf",
+    "EverymanCinemaChelsea",
+    "EverymanCinemaCrystalPalace",
+    "EverymanCinemaHampstead",
+    "EverymanCinemaKingSCross",
+    "EverymanCinemaMaidaVale",
+    "EverymanCinemaMuswellHill",
+    "EverymanCinemaStratfordInternational",
+    "EverymanCinemaIslington",
+    "FinsburyParkPicturehouse",
+    "ForestCinemasWalthamstow",
+    "GenesisTowerHamlets",
+    "InstituteOfContemporaryArts",
+    "Jw3Hampstead",
+    "KilnKilburn",
+    "LexiKensalRise",
+    "LumiereRomford",
+    "OdeonCinemaActon",
+    "OdeonCinemaBeckenham",
+    "OdeonCinemaGreenwich",
+    "OdeonCinemaHolloway",
+    "OdeonCinemaKingston",
+    "OdeonCinemaOrpington",
+    "OdeonCinemaRichmond",
+    "OdeonCinemaSouthWoodford",
+    "OdeonCinemaStreatham",
+    "OdeonCinemaTottenhamCourtRoad",
+    "OdeonCinemaUxbridge",
+    "OdeonCinemaWimbledon",
+    "OdeonCinemaLuxeHaymarket",
+    "OdeonLuxeIslington",
+    "OdeonLuxeLeeValley",
+    "OdeonCinemaLuxeLeicesterSquare",
+    "OdeonCinemaLuxePutney",
+    "OdeonLuxeSwissCottage",
+    "OdeonLuxeWestEnd",
+    "OlympicCinemaBarnes",
+    "EmpireCinemaSutton",
+    "Peckhamplex",
+    "PhoenixCinemaEastFinchley",
+    "PicturehouseCentralLondon",
+    "PicturehouseClapham",
+    "PicturehouseEalingFilmworks",
+    "PicturehouseEastDulwich",
+    "PicturehouseGreenwich",
+    "PicturehouseHackney",
+    "PicturehouseWestNorwood",
+    "PrinceCharlesLondon",
+    "RegentStreetCinemaLondon",
+    "RichMixBethnalGreen",
+    "RioDalston",
+    "RiversideStudiosHammersmith",
+    "RooftopFilmClubPeckhamBusseyBuilding",
+    "RooftopFilmClubStratfordRoofEast",
+    "ScienceMuseumLondonImax",
+    "ArchlightCinemas",
+    "TheArzner",
+    "TheCinemaAtSelfridges",
+    "TheCinemaInThePowerStation",
+    "TheGardenCinema",
+    "TheGatePicturehouseLondon",
+    "TheNickelLondon",
+    "TheRitzyPicturehouseBrixton",
+    "VueCinemasBromley",
+    "VueCinemasDagenham",
+    "VueCinemasEltham",
+    "VueCinemasFinchleyRoadSwissCottage",
+    "VueCinemasFulham",
+    "VueCinemasHarrow",
+    "VueCinemasIslington",
+    "VueCinemasFinchley",
+    "VueCinemasPiccadillyCircus",
+    "VueCinemasPurleyWayCroydon",
+    "VueCinemasRomford",
+    "VueCinemasStratford",
+    "VueCinemasWestEnd",
+    "VueCinemasWestfieldShepherdSBush",
+    "VueCinemasWoodGreen"
+   ]
+  },
+  {
+   "slug": "birmingham",
+   "kind": "major",
+   "name": "Birmingham",
+   "anchor": "Birmingham, West Midlands",
+   "nation": "England",
+   "county": "West Midlands",
+   "qualifiedSlug": "birmingham-west-midlands",
+   "lat": 52.4814,
+   "lon": -1.8998,
+   "towns": [
+    "Birmingham, West Midlands"
+   ],
+   "cinemas": [
+    "CineworldBroadStreetBirmingham",
+    "EverymanCinemaBirmingham",
+    "MidlandsArtsCentreBirmingham",
+    "MockingbirdCinemaKitchenBirmingham",
+    "OdeonBirminghamNewStreet",
+    "OdeonLuxeBirminghamBroadwayPlaza",
+    "OmniplexBirmingham",
+    "VueCinemasBirmingham"
+   ]
+  },
+  {
+   "slug": "glasgow",
+   "kind": "major",
+   "name": "Glasgow",
+   "anchor": "Glasgow, Glasgow",
+   "nation": "Scotland",
+   "county": "Glasgow",
+   "qualifiedSlug": "glasgow-glasgow",
+   "lat": 55.8651,
+   "lon": -4.2576,
+   "towns": [
+    "Glasgow, Glasgow"
+   ],
+   "cinemas": [
+    "CineworldSilverburnGlasgow",
+    "EverymanCinemaGlasgow",
+    "GlasgowFilmTheatre",
+    "GrosvenorCinemaGlasgow",
+    "IMAXAtGlasgowScienceCentre",
+    "OdeonLuxeGlasgow",
+    "VueCinemasGlasgowFort",
+    "VueCinemasGlasgowStEnoch"
+   ]
+  },
+  {
+   "slug": "manchester",
+   "kind": "major",
+   "name": "Manchester",
+   "anchor": "Manchester, Greater Manchester",
+   "nation": "England",
+   "county": "Greater Manchester",
+   "qualifiedSlug": "manchester-greater-manchester",
+   "lat": 53.4809,
+   "lon": -2.2374,
+   "towns": [
+    "Manchester, Greater Manchester"
+   ],
+   "cinemas": [
+    "CineworldManchester",
+    "CultplexManchester",
+    "EverymanManchesterStJohns",
+    "FlixTreehouseManchester",
+    "HomeManchester",
+    "OdeonCinemaManchesterGreatNorthern",
+    "OdeonCinemaManchesterTraffordCentre",
+    "VueCinemasManchesterPrintworks"
+   ]
+  },
+  {
+   "slug": "sheffield",
+   "kind": "major",
+   "name": "Sheffield",
+   "anchor": "Sheffield, South Yorkshire",
+   "nation": "England",
+   "county": "South Yorkshire",
+   "qualifiedSlug": "sheffield-south-yorkshire",
+   "lat": 53.383,
+   "lon": -1.4659,
+   "towns": [
+    "Sheffield, South Yorkshire"
+   ],
+   "cinemas": [
+    "CineworldSheffield",
+    "OdeonLuxeSheffield",
+    "ShowroomSheffield",
+    "TheLightSheffield",
+    "VueCinemasSheffield"
+   ]
+  },
+  {
+   "slug": "leeds",
+   "kind": "major",
+   "name": "Leeds",
+   "anchor": "Leeds, West Yorkshire",
+   "nation": "England",
+   "county": "West Yorkshire",
+   "qualifiedSlug": "leeds-west-yorkshire",
+   "lat": 53.7965,
+   "lon": -1.5478,
+   "towns": [
+    "Leeds, West Yorkshire"
+   ],
+   "cinemas": [
+    "CineworldLeeds",
+    "CottageRoadCinemaLeeds",
+    "EverymanCinemaLeeds",
+    "HeartCentreHeadingley",
+    "HydeParkPictureHouse",
+    "OdeonLuxeLeedsThorpePark",
+    "ShowcaseDeLuxLeeds",
+    "VueCinemasLeedsKirkstallRoad",
+    "VueCinemasLeedsTheLight"
+   ]
+  },
+  {
+   "slug": "edinburgh",
+   "kind": "major",
+   "name": "Edinburgh",
+   "anchor": "Edinburgh, Lothian",
+   "nation": "Scotland",
+   "county": "Lothian",
+   "qualifiedSlug": "edinburgh-lothian",
+   "lat": 55.9521,
+   "lon": -3.1965,
+   "towns": [
+    "Edinburgh, Lothian"
+   ],
+   "cinemas": [
+    "CineworldEdinburgh",
+    "DominionCinemaEdinburgh",
+    "EverymanCinemaEdinburgh",
+    "FilmhouseEdinburgh",
+    "OdeonEdinburghFortKinnaird",
+    "OdeonEdinburghLothianRoad",
+    "OdeonLuxeEdinburghEdinburghWest",
+    "ScotsmanPicturehouseEdinburgh",
+    "TheCameoPicturehouse",
+    "VueEdinburghOceanTerminal",
+    "VueEdinburghOmniCentre"
+   ]
+  },
+  {
+   "slug": "liverpool",
+   "kind": "major",
+   "name": "Liverpool",
+   "anchor": "Liverpool, Merseyside",
+   "nation": "England",
+   "county": "Merseyside",
+   "qualifiedSlug": "liverpool-merseyside",
+   "lat": 53.4106,
+   "lon": -2.9779,
+   "towns": [
+    "Liverpool, Merseyside"
+   ],
+   "cinemas": [
+    "EverymanCinemaLiverpool",
+    "OdeonLiverpoolONE",
+    "PicturehouseAtFACTLiverpool",
+    "ShowcaseDeLuxLiverpool",
+    "WooltonPictureHouse"
+   ]
+  },
+  {
+   "slug": "bristol",
+   "kind": "major",
+   "name": "Bristol",
+   "anchor": "Bristol, Bristol",
+   "nation": "England",
+   "county": "Bristol",
+   "qualifiedSlug": "bristol-bristol",
+   "lat": 51.4552,
+   "lon": -2.5966,
+   "towns": [
+    "Bristol, Bristol"
+   ],
+   "cinemas": [
+    "CubeCinemaBristol",
+    "EverymanCinemaBristol",
+    "OdeonCabotCircus",
+    "ScottCinemasBristolWestburyPark",
+    "ShowcaseBristolAvonmeads",
+    "VueCinemasBristolCribbsCauseway",
+    "VueCinemasBristolLongwellGreen",
+    "WatershedBristol"
+   ]
+  },
+  {
+   "slug": "cardiff",
+   "kind": "major",
+   "name": "Cardiff",
+   "anchor": "Cardiff, Glamorgan",
+   "nation": "Wales",
+   "county": "Glamorgan",
+   "qualifiedSlug": "cardiff-glamorgan",
+   "lat": 51.48,
+   "lon": -3.18,
+   "towns": [
+    "Cardiff, Glamorgan"
+   ],
+   "cinemas": [
+    "ChapterCardiff",
+    "CineworldCardiff",
+    "EverymanCinemaCardiff",
+    "OdeonCinemaCardiff"
+   ]
+  },
+  {
+   "slug": "leicester",
+   "kind": "major",
+   "name": "Leicester",
+   "anchor": "Leicester, Leicestershire",
+   "nation": "England",
+   "county": "Leicestershire",
+   "qualifiedSlug": "leicester-leicestershire",
+   "lat": 52.6386,
+   "lon": -1.1317,
+   "towns": [
+    "Leicester, Leicestershire"
+   ],
+   "cinemas": [
+    "OdeonLuxeLeicester",
+    "PhoenixCinemaAndArtCentreLeicester",
+    "PiccadillyCinemaLeicester",
+    "ShowcaseDeLuxLeicester",
+    "VueCinemasLeicester"
+   ]
+  },
+  {
+   "slug": "bradford",
+   "kind": "major",
+   "name": "Bradford",
+   "anchor": "Bradford, West Yorkshire",
+   "nation": "England",
+   "county": "West Yorkshire",
+   "qualifiedSlug": "bradford-west-yorkshire",
+   "lat": 53.7939,
+   "lon": -1.7521,
+   "towns": [
+    "Bradford, West Yorkshire"
+   ],
+   "cinemas": [
+    "CineworldBradford",
+    "OdeonLuxeLeedsBradford",
+    "PicturevilleScienceAndMediaMuseumBradford",
+    "TheLightBradford"
+   ]
+  },
+  {
+   "slug": "belfast",
+   "kind": "major",
+   "name": "Belfast",
+   "anchor": "Belfast, Belfast",
+   "nation": "Northern Ireland",
+   "county": "Belfast",
+   "qualifiedSlug": "belfast-belfast",
+   "lat": 54.5968,
+   "lon": -5.9254,
+   "towns": [
+    "Belfast, Belfast"
+   ],
+   "cinemas": [
+    "CineworldBelfast",
+    "MovieHouseCitySideBelfast",
+    "OdeonCinemaBelfast",
+    "OmniplexBelfast",
+    "OmniplexDundonald",
+    "QueenSFilmTheatreBelfast",
+    "StrandArtsCentreBelfast",
+    "TheAvenueCinemaBelfast"
+   ]
+  },
+  {
+   "slug": "coventry",
+   "kind": "major",
+   "name": "Coventry",
+   "anchor": "Coventry, West Midlands",
+   "nation": "England",
+   "county": "West Midlands",
+   "qualifiedSlug": "coventry-west-midlands",
+   "lat": 52.4066,
+   "lon": -1.5122,
+   "towns": [
+    "Coventry, West Midlands"
+   ],
+   "cinemas": [
+    "OdeonCinemaCoventry",
+    "ShowcaseDeLuxCoventry",
+    "WarwickArtsCentreCoventry"
+   ]
+  },
+  {
+   "slug": "birkenhead",
+   "kind": "major",
+   "name": "Birkenhead",
+   "anchor": "Birkenhead, Merseyside",
+   "nation": "England",
+   "county": "Merseyside",
+   "qualifiedSlug": "birkenhead-merseyside",
+   "lat": 53.3934,
+   "lon": -3.0148,
+   "towns": [
+    "Birkenhead, Merseyside"
+   ],
+   "cinemas": [
+    "VueCinemasBirkenhead"
+   ]
+  },
+  {
+   "slug": "nottingham",
+   "kind": "major",
+   "name": "Nottingham",
+   "anchor": "Nottingham, Nottinghamshire",
+   "nation": "England",
+   "county": "Nottinghamshire",
+   "qualifiedSlug": "nottingham-nottinghamshire",
+   "lat": 52.9536,
+   "lon": -1.1505,
+   "towns": [
+    "Nottingham, Nottinghamshire"
+   ],
+   "cinemas": [
+    "BroadwayCinemaNottingham",
+    "SavoyCinemaNottingham",
+    "ShowcaseDeLuxNottingham",
+    "VueCinemasNottingham"
+   ]
+  },
+  {
+   "slug": "reading-berkshire",
+   "kind": "major",
+   "name": "Reading",
+   "anchor": "Reading, Berkshire",
+   "nation": "England",
+   "county": "Berkshire",
+   "qualifiedSlug": "reading-berkshire",
+   "lat": 51.4562,
+   "lon": -0.9711,
+   "towns": [
+    "Reading, Berkshire"
+   ],
+   "cinemas": [
+    "ReadingBiscuitFactory",
+    "ShowcaseDeLuxReading",
+    "VueCinemasReading"
+   ]
+  },
+  {
+   "slug": "hull",
+   "kind": "major",
+   "name": "Hull",
+   "anchor": "Hull, East Riding of Yorkshire",
+   "nation": "England",
+   "county": "East Riding of Yorkshire",
+   "qualifiedSlug": "hull-east-riding-of-yorkshire",
+   "lat": 53.7446,
+   "lon": -0.3352,
+   "towns": [
+    "Hull, East Riding of Yorkshire"
+   ],
+   "cinemas": [
+    "CineworldHull",
+    "OdeonLuxeHull",
+    "ReelCinemaHull",
+    "VueCinemasHull"
+   ]
+  },
+  {
+   "slug": "preston-lancashire",
+   "kind": "major",
+   "name": "Preston",
+   "anchor": "Preston, Lancashire",
+   "nation": "England",
+   "county": "Lancashire",
+   "qualifiedSlug": "preston-lancashire",
+   "lat": 53.7628,
+   "lon": -2.7045,
+   "towns": [
+    "Preston, Lancashire"
+   ],
+   "cinemas": [
+    "ArcCinemaPreston",
+    "FlowerBowlEntertainmentCentrePreston",
+    "OdeonCinemaPreston",
+    "VueCinemasPreston"
+   ]
+  },
+  {
+   "slug": "swansea",
+   "kind": "major",
+   "name": "Swansea",
+   "anchor": "Swansea, Glamorgan",
+   "nation": "Wales",
+   "county": "Glamorgan",
+   "qualifiedSlug": "swansea-glamorgan",
+   "lat": 51.6208,
+   "lon": -3.9432,
+   "towns": [
+    "Swansea, Glamorgan"
+   ],
+   "cinemas": [
+    "OdeonCinemaSwansea",
+    "TaliesinArtsCentreSwansea",
+    "VueCinemasSwansea"
+   ]
+  },
+  {
+   "slug": "newcastle-upon-tyne",
+   "kind": "major",
+   "name": "Newcastle upon Tyne",
+   "anchor": "Newcastle upon Tyne, Tyne and Wear",
+   "nation": "England",
+   "county": "Tyne and Wear",
+   "qualifiedSlug": "newcastle-upon-tyne-tyne-and-wear",
+   "lat": 54.9733,
+   "lon": -1.614,
+   "towns": [
+    "Newcastle upon Tyne, Tyne and Wear"
+   ],
+   "cinemas": [
+    "CineworldNewcastle",
+    "EverymanCinemaNewcastle",
+    "StarAndShadowCinemaNewcastle",
+    "TynesideNewcastle"
+   ]
+  },
+  {
+   "slug": "southend-on-sea",
+   "kind": "major",
+   "name": "Southend-on-Sea",
+   "anchor": "Southend-on-Sea, Essex",
+   "nation": "England",
+   "county": "Essex",
+   "qualifiedSlug": "southend-on-sea-essex",
+   "lat": 51.5378,
+   "lon": 0.7143,
+   "towns": [
+    "Southend-on-Sea, Essex"
+   ],
+   "cinemas": [
+    "OdeonCinemaSouthendOnSea"
+   ]
+  },
+  {
+   "slug": "brighton",
+   "kind": "major",
+   "name": "Brighton",
+   "anchor": "Brighton, East Sussex",
+   "nation": "England",
+   "county": "East Sussex",
+   "qualifiedSlug": "brighton-east-sussex",
+   "lat": 50.8284,
+   "lon": -0.1395,
+   "towns": [
+    "Brighton, East Sussex"
+   ],
+   "cinemas": [
+    "CineworldBrighton",
+    "DukeOfYorkSPicturehouseBrighton",
+    "DukeSAtKomediaPicturehouse",
+    "OdeonCinemaBrighton"
+   ]
+  },
+  {
+   "slug": "derby-derbyshire",
+   "kind": "major",
+   "name": "Derby",
+   "anchor": "Derby, Derbyshire",
+   "nation": "England",
+   "county": "Derbyshire",
+   "qualifiedSlug": "derby-derbyshire",
+   "lat": 52.9228,
+   "lon": -1.4766,
+   "towns": [
+    "Derby, Derbyshire"
+   ],
+   "cinemas": [
+    "OdeonLuxeDerby",
+    "QuadDerby",
+    "ShowcaseCinemaDeLuxDerby"
+   ]
+  },
+  {
+   "slug": "southampton",
+   "kind": "major",
+   "name": "Southampton",
+   "anchor": "Southampton, Hampshire",
+   "nation": "England",
+   "county": "Hampshire",
+   "qualifiedSlug": "southampton-hampshire",
+   "lat": 50.904,
+   "lon": -1.4043,
+   "towns": [
+    "Southampton, Hampshire"
+   ],
+   "cinemas": [
+    "HarbourLightsPicturehouse",
+    "HytheMoviolaCinema",
+    "ShowcaseDeLuxSouthampton"
+   ]
+  },
+  {
+   "slug": "wolverhampton",
+   "kind": "major",
+   "name": "Wolverhampton",
+   "anchor": "Wolverhampton, West Midlands",
+   "nation": "England",
+   "county": "West Midlands",
+   "qualifiedSlug": "wolverhampton-west-midlands",
+   "lat": 52.5855,
+   "lon": -2.123,
+   "towns": [
+    "Wolverhampton, West Midlands"
+   ],
+   "cinemas": [
+    "CineworldWolverhampton",
+    "LockworksCinemaWolverhampton"
+   ]
+  },
+  {
+   "slug": "plymouth-devon",
+   "kind": "major",
+   "name": "Plymouth",
+   "anchor": "Plymouth, Devon",
+   "nation": "England",
+   "county": "Devon",
+   "qualifiedSlug": "plymouth-devon",
+   "lat": 50.3715,
+   "lon": -4.143,
+   "towns": [
+    "Plymouth, Devon"
+   ],
+   "cinemas": [
+    "CineworldPlymouth",
+    "EverymanCinemaPlymouth",
+    "PlymouthArtsCinema",
+    "VueCinemasPlymouth"
+   ]
+  },
+  {
+   "slug": "stoke-on-trent",
+   "kind": "major",
+   "name": "Stoke-on-Trent",
+   "anchor": "Stoke-on-Trent, Staffordshire",
+   "nation": "England",
+   "county": "Staffordshire",
+   "qualifiedSlug": "stoke-on-trent-staffordshire",
+   "lat": 53.0042,
+   "lon": -2.1854,
+   "towns": [
+    "Stoke-on-Trent, Staffordshire"
+   ],
+   "cinemas": [
+    "CineworldStokeOnTrent",
+    "FilmTheatreStokeOnTrent",
+    "OdeonCinemaStokeOnTrent"
+   ]
+  },
+  {
+   "slug": "milton-keynes",
+   "kind": "major",
+   "name": "Milton Keynes",
+   "anchor": "Milton Keynes, Buckinghamshire",
+   "nation": "England",
+   "county": "Buckinghamshire",
+   "qualifiedSlug": "milton-keynes-buckinghamshire",
+   "lat": 52.0417,
+   "lon": -0.7558,
+   "towns": [
+    "Milton Keynes, Buckinghamshire"
+   ],
+   "cinemas": [
+    "CineworldMiltonKeynes",
+    "OdeonCinemaMiltonKeynes"
+   ]
+  },
+  {
+   "slug": "northampton",
+   "kind": "major",
+   "name": "Northampton",
+   "anchor": "Northampton, Northamptonshire",
+   "nation": "England",
+   "county": "Northamptonshire",
+   "qualifiedSlug": "northampton-northamptonshire",
+   "lat": 52.25,
+   "lon": -0.8833,
+   "towns": [
+    "Northampton, Northamptonshire"
+   ],
+   "cinemas": [
+    "ForumCinemaNorthampton",
+    "NorthamptonFilmhouse",
+    "OdeonNorthampton",
+    "VueCinemasNorthampton"
+   ]
+  },
+  {
+   "slug": "oldham",
+   "kind": "major",
+   "name": "Oldham",
+   "anchor": "Oldham, Greater Manchester",
+   "nation": "England",
+   "county": "Greater Manchester",
+   "qualifiedSlug": "oldham-greater-manchester",
+   "lat": 53.5405,
+   "lon": -2.1183,
+   "towns": [
+    "Oldham, Greater Manchester"
+   ],
+   "cinemas": [
+    "OdeonCinemaOldham"
+   ]
+  },
+  {
+   "slug": "luton",
+   "kind": "major",
+   "name": "Luton",
+   "anchor": "Luton, Bedfordshire",
+   "nation": "England",
+   "county": "Bedfordshire",
+   "qualifiedSlug": "luton-bedfordshire",
+   "lat": 51.8797,
+   "lon": -0.4175,
+   "towns": [
+    "Luton, Bedfordshire"
+   ],
+   "cinemas": [
+    "CineworldLuton"
+   ]
+  },
+  {
+   "slug": "portsmouth-hampshire",
+   "kind": "major",
+   "name": "Portsmouth",
+   "anchor": "Portsmouth, Hampshire",
+   "nation": "England",
+   "county": "Hampshire",
+   "qualifiedSlug": "portsmouth-hampshire",
+   "lat": 50.799,
+   "lon": -1.0913,
+   "towns": [
+    "Portsmouth, Hampshire"
+   ],
+   "cinemas": [
+    "No6CinemaPortsmouth",
+    "OdeonCinemaPortSolent",
+    "SouthseaCinemaArtsCentre",
+    "VueCinemasPortsmouth"
+   ]
+  },
+  {
+   "slug": "swindon",
+   "kind": "major",
+   "name": "Swindon",
+   "anchor": "Swindon, Wiltshire",
+   "nation": "England",
+   "county": "Wiltshire",
+   "qualifiedSlug": "swindon-wiltshire",
+   "lat": 51.558,
+   "lon": -1.7812,
+   "towns": [
+    "Swindon, Wiltshire"
+   ],
+   "cinemas": [
+    "CineworldShawRidgeSwindon",
+    "VueCinemasSwindon"
+   ]
+  },
+  {
+   "slug": "dudley",
+   "kind": "major",
+   "name": "Dudley",
+   "anchor": "Dudley, West Midlands",
+   "nation": "England",
+   "county": "West Midlands",
+   "qualifiedSlug": "dudley-west-midlands",
+   "lat": 52.5,
+   "lon": -2.0833,
+   "towns": [
+    "Dudley, West Midlands"
+   ],
+   "cinemas": [
+    "OdeonCinemaDudley",
+    "ShowcaseCinemaDudley"
+   ]
+  },
+  {
+   "slug": "aberdeen-aberdeenshire",
+   "kind": "major",
+   "name": "Aberdeen",
+   "anchor": "Aberdeen, Aberdeenshire",
+   "nation": "Scotland",
+   "county": "Aberdeenshire",
+   "qualifiedSlug": "aberdeen-aberdeenshire",
+   "lat": 57.1437,
+   "lon": -2.0981,
+   "towns": [
+    "Aberdeen, Aberdeenshire"
+   ],
+   "cinemas": [
+    "CineworldQueensLinkAberdeen",
+    "CineworldUnionSquareAberdeen"
+   ]
+  },
+  {
+   "slug": "st-helens",
+   "kind": "major",
+   "name": "St Helens",
+   "anchor": "St Helens, Merseyside",
+   "nation": "England",
+   "county": "Merseyside",
+   "qualifiedSlug": "st-helens-merseyside",
+   "lat": 53.45,
+   "lon": -2.7333,
+   "towns": [
+    "St Helens, Merseyside"
+   ],
+   "cinemas": [
+    "CineworldStHelens"
+   ]
+  },
+  {
+   "slug": "ipswich",
+   "kind": "major",
+   "name": "Ipswich",
+   "anchor": "Ipswich, Suffolk",
+   "nation": "England",
+   "county": "Suffolk",
+   "qualifiedSlug": "ipswich-suffolk",
+   "lat": 52.0592,
+   "lon": 1.1555,
+   "towns": [
+    "Ipswich, Suffolk"
+   ],
+   "cinemas": [
+    "CineworldIpswich",
+    "KingStreetCinema",
+    "OmniplexIpswichFormerlyEmpire"
+   ]
+  },
+  {
+   "slug": "wigan",
+   "kind": "major",
+   "name": "Wigan",
+   "anchor": "Wigan, Greater Manchester",
+   "nation": "England",
+   "county": "Greater Manchester",
+   "qualifiedSlug": "wigan-greater-manchester",
+   "lat": 53.543,
+   "lon": -2.6371,
+   "towns": [
+    "Wigan, Greater Manchester"
+   ],
+   "cinemas": [
+    "EmpireCinemaWigan"
+   ]
+  },
+  {
+   "slug": "warrington",
+   "kind": "major",
+   "name": "Warrington",
+   "anchor": "Warrington, Cheshire",
+   "nation": "England",
+   "county": "Cheshire",
+   "qualifiedSlug": "warrington-cheshire",
+   "lat": 53.3925,
+   "lon": -2.5802,
+   "towns": [
+    "Warrington, Cheshire"
+   ],
+   "cinemas": [
+    "CineworldWarrington",
+    "OdeonLuxeWarrington"
+   ]
+  },
+  {
+   "slug": "walsall",
+   "kind": "major",
+   "name": "Walsall",
+   "anchor": "Walsall, West Midlands",
+   "nation": "England",
+   "county": "West Midlands",
+   "qualifiedSlug": "walsall-west-midlands",
+   "lat": 52.5853,
+   "lon": -1.984,
+   "towns": [
+    "Walsall, West Midlands"
+   ],
+   "cinemas": [
+    "TheLightWalsall"
+   ]
+  },
+  {
+   "slug": "mansfield-nottinghamshire",
+   "kind": "major",
+   "name": "Mansfield",
+   "anchor": "Mansfield, Nottinghamshire",
+   "nation": "England",
+   "county": "Nottinghamshire",
+   "qualifiedSlug": "mansfield-nottinghamshire",
+   "lat": 53.1333,
+   "lon": -1.2,
+   "towns": [
+    "Mansfield, Nottinghamshire"
+   ],
+   "cinemas": [
+    "OdeonCinemaMansfield"
+   ]
+  },
+  {
+   "slug": "sunderland",
+   "kind": "major",
+   "name": "Sunderland",
+   "anchor": "Sunderland, Tyne and Wear",
+   "nation": "England",
+   "county": "Tyne and Wear",
+   "qualifiedSlug": "sunderland-tyne-and-wear",
+   "lat": 54.9046,
+   "lon": -1.3822,
+   "towns": [
+    "Sunderland, Tyne and Wear"
+   ],
+   "cinemas": [
+    "OmniplexSunderlandFormerlyEmpire"
+   ]
+  },
+  {
+   "slug": "bournemouth",
+   "kind": "major",
+   "name": "Bournemouth",
+   "anchor": "Bournemouth, Dorset",
+   "nation": "England",
+   "county": "Dorset",
+   "qualifiedSlug": "bournemouth-dorset",
+   "lat": 50.7205,
+   "lon": -1.8795,
+   "towns": [
+    "Bournemouth, Dorset"
+   ],
+   "cinemas": [
+    "ColosseumBournemouth",
+    "OdeonCinemaBournemouthBH2"
+   ]
+  },
+  {
+   "slug": "peterborough",
+   "kind": "major",
+   "name": "Peterborough",
+   "anchor": "Peterborough, Cambridgeshire",
+   "nation": "England",
+   "county": "Cambridgeshire",
+   "qualifiedSlug": "peterborough-cambridgeshire",
+   "lat": 52.5736,
+   "lon": -0.2478,
+   "towns": [
+    "Peterborough, Cambridgeshire"
+   ],
+   "cinemas": [
+    "ArtsCinemaJohnClareTheatrePeterborough",
+    "KeyTheatrePeterborough",
+    "OdeonLuxePeterborough",
+    "ShowcaseDeLuxPeterborough"
+   ]
+  },
+  {
+   "slug": "oxford-oxfordshire",
+   "kind": "major",
+   "name": "Oxford",
+   "anchor": "Oxford, Oxfordshire",
+   "nation": "England",
+   "county": "Oxfordshire",
+   "qualifiedSlug": "oxford-oxfordshire",
+   "lat": 51.7522,
+   "lon": -1.256,
+   "towns": [
+    "Oxford, Oxfordshire"
+   ],
+   "cinemas": [
+    "CurzonCinemaOxford",
+    "PhoenixPicturehouseOxford",
+    "TheOxfordCinemaCafe",
+    "UltimatePicturePalaceOxford",
+    "VueCinemasOxford"
+   ]
+  },
+  {
+   "slug": "newport-gwent",
+   "kind": "major",
+   "name": "Newport",
+   "anchor": "Newport, Gwent",
+   "nation": "Wales",
+   "county": "Gwent",
+   "qualifiedSlug": "newport-gwent",
+   "lat": 51.5877,
+   "lon": -2.9983,
+   "towns": [
+    "Newport, Gwent"
+   ],
+   "cinemas": [
+    "CineworldSpyttyParkNewport",
+    "RiverfrontNewport"
+   ]
+  },
+  {
+   "slug": "york-north-yorkshire",
+   "kind": "major",
+   "name": "York",
+   "anchor": "York, North Yorkshire",
+   "nation": "England",
+   "county": "North Yorkshire",
+   "qualifiedSlug": "york-north-yorkshire",
+   "lat": 53.9576,
+   "lon": -1.0827,
+   "towns": [
+    "York, North Yorkshire"
+   ],
+   "cinemas": [
+    "CineworldYork",
+    "CityScreenPicturehouseYork",
+    "EverymanCinemaYork",
+    "VueCinemasYork"
+   ]
+  },
+  {
+   "slug": "telford",
+   "kind": "major",
+   "name": "Telford",
+   "anchor": "Telford, Shropshire",
+   "nation": "England",
+   "county": "Shropshire",
+   "qualifiedSlug": "telford-shropshire",
+   "lat": 52.6766,
+   "lon": -2.4493,
+   "towns": [
+    "Telford, Shropshire"
+   ],
+   "cinemas": [
+    "CineworldTelford",
+    "OdeonLuxeTelford"
+   ]
+  },
+  {
+   "slug": "poole",
+   "kind": "major",
+   "name": "Poole",
+   "anchor": "Poole, Dorset",
+   "nation": "England",
+   "county": "Dorset",
+   "qualifiedSlug": "poole-dorset",
+   "lat": 50.7143,
+   "lon": -1.9846,
+   "towns": [
+    "Poole, Dorset"
+   ],
+   "cinemas": [
+    "LighthousePoole",
+    "VueCinemasPoole"
+   ]
+  },
+  {
+   "slug": "burnley",
+   "kind": "major",
+   "name": "Burnley",
+   "anchor": "Burnley, Lancashire",
+   "nation": "England",
+   "county": "Lancashire",
+   "qualifiedSlug": "burnley-lancashire",
+   "lat": 53.8,
+   "lon": -2.2333,
+   "towns": [
+    "Burnley, Lancashire"
+   ],
+   "cinemas": [
+    "ReelCinemasBurnley"
+   ]
+  },
+  {
+   "slug": "huddersfield",
+   "kind": "major",
+   "name": "Huddersfield",
+   "anchor": "Huddersfield, West Yorkshire",
+   "nation": "England",
+   "county": "West Yorkshire",
+   "qualifiedSlug": "huddersfield-west-yorkshire",
+   "lat": 53.649,
+   "lon": -1.7842,
+   "towns": [
+    "Huddersfield, West Yorkshire"
+   ],
+   "cinemas": [
+    "OdeonCinemaHuddersfield"
+   ]
+  },
+  {
+   "slug": "dundee",
+   "kind": "major",
+   "name": "Dundee",
+   "anchor": "Dundee, Tayside",
+   "nation": "Scotland",
+   "county": "Tayside",
+   "qualifiedSlug": "dundee-tayside",
+   "lat": 56.4691,
+   "lon": -2.9749,
+   "towns": [
+    "Dundee, Tayside"
+   ],
+   "cinemas": [
+    "CineworldDundee",
+    "DundeeContemporaryArtsDCA",
+    "OdeonLuxeDundee"
+   ]
+  },
+  {
+   "slug": "blackburn",
+   "kind": "major",
+   "name": "Blackburn",
+   "anchor": "Blackburn, Lancashire",
+   "nation": "England",
+   "county": "Lancashire",
+   "qualifiedSlug": "blackburn-lancashire",
+   "lat": 53.75,
+   "lon": -2.4833,
+   "towns": [
+    "Blackburn, Lancashire"
+   ],
+   "cinemas": [
+    "ReelCinemaBlackburn",
+    "VueCinemasBlackburn"
+   ]
+  },
+  {
+   "slug": "cambridge-cambridgeshire",
+   "kind": "major",
+   "name": "Cambridge",
+   "anchor": "Cambridge, Cambridgeshire",
+   "nation": "England",
+   "county": "Cambridgeshire",
+   "qualifiedSlug": "cambridge-cambridgeshire",
+   "lat": 52.2,
+   "lon": 0.1167,
+   "towns": [
+    "Cambridge, Cambridgeshire"
+   ],
+   "cinemas": [
+    "ArtsPicturehouseCambridge",
+    "EverymanCinemaCambridge",
+    "TheLightCambridge"
+   ]
+  },
+  {
+   "slug": "blackpool",
+   "kind": "major",
+   "name": "Blackpool",
+   "anchor": "Blackpool, Lancashire",
+   "nation": "England",
+   "county": "Lancashire",
+   "qualifiedSlug": "blackpool-lancashire",
+   "lat": 53.8167,
+   "lon": -3.05,
+   "towns": [
+    "Blackpool, Lancashire"
+   ],
+   "cinemas": [
+    "ArcCinemaBlackpool",
+    "RegentBlackpool"
+   ]
+  },
+  {
+   "slug": "basildon",
+   "kind": "major",
+   "name": "Basildon",
+   "anchor": "Basildon, Essex",
+   "nation": "England",
+   "county": "Essex",
+   "qualifiedSlug": "basildon-essex",
+   "lat": 51.5684,
+   "lon": 0.4578,
+   "towns": [
+    "Basildon, Essex"
+   ],
+   "cinemas": [
+    "CineworldBasildon",
+    "VueCinemasBasildon"
+   ]
+  },
+  {
+   "slug": "norwich",
+   "kind": "major",
+   "name": "Norwich",
+   "anchor": "Norwich, Norfolk",
+   "nation": "England",
+   "county": "Norfolk",
+   "qualifiedSlug": "norwich-norfolk",
+   "lat": 52.6278,
+   "lon": 1.2983,
+   "towns": [
+    "Norwich, Norfolk"
+   ],
+   "cinemas": [
+    "OdeonNorwich",
+    "CinemaCityPicturehouseNorwich",
+    "VueCinemasNorwich"
+   ]
+  },
+  {
+   "slug": "middlesbrough",
+   "kind": "major",
+   "name": "Middlesbrough",
+   "anchor": "Middlesbrough, North Yorkshire",
+   "nation": "England",
+   "county": "North Yorkshire",
+   "qualifiedSlug": "middlesbrough-north-yorkshire",
+   "lat": 54.5762,
+   "lon": -1.2348,
+   "towns": [
+    "Middlesbrough, North Yorkshire"
+   ],
+   "cinemas": [
+    "OdeonMiddlesbrough",
+    "RoxyMoviesMiddlesbrough"
+   ]
+  },
+  {
+   "slug": "bolton",
+   "kind": "major",
+   "name": "Bolton",
+   "anchor": "Bolton, Greater Manchester",
+   "nation": "England",
+   "county": "Greater Manchester",
+   "qualifiedSlug": "bolton-greater-manchester",
+   "lat": 53.5833,
+   "lon": -2.4333,
+   "towns": [
+    "Bolton, Greater Manchester"
+   ],
+   "cinemas": [
+    "CineworldBolton",
+    "TheLightBolton",
+    "VueCinemasBolton"
+   ]
+  },
+  {
+   "slug": "stockport",
+   "kind": "major",
+   "name": "Stockport",
+   "anchor": "Stockport, Greater Manchester",
+   "nation": "England",
+   "county": "Greater Manchester",
+   "qualifiedSlug": "stockport-greater-manchester",
+   "lat": 53.4098,
+   "lon": -2.1576,
+   "towns": [
+    "Stockport, Greater Manchester"
+   ],
+   "cinemas": [
+    "PlazaStockport",
+    "SavoyHeatonMoor",
+    "TheLightCinemasStockport"
+   ]
+  },
+  {
+   "slug": "high-wycombe",
+   "kind": "major",
+   "name": "High Wycombe",
+   "anchor": "High Wycombe, Buckinghamshire",
+   "nation": "England",
+   "county": "Buckinghamshire",
+   "qualifiedSlug": "high-wycombe-buckinghamshire",
+   "lat": 51.6291,
+   "lon": -0.7493,
+   "towns": [
+    "High Wycombe, Buckinghamshire"
+   ],
+   "cinemas": [
+    "CineworldHighWycombe",
+    "OmniplexHighWycombeFormerlyEmpire"
+   ]
+  },
+  {
+   "slug": "gloucester",
+   "kind": "major",
+   "name": "Gloucester",
+   "anchor": "Gloucester, Gloucestershire",
+   "nation": "England",
+   "county": "Gloucestershire",
+   "qualifiedSlug": "gloucester-gloucestershire",
+   "lat": 51.8657,
+   "lon": -2.2431,
+   "towns": [
+    "Gloucester, Gloucestershire"
+   ],
+   "cinemas": [
+    "CineworldGloucesterQuays",
+    "GuildhallCinemaGloucester",
+    "SherborneCinemaGloucester"
+   ]
+  },
+  {
+   "slug": "exeter",
+   "kind": "major",
+   "name": "Exeter",
+   "anchor": "Exeter, Devon",
+   "nation": "England",
+   "county": "Devon",
+   "qualifiedSlug": "exeter-devon",
+   "lat": 50.7236,
+   "lon": -3.5275,
+   "towns": [
+    "Exeter, Devon"
+   ],
+   "cinemas": [
+    "OdeonCinemaExeter",
+    "PicturehouseExeter",
+    "VueCinemasExeter"
+   ]
+  },
+  {
+   "slug": "colchester",
+   "kind": "major",
+   "name": "Colchester",
+   "anchor": "Colchester, Essex",
+   "nation": "England",
+   "county": "Essex",
+   "qualifiedSlug": "colchester-essex",
+   "lat": 51.8892,
+   "lon": 0.9042,
+   "towns": [
+    "Colchester, Essex"
+   ],
+   "cinemas": [
+    "CurzonCinemaColchester",
+    "OdeonCinemaColchester",
+    "VueCinemasColchester"
+   ]
+  },
+  {
+   "slug": "salford",
+   "kind": "major",
+   "name": "Salford",
+   "anchor": "Salford, Greater Manchester",
+   "nation": "England",
+   "county": "Greater Manchester",
+   "qualifiedSlug": "salford-greater-manchester",
+   "lat": 53.4877,
+   "lon": -2.2904,
+   "towns": [
+    "Salford, Greater Manchester"
+   ],
+   "cinemas": [
+    "VueCinemasManchesterQuayside"
+   ]
+  },
+  {
+   "slug": "newcastle-under-lyme",
+   "kind": "major",
+   "name": "Newcastle-under-Lyme",
+   "anchor": "Newcastle-under-Lyme, Staffordshire",
+   "nation": "England",
+   "county": "Staffordshire",
+   "qualifiedSlug": "newcastle-under-lyme-staffordshire",
+   "lat": 53.0,
+   "lon": -2.2333,
+   "towns": [
+    "Newcastle-under-Lyme, Staffordshire"
+   ],
+   "cinemas": [
+    "VueCinemasNewcastleUnderLyme"
+   ]
+  },
+  {
+   "slug": "solihull",
+   "kind": "major",
+   "name": "Solihull",
+   "anchor": "Solihull, West Midlands",
+   "nation": "England",
+   "county": "West Midlands",
+   "qualifiedSlug": "solihull-west-midlands",
+   "lat": 52.4143,
+   "lon": -1.7809,
+   "towns": [
+    "Solihull, West Midlands"
+   ],
+   "cinemas": [
+    "CineworldNECBirmingham",
+    "CineworldSolihull"
+   ]
+  },
+  {
+   "slug": "watford",
+   "kind": "major",
+   "name": "Watford",
+   "anchor": "Watford, Hertfordshire",
+   "nation": "England",
+   "county": "Hertfordshire",
+   "qualifiedSlug": "watford-hertfordshire",
+   "lat": 51.6553,
+   "lon": -0.396,
+   "towns": [
+    "Watford, Hertfordshire"
+   ],
+   "cinemas": [
+    "CineworldWatford",
+    "VueCinemasWatford"
+   ]
+  },
+  {
+   "slug": "crawley",
+   "kind": "major",
+   "name": "Crawley",
+   "anchor": "Crawley, West Sussex",
+   "nation": "England",
+   "county": "West Sussex",
+   "qualifiedSlug": "crawley-west-sussex",
+   "lat": 51.113,
+   "lon": -0.1831,
+   "towns": [
+    "Crawley, West Sussex"
+   ],
+   "cinemas": [
+    "CineworldCrawley"
+   ]
+  },
+  {
+   "slug": "burton-upon-trent",
+   "kind": "major",
+   "name": "Burton upon Trent",
+   "anchor": "Burton upon Trent, Staffordshire",
+   "nation": "England",
+   "county": "Staffordshire",
+   "qualifiedSlug": "burton-upon-trent-staffordshire",
+   "lat": 52.8073,
+   "lon": -1.6426,
+   "towns": [
+    "Burton upon Trent, Staffordshire"
+   ],
+   "cinemas": [
+    "CineworldBurtonOnTrent"
+   ]
+  },
+  {
+   "slug": "cheltenham",
+   "kind": "major",
+   "name": "Cheltenham",
+   "anchor": "Cheltenham, Gloucestershire",
+   "nation": "England",
+   "county": "Gloucestershire",
+   "qualifiedSlug": "cheltenham-gloucestershire",
+   "lat": 51.9001,
+   "lon": -2.0797,
+   "towns": [
+    "Cheltenham, Gloucestershire"
+   ],
+   "cinemas": [
+    "CineworldCheltenham",
+    "EverymanCheltenham"
+   ]
+  },
+  {
+   "slug": "rotherham",
+   "kind": "major",
+   "name": "Rotherham",
+   "anchor": "Rotherham, South Yorkshire",
+   "nation": "England",
+   "county": "South Yorkshire",
+   "qualifiedSlug": "rotherham-south-yorkshire",
+   "lat": 53.4301,
+   "lon": -1.3568,
+   "towns": [
+    "Rotherham, South Yorkshire"
+   ],
+   "cinemas": [
+    "ArcCinemaRotherham"
+   ]
+  },
+  {
+   "slug": "worthing",
+   "kind": "major",
+   "name": "Worthing",
+   "anchor": "Worthing, West Sussex",
+   "nation": "England",
+   "county": "West Sussex",
+   "qualifiedSlug": "worthing-west-sussex",
+   "lat": 50.818,
+   "lon": -0.3754,
+   "towns": [
+    "Worthing, West Sussex"
+   ],
+   "cinemas": [
+    "ConnaughtTheatreStudioWorthing",
+    "DomeWorthing"
+   ]
+  },
+  {
+   "slug": "doncaster",
+   "kind": "major",
+   "name": "Doncaster",
+   "anchor": "Doncaster, South Yorkshire",
+   "nation": "England",
+   "county": "South Yorkshire",
+   "qualifiedSlug": "doncaster-south-yorkshire",
+   "lat": 53.5228,
+   "lon": -1.1312,
+   "towns": [
+    "Doncaster, South Yorkshire"
+   ],
+   "cinemas": [
+    "SavoyDoncaster",
+    "VueCinemasDoncaster"
+   ]
+  },
+  {
+   "slug": "chesterfield",
+   "kind": "major",
+   "name": "Chesterfield",
+   "anchor": "Chesterfield, Derbyshire",
+   "nation": "England",
+   "county": "Derbyshire",
+   "qualifiedSlug": "chesterfield-derbyshire",
+   "lat": 53.25,
+   "lon": -1.4167,
+   "towns": [
+    "Chesterfield, Derbyshire"
+   ],
+   "cinemas": [
+    "CineworldChesterfield"
+   ]
+  },
+  {
+   "slug": "chelmsford",
+   "kind": "major",
+   "name": "Chelmsford",
+   "anchor": "Chelmsford, Essex",
+   "nation": "England",
+   "county": "Essex",
+   "qualifiedSlug": "chelmsford-essex",
+   "lat": 51.7358,
+   "lon": 0.4696,
+   "towns": [
+    "Chelmsford, Essex"
+   ],
+   "cinemas": [
+    "EverymanCinemaChelmsford",
+    "OdeonCinemaChelmsford"
+   ]
+  },
+  {
+   "slug": "sutton-coldfield",
+   "kind": "major",
+   "name": "Sutton Coldfield",
+   "anchor": "Sutton Coldfield, West Midlands",
+   "nation": "England",
+   "county": "West Midlands",
+   "qualifiedSlug": "sutton-coldfield-west-midlands",
+   "lat": 52.5667,
+   "lon": -1.8167,
+   "towns": [
+    "Sutton Coldfield, West Midlands"
+   ],
+   "cinemas": [
+    "RoyalCinemasSuttonColdfield"
+   ]
+  },
+  {
+   "slug": "wakefield",
+   "kind": "major",
+   "name": "Wakefield",
+   "anchor": "Wakefield, West Yorkshire",
+   "nation": "England",
+   "county": "West Yorkshire",
+   "qualifiedSlug": "wakefield-west-yorkshire",
+   "lat": 53.6833,
+   "lon": -1.4977,
+   "towns": [
+    "Wakefield, West Yorkshire"
+   ],
+   "cinemas": [
+    "CineworldWakefield",
+    "ReelCinemaWakefield"
+   ]
+  },
+  {
+   "slug": "basingstoke",
+   "kind": "major",
+   "name": "Basingstoke",
+   "anchor": "Basingstoke, Hampshire",
+   "nation": "England",
+   "county": "Hampshire",
+   "qualifiedSlug": "basingstoke-hampshire",
+   "lat": 51.2625,
+   "lon": -1.0871,
+   "towns": [
+    "Basingstoke, Hampshire"
+   ],
+   "cinemas": [
+    "VueCinemasBasingstoke"
+   ]
+  },
+  {
+   "slug": "maidstone",
+   "kind": "major",
+   "name": "Maidstone",
+   "anchor": "Maidstone, Kent",
+   "nation": "England",
+   "county": "Kent",
+   "qualifiedSlug": "maidstone-kent",
+   "lat": 51.2667,
+   "lon": 0.5167,
+   "towns": [
+    "Maidstone, Kent"
+   ],
+   "cinemas": [
+    "OdeonCinemaMaidstone"
+   ]
+  },
+  {
+   "slug": "bedford-bedfordshire",
+   "kind": "major",
+   "name": "Bedford",
+   "anchor": "Bedford, Bedfordshire",
+   "nation": "England",
+   "county": "Bedfordshire",
+   "qualifiedSlug": "bedford-bedfordshire",
+   "lat": 52.1346,
+   "lon": -0.4663,
+   "towns": [
+    "Bedford, Bedfordshire"
+   ],
+   "cinemas": [
+    "VueCinemasBedford"
+   ]
+  },
+  {
+   "slug": "woking",
+   "kind": "major",
+   "name": "Woking",
+   "anchor": "Woking, Surrey",
+   "nation": "England",
+   "county": "Surrey",
+   "qualifiedSlug": "woking-surrey",
+   "lat": 51.319,
+   "lon": -0.5589,
+   "towns": [
+    "Woking, Surrey"
+   ],
+   "cinemas": [
+    "NovaCinemaWoking"
+   ]
+  },
+  {
+   "slug": "lincoln-lincolnshire",
+   "kind": "major",
+   "name": "Lincoln",
+   "anchor": "Lincoln, Lincolnshire",
+   "nation": "England",
+   "county": "Lincolnshire",
+   "qualifiedSlug": "lincoln-lincolnshire",
+   "lat": 53.2268,
+   "lon": -0.5379,
+   "towns": [
+    "Lincoln, Lincolnshire"
+   ],
+   "cinemas": [
+    "EverymanCinemaLincoln",
+    "OdeonCinemaLincoln"
+   ]
+  },
+  {
+   "slug": "west-bromwich",
+   "kind": "major",
+   "name": "West Bromwich",
+   "anchor": "West Bromwich, West Midlands",
+   "nation": "England",
+   "county": "West Midlands",
+   "qualifiedSlug": "west-bromwich-west-midlands",
+   "lat": 52.5187,
+   "lon": -1.9945,
+   "towns": [
+    "West Bromwich, West Midlands"
+   ],
+   "cinemas": [
+    "OdeonCinemaWestBromwich"
+   ]
+  },
+  {
+   "slug": "eastbourne",
+   "kind": "major",
+   "name": "Eastbourne",
+   "anchor": "Eastbourne, East Sussex",
+   "nation": "England",
+   "county": "East Sussex",
+   "qualifiedSlug": "eastbourne-east-sussex",
+   "lat": 50.7687,
+   "lon": 0.2845,
+   "towns": [
+    "Eastbourne, East Sussex"
+   ],
+   "cinemas": [
+    "CineworldEastbourne",
+    "TownerEastbourneCinema"
+   ]
+  },
+  {
+   "slug": "worcester-worcestershire",
+   "kind": "major",
+   "name": "Worcester",
+   "anchor": "Worcester, Worcestershire",
+   "nation": "England",
+   "county": "Worcestershire",
+   "qualifiedSlug": "worcester-worcestershire",
+   "lat": 52.1893,
+   "lon": -2.22,
+   "towns": [
+    "Worcester, Worcestershire"
+   ],
+   "cinemas": [
+    "OdeonCinemaWorcester",
+    "VueCinemasWorcester"
+   ]
+  },
+  {
+   "slug": "bath",
+   "kind": "major",
+   "name": "Bath",
+   "anchor": "Bath, Somerset",
+   "nation": "England",
+   "county": "Somerset",
+   "qualifiedSlug": "bath-somerset",
+   "lat": 51.3751,
+   "lon": -2.3617,
+   "towns": [
+    "Bath, Somerset"
+   ],
+   "cinemas": [
+    "EverymanBath",
+    "LittleTheatrePicturehouse",
+    "OdeonCinemaBath"
+   ]
+  },
+  {
+   "slug": "aberfeldy",
+   "kind": "town",
+   "name": "Aberfeldy",
+   "anchor": "Aberfeldy, Tayside",
+   "nation": "Scotland",
+   "county": "Tayside",
+   "qualifiedSlug": "aberfeldy-tayside",
+   "lat": 56.622,
+   "lon": -3.8669,
+   "towns": [
+    "Aberfeldy, Tayside"
+   ],
+   "cinemas": [
+    "BirksAberfeldy"
+   ]
+  },
+  {
+   "slug": "aberystwyth",
+   "kind": "cluster",
+   "name": "Aberystwyth",
+   "anchor": "Aberystwyth, Dyfed",
+   "nation": "Wales",
+   "county": "Dyfed",
+   "qualifiedSlug": "aberystwyth-dyfed",
+   "lat": 52.4155,
+   "lon": -4.0829,
+   "towns": [
+    "Aberystwyth, Dyfed",
+    "Tywyn, Gwynedd",
+    "Borth, Dyfed"
+   ],
+   "cinemas": [
+    "AberystwythArtsCentre",
+    "CommodoreCinemaAberystwyth",
+    "Libanus1877",
+    "MagicLanternTywyn"
+   ]
+  },
+  {
+   "slug": "abingdon-oxfordshire",
+   "kind": "cluster",
+   "name": "Abingdon",
+   "anchor": "Abingdon, Oxfordshire",
+   "nation": "England",
+   "county": "Oxfordshire",
+   "qualifiedSlug": "abingdon-oxfordshire",
+   "lat": 51.6711,
+   "lon": -1.2828,
+   "towns": [
+    "Abingdon, Oxfordshire",
+    "Didcot, Oxfordshire",
+    "Witney, Oxfordshire",
+    "Wallingford, Oxfordshire"
+   ],
+   "cinemas": [
+    "AbbeyCinemaAbingdon",
+    "CineworldDidcot",
+    "CineworldWitney",
+    "CornExchangeCinemaWallingford"
+   ]
+  },
+  {
+   "slug": "accrington",
+   "kind": "cluster",
+   "name": "Accrington",
+   "anchor": "Accrington, Lancashire",
+   "nation": "England",
+   "county": "Lancashire",
+   "qualifiedSlug": "accrington-lancashire",
+   "lat": 53.7538,
+   "lon": -2.3586,
+   "towns": [
+    "Accrington, Lancashire",
+    "Chorley, Lancashire",
+    "Clitheroe, Lancashire"
+   ],
+   "cinemas": [
+    "EverymanCinemaClitheroe",
+    "ReelCinemaChorley",
+    "VueCinemasAccrington"
+   ]
+  },
+  {
+   "slug": "altrincham",
+   "kind": "cluster",
+   "name": "Altrincham",
+   "anchor": "Altrincham, Greater Manchester",
+   "nation": "England",
+   "county": "Greater Manchester",
+   "qualifiedSlug": "altrincham-greater-manchester",
+   "lat": 53.3875,
+   "lon": -2.3485,
+   "towns": [
+    "Altrincham, Greater Manchester",
+    "Sale, Greater Manchester",
+    "Knutsford, Cheshire"
+   ],
+   "cinemas": [
+    "CurzonCinemaKnutsford",
+    "EverymanCinemaAltrincham",
+    "VueCinemasAltrincham",
+    "NorthernLightSale"
+   ]
+  },
+  {
+   "slug": "arbroath",
+   "kind": "cluster",
+   "name": "Arbroath",
+   "anchor": "Arbroath, Tayside",
+   "nation": "Scotland",
+   "county": "Tayside",
+   "qualifiedSlug": "arbroath-tayside",
+   "lat": 56.5632,
+   "lon": -2.5874,
+   "towns": [
+    "Arbroath, Tayside",
+    "St Andrews, Fife",
+    "Montrose, Tayside"
+   ],
+   "cinemas": [
+    "ChalmersFilmhouseArbroath",
+    "NewPictureHouseStAndrews",
+    "TheMontrosePlayhouse"
+   ]
+  },
+  {
+   "slug": "ashford",
+   "kind": "town",
+   "name": "Ashford",
+   "anchor": "Ashford, Kent",
+   "nation": "England",
+   "county": "Kent",
+   "qualifiedSlug": "ashford-kent",
+   "lat": 51.1465,
+   "lon": 0.8738,
+   "towns": [
+    "Ashford, Kent"
+   ],
+   "cinemas": [
+    "CineworldAshford",
+    "TheAshfordCinemaFormerlyPicturehouse"
+   ]
+  },
+  {
+   "slug": "aviemore",
+   "kind": "town",
+   "name": "Aviemore",
+   "anchor": "Aviemore, Highland",
+   "nation": "Scotland",
+   "county": "Highland",
+   "qualifiedSlug": "aviemore-highland",
+   "lat": 57.1955,
+   "lon": -3.8259,
+   "towns": [
+    "Aviemore, Highland"
+   ],
+   "cinemas": [
+    "SpeyValleyCinemaAviemore"
+   ]
+  },
+  {
+   "slug": "aylesbury",
+   "kind": "town",
+   "name": "Aylesbury",
+   "anchor": "Aylesbury, Buckinghamshire",
+   "nation": "England",
+   "county": "Buckinghamshire",
+   "qualifiedSlug": "aylesbury-buckinghamshire",
+   "lat": 51.8167,
+   "lon": -0.8146,
+   "towns": [
+    "Aylesbury, Buckinghamshire"
+   ],
+   "cinemas": [
+    "OdeonCinemaAylesbury",
+    "VillagePictureHouseCuddington"
+   ]
+  },
+  {
+   "slug": "ayr",
+   "kind": "town",
+   "name": "Ayr",
+   "anchor": "Ayr, Ayrshire",
+   "nation": "Scotland",
+   "county": "Ayrshire",
+   "qualifiedSlug": "ayr-ayrshire",
+   "lat": 55.4627,
+   "lon": -4.6339,
+   "towns": [
+    "Ayr, Ayrshire"
+   ],
+   "cinemas": [
+    "AstoriaCinemaAyr",
+    "CinemaSaltcoatsPremierLeisure"
+   ]
+  },
+  {
+   "slug": "bala",
+   "kind": "town",
+   "name": "Bala",
+   "anchor": "Bala, Gwynedd",
+   "nation": "Wales",
+   "county": "Gwynedd",
+   "qualifiedSlug": "bala-gwynedd",
+   "lat": 52.9111,
+   "lon": -3.5972,
+   "towns": [
+    "Bala, Gwynedd"
+   ],
+   "cinemas": [
+    "TheatrDerekWilliams"
+   ]
+  },
+  {
+   "slug": "ballymena",
+   "kind": "town",
+   "name": "Ballymena",
+   "anchor": "Ballymena, Mid and East Antrim",
+   "nation": "Northern Ireland",
+   "county": "Mid and East Antrim",
+   "qualifiedSlug": "ballymena-mid-and-east-antrim",
+   "lat": 54.8636,
+   "lon": -6.2763,
+   "towns": [
+    "Ballymena, Mid and East Antrim"
+   ],
+   "cinemas": [
+    "IMCCinemaBallymena"
+   ]
+  },
+  {
+   "slug": "banbridge",
+   "kind": "town",
+   "name": "Banbridge",
+   "anchor": "Banbridge, Armagh, Banbridge and Craigavon",
+   "nation": "Northern Ireland",
+   "county": "Armagh, Banbridge and Craigavon",
+   "qualifiedSlug": "banbridge-armagh-banbridge-and-craigavon",
+   "lat": 54.35,
+   "lon": -6.2833,
+   "towns": [
+    "Banbridge, Armagh, Banbridge and Craigavon"
+   ],
+   "cinemas": [
+    "IveaghMovieStudioIMCBanbridge",
+    "OmniplexBanbridge"
+   ]
+  },
+  {
+   "slug": "banbury",
+   "kind": "cluster",
+   "name": "Banbury",
+   "anchor": "Banbury, Oxfordshire",
+   "nation": "England",
+   "county": "Oxfordshire",
+   "qualifiedSlug": "banbury-oxfordshire",
+   "lat": 52.0632,
+   "lon": -1.3422,
+   "towns": [
+    "Banbury, Oxfordshire",
+    "Bicester, Oxfordshire",
+    "Daventry, Northamptonshire",
+    "Chipping Norton, Oxfordshire"
+   ],
+   "cinemas": [
+    "ArcCinemaDaventry",
+    "TheLightBanbury",
+    "TheLivingRoomCinemaChippingNorton",
+    "VueCinemasBicester"
+   ]
+  },
+  {
+   "slug": "banchory",
+   "kind": "town",
+   "name": "Banchory",
+   "anchor": "Banchory, Aberdeenshire",
+   "nation": "Scotland",
+   "county": "Aberdeenshire",
+   "qualifiedSlug": "banchory-aberdeenshire",
+   "lat": 57.0517,
+   "lon": -2.4882,
+   "towns": [
+    "Banchory, Aberdeenshire"
+   ],
+   "cinemas": [
+    "TheBarnBanchory"
+   ]
+  },
+  {
+   "slug": "bangor-ards-and-north-down",
+   "kind": "cluster",
+   "name": "Bangor",
+   "anchor": "Bangor, Ards and North Down",
+   "nation": "Northern Ireland",
+   "county": "Ards and North Down",
+   "qualifiedSlug": "bangor-ards-and-north-down",
+   "lat": 54.6608,
+   "lon": -5.668,
+   "towns": [
+    "Bangor, Ards and North Down",
+    "Carrickfergus, Mid and East Antrim",
+    "Larne, Mid and East Antrim"
+   ],
+   "cinemas": [
+    "OmniplexBangor",
+    "OmniplexCarrickfergus",
+    "OmniplexLarne"
+   ]
+  },
+  {
+   "slug": "bangor-gwynedd",
+   "kind": "cluster",
+   "name": "Bangor",
+   "anchor": "Bangor, Gwynedd",
+   "nation": "Wales",
+   "county": "Gwynedd",
+   "qualifiedSlug": "bangor-gwynedd",
+   "lat": 53.2275,
+   "lon": -4.1294,
+   "towns": [
+    "Bangor, Gwynedd",
+    "Holyhead, Gwynedd",
+    "Caernarfon, Gwynedd"
+   ],
+   "cinemas": [
+    "EmpireCinemaHolyhead",
+    "GaleriCaenarfon",
+    "PontioArtsInnovationCentreBangor"
+   ]
+  },
+  {
+   "slug": "barnsley",
+   "kind": "town",
+   "name": "Barnsley",
+   "anchor": "Barnsley, South Yorkshire",
+   "nation": "England",
+   "county": "South Yorkshire",
+   "qualifiedSlug": "barnsley-south-yorkshire",
+   "lat": 53.55,
+   "lon": -1.4833,
+   "towns": [
+    "Barnsley, South Yorkshire"
+   ],
+   "cinemas": [
+    "CineworldBarnsley",
+    "ParkwayBarnsley"
+   ]
+  },
+  {
+   "slug": "barnstaple",
+   "kind": "cluster",
+   "name": "Barnstaple",
+   "anchor": "Barnstaple, Devon",
+   "nation": "England",
+   "county": "Devon",
+   "qualifiedSlug": "barnstaple-devon",
+   "lat": 51.0802,
+   "lon": -4.0581,
+   "towns": [
+    "Barnstaple, Devon",
+    "Ilfracombe, Devon",
+    "Great Torrington, Devon",
+    "Lynton, Devon"
+   ],
+   "cinemas": [
+    "CentralCinemaBarnstaple",
+    "EmbassyCinemaIlfracombe",
+    "LyntonCinema",
+    "PloughArtsCentreTorrington"
+   ]
+  },
+  {
+   "slug": "barrow-in-furness",
+   "kind": "cluster",
+   "name": "Barrow-in-Furness",
+   "anchor": "Barrow-in-Furness, Cumbria",
+   "nation": "England",
+   "county": "Cumbria",
+   "qualifiedSlug": "barrow-in-furness-cumbria",
+   "lat": 54.1109,
+   "lon": -3.2276,
+   "towns": [
+    "Barrow-in-Furness, Cumbria",
+    "Ulverston, Cumbria"
+   ],
+   "cinemas": [
+    "RoxyUlverston",
+    "VueCinemasBarrow"
+   ]
+  },
+  {
+   "slug": "berwick-upon-tweed",
+   "kind": "town",
+   "name": "Berwick-upon-Tweed",
+   "anchor": "Berwick-upon-Tweed, Northumberland",
+   "nation": "England",
+   "county": "Northumberland",
+   "qualifiedSlug": "berwick-upon-tweed-northumberland",
+   "lat": 55.7687,
+   "lon": -2.0054,
+   "towns": [
+    "Berwick-upon-Tweed, Northumberland"
+   ],
+   "cinemas": [
+    "TheMaltingsBerwickUponTweed"
+   ]
+  },
+  {
+   "slug": "beverley",
+   "kind": "cluster",
+   "name": "Beverley",
+   "anchor": "Beverley, East Riding of Yorkshire",
+   "nation": "England",
+   "county": "East Riding of Yorkshire",
+   "qualifiedSlug": "beverley-east-riding-of-yorkshire",
+   "lat": 53.8459,
+   "lon": -0.4233,
+   "towns": [
+    "Beverley, East Riding of Yorkshire",
+    "Pocklington, East Riding of Yorkshire"
+   ],
+   "cinemas": [
+    "ParkwayBeverley",
+    "PocklingtonArtsCentre"
+   ]
+  },
+  {
+   "slug": "bishop-s-stortford",
+   "kind": "cluster",
+   "name": "Bishop's Stortford",
+   "anchor": "Bishop's Stortford, Hertfordshire",
+   "nation": "England",
+   "county": "Hertfordshire",
+   "qualifiedSlug": "bishop-s-stortford-hertfordshire",
+   "lat": 51.8711,
+   "lon": 0.1587,
+   "towns": [
+    "Bishop's Stortford, Hertfordshire",
+    "Hertford, Hertfordshire",
+    "Saffron Walden, Essex"
+   ],
+   "cinemas": [
+    "BEAMHertfordTheatre",
+    "RoxyMoviesBishopSStortford",
+    "SaffronScreen"
+   ]
+  },
+  {
+   "slug": "boston-lincolnshire",
+   "kind": "cluster",
+   "name": "Boston",
+   "anchor": "Boston, Lincolnshire",
+   "nation": "England",
+   "county": "Lincolnshire",
+   "qualifiedSlug": "boston-lincolnshire",
+   "lat": 52.9763,
+   "lon": -0.0266,
+   "towns": [
+    "Boston, Lincolnshire",
+    "Woodhall Spa, Lincolnshire"
+   ],
+   "cinemas": [
+    "KinemaInTheWoods",
+    "SavoyBoston"
+   ]
+  },
+  {
+   "slug": "bracknell",
+   "kind": "cluster",
+   "name": "Bracknell",
+   "anchor": "Bracknell, Berkshire",
+   "nation": "England",
+   "county": "Berkshire",
+   "qualifiedSlug": "bracknell-berkshire",
+   "lat": 51.4136,
+   "lon": -0.7505,
+   "towns": [
+    "Bracknell, Berkshire",
+    "Wokingham, Berkshire",
+    "Camberley, Surrey"
+   ],
+   "cinemas": [
+    "CineworldBracknell",
+    "SouthHillParkArtsCentreBracknell",
+    "EverymanCinemaWokingham",
+    "VueCinemasCamberley"
+   ]
+  },
+  {
+   "slug": "braintree",
+   "kind": "cluster",
+   "name": "Braintree",
+   "anchor": "Braintree, Essex",
+   "nation": "England",
+   "county": "Essex",
+   "qualifiedSlug": "braintree-essex",
+   "lat": 51.8782,
+   "lon": 0.5529,
+   "towns": [
+    "Braintree, Essex",
+    "Halstead, Essex"
+   ],
+   "cinemas": [
+    "CineworldBraintree",
+    "EmpireTheatreHalstead"
+   ]
+  },
+  {
+   "slug": "bridgend",
+   "kind": "cluster",
+   "name": "Bridgend",
+   "anchor": "Bridgend, Glamorgan",
+   "nation": "Wales",
+   "county": "Glamorgan",
+   "qualifiedSlug": "bridgend-glamorgan",
+   "lat": 51.5058,
+   "lon": -3.5772,
+   "towns": [
+    "Bridgend, Glamorgan",
+    "Neath, Glamorgan",
+    "Aberdare, Glamorgan",
+    "Nantgarw, Glamorgan",
+    "Port Talbot, Glamorgan"
+   ],
+   "cinemas": [
+    "ColiseumTheatreAberdare",
+    "GwynHallNeath",
+    "OdeonCinemaBridgend",
+    "ReelCinemaPortTalbot",
+    "ShowcaseCinemaCardiff"
+   ]
+  },
+  {
+   "slug": "bridgwater",
+   "kind": "cluster",
+   "name": "Bridgwater",
+   "anchor": "Bridgwater, Somerset",
+   "nation": "England",
+   "county": "Somerset",
+   "qualifiedSlug": "bridgwater-somerset",
+   "lat": 51.1284,
+   "lon": -3.0036,
+   "towns": [
+    "Bridgwater, Somerset",
+    "Burnham-on-Sea, Somerset",
+    "Wells, Somerset"
+   ],
+   "cinemas": [
+    "RitzBurnhamOnSea",
+    "ScottCinemasBridgwater",
+    "TheWellsFilmCentre"
+   ]
+  },
+  {
+   "slug": "bridlington",
+   "kind": "town",
+   "name": "Bridlington",
+   "anchor": "Bridlington, East Riding of Yorkshire",
+   "nation": "England",
+   "county": "East Riding of Yorkshire",
+   "qualifiedSlug": "bridlington-east-riding-of-yorkshire",
+   "lat": 54.0831,
+   "lon": -0.1919,
+   "towns": [
+    "Bridlington, East Riding of Yorkshire"
+   ],
+   "cinemas": [
+    "ForumBridlington"
+   ]
+  },
+  {
+   "slug": "broadstairs",
+   "kind": "cluster",
+   "name": "Broadstairs",
+   "anchor": "Broadstairs, Kent",
+   "nation": "England",
+   "county": "Kent",
+   "qualifiedSlug": "broadstairs-kent",
+   "lat": 51.3584,
+   "lon": 1.4419,
+   "towns": [
+    "Broadstairs, Kent",
+    "Westgate-on-Sea, Kent"
+   ],
+   "cinemas": [
+    "CarltonCinemaWestgateOnSea",
+    "PalaceCinemaKent",
+    "VueCinemasThanetWestwoodCross"
+   ]
+  },
+  {
+   "slug": "bude",
+   "kind": "town",
+   "name": "Bude",
+   "anchor": "Bude, Cornwall",
+   "nation": "England",
+   "county": "Cornwall",
+   "qualifiedSlug": "bude-cornwall",
+   "lat": 50.8244,
+   "lon": -4.5413,
+   "towns": [
+    "Bude, Cornwall"
+   ],
+   "cinemas": [
+    "RebelCinema"
+   ]
+  },
+  {
+   "slug": "builth-wells",
+   "kind": "cluster",
+   "name": "Builth Wells",
+   "anchor": "Builth Wells, Powys",
+   "nation": "Wales",
+   "county": "Powys",
+   "qualifiedSlug": "builth-wells-powys",
+   "lat": 52.1494,
+   "lon": -3.4047,
+   "towns": [
+    "Builth Wells, Powys",
+    "Hay-on-Wye, Powys"
+   ],
+   "cinemas": [
+    "RichardBoothSBookshopHayOnWye",
+    "WyesideArtsCentreBuilthWells"
+   ]
+  },
+  {
+   "slug": "burgess-hill",
+   "kind": "cluster",
+   "name": "Burgess Hill",
+   "anchor": "Burgess Hill, West Sussex",
+   "nation": "England",
+   "county": "West Sussex",
+   "qualifiedSlug": "burgess-hill-west-sussex",
+   "lat": 50.9584,
+   "lon": -0.1329,
+   "towns": [
+    "Burgess Hill, West Sussex",
+    "Lewes, East Sussex"
+   ],
+   "cinemas": [
+    "DepotLewes",
+    "OrionBurgessHill"
+   ]
+  },
+  {
+   "slug": "bury-st-edmunds",
+   "kind": "town",
+   "name": "Bury St Edmunds",
+   "anchor": "Bury St Edmunds, Suffolk",
+   "nation": "England",
+   "county": "Suffolk",
+   "qualifiedSlug": "bury-st-edmunds-suffolk",
+   "lat": 52.2463,
+   "lon": 0.7111,
+   "towns": [
+    "Bury St Edmunds, Suffolk"
+   ],
+   "cinemas": [
+    "AbbeygateBuryStEdmunds",
+    "CineworldBuryStEdmunds",
+    "EverymanBuryStEdmunds"
+   ]
+  },
+  {
+   "slug": "campbeltown",
+   "kind": "town",
+   "name": "Campbeltown",
+   "anchor": "Campbeltown, Argyll and Bute",
+   "nation": "Scotland",
+   "county": "Argyll and Bute",
+   "qualifiedSlug": "campbeltown-argyll-and-bute",
+   "lat": 55.4258,
+   "lon": -5.6076,
+   "towns": [
+    "Campbeltown, Argyll and Bute"
+   ],
+   "cinemas": [
+    "CampbeltownPictureHouse"
+   ]
+  },
+  {
+   "slug": "cannock",
+   "kind": "cluster",
+   "name": "Cannock",
+   "anchor": "Cannock, Staffordshire",
+   "nation": "England",
+   "county": "Staffordshire",
+   "qualifiedSlug": "cannock-staffordshire",
+   "lat": 52.6904,
+   "lon": -2.0309,
+   "towns": [
+    "Cannock, Staffordshire",
+    "Stafford, Staffordshire",
+    "Lichfield, Staffordshire",
+    "Barton-under-Needwood, Staffordshire"
+   ],
+   "cinemas": [
+    "CannockCinema",
+    "LichfieldGarrickTheatreStudio",
+    "OdeonLuxeStafford",
+    "RedCarpetBartonMarina"
+   ]
+  },
+  {
+   "slug": "canterbury",
+   "kind": "town",
+   "name": "Canterbury",
+   "anchor": "Canterbury, Kent",
+   "nation": "England",
+   "county": "Kent",
+   "qualifiedSlug": "canterbury-kent",
+   "lat": 51.279,
+   "lon": 1.0799,
+   "towns": [
+    "Canterbury, Kent"
+   ],
+   "cinemas": [
+    "CurzonCanterburyRiverside",
+    "GulbenkianTheatre"
+   ]
+  },
+  {
+   "slug": "cardigan",
+   "kind": "town",
+   "name": "Cardigan",
+   "anchor": "Cardigan, Dyfed",
+   "nation": "Wales",
+   "county": "Dyfed",
+   "qualifiedSlug": "cardigan-dyfed",
+   "lat": 52.0837,
+   "lon": -4.6623,
+   "towns": [
+    "Cardigan, Dyfed"
+   ],
+   "cinemas": [
+    "TheatrMwldanCardigan"
+   ]
+  },
+  {
+   "slug": "carlisle-cumbria",
+   "kind": "cluster",
+   "name": "Carlisle",
+   "anchor": "Carlisle, Cumbria",
+   "nation": "England",
+   "county": "Cumbria",
+   "qualifiedSlug": "carlisle-cumbria",
+   "lat": 54.8951,
+   "lon": -2.9382,
+   "towns": [
+    "Carlisle, Cumbria",
+    "Penrith, Cumbria",
+    "Annan, Dumfries and Galloway"
+   ],
+   "cinemas": [
+    "LonsdaleAlhambraPenrith",
+    "LonsdaleCityCinemaAnnan",
+    "VueCinemasCarlisle"
+   ]
+  },
+  {
+   "slug": "castleford",
+   "kind": "cluster",
+   "name": "Castleford",
+   "anchor": "Castleford, West Yorkshire",
+   "nation": "England",
+   "county": "West Yorkshire",
+   "qualifiedSlug": "castleford-west-yorkshire",
+   "lat": 53.7259,
+   "lon": -1.3626,
+   "towns": [
+    "Castleford, West Yorkshire",
+    "Wetherby, West Yorkshire"
+   ],
+   "cinemas": [
+    "VueCinemasCastleford",
+    "WetherbyFilmTheatre"
+   ]
+  },
+  {
+   "slug": "chatham",
+   "kind": "cluster",
+   "name": "Chatham",
+   "anchor": "Chatham, Kent",
+   "nation": "England",
+   "county": "Kent",
+   "qualifiedSlug": "chatham-kent",
+   "lat": 51.3789,
+   "lon": 0.5279,
+   "towns": [
+    "Chatham, Kent",
+    "Sittingbourne, Kent",
+    "Gravesend, Kent",
+    "Dartford, Kent",
+    "Canvey Island, Essex",
+    "Rochester, Kent",
+    "West Thurrock, Essex"
+   ],
+   "cinemas": [
+    "CineworldRochester",
+    "MovieStarrCanveyIsland",
+    "OdeonCinemaChatham",
+    "ShowcaseDeLuxBluewater",
+    "TheLightSittingbourne",
+    "TheWoodvilleGravesend",
+    "VueCinemasWestThurrock"
+   ]
+  },
+  {
+   "slug": "chester-cheshire",
+   "kind": "cluster",
+   "name": "Chester",
+   "anchor": "Chester, Cheshire",
+   "nation": "England",
+   "county": "Cheshire",
+   "qualifiedSlug": "chester-cheshire",
+   "lat": 53.1905,
+   "lon": -2.8919,
+   "towns": [
+    "Chester, Cheshire",
+    "Ellesmere Port, Cheshire",
+    "Broughton, Clwyd"
+   ],
+   "cinemas": [
+    "CineworldBroughton",
+    "PicturehouseChester",
+    "StoryhouseChester",
+    "VueCinemasCheshireOaks"
+   ]
+  },
+  {
+   "slug": "chichester",
+   "kind": "cluster",
+   "name": "Chichester",
+   "anchor": "Chichester, West Sussex",
+   "nation": "England",
+   "county": "West Sussex",
+   "qualifiedSlug": "chichester-west-sussex",
+   "lat": 50.8367,
+   "lon": -0.78,
+   "towns": [
+    "Chichester, West Sussex",
+    "Bognor Regis, West Sussex",
+    "Littlehampton, West Sussex"
+   ],
+   "cinemas": [
+    "ChichesterCinemaAtNewPark",
+    "CineworldChichester",
+    "PicturedromeBognorRegis",
+    "WindmillLittlehampton"
+   ]
+  },
+  {
+   "slug": "christchurch",
+   "kind": "cluster",
+   "name": "Christchurch",
+   "anchor": "Christchurch, Dorset",
+   "nation": "England",
+   "county": "Dorset",
+   "qualifiedSlug": "christchurch-dorset",
+   "lat": 50.7358,
+   "lon": -1.7813,
+   "towns": [
+    "Christchurch, Dorset",
+    "Wimborne Minster, Dorset",
+    "Lymington, Hampshire",
+    "Swanage, Dorset",
+    "Wareham, Dorset",
+    "Fordingbridge, Hampshire"
+   ],
+   "cinemas": [
+    "MowlemTheatre",
+    "RegalCinemaFordingbridge",
+    "RegentChristchurch",
+    "TheMaltLymington",
+    "TheRexCinemaWareham",
+    "TivoliTheatreWimborne"
+   ]
+  },
+  {
+   "slug": "clacton-on-sea",
+   "kind": "cluster",
+   "name": "Clacton-on-Sea",
+   "anchor": "Clacton-on-Sea, Essex",
+   "nation": "England",
+   "county": "Essex",
+   "qualifiedSlug": "clacton-on-sea-essex",
+   "lat": 51.7897,
+   "lon": 1.156,
+   "towns": [
+    "Clacton-on-Sea, Essex",
+    "Felixstowe, Suffolk",
+    "Harwich, Essex",
+    "Burnham-on-Crouch, Essex"
+   ],
+   "cinemas": [
+    "CenturyCinemaClacton",
+    "ElectricPalaceHarwich",
+    "PalaceCinemaFelixstowe",
+    "RioBurnhamOnCrouch"
+   ]
+  },
+  {
+   "slug": "cleethorpes",
+   "kind": "cluster",
+   "name": "Cleethorpes",
+   "anchor": "Cleethorpes, Lincolnshire",
+   "nation": "England",
+   "county": "Lincolnshire",
+   "qualifiedSlug": "cleethorpes-lincolnshire",
+   "lat": 53.5605,
+   "lon": -0.0323,
+   "towns": [
+    "Cleethorpes, Lincolnshire",
+    "Louth, Lincolnshire"
+   ],
+   "cinemas": [
+    "ParkwayCinemaLouth",
+    "ParkwayCleethorpes"
+   ]
+  },
+  {
+   "slug": "coleraine",
+   "kind": "town",
+   "name": "Coleraine",
+   "anchor": "Coleraine, Causeway Coast and Glens",
+   "nation": "Northern Ireland",
+   "county": "Causeway Coast and Glens",
+   "qualifiedSlug": "coleraine-causeway-coast-and-glens",
+   "lat": 55.1333,
+   "lon": -6.6667,
+   "towns": [
+    "Coleraine, Causeway Coast and Glens"
+   ],
+   "cinemas": [
+    "MovieHouseColeraine"
+   ]
+  },
+  {
+   "slug": "colwyn-bay",
+   "kind": "cluster",
+   "name": "Colwyn Bay",
+   "anchor": "Colwyn Bay, Clwyd",
+   "nation": "Wales",
+   "county": "Clwyd",
+   "qualifiedSlug": "colwyn-bay-clwyd",
+   "lat": 53.2948,
+   "lon": -3.7267,
+   "towns": [
+    "Colwyn Bay, Clwyd",
+    "Rhyl, Clwyd",
+    "Prestatyn, Clwyd",
+    "Llandudno, Clwyd"
+   ],
+   "cinemas": [
+    "CineworldLlandudno",
+    "MerlinScalaPrestatyn",
+    "StrandCinemaRhyl",
+    "TheatrColwyn"
+   ]
+  },
+  {
+   "slug": "consett",
+   "kind": "cluster",
+   "name": "Consett",
+   "anchor": "Consett, County Durham",
+   "nation": "England",
+   "county": "County Durham",
+   "qualifiedSlug": "consett-county-durham",
+   "lat": 54.854,
+   "lon": -1.8316,
+   "towns": [
+    "Consett, County Durham",
+    "Prudhoe, Northumberland",
+    "Hexham, Northumberland"
+   ],
+   "cinemas": [
+    "EmpireTheatreConsett",
+    "ForumCinemaHexham",
+    "FuseCommunityCinemaPrudhoe"
+   ]
+  },
+  {
+   "slug": "corby",
+   "kind": "cluster",
+   "name": "Corby",
+   "anchor": "Corby, Northamptonshire",
+   "nation": "England",
+   "county": "Northamptonshire",
+   "qualifiedSlug": "corby-northamptonshire",
+   "lat": 52.4964,
+   "lon": -0.6894,
+   "towns": [
+    "Corby, Northamptonshire",
+    "Rushden, Northamptonshire",
+    "Stamford, Lincolnshire"
+   ],
+   "cinemas": [
+    "ArtsCentreStamford",
+    "CineworldRushdenLakes",
+    "SavoyCinemaCorby"
+   ]
+  },
+  {
+   "slug": "crewe",
+   "kind": "cluster",
+   "name": "Crewe",
+   "anchor": "Crewe, Cheshire",
+   "nation": "England",
+   "county": "Cheshire",
+   "qualifiedSlug": "crewe-cheshire",
+   "lat": 53.0979,
+   "lon": -2.4416,
+   "towns": [
+    "Crewe, Cheshire",
+    "Northwich, Cheshire",
+    "Market Drayton, Shropshire"
+   ],
+   "cinemas": [
+    "FestivalDraytonCentre",
+    "OdeonCinemaCrewe",
+    "OdeonCinemaNorthwichBaronsQuay"
+   ]
+  },
+  {
+   "slug": "cromarty",
+   "kind": "town",
+   "name": "Cromarty",
+   "anchor": "Cromarty, Highland",
+   "nation": "Scotland",
+   "county": "Highland",
+   "qualifiedSlug": "cromarty-highland",
+   "lat": 57.6776,
+   "lon": -4.0416,
+   "towns": [
+    "Cromarty, Highland"
+   ],
+   "cinemas": [
+    "CromartyCinema"
+   ]
+  },
+  {
+   "slug": "cromer",
+   "kind": "cluster",
+   "name": "Cromer",
+   "anchor": "Cromer, Norfolk",
+   "nation": "England",
+   "county": "Norfolk",
+   "qualifiedSlug": "cromer-norfolk",
+   "lat": 52.9312,
+   "lon": 1.2989,
+   "towns": [
+    "Cromer, Norfolk",
+    "Sheringham, Norfolk"
+   ],
+   "cinemas": [
+    "LittleTheatreSheringham",
+    "RegalMovieplexCromer"
+   ]
+  },
+  {
+   "slug": "cwmbran",
+   "kind": "cluster",
+   "name": "Cwmbran",
+   "anchor": "Cwmbran, Gwent",
+   "nation": "Wales",
+   "county": "Gwent",
+   "qualifiedSlug": "cwmbran-gwent",
+   "lat": 51.6545,
+   "lon": -3.0228,
+   "towns": [
+    "Cwmbran, Gwent",
+    "Ebbw Vale, Gwent",
+    "Clevedon, Somerset",
+    "Blackwood, Glamorgan",
+    "Abergavenny, Gwent"
+   ],
+   "cinemas": [
+    "BakerStreetCinemaAbergavenny",
+    "CurzonCinemaClevedon",
+    "MarketHallCinemaBrynmawr",
+    "MaximeCinemaBlackwood",
+    "VueCinemasCwmbran"
+   ]
+  },
+  {
+   "slug": "darlington",
+   "kind": "cluster",
+   "name": "Darlington",
+   "anchor": "Darlington, County Durham",
+   "nation": "England",
+   "county": "County Durham",
+   "qualifiedSlug": "darlington-county-durham",
+   "lat": 54.5243,
+   "lon": -1.5504,
+   "towns": [
+    "Darlington, County Durham",
+    "Catterick Garrison, North Yorkshire",
+    "Richmond, North Yorkshire"
+   ],
+   "cinemas": [
+    "SavoyCinemaCatterickGarrison",
+    "StationCinemaRichmond",
+    "VueCinemasDarlington"
+   ]
+  },
+  {
+   "slug": "dereham",
+   "kind": "cluster",
+   "name": "Dereham",
+   "anchor": "Dereham, Norfolk",
+   "nation": "England",
+   "county": "Norfolk",
+   "qualifiedSlug": "dereham-norfolk",
+   "lat": 52.6833,
+   "lon": 0.9333,
+   "towns": [
+    "Dereham, Norfolk",
+    "Fakenham, Norfolk"
+   ],
+   "cinemas": [
+    "CentralCinemaFakenham",
+    "OrionDereham"
+   ]
+  },
+  {
+   "slug": "dorchester",
+   "kind": "town",
+   "name": "Dorchester",
+   "anchor": "Dorchester, Dorset",
+   "nation": "England",
+   "county": "Dorset",
+   "qualifiedSlug": "dorchester-dorset",
+   "lat": 50.7167,
+   "lon": -2.4333,
+   "towns": [
+    "Dorchester, Dorset"
+   ],
+   "cinemas": [
+    "OdeonCinemaDorchester",
+    "PlazaCinemaDorchester"
+   ]
+  },
+  {
+   "slug": "douglas-isle-of-man",
+   "kind": "town",
+   "name": "Douglas",
+   "anchor": "Douglas, Isle of Man",
+   "nation": "Crown Dependencies",
+   "county": "Isle of Man",
+   "qualifiedSlug": "douglas-isle-of-man",
+   "lat": 54.15,
+   "lon": -4.4833,
+   "towns": [
+    "Douglas, Isle of Man"
+   ],
+   "cinemas": [
+    "BroadwayCinemaVillaMarina",
+    "PalaceCinemasIsleOfMan"
+   ]
+  },
+  {
+   "slug": "dumfries",
+   "kind": "cluster",
+   "name": "Dumfries",
+   "anchor": "Dumfries, Dumfries and Galloway",
+   "nation": "Scotland",
+   "county": "Dumfries and Galloway",
+   "qualifiedSlug": "dumfries-dumfries-and-galloway",
+   "lat": 55.0696,
+   "lon": -3.6114,
+   "towns": [
+    "Dumfries, Dumfries and Galloway",
+    "Castle Douglas, Dumfries and Galloway"
+   ],
+   "cinemas": [
+    "RobertBurnsCentreFilmTheatre",
+    "TheFullartonCastleDouglas"
+   ]
+  },
+  {
+   "slug": "dungannon",
+   "kind": "cluster",
+   "name": "Dungannon",
+   "anchor": "Dungannon, Mid Ulster",
+   "nation": "Northern Ireland",
+   "county": "Mid Ulster",
+   "qualifiedSlug": "dungannon-mid-ulster",
+   "lat": 54.5034,
+   "lon": -6.7672,
+   "towns": [
+    "Dungannon, Mid Ulster",
+    "Cookstown, Mid Ulster"
+   ],
+   "cinemas": [
+    "OmniplexDungannon",
+    "RitzMultiplexCookstown"
+   ]
+  },
+  {
+   "slug": "durham-county-durham",
+   "kind": "town",
+   "name": "Durham",
+   "anchor": "Durham, County Durham",
+   "nation": "England",
+   "county": "County Durham",
+   "qualifiedSlug": "durham-county-durham",
+   "lat": 54.7768,
+   "lon": -1.5757,
+   "towns": [
+    "Durham, County Durham"
+   ],
+   "cinemas": [
+    "EverymanCinemaDurham",
+    "GalaCinemaDurham",
+    "OdeonLuxeDurham"
+   ]
+  },
+  {
+   "slug": "eastleigh",
+   "kind": "cluster",
+   "name": "Eastleigh",
+   "anchor": "Eastleigh, Hampshire",
+   "nation": "England",
+   "county": "Hampshire",
+   "qualifiedSlug": "eastleigh-hampshire",
+   "lat": 50.9667,
+   "lon": -1.35,
+   "towns": [
+    "Eastleigh, Hampshire",
+    "Winchester, Hampshire",
+    "Andover, Hampshire"
+   ],
+   "cinemas": [
+    "EverymanCinemaWinchester",
+    "OdeonCinemaAndover",
+    "VueCinemasEastleigh"
+   ]
+  },
+  {
+   "slug": "elgin-moray",
+   "kind": "town",
+   "name": "Elgin",
+   "anchor": "Elgin, Moray",
+   "nation": "Scotland",
+   "county": "Moray",
+   "qualifiedSlug": "elgin-moray",
+   "lat": 57.6495,
+   "lon": -3.3184,
+   "towns": [
+    "Elgin, Moray"
+   ],
+   "cinemas": [
+    "MorayPlayhouse"
+   ]
+  },
+  {
+   "slug": "ely-cambridgeshire",
+   "kind": "town",
+   "name": "Ely",
+   "anchor": "Ely, Cambridgeshire",
+   "nation": "England",
+   "county": "Cambridgeshire",
+   "qualifiedSlug": "ely-cambridgeshire",
+   "lat": 52.3996,
+   "lon": 0.262,
+   "towns": [
+    "Ely, Cambridgeshire"
+   ],
+   "cinemas": [
+    "CineworldEly",
+    "ElyCommunityCinema"
+   ]
+  },
+  {
+   "slug": "enniskillen",
+   "kind": "town",
+   "name": "Enniskillen",
+   "anchor": "Enniskillen, Fermanagh and Omagh",
+   "nation": "Northern Ireland",
+   "county": "Fermanagh and Omagh",
+   "qualifiedSlug": "enniskillen-fermanagh-and-omagh",
+   "lat": 54.3462,
+   "lon": -7.6413,
+   "towns": [
+    "Enniskillen, Fermanagh and Omagh"
+   ],
+   "cinemas": [
+    "IMCCinemaEnniskillen"
+   ]
+  },
+  {
+   "slug": "epsom",
+   "kind": "cluster",
+   "name": "Epsom",
+   "anchor": "Epsom, Surrey",
+   "nation": "England",
+   "county": "Surrey",
+   "qualifiedSlug": "epsom-surrey",
+   "lat": 51.3305,
+   "lon": -0.2701,
+   "towns": [
+    "Epsom, Surrey",
+    "Esher, Surrey",
+    "Leatherhead, Surrey"
+   ],
+   "cinemas": [
+    "EverymanCinemaEsher",
+    "LeatherheadTheatreCinemaLeatherhead",
+    "OdeonCinemaEpsom",
+    "PicturehouseEpsomSquare"
+   ]
+  },
+  {
+   "slug": "falmouth",
+   "kind": "town",
+   "name": "Falmouth",
+   "anchor": "Falmouth, Cornwall",
+   "nation": "England",
+   "county": "Cornwall",
+   "qualifiedSlug": "falmouth-cornwall",
+   "lat": 50.1544,
+   "lon": -5.0711,
+   "towns": [
+    "Falmouth, Cornwall"
+   ],
+   "cinemas": [
+    "PhoenixCinemaFalmouth",
+    "ThePolyFalmouth"
+   ]
+  },
+  {
+   "slug": "fareham",
+   "kind": "town",
+   "name": "Fareham",
+   "anchor": "Fareham, Hampshire",
+   "nation": "England",
+   "county": "Hampshire",
+   "qualifiedSlug": "fareham-hampshire",
+   "lat": 50.8516,
+   "lon": -1.1793,
+   "towns": [
+    "Fareham, Hampshire"
+   ],
+   "cinemas": [
+    "CineworldWhiteley",
+    "ReelCinemaFareham"
+   ]
+  },
+  {
+   "slug": "folkestone",
+   "kind": "cluster",
+   "name": "Folkestone",
+   "anchor": "Folkestone, Kent",
+   "nation": "England",
+   "county": "Kent",
+   "qualifiedSlug": "folkestone-kent",
+   "lat": 51.0817,
+   "lon": 1.1673,
+   "towns": [
+    "Folkestone, Kent",
+    "Dover, Kent",
+    "New Romney, Kent",
+    "Sandwich, Kent"
+   ],
+   "cinemas": [
+    "CinemarshTheMarshAcademy",
+    "CineworldDover",
+    "EmpireCinemaSandwich",
+    "SilverScreenFolkestone"
+   ]
+  },
+  {
+   "slug": "fort-william",
+   "kind": "town",
+   "name": "Fort William",
+   "anchor": "Fort William, Highland",
+   "nation": "Scotland",
+   "county": "Highland",
+   "qualifiedSlug": "fort-william-highland",
+   "lat": 56.8165,
+   "lon": -5.1121,
+   "towns": [
+    "Fort William, Highland"
+   ],
+   "cinemas": [
+    "HighlandCinemaFortWilliam"
+   ]
+  },
+  {
+   "slug": "gateshead",
+   "kind": "cluster",
+   "name": "Gateshead",
+   "anchor": "Gateshead, Tyne and Wear",
+   "nation": "England",
+   "county": "Tyne and Wear",
+   "qualifiedSlug": "gateshead-tyne-and-wear",
+   "lat": 54.9621,
+   "lon": -1.6017,
+   "towns": [
+    "Gateshead, Tyne and Wear",
+    "Wallsend, Tyne and Wear",
+    "Boldon, Tyne and Wear"
+   ],
+   "cinemas": [
+    "CineworldBoldonTyneWear",
+    "OdeonCinemaMetrocentre",
+    "VueCinemasGateshead",
+    "OdeonCinemaSilverlink"
+   ]
+  },
+  {
+   "slug": "grantham",
+   "kind": "cluster",
+   "name": "Grantham",
+   "anchor": "Grantham, Lincolnshire",
+   "nation": "England",
+   "county": "Lincolnshire",
+   "qualifiedSlug": "grantham-lincolnshire",
+   "lat": 52.9115,
+   "lon": -0.6418,
+   "towns": [
+    "Grantham, Lincolnshire",
+    "Newark-on-Trent, Nottinghamshire",
+    "Melton Mowbray, Leicestershire",
+    "Sleaford, Lincolnshire"
+   ],
+   "cinemas": [
+    "OdeonCinemaNewark",
+    "RegalMeltonMowbray",
+    "SavoyGrantham",
+    "SleafordPlayhouse"
+   ]
+  },
+  {
+   "slug": "great-yarmouth",
+   "kind": "cluster",
+   "name": "Great Yarmouth",
+   "anchor": "Great Yarmouth, Norfolk",
+   "nation": "England",
+   "county": "Norfolk",
+   "qualifiedSlug": "great-yarmouth-norfolk",
+   "lat": 52.6083,
+   "lon": 1.7305,
+   "towns": [
+    "Great Yarmouth, Norfolk",
+    "Gorleston-on-Sea, Norfolk"
+   ],
+   "cinemas": [
+    "ArcCinemaGreatYarmouth",
+    "PalaceCinemaGorlestonOnSea"
+   ]
+  },
+  {
+   "slug": "guildford",
+   "kind": "cluster",
+   "name": "Guildford",
+   "anchor": "Guildford, Surrey",
+   "nation": "England",
+   "county": "Surrey",
+   "qualifiedSlug": "guildford-surrey",
+   "lat": 51.2354,
+   "lon": -0.5743,
+   "towns": [
+    "Guildford, Surrey",
+    "Farnborough, Hampshire",
+    "Staines-upon-Thames, Surrey",
+    "Aldershot, Hampshire",
+    "Farnham, Surrey",
+    "Egham, Surrey",
+    "Walton-on-Thames, Surrey",
+    "Godalming, Surrey",
+    "Haslemere, Surrey",
+    "Addlestone, Surrey",
+    "Liphook, Hampshire"
+   ],
+   "cinemas": [
+    "ChiddingfoldVillageHallCinema",
+    "CineworldAldershot",
+    "EverymanCinemaEgham",
+    "EverymanCinemaWaltonOnThames",
+    "HaslemereHallCinema",
+    "OdeonCinemaGuildford",
+    "ReelCinemasFarnham",
+    "TheLightCinemasAddlestone",
+    "TheLivingRoomCinemaLiphook",
+    "VueCinemasFarnborough",
+    "VueCinemasStainesUponThames"
+   ]
+  },
+  {
+   "slug": "halifax",
+   "kind": "cluster",
+   "name": "Halifax",
+   "anchor": "Halifax, West Yorkshire",
+   "nation": "England",
+   "county": "West Yorkshire",
+   "qualifiedSlug": "halifax-west-yorkshire",
+   "lat": 53.7167,
+   "lon": -1.85,
+   "towns": [
+    "Halifax, West Yorkshire",
+    "Keighley, West Yorkshire",
+    "Elland, West Yorkshire",
+    "Ilkley, West Yorkshire",
+    "Skipton, North Yorkshire",
+    "Penistone, South Yorkshire",
+    "Hebden Bridge, West Yorkshire"
+   ],
+   "cinemas": [
+    "HebdenBridgePicturehouse",
+    "IlkleyCinema",
+    "ParamountPenistone",
+    "PictureHouseKeighley",
+    "PlazaSkipton",
+    "RexElland",
+    "VueCinemasHalifax"
+   ]
+  },
+  {
+   "slug": "hamilton-lanarkshire",
+   "kind": "cluster",
+   "name": "Hamilton",
+   "anchor": "Hamilton, Lanarkshire",
+   "nation": "Scotland",
+   "county": "Lanarkshire",
+   "qualifiedSlug": "hamilton-lanarkshire",
+   "lat": 55.7667,
+   "lon": -4.0333,
+   "towns": [
+    "Hamilton, Lanarkshire",
+    "Cumbernauld, Lanarkshire",
+    "Coatbridge, Lanarkshire"
+   ],
+   "cinemas": [
+    "LanternhouseCinema",
+    "ShowcaseGlasgowCoatbridge",
+    "VueCinemasHamilton"
+   ]
+  },
+  {
+   "slug": "harlow",
+   "kind": "town",
+   "name": "Harlow",
+   "anchor": "Harlow, Essex",
+   "nation": "England",
+   "county": "Essex",
+   "qualifiedSlug": "harlow-essex",
+   "lat": 51.7766,
+   "lon": 0.1116,
+   "towns": [
+    "Harlow, Essex"
+   ],
+   "cinemas": [
+    "CineworldHarlowHarveyCentre",
+    "CineworldHarlowQueensgate"
+   ]
+  },
+  {
+   "slug": "harrogate",
+   "kind": "town",
+   "name": "Harrogate",
+   "anchor": "Harrogate, North Yorkshire",
+   "nation": "England",
+   "county": "North Yorkshire",
+   "qualifiedSlug": "harrogate-north-yorkshire",
+   "lat": 53.9908,
+   "lon": -1.5373,
+   "towns": [
+    "Harrogate, North Yorkshire"
+   ],
+   "cinemas": [
+    "EverymanCinemaHarrogate",
+    "OdeonCinemaHarrogate"
+   ]
+  },
+  {
+   "slug": "hartlepool",
+   "kind": "cluster",
+   "name": "Hartlepool",
+   "anchor": "Hartlepool, County Durham",
+   "nation": "England",
+   "county": "County Durham",
+   "qualifiedSlug": "hartlepool-county-durham",
+   "lat": 54.6855,
+   "lon": -1.2103,
+   "towns": [
+    "Hartlepool, County Durham",
+    "Redcar, North Yorkshire",
+    "Murton, County Durham"
+   ],
+   "cinemas": [
+    "CineworldDaltonParkMurtonCounty",
+    "RegentRedcar",
+    "VueCinemasHartlepool"
+   ]
+  },
+  {
+   "slug": "hastings-east-sussex",
+   "kind": "cluster",
+   "name": "Hastings",
+   "anchor": "Hastings, East Sussex",
+   "nation": "England",
+   "county": "East Sussex",
+   "qualifiedSlug": "hastings-east-sussex",
+   "lat": 50.8557,
+   "lon": 0.5801,
+   "towns": [
+    "Hastings, East Sussex",
+    "Hailsham, East Sussex",
+    "St Leonards-on-Sea, East Sussex",
+    "Rye, East Sussex"
+   ],
+   "cinemas": [
+    "ElectricPalaceHastings",
+    "OdeonCinemaHastings",
+    "KinoRye",
+    "KinoTeatr",
+    "PavilionHailsham"
+   ]
+  },
+  {
+   "slug": "haverfordwest",
+   "kind": "cluster",
+   "name": "Haverfordwest",
+   "anchor": "Haverfordwest, Dyfed",
+   "nation": "Wales",
+   "county": "Dyfed",
+   "qualifiedSlug": "haverfordwest-dyfed",
+   "lat": 51.8017,
+   "lon": -4.9691,
+   "towns": [
+    "Haverfordwest, Dyfed",
+    "Milford Haven, Dyfed",
+    "Fishguard, Dyfed"
+   ],
+   "cinemas": [
+    "PalaceCinemaHaverfordwest",
+    "TheatrGwaunFishguard",
+    "TorchTheatreMilfordHaven"
+   ]
+  },
+  {
+   "slug": "haverhill",
+   "kind": "town",
+   "name": "Haverhill",
+   "anchor": "Haverhill, Suffolk",
+   "nation": "England",
+   "county": "Suffolk",
+   "qualifiedSlug": "haverhill-suffolk",
+   "lat": 52.0823,
+   "lon": 0.4389,
+   "towns": [
+    "Haverhill, Suffolk"
+   ],
+   "cinemas": [
+    "CineworldHaverhill",
+    "HaverhillArtsCentre"
+   ]
+  },
+  {
+   "slug": "hawick",
+   "kind": "cluster",
+   "name": "Hawick",
+   "anchor": "Hawick, Scottish Borders",
+   "nation": "Scotland",
+   "county": "Scottish Borders",
+   "qualifiedSlug": "hawick-scottish-borders",
+   "lat": 55.4227,
+   "lon": -2.7867,
+   "towns": [
+    "Hawick, Scottish Borders",
+    "Galashiels, Scottish Borders"
+   ],
+   "cinemas": [
+    "PavilionCinemaGalashiels",
+    "TowerMillHeartOfHawick"
+   ]
+  },
+  {
+   "slug": "helensburgh",
+   "kind": "cluster",
+   "name": "Helensburgh",
+   "anchor": "Helensburgh, Argyll and Bute",
+   "nation": "Scotland",
+   "county": "Argyll and Bute",
+   "qualifiedSlug": "helensburgh-argyll-and-bute",
+   "lat": 56.0061,
+   "lon": -4.7265,
+   "towns": [
+    "Helensburgh, Argyll and Bute",
+    "Dunoon, Argyll and Bute"
+   ],
+   "cinemas": [
+    "StudioCinemaDunoon",
+    "TheTowerDigitalArtsCenterHelensburgh"
+   ]
+  },
+  {
+   "slug": "hemel-hempstead",
+   "kind": "cluster",
+   "name": "Hemel Hempstead",
+   "anchor": "Hemel Hempstead, Hertfordshire",
+   "nation": "England",
+   "county": "Hertfordshire",
+   "qualifiedSlug": "hemel-hempstead-hertfordshire",
+   "lat": 51.7537,
+   "lon": -0.4497,
+   "towns": [
+    "Hemel Hempstead, Hertfordshire",
+    "Stevenage, Hertfordshire",
+    "St Albans, Hertfordshire",
+    "Welwyn Garden City, Hertfordshire",
+    "Hatfield, Hertfordshire",
+    "Borehamwood, Hertfordshire",
+    "Rickmansworth, Hertfordshire",
+    "Potters Bar, Hertfordshire",
+    "Berkhamsted, Hertfordshire",
+    "Gerrards Cross, Buckinghamshire"
+   ],
+   "cinemas": [
+    "CineworldHemelHempstead",
+    "CineworldStevenage",
+    "EverymanCinemaGerrardsCross",
+    "OdeonCinemaHatfield",
+    "ReelCinemaBorehamwood",
+    "TheCinemaCampusWest",
+    "TheOdysseyStAlbans",
+    "TheRexCinemaBerkhamsted",
+    "Watersmeet",
+    "WyllyottsTheatrePottersBar"
+   ]
+  },
+  {
+   "slug": "hereford-herefordshire",
+   "kind": "town",
+   "name": "Hereford",
+   "anchor": "Hereford, Herefordshire",
+   "nation": "England",
+   "county": "Herefordshire",
+   "qualifiedSlug": "hereford-herefordshire",
+   "lat": 52.0568,
+   "lon": -2.7148,
+   "towns": [
+    "Hereford, Herefordshire"
+   ],
+   "cinemas": [
+    "CourtyardHereford",
+    "OdeonCinemaHereford"
+   ]
+  },
+  {
+   "slug": "herne-bay",
+   "kind": "cluster",
+   "name": "Herne Bay",
+   "anchor": "Herne Bay, Kent",
+   "nation": "England",
+   "county": "Kent",
+   "qualifiedSlug": "herne-bay-kent",
+   "lat": 51.373,
+   "lon": 1.1286,
+   "towns": [
+    "Herne Bay, Kent",
+    "Faversham, Kent"
+   ],
+   "cinemas": [
+    "KavanaghCinemaHerneBay",
+    "RoyalCinemaFaversham"
+   ]
+  },
+  {
+   "slug": "horsham",
+   "kind": "town",
+   "name": "Horsham",
+   "anchor": "Horsham, West Sussex",
+   "nation": "England",
+   "county": "West Sussex",
+   "qualifiedSlug": "horsham-west-sussex",
+   "lat": 51.0631,
+   "lon": -0.3276,
+   "towns": [
+    "Horsham, West Sussex"
+   ],
+   "cinemas": [
+    "CapitolHorsham",
+    "EverymanCinemaHorsham"
+   ]
+  },
+  {
+   "slug": "huntly",
+   "kind": "town",
+   "name": "Huntly",
+   "anchor": "Huntly, Aberdeenshire",
+   "nation": "Scotland",
+   "county": "Aberdeenshire",
+   "qualifiedSlug": "huntly-aberdeenshire",
+   "lat": 57.4474,
+   "lon": -2.7861,
+   "towns": [
+    "Huntly, Aberdeenshire"
+   ],
+   "cinemas": [
+    "Number30Huntly"
+   ]
+  },
+  {
+   "slug": "ilkeston",
+   "kind": "cluster",
+   "name": "Ilkeston",
+   "anchor": "Ilkeston, Derbyshire",
+   "nation": "England",
+   "county": "Derbyshire",
+   "qualifiedSlug": "ilkeston-derbyshire",
+   "lat": 52.9706,
+   "lon": -1.3095,
+   "towns": [
+    "Ilkeston, Derbyshire",
+    "Hucknall, Nottinghamshire",
+    "Belper, Derbyshire",
+    "Ashbourne, Derbyshire",
+    "Wirksworth, Derbyshire",
+    "Beeston, Nottinghamshire"
+   ],
+   "cinemas": [
+    "ArcCinemaAtTheByronHucknall",
+    "ArcCinemaBeeston",
+    "EliteCinemaAndTheatreAshbourne",
+    "NorthernLightWirksworth",
+    "ReelCinemaScalaIlkeston",
+    "RitzBelper"
+   ]
+  },
+  {
+   "slug": "inverness-highland",
+   "kind": "town",
+   "name": "Inverness",
+   "anchor": "Inverness, Highland",
+   "nation": "Scotland",
+   "county": "Highland",
+   "qualifiedSlug": "inverness-highland",
+   "lat": 57.4791,
+   "lon": -4.224,
+   "towns": [
+    "Inverness, Highland"
+   ],
+   "cinemas": [
+    "EdenCourtTheatreInverness",
+    "VueCinemasInverness"
+   ]
+  },
+  {
+   "slug": "ivybridge",
+   "kind": "cluster",
+   "name": "Ivybridge",
+   "anchor": "Ivybridge, Devon",
+   "nation": "England",
+   "county": "Devon",
+   "qualifiedSlug": "ivybridge-devon",
+   "lat": 50.3904,
+   "lon": -3.9191,
+   "towns": [
+    "Ivybridge, Devon",
+    "Kingsbridge, Devon"
+   ],
+   "cinemas": [
+    "KingsCinemaKingsbridge",
+    "TheWatermarkIvybridge"
+   ]
+  },
+  {
+   "slug": "kendal",
+   "kind": "cluster",
+   "name": "Kendal",
+   "anchor": "Kendal, Cumbria",
+   "nation": "England",
+   "county": "Cumbria",
+   "qualifiedSlug": "kendal-cumbria",
+   "lat": 54.3268,
+   "lon": -2.7476,
+   "towns": [
+    "Kendal, Cumbria",
+    "Windermere, Cumbria",
+    "Ambleside, Cumbria"
+   ],
+   "cinemas": [
+    "BreweryArtsCentreKendal",
+    "RoyaltyBownessOnWindemere",
+    "ZeffirellisCinemaAmbleside"
+   ]
+  },
+  {
+   "slug": "keswick",
+   "kind": "town",
+   "name": "Keswick",
+   "anchor": "Keswick, Cumbria",
+   "nation": "England",
+   "county": "Cumbria",
+   "qualifiedSlug": "keswick-cumbria",
+   "lat": 54.5995,
+   "lon": -3.1326,
+   "towns": [
+    "Keswick, Cumbria"
+   ],
+   "cinemas": [
+    "KeswickAlhambra"
+   ]
+  },
+  {
+   "slug": "king-s-lynn",
+   "kind": "town",
+   "name": "King's Lynn",
+   "anchor": "King's Lynn, Norfolk",
+   "nation": "England",
+   "county": "Norfolk",
+   "qualifiedSlug": "king-s-lynn-norfolk",
+   "lat": 52.7517,
+   "lon": 0.3952,
+   "towns": [
+    "King's Lynn, Norfolk"
+   ],
+   "cinemas": [
+    "CornExchangeCinemaKingSLynn",
+    "MajesticKingSLynn"
+   ]
+  },
+  {
+   "slug": "kirkcaldy",
+   "kind": "cluster",
+   "name": "Kirkcaldy",
+   "anchor": "Kirkcaldy, Fife",
+   "nation": "Scotland",
+   "county": "Fife",
+   "qualifiedSlug": "kirkcaldy-fife",
+   "lat": 56.1168,
+   "lon": -3.16,
+   "towns": [
+    "Kirkcaldy, Fife",
+    "Glenrothes, Fife",
+    "Tranent, Lothian"
+   ],
+   "cinemas": [
+    "AdamSmithTheatreKirkcaldy",
+    "KinoGlenrothes",
+    "TheFraserCentreTranent"
+   ]
+  },
+  {
+   "slug": "kirkwall",
+   "kind": "cluster",
+   "name": "Kirkwall",
+   "anchor": "Kirkwall, Orkney",
+   "nation": "Scotland",
+   "county": "Orkney",
+   "qualifiedSlug": "kirkwall-orkney",
+   "lat": 58.9848,
+   "lon": -2.9587,
+   "towns": [
+    "Kirkwall, Orkney",
+    "Stromness, Orkney"
+   ],
+   "cinemas": [
+    "PhoenixKirkwallOkneyIslands",
+    "WestSideCinemaStromness"
+   ]
+  },
+  {
+   "slug": "lancaster-lancashire",
+   "kind": "cluster",
+   "name": "Lancaster",
+   "anchor": "Lancaster, Lancashire",
+   "nation": "England",
+   "county": "Lancashire",
+   "qualifiedSlug": "lancaster-lancashire",
+   "lat": 54.0465,
+   "lon": -2.7999,
+   "towns": [
+    "Lancaster, Lancashire",
+    "Morecambe, Lancashire",
+    "Cleveleys, Lancashire"
+   ],
+   "cinemas": [
+    "ReelCinemaMorecambe",
+    "TheDukesLancaster",
+    "VueCinemasLancaster",
+    "VueCinemasCleveleys"
+   ]
+  },
+  {
+   "slug": "leamington-spa",
+   "kind": "town",
+   "name": "Leamington Spa",
+   "anchor": "Leamington Spa, Warwickshire",
+   "nation": "England",
+   "county": "Warwickshire",
+   "qualifiedSlug": "leamington-spa-warwickshire",
+   "lat": 52.2852,
+   "lon": -1.52,
+   "towns": [
+    "Leamington Spa, Warwickshire"
+   ],
+   "cinemas": [
+    "RoyalSpaCentre",
+    "VueCinemasLeamingtonSpa"
+   ]
+  },
+  {
+   "slug": "leiston",
+   "kind": "cluster",
+   "name": "Leiston",
+   "anchor": "Leiston, Suffolk",
+   "nation": "England",
+   "county": "Suffolk",
+   "qualifiedSlug": "leiston-suffolk",
+   "lat": 52.2061,
+   "lon": 1.5776,
+   "towns": [
+    "Leiston, Suffolk",
+    "Southwold, Suffolk",
+    "Aldeburgh, Suffolk"
+   ],
+   "cinemas": [
+    "AldeburghCinema",
+    "ElectricPicturePalaceSouthwold",
+    "FilmTheatreLeiston"
+   ]
+  },
+  {
+   "slug": "lerwick",
+   "kind": "town",
+   "name": "Lerwick",
+   "anchor": "Lerwick, Shetland",
+   "nation": "Scotland",
+   "county": "Shetland",
+   "qualifiedSlug": "lerwick-shetland",
+   "lat": 60.1534,
+   "lon": -1.1443,
+   "towns": [
+    "Lerwick, Shetland"
+   ],
+   "cinemas": [
+    "MareelLerwickShetlandIslands"
+   ]
+  },
+  {
+   "slug": "letchworth-garden-city",
+   "kind": "cluster",
+   "name": "Letchworth Garden City",
+   "anchor": "Letchworth Garden City, Hertfordshire",
+   "nation": "England",
+   "county": "Hertfordshire",
+   "qualifiedSlug": "letchworth-garden-city-hertfordshire",
+   "lat": 51.9794,
+   "lon": -0.2266,
+   "towns": [
+    "Letchworth Garden City, Hertfordshire",
+    "Baldock, Hertfordshire"
+   ],
+   "cinemas": [
+    "BaldockArtsHeritageCentre",
+    "BroadwayLetchworth"
+   ]
+  },
+  {
+   "slug": "lisburn",
+   "kind": "cluster",
+   "name": "Lisburn",
+   "anchor": "Lisburn, Lisburn and Castlereagh",
+   "nation": "Northern Ireland",
+   "county": "Lisburn and Castlereagh",
+   "qualifiedSlug": "lisburn-lisburn-and-castlereagh",
+   "lat": 54.5234,
+   "lon": -6.0353,
+   "towns": [
+    "Lisburn, Lisburn and Castlereagh",
+    "Newtownabbey, Antrim and Newtownabbey",
+    "Craigavon, Armagh, Banbridge and Craigavon",
+    "Newtownards, Ards and North Down",
+    "Antrim, Antrim and Newtownabbey",
+    "Downpatrick, Newry, Mourne and Down"
+   ],
+   "cinemas": [
+    "IMCNewtownardsMovieland",
+    "MovieHouseGlengormley",
+    "OmniplexAntrim",
+    "OmniplexCraigavon",
+    "OmniplexDownpatrick",
+    "OmniplexLisburn"
+   ]
+  },
+  {
+   "slug": "livingston-lothian",
+   "kind": "cluster",
+   "name": "Livingston",
+   "anchor": "Livingston, Lothian",
+   "nation": "Scotland",
+   "county": "Lothian",
+   "qualifiedSlug": "livingston-lothian",
+   "lat": 55.9029,
+   "lon": -3.5226,
+   "towns": [
+    "Livingston, Lothian",
+    "Dunfermline, Fife",
+    "Falkirk, Central Scotland",
+    "Bo'ness, Central Scotland"
+   ],
+   "cinemas": [
+    "CineworldFalkirk",
+    "HippodromeBoNess",
+    "OdeonCinemaDunfermline",
+    "VueCinemasLivingston"
+   ]
+  },
+  {
+   "slug": "llanelli",
+   "kind": "cluster",
+   "name": "Llanelli",
+   "anchor": "Llanelli, Dyfed",
+   "nation": "Wales",
+   "county": "Dyfed",
+   "qualifiedSlug": "llanelli-dyfed",
+   "lat": 51.682,
+   "lon": -4.1619,
+   "towns": [
+    "Llanelli, Dyfed",
+    "Carmarthen, Dyfed",
+    "Brynamman, Glamorgan",
+    "Cross Hands, Dyfed",
+    "Pontardawe, Glamorgan"
+   ],
+   "cinemas": [
+    "CrossHandsHallCinema",
+    "OdeonCinemaLlanelli",
+    "PontardaweArtsCentre",
+    "PublicHallBrynamman",
+    "VueCinemasCarmarthen"
+   ]
+  },
+  {
+   "slug": "londonderry",
+   "kind": "town",
+   "name": "Londonderry",
+   "anchor": "Londonderry, Derry and Strabane",
+   "nation": "Northern Ireland",
+   "county": "Derry and Strabane",
+   "qualifiedSlug": "londonderry-derry-and-strabane",
+   "lat": 54.9981,
+   "lon": -7.3093,
+   "towns": [
+    "Londonderry, Derry and Strabane"
+   ],
+   "cinemas": [
+    "BrunswickMoviebowlLondonderry",
+    "NerveCentreLondonderry",
+    "OmniplexLondonderry"
+   ]
+  },
+  {
+   "slug": "loughborough",
+   "kind": "town",
+   "name": "Loughborough",
+   "anchor": "Loughborough, Leicestershire",
+   "nation": "England",
+   "county": "Leicestershire",
+   "qualifiedSlug": "loughborough-leicestershire",
+   "lat": 52.7667,
+   "lon": -1.2,
+   "towns": [
+    "Loughborough, Leicestershire"
+   ],
+   "cinemas": [
+    "FlixStudentRunCinemaLoughborough",
+    "OdeonCinemaLoughborough"
+   ]
+  },
+  {
+   "slug": "lowestoft",
+   "kind": "town",
+   "name": "Lowestoft",
+   "anchor": "Lowestoft, Suffolk",
+   "nation": "England",
+   "county": "Suffolk",
+   "qualifiedSlug": "lowestoft-suffolk",
+   "lat": 52.4752,
+   "lon": 1.7517,
+   "towns": [
+    "Lowestoft, Suffolk"
+   ],
+   "cinemas": [
+    "EastCoastCinemaLowestoft",
+    "MarinaTheatreLowestoft"
+   ]
+  },
+  {
+   "slug": "ludlow",
+   "kind": "cluster",
+   "name": "Ludlow",
+   "anchor": "Ludlow, Shropshire",
+   "nation": "England",
+   "county": "Shropshire",
+   "qualifiedSlug": "ludlow-shropshire",
+   "lat": 52.3743,
+   "lon": -2.7131,
+   "towns": [
+    "Ludlow, Shropshire",
+    "Tenbury Wells, Worcestershire"
+   ],
+   "cinemas": [
+    "AssemblyRoomsLudlow",
+    "RegalCinemaTenburyWells"
+   ]
+  },
+  {
+   "slug": "lytham-st-annes",
+   "kind": "town",
+   "name": "Lytham St Annes",
+   "anchor": "Lytham St Annes, Lancashire",
+   "nation": "England",
+   "county": "Lancashire",
+   "qualifiedSlug": "lytham-st-annes-lancashire",
+   "lat": 53.7426,
+   "lon": -2.997,
+   "towns": [
+    "Lytham St Annes, Lancashire"
+   ],
+   "cinemas": [
+    "LowtherPavilionLytham",
+    "TheIslandLythamStAnnes"
+   ]
+  },
+  {
+   "slug": "macclesfield",
+   "kind": "cluster",
+   "name": "Macclesfield",
+   "anchor": "Macclesfield, Cheshire",
+   "nation": "England",
+   "county": "Cheshire",
+   "qualifiedSlug": "macclesfield-cheshire",
+   "lat": 53.2602,
+   "lon": -2.1256,
+   "towns": [
+    "Macclesfield, Cheshire",
+    "Wilmslow, Cheshire",
+    "Buxton, Derbyshire",
+    "Marple, Greater Manchester"
+   ],
+   "cinemas": [
+    "BuxtonCinemaPavilionArtsCentre",
+    "CinemacMacclesfield",
+    "RegentMarple",
+    "RexWilmslow"
+   ]
+  },
+  {
+   "slug": "maghera",
+   "kind": "town",
+   "name": "Maghera",
+   "anchor": "Maghera, Mid Ulster",
+   "nation": "Northern Ireland",
+   "county": "Mid Ulster",
+   "qualifiedSlug": "maghera-mid-ulster",
+   "lat": 54.8439,
+   "lon": -6.6715,
+   "towns": [
+    "Maghera, Mid Ulster"
+   ],
+   "cinemas": [
+    "MovieHouseMaghera"
+   ]
+  },
+  {
+   "slug": "maidenhead",
+   "kind": "cluster",
+   "name": "Maidenhead",
+   "anchor": "Maidenhead, Berkshire",
+   "nation": "England",
+   "county": "Berkshire",
+   "qualifiedSlug": "maidenhead-berkshire",
+   "lat": 51.5228,
+   "lon": -0.7199,
+   "towns": [
+    "Maidenhead, Berkshire",
+    "Windsor, Berkshire",
+    "Marlow, Buckinghamshire",
+    "Henley-on-Thames, Oxfordshire"
+   ],
+   "cinemas": [
+    "EverymanCinemaMarlow",
+    "OdeonLuxeMaidenhead",
+    "RegalPicturehouseHenley",
+    "TheOldCourtWindsor"
+   ]
+  },
+  {
+   "slug": "malton",
+   "kind": "town",
+   "name": "Malton",
+   "anchor": "Malton, North Yorkshire",
+   "nation": "England",
+   "county": "North Yorkshire",
+   "qualifiedSlug": "malton-north-yorkshire",
+   "lat": 54.1369,
+   "lon": -0.7996,
+   "towns": [
+    "Malton, North Yorkshire"
+   ],
+   "cinemas": [
+    "PalaceCinemaMalton"
+   ]
+  },
+  {
+   "slug": "malvern",
+   "kind": "town",
+   "name": "Malvern",
+   "anchor": "Malvern, Worcestershire",
+   "nation": "England",
+   "county": "Worcestershire",
+   "qualifiedSlug": "malvern-worcestershire",
+   "lat": 52.1116,
+   "lon": -2.3251,
+   "towns": [
+    "Malvern, Worcestershire"
+   ],
+   "cinemas": [
+    "CastlemortonCinemaMortonMajestic",
+    "MalvernTheatres"
+   ]
+  },
+  {
+   "slug": "marlborough",
+   "kind": "town",
+   "name": "Marlborough",
+   "anchor": "Marlborough, Wiltshire",
+   "nation": "England",
+   "county": "Wiltshire",
+   "qualifiedSlug": "marlborough-wiltshire",
+   "lat": 51.4203,
+   "lon": -1.7295,
+   "towns": [
+    "Marlborough, Wiltshire"
+   ],
+   "cinemas": [
+    "TheParadeCinemaMarlborough"
+   ]
+  },
+  {
+   "slug": "merthyr-tydfil",
+   "kind": "cluster",
+   "name": "Merthyr Tydfil",
+   "anchor": "Merthyr Tydfil, Glamorgan",
+   "nation": "Wales",
+   "county": "Glamorgan",
+   "qualifiedSlug": "merthyr-tydfil-glamorgan",
+   "lat": 51.7479,
+   "lon": -3.3778,
+   "towns": [
+    "Merthyr Tydfil, Glamorgan",
+    "Brecon, Powys",
+    "Ystradgynlais, Powys"
+   ],
+   "cinemas": [
+    "ColiseumCinemaBrecon",
+    "MinersWelfareAndCommunityHallYstradgynlais",
+    "VueCinemasMerthyrTydfil"
+   ]
+  },
+  {
+   "slug": "newbury",
+   "kind": "town",
+   "name": "Newbury",
+   "anchor": "Newbury, Berkshire",
+   "nation": "England",
+   "county": "Berkshire",
+   "qualifiedSlug": "newbury-berkshire",
+   "lat": 51.4015,
+   "lon": -1.3247,
+   "towns": [
+    "Newbury, Berkshire"
+   ],
+   "cinemas": [
+    "CornExchangeNewburyScreenOne",
+    "VueCinemasNewbury"
+   ]
+  },
+  {
+   "slug": "newmarket",
+   "kind": "town",
+   "name": "Newmarket",
+   "anchor": "Newmarket, Suffolk",
+   "nation": "England",
+   "county": "Suffolk",
+   "qualifiedSlug": "newmarket-suffolk",
+   "lat": 52.2447,
+   "lon": 0.4042,
+   "towns": [
+    "Newmarket, Suffolk"
+   ],
+   "cinemas": [
+    "KingsCinemaNewmarket"
+   ]
+  },
+  {
+   "slug": "newport-isle-of-wight",
+   "kind": "cluster",
+   "name": "Newport",
+   "anchor": "Newport, Isle of Wight",
+   "nation": "England",
+   "county": "Isle of Wight",
+   "qualifiedSlug": "newport-isle-of-wight",
+   "lat": 50.7015,
+   "lon": -1.2912,
+   "towns": [
+    "Newport, Isle of Wight",
+    "Ryde, Isle of Wight"
+   ],
+   "cinemas": [
+    "CineworldNewportIsleOfWight",
+    "CommodoreRydeIsleOfWight"
+   ]
+  },
+  {
+   "slug": "newquay",
+   "kind": "town",
+   "name": "Newquay",
+   "anchor": "Newquay, Cornwall",
+   "nation": "England",
+   "county": "Cornwall",
+   "qualifiedSlug": "newquay-cornwall",
+   "lat": 50.4156,
+   "lon": -5.0732,
+   "towns": [
+    "Newquay, Cornwall"
+   ],
+   "cinemas": [
+    "TheAstraCinemaStMawgan",
+    "WTWLighthouseNewquay"
+   ]
+  },
+  {
+   "slug": "newry",
+   "kind": "town",
+   "name": "Newry",
+   "anchor": "Newry, Newry, Mourne and Down",
+   "nation": "Northern Ireland",
+   "county": "Newry, Mourne and Down",
+   "qualifiedSlug": "newry-newry-mourne-and-down",
+   "lat": 54.1784,
+   "lon": -6.3374,
+   "towns": [
+    "Newry, Newry, Mourne and Down"
+   ],
+   "cinemas": [
+    "OmniplexNewry"
+   ]
+  },
+  {
+   "slug": "newton-stewart",
+   "kind": "town",
+   "name": "Newton Stewart",
+   "anchor": "Newton Stewart, Dumfries and Galloway",
+   "nation": "Scotland",
+   "county": "Dumfries and Galloway",
+   "qualifiedSlug": "newton-stewart-dumfries-and-galloway",
+   "lat": 54.9578,
+   "lon": -4.4832,
+   "towns": [
+    "Newton Stewart, Dumfries and Galloway"
+   ],
+   "cinemas": [
+    "TheCinemaNewtonStewart"
+   ]
+  },
+  {
+   "slug": "northallerton",
+   "kind": "town",
+   "name": "Northallerton",
+   "anchor": "Northallerton, North Yorkshire",
+   "nation": "England",
+   "county": "North Yorkshire",
+   "qualifiedSlug": "northallerton-north-yorkshire",
+   "lat": 54.339,
+   "lon": -1.4324,
+   "towns": [
+    "Northallerton, North Yorkshire"
+   ],
+   "cinemas": [
+    "EverymanCinemaNorthallerton",
+    "TheForumNorthallerton"
+   ]
+  },
+  {
+   "slug": "nuneaton",
+   "kind": "cluster",
+   "name": "Nuneaton",
+   "anchor": "Nuneaton, Warwickshire",
+   "nation": "England",
+   "county": "Warwickshire",
+   "qualifiedSlug": "nuneaton-warwickshire",
+   "lat": 52.5232,
+   "lon": -1.4652,
+   "towns": [
+    "Nuneaton, Warwickshire",
+    "Tamworth, Staffordshire",
+    "Rugby, Warwickshire",
+    "Hinckley, Leicestershire"
+   ],
+   "cinemas": [
+    "CineworldHinckley",
+    "CineworldRugby",
+    "OdeonCinemaTamworth",
+    "OdeonLuxeNuneaton"
+   ]
+  },
+  {
+   "slug": "okehampton",
+   "kind": "town",
+   "name": "Okehampton",
+   "anchor": "Okehampton, Devon",
+   "nation": "England",
+   "county": "Devon",
+   "qualifiedSlug": "okehampton-devon",
+   "lat": 50.7384,
+   "lon": -4.0016,
+   "towns": [
+    "Okehampton, Devon"
+   ],
+   "cinemas": [
+    "NewCarltonOkehampton"
+   ]
+  },
+  {
+   "slug": "omagh",
+   "kind": "town",
+   "name": "Omagh",
+   "anchor": "Omagh, Fermanagh and Omagh",
+   "nation": "Northern Ireland",
+   "county": "Fermanagh and Omagh",
+   "qualifiedSlug": "omagh-fermanagh-and-omagh",
+   "lat": 54.6,
+   "lon": -7.3,
+   "towns": [
+    "Omagh, Fermanagh and Omagh"
+   ],
+   "cinemas": [
+    "OmniplexOmagh"
+   ]
+  },
+  {
+   "slug": "paisley",
+   "kind": "cluster",
+   "name": "Paisley",
+   "anchor": "Paisley, Renfrewshire",
+   "nation": "Scotland",
+   "county": "Renfrewshire",
+   "qualifiedSlug": "paisley-renfrewshire",
+   "lat": 55.8317,
+   "lon": -4.4325,
+   "towns": [
+    "Paisley, Renfrewshire",
+    "East Kilbride, Lanarkshire",
+    "Kilmarnock, Ayrshire",
+    "Greenock, Renfrewshire",
+    "Clydebank, Dunbartonshire",
+    "Renfrew, Renfrewshire"
+   ],
+   "cinemas": [
+    "OdeonCinemaBraehead",
+    "OdeonCinemaKilmarnock",
+    "OdeonLuxeEastKilbride",
+    "OmniplexClydebankFormerlyEmpire",
+    "ShowcaseDeLuxPaisley",
+    "WaterfrontGreenock"
+   ]
+  },
+  {
+   "slug": "penzance",
+   "kind": "town",
+   "name": "Penzance",
+   "anchor": "Penzance, Cornwall",
+   "nation": "England",
+   "county": "Cornwall",
+   "qualifiedSlug": "penzance-cornwall",
+   "lat": 50.1186,
+   "lon": -5.5371,
+   "towns": [
+    "Penzance, Cornwall"
+   ],
+   "cinemas": [
+    "FilmhouseNewlyn",
+    "MerlinSavoyPenzance"
+   ]
+  },
+  {
+   "slug": "perth",
+   "kind": "town",
+   "name": "Perth",
+   "anchor": "Perth, Tayside",
+   "nation": "Scotland",
+   "county": "Tayside",
+   "qualifiedSlug": "perth-tayside",
+   "lat": 56.3952,
+   "lon": -3.4314,
+   "towns": [
+    "Perth, Tayside"
+   ],
+   "cinemas": [
+    "PlayhouseCinemaPerth"
+   ]
+  },
+  {
+   "slug": "peterhead",
+   "kind": "cluster",
+   "name": "Peterhead",
+   "anchor": "Peterhead, Aberdeenshire",
+   "nation": "Scotland",
+   "county": "Aberdeenshire",
+   "qualifiedSlug": "peterhead-aberdeenshire",
+   "lat": 57.5052,
+   "lon": -1.7844,
+   "towns": [
+    "Peterhead, Aberdeenshire",
+    "Ellon, Aberdeenshire"
+   ],
+   "cinemas": [
+    "ArcCinemaPeterhead",
+    "VictoriaHallEllon"
+   ]
+  },
+  {
+   "slug": "portree",
+   "kind": "town",
+   "name": "Portree",
+   "anchor": "Portree, Highland",
+   "nation": "Scotland",
+   "county": "Highland",
+   "qualifiedSlug": "portree-highland",
+   "lat": 57.4129,
+   "lon": -6.1942,
+   "towns": [
+    "Portree, Highland"
+   ],
+   "cinemas": [
+    "LASPortRighArosCinemaPortree"
+   ]
+  },
+  {
+   "slug": "pwllheli",
+   "kind": "cluster",
+   "name": "Pwllheli",
+   "anchor": "Pwllheli, Gwynedd",
+   "nation": "Wales",
+   "county": "Gwynedd",
+   "qualifiedSlug": "pwllheli-gwynedd",
+   "lat": 52.8899,
+   "lon": -4.4145,
+   "towns": [
+    "Pwllheli, Gwynedd",
+    "Blaenau Ffestiniog, Gwynedd"
+   ],
+   "cinemas": [
+    "CellBBlaenauFfestiniog",
+    "NeuaddDwyforPwllheli"
+   ]
+  },
+  {
+   "slug": "redditch",
+   "kind": "cluster",
+   "name": "Redditch",
+   "anchor": "Redditch, Worcestershire",
+   "nation": "England",
+   "county": "Worcestershire",
+   "qualifiedSlug": "redditch-worcestershire",
+   "lat": 52.3065,
+   "lon": -1.9457,
+   "towns": [
+    "Redditch, Worcestershire",
+    "Halesowen, West Midlands",
+    "Kidderminster, Worcestershire",
+    "Bromsgrove, Worcestershire",
+    "Stratford-upon-Avon, Warwickshire",
+    "Evesham, Worcestershire",
+    "Pershore, Worcestershire"
+   ],
+   "cinemas": [
+    "ArtrixBromsgrove",
+    "EverymanCinemaStratfordUponAvon",
+    "FuturistCinema",
+    "Number8Pershore",
+    "ReelCinemaQuinton",
+    "RegalCinemaEvesham",
+    "VueCinemasRedditch"
+   ]
+  },
+  {
+   "slug": "redhill",
+   "kind": "cluster",
+   "name": "Redhill",
+   "anchor": "Redhill, Surrey",
+   "nation": "England",
+   "county": "Surrey",
+   "qualifiedSlug": "redhill-surrey",
+   "lat": 51.2405,
+   "lon": -0.1704,
+   "towns": [
+    "Redhill, Surrey",
+    "Reigate, Surrey"
+   ],
+   "cinemas": [
+    "EverymanCinemaReigate",
+    "TheLightRedhill"
+   ]
+  },
+  {
+   "slug": "redruth",
+   "kind": "cluster",
+   "name": "Redruth",
+   "anchor": "Redruth, Cornwall",
+   "nation": "England",
+   "county": "Cornwall",
+   "qualifiedSlug": "redruth-cornwall",
+   "lat": 50.2332,
+   "lon": -5.2243,
+   "towns": [
+    "Redruth, Cornwall",
+    "Truro, Cornwall",
+    "Helston, Cornwall",
+    "St Ives, Cornwall"
+   ],
+   "cinemas": [
+    "FloraCinemaHelston",
+    "MerlinRegalCinemaRedruth",
+    "RoyalStIvesCinema",
+    "WTWPlazaTruro"
+   ]
+  },
+  {
+   "slug": "rochdale",
+   "kind": "cluster",
+   "name": "Rochdale",
+   "anchor": "Rochdale, Greater Manchester",
+   "nation": "England",
+   "county": "Greater Manchester",
+   "qualifiedSlug": "rochdale-greater-manchester",
+   "lat": 53.6177,
+   "lon": -2.1552,
+   "towns": [
+    "Rochdale, Greater Manchester",
+    "Bury, Greater Manchester",
+    "Ashton-under-Lyne, Greater Manchester"
+   ],
+   "cinemas": [
+    "CineworldAshtonUnderLyne",
+    "OdeonCinemaRochdale",
+    "ReelCinemaRochdale",
+    "VueCinemasBury"
+   ]
+  },
+  {
+   "slug": "ross-on-wye",
+   "kind": "cluster",
+   "name": "Ross-on-Wye",
+   "anchor": "Ross-on-Wye, Herefordshire",
+   "nation": "England",
+   "county": "Herefordshire",
+   "qualifiedSlug": "ross-on-wye-herefordshire",
+   "lat": 51.9167,
+   "lon": -2.5667,
+   "towns": [
+    "Ross-on-Wye, Herefordshire",
+    "Monmouth, Gwent",
+    "Coleford, Gloucestershire"
+   ],
+   "cinemas": [
+    "GatewayCinemaRossOnWye",
+    "MerlinStudioColeford",
+    "SavoyTheatreMonmouth"
+   ]
+  },
+  {
+   "slug": "rothesay",
+   "kind": "town",
+   "name": "Rothesay",
+   "anchor": "Rothesay, Argyll and Bute",
+   "nation": "Scotland",
+   "county": "Argyll and Bute",
+   "qualifiedSlug": "rothesay-argyll-and-bute",
+   "lat": 55.8365,
+   "lon": -5.0551,
+   "towns": [
+    "Rothesay, Argyll and Bute"
+   ],
+   "cinemas": [
+    "DiscoveryCentreCinemaRothesay"
+   ]
+  },
+  {
+   "slug": "salisbury-wiltshire",
+   "kind": "town",
+   "name": "Salisbury",
+   "anchor": "Salisbury, Wiltshire",
+   "nation": "England",
+   "county": "Wiltshire",
+   "qualifiedSlug": "salisbury-wiltshire",
+   "lat": 51.0693,
+   "lon": -1.7957,
+   "towns": [
+    "Salisbury, Wiltshire"
+   ],
+   "cinemas": [
+    "EverymanCinemaSalisbury",
+    "OdeonCinemaSalisbury"
+   ]
+  },
+  {
+   "slug": "scarborough",
+   "kind": "town",
+   "name": "Scarborough",
+   "anchor": "Scarborough, North Yorkshire",
+   "nation": "England",
+   "county": "North Yorkshire",
+   "qualifiedSlug": "scarborough-north-yorkshire",
+   "lat": 54.2797,
+   "lon": -0.4044,
+   "towns": [
+    "Scarborough, North Yorkshire"
+   ],
+   "cinemas": [
+    "HollywoodPlazaScarborough",
+    "StephenJosephTheatreScarborough"
+   ]
+  },
+  {
+   "slug": "scunthorpe",
+   "kind": "cluster",
+   "name": "Scunthorpe",
+   "anchor": "Scunthorpe, Lincolnshire",
+   "nation": "England",
+   "county": "Lincolnshire",
+   "qualifiedSlug": "scunthorpe-lincolnshire",
+   "lat": 53.5791,
+   "lon": -0.6544,
+   "towns": [
+    "Scunthorpe, Lincolnshire",
+    "Goole, East Riding of Yorkshire"
+   ],
+   "cinemas": [
+    "JunctionGoole",
+    "VueCinemasScunthorpe"
+   ]
+  },
+  {
+   "slug": "shaftesbury",
+   "kind": "cluster",
+   "name": "Shaftesbury",
+   "anchor": "Shaftesbury, Dorset",
+   "nation": "England",
+   "county": "Dorset",
+   "qualifiedSlug": "shaftesbury-dorset",
+   "lat": 51.0053,
+   "lon": -2.1933,
+   "towns": [
+    "Shaftesbury, Dorset",
+    "Tisbury, Wiltshire"
+   ],
+   "cinemas": [
+    "HilltopCinemaShaftesburyArtsCentre",
+    "TheNewVicTisburyVillageHall"
+   ]
+  },
+  {
+   "slug": "shrewsbury",
+   "kind": "town",
+   "name": "Shrewsbury",
+   "anchor": "Shrewsbury, Shropshire",
+   "nation": "England",
+   "county": "Shropshire",
+   "qualifiedSlug": "shrewsbury-shropshire",
+   "lat": 52.7101,
+   "lon": -2.7521,
+   "towns": [
+    "Shrewsbury, Shropshire"
+   ],
+   "cinemas": [
+    "CineworldShrewsbury",
+    "OldMarketHallShrewsbury"
+   ]
+  },
+  {
+   "slug": "skegness",
+   "kind": "cluster",
+   "name": "Skegness",
+   "anchor": "Skegness, Lincolnshire",
+   "nation": "England",
+   "county": "Lincolnshire",
+   "qualifiedSlug": "skegness-lincolnshire",
+   "lat": 53.1436,
+   "lon": 0.3363,
+   "towns": [
+    "Skegness, Lincolnshire",
+    "Mablethorpe, Lincolnshire"
+   ],
+   "cinemas": [
+    "LoewenCinema",
+    "TowerCinemaSkegness"
+   ]
+  },
+  {
+   "slug": "south-shields",
+   "kind": "cluster",
+   "name": "South Shields",
+   "anchor": "South Shields, Tyne and Wear",
+   "nation": "England",
+   "county": "Tyne and Wear",
+   "qualifiedSlug": "south-shields-tyne-and-wear",
+   "lat": 54.9986,
+   "lon": -1.4323,
+   "towns": [
+    "South Shields, Tyne and Wear",
+    "Whitley Bay, Tyne and Wear",
+    "Blyth, Northumberland",
+    "Cramlington, Northumberland"
+   ],
+   "cinemas": [
+    "CustomsHouseCinemaSouthShields",
+    "JamJarCinema",
+    "MarketPavilionCinemaBlyth",
+    "VueCinemasCramlington"
+   ]
+  },
+  {
+   "slug": "southport-merseyside",
+   "kind": "town",
+   "name": "Southport",
+   "anchor": "Southport, Merseyside",
+   "nation": "England",
+   "county": "Merseyside",
+   "qualifiedSlug": "southport-merseyside",
+   "lat": 53.6458,
+   "lon": -3.0101,
+   "towns": [
+    "Southport, Merseyside"
+   ],
+   "cinemas": [
+    "SouthportBijouCinema",
+    "VueCinemasSouthport"
+   ]
+  },
+  {
+   "slug": "st-austell",
+   "kind": "cluster",
+   "name": "St Austell",
+   "anchor": "St Austell, Cornwall",
+   "nation": "England",
+   "county": "Cornwall",
+   "qualifiedSlug": "st-austell-cornwall",
+   "lat": 50.3425,
+   "lon": -4.7744,
+   "towns": [
+    "St Austell, Cornwall",
+    "Bodmin, Cornwall",
+    "Wadebridge, Cornwall"
+   ],
+   "cinemas": [
+    "MerlinCapitolBodmin",
+    "WTWRegalWadebridge",
+    "WTWWhiteRiverCinema"
+   ]
+  },
+  {
+   "slug": "st-helier",
+   "kind": "town",
+   "name": "St Helier",
+   "anchor": "St Helier, Jersey",
+   "nation": "Crown Dependencies",
+   "county": "Jersey",
+   "qualifiedSlug": "st-helier-jersey",
+   "lat": 49.188,
+   "lon": -2.1049,
+   "towns": [
+    "St Helier, Jersey"
+   ],
+   "cinemas": [
+    "CineworldStHelierJersey"
+   ]
+  },
+  {
+   "slug": "st-neots",
+   "kind": "cluster",
+   "name": "St Neots",
+   "anchor": "St Neots, Cambridgeshire",
+   "nation": "England",
+   "county": "Cambridgeshire",
+   "qualifiedSlug": "st-neots-cambridgeshire",
+   "lat": 52.2167,
+   "lon": -0.2667,
+   "towns": [
+    "St Neots, Cambridgeshire",
+    "Huntingdon, Cambridgeshire"
+   ],
+   "cinemas": [
+    "CineworldHuntingdon",
+    "CineworldStNeots"
+   ]
+  },
+  {
+   "slug": "st-peter-port",
+   "kind": "cluster",
+   "name": "St Peter Port",
+   "anchor": "St Peter Port, Guernsey",
+   "nation": "Crown Dependencies",
+   "county": "Guernsey",
+   "qualifiedSlug": "st-peter-port-guernsey",
+   "lat": 49.4598,
+   "lon": -2.5353,
+   "towns": [
+    "St Peter Port, Guernsey",
+    "Forest, Guernsey"
+   ],
+   "cinemas": [
+    "BeauSejourLeisureCentreGuernsey",
+    "TheMallardCinemaGuernsey"
+   ]
+  },
+  {
+   "slug": "stirling",
+   "kind": "cluster",
+   "name": "Stirling",
+   "anchor": "Stirling, Central Scotland",
+   "nation": "Scotland",
+   "county": "Central Scotland",
+   "qualifiedSlug": "stirling-central-scotland",
+   "lat": 56.119,
+   "lon": -3.9368,
+   "towns": [
+    "Stirling, Central Scotland",
+    "Alloa, Central Scotland"
+   ],
+   "cinemas": [
+    "ChalmersAlloaCinema",
+    "MacrobertArtCentreStirling",
+    "VueCinemasStirling"
+   ]
+  },
+  {
+   "slug": "stockton-on-tees",
+   "kind": "town",
+   "name": "Stockton-on-Tees",
+   "anchor": "Stockton-on-Tees, County Durham",
+   "nation": "England",
+   "county": "County Durham",
+   "qualifiedSlug": "stockton-on-tees-county-durham",
+   "lat": 54.5685,
+   "lon": -1.3187,
+   "towns": [
+    "Stockton-on-Tees, County Durham"
+   ],
+   "cinemas": [
+    "ARCStocktonOnTees",
+    "ShowcaseCinemaDeLuxTeesside"
+   ]
+  },
+  {
+   "slug": "stornoway",
+   "kind": "town",
+   "name": "Stornoway",
+   "anchor": "Stornoway, Western Isles",
+   "nation": "Scotland",
+   "county": "Western Isles",
+   "qualifiedSlug": "stornoway-western-isles",
+   "lat": 58.2092,
+   "lon": -6.3865,
+   "towns": [
+    "Stornoway, Western Isles"
+   ],
+   "cinemas": [
+    "AnLanntairArtsCentreStornowayIsleOfLewis"
+   ]
+  },
+  {
+   "slug": "stroud",
+   "kind": "cluster",
+   "name": "Stroud",
+   "anchor": "Stroud, Gloucestershire",
+   "nation": "England",
+   "county": "Gloucestershire",
+   "qualifiedSlug": "stroud-gloucestershire",
+   "lat": 51.75,
+   "lon": -2.2,
+   "towns": [
+    "Stroud, Gloucestershire",
+    "Tewkesbury, Gloucestershire",
+    "Cinderford, Gloucestershire",
+    "Wotton-under-Edge, Gloucestershire"
+   ],
+   "cinemas": [
+    "ElectricPictureHouseWottonUnderEdge",
+    "PalaceCinemaCinderford",
+    "RosesTheatreTewkesbury",
+    "VueCinemasStroud"
+   ]
+  },
+  {
+   "slug": "swadlincote",
+   "kind": "cluster",
+   "name": "Swadlincote",
+   "anchor": "Swadlincote, Derbyshire",
+   "nation": "England",
+   "county": "Derbyshire",
+   "qualifiedSlug": "swadlincote-derbyshire",
+   "lat": 52.774,
+   "lon": -1.5574,
+   "towns": [
+    "Swadlincote, Derbyshire",
+    "Uttoxeter, Staffordshire"
+   ],
+   "cinemas": [
+    "CinebowlUttoxeter",
+    "OdeonCinemaSwadlincote"
+   ]
+  },
+  {
+   "slug": "taunton",
+   "kind": "cluster",
+   "name": "Taunton",
+   "anchor": "Taunton, Somerset",
+   "nation": "England",
+   "county": "Somerset",
+   "qualifiedSlug": "taunton-somerset",
+   "lat": 51.0149,
+   "lon": -3.1029,
+   "towns": [
+    "Taunton, Somerset",
+    "Wellington, Somerset"
+   ],
+   "cinemas": [
+    "MerlinWellesleyWellington",
+    "OdeonCinemaTaunton",
+    "TauntonBrewhouse"
+   ]
+  },
+  {
+   "slug": "thetford",
+   "kind": "cluster",
+   "name": "Thetford",
+   "anchor": "Thetford, Norfolk",
+   "nation": "England",
+   "county": "Norfolk",
+   "qualifiedSlug": "thetford-norfolk",
+   "lat": 52.4167,
+   "lon": 0.75,
+   "towns": [
+    "Thetford, Norfolk",
+    "Stowmarket, Suffolk"
+   ],
+   "cinemas": [
+    "RegalStowmarket",
+    "TheLightThetford"
+   ]
+  },
+  {
+   "slug": "thirsk",
+   "kind": "town",
+   "name": "Thirsk",
+   "anchor": "Thirsk, North Yorkshire",
+   "nation": "England",
+   "county": "North Yorkshire",
+   "qualifiedSlug": "thirsk-north-yorkshire",
+   "lat": 54.233,
+   "lon": -1.3441,
+   "towns": [
+    "Thirsk, North Yorkshire"
+   ],
+   "cinemas": [
+    "RitzCinemaThirsk"
+   ]
+  },
+  {
+   "slug": "thurso",
+   "kind": "town",
+   "name": "Thurso",
+   "anchor": "Thurso, Highland",
+   "nation": "Scotland",
+   "county": "Highland",
+   "qualifiedSlug": "thurso-highland",
+   "lat": 58.5927,
+   "lon": -3.5259,
+   "towns": [
+    "Thurso, Highland"
+   ],
+   "cinemas": [
+    "MerlinCinemaThurso"
+   ]
+  },
+  {
+   "slug": "tiverton",
+   "kind": "cluster",
+   "name": "Tiverton",
+   "anchor": "Tiverton, Devon",
+   "nation": "England",
+   "county": "Devon",
+   "qualifiedSlug": "tiverton-devon",
+   "lat": 50.9024,
+   "lon": -3.4923,
+   "towns": [
+    "Tiverton, Devon",
+    "Sidmouth, Devon",
+    "Honiton, Devon",
+    "Minehead, Somerset"
+   ],
+   "cinemas": [
+    "RadwaySidmouth",
+    "TheAvenueCinemaMinehead",
+    "TheBeehiveHoniton",
+    "TivoliTiverton"
+   ]
+  },
+  {
+   "slug": "torquay",
+   "kind": "cluster",
+   "name": "Torquay",
+   "anchor": "Torquay, Devon",
+   "nation": "England",
+   "county": "Devon",
+   "qualifiedSlug": "torquay-devon",
+   "lat": 50.462,
+   "lon": -3.5252,
+   "towns": [
+    "Torquay, Devon",
+    "Newton Abbot, Devon",
+    "Exmouth, Devon",
+    "Teignmouth, Devon",
+    "Dartmouth, Devon"
+   ],
+   "cinemas": [
+    "AlexandraNewtonAbbot",
+    "NewCentralCinemaTorquay",
+    "PavilionsTeignmouth",
+    "SavoyScottCinemasExmouth",
+    "TheFlavel"
+   ]
+  },
+  {
+   "slug": "totnes",
+   "kind": "cluster",
+   "name": "Totnes",
+   "anchor": "Totnes, Devon",
+   "nation": "England",
+   "county": "Devon",
+   "qualifiedSlug": "totnes-devon",
+   "lat": 50.4311,
+   "lon": -3.6843,
+   "towns": [
+    "Totnes, Devon",
+    "Paignton, Devon"
+   ],
+   "cinemas": [
+    "BarnCinemaDartingtonArtCentre",
+    "TotnesCinema",
+    "VueCinemasTorbayPaignton"
+   ]
+  },
+  {
+   "slug": "trowbridge",
+   "kind": "cluster",
+   "name": "Trowbridge",
+   "anchor": "Trowbridge, Wiltshire",
+   "nation": "England",
+   "county": "Wiltshire",
+   "qualifiedSlug": "trowbridge-wiltshire",
+   "lat": 51.3189,
+   "lon": -2.2086,
+   "towns": [
+    "Trowbridge, Wiltshire",
+    "Chippenham, Wiltshire",
+    "Frome, Somerset"
+   ],
+   "cinemas": [
+    "OdeonCinemaTrowbridge",
+    "ReelCinemaChippenhamAstoria",
+    "WestwayCinemaFrome"
+   ]
+  },
+  {
+   "slug": "tunbridge-wells",
+   "kind": "cluster",
+   "name": "Tunbridge Wells",
+   "anchor": "Tunbridge Wells, Kent",
+   "nation": "England",
+   "county": "Kent",
+   "qualifiedSlug": "tunbridge-wells-kent",
+   "lat": 51.1332,
+   "lon": 0.2626,
+   "towns": [
+    "Tunbridge Wells, Kent",
+    "Sevenoaks, Kent",
+    "East Grinstead, West Sussex",
+    "Uckfield, East Sussex",
+    "Oxted, Surrey",
+    "Hawkhurst, Kent"
+   ],
+   "cinemas": [
+    "AtriumEastGrinstead",
+    "EverymanCinemaOxted",
+    "KinoHawkhurst",
+    "OdeonCinemaTunbridgeWells",
+    "PictureHouseUckfield",
+    "StagSevenoaks"
+   ]
+  },
+  {
+   "slug": "wellington-shropshire",
+   "kind": "cluster",
+   "name": "Wellington",
+   "anchor": "Wellington, Shropshire",
+   "nation": "England",
+   "county": "Shropshire",
+   "qualifiedSlug": "wellington-shropshire",
+   "lat": 52.7,
+   "lon": -2.5167,
+   "towns": [
+    "Wellington, Shropshire",
+    "Bridgnorth, Shropshire"
+   ],
+   "cinemas": [
+    "ReelCinemaBridgnorthMajestic",
+    "WellingtonOrbit"
+   ]
+  },
+  {
+   "slug": "weston-super-mare",
+   "kind": "town",
+   "name": "Weston-super-Mare",
+   "anchor": "Weston-super-Mare, Somerset",
+   "nation": "England",
+   "county": "Somerset",
+   "qualifiedSlug": "weston-super-mare-somerset",
+   "lat": 51.346,
+   "lon": -2.9766,
+   "towns": [
+    "Weston-super-Mare, Somerset"
+   ],
+   "cinemas": [
+    "CineworldWestonSuperMare",
+    "PlazaCinemaWestonSuperMare"
+   ]
+  },
+  {
+   "slug": "whitby",
+   "kind": "town",
+   "name": "Whitby",
+   "anchor": "Whitby, North Yorkshire",
+   "nation": "England",
+   "county": "North Yorkshire",
+   "qualifiedSlug": "whitby-north-yorkshire",
+   "lat": 54.4877,
+   "lon": -0.615,
+   "towns": [
+    "Whitby, North Yorkshire"
+   ],
+   "cinemas": [
+    "PavilionCinemaWhitby"
+   ]
+  },
+  {
+   "slug": "whitehaven",
+   "kind": "town",
+   "name": "Whitehaven",
+   "anchor": "Whitehaven, Cumbria",
+   "nation": "England",
+   "county": "Cumbria",
+   "qualifiedSlug": "whitehaven-cumbria",
+   "lat": 54.549,
+   "lon": -3.5841,
+   "towns": [
+    "Whitehaven, Cumbria"
+   ],
+   "cinemas": [
+    "GaietyCinemaWhitehaven"
+   ]
+  },
+  {
+   "slug": "widnes",
+   "kind": "cluster",
+   "name": "Widnes",
+   "anchor": "Widnes, Cheshire",
+   "nation": "England",
+   "county": "Cheshire",
+   "qualifiedSlug": "widnes-cheshire",
+   "lat": 53.3618,
+   "lon": -2.7341,
+   "towns": [
+    "Widnes, Cheshire",
+    "Wallasey, Merseyside",
+    "Bootle, Merseyside",
+    "Leigh, Greater Manchester",
+    "Speke, Merseyside",
+    "Bromborough, Merseyside",
+    "Crosby, Merseyside"
+   ],
+   "cinemas": [
+    "CineworldSpeke",
+    "LeighFilmFactory",
+    "OdeonLiverpoolSwitchIsland",
+    "OdeonLuxeBromborough",
+    "PlazaCommunityCinemaLiverpool",
+    "ReelCinemaWidnes",
+    "TheLightNewBrighton"
+   ]
+  },
+  {
+   "slug": "wisbech",
+   "kind": "town",
+   "name": "Wisbech",
+   "anchor": "Wisbech, Cambridgeshire",
+   "nation": "England",
+   "county": "Cambridgeshire",
+   "qualifiedSlug": "wisbech-cambridgeshire",
+   "lat": 52.6662,
+   "lon": 0.1594,
+   "towns": [
+    "Wisbech, Cambridgeshire"
+   ],
+   "cinemas": [
+    "LuxeWisbech",
+    "TheLightWisbech"
+   ]
+  },
+  {
+   "slug": "woodbridge-suffolk",
+   "kind": "town",
+   "name": "Woodbridge",
+   "anchor": "Woodbridge, Suffolk",
+   "nation": "England",
+   "county": "Suffolk",
+   "qualifiedSlug": "woodbridge-suffolk",
+   "lat": 52.0933,
+   "lon": 1.3204,
+   "towns": [
+    "Woodbridge, Suffolk"
+   ],
+   "cinemas": [
+    "RiversideTheatreWoodbridge"
+   ]
+  },
+  {
+   "slug": "workington",
+   "kind": "town",
+   "name": "Workington",
+   "anchor": "Workington, Cumbria",
+   "nation": "England",
+   "county": "Cumbria",
+   "qualifiedSlug": "workington-cumbria",
+   "lat": 54.6425,
+   "lon": -3.5441,
+   "towns": [
+    "Workington, Cumbria"
+   ],
+   "cinemas": [
+    "ParkwayWorkington",
+    "TheRitzCinemaWorkington"
+   ]
+  },
+  {
+   "slug": "worksop",
+   "kind": "town",
+   "name": "Worksop",
+   "anchor": "Worksop, Nottinghamshire",
+   "nation": "England",
+   "county": "Nottinghamshire",
+   "qualifiedSlug": "worksop-nottinghamshire",
+   "lat": 53.3018,
+   "lon": -1.124,
+   "towns": [
+    "Worksop, Nottinghamshire"
+   ],
+   "cinemas": [
+    "SavoyWorksop"
+   ]
+  },
+  {
+   "slug": "wrexham",
+   "kind": "cluster",
+   "name": "Wrexham",
+   "anchor": "Wrexham, Clwyd",
+   "nation": "Wales",
+   "county": "Clwyd",
+   "qualifiedSlug": "wrexham-clwyd",
+   "lat": 53.0466,
+   "lon": -2.9913,
+   "towns": [
+    "Wrexham, Clwyd",
+    "Oswestry, Shropshire"
+   ],
+   "cinemas": [
+    "MaonaCinemaOswestry",
+    "OdeonCinemaWrexham"
+   ]
+  },
+  {
+   "slug": "yeovil",
+   "kind": "cluster",
+   "name": "Yeovil",
+   "anchor": "Yeovil, Somerset",
+   "nation": "England",
+   "county": "Somerset",
+   "qualifiedSlug": "yeovil-somerset",
+   "lat": 50.9416,
+   "lon": -2.6321,
+   "towns": [
+    "Yeovil, Somerset",
+    "Bridport, Dorset"
+   ],
+   "cinemas": [
+    "CineworldYeovil",
+    "ElectricPalaceBridport"
+   ]
+  }
+ ],
+ "retired": {
+  "aberdeenshire": {
+   "page": "aberdeen-aberdeenshire",
+   "qualifiedSlug": "aberdeenshire",
+   "anchor": null
+  },
+  "antrim": {
+   "page": "lisburn",
+   "qualifiedSlug": "antrim",
+   "anchor": "Antrim, Antrim and Newtownabbey"
+  },
+  "armagh": {
+   "page": "lisburn",
+   "qualifiedSlug": "armagh",
+   "anchor": null
+  },
+  "ayrshire-and-arran": {
+   "page": "ayr",
+   "qualifiedSlug": "ayrshire-and-arran",
+   "anchor": null
+  },
+  "bedfordshire": {
+   "page": "bedford-bedfordshire",
+   "qualifiedSlug": "bedfordshire",
+   "anchor": null
+  },
+  "berkshire": {
+   "page": "reading-berkshire",
+   "qualifiedSlug": "berkshire",
+   "anchor": null
+  },
+  "buckinghamshire": {
+   "page": "high-wycombe",
+   "qualifiedSlug": "buckinghamshire",
+   "anchor": null
+  },
+  "cambridgeshire": {
+   "page": "peterborough",
+   "qualifiedSlug": "cambridgeshire",
+   "anchor": null
+  },
+  "central-scotland": {
+   "page": "stirling",
+   "qualifiedSlug": "central-scotland",
+   "anchor": null
+  },
+  "cheshire": {
+   "page": "altrincham",
+   "qualifiedSlug": "cheshire",
+   "anchor": null
+  },
+  "clwyd": {
+   "page": "colwyn-bay",
+   "qualifiedSlug": "clwyd",
+   "anchor": null
+  },
+  "cornwall": {
+   "page": "redruth",
+   "qualifiedSlug": "cornwall",
+   "anchor": null
+  },
+  "county-durham": {
+   "page": "durham-county-durham",
+   "qualifiedSlug": "county-durham",
+   "anchor": null
+  },
+  "cumbria": {
+   "page": "kendal",
+   "qualifiedSlug": "cumbria",
+   "anchor": null
+  },
+  "derbyshire": {
+   "page": "derby-derbyshire",
+   "qualifiedSlug": "derbyshire",
+   "anchor": null
+  },
+  "devon": {
+   "page": "torquay",
+   "qualifiedSlug": "devon",
+   "anchor": null
+  },
+  "dorset": {
+   "page": "christchurch",
+   "qualifiedSlug": "dorset",
+   "anchor": null
+  },
+  "down": {
+   "page": "lisburn",
+   "qualifiedSlug": "down",
+   "anchor": null
+  },
+  "dumfries-and-galloway": {
+   "page": "dumfries",
+   "qualifiedSlug": "dumfries-and-galloway",
+   "anchor": null
+  },
+  "dunbartonshire-argyll-bute": {
+   "page": "rothesay",
+   "qualifiedSlug": "dunbartonshire-argyll-bute",
+   "anchor": null
+  },
+  "dyfed": {
+   "page": "llanelli",
+   "qualifiedSlug": "dyfed",
+   "anchor": null
+  },
+  "east-sussex": {
+   "page": "hastings-east-sussex",
+   "qualifiedSlug": "east-sussex",
+   "anchor": null
+  },
+  "east-yorkshire": {
+   "page": "hull",
+   "qualifiedSlug": "east-yorkshire",
+   "anchor": null
+  },
+  "edinburgh-and-lothians": {
+   "page": "edinburgh",
+   "qualifiedSlug": "edinburgh-and-lothians",
+   "anchor": null
+  },
+  "essex": {
+   "page": "colchester",
+   "qualifiedSlug": "essex",
+   "anchor": null
+  },
+  "fermanagh": {
+   "page": "enniskillen",
+   "qualifiedSlug": "fermanagh",
+   "anchor": null
+  },
+  "fife": {
+   "page": "kirkcaldy",
+   "qualifiedSlug": "fife",
+   "anchor": null
+  },
+  "glamorgan": {
+   "page": "bridgend",
+   "qualifiedSlug": "glamorgan",
+   "anchor": null
+  },
+  "gloucestershire": {
+   "page": "stroud",
+   "qualifiedSlug": "gloucestershire",
+   "anchor": null
+  },
+  "guernsey": {
+   "page": "st-peter-port",
+   "qualifiedSlug": "guernsey",
+   "anchor": null
+  },
+  "gwent": {
+   "page": "cwmbran",
+   "qualifiedSlug": "gwent",
+   "anchor": null
+  },
+  "gwynedd": {
+   "page": "bangor-gwynedd",
+   "qualifiedSlug": "gwynedd",
+   "anchor": null
+  },
+  "hampshire": {
+   "page": "portsmouth-hampshire",
+   "qualifiedSlug": "hampshire",
+   "anchor": null
+  },
+  "herefordshire": {
+   "page": "hereford-herefordshire",
+   "qualifiedSlug": "herefordshire",
+   "anchor": null
+  },
+  "hertfordshire": {
+   "page": "hemel-hempstead",
+   "qualifiedSlug": "hertfordshire",
+   "anchor": null
+  },
+  "highlands-and-islands": {
+   "page": "inverness-highland",
+   "qualifiedSlug": "highlands-and-islands",
+   "anchor": null
+  },
+  "isle-of-man": {
+   "page": "douglas-isle-of-man",
+   "qualifiedSlug": "isle-of-man",
+   "anchor": null
+  },
+  "isle-of-wight": {
+   "page": "newport-isle-of-wight",
+   "qualifiedSlug": "isle-of-wight",
+   "anchor": null
+  },
+  "jersey": {
+   "page": "st-helier",
+   "qualifiedSlug": "jersey",
+   "anchor": null
+  },
+  "kent": {
+   "page": "chatham",
+   "qualifiedSlug": "kent",
+   "anchor": null
+  },
+  "lanarkshire": {
+   "page": "glasgow",
+   "qualifiedSlug": "lanarkshire",
+   "anchor": null
+  },
+  "lancashire": {
+   "page": "preston-lancashire",
+   "qualifiedSlug": "lancashire",
+   "anchor": null
+  },
+  "leicestershire": {
+   "page": "leicester",
+   "qualifiedSlug": "leicestershire",
+   "anchor": null
+  },
+  "lincolnshire": {
+   "page": "lincoln-lincolnshire",
+   "qualifiedSlug": "lincolnshire",
+   "anchor": null
+  },
+  "north-yorkshire": {
+   "page": "york-north-yorkshire",
+   "qualifiedSlug": "north-yorkshire",
+   "anchor": null
+  },
+  "northamptonshire": {
+   "page": "northampton",
+   "qualifiedSlug": "northamptonshire",
+   "anchor": null
+  },
+  "northumberland": {
+   "page": "south-shields",
+   "qualifiedSlug": "northumberland",
+   "anchor": null
+  },
+  "nottinghamshire": {
+   "page": "nottingham",
+   "qualifiedSlug": "nottinghamshire",
+   "anchor": null
+  },
+  "oxfordshire": {
+   "page": "oxford-oxfordshire",
+   "qualifiedSlug": "oxfordshire",
+   "anchor": null
+  },
+  "powys": {
+   "page": "builth-wells",
+   "qualifiedSlug": "powys",
+   "anchor": null
+  },
+  "renfrewshire": {
+   "page": "paisley",
+   "qualifiedSlug": "renfrewshire",
+   "anchor": null
+  },
+  "roxburgh-ettrick-and-lauderdale": {
+   "page": "hawick",
+   "qualifiedSlug": "roxburgh-ettrick-and-lauderdale",
+   "anchor": null
+  },
+  "sandwell": {
+   "page": "birmingham",
+   "qualifiedSlug": "sandwell",
+   "anchor": null
+  },
+  "shropshire": {
+   "page": "telford",
+   "qualifiedSlug": "shropshire",
+   "anchor": null
+  },
+  "somerset": {
+   "page": "bath",
+   "qualifiedSlug": "somerset",
+   "anchor": null
+  },
+  "south-yorkshire": {
+   "page": "doncaster",
+   "qualifiedSlug": "south-yorkshire",
+   "anchor": null
+  },
+  "staffordshire": {
+   "page": "cannock",
+   "qualifiedSlug": "staffordshire",
+   "anchor": null
+  },
+  "suffolk": {
+   "page": "ipswich",
+   "qualifiedSlug": "suffolk",
+   "anchor": null
+  },
+  "surrey": {
+   "page": "guildford",
+   "qualifiedSlug": "surrey",
+   "anchor": null
+  },
+  "tayside": {
+   "page": "dundee",
+   "qualifiedSlug": "tayside",
+   "anchor": null
+  },
+  "tyne-and-wear": {
+   "page": "newcastle-upon-tyne",
+   "qualifiedSlug": "tyne-and-wear",
+   "anchor": null
+  },
+  "tyrone": {
+   "page": "dungannon",
+   "qualifiedSlug": "tyrone",
+   "anchor": null
+  },
+  "warwickshire": {
+   "page": "coventry",
+   "qualifiedSlug": "warwickshire",
+   "anchor": null
+  },
+  "west-sussex": {
+   "page": "worthing",
+   "qualifiedSlug": "west-sussex",
+   "anchor": null
+  },
+  "west-yorkshire": {
+   "page": "leeds",
+   "qualifiedSlug": "west-yorkshire",
+   "anchor": null
+  },
+  "wiltshire": {
+   "page": "swindon",
+   "qualifiedSlug": "wiltshire",
+   "anchor": null
+  },
+  "worcestershire": {
+   "page": "redditch",
+   "qualifiedSlug": "worcestershire",
+   "anchor": null
+  },
+  "yorkshire": {
+   "page": "sheffield",
+   "qualifiedSlug": "yorkshire",
+   "anchor": null
+  }
+ }
+}

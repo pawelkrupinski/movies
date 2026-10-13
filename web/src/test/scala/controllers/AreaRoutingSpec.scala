@@ -140,10 +140,10 @@ class AreaRoutingSpec extends AnyFlatSpec with Matchers {
     catalogRegion("glasgow") shouldBe Some("Scotland")
     catalogRegion("cardiff") shouldBe Some("Wales")
     catalogSubregion("cardiff") shouldBe Some("Glamorgan")
-    // Cheshire collapsed onto its one place, so it reads correctly through
+    // Shetland collapsed onto its one place, so Lerwick reads correctly through
     // `region` alone — no subregion heading for a visitor to open for nothing.
-    catalogRegion("cheshire") shouldBe Some("England")
-    catalogSubregion("cheshire") shouldBe None
+    catalogRegion("lerwick") shouldBe Some("Scotland")
+    catalogSubregion("lerwick") shouldBe None
   }
 
   it should "group Germany's regions by Bundesland, the same way" in {

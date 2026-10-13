@@ -5,9 +5,13 @@ The UK roster is scraped via one `FlicksClient` per venue, wired by hand in two
 files:
 
   * common/src/main/scala/models/Cinema.scala        — the `case object … extends
-    Cinema(display, pill)` plus membership in a per-city grouping `val`.
+    Cinema(display, pill)`.
   * worker/.../services/cinemas/CinemaScraperCatalog.scala — a `flicks("<slug>",
-    Obj)` line inside the city's `<city>Scrapers` Seq.
+    Obj)` line inside a `<region>Scrapers` Seq.
+
+Which PAGE lists a venue is not wired by hand: it is generated from the venue's
+town (data/uk/scripts/build_pages.py → UkPages.scala), after the workflow has
+harvested and geocoded the new venue.
 
 UK chain venues (Cineworld / Vue / Showcase / Everyman / Odeon) are the exception:
 they are catalogued under their own-site client, and keep their Flicks slug only as
@@ -17,8 +21,9 @@ so both files are read when deciding what is already covered.
 Flicks publishes every cinema in sitemap-cinemas.xml. This tool diffs that list
 against the slugs we already wire (minus an exclude list of known-defunct venues)
 and, for each genuinely new venue, resolves its display name + coordinates +
-whether it currently lists sessions, assigns it to the nearest wired UK city by
-great-circle distance, and splices compilable Scala into both files.
+whether it currently lists sessions, wires it into the `<region>Scrapers` val of
+the nearest already-wired venue (great-circle distance over data/uk/venues.json),
+and splices compilable Scala into both files.
 
 Anything it can't wire safely — a London venue (needs a manual area-group
 assignment), an object-name collision, missing coordinates, or a venue with no
@@ -36,6 +41,7 @@ from __future__ import annotations
 import argparse
 import concurrent.futures as futures
 import datetime as dt
+import json
 import math
 import os
 import re
@@ -50,7 +56,8 @@ SESSION_DAYS = 7  # today .. +6, matching FlicksClient.daysAhead
 
 REPO = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
 CINEMA_SCALA = os.path.join(REPO, "common/src/main/scala/models/Cinema.scala")
-CITY_SCALA = os.path.join(REPO, "common/src/main/scala/models/City.scala")
+UK_VENUES = os.path.join(REPO, "data/uk/venues.json")
+UK_PAGES = os.path.join(REPO, "data/uk/pages.json")
 CATALOG_SCALA = os.path.join(
     REPO, "worker/src/main/scala/services/cinemas/CinemaScraperCatalog.scala"
 )
@@ -109,52 +116,43 @@ def load_exclude(text: str) -> set[str]:
     return out
 
 
-# ── City model (parsed from City.scala) ─────────────────────────────────────
+# ── Where a new venue is wired (read off the catalog and data/uk) ────────────
 @dataclass
-class City:
-    obj: str          # Scala object name, e.g. "London"
-    slug: str         # City.slug == flicks region slug, e.g. "london"
-    lat: float
-    lon: float
-    group_val: str    # Cinema grouping val, e.g. "london" (Cinema.london)
+class Group:
+    """The catalog `<region>Scrapers` val a new venue is wired into: the one its
+    nearest already-wired venue is in. Which PAGE lists the venue is not decided
+    here — `data/uk/scripts/build_pages.py` places it by its town, and the
+    catalog files every UK scraper under that page whatever val it sits in."""
+    val: str          # e.g. "cardiffScrapers"
+    near: str         # the nearest wired venue's case object
+    km: float
+    london: bool      # that venue is on the London page
 
 
-def parse_uk_cities(city_text: str) -> list[City]:
-    """UK City case objects with coordinates and their Cinema grouping val.
+def scraper_vals(catalog_text: str) -> dict[str, str]:
+    """Every venue object the catalog wires → the `<region>Scrapers` val it is in."""
+    out = {}
+    for val, body in re.findall(
+            r"private val (\w+Scrapers): Seq\[CinemaScraper\] = Seq\((.*?)\n  \)", catalog_text, re.S):
+        for obj in re.findall(r"\b([A-Z]\w*)\)", body):
+            out.setdefault(obj, val)
+    return out
 
-    Only the objects listed in `allUkCities` are returned, so PL/DE cities never
-    become assignment targets.
-    """
-    m = re.search(r"val allUkCities:\s*Seq\[City\]\s*=\s*Seq\((.*?)\)", city_text, re.S)
-    if not m:
-        raise SystemExit("could not find allUkCities in City.scala")
-    uk_objs = [o.strip() for o in m.group(1).split(",") if o.strip()]
 
-    cities = []
-    for obj in uk_objs:
-        # Two declaration shapes, and this has to read BOTH:
-        #   case object <obj> extends City("slug", CityLabels(...), <lat>, <lon>, ZoneId.of(...)) {
-        #   case object <obj> extends UkCity("slug", CityLabels(...), <lat>, <lon>) {
-        # The second is what every UK city is today — they were folded onto a
-        # `sealed abstract class UkCity` that supplies Europe/London once instead
-        # of 79 times, so the argument list ENDS at the longitude. Matching only
-        # the first form is what killed the scheduled run on 2026-09-07 with
-        # "could not parse City case object London". Longitude is therefore
-        # followed by a comma OR the closing paren, and the class name is
-        # `City` or a `<Xx>City` prefix, so a future DeCity/EsCity lands here too.
-        cm = re.search(
-            rf'case object {obj} extends \w*City\(\s*"([^"]+)",\s*CityLabels\([^)]*\),\s*'
-            rf"(-?\d+\.?\d*),\s*(-?\d+\.?\d*)\s*[,)]",
-            city_text,
-        )
-        gm = re.search(rf"case object {obj} extends \w*City\(.*?Cinema\.(\w+)", city_text, re.S)
-        if not cm or not gm:
-            raise SystemExit(
-                f"could not parse City case object {obj}. Expected `extends City(` or "
-                f"`extends <Country>City(` followed by a quoted slug, CityLabels(...), "
-                f"latitude and longitude — check whether City.scala changed shape.")
-        cities.append(City(obj, cm.group(1), float(cm.group(2)), float(cm.group(3)), gm.group(1)))
-    return cities
+def nearest_group(lat, lon, venues: list[dict], vals: dict[str, str], london: set[str]) -> Group | None:
+    """The val the wired venue nearest (lat, lon) is in. `venues`: data/uk/venues.json
+    rows (cinemaObject, lat, lon); only those the catalog wires count."""
+    placed = [v for v in venues if v["cinemaObject"] in vals and v.get("lat") is not None]
+    if not placed:
+        return None
+    v = min(placed, key=lambda v: haversine(lat, lon, v["lat"], v["lon"]))
+    return Group(vals[v["cinemaObject"]], v["cinemaObject"], haversine(lat, lon, v["lat"], v["lon"]),
+                 v["cinemaObject"] in london)
+
+
+def london_venues(pages_json: str) -> set[str]:
+    """The venues the London page lists, off data/uk/pages.json."""
+    return set(next(p for p in json.loads(pages_json)["pages"] if p["slug"] == "london")["cinemas"])
 
 
 def haversine(lat1, lon1, lat2, lon2) -> float:
@@ -164,11 +162,6 @@ def haversine(lat1, lon1, lat2, lon2) -> float:
     dl = math.radians(lon2 - lon1)
     a = math.sin(dp / 2) ** 2 + math.cos(p1) * math.cos(p2) * math.sin(dl / 2) ** 2
     return 2 * r * math.asin(math.sqrt(a))
-
-
-def nearest_city(lat, lon, cities: list[City]) -> tuple[City, float]:
-    best = min(cities, key=lambda c: haversine(lat, lon, c.lat, c.lon))
-    return best, haversine(lat, lon, best.lat, best.lon)
 
 
 # ── Per-venue metadata from the Flicks cinema page ──────────────────────────
@@ -242,7 +235,7 @@ class Wired:
     slug: str
     obj: str
     display: str
-    city: City
+    group: Group
 
 
 @dataclass
@@ -283,16 +276,12 @@ def existing_objects(cinema_text: str) -> set[str]:
     return set(re.findall(r"case object (\w+) extends Cinema\(", cinema_text))
 
 
-def scraper_val_for(catalog_text: str, city_slug: str) -> str | None:
-    """The `<city>Scrapers` val name mapped to this city slug in baseByCity."""
-    m = re.search(rf'"{re.escape(city_slug)}"\s*->\s*(\w+)', catalog_text)
-    return m.group(1) if m else None
-
-
-def build_plan(cinema_text, catalog_text, cities, metas, gone_dead, gone_live) -> Plan:
-    """Pure planning step (no I/O) — decides wire vs park for each new venue."""
+def build_plan(cinema_text, catalog_text, venues, london, metas, gone_dead, gone_live) -> Plan:
+    """Pure planning step (no I/O) — decides wire vs park for each new venue.
+    `venues`: data/uk/venues.json; `london`: the venues the London page lists."""
     plan = Plan(gone_dead=sorted(gone_dead), gone_live=sorted(gone_live))
     taken = existing_objects(cinema_text)
+    vals = scraper_vals(catalog_text)
     for meta in metas:
         if not meta.display:
             plan.park.append(Parked(meta.slug, "could not read cinema page / display name"))
@@ -307,15 +296,16 @@ def build_plan(cinema_text, catalog_text, cities, metas, gone_dead, gone_live) -
         if not obj or obj in taken:
             plan.park.append(Parked(meta.slug, f"object-name collision/empty ({obj!r})", meta.display))
             continue
-        city, _ = nearest_city(meta.lat, meta.lon, cities)
-        if city.group_val == "london":
-            plan.park.append(Parked(meta.slug, "nearest city is London — needs manual area-group assignment", meta.display))
+        group = nearest_group(meta.lat, meta.lon, venues, vals, london)
+        if group is None:
+            plan.park.append(Parked(meta.slug, "no wired UK venue to place it beside", meta.display))
             continue
-        if scraper_val_for(catalog_text, city.slug) is None:
-            plan.park.append(Parked(meta.slug, f"no scrapers val for city {city.slug!r}", meta.display))
+        if group.london:
+            plan.park.append(Parked(meta.slug, "nearest venue is on the London page — needs manual "
+                                               "area-group assignment", meta.display))
             continue
         taken.add(obj)
-        plan.wire.append(Wired(meta.slug, obj, meta.display, city))
+        plan.wire.append(Wired(meta.slug, obj, meta.display, group))
     return plan
 
 
@@ -335,14 +325,9 @@ def apply_plan(cinema_text: str, catalog_text: str, plan: Plan) -> tuple[str, st
             r"case object \w+ extends Cinema\([^\n]*\)\n",
             f'case object {w.obj} extends Cinema("{w.display}", "{w.display}")\n',
         )
-        # 2) membership in the city grouping val: insert before its closing ')'.
-        grp = re.compile(rf"(val {w.city.group_val}: Seq\[Cinema\] = Seq\((?:.*?))\)", re.S)
-        cinema_text = grp.sub(lambda m: f"{m.group(1)}, {w.obj})", cinema_text, count=1)
-
-        # 3) flicks(...) line in the city's <city>Scrapers Seq, on its own line
-        #    just before the val's closing `\n  )`.
-        sval = scraper_val_for(catalog_text, w.city.slug)
-        sre = re.compile(rf"(private val {sval}: Seq\[CinemaScraper\] = Seq\((?:.*?))(\n  \))", re.S)
+        # 2) flicks(...) line in the nearest venue's <region>Scrapers Seq, on its
+        #    own line just before the val's closing `\n  )`.
+        sre = re.compile(rf"(private val {w.group.val}: Seq\[CinemaScraper\] = Seq\((?:.*?))(\n  \))", re.S)
         catalog_text = sre.sub(
             lambda m: f'{m.group(1)}\n    flicks("{w.slug}", {w.obj}),{m.group(2)}', catalog_text, count=1
         )
@@ -355,7 +340,8 @@ def render_report(plan: Plan, applied: bool) -> str:
     verb = "Wired" if applied else "Would wire"
     lines.append(f"### {verb} {len(plan.wire)} new cinema(s)")
     for w in plan.wire:
-        lines.append(f"- **{w.display}** (`{w.slug}`) → {w.city.obj} — `{w.obj}`")
+        lines.append(f"- **{w.display}** (`{w.slug}`) → `{w.group.val}`, beside `{w.group.near}` "
+                     f"({w.group.km:.0f} km) — `{w.obj}`")
     if not plan.wire:
         lines.append("- _none_")
     lines.append("")
@@ -393,7 +379,8 @@ def main(argv=None) -> int:
 
     cinema_text = read_text(CINEMA_SCALA)
     catalog_text = read_text(CATALOG_SCALA)
-    cities = parse_uk_cities(read_text(CITY_SCALA))
+    venues = json.loads(read_text(UK_VENUES))
+    london = london_venues(read_text(UK_PAGES))
 
     flicks = sitemap_slugs(fetch(SITEMAP))
     wired = wired_slugs(catalog_text, read_text(CHAIN_FALLBACK_SCALA))
@@ -420,7 +407,7 @@ def main(argv=None) -> int:
         gone_dead, gone_live = partition_gone(gone, lambda s: liveness[s])
     print(f"gone → retirement candidates: {len(gone_dead)}  live index-gaps: {len(gone_live)}", file=sys.stderr)
 
-    plan = build_plan(cinema_text, catalog_text, cities, metas, gone_dead, gone_live)
+    plan = build_plan(cinema_text, catalog_text, venues, london, metas, gone_dead, gone_live)
 
     if args.apply and plan.wire:
         new_cinema, new_catalog = apply_plan(cinema_text, catalog_text, plan)

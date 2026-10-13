@@ -12,7 +12,7 @@ import play.api.{ApplicationLoader, Environment}
  * Where this deployment's URLs START.
  *
  * Three of the four countries share `showtimes.cc` and are told apart by a
- * leading path segment (`showtimes.cc/uk/kent/`); Poland keeps `kinowo.net/`
+ * leading path segment (`showtimes.cc/uk/canterbury/`); Poland keeps `kinowo.net/`
  * at the root. One process still serves one country against one database — only
  * the address moved — so the whole application is MOUNTED at that segment via
  * Play's `play.http.context`, which the loader derives from the country rather
@@ -90,9 +90,9 @@ class AppMountPointSpec extends AnyFlatSpec with Matchers {
   // against.
   "reverse routes" should "carry the mount point on every kind of URL" in {
     new controllers.ReverseLandingController("/uk/").index().url shouldBe "/uk/"
-    new controllers.ReverseMovieController("/uk/").index("kent").url shouldBe "/uk/kent/"
-    new controllers.ReverseMovieController("/uk/").filmBySlug("kent", "dune").url shouldBe
-      "/uk/kent/movie/dune"
+    new controllers.ReverseMovieController("/uk/").index("canterbury").url shouldBe "/uk/canterbury/"
+    new controllers.ReverseMovieController("/uk/").filmBySlug("canterbury", "dune").url shouldBe
+      "/uk/canterbury/movie/dune"
     new controllers.ReverseMovieController("/uk/").sitemap.url shouldBe "/uk/sitemap.xml"
     new controllers.ReverseAssets("/uk/").versioned(controllers.Assets.Asset("js/shared.js")).url shouldBe
       "/uk/assets/js/shared.js"
@@ -112,7 +112,7 @@ class AppMountPointSpec extends AnyFlatSpec with Matchers {
   it should "claim nothing else, so the mounted router still owns every page" in {
     val routes = AppLoader.rootOperationalRoutes(stubAction("health"), stubAction("ready"), stubAction("metrics"))
     routes.handlerFor(FakeRequest("GET", "/")) shouldBe empty
-    routes.handlerFor(FakeRequest("GET", "/uk/kent/")) shouldBe empty
+    routes.handlerFor(FakeRequest("GET", "/uk/canterbury/")) shouldBe empty
     routes.handlerFor(FakeRequest("GET", "/uk/health")) shouldBe empty
     routes.handlerFor(FakeRequest("GET", "/uk/ready")) shouldBe empty
     routes.handlerFor(FakeRequest("POST", "/health")) shouldBe empty

@@ -95,8 +95,8 @@ class LandingViewSpec extends AnyFlatSpec with Matchers {
     usHtml should not include heading("District of Columbia")
   }
 
-  /** The UK picks a COUNTY — Cheshire, Kent — or one of the cities big enough to
-   *  be a region of its own, found under its nation's heading. */
+  /** The UK picks a town page — London, Leeds, "Penrith area" — found under its
+   *  county under its nation. */
   private val ukHtml =
     views.html.landing(models.Country.UnitedKingdom, isApex = false, picker)(using testsupport.TestMessages.forLang("en")).body
 
@@ -118,28 +118,19 @@ class LandingViewSpec extends AnyFlatSpec with Matchers {
 
   it should "pull a county's single place up a level, so most of the list stays one tap deep" in {
     // A heading you open to find one row underneath is a tap that buys nothing.
-    // A Flicks region already IS Cheshire, so those two names agree; Merseyside
-    // and Greater Manchester collapse onto names that differ. Only the counties
-    // really arranging several cost a second tap — which is what keeps two
-    // levels readable. See `CityGroup.soleCity`.
-    placeLink(ukHtml, "cheshire") should not include "data-alias"
-    ukHtml should not include """data-subregion="Cheshire""""
-    ukHtml should not include """data-subregion="Greater Manchester""""
-    ukHtml should not include """data-subregion="Merseyside""""
+    // Shetland holds Lerwick alone, Greater London London: only the counties
+    // really arranging several cost a second tap. See `CityGroup.soleCity`.
+    ukHtml should not include """data-subregion="Shetland""""
+    ukHtml should not include """data-subregion="Greater London""""
+    placeLink(ukHtml, "bristol") should not include "data-alias"   // Bristol over Bristol: nothing to add
 
     // …and the county's own name rides along so the search still finds the row
     // by it: dropping the heading saves a tap, it does not hide the county.
-    placeLink(ukHtml, "liverpool") should include ("""data-alias="Merseyside"""")
-    placeLink(ukHtml, "manchester") should include ("""data-alias="Greater Manchester"""")
+    placeLink(ukHtml, "lerwick") should include ("""data-alias="Shetland"""")
+    placeLink(ukHtml, "london") should include ("""data-alias="Greater London"""")
 
-    // Glamorgan really groups two, so it keeps its heading.
-    ukHtml should include ("""data-subregion="Glamorgan"""")
-    ukHtml should not include """data-subregion="West Midlands""""
-
-    // A page folded into its neighbour (`City.ukMergedPages`) is findable by its
-    // old name on the row that absorbed it, beside the collapsed county's.
-    placeLink(ukHtml, "birmingham") should include ("""data-alias="West Midlands, Dudley, Sandwell"""")
-    placeLink(ukHtml, "glasgow") should include ("""data-alias="Lanarkshire"""")
+    // West Midlands really groups several, so it keeps its heading.
+    ukHtml should include ("""data-subregion="West Midlands"""")
   }
 
   /** Germany picks a town page — Köln, München, "Bayreuth und Umgebung" — found under its Bundesland. */

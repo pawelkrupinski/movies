@@ -45,11 +45,10 @@ class RetiredVenueCensus(
 
   // "Future" is judged on each venue's OWN clock: a retired Los Angeles venue's 21:30 is still ahead
   // when New York is past midnight. The live roster no longer lists a retired venue, so its city is
-  // found among every modelled city (disabled ones too); a venue none lists falls back to the
-  // country's first city.
+  // found among every city; a venue none lists falls back to the country's first city.
   private val fallbackZone: ZoneId = country.cities.headOption.map(_.zoneId).getOrElse(java.time.ZoneOffset.UTC)
   private def zoneOf(venue: String): ZoneId =
-    models.City.allModelled.find(_.cinemas.exists(_.displayName == venue)).fold(fallbackZone)(_.zoneId)
+    models.City.all.find(_.cinemas.exists(_.displayName == venue)).fold(fallbackZone)(_.zoneId)
 
   Collections.foreach(coll => rows.labelValues(countryCode, coll).set(0.0))
   futureShowtimes.labelValues(countryCode).set(0.0)

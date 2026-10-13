@@ -123,8 +123,8 @@ class LandingApexSpec extends AnyFlatSpec with Matchers {
     val uk = new LandingController(Helpers.stubControllerComponents(), models.Country.UnitedKingdom, PickerFragments.rendered())
     val res = uk.index().apply(FakeRequest("GET", "/")
       .withHeaders("X-Forwarded-Host" -> "showtimes.cc")
-      .withCookies(play.api.mvc.Cookie("city", "kent")))
-    redirectLocation(res) shouldBe Some("/uk/kent/")
+      .withCookies(play.api.mvc.Cookie("city", "canterbury")))
+    redirectLocation(res) shouldBe Some("/uk/canterbury/")
   }
 
   it should "be unprefixed on the country that owns its domain" in {

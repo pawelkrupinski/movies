@@ -36,11 +36,11 @@ class CityTrailingSlashRedirectSpec extends AnyFlatSpec with Matchers {
   }
 
   // Play strips `play.http.context` before matching, so a Location built from
-  // the route's own `:city` would send `showtimes.cc/uk/kent` to
-  // `showtimes.cc/kent` — off this country's site entirely.
+  // the route's own `:city` would send `showtimes.cc/uk/canterbury` to
+  // `showtimes.cc/canterbury` — off this country's site entirely.
   "a country that shares the brand domain" should "keep its mount prefix in the redirect" in {
     val uk = controller(models.Country.UnitedKingdom)
-    locationOf(uk.indexNoTrailingSlash("kent").apply(FakeRequest(GET, "/kent"))) shouldBe "/uk/kent/"
+    locationOf(uk.indexNoTrailingSlash("canterbury").apply(FakeRequest(GET, "/canterbury"))) shouldBe "/uk/canterbury/"
   }
 
   // The route is a catch-all for ANY single top-level segment — every mistyped

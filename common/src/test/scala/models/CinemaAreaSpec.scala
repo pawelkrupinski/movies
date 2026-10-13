@@ -14,7 +14,7 @@ class CinemaAreaSpec extends AnyFlatSpec with Matchers {
 
   /** Every city that opts into areas, disabled ones included — the invariants
    *  below hold for the model, not just for the currently-live roster. */
-  private val splitCities: Seq[City] = City.allModelled.filter(_.isSplit)
+  private val splitCities: Seq[City] = City.all.filter(_.isSplit)
 
   "Every split city" should "partition its cinemas with none dropped or duplicated" in {
     splitCities should not be empty

@@ -224,7 +224,7 @@ object Country {
   ) {
     val cities: Seq[City] = City.ukCities
     /** The four nations plus the Crown Dependencies, each over the counties and
-     *  cities inside it — 76 places is not an A-to-Z anybody reads. */
+     *  pages inside it — 264 pages is not an A-to-Z anybody reads. */
     override val cityGroups: Seq[CityGroup] = City.ukNations
     // Britain subtitles rather than dubs: `SUB` (captions, 4,000 screenings on
     // 2026-09-02) is the one a visitor filters for, `DUB` the rare foreign-language

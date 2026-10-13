@@ -1220,15 +1220,14 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
         """["England","Scotland","Northern Ireland","Wales","Crown Dependencies"]"""
 
       clickPickerRow(page, "England")
-      // All of it is places, because every county holding ONE place was
-      // pulled up a level (`CityGroup.soleCity`) — including where the
-      // county's own name differs from the place's (Merseyside → Liverpool,
-      // West Midlands → Birmingham).
-      pickerRowLabels(page) should include ("Cheshire")
-      pickerRowLabels(page) should include ("Liverpool")
-      pickerRowLabels(page) should include ("Birmingham")
-      pickerRowLabels(page) should not include "Merseyside"
-      pickerRowLabels(page) should not include "West Midlands"
+      // A county holding ONE place is pulled up a level (`CityGroup.soleCity`)
+      // — including where the county's own name differs from the place's
+      // (Greater London → London); one holding several is a heading.
+      pickerRowLabels(page) should include ("Bristol")
+      pickerRowLabels(page) should include ("London")
+      pickerRowLabels(page) should include ("West Midlands")
+      pickerRowLabels(page) should not include "Greater London"
+      pickerRowLabels(page) should not include "Birmingham"
       page.eval("document.getElementById('picker-back-row').click()")
 
       clickPickerRow(page, "Wales")
@@ -1237,19 +1236,19 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // The "Glamorgan" heading sits interleaved in its own alphabetical
       // position — between Dyfed and Gwent, not stranded ahead of every direct
       // place in Wales — the fix for the reported "West Midlands out of order"
-      // bug, back when West Midlands was a heading.
+      // bug.
       val wales = Json.parse(pickerRowLabels(page)).as[Seq[String]]
       wales.indexOf("Dyfed")     should be < wales.indexOf("Glamorgan")
       wales.indexOf("Glamorgan") should be < wales.indexOf("Gwent")
 
       clickPickerRow(page, "Glamorgan")
       page.evalString("document.getElementById('picker-subtitle').textContent") shouldBe "Wales — Glamorgan"
-      pickerRowLabels(page) shouldBe """["Cardiff","Glamorgan"]"""
+      pickerRowLabels(page) shouldBe """["Bridgend area","Cardiff","Merthyr Tydfil area","Swansea"]"""
 
       // Back pops ONE level at a time — county first, then nation.
       page.eval("document.getElementById('picker-back-row').click()")
       pickerRowLabels(page) should include ("Glamorgan")
-      pickerRowLabels(page) should include ("Powys")
+      pickerRowLabels(page) should include ("Dyfed")
       page.eval("document.getElementById('picker-back-row').click()")
       pickerRowLabels(page) shouldBe
         """["England","Scotland","Northern Ireland","Wales","Crown Dependencies"]"""
@@ -1273,10 +1272,9 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     onNestedLanding { page =>
       // "Glamorgan" is a COUNTY two levels below the root the box shows
       // (nation → county → place) — the search scans the whole country
-      // regardless of level, so it surfaces from the very first screen,
-      // ahead of the place of the same name inside it.
+      // regardless of level, so it surfaces from the very first screen.
       typePickerSearch(page, "glamorgan")
-      pickerRowLabels(page) shouldBe """["Glamorgan","Glamorgan"]"""
+      pickerRowLabels(page) shouldBe """["Glamorgan"]"""
 
       // Picking it has to land on the right NATION too, not just the
       // county — `buildSearchRows` carries the parent region along for
@@ -1284,7 +1282,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // nation it belongs to.
       clickPickerRow(page, "Glamorgan")
       page.evalString("document.getElementById('picker-subtitle').textContent") shouldBe "Wales — Glamorgan"
-      pickerRowLabels(page) shouldBe """["Cardiff","Glamorgan"]"""
+      pickerRowLabels(page) shouldBe """["Bridgend area","Cardiff","Merthyr Tydfil area","Swansea"]"""
     }
   }
 

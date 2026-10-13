@@ -85,15 +85,11 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     names should contain ("Rich Mix Shoreditch")
   }
 
-  "Country.UnitedKingdom.cities" should "be the full modelled UK roster (every Flicks region live)" in {
-    // Every one of the 76 modelled regions is live — web serves them and the
-    // worker scrapes them. `activeUkCities` currently equals the full roster, so
-    // `ukCities` is `allUkCities` unchanged (in its declared order).
-    City.ukCities shouldBe City.allUkCities
-    City.ukCities should have size 76
-    City.activeUkCities shouldBe City.allUkCities.toSet
-    // Formerly-disabled regions (e.g. Norwich) are now live too.
-    City.ukCities.map(_.slug) should contain("norwich")
+  "Country.UnitedKingdom.cities" should "be London and every generated town and cluster page" in {
+    City.ukCities.head shouldBe London
+    City.ukCities.tail shouldBe City.ukPages
+    City.ukCities should have size (UkPages.rows.size + 1)
+    City.ukCities.map(_.slug) should contain allOf ("norwich", "manchester", "peterhead")
   }
 
   "Country.Germany" should "be a German, Filmweb-free deployment (Filmstarts-sourced) on its own database" in {
@@ -190,7 +186,7 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     names.indexOf("Köln") should be < names.indexOf("Krefeld")
   }
 
-  it should "group the UK by nation, then by county — the two levels above a Flicks region" in {
+  it should "group the UK by nation, then by county — the two levels above a town" in {
     Country.UnitedKingdom.cityGroups.map(_.label) shouldBe
       Seq("England", "Scotland", "Northern Ireland", "Wales", "Crown Dependencies")
     // A nation holds counties, never places directly.
@@ -204,44 +200,37 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     def nation(label: String): CityGroup =
       Country.UnitedKingdom.cityGroups.find(_.label == label).getOrElse(fail(s"no nation $label"))
 
-    nation("England").allCities.map(_.slug)          should contain allOf ("london", "cheshire", "liverpool", "kent")
-    nation("Scotland").allCities.map(_.slug)         should contain allOf ("glasgow", "fife", "highlands-and-islands")
-    nation("Wales").allCities.map(_.slug)            should contain allOf ("cardiff", "gwynedd", "powys")
-    nation("Northern Ireland").allCities.map(_.slug) should contain allOf ("belfast", "antrim", "tyrone")
+    nation("England").allCities.map(_.slug)          should contain allOf ("london", "chester-cheshire", "liverpool")
+    nation("Scotland").allCities.map(_.slug)         should contain allOf ("glasgow", "inverness-highland", "lerwick")
+    nation("Wales").allCities.map(_.slug)            should contain allOf ("cardiff", "bangor-gwynedd", "newport-gwent")
+    nation("Northern Ireland").allCities.map(_.slug) should contain allOf ("belfast", "lisburn", "londonderry")
     nation("Crown Dependencies").allCities.map(_.slug) should contain theSameElementsAs
-      Seq("guernsey", "isle-of-man", "jersey")
+      Seq("st-peter-port", "douglas-isle-of-man", "st-helier")
 
-    // The county level earns its keep on the entries that are a CITY rather than
-    // a county: Cardiff beside the rest of Glamorgan.
+    // The county is the level a visitor knows a town by: Cardiff beside Swansea
+    // in Glamorgan, Leeds beside Bradford in West Yorkshire.
     val glamorgan = nation("Wales").groups.find(_.label == "Glamorgan").getOrElse(fail("no Glamorgan"))
-    glamorgan.cities.map(_.slug) shouldBe Seq("cardiff", "glamorgan")
+    glamorgan.cities.map(_.slug) should contain allOf ("cardiff", "swansea")
     // Counties are alphabetical under British collation BY WHAT THEY SHOW, and
     // nations are not — England leads by size. Sorting on the county name would
-    // file Manchester under "Greater Manchester" and Liverpool under
-    // "Merseyside", giving a list that reads out of order.
+    // file Shetland's one page, Lerwick, under S, giving a list that reads out
+    // of order.
     val collator = java.text.Collator.getInstance(Locale.forLanguageTag("en-GB"))
-    val shown    = nation("England").groups.map(_.displayLabel)
+    val shown    = nation("Scotland").groups.map(_.displayLabel)
     shown shouldBe shown.sortWith((a, b) => collator.compare(a, b) < 0)
-    shown should contain allOf ("Liverpool", "Manchester", "Cheshire", "Birmingham")
-    shown.indexOf("Liverpool")  should be < shown.indexOf("Manchester")
-    shown.indexOf("Manchester") should be < shown.indexOf("Norwich")
+    shown should contain allOf ("Lerwick", "Glasgow", "Highland", "Tayside")
 
     // A NATION is never a place: nothing is served at `/scotland/`.
     Country.UnitedKingdom.cityGroups.map(_.slug).flatMap(Country.UnitedKingdom.bySlug.get) shouldBe empty
     Country.UnitedKingdom.bySlug.get("west-midlands")  shouldBe None
     Country.UnitedKingdom.bySlug.get("greater-london") shouldBe None
 
-    // A COUNTY's slug is a different matter, and deliberately so: most are their
-    // one place's (`Slugify.stable("Cheshire")` is `cheshire`), which is why they
-    // collapse onto it, and two counties that arrange several still share a slug
-    // with a member — Glamorgan holds Cardiff and Glamorgan, Antrim holds Antrim
-    // and Belfast. The same shape the US has, where the state "New York" holds a
-    // metro of that name. Harmless because nothing ROUTES a group slug: the
-    // picker links `city.slug` and nothing else, which `LandingViewSpec` holds.
+    // A COUNTY's slug may be a place's too (`glasgow` is the county and the
+    // city), the shape the US has, where the state "New York" holds a city of
+    // that name. Harmless because nothing ROUTES a group slug: the picker links
+    // `city.slug` and nothing else, which `LandingViewSpec` holds.
     val counties = Country.UnitedKingdom.cityGroups.flatMap(_.groups)
-    counties.find(_.label == "Cheshire").get.slug shouldBe "cheshire"
-    counties.filter(_.soleCity.isEmpty).map(_.label) should contain theSameElementsAs
-      Seq("Glamorgan", "Antrim")
+    counties.find(_.label == "Glasgow").get.slug shouldBe "glasgow"
   }
 
   it should "group Germany by Bundesland, from the roster's own field" in {
@@ -319,22 +308,16 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     // ANY county holding one place collapses onto it, whatever the two are
     // called — a heading you open to find a single row is a tap that buys
     // nothing. That is what keeps a two-level list readable.
-    county("Cheshire").soleCity.map(_.slug)           shouldBe Some("cheshire")
-    county("Greater Manchester").soleCity.map(_.slug) shouldBe Some("manchester")
-    county("Merseyside").soleCity.map(_.slug)         shouldBe Some("liverpool")
-    county("Norfolk").soleCity.map(_.slug)            shouldBe Some("norwich")
-    county("West Midlands").soleCity.map(_.slug)      shouldBe Some("birmingham")
-    // England has no county arranging several places any more; Wales and
-    // Northern Ireland keep a heading each (Glamorgan, Antrim).
-    england.groups.count(_.soleCity.isEmpty) shouldBe 0
+    county("Greater London").soleCity.map(_.slug) shouldBe Some("london")
+    county("Bristol").soleCity.map(_.slug)        shouldBe Some("bristol")
+    county("West Midlands").soleCity              shouldBe None   // Birmingham, Coventry, Dudley…
 
     // A collapsed county's own name is kept as a search alias where it differs,
     // so dropping the heading saves a tap without making the county unfindable.
-    county("Merseyside").collapsedAlias         shouldBe Some("Merseyside")
-    county("Greater Manchester").collapsedAlias shouldBe Some("Greater Manchester")
+    county("Greater London").collapsedAlias shouldBe Some("Greater London")
     // …and there is nothing to remember when the two names already agree.
-    county("Cheshire").collapsedAlias    shouldBe None
-    county("Cheshire").searchAliases     shouldBe empty
+    county("Bristol").collapsedAlias    shouldBe None
+    county("Bristol").searchAliases     shouldBe empty
 
     // A nation is never a place.
     Country.UnitedKingdom.cityGroups.flatMap(_.soleCity) shouldBe empty
@@ -415,7 +398,7 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     // silently collapse to whichever is built LAST, and the loser's stored slots
     // read back as the WINNER's. Adding ~4,250 US venues is far and away the
     // largest chance this repo has had to introduce such a collision.
-    val names = City.allModelled.flatMap(_.cinemas).map(_.displayName)
+    val names = City.all.flatMap(_.cinemas).map(_.displayName)
     val dupes = names.groupBy(identity).collect { case (n, xs) if xs.sizeIs > 1 => n }
     dupes shouldBe empty
   }
@@ -544,9 +527,9 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     Country.Poland.bySlug.get("london") shouldBe None            // London is a UK city
     Country.UnitedKingdom.bySlug.get("london") shouldBe Some(London)
     Country.Poland.allSorted.toSet shouldBe City.polishCities.toSet
-    Country.UnitedKingdom.allSorted.toSet shouldBe City.ukCities.toSet         // the full 79-region UK roster
-    Country.UnitedKingdom.allSorted.head shouldBe Aberdeenshire                // English collation A→Z
-    Country.UnitedKingdom.allSorted.last shouldBe Yorkshire
+    Country.UnitedKingdom.allSorted.toSet shouldBe City.ukCities.toSet         // the full UK roster
+    Country.UnitedKingdom.allSorted.head.labels.nominative shouldBe "Aberdeen"   // English collation A→Z
+    Country.UnitedKingdom.allSorted.last.labels.nominative shouldBe "York"
     Country.Poland.allJson should include("poznan")
     Country.Poland.allJson should not include "london"
   }

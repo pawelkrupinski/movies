@@ -56,7 +56,7 @@ class RetiredVenueCensusSpec extends AnyFlatSpec with Matchers {
 
   // A multi-zone country: the venue's own clock decides "future", not the country's first city's.
   it should "judge a retired venue's showtimes on its own city's clock" in {
-    val losAngeles = models.City.allModelled.find(_.zoneId == java.time.ZoneId.of("America/Los_Angeles")).get
+    val losAngeles = models.City.all.find(_.zoneId == java.time.ZoneId.of("America/Los_Angeles")).get
     val venue      = losAngeles.cinemas.head.displayName
     val screenings = new InMemoryScreeningsRepository
     // 05:00 UTC on 2 November: 00:00 in New York, 21:00 on the 1st in Los Angeles — a 21:30 show is still ahead.

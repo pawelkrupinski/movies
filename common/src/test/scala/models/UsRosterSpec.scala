@@ -146,8 +146,8 @@ class UsRosterSpec extends AnyFlatSpec with Matchers with OptionValues {
   }
 
   it should "never take a name another country serves" in {
-    City.bySlug("birmingham") shouldBe Some(Birmingham)
-    City.bySlug("glasgow")    shouldBe Some(Glasgow)
+    City.bySlug("birmingham").value.country shouldBe Country.UnitedKingdom
+    City.bySlug("glasgow").value.country    shouldBe Country.UnitedKingdom
     pageOf("Alabama Theatre Birmingham").slug shouldBe "birmingham-alabama"
     pageOf("Marquee Highland Glasgow 8").slug shouldBe "glasgow-kentucky"
     City.bySlug("potsdam").value.country shouldBe Country.Germany

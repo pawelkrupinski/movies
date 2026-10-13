@@ -619,329 +619,47 @@ final class PolishPage private[models] (row: PolishPages.Row)
 // ── United Kingdom (English — non-declining, so the three label slots all carry
 //    the plain nominative; `CityGrammar.Nominative` reads only that). ──────────
 
-/** A UK city or region — the shape most of the UK roster is: a COUNTY or a
- *  travel-shed rather than one town. `/aberdeenshire/` covers Aberdeen,
- *  Peterhead, Banchory, Huntly and Ellon; `/cheshire/` covers Chester,
- *  Warrington and Crewe. That is why they share a class at all: it is the one
- *  country whose venues are hand-written `case object`s, so its towns cannot
- *  ride along in a generated roster tuple the way Germany's, Spain's and the
- *  US's do — they come from [[VenueTowns]] instead, which every city reads by
- *  default, so this class does not have to say so.
+/** A UK page — a major city (a place of 100,000+) with only its own venues, a
+ *  town with three or more, or a cluster of small towns a short drive apart named
+ *  after the biggest: "Penrith area", "in the Penrith area". Poland's shape
+ *  ([[PolishPage]]), built by the same rule (`data/uk/scripts/build_pages.py`),
+ *  with one addition: no venue is more than 40 km from the town a page is named
+ *  after. Until 2026-10 a UK page was a Flicks REGION filed by hand — mostly a
+ *  county, so `/west-yorkshire/` listed Leeds, Bradford and Ilkley, and the
+ *  Highlands and Islands reached 285 km to Lerwick.
  *
- *  What it is for now is the zone the 76 of them were each repeating.
- *
- *  Which venues each one lists is held to two distance rules by
- *  `UkPageGeographySpec` (see `data/uk/README.md`): a venue far from its own
- *  hub and close to another's is re-filed there, and two pages whose hubs are
- *  one urban area are merged — Dudley and Sandwell into [[Birmingham]],
- *  Lanarkshire into [[Glasgow]] ([[ukMergedPages]]). */
-sealed abstract class UkCity(slug: String, labels: CityLabels, lat: Double, lon: Double)
-  extends City(slug, labels, lat, lon, TimeZones.UnitedKingdom)
+ *  The venues stay the hand-written `case object`s of `Cinema.scala`; which page
+ *  lists each is generated into [[UkPages]], and instances are built ONCE (in
+ *  `City.ukPages`), so identity equality holds just like the hand-authored
+ *  `case object` cities. Every page except [[London]], which keeps its compass
+ *  areas. */
+final class UkPage private[models] (row: UkPages.Row)
+  extends City(row.slug, UkPage.labels(row), row.lat, row.lon, TimeZones.UnitedKingdom) {
+  val cinemas: Seq[Cinema] = row.cinemas
+  /** The town the page is named after first, then the rest of its towns, then
+   *  the places its venues' addresses name. */
+  override protected val extraPlaces: Seq[String] = (row.towns ++ VenueTowns.of(cinemas)).distinct
+  /** "in the Penrith area" — an area takes the article a town does not. */
+  override def locativePhrase: String = if (row.multiTown) s"in the ${labels.nominative}" else super.locativePhrase
+  /** The nation and county the picker files this page under: its anchor town's. */
+  def nation: String = row.nation
+  def county: String = row.county
+}
 
-case object London extends UkCity("london",
-  CityLabels("London", "London", "London"), 51.5074, -0.1278) {
-  val cinemas: Seq[Cinema] = Cinema.london
+private[models] object UkPage {
+  /** English does not decline a place name, so all three slots carry the page's
+   *  name — "<town> area" for a cluster, as a US cluster reads. */
+  def labels(row: UkPages.Row): CityLabels = CityLabels(row.nominative, row.nominative, row.nominative)
+}
+
+/** Greater London — one page, as New York's five boroughs are one: every place in
+ *  it (Croydon, Romford, Kingston) is London (`data/uk/scripts/geocode_towns.py`).
+ *  Hand-declared rather than a [[UkPage]] for the one thing no other UK page has,
+ *  its compass areas. */
+case object London extends City("london", CityLabels("London", "London", "London"),
+                                UkPages.london.lat, UkPages.london.lon, TimeZones.UnitedKingdom) {
+  val cinemas: Seq[Cinema] = UkPages.london.cinemas
   override val areas: Seq[CinemaAreaGroup] = Cinema.londonAreas
-}
-case object Manchester extends UkCity("manchester",
-  CityLabels("Manchester", "Manchester", "Manchester"), 53.4808, -2.2426) {
-  val cinemas: Seq[Cinema] = Cinema.manchester
-}
-case object Norwich extends UkCity("norwich",
-  CityLabels("Norwich", "Norwich", "Norwich"), 52.6309, 1.2974) {
-  val cinemas: Seq[Cinema] = Cinema.norwich
-}
-case object Aberdeenshire extends UkCity("aberdeenshire",
-  CityLabels("Aberdeenshire", "Aberdeenshire", "Aberdeenshire"), 57.308, -2.3393) {
-  val cinemas: Seq[Cinema] = Cinema.aberdeenshire
-}
-case object Antrim extends UkCity("antrim",
-  CityLabels("Antrim", "Antrim", "Antrim"), 54.762, -6.0127) {
-  val cinemas: Seq[Cinema] = Cinema.antrim
-}
-case object Armagh extends UkCity("armagh",
-  CityLabels("Armagh", "Armagh", "Armagh"), 54.4492, -6.398) {
-  val cinemas: Seq[Cinema] = Cinema.armagh
-}
-case object AyrshireAndArran extends UkCity("ayrshire-and-arran",
-  CityLabels("Ayrshire and Arran", "Ayrshire and Arran", "Ayrshire and Arran"), 55.5093, -4.581) {
-  val cinemas: Seq[Cinema] = Cinema.ayrshireAndArran
-}
-case object Bedfordshire extends UkCity("bedfordshire",
-  CityLabels("Bedfordshire", "Bedfordshire", "Bedfordshire"), 52.0082, -0.4435) {
-  val cinemas: Seq[Cinema] = Cinema.bedfordshire
-}
-case object Belfast extends UkCity("belfast",
-  CityLabels("Belfast", "Belfast", "Belfast"), 54.5857, -5.9428) {
-  val cinemas: Seq[Cinema] = Cinema.belfast
-}
-case object Berkshire extends UkCity("berkshire",
-  CityLabels("Berkshire", "Berkshire", "Berkshire"), 51.4268, -0.9169) {
-  val cinemas: Seq[Cinema] = Cinema.berkshire
-}
-case object Birmingham extends UkCity("birmingham",
-  CityLabels("Birmingham", "Birmingham", "Birmingham"), 52.4581, -1.9041) {
-  val cinemas: Seq[Cinema] = Cinema.birmingham
-}
-case object Bristol extends UkCity("bristol",
-  CityLabels("Bristol", "Bristol", "Bristol"), 51.4659, -2.5805) {
-  val cinemas: Seq[Cinema] = Cinema.bristol
-}
-case object Buckinghamshire extends UkCity("buckinghamshire",
-  CityLabels("Buckinghamshire", "Buckinghamshire", "Buckinghamshire"), 51.7582, -0.7609) {
-  val cinemas: Seq[Cinema] = Cinema.buckinghamshire
-}
-case object Cambridgeshire extends UkCity("cambridgeshire",
-  CityLabels("Cambridgeshire", "Cambridgeshire", "Cambridgeshire"), 52.4301, -0.0137) {
-  val cinemas: Seq[Cinema] = Cinema.cambridgeshire
-}
-case object Cardiff extends UkCity("cardiff",
-  CityLabels("Cardiff", "Cardiff", "Cardiff"), 51.4892, -3.1939) {
-  val cinemas: Seq[Cinema] = Cinema.cardiff
-}
-case object CentralScotland extends UkCity("central-scotland",
-  CityLabels("Central Scotland", "Central Scotland", "Central Scotland"), 56.08, -3.8066) {
-  val cinemas: Seq[Cinema] = Cinema.centralScotland
-}
-case object Cheshire extends UkCity("cheshire",
-  CityLabels("Cheshire", "Cheshire", "Cheshire"), 53.2917, -2.4966) {
-  val cinemas: Seq[Cinema] = Cinema.cheshire
-}
-case object Clwyd extends UkCity("clwyd",
-  CityLabels("Clwyd", "Clwyd", "Clwyd"), 53.3083, -3.6072) {
-  val cinemas: Seq[Cinema] = Cinema.clwyd
-}
-case object Cornwall extends UkCity("cornwall",
-  CityLabels("Cornwall", "Cornwall", "Cornwall"), 50.317, -4.9211) {
-  val cinemas: Seq[Cinema] = Cinema.cornwall
-}
-case object CountyDurham extends UkCity("county-durham",
-  CityLabels("County Durham", "County Durham", "County Durham"), 54.7289, -1.5139) {
-  val cinemas: Seq[Cinema] = Cinema.countyDurham
-}
-case object Cumbria extends UkCity("cumbria",
-  CityLabels("Cumbria", "Cumbria", "Cumbria"), 54.4593, -3.1119) {
-  val cinemas: Seq[Cinema] = Cinema.cumbria
-}
-case object Derbyshire extends UkCity("derbyshire",
-  CityLabels("Derbyshire", "Derbyshire", "Derbyshire"), 52.9886, -1.5219) {
-  val cinemas: Seq[Cinema] = Cinema.derbyshire
-}
-case object Devon extends UkCity("devon",
-  CityLabels("Devon", "Devon", "Devon"), 50.6651, -3.687) {
-  val cinemas: Seq[Cinema] = Cinema.devon
-}
-case object Dorset extends UkCity("dorset",
-  CityLabels("Dorset", "Dorset", "Dorset"), 50.7664, -2.1122) {
-  val cinemas: Seq[Cinema] = Cinema.dorset
-}
-case object Down extends UkCity("down",
-  CityLabels("Down", "Down", "Down"), 54.4293, -5.9704) {
-  val cinemas: Seq[Cinema] = Cinema.down
-}
-case object DumfriesAndGalloway extends UkCity("dumfries-and-galloway",
-  CityLabels("Dumfries and Galloway", "Dumfries and Galloway", "Dumfries and Galloway"), 54.9881, -3.8232) {
-  val cinemas: Seq[Cinema] = Cinema.dumfriesAndGalloway
-}
-case object DunbartonshireArgyllBute extends UkCity("dunbartonshire-argyll-bute",
-  CityLabels("Dunbartonshire and Argyll & Bute", "Dunbartonshire and Argyll & Bute", "Dunbartonshire and Argyll & Bute"), 55.7795, -4.9973) {
-  val cinemas: Seq[Cinema] = Cinema.dunbartonshireArgyllBute
-}
-case object Dyfed extends UkCity("dyfed",
-  CityLabels("Dyfed", "Dyfed", "Dyfed"), 51.9892, -4.3329) {
-  val cinemas: Seq[Cinema] = Cinema.dyfed
-}
-case object EastSussex extends UkCity("east-sussex",
-  CityLabels("East Sussex", "East Sussex", "East Sussex"), 50.8499, 0.2215) {
-  val cinemas: Seq[Cinema] = Cinema.eastSussex
-}
-case object EastYorkshire extends UkCity("east-yorkshire",
-  CityLabels("East Yorkshire", "East Yorkshire", "East Yorkshire"), 53.8685, -0.3985) {
-  val cinemas: Seq[Cinema] = Cinema.eastYorkshire
-}
-case object EdinburghAndLothians extends UkCity("edinburgh-and-lothians",
-  CityLabels("Edinburgh & Lothians", "Edinburgh & Lothians", "Edinburgh & Lothians"), 55.9404, -3.2039) {
-  val cinemas: Seq[Cinema] = Cinema.edinburghAndLothians
-}
-case object Essex extends UkCity("essex",
-  CityLabels("Essex", "Essex", "Essex"), 51.7621, 0.5901) {
-  val cinemas: Seq[Cinema] = Cinema.essex
-}
-case object Fermanagh extends UkCity("fermanagh",
-  CityLabels("Fermanagh", "Fermanagh", "Fermanagh"), 54.3499, -7.6316) {
-  val cinemas: Seq[Cinema] = Cinema.fermanagh
-}
-case object Fife extends UkCity("fife",
-  CityLabels("Fife", "Fife", "Fife"), 56.1287, -3.2424) {
-  val cinemas: Seq[Cinema] = Cinema.fife
-}
-case object Glamorgan extends UkCity("glamorgan",
-  CityLabels("Glamorgan", "Glamorgan", "Glamorgan"), 51.6388, -3.7535) {
-  val cinemas: Seq[Cinema] = Cinema.glamorgan
-}
-case object Glasgow extends UkCity("glasgow",
-  CityLabels("Glasgow", "Glasgow", "Glasgow"), 55.8682, -4.2316) {
-  val cinemas: Seq[Cinema] = Cinema.glasgow
-}
-case object Gloucestershire extends UkCity("gloucestershire",
-  CityLabels("Gloucestershire", "Gloucestershire", "Gloucestershire"), 51.8387, -2.2712) {
-  val cinemas: Seq[Cinema] = Cinema.gloucestershire
-}
-case object Guernsey extends UkCity("guernsey",
-  CityLabels("Guernsey", "Guernsey", "Guernsey"), 49.4446, -2.5695) {
-  val cinemas: Seq[Cinema] = Cinema.guernsey
-}
-case object Gwent extends UkCity("gwent",
-  CityLabels("Gwent", "Gwent", "Gwent"), 51.6882, -3.0066) {
-  val cinemas: Seq[Cinema] = Cinema.gwent
-}
-case object Gwynedd extends UkCity("gwynedd",
-  CityLabels("Gwynedd", "Gwynedd", "Gwynedd"), 53.0098, -4.153) {
-  val cinemas: Seq[Cinema] = Cinema.gwynedd
-}
-case object Hampshire extends UkCity("hampshire",
-  CityLabels("Hampshire", "Hampshire", "Hampshire"), 50.9234, -1.165) {
-  val cinemas: Seq[Cinema] = Cinema.hampshire
-}
-case object Herefordshire extends UkCity("herefordshire",
-  CityLabels("Herefordshire", "Herefordshire", "Herefordshire"), 52.031, -2.7825) {
-  val cinemas: Seq[Cinema] = Cinema.herefordshire
-}
-case object Hertfordshire extends UkCity("hertfordshire",
-  CityLabels("Hertfordshire", "Hertfordshire", "Hertfordshire"), 51.7791, -0.3102) {
-  val cinemas: Seq[Cinema] = Cinema.hertfordshire
-}
-case object HighlandsAndIslands extends UkCity("highlands-and-islands",
-  CityLabels("Highlands and Islands", "Highlands and Islands", "Highlands and Islands"), 58.086, -4.0855) {
-  val cinemas: Seq[Cinema] = Cinema.highlandsAndIslands
-}
-case object IsleOfMan extends UkCity("isle-of-man",
-  CityLabels("Isle of Man", "Isle of Man", "Isle of Man"), 54.1578, -4.4775) {
-  val cinemas: Seq[Cinema] = Cinema.isleOfMan
-}
-case object IsleOfWight extends UkCity("isle-of-wight",
-  CityLabels("Isle of Wight", "Isle of Wight", "Isle of Wight"), 50.7118, -1.2248) {
-  val cinemas: Seq[Cinema] = Cinema.isleOfWight
-}
-case object Jersey extends UkCity("jersey",
-  CityLabels("Jersey", "Jersey", "Jersey"), 49.1839, -2.1144) {
-  val cinemas: Seq[Cinema] = Cinema.jersey
-}
-case object Kent extends UkCity("kent",
-  CityLabels("Kent", "Kent", "Kent"), 51.2682, 0.8631) {
-  val cinemas: Seq[Cinema] = Cinema.kent
-}
-case object Lancashire extends UkCity("lancashire",
-  CityLabels("Lancashire", "Lancashire", "Lancashire"), 53.7367, -2.6625) {
-  val cinemas: Seq[Cinema] = Cinema.lancashire
-}
-case object Leicestershire extends UkCity("leicestershire",
-  CityLabels("Leicestershire", "Leicestershire", "Leicestershire"), 52.6656, -1.1514) {
-  val cinemas: Seq[Cinema] = Cinema.leicestershire
-}
-case object Lincolnshire extends UkCity("lincolnshire",
-  CityLabels("Lincolnshire", "Lincolnshire", "Lincolnshire"), 53.2194, -0.2916) {
-  val cinemas: Seq[Cinema] = Cinema.lincolnshire
-}
-case object Londonderry extends UkCity("londonderry",
-  CityLabels("Londonderry", "Londonderry", "Londonderry"), 54.9949, -7.0636) {
-  val cinemas: Seq[Cinema] = Cinema.londonderry
-}
-case object Liverpool extends UkCity("liverpool",
-  CityLabels("Liverpool", "Liverpool", "Liverpool"), 53.4084, -2.9916) {
-  val cinemas: Seq[Cinema] = Cinema.liverpool
-}
-case object NorthYorkshire extends UkCity("north-yorkshire",
-  CityLabels("North Yorkshire", "North Yorkshire", "North Yorkshire"), 54.2402, -1.156) {
-  val cinemas: Seq[Cinema] = Cinema.northYorkshire
-}
-case object Northamptonshire extends UkCity("northamptonshire",
-  CityLabels("Northamptonshire", "Northamptonshire", "Northamptonshire"), 52.288, -0.8653) {
-  val cinemas: Seq[Cinema] = Cinema.northamptonshire
-}
-case object Northumberland extends UkCity("northumberland",
-  CityLabels("Northumberland", "Northumberland", "Northumberland"), 55.2158, -1.7422) {
-  val cinemas: Seq[Cinema] = Cinema.northumberland
-}
-case object Nottinghamshire extends UkCity("nottinghamshire",
-  CityLabels("Nottinghamshire", "Nottinghamshire", "Nottinghamshire"), 53.0236, -1.15) {
-  val cinemas: Seq[Cinema] = Cinema.nottinghamshire
-}
-case object Oxfordshire extends UkCity("oxfordshire",
-  CityLabels("Oxfordshire", "Oxfordshire", "Oxfordshire"), 51.7572, -1.2545) {
-  val cinemas: Seq[Cinema] = Cinema.oxfordshire
-}
-case object Powys extends UkCity("powys",
-  CityLabels("Powys", "Powys", "Powys"), 52.3806, -3.26) {
-  val cinemas: Seq[Cinema] = Cinema.powys
-}
-case object Renfrewshire extends UkCity("renfrewshire",
-  CityLabels("Renfrewshire", "Renfrewshire", "Renfrewshire"), 55.9204, -4.5838) {
-  val cinemas: Seq[Cinema] = Cinema.renfrewshire
-}
-case object RoxburghEttrickAndLauderdale extends UkCity("roxburgh-ettrick-and-lauderdale",
-  CityLabels("Roxburgh, Ettrick and Lauderdale", "Roxburgh, Ettrick and Lauderdale", "Roxburgh, Ettrick and Lauderdale"), 55.5183, -2.7969) {
-  val cinemas: Seq[Cinema] = Cinema.roxburghEttrickAndLauderdale
-}
-case object Shropshire extends UkCity("shropshire",
-  CityLabels("Shropshire", "Shropshire", "Shropshire"), 52.6813, -2.6215) {
-  val cinemas: Seq[Cinema] = Cinema.shropshire
-}
-case object Somerset extends UkCity("somerset",
-  CityLabels("Somerset", "Somerset", "Somerset"), 51.2159, -2.824) {
-  val cinemas: Seq[Cinema] = Cinema.somerset
-}
-case object SouthYorkshire extends UkCity("south-yorkshire",
-  CityLabels("South Yorkshire", "South Yorkshire", "South Yorkshire"), 53.5141, -1.3109) {
-  val cinemas: Seq[Cinema] = Cinema.southYorkshire
-}
-case object Staffordshire extends UkCity("staffordshire",
-  CityLabels("Staffordshire", "Staffordshire", "Staffordshire"), 52.7942, -1.9887) {
-  val cinemas: Seq[Cinema] = Cinema.staffordshire
-}
-case object Suffolk extends UkCity("suffolk",
-  CityLabels("Suffolk", "Suffolk", "Suffolk"), 52.1492, 1.0262) {
-  val cinemas: Seq[Cinema] = Cinema.suffolk
-}
-case object Surrey extends UkCity("surrey",
-  CityLabels("Surrey", "Surrey", "Surrey"), 51.2269, -0.5354) {
-  val cinemas: Seq[Cinema] = Cinema.surrey
-}
-case object Tayside extends UkCity("tayside",
-  CityLabels("Tayside", "Tayside", "Tayside"), 56.5061, -3.0128) {
-  val cinemas: Seq[Cinema] = Cinema.tayside
-}
-case object TyneAndWear extends UkCity("tyne-and-wear",
-  CityLabels("Tyne and Wear", "Tyne and Wear", "Tyne and Wear"), 54.9749, -1.5397) {
-  val cinemas: Seq[Cinema] = Cinema.tyneAndWear
-}
-case object Tyrone extends UkCity("tyrone",
-  CityLabels("Tyrone", "Tyrone", "Tyrone"), 54.5255, -6.8664) {
-  val cinemas: Seq[Cinema] = Cinema.tyrone
-}
-case object Warwickshire extends UkCity("warwickshire",
-  CityLabels("Warwickshire", "Warwickshire", "Warwickshire"), 52.3602, -1.5034) {
-  val cinemas: Seq[Cinema] = Cinema.warwickshire
-}
-case object WestSussex extends UkCity("west-sussex",
-  CityLabels("West Sussex", "West Sussex", "West Sussex"), 50.9492, -0.3262) {
-  val cinemas: Seq[Cinema] = Cinema.westSussex
-}
-case object WestYorkshire extends UkCity("west-yorkshire",
-  CityLabels("West Yorkshire", "West Yorkshire", "West Yorkshire"), 53.7878, -1.665) {
-  val cinemas: Seq[Cinema] = Cinema.westYorkshire
-}
-case object Wiltshire extends UkCity("wiltshire",
-  CityLabels("Wiltshire", "Wiltshire", "Wiltshire"), 51.2955, -1.8505) {
-  val cinemas: Seq[Cinema] = Cinema.wiltshire
-}
-case object Worcestershire extends UkCity("worcestershire",
-  CityLabels("Worcestershire", "Worcestershire", "Worcestershire"), 52.1923, -2.2079) {
-  val cinemas: Seq[Cinema] = Cinema.worcestershire
-}
-case object Yorkshire extends UkCity("yorkshire",
-  CityLabels("Yorkshire", "Yorkshire", "Yorkshire"), 53.4082, -1.4756) {
-  val cinemas: Seq[Cinema] = Cinema.yorkshire
 }
 
 // ── Germany (also non-declining for our purposes). ───────────────────────────
@@ -1057,27 +775,21 @@ private[models] object SpanishPage {
  *  The exception is [[soleCity]] — see there.
  *
  *  A country whose picker is one flat list leaves `Country.cityGroups` empty
- *  rather than declaring one group per city.
- *
- *  @param absorbed names of former pages now listed by this group's one place —
- *                  the UK's [[City.ukMergedPages]] — kept findable by [[searchAliases]]. */
+ *  rather than declaring one group per city. */
 final case class CityGroup(label: String, slug: String, cities: Seq[City] = Nil,
-                          groups: Seq[CityGroup] = Nil, absorbed: Seq[String] = Nil) {
+                          groups: Seq[CityGroup] = Nil) {
 
   /** The one place this group holds, pulled up a level — and `None` for a group
    *  that really arranges several.
    *
    *  A heading you open to find exactly one row underneath is a tap that buys
-   *  the reader nothing, whatever the two are called. Most UK counties ARE the
-   *  Flicks region under them (Cheshire, Kent), so those collapse onto a name
-   *  they already share. The rest collapse onto a name they do not: Merseyside
-   *  shows as Liverpool, Greater Manchester as Manchester, the District of
-   *  Columbia as Washington, Saarland
-   *  as Saarbrücken.
+   *  the reader nothing, whatever the two are called. A UK county holding one
+   *  page collapses onto it — Rutland shows as Oakham, Shetland as Lerwick — as
+   *  the District of Columbia shows as Washington and Saarland as Saarbrücken.
    *
    *  The group's own name is NOT lost when it differs — the picker keeps it on
-   *  the row as a search alias (`data-alias`), so "merseyside" still finds
-   *  Liverpool. Dropping the heading is meant to save a tap, not to make the
+   *  the row as a search alias (`data-alias`), so "shetland" still finds
+   *  Lerwick. Dropping the heading is meant to save a tap, not to make the
    *  county unfindable, and the search is where that name was doing its work.
    *
    *  Nil `groups` is part of the test: a node with one city AND a subgroup under
@@ -1086,8 +798,7 @@ final case class CityGroup(label: String, slug: String, cities: Seq[City] = Nil,
    *  [[slug]] is deliberately NOT consulted. An earlier version required the
    *  city's slug to equal the group's, which collapsed Cheshire and left
    *  Merseyside, Greater Manchester, Norfolk and Saarland as headings over a
-   *  single row — the tap this exists to remove. Re-adding that condition would
-   *  silently restore all four; `CountrySpec` pins each of them by name. */
+   *  single row — the tap this exists to remove. */
   def soleCity: Option[City] = (cities, groups) match {
     case (Seq(only), Nil) => Some(only)
     case _                => None
@@ -1109,10 +820,9 @@ final case class CityGroup(label: String, slug: String, cities: Seq[City] = Nil,
   def collapsedAlias: Option[String] =
     soleCity.filter(_.labels.nominative != label).map(_ => label)
 
-  /** Every other name the picker should find this row by: [[collapsedAlias]], then
-   *  the names of the pages [[absorbed]] into its one place. Empty for a group
-   *  that did not collapse — its heading is already on screen. */
-  def searchAliases: Seq[String] = soleCity.fold(Seq.empty[String])(_ => collapsedAlias.toSeq ++ absorbed)
+  /** Every other name the picker should find this row by — its [[collapsedAlias]].
+   *  Empty for a group that did not collapse: its heading is already on screen. */
+  def searchAliases: Seq[String] = collapsedAlias.toSeq
 
   /** Every city under this group at any depth — its own, plus its subgroups'.
    *
@@ -1155,182 +865,51 @@ object City {
     CityListing.sortedLabels(built, pl)(_.displayLabel)
   }
 
-  /** The United Kingdom's full modelled roster — every Flicks region we know how
-   *  to scrape (76), less the ones folded into a neighbour ([[ukMergedPages]]). Retained in full even while only a subset is live so that
-   *  bringing a city back online is a one-line edit to [[activeUkCities]], never
-   *  a re-declaration. Do NOT trim this list to disable cities — narrow
-   *  [[activeUkCities]] instead. */
-  private[models] val allUkCities: Seq[City] = Seq(
-    London, Manchester, Norwich, Aberdeenshire, Antrim, Armagh, AyrshireAndArran, Bedfordshire, Belfast, Berkshire, Birmingham, Bristol, Buckinghamshire, Cambridgeshire, Cardiff, CentralScotland, Cheshire, Clwyd, Cornwall, CountyDurham, Cumbria, Derbyshire, Devon, Dorset, Down, DumfriesAndGalloway, DunbartonshireArgyllBute, Dyfed, EastSussex, EastYorkshire, EdinburghAndLothians, Essex, Fermanagh, Fife, Glamorgan, Glasgow, Gloucestershire, Guernsey, Gwent, Gwynedd, Hampshire, Herefordshire, Hertfordshire, HighlandsAndIslands, IsleOfMan, IsleOfWight, Jersey, Kent, Lancashire, Leicestershire, Lincolnshire, Londonderry, Liverpool, NorthYorkshire, Northamptonshire, Northumberland, Nottinghamshire, Oxfordshire, Powys, Renfrewshire, RoxburghEttrickAndLauderdale, Shropshire, Somerset, SouthYorkshire, Staffordshire, Suffolk, Surrey, Tayside, TyneAndWear, Tyrone, Warwickshire, WestSussex, WestYorkshire, Wiltshire, Worcestershire, Yorkshire,
-  )
+  /** The United Kingdom's cities — the authoritative list for
+   *  [[Country.UnitedKingdom]]: [[London]], then one [[UkPage]] per town or
+   *  cluster page, materialised from [[UkPages]]. Their slugs are final there:
+   *  `data/uk/scripts/build_pages.py` already qualified a name another country
+   *  holds (`/cambridge-cambridgeshire/`, Massachusetts having `/cambridge/`). */
+  private[models] lazy val ukPages: Seq[UkPage] = UkPages.rows.map(new UkPage(_))
+  private[models] lazy val ukCities: Seq[City] = London +: ukPages
 
-  /** The UK cities currently live — the ones web serves and the worker scrapes.
-   *  Currently the FULL modelled roster: every Flicks region is live. To scope
-   *  the live set down again, narrow this to a subset of [[allUkCities]] (e.g.
-   *  `Set(London, Manchester, …)`); the disabled cities stay fully modelled
-   *  above, so re-enabling is always a one-line edit here — never a
-   *  re-declaration. */
-  private[models] val activeUkCities: Set[City] = allUkCities.toSet
+  /** UK pages that no longer exist → the page holding the town each was named
+   *  after, or — where no such town has a venue — the page now holding most of
+   *  its venues. The 76 Flicks regions the UK was filed under until 2026-10 and
+   *  the three folded into a neighbour before that among them: `/antrim/` → the
+   *  Lisburn area (Antrim's cluster), `/west-yorkshire/` → Leeds. A region whose
+   *  slug is a page now (`/manchester/`, `/dudley/`) simply IS that town's page. */
+  private lazy val ukSuccession: Map[String, String] = UkPages.retired
 
-  /** Flicks regions that are not pages of their own, by name, and the page that
-   *  lists their venues instead. Each one's hub was under 15 km from its
-   *  neighbour's — two halves of one urban area, which `UkPageGeographySpec`
-   *  holds no two pages may be: Dudley (13 km) and Sandwell (9 km) are boroughs
-   *  of the Birmingham conurbation, and Lanarkshire's hub sits between East
-   *  Kilbride and Hamilton, 12 km from Glasgow's.
+  /** The UK picker's grouping: NATION over COUNTY over the pages inside it — the
+   *  nation and county of each page's anchor town, read off GeoNames by
+   *  `data/uk/scripts/geocode_towns.py` (England's ceremonial counties, Wales'
+   *  preserved ones, Scotland's and Northern Ireland's councils, grouped).
    *
-   *  The ONE place the merge is said: their old slugs redirect from here (see
-   *  [[renamedSlugs]]), and the picker keeps each name as a search alias on
-   *  the row that absorbed it (see [[CityGroup.absorbed]]). */
-  private[models] val ukMergedPages: Seq[(String, City)] = Seq(
-    "Dudley"      -> Birmingham,
-    "Sandwell"    -> Birmingham,
-    "Lanarkshire" -> Glasgow,
-  )
-
-  /** The authoritative UK list for [[Country.UnitedKingdom]] — the live subset
-   *  of [[allUkCities]], kept in that list's declared order. */
-  private[models] val ukCities: Seq[City] = allUkCities.filter(activeUkCities)
-
-  /** The UK picker's grouping: NATION over COUNTY over the places inside it.
+   *  264 pages is past what anyone reads as one A-to-Z, and a nation alone still
+   *  is (England holds 200); the county is the level a visitor already knows a
+   *  town by. A county holding one page collapses onto it ([[CityGroup.soleCity]]):
+   *  Shetland shows as Lerwick, its own name kept as a search alias.
    *
-   *  76 places is past what anyone reads as one A-to-Z — the same problem the US
-   *  has at 468 — but the UK's answer is levels UP rather than one down. A Flicks
-   *  region is usually already the county ("Cheshire", "Cornwall", "Kent"), so
-   *  there is nothing to cut those into; what the list wanted was the county over
-   *  them and the nation over that.
-   *
-   *  Most counties therefore stand exactly where their one place stands and
-   *  collapse back into it — see [[CityGroup.soleCity]]. The level earns its keep
-   *  on the entries that are a CITY rather than a county: Cardiff and Belfast sit
-   *  beside the rest of Glamorgan and Antrim, and Manchester is where it is
-   *  because Greater Manchester is.
-   *
-   *  Declared as a table rather than derived, because nothing in a `UkCity` knows
-   *  its county or its nation: the roster is hand-authored `case object`s
-   *  carrying a slug, a label and a fix, and neither fact is one those imply.
-   *  Nations are in this fixed reading order (England, Scotland, Northern
-   *  Ireland, Wales, Crown Dependencies) — the same order every client's picker
-   *  shows, kept in one place rather than re-derived per platform — and
+   *  Nations are in [[UkPages.nations]]' fixed reading order (England, Scotland,
+   *  Northern Ireland, Wales, Crown Dependencies) — the same order every client's
+   *  picker shows, kept in one place rather than re-derived per platform — and
    *  everything below is alphabetical, which is the only order a reader can
-   *  search by eye.
-   *
-   *  Every LIVE city appears exactly once (`CountrySpec` holds that, the same
-   *  partition it holds over the US states — a place reachable from no heading is
-   *  a place nobody can find), so narrowing [[activeUkCities]] drops rows here
-   *  without leaving an empty county or nation standing. */
-  private[models] val ukNations: Seq[CityGroup] = {
-    // (nation, nation slug, (county, its places)*). A county named for the place
-    // it holds is the common case and collapses away; the ones that group
-    // something are the point of the level.
-    val UkLocale = Locale.forLanguageTag("en-GB")
-    val table: Seq[(String, String, Seq[(String, Seq[City])])] = Seq(
-      ("England", "england", Seq(
-        "Bedfordshire"      -> Seq(Bedfordshire),
-        "Berkshire"         -> Seq(Berkshire),
-        "Bristol"           -> Seq(Bristol),
-        "Buckinghamshire"   -> Seq(Buckinghamshire),
-        "Cambridgeshire"    -> Seq(Cambridgeshire),
-        "Cheshire"          -> Seq(Cheshire),
-        "Cornwall"          -> Seq(Cornwall),
-        "County Durham"     -> Seq(CountyDurham),
-        "Cumbria"           -> Seq(Cumbria),
-        "Derbyshire"        -> Seq(Derbyshire),
-        "Devon"             -> Seq(Devon),
-        "Dorset"            -> Seq(Dorset),
-        "East Sussex"       -> Seq(EastSussex),
-        "East Yorkshire"    -> Seq(EastYorkshire),
-        "Essex"             -> Seq(Essex),
-        "Gloucestershire"   -> Seq(Gloucestershire),
-        "Greater London"    -> Seq(London),
-        "Greater Manchester"-> Seq(Manchester),
-        "Hampshire"         -> Seq(Hampshire),
-        "Herefordshire"     -> Seq(Herefordshire),
-        "Hertfordshire"     -> Seq(Hertfordshire),
-        "Isle of Wight"     -> Seq(IsleOfWight),
-        "Kent"              -> Seq(Kent),
-        "Lancashire"        -> Seq(Lancashire),
-        "Leicestershire"    -> Seq(Leicestershire),
-        "Lincolnshire"      -> Seq(Lincolnshire),
-        "Merseyside"        -> Seq(Liverpool),
-        "Norfolk"           -> Seq(Norwich),
-        "North Yorkshire"   -> Seq(NorthYorkshire),
-        "Northamptonshire"  -> Seq(Northamptonshire),
-        "Northumberland"    -> Seq(Northumberland),
-        "Nottinghamshire"   -> Seq(Nottinghamshire),
-        "Oxfordshire"       -> Seq(Oxfordshire),
-        "Shropshire"        -> Seq(Shropshire),
-        "Somerset"          -> Seq(Somerset),
-        "South Yorkshire"   -> Seq(SouthYorkshire),
-        "Staffordshire"     -> Seq(Staffordshire),
-        "Suffolk"           -> Seq(Suffolk),
-        "Surrey"            -> Seq(Surrey),
-        "Tyne and Wear"     -> Seq(TyneAndWear),
-        "Warwickshire"      -> Seq(Warwickshire),
-        "West Midlands"     -> Seq(Birmingham),
-        "West Sussex"       -> Seq(WestSussex),
-        "West Yorkshire"    -> Seq(WestYorkshire),
-        "Wiltshire"         -> Seq(Wiltshire),
-        "Worcestershire"    -> Seq(Worcestershire),
-        // Flicks carries a catch-all Yorkshire region beside the four ridings.
-        "Yorkshire"         -> Seq(Yorkshire),
-      )),
-      ("Scotland", "scotland", Seq(
-        "Aberdeenshire"                    -> Seq(Aberdeenshire),
-        "Ayrshire and Arran"               -> Seq(AyrshireAndArran),
-        "Central Scotland"                 -> Seq(CentralScotland),
-        "Dumfries and Galloway"            -> Seq(DumfriesAndGalloway),
-        "Dunbartonshire and Argyll & Bute" -> Seq(DunbartonshireArgyllBute),
-        "Edinburgh & Lothians"             -> Seq(EdinburghAndLothians),
-        "Fife"                             -> Seq(Fife),
-        "Glasgow"                          -> Seq(Glasgow),
-        "Highlands and Islands"            -> Seq(HighlandsAndIslands),
-        "Renfrewshire"                     -> Seq(Renfrewshire),
-        "Roxburgh Ettrick and Lauderdale"  -> Seq(RoxburghEttrickAndLauderdale),
-        "Tayside"                          -> Seq(Tayside),
-      )),
-      ("Northern Ireland", "northern-ireland", Seq(
-        // Belfast straddles Antrim and Down; County Antrim holds the bulk of it
-        // and is where it is conventionally filed.
-        "Antrim"      -> Seq(Antrim, Belfast),
-        "Armagh"      -> Seq(Armagh),
-        "Down"        -> Seq(Down),
-        "Fermanagh"   -> Seq(Fermanagh),
-        "Londonderry" -> Seq(Londonderry),
-        "Tyrone"      -> Seq(Tyrone),
-      )),
-      ("Wales", "wales", Seq(
-        "Clwyd"     -> Seq(Clwyd),
-        "Dyfed"     -> Seq(Dyfed),
-        // Cardiff is in Glamorgan, which Flicks also carries as a region of its
-        // own — so the county holds the city and the rest of itself.
-        "Glamorgan" -> Seq(Cardiff, Glamorgan),
-        "Gwent"     -> Seq(Gwent),
-        "Gwynedd"   -> Seq(Gwynedd),
-        "Powys"     -> Seq(Powys),
-      )),
-      // Not part of the UK, but served by the same Flicks market and reached from
-      // the same picker, so they need a heading rather than a nation to be filed
-      // under wrongly.
-      ("Crown Dependencies", "crown-dependencies", Seq(
-        "Guernsey"    -> Seq(Guernsey),
-        "Isle of Man" -> Seq(IsleOfMan),
-        "Jersey"      -> Seq(Jersey),
-      )),
-    )
-    table.map { case (nation, nationSlug, counties) =>
-      val kept = counties
-        .map { case (county, places) =>
-          CityGroup(county, Slugify.stable(county),
-                    CityListing.sorted(places.filter(activeUkCities), UkLocale),
-                    absorbed = places.flatMap(place => ukMergedPages.collect { case (name, `place`) => name }))
-        }
-        .filter(_.cities.nonEmpty)
+   *  search by eye. Every page appears exactly once (`CountrySpec` holds that). */
+  private[models] lazy val ukNations: Seq[CityGroup] = {
+    val en = Locale.forLanguageTag("en-GB")
+    val placed: Seq[(String, String, City)] =
+      (UkPages.london.nation, UkPages.london.county, London) +: ukPages.map(p => (p.nation, p.county, p))
+    UkPages.nations.flatMap { nation =>
+      val counties = placed.filter(_._1 == nation).groupBy(_._2).toSeq.map { case (county, pages) =>
+        CityGroup(county, Slugify.stable(county), CityListing.sorted(pages.map(_._3), en))
+      }
       // By what each row SHOWS, not by the county it came from: a county that
       // collapsed onto its one place displays that place's name, and sorting on
-      // the county would file Manchester under "Greater Manchester".
-      CityGroup(nation, nationSlug, Nil, CityListing.sortedLabels(kept, UkLocale)(_.displayLabel))
-    }.filter(_.groups.nonEmpty)
+      // the county would file Shetland's Lerwick under S.
+      Option.when(counties.nonEmpty)(
+        CityGroup(nation, Slugify.stable(nation), Nil, CityListing.sortedLabels(counties, en)(_.displayLabel)))
+    }
   }
 
   /** Germany's cities — the authoritative list for [[Country.Germany]]. One per
@@ -1351,9 +930,10 @@ object City {
    *  live URL, and the newcomer is the one that can still choose. None of the 139
    *  slugs the regions kept collides with one. The US is decided AFTER Germany and
    *  yields to it (`/potsdam/` is Brandenburg's, Potsdam, New York qualifies) —
-   *  see [[usSlug]]. */
+   *  see [[usSlug]]; so does the UK, whose `build_pages.py` reads Germany's slugs.
+   *  The UK's retired slugs count: a German page at `/dyfed/` would be redirected. */
   private lazy val foreignToGermany: Set[String] =
-    (polishCities ++ allUkCities).map(_.slug).toSet ++ SpanishRoster.places.map(_.preferredSlug)
+    (polishCities ++ ukCities).map(_.slug).toSet ++ ukSuccession.keys ++ SpanishRoster.places.map(_.preferredSlug)
 
   /** The URL slug of a German page — or of one that used to be (see
    *  [[germanSuccession]]), which answered at the slug this gives too: its own
@@ -1411,9 +991,8 @@ object City {
    *  before ([[UsSlugsSpainYields]]). Retired slugs count: a US page at `/regen/`
    *  would be redirected to Deggendorf. */
   private lazy val foreignToUs: Set[String] =
-    (polishCities ++ allUkCities ++ germanCities ++ spanishCities).map(_.slug).toSet ++
-      PolishPages.retired.keys ++ ukMergedPages.map { case (name, _) => Slugify.stable(name) } ++
-      germanSuccession.keys ++ spanishSuccession.keys
+    (polishCities ++ ukCities ++ germanCities ++ spanishCities).map(_.slug).toSet ++
+      PolishPages.retired.keys ++ ukSuccession.keys ++ germanSuccession.keys ++ spanishSuccession.keys
 
   /** The URL slug of a US page — or of one that used to be (see [[usSuccession]]),
    *  which answered at the slug this gives too: its own name wherever that is free
@@ -1464,14 +1043,12 @@ object City {
    *  URL lands on, and a row of a venue that moved is re-addressed to the venue's
    *  page by `WebReadModel` whatever slug it was projected under.
    *
-   *  - `dudley`, `sandwell` → `birmingham` and `lanarkshire` → `glasgow`
-   *    (2026-10-09): UK pages whose hubs were one urban area — see [[ukMergedPages]].
-   *  - Poland's, Spain's, Germany's and the United States' retired pages, each
-   *    pointing at the page holding the town it was named after — see
-   *    [[germanSuccession]], [[spanishSuccession]], [[usSuccession]].
+   *  - Poland's, Spain's, Germany's, the United States' and the United Kingdom's
+   *    retired pages, each pointing at the page holding the town it was named
+   *    after — see [[germanSuccession]], [[spanishSuccession]], [[usSuccession]],
+   *    [[ukSuccession]].
    */
-  lazy val renamedSlugs: Map[String, String] = PolishPages.retired ++
-    ukMergedPages.map { case (name, into) => Slugify.stable(name) -> into.slug } ++ spanishSuccession ++
+  lazy val renamedSlugs: Map[String, String] = PolishPages.retired ++ ukSuccession ++ spanishSuccession ++
     germanSuccession ++ usSuccession
 
   /** The slugs a city used to answer at, given the one it answers at now.
@@ -1519,10 +1096,10 @@ object City {
     SpanishRoster.places.map(p => new SpanishPage(spanishSlug(p.preferredSlug, p.qualifiedSlug), p))
   private[models] val spanishCities: Seq[City] = spanishPages
 
-  /** Slugs another country already serves, which a Spanish page may not take —
-   *  the US's only where it held them first ([[UsSlugsSpainYields]]). */
+  /** Slugs another country already serves or redirects, which a Spanish page may
+   *  not take — the US's only where it held them first ([[UsSlugsSpainYields]]). */
   private lazy val foreignToSpain: Set[String] =
-    (polishCities ++ allUkCities ++ germanCities).map(_.slug).toSet ++ UsSlugsSpainYields
+    (polishCities ++ ukCities ++ germanCities).map(_.slug).toSet ++ ukSuccession.keys ++ UsSlugsSpainYields
 
   /** The URL slug of a Spanish page — or of one that used to be (see
    *  [[spanishSuccession]]), which answered at the slug this gives too.
@@ -1567,19 +1144,12 @@ object City {
    *  lookups. A single-country web deployment scopes to `country.cities`.
    *
    *  Built directly from the per-country lists that live HERE (`polishCities`,
-   *  and future `ukCities`, …), NOT via `Country.all` — `Country` depends on
+   *  `ukCities`, …), NOT via `Country.all` — `Country` depends on
    *  `City` (its `cities` read `City.polishCities`), so a back-reference would
    *  make the two objects' static initialisers wait on each other and deadlock
    *  when loaded on parallel threads. Keep the dependency one-directional:
    *  `Country → City`. A new country adds its list to this concatenation. */
   val all: Seq[City] = polishCities ++ ukCities ++ germanCities ++ usCities ++ spanishCities
-
-  /** Every modelled city across all countries — including cities that are
-   *  declared in code but currently disabled, so absent from the live [[all]]
-   *  (e.g. the UK cities filtered out by [[activeUkCities]]). [[all]] is the
-   *  LIVE roster that web serves and the worker scrapes; this is the FULL roster
-   *  used only by coverage/partition checks that must also see disabled cities. */
-  val allModelled: Seq[City] = polishCities ++ allUkCities ++ germanCities ++ usCities ++ spanishCities
 
   def bySlug(slug: String): Option[City] = all.find(_.slug == slug)
 

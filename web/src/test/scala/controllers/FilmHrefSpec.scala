@@ -44,8 +44,8 @@ class FilmHrefSpec extends AnyFlatSpec with Matchers {
    *  addressing rule true for every country at once instead of only the one this
    *  JVM happens to be configured as. */
   "a city in a country mounted under a country segment" should "carry that segment in every form of the link" in {
-    val kent = models.Country.UnitedKingdom.cities.find(_.slug == "kent").get
-    FilmHref("Belle", kent) shouldBe "/uk/kent/movie/belle"
-    FilmHref.legacy("!!!", kent) shouldBe "/uk/kent/movie?title=%21%21%21"
+    val canterbury = models.Country.UnitedKingdom.cities.find(_.slug == "canterbury").get
+    FilmHref("Belle", canterbury) shouldBe "/uk/canterbury/movie/belle"
+    FilmHref.legacy("!!!", canterbury) shouldBe "/uk/canterbury/movie?title=%21%21%21"
   }
 }

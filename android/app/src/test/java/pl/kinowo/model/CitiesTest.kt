@@ -69,17 +69,17 @@ class CitiesTest {
     }
 
     @Test
-    fun ukRosterIsTheFullSeventySixRegions() {
-        assertEquals(76, Cities.citiesIn("uk").size)
-        assertEquals("london", Cities.citiesIn("uk").first().slug) // hand order
+    fun ukRosterIsEveryTownAndClusterPage() {
+        assertEquals(264, Cities.citiesIn("uk").size)
+        assertEquals("london", Cities.citiesIn("uk").first().slug) // pages.json order: biggest first
         assertTrue(Cities.citiesIn("uk").all { it.country == "uk" })
     }
 
     @Test
     fun ukSortedIsAlphabeticalUnderEnglishCollation() {
         val sorted = Cities.sortedIn("uk")
-        assertEquals("aberdeenshire", sorted.first().slug)
-        assertEquals("yorkshire", sorted.last().slug)
+        assertEquals("aberdeen-aberdeenshire", sorted.first().slug)
+        assertEquals("york-north-yorkshire", sorted.last().slug)
         assertEquals(Cities.citiesIn("uk").map { it.slug }.toSet(), sorted.map { it.slug }.toSet())
     }
 
@@ -88,17 +88,16 @@ class CitiesTest {
         assertEquals(listOf("manchester"), Cities.matching("manch", "uk").map { it.slug })
         assertTrue(Cities.matching("poznan", "uk").isEmpty())
         val yorks = Cities.matching("york", "uk").map { it.slug }
-        assertTrue(yorks.contains("east-yorkshire"))
-        assertTrue(yorks.contains("yorkshire"))
+        assertEquals(listOf("york-north-yorkshire"), yorks)
     }
 
     // ── catalogue (global union, per-country order) ───────────────
 
     @Test
     fun allIsTheGlobalUnionOfPolishAndUkCities() {
-        assertEquals(256, Cities.all.size)               // 180 PL + 76 GB
+        assertEquals(444, Cities.all.size)               // 180 PL + 264 GB
         assertEquals(180, Cities.citiesIn("pl").size)
-        assertEquals(76, Cities.citiesIn("uk").size)
+        assertEquals(264, Cities.citiesIn("uk").size)
     }
 
     /**

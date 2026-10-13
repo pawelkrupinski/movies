@@ -93,16 +93,16 @@ class SitemapRobotsControllerSpec extends AnyFlatSpec with Matchers {
   }
 
   /** A country that shares `showtimes.cc` is served one segment down, so every
-   *  `<loc>` has to carry that segment — a sitemap advertising `/kent/` on a
-   *  deployment reachable at `/uk/kent/` is a file of 404s, and it is the one
+   *  `<loc>` has to carry that segment — a sitemap advertising `/canterbury/` on a
+   *  deployment reachable at `/uk/canterbury/` is a file of 404s, and it is the one
    *  file a crawler trusts to enumerate the site. */
   it should "hang every URL off the mount point on a country sharing the brand domain" in {
     val uk = TestMovieController.build(Seq.empty, servingCountry = models.Country.UnitedKingdom)._1
     val body = contentAsString(uk.sitemap(
       EdgeRequest("/sitemap.xml", host = "showtimes.cc")))
     body should include("<loc>https://showtimes.cc/uk/</loc>")
-    body should include("<loc>https://showtimes.cc/uk/kent/</loc>")
-    body should not include "<loc>https://showtimes.cc/kent/</loc>"
+    body should include("<loc>https://showtimes.cc/uk/canterbury/</loc>")
+    body should not include "<loc>https://showtimes.cc/canterbury/</loc>"
   }
 
   /** The brand front door owns the apex ROOT, which is the only `robots.txt` and
@@ -139,7 +139,7 @@ class SitemapRobotsControllerSpec extends AnyFlatSpec with Matchers {
     val body = contentAsString(controller().sitemap(req("/sitemap.xml")))
     body should include("/warszawa/")          // a Polish city stays
     body should not include "/london/"          // UK city — different deployment
-    body should not include "/kent/"            // UK region added in the Flicks roster
+    body should not include "/canterbury/"      // UK town page
     body should not include "/berlin/"          // German city
   }
 

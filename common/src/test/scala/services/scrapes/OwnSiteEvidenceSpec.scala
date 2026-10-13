@@ -87,7 +87,7 @@ class OwnSiteEvidenceSpec extends AnyFlatSpec with Matchers {
     val keys = scala.util.Using.resource(getClass.getResourceAsStream("/venue-websites.json")) { in =>
       play.api.libs.json.Json.parse(in).as[play.api.libs.json.JsObject].value.toMap
     }.collect { case (venue, play.api.libs.json.JsString(url)) if !venue.startsWith("_") => venue -> url }
-    val rostered = models.City.allModelled.flatMap(_.cinemas).map(_.displayName).toSet
+    val rostered = models.City.all.flatMap(_.cinemas).map(_.displayName).toSet
     keys.keySet -- rostered shouldBe empty
     all(keys.values) should startWith regex "https?://"
   }

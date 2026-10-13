@@ -96,7 +96,7 @@ class CatalogSpec extends AnyFlatSpec with Matchers {
   it should "carry each city with its owning country's code" in {
     val j = Catalog.json
     j should include("""{"slug":"poznan","name":"Poznań","lat":52.4064,"lon":16.9252,"country":"pl","region":"Wielkopolskie"}""")
-    j should include("""{"slug":"london","name":"London","lat":51.5074,"lon":-0.1278,"country":"uk","region":"England","aliases":["Greater London"]}""")
+    j should include("""{"slug":"london","name":"London","lat":51.5085,"lon":-0.1257,"country":"uk","region":"England","aliases":["Greater London"]}""")
   }
 
   it should "name the group a GROUPED country finds a city through, and only there" in {
@@ -112,8 +112,9 @@ class CatalogSpec extends AnyFlatSpec with Matchers {
     // The TOP level, where the web nests deeper: `region` is one string and the
     // apps' pick is two steps, so a UK city names its NATION, not the county the
     // page puts between them.
-    cityEntry("cheshire") should include(""""region":"England"""")
-    cityEntry("cheshire") should not include "West Midlands"
+    cityEntry("chester-cheshire") should include(""""region":"England"""")
+    cityEntry("birmingham") should include(""""region":"England"""")
+    cityEntry("birmingham") should not include """"region":"West Midlands""""
     cityEntry("poznan") should include(""""region":"Wielkopolskie"""")
     cityEntry("sitges") should include(""""region":"Barcelona"""")
   }
@@ -148,9 +149,10 @@ class CatalogSpec extends AnyFlatSpec with Matchers {
     cityEntry("dededo-village") should include(""""aliases":["Guam"]""")
     cityEntry("pago-pago")      should include(""""aliases":["American Samoa"]""")
     // One level down too: a UK county that collapsed onto its one place.
-    cityEntry("liverpool")      should include(""""aliases":["Merseyside"]""")
+    cityEntry("lerwick")        should include(""""aliases":["Shetland"]""")
     // Nothing to add where the group's name IS the place's, or nothing collapsed.
-    cityEntry("cheshire")    should not include "aliases"
+    cityEntry("glasgow")     should not include "aliases"
+    cityEntry("liverpool")   should not include "aliases"
     cityEntry("los-angeles") should not include "aliases"
     cityEntry("poznan")      should not include "aliases"
   }
@@ -159,19 +161,15 @@ class CatalogSpec extends AnyFlatSpec with Matchers {
     val j = Catalog.json
     def cityEntry(slug: String) =
       j.split("\\{").find(_.contains(s""""slug":"$slug"""")).getOrElse(fail(s"no $slug entry"))
-    // Glamorgan and Antrim are the two UK counties that group more than one
-    // place — the level `region` alone can't carry (it names only the nation,
-    // "Wales"/"Northern Ireland").
+    // A UK county holding several pages is the level `region` alone can't carry
+    // (it names only the nation, "Wales"/"England").
     cityEntry("cardiff")    should include(""""region":"Wales","subregion":"Glamorgan"""")
-    cityEntry("glamorgan")  should include(""""subregion":"Glamorgan"""")
-    cityEntry("antrim")     should include(""""region":"Northern Ireland","subregion":"Antrim"""")
-    cityEntry("belfast")    should include(""""subregion":"Antrim"""")
-    // A county that collapsed onto its one place carries no subregion — Cheshire
+    cityEntry("swansea")    should include(""""subregion":"Glamorgan"""")
+    cityEntry("birmingham") should include(""""region":"England","subregion":"West Midlands"""")
+    cityEntry("dudley")     should include(""""subregion":"West Midlands"""")
+    // A county that collapsed onto its one place carries no subregion — Lerwick
     // reads correctly through `region` alone, with no extra tap to reach it.
-    cityEntry("cheshire") should not include "subregion"
-    // West Midlands used to group three, until Dudley and Sandwell were folded
-    // into Birmingham (`City.ukMergedPages`); it now collapses like Cheshire.
-    cityEntry("birmingham") should not include "subregion"
+    cityEntry("lerwick")  should not include "subregion"
     cityEntry("glasgow")  should not include "subregion"
     // Germany and the US group one level deep, so neither ever writes it.
     cityEntry("muenchen")     should not include "subregion"

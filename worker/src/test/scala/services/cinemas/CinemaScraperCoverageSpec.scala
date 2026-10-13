@@ -18,13 +18,10 @@ class CinemaScraperCoverageSpec extends AnyFlatSpec with Matchers {
   // Constructing the catalogue does no network I/O — fetch() is never called here.
   private val catalog = new CinemaScraperCatalog(new FakeHttpFetch("multikino"), models.VenueClock.fixedOn(LocalDate.of(2026, 6, 8)), tools.SpecClock.Pinned)
 
-  // `byCity` wires EVERY modelled city's cinemas — including the UK cities
-  // currently disabled, which drop out of the live `City.all` / `catalog.all`
-  // view but stay fully modelled. Coverage is checked here (not against
-  // `catalog.all`) so "a cinema added to the model but never wired" is still
-  // caught while its city is offline.
+  // `byCity` wires EVERY city's cinemas; coverage is checked over it so "a cinema
+  // added to the model but never wired" is caught.
   private val wiredCinemas: Seq[Cinema] = catalog.byCity.values.flatten.map(_.cinema).toSeq
-  private val modelledSlugs: Set[String] = City.allModelled.map(_.slug).toSet
+  private val modelledSlugs: Set[String] = City.all.map(_.slug).toSet
 
   "Every modelled cinema" should "have exactly one wired scraper" in {
     wiredCinemas.toSet shouldBe Cinema.all.toSet

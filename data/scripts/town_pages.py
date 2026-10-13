@@ -1,4 +1,4 @@
-"""Which listing page each venue belongs to — the rule Poland, Spain, Germany and the US share.
+"""Which listing page each venue belongs to — the rule Poland, Spain, Germany, the US and the UK share.
 
 A country's pages are built from its venues' towns:
 
@@ -14,6 +14,14 @@ A country's pages are built from its venues' towns:
         found nobody stays a page of its own, like a 3-venue one.
      Only 1- and 2-venue towns ever cluster: a major or a town with
      `own_page_min_venues`+ venues never takes in a neighbour, however close.
+  4. Where the country sets `max_reach_km` (the UK: 40), no venue on a cluster
+     page is further than that from the town the page is named after. The steps
+     above measure town centre to town centre, and a venue can sit well out from
+     its town's — so a town whose venues are past the cap leaves its
+     cluster, are clustered again among themselves by the same steps, and a
+     1-venue town still alone joins the nearest cluster it is within reach of,
+     else stands as a page of its own (Malton, whose cinema is 40.4 km from
+     Beverley, the cluster it would otherwise join).
 
 A cluster is named and slugged after its anchor — the town with the most venues,
 then the most people. Distances are straight-line (haversine) between gazetteer
@@ -22,9 +30,9 @@ town centres.
 What differs per country is only at the edges, and is the caller's: how a
 venue's town is read, which cities are major, the radii (Germany's tighter, the US's wider),
 how a name becomes a slug, what a page records beside its towns and venues
-(Poland's locative, Spain's province, Germany's Bundesland, the US's state), and where a page
-that stopped existing now redirects. `data/{pl,spain,germany,us}/scripts/build_pages.py`
-are those callers.
+(Poland's locative, Spain's province, Germany's Bundesland, the US's state, the UK's
+county), how far a page may reach (the UK's cap), and where a page that stopped existing
+now redirects. `data/{pl,spain,germany,us,uk}/scripts/build_pages.py` are those callers.
 """
 import collections
 import math
@@ -43,6 +51,9 @@ class Rules:
     # A town placed further than this from the page its venues were on before has
     # almost certainly been matched to a gazetteer namesake.
     max_drift_km: float = 60
+    # No venue on a cluster page further than this from the page's anchor town
+    # (step 4 above). None — Poland, Spain, Germany and the US — holds none.
+    max_reach_km: float = None
 
 
 def fold(s):
@@ -61,14 +72,18 @@ def km(a, b):
                                           math.cos(p(a[0])) * math.cos(p(b[0])) * math.sin(p(b[1] - a[1]) / 2) ** 2))
 
 
-def cluster(count, pos, pop, rules=Rules(), landmass=None):
+def cluster(count, pos, pop, rules=Rules(), landmass=None, reach=None):
     """Group the non-major towns into pages: a list of clusters, each a list of
     towns with its anchor first. `count`, `pos` and `pop` map each town to its
     venue count, (lat, lon) and population.
 
     `landmass` (town → key, optional) keeps towns a short line but a sea apart off
     one page: Ceuta is 28 km from Algeciras across the Strait, Fuerteventura 11 km
-    from Lanzarote. Towns with different keys are never within any radius."""
+    from Lanzarote. Towns with different keys are never within any radius.
+
+    `reach` ((town, anchor) → km, optional) is how far a town's furthest venue is
+    from an anchor town, which `rules.max_reach_km` caps; by default the distance
+    between the two towns' centres."""
     def dist(a, b):
         if landmass and landmass(a) != landmass(b):
             return math.inf
@@ -104,11 +119,43 @@ def cluster(count, pos, pop, rules=Rules(), landmass=None):
     # venues, then the most people.
     for c in final:
         c.sort(key=lambda t: (-count[t], -pop[t], t))
+    if rules.max_reach_km is not None:
+        final = within_reach(final, count, pos, pop, rules, dist, reach or (lambda t, a: km(pos[t], pos[a])),
+                             landmass)
+    return final
+
+
+def within_reach(clusters, count, pos, pop, rules, dist, reach, landmass):
+    """Step 4 of the rule: `clusters` with every town further than
+    `rules.max_reach_km` (by `reach`) from its cluster's anchor taken out and
+    placed again — clustered among themselves by the same rule (which caps them
+    in turn), then a 1-venue town left alone joining the nearest cluster whose
+    anchor it is within reach of, as `cluster`'s absorb step would. It only joins
+    a cluster whose anchor still outranks it, so no anchor — and so no distance
+    already checked — changes."""
+    def ranks(t):
+        return -count[t], -pop[t], t
+    kept, out = [], []
+    for c in clusters:
+        kept.append([t for t in c if t == c[0] or reach(t, c[0]) <= rules.max_reach_km])
+        out.extend(t for t in c if t not in kept[-1])
+    if not out:
+        return clusters
+    final = list(kept)
+    for c in cluster({t: count[t] for t in out}, pos, pop, rules, landmass, reach):
+        t = c[0]
+        if len(c) == 1 and count[t] == 1:
+            near = [m for m in kept if len(m) > 1 and ranks(m[0]) < ranks(t)
+                    and dist(t, m[0]) <= rules.absorb_radius_km and reach(t, m[0]) <= rules.max_reach_km]
+            if near:
+                min(near, key=lambda m: (dist(t, m[0]), m[0])).append(t)
+                continue
+        final.append(c)
     return final
 
 
 def build(by_town, majors, major_town, gaz, display, make_page, region_slug, cinema_of, rules=Rules(),
-          landmass=None, slug_of=slugify, reserved=None):
+          landmass=None, slug_of=slugify, reserved=None, reach=None):
     """Every page, as {slug: page}, and the page each town is on.
 
     by_town:    town → its venues, in roster order (the order a page lists them in)
@@ -120,6 +167,7 @@ def build(by_town, majors, major_town, gaz, display, make_page, region_slug, cin
     region_slug: anchor → what qualifies its slug when another page has it already
     cinema_of:  venue → what the page's "cinemas" lists for it
     landmass:   see `cluster`
+    reach:      see `cluster`
     slug_of:    name → URL slug (German spells ä as "ae" where Polish and Spanish drop the accent)
     reserved:   slug → the town only a page anchored there may take it for (see `reserve`)
     """
@@ -131,7 +179,7 @@ def build(by_town, majors, major_town, gaz, display, make_page, region_slug, cin
     pop = {t: gaz[t]["pop"] for t in minor}
 
     used = set(result)
-    for c in cluster(count, pos, pop, rules, landmass):
+    for c in cluster(count, pos, pop, rules, landmass, reach):
         anchor = c[0]
         slug = slug_of(display(anchor))
         if slug in used or reserved.get(slug, anchor) != anchor:

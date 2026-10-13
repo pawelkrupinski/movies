@@ -9,22 +9,26 @@ every Monday 06:00 UTC (and on `workflow_dispatch`).
 
 The UK roster is one hand-wired `FlicksClient` per venue, spread across two files:
 
-- `common/src/main/scala/models/Cinema.scala` — a `case object … extends Cinema(display, pill)` plus membership in a per-city grouping `val` (e.g. `val cardiff`).
-- `worker/src/main/scala/services/cinemas/CinemaScraperCatalog.scala` — a `flicks("<slug>", Obj)` line inside the city's `<city>Scrapers` Seq.
+- `common/src/main/scala/models/Cinema.scala` — a `case object … extends Cinema(display, pill)`.
+- `worker/src/main/scala/services/cinemas/CinemaScraperCatalog.scala` — a `flicks("<slug>", Obj)` line inside a `<region>Scrapers` Seq.
+
+Which page LISTS a venue is not wired by hand: it is generated from the venue's
+town (`data/uk/scripts/build_pages.py` → `UkPages.scala`), which the workflow
+reruns after harvesting and geocoding the new venues.
 
 `discover.py`:
 
 1. Fetches Flicks' `sitemap-cinemas.xml` — every cinema slug Flicks knows.
 2. Diffs it against the slugs we already wire, minus [`exclude.txt`](exclude.txt).
 3. For each genuinely new slug, fetches the cinema page for its display name + coordinates and probes the sessions endpoint (today … +6d) for whether it currently lists showtimes.
-4. Assigns each venue to the **nearest wired UK city** by great-circle distance (cities carry lat/lon in `City.scala`), then splices compilable Scala into both files.
+4. Wires each venue into the `<region>Scrapers` val of the **nearest already-wired venue** by great-circle distance (coordinates in `data/uk/venues.json`), then splices compilable Scala into both files.
 5. Reports venues wired by us but **dropped from Flicks' sitemap index**, split by session-liveness: a slug that also has **no sessions** this week is a genuine **retirement candidate**; one that **still serves sessions** is a benign Flicks index gap (the sitemap-cinemas.xml index omits some live venues — e.g. Vue Colchester, the Isle of Man cinemas — while their per-venue sessions endpoint keeps working), reported as "no action" and left wired. It never auto-deletes.
 
 ### Parking (never emit broken Scala)
 
 A venue is **parked** (reported, not wired) when it can't be placed safely:
 
-- nearest city is **London** — London needs a manual `londonAreas` area-group assignment;
+- nearest venue is on the **London** page — London needs a manual `londonAreas` area-group assignment;
 - **object-name collision** with an existing cinema;
 - **no coordinates** on the page — city can't be resolved;
 - **no sessions** this week — verify it is actually live before wiring.

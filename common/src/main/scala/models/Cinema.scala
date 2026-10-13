@@ -901,6 +901,9 @@ case object RegalChain extends Cinema("Regal", "Regal")
 
 
 // ── United Kingdom (Flicks-sourced) ──
+// Grouped below by the Flicks region each venue was first wired under. That is all the
+// headings are: the page a venue is LISTED on is generated, from its town, into `UkPages`
+// (`data/uk/scripts/build_pages.py`).
 // ── United Kingdom · London (Flicks) ──
 case object ActOneActon extends Cinema("Act One Cinema Acton", "Act One Acton")
 case object ArthouseCrouchEnd extends Cinema("ArtHouse Crouch End", "ArtHouse Crouch End")
@@ -1290,7 +1293,7 @@ case object OmniplexBangor extends Cinema("Omniplex Bangor", "Omniplex Bangor")
 case object OmniplexDownpatrick extends Cinema("Omniplex Downpatrick", "Omniplex Downpatrick")
 case object OmniplexDundonald extends Cinema("Omniplex Dundonald", "Omniplex Dundonald")
 case object OmniplexNewry extends Cinema("Omniplex Newry", "Omniplex Newry")
-// ── United Kingdom · Dudley (Flicks) — listed on the Birmingham page ──
+// ── United Kingdom · Dudley (Flicks) ──
 case object OdeonCinemaDudley extends Cinema("Odeon Cinema Dudley", "Odeon Dudley")
 case object ShowcaseCinemaDudley extends Cinema("Showcase Cinema Dudley", "Showcase Dudley")
 // ── United Kingdom · Dumfries and Galloway (Flicks) ──
@@ -1308,8 +1311,6 @@ case object AberystwythArtsCentre extends Cinema("Aberystwyth Arts Centre", "Abe
 case object CommodoreCinemaAberystwyth extends Cinema("Commodore Cinema Aberystwyth", "Commodore Aberystwyth")
 case object CrossHandsHallCinema extends Cinema("Cross Hands Hall & Cinema", "Cross Hands Hall &")
 case object Libanus1877 extends Cinema("Libanus 1877", "Libanus 1877")
-// Flicks files it under Dyfed, but it is 47 km from that hub and 18 km from Glamorgan's, so it
-// is listed on the Glamorgan page — see `UkPageGeographySpec`.
 case object MinersWelfareAndCommunityHallYstradgynlais extends Cinema("Miners Welfare and Community Hall Ystradgynlais", "Miners Welfare and Community Hall Ystradgynlais")
 case object OdeonCinemaLlanelli extends Cinema("Odeon Cinema Llanelli", "Odeon Llanelli")
 case object PalaceCinemaHaverfordwest extends Cinema("Palace Cinema Haverfordwest", "Palace Haverfordwest")
@@ -1509,7 +1510,7 @@ case object TheAshfordCinemaFormerlyPicturehouse extends Cinema("The Ashford Cin
 case object TheLightSittingbourne extends Cinema("The Light Sittingbourne", "The Light Sittingbourne")
 case object TheWoodvilleGravesend extends Cinema("The Woodville Gravesend", "The Woodville Gravesend")
 case object VueCinemasThanetWestwoodCross extends Cinema("Vue Cinemas Thanet Westwood Cross", "Vue Thanet Westwood Cross")
-// ── United Kingdom · Lanarkshire (Flicks) — listed on the Glasgow page ──
+// ── United Kingdom · Lanarkshire (Flicks) ──
 case object OdeonLuxeEastKilbride extends Cinema("Odeon Luxe East Kilbride", "Odeon Luxe East Kilbride")
 case object ShowcaseGlasgowCoatbridge extends Cinema("Showcase Glasgow Coatbridge", "Showcase Glasgow Coatbridge")
 case object VueCinemasHamilton extends Cinema("Vue Cinemas Hamilton", "Vue Hamilton")
@@ -1651,7 +1652,7 @@ case object WaterfrontGreenock extends Cinema("Waterfront Greenock", "Waterfront
 // ── United Kingdom · Roxburgh, Ettrick and Lauderdale (Flicks) ──
 case object PavilionCinemaGalashiels extends Cinema("Pavilion Cinema Galashiels", "Pavilion Galashiels")
 case object TowerMillHeartOfHawick extends Cinema("Tower Mill (Heart of Hawick)", "Tower Mill (Heart of Hawick)")
-// ── United Kingdom · Sandwell (Flicks) — listed on the Birmingham page ──
+// ── United Kingdom · Sandwell (Flicks) ──
 case object OdeonCinemaWestBromwich extends Cinema("Odeon Cinema West Bromwich", "Odeon West Bromwich")
 // ── United Kingdom · Shropshire (Flicks) ──
 case object AssemblyRoomsLudlow extends Cinema("Assembly Rooms Ludlow", "Assembly Rooms Ludlow")
@@ -2276,18 +2277,19 @@ object Cinema {
   val konin: Seq[Cinema] = PolishPages.majorCinemas("konin")
 
   // ── United Kingdom (Flicks) ──
-  val london: Seq[Cinema] = Seq(ActOneActon, ArthouseCrouchEnd, BarbicanLondonCinema1, BfiLondonImax, BfiLondonSouthbank, CastleCinemaHackney, SidcupStoryteller, ChiswickCinema, CineworldGreenwich, CineworldBexleyheath, CineworldEnfield, CineworldFeltham, CineworldIlford, CineworldLeicesterSquare, CineworldLondonHounslow, CineworldSouthRuislip, CineworldWandsworth, CineworldWembley, CineworldWestIndiaQuay, CineworldWoodGreen, CineLumiereLondon, CloseUpFilmCentreShoreditch, CrouchEndPicturehouse, CurzonCinemaAldgate, CurzonCinemaBloomsbury, CurzonCinemaCamden, CurzonCinemaHoxton, CurzonCinemaKingston, CurzonCinemaMayfair, CurzonCinemaRichmond, CurzonCinemaSeaContainersMondrian, CurzonCinemaVictoria, CurzonSoho, CurzonWimbledon, DavidLeanCinemaCroydon, ElectricCinemaLondon, ElectricCinemaWhiteCity, EverymanAtTheWhiteleyLondon, EverymanBrentford, EverymanCinemaBakerStreet, EverymanCinemaBarnet, EverymanCinemaBelsizeParkHampstead, EverymanCinemaBoroughYards, EverymanCinemaBroadgate, EverymanCinemaCanaryWharf, EverymanCinemaChelsea, EverymanCinemaCrystalPalace, EverymanCinemaEgham, EverymanCinemaEsher, EverymanCinemaHampstead, EverymanCinemaKingSCross, EverymanCinemaMaidaVale, EverymanCinemaMuswellHill, EverymanCinemaStratfordInternational, EverymanCinemaWaltonOnThames, EverymanCinemaIslington, FinsburyParkPicturehouse, ForestCinemasWalthamstow, GenesisTowerHamlets, InstituteOfContemporaryArts, Jw3Hampstead, KilnKilburn, LeatherheadTheatreCinemaLeatherhead, LexiKensalRise, LumiereRomford, NovaCinemaWoking, OdeonCinemaActon, OdeonCinemaBeckenham, OdeonCinemaEpsom, OdeonCinemaGreenwich, OdeonCinemaHolloway, OdeonCinemaKingston, OdeonCinemaOrpington, OdeonCinemaRichmond, OdeonCinemaSouthWoodford, OdeonCinemaStreatham, OdeonCinemaTottenhamCourtRoad, OdeonCinemaUxbridge, OdeonCinemaWimbledon, OdeonCinemaLuxeHaymarket, OdeonLuxeIslington, OdeonLuxeLeeValley, OdeonCinemaLuxeLeicesterSquare, OdeonCinemaLuxePutney, OdeonLuxeSwissCottage, OdeonLuxeWestEnd, OlympicCinemaBarnes, EmpireCinemaSutton, Peckhamplex, PhoenixCinemaEastFinchley, PicturehouseCentralLondon, PicturehouseClapham, PicturehouseEalingFilmworks, PicturehouseEastDulwich, PicturehouseEpsomSquare, PicturehouseGreenwich, PicturehouseHackney, PicturehouseWestNorwood, PrinceCharlesLondon, RegentStreetCinemaLondon, RichMixBethnalGreen, RioDalston, RiversideStudiosHammersmith, RooftopFilmClubPeckhamBusseyBuilding, RooftopFilmClubStratfordRoofEast, ScienceMuseumLondonImax, ArchlightCinemas, TheArzner, TheCinemaAtSelfridges, TheCinemaInThePowerStation, TheGardenCinema, TheGatePicturehouseLondon, TheLightCinemasAddlestone, TheNickelLondon, TheRitzyPicturehouseBrixton, VueCinemasBromley, VueCinemasDagenham, VueCinemasEltham, VueCinemasFinchleyRoadSwissCottage, VueCinemasFulham, VueCinemasHarrow, VueCinemasIslington, VueCinemasFinchley, VueCinemasPiccadillyCircus, VueCinemasPurleyWayCroydon, VueCinemasRomford, VueCinemasStainesUponThames, VueCinemasStratford, VueCinemasWestEnd, VueCinemasWestfieldShepherdSBush, VueCinemasWoodGreen, WyllyottsTheatrePottersBar)
+  /** London's venues — every one in Greater London (see `UkPages`). */
+  val london: Seq[Cinema] = UkPages.london.cinemas
   private val londonAreaOf: Map[Cinema, CinemaArea] = {
     import CinemaArea.*
     Map(
       // ── Central ──
       BfiLondonImax -> Central, BfiLondonSouthbank -> Central, CineworldLeicesterSquare -> Central, CineLumiereLondon -> Central, CurzonCinemaBloomsbury -> Central, CurzonCinemaCamden -> Central, CurzonCinemaSeaContainersMondrian -> Central, CurzonCinemaVictoria -> Central, CurzonSoho -> Central, EverymanCinemaBakerStreet -> Central, EverymanCinemaBroadgate -> Central, EverymanCinemaChelsea -> Central, EverymanCinemaKingSCross -> Central, EverymanCinemaIslington -> Central, InstituteOfContemporaryArts -> Central, OdeonCinemaTottenhamCourtRoad -> Central, OdeonCinemaLuxeHaymarket -> Central, OdeonLuxeIslington -> Central, OdeonCinemaLuxeLeicesterSquare -> Central, OdeonLuxeWestEnd -> Central, PrinceCharlesLondon -> Central, RegentStreetCinemaLondon -> Central, ScienceMuseumLondonImax -> Central, TheCinemaAtSelfridges -> Central, TheGardenCinema -> Central, TheNickelLondon -> Central, VueCinemasIslington -> Central, VueCinemasPiccadillyCircus -> Central, VueCinemasWestEnd -> Central,
       // ── North ──
-      ArthouseCrouchEnd -> North, CineworldEnfield -> North, CineworldIlford -> North, CineworldWoodGreen -> North, CrouchEndPicturehouse -> North, EverymanCinemaBarnet -> North, EverymanCinemaBelsizeParkHampstead -> North, EverymanCinemaHampstead -> North, EverymanCinemaMuswellHill -> North, FinsburyParkPicturehouse -> North, Jw3Hampstead -> North, KilnKilburn -> North, LexiKensalRise -> North, LumiereRomford -> North, OdeonCinemaHolloway -> North, OdeonLuxeLeeValley -> North, OdeonLuxeSwissCottage -> North, PhoenixCinemaEastFinchley -> North, VueCinemasDagenham -> North, VueCinemasFinchleyRoadSwissCottage -> North, VueCinemasFinchley -> North, VueCinemasRomford -> North, VueCinemasWoodGreen -> North, WyllyottsTheatrePottersBar -> North,
+      ArthouseCrouchEnd -> North, CineworldEnfield -> North, CineworldIlford -> North, CineworldWoodGreen -> North, CrouchEndPicturehouse -> North, EverymanCinemaBarnet -> North, EverymanCinemaBelsizeParkHampstead -> North, EverymanCinemaHampstead -> North, EverymanCinemaMuswellHill -> North, FinsburyParkPicturehouse -> North, Jw3Hampstead -> North, KilnKilburn -> North, LexiKensalRise -> North, LumiereRomford -> North, OdeonCinemaHolloway -> North, OdeonLuxeLeeValley -> North, OdeonLuxeSwissCottage -> North, PhoenixCinemaEastFinchley -> North, VueCinemasDagenham -> North, VueCinemasFinchleyRoadSwissCottage -> North, VueCinemasFinchley -> North, VueCinemasRomford -> North, VueCinemasWoodGreen -> North,
       // ── East ──
       BarbicanLondonCinema1 -> East, CastleCinemaHackney -> East, CineworldWestIndiaQuay -> East, CloseUpFilmCentreShoreditch -> East, CurzonCinemaAldgate -> East, CurzonCinemaHoxton -> East, EverymanCinemaCanaryWharf -> East, EverymanCinemaStratfordInternational -> East, ForestCinemasWalthamstow -> East, GenesisTowerHamlets -> East, OdeonCinemaSouthWoodford -> East, PicturehouseHackney -> East, RichMixBethnalGreen -> East, RioDalston -> East, RooftopFilmClubStratfordRoofEast -> East, VueCinemasStratford -> East,
       // ── South ──
-      SidcupStoryteller -> South, CineworldGreenwich -> South, CineworldBexleyheath -> South, CineworldFeltham -> South, CineworldLondonHounslow -> South, CineworldWandsworth -> South, CurzonCinemaKingston -> South, CurzonCinemaRichmond -> South, CurzonWimbledon -> South, DavidLeanCinemaCroydon -> South, EverymanCinemaBoroughYards -> South, EverymanCinemaCrystalPalace -> South, EverymanCinemaEgham -> South, EverymanCinemaEsher -> South, EverymanCinemaWaltonOnThames -> South, LeatherheadTheatreCinemaLeatherhead -> South, NovaCinemaWoking -> South, OdeonCinemaBeckenham -> South, OdeonCinemaEpsom -> South, OdeonCinemaGreenwich -> South, OdeonCinemaKingston -> South, OdeonCinemaOrpington -> South, OdeonCinemaRichmond -> South, OdeonCinemaStreatham -> South, OdeonCinemaWimbledon -> South, OdeonCinemaLuxePutney -> South, OlympicCinemaBarnes -> South, EmpireCinemaSutton -> South, Peckhamplex -> South, PicturehouseClapham -> South, PicturehouseEastDulwich -> South, PicturehouseEpsomSquare -> South, PicturehouseGreenwich -> South, PicturehouseWestNorwood -> South, RooftopFilmClubPeckhamBusseyBuilding -> South, ArchlightCinemas -> South, TheArzner -> South, TheCinemaInThePowerStation -> South, TheLightCinemasAddlestone -> South, TheRitzyPicturehouseBrixton -> South, VueCinemasBromley -> South, VueCinemasEltham -> South, VueCinemasFulham -> South, VueCinemasPurleyWayCroydon -> South, VueCinemasStainesUponThames -> South,
+      SidcupStoryteller -> South, CineworldGreenwich -> South, CineworldBexleyheath -> South, CineworldFeltham -> South, CineworldLondonHounslow -> South, CineworldWandsworth -> South, CurzonCinemaKingston -> South, CurzonCinemaRichmond -> South, CurzonWimbledon -> South, DavidLeanCinemaCroydon -> South, EverymanCinemaBoroughYards -> South, EverymanCinemaCrystalPalace -> South, OdeonCinemaBeckenham -> South, OdeonCinemaGreenwich -> South, OdeonCinemaKingston -> South, OdeonCinemaOrpington -> South, OdeonCinemaRichmond -> South, OdeonCinemaStreatham -> South, OdeonCinemaWimbledon -> South, OdeonCinemaLuxePutney -> South, OlympicCinemaBarnes -> South, EmpireCinemaSutton -> South, Peckhamplex -> South, PicturehouseClapham -> South, PicturehouseEastDulwich -> South, PicturehouseGreenwich -> South, PicturehouseWestNorwood -> South, RooftopFilmClubPeckhamBusseyBuilding -> South, ArchlightCinemas -> South, TheArzner -> South, TheCinemaInThePowerStation -> South, TheRitzyPicturehouseBrixton -> South, VueCinemasBromley -> South, VueCinemasEltham -> South, VueCinemasFulham -> South, VueCinemasPurleyWayCroydon -> South,
       // ── West ──
       ActOneActon -> West, ChiswickCinema -> West, CineworldSouthRuislip -> West, CineworldWembley -> West, CurzonCinemaMayfair -> West, ElectricCinemaLondon -> West, ElectricCinemaWhiteCity -> West, EverymanAtTheWhiteleyLondon -> West, EverymanBrentford -> West, EverymanCinemaMaidaVale -> West, OdeonCinemaActon -> West, OdeonCinemaUxbridge -> West, PicturehouseCentralLondon -> West, PicturehouseEalingFilmworks -> West, RiversideStudiosHammersmith -> West, TheGatePicturehouseLondon -> West, VueCinemasHarrow -> West, VueCinemasWestfieldShepherdSBush -> West,
     )
@@ -2296,81 +2298,6 @@ object Cinema {
     CinemaArea.compass
       .map(area => CinemaAreaGroup(area, london.filter(londonAreaOf.get(_).contains(area))))
       .filter(_.cinemas.nonEmpty)
-  val manchester: Seq[Cinema] = Seq(CineworldAshtonUnderLyne, CineworldManchester, CultplexManchester, EverymanManchesterStJohns, FlixTreehouseManchester, HomeManchester, LeighFilmFactory, NorthernLightSale, OdeonCinemaManchesterGreatNorthern, OdeonCinemaManchesterTraffordCentre, OdeonCinemaOldham, EmpireCinemaWigan, PlazaStockport, ReelCinemaRochdale, RegentMarple, SavoyHeatonMoor, TheLightCinemasStockport, VueCinemasManchesterPrintworks, VueCinemasManchesterQuayside)
-  val norwich: Seq[Cinema] = Seq(ArcCinemaGreatYarmouth, CentralCinemaFakenham, CornExchangeCinemaKingSLynn, EastCoastCinemaLowestoft, LittleTheatreSheringham, MajesticKingSLynn, MarinaTheatreLowestoft, OdeonNorwich, OrionDereham, PalaceCinemaGorlestonOnSea, CinemaCityPicturehouseNorwich, RegalMovieplexCromer, TheLightThetford, VueCinemasNorwich)
-  val aberdeenshire: Seq[Cinema] = Seq(ArcCinemaPeterhead, CineworldQueensLinkAberdeen, CineworldUnionSquareAberdeen, MorayPlayhouse, Number30Huntly, TheBarnBanchory, VictoriaHallEllon)
-  val antrim: Seq[Cinema] = Seq(IMCCinemaBallymena, MovieHouseGlengormley, OmniplexAntrim, OmniplexCarrickfergus, OmniplexLarne)
-  val armagh: Seq[Cinema] = Seq(OmniplexCraigavon)
-  val ayrshireAndArran: Seq[Cinema] = Seq(AstoriaCinemaAyr, CinemaSaltcoatsPremierLeisure, OdeonCinemaKilmarnock)
-  val bedfordshire: Seq[Cinema] = Seq(CineworldLuton, VueCinemasBedford)
-  val belfast: Seq[Cinema] = Seq(CineworldBelfast, MovieHouseCitySideBelfast, OdeonCinemaBelfast, OmniplexBelfast, OmniplexLisburn, QueenSFilmTheatreBelfast, StrandArtsCentreBelfast, TheAvenueCinemaBelfast)
-  val berkshire: Seq[Cinema] = Seq(CineworldBracknell, CornExchangeNewburyScreenOne, EverymanCinemaWokingham, OdeonLuxeMaidenhead, ReadingBiscuitFactory, ShowcaseDeLuxReading, SouthHillParkArtsCentreBracknell, TheOldCourtWindsor, VueCinemasNewbury, VueCinemasReading)
-  val birmingham: Seq[Cinema] = Seq(ArtrixBromsgrove, CineworldBroadStreetBirmingham, CineworldNECBirmingham, CineworldSolihull, EverymanCinemaBirmingham, MidlandsArtsCentreBirmingham, MockingbirdCinemaKitchenBirmingham, OdeonBirminghamNewStreet, OdeonCinemaDudley, OdeonCinemaWestBromwich, OdeonLuxeBirminghamBroadwayPlaza, OmniplexBirmingham, ReelCinemaQuinton, RoyalCinemasSuttonColdfield, ShowcaseCinemaDudley, VueCinemasBirmingham)
-  val bristol: Seq[Cinema] = Seq(CubeCinemaBristol, EverymanCinemaBristol, OdeonCabotCircus, ScottCinemasBristolWestburyPark, ShowcaseBristolAvonmeads, VueCinemasBristolCribbsCauseway, VueCinemasBristolLongwellGreen, WatershedBristol)
-  val buckinghamshire: Seq[Cinema] = Seq(CineworldHighWycombe, CineworldMiltonKeynes, EverymanCinemaGerrardsCross, EverymanCinemaMarlow, OdeonCinemaAylesbury, OdeonCinemaMiltonKeynes, OmniplexHighWycombeFormerlyEmpire, VillagePictureHouseCuddington)
-  val cambridgeshire: Seq[Cinema] = Seq(ArtsCinemaJohnClareTheatrePeterborough, ArtsPicturehouseCambridge, CineworldEly, CineworldHuntingdon, CineworldStNeots, ElyCommunityCinema, EverymanCinemaCambridge, KeyTheatrePeterborough, LuxeWisbech, OdeonLuxePeterborough, ShowcaseDeLuxPeterborough, TheLightCambridge, TheLightWisbech)
-  val cardiff: Seq[Cinema] = Seq(ChapterCardiff, CineworldCardiff, EverymanCinemaCardiff, OdeonCinemaCardiff, ShowcaseCinemaCardiff)
-  val centralScotland: Seq[Cinema] = Seq(ChalmersAlloaCinema, CineworldFalkirk, HippodromeBoNess, MacrobertArtCentreStirling, VueCinemasStirling)
-  val cheshire: Seq[Cinema] = Seq(BuxtonCinemaPavilionArtsCentre, CinemacMacclesfield, CineworldWarrington, CurzonCinemaKnutsford, EverymanCinemaAltrincham, OdeonCinemaCrewe, OdeonCinemaNorthwichBaronsQuay, OdeonLuxeWarrington, PicturehouseChester, ReelCinemaWidnes, RexWilmslow, StoryhouseChester, VueCinemasAltrincham, VueCinemasCheshireOaks)
-  val clwyd: Seq[Cinema] = Seq(CineworldLlandudno, MerlinScalaPrestatyn, StrandCinemaRhyl, TheatrColwyn)
-  val cornwall: Seq[Cinema] = Seq(CineworldPlymouth, FilmhouseNewlyn, FloraCinemaHelston, MerlinCapitolBodmin, MerlinRegalCinemaRedruth, MerlinSavoyPenzance, PhoenixCinemaFalmouth, PlymouthArtsCinema, RebelCinema, RoyalStIvesCinema, TheAstraCinemaStMawgan, ThePolyFalmouth, VueCinemasPlymouth, WTWLighthouseNewquay, WTWPlazaTruro, WTWRegalWadebridge, WTWWhiteRiverCinema)
-  val countyDurham: Seq[Cinema] = Seq(ARCStocktonOnTees, CineworldDaltonParkMurtonCounty, EmpireTheatreConsett, EverymanCinemaDurham, FuseCommunityCinemaPrudhoe, GalaCinemaDurham, OdeonLuxeDurham, ShowcaseCinemaDeLuxTeesside, VueCinemasDarlington, VueCinemasHartlepool)
-  val cumbria: Seq[Cinema] = Seq(BreweryArtsCentreKendal, GaietyCinemaWhitehaven, KeswickAlhambra, LonsdaleAlhambraPenrith, ParkwayWorkington, ReelCinemaMorecambe, RoxyUlverston, RoyaltyBownessOnWindemere, TheRitzCinemaWorkington, VueCinemasBarrow, VueCinemasCarlisle, ZeffirellisCinemaAmbleside)
-  val derbyshire: Seq[Cinema] = Seq(CineworldChesterfield, EliteCinemaAndTheatreAshbourne, NorthernLightWirksworth, OdeonCinemaSwadlincote, OdeonLuxeDerby, QuadDerby, RitzBelper, ShowcaseCinemaDeLuxDerby)
-  val devon: Seq[Cinema] = Seq(AlexandraNewtonAbbot, BarnCinemaDartingtonArtCentre, CentralCinemaBarnstaple, EmbassyCinemaIlfracombe, EverymanCinemaPlymouth, KingsCinemaKingsbridge, LyntonCinema, NewCarltonOkehampton, NewCentralCinemaTorquay, OdeonCinemaExeter, PavilionsTeignmouth, PicturehouseExeter, PloughArtsCentreTorrington, RadwaySidmouth, SavoyScottCinemasExmouth, TheBeehiveHoniton, TheFlavel, TheWatermarkIvybridge, TivoliTiverton, TotnesCinema, VueCinemasExeter, VueCinemasTorbayPaignton)
-  val dorset: Seq[Cinema] = Seq(ColosseumBournemouth, ElectricPalaceBridport, HilltopCinemaShaftesburyArtsCentre, LighthousePoole, MowlemTheatre, OdeonCinemaBournemouthBH2, OdeonCinemaDorchester, PlazaCinemaDorchester, RegentChristchurch, TheNewVicTisburyVillageHall, TheRexCinemaWareham, TivoliTheatreWimborne, VueCinemasPoole)
-  val down: Seq[Cinema] = Seq(IMCNewtownardsMovieland, IveaghMovieStudioIMCBanbridge, OmniplexBanbridge, OmniplexBangor, OmniplexDownpatrick, OmniplexDundonald, OmniplexNewry)
-  val dumfriesAndGalloway: Seq[Cinema] = Seq(LonsdaleCityCinemaAnnan, RobertBurnsCentreFilmTheatre, TheCinemaNewtonStewart, TheFullartonCastleDouglas)
-  val dunbartonshireArgyllBute: Seq[Cinema] = Seq(CampbeltownPictureHouse, DiscoveryCentreCinemaRothesay, OmniplexClydebankFormerlyEmpire, StudioCinemaDunoon)
-  val dyfed: Seq[Cinema] = Seq(AberystwythArtsCentre, CommodoreCinemaAberystwyth, CrossHandsHallCinema, Libanus1877, OdeonCinemaLlanelli, PalaceCinemaHaverfordwest, PublicHallBrynamman, TheatrGwaunFishguard, TheatrMwldanCardigan, TorchTheatreMilfordHaven, VueCinemasCarmarthen)
-  val eastSussex: Seq[Cinema] = Seq(CineworldBrighton, CineworldEastbourne, DepotLewes, DukeOfYorkSPicturehouseBrighton, DukeSAtKomediaPicturehouse, ElectricPalaceHastings, KinoRye, KinoTeatr, OdeonCinemaBrighton, OdeonCinemaHastings, PavilionHailsham, PictureHouseUckfield, TownerEastbourneCinema)
-  val eastYorkshire: Seq[Cinema] = Seq(CineworldHull, ForumBridlington, OdeonLuxeHull, PalaceCinemaMalton, ParkwayBeverley, ReelCinemaHull, VueCinemasHull)
-  val edinburghAndLothians: Seq[Cinema] = Seq(CineworldEdinburgh, DominionCinemaEdinburgh, EverymanCinemaEdinburgh, FilmhouseEdinburgh, OdeonEdinburghFortKinnaird, OdeonEdinburghLothianRoad, OdeonLuxeEdinburghEdinburghWest, ScotsmanPicturehouseEdinburgh, TheCameoPicturehouse, TheFraserCentreTranent, VueCinemasLivingston, VueEdinburghOceanTerminal, VueEdinburghOmniCentre)
-  val essex: Seq[Cinema] = Seq(CenturyCinemaClacton, CineworldBasildon, CineworldBraintree, CineworldHarlowHarveyCentre, CineworldHarlowQueensgate, CurzonCinemaColchester, ElectricPalaceHarwich, EmpireTheatreHalstead, EverymanCinemaChelmsford, MovieStarrCanveyIsland, OdeonCinemaChelmsford, OdeonCinemaColchester, OdeonCinemaSouthendOnSea, RioBurnhamOnCrouch, RoxyMoviesBishopSStortford, SaffronScreen, VueCinemasBasildon, VueCinemasColchester, VueCinemasWestThurrock)
-  val fermanagh: Seq[Cinema] = Seq(IMCCinemaEnniskillen)
-  val fife: Seq[Cinema] = Seq(AdamSmithTheatreKirkcaldy, KinoGlenrothes, OdeonCinemaDunfermline)
-  val glamorgan: Seq[Cinema] = Seq(ColiseumTheatreAberdare, GwynHallNeath, MinersWelfareAndCommunityHallYstradgynlais, OdeonCinemaBridgend, OdeonCinemaSwansea, PontardaweArtsCentre, ReelCinemaPortTalbot, TaliesinArtsCentreSwansea, VueCinemasMerthyrTydfil, VueCinemasSwansea)
-  val glasgow: Seq[Cinema] = Seq(CineworldSilverburnGlasgow, EverymanCinemaGlasgow, GlasgowFilmTheatre, GrosvenorCinemaGlasgow, IMAXAtGlasgowScienceCentre, LanternhouseCinema, OdeonLuxeEastKilbride, OdeonLuxeGlasgow, ShowcaseGlasgowCoatbridge, VueCinemasGlasgowFort, VueCinemasGlasgowStEnoch, VueCinemasHamilton)
-  val gloucestershire: Seq[Cinema] = Seq(CineworldCheltenham, CineworldGloucesterQuays, ElectricPictureHouseWottonUnderEdge, EverymanCheltenham, GuildhallCinemaGloucester, MerlinStudioColeford, PalaceCinemaCinderford, RosesTheatreTewkesbury, SherborneCinemaGloucester, VueCinemasStroud)
-  val guernsey: Seq[Cinema] = Seq(BeauSejourLeisureCentreGuernsey, TheMallardCinemaGuernsey)
-  val gwent: Seq[Cinema] = Seq(BakerStreetCinemaAbergavenny, CineworldSpyttyParkNewport, MarketHallCinemaBrynmawr, MaximeCinemaBlackwood, RiverfrontNewport, SavoyTheatreMonmouth, VueCinemasCwmbran)
-  val gwynedd: Seq[Cinema] = Seq(CellBBlaenauFfestiniog, EmpireCinemaHolyhead, GaleriCaenarfon, MagicLanternTywyn, NeuaddDwyforPwllheli, PontioArtsInnovationCentreBangor, TheatrDerekWilliams)
-  val hampshire: Seq[Cinema] = Seq(ChichesterCinemaAtNewPark, CineworldChichester, CineworldWhiteley, EverymanCinemaWinchester, HarbourLightsPicturehouse, HytheMoviolaCinema, No6CinemaPortsmouth, OdeonCinemaPortSolent, ReelCinemaFareham, ShowcaseDeLuxSouthampton, SouthseaCinemaArtsCentre, TheLivingRoomCinemaLiphook, TheMaltLymington, VueCinemasBasingstoke, VueCinemasEastleigh, VueCinemasPortsmouth)
-  val herefordshire: Seq[Cinema] = Seq(CourtyardHereford, GatewayCinemaRossOnWye, OdeonCinemaHereford, RichardBoothSBookshopHayOnWye)
-  val hertfordshire: Seq[Cinema] = Seq(BaldockArtsHeritageCentre, BEAMHertfordTheatre, BroadwayLetchworth, CineworldHemelHempstead, CineworldStevenage, CineworldWatford, OdeonCinemaHatfield, ReelCinemaBorehamwood, TheCinemaCampusWest, TheOdysseyStAlbans, TheRexCinemaBerkhamsted, VueCinemasWatford, Watersmeet)
-  val highlandsAndIslands: Seq[Cinema] = Seq(AnLanntairArtsCentreStornowayIsleOfLewis, CromartyCinema, EdenCourtTheatreInverness, HighlandCinemaFortWilliam, LASPortRighArosCinemaPortree, MareelLerwickShetlandIslands, MerlinCinemaThurso, PhoenixKirkwallOkneyIslands, SpeyValleyCinemaAviemore, VueCinemasInverness, WestSideCinemaStromness)
-  val isleOfMan: Seq[Cinema] = Seq(BroadwayCinemaVillaMarina, PalaceCinemasIsleOfMan)
-  val isleOfWight: Seq[Cinema] = Seq(CineworldNewportIsleOfWight, CommodoreRydeIsleOfWight)
-  val jersey: Seq[Cinema] = Seq(CineworldStHelierJersey)
-  val kent: Seq[Cinema] = Seq(CarltonCinemaWestgateOnSea, CinemarshTheMarshAcademy, CineworldAshford, CineworldDover, CineworldRochester, CurzonCanterburyRiverside, EmpireCinemaSandwich, GulbenkianTheatre, KavanaghCinemaHerneBay, KinoHawkhurst, OdeonCinemaChatham, OdeonCinemaMaidstone, OdeonCinemaTunbridgeWells, PalaceCinemaKent, RoyalCinemaFaversham, ShowcaseDeLuxBluewater, SilverScreenFolkestone, StagSevenoaks, TheAshfordCinemaFormerlyPicturehouse, TheLightSittingbourne, TheWoodvilleGravesend, VueCinemasThanetWestwoodCross)
-  val lancashire: Seq[Cinema] = Seq(ArcCinemaBlackpool, ArcCinemaPreston, CineworldBolton, CineworldBroughton, EverymanCinemaClitheroe, FlowerBowlEntertainmentCentrePreston, LowtherPavilionLytham, OdeonCinemaPreston, OdeonCinemaRochdale, ReelCinemaBlackburn, ReelCinemaChorley, ReelCinemasBurnley, RegentBlackpool, TheDukesLancaster, TheIslandLythamStAnnes, TheLightBolton, VueCinemasAccrington, VueCinemasBlackburn, VueCinemasBolton, VueCinemasBury, VueCinemasCleveleys, VueCinemasLancaster, VueCinemasPreston)
-  val leicestershire: Seq[Cinema] = Seq(CineworldHinckley, FlixStudentRunCinemaLoughborough, OdeonCinemaLoughborough, OdeonLuxeLeicester, PhoenixCinemaAndArtCentreLeicester, PiccadillyCinemaLeicester, RegalMeltonMowbray, ShowcaseDeLuxLeicester, VueCinemasLeicester)
-  val lincolnshire: Seq[Cinema] = Seq(ArtsCentreStamford, EverymanCinemaLincoln, JunctionGoole, KinemaInTheWoods, LoewenCinema, OdeonCinemaLincoln, ParkwayCinemaLouth, ParkwayCleethorpes, SavoyBoston, SavoyGrantham, SleafordPlayhouse, TowerCinemaSkegness, VueCinemasScunthorpe)
-  val londonderry: Seq[Cinema] = Seq(BrunswickMoviebowlLondonderry, MovieHouseColeraine, MovieHouseMaghera, NerveCentreLondonderry, OmniplexLondonderry)
-  val liverpool: Seq[Cinema] = Seq(CineworldSpeke, CineworldStHelens, EverymanCinemaLiverpool, OdeonLiverpoolONE, OdeonLiverpoolSwitchIsland, OdeonLuxeBromborough, PicturehouseAtFACTLiverpool, PlazaCommunityCinemaLiverpool, ShowcaseDeLuxLiverpool, SouthportBijouCinema, TheLightNewBrighton, VueCinemasBirkenhead, VueCinemasSouthport, WooltonPictureHouse)
-  val northYorkshire: Seq[Cinema] = Seq(CineworldYork, CityScreenPicturehouseYork, EverymanCinemaHarrogate, EverymanCinemaNorthallerton, EverymanCinemaYork, HollywoodPlazaScarborough, OdeonCinemaHarrogate, OdeonMiddlesbrough, PavilionCinemaWhitby, PocklingtonArtsCentre, RegentRedcar, RitzCinemaThirsk, RoxyMoviesMiddlesbrough, SavoyCinemaCatterickGarrison, StationCinemaRichmond, StephenJosephTheatreScarborough, TheForumNorthallerton, VueCinemasYork)
-  val northamptonshire: Seq[Cinema] = Seq(ArcCinemaDaventry, CineworldRushdenLakes, ForumCinemaNorthampton, NorthamptonFilmhouse, OdeonNorthampton, SavoyCinemaCorby, VueCinemasNorthampton)
-  val northumberland: Seq[Cinema] = Seq(ForumCinemaHexham, MarketPavilionCinemaBlyth, TheMaltingsBerwickUponTweed, VueCinemasCramlington)
-  val nottinghamshire: Seq[Cinema] = Seq(ArcCinemaAtTheByronHucknall, ArcCinemaBeeston, BroadwayCinemaNottingham, OdeonCinemaMansfield, OdeonCinemaNewark, ReelCinemaScalaIlkeston, SavoyCinemaNottingham, SavoyWorksop, ShowcaseDeLuxNottingham, VueCinemasNottingham)
-  val oxfordshire: Seq[Cinema] = Seq(AbbeyCinemaAbingdon, CineworldDidcot, CineworldWitney, CornExchangeCinemaWallingford, CurzonCinemaOxford, PhoenixPicturehouseOxford, RegalPicturehouseHenley, TheLightBanbury, TheLivingRoomCinemaChippingNorton, TheOxfordCinemaCafe, UltimatePicturePalaceOxford, VueCinemasBicester, VueCinemasOxford)
-  val powys: Seq[Cinema] = Seq(ColiseumCinemaBrecon, OdeonCinemaWrexham, WyesideArtsCentreBuilthWells)
-  val renfrewshire: Seq[Cinema] = Seq(OdeonCinemaBraehead, ShowcaseDeLuxPaisley, TheTowerDigitalArtsCenterHelensburgh, WaterfrontGreenock)
-  val roxburghEttrickAndLauderdale: Seq[Cinema] = Seq(PavilionCinemaGalashiels, TowerMillHeartOfHawick)
-  val shropshire: Seq[Cinema] = Seq(AssemblyRoomsLudlow, CineworldShrewsbury, CineworldTelford, FestivalDraytonCentre, MaonaCinemaOswestry, OdeonLuxeTelford, OldMarketHallShrewsbury, ReelCinemaBridgnorthMajestic, WellingtonOrbit)
-  val somerset: Seq[Cinema] = Seq(CineworldWestonSuperMare, CineworldYeovil, CurzonCinemaClevedon, EverymanBath, LittleTheatrePicturehouse, MerlinWellesleyWellington, OdeonCinemaBath, OdeonCinemaTaunton, PlazaCinemaWestonSuperMare, RitzBurnhamOnSea, ScottCinemasBridgwater, TauntonBrewhouse, TheAvenueCinemaMinehead, TheWellsFilmCentre, WestwayCinemaFrome)
-  val southYorkshire: Seq[Cinema] = Seq(ArcCinemaRotherham, CineworldBarnsley, ParkwayBarnsley, SavoyDoncaster, VueCinemasDoncaster)
-  val staffordshire: Seq[Cinema] = Seq(CannockCinema, CinebowlUttoxeter, CineworldBurtonOnTrent, CineworldStokeOnTrent, CineworldWolverhampton, FilmTheatreStokeOnTrent, LichfieldGarrickTheatreStudio, LockworksCinemaWolverhampton, OdeonCinemaStokeOnTrent, OdeonCinemaTamworth, OdeonLuxeStafford, RedCarpetBartonMarina, TheLightWalsall, VueCinemasNewcastleUnderLyme)
-  val suffolk: Seq[Cinema] = Seq(AbbeygateBuryStEdmunds, AldeburghCinema, CineworldBuryStEdmunds, CineworldHaverhill, CineworldIpswich, ElectricPicturePalaceSouthwold, EverymanBuryStEdmunds, FilmTheatreLeiston, HaverhillArtsCentre, KingStreetCinema, KingsCinemaNewmarket, OmniplexIpswichFormerlyEmpire, PalaceCinemaFelixstowe, RegalStowmarket, RiversideTheatreWoodbridge)
-  val surrey: Seq[Cinema] = Seq(ChiddingfoldVillageHallCinema, CineworldAldershot, EverymanCinemaOxted, EverymanCinemaReigate, HaslemereHallCinema, OdeonCinemaGuildford, ReelCinemasFarnham, TheLightRedhill, VueCinemasCamberley, VueCinemasFarnborough)
-  val tayside: Seq[Cinema] = Seq(BirksAberfeldy, ChalmersFilmhouseArbroath, CineworldDundee, DundeeContemporaryArtsDCA, NewPictureHouseStAndrews, OdeonLuxeDundee, PlayhouseCinemaPerth, TheMontrosePlayhouse)
-  val tyneAndWear: Seq[Cinema] = Seq(CineworldBoldonTyneWear, CineworldNewcastle, CustomsHouseCinemaSouthShields, EverymanCinemaNewcastle, JamJarCinema, OdeonCinemaMetrocentre, OdeonCinemaSilverlink, OmniplexSunderlandFormerlyEmpire, StarAndShadowCinemaNewcastle, TynesideNewcastle, VueCinemasGateshead)
-  val tyrone: Seq[Cinema] = Seq(OmniplexDungannon, OmniplexOmagh, RitzMultiplexCookstown)
-  val warwickshire: Seq[Cinema] = Seq(CineworldRugby, EverymanCinemaStratfordUponAvon, OdeonCinemaCoventry, OdeonLuxeNuneaton, RoyalSpaCentre, ShowcaseDeLuxCoventry, VueCinemasLeamingtonSpa, WarwickArtsCentreCoventry)
-  val westSussex: Seq[Cinema] = Seq(AtriumEastGrinstead, CapitolHorsham, CineworldCrawley, ConnaughtTheatreStudioWorthing, DomeWorthing, EverymanCinemaHorsham, OrionBurgessHill, PicturedromeBognorRegis, WindmillLittlehampton)
-  val westYorkshire: Seq[Cinema] = Seq(CineworldBradford, CineworldLeeds, CineworldWakefield, CottageRoadCinemaLeeds, EverymanCinemaLeeds, HeartCentreHeadingley, HebdenBridgePicturehouse, HydeParkPictureHouse, IlkleyCinema, OdeonCinemaHuddersfield, OdeonLuxeLeedsThorpePark, OdeonLuxeLeedsBradford, PictureHouseKeighley, PicturevilleScienceAndMediaMuseumBradford, PlazaSkipton, ReelCinemaWakefield, RexElland, ShowcaseDeLuxLeeds, TheLightBradford, VueCinemasCastleford, VueCinemasHalifax, VueCinemasLeedsKirkstallRoad, VueCinemasLeedsTheLight, WetherbyFilmTheatre)
-  val wiltshire: Seq[Cinema] = Seq(CineworldShawRidgeSwindon, EverymanCinemaSalisbury, OdeonCinemaAndover, OdeonCinemaSalisbury, OdeonCinemaTrowbridge, ReelCinemaChippenhamAstoria, RegalCinemaFordingbridge, TheParadeCinemaMarlborough, VueCinemasSwindon)
-  val worcestershire: Seq[Cinema] = Seq(CastlemortonCinemaMortonMajestic, FuturistCinema, MalvernTheatres, Number8Pershore, OdeonCinemaWorcester, RegalCinemaEvesham, RegalCinemaTenburyWells, VueCinemasRedditch, VueCinemasWorcester)
-  val yorkshire: Seq[Cinema] = Seq(CineworldSheffield, OdeonLuxeSheffield, ParamountPenistone, ShowroomSheffield, TheLightSheffield, VueCinemasSheffield)
 
   // Germany's cinemas come from `GermanRoster.byCity` (appended to `byCity` below),
   // not per-city vals — the full 436-page roster is data-driven.
@@ -2421,85 +2348,13 @@ object Cinema {
     "Jelenia Góra"        -> jeleniaGora,
     "Przemyśl"            -> przemysl,
     "Konin"               -> konin,
-  ) ++ PolishPages.rows.map(r => r.nominative -> r.cinemas) ++ Seq(
-    // United Kingdom
-    "London" -> london,
-    "Manchester" -> manchester,
-    "Norwich" -> norwich,
-    "Aberdeenshire" -> aberdeenshire,
-    "Antrim" -> antrim,
-    "Armagh" -> armagh,
-    "Ayrshire and Arran" -> ayrshireAndArran,
-    "Bedfordshire" -> bedfordshire,
-    "Belfast" -> belfast,
-    "Berkshire" -> berkshire,
-    "Birmingham" -> birmingham,
-    "Bristol" -> bristol,
-    "Buckinghamshire" -> buckinghamshire,
-    "Cambridgeshire" -> cambridgeshire,
-    "Cardiff" -> cardiff,
-    "Central Scotland" -> centralScotland,
-    "Cheshire" -> cheshire,
-    "Clwyd" -> clwyd,
-    "Cornwall" -> cornwall,
-    "County Durham" -> countyDurham,
-    "Cumbria" -> cumbria,
-    "Derbyshire" -> derbyshire,
-    "Devon" -> devon,
-    "Dorset" -> dorset,
-    "Down" -> down,
-    "Dumfries and Galloway" -> dumfriesAndGalloway,
-    "Dunbartonshire and Argyll & Bute" -> dunbartonshireArgyllBute,
-    "Dyfed" -> dyfed,
-    "East Sussex" -> eastSussex,
-    "East Yorkshire" -> eastYorkshire,
-    "Edinburgh & Lothians" -> edinburghAndLothians,
-    "Essex" -> essex,
-    "Fermanagh" -> fermanagh,
-    "Fife" -> fife,
-    "Glamorgan" -> glamorgan,
-    "Glasgow" -> glasgow,
-    "Gloucestershire" -> gloucestershire,
-    "Guernsey" -> guernsey,
-    "Gwent" -> gwent,
-    "Gwynedd" -> gwynedd,
-    "Hampshire" -> hampshire,
-    "Herefordshire" -> herefordshire,
-    "Hertfordshire" -> hertfordshire,
-    "Highlands and Islands" -> highlandsAndIslands,
-    "Isle of Man" -> isleOfMan,
-    "Isle of Wight" -> isleOfWight,
-    "Jersey" -> jersey,
-    "Kent" -> kent,
-    "Lancashire" -> lancashire,
-    "Leicestershire" -> leicestershire,
-    "Lincolnshire" -> lincolnshire,
-    "Londonderry" -> londonderry,
-    "Liverpool" -> liverpool,
-    "North Yorkshire" -> northYorkshire,
-    "Northamptonshire" -> northamptonshire,
-    "Northumberland" -> northumberland,
-    "Nottinghamshire" -> nottinghamshire,
-    "Oxfordshire" -> oxfordshire,
-    "Powys" -> powys,
-    "Renfrewshire" -> renfrewshire,
-    "Roxburgh, Ettrick and Lauderdale" -> roxburghEttrickAndLauderdale,
-    "Shropshire" -> shropshire,
-    "Somerset" -> somerset,
-    "South Yorkshire" -> southYorkshire,
-    "Staffordshire" -> staffordshire,
-    "Suffolk" -> suffolk,
-    "Surrey" -> surrey,
-    "Tayside" -> tayside,
-    "Tyne and Wear" -> tyneAndWear,
-    "Tyrone" -> tyrone,
-    "Warwickshire" -> warwickshire,
-    "West Sussex" -> westSussex,
-    "West Yorkshire" -> westYorkshire,
-    "Wiltshire" -> wiltshire,
-    "Worcestershire" -> worcestershire,
-    "Yorkshire" -> yorkshire,
-  )
+  ) ++ PolishPages.rows.map(r => r.nominative -> r.cinemas) ++
+    (("London" -> london) +: UkPages.rows.map(r => ukLabel(r) -> r.cinemas))
+
+  /** A UK page's label here, unique as [[byCity]]'s must be: the page's name,
+   *  with its county where two pages share one — the two Bangors are both an area. */
+  private def ukLabel(r: UkPages.Row): String =
+    if (UkPages.rows.count(_.nominative == r.nominative) > 1) s"${r.nominative} (${r.county})" else r.nominative
 
   /** Every city's venues in page order, paired with the city's display label.
    *  Single source of truth for `all` and for the uptime page's per-city

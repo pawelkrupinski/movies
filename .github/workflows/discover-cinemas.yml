@@ -9,7 +9,7 @@ name: Discover UK cinemas
 # sitemap-cinemas.xml; scripts/discover-cinemas/discover.py diffs that against the
 # slugs we already wire (minus scripts/discover-cinemas/exclude.txt, the known-
 # defunct venues) and splices compilable Scala for each genuinely new venue,
-# assigning it to the nearest wired UK city by coordinates. "Already wired" spans
+# wiring it beside the nearest already-wired UK venue. "Already wired" spans
 # both the `flicks(...)` catalogue lines and the chain venues catalogued
 # own-site-primary, whose Flicks slug lives in worker/.../ChainFlicksFallback.scala.
 #
@@ -18,11 +18,12 @@ name: Discover UK cinemas
 # body, never written as broken Scala. It also lists GONE venues (wired by us but
 # dropped from Flicks' sitemap) as retirement candidates; it never auto-deletes.
 #
-# A newly wired venue then needs its TOWN, or it drops silently out of its city's
-# `City.coveredPlaces` — the page just stops naming one of the places it covers,
-# with nothing red to say so. So the same job tops up data/uk/venues.json
-# (`harvest_towns.py --sync`: only the venues the file lacks, a handful at most)
-# and regenerates the lookup, in the same PR as the wiring that needs it.
+# A newly wired venue then needs its TOWN, or it is on no page: which page lists
+# a UK venue is generated from its town. So the same job tops up data/uk/venues.json
+# (`harvest_towns.py --sync`: only the venues the file lacks, a handful at most),
+# places the new towns on GeoNames (`geocode_towns.py`, which refuses a town it
+# cannot place — the run fails rather than guess), rebuilds the pages and
+# regenerates the Scala, in the same PR as the wiring that needs it.
 #
 # Like scala-steward.yml, the PR is opened via the
 # "Kinowo Sync Bot" GitHub App (secrets SYNC_PR_APP_ID + SYNC_PR_APP_PRIVATE_KEY)
@@ -96,13 +97,25 @@ jobs:
                   python3 data/uk/scripts/harvest_towns.py --sync
                   python3 data/scripts/generate_venue_towns.py
 
+            # …and put them on pages. GeoNames' gazetteer is fetched for the run and
+            # never committed; towns.json is what the build reads.
+            - name: Place the new venues on pages
+              run: |
+                  mkdir -p "$RUNNER_TEMP/geonames"
+                  curl -fsSL --retry 5 --retry-all-errors https://download.geonames.org/export/dump/cities1000.zip \
+                      -o "$RUNNER_TEMP/geonames/cities1000.zip"
+                  unzip -oq "$RUNNER_TEMP/geonames/cities1000.zip" -d "$RUNNER_TEMP/geonames"
+                  python3 data/uk/scripts/geocode_towns.py "$RUNNER_TEMP/geonames/cities1000.txt"
+                  python3 data/uk/scripts/build_pages.py
+                  python3 data/uk/scripts/generate_roster.py
+
             # Only compile when the discovery actually changed the wiring — a bad
             # splice must fail the job here, BEFORE a broken PR is opened. Weeks
             # with no new venues skip the (slow) compile entirely.
             - name: Check for wiring changes
               id: changed
               run: |
-                  if git diff --quiet -- common/src/main/scala/models/Cinema.scala worker/src/main/scala/services/cinemas/CinemaScraperCatalog.scala common/src/main/scala/models/VenueTowns.scala data/uk/venues.json; then
+                  if git diff --quiet -- common/src/main/scala/models/Cinema.scala worker/src/main/scala/services/cinemas/CinemaScraperCatalog.scala common/src/main/scala/models/VenueTowns.scala data/uk; then
                       echo "wired=false" >> "$GITHUB_OUTPUT"
                   else
                       echo "wired=true" >> "$GITHUB_OUTPUT"
@@ -151,7 +164,12 @@ jobs:
                       common/src/main/scala/models/Cinema.scala
                       worker/src/main/scala/services/cinemas/CinemaScraperCatalog.scala
                       common/src/main/scala/models/VenueTowns.scala
+                      common/src/main/scala/models/UkPages.scala
                       data/uk/venues.json
+                      data/uk/towns.json
+                      data/uk/pages.json
+                      android/app/src/main/java/pl/kinowo/model/City.kt
+                      ios/Kinowo/Models/City.swift
                   commit-message: 'chore: wire newly-discovered UK cinemas from Flicks'
                   title: 'chore: wire newly-discovered UK cinemas'
                   body-path: discovery-report.md

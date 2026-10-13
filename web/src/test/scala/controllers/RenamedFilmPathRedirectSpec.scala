@@ -73,10 +73,10 @@ class RenamedFilmPathRedirectSpec extends AnyFlatSpec with Matchers {
   // country's site entirely. The mount point comes off the CITY instead.
   "a country that shares the brand domain" should "keep its mount prefix in the redirect" in {
     val uk = controller(models.Country.UnitedKingdom)
-    locationOf(uk.filmSubPathLegacy("kent", "inception-2010")
-      .apply(FakeRequest(GET, "/kent/film/inception-2010"))) shouldBe "/uk/kent/movie/inception-2010"
-    locationOf(uk.browseLegacy("kent")
-      .apply(FakeRequest(GET, "/kent/filmy?genre=Comedy"))) shouldBe "/uk/kent/movies?genre=Comedy"
+    locationOf(uk.filmSubPathLegacy("canterbury", "inception-2010")
+      .apply(FakeRequest(GET, "/canterbury/film/inception-2010"))) shouldBe "/uk/canterbury/movie/inception-2010"
+    locationOf(uk.browseLegacy("canterbury")
+      .apply(FakeRequest(GET, "/canterbury/filmy?genre=Comedy"))) shouldBe "/uk/canterbury/movies?genre=Comedy"
   }
 
   "an unknown city" should "404 rather than redirect onto a URL that 404s one hop later" in {

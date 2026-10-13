@@ -2168,7 +2168,8 @@ class CinemaScraperCatalog(
     "zlocieniec" -> zlocieniecScrapers,
     "slubice" -> slubiceScrapers,
     "wlodawa" -> wlodawaScrapers,
-    // United Kingdom (Flicks)
+    // United Kingdom (Flicks) — keyed by the Flicks region each was wired under;
+    // `byCity` files every one under the page its cinema is on (`models.UkPages`).
     "london" -> londonScrapers,
     "manchester" -> manchesterScrapers,
     "norwich" -> norwichScrapers,
@@ -2488,15 +2489,16 @@ class CinemaScraperCatalog(
     val wired = baseByCity.map { case (slug, scrapers) =>
       slug -> (scrapers ++ filmwebExtra.getOrElse(slug, Nil) ++ nearbyTowns.getOrElse(slug, Nil))
     } ++ nearbyTowns.filter { case (slug, _) => !baseByCity.contains(slug) }
-    // A Polish scraper is filed under the PAGE its cinema is on, not the group it
-    // is wired in above: which page lists which venue is data (`models.PolishPages`,
-    // re-clustered by `data/pl/scripts/build_pages.py`), and a re-cluster must not
-    // need a single scraper moved here to take effect.
-    def polishPage(s: CinemaScraper): Option[City] = City.forCinema(s.cinema).filter(_.country == Country.Poland)
-    val polish = wired.values.flatten.toSeq.filter(polishPage(_).isDefined)
-    val others = wired.map { case (slug, scrapers) => slug -> scrapers.filterNot(polishPage(_).isDefined) }
+    // A Polish or UK scraper is filed under the PAGE its cinema is on, not the group
+    // it is wired in above: which page lists which venue is data (`models.PolishPages`
+    // and `models.UkPages`, re-clustered by each country's `build_pages.py`), and a
+    // re-cluster must not need a single scraper moved here to take effect.
+    def generatedPage(s: CinemaScraper): Option[City] =
+      City.forCinema(s.cinema).filter(c => c.country == Country.Poland || c.country == Country.UnitedKingdom)
+    val paged = wired.values.flatten.toSeq.filter(generatedPage(_).isDefined)
+    val others = wired.map { case (slug, scrapers) => slug -> scrapers.filterNot(generatedPage(_).isDefined) }
       .filter { case (_, scrapers) => scrapers.nonEmpty }
-    others ++ polish.groupBy(polishPage(_).get.slug)
+    others ++ paged.groupBy(generatedPage(_).get.slug)
   }
 
   /** Every raw scraper across every city, in city order. */

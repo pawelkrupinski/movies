@@ -136,7 +136,7 @@ final class CityRegionTests: XCTestCase {
             return false
         })
         // And the flat list a country-wide match reads.
-        XCTAssertEqual(seeded.matching("merseyside", inCountry: "uk").map(\.slug), ["liverpool"])
+        XCTAssertEqual(seeded.matching("shetland", inCountry: "uk").map(\.slug), ["lerwick"])
     }
 
     /// Optional on the wire, like `region`: an older server's catalog decodes.

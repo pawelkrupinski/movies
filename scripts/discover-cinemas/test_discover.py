@@ -10,53 +10,28 @@ import discover as d
 
 # Minimal but structurally faithful fixtures ----------------------------------
 #
-# THE UK CITIES DECLARE `extends UkCity` AND CARRY NO ZoneId, which is not a
-# stylistic choice in this fixture — it is the shape City.scala actually has, and
-# copying it is the whole job of this file. The 79 UK objects were folded onto a
-# `sealed abstract class UkCity(slug, labels, lat, lon)` that supplies
-# `ZoneId.of("Europe/London")` for all of them, so their argument list now ENDS at
-# the longitude. This fixture kept the pre-refactor `extends City(..., ZoneId...)`
-# form, so every test here passed against a shape production no longer emits and
-# the scheduled `Discover UK cinemas` run died on 2026-09-07 with "could not parse
-# City case object London" — its first failure in five weeks of green.
-#
-# Poznan is left in the OLD form deliberately: PL cities really do still declare
-# `extends City(...)` with their own ZoneId, so the parser has to accept both, and
-# a fixture that converted everything would stop proving that.
-CITY_SCALA = '''
-case object London extends UkCity("london",
-  CityLabels("London", "London", "London"), 51.5074, -0.1278) {
-  val cinemas: Seq[Cinema] = Cinema.london
-  override val areas: Seq[CinemaAreaGroup] = Cinema.londonAreas
-}
-case object Cardiff extends UkCity("cardiff",
-  CityLabels("Cardiff", "Cardiff", "Cardiff"), 51.4816, -3.1791) {
-  val cinemas: Seq[Cinema] = Cinema.cardiff
-}
-case object Manchester extends UkCity("manchester",
-  CityLabels("Manchester", "Manchester", "Manchester"), 53.4808, -2.2426) {
-  val cinemas: Seq[Cinema] = Cinema.manchester
-}
-case object Poznan extends City("poznan",
-  CityLabels("Poznań", "Poznaniu", "Poznania"), 52.4064, 16.9252, ZoneId.of("Europe/Warsaw")) {
-  val cinemas: Seq[Cinema] = Cinema.poznan
-}
-  private[models] val allUkCities: Seq[City] = Seq(
-    London, Cardiff, Manchester,
-  )
-'''
+# Where a venue is wired is read off the CATALOG (which `<region>Scrapers` val holds
+# each venue) and data/uk/venues.json (where each venue is): a new venue joins the
+# val of the wired venue nearest it. Which PAGE lists it is generated later, from
+# its town (data/uk/scripts/build_pages.py), so nothing here touches a page.
+VENUES = [
+    {"cinemaObject": "BfiLondonSouthbank", "lat": 51.5069, "lon": -0.1150},
+    {"cinemaObject": "ChapterCardiff", "lat": 51.4820, "lon": -3.2010},
+    {"cinemaObject": "CineworldCardiff", "lat": 51.4780, "lon": -3.1760},
+    {"cinemaObject": "HomeManchester", "lat": 53.4740, "lon": -2.2460},
+]
+LONDON = {"BfiLondonSouthbank"}
 
 CINEMA_SCALA = '''
 case object ChapterCardiff extends Cinema("Chapter Cardiff", "Chapter")
 case object CineworldCardiff extends Cinema("Cineworld Cardiff", "Cineworld Cardiff")
 case object HomeManchester extends Cinema("HOME Manchester", "HOME")
-
-  val london: Seq[Cinema] = Seq(BfiLondonSouthbank, PrinceCharlesLondon)
-  val cardiff: Seq[Cinema] = Seq(ChapterCardiff, CineworldCardiff)
-  val manchester: Seq[Cinema] = Seq(HomeManchester)
 '''
 
-CATALOG_SCALA = '''  private val cardiffScrapers: Seq[CinemaScraper] = Seq(
+CATALOG_SCALA = '''  private val londonScrapers: Seq[CinemaScraper] = Seq(
+    flicks("bfi-london-southbank", BfiLondonSouthbank),
+  )
+  private val cardiffScrapers: Seq[CinemaScraper] = Seq(
     flicks("chapter-cardiff", ChapterCardiff),
     cineworldUk("cardiff", CineworldCardiff),
   )
@@ -79,6 +54,7 @@ CHAIN_FALLBACK_SCALA = '''object ChainFlicksFallback {
 '''
 
 SITEMAP = """<?xml version="1.0"?><urlset>
+<url><loc>https://www.flicks.co.uk/cinema/bfi-london-southbank/</loc></url>
 <url><loc>https://www.flicks.co.uk/cinema/chapter-cardiff/</loc></url>
 <url><loc>https://www.flicks.co.uk/cinema/cineworld-cardiff/</loc></url>
 <url><loc>https://www.flicks.co.uk/cinema/home-manchester/</loc></url>
@@ -91,7 +67,7 @@ class EnumerationTests(unittest.TestCase):
     def test_sitemap_slugs(self):
         self.assertEqual(
             d.sitemap_slugs(SITEMAP),
-            {"chapter-cardiff", "cineworld-cardiff", "home-manchester",
+            {"bfi-london-southbank", "chapter-cardiff", "cineworld-cardiff", "home-manchester",
              "premiere-cinema-cardiff", "odeon-luxe-manchester"},
         )
 
@@ -100,7 +76,7 @@ class EnumerationTests(unittest.TestCase):
         # fallback map — it is still WIRED and must never read as a new candidate.
         self.assertEqual(
             d.wired_slugs(CATALOG_SCALA, CHAIN_FALLBACK_SCALA),
-            {"chapter-cardiff", "cineworld-cardiff", "home-manchester"},
+            {"bfi-london-southbank", "chapter-cardiff", "cineworld-cardiff", "home-manchester"},
         )
 
     def test_load_exclude_ignores_comments(self):
@@ -115,22 +91,25 @@ class EnumerationTests(unittest.TestCase):
         self.assertEqual(wired - flicks - exclude, set())
 
 
-class CityTests(unittest.TestCase):
-    def test_parses_only_uk_cities_with_coords_and_group(self):
-        cities = d.parse_uk_cities(CITY_SCALA)
-        self.assertEqual({c.obj for c in cities}, {"London", "Cardiff", "Manchester"})
-        self.assertNotIn("Poznan", {c.obj for c in cities})  # PL excluded
-        cardiff = next(c for c in cities if c.obj == "Cardiff")
-        self.assertEqual(cardiff.slug, "cardiff")
-        self.assertEqual(cardiff.group_val, "cardiff")
-        self.assertAlmostEqual(cardiff.lat, 51.4816)
+class GroupTests(unittest.TestCase):
+    def test_reads_the_val_each_wired_venue_is_in(self):
+        vals = d.scraper_vals(CATALOG_SCALA)
+        self.assertEqual(vals["ChapterCardiff"], "cardiffScrapers")
+        self.assertEqual(vals["CineworldCardiff"], "cardiffScrapers")   # own-site clients count too
+        self.assertEqual(vals["HomeManchester"], "manchesterScrapers")
 
-    def test_nearest_city_by_distance(self):
-        cities = d.parse_uk_cities(CITY_SCALA)
-        # a point in central Cardiff resolves to Cardiff, not Manchester/London
-        city, dist = d.nearest_city(51.48, -3.18, cities)
-        self.assertEqual(city.obj, "Cardiff")
-        self.assertLess(dist, 5)
+    def test_nearest_wired_venue_decides_the_val(self):
+        vals = d.scraper_vals(CATALOG_SCALA)
+        # a point in central Cardiff resolves to a Cardiff venue, not Manchester/London
+        group = d.nearest_group(51.48, -3.18, VENUES, vals, LONDON)
+        self.assertEqual(group.val, "cardiffScrapers")
+        self.assertEqual(group.near, "CineworldCardiff")
+        self.assertLess(group.km, 5)
+        self.assertFalse(group.london)
+
+    def test_london_venues_come_from_the_generated_pages(self):
+        pages = '{"pages": [{"slug": "london", "cinemas": ["A", "B"]}, {"slug": "leeds", "cinemas": ["C"]}]}'
+        self.assertEqual(d.london_venues(pages), {"A", "B"})
 
 
 class PascalTests(unittest.TestCase):
@@ -141,9 +120,6 @@ class PascalTests(unittest.TestCase):
 
 
 class PlanTests(unittest.TestCase):
-    def setUp(self):
-        self.cities = d.parse_uk_cities(CITY_SCALA)
-
     def _meta(self, **kw):
         m = d.VenueMeta(kw.pop("slug"))
         for k, v in kw.items():
@@ -153,47 +129,42 @@ class PlanTests(unittest.TestCase):
     def test_wire_good_candidate(self):
         metas = [self._meta(slug="premiere-cinema-cardiff", display="Premiere Cinema Cardiff",
                             lat=51.48, lon=-3.18, has_sessions=True)]
-        plan = d.build_plan(CINEMA_SCALA, CATALOG_SCALA, self.cities, metas, gone_dead=[], gone_live=[])
+        plan = d.build_plan(CINEMA_SCALA, CATALOG_SCALA, VENUES, LONDON, metas, gone_dead=[], gone_live=[])
         self.assertEqual(len(plan.wire), 1)
         w = plan.wire[0]
         self.assertEqual(w.obj, "PremiereCinemaCardiff")
-        self.assertEqual(w.city.obj, "Cardiff")
+        self.assertEqual(w.group.val, "cardiffScrapers")
 
     def test_park_london(self):
         metas = [self._meta(slug="x", display="New Picturehouse Soho", lat=51.51, lon=-0.13, has_sessions=True)]
-        plan = d.build_plan(CINEMA_SCALA, CATALOG_SCALA, self.cities, metas, gone_dead=[], gone_live=[])
+        plan = d.build_plan(CINEMA_SCALA, CATALOG_SCALA, VENUES, LONDON, metas, gone_dead=[], gone_live=[])
         self.assertEqual(plan.wire, [])
         self.assertIn("London", plan.park[0].reason)
 
     def test_park_no_sessions(self):
         metas = [self._meta(slug="x", display="Dark Hall Cardiff", lat=51.48, lon=-3.18, has_sessions=False)]
-        plan = d.build_plan(CINEMA_SCALA, CATALOG_SCALA, self.cities, metas, gone_dead=[], gone_live=[])
+        plan = d.build_plan(CINEMA_SCALA, CATALOG_SCALA, VENUES, LONDON, metas, gone_dead=[], gone_live=[])
         self.assertIn("no sessions", plan.park[0].reason)
 
     def test_park_no_coords(self):
         metas = [self._meta(slug="x", display="Somewhere", lat=None, has_sessions=True)]
-        plan = d.build_plan(CINEMA_SCALA, CATALOG_SCALA, self.cities, metas, gone_dead=[], gone_live=[])
+        plan = d.build_plan(CINEMA_SCALA, CATALOG_SCALA, VENUES, LONDON, metas, gone_dead=[], gone_live=[])
         self.assertIn("coordinates", plan.park[0].reason)
 
     def test_park_name_collision(self):
         metas = [self._meta(slug="chapter-cardiff-2", display="Chapter Cardiff",
                             lat=51.48, lon=-3.18, has_sessions=True)]
-        plan = d.build_plan(CINEMA_SCALA, CATALOG_SCALA, self.cities, metas, gone_dead=[], gone_live=[])
+        plan = d.build_plan(CINEMA_SCALA, CATALOG_SCALA, VENUES, LONDON, metas, gone_dead=[], gone_live=[])
         self.assertIn("collision", plan.park[0].reason)
 
 
 class SpliceTests(unittest.TestCase):
-    def test_apply_plan_edits_all_three_sites(self):
-        cities = d.parse_uk_cities(CITY_SCALA)
+    def test_apply_plan_edits_both_files(self):
         metas = [d.VenueMeta("premiere-cinema-cardiff", "Premiere Cinema Cardiff", 51.48, -3.18, True)]
-        plan = d.build_plan(CINEMA_SCALA, CATALOG_SCALA, cities, metas, gone_dead=[], gone_live=[])
+        plan = d.build_plan(CINEMA_SCALA, CATALOG_SCALA, VENUES, LONDON, metas, gone_dead=[], gone_live=[])
         new_cin, new_cat = d.apply_plan(CINEMA_SCALA, CATALOG_SCALA, plan)
         # case object added
         self.assertIn('case object PremiereCinemaCardiff extends Cinema("Premiere Cinema Cardiff"', new_cin)
-        # added to the cardiff grouping val, not london/manchester
-        cardiff_line = next(l for l in new_cin.splitlines() if l.strip().startswith("val cardiff:"))
-        self.assertIn("PremiereCinemaCardiff", cardiff_line)
-        self.assertNotIn("PremiereCinemaCardiff", next(l for l in new_cin.splitlines() if "val manchester:" in l))
         # catalog flicks line added inside cardiffScrapers, on ITS OWN line
         self.assertIn(
             '\n    flicks("premiere-cinema-cardiff", PremiereCinemaCardiff),\n', new_cat
@@ -205,8 +176,7 @@ class SpliceTests(unittest.TestCase):
         self.assertLess(new_cat.index("premiere-cinema-cardiff"), new_cat.index("manchesterScrapers"))
 
     def test_no_candidates_is_noop(self):
-        cities = d.parse_uk_cities(CITY_SCALA)
-        plan = d.build_plan(CINEMA_SCALA, CATALOG_SCALA, cities, metas=[],
+        plan = d.build_plan(CINEMA_SCALA, CATALOG_SCALA, VENUES, LONDON, metas=[],
                             gone_dead=["gone-slug"], gone_live=[])
         new_cin, new_cat = d.apply_plan(CINEMA_SCALA, CATALOG_SCALA, plan)
         self.assertEqual(new_cin, CINEMA_SCALA)
@@ -226,9 +196,8 @@ class GoneLivenessTests(unittest.TestCase):
         self.assertEqual(live, ["palace-cinemas-isle-of-man", "vue-cinemas-colchester"])
 
     def test_live_index_gap_is_not_a_retirement_candidate(self):
-        cities = d.parse_uk_cities(CITY_SCALA)
         dead, live = d.partition_gone({"vue-cinemas-colchester"}, probe=lambda s: True)
-        plan = d.build_plan(CINEMA_SCALA, CATALOG_SCALA, cities, metas=[],
+        plan = d.build_plan(CINEMA_SCALA, CATALOG_SCALA, VENUES, LONDON, metas=[],
                             gone_dead=dead, gone_live=live)
         report = d.render_report(plan, applied=False)
         # reported as an index gap, NOT under retirement candidates

@@ -38,15 +38,15 @@ class BrowseFilterParamsSpec extends AnyFlatSpec with Matchers {
 
   // Same mount-point trap the canonical tag has: these are absolute `<a href>`s
   // on every card's meta rows, so on the shared brand domain a prefix-less one
-  // sends the visitor to `showtimes.cc/kent/…` — off this country's site, and a
+  // sends the visitor to `showtimes.cc/canterbury/…` — off this country's site, and a
   // 404. The prefix comes off the CITY, which is the only thing these builders
   // are handed.
   it should "carry the mount point of a country that shares the brand domain" in {
-    implicit val kent: City = City.bySlug("kent").getOrElse(fail("no city 'kent'"))
-    BrowseHref.country("United Kingdom") shouldBe "/uk/kent/movies?country=United+Kingdom"
-    BrowseHref.director("Jane Doe")      shouldBe "/uk/kent/movies?director=Jane+Doe"
-    BrowseHref.actor("John Roe")         shouldBe "/uk/kent/movies?cast=John+Roe"
-    BrowseHref.genre("Comedy")           shouldBe "/uk/kent/movies?genre=Comedy"
+    implicit val canterbury: City = City.bySlug("canterbury").getOrElse(fail("no city 'canterbury'"))
+    BrowseHref.country("United Kingdom") shouldBe "/uk/canterbury/movies?country=United+Kingdom"
+    BrowseHref.director("Jane Doe")      shouldBe "/uk/canterbury/movies?director=Jane+Doe"
+    BrowseHref.actor("John Roe")         shouldBe "/uk/canterbury/movies?cast=John+Roe"
+    BrowseHref.genre("Comedy")           shouldBe "/uk/canterbury/movies?genre=Comedy"
   }
 
   it should "only emit params the routes file actually binds" in {

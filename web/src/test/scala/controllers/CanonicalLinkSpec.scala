@@ -52,9 +52,9 @@ class CanonicalLinkSpec extends AnyFlatSpec with Matchers with OptionValues {
   // index the OTHER address, and the other address 404s.
   "a country sharing the brand domain" should "canonicalise under its mount point" in {
     val uk   = TestMovieController.build(Nil, servingCountry = models.Country.UnitedKingdom)._1
-    val html = contentAsString(uk.index("kent")(
-      EdgeRequest("/kent/", host = "showtimes.cc")))
-    canonicalOf(html) shouldBe Some("https://showtimes.cc/uk/kent/")
+    val html = contentAsString(uk.index("canterbury")(
+      EdgeRequest("/canterbury/", host = "showtimes.cc")))
+    canonicalOf(html) shouldBe Some("https://showtimes.cc/uk/canterbury/")
   }
 
   // ── The faceted browse pages ───────────────────────────────────────────────

@@ -112,19 +112,21 @@ those is expensive to change once a `Country` is switchable.
    what makes it `switchable` (appears in the navbar country switcher) and
    self-serve its OG origin.
 2. **City roster** (`City.scala`) — the sealed `City` model. Two shapes:
-   - **Hand-authored case objects** (like PL/UK): `case object X extends City(slug,
-     CityLabels(...), lat, lon, ZoneId.of(...))` with `cinemas = Cinema.<city>`.
-     Keep an `all<CC>Cities` full roster + an `active<CC>Cities` filter so
-     enabling/disabling a city is a one-line edit (see UK). Add the list to
-     `City.all`, `City.allModelled`.
-   - **Data-driven** (like DE, ES at scale — hundreds of cinemas): generate the
-     roster from a checked-in data file (see `data/germany/`). Poland, Spain and
-     Germany share ONE page rule, `data/scripts/town_pages.py`: a major city keeps
-     only its own venues, a town of 3+ is a page, and 1-2 venue towns cluster
-     under the biggest ("<Anchor> und Umgebung"); each country's
-     `build_pages.py` supplies its majors, radii, town spellings and slug rule,
-     and the picker groups the pages by an administrative level (voivodeship,
-     province, Bundesland). This needs a `case class` data subtype of the sealed
+   - **Hand-authored case objects** (Poland's 41 majors, London): `case object X
+     extends City(slug, CityLabels(...), lat, lon, ZoneId.of(...))` — kept only
+     where a page needs something no data row carries (Polish declension,
+     London's compass areas). Add the list to `City.all`.
+   - **Data-driven** (everything else — DE, ES, the US, the UK, and Poland's
+     towns): generate the pages from a checked-in data file (see `data/uk/`).
+     Poland, Spain, Germany, the US and the UK share ONE page rule,
+     `data/scripts/town_pages.py`: a major city keeps only its own venues, a town
+     of 3+ is a page, and 1-2 venue towns cluster under the biggest ("<Anchor>
+     und Umgebung"); each country's `build_pages.py` supplies its majors, radii,
+     reach cap (the UK's 40 km), town spellings and slug rule, and the picker
+     groups the pages by an administrative level (voivodeship, province,
+     Bundesland, state, nation and county). The venues themselves may stay
+     hand-written `case object`s (Poland, the UK) with only the page each is on
+     generated. This needs a `case class` data subtype of the sealed
      `City`/`Cinema` fed into `Cinema.byCity`.
 3. **Cinemas** (`Cinema.scala`) — each venue is a `Cinema(displayName, pillName)`
    **and a `Source`** (merge/priority). `Cinema.all` = `byCity.flatMap(_._2)`, and
@@ -218,7 +220,16 @@ a re-harvest if missed:
   and a town name is not unique across states either. `build_pages.py` qualifies
   a second Springfield with its state (keeping the bare slug for the town it
   already meant), and `City.usCities` qualifies a slug another country holds;
-  `CountrySpec` fails on any collision that survives.
+  `CountrySpec` fails on any collision that survives. The UK, re-cut after
+  everyone else (2026-10), qualifies in `build_pages.py` itself, reading the
+  other countries' `pages.json`: `/cambridge/` stays Massachusetts', the UK's is
+  `/cambridge-cambridgeshire/`.
+- **Postal towns are not towns at the edges.** The UK's addresses name a sorting
+  office's town, which reaches past its council's edge (Cumbernauld's cinema is
+  "Glasgow G67") and splits one city into its boroughs' towns (Croydon, Romford).
+  `data/uk/scripts/geocode_towns.py` folds Greater London into London, moves a
+  venue far from its postal town into the council area it actually sits in, and
+  refuses a name it cannot place rather than guessing.
 - **A country wider than one time zone needs the zone per PLACE.** `GermanPage`
   hardcodes `Europe/Berlin` because Germany has one; `UsCity` takes it as a
   constructor parameter because the US has six, and a national default would move

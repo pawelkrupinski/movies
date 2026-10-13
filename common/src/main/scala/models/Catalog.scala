@@ -110,10 +110,10 @@ object Catalog {
         val regionOf = c.cityGroups.filter(_.soleCity.isEmpty)
           .flatMap(g => g.allCities.map(_.slug -> g.label)).toMap
         // The SECOND level — present only for a sub-group that actually holds MORE
-        // THAN ONE city (`CityGroup.soleCity` is `None`): the UK's Glamorgan
-        // (Cardiff/Glamorgan) and Antrim (Antrim/Belfast) are the only two today. A county that collapsed onto
-        // its one place already reads correctly through `region` alone — Cheshire
-        // needs no extra tap to reach Cheshire — so this stays absent there, and
+        // THAN ONE city (`CityGroup.soleCity` is `None`): a UK county
+        // holding several pages (Glamorgan: Cardiff, Swansea…). A county that collapsed onto
+        // its one place already reads correctly through `region` alone — Shetland
+        // needs no extra tap to reach Lerwick — so this stays absent there, and
         // absent entirely for Germany and the US, whose groups don't nest a level
         // this deep. The apps' third picker step reads this field and skip it when
         // it's absent, same shape as `region`/`timezone` below.

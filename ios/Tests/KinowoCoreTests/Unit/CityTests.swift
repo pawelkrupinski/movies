@@ -67,16 +67,16 @@ final class CityTests: XCTestCase {
         XCTAssertNil(City.all.nearestWithin100km(lat: 0, lon: 0))
     }
 
-    func testUkRosterIsTheFullSeventySixRegions() {
-        XCTAssertEqual(City.all.inCountry("uk").count, 76)
-        XCTAssertEqual(City.all.inCountry("uk").first?.slug, "london")   // hand order
+    func testUkRosterIsEveryTownAndClusterPage() {
+        XCTAssertEqual(City.all.inCountry("uk").count, 264)
+        XCTAssertEqual(City.all.inCountry("uk").first?.slug, "london")   // pages.json order: biggest first
         XCTAssertTrue(City.all.inCountry("uk").allSatisfy { $0.country == "uk" })
     }
 
     func testUkSortedIsAlphabeticalUnderEnglishCollation() {
         let sorted = City.all.sortedForPicker(inCountry: "uk")
-        XCTAssertEqual(sorted.first?.slug, "aberdeenshire")
-        XCTAssertEqual(sorted.last?.slug, "yorkshire")
+        XCTAssertEqual(sorted.first?.slug, "aberdeen-aberdeenshire")
+        XCTAssertEqual(sorted.last?.slug, "york-north-yorkshire")
         XCTAssertEqual(Set(sorted.map(\.slug)), Set(City.all.inCountry("uk").map(\.slug)))
     }
 
@@ -84,8 +84,7 @@ final class CityTests: XCTestCase {
         XCTAssertEqual(City.all.matching("manch", inCountry: "uk").map(\.slug), ["manchester"])
         XCTAssertTrue(City.all.matching("poznan", inCountry: "uk").isEmpty)
         let yorks = City.all.matching("york", inCountry: "uk").map(\.slug)
-        XCTAssertTrue(yorks.contains("east-yorkshire"))
-        XCTAssertTrue(yorks.contains("yorkshire"))
+        XCTAssertEqual(yorks, ["york-north-yorkshire"])
     }
 
     // ── default city (per country) ────────────────────────────────
@@ -99,9 +98,9 @@ final class CityTests: XCTestCase {
     // ── catalogue (global union, per-country order) ───────────────
 
     func testAllIsTheGlobalUnionOfPolishAndUkCities() {
-        XCTAssertEqual(City.all.count, 256)                 // 180 PL + 76 UK
+        XCTAssertEqual(City.all.count, 444)                 // 180 PL + 264 UK
         XCTAssertEqual(City.all.inCountry("pl").count, 180)
-        XCTAssertEqual(City.all.inCountry("uk").count, 76)
+        XCTAssertEqual(City.all.inCountry("uk").count, 264)
     }
 
     /// The data-driven rosters are deliberately absent from the compile-time

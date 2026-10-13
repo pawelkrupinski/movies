@@ -52,7 +52,7 @@ class FixtureServerLandingSpec extends AnyFlatSpec with Matchers {
     // The ones the Playwright specs actually click, named so a failure here says
     // which page lost them rather than timing out in a browser.
     rows("/landing-us") should contain allOf ("los-angeles", "washington")
-    rows("/landing-uk") should contain allOf ("cheshire", "birmingham", "liverpool")
+    rows("/landing-uk") should contain allOf ("bristol", "london", "cardiff", "lerwick")
     rows("/landing-de") should contain allOf ("koeln", "muenchen", "hamburg")
   }
 

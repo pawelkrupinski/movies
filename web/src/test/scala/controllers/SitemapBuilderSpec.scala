@@ -49,12 +49,12 @@ class SitemapBuilderSpec extends AnyFlatSpec with Matchers {
   // (once to the base, once again inside `FilmHref`) and it is a list of 404s
   // with a plausible-looking prefix.
   "a country mounted under a country segment" should "carry its prefix exactly once per URL" in {
-    val ukEntries = Seq(Kent -> Seq(film("Belle", Multikino)))
+    val ukEntries = Seq(London -> Seq(film("Belle", Multikino)))
     val xml = SitemapBuilder.build("https://showtimes.cc", Country.UnitedKingdom, ukEntries)
 
     xml should include("<loc>https://showtimes.cc/uk/</loc>")
-    xml should include("<loc>https://showtimes.cc/uk/kent/</loc>")
-    xml should include("<loc>https://showtimes.cc/uk/kent/movie/belle</loc>")
+    xml should include("<loc>https://showtimes.cc/uk/london/</loc>")
+    xml should include("<loc>https://showtimes.cc/uk/london/movie/belle</loc>")
     xml should not include "/uk/uk/"
   }
 
@@ -216,7 +216,7 @@ class SitemapBuilderSpec extends AnyFlatSpec with Matchers {
   it should "hang every city sub-sitemap off the mount point on a country sharing the brand domain" in {
     val xml = SitemapBuilder.cityIndex("https://showtimes.cc", Country.UnitedKingdom)
     xml should include("<loc>https://showtimes.cc/uk/sitemap-root.xml</loc>")
-    xml should include("<loc>https://showtimes.cc/uk/kent/sitemap.xml</loc>")
+    xml should include("<loc>https://showtimes.cc/uk/canterbury/sitemap.xml</loc>")
     xml should not include "/uk/uk/"
   }
 }

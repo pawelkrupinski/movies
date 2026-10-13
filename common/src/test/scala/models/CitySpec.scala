@@ -27,8 +27,8 @@ class CitySpec extends AnyFlatSpec with Matchers {
     // The full modelled roster — including the disabled UK cities — partitions
     // the global cinema universe with no overlap: every cinema is owned by
     // exactly one city, live or not.
-    City.allModelled.flatMap(_.cinemas) should contain theSameElementsAs Cinema.all
-    City.allModelled.flatMap(_.cinemas).distinct.size shouldBe Cinema.all.size
+    City.all.flatMap(_.cinemas) should contain theSameElementsAs Cinema.all
+    City.all.flatMap(_.cinemas).distinct.size shouldBe Cinema.all.size
     // The live view (`City.all`, which the worker scrapes + web serves) is a
     // no-overlap subset of that universe — the disabled cities' cinemas stay
     // modelled but drop out of the live set.
@@ -42,11 +42,11 @@ class CitySpec extends AnyFlatSpec with Matchers {
    *  436 German ones. Two cities sharing a slug means one of them is
    *  unreachable, silently, at whichever position `find` reaches second. */
   "Every city slug" should "be unique across every country, and URL-shaped" in {
-    val slugs = City.allModelled.map(_.slug)
+    val slugs = City.all.map(_.slug)
     val dupes = slugs.groupBy(identity).collect { case (s, xs) if xs.sizeIs > 1 => s }
     dupes shouldBe empty
     slugs.foreach(_ should fullyMatch regex "[a-z0-9]+(-[a-z0-9]+)*")
-    City.allModelled.foreach(c => withClue(s"${c.slug}: ")(City.bySlug(c.slug) should contain(c)))
+    City.all.foreach(c => withClue(s"${c.slug}: ")(City.bySlug(c.slug) should contain(c)))
   }
 
   it should "carry the Polish label inflections the templates render" in {
@@ -189,19 +189,15 @@ class CitySpec extends AnyFlatSpec with Matchers {
     sitges.coveredPlaces shouldBe Seq("Sitges y alrededores", "Sitges", "Vilanova i la Geltrú", "Sant Pere de Ribes")
   }
 
-  it should "read a UK county's towns from the harvested venue table" in {
-    Aberdeenshire.coveredPlaces.head shouldBe "Aberdeenshire"
-    Aberdeenshire.otherCoveredPlaces should contain allOf ("Aberdeen", "Peterhead", "Banchory")
-    // Ranked like every other country's: the town with the most venues first.
-    Aberdeenshire.otherCoveredPlaces.head shouldBe "Aberdeen"
-  }
-
-  it should "cover the UK roster, not a handful of venues that happened to match" in {
-    val uk = City.allModelled.collect { case c: UkCity => c }
-    uk.size shouldBe 76
-    // A table that silently stopped matching displayNames would leave every one
-    // of these naming only itself again.
-    uk.count(_.otherCoveredPlaces.nonEmpty) should be >= 70
+  // A UK page was a Flicks region until 2026-10 (/aberdeenshire/ covered Aberdeen,
+  // Peterhead and Banchory); it is Poland's shape now — a cluster names its towns.
+  it should "name a UK cluster's towns, the one it is named after first" in {
+    val peterhead = City.bySlug("peterhead").getOrElse(fail("no Peterhead page in the roster"))
+    peterhead.coveredPlaces shouldBe Seq("Peterhead area", "Peterhead", "Ellon")
+    peterhead.locativePhrase shouldBe "in the Peterhead area"
+    val aberdeen = City.bySlug("aberdeen-aberdeenshire").getOrElse(fail("no Aberdeen page in the roster"))
+    aberdeen.coveredPlaces.head shouldBe "Aberdeen"
+    aberdeen.locativePhrase shouldBe "in Aberdeen"
   }
 
   it should "ignore compass bearings, which name no place outside their city" in {
@@ -209,9 +205,9 @@ class CitySpec extends AnyFlatSpec with Matchers {
     // …but into directions. "Central" is not a place, and a `containsPlace`
     // claiming one would be a claim about a town by that name.
     London.coveredPlaces should contain noneOf ("Central", "North", "East", "South", "West")
-    // What it does cover are the commuter towns its venues sit in, which the
+    // What it does cover are the boroughs' towns its venues sit in, which the
     // bare "London" never named.
-    London.otherCoveredPlaces should contain allOf ("Epsom", "Woking", "Wembley")
+    London.otherCoveredPlaces should contain allOf ("Romford", "Sidcup", "Wembley")
   }
 
   "City.allJson" should "emit a slug/name/lat/lon object per city for the clients" in {

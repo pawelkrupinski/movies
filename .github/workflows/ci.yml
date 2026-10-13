@@ -159,6 +159,9 @@ jobs:
                   python3 data/us/scripts/test_build_pages.py
                   python3 data/us/scripts/test_generate_roster.py
                   python3 data/us/scripts/test_geocode_towns.py
+                  python3 data/uk/scripts/test_build_pages.py
+                  python3 data/uk/scripts/test_geocode_towns.py
+                  python3 data/uk/scripts/test_harvest_towns.py
                   python3 data/scripts/test_seasonal_venues.py
 
             # A fixture-corpus edit that skipped the read-model snapshot's regeneration, in

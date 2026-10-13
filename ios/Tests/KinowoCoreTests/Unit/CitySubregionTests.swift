@@ -92,8 +92,8 @@ final class CitySubregionTests: XCTestCase {
         XCTAssertEqual(try JSONDecoder().decode(City.self, from: Data(withSubregion.utf8)).subregion, "West Midlands")
     }
 
-    /// The bundled seed is what the app actually opens on: Glamorgan and
-    /// Antrim have to carry a `subregion` there too, not merely in the model.
+    /// The bundled seed is what the app actually opens on: a county holding
+    /// several pages has to carry a `subregion` there too, not merely in the model.
     func testTheBundledSeedNamesTheMultiCityCounties() throws {
         struct Seed: Decodable {
             struct Body: Decodable { let cities: [City] }
@@ -105,16 +105,14 @@ final class CitySubregionTests: XCTestCase {
 
         func subregion(_ slug: String) -> String? { seeded.first { $0.slug == slug }?.subregion }
         XCTAssertEqual(subregion("cardiff"), "Glamorgan")
-        XCTAssertEqual(subregion("glamorgan"), "Glamorgan")
-        XCTAssertEqual(subregion("antrim"), "Antrim")
-        XCTAssertEqual(subregion("belfast"), "Antrim")
-        // A collapsed county carries none — Cheshire reads correctly through
-        // `region` alone.
-        XCTAssertNil(subregion("cheshire"))
-        // West Midlands collapsed onto Birmingham once Dudley and Sandwell were
-        // folded into it — and their old slugs resolve there for deep links.
-        XCTAssertNil(subregion("birmingham"))
-        XCTAssertEqual(seeded.first { $0.slug == "birmingham" }?.formerSlugs, ["dudley", "sandwell"])
+        XCTAssertEqual(subregion("swansea"), "Glamorgan")
+        XCTAssertEqual(subregion("birmingham"), "West Midlands")
+        // A collapsed county carries none — Shetland's one page, Lerwick, reads
+        // correctly through `region` alone.
+        XCTAssertNil(subregion("lerwick"))
+        // A retired county page's slug resolves to the page now holding most of
+        // its venues, for deep links.
+        XCTAssertTrue(seeded.first { $0.slug == "leeds" }?.formerSlugs?.contains("west-yorkshire") ?? false)
         XCTAssertTrue(seeded.inCountry("de").allSatisfy { $0.subregion == nil })
         XCTAssertTrue(seeded.inCountry("us").allSatisfy { $0.subregion == nil })
     }
