@@ -133,8 +133,8 @@ final class IdentityProjection(
    *  the last projection with a field the model's decisions do not move with (`LiveProjectionIndex.republished`; `None`
    *  when there is no last projection to tell by). */
   agreement:   (Resolution, ListingKey => Option[Listing], Option[Seq[ListingKey]]) => Resolution = (resolution, _, _) => resolution,
-  /** Handed each projection of the whole corpus's resolution, as projected, and every listing it decided: what counts
-   *  its suspect takes (`SuspectTakeCount`). */
+  /** Handed each WRITTEN projection of the whole corpus's resolution, as projected, and every listing it decided: what
+   *  counts its suspect takes (`SuspectTakeCount.submit`), which must return at once — the count is no part of a projection. */
   suspects:    (Resolution, Seq[Listing]) => Unit = (_, _) => ()
 ) extends Logging {
   // The latest year a title may name, read off this class's clock at each ask (`LatestTitleYear`).
@@ -142,8 +142,6 @@ final class IdentityProjection(
 
   private val mapping = new FilmIdMapping(filmIds)
   private var consecutiveShrinks = 0
-  /** The decisions and listings (their hashes) the suspect takes were last counted over: a count of the same is the same. */
-  private var suspectsCountedOver = Option.empty[(Int, Int)]
   /** The venue slots the last projection built, so this one rebuilds only the films whose listings changed. */
   private val slotMemo = new VenueSlotMemo(VenueSlotMemo.environment(normalizer))
   /** The fingerprints the store holds, as far as this worker knows: none read yet until the first projection. */
@@ -262,16 +260,6 @@ final class IdentityProjection(
               changes.fold(Set.empty[ListingKey])(_.listings), index, at, phases)
             val slotCounts = slotMemo.endTick(retainUnseen = !scope.whole)
             if (!light) phases("fingerprints")(recordSlotFingerprints())
-            // the corpus's suspect takes, counted on a projection of the whole of it whose decisions or listings moved since the
-            // last count (an hourly reconcile over a quiet corpus counts nothing again): never a reason to stop one
-            if (scope.whole && !light) {
-              val decided = venues.flatMap(_._2).map(_.listing)
-              val over    = (resolution.decisions.##, decided.##)
-              if (!suspectsCountedOver.contains(over)) phases("suspects")(Try(suspects(resolution, decided)) match {
-                case Success(_) => suspectsCountedOver = Some(over)
-                case Failure(e) => logger.warn("identity projection: counting the suspect takes failed", e)
-              })
-            }
             val misses = slotMemo.lastMisses()
             phases.note(s"venue slots reused ${slotCounts._1}, built ${slotCounts._2} " +
               s"(rows moved ${misses._1}, priors moved ${misses._2}, new ${misses._3})")
@@ -291,6 +279,10 @@ final class IdentityProjection(
                 val films     = stored.size - scopeStored.size + plan.films.size
                 val tick      = write(resolution, detailed, plan, stored, listed, films, canary, started, phases, patch = !scope.whole,
                   movedElsewhere = changes.fold(Set.empty[String])(_.films))
+                // the corpus's suspect takes, of a projection of the whole of it once written — what is served, never what the
+                // guard held back — handed to a count of its own, off this projection's path: never a reason to stop one
+                if (scope.whole && !light) Try(suspects(resolution, venues.flatMap(_._2).map(_.listing))).failed.foreach(e =>
+                  logger.warn("identity projection: handing the suspect takes to their count failed", e))
                 if (reconciling) metrics.reconciled(measured = reconcile)
                 if (reconcile) moved.foreach(drift(_, freed, index, tick))
                 if (tick.declined == 0) {

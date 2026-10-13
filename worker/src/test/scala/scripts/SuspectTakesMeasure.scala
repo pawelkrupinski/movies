@@ -73,10 +73,10 @@ object SuspectTakesMeasure {
       }
 
       val verdict = SuspectTakesAudit.judge(cc, corpus, year, labels, baseline)
-      // what the worker's count of the same corpus costs on a projection of the whole of it (`SuspectTakeCount`)
+      // what the worker's count of the same corpus costs, on its own thread, per written projection of the whole of it (`SuspectTakeCount`)
       val counting = tools.Stopwatch.start()
-      val (_, allocated) = tools.ThreadAllocation.of(new services.identity.SuspectTakeCount(venues, films.get, tools.SpecClock.Pinned,
-        java.time.ZoneOffset.UTC, _ => ())(UnmatchedClusters.resolutionOf(dump.decisions), dump.listings))
+      val (_, allocated) = tools.ThreadAllocation.of(new services.identity.SuspectTakeCount(venues, ids => ids.flatMap(id => films.get(id).map(id -> _)).toMap,
+        tools.SpecClock.Pinned, java.time.ZoneOffset.UTC, _ => (), _.run(), () => false)(UnmatchedClusters.resolutionOf(dump.decisions), dump.listings))
       val (again, reading) = tools.ThreadAllocation.of(SuspectTakes.corpus(UnmatchedClusters.resolutionOf(dump.decisions), dump.listings, venues, films.get))
       val (_, billing) = tools.ThreadAllocation.of(SuspectTakes.Billings.of(dump.listings, again.takes))
       val (_, asking) = tools.ThreadAllocation.of(SuspectTakes.suspected(again.takes, year, again.billings))

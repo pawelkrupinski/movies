@@ -3171,9 +3171,13 @@ themselves (`<corpus>-takes/<cc>.json.gz`, what the measure reads with `--dumps`
 baseline was armed with the suspects standing on 2026-10-13 and only shrinks (`SuspectTakesAuditSpec`); a line no take
 stands for any more is named in the leg's log for striking.
 
-**The gauge** `kinowo_worker_identity_suspect_takes{country,signal}`: `SuspectTakeCount`, on every projection of the whole
-corpus (hourly). It holds nothing between counts; one count allocated (measured on the recorded corpora) ES 26 MB, PL
-130 MB, UK 277 MB, DE 342 MB, US 468 MB in 0.1–1.6 s, each billing asked once however many venues bill it.
+**The gauge** `kinowo_worker_identity_suspect_takes{country,signal}`: `SuspectTakeCount`, over every WRITTEN projection of
+the whole corpus (hourly) — never one the shrink guard held back — on a thread of its own, off the projection's path: the
+projection hands it the resolution and goes on; only the latest hand-off waits, the same decisions over the same listings
+are not counted twice, and none is counted while the heap held ≥ 70% of its maximum after its last collection
+(`tools.HeapPressure`). It holds nothing between counts; one count allocated (measured on the recorded corpora) ES 26 MB,
+PL 130 MB, UK 277 MB, DE 342 MB, US 360–468 MB in 0.1–1.6 s, each billing asked once however many venues bill it; the
+agreed films' records are read in one prefetch.
 
 ## 21. The rules, consolidated (2026-10-06)
 

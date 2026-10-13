@@ -1374,10 +1374,11 @@ abstract class CountryConvergenceBehaviour(
     val labels   = tools.UnmatchedClusters.readLabels(tools.UnmatchedClusters.Directory.resolve("labels.tsv"))
     val (verdict, judging) = tools.ThreadAllocation.of(tools.SuspectTakesAudit.judge(country.code, corpus, year, labels,
       tools.SuspectTakesAudit.readBaseline()))
-    // what the worker's count costs on every projection of the whole corpus (`SuspectTakeCount`): held, nothing
+    // what the worker's count costs, on its own thread, per written projection of the whole corpus (`SuspectTakeCount`): held, nothing
     val counted = tools.Stopwatch.start()
-    val (_, counting) = tools.ThreadAllocation.of(new services.identity.SuspectTakeCount(lookups, id => lookups.film(id).toOption.flatten, clock,
-      CorpusCoverage.zoneOf(country), _ => ())(decided, model.listings))
+    val (_, counting) = tools.ThreadAllocation.of(new services.identity.SuspectTakeCount(lookups,
+      services.identity.SuspectTakeCount.recordsOf(w.storedLookups()), clock, CorpusCoverage.zoneOf(country), _ => (), _.run(), () => false)(
+      decided, model.listings))
     info(f"${country.displayName}: the worker's suspect-take count took ${counted.seconds}%.1fs and allocated ${counting / 1000000} MB")
     info(s"${country.displayName}: ${corpus.takes.size} listings' takes, ${verdict.suspects.size} suspect billing(s), ${verdict.fresh.size} unjudged; " +
       s"${tools.SuspectTakesAudit.byCount(verdict.suspects)}; allocated ${reading / 1000000} MB reading the takes, ${judging / 1000000} MB judging them" +

@@ -97,7 +97,7 @@ final class IdentityCutoverMetrics(registry: PrometheusRegistry) {
 
   private val suspectTakes: Gauge = Gauge.builder()
     .name("kinowo_worker_identity_suspect_takes")
-    .help("Billings whose identity take a suspect-take signal finds against its own evidence, per signal, on the last whole-corpus projection.")
+    .help("Billings whose identity take a suspect-take signal finds against its own evidence, per signal, on the last written whole-corpus projection.")
     .labelNames("country", "signal")
     .register(registry)
 

@@ -163,7 +163,7 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     w.scrape(programme)
     val phases = w.projection.tick().phases
     phases.map(_.name) shouldBe Seq("listings", "snapshot", "resolve", "agreement", "seed", "index", "draft", "details", "finish", "fingerprints",
-      "suspects", "guard", "compare", "writes")
+      "guard", "compare", "writes")
     phases.foreach(p => (p.seconds >= 0 && p.allocatedBytes >= 0) shouldBe true)
     phases.map(_.allocatedBytes).sum should be > 0L
   }
@@ -185,17 +185,30 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     again.wroteNothing shouldBe true
   }
 
-  it should "count the corpus's suspect takes over every listing it decided, once per state — a scoped projection counts none" in {
+  it should "hand the suspect-take count every listing a written projection of the whole corpus decided — a scoped one none" in {
     val w = World(whole = true)
     w.scrape(programme)
     val first = w.projection.tick()
     w.suspected.toSeq shouldBe Seq((first.resolution.get.decisions.size, first.listings))
-    // the same decisions over the same listings: the count is the one already made
+    // handed again: whether the same decisions over the same listings are counted again is the count's to tell
     w.projection.tick(whole = true).scoped shouldBe false
-    w.suspected.size shouldBe 1
+    w.suspected.size shouldBe 2
     w.scrape(Map(KinoMuza -> Seq(film(KinoMuza, "Diuna", Some(2021), 7, 8, 9))))
     w.projection.tickChanged()
+    w.suspected.size shouldBe 2
+  }
+
+  it should "hand the suspect-take count nothing the guard refused to write: the gauge says what is served" in {
+    val w = World()
+    w.scrape(programme)
+    w.projection.tick()
     w.suspected.size shouldBe 1
+    // Rialto and Multikino stop listing "Obcy": the guard refuses the whole projection for its grace
+    w.scrape(Map(Rialto -> Seq(film(Rialto, "Diuna", Some(2021), 9)), Multikino -> programme(Multikino).take(1)))
+    (1 to ProjectionGuard.Grace).foreach(_ => w.projection.tick(whole = true).refused should not be empty)
+    w.suspected.size shouldBe 1
+    w.projection.tick(whole = true).refused shouldBe None
+    w.suspected.size shouldBe 2
   }
 
   it should "rebuild only the venue whose listing changed, and write that film with every showtime" in {

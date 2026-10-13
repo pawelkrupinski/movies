@@ -51,15 +51,17 @@ trait IdentityCutoverWiring { self: WorkerWiring =>
       fingerprints = venueSlotFingerprints,
       adopt       = identityListingIntake.adopt,
       agreement   = (resolution, listingOf, republished) => agreementStage.apply(resolution, listingOf, familyAnswerStore.version, republished),
-      suspects    = suspectTakeCount.apply)
+      suspects    = suspectTakeCount.submit)
 
-  /** The suspect takes of each projection of the whole corpus (`kinowo_worker_identity_suspect_takes`): its listings as
-   *  their venue pages state them, as the agreement reads them, and an agreed film's record from the model's store. */
-  lazy val suspectTakeCount: services.identity.SuspectTakeCount = {
-    val stored = storedLookups()
+  /** The suspect takes of each written projection of the whole corpus (`kinowo_worker_identity_suspect_takes`): its
+   *  listings as their venue pages state them, as the agreement reads them, and the agreed films' records from the model's
+   *  store, in one batch — counted on a thread of its own, put off while the heap is near its limit. */
+  lazy val suspectTakeCount: services.identity.SuspectTakeCount =
     new services.identity.SuspectTakeCount(new services.identity.VenueDetailLookups(detailEnrichers, venuePageIndex, services.identity.ObservationReads.Untracked),
-      id => stored.film(id).toOption.flatten, clock, country.zone, workerMetrics.identityCutover.suspects(country.code))
-  }
+      services.identity.SuspectTakeCount.recordsOf(storedLookups()), clock, country.zone, workerMetrics.identityCutover.suspects(country.code),
+      runner = managedResources.executor("identity suspect takes")(tools.DaemonExecutors.boundedPool(s"identity-suspect-takes-${country.code}",
+        threads = 1, queueCapacity = 1, tools.WhenFull.WaitForRoom)),
+      pressed = () => tools.HeapPressure.pressed())
 
   // ── Agreement: the no-matches ≥3 other film database families agree on ─────────────────────
   /** What the other film database families answered (`identity_family_answers`), kept long. */
