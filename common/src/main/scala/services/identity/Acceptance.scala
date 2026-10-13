@@ -614,8 +614,9 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
   /** The one SEASON record whose title is the listing's own once its season is taken out ("&" and "and" alike), when
    *  the listing names no season: UK "Royal Ballet and Opera: Romeo and Juliet" {Kenneth MacMillan} ×127, screening
    *  May–June 2027, is "Royal Ballet & Opera 2026/27: Romeo and Juliet" — the cut alone denied it, the season marker
-   *  reading as a title the listing does not carry. Two seasons of the title ("…: Tosca", 2025/26 and 2026/27) are the
-   *  season's to tell apart, not this rule's; a fact contradicting it, or another director, refuses it. */
+   *  reading as a title the listing does not carry. Two seasons of the title ("…: Tosca", 2025/26 and 2026/27) are told
+   *  apart by the season the listing's screenings broadcast it in ([[ofItsBroadcastSeason]]), and are no answer without
+   *  one; a fact contradicting it, or another director, refuses it. */
   def seasonRecord(ranked: Seq[Scored]): Option[Accepted] = seasonRecordWhy(ranked).toOption
   private def seasonRecordWhy(ranked: Seq[Scored]): Verdict = {
     def plain(title: String) = IdentityMeasures.key(title.replace("&", " and "))
@@ -623,14 +624,24 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
       any    <- ranked.headOption.toRight(Refused("no candidate"))
       _      <- need(any.listing.seasonYear.isEmpty, "the title names its season")
       own     = (Seq(any.listing.title) ++ any.listing.rawTitle).map(plain).toSet
-      record <- one(ranked.filter(scored => (eligibleOf(ranked).contains(scored) || scored.deniedByCutOnly) &&
+      record <- one(ofItsBroadcastSeason(ranked.filter(scored => (eligibleOf(ranked).contains(scored) || scored.deniedByCutOnly) &&
                   IdentityMeasures.filmSeason(scored.candidate.film).isDefined &&
-                  scored.candidate.film.titles.exists(t => own(plain(IdentityMeasures.withoutSeasons(t))))),
+                  scored.candidate.film.titles.exists(t => own(plain(IdentityMeasures.withoutSeasons(t)))))),
                   "no season record carries its title", "two seasons' records carry its title")
       _      <- needOf(!contradicted(record), "a published fact contradicts it", record, contradiction(record))
       _      <- needOf(!record.category("director").exists(Set("different", "different_script")), "it credits another director", record)
     } yield record -> record.probability
   }
+
+  /** Of several season records of one stage work, the one season the listing's screenings broadcast it in
+   *  ([[IdentityMeasures.Listing.broadcastSeason]]) when exactly that season's records are among them; all of them
+   *  otherwise. A relay airs on its house's published dates: UK "Royal Ballet & Opera: Swan Lake" (recording
+   *  38342304766, ~30 venues billing no season or year), screening on 22 April 2027, is the 2026/27 record, not the
+   *  house's 2024/25 one. */
+  private def ofItsBroadcastSeason(records: Seq[Scored]): Seq[Scored] =
+    records.headOption.flatMap(_.listing.broadcastSeason).filter(_ => records.sizeIs > 1)
+      .map(season => records.filter(record => IdentityMeasures.filmSeason(record.candidate.film).contains(season)))
+      .filter(_.nonEmpty).getOrElse(records)
 
   /** The EDITION of the accepted film that the listing's whole title names, when there is exactly
    *  one: a later record carrying the film's title under a qualifier (`IdentityMeasures.editionOf`

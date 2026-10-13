@@ -54,6 +54,18 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
       (1702784, Film("Royal Ballet & Opera 2026/27: Tosca", year = Some(2027)), None))) shouldBe None
   }
 
+  it should "take the season its screenings broadcast it in when two seasons' records carry its title" in {
+    // UK recording 38342304766: ~30 venues bill the RBO's Swan Lake relay of 22 April 2027 with no season or year
+    // ("Royal Ballet & Opera: Swan Lake", Pocklington Arts Centre); TMDB holds the house's 2024/25 and 2026/27
+    // records of it, so each venue's listing was left unidentified as a film of its own.
+    val swanLake = Listing("Royal Ballet & Opera: Swan Lake", broadcastSeason = Some(2026))
+    val seasons  = Seq((1300034, Film("Royal Ballet & Opera 2024/25: Swan Lake", year = Some(2025)), Some(1)),
+      (1702782, Film("Royal Ballet & Opera 2026/27: Swan Lake", year = Some(2027)), Some(2)))
+    acceptance.seasonRecord(ranked(swanLake, seasons *)).map(_._1.candidate.tmdbId) shouldBe Some(1702782)
+    // screening in neither season leaves the two to nobody
+    acceptance.seasonRecord(ranked(swanLake.copy(broadcastSeason = Some(2028)), seasons *)) shouldBe None
+  }
+
   "directors-work" should "leave two seasons of one staging, both billing the work, to the season" in {
     // UK "Royal Ballet and Opera: Tosca" {Oliver Mears} [195′] ×123 screens in May 2027 — the 2026/27 record, which
     // credits nobody yet; the 2025/26 one is his with the running time. Billed alike, the rule takes neither.
