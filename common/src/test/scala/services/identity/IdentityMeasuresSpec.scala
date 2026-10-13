@@ -69,6 +69,33 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     measures(Listing("Dracula", year = Some(2022)), dracula)("year.delta") shouldBe Number(30)
   }
 
+  // prod DE 2026-10-13 (identity take change log): Apollo Aachen's "Der mit dem Wolf tanzt (35-jähriges Jubiläum)",
+  // dated 2026, read 36 years off Costner's 1990 film — its German anniversary unread — and the veto it earned went to
+  // every venue's listing joined to it by original title: tmdb 581 lost ×17 ("(OmU)", "Extented Edition" among them)
+  it should "be read in the anniversary words of the languages venues bill re-releases in" in {
+    val wolves = Film("Der mit dem Wolf tanzt", year = Some(1990), originalTitle = Some("Dances with Wolves"))
+    Seq("Der mit dem Wolf tanzt (35-jähriges Jubiläum)", "Der mit dem Wolf tanzt (35- jähriges Jubiläum)",
+        "Der mit dem Wolf tanzt - 35. Jubiläum", "Danse avec les loups (35e anniversaire)", "Tańczący z wilkami - 35. rocznica").foreach { t =>
+      withClue(t) { measures(Listing(t, year = Some(2026)), wolves)("year.delta") shouldBe Missing("listing") }
+    }
+    // a number beside no anniversary word, or a year not the anniversary's, stays the listing's fact
+    measures(Listing("Der mit dem Wolf tanzt (35 Jahre)", year = Some(2026)), wolves)("year.delta") shouldBe Number(36)
+    measures(Listing("Der mit dem Wolf tanzt (20-jähriges Jubiläum)", year = Some(2026)), wolves)("year.delta") shouldBe Number(36)
+    // a re-release TMDB dates in the year stated is the year's own evidence: the anniversary never takes it away
+    measures(Listing("Der mit dem Wolf tanzt (35-jähriges Jubiläum)", year = Some(2026)), wolves.copy(releases = Some("DE1991-DE2026-")))(
+      "year.delta") shouldBe Number(0)
+  }
+
+  it should "date two listings of one re-release alike, one by the screening's year and one by the film's" in {
+    val reRelease = Listing("Der mit dem Wolf tanzt (35-jähriges Jubiläum)", year = Some(2026))
+    val original  = Listing("DER MIT DEM WOLF TANZT (35-JÄHRIGES JUBILÄUM)", year = Some(1991))
+    IdentityMeasures.listingListing(reRelease, original, sameVenue = false, None)("year.delta") shouldBe Missing("listing")
+    IdentityMeasures.listingListing(original, reRelease, sameVenue = false, None)("year.delta") shouldBe Missing("listing")
+    // without an anniversary the 35 years stand
+    IdentityMeasures.listingListing(Listing("Der mit dem Wolf tanzt", year = Some(2026)), original.copy(title = "Der mit dem Wolf tanzt"),
+      sameVenue = false, None)("year.delta") shouldBe Number(35)
+  }
+
   "a season a broadcast names" should "be read as its own measure, in every spelling, and never as a bracketed year" in {
     val film = Film("Samson et Dalila", year = Some(1949))
     Seq("Samson i dalila | metropolitan opera: live in hd 2026/27", "OPERA 2026/2027 - SAMSON I DALILA- RETRANSMISJA",

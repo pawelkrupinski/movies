@@ -1922,12 +1922,22 @@ object IdentityMeasures {
 
   /** `m` with the published year absent when it is the year of an ANNIVERSARY the title bills: ES "Drácula. 30
    *  Aniversario" (original title "Bram Stoker's Dracula 30th Anniversary"), dated 2022, is Coppola's 1992 film — its
-   *  year that many years before the stated one, within a year. Any other year stays the listing's fact. */
+   *  year that many years before the stated one, within a year. Any other year stays the listing's fact, and so does one
+   *  a re-release TMDB dates already agrees with (DE "Der mit dem Wolf tanzt (35-jähriges Jubiläum)" [2026], released
+   *  again in 2026). */
   private def anniversaryYear(l: Listing, f: Film, m: Map[String, Measure]): Map[String, Measure] =
-    if (l.anniversary.isEmpty || l.year.isEmpty || f.year.isEmpty || !FactRelations.yearsNear(l.year.get - l.anniversary.get, f.year.get)) m
+    if (l.anniversary.isEmpty || l.year.isEmpty || f.year.isEmpty || !FactRelations.yearsNear(l.year.get - l.anniversary.get, f.year.get) ||
+        m("year.delta").match { case Number(d) => FactRelations.nearDelta(d); case _ => false }) m
     else m ++ PublishedYear.map(_ -> MissingListing)
-  /** "30th Anniversary", "30 Aniversario": how many years a re-release celebrates. */
-  private[identity] val AnniversaryYears = """(?i)\b(\d{1,3})(?:st|nd|rd|th)?\.?\s+(?:anniversary|aniversario)\b""".r
+  /** Is `a` dated by the screening of an anniversary it bills, `b` by the film's own year that many years before: two
+   *  spellings of one re-release, neither year the other's fact (DE "Der mit dem Wolf tanzt (35-jähriges Jubiläum)" dated
+   *  2026 at one venue and 1991 at another). */
+  private def anniversaryDated(a: Listing, b: Listing): Boolean =
+    a.anniversary.isDefined && a.year.isDefined && b.year.exists(FactRelations.yearsNear(a.year.get - a.anniversary.get, _))
+  /** "30th Anniversary", "30 Aniversario", "35-jähriges Jubiläum", "35. rocznica", "35e anniversaire": how many years a
+   *  re-release celebrates — the number, its ordinal ending, and an anniversary word of a language venues bill in. */
+  private[identity] val AnniversaryYears =
+    """(?iU)\b(\d{1,3})(?:st|nd|rd|th|e|ème|°)?\.?(?:\s*-\s*|\s+)(?:jährige[smn]?\s+)?(?:anniversary|aniversario|anniversaire|anniversario|aniversário|jubiläum|jubileusz|rocznica)\b""".r
 
   /** `m` with the published year absent when it dates a screening ([[PublishedYear]]): when the
    *  listing's title is the film's title ([[TitledRelations]]) and the same director is credited, a year
@@ -1990,7 +2000,7 @@ object IdentityMeasures {
                            case (None, _)           => MissingListing
                            case (_, None)           => MissingFilm
                          }),
-      "year.delta"    -> absDelta(a.year, b.year),
+      "year.delta"    -> (if (anniversaryDated(a, b) || anniversaryDated(b, a)) MissingListing else absDelta(a.year, b.year)),
       "titleYear.delta" -> absDelta(a.titleYear, b.titleYear),
       "season.delta"  -> absDelta(a.seasonYear, b.seasonYear),
       "director"      -> directorRelation(a.directors, b.directors),
