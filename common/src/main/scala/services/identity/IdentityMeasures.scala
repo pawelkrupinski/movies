@@ -1523,6 +1523,15 @@ object IdentityMeasures {
   /** Do the two titles' banners — their pieces naming no work — share a word ([[bannersMeet]])? */
   def bannersMeetOf(l: Listing, f: Film): Boolean = bannersMeet(l.title +: l.rawTitle.toSeq, f.titles)
 
+  private val BannerYear = """(?<![\p{N}])(20\d{2})(?![\p{N}/–—-])""".r
+  /** The one year a relay's banner dates its broadcast by — a piece of its title naming no stage work, beside one that
+   *  does: DE "RBO live 2027: Tosca". A year beside the work is the work's own ("Macbeth 2026" is [[stageWorkQueries]]'). */
+  def bannerYear(l: Listing): Option[Int] = {
+    val (works, banners) = (Seq(l.title) ++ l.rawTitle).flatMap(t => PieceBreak.split(withoutSeasons(t)).toSeq)
+      .partition(piece => StageWorks.resolver.named(key(BannerYear.replaceAllIn(piece, ""))).nonEmpty)
+    Option.when(works.nonEmpty)(banners.flatMap(BannerYear.findAllMatchIn).map(_.group(1).toInt).distinct).collect { case Seq(one) => one }
+  }
+
   /** Does the listing's banner name the house the record bills: their banners share a word ([[bannersMeetOf]]), or a
    *  piece of the listing's title naming no stage work names one house with the record's ([[namesOneHouse]] — a prefix,
    *  "MET" of "The Metropolitan Opera"; initials, "RBO" of "Royal Ballet & Opera")? Read off the title's pieces, not

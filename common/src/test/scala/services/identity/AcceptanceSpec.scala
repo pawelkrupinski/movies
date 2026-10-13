@@ -97,6 +97,20 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
       (1703622, Film("The Metropolitan Opera 2026/27: Macbeth", year = Some(2026)), Some(1)))) shouldBe Some(1703622)
   }
 
+  it should "take its season's record over another staging of the work, by the house's word or the year its title dates" in {
+    // Prod PL 2026-10-13: Kino Powiśle's "OPERA-SAMSON I DALILA" left the Met's 2026/27 record, its first hit, below the
+    // threshold; DE recording 38351832400: "RBO live 2027: Tosca" took the ROH's 2011 Tosca by IMDb's suggestion, and
+    // Cinema Stuttgart's "Metropolitan Opera: Macbeth (Verdi)" the Met's 2014 staging.
+    val samson1949 = (29993, Film("Samson and Delilah", year = Some(1949), runtime = Some(134)), Some(2))
+    taken(ranked(Listing("OPERA-SAMSON I DALILA", broadcastSeason = Some(2026)),
+      (1703624, Film("The Metropolitan Opera 2026/27: Samson et Dalila", year = Some(2026)), Some(1)), samson1949)) shouldBe Some(1703624)
+    taken(ranked(Listing("RBO live 2027: Tosca"), (181442, Film("Royal Opera House: Tosca", year = Some(2011), runtime = Some(128)), Some(1)),
+      (1702784, Film("Royal Ballet & Opera 2026/27: Tosca", year = Some(2027)), Some(2)))) shouldBe Some(1702784)
+    taken(ranked(Listing("Metropolitan Opera: Macbeth (Verdi)", broadcastSeason = Some(2026)),
+      (295526, Film("The Metropolitan Opera - Verdi: Macbeth", year = Some(2014), runtime = Some(169)), Some(1)),
+      (1703622, Film("The Metropolitan Opera 2026/27: Macbeth", year = Some(2026)), Some(2)))) shouldBe Some(1703622)
+  }
+
   it should "read its work and its house however a box office spells them" in {
     // Prod UK 2026-10-13: each venue's spelling, unread, named no work to search with its broadcast season ("NoCandidate"),
     // or no house the season's record bills

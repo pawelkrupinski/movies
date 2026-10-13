@@ -86,7 +86,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
   def aloneNamed(ranked: Seq[Scored]): Option[(Accepted, String)] =
     if (billsSeveralWorks(ranked)) None
     else seasonProduction(ranked).map(_.map(_ -> "season-production"))
-      .orElse(broadcastSeasonRecord(ranked).map(record => Some(record -> "season-record"))).getOrElse(firstOf(ranked, aloneRules))
+      .orElse(datedOrBroadcastSeasonRecord(ranked).map(Some(_))).getOrElse(firstOf(ranked, aloneRules))
       .map { case (accepted, rule) => editionNamed(ranked)(accepted) -> rule }.filter(takesNoBill(ranked))
 
   /** A DOUBLE PROGRAMME: a "+" joining two whole works ([[IdentityMeasures.billsTwoWholeWorks]]), whatever is held
@@ -592,21 +592,23 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
     } yield house -> house.probability
   }
 
-  /** A stage broadcast billed with no season but with its year: the one eligible SEASON record naming the same stage
-   *  work ([[StageWorks]], in any language), whose banner meets the listing's ([[IdentityMeasures.bannersMeetOf]]),
-   *  from the very year the venue publishes, that no running time contradicts. DE "Royal Ballet & Opera im Kino: Manon"
-   *  [2026] {Kenneth MacMillan} ×59 is "Royal Ballet & Opera 2026/27: Manon" (October 2026), not the Met's 2026/27
-   *  Manon (April 2027), which "MET Opera Live im Kino: Manon" [2027] ×4 is. */
+  /** A stage broadcast billed with no season but with its year — in its field or its title: the one eligible SEASON
+   *  record naming the same stage work ([[StageWorks]], in any language), billing the listing's house
+   *  ([[IdentityMeasures.namesItsHouse]]), from the very year the venue publishes, that no running time contradicts. DE
+   *  "Royal Ballet & Opera im Kino: Manon" [2026] {Kenneth MacMillan} ×59 is "Royal Ballet & Opera 2026/27: Manon"
+   *  (October 2026), not the Met's 2026/27 Manon (April 2027), which "MET Opera Live im Kino: Manon" [2027] ×4 is; DE
+   *  "RBO live 2027: Tosca" is the RBO's 2026/27 record, not the ROH's 2011 one IMDb suggests. It pre-empts every rule
+   *  as [[seasonProduction]] does ([[datedOrBroadcastSeasonRecord]]). */
   def stageProduction(ranked: Seq[Scored]): Option[Accepted] = stageProductionWhy(ranked).toOption
   private def stageProductionWhy(ranked: Seq[Scored]): Verdict =
     for {
       any    <- ranked.headOption.toRight(Refused("no candidate"))
       _      <- need(any.listing.seasonYear.isEmpty, "the title names its season")
-      year   <- any.listing.year.toRight(Refused("the listing publishes no year"))
+      year   <- any.listing.statedYear.orElse(IdentityMeasures.bannerYear(any.listing)).toRight(Refused("the listing publishes no year"))
       works   = IdentityMeasures.stageWorks(any.listing)
       _      <- need(works.nonEmpty, "the title names no stage work")
       record <- one(eligibleOf(ranked).filter(scored => IdentityMeasures.filmSeason(scored.candidate.film).isDefined &&
-                  IdentityMeasures.stageWorks(scored.candidate.film).exists(works) && IdentityMeasures.bannersMeetOf(any.listing, scored.candidate.film) &&
+                  IdentityMeasures.stageWorks(scored.candidate.film).exists(works) && IdentityMeasures.namesItsHouse(any.listing, scored.candidate.film) &&
                   scored.candidate.film.year.contains(year) && !contradicted(scored)),
                   "no season record of its work from its year", "two season records of its work from its year", s"works ${works.toSeq.sorted.mkString(",")}, $year")
     } yield record -> record.probability
@@ -628,6 +630,10 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
   private def broadcastSeasonRecord(ranked: Seq[Scored]): Option[Accepted] = seasonRecord(ranked).filter { case (record, _) =>
     record.listing.broadcastSeason.exists(IdentityMeasures.filmSeason(record.candidate.film).contains)
   }
+  /** The season record a relay's own year ([[stageProduction]]) or its screenings' season ([[broadcastSeasonRecord]])
+   *  names, with the rule naming it: what pre-empts the rules after [[seasonProduction]]. */
+  private def datedOrBroadcastSeasonRecord(ranked: Seq[Scored]): Option[(Accepted, String)] =
+    stageProduction(ranked).map(_ -> "stage-production").orElse(broadcastSeasonRecord(ranked).map(_ -> "season-record"))
   private def seasonRecordWhy(ranked: Seq[Scored]): Verdict = {
     def plain(title: String) = IdentityMeasures.key(title.replace("&", " and "))
     // of the screenings' season only: a record of another of the work's seasons is no staging the venue said it screens

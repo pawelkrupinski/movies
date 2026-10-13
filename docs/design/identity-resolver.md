@@ -3162,7 +3162,7 @@ fails when this table and the code disagree.
 | alone | 9 | directors-title | the credited director's film of the exact title |
 | alone | 10 | dated-title | the film of the title from the year the title dates |
 | alone | 11 | house-production | the record billing the work under the listing's house |
-| alone | 12 | stage-production | the season record of the stage work from the listing's year |
+| alone | 12 | stage-production | the season record of the stage work under its house from the listing's year, in its field, title or banner (pre-empts the rest) |
 | alone | 13 | season-record | the one season record carrying the title, or of the season its screenings broadcast it in naming its work under its house (pre-empts the rest when of that season) |
 | pooled | 1 | season-production | as alone, over the cluster's pooled evidence |
 | pooled | 2 | unrivalled-calibrated | the calibration accepts it and no namesake out-fits it |
