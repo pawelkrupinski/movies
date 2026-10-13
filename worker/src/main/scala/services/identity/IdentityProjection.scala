@@ -63,6 +63,8 @@ trait IdentityProjectionMetrics {
   /** A reconciling projection of the whole corpus ran — `measured` when an earlier projection gave it the scope to check
    *  its drift against, unmeasured when none had (`drifted` is then not called). */
   def reconciled(measured: Boolean): Unit
+  /** A written projection moved these listings' TMDB films ([[TakeChange]]): the live alarm on match changes. */
+  def takesChanged(changes: Seq[TakeChange]): Unit
 }
 
 object IdentityProjectionMetrics {
@@ -77,6 +79,7 @@ object IdentityProjectionMetrics {
     def refused(reason: Refusal): Unit = ()
     def drifted(films: Int): Unit = ()
     def reconciled(measured: Boolean): Unit = ()
+    def takesChanged(changes: Seq[TakeChange]): Unit = ()
   }
 }
 
@@ -382,6 +385,7 @@ final class IdentityProjection(
     }
     val seconds = started.seconds
     metrics.projected(films, listings, plan.regroupings, canary, seconds)
+    reportTakes(plan, resolution, before)
     val tick = ProjectionTick(Some(resolution), Some(plan), listings, changed.size - declined, plan.retired.size, declined, None, phases.all,
       changed = changed)
     logger.info(f"identity projection: $listings listings → $films films; wrote ${tick.written}, retired ${tick.retired}, " +
@@ -389,6 +393,27 @@ final class IdentityProjection(
         f" in $seconds%.1fs (${phases.render})")
     tick
   }
+
+  /** The listings whose TMDB film this projection moved, counted, and logged one line each (the first
+   *  [[IdentityProjection.TakeChangesLogged]]) for drill-down: venue, listing, the film it was on and the one it is on
+   *  now, and the resolver's reason. The country is every worker log line's own field. */
+  private def reportTakes(plan: ProjectionPlan, resolution: Resolution, before: Map[FilmId, StoredMovieRecord]): Unit =
+    if (plan.takes.nonEmpty) {
+      metrics.takesChanged(plan.takes)
+      val logged  = plan.takes.take(IdentityProjection.TakeChangesLogged)
+      val wanted  = logged.iterator.map(_.listing).toSet
+      val reasons = resolution.decisions.iterator.flatMap(d => d.members.iterator.filter(wanted).map(_ -> d)).toMap
+      val now     = plan.films.iterator.flatMap(f => f.members.iterator.filter(wanted).map(_ -> f)).toMap
+      def film(tmdb: Option[Int], title: Option[String]) = tmdb.fold("none")(id => s"tmdb $id") + title.fold("")(t => s" ($t)")
+      logged.foreach { t =>
+        val was    = before.get(FilmId(t.previousFilm)).map(_.title)
+        val reason = reasons.get(t.listing).fold("no decision")(d => (d.basis.toString +: d.explanation.take(2)).mkString(": "))
+        logger.info(s"identity take change: ${t.kind.label} ${t.listing.venue} | ${t.listing.rawTitle}: " +
+          s"${film(t.before, was)} -> ${film(t.after, now.get(t.listing).map(_.title))} (${t.previousFilm}); reason $reason")
+      }
+      if (plan.takes.size > logged.size) logger.info(s"identity take change: ${plan.takes.size - logged.size} more not logged " +
+        s"(${plan.takes.groupMapReduce(_.kind.label)(_ => 1)(_ + _).toSeq.sorted.map { case (k, n) => s"$k $n" }.mkString(", ")} in all)")
+    }
 
   /** Write `films` and retire `retired`, in the order the store's unique `key` / `tmdbId` indexes
    *  allow: a film whose key or TMDB id another document still holds waits until the retirements
@@ -451,6 +476,10 @@ object IdentityProjection {
   /** How often the worker projects the whole corpus — the reconciliation, the archives' stamps read and the slot
    *  fingerprints recorded. Every other projection runs as the identity model takes this worker's scrapes in. */
   val ReconcileEvery: FiniteDuration = scala.concurrent.duration.Duration(1, java.util.concurrent.TimeUnit.HOURS)
+
+  /** How many take changes one projection logs a line each for; past it, one line counts the rest. A deploy that moves
+   *  every film still says so in a handful of lines, and the counter has them all. */
+  private[identity] val TakeChangesLogged = 200
 
   /** How many independent films a projection writes at once. */
   private[identity] val WriteConcurrency = 8

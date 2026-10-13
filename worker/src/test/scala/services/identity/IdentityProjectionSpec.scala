@@ -435,6 +435,44 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     w.announced should have size 3 // announced once, not again by a projection that changes nothing
   }
 
+  /** The live alarm's input: a listing still published whose TMDB film a projection moved — lost, changed or gained — is
+   *  reported and logged once, naming its venue, title, both films and the decision's reason. A listing leaving the
+   *  schedule, and a projection that keeps every listing's film, report nothing. */
+  "A projection that moves a listing's TMDB film" should "report and log the take change, and nothing for expected churn" in {
+    var takes = Map("Lalka" -> Option(501), "Obcy" -> Option(502), "Diuna" -> Option(503))
+    val matched: (() => Seq[Listing]) => Option[IdentityProjection.Resolved] = read => ProjectionWorld.unmatched(read).map { r =>
+      r.copy(resolution = r.resolution.copy(decisions = r.resolution.decisions.map { d =>
+        ResolverDecision(d.members, takes(d.members.head.rawTitle), 0.9, ResolverDecision.Basis.OwnMatch, Seq(s"because ${d.members.head.rawTitle}"))()
+      }))
+    }
+    val w = new ProjectionWorld(new InMemoryMovieRepository(normalizer = normalizer), programme.keys.toSeq, clock, matched)
+    w.scrape(programme)
+    w.projection.tick().refused shouldBe None
+    w.takes shouldBe empty // a first projection matches; it moves nothing
+    w.projection.tick()
+    w.takes shouldBe empty // nor does a projection that keeps every film
+
+    // Lalka loses its film and Obcy is taken as another; KinoMuza drops Diuna and starts Obcy — churn, not a take change.
+    takes = takes ++ Map("Lalka" -> None, "Obcy" -> Some(602))
+    w.scrape(Map(KinoMuza -> Seq(film(KinoMuza, "Obcy", Some(1979), 9, 10))))
+    val logged = tools.LogCapture.thisThread(classOf[IdentityProjection].getName)(w.projection.tick().refused shouldBe None)
+      .map(_.getFormattedMessage).filter(_.startsWith("identity take change"))
+    w.takes.map(t => (t.kind, t.listing.venue, t.listing.rawTitle, t.before, t.after)).sortBy(t => (t._3, t._2)) shouldBe Seq(
+      (TakeChange.Kind.Lost, Helios.displayName, "Lalka", Some(501), None), (TakeChange.Kind.Lost, KinoApollo.displayName, "Lalka", Some(501), None),
+      (TakeChange.Kind.Lost, Multikino.displayName, "Lalka", Some(501), None),
+      (TakeChange.Kind.Changed, Rialto.displayName, "Obcy", Some(502), Some(602)),
+      (TakeChange.Kind.Changed, Multikino.displayName, "Obcy", Some(502), Some(602)))
+    logged should have size 5
+    logged.find(_.contains(Rialto.displayName)).get should (include("changed") and include("Obcy") and include("tmdb 502") and include("tmdb 602") and
+      include("because Obcy"))
+
+    w.takes.clear()
+    takes = takes + ("Lalka" -> Some(501))
+    w.projection.tick()
+    w.takes.map(_.kind).distinct shouldBe Seq(TakeChange.Kind.Gained)
+    w.takes should have size 3
+  }
+
   /** A country's first projection fetches the TMDB details of every film it matched (~2,250 on a US
    *  boot): one at a time, it waited on each in a row. */
   "A projection's TMDB details" should "be fetched side by side, each onto its own draft" in {

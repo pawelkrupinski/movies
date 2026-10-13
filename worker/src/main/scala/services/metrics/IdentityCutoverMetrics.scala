@@ -27,6 +27,10 @@ import services.identity.{IdentityProjectionMetrics, Regroupings, ShadowRelation
  *  - `kinowo_worker_identity_projection_drift_total` — films an hourly projection of the whole corpus changed that the
  *    scoped projections between (`ProjectionScope`: only the films their changes reach) would have left as they were.
  *    Zero, always: anything else is a film a scope missed, which the whole projection has just put right.
+ *  - `kinowo_worker_identity_take_changes_total{kind}` — listings still published whose TMDB film a written projection
+ *    moved: `lost` (had one, has none), `changed` (another), `gained` (had none). A listing leaving the schedule, a new
+ *    one, and a re-key or merge that keeps the TMDB film are churn and never counted ([[services.identity.TakeChange]]);
+ *    the alarm on match changes reads this. Each change is also logged (`identity take change: …`).
  *  - `kinowo_worker_identity_projection_reconciles_total{measured}` — hourly projections of the whole corpus, `measured`
  *    when an earlier projection gave one a scope to check drift against: an hour of `false` alone is drift not measured.
  *
@@ -82,10 +86,20 @@ final class IdentityCutoverMetrics(registry: PrometheusRegistry) {
     .labelNames("country")
     .register(registry)
 
+  private val takeChanges: Counter = Counter.builder()
+    .name("kinowo_worker_identity_take_changes_total")
+    .help("Published listings whose TMDB film a written identity projection moved: lost / changed / gained. Churn (a listing leaving, a re-key keeping the film) is not counted.")
+    .labelNames("country", "kind")
+    .register(registry)
+
   def forCountry(country: String): IdentityProjectionMetrics = new IdentityProjectionMetrics {
     // Exported at 0 from boot: no drift reads 0, not absent, and an unmeasured hour shows as reconciles{measured=false}.
     drift.labelValues(country)
     Seq("true", "false").foreach(reconciles.labelValues(country, _))
+    // Every kind exported at 0 from boot, so a first change is an increase a rate sees, not a series appearing.
+    services.identity.TakeChange.Kind.values.foreach(k => takeChanges.labelValues(country, k.label))
+    def takesChanged(changes: Seq[services.identity.TakeChange]): Unit =
+      changes.groupMapReduce(_.kind)(_ => 1)(_ + _).foreach { case (kind, n) => takeChanges.labelValues(country, kind.label).inc(n.toDouble) }
     def reconciled(measured: Boolean): Unit = reconciles.labelValues(country, measured.toString).inc()
     def projected(filmCount: Int, listingCount: Int, moved: Regroupings, relations: Map[ShadowRelation, Int], took: Double): Unit = {
       films.labelValues(country, "projection").set(filmCount.toDouble)

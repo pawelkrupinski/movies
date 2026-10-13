@@ -61,7 +61,8 @@ final case class ProjectionDraft(drafts: Seq[FilmDraft], retired: Seq[FilmId], v
                                  additions: Seq[FilmIdCounter], regroupings: Regroupings, canary: Map[ShadowRelation, Int],
                                  venues: Map[Long, Map[Cinema, Seq[ListingKey]]] = Map.empty,
                                  build: (Cinema, Seq[ListingKey], IdentityProjectionPlan.VenueRows) => Seq[(Source, SourceData)] = (_, _, _) => Nil,
-                                 rowsOf: Set[Cinema] => Map[Cinema, Seq[CinemaMovie]] = _ => Map.empty) {
+                                 rowsOf: Set[Cinema] => Map[Cinema, Seq[CinemaMovie]] = _ => Map.empty,
+                                 takes: Seq[TakeChange] = Nil) {
   /** `films` as they are written over the films stored before (`stored`). Every drafted slot is LEAN (no showtimes,
    *  only their digest and starts — enough to compare and guard by); a venue whose lean slot differs from the stored
    *  one is built in full from its rows, read a batch of venues at a time. One that matches a stored slot kept
@@ -97,9 +98,9 @@ final case class ProjectionDraft(drafts: Seq[FilmDraft], retired: Seq[FilmId], v
 }
 
 /** A projection ready to write: the films (every key unique, every TMDB id on one film), the ids to
- *  retire, the FilmId-map entries it adds, and the draft's regroupings and canary. */
+ *  retire, the FilmId-map entries it adds, and the draft's regroupings, canary and take changes. */
 final case class ProjectionPlan(films: Seq[ProjectedFilm], retired: Seq[FilmId], counterAdditions: Seq[FilmIdCounter],
-                                regroupings: Regroupings, canary: Map[ShadowRelation, Int])
+                                regroupings: Regroupings, canary: Map[ShadowRelation, Int], takes: Seq[TakeChange] = Nil)
 
 /**
  * THE IDENTITY PROJECTION's decisions (docs/design/identity-resolver.md §2 "Projection", §6, §8
@@ -404,8 +405,10 @@ object IdentityProjectionPlan {
       moves   = previousOf.count { case (l, ref) => newIdOf.get(l).map(c => previousIdOf(c).getOrElse(s"#$c")) != Some(ref.id) },
       fresh   = drafts.count(_.inherited.isEmpty),
       retired = retired.size)
+    // The listings of the scope whose TMDB film moved — read off the index's clusters, so nothing is built per listing.
+    val takes = TakeChange.of(previousOf, l => index.clusterOf.get(l).flatMap(index.clusters.get).map(_.film))
     ProjectionDraft(drafts, retired, retired.filterNot(id => index.placed(id.value)), covered, index.additions, regroupings,
-      canaryOf(clusters, previousOf), venues, build, rowsOf)
+      canaryOf(clusters, previousOf), venues, build, rowsOf, takes)
   }
 
   /** The canary over every cluster of `index`: what a projection reports, whichever films it drafted. */
@@ -462,7 +465,7 @@ object IdentityProjectionPlan {
       ProjectedFilm(id, d.counter, title, year, key, d.record, d.members, d.touched)
     }
     val freshEntries = films.filter(f => draft.counters.filmIdOf(f.counter).isEmpty).map(f => FilmIdCounter(f.id.value, f.counter))
-    ProjectionPlan(films, draft.retired, draft.additions ++ freshEntries, draft.regroupings, draft.canary)
+    ProjectionPlan(films, draft.retired, draft.additions ++ freshEntries, draft.regroupings, draft.canary, draft.takes)
   }
 
   type VenueRows = VenueSlots.VenueRows
