@@ -16,8 +16,11 @@ import scala.concurrent.Future
  * rule — the country that owned it before slugs were per country, else the one
  * that has it, else the first in order — the same one the apps read.
  *
- * Only a single bare segment; one that means the root country's own place is left
- * to it. Off the apex — `kinowo.net`, the root country's own domain — nothing is
+ * A path under one of the root country's OWN places — `showtimes.cc/poznan/`, its
+ * sub-pages, with or without the slash — 301s to the same address on that country's
+ * own domain (`kinowo.net/poznan/`): Caddy sends every unmounted path on the apex to
+ * the root deployment, which would otherwise serve its pages a second time under
+ * showtimes.cc, canonical and all. Off the apex — `kinowo.net` itself — nothing is
  * touched. Every redirect is counted in [[LegacyAddressMetrics]] — as
  * `front_door_old_owner` only where the old-owner table changed the answer, the
  * one kind the table's drop rule reads; a Polish page served on the apex is no
@@ -34,15 +37,22 @@ class FrontDoorRedirectFilter(country: Country, legacy: LegacyAddressMetrics)(us
 
   private def target(request: RequestHeader): Option[String] =
     Option.when(country.servesApex(PageMeta.host(request))) {
-      request.path.stripPrefix("/").stripSuffix("/") match {
-        case slug if slug.nonEmpty && !slug.contains('/') =>
-          Country.bareSlugTarget(slug).filter(_.country != country).map { target =>
-            legacy.record(if (target.tableChangedAnswer) LegacyAddressKind.FrontDoorOldOwner else LegacyAddressKind.FrontDoorNew,
-                          request)
-            val path = s"${target.country.pathPrefix}/${target.city.slug}/"
-            if (request.rawQueryString.isEmpty) path else s"$path?${request.rawQueryString}"
+      request.path.stripPrefix("/").split('/').toList match {
+        case slug :: Nil if slug.nonEmpty =>
+          Country.bareSlugTarget(slug).flatMap { target =>
+            if (target.country == country) ownDomain(request)
+            else {
+              legacy.record(if (target.tableChangedAnswer) LegacyAddressKind.FrontDoorOldOwner else LegacyAddressKind.FrontDoorNew,
+                            request)
+              val path = s"${target.country.pathPrefix}/${target.city.slug}/"
+              Some(if (request.rawQueryString.isEmpty) path else s"$path?${request.rawQueryString}")
+            }
           }
+        case place :: _ if country.resolve(place).isDefined => ownDomain(request)
         case _ => None
       }
     }.flatten
+
+  /** The same address on the root country's own domain. */
+  private def ownDomain(request: RequestHeader): Option[String] = country.webOrigin.map(_ + request.uri)
 }

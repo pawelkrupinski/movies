@@ -106,8 +106,16 @@ class KnownPlacesNeverNotFoundSpec extends AnyFlatSpec with Matchers with Before
     val front = new Deployment(Country.Poland)
     // Harrogate is a UK page and nothing else's.
     front.get("/harrogate/", host = Country.apexHost).header.headers(LOCATION) shouldBe "/uk/harrogate/"
-    // A Polish page stays Poland's, on the apex as on kinowo.net.
-    front.get("/poznan/", host = Country.apexHost).header.status shouldBe OK
+    // A Polish page lives on kinowo.net: the apex sends it there, sub-pages and query included,
+    // rather than serve a duplicate of it under showtimes.cc.
+    front.get("/poznan/", host = Country.apexHost).header.headers(LOCATION) shouldBe "https://kinowo.net/poznan/"
+    front.get("/poznan", host = Country.apexHost).header.headers(LOCATION) shouldBe "https://kinowo.net/poznan"
+    front.get("/poznan/film/dune?d=1", host = Country.apexHost).header.headers(LOCATION) shouldBe
+      "https://kinowo.net/poznan/film/dune?d=1"
+    // The front door's own root is not sent away.
+    front.get("/", host = Country.apexHost).header.headers.get(LOCATION) shouldBe None
+    // On kinowo.net, Poland's own host, it is the page.
+    front.get("/poznan/", host = "kinowo.net").header.status shouldBe OK
     // Off the apex — kinowo.net — nothing is redirected.
     front.get("/harrogate/", host = "kinowo.net").header.status shouldBe NOT_FOUND
   }
@@ -131,7 +139,6 @@ class KnownPlacesNeverNotFoundSpec extends AnyFlatSpec with Matchers with Before
 
   it should "send every slug any country answers to where the table and its fallback say" in {
     val front = new Deployment(Country.Poland)
-    val others = Country.switchable.filter(_ != Country.Poland)
     val failures = for {
       country <- Country.switchable
       slug    <- everySlug(country)
@@ -140,9 +147,11 @@ class KnownPlacesNeverNotFoundSpec extends AnyFlatSpec with Matchers with Before
       location = result.header.headers.get(LOCATION)
       problem <- (
         if (owner == Country.Poland)
-          // Poland's own: no front-door redirect — its page, or its own 301 onto one.
-          Option.when(location.exists(to => others.exists(c => to.startsWith(c.pathPrefix + "/"))))(
-            s"/$slug/ -> $location, but Poland keeps it")
+          // Poland's own: to kinowo.net, Poland's host — directly, or through Poland's own
+          // 301 from an alias or renamed slug onto its page, which then goes there.
+          Option.when(!location.exists(to => to.startsWith("https://kinowo.net/") ||
+              front.get(to, host = Country.apexHost).header.headers.get(LOCATION).contains(s"https://kinowo.net$to")))(
+            s"/$slug/ -> $location, not kinowo.net")
         else {
           val expected = owner.resolve(slug).map(city => s"${owner.pathPrefix}/${city.slug}/")
           Option.when(expected.isEmpty || location != expected)(

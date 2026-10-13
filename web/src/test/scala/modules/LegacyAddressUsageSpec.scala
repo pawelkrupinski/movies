@@ -105,10 +105,10 @@ class LegacyAddressUsageSpec extends AnyFlatSpec with Matchers with BeforeAndAft
     Country.bareSlugTarget("kent").map(t => t.country.code -> t.tableChangedAnswer) shouldBe Some("uk" -> false)
   }
 
-  it should "not count a Polish page served on the apex, which is no redirect" in {
+  it should "not count a Polish page's move from the apex to kinowo.net, which is no legacy address" in {
     val front = new Deployment(Country.Poland)
-    front.follow("/warszawa/", Browser, host = Country.apexHost).header.status shouldBe 200
-    front.follow("/warszawa", Browser, host = Country.apexHost).header.status shouldBe 200
+    front.get("/warszawa/", Browser, host = Country.apexHost).header.headers("Location") shouldBe "https://kinowo.net/warszawa/"
+    front.get("/warszawa", Browser, host = Country.apexHost).header.headers("Location") shouldBe "https://kinowo.net/warszawa"
     front.hits shouldBe empty
   }
 
