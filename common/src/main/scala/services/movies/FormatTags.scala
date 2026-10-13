@@ -86,6 +86,9 @@ object FormatTags {
   // mins *MATINEE*", "… *SUBTITLED MATINEE*": words only, spaced off the title, so a title's own asterisks ("M*A*S*H",
   // "Monet*", "B****") stay. Its version words still badge the showing.
   private val AsteriskNote = """(?<=\S)\s+\*\s*\p{L}[\p{L}\s'&-]*\*\s*$""".r
+  // …and the running time it brackets, confirmed or not: Bridport's "Screening: NTL - Hay Fever (12A TBC) (160 mins TBC)"
+  // hid its certificate behind it. A number of minutes, so "Apollo 13" and "Sweet Sixteen (16)" stay.
+  private val BracketedRunningTime = """(?i)(?<=\S)\s*\(\s*\d{2,3}\s*mins?\.?(?:\s+TBC)?\s*\)\s*$""".r
   private val ReReleaseMark = """(?i)(?<=\S)\s*\(\s*(?:WA(?:\s*:?\s*\d{2,4}|\s*:)?|Wiederauff(?:ü|ue)hrung)\s*\)?\s*$""".r
   // The same tags written IN FRONT of the title — "OV: Digger", "(OmU) Verity", "ATMOS/OV: Verity", "Dolby
   // Cinema: Die Odyssee", "3D: Forgotten Island", "engl. OV: Der Herr der Ringe", "OMU - Searching for Sugar Man":
@@ -185,6 +188,7 @@ object FormatTags {
         captureTagWords(note, dropped)
         t = AsteriskNote.replaceFirstIn(t, "").trim
       }
+      t = BracketedRunningTime.replaceFirstIn(t, "").trim
       t = ReReleaseMark.replaceFirstIn(CertificateNote.replaceFirstIn(t, "$1"), "").trim
       // Tokens peeled inside a [..]/(..) tag also carry version meaning, so
       // capture them before deleting the tag — UNLESS the tag names the Ukrainian

@@ -149,8 +149,11 @@ class TitleFormatWordsSpec extends AnyFlatSpec with Matchers {
     FormatTags.extractFormatTags("Wicker (15) 105 mins *MATINEE*") shouldBe ("Wicker", Nil)
     FormatTags.extractFormatTags("Sense and Sensibility (Cert TBC) (2026) 131 mins *MATINEE*") shouldBe ("Sense and Sensibility (2026)", Nil)
     FormatTags.extractFormatTags("Pressure (15 TBC) (2026) 100 mins *SUBTITLED MATINEE*") shouldBe ("Pressure (2026)", List("SUB"))
-    FormatTags.extractFormatTags("Screening: NTL - Hay Fever (12A TBC) (160 mins TBC) *MATINEE*")._1 shouldBe
-      FormatTags.extractFormatTags("Screening: NTL - Hay Fever (12A TBC) (160 mins TBC)")._1
+    FormatTags.extractFormatTags("Screening: NTL - Hay Fever (12A TBC) (160 mins TBC) *MATINEE*")._1 shouldBe "Screening: NTL - Hay Fever"
+    // a running time it brackets is the showing's note too, the certificate before it with it
+    FormatTags.extractFormatTags("Screening: NTL - Hay Fever (12A TBC) (160 mins TBC)") shouldBe ("Screening: NTL - Hay Fever", Nil)
+    FormatTags.extractFormatTags("Wicker (15) (105 mins)") shouldBe ("Wicker", Nil)
+    FormatTags.extractFormatTags("Apollo 13 (140 min.)")._1 shouldBe "Apollo 13"
     // an asterisk inside the title, or one glued to its last word, is the title's own
     FormatTags.extractFormatTags("Smile You Son Of a B****")._1 shouldBe "Smile You Son Of a B****"
     FormatTags.extractFormatTags("Exhibition On Screen: Monet*")._1 shouldBe "Exhibition On Screen: Monet*"
