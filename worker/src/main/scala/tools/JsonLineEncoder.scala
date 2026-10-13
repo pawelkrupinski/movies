@@ -8,7 +8,8 @@ import java.nio.charset.StandardCharsets
 /**
  * The worker's stdout format: ONE JSON object per log line — `level`, `logger`, `thread`, `message`, then the logger
  * context's properties (the `build` the boot stamps, `LogFields.stampBuild`), the MDC (a projection's
- * `projection_id`), the key-value pairs a log call adds (`StructuredLog`), and a thrown exception's `stack_trace`.
+ * `projection_id`), the key-value pairs a log call adds (`StructuredLog`), and a thrown exception's `stack_trace` (which `message` also
+ * ends with, so a word search over `_msg` finds it).
  *
  * The fleet's Vector parses a JSON line and merges its fields into the VictoriaLogs row (`mergeJsonBodyVrl` in
  * `infra/nix/modules/fleet/logs.nix`, checked by `infra/test/test_log_fields.sh`): `message` becomes `_msg`, every other
@@ -31,14 +32,15 @@ final class JsonLineEncoder extends EncoderBase[ILoggingEvent] {
     field(line, "level", event.getLevel.toString, first = true)
     field(line, "logger", event.getLoggerName)
     field(line, "thread", event.getThreadName)
-    field(line, "message", event.getFormattedMessage)
+    val stackTrace = Option(event.getThrowableProxy).map(ThrowableProxyUtil.asString)
+    field(line, "message", message(Option(event.getFormattedMessage).filterNot(_.isBlank), stackTrace))
     val context = Option(event.getLoggerContextVO).map(_.getPropertyMap).orNull
     if (context != null) context.forEach((k, v) => if (!Reserved(k) && !ContextLeftOut(k)) field(line, k, v))
     val mdc = event.getMDCPropertyMap
     if (mdc != null) mdc.forEach((k, v) => if (!Reserved(k)) field(line, k, v))
     val pairs = event.getKeyValuePairs
     if (pairs != null) pairs.forEach(pair => if (pair.key != null && !Reserved(pair.key) && pair.value != null) field(line, pair.key, pair.value))
-    Option(event.getThrowableProxy).foreach(error => field(line, "stack_trace", ThrowableProxyUtil.asString(error)))
+    stackTrace.foreach(field(line, "stack_trace", _))
     line.append("}\n").toString.getBytes(StandardCharsets.UTF_8)
   }
 }
@@ -48,6 +50,15 @@ object JsonLineEncoder {
   private val Reserved = Set("level", "logger", "thread", "message", "stack_trace")
   /** Context properties logback keeps for itself: the pod's name is the shipper's `pod` already. */
   private val ContextLeftOut = Set("HOSTNAME", "CONTEXT_NAME")
+
+  /** `message` is `_msg`, the field a bare LogsQL word searches, so a thrown exception's trace goes there too — as it
+   *  did when each trace line was a text row of its own — besides its `stack_trace` field. It is never empty: an empty
+   *  `_msg` is stored under VictoriaLogs' "missing _msg field" placeholder, which says nothing about the line. */
+  private def message(text: Option[String], stackTrace: Option[String]): String =
+    (text ++ stackTrace).mkString("\n") match {
+      case "" => "(empty log message)"
+      case m  => m
+    }
 
   private def field(line: java.lang.StringBuilder, key: String, value: Any, first: Boolean = false): Unit = {
     if (!first) line.append(',')

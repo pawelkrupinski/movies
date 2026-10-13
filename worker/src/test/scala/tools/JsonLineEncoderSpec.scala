@@ -52,11 +52,23 @@ class JsonLineEncoderSpec extends AnyFlatSpec with Matchers {
     json("build") shouldBe JsString("0e41a4812")
   }
 
-  it should "keep a thrown exception in ONE line, its stack trace a field of its own" in {
+  it should "keep a thrown exception in ONE line, its stack trace a field of its own AND in the message" in {
     val json = encoded() { context => event(context, "identity projection failed", Level.WARN, new IllegalStateException("bus down\nhard")) }
     json("level") shouldBe JsString("WARN")
-    json("message") shouldBe JsString("identity projection failed")
-    json("stack_trace").as[String] should (include("java.lang.IllegalStateException: bus down") and include("JsonLineEncoderSpec"))
+    val trace = json("stack_trace").as[String]
+    trace should (include("java.lang.IllegalStateException: bus down") and include("JsonLineEncoderSpec"))
+    // `message` is `_msg`, the field a bare LogsQL word searches: an exception class or a frame is found there,
+    // as it was when each trace line was a text row of its own.
+    json("message") shouldBe JsString("identity projection failed\n" + trace)
+  }
+
+  it should "never write an empty message, which VictoriaLogs stores as its 'missing _msg field' placeholder" in {
+    val thrown = encoded() { context => event(context, "", Level.ERROR, new IllegalStateException("bus down")) }
+    thrown("message").as[String] should startWith("java.lang.IllegalStateException: bus down")
+    val nothing = encoded() { context => event(context, null) }
+    nothing("message") shouldBe JsString("(empty log message)")
+    val blank = encoded() { context => event(context, "   ") }
+    blank("message") shouldBe JsString("(empty log message)")
   }
 
   it should "never let a pair rename the line's own fields" in {
