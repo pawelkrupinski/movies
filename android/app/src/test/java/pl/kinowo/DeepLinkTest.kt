@@ -121,13 +121,39 @@ class DeepLinkTest {
             """{"countries":[],"cities":[{"slug":"biala-podlaska","name":"Biała Podlaska i okolice","lat":52.0,"lon":23.1,"country":"pl","formerSlugs":["miedzyrzec-podlaski"]}]}""",
         )!!
         val slugs = catalog.cities.map { it.slug }.toSet()
-        val former = catalog.cities.currentSlugByFormer()
+        val former = catalog.cities.currentSlugByFormer("pl")
         val dl = DeepLink.parse("https://kinowo.net/miedzyrzec-podlaski/movie/oppenheimer?date=tomorrow", slugs, currentSlugByFormer = former)!!
         assertEquals("biala-podlaska", dl.citySlug)
         assertEquals("oppenheimer", dl.filmSlug)
         assertEquals(DateFilter.Tomorrow, dl.filters.date)
         // A slug nobody ever answered at is still no city.
         assertNull(DeepLink.parse("https://kinowo.net/nowhere/", slugs, currentSlugByFormer = former))
+    }
+
+    /** Every country owns its slugs: the link's path segment picks the country,
+     *  and a slug two countries share opens the one the URL names. */
+    @Test fun aSharedSlugOpensTheCountryTheLinkNames() {
+        val cities = listOf(
+            pl.kinowo.model.City("york", "York", 53.96, -1.08, "uk"),
+            pl.kinowo.model.City("kent", "Kent", 47.38, -122.23, "us"),
+            pl.kinowo.model.City("chatham", "Chatham area", 51.37, 0.53, "uk", formerSlugs = listOf("kent")),
+            pl.kinowo.model.City("york", "York", 39.96, -76.73, "us"),
+        )
+        val us = DeepLink.parse("https://showtimes.cc/us/york/movie/dune", cities = cities)!!
+        assertEquals("us", us.countryCode)
+        assertEquals("york", us.citySlug)
+        assertEquals("uk", DeepLink.parse("https://showtimes.cc/uk/york/", cities = cities)!!.countryCode)
+        // A slug that is one country's live city and another's former one opens the country the URL names.
+        assertEquals("kent", DeepLink.parse("https://showtimes.cc/us/kent/", cities = cities)!!.citySlug)
+        val ukKent = DeepLink.parse("https://showtimes.cc/uk/kent/", cities = cities)!!
+        assertEquals("chatham", ukKent.citySlug)
+        assertEquals("uk", ukKent.countryCode)
+        // A slug the named country does not have is no city, whoever else has it.
+        assertNull(DeepLink.parse("https://showtimes.cc/de/york/", cities = cities))
+        // The version pair is the resolved country's.
+        val pairs = { code: String -> if (code == "us") VersionTokens("SUB", "DUB") else VersionTokens("OmU", "DF") }
+        assertEquals("SUB", DeepLink.parse("https://showtimes.cc/us/york/?lang=SUB", cities = cities,
+                                           versionTokensOfCountry = pairs)!!.filters.language)
     }
 
     @Test fun rejectsUnknownCityHostAndScheme() {

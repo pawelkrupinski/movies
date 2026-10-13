@@ -1,6 +1,6 @@
 package services.readmodel
 
-import models.{Cinema, City, CityScreening, ResolvedMovie}
+import models.{Cinema, City, CityScreening, Country, ResolvedMovie}
 import play.api.Logging
 import services.Stoppable
 import settings.{ReadModelColdRetryInterval, ReadModelReloadInterval}
@@ -38,7 +38,21 @@ class WebReadModel(
     // Each reopen of a change stream that ended (`kinowo_web_readmodel_stream_reopens_total`).
     streamMetrics:     ReadModelStreamMetrics     = ReadModelStreamMetrics.noop,
     // What the change stamps are read from; the system clock outside specs.
-    clock:             java.time.Clock) extends Stoppable with Logging {
+    clock:             java.time.Clock,
+    // The country this deployment serves. Every country owns its own city slugs, so a
+    // slug means a city only within one: `aberdeen` is the UK's Aberdeen and South
+    // Dakota's. The model serves a row under a slug only when its venue is this country's
+    // (or retired, so on no country's page), and reads the slugs THIS country's cities
+    // used to answer at (`Country.formerSlugs`) alongside their own. `None` — specs over
+    // one country's fixture rows — takes every row and no former slugs.
+    servingCountry:    Option[Country] = None) extends Stoppable with Logging {
+
+  private val formerSlugs: String => Seq[String] = servingCountry.fold((_: String) => Seq.empty[String])(c => c.formerSlugs)
+
+  /** Is `cinema` a venue some OTHER country lists? Such a row is never this
+   *  deployment's to serve, whatever slug it was filed under. */
+  private def foreign(cinema: String): Boolean =
+    servingCountry.exists(country => Cinema.byDisplayName.get(cinema).flatMap(City.forCinema).exists(_.country != country))
 
   private val movies = new ConcurrentHashMap[String, ResolvedMovie]()
   // citySlug -> (screeningId -> CityScreening). The per-city bucket is the
@@ -92,7 +106,7 @@ class WebReadModel(
    *  first, a request racing the reload took the floor from before it and the stamp from after,
    *  and answered a validator older than one already handed out. */
   def lastModifiedFor(citySlug: String): java.time.Instant = {
-    val stamps = (citySlug +: City.formerSlugs(citySlug)).map(cityStamps.get)
+    val stamps = (citySlug +: formerSlugs(citySlug)).map(cityStamps.get)
     stamps.foldLeft(_globalFloor.get())(laterOf)
   }
 
@@ -191,13 +205,13 @@ class WebReadModel(
   private def cityRows(citySlug: String, keep: CityScreening => Boolean): Seq[CityScreening] = {
     val current = bucket(citySlug, keep)
     // A city that changed slug still has most of its rows projected under the
-    // OLD one (see `City.formerSlugs`), and would otherwise serve almost nothing
+    // OLD one (see `Country.formerSlugs`), and would otherwise serve almost nothing
     // until every one of its films had been projected again. Rows under the
     // current slug WIN — they are the freshly projected ones — and the former
     // bucket only fills the venues that have not caught up yet. (A row of a venue
     // the roster knows is filed under that venue's page already — `onCurrentPage`
     // — so what a former bucket holds is the rows of venues it does not.)
-    val former = City.formerSlugs(citySlug).flatMap(bucket(_, keep))
+    val former = formerSlugs(citySlug).flatMap(bucket(_, keep))
     if (former.isEmpty) current
     else {
       val projected = current.map(s => (s.filmId, s.cinema)).toSet
@@ -206,7 +220,8 @@ class WebReadModel(
   }
 
   private def bucket(citySlug: String, keep: CityScreening => Boolean): Seq[CityScreening] =
-    Option(byCity.get(citySlug)).map(_.values.asScala.iterator.filter(keep).toSeq).getOrElse(Seq.empty)
+    Option(byCity.get(citySlug)).map(_.values.asScala.iterator.filter(s => keep(s) && !foreign(s.cinema)).toSeq)
+      .getOrElse(Seq.empty)
   /** Every cached screening across all cities — the read cache's full
    *  `web_screenings` view, used by the dev `/debug/readmodel` dump. */
   def allScreenings(): Seq[CityScreening] =

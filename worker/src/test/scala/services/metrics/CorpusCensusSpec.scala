@@ -3,7 +3,7 @@ package services.metrics
 import tools.SpecClock.given
 
 import io.prometheus.metrics.model.registry.PrometheusRegistry
-import models.{Cinema, CinemaShowing, City, Helios, HeliosMagnolia, Imdb, KinoApollo, MovieRecord, Rialto, Showtime, Source, SourceData, Tmdb}
+import models.{Cinema, CinemaShowing, City, Country, Helios, HeliosMagnolia, Imdb, KinoApollo, MovieRecord, Rialto, Showtime, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.metrics.CorpusMetricsFixtures.{cacheOver, censusOver, now, ready, row, splitRepository, tomorrow, warsaw}
@@ -313,7 +313,7 @@ class CorpusCensusSpec extends AnyFlatSpec with Matchers {
     val allSeasonal = City.all.find(c => c.mayBeDarkAt(winter)).getOrElse(fail("no city whose every venue is seasonal"))
     val mixed       = City.all.find(c => c.cinemas.exists(_.opening != models.Opening.YearRound) && !c.mayBeDarkAt(winter))
                         .getOrElse(fail("no city with a seasonal venue beside a year-round one"))
-    val yearRound   = City.bySlug("poznan").get
+    val yearRound   = Country.Poland.bySlug.get("poznan").get
     val clock       = new tools.MutableClock(winter)
     val registry    = new PrometheusRegistry()
     val census      = new CorpusCensus(cacheOver(splitRepository()), WorkerCorpusMetrics.gauge(registry),
@@ -340,7 +340,7 @@ class CorpusCensusSpec extends AnyFlatSpec with Matchers {
     }
     val seasonalTown = City.all.find(c => c.cinemas.nonEmpty && c.cinemas.forall(v => septemberClose(v.opening)))
                       .getOrElse(fail("no city whose every venue's season closes in September"))
-    val yearRound = City.bySlug("poznan").get
+    val yearRound = Country.Poland.bySlug.get("poznan").get
     val clock     = new tools.MutableClock(java.time.Instant.parse("2026-09-28T12:00:00Z"))
     val registry  = new PrometheusRegistry()
     val census    = new CorpusCensus(cacheOver(splitRepository()), WorkerCorpusMetrics.gauge(registry),

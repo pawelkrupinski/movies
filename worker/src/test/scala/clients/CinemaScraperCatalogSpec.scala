@@ -62,7 +62,10 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     )
 
   /** The slug of the page a cinema is listed on. */
-  private def pageOf(cinema: Cinema): String = City.forCinema(cinema).value.slug
+  private def pageOf(cinema: Cinema): City = City.forCinema(cinema).value
+  private def de(slug: String): City = Country.Germany.bySlug(slug)
+  private def us(slug: String): City = Country.UnitedStates.bySlug(slug)
+  private def pl(slug: String): City = Country.Poland.bySlug(slug)
 
   /** An HttpFetch that fails every GET and POST with a uniquely-identifiable
    *  message, so a test can prove WHICH seam a scraper egressed through by catching
@@ -732,14 +735,14 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     // /frankfurt-am-main/; Sulzbach (Taunus) clusters with Hofheim now.
     val c        = catalog()
     val venue    = models.GermanRoster.theaterIdByCinema.collectFirst { case (v, "A0831") => v }.value
-    val scrapers = c.byCity("hofheim-am-taunus").filter(_.cinema == venue)
+    val scrapers = c.byCity(de("hofheim-am-taunus")).filter(_.cinema == venue)
     scrapers should have size 1
     scrapers.head.scrapeHosts shouldBe Set("api.cineamo.com")   // its measured primary (venue-sources.json)
-    c.byCity.get("frankfurt-am-main").value.map(_.cinema) should not contain venue
+    c.byCity.get(de("frankfurt-am-main")).value.map(_.cinema) should not contain venue
     // Every German page the web tier serves has its scrapers under the same slug,
     // and the fallback is still found for venues that moved pages.
     Country.Germany.cities.foreach { city =>
-      withClue(s"${city.slug}: ")(c.byCity.get(city.slug).value.map(_.cinema).toSet shouldBe city.cinemas.toSet)
+      withClue(s"${city.slug}: ")(c.byCity.get(city).value.map(_.cinema).toSet shouldBe city.cinemas.toSet)
     }
     // Kulmbach was on /bayreuth/'s region and is on its cluster now — a venue's
     // fallback is keyed by the venue, so moving pages leaves it alone.
@@ -752,11 +755,11 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     // cinema was on /minneapolis-st-paul-wisconsin/; it clusters with Woodbury, Minnesota now.
     val c      = catalog()
     val hudson = UsRoster.byDisplayName("Hudson 12 Theatre")
-    c.byCity("woodbury").map(_.cinema) should contain (hudson)
-    c.byCity.get("minneapolis-st-paul-wisconsin") shouldBe None
+    c.byCity(us("woodbury")).map(_.cinema) should contain (hudson)
+    Country.UnitedStates.bySlug.get("minneapolis-st-paul-wisconsin") shouldBe None
     // Every US page the web tier serves has its scrapers under the same slug.
     Country.UnitedStates.cities.foreach { city =>
-      withClue(s"${city.slug}: ")(c.byCity.get(city.slug).value.map(_.cinema).toSet shouldBe city.cinemas.toSet)
+      withClue(s"${city.slug}: ")(c.byCity.get(city).value.map(_.cinema).toSet shouldBe city.cinemas.toSet)
     }
   }
 
@@ -775,9 +778,9 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
   // feed that found it.
   it should "scrape the venues the harvest found: Bochum's off their measured primary, kinoheld's own off kinoheld" in {
     val c = catalog()
-    c.byCity("bochum").map(_.cinema.displayName) should have size 6
+    c.byCity(de("bochum")).map(_.cinema.displayName) should have size 6
     val raststaette = models.Cinema.byDisplayName("Raststätte")
-    c.byCity("aachen").filter(_.cinema == raststaette).map(_.sourceKey) shouldBe Seq(Some("kinoheld.de/cinema/2417"))
+    c.byCity(de("aachen")).filter(_.cinema == raststaette).map(_.sourceKey) shouldBe Seq(Some("kinoheld.de/cinema/2417"))
   }
 
   it should "keep Filmstarts, then kinoprogramm.com, for a venue the measurement has no row for" in {
@@ -924,7 +927,7 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
   // organiser (Siennieńska 54, identical showtimes), which lists its whole
   // programme — so wiring both showed Kino Etiuda twice under two names.
   it should "scrape Ostrowiec's Kino Etiuda once, off its bilety24 organiser" in {
-    val etiudas = catalog(biletyna = "kino-kameralne").byCity("ostrowiec-swietokrzyski")
+    val etiudas = catalog(biletyna = "kino-kameralne").byCity(pl("ostrowiec-swietokrzyski"))
       .filter(_.cinema.displayName.contains("Etiuda"))
     etiudas.map(_.cinema.displayName) shouldBe Seq("Kino Etiuda")
     etiudas.head shouldBe a [Bilety24OrganizerClient]
@@ -981,14 +984,14 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
   // or cluster page it is on. Each still comes off its own source.
   it should "file every Polish scraper under the page its cinema is on" in {
     val c = catalog(biletyna = "kino-kameralne")
-    for ((slug, scrapers) <- c.byCity; s <- scrapers if City.forCinema(s.cinema).exists(_.country == Country.Poland))
-      withClue(s"${s.cinema.displayName}: ") { City.forCinema(s.cinema).value.slug shouldBe slug }
+    for ((city, scrapers) <- c.byCity; s <- scrapers if City.forCinema(s.cinema).exists(_.country == Country.Poland))
+      withClue(s"${s.cinema.displayName}: ") { City.forCinema(s.cinema).value shouldBe city }
   }
 
   it should "scrape a suburb's venue under its own page, not the major city it used to be folded into" in {
     val c = catalog(biletyna = "kino-kameralne")
-    c.byCity("warszawa").map(_.cinema) should (contain (KinoMuranow) and not contain (MultikinoPruszkow))
-    c.byCity("pruszkow").find(_.cinema == MultikinoPruszkow).value shouldBe a [MultikinoClient]
+    c.byCity(pl("warszawa")).map(_.cinema) should (contain (KinoMuranow) and not contain (MultikinoPruszkow))
+    c.byCity(pl("pruszkow")).find(_.cinema == MultikinoPruszkow).value shouldBe a [MultikinoClient]
     c.byCity(pageOf(HeliosSiedlce)).find(_.cinema == HeliosSiedlce).value shouldBe a [HeliosClient]
     c.byCity(pageOf(KinoWCKWalcz)).find(_.cinema == KinoWCKWalcz).value shouldBe a [Bilety24OrganizerClient]
     c.byCity(pageOf(KinoGiewont)).find(_.cinema == KinoGiewont).value shouldBe a [BiletynaClient]

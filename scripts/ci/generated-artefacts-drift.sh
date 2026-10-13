@@ -13,6 +13,7 @@
 #   data/us/venues.json + towns.json → data/us/scripts/build_pages.py → data/us/pages.json
 #   data/uk/venues.json + towns.json → data/uk/scripts/build_pages.py → data/uk/pages.json
 #     → data/uk/scripts/generate_roster.py → UkPages.scala + the apps' City lists
+#   every country's pages.json → data/scripts/generate_slug_index.py → CitySlugIndexData.scala
 #   data/germany/venues.json + city-coords.json → data/germany/scripts/build_pages.py → data/germany/pages.json
 #   data/spain/town-coords.json → data/spain/scripts/build_pages.py   → data/spain/pages.json
 #   data/germany, data/spain, data/us → their generate_roster.py     → *RosterData.scala
@@ -84,9 +85,10 @@ python3 data/germany/scripts/generate_sources.py
 python3 data/spain/scripts/build_pages.py
 python3 data/spain/scripts/generate_roster.py
 python3 data/spain/scripts/generate_own_sources.py
-# Last: the UK's slugs yield to every other country's, read off their pages.json above.
 python3 data/uk/scripts/build_pages.py
 python3 data/uk/scripts/generate_roster.py
+# Last of all: every country's other slugs and the front door's, off every pages.json above.
+python3 data/scripts/generate_slug_index.py
 
 drift=$(diff <(printf '%s\n' "$before") <(tree_state) | sed -n 's/^[<>] \(.*\) [^ ]*$/\1/p' | LC_ALL=C sort -u || true)
 if [ -n "$drift" ]; then

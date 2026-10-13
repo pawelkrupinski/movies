@@ -56,7 +56,7 @@ trait ScrapeWiring { self: WorkerWiring =>
    *  venues tagged into each country's /uptime). Narrowed further by
    *  [[scrapeCities]] where only the scraped subset matters. */
   lazy val countryScrapers: Seq[CinemaScraper] =
-    country.cities.flatMap(c => cinemaScraperCatalog.byCity.getOrElse(c.slug, Nil))
+    country.cities.flatMap(c => cinemaScraperCatalog.byCity.getOrElse(c, Nil))
 
   // This country's own cities — the default scrape set. A country wiring only
   // ever scrapes its own cities (never another country's), so the default is
@@ -153,7 +153,7 @@ trait ScrapeWiring { self: WorkerWiring =>
   lazy val cinemaScrapers: Seq[CinemaScraper] =
     country.cities
       .filter(c => scrapeCities(c.slug))
-      .flatMap(c => cinemaScraperCatalog.byCity.getOrElse(c.slug, Nil))
+      .flatMap(c => cinemaScraperCatalog.byCity.getOrElse(c, Nil))
       .map { raw =>
         val retried = new RetryingCinemaScraper(raw, maxAttempts = math.min(raw.maxFetchAttempts, scrapeAttemptCeiling))
         // A chunked cinema is scraped via the task fan-out (ScrapeCinemaHandler

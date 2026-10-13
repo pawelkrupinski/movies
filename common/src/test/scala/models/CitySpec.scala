@@ -5,19 +5,15 @@ import org.scalatest.matchers.should.Matchers
 
 class CitySpec extends AnyFlatSpec with Matchers {
 
-  "City.bySlug" should "resolve known slugs and reject an unknown one" in {
-    City.bySlug("poznan") shouldBe Some(Poznan)
-    City.bySlug("wroclaw") shouldBe Some(Wroclaw)
-    City.bySlug("warszawa") shouldBe Some(Warszawa)
-    City.bySlug("krakow") shouldBe Some(Krakow)
-    City.bySlug("lodz") shouldBe Some(Lodz)
-    City.bySlug("katowice") shouldBe Some(Katowice)
-    City.bySlug("szczecin") shouldBe Some(Szczecin)
-    City.bySlug("trojmiasto") shouldBe Some(Trojmiasto)
-    City.bySlug("gliwice") shouldBe Some(Gliwice)
-    City.bySlug("rzeszow") shouldBe Some(Rzeszow)
-    City.bySlug("sopot") shouldBe None
-    City.bySlug("") shouldBe None
+  "Country.bySlug" should "resolve its own known slugs and reject an unknown one" in {
+    val pl = Country.Poland.bySlug
+    Seq("poznan" -> Poznan, "wroclaw" -> Wroclaw, "warszawa" -> Warszawa, "krakow" -> Krakow, "lodz" -> Lodz,
+        "katowice" -> Katowice, "szczecin" -> Szczecin, "trojmiasto" -> Trojmiasto, "gliwice" -> Gliwice,
+        "rzeszow" -> Rzeszow).foreach { case (slug, city) => pl.get(slug) shouldBe Some(city) }
+    pl.get("sopot") shouldBe None
+    pl.get("") shouldBe None
+    // Another country's city is not this one's.
+    Country.Poland.bySlug.get("london") shouldBe None
   }
 
   "Each city" should "scope to its own cinemas (disjoint partition of the universe)" in {
@@ -30,16 +26,31 @@ class CitySpec extends AnyFlatSpec with Matchers {
     City.all.flatMap(_.cinemas).distinct.size shouldBe Cinema.all.size
   }
 
-  /** `/{slug}/` is ONE global namespace — `City.bySlug` searches every country's
-   *  list — and the US puts ~2,000 places into it beside ~180 Polish, ~260 UK
-   *  and ~450 German ones. Two cities sharing a slug means one of them is
-   *  unreachable, silently, at whichever position `find` reaches second. */
-  "Every city slug" should "be unique across every country, and URL-shaped" in {
-    val slugs = City.all.map(_.slug)
-    val dupes = slugs.groupBy(identity).collect { case (s, xs) if xs.sizeIs > 1 => s }
-    dupes shouldBe empty
-    slugs.foreach(_ should fullyMatch regex "[a-z0-9]+(-[a-z0-9]+)*")
-    City.all.foreach(c => withClue(s"${c.slug}: ")(City.bySlug(c.slug) should contain(c)))
+  /** Every country owns its own slugs: `/uk/york/` is York and `/us/york/` York,
+   *  Pennsylvania. Within ONE country two cities sharing a slug means one of them
+   *  is unreachable, so a slug is unique there — and only there. */
+  "Every city slug" should "be unique within its country, and URL-shaped" in {
+    Country.all.foreach { country =>
+      val slugs = country.cities.map(_.slug)
+      withClue(s"${country.code}: ")(slugs.groupBy(identity).collect { case (s, xs) if xs.sizeIs > 1 => s } shouldBe empty)
+      slugs.foreach(_ should fullyMatch regex "[a-z0-9]+(-[a-z0-9]+)*")
+      country.cities.foreach(c => withClue(s"${country.code}/${c.slug}: ")(country.bySlug.get(c.slug) shouldBe Some(c)))
+    }
+  }
+
+  it should "be free for two countries to share, each meaning its own town" in {
+    val ukYork = Country.UnitedKingdom.bySlug("york")
+    val usYork = Country.UnitedStates.bySlug("york")
+    ukYork should not be usYork
+    ukYork.country shouldBe Country.UnitedKingdom
+    usYork.country shouldBe Country.UnitedStates
+    // …with neither qualified for the other: the US page Alabama's Birmingham had to
+    // be `/birmingham-alabama/` for is `/us/birmingham/`, the old slug its 301.
+    Country.UnitedStates.bySlug("birmingham").country shouldBe Country.UnitedStates
+    Country.UnitedKingdom.bySlug("birmingham").country shouldBe Country.UnitedKingdom
+    Country.UnitedStates.redirectFor("birmingham-alabama") shouldBe Some("birmingham")
+    Country.Spain.bySlug("toledo").country shouldBe Country.Spain
+    Country.Spain.redirectFor("toledo-castilla-la-mancha") shouldBe Some("toledo")
   }
 
   it should "carry the Polish label inflections the templates render" in {
@@ -135,7 +146,7 @@ class CitySpec extends AnyFlatSpec with Matchers {
   // Island; it is Poland's shape now — a major city is itself alone (naming the
   // boroughs its venues give as their town), a cluster names its towns.
   it should "keep a major US city to itself, naming the boroughs its venues are in" in {
-    val nyc = City.bySlug("new-york").getOrElse(fail("no New York page in the roster"))
+    val nyc = Country.UnitedStates.bySlug.get("new-york").getOrElse(fail("no New York page in the roster"))
     nyc.coveredPlaces.head shouldBe "New York"
     nyc.otherCoveredPlaces should contain allOf ("Brooklyn", "Staten Island")
     nyc.otherCoveredPlaces should not contain "Yonkers"
@@ -146,14 +157,14 @@ class CitySpec extends AnyFlatSpec with Matchers {
   // and Bonn; it is Poland's shape now — a major city is itself alone, a cluster
   // names its towns.
   it should "keep a major German city to itself, and name a cluster's towns" in {
-    val koeln = City.bySlug("koeln").getOrElse(fail("no Köln page in the roster"))
+    val koeln = Country.Germany.bySlug.get("koeln").getOrElse(fail("no Köln page in the roster"))
     koeln.coveredPlaces shouldBe Seq("Köln")
-    val bayreuth = City.bySlug("bayreuth").getOrElse(fail("no Bayreuth page in the roster"))
+    val bayreuth = Country.Germany.bySlug.get("bayreuth").getOrElse(fail("no Bayreuth page in the roster"))
     bayreuth.coveredPlaces shouldBe Seq("Bayreuth und Umgebung", "Bayreuth", "Kulmbach", "Pegnitz", "Hollfeld")
   }
 
   it should "name a US cluster's towns" in {
-    val coeur = City.bySlug("coeur-d-alene").getOrElse(fail("no Coeur d'Alene page in the roster"))
+    val coeur = Country.UnitedStates.bySlug.get("coeur-d-alene").getOrElse(fail("no Coeur d'Alene page in the roster"))
     coeur.coveredPlaces shouldBe Seq("Coeur d'Alene area", "Coeur d'Alene", "Hayden")
   }
 
@@ -163,7 +174,7 @@ class CitySpec extends AnyFlatSpec with Matchers {
   it should "keep a major city to itself, and read a cluster's towns off its venues" in {
     // Tarnów used to list Biecz, Gorlice, Bochnia… — they are pages of their own now.
     Tarnow.otherCoveredPlaces shouldBe empty
-    val turek = City.bySlug("turek").get
+    val turek = Country.Poland.bySlug.get("turek").get
     turek.coveredPlaces shouldBe Seq("Turek i okolice", "Turek", "Koło")
   }
 
@@ -174,9 +185,9 @@ class CitySpec extends AnyFlatSpec with Matchers {
   // A Spanish page was a whole province until 2026-10, and named its towns; it is
   // Poland's shape now — a major city is itself alone, a cluster names its towns.
   it should "keep a major Spanish city to itself, and name a cluster's towns, accented" in {
-    val madrid = City.bySlug("madrid").getOrElse(fail("no Madrid page in the roster"))
+    val madrid = Country.Spain.bySlug.get("madrid").getOrElse(fail("no Madrid page in the roster"))
     madrid.coveredPlaces shouldBe Seq("Madrid")
-    val sitges = City.bySlug("sitges").getOrElse(fail("no Sitges page in the roster"))
+    val sitges = Country.Spain.bySlug.get("sitges").getOrElse(fail("no Sitges page in the roster"))
     // Spelled the way Spanish spells them, which SensaCine's own headers are not
     // (see data/spain/scripts/build_venue_towns.py).
     sitges.coveredPlaces shouldBe Seq("Sitges y alrededores", "Sitges", "Vilanova i la Geltrú", "Sant Pere de Ribes")
@@ -185,10 +196,10 @@ class CitySpec extends AnyFlatSpec with Matchers {
   // A UK page was a Flicks region until 2026-10 (/aberdeenshire/ covered Aberdeen,
   // Peterhead and Banchory); it is Poland's shape now — a cluster names its towns.
   it should "name a UK cluster's towns, the one it is named after first" in {
-    val peterhead = City.bySlug("peterhead").getOrElse(fail("no Peterhead page in the roster"))
+    val peterhead = Country.UnitedKingdom.bySlug.get("peterhead").getOrElse(fail("no Peterhead page in the roster"))
     peterhead.coveredPlaces shouldBe Seq("Peterhead area", "Peterhead", "Ellon")
     peterhead.locativePhrase shouldBe "in the Peterhead area"
-    val aberdeen = City.bySlug("aberdeen-aberdeenshire").getOrElse(fail("no Aberdeen page in the roster"))
+    val aberdeen = Country.UnitedKingdom.bySlug.get("aberdeen").getOrElse(fail("no Aberdeen page in the roster"))
     aberdeen.coveredPlaces.head shouldBe "Aberdeen"
     aberdeen.locativePhrase shouldBe "in Aberdeen"
   }

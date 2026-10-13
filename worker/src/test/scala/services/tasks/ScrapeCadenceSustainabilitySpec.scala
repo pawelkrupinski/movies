@@ -42,7 +42,7 @@ class ScrapeCadenceSustainabilitySpec extends AnyFlatSpec with Matchers {
   private val catalog = new CinemaScraperCatalog(NoFetch, models.VenueClock.fixedOn(LocalDate.of(2026, 6, 21)), tools.SpecClock.Pinned)
 
   private def corpusOf(country: models.Country): Int =
-    country.cities.flatMap(city => catalog.byCity.getOrElse(city.slug, Nil)).size
+    country.cities.flatMap(city => catalog.byCity.getOrElse(city, Nil)).size
 
   /** Reaper ticks inside one country's freshness window. Its cadence lives ONLY in
    *  its k3s overlay (`deploy.RepoFile.deployedFreshnessMinutes`) — no `Country`

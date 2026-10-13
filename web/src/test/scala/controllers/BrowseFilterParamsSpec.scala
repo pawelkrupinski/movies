@@ -27,7 +27,7 @@ class BrowseFilterParamsSpec extends AnyFlatSpec with Matchers {
    *  already crawled — spells them this way. */
   private val legacyParams = Set("kraj", "rezyser", "aktor", "gatunek")
 
-  private implicit val poznan: City = City.bySlug("poznan").get
+  private implicit val poznan: City = models.Country.Poland.bySlug.get("poznan").get
 
   "the browse hrefs" should "use English query-param names" in {
     BrowseHref.country("Polska")        shouldBe "/poznan/movies?country=Polska"
@@ -42,7 +42,7 @@ class BrowseFilterParamsSpec extends AnyFlatSpec with Matchers {
   // 404. The prefix comes off the CITY, which is the only thing these builders
   // are handed.
   it should "carry the mount point of a country that shares the brand domain" in {
-    implicit val canterbury: City = City.bySlug("canterbury").getOrElse(fail("no city 'canterbury'"))
+    implicit val canterbury: City = models.Country.UnitedKingdom.bySlug.get("canterbury").getOrElse(fail("no city 'canterbury'"))
     BrowseHref.country("United Kingdom") shouldBe "/uk/canterbury/movies?country=United+Kingdom"
     BrowseHref.director("Jane Doe")      shouldBe "/uk/canterbury/movies?director=Jane+Doe"
     BrowseHref.actor("John Roe")         shouldBe "/uk/canterbury/movies?cast=John+Roe"

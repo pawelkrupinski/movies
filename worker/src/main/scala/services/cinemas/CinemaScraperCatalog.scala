@@ -838,8 +838,6 @@ class CinemaScraperCatalog(
     bilety24("https://www.bilety24.pl/kino/organizator/osrodek-kultury-w-drawsku-pomorskim-1680", KinoOKDrawsko),   // Drawsko Pomorskie
   )
 
-  /** Raw scrapers grouped by city slug — same slugs `City.slug` uses, so a
-   *  caller can scope by city without re-spelling the membership. */
   // Catchment cinemas (nearby towns) and a few in-city venues that came in via a
   // Filmweb sweep, each by Filmweb internal cinema id — except the handful that
   // have since moved to their own site (Kino Spójnia, Kino Praha), which fed
@@ -1960,14 +1958,10 @@ class CinemaScraperCatalog(
     GermanSources.of(models.GermanRoster.venueKeyByCinema(cinema), models.GermanRoster.kinoprogrammPathByCinema.get(cinema))
 
   // Germany — data-driven from the full GermanRoster (436 town pages / 1,515 cinemas):
-  // one scraper per cinema — its primary source's ([[germanFeeds]]) — keyed by the
-  // PAGE slug City.slug uses. Keyed off `Country.Germany.cities` rather than
-  // `GermanRoster.places` for Spain's reason: the slug a page is finally addressable
-  // under is decided in `City.germanPages`, and the catalogue has to agree with the
-  // roster the web tier serves.
-  private val germanBaseByCity: Map[String, Seq[CinemaScraper]] =
+  // one scraper per cinema — its primary source's ([[germanFeeds]]) — keyed by its page.
+  private val germanBaseByCity: Map[City, Seq[CinemaScraper]] =
     models.Country.Germany.cities.map { city =>
-      city.slug -> city.cinemas.map(c => germanFeedScraper(germanFeeds(c).head, c))
+      city -> city.cinemas.map(c => germanFeedScraper(germanFeeds(c).head, c))
     }.toMap
 
   // ── Spain (AlloCiné/SensaCine website-JSON) ──────────────────────────────
@@ -2004,16 +1998,12 @@ class CinemaScraperCatalog(
       .getOrElse(sensacine(theaterId, cinema))
 
   // Spain — data-driven from the full SpanishRoster (240 town pages / 599 cinemas):
-  // one scraper per cinema, keyed by the PAGE slug City.slug uses — the venue's
-  // own chain server where the roster names one, then its chain's own page or
-  // taquilla.com where `SpanishOwnSourcesData` names one, SensaCine otherwise. Keyed off
-  // `Country.Spain.cities` rather than off `SpanishRoster.places`, because
-  // the slug a page is finally addressable under is decided in
-  // `City.spanishCities` (one of them is qualified away from a US metro's) and
-  // the catalogue has to agree with the roster the web tier serves.
-  private val spanishBaseByCity: Map[String, Seq[CinemaScraper]] =
+  // one scraper per cinema, keyed by its page — the venue's own chain server where the
+  // roster names one, then its chain's own page or taquilla.com where
+  // `SpanishOwnSourcesData` names one, SensaCine otherwise.
+  private val spanishBaseByCity: Map[City, Seq[CinemaScraper]] =
     models.Country.Spain.cities.map { city =>
-      city.slug -> city.cinemas.map { c =>
+      city -> city.cinemas.map { c =>
         models.SpanishRoster.ocineServerByCinema.get(c).map(ocine(_, c))
           .getOrElse(spanishListed(models.SpanishRoster.theaterIdByCinema(c), c))
       }
@@ -2082,9 +2072,9 @@ class CinemaScraperCatalog(
     })
   }
 
-  private val usBaseByCity: Map[String, Seq[CinemaScraper]] =
+  private val usBaseByCity: Map[City, Seq[CinemaScraper]] =
     models.Country.UnitedStates.cities.map { city =>
-      city.slug -> city.cinemas.map { c =>
+      city -> city.cinemas.map { c =>
         usChainScraper(c).orElse(usIndependentScraper(c)).getOrElse(flicksUs(models.UsRoster.flicksSlugByCinema(c), c))
       }
     }.toMap
@@ -2246,9 +2236,7 @@ class CinemaScraperCatalog(
     "wiltshire" -> wiltshireScrapers,
     "worcestershire" -> worcestershireScrapers,
     "yorkshire" -> yorkshireScrapers,
-  ) ++ germanBaseByCity   // Germany: 436 town and cluster pages (data-driven)
-    ++ usBaseByCity       // USA: 1,995 town and cluster pages (data-driven)
-    ++ spanishBaseByCity  // Spain: 240 town and cluster pages (data-driven)
+  )
 
   // Venues the 2026-09 sweeps added (Filmweb, bilety24, biletyna, the chains' own
   // branch lists), grouped by the city they were first found near. The key is
@@ -2484,26 +2472,26 @@ class CinemaScraperCatalog(
     ),
   )
 
-  /** Per-city scrapers plus that city's catchment venues (Filmweb sweep + nearby towns). */
-  val byCity: Map[String, Seq[CinemaScraper]] = {
-    val wired = baseByCity.map { case (slug, scrapers) =>
-      slug -> (scrapers ++ filmwebExtra.getOrElse(slug, Nil) ++ nearbyTowns.getOrElse(slug, Nil))
-    } ++ nearbyTowns.filter { case (slug, _) => !baseByCity.contains(slug) }
-    // A Polish or UK scraper is filed under the PAGE its cinema is on, not the group
-    // it is wired in above: which page lists which venue is data (`models.PolishPages`
-    // and `models.UkPages`, re-clustered by each country's `build_pages.py`), and a
-    // re-cluster must not need a single scraper moved here to take effect.
-    def generatedPage(s: CinemaScraper): Option[City] =
-      City.forCinema(s.cinema).filter(c => c.country == Country.Poland || c.country == Country.UnitedKingdom)
-    val paged = wired.values.flatten.toSeq.filter(generatedPage(_).isDefined)
-    val others = wired.map { case (slug, scrapers) => slug -> scrapers.filterNot(generatedPage(_).isDefined) }
-      .filter { case (_, scrapers) => scrapers.nonEmpty }
-    others ++ paged.groupBy(generatedPage(_).get.slug)
+  /** Every city's scrapers, keyed by the CITY — never its slug, which only means
+   *  something within a country (`york` is a UK page and a US one).
+   *
+   *  The hand-wired ones (Poland's and the UK's, with Poland's Filmweb sweep and
+   *  nearby towns) are filed under the PAGE their cinema is on, not the group they
+   *  are wired in above: which page lists which venue is data (`models.PolishPages`
+   *  and `models.UkPages`, re-clustered by each country's `build_pages.py`), and a
+   *  re-cluster must not need a single scraper moved here to take effect. The
+   *  data-driven countries (Germany's 448, the US's 1,995, Spain's 240 pages) are
+   *  built per city to begin with. */
+  val byCity: Map[City, Seq[CinemaScraper]] = {
+    val handWired = (baseByCity.values ++ filmwebExtra.values ++ nearbyTowns.values).flatten.toSeq
+    val paged = handWired.flatMap(s => City.forCinema(s.cinema).map(_ -> s))
+      .groupBy(_._1).view.mapValues(_.map(_._2)).toMap
+    paged ++ germanBaseByCity ++ usBaseByCity ++ spanishBaseByCity
   }
 
   /** Every raw scraper across every city, in city order. */
   val all: Seq[CinemaScraper] =
-    City.all.flatMap(c => byCity.getOrElse(c.slug, Nil))
+    City.all.flatMap(c => byCity.getOrElse(c, Nil))
 
   /** UK chain venues (Cineworld / Vue / Showcase / Everyman / Odeon) whose own-site
    *  client is the catalogue's primary and that keep flicks.co.uk as their aggregator

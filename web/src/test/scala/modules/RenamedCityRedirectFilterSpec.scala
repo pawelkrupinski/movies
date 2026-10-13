@@ -2,6 +2,7 @@ package modules
 
 import tools.SpecTimeouts
 
+import models.Country
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.stream.Materializer
 import org.scalatest.flatspec.AnyFlatSpec
@@ -27,9 +28,9 @@ class RenamedCityRedirectFilterSpec extends AnyFlatSpec with Matchers {
   /** The filter over a `next` that stands in for the router — it answers 200
    *  with the path it was asked for, so a test can tell "passed through" from
    *  "redirected" and see what the router would have received. */
-  private def run(path: String, mountPath: String = "/us/"): Result = {
+  private def run(path: String, country: Country = Country.UnitedStates): Result = {
     val next: RequestHeader => Future[Result] = rh => Future.successful(Results.Ok(rh.path))
-    val filter = new RenamedCityRedirectFilter(mountPath)
+    val filter = new RenamedCityRedirectFilter(country)
     Await.result(filter(next)(FakeRequest("GET", path)), SpecTimeouts.Io)
   }
 
@@ -67,8 +68,32 @@ class RenamedCityRedirectFilterSpec extends AnyFlatSpec with Matchers {
 
   "A deployment served at the root" should "redirect without a mount prefix" in {
     // Poland is at `/`, so the city is the first segment of the path itself.
-    val res = run("/san-francisco-bay-area/", mountPath = "/")
+    val res = run("/ketrzyn/", Country.Poland)
     res.header.status shouldBe 301
-    res.header.headers("Location") shouldBe "/san-francisco/"
+    res.header.headers("Location") shouldBe "/gizycko/"
+  }
+
+  "A slug" should "only ever mean its own country's place" in {
+    // `san-francisco-bay-area` is a retired US slug: on the UK's deployment it is
+    // nothing at all, so the router (here, `next`) answers it.
+    run("/uk/san-francisco-bay-area/", Country.UnitedKingdom).header.status shouldBe 200
+    // `york` is a live UK page and a live US page; neither redirects.
+    run("/uk/york/", Country.UnitedKingdom).header.status shouldBe 200
+    run("/us/york/").header.status shouldBe 200
+  }
+
+  "A town a page covers, or a page's qualified slug," should "301 to the page" in {
+    // Ilkley is on a cluster page; the UK's York page is `/uk/york/`, never
+    // `/uk/york-north-yorkshire/`.
+    val ilkley = Country.UnitedKingdom.slugAliases("ilkley")
+    run("/uk/ilkley/", Country.UnitedKingdom).header.headers("Location") shouldBe s"/uk/$ilkley/"
+    run("/uk/york-north-yorkshire/movie/dune", Country.UnitedKingdom).header.headers("Location") shouldBe
+      "/uk/york/movie/dune"
+    // A formerly qualified US page's URL, published while the UK held its name.
+    run("/us/birmingham-alabama/").header.headers("Location") shouldBe "/us/birmingham/"
+  }
+
+  "A redirected slug with no trailing slash" should "land on the listing's slash form in one hop" in {
+    run("/us/san-francisco-bay-area").header.headers("Location") shouldBe "/us/san-francisco/"
   }
 }

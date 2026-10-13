@@ -53,7 +53,7 @@ import pl.kinowo.model.Cities
 import pl.kinowo.model.CitySwitchSuggestion
 import pl.kinowo.model.zoneFor
 import pl.kinowo.model.currentSlugByFormer
-import pl.kinowo.model.countryOf
+import pl.kinowo.model.city
 import pl.kinowo.model.switchSuggestion
 import pl.kinowo.model.Country
 import pl.kinowo.model.LanguageDefault
@@ -306,7 +306,7 @@ class KinowoViewModel(
      *  rather than on whichever single zone the US had to publish. */
     private fun currentZone(): java.time.ZoneId {
         val country = countryCatalog.value.countries.selected(selectedCountryCode.value)
-        return countryCatalog.value.cities.zoneFor(selectedCity.value, country.zoneId)
+        return countryCatalog.value.cities.zoneFor(selectedCity.value, country.code, country.zoneId)
     }
 
     /** Distinct cinema names anywhere in the payload, sorted by pill name. */
@@ -364,7 +364,10 @@ class KinowoViewModel(
         // and labelled the list with the country's default. Adopt the slug it
         // answers at, as the web's redirect does for a browser.
         viewModelScope.launch {
-            combine(prefs.selectedCity, countryCatalog) { slug, catalog -> slug?.let(catalog.cities.currentSlugByFormer()::get) }
+            combine(prefs.selectedCity, prefs.selectedCountryCode, countryCatalog) { slug, code, catalog ->
+                val country = Country.byCode(code).code
+                slug?.takeIf { catalog.cities.city(it, country) == null }?.let(catalog.cities.currentSlugByFormer(country)::get)
+            }
                 .filterNotNull()
                 .collect { current -> prefs.setCity(current) }
         }
@@ -484,13 +487,13 @@ class KinowoViewModel(
         // a city that ships only via `/api/catalog` — every German city — is
         // recognised, not just the compile-time `Cities.all` roster.
         val catalog = countryCatalog.value
-        val link = DeepLink.parse(rawUrl, catalog.cities.map { it.slug }.toSet(), catalog::versionTokensOf,
-                                  catalog.cities.currentSlugByFormer()) ?: return@launch
+        val link = DeepLink.parse(rawUrl, cities = catalog.cities,
+                                  versionTokensOfCountry = catalog::versionTokensOfCountry) ?: return@launch
         // The STORED choices, not this ViewModel's `stateIn` mirrors, which
         // still read null until DataStore's first emission lands.
         val (storedCountry, storedCity) = prefs.countryAndCity.first()
         val current = Country.byCode(storedCountry).code
-        val target = catalog.cities.countryOf(link.citySlug) ?: current
+        val target = link.countryCode ?: current
         citySwitchSuggestion = null
         if (target != current) {
             // Another country's deployment: switch country and city in ONE

@@ -90,7 +90,15 @@ class CatalogSpec extends AnyFlatSpec with Matchers {
     cityEntry("san-francisco") should include(""""formerSlugs":["san-francisco-bay-area"]""")
     cityEntry("poznan") should not include "formerSlugs"
     // Every former slug is a slug no current city answers at.
-    City.renamedSlugs.keySet.foreach(former => j should not include s""""slug":"$former"""")
+    // No city's former slug is a live city of ANY country in the catalog: installed app
+    // builds map former slugs across every country, so the UK's retired `/kent/` would
+    // move a US user off Kent, Washington.
+    val live = Country.switchable.flatMap(_.cities.map(_.slug)).toSet
+    val formerOnWire = """"formerSlugs":\[([^\]]*)\]""".r.findAllMatchIn(j).flatMap(_.group(1).split(",")).map(_.trim.stripPrefix("\"").stripSuffix("\"")).toSet
+    (formerOnWire intersect live) shouldBe empty
+    formerOnWire should contain ("west-yorkshire")
+    // A renamed slug is never a city of its OWN country (another country may have it).
+    Country.switchable.foreach(c => c.renamedSlugs.keySet.foreach(former => c.bySlug.get(former) shouldBe None))
   }
 
   it should "carry each city with its owning country's code" in {
@@ -112,7 +120,7 @@ class CatalogSpec extends AnyFlatSpec with Matchers {
     // The TOP level, where the web nests deeper: `region` is one string and the
     // apps' pick is two steps, so a UK city names its NATION, not the county the
     // page puts between them.
-    cityEntry("chester-cheshire") should include(""""region":"England"""")
+    cityEntry("chester") should include(""""region":"England"""")
     cityEntry("birmingham") should include(""""region":"England"""")
     cityEntry("birmingham") should not include """"region":"West Midlands""""
     cityEntry("poznan") should include(""""region":"Wielkopolskie"""")

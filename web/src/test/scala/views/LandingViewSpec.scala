@@ -139,7 +139,7 @@ class LandingViewSpec extends AnyFlatSpec with Matchers {
     // inside a county that did NOT collapse, which is the case the collapsed
     // alias alone never reached.
     placeLink(ukHtml, "west-bromwich") should include ("""data-alias="Sandwell"""")
-    placeLink(ukHtml, "inverness-highland") should include ("""data-alias="Highlands and Islands"""")
+    placeLink(ukHtml, "inverness") should include ("""data-alias="Highlands and Islands"""")
     placeLink(ukHtml, "lisburn") should include ("""data-alias="Lisburn and Castlereagh, Antrim, Armagh, Down"""")
     placeLink(ukHtml, "edinburgh") should include ("""data-alias="Edinburgh &amp; Lothians"""")
     // A collapsed county keeps its own name beside them.

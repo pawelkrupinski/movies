@@ -78,8 +78,8 @@ class CitiesTest {
     @Test
     fun ukSortedIsAlphabeticalUnderEnglishCollation() {
         val sorted = Cities.sortedIn("uk")
-        assertEquals("aberdeen-aberdeenshire", sorted.first().slug)
-        assertEquals("york-north-yorkshire", sorted.last().slug)
+        assertEquals("aberdeen", sorted.first().slug)
+        assertEquals("york", sorted.last().slug)
         assertEquals(Cities.citiesIn("uk").map { it.slug }.toSet(), sorted.map { it.slug }.toSet())
     }
 
@@ -88,7 +88,7 @@ class CitiesTest {
         assertEquals(listOf("manchester"), Cities.matching("manch", "uk").map { it.slug })
         assertTrue(Cities.matching("poznan", "uk").isEmpty())
         val yorks = Cities.matching("york", "uk").map { it.slug }
-        assertEquals(listOf("york-north-yorkshire"), yorks)
+        assertEquals(listOf("york"), yorks)
     }
 
     // ── catalogue (global union, per-country order) ───────────────
@@ -126,7 +126,7 @@ class CitiesTest {
             City("new-york", "New York", 40.7128, -74.0060, "us"),
         )
         assertEquals(2, catalog.inCountry("us").size)
-        assertEquals("us", catalog.countryOf("new-york"))
+        assertEquals("us", catalog.city("new-york", "us")?.country)
         assertEquals("california", catalog.defaultCity("us")?.slug)
         assertEquals(listOf("california", "new-york"), catalog.sortedForPicker("us").map { it.slug })
         assertEquals(listOf("new-york"), catalog.matching("new", "us").map { it.slug })
@@ -143,19 +143,14 @@ class CitiesTest {
         assertEquals("poznan", Cities.DEFAULT.slug)
     }
 
-    // ── countryOf (deep-link → right deployment) ──────────────────
+    // ── city(slug, country) — a slug is only its country's ─────────
 
     @Test
-    fun countryOfResolvesEachCitysCountry() {
-        assertEquals("pl", Cities.all.countryOf("poznan"))
-        assertEquals("uk", Cities.all.countryOf("london"))
-    }
-
-    @Test
-    fun countryOfIsNullForUnknownCity() {
-        assertNull(Cities.all.countryOf("berlin"))       // DE arrives via the live catalog, not the fallback
-        assertNull(Cities.all.countryOf("california"))   // …and so does the US roster
-        assertNull(Cities.all.countryOf("nope"))
+    fun citySlugResolvesWithinItsCountry() {
+        assertEquals("pl", Cities.all.city("poznan", "pl")?.country)
+        assertEquals("uk", Cities.all.city("london", "uk")?.country)
+        assertNull(Cities.all.city("london", "pl"))
+        assertNull(Cities.all.city("nope", "pl"))
     }
 
     @Test

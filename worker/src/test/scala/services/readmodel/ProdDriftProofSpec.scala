@@ -70,7 +70,7 @@ class ProdDriftProofSpec extends AnyFlatSpec with Matchers {
 
     val rows = ReadModelProjection.screenings(stored, titleNormalizer)
 
-    rows.map(_._id) shouldBe Seq("glastonbury|2006|portsmouth-hampshire|Southsea Cinema & Arts Centre")
+    rows.map(_._id) shouldBe Seq("glastonbury|2006|portsmouth|Southsea Cinema & Arts Centre")
     rows.head.showtimes.map(_.dateTime.toString) shouldBe Seq("2026-09-23T19:00")
   }
 

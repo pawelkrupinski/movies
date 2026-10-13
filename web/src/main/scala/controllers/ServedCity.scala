@@ -6,10 +6,10 @@ import play.api.mvc.{Result, Results}
 
 /** Resolve a city slug against THIS deployment's country, 404ing anything else.
  *
- *  Resolving is not enough on its own: `City.bySlug` searches the global
- *  `City.all` (the union across every country), so Berlin resolves on the
- *  Poland host too — it is a real city, just not a Polish one. Serving it 200
- *  with an empty body is worse than a 404, because an empty listing is
+ *  A slug only means something within a country — each owns its own, so `york`
+ *  is York on `/uk/` and York, Pennsylvania on `/us/` — and Berlin must not
+ *  resolve on the Poland host: it is a real city, just not a Polish one. Serving
+ *  it 200 with an empty body would be worse than a 404, because an empty listing is
  *  indistinguishable from a genuine "nothing on today": a client caches it
  *  along with the `Last-Modified` this deployment stamps, and the German
  *  deployment then answers that timestamp with a 304, leaving the client
@@ -25,7 +25,7 @@ import play.api.mvc.{Result, Results}
 object ServedCity {
 
   def resolve(slug: String, servingCountry: models.Country)(f: City => Result)(implicit messages: Messages): Result =
-    City.bySlug(slug).filter(servingCountry.cities.contains) match {
+    servingCountry.bySlug.get(slug) match {
       case Some(c) => f(c)
       case None    => Results.NotFound(messages("error.unknownCity", slug))
     }

@@ -16,7 +16,7 @@ import java.nio.file.Files
 class UkPagesSpec extends AnyFlatSpec with Matchers with OptionValues {
   import UkPagesSpec._
 
-  private def page(slug: String): City = City.bySlug(slug).value
+  private def page(slug: String): City = Country.UnitedKingdom.bySlug.get(slug).value
   private def venue(name: String): Cinema = Cinema.byDisplayName.get(name).value
   private def pageOf(name: String): String = City.forCinema(venue(name)).value.slug
 
@@ -83,25 +83,28 @@ class UkPagesSpec extends AnyFlatSpec with Matchers with OptionValues {
     page("lerwick").cinemas.map(_.displayName) shouldBe Seq("Mareel Lerwick, Shetland Islands")
   }
 
-  "two towns of one name" should "be two pages, each slug naming its county" in {
-    page("newport-gwent").country shouldBe Country.UnitedKingdom
-    page("newport-isle-of-wight").country shouldBe Country.UnitedKingdom
+  "two UK towns of one name" should "be two pages, the more populous with the bare slug" in {
+    // Each country owns its slugs, so only another UK Newport qualifies one.
+    page("newport").coveredPlaces should contain ("Newport")
+    page("newport").lat should be > 51.5            // Gwent's, not the Isle of Wight's
+    page("newport-isle-of-wight").coveredPlaces should contain ("Ryde")
     page("bangor-gwynedd").labels.nominative should startWith ("Bangor")
+    page("bangor").lat should be > 54.0             // County Down's
   }
 
   "every retired UK slug" should "redirect to a UK page" in {
     val gone = HandFiled.filterNot(slug => Country.UnitedKingdom.bySlug.contains(slug))
-    gone.filterNot(City.renamedSlugs.contains) shouldBe empty
-    gone.map(City.renamedSlugs).filterNot(Country.UnitedKingdom.bySlug.contains) shouldBe empty
+    gone.filterNot(Country.UnitedKingdom.renamedSlugs.contains) shouldBe empty
+    gone.map(Country.UnitedKingdom.renamedSlugs).filterNot(Country.UnitedKingdom.bySlug.contains) shouldBe empty
     // A region named after a town goes to the page holding it; a county, to the
     // page holding most of its venues.
-    City.renamedSlugs("antrim") shouldBe pageOf("Omniplex Antrim")
-    City.renamedSlugs("west-yorkshire") shouldBe "leeds"
+    Country.UnitedKingdom.renamedSlugs("antrim") shouldBe pageOf("Omniplex Antrim")
+    Country.UnitedKingdom.renamedSlugs("west-yorkshire") shouldBe "leeds"
     // A page folded into a neighbour before the re-cut follows its venues too,
     // not the neighbour it was folded into.
-    City.renamedSlugs("sandwell") shouldBe pageOf("Odeon Cinema West Bromwich")
-    City.renamedSlugs("lanarkshire") shouldBe pageOf("Vue Cinemas Hamilton")
-    City.renamedSlugs("highlands-and-islands") shouldBe pageOf("Eden Court Theatre Inverness")
+    Country.UnitedKingdom.renamedSlugs("sandwell") shouldBe pageOf("Odeon Cinema West Bromwich")
+    Country.UnitedKingdom.renamedSlugs("lanarkshire") shouldBe pageOf("Vue Cinemas Hamilton")
+    Country.UnitedKingdom.renamedSlugs("highlands-and-islands") shouldBe pageOf("Eden Court Theatre Inverness")
   }
 
   "The UK picker" should "file every page under its nation and county, nations in their fixed order" in {

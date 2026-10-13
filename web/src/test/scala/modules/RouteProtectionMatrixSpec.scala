@@ -119,7 +119,8 @@ class RouteProtectionMatrixSpec extends AnyFlatSpec with Matchers with BeforeAnd
     metrics        = PassThrough,
     playDefaults   = Components.httpFilters,
     crossSiteWrite = new CrossSiteWriteFilter(),
-    renamedCity    = new RenamedCityRedirectFilter("")(using Components.materializer),
+    renamedCity    = new RenamedCityRedirectFilter(models.Country.Poland)(using Components.materializer),
+    frontDoor      = new FrontDoorRedirectFilter(models.Country.Poland)(using Components.materializer),
     cors           = Components.corsFilter,
     csp            = new CspFilter()(using Components.materializer, Components.executionContext),
     gzip           = Components.gzipFilter)

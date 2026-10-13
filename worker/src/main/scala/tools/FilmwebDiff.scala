@@ -103,7 +103,7 @@ object FilmwebDiff {
     // the diff to those cities. Order-independent: classified by extension, so the
     // documented `<days> <txt> <csv> <json>` order works and omitting the json
     // path just defaults it (doesn't break older 2-3 arg invocations).
-    val knownSlugs  = City.all.map(_.slug).toSet
+    val knownSlugs  = models.Country.Poland.cities.map(_.slug).toSet   // Filmweb is Poland's
     val pathArgs    = args.tail.filter(a => a.endsWith(".txt") || a.endsWith(".csv") || a.endsWith(".json") || a.startsWith("/"))
     val cityFilter  = args.tail.filter(knownSlugs).toSet
     val txtPath     = pathArgs.find(_.endsWith(".txt")).getOrElse("/temporary/filmweb-diff-output.txt")

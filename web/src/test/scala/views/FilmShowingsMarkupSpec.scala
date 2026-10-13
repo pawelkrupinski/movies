@@ -148,7 +148,7 @@ class FilmShowingsMarkupSpec extends AnyFlatSpec with Matchers {
   // every film's markup mid-render; as `&#8599;` it renders the same and keeps it narrow.
   it should "keep a film whose names are Latin-1 in Latin-1, cinema-page arrow included" in {
     // An English-language city: a Polish date label is outside Latin-1 on its own.
-    val london = models.City.bySlug("london").getOrElse(fail("no city 'london'"))
+    val london = models.Country.UnitedKingdom.bySlug.get("london").getOrElse(fail("no city 'london'"))
     val html = views.html._filmShowings(scheduleWith(Seq(Helios -> "https://helios.pl/film/test"),
       day -> Seq(slot(day.atTime(18, 0))), day.plusDays(1) -> Seq(slot(day.plusDays(1).atTime(18, 0)))))(using london).body
     html should include ("&#8599;</a>")

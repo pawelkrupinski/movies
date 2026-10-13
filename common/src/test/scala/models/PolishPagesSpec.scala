@@ -9,7 +9,7 @@ import org.scalatest.matchers.should.Matchers
  *  towns — see `data/pl/scripts/build_pages.py` and [[PolishPages]]. */
 class PolishPagesSpec extends AnyFlatSpec with Matchers with OptionValues {
 
-  private def page(slug: String): City = City.bySlug(slug).value
+  private def page(slug: String): City = Country.Poland.bySlug.get(slug).value
 
   "a major city" should "list only the venues inside it" in {
     Poznan.cinemas should contain (Multikino)
@@ -57,7 +57,7 @@ class PolishPagesSpec extends AnyFlatSpec with Matchers with OptionValues {
   }
 
   "a page that stopped existing" should "redirect to the page now holding its town" in {
-    City.renamedSlugs.get("ketrzyn").value shouldBe "gizycko"
-    City.bySlug("ketrzyn") shouldBe None
+    Country.Poland.renamedSlugs.get("ketrzyn").value shouldBe "gizycko"
+    Country.Poland.bySlug.get("ketrzyn") shouldBe None
   }
 }

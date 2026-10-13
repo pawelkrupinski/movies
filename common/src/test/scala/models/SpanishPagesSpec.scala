@@ -10,7 +10,7 @@ import org.scalatest.matchers.should.Matchers
  *  and [[SpanishRoster]]. The Spanish counterpart of [[PolishPagesSpec]]. */
 class SpanishPagesSpec extends AnyFlatSpec with Matchers with OptionValues {
 
-  private def page(slug: String): City = City.bySlug(slug).value
+  private def page(slug: String): City = Country.Spain.bySlug.get(slug).value
   private def venue(name: String): Cinema = Cinema.byDisplayName.get(name).value
   private def pageOf(name: String): String = City.forCinema(venue(name)).value.slug
 
@@ -69,11 +69,11 @@ class SpanishPagesSpec extends AnyFlatSpec with Matchers with OptionValues {
   }
 
   "a province that is no longer a page" should "redirect to the page holding most of its venues" in {
-    City.renamedSlugs.get("asturias").value shouldBe "gijon"
-    City.renamedSlugs.get("islas-baleares").value shouldBe "palma-de-mallorca"
-    City.renamedSlugs.get("las-palmas").value shouldBe "las-palmas-de-gran-canaria"
-    City.renamedSlugs.get("vizcaya").value shouldBe "barakaldo"
-    City.bySlug("asturias") shouldBe None
+    Country.Spain.renamedSlugs.get("asturias").value shouldBe "gijon"
+    Country.Spain.renamedSlugs.get("islas-baleares").value shouldBe "palma-de-mallorca"
+    Country.Spain.renamedSlugs.get("las-palmas").value shouldBe "las-palmas-de-gran-canaria"
+    Country.Spain.renamedSlugs.get("vizcaya").value shouldBe "barakaldo"
+    Country.Spain.bySlug.get("asturias") shouldBe None
   }
 
   it should "leave no old province slug unanswered" in {
@@ -84,14 +84,14 @@ class SpanishPagesSpec extends AnyFlatSpec with Matchers with OptionValues {
       "ourense", "palencia", "pontevedra", "salamanca", "santa-cruz-de-tenerife", "segovia", "sevilla", "soria",
       "tarragona", "teruel", "toledo-castilla-la-mancha", "valencia", "valladolid", "vizcaya", "zamora", "zaragoza")
     forAll(provinces) { slug =>
-      val landing = City.renamedSlugs.getOrElse(slug, slug)
-      City.bySlug(landing).value.country shouldBe Country.Spain
+      val landing = Country.Spain.renamedSlugs.getOrElse(slug, slug)
+      Country.Spain.bySlug.get(landing).value.country shouldBe Country.Spain
     }
   }
 
   it should "never redirect a slug another country serves" in {
-    val spanishFormer = City.renamedSlugs.filter { case (_, to) => City.bySlug(to).exists(_.country == Country.Spain) }.keySet
-    forAll(spanishFormer)(former => City.bySlug(former) shouldBe None)
+    val spanishFormer = Country.Spain.renamedSlugs.filter { case (_, to) => Country.Spain.bySlug.get(to).exists(_.country == Country.Spain) }.keySet
+    forAll(spanishFormer)(former => Country.Spain.bySlug.get(former) shouldBe None)
   }
 
   private def forAll[A](xs: Iterable[A])(f: A => Unit): Unit = org.scalatest.Inspectors.forAll(xs)(f)

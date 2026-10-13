@@ -879,8 +879,7 @@ object City {
   /** The United Kingdom's cities — the authoritative list for
    *  [[Country.UnitedKingdom]]: [[London]], then one [[UkPage]] per town or
    *  cluster page, materialised from [[UkPages]]. Their slugs are final there:
-   *  `data/uk/scripts/build_pages.py` already qualified a name another country
-   *  holds (`/cambridge-cambridgeshire/`, Massachusetts having `/cambridge/`). */
+   *  each country owns its own, so `/uk/york/` is York whatever the US has. */
   private[models] lazy val ukPages: Seq[UkPage] = UkPages.rows.map(new UkPage(_))
   private[models] lazy val ukCities: Seq[City] = London +: ukPages
 
@@ -890,7 +889,7 @@ object City {
    *  the three folded into a neighbour before that among them: `/antrim/` → the
    *  Lisburn area (Antrim's cluster), `/west-yorkshire/` → Leeds. A region whose
    *  slug is a page now (`/manchester/`, `/dudley/`) simply IS that town's page. */
-  private lazy val ukSuccession: Map[String, String] = UkPages.retired
+  private[models] lazy val ukSuccession: Map[String, String] = UkPages.retired
 
   /** The UK picker's grouping: NATION over COUNTY over the pages inside it — the
    *  nation and county of each page's anchor town, read off GeoNames by
@@ -930,33 +929,19 @@ object City {
   /** Germany's cities — the authoritative list for [[Country.Germany]]. One per
    *  town or cluster page (see [[GermanPage]] / [[GermanRoster]]), materialised
    *  data-driven from `GermanRosterData` rather than hand-authored case objects.
-   *
-   *  The slug is assigned HERE rather than in [[GermanRoster]] for the reason
-   *  [[usCities]] spells out: `City.bySlug` is a single global namespace. */
-  private[models] val germanPages: Seq[GermanPage] =
-    GermanRoster.places.map(p => new GermanPage(germanSlug(p.preferredSlug, p.qualifiedSlug), p))
+   *  Each country owns its own slugs, so a page's is simply its own name (or, for
+   *  two German towns of one name, the qualified one `build_pages.py` gave it). */
+  private[models] val germanPages: Seq[GermanPage] = GermanRoster.places.map(p => new GermanPage(p.preferredSlug, p))
   private[models] val germanCities: Seq[City] = germanPages
 
-  /** Slugs another country serves or wants, which a German page may not take.
-   *
-   *  Germany's slugs are decided BEFORE Spain's (which qualifies around Germany's),
-   *  so Spain's final slugs cannot be read here — its PREFERRED ones can. A German
-   *  page that wants a slug a Spanish town wants yields it: the other page is the
-   *  live URL, and the newcomer is the one that can still choose. None of the 139
-   *  slugs the regions kept collides with one. The US is decided AFTER Germany and
-   *  yields to it (`/potsdam/` is Brandenburg's, Potsdam, New York qualifies) —
-   *  see [[usSlug]]; so does the UK, whose `build_pages.py` reads Germany's slugs.
-   *  The UK's retired slugs count: a German page at `/dyfed/` would be redirected. */
-  private lazy val foreignToGermany: Set[String] =
-    (polishCities ++ ukCities).map(_.slug).toSet ++ ukSuccession.keys ++ SpanishRoster.places.map(_.preferredSlug)
-
-  /** The URL slug of a German page — or of one that used to be (see
-   *  [[germanSuccession]]), which answered at the slug this gives too: its own
-   *  name wherever that is free, and its name qualified with its Bundesland where
-   *  it is not, the way Spain's Toledo is `toledo-castilla-la-mancha`. Only the
-   *  SLUG is qualified; the label the German picker shows stays the town. */
-  private[models] def germanSlug(preferred: String, qualified: String): String =
-    if (foreignToGermany.contains(preferred)) qualified else preferred
+  /** A retired page's URLs → the page it redirects to: under its own name AND
+   *  under its qualified name, which is the one it answered at while another
+   *  country held its name (until 2026-10, when every country came to own its
+   *  slugs) — both are published. Neither may be a live page's slug. */
+  private def succession(retired: Seq[(String, String, String)], live: Set[String]): Map[String, String] =
+    retired.flatMap { case (preferred, qualified, page) => Seq(preferred -> page, qualified -> page) }
+      .filter { case (from, to) => from != to && !live(from) }
+      .toMap
 
   /** German pages that no longer exist → the page holding the town each was
    *  named after, or — where that town has no venue left — the page now holding
@@ -964,12 +949,8 @@ object City {
    *  slug when Germany went from regions to towns (2026-10) among them: `/vechta/`
    *  → Cloppenburg (Vechta's cluster), `/itzehoe/` → Elmshorn. A region whose slug is a page now
    *  (`/koeln/`, `/freiburg/`) simply IS that town's page. */
-  private lazy val germanSuccession: Map[String, String] =
-    GermanRosterData.retired.map { case (preferred, qualified, page) =>
-      val target = GermanRoster.places.find(_.preferredSlug == page)
-        .fold(page)(p => germanSlug(p.preferredSlug, p.qualifiedSlug))
-      germanSlug(preferred, qualified) -> target
-    }.toMap
+  private[models] lazy val germanSuccession: Map[String, String] =
+    succession(GermanRosterData.retired, germanPages.map(_.slug).toSet)
 
   /** The German picker's grouping: one entry per BUNDESLAND over the pages inside
    *  it — major cities, towns and clusters side by side — alphabetically both
@@ -990,94 +971,34 @@ object City {
    *  [[Country.UnitedStates]]. One per town or cluster page (see [[UsCity]] /
    *  [[UsRoster]]), materialised data-driven from `UsRosterData`. The state is a
    *  [[CityGroup]], not a city: nobody wants a screen of every cinema in Texas.
-   *
-   *  The slug is assigned HERE rather than in [[UsRoster]] because it is the one
-   *  thing about a place that depends on every OTHER country: `City.bySlug` is a
-   *  single global namespace, and a US town's name is not unique in it —
-   *  "Birmingham" is a UK city. See [[usSlug]].
-   *
-   *  Lazy because it reads Spain's pages, declared below. */
-  private[models] lazy val usCities: Seq[UsCity] =
-    UsRoster.places.map(p => new UsCity(usSlug(p.preferredSlug, p.qualifiedSlug), p))
-
-  /** Slugs another country serves or redirects, which a US page may not take. The
-   *  US was re-cut into towns (2026-10) after Germany and Spain had theirs, so it
-   *  is the newcomer that yields to them — except at the two Spain yielded to
-   *  before ([[UsSlugsSpainYields]]). Retired slugs count: a US page at `/regen/`
-   *  would be redirected to Deggendorf. */
-  private lazy val foreignToUs: Set[String] =
-    (polishCities ++ ukCities ++ germanCities ++ spanishCities).map(_.slug).toSet ++
-      PolishPages.retired.keys ++ ukSuccession.keys ++ germanSuccession.keys ++ spanishSuccession.keys
-
-  /** The URL slug of a US page — or of one that used to be (see [[usSuccession]]),
-   *  which answered at the slug this gives too: its own name wherever that is free
-   *  (`build_pages.py` has already qualified a name another US page holds — two
-   *  Springfields), and its name qualified with its state where another country
-   *  has it: `/birmingham/` is a live UK page, so Alabama's is
-   *  `/birmingham-alabama/`. Only the SLUG is qualified; the picker shows the town
-   *  under its state's heading, where it is not ambiguous. */
-  private def usSlug(preferred: String, qualified: String): String =
-    if (foreignToUs.contains(preferred)) qualified else preferred
+   *  A page's slug is its own name, qualified with its state only where another
+   *  US page has the name (the Springfields). */
+  private[models] lazy val usCities: Seq[UsCity] = UsRoster.places.map(p => new UsCity(p.preferredSlug, p))
 
   /** US pages that no longer exist → the page holding the town each was named
    *  after, or — where no such town has a venue — the page now holding most of its
    *  venues. The 149 metros that did not leave a page under their own slug when
    *  the US went from metros to towns (2026-10) among them: `/philadelphia-new-jersey/`
    *  → Philadelphia, `/inland-empire/` → Chino. A metro whose slug is a page now
-   *  (`/los-angeles/`, `/springfield/`) simply IS that town's page. Both sides are
-   *  slugged by [[usSlug]]; a former page that now IS its heir's URL
-   *  (`/birmingham-alabama/`) is no redirect at all. */
-  private lazy val usSuccession: Map[String, String] = {
-    val target = UsRoster.places.map(p => p.preferredSlug -> usSlug(p.preferredSlug, p.qualifiedSlug)).toMap
-    val live   = usCities.map(_.slug).toSet
-    UsRosterData.retired
-      .map { case (preferred, qualified, page) => usSlug(preferred, qualified) -> target.getOrElse(page, page) }
-      .collect { case (from, to) if from != to && !live(from) => from -> to }
-      .toMap
+   *  (`/los-angeles/`, `/springfield/`) simply IS that town's page. Plus
+   *  [[FormerlyQualified]]'s US pages. */
+  private[models] lazy val usSuccession: Map[String, String] =
+    succession(UsRosterData.retired, usCities.map(_.slug).toSet) ++ FormerlyQualified.us
+
+  /** The pages that answered at a slug qualified with their state or community
+   *  while another country held their name — published URLs, live until every
+   *  country came to own its own slugs (2026-10) — and the bare slug each answers
+   *  at now. Ten US pages yielded to the UK, Germany and Spain; Spain's Toledo and
+   *  Laredo yielded to the US. (The UK's qualified slugs never shipped.) */
+  private[models] object FormerlyQualified {
+    val us: Map[String, String] = Map(
+      "birmingham-alabama" -> "birmingham", "bristol-tennessee" -> "bristol", "glasgow-kentucky" -> "glasgow",
+      "kent-washington" -> "kent", "london-kentucky" -> "london", "manchester-new-hampshire" -> "manchester",
+      "potsdam-new-york" -> "potsdam", "somerset-kentucky" -> "somerset", "stuttgart-arkansas" -> "stuttgart",
+      "suffolk-virginia" -> "suffolk",
+    )
+    val es: Map[String, String] = Map("toledo-castilla-la-mancha" -> "toledo", "laredo-cantabria" -> "laredo")
   }
-
-  /** The two US slugs Spain's pages yield to: the Ohio and Texas cities that held
-   *  `/toledo/` and `/laredo/` before Spain had town pages, so the Spanish ones are
-   *  `/toledo-castilla-la-mancha/` and `/laredo-cantabria/`. Every other collision
-   *  is the US's to resolve. */
-  private[models] val UsSlugsSpainYields: Set[String] = Set("toledo", "laredo")
-
-  /** Slugs a city USED to answer at, and the one it answers at now.
-   *
-   *  A city slug is published — the sitemap, whatever a search engine indexed,
-   *  the `city` cookie of everyone who has visited, the share card named after
-   *  it — so renaming one is a redirect, not an edit. `modules.RenamedCityRedirectFilter`
-   *  301s every path under the old slug to the same path under the new one.
-   *
-   *  An entry stays FOREVER: the cost is one map lookup per request, and the
-   *  links it serves are the ones nobody can go back and fix.
-   *
-   *  ONE successor each. A slug once could be split over several (Alaska over its
-   *  nine metros, until 2026-10), which made every successor read the old slug's
-   *  rows filtered to its own venues; every retirement now names the one page its
-   *  URL lands on, and a row of a venue that moved is re-addressed to the venue's
-   *  page by `WebReadModel` whatever slug it was projected under.
-   *
-   *  - Poland's, Spain's, Germany's, the United States' and the United Kingdom's
-   *    retired pages, each pointing at the page holding the town it was named
-   *    after — see [[germanSuccession]], [[spanishSuccession]], [[usSuccession]],
-   *    [[ukSuccession]].
-   */
-  lazy val renamedSlugs: Map[String, String] = PolishPages.retired ++ ukSuccession ++ spanishSuccession ++
-    germanSuccession ++ usSuccession
-
-  /** The slugs a city used to answer at, given the one it answers at now.
-   *
-   *  The read model is PROJECTED under the slug — a `CityScreening`'s `_id` is
-   *  `filmId|city|cinema` — so the instant a slug changes, every already-projected
-   *  row for that city is filed under a name nothing asks for, and stays that way
-   *  until each film is projected again (up to a whole scrape cadence: 14h in the
-   *  US). `WebReadModel` reads the former slugs alongside the current one so the
-   *  city keeps serving across that window. */
-  def formerSlugs(current: String): Seq[String] = formerSlugsByCurrent.getOrElse(current, Nil)
-
-  private lazy val formerSlugsByCurrent: Map[String, Seq[String]] =
-    renamedSlugs.toSeq.groupMap(_._2)(_._1)
 
   /** The US picker's grouping: one entry per state or territory over the pages
    *  filed under it — major cities, towns and clusters side by side — the state
@@ -1103,48 +1024,18 @@ object City {
   /** Spain's cities — the authoritative list for [[Country.Spain]]. One per town
    *  or cluster page (see [[SpanishPage]] / [[SpanishRoster]]), materialised
    *  data-driven from `SpanishRosterData` rather than hand-authored case objects.
-   *
-   *  The slug is assigned HERE rather than in [[SpanishRoster]] for the reason
-   *  [[usCities]] spells out: `City.bySlug` is a single global namespace, and a
-   *  Spanish town's name is not unique in it. */
-  private[models] val spanishPages: Seq[SpanishPage] =
-    SpanishRoster.places.map(p => new SpanishPage(spanishSlug(p.preferredSlug, p.qualifiedSlug), p))
+   *  A page's slug is its own name: `/es/toledo/` is Toledo, whatever the US has. */
+  private[models] val spanishPages: Seq[SpanishPage] = SpanishRoster.places.map(p => new SpanishPage(p.preferredSlug, p))
   private[models] val spanishCities: Seq[City] = spanishPages
-
-  /** Slugs another country already serves or redirects, which a Spanish page may
-   *  not take — the US's only where it held them first ([[UsSlugsSpainYields]]). */
-  private lazy val foreignToSpain: Set[String] =
-    (polishCities ++ ukCities ++ germanCities).map(_.slug).toSet ++ ukSuccession.keys ++ UsSlugsSpainYields
-
-  /** The URL slug of a Spanish page — or of one that used to be (see
-   *  [[spanishSuccession]]), which answered at the slug this gives too.
-   *
-   *  A page keeps its own folded name wherever that is free, and takes its name
-   *  qualified with its autonomous community where it is not
-   *  (`toledo-castilla-la-mancha`) — the same rule, and the same reason, as a US
-   *  page qualifying with its state. Toledo is the case: the US roster already
-   *  serves Toledo, Ohio at `/toledo/`, a live published URL with a sitemap
-   *  entry, an indexed page and a `city` cookie behind it, and the newcomer is the
-   *  one that can still choose.
-   *
-   *  Qualifying only the SLUG — the label stays "Toledo", which is what the
-   *  Spanish picker shows and what is unambiguous inside Spain. */
-  private def spanishSlug(preferred: String, qualified: String): String =
-    if (foreignToSpain.contains(preferred)) qualified else preferred
 
   /** Spanish pages that no longer exist → the page now holding most of their
    *  venues. The 13 provinces that did not leave a town page under their own slug
    *  when Spain went from provinces to towns (2026-10) among them: `/asturias/` →
    *  Gijón, `/islas-baleares/` → Palma de Mallorca. A province whose slug is a
-   *  town page now (`/madrid/`, `/barcelona/`) simply IS that town's page. Both
-   *  sides are slugged by [[spanishSlug]], so a former page that had to be
-   *  qualified redirects from the URL it really answered at. */
-  private lazy val spanishSuccession: Map[String, String] =
-    SpanishRosterData.retired.map { case (preferred, qualified, page) =>
-      val target = SpanishRoster.places.find(_.preferredSlug == page)
-        .fold(page)(p => spanishSlug(p.preferredSlug, p.qualifiedSlug))
-      spanishSlug(preferred, qualified) -> target
-    }.toMap
+   *  town page now (`/madrid/`, `/barcelona/`) simply IS that town's page. Plus
+   *  [[FormerlyQualified]]'s Spanish pages. */
+  private[models] lazy val spanishSuccession: Map[String, String] =
+    succession(SpanishRosterData.retired, spanishPages.map(_.slug).toSet) ++ FormerlyQualified.es
 
   /** Spain's picker: one group per province, its major cities, towns and
    *  clusters side by side, alphabetically — as Poland's voivodeships. */
@@ -1165,8 +1056,6 @@ object City {
    *  when loaded on parallel threads. Keep the dependency one-directional:
    *  `Country → City`. A new country adds its list to this concatenation. */
   val all: Seq[City] = polishCities ++ ukCities ++ germanCities ++ usCities ++ spanishCities
-
-  def bySlug(slug: String): Option[City] = all.find(_.slug == slug)
 
   /** What starts every city's [[City.shareImage]]. */
   val ShareImagePrefix: String = "city-"

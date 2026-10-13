@@ -26,7 +26,7 @@ import java.nio.file.Files
  */
 class ApiRepertoireUsWireSpec extends AnyFlatSpec with Matchers {
 
-  private val newYork = models.City.bySlug("new-york").getOrElse(fail("no new-york city"))
+  private val newYork = models.Country.UnitedStates.bySlug.get("new-york").getOrElse(fail("no new-york city"))
   private val venue   = newYork.cinemas.head
   private val today   = java.time.LocalDate.of(2026, 6, 10) // TestMovieController.clock's date
 

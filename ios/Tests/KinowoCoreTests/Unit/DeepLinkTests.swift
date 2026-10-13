@@ -102,14 +102,40 @@ final class DeepLinkTests: XCTestCase {
         let cities = try! JSONDecoder().decode([City].self, from: Data(#"[{"slug":"biala-podlaska","name":"Biała Podlaska i okolice","lat":52.0,"lon":23.1,"country":"pl","formerSlugs":["miedzyrzec-podlaski"]}]"#.utf8))
         let dl = DeepLink.parse(URL(string: "https://kinowo.net/miedzyrzec-podlaski/movie/oppenheimer?date=tomorrow")!,
                                 knownCitySlugs: Set(cities.map(\.slug)),
-                                currentSlugByFormer: cities.currentSlugByFormer)
+                                currentSlugByFormer: cities.currentSlugByFormer(inCountry: "pl"))
         XCTAssertEqual(dl?.citySlug, "biala-podlaska")
         XCTAssertEqual(dl?.filmSlug, "oppenheimer")
         XCTAssertEqual(dl?.filters.date, .tomorrow)
         // A slug nobody ever answered at is still no city.
         XCTAssertNil(DeepLink.parse(URL(string: "https://kinowo.net/nowhere/")!,
                                     knownCitySlugs: Set(cities.map(\.slug)),
-                                    currentSlugByFormer: cities.currentSlugByFormer))
+                                    currentSlugByFormer: cities.currentSlugByFormer(inCountry: "pl")))
+    }
+
+    /// Every country owns its slugs: the link's path segment picks the country,
+    /// and a slug two countries share opens the one the URL names.
+    func testASharedSlugOpensTheCountryTheLinkNames() throws {
+        let cities = try JSONDecoder().decode([City].self, from: Data(#"""
+        [{"slug":"york","name":"York","lat":53.96,"lon":-1.08,"country":"uk"},
+         {"slug":"kent","name":"Kent","lat":47.38,"lon":-122.23,"country":"us"},
+         {"slug":"chatham","name":"Chatham area","lat":51.37,"lon":0.53,"country":"uk","formerSlugs":["kent"]},
+         {"slug":"york","name":"York","lat":39.96,"lon":-76.73,"country":"us"}]
+        """#.utf8))
+        let us = DeepLink.parse(URL(string: "https://showtimes.cc/us/york/movie/dune")!, cities: cities)
+        XCTAssertEqual(us?.countryCode, "us")
+        XCTAssertEqual(us?.citySlug, "york")
+        XCTAssertEqual(DeepLink.parse(URL(string: "https://showtimes.cc/uk/york/")!, cities: cities)?.countryCode, "uk")
+        // A slug that is one country's live city and another's former one opens the country the URL names.
+        XCTAssertEqual(DeepLink.parse(URL(string: "https://showtimes.cc/us/kent/")!, cities: cities)?.citySlug, "kent")
+        let ukKent = DeepLink.parse(URL(string: "https://showtimes.cc/uk/kent/")!, cities: cities)
+        XCTAssertEqual(ukKent?.citySlug, "chatham")
+        XCTAssertEqual(ukKent?.countryCode, "uk")
+        // A slug the named country does not have is no city, whoever else has it.
+        XCTAssertNil(DeepLink.parse(URL(string: "https://showtimes.cc/de/york/")!, cities: cities))
+        // The version pair is the resolved country's.
+        let german: (String) -> Set<String> = { $0 == "us" ? ["SUB", "DUB"] : ["OmU", "DF"] }
+        XCTAssertEqual(DeepLink.parse(URL(string: "https://showtimes.cc/us/york/?lang=SUB")!, cities: cities,
+                                      languageTokensOfCountry: german)?.filters.language, "SUB")
     }
 
     func testRejectsForeignHostAndScheme() {

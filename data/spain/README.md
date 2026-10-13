@@ -34,14 +34,14 @@ Barcelona's province went from one page of 55 venues to 15, Madrid's 51 to 15.
 
 A page that disappears is kept in `pages.json`'s `retired` map, pointing at the
 page now holding MOST of its venues (ties: a major city's, then the one nearest
-the old page's centre); `City.renamedSlugs` 301s it. The first build retired
+the old page's centre); `Country.renamedSlugs` 301s it. The first build retired
 the 13 province slugs that are not also a town's — `/asturias/` → Gijón,
 `/islas-baleares/` → Palma de Mallorca, `/vizcaya/` → Barakaldo,
 `/soria/` → Golmayo (Soria's cinema, a municipality over the line). The other
 39 province slugs are a town's page now and answer as that town. Each retired
-entry also carries the slug its page was qualified to where another country
-had the plain one (`City.spanishSlug`), so the redirect leaves from the URL the
-page really had.
+entry also carries its community-qualified slug, which is the URL a page had
+while another country held its plain name (until 2026-10, when every country
+came to own its slugs); both 301.
 
 ### Towns: `town-coords.json`
 
@@ -110,11 +110,10 @@ A new page has no share card until it has deployed; list it in
 - **`communities.json`** — province → autonomous community. Reference data
   (the Spanish state's own administrative division), NOT harvested, which is
   why it sits apart from `provinces.json` and survives a re-harvest. It has
-  exactly one job: qualifying a page slug that another country already
-  claims in `City.bySlug`'s single global namespace, the way a state qualifies
-  a US metro's. Two pages need it today — Toledo and Laredo, which the US
-  roster already serves (Ohio, Texas), so Spain's are
-  `/toledo-castilla-la-mancha/` and `/laredo-cantabria/`.
+  exactly one job: the community-qualified slug every page carries, which 301s
+  to it. Toledo and Laredo answered there (`/toledo-castilla-la-mancha/`) while
+  the US held `/toledo/` and `/laredo/` in one global namespace; every country
+  owns its own slugs now, so they are `/es/toledo/` and `/es/laredo/`.
 - `scripts/` — the reproducible pipeline.
 
 ## How it was produced

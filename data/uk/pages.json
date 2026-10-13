@@ -470,7 +470,7 @@
    ]
   },
   {
-   "slug": "reading-berkshire",
+   "slug": "reading",
    "kind": "major",
    "name": "Reading",
    "anchor": "Reading, Berkshire",
@@ -509,7 +509,7 @@
    ]
   },
   {
-   "slug": "preston-lancashire",
+   "slug": "preston",
    "kind": "major",
    "name": "Preston",
    "anchor": "Preston, Lancashire",
@@ -605,7 +605,7 @@
    ]
   },
   {
-   "slug": "derby-derbyshire",
+   "slug": "derby",
    "kind": "major",
    "name": "Derby",
    "anchor": "Derby, Derbyshire",
@@ -661,7 +661,7 @@
    ]
   },
   {
-   "slug": "plymouth-devon",
+   "slug": "plymouth",
    "kind": "major",
    "name": "Plymouth",
    "anchor": "Plymouth, Devon",
@@ -772,7 +772,7 @@
    ]
   },
   {
-   "slug": "portsmouth-hampshire",
+   "slug": "portsmouth",
    "kind": "major",
    "name": "Portsmouth",
    "anchor": "Portsmouth, Hampshire",
@@ -828,7 +828,7 @@
    ]
   },
   {
-   "slug": "aberdeen-aberdeenshire",
+   "slug": "aberdeen",
    "kind": "major",
    "name": "Aberdeen",
    "anchor": "Aberdeen, Aberdeenshire",
@@ -934,7 +934,7 @@
    ]
   },
   {
-   "slug": "mansfield-nottinghamshire",
+   "slug": "mansfield",
    "kind": "major",
    "name": "Mansfield",
    "anchor": "Mansfield, Nottinghamshire",
@@ -1006,7 +1006,7 @@
    ]
   },
   {
-   "slug": "oxford-oxfordshire",
+   "slug": "oxford",
    "kind": "major",
    "name": "Oxford",
    "anchor": "Oxford, Oxfordshire",
@@ -1027,7 +1027,7 @@
    ]
   },
   {
-   "slug": "newport-gwent",
+   "slug": "newport",
    "kind": "major",
    "name": "Newport",
    "anchor": "Newport, Gwent",
@@ -1045,7 +1045,7 @@
    ]
   },
   {
-   "slug": "york-north-yorkshire",
+   "slug": "york",
    "kind": "major",
    "name": "York",
    "anchor": "York, North Yorkshire",
@@ -1172,7 +1172,7 @@
    ]
   },
   {
-   "slug": "cambridge-cambridgeshire",
+   "slug": "cambridge",
    "kind": "major",
    "name": "Cambridge",
    "anchor": "Cambridge, Cambridgeshire",
@@ -1656,7 +1656,7 @@
    ]
   },
   {
-   "slug": "bedford-bedfordshire",
+   "slug": "bedford",
    "kind": "major",
    "name": "Bedford",
    "anchor": "Bedford, Bedfordshire",
@@ -1690,7 +1690,7 @@
    ]
   },
   {
-   "slug": "lincoln-lincolnshire",
+   "slug": "lincoln",
    "kind": "major",
    "name": "Lincoln",
    "anchor": "Lincoln, Lincolnshire",
@@ -1743,7 +1743,7 @@
    ]
   },
   {
-   "slug": "worcester-worcestershire",
+   "slug": "worcester",
    "kind": "major",
    "name": "Worcester",
    "anchor": "Worcester, Worcestershire",
@@ -1819,7 +1819,7 @@
    ]
   },
   {
-   "slug": "abingdon-oxfordshire",
+   "slug": "abingdon",
    "kind": "cluster",
    "name": "Abingdon",
    "anchor": "Abingdon, Oxfordshire",
@@ -2069,7 +2069,7 @@
    ]
   },
   {
-   "slug": "bangor-ards-and-north-down",
+   "slug": "bangor",
    "kind": "cluster",
    "name": "Bangor",
    "anchor": "Bangor, Ards and North Down",
@@ -2228,7 +2228,7 @@
    ]
   },
   {
-   "slug": "boston-lincolnshire",
+   "slug": "boston",
    "kind": "cluster",
    "name": "Boston",
    "anchor": "Boston, Lincolnshire",
@@ -2520,7 +2520,7 @@
    ]
   },
   {
-   "slug": "carlisle-cumbria",
+   "slug": "carlisle",
    "kind": "cluster",
    "name": "Carlisle",
    "anchor": "Carlisle, Cumbria",
@@ -2589,7 +2589,7 @@
    ]
   },
   {
-   "slug": "chester-cheshire",
+   "slug": "chester",
    "kind": "cluster",
    "name": "Chester",
    "anchor": "Chester, Cheshire",
@@ -2924,7 +2924,7 @@
    ]
   },
   {
-   "slug": "douglas-isle-of-man",
+   "slug": "douglas",
    "kind": "town",
    "name": "Douglas",
    "anchor": "Douglas, Isle of Man",
@@ -2980,7 +2980,7 @@
    ]
   },
   {
-   "slug": "durham-county-durham",
+   "slug": "durham",
    "kind": "town",
    "name": "Durham",
    "anchor": "Durham, County Durham",
@@ -3020,7 +3020,7 @@
    ]
   },
   {
-   "slug": "elgin-moray",
+   "slug": "elgin",
    "kind": "town",
    "name": "Elgin",
    "anchor": "Elgin, Moray",
@@ -3037,7 +3037,7 @@
    ]
   },
   {
-   "slug": "ely-cambridgeshire",
+   "slug": "ely",
    "kind": "town",
    "name": "Ely",
    "anchor": "Ely, Cambridgeshire",
@@ -3300,7 +3300,7 @@
    ]
   },
   {
-   "slug": "hamilton-lanarkshire",
+   "slug": "hamilton",
    "kind": "cluster",
    "name": "Hamilton",
    "anchor": "Hamilton, Lanarkshire",
@@ -3378,7 +3378,7 @@
    ]
   },
   {
-   "slug": "hastings-east-sussex",
+   "slug": "hastings",
    "kind": "cluster",
    "name": "Hastings",
    "anchor": "Hastings, East Sussex",
@@ -3514,7 +3514,7 @@
    ]
   },
   {
-   "slug": "hereford-herefordshire",
+   "slug": "hereford",
    "kind": "town",
    "name": "Hereford",
    "anchor": "Hereford, Herefordshire",
@@ -3613,7 +3613,7 @@
    ]
   },
   {
-   "slug": "inverness-highland",
+   "slug": "inverness",
    "kind": "town",
    "name": "Inverness",
    "anchor": "Inverness, Highland",
@@ -3746,7 +3746,7 @@
    ]
   },
   {
-   "slug": "lancaster-lancashire",
+   "slug": "lancaster",
    "kind": "cluster",
    "name": "Lancaster",
    "anchor": "Lancaster, Lancashire",
@@ -3870,7 +3870,7 @@
    ]
   },
   {
-   "slug": "livingston-lothian",
+   "slug": "livingston",
    "kind": "cluster",
    "name": "Livingston",
    "anchor": "Livingston, Lothian",
@@ -4575,7 +4575,7 @@
    ]
   },
   {
-   "slug": "salisbury-wiltshire",
+   "slug": "salisbury",
    "kind": "town",
    "name": "Salisbury",
    "anchor": "Salisbury, Wiltshire",
@@ -4709,7 +4709,7 @@
    ]
   },
   {
-   "slug": "southport-merseyside",
+   "slug": "southport",
    "kind": "town",
    "name": "Southport",
    "anchor": "Southport, Merseyside",
@@ -5089,7 +5089,7 @@
    ]
   },
   {
-   "slug": "wellington-shropshire",
+   "slug": "wellington",
    "kind": "cluster",
    "name": "Wellington",
    "anchor": "Wellington, Shropshire",
@@ -5207,7 +5207,7 @@
    ]
   },
   {
-   "slug": "woodbridge-suffolk",
+   "slug": "woodbridge",
    "kind": "town",
    "name": "Woodbridge",
    "anchor": "Woodbridge, Suffolk",
@@ -5299,7 +5299,7 @@
  ],
  "retired": {
   "aberdeenshire": {
-   "page": "aberdeen-aberdeenshire",
+   "page": "aberdeen",
    "qualifiedSlug": "aberdeenshire",
    "anchor": null,
    "name": "Aberdeenshire",
@@ -5355,7 +5355,7 @@
    "lon": -4.581
   },
   "bedfordshire": {
-   "page": "bedford-bedfordshire",
+   "page": "bedford",
    "qualifiedSlug": "bedfordshire",
    "anchor": null,
    "name": "Bedfordshire",
@@ -5367,7 +5367,7 @@
    "lon": -0.4435
   },
   "berkshire": {
-   "page": "reading-berkshire",
+   "page": "reading",
    "qualifiedSlug": "berkshire",
    "anchor": null,
    "name": "Berkshire",
@@ -5508,7 +5508,7 @@
    "lon": -4.9211
   },
   "county-durham": {
-   "page": "durham-county-durham",
+   "page": "durham",
    "qualifiedSlug": "county-durham",
    "anchor": null,
    "name": "County Durham",
@@ -5550,7 +5550,7 @@
    "lon": -3.1119
   },
   "derbyshire": {
-   "page": "derby-derbyshire",
+   "page": "derby",
    "qualifiedSlug": "derbyshire",
    "anchor": null,
    "name": "Derbyshire",
@@ -5689,7 +5689,7 @@
    "lon": -4.3329
   },
   "east-sussex": {
-   "page": "hastings-east-sussex",
+   "page": "hastings",
    "qualifiedSlug": "east-sussex",
    "anchor": null,
    "name": "East Sussex",
@@ -5891,7 +5891,7 @@
    "lon": -4.153
   },
   "hampshire": {
-   "page": "portsmouth-hampshire",
+   "page": "portsmouth",
    "qualifiedSlug": "hampshire",
    "anchor": null,
    "name": "Hampshire",
@@ -5917,7 +5917,7 @@
    "lon": -1.165
   },
   "herefordshire": {
-   "page": "hereford-herefordshire",
+   "page": "hereford",
    "qualifiedSlug": "herefordshire",
    "anchor": null,
    "name": "Herefordshire",
@@ -5954,7 +5954,7 @@
    "lon": -0.3102
   },
   "highlands-and-islands": {
-   "page": "inverness-highland",
+   "page": "inverness",
    "qualifiedSlug": "highlands-and-islands",
    "anchor": null,
    "name": "Highlands and Islands",
@@ -5975,7 +5975,7 @@
    "lon": -4.0855
   },
   "isle-of-man": {
-   "page": "douglas-isle-of-man",
+   "page": "douglas",
    "qualifiedSlug": "isle-of-man",
    "anchor": null,
    "name": "Isle of Man",
@@ -6042,7 +6042,7 @@
    "lon": 0.8631
   },
   "lanarkshire": {
-   "page": "hamilton-lanarkshire",
+   "page": "hamilton",
    "qualifiedSlug": "lanarkshire",
    "anchor": null,
    "name": "Lanarkshire",
@@ -6055,7 +6055,7 @@
    "lon": -4.0904
   },
   "lancashire": {
-   "page": "preston-lancashire",
+   "page": "preston",
    "qualifiedSlug": "lancashire",
    "anchor": null,
    "name": "Lancashire",
@@ -6107,7 +6107,7 @@
    "lon": -1.1514
   },
   "lincolnshire": {
-   "page": "lincoln-lincolnshire",
+   "page": "lincoln",
    "qualifiedSlug": "lincolnshire",
    "anchor": null,
    "name": "Lincolnshire",
@@ -6130,7 +6130,7 @@
    "lon": -0.2916
   },
   "north-yorkshire": {
-   "page": "york-north-yorkshire",
+   "page": "york",
    "qualifiedSlug": "north-yorkshire",
    "anchor": null,
    "name": "North Yorkshire",
@@ -6209,7 +6209,7 @@
    "lon": -1.15
   },
   "oxfordshire": {
-   "page": "oxford-oxfordshire",
+   "page": "oxford",
    "qualifiedSlug": "oxfordshire",
    "anchor": null,
    "name": "Oxfordshire",

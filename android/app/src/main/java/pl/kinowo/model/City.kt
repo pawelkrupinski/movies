@@ -86,21 +86,28 @@ data class City(
 fun City.matchesFolded(q: String): Boolean =
     (listOf(name) + aliases).any { Cities.searchFold(it).contains(q) }
 
-/** Each former slug ([City.formerSlugs]) → the city that answers at it now. */
-fun List<City>.currentSlugByFormer(): Map<String, String> =
-    buildMap { this@currentSlugByFormer.forEach { city -> city.formerSlugs.forEach { putIfAbsent(it, city.slug) } } }
+/** Each former slug ([City.formerSlugs]) of [countryCode]'s cities → the city
+ *  that answers at it now. Per country: another country may use the same slug
+ *  for a live city of its own. */
+fun List<City>.currentSlugByFormer(countryCode: String): Map<String, String> =
+    buildMap { inCountry(countryCode).forEach { city -> city.formerSlugs.forEach { putIfAbsent(it, city.slug) } } }
+
+/** The city [slug] names in [countryCode] — a slug is only its country's own:
+ *  `york` is York on `uk` and York, Pennsylvania on `us`. */
+fun List<City>.city(slug: String, countryCode: String): City? =
+    firstOrNull { it.country == countryCode && it.slug == slug }
 
 /**
- * The zone to reason about [slug]'s showtimes in — that city's own where the
- * catalog gave it one, else [fallback] (its country's).
+ * The zone to reason about [slug]'s showtimes in — that [countryCode] city's
+ * own where the catalog gave it one, else [fallback] (its country's).
  *
  * Also the answer for a slug this catalog does not know, which is what a stale
  * saved selection or a deep link into another deployment looks like, and for an
  * identifier the platform cannot parse. Past-showtime pruning and the day
  * buckets both go through here, so they cannot disagree.
  */
-fun List<City>.zoneFor(slug: String?, fallback: java.time.ZoneId): java.time.ZoneId {
-    val city = slug?.let { s -> firstOrNull { it.slug == s } } ?: return fallback
+fun List<City>.zoneFor(slug: String?, countryCode: String, fallback: java.time.ZoneId): java.time.ZoneId {
+    val city = slug?.let { city(it, countryCode) } ?: return fallback
     val id = city.timezone ?: return fallback
     return runCatching { java.time.ZoneId.of(id) }.getOrDefault(fallback)
 }
@@ -326,45 +333,45 @@ object Cities {
         City("coventry", "Coventry", 52.4066, -1.5122, "uk", "England", "West Midlands"),
         City("birkenhead", "Birkenhead", 53.3934, -3.0148, "uk", "England", "Merseyside"),
         City("nottingham", "Nottingham", 52.9536, -1.1505, "uk", "England", "Nottinghamshire"),
-        City("reading-berkshire", "Reading", 51.4562, -0.9711, "uk", "England", "Berkshire"),
+        City("reading", "Reading", 51.4562, -0.9711, "uk", "England", "Berkshire"),
         City("hull", "Hull", 53.7446, -0.3352, "uk", "England", "East Riding of Yorkshire"),
-        City("preston-lancashire", "Preston", 53.7628, -2.7045, "uk", "England", "Lancashire"),
+        City("preston", "Preston", 53.7628, -2.7045, "uk", "England", "Lancashire"),
         City("swansea", "Swansea", 51.6208, -3.9432, "uk", "Wales", "Glamorgan"),
         City("newcastle-upon-tyne", "Newcastle upon Tyne", 54.9733, -1.6140, "uk", "England", "Tyne and Wear"),
         City("southend-on-sea", "Southend-on-Sea", 51.5378, 0.7143, "uk", "England", "Essex"),
         City("brighton", "Brighton", 50.8284, -0.1395, "uk", "England", "East Sussex"),
-        City("derby-derbyshire", "Derby", 52.9228, -1.4766, "uk", "England", "Derbyshire"),
+        City("derby", "Derby", 52.9228, -1.4766, "uk", "England", "Derbyshire"),
         City("southampton", "Southampton", 50.9040, -1.4043, "uk", "England", "Hampshire"),
         City("wolverhampton", "Wolverhampton", 52.5855, -2.1230, "uk", "England", "West Midlands"),
-        City("plymouth-devon", "Plymouth", 50.3715, -4.1430, "uk", "England", "Devon"),
+        City("plymouth", "Plymouth", 50.3715, -4.1430, "uk", "England", "Devon"),
         City("stoke-on-trent", "Stoke-on-Trent", 53.0042, -2.1854, "uk", "England", "Staffordshire"),
         City("milton-keynes", "Milton Keynes", 52.0417, -0.7558, "uk", "England", "Buckinghamshire"),
         City("northampton", "Northampton", 52.2500, -0.8833, "uk", "England", "Northamptonshire"),
         City("oldham", "Oldham", 53.5405, -2.1183, "uk", "England", "Greater Manchester"),
         City("luton", "Luton", 51.8797, -0.4175, "uk", "England", "Bedfordshire"),
-        City("portsmouth-hampshire", "Portsmouth", 50.7990, -1.0913, "uk", "England", "Hampshire"),
+        City("portsmouth", "Portsmouth", 50.7990, -1.0913, "uk", "England", "Hampshire"),
         City("swindon", "Swindon", 51.5580, -1.7812, "uk", "England", "Wiltshire"),
         City("dudley", "Dudley", 52.5000, -2.0833, "uk", "England", "West Midlands"),
-        City("aberdeen-aberdeenshire", "Aberdeen", 57.1437, -2.0981, "uk", "Scotland", "Aberdeenshire"),
+        City("aberdeen", "Aberdeen", 57.1437, -2.0981, "uk", "Scotland", "Aberdeenshire"),
         City("st-helens", "St Helens", 53.4500, -2.7333, "uk", "England", "Merseyside"),
         City("ipswich", "Ipswich", 52.0592, 1.1555, "uk", "England", "Suffolk"),
         City("wigan", "Wigan", 53.5430, -2.6371, "uk", "England", "Greater Manchester"),
         City("warrington", "Warrington", 53.3925, -2.5802, "uk", "England", "Cheshire"),
         City("walsall", "Walsall", 52.5853, -1.9840, "uk", "England", "West Midlands"),
-        City("mansfield-nottinghamshire", "Mansfield", 53.1333, -1.2000, "uk", "England", "Nottinghamshire"),
+        City("mansfield", "Mansfield", 53.1333, -1.2000, "uk", "England", "Nottinghamshire"),
         City("sunderland", "Sunderland", 54.9046, -1.3822, "uk", "England", "Tyne and Wear"),
         City("bournemouth", "Bournemouth", 50.7205, -1.8795, "uk", "England", "Dorset"),
         City("peterborough", "Peterborough", 52.5736, -0.2478, "uk", "England", "Cambridgeshire"),
-        City("oxford-oxfordshire", "Oxford", 51.7522, -1.2560, "uk", "England", "Oxfordshire"),
-        City("newport-gwent", "Newport", 51.5877, -2.9983, "uk", "Wales", "Gwent"),
-        City("york-north-yorkshire", "York", 53.9576, -1.0827, "uk", "England", "North Yorkshire"),
+        City("oxford", "Oxford", 51.7522, -1.2560, "uk", "England", "Oxfordshire"),
+        City("newport", "Newport", 51.5877, -2.9983, "uk", "Wales", "Gwent"),
+        City("york", "York", 53.9576, -1.0827, "uk", "England", "North Yorkshire"),
         City("telford", "Telford", 52.6766, -2.4493, "uk", "England", "Shropshire"),
         City("poole", "Poole", 50.7143, -1.9846, "uk", "England", "Dorset"),
         City("burnley", "Burnley", 53.8000, -2.2333, "uk", "England", "Lancashire"),
         City("huddersfield", "Huddersfield", 53.6490, -1.7842, "uk", "England", "West Yorkshire"),
         City("dundee", "Dundee", 56.4691, -2.9749, "uk", "Scotland", "Tayside"),
         City("blackburn", "Blackburn", 53.7500, -2.4833, "uk", "England", "Lancashire"),
-        City("cambridge-cambridgeshire", "Cambridge", 52.2000, 0.1167, "uk", "England", "Cambridgeshire"),
+        City("cambridge", "Cambridge", 52.2000, 0.1167, "uk", "England", "Cambridgeshire"),
         City("blackpool", "Blackpool", 53.8167, -3.0500, "uk", "England", "Lancashire"),
         City("basildon", "Basildon", 51.5684, 0.4578, "uk", "England", "Essex"),
         City("norwich", "Norwich", 52.6278, 1.2983, "uk", "England", "Norfolk"),
@@ -391,16 +398,16 @@ object Cities {
         City("wakefield", "Wakefield", 53.6833, -1.4977, "uk", "England", "West Yorkshire"),
         City("basingstoke", "Basingstoke", 51.2625, -1.0871, "uk", "England", "Hampshire"),
         City("maidstone", "Maidstone", 51.2667, 0.5167, "uk", "England", "Kent"),
-        City("bedford-bedfordshire", "Bedford", 52.1346, -0.4663, "uk", "England", "Bedfordshire"),
+        City("bedford", "Bedford", 52.1346, -0.4663, "uk", "England", "Bedfordshire"),
         City("woking", "Woking", 51.3190, -0.5589, "uk", "England", "Surrey"),
-        City("lincoln-lincolnshire", "Lincoln", 53.2268, -0.5379, "uk", "England", "Lincolnshire"),
+        City("lincoln", "Lincoln", 53.2268, -0.5379, "uk", "England", "Lincolnshire"),
         City("west-bromwich", "West Bromwich", 52.5187, -1.9945, "uk", "England", "West Midlands"),
         City("eastbourne", "Eastbourne", 50.7687, 0.2845, "uk", "England", "East Sussex"),
-        City("worcester-worcestershire", "Worcester", 52.1893, -2.2200, "uk", "England", "Worcestershire"),
+        City("worcester", "Worcester", 52.1893, -2.2200, "uk", "England", "Worcestershire"),
         City("bath", "Bath", 51.3751, -2.3617, "uk", "England", "Somerset"),
         City("aberfeldy", "Aberfeldy", 56.6220, -3.8669, "uk", "Scotland", "Tayside"),
         City("aberystwyth", "Aberystwyth area", 52.4155, -4.0829, "uk", "Wales", "Dyfed"),
-        City("abingdon-oxfordshire", "Abingdon area", 51.6711, -1.2828, "uk", "England", "Oxfordshire"),
+        City("abingdon", "Abingdon area", 51.6711, -1.2828, "uk", "England", "Oxfordshire"),
         City("accrington", "Accrington area", 53.7538, -2.3586, "uk", "England", "Lancashire"),
         City("altrincham", "Altrincham area", 53.3875, -2.3485, "uk", "England", "Greater Manchester"),
         City("arbroath", "Arbroath area", 56.5632, -2.5874, "uk", "Scotland", "Tayside"),
@@ -413,7 +420,7 @@ object Cities {
         City("banbridge", "Banbridge", 54.3500, -6.2833, "uk", "Northern Ireland"),
         City("banbury", "Banbury area", 52.0632, -1.3422, "uk", "England", "Oxfordshire"),
         City("banchory", "Banchory", 57.0517, -2.4882, "uk", "Scotland", "Aberdeenshire"),
-        City("bangor-ards-and-north-down", "Bangor area", 54.6608, -5.6680, "uk", "Northern Ireland"),
+        City("bangor", "Bangor area", 54.6608, -5.6680, "uk", "Northern Ireland"),
         City("bangor-gwynedd", "Bangor area", 53.2275, -4.1294, "uk", "Wales", "Gwynedd"),
         City("barnsley", "Barnsley", 53.5500, -1.4833, "uk", "England", "South Yorkshire"),
         City("barnstaple", "Barnstaple area", 51.0802, -4.0581, "uk", "England", "Devon"),
@@ -421,7 +428,7 @@ object Cities {
         City("berwick-upon-tweed", "Berwick-upon-Tweed", 55.7687, -2.0054, "uk", "England"),
         City("beverley", "Beverley area", 53.8459, -0.4233, "uk", "England", "East Riding of Yorkshire"),
         City("bishop-s-stortford", "Bishop's Stortford area", 51.8711, 0.1587, "uk", "England", "Hertfordshire"),
-        City("boston-lincolnshire", "Boston area", 52.9763, -0.0266, "uk", "England", "Lincolnshire"),
+        City("boston", "Boston area", 52.9763, -0.0266, "uk", "England", "Lincolnshire"),
         City("bracknell", "Bracknell area", 51.4136, -0.7505, "uk", "England", "Berkshire"),
         City("braintree", "Braintree area", 51.8782, 0.5529, "uk", "England", "Essex"),
         City("bridgend", "Bridgend area", 51.5058, -3.5772, "uk", "Wales", "Glamorgan"),
@@ -436,10 +443,10 @@ object Cities {
         City("cannock", "Cannock area", 52.6904, -2.0309, "uk", "England", "Staffordshire"),
         City("canterbury", "Canterbury", 51.2790, 1.0799, "uk", "England", "Kent"),
         City("cardigan", "Cardigan", 52.0837, -4.6623, "uk", "Wales", "Dyfed"),
-        City("carlisle-cumbria", "Carlisle area", 54.8951, -2.9382, "uk", "England", "Cumbria"),
+        City("carlisle", "Carlisle area", 54.8951, -2.9382, "uk", "England", "Cumbria"),
         City("castleford", "Castleford area", 53.7259, -1.3626, "uk", "England", "West Yorkshire"),
         City("chatham", "Chatham area", 51.3789, 0.5279, "uk", "England", "Kent"),
-        City("chester-cheshire", "Chester area", 53.1905, -2.8919, "uk", "England", "Cheshire"),
+        City("chester", "Chester area", 53.1905, -2.8919, "uk", "England", "Cheshire"),
         City("chichester", "Chichester area", 50.8367, -0.7800, "uk", "England", "West Sussex"),
         City("christchurch", "Christchurch area", 50.7358, -1.7813, "uk", "England", "Dorset"),
         City("clacton-on-sea", "Clacton-on-Sea area", 51.7897, 1.1560, "uk", "England", "Essex"),
@@ -455,13 +462,13 @@ object Cities {
         City("darlington", "Darlington area", 54.5243, -1.5504, "uk", "England", "County Durham"),
         City("dereham", "Dereham area", 52.6833, 0.9333, "uk", "England", "Norfolk"),
         City("dorchester", "Dorchester", 50.7167, -2.4333, "uk", "England", "Dorset"),
-        City("douglas-isle-of-man", "Douglas", 54.1500, -4.4833, "uk", "Crown Dependencies"),
+        City("douglas", "Douglas", 54.1500, -4.4833, "uk", "Crown Dependencies"),
         City("dumfries", "Dumfries area", 55.0696, -3.6114, "uk", "Scotland", "Dumfries and Galloway"),
         City("dungannon", "Dungannon area", 54.5034, -6.7672, "uk", "Northern Ireland", "Mid Ulster"),
-        City("durham-county-durham", "Durham", 54.7768, -1.5757, "uk", "England", "County Durham"),
+        City("durham", "Durham", 54.7768, -1.5757, "uk", "England", "County Durham"),
         City("eastleigh", "Eastleigh area", 50.9667, -1.3500, "uk", "England", "Hampshire"),
-        City("elgin-moray", "Elgin", 57.6495, -3.3184, "uk", "Scotland"),
-        City("ely-cambridgeshire", "Ely", 52.3996, 0.2620, "uk", "England", "Cambridgeshire"),
+        City("elgin", "Elgin", 57.6495, -3.3184, "uk", "Scotland"),
+        City("ely", "Ely", 52.3996, 0.2620, "uk", "England", "Cambridgeshire"),
         City("enniskillen", "Enniskillen", 54.3462, -7.6413, "uk", "Northern Ireland", "Fermanagh and Omagh"),
         City("epsom", "Epsom area", 51.3305, -0.2701, "uk", "England", "Surrey"),
         City("falmouth", "Falmouth", 50.1544, -5.0711, "uk", "England", "Cornwall"),
@@ -473,35 +480,35 @@ object Cities {
         City("great-yarmouth", "Great Yarmouth area", 52.6083, 1.7305, "uk", "England", "Norfolk"),
         City("guildford", "Guildford area", 51.2354, -0.5743, "uk", "England", "Surrey"),
         City("halifax", "Halifax area", 53.7167, -1.8500, "uk", "England", "West Yorkshire"),
-        City("hamilton-lanarkshire", "Hamilton area", 55.7667, -4.0333, "uk", "Scotland"),
+        City("hamilton", "Hamilton area", 55.7667, -4.0333, "uk", "Scotland"),
         City("harlow", "Harlow", 51.7766, 0.1116, "uk", "England", "Essex"),
         City("harrogate", "Harrogate", 53.9908, -1.5373, "uk", "England", "North Yorkshire"),
         City("hartlepool", "Hartlepool area", 54.6855, -1.2103, "uk", "England", "County Durham"),
-        City("hastings-east-sussex", "Hastings area", 50.8557, 0.5801, "uk", "England", "East Sussex"),
+        City("hastings", "Hastings area", 50.8557, 0.5801, "uk", "England", "East Sussex"),
         City("haverfordwest", "Haverfordwest area", 51.8017, -4.9691, "uk", "Wales", "Dyfed"),
         City("haverhill", "Haverhill", 52.0823, 0.4389, "uk", "England", "Suffolk"),
         City("hawick", "Hawick area", 55.4227, -2.7867, "uk", "Scotland"),
         City("helensburgh", "Helensburgh area", 56.0061, -4.7265, "uk", "Scotland", "Argyll and Bute"),
         City("hemel-hempstead", "Hemel Hempstead area", 51.7537, -0.4497, "uk", "England", "Hertfordshire"),
-        City("hereford-herefordshire", "Hereford", 52.0568, -2.7148, "uk", "England", "Herefordshire"),
+        City("hereford", "Hereford", 52.0568, -2.7148, "uk", "England", "Herefordshire"),
         City("herne-bay", "Herne Bay area", 51.3730, 1.1286, "uk", "England", "Kent"),
         City("horsham", "Horsham", 51.0631, -0.3276, "uk", "England", "West Sussex"),
         City("huntly", "Huntly", 57.4474, -2.7861, "uk", "Scotland", "Aberdeenshire"),
         City("ilkeston", "Ilkeston area", 52.9706, -1.3095, "uk", "England", "Derbyshire"),
-        City("inverness-highland", "Inverness", 57.4791, -4.2240, "uk", "Scotland", "Highland"),
+        City("inverness", "Inverness", 57.4791, -4.2240, "uk", "Scotland", "Highland"),
         City("ivybridge", "Ivybridge area", 50.3904, -3.9191, "uk", "England", "Devon"),
         City("kendal", "Kendal area", 54.3268, -2.7476, "uk", "England", "Cumbria"),
         City("keswick", "Keswick", 54.5995, -3.1326, "uk", "England", "Cumbria"),
         City("king-s-lynn", "King's Lynn", 52.7517, 0.3952, "uk", "England", "Norfolk"),
         City("kirkcaldy", "Kirkcaldy area", 56.1168, -3.1600, "uk", "Scotland"),
         City("kirkwall", "Kirkwall area", 58.9848, -2.9587, "uk", "Scotland"),
-        City("lancaster-lancashire", "Lancaster area", 54.0465, -2.7999, "uk", "England", "Lancashire"),
+        City("lancaster", "Lancaster area", 54.0465, -2.7999, "uk", "England", "Lancashire"),
         City("leamington-spa", "Leamington Spa", 52.2852, -1.5200, "uk", "England", "Warwickshire"),
         City("leiston", "Leiston area", 52.2061, 1.5776, "uk", "England", "Suffolk"),
         City("lerwick", "Lerwick", 60.1534, -1.1443, "uk", "Scotland"),
         City("letchworth-garden-city", "Letchworth Garden City area", 51.9794, -0.2266, "uk", "England", "Hertfordshire"),
         City("lisburn", "Lisburn area", 54.5234, -6.0353, "uk", "Northern Ireland"),
-        City("livingston-lothian", "Livingston area", 55.9029, -3.5226, "uk", "Scotland", "Lothian"),
+        City("livingston", "Livingston area", 55.9029, -3.5226, "uk", "Scotland", "Lothian"),
         City("llanelli", "Llanelli area", 51.6820, -4.1619, "uk", "Wales", "Dyfed"),
         City("londonderry", "Londonderry", 54.9981, -7.3093, "uk", "Northern Ireland"),
         City("loughborough", "Loughborough", 52.7667, -1.2000, "uk", "England", "Leicestershire"),
@@ -537,14 +544,14 @@ object Cities {
         City("rochdale", "Rochdale area", 53.6177, -2.1552, "uk", "England", "Greater Manchester"),
         City("ross-on-wye", "Ross-on-Wye area", 51.9167, -2.5667, "uk", "England", "Herefordshire"),
         City("rothesay", "Rothesay", 55.8365, -5.0551, "uk", "Scotland", "Argyll and Bute"),
-        City("salisbury-wiltshire", "Salisbury", 51.0693, -1.7957, "uk", "England", "Wiltshire"),
+        City("salisbury", "Salisbury", 51.0693, -1.7957, "uk", "England", "Wiltshire"),
         City("scarborough", "Scarborough", 54.2797, -0.4044, "uk", "England", "North Yorkshire"),
         City("scunthorpe", "Scunthorpe area", 53.5791, -0.6544, "uk", "England", "Lincolnshire"),
         City("shaftesbury", "Shaftesbury area", 51.0053, -2.1933, "uk", "England", "Dorset"),
         City("shrewsbury", "Shrewsbury", 52.7101, -2.7521, "uk", "England", "Shropshire"),
         City("skegness", "Skegness area", 53.1436, 0.3363, "uk", "England", "Lincolnshire"),
         City("south-shields", "South Shields area", 54.9986, -1.4323, "uk", "England", "Tyne and Wear"),
-        City("southport-merseyside", "Southport", 53.6458, -3.0101, "uk", "England", "Merseyside"),
+        City("southport", "Southport", 53.6458, -3.0101, "uk", "England", "Merseyside"),
         City("st-austell", "St Austell area", 50.3425, -4.7744, "uk", "England", "Cornwall"),
         City("st-helier", "St Helier", 49.1880, -2.1049, "uk", "Crown Dependencies"),
         City("st-neots", "St Neots area", 52.2167, -0.2667, "uk", "England", "Cambridgeshire"),
@@ -563,13 +570,13 @@ object Cities {
         City("totnes", "Totnes area", 50.4311, -3.6843, "uk", "England", "Devon"),
         City("trowbridge", "Trowbridge area", 51.3189, -2.2086, "uk", "England", "Wiltshire"),
         City("tunbridge-wells", "Tunbridge Wells area", 51.1332, 0.2626, "uk", "England", "Kent"),
-        City("wellington-shropshire", "Wellington area", 52.7000, -2.5167, "uk", "England", "Shropshire"),
+        City("wellington", "Wellington area", 52.7000, -2.5167, "uk", "England", "Shropshire"),
         City("weston-super-mare", "Weston-super-Mare", 51.3460, -2.9766, "uk", "England", "Somerset"),
         City("whitby", "Whitby", 54.4877, -0.6150, "uk", "England", "North Yorkshire"),
         City("whitehaven", "Whitehaven", 54.5490, -3.5841, "uk", "England", "Cumbria"),
         City("widnes", "Widnes area", 53.3618, -2.7341, "uk", "England", "Cheshire"),
         City("wisbech", "Wisbech", 52.6662, 0.1594, "uk", "England", "Cambridgeshire"),
-        City("woodbridge-suffolk", "Woodbridge", 52.0933, 1.3204, "uk", "England", "Suffolk"),
+        City("woodbridge", "Woodbridge", 52.0933, 1.3204, "uk", "England", "Suffolk"),
         City("workington", "Workington", 54.6425, -3.5441, "uk", "England", "Cumbria"),
         City("worksop", "Worksop", 53.3018, -1.1240, "uk", "England", "Nottinghamshire"),
         City("wrexham", "Wrexham area", 53.0466, -2.9913, "uk", "Wales", "Clwyd"),
@@ -674,11 +681,6 @@ object Cities {
 
 /** The subset belonging to [countryCode] (`"pl"`, `"uk"`), in this list's order. */
 fun List<City>.inCountry(countryCode: String): List<City> = filter { it.country == countryCode }
-
-/** The country code of the city with [slug], or null when no such city. Lets a
- *  deep link that lands on another country's city (a showtimes-uk / showtimes-de
- *  link) switch the app to the right deployment before the repertoire loads. */
-fun List<City>.countryOf(slug: String): String? = firstOrNull { it.slug == slug }?.country
 
 /** [inCountry] ordered alphabetically under that country's collation (Polish for
  *  `pl`, so `Ł` sorts after `L`; English elsewhere) — what the pickers show. */

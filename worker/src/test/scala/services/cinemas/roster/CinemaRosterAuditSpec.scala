@@ -40,17 +40,19 @@ class CinemaRosterAuditSpec extends AnyFlatSpec with Matchers {
   /** Every upstream listing with the city it is wired under — every modelled
    *  city, including ones currently disabled. A venue read off several listings
    *  counts each, so each is held to the checks on its own. */
-  private val placed: Seq[(String, CinemaScraper)] =
-    catalog.byCity.toSeq.flatMap { case (slug, scrapers) =>
+  private val listed: Seq[(City, CinemaScraper)] =
+    catalog.byCity.toSeq.flatMap { case (city, scrapers) =>
       scrapers.flatMap {
         case venue: MultiListingScraper => venue.listings
         case single                     => Seq(single)
-      }.map(slug -> _)
+      }.map(city -> _)
     }
+  /** [[listed]], each city named the way a URL does — `{country}/{slug}`, since a
+   *  slug alone is only its country's. */
+  private val placed: Seq[(String, CinemaScraper)] =
+    listed.map { case (city, s) => s"${city.country.code}/${city.slug}" -> s }
 
-  private val polishCities: Map[String, City] = Country.Poland.cities.map(c => c.slug -> c).toMap
-  private val polish: Seq[(City, CinemaScraper)] =
-    placed.collect { case (slug, s) if polishCities.contains(slug) => polishCities(slug) -> s }
+  private val polish: Seq[(City, CinemaScraper)] = listed.filter(_._1.country == Country.Poland)
 
   private def describe(city: String, s: CinemaScraper): String = s"${s.cinema.displayName} ($city)"
 
@@ -146,7 +148,7 @@ class CinemaRosterAuditSpec extends AnyFlatSpec with Matchers {
   // A town with its own city page is that city's, not a hub's: filing it under
   // a neighbour hides it from the page a visitor from that town opens.
   it should "file every venue under its own town's city, when that town has one" in {
-    val homeOf: Map[String, City] = polishCities.values.toSeq.flatMap(c => c.homeTowns.map(Slugify.stable(_) -> c)).toMap
+    val homeOf: Map[String, City] = Country.Poland.cities.flatMap(c => c.homeTowns.map(Slugify.stable(_) -> c)).toMap
     val misfiled = polish.flatMap { case (city, s) =>
       city.townsOf(s.cinema).flatMap(t => homeOf.get(Slugify.stable(t))).filterNot(_ == city)
         .map(own => s"${describe(city.slug, s)} is in ${own.labels.nominative}, which is /${own.slug}/")

@@ -18,7 +18,7 @@ import java.time.LocalDate
  */
 class FilmCardFragmentsSpec extends AnyFlatSpec with Matchers {
 
-  private implicit val city: City = City.bySlug("poznan").getOrElse(fail("no city 'poznan'"))
+  private implicit val city: City = models.Country.Poland.bySlug.get("poznan").getOrElse(fail("no city 'poznan'"))
   private val day = LocalDate.of(2026, 5, 13)
   private val cinemas = Cinema.all.distinct.filter(c => City.forCinema(c).contains(city)).take(6)
 
@@ -91,7 +91,7 @@ class FilmCardFragmentsSpec extends AnyFlatSpec with Matchers {
   // the hide button's literal ✕, which doubled every card the cache holds on a
   // non-Polish host; the entity renders the same glyph.
   it should "hold an English card at one byte per char" in {
-    val london   = City.bySlug("london").getOrElse(fail("no city 'london'"))
+    val london   = models.Country.UnitedKingdom.bySlug.get("london").getOrElse(fail("no city 'london'"))
     val venues   = Cinema.all.distinct.filter(c => City.forCinema(c).contains(london)).take(6)
     val card = views.html._filmCards(Seq(film(1, cinemas = venues)))(using london, testsupport.TestMessages.forLang("en"),
       FilmCardFragments.Uncached).body

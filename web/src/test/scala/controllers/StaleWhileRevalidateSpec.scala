@@ -31,7 +31,7 @@ import scala.concurrent.Future
 class StaleWhileRevalidateSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   private val zone = ZoneId.of("Europe/Warsaw")
-  private val city: City = City.bySlug("poznan").getOrElse(fail("no city 'poznan'"))
+  private val city: City = models.Country.Poland.bySlug.get("poznan").getOrElse(fail("no city 'poznan'"))
   private val t0 = ZonedDateTime.of(2026, 9, 25, 12, 0, 0, 0, zone).toInstant
 
   /** One process's worth of state: a city stamp that moves when told to, a clock

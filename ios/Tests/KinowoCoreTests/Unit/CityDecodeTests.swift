@@ -39,14 +39,20 @@ final class CityDecodeTests: XCTestCase {
          {"slug":"los-angeles","name":"Los Angeles","lat":34.05,"lon":-118.3,"country":"us"}]
         """#
         let cities = try JSONDecoder().decode([City].self, from: Data(json.utf8))
-        XCTAssertEqual(cities.zone(ofSlug: "knoxville", fallback: pacific).identifier, "America/New_York")
-        XCTAssertEqual(cities.zone(ofSlug: "los-angeles", fallback: pacific).identifier, "America/Los_Angeles")
+        XCTAssertEqual(cities.zone(ofSlug: "knoxville", inCountry: "us", fallback: pacific).identifier, "America/New_York")
+        XCTAssertEqual(cities.zone(ofSlug: "los-angeles", inCountry: "us", fallback: pacific).identifier, "America/Los_Angeles")
         // A slug this catalog does not know — a stale saved selection, or a deep
         // link into another deployment — is the country's, never a crash.
-        XCTAssertEqual(cities.zone(ofSlug: "nowhere", fallback: pacific).identifier, "America/Los_Angeles")
-        XCTAssertEqual(cities.zone(ofSlug: nil, fallback: pacific).identifier, "America/Los_Angeles")
+        XCTAssertEqual(cities.zone(ofSlug: "nowhere", inCountry: "us", fallback: pacific).identifier, "America/Los_Angeles")
+        XCTAssertEqual(cities.zone(ofSlug: nil, inCountry: "us", fallback: pacific).identifier, "America/Los_Angeles")
         // An identifier the platform does not know falls back rather than crashing.
         let bogus = [City(slug: "x", name: "X", lat: 0, lon: 0, country: "us", timezone: "Mars/Olympus")]
-        XCTAssertEqual(bogus.zone(ofSlug: "x", fallback: pacific).identifier, "America/Los_Angeles")
+        // A slug is its own country's: the UK's city of that name is not the US one's clock.
+        let york = try JSONDecoder().decode([City].self, from: Data(#"""
+        [{"slug":"york","name":"York","lat":53.96,"lon":-1.08,"country":"uk"},
+         {"slug":"york","name":"York","lat":39.96,"lon":-76.73,"country":"us","timezone":"America/New_York"}]
+        """#.utf8))
+        XCTAssertEqual(york.zone(ofSlug: "york", inCountry: "us", fallback: pacific).identifier, "America/New_York")
+        XCTAssertEqual(bogus.zone(ofSlug: "x", inCountry: "us", fallback: pacific).identifier, "America/Los_Angeles")
     }
 }

@@ -35,18 +35,14 @@ LONDON is the exception — one city, like New York's five boroughs, so every
 place in it (Croydon, Romford, Kingston) is London (`geocode_towns.py`), and its
 one page keeps its compass areas (`Cinema.londonAreas`).
 
-A SLUG names one town. A page is slugged after its name; where another page or
-another country has that slug it is qualified with its county
-(`/newport-isle-of-wight/`, `/cambridge-cambridgeshire/`):
+A SLUG names one town within the UK — every country owns its own slugs, so
+`/uk/york/` is York and `/us/york/` York, Pennsylvania. A page is slugged after
+its name; where another UK page has that name it is qualified with its county
+(`/newport-isle-of-wight/`):
 
   - a slug a UK page had before keeps meaning its town (`town_pages.reserve`);
-  - of two UK towns of one name the more populous takes the bare slug, where
-    the slug is free;
-  - a slug Poland, Germany, Spain or the US serves or redirects stays theirs —
-    the UK, re-cut after them, is the newcomer (`/cambridge/` is Massachusetts').
-    Bangor, Newport and Wellington are US slugs too, so both UK Bangors
-    (`/bangor-gwynedd/`, `/bangor-ards-and-north-down/`) and both Newports are
-    qualified.
+  - of two UK towns of one name the more populous takes the bare slug
+    (`/bangor/` is County Down's, Gwynedd's is `/bangor-gwynedd/`).
 
 Inputs, all committed:
 
@@ -82,10 +78,6 @@ MAJOR_MIN_POPULATION = 100_000
 
 RULES = town_pages.Rules(max_reach_km=40)
 
-#: The other countries' pages, whose slugs (live or redirecting) a UK page does
-#: not take unless it held the slug first.
-FOREIGN_PAGES = [ROOT / "data" / c / "pages.json" for c in ("pl", "germany", "spain", "us")]
-
 
 def load_towns():
     """(cinemaObject → town key, town key → {name, nation, county, landmass, lat, lon, pop})."""
@@ -102,23 +94,13 @@ def roster_venues():
     return sorted(venues, key=lambda v: (v["displayName"].casefold(), v["cinemaObject"]))
 
 
-def foreign_slugs():
-    """Every slug another country's pages serve or redirect."""
-    slugs = set()
-    for path in FOREIGN_PAGES:
-        data = json.loads(path.read_text())
-        slugs.update(p["slug"] for p in data["pages"])
-        slugs.update(data["retired"])
-    return slugs
-
-
-def build(venues, venue_town, towns, previous, prior_retired, foreign=frozenset(), rules=RULES):
+def build(venues, venue_town, towns, previous, prior_retired, rules=RULES):
     """venues: (cinemaObject, (lat, lon)) for every venue, in roster order;
     venue_town: cinemaObject → town key; towns: town key → {name, nation, county,
     landmass, lat, lon, pop}; previous: slug → {"name", "cinemas", "lat", "lon",
     "qualifiedSlug", "anchor"} for every page the last build had (the hand-filed
     regions, before the first); prior_retired: the last build's "retired", the
-    same fields beside its "page"; foreign: the slugs other countries hold."""
+    same fields beside its "page"."""
     by_town = collections.defaultdict(list)
     for obj, _ in venues:
         by_town[venue_town[obj]].append(obj)
@@ -139,11 +121,9 @@ def build(venues, venue_town, towns, previous, prior_retired, foreign=frozenset(
     def qualified(t):
         return town_pages.slugify(f"{towns[t]['name']} {towns[t]['county']}")
 
-    held = set(previous) | set(prior_retired)
     # A slug keeps meaning the town it was named after (`town_pages.reserve`); of
-    # two UK towns sharing a name the more populous has the bare slug; and a slug
-    # another country has is not the UK's to take.
-    reserved = {slug: "<another country>" for slug in foreign - held}
+    # two UK towns sharing a name the more populous has the bare slug.
+    reserved = {}
     by_name = collections.defaultdict(list)
     for t in by_town:
         by_name[town_pages.slugify(towns[t]["name"])].append(t)
@@ -178,9 +158,6 @@ def build(venues, venue_town, towns, previous, prior_retired, foreign=frozenset(
         landmass=lambda t: towns[t]["landmass"],
         reserved=reserved,
         reach=reach)
-    taken = sorted(s for s in result if s in foreign and s not in held)
-    if taken:
-        sys.exit(f"pages took slugs another country holds, qualified or not: {taken}")
     beyond = [f"{p['slug']}: {obj} is {km(centre(p['anchor']), at[obj]):.1f} km from {p['anchor']}"
               for p in result.values() for obj in p["cinemas"]
               if rules.max_reach_km is not None and km(centre(p["anchor"]), at[obj]) > rules.max_reach_km]
@@ -215,7 +192,7 @@ def main():
     prior = json.loads(OUT.read_text())
     previous = {p["slug"]: p for p in prior["pages"]}
     venues = [(v["cinemaObject"], (float(v["lat"]), float(v["lon"]))) for v in roster]
-    pages, retired = build(venues, venue_town, towns, previous, prior["retired"], foreign_slugs())
+    pages, retired = build(venues, venue_town, towns, previous, prior["retired"])
     problems = town_pages.placement_problems([obj for obj, _ in venues], pages)
     if problems:
         sys.exit("\n".join(problems))

@@ -21,14 +21,12 @@ class CinemaScraperCoverageSpec extends AnyFlatSpec with Matchers {
   // `byCity` wires EVERY city's cinemas; coverage is checked over it so "a cinema
   // added to the model but never wired" is caught.
   private val wiredCinemas: Seq[Cinema] = catalog.byCity.values.flatten.map(_.cinema).toSeq
-  private val modelledSlugs: Set[String] = City.all.map(_.slug).toSet
 
   "Every modelled cinema" should "have exactly one wired scraper" in {
     wiredCinemas.toSet shouldBe Cinema.all.toSet
     wiredCinemas.size shouldBe Cinema.all.size
-    // No scraper wired under a slug that no modelled city scopes (a typo would
-    // drop that city's cinemas out of the worker's `byCity` lookup).
-    catalog.byCity.keySet.subsetOf(modelledSlugs) shouldBe true
+    // Every scraper is filed under a modelled city.
+    catalog.byCity.keySet.subsetOf(City.all.toSet) shouldBe true
   }
 
   "Every live-scraped cinema" should "be scoped to a live city" in {

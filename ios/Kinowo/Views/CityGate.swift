@@ -62,7 +62,8 @@ struct CityGate: View {
                     // arrived through the server's 301, but Filtry found no city
                     // by the old slug and labelled the list with the slug itself.
                     // Adopt the one it answers at; the task re-runs for it.
-                    if let current = catalog.currentSlugByFormer[slug] {
+                    if catalog.cities.city(slug: slug, inCountry: prefs.selectedCountry.code) == nil,
+                       let current = catalog.currentSlugByFormer(inCountry: prefs.selectedCountry)[slug] {
                         prefs.setCity(current)
                         return
                     }

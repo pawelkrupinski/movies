@@ -10,13 +10,13 @@ import org.scalatest.matchers.should.Matchers
  * on a town page or a cluster of nearby small towns — see
  * `data/us/scripts/build_pages.py` and [[UsRoster]]. The state is only how a
  * visitor finds a page: `/california/` is nothing at all. These lock the cut, the
- * slugs (1,995 pages joining a global namespace that already holds a UK Birmingham
- * and a German Potsdam), where each retired metro's URL goes, the clock each page
+ * slugs (the US's own: `/us/birmingham/` whatever the UK has), where each retired
+ * metro's URL goes, the clock each page
  * keeps, and that re-cutting the roster moved no cinema off it.
  */
 class UsRosterSpec extends AnyFlatSpec with Matchers with OptionValues {
 
-  private def page(slug: String): City = City.bySlug(slug).value
+  private def page(slug: String): City = Country.UnitedStates.bySlug.get(slug).value
   private def venue(name: String): Cinema = UsRoster.byDisplayName.get(name).value
   private def pageOf(name: String): City = City.forCinema(venue(name)).value
   private def state(label: String): CityGroup = City.usStates.find(_.label == label).value
@@ -87,7 +87,7 @@ class UsRosterSpec extends AnyFlatSpec with Matchers with OptionValues {
     // metro kept out of Fresno by hand. At 30 km neither reaches the other.
     pageOf("Bishop Twin Theatre").slug shouldBe "bishop"
     pageOf("Minaret Cinema is D'Place").slug shouldBe "mammoth-lakes"
-    City.renamedSlugs.get("eastern-sierra").value shouldBe "bishop"
+    Country.UnitedStates.renamedSlugs.get("eastern-sierra").value shouldBe "bishop"
   }
 
   "A venue whose coordinates were wrong" should "be on the page of the town its address names" in {
@@ -98,9 +98,9 @@ class UsRosterSpec extends AnyFlatSpec with Matchers with OptionValues {
   }
 
   "A state" should "be a grouping over its pages, not a city" in {
-    City.bySlug("texas") shouldBe None
+    Country.UnitedStates.bySlug.get("texas") shouldBe None
     // A state's name is a page only where a TOWN has it — California, Maryland.
-    City.bySlug("california").value.asInstanceOf[UsCity].stateName shouldBe "Maryland"
+    Country.UnitedStates.bySlug.get("california").value.asInstanceOf[UsCity].stateName shouldBe "Maryland"
     val california = state("California")
     california.cities should contain allOf (page("los-angeles"), page("san-francisco"), page("bishop"))
     // Alphabetical — a heading you OPEN is a list you scan for a name you already know.
@@ -145,44 +145,42 @@ class UsRosterSpec extends AnyFlatSpec with Matchers with OptionValues {
     page("springfield").asInstanceOf[UsCity].stateName shouldBe "Illinois"
   }
 
-  it should "never take a name another country serves" in {
-    City.bySlug("birmingham").value.country shouldBe Country.UnitedKingdom
-    City.bySlug("glasgow").value.country    shouldBe Country.UnitedKingdom
-    pageOf("Alabama Theatre Birmingham").slug shouldBe "birmingham-alabama"
-    pageOf("Marquee Highland Glasgow 8").slug shouldBe "glasgow-kentucky"
-    City.bySlug("potsdam").value.country shouldBe Country.Germany
-    pageOf("Roxy Potsdam 5").slug shouldBe "potsdam-new-york"
-    pageOf("Stuttgart Twin Cinema").slug shouldBe "stuttgart-arkansas"
-  }
-
-  it should "keep the two Spain yielded to before it had town pages" in {
+  it should "be the US's own, whatever another country calls a town" in {
+    // Each country owns its slugs: these were qualified while the UK, Germany and
+    // Spain held the names in one global namespace, and those URLs now 301 here.
+    pageOf("Alabama Theatre Birmingham").slug shouldBe "birmingham"
+    pageOf("Marquee Highland Glasgow 8").slug shouldBe "glasgow"
+    pageOf("Roxy Potsdam 5").slug shouldBe "potsdam"
+    pageOf("Stuttgart Twin Cinema").slug shouldBe "stuttgart"
+    Country.UnitedStates.renamedSlugs.get("glasgow-kentucky").value shouldBe "glasgow"
+    Country.UnitedStates.renamedSlugs.get("potsdam-new-york").value shouldBe "potsdam"
     page("toledo").country shouldBe Country.UnitedStates
     page("laredo").country shouldBe Country.UnitedStates
-    page("toledo-castilla-la-mancha").country shouldBe Country.Spain
   }
 
   "A metro that is no longer a page" should "redirect to the page holding the town it was named after" in {
     // The halves of a travel-shed the state line used to split go to the city itself.
-    City.renamedSlugs.get("philadelphia-new-jersey").value shouldBe "philadelphia"
-    City.renamedSlugs.get("cincinnati-kentucky").value shouldBe "cincinnati"
-    City.renamedSlugs.get("new-york-new-jersey").value shouldBe "new-york"
-    City.renamedSlugs.get("minneapolis-st-paul-wisconsin").value shouldBe "minneapolis"
-    City.renamedSlugs.get("san-francisco-bay-area").value shouldBe "san-francisco"
+    Country.UnitedStates.renamedSlugs.get("philadelphia-new-jersey").value shouldBe "philadelphia"
+    Country.UnitedStates.renamedSlugs.get("cincinnati-kentucky").value shouldBe "cincinnati"
+    Country.UnitedStates.renamedSlugs.get("new-york-new-jersey").value shouldBe "new-york"
+    Country.UnitedStates.renamedSlugs.get("minneapolis-st-paul-wisconsin").value shouldBe "minneapolis"
+    Country.UnitedStates.renamedSlugs.get("san-francisco-bay-area").value shouldBe "san-francisco"
     // Its town is on a cluster named after another: the cluster.
-    City.renamedSlugs.get("portland-maine").value shouldBe "westbrook"
-    City.renamedSlugs.get("madison-minnesota").value shouldBe "canby"
+    Country.UnitedStates.renamedSlugs.get("portland-maine").value shouldBe "westbrook"
+    Country.UnitedStates.renamedSlugs.get("madison-minnesota").value shouldBe "canby"
   }
 
   it should "fall back to the page holding most of its venues when no town has its name" in {
-    City.renamedSlugs.get("inland-empire").value shouldBe "chino"
-    City.renamedSlugs.get("hampton-roads").value shouldBe "norfolk-virginia"
-    City.renamedSlugs.get("alaska").value shouldBe "anchorage"
+    Country.UnitedStates.renamedSlugs.get("inland-empire").value shouldBe "chino"
+    Country.UnitedStates.renamedSlugs.get("hampton-roads").value shouldBe "norfolk-virginia"
+    Country.UnitedStates.renamedSlugs.get("alaska").value shouldBe "anchorage"
   }
 
-  it should "not redirect a slug that is its heir's own URL again" in {
-    // The Alabama metro was /birmingham-alabama/, and so is the Birmingham page.
-    City.renamedSlugs.get("birmingham-alabama") shouldBe None
-    page("birmingham-alabama").labels.nominative shouldBe "Birmingham"
+  it should "send the Alabama metro's and page's old slug to the bare page" in {
+    // The Alabama metro was /birmingham-alabama/, and so was the Birmingham page
+    // while the UK held /birmingham/.
+    Country.UnitedStates.renamedSlugs.get("birmingham-alabama").value shouldBe "birmingham"
+    page("birmingham").labels.nominative shouldBe "Birmingham"
   }
 
   "Every US slug ever published" should "still answer, at a US page" in {
@@ -260,16 +258,12 @@ class UsRosterSpec extends AnyFlatSpec with Matchers with OptionValues {
       "newport-news", "jefferson", "osage",
     )
     published should have size 475
-    published.foreach { slug =>
-      withClue(s"$slug: ") {
-        val landing = City.renamedSlugs.getOrElse(slug, slug)
-        City.bySlug(landing).value.country shouldBe Country.UnitedStates
-      }
-    }
+    published.foreach(slug => withClue(s"$slug: ")(Country.UnitedStates.resolve(slug) should not be None))
     // The metros that are still a page under their own slug — among them three
     // retired since (`/perry/`, `/newport-news/`, `/san-francisco/`), whose towns
-    // are pages again.
-    published.count(City.bySlug(_).isDefined) shouldBe 329
+    // are pages again; three that were state-qualified pages (`/birmingham-alabama/`…)
+    // are the bare page's 301 now.
+    published.count(Country.UnitedStates.bySlug.contains) shouldBe 326
   }
 
   "Every retired slug" should "be retired, and name a successor that exists" in {
@@ -277,10 +271,10 @@ class UsRosterSpec extends AnyFlatSpec with Matchers with OptionValues {
     // most: the redirect 404s and the rows projected under the old slug are
     // read by nobody, so the city serves a near-empty page for a whole scrape
     // cadence and nothing says why.
-    City.renamedSlugs.foreach { case (former, successor) =>
+    Country.UnitedStates.renamedSlugs.foreach { case (former, successor) =>
       withClue(s"$former → $successor: ") {
-        City.bySlug(former) shouldBe None
-        City.bySlug(successor) should not be None
+        Country.UnitedStates.bySlug.get(former) shouldBe None
+        Country.UnitedStates.bySlug.get(successor) should not be None
       }
     }
   }

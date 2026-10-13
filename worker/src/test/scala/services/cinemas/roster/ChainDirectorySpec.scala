@@ -78,7 +78,7 @@ class ChainDirectorySpec extends AnyFlatSpec with Matchers {
   // venue with no town of its own; the chain lists it in Janki.
   "every Polish chain venue" should "be listed by its chain, in the town we file it under and near its city page" in {
     val catalog = new CinemaScraperCatalog(new FakeHttpFetch("does-not-exist"), models.VenueClock.fixedOn(Today), tools.SpecClock.Pinned)
-    val venues  = RosterSourceReader.chainVenuesOf(Country.Poland.cities, slug => catalog.byCity.getOrElse(slug, Nil), Today)
+    val venues  = RosterSourceReader.chainVenuesOf(Country.Poland.cities, city => catalog.byCity.getOrElse(city, Nil), Today)
     venues.map(_._1).distinct should contain theSameElementsAs ChainDirectory.all
     val readings = venues.groupMap(_._1)(v => v._2 -> v._3).toSeq.flatMap { case (directory, vs) =>
       RosterSourceReader.readDirectory(recorded, Today)(directory, vs).fold(e => fail(e.describe), identity)

@@ -745,11 +745,12 @@ class MovieController( cc: ControllerComponents,
   }
 
   /** `/assets/img/og-<slug>.jpg` — the city card's address while it was a committed asset, kept
-   *  because link previews cached it: permanently redirected to the worker's card. A slug no city
-   *  answers to any more goes to this deployment's home card. */
+   *  because link previews cached it: permanently redirected to the worker's card — THIS country's
+   *  city of that slug, never another's. A slug no city here answers to any more goes to this
+   *  deployment's home card. */
   def legacyCityCard(file: String): Action[AnyContent] = Action {
     val slug = file.stripPrefix("og-").stripSuffix(".jpg")
-    models.City.bySlug(slug).fold(Found(ShareCardUrl.home(servingCountry)))(city => MovedPermanently(ShareCardUrl.city(city)))
+    servingCountry.resolve(slug).fold(Found(ShareCardUrl.home(servingCountry)))(city => MovedPermanently(ShareCardUrl.city(city)))
   }
 
   /** `/share-card-fallback/<cc>` — where Caddy sends a request for a city card the worker has not

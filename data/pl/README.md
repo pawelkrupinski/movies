@@ -21,7 +21,7 @@ the towns, the majors, the locatives and the voivodeships:
    side.
 
 A page that disappears in a rebuild is kept in `pages.json`'s `retired` map,
-pointing at the page now holding its town; `City.renamedSlugs` redirects it.
+pointing at the page now holding its town; `Country.renamedSlugs` redirects it.
 Anchor towns need their locative in `town_forms.json` (hand-checked Polish);
 a town GeoNames gives to several places is pinned in `build_pages.py`'s
 `TOWN_COORDS`, and the build refuses one that lands far from its previous page.

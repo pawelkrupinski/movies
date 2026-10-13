@@ -287,45 +287,45 @@ struct City: Codable, Hashable {
         City(slug: "coventry", name: "Coventry", lat: 52.4066, lon: -1.5122, country: "uk", region: "England", subregion: "West Midlands"),
         City(slug: "birkenhead", name: "Birkenhead", lat: 53.3934, lon: -3.0148, country: "uk", region: "England", subregion: "Merseyside"),
         City(slug: "nottingham", name: "Nottingham", lat: 52.9536, lon: -1.1505, country: "uk", region: "England", subregion: "Nottinghamshire"),
-        City(slug: "reading-berkshire", name: "Reading", lat: 51.4562, lon: -0.9711, country: "uk", region: "England", subregion: "Berkshire"),
+        City(slug: "reading", name: "Reading", lat: 51.4562, lon: -0.9711, country: "uk", region: "England", subregion: "Berkshire"),
         City(slug: "hull", name: "Hull", lat: 53.7446, lon: -0.3352, country: "uk", region: "England", subregion: "East Riding of Yorkshire"),
-        City(slug: "preston-lancashire", name: "Preston", lat: 53.7628, lon: -2.7045, country: "uk", region: "England", subregion: "Lancashire"),
+        City(slug: "preston", name: "Preston", lat: 53.7628, lon: -2.7045, country: "uk", region: "England", subregion: "Lancashire"),
         City(slug: "swansea", name: "Swansea", lat: 51.6208, lon: -3.9432, country: "uk", region: "Wales", subregion: "Glamorgan"),
         City(slug: "newcastle-upon-tyne", name: "Newcastle upon Tyne", lat: 54.9733, lon: -1.6140, country: "uk", region: "England", subregion: "Tyne and Wear"),
         City(slug: "southend-on-sea", name: "Southend-on-Sea", lat: 51.5378, lon: 0.7143, country: "uk", region: "England", subregion: "Essex"),
         City(slug: "brighton", name: "Brighton", lat: 50.8284, lon: -0.1395, country: "uk", region: "England", subregion: "East Sussex"),
-        City(slug: "derby-derbyshire", name: "Derby", lat: 52.9228, lon: -1.4766, country: "uk", region: "England", subregion: "Derbyshire"),
+        City(slug: "derby", name: "Derby", lat: 52.9228, lon: -1.4766, country: "uk", region: "England", subregion: "Derbyshire"),
         City(slug: "southampton", name: "Southampton", lat: 50.9040, lon: -1.4043, country: "uk", region: "England", subregion: "Hampshire"),
         City(slug: "wolverhampton", name: "Wolverhampton", lat: 52.5855, lon: -2.1230, country: "uk", region: "England", subregion: "West Midlands"),
-        City(slug: "plymouth-devon", name: "Plymouth", lat: 50.3715, lon: -4.1430, country: "uk", region: "England", subregion: "Devon"),
+        City(slug: "plymouth", name: "Plymouth", lat: 50.3715, lon: -4.1430, country: "uk", region: "England", subregion: "Devon"),
         City(slug: "stoke-on-trent", name: "Stoke-on-Trent", lat: 53.0042, lon: -2.1854, country: "uk", region: "England", subregion: "Staffordshire"),
         City(slug: "milton-keynes", name: "Milton Keynes", lat: 52.0417, lon: -0.7558, country: "uk", region: "England", subregion: "Buckinghamshire"),
         City(slug: "northampton", name: "Northampton", lat: 52.2500, lon: -0.8833, country: "uk", region: "England", subregion: "Northamptonshire"),
         City(slug: "oldham", name: "Oldham", lat: 53.5405, lon: -2.1183, country: "uk", region: "England", subregion: "Greater Manchester"),
         City(slug: "luton", name: "Luton", lat: 51.8797, lon: -0.4175, country: "uk", region: "England", subregion: "Bedfordshire"),
-        City(slug: "portsmouth-hampshire", name: "Portsmouth", lat: 50.7990, lon: -1.0913, country: "uk", region: "England", subregion: "Hampshire"),
+        City(slug: "portsmouth", name: "Portsmouth", lat: 50.7990, lon: -1.0913, country: "uk", region: "England", subregion: "Hampshire"),
         City(slug: "swindon", name: "Swindon", lat: 51.5580, lon: -1.7812, country: "uk", region: "England", subregion: "Wiltshire"),
         City(slug: "dudley", name: "Dudley", lat: 52.5000, lon: -2.0833, country: "uk", region: "England", subregion: "West Midlands"),
-        City(slug: "aberdeen-aberdeenshire", name: "Aberdeen", lat: 57.1437, lon: -2.0981, country: "uk", region: "Scotland", subregion: "Aberdeenshire"),
+        City(slug: "aberdeen", name: "Aberdeen", lat: 57.1437, lon: -2.0981, country: "uk", region: "Scotland", subregion: "Aberdeenshire"),
         City(slug: "st-helens", name: "St Helens", lat: 53.4500, lon: -2.7333, country: "uk", region: "England", subregion: "Merseyside"),
         City(slug: "ipswich", name: "Ipswich", lat: 52.0592, lon: 1.1555, country: "uk", region: "England", subregion: "Suffolk"),
         City(slug: "wigan", name: "Wigan", lat: 53.5430, lon: -2.6371, country: "uk", region: "England", subregion: "Greater Manchester"),
         City(slug: "warrington", name: "Warrington", lat: 53.3925, lon: -2.5802, country: "uk", region: "England", subregion: "Cheshire"),
         City(slug: "walsall", name: "Walsall", lat: 52.5853, lon: -1.9840, country: "uk", region: "England", subregion: "West Midlands"),
-        City(slug: "mansfield-nottinghamshire", name: "Mansfield", lat: 53.1333, lon: -1.2000, country: "uk", region: "England", subregion: "Nottinghamshire"),
+        City(slug: "mansfield", name: "Mansfield", lat: 53.1333, lon: -1.2000, country: "uk", region: "England", subregion: "Nottinghamshire"),
         City(slug: "sunderland", name: "Sunderland", lat: 54.9046, lon: -1.3822, country: "uk", region: "England", subregion: "Tyne and Wear"),
         City(slug: "bournemouth", name: "Bournemouth", lat: 50.7205, lon: -1.8795, country: "uk", region: "England", subregion: "Dorset"),
         City(slug: "peterborough", name: "Peterborough", lat: 52.5736, lon: -0.2478, country: "uk", region: "England", subregion: "Cambridgeshire"),
-        City(slug: "oxford-oxfordshire", name: "Oxford", lat: 51.7522, lon: -1.2560, country: "uk", region: "England", subregion: "Oxfordshire"),
-        City(slug: "newport-gwent", name: "Newport", lat: 51.5877, lon: -2.9983, country: "uk", region: "Wales", subregion: "Gwent"),
-        City(slug: "york-north-yorkshire", name: "York", lat: 53.9576, lon: -1.0827, country: "uk", region: "England", subregion: "North Yorkshire"),
+        City(slug: "oxford", name: "Oxford", lat: 51.7522, lon: -1.2560, country: "uk", region: "England", subregion: "Oxfordshire"),
+        City(slug: "newport", name: "Newport", lat: 51.5877, lon: -2.9983, country: "uk", region: "Wales", subregion: "Gwent"),
+        City(slug: "york", name: "York", lat: 53.9576, lon: -1.0827, country: "uk", region: "England", subregion: "North Yorkshire"),
         City(slug: "telford", name: "Telford", lat: 52.6766, lon: -2.4493, country: "uk", region: "England", subregion: "Shropshire"),
         City(slug: "poole", name: "Poole", lat: 50.7143, lon: -1.9846, country: "uk", region: "England", subregion: "Dorset"),
         City(slug: "burnley", name: "Burnley", lat: 53.8000, lon: -2.2333, country: "uk", region: "England", subregion: "Lancashire"),
         City(slug: "huddersfield", name: "Huddersfield", lat: 53.6490, lon: -1.7842, country: "uk", region: "England", subregion: "West Yorkshire"),
         City(slug: "dundee", name: "Dundee", lat: 56.4691, lon: -2.9749, country: "uk", region: "Scotland", subregion: "Tayside"),
         City(slug: "blackburn", name: "Blackburn", lat: 53.7500, lon: -2.4833, country: "uk", region: "England", subregion: "Lancashire"),
-        City(slug: "cambridge-cambridgeshire", name: "Cambridge", lat: 52.2000, lon: 0.1167, country: "uk", region: "England", subregion: "Cambridgeshire"),
+        City(slug: "cambridge", name: "Cambridge", lat: 52.2000, lon: 0.1167, country: "uk", region: "England", subregion: "Cambridgeshire"),
         City(slug: "blackpool", name: "Blackpool", lat: 53.8167, lon: -3.0500, country: "uk", region: "England", subregion: "Lancashire"),
         City(slug: "basildon", name: "Basildon", lat: 51.5684, lon: 0.4578, country: "uk", region: "England", subregion: "Essex"),
         City(slug: "norwich", name: "Norwich", lat: 52.6278, lon: 1.2983, country: "uk", region: "England", subregion: "Norfolk"),
@@ -352,16 +352,16 @@ struct City: Codable, Hashable {
         City(slug: "wakefield", name: "Wakefield", lat: 53.6833, lon: -1.4977, country: "uk", region: "England", subregion: "West Yorkshire"),
         City(slug: "basingstoke", name: "Basingstoke", lat: 51.2625, lon: -1.0871, country: "uk", region: "England", subregion: "Hampshire"),
         City(slug: "maidstone", name: "Maidstone", lat: 51.2667, lon: 0.5167, country: "uk", region: "England", subregion: "Kent"),
-        City(slug: "bedford-bedfordshire", name: "Bedford", lat: 52.1346, lon: -0.4663, country: "uk", region: "England", subregion: "Bedfordshire"),
+        City(slug: "bedford", name: "Bedford", lat: 52.1346, lon: -0.4663, country: "uk", region: "England", subregion: "Bedfordshire"),
         City(slug: "woking", name: "Woking", lat: 51.3190, lon: -0.5589, country: "uk", region: "England", subregion: "Surrey"),
-        City(slug: "lincoln-lincolnshire", name: "Lincoln", lat: 53.2268, lon: -0.5379, country: "uk", region: "England", subregion: "Lincolnshire"),
+        City(slug: "lincoln", name: "Lincoln", lat: 53.2268, lon: -0.5379, country: "uk", region: "England", subregion: "Lincolnshire"),
         City(slug: "west-bromwich", name: "West Bromwich", lat: 52.5187, lon: -1.9945, country: "uk", region: "England", subregion: "West Midlands"),
         City(slug: "eastbourne", name: "Eastbourne", lat: 50.7687, lon: 0.2845, country: "uk", region: "England", subregion: "East Sussex"),
-        City(slug: "worcester-worcestershire", name: "Worcester", lat: 52.1893, lon: -2.2200, country: "uk", region: "England", subregion: "Worcestershire"),
+        City(slug: "worcester", name: "Worcester", lat: 52.1893, lon: -2.2200, country: "uk", region: "England", subregion: "Worcestershire"),
         City(slug: "bath", name: "Bath", lat: 51.3751, lon: -2.3617, country: "uk", region: "England", subregion: "Somerset"),
         City(slug: "aberfeldy", name: "Aberfeldy", lat: 56.6220, lon: -3.8669, country: "uk", region: "Scotland", subregion: "Tayside"),
         City(slug: "aberystwyth", name: "Aberystwyth area", lat: 52.4155, lon: -4.0829, country: "uk", region: "Wales", subregion: "Dyfed"),
-        City(slug: "abingdon-oxfordshire", name: "Abingdon area", lat: 51.6711, lon: -1.2828, country: "uk", region: "England", subregion: "Oxfordshire"),
+        City(slug: "abingdon", name: "Abingdon area", lat: 51.6711, lon: -1.2828, country: "uk", region: "England", subregion: "Oxfordshire"),
         City(slug: "accrington", name: "Accrington area", lat: 53.7538, lon: -2.3586, country: "uk", region: "England", subregion: "Lancashire"),
         City(slug: "altrincham", name: "Altrincham area", lat: 53.3875, lon: -2.3485, country: "uk", region: "England", subregion: "Greater Manchester"),
         City(slug: "arbroath", name: "Arbroath area", lat: 56.5632, lon: -2.5874, country: "uk", region: "Scotland", subregion: "Tayside"),
@@ -374,7 +374,7 @@ struct City: Codable, Hashable {
         City(slug: "banbridge", name: "Banbridge", lat: 54.3500, lon: -6.2833, country: "uk", region: "Northern Ireland"),
         City(slug: "banbury", name: "Banbury area", lat: 52.0632, lon: -1.3422, country: "uk", region: "England", subregion: "Oxfordshire"),
         City(slug: "banchory", name: "Banchory", lat: 57.0517, lon: -2.4882, country: "uk", region: "Scotland", subregion: "Aberdeenshire"),
-        City(slug: "bangor-ards-and-north-down", name: "Bangor area", lat: 54.6608, lon: -5.6680, country: "uk", region: "Northern Ireland"),
+        City(slug: "bangor", name: "Bangor area", lat: 54.6608, lon: -5.6680, country: "uk", region: "Northern Ireland"),
         City(slug: "bangor-gwynedd", name: "Bangor area", lat: 53.2275, lon: -4.1294, country: "uk", region: "Wales", subregion: "Gwynedd"),
         City(slug: "barnsley", name: "Barnsley", lat: 53.5500, lon: -1.4833, country: "uk", region: "England", subregion: "South Yorkshire"),
         City(slug: "barnstaple", name: "Barnstaple area", lat: 51.0802, lon: -4.0581, country: "uk", region: "England", subregion: "Devon"),
@@ -382,7 +382,7 @@ struct City: Codable, Hashable {
         City(slug: "berwick-upon-tweed", name: "Berwick-upon-Tweed", lat: 55.7687, lon: -2.0054, country: "uk", region: "England"),
         City(slug: "beverley", name: "Beverley area", lat: 53.8459, lon: -0.4233, country: "uk", region: "England", subregion: "East Riding of Yorkshire"),
         City(slug: "bishop-s-stortford", name: "Bishop's Stortford area", lat: 51.8711, lon: 0.1587, country: "uk", region: "England", subregion: "Hertfordshire"),
-        City(slug: "boston-lincolnshire", name: "Boston area", lat: 52.9763, lon: -0.0266, country: "uk", region: "England", subregion: "Lincolnshire"),
+        City(slug: "boston", name: "Boston area", lat: 52.9763, lon: -0.0266, country: "uk", region: "England", subregion: "Lincolnshire"),
         City(slug: "bracknell", name: "Bracknell area", lat: 51.4136, lon: -0.7505, country: "uk", region: "England", subregion: "Berkshire"),
         City(slug: "braintree", name: "Braintree area", lat: 51.8782, lon: 0.5529, country: "uk", region: "England", subregion: "Essex"),
         City(slug: "bridgend", name: "Bridgend area", lat: 51.5058, lon: -3.5772, country: "uk", region: "Wales", subregion: "Glamorgan"),
@@ -397,10 +397,10 @@ struct City: Codable, Hashable {
         City(slug: "cannock", name: "Cannock area", lat: 52.6904, lon: -2.0309, country: "uk", region: "England", subregion: "Staffordshire"),
         City(slug: "canterbury", name: "Canterbury", lat: 51.2790, lon: 1.0799, country: "uk", region: "England", subregion: "Kent"),
         City(slug: "cardigan", name: "Cardigan", lat: 52.0837, lon: -4.6623, country: "uk", region: "Wales", subregion: "Dyfed"),
-        City(slug: "carlisle-cumbria", name: "Carlisle area", lat: 54.8951, lon: -2.9382, country: "uk", region: "England", subregion: "Cumbria"),
+        City(slug: "carlisle", name: "Carlisle area", lat: 54.8951, lon: -2.9382, country: "uk", region: "England", subregion: "Cumbria"),
         City(slug: "castleford", name: "Castleford area", lat: 53.7259, lon: -1.3626, country: "uk", region: "England", subregion: "West Yorkshire"),
         City(slug: "chatham", name: "Chatham area", lat: 51.3789, lon: 0.5279, country: "uk", region: "England", subregion: "Kent"),
-        City(slug: "chester-cheshire", name: "Chester area", lat: 53.1905, lon: -2.8919, country: "uk", region: "England", subregion: "Cheshire"),
+        City(slug: "chester", name: "Chester area", lat: 53.1905, lon: -2.8919, country: "uk", region: "England", subregion: "Cheshire"),
         City(slug: "chichester", name: "Chichester area", lat: 50.8367, lon: -0.7800, country: "uk", region: "England", subregion: "West Sussex"),
         City(slug: "christchurch", name: "Christchurch area", lat: 50.7358, lon: -1.7813, country: "uk", region: "England", subregion: "Dorset"),
         City(slug: "clacton-on-sea", name: "Clacton-on-Sea area", lat: 51.7897, lon: 1.1560, country: "uk", region: "England", subregion: "Essex"),
@@ -416,13 +416,13 @@ struct City: Codable, Hashable {
         City(slug: "darlington", name: "Darlington area", lat: 54.5243, lon: -1.5504, country: "uk", region: "England", subregion: "County Durham"),
         City(slug: "dereham", name: "Dereham area", lat: 52.6833, lon: 0.9333, country: "uk", region: "England", subregion: "Norfolk"),
         City(slug: "dorchester", name: "Dorchester", lat: 50.7167, lon: -2.4333, country: "uk", region: "England", subregion: "Dorset"),
-        City(slug: "douglas-isle-of-man", name: "Douglas", lat: 54.1500, lon: -4.4833, country: "uk", region: "Crown Dependencies"),
+        City(slug: "douglas", name: "Douglas", lat: 54.1500, lon: -4.4833, country: "uk", region: "Crown Dependencies"),
         City(slug: "dumfries", name: "Dumfries area", lat: 55.0696, lon: -3.6114, country: "uk", region: "Scotland", subregion: "Dumfries and Galloway"),
         City(slug: "dungannon", name: "Dungannon area", lat: 54.5034, lon: -6.7672, country: "uk", region: "Northern Ireland", subregion: "Mid Ulster"),
-        City(slug: "durham-county-durham", name: "Durham", lat: 54.7768, lon: -1.5757, country: "uk", region: "England", subregion: "County Durham"),
+        City(slug: "durham", name: "Durham", lat: 54.7768, lon: -1.5757, country: "uk", region: "England", subregion: "County Durham"),
         City(slug: "eastleigh", name: "Eastleigh area", lat: 50.9667, lon: -1.3500, country: "uk", region: "England", subregion: "Hampshire"),
-        City(slug: "elgin-moray", name: "Elgin", lat: 57.6495, lon: -3.3184, country: "uk", region: "Scotland"),
-        City(slug: "ely-cambridgeshire", name: "Ely", lat: 52.3996, lon: 0.2620, country: "uk", region: "England", subregion: "Cambridgeshire"),
+        City(slug: "elgin", name: "Elgin", lat: 57.6495, lon: -3.3184, country: "uk", region: "Scotland"),
+        City(slug: "ely", name: "Ely", lat: 52.3996, lon: 0.2620, country: "uk", region: "England", subregion: "Cambridgeshire"),
         City(slug: "enniskillen", name: "Enniskillen", lat: 54.3462, lon: -7.6413, country: "uk", region: "Northern Ireland", subregion: "Fermanagh and Omagh"),
         City(slug: "epsom", name: "Epsom area", lat: 51.3305, lon: -0.2701, country: "uk", region: "England", subregion: "Surrey"),
         City(slug: "falmouth", name: "Falmouth", lat: 50.1544, lon: -5.0711, country: "uk", region: "England", subregion: "Cornwall"),
@@ -434,35 +434,35 @@ struct City: Codable, Hashable {
         City(slug: "great-yarmouth", name: "Great Yarmouth area", lat: 52.6083, lon: 1.7305, country: "uk", region: "England", subregion: "Norfolk"),
         City(slug: "guildford", name: "Guildford area", lat: 51.2354, lon: -0.5743, country: "uk", region: "England", subregion: "Surrey"),
         City(slug: "halifax", name: "Halifax area", lat: 53.7167, lon: -1.8500, country: "uk", region: "England", subregion: "West Yorkshire"),
-        City(slug: "hamilton-lanarkshire", name: "Hamilton area", lat: 55.7667, lon: -4.0333, country: "uk", region: "Scotland"),
+        City(slug: "hamilton", name: "Hamilton area", lat: 55.7667, lon: -4.0333, country: "uk", region: "Scotland"),
         City(slug: "harlow", name: "Harlow", lat: 51.7766, lon: 0.1116, country: "uk", region: "England", subregion: "Essex"),
         City(slug: "harrogate", name: "Harrogate", lat: 53.9908, lon: -1.5373, country: "uk", region: "England", subregion: "North Yorkshire"),
         City(slug: "hartlepool", name: "Hartlepool area", lat: 54.6855, lon: -1.2103, country: "uk", region: "England", subregion: "County Durham"),
-        City(slug: "hastings-east-sussex", name: "Hastings area", lat: 50.8557, lon: 0.5801, country: "uk", region: "England", subregion: "East Sussex"),
+        City(slug: "hastings", name: "Hastings area", lat: 50.8557, lon: 0.5801, country: "uk", region: "England", subregion: "East Sussex"),
         City(slug: "haverfordwest", name: "Haverfordwest area", lat: 51.8017, lon: -4.9691, country: "uk", region: "Wales", subregion: "Dyfed"),
         City(slug: "haverhill", name: "Haverhill", lat: 52.0823, lon: 0.4389, country: "uk", region: "England", subregion: "Suffolk"),
         City(slug: "hawick", name: "Hawick area", lat: 55.4227, lon: -2.7867, country: "uk", region: "Scotland"),
         City(slug: "helensburgh", name: "Helensburgh area", lat: 56.0061, lon: -4.7265, country: "uk", region: "Scotland", subregion: "Argyll and Bute"),
         City(slug: "hemel-hempstead", name: "Hemel Hempstead area", lat: 51.7537, lon: -0.4497, country: "uk", region: "England", subregion: "Hertfordshire"),
-        City(slug: "hereford-herefordshire", name: "Hereford", lat: 52.0568, lon: -2.7148, country: "uk", region: "England", subregion: "Herefordshire"),
+        City(slug: "hereford", name: "Hereford", lat: 52.0568, lon: -2.7148, country: "uk", region: "England", subregion: "Herefordshire"),
         City(slug: "herne-bay", name: "Herne Bay area", lat: 51.3730, lon: 1.1286, country: "uk", region: "England", subregion: "Kent"),
         City(slug: "horsham", name: "Horsham", lat: 51.0631, lon: -0.3276, country: "uk", region: "England", subregion: "West Sussex"),
         City(slug: "huntly", name: "Huntly", lat: 57.4474, lon: -2.7861, country: "uk", region: "Scotland", subregion: "Aberdeenshire"),
         City(slug: "ilkeston", name: "Ilkeston area", lat: 52.9706, lon: -1.3095, country: "uk", region: "England", subregion: "Derbyshire"),
-        City(slug: "inverness-highland", name: "Inverness", lat: 57.4791, lon: -4.2240, country: "uk", region: "Scotland", subregion: "Highland"),
+        City(slug: "inverness", name: "Inverness", lat: 57.4791, lon: -4.2240, country: "uk", region: "Scotland", subregion: "Highland"),
         City(slug: "ivybridge", name: "Ivybridge area", lat: 50.3904, lon: -3.9191, country: "uk", region: "England", subregion: "Devon"),
         City(slug: "kendal", name: "Kendal area", lat: 54.3268, lon: -2.7476, country: "uk", region: "England", subregion: "Cumbria"),
         City(slug: "keswick", name: "Keswick", lat: 54.5995, lon: -3.1326, country: "uk", region: "England", subregion: "Cumbria"),
         City(slug: "king-s-lynn", name: "King's Lynn", lat: 52.7517, lon: 0.3952, country: "uk", region: "England", subregion: "Norfolk"),
         City(slug: "kirkcaldy", name: "Kirkcaldy area", lat: 56.1168, lon: -3.1600, country: "uk", region: "Scotland"),
         City(slug: "kirkwall", name: "Kirkwall area", lat: 58.9848, lon: -2.9587, country: "uk", region: "Scotland"),
-        City(slug: "lancaster-lancashire", name: "Lancaster area", lat: 54.0465, lon: -2.7999, country: "uk", region: "England", subregion: "Lancashire"),
+        City(slug: "lancaster", name: "Lancaster area", lat: 54.0465, lon: -2.7999, country: "uk", region: "England", subregion: "Lancashire"),
         City(slug: "leamington-spa", name: "Leamington Spa", lat: 52.2852, lon: -1.5200, country: "uk", region: "England", subregion: "Warwickshire"),
         City(slug: "leiston", name: "Leiston area", lat: 52.2061, lon: 1.5776, country: "uk", region: "England", subregion: "Suffolk"),
         City(slug: "lerwick", name: "Lerwick", lat: 60.1534, lon: -1.1443, country: "uk", region: "Scotland"),
         City(slug: "letchworth-garden-city", name: "Letchworth Garden City area", lat: 51.9794, lon: -0.2266, country: "uk", region: "England", subregion: "Hertfordshire"),
         City(slug: "lisburn", name: "Lisburn area", lat: 54.5234, lon: -6.0353, country: "uk", region: "Northern Ireland"),
-        City(slug: "livingston-lothian", name: "Livingston area", lat: 55.9029, lon: -3.5226, country: "uk", region: "Scotland", subregion: "Lothian"),
+        City(slug: "livingston", name: "Livingston area", lat: 55.9029, lon: -3.5226, country: "uk", region: "Scotland", subregion: "Lothian"),
         City(slug: "llanelli", name: "Llanelli area", lat: 51.6820, lon: -4.1619, country: "uk", region: "Wales", subregion: "Dyfed"),
         City(slug: "londonderry", name: "Londonderry", lat: 54.9981, lon: -7.3093, country: "uk", region: "Northern Ireland"),
         City(slug: "loughborough", name: "Loughborough", lat: 52.7667, lon: -1.2000, country: "uk", region: "England", subregion: "Leicestershire"),
@@ -498,14 +498,14 @@ struct City: Codable, Hashable {
         City(slug: "rochdale", name: "Rochdale area", lat: 53.6177, lon: -2.1552, country: "uk", region: "England", subregion: "Greater Manchester"),
         City(slug: "ross-on-wye", name: "Ross-on-Wye area", lat: 51.9167, lon: -2.5667, country: "uk", region: "England", subregion: "Herefordshire"),
         City(slug: "rothesay", name: "Rothesay", lat: 55.8365, lon: -5.0551, country: "uk", region: "Scotland", subregion: "Argyll and Bute"),
-        City(slug: "salisbury-wiltshire", name: "Salisbury", lat: 51.0693, lon: -1.7957, country: "uk", region: "England", subregion: "Wiltshire"),
+        City(slug: "salisbury", name: "Salisbury", lat: 51.0693, lon: -1.7957, country: "uk", region: "England", subregion: "Wiltshire"),
         City(slug: "scarborough", name: "Scarborough", lat: 54.2797, lon: -0.4044, country: "uk", region: "England", subregion: "North Yorkshire"),
         City(slug: "scunthorpe", name: "Scunthorpe area", lat: 53.5791, lon: -0.6544, country: "uk", region: "England", subregion: "Lincolnshire"),
         City(slug: "shaftesbury", name: "Shaftesbury area", lat: 51.0053, lon: -2.1933, country: "uk", region: "England", subregion: "Dorset"),
         City(slug: "shrewsbury", name: "Shrewsbury", lat: 52.7101, lon: -2.7521, country: "uk", region: "England", subregion: "Shropshire"),
         City(slug: "skegness", name: "Skegness area", lat: 53.1436, lon: 0.3363, country: "uk", region: "England", subregion: "Lincolnshire"),
         City(slug: "south-shields", name: "South Shields area", lat: 54.9986, lon: -1.4323, country: "uk", region: "England", subregion: "Tyne and Wear"),
-        City(slug: "southport-merseyside", name: "Southport", lat: 53.6458, lon: -3.0101, country: "uk", region: "England", subregion: "Merseyside"),
+        City(slug: "southport", name: "Southport", lat: 53.6458, lon: -3.0101, country: "uk", region: "England", subregion: "Merseyside"),
         City(slug: "st-austell", name: "St Austell area", lat: 50.3425, lon: -4.7744, country: "uk", region: "England", subregion: "Cornwall"),
         City(slug: "st-helier", name: "St Helier", lat: 49.1880, lon: -2.1049, country: "uk", region: "Crown Dependencies"),
         City(slug: "st-neots", name: "St Neots area", lat: 52.2167, lon: -0.2667, country: "uk", region: "England", subregion: "Cambridgeshire"),
@@ -524,13 +524,13 @@ struct City: Codable, Hashable {
         City(slug: "totnes", name: "Totnes area", lat: 50.4311, lon: -3.6843, country: "uk", region: "England", subregion: "Devon"),
         City(slug: "trowbridge", name: "Trowbridge area", lat: 51.3189, lon: -2.2086, country: "uk", region: "England", subregion: "Wiltshire"),
         City(slug: "tunbridge-wells", name: "Tunbridge Wells area", lat: 51.1332, lon: 0.2626, country: "uk", region: "England", subregion: "Kent"),
-        City(slug: "wellington-shropshire", name: "Wellington area", lat: 52.7000, lon: -2.5167, country: "uk", region: "England", subregion: "Shropshire"),
+        City(slug: "wellington", name: "Wellington area", lat: 52.7000, lon: -2.5167, country: "uk", region: "England", subregion: "Shropshire"),
         City(slug: "weston-super-mare", name: "Weston-super-Mare", lat: 51.3460, lon: -2.9766, country: "uk", region: "England", subregion: "Somerset"),
         City(slug: "whitby", name: "Whitby", lat: 54.4877, lon: -0.6150, country: "uk", region: "England", subregion: "North Yorkshire"),
         City(slug: "whitehaven", name: "Whitehaven", lat: 54.5490, lon: -3.5841, country: "uk", region: "England", subregion: "Cumbria"),
         City(slug: "widnes", name: "Widnes area", lat: 53.3618, lon: -2.7341, country: "uk", region: "England", subregion: "Cheshire"),
         City(slug: "wisbech", name: "Wisbech", lat: 52.6662, lon: 0.1594, country: "uk", region: "England", subregion: "Cambridgeshire"),
-        City(slug: "woodbridge-suffolk", name: "Woodbridge", lat: 52.0933, lon: 1.3204, country: "uk", region: "England", subregion: "Suffolk"),
+        City(slug: "woodbridge", name: "Woodbridge", lat: 52.0933, lon: 1.3204, country: "uk", region: "England", subregion: "Suffolk"),
         City(slug: "workington", name: "Workington", lat: 54.6425, lon: -3.5441, country: "uk", region: "England", subregion: "Cumbria"),
         City(slug: "worksop", name: "Worksop", lat: 53.3018, lon: -1.1240, country: "uk", region: "England", subregion: "Nottinghamshire"),
         City(slug: "wrexham", name: "Wrexham area", lat: 53.0466, lon: -2.9913, country: "uk", region: "Wales", subregion: "Clwyd"),
@@ -754,25 +754,27 @@ extension Array where Element == City {
     /// The subset belonging to `countryCode` (`"pl"`, `"uk"`), in this list's order.
     func inCountry(_ countryCode: String) -> [City] { filter { $0.country == countryCode } }
 
-    /// The country code of the city with `slug`, or `nil` when no such city.
-    /// Lets a deep link that lands on another country's city (a
-    /// `showtimes-uk` / `showtimes-de` link) switch the app to the right
-    /// deployment before the repertoire loads.
-    func country(ofSlug slug: String) -> String? { first { $0.slug == slug }?.country }
+    /// The city `slug` names in `countryCode`. A slug is only its country's own:
+    /// `york` is York on `uk` and York, Pennsylvania on `us`.
+    func city(slug: String, inCountry countryCode: String) -> City? {
+        first { $0.country == countryCode && $0.slug == slug }
+    }
 
-    /// Each former slug (`City.formerSlugs`) → the city that answers at it now.
-    var currentSlugByFormer: [String: String] {
-        Dictionary(flatMap { city in (city.formerSlugs ?? []).map { ($0, city.slug) } },
+    /// Each former slug (`City.formerSlugs`) of `countryCode`'s cities → the city
+    /// that answers at it now. Per country: another country may use the same slug
+    /// for a live city of its own.
+    func currentSlugByFormer(inCountry countryCode: String) -> [String: String] {
+        Dictionary(inCountry(countryCode).flatMap { city in (city.formerSlugs ?? []).map { ($0, city.slug) } },
                    uniquingKeysWith: { first, _ in first })
     }
 
-    /// The zone to reason about `slug`'s showtimes in — that city's own where the
-    /// catalog gave it one, else `fallback` (its country's). Also the answer for a
-    /// slug this catalog does not know, which is what a stale saved selection or a
-    /// deep link into another deployment looks like.
-    func zone(ofSlug slug: String?, fallback: TimeZone) -> TimeZone {
+    /// The zone to reason about `slug`'s showtimes in — that `countryCode` city's
+    /// own where the catalog gave it one, else `fallback` (its country's). Also the
+    /// answer for a slug this catalog does not know, which is what a stale saved
+    /// selection looks like.
+    func zone(ofSlug slug: String?, inCountry countryCode: String, fallback: TimeZone) -> TimeZone {
         guard let slug else { return fallback }
-        return first { $0.slug == slug }?.zone(fallback: fallback) ?? fallback
+        return city(slug: slug, inCountry: countryCode)?.zone(fallback: fallback) ?? fallback
     }
 
     /// [inCountry] ordered alphabetically under that country's collation (Polish

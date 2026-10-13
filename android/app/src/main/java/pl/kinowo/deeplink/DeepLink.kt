@@ -4,6 +4,7 @@ import pl.kinowo.filter.DateFilter
 import pl.kinowo.filter.FormatFilter
 import pl.kinowo.filter.SortOption
 import pl.kinowo.model.Cities
+import pl.kinowo.model.City
 import pl.kinowo.model.VersionTokens
 import java.net.URI
 import java.net.URLDecoder
@@ -40,6 +41,11 @@ data class DeepLink(
      *  `slug` each film carries from `/api/repertoire`. */
     val filmSlug: String? = null,
     val filters: DeepLinkFilters,
+    /** The country the link's city belongs to: the one its URL names
+     *  (`showtimes.cc/us/…`, `kinowo.net/…` → `pl`), or — given the catalog's
+     *  cities — the one resolved for it. Every country owns its own slugs, so
+     *  `/uk/york/` and `/us/york/` are two cities. Null when neither says. */
+    val countryCode: String? = null,
 ) {
     companion object {
         // Every public HOST the site answers on — a link on any of them opens the
@@ -79,12 +85,21 @@ data class DeepLink(
          * page, a renamed metro — [pl.kinowo.model.City.formerSlugs]) onto the
          * city answering at it: the link opens there, as the server's 301 would
          * have sent a browser.
+         *
+         * Given [cities] (the app passes the live catalog's), the link resolves
+         * WITHIN a country: the one its URL names, else the first in [cities]'
+         * order with a city — or a former slug — of that name ([resolve]);
+         * [knownCitySlugs] and [currentSlugByFormer] are then unused, and
+         * [versionTokensOfCountry], when given, answers the version pair by the
+         * resolved country.
          */
         fun parse(
             url: String,
             knownCitySlugs: Set<String> = Cities.all.map { it.slug }.toSet(),
             versionTokens: (citySlug: String) -> VersionTokens = { VersionTokens.POLAND },
             currentSlugByFormer: Map<String, String> = emptyMap(),
+            cities: List<City>? = null,
+            versionTokensOfCountry: ((countryCode: String) -> VersionTokens)? = null,
         ): DeepLink? {
             // Split the query (and any fragment) off the raw string BEFORE
             // handing the base to java.net.URI. The single-arg URI(String)
@@ -112,13 +127,20 @@ data class DeepLink(
 
             val linked: String
             val trailing: List<String>
+            // The country the URL itself names, where it names one.
+            var named: String? = null
+            val slugs = cities?.map { it.slug }?.toSet() ?: knownCitySlugs
             when (scheme) {
                 "https", "http" -> {
                     if (host !in WEB_HOSTS) return null
+                    if (host.endsWith("kinowo.net")) named = "pl"
                     val raw = pathSegments(uri.rawPath)
+                    val first = raw.firstOrNull()
                     val segments =
-                        if (raw.firstOrNull() in COUNTRY_PATH_SEGMENTS && raw.firstOrNull() !in knownCitySlugs) raw.drop(1)
-                        else raw
+                        if (first in COUNTRY_PATH_SEGMENTS && (first !in slugs || raw.size > 1)) {
+                            named = first
+                            raw.drop(1)
+                        } else raw
                     linked = segments.firstOrNull() ?: return null
                     trailing = segments.drop(1)
                 }
@@ -130,9 +152,18 @@ data class DeepLink(
                 else -> return null
             }
 
-            val city = when {
-                linked in knownCitySlugs -> linked
-                else -> currentSlugByFormer[linked]?.takeIf { it in knownCitySlugs } ?: return null
+            val country: String?
+            val city: String
+            if (cities != null) {
+                val (resolvedCountry, resolvedCity) = resolve(linked, named, cities) ?: return null
+                country = resolvedCountry
+                city = resolvedCity
+            } else {
+                country = named
+                city = when {
+                    linked in knownCitySlugs -> linked
+                    else -> currentSlugByFormer[linked]?.takeIf { it in knownCitySlugs } ?: return null
+                }
             }
 
             val query = parseQuery(rawQuery)
@@ -149,7 +180,22 @@ data class DeepLink(
                 query.firstOrNull { it.first == "title" }?.second?.takeIf { it.isNotEmpty() }
             } else null
 
-            return DeepLink(city, filmTitle, filmSlug, DeepLinkFilters.from(query, versionTokens(city)))
+            val tokens = country?.let { c -> versionTokensOfCountry?.invoke(c) } ?: versionTokens(city)
+            return DeepLink(city, filmTitle, filmSlug, DeepLinkFilters.from(query, tokens), country)
+        }
+
+        /** `(country, city slug)` for a link's [slug]: within the country the URL
+         *  [named], else the first in [cities]' order that answers to it — as a
+         *  city, then as a former slug ([City.formerSlugs]), which opens the city
+         *  answering at it now, as the server's 301 would send a browser. */
+        fun resolve(slug: String, named: String?, cities: List<City>): Pair<String, String>? {
+            val order = named?.let { listOf(it) } ?: cities.map { it.country }.distinct()
+            for (code in order) {
+                val own = cities.filter { it.country == code }
+                if (own.any { it.slug == slug }) return code to slug
+                own.firstOrNull { slug in it.formerSlugs }?.let { return code to it.slug }
+            }
+            return null
         }
 
         private fun pathSegments(rawPath: String?): List<String> =

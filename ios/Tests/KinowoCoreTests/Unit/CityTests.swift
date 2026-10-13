@@ -75,8 +75,8 @@ final class CityTests: XCTestCase {
 
     func testUkSortedIsAlphabeticalUnderEnglishCollation() {
         let sorted = City.all.sortedForPicker(inCountry: "uk")
-        XCTAssertEqual(sorted.first?.slug, "aberdeen-aberdeenshire")
-        XCTAssertEqual(sorted.last?.slug, "york-north-yorkshire")
+        XCTAssertEqual(sorted.first?.slug, "aberdeen")
+        XCTAssertEqual(sorted.last?.slug, "york")
         XCTAssertEqual(Set(sorted.map(\.slug)), Set(City.all.inCountry("uk").map(\.slug)))
     }
 
@@ -84,7 +84,7 @@ final class CityTests: XCTestCase {
         XCTAssertEqual(City.all.matching("manch", inCountry: "uk").map(\.slug), ["manchester"])
         XCTAssertTrue(City.all.matching("poznan", inCountry: "uk").isEmpty)
         let yorks = City.all.matching("york", inCountry: "uk").map(\.slug)
-        XCTAssertEqual(yorks, ["york-north-yorkshire"])
+        XCTAssertEqual(yorks, ["york"])
     }
 
     // ── default city (per country) ────────────────────────────────
@@ -123,7 +123,7 @@ final class CityTests: XCTestCase {
             City(slug: "new-york", name: "New York", lat: 40.7128, lon: -74.0060, country: "us"),
         ]
         XCTAssertEqual(catalog.inCountry("us").count, 2)
-        XCTAssertEqual(catalog.country(ofSlug: "new-york"), "us")
+        XCTAssertEqual(catalog.city(slug: "new-york", inCountry: "us")?.country, "us")
         XCTAssertEqual(catalog.defaultCity(inCountry: "us")?.slug, "california")
         XCTAssertEqual(catalog.sortedForPicker(inCountry: "us").map(\.slug), ["california", "new-york"])
         XCTAssertEqual(catalog.matching("new", inCountry: "us").map(\.slug), ["new-york"])
@@ -211,17 +211,13 @@ final class CityTests: XCTestCase {
         }
     }
 
-    // ── country(ofSlug:) (deep-link → right deployment) ───────────
+    // ── city(slug:inCountry:) — a slug is only its country's ───────
 
-    func testCountryOfSlugResolvesEachCitysCountry() {
-        XCTAssertEqual(City.all.country(ofSlug: "poznan"), "pl")
-        XCTAssertEqual(City.all.country(ofSlug: "london"), "uk")
-    }
-
-    func testCountryOfSlugIsNilForUnknownCity() {
-        XCTAssertNil(City.all.country(ofSlug: "berlin"))     // DE arrives via the live catalog, not the fallback
-        XCTAssertNil(City.all.country(ofSlug: "california"))  // …and so does the US roster
-        XCTAssertNil(City.all.country(ofSlug: "nope"))
+    func testCitySlugResolvesWithinItsCountry() {
+        XCTAssertEqual(City.all.city(slug: "poznan", inCountry: "pl")?.country, "pl")
+        XCTAssertEqual(City.all.city(slug: "london", inCountry: "uk")?.country, "uk")
+        XCTAssertNil(City.all.city(slug: "london", inCountry: "pl"))
+        XCTAssertNil(City.all.city(slug: "nope", inCountry: "pl"))
     }
 
     // ── switchSuggestion (you're-nearer-another-city prompt) ──────

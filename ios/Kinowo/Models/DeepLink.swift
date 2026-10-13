@@ -31,6 +31,11 @@ struct DeepLink: Equatable {
     /// `slug` each film carries from `/api/repertoire`.
     let filmSlug: String?
     let filters: DeepLinkFilters
+    /// The country the link's city belongs to: the one its URL names
+    /// (`showtimes.cc/us/…`, `kinowo.net/…` → `pl`), or — given the catalog's
+    /// cities — the one resolved for it. Every country owns its own slugs, so
+    /// `/uk/york/` and `/us/york/` are two cities. `nil` when neither says.
+    var countryCode: String? = nil
 
     /// Every public HOST the site answers on — a link on any of them opens the
     /// app. Two, not five: Poland owns kinowo.net, and the four Showtimes
@@ -69,26 +74,39 @@ struct DeepLink: Equatable {
     /// `languageTokens` answers, for the linked city, the `?lang=` values its
     /// country's version filter can match — the country's own subtitled/dubbed
     /// pair, which is `OmU`/`DF` in Germany and `NAP`/`DUB` in Poland. The app
-    /// passes the live catalog's lookup (`CatalogStore.versionTokens(ofSlug:)`);
+    /// passes the live catalog's lookup (`CatalogStore.versionTokens(ofCountry:)`);
     /// the default is Poland's pair, the one every link was checked against
     /// before the catalog carried the field. (`Country` lives in another SPM
     /// target, so the pair arrives as bare strings.)
+    ///
+    /// Given `cities` (the app passes the live catalog's), the link resolves
+    /// WITHIN a country: the one its URL names, else the first in `cities`' order
+    /// with a city — or a former slug — of that name; `knownCitySlugs` and
+    /// `currentSlugByFormer` are then unused, and `languageTokensOfCountry`, when
+    /// given, answers the version pair by the resolved country.
     static func parse(_ url: URL,
                       knownCitySlugs: Set<String> = Set(City.all.map(\.slug)),
                       currentSlugByFormer: [String: String] = [:],
-                      languageTokens: (String) -> Set<String> = { _ in DeepLinkFilters.polishLanguageTokens }) -> DeepLink? {
+                      languageTokens: (String) -> Set<String> = { _ in DeepLinkFilters.polishLanguageTokens },
+                      cities: [City]? = nil,
+                      languageTokensOfCountry: ((String) -> Set<String>)? = nil) -> DeepLink? {
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
               let scheme = components.scheme?.lowercased() else { return nil }
 
         // Path segments that follow the city slug (e.g. ["movie"]).
         let linked: String
         let trailing: [String]
+        // The country the URL itself names, where it names one.
+        var named: String? = nil
+        let slugs = cities.map { Set($0.map(\.slug)) } ?? knownCitySlugs
         switch scheme {
         case "https", "http":
             guard let host = components.host?.lowercased(), webHosts.contains(host) else { return nil }
+            if host.hasSuffix("kinowo.net") { named = "pl" }
             var segments = pathSegments(components.path)
             if let first = segments.first,
-               countryPathSegments.contains(first), !knownCitySlugs.contains(first) {
+               countryPathSegments.contains(first), !slugs.contains(first) || segments.count > 1 {
+                named = first
                 segments = Array(segments.dropFirst())
             }
             guard let first = segments.first else { return nil }
@@ -103,10 +121,17 @@ struct DeepLink: Equatable {
         }
 
         let city: String
-        if knownCitySlugs.contains(linked) {
+        let country: String?
+        if let cities {
+            guard let (resolvedCountry, resolvedCity) = resolve(linked, named: named, in: cities) else { return nil }
+            country = resolvedCountry
+            city = resolvedCity
+        } else if knownCitySlugs.contains(linked) {
             city = linked
+            country = named
         } else if let current = currentSlugByFormer[linked], knownCitySlugs.contains(current) {
             city = current
+            country = named
         } else {
             return nil
         }
@@ -128,8 +153,25 @@ struct DeepLink: Equatable {
             citySlug: city,
             filmTitle: filmTitle.flatMap { $0.isEmpty ? nil : $0 },
             filmSlug: filmSlug.flatMap { $0.isEmpty ? nil : $0 },
-            filters: DeepLinkFilters(queryItems: components.queryItems ?? [], languageTokens: languageTokens(city))
+            filters: DeepLinkFilters(queryItems: components.queryItems ?? [],
+                                     languageTokens: country.flatMap { languageTokensOfCountry?($0) } ?? languageTokens(city)),
+            countryCode: country
         )
+    }
+
+    /// `(country, city slug)` for a link's slug: within the country the URL
+    /// names, else the first in `cities`' order that answers to it — as a city,
+    /// then as a former slug (`City.formerSlugs`), which opens the city answering
+    /// at it now, as the server's 301 would send a browser.
+    static func resolve(_ slug: String, named: String?, in cities: [City]) -> (String, String)? {
+        var order: [String] = []
+        for code in cities.map(\.country) where !order.contains(code) { order.append(code) }
+        for code in named.map({ [$0] }) ?? order {
+            let own = cities.inCountry(code)
+            if own.contains(where: { $0.slug == slug }) { return (code, slug) }
+            if let current = own.first(where: { ($0.formerSlugs ?? []).contains(slug) }) { return (code, current.slug) }
+        }
+        return nil
     }
 
     private static func pathSegments(_ path: String) -> [String] {

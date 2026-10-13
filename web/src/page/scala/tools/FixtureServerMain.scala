@@ -176,14 +176,24 @@ object FixtureServerMain {
     // The country-agnostic update-gate rule the iOS LocalServer suite decodes.
     val clientSupportApi = new controllers.ClientSupportController(play.api.test.Helpers.stubControllerComponents())
 
-    // Resolve `/{city}/…` to (City, in-city sub-path). The first path segment
-    // is matched against the known cities; an unknown first segment → None.
+    // Resolve `/{cc}/{city}/…` — a city of the country with that code, as the
+    // deployed sites are mounted — or the bare `/{city}/…` the specs have always
+    // used, to (City, in-city sub-path). A slug is only a country's own, so the
+    // bare form takes the first country in `Country.all`'s order that has the slug
+    // (`/london/` is the UK's London; `/us/london/` Kentucky's). An unknown first
+    // segment → None.
     def resolve(p: String): Option[(City, String)] = {
-      val firstSeg = p.stripPrefix("/").takeWhile(ch => ch != '/' && ch != '?')
-      City.bySlug(firstSeg).map { c =>
-        val prefix = "/" + firstSeg
-        (c, if (p == prefix) "/" else p.stripPrefix(prefix))
+      def segment(path: String) = path.stripPrefix("/").takeWhile(ch => ch != '/' && ch != '?')
+      def within(country: models.Country, path: String): Option[(City, String)] = {
+        val slug = segment(path)
+        country.bySlug.get(slug).map { c =>
+          val prefix = "/" + slug
+          (c, if (path == prefix) "/" else path.stripPrefix(prefix))
+        }
       }
+      val first = segment(p)
+      models.Country.byCode(first).filter(c => p.startsWith(s"/$first/")).flatMap(c => within(c, p.stripPrefix(s"/$first")))
+        .orElse(models.Country.all.view.flatMap(within(_, p)).headOption)
     }
 
     // The page a `/{city}/…` sub-path renders, or None — so that an in-city path

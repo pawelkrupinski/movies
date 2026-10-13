@@ -141,9 +141,9 @@ struct KinowoApp: App {
     /// from a link lands on the linked city's CityGate result) and park the
     /// parsed link for `ContentView` to apply its filters + film push.
     private func handleDeepLink(_ url: URL) {
-        guard let link = DeepLink.parse(url, knownCitySlugs: catalog.allSlugs,
-                                        currentSlugByFormer: catalog.currentSlugByFormer,
-                                        languageTokens: { catalog.versionTokens(ofSlug: $0).accepted }) else { return }
+        guard let link = DeepLink.parse(url, cities: catalog.cities,
+                                        languageTokensOfCountry: { catalog.versionTokens(ofCountry: $0).accepted })
+        else { return }
         // A link on another country's deployment (showtimes-uk / showtimes-de)
         // must switch the country too, or the city would resolve against the
         // wrong deployment's catalog — and the stores must be re-pointed at
@@ -151,8 +151,7 @@ struct KinowoApp: App {
         // fetches the new country's city from the old one. The UI language is
         // unaffected — it's a fully independent preference (see
         // `LanguageSelection`), so a cross-country link never changes it.
-        if let countryCode = catalog.cities.country(ofSlug: link.citySlug),
-           countryCode != prefs.selectedCountry.code {
+        if let countryCode = link.countryCode, countryCode != prefs.selectedCountry.code {
             switchCountry(to: catalog.country(code: countryCode), prefs: prefs, store: store, details: details)
         }
         if link.citySlug != prefs.selectedCity {

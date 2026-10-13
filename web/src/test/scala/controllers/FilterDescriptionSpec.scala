@@ -82,7 +82,7 @@ class FilterDescriptionSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "still name the towns it drops the rest for" in {
-    val d = FilterDescription.defaultDescription(City.bySlug("pila").get)
+    val d = FilterDescription.defaultDescription(Country.Poland.bySlug.get("pila").get)
     d           should include("Repertuar wszystkich kin w Pile i okolicach (Piła")
     d           should include("Rotten Tomatoes.")   // the sources survive
     d.length    should be <= FilterDescription.MaxDescription
@@ -92,7 +92,7 @@ class FilterDescriptionSpec extends AnyFlatSpec with Matchers {
     FilterDescription.pageHeading(Sosnowiec)  shouldBe "Repertuar kin w Sosnowcu"
     FilterDescription.pageHeading(Trojmiasto) shouldBe "Repertuar kin w Trójmieście – Gdańsk, Gdynia, Sopot"
     // A cluster of small towns is named after its biggest, "i okolicach".
-    FilterDescription.pageHeading(City.bySlug("turek").get) shouldBe "Repertuar kin w Turku i okolicach – Turek, Koło"
+    FilterDescription.pageHeading(Country.Poland.bySlug.get("turek").get) shouldBe "Repertuar kin w Turku i okolicach – Turek, Koło"
   }
 
   "FilterDescription.forIndex with an empty query" should "produce the keyword-rich default city title" in {

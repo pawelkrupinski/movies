@@ -1653,7 +1653,7 @@ abstract class CountryConvergenceBehaviour(
       // projection must leave nothing behind under the old name — the cross-country check
       // below reports any row outside the country's CURRENT cities.
       val service  = new MovieControllerService(w.webReadModel, w.clock)
-      val renamed  = country.cities.filter(c => City.formerSlugs(c.slug).nonEmpty).sortBy(_.slug)
+      val renamed  = country.cities.filter(c => country.formerSlugs(c.slug).nonEmpty).sortBy(_.slug)
       def filmsIn(c: City) = service.toSchedules(c, renderAt).map(_.resolved._id).toSet
       val servedBefore = renamed.map(c => c -> filmsIn(c)).toMap
       // The read model read ONCE, the moves worked out in memory and written as their net effect:
@@ -1662,7 +1662,7 @@ abstract class CountryConvergenceBehaviour(
       val renamedRows = step("city rename") {
         if (renamed.isEmpty) 0 else {
           val refile = CityRenameRefile.of(w.readModelRepository.findAllScreenings(),
-            renamed.map(c => c.slug -> City.formerSlugs(c.slug).head))
+            renamed.map(c => c.slug -> country.formerSlugs(c.slug).head))
           w.readModelRepository.upsertScreenings(refile.upserts)
           refile.deletes.foreach(w.readModelRepository.deleteScreening)
           refile.upserts.size
@@ -1674,12 +1674,12 @@ abstract class CountryConvergenceBehaviour(
       w.webReadModel.reload()
       val renameLost = renamed.flatMap { c =>
         val lost = servedBefore(c) -- filmsIn(c)
-        Option.when(lost.nonEmpty)(s"${c.slug} (renamed from ${City.formerSlugs(c.slug).mkString(", ")}) stopped serving " +
+        Option.when(lost.nonEmpty)(s"${c.slug} (renamed from ${country.formerSlugs(c.slug).mkString(", ")}) stopped serving " +
           s"${lost.size} of ${servedBefore(c).size} film(s) the moment the rename deployed: " +
           lost.toSeq.sorted.take(6).map(id => w.webReadModel.movie(id).fold(id)(m => s"'${m.title}' ($id)")).mkString(", "))
       }
       info(s"${country.displayName}: city rename — ${if (renamed.isEmpty) "no city with a former slug" else
-        renamed.map(c => s"${c.slug} ← ${City.formerSlugs(c.slug).head} (${servedBefore(c).size} film(s))").mkString(", ") +
+        renamed.map(c => s"${c.slug} ← ${country.formerSlugs(c.slug).head} (${servedBefore(c).size} film(s))").mkString(", ") +
           s"; $renamedRows screening row(s) refiled"}")
 
       clock.advance(java.time.Duration.between(clock.instant(),

@@ -76,8 +76,8 @@ parameters in `scripts/build_pages.py`:
 
 A cluster is named after its anchor — most venues, then most people — as
 "Bayreuth und Umgebung" ("in Bayreuth und Umgebung"; the phrase is `GermanPage`'s).
-Slugs spell umlauts out (`muenster`); a page whose slug another country already
-serves or wants is qualified with its Bundesland (`City.germanSlug`). The picker
+Slugs spell umlauts out (`muenster`) and are Germany's own — `/de/potsdam/` is
+Potsdam whatever the US has; a page's Land-qualified slug 301s to it. The picker
 groups pages by the anchor's Bundesland, read off its coordinates.
 
 Towns are Filmstarts' cities, with two corrections in `build_pages.py`:

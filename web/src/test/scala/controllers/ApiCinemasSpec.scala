@@ -54,7 +54,7 @@ class ApiCinemasSpec extends AnyFlatSpec with Matchers {
     val result = controller(models.Country.UnitedStates).apiCinemas("los-angeles")(FakeRequest())
     status(result) shouldBe OK
     val json = Json.parse(contentAsString(result))
-    (json \ "cinemas").as[Seq[String]] shouldBe models.City.bySlug("los-angeles").get.cinemaDisplayNames
+    (json \ "cinemas").as[Seq[String]] shouldBe models.Country.UnitedStates.bySlug.get("los-angeles").get.cinemaDisplayNames
     (json \ "areas").as[Seq[play.api.libs.json.JsValue]] shouldBe empty
   }
 

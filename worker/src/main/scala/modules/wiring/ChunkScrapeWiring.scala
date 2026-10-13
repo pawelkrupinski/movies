@@ -21,7 +21,7 @@ trait ChunkScrapeWiring { self: WorkerWiring =>
   lazy val chunkScrapers: Map[String, ChunkedCinemaScraper] =
     country.cities
       .filter(c => scrapeCities(c.slug))
-      .flatMap(c => cinemaScraperCatalog.byCity.getOrElse(c.slug, Nil))
+      .flatMap(c => cinemaScraperCatalog.byCity.getOrElse(c, Nil))
       .collect { case cs: ChunkedCinemaScraper => ScrapeCinemaHandler.scraperKey(cs.cinema) -> cs }
       .toMap
 

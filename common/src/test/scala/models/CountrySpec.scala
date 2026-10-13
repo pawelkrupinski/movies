@@ -200,12 +200,12 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     def nation(label: String): CityGroup =
       Country.UnitedKingdom.cityGroups.find(_.label == label).getOrElse(fail(s"no nation $label"))
 
-    nation("England").allCities.map(_.slug)          should contain allOf ("london", "chester-cheshire", "liverpool")
-    nation("Scotland").allCities.map(_.slug)         should contain allOf ("glasgow", "inverness-highland", "lerwick")
-    nation("Wales").allCities.map(_.slug)            should contain allOf ("cardiff", "bangor-gwynedd", "newport-gwent")
+    nation("England").allCities.map(_.slug)          should contain allOf ("london", "chester", "york", "liverpool")
+    nation("Scotland").allCities.map(_.slug)         should contain allOf ("glasgow", "inverness", "lerwick")
+    nation("Wales").allCities.map(_.slug)            should contain allOf ("cardiff", "bangor-gwynedd", "newport")
     nation("Northern Ireland").allCities.map(_.slug) should contain allOf ("belfast", "lisburn", "londonderry")
     nation("Crown Dependencies").allCities.map(_.slug) should contain theSameElementsAs
-      Seq("st-peter-port", "douglas-isle-of-man", "st-helier")
+      Seq("st-peter-port", "douglas", "st-helier")
 
     // The county is the level a visitor knows a town by: Cardiff beside Swansea
     // in Glamorgan, Leeds beside Bradford in West Yorkshire.
@@ -350,16 +350,12 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     Country.Spain.cities.flatMap(_.cinemas).size shouldBe 599   // SensaCine's 595, less 5 closed, + the 9 Ocine venues it does not list
   }
 
-  it should "qualify a page slug another country already serves" in {
-    // `/toledo/` is the live US page of Toledo, Ohio — a published URL with a sitemap
-    // entry and a `city` cookie behind it — so the NEWCOMER moves, not the
-    // incumbent.
-    Country.Spain.bySlug.get("toledo") shouldBe None
-    Country.Spain.cities.map(_.slug) should contain ("toledo-castilla-la-mancha")
-    City.bySlug("toledo").get.country shouldBe Country.UnitedStates
-    // The LABEL is untouched — inside Spain "Toledo" is not ambiguous, and the
-    // picker is what a visitor reads.
-    Country.Spain.bySlug("toledo-castilla-la-mancha").labels.nominative shouldBe "Toledo y alrededores"
+  it should "own its slugs: Spain's Toledo is /es/toledo/ whatever the US has" in {
+    // Toledo was `/toledo-castilla-la-mancha/` while the US held `/toledo/` in one global
+    // namespace; that URL is published, so it 301s to the bare one.
+    Country.Spain.bySlug("toledo").labels.nominative shouldBe "Toledo y alrededores"
+    Country.UnitedStates.bySlug("toledo").country shouldBe Country.UnitedStates
+    Country.Spain.renamedSlugs.get("toledo-castilla-la-mancha") shouldBe Some("toledo")
   }
 
   "Spanish pages" should "carry their own time zone, so the Canaries are not on peninsular time" in {
@@ -514,9 +510,9 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     Country.of(Poznan) shouldBe Country.Poland
     Warszawa.country shouldBe Country.Poland
     London.country shouldBe Country.UnitedKingdom
-    City.bySlug("berlin").get.country shouldBe Country.Germany
-    City.bySlug("los-angeles").get.country shouldBe Country.UnitedStates
-    City.bySlug("barcelona").get.country shouldBe Country.Spain
+    Country.Germany.bySlug("berlin").country shouldBe Country.Germany
+    Country.UnitedStates.bySlug("los-angeles").country shouldBe Country.UnitedStates
+    Country.Spain.bySlug("barcelona").country shouldBe Country.Spain
     // Every city belongs to exactly the country whose list contains it.
     City.all.foreach(c => Country.of(c).cities should contain(c))
   }

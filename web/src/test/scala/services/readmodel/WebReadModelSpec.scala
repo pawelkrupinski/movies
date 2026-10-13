@@ -62,10 +62,28 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     val repository = new InMemoryReadModelRepository
     repository.upsertMovie(movie("dune|2021"))
     repository.upsertScreening(screening("s1", "dune|2021", "san-francisco-bay-area"))
-    val rm = new WebReadModel(repository, clock = _root_.tools.SpecClock.Pinned)
+    val rm = new WebReadModel(repository, clock = _root_.tools.SpecClock.Pinned, servingCountry = Some(models.Country.UnitedStates))
     rm.reload()
 
     rm.screeningsForCity("san-francisco").map(_._id) shouldBe Seq("s1")
+    // The former slug is the SERVING country's: on the UK's deployment it is nothing.
+    val uk = new WebReadModel(repository, clock = _root_.tools.SpecClock.Pinned, servingCountry = Some(models.Country.UnitedKingdom))
+    uk.reload()
+    uk.screeningsForCity("san-francisco") shouldBe empty
+  }
+
+  "A slug two countries share" should "serve only the serving country's venues under it" in {
+    // `aberdeen` is the UK's Aberdeen and South Dakota's: a row of a UK venue filed
+    // under it is never the US deployment's to serve.
+    val repository = new InMemoryReadModelRepository
+    repository.upsertMovie(movie("dune|2021"))
+    val ukVenue = models.Country.UnitedKingdom.bySlug("aberdeen").cinemas.head.displayName
+    val usVenue = models.Country.UnitedStates.bySlug("aberdeen").cinemas.head.displayName
+    repository.upsertScreening(CityScreening("uk", "dune|2021", "aberdeen", ukVenue, None, Nil))
+    repository.upsertScreening(CityScreening("us", "dune|2021", "aberdeen", usVenue, None, Nil))
+    val rm = new WebReadModel(repository, clock = _root_.tools.SpecClock.Pinned, servingCountry = Some(models.Country.UnitedStates))
+    rm.reload()
+    rm.screeningsForCity("aberdeen").map(_._id) shouldBe Seq("us")
   }
 
   it should "prefer the freshly projected row over the stale one for the same venue" in {
@@ -164,8 +182,10 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
 
   // ── Backstop: cheap drift check, not an unconditional full reload ────────────
 
-  private def started(repository: InMemoryReadModelRepository): WebReadModel = {
-    val rm = new WebReadModel(repository, driftSettle = WebReadModel.DriftSettle(Duration.Zero), clock = _root_.tools.SpecClock.Pinned)
+  private def started(repository: InMemoryReadModelRepository,
+                      country: Option[models.Country] = Some(models.Country.UnitedStates)): WebReadModel = {
+    val rm = new WebReadModel(repository, driftSettle = WebReadModel.DriftSettle(Duration.Zero), clock = _root_.tools.SpecClock.Pinned,
+                              servingCountry = country)
     rm.start() // hydrates once + opens the watches; reset the counters so we only
     repository.findAllMoviesCalls.set(0)     // measure what the backstop tick itself does
     repository.findAllScreeningsCalls.set(0)
@@ -1043,7 +1063,7 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     repository.upsertScreening(CityScreening("fill", "dune|2021", "san-francisco-bay-area", "Castro", None, Nil))
     repository.upsertScreening(CityScreening("other", "alien|1979", "san-francisco", "Roxie", None, Nil))
     repository.upsertScreening(CityScreening("other-old", "alien|1979", "san-francisco-bay-area", "Castro", None, Nil))
-    val rm = new WebReadModel(repository, clock = _root_.tools.SpecClock.Pinned)
+    val rm = new WebReadModel(repository, clock = _root_.tools.SpecClock.Pinned, servingCountry = Some(models.Country.UnitedStates))
     rm.reload()
 
     for (films <- Seq(Set("dune|2021"), Set("alien|1979"), Set("dune|2021", "alien|1979"), Set("nope")))

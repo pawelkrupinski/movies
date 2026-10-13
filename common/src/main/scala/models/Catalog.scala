@@ -16,16 +16,15 @@ package models
  */
 object Catalog {
 
+  /** Slugs a city of a country other than `c` answers at — see `formerSlugs` in [[json]]. */
+  private def liveElsewhere(c: Country): String => Boolean = {
+    val others = Country.switchable.filterNot(_ == c).flatMap(_.cities.map(_.slug)).toSet
+    others.contains
+  }
+
   /** The zone a country is published under — see [[Country.zone]]. */
   private def countryTimezone(c: Country): String = c.zone.getId
 
-  /** The slugs whose URLs the web now 301s onto each city (`City.renamedSlugs`) — a
-   *  retired page's, a renamed metro's — sorted, and absent for every city that never
-   *  had another. The apps claim those URLs too (App Links, Universal Links), and a
-   *  link opened in an app never reaches the server's redirect: without this an app
-   *  rejected `/miedzyrzec-podlaski/movie/…` as an unknown city and opened nothing. */
-  private lazy val formerSlugsOf: Map[String, Seq[String]] =
-    City.renamedSlugs.toSeq.groupMap(_._2)(_._1).view.mapValues(_.sorted).toMap
 
   /**
    * Canonical, deterministic JSON body: `{"countries":[…],"cities":[…]}`. Order
@@ -155,7 +154,19 @@ object Catalog {
           val aliases = aliasesOf.get(city.slug).fold("")(names => names.map(n => s""""$n"""").mkString(""","aliases":[""", ",", "]"))
           val zone   = city.zoneId.getId
           val tz     = if (zone == countryZone) "" else s""","timezone":"$zone""""
-          val former = formerSlugsOf.get(city.slug).fold("")(slugs => slugs.map(s => s""""$s"""").mkString(""","formerSlugs":[""", ",", "]"))
+          // The slugs the web now 301s onto this city (`Country.renamedSlugs`), its own
+          // country's only — a retired page's, a formerly qualified one's. The apps claim
+          // those URLs too (App Links, Universal Links), and a link opened in an app never
+          // reaches the server's redirect: without this an app rejected
+          // `/miedzyrzec-podlaski/movie/…` as an unknown city and opened nothing.
+          //
+          // Less any slug ANOTHER country serves as a live city. App builds from before
+          // slugs were per country read every country's former slugs as one map and
+          // apply it to the saved city of whichever country is selected: the UK's
+          // retired `/kent/` (→ Chatham) would turn a US user's Kent, Washington into a
+          // city the US does not have. Such a link still 301s on the web.
+          val formerSlugs = c.formerSlugs(city.slug).filterNot(liveElsewhere(c))
+          val former = if (formerSlugs.isEmpty) "" else formerSlugs.map(s => s""""$s"""").mkString(""","formerSlugs":[""", ",", "]")
           s"""{"slug":"${city.slug}","name":"${city.labels.nominative}","lat":${city.lat},"lon":${city.lon},"country":"${c.code}"$region$subregion$aliases$tz$former}"""
         }
       }

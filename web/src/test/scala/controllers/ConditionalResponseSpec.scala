@@ -18,7 +18,7 @@ class ConditionalResponseSpec extends AnyFlatSpec with Matchers with OptionValue
 
   private val stamp = Instant.parse("2026-09-05T10:20:30Z")
   private val zone  = ZoneId.of("Europe/Warsaw")
-  private val city: City = City.bySlug("poznan").getOrElse(fail("no city 'poznan'"))
+  private val city: City = models.Country.Poland.bySlug.get("poznan").getOrElse(fail("no city 'poznan'"))
 
   /** A response builder whose model stamp never moves and whose clock is `now`,
    *  answering as a `Future` so Play's result extractors read it like a

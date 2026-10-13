@@ -10,7 +10,7 @@ import org.scalatest.matchers.should.Matchers
  *  and [[GermanRoster]]. The German counterpart of [[SpanishPagesSpec]]. */
 class GermanPagesSpec extends AnyFlatSpec with Matchers with OptionValues {
 
-  private def page(slug: String): City = City.bySlug(slug).value
+  private def page(slug: String): City = Country.Germany.bySlug.get(slug).value
   private def venue(name: String): Cinema = Cinema.byDisplayName.get(name).value
   private def pageOf(name: String): String = City.forCinema(venue(name)).value.slug
 
@@ -74,26 +74,26 @@ class GermanPagesSpec extends AnyFlatSpec with Matchers with OptionValues {
     groups.find(_.label == "Niedersachsen").value.cities should contain (page("cloppenburg"))
   }
 
-  "a German page slug another country serves or wants" should "be qualified with its Bundesland" in {
-    // `/toledo/` is a Spanish town's wanted slug (and the US city's); a German page wanting it would yield.
-    City.germanSlug("toledo", "toledo-bayern") shouldBe "toledo-bayern"
-    City.germanSlug("koeln", "koeln-nordrhein-westfalen") shouldBe "koeln"
+  "a German page" should "keep its own name, whatever another country calls a town" in {
+    // Each country owns its slugs; a page's Land-qualified slug 301s to it.
+    Country.Germany.bySlug("potsdam").country shouldBe Country.Germany
+    Country.Germany.redirectFor("koeln-nordrhein-westfalen") shouldBe Some("koeln")
   }
 
   "a region that is no longer a page" should "redirect to the page holding the town it was named after" in {
     // Vechta clusters with Cloppenburg; most of the old region's venues are on
     // Wildeshausen's page, but a visitor typing /vechta/ wants Vechta.
-    City.renamedSlugs.get("vechta").value shouldBe "cloppenburg"
-    City.renamedSlugs.get("korbach").value shouldBe "meschede"
-    City.renamedSlugs.get("itzehoe").value shouldBe "elmshorn"
-    City.renamedSlugs.get("dorsten").value shouldBe "marl"
-    City.renamedSlugs.get("sassnitz").value shouldBe "stralsund"
-    City.bySlug("vechta") shouldBe None
+    Country.Germany.renamedSlugs.get("vechta").value shouldBe "cloppenburg"
+    Country.Germany.renamedSlugs.get("korbach").value shouldBe "meschede"
+    Country.Germany.renamedSlugs.get("itzehoe").value shouldBe "elmshorn"
+    Country.Germany.renamedSlugs.get("dorsten").value shouldBe "marl"
+    Country.Germany.renamedSlugs.get("sassnitz").value shouldBe "stralsund"
+    Country.Germany.bySlug.get("vechta") shouldBe None
   }
 
   it should "fall back to the page holding most of its venues when its town has none left" in {
     // Sigmaringen's own cinema closed; most of its region's venues are on Tuttlingen's page.
-    City.renamedSlugs.get("sigmaringen").value shouldBe "tuttlingen"
+    Country.Germany.renamedSlugs.get("sigmaringen").value shouldBe "tuttlingen"
   }
 
   it should "leave no old region slug unanswered" in {
@@ -120,15 +120,15 @@ class GermanPagesSpec extends AnyFlatSpec with Matchers with OptionValues {
       "wuppertal")
     regions should have size 158
     forAll(regions) { slug =>
-      val landing = City.renamedSlugs.getOrElse(slug, slug)
-      City.bySlug(landing).value.country shouldBe Country.Germany
+      val landing = Country.Germany.renamedSlugs.getOrElse(slug, slug)
+      Country.Germany.bySlug.get(landing).value.country shouldBe Country.Germany
     }
-    regions.count(City.bySlug(_).isDefined) shouldBe 138
+    regions.count(Country.Germany.bySlug.get(_).isDefined) shouldBe 138
   }
 
   it should "never redirect a slug another country serves" in {
-    val germanFormer = City.renamedSlugs.filter { case (_, to) => City.bySlug(to).exists(_.country == Country.Germany) }.keySet
-    forAll(germanFormer)(former => City.bySlug(former) shouldBe None)
+    val germanFormer = Country.Germany.renamedSlugs.filter { case (_, to) => Country.Germany.bySlug.get(to).exists(_.country == Country.Germany) }.keySet
+    forAll(germanFormer)(former => Country.Germany.bySlug.get(former) shouldBe None)
   }
 
   // Filmstarts' directory never linked these cities; its id sweep and Cineamo/kinoheld found

@@ -143,7 +143,48 @@ sealed abstract class Country(
   lazy val zone: java.time.ZoneId =
     cities.maxByOption(city => (city.cinemas.size, city.slug)).map(_.zoneId).getOrElse(TimeZones.Poland)
 
+  /** This country's cities by slug. EVERY slug lookup goes through a country:
+   *  each country owns its own slugs, so `york` is York on `/uk/` and York,
+   *  Pennsylvania on `/us/`, and there is no global namespace to search. */
   lazy val bySlug: Map[String, City] = cities.map(c => c.slug -> c).toMap
+
+  /** Slugs a city of this country USED to answer at → the one it answers at now:
+   *  its retired pages, each pointing at the page holding the town it was named
+   *  after (else most of its venues), and the slugs its pages were qualified to
+   *  while another country held their names.
+   *
+   *  A city slug is published — the sitemap, whatever a search engine indexed,
+   *  the `city` cookie of everyone who has visited, the share card named after
+   *  it — so renaming one is a redirect, not an edit (`RenamedCityRedirectFilter`),
+   *  and an entry stays FOREVER. ONE successor each. */
+  def renamedSlugs: Map[String, String]
+
+  /** The slugs a city of this country used to answer at, given the one it answers
+   *  at now. The read model is PROJECTED under the slug — a `CityScreening`'s
+   *  `_id` is `filmId|city|cinema` — so the instant a slug changes, the rows
+   *  already projected are filed under a name nothing asks for until each film is
+   *  projected again. `WebReadModel` reads these alongside the current one. */
+  def formerSlugs(current: String): Seq[String] = formerSlugsByCurrent.getOrElse(current, Nil)
+
+  private lazy val formerSlugsByCurrent: Map[String, Seq[String]] =
+    renamedSlugs.toSeq.groupMap(_._2)(_._1).view.mapValues(_.sorted).toMap
+
+  /** Every other slug a place of this country is known by → the page it 301s to:
+   *  a town a page covers that is not a page itself (`/uk/ilkley/`), and a page's
+   *  qualified slug (`/uk/york-north-yorkshire/`). Generated from the pages'
+   *  data (`data/scripts/generate_slug_index.py`); never a page's or a renamed
+   *  slug, and not a former slug the read model reads — nothing was ever filed
+   *  under one. */
+  def slugAliases: Map[String, String]
+
+  /** Where a slug that is not a page of this country goes instead: the page it
+   *  was renamed to, else the page it is an alias of — `None` for one this country
+   *  does not know, which is the only kind that 404s. */
+  def redirectFor(slug: String): Option[String] =
+    if (bySlug.contains(slug)) None else renamedSlugs.get(slug).orElse(slugAliases.get(slug))
+
+  /** The page a slug means here, live or by redirect. */
+  def resolve(slug: String): Option[City] = bySlug.get(slug).orElse(redirectFor(slug).flatMap(bySlug.get))
 
   /** [[cities]] ordered alphabetically by display name under this country's
    *  language collation — the list every UI city picker in this deployment
@@ -203,6 +244,8 @@ object Country {
     brandName      = "Kinowo",
   ) {
     val cities: Seq[City] = City.polishCities
+    lazy val renamedSlugs: Map[String, String] = PolishPages.retired
+    lazy val slugAliases: Map[String, String] = CitySlugIndexData.plAliases
     /** One group per voivodeship — see `City.polishVoivodeships`. */
     override lazy val cityGroups: Seq[CityGroup] = City.polishVoivodeships
     override val versionTokens: Option[VersionTokens] = Some(VersionTokens("NAP", "DUB"))
@@ -223,6 +266,8 @@ object Country {
     brandName      = "Showtimes",
   ) {
     val cities: Seq[City] = City.ukCities
+    lazy val renamedSlugs: Map[String, String] = City.ukSuccession
+    lazy val slugAliases: Map[String, String] = CitySlugIndexData.ukAliases
     /** The four nations plus the Crown Dependencies, each over the counties and
      *  pages inside it — 264 pages is not an A-to-Z anybody reads. */
     override val cityGroups: Seq[CityGroup] = City.ukNations
@@ -252,6 +297,8 @@ object Country {
     brandName      = "Showtimes",
   ) {
     val cities: Seq[City] = City.germanCities
+    lazy val renamedSlugs: Map[String, String] = City.germanSuccession
+    lazy val slugAliases: Map[String, String] = CitySlugIndexData.deAliases
     /** The 16 Bundesländer, each over the pages inside it — see `City.germanStates`. */
     override lazy val cityGroups: Seq[CityGroup] = City.germanStates
     override val versionTokens: Option[VersionTokens] = Some(VersionTokens("OmU", "DF"))
@@ -283,6 +330,8 @@ object Country {
     brandName      = "Showtimes",
   ) {
     val cities: Seq[City] = City.usCities
+    lazy val renamedSlugs: Map[String, String] = City.usSuccession
+    lazy val slugAliases: Map[String, String] = CitySlugIndexData.usAliases
     /** The states and territories, each over the pages anchored in it. */
     override val cityGroups: Seq[CityGroup] = City.usStates
     // Same pair as the UK, and for the same reason — a subtitled print is the
@@ -319,6 +368,8 @@ object Country {
     brandName      = "Showtimes",
   ) {
     val cities: Seq[City] = City.spanishCities
+    lazy val renamedSlugs: Map[String, String] = City.spanishSuccession
+    lazy val slugAliases: Map[String, String] = CitySlugIndexData.esAliases
     /** One group per province — see `City.spanishProvinces`. */
     override lazy val cityGroups: Seq[CityGroup] = City.spanishProvinces
     override val versionTokens: Option[VersionTokens] = Some(VersionTokens("VOSE", "DOB"))
@@ -416,6 +467,32 @@ object Country {
    *  question callers want. */
   def isApexHost(host: String): Boolean =
     host.toLowerCase(Locale.ROOT).takeWhile(_ != ':').stripPrefix("www.") == apexHost
+
+  /** The countries mounted UNDER the brand apex (`showtimes.cc/uk/`, `/de/`…) —
+   *  the ones a bare `showtimes.cc/{slug}/` can mean. */
+  lazy val mountedUnderApex: Seq[Country] = switchable.filter(_.pathPrefix.nonEmpty)
+
+  /** The page a bare `showtimes.cc/{slug}/` means: the one city among
+   *  [[mountedUnderApex]] that answers to the slug (a page, a renamed slug or an
+   *  alias — [[Country.resolve]]), with its country.
+   *
+   *  THE RULE where several answer: the country whose TOWN of that name is the
+   *  most populous — York goes to the UK's York (156,000) rather than York,
+   *  Pennsylvania (44,000); Boston to Massachusetts. The populations are the
+   *  countries' own committed town data, compared once by
+   *  `data/scripts/generate_slug_index.py` into `frontDoorContested`; a slug the
+   *  generator did not see contested falls back to [[mountedUnderApex]]'s order. */
+  def frontDoorTarget(slug: String): Option[(Country, City)] =
+    mountedUnderApex.flatMap(c => c.resolve(slug).map(c -> _)) match {
+      case Seq()    => None
+      case Seq(one) => Some(one)
+      case several  =>
+        CitySlugIndexData.frontDoorContested.get(slug).flatMap(code => several.find(_._1.code == code))
+          .orElse(several.headOption)
+    }
+
+  /** The bare slugs [[frontDoorTarget]] has a recorded winner for. */
+  def frontDoorContestedSlugs: Set[String] = CitySlugIndexData.frontDoorContested.keySet
 
   def byCode(code: String): Option[Country] =
     all.find(_.code.equalsIgnoreCase(code.trim))

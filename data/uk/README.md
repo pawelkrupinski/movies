@@ -126,19 +126,19 @@ Lanarkshire into Glasgow) are gone with it: `/dudley/` is Dudley's page again.
 
 ## Slugs
 
-A page is slugged after its name. Where another page or country has the slug,
-it is qualified with its county:
+A slug names one town within the UK: every country owns its own slugs, so
+`/uk/york/` is York and `/us/york/` York, Pennsylvania. Where another UK page has
+the name, a page is qualified with its county:
 
 - a slug a UK page had before keeps meaning its town (`town_pages.reserve`);
-- of two UK towns of one name the more populous takes the bare slug, where it
-  is free (today none is: Bangor, Newport and Wellington are US slugs too);
-- a slug Poland, Germany, Spain or the US serves or redirects stays theirs —
-  the UK, re-cut after them, is the newcomer, as Spain's Toledo was:
-  `/cambridge/` is Massachusetts', the UK's is `/cambridge-cambridgeshire/`
-  (likewise York, Oxford, Reading, Derby, Plymouth, Bangor, Newport…).
+- of two UK towns of one name the more populous takes the bare slug (`/bangor/`
+  is County Down's, Gwynedd's `/bangor-gwynedd/`).
+
+A town a page covers that is not a page itself (`/uk/ilkley/`), and a page's
+county-qualified slug (`/uk/york-north-yorkshire/`), 301 to the page.
 
 Every one of the 79 old slugs (the 76 regions and the three merged ones) still
 answers: as a page where its town is one (`/manchester/`, `/dudley/`), else as a
-301 (`City.renamedSlugs`) to the page holding its namesake town (`/antrim/` → the
+301 (`Country.renamedSlugs`) to the page holding its namesake town (`/antrim/` → the
 Lisburn area, Antrim's cluster), else to the page holding most of its venues
 (`/west-yorkshire/` → Leeds).

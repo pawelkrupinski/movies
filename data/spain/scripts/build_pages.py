@@ -22,10 +22,9 @@ headers, which file Huércal-Overa's cinema under a Córdoba hamlet.
 A page that existed before and is not a page any more is listed under "retired",
 pointing at the page now holding MOST of its venues — for the 52 provinces of the
 first build, usually the capital (`/asturias/` → Oviedo or Gijón, whichever has
-more). Each retired entry carries the slug its old page was QUALIFIED to where
-another country already has the plain one (`toledo-castilla-la-mancha`), because
-that qualification happens in Scala (`City.spanishSlug`) and the redirect has to
-come from the URL the page really had.
+more). Each retired entry carries its community-QUALIFIED slug
+(`toledo-castilla-la-mancha`) too: it is the URL a page had while another country
+held its plain name, and both 301.
 
 Every page — and every town on it — is reported with the province it is in; the
 picker groups by the anchor's province.
@@ -104,7 +103,7 @@ def province_venues(rows):
 
 
 def qualified(name, community):
-    """The slug `City.spanishSlug` gives a page whose own one another country has."""
+    """A page's community-qualified slug, which 301s to it."""
     return slugify(f"{name} {community}")
 
 

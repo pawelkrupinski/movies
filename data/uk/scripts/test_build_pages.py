@@ -3,7 +3,7 @@
 pages.json. The clustering rule itself is Poland's, Spain's, Germany's and the
 US's too and is tested in data/pl/scripts/test_build_pages.py; these cover what
 the UK adds — the 40 km cap on how far a page reaches, no cluster across water,
-two towns of one name, slugs another country holds, and where a retired county
+two towns of one name, a slug that is the UK's own, and where a retired county
 page's URL goes.
 
     python3 data/uk/scripts/test_build_pages.py
@@ -29,7 +29,7 @@ def town(name, county, km_north, km_east, pop, landmass="Great Britain"):
                                  "lat": lat, "lon": lon, "pop": pop}
 
 
-def run(towns, venues, previous=None, prior_retired=None, foreign=frozenset(), rules=b.RULES):
+def run(towns, venues, previous=None, prior_retired=None, rules=b.RULES):
     """towns: [town(...)]; venues: (town key, venue, offset) in roster order, the
     venue `offset` (km north, km east) from its town's centre."""
     towns = dict(towns)
@@ -37,8 +37,7 @@ def run(towns, venues, previous=None, prior_retired=None, foreign=frozenset(), r
     for t, v, (n, e) in venues:
         lat, lon = towns[t]["lat"], towns[t]["lon"]
         at.append((v, (lat + n / 111.2, lon + e / (111.2 * math.cos(math.radians(lat))))))
-    pages, retired = b.build(at, {v: t for t, v, _ in venues}, towns, previous or {}, prior_retired or {},
-                             frozenset(foreign), rules)
+    pages, retired = b.build(at, {v: t for t, v, _ in venues}, towns, previous or {}, prior_retired or {}, rules)
     return {p["slug"]: p for p in pages}, retired
 
 
@@ -96,7 +95,7 @@ def synthetic():
         "isle-of-wight": region("Isle of Wight", ["nw1", "ry1"], -398, 5),
         "leeds": region("Leeds", ["le1"], 0, 0, "Leeds, West Yorkshire"),
     }
-    pages, retired = run(TOWNS, VENUES, previous, foreign={"cambridge"})
+    pages, retired = run(TOWNS, VENUES, previous)
 
     check("a place of 100,000+ is a major city with only its own venues",
           pages["leeds"]["kind"] == "major" and pages["leeds"]["cinemas"] == ["le1"]
@@ -110,7 +109,7 @@ def synthetic():
           "35 km absorb", "gr1" not in skipton["cinemas"])
     check("…and, with nowhere within reach, it stands as a page of its own",
           pages["grassington"]["cinemas"] == ["gr1"] and pages["grassington"]["kind"] == "town")
-    uncapped, _ = run(TOWNS, VENUES, previous, foreign={"cambridge"},
+    uncapped, _ = run(TOWNS, VENUES, previous,
                       rules=b.town_pages.Rules(max_reach_km=None))
     check("without the cap the same venue would be on the cluster (the case the cap exists for)",
           any("gr1" in p["cinemas"] and len(p["towns"]) > 1 for p in uncapped.values()))
@@ -119,8 +118,8 @@ def synthetic():
           and next(p for p in pages.values() if "so1" in p["cinemas"])["cinemas"] == ["so1"])
     check("of two towns of one name, the more populous has the bare slug, the other its county's",
           pages["newport"]["anchor"] == "Newport, Gwent" and "newport-isle-of-wight" in pages)
-    check("a slug another country holds is qualified with the county",
-          "cambridge" not in pages and pages["cambridge-cambridgeshire"]["cinemas"] == ["ca1"])
+    check("a slug is the UK's own: another country having Cambridge does not qualify it",
+          pages["cambridge"]["cinemas"] == ["ca1"])
     check("a page carries its nation and its county",
           pages["skipton"]["county"] == "North Yorkshire" and pages["skipton"]["nation"] == "England")
     check("a page still named after its town is not retired", "leeds" not in retired)
@@ -133,17 +132,14 @@ def synthetic():
     # rather than keeping the page it pointed at then.
     merged = {"sandwell": {"page": "leeds", "qualifiedSlug": "sandwell", "anchor": None, "name": "Sandwell",
                            "cinemas": ["br1"], "lat": point(0, -14)[0], "lon": point(0, -14)[1]}}
-    _, rederived = run(TOWNS, VENUES, previous, merged, foreign={"cambridge"})
+    _, rederived = run(TOWNS, VENUES, previous, merged)
     check("an earlier retirement is re-derived from the venues it records, not kept",
           rederived["sandwell"]["page"] == "bradford" and rederived["sandwell"]["name"] == "Sandwell")
     check("a retired page keeps its name, venues and centre, so the next build can do the same",
           set(retired["west-yorkshire"]) >= {"name", "cinemas", "lat", "lon"})
 
-    pages2, retired2 = run(TOWNS, VENUES, pages, retired, foreign={"cambridge"})
+    pages2, retired2 = run(TOWNS, VENUES, pages, retired)
     check("a rebuild from the build's own output is a no-op", (pages2, retired2) == (pages, retired))
-    pages3, _ = run(TOWNS, VENUES, pages, retired, foreign={"cambridge", "newport", "leeds"})
-    check("a slug the UK held before stays the UK's when another country later wants it",
-          "leeds" in pages3 and "newport" in pages3)
 
 
 def committed():

@@ -19,6 +19,8 @@ object ScrapeCities {
 
   /** Every modelled city's slug — the production default scrape set. Derived
    *  from `City.all` so a newly modelled city is scraped automatically, without
-   *  re-spelling the list here, in the wiring, or in the test seams. */
+   *  re-spelling the list here, in the wiring, or in the test seams. A slug only
+   *  means a city within one country; a worker scrapes one country, whose own
+   *  cities it matches these against. */
   val allCities: Set[String] = City.all.map(_.slug).toSet
 }

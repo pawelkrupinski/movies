@@ -91,10 +91,11 @@ object AppLoader {
       playDefaults:   Seq[EssentialFilter],
       crossSiteWrite: CrossSiteWriteFilter,
       renamedCity:    EssentialFilter,
+      frontDoor:      EssentialFilter,
       cors:           play.filters.cors.CORSFilter,
       csp:            EssentialFilter,
       gzip:           EssentialFilter): Seq[EssentialFilter] =
-    (metrics +: playDefaults) :+ crossSiteWrite :+ renamedCity :+ cors :+ csp :+ gzip
+    (metrics +: playDefaults) :+ crossSiteWrite :+ renamedCity :+ frontDoor :+ cors :+ csp :+ gzip
 
   /** Mount the whole application at its country's [[models.Country.mountPath]].
    *
@@ -165,7 +166,8 @@ class AppComponents(context: Context, val env: Env, val country: Country, val mo
   // ── Router + filters ──────────────────────────────────────────────────────
   lazy val cspFilter: CspFilter = new CspFilter()(using materializer, executionContext)
   lazy val renamedCityRedirectFilter: RenamedCityRedirectFilter =
-    new RenamedCityRedirectFilter(country.mountPath)(using materializer)
+    new RenamedCityRedirectFilter(country)(using materializer)
+  lazy val frontDoorRedirectFilter: FrontDoorRedirectFilter = new FrontDoorRedirectFilter(country)(using materializer)
   lazy val httpMetricsFilter: HttpMetricsFilter = new HttpMetricsFilter(webHttpMetrics, webRouteUsageMetrics)(using executionContext)
   lazy val crossSiteWriteFilter: CrossSiteWriteFilter = new CrossSiteWriteFilter()(using materializer)
   // Metrics FIRST (outermost) so the latency it records is the whole chain —
@@ -184,7 +186,7 @@ class AppComponents(context: Context, val env: Env, val country: Country, val mo
   // The cross-site write refusal sits right after Play's own filters, ahead of
   // everything that could act on the request.
   override def httpFilters: Seq[EssentialFilter] =
-    AppLoader.filterChain(httpMetricsFilter, super.httpFilters, crossSiteWriteFilter, renamedCityRedirectFilter, corsFilter, cspFilter, gzipFilter)
+    AppLoader.filterChain(httpMetricsFilter, super.httpFilters, crossSiteWriteFilter, renamedCityRedirectFilter, frontDoorRedirectFilter, corsFilter, cspFilter, gzipFilter)
 
   // Replace Play's default error handler with the truncation-tolerant
   // variant so `EntityStreamException` from client-side body cutoffs

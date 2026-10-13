@@ -1,6 +1,6 @@
 package controllers
 
-import models.{City, Country}
+import models.Country
 import play.api.i18n.Lang
 import play.api.mvc._
 
@@ -69,7 +69,7 @@ class LandingController(cc: ControllerComponents, country: Country, picker: Pick
     if (country.servesApex(PageMeta.host(request)))
       Ok(views.html.landing(country, isApex = true, picker)(using frontDoorMessages))
     else
-      request.cookies.get("city").map(_.value).flatMap(City.bySlug) match {
+      request.cookies.get("city").map(_.value).flatMap(country.resolve) match {
         case Some(c) if !LandingController.picksCity(request) =>
           Redirect(s"${country.pathPrefix}/${c.slug}/")
         case _ => Ok(views.html.landing(country, isApex = false, picker)(using cityScreenMessages))

@@ -1,37 +1,44 @@
 package modules
 
+import models.Country
 import org.apache.pekko.stream.Materializer
 import play.api.mvc.{Filter, RequestHeader, Result, Results}
 
 import scala.concurrent.Future
 
 /**
- * 301s every path under a city that changed slug to the same path under its
- * current one — `/us/san-francisco/movie/dune` → `/us/san-francisco-bay-area/movie/dune`.
+ * 301s every path under a slug that is not a page of THIS deployment's country
+ * but names one — `/us/san-francisco-bay-area/movie/dune` → `/us/san-francisco/movie/dune`.
  *
- * A city slug is a PUBLISHED URL: it is in the sitemap, in whatever Google has
- * indexed, in the `city` cookie of everyone who has visited, and in the share
- * cards named after it. Renaming one without this leaves every one of those
- * pointing at `withCity`'s 404, which is why the film-path rename
- * (`/film` → `/movie`) shipped with its own permanent redirects rather than a
- * flag day.
+ * Two kinds of slug, both the country's own ([[Country.redirectFor]]):
+ *  - a slug a city USED to answer at ([[Country.renamedSlugs]]): a retired page's,
+ *    or one a page was qualified to while another country held its name. Those
+ *    are PUBLISHED — the sitemap, whatever a search engine indexed, the `city`
+ *    cookie of everyone who visited, the share cards named after them;
+ *  - another name of a place a page covers ([[Country.slugAliases]]): a town on a
+ *    cluster's page (`/uk/ilkley/`), a page's qualified slug. Nobody should hit a
+ *    404 for a place the site lists.
+ *
+ * Only the deployment's own country is consulted: every country owns its slugs,
+ * so `/uk/york/` is a UK page whatever the US calls York, and one country's
+ * retired slug never moves another's live page.
  *
  * A FILTER rather than a branch in `MovieController.withCity` because the slug
  * appears in fifteen routes — the index, the film pages, three `/api/…`
  * endpoints the mobile apps call, both OG-image endpoints — and `withCity` is
- * handed only the slug, never the path it has to rewrite. One filter covers
- * every route that exists now and every one added later; the alternative is
- * remembering this at fifteen call sites.
+ * handed only the slug, never the path it has to rewrite.
  *
  * The rewrite is confined to the CITY segment: the path is split after the
  * deployment's mount point, and only that first segment is looked up. A film
- * whose own slug collides with a renamed city's is therefore untouched.
+ * whose own slug collides with a renamed city's is therefore untouched. A bare
+ * city segment with no trailing slash lands on the listing's canonical slash
+ * form in the one hop, rather than in two.
  */
-class RenamedCityRedirectFilter(mountPath: String)(using val mat: Materializer) extends Filter {
+class RenamedCityRedirectFilter(country: Country)(using val mat: Materializer) extends Filter {
 
   /** The mount point without its trailing slash — `/us`, or `""` for a
    *  deployment served at the root. */
-  private val mount: String = mountPath.stripSuffix("/")
+  private val mount: String = country.mountPath.stripSuffix("/")
 
   override def apply(next: RequestHeader => Future[Result])(request: RequestHeader): Future[Result] =
     renamed(request.path) match {
@@ -42,12 +49,12 @@ class RenamedCityRedirectFilter(mountPath: String)(using val mat: Materializer) 
     }
 
   /** The path this one redirects to, or `None` when its city segment is not a
-   *  renamed slug (the overwhelmingly common case — one map lookup per
-   *  request). */
+   *  slug this country redirects (the overwhelmingly common case — a map lookup
+   *  per request). */
   private def renamed(path: String): Option[String] =
     Option.when(path.startsWith(s"$mount/")) {
       val rest              = path.substring(mount.length + 1)
       val (city, remainder) = rest.span(_ != '/')
-      models.City.renamedSlugs.get(city).map(current => s"$mount/$current$remainder")
+      country.redirectFor(city).map(current => s"$mount/$current${if (remainder.isEmpty) "/" else remainder}")
     }.flatten
 }

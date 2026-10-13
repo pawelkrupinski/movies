@@ -32,11 +32,8 @@ class CatalogTest {
         val json = """{"countries":[{"code":"de","name":"Deutschland","baseUrl":"https://showtimes.cc/de","language":"de","brand":"Showtimes","timezone":"Europe/Berlin","versionTokens":{"subtitled":"OmU","dubbed":"DF"}},{"code":"pl","name":"Polska","baseUrl":"https://kinowo.net","language":"pl","brand":"Kinowo","timezone":"Europe/Warsaw"}],"cities":[{"slug":"berlin","name":"Berlin","lat":52.5,"lon":13.4,"country":"de"},{"slug":"poznan","name":"Poznań","lat":52.4,"lon":16.9,"country":"pl"}]}"""
         val c = Catalog.parseBody(json)!!
         assertEquals(VersionTokens("OmU", "DF"), c.countries[0].versionTokens)
-        assertEquals(VersionTokens("OmU", "DF"), c.versionTokensOf("berlin"))
-        assertEquals(VersionTokens.POLAND, c.versionTokensOf("poznan"))
-        // A slug the catalog does not know falls back to Poland's — the link is
-        // rejected on the slug before the pair matters.
-        assertEquals(VersionTokens.POLAND, c.versionTokensOf("nowhere"))
+        assertEquals(VersionTokens("OmU", "DF"), c.versionTokensOfCountry("de"))
+        assertEquals(VersionTokens.POLAND, c.versionTokensOfCountry("pl"))
     }
 
     @Test
@@ -92,12 +89,12 @@ class CatalogTest {
             City(slug = "bogus", name = "Bogus", lat = 0.0, lon = 0.0, country = "us",
                  timezone = "Mars/Olympus"),
         )
-        assertEquals(java.time.ZoneId.of("America/New_York"), cities.zoneFor("knoxville", pacific))
-        assertEquals(pacific, cities.zoneFor("los-angeles", pacific))
+        assertEquals(java.time.ZoneId.of("America/New_York"), cities.zoneFor("knoxville", "us", pacific))
+        assertEquals(pacific, cities.zoneFor("los-angeles", "us", pacific))
         // A slug this catalog does not know, no slug at all, and an identifier the
         // platform cannot parse all fall back — never a crash on a saved selection.
-        assertEquals(pacific, cities.zoneFor("nowhere", pacific))
-        assertEquals(pacific, cities.zoneFor(null, pacific))
-        assertEquals(pacific, cities.zoneFor("bogus", pacific))
+        assertEquals(pacific, cities.zoneFor("nowhere", "us", pacific))
+        assertEquals(pacific, cities.zoneFor(null, "us", pacific))
+        assertEquals(pacific, cities.zoneFor("bogus", "us", pacific))
     }
 }

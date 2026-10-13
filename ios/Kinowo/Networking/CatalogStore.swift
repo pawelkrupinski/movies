@@ -115,7 +115,7 @@ final class CatalogStore: ObservableObject {
     /// gave it one, else the country's. The one place the app resolves a city to a
     /// clock, so the pruning and the day buckets cannot disagree.
     func zone(ofSlug slug: String?, inCountry country: Country) -> TimeZone {
-        cities.zone(ofSlug: slug, fallback: country.timeZone)
+        cities.zone(ofSlug: slug, inCountry: country.code, fallback: country.timeZone)
     }
     func nearestWithin100km(lat: Double, lon: Double, inCountry code: String) -> City? {
         cities.nearestWithin100km(lat: lat, lon: lon, inCountry: code)
@@ -129,16 +129,15 @@ final class CatalogStore: ObservableObject {
     func country(code: String?) -> Country {
         countries.withCode(Country.normalizeCode(code)) ?? Country.byCode(code)
     }
-    /// The version-filter pair of the country `slug` belongs to — what a deep
-    /// link's `?lang=` is validated against, since the linked city names the
-    /// country and the pair is the country's own. Poland's for a slug the
-    /// catalog does not know (the link is rejected on the slug anyway).
-    func versionTokens(ofSlug slug: String) -> VersionTokens {
-        country(code: cities.country(ofSlug: slug)).versionTokens
+    /// The version-filter pair of `countryCode` — what a deep link's `?lang=` is
+    /// validated against, the pair being the linked city's country's own.
+    func versionTokens(ofCountry countryCode: String) -> VersionTokens {
+        country(code: countryCode).versionTokens
     }
     var isSwitchable: Bool { countries.isSwitchable }
-    var allSlugs: Set<String> { Set(cities.map(\.slug)) }
-    var currentSlugByFormer: [String: String] { cities.currentSlugByFormer }
+    func currentSlugByFormer(inCountry country: Country) -> [String: String] {
+        cities.currentSlugByFormer(inCountry: country.code)
+    }
 }
 
 // MARK: - Wire / seed decoding

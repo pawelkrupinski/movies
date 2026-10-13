@@ -16,7 +16,9 @@ class ScrapeCitiesSpec extends AnyFlatSpec with Matchers {
     // — must be in the default scrape set.
     ScrapeCities.allCities shouldBe City.all.map(_.slug).toSet
     ScrapeCities.allCities should contain allOf ("lodz", "katowice", "rzeszow", "torun")
-    ScrapeCities.allCities.size shouldBe City.all.size
+    // A slug is only its own country's (`aberdeen` is a UK and a US page), and the
+    // override narrows ONE country's worker, so the set names every slug once.
+    ScrapeCities.allCities.size shouldBe City.all.map(_.slug).distinct.size
   }
 
   "The KINOWO_SCRAPE_CITIES override" should "be absent when unset, blank or naming nothing, so the default stands" in {

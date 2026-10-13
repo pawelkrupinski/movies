@@ -215,15 +215,15 @@ a re-harvest if missed:
   kept as a `CityGroup` so the picker can still be browsed. Group by the unit a
   visitor NAMES, and reach for a grouping — not a bigger city — when the
   resulting list is long.
-- **A town-sized `City` unit needs a slug rule.** 2,003 US slugs join one global
-  `City.bySlug` namespace that already held a UK Birmingham and a German Potsdam,
-  and a town name is not unique across states either. `build_pages.py` qualifies
-  a second Springfield with its state (keeping the bare slug for the town it
-  already meant), and `City.usCities` qualifies a slug another country holds;
-  `CountrySpec` fails on any collision that survives. The UK, re-cut after
-  everyone else (2026-10), qualifies in `build_pages.py` itself, reading the
-  other countries' `pages.json`: `/cambridge/` stays Massachusetts', the UK's is
-  `/cambridge-cambridgeshire/`.
+- **A town-sized `City` unit needs a slug rule — within the country.** Every
+  country owns its own slugs (`/uk/york/`, `/us/york/`; `Country.bySlug`, never a
+  global lookup), but a town name is not unique across US states:
+  `build_pages.py` qualifies a second Springfield with its state (keeping the
+  bare slug for the town it already meant); `CitySpec` fails on any collision
+  inside a country. A town a page covers, a page's qualified slug and a retired
+  slug all 301 to the page (`Country.redirectFor`, from
+  `data/scripts/generate_slug_index.py`), so a known place never 404s
+  (`KnownPlacesNeverNotFoundSpec`).
 - **Postal towns are not towns at the edges.** The UK's addresses name a sorting
   office's town, which reaches past its council's edge (Cumbernauld's cinema is
   "Glasgow G67") and splits one city into its boroughs' towns (Croydon, Romford).

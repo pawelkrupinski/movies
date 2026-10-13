@@ -110,7 +110,7 @@ class CityCardServiceSpec extends AnyFlatSpec with Matchers {
       drain(queue).foreach { t =>
         val slug = t.payload(CityCardService.CityKey)
         renders += slug -> clock.instant()
-        store.touch(store.cityCardPath(City.bySlug(slug).get), clock.instant())
+        store.touch(store.cityCardPath(country.bySlug(slug)), clock.instant())
       }
     }
     renders.map(_._1).groupBy(identity).values.map(_.size).toSet shouldBe Set(1)

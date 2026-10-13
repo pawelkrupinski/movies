@@ -1,16 +1,16 @@
 package services.cinemas.roster
 
-import models.{City, GeoPoint}
+import models.GeoPoint
 import tools.Slugify
 
 import java.time.LocalDate
 
 /** One venue the online audit checks: where we file it, and the source page
  *  that should agree. `expectedTowns` is [[models.City.townsOf]]. */
-final case class AuditedVenue(citySlug: String, cinema: String, sourceUrl: String, expectedTowns: Seq[String]) {
+final case class AuditedVenue(citySlug: String, cinema: String, sourceUrl: String, expectedTowns: Seq[String],
+                              /** The centre of the city page the venue is listed on. */
+                              hub: Option[GeoPoint] = None) {
   def label: String = s"$cinema (/$citySlug/)"
-  /** The centre of the city page the venue is listed on. */
-  def hub: Option[GeoPoint] = City.bySlug(citySlug).map(_.centre)
 }
 
 /** What fetching a venue's source page came to. */
@@ -174,21 +174,22 @@ object RosterSourceReader {
   }
 
   /** Every venue of these cities whose source page names its town. */
-  def venuesOf(cities: Seq[models.City], scrapersOf: String => Seq[services.cinemas.common.CinemaScraper]): Seq[AuditedVenue] =
+  def venuesOf(cities: Seq[models.City], scrapersOf: models.City => Seq[services.cinemas.common.CinemaScraper]): Seq[AuditedVenue] =
     for {
       city    <- cities
-      scraper <- scrapersOf(city.slug)
+      scraper <- scrapersOf(city)
       url     <- scraper.sourceUrl.toSeq if VenueSourcePage.forUrl(url).isDefined
-    } yield AuditedVenue(city.slug, scraper.cinema.displayName, url, city.townsOf(scraper.cinema))
+    } yield AuditedVenue(city.slug, scraper.cinema.displayName, url, city.townsOf(scraper.cinema), Some(city.centre))
 
   /** Every venue of these cities a [[ChainDirectory]] lists, with its id there. */
-  def chainVenuesOf(cities: Seq[models.City], scrapersOf: String => Seq[services.cinemas.common.CinemaScraper], today: LocalDate): Seq[(ChainDirectory, String, AuditedVenue)] =
+  def chainVenuesOf(cities: Seq[models.City], scrapersOf: models.City => Seq[services.cinemas.common.CinemaScraper], today: LocalDate): Seq[(ChainDirectory, String, AuditedVenue)] =
     for {
       city          <- cities
-      scraper       <- scrapersOf(city.slug)
+      scraper       <- scrapersOf(city)
       (directory, id) <- ChainDirectory.of(scraper).toSeq
     } yield (directory, id, AuditedVenue(city.slug, scraper.cinema.displayName,
-                                         scraper.sourceUrl.getOrElse(directory.listUrl(today)), city.townsOf(scraper.cinema)))
+                                         scraper.sourceUrl.getOrElse(directory.listUrl(today)), city.townsOf(scraper.cinema),
+                                         Some(city.centre)))
 
   /** Read a chain's venue list once and look each of its venues up in it — or,
    *  when the list cannot be read, why not. */
