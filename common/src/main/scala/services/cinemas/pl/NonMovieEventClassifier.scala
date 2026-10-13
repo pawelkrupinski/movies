@@ -144,6 +144,13 @@ object NonMovieEventClassifier {
    *  Rieu) still veto. Lazy: [[BroadcastMarkers]] is defined further down this object. */
   private lazy val NeutralBroadcastVeto = BroadcastMarkers.filterNot(_ == " live") :+ "live viewing"
 
+  /** [[isScreenedBroadcast]] by a broadcast's NAME alone — its bare " live" aside, which a performer's own show bills
+   *  too ("Jan Logemann LIVE: …"). */
+  def isNamedBroadcast(title: String): Boolean = {
+    val t = title.toLowerCase(Locale.ROOT)
+    NeutralBroadcastVeto.exists(t.contains)
+  }
+
   /** The listings box-office staff create to try their own site, billed as such: BFI Southbank's "Z Test Show
    *  please ignore" (2026-10-12), Spektrix's "Website Test Event 2". A test NAMED as a show, event or screening —
    *  not "Screen Test" or "The Test", which are films — or a plea not to book it. */
@@ -159,7 +166,7 @@ object NonMovieEventClassifier {
    *  kinoprogramm.com, Webedia). */
   def isNonScreening(title: String): Boolean = {
     val t = title.toLowerCase(Locale.ROOT)
-    isMysteryScreening(title) || isTestListing(t) || (!NeutralBroadcastVeto.exists(t.contains) && (
+    isMysteryScreening(title) || isTestListing(t) || (!isNamedBroadcast(t) && (
       NeutralPerformanceMarkers.exists(_.findFirstIn(t).isDefined) ||
       (NeutralTalkMarkers.exists(_.findFirstIn(t).isDefined) && !hasBoltedOnFilm(t) && FilmMention.findFirstIn(t).isEmpty)))
   }

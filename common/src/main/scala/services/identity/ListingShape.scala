@@ -48,8 +48,16 @@ object ListingShape {
   def relaysTitle(rawTitle: String): Boolean = relaysBilled(rawTitle.toLowerCase(java.util.Locale.ROOT), Seq(rawTitle), rawTitle)
 
   private def relaysBilled(lowerTitle: String, titles: Seq[String], rawTitle: String): Boolean =
-    NonMovieEventClassifier.isScreenedBroadcast(lowerTitle) || ConcertFilm.findFirstIn(lowerTitle).isDefined ||
-      IdentityMeasures.billsStageWork(titles, rawTitle) || IdentityMeasures.seasonYear(Seq(rawTitle)).isDefined
+    NonMovieEventClassifier.isScreenedBroadcast(lowerTitle) || relaysBesideLive(lowerTitle, titles, rawTitle)
+
+  /** [[relays]] by what names a broadcast — a broadcast's own name, a concert film's place, a stage work, a season — and
+   *  not by the bare word "live", which a performer billed in person carries too ("Jan Logemann LIVE: …"). */
+  def relaysNamed(listing: Listing, title: String): Boolean =
+    NonMovieEventClassifier.isNamedBroadcast(title) || relaysBesideLive(title, Seq(listing.title, listing.cleanTitle, listing.rawTitle).distinct, listing.rawTitle)
+
+  private def relaysBesideLive(lowerTitle: String, titles: Seq[String], rawTitle: String): Boolean =
+    ConcertFilm.findFirstIn(lowerTitle).isDefined || IdentityMeasures.billsStageWork(titles, rawTitle) ||
+      IdentityMeasures.seasonYear(Seq(rawTitle)).isDefined
 
   // ── a bill of several works ────────────────────────────────────────────────────────────────
 

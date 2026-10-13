@@ -50,6 +50,22 @@ class NonFilmEventsSpec extends AnyFlatSpec with Matchers {
     ).foreach(title => withClue(title) { NonFilmEvents.of(titled(title)) shouldBe None })
   }
 
+  it should "be a live show when it bills a performer live, at the venue, or a theatre company's staging" in {
+    // DE, recording 38355584482: each took the film one piece of its title names — a 1999 short "Ausverkauft!" by the
+    // sold-out tag, the 1951 "Follow the Sun" by the show's name, the 2019 film of the play the company stages
+    def at(venue: String, title: String) = titled(title).copy(key = services.movies.ListingKey.Published(venue, title, None, Nil))
+    NonFilmEvents.of(at("Apollo Hannover", "Jan Logemann LIVE: Herr Logemann hebt ab! -AUSVERKAUFT!-")) shouldBe Some("live show")
+    NonFilmEvents.of(at("Apollo Hannover", "Jan Preuß LIVE")) shouldBe Some("live show")
+    NonFilmEvents.of(at("Beluga Kino", "HELMUT ZIERL - live im Beluga Kino - FOLLOW THE SUN - Der Sommer meines Lebens")) shouldBe Some("live show")
+    NonFilmEvents.of(at("Kino in der Lagerhalle", "Gut gegen Nordwind - Thiele-Neumann-Theater")) shouldBe Some("theatre company")
+    // what stays cinema: a concert relayed "live im Kino" names no venue, a house's relay and live music to a film are
+    // the screening's, a performer's concert film is billed "live in/at", and a cinema's own name is no company's
+    Seq("Helene Fischer - Live im Kino", "RBO Live 2026/27: Götterdämmerung (Royal Opera)", "NT Live: All My Sons",
+      "Stray Kids World Tour <RUN IT> LIVE VIEWING", "Hungarian Rhapsody: Queen - Live In Budapest", "SPECIAL: Music for Cinemas: NADJA Live Score",
+      "STUMMFILM-PROGRAMM: ZIRKUS UND JAHRMARKT MIT LIVE-MUSIK", "Das Boot - Filmtheater", "Live and Let Die", "Live by Night",
+      "Theater of Blood").foreach(title => withClue(title) { NonFilmEvents.of(at("Beluga Kino", title)) shouldBe None })
+  }
+
   it should "not be one when it states a film's record — a director and a year — whatever its title says" in {
     NonFilmEvents.of(titled("Koncert").copy(directors = Seq("Michał Rosa"), year = Some(2009))) shouldBe None
     NonFilmEvents.of(titled("Koncert").copy(year = Some(2009))) shouldBe Some("live event")
