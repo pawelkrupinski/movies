@@ -916,6 +916,15 @@ jobs:
                   echo "::error::the ${{ inputs.country }} sample failed — see its step above"
                   exit 1
 
+            # A RECORDING whose per-origin health failed (convergence-publish's "Judge this recording's per-origin
+            # health", the table on the summary): red here, after every publish, so the tree is saved either way.
+            - name: Fail the leg on the recording's health
+              if: always() && inputs.mode == 'record' && steps.publish.outputs.recording-healthy == 'false'
+              shell: bash
+              run: |
+                  echo "::error::an origin refused most of ${{ inputs.country }}'s recording, or vanished from its tree — see the Recording health table on the summary"
+                  exit 1
+
             # Last, and whatever happened (scripts/ci/leg-verdict.sh, LegVerdictWiringSpec).
             - uses: ./.github/actions/leg-verdict
               if: always()

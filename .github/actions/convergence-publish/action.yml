@@ -83,6 +83,11 @@ outputs:
   fill-asset:
     description: The name `fill-archive` was published under; empty when nothing was.
     value: ${{ steps.fill.outputs.asset }}
+  recording-healthy:
+    description: >-
+      A RECORDING's per-origin health (scripts/ci/recording_health.py): 'false' when an origin refused most of
+      what it was asked or vanished from the tree, 'true' when none did; empty when not judged (a hermetic leg).
+    value: ${{ steps.health.outputs.healthy }}
 
 runs:
   using: composite
@@ -175,6 +180,50 @@ runs:
           if gh release view "$TAG" --json assets --jq '.assets[].name' | grep -qxF "$legacy"; then
               "$RELEASE" delete-asset "$TAG" "$legacy" -y || true
           fi
+
+    # WHICH ORIGINS REFUSED THIS RECORDING. From 2026-10-07 to 10-13 Cineworld's API answered 403 to every
+    # detail read every recording made (~350 a run: the recorder had no residential-proxy fallback until
+    # f20a6b5dd), and every recording went green — the first thing to fail was an identity capture six days
+    # later. Per origin (the URL's host; no host lists), the share of what this recording asked that came back
+    # refused — 403 / 429 / 5xx / timeouts; a 404 is an answer — and whether an origin the last green recording
+    # held responses from now holds none. The leg fails on it, after every publish ("Fail the leg on the
+    # recording's health"), so a refusing night still saves the tree the next recording resumes from.
+    #
+    # The baseline is the last HEALTHY recording's manifest, `recording-health-<code>.json`, which only a healthy
+    # recording on main replaces (the step below); with none yet, the absolute floor alone applies.
+    - name: Judge this recording's per-origin health
+      id: health
+      if: inputs.mode == 'record'
+      shell: bash
+      env:
+          GH_TOKEN: ${{ inputs.token }}
+          CODE: ${{ inputs.code }}
+      run: |
+          set -uo pipefail
+          # The attempt's start: a restored file keeps its archived, older mtime; one this run recorded is newer.
+          since="$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" --jq .run_started_at)" \
+              || { echo "::warning::cannot read this run's start time — recording health not judged"; exit 0; }
+          manifest="recording-health-$CODE.json"
+          previous="$RUNNER_TEMP/previous-$manifest"
+          present=$(scripts/ci/gh-optional.sh release download "$FIXTURE_RELEASE_TAG" --pattern "$manifest" --output "$previous" --clobber) \
+              || { echo "::warning::cannot read $manifest — recording health not judged"; exit 0; }
+          [ "$present" = present ] || echo "no $manifest on $FIXTURE_RELEASE_TAG yet — judged against the absolute floor alone"
+          # `|| verdict=$?`: the step's shell is `bash -e`, which would end it on the verdict before it is recorded.
+          verdict=0
+          python3 scripts/ci/recording_health.py "test/resources/fixtures/enrichment-$CODE" --since "$since" \
+              --previous "$previous" --write "$manifest" --summary "$GITHUB_STEP_SUMMARY" --title "$CODE" || verdict=$?
+          [ "$verdict" -gt 1 ] && { echo "::warning::recording_health.py crashed ($verdict) — not judged"; exit 0; }
+          echo "healthy=$([ "$verdict" = 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
+
+    - name: Publish this healthy recording's manifest as the next one's baseline
+      if: github.ref == 'refs/heads/main' && inputs.mode == 'record' && steps.health.outputs.healthy == 'true'
+      shell: bash
+      env:
+          GH_TOKEN: ${{ inputs.token }}
+      run: |
+          set -uo pipefail
+          scripts/ci/gh-release.sh upload "$FIXTURE_RELEASE_TAG" "recording-health-${{ inputs.code }}.json" --clobber \
+              || echo "::warning::could not publish the manifest — the next recording compares against an older one"
 
     # WHAT A HERMETIC LEG FOUND MISSING, AND WHAT A FILL FETCHED — the two halves of "every convergence
     # build publishes the missing data it found" (docs/design/convergence-fixture-fill.md).
