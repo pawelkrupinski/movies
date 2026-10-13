@@ -65,7 +65,11 @@ object NonMovieEventClassifier {
    *  Sneak") is that film's preview and stays, as do "Sneakers" and "Sneaks". */
   private val SneakWords = Set("sneak", "ov", "omu", "omeu", "kult", "cult", "horror", "classic", "classics",
     "klassiker", "retro", "fsk", "of", "vol", "preview", "die", "des", "jahres", "the", "kw", "original", "mystery",
-    "movie", "surprise", "grusel", "cine", "extreme", "review", "special", "live")
+    "movie", "surprise", "grusel", "cine", "extreme", "review", "special", "live",
+    // …its night and its strand ("Friday Night Sneak", "Montags-Sneak", "Arthaus Sneak Vol. 43" — DE 2026-10-13).
+    "night", "late", "nacht", "arthaus", "arthouse", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday",
+    "sunday", "montag", "dienstag", "mittwoch", "donnerstag", "freitag", "samstag", "sonntag", "montags", "dienstags",
+    "mittwochs", "donnerstags", "freitags", "samstags", "sonntags")
   private def isBareSneak(lower: String): Boolean = {
     val words = lower.split("""[^\p{L}\p{N}]+""").filter(_.nonEmpty)
     words.contains("sneak") && words.forall(w => SneakWords.contains(w) || w.forall(_.isDigit))

@@ -80,6 +80,12 @@ class SearchQueryMarkersSpec extends CorpusShapeSpec {
     AllowedListing.anywhere("Bowie on the Silver Screen: An Illustrated Talk by Adrian Wootton + The Man Who Fell to Earth") ->
       "an illustrated talk billed with a film: an event plus a film matches neither (the double-bill rule)",
     AllowedListing.anywhere("Space: 1999 4K Restoration Double Bill (U)") -> "a double bill: it matches neither film, by design",
+    AllowedListing.anywhere("Space: 1999: 4K Restoration Double Bill") -> "a double bill: it matches neither film, by design",
+    AllowedListing.anywhere("Sekretny pokaz") -> s"Cinema City's secret screening, its film undisclosed: $NoFilmToFind",
+    AllowedListing("Cinexx", "OmU Ebenezer: Eine Weihnachtsgeschichte") ->
+      "TODO(rule): a version bare in front of the film with no separator — one listing across the five corpora of 2026-10-13, too rare for a rule of its own",
+    AllowedListing("FilmRaum", "Das Geheimnis der gestohlenen Maske, Preview am 25.10. um 15 Uhr") ->
+      "TODO(rule): a dated preview after a comma — one listing across the five corpora of 2026-10-13, too rare for a rule of its own",
   ) ++ DroppedByTheClients.map(AllowedListing.anywhere(_) -> DroppedOnReRecord) ++ RecordedBeforeParserFix
 
   /** Listings the German clients drop as no screening at all since the 2026-10-12 recording was made
@@ -132,7 +138,9 @@ object SearchQueryMarkersSpec {
     "DF Tagesticket 3.11.26", "DF Tagesticket 4.11.26", "DF Tagesticket 5.11.26", "DF Tagesticket 6.11.26", "DF Tagesticket 7.11.26",
     // …and those of the afternoon's re-record (run 38251516862), which the same drop covers.
     "SNEAK", "Klassiker Sneak", "Horror Classics Sneak Vol. 83", "Grusel Sneak", "Cine Sneak", "SNEAK Extreme",
-    "KLASSIKER SNEAK REVIEW - Special - Live", "Sneak Impro - Theatersport geht ins Kino")
+    "KLASSIKER SNEAK REVIEW - Special - Live", "Sneak Impro - Theatersport geht ins Kino",
+    // …and the night's (run 38326582997), billed by their night or their arthouse strand.
+    "Friday Night Sneak", "Arthaus Sneak Vol. 43", "Arthouse Sneak")
 
   /** A marker word or phrase, matched case-insensitively as whole words. */
   private def phrase(text: String): (String, Regex) =

@@ -309,6 +309,17 @@ class NonMovieEventClassifierSpec extends AnyFlatSpec with Matchers {
       withClue(t)(NonMovieEventClassifier.isMysteryScreening(t) shouldBe false))
   }
 
+  it should "name a sneak billed by its night or its arthouse strand" in {
+    // The DE recording of 2026-10-13 (run 38326582997): Cineplex Spandau and Titania, Atelier am Bollwerk, Cinema &
+    // Kurbelkiste Münster — none names a film.
+    Seq("Friday Night Sneak", "Arthaus Sneak Vol. 43", "Arthouse Sneak", "Montags-Sneak", "Late Night Sneak").foreach(t =>
+      withClue(t)(NonMovieEventClassifier.isNonScreening(t) shouldBe true))
+    // A night or strand word counts only beside "sneak": every word of the title must be a sneak's own.
+    Seq("Hope Sneak", "Friday Night Lights", "Late Night with the Devil", "Saturday Night Fever", "Arthouse",
+      "Night of the Living Dead", "Sunday Bloody Sunday", "Friday Night Dinner").foreach(t =>
+      withClue(t)(NonMovieEventClassifier.isNonScreening(t) shouldBe false))
+  }
+
   // The listings box-office staff create to try their own site: BFI Southbank's "Z Test Show
   // please ignore" (cinemas.bfi.org.uk, 2026-10-12), Spektrix's "Website Test Event 2".
   "isLiveEvent and isNonScreening" should "drop a box office's own test listing, in any feed" in {

@@ -1342,7 +1342,7 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Postcards from the Peaks & We Wild Camp +Q&A"                          -> "Postcards from the Peaks & We Wild Camp",
     "Doc 'n Roll: KING OF THEM ALL - The Story of King Records+ Q&A"        -> "Doc 'n Roll: King Of Them All - The Story of King Records",
     "Doc'n'Roll FF: KitKatClub: Kinks of Berlin + Q&A (zoom)"               -> "Doc'n'Roll FF: KitKatClub: Kinks of Berlin",
-    "The Comic Strip Presents... PART 2 screenings + Q&A (18)"              -> "The Comic Strip Presents... PART 2 screenings",
+    "The Comic Strip Presents... PART 2 screenings + Q&A (18)"              -> "The Comic Strip Presents... PART 2",
     "Delupi (London Breeze Film Festival UK Premiere + Q&A)"                -> "Delupi",
     "Man Baby (London Breeze Film Festival Preview + Q&A + Props Table)"    -> "Man Baby",
     "Arrietty  (Dubbed) - Relaxed Screening"                                -> "Arrietty",
@@ -1385,6 +1385,62 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
       withClue(s"search('$t') unchanged: ")(withExtras.search(t) shouldBe t)
     }
     listingQuery(titles, models.KinoCentrum3D, "Lalka | 2D DUBBING") shouldBe "Lalka"
+  }
+
+  /** Listings of the 2026-10-13 recording (run 38326582997) whose TMDB query kept a screening marker
+   *  (SearchQueryMarkersSpec over the recorded UK and DE corpora). Each night's recording brings its venues' new
+   *  spellings of the same few notes, so these are held by SHAPE rather than by spelling: a segment — bracketed, after
+   *  a separator, or after a certificate — made of nothing but a screening note's words; a Q&A clause from its
+   *  connector on; a print tag ahead of a strand or the film; a re-release mark; a subtitle note in brackets. Through the whole query path. */
+  private val screeningNoteListings: Seq[(String, String)] = Seq(
+    "Labyrinth (Relaxed Screening)"                                          -> "Labyrinth",
+    "Queen at Sea (Relaxed Screening)"                                       -> "Queen at Sea",
+    "Monster Mia: Autism Friendly"                                           -> "Monster Mia",
+    "Planes, Trains and Automobiles (Dementia Friendly Screening)"           -> "Planes, Trains and Automobiles",
+    "Springsteen: Deliver Me from Nowhere (Dementia Friendly Screenng)"      -> "Springsteen: Deliver Me from Nowhere",
+    "The Devil Wears Prada (dementia friendly screening)"                    -> "The Devil Wears Prada",
+    "The Wizard of Oz (Dementia Friendly)"                                   -> "The Wizard of Oz",
+    "Sense and Sensibility (PG) PARENT & BABY"                               -> "Sense and Sensibility",
+    "The Incomer (12A) PARENT & BABY"                                        -> "The Incomer",
+    "Whisper of the Heart (English Dub, 4K Restoration)"                     -> "Whisper of the Heart",
+    "The Uprising & Paul Greengrass Q&A"                                     -> "The Uprising",
+    "Once Upon A Time In Suffolk - with Q&A and optional Ely Walking Tour"   -> "Once Upon A Time In Suffolk",
+    "Forty Years of Handsworth Songs: Film Screening and Q&A Panel"          -> "Forty Years of Handsworth Songs",
+    "La Boum 4K - FFFL"                                                      -> "La Boum",
+    "Black Christmas (1974) [35mm] - Dirt in the Gate Movies"                -> "Black Christmas (1974)",
+    "The Odyssey (2026) [35mm] - Dirt in the Gate Movies"                    -> "The Odyssey (2026)",
+    "4K Film: Dracula: The Cut They Tried To Bury"                           -> "Dracula: The Cut They Tried To Bury",
+    "4K Film: Ken Russell's The Devils"                                      -> "Ken Russell's The Devils",
+    "Tribute von Panem - Mockingjay: Teil 1 (OV) (WA)"                       -> "Tribute von Panem - Mockingjay: Teil 1",
+    "Tribute von Panem - Songbirds & Snakes (OV) (WA)"                       -> "Tribute von Panem - Songbirds & Snakes",
+    "We Are All Strangers (Mandarin with engl.Sub)"                          -> "We Are All Strangers",
+    "Possible Love (koreanisch mit engl.UT)"                                 -> "Possible Love",
+    "Gohan - Drei Leben auf vier Pfoten (thailändisch mit dt.UT)"            -> "Gohan - Drei Leben auf vier Pfoten",
+    "Vaterland (deutsch with English subs)"                                  -> "Vaterland"
+  )
+
+  "A screening note the 2026-10-13 recording billed" should "leave the listing's search query" in {
+    val titles = new TitleNormalizer(withExtras)
+    screeningNoteListings.foreach { case (raw, query) =>
+      withClue(s"searchQuery of '$raw': ")(listingQuery(titles, models.KinoCentrum3D, raw) shouldBe query)
+    }
+  }
+
+  it should "be load-bearing — the seed rules alone search the note along" in {
+    val titles = new TitleNormalizer(seedOnly)
+    screeningNoteListings.foreach { case (raw, query) =>
+      withClue(s"seed searchQuery of '$raw': ")(listingQuery(titles, models.KinoCentrum3D, raw) should not be query)
+    }
+  }
+
+  it should "leave a film whose own title holds a note's words, a Q&A or an ampersand alone" in {
+    Seq("Friendly Fire", "Relaxed", "The Parent Trap", "Dune: Part Two", "Romeo & Juliet", "Live and Let Die", "Screen Test",
+      "The Film", "Sub Rosa", "Wa Wa", "Fast & Furious", "Planes, Trains and Automobiles", "Screening: The Film").foreach { t =>
+      withClue(s"search('$t') unchanged: ")(withExtras.search(t) shouldBe t)
+    }
+    // A Q&A after a colon or an ampersand takes only itself: the words before it may be the film's own.
+    withExtras.search("Dune: Part Two Q&A") should startWith ("Dune: Part Two")
+    withExtras.search("Romeo & Juliet Q&A") should startWith ("Romeo & Juliet")
   }
 
   /** Listings of the 2026-10-08 UK recording whose TMDB query kept a screening marker: a Showcase

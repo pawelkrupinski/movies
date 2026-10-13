@@ -43,6 +43,21 @@ object ExtraTitleRules {
   private def searchReplace(id: String, pattern: String, replacement: String, note: String): TitleRule =
     TitleRule(id, GlobalStructural, None, pattern, replacement, applyAll = false, order = 0, note = Some(note))
 
+  /** A special audience a screening is billed for, as a venue words it — each one no film's title ends on, so it
+   *  is a note even with no separator before it. */
+  private val BareAudience =
+    """(?:relaxed\s+screen\p{L}*|dementia\s+friendly|autism\s+friendly|parents?\s*(?:&|and)\s*(?:bab(?:y|ies)|toddlers?))"""
+  /** What names a screening note outright: an audience (the seniors' "Silver Screen" too, a film's title only once
+   *  set off), a Q&A, a restored print. */
+  private val NoteMarker = s"""(?:$BareAudience|silver\\s+screen|q\\s*&\\s*a|4k\\s+(?:restoration|remaster(?:ed)?))"""
+  /** Every word a screening note is made of — its markers and the words a venue strings them together with. */
+  private val NoteWord =
+    """(?:relaxed|dementia|autism|friendly|parents?|bab(?:y|ies)|toddlers?|silver|screen\p{L}*|club|q\s*&\s*a|""" +
+      """intro(?:duction)?|panel|live|subtitled|dubbed|dub|subs?|english|captioned|captions?|4k|35mm|70mm|""" +
+      """restoration|remaster(?:ed)?|with|and|plus|&|\+)"""
+  /** A run of nothing but note words that names at least one note. */
+  private val NoteSegment = s"""(?=(?:$NoteWord[\\s,/]*)*?$NoteMarker)$NoteWord(?:[\\s,/]+$NoteWord)*(?![\\p{L}\\p{N}])"""
+
   /** A Canonical-tier rule. `countries` defaults to every country, which is right
    *  for a language-NEUTRAL rule (a format-tag or bracketed-year strip). A rule
    *  whose replacement writes WORDS must name its countries — see
@@ -446,6 +461,27 @@ object ExtraTitleRules {
     searchStrip("xtra-audiodeskrypcja-suffix",     """(?iu)\s*[-–—]\s*(?:z\s+)?audiodeskrypcj\p{L}*.*$""",  "'<film> - audiodeskrypcją (na słuchawki), napisy dla osób nie(do)słyszących i PJM' accessible-screening suffix (Kino Sokół: Lalka)"),
     searchStrip("xtra-film-pl-suffix",             """(?u)(?<=\S)\s+(?i:film)\s+PL\s*$""",                "'<film> Film PL' venue tail (Kino CKiF: Lalka, Mistyczka, Czas, który nie nadszedł)"),
     searchStrip("xtra-age-bo-pipe-suffix",         """(?iu)\s*\|\s*BO\s*\|?\s*$""",                     "'<film> | 2D | DUB | BO |' trailing 'BO' (bez ograniczeń) age tag behind the format pipes, which searchQuery then re-peels (Kino Milenium)"),
+    // Each night's recording bills the same few screening notes in new spellings (the 2026-10-13 one, run
+    // 38326582997: "(Relaxed Screening)", "(Dementia Friendly Screenng)", ": Autism Friendly", "(PG) PARENT & BABY",
+    // "(English Dub, 4K Restoration)"), so these hold the SHAPE: a trailing segment — bracketed, after a separator, or
+    // after a certificate — made of nothing but a screening note's words and naming at least one note outright. A
+    // film's own words are never all note words, and a segment without a separator is taken only when it opens on a
+    // special audience. First, so a certificate the note sat behind is trailing for the certificate rule below.
+    searchStrip("xtra-screening-note-segment",
+      s"""(?iu)(?:\\s*\\((?:U|PG|12A?|15|18)\\))?(?:\\s*\\(\\s*(?=$NoteSegment\\s*\\))$NoteSegment\\s*\\)|\\s*[-–—|:]\\s*(?=$NoteSegment\\s*$$)$NoteSegment|(?<=\\S)\\s+(?=$BareAudience)$NoteSegment)\\s*$$""",
+      "'<film> (Relaxed Screening)' / '<film>: Autism Friendly' / '<film> (PG) PARENT & BABY' / '<film> (English Dub, 4K Restoration)' screening note made of nothing but note words (UK 2026-10-13: Electric Palace Hastings, Showcase, Phoenix, DCA)"),
+    // A Q&A clause from its connector on: after a spaced dash ("- with Q&A and optional Ely Walking Tour"), as a
+    // screening "and Q&A" ("…: Film Screening and Q&A Panel", "…Screening & Q&A"), or after an ampersand naming the
+    // guest ("& Paul Greengrass Q&A" — a two-word name, so "Romeo & Juliet Q&A" keeps its film).
+    searchStrip("xtra-qa-clause-tail",
+      """(?iu)(?:\s+[-–—|]\s+(?:(?:with|plus|and|&)\s+)?(?:(?:live|in[-\s]person)\s+)?|(?:\s*:\s*|(?<=\S)\s*)(?:Film\s+)?Screenings?\s*(?:and|&|\+|with)\s*(?:live\s+)?|\s+&\s+(?-i:\p{Lu})[\p{L}'’.-]+\s+(?-i:\p{Lu})[\p{L}'’-]+\s+)Q\s*&\s*A(?![\p{L}\p{N}]).*$""",
+      "'<film> - with Q&A and …' / '<film>: Film Screening and Q&A Panel' / '<film>...Screening & Q&A' / '<film> & <Guest Name> Q&A' (UK 2026-10-13: Palace Cinema Ely, Midlands Arts Centre, Rio, Curzon)"),
+    // A print tag, then a strand or festival behind a spaced dash ("[35mm] - Dirt in the Gate Movies", "4K - FFFL"),
+    // and a print billed in front of the film ("4K Film: Dracula: The Cut They Tried To Bury").
+    searchStrip("xtra-print-strand-tail",          """(?iu)(?:\s*\[\s*(?:16|35|70)mm\s*\]|\s+(?:4K|(?:16|35|70)mm))\s+[-–—]\s+\S.*$""",
+      "'<film> [35mm] - <strand>' / '<film> 4K - <festival>' print tag and the strand behind it (UK 2026-10-13: Dirt in the Gate Movies, Ciné Lumière's FFFL)"),
+    searchStrip("xtra-print-prefix",               """(?iu)^(?:4K|(?:16|35|70)mm)(?:\s+(?:Film|Restoration|Print|Screening))?\s*[:|–—]\s*(?=\S)""",
+      "'4K Film: <film>' print billed ahead of the film (UK 2026-10-13: Ken Russell's The Devils, Dracula)"),
     // Found by SearchQueryMarkersSpec over the UK recording of 2026-10-12 (run 38251516862). A screening note billed
     // after the film — a special audience, a Q&A, a matinee — and a box office's own certificate and running time.
     // The note in asterisks first, then the running time, then the certificate, each exposing the next at the end;
@@ -864,6 +900,15 @@ object ExtraTitleRules {
     // A festival's preview named after a pipe: the preview and the festival it previews go together.
     searchStrip("xtra-preview-pipe-tail",          """(?iu)(?<=\S)\s*\|\s*\p{L}*preview(?![\p{L}\p{N}]).*$""",
       "'<film> | Preview Osteuropäische Filmtage 2026' festival-preview tail (DE 2026-10-12: Zentralkino Dresden Minotaurus)"),
+    // A re-release mark ("Wiederaufführung") in brackets, wherever it sits — "(OV) (WA)", "(WA: 2026)": no film's own
+    // title brackets "WA".
+    searchStrip("xtra-rerelease-bracket",          """(?iu)\s*\(\s*WA(?:\s*:?\s*\d{4})?\s*\)""",
+      "'<film> (OV) (WA)' / '<film> (WA: 2026)' re-release mark (DE 2026-10-13: CineStar Cubix's Tribute von Panem)"),
+    // A subtitle note in brackets naming the languages ("(Mandarin with engl.Sub)", "(koreanisch mit engl.UT)",
+    // "(deutsch with English subs)" — six in the DE recording of 2026-10-13): FormatTags' bracket peel takes
+    // "(subtitled)", not an abbreviated "Sub" or "UT" inside a sentence.
+    searchStrip("xtra-subtitle-note-bracket",      """(?iu)(?<=\S)\s*\([^()]*(?<![\p{L}\p{N}])(?:with|mit|w/)\s+(?:engl?\.?|english|dt\.?|deutschen?)\s*(?:sub(?:s|titles?)?|ut|untertiteln?)(?![\p{L}\p{N}])[^()]*\)\s*$""",
+      "'<film> (Mandarin with engl.Sub)' / '<film> (koreanisch mit engl.UT)' bracketed subtitle note (DE 2026-10-13: Universum-City Karlsruhe and five more)"),
     searchStrip("xtra-vorpremiere-prefix",         """(?iu)^(?:\p{L}+\s+)?vorpremiere\s*[:–—-]\s*(?=\S)""",
       "'Vorpremiere: <film>' / 'Prosecco Vorpremiere: <film>' / 'Vorpremiere - <film>' German pre-premiere banner (DE 2026-10-12: Burg-Theater Uetersen, Casino Aschaffenburg)"),
     searchStrip("xtra-vorpremiere-suffix",         """(?iu)(?<=\S)\s*(?:[-–—]\s*|\(\s*)?vorpremiere\s*\)?\s*$""",
