@@ -11,11 +11,11 @@ import scala.collection.mutable
 private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scoring: CandidateScoring, acceptance: Acceptance,
                                           counted: () => Unit, related: () => Unit = () => (), fallback: Boolean = false) {
   import scoring.{backing, calibration, evidenceDenial, houses, namesItsSeasonProduction, namesOnlyAProgrammeSlot, namesOnlyATag, namesOnlyItsVenue, pins}
-  import scoring.generation.{candidateById, candidateOf, directed, fallbackOf, imdbOnly, imdbSuggested, imdbTitled, ownSearch, ownWalk, sharedOf, soleResults}
+  import scoring.generation.{candidateById, candidateOf, fallbackOf, sharedOf}
 
   val pool: Seq[Candidate] =
     if (fallback) members.flatMap(member => fallbackOf(member.id)).distinct.sorted.flatMap(candidateOf)
-    else members.flatMap(member => ownSearch(member.id).keys ++ ownWalk(member.id)).distinct.sorted.map(candidateById)
+    else members.flatMap(member => scoring.generation.reached(member)).distinct.sorted.map(candidateById)
   /** Which pieces of the members' titles are qualifiers — an edition, a banner — rather than
    *  works, learned from how the pool's records bill them (`IdentityMeasures.Qualifiers`): a
    *  record titled only a listing's qualifier does not name it. The family's own pool, so a
@@ -138,15 +138,26 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
    *  were the link's, restated — else its own. */
   def evidenceOf(node: EvidenceNode): Evidence = if (overruled(node).isEmpty) node.evidence else node.evidence.titlesOnly
 
+  /** What `node`'s own queries reached, as this scope reads its evidence ([[evidenceOf]]): an overruled link's node only
+   *  what its titles' queries did — a search for the original title the feed copied is the link's own pull, restated. DE
+   *  Cineamo's "Mira", linked to a record TMDB no longer holds, copied the original title "Last Signal", whose search
+   *  ranked Kiselyov's 2022 film first and let IMDb's suggestion take it. Its pool stays the family's: a candidate the
+   *  link alone reached is scored as any other the title names, with no rank. */
+  private[identity] def reach(node: EvidenceNode): CandidateGeneration.Reach =
+    if (overruled(node).isEmpty) scoring.generation.reach(node.id)
+    else reachMemo.getOrElseUpdate(node.id, scoring.generation.reachOf(CandidateQueries.of(node.evidence.titlesOnly)))
+  private val reachMemo = mutable.HashMap.empty[String, CandidateGeneration.Reach]
+
   /** Whose claim `node`'s facts are, for the sources backing a film ([[CatalogueSources.factSource]]). */
   private def sourceOf(node: EvidenceNode): String = CatalogueSources.factSource(node.listings.head)
 
   private val memo = mutable.HashMap.empty[String, Seq[Scored]]
   def of(node: EvidenceNode): Seq[Scored] = memo.getOrElseUpdate(node.id,
-    score(evidenceOf(node).measured, node.venue, ownSearch(node.id), ownWalk(node.id), sharedOf(node),
-      id => denialByNode(node, id), imdbOnly(node.id), directed(node.id), imdbTitled(node.id), countryOf(node)).map(placedByImdb(Seq(node)))
-      .map(scored => if (soleResults(node.id)(scored.candidate.tmdbId)) scored.copy(soleResult = true) else scored)
-      .map(scored => imdbTitled(node.id).get(scored.candidate.tmdbId).fold(scored)(titles => scored.copy(imdbTitled = titles))))
+    { val reached = reach(node)
+      score(evidenceOf(node).measured, node.venue, reached.search, reached.walk, sharedOf(node),
+        id => denialByNode(node, id), reached.imdbOnly, reached.directed, reached.imdbTitled, countryOf(node)).map(placedByImdb(Seq(node)))
+        .map(scored => if (reached.soleResults(scored.candidate.tmdbId)) scored.copy(soleResult = true) else scored)
+        .map(scored => reached.imdbTitled.get(scored.candidate.tmdbId).fold(scored)(titles => scored.copy(imdbTitled = titles))) })
 
   /** What `node` is taken by ALONE, with the rule ([[Acceptance.aloneNamed]]) — once per node for this scope's life:
    *  every round of `Families.grow` keeping the scope asks again, and so do the decisions, each node's trace for
@@ -158,7 +169,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
 
   /** Each film's place in IMDb's suggestions for the nodes' own titles — its best place, among the most suggested. */
   private def placedByImdb(nodes: Seq[EvidenceNode])(scored: Scored): Scored = {
-    val lists = nodes.map(node => imdbSuggested(node.id)).filter(_.nonEmpty)
+    val lists = nodes.map(node => reach(node).imdbSuggested).filter(_.nonEmpty)
     val place = lists.flatMap(list => Option(list.indexOf(scored.candidate.tmdbId)).filter(_ >= 0).map(i => Scored.ImdbPlace(i + 1, list.size)))
     place.minByOption(_.place).fold(scored)(best => scored.copy(imdb = Some(best.copy(of = lists.map(_.size).max))))
   }
@@ -198,14 +209,15 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
       directors     = evidence.flatMap(_._2.directors).distinct.sorted,
       runtime       = runtimes.lift(runtimes.size / 2),
       countries     = evidence.flatMap(_._2.countries).distinct.sorted)
-    val ranks = cluster.flatMap(node => ownSearch(node.id)).groupMapReduce(_._1)(_._2)(math.min)
-    score(listing, lead.venue, ranks, cluster.flatMap(node => ownWalk(node.id)).toSet, cluster.flatMap(sharedOf).toSet,
-      id => cluster.iterator.flatMap(denialByNode(_, id)).nextOption(), cluster.flatMap(node => imdbOnly(node.id)).toSet -- ranks.keySet,
-      cluster.flatMap(node => directed(node.id)).toSet,
-      cluster.flatMap(node => imdbTitled(node.id)).groupMapReduce(_._1)(_._2)(_ ++ _), countryOf(lead))
+    val reached = cluster.map(reach)
+    val ranks = reached.flatMap(_.search).groupMapReduce(_._1)(_._2)(math.min)
+    score(listing, lead.venue, ranks, reached.flatMap(_.walk).toSet, cluster.flatMap(sharedOf).toSet,
+      id => cluster.iterator.flatMap(denialByNode(_, id)).nextOption(), reached.flatMap(_.imdbOnly).toSet -- ranks.keySet,
+      reached.flatMap(_.directed).toSet,
+      reached.flatMap(_.imdbTitled).groupMapReduce(_._1)(_._2)(_ ++ _), countryOf(lead))
       .map(scored => if (scored.denied || cluster.forall(node => !of(node).exists(other => other.candidate.tmdbId == scored.candidate.tmdbId && other.denied))) scored else scored.copy(denial = Some("a member's own evidence rules it out")))
       .map(placedByImdb(cluster))
-      .map(scored => cluster.flatMap(node => imdbTitled(node.id).getOrElse(scored.candidate.tmdbId, Set.empty)).toSet match {
+      .map(scored => reached.flatMap(_.imdbTitled.getOrElse(scored.candidate.tmdbId, Set.empty)).toSet match {
         case titles if titles.nonEmpty => scored.copy(imdbTitled = titles)
         case _                         => scored
       })

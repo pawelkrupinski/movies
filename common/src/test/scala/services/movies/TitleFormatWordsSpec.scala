@@ -117,6 +117,84 @@ class TitleFormatWordsSpec extends AnyFlatSpec with Matchers {
     FormatTags.extractFormatTags("Jaws 3-D")._1 shouldBe "Jaws 3-D"
   }
 
+  // The UK box offices of 2026-10-13 bill the BBFC certificate in the title — Lanternhouse Cinema's "Digger (15)",
+  // "Verity (15)", "Heart of the Beast (12A)" each showed as a card of its own beside the film, IMDb id and all; Act
+  // One's "Digger - Cert 15", Electric Palace's "Digger (15) 129 mins", Hippodrome Bo'ness's "(15) 26" likewise. The
+  // certificate is the showing's, never the film's, so it comes off with the running time or year a box office runs
+  // on after it — yielding no token: the certificate is a field of its own.
+  "A box office's certificate" should "come off the title, with the running time or short year billed after it" in {
+    FormatTags.extractFormatTags("Digger (15)") shouldBe ("Digger", Nil)
+    FormatTags.extractFormatTags("Verity (15)") shouldBe ("Verity", Nil)
+    FormatTags.extractFormatTags("Heart of the Beast (12A)") shouldBe ("Heart of the Beast", Nil)
+    FormatTags.extractFormatTags("Festive Fun with Peppa Pig (U)") shouldBe ("Festive Fun with Peppa Pig", Nil)
+    FormatTags.extractFormatTags("Andre Rieu: Let it Snow (TBC)") shouldBe ("Andre Rieu: Let it Snow", Nil)
+    FormatTags.extractFormatTags("Pressure (15 TBC)") shouldBe ("Pressure", Nil)
+    FormatTags.extractFormatTags("Digger - Cert 15") shouldBe ("Digger", Nil)
+    FormatTags.extractFormatTags("EOS - Monet (Cert. TBC)") shouldBe ("EOS - Monet", Nil)
+    FormatTags.extractFormatTags("Digger (15) 129 mins") shouldBe ("Digger", Nil)
+    FormatTags.extractFormatTags("De Gaulle Liberté (15) 26") shouldBe ("De Gaulle Liberté", Nil)
+    // A release year after it stays, for the year reading and the canonical year strip.
+    FormatTags.extractFormatTags("Bad Apples (15) (2026) 100 mins") shouldBe ("Bad Apples (2026)", Nil)
+    FormatTags.extractFormatTags("Elf (2003) (PG) 26") shouldBe ("Elf (2003)", Nil)
+    FormatTags.extractFormatTags("Its A Wonderful Life (U) (1946) 130 mins") shouldBe ("Its A Wonderful Life (1946)", Nil)
+    // Stacked with a format tag, in either order.
+    FormatTags.extractFormatTags("Digger (15) (Subtitled)") shouldBe ("Digger", List("SUB"))
+    FormatTags.extractFormatTags("Digger (Subtitled) (15)") shouldBe ("Digger", List("SUB"))
+  }
+
+  it should "key the listing with the film's other listings" in {
+    val titles = TitleNormalizer.forCountry(models.Country.UnitedKingdom)
+    Seq("Digger (15)", "Digger - Cert 15", "Digger (15) 129 mins").foreach { raw =>
+      withClue(s"slot key of '$raw': ")(
+        ScrapeListing.slotKey(models.LanternhouseCinema, raw, titles) shouldBe ScrapeListing.slotKey(models.LanternhouseCinema, "Digger", titles))
+    }
+  }
+
+  it should "leave a bracketed number that is no certificate, and a title that is nothing but one, alone" in {
+    FormatTags.extractFormatTags("Sweet Sixteen (16)")._1 shouldBe "Sweet Sixteen (16)"
+    FormatTags.extractFormatTags("Apollo 18")._1 shouldBe "Apollo 18"
+    FormatTags.extractFormatTags("(15)")._1 shouldBe "(15)"
+    // A certificate before a strand stays for the strand's own rule: it is not the title's end.
+    FormatTags.extractFormatTags("Calle Malaga (12A) - Film Africa")._1 shouldBe "Calle Malaga (12A) - Film Africa"
+  }
+
+  // German re-releases (DE prod 2026-10-13): "Tribute von Panem - Catching Fire (Ov) (Wa)", "… (WA)", "… (WA: 2026)"
+  // made five cards of one resolved film. The re-release mark is the showing's, like the version beside it, so both
+  // come off in any order and case; "(WA:" is a box office's truncation of it.
+  "A re-release mark" should "come off the title with the version tags stacked around it" in {
+    FormatTags.extractFormatTags("Tribute von Panem - Catching Fire (Ov) (Wa)") shouldBe ("Tribute von Panem - Catching Fire", List("OV"))
+    FormatTags.extractFormatTags("Tribute von Panem - Catching Fire (WA)") shouldBe ("Tribute von Panem - Catching Fire", Nil)
+    FormatTags.extractFormatTags("Tribute von Panem - Catching Fire (WA: 2026)") shouldBe ("Tribute von Panem - Catching Fire", Nil)
+    FormatTags.extractFormatTags("DON CAMILLO UND PEPPONE (WA:2026)") shouldBe ("DON CAMILLO UND PEPPONE", Nil)
+    FormatTags.extractFormatTags("Tribute von Panem - The Ballad of Songbirds and Snakes (WA:") shouldBe
+      ("Tribute von Panem - The Ballad of Songbirds and Snakes", Nil)
+    FormatTags.extractFormatTags("Tribute von Panem - Mockingjay: Teil 1 (OV) (WA)") shouldBe ("Tribute von Panem - Mockingjay: Teil 1", List("OV"))
+    FormatTags.extractFormatTags("Tribute von Panem - Songbirds & Snakes (OV) (WA)") shouldBe ("Tribute von Panem - Songbirds & Snakes", List("OV"))
+    FormatTags.extractFormatTags("Tribute von Panem - Catching Fire (WA) (OmU)") shouldBe ("Tribute von Panem - Catching Fire", List("OmU"))
+    FormatTags.extractFormatTags("OV: Tribute von Panem - Catching Fire (WA: 2026)") shouldBe ("Tribute von Panem - Catching Fire", List("OV"))
+    FormatTags.extractFormatTags("Die Vögel (Wiederaufführung)") shouldBe ("Die Vögel", Nil)
+    val titles = TitleNormalizer.forCountry(models.Country.Germany)
+    Seq("Tribute von Panem - Catching Fire (Ov) (Wa)", "Tribute von Panem - Catching Fire (WA)", "Tribute von Panem - Catching Fire (WA: 2026)").foreach { raw =>
+      withClue(s"slot key of '$raw': ")(ScrapeListing.slotKey(models.LanternhouseCinema, raw, titles) shouldBe
+        ScrapeListing.slotKey(models.LanternhouseCinema, "Tribute von Panem - Catching Fire", titles))
+    }
+  }
+
+  it should "leave a title's own 'Wa' alone" in {
+    FormatTags.extractFormatTags("Wa (2019)")._1 shouldBe "Wa (2019)"
+    FormatTags.extractFormatTags("Wasabi")._1 shouldBe "Wasabi"
+  }
+
+  // Corso Stuttgart bills the original version as a phrase, "Forgotten Island in (Original English Version)" and "… in
+  // 2D (Original English Version)": the version came off and left "Forgotten Island in", a card of its own.
+  "A version billed with its preposition" should "take the preposition with it, a screen format between them too" in {
+    FormatTags.extractFormatTags("Forgotten Island in (Original English Version)") shouldBe ("Forgotten Island", List("OV"))
+    FormatTags.extractFormatTags("Forgotten Island in 2D (Original English Version)") shouldBe ("Forgotten Island", List("2D", "OV"))
+    FormatTags.extractFormatTags("Avengers: Doomsday in (Original English Version)") shouldBe ("Avengers: Doomsday", List("OV"))
+    // A title's own capitalised last word is no preposition.
+    FormatTags.extractFormatTags("Let Me In (Original English Version)") shouldBe ("Let Me In", List("OV"))
+  }
+
   "A generic version token" should "be the country's own spelling" in {
     ScreeningTokens.of(models.Country.Poland).normalize(Seq("2D", "SUB")) shouldBe List("2D", "NAP")
     ScreeningTokens.of(models.Country.UnitedKingdom).normalize(Seq("SUB", "DUB")) shouldBe List("SUB", "DUB")

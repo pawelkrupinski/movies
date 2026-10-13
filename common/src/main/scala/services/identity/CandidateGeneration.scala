@@ -45,18 +45,12 @@ private[identity] final class CandidateGeneration(ordered: Seq[Listing], lookups
     asked.foreach(ask)
   }
 
-  val ownSearch: Map[String, Map[Int, Int]] = nodes.map(node => node.id -> CandidateGeneration.ownSearch(queriesOf(node.id), answers)).toMap
-  val ownWalk: Map[String, Set[Int]]        = nodes.map(node => node.id -> CandidateGeneration.ownWalk(queriesOf(node.id), answers)).toMap
-  val directed: Map[String, Set[Int]]       = nodes.map(node => node.id -> CandidateGeneration.directed(queriesOf(node.id), answers)).toMap
-  val soleResults: Map[String, Set[Int]]    = nodes.map(node => node.id -> CandidateGeneration.soleResults(queriesOf(node.id), answers)).toMap
-  val imdbSuggested: Map[String, Seq[Int]] = nodes.map(node => node.id -> CandidateGeneration.imdbSuggested(queriesOf(node.id), answers)).toMap
-  /** The films IMDb lists under one of a node's search titles, in some language ([[CandidateQuery.ImdbTitled]]). An
-   *  IMDb-titled film is an ordinary candidate, scored on the listing's facts and counted as a rival like any other:
-   *  what IMDb's title alone may do is `Acceptance.imdbSuggested`'s titled rung. */
-  val imdbTitled: Map[String, Map[Int, Set[String]]] = nodes.map(node => node.id -> CandidateGeneration.imdbTitled(queriesOf(node.id), answers)).toMap
-  /** The films only IMDb's suggestions reached for a node — no title search of its and no director walk. */
-  val imdbOnly: Map[String, Set[Int]]       = nodes.map(node => node.id -> (imdbSuggested(node.id).toSet -- ownSearch(node.id).keySet --
-    queriesOf(node.id).collect { case query: CandidateQuery.Director => answers(query).toOption.getOrElse(Nil).map(_.tmdbId) }.flatten)).toMap
+  /** What each node's own queries reached ([[CandidateGeneration.Reach]]). */
+  val reach: Map[String, CandidateGeneration.Reach] = nodes.map(node => node.id -> reachOf(queriesOf(node.id))).toMap
+  /** What `queries` reached, from the answers this resolve holds: a node's own, or those of the evidence a family's scope
+   *  reads it by (`FamilyScope.reach`) — a query no node asked reached nothing. */
+  def reachOf(queries: Seq[CandidateQuery]): CandidateGeneration.Reach =
+    CandidateGeneration.Reach.of(queries, query => answers.getOrElse(query, Answer.Known(Nil)))
   /** The films a fallback source lists under a node's search titles that TMDB holds no record of (the fallback ids an
    *  [[CandidateQuery.ImdbTitled]] answer carries): never in a TMDB pool, only what a cluster no TMDB film was taken for
    *  may fall back to. */
@@ -74,7 +68,7 @@ private[identity] final class CandidateGeneration(ordered: Seq[Listing], lookups
   /** Whether these listings are part of a larger corpus, read through its context. */
   def partOfCorpus: Boolean = corpus.isDefined
   /** Every candidate a node's own evidence reached: its searches' and its walks'. */
-  def reached(node: EvidenceNode): Seq[Int] = CandidateGeneration.reached(ownSearch(node.id), ownWalk(node.id))
+  def reached(node: EvidenceNode): Seq[Int] = CandidateGeneration.reached(reach(node.id).search, reach(node.id).walk)
 
   /** What these listings' families read from the whole corpus: `corpus` when they are part of a
    *  larger one, else their own. */
@@ -115,19 +109,29 @@ private[identity] object CandidateGeneration {
    *  films IMDb lists under its title (found by their IMDb ids) — paths, never a search rank. */
   def ownWalk(queries: Seq[CandidateQuery], answer: CandidateQuery => Answer[Seq[Hit]]): Set[Int] =
     queries.filterNot(isTitle).flatMap(query => answer(query).toOption.getOrElse(Nil)).map(_.tmdbId).filterNot(FallbackIds.isFallback).toSet
-  /** The films IMDb suggests for a node's own title, in IMDb's order. */
-  def imdbSuggested(queries: Seq[CandidateQuery], answer: CandidateQuery => Answer[Seq[Hit]]): Seq[Int] =
-    queries.collect { case query: CandidateQuery.Imdb => answer(query).toOption.getOrElse(Nil).map(_.tmdbId) }.flatten.distinct
-  /** The films IMDb lists under one of a node's search titles ([[CandidateQuery.ImdbTitled]]), each with those titles. */
-  def imdbTitled(queries: Seq[CandidateQuery], answer: CandidateQuery => Answer[Seq[Hit]]): Map[Int, Set[String]] =
-    queries.collect { case query @ CandidateQuery.ImdbTitled(title) => answer(query).toOption.getOrElse(Nil).map(_.tmdbId).filterNot(FallbackIds.isFallback).map(_ -> title) }.flatten
-      .groupMap(_._1)(_._2).view.mapValues(_.toSet).toMap
-  /** The films the people a node credits — found by its OWN spelling of their names — directed or wrote. */
-  def directed(queries: Seq[CandidateQuery], answer: CandidateQuery => Answer[Seq[Hit]]): Set[Int] =
-    queries.collect { case query: CandidateQuery.Director => answer(query).toOption.getOrElse(Nil).map(_.tmdbId) }.flatten.toSet
-  /** The films that were the ONLY result of one of a node's own title searches. */
-  def soleResults(queries: Seq[CandidateQuery], answer: CandidateQuery => Answer[Seq[Hit]]): Set[Int] =
-    queries.filter(isTitle).flatMap(query => answer(query).toOption.map(_.map(_.tmdbId).distinct)).collect { case Seq(id) => id }.toSet
+  /** What a node's queries reached: each film its title searches named, at its best rank ([[ownSearch]]); the films its
+   *  other paths reached ([[ownWalk]]); the films the people it credits — found by its OWN spelling of their names —
+   *  directed or wrote; the films that were the ONLY result of one of its title searches; the films IMDb suggests for
+   *  its own title, in IMDb's order; and the films IMDb lists under one of its search titles in some language
+   *  ([[CandidateQuery.ImdbTitled]]), each with those titles. An IMDb-titled film is an ordinary candidate, scored on the
+   *  listing's facts and counted as a rival like any other: what IMDb's title alone may do is `Acceptance.imdbSuggested`'s
+   *  titled rung. */
+  final case class Reach(search: Map[Int, Int], walk: Set[Int], directed: Set[Int], soleResults: Set[Int], imdbSuggested: Seq[Int],
+                         imdbTitled: Map[Int, Set[String]]) {
+    /** The films only IMDb's suggestions reached — no title search and no director walk. */
+    lazy val imdbOnly: Set[Int] = imdbSuggested.toSet -- search.keySet -- directed
+  }
+  object Reach {
+    def of(queries: Seq[CandidateQuery], answer: CandidateQuery => Answer[Seq[Hit]]): Reach = {
+      def answered(query: CandidateQuery) = answer(query).toOption.getOrElse(Nil)
+      Reach(ownSearch(queries, answer), ownWalk(queries, answer),
+        queries.collect { case query: CandidateQuery.Director => answered(query).map(_.tmdbId) }.flatten.toSet,
+        queries.filter(isTitle).flatMap(query => answer(query).toOption.map(_.map(_.tmdbId).distinct)).collect { case Seq(id) => id }.toSet,
+        queries.collect { case query: CandidateQuery.Imdb => answered(query).map(_.tmdbId) }.flatten.distinct,
+        queries.collect { case query @ CandidateQuery.ImdbTitled(title) => answered(query).map(_.tmdbId).filterNot(FallbackIds.isFallback).map(_ -> title) }
+          .flatten.groupMap(_._1)(_._2).view.mapValues(_.toSet).toMap)
+    }
+  }
   /** Every candidate a node's own evidence reached: its searches' and its walks'. */
   def reached(ownSearch: Map[Int, Int], ownWalk: Set[Int]): Seq[Int] = (ownSearch.keys ++ ownWalk).toSeq.distinct.sorted
   /** The films an answer names, best first. */

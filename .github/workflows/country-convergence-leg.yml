@@ -812,6 +812,33 @@ jobs:
                   log:   ${{ matrix.phase == 'sample' && 'convergence-sample.log' || 'convergence.log' }}
                   name:  ${{ inputs.code }}-${{ matrix.phase }}
 
+            # THE IDENTITY TAKES CHECK (scripts/ci/identity-takes-check.sh): the pinned pair this row just replayed,
+            # resolved by the base commit and by the head, and every listing the code moved to another film --
+            # lost or changed, and accepted by neither labels.tsv nor identity-takes/accepted.tsv -- fails the row,
+            # listed in the step summary with both films and both reasons. Base vs head on one recording, so a new
+            # recording never fails it; only code does. Its commit status names the base the next run diffs from.
+            # Exit 2 (it could not run) warns without failing: a check that cannot answer is not a verdict.
+            - name: Check which listings the code moved to another film
+              id: takes
+              if: ${{ !cancelled() && inputs.mode == 'hermetic' && matrix.phase == 'convergence' && steps.suite.outcome != 'skipped' }}
+              shell: bash
+              timeout-minutes: 25
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  HEAP: ${{ inputs.heap }}
+                  KINOWO_COUNTRY: ${{ inputs.code }}
+                  KINOWO_COUNTRIES: ${{ inputs.code }}
+                  MONGODB_URI: mongodb://127.0.0.1:27017/?directConnection=true
+              run: |
+                  scripts/ci/identity-takes-check.sh "${{ inputs.code }}" "$RUNNER_TEMP/identity-takes"; code=$?
+                  case $code in 0) state=success ;; 1) state=failure ;; *) exit 0 ;; esac
+                  # allow-silenced: the status only names the next run's base; failing to post it must not turn the verdict
+                  gh api -X POST "repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" -f state="$state" \
+                      -f context="identity takes (${{ inputs.code }})" -f description="$(head -1 "$RUNNER_TEMP/identity-takes/verdict.txt" | cut -c1-140)" \
+                      -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" > /dev/null || true
+                  [ "$code" = 0 ] || echo "::error title=identity takes (${{ inputs.code }})::the code moved listings to another film -- see the step summary"
+                  exit "$code"
+
             # A RECORDING whose sample ran in a row of its own: its recordings, merged into this tree
             # before it is packed — a hermetic sample leg replays the pair a recording's publish pins,
             # so the sample's requests have to be in what this row publishes. The sample row is done minutes before this row gets
@@ -870,8 +897,10 @@ jobs:
             # the sample that failed (then the bad commit is known bad without a replay). ONE
             # step for both, where the two jobs each carried one: `sample-failed` is the only
             # thing that told them apart, and the sample step's outcome says it directly.
+            # Not for a red takes check alone (below too, the ratchet): it names its own range (base..head), and
+            # neither the sample nor the suite's findings can reproduce it.
             - uses: ./.github/actions/convergence-bisect-request
-              if: failure() && inputs.mode == 'hermetic' && github.ref == 'refs/heads/main'
+              if: failure() && inputs.mode == 'hermetic' && github.ref == 'refs/heads/main' && (steps.takes.outcome != 'failure' || steps.suite.outcome == 'failure')
               with:
                   country:        ${{ inputs.country }}
                   code:           ${{ inputs.code }}
@@ -889,7 +918,7 @@ jobs:
             # whose findings the ratchet below reads instead (in the old shape a red sample
             # meant this job never ran).
             - uses: ./.github/actions/hard-clusters-ratchet
-              if: failure() && steps.sample.outcome != 'failure' && matrix.phase != 'sample'
+              if: failure() && steps.sample.outcome != 'failure' && matrix.phase != 'sample' && (steps.takes.outcome != 'failure' || steps.suite.outcome == 'failure')
               with:
                   code:  ${{ inputs.code }}
                   name:  ${{ inputs.code }}-${{ matrix.phase }}
@@ -914,6 +943,15 @@ jobs:
               shell: bash
               run: |
                   echo "::error::the ${{ inputs.country }} sample failed — see its step above"
+                  exit 1
+
+            # A RECORDING whose per-origin health failed (convergence-publish's "Judge this recording's per-origin
+            # health", the table on the summary): red here, after every publish, so the tree is saved either way.
+            - name: Fail the leg on the recording's health
+              if: always() && inputs.mode == 'record' && steps.publish.outputs.recording-healthy == 'false'
+              shell: bash
+              run: |
+                  echo "::error::an origin refused most of ${{ inputs.country }}'s recording, or vanished from its tree — see the Recording health table on the summary"
                   exit 1
 
             # Last, and whatever happened (scripts/ci/leg-verdict.sh, LegVerdictWiringSpec).

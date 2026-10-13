@@ -84,6 +84,22 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     measures(Listing("Retrospektywa 1990-1999"), film)("season.delta") shouldBe Missing("listing")
   }
 
+  it should "be read in a box office's short spellings" in {
+    // Prod UK 2026-10-13: Keswick's "Royal Ballet 2026/7: Romeo & Juliet" named its season, unread, and left the 2026/27
+    // record below the threshold.
+    IdentityMeasures.seasonYear(Seq("Royal Ballet 2026/7: Romeo & Juliet")) shouldBe Some(2026)
+    IdentityMeasures.seasonYear(Seq("Met Opera 2029/0: Tosca")) shouldBe Some(2029)
+    // nor two numbers a slash joins, never a season the title states: an age band, a date, and a banner left from the
+    // season it was first billed in — DE "Berliner Philharmoniker 25/26" screens the 2026 Silvesterkonzert on 31 December
+    // 2026, and read as season 2025 it held ×73 spellings of the concert apart (identity measure, recording 38363428661).
+    // A relay's "RB&O 26/27" takes its season from its screenings ([[IdentityMeasures.Listing.broadcastSeason]]).
+    IdentityMeasures.seasonYear(Seq("Berliner Philharmoniker 25/26: Silvesterkonzert")) shouldBe None
+    IdentityMeasures.seasonYear(Seq("RB&O 26/27: Romeo & Juliet")) shouldBe None
+    IdentityMeasures.seasonYear(Seq("Kids Club 12/13")) shouldBe None
+    IdentityMeasures.seasonYear(Seq("Live 24/7")) shouldBe None
+    IdentityMeasures.seasonYear(Seq("Royal Ballet 2026/8: Romeo & Juliet")) shouldBe None
+  }
+
   "a season production named in another language" should "be the record's, by the stage work both name" in {
     // PL venues bill the RBO's 2026/27 season in Polish: "Dziadek do orzechów" is the record's "The Nutcracker"
     // (Wikidata Q193705, StageWorks), as "Jezioro łabędzie" is Swan Lake — not The Nutcracker
@@ -95,6 +111,11 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // Swan Lake, which TMDB has no record of — not the Royal Ballet's (recording 37116030016 took it)
     val rboSwanLake = Film("Royal Ballet & Opera 2026/27: Swan Lake", year = Some(2026))
     IdentityMeasures.namesSeasonProduction(Listing("Balet z Opery Paryskiej 2026-2027: Jezioro łabędzie"), rboSwanLake) shouldBe false
+    // nor by the art form both houses' names carry: DE "Opera de Paris: Romeo et Juliette (2026/27)" ×7 took the Royal
+    // Ballet's 2026/27 record by "opera" (identity measure on recording 38363428661)
+    IdentityMeasures.namesSeasonProduction(Listing("Opera de Paris: Romeo et Juliette (2026/27)"),
+      Film("RBO 2026/27: Romeo und Julia (The Royal Ballet)", originalTitle = Some("Royal Ballet & Opera 2026/27: Romeo and Juliet"),
+        year = Some(2027))) shouldBe false
     IdentityMeasures.namesSeasonProduction(Listing("Royal Ballet and Opera Sezon Kinowy 2026-27: Jezioro łabędzie"), rboSwanLake) shouldBe true
     IdentityMeasures.namesSeasonProduction(Listing("OPERA 2026/2027 - MAKBET"),
       Film("The Metropolitan Opera 2026/27: Macbeth", year = Some(2026))) shouldBe true
@@ -146,7 +167,8 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.searchQueries(Listing("NT Live: Manon")).exists(_.contains("20")) shouldBe false
     // Only the title naming the season asks, and a bracketed year is no part of the work.
     val cleaned = Listing("The Metropolitan Opera: Manon (2027)", rawTitle = Some("Met Opera 2026-27: Manon (2027)"))
-    IdentityMeasures.searchQueries(cleaned).filter(_.endsWith(" 2026")) shouldBe Seq("Manon 2026")
+    // ("Manon" names Massenet's opera and MacMillan's ballet, whose own name is asked beside it)
+    IdentityMeasures.searchQueries(cleaned).filter(_.endsWith(" 2026")) shouldBe Seq("Manon 2026", "L'histoire de Manon 2026", "Manon Lescaut 2026")
   }
 
   it should "be searched by every name of its work, whatever language the venue names it in" in {
@@ -325,6 +347,20 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     Houses.learn(Seq(w("bolshoi ballet live", "bolshoi", "swanlake"))) shouldBe Houses(Map("bolshoiballetlive" -> "bolshoi"))
   }
 
+  "a banner abbreviating its house" should "bill the work under that house, whatever the house was learned as" in {
+    // UK recording 38351832400: one candidate filed "NT Live: …" among its alternatives, so the "NT Live" banner was
+    // learned as itself; Flicks' "NT Live: Hay Fever" ×131 then read its own record, "National Theatre Live: Hay Fever",
+    // as an overlap, and the director's "National Theatre at Home: Samira" pooled in at 49.9%.
+    val learnedAsItself = Houses(Map("ntlive" -> "ntlive"))
+    IdentityMeasures.titleRelation(Listing("NT Live: Hay Fever"), Film("National Theatre Live: Hay Fever"), learnedAsItself) should not be
+      Category("overlap")
+    // an abbreviation names one house only by its initials, never by a word two houses share
+    IdentityMeasures.titleRelation(Listing("NT Live: Samira"), Film("National Theatre at Home: Samira"), learnedAsItself) shouldBe
+      IdentityMeasures.titleRelation(Listing("NT Live: Samira"), Film("National Theatre at Home: Samira"), Houses.Unknown)
+    IdentityMeasures.titleRelation(Listing("Royal Shakespeare Company: Macbeth"), Film("Royal Ballet & Opera 2026/27: Macbeth"), Houses.Unknown) shouldBe
+      Category("overlap")
+  }
+
   "a venue dropping a film's leading article" should "still list the film's exact title — a plain title of three words or more" in {
     // US Metrograph's "Brides of Dracula" {Terence Fisher} read a `fragment` of "The Brides of Dracula" and took Fisher's "Dracula".
     def rel(l: String, f: String) = IdentityMeasures.titleRelation(Listing(l), Film(f)).value
@@ -453,7 +489,8 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     val nt = Listing("NT Live: The Importance of Being Earnest")
     val record = Film("National Theatre Live: The Importance of Being Earnest")
     val houses = Houses(Map("ntlive" -> "nationaltheatrelive"))
-    IdentityMeasures.titleRelation(nt, record) shouldBe Category("overlap")
+    // a banner abbreviating the record's house names it unlearned ("NT" the initials of "National Theatre")
+    IdentityMeasures.titleRelation(nt, record) shouldBe Category("segment")
     IdentityMeasures.titleRelation(nt, record, houses) shouldBe Category("segment")
     IdentityMeasures.titleRelation(nt, Film("RSC Live: The Importance of Being Earnest"), houses) shouldBe Category("overlap")
     IdentityMeasures.listingFilm(nt, record, None, 0, 0, houses)("title") shouldBe Category("segment")

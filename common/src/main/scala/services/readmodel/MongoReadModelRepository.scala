@@ -288,7 +288,8 @@ class MongoReadModelRepository(
 
   /** The server's `operationTime` on a `hello` — every write already applied is at or before
    *  it, so a stream started AT it replays each write a read made after this call could have
-   *  missed. A standalone server reports no operation time (and cannot stream anyway): `None`.
+   *  missed. A standalone server reports no operation time (and cannot stream anyway): `Absent`,
+   *  which the read model opens its streams "from now" on. An unreachable server is `Failed`.
    *
    *  The reply is read as a raw `BsonDocument`, which every codec registry decodes. Read as the
    *  Scala `Document` it needed the Scala driver's registry: on a database built from the Java

@@ -60,19 +60,25 @@ def synthetic():
         f.write("\n".join(GAZETTEER) + "\n")
     gaz = g.load_gazetteer(f.name)
     # A reviewed figure for a town GeoNames DOES have is not a town it lacks.
+    # Restored whatever happens, so a failing place() leaves the table as it found it.
+    saved_populations = dict(g.POPULATIONS)
     g.POPULATIONS["Hull, East Riding of Yorkshire"] = 1
-    towns, town_of, lacking = g.place([
-        venue("Croydon1", "Croydon", 51.375, -0.098),
-        venue("Hampstead1", "Hampstead", 51.556, -0.178),
-        venue("NewportIow", "Newport", 50.699, -1.289),
-        venue("NewportGwent", "Newport", 51.588, -2.995),
-        venue("Hull1", "Hull", 53.74, -0.33),
-        venue("Lanternhouse", "Glasgow", 55.9488, -3.97109),
-        venue("Rothesay1", "Rothesay", 55.838, -5.055),
-        venue("Jersey1", "Jersey", 49.1838, -2.1143),
-        venue("Belfast1", "Belfast", 54.6, -5.93),
-        venue("Beeston1", "Beeston", 52.926, -1.215),
-    ], gaz, venue_towns={"Hampstead1": "London", "Jersey1": "Saint Helier"})
+    try:
+        towns, town_of, lacking = g.place([
+            venue("Croydon1", "Croydon", 51.375, -0.098),
+            venue("Hampstead1", "Hampstead", 51.556, -0.178),
+            venue("NewportIow", "Newport", 50.699, -1.289),
+            venue("NewportGwent", "Newport", 51.588, -2.995),
+            venue("Hull1", "Hull", 53.74, -0.33),
+            venue("Lanternhouse", "Glasgow", 55.9488, -3.97109),
+            venue("Rothesay1", "Rothesay", 55.838, -5.055),
+            venue("Jersey1", "Jersey", 49.1838, -2.1143),
+            venue("Belfast1", "Belfast", 54.6, -5.93),
+            venue("Beeston1", "Beeston", 52.926, -1.215),
+        ], gaz, venue_towns={"Hampstead1": "London", "Jersey1": "Saint Helier"})
+    finally:
+        g.POPULATIONS.clear()
+        g.POPULATIONS.update(saved_populations)
     check("every place in Greater London is London — a borough's postal town, and a neighbourhood the "
           "reviewed VENUE_TOWNS table names", town_of["Croydon1"] == town_of["Hampstead1"] == "London, Greater London")
     check("two towns of one name are two towns, keyed by their county",
@@ -87,7 +93,6 @@ def synthetic():
     check("the towns GeoNames lacks are only those it gave no population, whatever the table holds",
           lacking == ["Beeston, Nottinghamshire"]
           and towns["Hull, East Riding of Yorkshire"]["population"] > 1)
-    del g.POPULATIONS["Hull, East Riding of Yorkshire"]
     check("a town with no population anywhere stops the run",
           refuses(lambda: g.place([venue("Boldon1", "Boldon", 55.87, -4.26)], gaz)))
     check("an island is its own landmass: Bute, Jersey, the Isle of Wight",

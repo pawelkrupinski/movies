@@ -1,0 +1,7 @@
+# Listings whose film a change of the identity code moved ON PURPOSE, accepted by the identity takes check
+# (scripts/ci/identity_takes_diff.py), which fails a convergence leg on a lost or changed take nobody accepted.
+# Labelling the new film `right` in ../identity-unmatched/labels.tsv accepts a move too, and is the better record
+# when the listing's film is known; this file is for the rest (a deliberate unmatch, a move across many venues).
+# A line, tab-separated: country, venue (or * for every venue), rawTitle, before, after (tmdb:<id>, none, or *), why.
+# Once the check passes on a commit that commit becomes the next base, so a line here is spent; prune at leisure.
+country	venue	rawTitle	before	after	note

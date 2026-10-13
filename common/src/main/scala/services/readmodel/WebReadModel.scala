@@ -421,9 +421,9 @@ class WebReadModel(
       ticksUntilReopen = 0
       if (!_hydrated) coldReload()
       else if (catchUpOwed) {
-        // The reopen's read failed (or it had no checkpoint to replay from — a standalone): what was
-        // written while the streams were down reached neither. Read again — anything written from
-        // the checkpoint on, the live streams carry.
+        // The reopen's read failed (or it had no checkpoint to replay from — a standalone, `Absent`):
+        // what was written while the streams were down reached neither. Read again — anything
+        // written from the checkpoint on, the live streams carry.
         logger.warn("WebReadModel: change streams are live again but the writes made while they were down are unread — reloading.")
         reload()
         if (lastReloadComplete) catchUpOwed = false
@@ -438,13 +438,20 @@ class WebReadModel(
 
   // The reopen backoff, in cold-retry ticks: a stream reopened into an outage that is still on
   // dies again, and each reopen pays a full reload — so the waits double (1, 3, 7, … ticks) up
-  // to the backstop's interval, and reset once a tick finds both streams live. Only the tick's
-  // own thread touches them.
+  // to the backstop's interval, and reset once a tick finds both streams live. A checkpoint that
+  // could not be taken is no attempt: it reloads and opens nothing, so the next tick tries again.
+  // Only the tick's own thread touches them.
   private var reopenAttempts   = 0
   private var ticksUntilReopen = 0
-  // A reopen that could not read the corpus whole, or take a checkpoint to replay from, left the
-  // writes made while the streams were down unread.
+  // A reopen that could not read the corpus whole, or opened its streams with no checkpoint to
+  // replay from (a standalone answers `Absent`), left the writes made while the streams were down
+  // unread. A FAILED checkpoint sets nothing: it opens no stream, and the next tick tries again.
   private var catchUpOwed      = false
+  // A checkpoint fails every cold-retry tick for as long as Mongo is down — 120 lines an hour a
+  // pod if each logged. The first is news; after it, one line per backstop interval, counting
+  // the ticks it held back. On the injected clock, so a spec steps it.
+  private val checkpointFailureLog =
+    new tools.LogThrottle(reloadInterval.value.toNanos, () => clock.millis() * 1000000L)
   private val MaxTicksBetweenReopens =
     math.max(1L, reloadInterval.value.toSeconds / math.max(1L, coldRetryInterval.value.toSeconds))
 
@@ -455,20 +462,24 @@ class WebReadModel(
     if (ticksUntilReopen > 0) {
       ticksUntilReopen -= 1
       if (!_hydrated) coldReload()
-    } else {
-      reopenAttempts += 1
-      ticksUntilReopen = math.min((1L << math.min(reopenAttempts, 30)) - 1, MaxTicksBetweenReopens).toInt
-      logger.warn(s"WebReadModel: change stream(s) ended (movies live=${movieWatch.exists(_.live)}, " +
-        s"screenings live=${screeningWatch.exists(_.live)}) — reopening, attempt $reopenAttempts.")
+    } else
       reader.streamCheckpoint() match {
         // No checkpoint is not "watch from now": the cursor opens asynchronously, once Mongo answers
         // again — after this reopen, after the catch-up read a later tick makes — and a write landing
-        // between that read and the cursor reached neither (CI 2026-10-13). The next reopen, on the
-        // backoff, takes one.
+        // between that read and the cursor reached neither (CI 2026-10-13). Nor is it a reopen
+        // attempt: it cost a `hello`, not a reload, so it leaves the backoff alone and the next
+        // tick takes one — the streams are back the tick after Mongo is.
         case tools.ReadOutcome.Failed(cause) =>
-          logger.warn(s"WebReadModel: no stream checkpoint to replay from (${cause.explain}) — the streams stay down until the next reopen.")
+          checkpointFailureLog.admit().foreach { held =>
+            logger.warn(s"WebReadModel: no stream checkpoint to replay from (${cause.explain}) — the streams stay down; " +
+              s"retrying every tick${if (held > 0) s" ($held more failed since the last line)" else ""}.")
+          }
           if (!_hydrated) coldReload()
         case outcome =>
+          reopenAttempts += 1
+          ticksUntilReopen = math.min((1L << math.min(reopenAttempts, 30)) - 1, MaxTicksBetweenReopens).toInt
+          logger.warn(s"WebReadModel: change stream(s) ended (movies live=${movieWatch.exists(_.live)}, " +
+            s"screenings live=${screeningWatch.exists(_.live)}) — reopening, attempt $reopenAttempts.")
           val checkpoint = outcome.answered
           reload()
           // Caught up only by a whole read AND a replay from before it; short of either, the next tick
@@ -485,7 +496,6 @@ class WebReadModel(
             screeningWatch = reader.watchScreenings(applyScreeningUpsert, applyScreeningDelete, checkpoint)
           }
       }
-    }
 
   private[readmodel] def streamsLive: Boolean = movieWatch.exists(_.live) && screeningWatch.exists(_.live)
 

@@ -27,6 +27,12 @@ object ServedCity {
   def resolve(slug: String, servingCountry: models.Country)(f: City => Result)(implicit messages: Messages): Result =
     servingCountry.bySlug.get(slug) match {
       case Some(c) => f(c)
-      case None    => Results.NotFound(messages("error.unknownCity", slug))
+      case None    => unknown(slug)
     }
+
+  /** The answer for a slug this deployment does not serve — also what the
+   *  `showtimes.cc` front door gives a Polish place (`FrontDoorRedirectFilter`),
+   *  so it reads exactly like any other unknown city there. */
+  def unknown(slug: String)(implicit messages: Messages): Result =
+    Results.NotFound(messages("error.unknownCity", slug))
 }

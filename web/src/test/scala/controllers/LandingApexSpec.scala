@@ -48,12 +48,12 @@ class LandingApexSpec extends AnyFlatSpec with Matchers {
   // Poland answers on kinowo.net under a different brand, so it is the one entry
   // that could plausibly be left off the Showtimes front door. It must not be:
   // someone who lands here wanting Polish listings should not have to know the
-  // two brands are one product.
-  it should "include Poland, despite its separate domain and brand" in {
+  // two brands are one product. But it is ONE link to kinowo.net — its places
+  // are not showtimes.cc addresses (the front door 404s them).
+  it should "include Poland, despite its separate domain and brand, as one link to kinowo.net" in {
     val html = bodyOn("showtimes.cc")
     html should include ("Poland")
-    html should include ("""href="https://kinowo.net/?pick=city"""")
-    html should include ("kinowo.net")
+    """href="https://kinowo\.net[^"]*"""".r.findAllIn(html).toList shouldBe List("""href="https://kinowo.net/?pick=city"""")
   }
 
   it should "ask for a country, and never guess one — no automatic geolocation redirect" in {

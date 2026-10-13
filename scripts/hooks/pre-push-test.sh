@@ -35,6 +35,30 @@ check "docs run nothing" "" "$(plan docs/readme.md README.md)"
 check "checks come out once each, in run order" "eslint snapshot actionlint shellcheck sbt" \
   "$(plan web/src/main/assets/js/a.js build.sbt scripts/x.sh .github/workflows/a.yml worker/src/main/scala/A.scala test/resources/fixtures/08-06-2026/y)"
 
+# `sbt compile` skips the Test and It configs: f20a6b5dd's new `protected def wire` made a worker
+# it/ spec's local val ambiguous and reached CI unseen. The sbt check compiles the test configs of
+# every module the push touches AND every module that depends on one, in its one sbt run.
+printf '\033[36m▸\033[0m pre-push --compile-plan\n'
+compiles() { printf '%s\n' "$@" | "$REPO_ROOT/scripts/hooks/pre-push" --compile-plan | tr '\n' ' ' | sed 's/ $//'; }
+check "a worker source compiles worker's Test and It configs, and e2e's tests over it" \
+  "worker/Test/compile worker/It/compile e2e/Test/compile" "$(compiles worker/src/main/scala/A.scala)"
+check "a worker it/ spec compiles the same" \
+  "worker/Test/compile worker/It/compile e2e/Test/compile" "$(compiles worker/src/it/scala/ASpec.scala)"
+check "a web source compiles web's Test, It and Page configs, and e2e's tests" \
+  "web/Test/compile web/It/compile web/Page/compile e2e/Test/compile" "$(compiles web/app/A.scala)"
+check "worker's fixtures config also compiles web's, whose Page config builds on it" \
+  "worker/Test/compile worker/It/compile web/Test/compile web/It/compile web/Page/compile e2e/Test/compile" \
+  "$(compiles worker/src/fixtures/scala/tools/EnrichmentCache.scala)"
+check "an e2e spec compiles e2e alone" "e2e/Test/compile" "$(compiles e2e/src/test/scala/A.scala)"
+check "common compiles every module's test configs" \
+  "common/Test/compile testkit/Test/compile worker/Test/compile worker/It/compile web/Test/compile web/It/compile web/Page/compile e2e/Test/compile" \
+  "$(compiles common/src/main/scala/A.scala)"
+check "the build compiles every module's test configs" \
+  "common/Test/compile testkit/Test/compile worker/Test/compile worker/It/compile web/Test/compile web/It/compile web/Page/compile e2e/Test/compile" \
+  "$(compiles build.sbt)"
+check "a dashboard alone compiles nothing extra" "" \
+  "$(compiles infra/nix/files/monitoring/grafana/dashboards/apps/kinowo-http.json)"
+
 # ── Running for real, over a scratch clone: what is judged, and what is not silently passed ──
 printf '\033[36m▸\033[0m pre-push over a scratch repository\n'
 if command -v shellcheck >/dev/null; then
@@ -81,6 +105,16 @@ if command -v shellcheck >/dev/null; then
   mkdir -p "$scratch/bin"
   printf '#!/usr/bin/env bash\npwd -P > "%s/sbt-ran-in"\n' "$scratch" > "$scratch/bin/sbt"
   chmod +x "$scratch/bin/sbt"
+  # The test-config compiles ride the lints' ONE sbt run, ahead of them.
+  printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$@" > "%s/sbt-args"\n' "$scratch" > "$scratch/bin/sbt"
+  mkdir -p "$repo/worker/src/it/scala"; echo 'object B' > "$repo/worker/src/it/scala/B.scala"
+  scratch_git "$repo" add worker; scratch_git "$repo" commit -qm "adds a worker it/ source"
+  (cd "$repo" && PATH="$scratch/bin:$PATH" bash scripts/hooks/pre-push --range "HEAD~1..HEAD" >/dev/null 2>&1)
+  check "a worker push compiles its Test and It configs in the lints' one sbt invocation" \
+    "worker/Test/compile worker/It/compile e2e/Test/compile" \
+    "$(grep -E '^[a-z0-9]+/[A-Za-z]+/compile$' "$scratch/sbt-args" 2>/dev/null | tr '\n' ' ' | sed 's/ $//')"
+  check "...ahead of the lints, which still run" "1" "$(grep -c 'worker/Test/testOnly' "$scratch/sbt-args" 2>/dev/null)"
+  printf '#!/usr/bin/env bash\npwd -P > "%s/sbt-ran-in"\n' "$scratch" > "$scratch/bin/sbt"
   mkdir -p "$repo/src"; echo 'object A' > "$repo/src/A.scala"
   scratch_git "$repo" add src/A.scala; scratch_git "$repo" commit -qm "adds a Scala source"
   scala="$(scratch_git "$repo" rev-parse HEAD)"

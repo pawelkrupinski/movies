@@ -12,7 +12,7 @@ import json, os, sys, urllib.parse, urllib.request
 LANGUAGES = ("en", "pl", "de", "es", "fr", "it", "cs")
 QUERY = """
 SELECT ?work ?name (LANG(?name) AS ?lang) ?kind WHERE {
-  VALUES ?class { wd:Q58483083 wd:Q58483088 }
+  VALUES ?class { wd:Q58483083 wd:Q58483088 wd:Q15079786 }
   ?work wdt:P31 ?class ; wikibase:sitelinks ?sitelinks .
   FILTER(?sitelinks >= 5)
   { ?work rdfs:label ?name BIND("label" AS ?kind) } UNION { ?work skos:altLabel ?name BIND("alias" AS ?kind) }

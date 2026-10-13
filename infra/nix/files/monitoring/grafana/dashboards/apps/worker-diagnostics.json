@@ -2582,7 +2582,7 @@
     {
       "id": 48,
       "title": "Identity cutover — films and listings per path; canary",
-      "description": "`kinowo_worker_identity_cutover_films` / `kinowo_worker_identity_cutover_listings`: what the last identity projection of each country stored and resolved; path=projection. `kinowo_worker_identity_cutover_canary`: the projection's films by relation to the films stored BEFORE it (the shadow diff's relations): anything but identical is a regrouping about to be written. Panel only.",
+      "description": "`kinowo_worker_identity_cutover_films` / `kinowo_worker_identity_cutover_listings`: what the last identity projection of each country stored and resolved; path=projection. `kinowo_worker_identity_cutover_canary`: the projection's films by relation to the films stored BEFORE it (the shadow diff's relations): anything but identical is a regrouping about to be written. `kinowo_worker_identity_suspect_takes{signal}`: on the last whole-corpus projection, the billings whose take a suspect-take signal finds against its own evidence (SuspectTakes: fragment, era, runtime, sequel, feed, route) — a rise between recordings is a wrong take the convergence legs' suspect-take ratchet will name. Panel only.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -2645,13 +2645,22 @@
           },
           "expr": "max by (country, relation) (kinowo_worker_identity_cutover_canary{country=~\"$country\"})",
           "legendFormat": "{{country}} canary {{relation}}"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "max by (country, signal) (kinowo_worker_identity_suspect_takes{country=~\"$country\"})",
+          "legendFormat": "{{country}} suspect takes ({{signal}})"
         }
       ]
     },
     {
       "id": 49,
       "title": "Identity cutover — regroupings, refusals, drift and projection seconds",
-      "description": "`kinowo_worker_identity_regroupings_total`: per projection, previous films merged into another, split over two or more, listings moved to another film id, fresh ids, retired ids. On an unchanged listing set merge/split/move stay at 0 (P2) — §10's churn acceptance for a cut-over country; fresh/retire follow the venues' programmes. `kinowo_worker_identity_projection_refusals_total`: projections refused (crossing, unreadablemap, shrink past ProjectionGuard's 2% of cards / 0.5% of showtimes, notready: the model not taken up, failed: the projection threw) — the stored films kept serving. `kinowo_worker_identity_projection_seconds`: the last projection's duration — a scoped projection drafts only the films its changes reach (ProjectionScope), one of the whole corpus runs hourly. `kinowo_worker_identity_projection_drift_total`: films that hourly whole projection changed which the scoped ones before it would have left; 0, always — anything else is a film a scope missed, put right by the whole projection that counted it, and named in its log line (`identity projection drift`). `kinowo_worker_identity_projection_reconciles_total{measured}`: those hourly whole projections — measured=false when no projection ran before one, so its drift could not be checked: an hour of drift 0 with only measured=false is drift not measured, not none.",
+      "description": "`kinowo_worker_identity_regroupings_total`: per projection, previous films merged into another, split over two or more, listings moved to another film id, fresh ids, retired ids. On an unchanged listing set merge/split/move stay at 0 (P2) — §10's churn acceptance for a cut-over country; fresh/retire follow the venues' programmes. `kinowo_worker_identity_projection_refusals_total`: projections refused (crossing, unreadablemap, shrink past ProjectionGuard's 2% of cards / 0.5% of showtimes, notready: the model not taken up, failed: the projection threw) — the stored films kept serving. `kinowo_worker_identity_projection_seconds`: the last projection's duration — a scoped projection drafts only the films its changes reach (ProjectionScope), one of the whole corpus runs hourly. `kinowo_worker_identity_projection_drift_total`: films that hourly whole projection changed which the scoped ones before it would have left; 0, always — anything else is a film a scope missed, put right by the whole projection that counted it, and named in its log line (`identity projection drift`). `kinowo_worker_identity_projection_reconciles_total{measured}`: those hourly whole projections — measured=false when no projection ran before one, so its drift could not be checked: an hour of drift 0 with only measured=false is drift not measured, not none. `kinowo_worker_identity_take_changes_total{kind}`: published listings whose TMDB film a written projection moved — lost (had one, has none), changed (another film), gained (had none); a listing leaving the schedule and a re-key keeping the film are churn and not counted. Each is logged as `identity take change: <kind> <venue> | <listing>: <old> -> <new>; reason <basis: explanation>` (VictoriaLogs, field country). `IdentityTakeChangesBurst` alerts on a burst of lost + changed.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -2732,6 +2741,15 @@
           },
           "expr": "sum by (country, measured) (increase(kinowo_worker_identity_projection_reconciles_total{country=~\"$country\"}[1h]))",
           "legendFormat": "{{country}} reconciles /h, measured={{measured}}"
+        },
+        {
+          "refId": "F",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "sum by (country, kind) (increase(kinowo_worker_identity_take_changes_total{country=~\"$country\"}[1h]))",
+          "legendFormat": "{{country}} take {{kind}} /h"
         }
       ]
     },

@@ -16,11 +16,15 @@ import tools.SpecTimeouts
 import scala.concurrent.{Await, Future}
 
 /**
- * A place the site knows never 404s, in any country: every page slug, every slug
- * a city used to answer at (`Country.renamedSlugs`) and every other name of a
- * place a page covers (`Country.slugAliases`), with and without its trailing
- * slash, through the deployment's real filters and the real city actions —
- * answering 200, or a 301 that lands on a 200.
+ * A place the site knows never 404s on its own country's site, in any country:
+ * every page slug, every slug a city used to answer at (`Country.renamedSlugs`)
+ * and every other name of a place a page covers (`Country.slugAliases`), with
+ * and without its trailing slash, through the deployment's real filters and the
+ * real city actions — answering 200, or a 301 that lands on a 200.
+ *
+ * The one deliberate 404 is a Polish place asked for on the `showtimes.cc` apex
+ * rather than on `kinowo.net`: Polish places live on their own domain only
+ * (`FrontDoorRedirectFilter`), which the front-door cases below pin.
  *
  * The router here binds the three city shapes the routes file does (`/:city`,
  * `/:city/`, `/:city/api/cinemas`) to the real `MovieController`; everything a
@@ -37,7 +41,8 @@ class KnownPlacesNeverNotFoundSpec extends AnyFlatSpec with Matchers with Before
   override def afterAll(): Unit = Await.result(system.terminate(), SpecTimeouts.Io): Unit
 
   /** One country's deployment: its two redirect filters over a router of the
-   *  city routes, mounted at its own `mountPath`. */
+   *  city routes, mounted at its own `mountPath`, in production's order
+   *  (`AppLoader.filterChain`: the front door first). */
   private final class Deployment(country: Country, legacy: LegacyAddressMetrics = SpecLegacyAddressMetrics.fresh()) {
     private val controller: MovieController = TestMovieController.build(Nil, servingCountry = country)._1
     private val mount = country.mountPath.stripSuffix("/")
@@ -55,8 +60,8 @@ class KnownPlacesNeverNotFoundSpec extends AnyFlatSpec with Matchers with Before
 
     private val chain: RequestHeader => Future[Result] = {
       val renamed   = new RenamedCityRedirectFilter(country, legacy)
-      val frontDoor = new FrontDoorRedirectFilter(country, legacy)
-      rh => renamed(frontDoor(route))(rh)
+      val frontDoor = new FrontDoorRedirectFilter(country, legacy, testsupport.TestMessages.deployment)
+      rh => frontDoor(renamed(route))(rh)
     }
 
     def get(path: String, host: String = "localhost"): Result =
@@ -106,18 +111,30 @@ class KnownPlacesNeverNotFoundSpec extends AnyFlatSpec with Matchers with Before
     val front = new Deployment(Country.Poland)
     // Harrogate is a UK page and nothing else's.
     front.get("/harrogate/", host = Country.apexHost).header.headers(LOCATION) shouldBe "/uk/harrogate/"
-    // A Polish page lives on kinowo.net: the apex sends it there, sub-pages and query included,
-    // rather than serve a duplicate of it under showtimes.cc.
-    front.get("/poznan/", host = Country.apexHost).header.headers(LOCATION) shouldBe "https://kinowo.net/poznan/"
-    front.get("/poznan", host = Country.apexHost).header.headers(LOCATION) shouldBe "https://kinowo.net/poznan"
-    front.get("/poznan/film/dune?d=1", host = Country.apexHost).header.headers(LOCATION) shouldBe
-      "https://kinowo.net/poznan/film/dune?d=1"
     // The front door's own root is not sent away.
     front.get("/", host = Country.apexHost).header.headers.get(LOCATION) shouldBe None
-    // On kinowo.net, Poland's own host, it is the page.
-    front.get("/poznan/", host = "kinowo.net").header.status shouldBe OK
     // Off the apex — kinowo.net — nothing is redirected.
     front.get("/harrogate/", host = "kinowo.net").header.status shouldBe NOT_FOUND
+  }
+
+  it should "not know a Polish place at all: every path under one is a 404, never a page or a redirect" in {
+    val front = new Deployment(Country.Poland)
+    def notFound(path: String): Unit = {
+      val result = front.get(path, host = Country.apexHost)
+      withClue(path) {
+        result.header.status shouldBe NOT_FOUND
+        result.header.headers.get(LOCATION) shouldBe None
+      }
+    }
+    Seq("/poznan/", "/poznan", "/poznan/film/dune?d=1", "/poznan/api/cinemas").foreach(notFound)
+    // A slug Poland answers through its own 301 — a renamed page, another name of a
+    // place — is no exception: the apex does not walk a visitor to a 404 in two hops.
+    val polishRedirects = (Country.Poland.renamedSlugs.keys ++ Country.Poland.slugAliases.keys).toSeq
+      .filter(slug => Country.bareSlugTarget(slug).exists(_.country == Country.Poland))
+    polishRedirects should not be empty
+    polishRedirects.foreach(slug => { notFound(s"/$slug/"); notFound(s"/$slug") })
+    // On kinowo.net, Poland's own host, it is the page.
+    front.get("/poznan/", host = "kinowo.net").header.status shouldBe OK
   }
 
   it should "send a bare slug to its old owner, else the one country that has it, else the first in order" in {
@@ -127,6 +144,8 @@ class KnownPlacesNeverNotFoundSpec extends AnyFlatSpec with Matchers with Before
     // A retired UK county page, in one hop to the page it retired into.
     val somerset = Country.UnitedKingdom.resolve("somerset").map(_.slug).getOrElse(fail("somerset"))
     front.get("/somerset/", host = Country.apexHost).header.headers(LOCATION) shouldBe s"/uk/$somerset/"
+    // A retired county page with no page of its own lands on the page its towns are on.
+    front.get("/kent/", host = Country.apexHost).header.headers(LOCATION) shouldBe "/uk/chatham/"
     front.get("/leeds/", host = Country.apexHost).header.headers(LOCATION) shouldBe "/uk/leeds/"    // new, UK first
   }
 
@@ -137,7 +156,7 @@ class KnownPlacesNeverNotFoundSpec extends AnyFlatSpec with Matchers with Before
     models.LegacySlugOwners.owners.get(slug).flatMap(Country.byCode)
       .orElse(Country.switchable.find(_.resolve(slug).isDefined))
 
-  it should "send every slug any country answers to where the table and its fallback say" in {
+  it should "send every slug any country answers to where the table and its fallback say, and 404 Poland's" in {
     val front = new Deployment(Country.Poland)
     val failures = for {
       country <- Country.switchable
@@ -147,11 +166,9 @@ class KnownPlacesNeverNotFoundSpec extends AnyFlatSpec with Matchers with Before
       location = result.header.headers.get(LOCATION)
       problem <- (
         if (owner == Country.Poland)
-          // Poland's own: to kinowo.net, Poland's host — directly, or through Poland's own
-          // 301 from an alias or renamed slug onto its page, which then goes there.
-          Option.when(!location.exists(to => to.startsWith("https://kinowo.net/") ||
-              front.get(to, host = Country.apexHost).header.headers.get(LOCATION).contains(s"https://kinowo.net$to")))(
-            s"/$slug/ -> $location, not kinowo.net")
+          // Poland's own: not a showtimes.cc address at all.
+          Option.when(result.header.status != NOT_FOUND || location.isDefined)(
+            s"/$slug/ -> ${result.header.status} $location, not a 404")
         else {
           val expected = owner.resolve(slug).map(city => s"${owner.pathPrefix}/${city.slug}/")
           Option.when(expected.isEmpty || location != expected)(

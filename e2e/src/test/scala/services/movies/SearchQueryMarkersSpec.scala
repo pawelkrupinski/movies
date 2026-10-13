@@ -84,8 +84,6 @@ class SearchQueryMarkersSpec extends CorpusShapeSpec {
     AllowedListing.anywhere("Sekretny pokaz") -> s"Cinema City's secret screening, its film undisclosed: $NoFilmToFind",
     AllowedListing("Cinexx", "OmU Ebenezer: Eine Weihnachtsgeschichte") ->
       "TODO(rule): a version bare in front of the film with no separator — one listing across the five corpora of 2026-10-13, too rare for a rule of its own",
-    AllowedListing("FilmRaum", "Das Geheimnis der gestohlenen Maske, Preview am 25.10. um 15 Uhr") ->
-      "TODO(rule): a dated preview after a comma — one listing across the five corpora of 2026-10-13, too rare for a rule of its own",
   ) ++ DroppedByTheClients.map(AllowedListing.anywhere(_) -> DroppedOnReRecord)
 
   /** Listings the German clients drop as no screening at all since the 2026-10-12 recording was made

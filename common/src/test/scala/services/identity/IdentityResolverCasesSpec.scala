@@ -2225,6 +2225,62 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
       (linked ++ others).map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(1175842)))
   }
 
+  it should "leave no pull toward a namesake whose facts the title's other sources contradict" in {
+    // DE "Mira", recording 38351832400: Cineamo links 21 venues' bare "Mira"/"MIRA" to 1621242m, a record TMDB no longer
+    // holds, copying its original title "Last Signal"; kinoheld's page ("MIRA" [2026] {Marie Limkilde} [85′], the German
+    // release's year) and five venues' "Mira" [2025] {Marie Limkilde} [86′] state Limkilde's Danish film. The link was
+    // overruled, yet the bare nodes pooled to 1630377, a 2026 Brazilian 16-minute short, at 86.0% — and "MIRA" took the
+    // Russian 2022 "Mira" by IMDb's suggestion. Records as TMDB holds them, German titles, its release countries.
+    val de     = models.Cinema.all.filter(c => models.City.forCinema(c).exists(_.country.language.getCountry == "DE")).take(17)
+    val films  = Seq(F(1555986, "Mira", 2025, "Marie Limkilde", 85, 2.2076, releaseCountries = Some("DEDKEEKRNLTW")),
+      F(1630377, "Mira", 2026, "Daniella Saba", 16, 2.4933, releaseCountries = Some("BRFR")),
+      F(864101, "Last Signal", 2022, "Дмитрий Киселёв", 110, 5.608, alternatives = Seq("Mira", "Firefall", "12 Horas para el Fin del Mundo"),
+        original = Some("Мира"), releaseCountries = Some("BRDOFRKRRUTWUS"), unindexed = Seq("Mira"), imdbTitles = Seq("Mira")),
+      F(90503, "Mira", 1971, "Fons Rademakers", 95, 1.7029, releaseCountries = Some("BEFRNL")),
+      F(1346478, "Mira", 2024, "Ορφέας Περετζής", 14, 0.9312, releaseCountries = Some("GR")),
+      F(1175856, "Mira", 2023, "Eva Louise Hall", 12, 0.7484, releaseCountries = Some("CAJPUS")),
+      F(646073, "Mira", 2016, "Lloyd Belcher", 42, 0.4074, releaseCountries = Some("US")),
+      F(1537312, "Mira", 2025, "Sóllon Rodrigues", 0, 0.4504, releaseCountries = Some("BR"))).map(f => f.copy(suggested = f.id == 864101))
+    val linked = de.take(10).zipWithIndex.map { case (v, i) =>
+      fed(listing(v, if (i < 5) "MIRA" else "Mira"), "cineamo", "1621242m").copy(originalTitle = Some("Last Signal")) }
+    val stated = de.slice(10, 12).map(v => listing(v, "MIRA", Some(2026), Some("Marie Limkilde"), Some(85))
+      .copy(originalTitle = Some("Mira"), page = Some("https://www.kinoheld.de/film/mira"))) ++
+      de.slice(12, 17).map(v => fed(listing(v, "Mira", Some(2025), Some("Marie Limkilde"), Some(86)), "webedia", "1000027463"))
+    val r = shipped(linked ++ stated, films)
+    withClue((linked ++ stated).map(l => r.decisionOf(l.key).render).distinct.mkString("\n"))(
+      (linked ++ stated).map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(1555986)))
+    // the bare node's own reading: the short's 2026 is no backing beside Limkilde's credit and 85 minutes, so its release
+    // veto stands; and the copied original title's search ranks nothing
+    val bare = IdentityResolver.candidatesOf(linked ++ stated, new FilmTable(films, normalizer), normalizer)(linked.contains).flatMap(_.candidates)
+    withClue(bare.map(_.render).mkString("\n")) {
+      bare.filter(_.tmdbId == 1630377).map(_.denial.exists(ReleaseVeto.vetoes)).distinct shouldBe Seq(true)
+      bare.filter(_.tmdbId == 864101).map(_.searchRank).distinct shouldBe Seq(None)
+    }
+  }
+
+  "A bare title its credited siblings' facts give another record than the one carrying it" should "take the record their facts single out" in {
+    // PL "Ktoś całkiem obcy", prod 2026-10-13: Kino Marzenie's [2026] {Brandt Andersen} [103′] and Kino Chatka Żaka's
+    // programme listing [2024] [103′] are Andersen's "I Was a Stranger" (1193128), which TMDB titles in Arabic and
+    // English only; Kino Seniora's bare "Ktoś całkiem obcy" at three venues and Kryterium's "DKF: …" took Foley's 2007
+    // "Perfect Stranger", the one record carrying the Polish title, which every credited listing's year and director rule
+    // out. Every cycle the projection wrote that split, a fresh card for 1193128 beside Kino Seniora's, and the agreement
+    // stage's correction (Filmweb's programmes, a venue poster) then moved Seniora's to 1193128 and the fresh card was
+    // retired by overlap: 63 re-matches from 10-09. IMDb suggests "I Was a Stranger" first for the Polish title, then "Perfect Stranger"; TMDB's search finds only the latter
+    val films = Seq(F(1193128, "قضية الغرباء", 2025, "Brandt Andersen", 103, 3.7663, alternatives = Seq("The Strangers' Case", "The Passage"),
+        releaseCountries = Some("ARBRCACZDEESFIFRGRGTIDKRNLPESESKUS"), releases = Some("DE2024-DE2026-FR2024-FR2026-US2025-US2026-"),
+        searched = false, imdbTitles = Seq("Ktoś całkiem obcy")),
+      F(7183, "Ktoś całkiem obcy", 2007, "James Foley", 109, 7.3552, original = Some("Perfect Stranger"),
+        releaseCountries = Some("ATBRDEDKFRGBGRHUIEITKRNLPLPTROSKUS")))
+    val credited = Seq(listing(KinoMuza, "KTOŚ CAŁKIEM OBCY", Some(2026), Some("Brandt Andersen"), Some(103)),
+      listing(Helios, "Ktoś całkiem obcy", Some(2024), Some("Brandt Andersen"), Some(103)))
+    val bare = Seq(KinoOaza, KinoMikro, KinoPalacowe).map(listing(_, "Ktoś całkiem obcy"))
+    // Kryterium's "DKF: …" names the record only by a piece of its title, beside IMDb's suggestion: not decided here
+    val club = listing(Kinoteka, "DKF: Ktoś całkiem obcy").copy(searchTitle = Some("Ktoś całkiem obcy"))
+    val r = shipped(credited ++ bare :+ club, films)
+    withClue((credited ++ bare :+ club).map(l => r.decisionOf(l.key).render).distinct.mkString("\n"))(
+      (credited ++ bare).map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(1193128)))
+  }
+
   "A stage house's relay of a work" should "not take a screen namesake of the work" in {
     // DE "Paris Opera Ballett: Romeo und Julia" ×2 took Zeffirelli's 1968 film by its pooled evidence at 50.7%, and
     // "RB&O Live: Tosca (Oper)" the 1976 film: TMDB holds no record of either relay.
@@ -2310,6 +2366,122 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
       originalTitle = Some("The Metropolitan Opera: Eugene Onegin")))
     val r = shipped(macbeth, relayRecords)
     withClue(rendered(r, macbeth))(films(r, macbeth).flatten should not contain 1479651)
+  }
+
+  it should "take its season's record by the box office's short season, though a sibling's spelling leaves the record a banner of no house" in {
+    // DE "RBO 26/27: Cosí fan tutte (Royal Opera)" ×28 and "RBO 26/27: Götterdämmerung (Royal Opera)" ×26, recording
+    // 38363428661: read as season 2026 once "26/27" was a season, each was vetoed as "another house's season production"
+    // of its own record and kept apart from its siblings. TMDB's records as it holds them, no alternative titles.
+    val records = Seq(
+      F(1702775, "RBO 2026/27: Così fan tutte (The Royal Opera)", 2027, "", 195, 0.5751, original = Some("Royal Ballet & Opera 2026/27: Così fan tutte")),
+      F(1702769, "RBO 2026/27: Götterdämmerung (The Royal Opera)", 2027, "", 370, 0.5507, original = Some("Royal Ballet & Opera 2026/27: Götterdämmerung")),
+      F(1755057, "Così fan tutte", 2021, "", 0, 1.2, original = Some("Mozart: Così fan tutte - Teatro alla Scala")))
+    val de = models.Cinema.all.filter(c => models.City.forCinema(c).exists(_.country.language.getCountry == "DE")).take(20)
+    def staged(english: String, titles: String*) = titles.zip(de).map { case (t, v) =>
+      listing(v, t, Some(2027)).copy(originalTitle = Some(s"Royal Ballet & Opera 2026/27: $english")) }
+    val cosi = staged("Così fan tutte", "RBO 26/27: Cosí fan tutte (Royal Opera)", "RBO 2026/27: Così fan tutte (The Royal Opera)",
+      "Cosí fan tutte (Royal Opera)", "Cosí fan tutte ROYAL OPERA HOUSE", "RBO 26/27: Cosí fan tutte (Royal Opera) (Aufz.)",
+      "RBO 2026/ 27: Cosí fan tutte (The Royal Opera)", "RBO Cosi fan tutte (Royal Opera)", "RBO Kino Saison 2026-27: Così Fan Tutte",
+      "RBO Live 2026-27: The Royal Opera Cosi fan tutte", "Royal Ballet & Opera 2026/27: Così fan tutte (Royal Opera)",
+      "The Royal Opera: Cosí fan tutte", "RBO Live 2026/27: Cosí fan tutte (Royal Opera)", "RBO LIVE 2026/27: COSÍ FAN TUTTE (ROYAL OPERA)",
+      "Cosi fan tutte (RB+O 2026/27)")
+    val gotter = staged("Götterdämmerung", "RBO 26/27: Götterdämmerung (Royal Opera)", "RBO 2026/27: Götterdämmerung (The Royal Opera)",
+      "Götterdämmerung (Royal Opera)", "Götterdämmerung ROYAL OPERA HOUSE", "RBO 26/27: Götterdämmerung (Royal Opera) (Aufz.)",
+      "RBO 2026/ 27: Götterdämmerung (The Royal Opera)", "RBO Goetterdaemmerung (Royal Opera)", "RBO Kino Saison 2026-27: Götterdämmerung",
+      "RBO Live 2026-27: The Royal Opera Götterdämmerung", "Royal Ballet & Opera 2026/27: Götterdämmerung (Royal Opera)",
+      "The Royal Opera: Götterdämmerung", "RBO Live 2026/27: Götterdämmerung (Royal Opera)", "RBO LIVE 2026/27: GÖTTERDÄMMERUNG (ROYAL OPERA)",
+      "Götterdämmerung (RB+O Live 2026/27)", "Götterdämmerung")
+    // every spelling but RB+O's, whose "RB O" banner no record's spelling names: the "RBO Live" banner's too, which the
+    // "House" billing denied before as well
+    def taken(ls: Seq[Listing]) = ls.filterNot(_.title.contains("RB+O"))
+    val r = shipped(cosi ++ gotter, records)
+    withClue(rendered(r, cosi ++ gotter)) {
+      films(r, taken(cosi)) shouldBe Seq(Some(1702775))
+      films(r, taken(gotter)) shouldBe Seq(Some(1702769))
+    }
+  }
+
+  // UK venues as the scrape lists them: the title through the ingest's own cleaning (`Listing.of`), its certificate peeled
+  private val ukVenues = models.Cinema.all.filter(c => models.City.forCinema(c).exists(_.country.language.getCountry == "GB")).take(24)
+  private def scraped(venue: Cinema, raw: String, year: Option[Int] = None, director: Option[String] = None, runtime: Option[Int] = None) =
+    Listing.of(venue, models.CinemaMovie(models.Movie(raw, runtimeMinutes = runtime, releaseYear = year), venue, None, None, None, Nil,
+      director.toSeq, Seq(models.Showtime(java.time.LocalDateTime.of(2099, 3, 1, 18, 0), None))), normalizer)
+  private def namesakes(title: String, ids: Int*) =
+    ids.zipWithIndex.map { case (id, i) => F(id, title, 1970 + i * 7, s"Director $i", 90 + i, 1.8 - i * 0.05) }
+
+  "A relay a box office bills with its certificate" should "take the record its uncertified siblings take" in {
+    // UK "NT LIVE: Golden Boy (15)" ×10 and its "(15 tbc)", "- Cert 15" spellings, recording 38363428661: once the
+    // certificate was peeled at ingest they were kept apart from "Golden Boy (NT Live)" {Sam Yates} and "National Theatre
+    // Live: Golden Boy" by the learned listing-listing cut, and 1723978 was rejected. TMDB's record as it holds it (en-GB),
+    // ranked eighth for "Golden Boy" behind its namesakes; nothing answers "NT Live: Golden Boy".
+    val uk = ukVenues
+    val records = F(1723978, "National Theatre Live: Golden Boy", 2026, "Sam Yates", 0, 1.0,
+      alternatives = Seq("National Theatre at Home: Golden Boy", "Golden Boy")) +:
+      namesakes("Golden Boy", 526031, 1143881, 267285, 621866, 43529, 891037, 1421071)
+    val siblings = uk.take(6).map(scraped(_, "National Theatre Live: Golden Boy", director = Some("Sam Yates"), runtime = Some(180))) ++
+      uk.slice(6, 12).map(scraped(_, "NT Live: Golden Boy", Some(2026), Some("Sam Yates"), Some(180))) ++
+      Seq(scraped(uk(12), "Golden Boy (NT Live)", director = Some("Sam Yates"), runtime = Some(190)),
+        scraped(uk(13), "National Theatre Live: Golden Boy", runtime = Some(150)), scraped(uk(14), "National Theatre Live: Golden Boy (15)", runtime = Some(180)))
+    val certified = Seq(scraped(uk(15), "NT LIVE: Golden Boy (15)", runtime = Some(180)), scraped(uk(16), "NT Live: Golden Boy (15)", runtime = Some(180)),
+      scraped(uk(17), "NT Live: Golden Boy (15 tbc)"), scraped(uk(18), "NT Live: Golden Boy - Cert 15"), scraped(uk(19), "NT Live: Golden Boy (15 TBC) (Gala)"),
+      scraped(uk(20), "NT Live: Golden Boy"))
+    val ls = siblings ++ certified
+    val r  = shipped(ls, records)
+    withClue(rendered(r, ls))(films(r, ls) shouldBe Seq(Some(1723978)))
+  }
+
+  it should "take it beside a sibling billing another running time" in {
+    // UK "NT Live: The Misanthrope (15)" [106′], recording 38363428661: kept apart from "National Theatre Live: The
+    // Misanthrope" [120′] by the learned cut, it leaned to Bergman's 1974 film.
+    val uk = ukVenues
+    val records = F(1693710, "National Theatre Live: The Misanthrope", 2026, "Indhu Rubasingham", 105, 2.4015,
+      alternatives = Seq("National Theatre at Home: The Misanthrope", "The Misanthrope")) +:
+      namesakes("The Misanthrope", 262488, 680744, 511684, 449377, 274840, 905045)
+    val siblings = uk.take(8).map(scraped(_, "NT Live: The Misanthrope", Some(2026), runtime = Some(106))) ++
+      Seq(scraped(uk(8), "National Theatre Live: The Misanthrope", runtime = Some(120)), scraped(uk(9), "National Theatre Live: The Misanthrope"),
+        scraped(uk(10), "National Theatre Live: The Misanthrope (15)"), scraped(uk(11), "NT Live: The Misanthrope - Cert 15"))
+    val certified = Seq(scraped(uk(12), "NT Live: The Misanthrope (15)", runtime = Some(106)))
+    val ls = siblings ++ certified
+    val r  = shipped(ls, records)
+    withClue(rendered(r, ls))(films(r, ls) shouldBe Seq(Some(1693710)))
+  }
+
+  it should "take it billed as a screening with its running time" in {
+    // UK Electric Palace Bridport's "Screening: NTL - Hay Fever (12A TBC) (160 mins TBC)" ×5 and "NTL: Hay Fever",
+    // recording 38363428661: they leaned to the 1984 BBC "Hay Fever" once the certificate was peeled.
+    val uk = ukVenues
+    val records = Seq(F(1791571, "National Theatre Live: Hay Fever", 2027, "Emily Burns", 0, 0.9384),
+      F(120573, "Hay Fever", 1984, "Cedric Messina", 91, 0.9388), F(65325, "Hay Fever", 2010, "Laura Luchetti", 100, 1.4381))
+    val siblings = uk.take(6).map(scraped(_, "National Theatre Live: Hay Fever", director = Some("Emily Burns"), runtime = Some(160))) ++
+      uk.slice(6, 12).map(scraped(_, "NT Live: Hay Fever", Some(2027), Some("Emily Burns"), Some(160))) ++
+      Seq(scraped(uk(12), "National Theatre Live: Hay Fever (12A tbc)"), scraped(uk(13), "NT Live: Hay Fever (12A)", runtime = Some(160)))
+    val screened = Seq(scraped(uk(14), "Screening: NTL - Hay Fever (12A TBC) (160 mins TBC)"), scraped(uk(15), "NTL: Hay Fever"),
+      scraped(uk(16), "On Screen: National Theatre Live: Hay Fever (12A)", runtime = Some(160)))
+    val ls = siblings ++ screened
+    val r  = shipped(ls, records)
+    withClue(rendered(r, ls))(films(r, ls) shouldBe Seq(Some(1791571)))
+  }
+
+  "A house's encore of its own recording" should "take that recording beside another house's relays of the work" in {
+    // UK "Royal Ballet: La Bayadère" [2018] [170′] ×2, recording 38363428661: the Royal Ballet's 2018 recording (555004,
+    // Ross MacGibbon, 128′ — the venues bill the intervals), its search's only result; kept apart from the Paris Opera
+    // Ballet's "Opéra De Paris - La Bayadère" [125′] relays beside it. TMDB's records of the ballet as it holds them (en-GB).
+    val uk = ukVenues
+    val records = Seq(F(555004, "La Bayadère (Royal Ballet)", 2018, "Ross MacGibbon", 128, 1.3929),
+      F(1300733, "La Bayadere", 2020, "Andy Sommer", 98, 1.5048, original = Some("La Bayadère")),
+      F(376535, "La Bayadère", 2012, "François Roussillon", 0, 1.2959), F(1734528, "La Bayadere", 1991, "Derek Bailey", 123, 2.2894),
+      F(295159, "La Bayadère", 2014, "Valery Gergiev", 127, 1.5814), F(376521, "La Bayadère", 2010, "Alexandre Tarta", 133, 1.3169),
+      F(376531, "La Bayadère", 2011, "Ross MacGibbon", 166, 1.3696), F(142479, "La Scala Ballet: La Bayadère", 2006, "Tina Protasoni", 126, 1.3027),
+      F(303268, "Bolshoi Ballet: La Bayadère", 2013, "Vincent Bataillon", 125, 0.8529), F(559531, "Bolshoi Ballet: La Bayadère", 2019, "", 200, 1.0722))
+    val royal = uk.take(2).map(scraped(_, "Royal Ballet: La Bayadère", Some(2018), runtime = Some(170)))
+    val paris = uk.slice(2, 7).map(scraped(_, "Opéra De Paris - La Bayadère", runtime = Some(125))) ++
+      Seq(scraped(uk(7), "Opera De Paris - La Bayadere", runtime = Some(125)), scraped(uk(8), "La Bayadere - Opera de Paris", runtime = Some(125)),
+        scraped(uk(9), "Opéra de Paris: La Bayadère", runtime = Some(125)), scraped(uk(10), "Opéra de Paris: La Bayadère"),
+        scraped(uk(11), "Opéra de Paris Ballet Season - La Bayadère"), scraped(uk(12), "Opéra de Paris Ballet - La Bayadère (12A tbc)"),
+        scraped(uk(13), "On Screen: La Bayadere (12A)", runtime = Some(125)), scraped(uk(14), "Ballet - La Bayadère"))
+    val ls = royal ++ paris
+    val r  = shipped(ls, records)
+    withClue(rendered(r, ls))(films(r, royal) shouldBe Seq(Some(555004)))
   }
 
   "A ballet company's relay crediting its screen director" should "not take another house's recording of its work by that director" in {

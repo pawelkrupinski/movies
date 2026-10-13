@@ -38,4 +38,11 @@ class IdentityCaptureWorkflowSpec extends AnyFlatSpec with Matchers {
     jobs("pull-request") should include("test/resources/fixtures/identity-unmatched/")
     workflow should not include "git push"
   }
+
+  it should "upload the ratchet's findings as the artifact scripts/identity-ratchet-report reads" in {
+    val pr = jobs("pull-request")
+    pr should include("name: identity-ratchet")
+    pr should include(tools.UnmatchedClusters.FindingsPath.toString)
+    RepoFile.read("scripts/identity-ratchet-report") should include("\"identity-ratchet\"")
+  }
 }

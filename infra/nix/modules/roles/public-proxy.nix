@@ -50,6 +50,18 @@ let
     listenAddress = config.fleet.googleSso.listenAddress;
     proxyPrefix = "/oauth2";
   };
+
+  # PATHS NO PROXIED UPSTREAM PUBLISHES, answered 404 by this proxy on every vhost with an upstream
+  # -- 404 and not 403, so the answer does not confirm there is anything behind it.
+  #
+  # `/metrics` is the apps' Prometheus exposition: request counts, heap, queue depths, per-cinema
+  # scrape health -- an inventory of the system's internals, served to anyone who asked until
+  # 2026-10-13. Nothing needs it through here. The fleet's Prometheus scrapes every app at its pod's
+  # NodePort on the private network (10.20.0.12:309xx, files/monitoring/scrape-kinowo-apps.yaml) and
+  # Grafana, Alertmanager and VictoriaLogs at their private listen addresses (prometheus.yaml), so
+  # none of those scrapes passes this proxy. `/health` and `/ready` are deliberately NOT here: they
+  # say no more than a page load does.
+  privatePaths = [ "/metrics" ];
 in
 {
   options.fleet.publicProxy = {
@@ -524,14 +536,34 @@ in
             }
           '';
 
+          # THE UPSTREAM'S OPERATIONAL PATHS ARE NOT PUBLIC, on every vhost that proxies anything.
+          # See `privatePaths` above for what and why. Matched at the root AND under every
+          # `pathUpstreams` prefix, because a path-mounted app answers both (`/metrics` and
+          # `/uk/metrics` reach the same endpoint), and the prefixes are read off the vhost so a new
+          # country cannot be onboarded with its metrics published. The first `handle` written, so
+          # nothing below -- a country's prefix, the fallback -- can claim the request first.
+          proxies = v.upstream != null || v.pathUpstreams != { };
+          privatePathsBlock = lib.optionalString proxies (
+            let
+              mounts = [ "" ] ++ lib.attrNames v.pathUpstreams;
+              patterns = lib.concatMap (m: lib.concatMap (p: [ "${m}${p}" "${m}${p}/*" ]) privatePaths) mounts;
+            in ''
+              @privatePaths path ${lib.concatStringsSep " " patterns}
+              handle @privatePaths {
+                respond 404
+              }
+            '');
+
           # WHAT THE VHOST SERVES ONCE THE DOOR HAS BEEN ANSWERED. The fallback is wrapped in a
           # `handle` whenever another `handle` sits beside it: bare, a `redir` fallback (the www.
           # vhosts) sorts AHEAD of every `handle` in Caddy's directive order and would redirect the
-          # share cards too.
+          # share cards too -- and a bare `reverse_proxy` beside the private-path 404 would leave its
+          # precedence to that same sort rather than writing it down.
           body = ''
             ${v.extraConfig}
+            ${privatePathsBlock}
             ${throttleBlock}
-            ${if v.pathUpstreams == { } && v.shareCardsDir == null
+            ${if v.pathUpstreams == { } && v.shareCardsDir == null && !proxies
               then fallback
               else ''
                 ${shareCardsBlock}

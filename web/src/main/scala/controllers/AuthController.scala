@@ -495,8 +495,12 @@ class AuthController(
     // deployed base URLs verbatim, so a query string on it is not a deployed
     // country. Carried across the hop so a signed-in visitor switching country
     // reaches the far landing knowing they chose it — same as the signed-out
-    // switch, which navigates there directly.
-    val pick = if (LandingController.picksCity(request)) LandingController.PickCityQuery else ""
+    // switch, which navigates there directly. A `city=` the target does not
+    // have counts too: the visitor still named the country, so the fallback is
+    // its picker rather than a bare landing a stale `city` cookie would bounce.
+    val namedCountry = LandingController.picksCity(request) ||
+      request.getQueryString(LandingController.CityParam).exists(_.nonEmpty)
+    val pick = if (namedCountry) LandingController.PickCityQuery else ""
     SignedInUser.answering(AuthController.handoffTarget(request.getQueryString("to")) match {
       case None =>
         logger.warn(s"SSO start refused: '${request.getQueryString("to").getOrElse("")}' is not a deployed country.")

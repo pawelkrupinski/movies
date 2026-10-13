@@ -272,6 +272,58 @@ class LandingViewSpec extends AnyFlatSpec with Matchers {
     apexHtml should include ("""<html lang="en"""")
   }
 
+  // ── Poland is one link on showtimes.cc ─────────────────────────────────────
+  //
+  // Polish places live on kinowo.net only — the front door 404s them — so every
+  // showtimes.cc page lists Poland as ONE link to its site: no pane, no fetch of
+  // one, no place of it shown by name or linked. Its places' slugs DO ride in the
+  // pill's `data-points` (coordinates + slug, for "nearest city" to hand the
+  // visitor to that city through `/auth/sso/start?city=`) — data, never markup a
+  // visitor sees or a crawler follows.
+
+  /** The Poland pill a showtimes.cc page carries. Its href names the country,
+   *  so it carries the `?pick=city` marker: kinowo.net's landing then shows its
+   *  city list rather than bouncing a returning visitor to their cookie'd city. */
+  private val polandHandoffPill =
+    s"""<a class="picker-country-pill" href="https://kinowo.net/${controllers.LandingController.PickCityQuery}" data-country="pl" data-handoff data-base-url="https://kinowo.net" data-points=""""
+
+  private def assertNoPolishPlaces(page: String): Unit = {
+    page should not include """data-country="pl" data-base-url"""
+    page should not include """"pl":"/api/picker/pl"""
+    """https://kinowo\.net/[^"?#]+""".r.findAllIn(page).toList shouldBe empty
+    models.Country.Poland.cities.foreach(c => page should not include s"""data-slug="${c.slug}"""")
+    page should not include "Poznań"
+  }
+
+  "the front door" should "list Poland as one link to kinowo.net, never its places" in {
+    apexHtml should include (polandHandoffPill)
+    assertNoPolishPlaces(apexHtml)
+  }
+
+  it should "open on the first country it lists, the UK" in {
+    apexHtml should include ("""<a class="picker-country-pill active" href="https://showtimes.cc/uk/?pick=city" data-country="uk"""")
+    apexHtml should include ("""data-country="uk" data-base-url""")
+    apexHtml should include ("""const OPENING_COUNTRY = "uk";""")
+  }
+
+  "another country's landing on showtimes.cc" should "list Poland as one link to kinowo.net too" in {
+    Seq(ukHtml, usHtml, deHtml).foreach { page =>
+      page should include (polandHandoffPill)
+      assertNoPolishPlaces(page)
+    }
+  }
+
+  // The slug rides along so "use my location" lands on the NEAREST city on
+  // that site (through `AuthController.validatedCitySlug`), not on its landing,
+  // where a `city` cookie would bounce the visitor to some other city.
+  "a handed-off country's points" should "be its places' coordinates and slugs, and nothing else" in {
+    val points = controllers.LandingController.handoffPoints(models.Country.Poland).split(';').toSeq
+    points should not be empty
+    points.foreach(_ should fullyMatch regex """-?\d+(\.\d+)?,-?\d+(\.\d+)?,[a-z0-9-]+""")
+    val poznan = models.Country.Poland.cities.find(_.slug == "poznan").get
+    points should contain (s"${poznan.lat},${poznan.lon},poznan")
+  }
+
   // ── The picker's country names ─────────────────────────────────────────────
   //
   // The country pills are server-rendered links carrying `data-i18n="country.<code>"`,

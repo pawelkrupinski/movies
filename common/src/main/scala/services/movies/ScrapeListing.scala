@@ -87,7 +87,11 @@ object ScrapeListing {
    *  published — the discriminator `ListingKey.Published` keys a page-less listing by, never a
    *  year or film the pipeline derived:
    *
-   *   - years a production-to-release gap apart (each row's own, else its title's bracket).
+   *   - the seasons their titles name ([[TitleSeason]]): a house's two seasons' productions of
+   *     one work are two broadcasts — UK The Ashford Cinema's "RBO Cinema Season 2026-27: Swan
+   *     Lake" beside "Royal Ballet & Opera 2024-25: Swan Lake" took the 2024/25 record, folded.
+   *     A row naming no season is a part of its own when the others name two;
+   *   - then years a production-to-release gap apart (each row's own, else its title's bracket).
    *     Each part carries its year, so the landing puts it on its own film; a row naming no
    *     year is a part of its own;
    *   - then, within a year, directors crediting no common person
@@ -98,6 +102,13 @@ object ScrapeListing {
    *  Rows of one film stay one group, as before: a dub beside a subtitled print. A pure
    *  function of the rows as a set; the parts come out in a fixed order. */
   private def filmsOf(group: Seq[CinemaMovie], normalizer: TitleNormalizer)(using LatestTitleYear): Seq[Seq[CinemaMovie]] = {
+    def seasonOf(cm: CinemaMovie) = TitleSeason.of(cm.movie.rawTitle.toSeq :+ cm.movie.title)
+    val seasons = group.flatMap(seasonOf).distinct
+    if (seasons.sizeIs < 2) byYear(group, normalizer)
+    else group.groupBy(seasonOf).toSeq.sortBy(_._1.getOrElse(0)).flatMap { case (_, season) => byYear(season, normalizer) }
+  }
+
+  private def byYear(group: Seq[CinemaMovie], normalizer: TitleNormalizer)(using LatestTitleYear): Seq[Seq[CinemaMovie]] = {
     val years = group.flatMap(yearOf).distinct
     val byYear =
       // Years a production-vs-release gap apart are one film printed two ways.

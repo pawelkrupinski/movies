@@ -35,6 +35,10 @@ private[identity] final class ProjectionWorld(
   val refusals   = scala.collection.mutable.ListBuffer.empty[IdentityProjectionMetrics.Refusal]
   val drifts     = scala.collection.mutable.ListBuffer.empty[Int]
   val reconciles = scala.collection.mutable.ListBuffer.empty[Boolean]
+  /** Every listing whose TMDB film a written projection moved, in the order they were reported. */
+  val takes      = scala.collection.mutable.ListBuffer.empty[TakeChange]
+  /** Each count of suspect takes the projection asked for: how many decisions and listings it was handed. */
+  val suspected  = scala.collection.mutable.ListBuffer.empty[(Int, Int)]
   /** What the last projection reported: its films and canary. */
   var reported: Option[(Int, Map[ShadowRelation, Int])] = None
   val cache      = new CaffeineMovieCache(repository, normalizer = normalizer, clock = _root_.tools.SpecClock.Pinned)
@@ -55,7 +59,9 @@ private[identity] final class ProjectionWorld(
       def refused(reason: IdentityProjectionMetrics.Refusal): Unit = { refusals += reason; () }
       def drifted(films: Int): Unit = { drifts += films; () }
       def reconciled(measured: Boolean): Unit = { reconciles += measured; () }
-    }, clock = clock, fingerprints = fingerprints, scopedBetweenWhole = scopedBetweenWhole)
+      def takesChanged(changes: Seq[TakeChange]): Unit = { takes ++= changes; () }
+    }, clock = clock, fingerprints = fingerprints, scopedBetweenWhole = scopedBetweenWhole,
+    suspects = (resolution, listings) => { suspected += ((resolution.decisions.size, listings.size)); () })
 
   def scrape(listings: Map[Cinema, Seq[CinemaMovie]]): Unit = listings.foreach { case (c, fs) =>
     archive.record(ScrapeAttempt(c, Cinema.cityOf(c), clock.instant(), listingComplete = true, fs))

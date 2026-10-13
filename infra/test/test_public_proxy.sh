@@ -148,6 +148,23 @@ case "$filmowo_vhost" in
   *) echo "  FAILED expected the kinowo.net originCertificate tls line in filmowo.kinowo.net's vhost"; failed=1 ;;
 esac
 
+# SERVED TOO, not only string-checked: it is the one vhost whose upstream is a BARE `reverse_proxy`
+# (no share cards, no prefixes), so it is the shape where the private-path 404 below has to win
+# over a directive Caddy would otherwise sort however it likes.
+filmowo_port=8896
+filmowo_vhost="$(printf '%s\n' "$filmowo_vhost" | grep -v '^[[:space:]]*tls[[:space:]]')"
+
+# EVERY VHOST THAT PROXIES AN APP CARRIES THE PRIVATE-PATH RULE, on both public-proxy hosts. Asked of
+# the evaluated config rather than of a list spelled here, so a vhost added later is covered by
+# construction. Redirect-only vhosts proxy nothing and are left out.
+echo "==> every proxying vhost hides the apps' operational paths"
+for host in k3s-worker-1 monitoring-1; do
+  unguarded="$(nix "${nix_flags[@]}" eval --json "$infra/nix#nixosConfigurations.$host.config" \
+    --apply 'c: builtins.filter (n: let v = c.fleet.publicProxy.vhosts.${n}; in (v.upstream != null || v.pathUpstreams != { }) && builtins.match ".*@privatePaths.*respond 404.*" (builtins.replaceStrings ["\n"] [" "] c.services.caddy.virtualHosts.${n}.extraConfig) == null) (builtins.attrNames c.fleet.publicProxy.vhosts)' 2>"$work/eval.err")"
+  if [ "$unguarded" = "[]" ]; then echo "  ok  every proxying vhost on $host 404s the private paths"
+  else echo "  FAILED proxying vhosts on $host without the private-path 404: ${unguarded:-$(tail -3 "$work/eval.err")}"; failed=1; fi
+done
+
 echo "==> rendering logs.kinowo.net's vhost out of monitoring-1"
 logs_port=8898
 logs_vhost="$(nix "${nix_flags[@]}" eval --raw \
@@ -200,6 +217,7 @@ handle /oauth2/* {
   echo ":$port {"; echo "$vhost"; echo "}"
   echo ":$logs_port {"; echo "$logs_vhost"; echo "}"
   echo ":$www_port {"; echo "$www_vhost"; echo "}"
+  echo ":$filmowo_port {"; echo "$filmowo_vhost"; echo "}"
   echo ":$stub_port {"; echo "$stub_site"; echo "}"; } > "$work/Caddyfile"
 
 "${caddy_cmd[@]}" run --config "$work/Caddyfile" --adapter caddyfile >"$work/caddy.log" 2>&1 &
@@ -334,6 +352,34 @@ card 502 "$port" "/share-cards/pl/%2e%2e/%2e%2e/secret.jpg" "...and an encoded .
 card 404 "$port" "/share-cards/pl/../uk/f999.jpg" "a .. that stays inside /share-cards is cleaned and still only finds cards"
 card 502 "$port" "/uk/share-cards/uk/h0123456789abcdef0123.jpg" "/uk/share-cards/... is the UK app's path, not the disk's"
 card 301 "$www_port" "/poznan/" "the www. vhost still redirects everything that is not a card"
+
+# THE APPS' PROMETHEUS EXPOSITION IS NOT PUBLIC. Prometheus scrapes each pod's NodePort on the
+# private network (10.20.0.12:309xx, scrape-kinowo-apps.yaml) and never comes through here, so the
+# public answer is a 404 -- not a 403, which would confirm there is something behind it. Each
+# country's app answers /metrics both at the root (AppLoader.rootOperationalRoutes) and under its
+# mount, so both spellings are asked, for every mounted country. /health and /ready are NOT private:
+# they say nothing a page load does not, and stay reachable.
+echo "==> the apps' metrics are not published"
+check 404 "$HUMAN" "/metrics"            "/metrics on the apex is a 404, not the PL pod's exposition"
+for cc in uk de us es; do
+  check 404 "$HUMAN" "/$cc/metrics"      "...nor /$cc/metrics, the same endpoint under the $cc mount"
+done
+check 404 "$HUMAN" "/metrics/"           "...nor with a trailing slash"
+check 404 "$HUMAN" "/uk/metrics/"        "...under a mount either"
+check 404 "$HUMAN" "/metrics?name[]=up"  "...nor with a query string"
+check 404 "$HUMAN" "/METRICS"            "...nor in another case"
+check 404 "$HUMAN" "/%6detrics"          "...nor percent-encoded"
+check 404 "$HUMAN" "//metrics"           "...nor behind a doubled slash"
+check 502 "$HUMAN" "/health"             "/health still reaches the app"
+check 502 "$HUMAN" "/ready"              "...and so does /ready"
+check 502 "$HUMAN" "/uk/health"          "...under a mount too"
+check 502 "$HUMAN" "/poznan/metrics-of-success" "only the metrics PATH is hidden, not every path that starts with the word"
+got="$(curl -s -o /dev/null -w '%{http_code}' -A "$HUMAN" "http://127.0.0.1:$filmowo_port/metrics")"
+if [ "$got" = 404 ]; then echo "  ok  ...and on filmowo.kinowo.net, whose upstream is a bare reverse_proxy"
+else echo "  FAILED filmowo.kinowo.net/metrics -> $got, wanted 404"; failed=1; fi
+got="$(curl -s -o /dev/null -w '%{http_code}' -A "$HUMAN" "http://127.0.0.1:$filmowo_port/")"
+if [ "$got" = 502 ]; then echo "  ok  ...which still proxies everything else"
+else echo "  FAILED filmowo.kinowo.net/ -> $got, wanted 502"; failed=1; fi
 
 # HSTS: one year, still without preload or includeSubDomains (both one-way doors -- see the vhost).
 echo "==> what HSTS the vhost promises"

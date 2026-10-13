@@ -124,7 +124,9 @@ object UnmatchedClusters {
   /** One listing's take: the film its cluster took (TMDB's, or a fallback film), the IMDb id it is known by, and the
    *  fallback film's id where another database's stands for it ("filmweb:10105049", "wikidata:Q141180912"). */
   final case class Take(country: String, venue: String, rawTitle: String, tmdb: Option[Int], imdb: Option[String], basis: String, title: String,
-                        agreed: Map[String, String] = Map.empty, standsOn: Option[String] = None) {
+                        agreed: Map[String, String] = Map.empty, standsOn: Option[String] = None,
+                        /** The decision's explanation — the rule or fill that took the film, the guards it passed, its signals. */
+                        explanation: Seq[String] = Nil) {
     /** Every id it is known by: TMDB's, IMDb's, the one it stands on, and each agreeing family's own ("filmweb:880000",
      *  "wikidata:Q1"). */
     def ids: Set[String] = tmdb.map(id => s"tmdb:$id").toSet ++ imdb.map(id => s"imdb:$id") ++ standsOn ++
@@ -144,8 +146,55 @@ object UnmatchedClusters {
         .orElse(d.explanation.lastOption.collect { case NamedImdb(id) => id })
       val title = record.map(f => s"${f.title} (${f.year.getOrElse("?")})").getOrElse(d.explanation.lastOption.getOrElse(""))
       val standsOn = d.fallback.filter(_.source != "imdb").map(taken => s"${taken.source}:${taken.id}")
-      d.members.flatMap(byKey.get).map(l => Take(capture.country.code, l.venue, l.rawTitle, d.film, imdb, d.basis.toString, title, d.agreed, standsOn))
+      d.members.flatMap(byKey.get).map(l => Take(capture.country.code, l.venue, l.rawTitle, d.film, imdb, d.basis.toString, title, d.agreed, standsOn,
+        d.explanation))
     }.sortBy(t => (t.country, t.venue, t.rawTitle))
+  }
+
+  // ── the ratchet's findings, machine-readable ─────────────────────────────────────────────
+
+  /** One line of the ratchet's report: a take as the labels judge it — `WRONG`, `UNJUDGED`, `NEW` (right, not yet in
+   *  `expected-matches.tsv`) or `RIGHT` — or an expected right take no longer taken: `MOVED` when its listing now takes
+   *  another film (`film`, the old one in `was`), `LOST` when it takes none. */
+  final case class Finding(status: String, country: String, venue: String, rawTitle: String, film: String, title: String, basis: String,
+                           ids: Seq[String], was: String, explanation: Seq[String])
+
+  val FindingOrder: Seq[String] = Seq("WRONG", "UNJUDGED", "MOVED", "LOST", "NEW", "RIGHT")
+
+  /** Every take's finding, and every expected right take's that is gone — what a reviewer of a recapture works through. */
+  def findings(takes: Seq[Take], labels: Seq[Label], expected: Set[(String, String, String, String)]): Seq[Finding] = {
+    def line(take: Take) = (take.country, take.venue, take.rawTitle, take.film)
+    def of(status: String, take: Take, was: String = "") =
+      Finding(status, take.country, take.venue, take.rawTitle, take.film, take.title, take.basis, take.ids.toSeq.sorted, was, take.explanation)
+    val now = takes.map(take => take -> verdict(take, labels)).map {
+      case (take, Some(false)) => of("WRONG", take)
+      case (take, None)        => of("UNJUDGED", take)
+      case (take, _)           => of(if (expected(line(take))) "RIGHT" else "NEW", take)
+    }
+    val right  = takes.filter(take => verdict(take, labels).contains(true)).map(line).toSet
+    val byLine = takes.groupBy(take => (take.country, take.venue, take.rawTitle))
+    val gone = (expected -- right).toSeq.sorted.map { case (cc, venue, raw, film) =>
+      byLine.getOrElse((cc, venue, raw), Nil).find(_.film != film) match {
+        case Some(take) => of("MOVED", take, was = film)
+        case None       => Finding("LOST", cc, venue, raw, "", "", "", Nil, film, Nil)
+      }
+    }
+    (now ++ gone).sortBy(f => (FindingOrder.indexOf(f.status), f.country, f.venue, f.rawTitle))
+  }
+
+  /** Where the ratchet writes them. */
+  val FindingsPath: Path = Path.of("target", "identity-unmatched", "ratchet-takes.tsv")
+
+  val FindingsHeader: String = "status\tcountry\tvenue\trawTitle\tfilm\ttitle\tbasis\tids\twas\texplanation"
+
+  /** The findings as TSV: one line each, tabs and line breaks inside a field flattened, the explanation's lines joined
+   *  by " ¶ " — `scripts/identity-ratchet-report` and `scripts/identity-judge-cards` read it. */
+  def writeFindings(path: Path, findings: Seq[Finding]): Unit = {
+    def cell(text: String) = text.replace('\t', ' ').replace('\n', ' ').replace('\r', ' ')
+    val lines = findings.map(f => Seq(f.status, f.country, f.venue, f.rawTitle, f.film, f.title, f.basis, f.ids.mkString(","), f.was,
+      f.explanation.mkString(" ¶ ")).map(cell).mkString("\t"))
+    Files.createDirectories(path.getParent)
+    Files.writeString(path, (FindingsHeader +: lines).mkString("", "\n", "\n"), StandardCharsets.UTF_8)
   }
 
   // ── labels: what each listing is, and is not ─────────────────────────────────────────────
@@ -178,6 +227,27 @@ object UnmatchedClusters {
   def readTakeLines(path: Path): Set[(String, String, String, String)] =
     if (!Files.exists(path)) Set.empty
     else Files.readAllLines(path, StandardCharsets.UTF_8).asScala.toSeq.drop(1).filter(_.nonEmpty).map(_.split("\t", -1)).map(a => (a(0), a(1), a(2), a(3))).toSet
+
+  // ── the known-wrong baseline: the WRONG takes no safe fix removes, a list that only shrinks ──
+
+  /** The WRONG takes the ratchet lets stand, each with why no safe fix removes it — keyed, as the suspect-take audit's
+   *  baseline is ([[SuspectTakesAudit]]: country, raw title, film, title, reasons), by country, raw title and film: one
+   *  line covers every venue billing it. */
+  val KnownWrongPath: Path = Directory.resolve("known-wrong.tsv")
+
+  def readKnownWrong(path: Path): Set[(String, String, String)] =
+    if (!Files.exists(path)) Set.empty
+    else Files.readAllLines(path, StandardCharsets.UTF_8).asScala.toSeq.drop(1).filter(_.nonEmpty).map(_.split("\t", -1))
+      .map(a => (a(0), a(1), a(2))).toSet
+
+  /** The wrong takes the baseline does not list (`fresh`: each fails the ratchet), and the baseline's lines no wrong take
+   *  is any more (`stale`: each fails too, to strike — the fixture is checked in, so a cured line is cured for good). */
+  final case class WrongAudit(fresh: Seq[Take], stale: Seq[(String, String, String)])
+
+  def auditWrong(wrong: Seq[Take], known: Set[(String, String, String)]): WrongAudit = {
+    def key(take: Take) = (take.country, take.rawTitle, take.film)
+    WrongAudit(wrong.filterNot(take => known(key(take))), known.diff(wrong.map(key).toSet).toSeq.sorted)
+  }
 
   // ── recording and replaying the lookups ──────────────────────────────────────────────────
 

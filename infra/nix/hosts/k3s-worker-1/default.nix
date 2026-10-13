@@ -162,11 +162,13 @@ in
       # nothing here rewrites paths.
       #
       # THE BARE APEX IS THE BRAND FRONT DOOR, not a deployment of its own: the app renders a
-      # country picker (Poland included) when the request Host is the apex AND the deployment
-      # answering is mounted at `/` — see models.Country.servesApex. That is why the fallback
-      # points at POLAND's pod rather than the UK's: it is the only one whose `/` is not already a
-      # country's own landing. The picker is rendered in English regardless of which deployment
-      # serves it, so nothing about that pick is Polish.
+      # country picker (Poland as one link to kinowo.net, not its cities) when the request Host is
+      # the apex AND the deployment answering is mounted at `/` — see models.Country.servesApex.
+      # That is why the fallback points at POLAND's pod rather than the UK's: it is the only one
+      # whose `/` is not already a country's own landing. The picker is rendered in English
+      # regardless of which deployment serves it, so nothing about that pick is Polish — and the
+      # app 404s any apex path under a Polish city (modules.FrontDoorRedirectFilter), so Poland's
+      # pages are never served a second time under showtimes.cc.
       #
       # The fallback also carries the apex ROOT files a crawler and the mobile OSes only ever fetch
       # from a host's root — /robots.txt, /sitemap.xml, /.well-known/* — which the app answers with

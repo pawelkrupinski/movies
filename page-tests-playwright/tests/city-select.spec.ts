@@ -437,14 +437,15 @@ test.describe('the apex front door offers the manual locate button too', { tag: 
     await expect(page.locator('#picker-locate-btn')).toBeVisible();
   });
 
-  test('a fix near a supported city hands off through this origin\'s SSO start', async ({ page, context }) => {
+  test('a fix near a Polish city hands off to that city on kinowo.net through this origin\'s SSO start', async ({ page, context }) => {
     await context.grantPermissions(['geolocation']);
     await context.setGeolocation({ latitude: 52.4064, longitude: 16.9252 }); // Poznań
     await page.goto('/landing-apex', { waitUntil: 'domcontentloaded' });
-    // Same hand-off `crossCountryUrl` exercises for any cross-country pick —
-    // the apex is never itself a city's own door, so even a hit on the
-    // default country's own city routes through SSO start rather than
-    // navigating straight there.
+    // Poland is handed off to its own site on the apex: the page knows its
+    // places only as points and slugs, and the nearest one's slug rides along
+    // so the hand-off lands on that city — never on kinowo.net's bare landing,
+    // where a `city` cookie would bounce the visitor to some other city.
+    // Through SSO start, which carries a signed-in session across the domains.
     const [request] = await Promise.all([
       page.waitForRequest((r) => r.url().includes('/auth/sso/start')),
       page.locator('#picker-locate-btn').click(),
@@ -461,6 +462,44 @@ test.describe('the apex front door offers the manual locate button too', { tag: 
     await page.locator('#picker-locate-btn').click();
     await expect(page.locator('#picker-locate-status')).toHaveText(/./);
     expect(new URL(page.url()).pathname).toBe('/landing-apex');
+  });
+});
+
+// Polish places live on kinowo.net only — `showtimes.cc/poznan/` is a 404 — so
+// the apex lists Poland as ONE link to kinowo.net: no pane of its places in the
+// page, none fetched after it, and none to be found by searching.
+test.describe('the apex front door lists Poland as one link to kinowo.net', { tag: '@agnostic' }, () => {
+  test('no Polish place is linked, embedded or fetched, and the Poland pill goes to kinowo.net', async ({ page }) => {
+    const pickerFetches: string[] = [];
+    page.on('request', (r) => { if (r.url().includes('/api/picker/')) pickerFetches.push(new URL(r.url()).pathname); });
+    await page.goto('/landing-apex', { waitUntil: 'domcontentloaded' });
+    // Every other country's pane arrives (the locate button waits on them all).
+    await expect.poll(() => page.locator('#picker-panes > .picker-pane').count()).toBe(4);
+    await expect(page.locator('#picker-panes > .picker-pane[data-country="pl"]')).toHaveCount(0);
+    expect(pickerFetches.sort()).toEqual(['/api/picker/de', '/api/picker/es', '/api/picker/us']);
+
+    // The one kinowo.net address in the page is the pill: kinowo.net's city
+    // list, marked as a country the visitor named (`?pick=city`) so a `city`
+    // cookie there does not bounce them to a city they did not ask for.
+    const kinowoLinks = await page.locator('a[href*="kinowo.net"]').evaluateAll((as) => as.map((a) => a.getAttribute('href')));
+    expect(kinowoLinks).toEqual(['https://kinowo.net/?pick=city']);
+    await expect(page.locator('#picker-countries .picker-country-pill[data-country="pl"]')).toHaveAttribute('href', 'https://kinowo.net/?pick=city');
+    // It opens on the UK, the first country the brand domain lists.
+    await expect(page.locator('#picker-countries .picker-country-pill.active')).toHaveAttribute('data-country', 'uk');
+
+    // Searching for a Polish city finds nothing.
+    await page.locator('#picker-search').fill('Poznań');
+    await expect(page.locator('#picker-empty')).toBeVisible();
+
+    // A tap on Poland leaves for kinowo.net's city list (through SSO start,
+    // carrying the same marker), not a pane.
+    const [request] = await Promise.all([
+      page.waitForRequest((r) => r.url().includes('/auth/sso/start')),
+      page.locator('#picker-countries .picker-country-pill[data-country="pl"]').click(),
+    ]);
+    expect(request.url()).toContain('to=https%3A%2F%2Fkinowo.net');
+    expect(request.url()).toContain('pick=city');
+    expect(request.url()).not.toMatch(/[?&]city=/);
   });
 });
 

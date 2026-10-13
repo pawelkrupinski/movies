@@ -78,6 +78,17 @@ class SearchTitlesSpec extends AnyFlatSpec with Matchers {
     SearchTitles.candidates("Plain Title", None) shouldBe Seq("Plain Title")
   }
 
+  // UK recording 38351832400: Lanternhouse's "Obsession (18)" searched whole found only "80 Day Obsession: Day 18 AAA",
+  // a 2018 fitness video, which sole-result took. A box office's certificate is no part of any title it searches.
+  it should "never search a title with the box-office certificate it ends in" in {
+    SearchTitles.candidates("Obsession (18)", None) shouldBe Seq("Obsession")
+    SearchTitles.candidates("RB&O: Romeo & Juliet (12 TBC)", None) should contain noneOf ("RB&O: Romeo & Juliet (12 TBC)", "Romeo & Juliet (12 TBC)")
+    SearchTitles.candidates("On Screen: The Royal Opera TOSCA (12A)", None) should contain ("The Royal Opera TOSCA")
+    // a bracket that is no certificate stays a candidate's
+    SearchTitles.candidates("(500) Days of Summer", None) should contain ("(500) Days of Summer")
+    SearchTitles.candidates("Apollo 13 (U2)", None) should contain ("Apollo 13 (U2)")
+  }
+
   // A banner is joined with a dash as often as a pipe. "500 mil" is the worked example: TMDB's Polish
   // title is exactly "500 mil", but the whole decorated string was the only candidate. Both dash forms occur.
   it should "split a dash-joined programme banner, without touching hyphenated words" in {

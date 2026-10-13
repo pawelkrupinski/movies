@@ -7,7 +7,8 @@ import java.util.Locale
  * film title — `(Napisy PL)`, `[2D DUBBING]`, `- 2D dubbing`, `/napisy`,
  * `…_3D`, a bare trailing `NAPISY 2D` — into display tokens (2D / 3D / IMAX /
  * 4DX / ATMOS / DUB / NAP / LEK) while rewriting the title to its clean base (the format
- * words AND their adjacent brackets / slashes / dashes removed).
+ * words AND their adjacent brackets / slashes / dashes removed). With them, stacked in any order, the showing's
+ * notes that carry no badge: a box office's certificate and running time, a German re-release mark.
  *
  * Lives in `common` so BOTH the ingest choke point
  * (`MovieCache.recordCinemaScrape`, which every scrape path shares) and the
@@ -67,6 +68,20 @@ object FormatTags {
   // a film's own title ("Jaws 3-D").
   private val BracketedOriginalVersion  = """(?i)(?<=[(/])\s*original\s+(?:english\s+)?version\s*(?=\))""".r
   private val BracketedHyphenatedScreen = """(?i)\(\s*([234])-D\s*\)""".r
+  // Corso Stuttgart bills the version as a phrase, "Forgotten Island in (Original English Version)": its "in" goes
+  // with it. Lower-case only — a title's own last word is capitalised ("Let Me In").
+  private val OriginalVersionPreposition = """(?<=\S)\s+in\s+(?=\((?i:\s*original\s+(?:english\s+)?version\s*)\))""".r
+  // The showing's notes a box office bills behind the title, none of them a badge. A BBFC certificate — "Digger
+  // (15)", "Digger - Cert 15", "EOS - Monet (Cert. TBC)" — with the running time or short year it runs on into ("(15)
+  // 129 mins", "(15) 26"); a release year between them stays the title's ("Bad Apples (15) (2026) 100 mins" → "Bad
+  // Apples (2026)"), for the year reading and the canonical year strip. And a German re-release mark — "(WA)", "(WA:
+  // 2026)", "(Wiederaufführung)", or a box office's "(WA:" cut short. Each is a card's worth of split (Lanternhouse's
+  // "Digger (15)", CineStar's "Catching Fire (OV) (WA)") if it stays.
+  private val Certificate = services.titlerules.TitleRulePlaceholders.all("CERT")
+  private val CertificateNote =
+    (s"""(?i)(?<=\\S)\\s*(?:[-–—]\\s*Cert(?:ificate)?\\.?\\s+$Certificate|\\(\\s*(?:Cert(?:ificate)?\\.?\\s*)?$Certificate(?:\\s+TBC)?\\s*\\))""" +
+      """(\s*\(\s*(?:19|20)\d{2}\s*\))?(?:\s+\d{2,3}\s*mins?|\s+\d{2})?\s*$""").r
+  private val ReReleaseMark = """(?i)(?<=\S)\s*\(\s*(?:WA(?:\s*:?\s*\d{2,4}|\s*:)?|Wiederauff(?:ü|ue)hrung)\s*\)?\s*$""".r
   // The same tags written IN FRONT of the title — "OV: Digger", "(OmU) Verity", "ATMOS/OV: Verity", "Dolby
   // Cinema: Die Odyssee", "3D: Forgotten Island", "engl. OV: Der Herr der Ringe", "OMU - Searching for Sugar Man":
   // brackets, a colon, or a spaced dash closing a run of nothing but format and version words (a version's
@@ -148,9 +163,10 @@ object FormatTags {
    *  left-to-right. Words with no version meaning (dolby, premiera, …) yield no
    *  token. A Ukrainian dub/lektor tag is kept whole (guard) and yields no token. */
   def extractFormatTags(raw: String): (String, List[String]) = {
-    val spelled = BracketedHyphenatedScreen.replaceAllIn(BracketedOriginalVersion.replaceAllIn(raw, "OV"), "($1D)")
-    var t    = FormatPreposition.replaceAllIn(GluedFormatDash.replaceAllIn(GluedFormatSlash.replaceAllIn(
-                 GluedFormatUnderscore.replaceAllIn(GluedVersionHyphen.replaceAllIn(spelled.replaceAll("\\s+", " ").trim, " - "), " "), " "), " - "), " $1")
+    val spelled = BracketedHyphenatedScreen.replaceAllIn(
+      BracketedOriginalVersion.replaceAllIn(OriginalVersionPreposition.replaceAllIn(raw, " "), "OV"), "($1D)")
+    var t    = GluedFormatDash.replaceAllIn(GluedFormatSlash.replaceAllIn(
+                 GluedFormatUnderscore.replaceAllIn(GluedVersionHyphen.replaceAllIn(spelled.replaceAll("\\s+", " ").trim, " - "), " "), " "), " - ")
     var previous = ""
     val dropped = scala.collection.mutable.Set.empty[String]
     def uaGuarded(tag: String): Boolean = UaGuardedTag.findFirstIn(tag).isDefined
@@ -160,6 +176,7 @@ object FormatTags {
         captureTagWords(tag, dropped)
         t = t.substring(tag.length).trim
       }
+      t = ReReleaseMark.replaceFirstIn(CertificateNote.replaceFirstIn(t, "$1"), "").trim
       // Tokens peeled inside a [..]/(..) tag also carry version meaning, so
       // capture them before deleting the tag — UNLESS the tag names the Ukrainian
       // dub/lektor version, which is kept whole so it stays its own card.
@@ -173,6 +190,8 @@ object FormatTags {
         captureTagWords(tag, dropped)
         t = FormatParenTag.replaceFirstIn(t, "").trim
       }
+      // After the bracket peels, which can expose a format behind its preposition ("… in 2D (OV)" → "… in 2D").
+      t = FormatPreposition.replaceAllIn(t, " $1")
       var toks = t.split(" ").filter(_.nonEmpty).toVector
       while (toks.length > 1 && (isDroppableTag(toks.last) || isLanguageQualifier(toks)) && !uaGuardedTail(toks)) {
         captureTagWords(toks.last, dropped)

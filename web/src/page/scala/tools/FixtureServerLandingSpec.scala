@@ -94,4 +94,12 @@ class FixtureServerLandingSpec extends AnyFlatSpec with Matchers {
     // reasoning with) with no browser-independent layer catching it.
     landings("/landing-apex") should include("""id="picker-locate-btn"""")
   }
+
+  it should "serve the apex with Poland as one link to kinowo.net and no Polish place in it" in {
+    // The browser specs read the apex off this route: one that still carried
+    // Poland's pane would let them pass over a page production no longer serves.
+    val apex = landings("/landing-apex")
+    """https://kinowo\.net[^"]*""".r.findAllIn(apex).toList shouldBe List("https://kinowo.net/?pick=city", "https://kinowo.net")
+    apex should not include """data-country="pl" data-base-url"""
+  }
 }

@@ -62,6 +62,15 @@ class ConstraintSolverSpec extends AnyFlatSpec with Matchers {
       ConstraintSolver.solveAs(Seq("C", "B", "A"), cs.reverse, Presentation.AsGiven)
   }
 
+  it should "leave a node cannot-linked to one component it reaches alone, never hand it to the other (U ~ M, U ~ O, U ≁ M)" in {
+    // UK "Sense and Sensibility [U]" [132′] (U), apart from the 2026 film's spellings (M) and must-linked to them and to
+    // the "Baby & Me: …" screenings of the 1995 film (O): read as no choice, the link it cannot take left it the 1995
+    // film's, and its siblings' bare spellings, reaching it there, lost the 2026 film (recording 38363428661)
+    val cs = Seq(Constraint("M", "U", must = true, 3, "same-search-form"), Constraint("O", "U", must = true, 3, "same-search-form"),
+      Constraint("M", "U", must = false, 0, "denies-film"))
+    ConstraintSolver.solve(Seq("M", "O", "U"), cs, Map("M" -> 1503762, "O" -> 4584)) shouldBe Seq(Seq("M"), Seq("O"), Seq("U"))
+  }
+
   it should "never put two films in one component, though no cannot-link joins their nodes" in {
     // The PL festival chain: A holds one film, D another, and must-links run A ~ B, B ~ C, C ~ D
     // across tiers with no cannot-link between A and D — they share no key.
