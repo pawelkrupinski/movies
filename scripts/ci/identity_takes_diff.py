@@ -13,7 +13,7 @@ Per listing (matched by its serialised key, else by venue and raw title):
   gained   the base took none, the head takes one
 
 LOST and CHANGED fail the check unless accepted, either way:
-  - labels.tsv (test/resources/fixtures/identity-unmatched) says the head's film is `right` for the
+  - labels.tsv (test/resources/fixtures/identity-unmatched; a `*` venue labels every venue) says the head's film is `right` for the
     listing, or the base's film is `wrong` (and the head's is not labelled wrong);
   - accepted.tsv (test/resources/fixtures/identity-takes) lists the move:
     country, venue (or *), rawTitle, before, after (tmdb:<id> or none, or *), note.
@@ -54,6 +54,16 @@ def labels_of(path, cc):
                 continue
             out[(cols[1], cols[2], cols[3])] = cols[4]
     return out
+
+
+def label_of(labels, venue, title, film):
+    """The verdict labels.tsv gives `film` for the listing, read as UnmatchedClusters.verdict reads it: a label for every
+    venue ("*") covers this one too, and the venue's own label calling the film right overrules every venue's calling it
+    wrong (PL Kino Iluzjon's "Lalka" is Has' 1968 film, the bare "Lalka" everywhere else the 2026 one)."""
+    own, every = labels.get((venue, title, film)), labels.get(("*", title, film))
+    if own == "right" or every is None:
+        return own
+    return "wrong" if "wrong" in (own, every) else every
 
 
 def accepted_of(path, cc):
@@ -119,8 +129,8 @@ def verdict(cc, move, labels, accepted):
     for a_venue, a_title, a_before, a_after in accepted:
         if a_venue in ("*", venue) and a_title == title and a_before in ("*", before) and a_after in ("*", after):
             return True, "accepted.tsv"
-    now = labels.get((venue, title, after))
-    was = labels.get((venue, title, before))
+    now = label_of(labels, venue, title, after)
+    was = label_of(labels, venue, title, before)
     if now == "wrong":
         return False, f"labels.tsv: {after} is WRONG"
     if move["kind"] == "gained":

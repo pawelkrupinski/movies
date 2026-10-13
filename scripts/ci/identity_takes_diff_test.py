@@ -81,6 +81,24 @@ class TakesDiffTest(unittest.TestCase):
         self.assertIn("| ✓ | changed | Rialto | Obcy |", md)
         self.assertIn("| ❌ | gained | Muza | Diuna |", md)
 
+    def test_a_label_for_every_venue_judges_a_move_at_each_and_a_venues_own_right_label_overrules_its_wrong(self):
+        # PL "League of Legends Worlds 26 | Finals in Cinema": labels.tsv calls the 2025 final's record wrong at every
+        # venue ("*"), as UnmatchedClusters.verdict reads it; a venue's own label calling a film right overrules that.
+        base = [row("Cinema City Arkadia", "Worlds 26", 1552059), row("Cinema City Bonarka", "Worlds 26", 1552059),
+                row("Helios", "Lalka", 81315), row("Kino Iluzjon", "Lalka", 81315)]
+        head = [row("Cinema City Arkadia", "Worlds 26", None), row("Cinema City Bonarka", "Worlds 26", None),
+                row("Helios", "Lalka", 1321666), row("Kino Iluzjon", "Lalka", 1321666)]
+        labels = ["country\tvenue\trawTitle\tfilm\tverdict\tnote\n",
+                  "pl\t*\tWorlds 26\ttmdb:1552059\twrong\tthe 2025 final\n",
+                  "pl\t*\tLalka\ttmdb:81315\twrong\t1968\n",
+                  "pl\tKino Iluzjon\tLalka\ttmdb:81315\tright\tthe archive bills Has' 1968 film\n"]
+        code, md = self.run_diff(base, head, labels=labels)
+        self.assertEqual(1, code)
+        self.assertIn("| ✓ | lost | Cinema City Arkadia | Worlds 26 |", md)
+        self.assertIn("| ✓ | lost | Cinema City Bonarka | Worlds 26 |", md)
+        self.assertIn("| ✓ | changed | Helios | Lalka |", md)
+        self.assertIn("| ❌ | changed | Kino Iluzjon | Lalka |", md)
+
     def test_accepted_tsv_accepts_a_move_at_every_venue_with_a_wildcard(self):
         base = [row("Helios", "Lalka", 501), row("Rialto", "Lalka", 501)]
         head = [row("Helios", "Lalka", 9), row("Rialto", "Lalka", 9)]
