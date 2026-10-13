@@ -82,11 +82,20 @@ class ProdCoverageIntegrationSpec extends AnyFlatSpec with Matchers with BeforeA
   it should "count a film whose slots are still embedded, not only the migrated ones" in {
     val keys = Set(sideKey.displayName, embeddedKey.displayName)
 
-    val baseline = ProdCoverage.of(database, onlySlotKeys = Some(keys))
+    val baseline = ProdCoverage.of(database, Instant.now(), onlySlotKeys = Some(keys))
 
     withClue("a film mid-migration is still one of production's films: ") {
       baseline.films shouldBe 2
     }
     baseline.tmdbId shouldBe 2
+  }
+
+  // What a red band names its films from: each screening film with its id, the axes it holds and the slot keys
+  // a replayed film joins it on — the same read the counts above are taken from.
+  it should "read each screening film with its TMDB id, its covered axes and its screening slot keys" in {
+    val films = ProdCoverage.films(database, Instant.now()).map(film => film.id -> (film.tmdbId, film.covered, film.slots)).toMap
+
+    films("side|2024") shouldBe ((Some(1), Set("tmdbId"), Seq(sideKey.displayName)))
+    films("embedded|1982") shouldBe ((Some(2), Set("tmdbId"), Seq(embeddedKey.displayName)))
   }
 }

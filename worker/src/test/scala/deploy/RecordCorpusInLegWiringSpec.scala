@@ -133,8 +133,9 @@ class RecordCorpusInLegWiringSpec extends AnyFlatSpec with Matchers {
   // Hermetic legs, the provenance diff, identity-decorations and hard-clusters.sh all read these.
   it should "publish the corpus under the names its readers already read" in {
     RepoFile.step(convergence, Pack) should include("tar -czf \"scrape-archive/scrapes-${{ inputs.code }}.tar.gz\"")
-    Seq("cinema-scrapes-${{ inputs.code }}.json.gz", "prod-coverage-${{ inputs.code }}.json",
-        "cinema-scrapes-${{ inputs.code }}-sample.json.gz", "prod-coverage-${{ inputs.code }}-sample.json").foreach { file =>
+    Seq("cinema-scrapes-${{ inputs.code }}.json.gz", "prod-coverage-${{ inputs.code }}.json", "prod-films-${{ inputs.code }}.json.gz",
+        "cinema-scrapes-${{ inputs.code }}-sample.json.gz", "prod-coverage-${{ inputs.code }}-sample.json",
+        "prod-films-${{ inputs.code }}-sample.json.gz").foreach { file =>
       RepoFile.step(convergence, Pack) should include(s"\"test/resources/fixtures/corpus/$file\"")
     }
     convergence should include("path: scrape-archive\n                  key: scrape-fixtures-${{ inputs.code }}-${{ github.run_id }}")

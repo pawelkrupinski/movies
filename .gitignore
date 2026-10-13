@@ -73,6 +73,8 @@ test/resources/fixtures/corpus/cinema-scrapes-??.json.gz
 test/resources/fixtures/corpus/cinema-scrapes-??-sample.json.gz
 test/resources/fixtures/corpus/prod-coverage-??.json
 test/resources/fixtures/corpus/prod-coverage-??-sample.json
+test/resources/fixtures/corpus/prod-films-??.json.gz
+test/resources/fixtures/corpus/prod-films-??-sample.json.gz
 
 # The GitOps manifests live in pawelkrupinski/movies-gitops. CI and `infra/bin/fetch-gitops`
 # check that repository out HERE, so the deploy specs read the same paths they always did.

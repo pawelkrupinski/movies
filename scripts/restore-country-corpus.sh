@@ -12,7 +12,8 @@
 #   - the corpus is the `scrape-fixtures-<code>` ARTIFACT of that `Record scrape fixtures` run
 #     (14-day retention): `scrapes-<code>.tar.gz`, holding
 #     test/resources/fixtures/corpus/{cinema-scrapes-<code>.json.gz, prod-coverage-<code>.json,
-#     cinema-scrapes-<code>-sample.json.gz, prod-coverage-<code>-sample.json}.
+#     prod-films-<code>.json.gz, cinema-scrapes-<code>-sample.json.gz, prod-coverage-<code>-sample.json,
+#     prod-films-<code>-sample.json.gz} (prod-films only in recordings since 2026-10-13).
 #   - the tree is that release asset (`enrichment-<code>-<run>.tar.zst`, ~40-320 MB), unpacked to
 #     test/resources/fixtures/enrichment-<code>, with every FILL later legs published over it laid
 #     on top (`convergence-fill.sh fills`), as `restore-enrichment-tree.sh` does in CI.

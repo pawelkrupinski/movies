@@ -92,7 +92,8 @@ final class CorpusComparison {
     val b = s"pass$pass"
     val axes = mutable.ListBuffer.empty[String]
     if (corpus.records != baseCorpus.records)
-      axes += s"FILMS differ on $b:\n${CorpusDiff.records(baseCorpus.records, corpus.records, a, b)}"
+      // Every differing film: the caller shows each axis' first lines and writes the rest to a file.
+      axes += s"FILMS differ on $b:\n${CorpusDiff.records(baseCorpus.records, corpus.records, a, b, limit = Int.MaxValue)}"
     if (corpus.screenings != baseCorpus.screenings)
       axes += s"SCREENINGS differ on $b:\n${CorpusDiff.slots(baseCorpus.screenings, corpus.screenings, a, b)}"
     if (corpus.rows != baseCorpus.rows)

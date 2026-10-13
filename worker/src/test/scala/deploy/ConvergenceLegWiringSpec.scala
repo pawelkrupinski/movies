@@ -665,6 +665,18 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     commands should include("sed -n 's/^\\[info\\] //; 1,150p'")
   }
 
+  /** A red leg names its films in `target/convergence-diagnostics` (`tools.ConvergenceDiagnostics`); the report puts
+   *  their summaries on the run page and uploads the full lists under a per-job artifact name it prints. */
+  it should "put the suite's diagnostics on the summary page and upload them as a per-job artifact" in {
+    val action = RepoFile.read(".github/actions/convergence-findings/action.yml")
+    action should include ("""then cat "$summary" >> "$GITHUB_STEP_SUMMARY"; fi""")
+    action should include ("name: convergence-diagnostics-${{ inputs.name }}")
+    action should include ("path: target/convergence-diagnostics/")
+    action should include ("uploaded as artifact convergence-diagnostics-${{ inputs.name }}")
+    RepoFile.block(leg, "convergence") should include ("name:  ${{ inputs.code }}-${{ matrix.phase }}")
+    tools.ConvergenceDiagnostics.Directory.toString shouldBe "target/convergence-diagnostics"
+  }
+
   /** Hosted runners differ in CPU model, and the same leg on the same pair cost ~50% more CPU on one
    *  job than another (37150307201 vs 37153677455); the setup names the CPU so a slow leg can be told
    *  from a slow machine. */

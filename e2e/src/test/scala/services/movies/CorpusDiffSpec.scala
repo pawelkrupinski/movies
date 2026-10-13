@@ -64,4 +64,35 @@ class CorpusDiffSpec extends AnyFlatSpec with Matchers {
 
     CorpusDiff.records(Seq(row(billed, 131)), Seq(row(billed :+ "George MacKay", 112))) should include ("cast")
   }
+
+  private def film(title: String, venue: models.Cinema, raw: String, tmdb: Option[Int] = None) = {
+    import models.{MovieRecord, Source, SourceData}
+    StoredMovieRecord(title, Some(2026), MovieRecord(tmdbId = tmdb,
+      data = Map[Source, SourceData](venue -> SourceData(title = Some(title), rawTitle = Some(raw)))), FilmId(title))
+  }
+
+  // A film the two orders folded differently is the divergence's whole story, and the diff used to stop at it:
+  // `record keys differ: only0=Set((Wicked,Some(2026)))` and nothing about the venue, the listing, or the
+  // films both orders hold but disagree on.
+  it should "name a film only one order made by its listings, and still diff the films both made" in {
+    import models.{Kinoteka, KinoPionier}
+    val a = Seq(film("Anora", Kinoteka, "ANORA", tmdb = Some(1)), film("Wicked", KinoPionier, "Wicked: Sing-Along"))
+    val b = Seq(film("Anora", Kinoteka, "ANORA", tmdb = Some(2)))
+
+    val diff = CorpusDiff.records(a, b, "pass0", "pass1")
+    diff should include ("1 film(s) only in pass0")
+    diff should include (s"'Wicked' (Some(2026)) ← ${KinoPionier.displayName}: 'Wicked: Sing-Along'")
+    diff should include ("scalar tmdbId: pass0=Some(1) pass1=Some(2)")
+  }
+
+  it should "lead with which fields differ and how often, then show the first films, capped" in {
+    import models.Kinoteka
+    val a = (1 to 5).map(i => film(s"Film $i", Kinoteka, s"Film $i", tmdb = Some(i)))
+    val b = (1 to 5).map(i => film(s"Film $i", Kinoteka, s"Film $i", tmdb = Some(100 + i)))
+
+    val diff = CorpusDiff.records(a, b, "pass0", "pass1", limit = 2)
+    diff.linesIterator.next() shouldBe "5 film(s) differ — tmdbId ×5"
+    diff.linesIterator.count(_.startsWith("record ")) shouldBe 2
+    diff should include ("…and 3 more film(s)")
+  }
 }

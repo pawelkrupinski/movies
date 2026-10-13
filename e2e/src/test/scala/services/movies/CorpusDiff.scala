@@ -27,22 +27,33 @@ object CorpusDiff {
 
   /** Field-by-field difference between two record sets, `labelA`/`labelB` naming
    *  the two sides in the output (e.g. "iter0"/"iter3", "before"/"after"). Empty
-   *  string when they match. */
+   *  string when they match.
+   *
+   *  Led by WHICH fields differ and on how many films, so the first line says where to look; then the
+   *  films only one side made, each with the listings it holds (the fold that differs is the story, and
+   *  its title alone does not say which venue's listing went where); then the first `limit` differing
+   *  films field by field, and how many more there are. */
   def records(a: Seq[StoredMovieRecord], b: Seq[StoredMovieRecord],
-              labelA: String = "0", labelB: String = "1"): String = {
-    val ka = a.map(r => (r.title, r.year)).toSet
-    val kb = b.map(r => (r.title, r.year)).toSet
-    if (ka != kb) return s"record keys differ: only$labelA=${ka -- kb} only$labelB=${kb -- ka}"
-    val namesakes = b.groupBy(r => (r.title, r.year))
-    a.flatMap { ra =>
-      val ea = ra.record; val eb = counterpart(ra, namesakes((ra.title, ra.year))).record
+              labelA: String = "0", labelB: String = "1", limit: Int = 20): String = {
+    def keyOf(r: StoredMovieRecord) = (r.title, r.year)
+    val namesakesA = a.groupBy(keyOf)
+    val namesakes  = b.groupBy(keyOf)
+    def only(side: Seq[StoredMovieRecord], other: Map[(String, Option[Int]), Seq[StoredMovieRecord]], label: String) = {
+      val alone = side.filterNot(r => other.contains(keyOf(r)))
+      if (alone.isEmpty) Nil
+      else s"${alone.size} film(s) only in $label:" +: (alone.take(limit).map(r => s"  '${r.title}' (${r.year}) ← ${listingsOf(r)}") ++
+        Option.when(alone.sizeIs > limit)(s"  …and ${alone.size - limit} more film(s)"))
+    }
+    // Each differing film's field names (for the tally) and its lines.
+    val differing: Seq[(Seq[String], Seq[String])] = a.filter(r => namesakes.contains(keyOf(r))).flatMap { ra =>
+      val ea = ra.record; val eb = counterpart(ra, namesakes(keyOf(ra))).record
       val scalars = Seq[(String, Any, Any)](
         ("tmdbId", ea.tmdbId, eb.tmdbId), ("imdbId", ea.imdbId, eb.imdbId),
         ("imdbRating", ea.imdbRating, eb.imdbRating), ("metascore", ea.metascore, eb.metascore),
         ("rottenTomatoes", ea.rottenTomatoes, eb.rottenTomatoes), ("filmwebRating", ea.filmwebRating, eb.filmwebRating),
         ("filmwebUrl", ea.filmwebUrl, eb.filmwebUrl), ("metacriticUrl", ea.metacriticUrl, eb.metacriticUrl),
         ("rottenTomatoesUrl", ea.rottenTomatoesUrl, eb.rottenTomatoesUrl)
-      ).collect { case (n, x, y) if x != y => s"  scalar $n: $labelA=${short(x)} $labelB=${short(y)}" }
+      ).collect { case (n, x, y) if x != y => n -> s"  scalar $n: $labelA=${short(x)} $labelB=${short(y)}" }
       val srcDiffs = (ea.data.keySet ++ eb.data.keySet).toSeq.sortBy(_.displayName).flatMap { src =>
         (ea.data.get(src), eb.data.get(src)) match {
           case (Some(da), Some(db)) if da != db =>
@@ -55,17 +66,29 @@ object CorpusDiff {
               ("runtimeMinutes", da.runtimeMinutes, db.runtimeMinutes), ("countries", da.countries, db.countries),
               ("genres", da.genres, db.genres), ("filmUrl", da.filmUrl, db.filmUrl),
               ("showtimes.size", da.showtimes.size, db.showtimes.size), ("showtimes", da.showtimes, db.showtimes)
-            ).collect { case (n, x, y) if x != y => s"      $n: $labelA=${short(x)} $labelB=${short(y)}" }
-            Some(s"  source '${src.displayName}' differs:\n${fields.mkString("\n")}")
-          case (Some(_), None) => Some(s"  source '${src.displayName}': only in $labelA")
-          case (None, Some(_)) => Some(s"  source '${src.displayName}': only in $labelB")
+            ).collect { case (n, x, y) if x != y => n -> s"      $n: $labelA=${short(x)} $labelB=${short(y)}" }
+            Some(fields.map(field => s"slot ${field._1}") -> s"  source '${src.displayName}' differs:\n${fields.map(_._2).mkString("\n")}")
+          case (Some(_), None) => Some(Seq(s"slot only in $labelA") -> s"  source '${src.displayName}': only in $labelA")
+          case (None, Some(_)) => Some(Seq(s"slot only in $labelB") -> s"  source '${src.displayName}': only in $labelB")
           case _               => None
         }
       }
-      if (scalars.isEmpty && srcDiffs.isEmpty) Nil
-      else Seq(s"record '${ra.title}' (${ra.year}):") ++ scalars ++ srcDiffs
-    }.mkString("\n")
+      Option.when(scalars.nonEmpty || srcDiffs.nonEmpty)(
+        (scalars.map(_._1) ++ srcDiffs.flatMap(_._1)).distinct ->
+          (Seq(s"record '${ra.title}' (${ra.year}):") ++ scalars.map(_._2) ++ srcDiffs.map(_._2)))
+    }
+    val tally = differing.flatMap(_._1).groupMapReduce(identity)(_ => 1)(_ + _).toSeq.sortBy { case (field, n) => (-n, field) }
+    val header = Option.when(differing.nonEmpty)(
+      s"${differing.size} film(s) differ — ${tally.map { case (field, n) => s"$field ×$n" }.mkString(", ")}")
+    (header.toSeq ++ only(a, namesakes, labelA) ++ only(b, namesakesA, labelB) ++ differing.take(limit).flatMap(_._2) ++
+      Option.when(differing.sizeIs > limit)(s"…and ${differing.size - limit} more film(s) differ")).mkString("\n")
   }
+
+  /** A film's cinema listings as a reader finds them: venue and the title it billed. */
+  private def listingsOf(r: StoredMovieRecord): String =
+    r.record.cinemaSlots.map { case (source, slot) =>
+      s"${models.Source.cinemaOf(source).fold(source.displayName)(_.displayName)}: '${slot.rawTitle.orElse(slot.title).getOrElse("")}'"
+    }.sorted.mkString("; ")
 
   /** `r`'s record among its `namesakes` on the other side (the records of its title and year): where
    *  several films share both (a relay the model keeps apart per venue, two same-titled secret

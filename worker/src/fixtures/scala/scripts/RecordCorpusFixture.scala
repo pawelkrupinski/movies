@@ -5,7 +5,7 @@ import services.movies.LatestTitleYear
 import models.Country
 import org.mongodb.scala.MongoClient
 import services.scrapes.MongoScrapeArchiveRepository
-import tools.{Alongside, CorpusFixture, CorpusSample, CountryScrapeCorpus, ProdCoverage, ProdCoverageBaseline, TunnelTunedUri}
+import tools.{Alongside, CorpusFixture, CorpusSample, CountryScrapeCorpus, ProdCoverage, ProdCoverageBaseline, ProdFilms, TunnelTunedUri}
 
 /**
  * Dump one country's real `cinema_scrapes` to a compressed fixture file.
@@ -52,9 +52,11 @@ object RecordCorpusFixture {
       // only closer to the same instant — the reason they are captured here at all (below).
       val database = client.getDatabase(databaseName)
       val read     = tools.Stopwatch.start()
-      val (rows, baseline) = Alongside(
+      val now      = java.time.Instant.now()
+      val (rows, prodFilms) = Alongside(
         archive.findAll().filter(row => known.contains(row.cinema) && row.films.nonEmpty))(
-        ProdCoverage.of(database))
+        ProdCoverage.films(database, now))
+      val baseline = ProdCoverageBaseline.of(now, prodFilms)
       println(f"[corpus] read ${rows.size} venues and prod's coverage in ${read.seconds}%.1fs")
       if (rows.isEmpty) {
         System.err.println(
@@ -77,6 +79,9 @@ object RecordCorpusFixture {
       // else it would drift against the corpus and the band it guards would become a flake.
       val baselinePath = ProdCoverageBaseline.write(country.code, baseline)
       println(s"[corpus] wrote $baselinePath — prod's coverage of the same repertoire")
+      // The same read per film, for a leg that drifts from the band to name the films it drifted on (FilmCoverageDiff).
+      val filmsPath = ProdFilms.write(country.code, prodFilms)
+      println(f"[corpus] wrote $filmsPath%s — prod's ${prodFilms.size}%d screening films, ${java.nio.file.Files.size(filmsPath) / 1024.0}%.0f KB")
 
       // …and the same pair again over a ~100-film slice, for the fast leg that runs
       // ahead of the full matrix. The draw happens HERE, once, and the files pin it:
@@ -84,7 +89,7 @@ object RecordCorpusFixture {
       // every time the corpus is re-recorded, so it never ossifies around one hundred
       // films that happen to work. The seed is printed so a capture can be re-derived
       // from a log if anyone ever needs to.
-      val seed   = java.time.Instant.now().toEpochMilli
+      val seed   = now.toEpochMilli
       // The corpus is this country's, so the sample must be drawn under its rules.
       val titles = services.movies.TitleNormalizer.forCountry(country)
       val sample = CorpusSample.draw(rows, CorpusSample.DefaultSize, new scala.util.Random(seed), titles)
@@ -93,7 +98,9 @@ object RecordCorpusFixture {
       val samplePath = CorpusFixture.write(sampleKey, sample).path
       // Slot keys of the SAMPLE, not of the whole corpus: a wide release is replayed from
       // only the venues the draw kept, so the baseline counts prod's rows for those.
-      val sampleBaseline = ProdCoverageBaseline.write(sampleKey, ProdCoverage.of(database, onlySlotKeys = Some(CorpusSample.slotKeysOf(sample, keys, titles))))
+      val sampleFilms    = ProdCoverage.films(database, now, onlySlotKeys = Some(CorpusSample.slotKeysOf(sample, keys, titles)))
+      val sampleBaseline = ProdCoverageBaseline.write(sampleKey, ProdCoverageBaseline.of(now, sampleFilms))
+      ProdFilms.write(sampleKey, sampleFilms)
       println(s"[corpus] sample seed $seed — ${keys.size} films drawn from ${CorpusSample.filmKeys(rows, titles).size}")
       println(s"[corpus] wrote $samplePath — ${sample.size} venues, ${sample.map(_.films.size).sum} listings, " +
               s"${sample.map(_.films.map(_.showtimes.size).sum).sum} showtimes")

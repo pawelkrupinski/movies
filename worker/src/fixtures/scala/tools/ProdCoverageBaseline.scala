@@ -107,6 +107,13 @@ object ProdCoverageBaseline {
     path
   }
 
+  /** Production's films, counted: each axis the number of films holding a value on it. */
+  def of(recordedAt: java.time.Instant, films: Seq[ProdFilm]): ProdCoverageBaseline = {
+    def count(axis: String): Int = films.count(_.covered(axis))
+    ProdCoverageBaseline(recordedAt, films.size, count("tmdbId"), count("imdbId"), count("imdbRating"),
+      count("filmwebRating"), count("metascore"), count("rottenTomatoes"))
+  }
+
   def read(code: String): Option[ProdCoverageBaseline] =
     Option.when(exists(code))(Json.parse(Files.readAllBytes(pathFor(code))).as[ProdCoverageBaseline])
 

@@ -67,7 +67,7 @@ class CorpusCoverageSpec extends AnyFlatSpec with Matchers {
     CorpusCoverage.isScreening(ShowtimesDigest.stripForCache(film("a")), Now) shouldBe false
   }
 
-  "screening" should "leave the corpus's stale tail out of the coverage counted against production" in {
+  "isScreening" should "leave the corpus's stale tail out of the coverage counted against production" in {
     val corpus = Seq(
       film("still-playing", Now.plusDays(1)),
       film("also-playing",  Now.plusDays(4)),
@@ -75,14 +75,14 @@ class CorpusCoverageSpec extends AnyFlatSpec with Matchers {
       film("june-only",     Now.minusDays(61)))
 
     CorpusCoverage.of(corpus).films                              shouldBe 4
-    CorpusCoverage.of(CorpusCoverage.screening(corpus, Now)).films shouldBe 2
+    CorpusCoverage.of(corpus.filter(CorpusCoverage.isScreening(_, Now))).films shouldBe 2
   }
 
   "of" should "count each enrichment field over exactly the records it is given" in {
     val screening = film("a", Now.plusDays(1)).copy(tmdbId = Some(1), imdbId = Some("tt1"), imdbRating = Some(7.1))
     val stale     = film("b", Now.minusDays(30)).copy(tmdbId = Some(2), imdbId = Some("tt2"), imdbRating = Some(6.0))
 
-    val counted = CorpusCoverage.of(CorpusCoverage.screening(Seq(screening, stale), Now))
+    val counted = CorpusCoverage.of(Seq(screening, stale).filter(CorpusCoverage.isScreening(_, Now)))
     counted.films      shouldBe 1
     counted.tmdbId     shouldBe 1
     counted.imdbId     shouldBe 1

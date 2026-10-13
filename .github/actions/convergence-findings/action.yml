@@ -25,6 +25,11 @@ inputs:
         description: The tee'd suite log to read.
         required: false
         default: convergence.log
+    name:
+        description: >-
+            Suffix of the `convergence-diagnostics-<name>` artifact this job's diagnostics upload as, unique per job
+            (`<code>-<phase>`).
+        required: true
 
 runs:
     using: composite
@@ -73,3 +78,23 @@ runs:
                     | sed -n 's/^\[info\] //; 1,150p'
                   echo '```'
               } >> "$GITHUB_STEP_SUMMARY"
+
+        # What the suite wrote for a reader beyond its log (`tools.ConvergenceDiagnostics`): the per-film
+        # account of a coverage band against production, an order replay's differing films. Each `.md` is the
+        # short account, onto the summary page; the full lists go up as an artifact whose name the log prints.
+        - shell: bash
+          run: |
+              set -uo pipefail
+              dir=target/convergence-diagnostics
+              [ -d "$dir" ] || { echo "no convergence diagnostics written"; exit 0; }
+              for summary in "$dir"/*.md; do
+                  if [ -e "$summary" ]; then cat "$summary" >> "$GITHUB_STEP_SUMMARY"; fi
+              done
+              echo "convergence diagnostics: $(ls "$dir" | tr '\n' ' ')— uploaded as artifact convergence-diagnostics-${{ inputs.name }}"
+              echo "Full lists: artifact \`convergence-diagnostics-${{ inputs.name }}\`." >> "$GITHUB_STEP_SUMMARY"
+        - uses: actions/upload-artifact@v6
+          with:
+              name: convergence-diagnostics-${{ inputs.name }}
+              path: target/convergence-diagnostics/
+              if-no-files-found: ignore
+              retention-days: 14

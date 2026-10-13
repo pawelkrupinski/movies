@@ -68,23 +68,27 @@ object CorpusCoverage {
       else ShowtimesDigest.slotShowtimeCount(slot) > 0
     }
 
-  /** The films of `records` a cinema was still showing at `at`. */
-  def screening(records: Seq[MovieRecord], at: LocalDateTime): Seq[MovieRecord] =
-    records.filter(isScreening(_, at))
-
   /** These records' coverage, in the shape production's is recorded in, so the two can
    *  be compared field by field. `recordedAt` is [[Instant.EPOCH]]: this side is never
    *  the reference, and a timestamp on it would only invite reading one. */
   def of(records: Seq[MovieRecord]): ProdCoverageBaseline = {
-    def count(predicate: MovieRecord => Boolean): Int = records.count(predicate)
+    val coverage = records.map(covered)
+    def count(axis: String): Int = coverage.count(_(axis))
     ProdCoverageBaseline(
       recordedAt     = Instant.EPOCH,
       films          = records.size,
-      tmdbId         = count(_.tmdbId.isDefined),
-      imdbId         = count(_.imdbId.isDefined),
-      imdbRating     = count(_.imdbRating.isDefined),
-      filmwebRating  = count(_.filmwebRating.isDefined),
-      metascore      = count(_.metascore.isDefined),
-      rottenTomatoes = count(_.rottenTomatoes.isDefined))
+      tmdbId         = count("tmdbId"),
+      imdbId         = count("imdbId"),
+      imdbRating     = count("imdbRating"),
+      filmwebRating  = count("filmwebRating"),
+      metascore      = count("metascore"),
+      rottenTomatoes = count("rottenTomatoes"))
   }
+
+  /** The coverage axes `record` holds a value on, by [[ProdFilms.Axes]]' names — what [[of]] counts, and what the
+   *  per-film diff ([[FilmCoverageDiff]]) compares film by film. */
+  def covered(record: MovieRecord): Set[String] =
+    Seq("tmdbId" -> record.tmdbId.isDefined, "imdbId" -> record.imdbId.isDefined, "imdbRating" -> record.imdbRating.isDefined,
+      "filmwebRating" -> record.filmwebRating.isDefined, "metascore" -> record.metascore.isDefined,
+      "rottenTomatoes" -> record.rottenTomatoes.isDefined).collect { case (axis, true) => axis }.toSet
 }

@@ -424,8 +424,10 @@ jobs:
                   tar -czf "scrape-archive/scrapes-${{ inputs.code }}.tar.gz" \
                       "test/resources/fixtures/corpus/cinema-scrapes-${{ inputs.code }}.json.gz" \
                       "test/resources/fixtures/corpus/prod-coverage-${{ inputs.code }}.json" \
+                      "test/resources/fixtures/corpus/prod-films-${{ inputs.code }}.json.gz" \
                       "test/resources/fixtures/corpus/cinema-scrapes-${{ inputs.code }}-sample.json.gz" \
-                      "test/resources/fixtures/corpus/prod-coverage-${{ inputs.code }}-sample.json"
+                      "test/resources/fixtures/corpus/prod-coverage-${{ inputs.code }}-sample.json" \
+                      "test/resources/fixtures/corpus/prod-films-${{ inputs.code }}-sample.json.gz"
                   ls -l scrape-archive/
 
             # Run-id-suffixed so each capture is a new entry; readers restore by prefix and so
@@ -799,6 +801,7 @@ jobs:
               with:
                   title: ${{ matrix.phase }} (${{ inputs.country }})
                   log:   ${{ matrix.phase == 'sample' && 'convergence-sample.log' || 'convergence.log' }}
+                  name:  ${{ inputs.code }}-${{ matrix.phase }}
 
             # A RECORDING whose sample ran in a row of its own: its recordings, merged into this tree
             # before it is packed — a hermetic sample leg replays the pair a recording's publish pins,

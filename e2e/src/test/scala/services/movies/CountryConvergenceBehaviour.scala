@@ -13,9 +13,10 @@ import org.scalatest.exceptions.TestFailedException
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository, ScrapeAttempt}
-import tools.{Alongside, ArchiveReplayWiring, ConvergenceStorage, CorpusCoverage, CorpusFixture, CorpusProvenance, CountryScrapeCorpus, IdentityLookupSweep,
-  ChurnLedger, EnrichmentCache, EnrichmentFreshness, FileEnrichmentCacheStore, FixpointPass, MissingFixtures, PhaseTimer, ProdCoverageBaseline,
-  SameThreadExecutionBudget, ServedCorpusInvariants, TestWiring, ConvergenceKnownIssues}
+import tools.{Alongside, ArchiveReplayWiring, ConvergenceDiagnostics, ConvergenceStorage, CorpusCoverage, CorpusFixture, CorpusProvenance,
+  CountryScrapeCorpus, IdentityLookupSweep, ChurnLedger, EnrichmentCache, EnrichmentFreshness, FileEnrichmentCacheStore, FilmCoverageDiff,
+  FixpointPass, MissingFixtures, PhaseTimer, ProdCoverageBaseline, ProdFilms, SameThreadExecutionBudget, ServedCorpusInvariants, TestWiring,
+  ConvergenceKnownIssues}
 
 import java.time.{Instant, LocalDateTime}
 import java.util.concurrent.atomic.AtomicInteger
@@ -1151,7 +1152,20 @@ abstract class CountryConvergenceBehaviour(
       // quoting them makes a CI-only divergence reproducible on a laptop instead of
       // something you re-run and hope to see again.
       val seeds = (0 until Passes).map(i => s"pass$i=0x${(OrderSeed + i.toLong).toHexString}").mkString(", ")
-      withClue(s"${divergences.size} order-dependent divergence(s) [$seeds]:\n${divergences.take(10).mkString("\n")}\n") {
+      // Every differing film to the diagnostics artifact; the log and the summary page get each axis' first lines,
+      // which lead with which fields differ on how many films.
+      val shown = if (divergences.isEmpty) Nil else {
+        val report = ConvergenceDiagnostics.write(s"$corpusKey-order", s"[$seeds]" +: divergences)
+        val clipped = divergences.map { entry =>
+          val lines = entry.linesIterator.toSeq
+          (lines.take(DivergenceLinesShown) ++ Option.when(lines.sizeIs > DivergenceLinesShown)(
+            s"…${lines.size - DivergenceLinesShown} more line(s) in $report (the job's convergence-diagnostics artifact)")).mkString("\n")
+        }
+        ConvergenceDiagnostics.summarise(s"$corpusKey-order", s"${country.displayName}: order-dependent divergences [$seeds]",
+          clipped.flatMap(_.linesIterator))
+        clipped
+      }
+      withClue(s"${divergences.size} order-dependent divergence(s) [$seeds]:\n${shown.mkString("\n")}\n") {
         divergences shouldBe empty
       }
     }
@@ -1210,7 +1224,8 @@ abstract class CountryConvergenceBehaviour(
       // against production's live one: Poland sat 31-40 films above prod on every run
       // for as long as the band existed, and crossed 5% on 2026-08-23 without anything
       // in the pipeline moving. See `CorpusCoverage`.
-      val corpus       = w.movieRepository.findAll().map(_.record)
+      val stored       = w.movieRepository.findAll()
+      val corpus       = stored.map(_.record)
       // A CUT-OVER leg runs production's new model, so it is judged against that model's own
       // decisions for the same repertoire (its shadow run, recorded with the corpus); the
       // pipeline's band below is then how the new model compares with what production serves,
@@ -1222,7 +1237,8 @@ abstract class CountryConvergenceBehaviour(
              s"${shadow.films} films, ${shadow.tmdbId} on TMDB) —\n  " + shadow.report(whole, ProdTolerance).mkString("\n  "))
       }
       val screeningAt  = CorpusCoverage.localise(baseline.recordedAt, country)
-      val mine         = CorpusCoverage.of(CorpusCoverage.screening(corpus, screeningAt))
+      val screening    = stored.filter(film => CorpusCoverage.isScreening(film.record, screeningAt))
+      val mine         = CorpusCoverage.of(screening.map(_.record))
       info(s"${country.displayName}: counted over the ${mine.films} film(s) a cinema was still screening at " +
            s"$screeningAt — ${corpus.size - mine.films} of the corpus's ${corpus.size} had no showtime left " +
            s"by then, which is the tail production does not count either")
@@ -1235,6 +1251,11 @@ abstract class CountryConvergenceBehaviour(
 
       val offBand = againstShadow.fold(ProdCoverageBaseline.divergences(mine, baseline, ProdTolerance))(
         _.divergences(CorpusCoverage.of(corpus), ProdTolerance))
+
+      // WHICH films, on every run: the counts above say how far the run sits from production, this says on
+      // which films and why — so a red band is read off the log, not reproduced locally.
+      val filmByFilm = filmsAgainstProduction(w, screening, failing = offBand.map(_.takeWhile(_ != ' ')).toSet)
+      filmByFilm.foreach(line => println(s"[${country.code}] $line"))
 
       // Reported above either way; only the ASSERTION is conditional. A country
       // whose worker is stopped has a frozen baseline that the replay can no
@@ -1253,11 +1274,42 @@ abstract class CountryConvergenceBehaviour(
         f"${100 * ProdTolerance}%.0f%%:\n${offBand.mkString("\n")}\n\n" +
         s"A regression here means this pipeline now identifies or rates less of the corpus than prod does " +
         s"(or MORE — a source prod does not run for this country). If prod itself moved, re-record the " +
-        s"corpus and its baseline together.\n") {
+        s"corpus and its baseline together.\n\nFilm by film:\n${filmByFilm.mkString("\n")}\n") {
         offBand shouldBe empty
       }
     }
   }
+
+  /** How many lines of each order-dependent divergence the log shows; the diagnostics artifact holds them all. */
+  private val DivergenceLinesShown = 60
+
+  /** How many films a red band names in the log; the full report holds every one. */
+  private val GapFilmsShown = 40
+
+  /**
+   * The band's numbers, film by film: production's screening films (`ProdFilms`, recorded with the corpus)
+   * joined to the run's on their shared slot keys, each film the two differ on named with its listings,
+   * production's id and the identity model's decision on it ([[FilmCoverageDiff]]). The summary — where the
+   * film count goes and each axis' gap by cause — is returned for the log on every run; the films behind
+   * the `failing` axes follow it, capped at [[GapFilmsShown]], and the whole account goes to the leg's
+   * diagnostics artifact (`ConvergenceDiagnostics`).
+   */
+  private def filmsAgainstProduction(w: ArchiveReplayWiring, screening: Seq[StoredMovieRecord], failing: Set[String]): Seq[String] =
+    ProdFilms.read(corpusKey).fold(Seq(
+      s"no per-film production export beside this corpus (${ProdFilms.pathFor(corpusKey)}) — it was recorded before the " +
+        "recorder wrote one, so the band can name no films; the next recording carries it")) { prod =>
+      val decisions = w.identityModel.current(5.minutes).map(_.resolution.decisionOf)
+      val diff      = FilmCoverageDiff.ofReplay(screening, prod, decisions)
+      val name      = s"$corpusKey-coverage"
+      val report    = ConvergenceDiagnostics.write(name, diff.full)
+      val heading = s"coverage against production, film by film — every film in $report (the job's convergence-diagnostics artifact):"
+      val lines = heading +: (diff.summary ++
+        decisions.fold(Seq("the identity model could not be read, so no film's decision is shown"))(_ => Nil) ++
+        (if (failing.isEmpty) Nil
+         else s"the films behind ${failing.toSeq.sorted.mkString(", ")}, largest cause first:" +: diff.details(failing, GapFilmsShown)))
+      ConvergenceDiagnostics.summarise(name, s"${country.displayName}: coverage against production, film by film", lines)
+      lines
+    }
 
   /** Every cinema, showtime and film the DATABASE holds, versus what the web
    *  would actually render.
