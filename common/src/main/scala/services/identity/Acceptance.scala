@@ -640,7 +640,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  every rule, as [[seasonProduction]] does a season the title names — a house's other stagings of the work (the Met's
    *  2014 "Macbeth", the Royal Ballet's 2013 "Romeo and Juliet") are other broadcasts than the one the venue screens. */
   private def broadcastSeasonRecord(ranked: Seq[Scored]): Option[Accepted] = seasonRecord(ranked).filter { case (record, _) =>
-    record.listing.screenedSeason.exists(IdentityMeasures.filmSeason(record.candidate.film).contains)
+    record.listing.broadcastSeason.exists(IdentityMeasures.filmSeason(record.candidate.film).contains)
   }
   /** The season record a relay's own year ([[stageProduction]]) or its screenings' season ([[broadcastSeasonRecord]])
    *  names, with the rule naming it: what pre-empts the rules after [[seasonProduction]]. */
@@ -650,7 +650,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
     def plain(title: String) = IdentityMeasures.key(title.replace("&", " and "))
     // of the screenings' season only: a record of another of the work's seasons is no staging the venue said it screens
     def ofItsWork(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film) =
-      listing.screenedSeason.exists(IdentityMeasures.filmSeason(film).contains) &&
+      listing.broadcastSeason.exists(IdentityMeasures.filmSeason(film).contains) &&
         IdentityMeasures.stageWorks(film).exists(IdentityMeasures.stageWorksBilled(listing.rawTitle.toSeq :+ listing.title, seasonNamed = false)) &&
         IdentityMeasures.bannerNamesItsHouse(listing, film)
     for {
@@ -663,6 +663,10 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
                   (scored.candidate.film.titles.exists(t => own(plain(IdentityMeasures.withoutSeasons(t)))) || ofItsWork(listing, scored.candidate.film)))),
                   "no season record carries its title or its work under its house", "two seasons' records carry its title")
       _      <- needOf(!contradicted(record), "a published fact contradicts it", record, contradiction(record))
+      // a season spans two years: a year the listing states outside them is another season's broadcast (UK Aldeburgh's
+      // "The Royal Ballet: Romeo & Juliet" [2025] is no "The Royal Ballet: Romeo and Juliet (2021/22)")
+      _      <- needOf(listing.year.forall(year => IdentityMeasures.filmSeason(record.candidate.film).forall(season => year == season || year == season + 1)),
+                  "the year it states is another season's", record)
       _      <- needOf(!record.category("director").exists(Set("different", "different_script")), "it credits another director", record)
     } yield record -> record.probability
   }
@@ -673,7 +677,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  38342304766, ~30 venues billing no season or year), screening on 22 April 2027, is the 2026/27 record, not the
    *  house's 2024/25 one. */
   private def ofItsBroadcastSeason(records: Seq[Scored]): Seq[Scored] =
-    records.headOption.flatMap(_.listing.screenedSeason).filter(_ => records.sizeIs > 1)
+    records.headOption.flatMap(_.listing.broadcastSeason).filter(_ => records.sizeIs > 1)
       .map(season => records.filter(record => IdentityMeasures.filmSeason(record.candidate.film).contains(season)))
       .filter(_.nonEmpty).getOrElse(records)
 

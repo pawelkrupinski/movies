@@ -31,10 +31,7 @@ object IdentityMeasures {
                            decorations: TitleDecorations = TitleDecorations.None, searchTitles: Seq[String] = Nil,
                            /** The season a stage relay billing neither its season nor a year screens in
                             *  ([[services.identity.Listing.broadcastSeason]]): searched with its work, never measured. */
-                           broadcastSeason: Option[Int] = None,
-                           /** The season its screenings fall in, whatever it states ([[services.identity.Listing.screenedSeason]]):
-                            *  what picks among a house's records of its work's seasons, never searched. */
-                           screenedSeason: Option[Int] = None) {
+                           broadcastSeason: Option[Int] = None) {
     private def titles: Seq[String] = rawTitle.toSeq :+ title
     /** The directors credited beside the published `year` — one listing's own, unless a pooled
      *  read took its year and its credits from different listings (`yearCredits`). */
@@ -1542,11 +1539,12 @@ object IdentityMeasures {
   /** A title's delimited pieces, its seasons and bracketed years out. */
   private[identity] def pieces(title: String): Seq[String] = PieceBreak.split(withoutYears(title)).toSeq.map(_.trim).filter(_.nonEmpty)
 
-  /** The stage works one title piece bills ([[stageWorksBilled]]) — a broadcast's year shortened behind the work out:
-   *  prod UK "RBO: Tosca 27", "RBO: Tosca '27", "The Met: Macbeth 26". */
+  /** The stage works one title piece bills ([[stageWorksBilled]]) — a broadcast's year behind the work out, shortened or
+   *  whole: prod UK "RBO: Tosca 27", "RBO: Tosca '27", "The Met: Macbeth 26", Gorleston's "RBO: TOSCA 2027". */
   private[identity] def billedIn(piece: String, seasonNamed: Boolean): Set[String] = {
+    def broadcastYear(token: String) = token.forall(_.isDigit) && (token.length == 2 || token.length == 4 && (token.startsWith("19") || token.startsWith("20")))
     val tokens = services.movies.TitleContainment.tokens(piece).toIndexedSeq
-      .reverse.dropWhile(token => token.length == 2 && token.forall(_.isDigit)).reverse
+      .reverse.dropWhile(broadcastYear).reverse
     val runs   = tokens.indices.map(tokens.drop) ++ (if (seasonNamed) (1 until tokens.size).map(tokens.take) else Nil)
     runs.flatMap(run => StageWorks.resolver.named(run.mkString)).toSet
   }

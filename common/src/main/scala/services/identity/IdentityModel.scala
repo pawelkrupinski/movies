@@ -71,18 +71,11 @@ final case class Listing(
   /** The season a stage work billed with neither its season nor a year is broadcast in: the one its first screening
    *  falls in ([[ScreeningDays.season]]). A relay airs on its house's published dates — the Met's "Samson et Dalila"
    *  on 5 December 2026 — so a PL "Samson i Dalila" screening that day is the 2026/27 season's, whatever its title
-   *  leaves out. `None` for anything else: a film's run moving past July re-resolves nothing. */
+   *  leaves out. Whatever else it states, too: a credit or a running time names no season — UK "Royal Ballet and Opera:
+   *  Tosca" {Oliver Mears} [195′] ×123, screening on 5 May 2027, is the house's 2026/27 relay of his production, not
+   *  its 2025/26 one, which alone credits him. `None` for anything else: a film's run moving past July re-resolves
+   *  nothing. */
   lazy val broadcastSeason: Option[Int] =
-    // a credited director or a running time already names the staging: UK "Royal Shakespeare Company: Macbeth" {Polly
-    // Findlay} is her RSC Live record, US "Royal Opera House: Otello" [190′] the ROH's 2017 one, which the season's Met
-    // records of the work would only stand beside
-    screenedSeason.filter(_ => directors.isEmpty && runtime.isEmpty)
-  /** The season a stage work billed with neither its season nor a year screens in, whatever else it states: what tells
-   *  apart a house's records of the work's SEASONS ([[Acceptance.seasonRecord]]), where a credit or a running time names
-   *  no season — UK "Royal Ballet and Opera: Tosca" {Oliver Mears} [195′] ×123, screening on 5 May 2027, is the house's
-   *  2026/27 relay of his production, not its 2025/26 one, which alone credits him. Never searched with its work, as
-   *  [[broadcastSeason]] is. */
-  lazy val screenedSeason: Option[Int] =
     if (screenings.isEmpty || year.isDefined) None
     else {
       val titles = Seq(title, rawTitle)
@@ -94,7 +87,7 @@ final case class Listing(
     case that: Listing => (this eq that) || (key == that.key && rawTitle == that.rawTitle && title == that.title && cleanTitle == that.cleanTitle &&
       year == that.year && directors == that.directors && runtime == that.runtime && page == that.page && originalTitle == that.originalTitle &&
       countries == that.countries && catalogueIds == that.catalogueIds && searchTitle == that.searchTitle && cinema == that.cinema &&
-      screenedSeason == that.screenedSeason)
+      broadcastSeason == that.broadcastSeason)
     case _ => false
   }
   override def hashCode: Int = {
@@ -105,7 +98,7 @@ final case class Listing(
     var i = 0
     while (i < fields.length) { h = mix(h, fields(i)); i += 1 }
     h = mix(h, searchTitle.##)
-    finalizeHash(mixLast(h, screenedSeason.##), fields.length + 2)
+    finalizeHash(mixLast(h, broadcastSeason.##), fields.length + 2)
   }
 
   /** A TOTAL order over listings, as text: the key first, then every published field, so two
@@ -287,27 +280,23 @@ final case class Evidence(title: String, cleanTitle: String, rawTitle: String, y
                           decorations: TitleDecorations = TitleDecorations.None, searchTitle: Option[String] = None,
                           /** The season a stage relay billing neither its season nor a year screens in ([[Listing.broadcastSeason]]):
                            *  what its title is searched with, never a fact it states. */
-                          broadcastSeason: Option[Int] = None,
-                          /** The season its screenings fall in, whatever it states ([[Listing.screenedSeason]]). */
-                          screenedSeason: Option[Int] = None) {
+                          broadcastSeason: Option[Int] = None) {
   lazy val key: String =
     Seq(title, cleanTitle, rawTitle, year.fold("")(_.toString), directors.sorted.mkString(","),
       runtime.fold("")(_.toString), originalTitle.getOrElse(""), countries.sorted.mkString(",")).mkString("\u0000") +
-      broadcastSeason.fold("")(season => s"\u0000broadcast:$season") +
-      screenedSeason.filterNot(broadcastSeason.contains).fold("")(season => s"\u0000screened:$season")
+      broadcastSeason.fold("")(season => s"\u0000broadcast:$season")
 
   /** The evidence as the calibrated measures read a listing, its title shapes undecorated by the
    *  resolve's learned `decorations` (the same for every listing of a resolve, so not in [[key]]). */
   lazy val measured: IdentityMeasures.Listing =
     IdentityMeasures.Listing(title, Some(rawTitle).filter(_ != title), originalTitle, year, runtime, directors, countries,
-      decorations = decorations, searchTitles = searchTitle.toSeq, broadcastSeason = broadcastSeason, screenedSeason = screenedSeason)
+      decorations = decorations, searchTitles = searchTitle.toSeq, broadcastSeason = broadcastSeason)
 
   /** [[measured]] with the title shapes the venue's own delimiters leave, no learned decoration nor search title
    *  stripped: what relates two LISTINGS (their families, title must-links and listing-listing
    *  measures). A learned decoration names a FILM to search for and relate to; it never links a
    *  "Horror Season 2026 Dracula" to every other venue's bare "Dracula". */
-  lazy val published: IdentityMeasures.Listing =
-    measured.copy(decorations = TitleDecorations.None, searchTitles = Nil, broadcastSeason = None, screenedSeason = None)
+  lazy val published: IdentityMeasures.Listing = measured.copy(decorations = TitleDecorations.None, searchTitles = Nil, broadcastSeason = None)
 
   /** The year this listing states: its own field, else the one its title brackets. */
   def statedYear: Option[Int] = measured.statedYear
@@ -331,8 +320,7 @@ object Evidence {
     decorations   = decorations,
     searchTitle   = listing.searchTitle,
     // a year the detail page states dates the relay as a year the venue's own field does
-    broadcastSeason = listing.broadcastSeason.filter(_ => detail.flatMap(_.year).isEmpty),
-    screenedSeason  = listing.screenedSeason.filter(_ => detail.flatMap(_.year).isEmpty))
+    broadcastSeason = listing.broadcastSeason.filter(_ => detail.flatMap(_.year).isEmpty))
 }
 
 /** One film a lookup NAMED: a search result or a filmography credit. Only what the list itself
