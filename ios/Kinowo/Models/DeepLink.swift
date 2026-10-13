@@ -68,7 +68,7 @@ struct DeepLink: Equatable {
     /// so we never treat a non-city path as a city.
     ///
     /// `currentSlugByFormer` maps a slug the web now redirects (a retired page,
-    /// a renamed metro — `City.formerSlugs`) onto the city answering at it: the
+    /// a renamed metro — `City.slugsLeadingHere`) onto the city answering at it: the
     /// link opens there, as the server's 301 would have sent a browser.
     ///
     /// `languageTokens` answers, for the linked city, the `?lang=` values its

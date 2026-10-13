@@ -58,7 +58,7 @@ struct CityGate: View {
                 // fallback-city path on a cold launch with a saved choice.
                 .task(id: slug) {
                     // A saved city whose page was retired or renamed answers at
-                    // another slug now (`City.formerSlugs`): its listing still
+                    // another slug now (`City.slugsLeadingHere`): its listing still
                     // arrived through the server's 301, but Filtry found no city
                     // by the old slug and labelled the list with the slug itself.
                     // Adopt the one it answers at; the task re-runs for it.

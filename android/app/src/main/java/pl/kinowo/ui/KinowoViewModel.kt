@@ -359,7 +359,7 @@ class KinowoViewModel(
         // any failure leaves the app usable).
         viewModelScope.launch { clientSupportGate.check() }
         // A saved city whose page was retired or renamed answers at another slug
-        // now ([pl.kinowo.model.City.formerSlugs]): its listing still arrives
+        // now ([pl.kinowo.model.slugsLeadingHere]): its listing still arrives
         // through the server's 301, but the picker found no city by the old slug
         // and labelled the list with the country's default. Adopt the slug it
         // answers at, as the web's redirect does for a browser.
