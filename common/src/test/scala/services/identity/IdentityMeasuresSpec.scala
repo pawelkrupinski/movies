@@ -872,6 +872,12 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     numeral("Toy Story 2", Film("Toy Story 3")) shouldBe Category("different")
     numeral("Kill Bill: Vol. 2 (2026)", Film("Kill Bill: Vol. 1")) shouldBe Category("different")
     numeral("Star Wars: Episode IV - A New Hope", Film("Star Wars", alternativeTitles = Seq("Star Wars: Episode IV - A New Hope"))) shouldBe Category("same")
+    // PL Cinema City and UK Odeon, recorded 2026-10: the 2026 final billed against TMDB's record of the 2025 one, its
+    // number run into the word before it.
+    val worlds25 = Film("League of Legends Worlds25 - Finals in Cinema")
+    numeral("League of Legends Worlds 26 | Finals in Cinema", worlds25) shouldBe Category("different")
+    numeral("League of Legends Worlds 25 - Finals in Cinema", worlds25) shouldBe Category("same")
+    numeral("Rambo3", Film("Rambo III")) shouldBe Category("same")
   }
 
   it should "have nothing to compare in a remake, a title whose number is its name, or a decoration's number" in {
@@ -880,6 +886,8 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     numeral("2001: A Space Odyssey", "2001: A Space Odyssey") shouldBe Missing("none")
     numeral("1917", "1917") shouldBe Missing("none")
     numeral("Se7en", "Se7en") shouldBe Missing("none")
+    numeral("M3GAN", "M3GAN") shouldBe Missing("none")
+    numeral("R2D2", "R2D2") shouldBe Missing("none")
     numeral("Ocean's Eleven", "Ocean's Eleven") shouldBe Missing("none")
     numeral("2046", "2046") shouldBe Missing("none")
     numeral("9 to 5", "9 to 5") shouldBe Category("same")
@@ -891,6 +899,8 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     numeral("Listy do M. 5", "Listy do M. 5") shouldBe Category("same")
     numeral("Listy do M 5", "Listy do M. 5") shouldBe Category("same")
     numeral("Zodiac", "Fight Club") shouldBe Missing("unrelated")
+    // a relay numbers its house's season, no instalment
+    numeral("RBO: Tosca 27", "Royal Ballet & Opera 2026/27: Tosca") shouldBe Missing("season")
   }
 
   it should "keep a title that numbers another instalment from NAMING the film its words decorate" in {

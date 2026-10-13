@@ -1287,8 +1287,15 @@ object IdentityMeasures {
   }
   private val ColonBreak         = java.util.regex.Pattern.compile(":\\s")
   private val NumberedPieceBreak = java.util.regex.Pattern.compile("""[:|/()\[\]–—,.;!?]|\s-\s""")
+  /** A word with its number run into it — "Worlds25", "Rambo3" — as the word and the number; a number inside a word
+   *  ("Se7en", "M3GAN", "R2D2") is its name, kept whole. */
+  private val GluedNumber = """(\p{L}{2,})(\d{1,3})""".r
+  private def unglued(token: String): Seq[String] = token match {
+    case GluedNumber(word, number) => Seq(word, number)
+    case _                         => Seq(token)
+  }
   private[identity] def numbered(title: String): Numbered = {
-    val pieces = NumberedPieceBreak.split(withoutYears(title)).map(TitleContainment.tokens).filter(_.nonEmpty).toSeq
+    val pieces = NumberedPieceBreak.split(withoutYears(title)).map(p => TitleContainment.tokens(p).flatMap(unglued)).filter(_.nonEmpty).toSeq
     val arabic = (t: String) => t.lengthIs <= 3 && t.forall(c => c >= '0' && c <= '9')
     val numbers = pieces.flatMap(p => p.filter(arabic).map(_.toInt) ++ romanValue(p.last)).toSet
     val words = pieces.flatMap(p => p.zipWithIndex.filterNot { case (t, i) => arabic(t) || (i == p.size - 1 && romanValue(t).isDefined) }.map(_._1))
@@ -1311,10 +1318,12 @@ object IdentityMeasures {
    *  decoration's number, "Cineworld 30: The Matrix", never counts while a reading without it
    *  names the film) or when no reading names the film's series (`unrelated`: the title relation
    *  weighs that). A remake, or a title whose number IS its name ("1917", "Se7en", "Ocean's
-   *  Eleven"), has nothing to compare. */
+   *  Eleven"), has nothing to compare; nor has a house's SEASON record, whose relay a venue numbers by its season
+   *  (`season`: "RBO: Tosca 27" is "Royal Ballet & Opera 2026/27: Tosca"). */
   def numeralRelation(l: Listing, f: Film): Measure = {
-    val related = for (a <- l.numberedShapes; b <- f.numberedTitles if sameSeries(a, b)) yield (a.numbers, b.numbers)
-    if (related.isEmpty) Missing("unrelated")
+    lazy val related = for (a <- l.numberedShapes; b <- f.numberedTitles if sameSeries(a, b)) yield (a.numbers, b.numbers)
+    if (f.season.isDefined) Missing("season")
+    else if (related.isEmpty) Missing("unrelated")
     else if (related.exists { case (a, b) => a.nonEmpty && a == b }) Category("same")
     else if (related.exists { case (a, b) => a.isEmpty && b.isEmpty }) Missing("none")
     else related.head match {

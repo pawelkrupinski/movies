@@ -441,7 +441,13 @@ Massacre", which the title relation reads as `decorated`, a naming relation: eve
 Tobe Hooper (who directed both) then backed the original in `venues.corroborating`, and the pooled
 vote filed the sequel there, as the old pipeline did. A title names a film only when the numbers
 the two titles carry (`numeralRelation`) do not say another instalment; the same relation is a
-title measure (`numeral`) the calibration weighs.
+title measure (`numeral`) the calibration weighs. And no acceptance rule, alone or pooled, takes a
+film whose title numbers the series otherwise than the listing's (`Acceptance.Rule`, 2026-10-13; a
+number only one side carries stays each rule's to weigh — TMDB files a two-part film's halves by
+their subtitles, "De Gaulle: Liberté" for "… Part 2"): PL Cinema City's and
+UK Odeon's "League of Legends Worlds 26 | Finals in Cinema" took TMDB's "League of Legends Worlds25 -
+Finals in Cinema", its only search hit, by the pooled vote. A number run into the word before it
+("Worlds25") is read as one; a house's season record numbers its season, never an instalment.
 
 Order-independence: P0 is a function of the set (A2); a cluster's pooled evidence is a function
 of its members, so round k+1's lookups and edges are a function of Pk; by induction every round
@@ -1858,7 +1864,7 @@ Re-run this section's commands once phase 1's recording pass is pinned and `iden
 | The prior/fact split of the measures (`search.rank`, `popularity.log2`, `rivals`, `venues.corroborating` are priors) | `IdentityResolver.Priors` | a classification of the calibration's measure names, not a weight or threshold | the calibration could publish it in the artefact |
 | The bracketed-runtime marks (a prime, an apostrophe or "min" after a bracketed 2–3 digit number) | `IdentityMeasures.bracketedRuntime` | the only way a number in a title says it is a duration ("DZIADKU WIEJEMY (97’)"); 8 PL listings | learn per-venue title annotations from their agreement with the film's runtime |
 | The evidence-path rule (a candidate is scored only when the listing's own query named it or its title relates) | `IdentityResolver.reachable` | structural pruning, with no constant | none needed |
-| An instalment number: an Arabic numeral of at most three digits (four are a year), or a Roman one from I to XXXIX closing a delimited piece of the title | `IdentityMeasures.numbered` | a grammar, not a list: "2", "II" and "Part 2" are 2; L/C/D/M and a mid-piece "i" (Polish "and") spell words | none needed; its weight is fitted (`numeral`) |
+| An instalment number: an Arabic numeral of at most three digits (four are a year) — standing alone or closing a word ("Worlds25") — or a Roman one from I to XXXIX closing a delimited piece of the title | `IdentityMeasures.numbered` | a grammar, not a list: "2", "II" and "Part 2" are 2; L/C/D/M and a mid-piece "i" (Polish "and") spell words; a number inside a word ("Se7en", "M3GAN") is its name | none needed; its weight is fitted (`numeral`) |
 | Two films named apart by PLACE: every naming piece of each placed in the title at spans that share no word | `IdentityMeasures.namedApart` | a structural relation of the title's words, no constant | none needed |
 | A venue's title for a record: its original title names exactly one candidate, unanimously | `IdentityMeasures.venueTitles` | structural; "one record" and "unanimous" are the only counts | none needed |
 | The confidence of a title family's "clear" majority: the one-sided 95% Wilson lower bound of its venue share, against the show-ratings cut | `IdentityResolver.familyMajority`, `RateBounds` | the same one-sided 95% the calibration certifies its thresholds at; the cut is the artefact's | none needed |

@@ -519,4 +519,18 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     acceptance.alone(Seq(foley, andersen.copy(probability = 0.2))).map(_._1.candidate.tmdbId) shouldBe Some(7183)
     acceptance.alone(Seq(andersen.copy(measures = measures), foley)).map(_._1.candidate.tmdbId) shouldBe Some(7183)
   }
+
+  "no rule" should "take a film the title numbers as another instalment, alone or pooled" in {
+    // PL Cinema City ×6 and UK Odeon ×4, convergence 2026-10-13: the 2026 final took TMDB's record of the 2025 one, its
+    // only search hit, by its pooled vote.
+    val worlds26 = Listing("League of Legends Worlds 26 | Finals in Cinema", year = Some(2026), runtime = Some(420))
+    val worlds25 = (1552059, Film("League of Legends Worlds25 - Finals in Cinema", year = Some(2025)), Some(1))
+    // the pooled scoring rated it 40.5%, past the calibration's cut, on the venues billing it
+    def pooledAt(scored: Seq[Scored]) = scored.map(_.copy(probability = 0.405))
+    taken(pooledAt(ranked(worlds26, worlds25))) shouldBe None
+    acceptance.pooled(pooledAt(ranked(worlds26, worlds25))) shouldBe None
+    // its own instalment is taken
+    val worlds26Record = (1, Film("League of Legends Worlds 26 - Finals in Cinema", year = Some(2026)), Some(1))
+    acceptance.pooled(pooledAt(ranked(worlds26, worlds26Record))).map(_._1.candidate.tmdbId) shouldBe Some(1)
+  }
 }

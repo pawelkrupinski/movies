@@ -303,9 +303,9 @@ object SuspectTakes {
   // ── (d) sequel ───────────────────────────────────────────────────────────────────────────
 
   private[identity] def sequel(listing: Listing, pieces: Seq[Piece], measured: IdentityMeasures.Listing, film: IdentityMeasures.Film): Option[Suspicion] =
-    // a season's relay numbers its season ("RBO: Cosi fan Tutte 27"), no instalment; and a billing numbering nothing —
-    // no digit, no closing Roman numeral — numbers no other instalment, read without its title shapes
-    Option.when(film.season.isEmpty && pieces.exists(p => p.words.exists(_.exists(_.isDigit)) || p.words.lastOption.exists(Roman.matches)) &&
+    // a billing numbering nothing — no digit, no closing Roman numeral — numbers no other instalment, read without its
+    // title shapes (a season's relay, "RBO: Cosi fan Tutte 27", numbers its season: `numeralRelation` compares nothing)
+    Option.when(pieces.exists(p => p.words.exists(_.exists(_.isDigit)) || p.words.lastOption.exists(Roman.matches)) &&
       IdentityMeasures.numbersAnotherInstalment(measured, film))(
       Suspicion(Signal.Sequel, s"the billing numbers another instalment than '${film.title}'"))
   private val Roman = "[ivxl]+".r
