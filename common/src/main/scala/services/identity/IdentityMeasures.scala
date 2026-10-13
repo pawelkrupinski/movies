@@ -1637,12 +1637,13 @@ object IdentityMeasures {
         f.directorCredits.exists(creditRelation(l.directorCredits, _) == Category("same_person"))) && !factsRuleOut(l, f)
 
   /** Does a fact the listing publishes beside the year it shares with `f` rule the film out: another person credited in
-   *  the same script (a credit in another script is no other person here: "Wong Kar Wai" is TMDB's 王家衛), or a runtime
+   *  the same script, sharing no name's stem ([[FactRelations.otherPeople]]: "Marc Donskoi" is "Mark Donskoy") — a credit
+   *  in another script is no other person here ("Wong Kar Wai" is TMDB's 王家衛) — or a runtime
    *  [[RuntimeContradiction]] minutes or more off? A year is every film of that year's: DE kinoheld's "MIRA" [2026]
    *  {Marie Limkilde} [85′] backed Daniella Saba's 16-minute 2026 "Mira", which then stood beside Limkilde's film for
    *  every bare "Mira" as corroborated, its release veto lifted. */
   private def factsRuleOut(l: Listing, f: Film): Boolean =
-    f.directorCredits.exists(creditRelation(l.directorCredits, _) == Category("different")) ||
+    f.directors.exists(credits => FactRelations.otherPerson(l.directors, credits) && FactRelations.otherPeople(l.directors, credits)) ||
       (runtimeDelta(l, f, None) match { case Number(off) => math.abs(off) >= RuntimeContradiction; case _ => false })
 
   /** [[corroboratingVenues]] for every asker of the same title groups, each group's backing venues
