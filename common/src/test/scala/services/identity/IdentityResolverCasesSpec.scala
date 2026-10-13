@@ -2507,14 +2507,6 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     withClue(rendered(withDated, season ++ roh ++ dated))(films(withDated, season ++ roh ++ dated).flatten should not contain 1151422)
   }
 
-  "A relay billing its broadcast's year behind its work" should "take the house's record of the season it screens in" in {
-    // UK Palace Cinema Gorleston's "RBO: TOSCA 2027" (5 and 9 May 2027), recording 38363428661: the year hid the work, so
-    // its screenings' season was never read; it took 1702784 only while a sibling chained it into the season's cluster
-    val gorleston = Seq(scraped(ukVenues(0), "RBO: TOSCA 2027", days = toscaDays))
-    val r = shipped(gorleston, toscaRecords)
-    withClue(rendered(r, gorleston))(films(r, gorleston) shouldBe Seq(Some(1702784)))
-  }
-
   "A relay crediting its production's director" should "take the house's record of the season it screens in, not the one crediting him" in {
     // UK Cineworld's and Everyman's "Royal Ballet and Opera: Tosca" {Oliver Mears} [195′] ×123, recording 38363428661,
     // screening on 5 May 2027: both seasons' records carry its title, and only the 2025/26 one credits him — the

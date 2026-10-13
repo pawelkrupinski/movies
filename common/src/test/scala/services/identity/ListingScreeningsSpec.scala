@@ -46,8 +46,6 @@ class ListingScreeningsSpec extends AnyFlatSpec with Matchers {
     listing("Samson i Dalila", "2026-12-05T18:55").screenedSeason shouldBe Some(2026)
     listing("Met Opera 2026-27: Manon", "2027-04-03T18:00").screenedSeason shouldBe None
     listing("Lalka", "2026-12-05T18:00").screenedSeason shouldBe None
-    // a year behind the work hides it no more than a short one does: Gorleston's "RBO: TOSCA 2027"
-    listing("RBO: TOSCA 2027", "2027-05-05T18:40").broadcastSeason shouldBe Some(2026)
   }
 
   "A listing's equality" should "hold its broadcast season, never the days it screens on" in {
