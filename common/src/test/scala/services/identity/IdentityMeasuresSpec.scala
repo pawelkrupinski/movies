@@ -107,6 +107,11 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // Swan Lake, which TMDB has no record of — not the Royal Ballet's (recording 37116030016 took it)
     val rboSwanLake = Film("Royal Ballet & Opera 2026/27: Swan Lake", year = Some(2026))
     IdentityMeasures.namesSeasonProduction(Listing("Balet z Opery Paryskiej 2026-2027: Jezioro łabędzie"), rboSwanLake) shouldBe false
+    // nor by the art form both houses' names carry: DE "Opera de Paris: Romeo et Juliette (2026/27)" ×7 took the Royal
+    // Ballet's 2026/27 record by "opera" (identity measure on recording 38363428661)
+    IdentityMeasures.namesSeasonProduction(Listing("Opera de Paris: Romeo et Juliette (2026/27)"),
+      Film("RBO 2026/27: Romeo und Julia (The Royal Ballet)", originalTitle = Some("Royal Ballet & Opera 2026/27: Romeo and Juliet"),
+        year = Some(2027))) shouldBe false
     IdentityMeasures.namesSeasonProduction(Listing("Royal Ballet and Opera Sezon Kinowy 2026-27: Jezioro łabędzie"), rboSwanLake) shouldBe true
     IdentityMeasures.namesSeasonProduction(Listing("OPERA 2026/2027 - MAKBET"),
       Film("The Metropolitan Opera 2026/27: Macbeth", year = Some(2026))) shouldBe true

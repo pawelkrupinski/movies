@@ -143,12 +143,17 @@ object IdentityMeasures {
    *  the two titles' banners — the pieces naming no work — share a word: PL "Balet z Opery Paryskiej 2026-2027:
    *  Jezioro łabędzie" ×16 is the Paris Opera Ballet's Swan Lake, which TMDB has no record of, not "Royal Ballet & Opera
    *  2026/27: Swan Lake"; "Royal Ballet and Opera Sezon Kinowy 2026-27: Dziadek do orzechów" shares "royal", "ballet",
-   *  "opera" with its record. Words of four letters or more, so "the" or "and" meets nothing. */
+   *  "opera" with its record. Words of four letters or more, so "the" or "and" meets nothing. A banner naming a house in
+   *  particular meets only by such a word — never by the art form ([[HouseCommonWords]]) every house's name carries: DE
+   *  "Opera de Paris: Romeo et Juliette (2026/27)" ×7 took the Royal Ballet's record by "opera". One naming none ("OPERA
+   *  2026/2027 - MAKBET") meets by the art form. */
   private def bannersMeet(listingTitles: Seq[String], filmTitles: Seq[String]): Boolean = {
     def bannerWords(titles: Seq[String]) = titles.flatMap(t => PieceBreak.split(withoutYears(t)).toSeq)
       .filter(piece => StageWorks.resolver.named(key(piece)).isEmpty)
       .flatMap(TitleContainment.tokens).filter(word => word.length >= 4 && !word.forall(_.isDigit)).toSet
-    (bannerWords(listingTitles) intersect bannerWords(filmTitles)).nonEmpty
+    val listing    = bannerWords(listingTitles)
+    val particular = listing.filterNot(HouseCommonWords)
+    ((if (particular.nonEmpty) particular else listing) intersect bannerWords(filmTitles)).nonEmpty
   }
 
   /** The (work, season) pairs a listing's title names: each whole segment outside its season, keyed,
