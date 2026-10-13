@@ -27,18 +27,24 @@ class MultiFilmBillSpec extends AnyFlatSpec with Matchers {
     // 2025 film titled "English" filled by the language its bracket bills
     marker("Lord Of The Rings Triple (Extended Version - English)") shouldBe Some("triple")
     marker("Das große Herr der Ringe Triple") shouldBe Some("triple")
+    // DE recording 38355584482: a touring block of shorts and a short film day, each titled like The Who's 1979 film
+    // and taken as it on IMDb's, Filmweb's and RT's agreement
+    Seq("SHORTS ATTACK! THE KIDS ARE ALRIGHT", "Shorts Attack 2026: The Kids are alright", "Kurzfilmtag Oktober: The Kids Are Alright 2026",
+      "Kurzfilmnacht: Animation").foreach(title => withClue(title)(marker(title) shouldBe defined))
+    MultiFilmBill.billsBeside(Seq("SHORTS ATTACK! THE KIDS ARE ALRIGHT"), Film("The Kids Are Alright", year = Some(1979))) shouldBe true
   }
 
   it should "not be read into a film's own words" in {
     // the marker alone is a film's whole title, and "&", "Part Two", "2D" bill one film
     Seq("Marathon", "Double Feature", "Trilogy", "Fast & Furious", "Romeo & Juliet", "Dune: Part Two", "Wicked: Part 1 2D",
       "Avatar 2 (2022)", "Double Indemnity", "Body Double", "Triple Frontier", "Triple 9", "Triple Threat", "The Double Life of Veronique", "Krótki film o miłości",
-      "The Night Is Short, Walk on Girl").foreach(title => withClue(title)(marker(title) shouldBe None))
+      "The Night Is Short, Walk on Girl", "Shorts", "Kurzfilm").foreach(title => withClue(title)(marker(title) shouldBe None))
   }
 
   "A film whose own title carries the marker" should "be no bill of others" in {
     MultiFilmBill.billsBeside(Seq("Marathon Man"), Film("Marathon Man", year = Some(1976))) shouldBe false
     MultiFilmBill.billsBeside(Seq("Trilogy of Terror"), Film("Trilogy of Terror", year = Some(1975))) shouldBe false
+    MultiFilmBill.billsBeside(Seq("Shorts 3D"), Film("Shorts", year = Some(2009))) shouldBe false
     MultiFilmBill.billsBeside(Seq("The Lehman Trilogy"), Film("National Theatre Live: The Lehman Trilogy")) shouldBe false
     MultiFilmBill.billsBeside(Seq("SB19 Wakas at Simula: The Trilogy Concert Finale"),
       Film("SB19 Wakas at Simula: The Trilogy Concert Finale")) shouldBe false
