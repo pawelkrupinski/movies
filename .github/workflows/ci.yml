@@ -221,6 +221,7 @@ jobs:
                       python3 scripts/ops/fleet_metrics_test.py
                       bash scripts/identity-fetch-recording-test.sh
                       bash scripts/identity-tools-test.sh
+                      bash scripts/identity-ratchet-report-test.sh
                       bash .github/actions/drop-bot-branch/drop-test.sh
                   '
 

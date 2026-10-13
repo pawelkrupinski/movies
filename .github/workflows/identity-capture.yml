@@ -190,6 +190,16 @@ jobs:
                       cp target/identity-unmatched/expected-matches.tsv test/resources/fixtures/identity-unmatched/expected-matches.tsv
                   fi
 
+            # Every take's finding (WRONG / UNJUDGED / MOVED / LOST / NEW / RIGHT) with its decision's explanation, as
+            # TSV: what scripts/identity-ratchet-report and scripts/identity-judge-cards read, instead of the log.
+            - uses: actions/upload-artifact@v6
+              if: always()
+              with:
+                  name: identity-ratchet
+                  path: target/identity-unmatched/ratchet-takes.tsv
+                  if-no-files-found: warn
+                  retention-days: 30
+
             - name: Write the PR body
               run: |
                   set -euo pipefail
@@ -206,6 +216,8 @@ jobs:
                       echo '```'
                       echo
                       echo "### The ratchet"
+                      echo
+                      echo "Every finding, untruncated and with its decision's explanation: \`scripts/identity-ratchet-report ${GITHUB_RUN_ID} --explain\`; evidence cards for the UNJUDGED takes: \`scripts/identity-judge-cards --fixtures origin/chore/identity-capture\`."
                       echo
                       echo '```'
                       sed -E 's/^\[info\] ?//' ratchet.log \
