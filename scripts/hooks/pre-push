@@ -10,7 +10,10 @@
 #   `drift`       the generated roster chain (scripts/ci/generated-artefacts-drift.sh)
 #   `snapshot`    the read-model snapshot's input stamp (scripts/read-model-snapshot-inputs.sh)
 #   `sbt`         NoWallClockInTestsSpec, NoWallClockInClientsSpec, and the two Grafana
-#                 metric-coverage specs, in ONE sbt run, on any Scala or dashboard change
+#                 metric-coverage specs, in ONE sbt run, on any Scala or dashboard change — and,
+#                 ahead of them in that same run, the Test/It/Page configs of every module the push
+#                 touches and every module depending on one (`sbt compile` skips them all: f20a6b5dd
+#                 broke worker/It/compile and only CI saw it). `--compile-plan` prints that list.
 #   `dashboards`  infra/test/test_dashboards.py — the Grafana dashboards' structure and queries,
 #                 the CI check `Stage NixOS closures` runs (well under a second)
 #   `hooktest`    scripts/hooks/pre-push-test.sh, when the hook or its test changes — a new
@@ -93,10 +96,42 @@ plan() {
     return 0
 }
 
-if [ "${1:-}" = "--plan" ]; then
-    plan
-    exit 0
-fi
+# ── Which test configs a set of changed paths has to compile ────────────────────────────────────
+# One line per path on stdin; prints the sbt compile tasks, one per line, in dependency order. A
+# module's own test configs plus those of every module that depends on it (build.sbt's dependsOn):
+# common → testkit → worker → web (page->fixtures) → e2e. The build itself touches them all.
+compile_plan() {
+    local common=0 testkit=0 worker=0 web=0 e2e=0 path
+    while IFS= read -r path; do
+        case "$path" in
+            build.sbt|project/*)  common=1 ;;
+            common/*.scala|common/*.java)   common=1 ;;
+            testkit/*.scala|testkit/*.java) testkit=1 ;;
+            # web's Page config compiles against worker's fixtures config (page->fixtures).
+            worker/src/fixtures/*)          worker=1; web=1 ;;
+            worker/*.scala|worker/*.java)   worker=1 ;;
+            web/*.scala|web/*.java)         web=1 ;;
+            e2e/*.scala|e2e/*.java)         e2e=1 ;;
+        esac
+    done
+    [ $common = 1 ] && testkit=1
+    [ $testkit = 1 ] && worker=1
+    [ $worker = 1 ] && e2e=1
+    [ $web = 1 ] && e2e=1
+    [ $common = 1 ] && web=1
+    [ $testkit = 1 ] && web=1
+    [ $common = 1 ] && echo common/Test/compile
+    [ $testkit = 1 ] && echo testkit/Test/compile
+    [ $worker = 1 ] && printf '%s\n' worker/Test/compile worker/It/compile
+    [ $web = 1 ] && printf '%s\n' web/Test/compile web/It/compile web/Page/compile
+    [ $e2e = 1 ] && echo e2e/Test/compile
+    return 0
+}
+
+case "${1:-}" in
+    --plan)         plan; exit 0 ;;
+    --compile-plan) compile_plan; exit 0 ;;
+esac
 
 # ── What is being pushed ────────────────────────────────────────────────────────────────────────
 # git feeds "<local ref> <local sha> <remote ref> <remote sha>" per pushed ref. The base for a new
@@ -211,7 +246,10 @@ check_shellcheck() {
 
 check_sbt() {
     command -v sbt >/dev/null || { warn "sbt not installed — SKIPPED"; return 0; }
-    sbt -batch -Dsbt.server.forcestart=false \
+    local compiles
+    # shellcheck disable=SC2207 # task names carry no spaces
+    compiles=($(printf '%s\n' "$changed" | compile_plan))
+    sbt -batch -Dsbt.server.forcestart=false "${compiles[@]}" \
         "worker/Test/testOnly tools.NoWallClockInTestsSpec services.cinemas.NoWallClockInClientsSpec deploy.GrafanaMetricCoverageSpec" \
         "web/Test/testOnly deploy.GrafanaWebMetricCoverageSpec" > "$tmp/sbt.log" 2>&1 \
         || { grep -E '\*\*\* FAILED|\[error\]|should|Error' "$tmp/sbt.log" | head -60 >&2; warn "full log: $tmp/sbt.log"; return 1; }
