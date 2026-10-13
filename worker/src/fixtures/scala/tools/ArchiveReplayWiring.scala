@@ -68,10 +68,10 @@ class ArchiveReplayWiring(
    *  recording run builds it, so the two can only differ in whether a request that
    *  falls through all of them reaches the network. */
   override protected def realHttpLeaf: HttpFetch =
-    hermetic.fold(MissingFixtureFill.route(wire, recordingProxy))(new HermeticHttpLeaf(_))
+    hermetic.fold(MissingFixtureFill.route(recordingWire, recordingProxy))(new HermeticHttpLeaf(_))
 
   /** The real wire a RECORDING asks first. */
-  protected def wire: HttpFetch = super.realHttpLeaf
+  protected def recordingWire: HttpFetch = super.realHttpLeaf
 
   /** Where a RECORDING asks again what the origin refused the runner's own address — the residential proxy production
    *  reaches those origins over, built from the credentials the wiring was handed, over the same route the fill takes

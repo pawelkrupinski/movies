@@ -644,7 +644,7 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
                                              environment: Env = Env.of())
       extends ArchiveReplayWiring(Country.UnitedKingdom, new InMemoryScrapeArchiveRepository, None, new FetchOnlyStorage, fixtureTree,
         settings.FixtureRoot.RepositoryRelative, environment = environment) {
-    override protected def wire: HttpFetch = new GetOnlyHttpFetch {
+    override protected def recordingWire: HttpFetch = new GetOnlyHttpFetch {
       override def get(url: String): String = throw new HttpStatusException(403, "GET", url, None)
     }
     override protected lazy val recordingProxy: Option[HttpFetch] = Some(new GetOnlyHttpFetch {
