@@ -278,9 +278,11 @@ class LandingViewSpec extends AnyFlatSpec with Matchers {
   // showtimes.cc page lists Poland as ONE link to its site: no pane, no fetch of
   // one, no place of it named or linked anywhere in the page.
 
-  /** The Poland pill a showtimes.cc page carries. */
+  /** The Poland pill a showtimes.cc page carries. Its href names the country,
+   *  so it carries the `?pick=city` marker: kinowo.net's landing then shows its
+   *  city list rather than bouncing a returning visitor to their cookie'd city. */
   private val polandHandoffPill =
-    """<a class="picker-country-pill" href="https://kinowo.net/" data-country="pl" data-handoff data-base-url="https://kinowo.net" data-points=""""
+    s"""<a class="picker-country-pill" href="https://kinowo.net/${controllers.LandingController.PickCityQuery}" data-country="pl" data-handoff data-base-url="https://kinowo.net" data-points=""""
 
   private def assertNoPolishPlaces(page: String): Unit = {
     page should not include """data-country="pl" data-base-url"""
@@ -308,12 +310,15 @@ class LandingViewSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  "a handed-off country's points" should "be its places' coordinates and nothing else" in {
+  // The slug rides along so "use my location" lands on the NEAREST city on
+  // that site (through `AuthController.validatedCitySlug`), not on its landing,
+  // where a `city` cookie would bounce the visitor to some other city.
+  "a handed-off country's points" should "be its places' coordinates and slugs, and nothing else" in {
     val points = controllers.LandingController.handoffPoints(models.Country.Poland).split(';').toSeq
     points should not be empty
-    points.foreach(_ should fullyMatch regex """-?\d+(\.\d+)?,-?\d+(\.\d+)?""")
+    points.foreach(_ should fullyMatch regex """-?\d+(\.\d+)?,-?\d+(\.\d+)?,[a-z0-9-]+""")
     val poznan = models.Country.Poland.cities.find(_.slug == "poznan").get
-    points should contain (s"${poznan.lat},${poznan.lon}")
+    points should contain (s"${poznan.lat},${poznan.lon},poznan")
   }
 
   // ── The picker's country names ─────────────────────────────────────────────

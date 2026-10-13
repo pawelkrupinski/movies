@@ -103,11 +103,14 @@ object LandingController {
     country.webOrigin.exists(origin => !Country.isApexHost(Country.withoutScheme(origin))) &&
       (isApex || country != deployment)
 
-  /** A handed-off country's places as bare points, `lat,lon;lat,lon` — what
-   *  "nearest city" needs to send a visitor near one to that country's site, and
-   *  nothing more: no name, no slug, no link. */
+  /** A handed-off country's places as bare points, `lat,lon,slug;…` — what
+   *  "nearest city" needs to send a visitor near one straight to THAT city on
+   *  that country's site (through `/auth/sso/start`'s `city=`, which re-validates
+   *  the slug), and nothing more: no name, no link. The slug is what keeps the
+   *  hand-off off that site's bare landing, where a `city` cookie would bounce
+   *  the visitor to a city other than the one they stand in. */
   def handoffPoints(country: Country): String =
-    country.cities.map(c => s"${c.lat},${c.lon}").distinct.mkString(";")
+    country.cities.map(c => s"${c.lat},${c.lon},${c.slug}").distinct.mkString(";")
 
   /** Query parameter carrying a SPECIFIC city's slug across the SSO handoff
    *  (`AuthController.ssoStart`/`ssoFinish`) — distinct from `PickCityParam`,

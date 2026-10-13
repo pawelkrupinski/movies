@@ -19,12 +19,14 @@
    region → subregion → city drill-down with a back row. Picking a city in
    `deployment`'s own country navigates straight there (and on the per-country
    door, remembers it via the `city` cookie); picking one in another country
-   navigates straight to THAT city too — same-origin (the Showtimes family
-   sharing showtimes.cc) with a plain link, a genuinely different origin
-   (kinowo.net) via `/auth/sso/start` first, which would otherwise drop a
-   signed-in session crossing the origin and carries the picked city's slug
-   alongside it, re-validated against the target country's own cities before
-   being trusted (see `crossCountryUrl` / `AuthController.validatedCitySlug`).
+   navigates straight to THAT city too, with a plain link — the Showtimes
+   family shares showtimes.cc, so it shares the session too. The one country on
+   a different origin (kinowo.net) is never a pane here (see below); reaching it
+   goes via `/auth/sso/start` first, which would otherwise drop a signed-in
+   session crossing the origin, and carries either a city's slug — re-validated
+   against that country's own cities before being trusted — or the bare
+   "named this country" marker (see `crossCountryUrl` /
+   `AuthController.validatedCitySlug`).
 
    THE PLACES ARE SERVER-RENDERED, ONE COUNTRY AT A TIME. The country the
    picker opens on arrives inside this page as real markup
@@ -42,11 +44,13 @@
    showtimes.cc page — the front door and the other countries' landings
    (`LandingController.handsOff`). Poland's places live on kinowo.net only (the
    front door 404s them, `FrontDoorRedirectFilter`), so its pill links to
-   `https://kinowo.net/`, its pane is neither embedded nor fetched, and the
-   apex opens on the first country that IS listed. All the pill carries is
-   the places' coordinates, no names or links, so "nearest city" can still hand
-   a visitor near one to that site, whose own landing then finds the city.
-   kinowo.net's landing lists Poland's places like any country's own.
+   kinowo.net's city list (`?pick=city`, like every other pill: a visitor who
+   named the country is asked which city, never bounced to a cookie'd one), its
+   pane is neither embedded nor fetched, and the apex opens on the first country
+   that IS listed. All the pill carries is each place's coordinates and slug, no
+   names or links, so "nearest city" can still hand a visitor near one straight
+   to THAT city on that site. kinowo.net's landing lists Poland's places like any
+   country's own.
 
    NO SCRIPT: the country pills are links to each country's own picker, and
    every level of the opening country's pane shows at once, each under its own
@@ -218,15 +222,15 @@
     <div id="picker-dynamic">
       <div class="picker-header">
         @* Links, so a visitor with no script still reaches each country's own
-           picker — Poland listed like the rest, though it answers on
-           kinowo.net under another brand: someone wanting Polish listings
-           should not have to know the two are one product. The script takes
-           a tap over and shows that country's pane in place — except for a
-           country handed off to its own domain (`data-handoff`, see the
-           header), whose tap goes to that site. Named in the page's language
+           picker — Poland included, though it answers on kinowo.net under
+           another brand: someone wanting Polish listings should not have to
+           know the two are one product. The script takes a tap over and shows
+           that country's pane in place — except for a country handed off to
+           its own domain (`data-handoff`, see the header), whose tap goes to
+           that site's city list. Named in the page's language
            and relabelled by `applyLanguage` like any other `data-i18n` text. *@
         <div id="picker-countries" class="picker-countries"@if(models.Country.switchable.size <= 1) { hidden}>
-          @for(c <- models.Country.switchable) {@if(handsOff(c)) {<a class="picker-country-pill" href="@{c.webUrl.get}/" data-country="@c.code" data-handoff data-base-url="@c.webUrl.get" data-points="@controllers.LandingController.handoffPoints(c)" data-i18n="@{"country." + c.code}">@messages("country." + c.code)</a>} else {<a class="picker-country-pill@if(c.code == opening.code) { active}" href="@{c.webUrl.get}/@controllers.LandingController.PickCityQuery" data-country="@c.code" data-i18n="@{"country." + c.code}">@messages("country." + c.code)</a>}}
+          @for(c <- models.Country.switchable) {@if(handsOff(c)) {<a class="picker-country-pill" href="@{c.webUrl.get}/@controllers.LandingController.PickCityQuery" data-country="@c.code" data-handoff data-base-url="@c.webUrl.get" data-points="@controllers.LandingController.handoffPoints(c)" data-i18n="@{"country." + c.code}">@messages("country." + c.code)</a>} else {<a class="picker-country-pill@if(c.code == opening.code) { active}" href="@{c.webUrl.get}/@controllers.LandingController.PickCityQuery" data-country="@c.code" data-i18n="@{"country." + c.code}">@messages("country." + c.code)</a>}}
         </div>
         @* Icon-only, trailing the country row — mirrors the apps' own
            locate control (iOS: a bare `location.fill` toolbar button, no
@@ -275,6 +279,10 @@
     const DEPLOYMENT_MOUNT_PATH   = "@deployment.mountPath";
     const DEPLOYMENT_PATH_PREFIX  = "@deployment.pathPrefix";
     const IS_APEX = @isApex;
+    // The "named this country" marker (`LandingController.PickCityQuery`): a
+    // hand-off naming a country but no city carries it, so the far landing asks
+    // which city instead of bouncing to a cookie'd one.
+    const PICK_CITY_QUERY = "@controllers.LandingController.PickCityQuery";
     // The pill the picker opens on, and the one pane this page carries. The
     // apex isn't itself anybody's city site (see IS_APEX branch in
     // `pickPickerCity`), and the country that answers it (Poland) is handed off
@@ -410,13 +418,14 @@
     }
 
     // The places of every country handed off to its own site, as nothing but
-    // points: picking one goes to that site's landing, which finds the city.
+    // points and slugs (`LandingController.handoffPoints`): picking one goes to
+    // that city on that site.
     function handoffPlaces() {
       const places = [];
       Array.prototype.forEach.call(document.querySelectorAll('#picker-countries [data-handoff]'), function (pill) {
         (pill.dataset.points || '').split(';').filter(Boolean).forEach(function (point) {
-          const latLon = point.split(',');
-          places.push({ lat: parseFloat(latLon[0]), lon: parseFloat(latLon[1]), country: pill.dataset.country, handoff: pill.dataset.baseUrl });
+          const parts = point.split(',');
+          places.push({ lat: parseFloat(parts[0]), lon: parseFloat(parts[1]), slug: parts[2], country: pill.dataset.country, handoff: pill.dataset.baseUrl });
         });
       });
       return places;
@@ -619,12 +628,16 @@
     // so it is always safe to route through it rather than needing to know
     // client-side whether anyone is signed in.
     //
-    // With no `slug` — a country handed off to its own site — it lands on that
-    // site's own landing instead.
+    // With no `slug` — a tap on a country handed off to its own site — it lands
+    // on that site's city list, carrying the same `pick=city` marker every
+    // other country pill does: the visitor named the country, so a `city`
+    // cookie there must not bounce them to a city they did not ask for
+    // (`LandingController`; `ssoStart` carries the marker across the hop).
     function crossCountryUrl(baseUrl, slug) {
-      if (sameOriginAs(baseUrl)) return baseUrl + '/' + (slug ? slug + '/' : '');
+      if (sameOriginAs(baseUrl)) return baseUrl + '/' + (slug ? slug + '/' : PICK_CITY_QUERY);
       return window.location.origin + DEPLOYMENT_MOUNT_PATH +
-        'auth/sso/start?to=' + encodeURIComponent(baseUrl) + (slug ? '&city=' + encodeURIComponent(slug) : '');
+        'auth/sso/start?to=' + encodeURIComponent(baseUrl) +
+        (slug ? '&city=' + encodeURIComponent(slug) : '&' + PICK_CITY_QUERY.slice(1));
     }
 
     // A city was picked — directly, or as the "use my location" hit. On a
@@ -635,7 +648,7 @@
     // `crossCountryUrl`, which lands directly on the picked city whether or
     // not that country shares this origin.
     function pickPickerCity(city) {
-      if (city.handoff) { window.location.href = crossCountryUrl(city.handoff); return; }
+      if (city.handoff) { window.location.href = crossCountryUrl(city.handoff, city.slug); return; }
       if (!IS_APEX && city.country === DEPLOYMENT_COUNTRY_CODE) { rememberAndGo(city.slug); return; }
       const pane = paneOf(city.country);
       if (pane) window.location.href = crossCountryUrl(pane.dataset.baseUrl, city.slug);
@@ -699,7 +712,7 @@
         const pill = event.target.closest('.picker-country-pill');
         if (!pill) return;
         if (pill.hasAttribute('data-handoff')) {
-          // Its own site, not a pane: a plain tap hands the session over on the way.
+          // Its own site's city list, not a pane: a plain tap hands the session over on the way.
           if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
           event.preventDefault();
           window.location.href = crossCountryUrl(pill.dataset.baseUrl);

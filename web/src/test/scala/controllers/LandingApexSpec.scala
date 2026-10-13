@@ -40,9 +40,7 @@ class LandingApexSpec extends AnyFlatSpec with Matchers {
     // so a country's name here is its ENGLISH one, not `c.displayName` (which
     // is Poland's/Germany's/Spain's own native name, used elsewhere).
     models.Country.switchable.foreach { c =>
-      // A country on its own domain is one link to its site; the rest open their picker.
-      val href = if (c.pathPrefix.isEmpty) s"${c.webUrl.get}/" else s"${c.webUrl.get}/${controllers.LandingController.PickCityQuery}"
-      html should include (s"""href="$href"""")
+      html should include (s"""href="${c.webUrl.get}/${controllers.LandingController.PickCityQuery}"""")
       html should include (testsupport.TestMessages.forLang("en")("country." + c.code))
     }
   }
@@ -55,7 +53,7 @@ class LandingApexSpec extends AnyFlatSpec with Matchers {
   it should "include Poland, despite its separate domain and brand, as one link to kinowo.net" in {
     val html = bodyOn("showtimes.cc")
     html should include ("Poland")
-    """href="https://kinowo\.net[^"]*"""".r.findAllIn(html).toList shouldBe List("""href="https://kinowo.net/"""")
+    """href="https://kinowo\.net[^"]*"""".r.findAllIn(html).toList shouldBe List("""href="https://kinowo.net/?pick=city"""")
   }
 
   it should "ask for a country, and never guess one — no automatic geolocation redirect" in {

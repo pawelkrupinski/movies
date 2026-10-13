@@ -99,7 +99,7 @@ class FixtureServerLandingSpec extends AnyFlatSpec with Matchers {
     // The browser specs read the apex off this route: one that still carried
     // Poland's pane would let them pass over a page production no longer serves.
     val apex = landings("/landing-apex")
-    """https://kinowo\.net[^"]*""".r.findAllIn(apex).toList shouldBe List("https://kinowo.net/", "https://kinowo.net")
+    """https://kinowo\.net[^"]*""".r.findAllIn(apex).toList shouldBe List("https://kinowo.net/?pick=city", "https://kinowo.net")
     apex should not include """data-country="pl" data-base-url"""
   }
 }
