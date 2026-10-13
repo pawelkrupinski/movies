@@ -4,7 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.OptionValues
 import clients.tools.FakeHttpFetch
-import models.{IlkleyCinema, PhoenixCinemaAndArtCentreLeicester, PhoenixCinemaEastFinchley, SavoyCinemaCorby, WetherbyFilmTheatre}
+import models.{IlkleyCinema, PhoenixCinemaAndArtCentreLeicester, PhoenixCinemaEastFinchley, SavoyCinemaCorby, TheatrGwaunFishguard, WetherbyFilmTheatre}
 import services.cinemas.uk.SavoyClient
 
 import java.time.{LocalDate, LocalDateTime}
@@ -94,7 +94,21 @@ class SavoyClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     corby("Home Alone").movie.countries shouldBe empty
   }
 
-  it should "leave the credits of a venue that keys them right where they are" in {
+  // A 2026-10-13 capture of the same Phoenix East Finchley page (curl, kept beside the replayed one so that one's
+  // dated assertions hold): Tenzing's "Cast" is "2026" beside an empty "Year", which run 38326582997's UK recording
+  // carried as the film's cast.
+  "SavoyClient.parse (Phoenix East Finchley, 2026-10-13)" should "read a bare year typed into a person's field as the film's year" in {
+    val page = new String(java.nio.file.Files.readAllBytes(
+      java.nio.file.Paths.get("test/resources/fixtures/savoy-captures/phoenixcinema-whatson-2026-10-13.html")), "UTF-8")
+    val films   = SavoyClient.parse(page, Base, PhoenixCinemaEastFinchley, LocalDate.of(2026, 10, 13))
+    val tenzing = films.find(_.movie.title == "Tenzing").value
+    tenzing.cast shouldBe empty
+    tenzing.director shouldBe Seq("Jennifer Peedom")
+    tenzing.movie.releaseYear shouldBe Some(2026)
+    films.flatMap(f => f.cast ++ f.director).filter(_.matches("""\d{4}""")) shouldBe empty
+  }
+
+  "SavoyClient.fetch (Phoenix East Finchley)" should "leave the credits of a venue that keys them right where they are" in {
     val pressure = byTitle("Pressure")
     pressure.director shouldBe Seq("Anthony Maras")
     byTitle("The Social Reckoning").movie.countries shouldBe Seq("USA")
@@ -163,6 +177,20 @@ class SavoyBoxOfficeSpec extends AnyFlatSpec with Matchers with OptionValues {
     film.synopsis.value should startWith ("An irresistible new take on Jane Austen")
     wetherby.map(_.movie.title) should contain ("National Theatre Live: The Misanthrope")
     wetherby.map(_.movie.title).filter(_.endsWith("/")) shouldBe empty
+  }
+
+  // Replays a 2026-10-13 capture of Theatr Gwaun's box office (`WriteSavoy --record "Theatr Gwaun Fishguard"`): each
+  // synopsis opens on a credit line, "Director: James Dawson/UK/2026/88’ Two farmers…", which the recording of run
+  // 38326582997 carried as the synopsis.
+  it should "read the credit line heading a synopsis into the film's own record" in {
+    val gwaun = scrape("https://theatrgwaun.savoysystems.co.uk/TheatrGwaun.dll/", TheatrGwaunFishguard, LocalDate.of(2026, 10, 13))
+    val pressure = gwaun.find(_.movie.title == "Pressure").value
+    pressure.director shouldBe Seq("Anthony Maras")
+    pressure.movie.releaseYear shouldBe Some(2026)
+    pressure.movie.runtimeMinutes shouldBe Some(100)
+    pressure.movie.countries should contain ("UK")
+    pressure.synopsis.value should startWith ("In the tense 72 hours before D-Day")
+    gwaun.flatMap(_.synopsis).filter(_.startsWith("Director:")) shouldBe empty
   }
 
   "SavoyClient.BoxOffice" should "refuse a page that is no Savoy performance list rather than call it an empty programme" in {

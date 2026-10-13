@@ -8,7 +8,7 @@ import services.cinemas.uk.SavoyClient
  *  — film and showtime count and last date, the measurement their wiring was decided on —
  *  and, with `--record`, re-record the pages SavoyClientSpec replays under
  *  test/resources/fixtures/savoy/: the `WhatsOn` pages of Phoenix East Finchley and Savoy Corby
- *  and the box offices of Ilkley Cinema, the Phoenix Leicester and Wetherby Film Theatre. Pass
+ *  and the box offices of Ilkley Cinema, the Phoenix Leicester, Wetherby Film Theatre and Theatr Gwaun. Pass
  *  venue names to run only those. */
 object WriteSavoy {
   /** Full venue sites, the programme in the `WhatsOn` page's literal. */
@@ -43,7 +43,8 @@ object WriteSavoy {
     "https://riversidewoodbridge.savoysystems.co.uk/RiversideWoodbridge.dll/"                 -> RiversideTheatreWoodbridge
   )
 
-  private val Recorded: Set[Cinema] = Set(PhoenixCinemaEastFinchley, SavoyCinemaCorby, IlkleyCinema, PhoenixCinemaAndArtCentreLeicester, WetherbyFilmTheatre)
+  private val Recorded: Set[Cinema] = Set(PhoenixCinemaEastFinchley, SavoyCinemaCorby, IlkleyCinema, PhoenixCinemaAndArtCentreLeicester,
+    WetherbyFilmTheatre, TheatrGwaunFishguard)
 
   def main(args: Array[String]): Unit = {
     val record = args.contains("--record")

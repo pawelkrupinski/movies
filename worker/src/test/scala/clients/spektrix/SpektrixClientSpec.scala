@@ -4,7 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.OptionValues
 import clients.tools.FakeHttpFetch
-import models.{BroadwayCinemaNottingham, GalaCinemaDurham, InstituteOfContemporaryArts, OldMarketHallShrewsbury}
+import models.{BroadwayCinemaNottingham, DundeeContemporaryArtsDCA, GalaCinemaDurham, InstituteOfContemporaryArts, OldMarketHallShrewsbury, TauntonBrewhouse}
 import play.api.libs.json.{JsObject, Json}
 import services.cinemas.uk.SpektrixClient
 
@@ -129,6 +129,30 @@ class SpektrixClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     val films = SpektrixClient.parse(events, instances, GalaCinemaDurham, today, venue = Some("Gala"))
     films.map(_.movie.title) shouldBe Seq("Nosferatu (Drama)")
     films.flatMap(_.showtimes).map(_.dateTime) shouldBe Seq(LocalDateTime.of(2026, 10, 20, 19, 30))
+  }
+
+  // Replays a 2026-10-13 capture of DCA's Spektrix events and instances (`WriteSpektrix --record dundeeca`): its
+  // festival films open the description with a facts sheet, one "Label: value" line each, which the recording of run
+  // 38326582997 carried as The Everest Dream's synopsis.
+  "SpektrixClient.fetch (DCA)" should "read a synopsis past the facts sheet heading the description" in {
+    val films = new SpektrixClient(new FakeHttpFetch("spektrix"), "dundeeca", DundeeContemporaryArtsDCA, LocalDate.of(2026, 10, 13))
+      .fetch().map(cm => cm.movie.title -> cm).toMap
+    val everest = films("The Everest Dream + Q&A").synopsis.value
+    everest should not startWith "Director:"
+    everest should include ("inspiring mountaineering documentary")
+    films.values.flatMap(_.synopsis).filter(_.matches("""(?s)(?i)\s*(director|country|year|duration)\s*:.*""")) shouldBe empty
+  }
+
+  // Replays a 2026-10-13 capture of Taunton Brewhouse's Spektrix events and instances (`WriteSpektrix --record
+  // brewhousetaunton`): its Royal Ballet & Opera relays list "Cast:" and "Creatives:" first and head the story
+  // "Synopsis:", which the recording of run 38326582997 carried whole as five relays' synopsis.
+  "SpektrixClient.fetch (Taunton Brewhouse)" should "read a synopsis from its heading on, past the cast and creatives" in {
+    val films = new SpektrixClient(new FakeHttpFetch("spektrix"), "brewhousetaunton", TauntonBrewhouse, LocalDate.of(2026, 10, 13))
+      .fetch().map(cm => cm.movie.title -> cm).toMap
+    val carmen = films("RBO Live - Carmen").synopsis.value
+    carmen should startWith ("Under the oppressive heat of the Spanish sun")
+    carmen should not include "Creatives:"
+    films.values.flatMap(_.synopsis).filter(_.matches("""(?s)(?i)[\s ]*cast\s*:.*""")) shouldBe empty
   }
 
   private def objects(json: String): Seq[JsObject] = Json.parse(json).as[Seq[JsObject]]

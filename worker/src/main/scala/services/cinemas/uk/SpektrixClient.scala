@@ -150,7 +150,7 @@ object SpektrixClient {
         cinema      = cinema,
         posterUrl   = text(event, "imageUrl"),
         filmUrl     = webUrl(event),
-        synopsis    = text(event, "description"),
+        synopsis    = text(event, "description").flatMap(synopsisOf),
         cast        = names(attribute(event, CastAttribute)),
         director    = names(attribute(event, DirectorAttribute)),
         showtimes   = showtimes,
@@ -187,6 +187,28 @@ object SpektrixClient {
     venuesNamed(event).foldLeft(name) { (title, site) =>
       title.replaceAll(s"(?i)\\s*\\(${Pattern.quote(site)}\\)", "")
     }.replaceAll("\\s+", " ").trim
+
+  /** A box office's facts sheet heading a description, one "Label: value" line each — DCA's festival films open
+   *  "Director: … / Country: … / Year: … / Duration: … / Certificate: … / Distributor: … / Pricing: … / Ads &
+   *  trailers: No" (The Everest Dream, 2026-10-13) before the film's own words. */
+  private val FactLine =
+    """(?iu)^\s*(?:director|directed\s+by|country|year|duration|running\s+time|runtime|certificate|cert|distributor|""" +
+      """pricing|price|ads\s*&\s*trailers|language|subtitles|cast|starring|format)\s*:.*$"""
+
+  /** A "Synopsis:" heading on a line of its own: a relay's description lists its "Cast:" and "Creatives:" first and
+   *  heads the story so (Taunton Brewhouse's RBO Live - Carmen, 2026-10-13). */
+  private val SynopsisHeading = """(?iu)^[\s ]*synopsis[\s ]*:[\s ]*$"""
+
+  /** The description's own words: what follows its "Synopsis:" heading when it has one, else the description without
+   *  the facts sheet heading it; none when nothing is left. */
+  private def synopsisOf(description: String): Option[String] = {
+    val lines = description.linesIterator.toSeq
+    val heading = lines.indexWhere(_.matches(SynopsisHeading))
+    val sheet   = lines.takeWhile(line => line.replace(' ', ' ').trim.isEmpty || line.matches(FactLine))
+    if (heading < 0 && !sheet.exists(_.matches(FactLine))) Some(description)
+    else Some(lines.drop(if (heading >= 0) heading + 1 else sheet.size).mkString("\n").replace(' ', ' ').trim)
+      .filter(_.nonEmpty)
+  }
 
   private def attribute(o: JsObject, key: Regex): Option[String] =
     o.fields.collectFirst { case (key(_*), JsString(value)) if value.trim.nonEmpty => value.trim }

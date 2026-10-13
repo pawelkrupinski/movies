@@ -56,7 +56,8 @@ object WriteSpektrix {
   )
 
   /** The clients SpektrixClientSpec replays; the rest are fetched to measure only. */
-  private val Recorded = Set("ica", "galadurham", "broadwaynottingham", "theatresevern", "theploughartscentre")
+  private val Recorded = Set("ica", "galadurham", "broadwaynottingham", "theatresevern", "theploughartscentre", "dundeeca",
+    "brewhousetaunton")
 
   def main(args: Array[String]): Unit = {
     val record = args.contains("--record")

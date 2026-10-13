@@ -48,6 +48,20 @@ class CinemaSlotInvariantsSpec extends CorpusShapeSpec {
     Seq("Bad Moms X-mas (Mums Night Off)", "Hocus Pocus", "The Hunger Games: Mockingjay Part 2", "The Polar Express (Pyjama Party)").map { listing =>
       AllowedListing("Savoy Cinema Corby", listing) ->
         s"cast 'USA', the venue typing its credits a field over, 2026-10-12 (run 38251516862): $RecordedBeforeFix (SavoyClient.Credits reads each field by what it holds)"
+    } + (AllowedListing("Phoenix Cinema East Finchley", "Tenzing") ->
+      s"cast '2026', a year typed into the cast field, 2026-10-13 (run 38326582997): $RecordedBeforeFix (SavoyClient.Credits reads a bare year as the film's)") +
+    (AllowedListing("Dundee Contemporary Arts (DCA)", "The Everest Dream + Q&A") ->
+      s"a facts sheet heading the description, 2026-10-13 (run 38326582997): $RecordedBeforeFix (SpektrixClient reads the synopsis past it)") ++
+    Seq("RBO Live - Carmen", "RBO Live - Così fan Tutte", "RBO Live - Götterdämmerung", "RBO Live - La Fanciulla del West",
+      "RBO Live - Macbeth", "RBO Live - Manon", "RBO Live - Romeo & Juliet", "RBO Live - Swan Lake", "RBO Live - Tosca").map { listing =>
+      AllowedListing("Taunton Brewhouse", listing) ->
+        s"cast and creatives ahead of the story, 2026-10-13 (run 38326582997): $RecordedBeforeFix (SpektrixClient reads the synopsis from its 'Synopsis:' heading)"
+    } ++
+    Seq("Bad Apples", "Derek vs Derek", "FFS-Everybody Digs Bill Evans", "FFS-Everybody to Kenmure Street", "FFS-Kontinental 25",
+      "FFS-Resurrection", "FFS-Two Prosecutors", "Practical Magic 2", "Pressure", "Sense and Sensibility.",
+      "Shaun The Sheep: The Beast of Mossy Bottom").map { listing =>
+      AllowedListing("Theatr Gwaun Fishguard", listing) ->
+        s"a 'Director: …/UK/2026/88’' credit line heading the synopsis, 2026-10-13 (run 38326582997): $RecordedBeforeFix (SavoyClient.CreditLine reads it into the film's record)"
     }
 
   override protected val awaitingReRecord: Set[AllowedListing] = recordedBeforeFix.keySet

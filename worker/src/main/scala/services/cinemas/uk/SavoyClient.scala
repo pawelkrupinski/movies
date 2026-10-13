@@ -134,7 +134,7 @@ object SavoyClient {
         movie = Movie(
           title          = title,
           runtimeMinutes = (event \ "RunningTime").asOpt[Int].filter(_ > 0),
-          releaseYear    = text("Year").flatMap(ScraperParse.yearIn),
+          releaseYear    = text("Year").flatMap(ScraperParse.yearIn).orElse(credits.year),
           countries      = credits.countries
         ),
         cinema      = cinema,
@@ -154,18 +154,27 @@ object SavoyClient {
    *  fields, and one has them a field over: Savoy Corby's "Cast" holds the country ("USA"), its "Country" the
    *  actors and its "Year" the director (2026-10-12: Hocus Pocus, The Polar Express, Mockingjay Part 2). The tell
    *  is a "Cast" of nothing but countries, or an empty one beside a "Country" listing several names none of which
-   *  is a country; then each field is read as the one it stands for. */
-  private[uk] final case class Credits(director: Seq[String], cast: Seq[String], countries: Seq[String])
+   *  is a country; then each field is read as the one it stands for. A bare year typed into a person's field
+   *  (Phoenix East Finchley's Tenzing, "Cast":"2026" beside an empty "Year", 2026-10-13) names no person: it is the
+   *  film's year. */
+  private[uk] final case class Credits(director: Seq[String], cast: Seq[String], countries: Seq[String],
+                                       year: Option[Int] = None)
 
   private[uk] object Credits {
+    private val BareYear = """(?:18|19|20)\d{2}""".r
+
     def read(director: Seq[String], year: Seq[String], cast: Seq[String], country: Seq[String]): Credits = {
       val shifted = (cast.nonEmpty && cast.forall(CountryNames.isCountry)) ||
         (cast.isEmpty && country.size >= 2 && !country.exists(CountryNames.isCountry))
-      if (!shifted) Credits(director, cast, country)
-      else Credits(
-        director  = if (director.nonEmpty) director else year.filter(ScraperParse.yearIn(_).isEmpty),
-        cast      = country,
-        countries = cast)
+      val byField =
+        if (!shifted) Credits(director, cast, country)
+        else Credits(
+          director  = if (director.nonEmpty) director else year.filter(ScraperParse.yearIn(_).isEmpty),
+          cast      = country,
+          countries = cast)
+      val (directorYears, directors) = byField.director.partition(BareYear.matches)
+      val (castYears, people)        = byField.cast.partition(BareYear.matches)
+      byField.copy(director = directors, cast = people, year = (directorYears ++ castYears).headOption.map(_.toInt))
     }
   }
 
@@ -202,18 +211,48 @@ object SavoyClient {
 
     SlotsToMovies.fold(slots, _._1.title, _._2) { (title, group, showtimes) =>
       val programme = group.head._1
+      val credit    = programme.synopsis.flatMap(CreditLine.read)
       CinemaMovie(
-        movie       = Movie(title),
+        movie       = Movie(
+          title          = title,
+          runtimeMinutes = credit.flatMap(_.runtime),
+          releaseYear    = credit.flatMap(_.year),
+          countries      = credit.toSeq.flatMap(_.countries)),
         cinema      = cinema,
         posterUrl   = programme.poster,
         filmUrl     = programme.url,
-        synopsis    = programme.synopsis,
+        synopsis    = credit.fold(programme.synopsis)(c => Some(c.rest).filter(_.nonEmpty)),
         cast        = Seq.empty,
-        director    = Seq.empty,
+        director    = credit.toSeq.flatMap(_.director),
         showtimes   = showtimes,
         externalIds = programme.id.map(id => Map("savoy" -> id)).getOrElse(Map.empty),
         ageRating   = programme.certificate.flatMap(AgeRating.normalize)
       )
+    }
+  }
+
+  /** The credit line a box office heads a synopsis with — Theatr Gwaun's "Director: Anthony Maras/UK,France,USA/2026/
+   *  100’ In the tense 72 hours…", "Director: Bi Gan/2025/China/160’/Subtitles …" (2026-10-13) — read into the film's
+   *  director, countries, year and running time, and off the synopsis. Its segments come in any order after the
+   *  director's; a genre among them ("Biopic") is no country and is left. */
+  private[uk] final case class CreditLine(director: Seq[String], countries: Seq[String], year: Option[Int],
+                                          runtime: Option[Int], rest: String)
+
+  private[uk] object CreditLine {
+    private val Line = """(?s)^\s*Director:\s*([^’′]*?)/\s*(\d{2,3})\s*[’′']\s*(?:/\s*Subtitles\b)?\s*(.*)$""".r
+    private val Year = """(?:18|19|20)\d{2}"""
+
+    def read(synopsis: String): Option[CreditLine] = synopsis match {
+      case Line(credit, minutes, rest) =>
+        val segments = credit.split("/").map(_.trim).toSeq
+        val items    = segments.drop(1).flatMap(_.split(",")).map(_.trim).filter(_.nonEmpty)
+        Some(CreditLine(
+          director  = segments.headOption.toSeq.flatMap(_.split(",")).map(_.trim).filter(_.nonEmpty),
+          countries = items.filter(CountryNames.isCountry),
+          year      = items.find(_.matches(Year)).map(_.toInt),
+          runtime   = Some(minutes.toInt),
+          rest      = rest.trim))
+      case _ => None
     }
   }
 
