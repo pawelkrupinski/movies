@@ -45,6 +45,31 @@ class WellKnownControllerSpec extends AnyFlatSpec with Matchers {
     (components(authIdx) \ "exclude").as[Boolean] shouldBe true
   }
 
+  it should "send to Safari exactly the pages installed builds know another country's city by, and claim everything else" in {
+    def components(body: String) = (Json.parse(body) \ "applinks" \ "details" \ 0 \ "components").as[Seq[JsObject]]
+    val served = components(contentAsString(controller.appleAppSiteAssociation(FakeRequest())))
+    val file   = components(scala.io.Source.fromResource("wellknown/apple-app-site-association", getClass.getClassLoader).mkString)
+    def isExclude(c: JsObject) = (c \ "exclude").asOpt[Boolean].contains(true)
+
+    // The displaced pages: /uk/york/ is Pennsylvania's York to a 2.0.11 build,
+    // which drops the country segment and picks the city by slug.
+    val expected = models.InstalledBuildSlugs.displaced.flatMap { case (country, city) =>
+      Seq(s"${country.pathPrefix}/${city.slug}/", s"${country.pathPrefix}/${city.slug}/*")
+    }
+    expected should contain allOf ("/uk/york/", "/uk/york/*", "/us/kent/*", "/es/toledo/")
+    expected should not contain "/us/york/"
+    expected.size shouldBe 2 * models.InstalledBuildSlugs.displaced.size
+
+    // Every entry of the file, in its order, with the excludes between its own
+    // excludes and its first claim — an exclude only counts ahead of what it carves out of.
+    val (fileExcludes, fileClaims) = file.span(isExclude)
+    fileClaims.exists(isExclude) shouldBe false
+    val added = served.drop(fileExcludes.size).take(expected.size)
+    served shouldBe fileExcludes ++ added ++ fileClaims
+    added.map(c => (c \ "/").as[String]) shouldBe expected
+    added.forall(isExclude) shouldBe true
+  }
+
   "assetlinks.json" should "be valid JSON declaring the pl.kinowo package" in {
     val result = controller.assetLinks(FakeRequest())
 

@@ -1,19 +1,15 @@
 package modules
 
-import controllers.{MovieController, TestMovieController}
-import models.Country
+import models.{Country, InstalledBuildSlugs}
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.stream.Materializer
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import play.api.mvc.{EssentialAction, RequestHeader, Result, Results}
-import play.api.test.FakeRequest
 import play.api.test.Helpers._
-import services.metrics.{LegacyAddressMetrics, SpecLegacyAddressMetrics}
 import tools.SpecTimeouts
 
-import scala.concurrent.{Await, Future}
+import scala.concurrent.Await
 
 /**
  * A place the site knows never 404s on its own country's site, in any country:
@@ -26,12 +22,15 @@ import scala.concurrent.{Await, Future}
  * rather than on `kinowo.net`: Polish places live on their own domain only
  * (`FrontDoorRedirectFilter`), which the front-door cases below pin.
  *
- * The router here binds the three city shapes the routes file does (`/:city`,
- * `/:city/`, `/:city/api/cinemas`) to the real `MovieController`; everything a
- * request meets before them is the production filter pair. Every address lands
- * on the real `/:city/` page (`MovieController.index`, through `renderIndex`), so
- * a page that resolves but fails to render fails here too; over an empty read
- * model all ~12,000 addresses render in a few seconds.
+ * Each country is a [[CityRoutesDeployment]]: the production filter pair over the
+ * real city actions. Every address lands on the real `/:city/` page
+ * (`MovieController.index`, through `renderIndex`), so a page that resolves but
+ * fails to render fails here too; over an empty read model all ~12,000 addresses
+ * render in a few seconds.
+ *
+ * So does every slug the mobile catalog names a city by (`InstalledBuildSlugs`:
+ * the one installed builds from before slugs were per country know it by), with
+ * the three `/api/…` endpoints those builds call under it.
  */
 class KnownPlacesNeverNotFoundSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll {
 
@@ -40,65 +39,71 @@ class KnownPlacesNeverNotFoundSpec extends AnyFlatSpec with Matchers with Before
 
   override def afterAll(): Unit = Await.result(system.terminate(), SpecTimeouts.Io): Unit
 
-  /** One country's deployment: its two redirect filters over a router of the
-   *  city routes, mounted at its own `mountPath`, in production's order
-   *  (`AppLoader.filterChain`: the front door first). */
-  private final class Deployment(country: Country, legacy: LegacyAddressMetrics = SpecLegacyAddressMetrics.fresh()) {
-    private val controller: MovieController = TestMovieController.build(Nil, servingCountry = country)._1
-    private val mount = country.mountPath.stripSuffix("/")
-
-    private def route(rh: RequestHeader): Future[Result] = {
-      val rest = rh.path.stripPrefix(mount + "/")
-      val action: EssentialAction = rest.split("/", -1).toSeq match {
-        case Seq(city)                 => controller.indexNoTrailingSlash(city)
-        case Seq(city, "")             => controller.index(city)
-        case Seq(city, "api", "cinemas") => controller.apiCinemas(city)
-        case _                         => EssentialAction(_ => play.api.libs.streams.Accumulator.done(Results.NotFound))
-      }
-      action(rh).run()
-    }
-
-    private val chain: RequestHeader => Future[Result] = {
-      val renamed   = new RenamedCityRedirectFilter(country, legacy)
-      val frontDoor = new FrontDoorRedirectFilter(country, legacy, controllers.FrontDoorMessages(testsupport.TestMessages.messagesApi))
-      rh => frontDoor(renamed(route))(rh)
-    }
-
-    def get(path: String, host: String = "localhost"): Result =
-      Await.result(chain(FakeRequest(GET, path).withHeaders("Host" -> host)), SpecTimeouts.Io)
-
-    def path(slug: String, slash: Boolean): String = s"$mount/$slug${if (slash) "/" else ""}"
-  }
-
   private def everySlug(country: Country): Seq[String] =
     (country.cities.map(_.slug) ++ country.renamedSlugs.keys ++ country.slugAliases.keys).distinct.sorted
 
-  private def walk(d: Deployment, slugs: Seq[String]): Seq[String] =
+  private def walk(d: CityRoutesDeployment, slugs: Seq[String]): Seq[String] =
     for {
-      slug  <- slugs
-      slash <- Seq(true, false)
-      problem <- {
-        val first = d.get(d.path(slug, slash))
-        first.header.status match {
-          case OK => None
-          case MOVED_PERMANENTLY =>
-            val to = first.header.headers.getOrElse(LOCATION, "")
-            val landed = d.get(to)
-            Option.when(landed.header.status != OK)(s"${d.path(slug, slash)} → $to → ${landed.header.status}")
-          case other => Some(s"${d.path(slug, slash)} → $other")
-        }
-      }.toSeq
+      slug    <- slugs
+      slash   <- Seq(true, false)
+      problem <- d.landsOnOk(d.path(slug, slash)).left.toSeq
     } yield problem
 
   Country.switchable.foreach { country =>
     s"Every known slug of ${country.code}" should "answer 200, or 301 onto a page that answers 200" in {
-      val failures = walk(new Deployment(country), everySlug(country))
+      val failures = walk(new CityRoutesDeployment(country), everySlug(country))
       withClue(failures.take(20).mkString("\n")) { failures shouldBe empty }
     }
   }
 
+  /** The paths an app reaches a city by: its listing and the three endpoints it calls. */
+  private val appSubPaths = Seq("/", "/api/repertoire", "/api/details", "/api/cinemas")
+
+  Country.switchable.foreach { country =>
+    s"Every catalog slug of ${country.code}" should "land its listing and every API endpoint on its OWN page with a 200" in {
+      val d = new CityRoutesDeployment(country)
+      val mount = country.mountPath.stripSuffix("/")
+      val failures = for {
+        city    <- country.cities
+        slug     = InstalledBuildSlugs.of(country, city)
+        sub     <- appSubPaths
+        problem <- d.landsOnOk(s"$mount/$slug$sub") match {
+                     case Right(landed) => Option.when(landed != s"$mount/${city.slug}$sub")(s"$mount/$slug$sub → $landed")
+                     case Left(problem) => Some(problem)
+                   }
+      } yield problem
+      withClue(failures.take(20).mkString("\n")) { failures shouldBe empty }
+    }
+  }
+
+  "A conditional request an app sends under a catalog slug that is not its page's" should
+    "be redirected whole, and answered 304 by the page it lands on" in {
+    val uk = new CityRoutesDeployment(Country.UnitedKingdom)
+    val york = Country.UnitedKingdom.bySlug("york")
+    InstalledBuildSlugs.of(Country.UnitedKingdom, york) shouldBe "york-north-yorkshire"
+    Seq("repertoire", "details", "cinemas").foreach { endpoint =>
+      withClue(endpoint) {
+        val fresh = uk.get(s"/uk/york/api/$endpoint")
+        fresh.header.status shouldBe OK
+        val validators = fresh.header.headers.collect {
+          case (ETAG, etag)            => "If-None-Match" -> etag
+          case (LAST_MODIFIED, stamp)  => "If-Modified-Since" -> stamp
+        }.toSeq
+        validators should not be empty
+        // The redirect answers before any validator is looked at: a 304 there would
+        // tell the app its cached copy of a URL it never had a body for is current.
+        val redirect = uk.get(s"/uk/york-north-yorkshire/api/$endpoint", headers = validators)
+        redirect.header.status shouldBe MOVED_PERMANENTLY
+        redirect.header.headers(LOCATION) shouldBe s"/uk/york/api/$endpoint"
+        // Both HTTP stacks (URLSession, OkHttp) re-send the request's headers to the
+        // Location, where the validators are the page's own.
+        uk.get(redirect.header.headers(LOCATION), headers = validators).header.status shouldBe NOT_MODIFIED
+      }
+    }
+  }
+
   it should "send a page's own slash-less address to its listing, and a town on a cluster to that page" in {
-    val uk = new Deployment(Country.UnitedKingdom)
+    val uk = new CityRoutesDeployment(Country.UnitedKingdom)
     uk.get("/uk/york").header.headers(LOCATION) shouldBe "/uk/york/"
     uk.get("/uk/harrogate/").header.status shouldBe OK
     val ilkley = Country.UnitedKingdom.slugAliases("ilkley")
@@ -108,7 +113,7 @@ class KnownPlacesNeverNotFoundSpec extends AnyFlatSpec with Matchers with Before
   }
 
   "The brand front door" should "send a bare slug of exactly one mounted country to that country's page" in {
-    val front = new Deployment(Country.Poland)
+    val front = new CityRoutesDeployment(Country.Poland)
     // Harrogate is a UK page and nothing else's.
     front.get("/harrogate/", host = Country.apexHost).header.headers(LOCATION) shouldBe "/uk/harrogate/"
     // The front door's own root is not sent away.
@@ -118,7 +123,7 @@ class KnownPlacesNeverNotFoundSpec extends AnyFlatSpec with Matchers with Before
   }
 
   it should "not know a Polish place at all: every path under one is a 404, never a page or a redirect" in {
-    val front = new Deployment(Country.Poland)
+    val front = new CityRoutesDeployment(Country.Poland)
     def notFound(path: String): Unit = {
       val result = front.get(path, host = Country.apexHost)
       withClue(path) {
@@ -138,7 +143,7 @@ class KnownPlacesNeverNotFoundSpec extends AnyFlatSpec with Matchers with Before
   }
 
   it should "send a bare slug to its old owner, else the one country that has it, else the first in order" in {
-    val front = new Deployment(Country.Poland)
+    val front = new CityRoutesDeployment(Country.Poland)
     front.get("/york/", host = Country.apexHost).header.headers(LOCATION) shouldBe "/us/york/"      // the old owner
     front.get("/boston/", host = Country.apexHost).header.headers(LOCATION) shouldBe "/us/boston/"
     // A retired UK county page, in one hop to the page it retired into.
@@ -157,7 +162,7 @@ class KnownPlacesNeverNotFoundSpec extends AnyFlatSpec with Matchers with Before
       .orElse(Country.switchable.find(_.resolve(slug).isDefined))
 
   it should "send every slug any country answers to where the table and its fallback say, and 404 Poland's" in {
-    val front = new Deployment(Country.Poland)
+    val front = new CityRoutesDeployment(Country.Poland)
     val failures = for {
       country <- Country.switchable
       slug    <- everySlug(country)
