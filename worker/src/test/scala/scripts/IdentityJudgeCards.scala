@@ -1,7 +1,7 @@
 package scripts
 
 import models.Country
-import services.identity.{Answer, IdentityLookups, IdentityMeasures, TmdbIdentityLookups}
+import services.identity.{Answer, IdentityLookups, IdentityMeasures, SuspectTakes, TmdbIdentityLookups}
 import services.movies.ListingKey
 import tools.UnmatchedClusters
 import tools.UnmatchedClusters.{Capture, Label, Take}
@@ -21,6 +21,8 @@ import scala.concurrent.{Await, ExecutionContext, Future}
  *    the venue page give, the venue's own catalogue ids, a synopsis snippet;
  *  - the RECORD side: the taken TMDB record's title, original title, year, runtime and directors — from the capture's
  *    answers first, then TMDB live (TMDB_API_KEY) for a record it never read;
+ *  - why the take is suspect, when it is ([[SuspectTakes]]: a fragment, an era, a runtime, a sequel, a feed id, a weak
+ *    fill route) — shown to the judge, never deciding;
  *  - a SUGGESTED verdict only where the evidence is decisive ([[JudgeEvidence.suggest]]), every other card left open.
  *
  * Writes `cards.md`, `labels-draft.tsv` (the decisive suggestions as labels.tsv lines, each noted "suggested … confirm")
@@ -50,7 +52,7 @@ object IdentityJudgeCards {
   /** One card: the takes of one billed title in one country that took one film. */
   final case class Card(country: String, rawTitle: String, film: String, takes: Seq[Take], listing: JudgeEvidence.Side,
                         record: Option[JudgeEvidence.Side], synopsis: Option[String], catalogue: Seq[String], labelled: Option[Boolean],
-                        everyVenue: Boolean) {
+                        everyVenue: Boolean, suspicions: Seq[String] = Nil) {
     lazy val suggestion: JudgeEvidence.Suggestion = JudgeEvidence.suggest(listing, record, catalogue, takes.head.ids,
       broadcast = takes.head.basis == "Broadcast")
     def venues: Seq[String] = takes.map(_.venue).distinct.sorted
@@ -63,8 +65,10 @@ object IdentityJudgeCards {
     val captures = Country.all.filter(c => options.countries.isEmpty || options.countries.contains(c.code))
       .map(c => options.fixtures.resolve(s"${c.code}.json.gz")).filter(Files.exists(_)).map(UnmatchedClusters.read)
     val live     = if (options.offline) None else liveLookups()
-    val cards    = captures.flatMap(capture => cardsOf(capture, labels, options.all, live))
-    write(options.out, cards, options.all)
+    // the one wall-clock read: the day the drafts are noted with, and the screening year a dateless capture falls back to
+    val today    = java.time.LocalDate.now(java.time.Clock.systemUTC())
+    val cards    = captures.flatMap(capture => cardsOf(capture, labels, options.all, live, today))
+    write(options.out, cards, options.all, today)
     val decisive = cards.filter(_.labelled.isEmpty).count(_.suggestion.verdict.isDefined)
     println(f"[identity-judge-cards] ${cards.count(_.labelled.isEmpty)} unjudged card(s) (${cards.filter(_.labelled.isEmpty).map(_.takes.size).sum} takes), " +
       f"$decisive with a decisive suggestion; written to ${options.out} in ${(System.nanoTime() - started) / 1e9}%.1fs")
@@ -84,7 +88,7 @@ object IdentityJudgeCards {
       new services.enrichment.ImdbClient(new tools.RealHttpFetch()), Nil)
   }
 
-  def cardsOf(capture: Capture, labels: Seq[Label], all: Boolean, live: Option[IdentityLookups]): Seq[Card] = {
+  def cardsOf(capture: Capture, labels: Seq[Label], all: Boolean, live: Option[IdentityLookups], today: java.time.LocalDate): Seq[Card] = {
     val outcome  = UnmatchedClusters.replay(capture)
     val takes    = UnmatchedClusters.takes(capture, outcome).filter(take => all || UnmatchedClusters.verdict(take, labels).isEmpty)
     val byVenue  = capture.listings.groupBy(l => (l.venue, l.rawTitle))
@@ -94,6 +98,7 @@ object IdentityJudgeCards {
     val tmdbOf   = (take: Take) => take.tmdb.orElse(take.imdb.flatMap(capture.finds.get).flatten)
     val missing  = groups.flatMap(g => tmdbOf(g._2.head)).distinct.filterNot(id => capture.films.get(id).flatten.isDefined)
     val fetched  = live.fold(Map.empty[Int, IdentityMeasures.Film])(lookups => fetchAll(missing, lookups))
+    val suspect  = suspicionsOf(capture, outcome, today.getYear)
     groups.map { case ((raw, film), group) =>
       val listings = group.flatMap(take => byVenue.getOrElse((take.venue, take.rawTitle), Nil)).distinct
       val details  = listings.flatMap(l => capture.details.get(ListingKey.serialised(l.key)).flatten)
@@ -109,8 +114,19 @@ object IdentityJudgeCards {
       Card(capture.country.code, raw, film, group, listing, record, details.flatMap(_.synopsis).headOption,
         listings.flatMap(_.catalogueIds).map(c => s"${c.source}:${c.id}").distinct.sorted,
         if (all) UnmatchedClusters.verdict(group.head, labels) else None,
-        everyVenue = takenBy.get(raw).contains(Set(film)))
+        everyVenue = takenBy.get(raw).contains(Set(film)),
+        suspicions = group.flatMap(take => suspect.getOrElse((take.venue, take.rawTitle, take.film), Nil)).distinct)
     }
+  }
+
+  /** Why each take is suspect ([[SuspectTakes]], as the worker's audit reads the live resolve), by venue, billed title and
+   *  film; the year it screens in, where a listing states no days, is the capture's latest screening year, else `thisYear`. */
+  def suspicionsOf(capture: Capture, outcome: UnmatchedClusters.Outcome, thisYear: Int): Map[(String, String, String), Seq[String]] = {
+    val corpus = SuspectTakes.corpus(outcome.agreed, capture.listings, new UnmatchedClusters.Replay(capture), id => capture.films.get(id).flatten)
+    val year   = capture.listings.flatMap(_.screenings.first).map(_.getYear).maxOption.getOrElse(thisYear)
+    SuspectTakes.suspected(corpus.takes, year, corpus.billings).collect { case (take, found) if found.nonEmpty =>
+      (take.listing.venue, take.listing.rawTitle, take.film) -> found.map(_.render)
+    }.toMap
   }
 
   private def fetchAll(ids: Seq[Int], lookups: IdentityLookups): Map[Int, IdentityMeasures.Film] = {
@@ -128,16 +144,16 @@ object IdentityJudgeCards {
 
   // ── the files ────────────────────────────────────────────────────────────────────────────
 
-  def write(out: Path, cards: Seq[Card], all: Boolean): Unit = {
+  def write(out: Path, cards: Seq[Card], all: Boolean, today: java.time.LocalDate): Unit = {
     Files.createDirectories(out)
-    val today = java.time.LocalDate.now(java.time.ZoneOffset.UTC)
     def labelLines(card: Card, verdict: String, note: String): Seq[String] =
       (if (card.everyVenue) Seq("*") else card.venues).map(venue => Seq(card.country, venue, card.rawTitle, card.film, verdict, note).mkString("\t"))
     val open      = cards.filter(_.labelled.isEmpty)
     val draft     = open.filter(_.suggestion.verdict.isDefined).flatMap { card =>
       labelLines(card, verdictWord(card.suggestion.verdict), s"suggested $today by identity-judge-cards: ${card.suggestion.reasons.mkString("; ")} — CONFIRM")
     }
-    val undecided = open.filter(_.suggestion.verdict.isEmpty).flatMap(card => labelLines(card, "", s"${card.record.fold("no record")(r => r.line)}"))
+    val undecided = open.filter(_.suggestion.verdict.isEmpty).flatMap(card => labelLines(card, "",
+      (card.record.fold("no record")(r => r.line) +: card.suspicions.map(s => s"suspect — $s")).mkString("; ")))
     val header    = "country\tvenue\trawTitle\tfilm\tverdict\tnote"
     Files.writeString(out.resolve("labels-draft.tsv"), (header +: draft).mkString("", "\n", "\n"), StandardCharsets.UTF_8)
     Files.writeString(out.resolve("open.tsv"), (header +: undecided).mkString("", "\n", "\n"), StandardCharsets.UTF_8)
@@ -169,7 +185,7 @@ object IdentityJudgeCards {
        || runtime | ${cell(card.listing.runtime)} | ${cell(record.flatMap(_.runtime))} |
        || directors | ${people(card.listing.directors)} | ${people(record.toSeq.flatMap(_.directors))} |
        |
-       |${if (card.catalogue.nonEmpty) s"venue's catalogue ids: ${card.catalogue.mkString(", ")}\n\n" else ""}${card.synopsis.fold("")(s => s"> ${s.take(300).replace('\n', ' ')}\n\n")}why taken: ${take.explanation.lastOption.getOrElse("—").take(400)}
+       |${if (card.suspicions.nonEmpty) card.suspicions.map(s => s"suspect — $s").mkString("", "  \n", "\n\n") else ""}${if (card.catalogue.nonEmpty) s"venue's catalogue ids: ${card.catalogue.mkString(", ")}\n\n" else ""}${card.synopsis.fold("")(s => s"> ${s.take(300).replace('\n', ' ')}\n\n")}why taken: ${take.explanation.lastOption.getOrElse("—").take(400)}
        |""".stripMargin
   }
 }

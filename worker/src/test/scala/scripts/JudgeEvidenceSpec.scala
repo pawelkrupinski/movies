@@ -59,4 +59,17 @@ class JudgeEvidenceSpec extends AnyFlatSpec with Matchers {
     conflict.reasons.forall(_.startsWith("conflict: ")) shouldBe true
     suggest(side(Some(2003)), None, Nil, taken) shouldBe JudgeEvidence.Suggestion(None, Seq("no record to compare"))
   }
+
+  "a judge card" should "show why the suspect-take audit suspects its take, and the record beside the listing" in {
+    val take = tools.UnmatchedClusters.Take("de", "CineStar Augsburg", "Herr der Ringe - Rückkehr des Königs (ext.)", Some(1434460), None, "Filled",
+      "Herr der Ringe (2025)", explanation = Seq("filled by venues.current: 'Herr der Ringe (2025)'"))
+    val card = IdentityJudgeCards.Card("de", take.rawTitle, "tmdb:1434460", Seq(take), side(runtime = Some(263)),
+      Some(Side("Herr der Ringe", None, Some(2025), Some(14), Nil)), None, Nil, None, everyVenue = true,
+      suspicions = Seq("runtime: a 14-min short billed at feature length"))
+    val page = IdentityJudgeCards.markdown(card)
+    page should include("**suggest WRONG** — a short against a feature: runtime 263 vs 14 min")
+    page should include("suspect — runtime: a 14-min short billed at feature length")
+    page should include("| runtime | 263 | 14 |")
+    page should include("why taken: filled by venues.current")
+  }
 }
