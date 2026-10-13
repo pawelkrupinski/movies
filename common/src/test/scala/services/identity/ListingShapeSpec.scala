@@ -49,6 +49,10 @@ class ListingShapeSpec extends AnyFlatSpec with Matchers {
 
   "a relay" should "be told by its stage work, its house or season, or a concert film's venue" in {
     ListingShape.stagesAWork(listing(KinoMuza, "OPERA-COSI FAN TUTTE")) shouldBe true
+    // ES mk2's ballet relay, billed bare: Adam's ballet, which Wikidata files under "ballet" (Q15079786), a class the
+    // generated table never asks for — not Allégret's unfinished 1939 film the families agreed on (taquilla's "(Cine)" tag
+    // the normaliser strips)
+    ListingShape.stagesAWork(listing(KinoMuza, "Le Corsaire (Cine)").copy(cleanTitle = "Le Corsaire")) shouldBe true
     ListingShape.billsAHouse(listing(KinoMuza, "OPERA-MAKBET - retransmisja")) shouldBe true
     ListingShape.billsAHouse(listing(KinoMuza, "Klondike")) shouldBe false
     val concert = listing(KinoMuza, "Hauser symfonicznie z Royal Albert Hall")

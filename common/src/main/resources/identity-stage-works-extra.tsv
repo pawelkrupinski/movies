@@ -1,5 +1,6 @@
 # Names venues bill a stage work by that Wikidata lacks: <wikidata id>\t<name>|<name>…, or <wikidata id>\t<English name>\t<name>|<name>…
-# for a work the generated table leaves out (under five sitelinks) — hand-kept, read beside identity-stage-works.tsv
+# for a work the generated table leaves out (under five sitelinks, or filed under a class it does not ask for: Adam's ballet "Le Corsaire" is a "ballet", Q15079786) — hand-kept, read beside identity-stage-works.tsv
 Q5064	Zaczarowany flet
 Q460319	Dziewczyna z Dzikiego Zachodu
 Q4725679	Alice's Adventures in Wonderland	Alicja w Krainie Czarów|Alice's Adventures in Wonderland
+Q1809829	Le Corsaire	Le Corsaire|Korsarz (balet)|Il corsaro
