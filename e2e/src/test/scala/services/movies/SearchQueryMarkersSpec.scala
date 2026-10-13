@@ -136,17 +136,10 @@ object SearchQueryMarkersSpec {
     AllowedListing("Kino Górnik Łęczyca", "Baranek Shaun i kudłata bestia 2D Dubb. Kino Świat") ->
       "the distributor tail behind 'Dubb.', 2026-10-12 (run 38251516862) — recorded before MsiClient's DistributorTail took a version's full stop for the comma")
 
-  /** The 2026-10-12 DE recording's sneaks billed with no film and its day passes. */
-  private val DroppedByTheClients: Seq[String] = Seq("Sneak", "Sneak OV", "Kult-Sneak", "Kult Sneak FSK 16", "Horror Sneak",
-    "Horror Sneak FSK 18", "Sneak FSK 18", "Classic Sneak", "CLASSIC SNEAK", "Retro Sneak", "Cult Sneak of Horror", "SNEAK 1343",
-    "OV-Sneak", "OV Sneak: The surprise preview", "The Original Sneak", "Original Sneak - Mystery Movie", "Sneak KW 43 26",
-    "DIE KULT SNEAK KW 44 26", "DIE SNEAK DES JAHRES", "DIE SNEAK DES JAHRES [OmU]",
-    "DF Tagesticket 3.11.26", "DF Tagesticket 4.11.26", "DF Tagesticket 5.11.26", "DF Tagesticket 6.11.26", "DF Tagesticket 7.11.26",
-    // …and those of the afternoon's re-record (run 38251516862), which the same drop covers.
-    "SNEAK", "Klassiker Sneak", "Horror Classics Sneak Vol. 83", "Grusel Sneak", "Cine Sneak", "SNEAK Extreme",
-    "KLASSIKER SNEAK REVIEW - Special - Live", "Sneak Impro - Theatersport geht ins Kino",
-    // …and the night's (run 38326582997), billed by their night or their arthouse strand.
-    "Friday Night Sneak", "Arthaus Sneak Vol. 43", "Arthouse Sneak")
+  /** DE sneaks billed with no film that the clients now drop as no screening (`NonMovieEventClassifier.isNonScreening`),
+   *  still in the recording of run 38355584482 because their venues' last scrape (2026-10-12 21:22 to 10-13 02:48) predates
+   *  the drop: a re-record stops carrying them. */
+  private val DroppedByTheClients: Seq[String] = Seq("Friday Night Sneak", "Arthaus Sneak Vol. 43")
 
   /** A marker word or phrase, matched case-insensitively as whole words. */
   private def phrase(text: String): (String, Regex) =

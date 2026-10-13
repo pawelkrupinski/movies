@@ -41,10 +41,6 @@ class CinemaSlotInvariantsSpec extends CorpusShapeSpec {
         s"director = the whole credits line (and 'Lalka' cut at 'SUBS)'), 2026-10-03: $RecordedBeforeFix (SystemBiletowy's 'aktorzy' label, FormatTags' bracket guard)"
     }.toMap + (AllowedListing("Kino Parczew", "Supermocni") ->
       s"director '..', the site's placeholder for an unknown one, 2026-10-09 (run 37877199615): $RecordedBeforeFix (KinoParczewClient keeps only names with a letter)") ++
-    Seq("ARNIE & BARNEY – RETTEN DAS WASSER" -> 2034, "Hirten" -> 2040, "No Good Men" -> 2051).map { case (listing, year) =>
-      AllowedListing.anywhere(listing) ->
-        s"kinoheld's catalogue productionYear $year, 2026-10-12 (run 38196151886): $RecordedBeforeFix (KinoheldClient reads a year past next year as none)"
-    } ++
     Seq("Bad Moms X-mas (Mums Night Off)", "Hocus Pocus", "The Hunger Games: Mockingjay Part 2", "The Polar Express (Pyjama Party)").map { listing =>
       AllowedListing("Savoy Cinema Corby", listing) ->
         s"cast 'USA', the venue typing its credits a field over, 2026-10-12 (run 38251516862): $RecordedBeforeFix (SavoyClient.Credits reads each field by what it holds)"
