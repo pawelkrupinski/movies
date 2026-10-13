@@ -3096,6 +3096,27 @@ Allocation per replay of every capture (`IdentityConjunctionProbe --alloc 5`): 3
 code on the same capture (+3.7%: the relays' catalogue-blind candidate read, the review-only clusters' fills, the model
 takes' relay check); no map is held past a call.
 
+### 20.17 Namesakes the billing itself rules out (2026-10-13, recording 38355584482)
+
+Of the recapture's 101 WRONG listings, 16 were a namesake the billing's own words rule out, and each is now a guard:
+
+- **A block of shorts** (`MultiFilmBill`): "Shorts" beside other words, and any "Kurzfilm…" compound — DE "SHORTS ATTACK!
+  THE KIDS ARE ALRIGHT" ×9, "Kurzfilmtag Oktober: The Kids Are Alright 2026": IMDb, Filmweb and RT took The Who's film.
+- **A silent film** (`ListingShape.billsASilentFilm`, `SilentEraEnd` 1936): "Stummfilm", "silent film", "film niemy",
+  "cine mudo", "film muet" contradict a sound-era record (`Agreement.contradicts`) — "STUMMFILM MIT TOBIAS RANK:NOSFERATU"
+  took Eggers' 2024 film.
+- **A series banner naming a namesake's director** (`Agreement.billsAnothersDirector`, also `title.anothersOwn` for the
+  fills): "Hitchcock & Chabrol: Blood Relatives" is Chabrol's 1978 film, which Wikidata took and IMDb weighed.
+- **Adam's ballet "Le Corsaire"** in `identity-stage-works-extra.tsv`: Wikidata files 130 ballets under "ballet"
+  (Q15079786), a class `scripts/identity-stage-works.py` never asks for. Adding the class was measured and not taken: it
+  brings "The Outsiders", "Apollo", "Rodeo", "Parade", "Spartacus" and "Romeo and Juliet" in as stage works.
+
+Measured and dropped, each losing right takes the same evidence cannot tell apart: `!family.dissent` on the Filmweb fill
+(fixes DE "Ogin-sama", "Sparrows", "DIE INSEL DER DÄMONEN"; loses 9, Arsenal's "Kaidan", "Ototo", "Mozu" among them —
+the same shape, a family's take of the classic against another's of its namesake); a dissenting family that weighed the
+agreed film counted twice (loses "Gloria!", does not move PL "edukacja MH: Binti"); a Cineamo feed link to another TMDB
+film as one dissent (loses 11, its links being the operator's guess, `FeedLink`).
+
 ## 21. The rules, consolidated (2026-10-06)
 
 Every rule is inventoried in [identity-resolver-rules-inventory.md](identity-resolver-rules-inventory.md): where it
