@@ -93,6 +93,22 @@ object LandingController {
   def picksCity(request: RequestHeader): Boolean =
     request.getQueryString(PickCityParam).contains(PickCityValue)
 
+  /** Is `country` ONE link to its own site on `deployment`'s landing, rather than
+   *  a pane of its places? A country on a domain of its own (Poland, kinowo.net)
+   *  is, on every showtimes.cc page — the front door (`isApex`) and the other
+   *  countries' landings. Its places are addressed on that domain only — the
+   *  front door 404s them (`modules.FrontDoorRedirectFilter`) — so the brand
+   *  domain lists the country, not its cities. Its own landing lists them. */
+  def handsOff(country: Country, deployment: Country, isApex: Boolean): Boolean =
+    country.webOrigin.exists(origin => !Country.isApexHost(Country.withoutScheme(origin))) &&
+      (isApex || country != deployment)
+
+  /** A handed-off country's places as bare points, `lat,lon;lat,lon` — what
+   *  "nearest city" needs to send a visitor near one to that country's site, and
+   *  nothing more: no name, no slug, no link. */
+  def handoffPoints(country: Country): String =
+    country.cities.map(c => s"${c.lat},${c.lon}").distinct.mkString(";")
+
   /** Query parameter carrying a SPECIFIC city's slug across the SSO handoff
    *  (`AuthController.ssoStart`/`ssoFinish`) — distinct from `PickCityParam`,
    *  which only marks "ask which city" with no city named. A picker that

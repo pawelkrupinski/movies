@@ -38,13 +38,24 @@
    or "nearest city", which searches them all — shows a spinner until it lands,
    and a short error (retried on the next attempt) if it never does.
 
+   A COUNTRY ON A DOMAIN OF ITS OWN IS ONE LINK, NOT A PANE, on every
+   showtimes.cc page — the front door and the other countries' landings
+   (`LandingController.handsOff`). Poland's places live on kinowo.net only (the
+   front door 404s them, `FrontDoorRedirectFilter`), so its pill links to
+   `https://kinowo.net/`, its pane is neither embedded nor fetched, and the
+   apex opens on the first country that IS listed. All the pill carries is
+   the places' coordinates, no names or links, so "nearest city" can still hand
+   a visitor near one to that site, whose own landing then finds the city.
+   kinowo.net's landing lists Poland's places like any country's own.
+
    NO SCRIPT: the country pills are links to each country's own picker, and
    every level of the opening country's pane shows at once, each under its own
    title, its headings linking down to their levels — so a visitor (or a
    crawler) whose script never ran still has a complete, working picker. The
    `js` class set in `<head>` is what switches to one level at a time.
 *@
-@opening = @{ if (isApex) models.Country.default else deployment }
+@handsOff(c: models.Country) = @{ controllers.LandingController.handsOff(c, deployment, isApex) }
+@opening = @{ if (isApex) models.Country.switchable.find(c => !handsOff(c)).getOrElse(deployment) else deployment }
 <!DOCTYPE html>
 <html lang="@messages.lang.code">
 <head>
@@ -210,11 +221,12 @@
            picker — Poland listed like the rest, though it answers on
            kinowo.net under another brand: someone wanting Polish listings
            should not have to know the two are one product. The script takes
-           a tap over and shows that country's pane in place. Named in the
-           page's language and relabelled by `applyLanguage` like any other
-           `data-i18n` text. *@
+           a tap over and shows that country's pane in place — except for a
+           country handed off to its own domain (`data-handoff`, see the
+           header), whose tap goes to that site. Named in the page's language
+           and relabelled by `applyLanguage` like any other `data-i18n` text. *@
         <div id="picker-countries" class="picker-countries"@if(models.Country.switchable.size <= 1) { hidden}>
-          @for(c <- models.Country.switchable) {<a class="picker-country-pill@if(c.code == opening.code) { active}" href="@{c.webUrl.get}/@controllers.LandingController.PickCityQuery" data-country="@c.code" data-i18n="@{"country." + c.code}">@messages("country." + c.code)</a>}
+          @for(c <- models.Country.switchable) {@if(handsOff(c)) {<a class="picker-country-pill" href="@{c.webUrl.get}/" data-country="@c.code" data-handoff data-base-url="@c.webUrl.get" data-points="@controllers.LandingController.handoffPoints(c)" data-i18n="@{"country." + c.code}">@messages("country." + c.code)</a>} else {<a class="picker-country-pill@if(c.code == opening.code) { active}" href="@{c.webUrl.get}/@controllers.LandingController.PickCityQuery" data-country="@c.code" data-i18n="@{"country." + c.code}">@messages("country." + c.code)</a>}}
         </div>
         @* Icon-only, trailing the country row — mirrors the apps' own
            locate control (iOS: a bare `location.fill` toolbar button, no
@@ -265,13 +277,13 @@
     const IS_APEX = @isApex;
     // The pill the picker opens on, and the one pane this page carries. The
     // apex isn't itself anybody's city site (see IS_APEX branch in
-    // `pickPickerCity`), so it opens on the brand's own country rather than
-    // on `DEPLOYMENT_COUNTRY_CODE`, which may not even be a country a visitor
-    // would recognise as "home" here.
+    // `pickPickerCity`), and the country that answers it (Poland) is handed off
+    // to its own domain there, so it opens on the first country the brand
+    // domain lists.
     const OPENING_COUNTRY = "@opening.code";
     // Every other country's pane, by a URL naming its content version — so a
     // repeat visit takes them from the browser's cache without asking.
-    const PICKER_PANE_URLS = {@for(c <- models.Country.switchable if c.code != opening.code) {"@c.code":"@picker.url(c.code)",}};
+    const PICKER_PANE_URLS = {@for(c <- models.Country.switchable if c.code != opening.code && !handsOff(c)) {"@c.code":"@picker.url(c.code)",}};
 
     // The search box's copy names what a query can ACTUALLY reach from the
     // level currently open — "state" in the US, "nation"/"county" in the UK —
@@ -395,6 +407,19 @@
 
     function citiesIn(root) {
       return Array.prototype.map.call(root.querySelectorAll('a.picker-item[data-slug]'), cityOf);
+    }
+
+    // The places of every country handed off to its own site, as nothing but
+    // points: picking one goes to that site's landing, which finds the city.
+    function handoffPlaces() {
+      const places = [];
+      Array.prototype.forEach.call(document.querySelectorAll('#picker-countries [data-handoff]'), function (pill) {
+        (pill.dataset.points || '').split(';').filter(Boolean).forEach(function (point) {
+          const latLon = point.split(',');
+          places.push({ lat: parseFloat(latLon[0]), lon: parseFloat(latLon[1]), country: pill.dataset.country, handoff: pill.dataset.baseUrl });
+        });
+      });
+      return places;
     }
 
     function markActivePill() {
@@ -593,10 +618,13 @@
     // the link this would have followed anyway (see `AuthController.ssoStart`),
     // so it is always safe to route through it rather than needing to know
     // client-side whether anyone is signed in.
+    //
+    // With no `slug` — a country handed off to its own site — it lands on that
+    // site's own landing instead.
     function crossCountryUrl(baseUrl, slug) {
-      if (sameOriginAs(baseUrl)) return baseUrl + '/' + slug + '/';
+      if (sameOriginAs(baseUrl)) return baseUrl + '/' + (slug ? slug + '/' : '');
       return window.location.origin + DEPLOYMENT_MOUNT_PATH +
-        'auth/sso/start?to=' + encodeURIComponent(baseUrl) + '&city=' + encodeURIComponent(slug);
+        'auth/sso/start?to=' + encodeURIComponent(baseUrl) + (slug ? '&city=' + encodeURIComponent(slug) : '');
     }
 
     // A city was picked — directly, or as the "use my location" hit. On a
@@ -607,6 +635,7 @@
     // `crossCountryUrl`, which lands directly on the picked city whether or
     // not that country shares this origin.
     function pickPickerCity(city) {
+      if (city.handoff) { window.location.href = crossCountryUrl(city.handoff); return; }
       if (!IS_APEX && city.country === DEPLOYMENT_COUNTRY_CODE) { rememberAndGo(city.slug); return; }
       const pane = paneOf(city.country);
       if (pane) window.location.href = crossCountryUrl(pane.dataset.baseUrl, city.slug);
@@ -650,7 +679,7 @@
       navigator.geolocation.getCurrentPosition(
         function (pos) {
           panes.then(function (allArrived) {
-            const c = nearestCityWithinKm(citiesIn(document.getElementById('picker-panes')), pos.coords.latitude, pos.coords.longitude, 100);
+            const c = nearestCityWithinKm(citiesIn(document.getElementById('picker-panes')).concat(handoffPlaces()), pos.coords.latitude, pos.coords.longitude, 100);
             if (c) { setLocateStatus('', false); pickPickerCity(c); }
             else setLocateStatus(t(allArrived ? 'landing.noNearby' : 'landing.loadError'), false);
           });
@@ -669,6 +698,13 @@
       document.getElementById('picker-countries').addEventListener('click', function (event) {
         const pill = event.target.closest('.picker-country-pill');
         if (!pill) return;
+        if (pill.hasAttribute('data-handoff')) {
+          // Its own site, not a pane: a plain tap hands the session over on the way.
+          if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
+          event.preventDefault();
+          window.location.href = crossCountryUrl(pill.dataset.baseUrl);
+          return;
+        }
         event.preventDefault();
         pickPickerCountry(pill.dataset.country);
       });

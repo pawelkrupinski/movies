@@ -8,7 +8,7 @@ hostnames onto two domains this project owns:
 | `kinowo.fly.dev` | `kinowo.net` | Poland |
 | `showtimes-uk.fly.dev` | `showtimes.cc/uk` | United Kingdom |
 | `showtimes-de.fly.dev` | `showtimes.cc/de` | Germany |
-| — | `showtimes.cc` | the brand front door: a country picker, Poland included |
+| — | `showtimes.cc` | the brand front door: a country picker, Poland as one link to `kinowo.net` (`showtimes.cc/{polish-city}/` is a 404) |
 | `grafana.2-28-52-210.sslip.io` | `grafana.kinowo.net` | Grafana (sslip name RETIRED 2026-09-01 — see below) |
 | — (ssh tunnel to 10.20.0.11:9428) | `logs.kinowo.net` | VictoriaLogs vmui + LogsQL API (`/select` only; Google sign-in via `auth.kinowo.net`) |
 

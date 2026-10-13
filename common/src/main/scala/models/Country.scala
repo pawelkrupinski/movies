@@ -402,7 +402,8 @@ object Country {
   /** THE BRAND FRONT DOOR: the bare domain that fronts several countries rather
    *  than serving one. `showtimes.cc/uk` and `showtimes.cc/de` are countries;
    *  `showtimes.cc/` itself is this — a picker listing every deployed country,
-   *  Poland included, even though Poland answers on its own domain.
+   *  Poland included as one link to its own domain (its places are not
+   *  addressed under showtimes.cc at all: the front door 404s them).
    *
    *  It is a check on the REQUEST rather than a deployment of its own,
    *  deliberately: there is no fourth thing to keep running, the proxy simply
