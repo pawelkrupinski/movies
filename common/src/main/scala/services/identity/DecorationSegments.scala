@@ -96,7 +96,7 @@ object DecorationSegments {
   private[identity] val EventWords = Set("spotkanie", "prelekcja", "prelekcja", "pokaz", "specjalny", "q", "a", "qa", "premiera", "przedpremiera", "konkurs",
     "dyskusja", "rozmowa", "seans", "screening", "event", "special", "preview", "live", "talk", "intro", "introduced", "gesprach", "vorpremiere",
     "festiwal", "festival", "retransmisja", "koncert", "karnet", "maraton", "marathon")
-  private val EditionWords = Set("cut", "remaster", "remastered", "restored", "restoration", "4k", "rerelease", "re", "release", "anniversary",
+  private[identity] val EditionWords = Set("cut", "remaster", "remastered", "restored", "restoration", "4k", "rerelease", "re", "release", "anniversary",
     "aniversario", "rocznica", "edition", "extended", "director", "directors", "wersja", "rozszerzona", "jubileusz", "uncut", "redux")
 
   /** Does a listing billed under `titles` name an EDITION of the film titled `filmTitles` — a word of [[EditionWords]]
