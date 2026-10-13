@@ -34,6 +34,13 @@ object CatalogueSources {
   val FeedPages: Seq[String]     = Seq("https://www.kinoprogramm.com/", "https://kinoprogramm.com/",
                                         "https://www.kinoheld.de/film/")
 
+  /** Box offices whose ids number ONE installation's events, not a chain's films: every Spektrix client and every Savoy
+   *  system keeps its own sequence, so two venues' ids meet by coincidence. Measured on UK recording 38326582997: 52 of
+   *  the 56 Spektrix ids two venues shared named two films (BEAM Hertford's "Mildred Pierce" was Picture House Uckfield's
+   *  "Heart of the Beast"); no Savoy id was shared at all, so scoping it loses no join. [[CatalogueId.of]] files such an
+   *  id under its venue. */
+  val BoxOfficeOwn: Set[String] = Set("spektrix", "savoy")
+
   /** Film pages that are a listings site's own CATALOGUE ENTRY rather than the venue's: Flicks lists every UK and US venue's
    *  programme for it, and every venue's listing links the same `/movie/<slug>/` page. The facts read off that page
    *  (`FlicksFilmPage`: year, directors, countries) are Flicks' claim of which film the entry is — one mislinked entry

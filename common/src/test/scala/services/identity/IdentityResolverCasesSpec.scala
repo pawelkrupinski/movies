@@ -139,6 +139,25 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     shipped(Seq(credited, other), films).decisionOf(other.key).film shouldBe None
   }
 
+  "Listings carrying one box office's own event id" should "join no other venue's: each Spektrix client numbers its own events" in {
+    // UK recording 38326582997: BEAM Hertford's Spektrix event 255201AKJCQBKLRQQMCGTVCMMBCTCSBJK is its "Flashback
+    // Noirvember: Mildred Pierce" (1945, Curtiz); Picture House Uckfield's client numbers its "Heart of the Beast" the same.
+    // Read as one chain's id, it joined the two and served Curtiz's slot under Ayer's 2026 film — five BEAM classics so,
+    // and 52 of the 56 Spektrix ids two UK venues shared named two films.
+    val films = Seq(F(3309, "Mildred Pierce", 1945, "Michael Curtiz", 111), F(1263337, "Heart of the Beast", 2026, "David Ayer", 101))
+    def own(cinema: Cinema, title: String, year: Option[Int], director: String, runtime: Int) =
+      Listing.of(cinema, models.CinemaMovie(models.Movie(title, runtimeMinutes = Some(runtime), releaseYear = year), cinema, None, None, None,
+        Nil, Seq(director), Nil, externalIds = Map("spektrix" -> "255201AKJCQBKLRQQMCGTVCMMBCTCSBJK")), normalizer)
+    val classic = own(Multikino, "Flashback Noirvember: Mildred Pierce", Some(1945), "Michael Curtiz", 111)
+    val current = own(Helios, "Heart of the Beast", None, "David Ayer", 101)
+    val r = shipped(Seq(classic, current), films)
+    withClue(Seq(classic, current).map(l => r.decisionOf(l.key).render).mkString("\n")) {
+      r.decisionOf(classic.key).film shouldBe Some(3309)
+      r.decisionOf(current.key).film shouldBe Some(1263337)
+    }
+    classic.catalogueIds should not equal current.catalogueIds
+  }
+
   "Listings a feed links to one catalogue entry" should "be one film only where their titles agree: an aggregator can mislink" in {
     // A Webedia id is the feed's link of a screening to its entry, not the venue's naming of its film: Filmstarts files
     // seven venues' different programmes under one placeholder (51988, "Film Program"). Unlike a chain's own id, it never

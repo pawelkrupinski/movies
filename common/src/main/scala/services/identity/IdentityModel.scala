@@ -144,7 +144,8 @@ object ScreeningDays {
 /** A film's id in a cinema chain's own catalogue (`CinemaMovie.externalIds`: Gatsby's "boxoffice",
  *  Flicks', Cinema City's "cc", Multikino's "mk"…): the chain lists one film under one id at every
  *  venue, a bare listing beside its credited siblings. Measured on recording 36633286921 across the
- *  five corpora: no source reuses an id for another film, and ids are global to their source. */
+ *  five corpora: no chain reuses an id for another film, and its ids are global to it. A box office's own
+ *  event numbering is not ([[CatalogueSources.BoxOfficeOwn]]): its id is scoped by the venue that published it. */
 final case class CatalogueId(source: String, id: String) {
   /** Its family block key and must-link identity. */
   def key: String = s"c:$source:$id"
@@ -153,9 +154,14 @@ final case class CatalogueId(source: String, id: String) {
 object CatalogueId {
   given Ordering[CatalogueId] = Ordering.by(c => (c.source, c.id))
 
-  /** `cm`'s catalogue ids, blank ones dropped. */
-  def of(cm: CinemaMovie): Seq[CatalogueId] =
-    cm.externalIds.toSeq.collect { case (source, id) if source.trim.nonEmpty && id.trim.nonEmpty => CatalogueId(source.trim, id.trim) }.sorted
+  /** `cm`'s catalogue ids as `cinema` publishes them, blank ones dropped: a box office's own event id
+   *  ([[CatalogueSources.BoxOfficeOwn]]) under its venue's name, so another venue's system numbering another film
+   *  the same never names one film with it. */
+  def of(cinema: Cinema, cm: CinemaMovie): Seq[CatalogueId] =
+    cm.externalIds.toSeq.collect { case (source, id) if source.trim.nonEmpty && id.trim.nonEmpty =>
+      val own = id.trim
+      CatalogueId(source.trim, if (CatalogueSources.BoxOfficeOwn(source.trim)) s"${cinema.displayName}/$own" else own)
+    }.sorted
 }
 
 object Listing {
@@ -189,20 +195,20 @@ object Listing {
       page          = cm.filmUrl.map(_.trim).filter(_.nonEmpty),
       originalTitle = cm.movie.originalTitle.map(_.trim).filter(_.nonEmpty),
       countries     = cm.movie.countries.map(_.trim).filter(_.nonEmpty).distinct.sorted,
-      catalogueIds  = CatalogueId.of(cm),
+      catalogueIds  = CatalogueId.of(cinema, cm),
       searchTitle   = Some(normalizer.apiQuery(title).trim).filter(q => q.nonEmpty && q != title.trim),
       // as the card serves it ([[services.movies.CinemaSlotBuilder]]): absolute against its page, escaped — a site-relative
       // `img src` (PL Kino Roma's "/app/assets/movie/…") is a link no poster fetch takes
       poster        = SlotFields.url(cm.posterUrl, SlotFields.url(cm.filmUrl, None)),
       screenings    = ScreeningDays.of(cm.showtimes.map(_.dateTime.toLocalDate)),
-      names         = venueNames(cm))
+      names         = venueNames(cinema, cm))
   }
 
   /** What `cm`'s own synopsis and cast field name — its matching-only excerpt where the venue cut the synopsis (MSI) — none
    *  where a feed copied them from its catalogue entry. */
-  private def venueNames(cm: CinemaMovie): VenueNames = {
+  private def venueNames(cinema: Cinema, cm: CinemaMovie): VenueNames = {
     val text = cm.synopsis.orElse(cm.synopsisExcerpt)
-    if ((text.isEmpty && cm.cast.isEmpty) || CatalogueSources.feedStated(CatalogueId.of(cm), cm.filmUrl.map(_.trim))) VenueNames.None
+    if ((text.isEmpty && cm.cast.isEmpty) || CatalogueSources.feedStated(CatalogueId.of(cinema, cm), cm.filmUrl.map(_.trim))) VenueNames.None
     else VenueNames.of(text, cm.cast)
   }
 
