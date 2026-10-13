@@ -1,6 +1,7 @@
 package modules
 
 import models.Country
+import services.metrics.{LegacyAddressKind, LegacyAddressMetrics}
 import org.apache.pekko.stream.Materializer
 import play.api.mvc.{Filter, RequestHeader, Result, Results}
 
@@ -33,8 +34,12 @@ import scala.concurrent.Future
  * whose own slug collides with a renamed city's is therefore untouched. A bare
  * city segment with no trailing slash lands on the listing's canonical slash
  * form in the one hop, rather than in two.
+ *
+ * Each redirect is counted by its kind ([[Country.redirectKind]]) in
+ * [[LegacyAddressMetrics]], the signal for when these addresses can go.
  */
-class RenamedCityRedirectFilter(country: Country)(using val mat: Materializer) extends Filter {
+class RenamedCityRedirectFilter(country: Country, legacy: LegacyAddressMetrics)(using val mat: Materializer)
+    extends Filter {
 
   /** The mount point without its trailing slash — `/us`, or `""` for a
    *  deployment served at the root. */
@@ -42,19 +47,23 @@ class RenamedCityRedirectFilter(country: Country)(using val mat: Materializer) e
 
   override def apply(next: RequestHeader => Future[Result])(request: RequestHeader): Future[Result] =
     renamed(request.path) match {
-      case Some(path) =>
+      case Some((path, kind)) =>
+        legacy.record(LegacyAddressKind.of(kind), request)
         val target = if (request.rawQueryString.isEmpty) path else s"$path?${request.rawQueryString}"
         Future.successful(Results.MovedPermanently(target))
       case None => next(request)
     }
 
-  /** The path this one redirects to, or `None` when its city segment is not a
-   *  slug this country redirects (the overwhelmingly common case — a map lookup
-   *  per request). */
-  private def renamed(path: String): Option[String] =
+  /** The path this one redirects to and the kind of old address it is, or `None`
+   *  when its city segment is not a slug this country redirects (the overwhelmingly
+   *  common case — a map lookup per request). */
+  private def renamed(path: String): Option[(String, models.SlugRedirectKind)] =
     Option.when(path.startsWith(s"$mount/")) {
       val rest              = path.substring(mount.length + 1)
       val (city, remainder) = rest.span(_ != '/')
-      country.redirectFor(city).map(current => s"$mount/$current${if (remainder.isEmpty) "/" else remainder}")
+      for {
+        current <- country.redirectFor(city)
+        kind    <- country.redirectKind(city)
+      } yield s"$mount/$current${if (remainder.isEmpty) "/" else remainder}" -> kind
     }.flatten
 }

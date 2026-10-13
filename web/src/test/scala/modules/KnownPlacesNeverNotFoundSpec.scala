@@ -10,6 +10,7 @@ import org.scalatest.matchers.should.Matchers
 import play.api.mvc.{EssentialAction, RequestHeader, Result, Results}
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
+import services.metrics.{LegacyAddressMetrics, SpecLegacyAddressMetrics}
 import tools.SpecTimeouts
 
 import scala.concurrent.{Await, Future}
@@ -37,7 +38,7 @@ class KnownPlacesNeverNotFoundSpec extends AnyFlatSpec with Matchers with Before
 
   /** One country's deployment: its two redirect filters over a router of the
    *  city routes, mounted at its own `mountPath`. */
-  private final class Deployment(country: Country) {
+  private final class Deployment(country: Country, legacy: LegacyAddressMetrics = SpecLegacyAddressMetrics.fresh()) {
     private val controller: MovieController = TestMovieController.build(Nil, servingCountry = country)._1
     private val mount = country.mountPath.stripSuffix("/")
 
@@ -53,8 +54,8 @@ class KnownPlacesNeverNotFoundSpec extends AnyFlatSpec with Matchers with Before
     }
 
     private val chain: RequestHeader => Future[Result] = {
-      val renamed   = new RenamedCityRedirectFilter(country)
-      val frontDoor = new FrontDoorRedirectFilter(country)
+      val renamed   = new RenamedCityRedirectFilter(country, legacy)
+      val frontDoor = new FrontDoorRedirectFilter(country, legacy)
       rh => renamed(frontDoor(route))(rh)
     }
 

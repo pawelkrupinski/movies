@@ -2,7 +2,7 @@ package modules.webwiring
 
 import controllers.{MetricsController, WebMovieMetrics}
 import modules.Wiring
-import services.metrics.{UserStateIndexMetrics, UserStateWriteMetrics, WebDecodeFailureMetrics, WebCacheMetrics, WebHostMetrics, WebHttpMetrics, WebJvmMetrics, WebRenderMetrics, WebRouteUsageMetrics}
+import services.metrics.{UserStateIndexMetrics, UserStateWriteMetrics, WebDecodeFailureMetrics, WebCacheMetrics, WebHostMetrics, WebHttpMetrics, WebJvmMetrics, WebRenderMetrics, WebRouteUsageMetrics, LegacyAddressMetrics}
 
 /** ── /metrics ──────────────────────────────────────────────────────────────
  *  Everything the web tier exposes to Prometheus, on ONE registry: the served
@@ -29,6 +29,9 @@ trait MetricsWiring { self: Wiring =>
   // When each route was last called, and by which kind of client — the
   // retirement signal for old endpoints. See WebRouteUsageMetrics.
   lazy val webRouteUsageMetrics = new WebRouteUsageMetrics(webJvmMetrics.registry, metricsCountry.code, clock)
+  // Which old city addresses are still served, by kind and client: the signal for
+  // dropping the old-owner table and the legacy redirects. See LegacyAddressMetrics.
+  lazy val legacyAddressMetrics = new LegacyAddressMetrics(webJvmMetrics.registry, metricsCountry.code, clock)
   lazy val webRenderMetrics = new WebRenderMetrics(webJvmMetrics.registry, metricsCountry.code)
   // The MACHINE's free RAM and free disk, read from the process's own kernel.
   // Same registry again, same reason — and same cause: Fly's host metrics

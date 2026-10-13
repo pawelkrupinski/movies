@@ -30,7 +30,7 @@ class RenamedCityRedirectFilterSpec extends AnyFlatSpec with Matchers {
    *  "redirected" and see what the router would have received. */
   private def run(path: String, country: Country = Country.UnitedStates): Result = {
     val next: RequestHeader => Future[Result] = rh => Future.successful(Results.Ok(rh.path))
-    val filter = new RenamedCityRedirectFilter(country)
+    val filter = new RenamedCityRedirectFilter(country, services.metrics.SpecLegacyAddressMetrics.fresh())
     Await.result(filter(next)(FakeRequest("GET", path)), SpecTimeouts.Io)
   }
 

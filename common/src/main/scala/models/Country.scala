@@ -183,6 +183,15 @@ sealed abstract class Country(
   def redirectFor(slug: String): Option[String] =
     if (bySlug.contains(slug)) None else renamedSlugs.get(slug).orElse(slugAliases.get(slug))
 
+  /** Which kind of old address a slug [[redirectFor]] answers is — what the web's
+   *  legacy-address usage metric is labelled by; `None` for a page or an unknown slug. */
+  def redirectKind(slug: String): Option[SlugRedirectKind] =
+    redirectFor(slug).map { _ =>
+      if (!renamedSlugs.contains(slug)) SlugRedirectKind.Alias
+      else if (City.FormerlyQualified.of(this).contains(slug)) SlugRedirectKind.FormerlyQualified
+      else SlugRedirectKind.Retired
+    }
+
   /** The page a slug means here, live or by redirect. */
   def resolve(slug: String): Option[City] = bySlug.get(slug).orElse(redirectFor(slug).flatMap(bySlug.get))
 

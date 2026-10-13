@@ -998,6 +998,12 @@ object City {
       "suffolk-virginia" -> "suffolk",
     )
     val es: Map[String, String] = Map("toledo-castilla-la-mancha" -> "toledo", "laredo-cantabria" -> "laredo")
+
+    def of(country: Country): Map[String, String] = country match {
+      case Country.UnitedStates => us
+      case Country.Spain        => es
+      case _                    => Map.empty
+    }
   }
 
   /** The US picker's grouping: one entry per state or territory over the pages

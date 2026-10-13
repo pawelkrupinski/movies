@@ -1586,6 +1586,129 @@
           }
         }
       ]
+    },
+    {
+      "type": "table",
+      "title": "Legacy city addresses \u2014 days since last call, by kind and client kind",
+      "description": "Which old city addresses are still served, from kinowo_web_legacy_address_last_called_seconds over 60 days, all countries. legacy:front_door_old_owner = a bare showtimes.cc/{slug}/ the old-owner table (models.LegacySlugOwners) decided; legacy:front_door_new = a bare slug it does not list; legacy:retired_slug = a retired or renamed page (/uk/kent/); legacy:qualified_to_bare = the twelve US/Spanish qualified slugs (/us/birmingham-alabama/); legacy:town_alias = a town on a page or a page's qualified slug (/uk/ilkley/). Clients as in the route table. The table is temporary: drop it when legacy:front_door_old_owner shows no human/app calls over 30 days. The apps resolve bare and kinowo:// links themselves and never reach this counter.",
+      "id": 29,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 132,
+        "w": 12,
+        "h": 10
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "d",
+          "decimals": 1,
+          "custom": {
+            "cellOptions": {
+              "type": "color-text"
+            }
+          },
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "yellow",
+                "value": 7
+              },
+              {
+                "color": "red",
+                "value": 30
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "kind",
+            "desc": false
+          }
+        ]
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "(time() - max by (kind, client) (max_over_time(kinowo_web_legacy_address_last_called_seconds[60d]))) / 86400",
+          "instant": true,
+          "range": false,
+          "format": "table",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ],
+      "transformations": [
+        {
+          "id": "groupingToMatrix",
+          "options": {
+            "rowField": "kind",
+            "columnField": "client",
+            "valueField": "Value"
+          }
+        }
+      ]
+    },
+    {
+      "id": 30,
+      "type": "timeseries",
+      "title": "Legacy city addresses served, by kind and client kind",
+      "description": "kinowo_web_legacy_address_hits_total: how many old city addresses each kind serves, per client kind. Volume only \u2014 a restart drops a new series' first increment, so read 'still called at all?' from the days-since table beside it.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 132,
+        "w": 12,
+        "h": 10
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "min": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum by (kind, client) (increase(kinowo_web_legacy_address_hits_total{country=~\"$country\"}[$__rate_interval]))",
+          "legendFormat": "{{kind}} {{client}}",
+          "refId": "A",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
     }
   ],
   "annotations": {

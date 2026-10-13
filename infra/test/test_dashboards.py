@@ -353,7 +353,7 @@ class InProcessRecencyGauges(unittest.TestCase):
     restarts; the panel has to ask it, with a `max_over_time` over the whole window.
     """
 
-    RECENCY_GAUGES = ("kinowo_web_route_last_called_seconds",)
+    RECENCY_GAUGES = ("kinowo_web_route_last_called_seconds", "kinowo_web_legacy_address_last_called_seconds")
 
     def test_a_recency_panel_reads_across_pod_restarts(self):
         exprs = [

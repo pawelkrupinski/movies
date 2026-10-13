@@ -116,6 +116,10 @@ class GrafanaMetricCoverageSpec extends AnyFlatSpec with Matchers {
     // inventory — the general retirement signal, `WebRouteUsageMetrics`.
     "kinowo_web_route_last_called_seconds",
     "kinowo_web_route_defined",
+    // Which legacy city addresses are still served, by kind and client kind —
+    // `services.metrics.LegacyAddressMetrics`; temporary, with the old-owner table.
+    "kinowo_web_legacy_address_last_called_seconds",
+    "kinowo_web_legacy_address_hits",
     // Every atomic user-state write by endpoint and outcome — see
     // `services.metrics.UserStateWriteMetrics`.
     "kinowo_web_user_state_writes",
