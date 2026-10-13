@@ -23,6 +23,9 @@ object MultiFilmBill {
   private val Markers: Seq[scala.util.matching.Regex] = Seq(
     // a double or triple bill, as each language bills one
     """\b(?:double|triple|quadruple)\s+(?:features?|bills?)\b""",
+    // "Triple" after a franchise's name — DE CinemaxX's "Lord Of The Rings Triple (Extended Version - English)" — never
+    // heading a title, as a film's own name does ("Triple Frontier", "Triple 9")
+    """(?<=\w\s)triple\b""",
     """\bdoppel(?:vorstellung|pack|programm|feature)\w*""",
     """\b(?:sesion|programa)\s+(?:doble|triple)\b|\bdoble\s+sesion\b""",
     // not "zestaw" (a set): a set of a series' episodes is one compilation record ("Niesamowite przygody skarpetek 4. Do

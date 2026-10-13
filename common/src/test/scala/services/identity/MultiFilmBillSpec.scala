@@ -23,12 +23,16 @@ class MultiFilmBillSpec extends AnyFlatSpec with Matchers {
       "Podwójny seans: Shrek", "Trylogia Kieślowskiego", "Die Herr der Ringe-Trilogie", "Trilogía del dólar", "Kill Bill Vol. 1 & 2",
       "Der Pate Teil 1 & 2", "Back to Back: Before Sunrise", "Shorts Programme: Animation", "Kurzfilmprogramm: Animation",
       "Programa de cortos: Animación", "Pokaz shortów: Nowe kino").foreach(title => withClue(title)(marker(title) shouldBe defined))
+    // a franchise's name, "Triple" after it: DE CinemaxX's marathon of Jackson's three (recording 38355584482), which a
+    // 2025 film titled "English" filled by the language its bracket bills
+    marker("Lord Of The Rings Triple (Extended Version - English)") shouldBe Some("triple")
+    marker("Das große Herr der Ringe Triple") shouldBe Some("triple")
   }
 
   it should "not be read into a film's own words" in {
     // the marker alone is a film's whole title, and "&", "Part Two", "2D" bill one film
     Seq("Marathon", "Double Feature", "Trilogy", "Fast & Furious", "Romeo & Juliet", "Dune: Part Two", "Wicked: Part 1 2D",
-      "Avatar 2 (2022)", "Double Indemnity", "Body Double", "The Double Life of Veronique", "Krótki film o miłości",
+      "Avatar 2 (2022)", "Double Indemnity", "Body Double", "Triple Frontier", "Triple 9", "Triple Threat", "The Double Life of Veronique", "Krótki film o miłości",
       "The Night Is Short, Walk on Girl").foreach(title => withClue(title)(marker(title) shouldBe None))
   }
 
@@ -42,5 +46,6 @@ class MultiFilmBillSpec extends AnyFlatSpec with Matchers {
     MultiFilmBill.billsBeside(Seq("Maraton Horrorów"), Film("Dźwięk śmierci", Some("Whistle"), Seq("Maraton horrorów"))) shouldBe true
     MultiFilmBill.billsBeside(Seq("Triple Feature: Lord of the Rings"), Film("The Lord of the Rings: The Return of the King")) shouldBe true
     MultiFilmBill.billsBeside(Seq("The Dark Knight Trilogy"), Film("The Dark Knight")) shouldBe true
+    MultiFilmBill.billsBeside(Seq("Lord Of The Rings Triple (Extended Version - English)"), Film("English", year = Some(2025))) shouldBe true
   }
 }
