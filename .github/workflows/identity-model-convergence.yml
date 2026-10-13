@@ -40,6 +40,11 @@ on:
                 required: false
                 type: string
                 default: ubuntu-latest
+            takes-base:
+                description: The identity takes check's base commit, overriding the newest green one (re-judge a range a check passed unjudged).
+                required: false
+                type: string
+                default: ''
 
 concurrency:
     group: identity-model-convergence
@@ -118,6 +123,7 @@ jobs:
             profile:                       ${{ inputs.profile == true }}
             jvm-options:                   ${{ inputs.jvm-options || '' }}
             runner:                        ${{ inputs.runner || 'ubuntu-latest' }}
+            takes-base:                    ${{ inputs.takes-base || '' }}
         # TMDB_API_KEY (the pre-suite fill signs TMDB's gaps with it), DECODO_PROXY_USER / DECODO_PROXY_PASS (the
         # fill asks what an origin refuses CI again through the residential proxy), and the GITHUB_TOKEN the setup
         # and publish actions read.

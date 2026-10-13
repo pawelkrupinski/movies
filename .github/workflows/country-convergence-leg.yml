@@ -223,6 +223,13 @@ on:
                 required: false
                 type: string
                 default: ''
+            # The identity takes check's base, named by hand (scripts/ci/identity-takes-check.sh's TAKES_BASE):
+            # how to re-judge a range a check once passed without judging it. Empty on every dispatch Main makes.
+            takes-base:
+                description: The identity takes check's base commit, overriding the newest green one.
+                required: false
+                type: string
+                default: ''
             # A JFR CPU profile of the suite, uploaded as `convergence-profile-<code>-<phase>`: where a
             # leg's CPU goes, for whoever is making the lane faster. Off on every dispatch Main makes.
             profile:
@@ -829,6 +836,7 @@ jobs:
                   KINOWO_COUNTRY: ${{ inputs.code }}
                   KINOWO_COUNTRIES: ${{ inputs.code }}
                   MONGODB_URI: mongodb://127.0.0.1:27017/?directConnection=true
+                  TAKES_BASE: ${{ inputs.takes-base }}
               run: |
                   # `|| code=$?`: the step runs under bash -e, which would end it at the script's own non-zero exit.
                   code=0; scripts/ci/identity-takes-check.sh "${{ inputs.code }}" "$RUNNER_TEMP/identity-takes" || code=$?

@@ -19,7 +19,7 @@
 # can have moved.
 #
 # usage: identity-takes-check.sh <cc> <out dir>
-#   env: GH_TOKEN, GITHUB_REPOSITORY, GITHUB_SHA, MONGODB_URI, HEAP (sbt -Xmx, default 6g),
+#   env: GH_TOKEN, GITHUB_REPOSITORY, GITHUB_SHA, MONGODB_URI, HEAP (sbt -Xmx, default 6g), TAKES_BASE (optional),
 #        STATUS_CONTEXT (default "identity takes (<cc>)"), GITHUB_STEP_SUMMARY (optional)
 # Writes <out>/{base,head}/decisions-<cc>.jsonl, <out>/base.txt (the base commit) and <out>/verdict.txt.
 # Exit: 0 passed, 1 an unaccepted move, 2 the check could not run.
@@ -83,7 +83,9 @@ dump() { # <checkout> <out dir>
   [ -s "$2/decisions-$cc.jsonl" ]
 }
 
-base=$(pick_base) || { echo "::warning::identity takes ($cc): could not name a base commit"; exit 2; }
+# TAKES_BASE (a hand dispatch's `takes-base`) names the base outright: how to re-judge a range a check once passed
+# without judging it, e.g. one the old 40-commit window absorbed.
+base=${TAKES_BASE:-$(pick_base)} || { echo "::warning::identity takes ($cc): could not name a base commit"; exit 2; }
 [ -n "$base" ] || { echo "::warning::identity takes ($cc): could not name a base commit"; exit 2; }
 echo "$base" > "$out/base.txt"
 echo "identity takes ($cc): base $base, head $head"

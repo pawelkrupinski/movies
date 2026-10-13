@@ -60,6 +60,11 @@ run || true; check "a check that only ever failed diffs from its first run's bas
 rm "$work/status-$c2"
 run || true; check "a check that never ran: the parent" "$(cat "$work/out/base.txt")" "$c2"
 
+echo SUCCESS > "$work/status-$c2"
+(TAKES_BASE=$c1; export TAKES_BASE; run || true)
+check "a base named by hand overrides the newest green commit" "$(cat "$work/out/base.txt")" "$c1"
+rm "$work/status-$c2"
+
 code=0; HISTORY_FAILS=1 run || code=$?
 check "a failed history read stops the check" "$code" 2
 
