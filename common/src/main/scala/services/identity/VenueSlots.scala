@@ -225,9 +225,7 @@ private[identity] object VenueSlots {
     val prepared = ScrapeListing.prepare(cinema, rows, normalizer, tokens, pageOf)
     prepared.movies.groupBy(cm => slotKey(cinema, prepared.cleaned(cm), pageOf(cm), normalizer)).toSeq
       .sortBy(_._1.titleKey).map { case (source, group) =>
-        val representative =
-          if (group.sizeIs == 1) group.head
-          else MovieRecordMerge.slotRepresentative(group).copy(showtimes = MovieRecordMerge.dedupShowtimes(group.flatMap(_.showtimes)))
+        val representative = ScrapeListing.folded(group)
         val prior = previousOf.get(ListingKey.of(cinema, representative)).flatMap(ref => storedById.get(ref.id))
           .flatMap(_.record.data.get(source))
         (source: Source) -> slots.build(representative, prepared.cleaned(representative), prior)

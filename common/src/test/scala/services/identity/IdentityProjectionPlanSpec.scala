@@ -337,6 +337,17 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
     oneFilm.films.head.record.data.keySet shouldBe Set(CinemaShowing.keyFor(KinoApollo, "Lalka", normalizer))
   }
 
+  // DE Schauburg Karlsruhe (recording 38326582997) bills Oakley's 2026 "Sinn und Sinnlichkeit (OmU)" with its year and the
+  // "(OV)" print without one, beside Ang Lee's "Sinn und Sinnlichkeit" (1996): the two prints folded into one slot of the
+  // 2026 film under the yearless row's facts, and a slot naming no year could no longer tell the 2026 print from Lee's film.
+  "A venue's two prints of one film, one dated" should "fold into one slot carrying the date" in {
+    val dated    = row(KinoApollo, "Lalka 3D", Some(2026))
+    val undated  = row(KinoApollo, "Lalka 2D", hours = Seq(3))
+    val folded   = plan(Seq(dated, undated), resolution(decision(Some(2026), dated, undated)))
+    val atVenue  = folded.films.head.record.data.toSeq.collect { case (CinemaShowing(KinoApollo, _), slot) => slot }
+    atVenue.map(slot => (slot.releaseYear, slot.showtimes.size)) shouldBe Seq((Some(2026), 3))
+  }
+
   // A page read lands in venue_pages and the slot memo's key reads it: no listing moved, yet the slot is built anew.
   "A venue slot" should "be built again when its page's read moves, its listings unmoved" in {
     val has   = row(KinoApollo, "Lalka", page = Some(hasPage))

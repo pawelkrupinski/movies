@@ -63,13 +63,25 @@ object ScrapeListing {
       formatted.groupBy(cm => (normalizer.sanitize(cleaned(cm)), pageApart(cm))).toSeq
         .sortBy { case ((k, page), _) => (k, page.getOrElse("")) }
         .flatMap { case (_, group) => filmsOf(group, normalizer) }
-        .map { group =>
-          if (group.lengthCompare(1) == 0) group.head
-          else MovieRecordMerge.slotRepresentative(group)
-            .copy(showtimes = MovieRecordMerge.dedupShowtimes(group.flatMap(_.showtimes)))
-        }
+        .map(folded)
     Prepared(deduped, cleaned)
   }
+
+  /** One venue's rows of one film on one slot, as one: the representative's fields
+   *  ([[MovieRecordMerge.slotRepresentative]]) over every row's showtimes — and, where the
+   *  representative names no year, the one year its siblings name. DE Schauburg Karlsruhe's
+   *  yearless "Sinn und Sinnlichkeit (OV)" represented its dated "(OmU)" print of Oakley's 2026
+   *  film, and a slot naming no year could not be told from Ang Lee's film beside it. */
+  def folded(group: Seq[CinemaMovie])(using LatestTitleYear): CinemaMovie =
+    if (group.lengthCompare(1) == 0) group.head
+    else {
+      val representative = MovieRecordMerge.slotRepresentative(group)
+      val dated = if (yearOf(representative).isDefined) representative else group.flatMap(yearOf).distinct match {
+        case Seq(year) => representative.copy(movie = representative.movie.copy(releaseYear = Some(year)))
+        case _         => representative
+      }
+      dated.copy(showtimes = MovieRecordMerge.dedupShowtimes(group.flatMap(_.showtimes)))
+    }
 
   /** The films a venue's same-title rows name, told apart only by what the venue itself
    *  published — the discriminator `ListingKey.Published` keys a page-less listing by, never a
