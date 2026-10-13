@@ -3,10 +3,11 @@
 # cache from a run's artifacts or a git ref, and a tree's classpath compiled only when a source is newer.
 # Run: bash scripts/identity-tools-test.sh
 set -uo pipefail
-# run from a git hook, these would point the scratch repository's git at the real one
-unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 . "$REPO_ROOT/scripts/shell-spec.sh"
+# the scratch repository below is built only through the isolating helper: run from a hook, a bare git would act on
+# the repository being pushed
+. "$REPO_ROOT/scripts/scratch-git.sh"
 
 printf '\033[36m▸\033[0m identity-tools.sh\n'
 
@@ -35,7 +36,7 @@ repo="$work/repo"
 mkdir -p "$repo/test/resources/fixtures/identity-unmatched"
 echo pl-at-ref > "$repo/test/resources/fixtures/identity-unmatched/pl.json.gz"
 echo "labels-at-ref" > "$repo/test/resources/fixtures/identity-unmatched/labels.tsv"
-git -C "$repo" init -q && git -C "$repo" add -A && git -C "$repo" -c user.email=t@t -c user.name=t commit -qm capture
+scratch_repo "$repo" && scratch_git "$repo" add -A && scratch_git "$repo" commit -qm capture
 echo "labels-here" > "$repo/test/resources/fixtures/identity-unmatched/labels.tsv"
 
 tools() {
