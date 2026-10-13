@@ -17,10 +17,10 @@ final class FilmTable(films: Seq[FilmTable.F], normalizer: TitleNormalizer) exte
   override def candidates(q: CandidateQuery): Answer[Seq[Hit]] = Answer.Known(q match {
     case CandidateQuery.Title(text) =>
       val want = words(text)
-      inTmdb.filter(f => f.searched && want.nonEmpty && (f.title +: (f.original.toSeq ++ f.alternatives)).exists(t => want.subsetOf(words(t))))
+      inTmdb.filter(f => f.searched && want.nonEmpty && (f.title +: (f.original.toSeq ++ f.alternatives.diff(f.unindexed))).exists(t => want.subsetOf(words(t))))
         .sortBy(-_.popularity).map(hit)
     case CandidateQuery.Director(name) => inTmdb.filter(f => f.director == name || f.directorAliases.contains(name)).map(hit)
-    case CandidateQuery.Imdb(title)    => inTmdb.filter(f => words(f.title) == words(title) || f.imdbTitles.exists(words(_) == words(title))).map(hit)
+    case CandidateQuery.Imdb(title)    => inTmdb.filter(f => f.suggested && (words(f.title) == words(title) || f.imdbTitles.exists(words(_) == words(title)))).map(hit)
     // and the films only IMDb holds, under their fallback ids
     case CandidateQuery.ImdbTitled(t)  => inTmdb.filter(titledIn(_, t)).map(hit) ++
       films.filter(f => f.imdbOnly && titledIn(f, t)).flatMap(f => FallbackIds.of(FallbackIds.Source.Imdb, f.id).map(id => hit(f).copy(tmdbId = id, popularity = 0.0)))
@@ -43,12 +43,16 @@ object FilmTable {
  *  record of — only the IMDb-titled question answers it, under its fallback id ([[FallbackIds]]). `released`: the day TMDB
  *  dates its release, a broadcast's air date. `releaseCountries`: the countries TMDB dates a release in, codes run
  *  together ([[IdentityMeasures.Film.releaseCountries]]). `original`: its original title, when TMDB's localised one is
- *  another ("RBO 2026/27: Schwanensee (The Royal Ballet)" of "Royal Ballet & Opera 2026/27: Swan Lake"). */
+ *  another ("RBO 2026/27: Schwanensee (The Royal Ballet)" of "Royal Ballet & Opera 2026/27: Swan Lake"). `unindexed`: the
+ *  alternatives among its titles TMDB's search does not match a query against (Kiselyov's "Mira", 864101, which a search
+ *  for "Mira" does not return, only one for "Last Signal"). `suggested`: IMDb's suggestions for a title it carries list it —
+ *  they list a title's best-known films only (Kiselyov's "Mira" alone, of the eight). */
   final case class F(id: Int, title: String, year: Int, director: String, runtime: Int, popularity: Double = 10.0,
                      alternatives: Seq[String] = Nil, searched: Boolean = true, countries: Seq[String] = Nil,
                      directorAliases: Seq[String] = Nil, imdbTitles: Seq[String] = Nil, imdbOnly: Boolean = false,
                      released: Option[java.time.LocalDate] = None, releaseCountries: Option[String] = None,
-                     releases: Option[String] = None, original: Option[String] = None)
+                     releases: Option[String] = None, original: Option[String] = None, unindexed: Seq[String] = Nil,
+                     suggested: Boolean = true)
 
   /** A listing publishing only its title and what it is given, keyed as a page-less venue keys it. */
   def listing(venue: Cinema, title: String, year: Option[Int] = None, director: Option[String] = None,

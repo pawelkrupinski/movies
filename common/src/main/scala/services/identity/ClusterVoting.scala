@@ -7,14 +7,16 @@ import services.identity.Scored.Accepted
  *  on its members' pooled evidence ([[vote]]). */
 private[identity] final class ClusterVoting(scoring: CandidateScoring, families: Families, acceptance: Acceptance) {
   import scoring.calibration
-  import scoring.generation.ownSearch
   import acceptance.weights
 
   /** Does `n`'s own title evidence name `film`: its title searches returned it, or its title (a
    *  whole spelling, its original title or a segment) names the film's and not another
    *  instalment of its series (`IdentityMeasures.namesFilm`)? */
   private def titleNames(node: EvidenceNode, film: Candidate): Boolean =
-    ownSearch(node.id).contains(film.tmdbId) || IdentityMeasures.namesFilm(node.evidence.measured, film.film)
+    {
+      val scope = families.scopeOf(node)
+      scope.reach(node).search.contains(film.tmdbId) || IdentityMeasures.namesFilm(scope.evidenceOf(node).measured, film.film)
+    }
 
   /** The group vote over a cluster's POOLED scoring: the accepted film — but a film no member's
    *  title names, which only a credited director's filmography reached, only when nothing else

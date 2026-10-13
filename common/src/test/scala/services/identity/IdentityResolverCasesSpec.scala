@@ -2225,6 +2225,39 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
       (linked ++ others).map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(1175842)))
   }
 
+  it should "leave no pull toward a namesake whose facts the title's other sources contradict" in {
+    // DE "Mira", recording 38351832400: Cineamo links 21 venues' bare "Mira"/"MIRA" to 1621242m, a record TMDB no longer
+    // holds, copying its original title "Last Signal"; kinoheld's page ("MIRA" [2026] {Marie Limkilde} [85′], the German
+    // release's year) and five venues' "Mira" [2025] {Marie Limkilde} [86′] state Limkilde's Danish film. The link was
+    // overruled, yet the bare nodes pooled to 1630377, a 2026 Brazilian 16-minute short, at 86.0% — and "MIRA" took the
+    // Russian 2022 "Mira" by IMDb's suggestion. Records as TMDB holds them, German titles, its release countries.
+    val de     = models.Cinema.all.filter(c => models.City.forCinema(c).exists(_.country.language.getCountry == "DE")).take(17)
+    val films  = Seq(F(1555986, "Mira", 2025, "Marie Limkilde", 85, 2.2076, releaseCountries = Some("DEDKEEKRNLTW")),
+      F(1630377, "Mira", 2026, "Daniella Saba", 16, 2.4933, releaseCountries = Some("BRFR")),
+      F(864101, "Last Signal", 2022, "Дмитрий Киселёв", 110, 5.608, alternatives = Seq("Mira", "Firefall", "12 Horas para el Fin del Mundo"),
+        original = Some("Мира"), releaseCountries = Some("BRDOFRKRRUTWUS"), unindexed = Seq("Mira"), imdbTitles = Seq("Mira")),
+      F(90503, "Mira", 1971, "Fons Rademakers", 95, 1.7029, releaseCountries = Some("BEFRNL")),
+      F(1346478, "Mira", 2024, "Ορφέας Περετζής", 14, 0.9312, releaseCountries = Some("GR")),
+      F(1175856, "Mira", 2023, "Eva Louise Hall", 12, 0.7484, releaseCountries = Some("CAJPUS")),
+      F(646073, "Mira", 2016, "Lloyd Belcher", 42, 0.4074, releaseCountries = Some("US")),
+      F(1537312, "Mira", 2025, "Sóllon Rodrigues", 0, 0.4504, releaseCountries = Some("BR"))).map(f => f.copy(suggested = f.id == 864101))
+    val linked = de.take(10).zipWithIndex.map { case (v, i) =>
+      fed(listing(v, if (i < 5) "MIRA" else "Mira"), "cineamo", "1621242m").copy(originalTitle = Some("Last Signal")) }
+    val stated = de.slice(10, 12).map(v => listing(v, "MIRA", Some(2026), Some("Marie Limkilde"), Some(85))
+      .copy(originalTitle = Some("Mira"), page = Some("https://www.kinoheld.de/film/mira"))) ++
+      de.slice(12, 17).map(v => fed(listing(v, "Mira", Some(2025), Some("Marie Limkilde"), Some(86)), "webedia", "1000027463"))
+    val r = shipped(linked ++ stated, films)
+    withClue((linked ++ stated).map(l => r.decisionOf(l.key).render).distinct.mkString("\n"))(
+      (linked ++ stated).map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(1555986)))
+    // the bare node's own reading: the short's 2026 is no backing beside Limkilde's credit and 85 minutes, so its release
+    // veto stands; and the copied original title's search ranks nothing
+    val bare = IdentityResolver.candidatesOf(linked ++ stated, new FilmTable(films, normalizer), normalizer)(linked.contains).flatMap(_.candidates)
+    withClue(bare.map(_.render).mkString("\n")) {
+      bare.filter(_.tmdbId == 1630377).map(_.denial.exists(ReleaseVeto.vetoes)).distinct shouldBe Seq(true)
+      bare.filter(_.tmdbId == 864101).map(_.searchRank).distinct shouldBe Seq(None)
+    }
+  }
+
   "A stage house's relay of a work" should "not take a screen namesake of the work" in {
     // DE "Paris Opera Ballett: Romeo und Julia" ×2 took Zeffirelli's 1968 film by its pooled evidence at 50.7%, and
     // "RB&O Live: Tosca (Oper)" the 1976 film: TMDB holds no record of either relay.

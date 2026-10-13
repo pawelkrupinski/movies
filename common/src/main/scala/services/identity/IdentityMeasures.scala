@@ -1628,11 +1628,19 @@ object IdentityMeasures {
   }
   /** Do the listing's own facts back `f`? The venue's title must NAME the film: a year or a director
    *  alone backs every film of that year or that director, and the walk of a director's filmography
-   *  turns up all of them. */
+   *  turns up all of them. Nor may another fact it publishes rule the film out ([[factsRuleOut]]). */
   private def backsFilm(l: Listing, f: Film): Boolean =
     namesFilm(l, f) && (
       l.statedYear.exists(y => f.year.contains(y)) ||
-        f.directorCredits.exists(creditRelation(l.directorCredits, _) == Category("same_person")))
+        f.directorCredits.exists(creditRelation(l.directorCredits, _) == Category("same_person"))) && !factsRuleOut(l, f)
+
+  /** Does a fact the listing publishes beside the year it shares with `f` rule the film out: another person credited
+   *  ([[FactRelations.otherPeople]]), or a runtime [[RuntimeContradiction]] minutes or more off? A year is every film of
+   *  that year's: DE kinoheld's "MIRA" [2026] {Marie Limkilde} [85′] backed Daniella Saba's 16-minute 2026 "Mira", which
+   *  then stood beside Limkilde's film for every bare "Mira" as corroborated, its release veto lifted. */
+  private def factsRuleOut(l: Listing, f: Film): Boolean =
+    f.directors.exists(FactRelations.otherPeople(l.directors, _)) ||
+      (runtimeDelta(l, f, None) match { case Number(off) => math.abs(off) >= RuntimeContradiction; case _ => false })
 
   /** [[corroboratingVenues]] for every asker of the same title groups, each group's backing venues
    *  of a film found once: a wide release lists one title at thousands of venues over one candidate
