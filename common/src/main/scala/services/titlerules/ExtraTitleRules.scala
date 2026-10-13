@@ -362,6 +362,14 @@ object ExtraTitleRules {
     // comes WITH, and replacing the title with that searched for nothing. Case-insensitivity is scoped to the
     // keyword, since a global (?i) makes \p{Lu} match lowercase too.
     searchReplace("xtra-pokaz-filmu",              """(?u)^.*?\b(?i:(?:pokaz(?:\s+specjalny)?|(?:przed)?premiera)\s+filmu)\s*:?\s+(?:["„“]([^"„“”]+?)["”](?i:\s+i\s+(?:rozmowa|spotkanie|dyskusja)\b.*)?|(\p{Lu}[^"„“”]*?))\s*$""", "$1$2", "'… pokaz [specjalny] / [przed]premiera filmu[:] <film> [i rozmowa …]' screening of a film, the film quoted (straight, „…” or “…”) or capitalised"),
+    // A Q&A clause from its connector on: after a spaced dash ("- with Q&A and optional Ely Walking Tour"), as a
+    // screening "and Q&A" ("…: Film Screening and Q&A Panel", "…Screening & Q&A"), or after an ampersand naming the
+    // guest ("& Paul Greengrass Q&A" — a two-word name, so "Romeo & Juliet Q&A" keeps its film). Before the seed's
+    // "+ <event>" strip, which took only the "+ Q&A" of "… PART 2 screenings + Q&A" once the "(18)" that stopped it
+    // came off at ingest, and searched "… PART 2 screenings".
+    searchStrip("xtra-qa-clause-tail",
+      """(?iu)(?:\s+[-–—|]\s+(?:(?:with|plus|and|&)\s+)?(?:(?:live|in[-\s]person)\s+)?|(?:\s*:\s*|(?<=\S)\s*)(?:Film\s+)?Screenings?\s*(?:and|&|\+|with)\s*(?:live\s+)?|\s+&\s+(?-i:\p{Lu})[\p{L}'’.-]+\s+(?-i:\p{Lu})[\p{L}'’-]+\s+)Q\s*&\s*A(?![\p{L}\p{N}]).*$""",
+      "'<film> - with Q&A and …' / '<film>: Film Screening and Q&A Panel' / '<film>...Screening & Q&A' / '<film> & <Guest Name> Q&A' (UK 2026-10-13: Palace Cinema Ely, Midlands Arts Centre, Rio, Curzon)"),
   )
 
   /** Strips that fix enrichment without merging the row away — a premiere or a
@@ -472,14 +480,8 @@ object ExtraTitleRules {
     // film's own words are never all note words, and a segment without a separator is taken only when it opens on a
     // special audience. First, so a certificate the note sat behind is trailing for the certificate rule below.
     searchStrip("xtra-screening-note-segment",
-      s"""(?iu)(?:\\s*\\((?:U|PG|12A?|15|18)\\))?(?:\\s*\\(\\s*(?=$NoteSegment\\s*\\))$NoteSegment\\s*\\)|\\s*[-–—|:]\\s*(?=$NoteSegment\\s*$$)$NoteSegment|(?<=\\S)\\s+(?=$BareAudience)$NoteSegment)\\s*$$""",
+      s"""(?iu)(?:\\s*\\({{CERT}}\\))?(?:\\s*\\(\\s*(?=$NoteSegment\\s*\\))$NoteSegment\\s*\\)|\\s*[-–—|:]\\s*(?=$NoteSegment\\s*$$)$NoteSegment|(?<=\\S)\\s+(?=$BareAudience)$NoteSegment)\\s*$$""",
       "'<film> (Relaxed Screening)' / '<film>: Autism Friendly' / '<film> (PG) PARENT & BABY' / '<film> (English Dub, 4K Restoration)' screening note made of nothing but note words (UK 2026-10-13: Electric Palace Hastings, Showcase, Phoenix, DCA)"),
-    // A Q&A clause from its connector on: after a spaced dash ("- with Q&A and optional Ely Walking Tour"), as a
-    // screening "and Q&A" ("…: Film Screening and Q&A Panel", "…Screening & Q&A"), or after an ampersand naming the
-    // guest ("& Paul Greengrass Q&A" — a two-word name, so "Romeo & Juliet Q&A" keeps its film).
-    searchStrip("xtra-qa-clause-tail",
-      """(?iu)(?:\s+[-–—|]\s+(?:(?:with|plus|and|&)\s+)?(?:(?:live|in[-\s]person)\s+)?|(?:\s*:\s*|(?<=\S)\s*)(?:Film\s+)?Screenings?\s*(?:and|&|\+|with)\s*(?:live\s+)?|\s+&\s+(?-i:\p{Lu})[\p{L}'’.-]+\s+(?-i:\p{Lu})[\p{L}'’-]+\s+)Q\s*&\s*A(?![\p{L}\p{N}]).*$""",
-      "'<film> - with Q&A and …' / '<film>: Film Screening and Q&A Panel' / '<film>...Screening & Q&A' / '<film> & <Guest Name> Q&A' (UK 2026-10-13: Palace Cinema Ely, Midlands Arts Centre, Rio, Curzon)"),
     // An introduction clause from its connector on — "with", "plus", "and", "&", "+" or a spaced dash, then an
     // introduction (recorded, live, special) or a pre-/post-screening Q&A, and who gives it — and everything billed
     // after it: "<film> with Introduction by <name> AND post-screening Q&A with <names>" leaves whole. The connector
@@ -502,7 +504,7 @@ object ExtraTitleRules {
       "'<film> FFFL' / '<film> - FFFL' festival acronym after a mixed-case title (UK 2026-10-13: Ciné Lumière's French Film Festival)"),
     searchStrip("xtra-film-club-suffix",           """(?iu)(?<=\S)\s*[-–—|]\s*Film\s+Club\s*$""",
       "'<film> - Film Club' club screening after the film (UK 2026-10-13: Pontardawe Arts Centre: Fatherland, Kokuho, The Last Viking)"),
-    searchStrip("xtra-certificate-year-suffix",    """(?iu)\s*\((?:U|PG|12A?|15|18|TBC)\)\s+\d{2}\s*$""",
+    searchStrip("xtra-certificate-year-suffix",    """(?iu)\s*\({{CERT}}\)\s+\d{2}\s*$""",
       "'<film> (15) 26' certificate and the year's last two digits (UK 2026-10-13: Hippodrome Bo'ness)"),
     // A print tag, then a strand or festival behind a spaced dash ("[35mm] - Dirt in the Gate Movies", "4K - FFFL"),
     // and a print billed in front of the film ("4K Film: Dracula: The Cut They Tried To Bury").
@@ -520,7 +522,7 @@ object ExtraTitleRules {
     searchStrip("xtra-runtime-suffix",             """(?iu)\s*\(?(?<![\p{L}\p{N}])\d{2,3}\s*mins?(?:\s+TBC)?\)?(?:\s+TBC)?\s*$""",
       "'<film> (15) (2026) 100 mins' / '(160 mins TBC)' box-office running time (Electric Palace Bridport)"),
     searchStrip("xtra-certificate-suffix",
-      """(?iu)\s*(?:[-–—]\s*Cert(?:ificate)?\.?\s+(?:U|PG|12A?|15|18|TBC)|\((?:Cert\.?\s+)?(?:U|PG|12A?|15|18|TBC)(?:\s+TBC)?\))(?=\s*(?:\(\d{4}\)\s*)?$)""",
+      """(?iu)\s*(?:[-–—]\s*Cert(?:ificate)?\.?\s+{{CERT}}|\((?:Cert\.?\s+)?{{CERT}}(?:\s+TBC)?\))(?=\s*(?:\(\d{4}\)\s*)?$)""",
       "'<film> - Cert 12A' / '<film> (15 TBC) (2026)' / '<film> (Cert TBC)' BBFC certificate the box office bills in the title (Lighthouse Poole, Electric Palace Bridport); a '(YYYY)' after it stays"),
     // A Q&A after a plus, glued or spaced ("+Q&A with Graham Fellows", "Records+ Q&A", "plus live Q&A") and whatever
     // follows it, where the seed's spaced "+ <event>" strip stops at a bracket ("+ Q&A (18)") — but only when the
@@ -928,10 +930,6 @@ object ExtraTitleRules {
     // A festival's preview named after a pipe: the preview and the festival it previews go together.
     searchStrip("xtra-preview-pipe-tail",          """(?iu)(?<=\S)\s*\|\s*\p{L}*preview(?![\p{L}\p{N}]).*$""",
       "'<film> | Preview Osteuropäische Filmtage 2026' festival-preview tail (DE 2026-10-12: Zentralkino Dresden Minotaurus)"),
-    // A re-release mark ("Wiederaufführung") in brackets, wherever it sits — "(OV) (WA)", "(WA: 2026)": no film's own
-    // title brackets "WA".
-    searchStrip("xtra-rerelease-bracket",          """(?iu)\s*\(\s*WA(?:\s*:?\s*\d{4})?\s*\)""",
-      "'<film> (OV) (WA)' / '<film> (WA: 2026)' re-release mark (DE 2026-10-13: CineStar Cubix's Tribute von Panem)"),
     // A subtitle note in brackets naming the languages ("(Mandarin with engl.Sub)", "(koreanisch mit engl.UT)",
     // "(deutsch with English subs)" — six in the DE recording of 2026-10-13): FormatTags' bracket peel takes
     // "(subtitled)", not an abbreviated "Sub" or "UT" inside a sentence.

@@ -40,7 +40,11 @@ object TitleRulePlaceholders {
       "One character that is NOT a separator — the building block for a banner-name guard like " +
       "^DKF\\s+{{NSEP}}+{{SEP}} (\"DKF <name>: <film>\"), so the guard stops at the first separator " +
       "instead of backtracking across one into the film title. Narrower than SEP: it excludes the " +
-      "hard separators but keeps '_', so an underscore-glued cycle name is still consumed.")
+      "hard separators but keeps '_', so an underscore-glued cycle name is still consumed."),
+    Placeholder("CERT", """(?:U|PG|12A?|15|18|TBC)""",
+      "A BBFC certificate as a UK box office bills it in a title — U, PG, 12, 12A, 15, 18, or TBC while it " +
+      "awaits one. The bare value only: each rule writes the bracket or the 'Cert' around it. FormatTags " +
+      "peels a trailing one off every listing with the same value set.")
   )
 
   /** name → expansion, consumed by [[PlaceholderExpander]] / [[TitleRuleSet]]. */

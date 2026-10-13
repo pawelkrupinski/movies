@@ -1332,7 +1332,8 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
   /** Listings of the afternoon re-record of 2026-10-12 (run 38251516862) whose TMDB query kept a screening marker
    *  (SearchQueryMarkersSpec over the recorded UK and DE corpora): a Q&A, a special audience, a box office's
    *  certificate, running time and matinee note, a restoration's cut; a preview or Vorpremiere in a new spelling, a
-   *  version tag ahead of the film, a strand and its screen format. Through the whole query path. */
+   *  version tag ahead of the film, a strand and its screen format. Through the whole query path. (A certificate or
+   *  re-release mark ENDING the title comes off at ingest, FormatTags' — TitleFormatWordsSpec holds those.) */
   private val rerecordedScreeningMarkerListings: Seq[(String, String)] = Seq(
     "HeadKandy: Beyond the Chair plus Live Q&A"                             -> "HeadKandy: Beyond the Chair",
     "This Is Pete plus live Q&A"                                            -> "This Is Pete",
@@ -1354,7 +1355,6 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Dracula (1958) 4K Restoration - Cert 12A"                              -> "Dracula (1958)",
     "DRACULA (Hammer 1958) 4K Restoration - Directors Cut"                  -> "DRACULA (Hammer 1958)",
     "Pressure (15 TBC) (2026) 100 mins *SUBTITLED MATINEE*"                 -> "Pressure (2026)",
-    "Its A Wonderful Life (U) (1946) 130 mins"                              -> "Its A Wonderful Life (1946)",
     "Dune: Part Three \"Early Fan Preview\""                                -> "Dune: Part Three",
     "Early Fan Preview | Dune: Part Three"                                  -> "Dune: Part Three",
     "Vorpremiere - Dune: Part Three"                                        -> "Dune: Part Three",
@@ -1391,7 +1391,7 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
    *  (SearchQueryMarkersSpec over the recorded UK and DE corpora). Each night's recording brings its venues' new
    *  spellings of the same few notes, so these are held by SHAPE rather than by spelling: a segment — bracketed, after
    *  a separator, or after a certificate — made of nothing but a screening note's words; a Q&A clause from its
-   *  connector on; a print tag ahead of a strand or the film; a re-release mark; a subtitle note in brackets. Through the whole query path. */
+   *  connector on; a print tag ahead of a strand or the film; a subtitle note in brackets. Through the whole query path. */
   private val screeningNoteListings: Seq[(String, String)] = Seq(
     "Labyrinth (Relaxed Screening)"                                          -> "Labyrinth",
     "Queen at Sea (Relaxed Screening)"                                       -> "Queen at Sea",
@@ -1411,8 +1411,6 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "The Odyssey (2026) [35mm] - Dirt in the Gate Movies"                    -> "The Odyssey (2026)",
     "4K Film: Dracula: The Cut They Tried To Bury"                           -> "Dracula: The Cut They Tried To Bury",
     "4K Film: Ken Russell's The Devils"                                      -> "Ken Russell's The Devils",
-    "Tribute von Panem - Mockingjay: Teil 1 (OV) (WA)"                       -> "Tribute von Panem - Mockingjay: Teil 1",
-    "Tribute von Panem - Songbirds & Snakes (OV) (WA)"                       -> "Tribute von Panem - Songbirds & Snakes",
     "We Are All Strangers (Mandarin with engl.Sub)"                          -> "We Are All Strangers",
     "Possible Love (koreanisch mit engl.UT)"                                 -> "Possible Love",
     "Gohan - Drei Leben auf vier Pfoten (thailändisch mit dt.UT)"            -> "Gohan - Drei Leben auf vier Pfoten",
