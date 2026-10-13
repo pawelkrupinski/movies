@@ -104,9 +104,11 @@ object ListingShape {
   private val DatedWork = """\((?:18|19|20)\d\d\)""".r
   /** Does the venue's own title join two quoted works by a conjunction — a DOUBLE BILL, neither film (user rule): PL
    *  "„Mieszkanie” i „Owoce rajskich drzew spożywamy”", 'MAF: "Obcy" oraz "Milcząca Przyjaciółka"'? Undated, unlike
-   *  [[quotesSeveralDated]]: the conjunction says the two are billed as one programme. */
+   *  [[quotesSeveralDated]]: the conjunction says the two are billed as one programme. The two close the billing: words
+   *  after them say what they are ('"Kumotry" i "All The Diamonds": wystawa i film w dialogu', an exhibition beside the
+   *  film Kumotry). */
   def quotesTwoJoined(rawTitle: String): Boolean = JoinedQuotes.findFirstIn(rawTitle).isDefined
-  private val JoinedQuotes = """(?iu)[„"“][^"”„]+["”]\s*(?:i|oraz|und|and|&|et|y|e)\s+[„"“][^"”„]+["”]""".r
+  private val JoinedQuotes = """(?iu)[„"“][^"”„]+["”]\s*(?:i|oraz|und|and|&|et|y|e)\s+[„"“][^"”„]+["”]\W*$""".r
   private def billsSeveralBySigns(listing: Listing): Boolean =
     SetOfWorks.findFirstIn(listing.rawTitle).isDefined || quotesSeveral(listing.rawTitle) ||
       IdentityMeasures.billsTwoWholeWorks(Evidence.of(listing, None).measured)

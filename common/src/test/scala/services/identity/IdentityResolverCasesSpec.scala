@@ -1467,6 +1467,8 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     // one quoted work is that work, and two quotes a conjunction does not join are a work and its programme
     decided("Kino Kobiet: „Owoce rajskich drzew spożywamy”").film shouldBe Some(80080)
     ListingShape.quotesTwoJoined("„10 na 10”. Przegląd filmów Andrzeja Wajdy: „Pan Tadeusz” (1999)") shouldBe false
+    // words after the two say what they are: an exhibition beside the film (the fixture corpus' PL Kumotry)
+    ListingShape.quotesTwoJoined("\"Kumotry\" i \"All The Diamonds\": wystawa i film w dialogu") shouldBe false
   }
 
   it should "still take the same director's film of the listing's year when both are there" in {
