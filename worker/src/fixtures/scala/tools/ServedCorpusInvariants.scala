@@ -79,18 +79,23 @@ object ServedCorpusInvariants {
     // Each with the page and year its slot records: one venue can list one title as two films ("Belle
     // (2013)" beside "Belle (2021)", Ang Lee's and Georgia Oakley's "Sinn und Sinnlichkeit", Kino
     // Iluzjon's two "Lalka" pages), one slot on each film, told apart by the page the venue printed —
-    // else by the year, the rule the landing itself uses.
-    val holders: Map[(String, String), Seq[(String, Option[String], Option[Int])]] = records.flatMap { r =>
+    // else by the year, the rule the landing itself uses — else, for a listing naming no year (Schauburg
+    // Karlsruhe's "(OV)" print of one of its two "Sinn und Sinnlichkeit"s), by the slot holding its showtimes:
+    // a listing duplicated across films is on both, and still named.
+    final case class Holder(id: String, page: Option[String], year: Option[Int], times: Set[LocalDateTime])
+    val holders: Map[(String, String), Seq[Holder]] = records.flatMap { r =>
       r.record.data.iterator.collect { case (CinemaShowing(c, key), sd) =>
-        (c.displayName, key) -> (r.id.value, sd.filmUrl, ScrapeListing.yearOf(sd))
+        (c.displayName, key) -> Holder(r.id.value, sd.filmUrl, ScrapeListing.yearOf(sd), sd.showtimes.iterator.map(_.dateTime).toSet)
       }
     }.groupMap(_._1)(_._2)
     def holdersOf(cinema: String, key: String, cm: CinemaMovie)(using LatestTitleYear): Seq[String] = {
       val all = holders.getOrElse((cinema, key), Nil)
-      def narrowed(by: Seq[(String, Option[String], Option[Int])]) =
-        if (all.map(_._1).distinct.sizeIs > 1 && by.nonEmpty) by else all
-      val byPage = cm.filmUrl.filter(_.trim.nonEmpty).fold(Seq.empty)(page => all.filter(_._2.contains(page)))
-      (if (byPage.nonEmpty) narrowed(byPage) else narrowed(all.filter(_._3 == ScrapeListing.yearOf(cm)))).map(_._1).distinct
+      def narrowed(from: Seq[Holder], by: Seq[Holder]) =
+        if (from.map(_.id).distinct.sizeIs > 1 && by.nonEmpty) by else from
+      val byPage = cm.filmUrl.filter(_.trim.nonEmpty).fold(Seq.empty)(page => all.filter(_.page.contains(page)))
+      val byFacts = if (byPage.nonEmpty) narrowed(all, byPage) else narrowed(all, all.filter(_.year == ScrapeListing.yearOf(cm)))
+      val times   = cm.showtimes.iterator.map(_.dateTime).toSet
+      narrowed(byFacts, byFacts.filter(h => times.nonEmpty && times.subsetOf(h.times))).map(_.id).distinct
     }
 
     // What the read model serves, per (base film id, cinema).

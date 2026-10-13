@@ -129,6 +129,20 @@ class ServedCorpusInvariantsSpec extends AnyFlatSpec with Matchers {
       served = Seq(screening("f1", Helios, Nine), screening("f2", Helios, Seven))) shouldBe empty
   }
 
+  // DE Schauburg Karlsruhe (recording 38326582997): Ang Lee's "Sinn und Sinnlichkeit" (1996), Oakley's 2026 film's dated
+  // "(OmU)" print and its yearless "(OV)" one share a slot key; the "(OV)" print names no year to tell its film by.
+  "a yearless listing of a title a venue lists for two films" should "home on the film whose slot holds its showtimes" in {
+    def dated(title: String, year: Option[Int], at: LocalDateTime) =
+      Helios -> CinemaMovie(Movie(title, releaseYear = year), Helios, None, None, None, Nil, Nil, Seq(Showtime(at, bookingUrl = None)))
+    def holding(id: String, year: Int, at: LocalDateTime*) = StoredMovieRecord("Sinn und Sinnlichkeit", Some(year),
+      MovieRecord(tmdbId = Some(year), data = Map[Source, SourceData](CinemaShowing.keyFor(Helios, "Sinn und Sinnlichkeit", titleNormalizer) ->
+        SourceData(title = Some("Sinn und Sinnlichkeit"), releaseYear = Some(year), showtimes = at.map(Showtime(_, None))))), FilmId(id))
+    check(listings = Seq(dated("Sinn und Sinnlichkeit", Some(1996), Seven), dated("Sinn und Sinnlichkeit", None, Nine)),
+      records = Seq(holding("f1", 1996, Seven), holding("f2", 2026, Nine)),
+      cards = Seq(card("f1"), card("f2")),
+      served = Seq(screening("f1", Helios, Seven), screening("f2", Helios, Nine))) shouldBe empty
+  }
+
   "showtimes before `from`" should "count on neither side" in {
     // A failed venue keeps its old slot, yesterday's 19:00 included; that is not an invented showtime.
     check(listings = Seq(listing(Helios, "Diuna", Nine), listing(Helios, "Lalka", Nine)),
