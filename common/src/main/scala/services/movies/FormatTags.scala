@@ -209,7 +209,9 @@ object FormatTags {
       .flatMap(FormatToken.get)
       .distinct
       .toList
-    (t, tokens)
+    // A peel can leave a library-style filing at the end it bared — "Rocky Horror Picture Show, The (WA)" — which the
+    // tidy-up's fronting, run before the peel, saw with the mark still behind it.
+    (TitleText.frontArticle(t), tokens)
   }
 
   /** Record every [[FormatToken]]-bearing word in `chunk` (a single token or a

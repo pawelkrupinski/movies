@@ -180,6 +180,17 @@ class TitleFormatWordsSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  // Traumpalast Leonberg (DE recording 2026-10-13) files a re-release library-style, "Rocky Horror Picture Show, The
+  // (WA)": the tidy-up's article fronting saw the mark still at the end, so the peel left "…, The" — a phrase cut off.
+  it should "front the article a peel leaves filed at the title's end" in {
+    FormatTags.extractFormatTags("Rocky Horror Picture Show, The (WA)") shouldBe ("The Rocky Horror Picture Show", Nil)
+    FormatTags.extractFormatTags("Perfekte Urlaub, Der (OV) (WA: 2026)") shouldBe ("Der Perfekte Urlaub", List("OV"))
+    FormatTags.extractFormatTags("Piano Tuner, The (15)") shouldBe ("The Piano Tuner", Nil)
+    val titles = TitleNormalizer.forCountry(models.Country.Germany)
+    ScrapeListing.slotKey(models.LanternhouseCinema, "Rocky Horror Picture Show, The (WA)", titles) shouldBe
+      ScrapeListing.slotKey(models.LanternhouseCinema, "The Rocky Horror Picture Show", titles)
+  }
+
   it should "leave a title's own 'Wa' alone" in {
     FormatTags.extractFormatTags("Wa (2019)")._1 shouldBe "Wa (2019)"
     FormatTags.extractFormatTags("Wasabi")._1 shouldBe "Wasabi"
