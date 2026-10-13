@@ -126,8 +126,9 @@ class FilmWriteFenceSpec extends AnyFlatSpec with Matchers {
     applying.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS) shouldBe true
     val write = new Thread(() => fence.writing(film) { order.add("wrote"); () })
     write.start()
-    // The write is parked on the fence's monitor, not running.
-    val deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5)
+    // The write is parked on the fence's monitor, not running. Bounded by Settle, not a few
+    // seconds: on a loaded machine the write thread can sit RUNNABLE, unscheduled, past 5s.
+    val deadline = System.nanoTime() + SpecTimeouts.Settle.toNanos
     while (write.getState != Thread.State.BLOCKED && System.nanoTime() < deadline) Thread.onSpinWait()
     write.getState shouldBe Thread.State.BLOCKED
     order.isEmpty shouldBe true
