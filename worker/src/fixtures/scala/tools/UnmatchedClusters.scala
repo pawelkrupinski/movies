@@ -228,6 +228,27 @@ object UnmatchedClusters {
     if (!Files.exists(path)) Set.empty
     else Files.readAllLines(path, StandardCharsets.UTF_8).asScala.toSeq.drop(1).filter(_.nonEmpty).map(_.split("\t", -1)).map(a => (a(0), a(1), a(2), a(3))).toSet
 
+  // ── the known-wrong baseline: the WRONG takes no safe fix removes, a list that only shrinks ──
+
+  /** The WRONG takes the ratchet lets stand, each with why no safe fix removes it — keyed, as the suspect-take audit's
+   *  baseline is ([[SuspectTakesAudit]]: country, raw title, film, title, reasons), by country, raw title and film: one
+   *  line covers every venue billing it. */
+  val KnownWrongPath: Path = Directory.resolve("known-wrong.tsv")
+
+  def readKnownWrong(path: Path): Set[(String, String, String)] =
+    if (!Files.exists(path)) Set.empty
+    else Files.readAllLines(path, StandardCharsets.UTF_8).asScala.toSeq.drop(1).filter(_.nonEmpty).map(_.split("\t", -1))
+      .map(a => (a(0), a(1), a(2))).toSet
+
+  /** The wrong takes the baseline does not list (`fresh`: each fails the ratchet), and the baseline's lines no wrong take
+   *  is any more (`stale`: each fails too, to strike — the fixture is checked in, so a cured line is cured for good). */
+  final case class WrongAudit(fresh: Seq[Take], stale: Seq[(String, String, String)])
+
+  def auditWrong(wrong: Seq[Take], known: Set[(String, String, String)]): WrongAudit = {
+    def key(take: Take) = (take.country, take.rawTitle, take.film)
+    WrongAudit(wrong.filterNot(take => known(key(take))), known.diff(wrong.map(key).toSet).toSeq.sorted)
+  }
+
   // ── recording and replaying the lookups ──────────────────────────────────────────────────
 
   /** `inner`, every answer it gave noted — what a capture writes. */

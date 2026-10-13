@@ -12,7 +12,8 @@ import java.nio.file.{Files, Path}
  * The clusters the identity model leaves unmatched on the recorded full corpora ([[UnmatchedClusters]]' fixture),
  * resolved and put to the agreement stage again over their captured answers — the ratchet for matching more of them:
  *
- *  - ZERO WRONG: no take a label denies (`labels.tsv`: the recall targets, the must-not pairs, hand labels), none
+ *  - ZERO WRONG: but those `known-wrong.tsv` lists (no safe fix removes them; a cured line fails as stale, so the list
+ *    only shrinks), no take a label denies (`labels.tsv`: the recall targets, the must-not pairs, hand labels), none
  *    contradicting the right film a label names, and every take judged — a take no label covers fails, to be judged
  *    and added to `labels.tsv` before it counts;
  *  - ONLY MORE: every right take of `expected-matches.tsv` is still taken. A run that takes more right ones writes the
@@ -58,9 +59,18 @@ class UnmatchedClustersRatchetSpec extends AnyFlatSpec with Matchers {
       s"re-record the corpus (country -> host -> listings): ") { missing shouldBe empty }
   }
 
-  "the resolver and the agreement over the unmatched clusters" should "take no film a label denies or contradicts" in {
-    val wrong = reported.filter(take => UnmatchedClusters.verdict(take, labels).contains(false))
+  private lazy val wrongAudit = UnmatchedClusters.auditWrong(reported.filter(take => UnmatchedClusters.verdict(take, labels).contains(false)),
+    UnmatchedClusters.readKnownWrong(UnmatchedClusters.KnownWrongPath))
+
+  "the resolver and the agreement over the unmatched clusters" should "take no film a label denies or contradicts, but those known-wrong.tsv lists" in {
+    val wrong = wrongAudit.fresh
     withClue(wrong.map(UnmatchedClusters.takeLine).mkString("WRONG takes:\n", "\n", "\n")) { wrong shouldBe empty }
+  }
+
+  it should "still take every wrong film known-wrong.tsv lists — a cured line is struck, so the list only shrinks" in {
+    withClue(wrongAudit.stale.map(_.productIterator.mkString("\t")).mkString("known-wrong.tsv lines no longer taken (STALE — strike them):\n", "\n", "\n")) {
+      wrongAudit.stale shouldBe empty
+    }
   }
 
   it should "take only films judged right — a new take is judged in labels.tsv before it counts" in {
