@@ -1,6 +1,9 @@
 package models
 
-/** Which kind of old address a slug a country 301s is ([[Country.redirectKind]]). */
+/** A slug a country 301s: the page it goes to, and the kind of old address it is. */
+final case class SlugRedirect(to: String, kind: SlugRedirectKind)
+
+/** Which kind of old address a slug a country 301s is ([[Country.redirect]]). */
 enum SlugRedirectKind {
   /** A page's slug before it was retired or renamed (`/uk/kent/` → Chatham). */
   case Retired

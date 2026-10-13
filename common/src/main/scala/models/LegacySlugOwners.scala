@@ -3,7 +3,11 @@ package models
 /**
  * TEMPORARY: preserves pre-per-country-slug resolution; drop later — drop when
  * `legacy:front_door_old_owner` (`kinowo_web_legacy_address_last_called_seconds`)
- * shows no human or app calls over 30 days.
+ * shows no human or app calls over 30 days. That kind counts only the web's front
+ * door, and only where an entry here changed the answer (47 do; the rest give the
+ * answer the rule without the table gives). The apps resolve bare and `kinowo://`
+ * links from the catalog's copy of this table on the device, and nothing measures
+ * that: the drop rule speaks for web traffic only.
  *
  * Before every country owned its own slugs, all of them shared one namespace and
  * each slug had exactly one country. This is that namespace — every live and

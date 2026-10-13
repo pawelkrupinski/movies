@@ -531,15 +531,16 @@ class CountrySpec extends AnyFlatSpec with Matchers {
   }
 
   "A bare slug" should "go to its old owner, else the one country that has it, else the first in country order" in {
-    def owner(slug: String) = Country.bareSlugTarget(slug).map(t => t.country.code -> t.viaLegacyOwner)
-    // 1. The old owner, though the UK has a York page now.
+    def owner(slug: String) = Country.bareSlugTarget(slug).map(t => t.country.code -> t.tableChangedAnswer)
+    // 1. The old owner, though the UK has a York page now and comes first: the table
+    //    changed the answer.
     owner("york") shouldBe Some("us" -> true)
     owner("boston") shouldBe Some("us" -> true)
-    // The UK's retired county pages were live UK slugs: the US's Somerset, Kentucky
-    // and Kent, Washington had qualified slugs then.
-    owner("somerset") shouldBe Some("uk" -> true)
-    owner("kent") shouldBe Some("uk" -> true)
-    owner("poznan") shouldBe Some("pl" -> true)
+    // The UK's retired county pages were live UK slugs (the US's Somerset, Kentucky
+    // and Kent, Washington had qualified slugs then) — the UK either way.
+    owner("somerset") shouldBe Some("uk" -> false)
+    owner("kent") shouldBe Some("uk" -> false)
+    owner("poznan") shouldBe Some("pl" -> false)
     // 2. New on this branch, one country: Harrogate is a UK page and nothing else's.
     LegacySlugOwners.owners.get("harrogate") shouldBe None
     owner("harrogate") shouldBe Some("uk" -> false)
@@ -555,6 +556,10 @@ class CountrySpec extends AnyFlatSpec with Matchers {
       Country.byCode(code).flatMap(_.resolve(slug)).isEmpty
     }
     lost shouldBe empty
+    // The entries that change an answer are the ones the drop rule waits on.
+    val changing = LegacySlugOwners.owners.keys.filter(s => Country.bareSlugTarget(s).exists(_.tableChangedAnswer))
+    info(s"${changing.size} of ${LegacySlugOwners.owners.size} entries change the answer")
+    changing.size should (be > 0 and be < 100)
     Country.switchable.map(_.code).toSet should contain allElementsOf LegacySlugOwners.owners.values.toSet
   }
 

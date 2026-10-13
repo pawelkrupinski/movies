@@ -32,7 +32,8 @@ class LegacyAddressUsageSpec extends AnyFlatSpec with Matchers with BeforeAndAft
   private val Browser = "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0)"
   private val Bot     = "Mozilla/5.0 (compatible; Googlebot/2.1)"
 
-  /** One deployment's two redirect filters over a router that answers 200,
+  /** One deployment's two redirect filters over a stand-in router that, like the
+   *  real one, 301s a bare `/{slug}` to `/{slug}/` and answers 200 otherwise,
    *  counting into a registry of its own. */
   private final class Deployment(country: Country) {
     val registry = new PrometheusRegistry()
@@ -40,10 +41,22 @@ class LegacyAddressUsageSpec extends AnyFlatSpec with Matchers with BeforeAndAft
     private val chain: RequestHeader => Future[Result] = {
       val renamed   = new RenamedCityRedirectFilter(country, legacy)
       val frontDoor = new FrontDoorRedirectFilter(country, legacy)
-      renamed(frontDoor(_ => Future.successful(Results.Ok)))
+      val router: RequestHeader => Future[Result] = rh =>
+        Future.successful(
+          if (rh.path.count(_ == '/') == 1 && rh.path.length > 1) Results.MovedPermanently(rh.path + "/")
+          else Results.Ok)
+      renamed(frontDoor(router))
     }
     def get(path: String, agent: String, host: String = "localhost"): Result =
       Await.result(chain(FakeRequest("GET", path).withHeaders("Host" -> host, "User-Agent" -> agent)), SpecTimeouts.Io)
+
+    /** `get`, following this deployment's own 301s the way a browser would. */
+    def follow(path: String, agent: String, host: String = "localhost"): Result = {
+      val first = get(path, agent, host)
+      first.header.headers.get("Location").filter(_ => first.header.status == 301)
+        .filter(to => Country.switchable.filter(_ != country).forall(c => c.pathPrefix.isEmpty || !to.startsWith(c.pathPrefix + "/")))
+        .fold(first)(follow(_, agent, host))
+    }
 
     /** kind → client → hits, from the exposition. */
     def hits: Map[(String, String), Double] =
@@ -74,13 +87,38 @@ class LegacyAddressUsageSpec extends AnyFlatSpec with Matchers with BeforeAndAft
     us.hits shouldBe Map(("legacy:qualified_to_bare", "bot") -> 1.0)
 
     val front = new Deployment(Country.Poland)
-    front.get("/york/", Browser, host = Country.apexHost)      // the old owner's: the US
+    front.get("/york/", Browser, host = Country.apexHost)      // the table changes it: the US, not the UK
+    front.get("/kent/", Browser, host = Country.apexHost)      // in the table, but the UK either way
     front.get("/leeds/", Ios, host = Country.apexHost)         // not in the table: the first in order
     front.get("/york/", Browser, host = "kinowo.net")          // off the apex: nothing
     front.get("/poznan/", Bot)                                 // Poland's own page on its own host: nothing
     front.hits shouldBe Map(
       ("legacy:front_door_old_owner", "browser") -> 1.0,
+      ("legacy:front_door_new", "browser")       -> 1.0,
       ("legacy:front_door_new", "ios_app")       -> 1.0)
+  }
+
+  it should "count a bare slug as old-owner only where the table changes the answer" in {
+    // York: the UK has a page and comes first in order, but the table says the US.
+    Country.bareSlugTarget("york").map(t => t.country.code -> t.tableChangedAnswer) shouldBe Some("us" -> true)
+    // Kent: in the table, and the UK is the one the rule without it would pick too.
+    Country.bareSlugTarget("kent").map(t => t.country.code -> t.tableChangedAnswer) shouldBe Some("uk" -> false)
+  }
+
+  it should "not count a Polish page served on the apex, which is no redirect" in {
+    val front = new Deployment(Country.Poland)
+    front.follow("/warszawa/", Browser, host = Country.apexHost).header.status shouldBe 200
+    front.follow("/warszawa", Browser, host = Country.apexHost).header.status shouldBe 200
+    front.hits shouldBe empty
+  }
+
+  it should "count a slash-less legacy address once, not again for the slash its redirect adds" in {
+    val front = new Deployment(Country.Poland)
+    front.follow("/york", Browser, host = Country.apexHost).header.headers("Location") shouldBe "/us/york/"
+    front.hits shouldBe Map(("legacy:front_door_old_owner", "browser") -> 1.0)
+    val uk = new Deployment(Country.UnitedKingdom)
+    uk.follow("/uk/kent", Ios).header.status shouldBe 200
+    uk.hits shouldBe Map(("legacy:retired_slug", "ios_app") -> 1.0)
   }
 
   it should "not count the synthetic probe" in {

@@ -18,8 +18,10 @@ import scala.concurrent.Future
  *
  * Only a single bare segment; one that means the root country's own place is left
  * to it. Off the apex — `kinowo.net`, the root country's own domain — nothing is
- * touched. Every bare slug answered is counted in [[LegacyAddressMetrics]] by
- * whether the old-owner table decided it.
+ * touched. Every redirect is counted in [[LegacyAddressMetrics]] — as
+ * `front_door_old_owner` only where the old-owner table changed the answer, the
+ * one kind the table's drop rule reads; a Polish page served on the apex is no
+ * redirect and is not counted.
  */
 class FrontDoorRedirectFilter(country: Country, legacy: LegacyAddressMetrics)(using val mat: Materializer)
     extends Filter {
@@ -34,12 +36,9 @@ class FrontDoorRedirectFilter(country: Country, legacy: LegacyAddressMetrics)(us
     Option.when(country.servesApex(PageMeta.host(request))) {
       request.path.stripPrefix("/").stripSuffix("/") match {
         case slug if slug.nonEmpty && !slug.contains('/') =>
-          val answered = Country.bareSlugTarget(slug)
-          answered.foreach { target =>
-            legacy.record(if (target.viaLegacyOwner) LegacyAddressKind.FrontDoorOldOwner else LegacyAddressKind.FrontDoorNew,
+          Country.bareSlugTarget(slug).filter(_.country != country).map { target =>
+            legacy.record(if (target.tableChangedAnswer) LegacyAddressKind.FrontDoorOldOwner else LegacyAddressKind.FrontDoorNew,
                           request)
-          }
-          answered.filter(_.country != country).map { target =>
             val path = s"${target.country.pathPrefix}/${target.city.slug}/"
             if (request.rawQueryString.isEmpty) path else s"$path?${request.rawQueryString}"
           }

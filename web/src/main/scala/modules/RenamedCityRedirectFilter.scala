@@ -35,7 +35,7 @@ import scala.concurrent.Future
  * city segment with no trailing slash lands on the listing's canonical slash
  * form in the one hop, rather than in two.
  *
- * Each redirect is counted by its kind ([[Country.redirectKind]]) in
+ * Each redirect is counted by its kind ([[Country.redirect]]) in
  * [[LegacyAddressMetrics]], the signal for when these addresses can go.
  */
 class RenamedCityRedirectFilter(country: Country, legacy: LegacyAddressMetrics)(using val mat: Materializer)
@@ -61,9 +61,6 @@ class RenamedCityRedirectFilter(country: Country, legacy: LegacyAddressMetrics)(
     Option.when(path.startsWith(s"$mount/")) {
       val rest              = path.substring(mount.length + 1)
       val (city, remainder) = rest.span(_ != '/')
-      for {
-        current <- country.redirectFor(city)
-        kind    <- country.redirectKind(city)
-      } yield s"$mount/$current${if (remainder.isEmpty) "/" else remainder}" -> kind
+      country.redirect(city).map(r => s"$mount/${r.to}${if (remainder.isEmpty) "/" else remainder}" -> r.kind)
     }.flatten
 }

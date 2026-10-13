@@ -32,7 +32,7 @@ class LegacyAddressMetrics(registry: PrometheusRegistry, country: String, clock:
     .help("Unix time a legacy city address of each kind was last served since this process booted, by " +
       "country and client kind (ios_app, android_app, browser, bot, other); read with max_over_time " +
       "across restarts. Temporary — drop when legacy:front_door_old_owner shows no human/app calls " +
-      "over 30 days.")
+      "over 30 days; it counts web hits only, and the apps' own use of the table is never measured.")
     .labelNames("country", "kind", "client")
     .callback { callback =>
       lastCalled.forEach { case ((kind, client), instant) =>
@@ -44,7 +44,8 @@ class LegacyAddressMetrics(registry: PrometheusRegistry, country: String, clock:
   private val hits = Counter.builder()
     .name("kinowo_web_legacy_address_hits_total")
     .help("Legacy city addresses served, by country, kind and client kind. Temporary — drop when " +
-      "legacy:front_door_old_owner shows no human/app calls over 30 days.")
+      "legacy:front_door_old_owner shows no human/app calls over 30 days; it counts web hits only, and " +
+      "the apps' own use of the table is never measured.")
     .labelNames("country", "kind", "client")
     .register(registry)
 
@@ -60,9 +61,12 @@ class LegacyAddressMetrics(registry: PrometheusRegistry, country: String, clock:
 
 /** The kinds of legacy city address [[LegacyAddressMetrics]] counts. */
 enum LegacyAddressKind(val label: String) {
-  /** A bare `showtimes.cc/{slug}/` the old-owner table decided. */
+  /** A bare `showtimes.cc/{slug}/` the old-owner table sent somewhere other than the
+   *  rule without it would (`york` → the US, not the UK): the one kind that depends on
+   *  the table, so the only one its drop rule reads. */
   case FrontDoorOldOwner extends LegacyAddressKind("legacy:front_door_old_owner")
-  /** A bare `showtimes.cc/{slug}/` the table does not list: the one country that has it, or the first. */
+  /** Any other bare `showtimes.cc/{slug}/` redirected to another country: not in the
+   *  table, or in it with the answer the rule without it gives anyway (`kent` → the UK). */
   case FrontDoorNew extends LegacyAddressKind("legacy:front_door_new")
   /** A retired or renamed page's slug (`/uk/kent/`). */
   case RetiredSlug extends LegacyAddressKind("legacy:retired_slug")

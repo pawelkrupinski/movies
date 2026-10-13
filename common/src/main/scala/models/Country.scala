@@ -180,17 +180,16 @@ sealed abstract class Country(
   /** Where a slug that is not a page of this country goes instead: the page it
    *  was renamed to, else the page it is an alias of — `None` for one this country
    *  does not know, which is the only kind that 404s. */
-  def redirectFor(slug: String): Option[String] =
-    if (bySlug.contains(slug)) None else renamedSlugs.get(slug).orElse(slugAliases.get(slug))
+  def redirectFor(slug: String): Option[String] = redirect(slug).map(_.to)
 
-  /** Which kind of old address a slug [[redirectFor]] answers is — what the web's
-   *  legacy-address usage metric is labelled by; `None` for a page or an unknown slug. */
-  def redirectKind(slug: String): Option[SlugRedirectKind] =
-    redirectFor(slug).map { _ =>
-      if (!renamedSlugs.contains(slug)) SlugRedirectKind.Alias
-      else if (City.FormerlyQualified.of(this).contains(slug)) SlugRedirectKind.FormerlyQualified
-      else SlugRedirectKind.Retired
-    }
+  /** [[redirectFor]]'s page with the kind of old address the slug is — what the
+   *  web's legacy-address usage metric is labelled by — in one lookup. */
+  def redirect(slug: String): Option[SlugRedirect] =
+    if (bySlug.contains(slug)) None
+    else renamedSlugs.get(slug).map { to =>
+      SlugRedirect(to, if (City.FormerlyQualified.of(this).contains(slug)) SlugRedirectKind.FormerlyQualified
+                       else SlugRedirectKind.Retired)
+    }.orElse(slugAliases.get(slug).map(SlugRedirect(_, SlugRedirectKind.Alias)))
 
   /** The page a slug means here, live or by redirect. */
   def resolve(slug: String): Option[City] = bySlug.get(slug).orElse(redirectFor(slug).flatMap(bySlug.get))
@@ -478,19 +477,22 @@ object Country {
     host.toLowerCase(Locale.ROOT).takeWhile(_ != ':').stripPrefix("www.") == apexHost
 
   /** The page a link that names no country means — a bare `showtimes.cc/{slug}/`,
-   *  a `kinowo://{slug}` custom-scheme link — with its country, and whether the old
-   *  owner decided it:
+   *  a `kinowo://{slug}` custom-scheme link — with its country, and whether the
+   *  table CHANGED the answer (its owner is not the one rules 2 and 3 would pick):
    *   1. a slug [[LegacySlugOwners]] lists goes to the country that owned it before
    *      slugs were per country, wherever else it now answers (`york` → the US);
    *   2. else the one country that answers to it (a page, a renamed slug, an alias);
    *   3. else, several answering, the first in [[switchable]]'s order.
    *  The apps read the same table from the catalog (`bareSlugOwners`) and apply 2
    *  and 3 in the catalog's country order, which is this one. */
-  def bareSlugTarget(slug: String): Option[BareSlugTarget] =
+  def bareSlugTarget(slug: String): Option[BareSlugTarget] = {
+    val withoutTable = switchable.iterator.flatMap(c => c.resolve(slug).map(c -> _)).nextOption()
     LegacySlugOwners.owners.get(slug) match {
-      case Some(code) => byCode(code).flatMap(c => c.resolve(slug).map(BareSlugTarget(c, _, viaLegacyOwner = true)))
-      case None       => switchable.iterator.flatMap(c => c.resolve(slug).map(BareSlugTarget(c, _, viaLegacyOwner = false))).nextOption()
+      case Some(code) =>
+        byCode(code).flatMap(c => c.resolve(slug).map(BareSlugTarget(c, _, tableChangedAnswer = !withoutTable.exists(_._1 == c))))
+      case None => withoutTable.map { case (c, city) => BareSlugTarget(c, city, tableChangedAnswer = false) }
     }
+  }
 
   def byCode(code: String): Option[Country] =
     all.find(_.code.equalsIgnoreCase(code.trim))
