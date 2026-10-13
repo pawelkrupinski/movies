@@ -294,8 +294,12 @@ class MovieController( cc: ControllerComponents,
   // Every city-scoped handler wraps its body in this so resolution + not-found
   // behaviour lives in one place — see `ServedCity` for the country scope. The
   // unknown-city 404 renders in `deploymentMessages` (see above), not a
-  // per-request resolution.
-  private def withCity(slug: String)(f: City => Result): Result = ServedCity.resolve(slug, servingCountry)(f)(using deploymentMessages)
+  // per-request resolution — except on the `showtimes.cc` front door, which speaks
+  // the brand's English ([[FrontDoorMessages]]) though Poland's deployment answers it.
+  private val frontDoorMessages: play.api.i18n.Messages = FrontDoorMessages(cc.messagesApi)
+  private def withCity(slug: String, request: RequestHeader)(f: City => Result): Result =
+    ServedCity.resolve(slug, servingCountry)(f)(
+      using if (servingCountry.servesApex(PageMeta.host(request))) frontDoorMessages else deploymentMessages)
 
   // Persist the viewed city so the bare `/` landing can bounce a returning
   // visitor straight to it. Readable by JS (httpOnly = false) so the client can
@@ -415,7 +419,7 @@ class MovieController( cc: ControllerComponents,
     )
   }
 
-  def index(city: String): Action[AnyContent] = Action { request => withCity(city)(renderIndex(_, request)) }
+  def index(city: String): Action[AnyContent] = Action { request => withCity(city, request)(renderIndex(_, request)) }
 
   private def renderBrowse(city: City, heading: String, films: Seq[FilmSchedule], request: RequestHeader): Result = {
     implicit val c: City = city
@@ -451,7 +455,7 @@ class MovieController( cc: ControllerComponents,
   def browse(city: String, country: Option[String], director: Option[String], cast: Option[String], genre: Option[String],
              kraj: Option[String] = None, rezyser: Option[String] = None,
              aktor: Option[String] = None, gatunek: Option[String] = None): Action[AnyContent] = Action { request =>
-    withCity(city) { c =>
+    withCity(city, request) { c =>
       val all = movieControllerService.toSchedules(c)
       (country.orElse(kraj), director.orElse(rezyser), cast.orElse(aktor), genre.orElse(gatunek)) match {
         case (Some(name), _, _, _) => renderBrowse(c, name, all.filter(_.movie.countries.contains(name)), request)
@@ -547,7 +551,7 @@ class MovieController( cc: ControllerComponents,
    *  flat file with; the only difference is the landing URL, which this
    *  omits — `sitemapRoot` already speaks for it. */
   def citySitemap(city: String): Action[AnyContent] = Action { request =>
-    withCity(city) { c =>
+    withCity(city, request) { c =>
       val films = movieControllerService.toSchedules(c)
       val body = SitemapBuilder.build(PageMeta.origin(request), servingCountry, Seq(c -> films),
                                        lastmod = cityLastmod, includeLanding = false)
@@ -578,7 +582,7 @@ class MovieController( cc: ControllerComponents,
   /** Lean listing — everything the grid + filters need, no heavy detail text.
    *  Latency-sensitive; clients hit this on the critical path. */
   def apiRepertoire(city: String, days: Option[Int] = None): Action[AnyContent] = Action { request =>
-    withCity(city) { c =>
+    withCity(city, request) { c =>
       val window   = MovieController.dayWindow(days)
       val cacheKey = MovieController.windowCacheKey(window)
       conditionalJson(request, c, cacheKey) {
@@ -594,7 +598,7 @@ class MovieController( cc: ControllerComponents,
    *  this in parallel with the listing and merge; keeping it off
    *  `/{city}/api/repertoire` halves the listing's gzip size. */
   def apiDetails(city: String): Action[AnyContent] = Action { request =>
-    withCity(city) { c =>
+    withCity(city, request) { c =>
       conditionalJson(request, c) {
         filmJsonArray("details", c, movieControllerService.nowIn(c).toLocalDate, movieControllerService.toSchedules(c)) { film =>
           Some(ApiFilmDetails.from(film)).filter(ApiFilmDetails.hasContent).map(Json.toJson(_))
@@ -607,7 +611,7 @@ class MovieController( cc: ControllerComponents,
    *  once per city to render the collapsible, per-area cinema filter — the
    *  counterpart of the server-side `CINEMA_AREAS` the web page is handed. */
   def apiCinemas(city: String): Action[AnyContent] = Action { request =>
-    withCity(city)(c => conditionalJson(request, c)(ResponseBody.text(Json.stringify(Json.toJson(ApiCityCinemas.from(c, movieControllerService.nowIn(c).toLocalDate))))))
+    withCity(city, request)(c => conditionalJson(request, c)(ResponseBody.text(Json.stringify(Json.toJson(ApiCityCinemas.from(c, movieControllerService.nowIn(c).toLocalDate))))))
   }
 
   /** `/{city}/film…` and `/{city}/filmy` — the pre-rename Polish spellings of
@@ -665,14 +669,14 @@ class MovieController( cc: ControllerComponents,
    *  filter links all live there, and dropping them would answer 200 with the
    *  wrong content — the failure mode nobody reports. */
   private def movedToCityPath(city: String, tail: String, request: RequestHeader): Result =
-    withCity(city) { c =>
+    withCity(city, request) { c =>
       val path = s"${c.country.pathPrefix}/${c.slug}/$tail"
       MovedPermanently(if (request.rawQueryString.isEmpty) path else s"$path?${request.rawQueryString}")
     }
 
   /** The canonical film page, addressed by slug. */
   def filmBySlug(city: String, slug: String): Action[AnyContent] = Action { request =>
-    withCity(city) { implicit c =>
+    withCity(city, request) { implicit c =>
       movieControllerService.filmBySlug(c, slug) match {
         case Some(schedule) => renderFilm(schedule, request)
         case None           => NotFound(s"Film not found: $slug")
@@ -686,7 +690,7 @@ class MovieController( cc: ControllerComponents,
    *  still generate — but answered with a 301 so crawlers consolidate on the
    *  slug and users land on the canonical address. */
   def film(city: String, title: String): Action[AnyContent] = Action { request =>
-    withCity(city) { implicit c =>
+    withCity(city, request) { implicit c =>
       movieControllerService.film(c, title) match {
         // A title with no usable slug has no other address to offer, so it
         // renders here rather than 301-ing to itself.
@@ -732,16 +736,16 @@ class MovieController( cc: ControllerComponents,
    *  already cached it, so it stays, as a temporary redirect to the image the page names now: the
    *  worker's share card, or the city's static card. Temporary because that target changes with
    *  every card version, and a film on the city card today gets its own later. The web decodes no image. */
-  def ogImage(city: String, title: String): Action[AnyContent] = Action {
-    withCity(city) { c =>
+  def ogImage(city: String, title: String): Action[AnyContent] = Action { request =>
+    withCity(city, request) { c =>
       Found(movieControllerService.film(c, title).fold(ShareCardUrl.city(c))(shareCardUrl(_)(using c)))
     }
   }
 
   /** `/:city/og-image` — the city card's old, web-rendered address, kept because link previews
    *  cached it. Permanently redirected, unlike [[ogImage]]: the city card's address never moves. */
-  def cityOgImage(city: String): Action[AnyContent] = Action {
-    withCity(city)(c => MovedPermanently(ShareCardUrl.city(c)))
+  def cityOgImage(city: String): Action[AnyContent] = Action { request =>
+    withCity(city, request)(c => MovedPermanently(ShareCardUrl.city(c)))
   }
 
   /** `/assets/img/og-<slug>.jpg` — the city card's address while it was a committed asset, kept

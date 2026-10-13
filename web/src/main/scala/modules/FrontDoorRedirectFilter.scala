@@ -27,7 +27,7 @@ import scala.concurrent.Future
  * under showtimes.cc. This filter sits AHEAD of [[RenamedCityRedirectFilter]]
  * (`AppLoader.filterChain`) so a renamed Polish slug is a 404 too, rather than a
  * 301 onto one. The 404 is exactly the one an unknown city gets on the apex
- * ([[ServedCity.unknown]], in the deployment's `messages`) — `showtimes.cc/poznan/`
+ * ([[ServedCity.unknown]], in the front door's English, `controllers.FrontDoorMessages`) — `showtimes.cc/poznan/`
  * reads like `showtimes.cc/xyzzy/`, not a bare status with an empty body. The
  * apex's own root, files and endpoints (`/`, `/robots.txt`, `/.well-known/…`,
  * `/assets/…`, `/api/…`) name no place and pass through. Off the apex —
@@ -38,7 +38,7 @@ import scala.concurrent.Future
  * one kind the table's drop rule reads. A Polish place's 404 is no legacy address
  * and is not counted.
  */
-class FrontDoorRedirectFilter(country: Country, legacy: LegacyAddressMetrics, messages: Messages)(
+class FrontDoorRedirectFilter(country: Country, legacy: LegacyAddressMetrics, frontDoorMessages: Messages)(
     using val mat: Materializer)
     extends Filter {
 
@@ -65,5 +65,5 @@ class FrontDoorRedirectFilter(country: Country, legacy: LegacyAddressMetrics, me
     }.flatten
 
   /** A place of the root country, which lives on its own domain only. */
-  private def notHere(place: String): Future[Result] = Future.successful(ServedCity.unknown(place)(using messages))
+  private def notHere(place: String): Future[Result] = Future.successful(ServedCity.unknown(place)(using frontDoorMessages))
 }

@@ -26,7 +26,7 @@ class FrontDoorRedirectFilterSpec extends AnyFlatSpec with Matchers with BeforeA
 
   override def afterAll(): Unit = Await.result(system.terminate(), SpecTimeouts.Io): Unit
 
-  private val filter = new FrontDoorRedirectFilter(Country.Poland, SpecLegacyAddressMetrics.fresh(), testsupport.TestMessages.deployment)
+  private val filter = new FrontDoorRedirectFilter(Country.Poland, SpecLegacyAddressMetrics.fresh(), controllers.FrontDoorMessages(testsupport.TestMessages.messagesApi))
   private val routed: RequestHeader => Future[Result] = _ => Future.successful(Results.Ok("routed"))
 
   private def get(path: String, host: String = Country.apexHost): Result =
@@ -76,5 +76,17 @@ class FrontDoorRedirectFilterSpec extends AnyFlatSpec with Matchers with BeforeA
     polish.body.contentType shouldBe unknown.body.contentType
     body(unknown) should include("xyzzy")
     body(polish) shouldBe body(unknown).replace("xyzzy", "poznan")
+  }
+
+  it should "answer it in English, the front door's language, though Poland's deployment serves it" in {
+    val english = testsupport.TestMessages.forLang("en")("error.unknownCity", "xyzzy")
+    english should not be testsupport.TestMessages.deployment("error.unknownCity", "xyzzy")
+    body(throughChain("/xyzzy/")) shouldBe english
+    body(throughChain("/poznan/")) shouldBe english.replace("xyzzy", "poznan")
+  }
+
+  it should "keep Poland's own host in Polish" in {
+    val result = Await.result(cityRoute(FakeRequest(GET, "/xyzzy/").withHeaders("Host" -> "kinowo.net")), SpecTimeouts.Io)
+    body(result) shouldBe testsupport.TestMessages.deployment("error.unknownCity", "xyzzy")
   }
 }

@@ -53,8 +53,7 @@ class LandingController(cc: ControllerComponents, country: Country, picker: Pick
    *  be a regression nobody asked for. Deliberately NOT resolved per request
    *  either — it's the one thing on this deployment that speaks for the whole
    *  brand rather than for a visitor. */
-  private lazy val frontDoorMessages: play.api.i18n.Messages =
-    cc.messagesApi.preferred(Seq(Lang("en")))
+  private lazy val frontDoorMessages: play.api.i18n.Messages = FrontDoorMessages(cc.messagesApi)
 
   // The city screen, unlike the front door, IS a country's own site — a page
   // this feature's language picker applies to. Always `country`'s language:

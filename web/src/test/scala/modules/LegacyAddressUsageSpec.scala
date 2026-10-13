@@ -41,7 +41,7 @@ class LegacyAddressUsageSpec extends AnyFlatSpec with Matchers with BeforeAndAft
     private val legacy = new LegacyAddressMetrics(registry, country.code, new MutableClock(Instant.parse("2026-10-13T12:00:00Z")))
     private val chain: RequestHeader => Future[Result] = {
       val renamed   = new RenamedCityRedirectFilter(country, legacy)
-      val frontDoor = new FrontDoorRedirectFilter(country, legacy, testsupport.TestMessages.deployment)
+      val frontDoor = new FrontDoorRedirectFilter(country, legacy, controllers.FrontDoorMessages(testsupport.TestMessages.messagesApi))
       val router: RequestHeader => Future[Result] = rh =>
         Future.successful(
           if (rh.path.count(_ == '/') == 1 && rh.path.length > 1) Results.MovedPermanently(rh.path + "/")
