@@ -60,10 +60,22 @@ def row(p, town_names):
             f"{seq(q(town_names[t]) for t in p['towns'])}, {seq(p['cinemas'])})")
 
 
-def main():
-    data = json.loads(PAGES.read_text(encoding="utf-8"))
-    town_names = {k: t["name"] for k, t in json.loads(TOWNS.read_text(encoding="utf-8"))["towns"].items()}
-    pages, retired = data["pages"], data["retired"]
+def former_names(pages, retired):
+    """page slug → the names its retired slugs went by, for the picker's search:
+    "West Yorkshire" finds Leeds, "Sandwell" West Bromwich. A name the page already
+    answers to — its own, or its county's heading — is left out."""
+    by_slug = {p["slug"]: p for p in pages}
+    names = collections.defaultdict(list)
+    for slug, r in sorted(retired.items()):
+        page = by_slug[r["page"]]
+        name = r.get("name")
+        if name and name.casefold() not in {page["name"].casefold(), page["county"].casefold()}:
+            names[r["page"]].append(name)
+    return {slug: sorted(set(ns)) for slug, ns in sorted(names.items())}
+
+
+def scala_source(pages, retired, town_names):
+    """UkPages.scala, whole."""
     unknown = sorted({p["nation"] for p in pages} - set(NATIONS))
     if unknown:
         sys.exit(f"nations with no place in the picker's order: {unknown}")
@@ -95,7 +107,7 @@ def main():
         "    def nominative: String = if (multiTown) s\"$name area\" else name",
         "  }",
         "",
-        f"  /** The nations in the order every picker shows them. */",
+        "  /** The nations in the order every picker shows them. */",
         f"  val nations: Seq[String] = {seq(q(n) for n in NATIONS)}",
         "",
         f"  val london: Row = {row(london, town_names)}",
@@ -113,23 +125,41 @@ def main():
     out.append("  val retired: Map[String, String] = Map(")
     out.extend(f"    {q(k)} -> {q(v['page'])}," for k, v in sorted(retired.items()))
     out.append("  )")
+    out.append("")
+    out.append("  /** Page slug → the names of the retired pages that now redirect to it, which")
+    out.append("   *  the picker's search still finds it by (\"West Yorkshire\" → Leeds). */")
+    out.append("  val formerNames: Map[String, Seq[String]] = Map(")
+    out.extend(f"    {q(k)} -> {seq(q(n) for n in v)}," for k, v in former_names(pages, retired).items())
+    out.append("  )")
     out.append("}")
-    OUT.write_text("\n".join(out) + "\n", encoding="utf-8")
+    return "\n".join(out) + "\n"
 
-    # The apps' fallback lists: a county holding more than one page is the
-    # third picker step (`subregion`), as `/api/catalog` sends it.
+
+def mobile_rows(pages):
+    """The apps' fallback rows, in pages.json order (the majors biggest first,
+    London leading): a county holding more than one page is the third picker
+    step (`subregion`), as `/api/catalog` sends it."""
     per_county = collections.Counter((p["nation"], p["county"]) for p in pages)
-    mobile = list(pages)   # pages.json order: the majors biggest first, London leading
-    for p in mobile:
-        p["label"] = label(p)
-        p["subregion"] = p["county"] if per_county[(p["nation"], p["county"])] > 1 else None
+    return [dict(p, label=label(p), subregion=p["county"] if per_county[(p["nation"], p["county"])] > 1 else None)
+            for p in pages]
+
+
+def splice(text, rows, line):
+    """`text` with the UK block between the markers replaced by `rows`."""
+    head, rest = text.split(MOBILE_START, 1)
+    _, tail = rest.split(MOBILE_END, 1)
+    return head + MOBILE_START + "".join(line(p) + "\n" for p in rows) + MOBILE_END + tail
+
+
+def main():
+    data = json.loads(PAGES.read_text(encoding="utf-8"))
+    town_names = {k: t["name"] for k, t in json.loads(TOWNS.read_text(encoding="utf-8"))["towns"].items()}
+    pages, retired = data["pages"], data["retired"]
+    OUT.write_text(scala_source(pages, retired, town_names), encoding="utf-8")
+    rows = mobile_rows(pages)
     for path, line in MOBILE:
-        text = path.read_text(encoding="utf-8")
-        head, rest = text.split(MOBILE_START, 1)
-        _, tail = rest.split(MOBILE_END, 1)
-        path.write_text(head + MOBILE_START + "".join(line(p) + "\n" for p in mobile) + MOBILE_END + tail,
-                        encoding="utf-8")
-    print(f"Wrote {OUT.relative_to(ROOT)}: London and {len(others)} generated pages, {len(retired)} retired slugs")
+        path.write_text(splice(path.read_text(encoding="utf-8"), rows, line), encoding="utf-8")
+    print(f"Wrote {OUT.relative_to(ROOT)}: London and {len(pages) - 1} generated pages, {len(retired)} retired slugs")
 
 
 if __name__ == "__main__":

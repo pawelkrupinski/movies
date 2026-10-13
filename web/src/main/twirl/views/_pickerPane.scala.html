@@ -26,13 +26,14 @@
    fragment is served by every deployment, so it cannot assume the host it
    lands on), carrying what the script needs and nothing more: its slug, its
    coordinates for "nearest city", and the other names the search should find
-   it by (`data-alias` — a region it collapsed onto, pages folded into it).
+   it by (`data-alias` — a region it collapsed onto, retired pages that redirect
+   to it).
 *@
 @levelId(parts: Seq[String]) = @{ ("pick" +: code +: parts).mkString("-") }
 @place(c: models.City, aliases: Seq[String]) = {<li><a class="picker-item" href="@baseUrl/@c.slug/" data-slug="@c.slug" data-lat="@c.lat" data-lon="@c.lon"@if(aliases.nonEmpty){ data-alias="@aliases.mkString(", ")"}><span class="picker-item-label">@c.labels.nominative</span></a></li>}
 @heading(label: String, id: String, region: String, subregion: Option[String]) = {<li><a class="picker-item picker-group-item" href="#@id" data-region="@region"@for(s <- subregion){ data-subregion="@s"}><span class="picker-item-label">@label</span><span class="submenu-chevron" aria-hidden="true">›</span></a></li>}
 @node(g: models.CityGroup, region: Option[models.CityGroup]) = {@g.soleCity match {
-  case Some(c) => {@place(c, g.searchAliases)}
+  case Some(c) => {@place(c, g.aliasesOf(c))}
   case None => {@region match {
     case None    => {@heading(g.label, levelId(Seq(g.slug)), g.label, None)}
     case Some(r) => {@heading(g.label, levelId(Seq(r.slug, g.slug)), r.label, Some(g.label))}
@@ -44,10 +45,10 @@
 }} else {@for(g <- groups) {@node(g, None)
 }}</ul></div>
 @for(r <- groups if r.soleCity.isEmpty) {<div class="picker-level" id="@levelId(Seq(r.slug))" data-region="@r.label"><p class="picker-level-title">@r.label</p><ul class="picker-list">
-@for(c <- r.cities) {@place(c, Nil)
+@for(c <- r.cities) {@place(c, r.aliasesOf(c))
 }@for(g <- r.groups) {@node(g, Some(r))
 }</ul></div>
 @for(g <- r.groups if g.soleCity.isEmpty) {<div class="picker-level" id="@levelId(Seq(r.slug, g.slug))" data-region="@r.label" data-subregion="@g.label"><p class="picker-level-title">@r.label — @g.label</p><ul class="picker-list">
-@for(c <- g.allCities) {@place(c, Nil)
+@for(c <- g.cities) {@place(c, g.aliasesOf(c))
 }</ul></div>
 }}</div>

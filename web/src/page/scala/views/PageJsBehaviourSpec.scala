@@ -1286,6 +1286,19 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  it should "find a page by the name of a retired region that redirects to it" in {
+    onNestedLanding { page =>
+      // `/sandwell/` and `/tyrone/` 301 to these pages; their names ride on the
+      // rows as `data-alias`, which the search reads.
+      typePickerSearch(page, "sandwell")
+      pickerRowLabels(page) shouldBe """["West Bromwich"]"""
+      typePickerSearch(page, "tyrone")
+      pickerRowLabels(page) should include ("Dungannon")
+      typePickerSearch(page, "highlands and islands")
+      pickerRowLabels(page) should include ("Inverness")
+    }
+  }
+
   "the search fold" should "find a German name by the spelling its own slug uses" in {
     onGermanLanding { page =>
       clickPickerRow(page, "Nordrhein-Westfalen")

@@ -383,4 +383,23 @@ private[models] object UkPages {
     "worcestershire" -> "redditch",
     "yorkshire" -> "sheffield",
   )
+
+  /** Page slug → the names of the retired pages that now redirect to it, which
+   *  the picker's search still finds it by ("West Yorkshire" → Leeds). */
+  val formerNames: Map[String, Seq[String]] = Map(
+    "altrincham" -> Seq("Cheshire"),
+    "ayr" -> Seq("Ayrshire and Arran"),
+    "coventry" -> Seq("Warwickshire"),
+    "dungannon" -> Seq("Tyrone"),
+    "edinburgh" -> Seq("Edinburgh & Lothians"),
+    "enniskillen" -> Seq("Fermanagh"),
+    "hawick" -> Seq("Roxburgh, Ettrick and Lauderdale"),
+    "hull" -> Seq("East Yorkshire"),
+    "inverness-highland" -> Seq("Highlands and Islands"),
+    "lisburn" -> Seq("Antrim", "Armagh", "Down"),
+    "rothesay" -> Seq("Dunbartonshire and Argyll & Bute"),
+    "sheffield" -> Seq("Yorkshire"),
+    "south-shields" -> Seq("Northumberland"),
+    "west-bromwich" -> Seq("Sandwell"),
+  )
 }

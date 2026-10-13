@@ -150,6 +150,10 @@ class CatalogSpec extends AnyFlatSpec with Matchers {
     cityEntry("pago-pago")      should include(""""aliases":["American Samoa"]""")
     // One level down too: a UK county that collapsed onto its one place.
     cityEntry("lerwick")        should include(""""aliases":["Shetland"]""")
+    // …and a retired page's name, on the page its slug redirects to, even in a
+    // county that did not collapse.
+    cityEntry("west-bromwich")  should include(""""aliases":["Sandwell"]""")
+    cityEntry("dungannon")      should include(""""aliases":["Tyrone"]""")
     // Nothing to add where the group's name IS the place's, or nothing collapsed.
     cityEntry("glasgow")     should not include "aliases"
     cityEntry("liverpool")   should not include "aliases"

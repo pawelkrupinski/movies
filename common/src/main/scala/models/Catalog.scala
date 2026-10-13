@@ -120,17 +120,19 @@ object Catalog {
         val subregionOf = c.cityGroups.flatMap { g =>
           g.groups.filter(_.soleCity.isEmpty).flatMap(sub => sub.allCities.map(_.slug -> sub.label))
         }.toMap
-        // The names a COLLAPSED group keeps findable by, at whichever level it
-        // collapsed (`CityGroup.searchAliases`): the District of Columbia, Guam
-        // and American Samoa over their one place, Merseyside over Liverpool,
-        // and the pages folded into it. The web's picker search reads the same
-        // list (`data-alias`); without it here, an app user typing "guam" finds
-        // nothing, the row being "Dededo Village area". Absent where nothing
-        // collapsed or the group's name is the place's own.
+        // The other names a city is findable by (`CityGroup.aliasesOf`), from the
+        // group it sits directly in: a COLLAPSED group's own name — the District
+        // of Columbia, Guam and American Samoa over their one place, Shetland
+        // over Lerwick — and the retired pages that redirect to it ("Sandwell" →
+        // West Bromwich). The web's picker search reads the same list
+        // (`data-alias`); without it here, an app user typing "guam" finds
+        // nothing, the row being "Dededo Village area". Absent where there is
+        // nothing to add.
         def everyGroup(groups: Seq[CityGroup]): Seq[CityGroup] =
           groups.flatMap(g => g +: everyGroup(g.groups))
         val aliasesOf = everyGroup(c.cityGroups)
-          .flatMap(g => g.soleCity.filter(_ => g.searchAliases.nonEmpty).map(_.slug -> g.searchAliases))
+          .flatMap(g => g.cities.map(city => city.slug -> g.aliasesOf(city)))
+          .filter { case (_, names) => names.nonEmpty }
           .toMap
         // The city's own zone, but ONLY where it differs from the country's — the
         // field a client falls back from, so writing it out where it would say the

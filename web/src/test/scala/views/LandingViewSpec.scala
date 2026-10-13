@@ -133,6 +133,19 @@ class LandingViewSpec extends AnyFlatSpec with Matchers {
     ukHtml should include ("""data-subregion="West Midlands"""")
   }
 
+  it should "find a page by the name of every retired region that redirects to it" in {
+    // The 76 Flicks regions retired into town pages (2026-10), and the three
+    // merged before that, keep their names on the row their slug now 301s to —
+    // inside a county that did NOT collapse, which is the case the collapsed
+    // alias alone never reached.
+    placeLink(ukHtml, "west-bromwich") should include ("""data-alias="Sandwell"""")
+    placeLink(ukHtml, "inverness-highland") should include ("""data-alias="Highlands and Islands"""")
+    placeLink(ukHtml, "lisburn") should include ("""data-alias="Lisburn and Castlereagh, Antrim, Armagh, Down"""")
+    placeLink(ukHtml, "edinburgh") should include ("""data-alias="Edinburgh &amp; Lothians"""")
+    // A collapsed county keeps its own name beside them.
+    placeLink(ukHtml, "lerwick") should include ("""data-alias="Shetland"""")
+  }
+
   /** Germany picks a town page — Köln, München, "Bayreuth und Umgebung" — found under its Bundesland. */
   private val deHtml =
     views.html.landing(models.Country.Germany, isApex = false, picker)(using testsupport.TestMessages.forLang("en")).body

@@ -775,9 +775,13 @@ private[models] object SpanishPage {
  *  The exception is [[soleCity]] — see there.
  *
  *  A country whose picker is one flat list leaves `Country.cityGroups` empty
- *  rather than declaring one group per city. */
+ *  rather than declaring one group per city.
+ *
+ *  @param absorbed for a city of this group, the names of former pages that now
+ *                  redirect to it — the UK's retired regions ([[UkPages.formerNames]])
+ *                  — kept findable by [[aliasesOf]]. */
 final case class CityGroup(label: String, slug: String, cities: Seq[City] = Nil,
-                          groups: Seq[CityGroup] = Nil) {
+                          groups: Seq[CityGroup] = Nil, absorbed: Map[City, Seq[String]] = Map.empty) {
 
   /** The one place this group holds, pulled up a level — and `None` for a group
    *  that really arranges several.
@@ -820,9 +824,16 @@ final case class CityGroup(label: String, slug: String, cities: Seq[City] = Nil,
   def collapsedAlias: Option[String] =
     soleCity.filter(_.labels.nominative != label).map(_ => label)
 
-  /** Every other name the picker should find this row by — its [[collapsedAlias]].
-   *  Empty for a group that did not collapse: its heading is already on screen. */
-  def searchAliases: Seq[String] = collapsedAlias.toSeq
+  /** Every other name the picker should find one of this group's own cities by:
+   *  the group's name where the group collapsed onto it ([[collapsedAlias]]),
+   *  then the names of the former pages that redirect to it ([[absorbed]]) — so
+   *  "Sandwell" still finds West Bromwich and "Highlands and Islands" Inverness. */
+  def aliasesOf(city: City): Seq[String] =
+    soleCity.filter(_ == city).flatMap(_ => collapsedAlias).toSeq ++ absorbed.getOrElse(city, Nil)
+
+  /** [[aliasesOf]] the one place this group collapsed onto — empty for a group
+   *  that did not collapse: its heading is already on screen. */
+  def searchAliases: Seq[String] = soleCity.fold(Seq.empty[String])(aliasesOf)
 
   /** Every city under this group at any depth — its own, plus its subgroups'.
    *
@@ -889,7 +900,9 @@ object City {
    *  264 pages is past what anyone reads as one A-to-Z, and a nation alone still
    *  is (England holds 200); the county is the level a visitor already knows a
    *  town by. A county holding one page collapses onto it ([[CityGroup.soleCity]]):
-   *  Shetland shows as Lerwick, its own name kept as a search alias.
+   *  Shetland shows as Lerwick, its own name kept as a search alias. A retired
+   *  region's name is a search alias of the page its slug redirects to
+   *  ([[UkPages.formerNames]]): "Tyrone" finds Dungannon.
    *
    *  Nations are in [[UkPages.nations]]' fixed reading order (England, Scotland,
    *  Northern Ireland, Wales, Crown Dependencies) — the same order every client's
@@ -902,7 +915,9 @@ object City {
       (UkPages.london.nation, UkPages.london.county, London) +: ukPages.map(p => (p.nation, p.county, p))
     UkPages.nations.flatMap { nation =>
       val counties = placed.filter(_._1 == nation).groupBy(_._2).toSeq.map { case (county, pages) =>
-        CityGroup(county, Slugify.stable(county), CityListing.sorted(pages.map(_._3), en))
+        val cities = pages.map(_._3)
+        CityGroup(county, Slugify.stable(county), CityListing.sorted(cities, en),
+                  absorbed = cities.flatMap(c => UkPages.formerNames.get(c.slug).map(c -> _)).toMap)
       }
       // By what each row SHOWS, not by the county it came from: a county that
       // collapsed onto its one place displays that place's name, and sorting on
