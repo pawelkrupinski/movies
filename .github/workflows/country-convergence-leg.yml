@@ -830,7 +830,8 @@ jobs:
                   KINOWO_COUNTRIES: ${{ inputs.code }}
                   MONGODB_URI: mongodb://127.0.0.1:27017/?directConnection=true
               run: |
-                  scripts/ci/identity-takes-check.sh "${{ inputs.code }}" "$RUNNER_TEMP/identity-takes"; code=$?
+                  # `|| code=$?`: the step runs under bash -e, which would end it at the script's own non-zero exit.
+                  code=0; scripts/ci/identity-takes-check.sh "${{ inputs.code }}" "$RUNNER_TEMP/identity-takes" || code=$?
                   case $code in 0) state=success ;; 1) state=failure ;; *) exit 0 ;; esac
                   # allow-silenced: the status only names the next run's base; failing to post it must not turn the verdict
                   gh api -X POST "repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" -f state="$state" \

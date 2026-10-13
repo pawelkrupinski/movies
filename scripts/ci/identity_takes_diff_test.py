@@ -89,6 +89,22 @@ class TakesDiffTest(unittest.TestCase):
         code, _ = self.run_diff(base, head, accepted=["uk\t*\tLalka\t*\t*\tanother country\n"])
         self.assertEqual(1, code)
 
+    def test_two_same_titled_listings_at_a_venue_are_never_paired_by_guess(self):
+        # Belle (2013) and Belle (2021) at one venue, both re-keyed by the head: pairing them by title would pick one at
+        # random and could read as a swap. They are reported as ambiguous instead.
+        base = [row("Helios", "Belle", 157827, key="Helios|Belle|2013"), row("Helios", "Belle", 776305, key="Helios|Belle|2021")]
+        head = [row("Helios", "Belle", 776305, key="Helios|Belle|2013|x"), row("Helios", "Belle", 157827, key="Helios|Belle|2021|x")]
+        code, md = self.run_diff(base, head)
+        self.assertEqual(0, code)
+        self.assertIn("4 listing(s) on one side only", md)  # two a side
+        self.assertIn("lost 0, changed 0", md)
+
+    def test_unreadable_inputs_exit_2_never_1(self):
+        base = self.write("b.jsonl", self.BASE)
+        self.assertEqual(2, d.main(["pl", base, base, "--labels", os.path.join(self.dir, "missing.tsv")]))
+        broken = self.write("broken.jsonl", [{"key": "k", "venue": "Helios", "film": 1}])
+        self.assertEqual(2, d.main(["pl", base, broken]))
+
     def test_an_empty_side_is_an_error_not_a_pass(self):
         self.assertEqual(2, d.main(["pl", self.write("b.jsonl", self.BASE), self.write("h.jsonl", [])]))
 

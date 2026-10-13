@@ -76,7 +76,9 @@ def accepted_of(path, cc):
 
 
 def pair(base, head):
-    """(base row, head row) per listing, by key, then by venue + raw title for keys the change re-spelled."""
+    """(base row, head row) per listing, by key, then by venue + raw title for keys the change re-spelled -- only where
+    that title is billed ONCE at the venue on each side: two same-titled listings (Belle 2013 and Belle 2021) are never
+    paired by guess, which could read as a swap or hide a move; they count as on one side only."""
     head_by_key = {r["key"]: r for r in head}
     pairs, base_left = [], []
     for b in base:
@@ -85,16 +87,18 @@ def pair(base, head):
             base_left.append(b)
         else:
             pairs.append((b, h))
-    head_by_title = {}
+    head_by_title, base_by_title = {}, {}
     for h in head_by_key.values():
         head_by_title.setdefault((h["venue"], h["rawTitle"]), []).append(h)
-    unpaired = 0
     for b in base_left:
-        candidates = head_by_title.get((b["venue"], b["rawTitle"]))
-        if candidates:
-            pairs.append((b, candidates.pop()))
+        base_by_title.setdefault((b["venue"], b["rawTitle"]), []).append(b)
+    unpaired = 0
+    for title, bs in base_by_title.items():
+        hs = head_by_title.pop(title, [])
+        if len(bs) == 1 and len(hs) == 1:
+            pairs.append((bs[0], hs[0]))
         else:
-            unpaired += 1
+            unpaired += len(bs) + len(hs)
     unpaired += sum(len(v) for v in head_by_title.values())
     return pairs, unpaired
 
@@ -193,15 +197,18 @@ def main(argv=None):
     p.add_argument("--base-name", default="base")
     p.add_argument("--head-name", default="head")
     a = p.parse_args(argv)
+    # Exit 2 for anything that is not a verdict -- an unreadable file, a row without its fields -- so it can never read as
+    # exit 1's "the code moved a take".
     try:
         base, head = load(a.base), load(a.head)
-    except (OSError, ValueError) as e:
-        print(f"identity takes ({a.cc}): unreadable decisions: {e}", file=sys.stderr)
+        if not base or not head:
+            print(f"identity takes ({a.cc}): an empty side (base {len(base)}, head {len(head)} listings) -- nothing resolved",
+                  file=sys.stderr)
+            return 2
+        moves, unpaired = moves_of(a.cc, base, head, labels_of(a.labels, a.cc), accepted_of(a.accepted, a.cc))
+    except (OSError, ValueError, KeyError, TypeError, IndexError) as e:
+        print(f"identity takes ({a.cc}): could not read the inputs: {type(e).__name__}: {e}", file=sys.stderr)
         return 2
-    if not base or not head:
-        print(f"identity takes ({a.cc}): an empty side (base {len(base)}, head {len(head)} listings) -- nothing resolved", file=sys.stderr)
-        return 2
-    moves, unpaired = moves_of(a.cc, base, head, labels_of(a.labels, a.cc), accepted_of(a.accepted, a.cc))
     text, md, failing = render(a.cc, moves, unpaired, a.base_name, a.head_name, len(head))
     print(text)
     if a.summary:
