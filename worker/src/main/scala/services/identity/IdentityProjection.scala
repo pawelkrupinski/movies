@@ -142,6 +142,8 @@ final class IdentityProjection(
 
   private val mapping = new FilmIdMapping(filmIds)
   private var consecutiveShrinks = 0
+  /** The decisions and listings (their hashes) the suspect takes were last counted over: a count of the same is the same. */
+  private var suspectsCountedOver = Option.empty[(Int, Int)]
   /** The venue slots the last projection built, so this one rebuilds only the films whose listings changed. */
   private val slotMemo = new VenueSlotMemo(VenueSlotMemo.environment(normalizer))
   /** The fingerprints the store holds, as far as this worker knows: none read yet until the first projection. */
@@ -260,9 +262,16 @@ final class IdentityProjection(
               changes.fold(Set.empty[ListingKey])(_.listings), index, at, phases)
             val slotCounts = slotMemo.endTick(retainUnseen = !scope.whole)
             if (!light) phases("fingerprints")(recordSlotFingerprints())
-            // the corpus's suspect takes, counted on a projection of the whole of it: a count is never a reason to stop one
-            if (scope.whole && !light) phases("suspects")(Try(suspects(resolution, venues.flatMap(_._2).map(_.listing))).failed
-              .foreach(e => logger.warn("identity projection: counting the suspect takes failed", e)))
+            // the corpus's suspect takes, counted on a projection of the whole of it whose decisions or listings moved since the
+            // last count (an hourly reconcile over a quiet corpus counts nothing again): never a reason to stop one
+            if (scope.whole && !light) {
+              val decided = venues.flatMap(_._2).map(_.listing)
+              val over    = (resolution.decisions.##, decided.##)
+              if (!suspectsCountedOver.contains(over)) phases("suspects")(Try(suspects(resolution, decided)) match {
+                case Success(_) => suspectsCountedOver = Some(over)
+                case Failure(e) => logger.warn("identity projection: counting the suspect takes failed", e)
+              })
+            }
             val misses = slotMemo.lastMisses()
             phases.note(s"venue slots reused ${slotCounts._1}, built ${slotCounts._2} " +
               s"(rows moved ${misses._1}, priors moved ${misses._2}, new ${misses._3})")

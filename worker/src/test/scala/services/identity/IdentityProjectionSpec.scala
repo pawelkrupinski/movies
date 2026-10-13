@@ -185,11 +185,14 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     again.wroteNothing shouldBe true
   }
 
-  it should "count the corpus's suspect takes over every listing it decided — a scoped projection counts none" in {
+  it should "count the corpus's suspect takes over every listing it decided, once per state — a scoped projection counts none" in {
     val w = World(whole = true)
     w.scrape(programme)
     val first = w.projection.tick()
     w.suspected.toSeq shouldBe Seq((first.resolution.get.decisions.size, first.listings))
+    // the same decisions over the same listings: the count is the one already made
+    w.projection.tick(whole = true).scoped shouldBe false
+    w.suspected.size shouldBe 1
     w.scrape(Map(KinoMuza -> Seq(film(KinoMuza, "Diuna", Some(2021), 7, 8, 9))))
     w.projection.tickChanged()
     w.suspected.size shouldBe 1
