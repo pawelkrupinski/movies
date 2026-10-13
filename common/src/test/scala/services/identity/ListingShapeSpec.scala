@@ -47,6 +47,36 @@ class ListingShapeSpec extends AnyFlatSpec with Matchers {
     ListingShape.programmeSlotOf("Splat!FilmFest: The Taxidermist") shouldBe None
   }
 
+  "a piece billed beside the film" should "be a subtitle, performer or show of its own words, never the venue's wording around a film" in {
+    def film(title: String, original: Option[String] = None, directors: Seq[String] = Nil) =
+      IdentityMeasures.Film(title, original, directors = Some(directors))
+    def beside(raw: String, films: IdentityMeasures.Film*) = ListingShape.billedBeside(listing(KinoMuza, raw), films)
+    // the identity-unmatched capture's agreed wrong takes (2026-10-13): a documentary's subtitle, a dance show, a comedian,
+    // a programme's piece before the film, an event named like a film, a concert line-up
+    beside("Femme - Frauen heilen die Welt", film("Femme")) shouldBe defined
+    beside("Dave - Music in MotionTBA", film("Dave")) shouldBe defined
+    beside("Giorgia Fumo - OUT OF OFFICE", film("Out of Office")) shouldBe defined
+    beside("FBF: Freud and Gale: Making It Up", film("Making It Up")) shouldBe defined
+    beside("Kids Club: CBeebies Panto 2026: Treasure Island", film("Treasure Island")) shouldBe defined
+    beside("The Tea Alchemist - World Premiere + Cast & Crew Q&A OmeU, keine Angabe", film("World Premiere")) shouldBe defined
+    beside("Wohnzimmerkonzerte Festival - Toi Et Moi | Ronja Maltzahn | Finn Moriz | Flora Falls", film("Du und ich", Some("Toi et moi"))) shouldBe
+      defined
+    // the venue's own wording: a banner in its slot, an event or edition, a programme, a note, the film's director or quotes
+    beside("Somali Film Festival: Lifeline", film("Lifeline")) shouldBe None
+    beside("IT FOLLOWS - HALLOWEEN SPECIAL", film("It Follows")) shouldBe None
+    beside("Fatherland - Film Club", film("Fatherland")) shouldBe None
+    beside("KÖNIG DROSSELBART - EIN ADVENTSMÄRCHEN FÜR KINDER", film("König Drosselbart")) shouldBe None
+    beside("Geliefert (ver.di)", film("Geliefert")) shouldBe None
+    beside("Olympia 1936 / 2026 - Leni Riefenstahl: OLYMPIA 1 - FEST DER VÖLKER", film("Olympia - Fest der Völker", directors = Seq("Leni Riefenstahl"))) shouldBe
+      None
+    beside("Festiwal Korelacje: „Zemsta” z autorską narracją Artura Andrusa", film("Zemsta")) shouldBe None
+    beside("Dni Kina Niemego - 100 lat temu: SYMFONIA ZMYSŁÓW", film("Flesh and the Devil").copy(alternativeTitles = Seq("Symfonia zmysłów"))) shouldBe None
+    // the listing's own original title beside its title, and a billing the film's title names no whole piece of
+    ListingShape.billedBeside(listing(KinoMuza, "Hacer Mucho con Poco - Do More With Less").copy(originalTitle = Some("Do More With Less")),
+      Seq(film("Hacer Mucho con Poco"))) shouldBe None
+    beside("Johnny English Strikes Again", film("Johnny English")) shouldBe None
+  }
+
   "a relay" should "be told by its stage work, its house or season, or a concert film's venue" in {
     ListingShape.stagesAWork(listing(KinoMuza, "OPERA-COSI FAN TUTTE")) shouldBe true
     // ES mk2's ballet relay, billed bare: Adam's ballet, which Wikidata files under "ballet" (Q15079786), a class the

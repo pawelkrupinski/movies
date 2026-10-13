@@ -152,6 +152,7 @@ and.leanTakers&!family.dissent 1, **cast.venue 0**. (2026-10-14: the Filmweb fil
 | billsSeveralBeside | Agreement:519 | MultiFilmBill, zestaw, quoted, two whole works | AgreementSpec |
 | stagesAWork / screenAdaptation / billsAHouse | Agreement:485, 493, 501 | StageWorks, HouseWords | AgreementSpec |
 | namesFilms (review sites alone take nothing) | AgreementStage:648 | family | AgreementStageSpec |
+| billedBeside (an agreed film one piece of the billing names, another thing beside it: no film, no fill) — added 2026-10-13 | AgreementStage.pieceOf; ListingShape.billedBeside | raw title's pieces, record titles, director, original title | AgreementStageSpec, ListingShapeSpec |
 | poster veto / poster vote (4 / 8 / 10 bits) | AgreementStage:642, 685; Posters:144 | hashes | AgreementPosterSpec, PosterEvidenceSpec |
 | PosterEvidence.shows / editionsApart | Posters:133, 171 | provenance, stage, bill, numbers | PosterEvidenceSpec |
 | broadcast take (takeOrWait, fits, credits, spells; EncoreDays 60) | Broadcast:37, 131–184 | days, release, banner | AgreementBroadcastSpec |

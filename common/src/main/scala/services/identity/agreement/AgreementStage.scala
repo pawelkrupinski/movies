@@ -212,6 +212,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
             def distances(also: Option[Int]) = posterDistances(id, digest, listings, also, postersAsked)
             // the posters vote once the families reached a verdict that takes no film: none agreed, or a poster vetoed it
             verdict.fold(decision) { v =>
+              pieceOf(v, listings).fold(
               v.agreed.fold[AgreementStage.Take](AgreementStage.Take.Untaken)(taken(decision, _, finding, distances)) match {
                 // a screen adaptation agreed for a listing naming a stage work ([[Agreement.agreed]]) yields to the relay its
                 // screening days name: PL Kino Amok's bare "Manon" on the Met's broadcast day is the Met's, not Clouzot's
@@ -221,7 +222,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
                 case AgreementStage.Take.Pending       => decision
                 case AgreementStage.Take.Vetoed        => posterVetoed += 1; fellThrough(AgreementStage.Unagreed(decision, id, digest, listings, v, distances), asks)
                 case AgreementStage.Take.Untaken       => fellThrough(AgreementStage.Unagreed(decision, id, digest, listings, v, distances), asks)
-              }
+              })(line => decision.copy(explanation = decision.explanation :+ line)(decision.trace))
             }
         }
         if (now eq decision) decision else Option(takenAs.get(decision)).filter(_ == now).getOrElse { takenAs.put(decision, now); now }
@@ -678,6 +679,14 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
       }
     case _ => None
   }
+
+  /** Why the film the families agree on is none of the cluster's: its billing names it as ONE PIECE beside another thing —
+   *  a subtitle, a performer, a show ([[ListingShape.billedBeside]]). Then the families' best match is that piece's namesake
+   *  (DE "Femme - Frauen heilen die Welt" is a documentary, not the 2023 "Femme"), and no fill or poster is asked for a
+   *  film either: what the billing names is no film the families found. */
+  private def pieceOf(verdict: StoredVerdict, listings: Seq[Listing]): Option[String] =
+    verdict.agreed.flatMap(agreed => listings.iterator.flatMap(ListingShape.billedBeside(_, Seq(agreed.record.film))).nextOption()
+      .map(why => s"no film: the families agree on '${agreed.record.film.title}', one piece of the billing — $why"))
 
   /** The decision with the agreed film taken — pending while TMDB was not asked about its IMDb id yet or the venue posters
    *  are not all hashed, and not taken when they VETO it ([[PosterEvidence.veto]]): a venue poster names another candidate. */

@@ -804,7 +804,8 @@ pl	Terminal Kultury Gocław	Fritzi – przyjaźń bez granic Edukacja Młode Hor
 pl	Kino Wielicka Mediateka	Kino Zmysłów: Vincent. Legenda oceanu | 2D | Dubbing	tmdb:498995	wrong	review page: must not: Synchronisation (2006)
 pl	*	Ice Cream Man	tmdb:1477712	right	review page: right: Ice Cream Man (2026)
 pl	Kino MOK Międzyrzecz	Ice Cream Man 2D napisy	tmdb:1477712	right	review page: right: Ice Cream Man (2026)
-uk	*	CBeebies Panto 2026: Treasure Island	tmdb:1710881	right	review page: right: Treasure Island (2027)
+uk	*	CBeebies Panto 2026: Treasure Island	tmdb:1710881	wrong	judged 10-13: the BBC's CBeebies panto (Flicks page: "the CBeebies Panto returns"), not tmdb:1710881, Ridley Scott's 2027 Treasure Island (TMDB: director Ridley Scott, released 2027-11-11)
+uk	*	CBeebies Panto 2026: Treasure Island	tmdb:6646	wrong	judged 10-13: the BBC's 2026 CBeebies panto, not Disney's 1950 Treasure Island
 us	Alamo Drafthouse Corpus Christi	GONE WITH THE WIND (2026)	tmdb:770	right	review page: right: Gone with the Wind (1939)
 uk	*	Royal Ballet & Opera 2024-25: Romeo and Juliet	tmdb:1702789	wrong	review page: wrong: Royal Ballet & Opera 2026/27: Romeo and Juliet (2027)
 pl	Kino Kolory	DKF: Wieloryb	tmdb:660200	wrong	review page: must not: Wieloryb (2018)

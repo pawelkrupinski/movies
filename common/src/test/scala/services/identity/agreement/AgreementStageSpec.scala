@@ -217,6 +217,24 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     decided.decisions(1) shouldBe resolution.decisions(1)
   }
 
+  it should "take no film the families agree on that the billing names as one piece beside another thing, nor fill one" in {
+    // DE "Femme - Frauen heilen die Welt" (fixture identity-unmatched): four families agree on the 2023 "Femme" its first
+    // piece names — the billing is a documentary its subtitle names
+    def decided(title: String) = {
+      val billed = listing(KinoMuza, title)
+      val model  = Resolution(Seq(ResolverDecision(Seq(billed.key), None, 0.7, ResolverDecision.Basis.BelowThreshold, Nil)()), 1,
+        Map(billed.key -> 0), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
+      new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver,
+        tmdbOf = imdb => Answer.Known(Option.when(imdb == "tt16315948")(913760)), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned)
+        .apply(model, Map(billed.key -> billed).get, version = 1).decisions.head
+    }
+    val piece = decided("Klondike - Frauen heilen die Welt")
+    (piece.film, piece.basis) shouldBe ((None, ResolverDecision.Basis.BelowThreshold))
+    piece.explanation.last should include ("one piece of the billing — 'frauen heilen die welt' is billed beside 'Klondike'")
+    // the venue's own programme beside it is no other thing
+    decided("Klondike - Film Club").film shouldBe Some(913760)
+  }
+
   it should "count the model's own best TMDB candidate as a voter beside two families, by its record's facts" in {
     // IMDb and Wikidata take "Klondike"; the model weighed TMDB's 913760 best, below every rule's cut (no lean, no IMDb id)
     val two = agreeing().view.filterKeys(Set(VoterFamily.Imdb, VoterFamily.Wiki)).toMap ++ Map(

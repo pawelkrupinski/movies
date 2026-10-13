@@ -35,7 +35,7 @@ object ListingShape {
   val SilentEraEnd = 1936
 
   private val SilentFilm =
-    ("""\bstummfilm\w*|\bsilent\s+(?:films?|movies?|cinema|classics?)\b|\bfilm\w*\s+niem\w*|\bniem\w*\s+film\w*|\bkino\s+nieme\b|""" +
+    ("""\bstummfilm\w*|\bsilent\s+(?:films?|movies?|cinema|classics?)\b|\bfilm\w*\s+niem\w*|\bniem\w*\s+film\w*|\bkin[oa]\s+niem\w*|""" +
       """\bcine\s+mudo\b|\bpeliculas?\s+mudas?\b|\bfilms?\s+muets?\b""").r
 
   /** Words a billing names a stage house, a relay or a stage show by. */
@@ -105,6 +105,65 @@ object ListingShape {
   private def billsSeveralBySigns(listing: Listing): Boolean =
     SetOfWorks.findFirstIn(listing.rawTitle).isDefined || quotesSeveral(listing.rawTitle) ||
       IdentityMeasures.billsTwoWholeWorks(Evidence.of(listing, None).measured)
+
+  // ── a piece billed beside the film ─────────────────────────────────────────────────────────
+
+  /** The PIECE of the billing beside the film's title that bills another thing — a subtitle the film does not carry, a
+   *  performer, a show, a strand — so the film's title names only ONE piece of a longer billing, not the billing: DE
+   *  "Femme - Frauen heilen die Welt" is a documentary, not the 2023 "Femme"; "Giorgia Fumo - OUT OF OFFICE" a comedian's
+   *  show, not the 2022 "Out of Office"; UK "FBF: Freud and Gale: Making It Up" a programme's last piece. `None` when the
+   *  film's title is no run of the billing's whole pieces, or every piece beside it is the venue's own wording around a
+   *  film:
+   *  - a banner in the banner's slot, the leading piece a colon or a pipe closes ("Somali Film Festival: Lifeline");
+   *  - an event, format or edition word ([[DecorationSegments.EventWords]], "IT FOLLOWS - HALLOWEEN SPECIAL"), a
+   *    screening programme or its audience ([[ScreeningProgramme]]: "Fatherland - Film Club", "KÖNIG DROSSELBART - EIN
+   *    ADVENTSMÄRCHEN FÜR KINDER"), a note in brackets ("Geliefert (ver.di)"), numbers, the film's own titles and director;
+   *  - the listing's own original title ("Hacer Mucho con Poco - Do More With Less");
+   *  - the film quoted: the quotes name the work, what is around them is the evening's (PL "Festiwal Korelacje: „Zemsta”
+   *    z autorską narracją Artura Andrusa").
+   *  A piece of two such words of its own at least is another thing's. Measured on the unmatched clusters' agreed takes
+   *  (2026-10-13). */
+  def billedBeside(listing: Listing, films: Seq[IdentityMeasures.Film]): Option[String] = {
+    val raw = listing.rawTitle
+    // a silent film's billing is its programme's: an accompanist, an anniversary ("Dni Kina Niemego - 100 lat temu: …")
+    if (films.isEmpty || billsASilentFilm(listing) || Quote.findFirstIn(raw).exists(_ => quotesAFilm(raw, films))) None
+    else {
+      val parts  = PieceBreak.split(Bracketed.replaceAllIn(raw, " | ")).toIndexedSeq
+      val breaks = PieceBreak.findAllIn(Bracketed.replaceAllIn(raw, " | ")).toIndexedSeq.map(_.trim)
+      val words  = parts.map(TitleContainment.tokens)
+      val titles = films.flatMap(_.titles).map(t => withoutArticles(TitleContainment.tokens(t))).filter(_.nonEmpty).distinct
+      val theirs = films.flatMap(f => f.titles ++ f.directors.getOrElse(Nil)).flatMap(TitleContainment.tokens).toSet
+      val original = listing.originalTitle.map(t => withoutArticles(TitleContainment.tokens(t))).filter(_.nonEmpty)
+      def own(word: String) = word.length >= 2 && !word.exists(_.isDigit) && !theirs(word) && !billed(word)
+      // the film's run of whole pieces, the first one
+      val run = (for { from <- words.indices.iterator; to <- (from + 1 to words.size).iterator
+                       if titles.contains(withoutArticles(words.slice(from, to).flatten)) } yield (from, to)).nextOption()
+      run.flatMap { case (from, to) =>
+        words.indices.iterator.filterNot(k => k >= from && k < to).filter(k => words(k).nonEmpty)
+          // the banner's slot: the leading piece a colon or a pipe closes, the film after it
+          .filterNot(k => k == 0 && from > 0 && breaks.headOption.exists(b => b == ":" || b == "|"))
+          .map(words).find(piece => !original.contains(withoutArticles(piece)) && piece.count(own) >= 2 &&
+            !piece.exists(word => billed(word) || ScreeningProgramme.findFirstIn(word).isDefined))
+          .map(piece => s"'${piece.mkString(" ")}' is billed beside '${films.head.title}', no word of it the venue's around a film")
+      }
+    }
+  }
+
+  /** An event, format or edition word: what a venue bills around a film. */
+  private def billed(word: String): Boolean =
+    DecorationSegments.EventWords(word) || DecorationSegments.EditionWords(word) || services.movies.FormatTags.FormatToken.contains(word)
+  /** A word naming a screening programme or its audience, as a stem a compound carries ("Filmmittwoch", "Kinderkino"). */
+  private val ScreeningProgramme = """film|kin[oaie]|cine|movie|klub|club|kinder|kids|children|dzieci|familie|family|senior""".r
+  private val PieceBreak = """\s*[:|•+]\s*|\s+[-–—]\s+|\s*[„”"“«»]\s*""".r
+  private val Bracketed  = """\([^)]*\)|\[[^\]]*]""".r
+  private val Quote      = """[„”"“«»]""".r
+  private val QuotedSpan = """[„"“«]([^„”"“«»]+)[”"“»]""".r
+  private def quotesAFilm(raw: String, films: Seq[IdentityMeasures.Film]): Boolean = {
+    val titles = films.flatMap(_.titles).map(t => withoutArticles(TitleContainment.tokens(t))).toSet
+    QuotedSpan.findAllMatchIn(raw).exists(m => titles(withoutArticles(TitleContainment.tokens(m.group(1)))))
+  }
+  private def withoutArticles(words: Seq[String]): Seq[String] =
+    if (words.sizeIs >= 2 && IdentityMeasures.LeadingArticles(words.head)) words.tail else words
 
   // ── a programme slot ───────────────────────────────────────────────────────────────────────
 
