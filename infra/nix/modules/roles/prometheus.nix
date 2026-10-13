@@ -188,6 +188,10 @@ let
     # post-migration audit: on Fly the host was somebody else's problem, and nothing had replaced
     # the host agent's view with one of these three machines.
     "host-health"
+    # DID THE SITE STOP KNOWING WHICH FILM A LISTING IS. A burst of published listings whose TMDB
+    # film the identity projection lost or changed -- the live half of the identity takes check CI
+    # runs on code. Alphabetically after host-health and before jvm-heap.
+    "identity-matching"
     # IS ANY JVM ABOUT TO RUN OUT OF HEAP. Added after web-us OOMed on 2026-09-03 while a merged,
     # green, `deployed-web`-tagged heap raise sat unapplied: the CI deploy rolls images only, so a
     # JAVA_OPTS change never reaches the cluster on its own and nothing anywhere went red.
