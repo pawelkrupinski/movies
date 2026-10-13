@@ -126,8 +126,8 @@ object ListingShape {
    *  - the listing's own original title ("Hacer Mucho con Poco - Do More With Less");
    *  - the film quoted: the quotes name the work, what is around them is the evening's (PL "Festiwal Korelacje: „Zemsta”
    *    z autorską narracją Artura Andrusa").
-   *  A piece of two such words of its own at least is another thing's. Measured on the unmatched clusters' agreed takes
-   *  (2026-10-13). */
+   *  A piece holding a word of its own, three letters at least ("Athanor - Startblock", a drama school's showcase; "50 na
+   *  51" holds none), is another thing's. Measured on the unmatched clusters' agreed takes (2026-10-13). */
   def billedBeside(listing: Listing, films: Seq[IdentityMeasures.Film]): Option[String] = {
     val raw = listing.rawTitle
     // a silent film's billing is its programme's: an accompanist, an anniversary ("Dni Kina Niemego - 100 lat temu: …")
@@ -139,7 +139,7 @@ object ListingShape {
       val titles = films.flatMap(_.titles).map(t => withoutArticles(TitleContainment.tokens(t))).filter(_.nonEmpty).distinct
       val theirs = films.flatMap(f => f.titles ++ f.directors.getOrElse(Nil)).flatMap(TitleContainment.tokens).toSet
       val original = listing.originalTitle.map(t => withoutArticles(TitleContainment.tokens(t))).filter(_.nonEmpty)
-      def own(word: String) = word.length >= 2 && !word.exists(_.isDigit) && !theirs(word) && !billed(word)
+      def own(word: String) = word.length >= 3 && !word.exists(_.isDigit) && !theirs(word) && !billed(word)
       // the film's run of whole pieces, the first one
       val run = (for { from <- words.indices.iterator; to <- (from + 1 to words.size).iterator
                        if titles.contains(withoutArticles(words.slice(from, to).flatten)) } yield (from, to)).nextOption()
@@ -147,7 +147,7 @@ object ListingShape {
         words.indices.iterator.filterNot(k => k >= from && k < to).filter(k => words(k).nonEmpty)
           // the banner's slot: the leading piece a colon or a pipe closes, the film after it
           .filterNot(k => k == 0 && from > 0 && breaks.headOption.exists(b => b == ":" || b == "|"))
-          .map(words).find(piece => !original.contains(withoutArticles(piece)) && piece.count(own) >= 2 &&
+          .map(words).find(piece => !original.contains(withoutArticles(piece)) && piece.exists(own) &&
             !piece.exists(word => billed(word) || ScreeningProgramme.findFirstIn(word).isDefined))
           .map(piece => s"'${piece.mkString(" ")}' is billed beside '${films.head.title}', no word of it the venue's around a film")
       }

@@ -55,6 +55,8 @@ class ListingShapeSpec extends AnyFlatSpec with Matchers {
     // a programme's piece before the film, an event named like a film, a concert line-up
     beside("Femme - Frauen heilen die Welt", film("Femme")) shouldBe defined
     beside("Dave - Music in MotionTBA", film("Dave")) shouldBe defined
+    beside("Athanor - Startblock", film("Athanor")) shouldBe defined
+    beside("SKRZYŻOWANIE - 50 na 51 - spotkanie z Janem Englertem", film("Skrzyżowanie")) shouldBe None
     beside("Giorgia Fumo - OUT OF OFFICE", film("Out of Office")) shouldBe defined
     beside("FBF: Freud and Gale: Making It Up", film("Making It Up")) shouldBe defined
     beside("Kids Club: CBeebies Panto 2026: Treasure Island", film("Treasure Island")) shouldBe defined
