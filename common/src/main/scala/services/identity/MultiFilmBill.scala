@@ -42,7 +42,7 @@ object MultiFilmBill {
     """\bshorts?\s+(?:films?\s+)?(?:programmes?|programs?|blocks?|nights?|showcase)\b""",
     // "Shorts" beside a block's name, and any "Kurzfilm…" compound: DE "SHORTS ATTACK! THE KIDS ARE ALRIGHT" and
     // "Kurzfilmtag Oktober: The Kids Are Alright 2026", touring blocks titled like The Who's 1979 film
-    """\bshorts\b""",
+    """\bshorts\b|\bshortfilm\w*|\bshort\s+films\b""",
     """\bkurzfilm\w+""",
     """\b(?:programa|sesion|noche)\s+de\s+cortos?\w*|\bcortometrajes\b""",
     // parts numbered together: "Parts 1-3", "Teil 1 & 2", "Vol. 1 & 2", "części 1 i 2"

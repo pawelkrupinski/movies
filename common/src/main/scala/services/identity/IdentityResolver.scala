@@ -49,6 +49,26 @@ import services.movies.{ListingKey, TitleNormalizer}
  */
 object IdentityResolver {
 
+  /** The members billing a programme UNDER ITS BANNER: a member whose every listing's words are all words of a member
+   *  billing several films by a word that says so ([[MultiFilmBill]]: a block of shorts, a marathon), with one beside the
+   *  film its cluster took — the programme's banner, not the film's title. It is that programme, as none of its films:
+   *  DE "Pornfilmfestival: The more the merrier" is the block "Pornfilmfestival Warm Up: The more the merrier -
+   *  shortfilms presented by Paulita Pappel", not Stevens' 1943 film. A film's own bare title beside a bill of it
+   *  ("The Dark Knight" beside "The Dark Knight Trilogy") carries no banner, and stays the film. */
+  private[identity] def billingUnderBanner(members: Seq[EvidenceNode], bills: Set[String], filmOf: String => Option[Int],
+                                           scored: EvidenceNode => Seq[services.identity.Scored]): Set[String] = {
+    def words(listing: Listing) = services.movies.TitleContainment.tokens(listing.rawTitle).toSet
+    val programmes = members.filter(node => bills(node.id)).flatMap(_.listings)
+      .filter(listing => MultiFilmBill.marker(Seq(listing.rawTitle, listing.title)).isDefined).map(words)
+    if (programmes.isEmpty) Set.empty
+    else members.filterNot(node => bills(node.id)).flatMap { node =>
+      filmOf(node.id).flatMap(film => scored(node).find(_.candidate.tmdbId == film)).map(_.candidate.film).filter { film =>
+        val titled = film.titles.flatMap(services.movies.TitleContainment.tokens).toSet
+        node.listings.forall(listing => programmes.exists(programme => words(listing).subsetOf(programme)) && (words(listing) -- titled).nonEmpty)
+      }.map(_ => node.id)
+    }.toSet
+  }
+
   private[identity] enum Mutation {
     case None
     /** A2 broken: must-links applied in arrival order, first wins. */
@@ -392,7 +412,8 @@ object IdentityResolver {
       // A member billing several works is none of them, whichever film its cluster took or voted
       // ("We're Going on a Bear Hunt + The Tiger Who Came to Tea" {Joanna Harrison, Robin Shaw}, joined by its
       // title to the spelling crediting Harrison alone — itself a bill): it is decided apart, as no film.
-      val billing = members.filter(node => acceptance.billsSeveralWorks(scope.of(node))).map(_.id).toSet
+      val bills   = members.filter(node => acceptance.billsSeveralWorks(scope.of(node))).map(_.id).toSet
+      val billing = bills ++ IdentityResolver.billingUnderBanner(members, bills, filmOf, scope.of)
       val decided = clusters.flatMap { cluster =>
         val (bills, rest) = cluster.partition(node => billing(node.id))
         if (bills.isEmpty || cluster.forall(node => filmOf(node.id).isEmpty))

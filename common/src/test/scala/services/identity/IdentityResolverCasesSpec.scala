@@ -1021,6 +1021,27 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     withClue(withFilm.decisionOf(whistle.key).render)(Seq(bills(2), whistle).map(l => withFilm.decisionOf(l.key).film) shouldBe Seq(None, None))
   }
 
+  "A programme of shorts" should "be no feature it is named like, nor are its siblings billing it under its banner" in {
+    // DE recording 38355584482: Kino Central Berlin's and Moviemento's "Pornfilmfestival: The more the merrier" took
+    // Stevens' 1943 "The More the Merrier" (favoured-calibrated, 39.1%); their sibling "Pornfilmfestival Warm Up: The
+    // more the merrier - shortfilms presented by Paulita Pappel" says what it is, a block of shorts
+    val films   = Seq(F(80616, "The More the Merrier", 1943, "George Stevens", 104, 10), F(155, "The Dark Knight", 2008, "Christopher Nolan", 152, 48))
+    val shorts  = listing(Rialto, "Pornfilmfestival Warm Up: The more the merrier - shortfilms presented by Paulita Pappel")
+    val banners = Seq(KinoApollo, Helios).map(listing(_, "Pornfilmfestival: The more the merrier"))
+    val bare    = listing(Multikino, "The More the Merrier", Some(1943), Some("George Stevens"))
+    val all     = shorts +: banners :+ bare
+    val r = shipped(all, films)
+    withClue(all.map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
+      (shorts +: banners).map(l => r.decisionOf(l.key).film) shouldBe Seq(None, None, None)
+      // the film billed by its own title alone, as the venue credits it, stays the film
+      r.decisionOf(bare.key).film shouldBe Some(80616)
+    }
+    // and a franchise's bare listings beside a bill of it stay their film: "The Dark Knight" carries no banner of the bill's
+    val dark = Seq(KinoApollo, Helios).map(listing(_, "The Dark Knight", Some(2008), Some("Christopher Nolan"), Some(152)))
+    val trilogy = shipped(listing(Multikino, "The Dark Knight Trilogy", director = Some("Christopher Nolan")) +: dark, films)
+    dark.map(l => trilogy.decisionOf(l.key).film) shouldBe Seq(Some(155), Some(155))
+  }
+
   "A marathon billing one title after a dash" should "be that title's film when no other film's title extends it, and none of a franchise's" in {
     // the review page, 2026-10-06: PL "Inna Mamusia - maraton" is Inna mamusia (2026), a film no sequel extends; the
     // corpus's "Piraci z Karaibów - maraton" and "Władca Pierścieni - maraton (wersja reżyserska)" bill a franchise's

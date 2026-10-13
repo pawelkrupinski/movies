@@ -30,7 +30,8 @@ class MultiFilmBillSpec extends AnyFlatSpec with Matchers {
     // DE recording 38355584482: a touring block of shorts and a short film day, each titled like The Who's 1979 film
     // and taken as it on IMDb's, Filmweb's and RT's agreement
     Seq("SHORTS ATTACK! THE KIDS ARE ALRIGHT", "Shorts Attack 2026: The Kids are alright", "Kurzfilmtag Oktober: The Kids Are Alright 2026",
-      "Kurzfilmnacht: Animation").foreach(title => withClue(title)(marker(title) shouldBe defined))
+      "Kurzfilmnacht: Animation", "Pornfilmfestival Warm Up: The more the merrier - shortfilms presented by Paulita Pappel",
+      "Oscar Nominated Short Films 2026: Animation").foreach(title => withClue(title)(marker(title) shouldBe defined))
     MultiFilmBill.billsBeside(Seq("SHORTS ATTACK! THE KIDS ARE ALRIGHT"), Film("The Kids Are Alright", year = Some(1979))) shouldBe true
   }
 
