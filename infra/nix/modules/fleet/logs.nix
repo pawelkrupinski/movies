@@ -319,6 +319,10 @@ let
     pod_log_fields = {
       type = "remap";
       inputs = [ "pod_logs" ];
+      # The `abort` below DROPS a blank line rather than forwarding it unchanged. Vector's default
+      # is already true; spelled out because the blank-line rule depends on it, and
+      # test/test_log_fields.sh asserts it.
+      drop_on_abort = true;
       source = ''
         .host = "${config.networking.hostName}"
         .job = "kubernetes"
@@ -341,6 +345,13 @@ let
           # application's -- see mergeJsonBodyVrl for why that distinction is kept.
           .timestamp = parse_timestamp(cri.ts, "%+") ?? .timestamp
         }
+
+        # A BLANK LINE IS DROPPED. It carries no text, so the sink has nothing to file as `_msg` and
+        # VictoriaLogs stores the row under its literal placeholder "missing _msg field; see ..." --
+        # a level-less row that says nothing and matches every search for that phrase. The JVM's
+        # exit-time Native Memory Tracking report (-XX:+PrintNMTStatistics) writes 26 of them per
+        # worker shutdown, between its sections; its text lines are kept.
+        if strip_whitespace(to_string(.message) ?? "") == "" { abort }
 
         # NAMESPACE, POD AND CONTAINER OUT OF THE PATH. Anchored at the start and split on `_`,
         # because a POD name may contain `-` but neither a NAMESPACE nor a pod name may contain

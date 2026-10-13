@@ -276,6 +276,77 @@ else
   sed 's/^/    /' "$work/json.err" | tail -5
 fi
 
+# ------------------------------------------------------------------------------------------------
+# A LINE WITH NO TEXT, WHICH VICTORIALOGS WOULD STORE AS A PLACEHOLDER
+# ------------------------------------------------------------------------------------------------
+#
+# The JVM's exit-time Native Memory Tracking report (-XX:+PrintNMTStatistics, see the Dockerfile)
+# separates its sections with BLANK lines -- 26 per worker shutdown. An empty `message` gives the
+# sink nothing for `_msg`, and VictoriaLogs files the row under the literal text "missing _msg
+# field; see ...": ~440 such rows a day, level-less, matching every search for that phrase and
+# carrying nothing. A blank line has no content to lose, so it is dropped here. The report's own
+# text lines stay, as text, with no level -- they state none.
+echo "==> a blank pod line is dropped; a text line around it is kept as text"
+python3 -c "
+import json
+path = '/var/log/pods/kinowo_worker-de-794576c9cf-hftvh_9a2422f2-3e01-4851-b6c7-da3be161d1d1/worker/0.log'
+for line in ['', '   ', 'Native Memory Tracking:',
+             'heap-dumps: dir=/data/heapdumps files=2 bytes=500249666 keep=3 max_bytes=4294967296']:
+    print(json.dumps({'message': '2026-10-13T22:57:33.112075853Z stdout F ' + line, 'file': path}))
+" > "$work/blank-events.jsonl"
+"${vector_cmd[@]}" vrl --print-object --quiet --input "$work/blank-events.jsonl" --program "$work/program.vrl" \
+  > "$work/blank-out.jsonl" 2>"$work/blank.err"
+# A dropped event prints `aborted` on STDERR, the events that survive print on stdout.
+blank_got="$(python3 -c "
+import json, sys
+dropped = sum(1 for line in open(sys.argv[2]) if line.strip() == 'aborted')
+kept = ['%s/%s' % (e.get('message'), e.get('level', '-'))
+        for e in (json.loads(line) for line in open(sys.argv[1]) if line.strip())]
+print('|'.join(['dropped'] * dropped + kept))
+" "$work/blank-out.jsonl" "$work/blank.err")"
+blank_want='dropped|dropped|Native Memory Tracking:/-|heap-dumps: dir=/data/heapdumps files=2 bytes=500249666 keep=3 max_bytes=4294967296/-'
+if [ "$blank_got" = "$blank_want" ]; then
+  echo "  ok  an empty and a whitespace-only line are dropped; the report's text lines arrive, level-less"
+else
+  printf '  FAILED the blank-line cases came out as\n         %s\n         wanted %s\n' "$blank_got" "$blank_want"; failed=1
+  sed 's/^/    /' "$work/blank.err" | tail -5
+fi
+drop_on_abort="$(python3 -c "
+import json, sys
+print(json.load(open(sys.argv[1]))['transforms']['pod_log_fields'].get('drop_on_abort'))
+" "$config")"
+if [ "$drop_on_abort" = "True" ]; then
+  echo "  ok  the transform drops what it aborts, rather than forwarding it unchanged"
+else
+  echo "  FAILED pod_log_fields.drop_on_abort is '$drop_on_abort', so an aborted blank line would still ship"; failed=1
+fi
+
+# AN ERROR WITH A STACK TRACE, as tools.JsonLineEncoder writes it: the trace is in `stack_trace`
+# AND in `message`, so it lands in `_msg` -- the field a bare LogsQL word searches.
+echo "==> a worker ERROR keeps its stack trace, in the message and as a field"
+python3 -c "
+import json
+trace = 'java.net.SocketTimeoutException: Read timed out\n\tat clients.TmdbClient.get(TmdbClient.scala:42)\n'
+line = json.dumps({'level': 'ERROR', 'logger': 'clients.TmdbClient', 'thread': 'task-worker-1',
+                   'message': 'TMDB lookup failed\n' + trace, 'build': '89ced660a', 'stack_trace': trace})
+print(json.dumps({'message': '2026-10-13T21:24:50.000000000Z stdout F ' + line,
+                  'file': '/var/log/pods/kinowo_worker-uk-799df957c9-67594_e1b879c5-c7f2-478c-9b97-ecae569e7f7a/worker/0.log'}))
+" > "$work/error-events.jsonl"
+"${vector_cmd[@]}" vrl --print-object --quiet --input "$work/error-events.jsonl" --program "$work/program.vrl" \
+  > "$work/error-out.jsonl" 2>"$work/error.err"
+error_got="$(python3 -c "
+import json, sys
+event = json.loads(open(sys.argv[1]).read().strip() or '{}', strict=False)  # vrl prints a newline raw
+message, trace = event.get('message', ''), event.get('stack_trace', '')
+print('%s|%s|%s' % (event.get('level', '-'), 'SocketTimeoutException' in message and 'TmdbClient.scala:42' in message,
+                    'TmdbClient.scala:42' in trace))
+" "$work/error-out.jsonl")"
+if [ "$error_got" = "ERROR|True|True" ]; then
+  echo "  ok  level ERROR, and the trace is in _msg and in stack_trace"
+else
+  echo "  FAILED the ERROR line came out as $error_got, wanted ERROR|True|True"; failed=1
+fi
+
 echo "==> the pod name is shipped but never shards"
 first="$(sed -n 1p "$work/out.jsonl" | python3 -c "
 import json, sys
