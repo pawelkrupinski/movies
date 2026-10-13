@@ -25,6 +25,18 @@ class CatalogTest {
         assertEquals("uk", c.cities[0].country)
     }
 
+    /** The catalog's `slug` is unique across countries for installed builds from
+     *  before slugs were per country; this build keys every URL, saved city and
+     *  (country, slug) lookup on `pageSlug`, else (an older server) on `slug`. */
+    @Test
+    fun keysACityOnItsPageSlugWhereTheCatalogGivesOne() {
+        val json = """{"countries":[],"cities":[{"slug":"york-north-yorkshire","pageSlug":"york","name":"York","lat":53.96,"lon":-1.08,"country":"uk"},{"slug":"leeds","name":"Leeds","lat":53.8,"lon":-1.5,"country":"uk"}]}"""
+        val c = Catalog.parseBody(json)!!
+        assertEquals(listOf("york", "leeds"), c.cities.map { it.slug })
+        assertEquals("York", c.cities.city("york", "uk")?.name)
+        assertNull(c.cities.city("york-north-yorkshire", "uk"))
+    }
+
     @Test
     fun parsesTheCountrysVersionTokensAndAnswersThemPerCity() {
         // The pair a deep link's `?lang=` is checked against is the LINKED city's

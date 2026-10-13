@@ -49,6 +49,20 @@ class BareSlugDeepLinkTest {
         assertEquals("york", parse("https://showtimes.cc/uk/york-north-yorkshire/")!!.citySlug)
     }
 
+    /** A page slug two countries share: the catalog names the UK's York
+     *  `york-north-yorkshire` for installed builds, and this build reads its
+     *  `pageSlug` — so `/uk/york/` opens the UK's York and `/us/york/` Pennsylvania's. */
+    @Test fun aSharedPageSlugOpensEachCountrysOwnPage() {
+        val uk = parse("https://showtimes.cc/uk/york/")!!
+        assertEquals("uk", uk.countryCode)
+        assertEquals("york", uk.citySlug)
+        assertEquals(53.96, catalog.cities.city("york", "uk")!!.lat, 0.1)
+        val us = parse("https://showtimes.cc/us/york/movie/dune")!!
+        assertEquals("us", us.countryCode)
+        assertEquals("york", us.citySlug)
+        assertEquals(39.96, catalog.cities.city("york", "us")!!.lat, 0.1)
+    }
+
     @Test fun aBareSlugOpensTheCountryTheServersTableNames() {
         val owners = catalog.bareSlugOwners
         // The old owner, though the UK has a York page now (catalog order would say UK).

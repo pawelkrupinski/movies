@@ -16,6 +16,23 @@ final class CityDecodeTests: XCTestCase {
         XCTAssertEqual(cities[0].lon, -0.1278, accuracy: 1e-6)
     }
 
+    /// The catalog's `slug` is unique across countries for installed builds from
+    /// before slugs were per country; this build keys every URL, saved city and
+    /// (country, slug) lookup on `pageSlug`, the city's own slug on its country.
+    func testKeysACityOnItsPageSlugWhereTheCatalogGivesOne() throws {
+        let json = #"[{"slug":"york-north-yorkshire","pageSlug":"york","name":"York","lat":53.96,"lon":-1.08,"country":"uk"}]"#
+        let cities = try JSONDecoder().decode([City].self, from: Data(json.utf8))
+        XCTAssertEqual(cities[0].slug, "york")
+        XCTAssertEqual(cities.city(slug: "york", inCountry: "uk")?.name, "York")
+        XCTAssertNil(cities.city(slug: "york-north-yorkshire", inCountry: "uk"))
+    }
+
+    /// A server older than `pageSlug` names the city by `slug` alone.
+    func testFallsBackToSlugWithoutAPageSlug() throws {
+        let json = #"[{"slug":"york","name":"York","lat":53.96,"lon":-1.08,"country":"uk"}]"#
+        XCTAssertEqual(try JSONDecoder().decode([City].self, from: Data(json.utf8))[0].slug, "york")
+    }
+
     /// A city carries its OWN zone only where it differs from its country's, so
     /// most cities have none and must fall back rather than fail.
     func testDecodesPerCityTimezoneWhenPresent() throws {

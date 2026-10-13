@@ -674,6 +674,37 @@ struct City: Codable, Hashable {
 }
 
 extension City {
+    /// The catalog's wire keys. `slug` and `pageSlug` both arrive; only one is kept.
+    private enum WireKeys: String, CodingKey {
+        case slug, pageSlug, name, lat, lon, country, region, subregion, aliases, timezone, formerSlugs, otherSlugs
+    }
+
+    /// Decodes a catalog city keyed by its PAGE slug — `pageSlug`, the city's own
+    /// slug on its own country, which every URL, saved selection and
+    /// (country, slug) lookup in this build uses. The catalog's `slug` is unique
+    /// across countries for installed builds from before slugs were per country
+    /// (`york-north-yorkshire` for the UK's York, Pennsylvania's being `york`).
+    ///
+    /// TEMPORARY: the fallback to `slug` is for a server older than `pageSlug`;
+    /// drop it with the server's `models.LegacySlugOwners` once the 2.0.11 builds
+    /// are gone and `slug` is the page slug again.
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: WireKeys.self)
+        slug = try c.decodeIfPresent(String.self, forKey: .pageSlug) ?? c.decode(String.self, forKey: .slug)
+        name = try c.decode(String.self, forKey: .name)
+        lat = try c.decode(Double.self, forKey: .lat)
+        lon = try c.decode(Double.self, forKey: .lon)
+        country = try c.decode(String.self, forKey: .country)
+        region = try c.decodeIfPresent(String.self, forKey: .region)
+        subregion = try c.decodeIfPresent(String.self, forKey: .subregion)
+        aliases = try c.decodeIfPresent([String].self, forKey: .aliases)
+        timezone = try c.decodeIfPresent(String.self, forKey: .timezone)
+        formerSlugs = try c.decodeIfPresent([String].self, forKey: .formerSlugs)
+        otherSlugs = try c.decodeIfPresent([String].self, forKey: .otherSlugs)
+    }
+}
+
+extension City {
     /// The RAW localization key(s) for the group level(s) a search box's
     /// prompt should name from a country that groups its cities — the UK's
     /// nation/county, the US's/Germany's single state level. Not

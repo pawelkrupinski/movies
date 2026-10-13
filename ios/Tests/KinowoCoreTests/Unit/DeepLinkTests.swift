@@ -175,6 +175,21 @@ final class DeepLinkTests: XCTestCase {
                                       bareSlugOwners: owners)?.citySlug, "york")
     }
 
+    /// A page slug two countries share, in the real catalog: the catalog names the
+    /// UK's York `york-north-yorkshire` for installed builds, and this build reads
+    /// its `pageSlug` — so `/uk/york/` opens the UK's York and `/us/york/` Pennsylvania's.
+    func testASharedPageSlugOpensEachCountrysOwnPageInTheBundledCatalog() throws {
+        let (cities, owners) = try seed()
+        let uk = DeepLink.parse(URL(string: "https://showtimes.cc/uk/york/")!, cities: cities, bareSlugOwners: owners)
+        XCTAssertEqual(uk?.countryCode, "uk")
+        XCTAssertEqual(uk?.citySlug, "york")
+        XCTAssertEqual(cities.city(slug: "york", inCountry: "uk")?.lat ?? 0, 53.96, accuracy: 0.1)
+        let us = DeepLink.parse(URL(string: "https://showtimes.cc/us/york/movie/dune")!, cities: cities, bareSlugOwners: owners)
+        XCTAssertEqual(us?.countryCode, "us")
+        XCTAssertEqual(us?.citySlug, "york")
+        XCTAssertEqual(cities.city(slug: "york", inCountry: "us")?.lat ?? 0, 39.96, accuracy: 0.1)
+    }
+
     /// A bare `showtimes.cc/{slug}/` or `kinowo://{slug}` names no country: the
     /// country the server's old-owner table names (shipped in the catalog), else
     /// the first in catalog order that answers to it — as the web's front door.
