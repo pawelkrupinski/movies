@@ -468,25 +468,34 @@ object Agreement {
       own.zip(its).exists { case (o, t) => o == t }
   }
   /** Is the film named only WITHIN another candidate's title the listings bill whole — every run of the billing its
-   *  titles are, a strictly longer run of one of `others`' titles (one only a leading article longer is the same name)?
-   *  PL "Kacper i Emma – najlepsi przyjaciele …" names the 2026 "Najlepsi przyjaciele" only as part of the 2013
-   *  "Kacper i Emma: Najlepsi przyjaciele". `others`: every candidate's films, this one's among them. */
+   *  titles are, a strictly longer run of one of `others`' titles, articles aside (a title only an article longer is the
+   *  same name)? PL "Kacper i Emma – najlepsi przyjaciele …" names the 2026 "Najlepsi przyjaciele" only as part of the
+   *  2013 "Kacper i Emma: Najlepsi przyjaciele"; DE CineStar's "Herr der Ringe - Rückkehr des Königs (ext.)" names the
+   *  2025 short "Herr der Ringe" only as the head of "Der Herr der Ringe - Die Rückkehr des Königs", its articles dropped.
+   *  `others`: every candidate's films, this one's among them. */
   def namedWithinAnother(listings: Seq[Listing], films: Seq[IdentityMeasures.Film], others: Seq[Seq[IdentityMeasures.Film]]): Boolean =
     namedWithinAnother(billedSpans(listings, films), others.map(billedSpans(listings, _)))
 
-  /** The runs of every listing's billing the films' titles are (each as its words). */
-  def billedSpans(listings: Seq[Listing], films: Seq[IdentityMeasures.Film]): Seq[Seq[String]] = {
-    val billed = listings.map(l => TitleContainment.tokens(l.rawTitle))
+  /** The runs of every listing's billing the films' titles are (each as its words, articles aside). */
+  def billedSpans(listings: Seq[Listing], films: Seq[IdentityMeasures.Film]): Seq[Seq[String]] =
+    spansIn(listings.map(l => TitleContainment.tokens(l.rawTitle)), films)
+
+  /** [[billedSpans]] of billings already read into their words: each of `billed` must hold the run. */
+  def spansIn(billed: Seq[Seq[String]], films: Seq[IdentityMeasures.Film]): Seq[Seq[String]] =
     if (billed.isEmpty) Nil
-    else films.flatMap(_.titles).map(TitleContainment.tokens).filter(words => words.nonEmpty && billed.forall(_.containsSlice(words))).distinct
-  }
+    else {
+      val bare = billed.map(withoutArticles)
+      films.flatMap(_.titles).map(title => withoutArticles(TitleContainment.tokens(title)))
+        .filter(words => words.nonEmpty && bare.forall(_.containsSlice(words))).distinct
+    }
+
+  private def withoutArticles(words: Seq[String]): Seq[String] = words.filterNot(IdentityMeasures.LeadingArticles)
 
   /** [[namedWithinAnother]] over spans [[billedSpans]] found: `own` the film's, `others` every candidate's. */
   def namedWithinAnother(own: Seq[Seq[String]], others: Seq[Seq[Seq[String]]]): Boolean =
     own.nonEmpty && others.exists { other =>
       val longer = other.filter(words => !own.contains(words))
-      own.forall(span => longer.exists(words => words.sizeIs > span.size && words.containsSlice(span) &&
-        !(IdentityMeasures.LeadingArticles(words.head) && words.tail == span)))
+      own.forall(span => longer.exists(words => words.sizeIs > span.size && words.containsSlice(span)))
     }
 
 

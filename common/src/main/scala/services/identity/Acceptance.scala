@@ -420,9 +420,8 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  Emma – najlepsi przyjaciele Edukacja Młode Horyzonty" names the 2026 short "Najlepsi przyjaciele" only as part of
    *  the 2013 "Kacper i Emma: Najlepsi przyjaciele". */
   private def namedWithinAnother(best: Scored, eligible: Seq[Scored]): Boolean = eligible.sizeIs > 1 && {
-    val billed = services.movies.TitleContainment.tokens(best.listing.rawTitle.getOrElse(best.listing.title))
-    def spans(film: IdentityMeasures.Film) =
-      film.titles.map(services.movies.TitleContainment.tokens).filter(words => words.nonEmpty && billed.containsSlice(words)).distinct
+    val billed = Seq(services.movies.TitleContainment.tokens(best.listing.rawTitle.getOrElse(best.listing.title)))
+    def spans(film: IdentityMeasures.Film) = agreement.Agreement.spansIn(billed, Seq(film))
     agreement.Agreement.namedWithinAnother(spans(best.candidate.film), eligible.filterNot(_ eq best).map(other => spans(other.candidate.film)))
   }
 

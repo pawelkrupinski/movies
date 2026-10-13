@@ -188,6 +188,28 @@ class UnifiedEvidenceSpec extends AnyFlatSpec with Matchers {
       Some("tmdb:581759" -> "family.filmweb.took&!model.unscored&!model.vetoedAbove")
   }
 
+  "a current release billed widely" should "fill no film the title names only within another candidate's title, articles aside" in {
+    // DE CineStar ×43 "Herr der Ringe - Rückkehr des Königs (ext.)" (recording 38355584482), the 2003 film's re-release:
+    // a 14-minute 2025 short titled "Herr der Ringe" is the one current film the billing names, and venues.current
+    // filled it — the billing names it only as the head of "Der Herr der Ringe - Die Rückkehr des Königs", the
+    // venue dropping the articles
+    val title    = "Herr der Ringe - Rückkehr des Königs (ext.)"
+    val listings = Seq("CineStar Augsburg", "CineStar Berlin", "CineStar Kiel", "CineStar Erfurt").map(venue =>
+      listing(KinoMuza, title).copy(key = services.movies.ListingKey.Published(venue, title, None, Nil)))
+    val short    = IdentityMeasures.Film("Herr der Ringe", Some("Herr der Ringe"), Nil, Some(2025), Some(14))
+    val king     = IdentityMeasures.Film("Der Herr der Ringe - Die Rückkehr des Königs", Some("The Lord of the Rings: The Return of the King"), Nil,
+      Some(2003), Some(201), Some(Seq("Peter Jackson")), imdbNumber = 167260)
+    val decision = ResolverDecision(listings.map(_.key), None, 0.17, ResolverDecision.Basis.BelowThreshold, Nil)()
+    def found(ranked: IdentityResolver.CandidateEvidence*) =
+      contenders(ClusterEvidence(listings, decision, Seq(IdentityResolver.NodeEvidence(listings.map(_.key), ranked)), Nil, Nil, _ => None, thisYear = 2026))
+    UnifiedRules.resolver.filled(found(candidate(1434460, short, 0.03), candidate(122, king, 0.02))) shouldBe None
+    UnifiedRules.resolver.filled(found(candidate(1434460, short, 0.03), candidate(122, king, 0.02, denied = true))) shouldBe None
+    found(candidate(1434460, short, 0.03), candidate(122, king, 0.02)).find(_.film == "tmdb:1434460").map(_.signals.contains("title.anothersOwn")) shouldBe
+      Some(true)
+    // the short alone, no other candidate naming more of the billing: the fill stands as before
+    UnifiedRules.resolver.filled(found(candidate(1434460, short, 0.03))).map(_._1.film) shouldBe Some("tmdb:1434460")
+  }
+
   "a pinned rule" should "fire on a conjunction of signals and absences" in {
     val signals = Map("family.filmweb.took" -> 1.0, "model.logit" -> -3.5)
     UnifiedRules.fires("family.filmweb.took&!model.unscored", signals.getOrElse(_, 0.0)) shouldBe true

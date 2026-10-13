@@ -176,8 +176,11 @@ object UnifiedEvidence {
       val denied = scored.keys.filterNot(id => eligible.exists(_._1 == id)).toSeq.sorted.map(id => Option.empty[Building] -> c.cast(id))
       CastEvidence.take(c.venueNames, built.toSeq.map(b => Option(b) -> b.tmdb.flatMap(c.cast)) ++ denied).collect { case (Some(b), named) => b -> named }
     }
-    // each candidate's titles as runs of the billing, found once for every contender's `title.anothersOwn`
-    lazy val candidateSpans = built.toSeq.map(b => Agreement.billedSpans(c.listings, b.records.toSeq.map(_.film)))
+    // each candidate's titles as runs of the billing, found once for every contender's `title.anothersOwn` — a denied
+    // candidate's too: the billing naming it more fully names another film than one it names only in part, whatever
+    // ruled that one out (DE CineStar's "Herr der Ringe - Rückkehr des Königs (ext.)")
+    lazy val candidateSpans = built.toSeq.map(b => Agreement.billedSpans(c.listings, b.records.toSeq.map(_.film))) ++
+      scored.collect { case (id, candidates) if !eligible.exists(_._1 == id) => Agreement.billedSpans(c.listings, Seq(candidates.head.film)) }
     built.toSeq.map { contender =>
       val records = contender.records.toSeq
       val own     = contender.tmdb.flatMap(scored.get).getOrElse(Nil)
