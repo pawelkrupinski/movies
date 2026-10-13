@@ -469,8 +469,18 @@ object Agreement {
     val raw    = TitleContainment.tokens(listing.rawTitle)
     lazy val ownWords = (Seq(listing.cleanTitle, listing.rawTitle, listing.title) ++ listing.originalTitle).map(TitleContainment.tokens).toSet
     // the words the normalised title keeps: a film named only by what it drops is named by a decoration ("Lalka
-    // PREMIERA", cleaned "Lalka", names no "Premiera")
-    lazy val kept = (listing.cleanTitle +: listing.originalTitle.toSeq).flatMap(TitleContainment.tokens).toSet
+    // PREMIERA", cleaned "Lalka", names no "Premiera") — nor by what its search form drops, an event bolted on after it
+    // (UK "Le Moulin + Q&A", searched as "Le Moulin", names no "Q & A")
+    lazy val kept = {
+      val original = listing.originalTitle.toSeq.flatMap(TitleContainment.tokens).toSet
+      val clean    = TitleContainment.tokens(listing.cleanTitle).toSet ++ original
+      // only a search form that drops what a "+" bolts on after the title's head: one dropping the head drops the film itself
+      // (DE '"JAGDSZENEN AUS NIEDERBAYERN" - HEIMATFILM IM WANDEL DER ZEIT', searched as its banner), and one dropping a
+      // second title keeps the film's other name out (DE "BARWY OCHRONNE / CAMOUFLAGE", searched as "BARWY OCHRONNE")
+      val head = listing.searchTitle.map(_.trim).filter(search => search.nonEmpty && listing.cleanTitle.startsWith(search) &&
+        listing.cleanTitle.drop(search.length).trim.startsWith("+"))
+      head.map(search => clean.intersect(TitleContainment.tokens(search).toSet ++ original)).getOrElse(clean)
+    }
     titles.map(IdentityMeasures.key).exists(own) ||
       titles.exists(title => title.length >= 4 && { val words = TitleContainment.tokens(title)
         words.nonEmpty && raw.containsSlice(words) && (kept.isEmpty || words.exists(kept)) }) ||

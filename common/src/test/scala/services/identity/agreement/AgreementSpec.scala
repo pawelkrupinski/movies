@@ -463,6 +463,18 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     Agreement.namesIt(listing(KinoMuza, "WAJDA: re-wizje: Bez znieczulenia"), Seq(film("Bez znieczulenia", 1978, "Andrzej Wajda"))) shouldBe true
   }
 
+  it should "name no film by the event its search form drops" in {
+    // UK The Garden Cinema "Le Moulin + Q&A" (PR #230's capture), searched as "Le Moulin": IMDb and RT took "Q & A" (1990)
+    val moulin = listing(KinoMuza, "Le Moulin + Q&A").copy(searchTitle = Some("Le Moulin"))
+    Agreement.namesIt(moulin, Seq(film("Q & A", 1990, "Sidney Lumet"))) shouldBe false
+    Agreement.namesIt(moulin, Seq(film("Le Moulin", 2017, "Huang Ya-li"))) shouldBe true
+    // a search form dropping a second title, not an event a "+" bolts on, still lets that title name its film
+    val bilingual = listing(KinoMuza, "BARWY OCHRONNE / CAMOUFLAGE").copy(searchTitle = Some("BARWY OCHRONNE"))
+    Agreement.namesIt(bilingual, Seq(IdentityMeasures.Film("Камуфляж", Some("Камуфляж"), Seq("Camouflage"), Some(2026), None, None, None, None))) shouldBe true
+    // a search form keeping the film names it still
+    Agreement.namesIt(listing(KinoMuza, "Kino Konesera: Róża").copy(searchTitle = Some("Róża")), Seq(film("Róża", 2011, "Wojciech Smarzowski"))) shouldBe true
+  }
+
   it should "name a film's title only as part of another candidate's title it bills whole" in {
     // PL "Kacper i Emma – najlepsi przyjaciele Edukacja Młode Horyzonty": the 2026 "Najlepsi przyjaciele" is named only
     // within the 2013 "Kacper i Emma: Najlepsi przyjaciele" the venue bills (review page: the 2013 film)
