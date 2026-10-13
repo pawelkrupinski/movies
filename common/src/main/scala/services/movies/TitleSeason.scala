@@ -4,10 +4,11 @@ package services.movies
  *  (prod UK "Royal Ballet 2026/7: Romeo & Juliet"): a year and the next, which is how a broadcast or programme series
  *  names its run, never a film's year. Two digits alone are none: an age band ("Kids Club 12/13"), or a banner left from
  *  the season it was first billed in — DE "Berliner Philharmoniker 25/26" screens the 2026 Silvesterkonzert, and read as
- *  2025 held ×73 spellings of it apart; a relay's "RB&O 26/27" takes its season from its screenings. Read by the identity model (a listing's season, a
+ *  2025 held ×73 spellings of it apart; a relay's "RB&O 26/27" takes its season from its screenings. Nor a date a month
+ *  runs on from ("2026-7-15"). Read by the identity model (a listing's season, a
  *  record's) and by a venue's slots (two seasons' productions of one work are two films), so both read one season. */
 object TitleSeason {
-  private val Season = """(?<![\p{N}])((?:18|19|20)\d{2})\s*[/–—-]\s*(\d{4}|\d{1,2})(?![\p{N}])""".r
+  private val Season = """(?<![\p{N}])((?:18|19|20)\d{2})\s*[/–—-]\s*(\d{4}|\d{1,2})(?![\p{N}]|[-/.]\d)""".r
 
   /** The season's first year, when the match is one: a year and the very next. */
   private def start(m: scala.util.matching.Regex.Match): Option[Int] = {

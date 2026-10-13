@@ -19,6 +19,12 @@ class TitleSeasonSpec extends AnyFlatSpec with Matchers {
     TitleSeason.of(Seq("Warschau 1944/45", "Royal Ballet 2026/27: Carmen"), Some(2026)) shouldBe Some(2026)
   }
 
+  "a date" should "be no season, its month running on into a day" in {
+    // the one-digit season end ("2026/7") also matched an unpadded date
+    TitleSeason.of(Seq("Gala 2026-7-15: Carmen")) shouldBe None
+    TitleSeason.of(Seq("Royal Ballet 2026/7: Romeo & Juliet")) shouldBe Some(2026)
+  }
+
   "a record's season" should "be any season its titles name" in {
     TitleSeason.of(Seq("Warschau 1944/45")) shouldBe Some(1944)
   }
