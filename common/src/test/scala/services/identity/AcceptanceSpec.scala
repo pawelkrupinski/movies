@@ -97,6 +97,21 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
       (1703622, Film("The Metropolitan Opera 2026/27: Macbeth", year = Some(2026)), Some(1)))) shouldBe Some(1703622)
   }
 
+  it should "never take another house's season record, nor one of another work its title also names" in {
+    // Identity measure on recording 38363428661: DE "PARIS OPERA: ROMEO UND JULIA" ×12 took the Royal Ballet's 2026/27
+    // record by the word "opera", UK "La Fanciulla Del West - Royal Opera" the Met's, and ES "Manon de Jules Massenet -
+    // Ópera (Cine)" ×14 MacMillan's ballet — "Manon" names Massenet's opera too, and "Ópera" no house.
+    taken(ranked(Listing("PARIS OPERA: ROMEO UND JULIA", broadcastSeason = Some(2026)),
+      (1702789, Film("RBO 2026/27: Romeo und Julia (The Royal Ballet)", year = Some(2027)), Some(1)))) shouldBe None
+    taken(ranked(Listing("La Fanciulla Del West - Royal Opera", broadcastSeason = Some(2026)),
+      (1703629, Film("The Metropolitan Opera 2026/27: La Fanciulla del West", year = Some(2027)), Some(1)))) shouldBe None
+    taken(ranked(Listing("Manon de Jules Massenet - Ópera (Cine)", broadcastSeason = Some(2026)),
+      (1702757, Film("Royal Ballet & Opera 2026/27: Manon", year = Some(2026)), Some(1)))) shouldBe None
+    // a banner naming no house, over the one work it names, still takes its season's record
+    taken(ranked(Listing("OPERA-PARSIFAL", broadcastSeason = Some(2026)),
+      (1703636, Film("The Metropolitan Opera 2026/27: Parsifal", year = Some(2027)), Some(1)))) shouldBe Some(1703636)
+  }
+
   it should "take its season's record over another staging of the work, by the house's word or the year its title dates" in {
     // Prod PL 2026-10-13: Kino Powiśle's "OPERA-SAMSON I DALILA" left the Met's 2026/27 record, its first hit, below the
     // threshold; DE recording 38351832400: "RBO live 2027: Tosca" took the ROH's 2011 Tosca by IMDb's suggestion, and

@@ -594,7 +594,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
 
   /** A stage broadcast billed with no season but with its year — in its field or its title: the one eligible SEASON
    *  record naming the same stage work ([[StageWorks]], in any language), billing the listing's house
-   *  ([[IdentityMeasures.namesItsHouse]]), from the very year the venue publishes, that no running time contradicts. DE
+   *  ([[IdentityMeasures.bannerNamesItsHouse]]), from the very year the venue publishes, that no running time contradicts. DE
    *  "Royal Ballet & Opera im Kino: Manon" [2026] {Kenneth MacMillan} ×59 is "Royal Ballet & Opera 2026/27: Manon"
    *  (October 2026), not the Met's 2026/27 Manon (April 2027), which "MET Opera Live im Kino: Manon" [2027] ×4 is; DE
    *  "RBO live 2027: Tosca" is the RBO's 2026/27 record, not the ROH's 2011 one IMDb suggests. It pre-empts every rule
@@ -608,7 +608,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
       works   = IdentityMeasures.stageWorks(any.listing)
       _      <- need(works.nonEmpty, "the title names no stage work")
       record <- one(eligibleOf(ranked).filter(scored => IdentityMeasures.filmSeason(scored.candidate.film).isDefined &&
-                  IdentityMeasures.stageWorks(scored.candidate.film).exists(works) && IdentityMeasures.namesItsHouse(any.listing, scored.candidate.film) &&
+                  IdentityMeasures.stageWorks(scored.candidate.film).exists(works) && IdentityMeasures.bannerNamesItsHouse(any.listing, scored.candidate.film) &&
                   scored.candidate.film.year.contains(year) && !contradicted(scored)),
                   "no season record of its work from its year", "two season records of its work from its year", s"works ${works.toSeq.sorted.mkString(",")}, $year")
     } yield record -> record.probability
@@ -621,7 +621,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  one; a fact contradicting it, or another director, refuses it.
    *
    *  So is the record of the very season the listing's screenings broadcast it in that names its stage work under its
-   *  house ([[IdentityMeasures.namesItsHouse]]), however the venue shortens the banner: prod UK 2026-10-13 "MET:
+   *  house ([[IdentityMeasures.bannerNamesItsHouse]]), however the venue shortens the banner: prod UK 2026-10-13 "MET:
    *  Macbeth" (17 October 2026), "RBO: Tosca 27" and "Macbeth (Met Opera)" are the Met's and RBO's 2026/27 records. */
   def seasonRecord(ranked: Seq[Scored]): Option[Accepted] = seasonRecordWhy(ranked).toOption
   /** [[seasonRecord]]'s answer when it is a record of the season the listing's screenings broadcast it in: it pre-empts
@@ -640,7 +640,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
     def ofItsWork(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film) =
       listing.broadcastSeason.exists(IdentityMeasures.filmSeason(film).contains) &&
         IdentityMeasures.stageWorks(film).exists(IdentityMeasures.stageWorksBilled(listing.rawTitle.toSeq :+ listing.title, seasonNamed = false)) &&
-        IdentityMeasures.namesItsHouse(listing, film)
+        IdentityMeasures.bannerNamesItsHouse(listing, film)
     for {
       any    <- ranked.headOption.toRight(Refused("no candidate"))
       listing = any.listing

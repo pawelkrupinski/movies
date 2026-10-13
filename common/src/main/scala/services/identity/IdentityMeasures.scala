@@ -319,12 +319,15 @@ object IdentityMeasures {
     "company", "theatre", "theater", "teatro", "teatr", "the", "and", "und", "of", "de", "du", "des", "di", "del", "der", "die", "das", "la",
     "le", "les", "el", "los", "las", "im", "in", "aus", "at", "from", "live", "kino", "cinema", "hd", "season", "saison", "sezon", "kinowy",
     "presents", "z", "w", "na")
+  /** A house name's words that say WHICH house: two letters or more, no number, none of [[HouseCommonWords]]. */
+  private def particularWords(name: Seq[String]): Seq[String] =
+    name.filter(word => word.length >= 2 && !word.forall(_.isDigit) && !HouseCommonWords(word))
   /** Do two house names NAME one house: a word in common beyond [[HouseCommonWords]], one's word a prefix of the other's
    *  ("Met", "Metropolitan"), or one's word the other's initials ("RBO" of "Royal Ballet & Opera", "ROH" of "Royal Opera
    *  House")? Never a name of common words alone ("Opera", "The Ballet"): it names no house in particular. Numbers are no
    *  part of a name ("RBO 26/27"). */
   private[identity] def namesOneHouse(a: Seq[String], b: Seq[String]): Boolean = {
-    def own(name: Seq[String]) = name.filter(word => word.length >= 2 && !word.forall(_.isDigit) && !HouseCommonWords(word))
+    def own(name: Seq[String]) = particularWords(name)
     def initials(name: Seq[String]) =
       name.filterNot(word => word.forall(_.isDigit) || Set("the", "and", "und", "of")(word)).flatMap(_.headOption).mkString
     val (ownA, ownB) = (own(a), own(b))
@@ -1469,7 +1472,7 @@ object IdentityMeasures {
   private val UnclosedBracket     = """\s*[(\[][^)\]]*$""".r
   /** Initials an ampersand joins ("RB&O"): one abbreviation, "RBO" — never "Romeo & Juliet", spaced. */
   private val AmpersandInitials   = """(?<=\b\p{Lu}{1,3})&(?=\p{Lu}{1,3}\b)""".r
-  /** A title as its stage works and house are read off it ([[stageWorksBilled]], [[namesItsHouse]]): initials an
+  /** A title as its stage works and house are read off it ([[stageWorksBilled]], [[bannerNamesItsHouse]]): initials an
    *  ampersand joins run together, any other "&" read as "and", its running time and an unclosed bracket's tail cut off
    *  (the bracket's words kept as a piece of their own). */
   private def billable(title: String): String = {
@@ -1504,8 +1507,6 @@ object IdentityMeasures {
     else l.year.orElse(l.broadcastSeason).toSeq.flatMap(year =>
       stageWorksBilled(l.rawTitle.toSeq :+ l.title, seasonNamed = false).toSeq.sorted.flatMap(StageWorks.resolver.searchNames).map(name => s"$name $year"))
 
-  /** Do the two titles' banners — their pieces naming no work — share a word ([[bannersMeet]])? */
-  def bannersMeetOf(l: Listing, f: Film): Boolean = bannersMeet(l.title +: l.rawTitle.toSeq, f.titles)
 
   private val BannerYear = """(?<![\p{N}])(20\d{2})(?![\p{N}/–—-])""".r
   /** The one year a relay's banner dates its broadcast by — a piece of its title naming no stage work, beside one that
@@ -1516,14 +1517,17 @@ object IdentityMeasures {
     Option.when(works.nonEmpty)(banners.flatMap(BannerYear.findAllMatchIn).map(_.group(1).toInt).distinct).collect { case Seq(one) => one }
   }
 
-  /** Does the listing's banner name the house the record bills: their banners share a word ([[bannersMeetOf]]), or a
-   *  piece of the listing's title naming no stage work names one house with the record's ([[namesOneHouse]] — a prefix,
-   *  "MET" of "The Metropolitan Opera"; initials, "RBO" of "Royal Ballet & Opera")? Read off the title's pieces, not
-   *  the art-form word a relay's banner carries ([[Relay]]): UK "MET: Macbeth" names none. */
-  def namesItsHouse(l: Listing, f: Film): Boolean = bannersMeetOf(l, f) || {
-    val banners = (Seq(l.title) ++ l.rawTitle).map(billable).flatMap(fragments).filter(piece => StageWorks.resolver.named(key(piece)).isEmpty)
-      .map(wordsOf).filter(_.nonEmpty)
-    banners.exists(banner => f.houseNames.exists(namesOneHouse(banner, _)))
+  /** Does the listing's banner name the house the record bills? A banner naming a house in particular — words beside
+   *  [[HouseCommonWords]], read off the title's fragments, its stage works out ([[houseWords]]) — must name the record's
+   *  ([[namesOneHouse]]: a prefix, "MET" of "The Metropolitan Opera"; initials, "RBO" of "Royal Ballet & Opera"): DE
+   *  "PARIS OPERA: ROMEO UND JULIA" is no Royal Ballet relay, nor UK "La Fanciulla Del West - Royal Opera" the Met's,
+   *  however "opera" meets. A relay's banner naming no house ("OPERA-PARSIFAL") names the record by its one stage work
+   *  alone — never by a name two works share: ES "Manon de Jules Massenet - Ópera" is no Royal Ballet "Manon". */
+  def bannerNamesItsHouse(l: Listing, f: Film): Boolean = {
+    val titles     = Seq(l.title) ++ l.rawTitle
+    val particular = titles.map(billable).flatMap(fragments).map(houseWords).map(particularWords).filter(_.nonEmpty)
+    if (particular.nonEmpty) particular.exists(banner => f.houseNames.exists(namesOneHouse(banner, _)))
+    else l.billsAStageHouse && stageWorksBilled(titles, seasonNamed = false).sizeIs == 1
   }
 
   /** A season production searched as its WORK AND ITS SEASON ("Manon 2026"): a house's record of
