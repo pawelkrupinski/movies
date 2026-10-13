@@ -8,7 +8,8 @@ import java.util.Locale
  * `…_3D`, a bare trailing `NAPISY 2D` — into display tokens (2D / 3D / IMAX /
  * 4DX / ATMOS / DUB / NAP / LEK) while rewriting the title to its clean base (the format
  * words AND their adjacent brackets / slashes / dashes removed). With them, stacked in any order, the showing's
- * notes that carry no badge: a box office's certificate and running time, a German re-release mark.
+ * notes that carry no badge: a box office's certificate and running time, a note between asterisks, a German
+ * re-release mark.
  *
  * Lives in `common` so BOTH the ingest choke point
  * (`MovieCache.recordCinemaScrape`, which every scrape path shares) and the
@@ -81,6 +82,10 @@ object FormatTags {
   private val CertificateNote =
     (s"""(?i)(?<=\\S)\\s*(?:[-–—]\\s*Cert(?:ificate)?\\.?\\s+$Certificate|\\(\\s*(?:Cert(?:ificate)?\\.?\\s*)?$Certificate(?:\\s+TBC)?\\s*\\))""" +
       """(\s*\(\s*(?:19|20)\d{2}\s*\))?(?:\s+\d{2,3}\s*mins?|\s+\d{2})?\s*$""").r
+  // A showing's note a box office closes between asterisks after the rest — Electric Palace Bridport's "Wicker (15) 105
+  // mins *MATINEE*", "… *SUBTITLED MATINEE*": words only, spaced off the title, so a title's own asterisks ("M*A*S*H",
+  // "Monet*", "B****") stay. Its version words still badge the showing.
+  private val AsteriskNote = """(?<=\S)\s+\*\s*\p{L}[\p{L}\s'&-]*\*\s*$""".r
   private val ReReleaseMark = """(?i)(?<=\S)\s*\(\s*(?:WA(?:\s*:?\s*\d{2,4}|\s*:)?|Wiederauff(?:ü|ue)hrung)\s*\)?\s*$""".r
   // The same tags written IN FRONT of the title — "OV: Digger", "(OmU) Verity", "ATMOS/OV: Verity", "Dolby
   // Cinema: Die Odyssee", "3D: Forgotten Island", "engl. OV: Der Herr der Ringe", "OMU - Searching for Sugar Man":
@@ -176,6 +181,10 @@ object FormatTags {
         captureTagWords(tag, dropped)
         t = t.substring(tag.length).trim
       }
+      AsteriskNote.findFirstIn(t).foreach { note =>
+        captureTagWords(note, dropped)
+        t = AsteriskNote.replaceFirstIn(t, "").trim
+      }
       t = ReReleaseMark.replaceFirstIn(CertificateNote.replaceFirstIn(t, "$1"), "").trim
       // Tokens peeled inside a [..]/(..) tag also carry version meaning, so
       // capture them before deleting the tag — UNLESS the tag names the Ukrainian
@@ -203,7 +212,7 @@ object FormatTags {
       t = toks.mkString(" ").replaceAll("""\s*[-–—|/:,]+\s*$""", "").trim
     }
     val tokens = spelled.toLowerCase(Locale.ROOT)
-      .split("""[\s\[\]().,/|:_-]+""")
+      .split("""[\s\[\]().,/|:_*-]+""")
       .iterator
       .filter(dropped.contains)
       .flatMap(FormatToken.get)
@@ -217,7 +226,7 @@ object FormatTags {
   /** Record every [[FormatToken]]-bearing word in `chunk` (a single token or a
    *  whole `(...)`/`[...]` tag) into `out`. */
   private def captureTagWords(chunk: String, out: scala.collection.mutable.Set[String]): Unit =
-    chunk.split("""[\s\[\]()/:,]+""").iterator
+    chunk.split("""[\s\[\]()/:,*]+""").iterator
       .map(w => bareWord(w))
       .filter(FormatToken.contains)
       .foreach(out.add)

@@ -142,7 +142,23 @@ class TitleFormatWordsSpec extends AnyFlatSpec with Matchers {
     FormatTags.extractFormatTags("Digger (Subtitled) (15)") shouldBe ("Digger", List("SUB"))
   }
 
-  it should "key the listing with the film's other listings" in {
+  // Electric Palace Bridport bills a showing's note between asterisks after the rest, recording 38363428661: "Screening:
+  // NTL - Hay Fever (12A TBC) (160 mins TBC) *MATINEE*", "Wicker (15) 105 mins *MATINEE*", "Pressure (15 TBC) (2026) 100
+  // mins *SUBTITLED MATINEE*" — each a card beside the evening showing, its certificate left on behind the note.
+  "A showing's note between asterisks" should "come off the title's end, and the certificate it hid with it" in {
+    FormatTags.extractFormatTags("Wicker (15) 105 mins *MATINEE*") shouldBe ("Wicker", Nil)
+    FormatTags.extractFormatTags("Sense and Sensibility (Cert TBC) (2026) 131 mins *MATINEE*") shouldBe ("Sense and Sensibility (2026)", Nil)
+    FormatTags.extractFormatTags("Pressure (15 TBC) (2026) 100 mins *SUBTITLED MATINEE*") shouldBe ("Pressure (2026)", List("SUB"))
+    FormatTags.extractFormatTags("Screening: NTL - Hay Fever (12A TBC) (160 mins TBC) *MATINEE*")._1 shouldBe
+      FormatTags.extractFormatTags("Screening: NTL - Hay Fever (12A TBC) (160 mins TBC)")._1
+    // an asterisk inside the title, or one glued to its last word, is the title's own
+    FormatTags.extractFormatTags("Smile You Son Of a B****")._1 shouldBe "Smile You Son Of a B****"
+    FormatTags.extractFormatTags("Exhibition On Screen: Monet*")._1 shouldBe "Exhibition On Screen: Monet*"
+    FormatTags.extractFormatTags("M*A*S*H")._1 shouldBe "M*A*S*H"
+    FormatTags.extractFormatTags("*batteries not included")._1 shouldBe "*batteries not included"
+  }
+
+  "A box office's certificate" should "key the listing with the film's other listings" in {
     val titles = TitleNormalizer.forCountry(models.Country.UnitedKingdom)
     Seq("Digger (15)", "Digger - Cert 15", "Digger (15) 129 mins").foreach { raw =>
       withClue(s"slot key of '$raw': ")(
