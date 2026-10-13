@@ -23,7 +23,8 @@ name: Discover UK cinemas
 # (`harvest_towns.py --sync`: only the venues the file lacks, a handful at most),
 # places the new towns on GeoNames (`geocode_towns.py`, which refuses a town it
 # cannot place — the run fails rather than guess), rebuilds the pages and
-# regenerates the Scala, in the same PR as the wiring that needs it.
+# regenerates the Scala, the apps' city lists and their catalog seeds, in the same
+# PR as the wiring that needs it.
 #
 # Like scala-steward.yml, the PR is opened via the
 # "Kinowo Sync Bot" GitHub App (secrets SYNC_PR_APP_ID + SYNC_PR_APP_PRIVATE_KEY)
@@ -144,6 +145,15 @@ jobs:
               if: steps.changed.outputs.wired == 'true'
               run: sbt "worker/compile"
 
+            # A new venue in a new town is a new page, so the apps' bundled catalog
+            # seeds move with it — and CatalogSeedSpec (with tree-unchanged.sh) would
+            # turn the PR red without them. The spec rewrites stale seeds and fails;
+            # the second run must pass on what it wrote.
+            - name: Regenerate the apps' catalog seeds
+              if: steps.changed.outputs.wired == 'true'
+              run: |
+                  sbt "common/Test/testOnly tools.CatalogSeedSpec" || sbt "common/Test/testOnly tools.CatalogSeedSpec"
+
             # A fresh branch off main every run, never a force-push over a stale one --
             # see .github/actions/drop-bot-branch.
             - uses: ./.github/actions/drop-bot-branch
@@ -170,6 +180,8 @@ jobs:
                       data/uk/pages.json
                       android/app/src/main/java/pl/kinowo/model/City.kt
                       ios/Kinowo/Models/City.swift
+                      android/app/src/main/assets/catalog-seed.json
+                      ios/Kinowo/catalog-seed.json
                   commit-message: 'chore: wire newly-discovered UK cinemas from Flicks'
                   title: 'chore: wire newly-discovered UK cinemas'
                   body-path: discovery-report.md
