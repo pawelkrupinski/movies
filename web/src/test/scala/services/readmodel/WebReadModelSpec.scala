@@ -321,6 +321,43 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     rm.stop()
   }
 
+  // A failed checkpoint opens nothing and costs a `hello`, not a reload — so it is no reopen
+  // attempt: counting it grew the backoff through the outage, and a warm pod whose streams died
+  // before it sat up to the backstop's interval with them down after Mongo was back.
+  it should "reopen on the first tick after Mongo recovers, however long the backoff grew before the checkpoint failed" in {
+    val checkpointsTried = new java.util.concurrent.atomic.AtomicInteger(0)
+    class FlappingRepository extends UnreadableReadModelRepository {
+      @volatile var dying = false
+      override def streamCheckpoint(): tools.ReadOutcome[StreamCheckpoint] = {
+        checkpointsTried.incrementAndGet()
+        super.streamCheckpoint()
+      }
+      override def watchMovies(onUpsert: ResolvedMovie => Unit, onDelete: String => Unit, from: Option[StreamCheckpoint]): Option[StreamSubscription] = {
+        val opened = super.watchMovies(onUpsert, onDelete, from)
+        if (dying) failMovieStream()   // a flapping Mongo: the stream dies as soon as it opens
+        opened
+      }
+    }
+    val repository = new FlappingRepository
+    repository.healReads()
+    val rm = started(repository)
+
+    repository.dying = true
+    repository.failMovieStream()
+    (1 to 10).foreach(_ => rm.coldRetryTick())   // reopened on ticks 1, 3 and 7: the next waits 7 more
+    repository.failingCheckpoint = true           // Mongo down altogether: not even a `hello` answers
+    checkpointsTried.set(0)
+    (1 to 10).foreach(_ => rm.coldRetryTick())   // the backoff runs out into the outage
+    checkpointsTried.get() should be >= 1
+
+    repository.dying = false
+    repository.healReads()
+    rm.coldRetryTick()
+
+    rm.streamsLive shouldBe true
+    rm.stop()
+  }
+
   it should "reload when a server-side count drifts from the in-memory model" in {
     // countScreenings reports one more than was streamed in — standing in for a
     // delivered event the applier dropped, which a count-blind backstop misses.
