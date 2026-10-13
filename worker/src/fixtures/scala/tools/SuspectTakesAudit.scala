@@ -34,9 +34,10 @@ object SuspectTakesAudit {
   }
   private def clean(text: String) = text.replace('\t', ' ').replace('\n', ' ')
 
-  /** A take as the labels judge it ([[UnmatchedClusters.verdict]]). */
+  /** A take as the labels judge it ([[UnmatchedClusters.verdict]]): its raw title spelled as a TSV line holds it, a line
+   *  break as a space, as the baseline keys it. */
   def labelled(country: String, take: Take): UnmatchedClusters.Take =
-    UnmatchedClusters.Take(country, take.listing.venue, take.listing.rawTitle, take.tmdb, take.film.stripPrefix("imdb:") match {
+    UnmatchedClusters.Take(country, take.listing.venue, clean(take.listing.rawTitle), take.tmdb, take.film.stripPrefix("imdb:") match {
       case id if take.film.startsWith("imdb:") => Some(id)
       case _ => Option.when(take.record.imdbNumber > 0)(f"tt${take.record.imdbNumber}%07d")
     }, take.decision.basis.toString, take.record.title, take.decision.agreed,
@@ -68,7 +69,7 @@ object SuspectTakesAudit {
             baseline: Set[(String, String, String)]): Verdict = {
     val all       = suspects(country, corpus, screeningYear)
     val byTitle   = labels.filter(_.country == country).groupBy(_.rawTitle)
-    val verdicts  = corpus.takes.map(take => take -> byTitle.get(take.listing.rawTitle).flatMap(verdict(country, take, _)))
+    val verdicts  = corpus.takes.map(take => take -> byTitle.get(clean(take.listing.rawTitle)).flatMap(verdict(country, take, _)))
     val judged    = verdicts.collect { case (take, Some(_)) => key(country, take) }.toSet
     val wrongAll  = verdicts.collect { case (take, Some(false)) => take }.distinctBy(key(country, _))
     val fresh     = all.filterNot(s => judged(s.key) || baseline(s.key))

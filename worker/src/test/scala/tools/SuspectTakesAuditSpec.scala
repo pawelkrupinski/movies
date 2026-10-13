@@ -36,6 +36,14 @@ class SuspectTakesAuditSpec extends AnyFlatSpec with Matchers {
     SuspectTakesAudit.judge("pl", corpus(fragment, fine), 2026, Nil, Set(("pl", fragment.listing.rawTitle, "tmdb:1"))).failed shouldBe false
   }
 
+  it should "judge a raw title that breaks a line by the label spelling it as the baseline does, a space for the break" in {
+    // PL Kino w Ratuszu bills "„Skrzypek na dachu”\nMusical wszech czasów …": a TSV line holds no line break, so the label
+    // spells it as the baseline's key does, and must still judge the take
+    val broken = take("„Out of Office”\nGiorgia Fumo na scenie", "Out of Office", 2022, 1)
+    SuspectTakesAudit.judge("pl", corpus(broken, fine), 2026, Seq(label("„Out of Office” Giorgia Fumo na scenie", "tmdb:1", right = true)),
+      Set.empty).failed shouldBe false
+  }
+
   it should "fail on a take a label calls wrong, suspect or not, unless the baseline lists it" in {
     val labels  = Seq(label("Johnny", "tmdb:3", right = false))
     val verdict = SuspectTakesAudit.judge("pl", corpus(fine, wrongOne), 2026, labels, Set.empty)
