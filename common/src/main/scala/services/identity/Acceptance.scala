@@ -114,7 +114,8 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
     ranked.exists(other => (other ne taken) && other.suggestedOnly && !other.denied && other.number("venues.corroborating").exists(_ > 0) &&
       other.probability >= taken.probability)
 
-  /** A DOUBLE PROGRAMME: a "+" joining two whole works ([[IdentityMeasures.billsTwoWholeWorks]]), whatever is held
+  /** A DOUBLE PROGRAMME: two quoted works a conjunction joins ([[ListingShape.quotesTwoJoined]], PL "„Mieszkanie” i „Owoce
+   *  rajskich drzew spożywamy”"), or a "+" joining two whole works ([[IdentityMeasures.billsTwoWholeWorks]]), whatever is held
    *  of them, is neither film (user rule) — UK "We're Going on a Bear Hunt + The Tiger Who Came to Tea" {Joanna
    *  Harrison, Robin Shaw} ×133, its two films scored 91–93% and popularity's coin picking one; PL Kino Pałacowe's
    *  "Historia kina w Popielawach + Pruska kultura", a 1908 short TMDB does not hold. A talk joined to one film
@@ -123,7 +124,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  "The Dark Knight Trilogy", "Maraton Horrorów") — unless an eligible film's own title carries that word ("Marathon
    *  Man"), and then only that film may be taken ([[takesNoBill]]). */
   def billsSeveralWorks(ranked: Seq[Scored]): Boolean = ranked.headOption.exists { any =>
-    any.listing.rawTitle.exists(ListingShape.quotesSeveralDated) ||
+    any.listing.rawTitle.exists(ListingShape.quotesSeveralDated) || (any.listing.title +: any.listing.rawTitle.toSeq).exists(ListingShape.quotesTwoJoined) ||
     (IdentityMeasures.billsTwoWorks(any.listing) && !eligibleOf(ranked).exists(_.category("title").contains("exact")) &&
       IdentityMeasures.billsTwoWholeWorks(any.listing)) ||
       markerOf(ranked).exists(marker => !eligibleOf(ranked).exists(scored => MultiFilmBill.namedBy(marker, scored.candidate.film)) &&

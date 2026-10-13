@@ -76,7 +76,7 @@ object ListingShape {
 
   // ── a bill of several works ────────────────────────────────────────────────────────────────
 
-  private val Quoted = """[„"“][^"”„]+["”]""".r
+  private val Quoted = """[„"“]([^"”„]+)["”]""".r
   /** A set ("zestaw") — of a series' episodes, often one compilation record the model may still take ([[MultiFilmBill]]
    *  leaves it out), but no family's agreement, poster or catalogue id stands for one of its pieces. */
   private val SetOfWorks = """(?i)\bzestaw\b""".r
@@ -102,6 +102,11 @@ object ListingShape {
    *  (1999)') bills that work. */
   def quotesSeveralDated(rawTitle: String): Boolean = quotesSeveral(rawTitle) && DatedWork.findAllIn(rawTitle).size >= 2
   private val DatedWork = """\((?:18|19|20)\d\d\)""".r
+  /** Does the venue's own title join two quoted works by a conjunction — a DOUBLE BILL, neither film (user rule): PL
+   *  "„Mieszkanie” i „Owoce rajskich drzew spożywamy”", 'MAF: "Obcy" oraz "Milcząca Przyjaciółka"'? Undated, unlike
+   *  [[quotesSeveralDated]]: the conjunction says the two are billed as one programme. */
+  def quotesTwoJoined(rawTitle: String): Boolean = JoinedQuotes.findFirstIn(rawTitle).isDefined
+  private val JoinedQuotes = """(?iu)[„"“][^"”„]+["”]\s*(?:i|oraz|und|and|&|et|y|e)\s+[„"“][^"”„]+["”]""".r
   private def billsSeveralBySigns(listing: Listing): Boolean =
     SetOfWorks.findFirstIn(listing.rawTitle).isDefined || quotesSeveral(listing.rawTitle) ||
       IdentityMeasures.billsTwoWholeWorks(Evidence.of(listing, None).measured)
@@ -157,10 +162,9 @@ object ListingShape {
   private val PieceBreak = """\s*[:|•+]\s*|\s+[-–—]\s+|\s*[„”"“«»]\s*""".r
   private val Bracketed  = """\([^)]*\)|\[[^\]]*]""".r
   private val Quote      = """[„”"“«»]""".r
-  private val QuotedSpan = """[„"“«]([^„”"“«»]+)[”"“»]""".r
   private def quotesAFilm(raw: String, films: Seq[IdentityMeasures.Film]): Boolean = {
     val titles = films.flatMap(_.titles).map(t => withoutArticles(TitleContainment.tokens(t))).toSet
-    QuotedSpan.findAllMatchIn(raw).exists(m => titles(withoutArticles(TitleContainment.tokens(m.group(1)))))
+    Quoted.findAllMatchIn(raw).exists(m => titles(withoutArticles(TitleContainment.tokens(m.group(1)))))
   }
   private def withoutArticles(words: Seq[String]): Seq[String] =
     if (words.sizeIs >= 2 && IdentityMeasures.LeadingArticles(words.head)) words.tail else words

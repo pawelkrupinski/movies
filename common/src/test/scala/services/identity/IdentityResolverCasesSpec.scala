@@ -1452,6 +1452,23 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     ListingShape.quotesSeveralDated("„10 na 10”. Przegląd filmów Andrzeja Wajdy: „Pan Tadeusz” (1999)") shouldBe false
   }
 
+  it should "take neither of two quoted works a conjunction joins, a double bill" in {
+    // PL KINOMUZEUM (suspect audit 2026-10-13, served in prod): Chytilová's "Owoce rajskich drzew spożywamy" billed with
+    // her "Mieszkanie" — taken as the 1970 film alone by the calibrated rule (labelled wrong)
+    val films = Seq(F(80080, "Owoce rajskich drzew spożywamy", 1970, "Věra Chytilová", 99, 3))
+    // the venue states both works' directors, the year and running time of the second
+    def decided(raw: String) = {
+      val l = listing(Multikino, raw, Some(1970), Some("Věra Chytilová"), Some(109)).copy(directors = Seq("Jan Švankmajer", "Věra Chytilová"))
+      IdentityResolver.resolve(Seq(l), new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver).decisionOf(l.key)
+    }
+    val bill = decided("„Mieszkanie” i „Owoce rajskich drzew spożywamy”")
+    withClue(bill.render)(bill.film shouldBe None)
+    ListingShape.quotesTwoJoined("MAF: \"Obcy\" oraz \"Milcząca Przyjaciółka\"") shouldBe true
+    // one quoted work is that work, and two quotes a conjunction does not join are a work and its programme
+    decided("Kino Kobiet: „Owoce rajskich drzew spożywamy”").film shouldBe Some(80080)
+    ListingShape.quotesTwoJoined("„10 na 10”. Przegląd filmów Andrzeja Wajdy: „Pan Tadeusz” (1999)") shouldBe false
+  }
+
   it should "still take the same director's film of the listing's year when both are there" in {
     val films = Seq(F(10234, "Funny Games", 1997, "Michael Haneke", 108, 8), F(8461, "Funny Games", 2007, "Michael Haneke", 111, 9))
     val dated = listing(Multikino, "Funny Games", Some(2007), Some("Michael Haneke"), Some(111))
