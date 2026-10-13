@@ -90,12 +90,12 @@ object AppLoader {
       metrics:        EssentialFilter,
       playDefaults:   Seq[EssentialFilter],
       crossSiteWrite: CrossSiteWriteFilter,
-      renamedCity:    EssentialFilter,
       frontDoor:      EssentialFilter,
+      renamedCity:    EssentialFilter,
       cors:           play.filters.cors.CORSFilter,
       csp:            EssentialFilter,
       gzip:           EssentialFilter): Seq[EssentialFilter] =
-    (metrics +: playDefaults) :+ crossSiteWrite :+ renamedCity :+ frontDoor :+ cors :+ csp :+ gzip
+    (metrics +: playDefaults) :+ crossSiteWrite :+ frontDoor :+ renamedCity :+ cors :+ csp :+ gzip
 
   /** Mount the whole application at its country's [[models.Country.mountPath]].
    *
@@ -182,11 +182,12 @@ class AppComponents(context: Context, val env: Env, val country: Country, val mo
   // compressed payloads (images), so it only ever helps.
   // The renamed-city 301 sits INSIDE the metrics filter (so the redirect is
   // counted like any other response) but ahead of the router, since its whole
-  // job is to answer a path the router would 404.
+  // job is to answer a path the router would 404. The front door sits ahead of
+  // it: on the apex a renamed Polish slug is a 404, not a 301 onto one.
   // The cross-site write refusal sits right after Play's own filters, ahead of
   // everything that could act on the request.
   override def httpFilters: Seq[EssentialFilter] =
-    AppLoader.filterChain(httpMetricsFilter, super.httpFilters, crossSiteWriteFilter, renamedCityRedirectFilter, frontDoorRedirectFilter, corsFilter, cspFilter, gzipFilter)
+    AppLoader.filterChain(httpMetricsFilter, super.httpFilters, crossSiteWriteFilter, frontDoorRedirectFilter, renamedCityRedirectFilter, corsFilter, cspFilter, gzipFilter)
 
   // Replace Play's default error handler with the truncation-tolerant
   // variant so `EntityStreamException` from client-side body cutoffs

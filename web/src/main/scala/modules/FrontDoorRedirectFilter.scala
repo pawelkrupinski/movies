@@ -17,42 +17,45 @@ import scala.concurrent.Future
  * that has it, else the first in order — the same one the apps read.
  *
  * A path under one of the root country's OWN places — `showtimes.cc/poznan/`, its
- * sub-pages, with or without the slash — 301s to the same address on that country's
- * own domain (`kinowo.net/poznan/`): Caddy sends every unmounted path on the apex to
- * the root deployment, which would otherwise serve its pages a second time under
- * showtimes.cc, canonical and all. Off the apex — `kinowo.net` itself — nothing is
- * touched. Every redirect is counted in [[LegacyAddressMetrics]] — as
+ * sub-pages, with or without the slash, a renamed or aliased Polish slug, a bare
+ * slug the rule above gives to Poland — is a 404: Polish places live on
+ * `kinowo.net` and nowhere else, and Caddy sends every unmounted path on the apex
+ * to the root deployment, which would otherwise serve its pages a second time
+ * under showtimes.cc. This filter sits AHEAD of [[RenamedCityRedirectFilter]]
+ * (`AppLoader.filterChain`) so a renamed Polish slug is a 404 too, rather than a
+ * 301 onto one. The apex's own root, files and endpoints (`/`, `/robots.txt`,
+ * `/.well-known/…`, `/assets/…`, `/api/…`) name no place and pass through. Off the
+ * apex — `kinowo.net` itself — nothing is touched.
+ *
+ * Every redirect is counted in [[LegacyAddressMetrics]] — as
  * `front_door_old_owner` only where the old-owner table changed the answer, the
- * one kind the table's drop rule reads; a Polish page served on the apex is no
- * redirect and is not counted.
+ * one kind the table's drop rule reads. A Polish place's 404 is no legacy address
+ * and is not counted.
  */
 class FrontDoorRedirectFilter(country: Country, legacy: LegacyAddressMetrics)(using val mat: Materializer)
     extends Filter {
 
   override def apply(next: RequestHeader => Future[Result])(request: RequestHeader): Future[Result] =
-    target(request) match {
-      case Some(path) => Future.successful(Results.MovedPermanently(path))
-      case None       => next(request)
+    answer(request) match {
+      case Some(result) => Future.successful(result)
+      case None         => next(request)
     }
 
-  private def target(request: RequestHeader): Option[String] =
+  private def answer(request: RequestHeader): Option[Result] =
     Option.when(country.servesApex(PageMeta.host(request))) {
       request.path.stripPrefix("/").split('/').toList match {
         case slug :: Nil if slug.nonEmpty =>
-          Country.bareSlugTarget(slug).flatMap { target =>
-            if (target.country == country) ownDomain(request)
+          Country.bareSlugTarget(slug).map { target =>
+            if (target.country == country) Results.NotFound
             else {
               legacy.record(if (target.tableChangedAnswer) LegacyAddressKind.FrontDoorOldOwner else LegacyAddressKind.FrontDoorNew,
                             request)
               val path = s"${target.country.pathPrefix}/${target.city.slug}/"
-              Some(if (request.rawQueryString.isEmpty) path else s"$path?${request.rawQueryString}")
+              Results.MovedPermanently(if (request.rawQueryString.isEmpty) path else s"$path?${request.rawQueryString}")
             }
           }
-        case place :: _ if country.resolve(place).isDefined => ownDomain(request)
+        case place :: _ if country.resolve(place).isDefined => Some(Results.NotFound)
         case _ => None
       }
     }.flatten
-
-  /** The same address on the root country's own domain. */
-  private def ownDomain(request: RequestHeader): Option[String] = country.webOrigin.map(_ + request.uri)
 }

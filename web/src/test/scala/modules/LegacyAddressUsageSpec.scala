@@ -32,7 +32,8 @@ class LegacyAddressUsageSpec extends AnyFlatSpec with Matchers with BeforeAndAft
   private val Browser = "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0)"
   private val Bot     = "Mozilla/5.0 (compatible; Googlebot/2.1)"
 
-  /** One deployment's two redirect filters over a stand-in router that, like the
+  /** One deployment's two redirect filters, in production's order (the front door
+   *  first), over a stand-in router that, like the
    *  real one, 301s a bare `/{slug}` to `/{slug}/` and answers 200 otherwise,
    *  counting into a registry of its own. */
   private final class Deployment(country: Country) {
@@ -45,7 +46,7 @@ class LegacyAddressUsageSpec extends AnyFlatSpec with Matchers with BeforeAndAft
         Future.successful(
           if (rh.path.count(_ == '/') == 1 && rh.path.length > 1) Results.MovedPermanently(rh.path + "/")
           else Results.Ok)
-      renamed(frontDoor(router))
+      frontDoor(renamed(router))
     }
     def get(path: String, agent: String, host: String = "localhost"): Result =
       Await.result(chain(FakeRequest("GET", path).withHeaders("Host" -> host, "User-Agent" -> agent)), SpecTimeouts.Io)
@@ -105,10 +106,14 @@ class LegacyAddressUsageSpec extends AnyFlatSpec with Matchers with BeforeAndAft
     Country.bareSlugTarget("kent").map(t => t.country.code -> t.tableChangedAnswer) shouldBe Some("uk" -> false)
   }
 
-  it should "not count a Polish page's move from the apex to kinowo.net, which is no legacy address" in {
+  it should "not count a Polish place's 404 on the apex, which is no legacy address" in {
     val front = new Deployment(Country.Poland)
-    front.get("/warszawa/", Browser, host = Country.apexHost).header.headers("Location") shouldBe "https://kinowo.net/warszawa/"
-    front.get("/warszawa", Browser, host = Country.apexHost).header.headers("Location") shouldBe "https://kinowo.net/warszawa"
+    front.get("/warszawa/", Browser, host = Country.apexHost).header.status shouldBe 404
+    front.get("/warszawa", Browser, host = Country.apexHost).header.status shouldBe 404
+    // A renamed Polish slug neither: the apex does not 301 it onto a page it then 404s.
+    val renamed = Country.Poland.renamedSlugs.keys.find(s => Country.bareSlugTarget(s).exists(_.country == Country.Poland))
+      .getOrElse(fail("no renamed Polish slug"))
+    front.get(s"/$renamed/", Ios, host = Country.apexHost).header.status shouldBe 404
     front.hits shouldBe empty
   }
 
