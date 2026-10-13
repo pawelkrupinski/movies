@@ -276,7 +276,10 @@ class LandingViewSpec extends AnyFlatSpec with Matchers {
   //
   // Polish places live on kinowo.net only — the front door 404s them — so every
   // showtimes.cc page lists Poland as ONE link to its site: no pane, no fetch of
-  // one, no place of it named or linked anywhere in the page.
+  // one, no place of it shown by name or linked. Its places' slugs DO ride in the
+  // pill's `data-points` (coordinates + slug, for "nearest city" to hand the
+  // visitor to that city through `/auth/sso/start?city=`) — data, never markup a
+  // visitor sees or a crawler follows.
 
   /** The Poland pill a showtimes.cc page carries. Its href names the country,
    *  so it carries the `?pick=city` marker: kinowo.net's landing then shows its

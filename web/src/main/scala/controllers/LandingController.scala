@@ -106,7 +106,9 @@ object LandingController {
   /** A handed-off country's places as bare points, `lat,lon,slug;…` — what
    *  "nearest city" needs to send a visitor near one straight to THAT city on
    *  that country's site (through `/auth/sso/start`'s `city=`, which re-validates
-   *  the slug), and nothing more: no name, no link. The slug is what keeps the
+   *  the slug), and nothing more: no display name, no link — the slug, a
+   *  data attribute's value the page never shows, is the only place of that
+   *  country the page carries. The slug is what keeps the
    *  hand-off off that site's bare landing, where a `city` cookie would bounce
    *  the visitor to a city other than the one they stand in. */
   def handoffPoints(country: Country): String =
