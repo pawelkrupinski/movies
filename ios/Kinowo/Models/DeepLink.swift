@@ -1,5 +1,16 @@
 import Foundation
 
+/// The SERVER's answer for a bare slug — one whose link names no country —
+/// that several countries answer to: slug → country code. `apex` is the brand
+/// front door (`showtimes.cc/{slug}/`, `Country.frontDoorTarget`), `scheme` the
+/// `kinowo://{slug}` custom scheme (`Country.customSchemeTarget`). Read from the
+/// catalog (`bareSlugOwners`), so the app and the web send `showtimes.cc/boston/`
+/// to the same Boston instead of each picking its own.
+struct BareSlugOwners: Decodable, Equatable {
+    var apex: [String: String] = [:]
+    var scheme: [String: String] = [:]
+}
+
 /// A parsed deep link into the app.
 ///
 /// The grammar mirrors the web URLs one-for-one so the SAME links — on either
@@ -80,8 +91,9 @@ struct DeepLink: Equatable {
     /// target, so the pair arrives as bare strings.)
     ///
     /// Given `cities` (the app passes the live catalog's), the link resolves
-    /// WITHIN a country: the one its URL names, else the first in `cities`' order
-    /// with a city — or a former slug — of that name; `knownCitySlugs` and
+    /// WITHIN a country: the one its URL names, else — a bare `showtimes.cc` slug,
+    /// a `kinowo://` link — the one country that answers to it, or, where several
+    /// do, the one the server chose (`bareSlugOwners`). `knownCitySlugs` and
     /// `currentSlugByFormer` are then unused, and `languageTokensOfCountry`, when
     /// given, answers the version pair by the resolved country.
     static func parse(_ url: URL,
@@ -89,6 +101,7 @@ struct DeepLink: Equatable {
                       currentSlugByFormer: [String: String] = [:],
                       languageTokens: (String) -> Set<String> = { _ in DeepLinkFilters.polishLanguageTokens },
                       cities: [City]? = nil,
+                      bareSlugOwners: BareSlugOwners = BareSlugOwners(),
                       languageTokensOfCountry: ((String) -> Set<String>)? = nil) -> DeepLink? {
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
               let scheme = components.scheme?.lowercased() else { return nil }
@@ -98,6 +111,9 @@ struct DeepLink: Equatable {
         let trailing: [String]
         // The country the URL itself names, where it names one.
         var named: String? = nil
+        // Where it names none, the countries it can mean and the server's pick among them.
+        var candidates: Set<String>? = nil
+        var owners: [String: String] = [:]
         let slugs = cities.map { Set($0.map(\.slug)) } ?? knownCitySlugs
         switch scheme {
         case "https", "http":
@@ -110,12 +126,17 @@ struct DeepLink: Equatable {
                 segments = Array(segments.dropFirst())
             }
             guard let first = segments.first else { return nil }
+            if named == nil {
+                candidates = countryPathSegments
+                owners = bareSlugOwners.apex
+            }
             linked = first
             trailing = Array(segments.dropFirst())
         case "kinowo":
             guard let host = components.host?.lowercased(), !reservedSchemeHosts.contains(host) else { return nil }
             linked = host
             trailing = pathSegments(components.path)
+            owners = bareSlugOwners.scheme
         default:
             return nil
         }
@@ -123,7 +144,8 @@ struct DeepLink: Equatable {
         let city: String
         let country: String?
         if let cities {
-            guard let (resolvedCountry, resolvedCity) = resolve(linked, named: named, in: cities) else { return nil }
+            guard let (resolvedCountry, resolvedCity) = resolve(linked, named: named, among: candidates,
+                                                                owners: owners, in: cities) else { return nil }
             country = resolvedCountry
             city = resolvedCity
         } else if knownCitySlugs.contains(linked) {
@@ -160,18 +182,25 @@ struct DeepLink: Equatable {
     }
 
     /// `(country, city slug)` for a link's slug: within the country the URL
-    /// names, else the first in `cities`' order that answers to it — as a city,
-    /// then as a former slug (`City.formerSlugs`), which opens the city answering
-    /// at it now, as the server's 301 would send a browser.
-    static func resolve(_ slug: String, named: String?, in cities: [City]) -> (String, String)? {
-        var order: [String] = []
-        for code in cities.map(\.country) where !order.contains(code) { order.append(code) }
-        for code in named.map({ [$0] }) ?? order {
+    /// names, else among `candidates` (every country when `nil`) the one that
+    /// answers to it — where several do, the one `owners` (the server's
+    /// `bareSlugOwners`) names. A country answers as a city, or through another
+    /// of its slugs (`City.slugsLeadingHere`: a retired page, a town, a qualified
+    /// slug), which opens the city the server's 301 would send a browser to.
+    static func resolve(_ slug: String, named: String?, among candidates: Set<String>? = nil,
+                        owners: [String: String] = [:], in cities: [City]) -> (String, String)? {
+        func answer(_ code: String) -> (String, String)? {
             let own = cities.inCountry(code)
             if own.contains(where: { $0.slug == slug }) { return (code, slug) }
-            if let current = own.first(where: { ($0.formerSlugs ?? []).contains(slug) }) { return (code, current.slug) }
+            return own.first(where: { $0.slugsLeadingHere.contains(slug) }).map { (code, $0.slug) }
         }
-        return nil
+        if let named { return answer(named) }
+        var order: [String] = []
+        for code in cities.map(\.country) where !order.contains(code) && candidates?.contains(code) ?? true {
+            order.append(code)
+        }
+        let answering = order.compactMap(answer)
+        return answering.first(where: { $0.0 == owners[slug] }) ?? answering.first
     }
 
     private static func pathSegments(_ path: String) -> [String] {

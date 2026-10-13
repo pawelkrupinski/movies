@@ -138,6 +138,81 @@ final class DeepLinkTests: XCTestCase {
                                       languageTokensOfCountry: german)?.filters.language, "SUB")
     }
 
+    /// The bundled seed — the server's catalog — decoded as the app decodes it.
+    /// (`CatalogStore`, which owns the decode, is app-target only.)
+    private func seed() throws -> (cities: [City], owners: BareSlugOwners) {
+        struct Seed: Decodable {
+            struct Body: Decodable { let cities: [City]; let bareSlugOwners: BareSlugOwners }
+            let catalog: Body
+        }
+        let body = try JSONDecoder().decode(Seed.self, from: try AppSources.data("Kinowo/catalog-seed.json")).catalog
+        return (body.cities, body.bareSlugOwners)
+    }
+
+    /// A slug the UK retired that the US has live: the catalog's `formerSlugs`
+    /// leaves it out (it protects older builds), and this build reads `otherSlugs`,
+    /// so `/uk/kent/` opens the UK page the web 301s it to.
+    func testARetiredSlugAnotherCountryHasLiveOpensTheNamedCountrysPage() throws {
+        let (cities, owners) = try seed()
+        let link = DeepLink.parse(URL(string: "https://showtimes.cc/uk/kent/movie/dune")!, cities: cities, bareSlugOwners: owners)
+        XCTAssertEqual(link?.countryCode, "uk")
+        XCTAssertEqual(link?.citySlug, "chatham")
+        XCTAssertEqual(link?.filmSlug, "dune")
+        XCTAssertEqual(cities.currentSlugByFormer(inCountry: "uk")["kent"], "chatham")
+        XCTAssertNil(cities.currentSlugByFormer(inCountry: "us")["kent"])
+    }
+
+    /// A town a page covers is a URL the Universal Links claim and the web 301s
+    /// onto the page: the app opens that page.
+    func testATownAliasOpensThePageCoveringIt() throws {
+        let (cities, owners) = try seed()
+        let link = DeepLink.parse(URL(string: "https://showtimes.cc/uk/ilkley/")!, cities: cities, bareSlugOwners: owners)
+        XCTAssertEqual(link?.countryCode, "uk")
+        XCTAssertNotNil(link.flatMap { cities.city(slug: $0.citySlug, inCountry: "uk") })
+        XCTAssertNotEqual(link?.citySlug, "ilkley")
+        // A qualified slug too.
+        XCTAssertEqual(DeepLink.parse(URL(string: "https://showtimes.cc/uk/york-north-yorkshire/")!, cities: cities,
+                                      bareSlugOwners: owners)?.citySlug, "york")
+    }
+
+    /// A bare `showtimes.cc/{slug}/` names no country: where several answer, the
+    /// app opens the one the server's front door 301s to, not the first in
+    /// catalog order (the UK, for Boston).
+    func testABareBrandSlugOpensTheCountryTheServerChose() throws {
+        let (cities, owners) = try seed()
+        func country(_ url: String) -> String? {
+            DeepLink.parse(URL(string: url)!, cities: cities, bareSlugOwners: owners)?.countryCode
+        }
+        XCTAssertEqual(owners.apex["boston"], "us")
+        XCTAssertEqual(country("https://showtimes.cc/boston/"), "us")
+        XCTAssertEqual(country("https://showtimes.cc/york/"), "uk")
+        XCTAssertEqual(country("https://showtimes.cc/crosby/"), "uk")
+        XCTAssertEqual(country("https://showtimes.cc/somerset/"), "uk")
+        for slug in ["durham", "elgin", "hamilton", "lancaster", "andover", "kilmarnock"] {
+            XCTAssertEqual(country("https://showtimes.cc/\(slug)/"), owners.apex[slug], slug)
+        }
+        // Every slug the server ruled on opens where it ruled.
+        for (slug, code) in owners.apex {
+            XCTAssertEqual(country("https://showtimes.cc/\(slug)/"), code, slug)
+        }
+        // A slug only one country answers to needs no ruling.
+        XCTAssertEqual(country("https://showtimes.cc/harrogate/"), "uk")
+    }
+
+    /// `kinowo://{slug}` names no country either: Poland where Poland answers,
+    /// else the front door's answer — the server's `bareSlugOwners.scheme`.
+    func testACustomSchemeSlugOpensTheCountryTheServerChose() throws {
+        let (cities, owners) = try seed()
+        func country(_ url: String) -> String? {
+            DeepLink.parse(URL(string: url)!, cities: cities, bareSlugOwners: owners)?.countryCode
+        }
+        XCTAssertEqual(country("kinowo://poznan/"), "pl")
+        XCTAssertEqual(country("kinowo://boston/movie/dune"), "us")
+        for (slug, code) in owners.scheme {
+            XCTAssertEqual(country("kinowo://\(slug)/"), code, slug)
+        }
+    }
+
     func testRejectsForeignHostAndScheme() {
         XCTAssertNil(parse("https://evil.example.com/poznan/"))
         XCTAssertNil(parse("mailto:hi@kinowo.net"))

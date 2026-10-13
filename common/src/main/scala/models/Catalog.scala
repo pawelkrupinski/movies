@@ -16,11 +16,26 @@ package models
  */
 object Catalog {
 
-  /** Slugs a city of a country other than `c` answers at — see `formerSlugs` in [[json]]. */
-  private def liveElsewhere(c: Country): String => Boolean = {
-    val others = Country.switchable.filterNot(_ == c).flatMap(_.cities.map(_.slug)).toSet
-    others.contains
+  /** Each country's live slugs, built once for the whole catalog. */
+  private lazy val liveSlugs: Map[Country, Set[String]] =
+    Country.switchable.map(c => c -> c.cities.map(_.slug).toSet).toMap
+
+  /** Slugs a city of a country other than `c` answers at live — see `formerSlugs` in [[json]]. */
+  private def liveElsewhere(c: Country): Set[String] =
+    liveSlugs.collect { case (other, slugs) if other != c => slugs }.flatten.toSet
+
+  /** Every slug `c` answers to: a page's, a renamed one's, an alias's. */
+  private def answeredBy(c: Country): Set[String] = c.bySlug.keySet ++ c.renamedSlugs.keySet ++ c.slugAliases.keySet
+
+  /** The SERVER's answer for every bare slug more than one of `countries` answers to —
+   *  slug → the code of the country `target` sends it to. A slug only one answers to
+   *  has only one answer, so it is left out: the apps take the one country that has it.
+   *  See `bareSlugOwners` in [[json]]. */
+  private def contestedOwners(countries: Seq[Country], target: String => Option[(Country, City)]): String = {
+    val contested = countries.flatMap(answeredBy(_).toSeq).groupBy(identity).collect { case (s, xs) if xs.size > 1 => s }
+    contested.toSeq.sorted.flatMap(s => target(s).map { case (c, _) => s""""$s":"${c.code}"""" }).mkString("{", ",", "}")
   }
+
 
   /** The zone a country is published under — see [[Country.zone]]. */
   private def countryTimezone(c: Country): String = c.zone.getId
@@ -45,6 +60,13 @@ object Catalog {
    * web redirects older slugs onto it, those as `formerSlugs`. Each country
    * carries its `timezone` and, where it has one, the `versionTokens` pair its
    * "version" filter matches on.
+   *
+   * `bareSlugOwners` is the server's answer to a link that names no country — the
+   * apps read it rather than pick a country themselves, so an app and the web send
+   * `showtimes.cc/boston/` to the same Boston. `apex` is the brand front door
+   * ([[Country.frontDoorTarget]]); `scheme` the `kinowo://{slug}` custom scheme
+   * ([[Country.customSchemeTarget]]). Each lists only the slugs several countries
+   * answer to.
    */
   val json: String = {
     val countries = Country.switchable
@@ -87,6 +109,8 @@ object Catalog {
       .mkString("[", ",", "]")
     val cities = Country.switchable
       .flatMap { c =>
+        val elsewhere = liveElsewhere(c)
+        val aliasesByPage = c.slugAliases.toSeq.groupMap(_._2)(_._1)
         // A country whose picker GROUPS its cities (the US by state, Germany by
         // Bundesland, the UK by nation) names each city's group, so the apps can
         // offer the same two-step pick the web does: 468 US places in one A-to-Z
@@ -165,13 +189,23 @@ object Catalog {
           // apply it to the saved city of whichever country is selected: the UK's
           // retired `/kent/` (→ Chatham) would turn a US user's Kent, Washington into a
           // city the US does not have. Such a link still 301s on the web.
-          val formerSlugs = c.formerSlugs(city.slug).filterNot(liveElsewhere(c))
+          val formerSlugs = c.formerSlugs(city.slug).filterNot(elsewhere)
           val former = if (formerSlugs.isEmpty) "" else formerSlugs.map(s => s""""$s"""").mkString(""","formerSlugs":[""", ",", "]")
-          s"""{"slug":"${city.slug}","name":"${city.labels.nominative}","lat":${city.lat},"lon":${city.lon},"country":"${c.code}"$region$subregion$aliases$tz$former}"""
+          // EVERY other slug of its own country that leads here, unfiltered — what
+          // current app builds read in place of `formerSlugs`, resolving a link within
+          // the country its URL names: a renamed or retired page's slug (the UK's
+          // `/kent/` → Chatham, though the US has a Kent), a town the page covers
+          // (`/uk/ilkley/`) and the page's qualified slug (`/uk/york-north-yorkshire/`)
+          // — every URL the App Links and Universal Links claim that the web 301s here.
+          val others = (c.formerSlugs(city.slug) ++ aliasesByPage.getOrElse(city.slug, Nil)).distinct.sorted
+          val otherSlugs = if (others.isEmpty) "" else others.map(s => s""""$s"""").mkString(""","otherSlugs":[""", ",", "]")
+          s"""{"slug":"${city.slug}","name":"${city.labels.nominative}","lat":${city.lat},"lon":${city.lon},"country":"${c.code}"$region$subregion$aliases$tz$former$otherSlugs}"""
         }
       }
       .mkString("[", ",", "]")
-    s"""{"countries":$countries,"cities":$cities}"""
+    val owners = s"""{"apex":${contestedOwners(Country.mountedUnderApex, Country.frontDoorTarget)},""" +
+      s""""scheme":${contestedOwners(Country.switchable, Country.customSchemeTarget)}}"""
+    s"""{"countries":$countries,"cities":$cities,"bareSlugOwners":$owners}"""
   }
 
   /**

@@ -491,6 +491,14 @@ object Country {
           .orElse(several.headOption)
     }
 
+  /** The page a `kinowo://{slug}` custom-scheme link means — it names no country.
+   *  Poland's, where Poland answers to the slug: the scheme is Kinowo's and every
+   *  such link was minted while Poland was its only country. Else the brand front
+   *  door's answer ([[frontDoorTarget]]). The apps read this from the catalog
+   *  (`bareSlugOwners.scheme`) rather than deciding it themselves. */
+  def customSchemeTarget(slug: String): Option[(Country, City)] =
+    Poland.resolve(slug).map(Poland -> _).orElse(frontDoorTarget(slug))
+
   /** The bare slugs [[frontDoorTarget]] has a recorded winner for. */
   def frontDoorContestedSlugs: Set[String] = CitySlugIndexData.frontDoorContested.keySet
 

@@ -68,8 +68,20 @@ data class City(
      * redirect, so [pl.kinowo.deeplink.DeepLink.parse] resolves them through
      * [currentSlugByFormer] instead. Carried by `/api/catalog` (and the bundled
      * seed), same shape as [region].
+     *
+     * The server leaves out any slug ANOTHER country has live, which protects
+     * builds from before slugs were per country; this build reads [otherSlugs]
+     * instead ([slugsLeadingHere]), and this only from a server too old to send it.
      */
     val formerSlugs: List<String> = emptyList(),
+    /**
+     * EVERY other slug of this city's own country that leads to it: a retired or
+     * renamed page's (the UK's `kent` → Chatham, though the US has a Kent of its
+     * own), a town the page covers (`/uk/ilkley/`), the page's qualified slug.
+     * The App Links claim all of those URLs, which the web 301s here. `null` from
+     * a server too old to send it.
+     */
+    val otherSlugs: List<String>? = null,
     /**
      * Other names search should find this city by: the group it was pulled up
      * out of when that group held only it (Guam over "Dededo Village area",
@@ -86,11 +98,15 @@ data class City(
 fun City.matchesFolded(q: String): Boolean =
     (listOf(name) + aliases).any { Cities.searchFold(it).contains(q) }
 
-/** Each former slug ([City.formerSlugs]) of [countryCode]'s cities → the city
+/** The slugs besides its own that open this city — [City.otherSlugs], else (an
+ *  older server) [City.formerSlugs]. */
+val City.slugsLeadingHere: List<String> get() = otherSlugs ?: formerSlugs
+
+/** Each other slug ([slugsLeadingHere]) of [countryCode]'s cities → the city
  *  that answers at it now. Per country: another country may use the same slug
  *  for a live city of its own. */
 fun List<City>.currentSlugByFormer(countryCode: String): Map<String, String> =
-    buildMap { inCountry(countryCode).forEach { city -> city.formerSlugs.forEach { putIfAbsent(it, city.slug) } } }
+    buildMap { inCountry(countryCode).forEach { city -> city.slugsLeadingHere.forEach { putIfAbsent(it, city.slug) } } }
 
 /** The city [slug] names in [countryCode] — a slug is only its country's own:
  *  `york` is York on `uk` and York, Pennsylvania on `us`. */

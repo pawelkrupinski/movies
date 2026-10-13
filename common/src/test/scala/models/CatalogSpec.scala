@@ -101,10 +101,55 @@ class CatalogSpec extends AnyFlatSpec with Matchers {
     Country.switchable.foreach(c => c.renamedSlugs.keySet.foreach(former => c.bySlug.get(former) shouldBe None))
   }
 
+  it should "name on each city EVERY other slug of its own country that leads to it, for current app builds" in {
+    def entry(code: String, slug: String) =
+      Catalog.json.split("\\{").find(e => e.contains(s""""slug":"$slug"""") && e.contains(s""""country":"$code""""))
+        .getOrElse(fail(s"no $code/$slug entry"))
+    def listed(field: String)(code: String, slug: String) =
+      s""""$field":\\[([^\\]]*)\\]""".r.findFirstMatchIn(entry(code, slug)).toSeq
+        .flatMap(_.group(1).split(",")).map(_.trim.stripPrefix("\"").stripSuffix("\""))
+    val otherSlugs = listed("otherSlugs")
+    val formerSlugs = listed("formerSlugs")
+    // The UK's retired Kent page: a live US slug too, so `formerSlugs` (installed
+    // builds) must leave it out — and `otherSlugs` must not, or `/uk/kent/` opens
+    // the app on nothing.
+    val kentPage = Country.UnitedKingdom.redirectFor("kent").getOrElse(fail("kent is not a UK slug"))
+    Country.UnitedStates.bySlug.contains("kent") shouldBe true
+    formerSlugs("uk", kentPage) should not contain ("kent")
+    otherSlugs("uk", kentPage) should contain ("kent")
+    // A town a page covers, and the page's qualified slug: the aliases the web 301s.
+    val ilkleyPage = Country.UnitedKingdom.redirectFor("ilkley").getOrElse(fail("ilkley is not a UK alias"))
+    otherSlugs("uk", ilkleyPage) should contain ("ilkley")
+    // Every slug a country answers to besides its pages is on exactly one of its pages.
+    Country.switchable.foreach { c =>
+      val onWire = c.cities.flatMap(city => otherSlugs(c.code, city.slug))
+      onWire.sorted shouldBe (c.renamedSlugs.keySet ++ c.slugAliases.keySet).toSeq.sorted
+    }
+  }
+
+  it should "carry the server's own answer for every bare slug several countries answer to" in {
+    val owners = """"bareSlugOwners":\{"apex":\{([^}]*)\},"scheme":\{([^}]*)\}\}""".r
+      .findFirstMatchIn(Catalog.json).getOrElse(fail("no bareSlugOwners"))
+    def parse(body: String) = """"([^"]+)":"([a-z]{2})"""".r.findAllMatchIn(body).map(m => m.group(1) -> m.group(2)).toMap
+    val apex = parse(owners.group(1))
+    val scheme = parse(owners.group(2))
+    // The front door's answers, as the web 301s them.
+    apex("boston") shouldBe "us"
+    apex("york") shouldBe "uk"
+    Seq("durham", "elgin", "hamilton", "lancaster", "andover", "kilmarnock", "somerset", "crosby").foreach { s =>
+      apex.get(s) shouldBe Country.frontDoorTarget(s).map(_._1.code)
+    }
+    apex.foreach { case (s, code) => Country.frontDoorTarget(s).map(_._1.code) shouldBe Some(code) }
+    // The custom scheme: Poland's where Poland answers, the front door's otherwise.
+    scheme.foreach { case (s, code) => Country.customSchemeTarget(s).map(_._1.code) shouldBe Some(code) }
+    scheme("boston") shouldBe "us"
+    Country.customSchemeTarget("poznan").map(_._1) shouldBe Some(Country.Poland)
+  }
+
   it should "carry each city with its owning country's code" in {
     val j = Catalog.json
     j should include("""{"slug":"poznan","name":"Poznań","lat":52.4064,"lon":16.9252,"country":"pl","region":"Wielkopolskie"}""")
-    j should include("""{"slug":"london","name":"London","lat":51.5085,"lon":-0.1257,"country":"uk","region":"England","aliases":["Greater London"]}""")
+    j should include("""{"slug":"london","name":"London","lat":51.5085,"lon":-0.1257,"country":"uk","region":"England","aliases":["Greater London"]""")
   }
 
   it should "name the group a GROUPED country finds a city through, and only there" in {

@@ -487,7 +487,7 @@ class KinowoViewModel(
         // a city that ships only via `/api/catalog` — every German city — is
         // recognised, not just the compile-time `Cities.all` roster.
         val catalog = countryCatalog.value
-        val link = DeepLink.parse(rawUrl, cities = catalog.cities,
+        val link = DeepLink.parse(rawUrl, cities = catalog.cities, bareSlugOwners = catalog.bareSlugOwners,
                                   versionTokensOfCountry = catalog::versionTokensOfCountry) ?: return@launch
         // The STORED choices, not this ViewModel's `stateIn` mirrors, which
         // still read null until DataStore's first emission lands.

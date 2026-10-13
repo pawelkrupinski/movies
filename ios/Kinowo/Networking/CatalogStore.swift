@@ -15,6 +15,8 @@ import Combine
 final class CatalogStore: ObservableObject {
     @Published private(set) var countries: [Country]
     @Published private(set) var cities: [City]
+    /// The server's answer for a bare slug several countries answer to.
+    private(set) var bareSlugOwners = BareSlugOwners()
 
     private let session: URLSession
     private let cache: CatalogCache
@@ -40,10 +42,12 @@ final class CatalogStore: ObservableObject {
         if let persisted = cache.load(), let parsed = CatalogBody.decode(persisted.body) {
             countries = parsed.countries
             cities = parsed.cities
+            bareSlugOwners = parsed.bareSlugOwners
             etag = persisted.etag
         } else if let seed = CatalogStore.loadBundledSeed() {
             countries = seed.body.countries
             cities = seed.body.cities
+            bareSlugOwners = seed.body.bareSlugOwners
             etag = seed.etag
         } else {
             countries = Country.all
@@ -75,6 +79,7 @@ final class CatalogStore: ObservableObject {
             guard let body = String(data: data, encoding: .utf8), let parsed = CatalogBody.decode(body) else { return }
             countries = parsed.countries
             cities = parsed.cities
+            bareSlugOwners = parsed.bareSlugOwners
             etag = http.value(forHTTPHeaderField: "Etag")
             lastFetched = now
             cache.save(body: body, etag: etag)
@@ -83,7 +88,7 @@ final class CatalogStore: ObservableObject {
         }
     }
 
-    private static func loadBundledSeed() -> (etag: String, body: (countries: [Country], cities: [City]))? {
+    private static func loadBundledSeed() -> (etag: String, body: CatalogBody.Resolved)? {
         guard let url = Bundle.main.url(forResource: "catalog-seed", withExtension: "json"),
               let data = try? Data(contentsOf: url),
               let envelope = try? JSONDecoder().decode(CatalogEnvelope.self, from: data)
@@ -143,17 +148,21 @@ final class CatalogStore: ObservableObject {
 // MARK: - Wire / seed decoding
 
 /// The `/api/catalog` response body (and the `catalog` field of the bundled
-/// seed): `{"countries":[…],"cities":[…]}`. Countries arrive in the wire shape
-/// ([CountryDTO]) and are resolved to [Country]; cities decode directly.
+/// seed): `{"countries":[…],"cities":[…],"bareSlugOwners":{…}}`. Countries arrive
+/// in the wire shape ([CountryDTO]) and are resolved to [Country]; cities decode
+/// directly; `bareSlugOwners` is absent from an older server's catalog.
 struct CatalogBody: Decodable {
     let countries: [CountryDTO]
     let cities: [City]
+    let bareSlugOwners: BareSlugOwners?
 
-    func resolved() -> (countries: [Country], cities: [City]) {
-        (countries.compactMap { $0.toCountry() }, cities)
+    typealias Resolved = (countries: [Country], cities: [City], bareSlugOwners: BareSlugOwners)
+
+    func resolved() -> Resolved {
+        (countries.compactMap { $0.toCountry() }, cities, bareSlugOwners ?? BareSlugOwners())
     }
 
-    static func decode(_ json: String) -> (countries: [Country], cities: [City])? {
+    static func decode(_ json: String) -> Resolved? {
         guard let data = json.data(using: .utf8),
               let body = try? JSONDecoder().decode(CatalogBody.self, from: data) else { return nil }
         return body.resolved()

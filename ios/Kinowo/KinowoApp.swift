@@ -141,7 +141,7 @@ struct KinowoApp: App {
     /// from a link lands on the linked city's CityGate result) and park the
     /// parsed link for `ContentView` to apply its filters + film push.
     private func handleDeepLink(_ url: URL) {
-        guard let link = DeepLink.parse(url, cities: catalog.cities,
+        guard let link = DeepLink.parse(url, cities: catalog.cities, bareSlugOwners: catalog.bareSlugOwners,
                                         languageTokensOfCountry: { catalog.versionTokens(ofCountry: $0).accepted })
         else { return }
         // A link on another country's deployment (showtimes-uk / showtimes-de)

@@ -67,7 +67,21 @@ struct City: Codable, Hashable {
     /// metro's. Universal Links hand those URLs to the app without ever reaching
     /// that redirect, so `DeepLink.parse` resolves them through here instead.
     /// Carried by `/api/catalog` (and the bundled seed), same shape as `region`.
+    ///
+    /// The server leaves out any slug ANOTHER country has live, which protects
+    /// builds from before slugs were per country; this build reads `otherSlugs`
+    /// instead (`slugsLeadingHere`), and this only from a server too old to send it.
     var formerSlugs: [String]? = nil
+
+    /// EVERY other slug of this city's own country that leads to it: a retired or
+    /// renamed page's (the UK's `kent` → Chatham, though the US has a Kent of its
+    /// own), a town the page covers (`/uk/ilkley/`), the page's qualified slug.
+    /// The Universal Links claim all of those URLs, which the web 301s here.
+    var otherSlugs: [String]? = nil
+
+    /// The slugs besides its own that open this city — `otherSlugs`, else (an
+    /// older server) `formerSlugs`.
+    var slugsLeadingHere: [String] { otherSlugs ?? formerSlugs ?? [] }
 
     /// The wall-clock this city's showtimes are listed on: its own zone when the
     /// catalog gave it one, else the country's. Past-showtime pruning and the
@@ -760,11 +774,11 @@ extension Array where Element == City {
         first { $0.country == countryCode && $0.slug == slug }
     }
 
-    /// Each former slug (`City.formerSlugs`) of `countryCode`'s cities → the city
-    /// that answers at it now. Per country: another country may use the same slug
-    /// for a live city of its own.
+    /// Each other slug (`City.slugsLeadingHere`) of `countryCode`'s cities → the
+    /// city that answers at it now. Per country: another country may use the same
+    /// slug for a live city of its own.
     func currentSlugByFormer(inCountry countryCode: String) -> [String: String] {
-        Dictionary(inCountry(countryCode).flatMap { city in (city.formerSlugs ?? []).map { ($0, city.slug) } },
+        Dictionary(inCountry(countryCode).flatMap { city in city.slugsLeadingHere.map { ($0, city.slug) } },
                    uniquingKeysWith: { first, _ in first })
     }
 
