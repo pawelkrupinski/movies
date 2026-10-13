@@ -27,7 +27,6 @@ import argparse
 import json
 import pathlib
 import re
-import string
 import sys
 import threading
 import time
@@ -154,7 +153,18 @@ def town_of(address: str) -> str:
         chosen -= 1
     town = _clean(_tidy(parts[chosen])).rstrip(".")
     # An address written in capitals gives its town in capitals ("ALLOA").
-    return string.capwords(town) if town.isupper() else town
+    return _uncapitalise(town) if town.isupper() else town
+
+
+# The words a town name keeps lower-case inside it: Newcastle-upon-Tyne,
+# Stratford-upon-Avon, Bishop's Stortford's apostrophe aside.
+_SMALL_WORDS = {"upon", "on", "under", "in", "by", "the", "le", "next", "and", "super"}
+
+
+def _uncapitalise(town: str) -> str:
+    """"NEWCASTLE-UPON-TYNE" as a town writes itself: "Newcastle-upon-Tyne"."""
+    words = re.split(r"([\s-]+)", town.lower())
+    return "".join(w if i and w in _SMALL_WORDS else w[:1].upper() + w[1:] for i, w in enumerate(words))
 
 
 def _county_key(part: str) -> str:

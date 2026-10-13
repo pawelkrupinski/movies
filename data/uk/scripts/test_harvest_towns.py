@@ -68,6 +68,9 @@ def test_every_county_the_roster_writes_after_its_town_is_walked_past():
     assert ht.town_of("CHALMERS CHURCH, BANK STREET, ALLOA, CLACKMANNANSHIRE FK10 1HP") == "Alloa"
     assert ht.town_of("Esplanade Gardens, Victoria St, Rothesay, Isle of Bute PA20 0AP") == "Rothesay"
     # (An address in capitals gives its town in capitals; the town is "Alloa".)
+    # …and a hyphenated one in capitals keeps its small words small.
+    assert ht.town_of("1 GREY STREET, NEWCASTLE-UPON-TYNE NE1 6AE") == "Newcastle-upon-Tyne"
+    assert ht.town_of("HIGH STREET, STRATFORD-UPON-AVON CV37 6AU") == "Stratford-upon-Avon"
     # Spelled with an ampersand, which the list spells out.
     assert ht.town_of("Trinity Square, Gateshead, Tyne & Wear NE8 1AG") == "Gateshead"
 
