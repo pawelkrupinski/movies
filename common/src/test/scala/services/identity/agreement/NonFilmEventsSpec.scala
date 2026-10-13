@@ -15,6 +15,7 @@ class NonFilmEventsSpec extends AnyFlatSpec with Matchers {
     Map(
       "Koncert: Leszek Możdżer - solo"              -> "live event",
       "Spektakl teatralny \" brzydkie kaczątko \""  -> "live event",
+      "Koncert jazzowy połączony z degustacją wina"  -> "live event",
       "Halloweenowy Maraton Horrorów"               -> "marathon",
       "Rawska \"Noc horrorów\"-edycja 2026"         -> "marathon",
       "Dismember the Alamo 2026 - Brooklyn"         -> "marathon",
@@ -43,6 +44,7 @@ class NonFilmEventsSpec extends AnyFlatSpec with Matchers {
       "ReTransmisje Met: Na żywo w HD - Così fan tutte",         // the Met's
       "Hauser symfonicznie z Royal Albert Hall",                 // a concert film
       "André Rieu: Niech żyje Maastricht. Letni koncert 2026",   // event cinema
+      "DYRYGENT - POŁĄCZONY Z KONCERTEM MUZYKI NA ŻYWO",          // Wajda's film, a concert joined to its screening
       "Maraton",                                                 // a bare word may be a film's name
       "Tango"
     ).foreach(title => withClue(title) { NonFilmEvents.of(titled(title)) shouldBe None })

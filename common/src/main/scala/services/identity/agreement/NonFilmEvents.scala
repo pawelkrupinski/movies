@@ -18,7 +18,7 @@ import java.util.Locale
  * missed event only costs its questions. So a cluster is an event only when EVERY listing of it is, and a listing is
  * not one when it states a film's record (a director and a year), bills a relay (a broadcast, a stage work, a house's
  * season, a concert film: cinema the broadcast take names), or names a film screened with the event ("+ film",
- * "pokaz", "seans", a festival edition's number). Measured over the unmatched clusters' fixture against `labels.tsv`:
+ * "pokaz", "seans", a festival edition's number, a performance "joined" to its billing). Measured over the unmatched clusters' fixture against `labels.tsv`:
  * no listing a label names a right film for is one (`NonFilmEventsFixtureSpec`).
  */
 object NonFilmEvents {
@@ -46,6 +46,11 @@ object NonFilmEvents {
    *  numbered edition billing one of its films ("11. UFF - Teatr weteranów" is a documentary). */
   private val FilmAttached = """\+|\bpokaz\b|\bseans|\bfilm(?!ow)|^\d+\.\s""".r
 
+  /** "… joined with …": what follows is the companion of what the title bills before it — a performance named only
+   *  there is a screening's ("DYRYGENT - POŁĄCZONY Z KONCERTEM MUZYKI NA ŻYWO", Wajda's film), a performance billed
+   *  before it is still one ("Koncert jazzowy połączony z degustacją wina"). */
+  private val JoinedWith = """(?iu)\s*\bpołączon\p{L}*\s+ze?\b""".r
+
   /** Why `listings` (a cluster's) are an event no film database holds — the first listing's reason — or `None` unless
    *  every one of them is. */
   def of(listings: Seq[Listing]): Option[String] =
@@ -65,7 +70,7 @@ object NonFilmEvents {
       if (ListingShape.relays(listing, title)) None
       else Markers.collectFirst { case (reason, marker) if marker.findFirstIn(title).isDefined => reason }
         .filter(reason => reason == "no screening" || reason == "pass" || FilmAttached.findFirstIn(title).isEmpty)
-        .orElse(Option.when(NonMovieEventClassifier.isPerformance(raw) && FilmAttached.findFirstIn(title).isEmpty)("live event"))
+        .orElse(Option.when(NonMovieEventClassifier.isPerformance(JoinedWith.split(raw).head) && FilmAttached.findFirstIn(title).isEmpty)("live event"))
         .orElse(ListingShape.programmeSlotOf(raw).map(_ => "programme slot"))
     }
 }
