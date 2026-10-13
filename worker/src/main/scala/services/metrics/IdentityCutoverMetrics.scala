@@ -2,7 +2,7 @@ package services.metrics
 
 import io.prometheus.metrics.core.metrics.{Counter, Gauge}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
-import services.identity.{IdentityProjectionMetrics, Regroupings, ShadowRelation}
+import services.identity.{IdentityProjectionMetrics, Regroupings, ShadowRelation, SuspectTakes}
 
 /**
  * The identity projection of a cut-over country (`IdentityProjection`, docs/design/identity-resolver.md
@@ -31,6 +31,9 @@ import services.identity.{IdentityProjectionMetrics, Regroupings, ShadowRelation
  *    moved: `lost` (had one, has none), `changed` (another), `gained` (had none). A listing leaving the schedule, a new
  *    one, and a re-key or merge that keeps the TMDB film are churn and never counted ([[services.identity.TakeChange]]);
  *    the alarm on match changes reads this. Each change is also logged (`identity take change: …`).
+ *  - `kinowo_worker_identity_suspect_takes{signal}` — the billings whose take a suspect-take signal finds against its own
+ *    evidence (`services.identity.SuspectTakes`: a fragment, an era, a runtime, a sequel, a feed's id, a fill alone), on the
+ *    last projection of the whole corpus. A rise between recordings is a wrong take the convergence legs will name;
  *  - `kinowo_worker_identity_projection_reconciles_total{measured}` — hourly projections of the whole corpus, `measured`
  *    when an earlier projection gave one a scope to check drift against: an hour of `false` alone is drift not measured.
  *
@@ -91,6 +94,16 @@ final class IdentityCutoverMetrics(registry: PrometheusRegistry) {
     .help("Published listings whose TMDB film a written identity projection moved: lost / changed / gained. Churn (a listing leaving, a re-key keeping the film) is not counted.")
     .labelNames("country", "kind")
     .register(registry)
+
+  private val suspectTakes: Gauge = Gauge.builder()
+    .name("kinowo_worker_identity_suspect_takes")
+    .help("Billings whose identity take a suspect-take signal finds against its own evidence, per signal, on the last whole-corpus projection.")
+    .labelNames("country", "signal")
+    .register(registry)
+
+  /** Where a country's suspect-take count goes ([[services.identity.SuspectTakeCount]]): one series per signal. */
+  def suspects(country: String): Map[SuspectTakes.Signal, Int] => Unit =
+    counts => counts.foreach { case (signal, n) => suspectTakes.labelValues(country, signal.label).set(n.toDouble) }
 
   def forCountry(country: String): IdentityProjectionMetrics = new IdentityProjectionMetrics {
     // Exported at 0 from boot: no drift reads 0, not absent, and an unmeasured hour shows as reconciles{measured=false}.

@@ -162,8 +162,8 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     val w = World()
     w.scrape(programme)
     val phases = w.projection.tick().phases
-    phases.map(_.name) shouldBe Seq("listings", "snapshot", "resolve", "agreement", "seed", "index", "draft", "details", "finish", "fingerprints", "guard",
-      "compare", "writes")
+    phases.map(_.name) shouldBe Seq("listings", "snapshot", "resolve", "agreement", "seed", "index", "draft", "details", "finish", "fingerprints",
+      "suspects", "guard", "compare", "writes")
     phases.foreach(p => (p.seconds >= 0 && p.allocatedBytes >= 0) shouldBe true)
     phases.map(_.allocatedBytes).sum should be > 0L
   }
@@ -183,6 +183,16 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     again.slotsBuilt shouldBe 0
     again.slotsReused shouldBe first.slotsBuilt
     again.wroteNothing shouldBe true
+  }
+
+  it should "count the corpus's suspect takes over every listing it decided — a scoped projection counts none" in {
+    val w = World(whole = true)
+    w.scrape(programme)
+    val first = w.projection.tick()
+    w.suspected.toSeq shouldBe Seq((first.resolution.get.decisions.size, first.listings))
+    w.scrape(Map(KinoMuza -> Seq(film(KinoMuza, "Diuna", Some(2021), 7, 8, 9))))
+    w.projection.tickChanged()
+    w.suspected.size shouldBe 1
   }
 
   it should "rebuild only the venue whose listing changed, and write that film with every showtime" in {

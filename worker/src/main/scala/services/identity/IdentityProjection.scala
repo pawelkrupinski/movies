@@ -132,7 +132,10 @@ final class IdentityProjection(
    *  (`agreement.AgreementStage`), given each listing the resolution decided and the keys of those re-published since
    *  the last projection with a field the model's decisions do not move with (`LiveProjectionIndex.republished`; `None`
    *  when there is no last projection to tell by). */
-  agreement:   (Resolution, ListingKey => Option[Listing], Option[Seq[ListingKey]]) => Resolution = (resolution, _, _) => resolution
+  agreement:   (Resolution, ListingKey => Option[Listing], Option[Seq[ListingKey]]) => Resolution = (resolution, _, _) => resolution,
+  /** Handed each projection of the whole corpus's resolution, as projected, and every listing it decided: what counts
+   *  its suspect takes (`SuspectTakeCount`). */
+  suspects:    (Resolution, Seq[Listing]) => Unit = (_, _) => ()
 ) extends Logging {
   // The latest year a title may name, read off this class's clock at each ask (`LatestTitleYear`).
   private given LatestTitleYear = LatestTitleYear(clock)
@@ -257,6 +260,9 @@ final class IdentityProjection(
               changes.fold(Set.empty[ListingKey])(_.listings), index, at, phases)
             val slotCounts = slotMemo.endTick(retainUnseen = !scope.whole)
             if (!light) phases("fingerprints")(recordSlotFingerprints())
+            // the corpus's suspect takes, counted on a projection of the whole of it: a count is never a reason to stop one
+            if (scope.whole && !light) phases("suspects")(Try(suspects(resolution, venues.flatMap(_._2).map(_.listing))).failed
+              .foreach(e => logger.warn("identity projection: counting the suspect takes failed", e)))
             val misses = slotMemo.lastMisses()
             phases.note(s"venue slots reused ${slotCounts._1}, built ${slotCounts._2} " +
               s"(rows moved ${misses._1}, priors moved ${misses._2}, new ${misses._3})")
