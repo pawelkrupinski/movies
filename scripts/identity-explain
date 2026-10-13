@@ -1,0 +1,100 @@
+#!/usr/bin/env bash
+#
+# WHY did a listing take (or not take) its film? Replays ONE listing's cluster from the unmatched-cluster capture
+# (test/resources/fixtures/identity-unmatched/<cc>.json.gz — the recording's clusters the model left unmatched, with
+# every answer the resolver and the agreement stage read for them) and prints the whole trace: the billing and venue
+# page, the captured model decision, the cluster re-resolved by the code (keys, candidates and their signals, refusals),
+# the agreement stage's basis, fill rule and guards, the take, and its verdict in labels.tsv.
+#
+#   scripts/identity-explain <cc> [--venue S] [--title S] [--ref A [--ref B]] [--fixture SRC] [--limit N] [--no-resolve]
+#
+#   --venue/--title  substrings of the venue and the billed title, case and accents aside (at least one)
+#   --ref            explain under that git ref's code (each compiled once into the cache); two refs print side by
+#                    side, then the diff of their traces. Without --ref: this checkout's code.
+#   --fixture SRC    the capture to replay (default: this checkout's): a directory holding <cc>.json.gz, an "Identity
+#                    capture" run id (its identity-capture-<cc> artifact), or a git ref holding one
+#                    (origin/chore/identity-capture). Every ref replays the SAME capture, so two refs compare on one
+#                    input. Labels come from the same source (a run's: this checkout's).
+#
+# Everything downloaded or compiled is kept in $KINOWO_IDENTITY_CACHE (default ~/.cache/kinowo-identity), shared by
+# every worktree: captures/<run|ref sha>/<cc>.json.gz, refs/<sha>/ (the ref's tree, compiled). A repeat call is the
+# replay alone — seconds. A listing the MODEL took is not in the capture: reproduce it with scripts/convergence-local.sh.
+set -euo pipefail
+
+usage() { sed -n '3,/^set /p' "$0" | sed '$d; s/^# \{0,1\}//'; }
+case "${1:-}" in -h|--help) usage; exit 0 ;; "") usage >&2; exit 2 ;; esac
+
+IDENTITY_TOOL=identity-explain
+# shellcheck source=scripts/identity-tools.sh
+. "$(dirname "$0")/identity-tools.sh"
+repo=$IDENTITY_REPO
+cc=$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]'); shift
+refs=() fixture="" pass=()
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --ref) refs+=("$2"); shift 2 ;;
+    --fixture) fixture=$2; shift 2 ;;
+    --venue|--title|--limit) pass+=("$1" "$2"); shift 2 ;;
+    --no-resolve) pass+=("$1"); shift ;;
+    *) echo "unknown argument $1" >&2; usage >&2; exit 2 ;;
+  esac
+done
+[ "${#refs[@]}" -le 2 ] || { echo "at most two --ref" >&2; exit 2; }
+
+# tree <ref> -> a compiled-once copy of the ref's sources, this checkout's IdentityExplain dropped in
+tree() {
+  local sha dir t tool=worker/src/test/scala/scripts/IdentityExplain.scala
+  sha=$(git -C "$repo" rev-parse --verify "$1^{commit}") || { echo "no ref $1" >&2; return 2; }
+  dir=$IDENTITY_CACHE/refs/$sha
+  if [ ! -f "$dir/build.sbt" ]; then
+    identity_log "laying out $1 ($sha) in $dir"
+    rm -rf "$dir.part"; mkdir -p "$dir.part"
+    git -C "$repo" archive "$sha" -- . ':(exclude)test/resources' ':(exclude)ios' ':(exclude)android' | tar -x -C "$dir.part"
+    # Seed the compile from this checkout's (APFS clones, no copy): sbt recompiles only what the ref changed.
+    for t in project/target common/target testkit/target worker/target target; do
+      if [ -d "$repo/$t" ]; then mkdir -p "$dir.part/$(dirname "$t")"; cp -cR "$repo/$t" "$dir.part/$t" 2>/dev/null || cp -R "$repo/$t" "$dir.part/$t"; fi
+    done
+    rm -rf "$dir.part/target/identity-tools"
+    mv "$dir.part" "$dir"
+  fi
+  # copied only when it changed: an unchanged copy keeps its time, and the ref is not compiled again
+  cmp -s "$repo/$tool" "$dir/$tool" 2>/dev/null || cp "$repo/$tool" "$dir/$tool"
+  echo "$dir"
+}
+
+captured=$(identity_capture "$fixture" "$cc")
+[ -f "$captured/$cc.json.gz" ] || { echo "no capture $captured/$cc.json.gz" >&2; exit 1; }
+
+# run <tree> -> the trace under that tree's code
+run() {
+  local cp
+  cp=$(identity_classpath "$1") || return 1
+  (cd "$1" && "${IDENTITY_JAVA[@]}" -cp "$cp" scripts.IdentityExplain "$cc" --fixture "$captured/$cc.json.gz" --labels "$captured/labels.tsv" ${pass[@]+"${pass[@]}"})
+}
+
+if [ "${#refs[@]}" -eq 0 ]; then run "$repo"; exit; fi
+out=$(mktemp -d); trap 'rm -rf "$out"' EXIT
+for i in "${!refs[@]}"; do
+  t=$(tree "${refs[$i]}") || exit 1
+  run "$t" > "$out/$i.txt" || { cat "$out/$i.txt"; exit 1; }
+done
+if [ "${#refs[@]}" -eq 1 ]; then cat "$out/0.txt"; exit; fi
+# The two refs' outcomes side by side — each cluster's heading, agreement and takes — then the traces' diff.
+python3 -I - "$out/0.txt" "$out/1.txt" "${refs[0]}" "${refs[1]}" "${COLUMNS:-200}" <<'PY'
+import sys
+a, b, ra, rb, cols = sys.argv[1:]
+half = int(cols) // 2 - 2
+def summary(path):
+    return [l.rstrip("\n") for l in open(path, encoding="utf-8") if l.startswith(("== ", "agreement ", "TAKE "))]
+def fit(s):
+    return s if len(s) <= half else s[: half - 1] + "…"
+left, right = summary(a), summary(b)
+print(f"{fit(ra):<{half}} | {rb}")
+for i in range(max(len(left), len(right))):
+    l = left[i] if i < len(left) else ""
+    r = right[i] if i < len(right) else ""
+    print(f"{fit(l):<{half}} | {fit(r)}")
+PY
+echo
+if cmp -s "$out/0.txt" "$out/1.txt"; then echo "the two refs' traces are identical"
+else echo "--- ${refs[0]}"; echo "+++ ${refs[1]}"; diff -u "$out/0.txt" "$out/1.txt" | tail -n +3 || true; fi
