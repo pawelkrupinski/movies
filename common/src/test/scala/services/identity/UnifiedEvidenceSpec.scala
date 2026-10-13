@@ -166,26 +166,89 @@ class UnifiedEvidenceSpec extends AnyFlatSpec with Matchers {
     filled(2025) shouldBe Some("tmdb:51608" -> "model.lean&count.leaning&title.namesIt&film.current")
   }
 
-  "Filmweb's take of a film the model scored" should "fill no namesake the release veto left best by taking out the film ranked above it" in {
-    // PL Kino za Rogiem Cafe's bare "Stan wyjątkowy" (Hřebejk's 2024 film): TMDB's first hit, it dates no Polish release
-    // and the veto took it out; Brešan's 2018 namesake under it, released in Poland, is what Filmweb's and IMDb's takes of
-    // the bare title name too — the veto adds no evidence for it, and nothing else does
-    val listings  = Seq(listing(KinoMuza, "Stan wyjątkowy"))
-    val hrebejk   = IdentityMeasures.Film("Stan wyjątkowy", year = Some(2024), imdbNumber = 30000001)
-    val bresan    = IdentityMeasures.Film("Stan wyjątkowy", year = Some(2018), imdbNumber = 8246980)
-    val bresanRecord = SourceRecord(bresan.copy(imdbNumber = 0), Map("imdb" -> "tt8246980"))
-    val verdicts  = Seq(took(VoterFamily.Filmweb, bresanRecord), took(VoterFamily.Imdb, bresanRecord))
-    def filled(ranked: Seq[IdentityResolver.CandidateEvidence]) = {
-      val decision = ResolverDecision(listings.map(_.key), None, 0.88, ResolverDecision.Basis.Vetoed, Nil)()
-      UnifiedRules.resolver.filled(contenders(ClusterEvidence(listings, decision, Seq(IdentityResolver.NodeEvidence(listings.map(_.key), ranked)),
-        verdicts, Nil, _ => None, thisYear = 2026))).map { case (contender, rule) => contender.film -> rule }
+  /** The film a lone candidate's fill takes and the rule it takes it by, if any: the cluster's listings, the model's one
+   *  candidate (its lean where `lean`), the families' verdicts. */
+  private def filledBy(listings: Seq[Listing], tmdb: Int, f: IdentityMeasures.Film, verdicts: Seq[FamilyVerdict],
+                       lean: Boolean = false): Option[(String, String)] = {
+    val leaning  = Option.when(lean)(ResolverDecision.Leaning(tmdb, f.imdbNumber))
+    val decision = ResolverDecision(listings.map(_.key), None, 0.1, ResolverDecision.Basis.BelowThreshold, Nil, leaning = leaning, candidate = leaning)()
+    UnifiedRules.resolver.filled(contenders(ClusterEvidence(listings, decision,
+      Seq(IdentityResolver.NodeEvidence(listings.map(_.key), Seq(candidate(tmdb, f, 0.03)))), verdicts, Nil, _ => None, thisYear = 2026)))
+      .map { case (contender, rule) => contender.film -> rule }
+  }
+  private def recordOf(f: IdentityMeasures.Film) = SourceRecord(f.copy(imdbNumber = 0), Map("imdb" -> f"tt${f.imdbNumber}%07d"))
+  private def linked(title: String, cineamo: String) = listing(KinoMuza, title).copy(catalogueIds = Seq(CatalogueId(CatalogueSources.Cineamo, cineamo)))
+
+  "one film database's take of a bare title" should "fill no namesake on its own, the model scoring it" in {
+    // DE Cinema & Kurbelkiste's "Sparrows", Zeughauskino's "DIE INSEL DER DÄMONEN" (the 1934 film), Kino im DFF's "CLOSE
+    // YOUR EYES": Filmweb takes a namesake, the model scores it, nothing else speaks for it — a single family's take adds
+    // wrong films as often as right ones (§20.6; 13 wrong of the 26 Filmweb fills on the capture of 2026-10-13)
+    val sparrows = film("Sparrows", 1926, "William Beaudine", 84, imdb = 17423)
+    filledBy(Seq(listing(KinoMuza, "Sparrows")), 73575, sparrows, Seq(took(VoterFamily.Filmweb, recordOf(sparrows)))) shouldBe None
+  }
+
+  "a film database's take the venue's feed links" should "fill the film, two sources naming it, unless contested by an older namesake" in {
+    // DE 3001 Kino's "Amadeo": Cineamo links 648574m and Filmweb takes the 2023 film — two independent sources
+    val amadeo = film("Amadeo", 2023, "Vicente Amorim", 105, imdb = 11143850)
+    filledBy(Seq(linked("Amadeo", "648574m")), 648574, amadeo, Seq(took(VoterFamily.Filmweb, recordOf(amadeo)))) shouldBe
+      Some("tmdb:648574" -> "family.feedLink&!family.dissent")
+    // the feed linking another film: Filmweb's take alone
+    filledBy(Seq(linked("Amadeo", "1m")), 648574, amadeo, Seq(took(VoterFamily.Filmweb, recordOf(amadeo)))) shouldBe None
+    // DE Schloß-Theater's "Ladies Night", a women's evening: Cineamo links Norma Bailey's 2005 TV film and Wikidata takes
+    // it, IMDb a 9-minute namesake the title names as well — contested, and no current release
+    val ladies = film("Ladies Night", 2005, "Norma Bailey", 85, imdb = 422613)
+    val short  = film("Ladies Night", 2016, "Kate Sullivan", 9, imdb = 5365772)
+    filledBy(Seq(linked("Ladies Night", "223746m")), 223746, ladies,
+      Seq(took(VoterFamily.Wiki, recordOf(ladies)), took(VoterFamily.Imdb, recordOf(short)))) shouldBe None
+    // contested, but a current release (DE "The Arab", Cineamo's 1001315m): the feed and a database's take stand
+    val arab = film("The Arab", 2026, "Malek Bensmaïl", 90, imdb = 39230003)
+    filledBy(Seq(linked("The Arab", "1001315m")), 1001315, arab,
+      Seq(took(VoterFamily.Filmweb, recordOf(arab)), took(VoterFamily.Imdb, recordOf(film("The Arab", 1924, "Rex Ingram", 70, imdb = 14674))))) shouldBe
+      Some("tmdb:1001315" -> "family.feedLink&film.current")
+  }
+
+  "a film database's take the venue's director credit names" should "fill the film, though the venue states no year" in {
+    // UK Picture House Uckfield's "The Misanthrope (NT Live)", crediting Indhu Rubasingham: IMDb takes the 2026 production
+    val misanthrope = film("The Misanthrope", 2026, "Indhu Rubasingham", 165, imdb = 39000001)
+    val credited    = Seq(listing(KinoMuza, "The Misanthrope (NT Live)", director = Some("Indhu Rubasingham")))
+    filledBy(credited, 1693710, misanthrope, Seq(took(VoterFamily.Imdb, recordOf(misanthrope)))) shouldBe Some("tmdb:1693710" -> "family.director")
+    // another director credited: no fill
+    filledBy(Seq(listing(KinoMuza, "The Misanthrope (NT Live)", director = Some("Simon Godwin"))), 1693710, misanthrope,
+      Seq(took(VoterFamily.Imdb, recordOf(misanthrope)))) shouldBe None
+  }
+
+  "a family's take of the model's lean" should "fill a current release, or one two families take, never an older namesake one takes" in {
+    // UK Act One Cinema's "THE COMIC STRIP", a clips-and-Q&A evening: Wikidata takes the 1981 TV film the model leans to
+    val comic = film("The Comic Strip", 1981, "Bob Spiers", 30, imdb = 81876)
+    filledBy(Seq(listing(KinoMuza, "THE COMIC STRIP")), 396598, comic, Seq(took(VoterFamily.Wiki, recordOf(comic))), lean = true) shouldBe None
+    // UK Old Market Hall's "The Man with the Plan (15)": the 2026 film Wikidata takes and the model leans to
+    val plan = film("The Man with the Plan", 2026, "Jenny Popplewell", 90, imdb = 30000002)
+    filledBy(Seq(listing(KinoMuza, "The Man with the Plan (15)")), 1500000, plan, Seq(took(VoterFamily.Wiki, recordOf(plan))), lean = true) shouldBe
+      Some("tmdb:1500000" -> "and.leanTakers&!family.dissent&film.current")
+    // UK Mockingbird's "Love Actually With Wine": Metacritic and RT take Curtis's 2003 film, the model leans to it
+    val love = film("Love Actually", 2003, "Richard Curtis", 135, imdb = 314331)
+    filledBy(Seq(listing(KinoMuza, "Love Actually With Wine")), 508, love,
+      Seq(took(VoterFamily.Metacritic, recordOf(love)), took(VoterFamily.RottenTomatoes, recordOf(love))), lean = true) shouldBe
+      Some("tmdb:508" -> "and.leanTakers&!family.dissent&count.takers2")
+  }
+
+  "a billing under two names" should "fill no film one of them names that another candidate is named by both" in {
+    // DE Acud Kino's "BARWY OCHRONNE / CAMOUFLAGE", Zanussi's 1977 film ("Camouflage" in English), joined to venues'
+    // bare "CAMOUFLAGE": Gibalenko's 2026 "Камуфляж", billed widely, is named only by its English title there
+    val billed = Seq("Acud Kino" -> "BARWY OCHRONNE / CAMOUFLAGE", "Harsefelder Lichtspiele" -> "CAMOUFLAGE", "IL KINO" -> "Camouflage",
+      "Kino A" -> "Camouflage", "Kino B" -> "Camouflage").map { case (venue, title) =>
+      listing(KinoMuza, title).copy(key = services.movies.ListingKey.Published(venue, title, None, Nil)) }
+    val gibalenko = IdentityMeasures.Film("Камуфляж", Some("Камуфляж"), Seq("Camouflage"), Some(2026), Some(102), Some(Seq("Mykyta Gibalenko")))
+    val zanussi   = IdentityMeasures.Film("Barwy ochronne", Some("Barwy ochronne"), Seq("Camouflage"), Some(1977), Some(96), Some(Seq("Krzysztof Zanussi")))
+    def found(listings: Seq[Listing]) = {
+      val decision = ResolverDecision(listings.map(_.key), None, 0.1, ResolverDecision.Basis.BelowThreshold, Nil)()
+      contenders(ClusterEvidence(listings, decision, Seq(IdentityResolver.NodeEvidence(listings.map(_.key),
+        Seq(candidate(1735950, gibalenko, 0.08), candidate(139467, zanussi, 0.03, denied = true)))), Nil, Nil, _ => None, thisYear = 2026))
     }
-    val vetoed = candidate(1325178, hrebejk, 0.07, denied = true).copy(releaseVetoed = true)
-    filled(Seq(vetoed, candidate(581759, bresan, 0.03).copy(rank = Some(2)))) shouldBe None
-    // the vetoed namesake deeper in the search than its first hit, the film further down still (PL Kino Kameralne Cafe's
-    // "Bohater", Farhadi's 19th, a vetoed namesake 12th): the take is Filmweb's own, as before
-    filled(Seq(vetoed.copy(rank = Some(12)), candidate(581759, bresan, 0.03).copy(rank = Some(19)))) shouldBe
-      Some("tmdb:581759" -> "family.filmweb.took&!model.unscored&!model.vetoedAbove")
+    found(billed).find(_.film == "tmdb:1735950").map(_.signals.contains("title.anothersOwn")) shouldBe Some(true)
+    UnifiedRules.resolver.filled(found(billed)) shouldBe None
+    // the bare titles alone: the 2026 film, as before
+    UnifiedRules.resolver.filled(found(billed.tail)).map { case (c, rule) => c.film -> rule } shouldBe Some("tmdb:1735950" -> "venues.current")
   }
 
   "a current release billed widely" should "fill no film the title names only within another candidate's title, articles aside" in {
@@ -215,7 +278,7 @@ class UnifiedEvidenceSpec extends AnyFlatSpec with Matchers {
     UnifiedRules.fires("family.filmweb.took&!model.unscored", signals.getOrElse(_, 0.0)) shouldBe true
     UnifiedRules.fires("family.filmweb.took&!model.unscored", (signals + ("model.unscored" -> 1.0)).getOrElse(_, 0.0)) shouldBe false
     UnifiedRules.fires("family.imdb.took", signals.getOrElse(_, 0.0)) shouldBe false
-    UnifiedRules.resolver.pinned should contain ("family.filmweb.took&!model.unscored&!model.vetoedAbove")
+    UnifiedRules.resolver.pinned should contain ("family.feedLink&!family.dissent")
   }
 
   "the signal list" should "name every signal once, each with a direction" in {

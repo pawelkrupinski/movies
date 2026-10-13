@@ -246,12 +246,11 @@ object IdentityResolver {
 
   /** One candidate as a node's family scored it: the calibrated probability, the search rank, whether the node's own
    *  evidence denies it, whether the title names it, and whether its record is the listing's season or house production
-   *  — the model's side of the unified evidence model's signals ([[UnifiedEvidence]]) — the measures it was scored
-   *  on, which a refit of the calibration counts (`scripts.IdentityRefit`), and whether the denial is the release veto's
-   *  ([[ReleaseVeto]]). */
+   *  — the model's side of the unified evidence model's signals ([[UnifiedEvidence]]) — and the measures it was
+   *  scored on, which a refit of the calibration counts (`scripts.IdentityRefit`). */
   final case class CandidateEvidence(tmdbId: Int, film: IdentityMeasures.Film, probability: Double, rank: Option[Int], denied: Boolean,
                                      titleNamesIt: Boolean, seasonProduction: Boolean, houseProduction: Boolean,
-                                     measures: Map[String, IdentityMeasures.Measure] = Map.empty, releaseVetoed: Boolean = false)
+                                     measures: Map[String, IdentityMeasures.Measure] = Map.empty)
   /** A node's listings and its candidates as its family scored them (best first). */
   final case class NodeEvidence(keys: Seq[ListingKey], candidates: Seq[CandidateEvidence])
 
@@ -265,7 +264,7 @@ object IdentityResolver {
     stages.generation.nodes.filter(_.listings.exists(focused)).map { node =>
       val scored = stages.families.scopeOf(node).of(node)
       NodeEvidence(node.listings.map(_.key), scored.map(s => CandidateEvidence(s.candidate.tmdbId, s.candidate.film, s.probability, s.rank, s.denied,
-        s.titleNamesIt, s.seasonProduction, s.houseProduction, s.measures, s.denial.exists(ReleaseVeto.vetoes))))
+        s.titleNamesIt, s.seasonProduction, s.houseProduction, s.measures)))
     }
 
   /** A [[resolve]], and every node's candidates as that same resolve scored them ([[evidenceOf]], read only when asked):

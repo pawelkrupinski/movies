@@ -135,7 +135,8 @@ no screening 5, esports 3, pass 3), agreed 55, fill 22, poster vote 16, broadcas
 catalogue 1. Corroboration among the agreed: tmdb 18 (+ with listing/feed), feed 9, listing 12, runtime 8, venues 6,
 catalogue 1. Fill rules: venues.current 7, families.current 5, family.filmweb.took&!model.unscored 5,
 model.lean&count.leaning&title.namesIt 2, family.facts 1, count.takers2&venues.current 1,
-and.leanTakers&!family.dissent 1, **cast.venue 0**.
+and.leanTakers&!family.dissent 1, **cast.venue 0**. (2026-10-14: the Filmweb fill is gone, `and.leanTakers&!family.dissent` asks
+`&film.current` or `&count.takers2`, and `family.feedLink` and `family.director` are new — identity-resolver.md §20.19.)
 
 ### 2.2 Agreement guards (`Agreement.agreed`) and takes
 

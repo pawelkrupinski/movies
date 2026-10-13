@@ -152,7 +152,10 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     decided(listing(KinoMuza, "Dowżenko. Pierwsze spojrzenie", year = Some(2026)), shipped).basis shouldBe ResolverDecision.Basis.BelowThreshold
     decided(listing(KinoMuza, "Dowżenko. Pierwsze spojrzenie", year = Some(2026), director = Some("Oleksandr Dovzhenko")), shipped).basis shouldBe
       ResolverDecision.Basis.BelowThreshold
-    decided(credited, shipped.copy(pinned = shipped.pinned.filterNot(_ == "family.facts"))).basis shouldBe ResolverDecision.Basis.BelowThreshold
+    // unpinned, the director's credit alone takes it (family.director, the year unread); without both, nothing does
+    decided(credited, shipped.copy(pinned = shipped.pinned.filterNot(_ == "family.facts"))).explanation.last should startWith ("filled by family.director:")
+    decided(credited, shipped.copy(pinned = shipped.pinned.filterNot(Set("family.facts", "family.director")))).basis shouldBe
+      ResolverDecision.Basis.BelowThreshold
   }
 
   it should "take, by the pinned cast.venue rule, the one candidate two of whose top-billed cast the venue's own text names" in {

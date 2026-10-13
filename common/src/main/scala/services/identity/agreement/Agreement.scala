@@ -523,6 +523,16 @@ object Agreement {
 
   private def withoutArticles(words: Seq[String]): Seq[String] = words.filterNot(IdentityMeasures.LeadingArticles)
 
+  /** Does another candidate's titles name MORE of the billing than the film's — every word the film's titles name of it,
+   *  and a word beside them — where the billing bills one film under two names? DE Acud Kino's "BARWY OCHRONNE /
+   *  CAMOUFLAGE" names Gibalenko's 2026 "Камуфляж" only by its English title, and Zanussi's 1977 "Barwy ochronne",
+   *  "Camouflage" in English, by both. A run of words, not one title: [[namedWithinAnother]] reads one title naming
+   *  the film's within it. `own`, `others`: spans as [[billedSpans]] finds them. */
+  def namesMoreThanIt(own: Seq[Seq[String]], others: Seq[Seq[Seq[String]]]): Boolean = {
+    val named = own.flatten.toSet
+    named.nonEmpty && others.exists { other => val theirs = other.flatten.toSet; named.subsetOf(theirs) && !theirs.subsetOf(named) }
+  }
+
   /** [[namedWithinAnother]] over spans [[billedSpans]] found: `own` the film's, `others` every candidate's. */
   def namedWithinAnother(own: Seq[Seq[String]], others: Seq[Seq[Seq[String]]]): Boolean =
     own.nonEmpty && others.exists { other =>

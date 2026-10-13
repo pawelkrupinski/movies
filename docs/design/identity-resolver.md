@@ -2656,7 +2656,7 @@ filed each under retrieval, scoring, a guard, or the agreement. What it added, e
   ([[Broadcast]]) still wins over such an agreement: PL Kino Amok bills the Met's "Manon" bare, and Wikidata and Filmweb
   take Clouzot's (the ratchet's one wrong without that). "OPERA-COSI FAN TUTTE" bills a house: never Tinto Brass's.
   Ratchet: +2 listings, 2 films, 0 wrong.
-- **`family.filmweb.took&!model.unscored`, a second pinned fill** (from the search sweep, branch
+- **`family.filmweb.took&!model.unscored`, a second pinned fill** (REMOVED 2026-10-14, §20.19; from the search sweep, branch
   `measure/identity-film-search`): the one guard-passing contender Filmweb takes that the model scored too — Filmweb
   votes in Poland alone. PL "Bohater" (Farhadi's), "BEZ KOŃCA 2D PL LOLO", "NADZIEJA", "Wymarzony" (Herry's *Pupille*,
   judged from the venue's page). `UnifiedRules.fires` reads a rule as `&`-joined terms, `!` an absence. Ratchet: +4
@@ -3186,6 +3186,27 @@ are not counted twice, and none is counted while the heap held ≥ 70% of its ma
 (`tools.HeapPressure`). It holds nothing between counts; one count allocated (measured on the recorded corpora) ES 26 MB,
 PL 130 MB, UK 277 MB, DE 342 MB, US 360–468 MB in 0.1–1.6 s, each billing asked once however many venues bill it; the
 agreed films' records are read in one prefetch.
+
+### 20.19 Fills on one weak source, traded at the wrong-match rate (2026-10-14)
+
+The user's rate: a wrong match is worth up to ~100 missed ones, the goal zero wrong. Of the capture's 41 WRONG takes, 20
+were FILLS, and five changes to the pinned fills (`identity-unified-rules.json`) take 16 of those listings off, measured
+on the unmatched-cluster capture (`UnmatchedClustersRatchetSpec`), each changed listing read by hand:
+
+| change | wrong cured | right lost | right gained | new wrong |
+|---|---|---|---|---|
+| drop `family.filmweb.took&!model.unscored&!model.vetoedAbove`: one database's take of a bare title is a namesake as often as the film (13 wrong of its 26) — DE "Sparrows", "Ogin-sama", "DIE INSEL DER DÄMONEN", "CLOSE YOUR EYES", "Like Father, Like Son", "Ladies Night", "Newborn" ×2 (now Cineamo's 2026 film, by the model's lean) | 12 | 12 | 2 | 0 |
+| `family.feedLink` (pinned, `&!family.dissent`, `&film.current`): a film database's take AND the listings' TMDB-keyed feed link naming one film — two independent sources; contested by another family's namesake, only a current release (DE Schloß-Theater's "Ladies Night" evening: Cineamo's 2005 TV film and Wikidata's take, IMDb a short) | 0 | won back 3 (Amadeo, The Arab ×2) | 5 (This Is Ballroom, Black Water ×2, Camouflage OmU, An einem Tag im September) | 0 |
+| `and.leanTakers&!family.dissent` → `&film.current`, plus `&count.takers2`: one family's take of the model's lean, an older namesake fitting an evening as well (UK "THE COMIC STRIP", NT Live "Hay Fever", DE "KF: Out of the Box") | 3 | 1 (Tschaikowsky, 1971) | 0 | 0 |
+| `title.anothersOwn` += another candidate's titles name more of a listing's billing (`Agreement.namesMoreThanIt`): DE Acud's "BARWY OCHRONNE / CAMOUFLAGE" is Zanussi's, "Camouflage" in English — the cluster joins two bare "CAMOUFLAGE" venues, which go with it | 1 | 2 | 0 | 0 |
+| `family.director` (pinned): a database's take the venue's director credit names, no year stated | 0 | 0 | 1 (UK "The Misanthrope (NT Live)") | 0 |
+| **total** | **16** | **12** (Kaidan, Mozu, Ototo, Ping Pong Session, UNSPOKEN, Der nackte Wahnsinn, New Dawn, NADZIEJA, Wymarzony, Tschaikowsky, 2 × Camouflage) | **8** | **0** |
+
+`model.vetoedAbove` and `CandidateEvidence.releaseVetoed` went with the Filmweb fill, the only rule reading them. Left:
+DE "ATMOS: Michael" (Cineamo links Dreyer's 1924 film and copies its year; Filmweb takes it too — now
+`family.feedLink`), and `model.lean&count.leaning&title.namesIt&film.current`'s three (UK "Obsession (PG)", "Hocus
+Pocus", "Song Sung Blue- The Music of Neil Diamond"): a current namesake against a classic's re-run, no signal apart
+from its 11 right takes (Resident Evil and Street Fighter are the same shape, and right).
 
 ## 21. The rules, consolidated (2026-10-06)
 
