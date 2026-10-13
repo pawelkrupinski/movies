@@ -90,6 +90,8 @@ object FormatTags {
   // hid its certificate behind it. A number of minutes, so "Apollo 13" and "Sweet Sixteen (16)" stay.
   private val BracketedRunningTime = """(?i)(?<=\S)\s*\(\s*\d{2,3}\s*mins?\.?(?:\s+TBC)?\s*\)\s*$""".r
   private val ReReleaseMark = """(?i)(?<=\S)\s*\(\s*(?:WA(?:\s*:?\s*\d{2,4}|\s*:)?|Wiederauff(?:ü|ue)hrung)\s*\)?\s*$""".r
+  /** A closed re-release mark inside the title, before a strand or a pipe ("Tribute von Panem (WA) - Kinderkino"). */
+  private val ReReleaseBracket = """(?i)\s*\(\s*(?:WA(?:\s*:?\s*\d{2,4})?|Wiederauff(?:ü|ue)hrung)\s*\)(?=\s*\S)""".r
   // The same tags written IN FRONT of the title — "OV: Digger", "(OmU) Verity", "ATMOS/OV: Verity", "Dolby
   // Cinema: Die Odyssee", "3D: Forgotten Island", "engl. OV: Der Herr der Ringe", "OMU - Searching for Sugar Man":
   // brackets, a colon, or a spaced dash closing a run of nothing but format and version words (a version's
@@ -189,7 +191,7 @@ object FormatTags {
         t = AsteriskNote.replaceFirstIn(t, "").trim
       }
       t = BracketedRunningTime.replaceFirstIn(t, "").trim
-      t = ReReleaseMark.replaceFirstIn(CertificateNote.replaceFirstIn(t, "$1"), "").trim
+      t = ReReleaseBracket.replaceAllIn(ReReleaseMark.replaceFirstIn(CertificateNote.replaceFirstIn(t, "$1"), ""), "").trim
       // Tokens peeled inside a [..]/(..) tag also carry version meaning, so
       // capture them before deleting the tag — UNLESS the tag names the Ukrainian
       // dub/lektor version, which is kept whole so it stays its own card.

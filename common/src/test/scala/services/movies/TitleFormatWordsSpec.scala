@@ -193,6 +193,9 @@ class TitleFormatWordsSpec extends AnyFlatSpec with Matchers {
     FormatTags.extractFormatTags("Tribute von Panem - The Ballad of Songbirds and Snakes (WA:") shouldBe
       ("Tribute von Panem - The Ballad of Songbirds and Snakes", Nil)
     FormatTags.extractFormatTags("Tribute von Panem - Mockingjay: Teil 1 (OV) (WA)") shouldBe ("Tribute von Panem - Mockingjay: Teil 1", List("OV"))
+    // ...and a closed mark wherever it sits, as the search strip it replaced read it (code review of e67fca348)
+    FormatTags.extractFormatTags("Tribute von Panem (WA) - Kinderkino") shouldBe ("Tribute von Panem - Kinderkino", Nil)
+    FormatTags.extractFormatTags("Der Pate (WA: 2026) | Reihe Klassiker") shouldBe ("Der Pate | Reihe Klassiker", Nil)
     FormatTags.extractFormatTags("Tribute von Panem - Songbirds & Snakes (OV) (WA)") shouldBe ("Tribute von Panem - Songbirds & Snakes", List("OV"))
     FormatTags.extractFormatTags("Tribute von Panem - Catching Fire (WA) (OmU)") shouldBe ("Tribute von Panem - Catching Fire", List("OmU"))
     FormatTags.extractFormatTags("OV: Tribute von Panem - Catching Fire (WA: 2026)") shouldBe ("Tribute von Panem - Catching Fire", List("OV"))
