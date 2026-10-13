@@ -2,7 +2,7 @@ package services.identity
 
 import java.util.Locale
 
-import services.movies.{EmbeddedYear, TitleContainment}
+import services.movies.{EmbeddedYear, TitleContainment, TitleSeason}
 import services.resolution.{SearchTitles, YearWindow}
 
 /**
@@ -118,26 +118,11 @@ object IdentityMeasures {
       case _        => None
     }
 
-  /** A SEASON written into a title — "2026/27", "2026-27", "2026/2027", "2026–2027", and a box office's short
-   *  "2026/7" or "26/27" (prod UK "Royal Ballet 2026/7: Romeo & Juliet", "RB&O 26/27: Romeo & Juliet"): a year and the
-   *  next, which is how a broadcast or programme series names its run, never a film's year. Two digits alone start one
-   *  only from 20 and across a slash: "Kids Club 12/13" is an age band. */
-  private val Season = """(?<![\p{N}])(?:((?:18|19|20)\d{2})\s*[/–—-]\s*(\d{4}|\d{1,2})|([23]\d)\s*/\s*(\d{2}))(?![\p{N}])""".r
-  private def seasonStart(m: scala.util.matching.Regex.Match): Option[Int] =
-    if (m.group(1) == null) Option.when(m.group(4).toInt == m.group(3).toInt + 1)(2000 + m.group(3).toInt)
-    else {
-      val start = m.group(1).toInt
-      val end   = m.group(2)
-      Option.when(end.toInt == (start + 1) % math.pow(10, end.length).toInt)(start)
-    }
-  /** A season or a bracketed year needs an ASCII digit (`\d` is ASCII-only in Java): a title without
-   *  one skips their regexes. */
+  /** A bracketed year needs an ASCII digit (`\d` is ASCII-only in Java): a title without
+   *  one skips its regex. */
   private def hasAsciiDigit(t: String): Boolean = t.exists(c => c >= '0' && c <= '9')
-  def seasonYear(titles: Seq[String]): Option[Int] =
-    titles.iterator.filter(hasAsciiDigit).flatMap(Season.findAllMatchIn).flatMap(seasonStart).toSeq.distinct match {
-      case Seq(one) => Some(one)
-      case _        => None
-    }
+  /** The season `titles` name ([[TitleSeason]]), by its first year. */
+  def seasonYear(titles: Seq[String]): Option[Int] = TitleSeason.of(titles)
   /** The season a film's own titles name ("The Metropolitan Opera 2026/27: Macbeth"). */
   def filmSeason(f: Film): Option[Int] = f.season
 
@@ -516,8 +501,7 @@ object IdentityMeasures {
   private[identity] def yearlessTokens(t: String): Seq[String] = TitleContainment.tokens(withoutYears(t))
 
   /** `t` with every season removed, so a season's end year is never read as a bracketed year. */
-  def withoutSeasons(t: String): String =
-    if (!hasAsciiDigit(t)) t else Season.replaceAllIn(t, m => if (seasonStart(m).isDefined) " " else scala.util.matching.Regex.quoteReplacement(m.matched))
+  def withoutSeasons(t: String): String = TitleSeason.without(t)
 
   /** What TMDB says about a candidate film. `directors`/`countries` are `None` when the film's
    *  details were not fetched, which is not the same as TMDB crediting nobody. `countries` are

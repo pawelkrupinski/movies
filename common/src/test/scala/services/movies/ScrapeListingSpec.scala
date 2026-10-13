@@ -31,6 +31,16 @@ class ScrapeListingSpec extends AnyFlatSpec with Matchers {
     p.movies.head.showtimes.map(_.dateTime.getHour) shouldBe Seq(18, 20)
   }
 
+  it should "keep apart a house's two seasons' productions of one work at one venue" in {
+    // UK recording 38351832400: The Ashford Cinema lists "RBO Cinema Season 2026-27: Swan Lake" beside "Royal Ballet &
+    // Opera 2024-25: Swan Lake"; folded onto one slot, the 2026/27 relay took the 2024/25 record.
+    val p = prepare(
+      listing("RBO Cinema Season 2026-27: Swan Lake", Seq(at(18))),
+      listing("RBO Cinema Season 2024-25: Swan Lake", Seq(at(20))),
+      listing("RBO Cinema Season 2026/27: Swan Lake", Seq(at(21))))
+    p.movies.map(_.showtimes.size).sorted shouldBe Seq(1, 2)
+  }
+
   it should "strip a format tag off the title into the showings' badges, through the shared vocabulary" in {
     val p = prepare(listing("Zwierzogród 2 (Napisy PL)", Seq(at(18))))
     p.movies.map(p.cleaned) shouldBe Seq("Zwierzogród 2")
