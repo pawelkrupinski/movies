@@ -59,7 +59,9 @@ def synthetic():
     with tempfile.NamedTemporaryFile("w", suffix=".txt", delete=False) as f:
         f.write("\n".join(GAZETTEER) + "\n")
     gaz = g.load_gazetteer(f.name)
-    towns, town_of = g.place([
+    # A reviewed figure for a town GeoNames DOES have is not a town it lacks.
+    g.POPULATIONS["Hull, East Riding of Yorkshire"] = 1
+    towns, town_of, lacking = g.place([
         venue("Croydon1", "Croydon", 51.375, -0.098),
         venue("Hampstead1", "Hampstead", 51.556, -0.178),
         venue("NewportIow", "Newport", 50.699, -1.289),
@@ -82,6 +84,10 @@ def synthetic():
     check("a town GeoNames lacks is its own, centred on its venues, with its reviewed population",
           towns[town_of["Beeston1"]]["population"] == g.POPULATIONS["Beeston, Nottinghamshire"]
           and towns[town_of["Beeston1"]]["name"] == "Beeston")
+    check("the towns GeoNames lacks are only those it gave no population, whatever the table holds",
+          lacking == ["Beeston, Nottinghamshire"]
+          and towns["Hull, East Riding of Yorkshire"]["population"] > 1)
+    del g.POPULATIONS["Hull, East Riding of Yorkshire"]
     check("a town with no population anywhere stops the run",
           refuses(lambda: g.place([venue("Boldon1", "Boldon", 55.87, -4.26)], gaz)))
     check("an island is its own landmass: Bute, Jersey, the Isle of Wight",

@@ -289,8 +289,9 @@ def landmass(county, lat, lon):
 
 
 def place(venues, gazetteer, venue_towns=VENUE_TOWNS):
-    """(towns, cinemaObject → town key) for every venue. Refuses a venue it cannot
-    place — see the module docstring for the order it tries."""
+    """(towns, cinemaObject → town key, the towns GeoNames gave no population and
+    POPULATIONS filled) for every venue. Refuses a venue it cannot place — see the
+    module docstring for the order it tries."""
     towns, town_of, own, problems = {}, {}, collections.defaultdict(list), []
 
     def keep(g):
@@ -341,25 +342,25 @@ def place(venues, gazetteer, venue_towns=VENUE_TOWNS):
                       "population": 0}
     if problems:
         sys.exit("\n".join(problems))
-    for key, t in towns.items():
-        t["population"] = t["population"] or POPULATIONS.get(key, 0)
+    lacking = sorted(k for k, t in towns.items() if not t["population"])
+    for key in lacking:
+        towns[key]["population"] = POPULATIONS.get(key, 0)
     unpeopled = sorted(k for k, t in towns.items() if not t["population"])
     if unpeopled:
         sys.exit(f"towns with no population (review one into POPULATIONS): {unpeopled}")
     for t in towns.values():
         island = landmass(t["county"], t["lat"], t["lon"])
         t["landmass"] = island or ("Ireland" if t["nation"] == "Northern Ireland" else "Great Britain")
-    return towns, town_of
+    return towns, town_of, lacking
 
 
 def main(gazetteer_path):
     venues = json.loads((DATA / "venues.json").read_text())
-    towns, town_of = place(venues, load_gazetteer(gazetteer_path))
+    towns, town_of, lacking = place(venues, load_gazetteer(gazetteer_path))
     OUT.write_text(json.dumps({"towns": dict(sorted(towns.items())), "venues": dict(sorted(town_of.items()))},
                               ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
-    unmatched = sum(1 for k in towns if k in POPULATIONS)
     print(f"Wrote {OUT.relative_to(ROOT)}: {len(town_of)} venues in {len(towns)} towns "
-          f"({unmatched} with no GeoNames population)")
+          f"({len(lacking)} with no GeoNames population)")
 
 
 if __name__ == "__main__":
