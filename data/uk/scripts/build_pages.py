@@ -40,10 +40,13 @@ another country has that slug it is qualified with its county
 (`/newport-isle-of-wight/`, `/cambridge-cambridgeshire/`):
 
   - a slug a UK page had before keeps meaning its town (`town_pages.reserve`);
-  - of two UK towns of one name the more populous takes the bare slug
-    (`/bangor/` is County Down's, Gwynedd's is `/bangor-gwynedd/`);
+  - of two UK towns of one name the more populous takes the bare slug, where
+    the slug is free;
   - a slug Poland, Germany, Spain or the US serves or redirects stays theirs —
     the UK, re-cut after them, is the newcomer (`/cambridge/` is Massachusetts').
+    Bangor, Newport and Wellington are US slugs too, so both UK Bangors
+    (`/bangor-gwynedd/`, `/bangor-ards-and-north-down/`) and both Newports are
+    qualified.
 
 Inputs, all committed:
 
@@ -112,9 +115,10 @@ def foreign_slugs():
 def build(venues, venue_town, towns, previous, prior_retired, foreign=frozenset(), rules=RULES):
     """venues: (cinemaObject, (lat, lon)) for every venue, in roster order;
     venue_town: cinemaObject → town key; towns: town key → {name, nation, county,
-    landmass, lat, lon, pop}; previous: slug → {"cinemas", "lat", "lon",
+    landmass, lat, lon, pop}; previous: slug → {"name", "cinemas", "lat", "lon",
     "qualifiedSlug", "anchor"} for every page the last build had (the hand-filed
-    regions, before the first); foreign: the slugs other countries hold."""
+    regions, before the first); prior_retired: the last build's "retired", the
+    same fields beside its "page"; foreign: the slugs other countries hold."""
     by_town = collections.defaultdict(list)
     for obj, _ in venues:
         by_town[venue_town[obj]].append(obj)
@@ -130,10 +134,7 @@ def build(venues, venue_town, towns, previous, prior_retired, foreign=frozenset(
         """How far town `t`'s furthest venue is from `anchor`."""
         return max(km(centre(anchor), at[v]) for v in by_town[t])
 
-    far = sorted(t for t in by_town if min(km(centre(t), at[v]) for v in by_town[t]) > rules.max_drift_km)
-    if far:
-        sys.exit(f"towns placed > {rules.max_drift_km} km from every venue they hold (namesake?): {far} "
-                 f"— fix towns.json")
+    town_pages.refuse_namesakes(by_town, centre, at, rules.max_drift_km)
 
     def qualified(t):
         return town_pages.slugify(f"{towns[t]['name']} {towns[t]['county']}")
@@ -180,7 +181,7 @@ def build(venues, venue_town, towns, previous, prior_retired, foreign=frozenset(
     taken = sorted(s for s in result if s in foreign and s not in held)
     if taken:
         sys.exit(f"pages took slugs another country holds, qualified or not: {taken}")
-    beyond = [f"{p['slug']}: {obj} is {km((p['lat'], p['lon']), at[obj]):.0f} km from {p['anchor']}"
+    beyond = [f"{p['slug']}: {obj} is {km(centre(p['anchor']), at[obj]):.1f} km from {p['anchor']}"
               for p in result.values() for obj in p["cinemas"]
               if rules.max_reach_km is not None and km(centre(p["anchor"]), at[obj]) > rules.max_reach_km]
     if beyond:
@@ -189,22 +190,13 @@ def build(venues, venue_town, towns, previous, prior_retired, foreign=frozenset(
     # A page gone since the last build is named after a town or a county; a
     # visitor typing /antrim/ wants Antrim, so it goes to the page holding that
     # town, and only when no town by that name has a venue to the page now holding
-    # most of its venues (`town_pages.heir` has the tie-breaks).
-    def heir(old):
-        if old.get("anchor") in page_of_town:
-            return page_of_town[old["anchor"]]
-        held_now = town_pages.held_by(old["cinemas"], venue_town, page_of_town)
-        return town_pages.heir(held_now, (old["lat"], old["lon"]), result)
-    gone = {slug: heir(old) for slug, old in previous.items() if slug not in result}
-    retired = town_pages.retire(gone, {k: page_of_town.get(v.get("anchor"), v["page"])
-                                       for k, v in prior_retired.items()}, result)
-    remembered = {**prior_retired, **previous}
-    retired = {slug: {"page": target, "qualifiedSlug": remembered[slug]["qualifiedSlug"],
-                      "anchor": remembered[slug].get("anchor")}
-               for slug, target in sorted(retired.items())}
-    pages = list(result.values())
-    pages.sort(key=lambda p: (p["kind"] != "major", majors_here.index(p["anchor"]) if p["kind"] == "major" else 0,
-                              p["slug"]))
+    # most of its venues (`town_pages.heir` has the tie-breaks). Each retired
+    # entry keeps its name, its venues and where it was, so the next build
+    # re-derives its target the same way, and the picker finds the page it lands
+    # on by the old name.
+    retired = town_pages.succession(previous, prior_retired, result, page_of_town, venue_town,
+                                    carry=("name", "cinemas", "lat", "lon"))
+    pages = town_pages.sorted_pages(result, majors_here)
     return pages, retired
 
 

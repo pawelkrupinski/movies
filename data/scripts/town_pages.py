@@ -40,6 +40,7 @@ import re
 import sys
 import unicodedata
 from dataclasses import dataclass
+from decimal import ROUND_HALF_EVEN, Decimal
 
 
 @dataclass(frozen=True)
@@ -148,7 +149,9 @@ def within_reach(clusters, count, pos, pop, rules, dist, reach, landmass):
             near = [m for m in kept if len(m) > 1 and ranks(m[0]) < ranks(t)
                     and dist(t, m[0]) <= rules.absorb_radius_km and reach(t, m[0]) <= rules.max_reach_km]
             if near:
-                min(near, key=lambda m: (dist(t, m[0]), m[0])).append(t)
+                joined = min(near, key=lambda m: (dist(t, m[0]), m[0]))
+                joined.append(t)
+                joined.sort(key=ranks)
                 continue
         final.append(c)
     return final
@@ -252,6 +255,57 @@ def retire(previous, prior_retired, result):
     if missing:
         sys.exit(f"retired slugs point at pages that no longer exist: {missing}")
     return retired
+
+
+def succession(previous, prior_retired, result, page_of_town, venue_town, carry=()):
+    """The `retired` map a build writes: slug → {"page", "qualifiedSlug", "anchor",
+    *carry} for every page that existed before and is not a page any more.
+
+    Each goes where `heir_of` says — the page holding the town it was named after,
+    else the page now holding most of its former venues — and that is re-derived
+    on every build for an earlier retirement too, as long as the entry carries its
+    `cinemas`, `lat` and `lon` (pass them in `carry` to keep them): a retired
+    region follows its venues when they move again. An entry with neither an
+    anchor on a page nor its venues keeps the page it pointed at (`retire`
+    re-points it when that page itself goes)."""
+    def heir_of(old):
+        if old.get("anchor") in page_of_town:
+            return page_of_town[old["anchor"]]
+        if "cinemas" in old:
+            return heir(held_by(old["cinemas"], venue_town, page_of_town), (old["lat"], old["lon"]), result)
+        return None
+    gone = {slug: heir_of(old) for slug, old in previous.items() if slug not in result}
+    prior = {slug: heir_of(old) or old["page"] for slug, old in prior_retired.items()}
+    retired = retire(gone, prior, result)
+    remembered = {**prior_retired, **previous}
+    return {slug: {"page": target, "qualifiedSlug": remembered[slug]["qualifiedSlug"],
+                   "anchor": remembered[slug].get("anchor"),
+                   **{k: remembered[slug][k] for k in carry if k in remembered[slug]}}
+            for slug, target in sorted(retired.items())}
+
+
+def sorted_pages(result, majors_here):
+    """pages.json's order: the majors biggest first (`majors_here`'s order), then
+    every other page by slug."""
+    return sorted(result.values(),
+                  key=lambda p: (p["kind"] != "major", majors_here.index(p["anchor"]) if p["kind"] == "major" else 0,
+                                 p["slug"]))
+
+
+def refuse_namesakes(by_town, centre, at, max_km):
+    """Stop the build on a town placed more than `max_km` from every venue it holds
+    — the shape a gazetteer namesake takes. `centre`: town → (lat, lon); `at`:
+    venue → (lat, lon)."""
+    far = sorted(t for t, vs in by_town.items() if min(km(centre(t), at[v]) for v in vs) > max_km)
+    if far:
+        sys.exit(f"towns placed > {max_km} km from every venue they hold (namesake?): {far} — fix towns.json")
+
+
+def exact_mean(values):
+    """Mean of decimal strings, rounded half-even to five places — the same answer
+    on every Python."""
+    values = [Decimal(str(v)) for v in values]
+    return float((sum(values, Decimal(0)) / len(values)).quantize(Decimal("0.00001"), rounding=ROUND_HALF_EVEN))
 
 
 def placement_problems(venues, pages):

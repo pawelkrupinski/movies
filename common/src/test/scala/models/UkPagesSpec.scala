@@ -97,6 +97,10 @@ class UkPagesSpec extends AnyFlatSpec with Matchers with OptionValues {
     // page holding most of its venues.
     City.renamedSlugs("antrim") shouldBe pageOf("Omniplex Antrim")
     City.renamedSlugs("west-yorkshire") shouldBe "leeds"
+    // A page folded into a neighbour before the re-cut follows its venues too,
+    // not the neighbour it was folded into.
+    City.renamedSlugs("sandwell") shouldBe pageOf("Odeon Cinema West Bromwich")
+    City.renamedSlugs("lanarkshire") shouldBe pageOf("Vue Cinemas Hamilton")
     City.renamedSlugs("highlands-and-islands") shouldBe pageOf("Eden Court Theatre Inverness")
   }
 

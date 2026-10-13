@@ -128,7 +128,8 @@ A page is slugged after its name. Where another page or country has the slug,
 it is qualified with its county:
 
 - a slug a UK page had before keeps meaning its town (`town_pages.reserve`);
-- of two UK towns of one name the more populous takes the bare slug;
+- of two UK towns of one name the more populous takes the bare slug, where it
+  is free (today none is: Bangor, Newport and Wellington are US slugs too);
 - a slug Poland, Germany, Spain or the US serves or redirects stays theirs —
   the UK, re-cut after them, is the newcomer, as Spain's Toledo was:
   `/cambridge/` is Massachusetts', the UK's is `/cambridge-cambridgeshire/`

@@ -29,7 +29,6 @@ import json
 import pathlib
 import re
 import sys
-from decimal import ROUND_HALF_EVEN, Decimal
 
 ROOT = pathlib.Path(__file__).resolve().parents[3]
 DATA = ROOT / "data" / "us"
@@ -120,13 +119,6 @@ def load_gazetteer(path):
     return by_state
 
 
-def exact_mean(values):
-    """Mean of decimal strings, rounded half-even to five places — the same answer
-    on every Python (see generate_roster.mean_coordinate)."""
-    values = [Decimal(str(v)) for v in values]
-    return float((sum(values, Decimal(0)) / len(values)).quantize(Decimal("0.00001"), rounding=ROUND_HALF_EVEN))
-
-
 def place(venues, gazetteer):
     """(towns, venue slug → town key) for every venue with a state and coordinates.
     Refuses a venue harvested at a namesake town's coordinates, and venues too far
@@ -163,7 +155,7 @@ def place(venues, gazetteer):
                             f"matched to it — check their coordinates")
             continue
         towns[key] = {"name": vs[0]["city"].strip(), "state": vs[0]["state"],
-                      "lat": exact_mean(v["lat"] for v in vs), "lon": exact_mean(v["lon"] for v in vs),
+                      "lat": town_pages.exact_mean(v["lat"] for v in vs), "lon": town_pages.exact_mean(v["lon"] for v in vs),
                       "population": 0}
     if problems:
         sys.exit("\n".join(problems))

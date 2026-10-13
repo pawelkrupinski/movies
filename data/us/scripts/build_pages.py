@@ -128,11 +128,7 @@ def build(venues, venue_town, towns, previous, prior_retired, rules=RULES):
 
     # A namesake town is far from every venue it is supposed to hold.
     at = dict(venues)
-    far = sorted(t for t, vs in by_town.items()
-                 if min(km((towns[t]["lat"], towns[t]["lon"]), at[v]) for v in vs) > rules.max_drift_km)
-    if far:
-        sys.exit(f"towns placed > {rules.max_drift_km} km from every venue they hold (namesake?): {far} "
-                 f"— fix towns.json")
+    town_pages.refuse_namesakes(by_town, lambda t: (towns[t]["lat"], towns[t]["lon"]), at, rules.max_drift_km)
 
     # Biggest first, so where two majors share a name (Springfield, Missouri and
     # Springfield, Massachusetts) the bigger keeps the bare slug.
@@ -170,23 +166,8 @@ def build(venues, venue_town, towns, previous, prior_retired, rules=RULES):
     # /kansas-city-kansas/ wants Kansas City, Kansas: it goes to the page holding
     # that town. Only when no town by that name has a venue does it go to the page
     # now holding most of its venues (`town_pages.heir` has the tie-breaks).
-    def heir(old):
-        if old.get("anchor") in page_of_town:
-            return page_of_town[old["anchor"]]
-        held = town_pages.held_by(old["cinemas"], venue_town, page_of_town)
-        return town_pages.heir(held, (old["lat"], old["lon"]), result)
-    gone = {slug: heir(old) for slug, old in previous.items() if slug not in result}
-    # A slug retired in an earlier build follows its town to whichever page holds
-    # it now.
-    retired = town_pages.retire(gone, {k: page_of_town.get(v.get("anchor"), v["page"])
-                                       for k, v in prior_retired.items()}, result)
-    remembered = {**prior_retired, **previous}
-    retired = {slug: {"page": page, "qualifiedSlug": remembered[slug]["qualifiedSlug"],
-                      "anchor": remembered[slug].get("anchor")}
-               for slug, page in sorted(retired.items())}
-    pages = list(result.values())
-    pages.sort(key=lambda p: (p["kind"] != "major", majors_here.index(p["anchor"]) if p["kind"] == "major" else 0,
-                              p["slug"]))
+    retired = town_pages.succession(previous, prior_retired, result, page_of_town, venue_town)
+    pages = town_pages.sorted_pages(result, majors_here)
     return pages, retired
 
 

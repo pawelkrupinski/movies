@@ -56,9 +56,9 @@ def refuses(f):
     return False
 
 
-def region(cinemas, km_north, km_east, anchor=None):
+def region(name, cinemas, km_north, km_east, anchor=None):
     lat, lon = point(km_north, km_east)
-    return {"cinemas": cinemas, "lat": lat, "lon": lon, "anchor": anchor, "qualifiedSlug": None}
+    return {"name": name, "cinemas": cinemas, "lat": lat, "lon": lon, "anchor": anchor, "qualifiedSlug": None}
 
 
 HERE = (0, 0)
@@ -91,10 +91,10 @@ VENUES = [
 
 def synthetic():
     previous = {
-        "west-yorkshire": region(["le1", "br1", "ot1", "ot2", "il1"], 0, -5),
-        "north-yorkshire": region(["sk1", "se1", "gr1"], 40, -40),
-        "isle-of-wight": region(["nw1", "ry1"], -398, 5),
-        "leeds": region(["le1"], 0, 0, "Leeds, West Yorkshire"),
+        "west-yorkshire": region("West Yorkshire", ["le1", "br1", "ot1", "ot2", "il1"], 0, -5),
+        "north-yorkshire": region("North Yorkshire", ["sk1", "se1", "gr1"], 40, -40),
+        "isle-of-wight": region("Isle of Wight", ["nw1", "ry1"], -398, 5),
+        "leeds": region("Leeds", ["le1"], 0, 0, "Leeds, West Yorkshire"),
     }
     pages, retired = run(TOWNS, VENUES, previous, foreign={"cambridge"})
 
@@ -129,6 +129,16 @@ def synthetic():
     check("every venue is on exactly one page",
           sorted(c for p in pages.values() for c in p["cinemas"]) == sorted(v for _, v, _ in VENUES))
 
+    # A slug retired in an earlier build, named after no town, follows its venues
+    # rather than keeping the page it pointed at then.
+    merged = {"sandwell": {"page": "leeds", "qualifiedSlug": "sandwell", "anchor": None, "name": "Sandwell",
+                           "cinemas": ["br1"], "lat": point(0, -14)[0], "lon": point(0, -14)[1]}}
+    _, rederived = run(TOWNS, VENUES, previous, merged, foreign={"cambridge"})
+    check("an earlier retirement is re-derived from the venues it records, not kept",
+          rederived["sandwell"]["page"] == "bradford" and rederived["sandwell"]["name"] == "Sandwell")
+    check("a retired page keeps its name, venues and centre, so the next build can do the same",
+          set(retired["west-yorkshire"]) >= {"name", "cinemas", "lat", "lon"})
+
     pages2, retired2 = run(TOWNS, VENUES, pages, retired, foreign={"cambridge"})
     check("a rebuild from the build's own output is a no-op", (pages2, retired2) == (pages, retired))
     pages3, _ = run(TOWNS, VENUES, pages, retired, foreign={"cambridge", "newport", "leeds"})
@@ -158,6 +168,25 @@ def committed():
           and {"DavidLeanCinemaCroydon", "VueCinemasRomford"} <= set(pages["london"]["cinemas"]))
     check("pages.json: the two Bangors and the two Newports are four pages",
           len({p["slug"] for p in pages.values() if p["name"] in ("Bangor", "Newport")}) == 4)
+    # Every retired slug goes where the rule says, re-derived from what the entry
+    # records: the page holding its namesake town, else the page holding most of
+    # its former venues (`/lanarkshire/` once kept pointing at Glasgow, which held
+    # none of its venues any more).
+    page_of = {c: p["slug"] for p in pages.values() for c in p["cinemas"]}
+    page_of_town = {t: p["slug"] for p in pages.values() for t in p["towns"]}
+    wrong = []
+    for slug, r in sorted(data["retired"].items()):
+        if r.get("anchor") in page_of_town:
+            expected = {page_of_town[r["anchor"]]}
+        elif not r.get("cinemas"):
+            wrong.append(f"{slug}: records no former venues to follow")
+            continue
+        else:
+            held = collections.Counter(page_of[c] for c in r["cinemas"] if c in page_of)
+            expected = {s for s, n in held.items() if n == max(held.values())}
+        if r["page"] not in expected:
+            wrong.append(f"{slug} -> {r['page']}, but the rule says {sorted(expected)}")
+    check(f"pages.json: every retired slug goes to its namesake's page, else its venues' {wrong}", not wrong)
     missing = sorted(set(HAND_FILED) - set(pages) - set(data["retired"]))
     check(f"pages.json: every one of the 76 hand-filed regions and the 3 merged pages still answers {missing}",
           not missing)

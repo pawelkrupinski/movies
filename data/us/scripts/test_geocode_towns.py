@@ -105,7 +105,7 @@ def main():
     # sum lands below it and a compensated one on it, so the mean is exact.
     spencer = ["-95.1247219", "-95.1499786", "-94.6684079", "-94.6794721", "-94.9932445"]
     check("a centroid is the exact mean, rounded half-even, in any order",
-          all(g.exact_mean(order) == -94.92316 for order in itertools.permutations(spencer)))
+          all(g.town_pages.exact_mean(order) == -94.92316 for order in itertools.permutations(spencer)))
     print("all passed")
 
 
