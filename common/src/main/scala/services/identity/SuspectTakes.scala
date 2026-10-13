@@ -109,7 +109,10 @@ object SuspectTakes {
   // ── the billing's pieces ─────────────────────────────────────────────────────────────────
 
   /** One delimited piece of a billing — what a colon, a pipe, a spaced dash or plus, a bullet, a bracket, a quote or a
-   *  full stop sets apart — as its words. */
+   *  full stop sets apart — as its words. Not [[IdentityMeasures.pieces]], which splits a TITLE at a colon, a pipe or a
+   *  spaced dash or slash alone, its years out: a billing's banner also sits behind a bullet, a plus, a half-spaced dash,
+   *  brackets or quotes ("Kino Kobiet - KLAPS! „Jak żyć…”"). Split as a title is (2026-10-13, on the legs' takes), seven
+   *  right takes turn fragments: "Parasite (wersja czarno-biała)", "Nosferatu (1922) with Live Score by Hugo Max". */
   private[identity] final case class Piece(words: Seq[String]) {
     lazy val key: String = words.mkString(" ")
   }
@@ -178,15 +181,13 @@ object SuspectTakes {
 
   // ── (a) fragment ─────────────────────────────────────────────────────────────────────────
 
-  /** Words a venue bills around a film that are no part of another work's title: formats, event and edition words,
-   *  numbers, single letters. */
-  private def decoration(word: String): Boolean =
-    FormatTags.FormatToken.contains(word) || DecorationSegments.EventWords(word) || DecorationSegments.EditionWords(word) ||
-      word.exists(_.isDigit) || word.length == 1
-
   /** An event, edition or format word: what a venue bills around a film, never a work's own title. */
   private def billed(word: String): Boolean =
     FormatTags.FormatToken.contains(word) || DecorationSegments.EventWords(word) || DecorationSegments.EditionWords(word)
+
+  /** Words a venue bills around a film that are no part of another work's title: what it [[billed]] the film with,
+   *  numbers, single letters. */
+  private def decoration(word: String): Boolean = billed(word) || word.exists(_.isDigit) || word.length == 1
 
   /** Where the film's longest title runs in `words` — articles aside — as (start, length). */
   private def run(words: IndexedSeq[String], film: IdentityMeasures.Film): Option[(Int, Int)] =
