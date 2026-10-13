@@ -122,7 +122,8 @@ object ListingShape {
    *  - a banner in the banner's slot, the leading piece a colon or a pipe closes ("Somali Film Festival: Lifeline");
    *  - an event, format or edition word ([[DecorationSegments.EventWords]], "IT FOLLOWS - HALLOWEEN SPECIAL"), a
    *    screening programme or its audience ([[ScreeningProgramme]]: "Fatherland - Film Club", "KÖNIG DROSSELBART - EIN
-   *    ADVENTSMÄRCHEN FÜR KINDER"), a note in brackets ("Geliefert (ver.di)"), numbers, the film's own titles and director;
+   *    ADVENTSMÄRCHEN FÜR KINDER"), a note in brackets ("Geliefert (ver.di)") or one a number carries ("Digger (15) 129
+   *    mins", "ABO 10": one word of its own beside it), the film's own titles and director;
    *  - the listing's own original title ("Hacer Mucho con Poco - Do More With Less");
    *  - the film quoted: the quotes name the work, what is around them is the evening's (PL "Festiwal Korelacje: „Zemsta”
    *    z autorską narracją Artura Andrusa").
@@ -147,12 +148,17 @@ object ListingShape {
         words.indices.iterator.filterNot(k => k >= from && k < to).filter(k => words(k).nonEmpty)
           // the banner's slot: the leading piece a colon or a pipe closes, the film after it
           .filterNot(k => k == 0 && from > 0 && breaks.headOption.exists(b => b == ":" || b == "|"))
-          .map(words).find(piece => !original.contains(withoutArticles(piece)) && piece.exists(own) &&
+          .map(words).find(piece => !original.contains(withoutArticles(piece)) && piece.exists(own) && !numberedNote(piece, own) &&
             !piece.exists(word => billed(word) || ScreeningProgramme.findFirstIn(word).isDefined))
           .map(piece => s"'${piece.mkString(" ")}' is billed beside '${films.head.title}', no word of it the venue's around a film")
       }
     }
   }
+
+  /** A NOTE a number carries — a running time, a certificate, a subscription's or an anniversary's number — one word of
+   *  its own beside the number at most: "129 mins", "Cert 18", "ABO 10", "50 Jahre". */
+  private def numberedNote(piece: Seq[String], own: String => Boolean): Boolean =
+    piece.exists(_.exists(_.isDigit)) && piece.count(own) <= 1
 
   /** An event, format or edition word: what a venue bills around a film. */
   private def billed(word: String): Boolean =

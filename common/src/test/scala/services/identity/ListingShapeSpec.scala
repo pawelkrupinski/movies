@@ -69,6 +69,8 @@ class ListingShapeSpec extends AnyFlatSpec with Matchers {
     beside("Fatherland - Film Club", film("Fatherland")) shouldBe None
     beside("KÖNIG DROSSELBART - EIN ADVENTSMÄRCHEN FÜR KINDER", film("König Drosselbart")) shouldBe None
     beside("Geliefert (ver.di)", film("Geliefert")) shouldBe None
+    beside("Digger (15) 129 mins", film("Digger")) shouldBe None
+    beside("DAS LEHRERZIMMER - ABO 9", film("Das Lehrerzimmer")) shouldBe None
     beside("Olympia 1936 / 2026 - Leni Riefenstahl: OLYMPIA 1 - FEST DER VÖLKER", film("Olympia - Fest der Völker", directors = Seq("Leni Riefenstahl"))) shouldBe
       None
     beside("Festiwal Korelacje: „Zemsta” z autorską narracją Artura Andrusa", film("Zemsta")) shouldBe None
