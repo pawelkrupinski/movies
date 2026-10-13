@@ -13,20 +13,28 @@
     .back-link { color: #aad4ff; text-decoration: none; font-size: .9rem; display: inline-flex; align-items: center; gap: .3em; }
     .back-link svg { width: .7em; height: .7em; flex-shrink: 0; }
     .back-link:hover { color: #fff; }
+    /* The poster's box is fixed BEFORE the image arrives: a 300 px 2:3 slot
+       (weserv crops every proxied poster to exactly 480x720, and `cover`
+       crops an unproxied one rather than squashing it). The page is live from
+       DOMContentLoaded, and an unsized `<img>` is 0 px until it decodes —
+       then shoves the title, ratings and cinema pills ~450 px down on a phone
+       (the poster stacks above them there), under whatever tap is in flight. */
     .poster-wrap {
       position: relative;
-      max-width: 300px;
+      width: 300px;
+      max-width: 100%;
       padding-top: 0;
     }
     .poster-wrap img {
       position: static;
       inset: auto;
       height: auto;
-      object-fit: initial;
+      object-fit: cover;
     }
     .poster-img {
       width: 100%;
       max-width: 300px;
+      aspect-ratio: 2 / 3;
       border-radius: 12px;
       display: block;
       cursor: zoom-in;

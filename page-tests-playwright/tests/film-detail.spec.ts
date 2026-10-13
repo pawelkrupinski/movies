@@ -220,6 +220,30 @@ test.describe('/movie detail page', { tag: '@agnostic' }, () => {
     await expect(page.locator('.cinema-group:visible')).toHaveCount(12);
   });
 
+  // The poster sits ABOVE the cinema-link pills on a phone, and the page is
+  // usable from DOMContentLoaded — long before a weserv-proxied poster lands.
+  // Its box has to be reserved from the start: an `<img>` with no size takes
+  // 0px until it decodes, then shoves everything below it ~450px down. A tap
+  // in flight at that moment lands on whatever slid under the finger — the CI
+  // flake where the fold button took focus on mousedown but the click
+  // never reached it, leaving the pills folded (Main run 38422471456).
+  test('the cinema-link pills do not move when the poster arrives', async ({ page }) => {
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => { release = resolve; });
+    await page.route(/images\.weserv\.nl/, async (route) => { await held; await route.continue(); });
+
+    await page.goto('/poznan/movie-many', { waitUntil: 'domcontentloaded' });
+    const poster = page.locator('.poster-img');
+    const before = await page.locator('.cinema-links').boundingBox();
+
+    release();
+    await expect.poll(() => poster.evaluate((img: HTMLImageElement) => img.complete)).toBe(true);
+    const after = await page.locator('.cinema-links').boundingBox();
+
+    expect(before).not.toBeNull();
+    expect(after!.y).toBeCloseTo(before!.y, 0);
+  });
+
   // The showings tree does NOT fold — it renders every cinema, and what
   // narrows it is the visitor's own Filtry selection, applied by the page's
   // `applyFilters` off shared.js's `disabledCinemas` (a list of DISPLAY names).
