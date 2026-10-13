@@ -115,14 +115,15 @@ object FixtureServerMain {
 
     // `/{city}/movie-many` — the same film page, re-seated at 12 cinemas on one
     // date so the Playwright suite can drive /movie's cinema fold. No corpus
-    // film reaches the ten-cinema threshold on its own.
-    def manyCinemaFilmPageFor(c: City): String = {
+    // film reaches the ten-cinema threshold on its own. `/{city}/movie-no-poster`
+    // is the same page with no poster at all, which no corpus film lacks either.
+    def manyCinemaFilmPageFor(c: City, path: String, shape: controllers.FilmSchedule => controllers.FilmSchedule): String = {
       implicit val ci: City = c
       // Only Poznań carries a corpus in this harness; the other cities render
       // the same empty-handed page a real unpopulated city would.
       schedulesFor(c).headOption match {
-        case Some(base) => views.html.film(ManyCinemaFilm(base),
-          s"http://test.local/${c.slug}/movie-many", ogDescription = "", minifier = tools.Minify, pinnedToday = wiring.pinnedToday).body
+        case Some(base) => views.html.film(shape(base),
+          s"http://test.local/${c.slug}$path", ogDescription = "", minifier = tools.Minify, pinnedToday = wiring.pinnedToday).body
         case None       => "<html><body>Film not found</body></html>"
       }
     }
@@ -206,7 +207,8 @@ object FixtureServerMain {
       case s if s.startsWith("/movies?") &&
                  (s.contains("country=") || s.contains("director=") || s.contains("cast=")) => Some(browsePageFor(c))
       case s if s.startsWith("/movies?")                => Some(indexPageFor(c))
-      case "/movie-many"                                => Some(manyCinemaFilmPageFor(c))
+      case "/movie-many"                                => Some(manyCinemaFilmPageFor(c, "/movie-many", ManyCinemaFilm(_)))
+      case "/movie-no-poster"                           => Some(manyCinemaFilmPageFor(c, "/movie-no-poster", ManyCinemaFilm.withoutPoster))
       case "/many-showtimes"                             => Some(manyShowtimesPageFor(c))
       case "/us-clock"                                  => Some(usClockPageFor(c))
       case s if s.startsWith("/movie/")                 => Some(filmPageFor(c, s.stripPrefix("/movie/")))

@@ -1,6 +1,11 @@
 import { test, expect } from '@playwright/test';
 import { firstVisibleCard, gotoAndWaitForCards, pinDateFilterAnytime, setLocalStorageJson } from './helpers';
 import type { Page } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+
+// A real 2:3 poster (TMDB w185) the held poster requests are answered with.
+const FixturePoster = join(__dirname, '..', '..', 'test', 'resources', 'fixtures', 'identity-posters', 'tmdb-w185-5HArseDNgLicwmq5V2YmnCWE5eo.jpg');
 
 // `/poznan/movie/{slug}` detail page. Walks from a card on `/` to its
 // detail screen and asserts the page's content blocks render +
@@ -227,21 +232,103 @@ test.describe('/movie detail page', { tag: '@agnostic' }, () => {
   // in flight at that moment lands on whatever slid under the finger — the CI
   // flake where the fold button took focus on mousedown but the click
   // never reached it, leaving the pills folded (Main run 38422471456).
-  test('the cinema-link pills do not move when the poster arrives', async ({ page }) => {
+  //
+  // The same slot has to hold when the poster NEVER lands: the onerror chain
+  // running dry hides the `<img>` and shows the `.no-poster` placeholder, which
+  // must take the poster's place — not collapse the slot (the pills jumping UP
+  // ~450px) nor overlay the title and pills (it is absolutely positioned).
+  //
+  // Every off-site image request (the poster, proxied or not, and each of its
+  // fallbacks) is held until `release`, then answered from a poster on disk —
+  // or failed — so the test never reaches a real image host.
+  async function holdPosters(page: Page, outcome: 'load' | 'fail'): Promise<() => void> {
     let release!: () => void;
     const held = new Promise<void>((resolve) => { release = resolve; });
-    await page.route(/images\.weserv\.nl/, async (route) => { await held; await route.continue(); });
+    const site = new URL(test.info().project.use.baseURL!).origin;
+    await page.route((url) => url.origin !== site, async (route) => {
+      if (route.request().resourceType() !== 'image') return route.continue();
+      await held;
+      if (outcome === 'fail') return route.abort();
+      return route.fulfill({ contentType: 'image/jpeg', body: readFileSync(FixturePoster) });
+    });
+    return release;
+  }
+
+  // Where the poster slot's boxes sit, and whether the visible one (the image,
+  // or the placeholder standing in for it) overlaps the title or the pills.
+  async function posterLayout(page: Page) {
+    return page.evaluate(() => {
+      const box = (sel: string) => {
+        const el = document.querySelector(sel) as HTMLElement | null;
+        return el && getComputedStyle(el).display !== 'none' ? el.getBoundingClientRect() : null;
+      };
+      const wrap  = box('.poster-wrap')!;
+      const shown = box('.poster-wrap img') ?? box('.poster-wrap .no-poster');
+      const title = box('.film-title')!;
+      const pills = box('.cinema-links')!;
+      const overlaps = (a: DOMRect, b: DOMRect) =>
+        a.left < b.right - 1 && b.left < a.right - 1 && a.top < b.bottom - 1 && b.top < a.bottom - 1;
+      return {
+        wrapWidth: wrap.width, wrapHeight: wrap.height,
+        shown: shown && { width: shown.width, height: shown.height },
+        titleTop: title.top, pillsTop: pills.top,
+        overlapsTitle: !!shown && overlaps(shown, title),
+        overlapsPills: !!shown && overlaps(shown, pills),
+      };
+    });
+  }
+
+  function expectReservedSlot(layout: Awaited<ReturnType<typeof posterLayout>>) {
+    expect(layout.wrapWidth).toBeGreaterThan(100);
+    expect(layout.wrapHeight).toBeCloseTo(layout.wrapWidth * 1.5, 0);
+    expect(layout.overlapsTitle).toBe(false);
+    expect(layout.overlapsPills).toBe(false);
+  }
+
+  test('the cinema-link pills do not move when the poster arrives', async ({ page }) => {
+    const release = await holdPosters(page, 'load');
 
     await page.goto('/poznan/movie-many', { waitUntil: 'domcontentloaded' });
     const poster = page.locator('.poster-img');
-    const before = await page.locator('.cinema-links').boundingBox();
+    const before = await posterLayout(page);
+    expectReservedSlot(before);
 
     release();
-    await expect.poll(() => poster.evaluate((img: HTMLImageElement) => img.complete)).toBe(true);
-    const after = await page.locator('.cinema-links').boundingBox();
+    await expect.poll(() => poster.evaluate((img: HTMLImageElement) => img.complete && img.naturalWidth > 0)).toBe(true);
+    const after = await posterLayout(page);
 
-    expect(before).not.toBeNull();
-    expect(after!.y).toBeCloseTo(before!.y, 0);
+    expectReservedSlot(after);
+    expect(after.shown).toEqual({ width: after.wrapWidth, height: after.wrapHeight });
+    expect(after.pillsTop).toBeCloseTo(before.pillsTop, 0);
+    expect(after.titleTop).toBeCloseTo(before.titleTop, 0);
+  });
+
+  test('a poster that fails to load leaves its placeholder in the slot, over neither the title nor the pills', async ({ page }) => {
+    const release = await holdPosters(page, 'fail');
+
+    await page.goto('/poznan/movie-many', { waitUntil: 'domcontentloaded' });
+    const before = await posterLayout(page);
+    expectReservedSlot(before);
+
+    release();
+    // The whole fallback chain fails in turn, then the placeholder shows.
+    await expect(page.locator('.poster-wrap .no-poster')).toBeVisible();
+    const after = await posterLayout(page);
+
+    expectReservedSlot(after);
+    expect(after.shown).toEqual({ width: after.wrapWidth, height: after.wrapHeight });
+    expect(after.pillsTop).toBeCloseTo(before.pillsTop, 0);
+    expect(after.titleTop).toBeCloseTo(before.titleTop, 0);
+  });
+
+  test('a film with no poster shows its placeholder in the slot, over neither the title nor the pills', async ({ page }) => {
+    await page.goto('/poznan/movie-no-poster', { waitUntil: 'domcontentloaded' });
+    await expect(page.locator('.poster-wrap .no-poster')).toBeVisible();
+    await expect(page.locator('.poster-wrap img')).toHaveCount(0);
+    const layout = await posterLayout(page);
+
+    expectReservedSlot(layout);
+    expect(layout.shown).toEqual({ width: layout.wrapWidth, height: layout.wrapHeight });
   });
 
   // The showings tree does NOT fold — it renders every cinema, and what

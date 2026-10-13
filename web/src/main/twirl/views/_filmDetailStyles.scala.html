@@ -13,30 +13,29 @@
     .back-link { color: #aad4ff; text-decoration: none; font-size: .9rem; display: inline-flex; align-items: center; gap: .3em; }
     .back-link svg { width: .7em; height: .7em; flex-shrink: 0; }
     .back-link:hover { color: #fff; }
-    /* The poster's box is fixed BEFORE the image arrives: a 300 px 2:3 slot
-       (weserv crops every proxied poster to exactly 480x720, and `cover`
-       crops an unproxied one rather than squashing it). The page is live from
-       DOMContentLoaded, and an unsized `<img>` is 0 px until it decodes —
-       then shoves the title, ratings and cinema pills ~450 px down on a phone
-       (the poster stacks above them there), under whatever tap is in flight. */
+    /* The poster's 300 px 2:3 slot is reserved on the WRAP, before and
+       whatever the image does: loading, loaded, or no poster / the onerror
+       chain run dry (img hidden, `.no-poster` shown — absolutely positioned
+       to fill it, from `_sharedStyles`). The page is live from
+       DOMContentLoaded; a slot sized by its content is 0 px until the image
+       decodes, or forever when it never does — the title, ratings and cinema
+       pills then jump ~450 px on a phone (the poster stacks above them
+       there), under whatever tap is in flight, or the placeholder overlays
+       them. The image fills the slot with `contain`: weserv-proxied posters
+       are exactly 480x720 (contain = cover), and an unproxied one
+       (Multikino, Amazon, biletyna) that isn't 2:3 is letterboxed, never
+       cropped. No slot background, so the letterbox is the page's own. */
     .poster-wrap {
-      position: relative;
       width: 300px;
       max-width: 100%;
-      padding-top: 0;
-    }
-    .poster-wrap img {
-      position: static;
-      inset: auto;
-      height: auto;
-      object-fit: cover;
-    }
-    .poster-img {
-      width: 100%;
-      max-width: 300px;
       aspect-ratio: 2 / 3;
+      padding-top: 0;
+      background: transparent;
       border-radius: 12px;
-      display: block;
+    }
+    .poster-wrap img { object-fit: contain; }
+    .poster-img {
+      border-radius: 12px;
       cursor: zoom-in;
     }
     /* Full-screen poster: the image fits the viewport whole (contain), on
@@ -73,18 +72,8 @@
     }
     .poster-lightbox-close:hover { background: rgba(255, 255, 255, .3); }
     .no-poster {
-      width: 100%;
-      max-width: 300px;
-      aspect-ratio: 2/3;
       background: #2a2a3e;
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
       font-size: 1rem;
-      color: #99a;
-      font-style: italic;
-      letter-spacing: .03em;
     }
     .film-title { font-size: 1.6rem; font-weight: 700; margin-bottom: .5rem; }
     .film-title .pill { font-weight: 400; }

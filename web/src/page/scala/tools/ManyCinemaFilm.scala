@@ -26,4 +26,11 @@ object ManyCinemaFilm {
       showings       = Seq(date -> cinemas.map(CinemaShowtimes(_, slot))),
       cinemaFilmUrls = cinemas.map(c => c -> s"https://example.test/${c.pillName}"))
   }
+
+  /** [[apply]] with no poster and no fallbacks: the page's `.no-poster`
+   *  placeholder from the first paint — no corpus film in the fixture lacks one. */
+  def withoutPoster(base: FilmSchedule): FilmSchedule = {
+    val many = apply(base)
+    many.copy(posterUrl = None, resolved = many.resolved.copy(fallbackPosterUrls = Seq.empty))
+  }
 }
