@@ -455,7 +455,8 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     var takes = Map("Lalka" -> Option(501), "Obcy" -> Option(502), "Diuna" -> Option(503))
     val matched: (() => Seq[Listing]) => Option[IdentityProjection.Resolved] = read => ProjectionWorld.unmatched(read).map { r =>
       r.copy(resolution = r.resolution.copy(decisions = r.resolution.decisions.map { d =>
-        ResolverDecision(d.members, takes(d.members.head.rawTitle), 0.9, ResolverDecision.Basis.OwnMatch, Seq(s"because ${d.members.head.rawTitle}"))()
+        ResolverDecision(d.members, takes(d.members.head.rawTitle), 0.9, ResolverDecision.Basis.OwnMatch,
+          Seq(s"because ${d.members.head.rawTitle}", "the resolver's step", s"corrected ${d.members.head.rawTitle}"))()
       }))
     }
     val w = new ProjectionWorld(new InMemoryMovieRepository(normalizer = normalizer), programme.keys.toSeq, clock, matched)
@@ -477,7 +478,7 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
       (TakeChange.Kind.Changed, Multikino.displayName, "Obcy", Some(502), Some(602)))
     logged should have size 5
     logged.find(_.contains(Rialto.displayName)).get should (include("changed") and include("Obcy") and include("tmdb 502") and include("tmdb 602") and
-      include("because Obcy"))
+      include("OwnMatch: corrected Obcy: because Obcy"))
 
     w.takes.clear()
     takes = takes + ("Lalka" -> Some(501))

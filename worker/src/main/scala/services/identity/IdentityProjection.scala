@@ -422,7 +422,9 @@ final class IdentityProjection(
       def film(tmdb: Option[Int], title: Option[String]) = tmdb.fold("none")(id => s"tmdb $id") + title.fold("")(t => s" ($t)")
       logged.foreach { t =>
         val was    = before.get(FilmId(t.previousFilm)).map(_.title)
-        val reason = reasons.get(t.listing).fold("no decision")(d => (d.basis.toString +: d.explanation.take(2)).mkString(": "))
+        // The last explanation first: a stage that took or corrected the film after the resolver appends its own why.
+        val reason = reasons.get(t.listing).fold("no decision")(d =>
+          (d.basis.toString +: (d.explanation.lastOption.toSeq ++ d.explanation.headOption).distinct).mkString(": "))
         logger.info(s"identity take change: ${t.kind.label} ${t.listing.venue} | ${t.listing.rawTitle}: " +
           s"${film(t.before, was)} -> ${film(t.after, now.get(t.listing).map(_.title))} (${t.previousFilm}); reason $reason")
       }
