@@ -1,6 +1,6 @@
 ---
 name: identity-investigation
-description: Tools for identity-resolver investigations — why a listing took (or did not take) a film, base vs HEAD for a handful of listings, the ratchet's WRONG/UNJUDGED/LOST takes as a table, and evidence cards with suggested verdicts for judging UNJUDGED takes into labels.tsv. Use before writing an ad-hoc resolver test, downloading a recording, scraping a CI log for ratchet results, or researching takes by hand.
+description: Tools for identity-resolver investigations — why a listing took (or did not take) a film, what prod's projection moved and why (LogsQL over the take-change log fields), base vs HEAD for a handful of listings, the ratchet's WRONG/UNJUDGED/LOST takes as a table, and evidence cards with suggested verdicts for judging UNJUDGED takes into labels.tsv. Use before writing an ad-hoc resolver test, downloading a recording, scraping a CI log for ratchet results, or researching takes by hand.
 ---
 
 # Investigating an identity take
@@ -71,6 +71,53 @@ after the year billed, or year AND directors both disagreeing. A card with reaso
   for the judge to weigh; they never decide a suggestion.
 - Expect few decisive cards: most billings state no year or director (PR #230, 2026-10-13: 8 of 158 cards). The
   card's value is the evidence on one page; the suggestion is a bonus.
+
+## Querying take-change logs (live, VictoriaLogs)
+
+What prod's projection moved, and why, without a capture. The worker logs JSON, which Vector turns into
+fields (`tools.JsonLineEncoder`, `services.identity.TakeChangeLines`), so filter and group on FIELDS, never a
+regex over `_msg`. Every worker line carries `country`, `build` (the image's commit) and, inside a projection,
+`projection_id` + `projection_mode` (whole / periodic / changed). Lines logged before 2026-10-14 are text
+only and have none of these.
+
+- **`identity take change: <kind> …`** — one per listing whose TMDB film moved (up to 2,000 a tick): `kind`
+  (lost/changed/gained), `venue`, `listing`, `film_before`/`film_after`, `tmdb_before`/`tmdb_after`,
+  `title_before`/`title_after`, `basis`, `confidence`, `reason_first`/`reason_last`, `rules` (accept:/pooled:/
+  veto:/join:/apart:/refused: ids), `blocker`, `runner_up`, `fallback`, `unanswered`, `previous_basis`/
+  `previous_confidence`/`previous_reason` (the take before; absent after an index rebuild), `listing_year`/
+  `listing_runtime`/`listing_director`/`listing_original_title`, and `repro` — a ready
+  `scripts/identity-explain <cc> --venue '…' --title '…' --ref <build>` line (it finds the listing only if the
+  capture holds it unmatched; a model take needs `scripts/convergence-local.sh`).
+- **`identity take change: summary …`** — one per tick that moved any: `take_changes`, `lost`, `changed`,
+  `gained`, `logged`, `by_basis`.
+- **`identity projection: …`** — every written tick: `listings`, `films`, `written`, `retired`, `declined`,
+  `take_changes`, `seconds`, `scoped`, `retired_films`, `declined_films` (first 50 ids).
+- **`identity suspect takes: counted …`** — `suspected` and `suspect_<signal>` per signal, under the
+  projection's id.
+
+Run from a shell (or paste the query into https://logs.kinowo.net):
+
+```
+q() { ssh monitoring-1 "curl -s http://10.20.0.11:9428/select/logsql/query --data-urlencode 'query=$1' --data-urlencode limit=${2:-50}"; }
+```
+
+| Question | LogsQL |
+|---|---|
+| What moved, by kind and basis, per country | `_time:24h kind:* \| stats by (country, kind, basis) count() n \| sort by (n desc)` |
+| Lost takes in one country, by basis | `_time:24h country:uk kind:lost \| stats by (basis) count()` |
+| …and what took them before | `_time:24h country:uk kind:lost \| stats by (previous_basis, basis) count()` |
+| The last 20 changes at a venue | `_time:7d kind:* venue:="Cineworld Leigh" \| sort by (_time desc) \| limit 20 \| fields _time, kind, listing, tmdb_before, tmdb_after, basis, previous_basis, repro` |
+| Every change of one film | `_time:7d kind:* (tmdb_before:=550 or tmdb_after:=550) \| fields _time, country, venue, listing, kind, basis` |
+| Changes since deploy X | `_time:24h build:=<sha> kind:* \| stats by (country, kind, basis) count()` |
+| Before vs after a deploy | `_time:3d country:pl kind:* \| stats by (build, kind) count()` |
+| Which rule took (or refused) them | `_time:24h kind:gained \| stats by (rules) count() n \| sort by (n desc) \| limit 20` |
+| One tick, whole | `projection_id:="2026-10-14T09:12:03.120Z" \| fields _time, _msg` (any line's `projection_id`) |
+| Tick sizes over a day | `_time:24h "identity take change: summary" \| fields _time, country, take_changes, lost, changed, gained, logged, by_basis` |
+| Retired / declined films | `_time:24h "identity projection:" retired:>0 \| fields _time, country, retired, retired_films, declined_films` |
+| Suspect-take counts | `_time:24h "identity suspect takes: counted" \| fields _time, country, suspected, suspect_fragment, suspect_era, suspect_runtime` |
+
+`\|` is the table's escape — type `|`. A field missing from a line (`tmdb_after` on a `lost`) is absent, not
+empty; `kind:*` keeps only take-change lines (the summary has no `kind`).
 
 ## What they replaced (measured 2026-10-13)
 

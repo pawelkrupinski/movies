@@ -30,7 +30,8 @@ import services.identity.{IdentityProjectionMetrics, Regroupings, ShadowRelation
  *  - `kinowo_worker_identity_take_changes_total{kind}` — listings still published whose TMDB film a written projection
  *    moved: `lost` (had one, has none), `changed` (another), `gained` (had none). A listing leaving the schedule, a new
  *    one, and a re-key or merge that keeps the TMDB film are churn and never counted ([[services.identity.TakeChange]]);
- *    the alarm on match changes reads this. Each change is also logged (`identity take change: …`).
+ *    the alarm on match changes reads this. Each change is also logged, its facts as fields
+ *    (`identity take change: …`, [[services.identity.TakeChangeLines]]).
  *  - `kinowo_worker_identity_suspect_takes{signal}` — the billings whose take a suspect-take signal finds against its own
  *    evidence (`services.identity.SuspectTakes`: a fragment, an era, a runtime, a sequel, a feed's id, a fill alone), on the
  *    last projection of the whole corpus. A rise between recordings is a wrong take the convergence legs will name;

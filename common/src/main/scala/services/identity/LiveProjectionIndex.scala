@@ -48,6 +48,10 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer)(using LatestTitleYe
   private val decisions     = new java.util.IdentityHashMap[ResolverDecision, ClusterId]()
   private val decisionsOf   = mutable.HashMap.empty[ClusterId, List[ResolverDecision]]
   private var clusters      = Map.empty[ClusterId, Cluster]
+  // Of the listings whose decision the last update replaced with one taking another film, the decision replaced: the
+  // take before, which the take-change log names beside the new one. As many as the tick's moved takes — none on a
+  // quiet tick — and only its basis, confidence and last reason, never the decision itself.
+  private var replaced      = Map.empty[ListingKey, TakeChange.Prior]
 
   import LiveProjectionIndex.{Entry, Slot}
 
@@ -96,6 +100,13 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer)(using LatestTitleYe
   private val byKeyView      = new FieldView(_.listing, () => published)
   private val previousOfView = new FieldView(_.previous, () => placed)
   private val clusterOfView  = new FieldView(_.cluster, () => clustered)
+
+  /** The listing published under `key`, as the last [[update]] read it. */
+  def listing(key: ListingKey): Option[Listing] = listingAt(key).map(_.listing)
+
+  /** The decision the last [[update]] replaced for `key` with one taking another film: the take before, as far as this
+   *  index saw it — none after it was built afresh, or when the film moved without the decision taking another. */
+  def priorTake(key: ListingKey): Option[TakeChange.Prior] = replaced.get(key)
 
   /** The index as it stands, over `counters`: its listings, previous films and listings' clusters are views of this
    *  index, which read what the next [[update]] or [[written]] moves — a projection's, read before the two. */
@@ -222,6 +233,10 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer)(using LatestTitleYe
         d.members.foreach(k => entry(canonical(k)).decision = d)
       }
     }
+    replaced = if (gone.isEmpty) Map.empty else gone.iterator.flatMap { d =>
+      d.members.iterator.filter(k => entries.get(k).exists(e => e.decision != null && e.decision.film != d.film))
+        .map(_ -> TakeChange.Prior(d.basis, d.confidence, d.explanation.lastOption))
+    }.toMap
     republished.foreach(k => entries.get(k).flatMap(e => Option(e.decision)).foreach(d => touched += decisions.get(d)))
     val regrouped = mutable.HashSet.empty[ListingKey]
     touched.foreach { id =>

@@ -121,6 +121,8 @@ final class IdentityProjection(
   metrics:     IdentityProjectionMetrics,
   clock:       Clock,
   fingerprints: VenueSlotFingerprints,
+  /** The log lines of the take changes a projection writes. */
+  takeLines:   TakeChangeLines,
   /** The listings as [[listings]] gives them, read again only where this worker's own scrapes moved them: what a projection
    *  run on those ([[tickChanged]]) reads, leaving what other processes filed to the next periodic [[tick]]. */
   changedListings: Option[() => Seq[(Cinema, Seq[ProjectedListing])]] = None,
@@ -206,7 +208,14 @@ final class IdentityProjection(
     tick.refused.isEmpty && tick.declined == 0 &&
       !tick.changed.exists(film => IdentityProjection.awaitsDetails(film.record))
 
+  /** One projection, every line it logs on this thread carrying its id (`projection_id`, the clock's instant at its start)
+   *  and mode — what ties a tick's take changes, summary and warnings together in VictoriaLogs. */
   private def project(whole: Boolean, light: Boolean): ProjectionTick = synchronized {
+    tools.LogFields.within("projection_id" -> clock.instant().toString,
+      "projection_mode" -> (if (light) "changed" else if (whole) "whole" else "periodic"))(projectNow(whole, light))
+  }
+
+  private def projectNow(whole: Boolean, light: Boolean): ProjectionTick = {
     // Until this projection has written everything it planned, the next one projects the whole corpus.
     val previous = last
     last = None
@@ -396,9 +405,14 @@ final class IdentityProjection(
     reportTakes(plan, resolution, before, unwritten)
     val tick = ProjectionTick(Some(resolution), Some(plan), listings, changed.size - declined, plan.retired.size, declined, None, phases.all,
       changed = changed)
-    logger.info(f"identity projection: $listings listings → $films films; wrote ${tick.written}, retired ${tick.retired}, " +
+    tools.LogFields.info(logger.underlyingLogger, f"identity projection: $listings listings → $films films; wrote ${tick.written}, retired ${tick.retired}, " +
         s"declined $declined; ${plan.regroupings}; canary ${canary.toSeq.sortBy(_._1.ordinal).map { case (r, n) => s"${r.label} $n" }.mkString(", ")}" +
-        f" in $seconds%.1fs (${phases.render})")
+        f" in $seconds%.1fs (${phases.render})",
+      Seq("listings" -> listings, "films" -> films, "written" -> tick.written, "retired" -> tick.retired, "declined" -> declined,
+        "take_changes" -> plan.takes.size, "seconds" -> math.round(seconds * 10) / 10.0, "scoped" -> patch,
+        // which films, a handful: what a retire or decline burst is drilled into by
+        "retired_films" -> Option.when(plan.retired.nonEmpty)(plan.retired.take(IdentityProjection.FilmsNamed).map(_.value).mkString(" ")),
+        "declined_films" -> Option.when(unwritten.nonEmpty)(unwritten.take(IdentityProjection.FilmsNamed).map(_.value).mkString(" "))))
     tick
   }
 
@@ -408,10 +422,10 @@ final class IdentityProjection(
   private var heldTakes: Seq[TakeChange] = Nil
 
   /** The listings whose TMDB film this projection moved — and wrote: a film the store declined is retried by the next
-   *  projection, which counts it then, against the take before the first try ([[heldTakes]]) — counted, and logged one
-   *  line each (the first
-   *  [[IdentityProjection.TakeChangesLogged]]) for drill-down: venue, listing, the film it was on and the one it is on
-   *  now, and the resolver's reason. The country is every worker log line's own field. */
+   *  projection, which counts it then, against the take before the first try ([[heldTakes]]) — counted, logged one line
+   *  each (the first [[IdentityProjection.TakeChangesLogged]]) for drill-down, and summed up in one line by kind and
+   *  basis; the lines and their fields are [[TakeChangeLines]]'. The country, build and projection id are every worker
+   *  log line's own fields. */
   private def reportTakes(plan: ProjectionPlan, resolution: Resolution, before: Map[FilmId, StoredMovieRecord],
                           unwritten: Set[FilmId]): Unit =
     if (plan.takes.nonEmpty || heldTakes.nonEmpty) {
@@ -424,22 +438,20 @@ final class IdentityProjection(
       val now     = plan.films.iterator.flatMap(f => f.members.iterator.filter(moved).map(_ -> f)).toMap
       val (takes, notWritten) = planned.partition(t => now.get(t.listing).forall(f => !unwritten(f.id)))
       heldTakes = notWritten
-      if (takes.nonEmpty) metrics.takesChanged(takes)
-      val logged  = takes.take(IdentityProjection.TakeChangesLogged)
-      val wanted  = logged.iterator.map(_.listing).toSet
-      val reasons = resolution.decisions.iterator.flatMap(d => d.members.iterator.filter(wanted).map(_ -> d)).toMap
-      def film(tmdb: Option[Int], title: Option[String]) = tmdb.fold("none")(id => s"tmdb $id") + title.fold("")(t => s" ($t)")
-      logged.foreach { t =>
-        val was    = before.get(FilmId(t.previousFilm)).map(_.title)
-        // The last explanation first: a stage that took or corrected the film after the resolver appends its own why.
-        val reason = reasons.get(t.listing).fold("no decision")(d =>
-          (d.basis.toString +: (d.explanation.lastOption.toSeq ++ d.explanation.headOption).distinct).mkString(": "))
-        logger.info(s"identity take change: ${t.kind.label} ${t.listing.venue} | ${t.listing.rawTitle}: " +
-          s"${film(t.before, was)} -> ${film(t.after, now.get(t.listing).map(_.title))} (${t.previousFilm}); reason $reason")
+      if (takes.nonEmpty) {
+        metrics.takesChanged(takes)
+        val wanted    = takes.iterator.map(_.listing).toSet
+        val decisions = resolution.decisions.iterator.flatMap(d => d.members.iterator.filter(wanted).map(_ -> d)).toMap
+        val logged    = takes.take(IdentityProjection.TakeChangesLogged)
+        logged.foreach { t =>
+          log(takeLines.of(t, before.get(FilmId(t.previousFilm)).map(_.title), now.get(t.listing).map(f => f.id.value -> f.title),
+            decisions.get(t.listing), live.listing(t.listing), live.priorTake(t.listing)))
+        }
+        log(takeLines.summary(takes, t => decisions.get(t.listing).map(_.basis), logged.size))
       }
-      if (takes.size > logged.size) logger.info(s"identity take change: ${takes.size - logged.size} more not logged " +
-        s"(${takes.groupMapReduce(_.kind.label)(_ => 1)(_ + _).toSeq.sorted.map { case (k, n) => s"$k $n" }.mkString(", ")} in all)")
     }
+
+  private def log(line: TakeChangeLines.Line): Unit = tools.LogFields.info(logger.underlyingLogger, line.message, line.fields)
 
   /** Write `films` and retire `retired`, in the order the store's unique `key` / `tmdbId` indexes
    *  allow: a film whose key or TMDB id another document still holds waits until the retirements
@@ -463,14 +475,17 @@ final class IdentityProjection(
     val first = unwritten.flatten ++ attempt(ordered)
     retired.foreach { id =>
       val outcome = cache.retireProjected(id)
-      if (outcome != WriteOutcome.Written) logger.warn(s"identity projection: retiring $id: $outcome")
+      if (outcome != WriteOutcome.Written) tools.LogFields.warn(logger.underlyingLogger, s"identity projection: retiring $id: $outcome",
+        Seq("film" -> id.value, "outcome" -> outcome.toString))
     }
     val second = attempt(first)
     val parked = second.filter(f => cache.writeProjected(f.id, CacheKey.stored(f.title, s"~${f.id.value}|"), f.record.copy(tmdbId = None)) ==
       WriteOutcome.Written)
     val last = attempt(second)
-    if (last.nonEmpty) logger.warn(s"identity projection: ${last.size} film(s) not written (e.g. ${last.head.id} under ${last.head.key}); " +
-      s"${parked.size} parked; the next projection retries")
+    if (last.nonEmpty) tools.LogFields.warn(logger.underlyingLogger, s"identity projection: ${last.size} film(s) not written " +
+      s"(e.g. ${last.head.id} under ${last.head.key}); ${parked.size} parked; the next projection retries",
+      Seq("declined" -> last.size, "parked" -> parked.size,
+        "declined_films" -> last.take(IdentityProjection.FilmsNamed).map(f => s"${f.id.value}=${f.key}").mkString(" ")))
     last.map(_.id).toSet
   }
 }
@@ -503,9 +518,15 @@ object IdentityProjection {
    *  fingerprints recorded. Every other projection runs as the identity model takes this worker's scrapes in. */
   val ReconcileEvery: FiniteDuration = scala.concurrent.duration.Duration(1, java.util.concurrent.TimeUnit.HOURS)
 
-  /** How many take changes one projection logs a line each for; past it, one line counts the rest. A deploy that moves
-   *  every film still says so in a handful of lines, and the counter has them all. */
-  private[identity] val TakeChangesLogged = 200
+  /** How many take changes one projection logs a line each for; past it, the tick's summary line counts the rest by
+   *  kind and basis, and the counter has them all. Ten times the most one tick moved in the week to 2026-10-14 (211,
+   *  worker-uk; p50 1, the other countries ≤ 13), so an ordinary bad deploy is logged whole: what a capped line hid
+   *  was exactly the drill-down a burst needs. A resolver change re-taking a whole country (~10k listings) still logs
+   *  no more than ~2.5 MB of lines. */
+  private[identity] val TakeChangesLogged = 2000
+
+  /** How many films a projection's summary and warnings name, of those it retired or could not write. */
+  private[identity] val FilmsNamed = 50
 
   /** How many independent films a projection writes at once. */
   private[identity] val WriteConcurrency = 8

@@ -22,6 +22,9 @@ object TakeChange {
     def label: String = toString.toLowerCase(Locale.ROOT)
   }
 
+  /** The decision a listing's take came from before it moved: its basis, confidence and last reason. */
+  final case class Prior(basis: ResolverDecision.Basis, confidence: Double, reason: Option[String])
+
   /** Every listing of `previousOf` (a listing → the stored film it was on) whose cluster now (`filmOf`: none when the
    *  listing is in no cluster) takes another TMDB film than that film held, sorted by listing. One pass over the
    *  listings given, nothing kept: only the changes are allocated. */

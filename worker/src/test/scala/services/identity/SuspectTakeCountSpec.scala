@@ -85,6 +85,23 @@ class SuspectTakeCountSpec extends AnyFlatSpec with Matchers {
     reported.toSeq.map(_(Signal.Fragment)) shouldBe Seq(1)
   }
 
+  it should "log its counts as fields, under the id of the projection that submitted it, though another thread counts" in {
+    val queued  = scala.collection.mutable.Queue.empty[Runnable]
+    val counter = count(NoFilmLookups, _ => Map.empty, _ => (), runner = queued.enqueue(_))
+    val a       = listing("Giorgia Fumo - OUT OF OFFICE")
+    tools.LogFields.within("projection_id" -> "tick-7")(
+      counter.submit(resolutionOf(Seq(decision(Seq(a), 1)), Map(1 -> IdentityMeasures.Film("Out of Office", year = Some(2022)))), Seq(a)))
+    val events = tools.LogCapture.thisThread(classOf[SuspectTakeCount].getName)(queued.dequeue().run())
+      .filter(_.getFormattedMessage.startsWith("identity suspect takes: counted"))
+    events should have size 1
+    events.head.getFormattedMessage should include("1 suspect billing(s) (fragment 1)")
+    events.head.getMDCPropertyMap.get("projection_id") shouldBe "tick-7"
+    val fields = scala.jdk.CollectionConverters.ListHasAsScala(events.head.getKeyValuePairs).asScala.map(p => p.key -> (p.value: Any)).toMap
+    fields("suspected") shouldBe 1
+    fields("suspect_fragment") shouldBe 1
+    fields("suspect_era") shouldBe 0
+  }
+
   it should "count the decisions and listings last counted over only once" in {
     var counted = 0
     val counter = count(NoFilmLookups, _ => Map.empty, _ => counted += 1)

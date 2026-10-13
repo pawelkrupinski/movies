@@ -11,8 +11,10 @@
 # moved -- `lost` (had one, has none), `changed` (another film), `gained` (had none). Expected churn
 # is never counted: a listing leaving the schedule has no cluster, a new one no previous film, and a
 # re-key or merge that keeps the TMDB film keeps the take. Each change is also logged one line
-# (`identity take change: <kind> <venue> | <listing>: <old> -> <new>; reason <basis: why>`), so the
-# drill-down is a VictoriaLogs query on that phrase with `country:<cc>`.
+# (`identity take change: <kind> <venue> | <listing>: <old> -> <new>; reason <basis: why>; ...`), its
+# facts also FIELDS (kind, basis, venue, tmdb_before/after, previous_basis, rules, runner_up, repro,
+# build, projection_id), and a per-tick `identity take change: summary` line, so the drill-down is
+# `country:<cc> kind:lost | stats by (basis) count()` -- see the identity-investigation skill.
 #
 # WHY A SHARE OF THE COUNTRY'S LISTINGS AND NOT A COUNT. Countries differ 20x in size (ES 5,178
 # listings, US 101,678 on 2026-10-13) and in listings per film (PL 9, US 48): one US wide release

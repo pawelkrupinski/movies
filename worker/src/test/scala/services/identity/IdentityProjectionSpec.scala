@@ -468,7 +468,9 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     var takes = Map("Lalka" -> Option(501), "Obcy" -> Option(502), "Diuna" -> Option(503))
     val matched: (() => Seq[Listing]) => Option[IdentityProjection.Resolved] = read => ProjectionWorld.unmatched(read).map { r =>
       r.copy(resolution = r.resolution.copy(decisions = r.resolution.decisions.map { d =>
-        ResolverDecision(d.members, takes(d.members.head.rawTitle), 0.9, ResolverDecision.Basis.OwnMatch,
+        val film = takes(d.members.head.rawTitle)
+        ResolverDecision(d.members, film, if (film.isDefined) 0.9 else 0.4,
+          if (film.isDefined) ResolverDecision.Basis.OwnMatch else ResolverDecision.Basis.BelowThreshold,
           Seq(s"because ${d.members.head.rawTitle}", "the resolver's step", s"corrected ${d.members.head.rawTitle}"))()
       }))
     }
@@ -482,16 +484,44 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     // Lalka loses its film and Obcy is taken as another; KinoMuza drops Diuna and starts Obcy — churn, not a take change.
     takes = takes ++ Map("Lalka" -> None, "Obcy" -> Some(602))
     w.scrape(Map(KinoMuza -> Seq(film(KinoMuza, "Obcy", Some(1979), 9, 10))))
-    val logged = tools.LogCapture.thisThread(classOf[IdentityProjection].getName)(w.projection.tick().refused shouldBe None)
-      .map(_.getFormattedMessage).filter(_.startsWith("identity take change"))
+    val events = tools.LogCapture.thisThread(classOf[IdentityProjection].getName)(w.projection.tick().refused shouldBe None)
+    val logged = events.map(_.getFormattedMessage).filter(_.startsWith("identity take change"))
     w.takes.map(t => (t.kind, t.listing.venue, t.listing.rawTitle, t.before, t.after)).sortBy(t => (t._3, t._2)) shouldBe Seq(
       (TakeChange.Kind.Lost, Helios.displayName, "Lalka", Some(501), None), (TakeChange.Kind.Lost, KinoApollo.displayName, "Lalka", Some(501), None),
       (TakeChange.Kind.Lost, Multikino.displayName, "Lalka", Some(501), None),
       (TakeChange.Kind.Changed, Rialto.displayName, "Obcy", Some(502), Some(602)),
       (TakeChange.Kind.Changed, Multikino.displayName, "Obcy", Some(502), Some(602)))
-    logged should have size 5
+    logged should have size 6 // a line per take, and the tick's summary
     logged.find(_.contains(Rialto.displayName)).get should (include("changed") and include("Obcy") and include("tmdb 502") and include("tmdb 602") and
       include("OwnMatch: corrected Obcy: because Obcy"))
+
+    // Each line's facts are FIELDS (VictoriaLogs indexes them: `kind:lost | stats by (basis) count()`), with the take
+    // before, the listing's own facts, and a command that replays the listing; every line of the tick shares its id.
+    def fieldsOf(e: ch.qos.logback.classic.spi.ILoggingEvent): Map[String, Any] =
+      Option(e.getKeyValuePairs).fold(Map.empty[String, Any])(pairs =>
+        scala.jdk.CollectionConverters.ListHasAsScala(pairs).asScala.map(p => p.key -> p.value).toMap)
+    val lost = events.find(e => e.getFormattedMessage.startsWith("identity take change: lost") &&
+      e.getFormattedMessage.contains(Helios.displayName)).map(fieldsOf).get
+    lost("kind") shouldBe "lost"
+    lost("venue") shouldBe Helios.displayName
+    lost("listing") shouldBe "Lalka"
+    lost("tmdb_before") shouldBe 501
+    lost.get("tmdb_after") shouldBe None
+    lost("basis") shouldBe "BelowThreshold"
+    lost("confidence") shouldBe 0.4
+    lost("previous_basis") shouldBe "OwnMatch"
+    lost("previous_confidence") shouldBe 0.9
+    lost("previous_reason") shouldBe "corrected Lalka"
+    lost("listing_year") shouldBe 2026
+    lost("repro").toString should startWith(s"scripts/identity-explain pl --venue '${Helios.displayName}' --title 'Lalka'")
+    val summary = events.find(_.getFormattedMessage.startsWith("identity take change: summary")).get
+    summary.getFormattedMessage should include("5 take changes (changed 2, lost 3)")
+    fieldsOf(summary)("lost") shouldBe 3
+    fieldsOf(summary)("changed") shouldBe 2
+    fieldsOf(summary)("by_basis") shouldBe "BelowThreshold 3, OwnMatch 2"
+    val ids = events.filter(_.getFormattedMessage.startsWith("identity ")).map(_.getMDCPropertyMap.get("projection_id")).distinct
+    ids should have size 1
+    ids.head should not be null
 
     w.takes.clear()
     takes = takes + ("Lalka" -> Some(501))

@@ -49,6 +49,7 @@ trait IdentityCutoverWiring { self: WorkerWiring =>
       metrics     = workerMetrics.identityCutover.forCountry(country.code),
       clock       = clock,
       fingerprints = venueSlotFingerprints,
+      takeLines   = new services.identity.TakeChangeLines(country, configuration.commit),
       adopt       = identityListingIntake.adopt,
       agreement   = (resolution, listingOf, republished) => agreementStage.apply(resolution, listingOf, familyAnswerStore.version, republished),
       suspects    = suspectTakeCount.submit)
