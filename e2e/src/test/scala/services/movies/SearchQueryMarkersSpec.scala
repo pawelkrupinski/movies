@@ -31,7 +31,7 @@ class SearchQueryMarkersSpec extends CorpusShapeSpec {
     Option(listing.raw).filter(_.nonEmpty).toSeq.flatMap { _ =>
       val query   = corpus.query(listing)
       val markers = markersIn(corpus.country, query)
-      Option.when(markers.nonEmpty)(s"searches '$query' (${markers.mkString(", ")})")
+      Option.when(markers.nonEmpty)(s"searches '$query' (${markers.map(marker => s"$marker → ${strippedBy(marker)}").mkString(", ")})")
     }
 
   protected def remedy =
@@ -118,6 +118,12 @@ class SearchQueryMarkersSpec extends CorpusShapeSpec {
     markersIn(Country.Germany, "Das Lehrerzimmer") shouldBe empty
     markersIn(Country.Spain, "La sociedad de la nieve") shouldBe empty
   }
+
+  "a finding" should "name the rule set whose strip the marker escaped" in {
+    strippedBy("dubbing") shouldBe "FormatTags"
+    strippedBy("premiera") shouldBe "the country's title rules (TitleRules / ExtraTitleRules)"
+    strippedBy("reż.") shouldBe "the country's title rules (TitleRules / ExtraTitleRules)"
+  }
 }
 
 object SearchQueryMarkersSpec {
@@ -168,6 +174,11 @@ object SearchQueryMarkersSpec {
 
   private val Credit = """(?iu)(?:^|\s)reż\.""".r
   private val PlTail = """\s+PL\s*$""".r
+
+  /** Where the strip a marker escaped belongs: a format token is `FormatTags`' to strip, everything else a
+   *  country's title rules' — what a finding names, so the fix starts in the right file. */
+  def strippedBy(marker: String): String =
+    if (FormatTags.FormatToken.contains(marker)) "FormatTags" else "the country's title rules (TitleRules / ExtraTitleRules)"
 
   /** The markers `query` still carries, in a stable order. */
   def markersIn(country: Country, query: String): Seq[String] =
