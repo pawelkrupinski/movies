@@ -1351,6 +1351,50 @@ abstract class CountryConvergenceBehaviour(
    *    key and migrates it, deleting the old `_id`, while `MixedFilmSplitter` looks the row up
    *    by the derived id and gets a clean "not found" for a film that is right there. Both
    *    are how a film silently loses its board. */
+  /**
+   * The SUSPECT-TAKE ratchet ([[tools.SuspectTakesAudit]]) over every take of the settled corpus — the whole corpus, not
+   * only the unmatched clusters `UnmatchedClustersRatchetSpec` replays: a take a signal suspects ([[services.identity.SuspectTakes]]:
+   * a title covering a fragment of the billing, a film far older than its screening, a runtime or instalment the listing
+   * contradicts, a feed's own TMDB id against it, a fill rule alone) is judged in `labels.tsv` or stands in the baseline
+   * of the suspects the ratchet was armed over (which only shrinks); and no take is one a label calls wrong. Every
+   * suspect, with its reasons, goes to the leg's diagnostics; the unjudged ones to the run's summary page.
+   */
+  s"the ${country.displayName} identity takes" should "hold no suspect take labels.tsv has not judged, nor one it calls wrong" in {
+    // the whole corpus's takes are what the labels and the baseline judge: a sample's slice resolves its clusters without
+    // the neighbours that decide them, so its takes are no corpus's
+    if (corpusKey.endsWith("-sample")) cancel(s"$corpusKey is a sample: the full leg judges the whole corpus's takes")
+    val (w, _)   = shared
+    val tick     = w.projectIdentity()
+    val decided  = tick.resolution.getOrElse(fail(s"the projection after the settle was refused: ${tick.refused.getOrElse("")}"))
+    val model    = w.identityModel.current(5.minutes).getOrElse(fail("the identity model could not be read"))
+    val lookups  = w.storedLookups()
+    val (corpus, reading) = tools.ThreadAllocation.of(services.identity.SuspectTakes.corpus(decided, model.listings, lookups,
+      id => lookups.film(id).toOption.flatten))
+    val year     = java.time.LocalDate.ofInstant(clock.instant(), CorpusCoverage.zoneOf(country)).getYear
+    val labels   = tools.UnmatchedClusters.readLabels(tools.UnmatchedClusters.Directory.resolve("labels.tsv"))
+    val (verdict, judging) = tools.ThreadAllocation.of(tools.SuspectTakesAudit.judge(country.code, corpus, year, labels,
+      tools.SuspectTakesAudit.readBaseline()))
+    // what the worker's count costs on every projection of the whole corpus (`SuspectTakeCount`): held, nothing
+    val counted = tools.Stopwatch.start()
+    val (_, counting) = tools.ThreadAllocation.of(new services.identity.SuspectTakeCount(lookups, id => lookups.film(id).toOption.flatten, clock,
+      CorpusCoverage.zoneOf(country), _ => ())(decided, model.listings))
+    info(f"${country.displayName}: the worker's suspect-take count took ${counted.seconds}%.1fs and allocated ${counting / 1000000} MB")
+    info(s"${country.displayName}: ${corpus.takes.size} listings' takes, ${verdict.suspects.size} suspect billing(s), ${verdict.fresh.size} unjudged; " +
+      s"${tools.SuspectTakesAudit.byCount(verdict.suspects)}; allocated ${reading / 1000000} MB reading the takes, ${judging / 1000000} MB judging them" +
+      (if (verdict.gone.isEmpty) "" else s"; ${verdict.gone.size} baseline line(s) no longer suspect — strike them"))
+    val name = s"$corpusKey-suspect-takes"
+    val report = ConvergenceDiagnostics.write(name, verdict.suspects.map(_.line) ++ verdict.gone.map(g => s"GONE\t${g.productIterator.mkString("\t")}"))
+    // the takes themselves, for tuning a signal on what this leg judged (`scripts.SuspectTakesMeasure --dumps`)
+    tools.UnmatchedClusters.write(ConvergenceDiagnostics.Directory.resolve(s"$corpusKey-takes").resolve(s"${country.code}.json.gz"),
+      tools.SuspectTakesAudit.capture(country, corpus, decided.decisions, model.listings))
+    val failing = verdict.fresh.map(_.render) ++ verdict.wrong.map(t => s"WRONG by labels.tsv: ${t.listing.venue}\t${t.listing.rawTitle}\t${t.film} ${t.record.title}")
+    if (failing.nonEmpty)
+      ConvergenceDiagnostics.summarise(name, s"${country.displayName}: suspect takes to judge into labels.tsv (all in $report)", failing)
+    withClue(failing.mkString(s"suspect takes no label judges (judge them into labels.tsv; every suspect in $report):\n", "\n", "\n")) {
+      failing shouldBe empty
+    }
+  }
+
   s"the ${country.displayName} corpus" should "strand no side rows and no drifted keys" in {
     {
       val (w, _) = shared

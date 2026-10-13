@@ -3120,6 +3120,61 @@ the same shape, a family's take of the classic against another's of its namesake
 agreed film counted twice (loses "Gloria!", does not move PL "edukacja MH: Binti"); a Cineamo feed link to another TMDB
 film as one dissent (loses 11, its links being the operator's guess, `FeedLink`).
 
+### 20.18 Suspect takes: the whole corpus's wrong takes, found by their own evidence (2026-10-13)
+
+`UnmatchedClustersRatchetSpec` judges only the clusters the model leaves unmatched, so a wrong film the model or the
+agreement takes outright stood until a capture happened to surface it (the 10-12 capture: 100+ long-standing ones).
+`SuspectTakes` reads every take after the fact — a listing, the record taken, the decision — and names why it is
+suspect, never vetoing it:
+
+- **fragment** — the billing bills several works (`ListingShape.billsSeveralBeside`); or no word of any of the film's
+  titles is in it (the corpus's common words aside; never a stage relay, whose record titles the house); or, for a film
+  older than last year, the film's title is one piece of the billing and another piece bills a work's words — no banner
+  billed beside two films taken, no event, edition or format word, not the film's director nor its other titles.
+- **era** — the venue states a year more than 3 from the film's (the film newer, or older and not billed as old); or the
+  film is 30+ years older than the screening, nothing bills an old film (retrospective/silent/edition/anniversary words,
+  the director named, a re-release TMDB dates), and another billing of the same title was taken as a film 30+ years newer.
+  A feed's copied year is no venue's statement.
+- **runtime** — a short (<40 min) for a feature-length listing or a title three venues bill; else a stated runtime 30
+  min and 30% from every runtime TMDB states (cuts included).
+- **sequel** — `IdentityMeasures.numbersAnotherInstalment`, never a relay's season number.
+- **feed** — a Cineamo TMDB link to another film, on an agreement/fill take only (the model's own takes overrule a link
+  on their evidence, `FeedLink`).
+- **route** — a fill rule alone took it.
+
+Measured over every labelled pair of the five recorded corpora (recording 38363428661, `scripts.SuspectTakesMeasure` over
+`integration.SuspectTakesDump`), a pair read as a take whether or not today's stack takes it:
+
+| signal | wrong flagged (208) | right flagged (273) |
+|---|---|---|
+| fragment | 88 (42%) | 27 (9.9%) |
+| era | 29 (14%) | 2 (0.7%) |
+| runtime | 17 (8%) | 10 (3.7%) |
+| sequel | 2 (1%) | 0 |
+| feed | 0 | 0 |
+| route | 0 | 11 (4.0%) |
+| any | 127 (61%) | 47 (17%) |
+
+Recall stops at 61% because ~80 of the wrong pairs are namesakes the listing's own evidence cannot tell apart — a
+bare "Lalka" between Has' 1968 and Kawalski's 2026 film, "Silent Night" the relay or a film, the families' must-not
+candidates never taken — which no listing-local signal reaches at a judgeable queue. Measured and dropped: names-none on an exact title run rather
+than on no shared word (69% recall, but the queue 306 → 631 billings, title respellings — "Hayfever" — and
+untranslated records); era on any old film three venues bill (+6 wrong pairs, but DE's era queue 5 → 63 — "Die Hard",
+"Hocus Pocus", "Drei Haselnüsse für Aschenbrödel" are programmes, not namesakes); a fragment of a current release
+(subtitles and local titles: "HAMNET - Halte dein Herz offen"). Those stay the agreement's and the labels' to settle.
+
+**The ratchet** (`CountryConvergenceBehaviour`, "the identity takes should hold no suspect take labels.tsv has not
+judged"): after the settle, every take of the projection is judged by `tools.SuspectTakesAudit` — a suspect billing no
+label judges and `test/resources/fixtures/identity-suspects/baseline.tsv` does not list fails the leg, as does a take a
+label calls wrong; the suspects go to `<corpus>-suspect-takes.md` on the run's summary page, every suspect and the takes
+themselves (`<corpus>-takes/<cc>.json.gz`, what the measure reads with `--dumps`) to the diagnostics artifact. The
+baseline was armed with the suspects standing on 2026-10-13 and only shrinks (`SuspectTakesAuditSpec`); a line no take
+stands for any more is named in the leg's log for striking.
+
+**The gauge** `kinowo_worker_identity_suspect_takes{country,signal}`: `SuspectTakeCount`, on every projection of the whole
+corpus (hourly). It holds nothing between counts; one count allocated (measured on the recorded corpora) ES 26 MB, PL
+130 MB, UK 277 MB, DE 342 MB, US 468 MB in 0.1–1.6 s, each billing asked once however many venues bill it.
+
 ## 21. The rules, consolidated (2026-10-06)
 
 Every rule is inventoried in [identity-resolver-rules-inventory.md](identity-resolver-rules-inventory.md): where it
