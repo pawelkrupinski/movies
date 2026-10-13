@@ -2482,12 +2482,19 @@ class CinemaScraperCatalog(
    *  re-cluster must not need a single scraper moved here to take effect. The
    *  data-driven countries (Germany's 448, the US's 1,995, Spain's 240 pages) are
    *  built per city to begin with. */
-  val byCity: Map[City, Seq[CinemaScraper]] = {
-    val handWired = (baseByCity.values ++ filmwebExtra.values ++ nearbyTowns.values).flatten.toSeq
-    val paged = handWired.flatMap(s => City.forCinema(s.cinema).map(_ -> s))
-      .groupBy(_._1).view.mapValues(_.map(_._2)).toMap
-    paged ++ germanBaseByCity ++ usBaseByCity ++ spanishBaseByCity
-  }
+  private val wiredGroups: Seq[Seq[CinemaScraper]] =
+    (baseByCity.values ++ filmwebExtra.values ++ nearbyTowns.values ++ germanBaseByCity.values ++
+      usBaseByCity.values ++ spanishBaseByCity.values).toSeq
+  private val filed = CinemaScraperCatalog.file(wiredGroups, City.forCinema)
+
+  val byCity: Map[City, Seq[CinemaScraper]] = filed.byCity
+
+  /** Every scraper built here whose cinema no page lists — scraped by nothing, so
+   *  `CinemaScraperCoverageSpec` holds it empty rather than letting one vanish. */
+  val unplaced: Seq[CinemaScraper] = filed.unplaced
+
+  /** How many scrapers the catalog built, every group counted. */
+  private[cinemas] val built: Int = wiredGroups.map(_.size).sum
 
   /** Every raw scraper across every city, in city order. */
   val all: Seq[CinemaScraper] =
@@ -2548,6 +2555,21 @@ class CinemaScraperCatalog(
 }
 
 object CinemaScraperCatalog {
+
+  /** [[file]]'s answer: every scraper under the page its cinema is on, and the ones
+   *  whose cinema is on no page. */
+  final case class Filed(byCity: Map[City, Seq[CinemaScraper]], unplaced: Seq[CinemaScraper])
+
+  /** File `groups` of scrapers under the PAGE each one's cinema is on (`pageOf`) —
+   *  whichever group it was wired in — keeping every one: scrapers of one page from
+   *  several groups sit side by side, in wiring order, and a scraper whose cinema is
+   *  on no page is kept as [[Filed.unplaced]] rather than dropped. */
+  def file(groups: Seq[Seq[CinemaScraper]], pageOf: Cinema => Option[City]): Filed = {
+    val all = groups.flatten
+    val (placed, unplaced) = all.partition(s => pageOf(s.cinema).isDefined)
+    Filed(placed.groupBy(s => pageOf(s.cinema).get), unplaced)
+  }
+
   /** Kino Kryterium's MSI portal: it times out the worker's IP and every Decodo proxy IP, so its pages AND its posters
    *  go through the Zyte route (`EgressWiring.zyteFetch`). */
   val KinoKryteriumUrl = "https://bilety.ck105.koszalin.pl"
