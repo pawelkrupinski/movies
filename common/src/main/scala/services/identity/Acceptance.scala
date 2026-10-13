@@ -90,13 +90,16 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
       .filterNot { case ((taken, _), rule) => rule != "imdb-suggested" && outweighedBySuggestion(ranked, taken) }
       .map { case (accepted, rule) => editionNamed(ranked)(accepted) -> rule }.filter(takesNoBill(ranked))
 
-  /** Does an undenied film only IMDb's suggestion reached ([[Scored.suggestedOnly]], which only the IMDb rule may take)
-   *  weigh at least as much on the evidence as `taken`? Then the evidence does not single `taken` out, and no other rule
-   *  takes it: PL Kino Kryterium's "DKF: Ktoś całkiem obcy" took TMDB's Polish title of Foley's 2007 "Perfect Stranger"
-   *  at 46.3% beside Andersen's 2025 "I Was a Stranger" at 47.8% — which TMDB holds under its Arabic title, and another
-   *  venue's listing of the title corroborates — the film Kryterium shows. */
+  /** Does an undenied film only IMDb's suggestion reached ([[Scored.suggestedOnly]], which only the IMDb rule may take),
+   *  that another venue's listing of the title corroborates, weigh at least as much on the evidence as `taken`? Then the
+   *  evidence does not single `taken` out, and no other rule takes it: PL Kino Kryterium's "DKF: Ktoś całkiem obcy" took
+   *  TMDB's Polish title of Foley's 2007 "Perfect Stranger" at 46.3% beside Andersen's 2025 "I Was a Stranger" at 47.8%
+   *  — which TMDB holds under its Arabic title, and Kino Chatka Żaka's listing crediting him corroborates — the film
+   *  Kryterium shows. An uncorroborated suggestion is no such rival: IMDb suggests a title's best-known films, and DE
+   *  "Béni`s Noise", "Escape to Life" and a dozen more lost their own films to one. */
   private def outweighedBySuggestion(ranked: Seq[Scored], taken: Scored): Boolean =
-    ranked.exists(other => (other ne taken) && other.suggestedOnly && !other.denied && other.probability >= taken.probability)
+    ranked.exists(other => (other ne taken) && other.suggestedOnly && !other.denied && other.number("venues.corroborating").exists(_ > 0) &&
+      other.probability >= taken.probability)
 
   /** A DOUBLE PROGRAMME: a "+" joining two whole works ([[IdentityMeasures.billsTwoWholeWorks]]), whatever is held
    *  of them, is neither film (user rule) — UK "We're Going on a Bear Hunt + The Tiger Who Came to Tea" {Joanna

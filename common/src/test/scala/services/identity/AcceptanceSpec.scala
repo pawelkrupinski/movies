@@ -502,10 +502,11 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     val stranger = Film("Ktoś całkiem obcy", year = Some(2007), runtime = Some(109))
     val measures = IdentityMeasures.listingFilm(listing, stranger, Some(1), 0, 0, Houses.Unknown)
     val foley    = Scored(Candidate(7183, stranger), 0.463, measures, denial = None, listing, Some(1))
-    val andersen = Scored(Candidate(1193128, Film("قضية الغرباء", year = Some(2025), runtime = Some(103))), 0.478, measures, denial = None,
-      listing, None, suggestedOnly = true)
+    val andersen = Scored(Candidate(1193128, Film("قضية الغرباء", year = Some(2025), runtime = Some(103))), 0.478,
+      measures + ("venues.corroborating" -> IdentityMeasures.Number(1)), denial = None, listing, None, suggestedOnly = true)
     acceptance.alone(Seq(andersen, foley)) shouldBe None
-    // one it outscores is no reason to decline
+    // one it outscores, or one no other venue's listing corroborates, is no reason to decline
     acceptance.alone(Seq(foley, andersen.copy(probability = 0.2))).map(_._1.candidate.tmdbId) shouldBe Some(7183)
+    acceptance.alone(Seq(andersen.copy(measures = measures), foley)).map(_._1.candidate.tmdbId) shouldBe Some(7183)
   }
 }
