@@ -143,9 +143,11 @@ trait ReadModelReader {
    *  not be taken, which is no evidence about the model either way. */
   def countMovies(): tools.ReadOutcome[Long]
   def countScreenings(): tools.ReadOutcome[Long]
-  /** Where the change history stands now — `None` when the store cannot replay from a
-   *  point (disabled, a standalone Mongo), in which case a watch can only start now. */
-  def streamCheckpoint(): Option[StreamCheckpoint]
+  /** Where the change history stands now — absent when the store cannot replay from a point
+   *  (disabled, a standalone Mongo), in which case a watch can only start now; FAILED when the
+   *  store could not be asked, which is not "start now": a watch's cursor opens asynchronously, so
+   *  "now" is whenever the store answers again — past any write made before then. */
+  def streamCheckpoint(): tools.ReadOutcome[StreamCheckpoint]
   def watchMovies(onUpsert: ResolvedMovie => Unit, onDelete: String => Unit, from: Option[StreamCheckpoint]): Option[StreamSubscription]
   /** Delivers each row as the web serves it ([[ServedScreening]]): its only consumer is the web's model. */
   def watchScreenings(onUpsert: CityScreening => Unit, onDelete: String => Unit, from: Option[StreamCheckpoint]): Option[StreamSubscription]

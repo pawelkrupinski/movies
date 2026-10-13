@@ -421,9 +421,9 @@ class WebReadModel(
       ticksUntilReopen = 0
       if (!_hydrated) coldReload()
       else if (catchUpOwed) {
-        // Reopened into the outage: the streams are live now, but what was written while they were
-        // down reached neither them nor that reopen's failed read. Read again — anything written
-        // from here on, the live streams carry.
+        // The reopen's read failed (or it had no checkpoint to replay from — a standalone): what was
+        // written while the streams were down reached neither. Read again — anything written from
+        // the checkpoint on, the live streams carry.
         logger.warn("WebReadModel: change streams are live again but the writes made while they were down are unread — reloading.")
         reload()
         if (lastReloadComplete) catchUpOwed = false
@@ -460,20 +460,30 @@ class WebReadModel(
       ticksUntilReopen = math.min((1L << math.min(reopenAttempts, 30)) - 1, MaxTicksBetweenReopens).toInt
       logger.warn(s"WebReadModel: change stream(s) ended (movies live=${movieWatch.exists(_.live)}, " +
         s"screenings live=${screeningWatch.exists(_.live)}) — reopening, attempt $reopenAttempts.")
-      val checkpoint = reader.streamCheckpoint()
-      reload()
-      // Caught up only by a whole read AND a replay from before it; short of either, the next tick
-      // that finds the streams live reads again (`catchUpOwed`).
-      catchUpOwed = !(lastReloadComplete && checkpoint.isDefined)
-      if (!movieWatch.exists(_.live)) {
-        streamMetrics.reopened(MongoReadModelRepository.MoviesCollection)
-        movieWatch.foreach(watch => Try(watch.close()))
-        movieWatch = reader.watchMovies(applyMovieUpsert, applyMovieDelete, checkpoint)
-      }
-      if (!screeningWatch.exists(_.live)) {
-        streamMetrics.reopened(MongoReadModelRepository.ScreeningsCollection)
-        screeningWatch.foreach(watch => Try(watch.close()))
-        screeningWatch = reader.watchScreenings(applyScreeningUpsert, applyScreeningDelete, checkpoint)
+      reader.streamCheckpoint() match {
+        // No checkpoint is not "watch from now": the cursor opens asynchronously, once Mongo answers
+        // again — after this reopen, after the catch-up read a later tick makes — and a write landing
+        // between that read and the cursor reached neither (CI 2026-10-13). The next reopen, on the
+        // backoff, takes one.
+        case tools.ReadOutcome.Failed(cause) =>
+          logger.warn(s"WebReadModel: no stream checkpoint to replay from (${cause.explain}) — the streams stay down until the next reopen.")
+          if (!_hydrated) coldReload()
+        case outcome =>
+          val checkpoint = outcome.answered
+          reload()
+          // Caught up only by a whole read AND a replay from before it; short of either, the next tick
+          // that finds the streams live reads again (`catchUpOwed`).
+          catchUpOwed = !(lastReloadComplete && checkpoint.isDefined)
+          if (!movieWatch.exists(_.live)) {
+            streamMetrics.reopened(MongoReadModelRepository.MoviesCollection)
+            movieWatch.foreach(watch => Try(watch.close()))
+            movieWatch = reader.watchMovies(applyMovieUpsert, applyMovieDelete, checkpoint)
+          }
+          if (!screeningWatch.exists(_.live)) {
+            streamMetrics.reopened(MongoReadModelRepository.ScreeningsCollection)
+            screeningWatch.foreach(watch => Try(watch.close()))
+            screeningWatch = reader.watchScreenings(applyScreeningUpsert, applyScreeningDelete, checkpoint)
+          }
       }
     }
 
@@ -544,10 +554,16 @@ class WebReadModel(
     // screenings and served without them for the 30 minutes until the backstop saw the count
     // drift — and a missed write that leaves the counts equal, the backstop never sees. Replayed
     // events re-apply what the hydrate may already hold; every applier is idempotent.
+    // A checkpoint that could not be TAKEN opens nothing: the cold-retry tick's reopen does, from one.
     val checkpoint = reader.streamCheckpoint()
     reload()
-    movieWatch     = reader.watchMovies(applyMovieUpsert, applyMovieDelete, checkpoint)
-    screeningWatch = reader.watchScreenings(applyScreeningUpsert, applyScreeningDelete, checkpoint)
+    checkpoint match {
+      case tools.ReadOutcome.Failed(cause) =>
+        logger.warn(s"WebReadModel: no stream checkpoint to replay from (${cause.explain}) — the watches open on the cold-retry cadence.")
+      case outcome =>
+        movieWatch     = reader.watchMovies(applyMovieUpsert, applyMovieDelete, outcome.answered)
+        screeningWatch = reader.watchScreenings(applyScreeningUpsert, applyScreeningDelete, outcome.answered)
+    }
     scheduler.scheduleAtFixedRate(
       () => Try(backstopTick()).recover { case exception => logger.warn(s"WebReadModel backstop tick failed: ${exception.getMessage}") },
       BackstopSeconds, BackstopSeconds, TimeUnit.SECONDS)

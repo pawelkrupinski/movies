@@ -214,7 +214,7 @@ class ReadModelRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with 
       val isolated   = new MongoReadModelRepository(Some(own))
       val id         = "__it-rm-checkpoint__"
       val seen       = new java.util.concurrent.ConcurrentLinkedQueue[String]()
-      val checkpoint = isolated.streamCheckpoint()
+      val checkpoint = isolated.streamCheckpoint().answered
       checkpoint shouldBe defined   // a replica set reports its operation time; a standalone cannot stream at all
       isolated.upsertScreening(CityScreening(_id = id, filmId = "__it-rm-checkpoint-film__",
         city = "poznan", cinema = "Cinema", filmUrl = None, showtimes = Nil))

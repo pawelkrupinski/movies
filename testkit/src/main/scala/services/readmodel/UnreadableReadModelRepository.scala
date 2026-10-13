@@ -23,8 +23,13 @@ class UnreadableReadModelRepository extends InMemoryReadModelRepository with Fai
    *  outage a caller combining the two must still notice. */
   @volatile var screeningsReadable: Boolean = false
 
-  /** Let the whole-collection reads see the store again — a recovered Mongo. */
-  def healReads(): Unit = failingReads = false
+  /** Fail the stream checkpoint too — Mongo's `hello` gets no further than its reads do. Off by
+   *  default, so a spec can fail the reads alone, as a Mongo that answers a `hello` but times out a
+   *  long scan does. */
+  @volatile var failingCheckpoint: Boolean = false
+
+  /** Let the reads (and the checkpoint) see the store again — a recovered Mongo. */
+  def healReads(): Unit = { failingReads = false; failingCheckpoint = false }
 
   private def moviesFail     = failingReads
   private def screeningsFail = failingReads && !screeningsReadable
@@ -51,6 +56,8 @@ class UnreadableReadModelRepository extends InMemoryReadModelRepository with Fai
     else super.foreachScreening(f)
   override def findAllScreeningRefsChecked(): tools.ReadOutcome[Seq[ScreeningRef]] =
     if (screeningsFail) failed("web_screenings") else super.findAllScreeningRefsChecked()
+  override def streamCheckpoint(): tools.ReadOutcome[StreamCheckpoint] =
+    if (failingCheckpoint) failed("stream checkpoint") else super.streamCheckpoint()
   // A card is read from both collections, and the Mongo store answers a failed read None.
   override def findCard(id: String): Option[StoredCard] =
     if (moviesFail || screeningsFail) None else super.findCard(id)

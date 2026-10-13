@@ -106,7 +106,8 @@ class InMemoryReadModelRepository extends ReadModelReader with ReadModelWriter {
     screeningWatcher.foreach { case (_, onDelete) => onDelete(id) }
   }
 
-  def streamCheckpoint(): Option[StreamCheckpoint] = Some(StreamCheckpoint(lock.synchronized(history.size.toLong)))
+  def streamCheckpoint(): tools.ReadOutcome[StreamCheckpoint] =
+    tools.ReadOutcome.Answered(StreamCheckpoint(lock.synchronized(history.size.toLong)))
 
   def watchMovies(onUpsert: ResolvedMovie => Unit, onDelete: String => Unit, from: Option[StreamCheckpoint]): Option[StreamSubscription] = {
     movieWatchesOpened.incrementAndGet()

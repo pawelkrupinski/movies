@@ -239,9 +239,10 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     rm.stop()
   }
 
-  // A reopen INTO the outage opens a stream that goes live once Mongo answers — but its catch-up
-  // read failed, so what was written while the streams were down is in neither. Live streams and a
-  // warm model made every later tick a no-op: those writes waited on the backstop's count drift.
+  // A reopen whose checkpoint was taken but whose catch-up read failed (a Mongo that answers a
+  // `hello` but not a long scan) opens streams that replay only from the checkpoint, so what was
+  // written while the streams were down is in neither. Live streams and a warm model made every
+  // later tick a no-op: those writes waited on the backstop's count drift.
   it should "read again once the streams are live, when the reopen's catch-up read failed" in {
     val repository = new UnreadableReadModelRepository
     repository.healReads()
@@ -257,6 +258,49 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     rm.coldRetryTick()
 
     rm.movie("during|2026") shouldBe defined
+    rm.stop()
+  }
+
+  // Mongo opens a watch's cursor ASYNCHRONOUSLY: the subscribe returns at once, and the server-side
+  // aggregate runs whenever the driver next gets a connection — so a watch "from now" starts from
+  // THEN, not from the subscribe. This store holds every movie watch's cursor until `openCursors`.
+  private class LateCursorRepository extends UnreadableReadModelRepository {
+    private val pending = new java.util.concurrent.ConcurrentLinkedQueue[() => Unit]()
+    override def watchMovies(onUpsert: ResolvedMovie => Unit, onDelete: String => Unit, from: Option[StreamCheckpoint]): Option[StreamSubscription] = {
+      val opened = new java.util.concurrent.atomic.AtomicReference[Option[StreamSubscription]](None)
+      pending.add(() => opened.set(super.watchMovies(onUpsert, onDelete, from)))
+      // Live from the subscribe, as the Mongo store's watch reports itself until its cursor errors.
+      Some(new StreamSubscription {
+        override def live: Boolean = opened.get.forall(_.live)
+        override def close(): Unit = opened.get.foreach(_.close())
+      })
+    }
+    def openCursors(): Unit = Iterator.continually(pending.poll()).takeWhile(_ != null).foreach(_())
+  }
+
+  // CI 2026-10-13 (WebReadModelMongoOutageIntegrationSpec): a reopen INTO the outage could take no
+  // checkpoint, so it watched "from now" — from whenever its cursor would open. Mongo came back, the
+  // catch-up read ran, a write landed, and only then did the cursor open: past the write, which the
+  // model never saw. A reopen watches from a checkpoint taken before its read, or not at all.
+  it should "not lose a write made after its catch-up read, however late the reopened cursor opens" in {
+    val repository = new LateCursorRepository
+    repository.healReads()
+    repository.upsertMovie(movie("belle|2021"))
+    val rm = started(repository)
+    repository.openCursors()
+
+    repository.failingReads = true
+    repository.failingCheckpoint = true
+    repository.failMovieStream()
+    repository.upsertMovie(movie("during|2026"))
+    rm.coldRetryTick()                              // a reopen into the outage
+    repository.healReads()
+    (1 to 3).foreach(_ => rm.coldRetryTick())       // past the reopen backoff: reopened and caught up
+    rm.movie("during|2026") shouldBe defined
+    repository.upsertMovie(movie("after|2026"))
+    repository.openCursors()                        // the driver gets round to the aggregate only now
+
+    rm.movie("after|2026") shouldBe defined
     rm.stop()
   }
 

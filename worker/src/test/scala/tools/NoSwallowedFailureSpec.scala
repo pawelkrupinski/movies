@@ -223,9 +223,6 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
     ("common/src/main/scala/services/readmodel/MongoReadModelRepository.scala", "findCard",
       "case Failure(exception) =>") ->
       "read only by ReadModelContentAudit, which skips a card it could not read and audits it on the next pass",
-    ("common/src/main/scala/services/readmodel/MongoReadModelRepository.scala", "streamCheckpoint",
-      "case Failure(exception) =>") ->
-      "None is the documented \"watch from now\"; the projector's boot reconcile covers the gap either way",
     ("common/src/main/scala/services/resolution/ResolutionStore.scala", "removeForFilm",
       "}.recover { case exception =>") ->
       "the count only feeds an INFO line; a forget that failed leaves the entry, which the next forget retries",

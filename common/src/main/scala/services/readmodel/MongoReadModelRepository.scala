@@ -295,15 +295,14 @@ class MongoReadModelRepository(
    *  `MongoClientSettings` defaults the decode threw ("The BsonCodec can only encode to Bson"),
    *  every checkpoint was `None`, and the watches started "from now" — whenever their cursors
    *  opened, so a write landing before that was in neither the hydrate nor the stream. */
-  def streamCheckpoint(): Option[StreamCheckpoint] = sharedDb.flatMap { db =>
-    Try(Await.result(db.runCommand[org.bson.BsonDocument](Document("hello" -> 1)).toFuture(), 10.seconds)) match {
-      case Success(reply) =>
-        Option(reply.get("operationTime")).filter(_.isTimestamp).map(time => StreamCheckpoint(time.asTimestamp.getValue))
-      case Failure(exception) =>
-        logger.warn(s"ReadModelRepository.streamCheckpoint failed, watching from now: ${exception.getMessage}")
-        None
+  def streamCheckpoint(): tools.ReadOutcome[StreamCheckpoint] =
+    sharedDb.fold[tools.ReadOutcome[StreamCheckpoint]](tools.ReadOutcome.none("stream checkpoint (no database)")) { db =>
+      tools.MongoRead(10.seconds)(db.runCommand[org.bson.BsonDocument](Document("hello" -> 1)).toFuture()).flatMap { reply =>
+        Option(reply.get("operationTime")).filter(_.isTimestamp)
+          .fold[tools.ReadOutcome[StreamCheckpoint]](tools.ReadOutcome.none("stream checkpoint (no operation time: a standalone)"))(
+            time => tools.ReadOutcome.Answered(StreamCheckpoint(time.asTimestamp.getValue)))
+      }
     }
-  }
 
   def watchMovies(onUpsert: ResolvedMovie => Unit, onDelete: String => Unit, from: Option[StreamCheckpoint]): Option[StreamSubscription] =
     movies.map(watch(_, onUpsert, onDelete, MongoReadModelRepository.MoviesCollection, from, pipeline = Nil))
