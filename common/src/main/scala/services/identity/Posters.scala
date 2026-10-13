@@ -190,11 +190,23 @@ object PosterEvidence {
     if (filed.nonEmpty) {
       val billed = numbersOf(listing.rawTitle) ++ numbersOf(listing.title)
       billed.nonEmpty && (billed intersect filed).isEmpty
-    } else film.year.exists { released =>
+    } else numbersAnInstalment(listing, film) || film.year.exists { released =>
       val billed = yearsOf(listing.rawTitle) ++ yearsOf(listing.title)
       billed.nonEmpty && billed.forall(year => !FactRelations.yearsNear(year, released))
     }
   }
+
+  /** Does a title piece of the listing number the very title the film's own titles number none of — "Begegnungen der
+   *  Seele 2" against "Begegnungen der Seele", its first part? A sequel TMDB titles otherwise ("Avatar 2", "Avatar: The
+   *  Way of Water") is none of it. */
+  private def numbersAnInstalment(listing: Listing, film: IdentityMeasures.Film): Boolean = {
+    val filmKeys = film.titles.map(IdentityMeasures.key).filter(_.nonEmpty).toSet
+    Seq(listing.rawTitle, listing.title).distinct.flatMap(title => IdentityMeasures.pieces(title) :+ title).exists {
+      case Instalment(base, _) => filmKeys(IdentityMeasures.key(base))
+      case _                   => false
+    }
+  }
+  private val Instalment = """(.*\S)\s+(\d|II|III|IV)""".r
   private val Year = """(?<!\d)(?:19|20)\d\d(?!\d)""".r
   private def yearsOf(title: String): Set[Int] = Year.findAllIn(title).map(_.toInt).toSet
 }
