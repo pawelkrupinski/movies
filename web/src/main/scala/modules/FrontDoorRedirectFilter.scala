@@ -1,11 +1,10 @@
 package modules
 
-import controllers.PageMeta
+import controllers.{PageMeta, ServedCity}
 import models.Country
 import services.metrics.{LegacyAddressKind, LegacyAddressMetrics}
 import org.apache.pekko.stream.Materializer
-import play.api.http.HttpErrorHandler
-import play.api.http.Status.NOT_FOUND
+import play.api.i18n.Messages
 import play.api.mvc.{Filter, RequestHeader, Result, Results}
 
 import scala.concurrent.Future
@@ -27,8 +26,9 @@ import scala.concurrent.Future
  * to the root deployment, which would otherwise serve its pages a second time
  * under showtimes.cc. This filter sits AHEAD of [[RenamedCityRedirectFilter]]
  * (`AppLoader.filterChain`) so a renamed Polish slug is a 404 too, rather than a
- * 301 onto one. The 404 is the app's own (`errorHandler`) — the page the router
- * gives any address it does not know, not a bare status with an empty body. The
+ * 301 onto one. The 404 is exactly the one an unknown city gets on the apex
+ * ([[ServedCity.unknown]], in the deployment's `messages`) — `showtimes.cc/poznan/`
+ * reads like `showtimes.cc/xyzzy/`, not a bare status with an empty body. The
  * apex's own root, files and endpoints (`/`, `/robots.txt`, `/.well-known/…`,
  * `/assets/…`, `/api/…`) name no place and pass through. Off the apex —
  * `kinowo.net` itself — nothing is touched.
@@ -38,7 +38,7 @@ import scala.concurrent.Future
  * one kind the table's drop rule reads. A Polish place's 404 is no legacy address
  * and is not counted.
  */
-class FrontDoorRedirectFilter(country: Country, legacy: LegacyAddressMetrics, errorHandler: HttpErrorHandler)(
+class FrontDoorRedirectFilter(country: Country, legacy: LegacyAddressMetrics, messages: Messages)(
     using val mat: Materializer)
     extends Filter {
 
@@ -50,7 +50,7 @@ class FrontDoorRedirectFilter(country: Country, legacy: LegacyAddressMetrics, er
       request.path.stripPrefix("/").split('/').toList match {
         case slug :: Nil if slug.nonEmpty =>
           Country.bareSlugTarget(slug).map { target =>
-            if (target.country == country) notHere(request)
+            if (target.country == country) notHere(slug)
             else {
               legacy.record(if (target.tableChangedAnswer) LegacyAddressKind.FrontDoorOldOwner else LegacyAddressKind.FrontDoorNew,
                             request)
@@ -59,11 +59,11 @@ class FrontDoorRedirectFilter(country: Country, legacy: LegacyAddressMetrics, er
                 Results.MovedPermanently(if (request.rawQueryString.isEmpty) path else s"$path?${request.rawQueryString}"))
             }
           }
-        case place :: _ if country.resolve(place).isDefined => Some(notHere(request))
+        case place :: _ if country.resolve(place).isDefined => Some(notHere(place))
         case _ => None
       }
     }.flatten
 
   /** A place of the root country, which lives on its own domain only. */
-  private def notHere(request: RequestHeader): Future[Result] = errorHandler.onClientError(request, NOT_FOUND)
+  private def notHere(place: String): Future[Result] = Future.successful(ServedCity.unknown(place)(using messages))
 }

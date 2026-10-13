@@ -1,13 +1,13 @@
 package modules
 
+import controllers.TestMovieController
 import models.Country
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.stream.Materializer
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import play.api.http.DefaultHttpErrorHandler
-import play.api.mvc.{RequestHeader, Result, Results}
+import play.api.mvc.{EssentialAction, RequestHeader, Result, Results}
 import play.api.test.FakeRequest
 import play.api.test.Helpers._
 import services.metrics.SpecLegacyAddressMetrics
@@ -26,13 +26,27 @@ class FrontDoorRedirectFilterSpec extends AnyFlatSpec with Matchers with BeforeA
 
   override def afterAll(): Unit = Await.result(system.terminate(), SpecTimeouts.Io): Unit
 
-  // Production-mode (no dev details), like the deployed one.
-  private val errorHandler = new DefaultHttpErrorHandler()
-  private val filter = new FrontDoorRedirectFilter(Country.Poland, SpecLegacyAddressMetrics.fresh(), errorHandler)
+  private val filter = new FrontDoorRedirectFilter(Country.Poland, SpecLegacyAddressMetrics.fresh(), testsupport.TestMessages.deployment)
   private val routed: RequestHeader => Future[Result] = _ => Future.successful(Results.Ok("routed"))
 
   private def get(path: String, host: String = Country.apexHost): Result =
     Await.result(filter(routed)(FakeRequest(GET, path).withHeaders("Host" -> host)), SpecTimeouts.Io)
+
+  /** The real chain for an apex request: the front door over a router that binds
+   *  `/:city/` to the real `MovieController.index` — what answers an unknown slug. */
+  private val cityRoute: RequestHeader => Future[Result] = {
+    val controller = TestMovieController.build(Nil, servingCountry = Country.Poland)._1
+    rh => {
+      val action: EssentialAction = rh.path.stripPrefix("/").split("/", -1).toSeq match {
+        case Seq(city, "") => controller.index(city)
+        case _             => EssentialAction(_ => play.api.libs.streams.Accumulator.done(Results.Ok("routed")))
+      }
+      action(rh).run()
+    }
+  }
+
+  private def throughChain(path: String): Result =
+    Await.result(filter(cityRoute)(FakeRequest(GET, path).withHeaders("Host" -> Country.apexHost)), SpecTimeouts.Io)
 
   private def body(result: Result): String =
     Await.result(result.body.consumeData, SpecTimeouts.Io).utf8String
@@ -54,11 +68,13 @@ class FrontDoorRedirectFilterSpec extends AnyFlatSpec with Matchers with BeforeA
     get("/poznan/", host = "www.showtimes.cc").header.status shouldBe NOT_FOUND
   }
 
-  it should "answer it with the app's own 404 page, the one any unknown address gets, not an empty body" in {
-    val result = get("/poznan/")
-    val unknown = Await.result(errorHandler.onClientError(FakeRequest(GET, "/poznan/"), NOT_FOUND), SpecTimeouts.Io)
-    body(result) should not be empty
-    result.body.contentType shouldBe unknown.body.contentType
-    body(result) shouldBe body(unknown)
+  it should "answer it exactly as an unknown city there is answered, not with a different 404 page" in {
+    val polish  = throughChain("/poznan/")
+    val unknown = throughChain("/xyzzy/")
+    unknown.header.status shouldBe NOT_FOUND
+    polish.header.status shouldBe unknown.header.status
+    polish.body.contentType shouldBe unknown.body.contentType
+    body(unknown) should include("xyzzy")
+    body(polish) shouldBe body(unknown).replace("xyzzy", "poznan")
   }
 }

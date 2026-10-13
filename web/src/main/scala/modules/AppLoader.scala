@@ -167,7 +167,7 @@ class AppComponents(context: Context, val env: Env, val country: Country, val mo
   lazy val cspFilter: CspFilter = new CspFilter()(using materializer, executionContext)
   lazy val renamedCityRedirectFilter: RenamedCityRedirectFilter =
     new RenamedCityRedirectFilter(country, legacyAddressMetrics)(using materializer)
-  lazy val frontDoorRedirectFilter: FrontDoorRedirectFilter = new FrontDoorRedirectFilter(country, legacyAddressMetrics, httpErrorHandler)(using materializer)
+  lazy val frontDoorRedirectFilter: FrontDoorRedirectFilter = new FrontDoorRedirectFilter(country, legacyAddressMetrics, deploymentMessages)(using materializer)
   lazy val httpMetricsFilter: HttpMetricsFilter = new HttpMetricsFilter(webHttpMetrics, webRouteUsageMetrics)(using executionContext)
   lazy val crossSiteWriteFilter: CrossSiteWriteFilter = new CrossSiteWriteFilter()(using materializer)
   // Metrics FIRST (outermost) so the latency it records is the whole chain —

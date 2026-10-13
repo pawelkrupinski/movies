@@ -60,7 +60,7 @@ class KnownPlacesNeverNotFoundSpec extends AnyFlatSpec with Matchers with Before
 
     private val chain: RequestHeader => Future[Result] = {
       val renamed   = new RenamedCityRedirectFilter(country, legacy)
-      val frontDoor = new FrontDoorRedirectFilter(country, legacy, new play.api.http.DefaultHttpErrorHandler())
+      val frontDoor = new FrontDoorRedirectFilter(country, legacy, testsupport.TestMessages.deployment)
       rh => frontDoor(renamed(route))(rh)
     }
 
