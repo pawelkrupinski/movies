@@ -21,7 +21,7 @@ object SuspectTakesAudit {
   val BaselinePath: Path = Directory.resolve("baseline.tsv")
   /** The lines the baseline holds (armed 2026-10-13 with 307; 80 once those were judged the same day): it only shrinks,
    *  so a lower count replaces this as it does. */
-  val BaselineArmed = 80
+  val BaselineArmed = 77
 
   /** A billing taken as `film` that a signal suspects: every venue billing it and every reason. */
   final case class Suspect(country: String, rawTitle: String, film: String, title: String, venues: Seq[String], reasons: Seq[Suspicion]) {
