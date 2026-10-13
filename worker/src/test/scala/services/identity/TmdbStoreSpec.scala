@@ -262,8 +262,12 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     val first = lookups.film(film).toOption.flatten.get
     lookups.film(film).toOption.flatten.get should be theSameInstanceAs first
     first shouldBe w.lookups.film(film).toOption.flatten.get
-    val (_, bytes) = tools.ThreadAllocation.of((1 to 100).foreach(_ => lookups.film(film)))
-    withClue(s"$bytes bytes for 100 asks: ")(bytes should be < 100000L)   // was 239,216: a record decoded per ask
+    // The first run of the measured block links its lambda and loads its classes, ~38k of one-time allocation (a cold
+    // 100 asks measured 56k, a second 18k) that varies with what the suite has already loaded: run it once unmeasured.
+    def hundredAsks() = (1 to 100).foreach(_ => lookups.film(film))
+    hundredAsks()
+    val (_, bytes) = tools.ThreadAllocation.of(hundredAsks())
+    withClue(s"$bytes bytes for 100 asks: ")(bytes should be < 30000L)   // was 239,216 (a record decoded per ask); 18,448 once linked
     lookups.prefetchAnswered()
     lookups.film(film).toOption.flatten.get should not be theSameInstanceAs(first)
   }
