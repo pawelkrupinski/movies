@@ -531,6 +531,65 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     r.violations shouldBe 0
   }
 
+  it should "keep its own house's season record beside a title-linked sibling denying it as another house's" in {
+    // UK, run 38355584482: Savoy's "The Metropolitan Opera: Macbeth" ×6, Old Market Hall's "…: MACBETH", Wetherby's — each
+    // took the Met's 2026/27 Macbeth on its own banner, and each was withdrawn because Flicks' "RBO Cinema Season 2026-27:
+    // Macbeth" {Louisa Proske} ×34, title-linked to it by the Met record's original title it carries (RBO's cinema season
+    // relays the Met) and taking nothing itself, denies that record as ANOTHER house's season production. That denial is
+    // about the sibling's banner, not the work: two houses' stagings are two productions, and a banner wrongly learned as
+    // another house denies nothing — either way it says nothing of a listing whose own banner the record bills. Left
+    // unmatched, they split off the Met's film.
+    val films = Seq(F(1702782, "Royal Ballet & Opera 2026/27: Swan Lake", 2027, "", 0, 3),
+      F(1702778, "Royal Ballet & Opera 2026/27: Alice's Adventures in Wonderland", 2027, "", 0, 3),
+      F(1703631, "The Metropolitan Opera 2026/27: Manon", 2027, "", 0, 5),
+      F(1703622, "The Metropolitan Opera 2026/27: Macbeth", 2026, "", 0, 5),
+      F(295526, "The Metropolitan Opera - Verdi: Macbeth", 2014, "Gary Halvorson", 180, 2))
+    def rbo(work: String, director: Option[String] = None) = Seq(Helios, KinoApollo).map(listing(_, s"RBO Cinema Season 2026-27: $work", director = director))
+    def met(work: String) = Seq(Multikino, Rialto).map(listing(_, s"Met Opera 2026-27: $work"))
+    val rboMacbeth = rbo("Macbeth", Some("Louisa Proske")).map(_.copy(originalTitle = Some("The Metropolitan Opera: Macbeth (2026)")))
+    val housed     = Seq(KinoMuza, KinoMikro).map(listing(_, "The Metropolitan Opera: Macbeth"))
+    val all        = rbo("Swan Lake") ++ rbo("Alice's Adventures in Wonderland") ++ met("Manon") ++ rboMacbeth ++ housed
+    val r          = shipped(all, films)
+    withClue(all.map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
+      housed.map(l => r.decisionOf(l.key).film) shouldBe Seq.fill(2)(Some(1703622))
+    }
+    r.violations shouldBe 0
+  }
+
+  it should "keep the record its title names by house and season, whatever a title-linked sibling denies" in {
+    // UK, run 38355584482: Vue's "MET Opera 2026-27: La Fanciulla Del West" ×81 took the Met's 2026/27 record on its own
+    // banner and season, and was withdrawn because Flicks' "RBO Cinema Season 2026-27: La Fanciulla Del West" ×29 — the
+    // original title Vue's feed carries, taking nothing itself — denies the record as another house's season production.
+    // Its title names neither house's record alone (the season's banner is not a house of its own), so the house rule
+    // does not reach it: but a listing naming its house AND its season names one production, as one house stages a work
+    // once a season — any sibling's denial says which production the SIBLING is, never which the node is.
+    val films = Seq(F(1703629, "The Metropolitan Opera 2026/27: La Fanciulla del West", 2027, "", 0, 3),
+      F(1703631, "The Metropolitan Opera 2026/27: Manon", 2027, "", 0, 5),
+      F(1702782, "Royal Ballet & Opera 2026/27: Swan Lake", 2027, "", 0, 3),
+      F(1702778, "Royal Ballet & Opera 2026/27: Alice's Adventures in Wonderland", 2027, "", 0, 3))
+    def rbo(work: String) = Seq(Helios, KinoApollo).map(listing(_, s"RBO Cinema Season 2026-27: $work"))
+    val vue   = Seq(Multikino, Rialto).map(listing(_, "MET Opera 2026-27: La Fanciulla Del West", runtime = Some(195))
+      .copy(originalTitle = Some("RBO Cinema Season 2026-27: La Fanciulla Del West")))
+    val manon = Seq(KinoMuza, KinoMikro).map(listing(_, "Met Opera 2026-27: Manon"))
+    val all   = vue ++ rbo("La Fanciulla Del West") ++ rbo("Swan Lake") ++ rbo("Alice's Adventures in Wonderland") ++ manon
+    val r     = shipped(all, films)
+    withClue(all.map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
+      vue.map(l => r.decisionOf(l.key).film) shouldBe Seq.fill(2)(Some(1703629))
+    }
+    r.violations shouldBe 0
+  }
+
+  it should "still be withdrawn from a record of its own house that a sibling naming that house denies" in {
+    // The same shape, the sibling billing the SAME house: UK's "Met Opera: La Fanciulla Del West" {Richard Jones}, this
+    // season's staging, denies the Met's 2018 record the bare-banner "The Metropolitan Opera: La Fanciulla Del West" ×3
+    // took on its own banner — one house's two productions, which nothing the bare-banner listing publishes tells apart.
+    val films  = Seq(F(543704, "The Metropolitan Opera: La Fanciulla del West", 2018, "Gary Halvorson", 180, 3))
+    val jones  = Seq(Helios, KinoApollo).map(listing(_, "Met Opera: La Fanciulla Del West", director = Some("Richard Jones")))
+    val housed = Seq(KinoMuza, KinoMikro).map(listing(_, "The Metropolitan Opera: La Fanciulla Del West"))
+    val r      = shipped(jones ++ housed, films)
+    (jones ++ housed).foreach(l => withClue(r.decisionOf(l.key).render)(r.decisionOf(l.key).film should not be Some(543704)))
+  }
+
   it should "take its own house's record of the work once the database returns it" in {
     // TMDB does file RBO's 2026/27 Manon; a search for the work and its season returns both houses'.
     val films = Seq(F(1702782, "Royal Ballet & Opera 2026/27: Swan Lake", 2027, "", 0, 3),

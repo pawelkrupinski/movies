@@ -37,13 +37,27 @@ private[identity] final class Families(scoring: CandidateScoring, acceptance: Ac
    *  it only when the sibling compared a fact the node did not publish: the year a yearless listing lacks, a director
    *  beside a bare title. When the node published every fact the sibling did, its own reading of them is the answer:
    *  UK "Fallen Angels by Noel Coward" (×95), the 2026 recording by its credited screen director and its runtime, lost
-   *  it to the "…by Noël Coward" spelling crediting only the stage director at a longer runtime. */
+   *  it to the "…by Noël Coward" spelling crediting only the stage director at a longer runtime.
+   *
+   *  A node whose own title names the record's production — its house by its banner and its season
+   *  ([[Scored.seasonProduction]] and [[IdentityMeasures.billsItsHouse]]) — is withdrawn by no sibling: one house stages a
+   *  work once a season, so a sibling's denial (another season, another house, other credits) says the sibling is
+   *  another production, never that the node is. And a node whose banner alone bills the record under its house
+   *  ([[Scored.houseProduction]]) is withdrawn by no sibling denying the record as ANOTHER house's season production
+   *  ([[CandidateScoring.AnotherHousesSeason]]): that denial is about the sibling's banner, not the work — two houses'
+   *  stagings are two productions, and a banner wrongly learned as another house denies nothing. UK, run 38355584482:
+   *  Flicks' "RBO Cinema Season 2026-27: Macbeth" ×34 (RBO's cinema season relays the Met) withdrew Savoy's "The
+   *  Metropolitan Opera: Macbeth" ×6 from the Met's 2026/27 record, and its Fanciulla billing (the original title Vue's
+   *  feed carries) withdrew Vue's "MET Opera 2026-27: La Fanciulla Del West" ×81 from the Met's 2026/27 Fanciulla. */
   def deniedBySibling(node: EvidenceNode, members: Seq[EvidenceNode], scope: FamilyScope, best: Scored,
                       takenAlone: String => Boolean): Option[(EvidenceNode, String)] = {
     lazy val ownFacts = IdentityMeasures.comparedFacts(ListingFilm, best.measures).keySet
+    val ownProduction = best.seasonProduction && IdentityMeasures.billsItsHouse(best.listing, best.candidate.film)
     def withdraws(denial: Scored) =
-      !denial.deniedByCutOnly || (IdentityMeasures.comparedFacts(ListingFilm, denial.measures).keySet -- ownFacts).nonEmpty
-    members.iterator.filter(sibling => sibling.id != node.id && !takenAlone(sibling.id) && links.titleLinked(node, sibling))
+      !(best.houseProduction && denial.denial.contains(CandidateScoring.AnotherHousesSeason)) &&
+        (!denial.deniedByCutOnly || (IdentityMeasures.comparedFacts(ListingFilm, denial.measures).keySet -- ownFacts).nonEmpty)
+    if (ownProduction) None
+    else members.iterator.filter(sibling => sibling.id != node.id && !takenAlone(sibling.id) && links.titleLinked(node, sibling))
       .flatMap(sibling => scope.of(sibling).find(other => other.candidate.tmdbId == best.candidate.tmdbId && other.denied && withdraws(other))
         .map(other => sibling -> other.denial.getOrElse("denied")))
       .nextOption()

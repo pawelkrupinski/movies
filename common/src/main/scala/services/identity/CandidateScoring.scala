@@ -32,7 +32,7 @@ private[identity] final class CandidateScoring(val generation: CandidateGenerati
   /** [[evidenceDenies]], saying which of its reasons rules the film out. */
   def evidenceDenial(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film, measures: Map[String, Measure]): Option[String] =
     ListingConstraints.seasonsApart(listing.seasonYear, IdentityMeasures.filmSeason(film), film.year).map(_.toString)
-      .orElse(Option.when(IdentityMeasures.namesSeasonProduction(listing, film) && !namesItsSeasonProduction(listing, film))("another house's season production"))
+      .orElse(Option.when(IdentityMeasures.namesSeasonProduction(listing, film) && !namesItsSeasonProduction(listing, film))(CandidateScoring.AnotherHousesSeason))
       // a credit the venue publishes names its staging's record whatever TMDB titles it
       .orElse(Option.when(IdentityMeasures.screenNamesake(listing, film) && !IdentityMeasures.sameDirector(measures))(
         "a screen namesake of the work its stage house's billing names"))
@@ -99,4 +99,10 @@ private[identity] final class CandidateScoring(val generation: CandidateGenerati
    *  is listed plain by venues whose listings are not title-linked to it, so not in its family. */
   val backing: IdentityMeasures.VenueBacking = generation.context.backing
 
+}
+
+private[identity] object CandidateScoring {
+  /** How [[CandidateScoring.evidenceDenial]] names a season production its listing's banner is not the house of: a denial
+   *  about the banner, which says nothing of another listing billing the record's own house ([[Families.deniedBySibling]]). */
+  val AnotherHousesSeason = "another house's season production"
 }
