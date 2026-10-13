@@ -449,9 +449,12 @@ class WebReadModel(
   private var catchUpOwed      = false
   // A checkpoint fails every cold-retry tick for as long as Mongo is down — 120 lines an hour a
   // pod if each logged. The first is news; after it, one line per backstop interval, counting
-  // the ticks it held back. On the injected clock, so a spec steps it.
-  private val checkpointFailureLog =
+  // the ticks it held back. Per OUTAGE: a checkpoint taken starts a fresh one, so the next
+  // outage's first failure logs at once and counts only its own ticks. On the injected clock, so
+  // a spec steps it. Only the tick's own thread touches it.
+  private def freshCheckpointFailureLog() =
     new tools.LogThrottle(reloadInterval.value.toNanos, () => clock.millis() * 1000000L)
+  private var checkpointFailureLog = freshCheckpointFailureLog()
   private val MaxTicksBetweenReopens =
     math.max(1L, reloadInterval.value.toSeconds / math.max(1L, coldRetryInterval.value.toSeconds))
 
@@ -476,6 +479,7 @@ class WebReadModel(
           }
           if (!_hydrated) coldReload()
         case outcome =>
+          checkpointFailureLog = freshCheckpointFailureLog()
           reopenAttempts += 1
           ticksUntilReopen = math.min((1L << math.min(reopenAttempts, 30)) - 1, MaxTicksBetweenReopens).toInt
           logger.warn(s"WebReadModel: change stream(s) ended (movies live=${movieWatch.exists(_.live)}, " +

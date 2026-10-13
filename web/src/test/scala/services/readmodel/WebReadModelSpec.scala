@@ -387,6 +387,37 @@ class WebReadModelSpec extends AnyFlatSpec with Matchers {
     rm.stop()
   }
 
+  // The throttle is per OUTAGE: a second outage starting within a backstop's interval of the
+  // first one's last line is news again, and its count must not carry the first one's ticks.
+  it should "log the first failing checkpoint of a new outage at once, whatever the last one logged" in {
+    val clock = new _root_.tools.MutableClock(java.time.Instant.parse("2026-10-13T12:00:00Z"))
+    val repository = new UnreadableReadModelRepository
+    repository.healReads()
+    val rm = new WebReadModel(repository, driftSettle = WebReadModel.DriftSettle(Duration.Zero), clock = clock)
+    rm.start()
+
+    def outage(ticks: Int): Seq[String] = {
+      repository.failingCheckpoint = true
+      repository.failMovieStream()
+      _root_.tools.LogCapture.thisThread(classOf[WebReadModel].getName) {
+        (1 to ticks).foreach { _ =>
+          rm.coldRetryTick()
+          clock.advanceSeconds(WebReadModel.DefaultColdRetryInterval.value.toSeconds)
+        }
+      }.map(_.getFormattedMessage).filter(_.contains("no stream checkpoint"))
+    }
+
+    outage(5) should have size 1
+    repository.failingCheckpoint = false
+    rm.coldRetryTick()
+    rm.streamsLive shouldBe true
+    rm.coldRetryTick()                         // a tick that finds them live, as the next one would
+    val second = outage(1)
+    second should have size 1
+    second.head should not include "more failed"
+    rm.stop()
+  }
+
   it should "reload when a server-side count drifts from the in-memory model" in {
     // countScreenings reports one more than was streamed in — standing in for a
     // delivered event the applier dropped, which a count-blind backstop misses.
