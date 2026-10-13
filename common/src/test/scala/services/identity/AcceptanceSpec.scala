@@ -493,4 +493,19 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     ReleaseVeto.unvetoed(scored.copy(measures = Map("rivals" -> IdentityMeasures.Number(4))), Map("rivals" -> IdentityMeasures.Number(4)))("rivals") shouldBe
       IdentityMeasures.Number(1)
   }
+
+  "a calibrated take" should "not stand beside a film only IMDb reached that the evidence weighs higher" in {
+    // PL Kino Kryterium's "DKF: Ktoś całkiem obcy", recording 38363428661: TMDB's Polish title of Foley's 2007 "Perfect
+    // Stranger" (7183) took it at 46.3% while Andersen's "I Was a Stranger" (1193128), which TMDB holds under its Arabic
+    // title and IMDb's suggestion alone reaches, scored 47.8% on another venue's listing of it — the film Kryterium shows.
+    val listing  = Listing("Ktoś całkiem obcy")
+    val stranger = Film("Ktoś całkiem obcy", year = Some(2007), runtime = Some(109))
+    val measures = IdentityMeasures.listingFilm(listing, stranger, Some(1), 0, 0, Houses.Unknown)
+    val foley    = Scored(Candidate(7183, stranger), 0.463, measures, denial = None, listing, Some(1))
+    val andersen = Scored(Candidate(1193128, Film("قضية الغرباء", year = Some(2025), runtime = Some(103))), 0.478, measures, denial = None,
+      listing, None, suggestedOnly = true)
+    acceptance.alone(Seq(andersen, foley)) shouldBe None
+    // one it outscores is no reason to decline
+    acceptance.alone(Seq(foley, andersen.copy(probability = 0.2))).map(_._1.candidate.tmdbId) shouldBe Some(7183)
+  }
 }

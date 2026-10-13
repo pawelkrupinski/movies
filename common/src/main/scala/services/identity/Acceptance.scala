@@ -87,7 +87,16 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
     if (billsSeveralWorks(ranked)) None
     else seasonProduction(ranked).map(_.map(_ -> "season-production"))
       .orElse(datedOrBroadcastSeasonRecord(ranked).map(Some(_))).getOrElse(firstOf(ranked, aloneRules))
+      .filterNot { case ((taken, _), rule) => rule != "imdb-suggested" && outweighedBySuggestion(ranked, taken) }
       .map { case (accepted, rule) => editionNamed(ranked)(accepted) -> rule }.filter(takesNoBill(ranked))
+
+  /** Does an undenied film only IMDb's suggestion reached ([[Scored.suggestedOnly]], which only the IMDb rule may take)
+   *  weigh at least as much on the evidence as `taken`? Then the evidence does not single `taken` out, and no other rule
+   *  takes it: PL Kino Kryterium's "DKF: Ktoś całkiem obcy" took TMDB's Polish title of Foley's 2007 "Perfect Stranger"
+   *  at 46.3% beside Andersen's 2025 "I Was a Stranger" at 47.8% — which TMDB holds under its Arabic title, and another
+   *  venue's listing of the title corroborates — the film Kryterium shows. */
+  private def outweighedBySuggestion(ranked: Seq[Scored], taken: Scored): Boolean =
+    ranked.exists(other => (other ne taken) && other.suggestedOnly && !other.denied && other.probability >= taken.probability)
 
   /** A DOUBLE PROGRAMME: a "+" joining two whole works ([[IdentityMeasures.billsTwoWholeWorks]]), whatever is held
    *  of them, is neither film (user rule) — UK "We're Going on a Bear Hunt + The Tiger Who Came to Tea" {Joanna
