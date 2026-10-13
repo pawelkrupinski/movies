@@ -133,6 +133,7 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     val macbeth = (1703622, Film("The Metropolitan Opera 2026/27: Macbeth", year = Some(2026)), Some(1))
     val billed  = Seq(
       "RB&O Romeo & Juliet (12 TBC) 170 mins" -> romeo, // Electric Palace Bridport
+      "RB&O 26/27: Romeo & Juliet"            -> romeo, // Lonsdale Alhambra Penrith
       "RBO present Romeo and Juliet 27"        -> romeo, // The Flavel
       "ROYAL BALLET & OPERA LIVE_ ROMEO AND JULIET" -> romeo,
       "RBO/MET presents MACBETH"               -> macbeth, // The Flavel

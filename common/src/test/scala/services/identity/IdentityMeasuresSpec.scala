@@ -85,12 +85,16 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "be read in a box office's short spellings" in {
-    // Prod UK 2026-10-13: Lonsdale Alhambra's "RB&O 26/27: Romeo & Juliet" and Keswick's "Royal Ballet 2026/7: Romeo &
-    // Juliet" named their season, unread, and left the 2026/27 record below the threshold.
-    IdentityMeasures.seasonYear(Seq("RB&O 26/27: Romeo & Juliet")) shouldBe Some(2026)
+    // Prod UK 2026-10-13: Keswick's "Royal Ballet 2026/7: Romeo & Juliet" named its season, unread, and left the 2026/27
+    // record below the threshold.
     IdentityMeasures.seasonYear(Seq("Royal Ballet 2026/7: Romeo & Juliet")) shouldBe Some(2026)
     IdentityMeasures.seasonYear(Seq("Met Opera 2029/0: Tosca")) shouldBe Some(2029)
-    // nor two numbers a slash joins that are no season: an age band, a date, a fraction
+    // nor two numbers a slash joins, never a season the title states: an age band, a date, and a banner left from the
+    // season it was first billed in — DE "Berliner Philharmoniker 25/26" screens the 2026 Silvesterkonzert on 31 December
+    // 2026, and read as season 2025 it held ×73 spellings of the concert apart (identity measure, recording 38363428661).
+    // A relay's "RB&O 26/27" takes its season from its screenings ([[IdentityMeasures.Listing.broadcastSeason]]).
+    IdentityMeasures.seasonYear(Seq("Berliner Philharmoniker 25/26: Silvesterkonzert")) shouldBe None
+    IdentityMeasures.seasonYear(Seq("RB&O 26/27: Romeo & Juliet")) shouldBe None
     IdentityMeasures.seasonYear(Seq("Kids Club 12/13")) shouldBe None
     IdentityMeasures.seasonYear(Seq("Live 24/7")) shouldBe None
     IdentityMeasures.seasonYear(Seq("Royal Ballet 2026/8: Romeo & Juliet")) shouldBe None
