@@ -8,6 +8,8 @@ import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.{JsObject, Json}
+import play.api.test.Helpers._
+import play.api.test.{FakeRequest, Helpers}
 import tools.SpecTimeouts
 
 import java.net.URI
@@ -162,28 +164,47 @@ class InstalledBuildContractSpec extends AnyFlatSpec with Matchers with BeforeAn
     withClue(failures.take(20).mkString("\n")) { failures shouldBe empty }
   }
 
-  "A deep link to any page" should "open its city, except the pages old builds know as another country's city" in {
+  /** Every city segment a country's links carry — a page's slug, a renamed one, an
+   *  alias (the last two are the catalog's `otherSlugs`, `formerSlugs` among them) —
+   *  with the page the web sends it to. */
+  private val everySegment: Seq[(Country, String, City)] = for {
+    country <- Country.switchable
+    segment <- (country.cities.map(_.slug) ++ country.renamedSlugs.keys ++ country.slugAliases.keys).distinct.sorted
+    page    <- country.resolve(segment).toSeq
+  } yield (country, segment, page)
+
+  /** The served association file's excluded paths. */
+  private lazy val aasaExcludes: Set[String] = {
+    val controller = new WellKnownController(Helpers.stubControllerComponents())
+    val served = Json.parse(contentAsString(controller.appleAppSiteAssociation(FakeRequest())))
+    (served \ "applinks" \ "details" \ 0 \ "components").as[Seq[JsObject]]
+      .filter(c => (c \ "exclude").asOpt[Boolean].contains(true)).map(c => (c \ "/").as[String]).toSet
+  }
+
+  "A deep link to any page or other name of one" should "open its city, or be left to Safari by the AASA" in {
+    // What a 2.0.11 build opens for each: a city other than the web's page is wrong,
+    // and so is nothing at all for a link that names a page.
     val wrong = for {
-      country <- Country.switchable
-      city    <- country.cities
-      url      = s"${country.webUrl.get}/${city.slug}/movie/dune"
-      if !Old.open(url).contains(country.code -> InstalledBuildSlugs.of(country, city))
-    } yield country -> city
-    // Exactly the displaced pages: `/uk/york/` opens Pennsylvania's York, the slug's old
-    // owner's. iOS opens them in Safari (the AASA excludes them below); Android App
-    // Links are baked into the APK and cannot be carved out — its known residual, which
-    // opens the old owner's city (`/uk/york/` → York, Pennsylvania), or, where the
-    // old owner has no page there any more (`/us/kent/`, the UK's retired county), no
-    // city at all: the app stays on the one it had.
-    wrong.map { case (c, city) => c.code -> city.slug }.sorted shouldBe
-      InstalledBuildSlugs.displaced.map { case (c, city) => c.code -> city.slug }.sorted
-    wrong.size shouldBe 45
-    val aasa = WellKnownController.withInstalledBuildExcludes(
-      Source.fromResource("wellknown/apple-app-site-association").mkString)
-    wrong.foreach { case (c, city) =>
-      aasa should include(s""""${c.pathPrefix}/${city.slug}/*"""")
-      Old.open(s"${c.webUrl.get}/${city.slug}/").map(_._1) should not be Some(c.code)
+      (country, segment, page) <- everySegment
+      opened = Old.open(s"${country.webUrl.get}/$segment/movie/dune").map { case (_, slug) => serverCity(slug) }
+      if opened.fold(country.bySlug.contains(segment))(_ != (country -> page))
+    } yield (country, segment)
+    // iOS: every one excluded, listing and everything under it, so it opens in Safari.
+    val notExcluded = wrong.filterNot { case (c, segment) =>
+      aasaExcludes(s"${c.pathPrefix}/$segment/") && aasaExcludes(s"${c.pathPrefix}/$segment/*")
     }
+    withClue(notExcluded.map { case (c, s) => s"${c.code}/$s" }.take(40).mkString("\n")) { notExcluded shouldBe empty }
+    // Android App Links are baked into the APK and cannot be carved out: these are
+    // its known residual. A displaced page opens the slug's old owner's city
+    // (`/uk/york/` → York, Pennsylvania) or, where that owner has no page any more
+    // (`/us/kent/`, the UK's retired county), nothing; an alias that is another
+    // country's catalog slug opens that city (`/uk/rochester/` → Rochester, New York).
+    wrong.map { case (c, s) => c.code -> s } shouldBe InstalledBuildSlugs.misopened.map { case (c, s) => c.code -> s }
+    wrong.size shouldBe 81
+    // …and nothing else is excluded: every other city link still opens the app.
+    val fileExcludes = Json.parse(Source.fromResource("wellknown/apple-app-site-association").mkString)
+      .\("applinks").\("details").\(0).\("components").as[Seq[JsObject]].map(c => (c \ "/").as[String]).toSet
+    (aasaExcludes -- fileExcludes).size shouldBe 2 * wrong.size
   }
 
   it should "open every displaced page under the slug the catalog names it by" in {

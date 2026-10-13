@@ -49,11 +49,12 @@ object WellKnownController {
 
   /**
    * TEMPORARY, with [[models.LegacySlugOwners]]: `aasa` with an exclude for every
-   * page installed iOS builds from before slugs were per country (`mobile-ios-2.0.11`)
-   * know as ANOTHER country's city ([[InstalledBuildSlugs.displaced]]) — its listing
-   * and everything under it. Such a build drops a link's country segment and picks
-   * the city by slug, so `/uk/york/` would open Pennsylvania's York; excluded, the
-   * link opens in Safari on the right page. Inserted after the file's own excludes,
+   * city link installed iOS builds from before slugs were per country
+   * (`mobile-ios-2.0.11`) open on the wrong city ([[InstalledBuildSlugs.misopened]])
+   * — its listing and everything under it. Such a build drops a link's country
+   * segment and picks the city by slug, so `/uk/york/` would open Pennsylvania's
+   * York and `/uk/rochester/` (a UK town on Chatham's page) Rochester, New York;
+   * excluded, the link opens in Safari on the right page. Inserted after the file's own excludes,
    * ahead of the claims they carve out of: iOS takes the first component that
    * matches.
    */
@@ -62,8 +63,8 @@ object WellKnownController {
     val details    = (json \ "applinks" \ "details").as[Seq[JsObject]]
     val components = (details.head \ "components").as[Seq[JsObject]]
     val (excludes, claims) = components.span(c => (c \ "exclude").asOpt[Boolean].contains(true))
-    val added = InstalledBuildSlugs.displaced.flatMap { case (country, city) =>
-      Seq(s"${country.pathPrefix}/${city.slug}/", s"${country.pathPrefix}/${city.slug}/*")
+    val added = InstalledBuildSlugs.misopened.flatMap { case (country, segment) =>
+      Seq(s"${country.pathPrefix}/$segment/", s"${country.pathPrefix}/$segment/*")
         .map(path => Json.obj("/" -> path, "exclude" -> JsTrue))
     }
     val detail   = details.head + ("components" -> JsArray(excludes ++ added ++ claims))

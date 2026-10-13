@@ -51,9 +51,31 @@ object InstalledBuildSlugs {
   def of(country: Country, city: City): String = qualified.getOrElse((country, city.slug), city.slug)
 
   /** The pages installed builds do NOT know by their own slug, with their country:
-   *  `/{country}/{page slug}/` names a different city to them (the keeper's), so
-   *  the iOS association file excludes those paths and old builds open them in
-   *  Safari. Sorted by country order, then slug. */
+   *  `/{country}/{page slug}/` names a different city to them (the keeper's), or
+   *  none. Sorted by country order, then slug. */
   lazy val displaced: Seq[(Country, City)] =
     Country.switchable.flatMap(c => c.cities.filter(city => qualified.contains((c, city.slug))).sortBy(_.slug).map(c -> _))
+
+  /** Catalog `slug` → the page it names, with its country: what an installed build
+   *  opens for a link whose city segment is that slug, whatever country the link
+   *  names (it drops the country segment and takes the first city with the slug). */
+  lazy val opens: Map[String, (Country, City)] =
+    Country.switchable.flatMap(c => c.cities.map(city => of(c, city) -> (c, city))).toMap
+
+  /** Every city segment of every country — a page's slug, a renamed one, an alias
+   *  ([[Country.resolve]]) — whose link an installed build opens on a city OTHER
+   *  than the one the web sends it to: a [[displaced]] page, and an alias or
+   *  renamed slug that is another country's catalog `slug` (`/uk/rochester/`, a UK
+   *  town on Chatham's page, is Rochester, New York's `slug`). The iOS association
+   *  file excludes `/{country}/{segment}/` and everything under it, so old builds
+   *  open those links in Safari, on the right page. A segment no city of the
+   *  catalog has opens nothing at all, which is not a wrong city, and is claimed.
+   *  Sorted by country order, then segment. */
+  lazy val misopened: Seq[(Country, String)] =
+    Country.switchable.flatMap { c =>
+      (c.cities.map(_.slug) ++ c.renamedSlugs.keys ++ c.slugAliases.keys).distinct.sorted.filter { segment =>
+        val opened = opens.get(segment)
+        qualified.contains((c, segment)) || (opened.isDefined && opened != c.resolve(segment).map(c -> _))
+      }.map(c -> _)
+    }
 }
