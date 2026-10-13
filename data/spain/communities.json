@@ -1,5 +1,5 @@
 {
-  "_comment": "Province -> autonomous community. Reference data (the Spanish state's own administrative division), not harvested from SensaCine, so it is kept apart from provinces.json and survives a re-harvest. Its ONE job is to qualify a province slug that another country has already claimed in City.bySlug's single global namespace -- the same role a state plays for a US metro. Keys must match provinces.json's `name` exactly; the roster generator fails loudly on any province missing here.",
+  "_comment": "Province -> autonomous community. Reference data (the Spanish state's own administrative division), not harvested from SensaCine, so it is kept apart from provinces.json and survives a re-harvest. Its ONE job is each page's community-qualified slug (toledo-castilla-la-mancha), which answers as an alias of the page and is kept by a retired page -- the same role a state plays for a US page. Slugs are per country, so it no longer disambiguates against another country's pages. Keys must match provinces.json's `name` exactly; the roster generator fails loudly on any province missing here.",
   "A Coruña": "Galicia",
   "Albacete": "Castilla-La Mancha",
   "Alicante": "Comunidad Valenciana",

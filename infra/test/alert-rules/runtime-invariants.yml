@@ -52,7 +52,7 @@ tests:
               country: us
             exp_annotations:
               summary: "1 us cit(y/ies) serve at least 20% (and 5+) fewer films than the corpus has"
-              description: 'For 30 minutes, in each of these cities the web read model has served at least 5 and at least 20% fewer films than the worker''s corpus census says the city has (kinowo_web_movies_served vs kinowo_worker_movies_served, scope="all"). Name the cities with `topk(10, country_city:readmodel_served_short_of_corpus:films{country="us"})`. Many cities at once after a deploy is an id-scheme or city-model change orphaning projected rows (2026-08-30''s metro split); ONE city is usually a slug rename -- the rows are filed under the old slug, see City.renamedSlugs and WebReadModel''s former-slug fallback. Re-projection heals it at the scrape cadence (14h in the US), so do not wait it out.'
+              description: 'For 30 minutes, in each of these cities the web read model has served at least 5 and at least 20% fewer films than the worker''s corpus census says the city has (kinowo_web_movies_served vs kinowo_worker_movies_served, scope="all"). Name the cities with `topk(10, country_city:readmodel_served_short_of_corpus:films{country="us"})`. Many cities at once after a deploy is an id-scheme or city-model change orphaning projected rows (2026-08-30''s metro split); ONE city is usually a slug rename -- the rows are filed under the old slug, see Country.renamedSlugs and WebReadModel''s former-slug fallback. Re-projection heals it at the scrape cadence (14h in the US), so do not wait it out.'
 
   # A BOOT RACE: the web comes up 60 films short of a city and catches up within ten minutes --
   # the longest benign episode in the fortnight's replay was 8. Never pages.

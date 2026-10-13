@@ -83,7 +83,7 @@ groups:
             cities with `topk(10, country_city:readmodel_served_short_of_corpus:films{country="{{
             $labels.country }}"})`. Many cities at once after a deploy is an id-scheme or city-model
             change orphaning projected rows (2026-08-30's metro split); ONE city is usually a slug
-            rename -- the rows are filed under the old slug, see City.renamedSlugs and
+            rename -- the rows are filed under the old slug, see Country.renamedSlugs and
             WebReadModel's former-slug fallback. Re-projection heals it at the scrape cadence (14h
             in the US), so do not wait it out.
 
