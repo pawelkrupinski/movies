@@ -1298,6 +1298,10 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Clayface Vorpremiere"                                                  -> "Clayface",
     "Dune: Part Three  Vorpremiere"                                         -> "Dune: Part Three",
     "CLUB KIDMonGay-Vorpremiere"                                            -> "CLUB KIDMonGay",
+    // FilmRaum (DE prod 2026-10-13): the preview's date and time after a comma, where its "- Preview" sibling resolved.
+    "Das Geheimnis der gestohlenen Maske, Preview am 25.10. um 15 Uhr"      -> "Das Geheimnis der gestohlenen Maske",
+    "Clayface - Vorpremiere am 25.10.2026"                                  -> "Clayface",
+    "Clayface (Preview 25.10. 20:00 Uhr)"                                   -> "Clayface",
     "Rascal Does Not Dream of a Dear Friend (OmU) - CineAnime"              -> "Rascal Does Not Dream of a Dear Friend - CineAnime",
     "Türkische Filmtage: Bildigin Gibi Degil (OmeU) - Not what you think"   -> "Türkische Filmtage: Bildigin Gibi Degil - Not what you think",
     "Halloween - Special: Shining (OmU) (Extended Cut)"                     -> "Halloween - Special: Shining (Extended Cut)",

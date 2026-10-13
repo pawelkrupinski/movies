@@ -930,6 +930,12 @@ object ExtraTitleRules {
     // A festival's preview named after a pipe: the preview and the festival it previews go together.
     searchStrip("xtra-preview-pipe-tail",          """(?iu)(?<=\S)\s*\|\s*\p{L}*preview(?![\p{L}\p{N}]).*$""",
       "'<film> | Preview Osteuropäische Filmtage 2026' festival-preview tail (DE 2026-10-12: Zentralkino Dresden Minotaurus)"),
+    // A preview or Vorpremiere billed with its date and time — after a comma, a dash or in brackets: "…, Preview am
+    // 25.10. um 15 Uhr" searched whole while its "… - Preview" sibling resolved. Only date and time words may follow
+    // the marker, a digit among them, so a preview naming anything else is the rules' above.
+    searchStrip("xtra-preview-dated-tail",
+      """(?iu)(?<=\S)\s*(?:[,|–—-]\s*|\(\s*)(?:[\p{L}\p{N}]+\s+){0,2}?\p{L}*(?:preview|vorpremiere)(?=[^()]*\d)(?:[\s,]+(?:am|um|ab|on|at|uhr|h|\d{1,2}(?:[.:/]\d{1,2}){0,2}\.?(?:\d{2,4})?)(?![\p{L}\p{N}]))+\s*\)?\s*$""",
+      "'<film>, Preview am 25.10. um 15 Uhr' / '<film> - Vorpremiere am 25.10.2026' / '<film> (Preview 25.10. 20:00 Uhr)' dated preview tail (DE 2026-10-13: FilmRaum's Das Geheimnis der gestohlenen Maske)"),
     // A subtitle note in brackets naming the languages ("(Mandarin with engl.Sub)", "(koreanisch mit engl.UT)",
     // "(deutsch with English subs)" — six in the DE recording of 2026-10-13): FormatTags' bracket peel takes
     // "(subtitled)", not an abbreviated "Sub" or "UT" inside a sentence.
