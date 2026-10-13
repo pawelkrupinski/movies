@@ -986,6 +986,8 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
         "Royal Ballet and Opera: Tosca")),
       (UnitedKingdom, "National Theatre Live: Golden Boy", Seq(
         "NT Live: Golden Boy",
+        "NTL: Golden Boy",
+        "NTL Live: Golden Boy",
         "National Theatre Live: Golden Boy")),
       (UnitedStates, "The Metropolitan Opera: Otello", Seq(
         "The Metropolitan Opera 2026/27: Otello",

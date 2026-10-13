@@ -2401,6 +2401,67 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  // UK venues as the scrape lists them: the title through the ingest's own cleaning (`Listing.of`), its certificate peeled
+  private val ukVenues = models.Cinema.all.filter(c => models.City.forCinema(c).exists(_.country.language.getCountry == "GB")).take(24)
+  private def scraped(venue: Cinema, raw: String, year: Option[Int] = None, director: Option[String] = None, runtime: Option[Int] = None) =
+    Listing.of(venue, models.CinemaMovie(models.Movie(raw, runtimeMinutes = runtime, releaseYear = year), venue, None, None, None, Nil,
+      director.toSeq, Seq(models.Showtime(java.time.LocalDateTime.of(2099, 3, 1, 18, 0), None))), normalizer)
+  private def namesakes(title: String, ids: Int*) =
+    ids.zipWithIndex.map { case (id, i) => F(id, title, 1970 + i * 7, s"Director $i", 90 + i, 1.8 - i * 0.05) }
+
+  "A relay a box office bills with its certificate" should "take the record its uncertified siblings take" in {
+    // UK "NT LIVE: Golden Boy (15)" ×10 and its "(15 tbc)", "- Cert 15" spellings, recording 38363428661: once the
+    // certificate was peeled at ingest they were kept apart from "Golden Boy (NT Live)" {Sam Yates} and "National Theatre
+    // Live: Golden Boy" by the learned listing-listing cut, and 1723978 was rejected. TMDB's record as it holds it (en-GB),
+    // ranked eighth for "Golden Boy" behind its namesakes; nothing answers "NT Live: Golden Boy".
+    val uk = ukVenues
+    val records = F(1723978, "National Theatre Live: Golden Boy", 2026, "Sam Yates", 0, 1.0,
+      alternatives = Seq("National Theatre at Home: Golden Boy", "Golden Boy")) +:
+      namesakes("Golden Boy", 526031, 1143881, 267285, 621866, 43529, 891037, 1421071)
+    val siblings = uk.take(6).map(scraped(_, "National Theatre Live: Golden Boy", director = Some("Sam Yates"), runtime = Some(180))) ++
+      uk.slice(6, 12).map(scraped(_, "NT Live: Golden Boy", Some(2026), Some("Sam Yates"), Some(180))) ++
+      Seq(scraped(uk(12), "Golden Boy (NT Live)", director = Some("Sam Yates"), runtime = Some(190)),
+        scraped(uk(13), "National Theatre Live: Golden Boy", runtime = Some(150)), scraped(uk(14), "National Theatre Live: Golden Boy (15)", runtime = Some(180)))
+    val certified = Seq(scraped(uk(15), "NT LIVE: Golden Boy (15)", runtime = Some(180)), scraped(uk(16), "NT Live: Golden Boy (15)", runtime = Some(180)),
+      scraped(uk(17), "NT Live: Golden Boy (15 tbc)"), scraped(uk(18), "NT Live: Golden Boy - Cert 15"), scraped(uk(19), "NT Live: Golden Boy (15 TBC) (Gala)"),
+      scraped(uk(20), "NT Live: Golden Boy"))
+    val ls = siblings ++ certified
+    val r  = shipped(ls, records)
+    withClue(rendered(r, ls))(films(r, ls) shouldBe Seq(Some(1723978)))
+  }
+
+  it should "take it beside a sibling billing another running time" in {
+    // UK "NT Live: The Misanthrope (15)" [106′], recording 38363428661: kept apart from "National Theatre Live: The
+    // Misanthrope" [120′] by the learned cut, it leaned to Bergman's 1974 film.
+    val uk = ukVenues
+    val records = F(1693710, "National Theatre Live: The Misanthrope", 2026, "Indhu Rubasingham", 105, 2.4015,
+      alternatives = Seq("National Theatre at Home: The Misanthrope", "The Misanthrope")) +:
+      namesakes("The Misanthrope", 262488, 680744, 511684, 449377, 274840, 905045)
+    val siblings = uk.take(8).map(scraped(_, "NT Live: The Misanthrope", Some(2026), runtime = Some(106))) ++
+      Seq(scraped(uk(8), "National Theatre Live: The Misanthrope", runtime = Some(120)), scraped(uk(9), "National Theatre Live: The Misanthrope"),
+        scraped(uk(10), "National Theatre Live: The Misanthrope (15)"), scraped(uk(11), "NT Live: The Misanthrope - Cert 15"))
+    val certified = Seq(scraped(uk(12), "NT Live: The Misanthrope (15)", runtime = Some(106)))
+    val ls = siblings ++ certified
+    val r  = shipped(ls, records)
+    withClue(rendered(r, ls))(films(r, ls) shouldBe Seq(Some(1693710)))
+  }
+
+  it should "take it billed as a screening with its running time" in {
+    // UK Electric Palace Bridport's "Screening: NTL - Hay Fever (12A TBC) (160 mins TBC)" ×5 and "NTL: Hay Fever",
+    // recording 38363428661: they leaned to the 1984 BBC "Hay Fever" once the certificate was peeled.
+    val uk = ukVenues
+    val records = Seq(F(1791571, "National Theatre Live: Hay Fever", 2027, "Emily Burns", 0, 0.9384),
+      F(120573, "Hay Fever", 1984, "Cedric Messina", 91, 0.9388), F(65325, "Hay Fever", 2010, "Laura Luchetti", 100, 1.4381))
+    val siblings = uk.take(6).map(scraped(_, "National Theatre Live: Hay Fever", director = Some("Emily Burns"), runtime = Some(160))) ++
+      uk.slice(6, 12).map(scraped(_, "NT Live: Hay Fever", Some(2027), Some("Emily Burns"), Some(160))) ++
+      Seq(scraped(uk(12), "National Theatre Live: Hay Fever (12A tbc)"), scraped(uk(13), "NT Live: Hay Fever (12A)", runtime = Some(160)))
+    val screened = Seq(scraped(uk(14), "Screening: NTL - Hay Fever (12A TBC) (160 mins TBC)"), scraped(uk(15), "NTL: Hay Fever"),
+      scraped(uk(16), "On Screen: National Theatre Live: Hay Fever (12A)", runtime = Some(160)))
+    val ls = siblings ++ screened
+    val r  = shipped(ls, records)
+    withClue(rendered(r, ls))(films(r, ls) shouldBe Seq(Some(1791571)))
+  }
+
   "A ballet company's relay crediting its screen director" should "not take another house's recording of its work by that director" in {
     // UK Odeon's "English National Ballet: The Sleeping Beauty" {Ross MacGibbon} [144′] ×22 took the Royal Ballet's 2017
     // recording (TMDB 446902, also his) by his credit; ENB's 2026 relay is 1760605, his too.

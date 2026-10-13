@@ -85,8 +85,11 @@ object IdentityMeasures {
     private[identity] lazy val undecoratedWords: Seq[Seq[String]] =
       (Seq(title) ++ rawTitle).map(t => IdentityMeasures.creditedWork(t).getOrElse(t)).flatMap(decorations.strip)
         .map(IdentityMeasures.words).filter(_.nonEmpty).distinct
-    /** The title and raw title, and the shapes, as yearless tokens (`billing`). */
-    private[identity] lazy val billedTitles: Seq[Seq[String]] = (Seq(title) ++ rawTitle).map(IdentityMeasures.yearlessTokens).distinct
+    /** The title and raw title, each also as ingest cleans it ([[services.movies.FormatTags]]), as yearless tokens
+     *  (`billing`): a box office's certificate is no part of the house's billing. UK "NT LIVE: Golden Boy (15)" billed
+     *  "Golden Boy" under no banner, its work not at the title's edge, and measured an `overlap` of "Golden Boy (NT Live)". */
+    private[identity] lazy val billedTitles: Seq[Seq[String]] =
+      (Seq(title) ++ rawTitle).flatMap(t => Seq(t, services.movies.FormatTags.stripFormatTags(t))).map(IdentityMeasures.yearlessTokens).distinct
     private[identity] lazy val billedWorks: Set[Seq[String]] = shapes.map(IdentityMeasures.yearlessTokens).toSet.filter(_.nonEmpty)
     /** Does the venue publish a FACT beside its title — a year (field, bracket or season), a
      *  running time, a director, a country, or an original title that is not its title again
@@ -1002,8 +1005,11 @@ object IdentityMeasures {
    *
    *  So is a record BILLING the listing's work under the listing's house ([[billing]]): the same
    *  banner once seasons and bracketed years are dropped ("The Metropolitan Opera: Manon (2027)"
-   *  and "The Metropolitan Opera 2026/27: Manon"), or the house the listing's banner was learned
-   *  to be (`houses`: "NT Live" and "National Theatre Live"). */
+   *  and "The Metropolitan Opera 2026/27: Manon"), one abbreviating the other ([[abbreviates]]), or
+   *  the house the listing's banner was learned to be (`houses`). The first two are the names
+   *  alone, so two listings read them too: UK "NT LIVE: Golden Boy (15)" [180′] and "National
+   *  Theatre Live: Golden Boy" [150′] measured an `overlap`, which with the half hour between them
+   *  kept them apart by the learned cut, and "NT Live: Golden Boy" ×5 with them. */
   def titleRelation(l: Listing, f: Film, houses: Houses = Houses.Unknown, qualifiers: Qualifiers = Qualifiers.Unknown): Category =
     titleRelation(l, f, Some(houses), qualifiers)
 
@@ -1032,7 +1038,8 @@ object IdentityMeasures {
     else if (originalForms.map(_.key).exists(own) || originalForms.exists(articleless)) Category("original")
     else if (alternativeForms.map(_.key).exists(own) || alternativeForms.exists(articleless)) Category("alternative")
     else (if (fs.isEmpty) None
-          else containment(ls, l.shapeKeys, fs, houses.exists(h => namesSeasonProduction(l, f) || billing(l, f).exists(h.same)), l.shapeWords, l.undecoratedWords)).getOrElse(
+          else containment(ls, l.shapeKeys, fs,
+            houses.isDefined && namesSeasonProduction(l, f) || billing(l, f).exists(houses.getOrElse(Houses.Unknown).same), l.shapeWords, l.undecoratedWords)).getOrElse(
       if (ls.exists(a => all.exists(b => a.wordSet.exists(b.wordSet)))) Category("overlap") else Category("none"))
   }
 

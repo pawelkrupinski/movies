@@ -1155,16 +1155,18 @@ object ExtraTitleRules {
       """(?iu)^(?:The\s+)?(?:Met|Metropolitan)\s+Opera\s*:\s*(\S.*)$""",
       "The Metropolitan Opera: $1",
       "'Met Opera: <work>' / 'The MET Opera: <work>' — one house banner"),
-    // 4. National Theatre Live, prefixed ("NT Live: <play>", "NT Live <play>") or after the play — Cinema City's
-    //    "<play> - National Theatre Live 2026" and Gdynia's "<play> | TEATR W KINIE | National Theatre Live".
+    // 4. National Theatre Live, prefixed ("NT Live: <play>", "NT Live <play>", its own "NTL: <play>", "NTL Live: <play>")
+    //    or after the play — Cinema City's "<play> - National Theatre Live 2026" and Gdynia's "<play> | TEATR W KINIE |
+    //    National Theatre Live". UK The Beehive's "NTL: Hay Fever" reached its siblings only through a bare "Hay Fever"
+    //    [120′], which their running times keep apart.
     canonProperName("xtra-canonical-nt-live-suffix",
       """(?iu)^(\S.*?)\s*(?:\|\s*Teatr\s+w\s+kinie\s*)?(?:\||\s[-–—])\s*(?:NT|National\s+Theatre)\s+Live(?:\s+(?:19|20)\d{2})?\s*$""",
       "National Theatre Live: $1",
       "'<play> - National Theatre Live 2026' / '<play> | TEATR W KINIE | National Theatre Live' — the banner after the play, moved to the front"),
     canonProperName("xtra-canonical-nt-live",
-      """(?iu)^(?:NT|National\s+Theatre)\s+Live\s*(?::\s*|\s)(\S.*)$""",
+      """(?iu)^(?:(?:NT|National\s+Theatre)\s+Live|NTL(?:\s+Live)?)\s*(?::\s*|\s)(\S.*)$""",
       "National Theatre Live: $1",
-      "'NT Live: <play>' / 'NT Live <play>' — one house banner")
+      "'NT Live: <play>' / 'NT Live <play>' / 'NTL: <play>' — one house banner")
   )
 
   /** Per-cinema (client) cleanups — venue-specific junk too narrow to globalise
