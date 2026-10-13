@@ -3686,7 +3686,7 @@
     "_id" : "f29a2428d648c793",
     "title" : "90. urodziny Pavarottiego - Koncert gwiazd z Arena di Verona",
     "posterUrl" : "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8131S2R.jpg",
-    "fallbackPosterUrls" : [ "https://www.novekino.pl/multimedia/90_urodziny_pavarottiego/plakat.jpg", "https://bilety.kino.swiebodzin.pl:4433/MSI/ImageData.ashx?id=670&mode=thumb" ],
+    "fallbackPosterUrls" : [ ],
     "runtimeMinutes" : 92,
     "releaseYear" : 2025,
     "genres" : [ ],
@@ -3701,29 +3701,6 @@
     },
     "weightedRating" : 0,
     "synopsisByCity" : { },
-    "shareCardPending" : false
-  }, {
-    "_id" : "f29a2428d648c793~90urodzinypavarottiegokoncertgwiazdzarenadiverona2025",
-    "title" : "90. urodziny Pavarottiego. Koncert gwiazd z Arena di Verona 2025",
-    "posterUrl" : "https://www.cinema-city.pl/xmedia-cw/repo/feats/posters/8131S2R.jpg",
-    "fallbackPosterUrls" : [ "https://www.novekino.pl/multimedia/90_urodziny_pavarottiego/plakat.jpg", "https://bilety.kino.swiebodzin.pl:4433/MSI/ImageData.ashx?id=670&mode=thumb" ],
-    "runtimeMinutes" : 92,
-    "releaseYear" : 2025,
-    "genres" : [ ],
-    "countries" : [ "Włochy" ],
-    "directors" : [ "Luigi Antonini (reżyser)", "Matteo Parmeggiani (dyrygent)" ],
-    "cast" : [ "Andrea Bocelli", "José Carreras", "Plácido Domingo", "Il Volo", "Jonathan Tetelman", "Hauser" ],
-    "trailerUrls" : [ "https://www.youtube.com/embed/qigVesiMEQ0" ],
-    "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/90.+urodziny+Pavarottiego.+Koncert+gwiazd+z+Arena+di+Verona+2025/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=90.+urodziny+Pavarottiego.+Koncert+gwiazd+z+Arena+di+Verona+2025",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=90.+urodziny+Pavarottiego.+Koncert+gwiazd+z+Arena+di+Verona+2025"
-    },
-    "weightedRating" : 0,
-    "synopsisByCity" : {
-      "warszawa" : "**Jesienią 2025 roku w słynnej Arena di Verona zebrały się największe gwiazdy opery i popu, w tym Andrea Bocelli, Jonathan Tetelman, Angela Gheorghiu i Il Volo, by dać niebywały koncert, który... przywrócił do życia Luciana Pavarottiego, króla tenorów i wielkiego śpiewaka zwykłych ludzi. Jego dwaj żyjący koledzy, Plácido Domingo i José Carreras, zaśpiewali z nim na żywo. Niemożliwe stało się faktem – Trzej Tenorzy powrócili na estradę!**\n\nNajnowszemu koncertowi ku czci jedzącego za trzech śpiewaka o niebiańskim głosie, który wciąż przywołuje na myśl skąpane w słońcu i spaghetti Włochy, nadano znaczący tytuł: „Luciano Pavarotti. Człowiek, który poruszył świat”. To prawda. Choć święcił nieprawdopodobne tryumfy na najważniejszych scenach, począwszy od mediolańskiej La Scali, a skończywszy na nowojorskiej The Metropolitan Opera, Luciano Pavarotti chciał przybliżyć muzykę klasyczną ludziom na całym świecie. To dzięki swym popularyzatorskim koncertom sprawił, że wielu z nas pokochało operę. Na jego występ w Hyde Parku, mimo ulewy, przyszło ponad 100.000 osób, a jego transmitowane przez telewizję występy z Domingiem i Carrerasem (Trzej Tenorzy) sprawiały, że w miastach i miasteczkach zamierał ruch na ulicach.\n\nKoncert z legendarnego werońskiego amfiteatru to wiązanka najsłynniejszych arii operowych i niezaprzeczalnych evergreenów w wykonaniu nie tylko klasycznych śpiewaków, ale też artystów, którzy z powodzeniem łączą muzykę poważną z popową. Oprócz wcześniej wymienionych gwiazd wystąpili również: wiolonczelista Hauser, piosenkarz Umberto Tozzi, a także Vittorio Grigolo, międzynarodowej klasy tenor, który w wieku 13 lat zaśpiewał w Operze Rzymskiej partię Pastuszka w „Tosce” Pucciniego, a rolę Cavaradossiego w tym spektaklu kreował wtedy sam Luciano Pavarotti.",
-      "plock" : "**Jesienią 2025 roku w słynnej Arena di Verona zebrały się największe gwiazdy opery i popu, w tym Andrea Bocelli, Jonathan Tetelman, Angela Gheorghiu i Il Volo, by dać niebywały koncert, który... przywrócił do życia Luciana Pavarottiego, króla tenorów i wielkiego śpiewaka zwykłych ludzi. Jego dwaj żyjący koledzy, Plácido Domingo i José Carreras, zaśpiewali z nim na żywo. Niemożliwe stało się faktem – Trzej Tenorzy powrócili na estradę!**\n\nNajnowszemu koncertowi ku czci jedzącego za trzech śpiewaka o niebiańskim głosie, który wciąż przywołuje na myśl skąpane w słońcu i spaghetti Włochy, nadano znaczący tytuł: „Luciano Pavarotti. Człowiek, który poruszył świat”. To prawda. Choć święcił nieprawdopodobne tryumfy na najważniejszych scenach, począwszy od mediolańskiej La Scali, a skończywszy na nowojorskiej The Metropolitan Opera, Luciano Pavarotti chciał przybliżyć muzykę klasyczną ludziom na całym świecie. To dzięki swym popularyzatorskim koncertom sprawił, że wielu z nas pokochało operę. Na jego występ w Hyde Parku, mimo ulewy, przyszło ponad 100.000 osób, a jego transmitowane przez telewizję występy z Domingiem i Carrerasem (Trzej Tenorzy) sprawiały, że w miastach i miasteczkach zamierał ruch na ulicach.\n\nKoncert z legendarnego werońskiego amfiteatru to wiązanka najsłynniejszych arii operowych i niezaprzeczalnych evergreenów w wykonaniu nie tylko klasycznych śpiewaków, ale też artystów, którzy z powodzeniem łączą muzykę poważną z popową. Oprócz wcześniej wymienionych gwiazd wystąpili również: wiolonczelista Hauser, piosenkarz Umberto Tozzi, a także Vittorio Grigolo, międzynarodowej klasy tenor, który w wieku 13 lat zaśpiewał w Operze Rzymskiej partię Pastuszka w „Tosce” Pucciniego, a rolę Cavaradossiego w tym spektaklu kreował wtedy sam Luciano Pavarotti."
-    },
     "shareCardPending" : false
   }, {
     "_id" : "f2aa344240f951f1",
@@ -5763,6 +5740,29 @@
     "weightedRating" : 7.35,
     "synopsisByCity" : {
       "warszawa" : "„Dobry wojak Szwejk” z 1956 roku to kultowa czeska wojenna w reżyserii Karela Steklego, będąca ekranizacją pierwszego tomu powieści „Przygody dobrego wojaka Szwejka podczas wojny światowej” autorstwa Jaroslava Haška. Film przedstawia pełne humoru i absurdu losy Józefa Szwejka – prostodusznego handlarza psami, którego niebywała poczciwość i dosłowne wykonywanie rozkazów prowadzą do serii komicznych sytuacji.\n\nAkcja rozpoczyna się w chwili wybuchu I wojny światowej. Szwejk wdaje się w rozmowę z tajnym agentem policji Bretschneiderem w gospodzie pana Palivca, przez co zostaje oskarżony o zdradę i trafia na komisariat, a następnie do domu wariatów. Wkrótce jednak austro-węgierska administracja ponownie wciela go do armii, mimo że cierpi na reumatyzm i został uznany przez lekarzy za „idiotę”.\n\nFilm Steklego jest błyskotliwą satyrą na biurokrację, wojskową dyscyplinę i bezsens wojny. Humor łączy się tu z ostrą ironią wymierzoną w absurdalne mechanizmy monarchii austro-węgierskiej. Niezapomnianą kreację tytułowego bohatera stworzył Rudolf Hrušínský, którego interpretacja Szwejka do dziś uznawana jest za jedną z najwybitniejszych ról w historii czeskiego kina. Wizualny styl filmu inspirowany był ilustracjami Josef Lada, które na stałe ukształtowały wizerunek bohatera."
+    },
+    "shareCardPending" : false
+  }, {
+    "_id" : "f43ac1636cecd4f3",
+    "title" : "90. urodziny Pavarottiego. Koncert gwiazd z Arena di Verona 2025",
+    "posterUrl" : "https://www.novekino.pl/multimedia/90_urodziny_pavarottiego/plakat.jpg",
+    "fallbackPosterUrls" : [ "https://bilety.kino.swiebodzin.pl:4433/MSI/ImageData.ashx?id=670&mode=thumb" ],
+    "runtimeMinutes" : 95,
+    "releaseYear" : 2025,
+    "genres" : [ ],
+    "countries" : [ "Włochy" ],
+    "directors" : [ "Luigi Antonini (reżyser)", "Matteo Parmeggiani (dyrygent)" ],
+    "cast" : [ "Andrea Bocelli", "José Carreras", "Plácido Domingo", "Il Volo", "Jonathan Tetelman", "Hauser" ],
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "metacriticUrl" : "https://www.metacritic.com/search/90.+urodziny+Pavarottiego.+Koncert+gwiazd+z+Arena+di+Verona+2025/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=90.+urodziny+Pavarottiego.+Koncert+gwiazd+z+Arena+di+Verona+2025",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=90.+urodziny+Pavarottiego.+Koncert+gwiazd+z+Arena+di+Verona+2025"
+    },
+    "weightedRating" : 0,
+    "synopsisByCity" : {
+      "warszawa" : "**Jesienią 2025 roku w słynnej Arena di Verona zebrały się największe gwiazdy opery i popu, w tym Andrea Bocelli, Jonathan Tetelman, Angela Gheorghiu i Il Volo, by dać niebywały koncert, który... przywrócił do życia Luciana Pavarottiego, króla tenorów i wielkiego śpiewaka zwykłych ludzi. Jego dwaj żyjący koledzy, Plácido Domingo i José Carreras, zaśpiewali z nim na żywo. Niemożliwe stało się faktem – Trzej Tenorzy powrócili na estradę!**\n\nNajnowszemu koncertowi ku czci jedzącego za trzech śpiewaka o niebiańskim głosie, który wciąż przywołuje na myśl skąpane w słońcu i spaghetti Włochy, nadano znaczący tytuł: „Luciano Pavarotti. Człowiek, który poruszył świat”. To prawda. Choć święcił nieprawdopodobne tryumfy na najważniejszych scenach, począwszy od mediolańskiej La Scali, a skończywszy na nowojorskiej The Metropolitan Opera, Luciano Pavarotti chciał przybliżyć muzykę klasyczną ludziom na całym świecie. To dzięki swym popularyzatorskim koncertom sprawił, że wielu z nas pokochało operę. Na jego występ w Hyde Parku, mimo ulewy, przyszło ponad 100.000 osób, a jego transmitowane przez telewizję występy z Domingiem i Carrerasem (Trzej Tenorzy) sprawiały, że w miastach i miasteczkach zamierał ruch na ulicach.\n\nKoncert z legendarnego werońskiego amfiteatru to wiązanka najsłynniejszych arii operowych i niezaprzeczalnych evergreenów w wykonaniu nie tylko klasycznych śpiewaków, ale też artystów, którzy z powodzeniem łączą muzykę poważną z popową. Oprócz wcześniej wymienionych gwiazd wystąpili również: wiolonczelista Hauser, piosenkarz Umberto Tozzi, a także Vittorio Grigolo, międzynarodowej klasy tenor, który w wieku 13 lat zaśpiewał w Operze Rzymskiej partię Pastuszka w „Tosce” Pucciniego, a rolę Cavaradossiego w tym spektaklu kreował wtedy sam Luciano Pavarotti.",
+      "plock" : "**Jesienią 2025 roku w słynnej Arena di Verona zebrały się największe gwiazdy opery i popu, w tym Andrea Bocelli, Jonathan Tetelman, Angela Gheorghiu i Il Volo, by dać niebywały koncert, który... przywrócił do życia Luciana Pavarottiego, króla tenorów i wielkiego śpiewaka zwykłych ludzi. Jego dwaj żyjący koledzy, Plácido Domingo i José Carreras, zaśpiewali z nim na żywo. Niemożliwe stało się faktem – Trzej Tenorzy powrócili na estradę!**\n\nNajnowszemu koncertowi ku czci jedzącego za trzech śpiewaka o niebiańskim głosie, który wciąż przywołuje na myśl skąpane w słońcu i spaghetti Włochy, nadano znaczący tytuł: „Luciano Pavarotti. Człowiek, który poruszył świat”. To prawda. Choć święcił nieprawdopodobne tryumfy na najważniejszych scenach, począwszy od mediolańskiej La Scali, a skończywszy na nowojorskiej The Metropolitan Opera, Luciano Pavarotti chciał przybliżyć muzykę klasyczną ludziom na całym świecie. To dzięki swym popularyzatorskim koncertom sprawił, że wielu z nas pokochało operę. Na jego występ w Hyde Parku, mimo ulewy, przyszło ponad 100.000 osób, a jego transmitowane przez telewizję występy z Domingiem i Carrerasem (Trzej Tenorzy) sprawiały, że w miastach i miasteczkach zamierał ruch na ulicach.\n\nKoncert z legendarnego werońskiego amfiteatru to wiązanka najsłynniejszych arii operowych i niezaprzeczalnych evergreenów w wykonaniu nie tylko klasycznych śpiewaków, ale też artystów, którzy z powodzeniem łączą muzykę poważną z popową. Oprócz wcześniej wymienionych gwiazd wystąpili również: wiolonczelista Hauser, piosenkarz Umberto Tozzi, a także Vittorio Grigolo, międzynarodowej klasy tenor, który w wieku 13 lat zaśpiewał w Operze Rzymskiej partię Pastuszka w „Tosce” Pucciniego, a rolę Cavaradossiego w tym spektaklu kreował wtedy sam Luciano Pavarotti."
     },
     "shareCardPending" : false
   }, {
@@ -39050,81 +39050,6 @@
     } ],
     "listingKeys" : [ "N\u0000Cinema City Zielona Góra\u0000https://www.cinema-city.pl/filmy/90-urodziny-pavarottiego-koncert-gwiazd-z-arena-di-verona/8131s2r\u000090. urodziny Pavarottiego - Koncert gwiazd z Arena di Verona" ]
   }, {
-    "_id" : "f29a2428d648c793~90urodzinypavarottiegokoncertgwiazdzarenadiverona2025|plock|Kino Przedwiośnie",
-    "filmId" : "f29a2428d648c793~90urodzinypavarottiegokoncertgwiazdzarenadiverona2025",
-    "city" : "plock",
-    "cinema" : "Kino Przedwiośnie",
-    "filmUrl" : "https://www.novekino.pl/kina/przedwiosnie/film.php?id=19648",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-14T18:00:00",
-      "bookingUrl" : "https://przedwiosnie.novekino.pl/msi/default.aspx?event_id=109120&typetran=0&ReturnLink=https://www.novekino.pl/kina/przedwiosnie/repertuar.php",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-07-05T18:00:00",
-      "bookingUrl" : "https://przedwiosnie.novekino.pl/msi/default.aspx?event_id=109121&typetran=0&ReturnLink=https://www.novekino.pl/kina/przedwiosnie/repertuar.php",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "N\u0000Kino Przedwiośnie\u0000https://www.novekino.pl/kina/przedwiosnie/film.php?id=19648\u000090. urodziny Pavarottiego - Koncert gwiazd z Arena di Verona 2025" ]
-  }, {
-    "_id" : "f29a2428d648c793~90urodzinypavarottiegokoncertgwiazdzarenadiverona2025|rzeszow|Kino Zorza",
-    "filmId" : "f29a2428d648c793~90urodzinypavarottiegokoncertgwiazdzarenadiverona2025",
-    "city" : "rzeszow",
-    "cinema" : "Kino Zorza",
-    "filmUrl" : "https://www.kinozorza.pl/film/90-urodziny-pavarottiego-koncert-gwiazd-z-arena-di-verona-2025-napisy-2d",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-27T18:00:00",
-      "room" : "Sala widowiskowa",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-07-12T18:00:00",
-      "room" : "Sala widowiskowa",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "N\u0000Kino Zorza\u0000https://www.kinozorza.pl/film/90-urodziny-pavarottiego-koncert-gwiazd-z-arena-di-verona-2025-napisy-2d\u000090. urodziny Pavarottiego. Koncert gwiazd z Arena di Verona 2025" ]
-  }, {
-    "_id" : "f29a2428d648c793~90urodzinypavarottiegokoncertgwiazdzarenadiverona2025|swiebodzin|Kino ŚDK",
-    "filmId" : "f29a2428d648c793~90urodzinypavarottiegokoncertgwiazdzarenadiverona2025",
-    "city" : "swiebodzin",
-    "cinema" : "Kino ŚDK",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-19T18:00:00",
-      "bookingUrl" : "https://bilety.kino.swiebodzin.pl:4433/MSI/Default.aspx?event_id=4984&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-21T18:00:00",
-      "bookingUrl" : "https://bilety.kino.swiebodzin.pl:4433/MSI/Default.aspx?event_id=4985&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "P\u0000Kino ŚDK\u0000\"90. urodziny Pavarottiego\" Koncert gwiazd z Arena di Verona 2025\u0000" ]
-  }, {
-    "_id" : "f29a2428d648c793~90urodzinypavarottiegokoncertgwiazdzarenadiverona2025|warszawa|Kino Atlantic",
-    "filmId" : "f29a2428d648c793~90urodzinypavarottiegokoncertgwiazdzarenadiverona2025",
-    "city" : "warszawa",
-    "cinema" : "Kino Atlantic",
-    "filmUrl" : "https://www.novekino.pl/kina/atlantic/film.php?id=19648",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-14T17:00:00",
-      "bookingUrl" : "https://atlantic.novekino.pl/msi/default.aspx?event_id=45169&typetran=0&ReturnLink=https://www.novekino.pl/kina/atlantic/dziekujemy.php",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-06-28T15:00:00",
-      "bookingUrl" : "https://atlantic.novekino.pl/msi/default.aspx?event_id=45173&typetran=0&ReturnLink=https://www.novekino.pl/kina/atlantic/dziekujemy.php",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "N\u0000Kino Atlantic\u0000https://www.novekino.pl/kina/atlantic/film.php?id=19648\u000090. urodziny Pavarottiego - Koncert gwiazd z Arena di Verona 2025" ]
-  }, {
-    "_id" : "f29a2428d648c793~90urodzinypavarottiegokoncertgwiazdzarenadiverona2025|warszawa|Kino Wisła",
-    "filmId" : "f29a2428d648c793~90urodzinypavarottiegokoncertgwiazdzarenadiverona2025",
-    "city" : "warszawa",
-    "cinema" : "Kino Wisła",
-    "filmUrl" : "https://www.novekino.pl/kina/wisla/film.php?id=19648",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-21T16:00:00",
-      "bookingUrl" : "https://wisla.novekino.pl/msi/default.aspx?event_id=112329&typetran=0&ReturnLink=https://www.novekino.pl/kina/wisla/repertuar.php",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "N\u0000Kino Wisła\u0000https://www.novekino.pl/kina/wisla/film.php?id=19648\u000090. urodziny Pavarottiego - Koncert gwiazd z Arena di Verona 2025" ]
-  }, {
     "_id" : "f2aa344240f951f1|tczew|Helios Tczew",
     "filmId" : "f2aa344240f951f1",
     "city" : "tczew",
@@ -53749,6 +53674,81 @@
       "format" : [ ]
     } ],
     "listingKeys" : [ "N\u0000Kinoteka\u0000https://kinoteka.pl/film/dobry-wojak-szwejk/\u0000Dobry wojak Szwejk" ]
+  }, {
+    "_id" : "f43ac1636cecd4f3|plock|Kino Przedwiośnie",
+    "filmId" : "f43ac1636cecd4f3",
+    "city" : "plock",
+    "cinema" : "Kino Przedwiośnie",
+    "filmUrl" : "https://www.novekino.pl/kina/przedwiosnie/film.php?id=19648",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-14T18:00:00",
+      "bookingUrl" : "https://przedwiosnie.novekino.pl/msi/default.aspx?event_id=109120&typetran=0&ReturnLink=https://www.novekino.pl/kina/przedwiosnie/repertuar.php",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-07-05T18:00:00",
+      "bookingUrl" : "https://przedwiosnie.novekino.pl/msi/default.aspx?event_id=109121&typetran=0&ReturnLink=https://www.novekino.pl/kina/przedwiosnie/repertuar.php",
+      "format" : [ ]
+    } ],
+    "listingKeys" : [ "N\u0000Kino Przedwiośnie\u0000https://www.novekino.pl/kina/przedwiosnie/film.php?id=19648\u000090. urodziny Pavarottiego - Koncert gwiazd z Arena di Verona 2025" ]
+  }, {
+    "_id" : "f43ac1636cecd4f3|rzeszow|Kino Zorza",
+    "filmId" : "f43ac1636cecd4f3",
+    "city" : "rzeszow",
+    "cinema" : "Kino Zorza",
+    "filmUrl" : "https://www.kinozorza.pl/film/90-urodziny-pavarottiego-koncert-gwiazd-z-arena-di-verona-2025-napisy-2d",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-27T18:00:00",
+      "room" : "Sala widowiskowa",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-07-12T18:00:00",
+      "room" : "Sala widowiskowa",
+      "format" : [ ]
+    } ],
+    "listingKeys" : [ "N\u0000Kino Zorza\u0000https://www.kinozorza.pl/film/90-urodziny-pavarottiego-koncert-gwiazd-z-arena-di-verona-2025-napisy-2d\u000090. urodziny Pavarottiego. Koncert gwiazd z Arena di Verona 2025" ]
+  }, {
+    "_id" : "f43ac1636cecd4f3|swiebodzin|Kino ŚDK",
+    "filmId" : "f43ac1636cecd4f3",
+    "city" : "swiebodzin",
+    "cinema" : "Kino ŚDK",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-19T18:00:00",
+      "bookingUrl" : "https://bilety.kino.swiebodzin.pl:4433/MSI/Default.aspx?event_id=4984&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-06-21T18:00:00",
+      "bookingUrl" : "https://bilety.kino.swiebodzin.pl:4433/MSI/Default.aspx?event_id=4985&typetran=0&returnlink=%7e%2fmvc%2fpl%3fsort%3dName%26date%3d2026-06",
+      "format" : [ ]
+    } ],
+    "listingKeys" : [ "P\u0000Kino ŚDK\u0000\"90. urodziny Pavarottiego\" Koncert gwiazd z Arena di Verona 2025\u0000" ]
+  }, {
+    "_id" : "f43ac1636cecd4f3|warszawa|Kino Atlantic",
+    "filmId" : "f43ac1636cecd4f3",
+    "city" : "warszawa",
+    "cinema" : "Kino Atlantic",
+    "filmUrl" : "https://www.novekino.pl/kina/atlantic/film.php?id=19648",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-14T17:00:00",
+      "bookingUrl" : "https://atlantic.novekino.pl/msi/default.aspx?event_id=45169&typetran=0&ReturnLink=https://www.novekino.pl/kina/atlantic/dziekujemy.php",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-06-28T15:00:00",
+      "bookingUrl" : "https://atlantic.novekino.pl/msi/default.aspx?event_id=45173&typetran=0&ReturnLink=https://www.novekino.pl/kina/atlantic/dziekujemy.php",
+      "format" : [ ]
+    } ],
+    "listingKeys" : [ "N\u0000Kino Atlantic\u0000https://www.novekino.pl/kina/atlantic/film.php?id=19648\u000090. urodziny Pavarottiego - Koncert gwiazd z Arena di Verona 2025" ]
+  }, {
+    "_id" : "f43ac1636cecd4f3|warszawa|Kino Wisła",
+    "filmId" : "f43ac1636cecd4f3",
+    "city" : "warszawa",
+    "cinema" : "Kino Wisła",
+    "filmUrl" : "https://www.novekino.pl/kina/wisla/film.php?id=19648",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-21T16:00:00",
+      "bookingUrl" : "https://wisla.novekino.pl/msi/default.aspx?event_id=112329&typetran=0&ReturnLink=https://www.novekino.pl/kina/wisla/repertuar.php",
+      "format" : [ ]
+    } ],
+    "listingKeys" : [ "N\u0000Kino Wisła\u0000https://www.novekino.pl/kina/wisla/film.php?id=19648\u000090. urodziny Pavarottiego - Koncert gwiazd z Arena di Verona 2025" ]
   }, {
     "_id" : "f43bdc0fc350da48|bielsko-biala|Kino Kreska",
     "filmId" : "f43bdc0fc350da48",

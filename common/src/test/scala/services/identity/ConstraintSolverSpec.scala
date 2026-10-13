@@ -62,14 +62,13 @@ class ConstraintSolverSpec extends AnyFlatSpec with Matchers {
       ConstraintSolver.solveAs(Seq("C", "B", "A"), cs.reverse, Presentation.AsGiven)
   }
 
-  it should "not count a component a node is cannot-linked to as a choice (H ~ X ~ Y ~ Z, H ≁ each)" in {
-    // DE's "Berliner Philharmoniker 25/26: Silvesterkonzert" (H) shares the original title of the 2026 concert's spellings
-    // and names another season than theirs: every spelling reached H and its siblings, and none joined another
-    val nodes = Seq("H", "X", "Y", "Z")
-    val cs = (for (a <- nodes; b <- nodes if a < b) yield Constraint(a, b, must = true, 3, "original-title")) ++
-      Seq("X", "Y", "Z").map(Constraint("H", _, must = false, 0, "SeasonsApart"))
-    ConstraintSolver.solve(nodes, cs) shouldBe Seq(Seq("H"), Seq("X", "Y", "Z"))
-    ConstraintSolver.solve(nodes.reverse, cs.reverse) shouldBe Seq(Seq("H"), Seq("X", "Y", "Z"))
+  it should "leave a node cannot-linked to one component it reaches alone, never hand it to the other (U ~ M, U ~ O, U ≁ M)" in {
+    // UK "Sense and Sensibility [U]" [132′] (U), apart from the 2026 film's spellings (M) and must-linked to them and to
+    // the "Baby & Me: …" screenings of the 1995 film (O): read as no choice, the link it cannot take left it the 1995
+    // film's, and its siblings' bare spellings, reaching it there, lost the 2026 film (recording 38363428661)
+    val cs = Seq(Constraint("M", "U", must = true, 3, "same-search-form"), Constraint("O", "U", must = true, 3, "same-search-form"),
+      Constraint("M", "U", must = false, 0, "denies-film"))
+    ConstraintSolver.solve(Seq("M", "O", "U"), cs, Map("M" -> 1503762, "O" -> 4584)) shouldBe Seq(Seq("M"), Seq("O"), Seq("U"))
   }
 
   it should "never put two films in one component, though no cannot-link joins their nodes" in {

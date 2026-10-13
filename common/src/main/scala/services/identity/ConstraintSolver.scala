@@ -20,11 +20,7 @@ package services.identity
  *      components (as they stand at the START of the tier) that are cannot-linked to each other, or
  *      that hold different films. A
  *      bare "A Star Is Born" beside the 1954 and 2018 films is evidence for neither, and rule 2
- *      alone would hand it to whichever sorts first. Only components the node may itself join count:
- *      a must-link to one it is cannot-linked to never applies, so it offers no choice. DE's "Berliner
- *      Philharmoniker 25/26: Silvesterkonzert" shares its original title with ~100 spellings of the
- *      2026 concert and names another season than theirs: read as a choice, it made every one of them
- *      ambiguous, and none joined another.
+ *      alone would hand it to whichever sorts first.
  *
  * Why the partition is a function of the SET: `solve` reads its input only through sorts under a
  * total order of the elements themselves, so every presentation of one set produces the identical
@@ -102,10 +98,7 @@ object ConstraintSolver {
         reach(a) = reach.getOrElse(a, Set(find(a))) + find(b)
         reach(b) = reach.getOrElse(b, Set(find(b))) + find(a)
       }
-      val ambiguous = reach.collect { case (node, roots) if {
-        val joinable = roots.filterNot(forbidden(find(node), _))
-        joinable.exists(r => joinable.exists(forbidden(r, _)))
-      } => node }.toSet
+      val ambiguous = reach.collect { case (node, roots) if roots.exists(r => roots.exists(forbidden(r, _))) => node }.toSet
       edges.foreach { case (_, a, b) => if (!ambiguous(a) && !ambiguous(b)) join(a, b) }
     }
 
