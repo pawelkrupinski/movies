@@ -172,13 +172,15 @@ object Catalog {
           // reaches the server's redirect: without this an app rejected
           // `/miedzyrzec-podlaski/movie/…` as an unknown city and opened nothing.
           //
-          // Less any slug the catalog names a city by (`slug`, below). App builds from
-          // before slugs were per country read every country's former slugs as one map
-          // onto `slug` and apply it to the saved city of whichever country is
-          // selected: the UK's retired `/kent/` (→ Chatham) would turn a US user's
-          // Kent, Washington into a city the US does not have, and Potsdam, New York's
-          // former `potsdam-new-york` — its `slug` again — would map a saved city onto
-          // itself. Such a link still 301s on the web.
+          // Less any slug the catalog names a city by (`slug`, below). No RELEASED build
+          // reads this field — 2.0.11 predates it (fe6a847dd) and current builds read
+          // `otherSlugs` — but the unreleased builds between the two read every
+          // country's former slugs as one map onto `slug`, applied to the saved city of
+          // whichever country is selected: a former slug that is a catalog `slug` would
+          // move such a build off the city that answers at it. Kept, with the filter,
+          // for those builds and as current builds' fallback from an older server
+          // without `otherSlugs`; it goes when that fallback does. Such a link still
+          // 301s on the web.
           val formerSlugs = c.formerSlugs(city.slug).filterNot(catalogSlugs)
           val former = if (formerSlugs.isEmpty) "" else formerSlugs.map(s => s""""$s"""").mkString(""","formerSlugs":[""", ",", "]")
           // EVERY other slug of its own country that leads here, unfiltered — what
