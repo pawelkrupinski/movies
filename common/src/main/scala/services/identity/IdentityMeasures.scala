@@ -395,11 +395,18 @@ object IdentityMeasures {
    *  tutte" ×356 is. A season's record is a season-free listing's only when the
    *  listing's banner spells the house ([[spellsItsHouse]]): TMDB filing the Paris Opera's works only
    *  under the Met's 2026/27 records teaches the Paris banner to be the Met. And not a banner numbering its edition otherwise than the record's: a
-   *  house's name carries no number ("League of Legends Worlds 26" is not "… Worlds25"). */
+   *  house's name carries no number ("League of Legends Worlds 26" is not "… Worlds25"). Nor is a CUT or an edition a
+   *  house ([[DecorationSegments.EditionWords]]): DE "Das Boot - Director s Cut" is Petersen's film, not TMDB's yearless
+   *  "Das Boot - Directors Cut" record its "house" bills alike. */
   def billsUnderItsHouse(listing: Listing, film: Film, houses: Houses): Boolean =
     (listing.seasonYear.isEmpty || filmSeason(film).isEmpty) &&
       billings(listing, film).exists(billed => houses.same(billed) && numbersIn(billed.listingHouse) == numbersIn(billed.filmHouse) &&
-        (filmSeason(film).isEmpty || spellsItsHouse(billed)))
+        !namesAnEdition(billed.listingWords) && !namesAnEdition(billed.filmWords) && (filmSeason(film).isEmpty || spellsItsHouse(billed)))
+  /** A banner of edition words alone, a possessive's lone letter aside ("director s cut"). */
+  private def namesAnEdition(banner: Seq[String]): Boolean = {
+    val words = banner.filter(_.lengthIs > 1)
+    words.nonEmpty && words.forall(DecorationSegments.EditionWords)
+  }
   /** Does the listing's banner SPELL the record's house — two of its words or more ("Royal Ballet and
    *  Opera" of "Royal Ballet & Opera")? A season-free listing takes a season's record only then: the
    *  Paris Opera's banner, learned as the Met from TMDB's filing, shares only "opera". */

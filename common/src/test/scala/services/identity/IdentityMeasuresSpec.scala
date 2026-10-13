@@ -527,6 +527,10 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
       Film("League of Legends Worlds25 - Finals in Cinema"), houses) shouldBe false
     IdentityMeasures.billsUnderItsHouse(Listing("Berliner Philharmoniker LIVE: New Year’s Eve Concert 2025"),
       Film("Berliner Philharmoniker: New Year’s Eve Concert 2025"), Houses(Map("berlinerphilharmonikerlive" -> "berlinerphilharmoniker"))) shouldBe true
+    // A cut or an edition is no house: DE Movietown Brandenburg's "Das Boot - Director s Cut" took TMDB's yearless "Das
+    // Boot - Directors Cut" record as the house production of "Das Boot", not Petersen's film.
+    IdentityMeasures.billsUnderItsHouse(Listing("Das Boot - Director s Cut"), Film("Das Boot - Directors Cut"), Houses.Unknown) shouldBe false
+    IdentityMeasures.billsUnderItsHouse(Listing("DAS BOOT (DIRECTOR'S CUT)(WA:2023)"), Film("Das Boot - Directors Cut"), Houses.Unknown) shouldBe false
   }
 
   "qualifiers" should "be the pieces records bill beside more works than the rest of the listing's title" in {
