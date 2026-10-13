@@ -146,7 +146,8 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.searchQueries(Listing("NT Live: Manon")).exists(_.contains("20")) shouldBe false
     // Only the title naming the season asks, and a bracketed year is no part of the work.
     val cleaned = Listing("The Metropolitan Opera: Manon (2027)", rawTitle = Some("Met Opera 2026-27: Manon (2027)"))
-    IdentityMeasures.searchQueries(cleaned).filter(_.endsWith(" 2026")) shouldBe Seq("Manon 2026")
+    // ("Manon" names Massenet's opera and MacMillan's ballet, whose own name is asked beside it)
+    IdentityMeasures.searchQueries(cleaned).filter(_.endsWith(" 2026")) shouldBe Seq("Manon 2026", "L'histoire de Manon 2026", "Manon Lescaut 2026")
   }
 
   it should "be searched by every name of its work, whatever language the venue names it in" in {

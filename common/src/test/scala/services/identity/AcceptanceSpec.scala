@@ -66,6 +66,37 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     acceptance.seasonRecord(ranked(swanLake.copy(broadcastSeason = Some(2028)), seasons *)) shouldBe None
   }
 
+  "a relay billing its house and no season" should "take its house's record of the season its screenings broadcast it in" in {
+    // Prod UK 2026-10-13: Filmhouse Newlyn's "MET: Macbeth" screening 17 October 2026 took the Met's 2014 staging by
+    // house-production, beside its 2026/27 record; Kendal's "Romeo & Juliet - The Royal Ballet" (May 2027) took 2013's.
+    val macbeth     = Listing("MET: Macbeth", broadcastSeason = Some(2026))
+    val staging2014 = (295526, Film("The Metropolitan Opera - Verdi: Macbeth", year = Some(2014), runtime = Some(169)), Some(1))
+    val season2026  = (1703622, Film("The Metropolitan Opera 2026/27: Macbeth", year = Some(2026)), Some(2))
+    taken(ranked(macbeth, staging2014, season2026)) shouldBe Some(1703622)
+    // a record of another season than its screenings' is no staging it screens, however its house bills the work
+    acceptance.seasonRecord(ranked(macbeth.copy(broadcastSeason = Some(2027)), staging2014, season2026)) shouldBe None
+    // nor is another house's: "MET" names no Royal Ballet & Opera
+    acceptance.seasonRecord(ranked(macbeth, (1, Film("Royal Ballet & Opera 2026/27: Macbeth", year = Some(2027)), Some(1)))) shouldBe None
+
+    val romeo = Listing("Romeo & Juliet - The Royal Ballet", broadcastSeason = Some(2026))
+    taken(ranked(romeo, (476204, Film("Romeo and Juliet (Royal Ballet)", year = Some(2013), runtime = Some(168)), Some(1)),
+      (1451897, Film("The Royal Ballet: Romeo and Juliet", year = Some(2025), runtime = Some(175)), Some(3)),
+      (1702789, Film("Royal Ballet & Opera 2026/27: Romeo and Juliet", year = Some(2027)), Some(2)))) shouldBe Some(1702789)
+  }
+
+  it should "take the season record of its work when its title dates it by a bare year" in {
+    // Prod UK 2026-10-13: The Beehive Honiton's "RBO: Tosca 27" and "RBO: Swan Lake 27", and Chichester's "Macbeth (Met
+    // Opera)", each left its season's record, TMDB's first hit, below the threshold.
+    taken(ranked(Listing("RBO: Tosca 27", broadcastSeason = Some(2026)),
+      (1702784, Film("Royal Ballet & Opera 2026/27: Tosca", year = Some(2027)), Some(1)),
+      (1482356, Film("Royal Ballet & Opera 2025/26: Tosca", year = Some(2025), runtime = Some(195)), Some(2)))) shouldBe Some(1702784)
+    taken(ranked(Listing("RBO: Swan Lake 27", broadcastSeason = Some(2026)),
+      (1702782, Film("Royal Ballet & Opera 2026/27: Swan Lake", year = Some(2027)), Some(1)),
+      (1300034, Film("Royal Ballet & Opera 2024/25: Swan Lake", year = Some(2025), runtime = Some(210)), Some(2)))) shouldBe Some(1702782)
+    taken(ranked(Listing("Macbeth (Met Opera)", broadcastSeason = Some(2026)),
+      (1703622, Film("The Metropolitan Opera 2026/27: Macbeth", year = Some(2026)), Some(1)))) shouldBe Some(1703622)
+  }
+
   "directors-work" should "leave two seasons of one staging, both billing the work, to the season" in {
     // UK "Royal Ballet and Opera: Tosca" {Oliver Mears} [195′] ×123 screens in May 2027 — the 2026/27 record, which
     // credits nobody yet; the 2025/26 one is his with the running time. Billed alike, the rule takes neither.

@@ -85,7 +85,8 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
   /** What [[alone]] takes, with the rule that took it. A family's scope asks it once per node ([[FamilyScope.takenAlone]]). */
   def aloneNamed(ranked: Seq[Scored]): Option[(Accepted, String)] =
     if (billsSeveralWorks(ranked)) None
-    else seasonProduction(ranked).map(_.map(_ -> "season-production")).getOrElse(firstOf(ranked, aloneRules))
+    else seasonProduction(ranked).map(_.map(_ -> "season-production"))
+      .orElse(broadcastSeasonRecord(ranked).map(record => Some(record -> "season-record"))).getOrElse(firstOf(ranked, aloneRules))
       .map { case (accepted, rule) => editionNamed(ranked)(accepted) -> rule }.filter(takesNoBill(ranked))
 
   /** A DOUBLE PROGRAMME: a "+" joining two whole works ([[IdentityMeasures.billsTwoWholeWorks]]), whatever is held
@@ -615,18 +616,34 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  May–June 2027, is "Royal Ballet & Opera 2026/27: Romeo and Juliet" — the cut alone denied it, the season marker
    *  reading as a title the listing does not carry. Two seasons of the title ("…: Tosca", 2025/26 and 2026/27) are told
    *  apart by the season the listing's screenings broadcast it in ([[ofItsBroadcastSeason]]), and are no answer without
-   *  one; a fact contradicting it, or another director, refuses it. */
+   *  one; a fact contradicting it, or another director, refuses it.
+   *
+   *  So is the record of the very season the listing's screenings broadcast it in that names its stage work under its
+   *  house ([[IdentityMeasures.namesItsHouse]]), however the venue shortens the banner: prod UK 2026-10-13 "MET:
+   *  Macbeth" (17 October 2026), "RBO: Tosca 27" and "Macbeth (Met Opera)" are the Met's and RBO's 2026/27 records. */
   def seasonRecord(ranked: Seq[Scored]): Option[Accepted] = seasonRecordWhy(ranked).toOption
+  /** [[seasonRecord]]'s answer when it is a record of the season the listing's screenings broadcast it in: it pre-empts
+   *  every rule, as [[seasonProduction]] does a season the title names — a house's other stagings of the work (the Met's
+   *  2014 "Macbeth", the Royal Ballet's 2013 "Romeo and Juliet") are other broadcasts than the one the venue screens. */
+  private def broadcastSeasonRecord(ranked: Seq[Scored]): Option[Accepted] = seasonRecord(ranked).filter { case (record, _) =>
+    record.listing.broadcastSeason.exists(IdentityMeasures.filmSeason(record.candidate.film).contains)
+  }
   private def seasonRecordWhy(ranked: Seq[Scored]): Verdict = {
     def plain(title: String) = IdentityMeasures.key(title.replace("&", " and "))
+    // of the screenings' season only: a record of another of the work's seasons is no staging the venue said it screens
+    def ofItsWork(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film) =
+      listing.broadcastSeason.exists(IdentityMeasures.filmSeason(film).contains) &&
+        IdentityMeasures.stageWorks(film).exists(IdentityMeasures.stageWorksBilled(listing.rawTitle.toSeq :+ listing.title, seasonNamed = false)) &&
+        IdentityMeasures.namesItsHouse(listing, film)
     for {
       any    <- ranked.headOption.toRight(Refused("no candidate"))
-      _      <- need(any.listing.seasonYear.isEmpty, "the title names its season")
-      own     = (Seq(any.listing.title) ++ any.listing.rawTitle).map(plain).toSet
+      listing = any.listing
+      _      <- need(listing.seasonYear.isEmpty, "the title names its season")
+      own     = (Seq(listing.title) ++ listing.rawTitle).map(plain).toSet
       record <- one(ofItsBroadcastSeason(ranked.filter(scored => (eligibleOf(ranked).contains(scored) || scored.deniedByCutOnly) &&
                   IdentityMeasures.filmSeason(scored.candidate.film).isDefined &&
-                  scored.candidate.film.titles.exists(t => own(plain(IdentityMeasures.withoutSeasons(t)))))),
-                  "no season record carries its title", "two seasons' records carry its title")
+                  (scored.candidate.film.titles.exists(t => own(plain(IdentityMeasures.withoutSeasons(t)))) || ofItsWork(listing, scored.candidate.film)))),
+                  "no season record carries its title or its work under its house", "two seasons' records carry its title")
       _      <- needOf(!contradicted(record), "a published fact contradicts it", record, contradiction(record))
       _      <- needOf(!record.category("director").exists(Set("different", "different_script")), "it credits another director", record)
     } yield record -> record.probability

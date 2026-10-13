@@ -1473,14 +1473,16 @@ object IdentityMeasures {
    *  or, in a title naming its season (`seasonNamed`), opening with one before a venue's tag ("SAMSON I DALILA-
    *  RETRANSMISJA"). Never a work a title only opens with otherwise: "Manon des sources" is no broadcast of "Manon". */
   def stageWorksBilled(titles: Seq[String], seasonNamed: Boolean): Set[String] =
-    titles.flatMap(t => pieces(t) :+ t).flatMap(billedIn(_, seasonNamed)).toSet
+    titles.map(_.replace("&", " and ")).flatMap(t => (pieces(t) ++ fragments(t)).distinct :+ t).flatMap(billedIn(_, seasonNamed)).toSet
 
   /** A title's delimited pieces, its seasons and bracketed years out. */
   private[identity] def pieces(title: String): Seq[String] = PieceBreak.split(withoutYears(title)).toSeq.map(_.trim).filter(_.nonEmpty)
 
-  /** The stage works one title piece bills ([[stageWorksBilled]]). */
+  /** The stage works one title piece bills ([[stageWorksBilled]]) — a broadcast's year shortened behind the work out:
+   *  prod UK "RBO: Tosca 27", "RBO: Tosca '27", "The Met: Macbeth 26". */
   private[identity] def billedIn(piece: String, seasonNamed: Boolean): Set[String] = {
     val tokens = services.movies.TitleContainment.tokens(piece).toIndexedSeq
+      .reverse.dropWhile(token => token.length == 2 && token.forall(_.isDigit)).reverse
     val runs   = tokens.indices.map(tokens.drop) ++ (if (seasonNamed) (1 until tokens.size).map(tokens.take) else Nil)
     runs.flatMap(run => StageWorks.resolver.named(run.mkString)).toSet
   }
@@ -1502,6 +1504,16 @@ object IdentityMeasures {
 
   /** Do the two titles' banners — their pieces naming no work — share a word ([[bannersMeet]])? */
   def bannersMeetOf(l: Listing, f: Film): Boolean = bannersMeet(l.title +: l.rawTitle.toSeq, f.titles)
+
+  /** Does the listing's banner name the house the record bills: their banners share a word ([[bannersMeetOf]]), or a
+   *  piece of the listing's title naming no stage work names one house with the record's ([[namesOneHouse]] — a prefix,
+   *  "MET" of "The Metropolitan Opera"; initials, "RBO" of "Royal Ballet & Opera")? Read off the title's pieces, not
+   *  the art-form word a relay's banner carries ([[Relay]]): UK "MET: Macbeth" names none. */
+  def namesItsHouse(l: Listing, f: Film): Boolean = bannersMeetOf(l, f) || {
+    val banners = (Seq(l.title) ++ l.rawTitle).flatMap(fragments).filter(piece => StageWorks.resolver.named(key(piece)).isEmpty)
+      .map(wordsOf).filter(_.nonEmpty)
+    banners.exists(banner => f.houseNames.exists(namesOneHouse(banner, _)))
+  }
 
   /** A season production searched as its WORK AND ITS SEASON ("Manon 2026"): a house's record of
    *  it ("Royal Ballet & Opera 2026/27: Manon") carries both, however the venue spells the house,
