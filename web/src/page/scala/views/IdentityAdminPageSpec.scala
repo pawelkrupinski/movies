@@ -74,13 +74,6 @@ class IdentityAdminPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfte
     case None    => cancel("Chrome not installed — skipping /admin/identity page test")
   }
 
-  /** Run `act`, which makes the page reload itself, and wait for the NEW document. */
-  private def reloadingAfter(page: CdpPage)(act: String): Unit = {
-    page.eval("window.__stamp = 1")
-    page.eval(act)
-    page.waitFor("typeof window.__stamp === 'undefined' && document.readyState === 'complete'")
-  }
-
   private val samson = ListingKey.Published("Kino Amok", "Samson i Dalila", None, Nil)
   /** `samson`, as the page's "extra listings" box takes it. */
   private val SamsonListing = """[{"venue":"Kino Amok","rawTitle":"Samson i Dalila"}]"""
@@ -89,13 +82,13 @@ class IdentityAdminPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfte
     onPage { page =>
       page.evalInt("document.querySelectorAll('tr.pin').length") shouldBe 0
       page.eval(s"__dom.fill(${Json.obj("extra" -> SamsonListing, "kind" -> "never-film", "tmdb" -> "22683", "reason" -> "an opera broadcast")})")
-      reloadingAfter(page)("document.getElementById('pin').click()")
+      page.navigateBy("document.getElementById('pin').click()")
       pins.all().map(p => (p.listings, p.claim, p.author, p.reason)) shouldBe
         Seq((Seq(samson), PinClaim.NeverFilm(22683), TestAdminAction.AdminEmail, "an opera broadcast"))
       page.evalInt("document.querySelectorAll('tr.pin').length") shouldBe 1
       page.evalString("document.querySelector('tr.pin').textContent") should include ("never film 22683")
 
-      reloadingAfter(page)("document.querySelector('.unpin').click()")
+      page.navigateBy("document.querySelector('.unpin').click()")
       pins.all() shouldBe empty
       page.evalInt("document.querySelectorAll('tr.pin').length") shouldBe 0
     }

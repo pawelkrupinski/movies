@@ -585,6 +585,14 @@ class CdpPage private[tools] (uri: URI) extends AutoCloseable {
    *  what a spec walking one visitor across pages needs. */
   def navigate(url: String): Unit = replaceDocument(send("Page.navigate", Json.obj("url" -> url)))
 
+  /** Run `js`, which makes the PAGE leave its document (a picker setting
+   *  `location`, a button whose handler reloads), and wait for the NEW document —
+   *  same stamp as [[reload]]. Waiting instead on something the new document says
+   *  (`document.documentElement.lang === 'de'`) polls through the moment it has
+   *  committed but not yet parsed `<html>`, where that root is null and the check
+   *  throws (see `CdpNavigateBySpec`); the stamp check reads nothing of the page. */
+  def navigateBy(js: String): Unit = replaceDocument(eval(js))
+
   private def replaceDocument(go: => Any): Unit = {
     eval("window.__cdpReloadStamp = 1")
     go

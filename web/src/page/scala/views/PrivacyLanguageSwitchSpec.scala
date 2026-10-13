@@ -47,10 +47,10 @@ class PrivacyLanguageSwitchSpec extends AnyFlatSpec with Matchers with BeforeAnd
   }
 
   private def choose(page: CdpPage, code: String): Unit = {
-    page.eval(
+    page.navigateBy(
       s"""(() => { const s = document.querySelector('.lang-switch select');
          |  s.value = '$code'; s.dispatchEvent(new Event('change')); })()""".stripMargin)
-    page.waitFor(s"document.documentElement.lang === '$code'")
+    page.evalString("document.documentElement.lang") shouldBe code
   }
 
   "the privacy policy's language picker" should "list every published language, the page's own selected" in {
