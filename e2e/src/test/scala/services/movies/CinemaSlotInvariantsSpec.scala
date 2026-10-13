@@ -35,24 +35,13 @@ class CinemaSlotInvariantsSpec extends CorpusShapeSpec {
 
   /** Listings a parser fix has already cured, whose recorded slot still carries the old value. */
   private val recordedBeforeFix: Map[AllowedListing, String] =
-    Seq("Kino Mikro" -> "Lalka (+ ENG", "Mikro Bronowice" -> "Lalka (+ ENG", "Kino Mikro" -> "World Space Week - Interstellar",
-      "Kino Mikro" -> "Zaproszenie").map { case (venue, listing) =>
-      AllowedListing(venue, listing) ->
-        s"director = the whole credits line (and 'Lalka' cut at 'SUBS)'), 2026-10-03: $RecordedBeforeFix (SystemBiletowy's 'aktorzy' label, FormatTags' bracket guard)"
-    }.toMap + (AllowedListing("Kino Parczew", "Supermocni") ->
-      s"director '..', the site's placeholder for an unknown one, 2026-10-09 (run 37877199615): $RecordedBeforeFix (KinoParczewClient keeps only names with a letter)") ++
-    Seq("Bad Moms X-mas (Mums Night Off)", "Hocus Pocus", "The Hunger Games: Mockingjay Part 2", "The Polar Express (Pyjama Party)").map { listing =>
-      AllowedListing("Savoy Cinema Corby", listing) ->
-        s"cast 'USA', the venue typing its credits a field over, 2026-10-12 (run 38251516862): $RecordedBeforeFix (SavoyClient.Credits reads each field by what it holds)"
-    } + (AllowedListing("Phoenix Cinema East Finchley", "Tenzing") ->
-      s"cast '2026', a year typed into the cast field, 2026-10-13 (run 38326582997): $RecordedBeforeFix (SavoyClient.Credits reads a bare year as the film's)") +
-    (AllowedListing("Dundee Contemporary Arts (DCA)", "The Everest Dream + Q&A") ->
+    Map(AllowedListing("Kino Mikro", "Zaproszenie") -> (
+      s"director = the whole credits line, 2026-10-03: $RecordedBeforeFix (SystemBiletowy's 'aktorzy' label) — every recording " +
+        "since carries it clean, but the checked-in PL corpus (test/resources/fixtures/corpus, 2026-07-29) still has the old value"),
+    AllowedListing("Phoenix Cinema East Finchley", "Tenzing") ->
+      s"cast '2026', a year typed into the cast field, 2026-10-13 (run 38326582997): $RecordedBeforeFix (SavoyClient.Credits reads a bare year as the film's)",
+    AllowedListing("Dundee Contemporary Arts (DCA)", "The Everest Dream + Q&A") ->
       s"a facts sheet heading the description, 2026-10-13 (run 38326582997): $RecordedBeforeFix (SpektrixClient reads the synopsis past it)") ++
-    Seq("RBO Live - Carmen", "RBO Live - Così fan Tutte", "RBO Live - Götterdämmerung", "RBO Live - La Fanciulla del West",
-      "RBO Live - Macbeth", "RBO Live - Manon", "RBO Live - Romeo & Juliet", "RBO Live - Swan Lake", "RBO Live - Tosca").map { listing =>
-      AllowedListing("Taunton Brewhouse", listing) ->
-        s"cast and creatives ahead of the story, 2026-10-13 (run 38326582997): $RecordedBeforeFix (SpektrixClient reads the synopsis from its 'Synopsis:' heading)"
-    } ++
     Seq("Bad Apples", "Derek vs Derek", "FFS-Everybody Digs Bill Evans", "FFS-Everybody to Kenmure Street", "FFS-Kontinental 25",
       "FFS-Resurrection", "FFS-Two Prosecutors", "Practical Magic 2", "Pressure", "Sense and Sensibility.",
       "Shaun The Sheep: The Beast of Mossy Bottom").map { listing =>

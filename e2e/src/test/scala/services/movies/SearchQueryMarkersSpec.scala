@@ -86,12 +86,12 @@ class SearchQueryMarkersSpec extends CorpusShapeSpec {
       "TODO(rule): a version bare in front of the film with no separator — one listing across the five corpora of 2026-10-13, too rare for a rule of its own",
     AllowedListing("FilmRaum", "Das Geheimnis der gestohlenen Maske, Preview am 25.10. um 15 Uhr") ->
       "TODO(rule): a dated preview after a comma — one listing across the five corpora of 2026-10-13, too rare for a rule of its own",
-  ) ++ DroppedByTheClients.map(AllowedListing.anywhere(_) -> DroppedOnReRecord) ++ RecordedBeforeParserFix
+  ) ++ DroppedByTheClients.map(AllowedListing.anywhere(_) -> DroppedOnReRecord)
 
   /** Listings the German clients drop as no screening at all since the 2026-10-12 recording was made
    *  (`NonMovieEventClassifier.isNonScreening`: a sneak billed with no film, a day pass): a re-record stops carrying them. */
   override protected def awaitingReRecord: Set[AllowedListing] =
-    DroppedByTheClients.map(AllowedListing.anywhere).toSet ++ RecordedBeforeParserFix.keySet
+    DroppedByTheClients.map(AllowedListing.anywhere).toSet
 
   "every listing awaiting a re-record" should "be one the clients now drop as no screening" in {
     DroppedByTheClients.filterNot(services.cinemas.pl.NonMovieEventClassifier.isNonScreening) shouldBe empty
@@ -129,12 +129,6 @@ class SearchQueryMarkersSpec extends CorpusShapeSpec {
 object SearchQueryMarkersSpec {
 
   private val DroppedOnReRecord = "no screening, which the German clients now drop (NonMovieEventClassifier.isNonScreening) — the recording predates the drop"
-
-  /** Listings a parser fix has already cured, whose recorded title still carries the marker: the recorded corpus is
-   *  the parser's OUTPUT, so a re-record stops carrying them. */
-  private val RecordedBeforeParserFix: Map[AllowedListing, String] = Map(
-    AllowedListing("Kino Górnik Łęczyca", "Baranek Shaun i kudłata bestia 2D Dubb. Kino Świat") ->
-      "the distributor tail behind 'Dubb.', 2026-10-12 (run 38251516862) — recorded before MsiClient's DistributorTail took a version's full stop for the comma")
 
   /** DE sneaks billed with no film that the clients now drop as no screening (`NonMovieEventClassifier.isNonScreening`),
    *  still in the recording of run 38355584482 because their venues' last scrape (2026-10-12 21:22 to 10-13 02:48) predates
