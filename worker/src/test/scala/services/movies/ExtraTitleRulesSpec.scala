@@ -1443,6 +1443,31 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     withExtras.search("Romeo & Juliet Q&A") should startWith ("Romeo & Juliet")
   }
 
+  /** Recording 38342304766: an introduction clause — its connector, the introduction and whoever gives it, and any Q&A
+   *  billed after it — held by its SHAPE, so a Q&A behind an introduction leaves with it. */
+  private val introductionClauseListings: Seq[(String, String)] = Seq(
+    "Spotlight on Cinema: “The Peasants” with Introduction by Dylan Mayer AND post-screening Q&A with writers/directors DK Welchman and Hugh Welchman" ->
+      "Spotlight on Cinema: “The Peasants\"",
+    "2026 LHFF Spotlight on Cinema: “Revenge” with Introduction by Dylan Mayer" -> "Spotlight on Cinema: “Revenge\"",
+    "Spooked: Videodrome (18) - Introduction with Johnathan Ilott"            -> "Spooked: Videodrome",
+    "Heat + Recorded Introduction by Michael Mann"                            -> "Heat",
+    "Paris, Texas - with an introduction from Wim Wenders and Q&A"            -> "Paris, Texas",
+    "Aftersun & post-screening Q&A with Charlotte Wells"                      -> "Aftersun")
+
+  "An introduction clause the 2026-10-13 recording billed" should "leave the listing's search query" in {
+    val titles = new TitleNormalizer(withExtras)
+    introductionClauseListings.foreach { case (raw, query) =>
+      withClue(s"searchQuery of '$raw': ")(listingQuery(titles, models.KinoCentrum3D, raw) shouldBe query)
+    }
+  }
+
+  it should "leave a film whose own title is an introduction, or bills one with no connector, alone" in {
+    Seq("An Introduction to Love", "Introduction", "The Introduction", "Introduction by Fire", "Q&A", "Romeo & Juliet",
+      "Intro with Strangers").foreach { t =>
+      withClue(s"search('$t') unchanged: ")(withExtras.search(t) shouldBe t)
+    }
+  }
+
   /** Listings of the 2026-10-08 UK recording whose TMDB query kept a screening marker: a Showcase
    *  re-release billed with its print and an anniversary note, in either order. Through the whole query path. */
   private val anniversaryReleaseListings: Seq[((models.Cinema, String), String)] = Seq(

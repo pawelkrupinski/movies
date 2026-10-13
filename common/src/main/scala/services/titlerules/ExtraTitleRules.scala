@@ -476,6 +476,13 @@ object ExtraTitleRules {
     searchStrip("xtra-qa-clause-tail",
       """(?iu)(?:\s+[-–—|]\s+(?:(?:with|plus|and|&)\s+)?(?:(?:live|in[-\s]person)\s+)?|(?:\s*:\s*|(?<=\S)\s*)(?:Film\s+)?Screenings?\s*(?:and|&|\+|with)\s*(?:live\s+)?|\s+&\s+(?-i:\p{Lu})[\p{L}'’.-]+\s+(?-i:\p{Lu})[\p{L}'’-]+\s+)Q\s*&\s*A(?![\p{L}\p{N}]).*$""",
       "'<film> - with Q&A and …' / '<film>: Film Screening and Q&A Panel' / '<film>...Screening & Q&A' / '<film> & <Guest Name> Q&A' (UK 2026-10-13: Palace Cinema Ely, Midlands Arts Centre, Rio, Curzon)"),
+    // An introduction clause from its connector on — "with", "plus", "and", "&", "+" or a spaced dash, then an
+    // introduction (recorded, live, special) or a pre-/post-screening Q&A, and who gives it — and everything billed
+    // after it: "<film> with Introduction by <name> AND post-screening Q&A with <names>" leaves whole. The connector
+    // and the giver are both required, so "An Introduction to Love" or "Introduction by Fire" keep their titles.
+    searchStrip("xtra-introduction-clause-tail",
+      """(?iu)(?:\s+[-–—|]\s+(?:(?:with|plus|and|&|\+)\s+)?|\s*\+\s*|\s+(?:with|plus|and|&)\s+)(?:an?\s+)?(?:(?:recorded|live|special|director'?s?)\s+)?(?:(?:pre|post)[-\s]?(?:screening|film|show)\s+)?(?:intro(?:duction)?|q\s*&\s*a)\s+(?:by|from|with)\s+\S.*$""",
+      "'<film> with Introduction by <name> AND post-screening Q&A with <names>' / '<film> - Introduction with <name>' / '<film> & post-screening Q&A with <name>' introduction clause and all after it (US 2026-10-13: ACME Screening Room Lambertville; UK: Spooked)"),
     // A print tag, then a strand or festival behind a spaced dash ("[35mm] - Dirt in the Gate Movies", "4K - FFFL"),
     // and a print billed in front of the film ("4K Film: Dracula: The Cut They Tried To Bury").
     searchStrip("xtra-print-strand-tail",          """(?iu)(?:\s*\[\s*(?:16|35|70)mm\s*\]|\s+(?:4K|(?:16|35|70)mm))\s+[-–—]\s+\S.*$""",
