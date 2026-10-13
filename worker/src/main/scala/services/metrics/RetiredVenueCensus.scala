@@ -44,8 +44,9 @@ class RetiredVenueCensus(
   private val venueClock = new models.VenueClock(clock)
 
   // "Future" is judged on each venue's OWN clock: a retired Los Angeles venue's 21:30 is still ahead
-  // when New York is past midnight. The live roster no longer lists a retired venue, so its city is
-  // found among every city; a venue none lists falls back to the country's first city.
+  // when New York is past midnight. `City.all` never lists a venue once it is retired from the
+  // roster, so a city's clock is found only for a venue still on it; one no city lists falls back
+  // to the country's first city.
   private val fallbackZone: ZoneId = country.cities.headOption.map(_.zoneId).getOrElse(java.time.ZoneOffset.UTC)
   private def zoneOf(venue: String): ZoneId =
     models.City.all.find(_.cinemas.exists(_.displayName == venue)).fold(fallbackZone)(_.zoneId)

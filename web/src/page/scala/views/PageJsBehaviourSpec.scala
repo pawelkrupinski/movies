@@ -1122,7 +1122,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
 
   // ── the dynamic picker's drill-down: region → subregion → city ──────────
   //
-  // A country with 1,995 US places or 79 UK counties does not get one A-to-Z:
+  // A country with 1,995 US places or ~260 UK pages does not get one A-to-Z:
   // the root level shows region headings (plus any place small enough to
   // collapse onto — `CityGroup.soleCity`), and opening one REPLACES the list
   // with that region's own rows, with a back row to return — one level per

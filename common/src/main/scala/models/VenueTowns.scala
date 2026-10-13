@@ -8,7 +8,7 @@ package models
 /** The town each venue of a HAND-WRITTEN roster sits in — the roster fact
  *  Germany, Spain and the US carry in their generated rosters, and the UK and
  *  Poland, whose venues are hand-written, have to keep beside them. Read by
- *  [[City.extraPlaces]], so `/aberdeenshire/` names Peterhead and `/tarnow/`
+ *  [[City.extraPlaces]], so `/london/` names Croydon and `/tarnow/`
  *  names Bochnia rather than each naming only itself. */
 private[models] object VenueTowns {
 

@@ -100,7 +100,7 @@ with Poland's and Spain's radii, since British towns are close together:
 2. Any other town with 3+ venues is a page of its own.
 3. 1-2 venue towns cluster: a 2-venue town takes those within 10 km, 1-venue
    towns cluster within 25 km, a town left alone joins a cluster within 35 km.
-   A cluster is named after its biggest town ("Penrith area").
+   A cluster is named after its biggest town ("Epsom area").
 4. **No venue is more than 40 km from the town its page is named after**
    (`Rules.max_reach_km`). The radii are centre to centre, and a venue can sit
    well out from its town's centre; the three that would have been further

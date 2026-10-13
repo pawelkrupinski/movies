@@ -621,7 +621,7 @@ final class PolishPage private[models] (row: PolishPages.Row)
 
 /** A UK page — a major city (a place of 100,000+) with only its own venues, a
  *  town with three or more, or a cluster of small towns a short drive apart named
- *  after the biggest: "Penrith area", "in the Penrith area". Poland's shape
+ *  after the biggest: "Epsom area", "in the Epsom area". Poland's shape
  *  ([[PolishPage]]), built by the same rule (`data/uk/scripts/build_pages.py`),
  *  with one addition: no venue is more than 40 km from the town a page is named
  *  after. Until 2026-10 a UK page was a Flicks REGION filed by hand — mostly a
@@ -639,7 +639,7 @@ final class UkPage private[models] (row: UkPages.Row)
   /** The town the page is named after first, then the rest of its towns, then
    *  the places its venues' addresses name. */
   override protected val extraPlaces: Seq[String] = (row.towns ++ VenueTowns.of(cinemas)).distinct
-  /** "in the Penrith area" — an area takes the article a town does not. */
+  /** "in the Epsom area" — an area takes the article a town does not. */
   override def locativePhrase: String = if (row.multiTown) s"in the ${labels.nominative}" else super.locativePhrase
   /** The nation and county the picker files this page under: its anchor town's. */
   def nation: String = row.nation

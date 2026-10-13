@@ -348,10 +348,11 @@ for node in re.finditer(r"<node[^>]*>", sys.stdin.read()):
 # then type the single longest [a-z0-9] TOKEN of the result — which the substring
 # match still finds and which, being one alphanumeric word, dodges every character
 # input text can't send. Examples: "Kraków"→"krakow" (ó folds), "München"→"nchen"
-# (ü doesn't, so the tail after it), "West Yorkshire"→"yorkshire" (skips the
-# space), "Edinburgh & Lothians"→"edinburgh" (skips " & "). tap_text then selects
-# the row by its real name — it folds ü itself, via NFD — even when the token
-# matches several rows (the five "…Yorkshire" counties), since it matches in full.
+# (ü doesn't, so the tail after it), "Newcastle upon Tyne"→"newcastle" (skips
+# the spaces), "Bishop's Stortford"→"stortford" (skips "'s "). tap_text then
+# selects the row by its real name — it folds ü itself, via NFD — even when the
+# token matches several rows (Newcastle upon Tyne and Newcastle-under-Lyme), since
+# it matches in full.
 search_term() { # $1 city name
   python3 -c '
 import sys, re

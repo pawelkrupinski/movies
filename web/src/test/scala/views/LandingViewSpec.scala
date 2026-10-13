@@ -95,7 +95,7 @@ class LandingViewSpec extends AnyFlatSpec with Matchers {
     usHtml should not include heading("District of Columbia")
   }
 
-  /** The UK picks a town page — London, Leeds, "Penrith area" — found under its
+  /** The UK picks a town page — London, Leeds, "Epsom area" — found under its
    *  county under its nation. */
   private val ukHtml =
     views.html.landing(models.Country.UnitedKingdom, isApex = false, picker)(using testsupport.TestMessages.forLang("en")).body

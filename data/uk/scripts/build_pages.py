@@ -19,7 +19,7 @@ the rule Poland, Spain, Germany and the US use, from the shared
 
 Poland's and Spain's radii, not the US's wider ones: British towns are close
 together. A cluster is named after its anchor, the town with the most venues,
-then the most people ("Penrith area"; the phrase is the Scala side's, `UkPage`).
+then the most people ("Epsom area"; the phrase is the Scala side's, `UkPage`).
 No cluster crosses water (`towns.json`'s `landmass`): Ryde is 11 km from
 Portsmouth across the Solent, Larne 35 km from Stranraer across the North
 Channel.

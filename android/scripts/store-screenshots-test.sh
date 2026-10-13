@@ -285,8 +285,8 @@ check "search München → nchen"   "nchen"    "$(search_term "München")"
 check "search Köln → ln"         "ln"       "$(search_term "Köln")"
 # Multi-word / punctuated names collapse to their longest bare word, dodging the
 # space and & that input text can't send — the substring match still finds them:
-check "search West Yorkshire → yorkshire"    "yorkshire" "$(search_term "West Yorkshire")"
-check "search Edinburgh & Lothians → edinburgh" "edinburgh" "$(search_term "Edinburgh & Lothians")"
+check "search Newcastle upon Tyne → newcastle" "newcastle" "$(search_term "Newcastle upon Tyne")"
+check "search Bishop's Stortford → stortford"  "stortford" "$(search_term "Bishop's Stortford")"
 check "search plain ASCII" "manchester" "$(search_term "Manchester")"
 
 # --help must survive the header block growing: the new option near the top AND

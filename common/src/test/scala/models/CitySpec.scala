@@ -24,22 +24,15 @@ class CitySpec extends AnyFlatSpec with Matchers {
     Poznan.cinemas shouldBe Cinema.poznan
     Wroclaw.cinemas shouldBe Cinema.wroclaw
     Warszawa.cinemas shouldBe Cinema.warszawa
-    // The full modelled roster — including the disabled UK cities — partitions
-    // the global cinema universe with no overlap: every cinema is owned by
-    // exactly one city, live or not.
+    // Every city's venues partition the global cinema universe with no overlap:
+    // every cinema is owned by exactly one city.
     City.all.flatMap(_.cinemas) should contain theSameElementsAs Cinema.all
     City.all.flatMap(_.cinemas).distinct.size shouldBe Cinema.all.size
-    // The live view (`City.all`, which the worker scrapes + web serves) is a
-    // no-overlap subset of that universe — the disabled cities' cinemas stay
-    // modelled but drop out of the live set.
-    val liveCinemas = City.all.flatMap(_.cinemas)
-    liveCinemas.distinct.size shouldBe liveCinemas.size
-    liveCinemas.toSet.subsetOf(Cinema.all.toSet) shouldBe true
   }
 
   /** `/{slug}/` is ONE global namespace — `City.bySlug` searches every country's
-   *  list — and the US now puts 468 places into it beside 65 Polish, 79 UK and
-   *  436 German ones. Two cities sharing a slug means one of them is
+   *  list — and the US puts ~2,000 places into it beside ~180 Polish, ~260 UK
+   *  and ~450 German ones. Two cities sharing a slug means one of them is
    *  unreachable, silently, at whichever position `find` reaches second. */
   "Every city slug" should "be unique across every country, and URL-shaped" in {
     val slugs = City.all.map(_.slug)
