@@ -2462,6 +2462,28 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     withClue(rendered(r, ls))(films(r, ls) shouldBe Seq(Some(1791571)))
   }
 
+  "A house's encore of its own recording" should "take that recording beside another house's relays of the work" in {
+    // UK "Royal Ballet: La Bayadère" [2018] [170′] ×2, recording 38363428661: the Royal Ballet's 2018 recording (555004,
+    // Ross MacGibbon, 128′ — the venues bill the intervals), its search's only result; kept apart from the Paris Opera
+    // Ballet's "Opéra De Paris - La Bayadère" [125′] relays beside it. TMDB's records of the ballet as it holds them (en-GB).
+    val uk = ukVenues
+    val records = Seq(F(555004, "La Bayadère (Royal Ballet)", 2018, "Ross MacGibbon", 128, 1.3929),
+      F(1300733, "La Bayadere", 2020, "Andy Sommer", 98, 1.5048, original = Some("La Bayadère")),
+      F(376535, "La Bayadère", 2012, "François Roussillon", 0, 1.2959), F(1734528, "La Bayadere", 1991, "Derek Bailey", 123, 2.2894),
+      F(295159, "La Bayadère", 2014, "Valery Gergiev", 127, 1.5814), F(376521, "La Bayadère", 2010, "Alexandre Tarta", 133, 1.3169),
+      F(376531, "La Bayadère", 2011, "Ross MacGibbon", 166, 1.3696), F(142479, "La Scala Ballet: La Bayadère", 2006, "Tina Protasoni", 126, 1.3027),
+      F(303268, "Bolshoi Ballet: La Bayadère", 2013, "Vincent Bataillon", 125, 0.8529), F(559531, "Bolshoi Ballet: La Bayadère", 2019, "", 200, 1.0722))
+    val royal = uk.take(2).map(scraped(_, "Royal Ballet: La Bayadère", Some(2018), runtime = Some(170)))
+    val paris = uk.slice(2, 7).map(scraped(_, "Opéra De Paris - La Bayadère", runtime = Some(125))) ++
+      Seq(scraped(uk(7), "Opera De Paris - La Bayadere", runtime = Some(125)), scraped(uk(8), "La Bayadere - Opera de Paris", runtime = Some(125)),
+        scraped(uk(9), "Opéra de Paris: La Bayadère", runtime = Some(125)), scraped(uk(10), "Opéra de Paris: La Bayadère"),
+        scraped(uk(11), "Opéra de Paris Ballet Season - La Bayadère"), scraped(uk(12), "Opéra de Paris Ballet - La Bayadère (12A tbc)"),
+        scraped(uk(13), "On Screen: La Bayadere (12A)", runtime = Some(125)), scraped(uk(14), "Ballet - La Bayadère"))
+    val ls = royal ++ paris
+    val r  = shipped(ls, records)
+    withClue(rendered(r, ls))(films(r, royal) shouldBe Seq(Some(555004)))
+  }
+
   "A ballet company's relay crediting its screen director" should "not take another house's recording of its work by that director" in {
     // UK Odeon's "English National Ballet: The Sleeping Beauty" {Ross MacGibbon} [144′] ×22 took the Royal Ballet's 2017
     // recording (TMDB 446902, also his) by his credit; ENB's 2026 relay is 1760605, his too.

@@ -1675,10 +1675,16 @@ object IdentityMeasures {
    *  in another script is no other person here ("Wong Kar Wai" is TMDB's 王家衛) — or a runtime
    *  [[RuntimeContradiction]] minutes or more off? A year is every film of that year's: DE kinoheld's "MIRA" [2026]
    *  {Marie Limkilde} [85′] backed Daniella Saba's 16-minute 2026 "Mira", which then stood beside Limkilde's film for
-   *  every bare "Mira" as corroborated, its release veto lifted. */
+   *  every bare "Mira" as corroborated, its release veto lifted. Never the runtime of a stage house's relay billed
+   *  under the record's own house ([[billsItsHouse]]): the venue bills the performance with its intervals, UK "Royal
+   *  Ballet: La Bayadère" [2018] [170′] the house's 128-minute recording (555004), and ruled out, its two venues backed
+   *  nothing and it fell below the cut. */
   private def factsRuleOut(l: Listing, f: Film): Boolean =
     f.directors.exists(credits => FactRelations.otherPerson(l.directors, credits) && FactRelations.otherPeople(l.directors, credits)) ||
-      (runtimeDelta(l, f, None) match { case Number(off) => math.abs(off) >= RuntimeContradiction; case _ => false })
+      (runtimeDelta(l, f, None) match {
+        case Number(off) => math.abs(off) >= RuntimeContradiction && !(l.billsAStageHouse && billsItsHouse(l, f))
+        case _           => false
+      })
 
   /** [[corroboratingVenues]] for every asker of the same title groups, each group's backing venues
    *  of a film found once: a wide release lists one title at thousands of venues over one candidate
