@@ -257,7 +257,7 @@ object IdentityMeasures {
    *  composer ("Giuseppe Verdi MACBETH"), a tag ("Macbeth ENCORE") or a translation ("Cosi fan tutte. Tak czynią
    *  wszystkie") to the work's name; `workIds` the stage works the fragments name in any language ([[StageWorks]]);
    *  `fragmentKeys` every fragment's words run together, a leading article off ([[wholeKey]]), a house's or not ("Das
-   *  Phantom der Oper"); `houses` the house fragments' words ([[houseWords]]). */
+   *  Phantom der Oper") — never one of the art form alone ([[namesOnlyTheArt]]); `houses` the house fragments' words ([[houseWords]]). */
   final case class Relay(workWords: Set[String], workIds: Set[String], fragmentKeys: Set[String], houses: Seq[Seq[String]])
   object Relay {
     val Unbilled: Relay = Relay(Set.empty, Set.empty, Set.empty, Nil)
@@ -265,10 +265,13 @@ object IdentityMeasures {
       val all             = titles.flatMap(fragments).distinct
       val (houses, works) = all.partition(fragment => TitleContainment.tokens(fragment).exists(StageHouseWords))
       Relay(works.flatMap(wordsOf).filter(word => word.length >= 4 && !HouseCommonWords(word)).toSet,
-        works.flatMap(billedIn(_, seasonNamed = true)).toSet, all.map(wholeKey).filter(_.nonEmpty).toSet,
+        works.flatMap(billedIn(_, seasonNamed = true)).toSet, all.filterNot(namesOnlyTheArt).map(wholeKey).filter(_.nonEmpty).toSet,
         houses.map(houseWords).filter(_.nonEmpty).distinct)
     }
   }
+  /** Is `fragment` only the art form, a relay's word or a year ("Opera 2026", "Live")? It names no work and no house, so
+   *  no record carries it whole: UK "Macbeth - Opera 2026" took Argento's 1987 "Opera" so. */
+  private def namesOnlyTheArt(fragment: String): Boolean = wordsOf(fragment).forall(HouseCommonWords)
   private val BracketedFragment = """[(\[]([^()\[\]]*)[)\]]""".r
   /** A title's fragments: each delimited piece, and each bracket in it apart from what it follows. */
   private def fragments(title: String): Seq[String] = pieces(title).flatMap { piece =>

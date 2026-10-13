@@ -422,6 +422,10 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
       Film("Royal Ballet & Opera 2026/27: Così fan tutte")) shouldBe false
     IdentityMeasures.namesAnotherWork(Listing("MUSICAL MITTWOCH - Das Phantom der Oper"), Film("Das Phantom der Oper")) shouldBe false
     IdentityMeasures.namesAnotherWork(Listing("MUSICAL MITTWOCH - Das Phantom der Oper"), Film("Phantom der Oper")) shouldBe false
+    // a fragment naming only the art form is no title a record can carry whole: UK Riverside Theatre Woodbridge's "Macbeth -
+    // Opera 2026" (recording 38326582997) took Argento's 1987 "Opera" by its "Opera" alone
+    IdentityMeasures.namesAnotherWork(Listing("Macbeth - Opera 2026"), Film("Opera")) shouldBe true
+    IdentityMeasures.namesAnotherWork(Listing("Macbeth - Opera 2026"), Film("The Metropolitan Opera 2026/27: Macbeth")) shouldBe false
   }
 
   "a stage house's relay" should "know a record billing its house from one billing another's" in {
