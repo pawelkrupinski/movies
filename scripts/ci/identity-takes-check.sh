@@ -10,7 +10,8 @@
 # THE BASE is the newest commit before the head whose own check passed (its commit status
 # `identity takes (<cc>)` is `success`), so a failed check stays failed on every later push until
 # the move is fixed or accepted -- a check against the parent alone would let the next push absorb
-# it. No such commit in the last 40 (the first run) takes the parent.
+# it -- however far back that commit is. A check that has only ever failed diffs from its first run's
+# base; one that never ran takes the parent.
 #
 # The base is resolved in a worktree of its own beside the checkout (the row has overwritten tracked
 # corpus fixtures with the recording), its sbt seeded with the head's compiled classes so zinc
@@ -36,17 +37,42 @@ mkdir -p "$out"
 identity_paths=(common/src/main worker/src/main worker/src/it/scala/IdentityResolveDumpIntegrationSpec.scala
                 worker/src/it/scala/IdentityShadow.scala testkit/src/main build.sbt project)
 
-# A failed read fails the pick (exit 2 below), never reads as "no green commit": that would diff from the parent
-# and quietly let an earlier unaccepted move through.
+# One page of the head's history before it, a line a commit: `<sha> <state of $context, or -> <parent sha>`, then
+# `NEXT <cursor>` when there is more. GraphQL hands a commit's statuses with it: a page is one call, not 100.
+history_page() { # [cursor]
+  local after=${1:+, after: \$cursor}
+  gh api graphql -f owner="${GITHUB_REPOSITORY%/*}" -f name="${GITHUB_REPOSITORY#*/}" -f expr="$head~1" \
+    ${1:+-f cursor="$1"} -f query="query(\$owner: String!, \$name: String!, \$expr: String!${1:+, \$cursor: String}) {
+      repository(owner: \$owner, name: \$name) { object(expression: \$expr) { ... on Commit {
+        history(first: 100$after) { pageInfo { hasNextPage endCursor }
+          nodes { oid parents(first: 1) { nodes { oid } } status { contexts { context state } } } } } } } }" \
+    --jq ".data.repository.object.history | (.nodes[] | .oid + \" \" +
+            ([(.status.contexts // [])[] | select(.context == \"$context\") | .state][0] // \"-\") + \" \" +
+            (.parents.nodes[0].oid // \"-\")),
+          (if .pageInfo.hasNextPage then \"NEXT \" + .pageInfo.endCursor else empty end)"
+}
+
+# The newest commit before the head whose check passed, however far back. A check that has only ever failed diffs
+# from the base its first run took -- the parent of the oldest commit it judged -- so its moves stay failed until
+# accepted; only a check that never ran takes the head's parent. A failed read fails the pick (exit 2 below), never
+# reads as "no green commit": that would diff from the parent and quietly let an earlier unaccepted move through --
+# as a 40-commit window once did, absorbing a day's moves the moment the last green commit fell out of it.
 pick_base() {
-  local shas sha state
-  shas=$(gh api "repos/$GITHUB_REPOSITORY/commits?sha=$head&per_page=41" --jq '.[1:][].sha') || return 1
-  for sha in $shas; do
-    state=$(gh api "repos/$GITHUB_REPOSITORY/commits/$sha/statuses?per_page=100" \
-      --jq "[.[] | select(.context == \"$context\")][0].state // empty") || return 1
-    if [ "$state" = success ]; then echo "$sha"; return 0; fi
+  local cursor="" page sha state parent first_judged="" head_parent="" pages=0
+  while [ "$pages" -lt 20 ]; do
+    page=$(history_page "$cursor") || return 1
+    cursor=""
+    while read -r sha state parent; do
+      [ "$sha" = NEXT ] && { cursor="$state${parent:+ $parent}"; continue; } # a history cursor is "<sha> <offset>"
+      [ -n "$head_parent" ] || head_parent=$sha # the history of head~1 starts with it
+      [ "$state" = SUCCESS ] && { echo "$sha"; return 0; }
+      [ "$state" != - ] && first_judged=$parent
+    done <<< "$page"
+    pages=$((pages + 1))
+    [ -n "$cursor" ] || break
   done
-  gh api "repos/$GITHUB_REPOSITORY/commits/$head" --jq '.parents[0].sha'
+  if [ -n "$first_judged" ]; then echo "$first_judged"; return 0; fi
+  echo "$head_parent" # never judged in the last 2,000 commits: the check's first run
 }
 
 dump() { # <checkout> <out dir>
