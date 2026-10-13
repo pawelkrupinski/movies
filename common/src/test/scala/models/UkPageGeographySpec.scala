@@ -34,11 +34,10 @@ class UkPageGeographySpec extends AnyFlatSpec with Matchers {
     }.toMap
   }
 
-  "Every UK venue" should "have a harvested fix, bar the one Flicks does not list" in {
+  "Every UK venue" should "have a fix in data/uk/venues.json" in {
     // The rules below can only judge a venue they can place. The Old Court in
-    // Windsor is wired to no Flicks slug, so the harvest never saw it; naming it
-    // here means the NEXT venue to go missing fails instead of being skipped.
-    pages.flatMap(_.cinemas).map(_.displayName).filterNot(fixes.contains) shouldBe Seq("The Old Court Windsor")
+    // Windsor is wired to no Flicks slug, so it is entered there by hand.
+    pages.flatMap(_.cinemas).map(_.displayName).filterNot(fixes.contains) shouldBe empty
   }
 
   it should "sit on its own page's hub unless it is far from it AND close to another" in {

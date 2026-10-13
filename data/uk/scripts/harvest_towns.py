@@ -27,6 +27,7 @@ import argparse
 import json
 import pathlib
 import re
+import string
 import sys
 import threading
 import time
@@ -74,9 +75,9 @@ TAGS = re.compile(r"<[^>]+>")
 # want (Durham, Lincoln) is deliberately absent, since the town is the answer
 # there anyway.
 COUNTIES = frozenset(x.lower() for x in [
-    "Angus", "Argyll", "Ayrshire", "Bedfordshire", "Berkshire", "Buckinghamshire",
-    "Cambridgeshire", "Cheshire", "Clwyd", "Cornwall", "Cumbria", "Derbyshire",
-    "Devon", "Dorset", "Dumfriesshire", "Dyfed", "East Sussex", "Essex", "Fife",
+    "Aberdeenshire", "Angus", "Argyll", "Ayrshire", "Bedfordshire", "Berkshire", "Buckinghamshire",
+    "Cambridgeshire", "Cheshire", "Clackmannanshire", "Clwyd", "Cornwall", "Cumbria", "Derbyshire",
+    "Devon", "Dorset", "Dumfriesshire", "Dyfed", "East Riding of Yorkshire", "East Sussex", "Essex", "Fife",
     "Gloucestershire", "Greater Manchester", "Gwent", "Gwynedd", "Hampshire",
     "Herefordshire", "Hertfordshire", "Kent", "Lanarkshire", "Lancashire",
     "Leicestershire", "Lincolnshire", "Merseyside", "Middlesex", "Midlothian",
@@ -91,7 +92,7 @@ COUNTIES = frozenset(x.lower() for x in [
     # written this way. "Okney" is Flicks' own misspelling of Orkney, which the
     # display name in Cinema.scala carries too — spelled as harvested, because
     # this list has to match what the address actually says.
-    "Isle of Lewis", "Isle of Man", "Isle of Wight", "Okney Islands",
+    "Isle of Bute", "Isle of Lewis", "Isle of Man", "Isle of Wight", "Okney Islands",
     "Orkney Islands", "Shetland Islands", "Western Isles",
 ])
 
@@ -149,9 +150,17 @@ def town_of(address: str) -> str:
 
     # A county or an island group is never the answer; the town is in front of
     # it. Walk, rather than step once, because both can trail at once.
-    while chosen > 0 and _tidy(parts[chosen]).lower() in COUNTIES:
+    while chosen > 0 and _county_key(_tidy(parts[chosen])) in COUNTIES:
         chosen -= 1
-    return _clean(_tidy(parts[chosen]))
+    town = _clean(_tidy(parts[chosen])).rstrip(".")
+    # An address written in capitals gives its town in capitals ("ALLOA").
+    return string.capwords(town) if town.isupper() else town
+
+
+def _county_key(part: str) -> str:
+    """How a part is looked up in COUNTIES: lower-cased, with the "&" an address
+    writes for "and" ("Tyne & Wear") spelled out."""
+    return re.sub(r"\s*&\s*", " and ", part).lower()
 
 
 def _tidy(town: str) -> str:
@@ -225,6 +234,20 @@ def sync_plan(held: dict, wired: dict, names: dict) -> tuple[dict, list, list]:
     return keep, retired, sorted(renamed)
 
 
+def hand_entered(venues: list) -> list:
+    """The venues no Flicks page describes, entered by hand with no `flicksSlug`:
+    the ones a bespoke client scrapes off their own site (The Old Court, Windsor).
+    Every sweep keeps them as they are — there is nothing to re-harvest, and
+    "no longer wired to Flicks" is what they always were — because a venue
+    missing here is on no page (`build_pages.py` refuses the roster)."""
+    return [v for v in venues if not v["flicksSlug"]]
+
+
+def sort_key(venue: dict) -> str:
+    """venues.json's order: by Flicks slug, the hand-entered ones after them."""
+    return venue["flicksSlug"] or "~" + venue["cinemaObject"]
+
+
 _pace = threading.Lock()
 _last = [0.0]
 
@@ -275,9 +298,11 @@ def main() -> int:
     # re-read the display names, which are the table's KEY and change under a
     # rename with nothing to notice it.
     held: dict[str, dict] = {}
-    if args.sync and OUT.exists():
+    previous = json.loads(OUT.read_text()) if OUT.exists() else []
+    hand = hand_entered(previous)
+    if args.sync and previous:
         held, retired, renamed = sync_plan(
-            {v["flicksSlug"]: v for v in json.loads(OUT.read_text())}, wired, names)
+            {v["flicksSlug"]: v for v in previous if v["flicksSlug"]}, wired, names)
         print(f"sync: {len(held)} held, {len(retired)} no longer wired, "
               f"{len(renamed)} renamed", file=sys.stderr)
         for name in renamed:
@@ -288,7 +313,7 @@ def main() -> int:
         slugs = slugs[: args.limit]
     print(f"harvesting {len(slugs)} UK venues from Flicks", file=sys.stderr)
 
-    done, failed = list(held.values()), []
+    done, failed = list(held.values()) + hand, []
 
     def one(slug: str):
         obj = wired[slug]
@@ -313,7 +338,7 @@ def main() -> int:
             if i % 100 == 0:
                 print(f"  {i}/{len(slugs)}", file=sys.stderr)
 
-    done.sort(key=lambda v: v["flicksSlug"])
+    done.sort(key=sort_key)
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(done, indent=1, ensure_ascii=False) + "\n")
 

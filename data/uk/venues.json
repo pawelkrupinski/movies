@@ -471,7 +471,7 @@
   "flicksSlug": "chalmers-alloa-cinema",
   "cinemaObject": "ChalmersAlloaCinema",
   "displayName": "Chalmers Alloa Cinema",
-  "town": "CLACKMANNANSHIRE",
+  "town": "Alloa",
   "address": "CHALMERS CHURCH, BANK STREET, ALLOA, CLACKMANNANSHIRE FK10 1HP",
   "lat": 56.11384,
   "lon": -3.79328
@@ -1542,7 +1542,7 @@
   "flicksSlug": "cultplex-manchester",
   "cinemaObject": "CultplexManchester",
   "displayName": "Cultplex Manchester",
-  "town": "Manchester.",
+  "town": "Manchester",
   "address": "Grub (first floor), 50 Red Bank, Cheetham Hill, Manchester M4 4HF.",
   "lat": 53.49158,
   "lon": -2.23794
@@ -1740,7 +1740,7 @@
   "flicksSlug": "discovery-theatre-rothesay",
   "cinemaObject": "DiscoveryCentreCinemaRothesay",
   "displayName": "Discovery Centre Cinema Rothesay",
-  "town": "Isle of Bute",
+  "town": "Rothesay",
   "address": "Esplanade Gardens, Victoria St, Rothesay, Isle of Bute PA20 0AP",
   "lat": 55.83834,
   "lon": -5.05565
@@ -2892,7 +2892,7 @@
   "flicksSlug": "junction-goole",
   "cinemaObject": "JunctionGoole",
   "displayName": "Junction Goole",
-  "town": "East Riding of Yorkshire",
+  "town": "Goole",
   "address": "Paradise Place, Goole, East Riding of Yorkshire DN14 5DL",
   "lat": 53.70424,
   "lon": -0.87229
@@ -3459,7 +3459,7 @@
   "flicksSlug": "number-30-huntly",
   "cinemaObject": "Number30Huntly",
   "displayName": "Number 30 Huntly",
-  "town": "Aberdeenshire",
+  "town": "Huntly",
   "address": "30 The Square, Huntly, Aberdeenshire AB54 8BR",
   "lat": 57.44774,
   "lon": -2.7865
@@ -6897,7 +6897,7 @@
   "flicksSlug": "vue-cinemas-gateshead-tyne-wear",
   "cinemaObject": "VueCinemasGateshead",
   "displayName": "Vue Cinemas Gateshead",
-  "town": "Tyne & Wear",
+  "town": "Gateshead",
   "address": "Trinity Square, Gateshead, Tyne & Wear NE8 1AG",
   "lat": 54.96268,
   "lon": -1.60147
@@ -7522,5 +7522,14 @@
   "address": "Millans Park, Ambleside LA22 9AD",
   "lat": 54.43191,
   "lon": -2.96468
+ },
+ {
+  "flicksSlug": null,
+  "cinemaObject": "TheOldCourtWindsor",
+  "displayName": "The Old Court Windsor",
+  "town": "Windsor",
+  "address": "St Leonards Road, Windsor SL4 3BL",
+  "lat": 51.47957,
+  "lon": -0.61486
  }
 ]

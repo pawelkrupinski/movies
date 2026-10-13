@@ -59,6 +59,30 @@ def test_an_island_group_is_not_the_town_either():
     assert ht.town_of("Pickaquoy Centre, Muddisdale Road, Kirkwall, Okney Islands KW15 1LR") == "Kirkwall"
 
 
+def test_every_county_the_roster_writes_after_its_town_is_walked_past():
+    # Four venues were harvested with their county, an island or a unitary
+    # authority as their town — "East Riding of Yorkshire" for Junction Goole —
+    # and so were matched to no town at all when the pages were built from towns.
+    assert ht.town_of("Paradise Place, Goole, East Riding of Yorkshire DN14 5DL") == "Goole"
+    assert ht.town_of("30 The Square, Huntly, Aberdeenshire AB54 8BR") == "Huntly"
+    assert ht.town_of("CHALMERS CHURCH, BANK STREET, ALLOA, CLACKMANNANSHIRE FK10 1HP") == "Alloa"
+    assert ht.town_of("Esplanade Gardens, Victoria St, Rothesay, Isle of Bute PA20 0AP") == "Rothesay"
+    # (An address in capitals gives its town in capitals; the town is "Alloa".)
+    # Spelled with an ampersand, which the list spells out.
+    assert ht.town_of("Trinity Square, Gateshead, Tyne & Wear NE8 1AG") == "Gateshead"
+
+
+def test_a_full_stop_after_the_town_is_not_part_of_it():
+    assert ht.town_of("Grub (first floor), 50 Red Bank, Cheetham Hill, Manchester M4 4HF.") == "Manchester"
+
+
+def test_a_hand_entered_venue_survives_every_sweep_and_sorts_last():
+    flicks = {"flicksSlug": "abbey-cinema-abingdon", "cinemaObject": "AbbeyCinemaAbingdon"}
+    hand = {"flicksSlug": None, "cinemaObject": "TheOldCourtWindsor"}
+    assert ht.hand_entered([flicks, hand]) == [hand]
+    assert sorted([hand, flicks], key=ht.sort_key) == [flicks, hand]
+
+
 def test_the_word_county_is_dropped_from_the_town():
     assert ht.town_of("1 Millennium Place, Durham County DH1 1WA") == "Durham"
     assert ht.town_of("Victoria Road, County Hartlepool TS24 8BH") == "Hartlepool"
