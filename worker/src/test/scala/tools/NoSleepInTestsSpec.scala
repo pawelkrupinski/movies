@@ -81,6 +81,9 @@ class NoSleepInTestsSpec extends AnyFlatSpec with Matchers {
     "worker/src/it/scala/MovieRepositoryIntegrationSpec.scala"               -> RealMongo,
     "web/src/page/scala/tools/CdpDriver.scala" ->
       "THE browser polling primitive (waitFor / pollUntil) and Chrome's port-file wait: sleeps between probes, never instead of one",
+    "web/src/page/scala/tools/CdpNavigateBySpec.scala" -> (
+      "its local server sends a page's headers at once and its body 1.5 s later — the half-built document being simulated; " +
+        "every assertion waits on the page, never on the sleep"),
     "web/src/page/scala/tools/CdpWaitForSpec.scala" ->
       "SIGSTOPs Chrome's renderer for a set time — the freeze being simulated; the assertion is waitFor's verdict",
     "web/src/page/scala/views/HiddenFilmsSyncModelSpec.scala" -> (
