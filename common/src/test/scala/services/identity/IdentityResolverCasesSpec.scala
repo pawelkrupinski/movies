@@ -2403,9 +2403,10 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
 
   // UK venues as the scrape lists them: the title through the ingest's own cleaning (`Listing.of`), its certificate peeled
   private val ukVenues = models.Cinema.all.filter(c => models.City.forCinema(c).exists(_.country.language.getCountry == "GB")).take(24)
-  private def scraped(venue: Cinema, raw: String, year: Option[Int] = None, director: Option[String] = None, runtime: Option[Int] = None) =
+  private def scraped(venue: Cinema, raw: String, year: Option[Int] = None, director: Option[String] = None, runtime: Option[Int] = None,
+                      days: Seq[java.time.LocalDate] = Seq(java.time.LocalDate.of(2099, 3, 1))) =
     Listing.of(venue, models.CinemaMovie(models.Movie(raw, runtimeMinutes = runtime, releaseYear = year), venue, None, None, None, Nil,
-      director.toSeq, Seq(models.Showtime(java.time.LocalDateTime.of(2099, 3, 1, 18, 0), None))), normalizer)
+      director.toSeq, days.map(day => models.Showtime(day.atTime(18, 0), None))), normalizer)
   private def namesakes(title: String, ids: Int*) =
     ids.zipWithIndex.map { case (id, i) => F(id, title, 1970 + i * 7, s"Director $i", 90 + i, 1.8 - i * 0.05) }
 
@@ -2460,6 +2461,63 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val ls = siblings ++ screened
     val r  = shipped(ls, records)
     withClue(rendered(r, ls))(films(r, ls) shouldBe Seq(Some(1791571)))
+  }
+
+  // TMDB's UK records of Puccini's "Tosca" as recording 38363428661 holds them (en-GB): Royal Ballet & Opera's 2025/26 and
+  // 2026/27 relays of Oliver Mears's production (only the first credits him), the house's 2011 record under its former
+  // name, and a namesake
+  private val toscaRecords = Seq(
+    F(1482356, "Royal Ballet & Opera 2025/26: Tosca", 2025, "Oliver Mears", 210, 0.9716, released = Some(java.time.LocalDate.of(2025, 10, 1))),
+    F(1702784, "Royal Ballet & Opera 2026/27: Tosca", 2027, "", 0, 0.6206, released = Some(java.time.LocalDate.of(2027, 5, 5))),
+    F(181442, "Royal Opera House: Tosca", 2011, "Jonathan Kent", 128, 1.2345, alternatives = Seq("Puccini: Tosca (Royal Opera House 2011)"),
+      released = Some(java.time.LocalDate.of(2011, 7, 14))),
+    F(654317, "Tosca", 2019, "Patrizia Carmine", 0, 0.773, released = Some(java.time.LocalDate.of(2019, 12, 7))))
+  private val toscaDays = Seq(java.time.LocalDate.of(2027, 5, 5), java.time.LocalDate.of(2027, 5, 9))
+
+  "A relay billed under its house's former name" should "take the house's record of the season it screens in" in {
+    // UK Picture House Uckfield's "Tosca (ROH)" {Oliver Mears} [205′], recording 38363428661, screening 5 and 9 May 2027:
+    // "ROH" read as a house the RBO's records were not, which denied them as another house's staging beside the house's
+    // 2011 record. The Royal Opera House renamed itself Royal Ballet and Opera in 2024: one house, two names.
+    val uk = ukVenues
+    val roh = Seq(scraped(uk(0), "Tosca (ROH)", director = Some("Oliver Mears"), runtime = Some(205), days = toscaDays))
+    val r = shipped(roh, toscaRecords)
+    withClue(rendered(r, roh))(films(r, roh) shouldBe Seq(Some(1702784)))
+  }
+
+  "Two records of one broadcast" should "be one card: every listing takes the one dating its season, never the other" in {
+    // TMDB holds the Royal Opera's 10 November 2026 "Carmen" twice, recording 38363428661: 1151422 under the house's
+    // former name, crediting Michieletto, and 1702759 in the season's "Royal Ballet & Opera 2026/27" series. UK "Carmen
+    // (ROH)" took the first while ~500 listings took the second: two cards of one broadcast.
+    val uk = ukVenues
+    val records = Seq(
+      F(1151422, "Royal Opera House: Carmen", 2026, "Damiano Michieletto", 0, 1.3141, released = Some(java.time.LocalDate.of(2026, 11, 10))),
+      F(1702759, "Royal Ballet & Opera 2026/27: Carmen", 2026, "", 0, 0.5199, released = Some(java.time.LocalDate.of(2026, 11, 10))),
+      F(508142, "Royal Opera House: Carmen", 2018, "Barrie Kosky", 210, 1.0, released = Some(java.time.LocalDate.of(2018, 3, 6))),
+      F(146114, "Carmen", 2011, "Someone", 156, 1.0))
+    val broadcast = Seq(java.time.LocalDate.of(2026, 11, 10))
+    val season = uk.take(3).map(scraped(_, "RBO Cinema Season 2026-27: Carmen", days = broadcast))
+    val roh    = Seq(scraped(uk(3), "Carmen (ROH)", director = Some("Damiano Michieletto"), days = broadcast),
+      scraped(uk(4), "Royal Opera House: Carmen", days = broadcast), scraped(uk(5), "Royal Opera House: Carmen", days = broadcast),
+      scraped(uk(7), "Royal Opera House: Carmen", Some(2026), days = broadcast), scraped(uk(8), "Royal Opera House: Carmen (2026)", days = broadcast))
+    // Flicks' page dates the production by its 2024 premiere: another season than the record's, it takes neither
+    val dated = Seq(scraped(uk(6), "Royal Opera House: Carmen", Some(2024), runtime = Some(220), days = broadcast))
+    val r  = shipped(season ++ roh, records)
+    withClue(rendered(r, season ++ roh))(films(r, season ++ roh) shouldBe Seq(Some(1702759)))
+    val withDated = shipped(season ++ roh ++ dated, records)
+    withClue(rendered(withDated, season ++ roh ++ dated))(films(withDated, season ++ roh ++ dated).flatten should not contain 1151422)
+  }
+
+  "A relay crediting its production's director" should "take the house's record of the season it screens in, not the one crediting him" in {
+    // UK Cineworld's and Everyman's "Royal Ballet and Opera: Tosca" {Oliver Mears} [195′] ×123, recording 38363428661,
+    // screening on 5 May 2027: both seasons' records carry its title, and only the 2025/26 one credits him — the
+    // screenings' season, read only of a relay stating neither director nor running time, told them apart for none. Plaza
+    // Liverpool's "RBO: Tosca" [195′] took the 2025/26 record beside them.
+    val uk = ukVenues
+    val credited = uk.take(4).map(scraped(_, "Royal Ballet and Opera: Tosca", director = Some("Oliver Mears"), runtime = Some(195), days = toscaDays))
+    val plaza    = Seq(scraped(uk(4), "RBO: Tosca", runtime = Some(195), days = toscaDays.drop(1)))
+    val ls = credited ++ plaza
+    val r  = shipped(ls, toscaRecords)
+    withClue(rendered(r, ls))(films(r, ls) shouldBe Seq(Some(1702784)))
   }
 
   "A house's encore of its own recording" should "take that recording beside another house's relays of the work" in {

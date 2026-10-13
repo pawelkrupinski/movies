@@ -98,8 +98,16 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
     def besideItsOwnHouse(other: Scored) = !other.denied && IdentityMeasures.billsAnotherHouse(listing, other.candidate.film) &&
       housed.exists(own => own.candidate.tmdbId != other.candidate.tmdbId &&
         IdentityMeasures.billsItsHouse(listing, own.candidate.film, other.candidate.film.titleWords))
+    // One broadcast its film database holds twice is one film: the record every listing of it takes is the first in
+    // `broadcastRecordOrder`, and the other is no listing's ([[IdentityMeasures.sameBroadcast]]).
+    def anotherRecordOfItsBroadcast(scored: Scored) = candidates.exists(other => other.candidate.tmdbId != scored.candidate.tmdbId &&
+      IdentityMeasures.sameBroadcast(scored.candidate.film, other.candidate.film) &&
+      Ordering[(Int, Int, Int)].lt(IdentityMeasures.broadcastRecordOrder(other.candidate.tmdbId, other.candidate.film),
+        IdentityMeasures.broadcastRecordOrder(scored.candidate.tmdbId, scored.candidate.film)))
     candidates.map(scored =>
-      if (titled && !IdentityMeasures.NamingRelations(relation(scored.candidate.tmdbId)) && IdentityMeasures.sameDirector(scored.measures))
+      if (anotherRecordOfItsBroadcast(scored))
+        scored.copy(denial = Some("another record of a broadcast its film database holds twice"))
+      else if (titled && !IdentityMeasures.NamingRelations(relation(scored.candidate.tmdbId)) && IdentityMeasures.sameDirector(scored.measures))
         scored.copy(denial = Some("its director's other film, which the title does not name"))
       else if (instalment && scored.category("numeral").exists(IdentityMeasures.OtherInstalment))
         scored.copy(denial = Some("another instalment than the one the title numbers"))

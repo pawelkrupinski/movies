@@ -523,7 +523,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
 
   /** The listings as published, the people their own text names, and the venue detail page the picks read of each. */
   private def digestOf(listings: Seq[Listing]): Long =
-    AgreementStage.digest(listings.map(l => l.sortKey + l.broadcastSeason.fold("")(season => s"\u0002$season") +
+    AgreementStage.digest(listings.map(l => l.sortKey + l.screenedSeason.fold("")(season => s"\u0002$season") +
       (if (l.names.isEmpty) "" else s"\u0003${l.names.##}") +
       (if (venues.hasDetail(l)) "\u0001" + venues.detail(l) else "")))
 

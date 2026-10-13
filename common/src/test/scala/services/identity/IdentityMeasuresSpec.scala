@@ -439,6 +439,16 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     houses.other(billed("met opera", "rbo 26 27", "manon")) shouldBe true
   }
 
+  "two names of one renamed house" should "name one house, and no other house that shares a word with one of them" in {
+    // UK "Tosca (ROH)" beside TMDB's "Royal Ballet & Opera 2026/27: Tosca": the Royal Opera House renamed itself in 2024
+    def words(name: String) = name.split(" ").toSeq
+    IdentityMeasures.namesOneHouse(words("roh"), words("royal ballet opera")) shouldBe true
+    IdentityMeasures.namesOneHouse(words("rbo live"), words("royal opera house")) shouldBe true
+    IdentityMeasures.namesOneHouse(words("roh"), words("rbo")) shouldBe true
+    IdentityMeasures.namesOneHouse(words("roh"), words("royal shakespeare company")) shouldBe false
+    IdentityMeasures.namesOneHouse(words("roh"), words("the metropolitan opera")) shouldBe false
+  }
+
   "a stage house's relay" should "deny a record of another work, in no language its work goes by" in {
     val macbeth = Listing("MET Opera: Macbeth 2026", originalTitle = Some("The Metropolitan Opera: Eugene Onegin"))
     IdentityMeasures.namesAnotherWork(macbeth, Film("MET Opera: Eugen Onegin", Some("The Metropolitan Opera: Eugene Onegin"))) shouldBe true

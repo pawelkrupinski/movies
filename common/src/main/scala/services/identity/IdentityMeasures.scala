@@ -31,7 +31,10 @@ object IdentityMeasures {
                            decorations: TitleDecorations = TitleDecorations.None, searchTitles: Seq[String] = Nil,
                            /** The season a stage relay billing neither its season nor a year screens in
                             *  ([[services.identity.Listing.broadcastSeason]]): searched with its work, never measured. */
-                           broadcastSeason: Option[Int] = None) {
+                           broadcastSeason: Option[Int] = None,
+                           /** The season its screenings fall in, whatever it states ([[services.identity.Listing.screenedSeason]]):
+                            *  what picks among a house's records of its work's seasons, never searched. */
+                           screenedSeason: Option[Int] = None) {
     private def titles: Seq[String] = rawTitle.toSeq :+ title
     /** The directors credited beside the published `year` — one listing's own, unless a pooled
      *  read took its year and its credits from different listings (`yearCredits`). */
@@ -128,6 +131,17 @@ object IdentityMeasures {
   def seasonYear(titles: Seq[String]): Option[Int] = TitleSeason.of(titles)
   /** The season a film's own titles name ("The Metropolitan Opera 2026/27: Macbeth"). */
   def filmSeason(f: Film): Option[Int] = f.season
+
+  /** Are two records ONE BROADCAST its film database holds twice: one house's ([[namesOneHouse]]) record of one stage
+   *  work ([[StageWorks]]), aired the same day? TMDB holds the Royal Opera's 10 November 2026 "Carmen" as 1151422 "Royal
+   *  Opera House: Carmen" and as 1702759 "Royal Ballet & Opera 2026/27: Carmen". */
+  def sameBroadcast(a: Film, b: Film): Boolean =
+    a.released.isDefined && a.released == b.released && a.stageWorkIds.exists(b.stageWorkIds) &&
+      a.houseNames.exists(x => b.houseNames.exists(namesOneHouse(x, _)))
+  /** Which of one broadcast's records ([[sameBroadcast]]) every listing of it takes, first in this order: the one dating
+   *  its season (the series the house files its season under), then one IMDb also holds, then the lower id — so all of
+   *  a broadcast's listings land on one card, whichever record each one's evidence reaches first. */
+  def broadcastRecordOrder(id: Int, f: Film): (Int, Int, Int) = (if (f.season.isDefined) 0 else 1, if (f.imdbNumber > 0) 0 else 1, id)
 
   /** Does the film's own title name the listing's SEASON PRODUCTION: both name the same season,
    *  and they share a whole title segment outside it — the work. "Met Opera 2026-27: Samson et
@@ -332,16 +346,25 @@ object IdentityMeasures {
     name.filter(word => word.length >= 2 && !word.forall(_.isDigit) && !HouseCommonWords(word))
   /** Do two house names NAME one house: a word in common beyond [[HouseCommonWords]], one's word a prefix of the other's
    *  ("Met", "Metropolitan"), or one's word the other's initials ("RBO" of "Royal Ballet & Opera", "ROH" of "Royal Opera
-   *  House")? Never a name of common words alone ("Opera", "The Ballet"): it names no house in particular. Numbers are no
-   *  part of a name ("RBO 26/27"). */
+   *  House"), or two names of one house ([[StageHouses]]: "ROH" and "Royal Ballet & Opera", the house renamed)? Never a
+   *  name of common words alone ("Opera", "The Ballet"): it names no house in particular. Numbers are no part of a name
+   *  ("RBO 26/27"). */
   private[identity] def namesOneHouse(a: Seq[String], b: Seq[String]): Boolean = {
     def own(name: Seq[String]) = particularWords(name)
     def initials(name: Seq[String]) =
       name.filterNot(word => word.forall(_.isDigit) || Set("the", "and", "und", "of")(word)).flatMap(_.headOption).mkString
     val (ownA, ownB) = (own(a), own(b))
     ownA.exists(x => ownB.exists(y => x == y || (x.length >= 3 && y.startsWith(x)) || (y.length >= 3 && x.startsWith(y)))) ||
-      ownA.exists(x => x.length >= 2 && x == initials(b)) || ownB.exists(y => y.length >= 2 && y == initials(a))
+      ownA.exists(x => x.length >= 2 && x == initials(b)) || ownB.exists(y => y.length >= 2 && y == initials(a)) ||
+      oneHouseRenamed(ownA.toSet, ownB.toSet)
   }
+  /** Each multi-named house's names ([[StageHouses]]) as the words that say which house ([[particularWords]]). */
+  private lazy val housesByName: Seq[Set[Set[String]]] =
+    StageHouses.houses.map(_.map(name => particularWords(name).toSet).filter(_.nonEmpty).toSet)
+  /** Are `a` and `b` — particular words — exactly two names of one house: a banner spelling one of its names, nothing
+   *  more ("Royal Shakespeare" spells none of the Royal Opera House's)? */
+  private def oneHouseRenamed(a: Set[String], b: Set[String]): Boolean =
+    a.nonEmpty && b.nonEmpty && housesByName.exists(names => names(a) && names(b))
 
   /** A relay's own words, which a house's name is billed WITH but never abbreviated by ("NT Live" of "National Theatre
    *  Live" is "NT"). */

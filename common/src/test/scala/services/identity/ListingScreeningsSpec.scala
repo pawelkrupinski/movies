@@ -37,6 +37,17 @@ class ListingScreeningsSpec extends AnyFlatSpec with Matchers {
       Seq(Showtime(LocalDateTime.parse("2026-10-20T19:00"), None))), SingleCountryNormalizer.titleNormalizer).broadcastSeason shouldBe None
   }
 
+  it should "be screened in that season whatever else it states, though it is searched so only stating nothing" in {
+    // UK "Royal Ballet and Opera: Tosca" {Oliver Mears} [195′] on 5 May 2027: the 2026/27 season's relay
+    val credited = Listing.of(KinoApollo, CinemaMovie(Movie("Royal Ballet and Opera: Tosca", runtimeMinutes = Some(195)), KinoApollo, None,
+      None, None, Nil, Seq("Oliver Mears"), Seq(Showtime(LocalDateTime.parse("2027-05-05T19:00"), None))), SingleCountryNormalizer.titleNormalizer)
+    credited.screenedSeason shouldBe Some(2026)
+    credited.broadcastSeason shouldBe None
+    listing("Samson i Dalila", "2026-12-05T18:55").screenedSeason shouldBe Some(2026)
+    listing("Met Opera 2026-27: Manon", "2027-04-03T18:00").screenedSeason shouldBe None
+    listing("Lalka", "2026-12-05T18:00").screenedSeason shouldBe None
+  }
+
   "A listing's equality" should "hold its broadcast season, never the days it screens on" in {
     // a venue adding a showtime re-resolves nothing; a relay moving to the next season does
     listing("Samson i Dalila", "2026-12-05T18:55") shouldBe listing("Samson i Dalila", "2026-12-05T18:55", "2026-12-09T18:00")
