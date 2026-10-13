@@ -16,11 +16,15 @@ import tools.SpecTimeouts
 import scala.concurrent.{Await, Future}
 
 /**
- * A place the site knows never 404s, in any country: every page slug, every slug
- * a city used to answer at (`Country.renamedSlugs`) and every other name of a
- * place a page covers (`Country.slugAliases`), with and without its trailing
- * slash, through the deployment's real filters and the real city actions —
- * answering 200, or a 301 that lands on a 200.
+ * A place the site knows never 404s on its own country's site, in any country:
+ * every page slug, every slug a city used to answer at (`Country.renamedSlugs`)
+ * and every other name of a place a page covers (`Country.slugAliases`), with
+ * and without its trailing slash, through the deployment's real filters and the
+ * real city actions — answering 200, or a 301 that lands on a 200.
+ *
+ * The one deliberate 404 is a Polish place asked for on the `showtimes.cc` apex
+ * rather than on `kinowo.net`: Polish places live on their own domain only
+ * (`FrontDoorRedirectFilter`), which the front-door cases below pin.
  *
  * The router here binds the three city shapes the routes file does (`/:city`,
  * `/:city/`, `/:city/api/cinemas`) to the real `MovieController`; everything a
@@ -56,7 +60,7 @@ class KnownPlacesNeverNotFoundSpec extends AnyFlatSpec with Matchers with Before
 
     private val chain: RequestHeader => Future[Result] = {
       val renamed   = new RenamedCityRedirectFilter(country, legacy)
-      val frontDoor = new FrontDoorRedirectFilter(country, legacy)
+      val frontDoor = new FrontDoorRedirectFilter(country, legacy, new play.api.http.DefaultHttpErrorHandler())
       rh => frontDoor(renamed(route))(rh)
     }
 
@@ -140,6 +144,8 @@ class KnownPlacesNeverNotFoundSpec extends AnyFlatSpec with Matchers with Before
     // A retired UK county page, in one hop to the page it retired into.
     val somerset = Country.UnitedKingdom.resolve("somerset").map(_.slug).getOrElse(fail("somerset"))
     front.get("/somerset/", host = Country.apexHost).header.headers(LOCATION) shouldBe s"/uk/$somerset/"
+    // A retired county page with no page of its own lands on the page its towns are on.
+    front.get("/kent/", host = Country.apexHost).header.headers(LOCATION) shouldBe "/uk/chatham/"
     front.get("/leeds/", host = Country.apexHost).header.headers(LOCATION) shouldBe "/uk/leeds/"    // new, UK first
   }
 
