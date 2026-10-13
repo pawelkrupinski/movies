@@ -48,4 +48,19 @@ class UnmatchedClustersFindingsSpec extends AnyFlatSpec with Matchers {
     lines.get(1).split("\t", -1).toSeq shouldBe Seq("WRONG", "de", "A", "Wrong", "tmdb:2", "a b c", "Filled", "tmdb:2", "",
       "filled by venues.current ¶ guards passed: bill.several")
   }
+
+  "a label" should "call a film right at its venue however every venue's label calls it wrong" in {
+    // PL Kino Iluzjon's "Lalka" [1968] {Wojciech Jerzy Has}: the archive's screening of Has' film, where the bare "Lalka"
+    // every other venue bills is Kawalski's 2026 one
+    val labels = Seq(
+      Label("pl", "*", "Lalka", "tmdb:81315", right = false, "1968"),
+      Label("pl", "*", "Lalka", "imdb:tt0064570", right = false, "1968"),
+      Label("pl", "*", "Lalka", "tmdb:1321666", right = true, "2026"),
+      Label("pl", "Kino Iluzjon", "Lalka", "tmdb:81315", right = true, "the archive bills Has' 1968 film"),
+      Label("pl", "Kino Iluzjon", "Lalka", "imdb:tt0064570", right = true, "the archive bills Has' 1968 film"))
+    def lalka(venue: String, tmdb: Int, imdb: String) = Take("pl", venue, "Lalka", Some(tmdb), Some(imdb), "OwnMatch", "Lalka")
+    UnmatchedClusters.verdict(lalka("Kino Iluzjon", 81315, "tt0064570"), labels) shouldBe Some(true)
+    UnmatchedClusters.verdict(lalka("Kino Kadr", 81315, "tt0064570"), labels) shouldBe Some(false)
+    UnmatchedClusters.verdict(lalka("Kino Kadr", 1321666, "tt37082105"), labels) shouldBe Some(true)
+  }
 }

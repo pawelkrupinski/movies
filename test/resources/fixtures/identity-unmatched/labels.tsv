@@ -502,6 +502,10 @@ pl	*	Lalka	imdb:tt0064570	wrong	hand label: Lalka (1968) Wojciech Has
 pl	*	Lalka	imdb:tt37082105	right	hand label: Lalka (2026) Maciej Kawalski
 pl	*	Lalka	wikidata:Q139380938	right	hand label: Lalka (2026) Maciej Kawalski
 pl	*	Lalka	wikipedia:Q139380938	right	hand label: Lalka (2026) Maciej Kawalski
+pl	Kino Iluzjon	Lalka	tmdb:81315	right	judged 10-13: the archive page (iluzjon.fn.org.pl/filmy/info/2457) bills Lalka 1968, Wojciech Jerzy Has, 166 min
+pl	Kino Iluzjon	Lalka	imdb:tt0064570	right	judged 10-13: the archive page (iluzjon.fn.org.pl/filmy/info/2457) bills Lalka 1968, Wojciech Jerzy Has, 166 min
+pl	Kino Iluzjon	Lalka	filmweb:1174	right	judged 10-13: the archive page (iluzjon.fn.org.pl/filmy/info/2457) bills Lalka 1968, Wojciech Jerzy Has, 166 min
+pl	Kino Iluzjon	Lalka	cinemeta:tt0064570	right	judged 10-13: the archive page (iluzjon.fn.org.pl/filmy/info/2457) bills Lalka 1968, Wojciech Jerzy Has, 166 min
 pl	*	Lalka (DOLLY)	cinemeta:tt0064570	wrong	hand label: Lalka (1968)
 pl	*	Lalka (Dolly)	cinemeta:tt0064570	wrong	hand label: Lalka (1968)
 pl	*	Lalka Dolly (Napisy)	cinemeta:tt0064570	wrong	hand label: Lalka (1968)
