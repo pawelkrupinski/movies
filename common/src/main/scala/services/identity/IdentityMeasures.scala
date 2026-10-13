@@ -391,8 +391,11 @@ object IdentityMeasures {
     /** Is the listing's banner known to be ANOTHER house than the film's — and the two names not one house's
      *  ([[namesOneHouse]])? DE's "RBO Live" banner was learned as the house records spelling it so bill, and then denied
      *  "RBO Live 2026/27: Schwanensee (Royal Ballet)" ×80 the season's record billing it "RBO 26/27": one house, two
-     *  spellings. */
-    def other(b: Billing): Boolean = !same(b) && of.contains(b.listingHouse) && !namesOneHouse(b.listingWords, b.filmWords)
+     *  spellings. Nor is a banner of common words alone ([[particularWords]]) another house: it names none. A record
+     *  learning a venue's "Götterdämmerung ROYAL OPERA HOUSE" bills "Götterdämmerung Royal Opera" under "House", and once
+     *  "26/27" was a season that billing denied DE "RBO 26/27: Götterdämmerung (Royal Opera)" ×26 its own record. */
+    def other(b: Billing): Boolean =
+      !same(b) && of.contains(b.listingHouse) && particularWords(b.filmWords).nonEmpty && !namesOneHouse(b.listingWords, b.filmWords)
   }
   object Houses {
     val Unknown: Houses = Houses(Map.empty)

@@ -2368,6 +2368,39 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     withClue(rendered(r, macbeth))(films(r, macbeth).flatten should not contain 1479651)
   }
 
+  it should "take its season's record by the box office's short season, though a sibling's spelling leaves the record a banner of no house" in {
+    // DE "RBO 26/27: Cosí fan tutte (Royal Opera)" ×28 and "RBO 26/27: Götterdämmerung (Royal Opera)" ×26, recording
+    // 38363428661: read as season 2026 once "26/27" was a season, each was vetoed as "another house's season production"
+    // of its own record and kept apart from its siblings. TMDB's records as it holds them, no alternative titles.
+    val records = Seq(
+      F(1702775, "RBO 2026/27: Così fan tutte (The Royal Opera)", 2027, "", 195, 0.5751, original = Some("Royal Ballet & Opera 2026/27: Così fan tutte")),
+      F(1702769, "RBO 2026/27: Götterdämmerung (The Royal Opera)", 2027, "", 370, 0.5507, original = Some("Royal Ballet & Opera 2026/27: Götterdämmerung")),
+      F(1755057, "Così fan tutte", 2021, "", 0, 1.2, original = Some("Mozart: Così fan tutte - Teatro alla Scala")))
+    val de = models.Cinema.all.filter(c => models.City.forCinema(c).exists(_.country.language.getCountry == "DE")).take(20)
+    def staged(english: String, titles: String*) = titles.zip(de).map { case (t, v) =>
+      listing(v, t, Some(2027)).copy(originalTitle = Some(s"Royal Ballet & Opera 2026/27: $english")) }
+    val cosi = staged("Così fan tutte", "RBO 26/27: Cosí fan tutte (Royal Opera)", "RBO 2026/27: Così fan tutte (The Royal Opera)",
+      "Cosí fan tutte (Royal Opera)", "Cosí fan tutte ROYAL OPERA HOUSE", "RBO 26/27: Cosí fan tutte (Royal Opera) (Aufz.)",
+      "RBO 2026/ 27: Cosí fan tutte (The Royal Opera)", "RBO Cosi fan tutte (Royal Opera)", "RBO Kino Saison 2026-27: Così Fan Tutte",
+      "RBO Live 2026-27: The Royal Opera Cosi fan tutte", "Royal Ballet & Opera 2026/27: Così fan tutte (Royal Opera)",
+      "The Royal Opera: Cosí fan tutte", "RBO Live 2026/27: Cosí fan tutte (Royal Opera)", "RBO LIVE 2026/27: COSÍ FAN TUTTE (ROYAL OPERA)",
+      "Cosi fan tutte (RB+O 2026/27)")
+    val gotter = staged("Götterdämmerung", "RBO 26/27: Götterdämmerung (Royal Opera)", "RBO 2026/27: Götterdämmerung (The Royal Opera)",
+      "Götterdämmerung (Royal Opera)", "Götterdämmerung ROYAL OPERA HOUSE", "RBO 26/27: Götterdämmerung (Royal Opera) (Aufz.)",
+      "RBO 2026/ 27: Götterdämmerung (The Royal Opera)", "RBO Goetterdaemmerung (Royal Opera)", "RBO Kino Saison 2026-27: Götterdämmerung",
+      "RBO Live 2026-27: The Royal Opera Götterdämmerung", "Royal Ballet & Opera 2026/27: Götterdämmerung (Royal Opera)",
+      "The Royal Opera: Götterdämmerung", "RBO Live 2026/27: Götterdämmerung (Royal Opera)", "RBO LIVE 2026/27: GÖTTERDÄMMERUNG (ROYAL OPERA)",
+      "Götterdämmerung (RB+O Live 2026/27)", "Götterdämmerung")
+    // every spelling but RB+O's, whose "RB O" banner no record's spelling names: the "RBO Live" banner's too, which the
+    // "House" billing denied before as well
+    def taken(ls: Seq[Listing]) = ls.filterNot(_.title.contains("RB+O"))
+    val r = shipped(cosi ++ gotter, records)
+    withClue(rendered(r, cosi ++ gotter)) {
+      films(r, taken(cosi)) shouldBe Seq(Some(1702775))
+      films(r, taken(gotter)) shouldBe Seq(Some(1702769))
+    }
+  }
+
   "A ballet company's relay crediting its screen director" should "not take another house's recording of its work by that director" in {
     // UK Odeon's "English National Ballet: The Sleeping Beauty" {Ross MacGibbon} [144′] ×22 took the Royal Ballet's 2017
     // recording (TMDB 446902, also his) by his credit; ENB's 2026 relay is 1760605, his too.
