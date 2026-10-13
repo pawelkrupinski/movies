@@ -2258,6 +2258,29 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  "A bare title its credited siblings' facts give another record than the one carrying it" should "take the record their facts single out" in {
+    // PL "Ktoś całkiem obcy", prod 2026-10-13: Kino Marzenie's [2026] {Brandt Andersen} [103′] and Kino Chatka Żaka's
+    // programme listing [2024] [103′] are Andersen's "I Was a Stranger" (1193128), which TMDB titles in Arabic and
+    // English only; Kino Seniora's bare "Ktoś całkiem obcy" at three venues and Kryterium's "DKF: …" took Foley's 2007
+    // "Perfect Stranger", the one record carrying the Polish title, which every credited listing's year and director rule
+    // out. Every cycle the projection wrote that split, a fresh card for 1193128 beside Kino Seniora's, and the agreement
+    // stage's correction (Filmweb's programmes, a venue poster) then moved Seniora's to 1193128 and the fresh card was
+    // retired by overlap: 63 re-matches from 10-09. IMDb suggests "I Was a Stranger" first for the Polish title, then "Perfect Stranger"; TMDB's search finds only the latter
+    val films = Seq(F(1193128, "قضية الغرباء", 2025, "Brandt Andersen", 103, 3.7663, alternatives = Seq("The Strangers' Case", "The Passage"),
+        releaseCountries = Some("ARBRCACZDEESFIFRGRGTIDKRNLPESESKUS"), releases = Some("DE2024-DE2026-FR2024-FR2026-US2025-US2026-"),
+        searched = false, imdbTitles = Seq("Ktoś całkiem obcy")),
+      F(7183, "Ktoś całkiem obcy", 2007, "James Foley", 109, 7.3552, original = Some("Perfect Stranger"),
+        releaseCountries = Some("ATBRDEDKFRGBGRHUIEITKRNLPLPTROSKUS")))
+    val credited = Seq(listing(KinoMuza, "KTOŚ CAŁKIEM OBCY", Some(2026), Some("Brandt Andersen"), Some(103)),
+      listing(Helios, "Ktoś całkiem obcy", Some(2024), Some("Brandt Andersen"), Some(103)))
+    val bare = Seq(KinoOaza, KinoMikro, KinoPalacowe).map(listing(_, "Ktoś całkiem obcy"))
+    // Kryterium's "DKF: …" names the record only by a piece of its title, beside IMDb's suggestion: not decided here
+    val club = listing(Kinoteka, "DKF: Ktoś całkiem obcy").copy(searchTitle = Some("Ktoś całkiem obcy"))
+    val r = shipped(credited ++ bare :+ club, films)
+    withClue((credited ++ bare :+ club).map(l => r.decisionOf(l.key).render).distinct.mkString("\n"))(
+      (credited ++ bare).map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(1193128)))
+  }
+
   "A stage house's relay of a work" should "not take a screen namesake of the work" in {
     // DE "Paris Opera Ballett: Romeo und Julia" ×2 took Zeffirelli's 1968 film by its pooled evidence at 50.7%, and
     // "RB&O Live: Tosca (Oper)" the 1976 film: TMDB holds no record of either relay.
