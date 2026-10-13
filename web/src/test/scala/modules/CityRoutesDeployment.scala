@@ -17,14 +17,17 @@ import scala.concurrent.{Await, Future}
  * order (`AppLoader.filterChain`: the front door first).
  *
  * The router binds the city shapes the routes file does that a visitor or an app
- * reaches — `/:city`, `/:city/` and the three `/:city/api/…` endpoints the apps
- * call — to the real `MovieController`; everything a request meets before them is
- * the production filter pair. Over an empty read model, so thousands of addresses
- * render in seconds.
+ * reaches — `/:city`, `/:city/`, the three `/:city/api/…` endpoints the apps call
+ * and the film shapes a share link carries (`/movie/:slug`, `/movie?title=`, the
+ * pre-rename `/film…`) — to the real `MovieController`; everything a request meets
+ * before them is the production filter pair. Over the `films` it is handed, by
+ * default none, so thousands of addresses render in seconds.
  */
-final class CityRoutesDeployment(country: Country, legacy: LegacyAddressMetrics = SpecLegacyAddressMetrics.fresh())
+final class CityRoutesDeployment(country: Country,
+                                 legacy: LegacyAddressMetrics = SpecLegacyAddressMetrics.fresh(),
+                                 films: Seq[(String, Option[Int], models.MovieRecord)] = Nil)
                                 (using Materializer) {
-  private val controller: MovieController = TestMovieController.build(Nil, servingCountry = country)._1
+  private val controller: MovieController = TestMovieController.build(films, servingCountry = country)._1
   private val mount = country.mountPath.stripSuffix("/")
 
   private def route(rh: RequestHeader): Future[Result] = {
@@ -35,6 +38,10 @@ final class CityRoutesDeployment(country: Country, legacy: LegacyAddressMetrics 
       case Seq(city, "api", "repertoire") => controller.apiRepertoire(city)
       case Seq(city, "api", "details")    => controller.apiDetails(city)
       case Seq(city, "api", "cinemas")    => controller.apiCinemas(city)
+      case Seq(city, "movie")             => controller.film(city, rh.getQueryString("title").getOrElse(""))
+      case Seq(city, "movie", slug)       => controller.filmBySlug(city, slug)
+      case Seq(city, "film")              => controller.filmLegacy(city)
+      case city +: "film" +: rest         => controller.filmSubPathLegacy(city, rest.mkString("/"))
       case _                              => EssentialAction(_ => play.api.libs.streams.Accumulator.done(Results.NotFound))
     }
     action(rh).run()
@@ -51,16 +58,15 @@ final class CityRoutesDeployment(country: Country, legacy: LegacyAddressMetrics 
 
   def path(slug: String, slash: Boolean): String = s"$mount/$slug${if (slash) "/" else ""}"
 
-  /** Where `path` lands — itself on a 200, the `Location` of a 301 that answers
-   *  200 — or what went wrong instead. */
-  def landsOnOk(path: String): Either[String, String] = {
+  /** Where `path` lands — itself on a 200, the `Location` of up to `hops` 301s that
+   *  ends in a 200 — or what went wrong instead. */
+  def landsOnOk(path: String, hops: Int = 1): Either[String, String] = {
     val first = get(path)
     first.header.status match {
       case OK => Right(path)
-      case MOVED_PERMANENTLY =>
-        val to     = first.header.headers.getOrElse(LOCATION, "")
-        val landed = get(to)
-        if (landed.header.status == OK) Right(to) else Left(s"$path → $to → ${landed.header.status}")
+      case MOVED_PERMANENTLY if hops > 0 =>
+        val to = first.header.headers.getOrElse(LOCATION, "")
+        landsOnOk(to, hops - 1).left.map(problem => s"$path → $problem")
       case other => Left(s"$path → $other")
     }
   }

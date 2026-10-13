@@ -216,6 +216,28 @@ class InstalledBuildContractSpec extends AnyFlatSpec with Matchers with BeforeAn
     }
   }
 
+  "A film link an installed build shares from a displaced page" should "land on that film on the page, with a 200" in {
+    // Such a build mints its share links under the catalog `slug` it knows the city by.
+    val york  = Country.UnitedKingdom.bySlug("york")
+    val title = "Yorkshire Feature"
+    val film = models.MovieRecord(imdbId = Some("tt1010101"), data = Map[models.Source, models.SourceData](
+      york.cinemas.head -> models.SourceData(title = Some(title), releaseYear = Some(2024),
+                                             showtimes = Seq(models.Showtime(controllers.TestMovieController.now.plusDays(2), None, None, Nil)))))
+    val uk = new CityRoutesDeployment(Country.UnitedKingdom, films = Seq((title, Some(2024), film)))
+    val qualified = InstalledBuildSlugs.of(Country.UnitedKingdom, york)
+    qualified shouldBe "york-north-yorkshire"
+    // The film's canonical address, as the page names it.
+    val canonical = uk.get(s"/uk/york/movie?title=${java.net.URLEncoder.encode(title, "UTF-8")}").header.headers.getOrElse(LOCATION, fail("no canonical film address"))
+    val filmSlug  = canonical.split("/movie/").lastOption.getOrElse(fail(canonical))
+    val onPage    = s"/uk/york/movie/$filmSlug"
+    // The canonical form, its pre-rename `/film/` spelling, and the legacy `?title=` form.
+    uk.landsOnOk(s"/uk/$qualified/movie/$filmSlug", hops = 3) shouldBe Right(onPage)
+    uk.landsOnOk(s"/uk/$qualified/film/$filmSlug", hops = 3) shouldBe Right(onPage)
+    uk.landsOnOk(s"/uk/$qualified/movie?title=${java.net.URLEncoder.encode(title, "UTF-8")}", hops = 3) shouldBe Right(onPage)
+    // …and the build that shared it opens it on the same city.
+    Old.open(s"https://showtimes.cc/uk/$qualified/movie/$filmSlug") shouldBe Some("uk" -> qualified)
+  }
+
   "A link naming no country" should "open the city of the slug's old owner" in {
     val failures = for {
       old    <- oldCities
