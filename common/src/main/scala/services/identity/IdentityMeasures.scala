@@ -118,14 +118,18 @@ object IdentityMeasures {
       case _        => None
     }
 
-  /** A SEASON written into a title — "2026/27", "2026-27", "2026/2027", "2026–2027": a year and the
-   *  next, which is how a broadcast or programme series names its run, never a film's year. */
-  private val Season = """(?<![\p{N}])((?:18|19|20)\d{2})\s*[/–—-]\s*(\d{4}|\d{2})(?![\p{N}])""".r
-  private def seasonStart(m: scala.util.matching.Regex.Match): Option[Int] = {
-    val start = m.group(1).toInt
-    val end   = m.group(2)
-    Option.when((end.length == 4 && end.toInt == start + 1) || (end.length == 2 && end.toInt == (start + 1) % 100))(start)
-  }
+  /** A SEASON written into a title — "2026/27", "2026-27", "2026/2027", "2026–2027", and a box office's short
+   *  "2026/7" or "26/27" (prod UK "Royal Ballet 2026/7: Romeo & Juliet", "RB&O 26/27: Romeo & Juliet"): a year and the
+   *  next, which is how a broadcast or programme series names its run, never a film's year. Two digits alone start one
+   *  only from 20 and across a slash: "Kids Club 12/13" is an age band. */
+  private val Season = """(?<![\p{N}])(?:((?:18|19|20)\d{2})\s*[/–—-]\s*(\d{4}|\d{1,2})|([23]\d)\s*/\s*(\d{2}))(?![\p{N}])""".r
+  private def seasonStart(m: scala.util.matching.Regex.Match): Option[Int] =
+    if (m.group(1) == null) Option.when(m.group(4).toInt == m.group(3).toInt + 1)(2000 + m.group(3).toInt)
+    else {
+      val start = m.group(1).toInt
+      val end   = m.group(2)
+      Option.when(end.toInt == (start + 1) % math.pow(10, end.length).toInt)(start)
+    }
   /** A season or a bracketed year needs an ASCII digit (`\d` is ASCII-only in Java): a title without
    *  one skips their regexes. */
   private def hasAsciiDigit(t: String): Boolean = t.exists(c => c >= '0' && c <= '9')
@@ -1473,7 +1477,21 @@ object IdentityMeasures {
    *  or, in a title naming its season (`seasonNamed`), opening with one before a venue's tag ("SAMSON I DALILA-
    *  RETRANSMISJA"). Never a work a title only opens with otherwise: "Manon des sources" is no broadcast of "Manon". */
   def stageWorksBilled(titles: Seq[String], seasonNamed: Boolean): Set[String] =
-    titles.map(_.replace("&", " and ")).flatMap(t => (pieces(t) ++ fragments(t)).distinct :+ t).flatMap(billedIn(_, seasonNamed)).toSet
+    titles.map(billable).flatMap(t => (pieces(t) ++ fragments(t)).distinct :+ t).flatMap(billedIn(_, seasonNamed)).toSet
+
+  /** A box office's running time ending a title ("RB&O Romeo & Juliet (12 TBC) 170 mins"), and a bracket it never closes
+   *  ("The Metropolitan Opera: Macbeth [New Production"): neither part of the work, both hiding the end it is read off. */
+  private val TrailingRunningTime = """(?i)\s*\d{2,3}\s*mins?\.?\s*$""".r
+  private val UnclosedBracket     = """\s*[(\[][^)\]]*$""".r
+  /** Initials an ampersand joins ("RB&O"): one abbreviation, "RBO" — never "Romeo & Juliet", spaced. */
+  private val AmpersandInitials   = """(?<=\b\p{Lu}{1,3})&(?=\p{Lu}{1,3}\b)""".r
+  /** A title as its stage works and house are read off it ([[stageWorksBilled]], [[namesItsHouse]]): initials an
+   *  ampersand joins run together, any other "&" read as "and", its running time and an unclosed bracket's tail cut off
+   *  (the bracket's words kept as a piece of their own). */
+  private def billable(title: String): String = {
+    val untimed = TrailingRunningTime.replaceFirstIn(AmpersandInitials.replaceAllIn(title, "").replace("&", " and "), "")
+    UnclosedBracket.findFirstMatchIn(untimed).fold(untimed)(m => s"${m.before} | ${m.matched.trim.drop(1)}")
+  }
 
   /** A title's delimited pieces, its seasons and bracketed years out. */
   private[identity] def pieces(title: String): Seq[String] = PieceBreak.split(withoutYears(title)).toSeq.map(_.trim).filter(_.nonEmpty)
@@ -1510,7 +1528,7 @@ object IdentityMeasures {
    *  "MET" of "The Metropolitan Opera"; initials, "RBO" of "Royal Ballet & Opera")? Read off the title's pieces, not
    *  the art-form word a relay's banner carries ([[Relay]]): UK "MET: Macbeth" names none. */
   def namesItsHouse(l: Listing, f: Film): Boolean = bannersMeetOf(l, f) || {
-    val banners = (Seq(l.title) ++ l.rawTitle).flatMap(fragments).filter(piece => StageWorks.resolver.named(key(piece)).isEmpty)
+    val banners = (Seq(l.title) ++ l.rawTitle).map(billable).flatMap(fragments).filter(piece => StageWorks.resolver.named(key(piece)).isEmpty)
       .map(wordsOf).filter(_.nonEmpty)
     banners.exists(banner => f.houseNames.exists(namesOneHouse(banner, _)))
   }

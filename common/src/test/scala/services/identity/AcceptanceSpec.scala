@@ -97,6 +97,26 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
       (1703622, Film("The Metropolitan Opera 2026/27: Macbeth", year = Some(2026)), Some(1)))) shouldBe Some(1703622)
   }
 
+  it should "read its work and its house however a box office spells them" in {
+    // Prod UK 2026-10-13: each venue's spelling, unread, named no work to search with its broadcast season ("NoCandidate"),
+    // or no house the season's record bills
+    val romeo   = (1702789, Film("Royal Ballet & Opera 2026/27: Romeo and Juliet", year = Some(2027)), Some(1))
+    val macbeth = (1703622, Film("The Metropolitan Opera 2026/27: Macbeth", year = Some(2026)), Some(1))
+    val billed  = Seq(
+      "RB&O Romeo & Juliet (12 TBC) 170 mins" -> romeo, // Electric Palace Bridport
+      "RBO present Romeo and Juliet 27"        -> romeo, // The Flavel
+      "ROYAL BALLET & OPERA LIVE_ ROMEO AND JULIET" -> romeo,
+      "RBO/MET presents MACBETH"               -> macbeth, // The Flavel
+      "Live from the Met: Macbeth"             -> macbeth, // Dundee Contemporary Arts
+      "The Metropolitan Opera: Macbeth [New Production" -> macbeth, // The Maltings Berwick
+      "The Met: Macbeth 26"                    -> macbeth, // The Beehive Honiton
+      "Met Opera in Association with RBO: Macbeth (12A)" -> macbeth) // Theatr Mwldan Cardigan
+    billed.filterNot { case (title, record) =>
+      IdentityMeasures.stageWorksBilled(Seq(title), seasonNamed = false).nonEmpty &&
+        taken(ranked(Listing(title, broadcastSeason = Some(2026)), record)).contains(record._1)
+    }.map(_._1) shouldBe empty
+  }
+
   "directors-work" should "leave two seasons of one staging, both billing the work, to the season" in {
     // UK "Royal Ballet and Opera: Tosca" {Oliver Mears} [195′] ×123 screens in May 2027 — the 2026/27 record, which
     // credits nobody yet; the 2025/26 one is his with the running time. Billed alike, the rule takes neither.

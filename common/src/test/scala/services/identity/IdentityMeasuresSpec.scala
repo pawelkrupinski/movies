@@ -84,6 +84,18 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     measures(Listing("Retrospektywa 1990-1999"), film)("season.delta") shouldBe Missing("listing")
   }
 
+  it should "be read in a box office's short spellings" in {
+    // Prod UK 2026-10-13: Lonsdale Alhambra's "RB&O 26/27: Romeo & Juliet" and Keswick's "Royal Ballet 2026/7: Romeo &
+    // Juliet" named their season, unread, and left the 2026/27 record below the threshold.
+    IdentityMeasures.seasonYear(Seq("RB&O 26/27: Romeo & Juliet")) shouldBe Some(2026)
+    IdentityMeasures.seasonYear(Seq("Royal Ballet 2026/7: Romeo & Juliet")) shouldBe Some(2026)
+    IdentityMeasures.seasonYear(Seq("Met Opera 2029/0: Tosca")) shouldBe Some(2029)
+    // nor two numbers a slash joins that are no season: an age band, a date, a fraction
+    IdentityMeasures.seasonYear(Seq("Kids Club 12/13")) shouldBe None
+    IdentityMeasures.seasonYear(Seq("Live 24/7")) shouldBe None
+    IdentityMeasures.seasonYear(Seq("Royal Ballet 2026/8: Romeo & Juliet")) shouldBe None
+  }
+
   "a season production named in another language" should "be the record's, by the stage work both name" in {
     // PL venues bill the RBO's 2026/27 season in Polish: "Dziadek do orzechów" is the record's "The Nutcracker"
     // (Wikidata Q193705, StageWorks), as "Jezioro łabędzie" is Swan Lake — not The Nutcracker
