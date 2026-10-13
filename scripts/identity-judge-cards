@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+#
+# An evidence card for every UNJUDGED take of the unmatched-cluster capture — the listing's title, venues, year, runtime,
+# directors, catalogue ids and synopsis from the recording beside the taken record's title, original title, year,
+# runtime and directors — with a verdict SUGGESTED only where the evidence decides it (a year and a director shared →
+# right; a record running >30% longer than the venue's slot, a short billed as a feature, the year and the directors
+# both disagreeing → wrong; scripts.JudgeEvidence.suggest). Everything else stays open. Writes drafts for a human or an agent to confirm; it NEVER edits labels.tsv.
+#
+#   scripts/identity-judge-cards [--fixtures SRC] [--country cc[,cc]] [--out DIR] [--all] [--live|--offline]
+#
+#   --fixtures SRC  the capture (default: this checkout's): a directory, an "Identity capture" run id, or a git ref
+#                   (origin/chore/identity-capture — a capture PR's branch, read without checking it out). Its labels
+#                   come with it (a run's: this checkout's).
+#   --out DIR       default target/identity-judge: cards.md (one card per title × film, decisive ones first),
+#                   labels-draft.tsv (the decisive suggestions as labels.tsv lines, noted "— CONFIRM"), open.tsv
+#   --all           card the judged takes too, and write suggestions.tsv beside each label's verdict: how far the
+#                   suggestions can be trusted
+#   --live          read TMDB_API_KEY from the Touch ID vault when it is not set, for the records the capture never
+#                   read (default: TMDB_API_KEY if set, else those records stay unknown); --offline: never ask TMDB
+set -euo pipefail
+
+usage() { sed -n '3,/^set /p' "$0" | sed '$d; s/^# \{0,1\}//'; }
+case "${1:-}" in -h|--help) usage; exit 0 ;; esac
+
+IDENTITY_TOOL=identity-judge-cards
+# shellcheck source=scripts/identity-tools.sh
+. "$(dirname "$0")/identity-tools.sh"
+fixtures="" countries="pl,de,uk,us,es" pass=() live=false offline=false
+for arg in "$@"; do [ "$arg" = --live ] && live=true; done
+if $live && [ -z "${TMDB_API_KEY:-}" ]; then
+  # shellcheck source=scripts/vault-env.sh
+  . "$(dirname "$0")/vault-env.sh"
+  ensure_vault_env TMDB_API_KEY -- "$BASH" "$0" "$@" || exit 1
+fi
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --fixtures) fixtures=$2; shift 2 ;;
+    --country) countries=$2; pass+=("$1" "$2"); shift 2 ;;
+    --out) pass+=("$1" "$(mkdir -p "$2" && cd "$2" && pwd)"); shift 2 ;;
+    --all) pass+=("$1"); shift ;;
+    --offline) offline=true; pass+=("$1"); shift ;;
+    --live) shift ;;
+    *) echo "unknown argument $1" >&2; usage >&2; exit 2 ;;
+  esac
+done
+if ! $offline && [ -z "${TMDB_API_KEY:-}" ]; then
+  identity_log "no TMDB_API_KEY: a record the capture never read stays unknown (--live reads the key from the vault)"
+fi
+
+IFS=, read -r -a ccs <<< "$countries"
+dir=$(identity_capture "$fixtures" "${ccs[@]}")
+cp=$(identity_classpath "$IDENTITY_REPO")
+cd "$IDENTITY_REPO"
+"${IDENTITY_JAVA[@]}" -cp "$cp" scripts.IdentityJudgeCards --fixtures "$dir" --labels "$dir/labels.tsv" ${pass[@]+"${pass[@]}"}
