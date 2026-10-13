@@ -185,7 +185,7 @@ object PosterEvidence {
    *  titles number nothing, a year the listing bills dates it instead: a film released more than a year from every
    *  year billed is another edition ("Disney Junior Cinema Club 2026" against TMDB's 2024 one) or another film of the
    *  name ("Siostry (1972)" against the 2005 "Siostry"). */
-  def editionsApart(listing: Listing, film: IdentityMeasures.Film): Boolean = {
+  def editionsApart(listing: Listing, film: IdentityMeasures.Film): Boolean = billsAnEpisode(listing, film) || {
     val filed = film.titles.flatMap(numbersOf).toSet
     if (filed.nonEmpty) {
       val billed = numbersOf(listing.rawTitle) ++ numbersOf(listing.title)
@@ -206,6 +206,19 @@ object PosterEvidence {
       case _                   => false
     }
   }
+
+  /** Does a title piece of the listing bill a series' named episode ("LOVE ISLAND - EPISODE NATURE") the film's titles
+   *  bill none of? An episode numbered ("Star Wars: Episode IV") is a film's own. */
+  private def billsAnEpisode(listing: Listing, film: IdentityMeasures.Film): Boolean =
+    !film.titles.exists(title => EpisodeWord.findFirstIn(title).isDefined) &&
+      Seq(listing.rawTitle, listing.title).distinct.flatMap(IdentityMeasures.pieces).exists {
+        case NamedEpisode(name) => !Numeral.matches(name.trim.takeWhile(!_.isWhitespace))
+        case _                  => false
+      }
+  private val EpisodeWord  = """(?iu)\b(?:episode|folge|odcinek|episodio)\b""".r
+  private val NamedEpisode = """(?iu)(?:episode|folge|odcinek|episodio)\s+(\S.*)""".r
+  private val Numeral      = """(?i)\d+\.?|[ivxlc]+""".r
+
   private val Instalment = """(.*\S)\s+(\d|II|III|IV)""".r
   private val Year = """(?<!\d)(?:19|20)\d\d(?!\d)""".r
   private def yearsOf(title: String): Set[Int] = Year.findAllIn(title).map(_.toInt).toSet

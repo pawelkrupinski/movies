@@ -114,6 +114,16 @@ class PosterEvidenceSpec extends AnyFlatSpec with Matchers {
     PosterEvidence.editionsApart(FilmTable.listing(Multikino, "Avatar 2"), IdentityMeasures.Film("Avatar: The Way of Water", year = Some(2022))) shouldBe false
   }
 
+  it should "hold a listing billing an episode apart from a film whose titles bill none" in {
+    // DE recapture 2026-10-13: Acud Kino's and IL KINO's "LOVE ISLAND - EPISODE NATURE" was filled with the 1952 "Love Island"
+    val episode = FilmTable.listing(Multikino, "LOVE ISLAND - EPISODE NATURE")
+    PosterEvidence.editionsApart(episode, IdentityMeasures.Film("Love Island", year = Some(1952))) shouldBe true
+    PosterEvidence.editionsApart(episode, IdentityMeasures.Film("Love Island: Episode Nature", year = Some(2026))) shouldBe false
+    // a film numbering its episode is no series' episode
+    PosterEvidence.editionsApart(FilmTable.listing(Multikino, "Star Wars: Episode IV - A New Hope"),
+      IdentityMeasures.Film("Star Wars", year = Some(1977))) shouldBe false
+  }
+
   it should "read a number too long for an edition as none, never fail on it" in {
     // PL Kino Amok's "Requiem dla snu": a TMDB candidate titled with π's digits failed the whole agreement pass
     val requiem = FilmTable.listing(Multikino, "Requiem dla snu 2")
