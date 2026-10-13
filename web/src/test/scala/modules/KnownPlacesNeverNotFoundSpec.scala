@@ -111,35 +111,27 @@ class KnownPlacesNeverNotFoundSpec extends AnyFlatSpec with Matchers with Before
     front.get("/harrogate/", host = "kinowo.net").header.status shouldBe NOT_FOUND
   }
 
-  it should "send a slug several countries answer to the country with the most populous town of that name" in {
+  it should "send a bare slug to its old owner, else the one country that has it, else the first in order" in {
     val front = new Deployment(Country.Poland)
-    front.get("/york/", host = Country.apexHost).header.headers(LOCATION) shouldBe "/uk/york/"      // 156k vs 44k
-    front.get("/boston/", host = Country.apexHost).header.headers(LOCATION) shouldBe "/us/boston/"  // Massachusetts
+    front.get("/york/", host = Country.apexHost).header.headers(LOCATION) shouldBe "/us/york/"      // the old owner
+    front.get("/boston/", host = Country.apexHost).header.headers(LOCATION) shouldBe "/us/boston/"
+    // A retired UK county page, in one hop to the page it retired into.
+    val somerset = Country.UnitedKingdom.resolve("somerset").map(_.slug).getOrElse(fail("somerset"))
+    front.get("/somerset/", host = Country.apexHost).header.headers(LOCATION) shouldBe s"/uk/$somerset/"
+    front.get("/leeds/", host = Country.apexHost).header.headers(LOCATION) shouldBe "/uk/leeds/"    // new, UK first
   }
 
-  it should "send every slug a mounted country answers to somewhere that country serves" in {
+  it should "send every slug a country answers to somewhere that country serves" in {
     val front = new Deployment(Country.Poland)
-    val mounted = Country.mountedUnderApex
     val failures = for {
-      country <- mounted
-      slug    <- everySlug(country) if Country.Poland.resolve(slug).isEmpty
+      country <- Country.switchable
+      slug    <- everySlug(country)
+      target  <- Country.bareSlugTarget(slug).toSeq if target.country != Country.Poland
       result   = front.get(s"/$slug/", host = Country.apexHost)
-      problem <- Option.when(result.header.status != MOVED_PERMANENTLY)(s"/$slug/ → ${result.header.status}")
-        .orElse {
-          val to = result.header.headers(LOCATION)
-          val (code, page) = to.stripPrefix("/").stripSuffix("/").span(_ != '/')
-          val owner = mounted.find(_.code == code)
-          Option.when(!owner.exists(_.bySlug.contains(page.stripPrefix("/"))))(s"/$slug/ → $to, no such page")
-        }.toSeq
+      expected = s"${target.country.pathPrefix}/${target.city.slug}/"
+      problem <- Option.when(result.header.headers.get(LOCATION).forall(_ != expected))(
+                   s"/$slug/ → ${result.header.status} ${result.header.headers.get(LOCATION)}, not $expected").toSeq
     } yield problem
-    withClue(failures.take(20).mkString("\n")) { failures shouldBe empty }
+    withClue(failures.take(20).mkString("\n")) { failures.distinct shouldBe empty }
   }
-
-  it should "have a recorded winner for every slug several mounted countries answer to" in {
-    val contested = Country.mountedUnderApex.flatMap(everySlug).groupBy(identity).collect {
-      case (slug, owners) if Country.mountedUnderApex.count(_.resolve(slug).isDefined) > 1 => slug
-    }
-    contested.filterNot(Country.frontDoorContestedSlugs) shouldBe empty
-  }
-
 }

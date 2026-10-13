@@ -2,8 +2,8 @@
 // — do NOT edit by hand.
 package models
 
-/** Every slug a country answers to besides its pages', and who owns a contested
- *  bare slug on the brand front door — see `data/scripts/generate_slug_index.py`. */
+/** Every slug a country answers to besides its pages' — see
+ *  `data/scripts/generate_slug_index.py`. */
 private[models] object CitySlugIndexData {
 
   private def pl0: Seq[(String, String)] = Seq(
@@ -4905,96 +4905,4 @@ private[models] object CitySlugIndexData {
   )
   /** es: alias slug → the page it 301s to. */
   def esAliases: Map[String, String] = (es0 ++ es1).toMap
-
-  /** A bare slug several mounted countries answer to → the code of the one whose
-   *  town of that name is the most populous. */
-  val frontDoorContested: Map[String, String] = Map(
-    "aberdeen" -> "uk",
-    "abingdon" -> "uk",
-    "andover" -> "uk",
-    "bangor" -> "uk",
-    "bedford" -> "uk",
-    "belfast" -> "uk",
-    "birmingham" -> "uk",
-    "boston" -> "us",
-    "braintree" -> "uk",
-    "bremen" -> "de",
-    "brighton" -> "uk",
-    "bristol" -> "uk",
-    "camas" -> "es",
-    "cambridge" -> "uk",
-    "carlisle" -> "uk",
-    "chatham" -> "uk",
-    "chester" -> "uk",
-    "chesterfield" -> "uk",
-    "colchester" -> "uk",
-    "crosby" -> "uk",
-    "derby" -> "uk",
-    "dorchester" -> "us",
-    "douglas" -> "uk",
-    "dover" -> "uk",
-    "durango" -> "es",
-    "durham" -> "us",
-    "elgin" -> "us",
-    "ely" -> "uk",
-    "falmouth" -> "uk",
-    "glasgow" -> "uk",
-    "gloucester" -> "uk",
-    "hamburg" -> "de",
-    "hamilton" -> "us",
-    "hastings" -> "uk",
-    "hereford" -> "uk",
-    "hinckley" -> "uk",
-    "horsham" -> "uk",
-    "huntingdon" -> "uk",
-    "inverness" -> "uk",
-    "kent" -> "us",
-    "kilmarnock" -> "uk",
-    "lancaster" -> "us",
-    "laredo" -> "us",
-    "leeds" -> "uk",
-    "leon" -> "es",
-    "lewes" -> "uk",
-    "lincoln" -> "us",
-    "livingston" -> "uk",
-    "london" -> "uk",
-    "londonderry" -> "uk",
-    "manchester" -> "uk",
-    "mansfield" -> "uk",
-    "marlborough" -> "us",
-    "minden" -> "de",
-    "montrose" -> "us",
-    "newport" -> "uk",
-    "northampton" -> "uk",
-    "northumberland" -> "uk",
-    "norwich" -> "uk",
-    "oviedo" -> "es",
-    "oxford" -> "uk",
-    "peterborough" -> "uk",
-    "plymouth" -> "uk",
-    "portsmouth" -> "uk",
-    "potsdam" -> "de",
-    "preston" -> "uk",
-    "reading" -> "uk",
-    "richmond" -> "us",
-    "rochester" -> "us",
-    "rugby" -> "uk",
-    "salisbury" -> "uk",
-    "sandwich" -> "us",
-    "somerset" -> "uk",
-    "southampton" -> "uk",
-    "southport" -> "uk",
-    "stafford" -> "uk",
-    "stamford" -> "us",
-    "stuttgart" -> "de",
-    "suffolk" -> "uk",
-    "toledo" -> "us",
-    "wallingford" -> "us",
-    "wellington" -> "uk",
-    "wells" -> "uk",
-    "winchester" -> "uk",
-    "woodbridge" -> "uk",
-    "worcester" -> "us",
-    "york" -> "uk",
-  )
 }

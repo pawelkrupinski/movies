@@ -24,19 +24,6 @@ object Catalog {
   private def liveElsewhere(c: Country): Set[String] =
     liveSlugs.collect { case (other, slugs) if other != c => slugs }.flatten.toSet
 
-  /** Every slug `c` answers to: a page's, a renamed one's, an alias's. */
-  private def answeredBy(c: Country): Set[String] = c.bySlug.keySet ++ c.renamedSlugs.keySet ++ c.slugAliases.keySet
-
-  /** The SERVER's answer for every bare slug more than one of `countries` answers to —
-   *  slug → the code of the country `target` sends it to. A slug only one answers to
-   *  has only one answer, so it is left out: the apps take the one country that has it.
-   *  See `bareSlugOwners` in [[json]]. */
-  private def contestedOwners(countries: Seq[Country], target: String => Option[(Country, City)]): String = {
-    val contested = countries.flatMap(answeredBy(_).toSeq).groupBy(identity).collect { case (s, xs) if xs.size > 1 => s }
-    contested.toSeq.sorted.flatMap(s => target(s).map { case (c, _) => s""""$s":"${c.code}"""" }).mkString("{", ",", "}")
-  }
-
-
   /** The zone a country is published under — see [[Country.zone]]. */
   private def countryTimezone(c: Country): String = c.zone.getId
 
@@ -61,12 +48,12 @@ object Catalog {
    * carries its `timezone` and, where it has one, the `versionTokens` pair its
    * "version" filter matches on.
    *
-   * `bareSlugOwners` is the server's answer to a link that names no country — the
-   * apps read it rather than pick a country themselves, so an app and the web send
-   * `showtimes.cc/boston/` to the same Boston. `apex` is the brand front door
-   * ([[Country.frontDoorTarget]]); `scheme` the `kinowo://{slug}` custom scheme
-   * ([[Country.customSchemeTarget]]). Each lists only the slugs several countries
-   * answer to.
+   * `bareSlugOwners` is [[LegacySlugOwners]] — slug → the country that owned it
+   * before slugs were per country — which decides a link that names no country (a
+   * bare `showtimes.cc/{slug}/`, `kinowo://{slug}`) on the web
+   * ([[Country.bareSlugTarget]]) and in the apps alike; a slug it does not list
+   * goes to the first country, in this catalog's order, that answers to it.
+   * Temporary, with the table.
    */
   val json: String = {
     val countries = Country.switchable
@@ -203,8 +190,7 @@ object Catalog {
         }
       }
       .mkString("[", ",", "]")
-    val owners = s"""{"apex":${contestedOwners(Country.mountedUnderApex, Country.frontDoorTarget)},""" +
-      s""""scheme":${contestedOwners(Country.switchable, Country.customSchemeTarget)}}"""
+    val owners = LegacySlugOwners.owners.toSeq.sorted.map { case (slug, code) => s""""$slug":"$code"""" }.mkString("{", ",", "}")
     s"""{"countries":$countries,"cities":$cities,"bareSlugOwners":$owners}"""
   }
 

@@ -468,39 +468,20 @@ object Country {
   def isApexHost(host: String): Boolean =
     host.toLowerCase(Locale.ROOT).takeWhile(_ != ':').stripPrefix("www.") == apexHost
 
-  /** The countries mounted UNDER the brand apex (`showtimes.cc/uk/`, `/de/`…) —
-   *  the ones a bare `showtimes.cc/{slug}/` can mean. */
-  lazy val mountedUnderApex: Seq[Country] = switchable.filter(_.pathPrefix.nonEmpty)
-
-  /** The page a bare `showtimes.cc/{slug}/` means: the one city among
-   *  [[mountedUnderApex]] that answers to the slug (a page, a renamed slug or an
-   *  alias — [[Country.resolve]]), with its country.
-   *
-   *  THE RULE where several answer: the country whose TOWN of that name is the
-   *  most populous — York goes to the UK's York (156,000) rather than York,
-   *  Pennsylvania (44,000); Boston to Massachusetts. The populations are the
-   *  countries' own committed town data, compared once by
-   *  `data/scripts/generate_slug_index.py` into `frontDoorContested`; a slug the
-   *  generator did not see contested falls back to [[mountedUnderApex]]'s order. */
-  def frontDoorTarget(slug: String): Option[(Country, City)] =
-    mountedUnderApex.flatMap(c => c.resolve(slug).map(c -> _)) match {
-      case Seq()    => None
-      case Seq(one) => Some(one)
-      case several  =>
-        CitySlugIndexData.frontDoorContested.get(slug).flatMap(code => several.find(_._1.code == code))
-          .orElse(several.headOption)
+  /** The page a link that names no country means — a bare `showtimes.cc/{slug}/`,
+   *  a `kinowo://{slug}` custom-scheme link — with its country, and whether the old
+   *  owner decided it:
+   *   1. a slug [[LegacySlugOwners]] lists goes to the country that owned it before
+   *      slugs were per country, wherever else it now answers (`york` → the US);
+   *   2. else the one country that answers to it (a page, a renamed slug, an alias);
+   *   3. else, several answering, the first in [[switchable]]'s order.
+   *  The apps read the same table from the catalog (`bareSlugOwners`) and apply 2
+   *  and 3 in the catalog's country order, which is this one. */
+  def bareSlugTarget(slug: String): Option[BareSlugTarget] =
+    LegacySlugOwners.owners.get(slug) match {
+      case Some(code) => byCode(code).flatMap(c => c.resolve(slug).map(BareSlugTarget(c, _, viaLegacyOwner = true)))
+      case None       => switchable.iterator.flatMap(c => c.resolve(slug).map(BareSlugTarget(c, _, viaLegacyOwner = false))).nextOption()
     }
-
-  /** The page a `kinowo://{slug}` custom-scheme link means — it names no country.
-   *  Poland's, where Poland answers to the slug: the scheme is Kinowo's and every
-   *  such link was minted while Poland was its only country. Else the brand front
-   *  door's answer ([[frontDoorTarget]]). The apps read this from the catalog
-   *  (`bareSlugOwners.scheme`) rather than deciding it themselves. */
-  def customSchemeTarget(slug: String): Option[(Country, City)] =
-    Poland.resolve(slug).map(Poland -> _).orElse(frontDoorTarget(slug))
-
-  /** The bare slugs [[frontDoorTarget]] has a recorded winner for. */
-  def frontDoorContestedSlugs: Set[String] = CitySlugIndexData.frontDoorContested.keySet
 
   def byCode(code: String): Option[Country] =
     all.find(_.code.equalsIgnoreCase(code.trim))

@@ -15,8 +15,8 @@ import Combine
 final class CatalogStore: ObservableObject {
     @Published private(set) var countries: [Country]
     @Published private(set) var cities: [City]
-    /// The server's answer for a bare slug several countries answer to.
-    private(set) var bareSlugOwners = BareSlugOwners()
+    /// The server's old-owner table: which country a link naming none means.
+    private(set) var bareSlugOwners: [String: String] = [:]
 
     private let session: URLSession
     private let cache: CatalogCache
@@ -154,12 +154,12 @@ final class CatalogStore: ObservableObject {
 struct CatalogBody: Decodable {
     let countries: [CountryDTO]
     let cities: [City]
-    let bareSlugOwners: BareSlugOwners?
+    let bareSlugOwners: [String: String]?
 
-    typealias Resolved = (countries: [Country], cities: [City], bareSlugOwners: BareSlugOwners)
+    typealias Resolved = (countries: [Country], cities: [City], bareSlugOwners: [String: String])
 
     func resolved() -> Resolved {
-        (countries.compactMap { $0.toCountry() }, cities, bareSlugOwners ?? BareSlugOwners())
+        (countries.compactMap { $0.toCountry() }, cities, bareSlugOwners ?? [:])
     }
 
     static func decode(_ json: String) -> Resolved? {

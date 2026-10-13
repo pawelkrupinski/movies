@@ -1,27 +1,20 @@
 #!/usr/bin/env python3
 """Generate common/src/main/scala/models/CitySlugIndexData.scala — every slug a
-country answers to besides its pages', and who owns a bare slug on the front door.
+country answers to besides its pages'.
 
 Every country owns its own city slugs (`/uk/york/` is York, `/us/york/` York,
-Pennsylvania), and a known place never 404s. Two things make that so, and both
-are read off the countries' committed page data here:
+Pennsylvania), and a known place never 404s. Per country, slug → the page it
+301s to, read off the countries' committed page data:
+  - every town a page covers that is not a page itself (`/uk/ilkley/` is on the
+    Ilkley cluster's page … unless Ilkley is a page; `/de/bonn/` → Bonn's own);
+    for Poland, the towns its venues sit in (`data/pl/venues.json`) as well;
+  - every page's qualified slug (`/uk/york-north-yorkshire/` → `/uk/york/`).
+A slug that is a page, or a retired slug (which `City` already 301s by its own
+record), is never an alias. Where two pages of one country cover a town of one
+slug, the MORE POPULOUS town's page has it.
 
-  ALIASES — per country, slug → the page it 301s to:
-    - every town a page covers that is not a page itself (`/uk/ilkley/` is on the
-      Ilkley cluster's page … unless Ilkley is a page; `/de/bonn/` → Bonn's own);
-      for Poland, the towns its venues sit in (`data/pl/venues.json`) as well;
-    - every page's qualified slug (`/uk/york-north-yorkshire/` → `/uk/york/`).
-    A slug that is a page, or a retired slug (which `City` already 301s by its
-    own record), is never an alias. Where two pages of one country cover a town
-    of one slug, the MORE POPULOUS town's page has it.
-
-  FRONT DOOR — `showtimes.cc/{slug}/`, the bare brand apex, which Poland's
-    deployment answers: a slug that one mounted country (UK, Germany, US,
-    Spain) answers to, as a page, a retired page or an alias, 301s to that
-    country's page; one SEVERAL answer to goes to the country whose town of that
-    name is the MOST POPULOUS (a page's anchor town, an alias's town, a retired
-    page's namesake, else the page it redirects to). This file lists only those
-    contested slugs and their winner.
+Which country a bare `showtimes.cc/{slug}/` means is not decided here: see
+`models.LegacySlugOwners`.
 
     python3 data/scripts/generate_slug_index.py
 """
@@ -36,8 +29,6 @@ OUT = ROOT / "common" / "src" / "main" / "scala" / "models" / "CitySlugIndexData
 sys.path.insert(0, str(ROOT / "data" / "scripts"))
 import town_pages  # noqa: E402
 
-#: The countries mounted under the brand apex, in `Country.all`'s order (the tie-break).
-MOUNTED = ["uk", "de", "us", "es"]
 CHUNK = 400
 
 
@@ -85,8 +76,7 @@ def polish_venue_towns():
 
 
 def index(code, data, towns, slug_of, extra_towns=None):
-    """(aliases: slug → page, answers: slug → population of the town it names)
-    for one country."""
+    """alias slug → the page it 301s to, for one country."""
     pages, retired = data["pages"], data["retired"]
     live = {p["slug"] for p in pages}
     retired_keys = set(retired) | {r["qualifiedSlug"] for r in retired.values()
@@ -95,18 +85,6 @@ def index(code, data, towns, slug_of, extra_towns=None):
     def town(key):
         return towns.get(key, (key.split(",")[0], 0))
 
-    answers = {}
-    for p in pages:
-        answers[p["slug"]] = town(p.get("anchor") or p["name"])[1]
-    # A retired slug scores as the page it redirects to — its town's population, or,
-    # where it names none (a county, a region), the page's: the UK's /somerset/ is Bath.
-    for slug, r in retired.items():
-        target = r["page"] if isinstance(r, dict) else r
-        anchor = r.get("anchor") if isinstance(r, dict) else None
-        pop = max(town(anchor)[1] if anchor else 0, answers.get(target, 0))
-        for key in {slug, (r.get("qualifiedSlug") if isinstance(r, dict) else None)} - {None}:
-            answers.setdefault(key, pop)
-
     candidates = collections.defaultdict(list)    # alias slug → [(population, page slug)]
     for p in pages:
         names = [town(t) for t in p.get("towns", [])] + [(t, 0) for t in (extra_towns or {}).get(p["slug"], [])]
@@ -114,15 +92,13 @@ def index(code, data, towns, slug_of, extra_towns=None):
             for alias in {slug_of(name), town_pages.slugify(name)}:
                 candidates[alias].append((pop, p["slug"]))
         if p.get("qualifiedSlug"):
-            candidates[p["qualifiedSlug"]].append((answers[p["slug"]], p["slug"]))
+            candidates[p["qualifiedSlug"]].append((town(p.get("anchor") or p["name"])[1], p["slug"]))
     aliases = {}
     for alias, options in candidates.items():
         if not alias or alias in live or alias in retired_keys:
             continue
-        pop, page = max(options, key=lambda o: (o[0], o[1]))
-        aliases[alias] = page
-        answers.setdefault(alias, pop)
-    return dict(sorted(aliases.items())), answers
+        aliases[alias] = max(options, key=lambda o: (o[0], o[1]))[1]
+    return dict(sorted(aliases.items()))
 
 
 def scala_string(s):
@@ -131,25 +107,16 @@ def scala_string(s):
 
 def main():
     data = country_data()
-    aliases, answers = {}, {}
-    for code, (pages_json, towns, slug_of) in data.items():
-        extra = polish_venue_towns() if code == "pl" else None
-        aliases[code], answers[code] = index(code, pages_json, towns, slug_of, extra)
-
-    contested = {}
-    every = sorted({s for c in MOUNTED for s in answers[c]})
-    for slug in every:
-        owners = [c for c in MOUNTED if slug in answers[c]]
-        if len(owners) > 1:
-            contested[slug] = max(owners, key=lambda c: (answers[c][slug], -MOUNTED.index(c)))
+    aliases = {code: index(code, pages_json, towns, slug_of, polish_venue_towns() if code == "pl" else None)
+               for code, (pages_json, towns, slug_of) in data.items()}
 
     out = [
         "// GENERATED by data/scripts/generate_slug_index.py from every country's pages.json",
         "// — do NOT edit by hand.",
         "package models",
         "",
-        "/** Every slug a country answers to besides its pages', and who owns a contested",
-        " *  bare slug on the brand front door — see `data/scripts/generate_slug_index.py`. */",
+        "/** Every slug a country answers to besides its pages' — see",
+        " *  `data/scripts/generate_slug_index.py`. */",
         "private[models] object CitySlugIndexData {",
         "",
     ]
@@ -164,15 +131,9 @@ def main():
         out.append(f"  def {code}Aliases: Map[String, String] = ("
                    + " ++ ".join(f"{code}{i}" for i in range(len(chunks))) + ").toMap")
         out.append("")
-    out.append("  /** A bare slug several mounted countries answer to → the code of the one whose")
-    out.append("   *  town of that name is the most populous. */")
-    out.append("  val frontDoorContested: Map[String, String] = Map(")
-    out.extend(f"    {scala_string(s)} -> {scala_string(c)}," for s, c in contested.items())
-    out.append("  )")
-    out.append("}")
+    out[-1:] = ["}"]
     OUT.write_text("\n".join(out) + "\n", encoding="utf-8")
-    print(f"Wrote {OUT.relative_to(ROOT)}: aliases " +
-          ", ".join(f"{c} {len(a)}" for c, a in aliases.items()) + f"; {len(contested)} contested front-door slugs")
+    print(f"Wrote {OUT.relative_to(ROOT)}: aliases " + ", ".join(f"{c} {len(a)}" for c, a in aliases.items()))
 
 
 if __name__ == "__main__":

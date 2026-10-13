@@ -530,18 +530,32 @@ class CountrySpec extends AnyFlatSpec with Matchers {
     Country.Poland.allJson should not include "london"
   }
 
-  "The brand front door" should "send a bare slug several countries answer to the most populous town's" in {
-    def owner(slug: String) = Country.frontDoorTarget(slug).map(_._1.code)
-    owner("york") shouldBe Some("uk")       // York, 156,000, over York, Pennsylvania, 44,000
-    owner("boston") shouldBe Some("us")     // Massachusetts over Lincolnshire
-    // A retired page scores as the page it redirects to: the UK's Somerset county page
-    // went to Bath (101,000), over Somerset, Kentucky (11,000).
-    owner("somerset") shouldBe Some("uk")
-    owner("suffolk") shouldBe Some("uk")
-    owner("northumberland") shouldBe Some("uk")
-    // A town GeoNames had no population for is not a town of none: Crosby, Merseyside
-    // (50,000) over Crosby, Texas (1,408).
-    owner("crosby") shouldBe Some("uk")
+  "A bare slug" should "go to its old owner, else the one country that has it, else the first in country order" in {
+    def owner(slug: String) = Country.bareSlugTarget(slug).map(t => t.country.code -> t.viaLegacyOwner)
+    // 1. The old owner, though the UK has a York page now.
+    owner("york") shouldBe Some("us" -> true)
+    owner("boston") shouldBe Some("us" -> true)
+    // The UK's retired county pages were live UK slugs: the US's Somerset, Kentucky
+    // and Kent, Washington had qualified slugs then.
+    owner("somerset") shouldBe Some("uk" -> true)
+    owner("kent") shouldBe Some("uk" -> true)
+    owner("poznan") shouldBe Some("pl" -> true)
+    // 2. New on this branch, one country: Harrogate is a UK page and nothing else's.
+    LegacySlugOwners.owners.get("harrogate") shouldBe None
+    owner("harrogate") shouldBe Some("uk" -> false)
+    // 3. New, several: Leeds is a UK page and a US one — the first in country order.
+    LegacySlugOwners.owners.get("leeds") shouldBe None
+    Country.UnitedStates.resolve("leeds") should not be empty
+    owner("leeds") shouldBe Some("uk" -> false)
+    owner("atlantis") shouldBe None
+  }
+
+  it should "only ever be sent by the old-owner table to a country that still answers to it" in {
+    val lost = LegacySlugOwners.owners.filter { case (slug, code) =>
+      Country.byCode(code).flatMap(_.resolve(slug)).isEmpty
+    }
+    lost shouldBe empty
+    Country.switchable.map(_.code).toSet should contain allElementsOf LegacySlugOwners.owners.values.toSet
   }
 
   "Country.switchable" should "list every deployed country (webUrl defined), Poland first" in {

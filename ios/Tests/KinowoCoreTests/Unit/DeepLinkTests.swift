@@ -140,9 +140,9 @@ final class DeepLinkTests: XCTestCase {
 
     /// The bundled seed — the server's catalog — decoded as the app decodes it.
     /// (`CatalogStore`, which owns the decode, is app-target only.)
-    private func seed() throws -> (cities: [City], owners: BareSlugOwners) {
+    private func seed() throws -> (cities: [City], owners: [String: String]) {
         struct Seed: Decodable {
-            struct Body: Decodable { let cities: [City]; let bareSlugOwners: BareSlugOwners }
+            struct Body: Decodable { let cities: [City]; let bareSlugOwners: [String: String] }
             let catalog: Body
         }
         let body = try JSONDecoder().decode(Seed.self, from: try AppSources.data("Kinowo/catalog-seed.json")).catalog
@@ -175,42 +175,30 @@ final class DeepLinkTests: XCTestCase {
                                       bareSlugOwners: owners)?.citySlug, "york")
     }
 
-    /// A bare `showtimes.cc/{slug}/` names no country: where several answer, the
-    /// app opens the one the server's front door 301s to, not the first in
-    /// catalog order (the UK, for Boston).
-    func testABareBrandSlugOpensTheCountryTheServerChose() throws {
+    /// A bare `showtimes.cc/{slug}/` or `kinowo://{slug}` names no country: the
+    /// country the server's old-owner table names (shipped in the catalog), else
+    /// the first in catalog order that answers to it — as the web's front door.
+    func testABareSlugOpensTheCountryTheServersTableNames() throws {
         let (cities, owners) = try seed()
         func country(_ url: String) -> String? {
             DeepLink.parse(URL(string: url)!, cities: cities, bareSlugOwners: owners)?.countryCode
         }
-        XCTAssertEqual(owners.apex["boston"], "us")
-        XCTAssertEqual(country("https://showtimes.cc/boston/"), "us")
-        XCTAssertEqual(country("https://showtimes.cc/york/"), "uk")
-        XCTAssertEqual(country("https://showtimes.cc/crosby/"), "uk")
+        // The old owner, though the UK has a York page now (catalog order would say UK).
+        XCTAssertEqual(owners["york"], "us")
+        XCTAssertEqual(country("https://showtimes.cc/york/"), "us")
+        XCTAssertEqual(country("kinowo://york/movie/dune"), "us")
         XCTAssertEqual(country("https://showtimes.cc/somerset/"), "uk")
-        for slug in ["durham", "elgin", "hamilton", "lancaster", "andover", "kilmarnock"] {
-            XCTAssertEqual(country("https://showtimes.cc/\(slug)/"), owners.apex[slug], slug)
-        }
-        // Every slug the server ruled on opens where it ruled.
-        for (slug, code) in owners.apex {
-            XCTAssertEqual(country("https://showtimes.cc/\(slug)/"), code, slug)
-        }
-        // A slug only one country answers to needs no ruling.
-        XCTAssertEqual(country("https://showtimes.cc/harrogate/"), "uk")
-    }
-
-    /// `kinowo://{slug}` names no country either: Poland where Poland answers,
-    /// else the front door's answer — the server's `bareSlugOwners.scheme`.
-    func testACustomSchemeSlugOpensTheCountryTheServerChose() throws {
-        let (cities, owners) = try seed()
-        func country(_ url: String) -> String? {
-            DeepLink.parse(URL(string: url)!, cities: cities, bareSlugOwners: owners)?.countryCode
-        }
         XCTAssertEqual(country("kinowo://poznan/"), "pl")
-        XCTAssertEqual(country("kinowo://boston/movie/dune"), "us")
-        for (slug, code) in owners.scheme {
+        // Every entry opens where the table says.
+        for (slug, code) in owners {
+            XCTAssertEqual(country("https://showtimes.cc/\(slug)/"), code, slug)
             XCTAssertEqual(country("kinowo://\(slug)/"), code, slug)
         }
+        // Not in the table: the one country that has it, else the first in order.
+        XCTAssertNil(owners["harrogate"])
+        XCTAssertEqual(country("https://showtimes.cc/harrogate/"), "uk")
+        XCTAssertNil(owners["leeds"])
+        XCTAssertEqual(country("https://showtimes.cc/leeds/"), "uk")
     }
 
     func testRejectsForeignHostAndScheme() {

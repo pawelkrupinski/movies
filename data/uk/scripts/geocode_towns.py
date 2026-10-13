@@ -193,8 +193,9 @@ OWN_TOWNS = {
 }
 
 #: The population of a town GeoNames gives none for — every one a venue is in, since a
-#: town of 0 people loses every comparison it enters (the front door once sent /crosby/
-#: to Crosby, Texas, 1,408, over Crosby, Merseyside). GeoNames' own figure where it has
+#: town of 0 people loses every comparison the page rule makes (which town anchors a
+#: cluster and names it, which of two namesakes takes the bare slug, the order a page
+#: lists its towns in). GeoNames' own figure where it has
 #: one under another entry, else the 2011 census (ONS / StatsWales) for the built-up
 #: area or community. A town of 0 left over stops the run.
 POPULATIONS = {

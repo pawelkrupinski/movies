@@ -49,23 +49,22 @@ class BareSlugDeepLinkTest {
         assertEquals("york", parse("https://showtimes.cc/uk/york-north-yorkshire/")!!.citySlug)
     }
 
-    @Test fun aBareBrandSlugOpensTheCountryTheServerChose() {
-        val owners = catalog.bareSlugOwners.apex
-        assertEquals("us", owners["boston"])
-        assertEquals("us", parse("https://showtimes.cc/boston/")?.countryCode)
-        assertEquals("uk", parse("https://showtimes.cc/york/")?.countryCode)
-        assertEquals("uk", parse("https://showtimes.cc/crosby/")?.countryCode)
+    @Test fun aBareSlugOpensTheCountryTheServersTableNames() {
+        val owners = catalog.bareSlugOwners
+        // The old owner, though the UK has a York page now (catalog order would say UK).
+        assertEquals("us", owners["york"])
+        assertEquals("us", parse("https://showtimes.cc/york/")?.countryCode)
+        assertEquals("us", parse("kinowo://york/movie/dune")?.countryCode)
         assertEquals("uk", parse("https://showtimes.cc/somerset/")?.countryCode)
-        for (slug in listOf("durham", "elgin", "hamilton", "lancaster", "andover", "kilmarnock")) {
-            assertEquals(slug, owners[slug], parse("https://showtimes.cc/$slug/")?.countryCode)
-        }
-        for ((slug, code) in owners) assertEquals(slug, code, parse("https://showtimes.cc/$slug/")?.countryCode)
-        assertEquals("uk", parse("https://showtimes.cc/harrogate/")?.countryCode)
-    }
-
-    @Test fun aCustomSchemeSlugOpensTheCountryTheServerChose() {
         assertEquals("pl", parse("kinowo://poznan/")?.countryCode)
-        assertEquals("us", parse("kinowo://boston/movie/dune")?.countryCode)
-        for ((slug, code) in catalog.bareSlugOwners.scheme) assertEquals(slug, code, parse("kinowo://$slug/")?.countryCode)
+        for ((slug, code) in owners) {
+            assertEquals(slug, code, parse("https://showtimes.cc/$slug/")?.countryCode)
+            assertEquals(slug, code, parse("kinowo://$slug/")?.countryCode)
+        }
+        // Not in the table: the one country that has it, else the first in order.
+        assertNull(owners["harrogate"])
+        assertEquals("uk", parse("https://showtimes.cc/harrogate/")?.countryCode)
+        assertNull(owners["leeds"])
+        assertEquals("uk", parse("https://showtimes.cc/leeds/")?.countryCode)
     }
 }

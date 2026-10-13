@@ -3,7 +3,6 @@ package pl.kinowo.deeplink
 import pl.kinowo.filter.DateFilter
 import pl.kinowo.filter.FormatFilter
 import pl.kinowo.filter.SortOption
-import pl.kinowo.model.BareSlugOwners
 import pl.kinowo.model.Cities
 import pl.kinowo.model.City
 import pl.kinowo.model.VersionTokens
@@ -90,8 +89,9 @@ data class DeepLink(
          *
          * Given [cities] (the app passes the live catalog's), the link resolves
          * WITHIN a country: the one its URL names, else — a bare `showtimes.cc`
-         * slug, a `kinowo://` link — the one country that answers to it, or,
-         * where several do, the one the server chose ([bareSlugOwners]; [resolve]);
+         * slug, a `kinowo://` link — the country [bareSlugOwners] (the catalog's
+         * copy of the server's old-owner table) names, else the first in [cities]'
+         * order that answers to it, as the server's `Country.bareSlugTarget` ([resolve]);
          * [knownCitySlugs] and [currentSlugByFormer] are then unused, and
          * [versionTokensOfCountry], when given, answers the version pair by the
          * resolved country.
@@ -102,7 +102,7 @@ data class DeepLink(
             versionTokens: (citySlug: String) -> VersionTokens = { VersionTokens.POLAND },
             currentSlugByFormer: Map<String, String> = emptyMap(),
             cities: List<City>? = null,
-            bareSlugOwners: BareSlugOwners = BareSlugOwners(),
+            bareSlugOwners: Map<String, String> = emptyMap(),
             versionTokensOfCountry: ((countryCode: String) -> VersionTokens)? = null,
         ): DeepLink? {
             // Split the query (and any fragment) off the raw string BEFORE
@@ -133,9 +133,6 @@ data class DeepLink(
             val trailing: List<String>
             // The country the URL itself names, where it names one.
             var named: String? = null
-            // Where it names none, the countries it can mean and the server's pick among them.
-            var candidates: Set<String>? = null
-            var owners: Map<String, String> = emptyMap()
             val slugs = cities?.map { it.slug }?.toSet() ?: knownCitySlugs
             when (scheme) {
                 "https", "http" -> {
@@ -150,16 +147,11 @@ data class DeepLink(
                         } else raw
                     linked = segments.firstOrNull() ?: return null
                     trailing = segments.drop(1)
-                    if (named == null) {
-                        candidates = COUNTRY_PATH_SEGMENTS
-                        owners = bareSlugOwners.apex
-                    }
                 }
                 "kinowo" -> {
                     if (host in RESERVED_SCHEME_HOSTS) return null
                     linked = host
                     trailing = pathSegments(uri.rawPath)
-                    owners = bareSlugOwners.scheme
                 }
                 else -> return null
             }
@@ -167,7 +159,7 @@ data class DeepLink(
             val country: String?
             val city: String
             if (cities != null) {
-                val (resolvedCountry, resolvedCity) = resolve(linked, named, cities, candidates, owners) ?: return null
+                val (resolvedCountry, resolvedCity) = resolve(linked, named, cities, bareSlugOwners) ?: return null
                 country = resolvedCountry
                 city = resolvedCity
             } else {
@@ -197,16 +189,15 @@ data class DeepLink(
         }
 
         /** `(country, city slug)` for a link's [slug]: within the country the URL
-         *  [named], else among [candidates] (every country when `null`) the one
-         *  that answers to it — where several do, the one [owners] (the server's
-         *  [BareSlugOwners]) names. A country answers as a city, or through another
-         *  of its slugs ([slugsLeadingHere]: a retired page, a town, a qualified
-         *  slug), which opens the city the server's 301 would send a browser to. */
+         *  [named], else the one [owners] (the server's old-owner table) names,
+         *  else the first in [cities]' order that answers to it. A country answers
+         *  as a city, or through another of its slugs ([slugsLeadingHere]: a retired
+         *  page, a town, a qualified slug), which opens the city the server's 301
+         *  would send a browser to. */
         fun resolve(
             slug: String,
             named: String?,
             cities: List<City>,
-            candidates: Set<String>? = null,
             owners: Map<String, String> = emptyMap(),
         ): Pair<String, String>? {
             fun answer(code: String): Pair<String, String>? {
@@ -214,11 +205,8 @@ data class DeepLink(
                 if (own.any { it.slug == slug }) return code to slug
                 return own.firstOrNull { slug in it.slugsLeadingHere }?.let { code to it.slug }
             }
-            if (named != null) return answer(named)
-            val answering = cities.map { it.country }.distinct()
-                .filter { candidates == null || it in candidates }
-                .mapNotNull(::answer)
-            return answering.firstOrNull { it.first == owners[slug] } ?: answering.firstOrNull()
+            (named ?: owners[slug])?.let { return answer(it) }
+            return cities.map { it.country }.distinct().firstNotNullOfOrNull(::answer)
         }
 
         private fun pathSegments(rawPath: String?): List<String> =

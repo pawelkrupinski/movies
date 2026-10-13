@@ -127,23 +127,12 @@ class CatalogSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  it should "carry the server's own answer for every bare slug several countries answer to" in {
-    val owners = """"bareSlugOwners":\{"apex":\{([^}]*)\},"scheme":\{([^}]*)\}\}""".r
-      .findFirstMatchIn(Catalog.json).getOrElse(fail("no bareSlugOwners"))
-    def parse(body: String) = """"([^"]+)":"([a-z]{2})"""".r.findAllMatchIn(body).map(m => m.group(1) -> m.group(2)).toMap
-    val apex = parse(owners.group(1))
-    val scheme = parse(owners.group(2))
-    // The front door's answers, as the web 301s them.
-    apex("boston") shouldBe "us"
-    apex("york") shouldBe "uk"
-    Seq("durham", "elgin", "hamilton", "lancaster", "andover", "kilmarnock", "somerset", "crosby").foreach { s =>
-      apex.get(s) shouldBe Country.frontDoorTarget(s).map(_._1.code)
-    }
-    apex.foreach { case (s, code) => Country.frontDoorTarget(s).map(_._1.code) shouldBe Some(code) }
-    // The custom scheme: Poland's where Poland answers, the front door's otherwise.
-    scheme.foreach { case (s, code) => Country.customSchemeTarget(s).map(_._1.code) shouldBe Some(code) }
-    scheme("boston") shouldBe "us"
-    Country.customSchemeTarget("poznan").map(_._1) shouldBe Some(Country.Poland)
+  it should "carry the old-owner table that decides a link naming no country, whole" in {
+    val body = """"bareSlugOwners":\{([^}]*)\}""".r.findFirstMatchIn(Catalog.json).getOrElse(fail("no bareSlugOwners")).group(1)
+    val owners = """"([^"]+)":"([a-z]{2})"""".r.findAllMatchIn(body).map(m => m.group(1) -> m.group(2)).toMap
+    owners shouldBe LegacySlugOwners.owners
+    owners("york") shouldBe "us"
+    owners("kent") shouldBe "uk"
   }
 
   it should "carry each city with its owning country's code" in {
