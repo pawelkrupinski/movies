@@ -60,19 +60,29 @@ object NonMovieEventClassifier {
   /** A sneak billed with no film: "Sneak", "Kult-Sneak", "Horror Sneak FSK 18", "OV-Sneak", "Sneak 1343", "Horror
    *  Classics Sneak Vol. 83", "Cult Sneak of Horror", "Grusel Sneak", "Cine Sneak", "SNEAK Extreme", "KLASSIKER SNEAK
    *  REVIEW - Special - Live" (German venues, prod 2026-10-12: 48 cards titled just "Sneak").
-   *  Every word must be one a sneak bills itself with — its week ("Sneak KW 43 26"), or that it is an undisclosed
-   *  "Original Sneak - Mystery Movie" / "OV Sneak: The surprise preview" — so a sneak that NAMES its film ("Hope
-   *  Sneak") is that film's preview and stays, as do "Sneakers" and "Sneaks". */
+   *  Every word must be one a sneak bills itself with — its week ("Sneak KW 43 26") or month ("Sneak_nov", "Sneak
+   *  Dezember"), or that it is an undisclosed "Original Sneak - Mystery Movie" / "OV Sneak: The surprise preview" —
+   *  so a sneak that NAMES its film ("Hope Sneak") is that film's preview and stays, as do "Sneakers" and "Sneaks".
+   *  A word may fuse a strand to the sneak ("Kultsneak", "CineSneak"), read as the two words it joins. */
   private val SneakWords = Set("sneak", "ov", "omu", "omeu", "kult", "cult", "horror", "classic", "classics",
     "klassiker", "retro", "fsk", "of", "vol", "preview", "die", "des", "jahres", "the", "kw", "original", "mystery",
     "movie", "surprise", "grusel", "cine", "extreme", "review", "special", "live",
     // …its night and its strand ("Friday Night Sneak", "Montags-Sneak", "Arthaus Sneak Vol. 43" — DE 2026-10-13).
     "night", "late", "nacht", "arthaus", "arthouse", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday",
     "sunday", "montag", "dienstag", "mittwoch", "donnerstag", "freitag", "samstag", "sonntag", "montags", "dienstags",
-    "mittwochs", "donnerstags", "freitags", "samstags", "sonntags")
+    "mittwochs", "donnerstags", "freitags", "samstags", "sonntags", "originals",
+    // …and its month, in German and English, whole or cut short ("Sneak_nov" — Filmwerk Gütersloh, DE 2026-10-14).
+    "januar", "january", "jan", "februar", "february", "feb", "märz", "maerz", "march", "mar", "april", "apr", "mai",
+    "may", "juni", "june", "jun", "juli", "july", "jul", "august", "aug", "september", "sep", "sept", "oktober",
+    "october", "okt", "oct", "november", "nov", "dezember", "december", "dez", "dec")
   private def isBareSneak(lower: String): Boolean = {
-    val words = lower.split("""[^\p{L}\p{N}]+""").filter(_.nonEmpty)
+    val words = lower.split("""[^\p{L}\p{N}]+""").filter(_.nonEmpty).flatMap(unfuseSneak)
     words.contains("sneak") && words.forall(w => SneakWords.contains(w) || w.forall(_.isDigit))
+  }
+  /** "kultsneak" → kult, sneak: a word ending in "sneak" whose front is itself a sneak's word. */
+  private def unfuseSneak(word: String): Seq[String] = {
+    val front = word.stripSuffix("sneak")
+    if (front.nonEmpty && front != word && SneakWords.contains(front)) Seq(front, "sneak") else Seq(word)
   }
 
   /** Non-screenings whose vocabulary no film title in ANY of our languages shares, so a feed in any language may

@@ -224,11 +224,14 @@ object KinoheldClient {
 
   /** Does the venue's name for a show still name the film kinoheld linked it to? It does
    *  when the two share a word — "Forgotten Island" shares one with its linked film's
-   *  original title, "SNEAK PREVIEW KW42/2026" with "Sneak Preview" — or when the venue
-   *  named the show only with a placeholder (`KINOHELD_DUMMY_…`), which names nothing.
-   *  "Nordische Inseln" and "Life Itself" share none: a wrong link, not the same film. */
+   *  original title — or when the venue named the show only with a placeholder
+   *  (`KINOHELD_DUMMY_…`), which names nothing. "Nordische Inseln" and "Life Itself" share
+   *  none: a wrong link, not the same film. Nor is a link from a mystery screening ever
+   *  right: "Sneak_nov" names no film, and the word it shares with the 8-minute short
+   *  "Sneak Over" kinoheld linked it to is the sneak's own — the show keeps the venue's
+   *  name, which [[toMovies]] leaves out. */
   def linkTrusted(showName: String, title: String, original: Option[String]): Boolean =
-    showName.startsWith("KINOHELD_DUMMY") || {
+    showName.startsWith("KINOHELD_DUMMY") || !NonMovieEventClassifier.isMysteryScreening(showName) && {
       val named = words(showName)
       (words(title) ++ original.toSeq.flatMap(words)).exists(named)
     }

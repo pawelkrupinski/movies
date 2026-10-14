@@ -17,7 +17,9 @@ import scala.concurrent.duration._
  *   - Casablanca Bochum: a travel talk kinoheld linked to the wrong film;
  *   - Das Lumen Solingen: sells through kinoheld itself (no `deeplink`), a sneak preview;
  *   - nestkino Hamburg: subtitled prints, German and English;
- *   - Arthaus-Kino Bonn: a catalogue film whose production year is a slip ("Hirten", 2040).
+ *   - Arthaus-Kino Bonn: a catalogue film whose production year is a slip ("Hirten", 2040);
+ *   - Filmwerk Gütersloh: a sneak billed by its month ("Sneak_nov") that kinoheld linked to a
+ *     short sharing only the word "sneak" ("Sneak Over").
  *
  *  Replay-first, like [[WriteKinoprogramm]]: pages already on disk are served from it,
  *  so re-running for the pinned day only fills what a client change newly asks for.
@@ -29,7 +31,8 @@ object WriteKinoheld {
     "Casablanca Filmtheater Bochum"  -> KinoheldVenue("149", "/kino/bochum/casablanca-filmtheater"),
     "Das Lumen Filmtheater Solingen" -> KinoheldVenue("224", "/kino/solingen/das-lumen-filmtheater-solingen"),
     "nestkino Hamburg"               -> KinoheldVenue("1853", "/kino/hamburg/schanzenkino-73"),
-    "Arthaus-Kino Bonn"              -> KinoheldVenue("1461", "/kino/bonn/arthaus-kino-im-rheinischen-landesmuseum"))
+    "Arthaus-Kino Bonn"              -> KinoheldVenue("1461", "/kino/bonn/arthaus-kino-im-rheinischen-landesmuseum"),
+    "Filmwerk Gütersloh"             -> KinoheldVenue("369", "/kino/guetersloh/cinestar"))
 
   def main(args: Array[String]): Unit = {
     val today = LocalDate.parse(args.headOption.getOrElse(sys.error("usage: WriteKinoheld <yyyy-MM-dd>")))

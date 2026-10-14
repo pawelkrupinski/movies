@@ -286,9 +286,12 @@ class NonMovieEventClassifierSpec extends AnyFlatSpec with Matchers {
   it should "name a sneak billed with no film, and keep one that names its film" in {
     // German venues, prod 2026-10-12: 48 cards were titled just "Sneak".
     Seq("Sneak", "Kult-Sneak", "Horror Sneak FSK 18", "OV-Sneak", "Sneak 1343", "Horror Classics Sneak Vol. 83",
-      "Cult Sneak of Horror", "Kult Sneak FSK 16", "Retro Sneak", "Klassiker Sneak").foreach(t =>
+      "Cult Sneak of Horror", "Kult Sneak FSK 16", "Retro Sneak", "Klassiker Sneak",
+      // …one word with its strand ("Kultsneak", Cineplex, DE recording of 2026-10-14), or dated by its month
+      // ("Sneak_nov", Filmwerk Gütersloh) as by its week below.
+      "Kultsneak", "Originals Kultsneak", "Sneak_nov", "Sneak Dezember", "Sneak Oktober 2026").foreach(t =>
       withClue(t)(NonMovieEventClassifier.isMysteryScreening(t) shouldBe true))
-    Seq("Hope Sneak", "Classic Sneak – Couples", "Sneaky Pete").foreach(t =>
+    Seq("Hope Sneak", "Classic Sneak – Couples", "Sneaky Pete", "Sneak Over", "Sneaky Frights", "Novocaine Sneak").foreach(t =>
       withClue(t)(NonMovieEventClassifier.isMysteryScreening(t) shouldBe false))
   }
 

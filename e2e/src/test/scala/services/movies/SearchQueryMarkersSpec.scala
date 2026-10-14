@@ -81,15 +81,14 @@ class SearchQueryMarkersSpec extends CorpusShapeSpec {
     AllowedListing.anywhere("Sekretny pokaz") -> s"Cinema City's secret screening, its film undisclosed: $NoFilmToFind",
     AllowedListing("Cinexx", "OmU Ebenezer: Eine Weihnachtsgeschichte") ->
       "TODO(rule): a version bare in front of the film with no separator — one listing across the five corpora of 2026-10-13, too rare for a rule of its own",
-  ) ++ DroppedByTheClients.map(AllowedListing.anywhere(_) -> DroppedOnReRecord)
+  ) ++ DroppedByTheClients.keys.map(_ -> DroppedOnReRecord)
 
   /** Listings the German clients drop as no screening at all since the 2026-10-12 recording was made
    *  (`NonMovieEventClassifier.isNonScreening`: a sneak billed with no film, a day pass): a re-record stops carrying them. */
-  override protected def awaitingReRecord: Set[AllowedListing] =
-    DroppedByTheClients.map(AllowedListing.anywhere).toSet
+  override protected def awaitingReRecord: Set[AllowedListing] = DroppedByTheClients.keySet
 
   "every listing awaiting a re-record" should "be one the clients now drop as no screening" in {
-    DroppedByTheClients.filterNot(services.cinemas.pl.NonMovieEventClassifier.isNonScreening) shouldBe empty
+    DroppedByTheClients.values.filterNot(services.cinemas.pl.NonMovieEventClassifier.isNonScreening) shouldBe empty
   }
 
   "the marker matcher" should "find each screening marker the rules strip, and nothing in a plain title" in {
@@ -134,9 +133,14 @@ object SearchQueryMarkersSpec {
   private val DroppedOnReRecord = "no screening, which the German clients now drop (NonMovieEventClassifier.isNonScreening) — the recording predates the drop"
 
   /** DE sneaks billed with no film that the clients now drop as no screening (`NonMovieEventClassifier.isNonScreening`),
-   *  still in the recording of run 38355584482 because their venues' last scrape (2026-10-12 21:22 to 10-13 02:48) predates
-   *  the drop: a re-record stops carrying them. */
-  private val DroppedByTheClients: Seq[String] = Seq("Friday Night Sneak", "Arthaus Sneak Vol. 43")
+   *  each with the venue's own billing the client judges: still in the recording of run 38355584482 because their
+   *  venues' last scrape (2026-10-12 21:22 to 10-13 02:48) predates the drop, and in that of run 38542338732 Filmwerk
+   *  Gütersloh's "Sneak_nov", listed under the short kinoheld linked it to ("Sneak Over") until the client stopped
+   *  trusting a sneak's link. A re-record stops carrying them. */
+  private val DroppedByTheClients: Map[AllowedListing, String] = Map(
+    AllowedListing.anywhere("Friday Night Sneak")    -> "Friday Night Sneak",
+    AllowedListing.anywhere("Arthaus Sneak Vol. 43") -> "Arthaus Sneak Vol. 43",
+    AllowedListing("Filmwerk Gutersloh", "Sneak Over") -> "Sneak_nov")
 
   /** A marker word or phrase, matched case-insensitively as whole words. */
   private def phrase(text: String): (String, Regex) =

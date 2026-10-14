@@ -12,8 +12,8 @@ import java.io.IOException
 import java.time.{LocalDate, LocalDateTime}
 import scala.collection.mutable.ListBuffer
 
-/** Replays six venues' real kinoheld.de programmes, every `programShows` page,
- *  recorded on 2026-10-11 (Arthaus-Kino Bonn's on 2026-10-12) by [[WriteKinoheld]]
+/** Replays seven venues' real kinoheld.de programmes, every `programShows` page,
+ *  recorded on 2026-10-11 (Arthaus-Kino Bonn's on 2026-10-12, Filmwerk Gütersloh's on 2026-10-14) by [[WriteKinoheld]]
  *  (see it for why each venue is there). */
 class KinoheldClientSpec extends AnyFlatSpec with Matchers {
 
@@ -157,6 +157,14 @@ class KinoheldClientSpec extends AnyFlatSpec with Matchers {
     lumen.map(_.movie.title).filter(_.toLowerCase.contains("sneak")) shouldBe empty
   }
 
+  // Filmwerk Gütersloh bills November's sneak "Sneak_nov", which kinoheld links to an 8-minute short "Sneak Over":
+  // the two share only the word "sneak", and a sneak names no film for any link to be right about.
+  it should "leave out a sneak billed by its month, whatever film kinoheld linked it to" in {
+    val filmwerk = scrape("Filmwerk Gütersloh")
+    filmwerk.map(_.movie.title).filter(_.toLowerCase.contains("sneak")) shouldBe empty
+    filmwerk.flatMap(_.showtimes).flatMap(_.bookingUrl).filter(_.contains("1000-57804")) shouldBe empty
+  }
+
   it should "mark the language version as Filmstarts does: OV, OmU, OmeU" in {
     film(lumen, "Avengers: Doomsday").showtimes.count(_.format.contains("OV")) shouldBe 8
     film(lumen, "Avengers: Doomsday").showtimes.count(_.format.contains("DBOX")) should be > 0
@@ -182,5 +190,7 @@ class KinoheldClientSpec extends AnyFlatSpec with Matchers {
     KinoheldClient.linkTrusted("Nordische Inseln", "Life Itself", None) shouldBe false
     // A shared article is not a shared film.
     KinoheldClient.linkTrusted("Die Assistentin", "Die Mutter", None) shouldBe false
+    // A mystery screening names no film, so no film linked to it is the venue's.
+    KinoheldClient.linkTrusted("Sneak_nov", "Sneak Over", Some("Sneak Over")) shouldBe false
   }
 }
