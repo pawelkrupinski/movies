@@ -914,7 +914,7 @@ de	Capitol Arthouse Mainz	THEMENGESPRÄCH. The Broken Circle	tmdb:137182	right	j
 de	Capitol Marburg	Shorts Attack 2026: The Kids are alright	tmdb:22984	wrong	judged 10-13: a shorts programme, not The Who's 1979 film
 de	Cinema &amp; Kurbelkiste Münster	Shorts Attack 2026: The Kids are alright	tmdb:22984	wrong	judged 10-13: a shorts programme, not The Who's 1979 film
 de	Casablanca Nürnberg	Archiv Negativ: Turksib	tmdb:1400057	wrong	judged 10-13: Turksib is Turin's 1929 documentary, not the 1986 Na pereval
-de	Casablanca Zwickau	Ping Pong Session	tmdb:1559695	right	judged 10-13: the venue credits Yu Tianji, his 2025 short
+de	Casablanca Zwickau	Ping Pong Session	tmdb:1559695	wrong	judged 10-14: a one-off Friday 21:00 event at the Alter Gasometer; kinoheld's ticket page copies the original title, Animation genre and Yu Tianji credit of the 16-minute short a search for the billing hit, so the credit is no evidence
 de	Central im Bürgerbräu	ROYA - Eintritt frei mit Seebrücke Würzburg e.V.	tmdb:1616163	right	judged 10-13: Mohammadi 2026
 de	*	Wer weiß schon, was ein Leben ist?	imdb:tt43711476	right	judged 10-13: Boros & Brückner 2026, as the feeds state
 de	*	Dolly	tmdb:1309083	right	judged 10-13: Cineamo links it (1309083m), 2026
@@ -942,7 +942,7 @@ de	Cineplex Olpe	Gloria!	tmdb:1231035	right	judged 10-13: Vicario 2024; Cineamo 
 de	Drehwerk 1719	RBO Live 2026/27: Così fan tutte (Royal Opera)	tmdb:1702775	right	judged 10-13: the RBO relay; Cineamo 1702775m
 de	Drehwerk 1719	SONDERVORSTELLUNG: BEGEGNUNGEN DER SEELE 2	imdb:tt37057962	wrong	judged 10-13: the sequel the title numbers, not the 2025 first film
 de	Filmforum	Afterlives	tmdb:1540803	right	judged 10-13: Kevin B. Lee's 2025 film, in German release via Arsenal
-de	Filmforum im Stadttheater Landsberg	Ganes	tmdb:608716	right	judged 10-13: the venue credits Osorio, its Ganges (2019)
+de	Filmforum im Stadttheater Landsberg	Ganes	tmdb:608716	wrong	judged 10-14: Ganes, the Ladin band, on its December 2026 tour (Dorfen 12-05, Aschaffenburg 12-11), one Saturday 20:00 show; kinoheld copied the Osorio credit of the "Ganges" its search hit
 de	*	Begegnungen der Seele 2	imdb:tt37057962	wrong	judged 10-13: the sequel the title numbers, not the 2025 first film
 de	Filmklubb	UNSPOKEN	tmdb:1358800	right	judged 10-13: the venue's page describes Lewandowski's 2024 film
 de	Filmkunst 66	Ring (1998)	tmdb:2671	right	judged 10-13: Nakata
@@ -1780,3 +1780,12 @@ de	Bundesplatz- Studio	Der Diplomat	tmdb:1555000	right	judged 10-14: the venue's
 de	Bundesplatz- Studio	Der Diplomat	tmdb:1147546	wrong	judged 10-14: Cineamo links the 2025 Indian The Diplomat; the venue bills a 1994 film
 de	*	Blutgericht in Texas	tmdb:30497	right	judged 10-14: Blutgericht in Texas is the German title of Hooper's 1974 film (Kinopolis Halloween screenings); the 2003 remake ran in Germany as Michael Bay's Texas Chainsaw Massacre
 de	*	Blutgericht in Texas	tmdb:9373	wrong	judged 10-14: Cineamo links the 2003 remake, whose German title is not Blutgericht in Texas
+de	Fontane Klub	Ich bin Dein	tmdb:215028	right	judged 10-14: Iram Haq's Jeg er din, German title Ich bin Dein, the 100 minutes the venue states
+de	Fontane Klub	Ich bin Dein	tmdb:1366306	wrong	judged 10-14: another "Jeg er din" (2014, Claudia Bille Stræde, no runtime); the page's credit is copied from it, its 100 minutes are Haq's film's
+de	Kino im Druckluft	Punkabend #93	tmdb:1571250	wrong	judged 10-14: the club's 93rd punk night (Friday 22:00); kinoheld copied the original title and Mike Wood credit of the '93 a search for "93" hit
+de	Kino in der Scheune Dresden	Tino Bomelino	tmdb:1020336	wrong	judged 10-14: Tino Bomelino, the comedian's Saturday 21:00 show, not a 4-minute 2022 animated short whose credit kinoheld copied
+de	Kaminwerk	Christmas Time Machine	tmdb:1317795	wrong	judged 10-14: a Christmas-night 23:30 party at the Kaminwerk club; kinoheld copied the credit of the 2024 animated "Time Machine" its search hit
+de	Kino im Druckluft	DAS PACK	tmdb:1626362	wrong	judged 10-14: Das Pack, the punk band, at the punk venue; kinoheld copied the credit of the 2026 "Pack" its search hit
+de	Kulturhaus Caserne Kino Studio 17	Dancing Queens & Band „live and kicking“ – A Tribute to ABBA	tmdb:1517672	wrong	judged 10-14: an ABBA tribute band's live show; kinoheld copied the credits of "Live Forever" (2025), hit on the word "live"
+de	Goli Theater Goch	The Piano Tuner (Dokumentarfilm)	tmdb:1571662	right	judged 10-14: the venue bills a 2025 documentary by David Doucette running 107 minutes (a figure TMDB's 128 does not supply), Doucette's Cape Breton documentary
+de	*	MET Opera: Macbeth (Verdi)	tmdb:1703622	right	judged 10-14: the Met's 2026/27 Macbeth relay, as UK's "The MET Opera: Macbeth"

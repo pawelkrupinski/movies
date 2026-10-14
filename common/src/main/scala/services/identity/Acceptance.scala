@@ -569,15 +569,25 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
   /** The one eligible candidate the listing's title — or the original title its venue publishes — names EXACTLY that
    *  credits the director the listing credits, when no published year or runtime contradicts it: a title and its director
    *  name one film together, however the database's search ranks it or however few venues list it
-   *  (US "Man of Iron" {Andrzej Wajda}, seventh in TMDB's search behind "Iron Man"; DE Casablanca Zwickau's "Ping Pong
-   *  Session", published as "Ping Pong" {Yu Tianji}, his 2025 short, eighteenth for "Ping Pong"). Two such records are
-   *  no answer. */
+   *  (US "Man of Iron" {Andrzej Wajda}, seventh in TMDB's search behind "Iron Man"; PL Kinoteka's "Podróżnik", published
+   *  as Kiarostami's original). Two such records are no answer.
+   *
+   *  The original title names it only when it stands apart from the billing ([[IdentityMeasures.Listing.originalStandsApart]])
+   *  and the billed title names no eligible record exactly: a ticket page that copies the original title and director of
+   *  the record a search for its billing hit states nothing that record does not, so the two cannot confirm it (DE
+   *  kinoheld's "Tino Bomelino" as Tino {Anna Lucía Alcalá Pérez}, "Ganes" as Ganges; Fontane Klub's "Ich bin Dein",
+   *  Iram Haq's film by its title and runtime, credited to another "Jeg er din"'s director — run 38578038277). */
   def directorsTitle(ranked: Seq[Scored]): Option[Accepted] = ownInstalment(directorsTitleWhy(ranked)).toOption
-  private def directorsTitleWhy(ranked: Seq[Scored]): Verdict =
-    one(withoutHollow(eligibleOf(ranked).filter(candidate =>
-      (candidate.category("title").contains("exact") || candidate.category("originalTitle").contains("match")) &&
+  private def directorsTitleWhy(ranked: Seq[Scored]): Verdict = {
+    val eligible = eligibleOf(ranked)
+    lazy val titled = eligible.exists(_.category("title").contains("exact"))
+    def byOriginal(candidate: Scored) =
+      candidate.category("originalTitle").contains("match") && candidate.listing.originalStandsApart && !titled
+    one(withoutHollow(eligible.filter(candidate =>
+      (candidate.category("title").contains("exact") || byOriginal(candidate)) &&
       IdentityMeasures.sameDirector(candidate.measures) && !contradicted(candidate))),
       "no film of its exact title by its credited director", "two films of its title by its director", credited(ranked)).map(f => f -> f.probability)
+  }
 
   /** The one eligible candidate the listing's title names EXACTLY from the year its title dates it
    *  (a year off at most, as a release and a premiere differ), when nothing it publishes contradicts

@@ -36,6 +36,22 @@ object IdentityMeasures {
                             *  what picks among a house's records of its work's seasons, never searched. */
                            screenedSeason: Option[Int] = None) {
     private def titles: Seq[String] = rawTitle.toSeq :+ title
+    /** Does the original title the venue publishes stand apart from its billing — the billing itself or one of its whole
+     *  delimited or decorated pieces (US "Legend (1986)", published as "Legend"; DE Goli's "The Piano Tuner
+     *  (Dokumentarfilm)"), or a title sharing none of its words and no near-spelling of it, as the work's title in another
+     *  language is (PL "Podróżnik", published as "Mossafer")? An original title that is a mere part of the billing or a
+     *  near-spelling of it is what a search for the billing hit, copied onto the page with that record's credits: DE
+     *  kinoheld's "Tino Bomelino" (a comedian) as "Tino", "Punkabend #93" as "'93", "Ganes" (a band) as "Ganges". A
+     *  shared word counts when it is a number or longer than an article. */
+    private[identity] lazy val originalStandsApart: Boolean = originalTitle.forall { original =>
+      def words(t: String) = TitleContainment.tokens(t).filterNot(IdentityMeasures.YearWord.matches).toSet
+      val own = words(original)
+      IdentityMeasures.shapes(titles).exists(shape => IdentityMeasures.key(shape) == IdentityMeasures.key(original)) ||
+        titles.forall { billed =>
+          !own.exists(w => words(billed)(w) && (w.length > 3 || w.forall(_.isDigit))) &&
+            !tools.EditDistance.within(IdentityMeasures.key(original), IdentityMeasures.key(billed), 1)
+        }
+    }
     /** The directors credited beside the published `year` — one listing's own, unless a pooled
      *  read took its year and its credits from different listings (`yearCredits`). */
     def creditedBesideYear: Seq[String] = yearCredits.getOrElse(directors)
@@ -118,6 +134,9 @@ object IdentityMeasures {
     private[identity] lazy val originalForm: Option[IdentityMeasures.OriginalForm] =
       originalTitle.map(_.trim).filter(_.nonEmpty).map(IdentityMeasures.OriginalForm(_))
   }
+
+  /** A title word that is a year ("1986" of "Legend (1986)"). */
+  private[identity] val YearWord = """(?:18|19|20)\d\d""".r
 
   /** Does the title bill the print it screens — a 16, 35 or 70 mm gauge ("(35mm)", "[35mm]", "70mm", "on 35mm")? */
   private val PrintGauge = """(?i)(?<![\p{L}\d])(?:16|35|70)\s?mm(?![\p{L}\d])""".r

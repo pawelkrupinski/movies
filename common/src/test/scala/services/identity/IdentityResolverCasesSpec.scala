@@ -2648,14 +2648,15 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     filed.head.searchTitle.exists(_.endsWith(", Die")) shouldBe false
   }
 
-  "A listing publishing its original title and director" should "take the director's film that original title names exactly, its billed title decorated" in {
-    // DE Casablanca Zwickau's "Ping Pong Session" (kinoheld: original "Ping Pong", {Yu Tianji}): his 2025 short, 18th in
-    // TMDB's search for "Ping Pong" (capture 2026-10-13); only the Filmweb fill ca4059b55 dropped took it
+  "A listing publishing its original title and director" should "take no film that original title names when it is only a part of the billing" in {
+    // DE Casablanca Zwickau's "Ping Pong Session" (kinoheld: original "Ping Pong", {Yu Tianji}), a one-off Friday-night
+    // event at the Alter Gasometer: the original title and credit are those of the 2025 short a search for the billing
+    // hit, copied onto the ticket page, so they cannot confirm that short (420ca72a4 took it; run 38578038277)
     val films = Seq(F(68543, "Ping Pong", 1987, "Po-Chih Leong", 100, 8), F(607487, "Ping Pong", 1968, "Someone Else", 90, 6),
       F(1559695, "Ping Pong", 2025, "Yu Tianji", 16, 0.3), F(859777, "Ping Pong", 1971, "Another One", 80, 0.3))
     val l = listing(Multikino, "Ping Pong Session", director = Some("Yu Tianji")).copy(originalTitle = Some("Ping Pong"))
     val d = shipped(Seq(l), films).decisionOf(l.key)
-    withClue(d.render)(d.film shouldBe Some(1559695))
+    withClue(d.render)(d.film shouldBe None)
   }
 
   "A title dating its film inside a studio's bracket" should "take the film of that title from that year" in {

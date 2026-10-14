@@ -185,17 +185,50 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     taken(ranked(listing, favreau, wajda)) shouldBe Some(225)
   }
 
-  it should "take the one record by that director its published ORIGINAL title names exactly, the billed title decorated" in {
-    // DE Casablanca Zwickau's "Ping Pong Session" (kinoheld: original "Ping Pong", {Yu Tianji}) is his 2025 short,
-    // eighteenth in TMDB's search for "Ping Pong" — taken only by the Filmweb fill dropped in ca4059b55
-    val listing = Listing("Ping Pong Session", originalTitle = Some("Ping Pong"), directors = Seq("Yu Tianji"))
-    val yu      = (1559695, Film("Ping Pong", year = Some(2025), runtime = Some(16), directors = Some(Seq("Yu Tianji"))), Some(18))
-    val first   = (68543, Film("Ping Pong", year = Some(1987), runtime = Some(100), directors = Some(Seq("Po-Chih Leong")), popularity = Some(3.0)), Some(1))
-    val other   = (859777, Film("Ping Pong", year = Some(1971)), Some(16))
-    acceptance.directorsTitle(ranked(listing, first, yu, other)).map(_._1.candidate.tmdbId) shouldBe Some(1559695)
+  it should "take the one record by that director its published ORIGINAL title names exactly, when that title stands apart from the billing" in {
+    // PL Kinoteka's "Podróżnik", published as Kiarostami's "Mossafer": the work's own title in another language
+    val listing = Listing("Podróżnik", originalTitle = Some("Mossafer"), directors = Seq("Abbas Kiarostami"))
+    val his     = (54001, Film("The Traveler", originalTitle = Some("Mossafer"), year = Some(1974), runtime = Some(73),
+      directors = Some(Seq("Abbas Kiarostami"))), Some(9))
+    val first   = (68543, Film("Podróż na Księżyc", year = Some(2011), runtime = Some(100), directors = Some(Seq("Someone Else")), popularity = Some(3.0)), Some(1))
+    acceptance.directorsTitle(ranked(listing, first, his)).map(_._1.candidate.tmdbId) shouldBe Some(54001)
+    // US Landmark's "Legend (1986)", published as "Legend": the billing itself, its year aside
+    val legend = Listing("Legend (1986)", originalTitle = Some("Legend"), directors = Seq("Ridley Scott"))
+    val scott  = (11976, Film("Legend", year = Some(1985), runtime = Some(94), directors = Some(Seq("Ridley Scott"))), Some(3))
+    acceptance.directorsTitle(ranked(legend, scott)).map(_._1.candidate.tmdbId) shouldBe Some(11976)
+    // DE Goli's "The Piano Tuner (Dokumentarfilm)", published as "The Piano Tuner" {David Doucette}: a decorated piece
+    val goli     = Listing("The Piano Tuner (Dokumentarfilm)", originalTitle = Some("The Piano Tuner"), directors = Seq("David Doucette"))
+    val doucette = (1571662, Film("The Piano Tuner", year = Some(2025), runtime = Some(128), directors = Some(Seq("David Doucette"))), Some(5))
+    acceptance.directorsTitle(ranked(goli, doucette)).map(_._1.candidate.tmdbId) shouldBe Some(1571662)
     // the original title naming only the director's longer title is no exact naming
-    val longer = (1559695, Film("Ping Pong Summer", year = Some(2025), directors = Some(Seq("Yu Tianji"))), Some(18))
+    val longer = (54001, Film("The Traveler's Return", originalTitle = Some("Mossafer 2"), directors = Some(Seq("Abbas Kiarostami"))), Some(9))
     acceptance.directorsTitle(ranked(listing, first, longer)) shouldBe None
+  }
+
+  it should "take nothing by a published original title that is a part or a near-spelling of the billing, or beside a record the billing names" in {
+    // DE kinoheld's event tickets (run 38578038277), each published with the original title and director of the record a
+    // search for the billing hit — the "facts" are that record's, so they cannot confirm it: a word of the billing
+    // ("Tino Bomelino", a comedian, as Tino {Anna Lucía Alcalá Pérez}; "Ping Pong Session" as Ping Pong {Yu Tianji}),
+    // a near-spelling of it ("Ganes", the band, as Ganges {Talía Carolina Osorio}) …
+    val tino = (1020336, Film("Tino", year = Some(2022), runtime = Some(4), directors = Some(Seq("Anna Lucía Alcalá Pérez"))), Some(1))
+    acceptance.directorsTitle(ranked(Listing("Tino Bomelino", originalTitle = Some("Tino"), directors = Seq("Anna Lucía Alcalá Pérez")), tino)) shouldBe None
+    val yu = (1559695, Film("Ping Pong", year = Some(2025), runtime = Some(16), directors = Some(Seq("Yu Tianji"))), Some(18))
+    acceptance.directorsTitle(ranked(Listing("Ping Pong Session", originalTitle = Some("Ping Pong"), directors = Seq("Yu Tianji")), yu)) shouldBe None
+    def hit(billed: String, original: String, director: String) = acceptance.directorsTitle(ranked(
+      Listing(billed, originalTitle = Some(original), directors = Seq(director)), (7, Film(original, year = Some(2025), directors = Some(Seq(director))), Some(5))))
+    hit("Punkabend #93", "'93", "Mike Wood") shouldBe None
+    hit("Christmas Time Machine", "Time Machine", "Zihan Gao") shouldBe None
+    hit("DAS PACK", "Pack", "Peiqi Peng") shouldBe None
+    hit("Dancing Queens & Band „live and kicking“ – A Tribute to ABBA", "Live Forever", "Connor Withall") shouldBe None
+    val ganges = (608716, Film("Ganges", year = Some(2019), runtime = Some(75), directors = Some(Seq("Talía Carolina Osorio"))), Some(1))
+    acceptance.directorsTitle(ranked(Listing("Ganes", originalTitle = Some("Ganges"), directors = Seq("Talía Carolina Osorio")), ganges)) shouldBe None
+    // … or beside the record the billed title names exactly: Fontane Klub's "Ich bin Dein" runs Iram Haq's 100 minutes,
+    // published with Claudia Bille Stræde's credit from another "Jeg er din"
+    val haq     = (215028, Film("Ich bin Dein", originalTitle = Some("Jeg er din"), year = Some(2013), runtime = Some(100),
+      directors = Some(Seq("Iram Haq"))), Some(1))
+    val straede = (1366306, Film("Jeg er din", year = Some(2014), directors = Some(Seq("Claudia Bille Stræde"))), Some(2))
+    acceptance.directorsTitle(ranked(Listing("Ich bin Dein", originalTitle = Some("Jeg er din"), runtime = Some(100),
+      directors = Seq("Claudia Bille Stræde")), haq, straede)) shouldBe None
   }
 
   it should "take nothing when its runtime contradicts that record, or two such records are candidates" in {
