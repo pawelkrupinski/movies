@@ -68,7 +68,9 @@ class FiledAnswersSpec extends AnyFlatSpec with Matchers {
     val file    = Files.createTempDirectory("capture").resolve("uk.json.gz")
     UnmatchedClusters.write(file, capture)
     UnmatchedClusters.read(file).live shouldBe capture.live
-    FiledAnswers(FiledAnswers.of(uk).capture.copy(live = capture.live), "uk.json.gz").isEmpty shouldBe false
+    // read off the file by FiledAnswers itself, which identity-slice drops into refs whose Capture has no `live`
+    FiledAnswers.ofCapture(file).live shouldBe capture.live
+    FiledAnswers(FiledAnswers.of(uk).capture, "uk.json.gz", capture.live).isEmpty shouldBe false
   }
 
   "What a slice read" should "read back from disk as written, its source named" in {

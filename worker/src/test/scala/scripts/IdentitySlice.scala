@@ -133,7 +133,10 @@ object IdentitySlice {
     /** The country's venue detail pages, read by its scrapers' own detail enrichers over the same fetch. */
     val enrichers: Seq[services.cinemas.common.DetailEnricher] = {
       val catalog = new services.cinemas.CinemaScraperCatalog(fetch, venueClock, clock, normalizer)
-      country.cities.flatMap(c => catalog.byCity.getOrElse(c, Nil)).collect { case de: services.cinemas.common.DetailEnricher => de }.distinct
+      // filed by City since 89fc69800, by the city's slug before it: this file is dropped into refs from either side
+      def filedUnder(key: Any, city: models.City) = key match { case slug: String => slug == city.slug; case other => other == city }
+      country.cities.flatMap(c => catalog.byCity.collect { case (key, scrapers) if filedUnder(key, c) => scrapers }.flatten)
+        .collect { case de: services.cinemas.common.DetailEnricher => de }.distinct
     }
     private val recorded = new TmdbIdentityLookups(tmdb, new services.enrichment.ImdbClient(fetch), enrichers, gaps)
     /** The recording's answers, and the filed ones where it has none — each filed one read noted. */
@@ -402,7 +405,7 @@ object IdentitySlice {
         val opened    = openRecording(recording, filed)
         val listings  = listingsOf(recording, opened.rows)
         // the index of a resolve that read a capture's live answers is that capture's own
-        val live      = if (filed.capture.live.isEmpty) "" else s"-live${Integer.toHexString(filed.capture.live.keySet.hashCode)}"
+        val live      = if (filed.live.isEmpty) "" else s"-live${Integer.toHexString(filed.live.keySet.hashCode)}"
         val index     = indexOf(cache.resolve(s"index-${country.code}-${o.ref}$live.json.gz"), listings, opened)
         o.faithfulness match {
           case Some(takes) => faithfulness(recording, opened, index, takes, o, filed, out)
@@ -434,7 +437,7 @@ object IdentitySlice {
   def openRecording(recording: Recording, filed: tools.FiledAnswers): RecordedCorpus.Opened = {
     require(Files.exists(recording.corpus), s"no corpus ${recording.corpus}")
     RecordedCorpus.open(recording.country, recording.corpus, settings.FixtureRoot(recording.root),
-      leaf => if (filed.capture.live.isEmpty) leaf else new tools.FiledAnswers.LiveLeaf(filed.capture.live, leaf))
+      leaf => if (filed.live.isEmpty) leaf else new tools.FiledAnswers.LiveLeaf(filed.live, leaf))
   }
 
   def readsOf(opened: RecordedCorpus.Opened, fetch: tools.HttpFetch, gaps: TmdbIdentityLookups.Gaps, at: Instant,

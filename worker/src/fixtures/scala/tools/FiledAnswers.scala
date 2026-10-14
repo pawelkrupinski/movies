@@ -15,14 +15,17 @@ import scala.jdk.CollectionConverters._
  * where the recording does not answer, notes which it read ([[Noting]], [[Lookups]]), keeps exactly those, and names
  * them as filed, never as the recording's.
  */
-final case class FiledAnswers(capture: UnmatchedClusters.Capture, source: String) {
+final case class FiledAnswers(capture: UnmatchedClusters.Capture, source: String,
+                              /** The capture's live HTTP answers ([[FiledAnswers.liveOf]]): held beside `capture`, never in it, so
+                               *  this file compiles dropped into a ref whose `Capture` predates them (identity-slice's tool files). */
+                              live: Map[String, String] = Map.empty) {
   def families: Map[String, BsonDocument] = capture.families
   def finds: Map[String, Option[Int]] = capture.finds
   def isEmpty: Boolean = capture.families.isEmpty && capture.finds.isEmpty && capture.queries.isEmpty && capture.films.isEmpty &&
-    capture.details.isEmpty && capture.casts.isEmpty && capture.live.isEmpty
+    capture.details.isEmpty && capture.casts.isEmpty && live.isEmpty
   /** How many answers of each kind it holds. */
   def render: String = s"${capture.families.size} family answer(s), ${capture.finds.size} IMDb find(s), ${capture.queries.size} TMDB search(es), " +
-    s"${capture.films.size} TMDB record(s), ${capture.details.size} venue page(s), ${capture.live.size} live HTTP answer(s)"
+    s"${capture.films.size} TMDB record(s), ${capture.details.size} venue page(s), ${live.size} live HTTP answer(s)"
 }
 
 object FiledAnswers {
@@ -30,7 +33,16 @@ object FiledAnswers {
     Map.empty, Map.empty), "")
 
   /** An unmatched-cluster capture's answers. */
-  def ofCapture(path: Path): FiledAnswers = FiledAnswers(UnmatchedClusters.read(path), path.toString)
+  def ofCapture(path: Path): FiledAnswers = FiledAnswers(UnmatchedClusters.read(path), path.toString, liveOf(path))
+
+  /** A capture file's live HTTP answers (`UnmatchedClusters.Capture.live`, its `live` array), read off the file itself —
+   *  none in a capture from before them. */
+  def liveOf(path: Path): Map[String, String] = {
+    val in = new java.util.zip.GZIPInputStream(Files.newInputStream(path))
+    val d  = try BsonDocument.parse(new String(in.readAllBytes(), java.nio.charset.StandardCharsets.UTF_8)) finally in.close()
+    if (!d.containsKey("live")) Map.empty
+    else d.getArray("live").getValues.asScala.map(_.asDocument).map(l => l.getString("request").getValue -> l.getString("body").getValue).toMap
+  }
 
   /** The family documents `filed` seeds a store with, every one of them read noted in `read`. */
   final class Noting(filed: FiledAnswers) extends TmdbDocuments {
@@ -75,16 +87,15 @@ object FiledAnswers {
       films = lookups.fold(Map.empty[Int, Option[IdentityMeasures.Film]])(_.films.asScala.toMap),
       details = lookups.fold(Map.empty[String, Option[DetailFacts]])(_.details.asScala.toMap),
       withDetail = lookups.fold(Set.empty[String])(_.details.keySet.asScala.toSet),
-      casts = lookups.fold(Map.empty[Int, Option[Seq[String]]])(_.casts.asScala.toMap), unreachable = Set.empty,
-      live = Map.empty), filed.source) // the live HTTP answers a slice read are in its own HTTP notes
+      casts = lookups.fold(Map.empty[Int, Option[Seq[String]]])(_.casts.asScala.toMap), unreachable = Set.empty), filed.source) // the live HTTP answers a slice read are in its own HTTP notes
 
   /** Two reads' answers together. */
   def merge(a: FiledAnswers, b: FiledAnswers): FiledAnswers =
     FiledAnswers(b.capture.copy(families = a.families ++ b.families, finds = a.finds ++ b.finds, queries = a.capture.queries ++ b.capture.queries,
       films = a.capture.films ++ b.capture.films, details = a.capture.details ++ b.capture.details, withDetail = a.capture.withDetail ++ b.capture.withDetail,
-      casts = a.capture.casts ++ b.capture.casts, live = a.capture.live ++ b.capture.live), Seq(a.source, b.source).filter(_.nonEmpty).distinct.mkString(", "))
+      casts = a.capture.casts ++ b.capture.casts), Seq(a.source, b.source).filter(_.nonEmpty).distinct.mkString(", "), a.live ++ b.live)
 
-  /** The capture's live HTTP answers ([[UnmatchedClusters.Capture.live]]) answered before `gap` — the recording's leaf,
+  /** The capture's live HTTP answers ([[FiledAnswers.live]]) answered before `gap` — the recording's leaf,
    *  asked only for what the recording does not hold — so a captured model decision that read an IMDb suggestion live
    *  reads it again. `served` counts the answers it gave. */
   final class LiveLeaf(live: Map[String, String], gap: HttpFetch) extends HttpFetch {
