@@ -20,8 +20,7 @@ final class VenueDetailLookups(enrichers: Seq[DetailEnricher], index: VenuePageI
 /**
  * The model's lookups answered from what it keeps first (`stored`: its normalized TMDB store and the
  * venues' enriched details), and only a TMDB or IMDb question the store has no answer to asked `live`
- * — through the fetch that files its answer into the store (`NormalizingHttpFetch`), whose change
- * re-asks it from there. So a take-up reads the store in batches, as the shadow's does, instead of
+ * — through the fetch that files its answer into the store (`NormalizingHttpFetch`), then read back from there. So a take-up reads the store in batches, as the shadow's does, instead of
  * asking every question again; venue details are never fetched here, only waited for.
  */
 final class StoredFirstLookups(stored: IdentityLookups, live: IdentityLookups) extends IdentityLookups {
@@ -34,7 +33,13 @@ final class StoredFirstLookups(stored: IdentityLookups, live: IdentityLookups) e
   override def released(queries: Iterable[CandidateQuery], films: Iterable[Int], details: Iterable[services.movies.ListingKey]): Unit =
     stored.released(queries, films, details)
 
-  def candidates(query: CandidateQuery): Answer[Seq[Hit]] = stored.candidates(query).orElse(live.candidates(query))
-  def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = stored.film(tmdbId).orElse(live.film(tmdbId))
-  override def cast(tmdbId: Int): Answer[Option[Seq[String]]] = stored.cast(tmdbId).orElse(live.cast(tmdbId))
+  def candidates(query: CandidateQuery): Answer[Seq[Hit]] = storedFirst(stored.candidates(query), live.candidates(query))
+  def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = storedFirst(stored.film(tmdbId), live.film(tmdbId))
+  override def cast(tmdbId: Int): Answer[Option[Seq[String]]] = storedFirst(stored.cast(tmdbId), live.cast(tmdbId))
+
+  /** The store's answer; on a gap, the live one -- read back from the store it was just filed into, so the question
+   *  answers as the store holds it (popularity to its bucket), as every later ask of it will: answered as TMDB stated
+   *  it, a take-up decided on one input and its next drain on another. The live answer only when the store took none. */
+  private def storedFirst[A](fromStore: => Answer[A], asked: => Answer[A]): Answer[A] =
+    fromStore.orElse { val answer = asked; fromStore.orElse(answer) }
 }

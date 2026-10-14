@@ -16,13 +16,18 @@ import scala.collection.mutable
  * when its question is next asked ([[forget]]).
  */
 class ObservationReads {
-  private val asking  = new ThreadLocal[Option[ObservationReads.Question]] { override def initialValue() = None }
-  private val readers = mutable.HashMap.empty[String, Set[ObservationReads.Question]]
-  private val keysOf  = mutable.HashMap.empty[ObservationReads.Question, Set[String]]
+  import ObservationReads.{Asked, Change, Question}
+  private val asking  = new ThreadLocal[Option[Question]] { override def initialValue() = None }
+  private val readers = mutable.HashMap.empty[String, Set[Question]]
+  private val keysOf  = mutable.HashMap.empty[Question, Asked]
+  // One clock for when each question began asking and when each change was announced: a change wakes only the questions
+  // asked before it, which read the document as it was.
+  private val ticks = new java.util.concurrent.atomic.AtomicLong()
 
   /** Run `body` as the asking of `question`: every key this thread reads meanwhile is that question's. */
-  def asking[A](question: ObservationReads.Question)(body: => A): A = {
+  def asking[A](question: Question)(body: => A): A = {
     forget(question)
+    synchronized(keysOf(question) = Asked(ticks.incrementAndGet(), Set.empty))
     val outer = asking.get
     asking.set(Some(question))
     try body finally asking.set(outer)
@@ -31,23 +36,34 @@ class ObservationReads {
   /** The store read `key` for the question this thread is asking, if any. */
   def read(key: String): Unit = asking.get.foreach { question => synchronized {
     readers.updateWith(key)(held => Some(held.getOrElse(Set.empty) + question))
-    keysOf.updateWith(question)(held => Some(held.getOrElse(Set.empty) + key))
+    keysOf.updateWith(question)(held => Some(held.fold(Asked(0L, Set(key)))(asked => asked.copy(keys = asked.keys + key))))
   } }
 
   /** Drop what `question` read: it is being asked anew. */
-  def forget(question: ObservationReads.Question): Unit = synchronized {
-    keysOf.remove(question).foreach(_.foreach(key => readers.updateWith(key)(_.map(_ - question).filter(_.nonEmpty))))
+  def forget(question: Question): Unit = synchronized {
+    keysOf.remove(question).foreach(_.keys.foreach(key => readers.updateWith(key)(_.map(_ - question).filter(_.nonEmpty))))
   }
 
-  /** The questions whose answers new content under `keys` can change. */
-  def changedBy(keys: Iterable[String]): AnswersChanged = synchronized {
-    val questions = keys.flatMap(readers.getOrElse(_, Set.empty)).toSet
+  /** New content was filed under `key`, now: by the question this thread is asking, if it is asking one. */
+  def changed(key: String): Change = Change(ticks.incrementAndGet(), asking.get.toSet, filed = asking.get.isDefined)
+  /** New content under `key`, now, filed by no question's ask: a venue page read, a sweep's re-fetch. */
+  def announced(key: String): Change = Change(ticks.incrementAndGet(), Set.empty, filed = false)
+
+  /** The questions whose answers new content under `keys` can change: every question that reads one. */
+  def changedBy(keys: Iterable[String]): AnswersChanged = synchronized(answersOf(keys.flatMap(readers.getOrElse(_, Set.empty)).toSet))
+
+  /** The questions whose answers each change can have changed: those that read its key and began asking before it, but
+   *  never one that filed it -- it has read what it filed -- and, for a change no question filed, every reader. */
+  def changedBy(changes: Map[String, Change]): AnswersChanged = synchronized(answersOf(changes.toSeq.flatMap { case (key, change) =>
+    readers.getOrElse(key, Set.empty).filter(question =>
+      !change.filed || (!change.filers(question) && keysOf.get(question).forall(_.at < change.at)))
+  }.toSet))
+
+  private def answersOf(questions: Set[Question]): AnswersChanged =
     AnswersChanged(
       questions.collect { case ObservationReads.Question.Query(query) => query },
       questions.collect { case ObservationReads.Question.Record(id) => id },
       questions.collect { case ObservationReads.Question.Detail(listing) => listing })
-  }
-
 
   /** How many keys it tracks: the index a model's questions keep over the store. */
   def keys: Int = synchronized(readers.size)
@@ -57,6 +73,15 @@ class ObservationReads {
 }
 
 object ObservationReads {
+  /** When a question began asking, and the keys it read. */
+  private final case class Asked(at: Long, keys: Set[String])
+
+  /** A key's change: announced at `at` (the latest of several merged), by `filers` -- the questions whose own asks
+   *  filed it -- when every announcement of it was `filed` by one; a change anyone else announced wakes every reader. */
+  final case class Change(at: Long, filers: Set[Question], filed: Boolean) {
+    def merge(other: Change): Change = Change(at max other.at, filers ++ other.filers, filed && other.filed)
+  }
+
   enum Question {
     case Query(query: CandidateQuery)
     case Record(id: Int)

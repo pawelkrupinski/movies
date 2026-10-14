@@ -81,7 +81,7 @@ final class IdentityModelService(
   private val waiting = scala.collection.mutable.HashMap.empty[String, Map[services.movies.ListingKey, (Listing, java.time.Instant)]]
 
   private val venues       = new ConcurrentHashMap[String, Seq[Listing]]()
-  private val observations = ConcurrentHashMap.newKeySet[String]()
+  private val observations = new ConcurrentHashMap[String, ObservationReads.Change]()
   private var model: Option[IncrementalResolver] = scala.None
 
   /** A venue's scrape was archived with `films`: its listings now. */
@@ -89,8 +89,15 @@ final class IdentityModelService(
     venues.put(cinema.displayName, Listing.distinct(Listing.all(Seq(cinema -> films), normalizer))); wake()
   }
 
-  /** New content was filed under `key` (the TMDB store, the venue page index, the proposal index). */
-  def observed(key: String): Unit = { observations.add(key); wake() }
+  /** New content was filed under `key` (the venue page index, the proposal index): every question that reads it is
+   *  asked again. */
+  def observed(key: String): Unit = queue(key, reads.announced(key))
+  /** New content was filed under `key` in the TMDB store, by whichever question's ask fetched it, if one did: that
+   *  question has read what it filed, and the questions asked since read it too, so only those asked before it are
+   *  asked again ([[ObservationReads.changedBy]]). A take-up over an empty store files every answer it asks for, and
+   *  each woke its own question: its first drain resolved every family a second time (Germany sample, 2026-10-14). */
+  def filed(key: String): Unit = queue(key, reads.changed(key))
+  private def queue(key: String, change: ObservationReads.Change): Unit = { observations.merge(key, change, (held, now) => held.merge(now)); wake() }
 
   /** Drain soon: `quiet` after the last event of a burst, never more than `settle` after its first — so a burst several
    *  venues land in is resolved together, as the fixed `settle` period batched it, and an event alone is taken in within
@@ -210,15 +217,15 @@ final class IdentityModelService(
       logger.warn(s"identity model: settling announced pages failed — retried at the next drain: $e", e)
     }
     val scraped = venues.keySet.asScala.toSeq.flatMap(venue => Option(venues.remove(venue)).map(venue -> _))
-    val keys    = observations.asScala.toSeq.filter(observations.remove)
+    val changes = observations.keySet.asScala.toSeq.flatMap(key => Option(observations.remove(key)).map(key -> _)).toMap
     val (admitted, released) = admit(engine, scraped)
-    Option.when(scraped.nonEmpty || keys.nonEmpty || released.nonEmpty) {
+    Option.when(scraped.nonEmpty || changes.nonEmpty || released.nonEmpty) {
       val started = tools.Stopwatch.start()
       val before  = engine.familiesResolved
       val seen    = admitted.flatMap(_._2) ++ released
       val gone    = scraped.flatMap { case (venue, now) => engine.heldAt(venue) -- now.map(_.key) }
-      engine.batch(seen, gone, reads.changedBy(keys))
-      val batch = ModelBatch(scraped.size, keys.size, engine.familiesResolved - before, engine.familyCount, started.seconds,
+      engine.batch(seen, gone, reads.changedBy(changes))
+      val batch = ModelBatch(scraped.size, changes.size, engine.familiesResolved - before, engine.familyCount, started.seconds,
         engine.sizes)
       metrics.batch(batch)
       batched(batch)

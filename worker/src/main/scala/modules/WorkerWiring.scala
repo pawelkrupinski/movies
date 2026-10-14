@@ -159,7 +159,7 @@ class WorkerWiring(
                      WorkerWiring.VenuePageWaitLimit, clock),
       takenUp    = () => identityModelTakenUp(),
       clock      = clock)
-    identityTmdbStore.onChanged(model.observed)
+    identityTmdbStore.onChanged(model.filed)
     model
   }
   /** The model's TMDB and IMDb answers from its normalized store, and venue details from venue_pages

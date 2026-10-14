@@ -184,6 +184,77 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     service.drain() shouldBe None
   }
 
+  /** What TMDB answers for "Lalka": its search, and both films' two responses each. */
+  private def lalka(popularity: Double): Seq[(String, String)] = {
+    def record(id: Int, year: Int, director: String, popularity: Double) = Seq(
+      s"https://api.themoviedb.org/3/movie/$id?language=$language&append_to_response=credits,release_dates" ->
+        s"""{"id":$id,"title":"Lalka","original_title":"Lalka","release_date":"$year-01-01","popularity":$popularity,"credits":{"crew":[{"job":"Director","name":"$director"}]}}""",
+      s"https://api.themoviedb.org/3/movie/$id?language=en-US&append_to_response=alternative_titles" ->
+        s"""{"id":$id,"title":"The Doll","popularity":$popularity,"alternative_titles":{"titles":[]}}""")
+    Seq(s"https://api.themoviedb.org/3/search/movie?language=$language&include_adult=false&query=Lalka" ->
+      s"""{"results":[{"id":2,"title":"Lalka","original_title":"Lalka","release_date":"2025-09-19","popularity":$popularity},
+         |{"id":1,"title":"Lalka","original_title":"Lalka","release_date":"1968-02-02","popularity":3.5}]}""".stripMargin) ++
+      record(1, 1968, "Wojciech Has", 3.5) ++ record(2, 2025, "Maciej Kawalski", popularity)
+  }
+  /** TMDB asked live for the model's gaps, as a hermetic convergence boot over an empty store asks it: each answer filed
+   *  into the store as it is fetched (`NormalizingHttpFetch`), and answered with the RAW popularity TMDB states. */
+  private final class LiveTmdb(w: World, popularity: Double) extends IdentityLookups {
+    val asked = new java.util.concurrent.atomic.AtomicInteger()
+    private def fetched(): Unit = { asked.incrementAndGet(); lalka(popularity).foreach { case (u, b) => w.normalizer.filed("GET", u, Success(b)) } }
+    def hasDetail(listing: Listing): Boolean = false
+    def detail(listing: Listing): Answer[Option[DetailFacts]] = Answer.Known(None)
+    def candidates(query: CandidateQuery): Answer[Seq[Hit]] = query match {
+      case CandidateQuery.Title("Lalka") => fetched()
+        Answer.Known(Seq(Hit(2, "Lalka", Some("Lalka"), Some(2025), popularity), Hit(1, "Lalka", Some("Lalka"), Some(1968), 3.5)))
+      case _ => Answer.Known(Nil)
+    }
+    def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = { fetched(); w.lookups.film(tmdbId) }
+  }
+
+  /** A prefetch that found a document absent holds nothing of it: the live ask files it moments later, and an ask
+   *  served the absence again would decide on a gap the store has already filled. */
+  "the store's lookups" should "read a document a prefetch found absent again, once it is filed" in {
+    val w      = new World
+    val stored = w.lookups
+    val query  = CandidateQuery.Title("Lalka")
+    stored.prefetch(Seq(query), Nil, Nil)
+    stored.candidates(query) shouldBe Answer.Unknown
+    lalka(popularity = 12.4).foreach { case (u, b) => w.normalizer.filed("GET", u, Success(b)) }
+    stored.candidates(query).toOption.map(_.map(_.tmdbId)) shouldBe Some(Seq(2, 1))
+  }
+
+  /** A gap asked live is answered as the store now holds it -- popularity to its bucket -- not as TMDB stated it: the
+   *  take-up decided on raw popularity and its first drain on the bucket, so every boot resolved twice, on two inputs. */
+  "a gap the model asks live" should "be answered as the store holds what that ask filed" in {
+    val w       = new World
+    val lookups = new StoredFirstLookups(w.lookups, new LiveTmdb(w, popularity = 12.4))
+    lookups.candidates(CandidateQuery.Title("Lalka")).toOption.map(_.map(_.popularity)) shouldBe
+      Some(Seq(PopularityBucket.rounded(12.4), PopularityBucket.rounded(3.5)))
+  }
+
+  /** A hermetic convergence boot starts on an empty store: every question is a gap, asked live, its answer filed -- and
+   *  each filing announced. Its first drain re-resolved every family the take-up had just resolved (104 of 104 on the
+   *  Germany sample, 2026-10-14; ~38 s of a Germany boot). A filing wakes the questions that read the document before
+   *  it was filed, never the one that filed it and has read it since. */
+  "a take-up that fills its own gaps live" should "decide once, and leave its first drain nothing to resolve again" in {
+    import models.{Movie, CinemaMovie, Multikino, Showtime}
+    val w        = new World
+    val reads    = new ObservationReads
+    val titles   = services.movies.SingleCountryNormalizer.titleNormalizer
+    val listings = Listing.distinct(Listing.all(Seq(Multikino -> Seq(CinemaMovie(Movie("Lalka", releaseYear = Some(2025)), Multikino, None,
+      Some("Multikino/Lalka"), None, Nil, Nil, Seq(Showtime(java.time.LocalDateTime.of(2026, 10, 1, 18, 0), None))))), titles))
+    var model  = Option.empty[IncrementalResolver]
+    val service = new IdentityModelService(
+      () => { val m = new IncrementalResolver(new TrackedLookups(new StoredFirstLookups(new StoredTmdbLookups(w.store, language,
+        UnansweredTmdbLookups, reads), new LiveTmdb(w, popularity = 12.4)), reads, Some(java.util.concurrent.Executors.newFixedThreadPool(2))),
+        titles, IdentityCalibration.resolver); model = Some(m); m },
+      reads, () => listings, titles, scala.concurrent.duration.Duration(1, "second"), java.util.concurrent.Executors.newSingleThreadScheduledExecutor(), clock = _root_.tools.SpecClock.Pinned)
+    w.store.onChanged(service.filed)   // as WorkerWiring wires the model
+    service.takeUp()
+    model.get.decisions.flatMap(_.film) shouldBe Seq(2)
+    service.drain().map(_.familiesResolved).getOrElse(0) shouldBe 0
+  }
+
   /** A take-up asks tens of thousands of questions. Each read one document at a time — its search,
    *  then every film it names — as its own round-trip: 40.5k asks took 21 s of a UK restore's 28 s
    *  in production, against a fraction of a second for the same documents read in batches. The

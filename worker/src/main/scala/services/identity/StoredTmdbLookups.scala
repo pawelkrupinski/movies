@@ -102,10 +102,10 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
       // One record object per film a prefetch holds: decoded again for every listing a family weighs against it, each
       // copy worked its titles, tokens and credits out afresh (worker-pl's identity model, JFR 2026-10-05). The document is
       // the prefetch's, unchanged until the next one, so its record is too.
-      case Some(prefetched) =>
+      case Some(prefetched) if prefetched.document.isDefined =>
         reads.read(TmdbStore.keyOf(TmdbKind.Film, tmdbId.toString))
         films.computeIfAbsent(tmdbId, _ => filmOf(prefetched.document))
-      case None => filmOf(document(TmdbKind.Film, tmdbId.toString))
+      case _ => filmOf(document(TmdbKind.Film, tmdbId.toString))
     }
 
   private def filmOf(doc: Option[BsonDocument]): Answer[Option[IdentityMeasures.Film]] =
@@ -174,7 +174,9 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
 
   private def document(kind: TmdbKind, id: String): Option[BsonDocument] = {
     reads.read(TmdbStore.keyOf(kind, id)) // tracked whatever it holds: its change re-asks the question
-    Option(held(kind).get(id)).getOrElse(Held(store.answers(kind, Seq(id)).get(id))).document
+    // A document the prefetch found absent is read again: the gap's live ask files it moments later, and an absence
+    // held would answer the question that filed it from before its own filing.
+    Option(held(kind).get(id)).flatMap(_.document).orElse(store.answers(kind, Seq(id)).get(id))
   }
 
   private def heldDocument(kind: TmdbKind, id: String): Option[BsonDocument] = Option(held(kind).get(id)).flatMap(_.document)
@@ -197,7 +199,7 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
   private def hit(id: Int): Option[Hit] = {
     val key = id.toString
     reads.read(TmdbStore.keyOf(TmdbKind.Film, key))
-    Option(hits.get(key)).getOrElse(store.filmHits(Seq(key)).get(key))
+    Option(hits.get(key)).flatten.orElse(store.filmHits(Seq(key)).get(key)) // an absent one read again, as `document`'s
   }
 }
 
