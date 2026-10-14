@@ -86,7 +86,7 @@ final case class FamilyVerdict(family: VoterFamily, pick: Option[FamilyPick], we
 final case class AgreedFilm(families: Set[VoterFamily], record: SourceRecord, ids: Map[VoterFamily, String], leaning: Set[VoterFamily] = Set.empty,
                             corroborated: Set[String] = Set.empty) {
   /** The film's id in `database` ("imdb", "tmdb"), as any agreeing family's record links it. */
-  def crossId(database: String): Option[String] = Seq(record).flatMap(_.crossIds.get(database)).headOption
+  def crossId(database: String): Option[String] = record.crossIds.get(database)
 }
 
 /** A family's answers as the resolver's lookups — the family as the film database, as TMDB is to the model. Its ids
@@ -371,17 +371,20 @@ object Agreement {
     listings.exists(contradicts(_, record))
 
   private def contradicts(listing: Listing, record: SourceRecord): Boolean =
-    FactRelations.yearsApart(record.film.year, listing.year) ||
-      FactRelations.otherPeople(listing.directors, record.film.directors.getOrElse(Nil)) ||
-      // a billing as a silent film dates it to the silent era (DE "STUMMFILM MIT TOBIAS RANK:NOSFERATU", not Eggers' 2024 film)
-      (record.film.year.exists(_ > ListingShape.SilentEraEnd) && ListingShape.billsASilentFilm(listing))
+    yearAgainst(listing, record) || directorAgainst(listing, record)
   /** [[contradicts]] by the facts the listing's source states with `trust` alone ([[SourceReliability]]). */
   private def contradicts(listing: Listing, record: SourceRecord, trust: Trust): Boolean = {
     val source = SourceReliability.factsOf(listing)
-    (source.trust(Fact.Year) == trust && (FactRelations.yearsApart(record.film.year, listing.year) ||
-      (record.film.year.exists(_ > ListingShape.SilentEraEnd) && ListingShape.billsASilentFilm(listing)))) ||
-      (source.trust(Fact.Directors) == trust && FactRelations.otherPeople(listing.directors, record.film.directors.getOrElse(Nil)))
+    (source.trust(Fact.Year) == trust && yearAgainst(listing, record)) || (source.trust(Fact.Directors) == trust && directorAgainst(listing, record))
   }
+  /** Does the listing's year — more than one apart, or its billing as a silent film — rule the film out? A billing as a
+   *  silent film dates it to the silent era (DE "STUMMFILM MIT TOBIAS RANK:NOSFERATU", not Eggers' 2024 film). */
+  private def yearAgainst(listing: Listing, record: SourceRecord): Boolean =
+    FactRelations.yearsApart(record.film.year, listing.year) ||
+      (record.film.year.exists(_ > ListingShape.SilentEraEnd) && ListingShape.billsASilentFilm(listing))
+  /** Does the listing credit another director than the film's own ([[FactRelations.otherPeople]])? */
+  private def directorAgainst(listing: Listing, record: SourceRecord): Boolean =
+    FactRelations.otherPeople(listing.directors, record.film.directors.getOrElse(Nil))
 
   /** Is the listing's title another film's ORIGINAL title — one a family weighed — while it is none of the agreed film's
    *  records' original titles, only a translation they file? Then the venue may well bill that film by its own name:
@@ -505,15 +508,6 @@ object Agreement {
     own.sizeIs >= 2 && own.size == its.size && own.zip(its).forall { case (o, t) => t.nonEmpty && t.mkString.length >= 4 && o.containsSlice(t) } &&
       own.zip(its).exists { case (o, t) => o == t }
   }
-  /** Is the film named only WITHIN another candidate's title the listings bill whole — every run of the billing its
-   *  titles are, a strictly longer run of one of `others`' titles, articles aside (a title only an article longer is the
-   *  same name)? PL "Kacper i Emma – najlepsi przyjaciele …" names the 2026 "Najlepsi przyjaciele" only as part of the
-   *  2013 "Kacper i Emma: Najlepsi przyjaciele"; DE CineStar's "Herr der Ringe - Rückkehr des Königs (ext.)" names the
-   *  2025 short "Herr der Ringe" only as the head of "Der Herr der Ringe - Die Rückkehr des Königs", its articles dropped.
-   *  `others`: every candidate's films, this one's among them. */
-  def namedWithinAnother(listings: Seq[Listing], films: Seq[IdentityMeasures.Film], others: Seq[Seq[IdentityMeasures.Film]]): Boolean =
-    namedWithinAnother(billedSpans(listings, films), others.map(billedSpans(listings, _)))
-
   /** The runs of every listing's billing the films' titles are (each as its words, articles aside). */
   def billedSpans(listings: Seq[Listing], films: Seq[IdentityMeasures.Film]): Seq[Seq[String]] =
     spansIn(listings.map(l => TitleContainment.tokens(l.rawTitle)), films)
@@ -539,7 +533,12 @@ object Agreement {
     named.nonEmpty && others.exists { other => val theirs = other.flatten.toSet; named.subsetOf(theirs) && !theirs.subsetOf(named) }
   }
 
-  /** [[namedWithinAnother]] over spans [[billedSpans]] found: `own` the film's, `others` every candidate's. */
+  /** Is the film named only WITHIN another candidate's title the listings bill whole — every run of the billing its
+   *  titles are, a strictly longer run of one of `others`' titles, articles aside (a title only an article longer is the
+   *  same name)? PL "Kacper i Emma – najlepsi przyjaciele …" names the 2026 "Najlepsi przyjaciele" only as part of the
+   *  2013 "Kacper i Emma: Najlepsi przyjaciele"; DE CineStar's "Herr der Ringe - Rückkehr des Königs (ext.)" names the
+   *  2025 short "Herr der Ringe" only as the head of "Der Herr der Ringe - Die Rückkehr des Königs", its articles dropped.
+   *  Over spans [[billedSpans]] found: `own` the film's, `others` every candidate's, this one's among them. */
   def namedWithinAnother(own: Seq[Seq[String]], others: Seq[Seq[Seq[String]]]): Boolean =
     own.nonEmpty && others.exists { other =>
       val longer = other.filter(words => !own.contains(words))

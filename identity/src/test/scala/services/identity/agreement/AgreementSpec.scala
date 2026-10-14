@@ -496,13 +496,16 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     val kacper = listing(KinoMuza, "Kacper i Emma – najlepsi przyjaciele Edukacja Młode Horyzonty")
     val friends = film("Najlepsi przyjaciele", 2026, "X")
     val casper  = film("Kacper i Emma: Najlepsi przyjaciele", 2013, "Arne Lindtner Næss")
-    Agreement.namedWithinAnother(Seq(kacper), Seq(friends), Seq(Seq(casper), Seq(friends))) shouldBe true
-    Agreement.namedWithinAnother(Seq(kacper), Seq(casper), Seq(Seq(casper), Seq(friends))) shouldBe false
-    Agreement.namedWithinAnother(Seq(kacper), Seq(friends), Seq(Seq(friends))) shouldBe false
+    // the films' spans in the billing, as the agreement reads them
+    def namedWithinAnother(listings: Seq[Listing], films: Seq[IdentityMeasures.Film], others: Seq[Seq[IdentityMeasures.Film]]) =
+      Agreement.namedWithinAnother(Agreement.billedSpans(listings, films), others.map(Agreement.billedSpans(listings, _)))
+    namedWithinAnother(Seq(kacper), Seq(friends), Seq(Seq(casper), Seq(friends))) shouldBe true
+    namedWithinAnother(Seq(kacper), Seq(casper), Seq(Seq(casper), Seq(friends))) shouldBe false
+    namedWithinAnother(Seq(kacper), Seq(friends), Seq(Seq(friends))) shouldBe false
     // a title only an article longer is the same name: US "THE BRIDE OF FRANKENSTEIN" names Whale's "Bride of Frankenstein"
     val bride = listing(KinoMuza, "THE BRIDE OF FRANKENSTEIN")
     val whale = film("Bride of Frankenstein", 1935, "James Whale")
-    Agreement.namedWithinAnother(Seq(bride), Seq(whale), Seq(Seq(whale), Seq(film("The Bride of Frankenstein", 2026, "X")))) shouldBe false
+    namedWithinAnother(Seq(bride), Seq(whale), Seq(Seq(whale), Seq(film("The Bride of Frankenstein", 2026, "X")))) shouldBe false
   }
 
   it should "name a film piece by piece, each of the film's pieces a run of the listing's at its place and one of them whole" in {

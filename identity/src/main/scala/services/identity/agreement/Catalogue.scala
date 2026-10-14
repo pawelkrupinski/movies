@@ -92,7 +92,7 @@ object Catalogue {
             // TMDB's own find of the IMDb id first: Wikidata's TMDB id can name a record TMDB since deleted or merged (DE
             // "Dann passiert das Leben": P4947 1517080, gone; TMDB finds its IMDb id as 1445025)
             val tmdb: Answer[Option[Int]] = imdb match {
-              case Some(tt) => val found = tmdbOf(tt); if (found == Answer.Unknown) finding += tt; found
+              case Some(tt) => found(tmdbOf, tt, finding)
               case None     => Answer.Known(film.tmdb.orElse(facts.crossIds.get("tmdb").flatMap(_.toIntOption)))
             }
             tmdb match {
@@ -136,6 +136,13 @@ object Catalogue {
   /** Do the hits name one film: at most one Wikidata item, one TMDB id and one IMDb id among them? */
   private def oneFilm(hits: Seq[CatalogueHit]): Boolean =
     hits.flatMap(_.item).distinct.sizeIs <= 1 && hits.flatMap(_.tmdb).distinct.sizeIs <= 1 && hits.flatMap(_.imdb).distinct.sizeIs <= 1
+
+  /** The TMDB film TMDB finds by the IMDb id `tt`, the find noted in `finding` while it is not answered yet. */
+  private def found(tmdbOf: String => Answer[Option[Int]], tt: String, finding: mutable.Set[String]): Answer[Option[Int]] = {
+    val answer = tmdbOf(tt)
+    if (answer == Answer.Unknown) finding += tt
+    answer
+  }
 
   /** `family`'s record of `id`, a question noted when it is not answered yet. */
   private def noted(family: FamilyAnswers, id: String, asked: mutable.Set[(VoterFamily, String)]): Answer[Option[SourceRecord]] = {
