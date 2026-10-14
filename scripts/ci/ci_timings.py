@@ -64,7 +64,10 @@ PHASE_LOG_MIN_SECONDS = 60
 # The job .github/actions/report-timings runs in (`github.job`): a run holding one reported itself.
 REPORTER = "timings"
 # GitHub answers a filtered run listing with at most 1000 runs; Main runs ~150 a week.
-HISTORY_WINDOW_DAYS = 3
+HISTORY_WINDOW_DAYS = 7
+# A run that ran no job, or was cancelled part-way (a newer push superseding it, 38% of Main's), says nothing of how long
+# the build takes -- and its jobs would cost an API call each.
+HISTORY_SKIPPED = {"cancelled", "skipped"}
 
 
 def seconds_between(start, end):
@@ -293,6 +296,8 @@ def history(github, days, today=None):
         while since < end:
             until = min(end, since + datetime.timedelta(days=HISTORY_WINDOW_DAYS))
             for run in github.workflow_runs(workflow_id, since.isoformat(), until.isoformat()):
+                if run.get("conclusion") in HISTORY_SKIPPED:
+                    continue
                 raw = github.jobs(run["id"])
                 if any(job["name"] == REPORTER for job in raw):
                     continue

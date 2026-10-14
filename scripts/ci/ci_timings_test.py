@@ -255,8 +255,10 @@ class HistoryTest(unittest.TestCase):
         github = FakeGitHub([self.run_("a", "2026-10-14T10:00:00Z")], {"a": JOBS})   # JOBS holds its `timings` job
         self.assertEqual(list(timings.history(github, days=60, today=datetime.date(2026, 10, 14))), [])
 
-    def test_a_run_with_no_job_that_ran_is_skipped(self):
-        github = FakeGitHub([self.run_("a", "2026-10-01T10:00:00Z", conclusion="skipped")], {"a": []})
+    def test_a_skipped_or_cancelled_run_is_left_out_without_reading_its_jobs(self):
+        github = FakeGitHub([self.run_("a", "2026-10-01T10:00:00Z", conclusion="skipped"),
+                             self.run_("b", "2026-10-02T10:00:00Z", conclusion="cancelled")], {})
+        github.jobs = lambda run_id: self.fail("read the jobs of %s" % run_id)
         self.assertEqual(list(timings.history(github, days=60, today=datetime.date(2026, 10, 14))), [])
 
     def test_asks_in_windows_github_answers_whole(self):
