@@ -93,7 +93,24 @@ back to 1710881 in one changed projection — an artefact: it handed the changed
 listings, so the cluster was digested and decided again on half of them, which no worker does (the intake's changed
 read keeps every venue's listings; IdentityListingIntakeProjectedSpec). Fixed in `IdentitySlicing.changedRead`.
 
-Not covered: curation pins (prod Mongo, not in a recording); the projection itself (film ids, slots) — the slice
-decides takes, not films; prod's own state between ticks (the stored model a pod restores, family answers filed after
-the capture). A move prod logs that the slice does not reproduce at either ref, with the filed answers, is that
-state's, not the code's.
+## Prod's state: `--prod-mirror`
+
+`--prod-mirror` reads prod's own state from the LOCAL prod mirror (`scripts/local-mirror`, `<db>_prod_mirror` on
+:28017; `tools.ProdMirror` refuses any other host — never prod): its filed family answers (`identity_family_answers`)
+in preference to the capture's, the agreement stage's stored verdicts (`identity_agreements`, which the stage starts
+from as prod's does: a verdict stands only while its listings, rules and every answer it read do) and the operator pins
+(`identity_pins`, handed to the model). Beside each take it prints prod's stored take and why (`PROD …`: the model's
+stored decision, the trace, the agreement verdict and correction, the stored titles) and `PROD TAKES OTHERWISE` where
+they differ; with `--faithfulness` it also tallies the slice against prod's take now. `scripts/local-mirror/freshness`
+runs first: a mirror synced before the recording, or more than `KINOWO_MIRROR_MAX_LAG_HOURS` (6) behind, is WARNed — the
+slice mixes the recording's moment with the mirror's; no mirror at all refuses.
+
+Measured 2026-10-14 (recording 38363428661, the capture of be6cc4142b59), `--faithfulness capture --sample 60`: DE 50 of 60
+with and without it, UK 60 of 60. The DE misses are model-side — the captured model read an IMDb suggestion live that the
+recording gaps — and family answers do not reach them (the next capture's live answers do, 83b869548). The tally against
+prod's take (DE 12 of 57, UK 4 of 60) is not yet meaningful: the mirror held no `identity_agreements` (added in 692e96ee6,
+synced once the daemon's checkout has it), so prod's take of every model-unmatched listing read as none.
+
+Not covered: the projection itself (film ids, slots) — the slice decides takes, not films; the stored model a pod
+restores, and its arrival order. A move prod logs that the slice does not reproduce at either ref, with `--prod-mirror`,
+is that state's, not the code's.

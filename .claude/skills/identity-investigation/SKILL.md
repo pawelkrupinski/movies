@@ -31,6 +31,8 @@ Design and limits: docs/design/identity-slice.md.
 | Does arrival order (the worker's incremental model) move it? | `… --orders 12` |
 | Does a CHANGED projection take it otherwise than the periodic one? | `… --modes 4` |
 | Agreement takes (Agreed, Filled, Poster): read prod's filed family answers | default `--families` = this checkout's capture; without them the families agree on nothing (as in every hermetic leg) |
+| What does PROD take for it now, and why — beside the slice's take? Prod's filed answers newer than the capture's, its stored agreement verdicts, its pins | `… --prod-mirror` — reads the LOCAL prod mirror (:28017, never prod), prints `PROD …` lines (model decision, trace, agreement verdict, correction, stored titles) and `PROD TAKES OTHERWISE`; checks `scripts/local-mirror/freshness` first and WARNs when the mirror predates the recording or lags >6 h. Use it when a take is an agreement one, or prod moved a listing the plain slice does not reproduce |
+| Is the mirror current enough to trust? | `scripts/local-mirror/freshness [cc] [--not-before <recordedAt>]` — sync time and lag per country, per-collection counts; exit 3 = not fresh |
 | Does the slice's agreement decide as the capture's replay? | `scripts/identity-slice uk --faithfulness capture --sample 60` |
 | Does the slice decide as the whole leg did? | `scripts/identity-slice de --faithfulness <convergence run id> --sample 60` |
 | Why did «title» at a venue take film X (or none) — the whole trace, from the capture? | `scripts/identity-slice de --explain --venue cinestar --title "rückkehr des königs"` |

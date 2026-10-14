@@ -55,6 +55,28 @@ starts reading a collection the sync doesn't carry.
 > collections from prod, so don't also write them from a local worker — point
 > the worker at `kinowo_local`. That's the whole reason for the suffix.
 
+## Tools that read the mirror: check its freshness first
+
+`scripts/local-mirror/freshness [cc...]` says how current each country's mirror is, reading only the local
+mirror (never prod): the sync moment (the cluster time of the last change its tailer applied, from the resume
+token in `__mirror_state`), the lag behind the clock, and each mirrored collection's count and newest stamped
+write. Exit 0 fresh, 3 not fresh (each reason WARNed), 2 no mirror. Every tool that reads the mirror calls it
+first — `scripts/identity-slice --prod-mirror`, `scripts/listing-history`, `scripts/label-lookup`:
+
+```
+scripts/local-mirror/freshness        # all five countries, every collection
+scripts/local-mirror/freshness uk --quiet --not-before 2026-10-13T07:35:22Z --max-lag-hours 6 --need identity_agreements
+```
+
+`--not-before` is the recording the caller will mix the mirror with; `--need` the collections it reads.
+
+Not fresh means: synced more than `--max-lag-hours` ago, synced BEFORE `--not-before` (the reader would mix two
+moments), a seed in flight (`<db>:seed` in `__mirror_state` — the copy is a fragment), or a `--need`ed
+collection holding nothing (a collection newly added to `mirror-targets.js` stays empty until the RUNNING
+daemon's checkout has it — the launchd agent runs the root checkout, so `git pull` there — and its staleness
+audit re-seeds). The rule is `freshness-rule.js`, asserted with
+`mongosh --nodb --quiet --file staleness-rule.js --file freshness-rule.js --file freshness-rule-spec.js`.
+
 ## One-time setup
 
 1. **Install the server** (you likely only have `mongosh` + tools):
