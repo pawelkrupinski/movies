@@ -240,15 +240,20 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
       .orElse(Option.when(namesOnlyItsVenue(node, candidateById(id)))("its title names it only by the venue's own name"))
       .orElse(Option.when(namesOnlyATag(node, candidateById(id)))("its title names it only by a programme tag billed beside many titles"))
       .orElse(Option.when(namesOnlyAProgrammeSlot(node, candidateById(id)))("its title names it only by a festival's programme slot"))
-      .orElse(Option.when(billsAFilmFestival(node))("its title bills a film festival by its name alone: the programme, no film"))
+      .orElse(Option.when(billingOf(node).festival)("its title bills a film festival by its name alone: the programme, no film"))
+      // a billing as a silent film dates it to the silent era, as the agreement reads it (DE "STUMMFILM MIT TOBIAS
+      // RANK:CHARLIE CHAPLIN" is no 1999 "Charlie Chaplin")
+      .orElse(Option.when(candidateById(id).film.year.exists(_ > ListingShape.SilentEraEnd) && billingOf(node).silent)(
+        "it bills a silent film, and this one is of the sound era"))
 
-  /** Does `node` bill a film festival by its name alone ([[ListingShape.billsAFilmFestival]])? Once per node: asked of
-   *  every candidate of its pool. */
-  private def billsAFilmFestival(node: EvidenceNode): Boolean = festivalMemo.getOrElseUpdate(node.id, {
+  /** What `node`'s billing says it is beside a film, once per node — asked of every candidate of its pool: a film
+   *  festival billed by its name alone ([[ListingShape.billsAFilmFestival]]), a silent film ([[ListingShape.billsASilentFilm]]). */
+  private final case class Billing(festival: Boolean, silent: Boolean)
+  private def billingOf(node: EvidenceNode): Billing = billingMemo.getOrElseUpdate(node.id, {
     val listing = node.evidence.published
-    ListingShape.billsAFilmFestival(listing.rawTitle.getOrElse(listing.title))
+    Billing(ListingShape.billsAFilmFestival(listing.rawTitle.getOrElse(listing.title)), node.listings.exists(ListingShape.billsASilentFilm))
   })
-  private val festivalMemo = mutable.HashMap.empty[String, Boolean]
+  private val billingMemo = mutable.HashMap.empty[String, Billing]
 
   /** The cluster's members read as ONE listing: the title most of its listings carry (the
    *  smaller node on a tie), the year most of them publish (a title's bracket or season stays the lead title's own measure), every director and country, the

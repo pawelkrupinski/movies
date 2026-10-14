@@ -1232,6 +1232,18 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     denied(bare) should not contain 33665
   }
 
+  "A billing as a silent film" should "take no film of the sound era, however its title names one" in {
+    // DE Union Filmtheater Friedrichshagen "STUMMFILM MIT TOBIAS RANK:CHARLIE CHAPLIN" (2026-10-13 suspect audit): a silent
+    // Chaplin programme with live music took the 1999 Indian film "Charlie Chaplin", its search's first hit
+    val sound  = F(1152327, "Charlie Chaplin", 1999, "Someone Else", 140, 2)
+    val silent = listing(models.KinoMuza, "STUMMFILM MIT TOBIAS RANK:CHARLIE CHAPLIN")
+    withClue(shipped(Seq(silent), Seq(sound)).decisionOf(silent.key).render)(shipped(Seq(silent), Seq(sound)).decisionOf(silent.key).film shouldBe None)
+    // a silent-era film it names is still its film
+    val nosferatu = F(653, "Nosferatu", 1922, "F.W. Murnau", 94, 10)
+    val murnau    = listing(models.KinoMuza, "STUMMFILM MIT TOBIAS RANK:NOSFERATU", Some(1922), Some("F.W. Murnau"))
+    withClue(shipped(Seq(murnau), Seq(nosferatu)).decisionOf(murnau.key).render)(shipped(Seq(murnau), Seq(nosferatu)).decisionOf(murnau.key).film shouldBe Some(653))
+  }
+
   "A film festival billed by its own name" should "name no film, not even one whose alternative title it is, nor one a feed links" in {
     // DE "Alpen Film Festival 2026" at nine venues (2026-10-13 suspect audit): the festival's programme; Cineamo linked
     // it to the 13-minute short "How I Started A Film Festival", whose TMDB record carries the billing as an alternative
