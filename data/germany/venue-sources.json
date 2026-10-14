@@ -6023,6 +6023,10 @@
    },
    "kinoprogramm": "/kino/berlin/arsenal-institut-fuer-film-und-videokunst-e.v.-31387",
    "matchedBy": "same address",
+   "ownSite": {
+    "site": "arsenal-berlin",
+    "page": "https://www.arsenal-berlin.de/kalender/"
+   },
    "shows": {
     "filmstarts": [
      1,
@@ -6041,8 +6045,9 @@
      0
     ]
    },
-   "primary": "cineamo",
+   "primary": "ownSite",
    "fallbacks": [
+    "cineamo",
     "kinoheld",
     "filmstarts",
     "kinoprogramm"

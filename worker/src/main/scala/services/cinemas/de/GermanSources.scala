@@ -32,6 +32,10 @@ object GermanFeed {
   final case class RexSchifferstadt(page: String) extends GermanFeed {
     def label = "rex-schifferstadt.de"; def ref = page
   }
+  /** Arsenal Berlin's own calendar ([[ArsenalBerlinClient]]). */
+  case object ArsenalBerlin extends GermanFeed {
+    def label = "arsenal-berlin.de"; def ref = ArsenalBerlinClient.CalendarPage
+  }
 }
 
 /**

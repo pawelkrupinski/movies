@@ -9666,8 +9666,16 @@ services.cinemas.common.ZyteFallback$
 services.cinemas.common.ZyteFetch
 services.cinemas.common.ZyteFetch$
 services.cinemas.common.ZyteOriginStatusException
+services.cinemas.de.ArsenalBerlinClient
+services.cinemas.de.ArsenalBerlinClient$
+services.cinemas.de.ArsenalBerlinClient$$anon$1
+services.cinemas.de.ArsenalBerlinClient$Page
+services.cinemas.de.ArsenalBerlinClient$Page$
+services.cinemas.de.ArsenalBerlinClient$Screening
+services.cinemas.de.ArsenalBerlinClient$Screening$
 services.cinemas.de.GermanFeed
 services.cinemas.de.GermanFeed$
+services.cinemas.de.GermanFeed$ArsenalBerlin$
 services.cinemas.de.GermanFeed$Cineamo
 services.cinemas.de.GermanFeed$Cineamo$
 services.cinemas.de.GermanFeed$Filmstarts

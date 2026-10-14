@@ -39,6 +39,8 @@ def feed(source, venue):
             return f"GermanFeed.WixEvents({lit(site['page'])}, {lit(site['postcode'])})"
         if site["site"] == "rex-schifferstadt":
             return f"GermanFeed.RexSchifferstadt({lit(site['page'])})"
+        if site["site"] == "arsenal-berlin":
+            return "GermanFeed.ArsenalBerlin"
         raise ValueError(f"{venue['key']}: no client reads a {site['site']!r} site")
     raise ValueError(source)
 

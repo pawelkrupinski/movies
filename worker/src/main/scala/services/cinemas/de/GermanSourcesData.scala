@@ -45,7 +45,7 @@ private[de] object GermanSourcesData {
     "A0044" -> Seq(c("447"), p("/kino/gruenberg/lichtspiele-gruenberg-57696"), f("A0044")),
     "A0045" -> Seq(c("374"), k("3563", "/kino/ibbenbueren/apollo-kino-ibbenbüren"), f("A0045"), p("/kino/ibbenbueren/apollo-kino-31827")),
     "A0049" -> Seq(k("189", "/kino/nuernberg/cinecitta"), f("A0049"), c("747"), p("/kino/nuernberg-mittelfranken/cinecitta-34569")),
-    "A0050" -> Seq(c("236"), k("32", "/kino/berlin/arsenal"), f("A0050"), p("/kino/berlin/arsenal-institut-fuer-film-und-videokunst-e.v.-31387")),
+    "A0050" -> Seq(GermanFeed.ArsenalBerlin, c("236"), k("32", "/kino/berlin/arsenal"), f("A0050"), p("/kino/berlin/arsenal-institut-fuer-film-und-videokunst-e.v.-31387")),
     "A0054" -> Seq(c("174"), k("39", "/kino/essen/astra-theater"), f("A0054"), p("/kino/essen/astratheater-und-luna-374")),
     "A0056" -> Seq(c("243"), k("40", "/kino/berlin/astra-filmpalast"), f("A0056"), p("/kino/berlin/astrafilmpalast-31400")),
     "A0060" -> Seq(f("A0060"), c("610"), k("1380", "/kino/neustadt-in-holstein/kinocenter-vor-dem-kremper-tor")),
