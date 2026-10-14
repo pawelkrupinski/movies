@@ -17,6 +17,8 @@ Prints, for the listings at venues whose name holds --venue and whose title hold
   * with --replay: scripts/identity-slice at each deploy's commit that logged a change, all on ONE pinned recording
     (--recording, default the newest green one) — whether CI's view of the input reproduces each change. A change the
     replay does not reproduce at its commit is prod's state (filed answers, restored model, arrival order), not code.
+    The mirror readable, a third view replays with prod's state NOW (identity-slice --prod-mirror), and each change is
+    shown beside prod's reason for the listing now (its identity_traces).
 
 Every outside call goes through one runner (ssh monitoring-1 for VictoriaLogs and Prometheus, mongosh on the local mirror,
 git, identity-slice), so the tests answer them all. Tests: listing_history_test.py beside it.
@@ -356,13 +358,14 @@ def report(args, run=run_command, now=None):
         out.append(f"{len(quiet)} other deploy(s) in the window logged no change of it: {', '.join(quiet[:12])}"
                    + (" …" if len(quiet) > 12 else ""))
 
-    prod, state = [], {}
+    prod, state, readable = [], {}, False
     port = os.environ.get("LOCAL_MIRROR_PORT", "28017")
     code, text = run([os.path.join(REPO, "scripts/local-mirror/freshness"), args.cc, "--need", MIRROR_NEEDS, "--quiet"])
     prod.extend(f"  {line}" for line in text.strip().splitlines())
     if code == 2:
         prod.append("  the mirror is not readable: its state is not shown")
     else:
+        readable = True
         if code != 0:
             prod.append("  the mirror is not fresh: what follows is as of its sync, not now")
         script = f"const VENUE = {json.dumps(re2_escape(args.venue))}, TITLE = {json.dumps(re2_escape(args.title))};" + MIRROR_QUERY
@@ -388,7 +391,7 @@ def report(args, run=run_command, now=None):
 
     if args.replay:
         out.append("")
-        out.extend(replay(args, known, run))
+        out.extend(replay(args, known, run, state if readable else None))
     return "\n".join(out) + "\n"
 
 
@@ -422,13 +425,32 @@ def _film(take_line):
 # The two views a replay decides under: CI's hermetic one (a recording holds no family answers, so the families agree on
 # nothing) and prod's (its filed family answers, from this checkout's unmatched-cluster capture). A change only the
 # second reproduces is the CI-vs-prod gap: no hermetic leg could have seen it.
+# A third, where the mirror is readable: prod's own state NOW (identity-slice --prod-mirror — its filed answers, the
+# stage's stored verdicts and the pins), which prints prod's stored take and why beside the slice's.
 VIEWS = (("CI (no filed answers)", ["--families", "none"]), ("with prod's filed answers", []))
+MIRROR_VIEW = ("with prod's state now (--prod-mirror)", ["--prod-mirror"])
 
 
-def replay(args, known, run):
+def trace_reason(state, key):
+    """Prod's reason for `key` (`venue | raw title`) now, from the mirror's identity_traces: film, basis, rules, blocker."""
+    if state is None:
+        return "the mirror is not readable"
+    venue, listing = key.split(" | ", 1)
+    for trace in state.get("traces", []):
+        if trace.get("listing", {}).get("venue") == venue and trace.get("listing", {}).get("rawTitle") == listing:
+            return (f"film {trace.get('film') or 'none'} via {trace.get('basis')}"
+                    + (f"; rules {' '.join(trace['rules'])}" if trace.get("rules") else "")
+                    + (f"; blocker {trace['blocker']}" if trace.get("blocker") else "")
+                    + (f"; vetoed by {trace['vetoedBy']}" if trace.get("vetoedBy") else ""))
+    return "the mirror holds no trace of it now (not listed, or billed otherwise)"
+
+
+def replay(args, known, run, state=None):
     """identity-slice at each deploy's commit that logged a change and at the deploy before it, every one on ONE
     recording, in CI's view and in prod's: a change is reproduced where the replayed take moves between the two deploys
-    as prod's did."""
+    as prod's did. With the mirror readable (`state`), a third view reads prod's state now, and each change is shown
+    beside prod's reason for the listing now (its identity_traces)."""
+    views = VIEWS + ((MIRROR_VIEW,) if state is not None else ())
     recording = args.recording
     if not recording:
         code, text = run(["gh", "run", "list", "-R", os.environ.get("KINOWO_REPO", "pawelkrupinski/movies"), "--workflow",
@@ -456,7 +478,8 @@ def replay(args, known, run):
             if code != 0 or not takes:
                 taken[memo] = (None, ["no take — " + " | ".join(text.strip().splitlines()[-3:])])
             else:
-                taken[memo] = (_film(takes[0]), takes + [l for l in text.splitlines() if l.startswith(("model:", "agreement:"))])
+                taken[memo] = (_film(takes[0]), takes + [l for l in text.splitlines()
+                                                         if l.startswith(("model:", "agreement:", "PROD ", "  prod "))])
         return taken[memo]
 
     changed = [d for d in known if d.changes]
@@ -468,7 +491,8 @@ def replay(args, known, run):
         before = known[known.index(deploy) - 1] if known.index(deploy) > 0 else None
         for (listing, was, now), key in keys.items():
             lines.append(f"REPLAY {deploy.sha7} {key} (prod: {was} → {now}):")
-            for view in VIEWS:
+            lines.append(f"  prod now (mirror identity_traces): {trace_reason(state, key)}")
+            for view in views:
                 film, shown = take(deploy, key, view)
                 lines.append(f"  {view[0]}: {shown[0]}")
                 lines.extend(f"      {l}" for l in shown[1:])

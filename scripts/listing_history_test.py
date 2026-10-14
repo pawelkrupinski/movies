@@ -68,9 +68,10 @@ class Runner:
             return 0, f"label of {argv[argv.index('--title') + 1]}\n"
         if argv[0].endswith("identity-slice"):
             ref = argv[argv.index("--ref") + 1]
-            view = "ci" if "--families" in argv else "prod"
+            view = "ci" if "--families" in argv else "mirror" if "--prod-mirror" in argv else "prod"
             film = self.slice_takes.get((ref, view), self.slice_takes.get(ref, "none"))
-            return 0, f"== «x»\nmodel: something\nTAKE Casablanca-Programmkino: {film} via X — -\n"
+            prod = "PROD Casablanca-Programmkino | Der mit dem Wolf tanzt (OmU): tmdb:581 via Agreed imdb\n" if view == "mirror" else ""
+            return 0, f"== «x»\nmodel: something\nTAKE Casablanca-Programmkino: {film} via X — -\n{prod}"
         raise AssertionError(f"unexpected call {argv}")
 
 
@@ -166,9 +167,10 @@ class ReportTest(unittest.TestCase):
         runner.slice_takes[("a2e9df9" + "0" * 33, "ci")] = "tmdb:581"
         out = run(runner, "--replay", "--recording", "38498856157")
         slices = [a for a in runner.calls if a[0].endswith("identity-slice")]
-        # each deploy once in each view: CI's (no filed answers) and prod's
-        self.assertEqual([(a[a.index("--ref") + 1][:7], "--families" in a) for a in slices],
-                         [("a2e9df9", True), ("a2e9df9", False), ("56cd8fc", True), ("56cd8fc", False)])
+        # each deploy once in each view: CI's (no filed answers), the capture's filed answers, and prod's state now
+        self.assertEqual([(a[a.index("--ref") + 1][:7], "--families" in a, "--prod-mirror" in a) for a in slices],
+                         [("a2e9df9", True, False), ("a2e9df9", False, False), ("a2e9df9", False, True),
+                          ("56cd8fc", True, False), ("56cd8fc", False, False), ("56cd8fc", False, True)])
         self.assertTrue(all("--recording" in a and "38498856157" in a for a in slices))
         self.assertTrue(all("Casablanca-Programmkino|Der mit dem Wolf tanzt (OmU)" in a for a in slices))
         self.assertIn("REPLAY a2e9df9 Casablanca-Programmkino | Der mit dem Wolf tanzt (OmU) (prod: tmdb 581 → none):", out)
@@ -186,6 +188,22 @@ class ReportTest(unittest.TestCase):
         self.assertIn("NOT REPRODUCED: a2e9df9 takes none too", out[ci:prod])
         self.assertIn("REPRODUCED: a2e9df9 takes tmdb 1710881, 56cd8fc none", out[prod:])
 
+    def test_replay_reads_prod_s_state_now_from_the_mirror_and_its_trace_for_the_reason(self):
+        mirror = {"traces": [{"listing": {"venue": "Casablanca-Programmkino", "rawTitle": "Der mit dem Wolf tanzt (OmU)"},
+                              "family": "F1", "film": None, "basis": "BelowThreshold", "rules": ["refused:year"],
+                              "blocker": "year.delta"}], "families": [], "venues": []}
+        out = run(Runner(logs=[GAINED], mirror=mirror, slice_takes={("56cd8fc" + "0" * 33, "mirror"): "tmdb:581"}),
+                  "--replay", "--recording", "1")
+        self.assertIn("  prod now (mirror identity_traces): film none via BelowThreshold; rules refused:year; blocker year.delta", out)
+        self.assertIn("  with prod's state now (--prod-mirror): TAKE Casablanca-Programmkino: tmdb:581", out)
+        self.assertIn("      PROD Casablanca-Programmkino | Der mit dem Wolf tanzt (OmU): tmdb:581 via Agreed imdb", out)
+
+    def test_an_unreadable_mirror_replays_without_prod_s_state(self):
+        runner = Runner(logs=[GAINED], freshness=(2, "no mirror\n"))
+        out = run(runner, "--replay", "--recording", "1")
+        self.assertFalse(any("--prod-mirror" in a for a in runner.calls if a[0].endswith("identity-slice")))
+        self.assertIn("  prod now (mirror identity_traces): the mirror is not readable", out)
+
     def test_a_change_the_replay_does_not_move_is_not_reproduced(self):
         runner = Runner(logs=[GAINED], slice_takes={"a2e9df9" + "0" * 33: "tmdb:581", "56cd8fc" + "0" * 33: "tmdb:581"})
         out = run(runner, "--replay", "--recording", "1")
@@ -199,7 +217,7 @@ class ReportTest(unittest.TestCase):
         out = history.report(args, runner)
         self.assertIn("TAKES 5 venues (Cineworld 0, Cineworld 1, Cineworld 2, …) | Der mit dem Wolf tanzt (OmU): none → tmdb 581", out)
         self.assertIn("gained  Der mit dem Wolf tanzt (OmU) at 5 venues (Cineworld 0, …): none → tmdb 581", out)
-        self.assertEqual(len([a for a in runner.calls if a[0].endswith("identity-slice") and "56cd8fc" in a[a.index("--ref") + 1]]), 2)
+        self.assertEqual(len([a for a in runner.calls if a[0].endswith("identity-slice") and "56cd8fc" in a[a.index("--ref") + 1]]), 3)
 
     def test_no_change_logged_says_so(self):
         out = run(Runner(logs=[]))
