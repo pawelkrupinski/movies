@@ -43,10 +43,7 @@ class NoUnguardedReadModifyWriteSpec extends AnyFlatSpec with Matchers {
         "and a racing publish of the same slice writes the same rows"),
     ("worker/src/main/scala/services/tasks/MongoChunkScrapeStore.scala", "startRun") -> (
       "the claim is itself conditional — an insert on the unique `_id`, else a findOneAndReplace filtered on the stale " +
-        "`createdAt` it supersedes — so the filter is the guard"),
-    ("common/src/main/scala/services/identity/IdentityModelStore.scala", "replace") -> (
-      "one writer per country (the projection's model update): the read is the stored content digests, deciding only " +
-        "which families moved; a family another process wrote meanwhile is rewritten whole by the next model update")
+        "`createdAt` it supersedes — so the filter is the guard")
   )
 
   /** Every (method, body) of `src`: from each `def` to the next. */

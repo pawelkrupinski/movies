@@ -680,15 +680,15 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
     case _ => None
   }
 
-  /** Why the film the families agree on is none of the cluster's: its billing names it as ONE PIECE beside another thing —
-   *  a subtitle, a performer, a show ([[ListingShape.billedBeside]]). Then the families' best match is that piece's namesake
-   *  (DE "Femme - Frauen heilen die Welt" is a documentary, not the 2023 "Femme"), and no fill or poster is asked for a
-   *  film either: what the billing names is no film the families found. */
   /** The TMDB film a record names: its TMDB id, else the film TMDB finds by its IMDb id — `Unknown` while that find is
    *  not answered yet (the caller notes the IMDb id to find). */
   private def tmdbFilmOf(tmdb: Option[Int], imdb: Option[String]): Answer[Option[Int]] =
     tmdb.fold(imdb.fold[Answer[Option[Int]]](Answer.Known(None))(tmdbOf))(film => Answer.Known(Some(film)))
 
+  /** Why the film the families agree on is none of the cluster's: its billing names it as ONE PIECE beside another thing —
+   *  a subtitle, a performer, a show ([[ListingShape.billedBeside]]). Then the families' best match is that piece's namesake
+   *  (DE "Femme - Frauen heilen die Welt" is a documentary, not the 2023 "Femme"), and no fill or poster is asked for a
+   *  film either: what the billing names is no film the families found. */
   private def pieceOf(verdict: StoredVerdict, listings: Seq[Listing]): Option[String] =
     verdict.agreed.flatMap(agreed => listings.iterator.flatMap(ListingShape.billedBeside(_, Seq(agreed.record.film))).nextOption()
       .map(why => s"no film: the families agree on '${agreed.record.film.title}', one piece of the billing — $why"))

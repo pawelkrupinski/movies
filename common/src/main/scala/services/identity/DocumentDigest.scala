@@ -21,7 +21,9 @@ private[identity] object DocumentDigest {
   }
 
   /** Writes those of `docs` (id → document, digested under `field`) whose digest `collection` does not hold already,
-   *  each as `write` models it; how many it wrote. */
+   *  each as `write` models it; how many it wrote. Unguarded by design: each store has one writer per country (the
+   *  model's update), the read only decides which documents moved, and a document another process wrote meanwhile is
+   *  rewritten whole by the next update. */
   def writeMoved(collection: MongoCollection[Document], docs: Seq[(String, BsonDocument)], field: String, timeout: FiniteDuration)
                 (write: (String, BsonDocument) => WriteModel[? <: Document]): Int = {
     val stored = Await.result(collection.find(Filters.in("_id", docs.map(_._1)*)).projection(Projections.include(field))
