@@ -1302,6 +1302,8 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "CLUB KIDMonGay-Vorpremiere"                                            -> "CLUB KIDMonGay",
     // FilmRaum (DE prod 2026-10-13): the preview's date and time after a comma, where its "- Preview" sibling resolved.
     "Das Geheimnis der gestohlenen Maske, Preview am 25.10. um 15 Uhr"      -> "Das Geheimnis der gestohlenen Maske",
+    // its weekday too (DE recording 38625654132: FilmRaum)
+    "La bola negra , Preview am Mi. 18.11. um 20 Uhr"                        -> "La bola negra",
     "Clayface - Vorpremiere am 25.10.2026"                                  -> "Clayface",
     "Clayface (Preview 25.10. 20:00 Uhr)"                                   -> "Clayface",
     "Rascal Does Not Dream of a Dear Friend (OmU) - CineAnime"              -> "Rascal Does Not Dream of a Dear Friend - CineAnime",

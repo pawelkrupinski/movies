@@ -31,6 +31,8 @@ class TitleFormatWordsSpec extends AnyFlatSpec with Matchers {
     FormatTags.extractFormatTags("Carmen in 3D") shouldBe ("Carmen", List("3D"))
     FormatTags.extractFormatTags("Dune: Part Two Fan First Premieres in IMAX") shouldBe ("Dune: Part Two Fan First Premieres", List("IMAX"))
     FormatTags.extractFormatTags("Avatar w 3D") shouldBe ("Avatar", List("3D"))
+    // Cineworld's invitation to see it in a format is the format's note, whole (UK recording 38625654132)
+    FormatTags.extractFormatTags("Arrietty (4K Restoration) Experience It In IMAX") shouldBe ("Arrietty (4K Restoration)", List("IMAX"))
   }
 
   // Balagueró's "[REC]" (US corpus 2026-10-01) came out as no title at all: served as an empty card.
