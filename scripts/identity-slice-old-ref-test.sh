@@ -11,7 +11,8 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 printf '\033[36m▸\033[0m identity-slice compiles into an old ref\n'
 ref=${OLD_REF:-c2974e3aa}
-"$REPO_ROOT/scripts/identity-slice" --compiles "$ref" > /dev/null 2>&1; code=$?
+out=$("$REPO_ROOT/scripts/identity-slice" --compiles "$ref" 2>&1); code=$?
+[ "$code" = 0 ] || printf '%s\n' "$out" | tail -40
 check "this checkout's tool files compile into $ref" "0" "$code"
 
 spec_summary

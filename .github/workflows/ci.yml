@@ -561,6 +561,15 @@ jobs:
                   detailed_summary: true
                   include_passed: false
 
+            # scripts/identity-slice drops this checkout's tool files into every ref it slices; they must compile
+            # into old code too (83b869548 broke every older ref). A real sbt compile of c2974e3aa, seeded from this
+            # job's compiled target/ — here, where sbt and the JDK are set up and off the deploy-gating unit job.
+            - name: identity-slice's tool files still compile into a ref from before them
+              run: |
+                  git fetch --no-tags --depth=1 origin c2974e3aaea73fb841096a24316fb5e872154de9
+                  OLD_REF=c2974e3aaea73fb841096a24316fb5e872154de9 KINOWO_IDENTITY_CACHE="$RUNNER_TEMP/kinowo-identity" \
+                      bash scripts/identity-slice-old-ref-test.sh
+
     # The `e2e` module (cross-app whole-corpus specs), FANNED OUT across two
     # parallel shards (see the e2eCorpus/e2eRest aliases in build.sbt):
     #
