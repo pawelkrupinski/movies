@@ -334,8 +334,8 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     val group = (1 to 5).map(i => s"Venue $i" -> Listing("Candyman (1992)", directors = Seq("Bernard Rose")))
     val candyman = Film("Candyman", year = Some(1992), directors = Some(Seq("Bernard Rose")))
     val other    = Film("Paperhouse", year = Some(1988), directors = Some(Seq("Bernard Rose")))
-    IdentityMeasures.corroboratingVenues(candyman, group, "Venue 1") shouldBe 4
-    IdentityMeasures.corroboratingVenues(other, group, "Venue 1") shouldBe 0
+    (IdentityMeasures.backingVenues(candyman, group) - "Venue 1").size shouldBe 4
+    (IdentityMeasures.backingVenues(other, group) - "Venue 1").size shouldBe 0
   }
 
   "a group's venue backing" should "count, for every member and film, exactly what corroboratingVenues counts" in {
@@ -347,7 +347,7 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     }
     val backing = new IdentityMeasures.VenueBacking(Map("candyman" -> group))
     for (f <- films; (venue, _) <- group :+ ("Elsewhere" -> Listing("Candyman")))
-      withClue(s"$venue ${f.year}")(backing.corroborating(Seq("candyman"), f, venue) shouldBe IdentityMeasures.corroboratingVenues(f, group, venue))
+      withClue(s"$venue ${f.year}")(backing.corroborating(Seq("candyman"), f, venue) shouldBe (IdentityMeasures.backingVenues(f, group) - venue).size)
   }
 
   it should "count nothing for a title group no venue lists" in {

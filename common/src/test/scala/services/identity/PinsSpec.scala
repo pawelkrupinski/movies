@@ -17,7 +17,7 @@ class PinsSpec extends AnyFlatSpec with Matchers {
     val pin = p.add(Seq(opetanie), PinClaim.IsFilm(Possession1981), "admin@example.com", "the strand is the 1981 film")
     pin.map(_.createdAt) shouldBe Right(At)
     p.all() shouldBe pin.toSeq
-    p.constraints().resolvedFilm(opetanie, None) shouldBe Some(Possession1981)
+    p.constraints().filmOf(opetanie) shouldBe Some(Possession1981)
   }
 
   it should "refuse a pin with no listing, a one-listing same-film pin, a bad film id, or no author or reason" in {

@@ -13,8 +13,8 @@ import services.resolution.SearchTitles
  *  - [[StoredIdentityConfidence]], which scores a stored film against the pinned artefact;
  *  - the pipeline's `MovieService.measureTitleSearches`, which stores each TMDB slot's
  *    `titleSearches` — the rank and rivals the gate reads.
- * The resolver's measures evolve in shadow; these may not, or a shadow-only resolver change would
- * move a served rating or a stored row. They change only together with the pinned artefact: a
+ * The resolver's measures evolve with every resolver change; these may not, or a change made for the
+ * resolver would move a served rating or a stored row. They change only together with the pinned artefact: a
  * re-pin copies [[IdentityMeasures]] and the refit artefact in one step, after
  * `scripts.IdentityGateImpact` measured the gate on both.
  */

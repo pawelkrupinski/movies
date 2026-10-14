@@ -301,10 +301,10 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
       keyed.family = -1
       if (keyed.listing == null) byKey.remove(key)
     })
-    family.resolved.blockKeys.foreach(key => familiesOfKey.updateWith(key)(_.map(_ - id).filter(_.nonEmpty)))
-    family.resolved.reads.keys.foreach(key => readersOf.updateWith(key)(_.map(_ - id).filter(_.nonEmpty)))
-    family.resolved.queries.foreach(query => askersOf.updateWith(query)(_.map(_ - id).filter(_.nonEmpty)))
-    family.resolved.films.foreach(film => filmReadersOf.updateWith(film)(_.map(_ - id).filter(_.nonEmpty)))
+    family.resolved.blockKeys.foreach(unlink(familiesOfKey, _, id))
+    family.resolved.reads.keys.foreach(unlink(readersOf, _, id))
+    family.resolved.queries.foreach(unlink(askersOf, _, id))
+    family.resolved.films.foreach(unlink(filmReadersOf, _, id))
   }
 
   /** The held listing's own key object for `key` (`key` itself for a listing no longer held). */
@@ -317,11 +317,15 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
     val id = freedIds.headOption.fold { val fresh = nextFamily; nextFamily += 1; fresh } { free => freedIds -= free; free }
     families(id) = Family(resolved, digest)
     resolved.listings.foreach(key => byKey.getOrElseUpdate(key, new IncrementalResolver.Keyed).family = id)
-    resolved.blockKeys.foreach(key => familiesOfKey.updateWith(key)(ids => Some(ids.getOrElse(Set.empty) + id)))
-    resolved.reads.keys.foreach(key => readersOf.updateWith(key)(ids => Some(ids.getOrElse(Set.empty) + id)))
-    resolved.queries.foreach(query => askersOf.updateWith(query)(ids => Some(ids.getOrElse(Set.empty) + id)))
-    resolved.films.foreach(film => filmReadersOf.updateWith(film)(ids => Some(ids.getOrElse(Set.empty) + id)))
+    resolved.blockKeys.foreach(link(familiesOfKey, _, id))
+    resolved.reads.keys.foreach(link(readersOf, _, id))
+    resolved.queries.foreach(link(askersOf, _, id))
+    resolved.films.foreach(link(filmReadersOf, _, id))
   }
+
+  /** `id` among the families an index files under `key` — and out of them, the entry gone with its last family. */
+  private def link[K](index: mutable.Map[K, Set[Int]], key: K, id: Int): Unit = index.updateWith(key)(ids => Some(ids.getOrElse(Set.empty) + id))
+  private def unlink[K](index: mutable.Map[K, Set[Int]], key: K, id: Int): Unit = index.updateWith(key)(_.map(_ - id).filter(_.nonEmpty))
 }
 
 object IncrementalResolver {

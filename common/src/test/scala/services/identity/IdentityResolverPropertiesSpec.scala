@@ -96,9 +96,8 @@ class IdentityResolverPropertiesSpec extends AnyFlatSpec with Matchers {
       val c = corpus(seed)
       val (a, b) = (run(c.listings, c.lookups), run(c.listings.reverse, c.lookups))
       signature(a) shouldBe signature(b)
-      val ids1 = IdAssigner.fresh(a.decisions.map(_.listings.toSet))
+      val ids1 = IdAssigner.assign(Seq.empty, a.decisions.map(_.listings.toSet), 1L)
       val ids2 = IdAssigner.assign(ids1.ids, b.decisions.map(_.listings.toSet), ids1.nextFresh)
-      IdAssigner.listingIdChanges(ids1, ids2) shouldBe 0
       ids2.ids shouldBe ids1.ids
     }
   }

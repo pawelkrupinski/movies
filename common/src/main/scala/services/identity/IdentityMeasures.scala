@@ -1761,15 +1761,10 @@ object IdentityMeasures {
     def source(key: String): String = { val at = key.indexOf(Join); if (at < 0) key else key.substring(at + 1) }
   }
 
-  /** The venues among `group` (the listings sharing the listing's title key, each with its [[Backer]])
-   *  whose OWN facts back `f` — a title naming it, and its exact year or a credit of its director —
-   *  other than `ownVenue`: the `venues.corroborating` count. */
-  def corroboratingVenues(f: Film, group: Seq[(String, Listing)], ownVenue: String): Int =
-    (backingVenues(f, group) - ownVenue).size
-
-  /** Every venue of `group` whose own facts back `f` ([[corroboratingVenues]] before the asking
-   *  venue is taken out): one answer per title group and film ([[VenueBacking]]). */
-  def backingVenues(f: Film, group: Seq[(String, Listing)]): Set[String] = backers(f, group).map(Backer.venue)
+  /** Every venue of `group` (the listings sharing the listing's title key, each with its [[Backer]]) whose OWN facts
+   *  back `f` — a title naming it, and its exact year or a credit of its director: what [[VenueBacking]] counts, the
+   *  asking venue taken out, as `venues.corroborating`. */
+  private[identity] def backingVenues(f: Film, group: Seq[(String, Listing)]): Set[String] = backers(f, group).map(Backer.venue)
 
   /** Every [[Backer]] of `group` whose own facts back `f`. */
   private def backers(f: Film, group: Seq[(String, Listing)]): Set[String] = {

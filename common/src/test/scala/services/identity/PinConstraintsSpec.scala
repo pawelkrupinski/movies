@@ -35,13 +35,13 @@ class PinConstraintsSpec extends AnyFlatSpec with Matchers {
   }
 
   "a film pin" should "decide the listing's film over whatever its own lookup answered" in {
-    pins.resolvedFilm(opetanie, looked = Some(999)) shouldBe Some(Possession1981)
-    pins.resolvedFilm(stranger, looked = Some(999)) shouldBe Some(999)
+    pins.filmOf(opetanie) shouldBe Some(Possession1981)
+    pins.filmOf(stranger) shouldBe None
     pins.blockKeys(opetanie) should contain(s"id:$Possession1981")
   }
 
   "a never-film pin" should "drop the denied answer, and cannot-link the listing from every listing that is that film" in {
-    pins.resolvedFilm(metSamson, looked = Some(DeMilleSamson)) shouldBe None
+    pins.deniedFilms(metSamson) should contain(DeMilleSamson)
     val filmOf = Map[ListingKey, Int](stranger -> DeMilleSamson)
     pins.cannotLinks(Seq(metSamson, stranger, opetanie), filmOf.get) shouldBe
       Seq(Edge(metSamson, stranger, must = false, reason = ListingConstraints.CannotLink.PinnedNotFilm.toString))

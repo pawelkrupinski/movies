@@ -10,8 +10,8 @@ import services.movies.ListingKey
  * `ListingConstraints.pinned`, so pins enter the one constraint model like every other rule.
  *
  * What the resolver does with it:
- *  - [[resolvedFilm]] replaces a listing's own lookup answer: a pinned film wins, a denied one
- *    is dropped;
+ *  - [[filmOf]] is a listing's film whatever its lookups answered (`Families.pinnedFilm`), and a
+ *    [[deniedFilms]] film is denied it (`FamilyScope`);
  *  - [[blockKeys]] are added to the listing's family block keys, so every pin edge joins two
  *    listings of one family (the closure stays complete, `FamilyClosure.crossings`);
  *  - [[mustLinks]] go in as the strongest tier, [[cannotLinks]] beside the derived ones;
@@ -71,11 +71,6 @@ final case class PinConstraints(pins: Seq[Pin]) {
   /** The films the pins say `k` never is (its whole group's). */
   def deniedFilms(k: ListingKey): Set[Int] = deniedByGroup.getOrElse(groupOf.getOrElse(k, k), Set.empty)
 
-  /** `k`'s film once the pins have spoken: the pinned film, else its own lookup answer unless
-   *  a pin denies it. */
-  def resolvedFilm(k: ListingKey, looked: Option[Int]): Option[Int] =
-    filmOf(k).orElse(looked.filterNot(deniedFilms(k)))
-
   /** Extra family block keys: the group's own key, and the pinned and denied films' TMDB keys
    *  (the same `id:` form [[Families]] gives a resolved listing). */
   def blockKeys(k: ListingKey): Set[String] =
@@ -88,7 +83,7 @@ final case class PinConstraints(pins: Seq[Pin]) {
     }
 
   /** Each listing a pin denies film X, cannot-linked from every one of `keys` whose film
-   *  (`filmOf`, the resolver's per-listing answer after [[resolvedFilm]]) is X. */
+   *  (`filmOf`, the resolver's per-listing answer, pins applied) is X. */
   def cannotLinks(keys: Seq[ListingKey], filmOf: ListingKey => Option[Int]): Seq[Edge[ListingKey]] = {
     val sorted = keys.distinct.sorted
     for {

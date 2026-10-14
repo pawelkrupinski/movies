@@ -101,11 +101,8 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
 
   /** What [[alone]] takes, with the rule that took it. A family's scope asks it once per node ([[FamilyScope.takenAlone]]). */
   def aloneNamed(ranked: Seq[Scored]): Option[(Accepted, String)] =
-    if (billsSeveralWorks(ranked)) None
-    else seasonProduction(ranked).map(_.map(_ -> "season-production"))
-      .orElse(datedOrBroadcastSeasonRecord(ranked).map(Some(_))).getOrElse(firstOf(ranked, aloneRules))
-      .filterNot { case ((taken, _), rule) => rule != "imdb-suggested" && outweighedBySuggestion(ranked, taken) }
-      .map { case (accepted, rule) => editionNamed(ranked)(accepted) -> rule }.filter(takesNoBill(ranked))
+    takenBy(ranked, keep = { case ((taken, _), rule) => rule == "imdb-suggested" || !outweighedBySuggestion(ranked, taken) })(
+      datedOrBroadcastSeasonRecord(ranked).orElse(firstOf(ranked, aloneRules)))
 
   /** Does an undenied film only IMDb's suggestion reached ([[Scored.suggestedOnly]], which only the IMDb rule may take),
    *  that another venue's listing of the title corroborates, weigh at least as much on the evidence as `taken`? Then the
@@ -175,10 +172,16 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
   def pooled(ranked: Seq[Scored]): Option[Accepted] = pooledNamed(ranked).map(_._1)
 
   /** [[pooled]], with the rule that accepted — for the decision's trace. */
-  def pooledNamed(ranked: Seq[Scored]): Option[(Accepted, String)] =
+  def pooledNamed(ranked: Seq[Scored]): Option[(Accepted, String)] = takenBy(ranked)(firstOf(ranked, pooledRules))
+
+  /** What both ways of taking a film share: nothing for a bill of several works; the season's production when there is
+   *  one (it pre-empts every rule, and a season production refused takes nothing), else what `rules` take — either only
+   *  if `keep` keeps it — each the edition of it the listing names, and never a film the bill's word refuses
+   *  ([[takesNoBill]]). */
+  private def takenBy(ranked: Seq[Scored], keep: ((Accepted, String)) => Boolean = _ => true)
+                     (rules: => Option[(Accepted, String)]): Option[(Accepted, String)] =
     if (billsSeveralWorks(ranked)) None
-    else seasonProduction(ranked).map(_.map(_ -> "season-production"))
-      .getOrElse(firstOf(ranked, pooledRules))
+    else seasonProduction(ranked).map(_.map(_ -> "season-production")).getOrElse(rules).filter(keep)
       .map { case (accepted, rule) => editionNamed(ranked)(accepted) -> rule }.filter(takesNoBill(ranked))
 
   /** The probability that `film` is the listing's film — the decision's confidence, on the scale

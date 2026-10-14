@@ -399,11 +399,14 @@ object IdentityResolver {
           val titleEdges = roundAByFamily.getOrElse(family, Nil).filter(edge => edge.must && ConstraintEdges.TitleTiers(edge.tier))
           unaccepted.flatMap(cluster => voting.familyMajority(cluster, members, accepted, titleEdges).toSeq.flatMap(taken => cluster.map(_.id -> taken))).toMap
         }
-      val voted: Map[String, (Int, Double)] =
+      val votes: Map[String, ResolverDecisions.Vote] =
         if (mutation == Mutation.NoVoting) Map.empty
-        else unaccepted.flatMap(cluster => if (cluster.exists(node => familyTaken.contains(node.id))) cluster.map(node => node.id -> (familyTaken(node.id)._1, familyTaken(node.id)._2))
-                                     else voting.vote(cluster, scope)).toMap
-      val filmOf: String => Option[Int] = id => accepted.get(id).orElse(voted.get(id).map(_._1))
+        else unaccepted.flatMap { cluster =>
+          if (cluster.exists(node => familyTaken.contains(node.id)))
+            cluster.map(node => node.id -> { val (film, probability, why) = familyTaken(node.id); ResolverDecisions.Vote(film, probability, Some(why)) })
+          else voting.vote(cluster, scope).map { case (id, (film, probability)) => id -> ResolverDecisions.Vote(film, probability, None) }
+        }.toMap
+      val filmOf: String => Option[Int] = id => accepted.get(id).orElse(votes.get(id).map(_.film))
       val familyEdges = edges.of(members, filmOf)
       val clusters    = solve(members, familyEdges, filmOf)
 
@@ -417,11 +420,11 @@ object IdentityResolver {
       val decided = clusters.flatMap { cluster =>
         val (bills, rest) = cluster.partition(node => billing(node.id))
         if (bills.isEmpty || cluster.forall(node => filmOf(node.id).isEmpty))
-          Seq(decisions.of(cluster, scope, filmOf, accepted, voted, familyEdges, clusterIndex, familyTaken))
+          Seq(decisions.of(cluster, scope, filmOf, accepted, votes, familyEdges, clusterIndex))
         else {
           // a cluster of bills alone takes no film its vote reaches either
-          val neither = decisions.of(bills, scope, _ => None, Map.empty, Map.empty, familyEdges, clusterIndex, Map.empty)
-          Option.when(rest.nonEmpty)(decisions.of(rest, scope, filmOf, accepted, voted, familyEdges, clusterIndex, familyTaken)).toSeq :+
+          val neither = decisions.of(bills, scope, _ => None, Map.empty, Map.empty, familyEdges, clusterIndex)
+          Option.when(rest.nonEmpty)(decisions.of(rest, scope, filmOf, accepted, votes, familyEdges, clusterIndex)).toSeq :+
             neither.copy(explanation = "bills several works: none of them" +: neither.explanation)(
               neither.trace.copy(vetoed = Some(DecisionTrace.Veto("bills both works", None))))
         }

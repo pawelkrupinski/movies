@@ -53,8 +53,6 @@ object IdAssigner {
     }
   }
 
-  def fresh(next: Seq[Set[ListingKey]], start: Long = 1L): Assignment = assign(Seq.empty, next, start)
-
   def assign(previous: Seq[(Long, Set[ListingKey])], next: Seq[Set[ListingKey]], nextFresh: Long): Assignment =
     assignWith(previous, next, nextFresh, TieBreak.Canonical)
 
@@ -81,8 +79,4 @@ object IdAssigner {
     nexts.indices.filter(idOf(_) < 0).sortBy(smallest).foreach { n => idOf(n) = counter; counter += 1 }
     Assignment(nexts.indices.map(n => idOf(n) -> nexts(n)).sortBy(_._1), counter)
   }
-
-  /** How many listings present in both assignments changed film id — the churn P2 bounds at 0. */
-  def listingIdChanges(before: Assignment, after: Assignment): Int =
-    after.idOfListing.count { case (l, id) => before.idOfListing.get(l).exists(_ != id) }
 }

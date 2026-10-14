@@ -9,8 +9,7 @@ private[identity] final class ResolverDecisions(scoring: CandidateScoring, famil
   import families.{bestOf, pinnedFilm}
 
   def of(cluster: Seq[EvidenceNode], scope: FamilyScope, filmOf: String => Option[Int], accepted: Map[String, Int],
-         voted: Map[String, (Int, Double)], edges: Seq[ResolverEdge], clusterIndex: Map[String, Int],
-         familyTaken: Map[String, (Int, Double, String)]): ResolverDecision = {
+         votes: Map[String, ResolverDecisions.Vote], edges: Seq[ResolverEdge], clusterIndex: Map[String, Int]): ResolverDecision = {
     val films = cluster.flatMap(node => filmOf(node.id)).distinct
     require(films.sizeIs <= 1, s"a cluster holds two films ${films.mkString(",")}: a cannot-link was not drawn")
     val film    = films.headOption
@@ -20,7 +19,7 @@ private[identity] final class ResolverDecisions(scoring: CandidateScoring, famil
     // A cluster the title family alone decided is filed at the family's bound when its own
     // scoring rates the film lower.
     val familyBound = film.filter(_ => cluster.forall(node => !accepted.contains(node.id))).flatMap(filmId =>
-      cluster.flatMap(node => familyTaken.get(node.id)).filter(_._1 == filmId).map(_._2).minOption)
+      cluster.flatMap(node => votes.get(node.id)).filter(vote => vote.majority.isDefined && vote.film == filmId).map(_.probability).minOption)
     val confidence =
       if (pinned) 1.0
       else film.fold(eligible.map(1 - _.probability).product)(filmId => math.max(acceptance.confidenceOf(scored, filmId), familyBound.getOrElse(0.0)))
@@ -44,8 +43,9 @@ private[identity] final class ResolverDecisions(scoring: CandidateScoring, famil
       val other = if (ids(edge.a)) edge.b else edge.a
       s"kept apart from ${nodeById(other).label} (cluster ${clusterIndex(other)}): ${edge.reason}"
     }.distinct.sorted
-    val vote  = cluster.flatMap(node => familyTaken.get(node.id).map(_._3)).headOption.orElse(
-      cluster.flatMap(node => voted.get(node.id)).headOption.map { case (id, probability) => s"pooled evidence of ${cluster.size} node(s) → $id at ${ResolverDecision.percent(probability)}" })
+    val clusterVotes = cluster.flatMap(node => votes.get(node.id))
+    val vote  = clusterVotes.flatMap(_.majority).headOption.orElse(clusterVotes.headOption.map(v =>
+      s"pooled evidence of ${cluster.size} node(s) → ${v.film} at ${ResolverDecision.percent(v.probability)}"))
     val best  = scored.headOption.filter(scored => !film.contains(scored.candidate.tmdbId)).map(scored =>
       s"best ${if (scored.denied) "vetoed" else "rejected"} candidate ${scored.candidate.tmdbId} at ${ResolverDecision.percent(scored.probability)}${scored.denial.fold("")(why => s", denied: $why,")} (${calibration.explain(ListingFilm, scored.measures)})")
     val gaps  = Option.when(unknown > 0)(s"$unknown lookup(s) unanswerable")
@@ -132,4 +132,10 @@ private[identity] final class ResolverDecisions(scoring: CandidateScoring, famil
     }
     DecisionTrace(pooled, vetoed, nodes)
   }
+}
+
+private[identity] object ResolverDecisions {
+  /** The film a cluster no member matched alone voted for, at `probability` — `majority` saying why when its title
+   *  family's clear majority decided it (`ClusterVoting.familyMajority`), its confidence then the family's bound. */
+  final case class Vote(film: Int, probability: Double, majority: Option[String])
 }

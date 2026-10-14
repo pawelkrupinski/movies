@@ -14,7 +14,7 @@ class IdAssignerSpec extends AnyFlatSpec with Matchers {
   private def set(is: Int*): Set[ListingKey] = is.map(l).toSet
 
   "IdAssigner" should "give the same clusters the same ids" in {
-    val first = IdAssigner.fresh(Seq(set(1, 2), set(3)))
+    val first = IdAssigner.assign(Seq.empty, Seq(set(1, 2), set(3)), 1L)
     IdAssigner.assign(first.ids, Seq(set(3), set(1, 2)), first.nextFresh).ids shouldBe first.ids
   }
 
@@ -45,7 +45,7 @@ class IdAssignerSpec extends AnyFlatSpec with Matchers {
     val rnd = new Random(seed)
     val n   = 4 + rnd.nextInt(20)
     def partition() = (1 to n).groupBy(_ => rnd.nextInt(1 + n / 3)).values.toSeq.map(g => g.map(l).toSet)
-    (IdAssigner.fresh(partition()).ids, partition())
+    (IdAssigner.assign(Seq.empty, partition(), 1L).ids, partition())
   }
 
   private def firstVariance(tieBreak: IdAssigner.TieBreak): Option[Long] = (1L to 3000L).find { seed =>
