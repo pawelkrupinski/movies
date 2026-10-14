@@ -236,6 +236,7 @@ route_is telegram alertname=ReadModelHealsRecurring severity=warning country=us
 route_is telegram alertname=ChangeStreamApplyLagging severity=warning country=pl
 # The identity matching alarms (identity-matching.rules): warnings, so telegram -- a live receiver.
 route_is telegram alertname=IdentityTakeChangesBurst severity=warning country=pl
+route_is telegram alertname=IdentityTakesLost severity=warning country=uk
 route_is telegram alertname=IdentitySuspectTakesRising severity=warning country=de
 route_is telegram alertname=RetiredVenueRowsLingering severity=warning country=pl
 route_is telegram alertname=DuplicateVenueListing severity=warning country=uk

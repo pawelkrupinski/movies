@@ -24,44 +24,83 @@
 groups:
   - name: identity-matching
     rules:
-      # 2% OF A COUNTRY'S LISTINGS LOST OR RE-MATCHED WITHIN AN HOUR, held for 15 minutes.
+      # MORE THAN 0.15% OF A COUNTRY'S LISTINGS LOST THEIR FILM WITHIN AN HOUR (and over 25 of them), held 5 minutes.
       #
-      # THE BASELINE, measured before this counter existed from the projection's own canary
-      # (`kinowo_worker_identity_cutover_canary{relation="moved"}`: clusters taking another TMDB
-      # film than the film they were on), hourly max over 10 days to 2026-10-13: median 0 in every
-      # country, p99 3-7 clusters, max 4 (US) to 111 (PL). In listings that p99 is at most ~1% of a
-      # country (PL: 7 clusters x 9 listings = 63 of 9,408 = 0.7%); the bursts above it were the
-      # identity cut-over's own pushes. The `> 50` floor keeps Spain's 5,178 listings from paging on
-      # two films. The counter's own first 1.5 hours live (2026-10-13 13:25-15:00Z): worst hour DE 8 lost+changed
-      # listings (0.02% of 34,436), UK 3, PL/US/ES 0 -- the threshold sits two orders of magnitude above it.
+      # THE CASE IT EXISTS FOR: build 9c8170f5e, deployed 2026-10-14 04:16Z, and its first UK projection at
+      # 04:24Z unmatched 213 listings at once (0.58% of 36,700); the next one, 06:36Z, another 82 (0.23%). The
+      # 2%-of-lost-or-changed burst that stood here before never came within a tenth of either.
       #
-      # `increase(...[1h])` is a range function, so a worker restart's ~3-minute scrape gap leaves
-      # fewer samples, not a reset `for:` (the restart case in the test pins it), and the listings
-      # gauge is read through `max_over_time` for the same reason.
+      # LOST ALONE, because it is the failure that can sit at a fraction of a percent and still be a regression
+      # (a listing with no film shows no rating, poster or synopsis), while its everyday level is near zero:
+      # the counter's first 18 hours live (2026-10-13 13:25Z - 10-14 07:50Z) peaked per country at PL 0.068%
+      # (7 listings), DE 0.058% (20), UK 0.038% (14), US 0.001%, ES 0 -- outside the two bad UK projections.
+      # 0.15% sits 2.2x above the highest of them and 1.5x below the smaller UK loss. Changed takes have a
+      # benign burst at this scale -- DE re-matched 39 listings (0.12%) at 06:23Z, one film's legitimate
+      # re-take -- so lost + changed under one threshold low enough for the UK case would sit within 25% of a
+      # healthy hour; changed has its own looser alert below.
+      #
+      # WHY NOT "AFTER A DEPLOY": worker pods start ~hourly (113 starts across the five countries in the 31h
+      # to 2026-10-14 08:00Z), so every hour is "after a deploy" and a deploy gate would filter nothing. The
+      # deploy is named by the drill-down instead: each `identity take change` log line carries the `build`
+      # that made it, and kube_pod_container_info's `image` tag the build running.
+      #
+      # The `> 25` floor keeps a small country's handful from paging: 25 is 0.46% of Spain's 5,400 listings.
+      # `increase(...[1h])` and `max_over_time` ride out a worker restart's scrape gap (the restart case in
+      # the test pins it).
+      - alert: IdentityTakesLost
+        expr: |
+          (
+            sum by (country) (increase(kinowo_worker_identity_take_changes_total{kind="lost"}[1h]))
+              /
+            max by (country) (max_over_time(kinowo_worker_identity_cutover_listings[1h]))
+          ) > 0.0015
+          and
+          sum by (country) (increase(kinowo_worker_identity_take_changes_total{kind="lost"}[1h])) > 25
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }}: {{ $value | humanizePercentage }} of its listings lost their film within an hour"
+          description: >-
+            The identity projection unmatched more than 0.15% of this country's published listings in the
+            last hour: they had a TMDB film and now have none, so they show no rating, poster or synopsis.
+            Its normal hour is under 0.07%. Which ones, why, and which build: VictoriaLogs
+            `country:<cc> "identity take change" kind:lost | stats by (build, basis) count()`, one line per
+            listing with the resolver's reason. A loss at a worker's first projection after a deploy is
+            that build's resolver change -- CI's identity takes check should have listed it; one mid-pod is
+            the data or an answer store moving.
+
+      # MORE THAN 0.5% OF A COUNTRY'S LISTINGS RE-MATCHED TO ANOTHER FILM WITHIN AN HOUR (and over 50), held 15m.
+      #
+      # Lost takes have their own alert above; this is the other half. Its healthy ceiling over the counter's
+      # first 18 hours was DE's 0.12% (39 listings re-taken at 06:23Z on 2026-10-14, one film's legitimate
+      # move); UK 0.03%, ES 0.02%, PL 0.01%, US 0.005%. 0.5% is 4x above it: a re-match of that size is a
+      # whole family of films changing hands (a wide release in the US is ~500 listings, 0.5%). It was 2%
+      # of lost and changed together until 2026-10-14, when it missed the UK losses above by 4x.
+
       - alert: IdentityTakeChangesBurst
         expr: |
           (
-            sum by (country) (increase(kinowo_worker_identity_take_changes_total{kind=~"lost|changed"}[1h]))
+            sum by (country) (increase(kinowo_worker_identity_take_changes_total{kind="changed"}[1h]))
               /
             max by (country) (max_over_time(kinowo_worker_identity_cutover_listings[1h]))
-          ) > 0.02
+          ) > 0.005
           and
-          sum by (country) (increase(kinowo_worker_identity_take_changes_total{kind=~"lost|changed"}[1h])) > 50
+          sum by (country) (increase(kinowo_worker_identity_take_changes_total{kind="changed"}[1h])) > 50
         for: 15m
         labels:
           severity: warning
         annotations:
-          summary: "{{ $labels.country }}: {{ $value | humanizePercentage }} of its listings lost or changed their film within an hour"
+          summary: "{{ $labels.country }}: {{ $value | humanizePercentage }} of its listings changed their film within an hour"
           description: >-
-            The identity projection moved the TMDB film of more than 2% of this country's published
-            listings in the last hour -- lost (matched before, unmatched now) or changed (another
-            film). Listings leaving the schedule and re-keys that keep the film are not counted, so
-            this is the site showing different films under the same listings. Which ones and why:
-            VictoriaLogs `country:<cc> "identity take change"` (one line per listing: venue,
-            listing, old -> new film, the resolver's reason). A burst right after a worker deploy is
-            the deploy's resolver change -- CI's identity takes check should have listed it; one
-            with no deploy is the data or an answer store moving (the agreement stage, a TMDB
-            answer re-read). Panel: worker diagnostics, "Identity cutover -- regroupings".
+            The identity projection moved more than 0.5% of this country's published listings to another
+            TMDB film in the last hour. Listings leaving the schedule and re-keys that keep the film are not
+            counted, so this is the site showing different films under the same listings. Which ones and
+            why: VictoriaLogs `country:<cc> "identity take change" kind:changed` (one line per listing: venue,
+            listing, old -> new film, the resolver's reason, the build). A burst right after a worker deploy
+            is the deploy's resolver change -- CI's identity takes check should have listed it; one with no
+            deploy is the data or an answer store moving (the agreement stage, a TMDB answer re-read).
+            Panel: worker diagnostics, "Identity cutover -- regroupings".
 
       # MORE THAN 10 SUSPECT TAKES, AND 5%, ABOVE THE SAME TIME YESTERDAY, held for 2 hours.
       #
@@ -79,7 +118,14 @@ groups:
       # THE LEVELS, live on 2026-10-13 15:00Z (the gauge's first hours): DE 222, UK 101, PL 106, US 13, ES 2. The
       # proposed +10 alone is 4.5% of Germany's standing count, inside what a week's new programmes can add with no
       # wrong take among them; the 5% beside it keeps the +10 floor for the small countries and asks DE/UK for a
-      # rise their size makes notable. Re-check against a week of the gauge's own day-over-day spread.
+      # rise their size makes notable.
+      #
+      # CHECKED 2026-10-14 against the gauge's first 17 hours (it was first set ~2026-10-13 15:00Z, so the
+      # `offset 1d` side had nothing yet and the expression has never had an input to be true on): the largest
+      # 12-hour RISE in any country was +1 (PL); the moves were falls -- DE 218 -> 175 (-43), PL -5, UK -4, US and
+      # ES flat. The +10 / 5% bar sits 10x above the observed rise, so it stays; re-check once a week of
+      # day-over-day spread exists. The UK loss of 213 takes at 04:24Z moved UK's suspect count by 0: a lost take
+      # is no take to doubt, which is why IdentityTakesLost watches it directly.
       - alert: IdentitySuspectTakesRising
         expr: |
           (
@@ -104,5 +150,5 @@ groups:
             than 10 over the same time yesterday, for two hours. Which signal: worker diagnostics, the identity
             cutover panel (`kinowo_worker_identity_suspect_takes` by signal); which takes: the suspect-take
             audit (scripts.SuspectTakesMeasure over a recording, or the convergence legs' step summary on the next push). A rise
-            right after a worker deploy is the deploy's; IdentityTakeChangesBurst firing beside it says the films
-            themselves moved.
+            right after a worker deploy is the deploy's; IdentityTakeChangesBurst or IdentityTakesLost firing beside
+            it says the films themselves moved.

@@ -1,22 +1,61 @@
-# UNIT TESTS FOR THE IDENTITY MATCHING ALERT.
+# UNIT TESTS FOR THE IDENTITY MATCHING ALERTS.
 #
-# It fires for a burst of lost or changed takes past 2% of a country's listings, survives a worker
-# restart (a `stale` gap, ~3 minutes on a real pod change) inside its `for:`, and stays quiet for the
-# shapes beside it: an ordinary hour (well under 2%), a small country's handful of listings (under the
-# 50-listing floor), and a burst of GAINED takes (the site matching more is not the failure).
+# IdentityTakesLost fires for UK's real 2026-10-14 loss (213 of 36,700 listings, 0.58%) across a worker
+# restart, and stays quiet for the healthy hours beside it: DE's worst (20 lost of 34,650), a small country's
+# 20 (over 0.15% of its 5,400, under the 25-listing floor), and US gaining 656 (gained is not lost).
+# IdentityTakeChangesBurst fires for 600 of PL's 9,408 listings re-matched (6.4%) across a restart, and stays
+# quiet for UK's ordinary hour, DE's real benign 39 re-takes (0.12%), and a burst of LOST takes (the other alert's).
 rule_files:
   - ../../nix/files/monitoring/rules/identity-matching.rules
 
 evaluation_interval: 1m
 
 tests:
-  # PL loses 600 of its 9,408 listings' films at once (6.4%), the worker restarting a few minutes
-  # later. Quiet until the `for:` is up, then firing for pl alone.
+  # UK loses 213 listings' films at its first projection after a deploy, the worker having restarted just before.
   - interval: 1m
     input_series:
-      - series: 'kinowo_worker_identity_take_changes_total{country="pl",kind="lost",instance="w1"}'
-        values: '0x30 600x5 stale _x2 600x40'
+      - series: 'kinowo_worker_identity_take_changes_total{country="uk",kind="lost",instance="w1"}'
+        values: '1x30 stale _x2 213x40'
+      - series: 'kinowo_worker_identity_cutover_listings{country="uk",path="projection",instance="w1"}'
+        values: '36700x30 stale _x2 36700x40'
+      - series: 'kinowo_worker_identity_take_changes_total{country="de",kind="lost",instance="w1"}'
+        values: '0x30 20x43'
+      - series: 'kinowo_worker_identity_take_changes_total{country="de",kind="changed",instance="w1"}'
+        values: '0x30 39x43'
+      - series: 'kinowo_worker_identity_cutover_listings{country="de",path="projection",instance="w1"}'
+        values: '34650x73'
+      - series: 'kinowo_worker_identity_take_changes_total{country="es",kind="lost",instance="w1"}'
+        values: '0x30 20x43'
+      - series: 'kinowo_worker_identity_cutover_listings{country="es",path="projection",instance="w1"}'
+        values: '5400x73'
+      - series: 'kinowo_worker_identity_take_changes_total{country="us",kind="gained",instance="w1"}'
+        values: '0x30 656x43'
+      - series: 'kinowo_worker_identity_take_changes_total{country="us",kind="lost",instance="w1"}'
+        values: '0x73'
+      - series: 'kinowo_worker_identity_cutover_listings{country="us",path="projection",instance="w1"}'
+        values: '103800x73'
+    alert_rule_test:
+      - eval_time: 35m
+        alertname: IdentityTakesLost
+        exp_alerts: []
+      - eval_time: 45m
+        alertname: IdentityTakesLost
+        exp_alerts:
+          - exp_labels: { severity: warning, country: uk }
+            exp_annotations:
+              summary: "uk: 0.5804% of its listings lost their film within an hour"
+              description: "The identity projection unmatched more than 0.15% of this country's published listings in the last hour: they had a TMDB film and now have none, so they show no rating, poster or synopsis. Its normal hour is under 0.07%. Which ones, why, and which build: VictoriaLogs `country:<cc> \"identity take change\" kind:lost | stats by (build, basis) count()`, one line per listing with the resolver's reason. A loss at a worker's first projection after a deploy is that build's resolver change -- CI's identity takes check should have listed it; one mid-pod is the data or an answer store moving."
+      - eval_time: 45m
+        alertname: IdentityTakeChangesBurst
+        exp_alerts: []
+
+  # PL re-matches 600 of its 9,408 listings at once (6.4%), the worker restarting a few minutes later. Quiet until
+  # the `for:` is up, then firing for pl alone.
+  - interval: 1m
+    input_series:
       - series: 'kinowo_worker_identity_take_changes_total{country="pl",kind="changed",instance="w1"}'
+        values: '0x30 600x5 stale _x2 600x40'
+      - series: 'kinowo_worker_identity_take_changes_total{country="pl",kind="lost",instance="w1"}'
         values: '0x30 0x5 stale _x2 0x40'
       - series: 'kinowo_worker_identity_cutover_listings{country="pl",path="projection",instance="w1"}'
         values: '9408x35 stale _x2 9408x40'
@@ -29,18 +68,21 @@ tests:
         exp_alerts:
           - exp_labels: { severity: warning, country: pl }
             exp_annotations:
-              summary: "pl: 6.378% of its listings lost or changed their film within an hour"
-              description: "The identity projection moved the TMDB film of more than 2% of this country's published listings in the last hour -- lost (matched before, unmatched now) or changed (another film). Listings leaving the schedule and re-keys that keep the film are not counted, so this is the site showing different films under the same listings. Which ones and why: VictoriaLogs `country:<cc> \"identity take change\"` (one line per listing: venue, listing, old -> new film, the resolver's reason). A burst right after a worker deploy is the deploy's resolver change -- CI's identity takes check should have listed it; one with no deploy is the data or an answer store moving (the agreement stage, a TMDB answer re-read). Panel: worker diagnostics, \"Identity cutover -- regroupings\"."
+              summary: "pl: 6.378% of its listings changed their film within an hour"
+              description: "The identity projection moved more than 0.5% of this country's published listings to another TMDB film in the last hour. Listings leaving the schedule and re-keys that keep the film are not counted, so this is the site showing different films under the same listings. Which ones and why: VictoriaLogs `country:<cc> \"identity take change\" kind:changed` (one line per listing: venue, listing, old -> new film, the resolver's reason, the build). A burst right after a worker deploy is the deploy's resolver change -- CI's identity takes check should have listed it; one with no deploy is the data or an answer store moving (the agreement stage, a TMDB answer re-read). Panel: worker diagnostics, \"Identity cutover -- regroupings\"."
+      - eval_time: 50m
+        alertname: IdentityTakesLost
+        exp_alerts: []
 
-  # Quiet: UK's ordinary hour (100 changed of 35,891 = 0.3%), a 1,000-listing country losing 40 (4%,
-  # but under the floor), and US gaining 5,000 takes at once (gained is not counted).
+  # Quiet: UK's ordinary hour (100 changed of 35,891 = 0.3%), a 1,000-listing country re-matching 40 (4%, but
+  # under the floor), and US gaining 5,000 takes at once (gained is not counted).
   - interval: 1m
     input_series:
       - series: 'kinowo_worker_identity_take_changes_total{country="uk",kind="changed",instance="w1"}'
         values: '0+2x60'
       - series: 'kinowo_worker_identity_cutover_listings{country="uk",path="projection",instance="w1"}'
         values: '35891x60'
-      - series: 'kinowo_worker_identity_take_changes_total{country="xx",kind="lost",instance="w1"}'
+      - series: 'kinowo_worker_identity_take_changes_total{country="xx",kind="changed",instance="w1"}'
         values: '0x20 40x40'
       - series: 'kinowo_worker_identity_cutover_listings{country="xx",path="projection",instance="w1"}'
         values: '1000x60'
@@ -53,6 +95,9 @@ tests:
     alert_rule_test:
       - eval_time: 55m
         alertname: IdentityTakeChangesBurst
+        exp_alerts: []
+      - eval_time: 55m
+        alertname: IdentityTakesLost
         exp_alerts: []
 
   # SUSPECT TAKES: UK at 40 for a day, then 60 (+20) for three hours across a worker restart -- fires after its
@@ -79,4 +124,4 @@ tests:
           - exp_labels: { severity: warning, country: uk }
             exp_annotations:
               summary: "uk: 20 more suspect takes than a day ago"
-              description: "The live resolve's suspect takes (billings whose film a signal doubts against the listing's own evidence: a title fragment, an era, a runtime, a sequel number, a feed id, a fill route) rose by more than 10 over the same time yesterday, for two hours. Which signal: worker diagnostics, the identity cutover panel (`kinowo_worker_identity_suspect_takes` by signal); which takes: the suspect-take audit (scripts.SuspectTakesMeasure over a recording, or the convergence legs' step summary on the next push). A rise right after a worker deploy is the deploy's; IdentityTakeChangesBurst firing beside it says the films themselves moved."
+              description: "The live resolve's suspect takes (billings whose film a signal doubts against the listing's own evidence: a title fragment, an era, a runtime, a sequel number, a feed id, a fill route) rose by more than 10 over the same time yesterday, for two hours. Which signal: worker diagnostics, the identity cutover panel (`kinowo_worker_identity_suspect_takes` by signal); which takes: the suspect-take audit (scripts.SuspectTakesMeasure over a recording, or the convergence legs' step summary on the next push). A rise right after a worker deploy is the deploy's; IdentityTakeChangesBurst or IdentityTakesLost firing beside it says the films themselves moved."

@@ -320,3 +320,25 @@ incidents:
     start: 2026-10-03T18:00:00Z
     end: 2026-10-07T13:00:00Z
     expect_quiet: [ShareCardRescrapesNotDraining]
+
+  - id: uk-identity-takes-lost-after-deploy-2026-10-14
+    description: >-
+      Build 9c8170f5e reached worker-uk at 04:16Z and its first projection, 04:24Z, unmatched 213
+      published listings (0.58% of 36,700); the 06:36Z projection unmatched 82 more (0.23%).
+      IdentityTakesLost was written for exactly this; the 2%-of-lost-or-changed
+      IdentityTakeChangesBurst it replaced never came near it.
+    source: kinowo_worker_identity_take_changes_total{country="uk",kind="lost"} 1 -> 213 at 04:24Z, 213 -> 82 (restart) at 06:34Z; VictoriaLogs `country:uk "identity take change" kind:lost`
+    start: 2026-10-14T04:20:00Z
+    end: 2026-10-14T06:40:00Z
+    grace: 1h
+    expect_firing: [IdentityTakesLost]
+
+  - id: identity-benign-take-moves-2026-10-13
+    description: >-
+      The healthy moves around it: US gained 656 takes at 23:06Z on 10-13 (gains only), DE lost 20
+      at ~02:50Z and re-matched 39 (one film's legitimate re-take) at 06:23Z on 10-14. None is a
+      regression; neither identity alert may page on them.
+    source: increase(kinowo_worker_identity_take_changes_total[1h]) by (country, kind), 2026-10-13T13:25Z..10-14T07:50Z
+    start: 2026-10-13T22:30:00Z
+    end: 2026-10-14T07:50:00Z
+    expect_quiet: [IdentityTakeChangesBurst]
