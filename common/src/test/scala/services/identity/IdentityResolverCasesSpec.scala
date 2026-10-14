@@ -1550,6 +1550,19 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val patagonia = F(1010170, "Patagonia", 2023, "Simone Bozzelli", 112, countries = Seq("IT"), original = Some("Patagonia"),
       alternatives = Seq("Patagonien"))
     decided("Patagonien – Durch die Wildnis bis nach Feuerland", patagonia).film shouldBe None
+    // a film of a country speaking the venue's language carries its title, so it being its original keeps nothing: UK
+    // Pavilions Teignmouth's "The Wizard Of Oz - Hot Rock", a touring pantomime, is not the 1939 US film (2026-10-14)
+    val uk = models.Cinema.all.find(c => models.City.forCinema(c).exists(_.country == models.Country.UnitedKingdom)).get
+    val oz = F(630, "The Wizard of Oz", 1939, "Victor Fleming", 102, countries = Seq("US"), original = Some("The Wizard of Oz"))
+    def inUk(raw: String) = {
+      val l = listing(uk, raw).copy(screenings = ScreeningDays.of(Seq(java.time.LocalDate.of(2026, 12, 16))))
+      IdentityResolver.resolve(Seq(l), new FilmTable(Seq(oz), normalizer), normalizer, IdentityCalibration.resolver).decisionOf(l.key)
+    }
+    inUk("The Wizard Of Oz - Hot Rock").film shouldBe None
+    // a billing listing several works by name is a programme, whatever its first piece's current film: DE Apollo Aachen's
+    // "Retro - An Undiscovered World, Running High, Carrying Dreams: The Weight Between", four shorts
+    val retro = F(1265827, "Retro", 2025, "A. Director", 15) // a stand-in record: a 2025 short
+    decided("Retro - An Undiscovered World, Running High, Carrying Dreams: The Weight Between", retro).film shouldBe None
     // PL Kino Kosmos' 1976 films under its "Złote gody" programme, each its own family beside the film's plain billings
     // elsewhere: a piece the corpus bills beside two whole titles is the venue's
     val kosmos = Seq(F(51857, "Nakarmić kruki", 1976, "Carlos Saura", 107), F(891, "Wszyscy ludzie prezydenta", 1976, "Alan J. Pakula", 138))

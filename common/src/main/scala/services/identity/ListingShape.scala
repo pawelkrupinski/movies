@@ -245,6 +245,13 @@ object ListingShape {
     PieceBreak.split(raw).lastOption.exists(piece => titles.contains(withoutArticles(TitleContainment.tokens(piece))))
   }
   private val Dash = "[-–—]".r
+  /** Does a piece of the billing list three works or more by name, a comma between each, every one capitalised ("Retro -
+   *  An Undiscovered World, Running High, Carrying Dreams: The Weight Between", a programme of shorts)? */
+  def listsWorks(raw: String): Boolean = PieceBreak.split(raw).exists { piece =>
+    val works = piece.split(",").map(_.trim).toSeq
+    works.sizeIs >= ListedWorks && works.forall(work => work.headOption.exists(_.isUpper) && TitleContainment.tokens(work).sizeIs >= 2)
+  }
+  private val ListedWorks = 3
   private val PieceBreak = """\s*[:|•+]\s*|\s+[-–—]\s+|\s*[„”"“«»]\s*""".r
   private val Bracketed  = """\([^)]*\)|\[[^\]]*]""".r
   private val Quote      = """[„”"“«»]""".r

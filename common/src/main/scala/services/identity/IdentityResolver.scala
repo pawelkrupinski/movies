@@ -108,12 +108,16 @@ object IdentityResolver {
     // a foreign film TMDB knows by no title in the venue's language — its local title is its original — billed first, or
     // under one of its titles after one other piece: what the venue bills beside it is its own translation, subtitle or
     // subject (DE "Ekmek parası - Geld für's Brot", "Épines du Sahel - Die Dornen der Sahelzone", "LÍDA BAAROVÁ – DOOMED
-    // BEAUTY"); a film of the venue's own country would carry its title
+    // BEAUTY"); a film of a country speaking the venue's language — its own, or another this deployment serves in that
+    // language — carries its title, so its title being its original says nothing (UK "The Wizard Of Oz - Hot Rock", a
+    // touring pantomime, is not the 1939 US film untranslated)
     def untranslated = film.originalTitle.exists(IdentityMeasures.key(_) == IdentityMeasures.key(film.title)) &&
-      !node.country.exists(country => film.countries.exists(_.contains(country))) &&
+      !film.countries.exists(_.exists(country => node.country.exists(venue => sharesLanguage(venue, country)))) &&
       (services.movies.TitleContainment.tokens(node.evidence.rawTitle).startsWith(services.movies.TitleContainment.tokens(film.title)) ||
         ListingShape.titledAfterPiece(node.evidence.rawTitle, film))
-    if (screened || stated || current || untranslated) None
+    // a billing listing several works by name is a programme, whatever its first piece's film (DE "Retro - An Undiscovered
+    // World, Running High, Carrying Dreams: The Weight Between", four shorts): no keep reads it as one film's
+    if (screened || stated || (!ListingShape.listsWorks(node.evidence.rawTitle) && (current || untranslated))) None
     else {
       import services.movies.TitleContainment.tokens
       val evidence = node.evidence
@@ -135,6 +139,12 @@ object IdentityResolver {
         piece.exists(word => dated(word) || venues(word)) || acronym(piece) || tags.contains(piece) || banners.contains(piece) || titles(piece))
         .map(why => s"no film: one piece of the billing names '${film.title}' — $why")
     }
+  }
+  /** Do venues of country `a` and films of country `b` (ISO-3166-1) speak one language: the same country, or two this
+   *  deployment serves in one language ([[models.Country.all]]: the United Kingdom and the United States)? */
+  private def sharesLanguage(a: String, b: String): Boolean = a == b || {
+    def language(country: String) = models.Country.all.find(_.language.getCountry == country).map(_.language.getLanguage)
+    language(a).exists(language(b).contains)
   }
   /** How many years before its screenings' a film's may be and still be a current release ([[billedAsPiece]]). */
   val CurrentRelease = 1

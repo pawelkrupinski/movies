@@ -102,6 +102,10 @@ class ListingShapeSpec extends AnyFlatSpec with Matchers {
     ListingShape.dashedPair("LÍDA BAAROVÁ – DOOMED BEAUTY") shouldBe true
     ListingShape.dashedPair("DONNERSTAGSKNEIPE + X") shouldBe false
     ListingShape.dashedPair("Dio - Alive - eine Hommage an Ronnie James Dio") shouldBe false
+    // three works or more listed by name, a comma between each: a programme (DE "Retro - An Undiscovered World, …")
+    ListingShape.listsWorks("Retro - An Undiscovered World, Running High, Carrying Dreams: The Weight Between") shouldBe true
+    ListingShape.listsWorks("Paris, Texas - 40th Anniversary") shouldBe false
+    ListingShape.listsWorks("Ich, du, wir alle - Ein Film über uns") shouldBe false
     beside("Dolina Issy | Poniedziałki z Konwickim: pisarz – scenarzysta – reżyser", film("Dolina Issy", directors = Seq("Tadeusz Konwicki"))) shouldBe
       None
     beside("KÖNIG DROSSELBART - EIN ADVENTSMÄRCHEN FÜR KINDER", film("König Drosselbart")) shouldBe None
