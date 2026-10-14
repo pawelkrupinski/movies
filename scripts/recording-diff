@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+#
+# Two "Record scrape fixtures" recordings compared — "is it the code, or new data?" in seconds. Per country and venue:
+# listings added, lost and RE-SPELLED (the same listing, its title differing only by whitespace, case, accents,
+# punctuation or truncation, each named); field shape changes (synopsis, runtime, year, director, cast, original title,
+# feed ids); venues whose detail pages vanished; origins whose refusal share moved (scripts/ci/recording_health.py over
+# both enrichment trees); new and gone spellings of known title markers (sneak, preview, pokaz, double bill,
+# certificates). With --title, each matching listing one by one: "in both, spelled alike, fields alike" means the input
+# did not move, so a take that moved between the runs moved by the code.
+#
+#   scripts/recording-diff <runA> <runB> [--country cc]... [--venue S] [--title S] [--limit N] [--corpus-only]
+#
+#   runA, runB     "Record scrape fixtures" run ids, older first (the report reads A → B)
+#   --country      one country (repeatable; default pl de uk us es)
+#   --venue S      only venues whose name holds S (case and accents aside), each listed listing by listing
+#   --title S      the listings whose title holds S, one by one (with --venue, at those venues only)
+#   --limit N      at most N rows a section (default 15)
+#   --corpus-only  the scrape corpus alone: no enrichment tree is downloaded, origins are not compared
+#
+# Recordings are the ones scripts/identity-slice reads, downloaded once into $KINOWO_IDENTITY_CACHE (default
+# ~/.cache/kinowo-identity/recordings/<run>/), shared by every worktree; each tree's per-origin manifest is kept beside
+# them (recording-diff/<run>-<cc>.json), so a second comparison over a run reads no tree again.
+set -euo pipefail
+
+usage() { sed -n '3,/^set /p' "$0" | sed '$d; s/^# \{0,1\}//'; }
+case "${1:-}" in -h|--help) usage; exit 0 ;; "") usage >&2; exit 2 ;; esac
+[ "$#" -ge 2 ] || { usage >&2; exit 2; }
+
+# shellcheck disable=SC2034 # read by identity-tools.sh
+IDENTITY_TOOL=recording-diff
+# shellcheck source=scripts/identity-tools.sh
+. "$(dirname "$0")/identity-tools.sh"
+repo=$IDENTITY_REPO
+
+run_a=$1 run_b=$2; shift 2
+for run in "$run_a" "$run_b"; do [[ $run =~ ^[0-9]+$ ]] || { echo "not a run id: $run" >&2; exit 2; }; done
+countries=() pass=() corpus_only=0
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --country) countries+=("$(printf '%s' "$2" | tr '[:upper:]' '[:lower:]')"); shift 2 ;;
+    --venue|--title|--limit) pass+=("$1" "$2"); shift 2 ;;
+    --corpus-only) corpus_only=1; shift ;;
+    *) echo "unknown argument: $1" >&2; usage >&2; exit 2 ;;
+  esac
+done
+[ "${#countries[@]}" -gt 0 ] || countries=(pl de uk us es)
+
+# started <run> -> the run's start (ISO-8601), which tells a response the run recorded from one it restored; kept
+started() {
+  local file=$IDENTITY_CACHE/recordings/$1/started_at
+  if [ ! -s "$file" ]; then
+    mkdir -p "$(dirname "$file")"
+    gh api "repos/${KINOWO_REPO:-pawelkrupinski/movies}/actions/runs/$1" --jq .run_started_at > "$file.part" && mv "$file.part" "$file"
+  fi
+  cat "$file"
+}
+
+# corpus <run> <cc> -> the fixtures directory holding the run's corpus/ for cc, downloading only the scrape corpus
+corpus() {
+  local dir=$IDENTITY_CACHE/recordings/$1/pair/test/resources/fixtures archive
+  if [ ! -f "$dir/corpus/cinema-scrapes-$2.json.gz" ]; then
+    identity_log "downloading run $1's $2 scrape corpus"
+    archive=$IDENTITY_CACHE/recordings/$1/archive/scrape-$2
+    rm -rf "$archive"; mkdir -p "$archive"
+    gh run download "$1" -R "${KINOWO_REPO:-pawelkrupinski/movies}" --name "scrape-fixtures-$2" --dir "$archive" >&2
+    bash "$repo/.github/scripts/unpack-fixture-archive.sh" "$(compgen -G "$archive/scrapes-$2.tar.*" | head -1)" "$IDENTITY_CACHE/recordings/$1/pair"
+  fi
+  echo "$dir"
+}
+
+status=0
+for cc in "${countries[@]}"; do
+  if [ "$corpus_only" = 1 ]; then
+    if ! { dir_a=$(corpus "$run_a" "$cc") && dir_b=$(corpus "$run_b" "$cc"); }; then status=1; continue; fi
+    since=()
+  else
+    if ! { dir_a=$(identity_recording "$run_a" "$cc") && dir_b=$(identity_recording "$run_b" "$cc"); }; then status=1; continue; fi
+    since=(--since-a "$(started "$run_a")" --since-b "$(started "$run_b")")
+  fi
+  python3 -I "$repo/scripts/recording_diff.py" "$cc" "$dir_a" "$dir_b" ${since[@]+"${since[@]}"} \
+    --label-a "$run_a" --label-b "$run_b" --health-cache "$IDENTITY_CACHE/recording-diff" ${pass[@]+"${pass[@]}"} || status=1
+  echo
+done
+exit "$status"
