@@ -160,8 +160,8 @@ object IdentitySlice {
   final case class Decided(model: Seq[ResolverDecision], agreed: Resolution, open: Set[(VoterFamily, String)], unreachable: Set[(VoterFamily, String)],
                            /** The prod-filed answers the agreement read: what the slice keeps of them. */
                            filedRead: Option[tools.FiledAnswers] = None,
-                           /** A CHANGED projection's take of the same model: the stage's stored verdicts, a fresh stage (a pod
-                            *  start) and only the listings at `venues` read again, as `IdentityProjection.tickChanged` hands it. */
+                           /** A CHANGED projection's take of the same model after scrapes of `venues`, as
+                            *  `IdentityProjection.tickChanged` hands it ([[services.identity.IdentitySlicing.changedRead]]). */
                            changed: Set[String] => Resolution = _ => Resolution(Nil, 0, Map.empty, Nil, Nil, 0, 0, 0, 0, 0, Map.empty))
 
   def decide(core: Seq[Listing], context: Seq[Listing], reads: Reads, label: String): Decided =
@@ -191,13 +191,11 @@ object IdentitySlice {
       case Answer.Unknown => reads.filed.finds.get(imdb).fold[Answer[Option[Int]]](Answer.Unknown) { found => findsRead.put(imdb, found); Answer.Known(found) }
       case known          => known
     }
-    val verdicts = new InMemoryAgreementVerdicts
-    def stage() = new AgreementStage(reads.families.map(f => f -> store.answers(f)).toMap, reads.lookups, reads.normalizer, IdentityCalibration.resolver,
-      tmdbOf = tmdbOf, stored = verdicts, clock = reads.clock,
+    val periodic = new AgreementStage(reads.families.map(f => f -> store.answers(f)).toMap, reads.lookups, reads.normalizer, IdentityCalibration.resolver,
+      tmdbOf = tmdbOf, stored = new InMemoryAgreementVerdicts, clock = reads.clock,
       posters = posters, tmdb = Some(reads.lookups), identities = modules.wiring.IdentityCutoverWiring.identities(reads.country.code),
       catalogue = catalogue.answers, listedOn = modules.wiring.IdentityCutoverWiring.listedOn(reads.country.code),
       correctionPostersAtOnce = Int.MaxValue, correctionsPerApply = Int.MaxValue)
-    val periodic   = stage()
     val byKey      = core.map(l => l.key -> l).toMap
     val resolution = UnmatchedClusters.resolutionOf(model)
     // a periodic projection: every listing read, nothing to build on
@@ -207,7 +205,12 @@ object IdentitySlice {
         tools.ConcurrentAsks.each(periodic.wantedPosters.toSeq, atOnce = 8)(q => posters.file(q, Try(hashing.of(q)).getOrElse(Nil)))
         catalogue.file(periodic.wantedCatalogue)
       }))
-    val changed = (venues: Set[String]) => stage().apply(resolution, key => byKey.get(key).filter(l => venues(l.venue)), store.version, Some(Nil))
+    // a changed projection: the worker's ONE stage (IdentityCutoverWiring's agreementStage, which the periodic projection
+    // applied before it) handed every listing, the re-scraped venues' read again
+    val changed = (venues: Set[String]) => {
+      val read = services.identity.IdentitySlicing.changedRead(core, venues)
+      periodic.apply(resolution, read.listingOf, store.version, read.republished)
+    }
     Decided(model, asked.outcome, asked.open, asked.unreachable,
       Some(tools.FiledAnswers.read(reads.filed, docs.read.asScala.toMap, findsRead.asScala.toMap, reads.filedLookups)), changed)
   }
@@ -494,8 +497,8 @@ object IdentitySlice {
     if (slice.filed.isEmpty && decided.open.nonEmpty)
       println("NO FILED FAMILY ANSWERS: the agreement read only the recording, which holds none of prod's — its families agree on nothing " +
         "(pass --families <an unmatched-cluster capture> to read prod's)")
-    // the projection modes: a periodic projection reads every listing; a CHANGED one, a fresh stage over the stored
-    // verdicts reading only the listings at the venues it re-scraped — each a random half of the slice's venues
+    // the projection modes: a periodic projection, then CHANGED ones on the same stage after scrapes of a random half of
+    // the slice's venues — every listing still read, the re-scraped venues' read again
     if (modes > 0) {
       val periodic = takes.map(t => t.key -> t.film).toMap
       val venues   = slice.core.map(_.venue).distinct.sorted

@@ -18,6 +18,19 @@ import services.movies.{ListingKey, TitleNormalizer}
  */
 object IdentitySlicing {
 
+  /** What a CHANGED projection ([[IdentityProjection.tickChanged]]) hands its agreement stage after scrapes of the
+   *  `rescraped` venues: EVERY listing the intake holds — its changed read re-reads only those venues and keeps every
+   *  other venue's listings as held (IdentityListingIntake's `Read.Changed`) — and the re-scraped venues' listings as
+   *  republished, each of their clusters read again (prod hands only those whose poster, days or names moved: this is
+   *  the stricter case). Reading the re-scraped venues' listings alone digested a cluster as part of its listings and
+   *  decided it on them, a flip no worker makes (UK CBeebies Panto at b5e156555, 2026-10-14). */
+  final case class ChangedRead(listingOf: ListingKey => Option[Listing], republished: Option[Iterable[ListingKey]])
+
+  def changedRead(listings: Seq[Listing], rescraped: Set[String]): ChangedRead = {
+    val byKey = listings.map(l => l.key -> l).toMap
+    ChangedRead(byKey.get, Some(listings.collect { case l if rescraped(l.venue) => l.key }))
+  }
+
   /** The corpus a recording holds, resolved whole once: each listing's family, and each node's context keys. */
   final case class Index(listings: Seq[Listing], familyOf: Map[ListingKey, Int], nodeOf: Map[ListingKey, String],
                          keysOf: Map[String, Set[String]], nodeListings: Map[String, Seq[ListingKey]]) {

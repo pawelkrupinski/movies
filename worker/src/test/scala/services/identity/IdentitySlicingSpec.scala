@@ -2,6 +2,7 @@ package services.identity
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import models.{Cinema, Helios, Multikino}
 import services.movies.ListingKey
 
 /** What an identity slice cuts out of a whole corpus ([[IdentitySlicing.select]]): the seeds' whole families as the
@@ -35,5 +36,21 @@ class IdentitySlicingSpec extends AnyFlatSpec with Matchers {
   it should "hold a seed the whole resolve never placed in a family" in {
     val lone = key("F", "Unindexed")
     IdentitySlicing.select(index, Set(lone)).core shouldBe Set(lone)
+  }
+
+  private def listing(venue: Cinema, title: String): Listing =
+    Listing(venue, ListingKey.Published(venue.displayName, title, None, Nil), title, title, title, None, Nil, None, None, None)
+
+  "A changed projection's read" should "hand the agreement every listing the intake holds, the re-scraped venues' as republished" in {
+    // IdentityListingIntake's Read.Changed keeps each venue it did not read again (IdentityListingIntakeProjectedSpec:
+    // "read again, between two reads of the stamps, only the venues it took a scrape of" — the whole corpus, one row
+    // read), so tickChanged's agreement reads a cluster's listings at EVERY venue: a read of the re-scraped venues alone
+    // digests a cluster as half its listings and decides it again on them, a flip no worker can make.
+    val rescraped = listing(Helios, "CBeebies Panto")
+    val kept      = listing(Multikino, "CBeebies Panto")
+    val read = IdentitySlicing.changedRead(Seq(rescraped, kept), rescraped = Set(Helios.displayName))
+    read.listingOf(kept.key) shouldBe Some(kept)
+    read.listingOf(rescraped.key) shouldBe Some(rescraped)
+    read.republished.map(_.toSet) shouldBe Some(Set(rescraped.key))
   }
 }

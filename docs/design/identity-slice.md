@@ -58,9 +58,10 @@ Each ref runs in ONE JVM with this checkout's tool files dropped into its tree (
 - `--orders N`: the slice also fed to the INCREMENTAL model (`IncrementalResolver`, the worker's path) in N
   shuffled arrival orders, a few batches at a time, model and agreement — every listing whose take an order moves
   from the whole resolve's is named. The nondeterminism check.
-- `--modes N`: the periodic projection's agreement (every listing read) against N CHANGED projections' — a fresh
-  stage over the periodic one's stored verdicts, reading only the listings at a random half of the venues, as
-  `IdentityProjection.tickChanged` hands it — every listing a changed projection flips is named.
+- `--modes N`: the periodic projection's agreement against N CHANGED projections' — the same stage applied again
+  after scrapes of a random half of the venues, every listing still read and the re-scraped venues' read again, as
+  `IdentityProjection.tickChanged` hands it (`IdentitySlicing.changedRead`: the intake's `Read.Changed` keeps every
+  venue it did not re-read) — every listing a changed projection flips is named.
 - `--faithfulness capture`: the capture's agreement-taken listings (Agreed, Filled, Poster, Broadcast, Catalogue),
   as this code's agreement takes them over the captured model decisions, each sliced alone and compared — end to end,
   and the agreement stage alone over the captured model decisions.
@@ -81,8 +82,10 @@ recording gaps it, the capture does not hold it), so this code's model leaves th
 
 UK CBeebies Panto (ca4059b55..9c8170f5e): without filed answers 0 moves (the recording's families answer nothing —
 the CI view); with them ca4059b55 takes tmdb 1710881 by Agreed at 210 venues (WRONG) and both b5e156555 and
-9c8170f5e drop all 210 — the forensics diff's 211 and prod's 213. At b5e156555, `--modes 4` flips all 210 back to
-1710881 in one changed projection: a take that depends on which listings a projection reads.
+9c8170f5e drop all 210 — the forensics diff's 211 and prod's 213. At b5e156555 the first `--modes 4` flipped all 210
+back to 1710881 in one changed projection — an artefact: it handed the changed stage only the re-scraped venues'
+listings, so the cluster was digested and decided again on half of them, which no worker does (the intake's changed
+read keeps every venue's listings; IdentityListingIntakeProjectedSpec). Fixed in `IdentitySlicing.changedRead`.
 
 Not covered: curation pins (prod Mongo, not in a recording); the projection itself (film ids, slots) — the slice
 decides takes, not films; prod's own state between ticks (the stored model a pod restores, family answers filed after
