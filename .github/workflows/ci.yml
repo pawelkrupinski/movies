@@ -186,6 +186,7 @@ jobs:
                       bash scripts/hooks/pre-push-test.sh
                       bash scripts/scratch-git-test.sh
                       bash scripts/judgements-merge-test.sh
+                      bash scripts/sbt-warm-test.sh
                       bash scripts/ci/preflight-test.sh
                       bash scripts/ci/flake-ledger-test.sh
                       bash scripts/ci/leg-verdict-test.sh

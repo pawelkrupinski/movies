@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+# scripts/sbt-warm: a fresh checkout is seeded from the newest local build of a main commit (never a branch's, never
+# its own), the commands reach this checkout's server, and a removed checkout's server is stopped. sbt is a stub.
+# Run: bash scripts/sbt-warm-test.sh
+set -uo pipefail
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+. "$REPO_ROOT/scripts/shell-spec.sh"
+. "$REPO_ROOT/scripts/scratch-git.sh"
+
+scratch="$(mktemp -d)"; scratch="$(cd "$scratch" && pwd -P)"
+trap 'kill "${sleeper:-0}" 2>/dev/null; rm -rf "$scratch"' EXIT
+export KINOWO_SBT_WARM_STATE="$scratch/state" KINOWO_IDENTITY_CACHE="$scratch/identity"
+mkdir -p "$scratch/bin"
+printf '#!/usr/bin/env bash\nprintf "%%s|%%s\\n" "$(pwd -P)" "$*" >> "%s/sbt-calls"\n' "$scratch" > "$scratch/bin/sbt"
+chmod +x "$scratch/bin/sbt"
+export PATH="$scratch/bin:$PATH"
+
+origin="$scratch/origin.git"; repo="$scratch/repo"
+scratch_repo "$origin" --bare
+scratch_repo "$repo"
+echo a > "$repo/a"; scratch_git "$repo" add a; scratch_git "$repo" commit -qm one
+scratch_git "$repo" remote add origin "$origin"
+echo b >> "$repo/a"; scratch_git "$repo" commit -qam two
+scratch_git "$repo" push -q origin HEAD:main; scratch_git "$repo" fetch -q origin
+# built: an older main commit (worktree), the newest main commit (an identity ref tree), a branch ahead of main
+build() { mkdir -p "$1/worker/target/scala-3.9.0/test-classes" "$1/worker/target/scala-3.9.0/zinc" "$1/project/target"
+  echo "$2" > "$1/worker/target/scala-3.9.0/zinc/from"; }
+scratch_git "$repo" worktree add -q --detach "$scratch/old" HEAD~1; build "$scratch/old" old
+mkdir -p "$KINOWO_IDENTITY_CACHE/refs"; build "$KINOWO_IDENTITY_CACHE/refs/$(scratch_git "$repo" rev-parse HEAD)" newest
+scratch_git "$repo" worktree add -q -b ahead "$scratch/ahead" HEAD
+echo c >> "$scratch/ahead/a"; scratch_git "$scratch/ahead" commit -qam three; build "$scratch/ahead" branch
+scratch_git "$repo" worktree add -q -b fresh "$scratch/fresh" origin/main
+
+(cd "$scratch/fresh" && "$REPO_ROOT/scripts/sbt-warm" "worker/testOnly X" "web/compile" >/dev/null 2>&1)
+check "a fresh checkout is seeded from the newest build of a main commit" "newest" \
+  "$(cat "$scratch/fresh/worker/target/scala-3.9.0/zinc/from" 2>/dev/null)"
+check "...its project build too" "yes" "$([ -d "$scratch/fresh/project/target" ] && echo yes || echo no)"
+check "the commands go to this checkout's server, as one command line" "$scratch/fresh|--client worker/testOnly X; web/compile" \
+  "$(tail -1 "$scratch/sbt-calls")"
+check "...and the checkout is kept in the registry" "$scratch/fresh" "$(cat "$KINOWO_SBT_WARM_STATE"/*.root 2>/dev/null)"
+echo stale > "$scratch/fresh/worker/target/scala-3.9.0/zinc/from"
+(cd "$scratch/fresh" && "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
+check "a checkout with compiled output is never seeded over" "stale" "$(cat "$scratch/fresh/worker/target/scala-3.9.0/zinc/from")"
+
+scratch_git "$repo" worktree add -q -b other "$scratch/other" origin/main
+(cd "$scratch/other" && KINOWO_SBT_WARM_SEED="$scratch/old" "$REPO_ROOT/scripts/sbt-warm" --seed >/dev/null 2>&1)
+check "KINOWO_SBT_WARM_SEED names the source instead" "old" "$(cat "$scratch/other/worker/target/scala-3.9.0/zinc/from" 2>/dev/null)"
+
+# a removed checkout's server is stopped by the next call from anywhere
+sleep 300 & sleeper=$!
+for f in "$KINOWO_SBT_WARM_STATE"/*.root; do echo "$sleeper" > "${f%.root}.pid"; done
+rm -rf "$scratch/fresh"; scratch_git "$repo" worktree prune
+(cd "$scratch/other" && "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
+sleep 0.2
+check "a removed checkout's server is stopped, and forgotten" "stopped 0" \
+  "$(kill -0 "$sleeper" 2>/dev/null && echo running || echo stopped) $(grep -l "$scratch/fresh" "$KINOWO_SBT_WARM_STATE"/*.root 2>/dev/null | wc -l | tr -d ' ')"
+
+spec_summary

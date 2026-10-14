@@ -1,0 +1,135 @@
+#!/usr/bin/env bash
+#
+# sbt for agents, warm: ONE sbt server per checkout, kept between calls, and a fresh checkout's compile seeded from the
+# newest local build of main — so neither the JVM start (~40 s) nor the cold compile (~4–15 min) is paid per call.
+#
+#   scripts/sbt-warm <sbt command>...    run the commands (each one argument, e.g. "worker/testOnly services.identity.X")
+#                                        in this checkout's server — started, and seeded, when there is none
+#   scripts/sbt-warm --seed              only seed this checkout's compiled output (when it has none)
+#   scripts/sbt-warm --status            this checkout's server, and every kept one
+#   scripts/sbt-warm --stop              stop this checkout's server
+#   scripts/sbt-warm --reap              stop every kept server whose checkout is gone, or idle past the timeout
+#
+# SEEDING: a checkout with no worker/target/scala-* gets the compiled classes and Zinc state of the newest local build of
+# a main commit — another worktree's, the root checkout's, or an identity tool's ref tree (~/.cache/kinowo-identity/refs)
+# — whose commit origin/main contains: project/target, project/project/target and */target/scala-*, the paths the CI's
+# sbt-target-cache restores (APFS clones: no bytes copied). Zinc's analysis is relative to the checkout, so the first
+# compile recompiles only what differs from that commit. KINOWO_SBT_WARM_SEED=<dir> names the source instead.
+#
+# THE SERVER is sbt's own (`sbt --client`, one per checkout directory). A watchdog beside it stops it when the checkout
+# is removed, or after $KINOWO_SBT_WARM_IDLE_MINUTES (default 60) minutes without a call through this script; every call
+# also reaps the servers of removed checkouts. Its state: $KINOWO_SBT_WARM_STATE (default ~/.cache/kinowo-sbt-warm).
+#
+# A plain `sbt -batch` in the same checkout while the server lives would compile into the same target/ — two Zincs over
+# one classes dir delete each other's classes (the pre-push hook steps around a live one). Use this script, or --stop.
+set -uo pipefail
+
+State=${KINOWO_SBT_WARM_STATE:-$HOME/.cache/kinowo-sbt-warm}
+IdleMinutes=${KINOWO_SBT_WARM_IDLE_MINUTES:-60}
+IdentityRefs=${KINOWO_IDENTITY_CACHE:-$HOME/.cache/kinowo-identity}/refs
+log() { echo "[sbt-warm] $*" >&2; }
+
+root=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+root=$(cd "$root" && pwd -P)
+key=$(printf '%s' "$root" | shasum | cut -c1-12)
+mkdir -p "$State"
+
+# The pid of the sbt server whose working directory is <root>, if one runs.
+server_pid() { # <root>
+  local pid cwd
+  for pid in $(pgrep -f 'xsbt\.boot\.Boot|sbt-launch' 2>/dev/null); do
+    ps -o args= -p "$pid" 2>/dev/null | grep -q -- '--detach-stdio' || continue   # a server (sbt --client's), not a one-shot sbt
+    cwd=$(lsof -a -p "$pid" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p')
+    [ -n "$cwd" ] && [ "$(cd "$cwd" 2>/dev/null && pwd -P)" = "$1" ] && { echo "$pid"; return 0; }
+  done
+  return 1
+}
+
+# Stops the server of every registered checkout that is gone (or, with "idle", unused past the timeout).
+reap() { # [idle]
+  local f r pid
+  for f in "$State"/*.root; do
+    [ -f "$f" ] || continue
+    r=$(cat "$f")
+    if [ ! -d "$r" ]; then
+      pid=$(cat "${f%.root}.pid" 2>/dev/null || true)
+      [ -n "$pid" ] && kill "$pid" 2>/dev/null && log "stopped the server of the removed checkout $r (pid $pid)"
+      rm -f "${f%.root}".*
+    elif [ "${1:-}" = idle ] && [ -n "$(find "${f%.root}.used" -mmin +"$IdleMinutes" 2>/dev/null)" ]; then
+      (cd "$r" && sbt --client shutdown >/dev/null 2>&1) && log "stopped the idle server of $r"
+      rm -f "${f%.root}".*
+    fi
+  done
+}
+
+# The newest local build of a commit origin/main contains: "<commits behind it> <dir>", or nothing.
+seed_source() {
+  local dir sha t
+  {
+    git worktree list --porcelain 2>/dev/null | sed -n 's/^worktree //p'
+    [ -d "$IdentityRefs" ] && find "$IdentityRefs" -mindepth 1 -maxdepth 1 -type d ! -name '*.part'
+  } | while IFS= read -r dir; do
+    [ "$(cd "$dir" 2>/dev/null && pwd -P)" = "$root" ] && continue
+    compgen -G "$dir/worker/target/scala-*/test-classes" > /dev/null || continue
+    compgen -G "$dir/worker/target/scala-*/zinc" > /dev/null || continue
+    case "$dir" in "$IdentityRefs"/*) sha=$(basename "$dir") ;; *) sha=$(git -C "$dir" rev-parse -q --verify HEAD 2>/dev/null) || continue ;; esac
+    git merge-base --is-ancestor "$sha" origin/main 2>/dev/null || continue
+    t=$(git rev-list --count "$sha" 2>/dev/null) || continue   # main is linear: the newer, the more commits behind it
+    echo "$t $dir"
+  done | sort -rn | head -1
+}
+
+seed() {
+  compgen -G "$root/worker/target/scala-*/zinc" > /dev/null && return 0
+  local src=${KINOWO_SBT_WARM_SEED:-} d started=$SECONDS
+  [ -n "$src" ] || src=$(seed_source | cut -d' ' -f2-)
+  [ -n "$src" ] || { log "no local build of main to seed from: the first compile is cold"; return 0; }
+  log "seeding $root from $src's build"
+  for d in project/target project/project/target "$src"/*/target/scala-*; do
+    d=${d#"$src"/}
+    [ -d "$src/$d" ] || continue
+    mkdir -p "$root/$(dirname "$d")"
+    rm -rf "${root:?}/$d"
+    cp -cR "$src/$d" "$root/$d" 2>/dev/null || cp -R "$src/$d" "$root/$d"
+  done
+  log "seeded in $((SECONDS - started))s"
+}
+
+# The watchdog beside a server: stops it once the checkout is gone, or idle past the timeout.
+watch() { # <pid>
+  ( set -m; nohup bash -c '
+      pid=$1 root=$2 used=$3 idle=$4
+      while kill -0 "$pid" 2>/dev/null; do
+        sleep 60
+        if [ ! -d "$root" ]; then kill "$pid"; break; fi
+        if [ -n "$(find "$used" -mmin +"$idle" 2>/dev/null)" ]; then (cd "$root" && sbt --client shutdown); break; fi
+      done' watchdog "$1" "$root" "$State/$key.used" "$IdleMinutes" > /dev/null 2>&1 < /dev/null & )
+}
+
+case "${1:-}" in
+  --reap) reap idle; exit 0 ;;
+  --seed) seed; exit 0 ;;
+  --stop) (cd "$root" && sbt --client shutdown); rm -f "$State/$key".*; exit 0 ;;
+  --status)
+    pid=$(server_pid "$root") && echo "this checkout ($root): server pid $pid" || echo "this checkout ($root): no server"
+    for f in "$State"/*.root; do [ -f "$f" ] && echo "kept: $(cat "$f") (pid $(cat "${f%.root}.pid" 2>/dev/null || echo ?), last used $(stat -f %Sm "${f%.root}.used" 2>/dev/null))"; done
+    exit 0 ;;
+  ""|-h|--help) sed -n '3,/^set /p' "$0" | sed '$d; s/^# \{0,1\}//'; exit 0 ;;
+esac
+
+reap
+seed
+echo "$root" > "$State/$key.root"
+touch "$State/$key.used"
+fresh=0
+server_pid "$root" > /dev/null || fresh=1
+command=$(printf '%s; ' "$@"); command=${command%; }
+# sbt --client starts the server (in the background, outliving this call) when the checkout has none
+(cd "$root" && sbt --client "$command"); rc=$?
+touch "$State/$key.used"
+if [ "$fresh" = 1 ] && pid=$(server_pid "$root"); then
+  echo "$pid" > "$State/$key.pid"
+  watch "$pid"
+  log "kept sbt server pid $pid for $root (stops after $IdleMinutes idle minutes, or with the checkout)"
+fi
+exit "$rc"
