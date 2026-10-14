@@ -121,7 +121,8 @@ object ListingShape {
    *  show, not the 2022 "Out of Office"; UK "FBF: Freud and Gale: Making It Up" a programme's last piece. `None` when the
    *  film's title is no run of the billing's whole pieces, or every piece beside it is the venue's own wording around a
    *  film:
-   *  - a banner in the banner's slot, the leading piece a colon or a pipe closes ("Somali Film Festival: Lifeline");
+   *  - a banner in the banner's slot, the leading piece a colon or a pipe closes ("Somali Film Festival: Lifeline"), or
+   *    every piece of a segment ahead of the film's that names a screening programme or event (a strand's banner);
    *  - an event, format or edition word ([[DecorationSegments.EventWords]], "IT FOLLOWS - HALLOWEEN SPECIAL"), a
    *    screening programme or its audience ([[ScreeningProgramme]]: "Fatherland - Film Club", "KÖNIG DROSSELBART - EIN
    *    ADVENTSMÄRCHEN FÜR KINDER"), a note in brackets ("Geliefert (ver.di)") or one a number carries ("Digger (15) 129
@@ -146,12 +147,19 @@ object ListingShape {
       // the film's run of whole pieces, the first one
       val run = (for { from <- words.indices.iterator; to <- (from + 1 to words.size).iterator
                        if titles.contains(withoutArticles(words.slice(from, to).flatten)) } yield (from, to)).nextOption()
+      // the banner segment each piece is in: a colon or a pipe closes one
+      val segment = parts.indices.map(k => breaks.take(k).count(b => b == ":" || b == "|"))
+      def programmeWords(piece: Seq[String]) = piece.exists(word => billed(word) || ScreeningProgramme.findFirstIn(word).isDefined)
       run.flatMap { case (from, to) =>
-        words.indices.iterator.filterNot(k => k >= from && k < to).filter(k => words(k).nonEmpty)
+        // a strand's banner: a segment closed ahead of the film's that names a screening programme or an event in one of
+        // its pieces is the venue's, all of it (DE "SPECIAL: 2. Dangerous Encounters – Hong Kong im Filmrausch: MADE IN
+        // HONG KONG", a numbered strand of the Filmrausch's)
+        def strand(k: Int) = segment(k) < segment(from) && words.indices.exists(j => segment(j) == segment(k) && programmeWords(words(j)))
+        words.indices.iterator.filterNot(k => k >= from && k < to).filter(k => words(k).nonEmpty).filterNot(strand)
           // the banner's slot: the leading piece a colon or a pipe closes, the film after it
           .filterNot(k => k == 0 && from > 0 && breaks.headOption.exists(b => b == ":" || b == "|"))
           .map(words).find(piece => !original.contains(withoutArticles(piece)) && piece.exists(own) && !numberedNote(piece, own) &&
-            !piece.exists(word => billed(word) || ScreeningProgramme.findFirstIn(word).isDefined))
+            !programmeWords(piece))
           .map(piece => s"'${piece.mkString(" ")}' is billed beside '${films.head.title}', no word of it the venue's around a film")
       }
     }
