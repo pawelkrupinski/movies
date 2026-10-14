@@ -24,10 +24,19 @@ cp "$REPO_ROOT/scripts/identity-slice" "$REPO_ROOT/scripts/identity-explain" "$R
 for f in worker/src/test/scala/scripts/IdentitySlice.scala worker/src/test/scala/scripts/IdentityExplain.scala \
   worker/src/test/scala/services/identity/IdentitySlicing.scala worker/src/fixtures/scala/tools/RecordedCorpus.scala \
   worker/src/fixtures/scala/tools/SliceHttp.scala worker/src/fixtures/scala/tools/MemoLookups.scala worker/src/fixtures/scala/tools/CatalogueFill.scala \
-  worker/src/fixtures/scala/tools/FiledAnswers.scala; do
+  worker/src/fixtures/scala/tools/FiledAnswers.scala worker/src/fixtures/scala/tools/ProdMirror.scala; do
   echo "// $f" > "$repo/$f"
 done
 echo "build" > "$repo/build.sbt"
+# the mirror's freshness check: records how it was asked, answers as $FRESHNESS_EXIT says
+mkdir -p "$repo/scripts/local-mirror"
+cat > "$repo/scripts/local-mirror/freshness" <<'STUB'
+#!/usr/bin/env bash
+echo "freshness $*" >> "$STUB/calls"
+echo "de  kinowo_de_prod_mirror: synced …"
+exit "${FRESHNESS_EXIT:-0}"
+STUB
+chmod +x "$repo/scripts/local-mirror/freshness"
 printf 'country\tvenue\trawTitle\tfilm\tverdict\tnote\n' > "$repo/test/resources/fixtures/identity-unmatched/labels.tsv"
 scratch_repo "$repo" && scratch_git "$repo" add -A && scratch_git "$repo" commit -qm base
 echo "// head" >> "$repo/build.sbt"
@@ -38,6 +47,7 @@ base=$(scratch_git "$repo" rev-parse HEAD~1) head=$(scratch_git "$repo" rev-pars
 cache="$work/cache"
 mkdir -p "$cache/recordings/777/pair/test/resources/fixtures/corpus" "$cache/recordings/777/pair/test/resources/fixtures/enrichment-de"
 echo corpus > "$cache/recordings/777/pair/test/resources/fixtures/corpus/cinema-scrapes-de.json.gz"
+echo '{"recordedAt":"2026-10-14T05:00:00Z"}' > "$cache/recordings/777/pair/test/resources/fixtures/corpus/prod-coverage-de.json"
 
 # sbt prints a classpath, as `export` does; java records its arguments and writes the takes the base and head refs take
 cat > "$work/bin/sbt" <<'STUB'
@@ -89,6 +99,23 @@ check "a batch file is handed to the JVM by its absolute path" "1" "$(cd "$work"
 rm -f "$work/calls" "$work/sbt-calls"
 check "--compiles lays a ref out with the tool files and compiles it, deciding nothing" "0 0" \
   "$(slice --compiles HEAD~1 > /dev/null; echo $?) $(grep -c . "$work/calls" 2>/dev/null || echo 0)"
+
+# --prod-mirror: prod's state from the LOCAL mirror, its freshness checked against the recording first
+rm -f "$work/calls"
+slice de --recording 777 --key 'Kino|Lalka' --prod-mirror > /dev/null
+check "--prod-mirror checks the mirror's freshness against the recording's moment" "1" \
+  "$(grep -c -- '^freshness de --quiet .*--not-before 2026-10-14T05:00:00Z' "$work/calls")"
+check "...then hands the slice the LOCAL mirror, never prod" "1" "$(grep -c -- '--prod-mirror mongodb://127.0.0.1:28017/' "$work/calls")"
+check "...the mirror reader dropped into a ref's tree" "1" "$(slice de --recording 777 --key 'Kino|Lalka' --ref HEAD --prod-mirror > /dev/null
+  grep -c ProdMirror "$cache/refs/$head/worker/src/fixtures/scala/tools/ProdMirror.scala")"
+rm -f "$work/calls"
+FRESHNESS_EXIT=3 slice de --recording 777 --key 'Kino|Lalka' --prod-mirror de > /dev/null
+check "a stale mirror is WARNed loudly, and read" "1 1" "$(grep -c 'THE PROD MIRROR IS NOT FRESH' "$work/err") $(grep -c -- '--prod-mirror' "$work/calls")"
+rm -f "$work/calls"
+check "no mirror at all refuses, never falling back to prod" "2 0" \
+  "$(FRESHNESS_EXIT=2 slice de --recording 777 --key 'Kino|Lalka' --prod-mirror > /dev/null; echo $?) $(grep -c '^java' "$work/calls" 2> /dev/null)"
+check "another country's mirror is refused" "2" "$(slice de --recording 777 --key 'Kino|Lalka' --prod-mirror uk > /dev/null; echo $?)"
+check "...and a slice without it reads no mirror" "0" "$(rm -f "$work/calls"; slice de --recording 777 --key 'Kino|Lalka' > /dev/null; grep -c -- 'freshness\|--prod-mirror' "$work/calls")"
 
 # --explain: the WHY trace of a listing the unmatched-cluster capture holds (scripts/identity-explain is its alias)
 rm -f "$work/calls"

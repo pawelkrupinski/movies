@@ -89,6 +89,10 @@ object FiledAnswers {
       withDetail = lookups.fold(Set.empty[String])(_.details.keySet.asScala.toSet),
       casts = lookups.fold(Map.empty[Int, Option[Seq[String]]])(_.casts.asScala.toMap), unreachable = Set.empty), filed.source) // the live HTTP answers a slice read are in its own HTTP notes
 
+  /** `filed` with `families` — prod's own, read from the local prod mirror ([[ProdMirror]]) — in preference to its own. */
+  def preferring(filed: FiledAnswers, families: Map[String, BsonDocument], source: String): FiledAnswers =
+    FiledAnswers(filed.capture.copy(families = filed.families ++ families), if (filed.source.isEmpty) source else s"$source (over ${filed.source})")
+
   /** Two reads' answers together. */
   def merge(a: FiledAnswers, b: FiledAnswers): FiledAnswers =
     FiledAnswers(b.capture.copy(families = a.families ++ b.families, finds = a.finds ++ b.finds, queries = a.capture.queries ++ b.capture.queries,

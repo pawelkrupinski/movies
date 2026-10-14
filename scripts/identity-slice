@@ -50,6 +50,13 @@
 #     --limit N, --no-resolve  at most N clusters; skip the re-resolve (the captured decision and the agreement only)
 #   --faithfulness RUN  the slice's take of a sample of listings against what that "Identity model convergence" run's leg
 #                 took (its convergence-diagnostics `<cc>-takes`), at the run's commit and its pinned recording
+#   --prod-mirror [cc]  read prod's own state from the LOCAL prod mirror (scripts/local-mirror, :28017 — never prod): its
+#                 filed family answers in preference to the capture's, the agreement stage's stored verdicts (the stage
+#                 starts from them, as prod's does) and the operator pins; and print beside each take what prod's stored
+#                 state takes now and why (model decision, trace, agreement verdict, correction, stored titles). With
+#                 --faithfulness it also tallies the slice against prod's take. Checks the mirror's freshness first
+#                 (scripts/local-mirror/freshness) and WARNs when it is older than the recording or more than
+#                 $KINOWO_MIRROR_MAX_LAG_HOURS (default 6) hours behind — the slice would mix moments. [cc] must be the slice's.
 #
 # Everything downloaded or compiled is kept in $KINOWO_IDENTITY_CACHE (default ~/.cache/kinowo-identity), shared by every
 # worktree: recordings/<run>/, slice/<run>/{index-<cc>-<ref>.json.gz, slices/<selector>/}, refs/<sha>/. The first call on a
@@ -74,9 +81,10 @@ need_ref() {
 TOOL_FILES=(worker/src/test/scala/scripts/IdentitySlice.scala worker/src/test/scala/scripts/IdentityExplain.scala
   worker/src/test/scala/services/identity/IdentitySlicing.scala worker/src/fixtures/scala/tools/RecordedCorpus.scala
   worker/src/fixtures/scala/tools/SliceHttp.scala worker/src/fixtures/scala/tools/MemoLookups.scala
-  worker/src/fixtures/scala/tools/CatalogueFill.scala worker/src/fixtures/scala/tools/FiledAnswers.scala)
+  worker/src/fixtures/scala/tools/CatalogueFill.scala worker/src/fixtures/scala/tools/FiledAnswers.scala
+  worker/src/fixtures/scala/tools/ProdMirror.scala)
 
-families="" labels="" cc="" refs=() run="" pass=() batch="" bisect="" log="" faith="" sample=50 seed=1 explain=0 fixture=""
+families="" labels="" cc="" refs=() run="" pass=() batch="" bisect="" log="" faith="" sample=50 seed=1 explain=0 fixture="" mirror="" mirror_args=()
 if [ "$1" = "--compiles" ]; then
   need_ref "${2:?--compiles REF}"
   t=$(identity_tree "$2" "${TOOL_FILES[@]}") && identity_classpath "$t" > /dev/null && { identity_log "$2 compiles with this checkout's tool files"; exit 0; }
@@ -97,6 +105,8 @@ while [ "$#" -gt 0 ]; do
     --families) if [ "$2" = none ]; then families=none; else families=$(cd "$(dirname "$2")" && pwd)/$(basename "$2"); fi; shift 2 ;;
     --seed) seed=$2; shift 2 ;;
     --explain) explain=1; shift ;;
+    --prod-mirror) mirror=on
+      if [ -n "${2:-}" ] && [[ $2 =~ ^[A-Za-z]{2}$ ]]; then mirror=$(printf '%s' "$2" | tr '[:upper:]' '[:lower:]'); shift; fi; shift ;;
     --fixture) fixture=$2; shift 2 ;;
     --limit) pass+=("$1" "$2"); shift 2 ;;
     --no-resolve) pass+=("$1"); shift ;;
@@ -119,6 +129,28 @@ print("\t".join([d.get("country",""), d.get("venue",""), d.get("listing",""), d.
 fi
 [ -n "$cc" ] || { usage >&2; exit 2; }
 [ "${#refs[@]}" -le 2 ] || { echo "at most two --ref" >&2; exit 2; }
+[ -z "$mirror" ] || [ "$mirror" = on ] || [ "$mirror" = "$cc" ] || { echo "--prod-mirror $mirror: the slice is $cc's — the mirror read is the slice's country" >&2; exit 2; }
+[ -z "$mirror" ] || [ "$explain" = 0 ] || { echo "--prod-mirror reads prod's state beside a recording: slices and --faithfulness, not --explain" >&2; exit 2; }
+
+# the local prod mirror, read only once its freshness is printed: WARNed loudly when it predates the recording or lags
+# the clock (the slice would mix moments), refused when it is absent — never a fall-back to prod
+use_mirror() {
+  [ -n "$mirror" ] || return 0
+  local recorded status=0
+  recorded=$(python3 -I -c 'import json,sys
+try: print(json.load(open(sys.argv[1])).get("recordedAt",""))
+except Exception: print("")' "$recording/corpus/prod-coverage-$cc.json")
+  identity_log "prod mirror: the local mirror's freshness (recording made ${recorded:-at an unknown time}):"
+  "$repo/scripts/local-mirror/freshness" "$cc" --quiet --max-lag-hours "${KINOWO_MIRROR_MAX_LAG_HOURS:-6}" \
+    --need identity_family_answers,identity_model_families,identity_traces,identity_agreements \
+    ${recorded:+--not-before "$recorded"} >&2 || status=$?
+  case "$status" in
+    0) ;;
+    3) identity_log "WARNING — THE PROD MIRROR IS NOT FRESH (above): prod's state it reads is not the recording's moment; read every PROD line with that in mind" ;;
+    *) identity_log "no local prod mirror to read (above): scripts/local-mirror/service.sh install — --prod-mirror never reads prod itself"; exit 2 ;;
+  esac
+  mirror_args=(--prod-mirror "mongodb://127.0.0.1:${LOCAL_MIRROR_PORT:-28017}/?directConnection=true")
+}
 
 work=$(mktemp -d "${TMPDIR:-/tmp}/identity-slice.XXXXXX"); trap 'rm -rf "$work"' EXIT
 
@@ -131,7 +163,7 @@ run_at() {
   local tree=$1 ref=$2 out=$3 cp; shift 3
   cp=$(identity_classpath "$tree") || return 1
   (cd "$tree" && "${IDENTITY_JAVA[@]}" -cp "$cp" scripts.IdentitySlice "$cc" --recording "$recording" --cache "$IDENTITY_CACHE/slice/$run" \
-    --ref "$ref" --labels "$labels" --families "$families" --out "$out" "$@")
+    --ref "$ref" --labels "$labels" --families "$families" --out "$out" ${mirror_args[@]+"${mirror_args[@]}"} "$@")
 }
 tree_of() { if [ "$1" = "." ]; then echo "$repo"; else need_ref "$1"; identity_tree "$1" "${TOOL_FILES[@]}"; fi; }
 sha_of() { if [ "$1" = "." ]; then echo "worktree"; else git -C "$repo" rev-parse --verify "$1^{commit}"; fi; }
@@ -179,6 +211,7 @@ if [ "$faith" = capture ]; then
   [ -n "$run" ] || run=$(awk -F'\t' '$1 == "recording" { print $2 }' "${families%.json.gz}.inputs" 2>/dev/null || true)
   [ -n "$run" ] || { echo "no recording named beside $families (${families%.json.gz}.inputs): name it with --recording" >&2; exit 1; }
   recording=$(identity_recording "$run" "$cc")
+  use_mirror
   ref=${refs[0]:-.}
   identity_log "faithfulness of the agreement takes: $families at ${ref} on recording $run, $sample listing(s)"
   run_at "$(tree_of "$ref")" "$(sha_of "$ref")" "$work/faith.tsv" --faithfulness "$families" --sample "$sample" --seed "$seed"
@@ -196,6 +229,7 @@ if [ -n "$faith" ]; then
   [ -n "$run" ] || { echo "no pinned recording in run $faith's log: name it with --recording" >&2; exit 1; }
   head=$(gh run view "$faith" -R "${KINOWO_REPO:-pawelkrupinski/movies}" --json headSha -q .headSha)
   recording=$(identity_recording "$run" "$cc")
+  use_mirror
   identity_log "faithfulness: run $faith (commit ${head:0:9}) on recording $run, $sample listing(s)"
   run_at "$(tree_of "$head")" "$head" "$work/faith.tsv" --faithfulness "$diag/$cc-takes/$cc.json.gz" --sample "$sample" --seed "$seed"
   exit
@@ -203,6 +237,7 @@ fi
 
 [ -n "$run" ] || run=$(identity_newest_recording)
 recording=$(identity_recording "$run" "$cc")
+use_mirror
 [ -z "$batch" ] || pass+=(--batch "$batch")
 [ "${#pass[@]}" -gt 0 ] || { echo "no selector" >&2; usage >&2; exit 2; }
 

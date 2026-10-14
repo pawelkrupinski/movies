@@ -53,6 +53,8 @@ object IdentitySlice {
   final case class Options(country: String = "", recording: Option[Path] = None, cache: Option[Path] = None, slices: Option[Path] = None,
                            selectors: Seq[Selector] = Nil, replay: Seq[Path] = Nil, labels: Option[Path] = None, out: Option[Path] = None,
                            faithfulness: Option[Path] = None, sample: Int = 50, seed: Long = 1, widen: Int = 0, orders: Int = 0, modes: Int = 0, families: Option[Path] = None, ref: String = "",
+                           /** The LOCAL prod mirror's URI: prod's filed family answers, stored verdicts and pins read from it ([[tools.ProdMirror]]). */
+                           prodMirror: Option[String] = None,
                            pending: (Option[String], Option[String]) = (None, None), emitCase: Option[Path] = None)
 
   def parse(args: List[String], o: Options = Options()): Options = args match {
@@ -69,6 +71,7 @@ object IdentitySlice {
     case "--orders" :: v :: rest       => parse(rest, o.copy(orders = v.toInt))
     case "--modes" :: v :: rest        => parse(rest, o.copy(modes = v.toInt))
     case "--families" :: v :: rest     => parse(rest, o.copy(families = Option.when(v != "none")(Path.of(v))))
+    case "--prod-mirror" :: v :: rest  => parse(rest, o.copy(prodMirror = Some(v)))
     case "--widen" :: v :: rest        => parse(rest, o.copy(widen = v.toInt))
     case "--emit-case" :: v :: rest    => parse(rest, o.copy(emitCase = Some(Path.of(v))))
     case "--replay" :: v :: rest       => parse(rest, o.copy(replay = o.replay :+ Path.of(v)))
@@ -126,7 +129,9 @@ object IdentitySlice {
   /** What every decision of a slice reads: its fetch, the lookups over it and the clock. */
   final class Reads(val country: Country, val fetch: tools.HttpFetch, val gaps: TmdbIdentityLookups.Gaps, val clock: Clock,
                     /** The answers no recording holds — prod's filed family answers, the capture's live TMDB ones — read where the recording has none ([[tools.FiledAnswers]]). */
-                    val filed: tools.FiledAnswers) {
+                    val filed: tools.FiledAnswers,
+                    /** Prod's state beside the recording — the stage's stored verdicts, the pins — from the local prod mirror; none in a hermetic slice. */
+                    val prod: tools.ProdState = tools.ProdState.none) {
     val normalizer: TitleNormalizer = TitleNormalizer.forCountry(country)
     val tmdb = new clients.TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey(StubTmdbKey)), language = country.language, retrySleep = (_: Long) => ())
     private val venueClock = new models.VenueClock(clock)
@@ -168,7 +173,7 @@ object IdentitySlice {
                            changed: Set[String] => Resolution = _ => Resolution(Nil, 0, Map.empty, Nil, Nil, 0, 0, 0, 0, 0, Map.empty))
 
   def decide(core: Seq[Listing], context: Seq[Listing], reads: Reads, label: String): Decided =
-    agree(IdentitySlicing.resolve(core, context, reads.lookups, reads.normalizer), core, reads, label)
+    agree(IdentitySlicing.resolve(core, context, reads.lookups, reads.normalizer, pins = PinConstraints(reads.prod.pins)), core, reads, label)
 
   /** The slice's listings handed to the INCREMENTAL model in a shuffled order, a few batches at a time — as scrapes reach
    *  the worker's model — and its decisions on the core: what P1 says equals [[IdentitySlicing.resolve]]'s. */
@@ -195,7 +200,7 @@ object IdentitySlice {
       case known          => known
     }
     val periodic = new AgreementStage(reads.families.map(f => f -> store.answers(f)).toMap, reads.lookups, reads.normalizer, IdentityCalibration.resolver,
-      tmdbOf = tmdbOf, stored = new InMemoryAgreementVerdicts, clock = reads.clock,
+      tmdbOf = tmdbOf, stored = storedOf(reads.prod), clock = reads.clock,
       posters = posters, tmdb = Some(reads.lookups), identities = modules.wiring.IdentityCutoverWiring.identities(reads.country.code),
       catalogue = catalogue.answers, listedOn = modules.wiring.IdentityCutoverWiring.listedOn(reads.country.code),
       correctionPostersAtOnce = Int.MaxValue, correctionsPerApply = Int.MaxValue)
@@ -216,6 +221,14 @@ object IdentitySlice {
     }
     Decided(model, asked.outcome, asked.open, asked.unreachable,
       Some(tools.FiledAnswers.read(reads.filed, docs.read.asScala.toMap, findsRead.asScala.toMap, reads.filedLookups)), changed)
+  }
+
+  /** The verdicts the stage starts from: prod's stored ones where the slice reads the prod mirror (a verdict stands only
+   *  while its listings, rules and every answer it read do), else none. */
+  private def storedOf(prod: tools.ProdState): InMemoryAgreementVerdicts = {
+    val stored = new InMemoryAgreementVerdicts
+    stored.replace(Set.empty, prod.verdicts)
+    stored
   }
 
   /** The rounds' own progress lines, kept off the report. */
@@ -392,12 +405,22 @@ object IdentitySlice {
     out.foreach(_.println(TakeHeader))
     val lacked = scala.collection.mutable.ListBuffer.empty[String]
     // prod's filed family answers, from an unmatched-cluster capture: what no recording holds
-    val filed  = o.families.filter(Files.exists(_)).fold(tools.FiledAnswers.of(country))(tools.FiledAnswers.ofCapture)
+    val captured = o.families.filter(Files.exists(_)).fold(tools.FiledAnswers.of(country))(tools.FiledAnswers.ofCapture)
+    // and prod's own state, from the local prod mirror, in preference to the capture's — never prod itself
+    val mirror = o.prodMirror.map(tools.ProdMirror.open(_, country))
+    val (filed, prod) = mirror.fold((captured, tools.ProdState.none)) { m =>
+      val started  = System.nanoTime()
+      val families = m.familyAnswers()
+      val state    = m.state()
+      System.err.println(f"[identity-slice] prod mirror ${m.database}: ${families.size} family answer(s), ${state.verdicts.size} stored verdict(s), " +
+        f"${state.pins.size} pin(s) read in ${(System.nanoTime() - started) / 1e9}%.1fs")
+      (tools.FiledAnswers.preferring(captured, families, s"prod mirror ${m.database}"), state)
+    }
     try {
       if (o.replay.nonEmpty) o.replay.foreach { dir =>
         val slice = readSlice(dir)
         val opened = o.recording.map(r => openRecording(Recording(r, country), filed))
-        lacked ++= replaySlice(slice, opened, labels, out, o.orders, o.modes)
+        lacked ++= replaySlice(slice, opened, labels, out, o.orders, o.modes, prod)
       }
       else {
         val recording = Recording(o.recording.getOrElse(sys.error("--recording DIR, or --replay SLICE_DIR")), country)
@@ -408,7 +431,7 @@ object IdentitySlice {
         val live      = if (filed.live.isEmpty) "" else s"-live${Integer.toHexString(filed.live.keySet.hashCode)}"
         val index     = indexOf(cache.resolve(s"index-${country.code}-${o.ref}$live.json.gz"), listings, opened)
         o.faithfulness match {
-          case Some(takes) => faithfulness(recording, opened, index, takes, o, filed, out)
+          case Some(takes) => faithfulness(recording, opened, index, takes, o, filed, out, prod)
           case None =>
             if (o.selectors.isEmpty) sys.error("no selector: --venue/--title, --key or --batch")
             o.selectors.foreach { selector =>
@@ -416,14 +439,14 @@ object IdentitySlice {
               if (seeds.isEmpty) println(s"\n## ${selector.label}: no listing of recording ${recording.root} matches")
               else {
                 val dir   = o.slices.getOrElse(cache.resolve("slices")).resolve(selector.directoryName)
-                val slice = extract(recording, opened, index, seeds, selector.label, o.widen, dir, o.ref, filed)
-                lacked ++= replaySlice(slice, None, labels, out, o.orders, o.modes)
+                val slice = extract(recording, opened, index, seeds, selector.label, o.widen, dir, o.ref, filed, prod)
+                lacked ++= replaySlice(slice, None, labels, out, o.orders, o.modes, prod)
                 o.emitCase.foreach(target => emitCase(slice, dir, labels, target.resolve(s"${country.code}-${selector.directoryName}")))
               }
             }
         }
       }
-    } finally out.foreach(_.close())
+    } finally { out.foreach(_.close()); mirror.foreach(_.close()) }
     System.err.println(f"[identity-slice] ${(System.nanoTime() - started) / 1e9}%.1fs")
     if (lacked.nonEmpty) {
       System.err.println(s"[identity-slice] SLICE INCOMPLETE — the replay asked ${lacked.size} request(s) the slice does not hold (re-run with " +
@@ -441,8 +464,8 @@ object IdentitySlice {
   }
 
   def readsOf(opened: RecordedCorpus.Opened, fetch: tools.HttpFetch, gaps: TmdbIdentityLookups.Gaps, at: Instant,
-              filed: Option[tools.FiledAnswers] = None): Reads =
-    new Reads(opened.country, fetch, gaps, Clock.fixed(at, ZoneOffset.UTC), filed.getOrElse(tools.FiledAnswers.of(opened.country)))
+              filed: Option[tools.FiledAnswers] = None, prod: tools.ProdState = tools.ProdState.none): Reads =
+    new Reads(opened.country, fetch, gaps, Clock.fixed(at, ZoneOffset.UTC), filed.getOrElse(tools.FiledAnswers.of(opened.country)), prod)
 
   /** The recording's whole-corpus index at this ref: read from `path`, else resolved (minutes) and kept there. */
   def indexOf(path: Path, listings: Seq[Listing], opened: RecordedCorpus.Opened): IdentitySlicing.Index =
@@ -460,7 +483,7 @@ object IdentitySlice {
   /** Cuts the seeds' slice out of the recording and decides it through a noting fetch; what it read is the slice — merged
    *  into one `dir` holds already (another ref's), so one slice serves every ref asked of it. */
   def extract(recording: Recording, opened: RecordedCorpus.Opened, index: IdentitySlicing.Index, seeds: Set[ListingKey], selector: String,
-              widen: Int, dir: Path, ref: String, filed: tools.FiledAnswers): Slice = {
+              widen: Int, dir: Path, ref: String, filed: tools.FiledAnswers, prod: tools.ProdState = tools.ProdState.none): Slice = {
     val selection = IdentitySlicing.select(index, seeds, widen)
     // a slice of an older format, or one another agent is replacing, is no slice to merge
     val before    = Option.when(Files.exists(dir.resolve("rows.json.gz")))(Try(readSlice(dir)).toOption).flatten
@@ -468,7 +491,7 @@ object IdentitySlice {
     val coreKeys  = core.map(_.key).toSet
     val context   = ((selection.context ++ before.toSeq.flatMap(_.context.map(_.key))) -- coreKeys).flatMap(index.byKey.get).toSeq.sortBy(_.sortKey)
     val noting    = new SliceHttp.Noting(opened.fetch, () => opened.leaf.metOnThread)
-    val decided   = decide(core, context, readsOf(opened, noting, opened.gaps, recording.recordedAt, Some(filed)), selector)
+    val decided   = decide(core, context, readsOf(opened, noting, opened.gaps, recording.recordedAt, Some(filed), prod), selector)
     val was       = before.fold(tools.FiledAnswers.of(recording.country))(_.filed)
     val slice = Slice(recording.country, recording.root.toString, recording.recordedAt, selector, seeds ++ before.toSeq.flatMap(_.seeds),
       core, context, before.fold(Map.empty[SliceHttp.Request, SliceHttp.Outcome])(_.http) ++ noting.noted.asScala, (before.toSeq.flatMap(_.extractedAt) :+ ref).distinct,
@@ -482,10 +505,10 @@ object IdentitySlice {
   /** Decides `slice` from its own answers alone (widened from `recording` where given); prints and writes its takes, and
    *  returns what it lacked. */
   def replaySlice(slice: Slice, recording: Option[RecordedCorpus.Opened], labels: Seq[UnmatchedClusters.Label], out: Option[java.io.PrintWriter],
-                  orders: Int = 0, modes: Int = 0): Seq[String] = {
+                  orders: Int = 0, modes: Int = 0, prod: tools.ProdState = tools.ProdState.none): Seq[String] = {
     val widen     = recording.map(r => new SliceHttp.Noting(r.fetch, () => r.leaf.metOnThread))
     val replaying = new SliceHttp.Replaying(slice.http, widen)
-    val reads     = new Reads(slice.country, replaying, replaying.gaps, Clock.fixed(slice.recordedAt, ZoneOffset.UTC), slice.filed)
+    val reads     = new Reads(slice.country, replaying, replaying.gaps, Clock.fixed(slice.recordedAt, ZoneOffset.UTC), slice.filed, prod)
     val started   = System.nanoTime()
     val decided   = decide(slice.core, slice.context, reads, slice.selector)
     val wanted    = slice.seeds.toSeq.sortBy(ListingKey.serialised)
@@ -495,6 +518,15 @@ object IdentitySlice {
       s"${slice.http.size} answers (${slice.http.values.count(_ == SliceHttp.Outcome.Gap)} recording gaps); decided in " +
       f"${(System.nanoTime() - started) / 1e9}%.1fs at ${slice.recordedAt}")
     report(slice, wanted, decided, takes, labels)
+    // what prod's stored state takes for each listing now, and why: beside the slice's take, from the mirror
+    if (prod.name.nonEmpty) {
+      val sides = prod.sides(wanted)
+      println(s"\n-- prod's stored state (local mirror ${prod.name}; the stage started from its ${prod.verdicts.size} stored verdicts, ${prod.pins.size} pin(s)):")
+      wanted.foreach(k => sides.get(k).foreach(_.render.foreach(println)))
+      val differ = takes.filter(t => sides.get(t.key).exists(_.take._1 != t.film))
+      if (differ.nonEmpty) println(s"PROD TAKES OTHERWISE for ${differ.size} of ${takes.size}: " +
+        differ.map(t => s"${t.key.venue} | ${t.key.rawTitle}: slice ${t.film}, prod ${sides(t.key).take._1}").take(8).mkString("; "))
+    }
     if (!replaying.gapsMet.isEmpty)
       println(s"UNANSWERED by the recording (read as unknown, as the leg reads them): ${replaying.gapsMet.asScala.map(_.render).toSeq.sorted.take(12).mkString("; ")}" +
         (if (replaying.gapsMet.size > 12) s" … ${replaying.gapsMet.size - 12} more" else ""))
@@ -587,7 +619,7 @@ object IdentitySlice {
   val AgreementTakes: Set[ResolverDecision.Basis] = { import ResolverDecision.Basis._; Set(Agreed, Poster, Broadcast, Filled, Catalogue, Withdrawn, Corrected) }
 
   def faithfulness(recording: Recording, opened: RecordedCorpus.Opened, index: IdentitySlicing.Index, takesPath: Path, o: Options,
-                   filed: tools.FiledAnswers, out: Option[java.io.PrintWriter]): Unit = {
+                   filed: tools.FiledAnswers, out: Option[java.io.PrintWriter], prod: tools.ProdState = tools.ProdState.none): Unit = {
     val leg     = UnmatchedClusters.read(takesPath)
     // a convergence leg's takes as it took them; an unmatched-cluster capture's (it holds prod's filed family answers) as
     // this code's agreement stage takes them over its captured model decisions — the agreement-taken listings no hermetic
@@ -610,16 +642,22 @@ object IdentitySlice {
     var alike = 0
     var agreeWider = 0
     var agreeStage = 0
+    // with the prod mirror: the slice's take against what prod's stored state takes for the listing NOW
+    var agreeProd  = 0
+    var prodKnown  = 0
     val misses = scala.collection.mutable.ListBuffer.empty[String]
     sample.zipWithIndex.foreach { case (key, i) =>
       val started   = System.nanoTime()
       val selection = IdentitySlicing.select(index, Set(key), o.widen)
       val core      = selection.core.flatMap(ours.get).toSeq.sortBy(_.sortKey)
       val context   = selection.context.flatMap(ours.get).toSeq.sortBy(_.sortKey)
-      val decided   = decide(core, context, readsOf(opened, opened.fetch, opened.gaps, recording.recordedAt, Some(filed)), s"faithfulness $i")
+      val decided   = decide(core, context, readsOf(opened, opened.fetch, opened.gaps, recording.recordedAt, Some(filed), prod), s"faithfulness $i")
       val mine      = decided.agreed.decisionOf.get(key).map(filmOf).getOrElse("missing")
       val theirs    = legOf.get(key).map(filmOf).getOrElse("missing")
       val same      = mine == theirs
+      val prodTake  = if (prod.name.isEmpty) None else prod.sides(Seq(key)).get(key).map(_.take).filterNot(_._1 == "missing")
+      prodTake.foreach { case (film, _) => prodKnown += 1; if (film == mine) agreeProd += 1 }
+      val prodLine  = prodTake.fold("")(t => s"\tprod ${t._1} (${t._2}): ${if (t._1 == mine) "SAME" else "DIFF"}")
       if (same) alike += 1
       val legMembers = legOf.get(key).toSeq.flatMap(_.members).toSet
       val outside    = legMembers -- core.map(_.key)
@@ -628,7 +666,7 @@ object IdentitySlice {
       val (stageLine, modelMoved) = if (!ofCapture) ("", "") else {
         val coreKeys = core.map(_.key).toSet
         val captured = leg.decisions.filter(_.members.exists(coreKeys))
-        val staged   = agree(captured, core, readsOf(opened, opened.fetch, opened.gaps, recording.recordedAt, Some(filed)), s"faithfulness $i stage")
+        val staged   = agree(captured, core, readsOf(opened, opened.fetch, opened.gaps, recording.recordedAt, Some(filed), prod), s"faithfulness $i stage")
         val film     = staged.agreed.decisionOf.get(key).map(filmOf).getOrElse("missing")
         if (film == theirs) agreeStage += 1
         val was = leg.decisions.find(_.members.contains(key))
@@ -642,7 +680,7 @@ object IdentitySlice {
       def widened = {
         val wider = IdentitySlicing.select(index, Set(key), o.widen + 1)
         val again = decide(wider.core.flatMap(ours.get).toSeq.sortBy(_.sortKey), wider.context.flatMap(ours.get).toSeq.sortBy(_.sortKey),
-          readsOf(opened, opened.fetch, opened.gaps, recording.recordedAt, Some(filed)), s"faithfulness $i wider")
+          readsOf(opened, opened.fetch, opened.gaps, recording.recordedAt, Some(filed), prod), s"faithfulness $i wider")
         val film = again.agreed.decisionOf.get(key).map(filmOf).getOrElse("missing")
         if (film == theirs) agreeWider += 1
         s"; --widen ${o.widen + 1} (core ${wider.core.size}): ${if (film == theirs) "SAME as the leg" else s"still $film"}"
@@ -650,7 +688,7 @@ object IdentitySlice {
       val why = if (same) "" else if (modelMoved.nonEmpty) modelMoved else (if (outside.nonEmpty) s"the leg's cluster holds ${outside.size} listing(s) outside the slice's core (e.g. ${outside.take(2).map(k => s"${k.venue} | ${k.rawTitle}").mkString("; ")})"
                 else "same members — the slice lacks context the whole corpus gave it (a neighbouring family's facts or agreement)") + widened
       val line = f"${if (same) "SAME" else "DIFF"}\t${key.venue}\t${key.rawTitle}\tslice $mine (${decided.agreed.decisionOf.get(key).map(_.basis.toString).getOrElse("-")})\t" +
-        f"leg $theirs (${legOf.get(key).map(_.basis.toString).getOrElse("-")})\tcore ${core.size} context ${context.size}\t${(System.nanoTime() - started) / 1e9}%.1fs\t$why$stageLine"
+        f"leg $theirs (${legOf.get(key).map(_.basis.toString).getOrElse("-")})\tcore ${core.size} context ${context.size}\t${(System.nanoTime() - started) / 1e9}%.1fs\t$why$stageLine$prodLine"
       println(line)
       out.foreach(_.println(line))
       if (!same) misses += line
@@ -659,5 +697,7 @@ object IdentitySlice {
     if (misses.nonEmpty) println(s"# slice ≠ whole corpus for ${misses.size}: one ring wider, $agreeWider of them take what the leg took (the DIFF lines above)")
     if (ofCapture) println(f"# the agreement stage alone, over the captured model decisions: $agreeStage of ${sample.size} take what the capture's replay took " +
       f"(${100.0 * agreeStage / math.max(1, sample.size)}%.1f%%)")
+    if (prod.name.nonEmpty) println(f"# against prod's stored state now (local mirror ${prod.name}): $agreeProd of $prodKnown the mirror holds take what prod " +
+      f"takes (${100.0 * agreeProd / math.max(1, prodKnown)}%.1f%%); ${sample.size - prodKnown} not in prod's model now")
   }
 }

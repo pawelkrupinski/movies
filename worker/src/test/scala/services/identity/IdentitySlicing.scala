@@ -76,9 +76,8 @@ object IdentitySlicing {
   /** The model's decisions on `core`, its corpus context derived from `core` and `context` — as the incremental model
    *  decides a family against the whole corpus's context. */
   def resolve(core: Seq[Listing], context: Seq[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer,
-              calibration: IdentityCalibration = IdentityCalibration.resolver): Seq[ResolverDecision] = {
+              calibration: IdentityCalibration = IdentityCalibration.resolver, pins: PinConstraints = PinConstraints(Nil)): Seq[ResolverDecision] = {
     val decorations = TitleDecorations.resolver
-    val pins        = PinConstraints(Nil)
     val corpus      = IdentityResolver.contextOf(core ++ context, lookups, normalizer, pins, decorations)
     IdentityResolver.resolveRegion(core, lookups, normalizer, calibration, pins, decorations, corpus).flatMap(_.decisions)
   }

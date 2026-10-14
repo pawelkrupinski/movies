@@ -34,7 +34,10 @@ js_list() { local out="" x; for x in "$@"; do [ -n "$x" ] && out="$out${out:+,}'
 IFS=, read -r -a needs <<< "$need"
 not_before_ms=null
 if [ -n "$not_before" ]; then
-  not_before_ms=$(python3 -I -c 'import sys,datetime; print(int(datetime.datetime.fromisoformat(sys.argv[1].replace("Z","+00:00")).timestamp()*1000))' "$not_before") \
+  # a recording's recordedAt carries nanoseconds, which fromisoformat refuses past six digits
+  not_before_ms=$(python3 -I -c 'import sys,re,datetime
+t = re.sub(r"(\.\d{6})\d+", r"\1", sys.argv[1].replace("Z", "+00:00"))
+print(int(datetime.datetime.fromisoformat(t).timestamp() * 1000))' "$not_before") \
     || { echo "--not-before: not an ISO-8601 moment: $not_before" >&2; exit 2; }
 fi
 max_lag_ms=$(python3 -I -c 'import sys; print(int(float(sys.argv[1]) * 3600000))' "$max_lag_hours")
