@@ -12,8 +12,27 @@ private[identity] final class ResolverDecisions(scoring: CandidateScoring, famil
          votes: Map[String, ResolverDecisions.Vote], edges: Seq[ResolverEdge], clusterIndex: Map[String, Int]): ResolverDecision = {
     val films = cluster.flatMap(node => filmOf(node.id)).distinct
     require(films.sizeIs <= 1, s"a cluster holds two films ${films.mkString(",")}: a cannot-link was not drawn")
-    val film    = films.headOption
-    val pinned  = film.isDefined && cluster.exists(node => pinnedFilm.contains(node.id))
+    val voted   = films.headOption
+    val pinned  = voted.isDefined && cluster.exists(node => pinnedFilm.contains(node.id))
+    // a film only the cluster's pooled vote reaches — no member's own match, no pin — that a listing of its title kept
+    // apart from it denies ("denies-film": its feed links another film, its facts rule it out) is no take: DE IL KINO's
+    // "Ukrainian Film Festival Berlin: CAMOUFLAGE", stating nothing, pooled to the 2001 "Camouflage" at 39% while the
+    // listings whose Cineamo link names that film were overruled as Gibalenko's 2026 one (convergence 38627416973)
+    val members = cluster.map(_.id).toSet
+    // — a listing that takes another film itself (a double bill denying each of its pieces' films names none: PL
+    // "Toddler Club: Tabby McTat + Room on the Broom" beside the bare "Tabby McTat"), billed as a whole as one piece of
+    // a member's billing: the title itself, not a programme's banner both share (PL "DKF Rozpięci: FEDERICO FELLINI: ciao
+    // a tutti!" [1963] beside the banner's other films, each denying 8½ by its year)
+    def billsAPieceOf(other: EvidenceNode) = {
+      val whole = IdentityMeasures.key(other.evidence.cleanTitle)
+      cluster.exists(member => (member.evidence.cleanTitle +: member.evidence.published.shapes).exists(IdentityMeasures.key(_) == whole))
+    }
+    val deniedAround = voted.filter(filmId => !pinned && !cluster.exists(node => accepted.contains(node.id)) && edges.exists { edge =>
+      val other = if (members(edge.a)) edge.b else edge.a
+      !edge.must && edge.reason == "denies-film" && (members(edge.a) ^ members(edge.b)) &&
+        filmOf(other).exists(_ != filmId) && billsAPieceOf(nodeById(other)) && families.denies(nodeById(other), filmId)
+    })
+    val film    = voted.filterNot(deniedAround.contains)
     val scored  = scope.pooled(cluster)
     val eligible = scored.filterNot(_.denied)
     // A cluster the title family alone decided is filed at the family's bound when its own
@@ -49,6 +68,7 @@ private[identity] final class ResolverDecisions(scoring: CandidateScoring, famil
     val best  = scored.headOption.filter(scored => !film.contains(scored.candidate.tmdbId)).map(scored =>
       s"best ${if (scored.denied) "vetoed" else "rejected"} candidate ${scored.candidate.tmdbId} at ${ResolverDecision.percent(scored.probability)}${scored.denial.fold("")(why => s", denied: $why,")} (${calibration.explain(ListingFilm, scored.measures)})")
     val gaps  = Option.when(unknown > 0)(s"$unknown lookup(s) unanswerable")
+    val deniedVote = deniedAround.map(filmId => s"pooled vote for $filmId withdrawn: a listing of its title kept apart from it denies it")
     // a cluster no TMDB film was taken for, every question answered: the one fallback film its members take
     val fallback = if (film.isDefined || unknown > 0) None else fallbackOf(cluster, scope)
     // the one TMDB film the members lean to, none of them denying it
@@ -67,7 +87,7 @@ private[identity] final class ResolverDecisions(scoring: CandidateScoring, famil
       .map(best => ResolverDecision.Leaning(best.tmdbId, best.film.imdbNumber))
     ResolverDecision(cluster.flatMap(_.listings.map(_.key)).sorted, film, confidence, basis,
       (overruled ++ own.take(4) ++ Option.when(own.size > 4)(s"… ${own.size - 4} more own match(es)") ++ vote ++ joins ++
-        apart.take(4) ++ best ++ gaps ++ fallback.map(taken => s"falls back to ${taken.source} ${taken.id} at ${ResolverDecision.percent(taken.probability)}") ++
+        apart.take(4) ++ best ++ gaps ++ deniedVote ++ fallback.map(taken => s"falls back to ${taken.source} ${taken.id} at ${ResolverDecision.percent(taken.probability)}") ++
         leaning.map(lean => s"leans to ${lean.film} (tt${lean.imdbNumber})")) :+
         s"node ${cluster.head.listings.head.key}", contradictions = apart, fallback = fallback, leaning = leaning, unanswered = unknown,
       candidate = candidate)(
