@@ -265,7 +265,8 @@ class TakesDiffTest(unittest.TestCase):
                                           accepted=["pl\t*\tKF Ambasada: Diabły\ttmdb:1000\ttmdb:31767\tjudged\n"])[0])
         code, md = self.run_diff(base, head, accepted=["pl\t*\tKF Ambasada: Diabły\ttmdb:1000\ttmdb:31767\tjudged\n"])
         self.assertEqual(0, code)
-        self.assertIn("0 new (the code's: fail until judged), 1 standing", md)
+        self.assertIn("0 new (the code's: fail until judged), 0 standing at base and head (reported, never failed), 0 cured, "
+                      "1 moved onto by a move accepted.tsv accepts", md)
 
     def test_the_final_takes_judge_no_suspects(self):
         base = self.ratchet("b.tsv", ["RIGHT\tpl\tRialto\tDiuna\ttmdb:7\tDiuna\tOwnMatch\t\t\t\n"])

@@ -29,7 +29,7 @@ classified against the base's row for the same listing:
   standing  the base took the same film and flagged it too: data the code did not touch -- REPORTED, never failed
             (the whole corpus's standing suspects are the Identity findings report's, identity-findings-report.yml);
   new       the head took another film, or flags a take the base did not -- the code made it: FAILS, unless
-            accepted.tsv accepts the listing's move;
+            accepted.tsv accepts the listing's move (then counted as accepted);
   cured     the base's take was an unjudged suspect and the head's is not -- counted, never failed.
 A nightly recording changes base and head at once, so a suspect it brings is standing on both: it never fails here.
 
@@ -273,9 +273,9 @@ def unjudged_suspect(row, labels, baseline):
 
 
 def suspects_of(pairs, heads_alone, labels, baseline, accepted):
-    """{"new", "standing", "cured"}: the unjudged suspect takes, each classified against the base's row for its listing
+    """{"new", "standing", "accepted", "cured"}: the unjudged suspect takes, each classified against the base's row for its listing
     (the module doc). A head row on one side only (its key re-spelled ambiguously) has no base to stand on: new."""
-    out = {"new": [], "standing": [], "cured": []}
+    out = {"new": [], "standing": [], "accepted": [], "cured": []}
     def entry(b, h, flagged):
         """The listing, its head film, its base film and the reasons flagging `flagged`'s take."""
         return {"venue": h["venue"], "rawTitle": h["rawTitle"], "film": film_name(h), "base": film_name(b) if b else "-",
@@ -284,7 +284,7 @@ def suspects_of(pairs, heads_alone, labels, baseline, accepted):
         if unjudged_suspect(h, labels, baseline):
             stood = take(b) == take(h) and bool(b.get("suspect"))
             move = {"venue": h["venue"], "rawTitle": h["rawTitle"], "before": take(b), "after": take(h)}
-            out["standing" if stood or accepted_move(move, accepted) else "new"].append(entry(b, h, h))
+            out["standing" if stood else "accepted" if accepted_move(move, accepted) else "new"].append(entry(b, h, h))
         elif unjudged_suspect(b, labels, baseline):
             out["cured"].append(entry(b, h, b))
     out["new"] += [entry(None, h, h) for h in heads_alone if unjudged_suspect(h, labels, baseline)]
@@ -306,7 +306,8 @@ def render_suspects(cc, suspects):
     """(log lines, summary lines) of the suspect classification: every new one, then the standing ones as a report."""
     new, standing, cured = suspects["new"], suspects["standing"], suspects["cured"]
     line = (f"suspect takes ({cc}): {len(new)} new (the code's: fail until judged), {len(standing)} standing at base and "
-            f"head (reported, never failed), {len(cured)} cured")
+            f"head (reported, never failed), {len(cured)} cured" +
+            (f", {len(suspects['accepted'])} moved onto by a move accepted.tsv accepts" if suspects["accepted"] else ""))
     def text(e, status):
         return (f"  {status} suspect {e['venue']} | {e['rawTitle']}: {e['film']} (base {e['base']})\n"
                 f"        {'; '.join(e['reasons'])}")
