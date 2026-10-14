@@ -584,6 +584,8 @@ jobs:
                   fi
                   cp -a "$fetched/." "$GITHUB_WORKSPACE/test/resources/fixtures/"
                   echo "[fill] laid ${PUBLISHED:-the fill (unpublished off main)} over the tree"
+                  # What the takes check keys a stored resolve by: the published fill, or that it cannot be named.
+                  echo "${PUBLISHED:-unpublished}" > "$RUNNER_TEMP/laid-fill"
 
             # A RECORDING's sample row hands on only what its sample records: every file under the tree
             # newer than this (an unpacked file keeps its archived mtime). A hermetic leg records nothing.
@@ -861,6 +863,8 @@ jobs:
                   KINOWO_COUNTRIES: ${{ inputs.code }}
                   MONGODB_URI: mongodb://127.0.0.1:27017/?directConnection=true
                   TAKES_BASE: ${{ inputs.takes-base }}
+                  # Where each head's resolve is stored for the run whose base it becomes (identity-takes-check.sh).
+                  TAKES_STORE: ${{ env.FIXTURE_RELEASE_TAG }}
               run: |
                   # `|| code=$?`: the step runs under bash -e, which would end it at the script's own non-zero exit.
                   code=0; scripts/ci/identity-takes-check.sh "${{ inputs.code }}" "$RUNNER_TEMP/identity-takes" || code=$?

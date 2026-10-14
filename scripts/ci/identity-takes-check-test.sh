@@ -84,4 +84,71 @@ check "a base the fetch cannot reach stops the check, never passes it" "$code" 2
 check "...saying so in the verdict the leg posts" "$(grep -c 'could not fetch base' "$work/out/verdict.txt")" 1
 rm "$work/status-$c2"
 
+# THE STORE. c4 and c5 each touch identity code, so c5's check resolves; its base c4 ran the check before it, on main,
+# over the same pinned pair, and stored what it resolved. A stub `sbt` writes one take and logs which checkout ran it; a
+# stub release (a directory) holds what `upload` stored and answers `download` from it.
+for n in 4 5; do
+  mkdir -p "$work/src/common/src/main" && echo "$n" > "$work/src/common/src/main/Identity.scala"
+  scratch_git "$work/src" add common && scratch_git "$work/src" commit -q -m "c$n"
+done
+scratch_git "$work/src" push -q "$work/origin.git" HEAD:refs/heads/main
+c4=$(scratch_git "$work/src" rev-parse HEAD~1) c5=$(scratch_git "$work/src" rev-parse HEAD)
+rm -rf "$work/job" && mkdir -p "$work/job" && scratch_git "$work/job" clone -q --depth=1 --branch main "file://$work/origin.git" .
+mkdir -p "$work/job/test/resources/fixtures/identity-unmatched" "$work/job/scripts/ci"
+: > "$work/job/test/resources/fixtures/identity-unmatched/labels.tsv"
+cp "$(dirname "$script")/identity_takes_diff.py" "$(dirname "$script")/gh-release.sh" "$work/job/scripts/ci/"
+cat > "$work/bin/sbt" <<'SBT'
+#!/usr/bin/env bash
+pwd -P >> "$SBT_CALLS"
+if [ -n "${KINOWO_IDENTITY_DUMP:-}" ]; then
+  mkdir -p "$KINOWO_IDENTITY_DUMP"
+  echo '{"key":"k","venue":"v","rawTitle":"t","film":1,"filmTitle":"F","basis":"b","explanation":[],"blocker":null}' \
+    > "$KINOWO_IDENTITY_DUMP/decisions-$KINOWO_IDENTITY_FULL.jsonl"
+else
+  mkdir -p target/identity-unmatched
+  printf 'country\tvenue\trawTitle\tstatus\tfilm\ttitle\tbasis\npl\tv\tt\tRIGHT\ttmdb:1\tF\tb\n' > target/identity-unmatched/ratchet-takes.tsv
+fi
+echo "[success] Total time: 1 s"
+SBT
+chmod +x "$work/bin/sbt"
+# gh: the history stub above, plus a release kept in $work/release.
+mv "$work/bin/gh" "$work/bin/gh-history"
+cat > "$work/bin/gh" <<GH
+#!/usr/bin/env bash
+case "\$1 \$2" in
+  "release download") [ -f "$work/release/\$5" ] && cp "$work/release/\$5" "\$7" ;;
+  "release upload")   mkdir -p "$work/release" && cp "\$4" "$work/release/" ;;
+  "release view")     echo ;;
+  *) exec "$work/bin/gh-history" "\$@" ;;
+esac
+GH
+chmod +x "$work/bin/gh"
+store_run() { # <head>: the check of <head>, on main, storing on the release
+  rm -rf "$work/out" "$work/identity-takes-base"; : > "$work/sbt-calls"
+  (cd "$work/job" && PATH="$work/bin:$PATH" GITHUB_REPOSITORY=o/r GITHUB_SHA=$1 GITHUB_REF=refs/heads/main RUNNER_TEMP=$work \
+    SBT_CALLS="$work/sbt-calls" TAKES_STORE=fixtures KINOWO_CONVERGENCE_PIN_CORPUS_RUN=${PIN:-42} "$script" pl "$work/out" > "$work/log" 2>&1)
+}
+base_calls() { grep -c "identity-takes-base" "$work/sbt-calls" || true; }
+code=0; TAKES_BASE=$c4 store_run "$c5" || code=$?
+check "with nothing stored, the base is checked out and resolved" "$(base_calls)" 2
+check "...and the check passes on the same takes" "$code" 0
+check "...and the head's decisions and final takes are stored for the run whose base it becomes" "$(ls "$work/release" | wc -l | tr -d ' ')" 2
+
+# c4's own check, then c5's again: its base c4 is now stored.
+TAKES_BASE=$c2 store_run "$c4" || true
+code=0; TAKES_BASE=$c4 store_run "$c5" || code=$?
+check "a base its own run stored is reused, not compiled or resolved" "$(base_calls)" 0
+check "...and the head still resolves" "$(grep -vc identity-takes-base "$work/sbt-calls")" 2
+check "...and the check still diffs and passes" "$code" 0
+check "...saying it reused the base" "$(grep -c 'base resolve reused' "$work/log")" 1
+
+PIN=43 TAKES_BASE=$c4 store_run "$c5" || true
+check "another pinned recording is another key: the base's decisions resolve again" "$(base_calls)" 1
+check "...its final takes, which read only the capture, still reused" "$(grep -c 'base final takes reused' "$work/log")" 1
+
+echo unpublished > "$work/laid-fill"
+TAKES_BASE=$c4 store_run "$c5" || true
+check "a fill laid but never published names no key: nothing is reused" "$(base_calls)" 2
+rm -f "$work/laid-fill"
+
 [ "$fails" = 0 ] || { echo "$fails failure(s)"; exit 1; }

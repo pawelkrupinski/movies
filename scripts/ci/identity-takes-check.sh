@@ -20,7 +20,17 @@
 #
 # usage: identity-takes-check.sh <cc> <out dir>
 #   env: GH_TOKEN, GITHUB_REPOSITORY, GITHUB_SHA, MONGODB_URI, HEAP (sbt -Xmx, default 6g), TAKES_BASE (optional),
-#        STATUS_CONTEXT (default "identity takes (<cc>)"), GITHUB_STEP_SUMMARY (optional)
+#        STATUS_CONTEXT (default "identity takes (<cc>)"), GITHUB_STEP_SUMMARY (optional),
+#        TAKES_STORE (the release its resolves are stored on and reused from; empty stores nothing), GITHUB_REF,
+#        the pinned pair's KINOWO_CONVERGENCE_PIN_CORPUS_RUN / _TREE_ASSET / _FILL_ASSETS, RUNNER_TEMP/laid-fill
+#
+# THE BASE IS USUALLY ALREADY RESOLVED. It is the newest commit whose check passed -- most often the previous run's
+# head, which that run resolved over the same pinned recording minutes before. A resolve is a pure function of its
+# commit and what it reads (the base-equals-head skip below rests on the same determinism), so main stores each head's
+# decisions and final takes on the TAKES_STORE release, keyed by the commit and every input it read: the pinned corpus,
+# its enrichment tree and fills, the fill this row laid over them, and -- for the final takes -- the capture they replay.
+# A base whose key is stored is downloaded, not compiled and resolved: half of the step, 6-12 minutes of the US row
+# (run 38548739769). A key not stored -- other inputs, a fill this row could not publish, a first run -- resolves as before.
 # Writes <out>/{base,head}/decisions-<cc>.jsonl and ratchet-takes.tsv (the model's takes and the final ones, below),
 # <out>/base.txt (the base commit) and <out>/verdict.txt.
 # Exit: 0 passed, 1 an unaccepted move, 2 the check could not run -- no verdict, which the leg posts as an `error` status
@@ -106,21 +116,62 @@ if [ "$base" = "$head" ] || git diff --quiet "$base" "$head" -- "${identity_path
   exit 0
 fi
 
+# THE STORE (see the header). A fill laid over the tree but never published names nothing a later run could match:
+# such a row neither reuses nor stores.
+store=${TAKES_STORE:-}
+laid=$(cat "${RUNNER_TEMP:-/nonexistent}/laid-fill" 2>/dev/null || true)
+[ "$laid" = unpublished ] && store=""
+decisions_key() { # <sha>: the decisions dump's inputs
+  printf '%s\n' "$1" "$cc" "${KINOWO_CONVERGENCE_PIN_CORPUS_RUN:-}" "${KINOWO_CONVERGENCE_TREE_ASSET:-}" \
+    "${KINOWO_CONVERGENCE_FILL_ASSETS:-}" "$laid" | sha256sum | cut -c1-24
+}
+capture_key() { # <sha>: the final takes' inputs -- the code and the capture it replays (always the head's)
+  { printf '%s\n' "$1" "$cc"; cat "$here"/test/resources/fixtures/identity-unmatched/*.json.gz \
+      "$here"/test/resources/fixtures/identity-unmatched/*.inputs 2>/dev/null; } | sha256sum | cut -c1-24
+}
+reused() { # <asset> <file>: whether a stored result was fetched into <file>
+  [ -n "$store" ] || return 1
+  mkdir -p "$(dirname "$2")"
+  gh release download "$store" -p "$1" -O "$2.gz" --clobber > /dev/null 2>&1 && gunzip -f "$2.gz" && [ -s "$2" ]
+}
+keep() { # <file> <asset>: store a head's result, on main only (the only commits a later base is), never failing the check
+  [ -n "$store" ] && [ "${GITHUB_REF:-}" = refs/heads/main ] && [ -s "$1" ] || return 0
+  gzip -c "$1" > "$RUNNER_TEMP/$2" \
+    && "$here/scripts/ci/gh-release.sh" upload "$store" "$RUNNER_TEMP/$2" --clobber > /dev/null \
+    || { echo "::warning::identity takes ($cc): could not store $2 -- the next run resolves its base again"; return 0; }
+  # Only the newest few of a kind are ever a base again; the rest go (best effort -- one left is pruned next time).
+  local kind=${2#takes-}; kind=${kind%%-*}
+  gh release view "$store" --json assets --jq ".assets | map(select(.name | startswith(\"takes-$kind-$cc-\"))) \
+      | sort_by(.createdAt) | reverse | .[8:][] | .name" 2>/dev/null \
+    | while read -r stale; do "$here/scripts/ci/gh-release.sh" delete-asset "$store" "$stale" -y > /dev/null || true; done
+}
+asset() { echo "takes-$1-$cc-$2.gz"; } # <decisions|final> <key>
+
 SECONDS=0
 dump "$here" "$out/head" || { echo "::warning::identity takes ($cc): the head resolved nothing"; exit 2; }
 echo "identity takes ($cc): head resolved in ${SECONDS}s"
+keep "$out/head/decisions-$cc.jsonl" "$(asset decisions "$(decisions_key "$head")")"
 
 SECONDS=0
 tree="$RUNNER_TEMP/identity-takes-base"
+base_tree() { # the base checked out beside the head, once, for whichever of its resolves is not stored
+  [ -d "$tree" ] && return 0
+  git worktree add -q --detach "$tree" "$base" || return 1
+  # The head's compiled classes and zinc state, so the base compiles only what differs between them.
+  # The sbt-target-cache's paths (.github/actions/sbt-target-cache): classes and analysis, no jars.
+  for d in project/target project/project/target */target/scala-*; do
+    [ -d "$here/$d" ] && mkdir -p "$tree/$d" && cp -a "$here/$d/." "$tree/$d/"
+  done
+  return 0
+}
 rm -rf "$tree"
-git worktree add -q --detach "$tree" "$base" || exit 2
-# The head's compiled classes and zinc state, so the base compiles only what differs between them.
-# The sbt-target-cache's paths (.github/actions/sbt-target-cache): classes and analysis, no jars.
-for d in project/target project/project/target */target/scala-*; do
-  [ -d "$here/$d" ] && mkdir -p "$tree/$d" && cp -a "$here/$d/." "$tree/$d/"
-done
-dump "$tree" "$out/base" || { echo "::warning::identity takes ($cc): the base resolved nothing"; exit 2; }
-echo "identity takes ($cc): base compiled and resolved in ${SECONDS}s"
+if reused "$(asset decisions "$(decisions_key "$base")")" "$out/base/decisions-$cc.jsonl"; then
+  echo "identity takes ($cc): base resolve reused from $(asset decisions "$(decisions_key "$base")") in ${SECONDS}s"
+else
+  base_tree || exit 2
+  dump "$tree" "$out/base" || { echo "::warning::identity takes ($cc): the base resolved nothing"; exit 2; }
+  echo "identity takes ($cc): base compiled and resolved in ${SECONDS}s"
+fi
 
 # THE FINAL TAKES: the decisions above are the MODEL's, before the agreement stage reads them again -- 9c8170f5e's range
 # moved 213 UK listings in prod (and three right DE takes) with them at 0/0/0. The unmatched-cluster ratchet replays the
@@ -132,12 +183,19 @@ ratchet() { # <checkout> <out file>
   cp "$1/target/identity-unmatched/ratchet-takes.tsv" "$2" 2>/dev/null
 }
 SECONDS=0
-cp "$here"/test/resources/fixtures/identity-unmatched/*.json.gz "$here"/test/resources/fixtures/identity-unmatched/*.inputs \
-   "$tree/test/resources/fixtures/identity-unmatched/" 2>/dev/null
 final=0
-ratchet "$here" "$out/head/ratchet-takes.tsv" && ratchet "$tree" "$out/base/ratchet-takes.tsv" || final=2
+ratchet "$here" "$out/head/ratchet-takes.tsv" || final=2
+[ "$final" = 0 ] && keep "$out/head/ratchet-takes.tsv" "$(asset final "$(capture_key "$head")")"
+if [ "$final" = 0 ] && reused "$(asset final "$(capture_key "$base")")" "$out/base/ratchet-takes.tsv"; then
+  echo "identity takes ($cc): base final takes reused"
+elif [ "$final" = 0 ]; then
+  base_tree || exit 2
+  cp "$here"/test/resources/fixtures/identity-unmatched/*.json.gz "$here"/test/resources/fixtures/identity-unmatched/*.inputs \
+     "$tree/test/resources/fixtures/identity-unmatched/" 2>/dev/null
+  ratchet "$tree" "$out/base/ratchet-takes.tsv" || final=2
+fi
 echo "identity takes ($cc): final takes replayed in ${SECONDS}s"
-git worktree remove --force "$tree" || true
+[ -d "$tree" ] && { git worktree remove --force "$tree" || true; }
 
 diff_takes() { # <base> <head> [--final]
   python3 "$here/scripts/ci/identity_takes_diff.py" "$cc" "$1" "$2" "${@:3}" \
