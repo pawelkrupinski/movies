@@ -66,7 +66,11 @@ object IdentityMeasures {
      *  resolver relates every listing to every film of its family's pool (`titleRelation`). */
     private[identity] lazy val ownForms: Seq[IdentityMeasures.TitleForm] = (Seq(title) ++ rawTitle).map(IdentityMeasures.TitleForm(_))
     /** The own forms' non-empty keys, once per listing: every pool candidate's `titleRelation` asks. */
-    private[identity] lazy val ownKeys: Set[String] = ownForms.map(_.key).filter(_.nonEmpty).toSet
+    private[identity] lazy val ownKeys: Set[String] = (ownForms.map(_.key) ++ printless.map(IdentityMeasures.key)).filter(_.nonEmpty).toSet
+    /** Its titles without the print a repertory screening bills ([[IdentityMeasures.billsAPrint]]), format tags and all:
+     *  "Tschaikowsky - Genie und Wahnsinn (35mm)" is Ken Russell's film's whole title, not a piece of it. */
+    private[identity] lazy val printless: Seq[String] =
+      titles.filter(IdentityMeasures.billsAPrint).map(services.movies.FormatTags.stripFormatTags).filter(_.nonEmpty)
     /** How many years an anniversary the title or original title bills celebrates ("30th Anniversary"), once per listing. */
     private[identity] lazy val anniversary: Option[Int] = (Seq(title) ++ rawTitle ++ originalTitle).iterator
       .flatMap(t => IdentityMeasures.AnniversaryYears.findFirstMatchIn(t)).map(_.group(1).toInt).nextOption()
@@ -114,6 +118,10 @@ object IdentityMeasures {
     private[identity] lazy val originalForm: Option[IdentityMeasures.OriginalForm] =
       originalTitle.map(_.trim).filter(_.nonEmpty).map(IdentityMeasures.OriginalForm(_))
   }
+
+  /** Does the title bill the print it screens — a 16, 35 or 70 mm gauge ("(35mm)", "[35mm]", "70mm", "on 35mm")? */
+  private val PrintGauge = """(?i)(?<![\p{L}\d])(?:16|35|70)\s?mm(?![\p{L}\d])""".r
+  def billsAPrint(title: String): Boolean = PrintGauge.findFirstIn(title).isDefined
 
   /** A running time in brackets, marked as minutes by a prime or an apostrophe ("97’", "97'", "97′")
    *  or by "min" — the only way a number in a title says it is a duration. One value, or none. */
