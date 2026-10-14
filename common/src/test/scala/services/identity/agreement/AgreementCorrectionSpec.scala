@@ -139,6 +139,23 @@ class AgreementCorrectionSpec extends AnyFlatSpec with Matchers {
       clock = _root_.tools.SpecClock.Pinned, posters = hasPoster, tmdb = Some(table()), correctionsPerApply = 0)).basis shouldBe ResolverDecision.Basis.OwnMatch
   }
 
+  it should "stand as last decided after a deploy, in the whole projection's apply its budget is spent in as in a later one" in {
+    // prod UK Chichester Cinema at New Park's "The Ties That Bind Us": every deploy changes the stage's rules, so no stored
+    // verdict is current; the boot's whole projection reads afresh only its budget's takes and put the model's 2008 film
+    // back, the changed projection's apply 20 s later corrected it to the 2025 film again — 18 flips, one a pod start
+    val verdicts = new InMemoryAgreementVerdicts
+    def stageOver(perApply: Int) =
+      new AgreementStage(takingHas, table(), normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), verdicts,
+        clock = _root_.tools.SpecClock.Pinned, posters = hasPoster, tmdb = Some(table()), correctionsPerApply = perApply)
+    decided(stageOver(AgreementStage.CorrectionsPerApply)).basis shouldBe ResolverDecision.Basis.Corrected
+    verdicts.replace(Set.empty, verdicts.all().map(_.copy(rules = "the previous deploy's")))
+    val deployed = stageOver(0)
+    val whole    = decided(deployed, version = 1)    // the boot's whole projection: no take read afresh
+    val changed  = decided(stageOver(AgreementStage.CorrectionsPerApply), version = 2)
+    (whole.basis, whole.film) shouldBe ((changed.basis, changed.film))
+    (whole.basis, whole.film) shouldBe ((ResolverDecision.Basis.Corrected, Some(1002)))
+  }
+
   // prod PL 2026-10-06: Kino Kryterium's poster host times out the worker, so its poster was never hashed and the
   // correction of "Ktoś całkiem obcy" waited on it for ever. A poster given up on is no evidence: the rest is read
   // as for a take a poster questions, and decides only what it decides without the poster.

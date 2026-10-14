@@ -358,7 +358,12 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
       checked(key) = (digest, version)
       waits.fold(correctionWaits -= key)(w => correctionWaits(key) = w)
       correction
-    })
+    }).orElse(
+      // not read afresh this apply — its budget spent, a deploy's new rules having made every stored verdict stale — it
+      // stands as last decided over the same listings, never as the model took it: else the boot's whole projection put
+      // the model's take back and a later apply corrected it again, a flip per deploy (UK Chichester's "The Ties That Bind
+      // Us", 18 of them). Left unchecked, it is read afresh once an apply's budget reaches it.
+      held.get(key).filter(_.listings == digest).flatMap(_.correction))
     correctionWaits.get(key).foreach { w => asked ++= w.questions; finding ++= w.finds; posters ++= w.posters }
     now.flatMap(_.outcome).fold(decision) { outcome =>
       val explained = decision.explanation :+ outcome.line
