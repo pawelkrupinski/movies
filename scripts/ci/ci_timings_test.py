@@ -212,7 +212,6 @@ class PushTest(unittest.TestCase):
         self.assertEqual(message, "::warning::timings not pushed: HTTP Error 302: Found")
 
 
-@unittest.skipUnless(shutil.which("prometheus"), "no prometheus on PATH")
 class FakeGitHub:
     """Runs by workflow, and each run's jobs, as `GitHub` reads them."""
 
@@ -303,6 +302,7 @@ class PushFileTest(unittest.TestCase):
         self.assertEqual((pushed, failed), (3, 2))
 
 
+@unittest.skipUnless(shutil.which("prometheus"), "no prometheus on PATH")
 class RealPrometheusTest(unittest.TestCase):
     """The payload as Prometheus's own OTLP receiver reads it: names and labels unchanged, a stamp
     hours old admitted by the out-of-order window, and the same run pushed twice accepted."""
