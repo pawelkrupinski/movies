@@ -35,6 +35,12 @@
 #                 families agree on nothing — as in a hermetic leg. The slice keeps those it read, named as prod's.
 #   --faithfulness capture  the agreement-taken listings (Agreed, Filled, Poster, …) of that capture as this code's agreement
 #                 takes them, each sliced alone on the capture's recording and compared
+#   --threads N   decide N slices at once in the one JVM (default: half the cores, at most 8); the output keeps the batch's order
+#   --fresh       decide every slice again: by default a slice's result at a ref is kept (per recording, ref, tool files and
+#                 filed answers, and the labels about its listings) and read back by every checkout asking it again
+#   --serve       keep a JVM per (ref, recording, country) with the recording opened and the ref's index loaded, and send
+#                 the batch to it: no JVM start or corpus load per call (stops after $KINOWO_IDENTITY_SLICE_IDLE_MINUTES,
+#                 default 30, idle minutes; `scripts/identity-slice --stop-served` stops every kept one)
 #   --out TSV     keep the takes (of the last --ref) as a TSV: selector key venue rawTitle film title basis … verdict
 #   --labels TSV  judge the takes by this labels.tsv (default this checkout's) — the same labels at both refs
 #   --compiles REF  lay REF out with this checkout's tool files dropped in and compile it, nothing else: the tool must
@@ -89,11 +95,19 @@ TOOL_FILES=(worker/src/test/scala/scripts/IdentitySlice.scala worker/src/test/sc
   worker/src/fixtures/scala/tools/CatalogueFill.scala worker/src/fixtures/scala/tools/FiledAnswers.scala
   worker/src/fixtures/scala/tools/ProdMirror.scala)
 
-families="" labels="" cc="" refs=() run="" pass=() batch="" bisect="" log="" faith="" sample=50 seed=1 explain=0 fixture="" keep="" mirror="" mirror_args=()
+threads="" fresh=0 serve=0 families="" labels="" cc="" refs=() run="" pass=() batch="" bisect="" log="" faith="" sample=50 seed=1 explain=0 fixture="" keep="" mirror="" mirror_args=()
 if [ "$1" = "--compiles" ]; then
   need_ref "${2:?--compiles REF}"
   t=$(identity_tree "$2" "${TOOL_FILES[@]}") && identity_classpath "$t" > /dev/null && { identity_log "$2 compiles with this checkout's tool files"; exit 0; }
   exit 1
+fi
+if [ "$1" = "--stop-served" ]; then
+  for pidf in "$IDENTITY_CACHE"/serve/*.pid; do
+    [ -f "$pidf" ] || continue
+    kill "$(cat "$pidf")" 2>/dev/null && identity_log "stopped the kept JVM $(cat "$pidf")"
+    rm -f "$pidf" "${pidf%.pid}.sock"
+  done
+  exit 0
 fi
 if [ "$1" != "--log" ]; then cc=$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]'); shift; fi
 while [ "$#" -gt 0 ]; do
@@ -109,6 +123,9 @@ while [ "$#" -gt 0 ]; do
     --sample) sample=$2; shift 2 ;;
     --families) if [ "$2" = none ]; then families=none; else families=$(cd "$(dirname "$2")" && pwd)/$(basename "$2"); fi; shift 2 ;;
     --seed) seed=$2; shift 2 ;;
+    --threads) threads=$2; shift 2 ;;
+    --fresh) fresh=1; shift ;;
+    --serve) serve=1; shift ;;
     --explain) explain=1; shift ;;
     --out) keep=$(cd "$(dirname "$2")" && pwd)/$(basename "$2"); shift 2 ;;
     --prod-mirror) mirror=on
@@ -170,12 +187,78 @@ labels=${labels:-$repo/test/resources/fixtures/identity-unmatched/labels.tsv}
 # prod's filed family answers (no recording holds them): this checkout's unmatched-cluster capture unless named
 families=${families:-$repo/test/resources/fixtures/identity-unmatched/$cc.json.gz}
 
-# run <tree> <ref label> <out.tsv> <args...> -> that tree's IdentitySlice
+# Where each slice's result at <ref key> is kept, shared by every checkout: per recording, ref, the tool files dropped into
+# the ref (this checkout's) and the filed answers. Nothing with --fresh, nor beside prod's moment (--prod-mirror).
+results_of() { # <ref key>
+  [ "$fresh" = 0 ] && [ -z "$mirror" ] || return 0
+  local tools fam=none
+  tools=$( (cd "$repo" && cat "${TOOL_FILES[@]}") | shasum | cut -c1-8)
+  [ -f "$families" ] && fam=$(shasum < "$families" | cut -c1-8)
+  echo "$IDENTITY_CACHE/slice/$run/results/$1-$tools-$fam"
+}
+# run <tree> <ref label> <out.tsv> <args...> -> that tree's IdentitySlice (through its kept JVM with --serve)
 run_at() {
-  local tree=$1 ref=$2 out=$3 cp; shift 3
+  local tree=$1 ref=$2 out=$3 cp results more=(); shift 3
+  results=$(results_of "$ref")
+  [ -z "$results" ] || more+=(--results "$results")
+  [ -z "$threads" ] || more+=(--threads "$threads")
+  if [ "$serve" = 1 ] && [ -z "$mirror" ] && [ -z "$faith" ]; then serve_at "$tree" "$ref" "$out" "${more[@]}" "$@"; return; fi
   cp=$(identity_classpath "$tree") || return 1
   (cd "$tree" && "${IDENTITY_JAVA[@]}" -cp "$cp" scripts.IdentitySlice "$cc" --recording "$recording" --cache "$IDENTITY_CACHE/slice/$run" \
-    --ref "$ref" --labels "$labels" --families "$families" --out "$out" ${mirror_args[@]+"${mirror_args[@]}"} "$@")
+    --ref "$ref" --labels "$labels" --families "$families" --out "$out" ${mirror_args[@]+"${mirror_args[@]}"} ${more[@]+"${more[@]}"} "$@")
+}
+# The batch sent to the ref's kept JVM (IdentitySlice --serve), started when none is: the recording opened and the index
+# loaded once per (tree, ref, country, recording, filed answers), not once per call. A JVM that died is started again.
+serve_at() { # <tree> <ref key> <out.tsv> <args...>
+  local tree=$1 ref=$2 out=$3 key sock cp rc=0; shift 3
+  key=$(printf '%s\n' "$tree" "$ref" "$cc" "$recording" "$families" | shasum | cut -c1-16)
+  sock=$IDENTITY_CACHE/serve/$key.sock
+  for _ in 1 2; do
+    if [ ! -S "$sock" ] || ! kill -0 "$(cat "$IDENTITY_CACHE/serve/$key.pid" 2>/dev/null || echo 0)" 2>/dev/null; then
+      cp=$(identity_classpath "$tree") || return 1
+      mkdir -p "$IDENTITY_CACHE/serve"; rm -f "$sock"
+      identity_log "starting a kept JVM for ${ref:0:24} (log $IDENTITY_CACHE/serve/$key.log; stops after ${KINOWO_IDENTITY_SLICE_IDLE_MINUTES:-30} idle minutes)"
+      # its own process group (set -m): it outlives this call, and the shell or tool that ran it
+      (cd "$tree" && set -m && { nohup "${IDENTITY_JAVA[@]}" -cp "$cp" scripts.IdentitySlice "$cc" --recording "$recording" \
+          --cache "$IDENTITY_CACHE/slice/$run" --ref "$ref" --families "$families" --serve "$sock" \
+          --idle-minutes "${KINOWO_IDENTITY_SLICE_IDLE_MINUTES:-30}" > "$IDENTITY_CACHE/serve/$key.log" 2>&1 < /dev/null &
+        echo $! > "$IDENTITY_CACHE/serve/$key.pid"; })
+      until [ -S "$sock" ]; do
+        kill -0 "$(cat "$IDENTITY_CACHE/serve/$key.pid")" 2>/dev/null || { tail -20 "$IDENTITY_CACHE/serve/$key.log" >&2; identity_log "the kept JVM did not start"; return 1; }
+        sleep 1
+      done
+    fi
+    rc=0
+    python3 -I - "$sock" --labels "$labels" --out "$out" "$@" <<'PY' || rc=$?
+import socket, struct, sys
+path, args = sys.argv[1], sys.argv[2:]
+s = socket.socket(socket.AF_UNIX)
+try:
+    s.connect(path)
+except OSError:
+    sys.exit(111)
+payload = "\0".join(args).encode()
+s.sendall(struct.pack(">i", len(payload)) + payload)
+marker, held, out = b"\0EXIT ", b"", sys.stdout.buffer
+while True:
+    chunk = s.recv(65536)
+    if not chunk:
+        break
+    held += chunk
+    at = held.find(marker)
+    if at >= 0:
+        out.write(held[:at]); out.flush()
+        sys.exit(int(held[at + len(marker):].split(b"\n")[0] or b"1"))
+    keep = len(marker) - 1
+    out.write(held[:-keep]); held = held[-keep:]
+out.write(held); out.flush()
+sys.exit(112)
+PY
+    [ "$rc" = 111 ] || [ "$rc" = 112 ] || return "$rc"
+    identity_log "the kept JVM went away ($rc): starting another"
+    rm -f "$sock"
+  done
+  return 1
 }
 tree_of() { if [ "$1" = "." ]; then echo "$repo"; else need_ref "$1"; identity_tree "$1" "${TOOL_FILES[@]}"; fi; }
 # this checkout's code, keyed by WHICH checkout, its commit and its uncommitted code (tracked edits and new files): the

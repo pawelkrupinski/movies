@@ -57,7 +57,14 @@ object IdentitySlice {
                            prodMirror: Option[String] = None,
                            /** The worker build prod runs (the `deployed-worker` tag): whose code wrote the mirror's state. */
                            deployed: Option[String] = None,
-                           pending: (Option[String], Option[String]) = (None, None), emitCase: Option[Path] = None)
+                           pending: (Option[String], Option[String]) = (None, None), emitCase: Option[Path] = None,
+                           /** How many slices are decided at once (one JVM, a bounded pool; the output keeps the batch's order). */
+                           threads: Int = math.max(1, math.min(8, Runtime.getRuntime.availableProcessors / 2)),
+                           /** Where each slice's result is kept, shared by every checkout (scripts/identity-slice names it per
+                            *  recording, ref, tool files and filed answers). */
+                           results: Option[Path] = None,
+                           /** `--serve SOCKET`: keep the session and decide each batch asked over the socket ([[serve]]). */
+                           serve: Option[Path] = None, idleMinutes: Int = 30)
 
   def parse(args: List[String], o: Options = Options()): Options = args match {
     case Nil => flush(o)
@@ -76,6 +83,10 @@ object IdentitySlice {
     case "--prod-mirror" :: v :: rest  => parse(rest, o.copy(prodMirror = Some(v)))
     case "--deployed" :: v :: rest     => parse(rest, o.copy(deployed = Some(v).filter(_.nonEmpty)))
     case "--widen" :: v :: rest        => parse(rest, o.copy(widen = v.toInt))
+    case "--threads" :: v :: rest      => parse(rest, o.copy(threads = math.max(1, v.toInt)))
+    case "--results" :: v :: rest      => parse(rest, o.copy(results = Some(Path.of(v))))
+    case "--serve" :: v :: rest        => parse(rest, o.copy(serve = Some(Path.of(v))))
+    case "--idle-minutes" :: v :: rest => parse(rest, o.copy(idleMinutes = v.toInt))
     case "--emit-case" :: v :: rest    => parse(rest, o.copy(emitCase = Some(Path.of(v))))
     case "--replay" :: v :: rest       => parse(rest, o.copy(replay = o.replay :+ Path.of(v)))
     case "--venue" :: v :: rest        => parse(rest, pend(o, venue = Some(v)))
@@ -465,15 +476,12 @@ object IdentitySlice {
         o.faithfulness match {
           case Some(takes) => faithfulness(recording, opened, index, takes, o, filed, out, prod)
           case None =>
-            if (o.selectors.isEmpty) sys.error("no selector: --venue/--title, --key or --batch")
-            sameCluster(o.selectors.map(s => s -> listings.filter(s.selects).map(_.key).toSet), index, o.widen).foreach { case (selector, seeds) =>
-              if (seeds.isEmpty) println(s"\n## ${selector.label}: no listing of recording ${recording.root} matches")
-              else {
-                val dir   = o.slices.getOrElse(cache.resolve("slices")).resolve(selector.directoryName)
-                val slice = extract(recording, opened, index, seeds, selector.label, o.widen, dir, o.ref, filed, prod)
-                lacked ++= replaySlice(slice, None, labels, out, o.orders, o.modes, prod)
-                o.emitCase.foreach(target => emitCase(slice, dir, labels, target.resolve(s"${country.code}-${selector.directoryName}")))
-              }
+            val session = Session(recording, opened, listings, index, filed, cache)
+            o.serve match {
+              case Some(socket) => serve(socket, session, o)
+              case None =>
+                if (o.selectors.isEmpty) sys.error("no selector: --venue/--title, --key or --batch")
+                lacked ++= slices(session, o, labels, out, prod)
             }
         }
       }
@@ -484,6 +492,150 @@ object IdentitySlice {
         s"--recording to widen it from the recording):\n  ${lacked.distinct.take(20).mkString("\n  ")}")
       sys.exit(3)
     }
+  }
+
+  // ── many slices: in parallel, each result kept per (recording, ref, slice) ───────────────────
+
+  /** What every slice over one recording at one ref reads: opened once (and kept between batches by `--serve`). */
+  final case class Session(recording: Recording, opened: RecordedCorpus.Opened, listings: Seq[Listing], index: IdentitySlicing.Index,
+                           filed: tools.FiledAnswers, cache: Path)
+
+  /** One slice decided: its report, its takes' TSV lines, the requests it lacked. */
+  final case class SliceResult(report: String, takes: Seq[String], lacked: Seq[String])
+
+  /** The selected slices, decided `o.threads` at a time and printed in the batch's order — the same output whatever the
+   *  pool — each result read from, or kept in, `o.results` (a directory per recording, ref, tool files and filed answers,
+   *  shared by every checkout) under its selector, seeds, options and the labels about its listings: five agents
+   *  replaying origin/main over one recording decide each slice once. Returns what the slices lacked. */
+  def slices(session: Session, o: Options, labels: Seq[UnmatchedClusters.Label], out: Option[java.io.PrintWriter],
+             prod: tools.ProdState): Seq[String] = {
+    val country = session.recording.country
+    val groups  = sameCluster(o.selectors.map(s => s -> session.listings.filter(s.selects).map(_.key).toSet), session.index, o.widen)
+    // a result read from the cache holds nothing of prod's moment, nor the slice an emitted case copies
+    val results = o.results.filter(_ => prod.name.isEmpty && o.emitCase.isEmpty)
+    def one(selector: Selector, seeds: Set[ListingKey]): SliceResult =
+      if (seeds.isEmpty) SliceResult(s"\n## ${selector.label}: no listing of recording ${session.recording.root} matches\n", Nil, Nil)
+      else kept(results.map(_.resolve(resultKey(selector, seeds, o, labels, country)))) {
+          val report = new java.io.ByteArrayOutputStream()
+          val takes  = new java.io.StringWriter()
+          val lacked = Console.withOut(new java.io.PrintStream(report, true, StandardCharsets.UTF_8)) {
+            val dir   = o.slices.getOrElse(session.cache.resolve("slices")).resolve(selector.directoryName)
+            val slice = extract(session.recording, session.opened, session.index, seeds, selector.label, o.widen, dir, o.ref, session.filed, prod)
+            val lacked = replaySlice(slice, None, labels, Some(new java.io.PrintWriter(takes)), o.orders, o.modes, prod)
+            o.emitCase.foreach(target => emitCase(slice, dir, labels, target.resolve(s"${country.code}-${selector.directoryName}")))
+            lacked
+          }
+          SliceResult(report.toString(StandardCharsets.UTF_8), takes.toString.linesIterator.filter(_.nonEmpty).toSeq, lacked)
+        }
+    val threads = math.max(1, math.min(o.threads, groups.size))
+    if (groups.size > 1) System.err.println(s"[identity-slice] ${groups.size} slice(s), $threads at a time${results.fold("")(r => s", results kept in $r")}")
+    val lacked = scala.collection.mutable.ListBuffer.empty[String]
+    inOrder(groups, threads)(one.tupled) { result =>
+      print(result.report)
+      out.foreach(w => result.takes.foreach(w.println))
+      lacked ++= result.lacked
+    }
+    lacked.toSeq
+  }
+
+  /** `f` over `items`, `threads` at a time, each result handed to `each` in the items' order as soon as it and every one
+   *  before it are done: the output of a parallel batch is the serial one's. */
+  def inOrder[A, B](items: Seq[A], threads: Int)(f: A => B)(each: B => Unit): Unit = {
+    val pool = java.util.concurrent.Executors.newFixedThreadPool(math.max(1, threads))
+    try items.map(item => pool.submit(() => f(item))).foreach(future => each(future.get()))
+    finally pool.shutdownNow()
+  }
+
+  /** The result kept in `dir`, else `decide`d and kept there (none kept without a `dir`). */
+  def kept(dir: Option[Path])(decide: => SliceResult): SliceResult =
+    dir.flatMap(readResult).getOrElse {
+      val result = decide
+      dir.foreach(writeResult(_, result))
+      result
+    }
+
+  /** `--serve SOCKET`: the session (the recording opened, its listings, the ref's whole-corpus index) kept in this JVM,
+   *  and each batch asked of it over a Unix socket decided against it — no JVM start, recording read or index load per
+   *  batch. A request is the arguments a batch run takes besides the session's own (selectors, --labels, --out,
+   *  --threads, --results, --widen/--orders/--modes), NUL-separated after their length; the answer streams the batch's
+   *  output, then `\u0000EXIT <code>`. One request at a time; stops after `--idle-minutes` without one. */
+  def serve(socket: Path, session: Session, base: Options): Unit = {
+    import java.nio.channels.{Channels, ServerSocketChannel}
+    Files.createDirectories(socket.toAbsolutePath.getParent)
+    Files.deleteIfExists(socket)
+    val server = ServerSocketChannel.open(java.net.StandardProtocolFamily.UNIX)
+    server.bind(java.net.UnixDomainSocketAddress.of(socket))
+    val last = new java.util.concurrent.atomic.AtomicLong(System.currentTimeMillis())
+    val idle = base.idleMinutes * 60000L
+    val watchdog = new Thread(() => while (server.isOpen) {
+      Thread.sleep(5000)
+      if (System.currentTimeMillis() - last.get > idle) { Files.deleteIfExists(socket); server.close() }
+    })
+    watchdog.setDaemon(true)
+    watchdog.start()
+    System.err.println(s"[identity-slice] serving ${session.recording.root} (${session.listings.size} listings) at ${base.ref} on $socket, " +
+      s"stopping after ${base.idleMinutes} idle minute(s)")
+    try while (true) {
+      val client = server.accept()
+      last.set(Long.MaxValue / 2)
+      try {
+        val in   = new java.io.DataInputStream(Channels.newInputStream(client))
+        val args = new String(in.readNBytes(in.readInt()), StandardCharsets.UTF_8).split('\u0000').toList.filter(_.nonEmpty)
+        val answer = new java.io.PrintStream(Channels.newOutputStream(client), true, StandardCharsets.UTF_8)
+        val code = Try(Console.withOut(answer)(request(session, base, args))).recover { case e =>
+          answer.println(s"[identity-slice] the request failed: $e"); 1 }.get
+        answer.print(s"\u0000EXIT $code\n")
+        answer.flush()
+      } catch { case e: java.io.IOException => System.err.println(s"[identity-slice] a client went away: $e") }
+      finally { client.close(); last.set(System.currentTimeMillis()) }
+    } catch { case _: java.nio.channels.ClosedChannelException => System.err.println("[identity-slice] idle: stopped") }
+    finally Files.deleteIfExists(socket)
+  }
+
+  /** One batch asked of a served session; its exit code (3: some slice lacked a request). */
+  private def request(session: Session, base: Options, args: List[String]): Int = {
+    val started = System.nanoTime()
+    val o       = parse(args, Options(country = base.country, ref = base.ref, cache = base.cache, slices = base.slices))
+    val labels  = o.labels.filter(Files.exists(_)).fold(Seq.empty[UnmatchedClusters.Label])(UnmatchedClusters.readLabels)
+    val out     = o.out.map { p => Files.createDirectories(p.toAbsolutePath.getParent); new java.io.PrintWriter(Files.newBufferedWriter(p, StandardCharsets.UTF_8)) }
+    out.foreach(_.println(TakeHeader))
+    if (o.selectors.isEmpty) sys.error("no selector: --venue/--title, --key or --batch")
+    val lacked = try slices(session, o, labels, out, tools.ProdState.none) finally out.foreach(_.close())
+    System.err.println(f"[identity-slice] served a request of ${o.selectors.size} selector(s) in ${(System.nanoTime() - started) / 1e9}%.1fs")
+    if (lacked.isEmpty) 0
+    else {
+      println(s"[identity-slice] SLICE INCOMPLETE — ${lacked.size} request(s) the slices do not hold:\n  ${lacked.distinct.take(20).mkString("\n  ")}")
+      3
+    }
+  }
+
+  /** A slice's result's name in the results directory: its selector and seeds, the options that move a take, and the
+   *  labels about its listings (a label of another billing changes nothing here; one of these changes the verdict). */
+  def resultKey(selector: Selector, seeds: Set[ListingKey], o: Options, labels: Seq[UnmatchedClusters.Label], country: Country): String = {
+    // UnmatchedClusters.singleSpaced, which refs before 5a1c2a1bb lack: this file is dropped into them
+    def spaced(raw: String) = raw.replaceAll("(?U)\\s+", " ").trim
+    val titles = seeds.map(k => spaced(k.rawTitle))
+    val about  = labels.filter(l => l.country == country.code && titles(spaced(l.rawTitle)))
+      .map(l => Seq(l.venue, l.rawTitle, l.film, l.right, l.note).mkString("\t")).sorted
+    val text = (Seq(selector.label, s"widen ${o.widen} orders ${o.orders} modes ${o.modes}") ++ seeds.toSeq.map(ListingKey.serialised).sorted ++ about)
+      .mkString("\n")
+    val digest = java.security.MessageDigest.getInstance("SHA-256").digest(text.getBytes(StandardCharsets.UTF_8))
+    s"${selector.directoryName}-${digest.take(8).map(b => f"$b%02x").mkString}"
+  }
+
+  private def readResult(dir: Path): Option[SliceResult] =
+    Option.when(Files.isDirectory(dir))(Try(SliceResult(Files.readString(dir.resolve("report.txt")),
+      Files.readAllLines(dir.resolve("takes.tsv")).asScala.toSeq, Files.readAllLines(dir.resolve("lacked.txt")).asScala.toSeq)).toOption).flatten
+
+  /** Written whole beside `dir`, then moved over it: another checkout reading it mid-write would read half of one. */
+  private def writeResult(dir: Path, result: SliceResult): Unit = Try {
+    val part = dir.resolveSibling(s"${dir.getFileName}.part-${ProcessHandle.current.pid}-${Thread.currentThread.threadId}")
+    Files.createDirectories(part)
+    Files.writeString(part.resolve("report.txt"), result.report)
+    Files.write(part.resolve("takes.tsv"), result.takes.asJava)
+    Files.write(part.resolve("lacked.txt"), result.lacked.asJava)
+    Try(Files.move(part, dir, java.nio.file.StandardCopyOption.ATOMIC_MOVE))
+      .recover { case _ => Files.walk(part).sorted(java.util.Comparator.reverseOrder()).forEach(p => Files.deleteIfExists(p)) }
   }
 
   /** The recording, a gap it meets answered first by `filed`'s live HTTP answers — what the capture's whole resolve read

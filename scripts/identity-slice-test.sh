@@ -58,8 +58,10 @@ STUB
 cat > "$work/bin/java" <<STUB
 #!/usr/bin/env bash
 echo "java \$PWD \$*" >> "$work/calls"
-out="" ref=""
-while [ "\$#" -gt 0 ]; do case "\$1" in --out) out=\$2 ;; --ref) ref=\$2 ;; esac; shift; done
+out="" ref="" serve=""
+while [ "\$#" -gt 0 ]; do case "\$1" in --out) out=\$2 ;; --ref) ref=\$2 ;; --serve) serve=\$2 ;; esac; shift; done
+# --serve: a kept JVM, answering each request on its socket (the batch's own arguments) until it is stopped
+[ -z "\$serve" ] || exec python3 -I "$work/serve.py" "\$serve" "$work/calls"
 [ -n "\$out" ] || { echo "explained"; exit 0; }
 h='selector\tkey\tvenue\trawTitle\tfilm\ttitle\tbasis\tconfidence\tmodel\trules\tblocker\trunnerUp\tverdict\texplanation'
 { printf "\$h\n"
@@ -77,6 +79,23 @@ echo "decided"
 # the script edited while it runs (a rebase, a pull, an agent's edit): its text shifted under bash's read offset
 [ -z "\${STUB_REWRITE:-}" ] || { { printf '%09000d\n' 0 | tr 0 '#'; cat "\$STUB_REWRITE"; } > "\$STUB_REWRITE.new"; cat "\$STUB_REWRITE.new" > "\$STUB_REWRITE"; }
 STUB
+cat > "$work/serve.py" <<'PY'
+import os, socket, struct, sys
+path, calls = sys.argv[1], sys.argv[2]
+s = socket.socket(socket.AF_UNIX); s.bind(path); s.listen(1)
+while True:
+    c, _ = s.accept()
+    n = struct.unpack(">i", c.recv(4))[0]
+    data = b""
+    while len(data) < n:
+        data += c.recv(n - len(data))
+    args = data.decode().split("\0")
+    open(calls, "a").write("request " + " ".join(args) + "\n")
+    out = args[args.index("--out") + 1]
+    open(out, "w").write("selector\tkey\tvenue\trawTitle\tfilm\ttitle\tbasis\tconfidence\tmodel\trules\tblocker\trunnerUp\tverdict\texplanation\n"
+                         "k\tKino|Lalka\tKino\tLalka\ttmdb:1\tLalka (1968)\tOwnMatch\t0.9\ttmdb:1\t\t\t\tWRONG\twhy\n")
+    c.sendall(b"decided by the kept JVM\n\0EXIT 0\n"); c.close()
+PY
 chmod +x "$work/bin/sbt" "$work/bin/java"
 
 slice() { STUB="$work" PATH="$work/bin:$PATH" KINOWO_IDENTITY_CACHE="$cache" "$repo/scripts/identity-slice" "$@" 2> "$work/err"; }
@@ -128,12 +147,35 @@ rm -f "$work/calls" "$work/sbt-calls"
 check "--compiles lays a ref out with the tool files and compiles it, deciding nothing" "0 0" \
   "$(slice --compiles HEAD~1 > /dev/null; echo $?) $(grep -c . "$work/calls" 2>/dev/null || echo 0)"
 
+# each slice's result at a ref is kept for every checkout asking it again: per recording, ref, tool files, filed answers
+rm -f "$work/calls"; slice de --recording 777 --key 'Kino|Lalka' --ref HEAD --threads 3 > /dev/null
+check "a ref's results are kept per recording, ref, tool files and filed answers; --threads reaches the JVM" "1 1" \
+  "$(grep -c -- "--results $cache/slice/777/results/$head-[0-9a-f]\{8\}-none " "$work/calls") $(grep -c -- '--threads 3' "$work/calls")"
+rm -f "$work/calls"; slice de --recording 777 --key 'Kino|Lalka' --ref HEAD --fresh > /dev/null
+check "--fresh decides every slice again" "0" "$(grep -c -- '--results' "$work/calls")"
+
+# --serve: the batch goes to the ref's kept JVM — started once, then reused — which writes the takes the diff reads
+rm -f "$work/calls"
+out=$(slice de --recording 777 --key 'Kino|Lalka' --ref HEAD --serve)
+slice de --recording 777 --batch "$work/b.tsv" --ref HEAD --serve --out "$work/served.tsv" > /dev/null
+check "--serve starts one kept JVM per ref and recording, and sends it each batch" "1 2" \
+  "$(grep -c -- "--serve $cache/serve/" "$work/calls") $(grep -c '^request ' "$work/calls")"
+check "...each request carrying the batch's own arguments and where to write its takes" "1 1" \
+  "$(grep -c "^request --labels .*--batch $work/b.tsv" "$work/calls") $(grep -c 'Kino|Lalka' "$work/served.tsv")"
+check "...its output streamed back" "decided by the kept JVM" "$out"
+STUB="$work" PATH="$work/bin:$PATH" KINOWO_IDENTITY_CACHE="$cache" "$repo/scripts/identity-slice" --stop-served 2> /dev/null
+check "--stop-served stops every kept JVM" "0" "$(find "$cache/serve" -name '*.pid' | wc -l | tr -d ' ')"
+rm -f "$work/calls"; slice de --recording 777 --key 'Kino|Lalka' --ref HEAD --serve > /dev/null
+check "...and the next --serve starts another" "1" "$(grep -c -- "--serve $cache/serve/" "$work/calls")"
+STUB="$work" PATH="$work/bin:$PATH" KINOWO_IDENTITY_CACHE="$cache" "$repo/scripts/identity-slice" --stop-served 2> /dev/null
+
 # --prod-mirror: prod's state from the LOCAL mirror, its freshness checked against the recording first
 rm -f "$work/calls"
 slice de --recording 777 --key 'Kino|Lalka' --prod-mirror > /dev/null
 check "--prod-mirror checks the mirror's freshness against the recording's moment" "1" \
   "$(grep -c -- '^freshness de --quiet .*--not-before 2026-10-14T05:00:00Z' "$work/calls")"
 check "...then hands the slice the LOCAL mirror, never prod" "1" "$(grep -c -- '--prod-mirror mongodb://127.0.0.1:28017/' "$work/calls")"
+check "...and keeps no result of prod's moment for another call" "0" "$(grep -c -- '--results' "$work/calls")"
 rm -f "$work/calls"
 KINOWO_DEPLOYED_WORKER=0123abcd slice de --recording 777 --key 'Kino|Lalka' --prod-mirror > /dev/null
 check "...and names the deployed worker build whose code wrote the mirror's state" "1 1" \

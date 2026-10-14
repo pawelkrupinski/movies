@@ -24,4 +24,39 @@ class IdentitySliceBatchSpec extends AnyFlatSpec with Matchers {
     IdentitySlice.sameCluster(Seq(selector(pantoA) -> Set(pantoA), selector(heat) -> Set(heat), selector(pantoB) -> Set(pantoB),
       none -> Set.empty), index, 0) shouldBe Seq(selector(pantoA) -> Set(pantoA, pantoB), selector(heat) -> Set(heat), none -> Set.empty)
   }
+
+  "Many slices" should "be decided at once, and handed on in the batch's order whichever finishes first" in {
+    val running = new java.util.concurrent.atomic.AtomicInteger()
+    val most    = new java.util.concurrent.atomic.AtomicInteger()
+    val handed  = scala.collection.mutable.ListBuffer.empty[Int]
+    IdentitySlice.inOrder(Seq(5, 4, 3, 2, 1), threads = 3) { n =>
+      most.accumulateAndGet(running.incrementAndGet(), math.max)
+      Thread.sleep(n * 20L)
+      running.decrementAndGet()
+      n
+    }(handed += _)
+    handed.toList shouldBe List(5, 4, 3, 2, 1)
+    most.get should be > 1
+  }
+
+  "A slice's result" should "be decided once and read back from its directory after" in {
+    val dir = java.nio.file.Files.createTempDirectory("results").resolve("slice")
+    var decided = 0
+    def decide = { decided += 1; IdentitySlice.SliceResult("## report\n", Seq("a\tb"), Nil) }
+    val first = IdentitySlice.kept(Some(dir))(decide)
+    IdentitySlice.kept(Some(dir))(decide) shouldBe first
+    decided shouldBe 1
+    IdentitySlice.kept(None)(decide)
+    decided shouldBe 2
+  }
+
+  it should "be kept under the labels about its listings, not every label" in {
+    val o = IdentitySlice.Options()
+    def label(title: String, film: String) = tools.UnmatchedClusters.Label("pl", "*", title, film, right = true, "")
+    def keyOf(labels: Seq[tools.UnmatchedClusters.Label]) = IdentitySlice.resultKey(selector(pantoA), Set(pantoA, pantoB), o, labels, models.Country.Poland)
+    val bare = keyOf(Nil)
+    keyOf(Seq(label("Heat", "tmdb:1"))) shouldBe bare
+    keyOf(Seq(label("Panto", "tmdb:2"))) should not be bare
+    IdentitySlice.resultKey(selector(pantoA), Set(pantoA, pantoB), o.copy(widen = 1), Nil, models.Country.Poland) should not be bare
+  }
 }
