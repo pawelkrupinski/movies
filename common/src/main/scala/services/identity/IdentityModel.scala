@@ -375,7 +375,22 @@ enum Answer[+A] {
     case Unknown  => None
   }
   def isKnown: Boolean = this != Unknown
+  def map[B](f: A => B): Answer[B] = this match {
+    case Known(v) => Known(f(v))
+    case Unknown  => Unknown
+  }
+  /** This answer, or — the source not knowing — `other`'s. */
+  def orElse[B >: A](other: => Answer[B]): Answer[B] = if (isKnown) this else other
 }
+
+object Answer {
+  /** Every answer's value, or Unknown when any one is. */
+  def sequence[A](answers: Seq[Answer[A]]): Answer[Seq[A]] =
+    if (answers.forall(_.isKnown)) Known(answers.flatMap(_.toOption)) else Unknown
+}
+
+/** What a store holds, as an answer: none held is Unknown. */
+extension [A](held: Option[A]) def toAnswer: Answer[A] = held.fold[Answer[A]](Answer.Unknown)(Answer.Known(_))
 
 /** The questions the resolver asks. A function of one evidence: which is what makes the whole
  *  query set a function of the listing SET (assumption A1). */

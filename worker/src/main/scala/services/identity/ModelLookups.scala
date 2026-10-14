@@ -34,16 +34,7 @@ final class StoredFirstLookups(stored: IdentityLookups, live: IdentityLookups) e
   override def released(queries: Iterable[CandidateQuery], films: Iterable[Int], details: Iterable[services.movies.ListingKey]): Unit =
     stored.released(queries, films, details)
 
-  def candidates(query: CandidateQuery): Answer[Seq[Hit]] = stored.candidates(query) match {
-    case Answer.Unknown => live.candidates(query)
-    case known          => known
-  }
-  def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = stored.film(tmdbId) match {
-    case Answer.Unknown => live.film(tmdbId)
-    case known          => known
-  }
-  override def cast(tmdbId: Int): Answer[Option[Seq[String]]] = stored.cast(tmdbId) match {
-    case Answer.Unknown => live.cast(tmdbId)
-    case known          => known
-  }
+  def candidates(query: CandidateQuery): Answer[Seq[Hit]] = stored.candidates(query).orElse(live.candidates(query))
+  def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = stored.film(tmdbId).orElse(live.film(tmdbId))
+  override def cast(tmdbId: Int): Answer[Option[Seq[String]]] = stored.cast(tmdbId).orElse(live.cast(tmdbId))
 }

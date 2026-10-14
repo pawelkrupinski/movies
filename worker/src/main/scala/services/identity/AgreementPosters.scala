@@ -26,9 +26,9 @@ final class PosterAnswerStore(answers: FamilyAnswerStore, clock: Clock) extends 
   import PosterAnswers.idOf
 
   def venue(url: String): Answer[Option[PosterHash]] =
-    document(idOf(PosterQuestion.Venue(url))).fold[Answer[Option[PosterHash]]](Answer.Unknown)(d => Answer.Known(hashesOf(d).headOption))
+    document(idOf(PosterQuestion.Venue(url))).map(d => hashesOf(d).headOption).toAnswer
   def film(tmdbId: Int): Answer[Seq[PosterHash]] =
-    document(idOf(PosterQuestion.Film(tmdbId))).fold[Answer[Seq[PosterHash]]](Answer.Unknown)(d => Answer.Known(hashesOf(d)))
+    document(idOf(PosterQuestion.Film(tmdbId))).map(hashesOf).toAnswer
 
   /** `question`'s posters, filed: one at most for a venue's poster, a film's up to [[PosterEvidence.FilmPosters]], and a
    *  film's each with the TMDB path it was read from. A venue poster with none was not READ — its link fetches nothing,

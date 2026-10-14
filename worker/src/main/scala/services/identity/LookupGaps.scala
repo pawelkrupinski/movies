@@ -24,7 +24,7 @@ final class LookupGaps extends TmdbIdentityLookups.Gaps {
   }
   def answered[A](read: => A): Answer[A] = {
     val before = onThread.get
-    scala.util.Try(read).toOption.filter(_ => onThread.get == before).fold[Answer[A]](Answer.Unknown)(Answer.Known(_))
+    scala.util.Try(read).toOption.filter(_ => onThread.get == before).toAnswer
   }
   def total: Long = count.get()
   def byKind: Map[String, Long] = { import scala.jdk.CollectionConverters._; kinds.asScala.view.mapValues(_.get).toMap }

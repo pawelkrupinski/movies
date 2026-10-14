@@ -2,6 +2,7 @@ package services.identity.agreement
 
 import services.identity.{Acceptance, Answer, CandidateQuery, DetailFacts, FactRelations, Hit, IdentityCalibration, IdentityLookups, IdentityMeasures,
   IdentityResolver, Listing, ListingShape}
+import services.identity.toAnswer
 import services.movies.{TitleContainment, TitleNormalizer}
 
 import scala.collection.mutable
@@ -109,9 +110,9 @@ final class FamilyLookups(answers: FamilyAnswers, venues: IdentityLookups, listi
   override def detail(listing: Listing): Answer[Option[DetailFacts]] = venues.detail(listing)
   override def candidates(query: CandidateQuery): Answer[Seq[Hit]] = query match {
     case CandidateQuery.Title(text) if answers.family.latinTitlesOnly && !FamilyLookups.hasLatinWord(text) => Answer.Known(Nil)
-    case CandidateQuery.Title(text)    => answers.titled(text).mapKnown(ranked)
+    case CandidateQuery.Title(text)    => answers.titled(text).map(ranked)
     case CandidateQuery.Director(_) if !answers.family.searchesDirectors => Answer.Known(Nil)
-    case CandidateQuery.Director(name) => answers.directedBy(name).mapKnown(ranked)
+    case CandidateQuery.Director(name) => answers.directedBy(name).map(ranked)
     case _                             => Answer.Known(Nil)
   }
   private def ranked(hits: Seq[SourceHit]): Seq[Hit] = hits.zipWithIndex.map { case (hit, rank) =>
@@ -136,13 +137,8 @@ final class FamilyLookups(answers: FamilyAnswers, venues: IdentityLookups, listi
     named.get(number).filter(fetched(number, _)).fold[Answer[Option[IdentityMeasures.Film]]](Answer.Known(None)) { hit =>
       val answer = answers.record(hit.id)
       answer.toOption.flatten.foreach(record => read(hit.id) = record)
-      answer.mapKnown(_.map(_.film))
+      answer.map(_.map(_.film))
     }
-
-  extension [A](answer: Answer[A]) private def mapKnown[B](f: A => B): Answer[B] = answer match {
-    case Answer.Known(value) => Answer.Known(f(value))
-    case Answer.Unknown      => Answer.Unknown
-  }
 }
 
 object FamilyLookups {
@@ -200,7 +196,7 @@ object Agreement {
       case Seq(number) =>
         (for { id <- lookups.idOf(number); answered <- answers.record(id).toOption; record <- answered }
           yield FamilyVerdict(answers.family, Some(FamilyPick(answers.family, id, record)), lookups.weighed))
-          .fold[Answer[FamilyVerdict]](Answer.Unknown)(Answer.Known(_))
+          .toAnswer
       case _ => // none, or the family splits the cluster: no one film
         Answer.Known(FamilyVerdict(answers.family, None, lookups.weighed, leaningOf(scored.evidence, lookups, answers)))
     }

@@ -24,10 +24,10 @@ final class CatalogueAnswerStore(answers: FamilyAnswerStore, clock: Clock, pages
 
   def linked(page: String): Answer[Seq[CatalogueId]] =
     if (CatalogueLinks.pagesOf(page, pages).isEmpty) Answer.Known(Nil)
-    else answers.document(pageId(page)).fold[Answer[Seq[CatalogueId]]](Answer.Unknown)(d => Answer.Known(linksOf(d)))
+    else answers.document(pageId(page)).map(linksOf).toAnswer
 
   def mapped(id: CatalogueId): Answer[Seq[CatalogueHit]] =
-    answers.document(idOf(id)).fold[Answer[Seq[CatalogueHit]]](Answer.Unknown)(d => Answer.Known(hitsOf(d)))
+    answers.document(idOf(id)).map(hitsOf).toAnswer
 
   def fileMapped(id: CatalogueId, hits: Seq[CatalogueHit]): Unit = answers.put(idOf(id), new BsonDocument("hits", BsonArray.fromIterable(hits.map { hit =>
     val d = new BsonDocument("via", BsonString(hit.via))

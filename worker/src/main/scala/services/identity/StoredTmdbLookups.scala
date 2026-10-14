@@ -71,17 +71,17 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
       document(TmdbKind.Query, personSearchOf(name)).fold[Answer[Seq[Hit]]](Answer.Unknown) { search =>
         val people = intsOf(search).take(MaxPersonCandidates).map(id => document(TmdbKind.Person, id.toString))
         if (people.exists(_.isEmpty)) Answer.Unknown
-        else sequence(people.flatten.map { p =>
+        else Answer.sequence(people.flatten.map { p =>
           val directed = intsOf(p, "directed")
           hitsOf(if (directed.nonEmpty) directed else intsOf(p, "wrote"))
-        }).mapKnown(_.flatten.distinctBy(_.tmdbId))
+        }).map(_.flatten.distinctBy(_.tmdbId))
       }
     case CandidateQuery.Imdb(title) =>
       val id = TmdbStore.suggestionsId(ImdbClient.suggestionUrl(title))
       document(TmdbKind.Query, id).fold[Answer[Seq[Hit]]](Answer.Unknown) { d =>
         val finds = suggestionIds(d, title).map(tt => document(TmdbKind.Query, TmdbStore.findId(tt)))
         if (finds.exists(_.isEmpty)) Answer.Unknown
-        else sequence(finds.flatten.map(f => hitsOf(intsOf(f).take(1)))).mapKnown(_.flatten.distinctBy(_.tmdbId))
+        else Answer.sequence(finds.flatten.map(f => hitsOf(intsOf(f).take(1)))).map(_.flatten.distinctBy(_.tmdbId))
       }
     case CandidateQuery.ImdbTitled(title) =>
       document(TmdbKind.Query, TmdbStore.suggestionsId(ImdbClient.suggestionUrl(title))).fold[Answer[Seq[Hit]]](Answer.Unknown) { d =>
@@ -90,7 +90,7 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
           .fold[Answer[Seq[Hit]]](Answer.Unknown) { ids =>
             val finds = ids.map(tt => tt -> document(TmdbKind.Query, TmdbStore.findId(tt)))
             if (finds.exists(_._2.isEmpty)) Answer.Unknown
-            else sequence(finds.flatMap(_._2).map(f => hitsOf(intsOf(f).take(1)))).mapKnown(found =>
+            else Answer.sequence(finds.flatMap(_._2).map(f => hitsOf(intsOf(f).take(1)))).map(found =>
               TmdbIdentityLookups.titledHits(found, TmdbIdentityLookups.fallbackHits(finds.collect { case (tt, Some(f)) if intsOf(f).isEmpty => tt }, movies)))
           }
       }
@@ -161,7 +161,7 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
   private def fallbackFilm(id: Int): Answer[Option[IdentityMeasures.Film]] =
     FallbackIds.imdbId(id).fold[Answer[Option[IdentityMeasures.Film]]](Answer.Known(None)) { tt =>
       document(TmdbKind.Query, TmdbStore.imdbRecordId(tt)).flatMap(d => Option(d.get("record")))
-        .fold[Answer[Option[IdentityMeasures.Film]]](Answer.Unknown)(record => Answer.Known(IdentityAnswerBson.filmOf(record)))
+        .map(IdentityAnswerBson.filmOf).toAnswer
     }
 
   // ── documents, read once per prefetch and filed with `reads` ──────────────────────
@@ -235,12 +235,4 @@ object StoredTmdbLookups {
 
   private def stringsOf(d: BsonDocument, field: String): Seq[String] =
     Option(d.get(field)).filter(_.isArray).toSeq.flatMap(_.asArray.getValues.asScala.map(_.asString.getValue))
-
-  extension [A](answer: Answer[A]) private def mapKnown[B](f: A => B): Answer[B] = answer match {
-    case Answer.Known(value) => Answer.Known(f(value))
-    case Answer.Unknown      => Answer.Unknown
-  }
-
-  private def sequence[A](answers: Seq[Answer[A]]): Answer[Seq[A]] =
-    if (answers.forall(_.toOption.isDefined)) Answer.Known(answers.flatMap(_.toOption)) else Answer.Unknown
 }

@@ -46,9 +46,9 @@ final class FamilyAnswerStore(docs: TmdbDocuments, clock: Clock) extends service
     def titled(text: String): Answer[Seq[SourceHit]]     = hits(titleId(family, text))
     def directedBy(name: String): Answer[Seq[SourceHit]] = hits(directorId(family, name))
     def record(id: String): Answer[Option[SourceRecord]] =
-      document(recordId(family, id)).fold[Answer[Option[SourceRecord]]](Answer.Unknown)(d => Answer.Known(recordOf(d)))
+      document(recordId(family, id)).map(recordOf).toAnswer
     override def showing(venue: String): Answer[Seq[Showing]] =
-      document(showingId(family, venue)).fold[Answer[Seq[Showing]]](Answer.Unknown)(d => Answer.Known(showingsOf(d)))
+      document(showingId(family, venue)).map(showingsOf).toAnswer
     override def fresh(question: String): Boolean = !wanted(questionId(family, question))
   }
 
@@ -62,7 +62,7 @@ final class FamilyAnswerStore(docs: TmdbDocuments, clock: Clock) extends service
     document(id).forall(TmdbStore.olderThan(_, if (id.contains("|record|")) RecordAge else if (id.contains("|showing|")) ShowingAge else SearchAge, clock))
 
   private def hits(id: String): Answer[Seq[SourceHit]] =
-    document(id).fold[Answer[Seq[SourceHit]]](Answer.Unknown)(d => Answer.Known(hitsOf(d)))
+    document(id).map(hitsOf).toAnswer
   // Read as an answer: kept by the worker's document cache (`CachedTmdbDocuments`) until a filing replaces it — a whole-
   // document `get` asks Mongo each time, and the stage checks each waiting cluster's questions on every projection.
   private[identity] def document(id: String): Option[BsonDocument] = docs.answers(TmdbKind.Family, Seq(id)).get(id)

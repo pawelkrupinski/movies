@@ -115,7 +115,7 @@ object TmdbIdentityLookups {
   final class CountedGaps(misses: () => Long) extends Gaps {
     def answered[A](read: => A): Answer[A] = synchronized {
       val before = misses()
-      Try(read).toOption.filter(_ => misses() == before).fold[Answer[A]](Answer.Unknown)(Answer.Known(_))
+      Try(read).toOption.filter(_ => misses() == before).toAnswer
     }
   }
 }
