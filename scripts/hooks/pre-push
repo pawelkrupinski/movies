@@ -38,7 +38,9 @@
 # RED BUILDS GATE EVERY PUSH TO MAIN. Before any path check: when the newest COMPLETED run on main of a
 # gating workflow (Main, Identity model convergence, Record scrape fixtures; a cancelled run says nothing
 # and is passed over) is red, the push lands only as a fix for it — every pushed commit carries a
-# `Fixes-Red: <run id>` trailer naming one of the red runs. On 2026-10-13/14, 50 of 96 identity commits
+# `Fixes-Red: <run id>` trailer naming one of the red runs — except a commit touching no production path
+# (*/src/main/, conf/, build.sbt, project/, infra/nix/, infra/kubernetes/, Dockerfile): tools — scripts, docs,
+# skills, tests, fixtures, CI tooling — land while red (user, 2026-10-14). On 2026-10-13/14, 50 of 96 identity commits
 # landed while Identity model convergence was red: 3f11e2cc3's wrong switches hid behind a DE red for six
 # hours, and three gates and label batches each turned it red again. One `gh run list` a workflow, each
 # bounded; gh missing or unreachable is said out loud and does not block (it is no evidence of a red).
@@ -171,8 +173,26 @@ newest_verdict() { # <workflow name>
               | "\(.conclusion) \(.databaseId) \(.url)"'
 }
 
-# Refuses a push to main while a gating workflow's newest verdict is red, unless every pushed commit names one of the
-# red runs in a `Fixes-Red: <run id>` trailer. <range>... the pushed commits.
+# A production path: what reaches a running pod or a fleet host. Everything else — scripts/, docs/, .claude/, the
+# test, it and fixture trees, test/resources/, .github/ tooling — is tools, which may land while red (user, 2026-10-14).
+is_production_path() { # <path>
+    case "$1" in
+        */src/main/*|conf/*|*/conf/*|build.sbt|project/*|infra/nix/*|infra/kubernetes/*|Dockerfile) return 0 ;;
+    esac
+    return 1
+}
+
+# Whether <commit> changes any production path.
+touches_production() { # <commit>
+    local path
+    while IFS= read -r path; do
+        [ -n "$path" ] && is_production_path "$path" && return 0
+    done < <(git diff-tree --no-commit-id --name-only -r --root -m "$1")
+    return 1
+}
+
+# Refuses a push to main while a gating workflow's newest verdict is red, unless every pushed commit that touches a
+# production path names one of the red runs in a `Fixes-Red: <run id>` trailer. <range>... the pushed commits.
 check_redgate() {
     command -v gh >/dev/null || { warn "gh not installed: the gating workflows' verdicts are unread — red-build gate SKIPPED"; return 0; }
     local workflow verdict conclusion id url reds="" commit fixes ok bad=0 r
@@ -189,6 +209,10 @@ check_redgate() {
     [ -z "$reds" ] && return 0
     for r in "$@"; do
         while IFS=$'\t' read -r commit fixes; do
+            if ! touches_production "$commit"; then
+                log "${commit:0:9} is tools-only (touch no production path): lands while red" >&2
+                continue
+            fi
             ok=0
             for id in $(printf '%s' "$fixes" | tr ',' ' '); do
                 case " $reds " in *" $id "*) ok=1 ;; esac
@@ -198,7 +222,7 @@ check_redgate() {
             bad=1
         done < <(git log --format='%H%x09%(trailers:key=Fixes-Red,valueonly,separator=%x2C)' "$r")
     done
-    [ "$bad" = 0 ] && { log "every pushed commit is declared a fix for a red run"; return 0; }
+    [ "$bad" = 0 ] && { log "every pushed production commit is declared a fix for a red run"; return 0; }
     warn "main is red: only a fix for it lands. Add 'Fixes-Red: <run id>' to each commit's message (git commit --amend"
     warn "on unpushed commits), or bypass with PREPUSH_SKIP=redgate."
     return 1

@@ -197,19 +197,24 @@ printf '\033[36m▸\033[0m pre-push: red builds gate a push to main\n'
 gate="$(mktemp -d)"
 grepo="$gate/repo"; mkdir -p "$grepo"
 scratch_repo "$grepo"
-echo a > "$grepo/README"; scratch_git "$grepo" add README; scratch_git "$grepo" commit -qm base
-gbase="$(scratch_git "$grepo" rev-parse HEAD)"
-echo b >> "$grepo/README"; scratch_git "$grepo" commit -qam "docs only" -m "Fixes-Red: 38520439037"
-fixing="$(scratch_git "$grepo" rev-parse HEAD)"
-echo c >> "$grepo/README"; scratch_git "$grepo" commit -qam "an undeclared change"
-plain="$(scratch_git "$grepo" rev-parse HEAD)"
+# touch <path>... and commit them with the given message lines; prints the new commit.
+commit_paths() { # <message> [<trailer line>] -- <path>...
+  local msg=() p
+  while [ "$1" != -- ]; do msg+=(-m "$1"); shift; done; shift
+  for p in "$@"; do mkdir -p "$grepo/$(dirname "$p")"; echo "$RANDOM" >> "$grepo/$p"; scratch_git "$grepo" add "$p"; done
+  scratch_git "$grepo" commit -q "${msg[@]}"; scratch_git "$grepo" rev-parse HEAD; }
+gbase="$(commit_paths base -- README web/src/main/scala/A.scala)"
+fixing="$(commit_paths "a production fix" "Fixes-Red: 38520439037" -- web/src/main/scala/A.scala)"
+plain="$(commit_paths "an undeclared production change" -- web/src/main/scala/A.scala)"
 run_json() { printf '{"databaseId":%s,"status":"%s","conclusion":"%s","url":"https://x/%s"}' "$1" "$2" "$3" "$1"; }
 red="$(run_json 38520439037 completed failure 38520439037)"
 green="$(run_json 38487614044 completed success 38487614044)"
 cancelled="$(run_json 38470049143 completed cancelled 38470049143)"
 running="$(run_json 38529260149 in_progress "" 38529260149)"
+# Only the gate is under test here: the path checks the pushed paths select are skipped (the cases above cover them).
+pathchecks="judgements eslint drift snapshot dashboards sbt hooktest actionlint shellcheck ios"
 push() { # <range> -> exit code; stderr in $gate/err
-  (cd "$grepo" && bash "$REPO_ROOT/scripts/hooks/pre-push" --range "$1" >/dev/null 2>"$gate/err"); echo $?; }
+  (cd "$grepo" && PREPUSH_SKIP="${PREPUSH_SKIP:-} $pathchecks" bash "$REPO_ROOT/scripts/hooks/pre-push" --range "$1" >/dev/null 2>"$gate/err"); echo $?; }
 check "every workflow green: the push lands" "0" "$(GH_MAIN="[$green]" GH_IMC="[$green]" GH_REC="[$green]" push "$gbase..$plain")"
 check "a red Identity model convergence refuses an undeclared commit" "1" "$(GH_IMC="[$red,$green]" push "$gbase..$plain")"
 check "...naming the red run" "1" "$(grep -c 'Identity model convergence is RED on main: run 38520439037' "$gate/err")"
@@ -222,6 +227,26 @@ check "a Fixes-Red: naming another run is no declaration" "1" "$(GH_IMC="[$(run_
 check "a cancelled or running newest run says nothing: the decided one before it counts" "1" \
   "$(GH_IMC="[$running,$cancelled,$red,$green]" push "$gbase..$plain")"
 check "...and a green one before them lets it land" "0" "$(GH_IMC="[$cancelled,$green,$red]" push "$gbase..$plain")"
+# The user's rule (2026-10-14): tools may land while red; production waits for green. A commit touching no production
+# path (*/src/main/, conf/, build.sbt, project/, infra/nix/, infra/kubernetes/, Dockerfile) needs no Fixes-Red: trailer.
+tools="$(scratch_git "$grepo" rev-parse HEAD)"
+for p in scripts/x.sh docs/x.md .claude/skills/x/SKILL.md worker/src/test/scala/XSpec.scala worker/src/it/scala/XSpec.scala \
+         worker/src/fixtures/x.json "test/resources/x.json" .github/workflows/x.yml README CLAUDE.md; do
+  tools="$(commit_paths "tools-only: $p" -- "$p")"
+done
+check "a red build lets tools-only commits land without a Fixes-Red: trailer" "0" \
+  "$(GH_IMC="[$red]" GH_MAIN="[$red]" push "$plain..$tools")"
+check "...said out loud, once a commit" "10" "$(grep -c 'touch no production path' "$gate/err")"
+for p in web/src/main/scala/B.scala common/src/main/resources/x.conf conf/application.conf build.sbt project/plugins.sbt \
+         infra/nix/hosts/x.nix infra/kubernetes/apps/x.yaml Dockerfile; do
+  mixed="$(commit_paths "tools and $p" -- scripts/y.sh "$p")"
+  check "a commit also touching $p is production: refused while red" "1" "$(GH_IMC="[$red]" push "$tools..$mixed")"
+  scratch_git "$grepo" reset -q --hard "$tools"
+done
+check "a tools-only push with one undeclared production commit in it is refused" "1" \
+  "$(GH_IMC="[$red]" push "$gbase..$tools")"
+check "...naming only the production commit" "1 0" \
+  "$(grep -c "${plain:0:9} carries no Fixes-Red" "$gate/err") $(grep -c "${tools:0:9} carries no Fixes-Red" "$gate/err")"
 check "PREPUSH_SKIP=redgate bypasses it, said out loud" "0 1" \
   "$(GH_IMC="[$red]" PREPUSH_SKIP=redgate push "$gbase..$plain") $(grep -c 'redgate SKIPPED' "$gate/err")"
 check "gh failing is said for each workflow, and does not block" "0 3" "$(GH_FAILS=1 push "$gbase..$plain") $(grep -c 'HTTP 502' "$gate/err")"
@@ -229,10 +254,10 @@ start=$SECONDS
 code="$(GH_HANGS=1 PREPUSH_GH_SECONDS=1 push "$gbase..$plain")"
 check "gh hanging is cut off within its bound, and does not block" "0 yes" "$code $([ $((SECONDS - start)) -lt 10 ] && echo yes || echo no)"
 out="$(cd "$grepo" && printf 'refs/heads/x %s refs/heads/x %s\n' "$plain" "$gbase" \
-        | GH_IMC="[$red]" bash "$REPO_ROOT/scripts/hooks/pre-push" origin url 2>&1)"; code=$?
+        | GH_IMC="[$red]" PREPUSH_SKIP="$pathchecks" bash "$REPO_ROOT/scripts/hooks/pre-push" origin url 2>&1)"; code=$?
 check "a push to another branch than main is not gated" "0 0" "$code $(printf '%s\n' "$out" | grep -c 'RED on main')"
 out="$(cd "$grepo" && printf 'refs/heads/main %s refs/heads/main %s\n' "$plain" "$gbase" \
-        | GH_IMC="[$red]" bash "$REPO_ROOT/scripts/hooks/pre-push" origin url 2>&1)"; code=$?
+        | GH_IMC="[$red]" PREPUSH_SKIP="$pathchecks" bash "$REPO_ROOT/scripts/hooks/pre-push" origin url 2>&1)"; code=$?
 check "a real push to main reads git's stdin and is gated" "1" "$code"
 rm -rf "$gate"
 

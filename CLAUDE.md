@@ -50,7 +50,12 @@ it replaces none of them.
 reads the newest COMPLETED run on main of Main, Identity model
 convergence and Record scrape fixtures (a cancelled run says nothing);
 while any is red, a push lands only as a fix for it: every pushed commit
-carries a `Fixes-Red: <run id>` trailer naming one of the red runs.
+that touches a production path (`*/src/main/`, `conf/`, `build.sbt`,
+`project/`, `infra/nix/`, `infra/kubernetes/`, `Dockerfile`) carries a
+`Fixes-Red: <run id>` trailer naming one of the red runs. Tools-only
+commits — scripts, docs, `.claude/` skills, `*/src/test|it|fixtures/`,
+`test/resources/`, `.github/` — land while red without one (user,
+2026-10-14).
 2026-10-13/14 is why: 50 of 96 identity commits landed on a red
 convergence suite, 3f11e2cc3's wrong switches hid behind it for six
 hours, and three gates and label batches each turned it red again. One
