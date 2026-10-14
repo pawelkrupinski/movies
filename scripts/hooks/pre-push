@@ -47,7 +47,8 @@
 # landed while Identity model convergence was red: 3f11e2cc3's wrong switches hid behind a DE red for six
 # hours, and three gates and label batches each turned it red again. One `gh run list` a workflow, each
 # bounded; gh missing or unreachable is said out loud and does not block (it is no evidence of a red).
-# Bypass: PREPUSH_SKIP=redgate.
+# Bypass: PREPUSH_SKIP=redgate. NOT gating: the Identity findings report (a recording's own suspects and
+# corpus-shape findings, red after 3 days untriaged) -- no push makes or mends a recording's data.
 #
 # BYPASS: `git push --no-verify` skips the whole hook. `PREPUSH_SKIP="ios sbt" git push` skips
 # the named checks. A tool that is not installed (actionlint, shellcheck, Docker, Xcode) is

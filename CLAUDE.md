@@ -60,7 +60,15 @@ commits — scripts, docs, `.claude/` skills, `*/src/test|it|fixtures/`,
 2026-10-14).
 2026-10-13/14 is why: 50 of 96 identity commits landed on a red
 convergence suite, 3f11e2cc3's wrong switches hid behind it for six
-hours, and three gates and label batches each turned it red again. One
+hours, and three gates and label batches each turned it red again.
+Those gates now judge only what a commit's CODE changed: the identity
+takes check resolves one recording at the base and the head and fails on
+a take moved, a suspect take new at the head, or a corpus-shape finding
+only the head has. What a recording brings (a suspect it carries, a
+marker in a query) stands at both, so it never turns these red; it goes
+to the **Identity findings report** (one issue per country, red after 3
+days untriaged), which is NOT a gating workflow, because no push makes
+or mends a recording's data. One
 bounded `gh run list` a workflow; gh missing or unreachable is warned
 and does not block. Bypass: `PREPUSH_SKIP=redgate` — say so. Bypass: `PREPUSH_SKIP="ios sbt" git push`
 skips named checks, `git push --no-verify` skips all of them — say so

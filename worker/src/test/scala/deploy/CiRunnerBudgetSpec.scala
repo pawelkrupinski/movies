@@ -80,7 +80,8 @@ class CiRunnerBudgetSpec extends AnyFlatSpec with Matchers {
   /**
    * The slots ci.yml does NOT take are deliberate. One is main.yml's `gates` (below).
    * The other `Headroom` are for the workflows that overlap a push — Country convergence
-   * (which Main kicks off itself), dispatched identity runs, the mobile workflows — which
+   * (which Main kicks off itself), dispatched identity runs, the mobile workflows, the Identity
+   * findings report (one runner, a minute, after each recording) — which
    * hold runners for 20-40 min: with ci filling 19 slots each of their jobs queued one of
    * these rows, and 12 Main runs to 2026-10-01 had ci rows starting a median 1.2-2.0 min
    * late. This was an EXACT-fill assertion while the 20th slot was `free-runners`

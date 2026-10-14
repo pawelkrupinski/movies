@@ -1,0 +1,121 @@
+#
+# THE IDENTITY FINDINGS REPORT: the newest recording's whole-corpus findings, triaged from one GitHub issue
+# per country ("Identity findings: <cc>") rather than failing builds.
+#
+# WHY A WORKFLOW OF ITS OWN. On 10-13/14 the convergence legs began failing on whole-corpus findings -- a
+# suspect take no label judges (SuspectTakesAudit), a screening marker left in a query (SearchQueryMarkersSpec),
+# a slot field read off the wrong node (CinemaSlotInvariantsSpec). Those judge the recording as much as the
+# code: a listing that first appeared in last night's recording turned every push red, and the red-build gate
+# (scripts/hooks/pre-push) held unrelated pushes behind it. Now the BLOCKING gates judge only what a commit's
+# code changed -- the identity takes check resolves one recording at the base and the head
+# (scripts/ci/identity_takes_diff.py, corpus_shape_diff.py) -- and the recording's own findings come here.
+#
+# IT RE-RUNS NOTHING. Each `Record scrape fixtures` run's convergence rows already audit the newest recording
+# whole -- the suite's suspect audit, and the corpus-shape specs ahead of it -- and leave the findings in their
+# `convergence-diagnostics-<cc>-convergence` artifact (reported there, never failing the recording). This reads
+# those: one runner for about a minute a day, where re-deriving them would cost a convergence boot per country.
+#
+# Runs when a recording completes, as a daily backstop, and by hand (`run-id`: any recording's run). Each
+# country's issue is updated in place with the findings and their triage commands, closed when empty, reopened
+# when one comes back. A finding untriaged for MORE THAN 3 DAYS turns this run red. That red is deliberately NOT
+# one of the red-build gate's workflows: a push neither makes nor mends a recording's data, so gating pushes on
+# its triage would rebuild the coupling this report exists to undo. It reaches the owner through the issue,
+# which is assigned to them, and through this run's own failure notification.
+#
+name: Identity findings report
+
+on:
+    workflow_run:
+        workflows: [Record scrape fixtures]
+        types: [completed]
+    # A backstop after the nightly recording (23:31 UTC) and its longest row (the United States', up to 6 h):
+    # the age limit is judged daily even if a recording's completion event never arrived.
+    schedule:
+        - cron: '41 7 * * *'
+    workflow_dispatch:
+        inputs:
+            run-id:
+                description: The Record scrape fixtures run whose findings to report (default the newest completed one on main).
+                required: false
+                type: string
+                default: ''
+
+concurrency:
+    group: identity-findings-report
+    cancel-in-progress: false
+
+permissions:
+    contents: read
+
+jobs:
+    findings:
+        # A recording off main records nothing hermetic legs replay: its findings are no one's to triage.
+        if: github.event_name != 'workflow_run' || github.event.workflow_run.head_branch == 'main'
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+        permissions:
+            contents: read
+            actions: read
+            issues: write
+        steps:
+            - uses: actions/checkout@v5
+              with:
+                  sparse-checkout: |
+                      scripts/ci
+                      test/resources/fixtures/identity-unmatched/labels.tsv
+                      test/resources/fixtures/identity-suspects/baseline.tsv
+                  sparse-checkout-cone-mode: false
+            - name: Report each country's findings
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  GH_REPO: ${{ github.repository }}
+                  EVENT_RUN: ${{ github.event.workflow_run.id }}
+                  INPUT_RUN: ${{ inputs.run-id }}
+                  OWNER: ${{ github.repository_owner }}
+              run: |
+                  run=${INPUT_RUN:-$EVENT_RUN}
+                  if [ -z "$run" ]; then
+                      run=$(gh run list --workflow "Record scrape fixtures" --branch main --status completed --limit 1 \
+                              --json databaseId --jq '.[0].databaseId')
+                  fi
+                  [ -n "$run" ] || { echo "::error::no completed Record scrape fixtures run to report"; exit 2; }
+                  echo "reporting the findings of recording run $run"
+                  python3 scripts/ci/identity_findings_report.py --run "$run" --assignee "$OWNER" --work "$RUNNER_TEMP/identity-findings"
+
+    # EVERY JOB'S AND STEP'S TIME (.github/actions/report-timings). Never fails the run.
+    timings:
+        needs: [findings]
+        if: ${{ !cancelled() }}
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        permissions:
+            actions: read
+            contents: read
+        steps:
+            - uses: actions/checkout@v5
+              with:
+                  sparse-checkout: |
+                      scripts/ci
+                      .github/actions/report-timings
+                  sparse-checkout-cone-mode: false
+            - uses: ./.github/actions/report-timings
+              with:
+                  grafana-url: ${{ secrets.GRAFANA_URL }}
+                  grafana-annotation-token: ${{ secrets.GRAFANA_ANNOTATION_TOKEN }}
+
+    # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --
+    # see .github/actions/report-scheduled-run (ScheduledRunReportSpec). Beside the per-country issues, which
+    # carry the findings themselves: this one says the report itself is red (overdue, or unable to run).
+    report:
+        needs: [findings, timings]
+        if: always() && !cancelled() && github.event_name == 'schedule'
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        permissions:
+            contents: read
+            issues: write
+        steps:
+            - uses: actions/checkout@v5
+            - uses: ./.github/actions/report-scheduled-run
+              with:
+                  failed: ${{ contains(needs.*.result, 'failure') }}
