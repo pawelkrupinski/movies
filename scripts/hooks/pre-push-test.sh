@@ -202,6 +202,19 @@ if command -v shellcheck >/dev/null; then
   check "...and says which process it is stepping around" "1" \
     "$(printf '%s\n' "$out" | grep -c "sbt (pid $live_sbt)")"
 
+  # The checkout's KEPT sbt server (scripts/sbt-warm, `sbt --client`) is no rival compiler: the check runs through it,
+  # in place and warm, instead of in a cold temporary checkout.
+  printf '#!/usr/bin/env bash\necho "$(pwd -P) $1" > "%s/sbt-ran-in"\n' "$scratch" > "$scratch/bin/sbt"
+  (cd "$repo" && exec -a "java -jar /fake/sbt-launch.jar --detach-stdio" sleep 300) &
+  live_sbt=$!
+  for _ in $(seq 1 100); do pgrep -f 'fake/sbt-launch.jar --detach' >/dev/null && break; sleep 0.1; done
+  rm -f "$scratch/sbt-ran-in"
+  out="$(cd "$repo" && PATH="$scratch/bin:$PATH" bash scripts/hooks/pre-push --range "$scala~1..$scala" 2>&1)"
+  kill "$live_sbt" 2>/dev/null; wait "$live_sbt" 2>/dev/null
+  check "with the checkout's kept sbt server, the sbt check runs through it, in place" \
+    "$(cd "$repo" && pwd -P) --client" "$(cat "$scratch/sbt-ran-in" 2>/dev/null)"
+  printf '#!/usr/bin/env bash\npwd -P > "%s/sbt-ran-in"\n' "$scratch" > "$scratch/bin/sbt"
+
   # Pushed from a worktree, git hands the hook GIT_DIR for THAT worktree. Left exported into the
   # temporary checkout, every git a check runs there read the pushing worktree's HEAD and index:
   # the drift check's `git status` and the snapshot stamp's `git ls-files` judged the wrong tree.

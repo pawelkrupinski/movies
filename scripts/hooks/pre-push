@@ -419,7 +419,13 @@ check_sbt() {
     for module in worker web; do
         tests+=("$module/Test/testOnly $(printf '%s\n' "$lints" | sed -n "s/^$module://p" | tr '\n' ' ' | sed 's/ $//')")
     done
-    sbt -batch -Dsbt.server.forcestart=false "${compiles[@]}" "${tests[@]}" > "$tmp/sbt.log" 2>&1 \
+    local run=(sbt -batch -Dsbt.server.forcestart=false "${compiles[@]}" "${tests[@]}")
+    if [ "$sbt_client" = 1 ]; then
+        local line
+        line="$(printf '%s; ' "${compiles[@]}" "${tests[@]}")"
+        run=(sbt --client "${line%; }")
+    fi
+    "${run[@]}" > "$tmp/sbt.log" 2>&1 \
         || { grep -E '\*\*\* FAILED|\[error\]|should|Error' "$tmp/sbt.log" | head -60 >&2; warn "full log: $tmp/sbt.log"; return 1; }
 }
 
@@ -486,11 +492,18 @@ live_sbt_in_checkout() {
     done
     return 1
 }
-isolate_reason=""
+isolate_reason="" sbt_client=0
 if ! in_place; then
     isolate_reason="the working tree is not ${head_sha:0:9}"
 elif printf '%s\n' "$checks" | grep -qx sbt && ! skipped sbt && live_pid="$(live_sbt_in_checkout)"; then
-    isolate_reason="a live sbt (pid $live_pid) shares this checkout's target/"
+    # the checkout's KEPT server (scripts/sbt-warm: `sbt --client`, launched --detach-stdio) is no rival compiler —
+    # it is the one compiler: the check runs through it, in place and warm
+    if ps -o args= -p "$live_pid" 2>/dev/null | grep -q -- '--detach-stdio'; then
+        sbt_client=1
+        log "the sbt check runs through this checkout's kept sbt server (pid $live_pid), warm"
+    else
+        isolate_reason="a live sbt (pid $live_pid) shares this checkout's target/"
+    fi
 fi
 if [ -n "$isolate_reason" ]; then
     tree="$tmp/tree"
