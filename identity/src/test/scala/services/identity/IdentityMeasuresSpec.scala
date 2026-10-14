@@ -66,6 +66,19 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.titleYearOf(Seq("Metropolis (rest. Fassung 2010)")) shouldBe None
   }
 
+  // UK Picture House Uckfield's "(ROH)" series (capture 2026-10-13): "Tosca (ROH)" {Oliver Mears} [205′] screens the RBO
+  // 2026/27 relay, whose record no search of the work's name reaches; a credit kept the season out of its searches
+  "a relay billing its house beside a credit or a running time" should "be searched with the season its screenings fall in" in {
+    val tosca = Listing("Tosca (ROH)", runtime = Some(205), directors = Seq("Oliver Mears"), screenedSeason = Some(2026))
+    IdentityMeasures.searchQueries(tosca) should contain ("Tosca 2026")
+    // a film named like a stage work, no house billed: its season is no search of it
+    IdentityMeasures.searchQueries(Listing("Tosca", runtime = Some(105), directors = Seq("Benoît Jacquot"), screenedSeason = Some(2026))) should
+      not contain "Tosca 2026"
+    // Flicks dates the relay by the page it links: the year it states is searched, and the season it screens in beside it
+    val carmen = IdentityMeasures.searchQueries(Listing("Royal Opera House: Carmen", year = Some(2024), runtime = Some(220), screenedSeason = Some(2026)))
+    carmen should contain allOf ("Carmen 2024", "Carmen 2026")
+  }
+
   // UK Lanternhouse's "Obsession (18)" (wrong-match hunt 10-14): the whole title, searched as billed, found only "80 Day
   // Obsession: Day 18" — the box office's BBFC certificate read as the title's own number
   "a box office's trailing certificate" should "be no part of any title shape or search" in {
