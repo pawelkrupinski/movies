@@ -2411,6 +2411,17 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
       linked.map(l => r.decisionOf(l.key).film).distinct.filter(_.contains(1279423)) shouldBe empty)
   }
 
+  it should "deny no short the venue's own title names, the copied title being the one it bills" in {
+    // DE Filmklubb's "UNSPOKEN", recording 38547714686: Cineamo links 68360m ("Unspoken", 2008) and copies the very title
+    // the venue bills. Denied as the link's pull, the 2021 short "Unspoken" no longer held the take below the cut, and a
+    // 2026 Chinese film TMDB titles "Unspoken" only among its others took it; the venue's page describes Lewandowski's 2024 film.
+    val films  = Seq(F(946385, "Unspoken", 2021, "Someone Short", 12, 3.0), F(68360, "Unspoken", 2008, "Somebody", 95, 0.5),
+      F(1273948, "以父亲之名", 2026, "Somebody Else", 100, 0.5, alternatives = Seq("Unspoken"), searched = false))
+    val linked = Seq(fed(listing(KinoMikro, "UNSPOKEN"), "cineamo", "68360m").copy(originalTitle = Some("Unspoken")))
+    val pool   = IdentityResolver.candidatesOf(linked, new FilmTable(films, normalizer), normalizer)(linked.contains).flatMap(_.candidates)
+    withClue(pool.map(_.render).mkString("\n"))(pool.filter(_.tmdbId == 946385).flatMap(_.denial).filter(_.startsWith("a short, its feed")) shouldBe empty)
+  }
+
   it should "deny the listing a film only the original title it copied names" in {
     // DE Mathäser's "Rodychi (UKRAJINA CINEMA)", recording 38363428661: Cineamo links 1658840m, Chereshnya's 2026
     // "Родичі", copying its English title "Kin" as the original; that title alone named Josh Baker's 2018 "Kin", which

@@ -229,7 +229,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
   private def denialByNode(node: EvidenceNode, id: Int): Option[String] =
     Option.when(pins.deniedFilms(node.listings.head.key)(id))("pinned never this film")
       .orElse(overruled(node).filter(_.film == id).map(_.denial))
-      .orElse(feedLinked(node).flatMap(FeedLink.deniesShort(_, id, candidateById(id).film)))
+      .orElse(feedLinked(node).filter(_ => FeedLink.copiesAnotherTitle(evidenceOf(node).measured)).flatMap(FeedLink.deniesShort(_, id, candidateById(id).film)))
       .orElse(namedOnlyByCopiedTitle(node, candidateById(id)))
       .orElse(Option.when(namesOnlyItsVenue(node, candidateById(id)))("its title names it only by the venue's own name"))
       .orElse(Option.when(namesOnlyATag(node, candidateById(id)))("its title names it only by a programme tag billed beside many titles"))
