@@ -218,6 +218,44 @@ else
   printf '  (shellcheck not installed — scratch-repository cases skipped)\n'
 fi
 
+# ── AN ABSOLUTE core.hooksPath STILL RUNS THE PUSHING WORKTREE'S OWN HOOK ──────────────────────────
+# core.hooksPath=scripts/hooks is relative, so each worktree runs its own checkout's hook. Something (very likely an
+# IDE's git integration) rewrote it to the ROOT checkout's absolute path three times on 2026-10-14, and every worktree's
+# push then ran the root checkout's OLD hook. The hook hands itself over to the pushing worktree's copy.
+printf '\033[36m▸\033[0m pre-push under an absolute core.hooksPath\n'
+hp="$(mktemp -d)"
+scratch_repo "$hp/origin.git" --bare
+scratch_repo "$hp/clone"
+mkdir -p "$hp/clone/scripts/hooks"
+# stamp <copy> <word>: the hook with a line, right after its hand-over, recording which copy went on to run
+stamp() { awk -v w="$2" -v m="$hp/ran" '{ print } /^# ── end of the hand-over ──/ { print "echo " w " >> " m }' \
+  "$REPO_ROOT/scripts/hooks/pre-push" > "$1"; chmod +x "$1"; }
+stamp "$hp/clone/scripts/hooks/pre-push" old
+echo base > "$hp/clone/README"; scratch_git "$hp/clone" add -A; scratch_git "$hp/clone" commit -qm base
+scratch_git "$hp/clone" remote add origin "$hp/origin.git"; scratch_git "$hp/clone" push -q origin HEAD:main 2>/dev/null
+scratch_git "$hp/clone" fetch -q origin
+scratch_git "$hp/clone" worktree add -q -b feature "$hp/wt" origin/main
+stamp "$hp/wt/scripts/hooks/pre-push" new
+echo doc > "$hp/wt/doc.md"; scratch_git "$hp/wt" add -A; scratch_git "$hp/wt" commit -qm "a newer hook"
+scratch_git "$hp/clone" config core.hooksPath "$hp/clone/scripts/hooks"
+rm -f "$hp/ran"
+out="$(scratch_git "$hp/wt" push origin HEAD:refs/heads/feature 2>&1)"
+check "an absolute hooksPath at the root's OLD hook still runs the pushing worktree's own" "new" "$(cat "$hp/ran" 2>/dev/null | tr '\n' ' ' | sed 's/ $//')"
+check "...and warns that the hooks path is absolute" "1" "$(printf '%s\n' "$out" | grep -c 'core.hooksPath is absolute')"
+rm -f "$hp/ran"
+scratch_git "$hp/clone" config core.hooksPath scripts/hooks
+echo more >> "$hp/wt/doc.md"; scratch_git "$hp/wt" commit -qam more
+out="$(scratch_git "$hp/wt" push origin HEAD:refs/heads/feature 2>&1)"
+check "the relative hooksPath runs the worktree's own hook once, no hand-over and no warning" "new 0" \
+  "$(cat "$hp/ran" 2>/dev/null | tr '\n' ' ' | sed 's/ $//') $(printf '%s\n' "$out" | grep -c 'core.hooksPath is absolute')"
+# a worktree whose hook is the very file the path names, or one handed over already, never hands over again
+rm -f "$hp/ran"
+scratch_git "$hp/clone" config core.hooksPath "$hp/clone/scripts/hooks"
+echo again >> "$hp/wt/doc.md"; scratch_git "$hp/wt" commit -qam again
+out="$(PREPUSH_DELEGATED_FROM=/elsewhere scratch_git "$hp/wt" push origin HEAD:refs/heads/feature 2>&1)"
+check "a hook already handed over to runs itself (no recursion)" "old" "$(cat "$hp/ran" 2>/dev/null | tr '\n' ' ' | sed 's/ $//')"
+rm -rf "$hp"
+
 # ── RED BUILDS GATE A PUSH TO MAIN: only a commit declared a fix for a red run lands ───────────────
 printf '\033[36m▸\033[0m pre-push: red builds gate a push to main\n'
 gate="$(mktemp -d)"

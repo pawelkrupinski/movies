@@ -53,6 +53,8 @@
 #
 # INSTALL: scripts/install-hooks.sh (sets core.hooksPath=scripts/hooks, which every worktree of
 # this clone shares; the path is relative, so each worktree runs its own checkout's hook).
+# An ABSOLUTE path (an IDE rewrote it three times on 2026-10-14) is warned about, and the hook it names
+# hands over to the pushing worktree's own copy, so a stale root checkout never judges a worktree's push.
 #
 # DRY RUN / TEST: `scripts/hooks/pre-push --plan < paths` prints the checks a list of changed
 # paths selects, without running them (scripts/hooks/pre-push-test.sh). `--range A..B` runs the
@@ -65,6 +67,31 @@ set -uo pipefail
 unset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_COMMON_DIR GIT_PREFIX
 
 root="$(git rev-parse --show-toplevel)" || exit 1
+
+# ── The PUSHING checkout's own hook runs, whatever core.hooksPath says ──────────────────────────
+# core.hooksPath=scripts/hooks is relative: each worktree runs its own checkout's copy. Rewritten to an
+# absolute path (three times on 2026-10-14, very likely an IDE's git integration), every worktree's push ran
+# the ROOT checkout's copy — an older hook, judging new work by stale checks. So a hook git runs for another
+# checkout than its own hands over to that checkout's copy. Once only (PREPUSH_DELEGATED_FROM), and never for
+# the dry runs (--plan, --compile-plan, --range), which name the file they mean.
+case "${1:-}" in
+    --plan|--compile-plan|--range) ;;
+    *)
+        if [ -z "${PREPUSH_DELEGATED_FROM:-}" ]; then
+            hooks_path="$(git config --get core.hooksPath || true)"
+            case "$hooks_path" in
+                /*|~*) printf '\033[33m! pre-push\033[0m core.hooksPath is absolute (%s): every worktree reaches that one copy — scripts/install-hooks.sh sets it back to the relative scripts/hooks\n' "$hooks_path" >&2 ;;
+            esac
+            hook_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd -P)"
+            own="$(cd "$root" && pwd -P)/scripts/hooks/pre-push"
+            if [ "$(cd "$root" && pwd -P)" != "$hook_root" ] && [ -f "$own" ] && ! [ "$own" -ef "${BASH_SOURCE[0]}" ]; then
+                export PREPUSH_DELEGATED_FROM="$hook_root"
+                exec bash "$own" "$@"
+            fi
+        fi ;;
+esac
+unset PREPUSH_DELEGATED_FROM
+# ── end of the hand-over ──
 cd "$root" || exit 1
 
 Zero=0000000000000000000000000000000000000000
