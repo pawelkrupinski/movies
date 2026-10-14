@@ -271,6 +271,22 @@ class HistoryTest(unittest.TestCase):
         self.assertEqual(github.asked[-1][2], "2026-10-15")
 
 
+class FlakyHistoryTest(unittest.TestCase):
+    def test_a_run_whose_jobs_cannot_be_read_is_asked_again_then_skipped_and_the_rest_still_written(self):
+        runs = [HistoryTest.run_(None, run_id, "2026-10-0%dT10:00:00Z" % day) for run_id, day in (("a", 1), ("b", 2), ("c", 3))]
+        asked = []
+
+        class Flaky(FakeGitHub):
+            def jobs(self, run_id):
+                asked.append(run_id)
+                if run_id == "b":
+                    raise subprocess.CalledProcessError(1, ["gh"])
+                return UNREPORTED
+        payloads = list(timings.history(Flaky(runs, {}), days=60, today=datetime.date(2026, 10, 14)))
+        self.assertEqual(len(payloads), 2)
+        self.assertEqual(asked.count("b"), timings.HISTORY_ATTEMPTS)
+
+
 class PushFileTest(unittest.TestCase):
     def test_pushes_every_payload_in_batches_and_counts_what_failed(self):
         payload = timings.otlp_payload(RUN, jobs())

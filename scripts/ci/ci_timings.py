@@ -43,6 +43,7 @@ Run:  python3 scripts/ci/ci_timings.py --repo OWNER/REPO --run-id ID [--push] [-
 Test: python3 scripts/ci/ci_timings_test.py
 """
 import argparse
+import concurrent.futures
 import datetime
 import json
 import os
@@ -68,6 +69,9 @@ HISTORY_WINDOW_DAYS = 7
 # A run that ran no job, or was cancelled part-way (a newer push superseding it, 38% of Main's), says nothing of how long
 # the build takes -- and its jobs would cost an API call each.
 HISTORY_SKIPPED = {"cancelled", "skipped"}
+# A run's jobs asked this many times before the run is skipped (with a warning), and how many runs' jobs are read at once.
+HISTORY_ATTEMPTS = 3
+HISTORY_READERS = 6
 
 
 def seconds_between(start, end):
@@ -295,16 +299,28 @@ def history(github, days, today=None):
         since = start
         while since < end:
             until = min(end, since + datetime.timedelta(days=HISTORY_WINDOW_DAYS))
-            for run in github.workflow_runs(workflow_id, since.isoformat(), until.isoformat()):
-                if run.get("conclusion") in HISTORY_SKIPPED:
-                    continue
-                raw = github.jobs(run["id"])
-                if any(job["name"] == REPORTER for job in raw):
-                    continue
-                payload = otlp_payload(run, collect(raw, lambda _job_id: ""))
-                if payload:
-                    yield payload
+            runs = [run for run in github.workflow_runs(workflow_id, since.isoformat(), until.isoformat())
+                    if run.get("conclusion") not in HISTORY_SKIPPED]
+            with concurrent.futures.ThreadPoolExecutor(HISTORY_READERS) as readers:
+                for run, raw in zip(runs, readers.map(lambda run: jobs_of(github, run), runs)):
+                    if raw is None or any(job["name"] == REPORTER for job in raw):
+                        continue
+                    payload = otlp_payload(run, collect(raw, lambda _job_id: ""))
+                    if payload:
+                        yield payload
             since = until
+
+
+def jobs_of(github, run):
+    """The run's jobs, asked up to HISTORY_ATTEMPTS times -- one `gh` call failing is not a run without jobs -- else None,
+    and the run is left out of the history with a warning rather than ending it."""
+    for attempt in range(1, HISTORY_ATTEMPTS + 1):
+        try:
+            return github.jobs(run["id"])
+        except subprocess.CalledProcessError as error:
+            if attempt == HISTORY_ATTEMPTS:
+                print("::warning::run %s left out of the history: its jobs could not be read (%s)" % (run["id"], error), file=sys.stderr)
+    return None
 
 
 def push_file(path, url, token, batch=25, opener=urllib.request.build_opener(NoRedirect).open):
