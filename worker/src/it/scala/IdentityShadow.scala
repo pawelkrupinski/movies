@@ -10,7 +10,6 @@ import tools._
 
 import java.nio.file.{Files, Path}
 import scala.collection.mutable
-import scala.jdk.CollectionConverters._
 
 /**
  * The shadow harness around [[IdentityResolver]]: the recorded corpora, today's pipeline booted
@@ -59,75 +58,17 @@ object IdentityShadow {
 
   /** The full recorded corpora: `cinema-scrapes-<cc>.json.gz` in `corpusDir`, each replayed from
    *  its `enrichment-<cc>` tree (under `KINOWO_FIXTURE_ROOT`) and the remembered verdicts beside
-   *  it, read-only — exactly a hermetic leg's chain. A request neither answers is REFUSED and
+   *  it, read-only — exactly a hermetic leg's chain ([[RecordedCorpus]]). A request neither answers is REFUSED and
    *  named, never fetched. */
   def full(countries: Set[Country], corpusDir: Path, root: settings.FixtureRoot,
            live: Option[settings.IdentityLiveGaps] = None): Seq[Corpus] =
     Country.all.filter(countries).flatMap { c =>
       Option(corpusDir.resolve(s"cinema-scrapes-${c.code}.json.gz")).filter(Files.exists(_)).map { path =>
-        val missing = new MissingFixtures
-        val tree    = s"enrichment-${c.code}"
-        val store   = new EnrichmentCacheStore {
-          private val files = new FileEnrichmentCacheStore(FileEnrichmentCacheStore.beside(root, tree), FileEnrichmentCacheStore.NeverExpires)
-          override def loadAll(): Map[String, CachedResponse] = files.loadAll()
-          override def put(key: String, response: CachedResponse): Unit = ()
-        }
-        val cache = new EnrichmentCache(store, clock = () => TestWiring.FixedInstant.toEpochMilli)
-        val leaf  = new GapLeaf(missing)
-        cache.preload()
-        val fetch = replayChain(new clients.tools.FakeHttpFetch(tree, strict = true, foldYear = false, root = root), cache,
-          live.fold[HttpFetch](leaf)(key => new LiveGapLeaf(key, leaf)))
-        new Corpus(s"full-${c.code}", c, CorpusFixture.readFrom(path), fetch, () => leaf.met, () => missing.keys.map(_._2), Some(() => leaf.metOnThread))
+        val opened = RecordedCorpus.open(c, path, root, leaf => live.fold[HttpFetch](leaf)(key => new LiveGapLeaf(key, leaf)))
+        new Corpus(s"full-${c.code}", c, opened.rows, opened.fetch, () => opened.leaf.met, () => opened.missing.keys.map(_._2),
+          Some(() => opened.leaf.metOnThread))
       }
     }
-
-  /** A full corpus's chain: the recorded `tree`, then the remembered verdicts in `cache` ([[RememberedVerdicts]],
-   *  read-only), then `leaf` for a request neither answers. */
-  def replayChain(tree: HttpFetch, cache: EnrichmentCache, leaf: HttpFetch): HttpFetch =
-    new FallbackHttpFetch(Seq("tree" -> tree, "verdicts" -> new RememberedVerdicts(cache, leaf)))
-
-  /** The verdicts a recording remembered beside its tree, READ-ONLY: a remembered answer is answered, a remembered failure
-   *  thrown as it was, and anything else asked of `leaf` every time. Never a [[CachingEnrichmentFetch]], which remembers
-   *  what `leaf` answered for the rest of the run: the gap leaf's empty stand-in then answered every later ask of the same
-   *  request as though the source had — the chain-wide Cineworld detail, a gap for the first venue asking, read
-   *  "read, empty" for the other 76, and never read again (UK RBO Macbeth, 2026-10-07). */
-  final class RememberedVerdicts(cache: EnrichmentCache, leaf: HttpFetch) extends HttpFetch {
-    private def held[A](key: String, url: String)(answer: PartialFunction[CachedResponse, A])(orElse: => A): A =
-      cache.lookup(key) match {
-        case Some(failed: CachedResponse.Failed) => throw CachingEnrichmentFetch.revive(failed, url)
-        case Some(response) if answer.isDefinedAt(response) => answer(response)
-        case _ => orElse
-      }
-    private val body: PartialFunction[CachedResponse, String] = { case CachedResponse.Body(text) => text }
-    override def get(url: String): String = held(CachingEnrichmentFetch.keyOf("GET", url), url)(body)(leaf.get(url))
-    override def get(url: String, headers: Map[String, String]): String =
-      held(CachingEnrichmentFetch.keyOf("GET", url), url)(body)(leaf.get(url, headers))
-    override def getBytes(url: String): Array[Byte] =
-      held(CachingEnrichmentFetch.keyOf("BYTES", url), url) { case b: CachedResponse.Bytes => b.bytes }(leaf.getBytes(url))
-    override def post(url: String, body: String, contentType: String): String =
-      held(CachingEnrichmentFetch.keyOf("POST", url, Some(body)), url)(this.body)(leaf.post(url, body, contentType))
-  }
-
-  /** The end of a full corpus's chain: a request the recorded tree and verdicts cannot answer is
-   *  NAMED in `missing` and answered EMPTY, as a remembered 404 would be. A hermetic leaf throws
-   *  instead, and on the US corpus one such throw inside a director walk aborted the whole boot;
-   *  the shadow comparison wants the pipeline's answer with the gap, not no answer. The resolver
-   *  still sees every gap as `Unknown` through `met`, which counts EVERY gap met — `missing`
-   *  names each once, so counting it would read a repeated gap as the empty answer. */
-  final class GapLeaf(missing: MissingFixtures) extends HttpFetch {
-    private val gaps     = new java.util.concurrent.atomic.AtomicLong()
-    private val onThread = ThreadLocal.withInitial[java.lang.Long](() => 0L)
-    def met: Long = gaps.get()
-    /** The gaps met on the calling thread: what tells one lookup's gap from another's when they read side by side. */
-    def metOnThread: Long = onThread.get()
-    private def gap(method: String, url: String): Unit = {
-      gaps.incrementAndGet(); onThread.set(onThread.get() + 1); missing.record(s"$method $url", s"$method $url")
-    }
-    override def get(url: String): String = { gap("GET", url); "{}" }
-    override def get(url: String, headers: Map[String, String]): String = { gap("GET", url); "{}" }
-    override def getBytes(url: String): Array[Byte] = { gap("BYTES", url); Array.emptyByteArray }
-    override def post(url: String, body: String, contentType: String): String = { gap("POST", url); "{}" }
-  }
 
   /** A gap TMDB or IMDb can answer, answered LIVE, the stub key swapped for a real one; a venue page the capture read
    *  live before ([[LiveGapLeaf.readPages]]), answered as read; anything else, and a live failure, is still the gap. For
@@ -135,7 +76,7 @@ object IdentityShadow {
    *  `perHost` requests at a time per host ([[tools.HostPacing]]: halved on a 429 or 503, retried after a back-off), and
    *  every answer kept on disk ([[LiveGapLeaf.Store]]) so a re-run after a rule change asks nothing it asked before. A
    *  read that FAILED is kept nowhere — the gap again for the rest of this run, asked live again by the next. */
-  final class LiveGapLeaf(key: settings.IdentityLiveGaps, gap: GapLeaf,
+  final class LiveGapLeaf(key: settings.IdentityLiveGaps, gap: RecordedCorpus.GapLeaf,
                           perHost: settings.IdentityLivePerHost = settings.ProcessConfiguration.resolve().identityLivePerHost,
                           real: HttpFetch = new RealHttpFetch()) extends HttpFetch {
     import LiveGapLeaf._
@@ -287,37 +228,9 @@ object IdentityShadow {
   def listingsOf(w: ArchiveReplayWiring, normalizer: TitleNormalizer): Seq[Listing] =
     Listing.corpus(w.archivedListings, normalizer)
 
-  /** [[IdentityLookups]] with every answer memoised, so the permutation runs pay each lookup
-   *  once. The memo changes how often the source is reached, never what the resolver ISSUES. */
-  final class Memo(inner: IdentityLookups) extends IdentityLookups {
-    private val details = new java.util.concurrent.ConcurrentHashMap[(String, String), Answer[Option[DetailFacts]]]()
-    private val queries = new java.util.concurrent.ConcurrentHashMap[CandidateQuery, Answer[Seq[Hit]]]()
-    private val films   = new java.util.concurrent.ConcurrentHashMap[Int, Answer[Option[IdentityMeasures.Film]]]()
-    override def hasDetail(l: Listing): Boolean = inner.hasDetail(l)
-    override def detail(l: Listing): Answer[Option[DetailFacts]] = details.computeIfAbsent((l.venue, l.page.getOrElse("")), _ => inner.detail(l))
-    override def candidates(q: CandidateQuery): Answer[Seq[Hit]] = queries.computeIfAbsent(q, _ => inner.candidates(q))
-    override def film(id: Int): Answer[Option[IdentityMeasures.Film]]      = films.computeIfAbsent(id, _ => inner.film(id))
-    // What a resolve announces it will ask, answered ahead on a few threads: a live-gap replay
-    // (`settings.IdentityLiveGaps`) otherwise asks its live questions one after another.
-    override def prefetch(qs: Iterable[CandidateQuery], ids: Iterable[Int], pages: Iterable[Listing]): Unit = {
-      inner.prefetch(qs, ids, pages)
-      val pool = java.util.concurrent.Executors.newFixedThreadPool(Memo.PrefetchThreads)
-      try {
-        (qs.toSeq.map(q => () => { candidates(q); () }) ++ ids.toSeq.map(id => () => { film(id); () }))
-          .map(task => pool.submit(new java.util.concurrent.Callable[Unit] { def call(): Unit = task() })).foreach(_.get())
-      } finally pool.shutdown()
-    }
-    def sizes: (Int, Int, Int) = (details.size, queries.size, films.size)
-    /** Whether `l`'s venue detail was asked through it and had no answer: its page unread. */
-    def unreadDetail(l: Listing): Boolean = Option(details.get((l.venue, l.page.getOrElse("")))).exists(!_.isKnown)
-    /** Every candidate question and film record asked through it, with the answer it got. */
-    def asked: (Map[CandidateQuery, Answer[Seq[Hit]]], Map[Int, Answer[Option[IdentityMeasures.Film]]]) =
-      (queries.asScala.toMap, films.asScala.toMap)
-    def unknown: (Int, Int, Int) = (details.values.asScala.count(!_.isKnown), queries.values.asScala.count(!_.isKnown),
-      films.values.asScala.count(!_.isKnown))
-  }
-
-  object Memo { val PrefetchThreads = 8 }
+  /** [[tools.MemoLookups]], by the name the shadow harness has always used. */
+  type Memo = tools.MemoLookups
+  val Memo: tools.MemoLookups.type = tools.MemoLookups
 
   /** A simulated TMDB OUTAGE: a deterministic share of candidate queries and film records
    *  withheld as `Unknown`. */

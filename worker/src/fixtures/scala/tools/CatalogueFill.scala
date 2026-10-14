@@ -1,7 +1,6 @@
-package integration
+package tools
 
 import services.identity._
-import tools.{HttpFetch, UnmatchedClusters}
 
 import java.time.Clock
 import scala.util.Try
