@@ -200,7 +200,7 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
     // 2. films: each one's base candidate, and the title keys it files under — a fallback source's film none: it is a
     // candidate only a no-match's fallback scores, never a record the corpus's titles, seasons or houses are read off
     val filedUnder = mutable.HashSet.empty[String]
-    def filmKeysOf(id: Int, film: IdentityMeasures.Film) = if (FallbackIds.isFallback(id)) Set.empty[String] else filmKeys(film)
+    def filmKeysOf(id: Int, film: IdentityMeasures.Film) = if (FallbackIds.isFallback(id)) Set.empty[String] else film.ownTitleKeys
     films.toSeq.sorted.grouped(slices.records).foreach { slice =>
     lookups.prefetch(Nil, slice.filter(id => bestHits.contains(id) && (rerecorded(id) || !records.contains(id))), Nil)
     slice.foreach { id =>
@@ -279,9 +279,6 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
   }
 
   private def fresh(candidate: Candidate): Candidate = candidate.copy(film = candidate.film.copy())
-
-  private def filmKeys(film: IdentityMeasures.Film): Seq[String] =
-    (Seq(film.title) ++ film.originalTitle).map(IdentityMeasures.key).filter(_.nonEmpty).distinct
 
   /** Unhook a node from every per-key fact; the films whose hits it took away. */
   private def unlink(key: NodeKey, old: Node): Set[Int] = {

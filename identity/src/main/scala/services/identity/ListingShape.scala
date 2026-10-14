@@ -1,7 +1,8 @@
 package services.identity
 
 import services.cinemas.pl.NonMovieEventClassifier
-import services.movies.{TitleContainment, TitleWords}
+import services.identity.IdentityMeasures.withoutLeadingArticle
+import services.movies.{TitleContainment, TitleSeason, TitleWords}
 
 /**
  * The ONE place a listing's SHAPE is read off its billing — what kind of screening it bills, before any film is in
@@ -47,7 +48,7 @@ object ListingShape {
   /** Does the listing bill a house, a relay or a season ("OPERA-MAKBET - retransmisja", "Met Opera 2026/27: …")? */
   def billsAHouse(listing: Listing): Boolean = {
     val titles = spellingsOf(listing)
-    IdentityMeasures.seasonYear(titles).isDefined || titles.exists(title => TitleContainment.tokens(title).exists(HouseWords))
+    TitleSeason.of(titles).isDefined || titles.exists(title => TitleContainment.tokens(title).exists(HouseWords))
   }
 
   /** A concert FILM, recorded where a cinema relays it from: event cinema TMDB may hold ("Hauser symfonicznie z Royal
@@ -76,7 +77,7 @@ object ListingShape {
 
   private def relaysBesideLive(lowerTitle: String, titles: Seq[String], rawTitle: String): Boolean =
     ConcertFilm.findFirstIn(lowerTitle).isDefined || IdentityMeasures.billsStageWork(titles, rawTitle) ||
-      IdentityMeasures.seasonYear(Seq(rawTitle)).isDefined
+      TitleSeason.of(Seq(rawTitle)).isDefined
 
   // ── a bill of several works ────────────────────────────────────────────────────────────────
 
@@ -149,9 +150,9 @@ object ListingShape {
       val parts  = PieceBreak.split(Bracketed.replaceAllIn(raw, " | ")).toIndexedSeq
       val breaks = PieceBreak.findAllIn(Bracketed.replaceAllIn(raw, " | ")).toIndexedSeq.map(_.trim)
       val words  = parts.map(TitleContainment.tokens)
-      val titles = films.flatMap(_.titles).map(t => withoutArticles(TitleContainment.tokens(t))).filter(_.nonEmpty).distinct
+      val titles = films.flatMap(_.titles).map(t => withoutLeadingArticle(TitleContainment.tokens(t))).filter(_.nonEmpty).distinct
       val theirs = films.flatMap(f => f.titles ++ f.directors.getOrElse(Nil)).flatMap(TitleContainment.tokens).toSet
-      val original = listing.originalTitle.map(t => withoutArticles(TitleContainment.tokens(t))).filter(_.nonEmpty)
+      val original = listing.originalTitle.map(t => withoutLeadingArticle(TitleContainment.tokens(t))).filter(_.nonEmpty)
       // a piece crediting the film's director, as an inflected language bills the name ("Poniedziałki z Konwickim: pisarz –
       // scenarzysta – reżyser"): the whole billing is the venue's programme of the director's films
       val names  = films.flatMap(_.directors.getOrElse(Nil)).flatMap(TitleContainment.tokens).filter(_.length >= DirectorStem)
@@ -159,7 +160,7 @@ object ListingShape {
       def credits(word: String) = names.exists(word.startsWith)
       // the film's run of whole pieces, the first one
       val run = (for { from <- words.indices.iterator; to <- (from + 1 to words.size).iterator
-                       if titles.contains(withoutArticles(words.slice(from, to).flatten)) } yield (from, to)).nextOption()
+                       if titles.contains(withoutLeadingArticle(words.slice(from, to).flatten)) } yield (from, to)).nextOption()
       // the banner segment each piece is in: a colon or a pipe closes one
       val segment = parts.indices.map(k => breaks.take(k).count(b => b == ":" || b == "|"))
       def programme(piece: Seq[String]) = piece.exists(word => ScreeningProgramme.findFirstIn(word).isDefined)
@@ -173,8 +174,8 @@ object ListingShape {
       // that piece ("Exhibition on Screen: Vermeer - Die Blockbuster-Ausstellung" of its "Exhibition on Screen: Vermeer -
       // The Greatest Exhibition"); two pieces alike are no coincidence a namesake's two-piece title can be
       def reworded = films.flatMap(_.titles).exists { title =>
-        val theirs = PieceBreak.split(title).toIndexedSeq.map(piece => withoutArticles(TitleContainment.tokens(piece)))
-        theirs.sizeIs >= 3 && theirs.size == words.size && theirs.indices.count(k => theirs(k) != withoutArticles(words(k))) == 1
+        val theirs = PieceBreak.split(title).toIndexedSeq.map(piece => withoutLeadingArticle(TitleContainment.tokens(piece)))
+        theirs.sizeIs >= 3 && theirs.size == words.size && theirs.indices.count(k => theirs(k) != withoutLeadingArticle(words(k))) == 1
       }
       // the billing opens with one of the film's own titles of two pieces or more, word for word, its last word maybe glued
       // to what follows ("LA BOUM - Die FeteZum 60. Geb. von Sophie Marceau!" of "La Boum - Die Fete"): the rest is a note
@@ -205,7 +206,7 @@ object ListingShape {
           // what the screening adds after the film, a "+" closing it (PL "OPĘTANIE + TRASA PLAKATOWA", a poster tour)
           .filterNot(k => k >= to && breaks.lift(to - 1).contains("+"))
           .filterNot(k => tagged && piped.contains(k))
-          .map(words).find(piece => !original.contains(withoutArticles(piece)) && piece.exists(own) && !numberedNote(piece, own) &&
+          .map(words).find(piece => !original.contains(withoutLeadingArticle(piece)) && piece.exists(own) && !numberedNote(piece, own) &&
             !programmeWords(piece) && !piece.exists(ScreeningNote.matches) && !venues(piece) && !tagline(piece))
           .map(piece => s"'${piece.mkString(" ")}' is billed beside '${films.head.title}', no word of it the venue's around a film")
       }
@@ -251,8 +252,8 @@ object ListingShape {
   /** Is the billing two pieces a dash joins ([[dashedPair]]), the second a title of `film`'s, whole ("LÍDA BAAROVÁ –
    *  DOOMED BEAUTY": its subject, then the film)? */
   def titledAfterPiece(raw: String, film: IdentityMeasures.Film): Boolean = dashedPair(raw) && {
-    val titles = film.titles.map(t => withoutArticles(TitleContainment.tokens(t))).toSet
-    PieceBreak.split(raw).lastOption.exists(piece => titles.contains(withoutArticles(TitleContainment.tokens(piece))))
+    val titles = film.titles.map(t => withoutLeadingArticle(TitleContainment.tokens(t))).toSet
+    PieceBreak.split(raw).lastOption.exists(piece => titles.contains(withoutLeadingArticle(TitleContainment.tokens(piece))))
   }
   private val Dash = "[-–—]".r
   /** Does a piece of the billing list three works or more by name, a comma between each, every one capitalised ("Retro -
@@ -266,11 +267,9 @@ object ListingShape {
   private val Bracketed  = """\([^)]*\)|\[[^\]]*]""".r
   private val Quote      = """[„”"“«»]""".r
   private def quotesAFilm(raw: String, films: Seq[IdentityMeasures.Film]): Boolean = {
-    val titles = films.flatMap(_.titles).map(t => withoutArticles(TitleContainment.tokens(t))).toSet
-    Quoted.findAllMatchIn(raw).exists(m => titles(withoutArticles(TitleContainment.tokens(m.group(1)))))
+    val titles = films.flatMap(_.titles).map(t => withoutLeadingArticle(TitleContainment.tokens(t))).toSet
+    Quoted.findAllMatchIn(raw).exists(m => titles(withoutLeadingArticle(TitleContainment.tokens(m.group(1)))))
   }
-  private def withoutArticles(words: Seq[String]): Seq[String] =
-    if (words.sizeIs >= 2 && IdentityMeasures.LeadingArticles(words.head)) words.tail else words
 
   // ── a programme slot ───────────────────────────────────────────────────────────────────────
 

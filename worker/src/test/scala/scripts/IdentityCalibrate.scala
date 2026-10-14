@@ -212,7 +212,7 @@ object IdentityCalibrate {
     // title); a large block is sampled deterministically (each member with its next 20 by hash).
     val blocks = mutable.HashMap.empty[String, mutable.ArrayBuffer[Int]]
     obs.foreach { o =>
-      (IdentityMeasures.titleShapes(o.listing) ++ o.listing.originalTitle).map(IdentityMeasures.key).filter(_.nonEmpty).distinct
+      (o.listing.shapes ++ o.listing.originalTitle).map(IdentityMeasures.key).filter(_.nonEmpty).distinct
         .foreach(k => blocks.getOrElseUpdate(k, mutable.ArrayBuffer.empty) += o.idx)
     }
     val seenPairs = mutable.HashSet.empty[Long]

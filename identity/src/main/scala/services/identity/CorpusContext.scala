@@ -134,7 +134,7 @@ private[identity] object CorpusContext {
   /** A node's title pieces other than its whole title, sanitised: what [[CorpusContext.segmentSpread]] counts. */
   def piecesOf(node: EvidenceNode, sanitize: String => String): Set[String] = {
     val whole = sanitize(node.evidence.cleanTitle)
-    IdentityMeasures.titleShapes(node.evidence.published).map(sanitize).filter(piece => piece.nonEmpty && piece != whole).toSet
+    node.evidence.published.shapes.map(sanitize).filter(piece => piece.nonEmpty && piece != whole).toSet
   }
   /** Each piece's number of distinct whole titles among `nodes`. */
   def spreads(nodes: Seq[EvidenceNode], sanitize: String => String): Map[String, Int] =
@@ -155,7 +155,7 @@ private[identity] object CorpusContext {
            sanitize: String => String): Reads = Reads(
       members.map(titleOf).toSet,
       members.flatMap(node => IdentityMeasures.titleGroups(node.evidence.measured) ++ IdentityMeasures.searchGroupsAny(node.evidence.measured)).toSet,
-      members.flatMap(node => IdentityMeasures.titleShapes(node.evidence.published).map(sanitize)).toSet,
+      members.flatMap(node => node.evidence.published.shapes.map(sanitize)).toSet,
       members.flatMap(node => pool.flatMap(film => IdentityMeasures.billings(node.evidence.measured, film).map(_.listingHouse))).toSet,
       films, queries)
   }

@@ -21,7 +21,7 @@ private[identity] final class TitleLinks(nodes: Seq[EvidenceNode], normalizer: T
     keysOf.getOrElseUpdate(node.id, TitleLinks.titleKeys(node, normalizer, pins, wholeTitle, bannerSegment))
 
   val segmentsOf: Map[String, Set[String]] = nodes.map(node => node.id ->
-    (IdentityMeasures.titleShapes(node.evidence.published).map(sanitized).toSet - sanitized(node.evidence.cleanTitle)).filter(_.nonEmpty)).toMap
+    (node.evidence.published.shapes.map(sanitized).toSet - sanitized(node.evidence.cleanTitle)).filter(_.nonEmpty)).toMap
   def segmentOf(whole: EvidenceNode, decorated: EvidenceNode): Boolean =
     segmentsOf(decorated.id).contains(sanitized(whole.evidence.cleanTitle))
 
@@ -100,7 +100,7 @@ private[identity] object TitleLinks {
   private final class Cut(node: EvidenceNode, normalizer: TitleNormalizer, pins: PinConstraints, wholeTitle: String => Boolean,
                           bannerSegment: String => Boolean) {
     val whole   = normalizer.sanitize(node.evidence.cleanTitle)
-    val pieces  = IdentityMeasures.titleShapes(node.evidence.published).map(segment => segment -> normalizer.sanitize(segment))
+    val pieces  = node.evidence.published.shapes.map(segment => segment -> normalizer.sanitize(segment))
     // The listing's own cleaned title is a work too, when another piece of what the venue published
     // lies OUTSIDE it: "Spider-Man. Całkiem nowy dzień" beside "2D DUB", "KNT"; "Lalka" beside
     // "PREMIERA", though the normaliser drops "premiera" from the whole. Pieces inside it ("Così fan

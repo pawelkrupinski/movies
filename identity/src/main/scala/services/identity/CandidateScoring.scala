@@ -31,7 +31,7 @@ private[identity] final class CandidateScoring(val generation: CandidateGenerati
 
   /** [[evidenceDenies]], saying which of its reasons rules the film out. */
   def evidenceDenial(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film, measures: Map[String, Measure]): Option[String] =
-    ListingConstraints.seasonsApart(listing.seasonYear, IdentityMeasures.filmSeason(film), film.year).map(_.toString)
+    ListingConstraints.seasonsApart(listing.seasonYear, film.season, film.year).map(_.toString)
       .orElse(Option.when(IdentityMeasures.namesSeasonProduction(listing, film) && !namesItsSeasonProduction(listing, film))(CandidateScoring.AnotherHousesSeason))
       // a credit the venue publishes names its staging's record whatever TMDB titles it
       .orElse(Option.when(IdentityMeasures.screenNamesake(listing, film) && !IdentityMeasures.sameDirector(measures))(

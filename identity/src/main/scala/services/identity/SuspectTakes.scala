@@ -191,7 +191,7 @@ object SuspectTakes {
 
   /** Where the film's longest title runs in `words` — articles aside — as (start, length). */
   private def run(words: IndexedSeq[String], film: IdentityMeasures.Film): Option[(Int, Int)] =
-    film.titles.map(TitleContainment.tokens).flatMap(t => Seq(t) ++ Option.when(t.sizeIs >= 2 && IdentityMeasures.LeadingArticles(t.head))(t.tail))
+    film.titles.map(TitleContainment.tokens).flatMap(t => Seq(t, IdentityMeasures.withoutLeadingArticle(t)))
       .filter(_.nonEmpty).distinct.sortBy(-_.size).iterator
       .flatMap(t => Option(words.indexOfSlice(t)).filter(_ >= 0).map(_ -> t.size)).nextOption()
 

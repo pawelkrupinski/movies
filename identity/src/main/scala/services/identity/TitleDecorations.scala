@@ -29,7 +29,7 @@ import services.movies.TitleContainment
  *    film's, not the venue's.
  *
  * A decoration is stripped ADDITIVELY — the undecorated spelling becomes one more title shape
- * (`IdentityMeasures.titleShapes`), so it is searched and read by the title relation; the listing's
+ * (`IdentityMeasures.Listing.shapes`), so it is searched and read by the title relation; the listing's
  * own title, its card and its programme are untouched.
  */
 final case class TitleDecorations(prefixes: Set[Seq[String]], suffixes: Set[Seq[String]], tails: Set[Seq[String]] = Set.empty) {
@@ -37,7 +37,7 @@ final case class TitleDecorations(prefixes: Set[Seq[String]], suffixes: Set[Seq[
   /** Every spelling of `title` with ONE learned decoration taken off either edge, the title's own
    *  text kept (its casing and punctuation, which the search reads): "(4DX Rewind) Shrek" →
    *  "Shrek" — or with a learned event TAIL it bills last cut off: "Punku + spotkanie z reżyserem" → "Punku".
-   *  `IdentityMeasures.titleShapes` repeats it to a fixpoint. */
+   *  `IdentityMeasures.Listing.shapes` repeats it to a fixpoint. */
   def strip(title: String): Seq[String] =
     if (prefixes.isEmpty && suffixes.isEmpty && tails.isEmpty) Nil
     else (TitleDecorations.words(title).toSeq.flatMap { ws =>

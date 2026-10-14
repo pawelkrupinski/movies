@@ -552,5 +552,5 @@ object Agreement {
    *  Aronofsky's film, Metacritic leans to it and so does the model — "Mother" is also an opera's name.
    *  "OPERA-COSI FAN TUTTE" and "ReTransmisje Met: … Così fan tutte" bill a house, so Tinto Brass's film stays no relay's. */
   private def screenAdaptation(listings: Seq[Listing], film: AgreedFilm): Boolean =
-    film.corroborated(ModelVote) && !listings.exists(ListingShape.billsAHouse) && IdentityMeasures.filmSeason(film.record.film).isEmpty
+    film.corroborated(ModelVote) && !listings.exists(ListingShape.billsAHouse) && film.record.film.season.isEmpty
 }

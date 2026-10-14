@@ -1,6 +1,6 @@
 package services.identity
 
-import services.identity.IdentityMeasures.{Category, directorRelation}
+import services.identity.IdentityMeasures.{Category, SamePersonMeasure, directorRelation}
 import services.resolution.YearWindow
 
 /**
@@ -14,7 +14,6 @@ import services.resolution.YearWindow
  * empty side is never the same person nor another one.
  */
 object FactRelations {
-  private val SamePerson      = Category("same_person")
   private val Different       = Category("different")
   private val DifferentScript = Category("different_script")
 
@@ -31,7 +30,7 @@ object FactRelations {
   def yearsApart(a: Option[Int], b: Option[Int]): Boolean = a.zip(b).exists { case (x, y) => !yearsNear(x, y) }
 
   /** Do the two credits name one person? */
-  def samePerson(a: Seq[String], b: Seq[String]): Boolean = directorRelation(a, b) == SamePerson
+  def samePerson(a: Seq[String], b: Seq[String]): Boolean = directorRelation(a, b) == SamePersonMeasure
 
   /** Are the two credits other people, in the same script? */
   def otherPerson(a: Seq[String], b: Seq[String]): Boolean = directorRelation(a, b) == Different

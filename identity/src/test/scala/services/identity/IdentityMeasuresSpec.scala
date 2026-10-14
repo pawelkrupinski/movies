@@ -2,6 +2,7 @@ package services.identity
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.movies.TitleSeason
 import services.identity.IdentityMeasures.{Billing, Category, Film, Houses, Listing, ListingListing, Missing, Number}
 
 /** What the calibrated score reads must separate facts that mean different things: a venue's
@@ -83,7 +84,7 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
   // Obsession: Day 18" — the box office's BBFC certificate read as the title's own number
   "a box office's trailing certificate" should "be no part of any title shape or search" in {
     IdentityMeasures.searchQueries(Listing("Obsession (18)")) shouldBe Seq("Obsession")
-    IdentityMeasures.titleShapes(Listing("Obsession (18)")) shouldBe Seq("Obsession")
+    Listing("Obsession (18)").shapes shouldBe Seq("Obsession")
     IdentityMeasures.searchQueries(Listing("Romeo & Juliet (12A TBC)", rawTitle = Some("Romeo & Juliet (12A TBC)"))) shouldBe Seq("Romeo & Juliet")
     // a number that is no certificate stays the title's own
     IdentityMeasures.searchQueries(Listing("Sweet Sixteen (16)")) should contain ("Sweet Sixteen (16)")
@@ -166,17 +167,17 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
   it should "be read in a box office's short spellings" in {
     // Prod UK 2026-10-13: Keswick's "Royal Ballet 2026/7: Romeo & Juliet" named its season, unread, and left the 2026/27
     // record below the threshold.
-    IdentityMeasures.seasonYear(Seq("Royal Ballet 2026/7: Romeo & Juliet")) shouldBe Some(2026)
-    IdentityMeasures.seasonYear(Seq("Met Opera 2029/0: Tosca")) shouldBe Some(2029)
+    TitleSeason.of(Seq("Royal Ballet 2026/7: Romeo & Juliet")) shouldBe Some(2026)
+    TitleSeason.of(Seq("Met Opera 2029/0: Tosca")) shouldBe Some(2029)
     // nor two numbers a slash joins, never a season the title states: an age band, a date, and a banner left from the
     // season it was first billed in — DE "Berliner Philharmoniker 25/26" screens the 2026 Silvesterkonzert on 31 December
     // 2026, and read as season 2025 it held ×73 spellings of the concert apart (identity measure, recording 38363428661).
     // A relay's "RB&O 26/27" takes its season from its screenings ([[IdentityMeasures.Listing.broadcastSeason]]).
-    IdentityMeasures.seasonYear(Seq("Berliner Philharmoniker 25/26: Silvesterkonzert")) shouldBe None
-    IdentityMeasures.seasonYear(Seq("RB&O 26/27: Romeo & Juliet")) shouldBe None
-    IdentityMeasures.seasonYear(Seq("Kids Club 12/13")) shouldBe None
-    IdentityMeasures.seasonYear(Seq("Live 24/7")) shouldBe None
-    IdentityMeasures.seasonYear(Seq("Royal Ballet 2026/8: Romeo & Juliet")) shouldBe None
+    TitleSeason.of(Seq("Berliner Philharmoniker 25/26: Silvesterkonzert")) shouldBe None
+    TitleSeason.of(Seq("RB&O 26/27: Romeo & Juliet")) shouldBe None
+    TitleSeason.of(Seq("Kids Club 12/13")) shouldBe None
+    TitleSeason.of(Seq("Live 24/7")) shouldBe None
+    TitleSeason.of(Seq("Royal Ballet 2026/8: Romeo & Juliet")) shouldBe None
   }
 
   "a season production named in another language" should "be the record's, by the stage work both name" in {
@@ -689,53 +690,53 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
   "title shapes" should "de-decorate the parts a banner leaves, as well as the whole title" in {
     // "Throwback: Donnie Darko (25th Anniversary)": the banner split leaves "Donnie Darko (25th
     // Anniversary)", whose trailing bracket is itself a decoration.
-    IdentityMeasures.titleShapes(Listing("Throwback: Donnie Darko (25th Anniversary)")) should contain ("Donnie Darko")
+    Listing("Throwback: Donnie Darko (25th Anniversary)").shapes should contain ("Donnie Darko")
     IdentityMeasures.searchQueries(Listing("Throwback: Donnie Darko (25th Anniversary)")) should contain ("Donnie Darko")
   }
 
   they should "split a spaced slash and a short code before an unspaced colon, as the banner separators" in {
     // Kinoteatr Pasja bills "MISTYCZKA /film polski/"; Kino Millenium "MS:HOT SPOT": each piece is searched.
-    IdentityMeasures.titleShapes(Listing("MISTYCZKA /film polski/")) should contain ("MISTYCZKA")
-    IdentityMeasures.titleShapes(Listing("Róża / Spotkanie Filozoficzne")) should contain allOf ("Róża", "Spotkanie Filozoficzne")
-    IdentityMeasures.titleShapes(Listing("MS:HOT SPOT")) should contain ("HOT SPOT")
+    Listing("MISTYCZKA /film polski/").shapes should contain ("MISTYCZKA")
+    Listing("Róża / Spotkanie Filozoficzne").shapes should contain allOf ("Róża", "Spotkanie Filozoficzne")
+    Listing("MS:HOT SPOT").shapes should contain ("HOT SPOT")
     // Fregata's "Fregata dla seniorów- 500 Mil": a dash spaced on one side only separates too.
-    IdentityMeasures.titleShapes(Listing("Fregata dla seniorów- 500 Mil")) should contain ("500 Mil")
-    IdentityMeasures.titleShapes(Listing("Spider-Man")) shouldBe Seq("Spider-Man")
+    Listing("Fregata dla seniorów- 500 Mil").shapes should contain ("500 Mil")
+    Listing("Spider-Man").shapes shouldBe Seq("Spider-Man")
     // Jaworzyna's "Ma to sens 2026": a screening year after the title is no part of it; "2046" and
     // "Blade Runner 2049" are titles, not screening years.
-    IdentityMeasures.titleShapes(Listing("Ma to sens 2026")) should contain ("Ma to sens")
-    IdentityMeasures.titleShapes(Listing("Blade Runner 2049")) shouldNot contain ("Blade Runner")
-    IdentityMeasures.titleShapes(Listing("2046")) shouldBe Seq("2046")
+    Listing("Ma to sens 2026").shapes should contain ("Ma to sens")
+    Listing("Blade Runner 2049").shapes shouldNot contain ("Blade Runner")
+    Listing("2046").shapes shouldBe Seq("2046")
     // A slash or colon inside a word is the title's own: "Face/Off", "AC/DC", "Star Wars:Episode".
-    IdentityMeasures.titleShapes(Listing("Face/Off")) shouldBe Seq("Face/Off")
-    IdentityMeasures.titleShapes(Listing("Star Wars:Episode I")) shouldNot contain ("Episode I")
+    Listing("Face/Off").shapes shouldBe Seq("Face/Off")
+    Listing("Star Wars:Episode I").shapes shouldNot contain ("Episode I")
   }
 
   they should "take a programme's head-quoted title and a square-bracketed format off" in {
     // Kino Świt: "„Baranek Shaun i kudłata bestia” Rodzinne Poranki Filmowe"
-    IdentityMeasures.titleShapes(Listing("„Baranek Shaun i kudłata bestia” Rodzinne Poranki Filmowe")) should contain ("Baranek Shaun i kudłata bestia")
+    Listing("„Baranek Shaun i kudłata bestia” Rodzinne Poranki Filmowe").shapes should contain ("Baranek Shaun i kudłata bestia")
     // two quoted titles bill two works; a quote further in names what a talk or a concert is about
-    IdentityMeasures.titleShapes(Listing("„Bestia”, reż. Aleksander Hertz, „Cud nad Wisłą”")) shouldNot contain ("Bestia")
-    IdentityMeasures.titleShapes(Listing("Wojciech Cejrowski i „Prawo Dżungli”")) shouldNot contain ("Prawo Dżungli")
+    Listing("„Bestia”, reż. Aleksander Hertz, „Cud nad Wisłą”").shapes shouldNot contain ("Bestia")
+    Listing("Wojciech Cejrowski i „Prawo Dżungli”").shapes shouldNot contain ("Prawo Dżungli")
     // Kinematograf's lecture bills two quoted films; its cut title quotes one, its raw title both
-    IdentityMeasures.titleShapes(Listing("Wykład: „Bestia”", rawTitle = Some("Wykład: „Bestia”, reż. Aleksander Hertz, „Cud nad Wisłą”"))) shouldNot
+    Listing("Wykład: „Bestia”", rawTitle = Some("Wykład: „Bestia”, reż. Aleksander Hertz, „Cud nad Wisłą”")).shapes shouldNot
       contain ("Bestia")
     // Bałtyk: "Weekend Seniora z Kulturą: Vivaldi i ja [2D LEKTOR]"
-    IdentityMeasures.titleShapes(Listing("Weekend Seniora z Kulturą: Vivaldi i ja [2D LEKTOR]")) should contain ("Vivaldi i ja")
-    IdentityMeasures.titleShapes(Listing("[REC]")) shouldBe Seq("[REC]")
+    Listing("Weekend Seniora z Kulturą: Vivaldi i ja [2D LEKTOR]").shapes should contain ("Vivaldi i ja")
+    Listing("[REC]").shapes shouldBe Seq("[REC]")
   }
 
   they should "take the title an upper-case banner runs into with a colon and one quoted at the tail after a banner, never a sentence's head" in {
     // Kino Millenium "KINO NA NIEDZIELE:CAMINO DLA OPORNYCH": a programme's banner, no space after its colon
-    IdentityMeasures.titleShapes(Listing("KINO NA NIEDZIELE:CAMINO DLA OPORNYCH")) should contain ("CAMINO DLA OPORNYCH")
-    IdentityMeasures.titleShapes(Listing("Star Wars:Episode I")) shouldNot contain ("Episode I")
+    Listing("KINO NA NIEDZIELE:CAMINO DLA OPORNYCH").shapes should contain ("CAMINO DLA OPORNYCH")
+    Listing("Star Wars:Episode I").shapes shouldNot contain ("Episode I")
     // Kino w Ratuszu 'Kino Kobiet - KLAPS! "Jak żyć żeby nie zwariować"': the one quoted title ends the billing, after its banner
-    IdentityMeasures.titleShapes(Listing("Kino Kobiet - KLAPS! \"Jak żyć żeby nie zwariować\"")) should contain ("Jak żyć żeby nie zwariować")
-    IdentityMeasures.titleShapes(Listing("ZADUSZKI JAZZOWE GABA JANUSZ \"NIEOBECNI\"")) shouldNot contain ("NIEOBECNI")
+    Listing("Kino Kobiet - KLAPS! \"Jak żyć żeby nie zwariować\"").shapes should contain ("Jak żyć żeby nie zwariować")
+    Listing("ZADUSZKI JAZZOWE GABA JANUSZ \"NIEOBECNI\"").shapes shouldNot contain ("NIEOBECNI")
     // a sentence's head is a franchise's first film as often as the title: the sequel "Szkoła magicznych zwierząt.
     // Tajemnica szkolnego podwórka" is not "Szkoła magicznych zwierząt"
-    IdentityMeasures.titleShapes(Listing("SZKOŁA MAGICZNYCH ZWIERZĄT. TAJEMNICA SZKOLNEGO PODWÓRKA")) shouldNot contain ("SZKOŁA MAGICZNYCH ZWIERZĄT")
-    IdentityMeasures.titleShapes(Listing("Vincent. Legenda oceanu")) shouldNot contain ("Vincent")
+    Listing("SZKOŁA MAGICZNYCH ZWIERZĄT. TAJEMNICA SZKOLNEGO PODWÓRKA").shapes shouldNot contain ("SZKOŁA MAGICZNYCH ZWIERZĄT")
+    Listing("Vincent. Legenda oceanu").shapes shouldNot contain ("Vincent")
   }
 
   "a listing's comparable facts" should "be every measure but the title relation, the ranking priors and the pooled count" in {

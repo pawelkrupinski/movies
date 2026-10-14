@@ -144,7 +144,7 @@ object Broadcast {
     /** [[fits]] on every count but the house the banner spells. */
     def fitsButTheHouse(film: Film): Boolean =
       IdentityMeasures.stageWorks(film).exists(works) &&
-        season.forall(own => IdentityMeasures.filmSeason(film).forall(_ == own)) &&
+        season.forall(own => film.season.forall(_ == own)) &&
         !FactRelations.yearsApart(stated.statedYear, film.year) && !FactRelations.otherPerson(stated.directors, film.directors.getOrElse(Nil))
 
     /** Does a film database credit the record's production with the director the listing credits: one of `productions`

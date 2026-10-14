@@ -31,7 +31,7 @@ class TitleDecorationsSpec extends AnyFlatSpec with Matchers {
   it should "become a title shape, searched and read by the title relation" in {
     val d = TitleDecorations(Set(Seq("4dx", "rewind")), Set(Seq("2d", "pl")))
     val l = IdentityMeasures.Listing("(4DX Rewind) Shrek 2D PL", decorations = d)
-    IdentityMeasures.titleShapes(l) should contain allOf ("Shrek 2D PL", "(4DX Rewind) Shrek", "Shrek")
+    l.shapes should contain allOf ("Shrek 2D PL", "(4DX Rewind) Shrek", "Shrek")
     IdentityMeasures.searchQueries(l) should contain("Shrek")
     IdentityMeasures.titleRelation(l, IdentityMeasures.Film("Shrek")) shouldBe IdentityMeasures.Category("segment")
     IdentityMeasures.titleRelation(l.copy(decorations = TitleDecorations.None), IdentityMeasures.Film("Shrek")) shouldBe

@@ -672,7 +672,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
       year   <- any.listing.statedYear.orElse(IdentityMeasures.bannerYear(any.listing)).toRight(Refused("the listing publishes no year"))
       works   = IdentityMeasures.stageWorks(any.listing)
       _      <- need(works.nonEmpty, "the title names no stage work")
-      record <- one(eligibleOf(ranked).filter(scored => IdentityMeasures.filmSeason(scored.candidate.film).isDefined &&
+      record <- one(eligibleOf(ranked).filter(scored => scored.candidate.film.season.isDefined &&
                   IdentityMeasures.stageWorks(scored.candidate.film).exists(works) && IdentityMeasures.bannerNamesItsHouse(any.listing, scored.candidate.film) &&
                   scored.candidate.film.year.contains(year) && !contradicted(scored)),
                   "no season record of its work from its year", "two season records of its work from its year", s"works ${works.toSeq.sorted.mkString(",")}, $year")
@@ -693,7 +693,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  every rule, as [[seasonProduction]] does a season the title names — a house's other stagings of the work (the Met's
    *  2014 "Macbeth", the Royal Ballet's 2013 "Romeo and Juliet") are other broadcasts than the one the venue screens. */
   private def broadcastSeasonRecord(ranked: Seq[Scored]): Option[Accepted] = seasonRecord(ranked).filter { case (record, _) =>
-    record.listing.screenedSeason.exists(IdentityMeasures.filmSeason(record.candidate.film).contains)
+    record.listing.screenedSeason.exists(record.candidate.film.season.contains)
   }
   /** The season record a relay's own year ([[stageProduction]]) or its screenings' season ([[broadcastSeasonRecord]])
    *  names, with the rule naming it: what pre-empts the rules after [[seasonProduction]]. */
@@ -707,7 +707,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
       _      <- need(listing.seasonYear.isEmpty, "the title names its season")
       own     = (Seq(listing.title) ++ listing.rawTitle).map(plain).toSet
       record <- one(ofItsBroadcastSeason(ranked.filter(scored => (isEligible(scored) || scored.deniedByCutOnly) &&
-                  IdentityMeasures.filmSeason(scored.candidate.film).isDefined &&
+                  scored.candidate.film.season.isDefined &&
                   (scored.candidate.film.titles.exists(t => own(plain(IdentityMeasures.withoutSeasons(t)))) || IdentityMeasures.screenedSeasonRecord(listing, scored.candidate.film)))),
                   "no season record carries its title or its work under its house", "two seasons' records carry its title")
       _      <- needOf(!contradicted(record), "a published fact contradicts it", record, contradiction(record))
@@ -715,7 +715,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
       // "The Royal Ballet: Romeo & Juliet" [2025] is no "The Royal Ballet: Romeo and Juliet (2021/22)") — but for the
       // record of the season its screenings broadcast it in, whose year it predates: that year dates the staging's premiere
       // (Aldeburgh's, screening on 25 May 2027, is "Royal Ballet & Opera 2026/27: Romeo and Juliet", aired that day)
-      _      <- needOf(listing.year.forall(year => IdentityMeasures.filmSeason(record.candidate.film).forall(season => year == season || year == season + 1)) ||
+      _      <- needOf(listing.year.forall(year => record.candidate.film.season.forall(season => year == season || year == season + 1)) ||
                   IdentityMeasures.screenedSeasonRecord(listing, record.candidate.film), "the year it states is another season's", record)
       _      <- needOf(!record.category("director").exists(Set("different", "different_script")), "it credits another director", record)
     } yield atOwn(record)
@@ -728,7 +728,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  house's 2024/25 one. */
   private def ofItsBroadcastSeason(records: Seq[Scored]): Seq[Scored] =
     records.headOption.flatMap(_.listing.screenedSeason).filter(_ => records.sizeIs > 1)
-      .map(season => records.filter(record => IdentityMeasures.filmSeason(record.candidate.film).contains(season)))
+      .map(season => records.filter(record => record.candidate.film.season.contains(season)))
       .filter(_.nonEmpty).getOrElse(records)
 
   /** The EDITION of the accepted film that the listing's whole title names, when there is exactly

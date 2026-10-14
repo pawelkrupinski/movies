@@ -1,7 +1,7 @@
 package services.identity
 
 import models.{Cinema, CinemaMovie}
-import services.movies.{ListingKey, ScrapeListing, SlotFields, TitleNormalizer, TitleText}
+import services.movies.{ListingKey, ScrapeListing, SlotFields, TitleNormalizer, TitleSeason, TitleText}
 
 /*
  * The identity resolver's vocabulary (docs/design/identity-resolver.md, phase 2). Everything here
@@ -89,7 +89,7 @@ final case class Listing(
     if (screenings.isEmpty) None
     else {
       val titles = Seq(title, rawTitle)
-      Option.when(IdentityMeasures.seasonYear(titles).isEmpty && IdentityMeasures.titleYearOf(titles).isEmpty &&
+      Option.when(TitleSeason.of(titles).isEmpty && IdentityMeasures.titleYearOf(titles).isEmpty &&
         IdentityMeasures.stageWorksBilled(titles, seasonNamed = false).nonEmpty)(()).flatMap(_ => screenings.season)
         .filter(season => year.forall(_ < season))
     }
