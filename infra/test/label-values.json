@@ -103,6 +103,50 @@
     "same_as": "jvm_buffer_pool_capacity_bytes"
    }
   },
+  "kinowo_ci_job_seconds": {
+   "workflow": [
+    "Identity model convergence"
+   ]
+  },
+  "kinowo_ci_phase_seconds": {
+   "workflow": {
+    "same_as": "kinowo_ci_job_seconds"
+   }
+  },
+  "kinowo_ci_run_seconds": {
+   "workflow": {
+    "same_as": "kinowo_ci_job_seconds"
+   }
+  },
+  "kinowo_ci_step_seconds": {
+   "step": [
+    "Check which listings the code moved to another film",
+    "Complete job",
+    "Fill the gaps the last leg listed, before the suite",
+    "Lay the fill over the tree the suite replays",
+    "Post Run ./.github/actions/convergence-setup",
+    "Post Run actions/checkout@v5",
+    "Publish convergence test report",
+    "Run ./.github/actions/convergence-findings",
+    "Run ./.github/actions/convergence-publish",
+    "Run ./.github/actions/convergence-setup",
+    "Run ./.github/actions/leg-verdict",
+    "Run actions/checkout@v5",
+    "Run the germany convergence suite",
+    "Run the germany order-independence suite",
+    "Run the poland convergence suite",
+    "Run the spain convergence suite",
+    "Run the united-kingdom convergence suite",
+    "Run the united-states convergence suite",
+    "Run the united-states order-independence suite",
+    "Run the united-states sample ahead of the suite",
+    "Secrets present",
+    "Set up job"
+   ],
+   "workflow": {
+    "same_as": "kinowo_ci_job_seconds"
+   }
+  },
   "kinowo_uptime_recent_failures": {
    "service": [
     "12th Street Cinema Aurora",
@@ -8895,6 +8939,7 @@
     "img: all.web.img.acsta.net · fallback",
     "img: alternatywy.art",
     "img: api-sf.artmuseum.pl",
+    "img: bck.systembiletowy.pl · fallback",
     "img: bilety.ck105.koszalin.pl",
     "img: bilety.ck105.koszalin.pl · fallback",
     "img: bilety.ckchojnice.pl",
@@ -8906,6 +8951,7 @@
     "img: bilety.kinomikro.pl",
     "img: bilety.kinomikro.pl · fallback",
     "img: bilety.kinoparadox.pl",
+    "img: bilety.kinoparadox.pl · fallback",
     "img: bilety.kinospektrum.pl · fallback",
     "img: bilety.mgok.janikowo.com.pl · fallback",
     "img: bilety.mok.com.pl · fallback",
@@ -8928,6 +8974,7 @@
     "img: de.web.img3.acsta.net",
     "img: de.web.img3.acsta.net · fallback",
     "img: dksokol.eu · fallback",
+    "img: dksrodaslaska.pl",
     "img: dkswit.com.pl",
     "img: dkswit.com.pl · fallback",
     "img: dok.pl · fallback",
@@ -8939,12 +8986,14 @@
     "img: gcf.org.pl · fallback",
     "img: goksiedlec.pl · fallback",
     "img: grl.systembiletowy.pl · fallback",
+    "img: iframe22.biletyna.pl · fallback",
     "img: iframe639.biletyna.pl · fallback",
     "img: ikm.gda.pl · fallback",
     "img: image.bilety24.pl",
     "img: image.bilety24.pl · fallback",
     "img: image.tmdb.org",
     "img: image.tmdb.org · fallback",
+    "img: images.cinemaplus.com · fallback",
     "img: images.savoysystems.co.uk",
     "img: images.savoysystems.co.uk · fallback",
     "img: images.weserv.nl",
@@ -8961,6 +9010,7 @@
     "img: kino.swiatowid.elblag.pl · fallback",
     "img: kino.wysokiemazowieckie.pl · fallback",
     "img: kinoamondo.pl",
+    "img: kinoamondo.pl · fallback",
     "img: kinoapollo.pl",
     "img: kinoapollo.pl · fallback",
     "img: kinobajka.pl",
@@ -8976,6 +9026,7 @@
     "img: kinopodbaranami.pl · fallback",
     "img: kinosokolnia.org · fallback",
     "img: kinosztumbilety.pl",
+    "img: kinotatrylodz.pl · fallback",
     "img: kinotomi.pl · fallback",
     "img: kinowo.net",
     "img: klubzak.com.pl",
@@ -9001,6 +9052,7 @@
     "img: stacjafalenica.pl",
     "img: stacjafalenica.pl · fallback",
     "img: static.kinoheld.de",
+    "img: system.spektrix.com",
     "img: tickets.oldcourt.org · fallback",
     "img: u-jazdowski.pl",
     "img: www.charlie.pl · fallback",
@@ -9030,6 +9082,7 @@
     "indy-systems.imgix.net",
     "k.i.d. - Kino im Dach",
     "kino achteinhalb",
+    "kinogram.pl",
     "letterboxd.com",
     "liverpoolfilmoffice.tv",
     "m.media-amazon.com",
@@ -9130,11 +9183,13 @@
     "/:city/api/cinemas",
     "/:city/api/details",
     "/:city/api/repertoire",
+    "/:city/debug/tune",
     "/:city/film/:rest",
     "/:city/movie/:slug",
     "/:city/movie/og-image",
     "/:city/movies",
     "/:city/og-image",
+    "/:city/sitemap.xml",
     "/admin/config",
     "/admin/identity",
     "/admin/share-cards",
@@ -9170,6 +9225,7 @@
     "/de/assets/:file",
     "/de/auth/:provider/start",
     "/de/auth/sso/start",
+    "/de/health",
     "/de/privacy-policy",
     "/de/sitemap-root.xml",
     "/de/sitemap.xml",
@@ -9231,6 +9287,7 @@
     "/uk/assets/:file",
     "/uk/auth/:provider/start",
     "/uk/auth/sso/start",
+    "/uk/health",
     "/uk/privacy-policy",
     "/uk/sitemap-root.xml",
     "/uk/sitemap.xml",
@@ -9262,6 +9319,7 @@
     "/us/auth/:provider/start",
     "/us/auth/sso/start",
     "/us/privacy-policy",
+    "/us/ready",
     "/us/sitemap-root.xml",
     "/us/sitemap.xml",
     "/us/tasks",
@@ -9303,11 +9361,13 @@
     "/:city/api/cinemas",
     "/:city/api/details",
     "/:city/api/repertoire",
+    "/:city/debug/tune",
     "/:city/film/:rest",
     "/:city/movie/:slug",
     "/:city/movie/og-image",
     "/:city/movies",
     "/:city/og-image",
+    "/:city/sitemap.xml",
     "/admin/config",
     "/admin/identity",
     "/admin/share-cards",
@@ -9343,6 +9403,7 @@
     "/de/assets/:file",
     "/de/auth/:provider/start",
     "/de/auth/sso/start",
+    "/de/health",
     "/de/privacy-policy",
     "/de/sitemap-root.xml",
     "/de/sitemap.xml",
@@ -9402,6 +9463,7 @@
     "/uk/assets/:file",
     "/uk/auth/:provider/start",
     "/uk/auth/sso/start",
+    "/uk/health",
     "/uk/privacy-policy",
     "/uk/sitemap-root.xml",
     "/uk/sitemap.xml",
@@ -9431,6 +9493,7 @@
     "/us/auth/:provider/start",
     "/us/auth/sso/start",
     "/us/privacy-policy",
+    "/us/ready",
     "/us/sitemap-root.xml",
     "/us/sitemap.xml",
     "/us/tasks",
