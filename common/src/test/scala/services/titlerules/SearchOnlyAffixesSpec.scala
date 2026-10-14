@@ -17,6 +17,10 @@ class SearchOnlyAffixesSpec extends AnyFlatSpec with Matchers {
     n.apiQuery("Czas, który nie nadszedł - uroczysta premiera") shouldBe "Czas, który nie nadszedł"
     n.apiQuery("Vincent. Legenda Oceanu - Kino sensoryczne") shouldBe "Vincent. Legenda Oceanu"
     n.apiQuery("Kino przyjazne sensorycznie: Baranek Shaun i kudłata bestia") shouldBe "Baranek Shaun i kudłata bestia"
+    // any audience a Polish screening is billed as friendly to (KINOkawiarnia Stacja Falenica, recording 38498856157)
+    n.apiQuery("Pokaz przyjazny osobom z ADHD: Kandydaci śmierci") shouldBe "Kandydaci śmierci"
+    n.apiQuery("Seans Przyjazny Sensorycznie: Willow i tajemniczy las") shouldBe "Willow i tajemniczy las"
+    n.apiQuery("Pokaz przyjazny dla osób w spektrum autyzmu: Lalka") shouldBe "Lalka"
     n.apiQuery("Toddler Club: Pip and Posy and Friends") shouldBe "Pip and Posy and Friends"
     n.apiQuery("Róża. DKF") shouldBe "Róża"
     // US Showcase's Met broadcasts (recording 37071880312): the encore is the screening's, its year the film's
@@ -33,6 +37,9 @@ class SearchOnlyAffixesSpec extends AnyFlatSpec with Matchers {
     // PL Kino Orzeł, Kino Stary Młyn, Kino w Ratuszu, Kino Orzeł's Fonomo, Kino w Kadrze (2026-10 corpus).
     n.apiQuery("Sytuacje Relacje. Pokaz filmu Hamnet") shouldBe "Hamnet"
     n.apiQuery("Spotkanie z aktorką Kamilą Urzędowską. Pokaz filmu \"Lalka\"") shouldBe "Lalka"
+    // a venue code glued after the closing quote (Kino w Ratuszu, recording 38498856157)
+    n.apiQuery("Spotkanie z Sandrą Drzymalską i przedpremierowy pokaz filmu \"Violetta Villas\".FMZ") shouldBe "Violetta Villas"
+    n.apiQuery("DKF ZAPRASZA 19 CZERWCA NA PREMIEROWY POKAZ FILMU „OJCZYZNA” (REŻYSERA „IDY” ORAZ „ZIMNEJ WOJNY”)") shouldBe "OJCZYZNA"
     n.apiQuery("Fonomo 26 - Tajemnica śpiewających ptaków reż. Antoine Lanciaux") shouldBe "Fonomo 26 - Tajemnica śpiewających ptaków"
     n.apiQuery("Kandydaci śmierci: Kadr Non-Fiction (16+)") shouldBe "Kandydaci śmierci"
     // the screening keeps its own row

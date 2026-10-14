@@ -144,7 +144,10 @@ object ExtraTitleRules {
     prog("xtra-pp-wtorki-seniora",    """(?i)^Wtorki\s+dla\s+Seniora:\s+""",              "Wtorki dla Seniora cycle"),
     prog("xtra-pp-kino-dla-seniora",  """(?i)^Kino\s+dla\s+Seniora:\s+""",                "Kino dla Seniora cycle"),
     // Sensory-friendly and toddler screenings: an audience programme, never the film (2026-10 corpus audit).
-    prog("xtra-pp-kino-przyjazne-sensorycznie", """(?i)^Kino\s+przyjazne\s+sensorycznie:\s+""", "Kino przyjazne sensorycznie: sensory-friendly screening"),
+    // Any audience a screening is billed as friendly to: sensory ("Kino przyjazne sensorycznie:", "Seans Przyjazny
+    // Sensorycznie:"), or named after "osobom" / "dla" ("Pokaz przyjazny osobom z ADHD:").
+    prog("xtra-pp-przyjazny-audience", """(?iu)^(?:Pokaz|Seans|Kino)\s+przyjazn[ye](?:\s+sensorycznie)?(?:\s+(?:osobom|dla)\s+[^:]{1,60})?:\s+""",
+      "'Pokaz / Seans / Kino przyjazny [sensorycznie] [osobom z ADHD / dla …]: <film>' audience-friendly screening (Baranek Shaun, Willow i tajemniczy las, Kandydaci śmierci)"),
     prog("xtra-pp-toddler-club",       """(?i)^Toddler\s+Club:\s+""",                     "Toddler Club: UK toddler screenings (Showcase/Odeon)"),
     // Polish summer/holiday and family cycles. Every one of these was found on a row
     // that reached TMDB with the banner still attached and therefore matched nothing —
@@ -238,7 +241,6 @@ object ExtraTitleRules {
     prog("xtra-pp-rok-z-marilyn",      """(?iu)^Rok\s+z\s+Marilyn\s+Monroe:\s+""",          "'Rok z Marilyn Monroe: <film>' retrospective (Książę i aktoreczka, Przystanek autobusowy, Pół żartem pół serio, Skłóceni z życiem, Słomiany wdowiec)"),
     prog("xtra-pp-tani-wtorek",        """(?iu)^Tani\s+wtorek:\s+""",                        "'Tani wtorek: <film>' cheap-Tuesday promo (Czytając Lolitę w Teheranie, Drugie życie, Kumotry, Ojczyzna, Robin Hood)"),
     prog("xtra-pp-klasyk-w-kinie",     """(?iu)^Klasyk\s+w\s+kinie[.:]\s+""",                 "'Klasyk w kinie: / . <film>' classics strand — colon AND dot separators (Milczenie owiec, Rozmowa, Przekleństwa niewinności)"),
-    prog("xtra-pp-seans-sensoryczny",  """(?iu)^Seans\s+Przyjazny\s+Sensorycznie:\s+""",     "'Seans Przyjazny Sensorycznie: <film>' sensory-friendly screening (Willow i tajemniczy las, Chłopiec na krańcach świata)"),
     prog("xtra-pp-fiesta-hiszpanskiego", """(?iu)^FIESTA\s+KINA\s+HISZPAŃSKIEGO:\s+""",      "'FIESTA KINA HISZPAŃSKIEGO: <film>' Spanish-cinema fiesta prefix (Prawo pożądania); the '| / – fiesta …' suffix forms are handled by xtra-fiesta-hiszpanskiego-suffix"),
     // Chain recurring-programme banners that were per-cinema (client `cleanTitle`)
     // seeds in TitleRules — promoted here so the strip is GLOBAL (any cinema
@@ -360,8 +362,9 @@ object ExtraTitleRules {
   val beforePlusEvent: Seq[TitleRule] = Seq(
     // The film after "pokaz filmu" is quoted or capitalised; "– pokaz filmu z prelekcją" names what the screening
     // comes WITH, and replacing the title with that searched for nothing. Case-insensitivity is scoped to the
-    // keyword, since a global (?i) makes \p{Lu} match lowercase too.
-    searchReplace("xtra-pokaz-filmu",              """(?u)^.*?\b(?i:(?:pokaz(?:\s+specjalny)?|(?:przed)?premiera)\s+filmu)\s*:?\s+(?:["„“]([^"„“”]+?)["”](?i:\s+i\s+(?:rozmowa|spotkanie|dyskusja)\b.*)?|(\p{Lu}[^"„“”]*?))\s*$""", "$1$2", "'… pokaz [specjalny] / [przed]premiera filmu[:] <film> [i rozmowa …]' screening of a film, the film quoted (straight, „…” or “…”) or capitalised"),
+    // keyword, since a global (?i) makes \p{Lu} match lowercase too. After a quoted film, whatever is glued to the
+    // closing quote (Kino w Ratuszu's ".FMZ") or a parenthesised note ("(REŻYSERA „IDY”…)") is the billing's, not the film's.
+    searchReplace("xtra-pokaz-filmu",              """(?u)^.*?\b(?i:(?:pokaz(?:\s+specjalny)?|(?:przed)?premiera)\s+filmu)\s*:?\s+(?:["„“]([^"„“”]+?)["”](?:[^\s"„“”]*|\s*\([^()]*\)|(?i:\s+i\s+(?:rozmowa|spotkanie|dyskusja)\b.*))|(\p{Lu}[^"„“”]*?))\s*$""", "$1$2", "'… pokaz [specjalny] / [przed]premiera filmu[:] <film> [i rozmowa … / (note) / a glued '.FMZ' code]' screening of a film, the film quoted (straight, „…” or “…”) or capitalised"),
     // A Q&A clause from its connector on: after a spaced dash ("- with Q&A and optional Ely Walking Tour"), as a
     // screening "and Q&A" ("…: Film Screening and Q&A Panel", "…Screening & Q&A"), or after an ampersand naming the
     // guest ("& Paul Greengrass Q&A" — a two-word name, so "Romeo & Juliet Q&A" keeps its film). Before the seed's

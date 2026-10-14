@@ -1,6 +1,7 @@
 package services.movies
 
 import models.Country
+import services.identity.MultiFilmBill
 
 import java.util.regex.Pattern
 import scala.util.matching.Regex
@@ -28,7 +29,7 @@ class SearchQueryMarkersSpec extends CorpusShapeSpec {
   protected def rule = "search every listing without a screening marker"
 
   protected def findings(corpus: ListingCorpus, listing: CorpusListing): Seq[String] =
-    Option(listing.raw).filter(_.nonEmpty).toSeq.flatMap { _ =>
+    Option(listing.raw).filter(_.nonEmpty).filterNot(billsSeveralFilms).toSeq.flatMap { _ =>
       val query   = corpus.query(listing)
       val markers = markersIn(corpus.country, query)
       Option.when(markers.nonEmpty)(s"searches '$query' (${markers.map(marker => s"$marker → ${strippedBy(marker)}").mkString(", ")})")
@@ -54,11 +55,8 @@ class SearchQueryMarkersSpec extends CorpusShapeSpec {
     AllowedListing.anywhere("Sneak Preview") -> s"a mystery screening whose film is undisclosed: $NoFilmToFind",
     AllowedListing.anywhere("PIĘKNO BEZ ROZMIARU [Pokaz stylu, urody i dobrych manier] i projekcja filmu \" Cruella\"") ->
       "a fashion show billed with a film: an event plus a film matches neither (the double-bill rule)",
-    AllowedListing.anywhere("21 i 22 Jump Street – podwójny seans") -> "a double bill: it matches neither film, by design",
     AllowedListing.anywhere("Letnie przesilenie: Pokaz przedpremierowy PRZEKLEŃSTW NIEWINNOŚCI") ->
       "the film is named in the genitive; no strip yields its nominative title",
-    AllowedListing.anywhere("DKF ZAPRASZA 19 CZERWCA NA PREMIEROWY POKAZ FILMU „OJCZYZNA” (REŻYSERA „IDY” ORAZ „ZIMNEJ WOJNY”)") ->
-      "TODO(rule): xtra-pokaz-filmu wants the quoted film at the title's end; a trailing parenthesis defeats it — parked",
     AllowedListing.anywhere("Premiera biografii M. Breguły") -> s"a book launch: $NoFilmToFind",
     AllowedListing.anywhere("Premiera Camacho Limited Edition 2026 z ambasadorem marki Jackiem Najsztubem") -> s"a product launch: $NoFilmToFind",
     AllowedListing.anywhere("Gdynia Filmowa 2026 | Dobry Chłopiec+napisy SDH") ->
@@ -79,8 +77,7 @@ class SearchQueryMarkersSpec extends CorpusShapeSpec {
     AllowedListing.anywhere("Arsenal Sneak Tübinger Kinos") -> s"a sneak branded with the venue's name: $NoFilmToFind",
     AllowedListing.anywhere("Bowie on the Silver Screen: An Illustrated Talk by Adrian Wootton + The Man Who Fell to Earth") ->
       "an illustrated talk billed with a film: an event plus a film matches neither (the double-bill rule)",
-    AllowedListing.anywhere("Space: 1999 4K Restoration Double Bill (U)") -> "a double bill: it matches neither film, by design",
-    AllowedListing.anywhere("Space: 1999: 4K Restoration Double Bill") -> "a double bill: it matches neither film, by design",
+    AllowedListing.anywhere("21 i 22 Jump Street – podwójny seans") -> "a double bill: it matches neither film, by design",
     AllowedListing.anywhere("Sekretny pokaz") -> s"Cinema City's secret screening, its film undisclosed: $NoFilmToFind",
     AllowedListing("Cinexx", "OmU Ebenezer: Eine Weihnachtsgeschichte") ->
       "TODO(rule): a version bare in front of the film with no separator — one listing across the five corpora of 2026-10-13, too rare for a rule of its own",
@@ -115,6 +112,14 @@ class SearchQueryMarkersSpec extends CorpusShapeSpec {
     markersIn(Country.UnitedKingdom, "The Babadook") shouldBe empty
     markersIn(Country.Germany, "Das Lehrerzimmer") shouldBe empty
     markersIn(Country.Spain, "La sociedad de la nieve") shouldBe empty
+  }
+
+  "a listing billing several films" should "be held to no marker: it matches none of them, whatever it searches" in {
+    billsSeveralFilms("Thunderbirds - Double Bill 4k Restoration: Atlantic Inferno & Attack of the Alligators") shouldBe true
+    billsSeveralFilms("Space: 1999 4K Restoration Double Bill (U)") shouldBe true
+    // a marathon of ONE title is that film's, so its query still counts
+    billsSeveralFilms("Inna Mamusia - maraton") shouldBe false
+    billsSeveralFilms("Lalka | 13+ | PREMIERA!!!") shouldBe false
   }
 
   "a finding" should "name the rule set whose strip the marker escaped" in {
@@ -156,6 +161,12 @@ object SearchQueryMarkersSpec {
     (FormatTags.FormatToken.keySet.toSeq ++ byLanguage.getOrElse(country.language.getLanguage, Nil))
       .distinct.sorted.map(phrase)
   }
+
+  /** A listing billing several films as one programme ([[MultiFilmBill]]: a double bill, a trilogy, a marathon) — the
+   *  identity resolver matches it to none of them, so what its search carries finds nothing by design. A programme word
+   *  annotating ONE title ("Inna Mamusia - maraton") is that film's billing, and is still held to the rule. */
+  def billsSeveralFilms(listing: String): Boolean =
+    MultiFilmBill.marker(Seq(listing)).isDefined && MultiFilmBill.billedOne(Seq(listing)).isEmpty
 
   private val Credit = """(?iu)(?:^|\s)reż\.""".r
   private val PlTail = """\s+PL\s*$""".r
