@@ -43,6 +43,9 @@ class MatchedTakesLabelSpec extends AnyFlatSpec with Matchers {
     ("uk", "Unrestricted View Horror Film Festival 2026: Opening Night", "tmdb:311764") ->
       ("matched to no film since ListingShape.programmeSlotOf: a festival's programme slot names no film, an event " +
         "(IdentityResolverCasesSpec, NonFilmEventsSpec) — struck once the rows are re-emitted"),
+    ("pl", "„Mieszkanie” i „Owoce rajskich drzew spożywamy”", "tmdb:80080") ->
+      ("matched to no film since ListingShape.quotesTwoJoined: two quoted works a conjunction joins are a double bill " +
+        "(IdentityResolverCasesSpec) — struck once the rows are re-emitted"),
     ("pl", "Maraton Horrorów", "tmdb:1193501") -> multiFilmBill,
     ("uk", "The Dark Knight Trilogy", "tmdb:155") -> multiFilmBill,
     ("uk", "Triple Feature: Lord of the Rings", "tmdb:122") -> multiFilmBill,
@@ -54,9 +57,6 @@ class MatchedTakesLabelSpec extends AnyFlatSpec with Matchers {
     ("de", "München Mord: Leben und Sterben in Schwabing", "tmdb:655654") ->
       ("a TV crime episode the venue's feed files under its director's other 2019 film (webedia 273417, Sascha Bigler): " +
         "the feed's own facts name the record, and no rule tells an episode from the film without losing right takes"),
-    ("pl", "„Mieszkanie” i „Owoce rajskich drzew spożywamy”", "tmdb:80080") ->
-      ("a double bill whose two works are quoted and joined by \"i\": the resolver alone declines it " +
-        "(no dated quotes), the whole-corpus model takes it on a route not yet traced"),
     ("pl", "24. Festiwal TERRA - DIA DE MUERTOS - MEKSYKAŃSKI DZIEŃ ZMARŁYCH", "tmdb:378112") ->
       ("a talk on the Day of the Dead at a travel festival, its title the film's original title; the listing states " +
         "nothing (no year, runtime or director) a rule could refuse it on"))
