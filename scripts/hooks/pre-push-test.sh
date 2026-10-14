@@ -2,6 +2,9 @@
 # pre-push's path selection: which checks a push's changed paths run, and that an unrelated push
 # runs none of them. Run: bash scripts/hooks/pre-push-test.sh
 set -uo pipefail
+# The caller's PREPUSH_SKIP is the PUSH's: a push skipping `redgate` ran this test with the gate skipped in every scratch
+# push below, and its red-gate cases failed (2026-10-14). Each case names what it skips itself.
+unset PREPUSH_SKIP
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 . "$REPO_ROOT/scripts/shell-spec.sh"
 # Run as pre-push's own `hooktest` check, this inherits the GIT_DIR the hook was handed; the scratch
