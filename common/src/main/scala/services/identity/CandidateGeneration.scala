@@ -54,9 +54,10 @@ private[identity] final class CandidateGeneration(ordered: Seq[Listing], lookups
   /** The films a fallback source lists under a node's search titles that TMDB holds no record of (the fallback ids an
    *  [[CandidateQuery.ImdbTitled]] answer carries): never in a TMDB pool, only what a cluster no TMDB film was taken for
    *  may fall back to. */
-  val fallbackOf: Map[String, Seq[Int]] = nodes.map(node => node.id -> queriesOf(node.id)
-    .flatMap(query => answers(query).toOption.getOrElse(Nil)).map(_.tmdbId).filter(FallbackIds.isFallback).distinct.sorted).toMap
-  val hitsById = nodes.flatMap(node => queriesOf(node.id).flatMap(query => answers(query).toOption.getOrElse(Nil))).groupBy(_.tmdbId)
+  val fallbackOf: Map[String, Seq[Int]] = nodes.map(node => node.id -> hitsOf(node.id).map(_.tmdbId).filter(FallbackIds.isFallback).distinct.sorted).toMap
+  val hitsById = nodes.flatMap(node => hitsOf(node.id)).groupBy(_.tmdbId)
+  /** Every hit a node's own queries' answers hold — none for a query not answered. */
+  def hitsOf(nodeId: String): Seq[Hit] = queriesOf(nodeId).flatMap(query => answers(query).toOption.getOrElse(Nil))
   // Looked up only when these listings are the whole corpus: a region reads its candidates from
   // the corpus's context, which holds every record already.
   lazy val records  = {

@@ -288,9 +288,7 @@ object IdentityCalibration {
   val RatingGateResourcePath = "identity-weights-gate.json"
 
   def fromResource(path: String): Option[IdentityCalibration] =
-    Option(getClass.getClassLoader.getResourceAsStream(path)).map { in =>
-      try Json.parse(in).as[IdentityCalibration] finally in.close()
-    }
+    ClasspathResource.json[IdentityCalibration](path)
 
   private def required(path: String): IdentityCalibration =
     fromResource(path).getOrElse(throw new IllegalStateException(s"$path is not on the classpath"))

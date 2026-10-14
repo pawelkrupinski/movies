@@ -30,16 +30,21 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
   private def listingsApart(first: EvidenceNode, second: EvidenceNode): Option[String] =
     apart.getOrElseUpdate((first.id, second.id), weighApart(first, second))
 
+  /** The search form two nodes' titles share — unless it is only what both bill BESIDE the films they name: a
+   *  festival's spellings of its films all search as the festival's suffix. */
+  private def sharedSearchForm(first: EvidenceNode, second: EvidenceNode): Option[String] =
+    Some(searchForm(first.evidence.cleanTitle))
+      .filter(form => form.nonEmpty && form == searchForm(second.evidence.cleanTitle) && !titlesBeside(first, form) && !titlesBeside(second, form))
+
   private def weighApart(first: EvidenceNode, second: EvidenceNode): Option[String] = {
     // Two spellings the same-search-form must-link joins ("Kino Konesera: Róża", "FILMOWY KLUB SENIORA I
     // SENIORKI: RÓŻA") name their film by that form; their programmes are not what the learned scope
     // weighs — compared as decorated titles they only overlapped, and the cut kept them apart on that
     // alone. Their facts are compared as ever.
-    val form = searchForm(first.evidence.cleanTitle)
     // A double bill shares its first film's form and is neither film ("The Gruffalo + The Gruffalo's Child").
-    val sameForm = form.nonEmpty && form == searchForm(second.evidence.cleanTitle) && !titlesBeside(first, form) && !titlesBeside(second, form) &&
-      !IdentityMeasures.billsTwoWorks(first.evidence.published) && !IdentityMeasures.billsTwoWorks(second.evidence.published)
-    def titled(l: IdentityMeasures.Listing) = if (sameForm) l.copy(title = form, rawTitle = None) else l
+    val sameForm = sharedSearchForm(first, second)
+      .filterNot(_ => IdentityMeasures.billsTwoWorks(first.evidence.published) || IdentityMeasures.billsTwoWorks(second.evidence.published))
+    def titled(l: IdentityMeasures.Listing) = sameForm.fold(l)(form => l.copy(title = form, rawTitle = None))
     // as each node's scope reads its facts: an overruled feed link's copied facts keep no listing apart ([[FeedLink]])
     val (firstListing, secondListing) = (titled(families.scopeOf(first).evidenceOf(first).published), titled(families.scopeOf(second).evidenceOf(second).published))
     lazy val measures = IdentityMeasures.listingListing(firstListing, secondListing, sameVenue = (first.venues intersect second.venues).nonEmpty, sharedChainId = None)
@@ -111,10 +116,7 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
         // where their titles agree: `catalogueKey`).
         Option.when(sharesCatalogueId(first, second))((2, "same-catalogue-id")),
         Option.when(titleX.nonEmpty && titleX == sanitized(secondEvidence.cleanTitle))((2, "same-title")),
-        // Unless the form is only what the two titles share BESIDE the films they name: a
-        // festival's spellings of its films all search as the festival's suffix.
-        Option.when(searchForm(firstEvidence.cleanTitle).nonEmpty && searchForm(firstEvidence.cleanTitle) == searchForm(secondEvidence.cleanTitle) &&
-          !titlesBeside(first, searchForm(firstEvidence.cleanTitle)) && !titlesBeside(second, searchForm(secondEvidence.cleanTitle)))((3, "same-search-form")),
+        Option.when(sharedSearchForm(first, second).isDefined)((3, "same-search-form")),
         Option.when(originals.contains(titleX) || originals.contains(sanitized(secondEvidence.cleanTitle)) ||
           (firstEvidence.originalTitle.isDefined && firstEvidence.originalTitle.map(sanitized) == secondEvidence.originalTitle.map(sanitized) && originals.nonEmpty))((3, "original-title")),
         // One listing's whole title is a delimited SEGMENT of the other's ("Oficjalna premiera:

@@ -1,7 +1,5 @@
 package services.identity
 
-import scala.io.Source
-
 /** The cuts of a film cinemas bill at their own running time (`identity-film-cuts.tsv`, hand-kept, each row citing
  *  its source): TMDB keeps ONE record per film at its theatrical runtime — "The Return of the King" at 201 minutes,
  *  none for the 263-minute extended edition; "Apocalypse Now" at 147, none for the Final Cut (183) or Redux (202) —
@@ -20,16 +18,13 @@ object FilmCuts {
 
   /** Lines `<tmdbId>\t<imdbId>\t<label>\t<minutes>\t<source URL>`; `#` starts a comment. */
   def parse(lines: Iterator[String]): Map[Int, Seq[Cut]] =
-    lines.map(_.trim).filter(line => line.nonEmpty && !line.startsWith("#")).map(_.split("\t").map(_.trim)).collect {
+    ClasspathResource.rows(lines).map(_.split("\t").map(_.trim)).collect {
       case Array(tmdbId, imdbId, label, minutes, source) if IdentityMeasures.imdbNumber(imdbId) > 0 =>
         Cut(tmdbId.toInt, imdbId, label, minutes.toInt, source)
     }.toSeq.groupBy(cut => IdentityMeasures.imdbNumber(cut.imdbId))
 
   /** The table on the classpath, by IMDb number. */
-  lazy val table: Map[Int, Seq[Cut]] =
-    Option(getClass.getClassLoader.getResourceAsStream(Resource)).fold(Map.empty[Int, Seq[Cut]]) { in =>
-      try parse(Source.fromInputStream(in, "UTF-8").getLines()) finally in.close()
-    }
+  lazy val table: Map[Int, Seq[Cut]] = parse(ClasspathResource.lines(Resource).iterator)
 
   /** The cuts the table names of the film IMDb numbers `imdbNumber` (0: none). */
   def of(imdbNumber: Int): Seq[Cut] = if (imdbNumber == 0) Nil else table.getOrElse(imdbNumber, Nil)

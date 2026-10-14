@@ -76,7 +76,5 @@ object DecorationScore {
   val ResourcePath = "identity-decoration-score.json"
 
   def fromResource(path: String = ResourcePath): Option[DecorationScore] =
-    Option(getClass.getClassLoader.getResourceAsStream(path)).map { in =>
-      try Json.parse(in).as[DecorationScore] finally in.close()
-    }
+    ClasspathResource.json[DecorationScore](path)
 }

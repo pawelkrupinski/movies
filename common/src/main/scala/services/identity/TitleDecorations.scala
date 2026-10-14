@@ -100,9 +100,7 @@ object TitleDecorations {
   private[identity] val LastBillJoin = """\s\+\s(?!.*\s\+\s)""".r
 
   def fromResource(path: String): Option[Artefact] =
-    Option(getClass.getClassLoader.getResourceAsStream(path)).map { in =>
-      try Json.parse(in).as[Artefact] finally in.close()
-    }
+    ClasspathResource.json[Artefact](path)
 
   /** The resolver's decorations: the artefact on the classpath. */
   lazy val resolver: TitleDecorations =

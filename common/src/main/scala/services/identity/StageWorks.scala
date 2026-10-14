@@ -1,7 +1,5 @@
 package services.identity
 
-import scala.io.Source
-
 /** The stage works — operas and ballets — a season broadcast is billed by, each under every name it goes by
  *  (`identity-stage-works.tsv`, built from Wikidata by `scripts/identity-stage-works.py`, and the hand-kept
  *  `identity-stage-works-extra.tsv`): cinemas show one season's "Royal Ballet & Opera 2026/27: The Nutcracker" as
@@ -12,8 +10,6 @@ import scala.io.Source
 final class StageWorks(works: Map[String, Set[String]], english: Map[String, String], names: Map[String, Seq[String]] = Map.empty) {
   /** The works a title piece names, by its key. */
   def named(key: String): Set[String] = works.getOrElse(key, Set.empty)
-  /** The name a search asks for `work` by. */
-  def searchName(work: String): Option[String] = english.get(work)
   /** Every name a search asks for `work` by: its English one first, then each other in the Latin script, one per
    *  spelling ([[IdentityMeasures.key]]) — a house files its record under the work's original name ("The Metropolitan
    *  Opera 2026/27: Samson et Dalila"), which neither the venue's "Samson i Dalila" nor "Samson and Delilah" finds. Only
@@ -33,7 +29,7 @@ object StageWorks {
 
   /** Lines `<work>\t<English name>\t<name>|<name>…` (the generated table) or `<work>\t<name>|<name>…` (the extra). */
   def parse(lines: Iterator[String]): StageWorks = {
-    val rows = lines.map(_.trim).filter(line => line.nonEmpty && !line.startsWith("#")).map(_.split("\t")).collect {
+    val rows = ClasspathResource.rows(lines).map(_.split("\t")).collect {
       case Array(work, englishName, names) => (work, Some(englishName), names.split('|').toSeq :+ englishName)
       case Array(work, names)              => (work, None, names.split('|').toSeq)
     }.toSeq
@@ -49,11 +45,6 @@ object StageWorks {
   private def latin(name: String): Boolean =
     name.exists(_.isLetter) && name.filter(_.isLetter).forall(c => Character.UnicodeScript.of(c.toInt) == Character.UnicodeScript.LATIN)
 
-  private def lines(path: String): Iterator[String] =
-    Option(getClass.getClassLoader.getResourceAsStream(path)).fold(Iterator.empty[String]) { in =>
-      try Source.fromInputStream(in, "UTF-8").getLines().toVector.iterator finally in.close()
-    }
-
   /** The table on the classpath, the extra names beside the generated ones. */
-  lazy val resolver: StageWorks = parse(lines(Resource) ++ lines(Extra))
+  lazy val resolver: StageWorks = parse((ClasspathResource.lines(Resource) ++ ClasspathResource.lines(Extra)).iterator)
 }

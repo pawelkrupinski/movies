@@ -120,6 +120,11 @@ object IdentityResolver {
         s"${denial.fold("")(why => s" DENIED ($why)")}${if (seasonProduction) " season" else ""}${if (houseProduction) " house" else ""} " +
         s"'$title'${year.fold("")(filmYear => s" ($filmYear)")} — $explanation"
   }
+  object CandidateScore {
+    private[identity] def of(scored: services.identity.Scored, calibration: IdentityCalibration): CandidateScore =
+      CandidateScore(scored.candidate.tmdbId, scored.candidate.film.title, scored.candidate.film.year, scored.probability, scored.rank,
+        scored.denial, scored.seasonProduction, scored.houseProduction, calibration.explain(IdentityMeasures.ListingFilm, scored.measures))
+  }
 
   /** A focused node, its candidates as its family scores them (best first), and each banner its
    *  candidates bill it under with the houses contending for that banner, best first, and the one learned. */
@@ -173,10 +178,7 @@ object IdentityResolver {
       }
       val decision = resolution.decisionOf(listing)
       ListingExplanation(node.label, familyOf(node.id), members.map(_.weight).sum, keyed.kept ++ accepted, keyed.dropped,
-        if (anchor eq node) Nil else path(anchor), decision,
-        scopeOf(node).of(node).map(scored => CandidateScore(scored.candidate.tmdbId, scored.candidate.film.title, scored.candidate.film.year,
-          scored.probability, scored.rank, scored.denial, scored.seasonProduction, scored.houseProduction,
-          calibration.explain(IdentityMeasures.ListingFilm, scored.measures))))
+        if (anchor eq node) Nil else path(anchor), decision, scopeOf(node).of(node).map(CandidateScore.of(_, calibration)))
     }
   }
 
@@ -231,14 +233,9 @@ object IdentityResolver {
                    decorations: TitleDecorations = TitleDecorations.resolver)(focused: Listing => Boolean): Seq[NodeCandidates] = {
     val stages = new Stages(listings, lookups, normalizer, calibration, Mutation.None, pins, decorations)
     import stages.scoring.{houseRanking, houses}
-    stages.generation.nodes.filter(_.listings.exists(focused)).map { node =>
-      val scored  = stages.families.scopeOf(node).of(node)
+    focusedScored(stages)(focused).map { case (node, scored) =>
       val banners = scored.flatMap(candidate => IdentityMeasures.billing(node.evidence.measured, candidate.candidate.film)).map(_.listingHouse).distinct.sorted
-      NodeCandidates(node.label,
-        scored.map { candidate =>
-          CandidateScore(candidate.candidate.tmdbId, candidate.candidate.film.title, candidate.candidate.film.year, candidate.probability, candidate.rank,
-            candidate.denial, candidate.seasonProduction, candidate.houseProduction, calibration.explain(IdentityMeasures.ListingFilm, candidate.measures))
-        },
+      NodeCandidates(node.label, scored.map(CandidateScore.of(_, calibration)),
         banners.map(banner => s"banner '$banner' → ${houses.of.getOrElse(banner, "no house")}; contenders: " +
           houseRanking.getOrElse(banner, Nil).take(4).map(_.render).mkString(", ")))
     }
@@ -262,11 +259,14 @@ object IdentityResolver {
     evidenceIn(new Stages(listings, lookups, normalizer, calibration, Mutation.None, PinConstraints(Nil), decorations))(focused)
 
   private def evidenceIn(stages: Stages)(focused: Listing => Boolean): Seq[NodeEvidence] =
-    stages.generation.nodes.filter(_.listings.exists(focused)).map { node =>
-      val scored = stages.families.scopeOf(node).of(node)
+    focusedScored(stages)(focused).map { case (node, scored) =>
       NodeEvidence(node.listings.map(_.key), scored.map(s => CandidateEvidence(s.candidate.tmdbId, s.candidate.film, s.probability, s.rank, s.denied,
         s.titleNamesIt, s.seasonProduction, s.houseProduction, s.measures, s.denial.flatMap(ReleaseVeto.releasedBeside))))
     }
+
+  /** Every node holding a listing `focused` selects, with its candidates as its family scores them (best first). */
+  private def focusedScored(stages: Stages)(focused: Listing => Boolean): Seq[(EvidenceNode, Seq[services.identity.Scored])] =
+    stages.generation.nodes.filter(_.listings.exists(focused)).map(node => node -> stages.families.scopeOf(node).of(node))
 
   /** A [[resolve]], and every node's candidates as that same resolve scored them ([[evidenceOf]], read only when asked):
    *  one pass for a caller wanting both — building the stages a second time was a whole second resolve. */
@@ -331,7 +331,7 @@ object IdentityResolver {
       val keys  = members.flatMap(_.listings.map(_.key)).toSet
       val pool  = families.scopes(family).pool
       val queries = members.flatMap(node => generation.queriesOf(node.id)).toSet
-      val films = members.flatMap(node => generation.queriesOf(node.id).flatMap(query => generation.answers(query).toOption.getOrElse(Nil)).map(_.tmdbId)).toSet
+      val films = members.flatMap(node => generation.hitsOf(node.id).map(_.tmdbId)).toSet
       val decisions = decisionsOf.getOrElse(family, Nil)
       RegionFamily(keys, decisions, members.flatMap(node => families.blockKeysOf(node.id)).toSet, queries, films,
         CorpusContext.Reads.of(members, pool.map(_.film), films ++ pool.map(_.tmdbId) ++ decisions.flatMap(_.film), queries, normalizer.sanitize),

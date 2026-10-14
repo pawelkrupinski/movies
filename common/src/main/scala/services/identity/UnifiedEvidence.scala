@@ -339,9 +339,7 @@ object UnifiedWeights {
   val HybridResourcePath = "identity-unified-hybrid-weights.json"
 
   def fromResource(path: String = ResourcePath): Option[UnifiedWeights] =
-    Option(getClass.getClassLoader.getResourceAsStream(path)).map { in =>
-      try Json.parse(in).as[UnifiedWeights] finally in.close()
-    }
+    ClasspathResource.json[UnifiedWeights](path)
 }
 
 /**
@@ -381,9 +379,7 @@ object UnifiedRules {
     signal.split('&').forall(term => if (term.startsWith("!")) features(term.drop(1)) == 0.0 else features(term) > 0.0)
   val ResourcePath = "identity-unified-rules.json"
   def fromResource(path: String = ResourcePath): Option[UnifiedRules] =
-    Option(getClass.getClassLoader.getResourceAsStream(path)).map { in =>
-      try Json.parse(in).as[UnifiedRules] finally in.close()
-    }
+    ClasspathResource.json[UnifiedRules](path)
   /** The rules on the classpath; none when the artefact is missing (a fill then takes nothing). */
   lazy val resolver: UnifiedRules = fromResource().getOrElse(UnifiedRules("none", UnifiedEvidence.Guards, Nil))
 }
