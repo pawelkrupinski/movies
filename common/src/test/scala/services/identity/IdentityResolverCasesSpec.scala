@@ -1461,6 +1461,65 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     ListingShape.quotesSeveralDated("„10 na 10”. Przegląd filmów Andrzeja Wajdy: „Pan Tadeusz” (1999)") shouldBe false
   }
 
+  it should "take no film the billing names as one piece beside another thing, unless the listing states the film's facts" in {
+    // DE (the convergence legs' takes, 2026-10-14, labelled wrong): an actor's reading of the novel, taken as Hitchcock's film
+    // its second piece names; a film its venue dates is the film, whatever the billing says beside it
+    val films = Seq(F(11219, "Immer Ärger mit Harry", 1955, "Alfred Hitchcock", 99), F(509, "Notting Hill", 1999, "Roger Michell", 124),
+      F(1503762, "Rozważna i romantyczna", 2026, "Joanna Kos", 110), F(1585, "It's a Wonderful Life", 1946, "Frank Capra", 131))
+    def decided(l: Listing, also: Listing*) =
+      IdentityResolver.resolve(l +: also, new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver).decisionOf(l.key)
+    def billed(raw: String, year: Option[Int] = None) = listing(KinoMuza, raw, year)
+    val reading = decided(billed("Jens Wawrczeck - Immer Ärger mit Harry"))
+    withClue(reading.render)(reading.film shouldBe None)
+    reading.explanation.mkString(" ") should include("'jens wawrczeck' is billed beside 'Immer Ärger mit Harry'")
+    decided(billed("Immer Ärger mit Harry")).film shouldBe Some(11219)
+    // PL (MatchedTakesLabelSpec's known wrong): a talk on the Day of the Dead at a travel festival, its title the film's
+    // original title
+    val terra = Seq(F(378112, "Salma w krainie dusz", 2019, "Carlos Gutiérrez Medrano", 95, original = Some("Día de Muertos")))
+    def festival(raw: String) = {
+      val l = listing(KinoMuza, raw)
+      IdentityResolver.resolve(Seq(l), new FilmTable(terra, normalizer), normalizer, IdentityCalibration.resolver).decisionOf(l.key)
+    }
+    festival("Dia de Muertos").film shouldBe Some(378112)
+    festival("24. Festiwal TERRA - DIA DE MUERTOS - MEKSYKAŃSKI DZIEŃ ZMARŁYCH").film shouldBe None
+    decided(billed("Notting Hill - Lady's Night")).film shouldBe None
+    // the venue's year agrees with the film's (DE "Notting Hill - Lady's Night" [1999]): the film, at a ladies' night
+    decided(billed("Notting Hill - Lady's Night", Some(1999))).film shouldBe Some(509)
+    // a film five other venues bill under its title with its year and director, beside a programme's banner (PL "Rozważna i
+    // romantyczna | DZIEŃ PRZEPIĘKNYCH KOBIET", 75 venues), and a piece the corpus bills beside three titles: a venue's
+    // offer, not another thing
+    val ladies = "Rozważna i romantyczna | DZIEŃ PRZEPIĘKNYCH KOBIET"
+    // the venue's rules search it without its banner, as PL's do
+    val searched = billed(ladies).copy(searchTitle = Some("Rozważna i romantyczna"))
+    decided(searched).film shouldBe None
+    val elsewhere = Seq(Helios, KinoApollo, Multikino, Rialto, KinoMikro).map(listing(_, "Rozważna i romantyczna", Some(2026), Some("Joanna Kos")))
+    val widely = decided(searched, elsewhere*)
+    withClue(widely.render)(widely.film shouldBe Some(1503762))
+    decided(billed("It's A Wonderful Life - Pay What You Feel"), billed("Elf - Pay What You Feel"), billed("Home Alone - Pay What You Feel"))
+      .film shouldBe Some(1585)
+    // the piece another title of the film: one IMDb lists it under (DE "Épines du Sahel - Die Dornen der Sahelzone")
+    def sahel(also: Seq[String]) = {
+      val l = billed("Épines du Sahel - Die Dornen der Sahelzone")
+      IdentityResolver.resolve(Seq(l), new FilmTable(Seq(F(1216084, "Épines du Sahel", 2023, "Boubakar Diallo", 90, imdbTitles = also)), normalizer),
+        normalizer, IdentityCalibration.resolver).decisionOf(l.key).film
+    }
+    sahel(Nil) shouldBe None
+    sahel(Seq("Die Dornen der Sahelzone")) shouldBe Some(1216084)
+    // a programme's initials (PL "Kopnięci w czasie|Fks", a seniors' film club)
+    decided(billed("Notting Hill|Fks")).film shouldBe Some(509)
+    // a piece naming the venue (PL Kino Amondo's "Punku | Peruwiańskie pożegnanie lata w Amondo")
+    decided(billed("Notting Hill | Pożegnanie lata w Muzie")).film shouldBe None
+    decided(billed("Notting Hill | Pożegnanie lata z Kinem Muza")).film shouldBe Some(509)
+    // two of a family's titles carry it: a venue's programme (PL Kino Kosmos' 1976 films, "Złote gody")
+    val kosmos = Seq(F(51857, "Nakarmić kruki", 1976, "Carlos Saura", 107), F(891, "Wszyscy ludzie prezydenta", 1976, "Alan J. Pakula", 138))
+    val crows  = listing(KinoMuza, "Nakarmić kruki | Złote gody")
+    val golden = IdentityResolver.resolve(Seq(crows, listing(KinoMuza, "Wszyscy ludzie prezydenta | Złote gody")),
+      new FilmTable(kosmos, normalizer), normalizer, IdentityCalibration.resolver)
+    withClue(golden.decisionOf(crows.key).render)(golden.decisionOf(crows.key).film shouldBe Some(51857))
+    IdentityResolver.resolve(Seq(crows), new FilmTable(kosmos, normalizer), normalizer, IdentityCalibration.resolver).decisionOf(crows.key)
+      .film shouldBe None
+  }
+
   it should "take neither of two quoted works a conjunction joins, a double bill" in {
     // PL KINOMUZEUM (suspect audit 2026-10-13, served in prod): Chytilová's "Owoce rajskich drzew spożywamy" billed with
     // her "Mieszkanie" — taken as the 1970 film alone by the calibrated rule (labelled wrong)

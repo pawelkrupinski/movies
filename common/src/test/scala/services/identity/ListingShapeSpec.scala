@@ -71,10 +71,19 @@ class ListingShapeSpec extends AnyFlatSpec with Matchers {
       None
     beside("IT FOLLOWS - HALLOWEEN SPECIAL", film("It Follows")) shouldBe None
     beside("Fatherland - Film Club", film("Fatherland")) shouldBe None
+    beside("DKF Szpula – DRUGIE ŻYCIE", film("Drugie życie")) shouldBe None
+    beside("Dolina Issy | Poniedziałki z Konwickim: pisarz – scenarzysta – reżyser", film("Dolina Issy", directors = Seq("Tadeusz Konwicki"))) shouldBe
+      None
     beside("KÖNIG DROSSELBART - EIN ADVENTSMÄRCHEN FÜR KINDER", film("König Drosselbart")) shouldBe None
     beside("Geliefert (ver.di)", film("Geliefert")) shouldBe None
     beside("Digger (15) 129 mins", film("Digger")) shouldBe None
     beside("DAS LEHRERZIMMER - ABO 9", film("Das Lehrerzimmer")) shouldBe None
+    beside("Judas and the Black Messiah + Panel Discussion", film("Judas and the Black Messiah")) shouldBe None
+    beside("Wicker (15) 105 mins *MATINEE*", film("Wicker")) shouldBe None
+    beside("Zaproszenie | Zobacz przedpremierowo", film("Zaproszenie")) shouldBe None
+    beside("Hilfe, es weihnachtet sehr - DELUXE ABEND", film("Schöne Bescherung").copy(alternativeTitles = Seq("Hilfe, es Weihnachtet sehr"))) shouldBe
+      None
+    beside("Klątwa doliny węży – z autorską narracją Łony (pokaz jednorazowy)", film("Klątwa doliny węży")) shouldBe None
     beside("Olympia 1936 / 2026 - Leni Riefenstahl: OLYMPIA 1 - FEST DER VÖLKER", film("Olympia - Fest der Völker", directors = Seq("Leni Riefenstahl"))) shouldBe
       None
     beside("Festiwal Korelacje: „Zemsta” z autorską narracją Artura Andrusa", film("Zemsta")) shouldBe None

@@ -46,6 +46,9 @@ class MatchedTakesLabelSpec extends AnyFlatSpec with Matchers {
     ("pl", "„Mieszkanie” i „Owoce rajskich drzew spożywamy”", "tmdb:80080") ->
       ("matched to no film since ListingShape.quotesTwoJoined: two quoted works a conjunction joins are a double bill " +
         "(IdentityResolverCasesSpec) — struck once the rows are re-emitted"),
+    ("pl", "24. Festiwal TERRA - DIA DE MUERTOS - MEKSYKAŃSKI DZIEŃ ZMARŁYCH", "tmdb:378112") ->
+      ("matched to no film since IdentityResolver.billedAsPiece: the billing names the film as one piece beside a talk on " +
+        "the Day of the Dead (IdentityResolverCasesSpec) — struck once the rows are re-emitted"),
     ("pl", "Maraton Horrorów", "tmdb:1193501") -> multiFilmBill,
     ("uk", "The Dark Knight Trilogy", "tmdb:155") -> multiFilmBill,
     ("uk", "Triple Feature: Lord of the Rings", "tmdb:122") -> multiFilmBill,
@@ -63,9 +66,6 @@ class MatchedTakesLabelSpec extends AnyFlatSpec with Matchers {
     ("de", "München Mord: Leben und Sterben in Schwabing", "tmdb:655654") ->
       ("a TV crime episode the venue's feed files under its director's other 2019 film (webedia 273417, Sascha Bigler): " +
         "the feed's own facts name the record, and no rule tells an episode from the film without losing right takes"),
-    ("pl", "24. Festiwal TERRA - DIA DE MUERTOS - MEKSYKAŃSKI DZIEŃ ZMARŁYCH", "tmdb:378112") ->
-      ("a talk on the Day of the Dead at a travel festival, its title the film's original title; the listing states " +
-        "nothing (no year, runtime or director) a rule could refuse it on"),
     // found by the wrong-match hunt 2026-10-14 (feed-id detector): the venue's Cineamo link names another film
     ("de", "The Killer", "tmdb:970347") ->
       ("John Woo's 1989 film in its 2026 4K restoration (tmdb:10835, 8 venues), not his streaming-only 2024 remake: the " +

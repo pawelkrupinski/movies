@@ -69,6 +69,66 @@ object IdentityResolver {
     }.toSet
   }
 
+  /** Why the film a member's cluster took is none of that member's: its billing names the film as ONE PIECE beside another
+   *  thing ([[ListingShape.billedBeside]]) — DE "Jens Wawrczeck - Immer Ärger mit Harry" is an actor's reading, not
+   *  Hitchcock's 1955 film; UK "SISTER ACT - NORTHALLERTON MUSICAL THEATRE COMPANY" an amateur company's musical. Not where
+   *  what is around the film is the venue's after all:
+   *  - its cluster's listings — its own, or those its title joins it to — are backed by [[PieceCorroboration]] other venues
+   *    or more stating the film's year or crediting its director (`venues.corroborating`, `corroborated`): a film widely
+   *    screened, whose local title, subtitle or event a venue bills beside it (PL "Rozważna i romantyczna | DZIEŃ
+   *    PRZEPIĘKNYCH KOBIET", joined to the plain title 75 venues bill);
+   *  - the piece beside it RECURS across the corpus's titles ([[CorpusContext.recurringSegment]]) or two of its family's
+   *    (read by `recurs` on the title's shapes): a programme's banner or a venue's offer ("Family Cinema: Paddington - Cert
+   *    PG", PL Kino Kosmos' "Nakarmić kruki | Złote gody" beside "Wszyscy ludzie prezydenta | Złote gody"); or is a one-word
+   *    tag in capitals beside a title that is not ([[IdentityMeasures.capitalisedTags]]: "Camino dla opornych | CHKF") or
+   *    one word of consonants alone, a programme's initials ("Kopnięci w czasie|Fks"); or
+   *    dates an edition after the film ("Dismember the Alamo 2026 - Chicago"); or names its venue or city (PL Kino
+   *    Amondo's "Punku | Peruwiańskie pożegnanie lata w Amondo");
+   *  - the piece is another title of the film: its title search's first film, or one IMDb lists under it in some language
+   *    ([[CandidateQuery.ImdbTitled]]: DE "Épines du Sahel - Die Dornen der Sahelzone");
+   *  - the listing states a fact of the film's own: a year, a director or an original title ([[IdentityMeasures.ownAgreement]]),
+   *    a running time within [[PieceRuntimeAgreement]] minutes, a feed's TMDB link ("Notting Hill - Lady's Night" [1999]).
+   *  `scored`: the member's own scoring of the film, its record and measures. Measured on the five convergence legs'
+   *  whole-corpus takes (2026-10-14). */
+  private[identity] def billedAsPiece(node: EvidenceNode, scored: services.identity.Scored, corroborated: Double,
+                                      recurs: String => Boolean, answered: CandidateQuery => Seq[Hit]): Option[String] = {
+    val film     = scored.candidate.film
+    def screened = corroborated >= PieceCorroboration
+    def stated   = IdentityMeasures.ownAgreement(scored.measures)._1.nonEmpty ||
+      IdentityMeasures.runtimeGap(scored.measures).exists(_ <= PieceRuntimeAgreement) ||
+      node.listings.exists(listing => CatalogueSources.tmdbLinked(listing).exists(_._2 == scored.candidate.tmdbId))
+    if (screened || stated) None
+    else {
+      import services.movies.TitleContainment.tokens
+      val evidence = node.evidence
+      lazy val banners = evidence.published.shapes.filter(recurs).map(tokens)
+      lazy val tags    = IdentityMeasures.capitalisedTags(evidence.published).map(tokens).filter(_.sizeIs == 1)
+      // one word of consonants alone: a programme's initials ("Kopnięci w czasie|Fks", a seniors' film club)
+      def acronym(piece: Seq[String]) = piece.sizeIs == 1 && !piece.head.exists(c => "aeiouy".contains(c) || c.isDigit)
+      def dated(word: String) = word.length == 4 && word.forall(_.isDigit) && film.year.exists(_ < word.toInt)
+      // a word of every listing's venue's name or city, inflected as it may be ("Kino w Kadrze": "Kadr Non-Fiction")
+      def venues(word: String) = word.length >= VenueStem && node.listings.forall(listing => EvidenceNode.placesOf(listing.cinema).flatten
+        .exists(place => place.length >= VenueStem && (word.startsWith(place) || place.startsWith(word))))
+      val listing  = node.listings.head.copy(rawTitle = evidence.rawTitle, title = evidence.title, originalTitle = evidence.originalTitle)
+      // another title of the film itself: its search's first film, or one IMDb lists under it in some language (DE
+      // "Épines du Sahel - Die Dornen der Sahelzone", the German release title TMDB's record does not carry)
+      val id = scored.candidate.tmdbId
+      def titles(piece: Seq[String]) = evidence.published.shapes.exists(shape => tokens(shape) == piece &&
+        (answered(CandidateQuery.Title(shape)).headOption.exists(_.tmdbId == id) || answered(CandidateQuery.ImdbTitled(shape)).exists(_.tmdbId == id)))
+      ListingShape.billedBeside(listing, Seq(film), piece =>
+        piece.exists(word => dated(word) || venues(word)) || acronym(piece) || tags.contains(piece) || banners.contains(piece) || titles(piece))
+        .map(why => s"no film: one piece of the billing names '${film.title}' — $why")
+    }
+  }
+  /** The fewest letters a word shares with its venue's name or city to name it: "Kadr" in "Kino w Kadrze". */
+  val VenueStem = 4
+  /** How many minutes a listing's running time may stand from its film's and still state the film's own. */
+  val PieceRuntimeAgreement = 3
+  /** How many other venues stating the film's facts under the listing's title make it a film screened widely: above UK's
+   *  four billing "Sister Act" (1992) plainly beside an amateur company's "SISTER ACT - NORTHALLERTON MUSICAL THEATRE
+   *  COMPANY", below the 30 and more of PL's current releases a programme bills beside its banner (2026-10-14). */
+  val PieceCorroboration = 5
+
   private[identity] enum Mutation {
     case None
     /** A2 broken: must-links applied in arrival order, first wins. */
@@ -269,14 +329,17 @@ object IdentityResolver {
     stages.generation.nodes.filter(_.listings.exists(focused)).map(node => node -> stages.families.scopeOf(node).of(node))
 
   /** A [[resolve]], and every node's candidates as that same resolve scored them ([[evidenceOf]], read only when asked):
-   *  one pass for a caller wanting both — building the stages a second time was a whole second resolve. */
+   *  one pass for a caller wanting both — building the stages a second time was a whole second resolve. A family's verdict
+   *  (`agreement.Agreement.verdict`, its only caller) takes a film one piece of the billing names ([[billedAsPiece]]): what
+   *  the families agree on is the agreement stage's to read against the billing (`AgreementStage.pieceOf`), which also keeps
+   *  a fill off it. */
   final class Scored private[IdentityResolver] (val resolution: Resolution, stages: Stages) {
     lazy val evidence: Seq[NodeEvidence] = evidenceIn(stages)(_ => true)
   }
   def resolveScored(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer,
                     calibration: IdentityCalibration = IdentityCalibration.resolver): Scored = {
     val stages = new Stages(listings, lookups, normalizer, calibration, Mutation.None, PinConstraints(Nil), TitleDecorations.resolver)
-    new Scored(run(stages, Mutation.None), stages)
+    new Scored(run(stages, Mutation.None, pieces = false), stages)
   }
 
   /** The corpus-wide facts a resolve of `listings` reads ([[CorpusContext]]): what one family,
@@ -340,7 +403,9 @@ object IdentityResolver {
     }
   }
 
-  private def run(stages: Stages, mutation: Mutation): Resolution = {
+  /** `pieces`: whether a member billing its cluster's film as one piece beside another thing is decided apart, as no film
+   *  ([[billedAsPiece]]) — the model's own takes; not a family's verdict ([[resolveScored]]). */
+  private def run(stages: Stages, mutation: Mutation, pieces: Boolean = true): Resolution = {
     import stages.{acceptance, families, generation, links, ordered, scoring}
     import generation.{answers, candidateOf, details, issued, nodeById, nodes, records}
     import families.{familyOf, scopes}
@@ -417,16 +482,38 @@ object IdentityResolver {
       // title to the spelling crediting Harrison alone — itself a bill): it is decided apart, as no film.
       val bills   = members.filter(node => acceptance.billsSeveralWorks(scope.of(node))).map(_.id).toSet
       val billing = bills ++ IdentityResolver.billingUnderBanner(members, bills, filmOf, scope.of)
+      // a piece recurs across the corpus's titles, or across two of its family's — which a piece shared joins into one
+      lazy val familyPieces: Map[String, Int] = members.flatMap { node =>
+        val whole = generation.normalizer.sanitize(node.evidence.cleanTitle)
+        node.evidence.published.shapes.map(generation.normalizer.sanitize).filter(piece => piece.nonEmpty && piece != whole).distinct.map(_ -> whole)
+      }.groupMap(_._1)(_._2).map { case (piece, wholes) => piece -> wholes.distinct.size }
+      def answered(query: CandidateQuery): Seq[Hit] = answers.get(query).flatMap(_.toOption).getOrElse(Nil)
+      def recurs(shape: String) = {
+        val piece = generation.normalizer.sanitize(shape)
+        generation.context.recurringSegment(piece) || (!generation.context.wholeTitle(piece) && familyPieces.getOrElse(piece, 0) >= 2)
+      }
       val decided = clusters.flatMap { cluster =>
-        val (bills, rest) = cluster.partition(node => billing(node.id))
-        if (bills.isEmpty || cluster.forall(node => filmOf(node.id).isEmpty))
+        val (bills, unbilled) = cluster.partition(node => billing(node.id))
+        // a member billing its cluster's film as one piece beside another thing is none of it either — unless a pin took it
+        val film   = cluster.iterator.flatMap(node => filmOf(node.id)).nextOption()
+        val pinned = cluster.exists(node => families.pinnedFilm.contains(node.id))
+        val piecesOf = film.filterNot(_ => pinned || !pieces).toSeq.flatMap { film =>
+          val scored       = unbilled.flatMap(node => scope.of(node).find(_.candidate.tmdbId == film).map(node -> _))
+          val corroborated = scored.flatMap(_._2.number("venues.corroborating")).maxOption.getOrElse(0.0)
+          scored.flatMap { case (node, own) => IdentityResolver.billedAsPiece(node, own, corroborated, recurs, answered).map(node -> _) }
+        }.toMap
+        val rest   = unbilled.filterNot(piecesOf.contains)
+        if ((bills.isEmpty && piecesOf.isEmpty) || film.isEmpty)
           Seq(decisions.of(cluster, scope, filmOf, accepted, votes, familyEdges, clusterIndex))
         else {
-          // a cluster of bills alone takes no film its vote reaches either
-          val neither = decisions.of(bills, scope, _ => None, Map.empty, Map.empty, familyEdges, clusterIndex)
-          Option.when(rest.nonEmpty)(decisions.of(rest, scope, filmOf, accepted, votes, familyEdges, clusterIndex)).toSeq :+
-            neither.copy(explanation = "bills several works: none of them" +: neither.explanation)(
-              neither.trace.copy(vetoed = Some(DecisionTrace.Veto("bills both works", None))))
+          // a cluster of bills or pieces alone takes no film its vote reaches either
+          def none(nodes: Seq[EvidenceNode], why: Seq[String], veto: String) = {
+            val neither = decisions.of(nodes, scope, _ => None, Map.empty, Map.empty, familyEdges, clusterIndex)
+            neither.copy(explanation = why ++ neither.explanation)(neither.trace.copy(vetoed = Some(DecisionTrace.Veto(veto, None))))
+          }
+          Option.when(rest.nonEmpty)(decisions.of(rest, scope, filmOf, accepted, votes, familyEdges, clusterIndex)).toSeq ++
+            Option.when(bills.nonEmpty)(none(bills, Seq("bills several works: none of them"), "bills both works")) ++
+            Option.when(piecesOf.nonEmpty)(none(unbilled.filter(piecesOf.contains), unbilled.flatMap(piecesOf.get).distinct, "billed as one piece"))
         }
       }
       (familyEdges, decided, violations)
