@@ -56,6 +56,12 @@ final class CorpusComparison {
   private val lock = new ReentrantLock()
   @volatile private var baseline: Option[(Int, ReplayCorpus)] = None
   private val found = mutable.ListBuffer.empty[String]
+  @volatile private var submitted = 0
+
+  /** How many passes were folded in. No divergence between fewer passes than were replayed is no claim about the
+   *  missing ones: the caller holds this to the number it started, so the comparison cannot pass on passes that never
+   *  arrived. */
+  def folded: Int = submitted
 
   /** Materialise pass `pass`'s corpus and fold it into the comparison. The first
    *  caller in becomes the baseline and is retained; every later one is compared
@@ -69,6 +75,7 @@ final class CorpusComparison {
     lock.lock()
     try {
       val corpus = materialise()
+      submitted += 1
       baseline match {
         case None                   => baseline = Some(pass -> corpus)
         case Some((base, baseCorpus)) => found ++= diff(base, baseCorpus, pass, corpus)

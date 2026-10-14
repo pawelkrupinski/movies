@@ -1139,6 +1139,8 @@ abstract class CountryConvergenceBehaviour(
            s"${reference.screenings.values.map(_.size).sum} slots, ${reference.rows.size} rendered rows")
       reference.records should not be empty
       reference.rows    should not be empty
+      // Every pass compared: a pass that never folded in would leave nothing to diverge, and pass as agreement.
+      withClue(s"only ${comparison.folded} of $Passes order passes reached the comparison: ")(comparison.folded shouldBe Passes)
       // All three axes are real. This note used to say the screenings one was VACUOUS —
       // that `MongoConvergenceStorage` built `movies` without the `screenings`/`slots`
       // read-split, so the side collection was never written and two empty maps compared

@@ -37,7 +37,17 @@ class CorpusComparisonSpec extends AnyFlatSpec with Matchers {
   private def corpus(titles: String*): ReplayCorpus =
     ReplayCorpus(records = Nil, screenings = Map.empty, rows = titles.map(row))
 
-  "the corpus comparison" should
+  "the corpus comparison" should "count every pass it folds in, so a pass that never arrived is not read as agreement" in {
+    val comparison = new CorpusComparison
+    comparison.folded shouldBe 0
+    comparison.submit(0)(() => corpus("Ghost in the Shell"))
+    comparison.submit(1)(() => corpus("Ghost in the Shell"))
+    // two agreeing passes: no divergence, and the count says only two of (say) three were compared
+    comparison.divergences shouldBe empty
+    comparison.folded shouldBe 2
+  }
+
+  it should
     "materialise one pass's corpus at a time, so the heap never holds more than the baseline and one other" in {
     val comparison = new CorpusComparison
     val live = new AtomicInteger()
