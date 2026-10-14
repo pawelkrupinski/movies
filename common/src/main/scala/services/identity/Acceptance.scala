@@ -566,14 +566,16 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
     one(withoutHollow(found), "no film of its credited director shares its work", "two films of its director share its work", credited(ranked)).map(f => f -> f.probability)
   }
 
-  /** The one eligible candidate the listing's title names EXACTLY that credits the director the
-   *  listing credits, when no published year or runtime contradicts it: a title and its director
+  /** The one eligible candidate the listing's title — or the original title its venue publishes — names EXACTLY that
+   *  credits the director the listing credits, when no published year or runtime contradicts it: a title and its director
    *  name one film together, however the database's search ranks it or however few venues list it
-   *  (US "Man of Iron" {Andrzej Wajda}, seventh in TMDB's search behind "Iron Man"). Two such
-   *  records are no answer. */
+   *  (US "Man of Iron" {Andrzej Wajda}, seventh in TMDB's search behind "Iron Man"; DE Casablanca Zwickau's "Ping Pong
+   *  Session", published as "Ping Pong" {Yu Tianji}, his 2025 short, eighteenth for "Ping Pong"). Two such records are
+   *  no answer. */
   def directorsTitle(ranked: Seq[Scored]): Option[Accepted] = ownInstalment(directorsTitleWhy(ranked)).toOption
   private def directorsTitleWhy(ranked: Seq[Scored]): Verdict =
-    one(withoutHollow(eligibleOf(ranked).filter(candidate => candidate.category("title").contains("exact") &&
+    one(withoutHollow(eligibleOf(ranked).filter(candidate =>
+      (candidate.category("title").contains("exact") || candidate.category("originalTitle").contains("match")) &&
       IdentityMeasures.sameDirector(candidate.measures) && !contradicted(candidate))),
       "no film of its exact title by its credited director", "two films of its title by its director", credited(ranked)).map(f => f -> f.probability)
 
