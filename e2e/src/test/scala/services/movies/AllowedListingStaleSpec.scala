@@ -21,4 +21,11 @@ class AllowedListingStaleSpec extends AnyFlatSpec with Matchers {
   it should "say nothing about an entry whose listing the corpus does not carry" in {
     AllowedListing.stale(allow, carried = Set(jubilee), stillBreaking = Set(jubilee), awaitingReRecord = Set.empty) shouldBe empty
   }
+
+  // Cineamo billed "…außergewöhnliche  Freundschaft von A" (two spaces) when it was allowlisted, Astor Film Lounge
+  // "…außergewöhnliche Freundschaft von A" a recording later: one billing, which a venue's spacing does not make anew.
+  "an entry" should "hold the listing spelled alike but for its runs of spaces" in {
+    AllowedListing.anywhere("Freundschaft  von A") shouldBe AllowedListing.anywhere("Freundschaft von A ")
+    AllowedListing("Kino  Muza", "a\tb") shouldBe AllowedListing("Kino Muza", "a b")
+  }
 }

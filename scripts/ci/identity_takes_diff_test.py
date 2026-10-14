@@ -99,6 +99,17 @@ class TakesDiffTest(unittest.TestCase):
         self.assertIn("| ✓ | changed | Helios | Lalka |", md)
         self.assertIn("| ❌ | changed | Kino Iluzjon | Lalka |", md)
 
+    def test_a_label_judges_the_billing_spelled_alike_but_for_its_runs_of_spaces(self):
+        # DE Caligari billed "ES  (ULRICH SCHAMONI)" when it was judged, "ES (ULRICH SCHAMONI)" a recording later: the
+        # same billing, as UnmatchedClusters.singleSpaced keys it
+        base = [row("Caligari", "ES (ULRICH SCHAMONI)", 346364)]
+        head = [row("Caligari", "ES (ULRICH SCHAMONI)", None)]
+        labels = ["country\tvenue\trawTitle\tfilm\tverdict\tnote\n",
+                  "pl\t*\tES  (ULRICH SCHAMONI)\ttmdb:346364\twrong\tSchamoni's 1966 Es, not the 2017 It\n"]
+        code, md = self.run_diff(base, head, labels=labels)
+        self.assertEqual(0, code)
+        self.assertIn("| ✓ | lost | Caligari | ES (ULRICH SCHAMONI) |", md)
+
     def test_accepted_tsv_accepts_a_move_at_every_venue_with_a_wildcard(self):
         base = [row("Helios", "Lalka", 501), row("Rialto", "Lalka", 501)]
         head = [row("Helios", "Lalka", 9), row("Rialto", "Lalka", 9)]

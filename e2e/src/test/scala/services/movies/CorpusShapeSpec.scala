@@ -8,9 +8,14 @@ import org.scalatest.matchers.should.Matchers
 import tools.{FixtureTestWiring, SuiteConfiguration}
 
 /** An allowlisted listing: the venue (its `displayName`, the wire key) and the title it published. */
-final case class AllowedListing(venue: String, listing: String)
+final case class AllowedListing private (venue: String, listing: String)
 
 object AllowedListing {
+  /** An entry for `listing` at `venue`, both single-spaced ([[tools.UnmatchedClusters.singleSpaced]]): a venue that
+   *  re-spaces a billing between recordings bills the same listing. */
+  def apply(venue: String, listing: String): AllowedListing =
+    new AllowedListing(tools.UnmatchedClusters.singleSpaced(venue), tools.UnmatchedClusters.singleSpaced(listing))
+
   /** The venue of an entry that holds wherever the title is listed — a chain-wide event billing. */
   val AnyVenue = "*"
   def anywhere(listing: String): AllowedListing = AllowedListing(AnyVenue, listing)

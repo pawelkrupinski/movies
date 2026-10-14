@@ -59,14 +59,21 @@ def labels_of(path, cc):
             cols = line.rstrip("\n").split("\t")
             if n == 0 or len(cols) < 5 or cols[0] != cc:
                 continue
-            out[(cols[1], cols[2], cols[3])] = cols[4]
+            out[(cols[1], single_spaced(cols[2]), cols[3])] = cols[4]
     return out
+
+
+def single_spaced(title):
+    """A billing as every judgement file keys it (UnmatchedClusters.singleSpaced): its runs of whitespace one space, none at
+    the ends -- a venue that re-spaces a billing between recordings bills the same listing."""
+    return " ".join(title.split())
 
 
 def label_of(labels, venue, title, film):
     """The verdict labels.tsv gives `film` for the listing, read as UnmatchedClusters.verdict reads it: a label for every
     venue ("*") covers this one too, and the venue's own label calling the film right overrules every venue's calling it
     wrong (PL Kino Iluzjon's "Lalka" is Has' 1968 film, the bare "Lalka" everywhere else the 2026 one)."""
+    title = single_spaced(title)
     own, every = labels.get((venue, title, film)), labels.get(("*", title, film))
     if own == "right" or every is None:
         return own
@@ -161,7 +168,7 @@ def verdict(cc, move, labels, accepted):
     """(accepted?, why) for one move."""
     venue, title, before, after = move["venue"], move["rawTitle"], ref(move["before"]), ref(move["after"])
     for a_venue, a_title, a_before, a_after in accepted:
-        if a_venue in ("*", venue) and a_title == title and a_before in ("*", before) and a_after in ("*", after):
+        if a_venue in ("*", venue) and single_spaced(a_title) == single_spaced(title) and a_before in ("*", before) and a_after in ("*", after):
             return True, "accepted.tsv"
     now = label_of(labels, venue, title, after)
     was = label_of(labels, venue, title, before)

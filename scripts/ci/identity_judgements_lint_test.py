@@ -120,6 +120,18 @@ class JudgementsLintTest(unittest.TestCase):
         listed = self.files[lint.KNOWN_WRONG] + "de\t80ER PARTY\ttmdb:424523\t80er Clips (2004)\twhy it stands\n"
         self.assertEqual(([], []), self.messages(extra={lint.LABELS: labels, lint.KNOWN_WRONG: listed}, served=[cap]))
 
+    def test_a_billing_respaced_is_the_same_listing_to_judge_and_to_list(self):
+        # DE Caligari: "ES  (ULRICH SCHAMONI)" judged and baselined, served as "ES (ULRICH SCHAMONI)" a recording later
+        cap = self.served([{"film": 346364, "members": [{"venue": "Caligari", "rawTitle": "ES (ULRICH SCHAMONI)"}]}])
+        labels = HEAD + "de\t*\tES  (ULRICH SCHAMONI)\ttmdb:346364\twrong\tSchamoni's 1966 Es\n"
+        found, _ = self.messages(extra={lint.LABELS: labels}, served=[cap])
+        self.assertEqual(1, len(found))
+        listed = self.files[lint.BASELINE] + "de\tES  (ULRICH SCHAMONI)\ttmdb:346364\tEs (2017)\twrong by labels.tsv\n"
+        self.assertEqual(([], []), self.messages(extra={lint.LABELS: labels, lint.BASELINE: listed}, served=[cap]))
+        both = labels + "de\t*\tES (ULRICH SCHAMONI)\ttmdb:346364\tright\t\n"
+        self.assertEqual(["labels.tsv judges tmdb:346364 both right and wrong for de * | ES (ULRICH SCHAMONI)"],
+                         self.messages(extra={lint.LABELS: both})[0])
+
     def test_with_the_labels_a_push_started_from_only_its_new_wrong_judgements_of_served_takes_fail(self):
         cap = self.served([{"film": 424523, "members": [{"venue": "Union", "rawTitle": "80ER PARTY"}]},
                            {"film": 1576593, "members": [{"venue": "Thalia", "rawTitle": "Simply Christmas"}]}])

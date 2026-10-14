@@ -44,6 +44,19 @@ class SuspectTakesAuditSpec extends AnyFlatSpec with Matchers {
       Set.empty).failed shouldBe false
   }
 
+  it should "judge a raw title by the label and baseline spelling it alike but for its runs of spaces" in {
+    // DE Caligari billed "ES  (ULRICH SCHAMONI)" when it was judged and baselined, "ES (ULRICH SCHAMONI)" a recording later:
+    // the same billing, which a venue's spacing does not make a new question
+    val respaced = take("Giorgia  Fumo -   OUT OF OFFICE", "Out of Office", 2022, 1)
+    SuspectTakesAudit.judge("pl", corpus(respaced, fine), 2026, Seq(label("Giorgia Fumo - OUT OF OFFICE", "tmdb:1", right = true)), Set.empty)
+      .failed shouldBe false
+    SuspectTakesAudit.judge("pl", corpus(respaced, fine), 2026, Nil, Set(("pl", "Giorgia Fumo - OUT OF OFFICE", "tmdb:1"))).failed shouldBe false
+    SuspectTakesAudit.judge("pl", corpus(respaced, fine), 2026, Nil, Set.empty).failed shouldBe true
+    val labels = Seq(label("Johnny  ", "tmdb:3", right = false))
+    SuspectTakesAudit.judge("pl", corpus(fine, wrongOne), 2026, labels, Set.empty).wrong.map(_.film) shouldBe Seq("tmdb:3")
+    SuspectTakesAudit.judge("pl", corpus(fine, wrongOne), 2026, labels, Set(("pl", "Johnny ", "tmdb:3"))).failed shouldBe false
+  }
+
   it should "fail on a take a label calls wrong, suspect or not, unless the baseline lists it" in {
     val labels  = Seq(label("Johnny", "tmdb:3", right = false))
     val verdict = SuspectTakesAudit.judge("pl", corpus(fine, wrongOne), 2026, labels, Set.empty)
@@ -62,14 +75,14 @@ class SuspectTakesAuditSpec extends AnyFlatSpec with Matchers {
     withClue(s"${SuspectTakesAudit.BaselinePath} grew: judge a new suspect into labels.tsv, never baseline it — and lower " +
       "SuspectTakesAudit.BaselineArmed when the baseline shrinks: ") { lines.size should be <= SuspectTakesAudit.BaselineArmed }
     val rows = lines.map(_.split("\t", -1))
-    val keys = rows.map(a => (a(0), a(1), a(2)))
+    val keys = rows.map(a => (a(0), UnmatchedClusters.singleSpaced(a(1)), a(2)))
     keys.distinct.size shouldBe keys.size
     keys.map(_._1).toSet.subsetOf(models.Country.all.map(_.code).toSet) shouldBe true
     // a SUSPECT a label has since judged right at every venue ("*") is no question left: strike it. A wrong take stays
     // listed until it is fixed, whatever another venue's label says of the same billing.
     val labels = UnmatchedClusters.readLabels(UnmatchedClusters.Directory.resolve("labels.tsv"))
     val judged = rows.filterNot(_(4) == SuspectTakesAudit.WrongReason).map(a => (a(0), a(1), a(2))).filter { case (cc, raw, film) =>
-      labels.exists(l => l.country == cc && l.venue == "*" && l.rawTitle == raw && l.film == film && l.right) }
+      labels.exists(l => l.country == cc && l.venue == "*" && UnmatchedClusters.singleSpaced(l.rawTitle) == UnmatchedClusters.singleSpaced(raw) && l.film == film && l.right) }
     withClue("baselined suspects since judged right — strike them from the baseline: ") { judged shouldBe empty }
   }
 }

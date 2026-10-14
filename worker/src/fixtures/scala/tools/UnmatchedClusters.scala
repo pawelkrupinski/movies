@@ -202,8 +202,14 @@ object UnmatchedClusters {
   /** A judgement of one listing (`venue` "*" for every venue billing `rawTitle`): `film` ("tmdb:913760",
    *  "imdb:tt16315948") is `right` or `wrong` for it. */
   final case class Label(country: String, venue: String, rawTitle: String, film: String, right: Boolean, note: String) {
-    def covers(take: Take): Boolean = take.country == country && take.rawTitle == rawTitle && (venue == "*" || venue == take.venue)
+    def covers(take: Take): Boolean =
+      take.country == country && singleSpaced(take.rawTitle) == singleSpaced(rawTitle) && (venue == "*" || venue == take.venue)
   }
+
+  /** A billing as every judgement file keys it: its runs of whitespace — a tab, a line break, a no-break space, two
+   *  spaces — one space, none at the ends. A venue's spacing is not a new billing: DE Caligari's "ES  (ULRICH SCHAMONI)",
+   *  judged and baselined so, came back "ES (ULRICH SCHAMONI)" a recording later. */
+  def singleSpaced(raw: String): String = raw.replaceAll("(?U)\\s+", " ").trim
 
   def readLabels(path: Path): Seq[Label] = Files.readAllLines(path, StandardCharsets.UTF_8).asScala.toSeq.drop(1).filter(_.nonEmpty).map { line =>
     line.split("\t", -1) match {
@@ -249,8 +255,11 @@ object UnmatchedClusters {
   final case class WrongAudit(fresh: Seq[Take], stale: Seq[(String, String, String)])
 
   def auditWrong(wrong: Seq[Take], known: Set[(String, String, String)]): WrongAudit = {
-    def key(take: Take) = (take.country, take.rawTitle, take.film)
-    WrongAudit(wrong.filterNot(take => known(key(take))), known.diff(wrong.map(key).toSet).toSeq.sorted)
+    def key(country: String, raw: String, film: String) = (country, singleSpaced(raw), film)
+    val listed = known.map(key.tupled)
+    val taken  = wrong.map(take => key(take.country, take.rawTitle, take.film)).toSet
+    WrongAudit(wrong.filterNot(take => listed(key(take.country, take.rawTitle, take.film))),
+      known.filterNot(line => taken(key.tupled(line))).toSeq.sorted)
   }
 
   // ── recording and replaying the lookups ──────────────────────────────────────────────────

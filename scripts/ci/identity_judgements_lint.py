@@ -37,7 +37,7 @@ import unicodedata
 from collections import defaultdict
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from identity_takes_diff import label_of  # noqa: E402  (the one reading of a label, shared with the takes check)
+from identity_takes_diff import label_of, single_spaced  # noqa: E402  (the one reading of a label, shared with the takes check)
 
 LABELS = "test/resources/fixtures/identity-unmatched/labels.tsv"
 ACCEPTED = "test/resources/fixtures/identity-takes/accepted.tsv"
@@ -86,7 +86,7 @@ def labels_by_country(label_rows):
     """{cc: {(venue, rawTitle, film): verdict}} -- identity_takes_diff.labels_of's shape, every country at once."""
     out = defaultdict(dict)
     for c in label_rows:
-        out[c[0]][(c[1], c[2], c[3])] = c[4]
+        out[c[0]][(c[1], single_spaced(c[2]), c[3])] = c[4]
     return out
 
 
@@ -103,7 +103,7 @@ def accepted_findings(accepted_rows, labels):
         note = c[5] if len(c) > 5 else ""
         if not re.match(r"^(tmdb|imdb):", before) or after == before:
             continue
-        judged = label_of(labels[cc], venue, title, before) if venue != "*" else labels[cc].get(("*", title, before))
+        judged = label_of(labels[cc], venue, title, before) if venue != "*" else labels[cc].get(("*", single_spaced(title), before))
         if judged == "right" or RIGHT_LOST_NOTE.search(note):
             why = "labels.tsv calls it right" if judged == "right" else "its own note calls it right"
             out.append((("accepted", cc, venue, title, before),
@@ -115,17 +115,17 @@ def accepted_findings(accepted_rows, labels):
 def conflict_findings(label_rows):
     verdicts = defaultdict(set)
     for c in label_rows:
-        verdicts[(c[0], c[1], c[2], c[3])].add(c[4])
+        verdicts[(c[0], c[1], single_spaced(c[2]), c[3])].add(c[4])
     return [(("conflict",) + k, f"labels.tsv judges {k[3]} both right and wrong for {k[0]} {k[1]} | {k[2]}")
             for k, v in sorted(verdicts.items()) if len(v) > 1]
 
 
 def scattered_findings(label_rows):
-    every = {(c[0], c[2], c[3]) for c in label_rows if c[1] == "*" and c[4] == "wrong"}
+    every = {(c[0], single_spaced(c[2]), c[3]) for c in label_rows if c[1] == "*" and c[4] == "wrong"}
     venues = defaultdict(set)
     for c in label_rows:
         if c[1] != "*" and c[4] == "wrong":
-            venues[(c[0], c[2], c[3])].add(c[1])
+            venues[(c[0], single_spaced(c[2]), c[3])].add(c[1])
     return [(("scattered",) + k, f"labels.tsv judges {k[2]} wrong for {k[0]} '{k[1]}' at {len(v)} venues one by one: "
              f"judge it once for every venue ('*'), or the venue left out fails the takes check")
             for k, v in sorted(venues.items()) if len(v) >= SCATTERED_AT and k not in every]
@@ -174,7 +174,7 @@ def served_findings(served_paths, labels, listed, before=None):
                 continue
             film = f"tmdb:{decision['film']}"
             for m in decision["members"]:
-                title = m["rawTitle"].replace("\t", " ").replace("\n", " ")
+                title = single_spaced(m["rawTitle"])
                 if (cc, title, film) in listed or label_of(labels[cc], m["venue"], title, film) != "wrong":
                     continue
                 if before is not None and label_of(before[cc], m["venue"], title, film) == "wrong":
@@ -190,7 +190,7 @@ def lint(root, served_paths=(), labels_before=None):
     p = lambda rel: os.path.join(root, rel)  # noqa: E731
     label_rows = rows(p(LABELS), 5)
     labels = labels_by_country(label_rows)
-    listed = {tuple(c[:3]) for c in rows(p(BASELINE), 3)} | {tuple(c[:3]) for c in rows(p(KNOWN_WRONG), 3)}
+    listed = {(c[0], single_spaced(c[1]), c[2]) for c in rows(p(BASELINE), 3) + rows(p(KNOWN_WRONG), 3)}
     found = (accepted_findings(rows(p(ACCEPTED), 5), labels) + conflict_findings(label_rows) + scattered_findings(label_rows)
              + expected_match_findings(rows(p(EXPECTED_MATCHES), 4), labels) + hard_cluster_findings(root, label_rows)
              + served_findings(served_paths, labels, listed,

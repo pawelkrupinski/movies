@@ -21,6 +21,12 @@ class UnmatchedClustersKnownWrongSpec extends AnyFlatSpec with Matchers {
     audit.stale shouldBe empty
   }
 
+  it should "let a listed wrong take stand when its venue re-spaces the billing" in {
+    val audit = UnmatchedClusters.auditWrong(Seq(take("Neue Post Lichtspiele", "WHEN  PIGS FLY ", 149933)), Set(("de", "WHEN PIGS FLY", "tmdb:149933")))
+    audit.fresh shouldBe empty
+    audit.stale shouldBe empty
+  }
+
   it should "name a line no wrong take is any more as stale, to strike" in {
     // a fix cures it (or takes another wrong film): the line goes, so the list only shrinks
     val known = Set(("de", "WHEN PIGS FLY", "tmdb:149933"), ("de", "Begegnungen der Seele 2", "imdb:tt37057962"))
