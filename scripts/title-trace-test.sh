@@ -35,6 +35,10 @@ STUB
 cat > "$work/bin/java" <<STUB
 #!/usr/bin/env bash
 { printf 'java %s' "\$PWD"; printf ' <%s>' "\$@"; echo; } >> "$work/calls"
+case " \$* " in *" --batch "*) # a batch: two billings, the second's search step the tree's build.sbt
+  echo "### pl	Kino Muza	Amator"; echo "3. search: same"
+  echo "### pl	Kino Muza	Obsession (18)"; echo "3. search: \$(cat build.sbt)"; exit ;;
+esac
 echo "1. ingest"
 echo "3. search: \$(cat build.sbt)"
 STUB
@@ -57,6 +61,13 @@ check "the diff names the step that moved" "-3. search: rule a|+3. search: rule 
 
 out=$(trace "Obsession (18)" --country uk --ref HEAD --ref HEAD)
 check "two refs of one code say so" "1" "$(grep -c 'every step the same' <<< "$out")"
+printf 'pl\tKino Muza\tAmator\npl\tKino Muza\tObsession (18)\n' > "$work/batch.tsv"
+rm -f "$work/calls"
+out=$(trace --batch "$work/batch.tsv" --ref HEAD~1 --ref HEAD)
+check "a batch is handed to one JVM per ref" "2" "$(grep -c "TitleTrace> <--batch> <$work/batch.tsv>" "$work/calls")"
+check "...and names only the billing that moved, with its step" "### pl	Kino Muza	Obsession (18)|-3. search: rule a|+3. search: rule b" \
+  "$(grep -E '^(###|[-+]3)' <<< "$out" | paste -sd'|' -)"
+check "...and counts it" "1" "$(grep -c '1 of 2 billings moved' <<< "$out")"
 check "a call naming no country is refused" "2" "$(trace "Obsession (18)" > /dev/null; echo $?)"
 check "two raw titles are refused" "2" "$(trace Obsession Lalka --country pl > /dev/null; echo $?)"
 

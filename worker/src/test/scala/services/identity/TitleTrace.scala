@@ -23,18 +23,23 @@ import java.util.Locale
  */
 object TitleTrace {
 
-  final case class Options(raw: String = "", country: String = "", venue: Option[String] = None)
+  final case class Options(raw: String = "", country: String = "", venue: Option[String] = None, batch: Option[String] = None)
 
   def parse(args: List[String], o: Options = Options()): Options = args match {
     case Nil                        => o
     case "--country" :: cc :: rest  => parse(rest, o.copy(country = cc))
     case "--venue" :: venue :: rest => parse(rest, o.copy(venue = Some(venue)))
+    case "--batch" :: file :: rest  => parse(rest, o.copy(batch = Some(file)))
     case flag :: _ if flag.startsWith("--") => throw new IllegalArgumentException(s"unknown argument $flag")
     case raw :: rest                => parse(rest, o.copy(raw = raw))
   }
 
   def main(args: Array[String]): Unit = {
     val o = parse(args.toList)
+    o.batch.fold(single(o))(batch)
+  }
+
+  private def single(o: Options): Unit = {
     val country = Country.byCode(o.country.toLowerCase(Locale.ROOT)).getOrElse {
       System.err.println(s"no country '${o.country}' (one of ${Country.all.map(_.code).mkString(", ")})"); sys.exit(2)
     }
@@ -42,6 +47,25 @@ object TitleTrace {
       case Left(problem) => System.err.println(problem); sys.exit(2)
       case Right(cinema) => trace(o.raw, country, cinema).foreach(println)
     }
+  }
+
+  /** Every `country<TAB>venue<TAB>raw title` line of `file` traced in turn, each trace headed by its line — a whole
+   *  corpus in one JVM, so two refs' outputs diff to every billing whose steps moved. A venue the roster names twice is
+   *  traced with no venue rules (the roster's exact display names never are). */
+  private def batch(file: String): Unit = {
+    val source = scala.io.Source.fromFile(file, "UTF-8")
+    try source.getLines().foreach { line =>
+      line.split('\t') match {
+        case Array(cc, venue, raw) =>
+          val cinema = venueOf(Some(venue)).getOrElse(new UsCinema(venue, venue))
+          println(s"### $line")
+          Country.byCode(cc.toLowerCase(Locale.ROOT)) match {
+            case Some(country) => trace(raw, country, cinema).foreach(println)
+            case None          => println(s"no country '$cc'")
+          }
+        case _ => println(s"### $line\nskipped: not country<TAB>venue<TAB>raw title")
+      }
+    } finally source.close()
   }
 
   /** A synthetic venue: no rules of its own, as a venue the roster does not hold. */

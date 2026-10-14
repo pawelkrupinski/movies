@@ -7,11 +7,15 @@
 # SearchQueryMarkersSpec / CinemaSlotInvariantsSpec findings it would raise. No recording, no network: the code alone.
 #
 #   scripts/title-trace "<raw title>" --country <cc> [--venue NAME] [--ref A [--ref B]]
+#   scripts/title-trace --batch FILE [--ref A [--ref B]]
 #
 #   --venue   the venue whose rules apply: its display name, or a unique part of it (case and accents aside); a name the
 #             roster does not hold is traced with no venue rules
 #   --ref     trace under that ref's code (laid out and compiled once into the cache, as scripts/identity-slice does);
 #             two refs print both traces, then their diff. Without --ref: this checkout's code.
+#   --batch   every `country<TAB>venue<TAB>raw title` line of FILE traced in one JVM per ref, each trace headed `### line`;
+#             with two refs, only the billings whose steps moved (and their count) — a whole corpus checked for a
+#             title-rule or word-list change
 #
 # One JVM per ref; the compile is cached in $KINOWO_IDENTITY_CACHE (default ~/.cache/kinowo-identity), shared with
 # scripts/identity-slice.
@@ -28,23 +32,25 @@ IDENTITY_TOOL=title-trace
 TOOL_FILES=(worker/src/test/scala/services/identity/TitleTrace.scala worker/src/fixtures/scala/tools/SearchQueryMarkers.scala
   worker/src/fixtures/scala/tools/CinemaSlotInvariants.scala)
 
-raw="" cc="" refs=() pass=()
+raw="" cc="" batch="" refs=() pass=()
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --country) cc=$2; shift 2 ;;
     --venue) pass+=(--venue "$2"); shift 2 ;;
     --ref) refs+=("$2"); shift 2 ;;
+    --batch) batch=$(cd "$(dirname "$2")" && pwd)/$(basename "$2"); shift 2 ;;
     --*) echo "unknown argument $1" >&2; usage >&2; exit 2 ;;
     *) [ -z "$raw" ] || { echo "one raw title only (quote it)" >&2; exit 2; }; raw=$1; shift ;;
   esac
 done
-[ -n "$raw" ] && [ -n "$cc" ] || { usage >&2; exit 2; }
+if [ -n "$batch" ]; then [ -z "$raw" ] && [ -f "$batch" ] || { usage >&2; exit 2; }; pass=(--batch "$batch")
+else [ -n "$raw" ] && [ -n "$cc" ] || { usage >&2; exit 2; }; pass=("$raw" --country "$cc" ${pass[@]+"${pass[@]}"}); fi
 [ "${#refs[@]}" -le 2 ] || { echo "at most two --ref" >&2; exit 2; }
 
 trace_at() { # <tree> -> the trace under that tree's code
   local cp
   cp=$(identity_classpath "$1") || return 1
-  (cd "$1" && "${IDENTITY_JAVA[@]}" -cp "$cp" services.identity.TitleTrace "$raw" --country "$cc" ${pass[@]+"${pass[@]}"})
+  (cd "$1" && "${IDENTITY_JAVA[@]}" -cp "$cp" services.identity.TitleTrace "${pass[@]}")
 }
 [ "${#refs[@]}" -gt 0 ] || { trace_at "$IDENTITY_REPO"; exit; }
 
@@ -54,6 +60,23 @@ for i in "${!refs[@]}"; do
   trace_at "$tree" > "$work/$i.txt" || { cat "$work/$i.txt"; exit 1; }
 done
 if [ "${#refs[@]}" -eq 1 ]; then cat "$work/0.txt"; exit; fi
+if [ -n "$batch" ]; then # two refs over a batch: the billings that moved, each with its two traces' diff
+  python3 -I - "$work/0.txt" "$work/1.txt" "${refs[0]}" "${refs[1]}" <<'PY'
+import difflib, sys
+def traces(path):
+    out, key = {}, None
+    for line in open(path, encoding="utf-8"):
+        if line.startswith("### "): key = line[4:].rstrip("\n"); out[key] = []
+        elif key is not None: out[key].append(line)
+    return out
+a, b = traces(sys.argv[1]), traces(sys.argv[2])
+moved = [k for k in a if a[k] != b.get(k)] + [k for k in b if k not in a]
+for k in moved:
+    print(f"### {k}"); sys.stdout.writelines(list(difflib.unified_diff(a.get(k, []), b.get(k, []), n=0))[2:])
+print(f"=== {sys.argv[3]} → {sys.argv[4]}: {len(moved)} of {len(a)} billings moved")
+PY
+  exit
+fi
 echo "=== ${refs[0]}"; cat "$work/0.txt"; echo
 if cmp -s "$work/0.txt" "$work/1.txt"; then echo "=== ${refs[1]}: every step the same"
 else echo "=== ${refs[0]} → ${refs[1]}: the steps that moved"; diff -u "$work/0.txt" "$work/1.txt" | tail -n +3 || true; fi
