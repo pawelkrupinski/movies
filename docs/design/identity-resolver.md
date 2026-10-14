@@ -152,8 +152,7 @@ There is one module, `services.movies.ListingConstraints` (prerequisite b), and 
 | must | 2 | same sanitised title | the landing's same-titled rows, the sanitize group |
 | must | 3 | same search form (decoration / programme banner stripped), or one side's original title is the other's title | `FilmCanonicalizer.searchKey`, `TitleContainment`, `keysForAlias` |
 | cannot | – | different TMDB ids | – |
-| cannot | – | `VenueDeniesFilm`: a venue's own year AND director contradict the other's film | `ListingConstraints.slotDeniesFilm` / `rowDeniesFilms` |
-| cannot | – | `ListingDeniesFilm`: a shape-matched listing's director and runtime/year deny the film | `ListingConstraints.landingRefused` |
+| cannot | – | `VenueDeniesFilm`: a venue's own year AND director contradict the other's film | `ListingConstraints.slotDeniesFilm` |
 | cannot | – | `OriginalTitleNamesAnotherFilm` | `ListingConstraints.originalTitleNamesAnotherFilm` |
 | cannot | – | `CinemasDescribeDifferentFilms` | `ListingConstraints.cinemasDescribeDifferentFilms` |
 | cannot | – | different instalments | `SequelMarker.differentInstalments` (to be routed through `ListingConstraints`) |

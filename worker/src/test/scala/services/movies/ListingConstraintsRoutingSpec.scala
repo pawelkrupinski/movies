@@ -25,7 +25,7 @@ class ListingConstraintsRoutingSpec extends AnyFlatSpec with Matchers {
     "common/src/main/scala/services/movies/MixedFilmDetector.scala",
     "common/src/main/scala/services/movies/ListingConstraints.scala")
 
-  private val Vetoes = Seq("deniesFilm", "listingDeniesFilm", "wouldAddASecondFilm", "describeDifferentFilms")
+  private val Vetoes = Seq("deniesFilm", "wouldAddASecondFilm", "describeDifferentFilms")
   private val Direct = s"""MixedFilmDetector\\s*\\.\\s*(${Vetoes.mkString("|")})\\b""".r
 
   private def sources(root: String): Seq[Path] = {

@@ -316,24 +316,6 @@ object MixedFilmDetector {
       !creditSamePerson(slot.director, film.director, normalizer)
   }
 
-  /** Does a LISTING's own published crew and runtime deny the film `record` resolved to? A
-   *  director the film does not credit AND a runtime that does not agree with the film's (or a year
-   *  beyond `YearWindow.SlotYearImplausibility`). The veto for a listing that matches a known
-   *  film only by the SHAPE of its title — "It Ends with Us" (130 min, Justin Baldoni) runs
-   *  along "It Ends" (89 min, Alexander Ullom) — which `wouldAddASecondFilm` cannot give, since
-   *  it needs an original title and most listings publish none. Silent when the listing names
-   *  no director: a title-only listing is exactly what decoration landing is for. Refusing
-   *  costs little when wrong — the listing incubates, resolves on its own, and a shared tmdbId
-   *  folds it onto the film anyway. Directors compare only in Latin script, as in [[deniesFilm]]:
-   *  Helios's "Mandalorets' i Grogu - UA" credits "Джон Фавро", who is Jon Favreau. */
-  def listingDeniesFilm(record: MovieRecord, runtime: Option[Int], year: Option[Int], director: Seq[String],
-                        normalizer: TitleNormalizer): Boolean =
-    record.data.get(models.Tmdb).exists { film =>
-      latin(director) && latin(film.director) && !creditSamePerson(director, film.director, normalizer) &&
-        ((runtime.exists(_ > 0) && film.runtimeMinutes.exists(_ > 0) && !runtimesAgree(runtime.toSeq, film.runtimeMinutes.toSeq)) ||
-          YearWindow.contradicts(year, film.releaseYear, YearWindow.SlotYearImplausibility))
-    }
-
   /** Does one of `names` spell in Latin script? Only then can it be compared with another name:
    *  TMDB credits "王家衛" where a Polish cinema prints "Wong Kar Wai". */
   private def latin(names: Seq[String]): Boolean =

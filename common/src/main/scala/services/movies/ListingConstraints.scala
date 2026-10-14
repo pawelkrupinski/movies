@@ -17,7 +17,7 @@ import models.{MovieRecord, SourceData}
  * (docs/design/identity-resolver.md) draws its edges from the very rules those stages enforced,
  * and a narrowed or added rule reaches every stage at once.
  *
- * The rule BODIES stay where they are (`MixedFilmDetector.deniesFilm`, `listingDeniesFilm`,
+ * The rule BODIES stay where they are (`MixedFilmDetector.deniesFilm`,
  * `wouldAddASecondFilm`, `describeDifferentFilms`): this object routes and names them. Keep it
  * that way — a predicate change belongs in the predicate, a new constraint belongs here.
  * `ListingConstraintsRoutingSpec` fails any production file that asks one of those predicates
@@ -31,10 +31,6 @@ object ListingConstraints {
      *  (`MixedFilmDetector.deniesFilm`): the Met's 2026 "Samson i Dalila" is not DeMille's
      *  1949 film; Kinoteka's Wong Kar Wai "Happy Together" is not Kim Jeong-hwan's 2018 one. */
     case VenueDeniesFilm
-    /** A listing matched only by the SHAPE of its title names a director the film does not
-     *  credit and a runtime or year it does not share (`MixedFilmDetector.listingDeniesFilm`):
-     *  "It Ends with Us" is not "It Ends". */
-    case ListingDeniesFilm
     /** The listing's own original title names another film than the row, uncorroborated by
      *  director and runtime (`MixedFilmDetector.wouldAddASecondFilm`). */
     case OriginalTitleNamesAnotherFilm
@@ -75,15 +71,6 @@ object ListingConstraints {
   def slotDeniesFilm(slot: SourceData, film: SourceData, normalizer: TitleNormalizer)(using LatestTitleYear): Option[CannotLink] =
     Option.when(MixedFilmDetector.deniesFilm(slot, film, normalizer))(CannotLink.VenueDeniesFilm)
 
-  /** The first of `row`'s venue slots (in its cinema-data order) that denies one of `films`. */
-  def denyingSlot(row: MovieRecord, films: Seq[SourceData], normalizer: TitleNormalizer)(using LatestTitleYear): Option[SourceData] =
-    row.cinemaData.values.find(slot => films.exists(slotDeniesFilm(slot, _, normalizer).isDefined))
-
-  /** Does one of `row`'s venues deny one of `films`? A TMDB candidate so denied is not the row's
-   *  film, however it was found; an unresolved row so denied is filed apart by the staging fold. */
-  def rowDeniesFilms(row: MovieRecord, films: Seq[SourceData], normalizer: TitleNormalizer)(using LatestTitleYear): Option[CannotLink] =
-    denyingSlot(row, films, normalizer).map(_ => CannotLink.VenueDeniesFilm)
-
   /** Two rows' cinemas publish contradicting identities for their main film. STRICT (see
    *  `MixedFilmDetector.describeDifferentFilms`): the canonicaliser's pairwise veto, the
    *  imdbId sibling edge, and the rule-4 straggler's home check all read it. */
@@ -96,13 +83,6 @@ object ListingConstraints {
                                     normalizer: TitleNormalizer)(using LatestTitleYear): Option[CannotLink] =
     Option.when(MixedFilmDetector.wouldAddASecondFilm(row, listing.originalTitle, listing.runtime, listing.year,
       listing.director, normalizer))(CannotLink.OriginalTitleNamesAnotherFilm)
-
-  /** May a listing matched by the SHAPE of its title (a decoration, a shared search key) land
-   *  on `row`? */
-  def landingRefused(listing: ListingEvidence, row: MovieRecord, normalizer: TitleNormalizer)(using LatestTitleYear): Option[CannotLink] =
-    originalTitleNamesAnotherFilm(listing, row, normalizer).orElse(
-      Option.when(MixedFilmDetector.listingDeniesFilm(row, listing.runtime, listing.year, listing.director, normalizer))(
-        CannotLink.ListingDeniesFilm))
 
   /** May two rows ONE venue lists under one title be one film, by their directors? Refused when
    *  both credit someone and no person is credited by both. Within one venue this never split

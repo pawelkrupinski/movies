@@ -22,17 +22,14 @@ class ListingConstraintsSpec extends AnyFlatSpec with Matchers {
     runtimeMinutes = Some(96))
   private val kim      = SourceData(title = Some("Happy Together"), releaseYear = Some(2018), director = Seq("Kim Jeong-hwan"),
     runtimeMinutes = Some(110))
-  private val row      = MovieRecord(data = Map[Source, SourceData](Kinoteka -> kinoteka))
 
-  "a venue whose own year and director deny a film" should "cannot-link to it, and name the denying slot" in {
+  "a venue whose own year and director deny a film" should "cannot-link to it" in {
     ListingConstraints.slotDeniesFilm(kinoteka, kim, normalizer) shouldBe Some(CannotLink.VenueDeniesFilm)
-    ListingConstraints.rowDeniesFilms(row, Seq(kim), normalizer) shouldBe Some(CannotLink.VenueDeniesFilm)
-    ListingConstraints.denyingSlot(row, Seq(kim), normalizer) shouldBe Some(kinoteka)
   }
 
   it should "not cannot-link to the film it published" in {
     val wong = kim.copy(releaseYear = Some(1997), director = Seq("Wong Kar Wai"))
-    ListingConstraints.rowDeniesFilms(row, Seq(wong), normalizer) shouldBe None
+    ListingConstraints.slotDeniesFilm(kinoteka, wong, normalizer) shouldBe None
   }
 
   "a director in another script" should "never deny a film" in {
@@ -42,17 +39,14 @@ class ListingConstraintsSpec extends AnyFlatSpec with Matchers {
       SourceData(title = Some("The Mandalorian & Grogu"), releaseYear = Some(2026), director = Seq("Jon Favreau"), runtimeMinutes = Some(132))))
     val ukrainian = SourceData(title = Some("Mandalorets' i Grogu - UA"), releaseYear = Some(2025), director = Seq("Джон Фавро"),
       runtimeMinutes = Some(140))
-    ListingConstraints.landingRefused(ListingEvidence(None, Some(140), Some(2025), Seq("Джон Фавро")), favreau, normalizer) shouldBe None
-    ListingConstraints.rowDeniesFilms(MovieRecord(data = Map[Source, SourceData](HeliosMagnolia -> ukrainian)), favreau.data.get(Tmdb).toSeq, normalizer) shouldBe None
+    ListingConstraints.slotDeniesFilm(ukrainian, favreau.data(Tmdb), normalizer) shouldBe None
   }
 
-  "a listing matched by its title's shape" should "be refused on its own crew and runtime" in {
+  "a listing publishing no original title" should "name no second film by one" in {
     val itEnds = MovieRecord(tmdbId = Some(1422011), data = Map[Source, SourceData](
       Tmdb -> SourceData(title = Some("It Ends"), releaseYear = Some(2026), runtimeMinutes = Some(89), director = Seq("Alexander Ullom"))))
     val baldoni = ListingEvidence(originalTitle = None, runtime = Some(130), year = None, director = Seq("Justin Baldoni"))
     ListingConstraints.originalTitleNamesAnotherFilm(baldoni, itEnds, normalizer) shouldBe None
-    ListingConstraints.landingRefused(baldoni, itEnds, normalizer) shouldBe Some(CannotLink.ListingDeniesFilm)
-    ListingConstraints.landingRefused(baldoni.copy(director = Nil), itEnds, normalizer) shouldBe None
   }
 
   "a title naming a season" should "cannot-link another season, or a year outside the season's two" in {
