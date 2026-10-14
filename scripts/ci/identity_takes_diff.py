@@ -2,7 +2,7 @@
 """THE IDENTITY TAKES CHECK: which listings a code change moved to another film, on one recording.
 
 Both inputs are `decisions-<cc>.jsonl` files `IdentityResolveDumpIntegrationSpec` writes (one line a
-listing: key, venue, rawTitle, film, filmTitle, basis, explanation, blocker), resolved from the SAME
+listing: key, venue, rawTitle, film, filmTitle, basis, explanation, blocker, suspect), resolved from the SAME
 pinned recording -- one by the base commit, one by the head. The recording is identical, so every
 listing whose film differs was moved by the code between them, never by new data: a nightly
 recording changes both sides at once and moves nothing here.
@@ -17,7 +17,11 @@ LOST and CHANGED fail the check unless accepted, either way:
     listing, or the base's film is `wrong` (and the head's is not labelled wrong);
   - accepted.tsv (test/resources/fixtures/identity-takes) lists the move:
     country, venue (or *), rawTitle, before, after (tmdb:<id> or none, or *), note.
-GAINED is reported, never failed -- unless labels.tsv says the gained film is `wrong`.
+GAINED passes when labels.tsv calls the gained film `right`, fails when it calls it `wrong`, and otherwise NEEDS JUDGEMENT:
+  - a gained take a suspect-take signal flags (the head row's `suspect`: SuspectTakes' fragment, era, runtime, sequel,
+    feed, route) fails until labelled -- 648580662 gained DE "Punkabend #93" -> '93 (2025) and "Tino Bomelino" -> Tino
+    (2022) as plain gains, read by no one, in run 38578038277;
+  - an unflagged one passes, marked as needing judgement (WARN), never as a silent ok.
 
 THE FINAL TAKES. The decisions above are the MODEL's: the agreement stage (fills, corrections, the families' agreed
 takes, billedBeside on them) reads them again before anything is served, and a change there moved nothing in them --
@@ -182,7 +186,11 @@ def verdict(cc, move, labels, accepted):
     if now == "wrong":
         return False, f"labels.tsv: {after} is WRONG"
     if move["kind"] == "gained":
-        return True, "gained" + (" (labelled right)" if now == "right" else "")
+        if now == "right":
+            return True, "gained (labelled right)"
+        if move.get("suspect"):
+            return False, "needs judgement, suspect: " + "; ".join(move["suspect"])
+        return True, "needs judgement (unjudged gain)"
     if now == "right":
         return True, f"labels.tsv: {after} is right"
     if was == "wrong":
@@ -209,8 +217,9 @@ def moves_of(cc, base, head, labels, accepted):
         if kind is None:
             continue
         move = {"kind": kind, "venue": b["venue"], "rawTitle": b["rawTitle"], "before": take(b), "after": take(h),
-                "old": film_name(b), "new": film_name(h), "oldWhy": why(b), "newWhy": why(h)}
+                "old": film_name(b), "new": film_name(h), "oldWhy": why(b), "newWhy": why(h), "suspect": list(h.get("suspect") or [])}
         move["accepted"], move["verdict"] = verdict(cc, move, labels, accepted)
+        move["judge"] = move["verdict"].startswith("needs judgement")
         moves.append(move)
     moves.sort(key=lambda m: (m["accepted"], m["kind"], m["rawTitle"], m["venue"]))
     return moves, unpaired
@@ -220,24 +229,33 @@ def cell(text):
     return str(text).replace("|", "\\|").replace("\n", " ")
 
 
+def mark(move, failed, judge, ok):
+    """The move's status: failed, accepted but needing judgement (an unjudged gain), or accepted."""
+    return failed if not move["accepted"] else judge if move["judge"] else ok
+
+
 def render(cc, moves, unpaired, base_name, head_name, listings, what="identity takes", where="one recording"):
     failing = [m for m in moves if not m["accepted"]]
     counts = {k: sum(1 for m in moves if m["kind"] == k) for k in ("lost", "changed", "gained")}
+    judge = sum(1 for m in moves if m["judge"])
     head_line = (f"{what} ({cc}): {listings} listings, base {base_name} vs head {head_name} on {where} -- "
                  f"lost {counts['lost']}, changed {counts['changed']}, gained {counts['gained']}; "
-                 f"{len(failing)} not accepted" + (f"; {unpaired} listing(s) on one side only" if unpaired else ""))
+                 f"{len(failing)} not accepted, {judge} need judgement" + (f"; {unpaired} listing(s) on one side only" if unpaired else ""))
     text = [head_line] + [
-        f"  {'FAIL' if not m['accepted'] else 'ok  '} {m['kind']:7} {m['venue']} | {m['rawTitle']}: {m['old']} -> {m['new']} "
+        f"  {mark(m, 'FAIL', 'WARN', 'ok  ')} {m['kind']:7} {m['venue']} | {m['rawTitle']}: {m['old']} -> {m['new']} "
         f"[{m['verdict']}]\n        base: {m['oldWhy']}\n        head: {m['newWhy']}" for m in moves]
     md = [f"### {what[0].upper() + what[1:]} ({cc})", "", head_line, ""]
     if moves:
         md += ["| | kind | venue | listing | base film | head film | base reason | head reason | verdict |",
                "|---|---|---|---|---|---|---|---|---|"]
-        md += [f"| {'❌' if not m['accepted'] else '✓'} | {m['kind']} | {cell(m['venue'])} | {cell(m['rawTitle'])} | "
+        md += [f"| {mark(m, '❌', '⚠', '✓')} | {m['kind']} | {cell(m['venue'])} | {cell(m['rawTitle'])} | "
                f"{cell(m['old'])} | {cell(m['new'])} | {cell(m['oldWhy'])} | {cell(m['newWhy'])} | {cell(m['verdict'])} |"
                for m in moves[:300]]
         if len(moves) > 300:
             md.append(f"\n... and {len(moves) - 300} more (the job log has them all)")
+    if judge:
+        md += ["", "To judge a gain, label its film `right` or `wrong` in `test/resources/fixtures/identity-unmatched/labels.tsv` "
+                   "(`scripts/label-lookup`, `scripts/identity-judge-cards` for the evidence)."]
     if failing:
         md += ["", "To accept a move, label the head's film `right` in `test/resources/fixtures/identity-unmatched/labels.tsv`, "
                    "or add `country\tvenue|*\trawTitle\tbefore\tafter|*\tnote` to `test/resources/fixtures/identity-takes/accepted.tsv`."]
@@ -276,6 +294,9 @@ def main(argv=None):
     text, md, failing = render(a.cc, moves, unpaired, a.base_name, a.head_name, len(head),
                                *(("identity final takes", "one capture") if a.final else ()))
     print(text)
+    for m in moves:
+        if m["judge"] and m["accepted"]:
+            print(f"::warning::identity takes ({a.cc}): gained {m['venue']} | {m['rawTitle']} -> {m['new']} needs judgement")
     if a.summary:
         with open(a.summary, "a", encoding="utf-8") as f:
             f.write(md)

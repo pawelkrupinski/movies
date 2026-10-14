@@ -58,6 +58,28 @@ class TakesDiffTest(unittest.TestCase):
         self.assertEqual(0, code)
         self.assertIn("gained 1", md)
 
+    # DE 10-14 (run 38578038277): 648580662 gained "Punkabend #93" -> '93 and "Tino Bomelino" -> Tino, both passing as
+    # plain gains. A gained take nobody judged needs judgement: flagged by a suspect-take signal it fails until labelled,
+    # unflagged it is reported as needing judgement, never as a silent ok.
+    def test_a_gained_take_a_suspect_signal_flags_needs_judgement_and_fails_until_labelled(self):
+        base = [row("Kino im Druckluft", "Punkabend #93", None), row("Muza", "Diuna", None)]
+        head = [dict(row("Kino im Druckluft", "Punkabend #93", 1571250, title_of="'93 (2025)"),
+                     suspect=["fragment: '93 is one piece of the billing"]),
+                row("Muza", "Diuna", 438631)]
+        code, md = self.run_diff(base, head)
+        self.assertEqual(1, code)
+        self.assertIn("| ❌ | gained | Kino im Druckluft | Punkabend #93 | none | tmdb:1571250 '93 (2025) |", md)
+        self.assertIn("needs judgement, suspect: fragment: '93 is one piece of the billing", md)
+        self.assertIn("| ⚠ | gained | Muza | Diuna |", md)
+        self.assertIn("2 need judgement", md)
+        labels = ["country\tvenue\trawTitle\tfilm\tverdict\tnote\n",
+                  "pl\tKino im Druckluft\tPunkabend #93\ttmdb:1571250\tright\tsay it were\n",
+                  "pl\t*\tDiuna\ttmdb:438631\tright\t\n"]
+        code, md = self.run_diff(base, head, labels=labels)
+        self.assertEqual(0, code)
+        self.assertIn("0 need judgement", md)
+        self.assertIn("| ✓ | gained | Kino im Druckluft | Punkabend #93 |", md)
+
     def test_a_listing_on_one_side_only_is_counted_not_failed(self):
         code, md = self.run_diff(self.BASE, self.BASE[:2])
         self.assertEqual(0, code)

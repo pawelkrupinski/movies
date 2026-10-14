@@ -16,7 +16,7 @@ import scala.util.Try
  * The resolver alone over a recorded full corpus, every listing's decision written out — the fast loop for
  * a resolver change: seconds per country, no pipeline boot, against the same recording the CI measure
  * replays. `decisions-<cc>.jsonl` holds one line per listing (its serialised key, venue, raw title, the
- * film its cluster takes and the decision's explanation); with `KINOWO_IDENTITY_FOCUS` the focused titles'
+ * film its cluster takes, the decision's explanation and what [[SuspectTakes]] finds against the take); with `KINOWO_IDENTITY_FOCUS` the focused titles'
  * explanations and candidates are written beside it, as the CI measure's focus mode prints them.
  *
  * Opt-in: runs when `KINOWO_IDENTITY_DUMP` (the output directory), `KINOWO_IDENTITY_FULL`,
@@ -46,6 +46,12 @@ class IdentityResolveDumpIntegrationSpec extends AnyFlatSpec with Matchers with 
         c.gaps))
       val (resolution, seconds) = timed(IdentityResolver.resolve(listings, lookups, c.normalizer, IdentityCalibration.resolver))
       val clusterOf = resolution.decisions.zipWithIndex.flatMap { case (d, i) => d.members.map(_ -> i) }.toMap
+      // what argues against each take (SuspectTakes), which the takes check asks a person to judge before a gain passes
+      val suspects  = {
+        val corpus = SuspectTakes.corpus(resolution, listings, lookups, _ => None)
+        val year   = listings.flatMap(_.screenings.first).map(_.getYear).maxOption.getOrElse(SpecClock.PinnedDay.getYear)
+        SuspectTakes.suspected(corpus.takes, year, corpus.billings).collect { case (t, found) if found.nonEmpty => t.listing.key -> found.map(_.render) }.toMap
+      }
       Files.createDirectories(dir)
       val lines = listings.map { l =>
         val d = resolution.decisionOf(l.key)
@@ -59,6 +65,7 @@ class IdentityResolveDumpIntegrationSpec extends AnyFlatSpec with Matchers with 
           "confidence"  -> JsNumber(BigDecimal(d.confidence).setScale(4, BigDecimal.RoundingMode.HALF_UP)),
           "basis"       -> JsString(d.basis.toString),
           "explanation" -> JsArray(d.explanation.take(4).map(JsString(_))),
+          "suspect"     -> JsArray(suspects.getOrElse(l.key, Nil).map(JsString(_))),
           "rules"       -> JsArray((d.trace.rulesOf(l.key) ++ c.normalizer.firedRules(l.cinema, l.rawTitle)).map(JsString(_))),
           // why not: what stopped a listing left with no film, what it searched, what it weighed
           "blocker"     -> (if (d.film.isDefined) JsNull else JsString(d.trace.nodes.get(l.key).flatMap(_.blocker).getOrElse("pooled:no-film"))),
