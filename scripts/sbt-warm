@@ -13,10 +13,10 @@
 # SEEDING: a checkout with no worker/target/scala-* gets the compiled classes and Zinc state of the newest local build of
 # a main commit — another worktree's, the root checkout's, or an identity tool's ref tree (~/.cache/kinowo-identity/refs)
 # — whose commit origin/main contains: project/target, project/project/target and */target/scala-*, the paths the CI's
-# sbt-target-cache restores (APFS clones: no bytes copied). Zinc's analysis is relative to the checkout, so the first
+# sbt-target-cache restores (APFS clones: no bytes copied), less project/target/active.json, the source's server socket. Zinc's analysis is relative to the checkout, so the first
 # compile recompiles only what differs from that commit. KINOWO_SBT_WARM_SEED=<dir> names the source instead.
 #
-# THE SERVER is sbt's own (`sbt --client`, one per checkout directory). A watchdog beside it stops it when the checkout
+# THE SERVER is sbt's own (`sbt --client`, one per checkout directory; each call logs the checkout and server it uses). A watchdog beside it stops it when the checkout
 # is removed, or after $KINOWO_SBT_WARM_IDLE_MINUTES (default 60) minutes without a call through this script; every call
 # also reaps the servers of removed checkouts. Its state: $KINOWO_SBT_WARM_STATE (default ~/.cache/kinowo-sbt-warm).
 #
@@ -106,6 +106,7 @@ seed() {
       cp -cR "$src/$d" "$root/$d" 2>/dev/null || cp -R "$src/$d" "$root/$d"
     done
   done
+  rm -f "$root/project/target/active.json"   # the source's server: sbt --client would run this checkout's commands there
   log "seeded in $((SECONDS - started))s"
 }
 
@@ -139,7 +140,15 @@ seed
 echo "$root" > "$State/$key.root"
 touch "$State/$key.used"
 fresh=0
-server_pid "$root" > /dev/null || fresh=1
+if pid=$(server_pid "$root"); then
+  log "checkout $root, server pid $pid"
+else
+  fresh=1
+  # sbt --client runs the commands in whichever live server project/target/active.json names — another checkout's, when
+  # it was copied in (a seed before 2026-10-14) — so without a server of this checkout's own, it must name none
+  rm -f "$root/project/target/active.json"
+  log "checkout $root, server none: starting one"
+fi
 command=$(printf '%s; ' "$@"); command=${command%; }
 # the build changed under a kept server (a rebase onto a new module): sbt --client would run the old one
 digest=$(build_digest)
