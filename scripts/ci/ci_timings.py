@@ -335,18 +335,27 @@ def jobs_of(github, run):
 
 
 def push_file(path, url, token, batch=25, opener=urllib.request.build_opener(NoRedirect).open):
-    """Push a `--history-days` file, `batch` runs to a request: (runs pushed, runs not)."""
+    """Push a `--history-days` file, `batch` runs to a request: (runs pushed, runs not). Prometheus refuses a request
+    whole for one sample it will not take -- a run that slipped past the out-of-order window since it was read -- so a
+    refused batch is pushed again one run at a time, and only the runs refused alone count as not pushed."""
     payloads = [json.loads(line) for line in Path(path).read_text().splitlines() if line.strip()]
+
+    def pushed_(chunk):
+        return push({"resourceMetrics": [rm for payload in chunk for rm in payload["resourceMetrics"]]}, url, token, opener)
+
     pushed = failed = 0
     for at in range(0, len(payloads), batch):
         chunk = payloads[at:at + batch]
-        merged_ = {"resourceMetrics": [rm for payload in chunk for rm in payload["resourceMetrics"]]}
-        message = push(merged_, url, token, opener)
-        if message == "Pushed timings.":
+        if pushed_(chunk) == "Pushed timings.":
             pushed += len(chunk)
-        else:
-            failed += len(chunk)
-            print(message, file=sys.stderr)
+            continue
+        for payload in chunk:
+            message = pushed_([payload])
+            if message == "Pushed timings.":
+                pushed += 1
+            else:
+                failed += 1
+                print(message, file=sys.stderr)
     return pushed, failed
 
 

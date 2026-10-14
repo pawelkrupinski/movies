@@ -316,8 +316,21 @@ class PushFileTest(unittest.TestCase):
             posted.append(len(body["resourceMetrics"]))
             return Response(200 if len(posted) == 1 else 400)
         pushed, failed = timings.push_file(path, "https://grafana.example", "t", batch=3, opener=opener)
-        self.assertEqual(posted, [3, 2])
+        self.assertEqual(posted, [3, 2, 1, 1])
         self.assertEqual((pushed, failed), (3, 2))
+
+    def test_a_batch_refused_for_one_run_pushes_the_rest_of_it_one_by_one(self):
+        # One run past the out-of-order window (a history pushed hours after it was read) failed its whole batch of 25:
+        # run 38639023800 lost 72 good runs with 3 too old.
+        too_old = dict(RUN, run_started_at="2026-07-01T00:00:00Z")
+        path = Path(tempfile.mkdtemp()) / "history.jsonl"
+        path.write_text("\n".join(json.dumps(timings.otlp_payload(run, jobs())) for run in (RUN, too_old, RUN)) + "\n")
+
+        def opener(request, timeout):
+            stamps = {dp["timeUnixNano"] for rm in json.loads(request.data)["resourceMetrics"] for sm in rm["scopeMetrics"]
+                      for m in sm["metrics"] for dp in m["gauge"]["dataPoints"]}
+            return Response(400 if any(int(stamp) < 1790000000000000000 for stamp in stamps) else 200)
+        self.assertEqual(timings.push_file(path, "https://grafana.example", "t", batch=25, opener=opener), (2, 1))
 
 
 @unittest.skipUnless(shutil.which("prometheus"), "no prometheus on PATH")
