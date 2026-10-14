@@ -22,17 +22,32 @@ final case class Cluster(members: Set[ListingKey], film: Option[Int], fallback: 
 final case class ProjectionIndex(byKey: Map[ListingKey, ProjectedListing], storedById: Map[String, StoredMovieRecord],
                                  previousOf: Map[ListingKey, StoredFilmRef], listingsOf: Map[String, Set[ListingKey]],
                                  covered: FilmIdCounters, additions: Seq[FilmIdCounter],
-                                 clusters: Map[ClusterId, Cluster], clusterOf: Map[ListingKey, ClusterId]) {
+                                 clusters: Map[ClusterId, Cluster], clusterOf: Map[ListingKey, ClusterId])(normalizer: TitleNormalizer) {
   /** Whether some published listing is on stored film `id`. */
   def placed(id: String): Boolean = listingsOf.contains(id)
 
   /** Each stored film's PLAIN key — the `title|year` it is stored under, or would be were an older film of that title and
-   *  year not holding it (`title~counter|year`, [[IdentityProjectionPlan.finish]]) — and the stored films under each. */
-  def storedByPlainKey(normalizer: TitleNormalizer): Map[String, Seq[String]] =
+   *  year not holding it (`title~counter|year`, [[IdentityProjectionPlan.finish]]) — and the stored films under each:
+   *  worked out once per index, however often a scope is widened over it. */
+  lazy val storedByPlainKey: Map[String, Seq[String]] =
     storedById.valuesIterator.map(r => ProjectionScope.plainKey(r.key(normalizer)) -> r.id.value).toSeq.groupMap(_._1)(_._2)
 
   /** Every film of the corpus. */
   def everything: ProjectionScope = ProjectionScope.Whole
+
+  /** What of this index `scope` drafts: its listings' previous films, its stored films' listings, its clusters and its
+   *  stored films — all of them for the whole corpus. */
+  def within(scope: ProjectionScope): ProjectionIndex.Within =
+    if (scope.whole) ProjectionIndex.Within(previousOf, listingsOf.toSeq, clusters.values.toSeq, storedById.values.toSeq)
+    else ProjectionIndex.Within(previousOf.filter { case (k, _) => scope.listings(k) },
+      scope.films.toSeq.flatMap(id => listingsOf.get(id).map(id -> _)), scope.clusters.toSeq.map(clusters),
+      scope.films.toSeq.flatMap(storedById.get))
+}
+
+object ProjectionIndex {
+  /** The part of an index one scope drafts ([[ProjectionIndex.within]]). */
+  final case class Within(previousOf: Map[ListingKey, StoredFilmRef], listingsOf: Seq[(String, Set[ListingKey])],
+                          clusters: Seq[Cluster], stored: Seq[StoredMovieRecord])
 }
 
 /**
@@ -45,7 +60,7 @@ final case class ProjectionIndex(byKey: Map[ListingKey, ProjectedListing], store
  * films' listings fall in (ids are handed out by OVERLAP — [[IdAssigner]]; a cluster is every listing of its TMDB film,
  * the index joins them), and every film whose plain title key is its own (the older one keeps it —
  * [[IdentityProjectionPlan.finish]]). [[close]] follows the first two from the changes until nothing new is reached; the
- * key collisions, known only once the drafts are titled, are followed by the caller ([[keyHolders]]) and closed again.
+ * key collisions, known only once the drafts are titled, are followed by the caller ([[widened]]) and closed again.
  *
  * The changes ([[LiveProjectionIndex.update]]) are everything a projection reads that moved since the last one: a
  * listing added, gone, re-scraped or newly decided by the model; a listing on another previous film; a cluster that is
@@ -64,7 +79,7 @@ object ProjectionScope {
   val Whole: ProjectionScope = ProjectionScope(whole = true, Set.empty, Set.empty, Set.empty)
 
   /** What moved: listings, stored films, and the plain keys those films were stored under — a key a gone film held is
-   *  one another film may now take ([[keyHolders]]). */
+   *  one another film may now take ([[widened]]). */
   final case class Changes(listings: Set[ListingKey], films: Set[String], keys: Set[String] = Set.empty) {
     def ++(other: Changes): Changes = Changes(listings ++ other.listings, films ++ other.films, keys ++ other.keys)
     def isEmpty: Boolean = listings.isEmpty && films.isEmpty && keys.isEmpty
@@ -113,9 +128,14 @@ object ProjectionScope {
     ProjectionScope(whole = false, films.iterator.filter(now.storedById.contains).toSet, clusters.toSet, listings.toSet)
   }
 
-  /** The stored films outside `scope` under one of `plainKeys`: their keys are decided with the scope's films'. */
-  def keyHolders(now: ProjectionIndex, scope: ProjectionScope, plainKeys: Set[String], normalizer: TitleNormalizer): Set[String] = {
-    val byKey = now.storedByPlainKey(normalizer)
-    plainKeys.flatMap(byKey.getOrElse(_, Nil)).filterNot(scope.films)
+  /** `scope` closed again over the stored films outside it under a plain key one of its films is drafted under
+   *  (`filmKeys`) or stored under, or one its changes `freed` — their keys are decided with the scope's films' — or none
+   *  when no stored film outside it holds one. */
+  def widened(now: ProjectionIndex, scope: ProjectionScope, filmKeys: Iterable[String], freed: Set[String],
+              normalizer: TitleNormalizer): Option[ProjectionScope] = {
+    val keys    = filmKeys.iterator.map(plainKey).toSet ++
+      scope.films.iterator.flatMap(now.storedById.get).map(r => plainKey(r.key(normalizer))) ++ freed
+    val holders = keys.flatMap(now.storedByPlainKey.getOrElse(_, Nil)).filterNot(scope.films)
+    Option.when(holders.nonEmpty)(close(now, Changes(scope.listings, scope.films ++ holders)))
   }
 }

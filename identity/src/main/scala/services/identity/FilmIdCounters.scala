@@ -54,8 +54,13 @@ final class FilmIdCounters private (val entries: Seq[FilmIdCounter]) {
   def appended(additions: Seq[FilmIdCounter]): Either[String, FilmIdCounters] = FilmIdCounters.of(entries ++ additions)
 
   /** This map extended over `films` (for a caller that needs every film numbered, persisted or not). */
-  def covering(films: Seq[IdSeeding.Film]): FilmIdCounters =
-    new FilmIdCounters(entries ++ additionsFor(films))
+  def covering(films: Seq[IdSeeding.Film]): FilmIdCounters = cover(films)._1
+
+  /** [[covering]], and the entries it extends this map by: this map itself and none when every film is mapped already. */
+  def cover(films: Seq[IdSeeding.Film]): (FilmIdCounters, Seq[FilmIdCounter]) = {
+    val additions = additionsFor(films)
+    if (additions.isEmpty) (this, Nil) else (new FilmIdCounters(entries ++ additions), additions)
+  }
 
   override def toString: String = s"FilmIdCounters(${entries.size} entries, next ${nextCounter})"
 }

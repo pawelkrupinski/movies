@@ -59,7 +59,7 @@ final case class ProjectedFilm(id: FilmId, counter: Long, title: String, year: O
 final case class ProjectionDraft(drafts: Seq[FilmDraft], retired: Seq[FilmId], vanished: Seq[FilmId], counters: FilmIdCounters,
                                  additions: Seq[FilmIdCounter], regroupings: Regroupings,
                                  venues: Map[Long, Map[Cinema, Seq[ListingKey]]] = Map.empty,
-                                 build: (Cinema, Seq[ListingKey], IdentityProjectionPlan.VenueRows) => Seq[(Source, SourceData)] = (_, _, _) => Nil,
+                                 build: (Cinema, Seq[ListingKey], VenueSlots.VenueRows) => Seq[(Source, SourceData)] = (_, _, _) => Nil,
                                  rowsOf: Set[Cinema] => Map[Cinema, Seq[CinemaMovie]] = _ => Map.empty,
                                  takes: Seq[TakeChange] = Nil) {
   /** `films` as they are written over the films stored before (`stored`). Every drafted slot is LEAN (no showtimes,
@@ -83,7 +83,7 @@ final case class ProjectionDraft(drafts: Seq[FilmDraft], retired: Seq[FilmId], v
     filmsAt.keys.toSeq.sortBy(_.displayName).grouped(IdentityProjectionPlan.RowBatch).foreach { batch =>
       val rows = rowsOf(batch.toSet)
       batch.foreach { cinema =>
-        val byKey = IdentityProjectionPlan.rowsByKey(cinema, rows.getOrElse(cinema, Nil))
+        val byKey = VenueSlots.rowsByKey(cinema, rows.getOrElse(cinema, Nil))
         filmsAt(cinema).foreach { film =>
           built((film.counter, cinema)) = build(cinema, venues.getOrElse(film.counter, Map.empty).getOrElse(cinema, Nil), byKey)
         }
@@ -155,15 +155,14 @@ object IdentityProjectionPlan {
     val previousOf: Map[ListingKey, StoredFilmRef] =
       StoredFilmSlots.of(byKey.values.map(_.listing).toSeq, stored, normalizer) ++ slotOwner.filter { case (k, _) => byKey.contains(k) }
     val listingsOf = previousOf.toSeq.groupMap(_._2.id)(_._1).view.mapValues(_.toSet).toMap
-    val covered    = counters.covering(listingsOf.toSeq.map { case (id, ls) => IdSeeding.Film(id, ls) })
-    val additions  = covered.entries.filterNot(e => counters.counterOf(e.filmId).isDefined)
+    val (covered, additions) = counters.cover(listingsOf.toSeq.map { case (id, ls) => IdSeeding.Film(id, ls) })
 
     // Clusters, one per film: the resolver's, with the clusters of one TMDB film joined.
     val clusters: Map[ClusterId, Cluster] = resolution.decisions.groupBy(clusterIdOf).flatMap { case (id, ds) =>
       IdentityProjectionPlan.clusterOf(id, ds, byKey.contains).map(id -> _)
     }
     val clusterOf = clusters.iterator.flatMap { case (id, c) => c.members.iterator.map(_ -> id) }.toMap
-    ProjectionIndex(byKey, storedById, previousOf, listingsOf, covered, additions, clusters, clusterOf)
+    ProjectionIndex(byKey, storedById, previousOf, listingsOf, covered, additions, clusters, clusterOf)(normalizer)
   }
 
   /** One listing per key — the smallest by the total order, as the resolver takes it — standing for every row
@@ -218,13 +217,11 @@ object IdentityProjectionPlan {
     import index.{byKey, storedById, covered}
     // Within the scope: its stored films' listings, and its clusters. Everything outside it is a film no change reached,
     // whose draft is the film as stored.
-    val previousOf    = if (scope.whole) index.previousOf else index.previousOf.filter { case (k, _) => scope.listings(k) }
-    val previousFilms = (if (scope.whole) index.listingsOf.toSeq else scope.films.toSeq.flatMap(id => index.listingsOf.get(id).map(id -> _)))
-      .map { case (id, ls) => IdSeeding.Film(id, ls) }
-    val inScope       = if (scope.whole) index.clusters.values.toSeq else scope.clusters.toSeq.map(index.clusters)
-    val clusters      = inScope.map(c => c.members -> c.film)
-    val unmatchedOf   = inScope.filter(_.film.isEmpty).map(c => c.members -> c).toMap
-    val stored        = if (scope.whole) storedById.values.toSeq else scope.films.toSeq.flatMap(storedById.get)
+    val within        = index.within(scope)
+    import within.{previousOf, stored}
+    val previousFilms = within.listingsOf.map { case (id, ls) => IdSeeding.Film(id, ls) }
+    val clusters      = within.clusters.map(c => c.members -> c.film)
+    val unmatchedOf   = within.clusters.filter(_.film.isEmpty).map(c => c.members -> c).toMap
     val numbered      = previousFilms.map(f => covered.counterOf(f.id).get -> f.listings)
 
     // 2. Ids by overlap.
@@ -234,10 +231,8 @@ object IdentityProjectionPlan {
 
     // 3. Each film's record. Its venue slots are LEAN, each venue's from the memo when nothing it is built from
     // moved, else built from the venue's rows, read a batch of venues at a time and let go.
-    // Each stored film's prior slots by venue, as the slot memo's key reads them: worked out once per film, not
-    // once per venue of every film it lends a listing to — a US film showing at hundreds of venues was scanned
-    // whole for each of them.
-    // Each stored film's venue slots by venue, worked out once per film for the same reason.
+    // Each stored film's venue slots by venue, worked out once per film, not once per venue of every film it lends a
+    // listing to — a US film showing at hundreds of venues was scanned whole for each of them.
     val slotsByFilm = scala.collection.mutable.HashMap.empty[String, Map[Cinema, Seq[(Source, SourceData)]]]
     def slotsByVenueOf(id: String): Map[Cinema, Seq[(Source, SourceData)]] = slotsByFilm.getOrElseUpdate(id,
       storedById.get(id).fold(Map.empty[Cinema, Seq[(Source, SourceData)]])(_.record.data.toSeq.collect {
@@ -295,7 +290,7 @@ object IdentityProjectionPlan {
           Planned(counter, members, keys, titles, groups, None)
       }
     }
-    val build: (Cinema, Seq[ListingKey], VenueRows) => Seq[(Source, SourceData)] =
+    val build: (Cinema, Seq[ListingKey], VenueSlots.VenueRows) => Seq[(Source, SourceData)] =
       // Over the whole index: a slot's prior is its representative listing's film's, whichever of the venue's listings that is.
       (cinema, keys, rows) => VenueSlots.buildVenue(cinema, keys, rows, index.previousOf, storedById, normalizer, slots, tokens)
     val venueSlots = scala.collection.mutable.HashMap.empty[VenueSlotMemo.Key, Seq[(Source, SourceData)]]
@@ -312,7 +307,7 @@ object IdentityProjectionPlan {
     pending.groupBy(_.cinema).toSeq.sortBy(_._1.displayName).grouped(RowBatch).foreach { batch =>
       val fetched = rowsOf(batch.map(_._1).toSet)
       batch.foreach { case (cinema, groups) =>
-        val rows = rowsByKey(cinema, fetched.getOrElse(cinema, Nil))
+        val rows = VenueSlots.rowsByKey(cinema, fetched.getOrElse(cinema, Nil))
         groups.foreach { group =>
           val lean = build(cinema, group.rows.map(_.listing.key), rows).map { case (source, slot) => source -> ShowtimesDigest.stripSlot(slot) }
           venueSlots(group.key) = lean
@@ -434,9 +429,6 @@ object IdentityProjectionPlan {
     val freshEntries = films.filter(f => draft.counters.filmIdOf(f.counter).isEmpty).map(f => FilmIdCounter(f.id.value, f.counter))
     ProjectionPlan(films, draft.retired, draft.additions ++ freshEntries, draft.regroupings, draft.takes)
   }
-
-  type VenueRows = VenueSlots.VenueRows
-  def rowsByKey(cinema: Cinema, fetched: Seq[CinemaMovie]): VenueRows = VenueSlots.rowsByKey(cinema, fetched)
 
   /** How many venues' rows a projection reads at once to build their slots: a batch's rows are let go before the next. */
   private[identity] val RowBatch = 200

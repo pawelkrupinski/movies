@@ -35,8 +35,8 @@ trait IdentityCutoverWiring { self: WorkerWiring =>
   // The projection reads the model's resolution.
   lazy val identityProjection: IdentityProjection =
     new IdentityProjection(
-      listings    = () => identityListingIntake.projectedByVenue(cinemaScrapers.map(_.cinema)),
-      changedListings = Some(() => identityListingIntake.projectedChanged(cinemaScrapers.map(_.cinema))),
+      listings    = () => identityListingIntake.projectedByVenue(liveCinemas),
+      changedListings = () => identityListingIntake.projectedChanged(liveCinemas),
       rows        = identityListingIntake.rowsOf,
       resolve     = IdentityProjection.modelled(identityModel, IdentityCutoverWiring.ModelTimeout),
       cache       = movieCache,
@@ -130,16 +130,17 @@ trait IdentityCutoverWiring { self: WorkerWiring =>
       () => new models.VenueClock(clock).todayInPoland))
   /** The agreement's questions as queue tasks: each family question asked of its live source, and TMDB's find of an
    *  agreed IMDb id — each filed answer asking for a projection, which reads it. */
-  lazy val agreementHandlers: Seq[services.tasks.TaskHandler] = Seq(
-    new services.identity.AgreementQuestionHandler(familyAnswerStore, familySources,
-      () => identityProjectionTrigger.request(services.identity.EventTrigger.Answer), clock, agreementQuestionMetrics),
-    new services.identity.AgreementFindHandler(imdbId => { tmdbClient.findByImdbId(imdbId); () },
-      film => { tmdbClient.readRecordAgain(film); familyAnswerStore.noteFiled(services.identity.agreement.AgreementStage.recordReadId(film)) },
-      () => identityProjectionTrigger.request(services.identity.EventTrigger.Answer), clock, agreementQuestionMetrics),
-    new services.identity.AgreementPosterHandler(posterAnswerStore, posterHashing,
-      () => identityProjectionTrigger.request(services.identity.EventTrigger.Answer), clock, agreementQuestionMetrics),
-    new services.identity.AgreementCatalogueHandler(catalogueAnswerStore, catalogueMapping, catalogueLinkReader,
-      () => identityProjectionTrigger.request(services.identity.EventTrigger.Answer), clock, agreementQuestionMetrics))
+  lazy val agreementHandlers: Seq[services.tasks.TaskHandler] = {
+    val filed: () => Unit = () => identityProjectionTrigger.request(services.identity.EventTrigger.Answer)
+    Seq(
+      new services.identity.AgreementQuestionHandler(familyAnswerStore, familySources, filed, clock, agreementQuestionMetrics),
+      new services.identity.AgreementFindHandler(imdbId => { tmdbClient.findByImdbId(imdbId); () },
+        film => { tmdbClient.readRecordAgain(film); familyAnswerStore.noteFiled(services.identity.agreement.AgreementStage.recordReadId(film)) },
+        filed, clock, agreementQuestionMetrics),
+      new services.identity.AgreementPosterHandler(posterAnswerStore, posterHashing, filed, clock, agreementQuestionMetrics),
+      new services.identity.AgreementCatalogueHandler(catalogueAnswerStore, catalogueMapping, catalogueLinkReader, filed, clock,
+        agreementQuestionMetrics))
+  }
   /** Projects what moved: as the identity model takes this worker's scrapes in, and as another writer moves a stored film
    *  (`MovieCache.onChanged`) — there is no period between. */
   lazy val identityProjectionTrigger: services.identity.EventTrigger = {

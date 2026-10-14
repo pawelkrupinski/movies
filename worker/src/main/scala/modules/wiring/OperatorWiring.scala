@@ -42,7 +42,7 @@ trait OperatorWiring { self: WorkerWiring =>
     new BulkRefreshHandler(TaskType.RefreshAllImdb,       "IMDb",       () => { imdbIdCache.forgetAll(); imdbRatings.refreshAllNow() },         bulkTaskResultStore),
     new BulkRefreshHandler(TaskType.RefreshAllMetacritic, "Metacritic", () => { mcLinkCache.forgetAll(); metascoreRatings.refreshAllNow() },    bulkTaskResultStore),
     new BulkRefreshHandler(TaskType.RefreshAllRt,         "RT",         () => { rtLinkCache.forgetAll(); rottenTomatoesRatings.refreshAllNow() }, bulkTaskResultStore),
-    new BulkRefreshHandler(TaskType.SettleNow,            "Settle",     () => { identityProjection.tickQuietly(); BulkRefreshResult.message("projection complete") }, bulkTaskResultStore),
+    new BulkRefreshHandler(TaskType.SettleNow,            "Settle",     () => { val _ = identityProjection.projectQuietly(); BulkRefreshResult.message("projection complete") }, bulkTaskResultStore),
     // Movies-path IMDb-id recovery as a task (was inline off ImdbIdMissing) — so
     // the merge-retrigger path can re-kick it; resolveSync writes the id, and the
     // EnrichmentReaper then enqueues the now-eligible IMDb rating on its next pass.

@@ -168,6 +168,9 @@ trait ScrapeWiring { self: WorkerWiring =>
         recordingScraper(inner, FallbackEligibility.eligible(raw))
       }
 
+  /** The venues [[cinemaScrapers]] scrape: the venues whose listings the identity model and projection read. */
+  lazy val liveCinemas: Seq[Cinema] = cinemaScrapers.map(_.cinema)
+
   /** Cinema → its flicks.co.uk slug, for UK chain venues whose own-site scraper is
    *  the primary and flicks is the aggregator FALLBACK (the mirror of the Polish
    *  own-site→Filmweb arrangement). Sourced from the catalogue so the same slug that

@@ -73,7 +73,7 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
       Seq("bus down for Diuna", "bus down for Lalka", "bus down for Obcy")
 
     val down   = World(listingsRead = () => throw new IllegalStateException("archive down"))
-    val failed = tools.LogCapture.thisThread(name)(down.projection.tickQuietly()).filter(_.getLevel == ch.qos.logback.classic.Level.WARN)
+    val failed = tools.LogCapture.thisThread(name) { val _ = down.projection.projectQuietly() }.filter(_.getLevel == ch.qos.logback.classic.Level.WARN)
     failed.map(e => Option(e.getThrowableProxy).map(_.getMessage)) shouldBe Seq(Some("archive down"))
     down.refusals.toSeq shouldBe Seq(IdentityProjectionMetrics.Refusal.Failed) // and counted: the stored films keep serving
   }

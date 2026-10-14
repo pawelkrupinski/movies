@@ -111,10 +111,9 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer)(using LatestTitleYe
   /** The index as it stands, over `counters`: its listings, previous films and listings' clusters are views of this
    *  index, which read what the next [[update]] or [[written]] moves — a projection's, read before the two. */
   def index(counters: FilmIdCounters): ProjectionIndex = {
-    val unmapped  = listingsOf.iterator.collect { case (id, ls) if counters.counterOf(id).isEmpty => IdSeeding.Film(id, ls) }.toSeq
-    val covered   = if (unmapped.isEmpty) counters else counters.covering(unmapped)
-    ProjectionIndex(byKeyView, storedById, previousOfView, listingsOf, covered, covered.entries.filterNot(e => counters.counterOf(e.filmId).isDefined),
-      clusters, clusterOfView)
+    val (covered, additions) =
+      counters.cover(listingsOf.iterator.collect { case (id, ls) if counters.counterOf(id).isEmpty => IdSeeding.Film(id, ls) }.toSeq)
+    ProjectionIndex(byKeyView, storedById, previousOfView, listingsOf, covered, additions, clusters, clusterOfView)(normalizer)
   }
 
   /** The keys of `venues`' listings published equal to the one this index holds but for a field the model's equality
@@ -363,8 +362,8 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer)(using LatestTitleYe
     // slots) re-pointed every listing at every slot of theirs for nothing. Of a film written as patched from its last
     // draft, only the `touched` sources can differ from the record held (the written one, as nothing else wrote it since:
     // [[ProjectedFilm.touched]]), and only they are compared — the same on them, the same everywhere.
-    if (storedById.get(id).exists(was => was.record.tmdbId == r.record.tmdbId && pickedAlike(was, r, touched)) &&
-        storedById.get(id).exists(was => layoutOf(was, touched).toSet == layoutOf(r, touched).toSet)) {
+    if (storedById.get(id).exists(was => was.record.tmdbId == r.record.tmdbId && pickedAlike(was, r, touched) &&
+        layoutOf(was, touched).toSet == layoutOf(r, touched).toSet)) {
       storedById = storedById.updated(id, r)
       return
     }
