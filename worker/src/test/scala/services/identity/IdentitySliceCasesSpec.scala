@@ -11,7 +11,8 @@ import scala.jdk.CollectionConverters._
  * Real listings, pinned from recordings by `scripts/identity-slice --emit-case`: each directory of
  * `test/resources/fixtures/identity-slices/` is a hermetic slice of a recording — the listings' families, their corpus
  * context and every answer they read — and the film labels.tsv calls right for each listing (`expected.tsv`). The slice is
- * decided again, model and agreement, from its own answers alone, and each listing must take its right film.
+ * decided again, model and agreement, from its own answers alone, and each listing must take its right film — or, where
+ * the case's expected.tsv says so by hand, no film (`none`) or any film but a wrong one (`not:<film>`).
  */
 class IdentitySliceCasesSpec extends AnyFlatSpec with Matchers {
 
@@ -25,7 +26,8 @@ class IdentitySliceCasesSpec extends AnyFlatSpec with Matchers {
       val takes = IdentitySlice.takesOf(dir)
       IdentitySlice.readExpected(dir).foreach { expected =>
         withClue(s"${expected.venue} | ${expected.rawTitle} (label: ${expected.note}): ") {
-          takes.get((expected.venue, expected.rawTitle)) shouldBe Some(expected.film)
+          val take = takes.get((expected.venue, expected.rawTitle))
+          withClue(s"takes $take, expected ${expected.film}")(expected.holds(take) shouldBe true)
         }
       }
     }
