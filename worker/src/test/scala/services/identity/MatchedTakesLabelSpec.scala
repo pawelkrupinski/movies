@@ -58,7 +58,10 @@ class MatchedTakesLabelSpec extends AnyFlatSpec with Matchers {
         "joins a double bill (IdentityResolverCasesSpec) — struck once the rows are re-emitted"),
     ("de", "Karla", "tmdb:276944") ->
       ("the 1965 Karla, as the rows' old model took it at Filmpalast Iserlohn; convergence run 38487614044 (2026-10-14) " +
-        "takes the 2025 film there, as at its 16 other venues — struck once the rows are re-emitted"))
+        "takes the 2025 film there, as at its 16 other venues — struck once the rows are re-emitted"),
+    ("es", "El Cascanueces (BALLET)", "tmdb:471321") ->
+      ("the 2019 ROH Nutcracker, as the rows' old model took it at Ocine Blanes; the relay season's search takes the " +
+        "2026/27 relay (1702761) it screens on the day of — struck once the rows are re-emitted"))
 
   /** The model's wrong takes no safe fix removes yet, (country, raw title, taken film) → why — judged by the suspect-take
    *  audit 2026-10-13. */

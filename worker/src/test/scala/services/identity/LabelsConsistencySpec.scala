@@ -20,11 +20,16 @@ class LabelsConsistencySpec extends AnyFlatSpec with Matchers {
 
   private val labels = UnmatchedClusters.readLabels(UnmatchedClusters.Directory.resolve("labels.tsv"))
 
+  private val RoyalOperaCarmen =
+    "TMDB holds the Royal Opera's 10 November 2026 Carmen broadcast twice: 1151422 and 1702759, the season's record taken first"
   /** Listings right for two films of one database, (country, venue, raw title, database) → why. */
   private val twoRight: Map[(String, String, String, String), String] = Map(
     ("de", "*", "Ghost School", "tmdb") -> "TMDB holds Seemab Gul's film twice: 1516456 (2025) and 1599768 \"Geisterschule\" (2026)",
     ("pl", "*", "EVEREST: DRUGA STRONA", "tmdb") -> "TMDB holds Chin and Vasarhelyi's film twice: 1603262 and 1714568",
     ("pl", "*", "Everest: Druga strona", "tmdb") -> "TMDB holds Chin and Vasarhelyi's film twice: 1603262 and 1714568",
+    ("uk", "*", "Royal Opera House: Carmen", "tmdb") -> RoyalOperaCarmen,
+    ("uk", "*", "Carmen (ROH)", "tmdb") -> RoyalOperaCarmen,
+    ("uk", "*", "ROYAL BALLET & OPERA LIVE_ CARMEN", "tmdb") -> RoyalOperaCarmen,
     ("de", "camera zwo - das arthouse kino", "Sinn und Sinnlichkeit", "tmdb") ->
       "the venue bills Ang Lee's 1995 film and Georgia Oakley's 2026 one under one title, two listings one label key",
     ("de", "Apollo Hannover", "Emil und die Detektive", "tmdb") ->
