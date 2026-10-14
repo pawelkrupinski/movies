@@ -50,7 +50,6 @@ class GrafanaMetricCoverageSpec extends AnyFlatSpec with Matchers {
     "infra/nix/files/monitoring/grafana/dashboards/apps/worker-diagnostics.json",
     "infra/nix/files/monitoring/grafana/dashboards/fleet/kinowo-fleet.json",
     "infra/nix/files/monitoring/grafana/dashboards/apps/ci-builds.json",
-    "infra/nix/files/monitoring/grafana/dashboards/apps/ci-convergence.json",
     // Added 2026-08-29 with the HTTP dashboard. EVERY live dashboard has to be listed here or the
     // spec's guarantee inverts: a metric charted only on an unlisted dashboard reads as uncharted,
     // and someone "fixes" that by adding a duplicate panel to a listed one.

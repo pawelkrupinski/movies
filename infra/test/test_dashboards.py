@@ -342,6 +342,25 @@ class ApplicationDashboardCoverage(unittest.TestCase):
         self.assertQueried("count by (job) (up{")
 
 
+class CiTimingsDashboard(unittest.TestCase):
+    """Every CI timing is on ONE board (user, 2026-10-14): the identity model convergence lane per country first --
+    the lane with a 10-minute target -- then a row per build. Two boards split one question, how long CI takes, in two."""
+
+    def boards_querying(self, needle):
+        return sorted(name for name, document in dashboards()
+                      if any(needle in (t.get("expr") or "") for p in query_panels(document) for t in p.get("targets", [])))
+
+    def test_one_board_charts_every_ci_timing(self):
+        self.assertEqual(self.boards_querying("kinowo_ci_"), ["apps/ci-builds.json"])
+
+    def test_it_shows_convergence_per_country_and_every_build(self):
+        document = dict(dashboards())["apps/ci-builds.json"]
+        self.assertEqual({"workflow", "ref", "country"}, {v["name"] for v in document["templating"]["list"]})
+        self.assertEqual(["apps/ci-builds.json"], self.boards_querying("kinowo_ci_phase_seconds"))
+        rows = [p for p in document["panels"] if p["type"] == "row"]
+        self.assertEqual([None, "workflow"], [r.get("repeat") for r in rows])
+
+
 class InProcessRecencyGauges(unittest.TestCase):
     """A "when did X last happen" gauge held in a pod's memory forgets on every restart.
 

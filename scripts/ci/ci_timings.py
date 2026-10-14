@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Where a GitHub Actions run spent its time: every job and step, plus the `PhaseTimer` phases a
 convergence suite prints -- printed to the run's log and summary, and pushed to Prometheus for the
-"CI — build timings" and "CI — identity model convergence timings" Grafana dashboards.
+"CI — build timings" Grafana dashboard (convergence per country first, then every build).
 
 Every workflow runs it as its last job, `timings` (.github/actions/report-timings,
 RunTimingsWiringSpec), so it reports the run's OTHER jobs: the run is still in progress, and its
