@@ -1540,7 +1540,28 @@ object IdentityMeasures {
     (Seq(l.title) ++ l.rawTitle).map(t => billPieces(l.decorations.withoutTail(t)).map(_.trim).filter(_.nonEmpty)).filter(_.sizeIs > 1).flatten
 
   /** A year titles put in as a delimited annotation ("(2026)"), outside any season. */
-  def titleYearOf(titles: Seq[String]): Option[Int] = EmbeddedYear.ofAll(titles.map(withoutSeasons), Int.MaxValue)
+  def titleYearOf(titles: Seq[String]): Option[Int] = {
+    val seasonless = titles.map(withoutSeasons)
+    EmbeddedYear.ofAll(seasonless ++ seasonless.flatMap(labelledYears), Int.MaxValue)
+  }
+
+  /** A bracket dating the title beside a name — a studio's, a label's: UK Windmill Littlehampton's "DRACULA (Hammer 1958) 4K
+   *  Restoration - Directors Cut" is Fisher's 1958 film — as the bracketed year [[titleYearOf]] reads ("(1958)"). A month,
+   *  or a word an edition, an event or a print is billed by — a compound of an event's word too — dates the screening, not
+   *  the film: DE "Der Physiopath (März 2027)", "Krimizeit (Krimifestival 2026)", "(Re-release 2025)". */
+  private def labelledYears(title: String): Iterator[String] =
+    if (!hasAsciiDigit(title)) Iterator.empty
+    else LabelledYear.findAllMatchIn(title).filterNot(m => TitleContainment.tokens(m.group(1)).exists(datesAScreening))
+      .map(m => s"(${m.group(2)})")
+  private def datesAScreening(word: String): Boolean =
+    DecorationSegments.EditionWords(word) || DecorationSegments.EventWords(word) || services.movies.FormatTags.FormatToken.contains(word) ||
+      MonthNames(word) || DecorationSegments.EventWords.exists(event => event.length >= 5 && word.length > event.length && word.contains(event))
+  /** Every locale's month names, as title words. */
+  private lazy val MonthNames: Set[String] =
+    (for { locale <- java.util.Locale.getAvailableLocales.iterator; month <- java.time.Month.values.iterator
+           style <- Iterator(java.time.format.TextStyle.FULL, java.time.format.TextStyle.FULL_STANDALONE) }
+      yield TitleContainment.tokens(month.getDisplayName(style, locale))).flatten.filter(_.length >= 3).toSet
+  private val LabelledYear = """[(\[]\s*(\p{L}[\p{L}'’.&-]*(?:\s+\p{L}[\p{L}'’.&-]*)?)\s+((?:18|19|20)\d{2})\s*[)\]]""".r
 
   /** Do `titles` (a listing's, `rawTitle` the venue's own) bill a stage work — the work named whole, or within a piece:
    *  run into a house's word ("OPERA-COSI FAN TUTTE"), after its composer? */

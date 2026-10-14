@@ -2658,6 +2658,19 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     withClue(d.render)(d.film shouldBe Some(1559695))
   }
 
+  "A title dating its film inside a studio's bracket" should "take the film of that title from that year" in {
+    // UK Windmill Littlehampton's "DRACULA (Hammer 1958) 4K Restoration - Directors Cut" [86′] (capture 2026-10-13): Fisher's
+    // 1958 Dracula, fourth in TMDB's search for "Dracula" behind the 2025 film; the year sits beside the studio's name
+    val films = Seq(F(1246049, "Dracula", 2025, "Luc Besson", 130, 60), F(138, "Dracula", 1931, "Tod Browning", 75, 30),
+      F(11868, "Dracula", 1958, "Terence Fisher", 82, 15), F(355536, "Director's Cut", 2016, "Adam Rifkin", 90, 2))
+    val l = listing(KinoMuza, "DRACULA (Hammer 1958) 4K Restoration - Directors Cut", runtime = Some(86)).copy(searchTitle = Some("DRACULA (Hammer 1958)"))
+    val d = shipped(Seq(l), films).decisionOf(l.key)
+    withClue(d.render)(d.film shouldBe Some(11868))
+    // a re-release's year in the bracket dates no film
+    val rerelease = listing(KinoMuza, "DRACULA (Re-release 2025)", runtime = Some(86))
+    withClue(shipped(Seq(rerelease), films).decisionOf(rerelease.key).render)(shipped(Seq(rerelease), films).decisionOf(rerelease.key).film should not be Some(1246049))
+  }
+
   "The calibration" should "load from an artefact in its own format, the fixture as the real one" in {
     weights.version shouldBe "test-fixture-2"
     IdentityCalibration.resolver.scopes.keySet shouldBe weights.scopes.keySet

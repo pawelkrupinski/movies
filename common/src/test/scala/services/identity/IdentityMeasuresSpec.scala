@@ -37,6 +37,14 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.searchQueries(Listing("Żyć by tańczyć")) shouldBe Seq("Żyć by tańczyć")
   }
 
+  "a bracket dating the title beside a name" should "date the film by a studio's, never by a month, an event or an edition" in {
+    IdentityMeasures.titleYearOf(Seq("DRACULA (Hammer 1958) 4K Restoration - Directors Cut")) shouldBe Some(1958)
+    IdentityMeasures.titleYearOf(Seq("Der Physiopath (März 2027)")) shouldBe None
+    IdentityMeasures.titleYearOf(Seq("Krimizeit (Krimifestival 2026)")) shouldBe None
+    IdentityMeasures.titleYearOf(Seq("Jaws (Re-release 2025)")) shouldBe None
+    IdentityMeasures.titleYearOf(Seq("Akira (4K 2025)")) shouldBe None
+  }
+
   // UK Lanternhouse's "Obsession (18)" (wrong-match hunt 10-14): the whole title, searched as billed, found only "80 Day
   // Obsession: Day 18" — the box office's BBFC certificate read as the title's own number
   "a box office's trailing certificate" should "be no part of any title shape or search" in {
