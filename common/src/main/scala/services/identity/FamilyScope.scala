@@ -133,10 +133,12 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
     val listing = node.evidence.measured
     val groups  = IdentityMeasures.titleGroups(listing)
     val own     = sourceOf(node)
-    def sources(candidate: Candidate) =
-      backing.sources((groups ++ IdentityMeasures.searchGroups(listing, candidate.film)).distinct, candidate.film, own)
+    // a film the title carries as one of its delimited pieces is backed by the venues billing that piece alone: DE Astor's
+    // "ATMOS: Michael", which Cineamo links to Dreyer's 1924 film, is the "Michael" sixteen venues credit to Antoine Fuqua
+    def sources(candidate: Candidate) = backing.sources((groups ++ IdentityMeasures.searchGroups(listing, candidate.film) ++
+      listing.shapeKeys.filter(candidate.film.titleKeys)).distinct, candidate.film, own)
     if (pool.exists(candidate => candidate.tmdbId == film && sources(candidate) > 0)) None
-    else pool.filter(candidate => candidate.tmdbId != film && IdentityMeasures.Rivalling(titleRelation(listing, candidate).value))
+    else pool.filter(candidate => candidate.tmdbId != film && IdentityMeasures.TitlesItsOwn(titleRelation(listing, candidate).value))
       .map(candidate => candidate.tmdbId -> sources(candidate)).filter(_._2 >= FeedLink.OverrulingSources)
       .sortBy { case (rival, count) => (-count, rival) }.headOption
       .map { case (rival, count) => FeedLink(id, film, rival, count) }

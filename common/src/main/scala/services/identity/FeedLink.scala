@@ -10,7 +10,9 @@ package services.identity
  *
  *  Overruled when no source other than the feed's own entry backs the linked film ([[IdentityMeasures.VenueBacking]]:
  *  a title naming it beside its year or director) while [[OverrulingSources]] or more back one film the title names as
- *  its own — a link no one confirms against a film others independently state. The node is then read on its titles alone
+ *  its own, whole or as one delimited piece — a link no one confirms against a film others independently state. DE Astor's
+ *  "ATMOS: Michael", linked to Dreyer's 1924 film with its year copied, is the "Michael" other sources date 2026 and
+ *  credit to Antoine Fuqua. The node is then read on its titles alone
  *  ([[Evidence.titlesOnly]]) and the linked film is denied it; a link another source confirms, or one only a single
  *  source contradicts, stands (DE "Kohlhiesels Töchter": Cineamo's 1962 film at one venue, kinoheld's 1920 one at
  *  another — two films, each named once). */
