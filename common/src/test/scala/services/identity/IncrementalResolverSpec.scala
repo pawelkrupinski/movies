@@ -141,7 +141,7 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers with LoneElement
       def differs(expected: Iterable[Listing]) =
         ResolutionSignature.of(model) != ResolutionSignature.of(IdentityResolver.resolveWith(expected, lookups, normalizer, calibration, IdentityResolver.Mutation.None))
       val (half, rest) = listings.splitAt(listings.size / 2)
-      model.seed(listings)
+      model.listingsSeen(listings)
       val seeded = Option.when(differs(listings))(s"$label: seeded")
       model.listingsGone(half.map(_.key))
       val left   = Option.when(differs(rest))(s"$label: after half left")
@@ -157,7 +157,7 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers with LoneElement
     IndependentCases.flatMap(cases) { case (label, listings, lookups) =>
       Seq(1, 3, 7).flatMap { batch =>
         val model = new IncrementalResolver(lookups, normalizer, calibration, decorations = TitleDecorations.None, regionBatch = batch)
-        model.seed(listings)
+        model.listingsSeen(listings)
         Option.when(ResolutionSignature.of(model) != ResolutionSignature.of(
           IdentityResolver.resolveWith(listings, lookups, normalizer, calibration, IdentityResolver.Mutation.None)))(s"$label, batch $batch")
       }
@@ -167,7 +167,7 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers with LoneElement
   it should "take a corpus whole resolving each of its families about once" in {
     val corpus = GeneratedIdentityCorpus.generate(7L, normalizer, films = 12, listings = 48)
     val model  = new IncrementalResolver(corpus.lookups, normalizer, calibration, decorations = TitleDecorations.None)
-    model.seed(corpus.listings)
+    model.listingsSeen(corpus.listings)
     val whole  = IdentityResolver.resolveWith(corpus.listings, corpus.lookups, normalizer, calibration, IdentityResolver.Mutation.None)
     ResolutionSignature.of(model) shouldBe ResolutionSignature.of(whole)
     model.familiesResolved should be <= (whole.families * 2)
@@ -176,7 +176,7 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers with LoneElement
   "the incremental resolver's resolution" should "carry the whole resolve's decisions and decided films, and leave its families to the model" in {
     val corpus = GeneratedIdentityCorpus.generate(3L, normalizer, films = 12, listings = 48)
     val model  = new IncrementalResolver(corpus.lookups, normalizer, calibration, decorations = TitleDecorations.None)
-    model.seed(corpus.listings)
+    model.listingsSeen(corpus.listings)
     val whole  = IdentityResolver.resolveWith(corpus.listings, corpus.lookups, normalizer, calibration, IdentityResolver.Mutation.None)
     ResolutionSignature.of(model.resolution.decisions, model.familyOf) shouldBe ResolutionSignature.of(whole)
     model.resolution.films shouldBe whole.films
@@ -188,7 +188,7 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers with LoneElement
     val corpus  = GeneratedIdentityCorpus.generate(4L, normalizer, films = 12, listings = 48)
     val lookups = new FillingLookups(corpus.lookups, new Random(4L))
     val model   = new IncrementalResolver(lookups, normalizer, calibration, decorations = TitleDecorations.None)
-    model.seed(corpus.listings)
+    model.listingsSeen(corpus.listings)
     model.gaps.isEmpty shouldBe false
     Iterator.continually(lookups.answer()).takeWhile(!_.isEmpty).foreach(model.answersChanged)
     // The generated source leaves some questions unanswered for good (its GAPS): only those remain.

@@ -95,6 +95,10 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
   private[identity] def aloneOrder: Seq[String]  = "season-production" +: aloneRules.map(_.name)
   private[identity] def pooledOrder: Seq[String] = "season-production" +: pooledRules.map(_.name)
 
+  /** What the rule called `name` alone takes of `ranked` — for a spec holding one rule to its cases. */
+  private[identity] def byRule(name: String)(ranked: Seq[Scored]): Option[Accepted] =
+    (aloneRules ++ pooledRules).find(_.name == name).getOrElse(throw new NoSuchElementException(s"no rule $name")).accepts(ranked).toOption
+
   /** What [[alone]] takes, with the rule that took it. A family's scope asks it once per node ([[FamilyScope.takenAlone]]). */
   def aloneNamed(ranked: Seq[Scored]): Option[(Accepted, String)] =
     if (billsSeveralWorks(ranked)) None
@@ -207,7 +211,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  naive-Bayes sum of missing facts, a low popularity and its same-titled rivals, which undersells
    *  what the class measured on the labels; here the search standing LENDS confidence and never
    *  withdraws it. */
-  def topHit(ranked: Seq[Scored]): Option[Accepted] = ownInstalment(topHitWhy(ranked)).toOption
+  private def topHit(ranked: Seq[Scored]): Option[Accepted] = ownInstalment(topHitWhy(ranked)).toOption
   private def topHitWhy(ranked: Seq[Scored]): Verdict = {
     val eligible = eligibleOf(ranked)
     for {
@@ -231,7 +235,6 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  works, and nothing it publishes speaks against it or fits a rival better. The piece IS a bare title,
    *  so it is credited with what the exact-top-hit class measured for bare titles. PL's "DZIEŃ KINA POLSKIEGO:
    *  Przepraszam, czy tu biją" and ~30 programme listings like it sat at 28.9% with no rule to take them. */
-  def segmentTopHit(ranked: Seq[Scored]): Option[Accepted] = ownInstalment(segmentTopHitWhy(ranked)).toOption
   private def segmentTopHitWhy(ranked: Seq[Scored]): Verdict = {
     val eligible = eligibleOf(ranked)
     for {
@@ -265,7 +268,6 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  so); or the ONE film IMDb lists under one of the listing's search titles in some language — an AKA TMDB does
    *  not carry ("Camino dla opornych" is IMDb's Polish title of "Compostelle"). Read as a title the film answers to,
    *  nothing the listing publishes may speak against it, no rival may fit better, and a double bill is neither film. */
-  def imdbSuggested(ranked: Seq[Scored]): Option[Accepted] = ownInstalment(imdbSuggestedWhy(ranked)).toOption
   private def imdbSuggestedWhy(ranked: Seq[Scored]): Verdict = ranked.headOption.toRight(Refused("no candidate")).flatMap { any =>
     val eligible  = ranked.filterNot(_.denied)
     val suggested = eligible.filter(scored => scored.imdb.isDefined || scored.imdbTitled.nonEmpty)
@@ -311,12 +313,6 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
     } yield taken
   }
 
-  /** The ONLY film one of the listing's own title searches returned — the old pipeline's `searchUnique`, which
-   *  took it unless a fact CONTRADICTED it: "Loving Karma" [78′] is TMDB's 85-minute record, the one "Loving
-   *  Karma" finds, though seven minutes weigh against it in the probability. The title must name it — a piece
-   *  standing for the whole ([[IdentityMeasures.standsForTheWhole]]: not "Bhutan" of "Bhutan – Trails of
-   *  Happiness") — no other candidate the title names may stand beside it, and a double bill is neither film. */
-  def soleResult(ranked: Seq[Scored]): Option[Accepted] = ownInstalment(soleResultWhy(ranked)).toOption
   /** Is every word of the listing's whole title one of the film's title's — two words at least, or the film's title
    *  before its dash or colon — as the old pipeline took a whole title's only search result: "Dzień Dziecka księdza
    *  Kaczkowskiego" is "Dzień Dziecka księdza Jana Kaczkowskiego", "TAFITI" is "Tafiti – Ab durch die Wüste". Two words
@@ -351,6 +347,11 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
   private val MainTitleBreak = java.util.regex.Pattern.compile("""\s+[-–—]\s+|:\s""")
   /** What parts a title: a spaced dash, a colon, a full stop or a middle dot before a space. */
   private val TitlePartBreak = java.util.regex.Pattern.compile("""\s+[-–—·]\s+|[:.]\s""")
+  /** The ONLY film one of the listing's own title searches returned — the old pipeline's `searchUnique`, which
+   *  took it unless a fact CONTRADICTED it: "Loving Karma" [78′] is TMDB's 85-minute record, the one "Loving
+   *  Karma" finds, though seven minutes weigh against it in the probability. The title must name it — a piece
+   *  standing for the whole ([[IdentityMeasures.standsForTheWhole]]: not "Bhutan" of "Bhutan – Trails of
+   *  Happiness") — no other candidate the title names may stand beside it, and a double bill is neither film. */
   private def soleResultWhy(ranked: Seq[Scored]): Verdict = {
     val eligible = eligibleOf(ranked)
     for {
@@ -536,6 +537,8 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
     } yield work -> work.probability
   }
 
+  /** How far a billed work's running time may stand from the venue's: a broadcast's interval and introduction. */
+  private val BilledRuntime = 15
   /** The one candidate whose WORK the listing bills under another subtitle, or publishes alone, by
    *  the director it credits, that no published year or runtime contradicts
    *  (`IdentityMeasures.sharesWork`, `titleIsWorkOf`, or the original title the venue publishes, `originalTitleIsWorkOf`:
@@ -545,9 +548,6 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  The pipeline took such hits by their director on 3,247 listings with no wrong match; two
    *  candidates fitting alike (a director's sequels of one work) are no answer. A one-word work
    *  also needs the published year, a word being many films' title. */
-  def directorsWork(ranked: Seq[Scored]): Option[Accepted] = ownInstalment(directorsWorkWhy(ranked)).toOption
-  /** How far a billed work's running time may stand from the venue's: a broadcast's interval and introduction. */
-  private val BilledRuntime = 15
   private def directorsWorkWhy(ranked: Seq[Scored]): Verdict = {
     def bareWork(scored: Scored) =
       (IdentityMeasures.titleIsWorkOf(scored.listing, scored.candidate.film) orElse IdentityMeasures.originalTitleIsWorkOf(scored.listing, scored.candidate.film))
@@ -577,7 +577,6 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  the record a search for its billing hit states nothing that record does not, so the two cannot confirm it (DE
    *  kinoheld's "Tino Bomelino" as Tino {Anna Lucía Alcalá Pérez}, "Ganes" as Ganges; Fontane Klub's "Ich bin Dein",
    *  Iram Haq's film by its title and runtime, credited to another "Jeg er din"'s director — run 38578038277). */
-  def directorsTitle(ranked: Seq[Scored]): Option[Accepted] = ownInstalment(directorsTitleWhy(ranked)).toOption
   private def directorsTitleWhy(ranked: Seq[Scored]): Verdict = {
     val eligible = eligibleOf(ranked)
     lazy val titled = eligible.exists(_.category("title").contains("exact"))
@@ -629,7 +628,6 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  the title names fits at least as well on the listing's own facts: a banner is learned, not
    *  known, and Everyman's "Cellar Door x ThoughtBubble presents: Terminator 2: Judgment Day",
    *  publishing nothing but its title, is Cameron's film, not TMDB's making-of documentary. */
-  def houseProduction(ranked: Seq[Scored]): Option[Accepted] = ownInstalment(houseProductionWhy(ranked)).toOption
   private def houseProductionWhy(ranked: Seq[Scored]): Verdict = {
     val eligible = eligibleOf(ranked)
     for {
@@ -652,7 +650,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  (October 2026), not the Met's 2026/27 Manon (April 2027), which "MET Opera Live im Kino: Manon" [2027] ×4 is; DE
    *  "RBO live 2027: Tosca" is the RBO's 2026/27 record, not the ROH's 2011 one IMDb suggests. It pre-empts every rule
    *  as [[seasonProduction]] does ([[datedOrBroadcastSeasonRecord]]). */
-  def stageProduction(ranked: Seq[Scored]): Option[Accepted] = ownInstalment(stageProductionWhy(ranked)).toOption
+  private def stageProduction(ranked: Seq[Scored]): Option[Accepted] = ownInstalment(stageProductionWhy(ranked)).toOption
   private def stageProductionWhy(ranked: Seq[Scored]): Verdict =
     for {
       any    <- ranked.headOption.toRight(Refused("no candidate"))
@@ -676,7 +674,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  So is the record of the very season the listing's screenings broadcast it in that names its stage work under its
    *  house ([[IdentityMeasures.bannerNamesItsHouse]]), however the venue shortens the banner: prod UK 2026-10-13 "MET:
    *  Macbeth" (17 October 2026), "RBO: Tosca 27" and "Macbeth (Met Opera)" are the Met's and RBO's 2026/27 records. */
-  def seasonRecord(ranked: Seq[Scored]): Option[Accepted] = ownInstalment(seasonRecordWhy(ranked)).toOption
+  private def seasonRecord(ranked: Seq[Scored]): Option[Accepted] = ownInstalment(seasonRecordWhy(ranked)).toOption
   /** [[seasonRecord]]'s answer when it is a record of the season the listing's screenings broadcast it in: it pre-empts
    *  every rule, as [[seasonProduction]] does a season the title names — a house's other stagings of the work (the Met's
    *  2014 "Macbeth", the Royal Ballet's 2013 "Romeo and Juliet") are other broadcasts than the one the venue screens. */

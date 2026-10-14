@@ -179,7 +179,7 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
         val before  = LiveHeap.megabytes()
         val kept    = new InMemoryIdentityModelStore
         val model   = new IncrementalResolver(lookups, c.normalizer, calibration, store = kept)
-        val (_, seedSeconds) = timed(model.seed(listings))
+        val (_, seedSeconds) = timed(model.listingsSeen(listings))
         val held    = LiveHeap.megabytes() - before
         val keeps   = LiveHeap.grown(classesBefore, LiveHeap.classes())
         val seeded  = model.familiesResolved

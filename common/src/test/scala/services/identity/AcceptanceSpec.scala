@@ -38,19 +38,19 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     val solo  = Listing("Solo", year = Some(2024), runtime = Some(102), directors = Seq("Sophie Dupuis"))
     val full  = (952200, Film("Solo", year = Some(2023), runtime = Some(102), directors = Some(Seq("Sophie Dupuis"))), Some(5))
     val empty = (1450958, Film("Solo", directors = Some(Seq("Sophie Dupuis"))), None)
-    acceptance.directorsTitle(ranked(solo, full, empty)).map(_._1.candidate.tmdbId) shouldBe Some(952200)
+    acceptance.byRule("directors-title")(ranked(solo, full, empty)).map(_._1.candidate.tmdbId) shouldBe Some(952200)
     // two full records of hers stay two films
     val remake = (999, Film("Solo", year = Some(2025), runtime = Some(95), directors = Some(Seq("Sophie Dupuis"))), None)
-    acceptance.directorsTitle(ranked(solo, full, remake)) shouldBe None
+    acceptance.byRule("directors-title")(ranked(solo, full, remake)) shouldBe None
   }
 
   "season-record" should "take the one season record carrying the listing's title, and leave two seasons to the season" in {
     // UK "Royal Ballet and Opera: Romeo and Juliet" ×127 is the RBO's 2026/27 record; "…: Tosca" has 2025/26 and 2026/27
     val rj = Listing("Royal Ballet and Opera: Romeo and Juliet", runtime = Some(170))
-    acceptance.seasonRecord(ranked(rj, (1702789, Film("Royal Ballet & Opera 2026/27: Romeo and Juliet", year = Some(2027)), Some(1))))
+    acceptance.byRule("season-record")(ranked(rj, (1702789, Film("Royal Ballet & Opera 2026/27: Romeo and Juliet", year = Some(2027)), Some(1))))
       .map(_._1.candidate.tmdbId) shouldBe Some(1702789)
     val tosca = Listing("Royal Ballet and Opera: Tosca", runtime = Some(195))
-    acceptance.seasonRecord(ranked(tosca, (1482356, Film("Royal Ballet & Opera 2025/26: Tosca", year = Some(2025)), None),
+    acceptance.byRule("season-record")(ranked(tosca, (1482356, Film("Royal Ballet & Opera 2025/26: Tosca", year = Some(2025)), None),
       (1702784, Film("Royal Ballet & Opera 2026/27: Tosca", year = Some(2027)), None))) shouldBe None
   }
 
@@ -59,8 +59,8 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     // the RBO's 25 May 2027 relay: TMDB's "The Royal Ballet: Romeo and Juliet (2021/22)" carries its title once the season
     // is out, and is four seasons off its year
     val rj = Listing("The Royal Ballet: Romeo & Juliet", year = Some(2025), runtime = Some(170))
-    acceptance.seasonRecord(ranked(rj, (875143, Film("The Royal Ballet: Romeo and Juliet (2021/22)", runtime = Some(170)), Some(5)))) shouldBe None
-    acceptance.seasonRecord(ranked(rj.copy(year = Some(2022)), (875143, Film("The Royal Ballet: Romeo and Juliet (2021/22)", runtime = Some(170)), Some(5))))
+    acceptance.byRule("season-record")(ranked(rj, (875143, Film("The Royal Ballet: Romeo and Juliet (2021/22)", runtime = Some(170)), Some(5)))) shouldBe None
+    acceptance.byRule("season-record")(ranked(rj.copy(year = Some(2022)), (875143, Film("The Royal Ballet: Romeo and Juliet (2021/22)", runtime = Some(170)), Some(5))))
       .map(_._1.candidate.tmdbId) shouldBe Some(875143)
   }
 
@@ -69,8 +69,8 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     // staging's premiere, not the broadcast; the 2021/22 record stays another season's
     val rj = Listing("The Royal Ballet: Romeo & Juliet", year = Some(2025), runtime = Some(170), screenedSeason = Some(2026))
     val season = (1702789, Film("Royal Ballet & Opera 2026/27: Romeo and Juliet", year = Some(2027)), Some(7))
-    acceptance.seasonRecord(ranked(rj, season)).map(_._1.candidate.tmdbId) shouldBe Some(1702789)
-    acceptance.seasonRecord(ranked(rj, (875143, Film("The Royal Ballet: Romeo and Juliet (2021/22)", runtime = Some(170)), Some(5)))) shouldBe None
+    acceptance.byRule("season-record")(ranked(rj, season)).map(_._1.candidate.tmdbId) shouldBe Some(1702789)
+    acceptance.byRule("season-record")(ranked(rj, (875143, Film("The Royal Ballet: Romeo and Juliet (2021/22)", runtime = Some(170)), Some(5)))) shouldBe None
   }
 
   it should "take the season its screenings broadcast it in when two seasons' records carry its title" in {
@@ -80,9 +80,9 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     val swanLake = Listing("Royal Ballet & Opera: Swan Lake", broadcastSeason = Some(2026), screenedSeason = Some(2026))
     val seasons  = Seq((1300034, Film("Royal Ballet & Opera 2024/25: Swan Lake", year = Some(2025)), Some(1)),
       (1702782, Film("Royal Ballet & Opera 2026/27: Swan Lake", year = Some(2027)), Some(2)))
-    acceptance.seasonRecord(ranked(swanLake, seasons *)).map(_._1.candidate.tmdbId) shouldBe Some(1702782)
+    acceptance.byRule("season-record")(ranked(swanLake, seasons *)).map(_._1.candidate.tmdbId) shouldBe Some(1702782)
     // screening in neither season leaves the two to nobody
-    acceptance.seasonRecord(ranked(swanLake.copy(broadcastSeason = Some(2028), screenedSeason = Some(2028)), seasons *)) shouldBe None
+    acceptance.byRule("season-record")(ranked(swanLake.copy(broadcastSeason = Some(2028), screenedSeason = Some(2028)), seasons *)) shouldBe None
   }
 
   "a relay billing its house and no season" should "take its house's record of the season its screenings broadcast it in" in {
@@ -93,9 +93,9 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     val season2026  = (1703622, Film("The Metropolitan Opera 2026/27: Macbeth", year = Some(2026)), Some(2))
     taken(ranked(macbeth, staging2014, season2026)) shouldBe Some(1703622)
     // a record of another season than its screenings' is no staging it screens, however its house bills the work
-    acceptance.seasonRecord(ranked(macbeth.copy(broadcastSeason = Some(2027), screenedSeason = Some(2027)), staging2014, season2026)) shouldBe None
+    acceptance.byRule("season-record")(ranked(macbeth.copy(broadcastSeason = Some(2027), screenedSeason = Some(2027)), staging2014, season2026)) shouldBe None
     // nor is another house's: "MET" names no Royal Ballet & Opera
-    acceptance.seasonRecord(ranked(macbeth, (1, Film("Royal Ballet & Opera 2026/27: Macbeth", year = Some(2027)), Some(1)))) shouldBe None
+    acceptance.byRule("season-record")(ranked(macbeth, (1, Film("Royal Ballet & Opera 2026/27: Macbeth", year = Some(2027)), Some(1)))) shouldBe None
 
     val romeo = Listing("Romeo & Juliet - The Royal Ballet", broadcastSeason = Some(2026), screenedSeason = Some(2026))
     taken(ranked(romeo, (476204, Film("Romeo and Juliet (Royal Ballet)", year = Some(2013), runtime = Some(168)), Some(1)),
@@ -172,9 +172,9 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     val tosca   = Listing("Royal Ballet and Opera: Tosca", runtime = Some(195), directors = Seq("Oliver Mears"))
     val season1 = (1482356, Film("Royal Ballet & Opera 2025/26: Tosca", year = Some(2025), runtime = Some(195), directors = Some(Seq("Oliver Mears"))), None)
     val season2 = (1702784, Film("Royal Ballet & Opera 2026/27: Tosca", year = Some(2027)), None)
-    acceptance.directorsWork(ranked(tosca, season1, season2)) shouldBe None
+    acceptance.byRule("directors-work")(ranked(tosca, season1, season2)) shouldBe None
     // the one record billing the work alone is his staging, and taken
-    acceptance.directorsWork(ranked(tosca, season1)).map(_._1.candidate.tmdbId) shouldBe Some(1482356)
+    acceptance.byRule("directors-work")(ranked(tosca, season1)).map(_._1.candidate.tmdbId) shouldBe Some(1482356)
   }
 
   "a listing crediting a director" should "take the one record its title names exactly by that director, however the database ranks it" in {
@@ -191,18 +191,18 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     val his     = (54001, Film("The Traveler", originalTitle = Some("Mossafer"), year = Some(1974), runtime = Some(73),
       directors = Some(Seq("Abbas Kiarostami"))), Some(9))
     val first   = (68543, Film("Podróż na Księżyc", year = Some(2011), runtime = Some(100), directors = Some(Seq("Someone Else")), popularity = Some(3.0)), Some(1))
-    acceptance.directorsTitle(ranked(listing, first, his)).map(_._1.candidate.tmdbId) shouldBe Some(54001)
+    acceptance.byRule("directors-title")(ranked(listing, first, his)).map(_._1.candidate.tmdbId) shouldBe Some(54001)
     // US Landmark's "Legend (1986)", published as "Legend": the billing itself, its year aside
     val legend = Listing("Legend (1986)", originalTitle = Some("Legend"), directors = Seq("Ridley Scott"))
     val scott  = (11976, Film("Legend", year = Some(1985), runtime = Some(94), directors = Some(Seq("Ridley Scott"))), Some(3))
-    acceptance.directorsTitle(ranked(legend, scott)).map(_._1.candidate.tmdbId) shouldBe Some(11976)
+    acceptance.byRule("directors-title")(ranked(legend, scott)).map(_._1.candidate.tmdbId) shouldBe Some(11976)
     // DE Goli's "The Piano Tuner (Dokumentarfilm)", published as "The Piano Tuner" {David Doucette}: a decorated piece
     val goli     = Listing("The Piano Tuner (Dokumentarfilm)", originalTitle = Some("The Piano Tuner"), directors = Seq("David Doucette"))
     val doucette = (1571662, Film("The Piano Tuner", year = Some(2025), runtime = Some(128), directors = Some(Seq("David Doucette"))), Some(5))
-    acceptance.directorsTitle(ranked(goli, doucette)).map(_._1.candidate.tmdbId) shouldBe Some(1571662)
+    acceptance.byRule("directors-title")(ranked(goli, doucette)).map(_._1.candidate.tmdbId) shouldBe Some(1571662)
     // the original title naming only the director's longer title is no exact naming
     val longer = (54001, Film("The Traveler's Return", originalTitle = Some("Mossafer 2"), directors = Some(Seq("Abbas Kiarostami"))), Some(9))
-    acceptance.directorsTitle(ranked(listing, first, longer)) shouldBe None
+    acceptance.byRule("directors-title")(ranked(listing, first, longer)) shouldBe None
   }
 
   it should "take nothing by a published original title that is a part or a near-spelling of the billing, or beside a record the billing names" in {
@@ -211,23 +211,23 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     // ("Tino Bomelino", a comedian, as Tino {Anna Lucía Alcalá Pérez}; "Ping Pong Session" as Ping Pong {Yu Tianji}),
     // a near-spelling of it ("Ganes", the band, as Ganges {Talía Carolina Osorio}) …
     val tino = (1020336, Film("Tino", year = Some(2022), runtime = Some(4), directors = Some(Seq("Anna Lucía Alcalá Pérez"))), Some(1))
-    acceptance.directorsTitle(ranked(Listing("Tino Bomelino", originalTitle = Some("Tino"), directors = Seq("Anna Lucía Alcalá Pérez")), tino)) shouldBe None
+    acceptance.byRule("directors-title")(ranked(Listing("Tino Bomelino", originalTitle = Some("Tino"), directors = Seq("Anna Lucía Alcalá Pérez")), tino)) shouldBe None
     val yu = (1559695, Film("Ping Pong", year = Some(2025), runtime = Some(16), directors = Some(Seq("Yu Tianji"))), Some(18))
-    acceptance.directorsTitle(ranked(Listing("Ping Pong Session", originalTitle = Some("Ping Pong"), directors = Seq("Yu Tianji")), yu)) shouldBe None
-    def hit(billed: String, original: String, director: String) = acceptance.directorsTitle(ranked(
+    acceptance.byRule("directors-title")(ranked(Listing("Ping Pong Session", originalTitle = Some("Ping Pong"), directors = Seq("Yu Tianji")), yu)) shouldBe None
+    def hit(billed: String, original: String, director: String) = acceptance.byRule("directors-title")(ranked(
       Listing(billed, originalTitle = Some(original), directors = Seq(director)), (7, Film(original, year = Some(2025), directors = Some(Seq(director))), Some(5))))
     hit("Punkabend #93", "'93", "Mike Wood") shouldBe None
     hit("Christmas Time Machine", "Time Machine", "Zihan Gao") shouldBe None
     hit("DAS PACK", "Pack", "Peiqi Peng") shouldBe None
     hit("Dancing Queens & Band „live and kicking“ – A Tribute to ABBA", "Live Forever", "Connor Withall") shouldBe None
     val ganges = (608716, Film("Ganges", year = Some(2019), runtime = Some(75), directors = Some(Seq("Talía Carolina Osorio"))), Some(1))
-    acceptance.directorsTitle(ranked(Listing("Ganes", originalTitle = Some("Ganges"), directors = Seq("Talía Carolina Osorio")), ganges)) shouldBe None
+    acceptance.byRule("directors-title")(ranked(Listing("Ganes", originalTitle = Some("Ganges"), directors = Seq("Talía Carolina Osorio")), ganges)) shouldBe None
     // … or beside the record the billed title names exactly: Fontane Klub's "Ich bin Dein" runs Iram Haq's 100 minutes,
     // published with Claudia Bille Stræde's credit from another "Jeg er din"
     val haq     = (215028, Film("Ich bin Dein", originalTitle = Some("Jeg er din"), year = Some(2013), runtime = Some(100),
       directors = Some(Seq("Iram Haq"))), Some(1))
     val straede = (1366306, Film("Jeg er din", year = Some(2014), directors = Some(Seq("Claudia Bille Stræde"))), Some(2))
-    acceptance.directorsTitle(ranked(Listing("Ich bin Dein", originalTitle = Some("Jeg er din"), runtime = Some(100),
+    acceptance.byRule("directors-title")(ranked(Listing("Ich bin Dein", originalTitle = Some("Jeg er din"), runtime = Some(100),
       directors = Seq("Claudia Bille Stræde")), haq, straede)) shouldBe None
   }
 
@@ -244,10 +244,10 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     // which no rule took, and one venue's evidence stayed at 28.9%.
     val day   = Listing("DZIEŃ KINA POLSKIEGO: Przepraszam, czy tu biją")
     val film  = (318545, Film("Przepraszam, czy tu biją?", year = Some(1976)), Some(1))
-    def segment(l: Listing, films: (Int, Film, Option[Int])*) = acceptance.segmentTopHit(ranked(l, films *)).map(_._1.candidate.tmdbId)
+    def segment(l: Listing, films: (Int, Film, Option[Int])*) = acceptance.byRule("segment-top-hit")(ranked(l, films *)).map(_._1.candidate.tmdbId)
     segment(day, film) shouldBe Some(318545)
     // credited as the exact top hit it is once the banner is off, never less than its own probability
-    acceptance.segmentTopHit(ranked(day, film)).map(_._2).get should be >= 0.99
+    acceptance.byRule("segment-top-hit")(ranked(day, film)).map(_._2).get should be >= 0.99
     // not its search's FIRST hit: no answer
     segment(day, film.copy(_3 = Some(2)), (9, Film("Inny film"), Some(1))) shouldBe None
     // a programme naming two films: neither ("Akademia Polskiego Filmu: Ostatni etap | Majdanek - cmentarz Europy"; a
@@ -273,7 +273,7 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     places.toMap.get(sc.candidate.tmdbId).fold(sc)(place => sc.copy(imdb = Some(Scored.ImdbPlace(place, of)),
       suggestedOnly = sc.rank.isEmpty && !sc.category("title").exists(IdentityMeasures.Rivalling)))
   }
-  private def byImdb(scored: Seq[Scored]): Option[Int] = acceptance.imdbSuggested(scored).map(_._1.candidate.tmdbId)
+  private def byImdb(scored: Seq[Scored]): Option[Int] = acceptance.byRule("imdb-suggested")(scored).map(_._1.candidate.tmdbId)
 
   "a film IMDb suggests for the listing's title" should "be taken on the old pipeline's rungs: its director, its year, or the only suggestion the title names" in {
     // PL "Superfutrzak i złośliwa wiewiórka" {Joona Tena}: TMDB holds the film only under its Finnish title; IMDb
@@ -337,7 +337,7 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     val karma  = Listing("Loving Karma", runtime = Some(78))
     val record = (1563699, Film("Loving Karma", year = Some(2026), runtime = Some(85)), Some(1))
     def sole(scored: Seq[Scored], id: Int) = scored.map(sc => if (sc.candidate.tmdbId == id) sc.copy(soleResult = true) else sc)
-    def bySole(scored: Seq[Scored]) = acceptance.soleResult(scored).map(_._1.candidate.tmdbId)
+    def bySole(scored: Seq[Scored]) = acceptance.byRule("sole-result")(scored).map(_._1.candidate.tmdbId)
     bySole(ranked(karma, record)) shouldBe None
     bySole(sole(ranked(karma, record), 1563699)) shouldBe Some(1563699)
     // a runtime that contradicts it, a one-word piece, another film the title names, a double bill: no
@@ -358,7 +358,7 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     // that happens to hold them — DE "Simply Christmas" (a band's Advent concert), "80ER PARTY", "Anime Nights" (six
     // nights of different films), "DAS GEHEIME FILMARCHIV" (a secret-classic series), "Bodies in Translation" (a stage show)
     def sole(l: String, film: String) =
-      acceptance.soleResult(ranked(Listing(l), (9, Film(film, year = Some(2022)), Some(1))).map(_.copy(soleResult = true))).map(_._1.candidate.tmdbId)
+      acceptance.byRule("sole-result")(ranked(Listing(l), (9, Film(film, year = Some(2022)), Some(1))).map(_.copy(soleResult = true))).map(_._1.candidate.tmdbId)
     sole("Simply Christmas", "Steve's Simply Happy Christmas Cook-A-Long") shouldBe None
     sole("80ER PARTY", "Die Stärksten 80er Clips – Saturn-Party Edition") shouldBe None
     sole("Anime Nights", "Crunchyroll Anime Nights - Mob Psycho 100") shouldBe None
@@ -448,7 +448,7 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     val later   = (396227, Film("National Theatre Live: Hamlet", year = Some(2015), runtime = Some(217)), Some(2))
     val candidates = ranked(listing, older, later).map(scored =>
       if (scored.candidate.tmdbId == 396227) scored.copy(houseProduction = false) else scored)
-    acceptance.houseProduction(candidates) shouldBe None
+    acceptance.byRule("house-production")(candidates) shouldBe None
   }
 
   it should "take nothing when its runtime contradicts the house's record" in {
@@ -472,7 +472,7 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     }
     val candidates = Seq(scored(280, film, 1), scored(473793, makingOf, 2)).sortBy(candidate => -candidate.probability)
     candidates.find(_.candidate.tmdbId == 473793).map(_.houseProduction) shouldBe Some(true)
-    acceptance.houseProduction(candidates) shouldBe None
+    acceptance.byRule("house-production")(candidates) shouldBe None
   }
 
   it should "not take another house's record of the work" in {
@@ -494,7 +494,7 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     // never a record from another year than the title dates: US "MetOpera: Carmen (2009)" ×513 took the Met's 2024
     // Carmen this way, though Eyre's 2009 staging is another record
     val dated = Listing("NT Live: The Misanthrope (2009)", runtime = Some(180))
-    acceptance.houseProduction(ranked(dated, bare :+ national *)) shouldBe None
+    acceptance.byRule("house-production")(ranked(dated, bare :+ national *)) shouldBe None
     acceptance.refusals(ranked(dated, bare :+ national *)).find(_.rule == "house-production").map(_.why) shouldBe
       Some("its house's record is from another year than its title dates")
     // A film no rule takes names none.

@@ -67,6 +67,7 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
   private var reResolved    = 0
   private val clock         = new IncrementalResolver.Timings
 
+  /** Listings scraped — a venue's, or a whole corpus at boot, resolved a bounded batch at a time either way. */
   def listingsSeen(listings: Seq[Listing]): Unit       = batch(listings, Nil, AnswersChanged.Empty)
   def listingsGone(keys: Seq[ListingKey]): Unit        = batch(Nil, keys, AnswersChanged.Empty)
 
@@ -138,15 +139,6 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
       traces.settle(gone, Nil)
     }
     ruled()
-  }
-
-  /** Take `listings` in whole — a new country, or a rebuild after the rules changed — resolved a
-   *  bounded batch at a time, so the build holds one batch's answers and records, never the corpus's. */
-  def seed(listings: Seq[Listing]): Unit = {
-    val arrived = listings.filterNot(listing => heldListing(listing.key).contains(listing))
-    arrived.foreach(hold)
-    val moved = clock.context(corpus.seen(arrived))
-    update(arrived.flatMap(listing => familyOf(listing.key)).toSet, arrived.map(_.key).toSet, moved)
   }
 
   /** The model as a [[Resolution]] — what the projection reads: its decisions and the records of the films it decided.
