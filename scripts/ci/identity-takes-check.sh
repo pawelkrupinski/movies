@@ -27,7 +27,7 @@
 # THE BASE IS USUALLY ALREADY RESOLVED. It is the newest commit whose check passed -- most often the previous run's
 # head, which that run resolved over the same pinned recording minutes before. A resolve is a pure function of its
 # commit and what it reads (the base-equals-head skip below rests on the same determinism), so main stores each head's
-# decisions and final takes on the TAKES_STORE release, keyed by the commit and every input it read: the pinned corpus,
+# decisions and final takes on the TAKES_STORE release, keyed by the commit's identity code and every input it read: the pinned corpus,
 # its enrichment tree and fills, the fill this row laid over them, and -- for the final takes -- the capture they replay.
 # A base whose key is stored is downloaded, not compiled and resolved: half of the step, 6-12 minutes of the US row
 # (run 38548739769). A key not stored -- other inputs, a fill this row could not publish, a first run -- resolves as before.
@@ -121,12 +121,15 @@ fi
 store=${TAKES_STORE:-}
 laid=$(cat "${RUNNER_TEMP:-/nonexistent}/laid-fill" 2>/dev/null || true)
 [ "$laid" = unpublished ] && store=""
+# A key names the commit by its identity code, not its sha: a commit touching none of it (whose own check stored nothing,
+# above) is then the base of the next run under the key its last identity change stored -- run 38599662543's base had.
+code_of() { git ls-tree -r "$1" -- "${identity_paths[@]}" | sha256sum | cut -c1-24; } # <sha>
 decisions_key() { # <sha>: the decisions dump's inputs
-  printf '%s\n' "$1" "$cc" "${KINOWO_CONVERGENCE_PIN_CORPUS_RUN:-}" "${KINOWO_CONVERGENCE_TREE_ASSET:-}" \
+  printf '%s\n' "$(code_of "$1")" "$cc" "${KINOWO_CONVERGENCE_PIN_CORPUS_RUN:-}" "${KINOWO_CONVERGENCE_TREE_ASSET:-}" \
     "${KINOWO_CONVERGENCE_FILL_ASSETS:-}" "$laid" | sha256sum | cut -c1-24
 }
 capture_key() { # <sha>: the final takes' inputs -- the code and the capture it replays (always the head's)
-  { printf '%s\n' "$1" "$cc"; cat "$here"/test/resources/fixtures/identity-unmatched/*.json.gz \
+  { printf '%s\n' "$(code_of "$1")" "$cc"; cat "$here"/test/resources/fixtures/identity-unmatched/*.json.gz \
       "$here"/test/resources/fixtures/identity-unmatched/*.inputs 2>/dev/null; } | sha256sum | cut -c1-24
 }
 reused() { # <asset> <file>: whether a stored result was fetched into <file>

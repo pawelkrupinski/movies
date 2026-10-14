@@ -151,4 +151,22 @@ TAKES_BASE=$c4 store_run "$c5" || true
 check "a fill laid but never published names no key: nothing is reused" "$(base_calls)" 2
 rm -f "$work/laid-fill"
 
+# c6 touches no identity code, so its own check passed unresolved and stored nothing -- and it is the base of c7's. Its
+# identity code is c5's, which c5's run stored: the key is the identity code, not the commit, so c7 reuses c5's results
+# (run 38599662543: base 263b1c341 had exited early, and its US row compiled and resolved the base again, 270s).
+echo 6 > "$work/src/README" && scratch_git "$work/src" add README && scratch_git "$work/src" commit -q -m c6
+echo 7 > "$work/src/common/src/main/Identity.scala" && scratch_git "$work/src" add common && scratch_git "$work/src" commit -q -m c7
+scratch_git "$work/src" push -q "$work/origin.git" HEAD:refs/heads/main
+c6=$(scratch_git "$work/src" rev-parse HEAD~1) c7=$(scratch_git "$work/src" rev-parse HEAD)
+at() { scratch_git "$work/job" fetch -q --depth=1 origin "$1" && scratch_git "$work/job" checkout -q "$1"; } # the head, as CI checks it out
+TAKES_BASE=$c4 store_run "$c5" || true
+at "$c6"; TAKES_BASE=$c5 store_run "$c6" || true
+check "c6's check, touching no identity code, resolves nothing" "$(grep -c 'no identity code changed' "$work/out/verdict.txt")" 1
+at "$c7"; code=0; TAKES_BASE=$c6 store_run "$c7" || code=$?
+check "a base that stored nothing, its identity code another's that did, reuses that one's decisions" \
+  "$(grep -c 'base resolve reused' "$work/log")" 1
+check "...and its final takes" "$(grep -c 'base final takes reused' "$work/log")" 1
+check "...compiling and resolving nothing for the base" "$(base_calls)" 0
+check "...and the check still passes" "$code" 0
+
 [ "$fails" = 0 ] || { echo "$fails failure(s)"; exit 1; }
