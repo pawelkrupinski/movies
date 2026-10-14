@@ -620,7 +620,12 @@ object IdentityMeasures {
                         /** The cinema releases TMDB dates — premieres, re-releases, editions — run together
                          *  ([[TmdbFilmRecord.releases]]); `None` when its release dates were not fetched. One string, as
                          *  [[releaseCountries]] is. */
-                        releases: Option[String] = None) {
+                        releases: Option[String] = None,
+                        /** Its localised tagline's words as one key ([[Film.taglineKeyOf]]), 0 when TMDB states none: the
+                         *  subtitle a venue may bill beside its title ("Frauen bildet Banden - Eine Spurensuche zur Geschichte
+                         *  der Roten Zora"). A key, not the text: every candidate of every family holds it, and one question is
+                         *  asked of it ([[ListingShape.billedBeside]]). */
+                        taglineKey: Int = 0) {
     /** The film as a line names it: `'Lalka' (1968)`, its year left out where none is known. */
     def titled: String = s"'$title'${year.fold("")(y => s" ($y)")}"
     /** Every running time TMDB states for the film, [[runtime]] first: what a listing's runtime is compared with. */
@@ -692,6 +697,13 @@ object IdentityMeasures {
     /** The film's titles as series and numbers (`numeralRelation`). */
     private[identity] lazy val numberedTitles: Seq[IdentityMeasures.Numbered] =
       titles.map(_.trim).filter(_.nonEmpty).distinct.map(IdentityMeasures.numbered)
+  }
+  object Film {
+    /** A tagline's (or a billing piece's) words as one key: [[Film.taglineKey]]; 0 for none. */
+    def taglineKeyOf(text: String): Int = {
+      val words = services.movies.TitleContainment.tokens(text)
+      if (words.isEmpty) 0 else words.mkString(" ").hashCode
+    }
   }
 
   /** One measurement: a category, a number, or missing (with which side is missing). */

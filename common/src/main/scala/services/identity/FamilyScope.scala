@@ -175,7 +175,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
   def of(node: EvidenceNode): Seq[Scored] = memo.getOrElseUpdate(node.id,
     { val reached = reach(node)
       score(evidenceOf(node).measured, node.venue, reached.search, reached.walk, sharedOf(node),
-        id => denialByNode(node, id), reached.imdbOnly, reached.directed, reached.imdbTitled, countryOf(node)).map(placedByImdb(Seq(node)))
+        id => denialByNode(node, id), reached.imdbOnly, reached.directed, reached.imdbTitled, node.country).map(placedByImdb(Seq(node)))
         .map(scored => if (reached.soleResults(scored.candidate.tmdbId)) scored.copy(soleResult = true) else scored)
         .map(scored => reached.imdbTitled.get(scored.candidate.tmdbId).fold(scored)(titles => scored.copy(imdbTitled = titles))) })
 
@@ -193,10 +193,6 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
     val place = lists.flatMap(list => Option(list.indexOf(scored.candidate.tmdbId)).filter(_ >= 0).map(i => Scored.ImdbPlace(i + 1, list.size)))
     place.minByOption(_.place).fold(scored)(best => scored.copy(imdb = Some(best.copy(of = lists.map(_.size).max))))
   }
-
-  /** The country (ISO-3166-1) of `node`'s venue — what [[ReleaseVeto]] asks a namesake's releases of. */
-  private[identity] def countryOf(node: EvidenceNode): Option[String] =
-    models.City.forCinema(node.listings.head.cinema).map(_.country.language.getCountry).filter(_.nonEmpty)
 
   /** Why `node` rules `id` out before its evidence is scored: a pin, or a title naming it only by the venue's own name
    *  or by a programme tag. */
@@ -234,7 +230,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
     score(listing, lead.venue, ranks, reached.flatMap(_.walk).toSet, cluster.flatMap(sharedOf).toSet,
       id => cluster.iterator.flatMap(denialByNode(_, id)).nextOption(), reached.flatMap(_.imdbOnly).toSet -- ranks.keySet,
       reached.flatMap(_.directed).toSet,
-      reached.flatMap(_.imdbTitled).groupMapReduce(_._1)(_._2)(_ ++ _), countryOf(lead))
+      reached.flatMap(_.imdbTitled).groupMapReduce(_._1)(_._2)(_ ++ _), lead.country)
       .map(scored => if (scored.denied || cluster.forall(node => !of(node).exists(other => other.candidate.tmdbId == scored.candidate.tmdbId && other.denied))) scored else scored.copy(denial = Some("a member's own evidence rules it out")))
       .map(placedByImdb(cluster))
       .map(scored => reached.flatMap(_.imdbTitled.getOrElse(scored.candidate.tmdbId, Set.empty)).toSet match {

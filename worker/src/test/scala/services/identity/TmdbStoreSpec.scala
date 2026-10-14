@@ -337,6 +337,18 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     w.lookups.film(onceUpon).toOption.flatten.map(_.runtimes) shouldBe Some(Seq(229, 139))
   }
 
+  // "Frauen bildet Banden" (DE Museum-Lichtspiele Tübingen bills it "- Eine Spurensuche zur Geschichte der Roten Zora"): TMDB's
+  // de-DE tagline is the subtitle a venue bills beside the title, which a filed record must carry for billedBeside to read.
+  "a film's record" should "carry its tagline as filed" in {
+    val w = new World
+    val banden = 627671
+    def recorded(name: String) = scala.io.Source.fromResource(s"fixtures/tmdb/$name")(using scala.io.Codec.UTF8).mkString
+    w.store.filmPartial(banden, TmdbStore.Partial.Local, minimalOf(recorded("movie-627671-de.json")))
+    w.store.filmPartial(banden, TmdbStore.Partial.English, minimalOf(recorded("movie-627671-en.json")))
+    w.lookups.film(banden).toOption.flatten.map(_.taglineKey) shouldBe
+      Some(IdentityMeasures.Film.taglineKeyOf("Eine Spurensuche zur Geschichte der Roten Zora"))
+  }
+
   // The release veto asks one question of a film's release dates: does TMDB date a release of it in the venue's country?
   // The store files the answer to that alone — the countries, never the dates — off the localized response it already reads.
   "a film's record filed from its localized response" should "know which countries TMDB dates a release of it in" in {

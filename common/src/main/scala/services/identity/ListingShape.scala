@@ -130,7 +130,9 @@ object ListingShape {
    *    screening programme or its audience ([[ScreeningProgramme]]: "Fatherland - Film Club", "KÖNIG DROSSELBART - EIN
    *    ADVENTSMÄRCHEN FÜR KINDER"), a note in brackets ("Geliefert (ver.di)") or one a number carries ("Digger (15) 129
    *    mins", "ABO 10": one word of its own beside it), a screening's note ([[ScreeningNote]]: "+ Panel Discussion"), the
-   *    film's own titles and director;
+   *    film's own titles and director (a word of them misspelt by a letter: "Living - Einma wirklich leben");
+   *  - what a "+" adds after the film ("OPĘTANIE + TRASA PLAKATOWA"), tags piped after it one of which names a programme
+   *    ("Królestwo Kensuke | EKO-KINO | ZIELONE INSTYTUCJE KULTURY"), anything around a silent-era film a programme bills;
    *  - the listing's own original title ("Hacer Mucho con Poco - Do More With Less");
    *  - the film quoted: the quotes name the work, what is around them is the evening's (PL "Festiwal Korelacje: „Zemsta”
    *    z autorską narracją Artura Andrusa").
@@ -152,24 +154,52 @@ object ListingShape {
       // a piece crediting the film's director, as an inflected language bills the name ("Poniedziałki z Konwickim: pisarz –
       // scenarzysta – reżyser"): the whole billing is the venue's programme of the director's films
       val names  = films.flatMap(_.directors.getOrElse(Nil)).flatMap(TitleContainment.tokens).filter(_.length >= DirectorStem)
-      def own(word: String) = word.length >= 3 && !word.exists(_.isDigit) && !theirs(word) && !billed(word)
+      def own(word: String) = word.length >= 3 && !word.exists(_.isDigit) && !theirs.exists(spells(word, _)) && !billed(word)
       def credits(word: String) = names.exists(word.startsWith)
       // the film's run of whole pieces, the first one
       val run = (for { from <- words.indices.iterator; to <- (from + 1 to words.size).iterator
                        if titles.contains(withoutArticles(words.slice(from, to).flatten)) } yield (from, to)).nextOption()
       // the banner segment each piece is in: a colon or a pipe closes one
       val segment = parts.indices.map(k => breaks.take(k).count(b => b == ":" || b == "|"))
-      def programmeWords(piece: Seq[String]) = piece.exists(word => billed(word) || ScreeningProgramme.findFirstIn(word).isDefined)
-      run.filterNot { case (from, to) => words.indices.exists(k => (k < from || k >= to) && words(k).exists(credits)) }.flatMap { case (from, to) =>
+      def programme(piece: Seq[String]) = piece.exists(word => ScreeningProgramme.findFirstIn(word).isDefined)
+      def programmeWords(piece: Seq[String]) = programme(piece) || piece.exists(billed)
+      // a film of the silent era under a screening programme: the billing is the programme's, its accompanist's (DE
+      // "Film+Musikfest: Greta Garbo: The Temptress", 1926), as one billing it silent is
+      // the film's own tagline, its subtitle ("Frauen bildet Banden - Eine Spurensuche zur Geschichte der Roten Zora")
+      def tagline(piece: Seq[String]) = piece.nonEmpty && films.exists(_.taglineKey == IdentityMeasures.Film.taglineKeyOf(piece.mkString(" ")))
+      def silent = films.forall(_.year.exists(_ <= SilentEraEnd)) && words.exists(programme)
+      // one of the film's own titles of three pieces or more, piece for piece, one piece re-worded: the venue's spelling of
+      // that piece ("Exhibition on Screen: Vermeer - Die Blockbuster-Ausstellung" of its "Exhibition on Screen: Vermeer -
+      // The Greatest Exhibition"); two pieces alike are no coincidence a namesake's two-piece title can be
+      def reworded = films.flatMap(_.titles).exists { title =>
+        val theirs = PieceBreak.split(title).toIndexedSeq.map(piece => withoutArticles(TitleContainment.tokens(piece)))
+        theirs.sizeIs >= 3 && theirs.size == words.size && theirs.indices.count(k => theirs(k) != withoutArticles(words(k))) == 1
+      }
+      // the billing opens with one of the film's own titles of two pieces or more, word for word, its last word maybe glued
+      // to what follows ("LA BOUM - Die FeteZum 60. Geb. von Sophie Marceau!" of "La Boum - Die Fete"): the rest is a note
+      def opens = films.flatMap(_.titles).exists { title =>
+        val theirs = TitleContainment.tokens(title)
+        val ours   = words.flatten
+        PieceBreak.split(title).count(_.trim.nonEmpty) >= 2 && theirs.nonEmpty && ours.sizeIs >= theirs.size &&
+          ours.take(theirs.size - 1) == theirs.init && ours(theirs.size - 1).startsWith(theirs.last)
+      }
+      run.filterNot { case (from, to) => silent || reworded || opens || words.indices.exists(k => (k < from || k >= to) && words(k).exists(credits)) }.flatMap { case (from, to) =>
         // a strand's banner: a segment closed ahead of the film's that names a screening programme or an event in one of
         // its pieces is the venue's, all of it (DE "SPECIAL: 2. Dangerous Encounters – Hong Kong im Filmrausch: MADE IN
         // HONG KONG", a numbered strand of the Filmrausch's)
         def strand(k: Int) = segment(k) < segment(from) && words.indices.exists(j => segment(j) == segment(k) && programmeWords(words(j)))
+        // the pieces piped after the film, one after another: the venue's tags, when one of them names a programme (PL
+        // "Królestwo Kensuke | EKO-KINO | ZIELONE INSTYTUCJE KULTURY")
+        val piped = (to until words.size).takeWhile(k => breaks.lift(k - 1).contains("|"))
+        val tagged = piped.exists(k => programme(words(k)))
         words.indices.iterator.filterNot(k => k >= from && k < to).filter(k => words(k).nonEmpty).filterNot(strand)
           // the banner's slot: the leading piece a colon or a pipe closes, the film after it
           .filterNot(k => k == 0 && from > 0 && breaks.headOption.exists(b => b == ":" || b == "|"))
+          // what the screening adds after the film, a "+" closing it (PL "OPĘTANIE + TRASA PLAKATOWA", a poster tour)
+          .filterNot(k => k >= to && breaks.lift(to - 1).contains("+"))
+          .filterNot(k => tagged && piped.contains(k))
           .map(words).find(piece => !original.contains(withoutArticles(piece)) && piece.exists(own) && !numberedNote(piece, own) &&
-            !programmeWords(piece) && !piece.exists(ScreeningNote.matches) && !venues(piece))
+            !programmeWords(piece) && !piece.exists(ScreeningNote.matches) && !venues(piece) && !tagline(piece))
           .map(piece => s"'${piece.mkString(" ")}' is billed beside '${films.head.title}', no word of it the venue's around a film")
       }
     }
@@ -177,6 +207,15 @@ object ListingShape {
 
   /** The fewest letters of a director's name an inflected form of it starts with. */
   private val DirectorStem = 5
+
+  /** Is `word` the film's own `theirs`, or it misspelt by one letter dropped, added or changed — four letters and more
+   *  ("Living - Einma wirklich leben" of "Living - Einmal wirklich leben")? */
+  private def spells(word: String, theirs: String): Boolean =
+    word == theirs || (word.length >= 4 && theirs.length >= 4 && math.abs(word.length - theirs.length) <= 1 && {
+      val (short, long) = if (word.length <= theirs.length) (word, theirs) else (theirs, word)
+      if (short.length == long.length) short.indices.count(i => short(i) != long(i)) <= 1
+      else { val at = short.indices.find(i => short(i) != long(i)).getOrElse(short.length); short.substring(at) == long.substring(at + 1) }
+    })
 
   /** A NOTE a number carries — a running time, a certificate, a subscription's or an anniversary's number — one word of
    *  its own beside the number at most: "129 mins", "Cert 18", "ABO 10", "50 Jahre". */
@@ -186,12 +225,26 @@ object ListingShape {
   /** An event, format or edition word: what a venue bills around a film. */
   private def billed(word: String): Boolean =
     DecorationWords.EventWords(word) || DecorationWords.EditionWords(word) || services.movies.FormatTags.FormatToken.contains(word)
-  /** A word naming a screening programme or its audience, as a stem a compound carries ("Filmmittwoch", "Kinderkino"). */
-  private val ScreeningProgramme = """film|kin[oaie]|cine|movie|klub|club|dkf|kinder|kids|children|dzieci|familie|family|senior""".r
+  /** A word naming a screening programme or its audience, as a stem a compound carries ("Filmmittwoch", "Kinderkino"), or
+   *  a festival's ("SPECIAL: Jazzfest Community Week: SOUNDTRACK TO A COUP D’ETAT"). */
+  private val ScreeningProgramme = """film|kin[oaie]|cine|movie|klub|club|dkf|kinder|kids|children|dzieci|familie|family|senior|fest$""".r
   /** A word of what a screening holds beside its film — a talk, a panel, a matinee, its audience's slot, its running time:
    *  UK "Judas and the Black Messiah + Panel Discussion", "The Incomer (12A) PARENT & BABY", "Wicker (15) 105 mins *MATINEE*", PL "Klątwa doliny węży – z autorską narracją
-   *  Łony", "Zaproszenie | Zobacz przedpremierowo". */
-  private val ScreeningNote = """discussion|introduction|panel|matinee|parent|baby|relaxed|mins|minutes|narracj\w*|narration|przedpremier\w*|premierow\w*|deluxe""".r
+   *  Łony", "Zaproszenie | Zobacz przedpremierowo", DE "Live - Vortrag: Portugal - Der Wanderfilm", "BANKOMATT – Schweizer
+   *  Filmwoche – mit Regisseur!". */
+  private val ScreeningNote = """discussion|introduction|panel|matinee|parent|baby|relaxed|mins|minutes|narracj\w*|narration|przedpremier\w*|premierow\w*|deluxe|vortrag\w*|regisseur\w*""".r
+  /** Is the billing two pieces a dash joins, and nothing else ("LÍDA BAAROVÁ – DOOMED BEAUTY")? */
+  def dashedPair(raw: String): Boolean = {
+    val breaks = PieceBreak.findAllIn(raw).toSeq.map(_.trim)
+    breaks.sizeIs == 1 && Dash.matches(breaks.head) && PieceBreak.split(raw).count(_.trim.nonEmpty) == 2
+  }
+  /** Is the billing two pieces a dash joins ([[dashedPair]]), the second a title of `film`'s, whole ("LÍDA BAAROVÁ –
+   *  DOOMED BEAUTY": its subject, then the film)? */
+  def titledAfterPiece(raw: String, film: IdentityMeasures.Film): Boolean = dashedPair(raw) && {
+    val titles = film.titles.map(t => withoutArticles(TitleContainment.tokens(t))).toSet
+    PieceBreak.split(raw).lastOption.exists(piece => titles.contains(withoutArticles(TitleContainment.tokens(piece))))
+  }
+  private val Dash = "[-–—]".r
   private val PieceBreak = """\s*[:|•+]\s*|\s+[-–—]\s+|\s*[„”"“«»]\s*""".r
   private val Bracketed  = """\([^)]*\)|\[[^\]]*]""".r
   private val Quote      = """[„”"“«»]""".r

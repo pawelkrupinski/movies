@@ -1520,6 +1520,46 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
       .film shouldBe None
   }
 
+  it should "take a current release, or a foreign film billed first under its untranslated title, beside another piece" in {
+    // DE rights billedBeside lost on the model's takes (2026-10-14): a 2026 documentary billed with its subtitle at ten venues,
+    // a 1962 Turkish film billed with the venue's own German title
+    def decided(raw: String, film: F, screened: Option[Int] = Some(2026)) = {
+      val l = listing(KinoMuza, raw).copy(screenings = ScreeningDays.of(screened.map(java.time.LocalDate.of(_, 10, 16)).toSeq))
+      IdentityResolver.resolve(Seq(l), new FilmTable(Seq(film), normalizer), normalizer, IdentityCalibration.resolver).decisionOf(l.key)
+    }
+    val unterbiberger = F(1559083, "Über Unterbiberger", 2026, "Lukas Schöffel", 92)
+    val current = decided("Über Unterbiberger - Vom Woid in die Welt", unterbiberger)
+    withClue(current.render)(current.film shouldBe Some(1559083))
+    decided("Über Unterbiberger - Vom Woid in die Welt", unterbiberger, screened = Some(2028)).film shouldBe None
+    decided("Über Unterbiberger - Vom Woid in die Welt", unterbiberger, screened = None).film shouldBe None
+    val bread = F(1140985, "Ekmek Parası", 1962, "Atıf Yılmaz", 80, countries = Seq("TR"), original = Some("Ekmek Parası"))
+    val untranslated = decided("Ekmek parası - Geld für's Brot", bread)
+    withClue(untranslated.render)(untranslated.film shouldBe Some(1140985))
+    // not one TMDB knows by a local title, nor the venue's own country's film, nor one billed after other pieces
+    decided("Ekmek parası - Geld für's Brot", bread.copy(original = Some("Bread Money"))).film shouldBe None
+    decided("Ekmek parası - Geld für's Brot", bread.copy(countries = Seq("TR", "PL"))).film shouldBe None
+    decided("Orhan Gencebay - Konser - Ekmek parası", bread).film shouldBe None
+    // or billed as one of two pieces under its title in another language (DE "LÍDA BAAROVÁ – DOOMED BEAUTY", a Czech film
+    // TMDB titles "Doomed Beauty" in English alone)
+    val doomed = F(378814, "Zkáza krásou", 2016, "Filip Renč", 106, countries = Seq("CZ"), original = Some("Zkáza krásou"),
+      alternatives = Seq("Doomed Beauty"))
+    val subject = decided("LÍDA BAAROVÁ – DOOMED BEAUTY", doomed)
+    withClue(subject.render)(subject.film shouldBe Some(378814))
+    // not one titled so FIRST, a namesake's foreign title beside a travelogue's subtitle (DE "Patagonien – Durch die
+    // Wildnis bis nach Feuerland", taken as the Italian "Patagonia" IMDb also titles "Patagonien")
+    val patagonia = F(1010170, "Patagonia", 2023, "Simone Bozzelli", 112, countries = Seq("IT"), original = Some("Patagonia"),
+      alternatives = Seq("Patagonien"))
+    decided("Patagonien – Durch die Wildnis bis nach Feuerland", patagonia).film shouldBe None
+    // PL Kino Kosmos' 1976 films under its "Złote gody" programme, each its own family beside the film's plain billings
+    // elsewhere: a piece the corpus bills beside two whole titles is the venue's
+    val kosmos = Seq(F(51857, "Nakarmić kruki", 1976, "Carlos Saura", 107), F(891, "Wszyscy ludzie prezydenta", 1976, "Alan J. Pakula", 138))
+    val crows  = listing(KinoMuza, "Nakarmić kruki | Złote gody")
+    val corpus = Seq(crows, listing(KinoMuza, "Wszyscy ludzie prezydenta | Złote gody"), listing(Helios, "Nakarmić kruki", Some(1976)),
+      listing(Helios, "Wszyscy ludzie prezydenta", Some(1976)))
+    val golden = IdentityResolver.resolve(corpus, new FilmTable(kosmos, normalizer), normalizer, IdentityCalibration.resolver)
+    withClue(golden.decisionOf(crows.key).render)(golden.decisionOf(crows.key).film shouldBe Some(51857))
+  }
+
   it should "take neither of two quoted works a conjunction joins, a double bill" in {
     // PL KINOMUZEUM (suspect audit 2026-10-13, served in prod): Chytilová's "Owoce rajskich drzew spożywamy" billed with
     // her "Mieszkanie" — taken as the 1970 film alone by the calibrated rule (labelled wrong)

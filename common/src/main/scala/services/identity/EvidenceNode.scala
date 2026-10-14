@@ -8,6 +8,8 @@ private[identity] final class EvidenceNode(val evidence: Evidence, val listings:
   val venues: Set[String] = listings.map(_.venue).toSet
   /** The title's words, once per node: `namesOnlyItsVenue` reads them against every candidate. */
   lazy val titleWords: Seq[String] = services.movies.TitleContainment.tokens(evidence.title)
+  /** The country (ISO-3166-1) of its venue — what [[ReleaseVeto]] asks a namesake's releases of. */
+  lazy val country: Option[String] = models.City.forCinema(listings.head.cinema).map(_.country.language.getCountry).filter(_.nonEmpty)
   /** The evidence as text: title, stated year, directors. */
   def name: String        = s"'${evidence.title}'${evidence.statedYear.fold("")(year => s" [$year]")}" +
     (if (evidence.directors.nonEmpty) s" {${evidence.directors.mkString(", ")}}" else "")

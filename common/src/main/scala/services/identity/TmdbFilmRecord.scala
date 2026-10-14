@@ -47,7 +47,8 @@ object TmdbFilmRecord {
         releaseCountries  = main.flatMap(d => (d \ "release_dates").toOption.map(releaseCountries)
           .orElse((d \ ReleaseCountries).asOpt[String])).headOption,
         alternativeRuntimes = runtimes.drop(1),
-        releases          = main.flatMap(d => (d \ "release_dates").toOption.map(releases).orElse((d \ Releases).asOpt[String])).headOption) -> imdbId)
+        releases          = main.flatMap(d => (d \ "release_dates").toOption.map(releases).orElse((d \ Releases).asOpt[String])).headOption,
+        taglineKey        = (localized \ "tagline").asOpt[String].fold(0)(IdentityMeasures.Film.taglineKeyOf)) -> imdbId)
     }
   }
 

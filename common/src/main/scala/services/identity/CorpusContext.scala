@@ -40,6 +40,10 @@ private[identity] trait CorpusContext {
    *  titles or more? Too few to make it a banner by itself (a work billed under three programmes recurs so too); what
    *  a programme tag must do beside the rest of a title (`CandidateScoring.namesOnlyATag`). */
   final def recurringSegment(sanitised: String): Boolean = !wholeTitle(sanitised) && segmentSpread(sanitised) >= CorpusContext.TagSpread
+  /** Is `sanitised` a piece the corpus bills beside [[CorpusContext.PieceSpread]] whole titles or more, and no listing's whole
+   *  title — the venue's around a film, not another thing beside it (`IdentityResolver.billedAsPiece`: PL Kino Kosmos'
+   *  "Nakarmić kruki | Złote gody" beside "Wszyscy ludzie prezydenta | Złote gody")? */
+  final def repeatedSegment(sanitised: String): Boolean = !wholeTitle(sanitised) && segmentSpread(sanitised) >= CorpusContext.PieceSpread
   /** Every node carrying title key `key`, with the candidates its own evidence reached, in node order. */
   def reachedBy(key: String): Seq[(String, Set[Int])]
   /** The films `query`'s answer names, best first; `None` when the answer is not known. */
@@ -123,6 +127,9 @@ private[identity] object CorpusContext {
    *  must ([[TitleDecorations.MinCandidateRemainders]]) — PL Kino Amondo's "Alim | UFF", "Atlantyda | UFF",
    *  "Odblask | UFF". */
   val TagSpread: Int = TitleDecorations.MinCandidateRemainders
+  /** A piece carried by this many distinct whole titles is [[CorpusContext.repeatedSegment]]: two, a programme's piece
+   *  beside two of its films. */
+  val PieceSpread = 2
 
   /** A node's title pieces other than its whole title, sanitised: what [[CorpusContext.segmentSpread]] counts. */
   def piecesOf(node: EvidenceNode, sanitize: String => String): Set[String] = {

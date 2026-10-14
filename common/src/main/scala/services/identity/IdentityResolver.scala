@@ -77,8 +77,8 @@ object IdentityResolver {
    *    or more stating the film's year or crediting its director (`venues.corroborating`, `corroborated`): a film widely
    *    screened, whose local title, subtitle or event a venue bills beside it (PL "Rozważna i romantyczna | DZIEŃ
    *    PRZEPIĘKNYCH KOBIET", joined to the plain title 75 venues bill);
-   *  - the piece beside it RECURS across the corpus's titles ([[CorpusContext.recurringSegment]]) or two of its family's
-   *    (read by `recurs` on the title's shapes): a programme's banner or a venue's offer ("Family Cinema: Paddington - Cert
+   *  - the piece beside it RECURS beside two of the corpus's whole titles or more, whatever families they fell in
+   *    ([[CorpusContext.repeatedSegment]], read by `recurs` on the title's shapes): a programme's banner or a venue's offer ("Family Cinema: Paddington - Cert
    *    PG", PL Kino Kosmos' "Nakarmić kruki | Złote gody" beside "Wszyscy ludzie prezydenta | Złote gody"); or is a one-word
    *    tag in capitals beside a title that is not ([[IdentityMeasures.capitalisedTags]]: "Camino dla opornych | CHKF") or
    *    one word of consonants alone, a programme's initials ("Kopnięci w czasie|Fks"); or
@@ -87,7 +87,10 @@ object IdentityResolver {
    *  - the piece is another title of the film: its title search's first film, or one IMDb lists under it in some language
    *    ([[CandidateQuery.ImdbTitled]]: DE "Épines du Sahel - Die Dornen der Sahelzone");
    *  - the listing states a fact of the film's own: a year, a director or an original title ([[IdentityMeasures.ownAgreement]]),
-   *    a running time within [[PieceRuntimeAgreement]] minutes, a feed's TMDB link ("Notting Hill - Lady's Night" [1999]).
+   *    a running time within [[PieceRuntimeAgreement]] minutes, a feed's TMDB link ("Notting Hill - Lady's Night" [1999]);
+   *  - the film is a current release, of its screenings' year or the one before ([[CurrentRelease]]), or a foreign film
+   *    TMDB knows by its original title alone, billed first ("Ekmek parası - Geld für's Brot"): the venue's subtitle or
+   *    translation beside it — the namesakes a reading or a show is taken for are older catalogue films.
    *  `scored`: the member's own scoring of the film, its record and measures. Measured on the five convergence legs'
    *  whole-corpus takes (2026-10-14). */
   private[identity] def billedAsPiece(node: EvidenceNode, scored: services.identity.Scored, corroborated: Double,
@@ -97,7 +100,20 @@ object IdentityResolver {
     def stated   = IdentityMeasures.ownAgreement(scored.measures)._1.nonEmpty ||
       IdentityMeasures.runtimeGap(scored.measures).exists(_ <= PieceRuntimeAgreement) ||
       node.listings.exists(listing => CatalogueSources.tmdbLinked(listing).exists(_._2 == scored.candidate.tmdbId))
-    if (screened || stated) None
+    // a current release — of its screenings' year or the one before, or one TMDB dates no release of yet — whose subtitle
+    // or translation its venue bills beside it ("Über Unterbiberger – Vom Woid in die Welt", 2026, ten venues): the
+    // namesakes a reading or a show is taken for are the catalogue's older films ("Immer Ärger mit Harry", 1955)
+    def current = film.year.fold(film.released.isEmpty)(year =>
+      node.listings.flatMap(_.screenings.first).map(_.getYear).minOption.exists(year >= _ - CurrentRelease))
+    // a foreign film TMDB knows by no title in the venue's language — its local title is its original — billed first, or
+    // under one of its titles after one other piece: what the venue bills beside it is its own translation, subtitle or
+    // subject (DE "Ekmek parası - Geld für's Brot", "Épines du Sahel - Die Dornen der Sahelzone", "LÍDA BAAROVÁ – DOOMED
+    // BEAUTY"); a film of the venue's own country would carry its title
+    def untranslated = film.originalTitle.exists(IdentityMeasures.key(_) == IdentityMeasures.key(film.title)) &&
+      !node.country.exists(country => film.countries.exists(_.contains(country))) &&
+      (services.movies.TitleContainment.tokens(node.evidence.rawTitle).startsWith(services.movies.TitleContainment.tokens(film.title)) ||
+        ListingShape.titledAfterPiece(node.evidence.rawTitle, film))
+    if (screened || stated || current || untranslated) None
     else {
       import services.movies.TitleContainment.tokens
       val evidence = node.evidence
@@ -120,6 +136,8 @@ object IdentityResolver {
         .map(why => s"no film: one piece of the billing names '${film.title}' — $why")
     }
   }
+  /** How many years before its screenings' a film's may be and still be a current release ([[billedAsPiece]]). */
+  val CurrentRelease = 1
   /** The fewest letters a word shares with its venue's name or city to name it: "Kadr" in "Kino w Kadrze". */
   val VenueStem = 4
   /** How many minutes a listing's running time may stand from its film's and still state the film's own. */
@@ -482,16 +500,9 @@ object IdentityResolver {
       // title to the spelling crediting Harrison alone — itself a bill): it is decided apart, as no film.
       val bills   = members.filter(node => acceptance.billsSeveralWorks(scope.of(node))).map(_.id).toSet
       val billing = bills ++ IdentityResolver.billingUnderBanner(members, bills, filmOf, scope.of)
-      // a piece recurs across the corpus's titles, or across two of its family's — which a piece shared joins into one
-      lazy val familyPieces: Map[String, Int] = members.flatMap { node =>
-        val whole = generation.normalizer.sanitize(node.evidence.cleanTitle)
-        node.evidence.published.shapes.map(generation.normalizer.sanitize).filter(piece => piece.nonEmpty && piece != whole).distinct.map(_ -> whole)
-      }.groupMap(_._1)(_._2).map { case (piece, wholes) => piece -> wholes.distinct.size }
       def answered(query: CandidateQuery): Seq[Hit] = answers.get(query).flatMap(_.toOption).getOrElse(Nil)
-      def recurs(shape: String) = {
-        val piece = generation.normalizer.sanitize(shape)
-        generation.context.recurringSegment(piece) || (!generation.context.wholeTitle(piece) && familyPieces.getOrElse(piece, 0) >= 2)
-      }
+      // a piece the corpus bills beside two whole titles or more, whatever families they fell in
+      def recurs(shape: String) = generation.context.repeatedSegment(generation.normalizer.sanitize(shape))
       val decided = clusters.flatMap { cluster =>
         val (bills, unbilled) = cluster.partition(node => billing(node.id))
         // a member billing its cluster's film as one piece beside another thing is none of it either — unless a pin took it

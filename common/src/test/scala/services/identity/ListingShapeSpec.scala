@@ -72,6 +72,36 @@ class ListingShapeSpec extends AnyFlatSpec with Matchers {
     beside("IT FOLLOWS - HALLOWEEN SPECIAL", film("It Follows")) shouldBe None
     beside("Fatherland - Film Club", film("Fatherland")) shouldBe None
     beside("DKF Szpula – DRUGIE ŻYCIE", film("Drugie życie")) shouldBe None
+    // DE rights the model's own takes lost (2026-10-14): a talk before the film, the director in the house, a festival's
+    // week, a word of the film's own title the venue misspelt
+    beside("Live - Vortrag: Portugal - Der Wanderfilm", film("Portugal - Der Wanderfilm")) shouldBe None
+    beside("BANKOMATT – Schweizer Filmwoche – mit Regisseur!", film("Bankomatt")) shouldBe None
+    beside("SPECIAL: Jazzfest Community Week: SOUNDTRACK TO A COUP D’ETAT", film("Soundtrack to a Coup d'Etat")) shouldBe None
+    beside("Living - Einma wirklich leben", film("Living - Einmal wirklich leben", Some("Living"))) shouldBe None
+    beside("Living - Ein Abend mit Ulla Meinecke", film("Living - Einmal wirklich leben", Some("Living"))) shouldBe defined
+    // PL: what a screening adds after the film ("+"), a programme's tags piped after it, a silent film under a programme
+    beside("OPĘTANIE + TRASA PLAKATOWA", film("Opętanie")) shouldBe None
+    beside("Królestwo Kensuke | EKO-KINO | ZIELONE INSTYTUCJE KULTURY", film("Królestwo Kensuke")) shouldBe None
+    beside("Spieleabend | Command Tower", film("Spieleabend")) shouldBe defined
+    beside("Film+Musikfest: Greta Garbo: The Temptress", film("The Temptress").copy(year = Some(1926))) shouldBe None
+    beside("Film+Musikfest: Arthur Robison: THE INFORMER", film("The Informer").copy(year = Some(2019))) shouldBe defined
+    beside("MUSICAL MITTWOCH - Das Phantom der Oper", film("Das Phantom der Oper").copy(year = Some(1925))) shouldBe defined
+    // DE: the billing opening with the film's own two-piece title, a birthday glued to it; one of the film's own titles
+    // piece for piece, one piece re-worded
+    beside("LA BOUM - Die FeteZum 60. Geb. von Sophie Marceau!", film("La Boum - Die Fete", Some("La Boum"))) shouldBe None
+    // the same venue's birthday note beside a documentary named after its subject: not the 2012 drama (labelled wrong)
+    beside("HANNAH ARENDT - Denken ist gefährlichZum 120. Geb. von Hannah Arendt", film("Hannah Arendt")) shouldBe defined
+    val vermeer = film("Vermeer: Die Jahrhundertausstellung").copy(alternativeTitles = Seq("Exhibition on Screen: Vermeer - The Greatest Exhibition"))
+    beside("Exhibition on Screen: Vermeer - Die Blockbuster-Ausstellung", vermeer) shouldBe None
+    beside("On the Road - En el Camino", film("On the Road - Unterwegs", Some("On the Road"))) shouldBe defined
+    // the film's own tagline, its subtitle (DE "Frauen bildet Banden - Eine Spurensuche zur Geschichte der Roten Zora")
+    val banden = film("Frauen bildet Banden")
+    beside("Frauen bildet Banden - Eine Spurensuche zur Geschichte der Roten Zora", banden) shouldBe defined
+    beside("Frauen bildet Banden - Eine Spurensuche zur Geschichte der Roten Zora",
+      banden.copy(taglineKey = IdentityMeasures.Film.taglineKeyOf("Eine Spurensuche zur Geschichte der Roten Zora"))) shouldBe None
+    ListingShape.dashedPair("LÍDA BAAROVÁ – DOOMED BEAUTY") shouldBe true
+    ListingShape.dashedPair("DONNERSTAGSKNEIPE + X") shouldBe false
+    ListingShape.dashedPair("Dio - Alive - eine Hommage an Ronnie James Dio") shouldBe false
     beside("Dolina Issy | Poniedziałki z Konwickim: pisarz – scenarzysta – reżyser", film("Dolina Issy", directors = Seq("Tadeusz Konwicki"))) shouldBe
       None
     beside("KÖNIG DROSSELBART - EIN ADVENTSMÄRCHEN FÜR KINDER", film("König Drosselbart")) shouldBe None

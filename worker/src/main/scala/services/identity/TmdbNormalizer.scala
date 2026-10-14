@@ -94,7 +94,7 @@ object TmdbNormalizer {
    *  among the crew, the top-billed cast's names and which countries date a release of it, and its cinema releases (country, year, edition) — keeping the shape it reads them in (a `credits` block stays a `credits` block:
    *  its presence is what marks the localized response, and "directors known"). */
   def minimal(body: JsValue): JsValue = {
-    val keep = Seq("title", "original_title", "runtime", "imdb_id", "origin_country")
+    val keep = Seq("title", "original_title", "runtime", "imdb_id", "origin_country", "tagline")
       .flatMap(k => (body \ k).toOption.map(k -> _))
     // the whole day: a broadcast airs on it ([[services.identity.agreement.Broadcast]])
     val date = (body \ "release_date").asOpt[String].map(d => "release_date" -> Json.toJson(d.take(10)))
