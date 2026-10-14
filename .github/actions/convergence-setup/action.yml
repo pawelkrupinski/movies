@@ -226,17 +226,19 @@ runs:
     # The key is hashed HERE, in a step of its own: the runner re-evaluates a cache step's
     # inputs for its post-job save, and by then the restored fixture trees put 127k files
     # (US) under the `**` globs — 17 s to restore and 21 s to save, hashing sources that
-    # tree holds none of. And off git's index rather than `hashFiles`: the same sources' content
-    # (a blob's id is its content's hash), read from the index instead of by walking and reading
-    # the workspace — which still cost 8.8 s of the US recording's setup with the tree staged
-    # elsewhere (run 37111868620).
+    # tree holds none of. And off git's index rather than `hashFiles` (scripts/ci/sbt-sources-key.sh).
+    #
+    # TWO keys: this job's own, and the one Main's e2e job saved THIS commit's compile under. Main
+    # dispatches the legs only once `ci` is done, and e2e/Test is what a leg compiles, so that entry
+    # is first in the restore order: the newest convergence entry is an older commit's, and every
+    # leg recompiled the difference, 20-72 s in each of 14 suite jobs (run 38599662543). A lane run
+    # for an older commit, or a red e2e job that saved nothing, falls through to the prefixes.
     - name: Key the sbt build cache
       id: sbt-key
       shell: bash
       run: |
-          sources=$(git ls-files -s -- build.sbt project/build.properties project/plugins.sbt \
-              ':(glob)**/src/main/**/*.scala' ':(glob)**/src/test/**/*.scala' ':(glob)**/src/fixtures/**/*.scala' | sha256sum)
-          echo "key=sbt-target-convergence-${{ runner.os }}-${sources%% *}" >> "$GITHUB_OUTPUT"
+          echo "key=sbt-target-convergence-${{ runner.os }}-$("$GITHUB_WORKSPACE"/scripts/ci/sbt-sources-key.sh convergence)" >> "$GITHUB_OUTPUT"
+          echo "e2e=$("$GITHUB_WORKSPACE"/scripts/ci/sbt-sources-key.sh e2e)" >> "$GITHUB_OUTPUT"
     # NOT the root `target/`: every module writes its JUnit XML into the one root-level
     # `target/test-reports/unit/` (`unitReportSettings` in build.sbt), and the restore-keys
     # fall through to the key `ci.yml`'s unit job saves. Cached, it handed a leg a report
@@ -248,6 +250,7 @@ runs:
       with:
           key: ${{ steps.sbt-key.outputs.key }}
           restore-keys: |
+              sbt-target-e2e-${{ runner.os }}-${{ steps.sbt-key.outputs.e2e }}
               sbt-target-convergence-${{ runner.os }}-
               sbt-target-e2e-${{ runner.os }}-
               sbt-target-${{ runner.os }}-

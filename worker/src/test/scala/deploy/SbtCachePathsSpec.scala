@@ -66,10 +66,31 @@ class SbtCachePathsSpec extends AnyFlatSpec with Matchers {
   /** `hashFiles` walks and reads the workspace to hash the sources, 8.8 s of the US recording's
    *  setup even with its fixture tree staged outside the workspace (run 37111868620); git's index
    *  already holds each source's content hash. */
+  private lazy val setup = RepoFile.read(".github/actions/convergence-setup/action.yml")
+  private lazy val e2eJob = RepoFile.block(RepoFile.read(".github/workflows/ci.yml"), "e2e")
+  private def keyStep(file: String): String =
+    file.linesIterator.dropWhile(!_.contains("id: sbt-key")).takeWhile(!_.trim.startsWith("- uses:")).mkString("\n")
+
   "the convergence legs' build cache key" should "come from git's index, not a hashFiles walk of the workspace" in {
-    val step = RepoFile.read(".github/actions/convergence-setup/action.yml").linesIterator
-      .dropWhile(!_.contains("id: sbt-key")).takeWhile(!_.trim.startsWith("- uses:")).mkString("\n")
-    step should include("git ls-files -s")
-    step should not include "hashFiles("
+    keyStep(setup) should include("scripts/ci/sbt-sources-key.sh convergence")
+    keyStep(setup) should not include "hashFiles("
+    RepoFile.read("scripts/ci/sbt-sources-key.sh") should include("git ls-files -s")
+  }
+
+  /** Main dispatches the legs once `ci` is done, its e2e job included, which compiles what a leg compiles (e2e/Test)
+   *  for the same commit -- where the newest convergence entry is an older commit's, and every leg recompiled the
+   *  difference: 20-72 s in each of 14 suite jobs (run 38599662543). So a leg restores that exact entry first, named
+   *  by the one script both jobs key with. */
+  it should "try Main's e2e compile of the same commit before any older convergence entry" in {
+    keyStep(setup) should include("scripts/ci/sbt-sources-key.sh e2e")
+    keyStep(e2eJob) should include("scripts/ci/sbt-sources-key.sh e2e")
+    e2eJob should include("key: sbt-target-e2e-${{ runner.os }}-${{ steps.sbt-key.outputs.e2e }}")
+    val restoreKeys = setup.linesIterator.dropWhile(!_.trim.startsWith("restore-keys:")).drop(1).map(_.trim).toSeq
+    restoreKeys.headOption shouldBe Some("sbt-target-e2e-${{ runner.os }}-${{ steps.sbt-key.outputs.e2e }}")
+    restoreKeys.indexOf("sbt-target-convergence-${{ runner.os }}-") should be > 0
+  }
+
+  "ci.yml" should "run the cache key script's own spec" in {
+    RepoFile.read(".github/workflows/ci.yml") should include("bash scripts/ci/sbt-sources-key-test.sh")
   }
 }
