@@ -12,14 +12,14 @@ import services.movies.ListingKey
  * Wolf tanzt (35-jähriges Jubiläum)", lost to a gap, regained by a fix) is a correction, never counted: its two
  * changes are many projections apart.
  *
- * Counts in projections, not time: each [[note]] is one written projection that moved a take. Remembers the [[capacity]] most recently
+ * Counts in projections, not time: each [[note]] is one written projection that moved a take. Remembers the [[maxHeld]] most recently
  * changed listings (a projection logs at most 2,000 changes); the least recent are forgotten first.
  */
-final class TakeReversals(window: Int = 3, capacity: Int = 20000) {
+final class TakeReversals(window: Int = 3, maxHeld: Int = 20000) {
   private final case class Held(film: Option[Int], projection: Long)
   private var projection = 0L
   private val heldBefore = new java.util.LinkedHashMap[ListingKey, Held](16, 0.75f, true) {
-    override def removeEldestEntry(eldest: java.util.Map.Entry[ListingKey, Held]): Boolean = size() > capacity
+    override def removeEldestEntry(eldest: java.util.Map.Entry[ListingKey, Held]): Boolean = size() > maxHeld
   }
 
   /** Notes one written projection's `changes` (none when the caller notes only projections that moved one) and returns those that move a listing back to the film it held before a

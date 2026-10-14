@@ -34,7 +34,7 @@ class TakeReversalsSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "forget the least recently changed listing past its capacity" in {
-    val reversals = new TakeReversals(capacity = 1)
+    val reversals = new TakeReversals(maxHeld = 1)
     reversals.note(Seq(change("A", Some(1), Some(2)), change("B", Some(1), Some(2))))
     reversals.note(Seq(change("A", Some(2), Some(1)))) shouldBe empty // A forgotten when B was noted
   }

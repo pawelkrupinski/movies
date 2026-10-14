@@ -92,7 +92,7 @@ base=${TAKES_BASE:-$(pick_base)} || { echo "::error::identity takes ($cc): could
 # A base named by hand may be abbreviated ("c2974e3aa"), and a fetch asks the server for a FULL object name: run
 # 38533191835's every leg failed to fetch its short takes-base and passed unjudged. Expanded through the API first.
 if ! [[ "$base" =~ ^[0-9a-f]{40}$ ]]; then
-  full=$(gh api "repos/$GITHUB_REPOSITORY/commits/$base" --jq .sha 2>/dev/null) \
+  full=$(gh api "repos/$GITHUB_REPOSITORY/commits/$base" --jq .sha) \
     || { echo "::error::identity takes ($cc): no commit $base in $GITHUB_REPOSITORY" | tee "$out/verdict.txt"; exit 2; }
   base=$full
 fi
