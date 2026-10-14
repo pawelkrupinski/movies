@@ -98,7 +98,7 @@ class RecordCorpusInLegWiringSpec extends AnyFlatSpec with Matchers {
       at("- name: Merge the sample row's recordings") should be < at("id: publish\n")
     }
     withClue("and the sample row runs no suite: ")(
-      RepoFile.step(convergence, "Run the ${{ inputs.country }} ${{ matrix.phase }} suite") should include("if: matrix.phase != 'sample'\n"))
+      RepoFile.step(convergence, "Run the ${{ inputs.country }} ${{ matrix.phase }} suite") should include("if: matrix.phase != 'sample' && matrix.phase != 'takes'\n"))
   }
 
   it should "run the corpus steps in a recording's convergence row only, and close the tunnel whatever happened" in {

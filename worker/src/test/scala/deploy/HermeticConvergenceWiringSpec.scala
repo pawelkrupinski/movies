@@ -207,12 +207,22 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     step should not include ("exit 0 ;;")
   }
 
+  // A row of its own, beside the suite: it reads the pinned pair and none of the suite's output, and after the suite it was
+  // 4-9 minutes of every convergence row (run 38568096186). Its red asks no bisect and seeds no hard clusters (both read the
+  // suite), and its row runs no suite and reports none.
+  it should "run in a `takes` row of every hermetic leg, beside the suite, and nowhere else" in {
+    val convergence = RepoFile.block(leg, "convergence")
+    convergence should include("inputs.mode == 'hermetic' && ',\"takes\"' || ''")
+    convergence should include("if: ${{ !cancelled() && inputs.mode == 'hermetic' && matrix.phase == 'takes' }}")
+    convergence should include("if: matrix.phase != 'sample' && matrix.phase != 'takes'")
+    convergence should include("- name: Publish convergence test report\n              if: always() && matrix.phase != 'takes'")
+  }
+
   "the auto-bisect" should "be requested only by a red hermetic pipeline leg on main, saying whether the sample was red" in {
     val convergence = RepoFile.block(leg, "convergence")
     "uses: ./.github/actions/convergence-bisect-request".r.findAllIn(leg).size shouldBe 1
     convergence should include("uses: ./.github/actions/convergence-bisect-request\n" +
-      "              if: failure() && inputs.mode == 'hermetic' && github.ref == 'refs/heads/main' && " +
-      "(steps.takes.outcome != 'failure' || steps.suite.outcome == 'failure')")
+      "              if: failure() && inputs.mode == 'hermetic' && github.ref == 'refs/heads/main' && matrix.phase != 'takes'")
     convergence should include("sample-failed:  ${{ steps.sample.outcome == 'failure' }}")
   }
 
@@ -221,8 +231,7 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
   it should "ratchet a red sample's findings and a red suite's, never the suite's for a red sample" in {
     val convergence = RepoFile.block(leg, "convergence")
     convergence should include("uses: ./.github/actions/hard-clusters-ratchet\n" +
-      "              if: failure() && steps.sample.outcome != 'failure' && matrix.phase != 'sample' && " +
-      "(steps.takes.outcome != 'failure' || steps.suite.outcome == 'failure')")
+      "              if: failure() && steps.sample.outcome != 'failure' && matrix.phase != 'sample' && matrix.phase != 'takes'")
     convergence should include("uses: ./.github/actions/hard-clusters-ratchet\n" +
       "              if: always() && (matrix.phase == 'convergence' || matrix.phase == 'sample') && steps.sample.outcome == 'failure'\n" +
       "              with:\n                  code:  ${{ inputs.code }}\n                  log:   convergence-sample.log")

@@ -217,7 +217,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     withClue("the suite must not run past a failed sample — an `if:` without a status function keeps the " +
              "implicit success(), and this one only spares a recording's sample row: ") {
       RepoFile.step(convergence, SuiteStep).linesIterator.map(_.trim).filter(_.startsWith("if:")).toSeq shouldBe
-        Seq("if: matrix.phase != 'sample'")
+        Seq("if: matrix.phase != 'sample' && matrix.phase != 'takes'")
     }
   }
 
@@ -455,9 +455,10 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     }
     legDirectives should not include "if: inputs.order-command"
     RepoFile.block(leg, "convergence") should include(
-      """phase: ${{ fromJson(format('["convergence"{0}{1}{2}]', inputs.order-command != '' && (inputs.order-split && """ +
+      """phase: ${{ fromJson(format('["convergence"{0}{1}{2}{3}]', inputs.order-command != '' && (inputs.order-split && """ +
         """',"order-independence-p01","order-independence-p12"' || ',"order-independence"') || '', """ +
-        """inputs.sample-row && ',"sample"' || '', inputs.next-day-command != '' && ',"next-day"' || '')) }}""")
+        """inputs.sample-row && ',"sample"' || '', inputs.next-day-command != '' && ',"next-day"' || '', """ +
+        """inputs.mode == 'hermetic' && ',"takes"' || '')) }}""")
   }
 
   /** A country whose single order row ran past the 10-minute target splits it into two rows of two
