@@ -2,7 +2,7 @@ package services.identity
 
 import java.util.Locale
 
-import services.movies.{EmbeddedYear, TitleContainment, TitleSeason}
+import services.movies.{EmbeddedYear, TitleContainment, TitleSeason, TitleWords}
 import services.resolution.{SearchTitles, YearWindow}
 
 /**
@@ -273,8 +273,7 @@ object IdentityMeasures {
   /** Words naming an opera or ballet HOUSE, or its relay, in the languages venues bill one in: a title carrying one bills a
    *  STAGING ("Paris Opera Ballett: …", "RB&O Live: Tosca (Oper)", "Balet z Opery Paryskiej …", "RBO …", "ROH …"). The
    *  word as its own token: "Dreigroschenoper" or "Operation" is no house. */
-  private val StageHouseWords: Set[String] = Set("opera", "operas", "oper", "opern", "opery", "operze", "ballet", "ballets", "ballett",
-    "balet", "baletu", "balletto", "bolshoi", "bolschoi", "bolszoj", "staatsoper", "glyndebourne", "rbo", "roh")
+  private val StageHouseWords: Set[String] = TitleWords.tokens(TitleWords.Concept.StageHouse)
 
   /** Is `f` a SCREEN NAMESAKE of the work a stage house's relay bills: the listing's title names an opera or ballet house
    *  beside the work ([[StageHouseWords]]) and none of the film's own titles bills one? A house's banner names its
@@ -1573,11 +1572,7 @@ object IdentityMeasures {
   /** What a piece a bill joins after a film names when it names an event, not a work: a talk, a lecture, a workshop, a
    *  quiz, a gala, an exhibition or its opening, a concert, a (poster) tour, a signing — PL, EN, DE, ES — beside the
    *  segment model's event words. "OPĘTANIE + TRASA PLAKATOWA" (Światowid) is one film and a poster tour. */
-  private val EventTailWords: Set[String] = DecorationWords.EventWords ++ Set(
-    "wstep", "wyklad", "warsztaty", "quiz", "gala", "wystawa", "wernisaz", "trasa", "debata", "podpisywanie", "autografy", "dyskusji",
-    "lecture", "workshop", "exhibition", "vernissage", "concert", "tour", "signing", "discussion", "debate",
-    "vortrag", "werkstatt", "ausstellung", "konzert", "tournee", "diskussion", "lesung",
-    "charla", "coloquio", "taller", "exposicion", "concierto", "gira", "encuentro", "presentacion")
+  private val EventTailWords: Set[String] = DecorationWords.EventWords ++ TitleWords.tokens(TitleWords.Concept.SideEvent)
   /** The works a DOUBLE BILL joins with a spaced "+" ("Basia. Humor w paski mam + Kocia Szajka"),
    *  each searched on its own: the database has no record of the bill, so without them the only
    *  candidates are what a credited director's filmography walks to. Searched, not shapes: a bill
@@ -2018,7 +2013,8 @@ object IdentityMeasures {
   /** "30th Anniversary", "30 Aniversario", "35-jähriges Jubiläum", "35. rocznica", "35e anniversaire": how many years a
    *  re-release celebrates — the number, its ordinal ending, and an anniversary word of a language venues bill in. */
   private[identity] val AnniversaryYears =
-    """(?iU)\b(\d{1,3})(?:st|nd|rd|th|e|ème|°)?\.?(?:\s*-\s*|\s+)(?:jährige[smn]?\s+)?(?:anniversary|aniversario|anniversaire|anniversario|aniversário|jubiläum|jubileusz|rocznica)\b""".r
+    ("""(?iU)\b(\d{1,3})(?:st|nd|rd|th|e|ème|°)?\.?(?:\s*-\s*|\s+)(?:jährige[smn]?\s+)?""" +
+      TitleWords.rawPattern(TitleWords.Concept.Anniversary) + """\b""").r
 
   /** `m` with the published year absent when it dates a screening ([[PublishedYear]]): when the
    *  listing's title is the film's title ([[TitledRelations]]) and the same director is credited, a year

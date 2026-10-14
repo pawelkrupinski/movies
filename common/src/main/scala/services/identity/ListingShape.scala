@@ -1,7 +1,7 @@
 package services.identity
 
 import services.cinemas.pl.NonMovieEventClassifier
-import services.movies.TitleContainment
+import services.movies.{TitleContainment, TitleWords}
 
 /**
  * The ONE place a listing's SHAPE is read off its billing — what kind of screening it bills, before any film is in
@@ -39,9 +39,10 @@ object ListingShape {
       """\bcine\s+mudo\b|\bpeliculas?\s+mudas?\b|\bfilms?\s+muets?\b""").r
 
   /** Words a billing names a stage house, a relay or a stage show by. */
-  private val HouseWords = Set("opera", "opery", "oper", "operze", "met", "metropolitan", "ballet", "balet", "baletu", "bolshoi", "bolszoj",
-    "royal", "teatr", "teatru", "theatre", "theater", "nt", "live", "retransmisja", "retransmisje", "transmisja", "relay", "season", "sezon",
-    "musical", "stage", "scena", "rbo", "roh", "hd", "glyndebourne", "scala", "staatsoper")
+  private val HouseWords = {
+    import TitleWords.Concept.*
+    TitleWords.tokens(StageHouse, Stage, Relay, HouseBanner)
+  }
 
   /** Does the listing bill a house, a relay or a season ("OPERA-MAKBET - retransmisja", "Met Opera 2026/27: …")? */
   def billsAHouse(listing: Listing): Boolean = {

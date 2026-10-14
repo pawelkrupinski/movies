@@ -1,7 +1,7 @@
 package services.identity
 
 import services.identity.agreement.Agreement
-import services.movies.{FormatTags, ListingKey, TitleContainment}
+import services.movies.{FormatTags, ListingKey, TitleContainment, TitleWords}
 
 /**
  * SUSPECT TAKES: a film a listing's cluster took that the listing's own evidence argues against — not a verdict, a
@@ -243,10 +243,7 @@ object SuspectTakes {
   // ── (b) era ──────────────────────────────────────────────────────────────────────────────
 
   /** Words billing an old film as one: a retrospective, a classic, an archive print, a silent film. */
-  private val OldFilmWords = Set("retro", "retrospektywa", "retrospective", "retrospektive", "retrospectiva", "klasyka", "klassiker", "classic",
-    "classics", "clasico", "clasicos", "archiwum", "archive", "kultowe", "kult", "cult", "throwback", "rewind", "vintage", "dkf",
-    "wiederauffuhrung", "reestreno", "revival", "noir", "filmoteka", "kinemathek", "filmmuseum", "cinematheque", "nieme", "niemego", "niemy",
-    "stumm", "silent", "muet", "mudo", "wa")
+  private val OldFilmWords = TitleWords.tokens(TitleWords.Concept.OldFilm)
 
   /** Does the listing bill an old film as one: in its words, an edition, a silent film, an anniversary, the film's
    *  director named? */

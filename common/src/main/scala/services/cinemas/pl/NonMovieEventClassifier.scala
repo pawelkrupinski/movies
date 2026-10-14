@@ -3,6 +3,7 @@ package services.cinemas.pl
 import java.util.Locale
 
 import models.CinemaMovie
+import services.movies.{TitleContainment, TitleWords}
 
 import scala.util.matching.Regex
 /** Decides whether a scraped listing is a live STAGE/MUSIC event rather than a
@@ -42,20 +43,18 @@ object NonMovieEventClassifier {
    *  ciemno", "Seans niespodzianka" (collapsed "seanswciemno"), and Germany's "Sneak
    *  Preview" / "OV Sneak-Preview" / CineStar's "CineSneak". Not a bare "sneak": "Sneakers"
    *  and the 2025 "Sneaks" are films. Language-neutral enough to apply outside Poland, unlike
-   *  the stage vocabulary below ("tribute" is a word of "Die Tribute von Panem"). */
-  private val MysteryScreeningMarkers = List(
-    """seans\s?w\s?ciemno""".r,
-    """seans\s?niespodziank""".r,
-    """\bsneak[\s-]?preview""".r,
-    """\bcinesneak\b""".r
-  )
+   *  the stage vocabulary below ("tribute" is a word of "Die Tribute von Panem"). The word table's sneaks
+   *  ([[services.movies.TitleWords]]), read on the title's folded words. */
+  private val MysteryScreeningMarkers = TitleWords.foldedPattern(TitleWords.Concept.Sneak).r
 
   /** Whether `title` is a mystery screening ([[MysteryScreeningMarkers]], or a title made of nothing but a
    *  sneak's own words — [[BareSneak]]). */
   def isMysteryScreening(title: String): Boolean = {
     val t = title.toLowerCase(Locale.ROOT)
-    MysteryScreeningMarkers.exists(_.findFirstIn(t).isDefined) || isBareSneak(t)
+    hasMysteryMarker(title) || isBareSneak(t)
   }
+  private def hasMysteryMarker(title: String): Boolean =
+    MysteryScreeningMarkers.findFirstIn(TitleContainment.tokens(title).mkString(" ")).isDefined
 
   /** A sneak billed with no film: "Sneak", "Kult-Sneak", "Horror Sneak FSK 18", "OV-Sneak", "Sneak 1343", "Horror
    *  Classics Sneak Vol. 83", "Cult Sneak of Horror", "Grusel Sneak", "Cine Sneak", "SNEAK Extreme", "KLASSIKER SNEAK
@@ -189,7 +188,7 @@ object NonMovieEventClassifier {
    *  `\bgala\b` ignores "Galaxy"/"Galaktyki" (no boundary after "gala").
    *  `koncert`/`gala`/`balet` are Polish-only spellings, so the English
    *  "Royal Ballet" / "…Opera" of the kept broadcasts never match. */
-  private val EventMarkers = MysteryScreeningMarkers ++ List(
+  private val EventMarkers = List(
     """\bstand[\s-]?up\b""".r,
     """\bkabaret""".r,
     """\brecital""".r,
@@ -344,6 +343,7 @@ object NonMovieEventClassifier {
   def isPerformance(title: String, venueMarkers: Seq[Regex] = Nil): Boolean = {
     val t = title.toLowerCase(Locale.ROOT)
     !isScreenedBroadcast(t) && (
+      hasMysteryMarker(title) ||
       EventMarkers.exists(_.findFirstIn(t).isDefined) ||
       venueMarkers.exists(_.findFirstIn(t).isDefined) ||
       isStandaloneGala(t) ||

@@ -2,6 +2,7 @@ package services.identity.agreement
 
 import services.cinemas.pl.NonMovieEventClassifier
 import services.identity.{Listing, ListingShape}
+import services.movies.{TitleContainment, TitleWords}
 
 import java.util.Locale
 
@@ -30,8 +31,6 @@ object NonFilmEvents {
    *  trip it: a "Maraton" film needs the bare word, so `maraton` counts only as the marathon of a genre or a night
    *  ("Maraton Horrorów", "Halloweenowy Maraton", "Maraton Halloween"). */
   private val Markers: Seq[(String, scala.util.matching.Regex)] = Seq(
-    // a screening whose film is withheld: nothing to identify
-    "mystery screening" -> """\bsecret\s+(screening|movie|screaming|cinema)|\bmystery\s+movie|\bscream\s+unseen|\bscreen\s+unseen""".r,
     // a night of several films sold as one ticket
     "marathon"          -> """\bmaraton\s+(horror|hallow|grozy|film)|\bhalloween\p{L}*\s+maraton|\bhorror\s+marathon|\bnoc\s+(horror|grozy)|wiecz[oó]r\s+grozy|\bdismember\s+the\s+alamo""".r,
     "esports"           -> """\bleague\s+of\s+legends|\bworlds\s+\d\d\b.*\bfinals""".r,
@@ -42,6 +41,10 @@ object NonFilmEvents {
     // a booking of the room, or a day the venue does not screen
     "no screening"      -> """\bscreen\s+hire\b|\bkeine\s+vorstellung|dzi[sś]\s+nie\s+gramy|^sonderveranstaltung$|^sondervorstellung$|^film\s+program$""".r
   )
+
+  /** A screening whose film is withheld — nothing to identify ("Secret Screening", "Scream Unseen", "Überraschungsfilm"):
+   *  the word table's secret screenings ([[TitleWords]]), read on the title's folded words. */
+  private val SecretScreening = TitleWords.foldedPattern(TitleWords.Concept.SecretScreening).r
 
   /** A film screened with the event — the event its companion, the film still the families' to name — or a festival's
    *  numbered edition billing one of its films ("11. UFF - Teatr weteranów" is a documentary). */
@@ -92,7 +95,8 @@ object NonFilmEvents {
       val raw   = listing.rawTitle.trim
       val title = raw.toLowerCase(Locale.ROOT)
       if (ListingShape.relays(listing, title)) liveShow(listing, title)
-      else Markers.collectFirst { case (reason, marker) if marker.findFirstIn(title).isDefined => reason }
+      else Option.when(SecretScreening.findFirstIn(TitleContainment.tokens(raw).mkString(" ")).isDefined)("mystery screening")
+        .orElse(Markers.collectFirst { case (reason, marker) if marker.findFirstIn(title).isDefined => reason })
         .filter(reason => reason == "no screening" || reason == "pass" || FilmAttached.findFirstIn(title).isEmpty)
         .orElse(Option.when(NonMovieEventClassifier.isPerformance(JoinedWith.split(raw).head) && FilmAttached.findFirstIn(title).isEmpty)("live event"))
         // what the feeds' own filter reads in any language: a reading, a slam, a cabaret, a stand-up night billed as one

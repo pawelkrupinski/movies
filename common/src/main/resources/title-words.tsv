@@ -1,0 +1,281 @@
+# The words venues bill AROUND a film, by concept and language — one table, read by every rule that recognises them
+# (services.movies.TitleWords; which reader reads which concept is in TitleWords.Concept's doc). A word missing here is
+# missing everywhere at once, so TitleWordsSpec fails when a concept lacks a word in any language a country bills in
+# (pl, de, en, es) — a German "Jubiläum" the English and Spanish lists never knew is a test failure, not a prod regression.
+#
+# concept<TAB>language<TAB>phrase[<TAB>note]
+#   phrase: written as venues write it (case and accents kept: readers fold them). Words are separated by spaces; a
+#   trailing `*` makes a word a stem ("podwójn*" = podwójny, podwójne…), a leading one lets a phrase start inside a
+#   word. Concepts read as WORD SETS take every word of a phrase ("Q&A" = q, a) and allow no `*`.
+
+# ── anniversary: a re-release celebrating the film's anniversary ("30th Anniversary", "35-jähriges Jubiläum") ──
+anniversary	en	anniversary
+anniversary	es	aniversario
+anniversary	pt	aniversário
+anniversary	fr	anniversaire
+anniversary	it	anniversario
+anniversary	de	Jubiläum	"Der mit dem Wolf tanzt (35-jähriges Jubiläum)" — DE, 2026-10
+anniversary	pl	rocznica
+anniversary	pl	jubileusz
+
+# ── edition: a cut, a restoration, a re-release of the same film ──
+edition	en	cut
+edition	en	remaster
+edition	en	remastered
+edition	en	restored
+edition	en	restoration
+edition	en	4K
+edition	en	re-release
+edition	en	rerelease
+edition	en	edition
+edition	en	extended
+edition	en	director
+edition	en	directors
+edition	en	uncut
+edition	en	redux
+edition	pl	wersja
+edition	pl	rozszerzona
+edition	de	restauriert
+edition	de	restaurierte
+edition	de	Fassung	"Metropolis (rest. Fassung 2010)" dates a restoration, not the film — 6d6e10830
+edition	es	restaurada
+
+# ── premiere: a premiere or preview screening ──
+premiere	pl	premiera
+premiere	pl	przedpremiera
+premiere	en	preview
+premiere	de	Vorpremiere
+premiere	es	preestreno
+
+# ── talk: a talk, Q&A or introduction around the screening ──
+talk	pl	spotkanie
+talk	pl	prelekcja
+talk	pl	rozmowa
+talk	pl	dyskusja
+talk	en	Q&A
+talk	en	QA
+talk	en	talk
+talk	en	intro
+talk	en	introduced
+talk	de	Gespräch
+talk	es	coloquio
+
+# ── screening: the screening billed as an event of its own ──
+screening	pl	pokaz
+screening	pl	specjalny
+screening	pl	seans
+screening	pl	konkurs
+screening	pl	karnet
+screening	en	screening
+screening	en	event
+screening	en	special
+screening	de	Sondervorstellung
+screening	es	proyección
+
+# ── festival ──
+festival	pl	festiwal
+festival	en	festival
+festival	de	festival
+festival	es	festival
+
+# ── relay: a live relay or broadcast ──
+relay	en	live
+relay	en	relay
+relay	pl	retransmisja
+relay	pl	retransmisje
+relay	pl	transmisja
+relay	de	Liveübertragung
+relay	es	retransmisión
+
+# ── performance: a concert billed with (or as) the screening ──
+performance	pl	koncert
+performance	en	concert
+performance	de	Konzert
+performance	es	concierto
+
+# ── marathon: a night of several films ──
+marathon	pl	maraton
+marathon	es	maratón
+marathon	en	marathon
+marathon	de	marathon
+
+# ── side-event: what a bill joins after a film when it names an event, not a work ("OPĘTANIE + TRASA PLAKATOWA") ──
+side-event	pl	wstęp
+side-event	pl	wykład
+side-event	pl	warsztaty
+side-event	pl	quiz
+side-event	pl	gala
+side-event	pl	wystawa
+side-event	pl	wernisaż
+side-event	pl	trasa
+side-event	pl	debata
+side-event	pl	podpisywanie
+side-event	pl	autografy
+side-event	pl	dyskusji
+side-event	en	lecture
+side-event	en	workshop
+side-event	en	exhibition
+side-event	en	vernissage
+side-event	en	tour
+side-event	en	signing
+side-event	en	discussion
+side-event	en	debate
+side-event	de	Vortrag
+side-event	de	Werkstatt
+side-event	de	Ausstellung
+side-event	de	Tournee
+side-event	de	Diskussion
+side-event	de	Lesung
+side-event	es	charla
+side-event	es	taller
+side-event	es	exposición
+side-event	es	gira
+side-event	es	encuentro
+side-event	es	presentación
+
+# ── old-film: a retrospective, a classic, an archive print, a silent film ──
+old-film	en	retro
+old-film	pl	retrospektywa
+old-film	en	retrospective
+old-film	de	Retrospektive
+old-film	es	retrospectiva
+old-film	pl	klasyka
+old-film	de	Klassiker
+old-film	en	classic
+old-film	en	classics
+old-film	es	clásico
+old-film	es	clásicos
+old-film	pl	archiwum
+old-film	en	archive
+old-film	pl	kultowe
+old-film	de	Kult
+old-film	en	cult
+old-film	en	throwback
+old-film	en	rewind
+old-film	en	vintage
+old-film	pl	DKF
+old-film	de	Wiederaufführung
+old-film	de	WA	Wiederaufführung's abbreviation
+old-film	es	reestreno
+old-film	en	revival
+old-film	en	noir
+old-film	pl	filmoteka
+old-film	de	Kinemathek
+old-film	de	Filmmuseum
+old-film	fr	cinémathèque
+old-film	pl	nieme
+old-film	pl	niemego
+old-film	pl	niemy
+old-film	de	stumm
+old-film	en	silent
+old-film	fr	muet
+old-film	es	mudo
+
+# ── sneak: a blind screening sold under the sneak's own name — no film to list (the scrape filter drops it) ──
+sneak	pl	*seans w ciemno*	read inside a word too: "Ukrytyseanswciemno"
+sneak	pl	*seans niespodziank*
+sneak	de	Sneak Preview*
+sneak	en	sneak preview*
+sneak	de	CineSneak
+sneak	es	sesión sorpresa*
+
+# ── secret-screening: a withheld film billed as an event — listed, never a film the databases hold ──
+secret-screening	en	secret screening*
+secret-screening	en	secret movie*
+secret-screening	en	secret screaming*
+secret-screening	en	secret cinema*
+secret-screening	en	mystery movie*
+secret-screening	en	scream unseen*
+secret-screening	en	screen unseen*
+secret-screening	de	Überraschungsfilm*
+secret-screening	de	Überraschungspremiere*
+secret-screening	de	Überraschungskino*
+secret-screening	pl	seans niespodzianka*	inert in NonFilmEvents (its "seans" bills a film attached); the scrape filter's sneak drops it first
+secret-screening	es	película sorpresa*
+
+# ── double-bill: two or more films on one ticket ──
+double-bill	en	double feature
+double-bill	en	double features
+double-bill	en	double bill
+double-bill	en	double bills
+double-bill	en	triple feature
+double-bill	en	triple features
+double-bill	en	triple bill
+double-bill	en	triple bills
+double-bill	en	quadruple feature
+double-bill	en	quadruple features
+double-bill	en	quadruple bill
+double-bill	en	quadruple bills
+double-bill	de	Doppelvorstellung*
+double-bill	de	Doppelpack*
+double-bill	de	Doppelprogramm*
+double-bill	de	Doppelfeature*
+double-bill	es	sesión doble
+double-bill	es	programa doble
+double-bill	es	sesión triple
+double-bill	es	programa triple
+double-bill	es	doble sesión
+double-bill	pl	podwójn* seans*	not "zestaw" (a set): a set of a series' episodes is one compilation record
+
+# ── audience: a screening for a special audience — a note no film's title ends on ──
+audience	en	relaxed screen*
+audience	en	dementia friendly
+audience	en	autism friendly
+audience	en	ADHD friendly
+audience	en	parent* & bab*
+audience	en	parent* and bab*
+audience	en	parent* & toddler*
+audience	en	parent* and toddler*
+audience	pl	seans sensoryczny
+audience	pl	seans przyjazny sensorycznie
+audience	pl	pokaz przyjazny osobom z ADHD
+audience	de	Kinderwagenkino
+audience	de	Eltern-Kind-Kino
+audience	de	Babykino
+audience	es	sesión relajada
+audience	es	sesión adaptada
+
+# ── stage-house: an opera or ballet house whose relay a title bills ("Paris Opera Ballett: …", "Tosca (ROH)") ──
+stage-house	en	opera
+stage-house	en	operas
+stage-house	de	Oper
+stage-house	de	Opern
+stage-house	pl	opery
+stage-house	pl	operze
+stage-house	es	ópera
+stage-house	en	ballet
+stage-house	en	ballets
+stage-house	de	Ballett
+stage-house	pl	balet
+stage-house	pl	baletu
+stage-house	it	balletto
+stage-house	en	Bolshoi
+stage-house	de	Bolschoi
+stage-house	pl	Bolszoj
+stage-house	de	Staatsoper
+stage-house	en	Glyndebourne
+stage-house	en	RBO	Royal Ballet and Opera — counted only standing alone
+stage-house	en	ROH	Royal Opera House — counted only standing alone
+
+# ── stage: a theatre or a staged show ──
+stage	pl	teatr
+stage	pl	teatru
+stage	en	theatre
+stage	en	theater
+stage	de	Theater
+stage	es	teatro
+stage	en	musical
+stage	en	stage
+stage	pl	scena
+stage	it	Scala
+
+# ── house-banner: a house's or a relay series' banner and its season ("Met Opera 2026/27: …", "NT Live") ──
+house-banner	en	Met
+house-banner	en	Metropolitan
+house-banner	en	Royal
+house-banner	en	NT
+house-banner	en	HD
+house-banner	en	season
+house-banner	pl	sezon
+house-banner	de	Spielzeit
+house-banner	es	temporada

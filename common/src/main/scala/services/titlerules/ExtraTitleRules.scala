@@ -44,9 +44,9 @@ object ExtraTitleRules {
     TitleRule(id, GlobalStructural, None, pattern, replacement, applyAll = false, order = 0, note = Some(note))
 
   /** A special audience a screening is billed for, as a venue words it — each one no film's title ends on, so it
-   *  is a note even with no separator before it. */
-  private val BareAudience =
-    """(?:relaxed\s+screen\p{L}*|dementia\s+friendly|autism\s+friendly|parents?\s*(?:&|and)\s*(?:bab(?:y|ies)|toddlers?))"""
+   *  is a note even with no separator before it: the word table's audiences ([[services.movies.TitleWords]]), in every
+   *  language a country bills in ("Relaxed Screening", "Sesión relajada", "Kinderwagenkino"). */
+  private val BareAudience = services.movies.TitleWords.rawPattern(services.movies.TitleWords.Concept.Audience)
   /** A special audience a strand bills ahead of or after the film: any "<who> friendly" (dementia, autism, baby, sensory,
    *  family, dog…), a parent-and-baby or seniors' strand, and SEND (special educational needs) as a banner, a colon after
    *  it — never the word "send" a title opens on ("Send Help"). */
@@ -54,9 +54,10 @@ object ExtraTitleRules {
   /** What names a screening note outright: an audience (the seniors' "Silver Screen" too, a film's title only once
    *  set off), a Q&A, a restored print. */
   private val NoteMarker = s"""(?:$BareAudience|silver\\s+screen|q\\s*&\\s*a|4k\\s+(?:restoration|remaster(?:ed)?))"""
-  /** Every word a screening note is made of — its markers and the words a venue strings them together with. */
+  /** Every word a screening note is made of — its markers (an audience whole, in any language) and the words a venue
+   *  strings them together with. */
   private val NoteWord =
-    """(?:relaxed|dementia|autism|friendly|parents?|bab(?:y|ies)|toddlers?|silver|screen\p{L}*|club|q\s*&\s*a|""" +
+    s"""(?:$BareAudience|""" + """relaxed|dementia|autism|friendly|parents?|bab(?:y|ies)|toddlers?|silver|screen\p{L}*|club|q\s*&\s*a|""" +
       """intro(?:duction)?|panel|live|subtitled|dubbed|dub|subs?|english|captioned|captions?|4k|35mm|70mm|""" +
       """restoration|remaster(?:ed)?|with|and|plus|&|\+)"""
   /** A run of nothing but note words that names at least one note. */
