@@ -3,7 +3,7 @@ package services.identity
 import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.bson.{BsonArray, BsonDocument, BsonInt32, BsonInt64, BsonString, BsonValue}
 import org.bson.codecs.configuration.CodecRegistries
-import org.mongodb.scala.model.{Filters, Projections, ReplaceOptions, UpdateOneModel, UpdateOptions}
+import org.mongodb.scala.model.{Filters, ReplaceOptions, UpdateOneModel, UpdateOptions}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
 import services.movies.ListingKey
 
@@ -78,17 +78,11 @@ final class MongoIdentityModelStore(db: MongoDatabase) extends IdentityModelStor
   def replace(removed: Set[String], added: Seq[StoredFamily]): Unit = {
     if (removed.nonEmpty) Await.result(collection.deleteMany(Filters.in("_id", removed.toSeq*)).toFuture(), Timeout)
     added.grouped(WriteBatch).foreach { batch =>
-      val docs   = batch.map(family => family.id -> DocumentDigest.of(encode(family), ContentField))
-      val stored = Await.result(collection.find(Filters.in("_id", docs.map(_._1)*)).projection(Projections.include(ContentField))
-        .batchSize(tools.MongoReplies.Default).toFuture(), Timeout)
-        .flatMap(d => d.get("_id").map(_.asString.getValue -> d.get(ContentField).filter(_.isInt64).map(_.asInt64.getValue))).toMap
-      val moved  = docs.filterNot { case (id, doc) => stored.get(id).flatten.contains(doc.getInt64(ContentField).getValue) }
-      if (moved.nonEmpty) {
-        Await.result(collection.bulkWrite(moved.map { case (id, doc) =>
-          UpdateOneModel(Filters.equal("_id", id), Seq(Document("$replaceWith" -> Document("$literal" -> doc))),
-            UpdateOptions().upsert(true)) }).toFuture(), Timeout)
-        documentsWritten.addAndGet(moved.size.toLong)
+      val docs    = batch.map(family => family.id -> DocumentDigest.of(encode(family), ContentField))
+      val written = DocumentDigest.writeMoved(collection, docs, ContentField, Timeout) { (id, doc) =>
+        UpdateOneModel(Filters.equal("_id", id), Seq(Document("$replaceWith" -> Document("$literal" -> doc))), UpdateOptions().upsert(true))
       }
+      documentsWritten.addAndGet(written.toLong)
     }
   }
 

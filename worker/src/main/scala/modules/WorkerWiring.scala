@@ -165,7 +165,10 @@ class WorkerWiring(
   /** The model's TMDB and IMDb answers from its normalized store, and venue details from venue_pages
    *  ([[venuePageIndex]]) — what the model reads first ([[cutoverLookups]]). */
   def storedLookups(reads: services.identity.ObservationReads = services.identity.ObservationReads.Untracked): services.identity.IdentityLookups =
-    new services.identity.StoredTmdbLookups(identityTmdbStore, country.language.toLanguageTag, new services.identity.VenueDetailLookups(detailEnrichers, venuePageIndex, reads), reads)
+    new services.identity.StoredTmdbLookups(identityTmdbStore, country.language.toLanguageTag, venueDetailLookups(reads), reads)
+  /** What the venues' own detail pages state of their listings ([[venuePageIndex]]). */
+  def venueDetailLookups(reads: services.identity.ObservationReads = services.identity.ObservationReads.Untracked): services.identity.VenueDetailLookups =
+    new services.identity.VenueDetailLookups(detailEnrichers, venuePageIndex, reads)
 
   /** What a drain of the identity model sets off: the projection of what moved and the fill of the gaps it found.
    *  Neither runs on a period. */

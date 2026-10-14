@@ -174,17 +174,11 @@ final class MongoIdentityTraceStore(db: MongoDatabase) extends IdentityTraceStor
         .flatMap(_.get("_id").collect { case id if id.isString => id.asString.getValue }).toSet
     val kept = scala.collection.mutable.HashSet.empty[String]
     added.iterator.grouped(WriteBatch).foreach { batch =>
-      val docs   = batch.map(trace => ListingKey.serialised(trace.listing) -> DocumentDigest.of(encode(trace), DigestField))
+      val docs = batch.map(trace => ListingKey.serialised(trace.listing) -> DocumentDigest.of(encode(trace), DigestField))
       kept ++= docs.map(_._1)
-      val stored = Await.result(collection.find(Filters.in("_id", docs.map(_._1)*)).projection(Projections.include(DigestField))
-        .batchSize(tools.MongoReplies.Default).toFuture(), Timeout)
-        .flatMap(d => d.get("_id").map(_.asString.getValue -> d.get(DigestField).filter(_.isInt64).map(_.asInt64.getValue))).toMap
-      val moved  = docs.filterNot { case (id, doc) => stored.get(id).flatten.contains(doc.getInt64(DigestField).getValue) }
-      if (moved.nonEmpty) {
-        Await.result(collection.bulkWrite(moved.map { case (id, doc) =>
-          ReplaceOneModel(Filters.equal("_id", id), Document(doc), ReplaceOptions().upsert(true)) }).toFuture(), Timeout)
-        documentsWritten.addAndGet(moved.size.toLong)
-      }
+      val written = DocumentDigest.writeMoved(collection, docs.toSeq, DigestField, Timeout)((id, doc) =>
+        ReplaceOneModel(Filters.equal("_id", id), Document(doc), ReplaceOptions().upsert(true)))
+      documentsWritten.addAndGet(written.toLong)
     }
     (before -- kept).grouped(WriteBatch).foreach { gone =>
       Await.result(collection.deleteMany(Filters.in("_id", gone.toSeq*)).toFuture(), Timeout)

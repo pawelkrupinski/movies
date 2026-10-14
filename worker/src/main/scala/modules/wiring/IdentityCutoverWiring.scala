@@ -3,6 +3,7 @@ package modules.wiring
 import modules.WorkerWiring
 import services.identity.{FilmIdCounterStore, IdentityListingIntake, IdentityProjection,
   InMemoryFilmIdCounterStore, InMemoryVenueSlotFingerprints, MongoFilmIdCounterStore, MongoVenueSlotFingerprints, VenueSlotFingerprints}
+import services.identity.toAnswer
 import services.movies.{CinemaSlotBuilder, ScrapeHealth}
 import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository}
 
@@ -58,7 +59,7 @@ trait IdentityCutoverWiring { self: WorkerWiring =>
    *  listings as their venue pages state them, as the agreement reads them, and the agreed films' records from the model's
    *  store, in one batch — counted on a thread of its own, put off while the heap is near its limit. */
   lazy val suspectTakeCount: services.identity.SuspectTakeCount =
-    new services.identity.SuspectTakeCount(new services.identity.VenueDetailLookups(detailEnrichers, venuePageIndex, services.identity.ObservationReads.Untracked),
+    new services.identity.SuspectTakeCount(venueDetailLookups(),
       services.identity.SuspectTakeCount.recordsOf(storedLookups()), clock, country.zone, workerMetrics.identityCutover.suspects(country.code),
       runner = managedResources.executor("identity suspect takes")(tools.DaemonExecutors.boundedPool(s"identity-suspect-takes-${country.code}",
         threads = 1, queueCapacity = 1, tools.WhenFull.WaitForRoom)),
@@ -76,11 +77,10 @@ trait IdentityCutoverWiring { self: WorkerWiring =>
   }
   lazy val agreementStage: services.identity.agreement.AgreementStage =
     new services.identity.agreement.AgreementStage(agreementFamilies.map(family => family -> familyAnswerStore.answers(family)).toMap,
-      new services.identity.VenueDetailLookups(detailEnrichers, venuePageIndex, services.identity.ObservationReads.Untracked),
+      venueDetailLookups(),
       titleNormalizer, services.identity.IdentityCalibration.resolver,
       tmdbOf = imdbId => identityTmdbStore.get(services.identity.TmdbKind.Query, Seq(services.identity.TmdbStore.findId(imdbId))).get(services.identity.TmdbStore.findId(imdbId))
-        .fold[services.identity.Answer[Option[Int]]](services.identity.Answer.Unknown)(d =>
-          services.identity.Answer.Known(services.identity.TmdbStore.intsOf(d.get("ids")).headOption)),
+        .map(d => services.identity.TmdbStore.intsOf(d.get("ids")).headOption).toAnswer,
       stored = agreementVerdicts,
       ask = open => services.identity.AgreementQuestions.enqueueOpen(taskQueue, open.questions, open.finds, clock, agreementQuestionMetrics, open.posters,
         open.catalogue, open.records),
