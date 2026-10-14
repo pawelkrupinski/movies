@@ -49,6 +49,28 @@ class FiledAnswersSpec extends AnyFlatSpec with Matchers {
     lookups.queries.keySet.toArray.toSeq shouldBe Seq(CandidateQuery.Title("Treasure Island"))
   }
 
+  "The capture's live HTTP answers" should "answer a request the recording lacks, before its gap, and leave the rest to it" in {
+    val url  = "https://v3.sg.media-imdb.com/suggestion/t/treasure%20island.json"
+    val gap  = new HttpFetch {
+      def get(u: String): String = s"gap $u"
+      def post(u: String, body: String, contentType: String): String = s"gap $u $body"
+    }
+    val leaf = new FiledAnswers.LiveLeaf(Map(s"GET $url" -> """{"d":[]}""", "POST https://x.example/q {}" -> "posted"), gap)
+    leaf.get(url) shouldBe """{"d":[]}"""
+    leaf.get(url, Map("Accept" -> "application/json")) shouldBe """{"d":[]}"""
+    leaf.post("https://x.example/q", "{}", "application/json") shouldBe "posted"
+    leaf.get("https://elsewhere.example/") shouldBe "gap https://elsewhere.example/"
+    leaf.served shouldBe 3
+  }
+
+  they should "be kept in the capture's file, and read back as written" in {
+    val capture = filed.capture.copy(live = Map("GET https://v3.sg.media-imdb.com/suggestion/t/treasure.json" -> """{"d":[]}"""))
+    val file    = Files.createTempDirectory("capture").resolve("uk.json.gz")
+    UnmatchedClusters.write(file, capture)
+    UnmatchedClusters.read(file).live shouldBe capture.live
+    FiledAnswers(FiledAnswers.of(uk).capture.copy(live = capture.live), "uk.json.gz").isEmpty shouldBe false
+  }
+
   "What a slice read" should "read back from disk as written, its source named" in {
     val lookups = new FiledAnswers.Lookups(recording, filed)
     lookups.candidates(CandidateQuery.Title("Treasure Island"))

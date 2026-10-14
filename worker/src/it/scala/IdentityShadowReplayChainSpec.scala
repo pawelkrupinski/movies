@@ -51,4 +51,21 @@ class IdentityShadowReplayChainSpec extends AnyFlatSpec with Matchers {
     leaf.met shouldBe 2
     java.nio.file.Files.exists(IdentityShadow.LiveGapLeaf.fileOf(s"GET $url")) shouldBe false
   }
+
+  it should "keep every TMDB and IMDb answer it gave in place of the gap, as the capture's live answers" in {
+    val tmdb  = s"https://api.themoviedb.org/3/search/movie?query=${java.util.UUID.randomUUID()}&api_key=${IdentityShadow.StubTmdbKey}"
+    val imdb  = s"https://v3.sg.media-imdb.com/suggestion/x/${java.util.UUID.randomUUID()}.json"
+    val venue = s"https://venue.example/film/${java.util.UUID.randomUUID()}"
+    val up = new HttpFetch {
+      def get(url: String): String = s"answer of ${url.replace("api_key=key", s"api_key=${IdentityShadow.StubTmdbKey}")}"
+      def post(url: String, body: String, contentType: String): String = get(url)
+    }
+    val live = new IdentityShadow.LiveGapLeaf(settings.IdentityLiveGaps("key"), new RecordedCorpus.GapLeaf(new MissingFixtures),
+      settings.IdentityLivePerHost(1), up)
+    try {
+      live.get(tmdb); live.get(imdb); live.get(venue)
+      // keyed by the request as the replay asks it — the stub key, never the real one
+      live.answered shouldBe Map(s"GET $tmdb" -> s"answer of $tmdb", s"GET $imdb" -> s"answer of $imdb")
+    } finally Seq(tmdb, imdb).foreach(url => java.nio.file.Files.deleteIfExists(IdentityShadow.LiveGapLeaf.fileOf(s"GET $url")))
+  }
 }

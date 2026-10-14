@@ -26,9 +26,9 @@
 #   --emit-case   pin the listing as a FAILING TEST: the slice copied to test/resources/fixtures/identity-slices/, its expected
 #                 film taken from labels.tsv (never from the take), each label shown with its own note; refused when
 #                 labels.tsv does not judge the listing. IdentitySliceCasesSpec replays every such slice.
-#   --modes N     also take the slice through N CHANGED projections — a fresh agreement stage over the periodic one's stored
-#                 verdicts, reading only the listings at a random half of the venues, as tickChanged does — and name every
-#                 listing whose take a changed projection flips
+#   --modes N     also take the slice through N CHANGED projections — the periodic one's own agreement stage again, over
+#                 EVERY listing with those at a random half of the venues republished, as tickChanged reads them (the
+#                 scraped venues re-read, every other venue's held) — and name every listing whose take a changed one flips
 #   --families P  prod's filed family answers, which no recording holds: an unmatched-cluster capture (default this
 #                 checkout's test/resources/fixtures/identity-unmatched/<cc>.json.gz), or `none`. Without them the
 #                 families agree on nothing — as in a hermetic leg. The slice keeps those it read, named as prod's.

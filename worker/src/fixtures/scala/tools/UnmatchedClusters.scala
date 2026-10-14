@@ -45,7 +45,13 @@ object UnmatchedClusters {
                            /** The family questions the capture asked and never got answered ([[AgreementQuestionRounds]]: a
                             *  host that blackholed every attempt) — held no answer, so the replay leaves them open as
                             *  production leaves a failed fetch's, and the next capture asks them again. */
-                           unreachable: Set[(VoterFamily, String)] = Set.empty)
+                           unreachable: Set[(VoterFamily, String)] = Set.empty,
+                           /** Every TMDB and IMDb HTTP answer the capture's whole resolve read LIVE where its recording had a
+                            *  gap (`IdentityShadow.LiveGapLeaf.answered`), keyed `GET <url>` / `POST <url> <body>` as the
+                            *  replay asks it (the stub TMDB key): the answers a captured MODEL decision read that neither the
+                            *  recording nor the agreement's own reads above keep — an IMDb suggestion, most often. A slice
+                            *  replays them before its recording's gap ([[FiledAnswers.LiveLeaf]]). None in older captures. */
+                           live: Map[String, String] = Map.empty)
 
   /** The family questions `wanted` that `capture` holds no reason to leave open: those it gave up on as unreachable aside,
    *  every question the stage asks of a complete capture is answered. */
@@ -316,6 +322,7 @@ object UnmatchedClusters {
       .append("unreachable", array(capture.unreachable.toSeq.sortBy { case (family, question) => (family.ordinal, question) }.map { case (family, question) =>
         new BsonDocument("family", new BsonString(family.label)).append("question", new BsonString(question)) }))
       .append("casts", array(capture.casts.toSeq.sortBy(_._1).map { case (id, cast) => new BsonDocument("id", new BsonInt32(id)).append("cast", cast.fold[BsonValue](new BsonNull)(strings)) }))
+      .append("live", array(capture.live.toSeq.sortBy(_._1).map { case (request, body) => new BsonDocument("request", new BsonString(request)).append("body", new BsonString(body)) }))
     Files.createDirectories(path.getParent)
     val out = new GZIPOutputStream(Files.newOutputStream(path))
     try out.write(d.toJson(JsonWriterSettings.builder().outputMode(JsonMode.RELAXED).build()).getBytes(StandardCharsets.UTF_8)) finally out.close()
@@ -339,7 +346,8 @@ object UnmatchedClusters {
       (if (d.containsKey("unreachable")) docs("unreachable") else Nil).map { u =>
         val label = u.getString("family").getValue
         VoterFamily.values.find(_.label == label).getOrElse(sys.error(s"no family $label in $path")) -> u.getString("question").getValue
-      }.toSet)
+      }.toSet,
+      (if (d.containsKey("live")) docs("live") else Nil).map(l => l.getString("request").getValue -> l.getString("body").getValue).toMap)
   }
 
   private def array(values: Seq[BsonValue]): BsonArray = new BsonArray(values.asJava)

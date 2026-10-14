@@ -19,10 +19,10 @@ final case class FiledAnswers(capture: UnmatchedClusters.Capture, source: String
   def families: Map[String, BsonDocument] = capture.families
   def finds: Map[String, Option[Int]] = capture.finds
   def isEmpty: Boolean = capture.families.isEmpty && capture.finds.isEmpty && capture.queries.isEmpty && capture.films.isEmpty &&
-    capture.details.isEmpty && capture.casts.isEmpty
+    capture.details.isEmpty && capture.casts.isEmpty && capture.live.isEmpty
   /** How many answers of each kind it holds. */
   def render: String = s"${capture.families.size} family answer(s), ${capture.finds.size} IMDb find(s), ${capture.queries.size} TMDB search(es), " +
-    s"${capture.films.size} TMDB record(s), ${capture.details.size} venue page(s)"
+    s"${capture.films.size} TMDB record(s), ${capture.details.size} venue page(s), ${capture.live.size} live HTTP answer(s)"
 }
 
 object FiledAnswers {
@@ -75,13 +75,28 @@ object FiledAnswers {
       films = lookups.fold(Map.empty[Int, Option[IdentityMeasures.Film]])(_.films.asScala.toMap),
       details = lookups.fold(Map.empty[String, Option[DetailFacts]])(_.details.asScala.toMap),
       withDetail = lookups.fold(Set.empty[String])(_.details.keySet.asScala.toSet),
-      casts = lookups.fold(Map.empty[Int, Option[Seq[String]]])(_.casts.asScala.toMap), unreachable = Set.empty), filed.source)
+      casts = lookups.fold(Map.empty[Int, Option[Seq[String]]])(_.casts.asScala.toMap), unreachable = Set.empty,
+      live = Map.empty), filed.source) // the live HTTP answers a slice read are in its own HTTP notes
 
   /** Two reads' answers together. */
   def merge(a: FiledAnswers, b: FiledAnswers): FiledAnswers =
     FiledAnswers(b.capture.copy(families = a.families ++ b.families, finds = a.finds ++ b.finds, queries = a.capture.queries ++ b.capture.queries,
       films = a.capture.films ++ b.capture.films, details = a.capture.details ++ b.capture.details, withDetail = a.capture.withDetail ++ b.capture.withDetail,
-      casts = a.capture.casts ++ b.capture.casts), Seq(a.source, b.source).filter(_.nonEmpty).distinct.mkString(", "))
+      casts = a.capture.casts ++ b.capture.casts, live = a.capture.live ++ b.capture.live), Seq(a.source, b.source).filter(_.nonEmpty).distinct.mkString(", "))
+
+  /** The capture's live HTTP answers ([[UnmatchedClusters.Capture.live]]) answered before `gap` — the recording's leaf,
+   *  asked only for what the recording does not hold — so a captured model decision that read an IMDb suggestion live
+   *  reads it again. `served` counts the answers it gave. */
+  final class LiveLeaf(live: Map[String, String], gap: HttpFetch) extends HttpFetch {
+    private val count = new java.util.concurrent.atomic.AtomicInteger
+    def served: Int = count.get
+    private def answer(request: String)(orGap: => String): String =
+      live.get(request).fold(orGap) { body => count.incrementAndGet(); body }
+    override def get(url: String): String = answer(s"GET $url")(gap.get(url))
+    override def get(url: String, headers: Map[String, String]): String = answer(s"GET $url")(gap.get(url, headers))
+    override def getBytes(url: String): Array[Byte] = gap.getBytes(url)
+    override def post(url: String, body: String, contentType: String): String = answer(s"POST $url $body")(gap.post(url, body, contentType))
+  }
 
   /** Kept as an unmatched-cluster capture of no clusters, its source beside it. */
   def write(dir: Path, answers: FiledAnswers): Unit = {

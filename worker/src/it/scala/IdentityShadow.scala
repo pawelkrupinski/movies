@@ -10,6 +10,7 @@ import tools._
 
 import java.nio.file.{Files, Path}
 import scala.collection.mutable
+import scala.jdk.CollectionConverters._
 
 /**
  * The shadow harness around [[IdentityResolver]]: the recorded corpora, today's pipeline booted
@@ -35,7 +36,9 @@ object IdentityShadow {
   /** `misses` counts every request the recording could not answer, each time it is asked — so a
    *  lookup that meets a gap is `Unknown` however often the gap was met before. */
   final class Corpus(val label: String, val country: Country, val rows: Seq[ArchivedScrape], rawFetch: HttpFetch,
-                     val misses: () => Long, val missedKeys: () => Seq[String], threadMisses: Option[() => Long] = None) {
+                     val misses: () => Long, val missedKeys: () => Seq[String], threadMisses: Option[() => Long] = None,
+                     /** The TMDB and IMDb answers read live in place of the recording's gaps ([[LiveGapLeaf.answered]]). */
+                     val liveAnswers: () => Map[String, String] = () => Map.empty) {
     /** How the lookups tell a gap from an answer: by the gaps met on the asking thread when the corpus counts them per
      *  thread (lookups then read side by side), else by the replay's one counter, lookups taking turns. */
     def gaps: TmdbIdentityLookups.Gaps = threadMisses.fold[TmdbIdentityLookups.Gaps](new TmdbIdentityLookups.CountedGaps(misses))(onThread =>
@@ -64,9 +67,12 @@ object IdentityShadow {
            live: Option[settings.IdentityLiveGaps] = None): Seq[Corpus] =
     Country.all.filter(countries).flatMap { c =>
       Option(corpusDir.resolve(s"cinema-scrapes-${c.code}.json.gz")).filter(Files.exists(_)).map { path =>
-        val opened = RecordedCorpus.open(c, path, root, leaf => live.fold[HttpFetch](leaf)(key => new LiveGapLeaf(key, leaf)))
+        val liveLeaf = new java.util.concurrent.atomic.AtomicReference[Option[LiveGapLeaf]](None)
+        val opened = RecordedCorpus.open(c, path, root, leaf => live.fold[HttpFetch](leaf) { key =>
+          val l = new LiveGapLeaf(key, leaf); liveLeaf.set(Some(l)); l
+        })
         new Corpus(s"full-${c.code}", c, opened.rows, opened.fetch, () => opened.leaf.met, () => opened.missing.keys.map(_._2),
-          Some(() => opened.leaf.metOnThread))
+          Some(() => opened.leaf.metOnThread), () => liveLeaf.get.fold(Map.empty[String, String])(_.answered))
       }
     }
 
@@ -75,13 +81,17 @@ object IdentityShadow {
    *  the local resolver-only loop and the capture only (`settings.IdentityLiveGaps`): at most
    *  `perHost` requests at a time per host ([[tools.HostPacing]]: halved on a 429 or 503, retried after a back-off), and
    *  every answer kept on disk ([[LiveGapLeaf.Store]]) so a re-run after a rule change asks nothing it asked before. A
-   *  read that FAILED is kept nowhere — the gap again for the rest of this run, asked live again by the next. */
+   *  read that FAILED is kept nowhere — the gap again for the rest of this run, asked live again by the next. Every TMDB
+   *  and IMDb answer it gives is also kept in `answered`, for the capture to hold ([[UnmatchedClusters.Capture.live]]). */
   final class LiveGapLeaf(key: settings.IdentityLiveGaps, gap: RecordedCorpus.GapLeaf,
                           perHost: settings.IdentityLivePerHost = settings.ProcessConfiguration.resolve().identityLivePerHost,
                           real: HttpFetch = new RealHttpFetch()) extends HttpFetch {
     import LiveGapLeaf._
     private val pacing = new tools.HostPacing(perHost.value, Retries, BackOff.toMillis)
     private val failed = java.util.concurrent.ConcurrentHashMap.newKeySet[String]()
+    private val gave   = new java.util.concurrent.ConcurrentHashMap[String, String]()
+    /** Every TMDB and IMDb answer given in place of the gap this run, keyed as the replay asks (the stub key). */
+    def answered: Map[String, String] = gave.asScala.toMap
     private def answerable(url: String) = url.contains("themoviedb.org") || url.contains("imdb.com")
     private def keyed(url: String) = url.replace(s"api_key=$StubTmdbKey", s"api_key=${key.tmdbKey}")
     private def stored(id: String)(read: => String): String = {
@@ -91,7 +101,10 @@ object IdentityShadow {
     }
     private def tried(url: String, id: String, read: => String, orGap: => String): String =
       if (failed.contains(id) || (!answerable(url) && !Files.exists(fileOf(id)))) orGap
-      else scala.util.Try(stored(id)(pacing(url)(read))).getOrElse { failed.add(id); orGap }
+      else scala.util.Try(stored(id)(pacing(url)(read))).fold(_ => { failed.add(id); orGap }, { body =>
+        if (answerable(url)) gave.put(id, body)
+        body
+      })
     override def get(url: String): String = tried(url, s"GET $url", real.get(keyed(url)), gap.get(url))
     override def get(url: String, headers: Map[String, String]): String =
       tried(url, s"GET $url", real.get(keyed(url), headers), gap.get(url, headers))

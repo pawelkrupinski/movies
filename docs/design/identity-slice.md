@@ -79,6 +79,9 @@ the 2 UK RBO misses agree one ring wider). Agreement takes against the unmatched
 38363428661), the stage alone over the captured model decisions 180 of 180; end to end 170 of 180 — DE's 10 misses
 are listings the CAPTURED model decided with an IMDb suggestion the capture asked live and kept nowhere (its
 recording gaps it, the capture does not hold it), so this code's model leaves them unanswered and the agreement waits.
+Captures from 2026-10-14 on keep those answers (`live`: every TMDB/IMDb response the whole resolve read live,
+`LiveGapLeaf.answered`), and the slice answers its recording's gaps from them (`FiledAnswers.LiveLeaf`): the next
+capture closes the gap; re-measure with `--faithfulness capture` on it.
 
 UK CBeebies Panto (ca4059b55..9c8170f5e): without filed answers 0 moves (the recording's families answer nothing —
 the CI view); with them ca4059b55 takes tmdb 1710881 by Agreed at 210 venues (WRONG) and both b5e156555 and

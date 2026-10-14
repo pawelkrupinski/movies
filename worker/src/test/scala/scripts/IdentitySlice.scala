@@ -393,15 +393,17 @@ object IdentitySlice {
     try {
       if (o.replay.nonEmpty) o.replay.foreach { dir =>
         val slice = readSlice(dir)
-        val opened = o.recording.map(r => openRecording(Recording(r, country)))
+        val opened = o.recording.map(r => openRecording(Recording(r, country), filed))
         lacked ++= replaySlice(slice, opened, labels, out, o.orders, o.modes)
       }
       else {
         val recording = Recording(o.recording.getOrElse(sys.error("--recording DIR, or --replay SLICE_DIR")), country)
         val cache     = o.cache.getOrElse(sys.error("--cache DIR (the index of the recording's whole corpus is kept there)"))
-        val opened    = openRecording(recording)
+        val opened    = openRecording(recording, filed)
         val listings  = listingsOf(recording, opened.rows)
-        val index     = indexOf(cache.resolve(s"index-${country.code}-${o.ref}.json.gz"), listings, opened)
+        // the index of a resolve that read a capture's live answers is that capture's own
+        val live      = if (filed.capture.live.isEmpty) "" else s"-live${Integer.toHexString(filed.capture.live.keySet.hashCode)}"
+        val index     = indexOf(cache.resolve(s"index-${country.code}-${o.ref}$live.json.gz"), listings, opened)
         o.faithfulness match {
           case Some(takes) => faithfulness(recording, opened, index, takes, o, filed, out)
           case None =>
@@ -427,9 +429,12 @@ object IdentitySlice {
     }
   }
 
-  def openRecording(recording: Recording): RecordedCorpus.Opened = {
+  /** The recording, a gap it meets answered first by `filed`'s live HTTP answers — what the capture's whole resolve read
+   *  live, an IMDb suggestion most often, which its captured model decisions stand on ([[tools.FiledAnswers.LiveLeaf]]). */
+  def openRecording(recording: Recording, filed: tools.FiledAnswers): RecordedCorpus.Opened = {
     require(Files.exists(recording.corpus), s"no corpus ${recording.corpus}")
-    RecordedCorpus.open(recording.country, recording.corpus, settings.FixtureRoot(recording.root))
+    RecordedCorpus.open(recording.country, recording.corpus, settings.FixtureRoot(recording.root),
+      leaf => if (filed.capture.live.isEmpty) leaf else new tools.FiledAnswers.LiveLeaf(filed.capture.live, leaf))
   }
 
   def readsOf(opened: RecordedCorpus.Opened, fetch: tools.HttpFetch, gaps: TmdbIdentityLookups.Gaps, at: Instant,

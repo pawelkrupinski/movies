@@ -86,7 +86,10 @@ class UnmatchedClustersCaptureIntegrationSpec extends AnyFlatSpec with Matchers 
       val (outcome, rounds) = (asked.outcome, asked.rounds)
       val filed = docs.get(TmdbKind.Family, docs.fetchedBefore(TmdbKind.Family, Long.MaxValue).map(_._1))
       val capture = UnmatchedClusters.Capture(c.country, subset, decisions, recording.queries.asScala.toMap, recording.films.asScala.toMap,
-        recording.details.asScala.toMap, recording.withDetail.asScala.toSet, filed, finds.asScala.toMap, recording.casts.asScala.toMap, asked.unreachable)
+        recording.details.asScala.toMap, recording.withDetail.asScala.toSet, filed, finds.asScala.toMap, recording.casts.asScala.toMap, asked.unreachable,
+        // what the whole resolve read LIVE (an IMDb suggestion its recording lacked): the captured model decisions stand on
+        // it, and a slice re-deciding them without it decides otherwise (identity-slice --faithfulness capture)
+        c.liveAnswers())
       val written = configuration.identityUnmatchedCapture.get.value.resolve(s"${c.country.code}.json.gz")
       // never a capture its recording's detail reads were refused for: unwritten, the run's PR keeps the checked-in one
       withClue(s"[${c.label}] listings marked as having venue detail, none of their host's stored — the recording's detail reads " +
