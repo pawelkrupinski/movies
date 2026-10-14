@@ -64,6 +64,15 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
       .map(_._1.candidate.tmdbId) shouldBe Some(875143)
   }
 
+  it should "take the record of the season its screenings broadcast it in, whatever earlier year dates its staging" in {
+    // ...and screening on 25 May 2027, the day "Royal Ballet & Opera 2026/27: Romeo and Juliet" airs: its 2025 dates the
+    // staging's premiere, not the broadcast; the 2021/22 record stays another season's
+    val rj = Listing("The Royal Ballet: Romeo & Juliet", year = Some(2025), runtime = Some(170), screenedSeason = Some(2026))
+    val season = (1702789, Film("Royal Ballet & Opera 2026/27: Romeo and Juliet", year = Some(2027)), Some(7))
+    acceptance.seasonRecord(ranked(rj, season)).map(_._1.candidate.tmdbId) shouldBe Some(1702789)
+    acceptance.seasonRecord(ranked(rj, (875143, Film("The Royal Ballet: Romeo and Juliet (2021/22)", runtime = Some(170)), Some(5)))) shouldBe None
+  }
+
   it should "take the season its screenings broadcast it in when two seasons' records carry its title" in {
     // UK recording 38342304766: ~30 venues bill the RBO's Swan Lake relay of 22 April 2027 with no season or year
     // ("Royal Ballet & Opera: Swan Lake", Pocklington Arts Centre); TMDB holds the house's 2024/25 and 2026/27

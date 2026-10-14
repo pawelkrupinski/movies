@@ -76,18 +76,24 @@ final case class Listing(
     // a credited director or a running time already names the staging: UK "Royal Shakespeare Company: Macbeth" {Polly
     // Findlay} is her RSC Live record, US "Royal Opera House: Otello" [190′] the ROH's 2017 one, which the season's Met
     // records of the work would only stand beside
-    screenedSeason.filter(_ => directors.isEmpty && runtime.isEmpty)
+    screenedSeason.filter(_ => year.isEmpty && directors.isEmpty && runtime.isEmpty)
   /** The season a stage work billed with neither its season nor a year screens in, whatever else it states: what tells
    *  apart a house's records of the work's SEASONS ([[Acceptance.seasonRecord]]), where a credit or a running time names
    *  no season — UK "Royal Ballet and Opera: Tosca" {Oliver Mears} [195′] ×123, screening on 5 May 2027, is the house's
    *  2026/27 relay of his production, not its 2025/26 one, which alone credits him. Never searched with its work, as
-   *  [[broadcastSeason]] is. */
+   *  [[broadcastSeason]] is.
+   *
+   *  So is the season of one stating a year BEFORE that season opens: a relay screening in a later season than its year
+   *  dates the staging's premiere by it, not the broadcast — UK Aldeburgh's "The Royal Ballet: Romeo & Juliet" [2025],
+   *  screening on 25 May 2027, the day the RBO's 2026/27 relay of it airs ([[IdentityMeasures.screenedSeasonRecord]]).
+   *  A year within or after the season is the venue's dating of the broadcast, and stays the only one read. */
   lazy val screenedSeason: Option[Int] =
-    if (screenings.isEmpty || year.isDefined) None
+    if (screenings.isEmpty) None
     else {
       val titles = Seq(title, rawTitle)
       Option.when(IdentityMeasures.seasonYear(titles).isEmpty && IdentityMeasures.titleYearOf(titles).isEmpty &&
         IdentityMeasures.stageWorksBilled(titles, seasonNamed = false).nonEmpty)(()).flatMap(_ => screenings.season)
+        .filter(season => year.forall(_ < season))
     }
 
   override def equals(other: Any): Boolean = other match {

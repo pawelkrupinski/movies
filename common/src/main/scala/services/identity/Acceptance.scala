@@ -677,11 +677,6 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
     stageProduction(ranked).map(_ -> "stage-production").orElse(broadcastSeasonRecord(ranked).map(_ -> "season-record"))
   private def seasonRecordWhy(ranked: Seq[Scored]): Verdict = {
     def plain(title: String) = IdentityMeasures.key(title.replace("&", " and "))
-    // of the screenings' season only: a record of another of the work's seasons is no staging the venue said it screens
-    def ofItsWork(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film) =
-      listing.screenedSeason.exists(IdentityMeasures.filmSeason(film).contains) &&
-        IdentityMeasures.stageWorks(film).exists(IdentityMeasures.stageWorksBilled(listing.rawTitle.toSeq :+ listing.title, seasonNamed = false)) &&
-        IdentityMeasures.bannerNamesItsHouse(listing, film)
     for {
       any    <- ranked.headOption.toRight(Refused("no candidate"))
       listing = any.listing
@@ -689,13 +684,15 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
       own     = (Seq(listing.title) ++ listing.rawTitle).map(plain).toSet
       record <- one(ofItsBroadcastSeason(ranked.filter(scored => (eligibleOf(ranked).contains(scored) || scored.deniedByCutOnly) &&
                   IdentityMeasures.filmSeason(scored.candidate.film).isDefined &&
-                  (scored.candidate.film.titles.exists(t => own(plain(IdentityMeasures.withoutSeasons(t)))) || ofItsWork(listing, scored.candidate.film)))),
+                  (scored.candidate.film.titles.exists(t => own(plain(IdentityMeasures.withoutSeasons(t)))) || IdentityMeasures.screenedSeasonRecord(listing, scored.candidate.film)))),
                   "no season record carries its title or its work under its house", "two seasons' records carry its title")
       _      <- needOf(!contradicted(record), "a published fact contradicts it", record, contradiction(record))
       // a season spans two years: a year the listing states outside them is another season's broadcast (UK Aldeburgh's
-      // "The Royal Ballet: Romeo & Juliet" [2025] is no "The Royal Ballet: Romeo and Juliet (2021/22)")
-      _      <- needOf(listing.year.forall(year => IdentityMeasures.filmSeason(record.candidate.film).forall(season => year == season || year == season + 1)),
-                  "the year it states is another season's", record)
+      // "The Royal Ballet: Romeo & Juliet" [2025] is no "The Royal Ballet: Romeo and Juliet (2021/22)") — but for the
+      // record of the season its screenings broadcast it in, whose year it predates: that year dates the staging's premiere
+      // (Aldeburgh's, screening on 25 May 2027, is "Royal Ballet & Opera 2026/27: Romeo and Juliet", aired that day)
+      _      <- needOf(listing.year.forall(year => IdentityMeasures.filmSeason(record.candidate.film).forall(season => year == season || year == season + 1)) ||
+                  IdentityMeasures.screenedSeasonRecord(listing, record.candidate.film), "the year it states is another season's", record)
       _      <- needOf(!record.category("director").exists(Set("different", "different_script")), "it credits another director", record)
     } yield record -> record.probability
   }

@@ -2502,6 +2502,33 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     F(654317, "Tosca", 2019, "Patrizia Carmine", 0, 0.773, released = Some(java.time.LocalDate.of(2019, 12, 7))))
   private val toscaDays = Seq(java.time.LocalDate.of(2027, 5, 5), java.time.LocalDate.of(2027, 5, 9))
 
+  "A relay dated by its production's premiere" should "take the house's record of the season it screens in, and its siblings with it" in {
+    // UK Aldeburgh's "The Royal Ballet: Romeo & Juliet" [2025] {Choreography: Kenneth MacMillan} [170′], recording
+    // 38363428661, screens on 25 May 2027 — the day TMDB's "Royal Ballet & Opera 2026/27: Romeo and Juliet" airs. Its 2025
+    // denied that record (title overlap, two years off) and, title-linked, withdrew it from Lighthouse Poole's, Pocklington's
+    // and Durham's relays of the same broadcast. The year is the staging's, not the broadcast's: no season record of
+    // 2025 airs in the 2026/27 season — but the 2021/22 season's record stays another season's.
+    val uk = ukVenues
+    val day = java.time.LocalDate.of(2027, 5, 25)
+    val records = Seq(
+      F(1702789, "Royal Ballet & Opera 2026/27: Romeo and Juliet", 2027, "", 0, 0.6367, released = Some(day)),
+      F(875143, "The Royal Ballet: Romeo and Juliet (2021/22)", 2022, "", 170, 1.1855,
+        alternatives = Seq("Royal Ballet 2021/22 Season Special Screening: Rom")),
+      F(1451897, "The Royal Ballet: Romeo and Juliet", 2025, "Ross MacGibbon", 175, 1.2251, released = Some(java.time.LocalDate.of(2025, 3, 20))),
+      F(476204, "Romeo and Juliet (Royal Ballet)", 2013, "Ross MacGibbon", 168, 1.2503, original = Some("The Royal Ballet: Romeo & Juliet"),
+        released = Some(java.time.LocalDate.of(2013, 2, 25))),
+      F(6003, "Romeo and Juliet", 1968, "Franco Zeffirelli", 138, 3.1),
+      F(454, "Romeo + Juliet", 1996, "Baz Luhrmann", 120, 5.2))
+    val aldeburgh = Seq(scraped(uk(0), "The Royal Ballet: Romeo & Juliet", Some(2025), Some("Choreography: Kenneth MacMillan"), Some(170), days = Seq(day)))
+    val siblings = Seq(scraped(uk(1), "RBO: Romeo & Juliet - Cert TBC", days = Seq(day)),
+      scraped(uk(1), "RBO: Romeo & Juliet (ENCORE) - Cert TBC", days = Seq(day.plusDays(6))),
+      scraped(uk(2), "Royal Ballet & Opera: Romeo & Juliet", days = Seq(day)),
+      scraped(uk(3), "The Royal Ballet: Romeo & Juliet", days = Seq(day)))
+    val ls = aldeburgh ++ siblings
+    val r  = shipped(ls, records)
+    withClue(rendered(r, ls))(films(r, ls) shouldBe Seq(Some(1702789)))
+  }
+
   "A relay billed under its house's former name" should "take the house's record of the season it screens in" in {
     // UK Picture House Uckfield's "Tosca (ROH)" {Oliver Mears} [205′], recording 38363428661, screening 5 and 9 May 2027:
     // "ROH" read as a house the RBO's records were not, which denied them as another house's staging beside the house's

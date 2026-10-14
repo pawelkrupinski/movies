@@ -1606,6 +1606,13 @@ object IdentityMeasures {
     Option.when(works.nonEmpty)(banners.flatMap(BannerYear.findAllMatchIn).map(_.group(1).toInt).distinct).collect { case Seq(one) => one }
   }
 
+  /** Is `f` the house's record of the very season `l`'s screenings broadcast its work in ([[Listing.screenedSeason]]): a
+   *  season record naming a stage work the listing bills, under the listing's house ([[bannerNamesItsHouse]])? A relay
+   *  airs on its house's published dates, so a venue screening it then screens that season's broadcast. */
+  def screenedSeasonRecord(l: Listing, f: Film): Boolean =
+    l.screenedSeason.exists(filmSeason(f).contains) &&
+      stageWorks(f).exists(stageWorksBilled(l.rawTitle.toSeq :+ l.title, seasonNamed = false)) && bannerNamesItsHouse(l, f)
+
   /** Does the listing's banner name the house the record bills? A banner naming a house in particular — words beside
    *  [[HouseCommonWords]], read off the title's fragments, its stage works out ([[houseWords]]) — must name the record's
    *  ([[namesOneHouse]]: a prefix, "MET" of "The Metropolitan Opera"; initials, "RBO" of "Royal Ballet & Opera"): DE
@@ -1918,8 +1925,17 @@ object IdentityMeasures {
     slots(11) = f.popularity.fold[Measure](MissingFilm)(p => Number(PopularityBucket.of(p).toDouble))
     slots(12) = Number(rivals.toDouble)
     slots(13) = Number(corroboratingVenues.toDouble)
-    anniversaryYear(l, f, screeningYearAbsent(l, f, title, new ListingFilmMeasures(slots)))
+    premiereYear(l, f, anniversaryYear(l, f, screeningYearAbsent(l, f, title, new ListingFilmMeasures(slots))))
   }
+
+  /** `m` with the published year absent when it predates the season the listing's screenings broadcast its stage work
+   *  in ([[Listing.screenedSeason]]), against the house's record of that season ([[screenedSeasonRecord]]): the year dates
+   *  the staging's premiere, not the broadcast. UK Aldeburgh's "The Royal Ballet: Romeo & Juliet" [2025], screening on 25
+   *  May 2027, is "Royal Ballet & Opera 2026/27: Romeo and Juliet", aired that day — two years off its 2027, its title an
+   *  overlap, it was denied, and the denial withdrew the record from every relay title-linked to it. Against any other
+   *  record — the 2021/22 season's, the house's 2013 recording — the year stays the venue's fact. */
+  private def premiereYear(l: Listing, f: Film, m: Map[String, Measure]): Map[String, Measure] =
+    if (l.year.isDefined && screenedSeasonRecord(l, f)) m ++ PublishedYear.map(_ -> MissingListing) else m
 
   /** `m` with the published year absent when it is the year of an ANNIVERSARY the title bills: ES "Drácula. 30
    *  Aniversario" (original title "Bram Stoker's Dracula 30th Anniversary"), dated 2022, is Coppola's 1992 film — its
