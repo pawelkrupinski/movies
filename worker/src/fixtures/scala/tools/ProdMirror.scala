@@ -10,7 +10,6 @@ import services.identity.agreement.{AgreementStage, MongoAgreementVerdicts, Stor
 import services.movies.ListingKey
 
 import scala.concurrent.Await
-import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 
 /** One listing as prod's stored state holds it: the model's stored decision on it (`identity_model_families`), its trace
@@ -69,7 +68,7 @@ object ProdState {
 final class ProdMirror(client: MongoClient, val country: Country) extends AutoCloseable {
   val database: String = services.MongoConnection.mirrorDbFor(country.mongoDb)
   private val db: MongoDatabase = client.getDatabase(database)
-  private val Timeout = 120.seconds
+  private val Timeout = SpecTimeouts.Run
   private def find(collection: String, filter: org.bson.conversions.Bson): Seq[BsonDocument] =
     Await.result(db.getCollection[Document](collection).find(filter).batchSize(MongoReplies.Default).toFuture(), Timeout).map(_.toBsonDocument)
 
