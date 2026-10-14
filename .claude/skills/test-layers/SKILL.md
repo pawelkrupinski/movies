@@ -98,3 +98,24 @@ minutes to seconds.
 
 Note the `web/` project prefix is required — a bare
 `PageTest/testOnly …` fails to parse.
+
+## Keep sbt warm: `scripts/sbt-warm`
+
+A plain `sbt -batch` pays a JVM start and, in a fresh worktree, a cold compile on every call.
+`scripts/sbt-warm "<command>" ["<command>"...]` runs the commands in ONE sbt server kept per
+checkout (`sbt --client`), and seeds a fresh worktree's `project/target` and `*/target/scala-*`
+from the newest local build of a main commit (another worktree's, the root checkout's, or an
+identity tool's ref tree; APFS clones), so the first compile is incremental. A watchdog stops the
+server when the worktree is removed or after an idle hour (`KINOWO_SBT_WARM_IDLE_MINUTES`);
+`--status`, `--stop`, `--reap`, `--seed`. The pre-push hook runs its sbt check through the kept
+server too (3–5 s instead of a ~55 s sbt JVM). Don't mix it with a plain `sbt` in the same
+checkout while the server lives: two compilers over one target/ delete each other's classes.
+
+Measured 2026-10-14, `worker/testOnly services.identity.UnmatchedClustersRatchetSpec` in a fresh
+tree: plain `sbt -batch` 232 s (cold compile of four modules); `scripts/sbt-warm` seeded from a main
+build ~50 s on the first call (7 s server start, one changed file compiled, the spec's own ~38 s),
+41 s after.
+
+**Fast iteration:** while iterating, one spec — `scripts/sbt-warm "worker/testOnly X -- -z 'case'"`;
+once before pushing, the whole suite the change touches (for the identity resolver:
+`scripts/sbt-warm "worker/testOnly services.identity.*"`), then the layers above.
