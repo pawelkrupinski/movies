@@ -2411,6 +2411,30 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
       linked.map(l => r.decisionOf(l.key).film).distinct.filter(_.contains(1279423)) shouldBe empty)
   }
 
+  it should "deny the listing a film only the original title it copied names" in {
+    // DE Mathäser's "Rodychi (UKRAJINA CINEMA)", recording 38363428661: Cineamo links 1658840m, Chereshnya's 2026
+    // "Родичі", copying its English title "Kin" as the original; that title alone named Josh Baker's 2018 "Kin", which
+    // took the listing by pooled evidence at 62.5%. The billed title names it not at all.
+    val films  = Seq(F(425505, "Kin", 2018, "Josh Baker", 103, 12.0),
+      F(1658840, "Rodychi – Verwandte", 2026, "Andrii Chereshnya", 90, 0.8, original = Some("Родичі"), alternatives = Seq("Kin")))
+    val linked = Seq(KinoMikro, KinoOaza).map(v =>
+      fed(listing(v, "Rodychi (UKRAJINA CINEMA)"), "cineamo", "1658840m").copy(originalTitle = Some("Kin")))
+    val r = shipped(linked, films)
+    withClue(linked.map(l => r.decisionOf(l.key).render).distinct.mkString("\n"))(
+      linked.map(l => r.decisionOf(l.key).film).distinct.filter(_.contains(425505)) shouldBe empty)
+  }
+
+  it should "leave the listing a film its copied title names in the year it states" in {
+    // DE Kinorama Unna's "Tabaluga und Leo - Die Weihnachtsgeschichte" [2003]: Cineamo links 1486412m but copies the
+    // 2003 film's year and title "Tabaluga & Leo - Der Weihnachtsfilm" — one film, two records
+    val films  = Seq(F(68030, "Tabaluga - Der Weihnachtsfilm", 2003, "Beate Gerlach", 70, 3.0, alternatives = Seq("Tabaluga & Leo - Der Weihnachtsfilm")))
+    val linked = Seq(KinoMikro, KinoOaza).map(v => fed(listing(v, "Tabaluga und Leo - Die Weihnachtsgeschichte", Some(2003)), "cineamo", "1486412m")
+      .copy(originalTitle = Some("Tabaluga & Leo - Der Weihnachtsfilm")))
+    val r = shipped(linked, films)
+    withClue(linked.map(l => r.decisionOf(l.key).render).distinct.mkString("\n"))(
+      linked.map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(68030)))
+  }
+
   "A bare title its credited siblings' facts give another record than the one carrying it" should "take the record their facts single out" in {
     // PL "Ktoś całkiem obcy", prod 2026-10-13: Kino Marzenie's [2026] {Brandt Andersen} [103′] and Kino Chatka Żaka's
     // programme listing [2024] [103′] are Andersen's "I Was a Stranger" (1193128), which TMDB titles in Arabic and

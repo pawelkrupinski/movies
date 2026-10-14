@@ -194,12 +194,38 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
     place.minByOption(_.place).fold(scored)(best => scored.copy(imdb = Some(best.copy(of = lists.map(_.size).max))))
   }
 
+  /** Why a TMDB-keyed feed's link of `node` to ANOTHER film denies it `candidate`: only the original title the feed copied
+   *  from the film it linked names it, never the billed title. The copied title is that film's, restated ([[FeedLink]]),
+   *  so a namesake it alone names is the link's pull, not the venue's film. DE Mathäser's "Rodychi (UKRAJINA CINEMA)":
+   *  Cineamo links Chereshnya's "Родичі" (1658840m) and copies its English title "Kin", which took Baker's 2018 "Kin";
+   *  "Karavan" took the 1946 "Caravan", "Akten des Missbrauchs" Zobel's "The Hunt". Measured on convergence run
+   *  38529260149's DE model takes: 7 listings took a film only the copied title of another linked film named, all 7 wrong.
+   *  A feed that is not TMDB-keyed names no film its copy is of, and its copied title stays evidence. */
+  private def namedOnlyByCopiedTitle(node: EvidenceNode, candidate: Candidate): Option[String] =
+    FeedLink.linked(node).filter(_._2 != candidate.tmdbId).flatMap { case (id, linkedFilm) =>
+      val listing = evidenceOf(node).measured
+      // a year the listing states that the film shares — the linked film's, copied — makes the two one film under two
+      // records: DE "Tabaluga und Leo - Die Weihnachtsgeschichte" [2003] links 1486412m and is the 2003 film 68030
+      def sameYear = listing.year.exists(year => candidate.film.year.exists(film => math.abs(film - year) <= 1))
+      Option.when(listing.originalTitle.nonEmpty && !sameYear &&
+        IdentityMeasures.names(titleRelation(listing, candidate).value, listing, candidate.film) && {
+          // the billed titles — without the copied original, nor a search title that is only it again — against the
+          // record as its database holds it: the venue titles the corpus learned for it by that very original
+          // ([[IdentityMeasures.venueTitles]]) are the copy's pull again
+          val copied = listing.originalTitle.map(IdentityMeasures.key)
+          val billed = listing.copy(originalTitle = None, searchTitles = listing.searchTitles.filterNot(title => copied.contains(IdentityMeasures.key(title))))
+          val record = scoring.generation.recorded.get(candidate.tmdbId).fold(candidate.film)(_.film)
+          !IdentityMeasures.names(IdentityMeasures.titleRelation(billed, record, houses, qualifiers).value, billed, record)
+        })(s"named only by the title its feed (${id.source} ${id.id}) copied from $linkedFilm")
+    }
+
   /** Why `node` rules `id` out before its evidence is scored: a pin, or a title naming it only by the venue's own name
    *  or by a programme tag. */
   private def denialByNode(node: EvidenceNode, id: Int): Option[String] =
     Option.when(pins.deniedFilms(node.listings.head.key)(id))("pinned never this film")
       .orElse(overruled(node).filter(_.film == id).map(_.denial))
       .orElse(FeedLink.deniesShort(node, id, candidateById(id).film))
+      .orElse(namedOnlyByCopiedTitle(node, candidateById(id)))
       .orElse(Option.when(namesOnlyItsVenue(node, candidateById(id)))("its title names it only by the venue's own name"))
       .orElse(Option.when(namesOnlyATag(node, candidateById(id)))("its title names it only by a programme tag billed beside many titles"))
       .orElse(Option.when(namesOnlyAProgrammeSlot(node, candidateById(id)))("its title names it only by a festival's programme slot"))
