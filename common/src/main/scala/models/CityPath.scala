@@ -25,4 +25,9 @@ object CityPath {
    *  (`services.readmodel.FilmSlugs`). The web's links and the worker's share-card re-scrape
    *  requests both build it here, so the two cannot address different pages. */
   def film(city: City, slug: String): String = s"${apply(city)}/movie/$slug"
+
+  /** The film page's full URL, on its country's public origin (`None` for a country not deployed
+   *  yet) — what the worker asks Facebook to re-scrape and the web records Facebook fetching
+   *  (`services.facebook.FacebookFetches`), so the two key the same page alike. */
+  def filmUrl(city: City, slug: String): Option[String] = city.country.webOrigin.map(_ + film(city, slug))
 }

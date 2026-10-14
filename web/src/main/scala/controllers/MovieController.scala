@@ -189,6 +189,10 @@ class MovieController( cc: ControllerComponents,
                        // Where each listing render's allocation is reported (`WebRenderMetrics`);
                        // nowhere unless the composition root says.
                        recordRender: (String, Long) => Unit = (_, _) => (),
+                       // Each film page served — its client's user agent and the page's URL
+                       // (`CityPath.filmUrl`) — for the record of the pages Facebook's crawler
+                       // fetched (`FacebookFetchRecorder`); nowhere unless the composition root says.
+                       filmPageServed: (Option[String], String) => Unit = (_, _) => (),
                        // The build serving the pages — in every validator, so two builds side by
                        // side in a rolling deploy never answer one another's revalidation with a 304.
                        build: settings.CommitSha = settings.CommitSha("unknown"),
@@ -722,6 +726,7 @@ class MovieController( cc: ControllerComponents,
     // used to need. It stops short of offering itself to a shared cache only
     // because a per-film edge entry wants its own validator analysis, not because
     // the bytes are anyone's.
+    schedule.slug.flatMap(CityPath.filmUrl(c, _)).foreach(filmPageServed(request.headers.get(USER_AGENT), _))
     okHtml(views.html.film(schedule, canonicalUrl, FilmPreviewText.previewDescription(schedule), ogImageUrl, minifier, oauthProviders, otherCities, pageTags()))
       .withHeaders("Cache-Control" -> "private, no-cache")
       .withCookies(cityCookie(c))

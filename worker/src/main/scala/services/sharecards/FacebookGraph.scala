@@ -13,7 +13,23 @@ import scala.util.Try
 
 /** Asks Facebook to fetch a page again, so a preview it cached (image included) is replaced. */
 trait FacebookGraph {
-  def scrape(url: String): FacebookScrape
+  def scrape(url: String): FacebookReply
+}
+
+/** What Facebook said to one re-scrape request, and how much of the app's hourly allowance it
+ *  says is spent — when it says. */
+final case class FacebookReply(outcome: FacebookScrape, usage: Option[AppUsage] = None)
+
+/** The share (%) of the app's hourly allowance Facebook says is spent: past 100 it refuses the
+ *  app (code 4) until enough of the last hour's calls have aged out. */
+final case class AppUsage(percent: Int)
+object AppUsage {
+  /** The `X-App-Usage` header, `{"call_count":28,"total_time":25,"total_cputime":25}` — each a
+   *  percentage of its own allowance, so the highest is the one that limits. None for a header
+   *  that names no percentage. */
+  def parse(header: String): Option[AppUsage] =
+    Try(Json.parse(header)).toOption.collect { case o: play.api.libs.json.JsObject => o }
+      .flatMap(_.values.flatMap(_.asOpt[Int]).maxOption).map(AppUsage(_))
 }
 
 /** What Facebook said to one re-scrape request. */
@@ -51,22 +67,28 @@ object FacebookScrape {
 
 /** The Graph API's re-scrape (`POST /?id=<url>&scrape=true`) with an app access token. The token
  *  travels in the form body, not the query string, so no URL that reaches a log carries it. */
-class HttpFacebookGraph(appId: settings.FacebookAppId, appSecret: settings.FacebookAppSecret, tls: javax.net.ssl.SSLContext) extends FacebookGraph {
+class HttpFacebookGraph(appId: settings.FacebookAppId, appSecret: settings.FacebookAppSecret, tls: javax.net.ssl.SSLContext,
+                        endpoint: URI = HttpFacebookGraph.Endpoint) extends FacebookGraph {
   private val client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).sslContext(tls).build()
 
-  def scrape(url: String): FacebookScrape = {
+  def scrape(url: String): FacebookReply = {
     def enc(s: String) = URLEncoder.encode(s, StandardCharsets.UTF_8)
     val body = s"id=${enc(url)}&scrape=true&access_token=${enc(s"${appId.value}|${appSecret.value}")}"
     try {
-      val request = HttpRequest.newBuilder(URI.create("https://graph.facebook.com/")).timeout(Duration.ofSeconds(20))
+      val request = HttpRequest.newBuilder(endpoint).timeout(Duration.ofSeconds(20))
         .header("Content-Type", "application/x-www-form-urlencoded").POST(HttpRequest.BodyPublishers.ofString(body)).build()
       val response = client.send(request, HttpResponse.BodyHandlers.ofString())
-      FacebookScrape.of(response.statusCode(), response.body())
+      FacebookReply(FacebookScrape.of(response.statusCode(), response.body()),
+        Option(response.headers().firstValue("x-app-usage").orElse(null)).flatMap(AppUsage.parse))
     } catch {
-      case e: java.io.IOException => FacebookScrape.Unavailable(e.getClass.getSimpleName)   // refused, reset, timed out
-      case e: Exception           => FacebookScrape.Refused(e.getClass.getSimpleName)
+      case e: java.io.IOException => FacebookReply(FacebookScrape.Unavailable(e.getClass.getSimpleName))   // refused, reset, timed out
+      case e: Exception           => FacebookReply(FacebookScrape.Refused(e.getClass.getSimpleName))
     }
   }
+}
+
+object HttpFacebookGraph {
+  val Endpoint: URI = URI.create("https://graph.facebook.com/")
 }
 
 object FacebookGraph {
@@ -92,10 +114,10 @@ class FilmPageUrls(reader: ReadModelReader, country: Country, clock: Clock) exte
     // A film screening nowhere (retired since its render) has no page: no slug read for it.
     if (pagesIn.isEmpty) Seq.empty
     else (for {
-      origin <- country.webOrigin.toSeq
-      s      <- slugFor(filmId).toSeq
-      city   <- pagesIn
-    } yield origin + CityPath.film(city, s)).sorted
+      s    <- slugFor(filmId).toSeq
+      city <- pagesIn
+      url  <- CityPath.filmUrl(city, s)
+    } yield url).sorted
   }
 
   // A film's slug depends on every film (collisions are settled across the corpus), so it takes a

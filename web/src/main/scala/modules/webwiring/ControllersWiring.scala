@@ -36,12 +36,18 @@ trait ControllersWiring { self: Wiring =>
   lazy val encodedResponseCache = new EncodedResponseCache(pageRefreshExecutor, () => clock.instant())
   lazy val minifier: tools.Minifier = tools.Minifier.forMode(environmentMode)
   lazy val filmCards = new controllers.CaffeineFilmCardFragments(controllers.CaffeineFilmCardFragments.DefaultMaxBytes)
+  /** The film pages Facebook's crawler fetches, written to the fleet database for the worker's
+   *  re-scrapes (`services.facebook.FacebookFetches`) — none without that database. */
+  lazy val facebookFetchRecorder: Option[services.facebook.FacebookFetchRecorder] =
+    fleetConnection.database.map(db => managedResources.stopping(new services.facebook.FacebookFetchRecorder(
+      new services.facebook.MongoFacebookFetches(db.getCollection(services.facebook.FacebookFetches.Collection)), clock)))
   lazy val movieController  = new MovieController(controllerComponents, movieControllerService, webReadModel, oauthProviders.keySet, environmentMode, encodedResponseCache,
     servingCountry = country, normalizer = titleNormalizer, minifier = minifier,
     // Read per render, so an `/admin/config` change reaches the page.
     pageTags = () => controllers.PageTags.from(processConfiguration),
     filmCards = filmCards,
     recordRender = webRenderMetrics.record,
+    filmPageServed = (userAgent, url) => facebookFetchRecorder.foreach(_.served(userAgent, url)),
     build = processConfiguration.commit)
   // Global country+city catalog for the mobile apps (`GET /api/catalog`), served
   // identically by every deployment — no per-country/read-model dependency.

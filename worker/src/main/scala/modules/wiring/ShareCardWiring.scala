@@ -68,7 +68,7 @@ trait ShareCardWiring { self: WorkerWiring =>
    *  multi-country process, the same client) as the country's own. Optional: unreachable or
    *  refused, it is only the Facebook re-scrapes that stop. */
   lazy val fleetMongoConnection: MongoConnection =
-    MongoConnection.forDatabase(mongoAddress.uri, ShareCardWiring.FleetDatabase, MongoRequirement.Optional,
+    MongoConnection.forDatabase(mongoAddress.uri, services.FleetDatabase.Name, MongoRequirement.Optional,
       MongoTuning.from(configuration), sharedMongoClient)
 
   private lazy val facebookGraph: Option[FacebookGraph] = FacebookGraph.fromConfiguration(configuration, tlsContext)
@@ -78,18 +78,27 @@ trait ShareCardWiring { self: WorkerWiring =>
     facebookGraph.flatMap(_ => fleetMongoConnection.database).map(db =>
       new MongoFacebookRescrapeStore(db.getCollection(MongoFacebookRescrapeStore.Collection)))
 
+  /** The film pages Facebook has fetched, as the web records them: the only pages worth a
+   *  re-scrape. Present whenever the queue is — the same database. */
+  private lazy val facebookFetches: Option[services.facebook.MongoFacebookFetches] =
+    facebookRescrapeStore.flatMap(_ => fleetMongoConnection.database).map { db =>
+      val fetches = new services.facebook.MongoFacebookFetches(db.getCollection(services.facebook.FacebookFetches.Collection))
+      fetches.ensureExpiry(workerMetrics.ttlIndexMismatches)
+      fetches
+    }
+
   lazy val shareCardRescrapes: ShareCardRescrapes = facebookRescrapeStore match {
     case Some(store) => new FacebookRescrapeQueue(store, country.code)
     case None =>
       if (facebookGraph.isDefined) logger.error(s"share card: Facebook re-scrapes are OFF for ${country.code} — " +
-        s"the fleet database ${ShareCardWiring.FleetDatabase.value} could not be reached or used")
+        s"the fleet database ${services.FleetDatabase.Name.value} could not be reached or used")
       ShareCardRescrapes.disabled(shareCardMetrics)
   }
 
   /** This country's side of draining the fleet's re-scrape queue, on its own thread. */
   lazy val facebookRescrapeDrain: Option[FacebookRescrapeDrain] = managedResources.stoppingEach(
-    for { store <- facebookRescrapeStore; graph <- facebookGraph if shareCardsEnabled }
-    yield new FacebookRescrapeDrain(store, graph, new FilmPageUrls(readModelRepository, country, clock), country.code, shareCardMetrics, clock))
+    for { store <- facebookRescrapeStore; graph <- facebookGraph if shareCardsEnabled; fetches <- facebookFetches }
+    yield new FacebookRescrapeDrain(store, graph, new FilmPageUrls(readModelRepository, country, clock), fetches, country.code, shareCardMetrics, clock))
 
   def startFacebookRescrapes(): Unit = facebookRescrapeDrain.foreach(_.start())
 
@@ -158,13 +167,4 @@ object ShareCardWiring {
    *  under FilesystemSpaceCritical's 7% of k3s-worker-1's 160 GB root, so the node's own alerts fire
    *  first and this floor only ever stops the cards being what fills it. */
   val DefaultMinimumFreeMb: Long = 4096
-
-  /** The database every country's worker shares: the fleet's Facebook re-scrape queue and quota.
-   *
-   *  POLAND'S DATABASE, NOT A DEDICATED ONE, for the reason the web's shared users database is
-   *  (`MONGODB_USERS_DB: kinowo`, see the web manifest): the deployments' Mongo user is scoped to
-   *  the country databases, so a new database fails every write `Unauthorized` until the server
-   *  grants it. `kinowo` is one every worker already holds rights on; the queue's one collection
-   *  sits beside the Polish corpus and nothing that prunes the corpus reads it. */
-  val FleetDatabase: settings.MongoDatabaseName = settings.MongoDatabaseName(models.Country.Poland.mongoDb)
 }

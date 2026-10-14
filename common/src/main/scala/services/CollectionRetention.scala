@@ -35,6 +35,7 @@ object CollectionRetention {
     "uptimeServiceTags"       -> KeptForever("one document per monitored service (unique index)"),
     "database_owner"          -> KeptForever("a handful of owner markers"),
     "detail_cache"            -> Ttl("expireAt"),
+    "facebook_fetches"        -> Ttl("fetchedAt"),
     "resolve_imdb"            -> Ttl("at"),
     "resolve_rt"              -> Ttl("at"),
     "resolve_mc"              -> Ttl("at"),

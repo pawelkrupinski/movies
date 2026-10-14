@@ -96,6 +96,8 @@ trait Wiring
     // is this deployment's own database `usersConnection` IS `mongoConnection`,
     // and closing it here would be closing the primary early.
     if (usersConnection ne mongoConnection) usersConnection.close()
+    // The same for the fleet database: its own view only off Poland's deployment.
+    if (fleetConnection ne mongoConnection) fleetConnection.close()
     // The /debug read-mirror owns its own MongoClient when distinct from the
     // shared prod connection (i.e. MONGODB_MOVIES_MIRROR_URI was set).
     if (movieMirrorConnection ne mongoConnection) movieMirrorConnection.close()
@@ -122,21 +124,22 @@ object Wiring {
                             prod: => MongoConnection): MongoConnection =
     mirrorUri.fold(prod)(openMirror)
 
-  /** Which connection the `users` + `userStates` collections bind to.
+  /** Which connection a database shared across deployments binds to — the users database
+   *  (`users` + `userStates`), the fleet database (the film pages Facebook fetched).
    *
    *  A second database view costs a boot probe and a `close()` to get right, and
-   *  the common case — `MONGODB_USERS_DB` unset, so the users database IS this
-   *  deployment's own — needs neither: reuse the connection already open on that
-   *  exact database. Only a genuinely DIFFERENT name opens a second view, which
-   *  is why `own` is by-name.
+   *  the common case — the shared database IS this deployment's own (`MONGODB_USERS_DB`
+   *  unset; Poland's deployment for the fleet database) — needs neither: reuse the
+   *  connection already open on that exact database. Only a genuinely DIFFERENT name
+   *  opens a second view, which is why `own` is by-name.
    *
-   *  Split out here rather than inlined as an `if` because it is the whole of the
-   *  shared-account decision: get it backwards and every country silently keeps
-   *  its own private copy of every account again, and no page renders any
+   *  Split out here rather than inlined as an `if` because, for the users database, it is
+   *  the whole of the shared-account decision: get it backwards and every country silently
+   *  keeps its own private copy of every account again, and no page renders any
    *  differently until someone switches country. */
-  def usersConnection(ownDbName: settings.MongoDatabaseName,
-                      usersDbName: settings.MongoDatabaseName,
-                      own: => MongoConnection,
-                      openUsers: settings.MongoDatabaseName => MongoConnection): MongoConnection =
-    if (usersDbName == ownDbName) own else openUsers(usersDbName)
+  def connectionTo(ownDbName: settings.MongoDatabaseName,
+                   sharedDbName: settings.MongoDatabaseName,
+                   own: => MongoConnection,
+                   openShared: settings.MongoDatabaseName => MongoConnection): MongoConnection =
+    if (sharedDbName == ownDbName) own else openShared(sharedDbName)
 }

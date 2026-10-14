@@ -64,6 +64,8 @@ object TestMovieController {
     pageTags: () => PageTags = () => PageTags.none,
     // Where a listing render's allocation is reported — nowhere by default.
     recordRender: (String, Long) => Unit = (_, _) => (),
+    // Where each film page served is reported — nowhere by default.
+    filmPageServed: (Option[String], String) => Unit = (_, _) => (),
     // The rendered film cards kept across renders — none by default; production keeps them
     // (`CaffeineFilmCardFragments`), which a spec measuring a warm render passes.
     filmCards: FilmCardFragments = FilmCardFragments.Uncached,
@@ -85,6 +87,7 @@ object TestMovieController {
       minifier               = tools.Minifier.forMode(mode),
       pageTags               = pageTags,
       recordRender           = recordRender,
+      filmPageServed         = filmPageServed,
       filmCards              = filmCards,
     )
     (ctrl, readModel_)

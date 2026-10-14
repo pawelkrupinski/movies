@@ -6,7 +6,7 @@ import services.{MongoConnection, MongoRequirement, MongoTuning}
 
 /** ── Mongo ─────────────────────────────────────────────────────────────────
  *  The one `MongoClient` this process opens, and the two database views on it:
- *  this country's corpus and the shared users database. */
+ *  this country's corpus, the shared users database and the fleet database. */
 trait MongoWiring { self: Wiring =>
 
   // A missing/unreachable Mongo is a hard boot failure everywhere except tests
@@ -47,9 +47,19 @@ trait MongoWiring { self: Wiring =>
   // Unset (`MONGODB_USERS_DB`), this IS this deployment's database and one
   // connection object serves both — no second boot probe of a database we are
   // already talking to.
-  lazy val usersConnection: MongoConnection = Wiring.usersConnection(
-    ownDbName   = mongoAddress.databaseFor(country),
-    usersDbName = models.Country.usersDbName(processConfiguration.usersDatabase, mongoAddress.databaseFor(country)),
-    own         = mongoConnection,
-    openUsers   = MongoConnection.forDatabase(mongoAddress.uri, _, mongoRequired, mongoTuning, sharedClient = mongoSharedClient))
+  lazy val usersConnection: MongoConnection = Wiring.connectionTo(
+    ownDbName    = mongoAddress.databaseFor(country),
+    sharedDbName = models.Country.usersDbName(processConfiguration.usersDatabase, mongoAddress.databaseFor(country)),
+    own          = mongoConnection,
+    openShared   = MongoConnection.forDatabase(mongoAddress.uri, _, mongoRequired, mongoTuning, sharedClient = mongoSharedClient))
+
+  // ── Fleet ─────────────────────────────────────────────────────────────────
+  // The database every country's deployment shares with the workers (`services.FleetDatabase`):
+  // the web writes the film pages Facebook's crawler fetched there. Optional: unreachable or
+  // refused, it is only that record that stops.
+  lazy val fleetConnection: MongoConnection = Wiring.connectionTo(
+    ownDbName    = mongoAddress.databaseFor(country),
+    sharedDbName = services.FleetDatabase.Name,
+    own          = mongoConnection,
+    openShared   = MongoConnection.forDatabase(mongoAddress.uri, _, MongoRequirement.Optional, mongoTuning, sharedClient = mongoSharedClient))
 }

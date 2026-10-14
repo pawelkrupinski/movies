@@ -40,4 +40,18 @@ class FacebookScrapeSpec extends AnyFlatSpec with Matchers {
   "A body that is not the Graph API's error" should "be refused with the status alone" in {
     FacebookScrape.of(403, "<html>Forbidden</html>") shouldBe FacebookScrape.Refused("HTTP 403")
   }
+
+  // Facebook's documented shape (developers.facebook.com, "Rate Limiting": application-level). Not
+  // recorded: a request without the app's token, which is all a spec run can make, carries no
+  // usage header (checked 2026-10-14).
+  "Facebook's X-App-Usage" should "be read as the highest of its percentages" in {
+    AppUsage.parse("""{"call_count":28,"total_time":91,"total_cputime":25}""") shouldBe Some(AppUsage(91))
+    AppUsage.parse("""{"call_count":100}""") shouldBe Some(AppUsage(100))
+  }
+
+  it should "be no usage at all when it names no percentage" in {
+    AppUsage.parse("") shouldBe None
+    AppUsage.parse("{}") shouldBe None
+    AppUsage.parse("""["call_count"]""") shouldBe None
+  }
 }

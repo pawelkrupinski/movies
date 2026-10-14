@@ -2,6 +2,7 @@ package services.sharecards
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.facebook.InMemoryFacebookFetches
 import tools.MutableClock
 
 import java.time.Instant
@@ -21,12 +22,13 @@ class FacebookRescrapeDrainSpec extends AnyFlatSpec with Matchers {
 
   private val T0 = Instant.parse("2026-09-25T16:18:00Z")
 
-  /** Records each request with the instant it was made; answers from `answer`, taking `latency`
-   *  of the clock to do it, as a real request does. */
+  /** Records each request with the instant it was made; answers from `answer`, with Facebook's
+   *  app usage from `usage`, taking `latency` of the clock to do it, as a real request does. */
   private final class RecordingGraph(clock: MutableClock, answer: String => FacebookScrape = _ => FacebookScrape.Accepted,
-                                     latency: java.time.Duration = java.time.Duration.ZERO) extends FacebookGraph {
+                                     latency: java.time.Duration = java.time.Duration.ZERO,
+                                     usage: () => Option[AppUsage] = () => None) extends FacebookGraph {
     val sent = collection.mutable.Buffer.empty[(Instant, String)]
-    def scrape(url: String): FacebookScrape = { sent += clock.instant() -> url; clock.advance(latency); answer(url) }
+    def scrape(url: String): FacebookReply = { sent += clock.instant() -> url; clock.advance(latency); FacebookReply(answer(url), usage()) }
   }
 
   /** A film's pages — on its country's own host, as every country's are. */
@@ -36,15 +38,19 @@ class FacebookRescrapeDrainSpec extends AnyFlatSpec with Matchers {
   /** Two countries' workers on one store and one clock, each with its own graph (its own app
    *  credentials — the same app), each film having `cities` pages. */
   private final class Fleet(cities: Int, answer: String => FacebookScrape = _ => FacebookScrape.Accepted,
-                            latency: java.time.Duration = java.time.Duration.ZERO) {
+                            latency: java.time.Duration = java.time.Duration.ZERO, usage: () => Option[AppUsage] = () => None) {
     val clock = new MutableClock(T0)
     val store = new InMemoryFacebookRescrapeStore
-    val graph = new RecordingGraph(clock, answer, latency)
+    val fetches = new InMemoryFacebookFetches
+    val graph = new RecordingGraph(clock, answer, latency, usage)
     val series = new ShareCardMetrics.Series(Seq("us", "uk"), new io.prometheus.metrics.model.registry.PrometheusRegistry)
     val drains: Map[String, FacebookRescrapeDrain] = Seq("us", "uk").map(cc =>
-      cc -> new FacebookRescrapeDrain(store, graph, pagesOf(_, cities, cc), cc, series.forCountry(cc), clock)).toMap
-    def request(country: String, filmId: String): Unit =
+      cc -> new FacebookRescrapeDrain(store, graph, pagesOf(_, cities, cc), fetches, cc, series.forCountry(cc), clock)).toMap
+    /** A re-scrape of a film whose every page Facebook has fetched — shared, so holding a preview. */
+    def request(country: String, filmId: String): Unit = {
+      fetches.record(pagesOf(filmId, cities, country).map(_ -> clock.instant()).toMap)
       new FacebookRescrapeQueue(store, country).request(filmId, clock.instant())
+    }
     /** Every worker ticks every [[TickEvery]] for `span`. */
     def run(span: FiniteDuration): Unit =
       (1L to span.toMillis / TickEvery.toMillis).foreach { _ => drains.values.foreach(_.tick()); clock.advance(java.time.Duration.ofMillis(TickEvery.toMillis)) }
@@ -89,6 +95,7 @@ class FacebookRescrapeDrainSpec extends AnyFlatSpec with Matchers {
   // request for a film still waiting names a NEWER card: absorbed, it still has to wait for it.
   it should "wait for the later of the two, so the newer card is on its pages when Facebook looks" in {
     val fleet = new Fleet(cities = 1)
+    fleet.fetches.record(Map(pagesOf("film", 1).head -> T0))
     val queue = new FacebookRescrapeQueue(fleet.store, "us")
     queue.request("film", T0.plusSeconds(60))
     queue.request("film", T0.plusSeconds(110))
@@ -178,9 +185,11 @@ class FacebookRescrapeDrainSpec extends AnyFlatSpec with Matchers {
     val store = new InMemoryFacebookRescrapeStore
     var readable = false
     val graph = new RecordingGraph(clock)
+    val fetches = new InMemoryFacebookFetches
+    fetches.record(Map(pagesOf("film", 1).head -> T0))
     val drain = new FacebookRescrapeDrain(store, graph,
       id => if (readable) pagesOf(id, 1) else throw new IllegalStateException("read-model card unreadable"),
-      "us", ShareCardMetrics.noop, clock)
+      fetches, "us", ShareCardMetrics.noop, clock)
     new FacebookRescrapeQueue(store, "us").request("film", clock.instant())
     drain.tick()
     store.waiting.map(_.key) shouldBe Seq("film|us|film")
@@ -198,7 +207,7 @@ class FacebookRescrapeDrainSpec extends AnyFlatSpec with Matchers {
     var reads = 0
     val graph = new RecordingGraph(clock)
     val drain = new FacebookRescrapeDrain(store, graph,
-      _ => { reads += 1; throw new IllegalStateException("read-model card unreadable") }, "us", ShareCardMetrics.noop, clock)
+      _ => { reads += 1; throw new IllegalStateException("read-model card unreadable") }, new InMemoryFacebookFetches, "us", ShareCardMetrics.noop, clock)
     new FacebookRescrapeQueue(store, "us").request("film", clock.instant())
     (1 to MaxAttempts + 3).foreach { attempt =>
       drain.tick()
@@ -207,6 +216,50 @@ class FacebookRescrapeDrainSpec extends AnyFlatSpec with Matchers {
     reads shouldBe MaxAttempts
     store.waiting shouldBe empty
     graph.sent shouldBe empty
+  }
+
+  // Facebook holds a preview only of a page it fetched: one somebody shared. Re-scraping any other
+  // page refreshes nothing and creates a preview every later card change has to refresh — on
+  // 2026-10-12 Germany's first week queued ~4,100 city pages while Facebook fetched 30-140 a day.
+  "A film's pages Facebook has not fetched within a preview's lifetime" should "not be asked for; the ones it fetched should" in {
+    val fleet = new Fleet(cities = 4)
+    val pages = pagesOf("film", 4)
+    fleet.fetches.record(Map(pages(0) -> T0, pages(2) -> T0.minusSeconds(29L * 86400), pages(1) -> T0.minusSeconds(31L * 86400)))
+    new FacebookRescrapeQueue(fleet.store, "us").request("film", T0)
+    fleet.run(5.minutes)
+    fleet.graph.sent.map(_._2).toSeq.sorted shouldBe Seq(pages(0), pages(2))
+    fleet.series.rescrapeCount("us", ShareCardMetrics.RescrapeOutcome.Unfetched) shouldBe 2.0
+    fleet.store.waiting shouldBe empty
+  }
+
+  // The pages queued before the drain asked only for fetched ones: dropped as they come up, many to
+  // a slot — one each would have kept the 4,100 waiting for a day of slots.
+  "A backlog of pages Facebook never fetched" should "be dropped as it comes up, without spending a slot on each" in {
+    val fleet = new Fleet(cities = 1)
+    val backlog = (1 to 150).map(i => s"https://us.showtimes.cc/old/city$i")
+    fleet.store.add(backlog.map(url => RescrapeEntry("us", RescrapeTarget.Page(url), T0)))
+    fleet.fetches.record(Map(backlog(120) -> T0, backlog(149) -> T0))
+    fleet.run(Spacing * 4)
+    fleet.graph.sent.map(_._2).toSeq shouldBe Seq(backlog(120), backlog(149))
+    fleet.store.waiting shouldBe empty
+    fleet.series.rescrapeCount("us", ShareCardMetrics.RescrapeOutcome.Unfetched) shouldBe 148.0
+  }
+
+  // Facebook refused the app after 45-105 requests an hour on 2026-10-11/12, and each refusal held
+  // the fleet an hour. Its X-App-Usage says how close the app is BEFORE the refusal.
+  "Facebook's app usage at the ceiling" should "hold every country's re-scrapes a while, then resume at the quota's pace" in {
+    var usage = UsageCeiling
+    val fleet = new Fleet(cities = 3, usage = () => Some(AppUsage(usage)))
+    fleet.request("us", "us-film"); fleet.request("uk", "uk-film")
+    fleet.run(UsageHold - 1.minute)
+    fleet.graph.sent.size shouldBe 1
+    Seq("us", "uk").map(fleet.series.appUsageFor).max shouldBe UsageCeiling.toDouble
+    usage = UsageCeiling - 1
+    fleet.run(1.minute + Spacing * 3)
+    fleet.graph.sent.size shouldBe 4
+    val resumed = fleet.graph.sent.map(_._1).toSeq
+    java.time.Duration.between(resumed.head, resumed(1)).toMillis should be >= UsageHold.toMillis
+    resumed.drop(1).zip(resumed.drop(2)).map { case (a, b) => java.time.Duration.between(a, b).toMillis }.max should be <= (Spacing + TickEvery).toMillis
   }
 
   "The waiting gauge" should "count the country's pages still to send" in {
