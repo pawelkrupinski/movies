@@ -55,7 +55,7 @@ Alone rules are tried in list order (`Acceptance.scala:71`), first accept wins; 
 | favoured-calibrated | 344 | probability vs `showsRatings`, `favours`, `closerThan` | 145,584 | ITS |
 | exact-top-hit | 174 | exact title + rank 1, `speaksAgainst`, `fitsBetter`, class | 383 | ITS, IRC |
 | segment-top-hit | 198 | segment relation, rank 1, `standsForTheWhole`, titleYear | 59 | IRC, ITS, AS |
-| sole-result | 302 | only hit of a title search, `cutOnly` | 278 | AS, IRC |
+| sole-result | 302 | only hit of a title search, `cutOnly`; `wordsOfIts` more-than-half clause needs the billing's words in the film's order (`inOrder`, 2026-10-14) | 278 | AS, IRC |
 | imdb-suggested | 232 | IMDb place, AKA, director, year | 294 | AS, IRC |
 | directors-work | 484 | same director, shared work, `BilledRuntime`=15 | 360 | AS, ITS, IRC |
 | directors-title | 508 | exact title, same director, `withoutHollow` | 8 | AS, UnifiedEvidenceSpec |
@@ -77,11 +77,13 @@ Refusals: every listing no alone rule took carries one `refused:<rule>:<why>` pe
 | rule | file:line | evidence | fires (candidate × listing) | pinned by |
 |---|---|---|---|---|
 | director's other film | FamilyScope:92 | same director, title not naming it | 102,502 | IRC |
+| a film of the venue's own language its title shares no word with (`sharesNoWord`, `sharesLanguage`) — added 2026-10-14 | FamilyScope.score | title relation `none`, no glued word, film countries vs venue country | prod: 5 takes, all wrong | IRC |
 | learned listing-film cannot-links (28, data) | CandidateScoring:31 via identity-weights.json | measures | 11,350 + 9,655 + … (14 kinds seen) | IRC learned cases |
 | seasonsApart | CandidateScoring:31 (ListingConstraints) | season years | 4,925 | IRC |
 | another house's season production | CandidateScoring:33 | `Houses` | 2,123 | IRC |
 | another instalment | FamilyScope:94 | numeral relation | 768 | AS, IRC |
 | ReleaseVeto (not released in CC) | ReleaseVeto:24 | country releases, namesake | 753 | IRC |
+| named only by a feed's copied title (incl. one undelimited word of the billing, 2026-10-14) | FamilyScope.namedOnlyByCopiedTitle | TMDB-keyed feed link, original title, `namingPieces` | — | IRC |
 | namesOnlyItsVenue | CandidateScoring:42 | naming pieces vs venue/city | 25 | IRC |
 | namesOnlyATag | CandidateScoring:57 | capitalised recurring tag | 2 | IRC |
 | pinned never | FamilyScope:138 | pins | 0 (no pins in recordings) | IRC, PinConstraintsSpec |
@@ -154,7 +156,7 @@ and.leanTakers&!family.dissent 1, **cast.venue 0**. (2026-10-14: the Filmweb fil
 | stagesAWork / screenAdaptation / billsAHouse | Agreement:485, 493, 501 | StageWorks, HouseWords | AgreementSpec |
 | namesFilms (review sites alone take nothing) | AgreementStage:648 | family | AgreementStageSpec |
 | billedBeside (an agreed film one piece of the billing names, another thing beside it: no film, no fill; not a talk/director/birthday note, a festival, what a "+" adds after the film, tags piped after it naming a programme, a silent-era film under a programme, one of the film's own 3+-piece titles re-worded in one piece, a word misspelt by a letter) — added 2026-10-13 | AgreementStage.pieceOf; ListingShape.billedBeside | raw title's pieces, record titles, director, original title | AgreementStageSpec, ListingShapeSpec |
-| billedAsPiece (a model take one piece of the billing names, another thing beside it: decided apart as no film, unless 5+ venues corroborate the cluster, the listing states a year/director/original title/runtime ±3/feed link, or the piece recurs (beside 2+ of the corpus's whole titles), is a one-word capitals tag, dates a later edition or names the venue, the film is a current release (its screenings' year or the one before) or a foreign film TMDB titles only by its original title, billed first or as one of two dashed pieces) — added 2026-10-14 | IdentityResolver.billedAsPiece, run; ListingShape.billedBeside | raw title's pieces, scored measures, venues.corroborating, title shapes, venue name | IdentityResolverCasesSpec, ListingShapeSpec |
+| billedAsPiece (a model take one piece of the billing names, another thing beside it: decided apart as no film; a piece naming a staging (stage words, not the venue's name) outweighs every exemption but a stated fact; a piece is the film's when its letters run together are a title's ("AI" of "A.I."); else unless 5+ venues corroborate the cluster, the listing states a year/director/original title/runtime ±3/feed link, or the piece recurs (beside 2+ of the corpus's whole titles), is a one-word capitals tag, dates a later edition or names the venue, the film is a current release (its screenings' year or the one before) or a foreign film TMDB titles only by its original title, billed first or as one of two dashed pieces) — added 2026-10-14 | IdentityResolver.billedAsPiece, run; ListingShape.billedBeside | raw title's pieces, scored measures, venues.corroborating, title shapes, venue name | IdentityResolverCasesSpec, ListingShapeSpec |
 | poster veto / poster vote (4 / 8 / 10 bits) | AgreementStage:642, 685; Posters:144 | hashes | AgreementPosterSpec, PosterEvidenceSpec |
 | PosterEvidence.shows / editionsApart | Posters:133, 171 | provenance, stage, bill, numbers | PosterEvidenceSpec |
 | broadcast take (takeOrWait, fits, credits, spells; EncoreDays 60) | Broadcast:37, 131–184 | days, release, banner | AgreementBroadcastSpec |

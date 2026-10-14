@@ -1156,6 +1156,25 @@
     },
     "shareCardPending" : false
   }, {
+    "_id" : "f121eee958774947",
+    "title" : "Mały Kinematograf: Baczne oczka",
+    "posterUrl" : "https://muzeumkinematografii.pl/wp-content/uploads/2026/05/boo.png",
+    "fallbackPosterUrls" : [ ],
+    "releaseYear" : 2026,
+    "genres" : [ ],
+    "countries" : [ ],
+    "directors" : [ "Katarzyna Agopsowicz" ],
+    "cast" : [ ],
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "metacriticUrl" : "https://www.metacritic.com/search/Ma%C5%82y+Kinematograf%3A+Baczne+oczka/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Ma%C5%82y+Kinematograf%3A+Baczne+oczka",
+      "filmwebUrl" : "https://www.filmweb.pl/search?query=Ma%C5%82y+Kinematograf%3A+Baczne+oczka"
+    },
+    "weightedRating" : 0,
+    "synopsisByCity" : { },
+    "shareCardPending" : false
+  }, {
     "_id" : "f122bf12e51ff66d",
     "title" : "Dymkowski. Najważniejszy mecz",
     "posterUrl" : "https://img.helios.pl/pliki/film/dymkowski-najwazniejszy-mecz/dymkowski-najwazniejszy-mecz-plakat-995.jpg",
@@ -15510,58 +15529,6 @@
     },
     "shareCardPending" : false
   }, {
-    "_id" : "facbe1bbd8b0abb2",
-    "title" : "Cykl \"Zawsze Ósmego\" - Follemente. W tym szaleństwie jest metoda",
-    "originalTitle" : "FolleMente",
-    "posterUrl" : "https://kinoapollo.pl/wp-content/uploads/2026/02/plakat_follemente.jpg",
-    "fallbackPosterUrls" : [ "https://biletyna.pl/file/get/id/262093", "https://image.tmdb.org/t/p/w500/rT6Ni6syj94XgpzgniHJC1DaLRj.jpg", "https://m.media-amazon.com/images/M/MV5BNTQ5ZjViMGEtMzE4YS00MWQ0LWE3Y2UtZDc0ZThkNTBmYzBkXkEyXkFqcGc@._V1_.jpg" ],
-    "runtimeMinutes" : 97,
-    "releaseYear" : 2025,
-    "genres" : [ "Romans", "Komedia" ],
-    "countries" : [ "Włochy" ],
-    "directors" : [ "Paolo Genovese" ],
-    "cast" : [ "Edoardo Leo", "Pilar Fogliati", "Emanuela Fanelli", "Maria Chiara Giannetta", "Claudia Pandolfi" ],
-    "synopsis" : "Bohaterami filmu są Piero i Lara. Ich pierwsza ranka wywołuje u obojga zrozumiały stres. Oboje chcieliby pokazać się z jak najlepszej strony i uniknąć wpadek, o które w zdenerwowaniu nie trudno, ale też i poznać myśli i wyczuć pragnienia drugiej osoby. Genovese, zaglądając głęboko w myśli swoich bohaterów, ukazuje ich lęki, niepewności i potrzeby. Odkrywa tajemnicze mechanizmy, które odpowiadają za nasze działania. Różne osobowości mają swój głos i swoje racje. Dyskutują, kłócą się, wzruszają, a każda z nich chce, aby to właśnie jej decyzja była ostateczna. A co w sytuacji, gdy żadna z nich nie ma racji?",
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "imdb" : 6.9,
-      "imdbUrl" : "https://www.imdb.com/title/tt34621892/",
-      "metacriticUrl" : "https://www.metacritic.com/search/FolleMente/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=FolleMente",
-      "filmweb" : 7.2,
-      "filmwebUrl" : "https://www.filmweb.pl/film/Follemente.+W+tym+szale%C5%84stwie+jest+metoda-2025-10074839"
-    },
-    "weightedRating" : 7.050000000000001,
-    "synopsisByCity" : {
-      "poznan" : "Co kryje się w naszych myślach? Kto tak naprawdę mieszka w naszej głowie? Osoba szalona, romantyczna, namiętna, rozważna? A może w naszym umyśle panuje niezły tłok? O międzyludzkich relacjach oraz o tym, co w nas siedzi, w swoim nowym filmie opowiada twórca wielkiego hitu „Dobrze się kłamie w miłym towarzystwie” Paolo Genovese.\n\nBohaterami filmu są Piero i Lara. Ich pierwsza randka wywołuje u obojga zrozumiały stres. Oboje chcieliby pokazać się z jak najlepszej strony i uniknąć wpadek, o które w zdenerwowaniu nie trudno, ale też i poznać myśli i wyczuć pragnienia drugiej osoby."
-    },
-    "shareCardPending" : false
-  }, {
-    "_id" : "facbe1bbd8b0abb2~follementewtymszalenstwiejestmetoda",
-    "title" : "FolleMente. W tym szaleństwie jest metoda",
-    "originalTitle" : "FolleMente",
-    "posterUrl" : "https://kinoapollo.pl/wp-content/uploads/2026/02/plakat_follemente.jpg",
-    "fallbackPosterUrls" : [ "https://biletyna.pl/file/get/id/262093", "https://image.tmdb.org/t/p/w500/rT6Ni6syj94XgpzgniHJC1DaLRj.jpg", "https://m.media-amazon.com/images/M/MV5BNTQ5ZjViMGEtMzE4YS00MWQ0LWE3Y2UtZDc0ZThkNTBmYzBkXkEyXkFqcGc@._V1_.jpg" ],
-    "runtimeMinutes" : 97,
-    "releaseYear" : 2025,
-    "genres" : [ "Romans", "Komedia" ],
-    "countries" : [ "Włochy" ],
-    "directors" : [ "Paolo Genovese" ],
-    "cast" : [ "Edoardo Leo", "Pilar Fogliati", "Emanuela Fanelli", "Maria Chiara Giannetta", "Claudia Pandolfi" ],
-    "synopsis" : "Bohaterami filmu są Piero i Lara. Ich pierwsza ranka wywołuje u obojga zrozumiały stres. Oboje chcieliby pokazać się z jak najlepszej strony i uniknąć wpadek, o które w zdenerwowaniu nie trudno, ale też i poznać myśli i wyczuć pragnienia drugiej osoby. Genovese, zaglądając głęboko w myśli swoich bohaterów, ukazuje ich lęki, niepewności i potrzeby. Odkrywa tajemnicze mechanizmy, które odpowiadają za nasze działania. Różne osobowości mają swój głos i swoje racje. Dyskutują, kłócą się, wzruszają, a każda z nich chce, aby to właśnie jej decyzja była ostateczna. A co w sytuacji, gdy żadna z nich nie ma racji?",
-    "trailerUrls" : [ ],
-    "ratings" : {
-      "imdb" : 6.9,
-      "imdbUrl" : "https://www.imdb.com/title/tt34621892/",
-      "metacriticUrl" : "https://www.metacritic.com/search/FolleMente/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=FolleMente",
-      "filmweb" : 7.2,
-      "filmwebUrl" : "https://www.filmweb.pl/film/Follemente.+W+tym+szale%C5%84stwie+jest+metoda-2025-10074839"
-    },
-    "weightedRating" : 7.050000000000001,
-    "synopsisByCity" : { },
-    "shareCardPending" : false
-  }, {
     "_id" : "fadcd8125df27191",
     "title" : "Danton + prelekcja Alliance française",
     "posterUrl" : "https://ec1lodz.pl/fileadmin/user_upload/danton_07_gallery.jpg",
@@ -15861,7 +15828,7 @@
     "_id" : "fb0523e2ba7a269c",
     "title" : "Pucio kocha zwierzaki",
     "posterUrl" : "https://stacjafalenica.pl/wp-content/uploads/2026/07/Pucio-kocha-zwierzaki-7.png",
-    "fallbackPosterUrls" : [ "https://muzeumkinematografii.pl/wp-content/uploads/2026/05/boo.png", "https://medstore.cinemaone.pl/Puciokochazwierzaki16x9.jpg", "https://image.tmdb.org/t/p/w500/kHYBDgJk4e0FueP0ZRTWMqbSmf0.jpg" ],
+    "fallbackPosterUrls" : [ "https://medstore.cinemaone.pl/Puciokochazwierzaki16x9.jpg", "https://image.tmdb.org/t/p/w500/kHYBDgJk4e0FueP0ZRTWMqbSmf0.jpg" ],
     "runtimeMinutes" : 45,
     "releaseYear" : 2026,
     "genres" : [ "Animacja", "Familijny" ],
@@ -15880,28 +15847,6 @@
       "warszawa" : "Pucio wraca do kin! Tym razem obok rodziny Pucia w ważnych rolach wystąpią pies Funio, kot Mimi oraz cała ferajna zwierzaków. Przygotujcie się na mnóstwo śmiechu, wakacyjnych przygód i rodzinnych wzruszeń!\n\nU Pucia jak zwykle dużo się dzieje. Spędza wakacje u dziadków na wsi i sadzi swoje pierwsze drzewo, a podczas spaceru w parku rusza z Misią na misję ratunkową, by odnaleźć psa sąsiada. Kiedy ich własny, ukochany Funio gorzej się czuje, rodzeństwo robi, co w ich mocy, by poprawić mu humor. Wygląda jednak na to, że czas odwiedzić weterynarza! Emocji nie zabraknie również w przedszkolu: Pucio pomoże nowej koleżance Malinie odnaleźć się w grupie i razem z kolegami odkryje, że nie trzeba tańczyć idealnie – liczy się wyobraźnia i radość z bycia razem.\n\n„Pucio kocha zwierzaki” to ekranizacja bestsellerowej serii książek dr Marty Galewskiej-Kustry z ilustracjami Joanny Kłos. Opowieści o Puciu, publikowane przez Wydawnictwo „Nasza Księgarnia”, w lekki, mądry i pełen humoru sposób oswajają tematy bliskie wszystkim przedszkolakom. W animacji ponownie usłyszymy gwiazdorską obsadę dubbingową: m.in. Joannę Pach-Żbikowską, Małgorzatę Sochę i Artura Barcisia, oraz wyjątkową oprawę muzyczną autorstwa Grzegorza Turnaua.\n\nOdcinki, które zobaczymy w trakcie seansów:\n\nPucio u weterynarza – reż. Anna Błaszczyk\n\nPucio i Malina w przedszkolu – reż. Marta Stróżycka\n\nPucio i pojazdy – reż. Marta Stróżycka\n\nPucio i kołysanka dla samolotu – reż. Marta Stróżycka\n\nPucio tańczy – reż. Anna Błaszczyk\n\nPucio sadzi drzewo – reż. Katarzyna Agopsowicz\n\nPucio i późny spacer – reż. Dominik Litwiniak",
       "trojmiasto" : "Pucio wraca do kin! Tym razem obok rodziny Pucia w ważnych rolach wystąpią pies Funio, kot Mimi oraz cała ferajna zwierzaków. Przygotujcie się na mnóstwo śmiechu, wakacyjnych przygód i rodzinnych wzruszeń!\n\nOdcinki, które zobaczymy w trakcie seansów:\n\nPucio u weterynarza – reż. Anna Błaszczyk\nPucio i Malina w przedszkolu – reż. Marta Stróżycka\nPucio i pojazdy – reż. Marta Stróżycka\nPucio i kołysanka dla samolotu – reż. Marta Stróżycka\nPucio tańczy – reż. Anna Błaszczyk\nPucio sadzi drzewo – reż. Katarzyna Agopsowicz\nPucio i późny spacer – reż. Dominik Litwiniak"
     },
-    "shareCardPending" : false
-  }, {
-    "_id" : "fb0523e2ba7a269c~malykinematografbaczneoczka",
-    "title" : "Mały Kinematograf: Baczne oczka",
-    "originalTitle" : "Pucio kocha zwierzaki",
-    "posterUrl" : "https://stacjafalenica.pl/wp-content/uploads/2026/07/Pucio-kocha-zwierzaki-7.png",
-    "fallbackPosterUrls" : [ "https://muzeumkinematografii.pl/wp-content/uploads/2026/05/boo.png", "https://medstore.cinemaone.pl/Puciokochazwierzaki16x9.jpg", "https://image.tmdb.org/t/p/w500/kHYBDgJk4e0FueP0ZRTWMqbSmf0.jpg" ],
-    "runtimeMinutes" : 45,
-    "releaseYear" : 2026,
-    "genres" : [ "Animacja", "Familijny" ],
-    "countries" : [ "Polska" ],
-    "directors" : [ "Marta Stróżycka" ],
-    "cast" : [ "Joanna Pach", "Antonina Żbikowska", "Małgorzata Socha", "Waldemar Barwiński", "Ewa Kania" ],
-    "synopsis" : "U Pucia jak zwykle dużo się dzieje. Spędza wakacje u dziadków na wsi i sadzi swoje pierwsze drzewo, a podczas spaceru w parku rusza z Misią na misję ratunkową, by odnaleźć psa sąsiada. Kiedy ich własny, ukochany Funio gorzej się czuje, rodzeństwo robi, co w ich mocy, by poprawić mu humor. Wygląda jednak na to, że czas odwiedzić weterynarza! Emocji nie zabraknie również w przedszkolu: Pucio pomoże nowej koleżance Malinie odnaleźć się w grupie i razem z kolegami odkryje, że nie trzeba tańczyć idealnie – liczy się wyobraźnia i radość z bycia razem.",
-    "trailerUrls" : [ "https://www.youtube.com/embed/cHfgAqa0Pcc" ],
-    "ratings" : {
-      "metacriticUrl" : "https://www.metacritic.com/search/Pucio+kocha+zwierzaki/?category=2",
-      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=Pucio+kocha+zwierzaki",
-      "filmwebUrl" : "https://www.filmweb.pl/search?query=Pucio+kocha+zwierzaki"
-    },
-    "weightedRating" : 0,
-    "synopsisByCity" : { },
     "shareCardPending" : false
   }, {
     "_id" : "fb0c1a6737feaf9c",
@@ -18938,6 +18883,58 @@
       "filmwebUrl" : "https://www.filmweb.pl/film/Sarnie+%C5%BCniwo%2C+czyli+pokusa+statuetkowego+szlaku-2006-389424"
     },
     "weightedRating" : 6.75,
+    "synopsisByCity" : { },
+    "shareCardPending" : false
+  }, {
+    "_id" : "fcc9d06e468004d9",
+    "title" : "Cykl \"Zawsze Ósmego\" - Follemente. W tym szaleństwie jest metoda",
+    "originalTitle" : "FolleMente",
+    "posterUrl" : "https://kinoapollo.pl/wp-content/uploads/2026/02/plakat_follemente.jpg",
+    "fallbackPosterUrls" : [ "https://biletyna.pl/file/get/id/262093", "https://image.tmdb.org/t/p/w500/rT6Ni6syj94XgpzgniHJC1DaLRj.jpg", "https://m.media-amazon.com/images/M/MV5BNTQ5ZjViMGEtMzE4YS00MWQ0LWE3Y2UtZDc0ZThkNTBmYzBkXkEyXkFqcGc@._V1_.jpg" ],
+    "runtimeMinutes" : 97,
+    "releaseYear" : 2025,
+    "genres" : [ "Romans", "Komedia" ],
+    "countries" : [ "Włochy" ],
+    "directors" : [ "Paolo Genovese" ],
+    "cast" : [ "Edoardo Leo", "Pilar Fogliati", "Emanuela Fanelli", "Maria Chiara Giannetta", "Claudia Pandolfi" ],
+    "synopsis" : "Bohaterami filmu są Piero i Lara. Ich pierwsza ranka wywołuje u obojga zrozumiały stres. Oboje chcieliby pokazać się z jak najlepszej strony i uniknąć wpadek, o które w zdenerwowaniu nie trudno, ale też i poznać myśli i wyczuć pragnienia drugiej osoby. Genovese, zaglądając głęboko w myśli swoich bohaterów, ukazuje ich lęki, niepewności i potrzeby. Odkrywa tajemnicze mechanizmy, które odpowiadają za nasze działania. Różne osobowości mają swój głos i swoje racje. Dyskutują, kłócą się, wzruszają, a każda z nich chce, aby to właśnie jej decyzja była ostateczna. A co w sytuacji, gdy żadna z nich nie ma racji?",
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "imdb" : 6.9,
+      "imdbUrl" : "https://www.imdb.com/title/tt34621892/",
+      "metacriticUrl" : "https://www.metacritic.com/search/FolleMente/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=FolleMente",
+      "filmweb" : 7.2,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Follemente.+W+tym+szale%C5%84stwie+jest+metoda-2025-10074839"
+    },
+    "weightedRating" : 7.050000000000001,
+    "synopsisByCity" : {
+      "poznan" : "Co kryje się w naszych myślach? Kto tak naprawdę mieszka w naszej głowie? Osoba szalona, romantyczna, namiętna, rozważna? A może w naszym umyśle panuje niezły tłok? O międzyludzkich relacjach oraz o tym, co w nas siedzi, w swoim nowym filmie opowiada twórca wielkiego hitu „Dobrze się kłamie w miłym towarzystwie” Paolo Genovese.\n\nBohaterami filmu są Piero i Lara. Ich pierwsza randka wywołuje u obojga zrozumiały stres. Oboje chcieliby pokazać się z jak najlepszej strony i uniknąć wpadek, o które w zdenerwowaniu nie trudno, ale też i poznać myśli i wyczuć pragnienia drugiej osoby."
+    },
+    "shareCardPending" : false
+  }, {
+    "_id" : "fcc9d06e468004d9~follementewtymszalenstwiejestmetoda",
+    "title" : "FolleMente. W tym szaleństwie jest metoda",
+    "originalTitle" : "FolleMente",
+    "posterUrl" : "https://kinoapollo.pl/wp-content/uploads/2026/02/plakat_follemente.jpg",
+    "fallbackPosterUrls" : [ "https://biletyna.pl/file/get/id/262093", "https://image.tmdb.org/t/p/w500/rT6Ni6syj94XgpzgniHJC1DaLRj.jpg", "https://m.media-amazon.com/images/M/MV5BNTQ5ZjViMGEtMzE4YS00MWQ0LWE3Y2UtZDc0ZThkNTBmYzBkXkEyXkFqcGc@._V1_.jpg" ],
+    "runtimeMinutes" : 97,
+    "releaseYear" : 2025,
+    "genres" : [ "Romans", "Komedia" ],
+    "countries" : [ "Włochy" ],
+    "directors" : [ "Paolo Genovese" ],
+    "cast" : [ "Edoardo Leo", "Pilar Fogliati", "Emanuela Fanelli", "Maria Chiara Giannetta", "Claudia Pandolfi" ],
+    "synopsis" : "Bohaterami filmu są Piero i Lara. Ich pierwsza ranka wywołuje u obojga zrozumiały stres. Oboje chcieliby pokazać się z jak najlepszej strony i uniknąć wpadek, o które w zdenerwowaniu nie trudno, ale też i poznać myśli i wyczuć pragnienia drugiej osoby. Genovese, zaglądając głęboko w myśli swoich bohaterów, ukazuje ich lęki, niepewności i potrzeby. Odkrywa tajemnicze mechanizmy, które odpowiadają za nasze działania. Różne osobowości mają swój głos i swoje racje. Dyskutują, kłócą się, wzruszają, a każda z nich chce, aby to właśnie jej decyzja była ostateczna. A co w sytuacji, gdy żadna z nich nie ma racji?",
+    "trailerUrls" : [ ],
+    "ratings" : {
+      "imdb" : 6.9,
+      "imdbUrl" : "https://www.imdb.com/title/tt34621892/",
+      "metacriticUrl" : "https://www.metacritic.com/search/FolleMente/?category=2",
+      "rottenTomatoesUrl" : "https://www.rottentomatoes.com/search?search=FolleMente",
+      "filmweb" : 7.2,
+      "filmwebUrl" : "https://www.filmweb.pl/film/Follemente.+W+tym+szale%C5%84stwie+jest+metoda-2025-10074839"
+    },
+    "weightedRating" : 7.050000000000001,
     "synopsisByCity" : { },
     "shareCardPending" : false
   }, {
@@ -26154,6 +26151,17 @@
       "format" : [ ]
     } ],
     "listingKeys" : [ "N\u0000Służewski Dom Kultury\u0000https://sdk.waw.pl/wydarzenia/rodzaj-wydarzenia/kino/dla-dobra-adama-kino\u0000Dla dobra Adama" ]
+  }, {
+    "_id" : "f121eee958774947|lodz|Kino Kinematograf",
+    "filmId" : "f121eee958774947",
+    "city" : "lodz",
+    "cinema" : "Kino Kinematograf",
+    "filmUrl" : "https://muzeumkinematografii.pl/repertuar/maly-kinematograf-baczne-oczka-rez-katarzyna-agopsowicz-2026/",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-14T13:00:00",
+      "format" : [ ]
+    } ],
+    "listingKeys" : [ "N\u0000Kino Kinematograf\u0000https://muzeumkinematografii.pl/repertuar/maly-kinematograf-baczne-oczka-rez-katarzyna-agopsowicz-2026/\u0000Mały Kinematograf: Baczne oczka reż. Katarzyna Agopsowicz, (2026)" ]
   }, {
     "_id" : "f122bf12e51ff66d|szczecin|Helios Outlet Park",
     "filmId" : "f122bf12e51ff66d",
@@ -146000,34 +146008,6 @@
     } ],
     "listingKeys" : [ "N\u0000Cinema City Zielona Góra\u0000https://www.cinema-city.pl/filmy/niebezpieczne-zwiazki-national-theatre-live-2026/8212s2r\u0000Niebezpieczne związki - National Theatre Live 2026" ]
   }, {
-    "_id" : "facbe1bbd8b0abb2|poznan|Kino Apollo",
-    "filmId" : "facbe1bbd8b0abb2",
-    "city" : "poznan",
-    "cinema" : "Kino Apollo",
-    "filmUrl" : "https://kinoapollo.pl/kino/cykl-zawsze-osmego-follemente-w-tym-szalenstwie-jest-metoda/",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-08T18:30:00",
-      "bookingUrl" : "https://bilety.kinoapollo.pl/event/view/id/636315",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "N\u0000Kino Apollo\u0000https://kinoapollo.pl/kino/cykl-zawsze-osmego-follemente-w-tym-szalenstwie-jest-metoda/\u0000Cykl \"Zawsze Ósmego\" - Follemente. W tym szaleństwie jest metoda" ]
-  }, {
-    "_id" : "facbe1bbd8b0abb2~follementewtymszalenstwiejestmetoda|trojmiasto|Kino na Szekspirowskim",
-    "filmId" : "facbe1bbd8b0abb2~follementewtymszalenstwiejestmetoda",
-    "city" : "trojmiasto",
-    "cinema" : "Kino na Szekspirowskim",
-    "filmUrl" : "https://biletyna.pl/film/Follemente-W-tym-szalenstwie-jest-metoda?eid=664605#opis",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-17T21:45:00",
-      "bookingUrl" : "https://biletyna.pl/film/Follemente-W-tym-szalenstwie-jest-metoda?eid=664605#opis",
-      "format" : [ ]
-    }, {
-      "dateTime" : "2026-07-15T21:30:00",
-      "bookingUrl" : "https://biletyna.pl/film/Follemente-W-tym-szalenstwie-jest-metoda?eid=664617#opis",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "N\u0000Kino na Szekspirowskim\u0000https://biletyna.pl/film/Follemente-W-tym-szalenstwie-jest-metoda?eid=664605#opis\u0000Follemente. W tym szaleństwie jest metoda" ]
-  }, {
     "_id" : "fadcd8125df27191|lodz|Kino NCKF EC1",
     "filmId" : "fadcd8125df27191",
     "city" : "lodz",
@@ -146317,17 +146297,6 @@
       "format" : [ ]
     } ],
     "listingKeys" : [ "N\u0000KINOkawiarnia Stacja Falenica\u0000https://stacjafalenica.pl/filmy/pucio-kocha-zwierzaki/\u0000Pucio kocha zwierzaki" ]
-  }, {
-    "_id" : "fb0523e2ba7a269c~malykinematografbaczneoczka|lodz|Kino Kinematograf",
-    "filmId" : "fb0523e2ba7a269c~malykinematografbaczneoczka",
-    "city" : "lodz",
-    "cinema" : "Kino Kinematograf",
-    "filmUrl" : "https://muzeumkinematografii.pl/repertuar/maly-kinematograf-baczne-oczka-rez-katarzyna-agopsowicz-2026/",
-    "showtimes" : [ {
-      "dateTime" : "2026-06-14T13:00:00",
-      "format" : [ ]
-    } ],
-    "listingKeys" : [ "N\u0000Kino Kinematograf\u0000https://muzeumkinematografii.pl/repertuar/maly-kinematograf-baczne-oczka-rez-katarzyna-agopsowicz-2026/\u0000Mały Kinematograf: Baczne oczka reż. Katarzyna Agopsowicz, (2026)" ]
   }, {
     "_id" : "fb0c1a6737feaf9c|katowice|Kinoteatr Rialto",
     "filmId" : "fb0c1a6737feaf9c",
@@ -156640,6 +156609,34 @@
       "format" : [ ]
     } ],
     "listingKeys" : [ "P\u0000Gdyńskie Centrum Filmowe\u0000Sarnie żniwo, czyli pokusa statuetkowego szlaku | NAJLEPSZE Z NAJGORSZYCH\u0000" ]
+  }, {
+    "_id" : "fcc9d06e468004d9|poznan|Kino Apollo",
+    "filmId" : "fcc9d06e468004d9",
+    "city" : "poznan",
+    "cinema" : "Kino Apollo",
+    "filmUrl" : "https://kinoapollo.pl/kino/cykl-zawsze-osmego-follemente-w-tym-szalenstwie-jest-metoda/",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-08T18:30:00",
+      "bookingUrl" : "https://bilety.kinoapollo.pl/event/view/id/636315",
+      "format" : [ ]
+    } ],
+    "listingKeys" : [ "N\u0000Kino Apollo\u0000https://kinoapollo.pl/kino/cykl-zawsze-osmego-follemente-w-tym-szalenstwie-jest-metoda/\u0000Cykl \"Zawsze Ósmego\" - Follemente. W tym szaleństwie jest metoda" ]
+  }, {
+    "_id" : "fcc9d06e468004d9~follementewtymszalenstwiejestmetoda|trojmiasto|Kino na Szekspirowskim",
+    "filmId" : "fcc9d06e468004d9~follementewtymszalenstwiejestmetoda",
+    "city" : "trojmiasto",
+    "cinema" : "Kino na Szekspirowskim",
+    "filmUrl" : "https://biletyna.pl/film/Follemente-W-tym-szalenstwie-jest-metoda?eid=664605#opis",
+    "showtimes" : [ {
+      "dateTime" : "2026-06-17T21:45:00",
+      "bookingUrl" : "https://biletyna.pl/film/Follemente-W-tym-szalenstwie-jest-metoda?eid=664605#opis",
+      "format" : [ ]
+    }, {
+      "dateTime" : "2026-07-15T21:30:00",
+      "bookingUrl" : "https://biletyna.pl/film/Follemente-W-tym-szalenstwie-jest-metoda?eid=664617#opis",
+      "format" : [ ]
+    } ],
+    "listingKeys" : [ "N\u0000Kino na Szekspirowskim\u0000https://biletyna.pl/film/Follemente-W-tym-szalenstwie-jest-metoda?eid=664605#opis\u0000Follemente. W tym szaleństwie jest metoda" ]
   }, {
     "_id" : "fccb3f194ca7273f|poznan|Kino Malta Charlie Monroe",
     "filmId" : "fccb3f194ca7273f",

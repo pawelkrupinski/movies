@@ -45,6 +45,9 @@ object ListingShape {
     TitleWords.tokens(StageHouse, Stage, Relay, HouseBanner)
   }
 
+  /** Words a billing names a stage show by — a theatre, a musical, a stage ([[TitleWords.Concept.Stage]]). */
+  val StageWords: Set[String] = TitleWords.tokens(TitleWords.Concept.Stage)
+
   /** Does the listing bill a house, a relay or a season ("OPERA-MAKBET - retransmisja", "Met Opera 2026/27: …")? */
   def billsAHouse(listing: Listing): Boolean = {
     val titles = spellingsOf(listing)
@@ -151,6 +154,8 @@ object ListingShape {
       val breaks = PieceBreak.findAllIn(Bracketed.replaceAllIn(raw, " | ")).toIndexedSeq.map(_.trim)
       val words  = parts.map(TitleContainment.tokens)
       val titles = films.flatMap(_.titles).map(t => withoutLeadingArticle(TitleContainment.tokens(t))).filter(_.nonEmpty).distinct
+      // each title as its letters run together: a piece spelling it without its stops ("AI" of Spielberg's "A.I.") is it
+      val keys   = films.flatMap(_.titles).map(IdentityMeasures.key).filter(_.nonEmpty).toSet
       val theirs = films.flatMap(f => f.titles ++ f.directors.getOrElse(Nil)).flatMap(TitleContainment.tokens).toSet
       val original = listing.originalTitle.map(t => withoutLeadingArticle(TitleContainment.tokens(t))).filter(_.nonEmpty)
       // a piece crediting the film's director, as an inflected language bills the name ("Poniedziałki z Konwickim: pisarz –
@@ -160,7 +165,8 @@ object ListingShape {
       def credits(word: String) = names.exists(word.startsWith)
       // the film's run of whole pieces, the first one
       val run = (for { from <- words.indices.iterator; to <- (from + 1 to words.size).iterator
-                       if titles.contains(withoutLeadingArticle(words.slice(from, to).flatten)) } yield (from, to)).nextOption()
+                       if titles.contains(withoutLeadingArticle(words.slice(from, to).flatten)) || keys.contains(words.slice(from, to).flatten.mkString) }
+                   yield (from, to)).nextOption()
       // the banner segment each piece is in: a colon or a pipe closes one
       val segment = parts.indices.map(k => breaks.take(k).count(b => b == ":" || b == "|"))
       def programme(piece: Seq[String]) = piece.exists(word => ScreeningProgramme.findFirstIn(word).isDefined)

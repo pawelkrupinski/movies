@@ -91,6 +91,8 @@ object IdentityResolver {
    *  - the film is a current release, of its screenings' year or the one before ([[CurrentRelease]]), or a foreign film
    *    TMDB knows by its original title alone, billed first ("Ekmek parası - Geld für's Brot"): the venue's subtitle or
    *    translation beside it — the namesakes a reading or a show is taken for are older catalogue films.
+   *  A piece naming a STAGING beside the film — a theatre, a musical ([[ListingShape.StageWords]]) — outweighs all but a
+   *  stated fact: the widely screened film, the current release and the venue's town are no answer to a staging of its work.
    *  `scored`: the member's own scoring of the film, its record and measures. Measured on the five convergence legs'
    *  whole-corpus takes (2026-10-14). */
   private[identity] def billedAsPiece(node: EvidenceNode, scored: services.identity.Scored, corroborated: Double,
@@ -112,39 +114,42 @@ object IdentityResolver {
     // language — carries its title, so its title being its original says nothing (UK "The Wizard Of Oz - Hot Rock", a
     // touring pantomime, is not the 1939 US film untranslated)
     def untranslated = film.originalTitle.exists(IdentityMeasures.key(_) == IdentityMeasures.key(film.title)) &&
-      !film.countries.exists(_.exists(country => node.country.exists(venue => sharesLanguage(venue, country)))) &&
+      !film.countries.exists(_.exists(country => node.country.exists(venue => IdentityMeasures.sharesLanguage(venue, country)))) &&
       (services.movies.TitleContainment.tokens(node.evidence.rawTitle).startsWith(services.movies.TitleContainment.tokens(film.title)) ||
         ListingShape.titledAfterPiece(node.evidence.rawTitle, film))
+    import services.movies.TitleContainment.tokens
+    val evidence = node.evidence
+    // a word of every listing's venue's name or city, inflected as it may be ("Kino w Kadrze": "Kadr Non-Fiction")
+    def venues(word: String) = word.length >= VenueStem && node.listings.forall(listing => EvidenceNode.placesOf(listing.cinema).flatten
+      .exists(place => place.length >= VenueStem && (word.startsWith(place) || place.startsWith(word))))
+    val listing = node.listings.head.copy(rawTitle = evidence.rawTitle, title = evidence.title, originalTitle = evidence.originalTitle)
+    // a piece naming a stage show — a theatre, a musical ([[ListingShape.StageWords]]), not the venue's own name — beside the
+    // film: the billing is a staging of the work, however widely the film is screened or whichever town the piece names
+    // (UK "SISTER ACT - NORTHALLERTON MUSICAL THEATRE COMPANY", four venues billing the 1992 film plainly)
+    def staging(piece: Seq[String]) = piece.exists(word => ListingShape.StageWords(word) && !venues(word))
+    lazy val filmWords = film.titles.flatMap(tokens).toSet
+    lazy val staged = Option.when(staging(tokens(evidence.rawTitle).filterNot(filmWords)))(
+      ListingShape.billedBeside(listing, Seq(film), piece => !staging(piece))).flatten
+      .map(why => s"no film: one piece of the billing names '${film.title}' beside a staging — $why")
+    if (stated) None
     // a billing listing several works by name is a programme, whatever its first piece's film (DE "Retro - An Undiscovered
     // World, Running High, Carrying Dreams: The Weight Between", four shorts): no keep reads it as one film's
-    if (screened || stated || (!ListingShape.listsWorks(node.evidence.rawTitle) && (current || untranslated))) None
+    else if (screened || (!ListingShape.listsWorks(node.evidence.rawTitle) && (current || untranslated))) staged
     else {
-      import services.movies.TitleContainment.tokens
-      val evidence = node.evidence
       lazy val banners = evidence.published.shapes.filter(recurs).map(tokens)
       lazy val tags    = IdentityMeasures.capitalisedTags(evidence.published).map(tokens).filter(_.sizeIs == 1)
       // one word of consonants alone: a programme's initials ("Kopnięci w czasie|Fks", a seniors' film club)
       def acronym(piece: Seq[String]) = piece.sizeIs == 1 && !piece.head.exists(c => "aeiouy".contains(c) || c.isDigit)
       def dated(word: String) = word.length == 4 && word.forall(_.isDigit) && film.year.exists(_ < word.toInt)
-      // a word of every listing's venue's name or city, inflected as it may be ("Kino w Kadrze": "Kadr Non-Fiction")
-      def venues(word: String) = word.length >= VenueStem && node.listings.forall(listing => EvidenceNode.placesOf(listing.cinema).flatten
-        .exists(place => place.length >= VenueStem && (word.startsWith(place) || place.startsWith(word))))
-      val listing  = node.listings.head.copy(rawTitle = evidence.rawTitle, title = evidence.title, originalTitle = evidence.originalTitle)
       // another title of the film itself: its search's first film, or one IMDb lists under it in some language (DE
       // "Épines du Sahel - Die Dornen der Sahelzone", the German release title TMDB's record does not carry)
       val id = scored.candidate.tmdbId
       def titles(piece: Seq[String]) = evidence.published.shapes.exists(shape => tokens(shape) == piece &&
         (answered(CandidateQuery.Title(shape)).headOption.exists(_.tmdbId == id) || answered(CandidateQuery.ImdbTitled(shape)).exists(_.tmdbId == id)))
-      ListingShape.billedBeside(listing, Seq(film), piece =>
+      staged.orElse(ListingShape.billedBeside(listing, Seq(film), piece =>
         piece.exists(word => dated(word) || venues(word)) || acronym(piece) || tags.contains(piece) || banners.contains(piece) || titles(piece))
-        .map(why => s"no film: one piece of the billing names '${film.title}' — $why")
+        .map(why => s"no film: one piece of the billing names '${film.title}' — $why"))
     }
-  }
-  /** Do venues of country `a` and films of country `b` (ISO-3166-1) speak one language: the same country, or two this
-   *  deployment serves in one language ([[models.Country.all]]: the United Kingdom and the United States)? */
-  private def sharesLanguage(a: String, b: String): Boolean = a == b || {
-    def language(country: String) = models.Country.all.find(_.language.getCountry == country).map(_.language.getLanguage)
-    language(a).exists(language(b).contains)
   }
   /** The members QUOTING their cluster's film within words of their own, at a venue another member of the cluster bills
    *  the film by itself at: what that venue screens beside the film — a warm-up, a talk — not the film. The quotes name
@@ -179,9 +184,9 @@ object IdentityResolver {
   val VenueStem = 4
   /** How many minutes a listing's running time may stand from its film's and still state the film's own. */
   val PieceRuntimeAgreement = 3
-  /** How many other venues stating the film's facts under the listing's title make it a film screened widely: above UK's
-   *  four billing "Sister Act" (1992) plainly beside an amateur company's "SISTER ACT - NORTHALLERTON MUSICAL THEATRE
-   *  COMPANY", below the 30 and more of PL's current releases a programme bills beside its banner (2026-10-14). */
+  /** How many other venues stating the film's facts under the listing's title make it a film screened widely: below the
+   *  30 and more of PL's current releases a programme bills beside its banner (2026-10-14). A staging billed beside the
+   *  film is none of it however widely the film is screened (UK "SISTER ACT - NORTHALLERTON MUSICAL THEATRE COMPANY"). */
   val PieceCorroboration = 5
 
   private[identity] enum Mutation {

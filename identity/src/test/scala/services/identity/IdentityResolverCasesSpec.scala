@@ -1,6 +1,6 @@
 package services.identity
 
-import models.{CharlieMonroe, Cinema, CinemaCityKinepolis, CinemaCityKorona, CinemaCityPoznanPlaza, CinemaCityWroclavia, Helios, HeliosAlejaBielany, HeliosMagnolia, KinoApollo, KinoBulgarska, KinoCytadela, KinoDKFRumcajs, KinoMikro, KinoMuza, KinoOaza, KinoPalacowe, Kinoteka, Multikino, MultikinoPasazGrunwaldzki, Rialto, StacjaFalenica}
+import models.{CharlieMonroe, Cinema, CinemaCityKinepolis, CinemaCityKorona, CinemaCityPoznanPlaza, CinemaCityWroclavia, Helios, HeliosAlejaBielany, HeliosMagnolia, KinoApollo, KinoBulgarska, KinoCytadela, KinoDKFRumcajs, KinoMikro, KinoMuza, KinoOaza, KinoPalacowe, Kinoteka, Multikino, MultikinoPasazGrunwaldzki, PictureHouseUckfield, Rialto, StacjaFalenica, TheForumNorthallerton}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.{ListingKey, SingleCountryNormalizer}
@@ -1411,6 +1411,95 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val films    = Seq(F(431444, "The Curious World of Hieronymus Bosch", 2016, "David Bickerstaff", 90, 8))
     val credited = listing(KinoMuza, "Osobliwy świat Hieronymusa Boscha", Some(2016), Some("David Bickerstaff"), Some(90))
     shipped(Seq(credited), films).decisionOf(credited.key).film shouldBe Some(431444)
+  }
+
+  "A film of the venue's own language" should "never be taken for a title sharing no word with any of its titles" in {
+    // UK Picture House Uckfield (prod 2026-10-14, labelled wrong): "Gremlins Special Event" {Joe Dante} [120′] took
+    // Innerspace on its director and running time, the title naming another Dante film; "Social Reckoning" {Aaron Sorkin}
+    // [130′] took The Trial of the Chicago 7 the same way. An English-language film is billed in England by its title.
+    val dante = Seq(F(2614, "Innerspace", 1987, "Joe Dante", 120, 20, countries = Seq("US")),
+      F(927, "Gremlins", 1984, "Joe Dante", 106, 30, countries = Seq("US")))
+    val gremlins = listing(PictureHouseUckfield, "Gremlins Special Event", director = Some("Joe Dante"), runtime = Some(120))
+    val d = shipped(Seq(gremlins), dante).decisionOf(gremlins.key)
+    withClue(d.render)(d.film should not be Some(2614))
+    val sorkin = Seq(F(556984, "The Trial of the Chicago 7", 2020, "Aaron Sorkin", 130, 20, countries = Seq("US")),
+      F(517088, "Being the Ricardos", 2021, "Aaron Sorkin", 125, 15, countries = Seq("US")))
+    val social = listing(PictureHouseUckfield, "Social Reckoning", director = Some("Aaron Sorkin"), runtime = Some(130))
+    val s = shipped(Seq(social), sorkin).decisionOf(social.key)
+    withClue(s.render)(s.film shouldBe None)
+    // a film of another language is billed by the venue's translation of its title, which TMDB may not carry (PL "Kupiłem
+    // motocykl, który jest wampirem", the 1990 British film), and one whose title is run together in the billing ("NTLive:
+    // Hayfever" of "National Theatre Live: Hay Fever") still shares its words
+    val vampire = Seq(F(41153, "I Bought a Vampire Motorcycle", 1990, "Dirk Campbell", 105, 5, countries = Seq("GB", "US")))
+    val translated = listing(KinoMuza, "Kupiłem motocykl, który jest wampirem", director = Some("Dirk Campbell"), runtime = Some(105))
+    shipped(Seq(translated), vampire).decisionOf(translated.key).film shouldBe Some(41153)
+    def record(title: String) = IdentityMeasures.Film(title, countries = Some(Seq("GB")))
+    IdentityMeasures.sharesNoWord(IdentityMeasures.Listing("NTLive: Hayfever"), record("National Theatre Live: Hay Fever")) shouldBe false
+    IdentityMeasures.sharesNoWord(IdentityMeasures.Listing("Social Reckoning"), record("The Trial of the Chicago 7")) shouldBe true
+    // nor does one the billing misspells by a letter (DE "Grenzrerfahrungen - Bike Expeditionen ins Unbekannte")
+    IdentityMeasures.sharesNoWord(IdentityMeasures.Listing("Grenzrerfahrungen - Bike Expeditionen ins Unbekannte"), record("Grenzerfahrungen")) shouldBe false
+  }
+
+  "A billing naming a film beside a stage company" should "take no film, though the piece names the venue's town" in {
+    // UK The Forum Northallerton (prod 2026-10-14, labelled wrong): "SISTER ACT - NORTHALLERTON MUSICAL THEATRE COMPANY"
+    // [150′], an amateur company's staging of the musical, joined the 1992 film's family by its "SISTER ACT" piece; the
+    // piece beside it names the town, which read as the venue's own wording
+    val films = Seq(F(2005, "Sister Act", 1992, "Emile Ardolino", 100, 30, countries = Seq("US")),
+      F(6279, "Sister Act 2: Back in the Habit", 1993, "Bill Duke", 107, 20, countries = Seq("US")))
+    val company = listing(TheForumNorthallerton, "SISTER ACT - NORTHALLERTON MUSICAL THEATRE COMPANY", runtime = Some(150))
+    val film = Seq(Multikino, Helios, KinoApollo, Rialto, KinoMikro).map(listing(_, "Sister Act", Some(1992), Some("Emile Ardolino"), Some(100)))
+    val r = shipped(company +: film, films)
+    withClue(r.decisionOf(company.key).render)(r.decisionOf(company.key).film shouldBe None)
+    film.map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(2005))
+    // a billing naming no staging is read as before: a widely screened film whose title is a talk's word ("Rozmowa", The
+    // Conversation) at its farewell screening (the fixture corpus's Kino za Rogiem Cafe)
+    val conversation = Seq(F(592, "Rozmowa", 1974, "Francis Ford Coppola", 113, 20, countries = Seq("US")))
+    val farewell = listing(KinoMuza, "Rozmowa - pożegnanie z filmem")
+    val plain = Seq(Multikino, Helios, KinoApollo, Rialto, KinoMikro, Kinoteka).map(listing(_, "Rozmowa", Some(1974), Some("Francis Ford Coppola"), Some(113)))
+    val f = shipped(farewell +: plain, conversation).decisionOf(farewell.key)
+    withClue(f.render)(f.film shouldBe Some(592))
+  }
+
+  "A billing naming a film by a piece its title spells with stops" should "take no film when another piece is billed beside it" in {
+    // PL Kino Alternatywy (prod 2026-10-14, labelled wrong): 'Okładka „AI – rewolucja czy zagrożenie”', a debate, took
+    // Spielberg's "A.I." — the piece "AI" is its title's letters, which a word-for-word reading of the billing missed
+    val films = Seq(F(644, "A.I. Sztuczna inteligencja", 2001, "Steven Spielberg", 146, 30, alternatives = Seq("A.I."), countries = Seq("US"),
+      original = Some("A.I. Artificial Intelligence")), F(1781306, "AI", 2026, "Someone", 90, 1), F(333670, "Ai", 2008, "Another", 80, 1))
+    val raw = "Okładka „AI – rewolucja czy zagrożenie”"
+    val debate = listing(KinoMuza, raw).copy(title = "AI – rewolucja czy zagrożenie", cleanTitle = "AI – rewolucja czy zagrożenie")
+    val d = shipped(Seq(debate), films).decisionOf(debate.key)
+    withClue(d.render)(d.film shouldBe None)
+    val spielberg = IdentityMeasures.Film("A.I. Sztuczna inteligencja", Some("A.I. Artificial Intelligence"), Seq("A.I."), Some(2001))
+    ListingShape.billedBeside(debate, Seq(spielberg)).isDefined shouldBe true
+  }
+
+  "A billing a feed's copied original title names only by one word run into another" should "not take that film" in {
+    // DE Centraltheater Brake (prod 2026-10-14, labelled wrong): "RAY WILSON", the former Genesis singer's concert, which
+    // Cineamo links to the 1944 "Wilson" (84084m) and copies that title as its original: the copy named "Wilson - Der
+    // Weltverbesserer" (2017), and the billing names it only by the surname a first name runs into
+    val films = Seq(F(346681, "Wilson - Der Weltverbesserer", 2017, "Craig Johnson", 94, 12, original = Some("Wilson")),
+      F(475186, "Wilson", 2017, "Someone", 90, 1), F(84084, "Wilson", 1944, "Henry King", 154, 1))
+    val concert = listing(KinoMuza, "RAY WILSON").copy(originalTitle = Some("Wilson"), catalogueIds = Seq(CatalogueId("cineamo", "84084m")))
+    val d = shipped(Seq(concert), films).decisionOf(concert.key)
+    withClue(d.render)(d.film should not be Some(346681))
+  }
+
+  "A whole title one of whose pieces a search's only film reads the other way round" should "not take that film" in {
+    // UK Watershed Bristol (prod 2026-10-14, labelled wrong): "About Time: Once Upon a Time (15)", an episode of John
+    // Berger's 1985 series, took "Once Upon a Time… All About My Mother" (2012), its search's only film, which carries
+    // every word of the billing, but its "About Time" the other way round, in "… All About My Mother"
+    val films = Seq(F(640160, "Once Upon a Time… All About My Mother", 2012, "Someone", 60, 1))
+    val berger = listing(PictureHouseUckfield, "About Time: Once Upon a Time")
+    val d = shipped(Seq(berger), films).decisionOf(berger.key)
+    withClue(d.render)(d.film shouldBe None)
+    // a billing's words in the film's order still take it ("Dzień Dziecka księdza Kaczkowskiego")
+    val kaczkowski = Seq(F(1395000, "Dzień Dziecka księdza Jana Kaczkowskiego", 2024, "Someone", 80, 1))
+    val ordered = listing(KinoMuza, "Dzień Dziecka księdza Kaczkowskiego")
+    shipped(Seq(ordered), kaczkowski).decisionOf(ordered.key).film shouldBe Some(1395000)
+    // a billing of one piece, its banner after the work (UK Hebden Bridge's "GÖTTERDÄMMERUNG Royal Opera"), still does
+    val ring = Seq(F(1702769, "Royal Ballet & Opera 2026/27: Götterdämmerung", 2027, "", 0, 0.5))
+    val banner = listing(PictureHouseUckfield, "GÖTTERDÄMMERUNG Royal Opera")
+    shipped(Seq(banner), ring).decisionOf(banner.key).film shouldBe Some(1702769)
   }
 
   "Nowe Horyzonty's 83-minute Your Name re-release" should "take Shinkai's film, whose record carries the English title it publishes" in {

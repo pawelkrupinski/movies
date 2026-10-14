@@ -376,9 +376,11 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  that happens to hold them. */
   private def wordsOfIts(scored: Scored): Boolean = {
     val own = IdentityMeasures.yearlessTokens(scored.listing.title)
+    // the billing's own pieces, when it has two or more ("About Time: Once Upon a Time")
+    lazy val pieces = TitlePartBreak.split(scored.listing.title).toSeq.map(IdentityMeasures.yearlessTokens).filter(_.nonEmpty)
     own.nonEmpty && (Seq(scored.candidate.film.title) ++ scored.candidate.film.originalTitle).exists { title =>
       own.forall(IdentityMeasures.yearlessTokens(title).contains) && touchesPartsWhole(own, title, scored.listing.title) &&
-        ((own.sizeIs >= 2 && coversItsTitle(own, title)) || IdentityMeasures.yearlessTokens(MainTitleBreak.split(title).head) == own)
+        ((own.sizeIs >= 2 && coversItsTitle(own, pieces, title)) || IdentityMeasures.yearlessTokens(MainTitleBreak.split(title).head) == own)
     }
   }
   /** Does the billing touch every part of `title` ([[TitlePartBreak]]) it touches at all by half that part's words or more?
@@ -400,19 +402,27 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
         billed.exists(_.subsetOf(touched.toSet))
     }
   }
-  /** Do the listing's words `own`, all of them the film's `title`'s, cover that title: more than half its words, or every
-   *  part of it ([[TitlePartBreak]]) they touch whole — "BALLET LIVE. MANON. ROYAL ÓPERA HOUSE" for "Manon (BALLET LIVE)".
-   *  Fewer are words scattered over a longer title (the wrong-match hunt, 10-14, 9 wrong to 1 right): DE "Simply
-   *  Christmas", a band's Advent concert, is no "Steve's Simply Happy Christmas Cook-A-Long", "DAS GEHEIME FILMARCHIV",
-   *  a secret-classic series, no "Das geheime Filmarchiv der Eva Braun". */
-  private def coversItsTitle(own: Seq[String], title: String): Boolean = {
+  /** Do the listing's words `own`, all of them the film's `title`'s, cover that title: more than half its words — each of
+   *  the billing's own `pieces`, when it bills two or more, read in the title's order ([[inOrder]]) — or every part of it
+   *  ([[TitlePartBreak]]) they touch whole — "BALLET LIVE. MANON. ROYAL ÓPERA HOUSE" for "Manon (BALLET LIVE)". Fewer are
+   *  words scattered over a longer title (the wrong-match hunt, 10-14, 9 wrong to 1 right): DE "Simply Christmas", a
+   *  band's Advent concert, is no "Steve's Simply Happy Christmas Cook-A-Long", "DAS GEHEIME FILMARCHIV", a secret-classic
+   *  series, no "Das geheime Filmarchiv der Eva Braun"; nor is a piece whose words the title reads the other way round
+   *  another's phrase: UK Watershed's "About Time: Once Upon a Time", an episode of Berger's series, is no "Once Upon a
+   *  Time… All About My Mother" (prod 2026-10-14). */
+  private def coversItsTitle(own: Seq[String], pieces: => Seq[Seq[String]], title: String): Boolean = {
     val words = own.toSet
-    val theirs = IdentityMeasures.yearlessTokens(title).toSet
-    words.size * 2 > theirs.size || {
+    val ordered = IdentityMeasures.yearlessTokens(title)
+    val theirs = ordered.toSet
+    (words.size * 2 > theirs.size && (pieces.sizeIs < 2 || pieces.forall(inOrder(_, ordered)))) || {
       val parts = TitlePartBreak.split(title).toSeq.map(IdentityMeasures.yearlessTokens).filter(_.nonEmpty)
       parts.filter(_.exists(words)).forall(_.forall(words))
     }
   }
+  /** Are `piece`'s words `title`'s in its order, others between them at most? */
+  private def inOrder(piece: Seq[String], title: Seq[String]): Boolean =
+    piece.foldLeft(Option(title)) { (rest, word) => rest.map(_.dropWhile(_ != word)).filter(_.nonEmpty).map(_.tail) }.isDefined
+
   /** Denied only by the probability cut — no learned rule, no pin — while every word of the listing's title is the
    *  film's: the cut is then the title's reading of a reordered banner, not a fact against it. ES Ocine's "Manon
    *  (BALLET LIVE)" ×7 is TMDB's "BALLET LIVE. MANON. ROYAL ÓPERA HOUSE", the one film its search returns, denied

@@ -51,7 +51,7 @@ object TitleWords {
     case Audience        extends Concept("audience")
     /** `StageRelays.StageHouseWords` and `ListingShape.HouseWords`. */
     case StageHouse      extends Concept("stage-house")
-    /** `ListingShape.HouseWords`. */
+    /** `ListingShape.HouseWords` and `ListingShape.StageWords` (`IdentityResolver.billedAsPiece`: a staging beside a film). */
     case Stage           extends Concept("stage")
     case HouseBanner     extends Concept("house-banner")
     /** `services.identity.ShortFilms.billsAShort`: a listing billing a short may take one. */

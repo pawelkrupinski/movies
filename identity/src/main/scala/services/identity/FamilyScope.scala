@@ -116,8 +116,19 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
     def shortUntaken(scored: Scored) =
       if (scored.denied || (IdentityMeasures.sameDirector(scored.measures) && !creditedFeature)) None
       else ShortFilms.untaken(listing, scored.candidate.tmdbId, scored.candidate.film, linked, features.nonEmpty)
+    // A film of the venue's own language is billed by its title: one the listing's titles share no word with is another
+    // film, however its director's credit or running time fits — a director's filmography and a running time are paths to
+    // candidates, never a title. UK Picture House Uckfield's "Gremlins Special Event" {Joe Dante} [120′] took Innerspace,
+    // "Social Reckoning" {Aaron Sorkin} [130′] The Trial of the Chicago 7, US "Sabotage (1937)" Hitchcock's Young and
+    // Innocent (prod 2026-10-14: every such take in the UK, DE and US wrong). A film of another language may be billed by a
+    // translation TMDB does not carry (PL "Kupiłem motocykl, który jest wampirem", the 1990 British film): left to the facts.
+    def ownLanguageUntitled(scored: Scored) = relation(scored.candidate.tmdbId) == "none" &&
+      country.exists(venue => scored.candidate.film.countries.exists(_.exists(IdentityMeasures.sharesLanguage(venue, _)))) &&
+      IdentityMeasures.sharesNoWord(listing, scored.candidate.film)
     candidates.map(scored =>
-      if (anotherRecordOfItsBroadcast(scored))
+      if (!scored.denied && ownLanguageUntitled(scored))
+        scored.copy(denial = Some("a film of the venue's own language its title shares no word with"))
+      else if (anotherRecordOfItsBroadcast(scored))
         scored.copy(denial = Some("another record of a broadcast its film database holds twice"))
       else if (titled && !IdentityMeasures.NamingRelations(relation(scored.candidate.tmdbId)) && IdentityMeasures.sameDirector(scored.measures))
         scored.copy(denial = Some("its director's other film, which the title does not name"))
@@ -256,7 +267,12 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
           val copied = listing.originalTitle.map(IdentityMeasures.key)
           val billed = listing.copy(originalTitle = None, searchTitles = listing.searchTitles.filterNot(title => copied.contains(IdentityMeasures.key(title))))
           val record = scoring.generation.recorded.get(candidate.tmdbId).fold(candidate.film)(_.film)
-          !IdentityMeasures.names(IdentityMeasures.titleRelation(billed, record, houses, qualifiers).value, billed, record)
+          // nor by one word a first name runs into, no delimited piece of the billing: DE Centraltheater Brake's "RAY
+          // WILSON", a singer's concert Cineamo links to the 1944 "Wilson" and copies that title from, named "Wilson - Der
+          // Weltverbesserer" (2017) only by the surname (prod 2026-10-14)
+          val pieces = IdentityMeasures.namingPieces(billed, record)
+          def byOneWordOnly = pieces.nonEmpty && pieces.forall(_.sizeIs == 1) && !billed.shapeKeys.exists(key => record.forms.exists(_.key == key))
+          !IdentityMeasures.names(IdentityMeasures.titleRelation(billed, record, houses, qualifiers).value, billed, record) || byOneWordOnly
         })(s"named only by the title its feed ($feed) copied" + linked.fold("")(film => s" from $film"))
     }
 
@@ -309,11 +325,12 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
       runtime       = runtimes.lift(runtimes.size / 2),
       countries     = evidence.flatMap(_._2.countries).distinct.sorted)
     val reached = cluster.map(reach)
+    val linked  = cluster.flatMap(node => feedLinked(node).map(_._2)).toSet
     val ranks = reached.flatMap(_.search).groupMapReduce(_._1)(_._2)(math.min)
     score(listing, lead.venue, ranks, reached.flatMap(_.walk).toSet, cluster.flatMap(sharedOf).toSet,
       id => cluster.iterator.flatMap(denialByNode(_, id)).nextOption(), reached.flatMap(_.imdbOnly).toSet -- ranks.keySet,
       reached.flatMap(_.directed).toSet,
-      reached.flatMap(_.imdbTitled).groupMapReduce(_._1)(_._2)(_ ++ _), lead.country, cluster.flatMap(feedLinked(_).map(_._2)).toSet)
+      reached.flatMap(_.imdbTitled).groupMapReduce(_._1)(_._2)(_ ++ _), lead.country, linked)
       .map(scored => if (scored.denied || cluster.forall(node => !of(node).exists(other => other.candidate.tmdbId == scored.candidate.tmdbId && other.denied))) scored else scored.copy(denial = Some("a member's own evidence rules it out")))
       .map(placedByImdb(cluster))
       .map(scored => reached.flatMap(_.imdbTitled.getOrElse(scored.candidate.tmdbId, Set.empty)).toSet match {

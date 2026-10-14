@@ -705,6 +705,27 @@ object IdentityMeasures {
   def titleRelation(l: Listing, f: Film, houses: StageRelays.Houses = StageRelays.Houses.Unknown, qualifiers: Qualifiers = Qualifiers.Unknown): Category =
     titleRelation(l, f, Some(houses), qualifiers)
 
+  /** Does none of the listing's own titles or its original share a word with any of the film's titles — not even one a
+   *  title runs together ("NTLive: Hayfever" of "National Theatre Live: Hay Fever"), a word of [[GluedWord]] letters at
+   *  least found inside the other's key, nor one misspelt by a letter ("Grenzrerfahrungen" of "Grenzerfahrungen", a word
+   *  of [[SpeltWord]] letters at least)? A title relation of `none`, read without the relation's pieces. */
+  def sharesNoWord(l: Listing, f: Film): Boolean = {
+    val own = l.ownForms ++ l.originalTitle.map(TitleForm(_))
+    def misspelt(a: TitleForm, b: TitleForm) =
+      a.words.exists(word => word.length >= SpeltWord && b.words.exists(other => tools.EditDistance.within(word, other, 1)))
+    !own.exists(a => f.forms.exists(b => a.wordSet.exists(b.wordSet) || misspelt(a, b) ||
+      a.words.exists(word => word.length >= GluedWord && b.key.contains(word)) || b.words.exists(word => word.length >= GluedWord && a.key.contains(word))))
+  }
+  private val GluedWord = 4
+  private val SpeltWord = 5
+
+  /** Do a venue of country `venue` and a film of country `film` (ISO-3166-1 codes) speak one language: the same country, or
+   *  two this deployment serves in one language ([[models.Country.all]]: the United Kingdom and the United States)? */
+  def sharesLanguage(venue: String, film: String): Boolean = venue == film || {
+    def language(country: String) = models.Country.all.find(_.language.getCountry == country).map(_.language.getLanguage)
+    language(venue).exists(language(film).contains)
+  }
+
   /** `houses`: `None` for two listings, whose banners name no house on record.
    *
    *  A record title that is only one of the listing's [[Qualifiers]] names nothing: "Director's
