@@ -45,6 +45,7 @@ Test: python3 scripts/ci/ci_timings_test.py
 import argparse
 import concurrent.futures
 import datetime
+import functools
 import json
 import os
 import re
@@ -273,6 +274,10 @@ class GitHub:
     def workflows(self):
         return [w["id"] for page in self.json("actions/workflows?per_page=100") for w in page["workflows"]]
 
+    @functools.lru_cache(maxsize=None)
+    def workflow_name(self, workflow_id):
+        return self.json("actions/workflows/%s" % workflow_id)[0]["name"]
+
     def workflow_runs(self, workflow_id, since, until):
         """Finished runs on main created in [since, until), dates as YYYY-MM-DD."""
         last = (datetime.date.fromisoformat(until) - datetime.timedelta(days=1)).isoformat()
@@ -290,6 +295,12 @@ class GitHub:
 
 
 
+def named(github, run):
+    """The run, named by its workflow: a workflow with a `run-name:` titles each run its own way, and GitHub names the run
+    by that title -- charted by it, every identity-measure dispatch would be a workflow of its own."""
+    return dict(run, name=github.workflow_name(run["workflow_id"]))
+
+
 def history(github, days, today=None):
     """One payload per finished run on main of the last `days` days, every workflow's -- but none a
     `timings` job already reported (see the header)."""
@@ -305,7 +316,7 @@ def history(github, days, today=None):
                 for run, raw in zip(runs, readers.map(lambda run: jobs_of(github, run), runs)):
                     if raw is None or any(job["name"] == REPORTER for job in raw):
                         continue
-                    payload = otlp_payload(run, collect(raw, lambda _job_id: ""))
+                    payload = otlp_payload(named(github, run), collect(raw, lambda _job_id: ""))
                     if payload:
                         yield payload
             since = until
@@ -340,6 +351,7 @@ def push_file(path, url, token, batch=25, opener=urllib.request.build_opener(NoR
 
 
 def handle(github, run, args, out=sys.stdout):
+    run = named(github, run)
     jobs = collect(github.jobs(run["id"]), github.log, exclude=set(args.exclude_job))
     report(run, jobs, out)
     summary = os.environ.get("GITHUB_STEP_SUMMARY")

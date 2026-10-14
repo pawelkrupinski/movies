@@ -225,6 +225,9 @@ class FakeGitHub:
     def workflows(self):
         return sorted({run["workflow_id"] for run in self.runs})
 
+    def workflow_name(self, workflow_id):
+        return "Workflow %s" % workflow_id
+
     def jobs(self, run_id):
         return self.jobs_of.get(run_id, [])
 
@@ -268,6 +271,21 @@ class HistoryTest(unittest.TestCase):
         self.assertTrue(all(span <= timings.HISTORY_WINDOW_DAYS for span in spans))
         self.assertEqual(github.asked[0][1], "2026-07-16")
         self.assertEqual(github.asked[-1][2], "2026-10-15")
+
+
+class WorkflowNameTest(unittest.TestCase):
+    """A workflow with a `run-name:` (identity measure, identity decorations) titles each run its own way, and GitHub
+    names the run by that title: charted by it, each run would be a workflow of its own on the board."""
+
+    def test_a_run_is_charted_under_its_workflow_s_name_not_its_run_name(self):
+        run = HistoryTest.run_(None, "a", "2026-10-01T10:00:00Z", workflow_id=3)
+        run["name"] = "identity measure w7v2"
+        github = FakeGitHub([run], {"a": UNREPORTED})
+        [payload] = timings.history(github, days=60, today=datetime.date(2026, 10, 14))
+        labels = {a["key"]: a["value"]["stringValue"] for a in
+                  payload["resourceMetrics"][0]["scopeMetrics"][0]["metrics"][0]["gauge"]["dataPoints"][0]["attributes"]}
+        self.assertEqual(labels["workflow"], "Workflow 3")
+        self.assertEqual(timings.named(github, run)["name"], "Workflow 3")
 
 
 class FlakyHistoryTest(unittest.TestCase):
