@@ -50,7 +50,9 @@ class LookupFillSpec extends AnyFlatSpec with Matchers {
                    fillClock: java.time.Clock = Clock.fixed(TestWiring.FixedInstant, ZoneOffset.UTC)) =
     new LookupFill(() => gaps(store), new clients.TmdbClient(_, apiKey = Some(settings.TmdbApiKey("k")), retrySleep = (_: Long) => ()),
       service, new TmdbNormalizer(store), IdentityLookupFillRate(rate), IdentityLookupFillInterval(30.minutes), rounds += _,
-      DaemonExecutors.directExecutor(), sleeps += _, beforeRound, refreshes, gapMemory, fillClock)
+      DaemonExecutors.directExecutor(), sleeps += _, beforeRound, refreshes,
+      // a memory of its own unless the test shares one: nothing remembered, every gap due
+      gapMemory.getOrElse(new TmdbGapMemory(new InMemoryTmdbDocuments, "pl-PL", fillClock)), fillClock)
 
   /** What the identity model over the store's answers finds unanswered — what a round asks. */
   private def modelGaps(s: TmdbStore): AnswersChanged = {

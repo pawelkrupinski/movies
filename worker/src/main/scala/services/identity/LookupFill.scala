@@ -135,10 +135,10 @@ final class LookupFill(
   window:      => settings.IdentityLookupFillInterval,
   metrics:     LookupFillMetrics,
   executor:    ExecutorService,
-  sleep:       Long => Unit = Thread.sleep,
-  beforeRound: () => Unit = () => (),
-  refreshes:   () => Seq[CandidateQuery] = () => Nil,
-  gapMemory:   Option[TmdbGapMemory] = None,
+  sleep:       Long => Unit,
+  beforeRound: () => Unit,
+  refreshes:   () => Seq[CandidateQuery],
+  gapMemory:   TmdbGapMemory,
   clock:       java.time.Clock
 ) extends Logging {
   // When the last round began: a round's allowance is the rate over the time since, never more than a `window` —
@@ -170,7 +170,7 @@ final class LookupFill(
     // TMDB's edits first (`TmdbChangesSweep`, when one is due): what changed is fetched again
     // before the model's gaps and refreshes are chosen.
     try beforeRound() catch { case NonFatal(e) => logger.warn("identity lookup fill: TMDB changes not swept, this round", e) }
-    val asked = gapMemory.fold(questions())(_.due(questions()))
+    val asked = gapMemory.due(questions())
     // Asked and still unanswered — not deferred for want of budget — is remembered (`TmdbGapMemory`):
     // a durable non-answer is asked again a day later, one whose read failed on a short backoff.
     def outcome[A](answer: => Answer[A]): LookupFill.Asked = {
@@ -184,14 +184,12 @@ final class LookupFill(
     val queryOutcomes = asked.queries.toSeq.sorted.map(q => q -> outcome(lookups.candidates(q)))
     val filmOutcomes  = asked.films.toSeq.sorted.map(id => id -> outcome(lookups.film(id)))
     def those[K](outcomes: Seq[(K, LookupFill.Asked)], kind: LookupFill.Asked) = outcomes.collect { case (k, `kind`) => k }
-    gapMemory.foreach { memory =>
-      memory.unanswered(those(queryOutcomes, LookupFill.Asked.Unanswered), those(filmOutcomes, LookupFill.Asked.Unanswered))
-      memory.failed(those(queryOutcomes, LookupFill.Asked.Failed), those(filmOutcomes, LookupFill.Asked.Failed))
-    }
+    gapMemory.unanswered(those(queryOutcomes, LookupFill.Asked.Unanswered), those(filmOutcomes, LookupFill.Asked.Unanswered))
+    gapMemory.failed(those(queryOutcomes, LookupFill.Asked.Failed), those(filmOutcomes, LookupFill.Asked.Failed))
     // Then, with what the allowance has left, questions asked again because they have aged
     // (`TmdbRefreshes`) — through the same live fetch.
     refreshes().iterator.takeWhile(_ => budget.remaining > 0).foreach(lookups.candidates)
-    gapMemory.foreach(_.roundEnded(budget.answered.get, budget.failed.get, budget.deferred.get))
+    gapMemory.roundEnded(budget.answered.get, budget.failed.get, budget.deferred.get)
     current = Some(if (budget.paceOverloaded) at.halved else IdentityLookupFillRate((at.perMinute * 2).min(rate.perMinute)))
     val r = LookupFillRound(budget.asked.get, budget.answered.get, budget.failed.get, budget.deferred.get, gaps.total,
       budget.backedOff, at)

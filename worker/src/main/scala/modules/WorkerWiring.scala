@@ -247,7 +247,7 @@ class WorkerWiring(
       liveFetch   = enrichmentFetch,
       normalizer  = identityTmdbNormalizer,
       beforeRound = () => if (identityTmdbChanges.behind) { identityTmdbChanges.sweep(); () },
-      gapMemory   = Some(new services.identity.TmdbGapMemory(identityTmdbDocuments, country.language.toLanguageTag, clock)),
+      gapMemory   = new services.identity.TmdbGapMemory(identityTmdbDocuments, country.language.toLanguageTag, clock),
       refreshes   = () => identityModel.peek(WorkerWiring.IdentityModelPeek)
         .fold(Seq.empty[services.identity.CandidateQuery])(snapshot => identityTmdbRefreshes.due(snapshot.questions)),
       rate        = configuration.identityLookupFillRate(WorkerWiring.DefaultLookupFillRate),

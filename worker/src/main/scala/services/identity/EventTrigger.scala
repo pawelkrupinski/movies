@@ -14,18 +14,19 @@ import scala.concurrent.duration._
  * with no period between.
  *
  * A run that did not settle (a projection refused, failed, a write declined, a film's TMDB details still missing) runs again after
- * a backoff (`retryAfter`, doubling to `retryAtMost`), which a settled one resets: there is no period to come back on.
+ * a backoff ([[EventTrigger.RetryAfter]], doubling to [[EventTrigger.RetryAtMost]]), which a settled one resets: there is no
+ * period to come back on.
  * [[retry]] asks the same of a run made elsewhere (the hourly reconcile).
  *
  * Requests arrive from the model's thread; `run` runs on `scheduler`'s.
  */
-final class EventTrigger(run: () => Boolean, debounce: MovieChangeStream.Debounce, scheduler: ScheduledExecutorService,
-                              clock: Clock, retryAfter: FiniteDuration = EventTrigger.RetryAfter,
-                              retryAtMost: FiniteDuration = EventTrigger.RetryAtMost) {
+final class EventTrigger(run: () => Boolean, debounce: MovieChangeStream.Debounce, scheduler: ScheduledExecutorService, clock: Clock) {
+  import EventTrigger.{RetryAfter, RetryAtMost}
+
   private var pending: Option[ScheduledFuture[?]] = None
   /** Each window's burst since the last run: its first request, and when it is due. */
   private val bursts  = scala.collection.mutable.Map.empty[MovieChangeStream.Debounce, (Long, Long)]
-  private var backoff = retryAfter
+  private var backoff = RetryAfter
 
   /** Run within `debounce` of now, with whatever else asks in the meantime. */
   def request(): Unit = request(debounce)
@@ -43,7 +44,7 @@ final class EventTrigger(run: () => Boolean, debounce: MovieChangeStream.Debounc
   /** Run after the current backoff, unless a run is already due sooner; the backoff doubles. */
   def retry(): Unit = synchronized {
     val in = backoff.toMillis
-    backoff = (backoff * 2).min(retryAtMost)
+    backoff = (backoff * 2).min(RetryAtMost)
     if (pending.forall(_.getDelay(TimeUnit.MILLISECONDS) > in)) schedule(in)
   }
 
@@ -64,7 +65,7 @@ final class EventTrigger(run: () => Boolean, debounce: MovieChangeStream.Debounc
 
   private def fire(): Unit = {
     synchronized { pending = None; bursts.clear() }
-    if (run()) synchronized { backoff = retryAfter } else retry()
+    if (run()) synchronized { backoff = RetryAfter } else retry()
   }
 }
 
