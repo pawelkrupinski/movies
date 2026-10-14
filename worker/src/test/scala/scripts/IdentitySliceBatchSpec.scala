@@ -29,9 +29,12 @@ class IdentitySliceBatchSpec extends AnyFlatSpec with Matchers {
     val running = new java.util.concurrent.atomic.AtomicInteger()
     val most    = new java.util.concurrent.atomic.AtomicInteger()
     val handed  = scala.collection.mutable.ListBuffer.empty[Int]
+    // The first three slices hold until all three run, so "at once" is proven, not timed.
+    val allThree = new java.util.concurrent.CountDownLatch(3)
     IdentitySlice.inOrder(Seq(5, 4, 3, 2, 1), threads = 3) { n =>
       most.accumulateAndGet(running.incrementAndGet(), math.max)
-      Thread.sleep(n * 20L)
+      allThree.countDown()
+      allThree.await(tools.SpecTimeouts.Io.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS)
       running.decrementAndGet()
       n
     }(handed += _)
