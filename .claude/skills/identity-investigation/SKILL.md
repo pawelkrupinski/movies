@@ -29,6 +29,9 @@ Design and limits: docs/design/identity-slice.md.
 | Measure a rule change over many listings | `scripts/identity-slice de --batch FILE --ref BASE --ref HEAD [--labels TSV]` → cured / lost / new-wrong |
 | Pin a repro as a failing test | `… --emit-case` → `test/resources/fixtures/identity-slices/`, `IdentitySliceCasesSpec` (expected film from labels.tsv only) |
 | Does arrival order (the worker's incremental model) move it? | `… --orders 12` |
+| Does a CHANGED projection take it otherwise than the periodic one? | `… --modes 4` |
+| Agreement takes (Agreed, Filled, Poster): read prod's filed family answers | default `--families` = this checkout's capture; without them the families agree on nothing (as in every hermetic leg) |
+| Does the slice's agreement decide as the capture's replay? | `scripts/identity-slice uk --faithfulness capture --sample 60` |
 | Does the slice decide as the whole leg did? | `scripts/identity-slice de --faithfulness <convergence run id> --sample 60` |
 | Why did «title» at a venue take film X (or none)? | `scripts/identity-explain de --venue cinestar --title "rückkehr des königs"` |
 | Did commit Y change that, and how? | `… --ref Y~1 --ref Y` (side by side, then the traces' diff) |

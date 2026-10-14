@@ -23,7 +23,8 @@ mkdir -p "$repo/scripts" "$repo/worker/src/test/scala/scripts" "$repo/worker/src
 cp "$REPO_ROOT/scripts/identity-slice" "$REPO_ROOT/scripts/identity-tools.sh" "$REPO_ROOT/scripts/identity_slice_diff.py" "$repo/scripts/"
 for f in worker/src/test/scala/scripts/IdentitySlice.scala worker/src/test/scala/scripts/IdentityExplain.scala \
   worker/src/test/scala/services/identity/IdentitySlicing.scala worker/src/fixtures/scala/tools/RecordedCorpus.scala \
-  worker/src/fixtures/scala/tools/SliceHttp.scala worker/src/fixtures/scala/tools/MemoLookups.scala worker/src/fixtures/scala/tools/CatalogueFill.scala; do
+  worker/src/fixtures/scala/tools/SliceHttp.scala worker/src/fixtures/scala/tools/MemoLookups.scala worker/src/fixtures/scala/tools/CatalogueFill.scala \
+  worker/src/fixtures/scala/tools/FiledAnswers.scala; do
   echo "// $f" > "$repo/$f"
 done
 echo "build" > "$repo/build.sbt"
@@ -69,6 +70,7 @@ out=$(slice de --recording 777 --key 'Kino|Lalka' --ref HEAD~1 --ref HEAD)
 check "both refs are laid out once in the cache" "2" "$(find "$cache/refs" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')"
 check "...with the tool's files dropped in" "// worker/src/test/scala/scripts/IdentitySlice.scala" "$(cat "$cache/refs/$base/worker/src/test/scala/scripts/IdentitySlice.scala")"
 check "each ref decides on the SAME recording" "2" "$(grep -c -- "--recording $cache/recordings/777/pair/test/resources/fixtures" "$work/calls")"
+check "...each reading prod's filed answers from this checkout's capture" "2" "$(grep -c -- "--families $repo/test/resources/fixtures/identity-unmatched/de.json.gz" "$work/calls")"
 check "...each under its own commit" "1" "$(grep -c -- "--ref $head" "$work/calls")"
 check "the moves are tallied against the labels" "TALLY cured 1, lost 1, new-wrong 1, won 0, moved (unjudged) 0" "$(grep '^TALLY' <<< "$out")"
 check "...each move shown with its verdict at both refs" "1" "$(grep -c 'Kino | Emil: tmdb:2 .Emil (2001). via OwnMatch \[RIGHT\] -> none via BelowThreshold \[-\]' <<< "$out")"

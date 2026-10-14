@@ -25,6 +25,14 @@
 #   --emit-case   pin the listing as a FAILING TEST: the slice copied to test/resources/fixtures/identity-slices/, its expected
 #                 film taken from labels.tsv (never from the take), each label shown with its own note; refused when
 #                 labels.tsv does not judge the listing. IdentitySliceCasesSpec replays every such slice.
+#   --modes N     also take the slice through N CHANGED projections — a fresh agreement stage over the periodic one's stored
+#                 verdicts, reading only the listings at a random half of the venues, as tickChanged does — and name every
+#                 listing whose take a changed projection flips
+#   --families P  prod's filed family answers, which no recording holds: an unmatched-cluster capture (default this
+#                 checkout's test/resources/fixtures/identity-unmatched/<cc>.json.gz), or `none`. Without them the
+#                 families agree on nothing — as in a hermetic leg. The slice keeps those it read, named as prod's.
+#   --faithfulness capture  the agreement-taken listings (Agreed, Filled, Poster, …) of that capture as this code's agreement
+#                 takes them, each sliced alone on the capture's recording and compared
 #   --labels TSV  judge the takes by this labels.tsv (default this checkout's) — the same labels at both refs
 #   --log LINE    a prod `identity take change:` line from VictoriaLogs: its country, venue and listing, at its build
 #   --faithfulness RUN  the slice's take of a sample of listings against what that "Identity model convergence" run's leg
@@ -53,21 +61,22 @@ need_ref() {
 TOOL_FILES=(worker/src/test/scala/scripts/IdentitySlice.scala worker/src/test/scala/scripts/IdentityExplain.scala
   worker/src/test/scala/services/identity/IdentitySlicing.scala worker/src/fixtures/scala/tools/RecordedCorpus.scala
   worker/src/fixtures/scala/tools/SliceHttp.scala worker/src/fixtures/scala/tools/MemoLookups.scala
-  worker/src/fixtures/scala/tools/CatalogueFill.scala)
+  worker/src/fixtures/scala/tools/CatalogueFill.scala worker/src/fixtures/scala/tools/FiledAnswers.scala)
 
-labels="" cc="" refs=() run="" pass=() batch="" bisect="" log="" faith="" sample=50 seed=1
+families="" labels="" cc="" refs=() run="" pass=() batch="" bisect="" log="" faith="" sample=50 seed=1
 if [ "$1" != "--log" ]; then cc=$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]'); shift; fi
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --ref) refs+=("$2"); shift 2 ;;
     --recording) run=$2; shift 2 ;;
-    --venue|--title|--key|--widen|--orders) pass+=("$1" "$2"); shift 2 ;;
+    --venue|--title|--key|--widen|--orders|--modes) pass+=("$1" "$2"); shift 2 ;;
     --batch) batch=$(cd "$(dirname "$2")" && pwd)/$(basename "$2"); shift 2 ;;
     --bisect) bisect=$2; shift 2 ;;
     --emit-case) pass+=(--emit-case "$IDENTITY_REPO/test/resources/fixtures/identity-slices"); shift ;;
     --log) log=$2; shift 2 ;;
     --faithfulness) faith=$2; shift 2 ;;
     --sample) sample=$2; shift 2 ;;
+    --families) if [ "$2" = none ]; then families=none; else families=$(cd "$(dirname "$2")" && pwd)/$(basename "$2"); fi; shift 2 ;;
     --seed) seed=$2; shift 2 ;;
     --labels) labels=$(cd "$(dirname "$2")" && pwd)/$(basename "$2"); shift 2 ;;
     *) echo "unknown argument $1" >&2; usage >&2; exit 2 ;;
@@ -91,17 +100,31 @@ fi
 
 work=$(mktemp -d "${TMPDIR:-/tmp}/identity-slice.XXXXXX"); trap 'rm -rf "$work"' EXIT
 labels=${labels:-$repo/test/resources/fixtures/identity-unmatched/labels.tsv}
+# prod's filed family answers (no recording holds them): this checkout's unmatched-cluster capture unless named
+families=${families:-$repo/test/resources/fixtures/identity-unmatched/$cc.json.gz}
 
 # run <tree> <ref label> <out.tsv> <args...> -> that tree's IdentitySlice
 run_at() {
   local tree=$1 ref=$2 out=$3 cp; shift 3
   cp=$(identity_classpath "$tree") || return 1
   (cd "$tree" && "${IDENTITY_JAVA[@]}" -cp "$cp" scripts.IdentitySlice "$cc" --recording "$recording" --cache "$IDENTITY_CACHE/slice/$run" \
-    --ref "$ref" --labels "$labels" --out "$out" "$@")
+    --ref "$ref" --labels "$labels" --families "$families" --out "$out" "$@")
 }
 tree_of() { if [ "$1" = "." ]; then echo "$repo"; else need_ref "$1"; identity_tree "$1" "${TOOL_FILES[@]}"; fi; }
 sha_of() { if [ "$1" = "." ]; then echo "worktree"; else git -C "$repo" rev-parse --verify "$1^{commit}"; fi; }
 
+if [ "$faith" = capture ]; then
+  # the agreement-taken listings: the unmatched-cluster capture's, as this code's agreement takes them over prod's filed
+  # answers, on the recording the capture was made from — what no hermetic leg takes
+  [ "$families" != none ] && [ -f "$families" ] || { echo "--faithfulness capture needs the capture (--families PATH)" >&2; exit 2; }
+  [ -n "$run" ] || run=$(awk -F'\t' '$1 == "recording" { print $2 }' "${families%.json.gz}.inputs" 2>/dev/null || true)
+  [ -n "$run" ] || { echo "no recording named beside $families (${families%.json.gz}.inputs): name it with --recording" >&2; exit 1; }
+  recording=$(identity_recording "$run" "$cc")
+  ref=${refs[0]:-.}
+  identity_log "faithfulness of the agreement takes: $families at ${ref} on recording $run, $sample listing(s)"
+  run_at "$(tree_of "$ref")" "$(sha_of "$ref")" "$work/faith.tsv" --faithfulness "$families" --sample "$sample" --seed "$seed"
+  exit
+fi
 if [ -n "$faith" ]; then
   # the leg's own takes, its commit and its pinned recording
   diag=$IDENTITY_CACHE/diagnostics/$faith

@@ -52,7 +52,7 @@ object IdentitySlice {
 
   final case class Options(country: String = "", recording: Option[Path] = None, cache: Option[Path] = None, slices: Option[Path] = None,
                            selectors: Seq[Selector] = Nil, replay: Seq[Path] = Nil, labels: Option[Path] = None, out: Option[Path] = None,
-                           faithfulness: Option[Path] = None, sample: Int = 50, seed: Long = 1, widen: Int = 0, orders: Int = 0, ref: String = "",
+                           faithfulness: Option[Path] = None, sample: Int = 50, seed: Long = 1, widen: Int = 0, orders: Int = 0, modes: Int = 0, families: Option[Path] = None, ref: String = "",
                            pending: (Option[String], Option[String]) = (None, None), emitCase: Option[Path] = None)
 
   def parse(args: List[String], o: Options = Options()): Options = args match {
@@ -67,6 +67,8 @@ object IdentitySlice {
     case "--sample" :: v :: rest       => parse(rest, o.copy(sample = v.toInt))
     case "--seed" :: v :: rest         => parse(rest, o.copy(seed = v.toLong))
     case "--orders" :: v :: rest       => parse(rest, o.copy(orders = v.toInt))
+    case "--modes" :: v :: rest        => parse(rest, o.copy(modes = v.toInt))
+    case "--families" :: v :: rest     => parse(rest, o.copy(families = Option.when(v != "none")(Path.of(v))))
     case "--widen" :: v :: rest        => parse(rest, o.copy(widen = v.toInt))
     case "--emit-case" :: v :: rest    => parse(rest, o.copy(emitCase = Some(Path.of(v))))
     case "--replay" :: v :: rest       => parse(rest, o.copy(replay = o.replay :+ Path.of(v)))
@@ -122,7 +124,9 @@ object IdentitySlice {
   }
 
   /** What every decision of a slice reads: its fetch, the lookups over it and the clock. */
-  final class Reads(val country: Country, val fetch: tools.HttpFetch, val gaps: TmdbIdentityLookups.Gaps, val clock: Clock) {
+  final class Reads(val country: Country, val fetch: tools.HttpFetch, val gaps: TmdbIdentityLookups.Gaps, val clock: Clock,
+                    /** The answers no recording holds — prod's filed family answers, the capture's live TMDB ones — read where the recording has none ([[tools.FiledAnswers]]). */
+                    val filed: tools.FiledAnswers) {
     val normalizer: TitleNormalizer = TitleNormalizer.forCountry(country)
     val tmdb = new clients.TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey(StubTmdbKey)), language = country.language, retrySleep = (_: Long) => ())
     private val venueClock = new models.VenueClock(clock)
@@ -131,7 +135,10 @@ object IdentitySlice {
       val catalog = new services.cinemas.CinemaScraperCatalog(fetch, venueClock, clock, normalizer)
       country.cities.flatMap(c => catalog.byCity.getOrElse(c, Nil)).collect { case de: services.cinemas.common.DetailEnricher => de }.distinct
     }
-    val lookups: IdentityLookups = new TmdbIdentityLookups(tmdb, new services.enrichment.ImdbClient(fetch), enrichers, gaps)
+    private val recorded = new TmdbIdentityLookups(tmdb, new services.enrichment.ImdbClient(fetch), enrichers, gaps)
+    /** The recording's answers, and the filed ones where it has none — each filed one read noted. */
+    val filedLookups: Option[tools.FiledAnswers.Lookups] = Option.when(!filed.isEmpty)(new tools.FiledAnswers.Lookups(recorded, filed))
+    val lookups: IdentityLookups = filedLookups.getOrElse(recorded)
     val families: Seq[VoterFamily] = UnmatchedClusters.familiesOf(country)
     val sources: Map[VoterFamily, FamilySource] = Seq(new ImdbFamily(new services.enrichment.ImdbClient(fetch)),
       new WikiFamily(new services.enrichment.WikidataClient(fetch), country.language.getLanguage),
@@ -150,7 +157,12 @@ object IdentitySlice {
 
   /** A slice decided: the model's decisions on its core, the final ones after the agreement stage, what the stage left
    *  open, and the requests its fetch met as gaps of the recording. */
-  final case class Decided(model: Seq[ResolverDecision], agreed: Resolution, open: Set[(VoterFamily, String)], unreachable: Set[(VoterFamily, String)])
+  final case class Decided(model: Seq[ResolverDecision], agreed: Resolution, open: Set[(VoterFamily, String)], unreachable: Set[(VoterFamily, String)],
+                           /** The prod-filed answers the agreement read: what the slice keeps of them. */
+                           filedRead: Option[tools.FiledAnswers] = None,
+                           /** A CHANGED projection's take of the same model: the stage's stored verdicts, a fresh stage (a pod
+                            *  start) and only the listings at `venues` read again, as `IdentityProjection.tickChanged` hands it. */
+                           changed: Set[String] => Resolution = _ => Resolution(Nil, 0, Map.empty, Nil, Nil, 0, 0, 0, 0, 0, Map.empty))
 
   def decide(core: Seq[Listing], context: Seq[Listing], reads: Reads, label: String): Decided =
     agree(IdentitySlicing.resolve(core, context, reads.lookups, reads.normalizer), core, reads, label)
@@ -166,24 +178,38 @@ object IdentitySlice {
   }
 
   def agree(model: Seq[ResolverDecision], core: Seq[Listing], reads: Reads, label: String): Decided = {
-    val store    = new FamilyAnswerStore(new InMemoryTmdbDocuments, reads.clock)
+    // prod's filed family answers first, as the worker's store holds them; the rest asked of the recording
+    val docs     = new tools.FiledAnswers.Noting(reads.filed)
+    val store    = new FamilyAnswerStore(docs, reads.clock)
     val posters  = new PosterAnswerStore(store, reads.clock)
     val hashing  = new PosterHashing(new services.sharecards.EgressPosterDownload(reads.fetch), new services.sharecards.VipsPosterShrinker(binary = None),
       id => reads.tmdb.posters(id, also = Seq("en")), reads.country.language.getLanguage)
     val catalogue = new CatalogueFill(store, reads.clock, reads.fetch)
-    val stage = new AgreementStage(reads.families.map(f => f -> store.answers(f)).toMap, reads.lookups, reads.normalizer, IdentityCalibration.resolver,
-      tmdbOf = imdb => reads.gaps.answered(reads.tmdb.findByImdbId(imdb).map(_.id)), stored = new InMemoryAgreementVerdicts, clock = reads.clock,
+    val findsRead = new java.util.concurrent.ConcurrentHashMap[String, Option[Int]]()
+    // the recording's find first; one it does not hold, prod's filed one where there is
+    def tmdbOf(imdb: String): Answer[Option[Int]] = reads.gaps.answered(reads.tmdb.findByImdbId(imdb).map(_.id)) match {
+      case Answer.Unknown => reads.filed.finds.get(imdb).fold[Answer[Option[Int]]](Answer.Unknown) { found => findsRead.put(imdb, found); Answer.Known(found) }
+      case known          => known
+    }
+    val verdicts = new InMemoryAgreementVerdicts
+    def stage() = new AgreementStage(reads.families.map(f => f -> store.answers(f)).toMap, reads.lookups, reads.normalizer, IdentityCalibration.resolver,
+      tmdbOf = tmdbOf, stored = verdicts, clock = reads.clock,
       posters = posters, tmdb = Some(reads.lookups), identities = modules.wiring.IdentityCutoverWiring.identities(reads.country.code),
       catalogue = catalogue.answers, listedOn = modules.wiring.IdentityCutoverWiring.listedOn(reads.country.code),
       correctionPostersAtOnce = Int.MaxValue, correctionsPerApply = Int.MaxValue)
-    val byKey = core.map(l => l.key -> l).toMap
-    val asked = quietly(new tools.AgreementQuestionRounds(store, reads.sources, label).run(() => stage.apply(UnmatchedClusters.resolutionOf(model), byKey.get, store.version))(
-      _ => stage.wanted, pending = _ => stage.wantedPosters.nonEmpty || stage.wantedCatalogue.nonEmpty,
+    val periodic   = stage()
+    val byKey      = core.map(l => l.key -> l).toMap
+    val resolution = UnmatchedClusters.resolutionOf(model)
+    // a periodic projection: every listing read, nothing to build on
+    val asked = quietly(new tools.AgreementQuestionRounds(store, reads.sources, label).run(() => periodic.apply(resolution, byKey.get, store.version, None))(
+      _ => periodic.wanted, pending = _ => periodic.wantedPosters.nonEmpty || periodic.wantedCatalogue.nonEmpty,
       beside = { _ =>
-        tools.ConcurrentAsks.each(stage.wantedPosters.toSeq, atOnce = 8)(q => posters.file(q, Try(hashing.of(q)).getOrElse(Nil)))
-        catalogue.file(stage.wantedCatalogue)
+        tools.ConcurrentAsks.each(periodic.wantedPosters.toSeq, atOnce = 8)(q => posters.file(q, Try(hashing.of(q)).getOrElse(Nil)))
+        catalogue.file(periodic.wantedCatalogue)
       }))
-    Decided(model, asked.outcome, asked.open, asked.unreachable)
+    val changed = (venues: Set[String]) => stage().apply(resolution, key => byKey.get(key).filter(l => venues(l.venue)), store.version, Some(Nil))
+    Decided(model, asked.outcome, asked.open, asked.unreachable,
+      Some(tools.FiledAnswers.read(reads.filed, docs.read.asScala.toMap, findsRead.asScala.toMap, reads.filedLookups)), changed)
   }
 
   /** The rounds' own progress lines, kept off the report. */
@@ -196,7 +222,7 @@ object IdentitySlice {
    *  a change to how a scrape becomes a listing (the title rules, the normaliser) is a change the slice must show. */
   final case class Slice(country: Country, recording: String, recordedAt: Instant, selector: String, seeds: Set[ListingKey],
                          core: Seq[Listing], context: Seq[Listing], http: Map[SliceHttp.Request, SliceHttp.Outcome], extractedAt: Seq[String],
-                         rows: Seq[services.scrapes.ArchivedScrape])
+                         rows: Seq[services.scrapes.ArchivedScrape], filed: tools.FiledAnswers)
 
   /** The recording's `rows`, each venue's films cut to those billing one of `keys`. */
   def rowsOf(rows: Seq[services.scrapes.ArchivedScrape], keys: Set[ListingKey], normalizer: TitleNormalizer): Seq[services.scrapes.ArchivedScrape] =
@@ -224,6 +250,7 @@ object IdentitySlice {
     gzip(dir.resolve("slice.json.gz"), d.toJson)
     gzip(dir.resolve("rows.json.gz"), tools.CorpusFixture.render(slice.rows))
     SliceHttp.write(dir.resolve("http.jsonl.gz"), slice.http)
+    tools.FiledAnswers.write(dir, slice.filed)
   }
 
   def readSlice(dir: Path): Slice = {
@@ -236,7 +263,7 @@ object IdentitySlice {
     val context  = keys("context")
     Slice(country, d.getString("recording").getValue, recordedAt, d.getString("selector").getValue,
       keys("seeds"), listings.filterNot(l => context(l.key)), listings.filter(l => context(l.key)), SliceHttp.read(dir.resolve("http.jsonl.gz")),
-      d.getArray("extractedAt").getValues.asScala.toSeq.map(_.asString.getValue), rows)
+      d.getArray("extractedAt").getValues.asScala.toSeq.map(_.asString.getValue), rows, tools.FiledAnswers.readFrom(dir, country))
   }
 
   private def gzip(path: Path, text: String): Unit = {
@@ -358,11 +385,13 @@ object IdentitySlice {
     val out     = o.out.map { p => Files.createDirectories(p.toAbsolutePath.getParent); new java.io.PrintWriter(Files.newBufferedWriter(p, StandardCharsets.UTF_8)) }
     out.foreach(_.println(TakeHeader))
     val lacked = scala.collection.mutable.ListBuffer.empty[String]
+    // prod's filed family answers, from an unmatched-cluster capture: what no recording holds
+    val filed  = o.families.filter(Files.exists(_)).fold(tools.FiledAnswers.of(country))(tools.FiledAnswers.ofCapture)
     try {
       if (o.replay.nonEmpty) o.replay.foreach { dir =>
         val slice = readSlice(dir)
         val opened = o.recording.map(r => openRecording(Recording(r, country)))
-        lacked ++= replaySlice(slice, opened, labels, out, o.orders)
+        lacked ++= replaySlice(slice, opened, labels, out, o.orders, o.modes)
       }
       else {
         val recording = Recording(o.recording.getOrElse(sys.error("--recording DIR, or --replay SLICE_DIR")), country)
@@ -371,7 +400,7 @@ object IdentitySlice {
         val listings  = listingsOf(recording, opened.rows)
         val index     = indexOf(cache.resolve(s"index-${country.code}-${o.ref}.json.gz"), listings, opened)
         o.faithfulness match {
-          case Some(takes) => faithfulness(recording, opened, index, takes, o, labels, out)
+          case Some(takes) => faithfulness(recording, opened, index, takes, o, filed, out)
           case None =>
             if (o.selectors.isEmpty) sys.error("no selector: --venue/--title, --key or --batch")
             o.selectors.foreach { selector =>
@@ -379,8 +408,8 @@ object IdentitySlice {
               if (seeds.isEmpty) println(s"\n## ${selector.label}: no listing of recording ${recording.root} matches")
               else {
                 val dir   = o.slices.getOrElse(cache.resolve("slices")).resolve(selector.directoryName)
-                val slice = extract(recording, opened, index, seeds, selector.label, o.widen, dir, o.ref)
-                lacked ++= replaySlice(slice, None, labels, out, o.orders)
+                val slice = extract(recording, opened, index, seeds, selector.label, o.widen, dir, o.ref, filed)
+                lacked ++= replaySlice(slice, None, labels, out, o.orders, o.modes)
                 o.emitCase.foreach(target => emitCase(slice, dir, labels, target.resolve(s"${country.code}-${selector.directoryName}")))
               }
             }
@@ -400,8 +429,9 @@ object IdentitySlice {
     RecordedCorpus.open(recording.country, recording.corpus, settings.FixtureRoot(recording.root))
   }
 
-  def readsOf(opened: RecordedCorpus.Opened, fetch: tools.HttpFetch, gaps: TmdbIdentityLookups.Gaps, at: Instant): Reads =
-    new Reads(opened.country, fetch, gaps, Clock.fixed(at, ZoneOffset.UTC))
+  def readsOf(opened: RecordedCorpus.Opened, fetch: tools.HttpFetch, gaps: TmdbIdentityLookups.Gaps, at: Instant,
+              filed: Option[tools.FiledAnswers] = None): Reads =
+    new Reads(opened.country, fetch, gaps, Clock.fixed(at, ZoneOffset.UTC), filed.getOrElse(tools.FiledAnswers.of(opened.country)))
 
   /** The recording's whole-corpus index at this ref: read from `path`, else resolved (minutes) and kept there. */
   def indexOf(path: Path, listings: Seq[Listing], opened: RecordedCorpus.Opened): IdentitySlicing.Index =
@@ -419,7 +449,7 @@ object IdentitySlice {
   /** Cuts the seeds' slice out of the recording and decides it through a noting fetch; what it read is the slice — merged
    *  into one `dir` holds already (another ref's), so one slice serves every ref asked of it. */
   def extract(recording: Recording, opened: RecordedCorpus.Opened, index: IdentitySlicing.Index, seeds: Set[ListingKey], selector: String,
-              widen: Int, dir: Path, ref: String): Slice = {
+              widen: Int, dir: Path, ref: String, filed: tools.FiledAnswers): Slice = {
     val selection = IdentitySlicing.select(index, seeds, widen)
     // a slice of an older format, or one another agent is replacing, is no slice to merge
     val before    = Option.when(Files.exists(dir.resolve("rows.json.gz")))(Try(readSlice(dir)).toOption).flatten
@@ -427,10 +457,12 @@ object IdentitySlice {
     val coreKeys  = core.map(_.key).toSet
     val context   = ((selection.context ++ before.toSeq.flatMap(_.context.map(_.key))) -- coreKeys).flatMap(index.byKey.get).toSeq.sortBy(_.sortKey)
     val noting    = new SliceHttp.Noting(opened.fetch, () => opened.leaf.metOnThread)
-    decide(core, context, readsOf(opened, noting, opened.gaps, recording.recordedAt), selector)
+    val decided   = decide(core, context, readsOf(opened, noting, opened.gaps, recording.recordedAt, Some(filed)), selector)
+    val was       = before.fold(tools.FiledAnswers.of(recording.country))(_.filed)
     val slice = Slice(recording.country, recording.root.toString, recording.recordedAt, selector, seeds ++ before.toSeq.flatMap(_.seeds),
       core, context, before.fold(Map.empty[SliceHttp.Request, SliceHttp.Outcome])(_.http) ++ noting.noted.asScala, (before.toSeq.flatMap(_.extractedAt) :+ ref).distinct,
-      rowsOf(opened.rows, coreKeys ++ context.map(_.key), TitleNormalizer.forCountry(recording.country)))
+      rowsOf(opened.rows, coreKeys ++ context.map(_.key), TitleNormalizer.forCountry(recording.country)),
+      decided.filedRead.fold(was)(tools.FiledAnswers.merge(was, _)))
     writeSlice(dir, slice)
     System.err.println(s"[identity-slice] ${selector}: ${seeds.size} seed(s), core ${core.size}, context ${context.size}, ${slice.http.size} answers → $dir")
     slice
@@ -439,10 +471,10 @@ object IdentitySlice {
   /** Decides `slice` from its own answers alone (widened from `recording` where given); prints and writes its takes, and
    *  returns what it lacked. */
   def replaySlice(slice: Slice, recording: Option[RecordedCorpus.Opened], labels: Seq[UnmatchedClusters.Label], out: Option[java.io.PrintWriter],
-                  orders: Int = 0): Seq[String] = {
+                  orders: Int = 0, modes: Int = 0): Seq[String] = {
     val widen     = recording.map(r => new SliceHttp.Noting(r.fetch, () => r.leaf.metOnThread))
     val replaying = new SliceHttp.Replaying(slice.http, widen)
-    val reads     = new Reads(slice.country, replaying, replaying.gaps, Clock.fixed(slice.recordedAt, ZoneOffset.UTC))
+    val reads     = new Reads(slice.country, replaying, replaying.gaps, Clock.fixed(slice.recordedAt, ZoneOffset.UTC), slice.filed)
     val started   = System.nanoTime()
     val decided   = decide(slice.core, slice.context, reads, slice.selector)
     val wanted    = slice.seeds.toSeq.sortBy(ListingKey.serialised)
@@ -456,6 +488,28 @@ object IdentitySlice {
       println(s"UNANSWERED by the recording (read as unknown, as the leg reads them): ${replaying.gapsMet.asScala.map(_.render).toSeq.sorted.take(12).mkString("; ")}" +
         (if (replaying.gapsMet.size > 12) s" … ${replaying.gapsMet.size - 12} more" else ""))
     if (replaying.widened.nonEmpty) println(s"WIDENED from the recording: ${replaying.widened.size} answer(s) this ref asked that the slice lacked")
+    decided.filedRead.filterNot(_.isEmpty).foreach { read =>
+      println(s"FILED, NOT THE RECORDING'S: the decision read ${read.render} the recording does not hold (${slice.filed.source}) — prod's and the capture's live answers")
+    }
+    if (slice.filed.isEmpty && decided.open.nonEmpty)
+      println("NO FILED FAMILY ANSWERS: the agreement read only the recording, which holds none of prod's — its families agree on nothing " +
+        "(pass --families <an unmatched-cluster capture> to read prod's)")
+    // the projection modes: a periodic projection reads every listing; a CHANGED one, a fresh stage over the stored
+    // verdicts reading only the listings at the venues it re-scraped — each a random half of the slice's venues
+    if (modes > 0) {
+      val periodic = takes.map(t => t.key -> t.film).toMap
+      val venues   = slice.core.map(_.venue).distinct.sorted
+      val moved = (1 to modes).flatMap { seed =>
+        val subset  = new scala.util.Random(seed).shuffle(venues).take(math.max(1, venues.size / 2)).toSet
+        val changed = decided.changed(subset)
+        wanted.flatMap(k => changed.decisionOf.get(k).map(filmOf).filter(f => !periodic.get(k).contains(f)).map(f => (seed, k, f, subset(k.venue))))
+      }
+      if (moved.isEmpty) println(s"PROJECTION MODES: $modes changed projections take what the periodic one takes")
+      else moved.groupBy(m => (m._2, m._3)).toSeq.sortBy(_._1._1.venue).foreach { case ((k, film), at) =>
+        println(s"PROJECTION MODE FLIP ${k.venue} | ${k.rawTitle}: ${periodic.getOrElse(k, "none")} periodic, $film changed in ${at.size} of $modes " +
+          s"(its venue ${if (at.forall(_._4)) "re-scraped" else if (at.forall(!_._4)) "not re-scraped" else "re-scraped or not"})")
+      }
+    }
     out.foreach(w => takes.foreach(t => w.println(t.tsv)))
     // arrival order: the incremental model fed the slice shuffled, model and agreement, against the whole resolve's takes
     if (orders > 0) {
@@ -510,7 +564,7 @@ object IdentitySlice {
   def takesOf(dir: Path): Map[(String, String), String] = {
     val slice     = readSlice(dir)
     val replaying = new SliceHttp.Replaying(slice.http)
-    val reads     = new Reads(slice.country, replaying, replaying.gaps, Clock.fixed(slice.recordedAt, ZoneOffset.UTC))
+    val reads     = new Reads(slice.country, replaying, replaying.gaps, Clock.fixed(slice.recordedAt, ZoneOffset.UTC), slice.filed)
     val decided   = decide(slice.core, slice.context, reads, slice.selector)
     require(replaying.lacking.isEmpty, s"the slice $dir lacks answers: ${replaying.lacking.asScala.map(_.render).toSeq.sorted.take(5).mkString("; ")}")
     slice.seeds.toSeq.flatMap(key => decided.agreed.decisionOf.get(key).map(d => (key.venue, key.rawTitle) -> filmOf(d))).toMap
@@ -518,14 +572,22 @@ object IdentitySlice {
 
   // ── faithfulness: a slice's take against the whole convergence leg's ────────────────────────
 
+  /** The bases the agreement stage takes or moves a film by. */
+  val AgreementTakes: Set[ResolverDecision.Basis] = { import ResolverDecision.Basis._; Set(Agreed, Poster, Broadcast, Filled, Catalogue, Withdrawn, Corrected) }
+
   def faithfulness(recording: Recording, opened: RecordedCorpus.Opened, index: IdentitySlicing.Index, takesPath: Path, o: Options,
-                   labels: Seq[UnmatchedClusters.Label], out: Option[java.io.PrintWriter]): Unit = {
+                   filed: tools.FiledAnswers, out: Option[java.io.PrintWriter]): Unit = {
     val leg     = UnmatchedClusters.read(takesPath)
-    val legOf   = leg.decisions.flatMap(d => d.members.map(_ -> d)).toMap
+    // a convergence leg's takes as it took them; an unmatched-cluster capture's (it holds prod's filed family answers) as
+    // this code's agreement stage takes them over its captured model decisions — the agreement-taken listings no hermetic
+    // leg has, and only those
+    val ofCapture = leg.families.nonEmpty
+    val legDecisions = if (ofCapture) UnmatchedClusters.replay(leg).agreed.decisions else leg.decisions
+    val legOf   = legDecisions.flatMap(d => d.members.map(_ -> d)).toMap
     val ours    = index.byKey
-    // matched and unmatched alike, a fixed sample: half the leg's takes by the model, the rest its agreement's and its no-matches
     val rnd     = new scala.util.Random(o.seed)
     val inBoth  = leg.listings.map(_.key).filter(ours.contains)
+      .filter(k => !ofCapture || legOf.get(k).exists(d => AgreementTakes(d.basis)))
     // every basis the leg decided by — model, agreement and no-match alike — an equal share, the rest topped up at random
     val byKind  = inBoth.groupBy(k => legOf.get(k).map(_.basis.toString).getOrElse("missing")).toSeq.sortBy(_._1)
       .map { case (kind, keys) => kind -> rnd.shuffle(keys.sortBy(ListingKey.serialised)) }
@@ -534,39 +596,57 @@ object IdentitySlice {
     val sample  = (even ++ rnd.shuffle(byKind.flatMap(_._2.drop(share))).take(math.max(0, o.sample - even.size))).take(o.sample)
     println(s"# faithfulness: ${sample.size} listing(s) of ${takesPath} (${leg.listings.size} listings; ${inBoth.size} in this recording) by the leg's basis: " +
       sample.groupBy(k => legOf.get(k).map(_.basis.toString).getOrElse("-")).map { case (b, ks) => s"$b ${ks.size}" }.toSeq.sorted.mkString(", "))
-    var agree = 0
+    var alike = 0
     var agreeWider = 0
+    var agreeStage = 0
     val misses = scala.collection.mutable.ListBuffer.empty[String]
     sample.zipWithIndex.foreach { case (key, i) =>
       val started   = System.nanoTime()
       val selection = IdentitySlicing.select(index, Set(key), o.widen)
       val core      = selection.core.flatMap(ours.get).toSeq.sortBy(_.sortKey)
       val context   = selection.context.flatMap(ours.get).toSeq.sortBy(_.sortKey)
-      val decided   = decide(core, context, readsOf(opened, opened.fetch, opened.gaps, recording.recordedAt), s"faithfulness $i")
+      val decided   = decide(core, context, readsOf(opened, opened.fetch, opened.gaps, recording.recordedAt, Some(filed)), s"faithfulness $i")
       val mine      = decided.agreed.decisionOf.get(key).map(filmOf).getOrElse("missing")
       val theirs    = legOf.get(key).map(filmOf).getOrElse("missing")
       val same      = mine == theirs
-      if (same) agree += 1
+      if (same) alike += 1
       val legMembers = legOf.get(key).toSeq.flatMap(_.members).toSet
       val outside    = legMembers -- core.map(_.key)
+      // a capture's: the agreement stage alone, over the CAPTURED model decisions of the slice's core — what the capture's
+      // replay hands it — and whether this code's model decides the listing as the captured one did
+      val (stageLine, modelMoved) = if (!ofCapture) ("", "") else {
+        val coreKeys = core.map(_.key).toSet
+        val captured = leg.decisions.filter(_.members.exists(coreKeys))
+        val staged   = agree(captured, core, readsOf(opened, opened.fetch, opened.gaps, recording.recordedAt, Some(filed)), s"faithfulness $i stage")
+        val film     = staged.agreed.decisionOf.get(key).map(filmOf).getOrElse("missing")
+        if (film == theirs) agreeStage += 1
+        val was = leg.decisions.find(_.members.contains(key))
+        val now = UnmatchedClusters.resolutionOf(decided.model).decisionOf.get(key)
+        (s"\tstage over the captured model: ${if (film == theirs) "SAME" else s"DIFF $film"}",
+          if (was.map(d => (filmOf(d), d.unanswered)) == now.map(d => (filmOf(d), d.unanswered))) ""
+          else s"this code's model decides it otherwise than the captured one (${now.fold("-")(d => s"${d.basis}, ${d.unanswered} unanswered")} against " +
+            s"${was.fold("-")(d => s"${d.basis}, ${d.unanswered} unanswered")}): the captured model read an answer neither the recording nor the capture holds")
+      }
       // a slice that differs is decided again one ring wider: what the next investigation of it should ask for
       def widened = {
         val wider = IdentitySlicing.select(index, Set(key), o.widen + 1)
         val again = decide(wider.core.flatMap(ours.get).toSeq.sortBy(_.sortKey), wider.context.flatMap(ours.get).toSeq.sortBy(_.sortKey),
-          readsOf(opened, opened.fetch, opened.gaps, recording.recordedAt), s"faithfulness $i wider")
+          readsOf(opened, opened.fetch, opened.gaps, recording.recordedAt, Some(filed)), s"faithfulness $i wider")
         val film = again.agreed.decisionOf.get(key).map(filmOf).getOrElse("missing")
         if (film == theirs) agreeWider += 1
         s"; --widen ${o.widen + 1} (core ${wider.core.size}): ${if (film == theirs) "SAME as the leg" else s"still $film"}"
       }
-      val why = if (same) "" else (if (outside.nonEmpty) s"the leg's cluster holds ${outside.size} listing(s) outside the slice's core (e.g. ${outside.take(2).map(k => s"${k.venue} | ${k.rawTitle}").mkString("; ")})"
+      val why = if (same) "" else if (modelMoved.nonEmpty) modelMoved else (if (outside.nonEmpty) s"the leg's cluster holds ${outside.size} listing(s) outside the slice's core (e.g. ${outside.take(2).map(k => s"${k.venue} | ${k.rawTitle}").mkString("; ")})"
                 else "same members — the slice lacks context the whole corpus gave it (a neighbouring family's facts or agreement)") + widened
       val line = f"${if (same) "SAME" else "DIFF"}\t${key.venue}\t${key.rawTitle}\tslice $mine (${decided.agreed.decisionOf.get(key).map(_.basis.toString).getOrElse("-")})\t" +
-        f"leg $theirs (${legOf.get(key).map(_.basis.toString).getOrElse("-")})\tcore ${core.size} context ${context.size}\t${(System.nanoTime() - started) / 1e9}%.1fs\t$why"
+        f"leg $theirs (${legOf.get(key).map(_.basis.toString).getOrElse("-")})\tcore ${core.size} context ${context.size}\t${(System.nanoTime() - started) / 1e9}%.1fs\t$why$stageLine"
       println(line)
       out.foreach(_.println(line))
       if (!same) misses += line
     }
-    println(f"\n# faithfulness: $agree of ${sample.size} listings take what the whole leg took (${100.0 * agree / math.max(1, sample.size)}%.1f%%)")
+    println(f"\n# faithfulness: $alike of ${sample.size} listings take what the whole leg took (${100.0 * alike / math.max(1, sample.size)}%.1f%%)")
     if (misses.nonEmpty) println(s"# slice ≠ whole corpus for ${misses.size}: one ring wider, $agreeWider of them take what the leg took (the DIFF lines above)")
+    if (ofCapture) println(f"# the agreement stage alone, over the captured model decisions: $agreeStage of ${sample.size} take what the capture's replay took " +
+      f"(${100.0 * agreeStage / math.max(1, sample.size)}%.1f%%)")
   }
 }
