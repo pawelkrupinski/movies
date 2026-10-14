@@ -1,0 +1,99 @@
+#
+# CI TIMINGS -- every build's run, job and step durations (and a convergence suite's PhaseTimer
+# phases) pushed to Prometheus for the "CI — build timings" and "CI — identity model convergence
+# timings" Grafana dashboards. scripts/ci/ci_timings.py does the work; see its header.
+#
+# TWO WAYS IN, one per kind of run:
+#   - `workflow_run`, the moment a listed workflow finishes. NOT the workflows another workflow
+#     dispatches with the GITHUB_TOKEN (Main's convergence kick, the bisect, the fill, the capture):
+#     their runs raise no `workflow_run` at all (ConvergenceBisectTriggerSpec), so listing them
+#     would wait for nothing.
+#   - the sweep, every 30 minutes, for everything that list does not cover: runs of an unlisted
+#     workflow, and any run the GITHUB_TOKEN started. ci_timings.py reads the list below to tell
+#     which is which. Its 120-minute window overlaps the next sweep's; a run pushed twice writes
+#     identical samples. A new workflow is swept until it is listed (CiTimingsWiringSpec).
+#
+# Never fails on a push it could not make: a chart is a reading aid, not a gate.
+name: CI timings
+
+on:
+    workflow_run:
+        workflows:
+            - Main
+            - Branch CI
+            - Android
+            - iOS
+            - Record scrape fixtures
+            - Order independence
+            - Nightly stress
+            - Daily country fixture artifact
+            - Identity measure
+            - Identity rule refit
+            - Identity decorations
+            - Identity CI staleness
+            - Decoration discovery
+            - Discover UK cinemas
+            - Filmweb diff
+            - Cinema roster audit
+            - Retire closed venues
+            - Security headers (live)
+            - Prune Actions caches
+            - Renovate
+            - Scala Steward
+            - Stage NixOS closures
+        types: [completed]
+    schedule:
+        - cron: '*/30 * * * *'
+    workflow_dispatch:
+        inputs:
+            run-id:
+                description: Report and push this one run (empty = the sweep).
+                required: false
+                type: string
+                default: ''
+
+permissions:
+    contents: read
+    actions: read
+
+jobs:
+    timings:
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+        steps:
+            - uses: actions/checkout@v5
+              with:
+                  sparse-checkout: |
+                      scripts/ci
+                      .github/workflows/ci-timings.yml
+                  sparse-checkout-cone-mode: false
+            - name: Report and push the run's timings
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  GRAFANA_URL: ${{ secrets.GRAFANA_URL }}
+                  GRAFANA_ANNOTATION_TOKEN: ${{ secrets.GRAFANA_ANNOTATION_TOKEN }}
+                  RUN_ID: ${{ github.event.workflow_run.id || inputs.run-id }}
+              run: |
+                  if [ -n "$RUN_ID" ]; then
+                      python3 scripts/ci/ci_timings.py --repo "$GITHUB_REPOSITORY" --run-id "$RUN_ID" --push
+                  else
+                      python3 scripts/ci/ci_timings.py --repo "$GITHUB_REPOSITORY" --since-minutes 120 --push \
+                          --workflow-file .github/workflows/ci-timings.yml
+                  fi
+
+    # A failed sweep becomes an issue assigned to the owner, closed on the next pass -- see
+    # .github/actions/report-scheduled-run (ScheduledRunReportSpec). A dead sweep would otherwise
+    # leave the convergence charts quietly empty.
+    report:
+        needs: timings
+        if: always() && !cancelled() && github.event_name == 'schedule'
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        permissions:
+            contents: read
+            issues: write
+        steps:
+            - uses: actions/checkout@v5
+            - uses: ./.github/actions/report-scheduled-run
+              with:
+                  failed: ${{ contains(needs.*.result, 'failure') }}

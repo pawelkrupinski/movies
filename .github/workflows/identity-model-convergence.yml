@@ -153,6 +153,28 @@ jobs:
                   RUN_ID: ${{ github.run_id }}
               run: gh workflow run convergence-bisect.yml --ref main -f suite="$SUITE" -f run-id="$RUN_ID"
 
+    # Where the run's time went, in its own log and summary: every job's steps and the suites'
+    # top-level PhaseTimer phases (scripts/ci/ci_timings.py). Main dispatches this run with the
+    # GITHUB_TOKEN, so it raises no `workflow_run`: the metrics behind the Grafana dashboards are
+    # pushed by `CI timings`' sweep (ci-timings.yml), not from here. Never fails.
+    timings:
+        needs: [leg]
+        if: ${{ !cancelled() && needs.leg.result != 'skipped' }}
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        permissions:
+            actions: read
+            contents: read
+        steps:
+            - uses: actions/checkout@v5
+              with:
+                  sparse-checkout: scripts/ci
+                  sparse-checkout-cone-mode: false
+            - name: Report every step's time
+              env:
+                  GH_TOKEN: ${{ github.token }}
+              run: python3 scripts/ci/ci_timings.py --repo "$GITHUB_REPOSITORY" --run-id "$GITHUB_RUN_ID" --exclude-job timings
+
     # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --
     # see .github/actions/report-scheduled-run (ScheduledRunReportSpec).
     report:

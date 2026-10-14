@@ -30,8 +30,7 @@ class ConvergenceBisectTriggerSpec extends AnyFlatSpec with Matchers {
       yml.contains("uses: ./.github/workflows/country-convergence-leg.yml") && """mode:\s+record""".r.findFirstIn(yml).isEmpty
     }
 
-  private def nameOf(yml: String) =
-    yml.linesIterator.collectFirst { case s"name: $n" => n.trim }.getOrElse(fail("no name"))
+  private def nameOf(yml: String) = RepoFile.workflowName(yml)
 
   "the convergence workflows" should "be found" in {
     convergenceWorkflows.map(p => nameOf(RepoFile.read(p))).toSet shouldBe Set("Identity model convergence")
@@ -66,12 +65,8 @@ class ConvergenceBisectTriggerSpec extends AnyFlatSpec with Matchers {
   // Main dispatches with the GITHUB_TOKEN; so does every convergence run. A `workflow_run` on
   // anything started that way waits for an event that never comes.
   "no workflow" should "wait for the completion of a workflow another workflow dispatches" in {
-    val byFile = RepoFile.workflows().map(f => f.getName -> RepoFile.read(f.getPath)).toMap
-    val all    = byFile.values.mkString("\n")
-    val dispatched =
-      ("""gh workflow run ([\w.-]+\.ya?ml)""".r.findAllMatchIn(all).map(m => nameOf(byFile(m.group(1)))) ++
-        """kick-convergence\.sh "\$GITHUB_SHA" "\$GITHUB_REF_NAME" (.*)""".r.findAllMatchIn(all)
-          .flatMap(m => "\"([^\"]+)\"".r.findAllMatchIn(m.group(1)).map(_.group(1)))).toSet
+    val byFile     = RepoFile.workflows().map(f => f.getName -> RepoFile.read(f.getPath)).toMap
+    val dispatched = RepoFile.tokenDispatchedWorkflowNames()
     dispatched should contain ("Identity model convergence")
     byFile.foreach { case (file, yml) =>
       if (yml.contains("workflow_run:"))
