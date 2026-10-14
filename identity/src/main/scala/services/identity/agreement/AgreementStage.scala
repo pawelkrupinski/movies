@@ -70,24 +70,23 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
    *  decides every verdict again, as a change of the code does. */
   private val decidedUnder: String = s"${AgreementStage.RulesVersion}|${rules.version}"
 
-  @volatile private var gaps: Set[(VoterFamily, String)] = Set.empty
-  @volatile private var finds: Set[String] = Set.empty
-  @volatile private var posterGaps: Set[AgreementStage.PosterQuestion] = Set.empty
-  @volatile private var catalogueGaps: Set[CatalogueQuestion] = Set.empty
-  @volatile private var undated: Set[Int] = Set.empty
+  /** Everything the last [[apply]] met unanswered: what the getters below read. */
+  @volatile private var wantedNow: AgreementStage.Open = AgreementStage.Open.empty
   /** The clusters' family questions no family has answered yet, as the last [[apply]] met them. */
-  def wanted: Set[(VoterFamily, String)] = gaps
+  def wanted: Set[(VoterFamily, String)] = wantedNow.questions
   /** The agreed IMDb ids TMDB was not asked about yet, as the last [[apply]] met them. */
-  def wantedFinds: Set[String] = finds
+  def wantedFinds: Set[String] = wantedNow.finds
   /** The posters not hashed yet that a cluster's take waits on, as the last [[apply]] met them. */
-  def wantedPosters: Set[AgreementStage.PosterQuestion] = posterGaps
+  def wantedPosters: Set[AgreementStage.PosterQuestion] = wantedNow.posters
   /** The catalogue ids not mapped yet, and the venue pages whose links are not read yet, that a cluster's take waits on,
    *  as the last [[apply]] met them. */
-  def wantedCatalogue: Set[CatalogueQuestion] = catalogueGaps
+  def wantedCatalogue: Set[CatalogueQuestion] = wantedNow.catalogue
   /** The TMDB records a cluster's broadcast take waits on to read again — filed before records kept the whole release
    *  day ([[IdentityLookups.releaseDay]]) — as the last [[apply]] met them. */
-  def wantedRecords: Set[Int] = undated
+  def wantedRecords: Set[Int] = wantedNow.records
 
+  /** The families in their order: the order their verdicts and searches are read in. */
+  private val familiesInOrder: Seq[(VoterFamily, FamilyAnswers)] = families.toSeq.sortBy(_._1.ordinal)
   /** Each family's calibration: TMDB's, its search priors' spread scaled by the family's [[VoterFamily.priorSpread]]. */
   private val calibrations: Map[VoterFamily, IdentityCalibration] = families.keys.map(family => family -> calibration.withPriorSpread(family.priorSpread)).toMap
   private lazy val held: TrieMap[String, StoredVerdict] = TrieMap.from(stored.all().map(v => v.id -> v))
@@ -110,11 +109,10 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
   /** The clusters a family has not answered for yet, at the `version` and listings' digest they were last resolved at,
    *  with the questions they wait on: not resolved again until one of those is answered or their listings move. */
   private val waiting = TrieMap.empty[String, AgreementStage.Waiting]
-  /** The questions handed to `ask` since the families' answers last moved: a tick that filed nothing hands nothing. */
-  private val handed      = mutable.Set.empty[(VoterFamily, String)]
-  private val handedFinds = mutable.Set.empty[String]
-  private val handedPosters = mutable.Set.empty[AgreementStage.PosterQuestion]
-  private val handedCatalogue = mutable.Set.empty[CatalogueQuestion]
+  /** The questions handed to `ask` since the families' answers last moved (at `handedAt`): a tick that filed nothing
+   *  hands nothing. */
+  private var handed   = AgreementStage.Open.empty
+  private var handedAt = -1L
   /** Each TMDB record handed to `ask` to read again for its day, with the version and instant it was handed at — asked
    *  ONCE in the stage's life: a record still holding its year after the read was filed ([[AgreementStage.recordReadId]]),
    *  or after [[AgreementStage.RecordWait]], is waited on no more. One entry per stage-work record, a few hundred. */
@@ -126,9 +124,6 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
   /** What a correction still waiting on an answer asks, by its stored id: a take's posters, families' questions and
    *  finds while the backfill hashes them — none kept once its evidence is all answered. */
   private val correctionWaits = TrieMap.empty[String, AgreementStage.CorrectionWaits]
-  /** How many clusters the current [[apply]] asked the resolver about again — the stage's cost, for [[metrics]]. */
-  private var resolves    = 0
-  private var handedAt    = -1L
 
   /** The last resolution applied to, at which `version`, and what it came to: a tick handed the same decisions while
    *  no answer was filed gets those again, nothing re-read. */
@@ -177,114 +172,126 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
     }
     val started = tools.Stopwatch.start()
     applying = version
-    resolves = 0
-    val asked  = mutable.Set.empty[(VoterFamily, String)]
-    val finding = mutable.Set.empty[String]
-    val postersAsked = mutable.Set.empty[AgreementStage.PosterQuestion]
-    val catalogueAsked = mutable.Set.empty[CatalogueQuestion]
-    val dating = mutable.Set.empty[Int]
-    val moved  = mutable.ArrayBuffer.empty[StoredVerdict]
-    val seen   = mutable.Set.empty[String]
-    var posterVetoed = 0
-    val correctionPosters = mutable.Set.empty[AgreementStage.PosterQuestion]
-    val correcting = mutable.Set.empty[String]
-    val changedAt  = mutable.Map.empty[Long, Option[java.util.Set[java.lang.Long]]]
-    val reading    = new AgreementStage.Read(posters, listedOn.flatMap(families.get))
-    var budget     = correctionsPerApply
-    val asks       = AgreementStage.Asks(asked, finding, catalogueAsked, dating, version)
-    val decisions = resolution.decisions.map { decision =>
-      if (correctable(decision) && eventOf(decision, listingOf).isEmpty) {
-        val key = AgreementStage.correctionId(StoredFamily.idOf(decision.members))
-        correcting += key
-        corrected(decision, listingOf, key, version, asked, finding, correctionPosters, changedAt, moved, reading, () => {
-          val left = budget > 0; budget -= 1; left })
-      }
-      else if (decision.film.isDefined || decision.unanswered > 0 || decision.fallback.isDefined || decision.members.isEmpty) decision
-      else {
-        val now = eventOf(decision, listingOf) match {
-          // an event no film database holds: no family is asked about it, no poster hashed, no verdict kept
-          case Some(why) => decision.copy(basis = ResolverDecision.Basis.Event, explanation = decision.explanation :+ s"event, not a film: $why")(decision.trace)
-          case None =>
-            val AgreementStage.Digested(id, listings, digest, lean) = digestedOf(decision, listingOf)
-            seen += id
-            val verdict = verdictOf(decision, id, listings, digest, lean, version, asked, moved)
-            // the venue posters' distances to the cluster's candidates and to the film the families agree on
-            def distances(also: Option[Int]) = posterDistances(id, digest, listings, also, postersAsked)
-            // the posters vote once the families reached a verdict that takes no film: none agreed, or a poster vetoed it
-            verdict.fold(decision) { v =>
-              pieceOf(v, listings).fold(
-              v.agreed.fold[AgreementStage.Take](AgreementStage.Take.Untaken)(taken(decision, _, finding, distances)) match {
-                // a screen adaptation agreed for a listing naming a stage work ([[Agreement.agreed]]) yields to the relay its
-                // screening days name: PL Kino Amok's bare "Manon" on the Met's broadcast day is the Met's, not Clouzot's
-                case AgreementStage.Take.Taken(agreed) if listings.exists(ListingShape.stagesAWork) =>
-                  takeOf(AgreementStage.BroadcastTake, AgreementStage.Unagreed(decision, id, digest, listings, v, distances), asks).getOrElse(agreed)
-                case AgreementStage.Take.Taken(agreed) => agreed
-                case AgreementStage.Take.Pending       => decision
-                case AgreementStage.Take.Vetoed        => posterVetoed += 1; fellThrough(AgreementStage.Unagreed(decision, id, digest, listings, v, distances), asks)
-                case AgreementStage.Take.Untaken       => fellThrough(AgreementStage.Unagreed(decision, id, digest, listings, v, distances), asks)
-              })(line => decision.copy(explanation = decision.explanation :+ line)(decision.trace))
-            }
-        }
-        if (now eq decision) decision else takenAsBefore(decision, now)
-      }
+    val pass      = new AgreementStage.Pass(version, correctionsPerApply, new AgreementStage.Read(posters, listedOn.flatMap(families.get)))
+    val decisions = resolution.decisions.map(decide(_, listingOf, pass))
+    forgetGone(resolution, pass)
+    wantedNow = pass.wanted(correctionPostersAtOnce)
+    handOver(version)
+    releaseAt = nextRelease()
+    report(decisions, pass, started)
+    resolution.copy(decisions = decisions)
+  }
+
+  /** What the model's `decision` is taken as: a model take read against the evidence that may correct it, a no-match
+   *  the families, the posters, the screening days, a fill or the catalogue ids take a film for — else the decision as
+   *  the model left it. What it reads and waits on is noted in `pass`. */
+  private def decide(decision: ResolverDecision, listingOf: ListingKey => Option[Listing], pass: AgreementStage.Pass): ResolverDecision =
+    if (correctable(decision) && eventOf(decision, listingOf).isEmpty) {
+      val key = AgreementStage.correctionId(StoredFamily.idOf(decision.members))
+      pass.correcting += key
+      corrected(decision, listingOf, key, pass)
     }
-    val removed = held.keySet.toSet -- seen -- correcting
-    waiting --= waiting.keySet.toSet -- seen
-    candidateFilms --= candidateFilms.keySet.toSet -- seen   // a correction's candidates are read, never kept
-    correctionWaits --= correctionWaits.keySet.toSet -- correcting
-    // the posters a correction waits on, a few at a time: the backfill of every take's posters drains behind every other task
-    postersAsked ++= (if (correctionPosters.sizeIs <= correctionPostersAtOnce) correctionPosters
-      else correctionPosters.toSeq.sortBy(PosterAnswers.idOf).take(correctionPostersAtOnce))
-    if (removed.nonEmpty || moved.nonEmpty) {
-      stored.replace(removed, moved.toSeq)
+    else if (decision.film.isDefined || decision.unanswered > 0 || decision.fallback.isDefined || decision.members.isEmpty) decision
+    else {
+      val now = eventOf(decision, listingOf) match {
+        // an event no film database holds: no family is asked about it, no poster hashed, no verdict kept
+        case Some(why) => taking(decision)(ResolverDecision.Basis.Event, s"event, not a film: $why")
+        case None =>
+          val AgreementStage.Digested(id, listings, digest, lean) = digestedOf(decision, listingOf)
+          pass.seen += id
+          val verdict = verdictOf(decision, id, listings, digest, lean, pass)
+          // the venue posters' distances to the cluster's candidates and to the film the families agree on
+          def distances(also: Option[Int]) = posterDistances(id, digest, listings, also, pass.postersAsked)
+          // the posters vote once the families reached a verdict that takes no film: none agreed, or a poster vetoed it
+          verdict.fold(decision) { v =>
+            lazy val unagreed = AgreementStage.Unagreed(decision, id, digest, listings, v, distances)
+            pieceOf(v, listings).fold(
+            v.agreed.fold[AgreementStage.Take](AgreementStage.Take.Untaken)(taken(decision, _, pass.finding, distances)) match {
+              // a screen adaptation agreed for a listing naming a stage work ([[Agreement.agreed]]) yields to the relay its
+              // screening days name: PL Kino Amok's bare "Manon" on the Met's broadcast day is the Met's, not Clouzot's
+              case AgreementStage.Take.Taken(agreed) if listings.exists(ListingShape.stagesAWork) =>
+                takeOf(AgreementStage.BroadcastTake, unagreed, pass).getOrElse(agreed)
+              case AgreementStage.Take.Taken(agreed) => agreed
+              case AgreementStage.Take.Pending       => decision
+              case AgreementStage.Take.Vetoed        => pass.posterVetoed += 1; fellThrough(unagreed, pass)
+              case AgreementStage.Take.Untaken       => fellThrough(unagreed, pass)
+            })(line => taking(decision)(decision.basis, line))
+          }
+      }
+      if (now eq decision) decision else takenAsBefore(decision, now)
+    }
+
+  /** Forget what the clusters `resolution` no longer holds were kept with — their verdicts, waits, candidates,
+   *  corrections and the model's decisions — and store the verdicts `pass` moved. */
+  private def forgetGone(resolution: Resolution, pass: AgreementStage.Pass): Unit = {
+    val removed = held.keySet.toSet -- pass.seen -- pass.correcting
+    waiting --= waiting.keySet.toSet -- pass.seen
+    candidateFilms --= candidateFilms.keySet.toSet -- pass.seen   // a correction's candidates are read, never kept
+    correctionWaits --= correctionWaits.keySet.toSet -- pass.correcting
+    if (removed.nonEmpty || pass.moved.nonEmpty) {
+      stored.replace(removed, pass.moved.toSeq)
       held --= removed; checked --= removed
-      moved.foreach(v => held(v.id) = v)
+      pass.moved.foreach(v => held(v.id) = v)
     }
     val current = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap[ResolverDecision, java.lang.Boolean]())
     resolution.decisions.foreach(current.add)
     takenAs.keySet.retainAll(current)   // the model's decisions this resolution no longer holds
     digested.keySet.retainAll(current)
     events.keySet.retainAll(current)
-    gaps = asked.toSet
-    finds = finding.toSet
-    posterGaps = postersAsked.toSet
-    catalogueGaps = catalogueAsked.toSet
-    undated = dating.toSet
-    if (handedAt != version) { handed.clear(); handedFinds.clear(); handedPosters.clear(); handedCatalogue.clear(); handedAt = version }
-    val open = AgreementStage.Open(gaps -- handed, finds -- handedFinds, posterGaps -- handedPosters, catalogueGaps -- handedCatalogue,
-      undated.filterNot(rereads.contains))
-    if (open.questions.nonEmpty || open.finds.nonEmpty || open.posters.nonEmpty || open.catalogue.nonEmpty || open.records.nonEmpty) {
-      ask(open); handed ++= open.questions; handedFinds ++= open.finds; handedPosters ++= open.posters; handedCatalogue ++= open.catalogue
+  }
+
+  /** Hands `ask` what the last apply met unanswered and was not handed at `version` yet — a record to read again for
+   *  its day ONCE in the stage's life ([[rereads]]). */
+  private def handOver(version: Long): Unit = {
+    if (handedAt != version) { handed = AgreementStage.Open.empty; handedAt = version }
+    val unhanded = wantedNow -- handed
+    val open     = unhanded.copy(records = unhanded.records.filterNot(rereads.contains))
+    if (!open.isEmpty) {
+      ask(open); handed = handed ++ open
       open.records.foreach(film => rereads(film) = (version, clock.instant()))
     }
+  }
+
+  /** The first instant a wait ends: a waiting cluster's [[AgreementStage.PartialAfter]], a record's
+   *  [[AgreementStage.RecordWait]] — none passed yet. */
+  private def nextRelease(): Option[java.time.Instant] = {
     val now = clock.instant()
-    releaseAt = (waiting.valuesIterator.map(_.since.plusMillis(AgreementStage.PartialAfter.toMillis)) ++
+    (waiting.valuesIterator.map(_.since.plusMillis(AgreementStage.PartialAfter.toMillis)) ++
       rereads.valuesIterator.map(_._2.plusMillis(AgreementStage.RecordWait.toMillis))).filter(_.isAfter(now)).minOption
+  }
+
+  /** What the apply came to, for [[metrics]]. */
+  private def report(decisions: Seq[ResolverDecision], pass: AgreementStage.Pass, started: tools.Stopwatch.Started): Unit = {
     val agreedNow = decisions.filter(_.basis == ResolverDecision.Basis.Agreed)
     metrics.applied(AgreementStage.Applied(waiting = waiting.size, verdicts = held.valuesIterator.count(_.correction.isEmpty),
       agreed = held.valuesIterator.count(_.agreed.isDefined),
       takenTmdb = agreedNow.count(_.film.isDefined), takenFallback = agreedNow.count(_.fallback.isDefined),
-      open = gaps.groupMapReduce(_._1)(_ => 1)(_ + _), finds = finds.size, resolves = resolves, seconds = started.seconds,
-      takenPoster = decisions.count(_.basis == ResolverDecision.Basis.Poster), posterVetoed = posterVetoed, posters = posterGaps.size,
+      open = wantedNow.questions.groupMapReduce(_._1)(_ => 1)(_ + _), finds = wantedNow.finds.size, resolves = pass.resolves, seconds = started.seconds,
+      takenPoster = decisions.count(_.basis == ResolverDecision.Basis.Poster), posterVetoed = pass.posterVetoed, posters = wantedNow.posters.size,
       takenBroadcast = decisions.count(_.basis == ResolverDecision.Basis.Broadcast), takenFilled = decisions.count(_.basis == ResolverDecision.Basis.Filled),
-      takenCatalogue = decisions.count(_.basis == ResolverDecision.Basis.Catalogue), catalogue = catalogueGaps.size, undated = undated.size,
+      takenCatalogue = decisions.count(_.basis == ResolverDecision.Basis.Catalogue), catalogue = wantedNow.catalogue.size, undated = wantedNow.records.size,
       withdrawn = decisions.count(_.basis == ResolverDecision.Basis.Withdrawn), corrected = decisions.count(_.basis == ResolverDecision.Basis.Corrected),
-      correcting = correcting.size, correctionPosters = correctionPosters.size,
+      correcting = pass.correcting.size, correctionPosters = pass.correctionPosters.size,
       events = decisions.count(_.basis == ResolverDecision.Basis.Event)))
-    resolution.copy(decisions = decisions)
   }
 
+  /** `d` taken on `basis`, `line` explaining it — with the `film`, `fallback` and `agreed` ids it takes, where they move. */
+  private def taking(d: ResolverDecision)(basis: ResolverDecision.Basis, line: String, film: Option[Int] = d.film,
+                                          fallback: Option[ResolverDecision.Fallback] = d.fallback, agreed: Map[String, String] = d.agreed): ResolverDecision =
+    d.copy(film = film, basis = basis, explanation = d.explanation :+ line, fallback = fallback, agreed = agreed)(d.trace)
+
   /** The takes a cluster the families' agreement took no film for is read by, by name — in [[AgreementStage.FallThrough]]'s
-   *  order, the first to take one deciding: each reads its own evidence and notes in `asks` every question it waits on. */
-  private val takes: Map[String, (AgreementStage.Unagreed, AgreementStage.Asks) => Option[ResolverDecision]] = Map(
+   *  order, the first to take one deciding: each reads its own evidence and notes in `asks` (the apply's [[AgreementStage.Pass]])
+   *  every question it waits on. */
+  private val takes: Map[String, (AgreementStage.Unagreed, AgreementStage.Pass) => Option[ResolverDecision]] = Map(
     AgreementStage.PosterVoteTake -> ((u, _) => voted(u.decision, u.distances(None))),
     AgreementStage.BroadcastTake  -> ((u, asks) => broadcast(u.decision, u.id, u.digest, u.listings, asks.dating, asks.version, asks.asked)),
     AgreementStage.FillTake       -> ((u, asks) => filledTake(u.decision, u.verdict, asks.finding, u.distances)),
     AgreementStage.CatalogueTake  -> ((u, asks) => catalogued(u.decision, u.listings, asks.asked, asks.finding, asks.catalogue)))
-  private def takeOf(rule: String, untaken: AgreementStage.Unagreed, asks: AgreementStage.Asks): Option[ResolverDecision] = takes(rule)(untaken, asks)
+  private def takeOf(rule: String, untaken: AgreementStage.Unagreed, asks: AgreementStage.Pass): Option[ResolverDecision] = takes(rule)(untaken, asks)
   private val fallThrough = AgreementStage.FallThrough.map(takes)
   /** The first of [[AgreementStage.FallThrough]] to take a film for the cluster, else the cluster as the model left it. */
-  private def fellThrough(untaken: AgreementStage.Unagreed, asks: AgreementStage.Asks): ResolverDecision =
+  private def fellThrough(untaken: AgreementStage.Unagreed, asks: AgreementStage.Pass): ResolverDecision =
     fallThrough.iterator.flatMap(_(untaken, asks)).nextOption().getOrElse(untaken.decision)
 
   /** Why the decision's cluster is an event no film database holds, or `None` — read once per decision object. */
@@ -325,12 +332,9 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
    *  correction while its listings and rules stand and none of the answers it read was filed again since it was checked
    *  — at boot, every stored one stands, as a stored verdict does — else read anew, while the apply's `fresh` budget
    *  lasts ([[AgreementStage.CorrectionsPerApply]]; a take beyond it stands as the model took it until a later apply).
-   *  What it waits on is noted to ask: the families' questions in `asked`, the IMDb ids in `finding`, the posters in
-   *  `posters`. */
-  private def corrected(decision: ResolverDecision, listingOf: ListingKey => Option[Listing], key: String, version: Long,
-                        asked: mutable.Set[(VoterFamily, String)], finding: mutable.Set[String], posters: mutable.Set[AgreementStage.PosterQuestion],
-                        changedAt: mutable.Map[Long, Option[java.util.Set[java.lang.Long]]], moved: mutable.ArrayBuffer[StoredVerdict],
-                        reading: AgreementStage.Read, fresh: () => Boolean): ResolverDecision = {
+   *  What it waits on is noted in `pass` to ask: the families' questions, the IMDb ids, the posters. */
+  private def corrected(decision: ResolverDecision, listingOf: ListingKey => Option[Listing], key: String, pass: AgreementStage.Pass): ResolverDecision = {
+    val version = pass.version
     val digest = correctionDigest(decision, listingOf)
     val kept = held.get(key).filter(v => v.listings == digest && v.rules == decidedUnder).flatMap(v => v.correction.filter { c =>
       val waits = correctionWaits.get(key)
@@ -340,7 +344,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
         checked.get(key).collect { case (listed, at) if listed == digest => at }.exists { at =>
           at == version || {
             // stands when none of its reads was filed since: the filings' ids hashed once per version they are read from
-            val refiled = changedAt.getOrElseUpdate(at, changes.changedSince(at).map { ids =>
+            val refiled = pass.changedAt.getOrElseUpdate(at, changes.changedSince(at).map { ids =>
               val hashed = new java.util.HashSet[java.lang.Long](ids.size * 2)
               ids.foreach(id => hashed.add(AgreementStage.digest(Seq(id))))
               hashed
@@ -349,12 +353,12 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
           }
         }
     })
-    val now = kept.orElse(Option.when(fresh()) {
+    val now = kept.orElse(Option.when(pass.fresh()) {
       // the take's listings sorted and digested only to be read afresh: a stored correction is checked by `digest` alone
       val listings = decision.members.flatMap(listingOf).sortBy(_.key)(using ListingKey.ordering)
-      val (correction, waits) = correctionOf(decision, AgreementStage.Digested(key, listings, digest, None), reading)
+      val (correction, waits) = correctionOf(decision, AgreementStage.Digested(key, listings, digest, None), pass.reading)
       val verdict = StoredVerdict(key, digest, Map.empty, None, decidedUnder, correction = Some(correction))
-      if (!held.get(key).contains(verdict)) { moved += verdict; held(key) = verdict }
+      if (!held.get(key).contains(verdict)) { pass.moved += verdict; held(key) = verdict }
       checked(key) = (digest, version)
       waits.fold(correctionWaits -= key)(w => correctionWaits(key) = w)
       correction
@@ -364,11 +368,10 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
       // the model's take back and a later apply corrected it again, a flip per deploy (UK Chichester's "The Ties That Bind
       // Us", 18 of them). Left unchecked, it is read afresh once an apply's budget reaches it.
       held.get(key).filter(_.listings == digest).flatMap(_.correction))
-    correctionWaits.get(key).foreach { w => asked ++= w.questions; finding ++= w.finds; posters ++= w.posters }
+    correctionWaits.get(key).foreach { w => pass.asked ++= w.questions; pass.finding ++= w.finds; pass.correctionPosters ++= w.posters }
     now.flatMap(_.outcome).fold(decision) { outcome =>
-      val explained = decision.explanation :+ outcome.line
-      val taken = outcome.film.fold(decision.copy(film = None, basis = ResolverDecision.Basis.Withdrawn, explanation = explained)(decision.trace))(film =>
-        decision.copy(film = Some(film), basis = ResolverDecision.Basis.Corrected, explanation = explained)(decision.trace))
+      val taken = outcome.film.fold(taking(decision)(ResolverDecision.Basis.Withdrawn, outcome.line, film = None))(film =>
+        taking(decision)(ResolverDecision.Basis.Corrected, outcome.line, film = Some(film)))
       takenAsBefore(decision, taken)
     }
   }
@@ -402,7 +405,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
     def relayed(film: IdentityMeasures.Film) = Option.when(listings.exists(ListingShape.stagesAWork) && !Broadcast.billsAProduction(film.title)) {
       val known = (model +: candidatesOf(digested.id, digested.digest, listings)).distinct.flatMap(id => named(id).map(id -> _))
       // a correction reads no film database's productions and waits on no record's day: a take that would wait is none
-      Broadcast.take(listings, listing => Evidence.of(listing, venues.detail(listing).toOption.flatten).measured, known)().toOption.flatten
+      Broadcast.take(listings, measured, known)().toOption.flatten
     }.flatten.filter(_.film != model).map(taken => Correction.Outcome(Some(taken.film), s"corrected from ${title(model)} — ${taken.line}"))
     val outcome = named(model).flatMap(film => superseded(film).orElse(relayed(film)).orElse {
       val modelRecord = SourceRecord.ofTmdb(model, film)
@@ -487,9 +490,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
     if (verdicts.contains(Answer.Unknown)) Answer.Unknown
     else {
       val mapped = verdicts.flatMap(_.toOption).flatMap(_.pick).filterNot(pick => uncounted.contains(pick.family)).map { pick =>
-        val imdb = pick.record.crossIds.get("imdb")
-        val id   = tmdbFilmOf(pick.record.crossIds.get("tmdb").flatMap(_.toIntOption), imdb)
-        if (id == Answer.Unknown) imdb.foreach(finding += _)
+        val id = tmdbFilmOf(pick.record.crossIds.get("tmdb").flatMap(_.toIntOption), pick.record.crossIds.get("imdb"), finding)
         // a record linking no TMDB film (Filmweb's) is the one film the take's evidence reaches that its facts are
         pick -> (id match {
           case Answer.Known(None) => Answer.Known(reached.filter(film => records(film).exists(Agreement.sameFilm(pick.record, _))) match {
@@ -530,19 +531,20 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
 
   /** The cluster's verdict: the stored one while its listings and every answer it read stand, else the resolver's
    *  over the families' answers now — `None` while one of them is a gap. */
-  private def verdictOf(decision: ResolverDecision, id: String, listings: Seq[Listing], digest: Long, lean: Option[SourceRecord], version: Long,
-                        asked: mutable.Set[(VoterFamily, String)], moved: mutable.ArrayBuffer[StoredVerdict]): Option[StoredVerdict] = {
+  private def verdictOf(decision: ResolverDecision, id: String, listings: Seq[Listing], digest: Long, lean: Option[SourceRecord],
+                        pass: AgreementStage.Pass): Option[StoredVerdict] = {
+    val version = pass.version
     held.get(id).filter(v => v.listings == digest && v.rules == decidedUnder).filter { kept =>
       checked.get(id).contains((digest, version)) || untouched(id, kept, digest, version) || {
         val stands = kept.reads.forall { case (question, answered) => read(question).exists(answer => AgreementStage.digest(Seq(answer.toString)) == answered) }
         // read again because an answer was filed: a stale one among its reads is asked again too — a quiet tick reads none
-        if (stands) { checked(id) = (digest, version); asked ++= kept.reads.keys.flatMap(staleOf) }
+        if (stands) { checked(id) = (digest, version); pass.asked ++= kept.reads.keys.flatMap(staleOf) }
         stands
       }
     }
     .orElse(waiting.get(id).filter(w => w.listings == digest && !due(w)) match {
-      case Some(w) => asked ++= w.gaps; None   // its questions not all answered yet: a resolve now could reach no verdict
-      case None               => resolved(decision, id, digest, listings, lean, version, asked, moved)
+      case Some(w) => pass.asked ++= w.gaps; None   // its questions not all answered yet: a resolve now could reach no verdict
+      case None    => resolved(decision, id, digest, listings, lean, pass)
     })
   }
 
@@ -557,19 +559,20 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
   /** Every family's verdict on `listings`, in the families' order — each question read noted in `reads`, each gap in
    *  `gaps`. */
   private def verdictsOf(listings: Seq[Listing], gaps: mutable.Set[(VoterFamily, String)], reads: mutable.Map[String, Long]): Seq[Answer[FamilyVerdict]] =
-    families.toSeq.sortBy(_._1.ordinal).map { case (_, answers) =>
+    familiesInOrder.map { case (_, answers) =>
       Agreement.verdict(listings, new Recording(answers, gaps, reads), venues, normalizer, calibrations(answers.family))
     }
 
   /** The cluster's verdict, the resolver asked again over every family's answers now — `None`, and the cluster kept
    *  waiting on its questions, while one is a gap. */
-  private def resolved(decision: ResolverDecision, id: String, digest: Long, listings: Seq[Listing], lean: Option[SourceRecord], version: Long,
-                       asked: mutable.Set[(VoterFamily, String)], moved: mutable.ArrayBuffer[StoredVerdict]): Option[StoredVerdict] = {
-    resolves += 1
+  private def resolved(decision: ResolverDecision, id: String, digest: Long, listings: Seq[Listing], lean: Option[SourceRecord],
+                       pass: AgreementStage.Pass): Option[StoredVerdict] = {
+    val version = pass.version
+    pass.resolves += 1
     val reads = mutable.Map.empty[String, Long]
     val gaps  = mutable.Set.empty[(VoterFamily, String)]
     val verdicts = verdictsOf(listings, gaps, reads)
-    asked ++= gaps
+    pass.asked ++= gaps
     if (verdicts.contains(Answer.Unknown)) { waiting(id) = AgreementStage.Waiting(digest, gaps.toSet, clock.instant()); None }
     else {
       waiting -= id
@@ -579,7 +582,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
         val stated   = listings.map(asStated)
         val agreed   = Agreement.agreed(listings, known, lean, Some(thisYear), stated)
         // an agreement only review sites make is taken as nothing ([[taken]]): the fill reads the cluster as one none agreed on
-        val fill     = if (agreed.exists(_.families.exists(_.namesFilms))) Answer.Known(None) else filledOf(decision, listings, known, stated, thisYear, version, asked)
+        val fill     = if (agreed.exists(_.families.exists(_.namesFilms))) Answer.Known(None) else filledOf(decision, listings, known, stated, thisYear, version, pass.asked)
         val verdict  = StoredVerdict(id, digest, reads.toMap, agreed, decidedUnder, fill.toOption.flatten)
         if (fill == Answer.Unknown) {
           // the fill met a TMDB question not answered yet: this pass reads the verdict, none keeps it — kept, it stood once
@@ -587,7 +590,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
           waiting(id) = AgreementStage.Waiting(digest, Set.empty, clock.instant(), blindAt = Some(version))
           checked -= id
         } else {
-          if (!held.get(id).contains(verdict)) moved += verdict
+          if (!held.get(id).contains(verdict)) pass.moved += verdict
           checked(id) = (digest, version)
         }
         verdict
@@ -615,7 +618,6 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
       val nodes  = IdentityResolver.evidenceOf(listings, noting, normalizer, calibration)(_ => true)
       if (noting.unknown) Answer.Unknown
       else {
-        val measured = (listing: Listing) => Evidence.of(listing, venues.detail(listing).toOption.flatten).measured
         // the `broadcast.take` signal read as the stage's own take reads the join: the same productions, the same wait
         val evidence = services.identity.UnifiedEvidence.ClusterEvidence(listings, decision, nodes, verdicts, Nil, _ => None, thisYear, stated,
           Some(measured), venueNames(listings), film => lookups.cast(film).toOption.flatten,
@@ -638,13 +640,12 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
   private def filledTake(decision: ResolverDecision, verdict: StoredVerdict, finding: mutable.Set[String],
                          distances: Option[Int] => Answer[Seq[Map[Int, Option[Int]]]]): Option[ResolverDecision] =
     verdict.filled.flatMap { fill =>
-      tmdbFilmOf(fill.tmdb, fill.imdb) match {
-        case Answer.Unknown => fill.imdb.foreach(finding += _); None
+      tmdbFilmOf(fill.tmdb, fill.imdb, finding) match {
+        case Answer.Unknown => None
         case Answer.Known(tmdbFilm) => distances(tmdbFilm).toOption.filter(found => PosterEvidence.veto(tmdbFilm, found).isEmpty).flatMap { _ =>
-          val explained = decision.explanation :+ fill.line
-          tmdbFilm.map(id => decision.copy(film = Some(id), basis = ResolverDecision.Basis.Filled, explanation = explained)(decision.trace))
-            .orElse(fill.imdb.map(id => decision.copy(basis = ResolverDecision.Basis.Filled, explanation = explained,
-              fallback = Some(ResolverDecision.Fallback(VoterFamily.Imdb.database, id, 1.0)))(decision.trace)))
+          tmdbFilm.map(id => taking(decision)(ResolverDecision.Basis.Filled, fill.line, film = Some(id)))
+            .orElse(fill.imdb.map(id => taking(decision)(ResolverDecision.Basis.Filled, fill.line,
+              fallback = Some(ResolverDecision.Fallback(VoterFamily.Imdb.database, id, 1.0)))))
         }
       }
     }
@@ -685,9 +686,15 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
   }
 
   /** The TMDB film a record names: its TMDB id, else the film TMDB finds by its IMDb id — `Unknown` while that find is
-   *  not answered yet (the caller notes the IMDb id to find). */
-  private def tmdbFilmOf(tmdb: Option[Int], imdb: Option[String]): Answer[Option[Int]] =
-    tmdb.fold(imdb.fold[Answer[Option[Int]]](Answer.Known(None))(tmdbOf))(film => Answer.Known(Some(film)))
+   *  not answered yet, the IMDb id then noted in `finding`. */
+  private def tmdbFilmOf(tmdb: Option[Int], imdb: Option[String], finding: mutable.Set[String]): Answer[Option[Int]] = {
+    val film = tmdb.fold(imdb.fold[Answer[Option[Int]]](Answer.Known(None))(tmdbOf))(film => Answer.Known(Some(film)))
+    if (film == Answer.Unknown) imdb.foreach(finding += _)
+    film
+  }
+
+  /** The listing as the model measures it, its venue's detail page read: what the broadcast join reads. */
+  private def measured(listing: Listing): IdentityMeasures.Listing = Evidence.of(listing, venues.detail(listing).toOption.flatten).measured
 
   /** Why the film the families agree on is none of the cluster's: its billing names it as ONE PIECE beside another thing —
    *  a subtitle, a performer, a show ([[ListingShape.billedBeside]]). Then the families' best match is that piece's namesake
@@ -702,7 +709,8 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
   private def taken(decision: ResolverDecision, agreed: AgreedFilm, finding: mutable.Set[String],
                     distances: Option[Int] => Answer[Seq[Map[Int, Option[Int]]]]): AgreementStage.Take = {
     val imdb = agreed.crossId("imdb")
-    val tmdb = tmdbFilmOf(agreed.crossId("tmdb").flatMap(_.toIntOption), imdb)
+    // read only for a film the families' take may stand on: a find only review sites' agreement waits on is none to ask
+    lazy val tmdb = tmdbFilmOf(agreed.crossId("tmdb").flatMap(_.toIntOption), imdb, finding)
     val leaning = Option.when(agreed.leaning.nonEmpty)(s", ${agreed.leaning.toSeq.map(_.label).sorted.mkString(", ")} leaning to it").getOrElse("") +
       Option.when(agreed.corroborated.nonEmpty)(s", corroborated by ${agreed.corroborated.toSeq.sorted.mkString(", ")}").getOrElse("")
     val line = s"${agreed.families.toSeq.map(_.label).sorted.mkString(", ")}$leaning agree on ${agreed.record.film.titled}${imdb.fold("")(id => s" $id")}"
@@ -715,14 +723,11 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
     // Rieus Weihnachtskonzert 2026: Let it Snow": Metacritic's and RT's 2019 "Let It Snow", the model's best candidate)
     if (!agreed.families.exists(_.namesFilms)) AgreementStage.Take.Untaken
     else tmdb match {
-      case Answer.Unknown =>
-        imdb.foreach(finding += _)
-        AgreementStage.Take.Pending
-      case Answer.Known(Some(film)) => unlessVetoed(Some(film))(
-        decision.copy(film = Some(film), basis = ResolverDecision.Basis.Agreed, explanation = decision.explanation :+ line, agreed = ids)(decision.trace))
+      case Answer.Unknown           => AgreementStage.Take.Pending
+      case Answer.Known(Some(film)) => unlessVetoed(Some(film))(taking(decision)(ResolverDecision.Basis.Agreed, line, film = Some(film), agreed = ids))
       case Answer.Known(None) => identityOf(agreed).fold[AgreementStage.Take](AgreementStage.Take.Untaken) { case (source, id) =>
-        unlessVetoed(None)(decision.copy(basis = ResolverDecision.Basis.Agreed, explanation = decision.explanation :+ line,
-          fallback = Some(AgreementStage.fallbackOn(source, id, Some(agreed.record.film.title), agreed.record.film.year)), agreed = ids)(decision.trace)) }
+        unlessVetoed(None)(taking(decision)(ResolverDecision.Basis.Agreed, line,
+          fallback = Some(AgreementStage.fallbackOn(source, id, Some(agreed.record.film.title), agreed.record.film.year)), agreed = ids)) }
     }
   }
 
@@ -738,19 +743,17 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
                          catalogueAsked: mutable.Set[CatalogueQuestion]): Option[ResolverDecision] =
     Catalogue.take(listings, listings.map(asStated), catalogue, families, tmdbOf, () => titlePicks(listings), catalogueAsked, asked, finding)
       .toOption.flatten.map { taken =>
-      val explained = decision.explanation :+ taken.line
-      taken.film.fold(decision.copy(basis = ResolverDecision.Basis.Catalogue, explanation = explained,
-        fallback = taken.fallback.map { case (source, id) => AgreementStage.fallbackOn(source, id, taken.title, taken.year) })(decision.trace))(film =>
-        decision.copy(film = Some(film), basis = ResolverDecision.Basis.Catalogue, explanation = explained)(decision.trace))
+      taken.film.fold(taking(decision)(ResolverDecision.Basis.Catalogue, taken.line,
+        fallback = taken.fallback.map { case (source, id) => AgreementStage.fallbackOn(source, id, taken.title, taken.year) }))(film =>
+        taking(decision)(ResolverDecision.Basis.Catalogue, taken.line, film = Some(film)))
     }
 
   /** The decision with the one candidate the venue posters match taken ([[PosterEvidence.vote]]). */
   private def voted(decision: ResolverDecision, distances: Answer[Seq[Map[Int, Option[Int]]]]): Option[ResolverDecision] =
     distances.toOption.flatMap(PosterEvidence.vote).map { case (film, bits) =>
       val named = tmdb.flatMap(_.film(film).toOption.flatten).fold(s"tmdb $film")(_.titled)
-      decision.copy(film = Some(film), basis = ResolverDecision.Basis.Poster,
-        explanation = decision.explanation :+ s"the venue's poster matches $named ($bits bits), no other candidate's within ${PosterEvidence.VoteBits}")(
-        decision.trace)
+      taking(decision)(ResolverDecision.Basis.Poster,
+        s"the venue's poster matches $named ($bits bits), no other candidate's within ${PosterEvidence.VoteBits}", film = Some(film))
     }
 
   /** The decision with the one record the cluster's screening days name taken ([[Broadcast]]): of the TMDB films its own
@@ -763,13 +766,11 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
       val records = (candidatesOf(id, digest, listings) ++ uncatalogued(listings, lookups)).distinct.map(film => film -> lookups.film(film))
       Option.when(records.forall(_._2.isKnown))(records.flatMap { case (film, record) => record.toOption.flatten.map(film -> _) })
         .flatMap { known =>
-          val measured = (listing: Listing) => Evidence.of(listing, venues.detail(listing).toOption.flatten).measured
           // a record of the billed work holding only its year is read again before the day decides: it might be the one
           Broadcast.take(listings, measured, known, () => productionsOf(listings, measured, asked))(undatedOf(lookups, version))
             .left.map(dating ++= _).toOption.flatten
         }
-        .map(taken => decision.copy(film = Some(taken.film), basis = ResolverDecision.Basis.Broadcast,
-          explanation = decision.explanation :+ taken.line)(decision.trace))
+        .map(taken => taking(decision)(ResolverDecision.Basis.Broadcast, taken.line, film = Some(taken.film)))
     }
 
   /** Is a record of the billed work dated by its year alone, its day still to be read before the broadcast join decides
@@ -800,7 +801,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
       if (answer == Answer.Unknown) { unknown = true; asked += family -> question }
       answer.toOption
     }
-    val found = families.toSeq.sortBy(_._1.ordinal).flatMap { case (family, answers) =>
+    val found = familiesInOrder.flatMap { case (family, answers) =>
       queries.filterNot(text => family.latinTitlesOnly && !FamilyLookups.hasLatinWord(text)).flatMap { text =>
         noted(family, s"title|$text", answers.titled(text)).toSeq.flatMap(_.take(FamilyLookups.Records))
           .filter(hit => Broadcast.billsAProduction(hit.title)).map(family -> _.id)
@@ -940,7 +941,16 @@ object AgreementStage {
    *  posters not hashed yet, the catalogue questions, and the TMDB records to read again for their release day
    *  ([[wantedRecords]]). */
   final case class Open(questions: Set[(VoterFamily, String)], finds: Set[String], posters: Set[PosterQuestion] = Set.empty,
-                        catalogue: Set[CatalogueQuestion] = Set.empty, records: Set[Int] = Set.empty)
+                        catalogue: Set[CatalogueQuestion] = Set.empty, records: Set[Int] = Set.empty) {
+    /** These, but for those `other` holds. */
+    def --(other: Open): Open = Open(questions -- other.questions, finds -- other.finds, posters -- other.posters,
+      catalogue -- other.catalogue, records -- other.records)
+    /** These and those `other` holds. */
+    def ++(other: Open): Open = Open(questions ++ other.questions, finds ++ other.finds, posters ++ other.posters,
+      catalogue ++ other.catalogue, records ++ other.records)
+    def isEmpty: Boolean = questions.isEmpty && finds.isEmpty && posters.isEmpty && catalogue.isEmpty && records.isEmpty
+  }
+  object Open { val empty: Open = Open(Set.empty, Set.empty) }
 
   /** What a TMDB record read again for its day is filed as among the answers' changes ([[AnswerChanges]]). */
   def recordReadId(tmdbId: Int): String = s"tmdb|record|$tmdbId"
@@ -968,10 +978,37 @@ object AgreementStage {
    *  digest, the families' verdict, and its venue posters' distances to its candidates (and to `also`). */
   private final case class Unagreed(decision: ResolverDecision, id: String, digest: Long, listings: Seq[Listing], verdict: StoredVerdict,
                                    distances: Option[Int] => Answer[Seq[Map[Int, Option[Int]]]])
-  /** Where one apply's takes note what they wait on: the families' questions, the IMDb ids TMDB was not asked about, the
-   *  catalogue questions and the records to read again for their day — and the families' `version`. */
-  private final case class Asks(asked: mutable.Set[(VoterFamily, String)], finding: mutable.Set[String], catalogue: mutable.Set[CatalogueQuestion],
-                                dating: mutable.Set[Int], version: Long)
+  /** One apply at the families' `version`: where its takes and corrections note what they wait on — the families'
+   *  questions, the IMDb ids TMDB was not asked about, the posters, the catalogue questions and the records to read again
+   *  for their day — with the verdicts it moved, the clusters and model takes it read, and its cost. */
+  private final class Pass(val version: Long, corrections: Int, val reading: Read) {
+    val asked        = mutable.Set.empty[(VoterFamily, String)]
+    val finding      = mutable.Set.empty[String]
+    val postersAsked = mutable.Set.empty[PosterQuestion]
+    val catalogue    = mutable.Set.empty[CatalogueQuestion]
+    val dating       = mutable.Set.empty[Int]
+    /** The posters the model takes' corrections wait on: handed to the queue a few at a time ([[wanted]]). */
+    val correctionPosters = mutable.Set.empty[PosterQuestion]
+    val moved        = mutable.ArrayBuffer.empty[StoredVerdict]
+    /** The clusters read, by id, and the model takes read against the evidence, by their correction's id. */
+    val seen         = mutable.Set.empty[String]
+    val correcting   = mutable.Set.empty[String]
+    /** The filings' ids since each version a stored correction was checked at, hashed once per apply. */
+    val changedAt    = mutable.Map.empty[Long, Option[java.util.Set[java.lang.Long]]]
+    /** How many clusters the resolver was asked about again — the apply's cost — and how many agreed films a poster vetoed. */
+    var resolves     = 0
+    var posterVetoed = 0
+    private var budget = corrections
+    /** May one more model take be read afresh ([[CorrectionsPerApply]])? Each asking spends one of the budget. */
+    def fresh(): Boolean = { val left = budget > 0; budget -= 1; left }
+    /** What the apply met unanswered: the corrections' posters only `postersAtOnce` at a time, the backfill of every
+     *  take's posters draining behind every other task. */
+    def wanted(postersAtOnce: Int): Open = {
+      val capped = if (correctionPosters.sizeIs <= postersAtOnce) correctionPosters
+        else correctionPosters.toSeq.sortBy(PosterAnswers.idOf).take(postersAtOnce)
+      Open(asked.toSet, finding.toSet, (postersAsked ++ capped).toSet, catalogue.toSet, dating.toSet)
+    }
+  }
 
   /** What became of the film a cluster's families agree on: taken, pending an answer, vetoed by a venue poster, or none to take. */
   private enum Take {
