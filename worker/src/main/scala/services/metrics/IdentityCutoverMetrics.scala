@@ -32,6 +32,9 @@ import services.identity.{IdentityProjectionMetrics, Regroupings, ShadowRelation
  *    one, and a re-key or merge that keeps the TMDB film are churn and never counted ([[services.identity.TakeChange]]);
  *    the alarm on match changes reads this. Each change is also logged, its facts as fields
  *    (`identity take change: …`, [[services.identity.TakeChangeLines]]).
+ *  - `kinowo_worker_identity_take_reversals_total` — take changes that move a listing BACK to the film (or no-film) it held
+ *    before its last change ([[services.identity.TakeReversals]]): two rules undoing each other, an oscillation. UK
+ *    Chichester's "The Ties That Bind Us" flipped between two films on every pod start of 2026-10-13/14;
  *  - `kinowo_worker_identity_suspect_takes{signal}` — the billings whose take a suspect-take signal finds against its own
  *    evidence (`services.identity.SuspectTakes`: a fragment, an era, a runtime, a sequel, a feed's id, a fill alone), on the
  *    last projection of the whole corpus. A rise between recordings is a wrong take the convergence legs will name;
@@ -96,6 +99,12 @@ final class IdentityCutoverMetrics(registry: PrometheusRegistry) {
     .labelNames("country", "kind")
     .register(registry)
 
+  private val takeReversals: Counter = Counter.builder()
+    .name("kinowo_worker_identity_take_reversals_total")
+    .help("Published listings a written identity projection moved back to the film (or no-film) they held before their last take change: an oscillation.")
+    .labelNames("country")
+    .register(registry)
+
   private val suspectTakes: Gauge = Gauge.builder()
     .name("kinowo_worker_identity_suspect_takes")
     .help("Billings whose identity take a suspect-take signal finds against its own evidence, per signal, on the last written whole-corpus projection.")
@@ -112,8 +121,12 @@ final class IdentityCutoverMetrics(registry: PrometheusRegistry) {
     Seq("true", "false").foreach(reconciles.labelValues(country, _))
     // Every kind exported at 0 from boot, so a first change is an increase a rate sees, not a series appearing.
     services.identity.TakeChange.Kind.values.foreach(k => takeChanges.labelValues(country, k.label))
-    def takesChanged(changes: Seq[services.identity.TakeChange]): Unit =
+    takeReversals.labelValues(country)
+    private val reversals = new services.identity.TakeReversals
+    def takesChanged(changes: Seq[services.identity.TakeChange]): Unit = {
       changes.groupMapReduce(_.kind)(_ => 1)(_ + _).foreach { case (kind, n) => takeChanges.labelValues(country, kind.label).inc(n.toDouble) }
+      takeReversals.labelValues(country).inc(reversals.note(changes).size.toDouble)
+    }
     def reconciled(measured: Boolean): Unit = reconciles.labelValues(country, measured.toString).inc()
     def projected(filmCount: Int, listingCount: Int, moved: Regroupings, relations: Map[ShadowRelation, Int], took: Double): Unit = {
       films.labelValues(country, "projection").set(filmCount.toDouble)

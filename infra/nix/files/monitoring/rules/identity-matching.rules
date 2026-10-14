@@ -152,3 +152,31 @@ groups:
             audit (scripts.SuspectTakesMeasure over a recording, or the convergence legs' step summary on the next push). A rise
             right after a worker deploy is the deploy's; IdentityTakeChangesBurst or IdentityTakesLost firing beside
             it says the films themselves moved.
+
+      # A LISTING MOVED BACK TO THE FILM IT HELD, IN TWO OR MORE OF THE LAST SIX HOURS.
+      #
+      # `kinowo_worker_identity_take_reversals_total` (services.identity.TakeReversals): a take change undoing one
+      # at most three projections earlier -- two rules taking a listing from each other. UK Chichester's "The Ties
+      # That Bind Us" flipped between the 2008 and the 2025 film on every pod start of 2026-10-13/14 (18 reversals
+      # in 41 h of take-change logs): the periodic projection's exact-top-hit own match against the changed-scope
+      # projection's families-and-poster correction. One reversal in one hour is a quick correction; reversals in
+      # two separate hours of six are the same disagreement coming back. Counted hour by hour, so one projection
+      # undoing a batch of listings at once is one hour, never two. A counter, read through increase(): a worker
+      # restart resets it and increase() bridges that, so no hold is needed.
+      - alert: IdentityTakeOscillating
+        expr: |
+          count_over_time(
+            (sum by (country) (increase(kinowo_worker_identity_take_reversals_total[1h])) > 0)[6h:1h]
+          ) >= 2
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.country }}: listings moved back to a film they held, in {{ $value }} of the last 6 hours"
+          description: >-
+            The identity projection keeps undoing its own take changes: a listing taken from film A to B is
+            taken back to A within three projections, and it happened again in another hour. Two rules disagree
+            on the listing and each undoes the other (2026-10-13/14: UK "The Ties That Bind Us", the exact-top-hit
+            own match against the families-and-poster correction, once per pod start). Which listings:
+            VictoriaLogs `country:<cc> "identity take change" | stats by (venue, listing) count() n | sort by (n desc)`,
+            then the listing's lines' basis, reason_last and projection_mode on each side of the flip.
+            Panel: worker diagnostics, "Identity cutover -- regroupings".

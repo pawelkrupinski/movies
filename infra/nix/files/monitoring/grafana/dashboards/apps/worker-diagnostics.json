@@ -2750,6 +2750,15 @@
           },
           "expr": "sum by (country, kind) (increase(kinowo_worker_identity_take_changes_total{country=~\"$country\"}[1h]))",
           "legendFormat": "{{country}} take {{kind}} /h"
+        },
+        {
+          "refId": "G",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "sum by (country) (increase(kinowo_worker_identity_take_reversals_total{country=~\"$country\"}[1h]))",
+          "legendFormat": "{{country}} take reversals /h"
         }
       ]
     },

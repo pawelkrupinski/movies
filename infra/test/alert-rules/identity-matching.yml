@@ -125,3 +125,26 @@ tests:
             exp_annotations:
               summary: "uk: 20 more suspect takes than a day ago"
               description: "The live resolve's suspect takes (billings whose film a signal doubts against the listing's own evidence: a title fragment, an era, a runtime, a sequel number, a feed id, a fill route) rose by more than 10 over the same time yesterday, for two hours. Which signal: worker diagnostics, the identity cutover panel (`kinowo_worker_identity_suspect_takes` by signal); which takes: the suspect-take audit (scripts.SuspectTakesMeasure over a recording, or the convergence legs' step summary on the next push). A rise right after a worker deploy is the deploy's; IdentityTakeChangesBurst or IdentityTakesLost firing beside it says the films themselves moved."
+
+  # IdentityTakeOscillating: UK's Ties That Bind Us reverses once per pod start (hourly) -- fires once a second hour
+  # holds a reversal; one batch of reversals in a single hour (a quick correction) stays quiet; DE restarting with no
+  # reversal stays quiet.
+  - interval: 5m
+    input_series:
+      - series: 'kinowo_worker_identity_take_reversals_total{country="uk",instance="w1"}'
+        values: '0x11 1x12 stale 0x11 1x12'
+      - series: 'kinowo_worker_identity_take_reversals_total{country="pl",instance="w1"}'
+        values: '0x11 32x50'
+      - series: 'kinowo_worker_identity_take_reversals_total{country="de",instance="w1"}'
+        values: '0x23 stale 0x30'
+    alert_rule_test:
+      - eval_time: 3h
+        alertname: IdentityTakeOscillating
+        exp_alerts: []
+      - eval_time: 4h
+        alertname: IdentityTakeOscillating
+        exp_alerts:
+          - exp_labels: { severity: warning, country: uk }
+            exp_annotations:
+              summary: "uk: listings moved back to a film they held, in 2 of the last 6 hours"
+              description: "The identity projection keeps undoing its own take changes: a listing taken from film A to B is taken back to A within three projections, and it happened again in another hour. Two rules disagree on the listing and each undoes the other (2026-10-13/14: UK \"The Ties That Bind Us\", the exact-top-hit own match against the families-and-poster correction, once per pod start). Which listings: VictoriaLogs `country:<cc> \"identity take change\" | stats by (venue, listing) count() n | sort by (n desc)`, then the listing's lines' basis, reason_last and projection_mode on each side of the flip. Panel: worker diagnostics, \"Identity cutover -- regroupings\"."
