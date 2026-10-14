@@ -1,0 +1,59 @@
+#!/usr/bin/env bash
+#
+# Every step one raw billing goes through, in production order: the ingest tidy, the venue's own title rules, the format
+# peel (the slot's title), the canonical tier (the slot key), the search strip rule by rule (each rule's name, before and
+# after), the listing's shape as the identity model reads it (MultiFilmBill, NonMovieEventClassifier, ListingShape, its
+# pieces, billedBeside), the searches it issues (IdentityMeasures.searchQueries, SearchTitles.candidates), and the
+# SearchQueryMarkersSpec / CinemaSlotInvariantsSpec findings it would raise. No recording, no network: the code alone.
+#
+#   scripts/title-trace "<raw title>" --country <cc> [--venue NAME] [--ref A [--ref B]]
+#
+#   --venue   the venue whose rules apply: its display name, or a unique part of it (case and accents aside); a name the
+#             roster does not hold is traced with no venue rules
+#   --ref     trace under that ref's code (laid out and compiled once into the cache, as scripts/identity-slice does);
+#             two refs print both traces, then their diff. Without --ref: this checkout's code.
+#
+# One JVM per ref; the compile is cached in $KINOWO_IDENTITY_CACHE (default ~/.cache/kinowo-identity), shared with
+# scripts/identity-slice.
+set -euo pipefail
+
+usage() { sed -n '3,/^set /p' "$0" | sed '$d; s/^# \{0,1\}//'; }
+case "${1:-}" in -h|--help) usage; exit 0 ;; "") usage >&2; exit 2 ;; esac
+
+# shellcheck disable=SC2034 # read by identity-tools.sh's identity_log
+IDENTITY_TOOL=title-trace
+# shellcheck source=scripts/identity-tools.sh
+. "$(dirname "$0")/identity-tools.sh"
+
+TOOL_FILES=(worker/src/test/scala/services/identity/TitleTrace.scala worker/src/fixtures/scala/tools/SearchQueryMarkers.scala
+  worker/src/fixtures/scala/tools/CinemaSlotInvariants.scala)
+
+raw="" cc="" refs=() pass=()
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --country) cc=$2; shift 2 ;;
+    --venue) pass+=(--venue "$2"); shift 2 ;;
+    --ref) refs+=("$2"); shift 2 ;;
+    --*) echo "unknown argument $1" >&2; usage >&2; exit 2 ;;
+    *) [ -z "$raw" ] || { echo "one raw title only (quote it)" >&2; exit 2; }; raw=$1; shift ;;
+  esac
+done
+[ -n "$raw" ] && [ -n "$cc" ] || { usage >&2; exit 2; }
+[ "${#refs[@]}" -le 2 ] || { echo "at most two --ref" >&2; exit 2; }
+
+trace_at() { # <tree> -> the trace under that tree's code
+  local cp
+  cp=$(identity_classpath "$1") || return 1
+  (cd "$1" && "${IDENTITY_JAVA[@]}" -cp "$cp" services.identity.TitleTrace "$raw" --country "$cc" ${pass[@]+"${pass[@]}"})
+}
+[ "${#refs[@]}" -gt 0 ] || { trace_at "$IDENTITY_REPO"; exit; }
+
+work=$(mktemp -d "${TMPDIR:-/tmp}/title-trace.XXXXXX"); trap 'rm -rf "$work"' EXIT
+for i in "${!refs[@]}"; do
+  tree=$(identity_tree "${refs[$i]}" "${TOOL_FILES[@]}") || exit 1
+  trace_at "$tree" > "$work/$i.txt" || { cat "$work/$i.txt"; exit 1; }
+done
+if [ "${#refs[@]}" -eq 1 ]; then cat "$work/0.txt"; exit; fi
+echo "=== ${refs[0]}"; cat "$work/0.txt"; echo
+if cmp -s "$work/0.txt" "$work/1.txt"; then echo "=== ${refs[1]}: every step the same"
+else echo "=== ${refs[0]} → ${refs[1]}: the steps that moved"; diff -u "$work/0.txt" "$work/1.txt" | tail -n +3 || true; fi
