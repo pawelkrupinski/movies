@@ -1,0 +1,258 @@
+{
+ "uid": "kinowo-ci-builds",
+ "title": "CI — build timings",
+ "tags": [
+  "ci"
+ ],
+ "timezone": "browser",
+ "schemaVersion": 39,
+ "version": 1,
+ "refresh": "5m",
+ "time": {
+  "from": "now-7d",
+  "to": "now"
+ },
+ "description": "Every GitHub Actions workflow's run wall clock and job durations, one chart per build. From scripts/ci/ci_timings.py via the `CI timings` workflow (workflow_run as each run finishes; a 30-minute sweep for GITHUB_TOKEN-dispatched runs).",
+ "annotations": {
+  "list": [
+   {
+    "builtIn": 1,
+    "datasource": {
+     "type": "grafana",
+     "uid": "-- Grafana --"
+    },
+    "enable": true,
+    "hide": true,
+    "name": "Annotations & Alerts",
+    "type": "dashboard"
+   },
+   {
+    "datasource": {
+     "type": "grafana",
+     "uid": "-- Grafana --"
+    },
+    "enable": true,
+    "hide": false,
+    "iconColor": "purple",
+    "name": "Deploys",
+    "tags": [
+     "deploy"
+    ],
+    "type": "tags"
+   }
+  ]
+ },
+ "links": [
+  {
+   "title": "GitHub Actions",
+   "type": "link",
+   "url": "https://github.com/pawelkrupinski/movies/actions",
+   "targetBlank": true
+  }
+ ],
+ "templating": {
+  "list": [
+   {
+    "name": "workflow",
+    "label": "Build",
+    "type": "query",
+    "datasource": {
+     "type": "prometheus",
+     "uid": "local-prometheus"
+    },
+    "definition": "label_values(kinowo_ci_run_seconds, workflow)",
+    "query": {
+     "query": "label_values(kinowo_ci_run_seconds, workflow)",
+     "refId": "workflow"
+    },
+    "current": {
+     "text": "All",
+     "value": "$__all",
+     "selected": true
+    },
+    "includeAll": true,
+    "allValue": ".*",
+    "multi": true,
+    "refresh": 2,
+    "sort": 1,
+    "hide": 0
+   },
+   {
+    "name": "ref",
+    "label": "Ref",
+    "type": "query",
+    "datasource": {
+     "type": "prometheus",
+     "uid": "local-prometheus"
+    },
+    "definition": "label_values(kinowo_ci_job_seconds, ref)",
+    "query": {
+     "query": "label_values(kinowo_ci_job_seconds, ref)",
+     "refId": "ref"
+    },
+    "current": {
+     "text": "main",
+     "value": "main",
+     "selected": true
+    },
+    "includeAll": true,
+    "allValue": ".*",
+    "multi": true,
+    "refresh": 2,
+    "sort": 1,
+    "hide": 0
+   }
+  ]
+ },
+ "panels": [
+  {
+   "id": 1,
+   "type": "text",
+   "title": "",
+   "gridPos": {
+    "h": 3,
+    "w": 24,
+    "x": 0,
+    "y": 0
+   },
+   "options": {
+    "mode": "markdown",
+    "content": "One point per run, at the run's start. **Left: the run** (first job start → last job end, and the wait before any job started). **Right: each job of that build.** Every step and convergence phase is in Prometheus too (`kinowo_ci_step_seconds`, `kinowo_ci_phase_seconds`); per-country convergence detail is on *CI — identity model convergence timings*. A workflow appears once its first run is pushed; a new workflow must be listed in `ci-timings.yml`."
+   }
+  },
+  {
+   "id": 10,
+   "type": "row",
+   "title": "$workflow",
+   "collapsed": false,
+   "repeat": "workflow",
+   "gridPos": {
+    "h": 1,
+    "w": 24,
+    "x": 0,
+    "y": 3
+   },
+   "panels": []
+  },
+  {
+   "id": 2,
+   "title": "$workflow — run",
+   "description": "Wall clock from the first job's start to the last job's end (`wall`), and how long the run waited for its queue and runners before any job started (`queued`), by the run's conclusion.",
+   "type": "timeseries",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "local-prometheus"
+   },
+   "gridPos": {
+    "h": 9,
+    "w": 12,
+    "x": 0,
+    "y": 4
+   },
+   "interval": "1m",
+   "fieldConfig": {
+    "defaults": {
+     "unit": "s",
+     "min": 0,
+     "custom": {
+      "drawStyle": "line",
+      "showPoints": "always",
+      "pointSize": 5,
+      "lineWidth": 1,
+      "fillOpacity": 0,
+      "spanNulls": true
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "table",
+     "placement": "right",
+     "calcs": [
+      "lastNotNull",
+      "min",
+      "max"
+     ],
+     "sortBy": "Last *",
+     "sortDesc": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "max_over_time(kinowo_ci_run_seconds{workflow=\"$workflow\",ref=~\"$ref\"}[$__interval])",
+     "legendFormat": "{{measure}} · {{conclusion}}",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "local-prometheus"
+     }
+    }
+   ]
+  },
+  {
+   "id": 3,
+   "title": "$workflow — jobs",
+   "description": "Every job of the build, setup to teardown.",
+   "type": "timeseries",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "local-prometheus"
+   },
+   "gridPos": {
+    "h": 9,
+    "w": 12,
+    "x": 12,
+    "y": 4
+   },
+   "interval": "1m",
+   "fieldConfig": {
+    "defaults": {
+     "unit": "s",
+     "min": 0,
+     "custom": {
+      "drawStyle": "line",
+      "showPoints": "always",
+      "pointSize": 5,
+      "lineWidth": 1,
+      "fillOpacity": 0,
+      "spanNulls": true
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "table",
+     "placement": "right",
+     "calcs": [
+      "lastNotNull",
+      "min",
+      "max"
+     ],
+     "sortBy": "Last *",
+     "sortDesc": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "max_over_time(kinowo_ci_job_seconds{workflow=\"$workflow\",ref=~\"$ref\"}[$__interval])",
+     "legendFormat": "{{ci_job}}",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "local-prometheus"
+     }
+    }
+   ]
+  }
+ ]
+}

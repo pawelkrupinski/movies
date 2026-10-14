@@ -63,6 +63,13 @@ EVENT_ONLY_VALUES = {
     ("kinowo_worker_telegram_notifications_total", "job", "kinowo-worker"),
     ("kinowo_worker_telegram_notifications_total", "outcome", "sent"),
     ("kinowo_worker_telegram_notifications_total", "outcome", "failed"),
+    # NOT PUBLISHED YET: CI's build timings (scripts/ci/ci_timings.py) reach Prometheus once the
+    # token-gated OTLP path is live and a run has been pushed. Re-snapshot after that, then drop these.
+    ("kinowo_ci_run_seconds", "workflow", "Identity model convergence"),
+    ("kinowo_ci_job_seconds", "workflow", "Identity model convergence"),
+    ("kinowo_ci_step_seconds", "workflow", "Identity model convergence"),
+    ("kinowo_ci_phase_seconds", "workflow", "Identity model convergence"),
+    ("kinowo_ci_step_seconds", "step", "Run the .* (suite|sample.*)"),
     # HISTORY, not a value: the write burst had no `trigger` label before 7d59bc7e3, and
     # ReadModelProjectionWritePerCallHigh's `trigger=~"stream|"` keeps the empty branch so the
     # unlabelled series it fired on can still be replayed (alert-incidents.yml).

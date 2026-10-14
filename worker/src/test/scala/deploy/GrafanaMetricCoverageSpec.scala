@@ -49,6 +49,8 @@ class GrafanaMetricCoverageSpec extends AnyFlatSpec with Matchers {
     "infra/nix/files/monitoring/grafana/dashboards/apps/application-health.json",
     "infra/nix/files/monitoring/grafana/dashboards/apps/worker-diagnostics.json",
     "infra/nix/files/monitoring/grafana/dashboards/fleet/kinowo-fleet.json",
+    "infra/nix/files/monitoring/grafana/dashboards/apps/ci-builds.json",
+    "infra/nix/files/monitoring/grafana/dashboards/apps/ci-convergence.json",
     // Added 2026-08-29 with the HTTP dashboard. EVERY live dashboard has to be listed here or the
     // spec's guarantee inverts: a metric charted only on an unlisted dashboard reads as uncharted,
     // and someone "fixes" that by adding a duplicate panel to a listed one.
@@ -131,15 +133,17 @@ class GrafanaMetricCoverageSpec extends AnyFlatSpec with Matchers {
 
   /** `kinowo_*` families exported by the FLEET rather than by either application —
    *  written by a shell script into node_exporter's textfile directory (the mongodump
-   *  timer, the heap-dump pruner, the synthetic-probe discovery), so no registry in
-   *  this build can enumerate them.
+   *  timer, the heap-dump pruner, the synthetic-probe discovery), or pushed by a CI script
+   *  (scripts/ci/convergence_timings.py's convergence timings) — so no registry in this
+   *  build can enumerate them.
    *
    *  Read from the `# TYPE kinowo_… <type>` header each script echoes, under infra/nix,
    *  rather than listed: this used to be a hand-written pair of mongodump names, and the
    *  five heap-dump families and the probe-discovery timestamp — every one of them an
    *  alert input — were missing from it, charted nowhere, and invisible to both guards. */
   private lazy val fleetFamilies: Seq[String] =
-    filesUnder(new java.io.File("infra/nix"))(f => f.getName.endsWith(".sh") || f.getName.endsWith(".nix"))
+    (filesUnder(new java.io.File("infra/nix"))(f => f.getName.endsWith(".sh") || f.getName.endsWith(".nix")) ++
+      filesUnder(new java.io.File("scripts/ci"))(_.getName.endsWith(".py")))
       .flatMap(f => FleetTypeHeader.findAllMatchIn(RepoFile.read(f.getPath)).map(_.group(1)))
       .distinct
       .sorted

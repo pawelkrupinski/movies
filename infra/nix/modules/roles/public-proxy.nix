@@ -159,6 +159,40 @@ in
             example = [{ method = "POST"; path = "/api/annotations"; }];
           };
 
+          tokenGatedRequests = lib.mkOption {
+            type = lib.types.listOf (lib.types.submodule {
+              options = {
+                method = lib.mkOption { type = lib.types.str; description = "HTTP method, e.g. \"POST\"."; };
+                path = lib.mkOption { type = lib.types.str; description = "Exact public request path -- not a prefix."; };
+                upstream = lib.mkOption { type = lib.types.str; description = "host:port the admitted request is proxied to."; };
+                upstreamPath = lib.mkOption { type = lib.types.str; description = "The path the request is rewritten to before it is proxied."; };
+                authUri = lib.mkOption {
+                  type = lib.types.str;
+                  description = ''
+                    A GET on the vhost's own `upstream` that answers 2xx for a credential it accepts
+                    and 401 otherwise, e.g. Grafana's "/api/org".
+                  '';
+                };
+              };
+            });
+            default = [ ];
+            description = ''
+              Method+path pairs that bypass the Google-login gate like `ssoExemptRequests`, but go to
+              a DIFFERENT upstream that has no authentication of its own -- after the vhost's own
+              `upstream` has vouched for the request's credential at `authUri`.
+
+              EXISTS SO CI CAN WRITE METRICS WITHOUT A SECOND SECRET. Prometheus's OTLP receiver
+              accepts anything; Grafana already knows CI's service-account token (the deploy
+              marker's). So the request is shown to Grafana first (`forward_auth`), and only a 2xx
+              lets it through to Prometheus.
+
+              The `X-Auth-Request-*` headers are stripped before Grafana is asked: Grafana trusts
+              them from this proxy's address (`auth.proxy`), so a caller could otherwise name any
+              allowed email in a header and be vouched for without a token at all.
+            '';
+            example = [{ method = "POST"; path = "/ci/otlp/v1/metrics"; upstream = "10.20.0.11:9090"; upstreamPath = "/api/v1/otlp/v1/metrics"; authUri = "/api/org"; }];
+          };
+
           pathUpstreams = lib.mkOption {
             type = lib.types.attrsOf lib.types.str;
             default = { };
@@ -375,6 +409,15 @@ in
         `requireGoogleLogin` (there is no gate to bypass otherwise) and `upstream` (the address it
         routes an exempted request to).
       '';
+    }) cfg.vhosts
+    ++ lib.mapAttrsToList (host: v: {
+      # `tokenGatedRequests` asks the vhost's `upstream` to vouch, and bypasses a gate that has to
+      # exist -- the same two needs as an exemption.
+      assertion = v.tokenGatedRequests == [ ] || (v.requireGoogleLogin && v.upstream != null);
+      message = ''
+        fleet.publicProxy.vhosts."${host}" sets `tokenGatedRequests`, which needs both
+        `requireGoogleLogin` and `upstream` (the service asked to vouch for the credential).
+      '';
     }) cfg.vhosts;
 
     security.acme = {
@@ -421,18 +464,51 @@ in
           # emitted before it for the same reason: a `handle` that matches is terminal, so it must
           # be written ahead of `forward_auth` or the exemption never takes effect. Goes straight to
           # `upstream` -- the door this bypasses is Google's, not the upstream's own.
+          #
+          # THE SIGN-IN PROXY'S IDENTITY HEADERS ARE STRIPPED on the way past it. Grafana's
+          # `auth.proxy` believes `X-Auth-Request-Email` from this proxy's address, and on these
+          # paths `forward_auth` never ran to overwrite it -- so a caller's own copy would sign
+          # them in as whoever it names, token or no token.
           ssoExemptBlock = lib.concatStrings (lib.imap0 (i: e: ''
             @ssoExempt${toString i} {
               method ${e.method}
               path ${e.path}
             }
             handle @ssoExempt${toString i} {
-              reverse_proxy ${v.upstream}
+              reverse_proxy ${v.upstream} {
+                header_up -X-Auth-Request-Email
+                header_up -X-Auth-Request-User
+              }
             }
           '') v.ssoExemptRequests);
 
+          # ONE `handle` PER TOKEN-GATED METHOD+PATH, emitted beside the exemptions and for the same
+          # reason. `route` keeps the written order: ask the vhost's upstream about the credential,
+          # then rewrite and proxy.
+          tokenGatedBlock = lib.concatStrings (lib.imap0 (i: e: ''
+            @tokenGated${toString i} {
+              method ${e.method}
+              path ${e.path}
+            }
+            handle @tokenGated${toString i} {
+              route {
+                forward_auth ${v.upstream} {
+                  uri ${e.authUri}
+                  header_up -X-Auth-Request-Email
+                  header_up -X-Auth-Request-User
+                }
+                rewrite * ${e.upstreamPath}
+                reverse_proxy ${e.upstream} {
+                  header_up -X-Auth-Request-Email
+                  header_up -X-Auth-Request-User
+                }
+              }
+            }
+          '') v.tokenGatedRequests);
+
           googleLoginBlock = lib.optionalString v.requireGoogleLogin ''
             ${ssoExemptBlock}
+            ${tokenGatedBlock}
             handle ${googleSso.proxyPrefix}/* {
               reverse_proxy ${googleSso.listenAddress}
             }

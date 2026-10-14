@@ -730,6 +730,10 @@ in
           "--storage.tsdb.retention.time=${cfg.retention}"
           "--storage.tsdb.retention.size=${cfg.retentionSize}"
           "--web.listen-address=${cfg.listenAddress}:9090"
+          # CI's convergence timings arrive as OTLP (roles/public-proxy.nix `tokenGatedRequests`,
+          # scripts/ci/convergence_timings.py) -- a write path, but only on the private address; the
+          # one public route to it is token-gated by Grafana.
+          "--web.enable-otlp-receiver"
           # NOT --web.enable-admin-api, and not --web.enable-lifecycle. The first exposes
           # POST /api/v1/admin/tsdb/delete_series -- a delete button on the only copy of this
           # fleet's metric history, reachable by anything on the private network. The second

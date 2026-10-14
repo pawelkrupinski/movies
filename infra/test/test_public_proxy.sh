@@ -173,6 +173,23 @@ if [ -z "$logs_vhost" ]; then
   echo "  FAILED could not evaluate the vhost:"; sed 's/^/    /' "$work/eval.err" | tail -5; exit 1
 fi
 
+# grafana.kinowo.net, FOR ITS TWO DOORS THAT ARE NOT GOOGLE'S: the deploy marker's exempt
+# `/api/annotations`, and CI's token-gated metrics path into Prometheus. Grafana and Prometheus are
+# replaced by stub sites below (the private addresses do not exist on a laptop), which is what lets
+# this ask whether the TOKEN is what admits a request -- and whether a forged sign-in header is not.
+echo "==> rendering grafana.kinowo.net's vhost out of monitoring-1"
+grafana_port=8895
+grafana_stub_port=4181
+prometheus_stub_port=4182
+grafana_vhost="$(nix "${nix_flags[@]}" eval --raw \
+  "$infra/nix#nixosConfigurations.monitoring-1.config.services.caddy.virtualHosts.\"grafana.kinowo.net\".extraConfig" 2>"$work/eval.err")"
+if [ -z "$grafana_vhost" ]; then
+  echo "  FAILED could not evaluate the vhost:"; sed 's/^/    /' "$work/eval.err" | tail -5; exit 1
+fi
+grafana_vhost="$(printf '%s\n' "$grafana_vhost" | grep -v '^[[:space:]]*tls[[:space:]]')"
+grafana_vhost="${grafana_vhost//10.20.0.11:3000/127.0.0.1:$grafana_stub_port}"
+grafana_vhost="${grafana_vhost//10.20.0.11:9090/127.0.0.1:$prometheus_stub_port}"
+
 # THE DOOR IS GOOGLE'S, NOT A SHARED PASSWORD. Asserted on the rendered vhost so that a change
 # which quietly drops the check -- or reverts it to `basic_auth` -- fails here rather than being
 # noticed by nobody.
@@ -211,6 +228,28 @@ handle /oauth2/* {
 }
 '
 
+# GRAFANA, as far as these two doors ask it: `/api/org` vouches for the CI token -- and, like the
+# real `auth.proxy`, for anybody whose request carries `X-Auth-Request-Email`, which is exactly the
+# header the proxy must strip. `/api/annotations` says which of the two let the request in.
+grafana_stub_site='
+route /api/org {
+  @token header Authorization "Bearer ci-token"
+  respond @token 200
+  @proxyUser header X-Auth-Request-Email *
+  respond @proxyUser 200
+  respond 401
+}
+route /api/annotations {
+  @proxyUser header X-Auth-Request-Email *
+  respond @proxyUser "SIGNED-IN-BY-HEADER" 200
+  respond "ANNOTATION" 200
+}
+'
+prometheus_stub_site='
+respond /api/v1/otlp/v1/metrics "PROMETHEUS-OTLP" 200
+respond 404
+'
+
 # `auto_https off` and a plain port, because the rule under test is about matching, not TLS -- and
 # a test that had to obtain a certificate could not run offline.
 { echo "{ auto_https off"; echo "  admin off"; echo "}"
@@ -218,6 +257,9 @@ handle /oauth2/* {
   echo ":$logs_port {"; echo "$logs_vhost"; echo "}"
   echo ":$www_port {"; echo "$www_vhost"; echo "}"
   echo ":$filmowo_port {"; echo "$filmowo_vhost"; echo "}"
+  echo ":$grafana_port {"; echo "$grafana_vhost"; echo "}"
+  echo ":$grafana_stub_port {"; echo "$grafana_stub_site"; echo "}"
+  echo ":$prometheus_stub_port {"; echo "$prometheus_stub_site"; echo "}"
   echo ":$stub_port {"; echo "$stub_site"; echo "}"; } > "$work/Caddyfile"
 
 "${caddy_cmd[@]}" run --config "$work/Caddyfile" --adapter caddyfile >"$work/caddy.log" 2>&1 &
@@ -464,6 +506,26 @@ else echo "  FAILED / redirected to '$loc', wanted /select/vmui/"; failed=1; fi
 loc="$(curl -s -o /dev/null -D - -H "X-Test-Session: yes" "http://127.0.0.1:$logs_port/select" | tr -d '\r' | awk -F': ' '/^[Ll]ocation/{print $2}')"
 if [ "$loc" = "/select/" ]; then echo "  ok  /select without its slash is redirected, not 404'd"
 else echo "  FAILED /select redirected to '$loc', wanted /select/"; failed=1; fi
+
+echo "==> what grafana.kinowo.net admits without a Google session"
+grafana_check() { # <expected "status body"> <method> <path> <what it proves> [curl args...]
+  local want="$1" method="$2" path="$3" why="$4" got; shift 4
+  got="$(curl -s -o "$work/grafana.body" -w '%{http_code}' -X "$method" "$@" "http://127.0.0.1:$grafana_port$path")"
+  got="$got $(cat "$work/grafana.body" 2>/dev/null)"
+  if [ "${got% }" = "$want" ]; then printf '  ok  %s\n' "$why"
+  else printf '  FAILED %s\n         %s %s -> %s, wanted %s\n' "$why" "$method" "$path" "$got" "$want"; failed=1; fi
+}
+grafana_check "200 PROMETHEUS-OTLP" POST /ci/otlp/v1/metrics "CI's token reaches Prometheus's OTLP receiver" \
+  -H "Authorization: Bearer ci-token"
+grafana_check "401" POST /ci/otlp/v1/metrics "a token Grafana rejects does not" \
+  -H "Authorization: Bearer stolen"
+grafana_check "401" POST /ci/otlp/v1/metrics "a FORGED sign-in header is stripped before Grafana is asked" \
+  -H "X-Auth-Request-Email: pawel@bitcashier.io"
+grafana_check "302" GET /ci/otlp/v1/metrics "only the exact method is gated by token; the rest asks Google"
+grafana_check "302" POST /api/v1/otlp/v1/metrics "Prometheus's own path is not published"
+grafana_check "200 ANNOTATION" POST /api/annotations "the deploy marker's exemption still reaches Grafana"
+grafana_check "200 ANNOTATION" POST /api/annotations "...with a forged sign-in header stripped" \
+  -H "X-Auth-Request-Email: pawel@bitcashier.io"
 
 [ "$failed" = 0 ] && echo "  ok  public proxy behaves" || { echo; echo "caddy log:"; sed 's/^/    /' "$work/caddy.log" | tail -20; }
 exit "$failed"

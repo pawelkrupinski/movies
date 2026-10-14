@@ -266,6 +266,16 @@ in
         # own token check is the real gate on this path; this only removes the SSO hop CI cannot
         # complete. See `ssoExemptRequests` in roles/public-proxy.nix.
         ssoExemptRequests = [{ method = "POST"; path = "/api/annotations"; }];
+        # CI's convergence timings (scripts/ci/convergence_timings.py), as OTLP metrics into
+        # Prometheus. Prometheus has no auth of its own, so Grafana vouches for the same
+        # service-account token first; Prometheus is never published otherwise.
+        tokenGatedRequests = [{
+          method = "POST";
+          path = "/ci/otlp/v1/metrics";
+          upstream = "10.20.0.11:9090";
+          upstreamPath = "/api/v1/otlp/v1/metrics";
+          authUri = "/api/org";
+        }];
       };
 
       # THE SIGN-IN ITSELF, and the only redirect URI registered with Google. It carries no login
