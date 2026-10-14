@@ -168,10 +168,19 @@ class TakesDiffTest(unittest.TestCase):
         base = self.ratchet("b.tsv", ["LOST\tpl\tHelios\tLalka\ttmdb:1\tLalka\tnone\t\ttmdb:1\t\n",
                                        "NEW\tpl\tMuza\tObcy\timdb:tt1\tObcy\tAgreed\t\t\t\n"])
         head = self.ratchet("h.tsv", [])
-        self.assertEqual(2, d.main(["pl", base, head, "--final"]))  # nothing taken on either side: no verdict
+        self.assertEqual(2, d.main(["pl", base, head, "--final"]))  # a head ratchet that wrote no takes: no verdict
         base = self.ratchet("b.tsv", ["RIGHT\tpl\tRialto\tDiuna\ttmdb:7\tDiuna\tOwnMatch\t\t\t\n"])
         head = self.ratchet("h.tsv", ["RIGHT\tpl\tRialto\tDiuna\ttmdb:7\tDiuna\tOwnMatch\t\t\t\n"])
         self.assertEqual(0, d.main(["pl", base, head, "--final"]))
+
+
+    # Spain's capture on 10-14: both ratchets ran (other countries' rows), neither took a Spanish listing -- no move.
+    def test_a_country_neither_ratchet_took_a_listing_for_passes_when_both_ran(self):
+        base = self.ratchet("b.tsv", ["RIGHT\tpl\tRialto\tDiuna\ttmdb:7\tDiuna\tOwnMatch\t\t\t\n"])
+        head = self.ratchet("h.tsv", ["RIGHT\tpl\tRialto\tDiuna\ttmdb:7\tDiuna\tOwnMatch\t\t\t\n"])
+        self.assertEqual(0, d.main(["es", base, head, "--final"]))
+        empty = self.ratchet("e.tsv", [])
+        self.assertEqual(2, d.main(["es", empty, empty, "--final"]))
 
 
 if __name__ == "__main__":

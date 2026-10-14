@@ -99,6 +99,13 @@ def accepted_of(path, cc):
     return out
 
 
+def ratchet_ran(path):
+    """Whether a ratchet-takes.tsv holds any take row, for any country: an empty file is a ratchet that never ran."""
+    with open(path, encoding="utf-8") as f:
+        f.readline()
+        return any(line.strip() for line in f)
+
+
 def ratchet_rows(path, cc):
     """{(venue, rawTitle): row} of the takes a ratchet-takes.tsv holds for `cc` -- every status but LOST (an expected take
     now taking none) carries the film the listing takes; a TMDB id only, as the model's decisions carry."""
@@ -253,6 +260,11 @@ def main(argv=None):
     # exit 1's "the code moved a take".
     try:
         base, head = final_sides(a.base, a.head, a.cc) if a.final else (load(a.base), load(a.head))
+        # The final takes list only listings some side took a film for: a country whose captured clusters take none on
+        # either side (Spain's on 10-14) has no move to judge -- a verdict, provided both ratchets wrote takes at all.
+        if a.final and not base and not head and ratchet_ran(a.base) and ratchet_ran(a.head):
+            print(f"identity final takes ({a.cc}): the capture holds no taken listing on either side -- no move")
+            return 0
         if not base or not head:
             print(f"identity takes ({a.cc}): an empty side (base {len(base)}, head {len(head)} listings) -- nothing resolved",
                   file=sys.stderr)
