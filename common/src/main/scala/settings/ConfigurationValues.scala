@@ -116,6 +116,9 @@ final case class HermeticReplay(value: Boolean) extends AnyVal
  *  expiry, remembered failures replayed) but fetches, live, only what the tree lacks, and records it:
  *  the `Identity model convergence` build's overlay of the model's own enrichment. */
 final case class GapFill(value: Boolean) extends AnyVal
+/** `KINOWO_CONVERGENCE_ORDER_PASSES` — the order-independence passes (`0,1`) a split order row replays
+ *  and compares; every pass when unset. A leg over its time budget splits its passes across rows. */
+final case class OrderPasses(indices: Seq[Int]) extends AnyVal
 /** `KINOWO_IDENTITY_RATING_GATE` — the identity phase-3 staged-migration switch: cards below the
  *  calibrated identity confidence are served without ratings. Off by default. */
 final case class IdentityRatingGateEnabled(value: Boolean) extends AnyVal

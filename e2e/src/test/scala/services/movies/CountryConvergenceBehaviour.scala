@@ -318,6 +318,17 @@ abstract class CountryConvergenceBehaviour(
    *  country runs these replays in a CI job of its own; see [[OrderIndependence]]. */
   private val Passes = 3
 
+  /** The passes this run replays: every one, or the subset a SPLIT order row names
+   *  (`KINOWO_CONVERGENCE_ORDER_PASSES`) when one row of all three runs past the leg's
+   *  10-minute budget. A pass keeps its seed whichever row replays it, and each row must
+   *  hold two, since a pass is only ever compared with the others in its own row:
+   *  overlapping rows (`0,1` and `1,2`) still hold every pass to the same corpus. */
+  private lazy val passes: Seq[Int] = configuration.orderPasses.fold(0 until Passes: Seq[Int]) { chosen =>
+    require(chosen.indices.distinct.sizeIs >= 2 && chosen.indices.forall(i => i >= 0 && i < Passes),
+      s"KINOWO_CONVERGENCE_ORDER_PASSES names ${chosen.indices.mkString(",")}: a row needs two distinct passes of 0..${Passes - 1}")
+    chosen.indices.distinct
+  }
+
   /** Fixed, so an order-dependent regression fails the same way every run rather
    *  than surfacing as a flake. */
   private val OrderSeed = 0x2026_07_28L
@@ -1119,7 +1130,7 @@ abstract class CountryConvergenceBehaviour(
         // only the materialise-and-diff tail is one-at-a-time. See [[CorpusComparison]]
         // for the leg that ran out of heap holding all three.
         val comparison = new CorpusComparison
-        val _ = ParallelReplays((0 until Passes).map(i => OrderSeed + i.toLong), replayGuard)(replay(archive, comparison, _))
+        val _ = ParallelReplays(passes.map(i => OrderSeed + i.toLong), replayGuard)(replay(archive, comparison, _))
         comparison
       }
       orderReplays = Some(started)
@@ -1135,12 +1146,12 @@ abstract class CountryConvergenceBehaviour(
       reportCorpusProvenance()
       val reference = comparison.reference
       info(s"${country.displayName}: ${passBodies.describe}")
-      info(s"${country.displayName}: $Passes passes over ${reference.records.size} films, " +
+      info(s"${country.displayName}: ${passes.size} passes (${passes.mkString(",")}) over ${reference.records.size} films, " +
            s"${reference.screenings.values.map(_.size).sum} slots, ${reference.rows.size} rendered rows")
       reference.records should not be empty
       reference.rows    should not be empty
       // Every pass compared: a pass that never folded in would leave nothing to diverge, and pass as agreement.
-      withClue(s"only ${comparison.folded} of $Passes order passes reached the comparison: ")(comparison.folded shouldBe Passes)
+      withClue(s"only ${comparison.folded} of ${passes.size} order passes reached the comparison: ")(comparison.folded shouldBe passes.size)
       // All three axes are real. This note used to say the screenings one was VACUOUS —
       // that `MongoConvergenceStorage` built `movies` without the `screenings`/`slots`
       // read-split, so the side collection was never written and two empty maps compared
@@ -1153,7 +1164,7 @@ abstract class CountryConvergenceBehaviour(
       // Name the seeds: each pass's arrival order is a pure function of its seed, so
       // quoting them makes a CI-only divergence reproducible on a laptop instead of
       // something you re-run and hope to see again.
-      val seeds = (0 until Passes).map(i => s"pass$i=0x${(OrderSeed + i.toLong).toHexString}").mkString(", ")
+      val seeds = passes.map(i => s"pass$i=0x${(OrderSeed + i.toLong).toHexString}").mkString(", ")
       // Every differing film to the diagnostics artifact; the log and the summary page get each axis' first lines,
       // which lead with which fields differ on how many films.
       val shown = if (divergences.isEmpty) Nil else {

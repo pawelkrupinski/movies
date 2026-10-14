@@ -119,6 +119,16 @@ on:
                 required: false
                 type: string
                 default: ''
+            # ONE ORDER ROW PAST 10 MINUTES IS SPLIT IN TWO: passes 0,1 and passes 1,2, each row's two
+            # replays on a runner of their own instead of three sharing one. A pass is compared only
+            # with the others in its row, so each row holds two and they overlap on pass 1 -- 0 = 1 and
+            # 1 = 2 still hold all three to one corpus. Only for a country whose order row runs over
+            # (DE, US, UK); one under 10 minutes keeps its single row (KINOWO_CONVERGENCE_ORDER_PASSES).
+            order-split:
+                description: Run the order-independence passes as two overlapping rows (passes 0,1 and 1,2) rather than one.
+                required: false
+                type: boolean
+                default: false
             order-job-timeout-minutes:
                 description: Ceiling for the whole order-independence row, including setup and its sample step.
                 required: false
@@ -311,7 +321,7 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                phase: ${{ fromJson(format('["convergence"{0}{1}]', inputs.order-command != '' && ',"order-independence"' || '', inputs.sample-row && ',"sample"' || '')) }}
+                phase: ${{ fromJson(format('["convergence"{0}{1}]', inputs.order-command != '' && (inputs.order-split && ',"order-independence-p01","order-independence-p12"' || ',"order-independence"') || '', inputs.sample-row && ',"sample"' || '')) }}
         runs-on: ${{ inputs.runner }}
         # 45 was not enough headroom and cost a real run: on 2026-07-28 the Germany
         # and UK legs were CANCELLED at exactly 45m while Poland finished in 8,
@@ -738,6 +748,9 @@ jobs:
                   # in a RECORDING leg. A hermetic one refuses that request and names it.
                   KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES: enrichment-${{ inputs.code }}
                   KINOWO_CONVERGENCE_HERMETIC: ${{ inputs.mode == 'hermetic' }}
+                  # A split order row's passes, read off its phase (`order-independence-p01` -> 0,1);
+                  # empty, every pass, on any other row.
+                  KINOWO_CONVERGENCE_ORDER_PASSES: ${{ matrix.phase == 'order-independence-p01' && '0,1' || matrix.phase == 'order-independence-p12' && '1,2' || '' }}
                   # GAP-FILL in a RECORDING's order row: it replays the
                   # working tree it restored (the last recording's) and fetches live only what that
                   # lacks, ONCE between its three passes (`SharedLiveAnswers`), never refreshing it.

@@ -262,6 +262,13 @@ final class ProcessConfiguration(val env: Env) {
   /** `KINOWO_CONVERGENCE_FILL_ONLY` (`1` or `true`). */
   def gapFill: GapFill = GapFill(env.flag("KINOWO_CONVERGENCE_FILL_ONLY"))
 
+  /** `KINOWO_CONVERGENCE_ORDER_PASSES` (`0,1`): a split order row's passes. An entry that is not a pass
+   *  number is refused, not skipped -- the row would otherwise compare fewer passes than it says. */
+  def orderPasses: Option[OrderPasses] = text("KINOWO_CONVERGENCE_ORDER_PASSES").map { list =>
+    OrderPasses(list.split(',').toSeq.map(_.trim).map(pass =>
+      pass.toIntOption.getOrElse(throw new IllegalArgumentException(s"KINOWO_CONVERGENCE_ORDER_PASSES: '$pass' is not a pass number in '$list'"))))
+  }
+
   /** `KINOWO_IDENTITY_LOOKUPS` (`1` or `true`). */
   def identityLookupSweep: IdentityLookupSweepEnabled = IdentityLookupSweepEnabled(env.flag("KINOWO_IDENTITY_LOOKUPS"))
 

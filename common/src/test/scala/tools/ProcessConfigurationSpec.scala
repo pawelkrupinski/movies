@@ -39,6 +39,16 @@ class ProcessConfigurationSpec extends AnyFlatSpec with Matchers {
     resolvedFrom("KINOWO_CONVERGENCE_FILL_ONLY" -> "no").gapFill shouldBe GapFill(false)
   }
 
+  it should "resolve which order-independence passes a split row replays, every pass when unset" in {
+    resolvedFrom().orderPasses shouldBe None
+    resolvedFrom("KINOWO_CONVERGENCE_ORDER_PASSES" -> "0,1").orderPasses shouldBe Some(OrderPasses(Seq(0, 1)))
+    resolvedFrom("KINOWO_CONVERGENCE_ORDER_PASSES" -> " 1, 2 ").orderPasses shouldBe Some(OrderPasses(Seq(1, 2)))
+  }
+
+  it should "refuse an order-pass list it cannot read, rather than replay passes nobody asked for" in {
+    an[IllegalArgumentException] should be thrownBy resolvedFrom("KINOWO_CONVERGENCE_ORDER_PASSES" -> "0,x").orderPasses
+  }
+
   // Every boolean harness switch reads through the one `Env.flag` rule (`1` or `true`), not a
   // spelling of its own: they took "true" alone, one of them any value at all.
   it should "read every boolean harness switch as one flag, `1` and `true` alike" in {

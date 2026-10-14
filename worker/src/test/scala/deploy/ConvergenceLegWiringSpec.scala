@@ -455,8 +455,26 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     }
     legDirectives should not include "if: inputs.order-command"
     RepoFile.block(leg, "convergence") should include(
-      """phase: ${{ fromJson(format('["convergence"{0}{1}]', inputs.order-command != '' && ',"order-independence"' || '', """ +
+      """phase: ${{ fromJson(format('["convergence"{0}{1}]', inputs.order-command != '' && (inputs.order-split && """ +
+        """',"order-independence-p01","order-independence-p12"' || ',"order-independence"') || '', """ +
         """inputs.sample-row && ',"sample"' || '')) }}""")
+  }
+
+  /** A country whose single order row ran past the 10-minute target splits it into two rows of two
+   *  passes, overlapping on pass 1: a pass is only compared with the others in its row, so 0 = 1 and
+   *  1 = 2 are what hold all three to one corpus. Each row's passes are read off its phase. */
+  it should "split an over-budget order row into two overlapping two-pass rows" in {
+    val suite = RepoFile.block(leg, "convergence")
+    suite should include("""KINOWO_CONVERGENCE_ORDER_PASSES: ${{ matrix.phase == 'order-independence-p01' && '0,1' || """ +
+      """matrix.phase == 'order-independence-p12' && '1,2' || '' }}""")
+    RepoFile.block(leg, "order-split") should include("default: false")
+  }
+
+  it should "split only the countries whose order replay ran past 10 minutes" in {
+    val convergence = RepoFile.read(".github/workflows/identity-model-convergence.yml")
+    val split = RepoFile.matrixRows(convergence).filter(_.get("orderSplit").contains("true")).flatMap(_.get("code")).toSet
+    split shouldBe Set("de", "uk", "us")
+    convergence should include("order-split:                   ${{ matrix.orderSplit == true }}")
   }
 
   /**
