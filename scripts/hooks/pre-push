@@ -87,7 +87,7 @@ plan() {
             *.scala|*.java|build.sbt|project/*|infra/nix/files/monitoring/grafana/dashboards/*) sbt=1 ;;
         esac
         # What NoSilencedGhCurlSpec reads: a script that silences a gh/curl read failed Main from a push this check never
-        # selected (de3fee075).
+        # selected (d00c5edf2).
         case "$path" in
             scripts/*.sh|.github/*.sh|.github/*.yml|.github/*.yaml|infra/*.sh|infra/*.yml|infra/*.yaml) sbt=1 ;;
         esac

@@ -1,15 +1,10 @@
 #
-# ONE country's convergence leg: the full run, and in a recording the sample ahead of it.
+# ONE country's convergence leg: the full run, as one job of matrix rows.
 #
-# ONE job, always. In a RECORDING the sample is the first suite step of the `convergence`
-# row and the full suite the step after it, where it carries `continue-on-error`, so the
-# whole corpus is recorded past a red sample (see the sample step below). A HERMETIC
-# convergence row runs no sample: it replays a slice of the corpus its own suite replays
-# against the same pinned pair, so it only failed sooner, for ~2 minutes of the row's wall
-# time; the row runs the sample's corpus-shape specs ahead of its suite instead. A leg may also run
-# the sample as a `sample` row of its own (`sample-row`), beside the suite
-# rather than in front of it — the suite then runs ungated, and a red sample costs its runner, not
-# wall time.
+# NO ROW RUNS THE ~100-FILM SAMPLE (2026-10-14): it replays a slice of the corpus the suite replays in
+# full, so it only ever failed sooner, and once every row fit the lane's 10-minute target that cost more
+# than it saved. Each convergence row runs the sample's corpus-shape specs ahead of its suite instead;
+# the auto-bisect still replays the sample alias per commit (`sample-command`).
 #
 # A HERMETIC convergence row first fetches, for at most ~90 s, what the previous leg's suite could not
 # answer from the pinned pair, publishes it under its own name, and lays it over its tree; only then
@@ -25,7 +20,7 @@
 #
 # A reusable workflow called once per country rather than one matrix job in
 # `country-convergence.yml` holding every country, so each country reports — and fails —
-# on its own: a country whose sample fails stops only itself. (While the sample was a job
+# on its own: a country whose leg fails stops only itself. (While the sample was a job
 # of its own this was also the only way to say "this matrix leg needs THAT matrix leg":
 # `needs:` joins jobs, so a `convergence` matrix waiting on a `sample` matrix waited on
 # ALL of it, and one country's flap held every other country's full leg.)
@@ -54,15 +49,16 @@ on:
                 required: true
                 type: string
             sample-command:
-                description: The sbt alias running this country's ~100-film sample.
-                required: true
+                description: The sbt alias of this country's ~100-film sample, which a red hermetic leg's auto-bisect replays per commit. No row runs it.
+                required: false
                 type: string
+                default: ''
             command:
                 description: The sbt alias running this country's full convergence leg.
                 required: true
                 type: string
-            # Run ahead of the suite in a HERMETIC convergence row that runs no sample: the
-            # sample's corpus-shape specs, the one part of it the full suite does not cover.
+            # Run ahead of every convergence row's suite: the sample's corpus-shape specs, the one part of the
+            # sample the full suite does not cover.
             shape-command:
                 description: The sbt alias running this country's corpus-shape specs (`corpusShape*`).
                 required: false
@@ -81,22 +77,20 @@ on:
             # warm country's budget and it is cancelled before it can record the very
             # tree that would have made it fast — the self-defeating shape the comment
             # on the step below spells out.
-            # The JOB ceilings cover the sample step as well as the suite step: the sample
-            # runs first in the same job, so each job ceiling has to clear the two step
-            # ceilings together plus setup and the publishes (ConvergenceLegWiringSpec).
-            # GitHub expressions have no arithmetic, so the sum is the caller's to state.
+            # The JOB ceilings clear the suite step's ceiling plus setup and the publishes
+            # (ConvergenceLegWiringSpec). GitHub expressions have no arithmetic, so the sum is the caller's to state.
             job-timeout-minutes:
-                description: Ceiling for the whole convergence row, including setup, the sample step and publishes.
+                description: Ceiling for the whole convergence row, including setup and publishes.
                 required: false
                 type: number
                 default: 155
             suite-timeout-minutes:
-                description: Ceiling for the convergence suite step alone. MUST stay clear of the job's, with the sample's.
+                description: Ceiling for the convergence suite step alone. MUST stay clear of the job's.
                 required: false
                 type: number
                 default: 120
             sample-suite-timeout-minutes:
-                description: Ceiling for the sample step alone, inside every row's job ceiling.
+                description: Ceiling for each sample replay of the auto-bisect this leg requests when it goes red.
                 required: false
                 type: number
                 default: 20
@@ -137,7 +131,7 @@ on:
                 type: boolean
                 default: false
             order-job-timeout-minutes:
-                description: Ceiling for the whole order-independence row, including setup and its sample step.
+                description: Ceiling for the whole order-independence row, including setup.
                 required: false
                 type: number
                 default: 155
@@ -203,20 +197,6 @@ on:
                 required: false
                 type: boolean
                 default: false
-            # The sample in a row of its own, beside the suite instead of ahead of it. In a recording
-            # the sample gates nothing — it records, and its verdict fails the leg after the publish —
-            # so the minute it held the convergence row's critical path bought nothing there; the
-            # United States' leg, the run's longest once the UK's replays moved out, sets it (run
-            # 37105119296). The identity lane's US leg sets it too: its sample was 79 s of that
-            # lane's 10-minute critical path (run 37150307201), and an ungated suite costs a runner
-            # on a red sample, never wall time. In a recording its tree entries reach the
-            # convergence row's one publish through `.github/scripts/sample-recordings.sh`; a
-            # hermetic leg records nothing, so there is nothing to merge.
-            sample-row:
-                description: Run the sample as a row of its own, beside the suite; in a recording, merge what it records into the convergence row's publish.
-                required: false
-                type: boolean
-                default: false
             # MongoDB's data in RAM: see `convergence-setup`'s input of the same name. Per country because
             # the room is: the United States' 10g heap leaves none.
             mongo-tmpfs:
@@ -232,7 +212,7 @@ on:
                 type: string
                 default: ubuntu-latest
             # Extra sbt JVM options for every sbt run of the leg (`-J-XX:+UseParallelGC`) — the corpus capture,
-            # the pre-suite fill, the sample and the suite; not a bisect the leg requests, which replays with the
+            # the pre-suite fill and the suite; not a bisect the leg requests, which replays with the
             # bisect's own settings: how a hand-dispatched run tries a JVM setting on the runner it would ship to.
             # Empty on every dispatch Main makes.
             jvm-options:
@@ -278,26 +258,10 @@ permissions:
     contents: read
 
 jobs:
-    # THE RUN, AND WHERE THE SAMPLE GOES — one PHASE per row: `convergence` for every country,
-    # plus `order-independence` for a corpus that no longer fits in a single job, plus `sample`
-    # for a leg that runs its sample beside the suite (`sample-row`).
-    #
-    # THE SAMPLE is a ~100-film leg replaying the same four assertions the full leg does —
-    # fixpoint, order-independence, no-loss, and the production-coverage band — over a sample
-    # recorded beside the corpus. A HERMETIC leg runs it only as a `sample` row of its own (the
-    # United States'), never ahead of a suite: it replays a slice of the corpus the suite replays,
-    # so in front of the suite it only failed sooner, for ~2 minutes of every row (run
-    # 37499106536); a hermetic convergence row runs the sample's corpus-shape specs instead. A
-    # RECORDING runs it ahead of its convergence row's suite (or in a `sample` row), where it
-    # records into the tree the suite then extends and gates nothing — see the sample step.
-    #
-    # It used to be a JOB of its own, then the first suite step of every row. The job cost every
-    # hermetic leg ~1 minute of critical path (a second checkout, ~10 s, and a second
-    # convergence-setup, ~45 s) and one more runner per country per push; the step held the
-    # suite back for ~2 minutes, and the order-independence row's copy sat 97 s in front of the
-    # identity lane's critical path (run 37144949783). A `sample` row speaks for the sample (its
-    # row verdict, its ratchet) and, in a recording, hands its recordings to the convergence row's
-    # one publish; a red sample costs the other rows their runners, never wall time.
+    # THE RUN — one PHASE per row: `convergence` for every country, plus `order-independence` (or its two split
+    # rows) for a corpus whose replays no longer fit beside the boot, plus `next-day` for a leg its next-day test keeps
+    # past 10 minutes, plus `takes` (the identity takes check) in every hermetic leg. No row runs the sample (see the
+    # header).
     #
     # A ROW rather than a job of its own, because "a job that exists only sometimes" is
     # not something GitHub can express. A job carrying `if: inputs.order-command != ''`
@@ -328,7 +292,7 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                phase: ${{ fromJson(format('["convergence"{0}{1}{2}{3}]', inputs.order-command != '' && (inputs.order-split && ',"order-independence-p01","order-independence-p12"' || ',"order-independence"') || '', inputs.sample-row && ',"sample"' || '', inputs.next-day-command != '' && ',"next-day"' || '', inputs.mode == 'hermetic' && ',"takes"' || '')) }}
+                phase: ${{ fromJson(format('["convergence"{0}{1}{2}]', inputs.order-command != '' && (inputs.order-split && ',"order-independence-p01","order-independence-p12"' || ',"order-independence"') || '', inputs.next-day-command != '' && ',"next-day"' || '', inputs.mode == 'hermetic' && ',"takes"' || '')) }}
         runs-on: ${{ inputs.runner }}
         # 45 was not enough headroom and cost a real run: on 2026-07-28 the Germany
         # and UK legs were CANCELLED at exactly 45m while Poland finished in 8,
@@ -337,7 +301,7 @@ jobs:
         # but a CI runner is a good deal slower than the machine these are timed on,
         # so the ceiling now sits well clear of the expected run rather than just
         # above it. A leg that approaches this is a signal to re-measure the shape,
-        # not to raise the number again. It holds the sample step's ceiling too.
+        # not to raise the number again.
         timeout-minutes: ${{ (matrix.phase == 'convergence' || matrix.phase == 'next-day') && inputs.job-timeout-minutes || inputs.order-job-timeout-minutes }}
         permissions:
             # `contents: write` for the rolling release the fixture trees live in —
@@ -351,11 +315,11 @@ jobs:
             # `gh run download` still reads artifacts, for the one-off bootstrap when
             # the release doesn't exist yet.
             actions: read
-            # The sample's and the row's leg-verdict statuses.
+            # The row's leg-verdict and identity-takes statuses.
             statuses: write
         steps:
             - uses: actions/checkout@v5
-            # Each row resolves the pinned pair here, once, and its sample, its suite and
+            # Each row resolves the pinned pair here, once, and its suite and
             # any bisect it requests all replay that one (`steps.setup.outputs.hermetic-pair`)
             # even if the recorder pins a new pair while this row is running.
             - uses: ./.github/actions/convergence-setup
@@ -587,95 +551,10 @@ jobs:
                   # What the takes check keys a stored resolve by: the published fill, or that it cannot be named.
                   echo "${PUBLISHED:-unpublished}" > "$RUNNER_TEMP/laid-fill"
 
-            # A RECORDING's sample row hands on only what its sample records: every file under the tree
-            # newer than this (an unpacked file keeps its archived mtime). A hermetic leg records nothing.
-            - name: Mark the tree before the sample records into it
-              if: inputs.mode == 'record' && matrix.phase == 'sample'
-              shell: bash
-              run: touch "$RUNNER_TEMP/sample-stamp" && sleep 1
-
-            # THE SAMPLE: this country's ~100-film slice, ahead of the suite — in a RECORDING, or in a
-            # `sample` row of its own.
-            #
-            # NOT in a hermetic convergence row. The sample replays a slice of the very corpus the
-            # suite replays, against the same pinned pair, so there it made no claim the suite
-            # does not make; it only failed sooner, and cost every row ~2 minutes of wall time
-            # before the suite started (105-150 s, run 37499106536) — the margin between the lane
-            # and its 9-minute target. That row runs the sample's corpus-shape specs instead, ahead
-            # of its suite (`shape-command`). The United States keeps its `sample` row, which
-            # costs it no wall time.
-            #
-            # A RECORDING runs it over the tree this job then records the whole corpus into —
-            # the order the two jobs ran in, without the release in between: the sample records
-            # into the tree on disk, the full suite replays and extends it, and the one publish
-            # below carries both. Hermetic sample legs replay the pair this job
-            # pins, so the sample's requests have to be in it. `continue-on-error` there alone,
-            # because a recording records the full corpus whatever the sample said; the leg
-            # still goes red on a red sample, after the publish ("Fail the leg on the sample's
-            # verdict").
-            #
-            # Bounded BELOW the job's ceiling for the reason spelled out over the suite step: a
-            # job that hits its own `timeout-minutes` is CANCELLED, and a cancelled job runs its
-            # `always()` steps only inside a short grace window. Failing the STEP keeps the job
-            # alive so the publishes below run normally — the sample once had no step ceiling,
-            # so it could only ever be cancelled, which is how it spent ten consecutive runs
-            # throwing away the capture that would have made the eleventh fast enough to pass.
-            # Twenty minutes, not the ~70 s a hermetic sample takes: a cold tree (a recording's
-            # live sweep) can spend ~11 minutes enriching a ~100-film
-            # slice live (Germany: 47 films in 5m15s on 2026-08-16, every one a live fetch), and
-            # cold is a state this gate has to survive, not one to be timed out of. Every job
-            # ceiling is sized over this step and the suite's together (ConvergenceLegWiringSpec,
-            # HermeticConvergenceWiringSpec).
-            # It runs in at most one row: the sample row when there is one, else a recording's
-            # convergence row — NEVER the order-independence row, where it sat in front of that row's
-            # suite — the identity lane's critical path — for 97 s (run 37144949783). The row that
-            # runs it speaks for it (its verdict, its ratchet); every other row runs ungated, which
-            # costs a runner on a red sample, never wall time. A recording's sample gates nothing
-            # either way.
-            - name: Run the ${{ inputs.country }} sample ahead of the suite
-              id: sample
-              if: matrix.phase == 'sample' || (matrix.phase == 'convergence' && !inputs.sample-row && inputs.mode == 'record')
-              continue-on-error: ${{ inputs.mode == 'record' }}
-              shell: bash
-              timeout-minutes: ${{ inputs.sample-suite-timeout-minutes }}
-              run: |
-                  set -o pipefail
-                  # The runner's whole CPU beside the phase log's JVM-only number (cpu-sampler.sh).
-                  scripts/ci/cpu-sampler.sh 15 & sampler=$!; trap 'kill "$sampler"' EXIT
-                  read -ra jvm <<< "$JVM_OPTIONS"
-                  sbt -J-Xmx${{ inputs.heap }} "${jvm[@]}" -J-Djdk.http.auth.tunneling.disabledSchemes= ${{ inputs.sample-command }} 2>&1 | tee convergence-sample.log
-              env:
-                  JVM_OPTIONS:      ${{ inputs.jvm-options }}
-                  KINOWO_COUNTRY:   ${{ inputs.code }}
-                  KINOWO_COUNTRIES: ${{ inputs.code }}
-                  MONGODB_URI:      mongodb://127.0.0.1:27017/?directConnection=true
-                  # As the suite's: a recording asks what the origin refuses it again through the proxy.
-                  DECODO_PROXY_USER: ${{ inputs.mode == 'record' && secrets.DECODO_PROXY_USER || '' }}
-                  DECODO_PROXY_PASS: ${{ inputs.mode == 'record' && secrets.DECODO_PROXY_PASS || '' }}
-                  TMDB_API_KEY:     ${{ secrets.TMDB_API_KEY }}
-                  OMDB_API_KEY:     ${{ secrets.OMDB_API_KEY }}
-                  KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES: enrichment-${{ inputs.code }}
-                  KINOWO_CONVERGENCE_HERMETIC: ${{ inputs.mode == 'hermetic' }}
-                  KINOWO_IDENTITY_LOOKUPS: ${{ inputs.identity-lookups }}
-
-            # (A sample's verdict is its row's: a `sample` row's last step posts `sample (<country>)`, and
-            # a recording's convergence row, the only other place a sample runs, never posted one.)
-
-            # A RECORDING's sample row: what the sample recorded, for the convergence row to merge before
-            # it publishes (sample-recordings.sh). `always()`, as the publish is: a red sample still
-            # recorded what it fetched. Not a hermetic leg's, which records nothing.
-            - name: Pack the sample's recordings
-              if: always() && inputs.mode == 'record' && matrix.phase == 'sample' && steps.sample.outcome != 'skipped'
-              shell: bash
-              run: .github/scripts/sample-recordings.sh pack "test/resources/fixtures/enrichment-${{ inputs.code }}" "$RUNNER_TEMP/sample-stamp" "sample-upload/enrichment-sample-${{ inputs.code }}.tar.zst"
-
-            - uses: actions/upload-artifact@v6
-              if: always() && inputs.mode == 'record' && matrix.phase == 'sample' && steps.sample.outcome != 'skipped'
-              with:
-                  name: enrichment-sample-${{ inputs.code }}
-                  path: sample-upload/enrichment-sample-${{ inputs.code }}.tar.zst
-                  retention-days: 1
-                  if-no-files-found: error
+            # NO SAMPLE RUNS IN A LEG ANY MORE (2026-10-14): every row's suite fits the lane's 10-minute target, so the
+            # ~100-film slice of the corpus the suite replays in full only cost a runner or minutes in front of it. Each
+            # convergence row runs the sample's corpus-shape specs ahead of its suite instead (`shape-command`). The
+            # SAMPLE ALIAS stays: the auto-bisect replays it per commit (`sample-command`).
 
             # Bounded BELOW the job's ceiling, on purpose — the single most important line
             # in this file for a leg that runs long. Both numbers moved up together (from
@@ -702,7 +581,7 @@ jobs:
             # suite.
             - name: Run the ${{ inputs.country }} ${{ matrix.phase }} suite
               id: suite
-              if: matrix.phase != 'sample' && matrix.phase != 'takes'
+              if: matrix.phase != 'takes'
               shell: bash
               timeout-minutes: ${{ (matrix.phase == 'convergence' || matrix.phase == 'next-day') && inputs.suite-timeout-minutes || inputs.order-suite-timeout-minutes }}
               run: |
@@ -718,7 +597,7 @@ jobs:
                       profile=("-J-XX:StartFlightRecording=filename=convergence.jfr,settings=profile,dumponexit=true")
                   fi
                   read -ra jvm <<< "$JVM_OPTIONS"
-                  sbt -J-Xmx${{ inputs.heap }} "${jvm[@]}" "${profile[@]}" -J-Djdk.http.auth.tunneling.disabledSchemes= ${{ matrix.phase == 'convergence' && !inputs.sample-row && inputs.mode != 'record' && inputs.shape-command || '' }} ${{ matrix.phase == 'convergence' && inputs.command || matrix.phase == 'next-day' && inputs.next-day-command || inputs.order-command }} 2>&1 | tee convergence.log || suite=$?
+                  sbt -J-Xmx${{ inputs.heap }} "${jvm[@]}" "${profile[@]}" -J-Djdk.http.auth.tunneling.disabledSchemes= ${{ matrix.phase == 'convergence' && inputs.shape-command || '' }} ${{ matrix.phase == 'convergence' && inputs.command || matrix.phase == 'next-day' && inputs.next-day-command || inputs.order-command }} 2>&1 | tee convergence.log || suite=$?
                   # What the leg left in Mongo — the size a RAM-backed mongod would have to hold, and where its
                   # time went — on a red suite too, which is when it is read; then the suite's own verdict.
                   docker exec mongo du -sh /data/db || true
@@ -799,7 +678,7 @@ jobs:
                   MONGODB_URI: mongodb://127.0.0.1:27017/?directConnection=true
 
             - name: Upload the suite's CPU profile
-              if: always() && inputs.profile && matrix.phase != 'sample' && matrix.phase != 'takes'
+              if: always() && inputs.profile && matrix.phase != 'takes'
               uses: actions/upload-artifact@v6
               with:
                   name: convergence-profile-${{ inputs.code }}-${{ matrix.phase }}
@@ -838,7 +717,7 @@ jobs:
               if: always() && matrix.phase != 'takes'
               with:
                   title: ${{ matrix.phase }} (${{ inputs.country }})
-                  log:   ${{ matrix.phase == 'sample' && 'convergence-sample.log' || 'convergence.log' }}
+                  log:   convergence.log
                   name:  ${{ inputs.code }}-${{ matrix.phase }}
 
             # A ROW OF ITS OWN, `takes`, beside the suite rather than after it: it reads the pinned pair setup restored and
@@ -885,32 +764,7 @@ jobs:
                   esac
                   exit "$code"
 
-            # A RECORDING whose sample ran in a row of its own: its recordings, merged into this tree
-            # before it is packed — a hermetic sample leg replays the pair a recording's publish pins,
-            # so the sample's requests have to be in what this row publishes. The sample row is done minutes before this row gets
-            # here; one that ended without uploading leaves the tree without them, and says so. A
-            # hermetic leg records nothing and publishes no tree, so there is nothing to merge.
-            #
-            # The PRODUCER is the sample row's job name as the recorder renders it: `enrichment
-            # (<country>) / sample`.
-            - name: Merge the sample row's recordings
-              if: always() && inputs.mode == 'record' && inputs.sample-row && matrix.phase == 'convergence'
-              timeout-minutes: 30
-              shell: bash
-              env:
-                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-                  PRODUCER: (${{ inputs.country }}) / sample
-              run: |
-                  set -uo pipefail
-                  if ! scripts/ci/wait-for-run-artifact.sh "enrichment-sample-${{ inputs.code }}" "$PRODUCER" 1500; then
-                      echo "::warning::no recordings from the ${{ inputs.country }} sample row — the published tree lacks them"
-                      exit 0
-                  fi
-                  gh run download "$GITHUB_RUN_ID" --name "enrichment-sample-${{ inputs.code }}" --dir sample-download
-                  .github/scripts/sample-recordings.sh merge "sample-download/enrichment-sample-${{ inputs.code }}.tar.zst"
-
-            # The capture this leg just spent an hour building — a recording's sample's
-            # included, which ran first in this job — back to the release it was restored from.
+            # The capture this leg just spent an hour building back to the release it was restored from.
             #
             # ONE writing row, and the phase test is what makes it one. Both rows finish
             # into the same `enrichment-<code>.tar.zst`, and `gh release upload --clobber`
@@ -939,10 +793,7 @@ jobs:
                   refetch-list: ${{ inputs.mode == 'hermetic' && format('test/resources/fixtures/enrichment-{0}.refetch.tsv', inputs.code) || '' }}
 
             # A red HERMETIC leg on main asks `convergence-bisect.yml` which commit did it — with
-            # the sample, which the bisect first checks reproduces the failure, unless it was
-            # the sample that failed (then the bad commit is known bad without a replay). ONE
-            # step for both, where the two jobs each carried one: `sample-failed` is the only
-            # thing that told them apart, and the sample step's outcome says it directly.
+            # the sample alias, which the bisect first checks reproduces the failure.
             # Not for a red takes check alone (below too, the ratchet): it names its own range (base..head), and
             # neither the sample nor the suite's findings can reproduce it.
             - uses: ./.github/actions/convergence-bisect-request
@@ -956,7 +807,6 @@ jobs:
                   # The pair as this row replayed it: setup's, then the fill the convergence row published before
                   # its suite — the only fill laid over its tree on main — last.
                   pair:           ${{ format('{0} {1}', steps.setup.outputs.hermetic-pair, steps.publish-fill.outputs.fill-asset) }}
-                  sample-failed:  ${{ steps.sample.outcome == 'failure' }}
 
             # Only on a red leg, and after the publish so it can never cost the tree:
             # the films this leg named become clusters the itAll layer checks on every
@@ -964,32 +814,11 @@ jobs:
             # whose findings the ratchet below reads instead (in the old shape a red sample
             # meant this job never ran).
             - uses: ./.github/actions/hard-clusters-ratchet
-              if: failure() && steps.sample.outcome != 'failure' && matrix.phase != 'sample' && matrix.phase != 'takes'
+              if: failure() && matrix.phase != 'takes'
               with:
                   code:  ${{ inputs.code }}
                   name:  ${{ inputs.code }}-${{ matrix.phase }}
                   token: ${{ secrets.GITHUB_TOKEN }}
-
-            # A red sample's findings — a `sample` row's, whose red step ended the job there, or a
-            # recording convergence row's, which recorded past it. The row that ran the sample's alone:
-            # the artifact is named after the sample, not the row.
-            - uses: ./.github/actions/hard-clusters-ratchet
-              if: always() && (matrix.phase == 'convergence' || matrix.phase == 'sample') && steps.sample.outcome == 'failure'
-              with:
-                  code:  ${{ inputs.code }}
-                  log:   convergence-sample.log
-                  name:  ${{ inputs.code }}-sample
-                  token: ${{ secrets.GITHUB_TOKEN }}
-
-            # A recording's sample step carries `continue-on-error` so the full corpus is recorded
-            # past it; this is where its red comes back, once both recordings are published. (A
-            # hermetic leg runs its sample only in a `sample` row, whose red step already failed the job.)
-            - name: Fail the leg on the sample's verdict
-              if: always() && inputs.mode == 'record' && steps.sample.outcome == 'failure'
-              shell: bash
-              run: |
-                  echo "::error::the ${{ inputs.country }} sample failed — see its step above"
-                  exit 1
 
             # A RECORDING whose per-origin health failed (convergence-publish's "Judge this recording's per-origin
             # health", the table on the summary): red here, after every publish, so the tree is saved either way.

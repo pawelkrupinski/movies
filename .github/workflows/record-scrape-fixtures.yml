@@ -110,13 +110,10 @@ jobs:
     # of its 14 minutes and the longest leg of the run (37105119296), and a recording is
     # nightly, so the one extra runner is not a per-push cost.
     #
-    # Each country's corpus capture and sample run as the FIRST STEPS of its full leg's job
-    # here (as they are in every leg; there is no separate sample job), so `job` is that one job's
-    # ceiling over all of them: the corpus steps' own fifteen (tunnel and read), the sample's
-    # `sampleSuite`, the full leg's `suite`, plus ten minutes for setup and the publish
-    # (HermeticConvergenceWiringSpec). The United States' sample gets the same 20 as everyone
-    # else (as it does in the verdict legs) so the sum stays under GitHub's 360: whatever a cold
-    # sample leaves unfetched, the full leg behind it fetches over the same tree anyway.
+    # Each country's corpus capture runs as the FIRST STEPS of its full leg's job, so `job` is that one job's
+    # ceiling over all of it: the corpus steps' own fifteen (tunnel and read), the full leg's `suite`, plus ten
+    # minutes for setup and the publish (HermeticConvergenceWiringSpec). No row runs the sample: a recording never
+    # requests a bisect, the one thing that still replays it.
     enrichment:
         name: enrichment (${{ matrix.country }})
         # Behind the preflight alone: each leg records its own corpus, so one country's tunnel
@@ -129,11 +126,11 @@ jobs:
                     # The US first: the longest leg (run 37111868620: 11.8 min against the next 9.0) and
                     # so the critical path. Matrix rows are queued in this order, and when runners are
                     # short (the convergence lanes, measure runs) the last row waited 1.7 min for one.
-                    - { country: united-states,  code: us, cmd: convergenceUs,      sample: convergenceUsSample,      job: 360, suite: 315, sampleSuite: 20, heap: 10g, sampleRow: true }
-                    - { country: poland,         code: pl, cmd: convergencePoland,  sample: convergencePolandSample,  job: 170, suite: 120, sampleSuite: 20, heap: 4g }
-                    - { country: germany,        code: de, cmd: convergenceGermany, sample: convergenceGermanySample, job: 170, suite: 120, sampleSuite: 20, heap: 4g }
-                    - { country: united-kingdom, code: uk, cmd: convergenceUkWithoutOrder, order: convergenceUkOrder, sample: convergenceUkSample, job: 170, suite: 120, sampleSuite: 20, heap: 4g }
-                    - { country: spain,          code: es, cmd: convergenceSpain,   sample: convergenceSpainSample,   job: 170, suite: 120, sampleSuite: 20, heap: 4g }
+                    - { country: united-states,  code: us, cmd: convergenceUs,      shape: corpusShapeUs,      job: 360, suite: 315, heap: 10g }
+                    - { country: poland,         code: pl, cmd: convergencePoland,  shape: corpusShapePoland,  job: 170, suite: 120, heap: 4g }
+                    - { country: germany,        code: de, cmd: convergenceGermany, shape: corpusShapeGermany, job: 170, suite: 120, heap: 4g }
+                    - { country: united-kingdom, code: uk, cmd: convergenceUkWithoutOrder, order: convergenceUkOrder, shape: corpusShapeUk, job: 170, suite: 120, heap: 4g }
+                    - { country: spain,          code: es, cmd: convergenceSpain,   shape: corpusShapeSpain,   job: 170, suite: 120, heap: 4g }
         uses: ./.github/workflows/country-convergence-leg.yml
         permissions:
             contents: write
@@ -148,18 +145,14 @@ jobs:
             identity-lookups: ${{ github.event_name == 'schedule' || inputs.identity-lookups == true }}
             country:        ${{ matrix.country }}
             code:           ${{ matrix.code }}
-            sample-command: ${{ matrix.sample }}
             command:        ${{ matrix.cmd }}
+            shape-command:  ${{ matrix.shape }}
             # The UK's replays in a row of their own, beside its boot (`convergenceUkOrder`):
             # they were ~6 of its 14 minutes, the run's longest leg (run 37105119296). Empty for
             # every other country, whose leg stays one row.
             order-command:  ${{ matrix.order || '' }}
-            # The US sample in a row of its own, beside its boot rather than ahead of it — a minute
-            # off the run's longest leg (37105119296); it records into the same publish.
-            sample-row:     ${{ matrix.sampleRow == true }}
             job-timeout-minutes:           ${{ matrix.job }}
             suite-timeout-minutes:         ${{ matrix.suite }}
-            sample-suite-timeout-minutes:  ${{ matrix.sampleSuite }}
             heap:                          ${{ matrix.heap }}
         # TMDB_API_KEY / OMDB_API_KEY for the live fills, the GITHUB_TOKEN the setup reads, and
         # MONGO_CI_SSH_KEY / MONGO_CI_SSH_HOST_KEY — which the leg maps into its "Tunnel to prod

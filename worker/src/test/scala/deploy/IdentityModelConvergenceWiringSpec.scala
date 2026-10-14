@@ -80,34 +80,22 @@ class IdentityModelConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     RepoFile.exists(".github/actions/convergence-overlay-publish") shouldBe false
   }
 
-  /** The US sample was 79 s in front of the lane's critical path, its convergence row (run
-   *  37150307201). In a row of its own it runs beside the suite: the convergence row runs ungated, the
-   *  sample row speaks for the sample (its verdict, its red-sample ratchet), and what it records — in a
-   *  recording, which runs the same rows; a hermetic one records nothing — is merged into the convergence row's
-   *  one publish. */
-  it should "run the US sample in a row of its own, merged into the convergence row" in {
-    RepoFile.matrixRows(workflow).filter(_.get("sampleRow").contains("true")).map(_("country")) shouldBe
-      Seq("united-states")
-    RepoFile.jobs(workflow)("leg") should include("sample-row:                    ${{ matrix.sampleRow == true }}")
-    val convergence = RepoFile.block(leg, "convergence")
-    convergence should include("""inputs.sample-row && ',"sample"' || ''""")
-    RepoFile.step(convergence, "Run the ${{ inputs.country }} sample ahead of the suite") should include(
-      "if: matrix.phase == 'sample' || (matrix.phase == 'convergence' && !inputs.sample-row && inputs.mode == 'record')\n")
-    // A hermetic leg — this lane's — records nothing and publishes no tree, so its sample row hands nothing on.
-    Seq("Mark the tree before the sample records into it", "Pack the sample's recordings", "Merge the sample row's recordings")
-      .foreach { name =>
-        withClue(s"$name, in a recording alone: ")(RepoFile.step(convergence, name) should include("inputs.mode == 'record'"))
+  /** No row runs the ~100-film sample (2026-10-14): it replays a slice of the corpus every suite replays in full, so it
+   *  only ever failed sooner, and once every row fit the lane's 10-minute target it cost more than that. Each row keeps
+   *  the one part of it the suite does not assert -- the corpus-shape specs, ahead of its suite -- and names its sample
+   *  alias for the auto-bisect, which still replays it per commit. */
+  it should "run no sample, but every country's corpus-shape specs, and name each sample for the bisect" in {
+    val rows = RepoFile.matrixRows(workflow)
+    rows.filter(_.contains("sampleRow")) shouldBe empty
+    rows.foreach { row =>
+      withClue(s"${row("country")}: ") {
+        row.keySet should contain allOf ("shape", "sample")
+        RepoFile.read("build.sbt") should include("addCommandAlias(\"" + row("shape") + "\",")
+        RepoFile.read("build.sbt") should include("addCommandAlias(\"" + row("sample") + "\",")
       }
-    val merge = RepoFile.step(convergence, "Merge the sample row's recordings")
-    merge should include("if: always() && inputs.mode == 'record' && inputs.sample-row && matrix.phase == 'convergence'\n")
-    withClue("the recorder renders the sample row as `enrichment (<country>) / sample`: ") {
-      merge should include("PRODUCER: (${{ inputs.country }}) / sample")
     }
-    convergence.indexOf("- name: Merge the sample row's recordings") should be <
-      convergence.indexOf("id: publish\n")
-    withClue("a red sample row ratchets its findings: ") {
-      convergence should include("if: always() && (matrix.phase == 'convergence' || matrix.phase == 'sample') && steps.sample.outcome == 'failure'")
-    }
+    leg should not include "sample-row"
+    RepoFile.withoutComments(leg) should not include "steps.sample"
   }
 
   /** One lane: finish the run in flight, keep one newer run pending, and let each newer dispatch replace

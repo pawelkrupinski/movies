@@ -29,8 +29,9 @@ inputs:
         description: The recorded pair this leg replayed.
         required: true
     sample-failed:
-        description: "'true' when it was the SAMPLE that failed."
-        required: true
+        description: "'true' when it was the SAMPLE that failed. No leg runs a sample any more (2026-10-14), so a leg passes none."
+        required: false
+        default: 'false'
 
 runs:
     using: composite

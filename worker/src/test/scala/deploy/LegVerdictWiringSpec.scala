@@ -41,14 +41,10 @@ class LegVerdictWiringSpec extends AnyFlatSpec with Matchers {
     problems shouldBe empty
   }
 
-  /** A sample's verdict is its row's. A hermetic leg runs its sample only in a `sample` row, whose last step
-   *  already posts `sample (<country>)`; a convergence row runs it only in a recording, which never posted one. A
-   *  step posting the sample's outcome from the convergence row of a hermetic leg could never run. */
-  "a sample's verdict" should "be posted by the row that runs it, as its own" in {
+  /** One verdict a row, its own: no row runs a sample any more, so no step posts one beside it. */
+  "a row's verdict" should "be posted once, as its own" in {
     val body = leg("convergence")
-    RepoFile.step(body, "Run the ${{ inputs.country }} sample ahead of the suite") should include(
-      "if: matrix.phase == 'sample' || (matrix.phase == 'convergence' && !inputs.sample-row && inputs.mode == 'record')")
-    RepoFile.withoutComments(body) should not include "status: ${{ steps.sample.outcome }}"
+    RepoFile.withoutComments(body) should not include "steps.sample"
     body.linesIterator.count(_.contains(Action)) shouldBe 1
   }
 

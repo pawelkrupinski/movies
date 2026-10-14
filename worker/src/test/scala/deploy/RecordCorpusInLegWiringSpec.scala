@@ -26,7 +26,7 @@ class RecordCorpusInLegWiringSpec extends AnyFlatSpec with Matchers {
   private val Record  = "Record ${{ inputs.country }}'s corpus"
   private val Close   = "Close the tunnel to prod Mongo"
   private val Pack    = "Pack ${{ inputs.country }}'s corpus"
-  private val Sample  = "Run the ${{ inputs.country }} sample ahead of the suite"
+  private val Suite   = "Run the ${{ inputs.country }} ${{ matrix.phase }} suite"
   private val Restore = "Restore the corpus the convergence row records"
   private val InRecordingRow = "inputs.mode == 'record' && matrix.phase == 'convergence'"
 
@@ -53,21 +53,19 @@ class RecordCorpusInLegWiringSpec extends AnyFlatSpec with Matchers {
     restore should include("if: inputs.mode == 'record' && matrix.phase != 'convergence'\n")
     restore should include("""scripts/ci/wait-for-run-artifact.sh "scrape-fixtures-${{ inputs.code }}" "(${{ inputs.country }}) / convergence"""")
     restore should include("""gh run download "$GITHUB_RUN_ID" --name "scrape-fixtures-${{ inputs.code }}" --dir scrape-archive""")
-    withClue("restored before anything replays it: ")(at(s"- name: $Restore") should be < at(s"- name: $Sample"))
+    withClue("restored before anything replays it: ")(at(s"- name: $Restore") should be < at(s"- name: $Suite"))
   }
 
-  // Gap-filled: no boot of its own to have fetched what its passes ask, so
-  // what the restored tree lacks is fetched ONCE between them (SharedLiveAnswers), and its sample
-  // — which gates nothing in a recording and whose recordings no row would publish — skipped.
-  it should "replay a recording's order row gap-filled, without a sample of its own" in {
-    RepoFile.step(convergence, Sample) should include("if: matrix.phase == 'sample' || (matrix.phase == 'convergence' && !inputs.sample-row && inputs.mode == 'record')\n")
-    RepoFile.step(convergence, "Run the ${{ inputs.country }} ${{ matrix.phase }} suite") should include(
+  // Gap-filled: no boot of its own to have fetched what its passes ask, so what the restored tree lacks is fetched ONCE
+  // between them (SharedLiveAnswers).
+  it should "replay a recording's order row gap-filled" in {
+    RepoFile.step(convergence, Suite) should include(
       "KINOWO_CONVERGENCE_FILL_ONLY: ${{ inputs.mode == 'record' && matrix.phase != 'convergence' }}")
   }
 
-  "a recording leg" should "record, close the tunnel and upload its corpus before the sample replays it" in {
+  "a recording leg" should "record, close the tunnel and upload its corpus before the suite replays it" in {
     val order = Seq("uses: ./.github/actions/convergence-setup", s"- name: $Tunnel", s"- name: $Record",
-      s"- name: $Close", s"- name: $Pack", "uses: actions/cache/save@", "uses: actions/upload-artifact@", s"- name: $Sample")
+      s"- name: $Close", s"- name: $Pack", "uses: actions/cache/save@", "uses: actions/upload-artifact@", s"- name: $Suite")
     order.map(at) shouldBe order.map(at).sorted
   }
 
@@ -79,26 +77,16 @@ class RecordCorpusInLegWiringSpec extends AnyFlatSpec with Matchers {
     RepoFile.exists("worker/src/test/scala/scripts/RecordCorpusFixture.scala") shouldBe false
   }
 
-  // The US recording's sample, beside its boot rather than ahead of it (a minute off the run's longest
-  // leg, 37105119296): a row of its own over the same corpus and tree, whose recordings the convergence
-  // row merges before it publishes — a hermetic sample leg replays the pair that publish pins.
-  it should "run the US recording's sample in a row of its own, and publish what it records" in {
-    val ordered = recorder.linesIterator.filter(_.contains("sampleRow: true")).toSeq
-    ordered.map(_.contains("code: us,")) shouldBe Seq(true)
-    RepoFile.block(recorder, "enrichment") should include("sample-row:     ${{ matrix.sampleRow == true }}")
-    RepoFile.step(convergence, "Mark the tree before the sample records into it") should include(
-      "if: inputs.mode == 'record' && matrix.phase == 'sample'\n")
-    RepoFile.step(convergence, "Pack the sample's recordings") should include(
-      ".github/scripts/sample-recordings.sh pack \"test/resources/fixtures/enrichment-${{ inputs.code }}\" \"$RUNNER_TEMP/sample-stamp\"")
-    val merge = RepoFile.step(convergence, "Merge the sample row's recordings")
-    merge should include("if: always() && inputs.mode == 'record' && inputs.sample-row && matrix.phase == 'convergence'\n")
-    merge should include("PRODUCER: (${{ inputs.country }}) / sample")
-    merge should include(""".github/scripts/sample-recordings.sh merge "sample-download/enrichment-sample-${{ inputs.code }}.tar.zst"""")
-    withClue("merged before the tree is packed and published: ") {
-      at("- name: Merge the sample row's recordings") should be < at("id: publish\n")
+  // No recording runs the ~100-film sample (2026-10-14): a recording never requests a bisect, the one thing that still
+  // replays it. Every row runs the sample's corpus-shape specs ahead of its suite instead.
+  it should "run no sample, but every country's corpus-shape specs" in {
+    val rows = RepoFile.matrixRows(RepoFile.block(recorder, "enrichment"))
+    rows.foreach { row =>
+      withClue(s"${row("country")}: ") {
+        row.keySet should (contain("shape") and not contain "sample" and not contain "sampleRow")
+      }
     }
-    withClue("and the sample row runs no suite: ")(
-      RepoFile.step(convergence, "Run the ${{ inputs.country }} ${{ matrix.phase }} suite") should include("if: matrix.phase != 'sample' && matrix.phase != 'takes'\n"))
+    RepoFile.block(recorder, "enrichment") should include("shape-command:  ${{ matrix.shape }}")
   }
 
   it should "run the corpus steps in a recording's convergence row only, and close the tunnel whatever happened" in {
@@ -127,7 +115,7 @@ class RecordCorpusInLegWiringSpec extends AnyFlatSpec with Matchers {
   // The leg's own throwaway Mongo holds 27017; the tunnel must stay off it.
   it should "open and close the tunnel on 27018, clear of the leg's own database on 27017" in {
     RepoFile.step(convergence, Tunnel) should include("run: scripts/ci/wait-for-mongo-tunnel.sh 27018")
-    RepoFile.step(convergence, Sample) should include("MONGODB_URI:      mongodb://127.0.0.1:27017/")
+    RepoFile.step(convergence, Suite) should include("MONGODB_URI: mongodb://127.0.0.1:27017/")
   }
 
   // Hermetic legs, the provenance diff, identity-decorations and hard-clusters.sh all read these.

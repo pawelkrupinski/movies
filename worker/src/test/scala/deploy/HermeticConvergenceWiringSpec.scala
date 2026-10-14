@@ -34,11 +34,9 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
       directives(caller).linesIterator.map(_.trim).filter(_.startsWith("mode:")).map(_.split("\\s+").last).toSet should be(Set("hermetic")))
   }
 
-  it should "hand the mode to BOTH suite steps under the name the wiring reads" in {
+  it should "hand the mode to the suite under the name the wiring reads" in {
     val hermetic = s"${tools.ArchiveReplayWiring.HermeticVar}: $${{ inputs.mode == 'hermetic' }}"
-    val convergence = RepoFile.block(leg, "convergence")
-    RepoFile.step(convergence, SampleStep) should include(hermetic)
-    RepoFile.step(convergence, SuiteStep) should include(hermetic)
+    RepoFile.step(RepoFile.block(leg, "convergence"), SuiteStep) should include(hermetic)
   }
 
   it should "never publish a tree — only a recording leg has anything to add" in {
@@ -105,47 +103,24 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     codes shouldBe Country.all.map(_.code).toSet
   }
 
-  // A recording's sample used to be a job of its own AHEAD of the full leg: its own checkout and
-  // setup (~70 s), its own pack and upload of the whole working tree (90 s for the US), and only
-  // then the full leg's setup restoring that same upload — ~4 minutes of every recording's
-  // critical path (run 36909637796) to hand a tree from one runner to the next. Run in the full
-  // leg's job, first, over the tree on disk, the full leg replays exactly what the sample recorded,
-  // as it did through the release, and one publish carries both. The hermetic legs
-  // followed: their sample job cost ~1 minute of checkout and setup ahead of every full leg.
-  private val SampleStep = "Run the ${{ inputs.country }} sample ahead of the suite"
   private val SuiteStep  = "Run the ${{ inputs.country }} ${{ matrix.phase }} suite"
 
-  it should "run each country's sample in the full leg's job, ahead of its suite, not as a job ahead of it" in {
+  // No row runs the ~100-film sample (2026-10-14): one job, its suite the only sbt verdict in it.
+  it should "run each country's suite in one job of rows, and no sample in any" in {
     RepoFile.jobs(leg).keySet shouldBe Set("convergence")
     val convergence = RepoFile.block(leg, "convergence")
-    val sample = RepoFile.step(convergence, SampleStep)
-    sample should include("sbt -J-Xmx${{ inputs.heap }} \"${jvm[@]}\" -J-Djdk.http.auth.tunneling.disabledSchemes= ${{ inputs.sample-command }} 2>&1 | tee convergence-sample.log")
-    sample should include("timeout-minutes: ${{ inputs.sample-suite-timeout-minutes }}")
-    sample should include(s"${tools.ArchiveReplayWiring.HermeticVar}: $${{ inputs.mode == 'hermetic' }}")
-    sample should include("KINOWO_IDENTITY_LOOKUPS: ${{ inputs.identity-lookups }}")
-    sample should include("KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES: enrichment-${{ inputs.code }}")
-    RepoFile.positionOf(convergence, SampleStep) should be < RepoFile.positionOf(convergence, s"- name: $SuiteStep")
+    convergence should not include "sample ahead of the suite"
+    RepoFile.withoutComments(convergence) should not include "inputs.sample-command }} 2>&1"
   }
 
-  // A recording runs its full leg whatever the sample said — but a red sample must still turn the
-  // leg red, AFTER the publish has kept what both recorded, and its findings still feed the ratchet.
-  it should "record the full corpus past a red sample, then report the sample red" in {
-    val convergence = RepoFile.block(leg, "convergence")
-    RepoFile.step(convergence, SampleStep) should include("continue-on-error: ${{ inputs.mode == 'record' }}")
-    val verdict = RepoFile.step(convergence, "Fail the leg on the sample's verdict")
-    verdict should include("if: always() && inputs.mode == 'record' && steps.sample.outcome == 'failure'")
-    RepoFile.positionOf(convergence, "uses: ./.github/actions/convergence-publish") should be <
-      RepoFile.positionOf(convergence, "- name: Fail the leg on the sample's verdict")
-    convergence should include("log:   convergence-sample.log")
-    withClue("the full suite's report must name only the full suite's tests: ") {
-      RepoFile.step(convergence, SuiteStep) should include("rm -rf target/test-reports/unit")
-    }
+  // The full suite's report names only the full suite's tests.
+  it should "report only its own suite's tests" in {
+    RepoFile.step(RepoFile.block(leg, "convergence"), SuiteStep) should include("rm -rf target/test-reports/unit")
   }
 
-  // The full job now holds the corpus capture's and the sample's budgets too, so its ceiling must
-  // clear every step ceiling — a cancelled job runs its publish only inside a short grace window —
-  // and GitHub's 360.
-  it should "give each recording job a ceiling over its corpus capture, its sample and its suite together" in {
+  // The full job holds the corpus capture's budget too, so its ceiling must clear every step ceiling -- a cancelled job
+  // runs its publish only inside a short grace window -- and GitHub's 360.
+  it should "give each recording job a ceiling over its corpus capture and its suite together" in {
     val convergence = RepoFile.block(leg, "convergence")
     val corpus = Seq("Tunnel to prod Mongo", "Record ${{ inputs.country }}'s corpus").map { name =>
       RepoFile.step(convergence, name).linesIterator.map(_.trim)
@@ -154,7 +129,7 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     }.sum
     RepoFile.matrixRows(RepoFile.block(recorder, "enrichment")).foreach { row =>
       withClue(s"${row("country")}: ") {
-        row("job").toInt - corpus - row("suite").toInt - row("sampleSuite").toInt should be >= 10
+        row("job").toInt - corpus - row("suite").toInt should be >= 10
         row("job").toInt should be <= 360
       }
     }
@@ -214,27 +189,22 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     val convergence = RepoFile.block(leg, "convergence")
     convergence should include("inputs.mode == 'hermetic' && ',\"takes\"' || ''")
     convergence should include("if: ${{ !cancelled() && inputs.mode == 'hermetic' && matrix.phase == 'takes' }}")
-    convergence should include("if: matrix.phase != 'sample' && matrix.phase != 'takes'")
+    convergence should include("if: matrix.phase != 'takes'\n              shell: bash")
     convergence should include("- name: Publish convergence test report\n              if: always() && matrix.phase != 'takes'")
   }
 
-  "the auto-bisect" should "be requested only by a red hermetic pipeline leg on main, saying whether the sample was red" in {
+  "the auto-bisect" should "be requested only by a red hermetic pipeline leg on main, naming its sample to replay" in {
     val convergence = RepoFile.block(leg, "convergence")
     "uses: ./.github/actions/convergence-bisect-request".r.findAllIn(leg).size shouldBe 1
     convergence should include("uses: ./.github/actions/convergence-bisect-request\n" +
       "              if: failure() && inputs.mode == 'hermetic' && github.ref == 'refs/heads/main' && matrix.phase != 'takes'")
-    convergence should include("sample-failed:  ${{ steps.sample.outcome == 'failure' }}")
+    convergence should include("sample-command: ${{ inputs.sample-command }}")
   }
 
-  // The ratchet reads ONE log per run: the sample's when the sample failed (in the old shape the
-  // full leg never ran then), the suite's otherwise — and a sample artifact from one row only.
-  it should "ratchet a red sample's findings and a red suite's, never the suite's for a red sample" in {
-    val convergence = RepoFile.block(leg, "convergence")
-    convergence should include("uses: ./.github/actions/hard-clusters-ratchet\n" +
-      "              if: failure() && steps.sample.outcome != 'failure' && matrix.phase != 'sample' && matrix.phase != 'takes'")
-    convergence should include("uses: ./.github/actions/hard-clusters-ratchet\n" +
-      "              if: always() && (matrix.phase == 'convergence' || matrix.phase == 'sample') && steps.sample.outcome == 'failure'\n" +
-      "              with:\n                  code:  ${{ inputs.code }}\n                  log:   convergence-sample.log")
+  // The ratchet reads the red suite's findings, from every row but the takes check's.
+  it should "ratchet a red suite's findings" in {
+    RepoFile.block(leg, "convergence") should include("uses: ./.github/actions/hard-clusters-ratchet\n" +
+      "              if: failure() && matrix.phase != 'takes'")
   }
 
   // Outside the leg: inside, it would hold the suite's one-run lane for its whole budget.

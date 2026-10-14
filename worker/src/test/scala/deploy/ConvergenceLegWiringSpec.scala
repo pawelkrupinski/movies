@@ -5,28 +5,16 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 /**
- * Locks each country's convergence leg to ITS OWN sample gate.
+ * Locks each country's convergence leg to ITS OWN rows. (No row runs the ~100-film sample since
+ * 2026-10-14; a red leg's auto-bisect still replays it, so each row names its own country's.)
  *
- * `needs:` in GitHub Actions joins JOBS, not matrix legs — so a `convergence`
- * matrix declaring `needs: sample` waits for EVERY country's sample, not its
- * own. Three countries then moved as one: Poland's sample held Germany's and the
- * UK's full legs, the UK's sample (slowest, largest corpus) held everyone's, and
- * one country's flap cost the day's answer for the other two.
+ * `needs:` in GitHub Actions joins JOBS, not matrix legs — so a shared job a `convergence` matrix waited on
+ * (once the `sample` job) held every country's leg behind the slowest. One reusable workflow, called once per
+ * country, holds a country's rows as ONE job with a matrix. That is only correct while two things hold, and
+ * neither is visible at a glance in the YAML:
  *
- * The fix is one reusable workflow holding a country's sample and the run behind it,
- * called once per country. That run is ONE job with a matrix: a single row for a country
- * that folds order-independence into its standard run, and a second row for the one whose
- * corpus outgrew a single job. Every row runs the sample as its first suite step, so a red
- * sample fails the step and the suite behind it never starts — the gate a separate
- * `sample` job used to be, without its second checkout and setup. That is only correct
- * while three things hold, and none of them is visible at a glance in the YAML:
- *
- *   - the pair is genuinely chained (the sample step ahead of the suite step, in the
- *     same job, without `continue-on-error` outside a recording) inside the called
- *     file, where "the sample" can only mean this country's;
- *   - the caller's matrix pairs each country's full alias with the SAME
- *     country's sample alias — a mis-paired row would gate Germany's leg on
- *     Poland's sample and still be green;
+ *   - the caller's matrix pairs each country's full alias with the SAME country's sample alias — the one its
+ *     red leg's bisect replays; a mis-paired row would bisect Germany's red over Poland's sample;
  *   - the called file declares no `concurrency:` of its own. All three calls
  *     live in one run, so a group named there would be shared and the legs would
  *     cancel each other. The lane belongs to the caller. (See
@@ -42,7 +30,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
   private lazy val build    = RepoFile.read("build.sbt")
 
   /**
-   * The caller's matrix rows: country → (full alias, sample alias).
+   * The caller's matrix rows: country → (full alias, the sample alias its bisect replays).
    *
    * Each `- { … }` row is read as an unordered set of `key: value` pairs rather than
    * matched positionally — a spec that hard-codes the field order fails loudly on a
@@ -64,20 +52,17 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
    *  caller that says nothing. Both sources are checked, because a gap that closes in
    *  either place cancels a leg just as dead.
    *
-   *  The steps are the sample's AND the suite's: the sample runs first in every row's job
-   *  (there is no sample job of its own), so each row's ceiling has to clear the two
-   *  together — GitHub expressions have no arithmetic, so the leg cannot add them itself. */
+   *  The step is the suite's: no row runs a sample, so each row's ceiling has to clear its suite's plus setup and
+   *  the publishes. */
   private def budgetPairs: Seq[(String, Int, Int)] = {
-    val sampleDefault = defaultOf("sample-suite-timeout-minutes")
     val defaults = Seq(
-      ("leg default (full)",  defaultOf("job-timeout-minutes"),       defaultOf("suite-timeout-minutes") + sampleDefault),
-      ("leg default (order)", defaultOf("order-job-timeout-minutes"), defaultOf("order-suite-timeout-minutes") + sampleDefault))
+      ("leg default (full)",  defaultOf("job-timeout-minutes"),       defaultOf("suite-timeout-minutes")),
+      ("leg default (order)", defaultOf("order-job-timeout-minutes"), defaultOf("order-suite-timeout-minutes")))
     val perCountry = rows.flatMap { fields =>
       val country = fields("country")
-      val sample  = fields("sampleSuite").toInt
-      Seq((s"$country full", fields("job").toInt, fields("suite").toInt + sample)) ++
+      Seq((s"$country full", fields("job").toInt, fields("suite").toInt)) ++
         // Only the country that splits its order-independence replay out declares these.
-        fields.get("orderJob").map(job => (s"$country order", job.toInt, fields("orderSuite").toInt + sample))
+        fields.get("orderJob").map(job => (s"$country order", job.toInt, fields("orderSuite").toInt))
     }
     defaults ++ perCountry
   }
@@ -181,7 +166,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     callers.foreach(RepoFile.block(_, "strategy") should include("fail-fast: false"))
   }
 
-  it should "gate each country's full leg on that same country's sample" in {
+  it should "name each country's own sample for the bisect its red leg requests" in {
     countries.foreach { case (country, (command, sample)) =>
       // A full row whose order-independence replay (or next-day test) runs in a row of its own is the same country's suite.
       withClue(s"$country: ") { sample shouldBe s"${command.stripSuffix("WithoutOrder").stripSuffix("WithoutNextDay")}Sample" }
@@ -194,43 +179,29 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  /** The sample step, first in every row. */
-  private val SampleStep = "Run the ${{ inputs.country }} sample ahead of the suite"
+  /** The suite step, in every row but the takes check's. */
   private val SuiteStep  = "Run the ${{ inputs.country }} ${{ matrix.phase }} suite"
 
-  /** The gate is the step ORDER inside one job: a failed step skips every later step that
-   *  is not `always()`/`failure()`, so a red sample stops the suite exactly as a red sample
-   *  JOB stopped the job behind it — provided the sample neither continues on error (only a
-   *  recording does, to record the whole corpus past it) nor is skipped in a row that records.
-   *  A HERMETIC convergence row runs no sample: it replays a slice of the corpus its suite
-   *  replays, so there it only failed sooner, for ~2 minutes of the row's wall time. */
-  "the single-country leg workflow" should "run a recording's full suite behind its own sample, in the same job" in {
+  /** No row runs the ~100-film sample (2026-10-14): it replays a slice of the corpus the suite replays in full, so it
+   *  only ever failed sooner. The suite runs in every row but the identity takes check's. */
+  "the single-country leg workflow" should "run no sample in any row, and the suite in every row but the takes check's" in {
     val convergence = RepoFile.block(leg, "convergence")
-    val sample = RepoFile.step(convergence, SampleStep)
-    RepoFile.positionOf(convergence, s"- name: $SampleStep") should be < RepoFile.positionOf(convergence, s"- name: $SuiteStep")
-    sample should include("continue-on-error: ${{ inputs.mode == 'record' }}")
-    withClue("a recording's convergence row whose sample is skipped runs its suite ungated — only a leg that asks " +
-             "for a `sample` row of its own (`sample-row`) may move the sample out of it: ") {
-      sample.linesIterator.map(_.trim).filter(_.startsWith("if:")).toSeq shouldBe
-        Seq("if: matrix.phase == 'sample' || (matrix.phase == 'convergence' && !inputs.sample-row && inputs.mode == 'record')")
-    }
-    withClue("the suite must not run past a failed sample — an `if:` without a status function keeps the " +
-             "implicit success(), and this one only spares a recording's sample row: ") {
-      RepoFile.step(convergence, SuiteStep).linesIterator.map(_.trim).filter(_.startsWith("if:")).toSeq shouldBe
-        Seq("if: matrix.phase != 'sample' && matrix.phase != 'takes'")
-    }
+    convergence should not include "sample ahead of the suite"
+    RepoFile.withoutComments(convergence) should not include "steps.sample"
+    RepoFile.step(convergence, SuiteStep).linesIterator.map(_.trim).filter(_.startsWith("if:")).toSeq shouldBe
+      Seq("if: matrix.phase != 'takes'")
   }
 
-  /** What a hermetic row keeps of the sample it no longer runs: the corpus-shape specs over the
-   *  recorded corpus (`CinemaSlotInvariantsSpec`, `SearchQueryMarkersSpec`), which the convergence
-   *  suite itself does not assert — first, ahead of the suite, in the suite's own sbt run. */
-  it should "run the sample's corpus-shape specs ahead of a hermetic row's suite, where no sample runs" in {
+  /** What every row keeps of the sample it no longer runs: the corpus-shape specs over the recorded corpus
+   *  (`CinemaSlotInvariantsSpec`, `SearchQueryMarkersSpec`), which the convergence suite itself does not assert --
+   *  first, ahead of the suite, in the suite's own sbt run, recording or hermetic. */
+  it should "run the sample's corpus-shape specs ahead of every convergence row's suite" in {
     RepoFile.step(RepoFile.block(leg, "convergence"), SuiteStep) should include(
-      "${{ matrix.phase == 'convergence' && !inputs.sample-row && inputs.mode != 'record' && inputs.shape-command || '' }} " +
+      "${{ matrix.phase == 'convergence' && inputs.shape-command || '' }} " +
       "${{ matrix.phase == 'convergence' && inputs.command || matrix.phase == 'next-day' && inputs.next-day-command || inputs.order-command }}")
-    callers.foreach(_ should include("shape-command:  ${{ matrix.shape || '' }}"))
-    rows.filterNot(_.get("sampleRow").contains("true")).foreach { row =>
-      val shape = row.getOrElse("shape", fail(s"${row("country")} runs no sample in a hermetic row, and names no `shape` alias"))
+    callers.foreach(_ should include("shape-command:"))
+    rows.foreach { row =>
+      val shape = row.getOrElse("shape", fail(s"${row("country")} names no `shape` alias, so its corpus-shape specs run nowhere"))
       build should include("addCommandAlias(\"" + shape + "\",")
       build should include(s"""corpusShape("${row("code")}")""")
     }
@@ -344,23 +315,13 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  it should "publish what a recording's sample recorded, not just what the full leg did" in {
-    // The gate REPLAYS a fixture tree, and every recorded response in that tree expires
-    // after `EnrichmentFreshness.Ttl` (5 days). Only the full leg republished it, and the
-    // full leg is `needs: sample` — so a country whose sample failed for five days had its
-    // tree pruned to nothing, which made the sample slower still, which kept the full leg
-    // from ever running again. Germany sat in exactly that loop for ten runs from
-    // 2026-08-09: an asset that could only be refreshed by a job that could only run once
-    // the asset was fresh.
-    //
-    // Recording is the recorder's alone now, and every leg runs its sample as the first
-    // suite step of the full leg's job — so that job's publish, under `always()`, is what
-    // carries the sample's recordings, red sample or green.
+  // The gate REPLAYS a fixture tree, and every recorded response in it expires after `EnrichmentFreshness.Ttl`
+  // (5 days): a tree only refreshed by a row that could only run once it was fresh deadlocked Germany for ten runs from
+  // 2026-08-09. The convergence row's publish runs `always()`, so a recording's tree is published red or green.
+  it should "publish a recording's tree whatever its suite said" in {
     val convergence = RepoFile.block(leg, "convergence")
-    convergence should include(s"- name: $SampleStep")
     convergence should include(s"$PublishAction\n              if: always()")
-    // The tree's publish — `id: publish`; the convergence row's pre-suite fill goes up through the same action earlier.
-    RepoFile.positionOf(convergence, s"- name: $SampleStep") should be < RepoFile.positionOf(convergence, "id: publish\n")
+    RepoFile.positionOf(convergence, s"- name: $SuiteStep") should be < RepoFile.positionOf(convergence, "id: publish\n")
   }
 
   it should "keep the capture when tar reports the tree changing under it" in {
@@ -455,10 +416,9 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     }
     legDirectives should not include "if: inputs.order-command"
     RepoFile.block(leg, "convergence") should include(
-      """phase: ${{ fromJson(format('["convergence"{0}{1}{2}{3}]', inputs.order-command != '' && (inputs.order-split && """ +
+      """phase: ${{ fromJson(format('["convergence"{0}{1}{2}]', inputs.order-command != '' && (inputs.order-split && """ +
         """',"order-independence-p01","order-independence-p12"' || ',"order-independence"') || '', """ +
-        """inputs.sample-row && ',"sample"' || '', inputs.next-day-command != '' && ',"next-day"' || '', """ +
-        """inputs.mode == 'hermetic' && ',"takes"' || '')) }}""")
+        """inputs.next-day-command != '' && ',"next-day"' || '', inputs.mode == 'hermetic' && ',"takes"' || '')) }}""")
   }
 
   /** A country whose single order row ran past the 10-minute target splits it into two rows of two
@@ -527,18 +487,10 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
   }
 
   /** Side by side, not behind the full leg: chaining a 4-hour row to a 3-hour one is the
-   *  6-hour cancellation the split exists to escape — and one row's failure must not cancel
-   *  the other's answer.
-   *
-   *  ONLY the convergence row runs the sample. No row can wait on a step of another row, so the
-   *  order row would either run its own copy or run ungated; its own copy sat 97 s in front of the
-   *  identity lane's critical path (run 37144949783), so it runs ungated — a red sample then costs
-   *  that row's runner, never wall time, and the convergence row still gates and reports. */
-  it should "run the sample in the convergence row only, never ahead of the order row's suite" in {
-    val block = RepoFile.block(leg, "convergence")
-    block should include("fail-fast: false")
-    RepoFile.step(block, SampleStep) should include(
-      "if: matrix.phase == 'sample' || (matrix.phase == 'convergence' && !inputs.sample-row && inputs.mode == 'record')")
+   *  6-hour cancellation the split exists to escape -- and one row's failure must not cancel
+   *  the other's answer. */
+  it should "run its rows side by side, none cancelling another" in {
+    RepoFile.block(leg, "convergence") should include("fail-fast: false")
   }
 
   /** ONE writer to the rolling release per leg.
@@ -743,12 +695,12 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     caller should include ("profile:                       ${{ inputs.profile == true }}")
     leg should include ("if [ \"${{ inputs.profile }}\" = true ]; then")
     leg should include ("-J-XX:StartFlightRecording=filename=convergence.jfr")
-    leg should include ("if: always() && inputs.profile && matrix.phase != 'sample'")
+    leg should include ("if: always() && inputs.profile && matrix.phase != 'takes'")
     // A hand-dispatched JVM setting reaches every sbt run through the environment, never interpolated into the script.
     caller should include ("jvm-options:                   ${{ inputs.jvm-options || '' }}")
-    // Every sbt run of the leg: the sample, the suite, the pre-suite fill and a recording's corpus capture.
-    leg.linesIterator.count(_.trim == "JVM_OPTIONS:      ${{ inputs.jvm-options }}") shouldBe 4
-    leg.linesIterator.count(_.trim == "read -ra jvm <<< \"$JVM_OPTIONS\"") shouldBe 4
+    // Every sbt run of the leg: the suite, the pre-suite fill and a recording's corpus capture.
+    leg.linesIterator.count(_.trim == "JVM_OPTIONS:      ${{ inputs.jvm-options }}") shouldBe 3
+    leg.linesIterator.count(_.trim == "read -ra jvm <<< \"$JVM_OPTIONS\"") shouldBe 3
     RepoFile.withoutComments(leg).linesIterator.filter(_.trim.startsWith("sbt ")).foreach { line =>
       withClue(s"$line: ")(line should include ("\"${jvm[@]}\""))
     }
