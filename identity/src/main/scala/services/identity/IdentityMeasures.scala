@@ -1670,7 +1670,11 @@ object IdentityMeasures {
    *  [205′] and Flicks' "Royal Opera House: Carmen" [220′] ×13 screen the RBO 2026/27 relays, whose records the work's
    *  name alone never reaches — which season's record it is stays the season rules' to tell ([[Listing.screenedSeason]]).
    *  Beside a year it states as well: Flicks dates "Royal Opera House: Carmen" 2024, the year of the page it links, and
-   *  "Carmen 2024" finds the 2024 revival, never the 2026/27 broadcast its venues screen in November 2026. */
+   *  "Carmen 2024" finds the 2024 revival, never the 2026/27 broadcast its venues screen in November 2026.
+   *  KNOWN GAP (convergence 38627416973, accepted.tsv): UK Lonsdale Alhambra Penrith's "RB&O 26/27: <work>" ×3 reached
+   *  the season's record only by joining its other billings' cluster; once those took it alone, the learned
+   *  listing-listing cut kept Penrith apart and it takes none. Alone it takes the record (IdentityResolverCasesSpec's
+   *  short-season case): the follow-up is the corpus-level join. */
   private def stageWorkQueries(l: Listing): Seq[String] =
     if (l.seasonYear.isDefined) Nil
     else (l.year.orElse(l.broadcastSeason).toSeq ++ l.screenedSeason.filter(_ => l.billsAStageHouse)).distinct.flatMap(year =>

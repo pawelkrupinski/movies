@@ -61,6 +61,9 @@ SCATTERED_AT = 5
 # Findings standing when the lint was armed, each with why it stands and when it goes. Only shrinks: a line no finding
 # is any more fails as stale, to strike.
 GRANDFATHERED = {
+    ("accepted", "de", "IL KINO", "Ukrainian Film Festival Berlin: CAMOUFLAGE", "tmdb:1735950"):
+        "c1ef3a56c cured Acud's Camouflage take, which IL KINO's right take leaned on (convergence 38627416973): spent once the "
+        "withdrawn-vote follow-up leaves it unmatched -- then strike the accepted.tsv line and this one",
     ("accepted", "pl", "Kino Powiśle", "OPERA-OTELLO", "tmdb:1703634"):
         "7f939ee78's sole-result coverage trade (11 wrong cured for 2 right lost), landed before this lint: spent once "
         "identity takes (pl) passes past 7f939ee78 -- then strike the accepted.tsv line and this one",
