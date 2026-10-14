@@ -184,7 +184,13 @@ object ListingShape {
         PieceBreak.split(title).count(_.trim.nonEmpty) >= 2 && theirs.nonEmpty && ours.sizeIs >= theirs.size &&
           ours.take(theirs.size - 1) == theirs.init && ours(theirs.size - 1).startsWith(theirs.last)
       }
-      run.filterNot { case (from, to) => silent || reworded || opens || words.indices.exists(k => (k < from || k >= to) && words(k).exists(credits)) }.flatMap { case (from, to) =>
+      // a film titled only by a screening note's words ("Q & A", "Talk"): the billing's note, not a film, beside the
+      // billing's other pieces (UK The Garden Cinema's "Köln Tracks: The Legend Of Keith Jarrett’s Köln Concert + Q&A")
+      val noted = run.filter { case (from, to) =>
+        films.forall(f => { val title = TitleContainment.tokens(f.title); title.nonEmpty && title.forall(NoteWords) }) &&
+          words.indices.exists(k => (k < from || k >= to) && words(k).nonEmpty)
+      }.map(_ => s"'${films.head.title}' is a screening note's words, billed beside the billing's own pieces")
+      noted orElse run.filterNot { case (from, to) => silent || reworded || opens || words.indices.exists(k => (k < from || k >= to) && words(k).exists(credits)) }.flatMap { case (from, to) =>
         // a strand's banner: a segment closed ahead of the film's that names a screening programme or an event in one of
         // its pieces is the venue's, all of it (DE "SPECIAL: 2. Dangerous Encounters – Hong Kong im Filmrausch: MADE IN
         // HONG KONG", a numbered strand of the Filmrausch's)
@@ -223,6 +229,9 @@ object ListingShape {
   private def numberedNote(piece: Seq[String], own: String => Boolean): Boolean =
     piece.exists(_.exists(_.isDigit)) && piece.count(own) <= 1
 
+  /** The words of a screening's note — a talk, a Q&A, the screening as an event ([[TitleWords]]): a title of these alone
+   *  names the note. */
+  private val NoteWords = TitleWords.tokens(TitleWords.Concept.Talk, TitleWords.Concept.Screening)
   /** An event, format or edition word: what a venue bills around a film. */
   private def billed(word: String): Boolean =
     DecorationWords.EventWords(word) || DecorationWords.EditionWords(word) || services.movies.FormatTags.FormatToken.contains(word)

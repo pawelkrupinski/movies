@@ -63,6 +63,12 @@ class ListingShapeSpec extends AnyFlatSpec with Matchers {
     beside("The Tea Alchemist - World Premiere + Cast & Crew Q&A OmeU, keine Angabe", film("World Premiere")) shouldBe defined
     beside("Wohnzimmerkonzerte Festival - Toi Et Moi | Ronja Maltzahn | Finn Moriz | Flora Falls", film("Du und ich", Some("Toi et moi"))) shouldBe
       defined
+    // a film titled only by a screening note's words is the note, whatever the other pieces' words: UK The Garden Cinema's
+    // "Köln Tracks: … + Q&A" took the 1990 "Q & A" once "concert" became an event word (convergence 38606701583)
+    beside("Köln Tracks: The Legend Of Keith Jarrett’s Köln Concert + Q&A", film("Q & A")) shouldBe defined
+    beside("Nosferatu + Talk", film("Talk")) shouldBe defined
+    // and a note alone is no billing beside anything
+    beside("Q&A", film("Q & A")) shouldBe None
     // the venue's own wording: a banner in its slot, an event or edition, a programme, a note, the film's director or quotes
     beside("Somali Film Festival: Lifeline", film("Lifeline")) shouldBe None
     // a strand's banner a colon closes, a screening programme among its pieces, all of it — DE Filmrauschpalast's numbered
