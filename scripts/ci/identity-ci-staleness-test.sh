@@ -5,6 +5,7 @@
 set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 . "$REPO_ROOT/scripts/shell-spec.sh"
+. "$REPO_ROOT/scripts/scratch-git.sh"
 
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
@@ -24,13 +25,13 @@ iso() { date -u -r "$1" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -d "@$1" +%Y-
 
 # The scratch repository: a pipeline commit 4h old (worker/src/main), then a docs-only commit on it.
 repo="$work/repo"
-git init -q "$repo"
+scratch_repo "$repo" -q
 commit() {  # commit <path> <hours ago> -> prints the sha
   mkdir -p "$repo/$(dirname "$1")"; echo "$RANDOM" >> "$repo/$1"
-  git -C "$repo" add -A
+  scratch_git "$repo" add -A
   GIT_COMMITTER_DATE="@$(at "$2")" GIT_AUTHOR_DATE="@$(at "$2")" \
-    git -C "$repo" -c user.name=t -c user.email=t@t commit -qm "$1"
-  git -C "$repo" rev-parse HEAD
+    scratch_git "$repo" commit -qm "$1"
+  scratch_git "$repo" rev-parse HEAD
 }
 printf '# the paths\nworker/src/main/**\nbuild.sbt\n' > "$work/paths.txt"
 base=$(commit README 10)
@@ -88,7 +89,7 @@ check "with only build.sbt a pipeline path, no commit touches it: fresh" ok "$(c
 printf 'worker/src/main/**\n' > "$work/paths.txt"
 uncovered_young=$(commit worker/src/main/B.scala 0)
 check "an uncovered pipeline commit under 3h old is not yet due a run" ok "$(check_out convergence-unrun)"
-git -C "$repo" reset -q --hard "$docs"
+scratch_git "$repo" reset -q --hard "$docs"
 [ -n "$uncovered_young" ]
 
 echo "recording-stale"
