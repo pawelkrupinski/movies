@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+#
+# How current the LOCAL prod mirror (:28017) is, per country — for every tool that reads it (identity-slice
+# --prod-mirror, listing-history, …). Reads only the local mirror, never prod.
+#
+#   scripts/local-mirror/freshness [cc...] [--max-lag-hours N] [--not-before ISO-8601] [--need coll,coll] [--quiet]
+#
+#   cc               countries (pl de uk es us; default: all five)
+#   --max-lag-hours  how far behind the wall clock a database may be synced (default 6)
+#   --not-before     the moment the mirror must not predate: the recording's, which a slice mixes it with
+#   --need           collections the caller reads: one the mirror holds nothing of is a warning
+#   --quiet          the per-database line only, not each collection's count and newest write
+#
+# Prints each database's sync moment (the last change the tailer applied, from its resume token) and lag, then each
+# mirrored collection's count and newest stamped write. Exit 0 fresh, 3 when any is not (each reason WARNed), 2 when a
+# country has no mirror database or the mirror Mongo does not answer.
+set -euo pipefail
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ccs=() max_lag_hours=6 not_before="" need="" quiet=false
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --max-lag-hours) max_lag_hours=$2; shift 2 ;;
+    --not-before) not_before=$2; shift 2 ;;
+    --need) need=$2; shift 2 ;;
+    --quiet) quiet=true; shift ;;
+    -h|--help) sed -n '3,/^set /p' "$0" | sed '$d; s/^# \{0,1\}//'; exit 0 ;;
+    -*) echo "unknown argument $1" >&2; exit 2 ;;
+    *) ccs+=("$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"); shift ;;
+  esac
+done
+[ "${#ccs[@]}" -gt 0 ] || ccs=(pl de uk es us)
+uri="mongodb://127.0.0.1:${LOCAL_MIRROR_PORT:-28017}/?directConnection=true&serverSelectionTimeoutMS=5000"
+js_list() { local out="" x; for x in "$@"; do [ -n "$x" ] && out="$out${out:+,}'$x'"; done; echo "[$out]"; }
+IFS=, read -r -a needs <<< "$need"
+not_before_ms=null
+if [ -n "$not_before" ]; then
+  not_before_ms=$(python3 -I -c 'import sys,datetime; print(int(datetime.datetime.fromisoformat(sys.argv[1].replace("Z","+00:00")).timestamp()*1000))' "$not_before") \
+    || { echo "--not-before: not an ISO-8601 moment: $not_before" >&2; exit 2; }
+fi
+max_lag_ms=$(python3 -I -c 'import sys; print(int(float(sys.argv[1]) * 3600000))' "$max_lag_hours")
+set +e
+mongosh --nodb --quiet --eval "var LOCAL='$uri'; var CCS=$(js_list "${ccs[@]}"); var MAX_LAG_MS=$max_lag_ms; var NOT_BEFORE_MS=$not_before_ms; var NEED=$(js_list ${needs[@]+"${needs[@]}"}); var QUIET=$quiet" \
+  --file "$HERE/mirror-targets.js" --file "$HERE/staleness-rule.js" --file "$HERE/freshness-rule.js" --file "$HERE/freshness.js"
+status=$?
+set -e
+case "$status" in
+  0|2|3) exit "$status" ;;
+  *) echo "[freshness] the local mirror on :${LOCAL_MIRROR_PORT:-28017} did not answer (scripts/local-mirror/start-local-mongo.sh)" >&2; exit 2 ;;
+esac
