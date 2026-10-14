@@ -462,6 +462,10 @@ trait IdentityLookups {
   def candidates(query: CandidateQuery): Answer[Seq[Hit]]
   /** A film's own record (`TmdbFilmRecord`). */
   def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]]
+  /** Does this source number its films by their TMDB ids — the number a TMDB-keyed feed's link names ([[FeedLink]])? A
+   *  film-database family's answers number theirs as one resolve meets them (`agreement.FamilyLookups`): there a link's
+   *  TMDB id names none of them, and read as a film number it denied the very film the link meant. */
+  def numbersFilmsByTmdbId: Boolean = true
   /** The day a film was released, as its record states it: `Unknown` while the record is unknown — or, in a store, while
    *  it was filed before records kept the whole day and holds only the year TMDB dated it in
    *  ([[agreement.Broadcast]] reads the day; nothing else does). */

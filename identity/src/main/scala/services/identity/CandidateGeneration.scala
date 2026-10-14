@@ -13,6 +13,8 @@ private[identity] final class CandidateGeneration(ordered: Seq[Listing], lookups
                                                   pins: PinConstraints, decorations: TitleDecorations, lazyLookups: Boolean,
                                                   corpus: Option[CorpusContext] = None) {
   val details = mutable.LinkedHashMap.empty[(String, String), Answer[Option[DetailFacts]]]
+  /** Are the films numbered by their TMDB ids ([[IdentityLookups.numbersFilmsByTmdbId]])? */
+  def numbersFilmsByTmdbId: Boolean = lookups.numbersFilmsByTmdbId
   def detailOf(listing: Listing): Option[DetailFacts] =
     if (!lookups.hasDetail(listing)) None
     else details.getOrElseUpdate((listing.venue, listing.page.getOrElse("")), lookups.detail(listing)).toOption.flatten

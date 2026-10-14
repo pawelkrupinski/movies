@@ -995,6 +995,7 @@ object AgreementStage {
     def candidates(query: CandidateQuery): Answer[Seq[Hit]]      = inner.candidates(query)
     def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = inner.film(tmdbId)
     override def cast(tmdbId: Int): Answer[Option[Seq[String]]]  = inner.cast(tmdbId)
+    override def numbersFilmsByTmdbId: Boolean                   = inner.numbersFilmsByTmdbId
   }
 
   /** `inner`, noting whether any answer it gave was `Unknown`. */
@@ -1007,6 +1008,7 @@ object AgreementStage {
     override def prefetchAnswered(): Unit                        = inner.prefetchAnswered()
     def candidates(query: CandidateQuery): Answer[Seq[Hit]]      = noted(inner.candidates(query))
     def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = noted(inner.film(tmdbId))
+    override def numbersFilmsByTmdbId: Boolean                   = inner.numbersFilmsByTmdbId
     // a cast not known leaves the cast evidence unread, never the fill waiting
     override def cast(tmdbId: Int): Answer[Option[Seq[String]]]  = inner.cast(tmdbId)
   }

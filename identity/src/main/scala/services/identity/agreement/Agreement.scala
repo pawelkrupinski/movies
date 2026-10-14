@@ -108,6 +108,7 @@ final class FamilyLookups(answers: FamilyAnswers, venues: IdentityLookups, listi
   }
   /** The family's own id of a film this resolve numbered. */
   def idOf(number: Int): Option[String] = named.get(number).map(_.id)
+  override def numbersFilmsByTmdbId: Boolean = false
 
   override def hasDetail(listing: Listing): Boolean                  = venues.hasDetail(listing)
   override def detail(listing: Listing): Answer[Option[DetailFacts]] = venues.detail(listing)

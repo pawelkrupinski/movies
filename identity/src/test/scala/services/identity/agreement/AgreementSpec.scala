@@ -424,6 +424,21 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     asked.groupBy(identity).collect { case (question, times) if times.size > 1 => question } shouldBe empty
   }
 
+  "A family's resolve of a listing a TMDB-keyed feed links" should "read the link as nothing: the family numbers its own films, never TMDB's" in {
+    // DE Moviemento's "Der Film 444 und ein Treffen mit dem Protagonisten und dem Autor": Cineamo links 1669788m (TMDB's
+    // "444", 2026) and copies its title "444" as the original. Read against a family's numbers, the link named another
+    // film than every one the family held, so each was denied as "named only by the title its feed copied" — and the
+    // families that had agreed on IMDb's tt33394780 agreed on nothing.
+    val film444 = film("444", 2026, "Aleksandr Petrov", 90)
+    val bare = listing(KinoMuza, "Der Film 444 und ein Treffen mit dem Protagonisten und dem Autor").copy(originalTitle = Some("444"))
+    val fed  = bare.copy(catalogueIds = Seq(services.identity.CatalogueId("cineamo", "1669788m")))
+    def chosen(of: Listing) = Agreement.verdict(Seq(of), new HeldFamilyAnswers(VoterFamily.Imdb,
+      Map("tt33394780" -> SourceRecord(film444, Map("imdb" -> "tt33394780")))),
+      NoVenueDetails, normalizer, IdentityCalibration.resolver).toOption.map(verdict => verdict.pick.map(_.record.film).orElse(verdict.leaning.map(_.film)))
+    chosen(bare) shouldBe Some(Some(film444))
+    chosen(fed) shouldBe chosen(bare)
+  }
+
   "A family whose questions are not answered yet" should "pick nothing yet — a gap, not a verdict" in {
     val bare = Seq(listing(KinoMuza, "Klondike"))
     Agreement.verdict(bare, new HeldFamilyAnswers(VoterFamily.Imdb, Map.empty, unanswered = true), NoVenueDetails, normalizer, IdentityCalibration.resolver) shouldBe Answer.Unknown

@@ -37,14 +37,16 @@ private[identity] object FeedLink {
   /** The `sources` of a link overruled by the venue's own title naming another film exactly, no source backing either. */
   val TitledRival = 0
 
-  /** Why a TMDB-keyed feed's link of `node` to another film denies it `film`, a SHORT ([[SuspectTakes.ShortMinutes]]): the
+  /** Why a TMDB-keyed feed's `link` of a node to another film denies it `film` (`tmdbId`), a SHORT ([[SuspectTakes.ShortMinutes]]): the
    *  feed's pick is a programme's film, and the facts it copies are the pick's — an English title a short carries too is
    *  the pick restated, not a second film. DE "L`Estive" ×3: Cineamo links Lenoir's 2026 documentary (1729636m), copying
    *  its English title "Summer Meadow", which a 3-minute 2024 short carries and took at 62.5%; "HEIMSUCHUNG - MittagsKINO"
    *  took the 18-minute "Visitation" while Cineamo links Schlöndorff's "Heimsuchung", whose English title it is. */
-  def deniesShort(node: EvidenceNode, tmdbId: Int, film: IdentityMeasures.Film): Option[String] =
-    linked(node).filter { case (_, linkedFilm) => linkedFilm != tmdbId && film.runtimes.nonEmpty && film.runtimes.max < SuspectTakes.ShortMinutes }
-      .map { case (id, linkedFilm) => s"a short, its feed (${id.source} ${id.id}) linking $linkedFilm" }
+  def deniesShort(link: (CatalogueId, Int), tmdbId: Int, film: IdentityMeasures.Film): Option[String] = {
+    val (id, linkedFilm) = link
+    Option.when(linkedFilm != tmdbId && film.runtimes.nonEmpty && film.runtimes.max < SuspectTakes.ShortMinutes)(
+      s"a short, its feed (${id.source} ${id.id}) linking $linkedFilm")
+  }
 
   /** The one TMDB film a TMDB-keyed feed links every listing of `node` to, with the id that links it. */
   def linked(node: EvidenceNode): Option[(CatalogueId, Int)] =

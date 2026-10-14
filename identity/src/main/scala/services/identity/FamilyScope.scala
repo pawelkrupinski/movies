@@ -126,10 +126,15 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
     relations.getOrElseUpdate((listing.titleInputs, candidate.tmdbId),
       { related(); IdentityMeasures.titleRelation(listing, candidate.film, houses, qualifiers) })
 
+  /** The TMDB film a TMDB-keyed feed links `node` to ([[FeedLink.linked]]) — none where this resolve's films are a
+   *  family's own numbers, which no TMDB id names ([[IdentityLookups.numbersFilmsByTmdbId]]). */
+  private def feedLinked(node: EvidenceNode): Option[(CatalogueId, Int)] =
+    if (scoring.generation.numbersFilmsByTmdbId) FeedLink.linked(node) else None
+
   /** `node`'s feed link, when the title's other sources overrule it ([[FeedLink]]): once per node for this scope's life. */
   def overruled(node: EvidenceNode): Option[FeedLink] = overruledMemo.getOrElseUpdate(node.id, overrule(node))
   private val overruledMemo = mutable.HashMap.empty[String, Option[FeedLink]]
-  private def overrule(node: EvidenceNode): Option[FeedLink] = FeedLink.linked(node).flatMap { case (id, film) =>
+  private def overrule(node: EvidenceNode): Option[FeedLink] = feedLinked(node).flatMap { case (id, film) =>
     val listing = node.evidence.measured
     val groups  = IdentityMeasures.titleGroups(listing)
     val own     = sourceOf(node)
@@ -202,7 +207,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
    *  38529260149's DE model takes: 7 listings took a film only the copied title of another linked film named, all 7 wrong.
    *  A feed that is not TMDB-keyed names no film its copy is of, and its copied title stays evidence. */
   private def namedOnlyByCopiedTitle(node: EvidenceNode, candidate: Candidate): Option[String] =
-    FeedLink.linked(node).filter(_._2 != candidate.tmdbId).flatMap { case (id, linkedFilm) =>
+    feedLinked(node).filter(_._2 != candidate.tmdbId).flatMap { case (id, linkedFilm) =>
       val listing = evidenceOf(node).measured
       // a year the listing states that the film shares — the linked film's, copied — makes the two one film under two
       // records: DE "Tabaluga und Leo - Die Weihnachtsgeschichte" [2003] links 1486412m and is the 2003 film 68030
@@ -224,7 +229,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
   private def denialByNode(node: EvidenceNode, id: Int): Option[String] =
     Option.when(pins.deniedFilms(node.listings.head.key)(id))("pinned never this film")
       .orElse(overruled(node).filter(_.film == id).map(_.denial))
-      .orElse(FeedLink.deniesShort(node, id, candidateById(id).film))
+      .orElse(feedLinked(node).flatMap(FeedLink.deniesShort(_, id, candidateById(id).film)))
       .orElse(namedOnlyByCopiedTitle(node, candidateById(id)))
       .orElse(Option.when(namesOnlyItsVenue(node, candidateById(id)))("its title names it only by the venue's own name"))
       .orElse(Option.when(namesOnlyATag(node, candidateById(id)))("its title names it only by a programme tag billed beside many titles"))
