@@ -11,6 +11,24 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
 
   private def measures(l: Listing, f: Film) = IdentityMeasures.listingFilm(l, f, None, 0, 0)
 
+  /** Two of a title's shapes need its END: a bracketed format ("Vivaldi i ja [2D LEKTOR]") and a screening year ("Ma to
+   *  sens 2026"). Their patterns, anchored at the end but scanning from the start, backtrack over every title that has
+   *  neither -- 11.8% of a convergence leg's single-threaded take-up and agreement (JFR, run 38553692147) -- so a title
+   *  that cannot end so is never scanned. A long title shows the scan: quadratic in its length. */
+  "a title's format and screening-year shapes" should "still be cut where the title ends in one" in {
+    IdentityMeasures.shapes(Seq("Vivaldi i ja [2D LEKTOR]")) should contain("Vivaldi i ja")
+    IdentityMeasures.shapes(Seq("Ma to sens 2026")) should contain("Ma to sens")
+    IdentityMeasures.shapes(Seq("Blade Runner 2049")) should not contain "Blade Runner"
+  }
+
+  they should "cost a title that ends in neither no scan of it" in {
+    val long = ("Kino Seniora " * 1500).trim
+    IdentityMeasures.shapes(Seq(long)) // warm
+    val started = System.nanoTime()
+    IdentityMeasures.shapes(Seq(long))
+    (System.nanoTime() - started) / 1000000 should be < 100L
+  }
+
   "a bracketed year in a title" should "be its own measure, never the listing's published year" in {
     // A re-release bracket: the 2015 film shown in 2026.
     val m = measures(Listing("The Hunger Games: Mockingjay - Part 2 (2026)"), Film("The Hunger Games: Mockingjay - Part 2", year = Some(2015)))

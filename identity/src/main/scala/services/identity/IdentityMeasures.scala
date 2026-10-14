@@ -983,13 +983,26 @@ object IdentityMeasures {
     val slashed = Seq(SpacedSlash, HalfSpacedDash).flatMap(separator =>
       if (separator.findFirstIn(title).isDefined) separator.split(title).toSeq.map(_.trim) else Nil)
     val coded   = CodeBeforeColon.findFirstMatchIn(title).map(m => title.substring(m.end)).toSeq
-    val undated = ScreeningYearSuffix.findFirstMatchIn(title).map(_.group(1)).toSeq
-    val format  = TrailingSquareBracket.findFirstMatchIn(title).map(_.group(1)).toSeq
+    val undated = (if (endsInScreeningYear(title)) ScreeningYearSuffix.findFirstMatchIn(title).map(_.group(1)) else None).toSeq
+    val format  = (if (endsIn(title, _ == ']')) TrailingSquareBracket.findFirstMatchIn(title).map(_.group(1)) else None).toSeq
     val quoted  = (if (quotesOne && Quoted.findAllMatchIn(title).size == 1)
       LeadingQuoted.findFirstMatchIn(title).orElse(TrailingQuoted.findFirstMatchIn(title)).map(_.group(1)) else None).toSeq
     val banner  = BannerBeforeColon.findFirstMatchIn(title).map(m => title.substring(m.end)).toSeq
     (slashed ++ coded ++ undated ++ format ++ quoted ++ banner).map(_.trim).filter(_.exists(_.isLetter)).filter(_ != title.trim)
   }
+  /** Whether a title can match a pattern anchored at its end, read off its last characters before the pattern scans it
+   *  from the start: anchored at the end, a scan backtracks over every title that does not end so (11.8% of a
+   *  convergence leg's single-threaded take-up, JFR run 38553692147). A `$` also matches before a final line break, so a
+   *  title ending in one is always scanned. */
+  private def endsIn(title: String, last: Char => Boolean): Boolean =
+    title.nonEmpty && (last(title.last) || LineBreaks(title.last))
+  private def endsInScreeningYear(title: String): Boolean = {
+    def digit(c: Char) = c >= '0' && c <= '9'
+    val n = title.length
+    (n >= 5 && title(n - 4) == '2' && title(n - 3) == '0' && (title(n - 2) == '2' || title(n - 2) == '3') &&
+      digit(title(n - 1))) || endsIn(title, _ => false)
+  }
+  private val LineBreaks = Set('\n', '\r', '\u0085', '\u2028', '\u2029')
   /** A format or version tag in square brackets after the title ("Vivaldi i ja [2D LEKTOR]"); a round bracket is
    *  `SearchTitles`'s. */
   private val TrailingSquareBracket = """^(.*\p{L}.*?)\s*\[[^\]\[]*\]$""".r
