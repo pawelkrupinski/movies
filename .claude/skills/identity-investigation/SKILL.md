@@ -44,6 +44,8 @@ Design and limits: docs/design/identity-slice.md.
 | Why does a raw title clean / search / shape the way it does? Which title rule fired? | `scripts/title-trace "<raw title>" --country de [--venue X]` — every step, each rule's name, before and after (below) |
 | Did commit Y change how a title cleans, searches or shapes? | `scripts/title-trace "<raw title>" --country de --ref Y~1 --ref Y` — both traces, then the steps that moved |
 | What do the labels / known-wrong / expected / baseline / accepted lists and MatchedTakesLabelSpec say about a listing or film, who added each, and does prod still take it so? | `scripts/label-lookup uk --title "RBO: Romeo & Juliet" [--venue X]` or `scripts/label-lookup uk --film tmdb:N` (below) |
+| Code or new data? What changed between two recordings (a red recording, a leg that moved)? | `scripts/recording-diff <runA> <runB> --country de [--venue X] [--title Y]` (below) |
+| When and why did prod's take of a listing change, per deploy? Would CI have reproduced it? | `scripts/listing-history uk --title "ties that bind" [--venue X] [--since 7d] [--replay]` (below) |
 
 ## title-trace
 
@@ -89,6 +91,61 @@ The listing's take needs its candidates and families: that is `scripts/identity-
 
 A title is matched exactly (single-spaced) when any file holds it so, else as a part (case and accents aside:
 `--title Emil` finds "Emil und die Detektive").
+
+## recording-diff
+
+`scripts/recording-diff <runA> <runB> [--country cc]... [--venue S] [--title S] [--limit N] [--corpus-only]` — two
+"Record scrape fixtures" recordings (identity-slice's cache), per country, older first. ~3 s a country on the corpus;
+the first comparison over a tree reads it once (~15 s UK) and keeps its manifest. Prints:
+
+- listings added / lost, **RE-SPELLED** (a lost and an added title at one venue differing only by whitespace, case,
+  accents, punctuation or truncation — each kind named) and **RE-TITLED** (the very same showtimes under another
+  title: a feed's film name replacing the venue's);
+- **FIELDS** lost / gained / changed on listings in both (synopsis, runtime, year, director, cast, originalTitle,
+  `feed:<id>`), the venues moving most; **DETAIL PAGES** vanished or appeared per venue;
+- **ORIGINS** whose refusal share moved (`scripts/ci/recording_health.py` over both trees);
+- **MARKER SPELLINGS** new and gone (sneak, preview, pokaz, double bill, certificates);
+- `--title`: each matching listing in both runs — "in both, spelled alike, fields alike" means the input did not
+  move, so a take that moved between the runs moved by the code.
+
+```
+== DE  38498856157 → 38542338732  (venues matching «filmwerk»)
+NEW DATA: 2 re-titled listings; 1 new marker spellings
+RE-TITLED (the same showtimes under another title):
+  Filmwerk Gutersloh: «Sneak_nov + Filmquiz» → «Sneak Over»
+MARKER SPELLINGS NEW in 38542338732:
+  sneak        «sneak over»  e.g. Filmwerk Gutersloh: «Sneak Over»
+```
+
+Measured 2026-10-14: 38363428661 → 38498856157 names «Pokaz przyjazny osobom z ADHD» a new `pokaz przyjazny` spelling
+(PL), shows Cineworld's detail unchanged (UK, 94 % → 94 %, no origin moved) and Lieblingsmenschen's double space at
+Astor billed alike in both; 38498856157 → 38542338732 shows that double space collapsed (RE-SPELLED, whitespace) and
+the sneak re-titled to kinoheld's «Sneak Over».
+
+## listing-history
+
+`scripts/listing-history <cc> [--venue S] --title S [--since 7d] [--replay [--recording RUN] [--replay-limit N]]` —
+one listing's take over time, ~15 s without `--replay`:
+
+- **TAKES** per listing: the run of films with the moment and deploy of each change (listings of one billing moved
+  alike collapse into one line); **FLIPS within deploy X** when a deploy changed it more than once (a flip per pod
+  start: "The Ties That Bind Us" goes OwnMatch 1460982 → Corrected 1096642 within 30 s of every UK pod start);
+- **DEPLOY** blocks: the worker image tags Prometheus saw (`kube_pod_container_info`) → commit and subject, each with
+  its take-change lines (VictoriaLogs JSON fields; pre-10-14 text lines parsed from the message): kind, before → after,
+  basis, confidence, projection mode and id, pod, reason;
+- **LABELS** of every spelling the listing went by (`scripts/label-lookup --no-prod`);
+- **PROD NOW** from the local mirror (read-only, after `scripts/local-mirror/freshness` and its lag): the
+  identity_traces trace, the model family's decision, identity_agreements' verdict, identity_pins, the scraped listing;
+- `--replay`: `scripts/identity-slice --key … --ref <deploy commit>` at every deploy that logged a change and at the
+  one before it, all on ONE recording, in two views — **CI's** (`--families none`: no filed answers, as every hermetic
+  leg) and **prod's** (its filed family answers) — each **REPRODUCED** (the take moves between the two deploys as prod's
+  did) or **NOT REPRODUCED**. Reproduced only with filed answers = the CI-vs-prod gap; reproduced in neither = prod's
+  own state (restored model, arrival order). One ref compiles at a time (~2 min a new one). Measured: CBeebies Panto
+  at Cineworld Ashford on 9c8170f, recording 38363428661 — CI: NOT REPRODUCED (ca4059b takes none too); filed answers:
+  REPRODUCED (ca4059b tmdb 1710881 → none), prod's 213 lost takes CI never saw.
+  `LISTING_HISTORY_SLICE=<other checkout>/scripts/identity-slice` replays with another identity-slice — needed while
+  this checkout's tool files no longer compile at the deployed refs (from 83b869548, `FiledAnswers` reads
+  `Capture.live`, which refs before it lack: every ref before it fails to compile).
 
 ## identity-slice --explain
 

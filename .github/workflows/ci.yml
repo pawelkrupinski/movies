@@ -226,6 +226,7 @@ jobs:
                       bash scripts/identity-ratchet-report-test.sh
                       bash scripts/recording-diff-test.sh
                       python3 scripts/recording_diff_test.py
+                      python3 scripts/listing_history_test.py
                       bash .github/actions/drop-bot-branch/drop-test.sh
                   '
 

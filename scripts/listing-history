@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+#
+# One listing's identity take over time: production's take-change log lines (VictoriaLogs) grouped by the worker
+# deploy that logged them (Prometheus' image tags → commit), the labels judging it, prod's current state from the LOCAL
+# mirror (traces, family decisions, agreement verdicts, pins, the scraped listing — after its freshness), and with
+# --replay identity-slice at each of those deploys' commits on ONE recording: would CI have reproduced each change?
+#
+#   scripts/listing-history <cc> --venue S --title S [--since 7d] [--replay [--recording RUN] [--replay-limit N]]
+#
+#   --venue, --title  substrings of the venue and the raw title (case and accents aside)
+#   --since           how far back: Nd, Nh or Nm (default 7d)
+#   --replay          identity-slice at every deploy that logged a change (one ref compiled at a time, ~2 min a new ref)
+#   --recording       the recording every replay reads (default the newest green "Record scrape fixtures" run)
+#
+# Reads VictoriaLogs and Prometheus over `ssh monitoring-1`, the mirror on 127.0.0.1:28017 (read-only, never prod).
+# LISTING_HISTORY_SLICE names another identity-slice for --replay (one whose tool files still compile at old refs).
+# The logic and its tests: scripts/listing_history.py, scripts/listing_history_test.py.
+set -euo pipefail
+case "${1:-}" in -h|--help) sed -n '3,/^set /p' "$0" | sed '$d; s/^# \{0,1\}//'; exit 0 ;; "") sed -n '3,/^set /p' "$0" | sed '$d; s/^# \{0,1\}//' >&2; exit 2 ;; esac
+exec python3 -I "$(dirname "$0")/listing_history.py" "$@"
