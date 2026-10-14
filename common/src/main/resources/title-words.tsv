@@ -78,6 +78,30 @@ festival	en	festival
 festival	de	festival
 festival	es	festival
 
+# ── film-festival: a FILM festival's own name — billed alone, it is the festival's programme ("Alpen Film Festival 2026") ──
+#   a leading `*` reads it inside a compound ("ALPENFILMFESTIVAL", "FreerideFilmFestival")
+film-festival	en	*film festival
+film-festival	en	*film fest
+film-festival	de	*filmfestival
+film-festival	de	*filmfest
+film-festival	de	*filmfestspiele
+film-festival	de	*filmwoche
+film-festival	de	*filmtage
+film-festival	pl	festiwal filmow*
+film-festival	pl	festiwal kina
+film-festival	es	festival de cine
+film-festival	es	festival internacional de cine
+
+# ── festival-edition: a film festival's touring edition, billed after its name ("Freeride Filmfestival 2026 CINEMA EDITION") ──
+festival-edition	en	cinema edition
+festival-edition	en	on tour
+festival-edition	en	tour
+festival-edition	de	Kinotour
+festival-edition	de	Tour
+festival-edition	pl	w trasie
+festival-edition	pl	objazdowy
+festival-edition	es	gira
+
 # ── relay: a live relay or broadcast ──
 relay	en	live
 relay	en	relay

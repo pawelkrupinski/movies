@@ -1232,6 +1232,22 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     denied(bare) should not contain 33665
   }
 
+  "A film festival billed by its own name" should "name no film, not even one whose alternative title it is, nor one a feed links" in {
+    // DE "Alpen Film Festival 2026" at nine venues (2026-10-13 suspect audit): the festival's programme; Cineamo linked
+    // it to the 13-minute short "How I Started A Film Festival", whose TMDB record carries the billing as an alternative
+    // title, and prod took it at 100%. "Free Ride Filmfestival" took a 52-minute documentary its search ranked first.
+    val short  = F(1625266, "How I Started A Film Festival", 2026, "Nico Cariati", 13, 1, alternatives = Seq("Alpen Film Festival 2026"))
+    val doc    = F(1686112, "IA, au cœur du cinéma", 2026, "Someone Else", 52, 2, alternatives = Seq("Free Ride Filmfestival"))
+    val alpen  = Seq(models.KinoMuza, models.Helios, models.Multikino).map(v =>
+      fed(listing(v, "Alpen Film Festival 2026"), "cineamo", "1625266m").copy(originalTitle = Some("How I Started A Film Festival")))
+    val ride   = listing(models.KinoApollo, "Free Ride Filmfestival")
+    val r      = shipped(alpen :+ ride, Seq(short, doc))
+    (alpen :+ ride).foreach(l => withClue(r.decisionOf(l.key).render)(r.decisionOf(l.key).film shouldBe None))
+    // the short billed by its own title is still the short
+    val own = listing(models.KinoMuza, "How I Started A Film Festival", Some(2026), Some("Nico Cariati"))
+    withClue(shipped(Seq(own), Seq(short)).decisionOf(own.key).render)(shipped(Seq(own), Seq(short)).decisionOf(own.key).film shouldBe Some(1625266))
+  }
+
   "A capitalised tag a venue bills beside many different titles" should "still name the film billed whole, or beside a tag the venues bill around many films" in {
     // a piece in capitals billed ONCE is a title piece like any other ("MAX | Pokaz specjalny" is Max), and a work in
     // capitals billed under banners that recur themselves is the work ("UFF | Kino Seniora" beside "Lalka | Kino

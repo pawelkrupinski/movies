@@ -230,8 +230,8 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
         })(s"named only by the title its feed (${id.source} ${id.id}) copied from $linkedFilm")
     }
 
-  /** Why `node` rules `id` out before its evidence is scored: a pin, or a title naming it only by the venue's own name
-   *  or by a programme tag. */
+  /** Why `node` rules `id` out before its evidence is scored: a pin, a feed link's copied title, a title naming it only
+   *  by the venue's own name, a programme tag or slot, or a title billing a film festival alone. */
   private def denialByNode(node: EvidenceNode, id: Int): Option[String] =
     Option.when(pins.deniedFilms(node.listings.head.key)(id))("pinned never this film")
       .orElse(overruled(node).filter(_.film == id).map(_.denial))
@@ -240,6 +240,15 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
       .orElse(Option.when(namesOnlyItsVenue(node, candidateById(id)))("its title names it only by the venue's own name"))
       .orElse(Option.when(namesOnlyATag(node, candidateById(id)))("its title names it only by a programme tag billed beside many titles"))
       .orElse(Option.when(namesOnlyAProgrammeSlot(node, candidateById(id)))("its title names it only by a festival's programme slot"))
+      .orElse(Option.when(billsAFilmFestival(node))("its title bills a film festival by its name alone: the programme, no film"))
+
+  /** Does `node` bill a film festival by its name alone ([[ListingShape.billsAFilmFestival]])? Once per node: asked of
+   *  every candidate of its pool. */
+  private def billsAFilmFestival(node: EvidenceNode): Boolean = festivalMemo.getOrElseUpdate(node.id, {
+    val listing = node.evidence.published
+    ListingShape.billsAFilmFestival(listing.rawTitle.getOrElse(listing.title))
+  })
+  private val festivalMemo = mutable.HashMap.empty[String, Boolean]
 
   /** The cluster's members read as ONE listing: the title most of its listings carry (the
    *  smaller node on a tie), the year most of them publish (a title's bracket or season stays the lead title's own measure), every director and country, the

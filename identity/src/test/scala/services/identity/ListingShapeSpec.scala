@@ -47,6 +47,31 @@ class ListingShapeSpec extends AnyFlatSpec with Matchers {
     ListingShape.programmeSlotOf("Splat!FilmFest: The Taxidermist") shouldBe None
   }
 
+  "a film festival billed by its own name" should "be the festival's whole programme, never a film its search finds" in {
+    // DE (2026-10-13 suspect audit): the festival's own billing, which a feed linked to a 13-minute short and a 52-minute
+    // documentary its search ranked first
+    ListingShape.billsAFilmFestival("Alpen Film Festival 2026") shouldBe true
+    ListingShape.billsAFilmFestival("ALPEN FILM FESTIVAL 2026") shouldBe true
+    ListingShape.billsAFilmFestival("ALPENFILMFESTIVAL") shouldBe true
+    ListingShape.billsAFilmFestival("Free Ride Filmfestival") shouldBe true
+    ListingShape.billsAFilmFestival("FreerideFilmFestival 2026") shouldBe true
+    ListingShape.billsAFilmFestival("11. Festiwal Filmowy Kino Lato") shouldBe true
+    ListingShape.billsAFilmFestival("Festival de Cine de Sitges 2026") shouldBe true
+    // its touring edition's name after it
+    ListingShape.billsAFilmFestival("FREERIDE FILMFESTIVAL 2026 CINEMA EDITION") shouldBe true
+    ListingShape.billsAFilmFestival("FreeRide Film Festival 2026 - CINEMA EDITION") shouldBe true
+    ListingShape.billsAFilmFestival("Fargo - Purbeck Film Festival") shouldBe false
+    ListingShape.billsAFilmFestival("Purbeck Film Festival - Fargo") shouldBe false
+    // a work under the festival's banner is the work, and a festival that is no film festival may be a film's name
+    ListingShape.billsAFilmFestival("Alpen Film Festival 2026: Mont Blanc") shouldBe false
+    ListingShape.billsAFilmFestival("Splat!FilmFest: The Taxidermist") shouldBe false
+    ListingShape.billsAFilmFestival("Festival Express") shouldBe false
+    ListingShape.billsAFilmFestival("Festival") shouldBe false
+    ListingShape.billsAFilmFestival("The Festival") shouldBe false
+    // a sentence about a festival is a film's title: the short the feed linked Alpen Film Festival to
+    ListingShape.billsAFilmFestival("How I Started A Film Festival") shouldBe false
+  }
+
   "a piece billed beside the film" should "be a subtitle, performer or show of its own words, never the venue's wording around a film" in {
     def film(title: String, original: Option[String] = None, directors: Seq[String] = Nil) =
       IdentityMeasures.Film(title, original, directors = Some(directors))

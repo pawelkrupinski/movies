@@ -106,5 +106,6 @@ object NonFilmEvents {
         .orElse(Option.when(FilmAttached.findFirstIn(title).isEmpty && TheatreCompany.findFirstIn(title).isDefined &&
           CinemaTheatre.findFirstIn(title).isEmpty)("theatre company"))
         .orElse(ListingShape.programmeSlotOf(raw).map(_ => "programme slot"))
+        .orElse(Option.when(ListingShape.billsAFilmFestival(raw))("film festival"))
     }
 }

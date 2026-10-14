@@ -31,6 +31,10 @@ object TitleWords {
     case Festival        extends Concept("festival")
     case Performance     extends Concept("performance")
     case Marathon        extends Concept("marathon")
+    /** `ListingShape.billsAFilmFestival`: a film festival billed by its own name alone is its programme, no film. */
+    case FilmFestival    extends Concept("film-festival")
+    /** `ListingShape.billsAFilmFestival`: a festival's touring edition, billed after its name ("Cinema Edition"). */
+    case FestivalEdition extends Concept("festival-edition")
     /** `DecorationWords.EventWords` and `ListingShape.HouseWords`. */
     case Relay           extends Concept("relay")
     /** `IdentityMeasures.EventTailWords`, beside the event words. */

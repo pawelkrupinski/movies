@@ -297,6 +297,36 @@ object ListingShape {
         pieces.sizeIs >= 2 && pieces.forall(piece => (piece eq slot) || ProgrammeBanner.pattern.matcher(piece).find()))
     }
 
+  private val FilmFestival    = services.movies.TitleWords.foldedPattern(services.movies.TitleWords.Concept.FilmFestival).r
+  private val FestivalEdition = services.movies.TitleWords.foldedPattern(services.movies.TitleWords.Concept.FestivalEdition).r
+
+  /** Does the title bill a FILM FESTIVAL by its own name and nothing else — a piece naming a film festival
+   *  ([[services.movies.TitleWords.Concept.FilmFestival]]), its edition's year or number and its touring edition's name
+   *  ([[services.movies.TitleWords.Concept.FestivalEdition]]: "Cinema Edition") aside? That is the festival's programme,
+   *  never one film: DE "Alpen Film Festival 2026" is no 13-minute short a feed links it to (whose TMDB record carries the
+   *  billing as an alternative title), "Freeride Filmfestival 2026 - Cinema Edition" no documentary whose record does so
+   *  too. A work billed under the festival's banner ("Alpen Film Festival 2026: Mont Blanc") or beside it ("Fargo -
+   *  Purbeck Film Festival") is the work, and a festival that is no film festival may be a film's own name ("Festival
+   *  Express"). */
+  def billsAFilmFestival(rawTitle: String): Boolean = {
+    def folded(text: String) = services.movies.TitleContainment.tokens(text).mkString(" ")
+    // what an edition adds: its year or number, its touring edition's name
+    def editionOnly(words: String) = FestivalEdition.replaceAllIn(words, " ").trim.split(' ').forall(_.forall(_.isDigit))
+    IdentityMeasures.pieces(rawTitle).filter(_.exists(_.isLetter)) match {
+      case Seq(festival, rest*) if rest.forall(piece => editionOnly(folded(piece))) =>
+        val words = folded(festival)
+        val found = FilmFestival.pattern.matcher(words)
+        found.find() && {
+          val (before, after) = (words.substring(0, found.start), words.substring(found.end))
+          // the festival's name before its phrase ("Alpen Film Festival 2026"), or the phrase first and the name after it
+          // ("Festiwal Filmowy Kino Lato", "Festival de Cine de Sitges"); a sentence about a festival ("How I Started A Film
+          // Festival", a short) bills an article, which no festival's name does
+          (editionOnly(after) || editionOnly(before)) && !before.trim.split(' ').exists(IdentityMeasures.LeadingArticles)
+        }
+      case _ => false
+    }
+  }
+
   // ── whose facts ────────────────────────────────────────────────────────────────────────────
 
   /** Are the listing's facts all its VENUE's own — no feed catalogue's ([[SourceReliability.feedStated]]), and no
