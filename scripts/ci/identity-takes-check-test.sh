@@ -36,6 +36,8 @@ cat > "$work/bin/gh" <<EOF
 [ -n "\${HISTORY_FAILS:-}" ] && { echo "HTTP 502" >&2; exit 1; }
 state() { cat "$work/status-\$1" 2>/dev/null || echo -; }
 case "\$*" in
+  "api repos/o/r/commits/"*) short="\${2##*/}"; for c in $c1 $c2 $c3; do [ "\${c#\$short}" != "\$c" ] && { echo "\$c"; exit 0; }; done
+                            echo "No commit found for SHA: \$short" >&2; exit 1 ;;
   *"cursor=$c2 0"*) echo "$c1 \$(state $c1) $c0" ;;
   *cursor=*) echo "not a valid cursor" >&2; exit 1 ;; # GitHub's history cursor is "<sha> <offset>", space and all
   *) echo "$c2 \$(state $c2) $c1"
@@ -67,5 +69,19 @@ rm "$work/status-$c2"
 
 code=0; HISTORY_FAILS=1 run || code=$?
 check "a failed history read stops the check" "$code" 2
+
+# Run 38533191835 was dispatched with takes-base=c2974e3aa: a fetch asks for a FULL object name, so every leg failed to
+# fetch it -- and passed. A short base is expanded through the API; one naming no commit, or one the fetch cannot reach,
+# stops the check (exit 2, which the leg posts as `error` and fails on), saying why in verdict.txt.
+echo SUCCESS > "$work/status-$c2"
+(TAKES_BASE=${c1:0:9}; export TAKES_BASE; run || true)
+check "a base named by its abbreviation is expanded to the commit" "$(cat "$work/out/base.txt")" "$c1"
+code=0; (TAKES_BASE=deadbeef1; export TAKES_BASE; run) || code=$?
+check "a short base naming no commit stops the check" "$code" 2
+check "...saying so in the verdict the leg posts" "$(grep -c 'no commit deadbeef1' "$work/out/verdict.txt")" 1
+code=0; (TAKES_BASE=1111111111111111111111111111111111111111; export TAKES_BASE; run) || code=$?
+check "a base the fetch cannot reach stops the check, never passes it" "$code" 2
+check "...saying so in the verdict the leg posts" "$(grep -c 'could not fetch base' "$work/out/verdict.txt")" 1
+rm "$work/status-$c2"
 
 [ "$fails" = 0 ] || { echo "$fails failure(s)"; exit 1; }

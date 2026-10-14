@@ -196,11 +196,15 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
   // was red (then the bad commit is known bad without a first replay) from the sample step itself.
   // GitHub runs a `shell: bash` step as `bash -eo pipefail`: a bare `script; code=$?` ends the step at the script's
   // non-zero exit, so a check that could not run (2) turned the row red, and a red one (1) never posted its status.
-  "the identity takes check" should "read its script's exit code past bash -e, so 2 only warns and 1 posts its status" in {
+  // And a check that could not run (2) is no verdict, so never a pass: run 38533191835 named a base no leg could fetch and
+  // every leg passed. It posts `error` and fails the row.
+  "the identity takes check" should "read its script's exit code past bash -e, post every outcome, and fail on 2 as on 1" in {
     val step = leg.linesIterator.dropWhile(!_.contains("name: Check which listings the code moved to another film"))
       .takeWhile(l => !l.trim.startsWith("# A RECORDING whose sample")).mkString("\n")
     step should include("""code=0; scripts/ci/identity-takes-check.sh "${{ inputs.code }}" "$RUNNER_TEMP/identity-takes" || code=$?""")
-    step should include("""case $code in 0) state=success ;; 1) state=failure ;; *) exit 0 ;; esac""")
+    step should include("""case $code in 0) state=success ;; 1) state=failure ;; *) state=error ;; esac""")
+    step should include("""exit "$code"""")
+    step should not include ("exit 0 ;;")
   }
 
   "the auto-bisect" should "be requested only by a red hermetic pipeline leg on main, saying whether the sample was red" in {

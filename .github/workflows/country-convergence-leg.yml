@@ -820,16 +820,20 @@ jobs:
                   name:  ${{ inputs.code }}-${{ matrix.phase }}
 
             # THE IDENTITY TAKES CHECK (scripts/ci/identity-takes-check.sh): the pinned pair this row just replayed,
-            # resolved by the base commit and by the head, and every listing the code moved to another film --
+            # resolved by the base commit and by the head -- the model's takes, and the FINAL takes (model and
+            # agreement stage) over the checked-in capture -- and every listing the code moved to another film --
             # lost or changed, and accepted by neither labels.tsv nor identity-takes/accepted.tsv -- fails the row,
             # listed in the step summary with both films and both reasons. Base vs head on one recording, so a new
             # recording never fails it; only code does. Its commit status names the base the next run diffs from.
-            # Exit 2 (it could not run) warns without failing: a check that cannot answer is not a verdict.
+            # Exit 2 (it could not run: no base, an unfetchable one, a resolve that wrote nothing) is no verdict, and never
+            # a pass: it posts an `error` status and fails the row (run 38533191835 passed every leg on a base it could
+            # not fetch).
             - name: Check which listings the code moved to another film
               id: takes
               if: ${{ !cancelled() && inputs.mode == 'hermetic' && matrix.phase == 'convergence' && steps.suite.outcome != 'skipped' }}
               shell: bash
-              timeout-minutes: 25
+              # 25 for the two resolves, 20 for the two unmatched-cluster ratchet replays (the final takes)
+              timeout-minutes: 45
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   HEAP: ${{ inputs.heap }}
@@ -840,12 +844,16 @@ jobs:
               run: |
                   # `|| code=$?`: the step runs under bash -e, which would end it at the script's own non-zero exit.
                   code=0; scripts/ci/identity-takes-check.sh "${{ inputs.code }}" "$RUNNER_TEMP/identity-takes" || code=$?
-                  case $code in 0) state=success ;; 1) state=failure ;; *) exit 0 ;; esac
+                  case $code in 0) state=success ;; 1) state=failure ;; *) state=error ;; esac
                   # allow-silenced: the status only names the next run's base; failing to post it must not turn the verdict
                   gh api -X POST "repos/$GITHUB_REPOSITORY/statuses/$GITHUB_SHA" -f state="$state" \
                       -f context="identity takes (${{ inputs.code }})" -f description="$(head -1 "$RUNNER_TEMP/identity-takes/verdict.txt" | cut -c1-140)" \
                       -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" > /dev/null || true
-                  [ "$code" = 0 ] || echo "::error title=identity takes (${{ inputs.code }})::the code moved listings to another film -- see the step summary"
+                  case $code in
+                      0) ;;
+                      1) echo "::error title=identity takes (${{ inputs.code }})::the code moved listings to another film -- see the step summary" ;;
+                      *) echo "::error title=identity takes (${{ inputs.code }})::the check could not run, so nothing was judged -- see the step log" ;;
+                  esac
                   exit "$code"
 
             # A RECORDING whose sample ran in a row of its own: its recordings, merged into this tree

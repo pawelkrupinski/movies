@@ -19,8 +19,15 @@ LOST and CHANGED fail the check unless accepted, either way:
     country, venue (or *), rawTitle, before, after (tmdb:<id> or none, or *), note.
 GAINED is reported, never failed -- unless labels.tsv says the gained film is `wrong`.
 
+THE FINAL TAKES. The decisions above are the MODEL's: the agreement stage (fills, corrections, the families' agreed
+takes, billedBeside on them) reads them again before anything is served, and a change there moved nothing in them --
+9c8170f5e's range dropped 213 UK takes in prod (211 "CBeebies Panto 2026: Treasure Island") with this check at 0/0/0.
+With --final the inputs are instead the unmatched-cluster ratchet's `ratchet-takes.tsv` (UnmatchedClustersRatchetSpec:
+the model and the agreement stage over the checked-in capture and its families' answers), written by the base and the
+head over the SAME capture: a listing absent from a side took no film there. The same verdicts apply.
+
 usage: identity_takes_diff.py <cc> <base.jsonl> <head.jsonl> [--labels F] [--accepted F] [--summary F]
-         [--base-name S] [--head-name S]
+         [--base-name S] [--head-name S] [--final]
 Exit 1 when an unaccepted move is found, 2 on unreadable input.
 """
 
@@ -83,6 +90,33 @@ def accepted_of(path, cc):
                 continue
             out.append(tuple(cols[1:5]))
     return out
+
+
+def ratchet_rows(path, cc):
+    """{(venue, rawTitle): row} of the takes a ratchet-takes.tsv holds for `cc` -- every status but LOST (an expected take
+    now taking none) carries the film the listing takes; a TMDB id only, as the model's decisions carry."""
+    out = {}
+    with open(path, encoding="utf-8") as f:
+        header = f.readline().rstrip("\n").split("\t")
+        for line in f:
+            cols = dict(zip(header, line.rstrip("\n").split("\t")))
+            if cols.get("country") != cc or cols.get("status") == "LOST" or not cols.get("film", "").startswith("tmdb:"):
+                continue
+            out[(cols["venue"], cols["rawTitle"])] = {
+                "key": f"{cols['venue']}|{cols['rawTitle']}", "venue": cols["venue"], "rawTitle": cols["rawTitle"],
+                "film": int(cols["film"][5:]), "filmTitle": cols.get("title"), "basis": cols.get("basis"),
+                "explanation": [cols.get("explanation", "")], "blocker": None}
+    return out
+
+
+def final_sides(base_path, head_path, cc):
+    """The base's and the head's final takes, each listing on both sides: absent from one took no film there."""
+    base, head = ratchet_rows(base_path, cc), ratchet_rows(head_path, cc)
+    def side(rows, k):
+        return rows.get(k) or {"key": f"{k[0]}|{k[1]}", "venue": k[0], "rawTitle": k[1], "film": None, "filmTitle": None,
+                               "basis": "none", "explanation": ["takes no film"], "blocker": "no film"}
+    keys = sorted(set(base) | set(head))
+    return [side(base, k) for k in keys], [side(head, k) for k in keys]
 
 
 def pair(base, head):
@@ -172,16 +206,16 @@ def cell(text):
     return str(text).replace("|", "\\|").replace("\n", " ")
 
 
-def render(cc, moves, unpaired, base_name, head_name, listings):
+def render(cc, moves, unpaired, base_name, head_name, listings, what="identity takes", where="one recording"):
     failing = [m for m in moves if not m["accepted"]]
     counts = {k: sum(1 for m in moves if m["kind"] == k) for k in ("lost", "changed", "gained")}
-    head_line = (f"identity takes ({cc}): {listings} listings, base {base_name} vs head {head_name} on one recording -- "
+    head_line = (f"{what} ({cc}): {listings} listings, base {base_name} vs head {head_name} on {where} -- "
                  f"lost {counts['lost']}, changed {counts['changed']}, gained {counts['gained']}; "
                  f"{len(failing)} not accepted" + (f"; {unpaired} listing(s) on one side only" if unpaired else ""))
     text = [head_line] + [
         f"  {'FAIL' if not m['accepted'] else 'ok  '} {m['kind']:7} {m['venue']} | {m['rawTitle']}: {m['old']} -> {m['new']} "
         f"[{m['verdict']}]\n        base: {m['oldWhy']}\n        head: {m['newWhy']}" for m in moves]
-    md = [f"### Identity takes ({cc})", "", head_line, ""]
+    md = [f"### {what[0].upper() + what[1:]} ({cc})", "", head_line, ""]
     if moves:
         md += ["| | kind | venue | listing | base film | head film | base reason | head reason | verdict |",
                "|---|---|---|---|---|---|---|---|---|"]
@@ -206,11 +240,12 @@ def main(argv=None):
     p.add_argument("--summary")
     p.add_argument("--base-name", default="base")
     p.add_argument("--head-name", default="head")
+    p.add_argument("--final", action="store_true", help="the inputs are ratchet-takes.tsv files: the final takes")
     a = p.parse_args(argv)
     # Exit 2 for anything that is not a verdict -- an unreadable file, a row without its fields -- so it can never read as
     # exit 1's "the code moved a take".
     try:
-        base, head = load(a.base), load(a.head)
+        base, head = final_sides(a.base, a.head, a.cc) if a.final else (load(a.base), load(a.head))
         if not base or not head:
             print(f"identity takes ({a.cc}): an empty side (base {len(base)}, head {len(head)} listings) -- nothing resolved",
                   file=sys.stderr)
@@ -219,7 +254,8 @@ def main(argv=None):
     except (OSError, ValueError, KeyError, TypeError, IndexError) as e:
         print(f"identity takes ({a.cc}): could not read the inputs: {type(e).__name__}: {e}", file=sys.stderr)
         return 2
-    text, md, failing = render(a.cc, moves, unpaired, a.base_name, a.head_name, len(head))
+    text, md, failing = render(a.cc, moves, unpaired, a.base_name, a.head_name, len(head),
+                               *(("identity final takes", "one capture") if a.final else ()))
     print(text)
     if a.summary:
         with open(a.summary, "a", encoding="utf-8") as f:

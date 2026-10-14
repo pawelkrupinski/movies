@@ -21,8 +21,10 @@
 # usage: identity-takes-check.sh <cc> <out dir>
 #   env: GH_TOKEN, GITHUB_REPOSITORY, GITHUB_SHA, MONGODB_URI, HEAP (sbt -Xmx, default 6g), TAKES_BASE (optional),
 #        STATUS_CONTEXT (default "identity takes (<cc>)"), GITHUB_STEP_SUMMARY (optional)
-# Writes <out>/{base,head}/decisions-<cc>.jsonl, <out>/base.txt (the base commit) and <out>/verdict.txt.
-# Exit: 0 passed, 1 an unaccepted move, 2 the check could not run.
+# Writes <out>/{base,head}/decisions-<cc>.jsonl and ratchet-takes.tsv (the model's takes and the final ones, below),
+# <out>/base.txt (the base commit) and <out>/verdict.txt.
+# Exit: 0 passed, 1 an unaccepted move, 2 the check could not run -- no verdict, which the leg posts as an `error` status
+# and fails on: a check that cannot compute its diff never passes.
 set -uo pipefail
 
 cc=${1:?country code}
@@ -85,11 +87,19 @@ dump() { # <checkout> <out dir>
 
 # TAKES_BASE (a hand dispatch's `takes-base`) names the base outright: how to re-judge a range a check once passed
 # without judging it, e.g. one the old 40-commit window absorbed.
-base=${TAKES_BASE:-$(pick_base)} || { echo "::warning::identity takes ($cc): could not name a base commit"; exit 2; }
-[ -n "$base" ] || { echo "::warning::identity takes ($cc): could not name a base commit"; exit 2; }
+base=${TAKES_BASE:-$(pick_base)} || { echo "::error::identity takes ($cc): could not name a base commit" | tee "$out/verdict.txt"; exit 2; }
+[ -n "$base" ] || { echo "::error::identity takes ($cc): could not name a base commit" | tee "$out/verdict.txt"; exit 2; }
+# A base named by hand may be abbreviated ("c2974e3aa"), and a fetch asks the server for a FULL object name: run
+# 38533191835's every leg failed to fetch its short takes-base and passed unjudged. Expanded through the API first.
+if ! [[ "$base" =~ ^[0-9a-f]{40}$ ]]; then
+  full=$(gh api "repos/$GITHUB_REPOSITORY/commits/$base" --jq .sha 2>/dev/null) \
+    || { echo "::error::identity takes ($cc): no commit $base in $GITHUB_REPOSITORY" | tee "$out/verdict.txt"; exit 2; }
+  base=$full
+fi
 echo "$base" > "$out/base.txt"
 echo "identity takes ($cc): base $base, head $head"
-git fetch -q --no-tags --depth=1 origin "$base" || { echo "::warning::identity takes ($cc): could not fetch base $base"; exit 2; }
+git fetch -q --no-tags --depth=1 origin "$base" \
+  || { echo "::error::identity takes ($cc): could not fetch base $base" | tee "$out/verdict.txt"; exit 2; }
 
 if [ "$base" = "$head" ] || git diff --quiet "$base" "$head" -- "${identity_paths[@]}"; then
   echo "identity takes ($cc): no identity code changed since $base -- nothing can have moved" | tee "$out/verdict.txt"
@@ -111,10 +121,40 @@ for d in project/target project/project/target */target/scala-*; do
 done
 dump "$tree" "$out/base" || { echo "::warning::identity takes ($cc): the base resolved nothing"; exit 2; }
 echo "identity takes ($cc): base compiled and resolved in ${SECONDS}s"
+
+# THE FINAL TAKES: the decisions above are the MODEL's, before the agreement stage reads them again -- 9c8170f5e's range
+# moved 213 UK listings in prod (and three right DE takes) with them at 0/0/0. The unmatched-cluster ratchet replays the
+# model AND the agreement stage over the checked-in capture and its families' answers; run by the head and by the base
+# over the head's capture, its takes are diffed as the decisions are. The base reads the head's capture: one input.
+ratchet() { # <checkout> <out file>
+  rm -f "$1/target/identity-unmatched/ratchet-takes.tsv"
+  ( cd "$1" && sbt -J-Xmx"$heap" "worker/Test/testOnly services.identity.UnmatchedClustersRatchetSpec" > "$2.log" 2>&1 )
+  cp "$1/target/identity-unmatched/ratchet-takes.tsv" "$2" 2>/dev/null
+}
+SECONDS=0
+cp "$here"/test/resources/fixtures/identity-unmatched/*.json.gz "$here"/test/resources/fixtures/identity-unmatched/*.inputs \
+   "$tree/test/resources/fixtures/identity-unmatched/" 2>/dev/null
+final=0
+ratchet "$here" "$out/head/ratchet-takes.tsv" && ratchet "$tree" "$out/base/ratchet-takes.tsv" || final=2
+echo "identity takes ($cc): final takes replayed in ${SECONDS}s"
 git worktree remove --force "$tree" || true
 
-python3 "$here/scripts/ci/identity_takes_diff.py" "$cc" "$out/base/decisions-$cc.jsonl" "$out/head/decisions-$cc.jsonl" \
-  --labels "$here/test/resources/fixtures/identity-unmatched/labels.tsv" \
-  --accepted "$here/test/resources/fixtures/identity-takes/accepted.tsv" \
-  --base-name "${base:0:9}" --head-name "${head:0:9}" ${GITHUB_STEP_SUMMARY:+--summary "$GITHUB_STEP_SUMMARY"} | tee "$out/verdict.txt"
-exit "${PIPESTATUS[0]}"
+diff_takes() { # <base> <head> [--final]
+  python3 "$here/scripts/ci/identity_takes_diff.py" "$cc" "$1" "$2" "${@:3}" \
+    --labels "$here/test/resources/fixtures/identity-unmatched/labels.tsv" \
+    --accepted "$here/test/resources/fixtures/identity-takes/accepted.tsv" \
+    --base-name "${base:0:9}" --head-name "${head:0:9}" ${GITHUB_STEP_SUMMARY:+--summary "$GITHUB_STEP_SUMMARY"}
+}
+diff_takes "$out/base/decisions-$cc.jsonl" "$out/head/decisions-$cc.jsonl" | tee "$out/verdict.txt"
+model=${PIPESTATUS[0]}
+if [ "$final" = 0 ]; then
+  diff_takes "$out/base/ratchet-takes.tsv" "$out/head/ratchet-takes.tsv" --final | tee -a "$out/verdict.txt"
+  final=${PIPESTATUS[0]}
+else
+  echo "::error::identity takes ($cc): the final takes could not be replayed (the ratchet wrote no takes; $out/*/ratchet-takes.tsv.log)" \
+    | tee -a "$out/verdict.txt"
+fi
+# An unaccepted move anywhere fails; failing that, a half that could not run is no verdict (2), never a pass.
+if [ "$model" = 1 ] || [ "$final" = 1 ]; then exit 1; fi
+if [ "$model" != 0 ] || [ "$final" != 0 ]; then exit 2; fi
+exit 0

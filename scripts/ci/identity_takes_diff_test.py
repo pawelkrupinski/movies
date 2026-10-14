@@ -126,6 +126,42 @@ class TakesDiffTest(unittest.TestCase):
     def test_an_empty_side_is_an_error_not_a_pass(self):
         self.assertEqual(2, d.main(["pl", self.write("b.jsonl", self.BASE), self.write("h.jsonl", [])]))
 
+    # THE FINAL TAKES: the ratchet's takes over the capture, model and agreement stage both. 9c8170f5e's range dropped
+    # 211 UK "CBeebies Panto 2026: Treasure Island" takes in the agreement stage with the model check at 0/0/0, and three
+    # right DE takes with them (Transit at Cinema & Kurbelkiste Münster among them).
+    HEADER = "status\tcountry\tvenue\trawTitle\tfilm\ttitle\tbasis\tids\twas\texplanation\n"
+
+    def ratchet(self, name, lines):
+        return self.write(name, [self.HEADER] + lines)
+
+    def test_the_final_takes_diff_a_listing_absent_from_the_head_as_lost(self):
+        base = self.ratchet("b.tsv", ["WRONG\tuk\tCentral Cinema Barnstaple\tCBeebies Panto 2026: Treasure Island\ttmdb:1710881\t"
+                                       "Treasure Island (2027)\tAgreed\t\t\tfamilies agree\n",
+                                       "RIGHT\tde\tCinema Münster\tTransit\ttmdb:471853\tTransit (2018)\tAgreed\t\t\tagreed\n",
+                                       "RIGHT\tde\tKino X\tStays\ttmdb:5\tStays\tOwnMatch\t\t\t\n"])
+        head = self.ratchet("h.tsv", ["RIGHT\tde\tKino X\tStays\ttmdb:5\tStays\tOwnMatch\t\t\t\n"])
+        labels = self.write("labels.tsv", ["country\tvenue\trawTitle\tfilm\tverdict\tnote\n",
+                                           "uk\t*\tCBeebies Panto 2026: Treasure Island\ttmdb:1710881\twrong\tthe BBC panto\n",
+                                           "de\tCinema Münster\tTransit\ttmdb:471853\tright\tPetzold's\n"])
+        summary = os.path.join(self.dir, "s.md")
+        self.assertEqual(0, d.main(["uk", base, head, "--final", "--labels", labels, "--summary", summary]))
+        self.assertEqual(1, d.main(["de", base, head, "--final", "--labels", labels, "--summary", summary]))
+        with open(summary, encoding="utf-8") as f:
+            md = f.read()
+        self.assertIn("identity final takes (uk): 1 listings, base base vs head head on one capture -- lost 1", md)
+        self.assertIn("| ✓ | lost | Central Cinema Barnstaple | CBeebies Panto 2026: Treasure Island |", md)
+        self.assertIn("| ❌ | lost | Cinema Münster | Transit |", md)
+        self.assertIn("identity final takes (de): 2 listings", md)
+
+    def test_the_final_takes_read_a_lost_expected_take_as_none_and_an_imdb_only_take_not_at_all(self):
+        base = self.ratchet("b.tsv", ["LOST\tpl\tHelios\tLalka\ttmdb:1\tLalka\tnone\t\ttmdb:1\t\n",
+                                       "NEW\tpl\tMuza\tObcy\timdb:tt1\tObcy\tAgreed\t\t\t\n"])
+        head = self.ratchet("h.tsv", [])
+        self.assertEqual(2, d.main(["pl", base, head, "--final"]))  # nothing taken on either side: no verdict
+        base = self.ratchet("b.tsv", ["RIGHT\tpl\tRialto\tDiuna\ttmdb:7\tDiuna\tOwnMatch\t\t\t\n"])
+        head = self.ratchet("h.tsv", ["RIGHT\tpl\tRialto\tDiuna\ttmdb:7\tDiuna\tOwnMatch\t\t\t\n"])
+        self.assertEqual(0, d.main(["pl", base, head, "--final"]))
+
 
 if __name__ == "__main__":
     unittest.main()
