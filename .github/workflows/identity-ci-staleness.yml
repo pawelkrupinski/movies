@@ -1,0 +1,62 @@
+# IS THE IDENTITY CI STILL TELLING US ANYTHING? Every three hours, scripts/ci/identity-ci-staleness.sh
+# asks GitHub whether `Identity model convergence` has been red on main for over 6 hours, whether the
+# newest pipeline commit has gone 3 hours with no convergence run covering it, and whether
+# `Record scrape fixtures` has gone 36 hours without a success. Any of them fails the run, and the
+# `report` job turns that into the owner-assigned issue, closed by the next green run.
+#
+# WHY A WORKFLOW AND NOT AN ALERT: Prometheus cannot see GitHub. And WHY AT ALL: convergence is
+# dispatched by Main, so its own `report` job (schedule-only) never runs -- a red leg sat red for ~10
+# hours on 2026-10-13 with nobody told.
+name: Identity CI staleness
+
+on:
+    schedule:
+        - cron: '23 */3 * * *'
+    workflow_dispatch:
+
+concurrency:
+    group: identity-ci-staleness
+    cancel-in-progress: true
+
+permissions:
+    contents: read
+
+jobs:
+    check:
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        permissions:
+            contents: read
+            actions: read
+        steps:
+            - uses: actions/checkout@v5
+              with:
+                  # The coverage check asks whether a run's commit descends from the newest pipeline commit.
+                  fetch-depth: 0
+
+            # The checker's own verdicts first, offline: a checker that can no longer fail would report
+            # green here for as long as nobody looked at it.
+            - name: Self-test the checker
+              run: bash scripts/ci/identity-ci-staleness-test.sh
+
+            - name: Is the identity CI stale?
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  GH_REPO: ${{ github.repository }}
+              run: scripts/ci/identity-ci-staleness.sh
+
+    # A failed scheduled check becomes an issue assigned to the owner, closed on the next pass --
+    # see .github/actions/report-scheduled-run (ScheduledRunReportSpec).
+    report:
+        needs: check
+        if: always() && !cancelled() && github.event_name == 'schedule'
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        permissions:
+            contents: read
+            issues: write
+        steps:
+            - uses: actions/checkout@v5
+            - uses: ./.github/actions/report-scheduled-run
+              with:
+                  failed: ${{ contains(needs.*.result, 'failure') }}
