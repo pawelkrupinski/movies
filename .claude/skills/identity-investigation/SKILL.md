@@ -33,7 +33,7 @@ Design and limits: docs/design/identity-slice.md.
 | Agreement takes (Agreed, Filled, Poster): read prod's filed family answers | default `--families` = this checkout's capture; without them the families agree on nothing (as in every hermetic leg) |
 | Does the slice's agreement decide as the capture's replay? | `scripts/identity-slice uk --faithfulness capture --sample 60` |
 | Does the slice decide as the whole leg did? | `scripts/identity-slice de --faithfulness <convergence run id> --sample 60` |
-| Why did «title» at a venue take film X (or none)? | `scripts/identity-explain de --venue cinestar --title "rückkehr des königs"` |
+| Why did «title» at a venue take film X (or none) — the whole trace, from the capture? | `scripts/identity-slice de --explain --venue cinestar --title "rückkehr des königs"` |
 | Did commit Y change that, and how? | `… --ref Y~1 --ref Y` (side by side, then the traces' diff) |
 | The same on a newer capture (the capture branch, a capture run) | `… --fixture origin/chore/identity-capture` or `--fixture <identity-capture run id>` |
 | What did a capture run's ratchet find? | `scripts/identity-ratchet-report <run id>` (or a capture PR's number); `--explain`, `--status ALL`, `--tsv` |
@@ -42,7 +42,9 @@ Design and limits: docs/design/identity-slice.md.
 | Judge the UNJUDGED takes | `scripts/identity-judge-cards --fixtures origin/chore/identity-capture` → `target/identity-judge/` |
 | Which listings did a change move, over a WHOLE corpus (matched ones too)? | the convergence row's identity takes check (`scripts/ci/identity-takes-check.sh`, `identity_takes_diff.py`) |
 
-## identity-explain
+## identity-slice --explain
+
+`scripts/identity-explain <cc> …` is its alias (prod's older take-change `repro` lines print it).
 
 Prints, per matching cluster: the billing (title, clean/search title, year, runtime, directors, catalogue ids)
 and venue page facts, listings billed alike collapsed; the **captured** model decision; the cluster
@@ -103,7 +105,8 @@ only and have none of these.
   `previous_confidence`/`previous_reason` (the take before; absent after an index rebuild), `listing_year`/
   `listing_runtime`/`listing_director`/`listing_original_title`, and `repro` — a ready
   `scripts/identity-slice <cc> --key 'venue|raw title' --ref <build>` line (any listing, matched or not; lines logged before
-  2026-10-14 name `scripts/identity-explain`, which finds the listing only if the capture holds it unmatched).
+  2026-10-14 name `scripts/identity-explain`, now an alias of `identity-slice --explain`, which finds the listing only if
+  the capture holds it unmatched).
 - **`identity take change: summary …`** — one per tick that moved any: `take_changes`, `lost`, `changed`,
   `gained`, `logged`, `by_basis`.
 - **`identity projection: …`** — every written tick: `listings`, `films`, `written`, `retired`, `declined`,
@@ -140,7 +143,7 @@ empty; `kind:*` keeps only take-change lines (the summary has no `kind`).
 "Why did DE CineStar's «Herr der Ringe - Rückkehr des Königs (ext.)» take the 2025 short, and does 3e5a58e16 fix
 it?" — without the tools: fetch recording 38363428661's DE tree (370 MB, 5 GB unpacked) 189 s, lay out and compile
 the old commit fresh and run an ad-hoc spec 142 s — 331 s of mechanics for ONE ref, before writing the spec or
-reading the answer. With them: `scripts/identity-explain de --venue cinestar --title "(ext.)" --fixture
+reading the answer. With them: `scripts/identity-slice de --explain --venue cinestar --title "(ext.)" --fixture
 origin/chore/identity-capture --ref 3e5a58e16~1 --ref 3e5a58e16` — 186 s cold for both refs, 37 s warm, and the
 answer is on screen: `filled by venues.current … guards passed: …, title.anothersOwn …` before, no film after.
 

@@ -2,7 +2,7 @@
 
 `scripts/identity-slice` answers "why does this listing take (or not take) this film, and does commit X change
 that?" for ANY listing — matched or not, model or agreement — from a recording, without booting the pipeline.
-`scripts/identity-explain` replays only the unmatched-cluster capture; `scripts/convergence-local.sh` replays a
+`--explain` (alias `scripts/identity-explain`) replays only the unmatched-cluster capture; `scripts/convergence-local.sh` replays a
 whole country through the pipeline (10–90 min). The slice sits between them.
 
 ## What a slice is
@@ -46,7 +46,7 @@ A directory, cut from ONE "Record scrape fixtures" recording (`--recording RUN`,
 4. Replay: the same decision through `SliceHttp.Replaying` — ~1 s a slice.
 
 Each ref runs in ONE JVM with this checkout's tool files dropped into its tree (`identity_tree`, shared with
-identity-explain), so a ref from before the tool works; both refs replay the same recording.
+`--explain`), so a ref from before the tool works; both refs replay the same recording.
 
 ## Modes
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# What scripts/identity-explain and scripts/identity-judge-cards share: the shared cache, the unmatched-cluster capture
+# What scripts/identity-slice (and its --explain) and scripts/identity-judge-cards share: the shared cache, the unmatched-cluster capture
 # fetched from wherever it is named, and a tree's worker test classpath compiled once. Sourcing it defines functions only.
 #
 #   identity_capture <src> <cc>...  -> prints the directory holding <cc>.json.gz for each cc, and labels.tsv

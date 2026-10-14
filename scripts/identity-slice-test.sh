@@ -20,7 +20,7 @@ mkdir -p "$work/bin"
 repo="$work/repo"
 mkdir -p "$repo/scripts" "$repo/worker/src/test/scala/scripts" "$repo/worker/src/test/scala/services/identity" \
   "$repo/worker/src/fixtures/scala/tools" "$repo/common/src" "$repo/testkit/src" "$repo/test/resources/fixtures/identity-unmatched"
-cp "$REPO_ROOT/scripts/identity-slice" "$REPO_ROOT/scripts/identity-tools.sh" "$REPO_ROOT/scripts/identity_slice_diff.py" "$repo/scripts/"
+cp "$REPO_ROOT/scripts/identity-slice" "$REPO_ROOT/scripts/identity-explain" "$REPO_ROOT/scripts/identity-tools.sh" "$REPO_ROOT/scripts/identity_slice_diff.py" "$repo/scripts/"
 for f in worker/src/test/scala/scripts/IdentitySlice.scala worker/src/test/scala/scripts/IdentityExplain.scala \
   worker/src/test/scala/services/identity/IdentitySlicing.scala worker/src/fixtures/scala/tools/RecordedCorpus.scala \
   worker/src/fixtures/scala/tools/SliceHttp.scala worker/src/fixtures/scala/tools/MemoLookups.scala worker/src/fixtures/scala/tools/CatalogueFill.scala \
@@ -48,7 +48,9 @@ STUB
 cat > "$work/bin/java" <<STUB
 #!/usr/bin/env bash
 echo "java \$PWD \$*" >> "$work/calls"
+out="" ref=""
 while [ "\$#" -gt 0 ]; do case "\$1" in --out) out=\$2 ;; --ref) ref=\$2 ;; esac; shift; done
+[ -n "\$out" ] || { echo "explained"; exit 0; }
 h='selector\tkey\tvenue\trawTitle\tfilm\ttitle\tbasis\tconfidence\tmodel\trules\tblocker\trunnerUp\tverdict\texplanation'
 { printf "\$h\n"
   if [ "\$ref" = "$base" ]; then
@@ -83,5 +85,19 @@ check "...and decides it at the build that logged it" "1" "$(grep -c -- "--ref $
 check "a log line naming no listing is refused" "2" "$(slice --log '{"country":"de"}' > /dev/null; echo $?)"
 check "a ref the clone does not hold is refused by name" "1" "$(slice de --recording 777 --key 'Kino|Lalka' --ref 0123456789abcdef > /dev/null; grep -c 'no commit 0123456789abcdef' "$work/err")"
 check "a batch file is handed to the JVM by its absolute path" "1" "$(cd "$work" && printf 'Kino\tLalka\n' > b.tsv && slice de --recording 777 --batch b.tsv --ref HEAD > /dev/null; grep -c -- "--batch $work/b.tsv" "$work/calls")"
+
+# --explain: the WHY trace of a listing the unmatched-cluster capture holds (scripts/identity-explain is its alias)
+rm -f "$work/calls"
+mkdir -p "$work/capture"; echo c > "$work/capture/de.json.gz"; printf 'country\n' > "$work/capture/labels.tsv"
+slice de --explain --fixture "$work/capture" --venue Kino --title Lalka --ref HEAD > /dev/null
+check "--explain replays the capture it is handed, judged by its labels" "1" \
+  "$(grep -c -- "scripts.IdentityExplain de --fixture $work/capture/de.json.gz --labels $work/capture/labels.tsv --venue Kino --title Lalka" "$work/calls")"
+check "...under the ref's code, the explainer dropped into its tree" "1 // worker/src/test/scala/scripts/IdentityExplain.scala" \
+  "$(grep -c "java $cache/refs/$head " "$work/calls") $(cat "$cache/refs/$head/worker/src/test/scala/scripts/IdentityExplain.scala")"
+check "...and no recording is fetched for it" "0" "$(grep -c -- '--recording' "$work/calls")"
+rm -f "$work/calls"
+STUB="$work" PATH="$work/bin:$PATH" KINOWO_IDENTITY_CACHE="$cache" "$repo/scripts/identity-explain" de --fixture "$work/capture" --venue Kino > /dev/null 2>&1
+check "scripts/identity-explain is identity-slice --explain" "1" \
+  "$(grep -c -- "scripts.IdentityExplain de --fixture $work/capture/de.json.gz --labels $work/capture/labels.tsv --venue Kino" "$work/calls")"
 
 spec_summary

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# identity-tools.sh (what identity-explain and identity-judge-cards share): a capture fetched once into the shared
+# identity-tools.sh (what identity-slice --explain and identity-judge-cards share): a capture fetched once into the shared
 # cache from a run's artifacts or a git ref, and a tree's classpath compiled only when a source is newer.
 # Run: bash scripts/identity-tools-test.sh
 set -uo pipefail

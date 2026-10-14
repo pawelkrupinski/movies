@@ -9,7 +9,8 @@ import java.nio.file.Path
 import java.util.Locale
 
 /**
- * WHY a listing of the unmatched-cluster capture took (or did not take) its film, in one command — `scripts/identity-explain`
+ * WHY a listing of the unmatched-cluster capture took (or did not take) its film, in one command —
+ * `scripts/identity-slice <cc> --explain` (alias `scripts/identity-explain`)
  * compiles this at each git ref asked and runs it over ONE capture, so two refs' traces compare on one input:
  *
  *  - the listing as the venue bills it, and its venue page's facts as the capture recorded them;

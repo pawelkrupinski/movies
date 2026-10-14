@@ -10,6 +10,7 @@
 #   scripts/identity-slice <cc> SELECTOR... --bisect A..B [--recording RUN]
 #   scripts/identity-slice --log '<take-change log line (JSON)>'
 #   scripts/identity-slice <cc> --faithfulness CONVERGENCE_RUN [--sample N] [--seed S]
+#   scripts/identity-slice <cc> --explain [--venue S] [--title S] [--ref A [--ref B]] [--fixture SRC] [--limit N] [--no-resolve]
 #
 #   SELECTOR      --venue S --title S (substrings, case and accents aside; either alone), or --key 'venue|raw title' (exact)
 #   --ref         decide under that ref's code (each laid out and compiled once into the cache); two refs print their takes
@@ -35,6 +36,14 @@
 #                 takes them, each sliced alone on the capture's recording and compared
 #   --labels TSV  judge the takes by this labels.tsv (default this checkout's) — the same labels at both refs
 #   --log LINE    a prod `identity take change:` line from VictoriaLogs: its country, venue and listing, at its build
+#   --explain     WHY a listing the unmatched-cluster capture holds took (or did not take) its film: the whole trace —
+#                 billing and venue page, the captured model decision, the cluster re-resolved (keys, candidates, signals,
+#                 refusals), the agreement stage's basis, fill rule and guards, the take and its label. Replays the capture,
+#                 not a recording; a listing the MODEL took is not in it (slice it instead). scripts/identity-explain is an
+#                 alias kept for the `repro` field prod's take-change lines print.
+#     --fixture SRC  the capture to explain from (default: this checkout's): a directory holding <cc>.json.gz, an
+#                 "Identity capture" run id, or a git ref holding one. Its labels judge it (a run's: this checkout's).
+#     --limit N, --no-resolve  at most N clusters; skip the re-resolve (the captured decision and the agreement only)
 #   --faithfulness RUN  the slice's take of a sample of listings against what that "Identity model convergence" run's leg
 #                 took (its convergence-diagnostics `<cc>-takes`), at the run's commit and its pinned recording
 #
@@ -63,7 +72,7 @@ TOOL_FILES=(worker/src/test/scala/scripts/IdentitySlice.scala worker/src/test/sc
   worker/src/fixtures/scala/tools/SliceHttp.scala worker/src/fixtures/scala/tools/MemoLookups.scala
   worker/src/fixtures/scala/tools/CatalogueFill.scala worker/src/fixtures/scala/tools/FiledAnswers.scala)
 
-families="" labels="" cc="" refs=() run="" pass=() batch="" bisect="" log="" faith="" sample=50 seed=1
+families="" labels="" cc="" refs=() run="" pass=() batch="" bisect="" log="" faith="" sample=50 seed=1 explain=0 fixture=""
 if [ "$1" != "--log" ]; then cc=$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]'); shift; fi
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -78,6 +87,10 @@ while [ "$#" -gt 0 ]; do
     --sample) sample=$2; shift 2 ;;
     --families) if [ "$2" = none ]; then families=none; else families=$(cd "$(dirname "$2")" && pwd)/$(basename "$2"); fi; shift 2 ;;
     --seed) seed=$2; shift 2 ;;
+    --explain) explain=1; shift ;;
+    --fixture) fixture=$2; shift 2 ;;
+    --limit) pass+=("$1" "$2"); shift 2 ;;
+    --no-resolve) pass+=("$1"); shift ;;
     --labels) labels=$(cd "$(dirname "$2")" && pwd)/$(basename "$2"); shift 2 ;;
     *) echo "unknown argument $1" >&2; usage >&2; exit 2 ;;
   esac
@@ -99,6 +112,7 @@ fi
 [ "${#refs[@]}" -le 2 ] || { echo "at most two --ref" >&2; exit 2; }
 
 work=$(mktemp -d "${TMPDIR:-/tmp}/identity-slice.XXXXXX"); trap 'rm -rf "$work"' EXIT
+
 labels=${labels:-$repo/test/resources/fixtures/identity-unmatched/labels.tsv}
 # prod's filed family answers (no recording holds them): this checkout's unmatched-cluster capture unless named
 families=${families:-$repo/test/resources/fixtures/identity-unmatched/$cc.json.gz}
@@ -112,6 +126,42 @@ run_at() {
 }
 tree_of() { if [ "$1" = "." ]; then echo "$repo"; else need_ref "$1"; identity_tree "$1" "${TOOL_FILES[@]}"; fi; }
 sha_of() { if [ "$1" = "." ]; then echo "worktree"; else git -C "$repo" rev-parse --verify "$1^{commit}"; fi; }
+if [ "$explain" = 1 ]; then
+  captured=$(identity_capture "$fixture" "$cc")
+  [ -f "$captured/$cc.json.gz" ] || { echo "no capture $captured/$cc.json.gz" >&2; exit 1; }
+  explain_at() { # <tree> -> the trace under that tree's code
+    local cp
+    cp=$(identity_classpath "$1") || return 1
+    (cd "$1" && "${IDENTITY_JAVA[@]}" -cp "$cp" scripts.IdentityExplain "$cc" --fixture "$captured/$cc.json.gz" \
+      --labels "$captured/labels.tsv" ${pass[@]+"${pass[@]}"})
+  }
+  [ "${#refs[@]}" -gt 0 ] || { explain_at "$repo"; exit; }
+  for i in "${!refs[@]}"; do
+    t=$(tree_of "${refs[$i]}") || exit 1
+    explain_at "$t" > "$work/$i.txt" || { cat "$work/$i.txt"; exit 1; }
+  done
+  [ "${#refs[@]}" -eq 2 ] || { cat "$work/0.txt"; exit; }
+  # the two refs' outcomes side by side — each cluster's heading, agreement and takes — then the traces' diff
+  python3 -I - "$work/0.txt" "$work/1.txt" "${refs[0]}" "${refs[1]}" "${COLUMNS:-200}" <<'PY'
+import sys
+a, b, ra, rb, cols = sys.argv[1:]
+half = int(cols) // 2 - 2
+def summary(path):
+    return [l.rstrip("\n") for l in open(path, encoding="utf-8") if l.startswith(("== ", "agreement ", "TAKE "))]
+def fit(s):
+    return s if len(s) <= half else s[: half - 1] + "…"
+left, right = summary(a), summary(b)
+print(f"{fit(ra):<{half}} | {rb}")
+for i in range(max(len(left), len(right))):
+    l = left[i] if i < len(left) else ""
+    r = right[i] if i < len(right) else ""
+    print(f"{fit(l):<{half}} | {fit(r)}")
+PY
+  echo
+  if cmp -s "$work/0.txt" "$work/1.txt"; then echo "the two refs' traces are identical"
+  else echo "--- ${refs[0]}"; echo "+++ ${refs[1]}"; diff -u "$work/0.txt" "$work/1.txt" | tail -n +3 || true; fi
+  exit
+fi
 
 if [ "$faith" = capture ]; then
   # the agreement-taken listings: the unmatched-cluster capture's, as this code's agreement takes them over prod's filed
