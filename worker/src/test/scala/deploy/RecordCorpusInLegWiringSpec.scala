@@ -78,7 +78,7 @@ class RecordCorpusInLegWiringSpec extends AnyFlatSpec with Matchers {
   }
 
   // No recording runs the ~100-film sample (2026-10-14): a recording never requests a bisect, the one thing that still
-  // replays it. Every row runs the sample's corpus-shape specs ahead of its suite instead.
+  // replays it. Every row runs the sample's corpus-shape specs ahead of its suite instead, reporting what they find.
   it should "run no sample, but every country's corpus-shape specs" in {
     val rows = RepoFile.matrixRows(RepoFile.block(recorder, "enrichment"))
     rows.foreach { row =>

@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
 # THE IDENTITY TAKES CHECK, for one country inside its hermetic convergence row: resolve the pinned
 # recording the row just replayed with the BASE commit and with the HEAD, and fail on any listing the
-# code moved to another film (lost or changed) that nobody accepted (scripts/ci/identity_takes_diff.py).
+# code moved to another film (lost or changed) that nobody accepted, or onto a suspect take nobody
+# judged (scripts/ci/identity_takes_diff.py); and run the corpus-shape specs over the same recording at
+# both, failing on a finding only the head has (scripts/ci/corpus_shape_diff.py).
 #
 # Base vs head on ONE recording is what makes a red verdict mean "the code did it": a new nightly
 # recording changes both sides at once and so moves nothing here, where an expected-takes snapshot
-# would go stale with every recording.
+# would go stale with every recording. What the recording itself brings -- a suspect take, a marker
+# left in a query -- stands at base and head alike: listed on the summary, never failed, and triaged
+# from the Identity findings report (.github/workflows/identity-findings-report.yml).
 #
 # THE BASE is the newest commit before the head whose own check passed (its commit status
 # `identity takes (<cc>)` is `success`), so a failed check stays failed on every later push until
@@ -22,7 +26,8 @@
 #   env: GH_TOKEN, GITHUB_REPOSITORY, GITHUB_SHA, MONGODB_URI, HEAP (sbt -Xmx, default 6g), TAKES_BASE (optional),
 #        STATUS_CONTEXT (default "identity takes (<cc>)"), GITHUB_STEP_SUMMARY (optional),
 #        TAKES_STORE (the release its resolves are stored on and reused from; empty stores nothing), GITHUB_REF,
-#        the pinned pair's KINOWO_CONVERGENCE_PIN_CORPUS_RUN / _TREE_ASSET / _FILL_ASSETS, RUNNER_TEMP/laid-fill
+#        the pinned pair's KINOWO_CONVERGENCE_PIN_CORPUS_RUN / _TREE_ASSET / _FILL_ASSETS, RUNNER_TEMP/laid-fill,
+#        SHAPE_COMMAND (the country's `corpusShape*` sbt alias; empty checks no corpus shape)
 #
 # THE BASE IS USUALLY ALREADY RESOLVED. It is the newest commit whose check passed -- most often the previous run's
 # head, which that run resolved over the same pinned recording minutes before. A resolve is a pure function of its
@@ -31,9 +36,10 @@
 # its enrichment tree and fills, the fill this row laid over them, and -- for the final takes -- the capture they replay.
 # A base whose key is stored is downloaded, not compiled and resolved: half of the step, 6-12 minutes of the US row
 # (run 38548739769). A key not stored -- other inputs, a fill this row could not publish, a first run -- resolves as before.
+# Each head's corpus-shape findings are stored the same way, keyed by the checks' code and allowlists and the recording.
 # Writes <out>/{base,head}/decisions-<cc>.jsonl and ratchet-takes.tsv (the model's takes and the final ones, below),
-# <out>/base.txt (the base commit) and <out>/verdict.txt.
-# Exit: 0 passed, 1 an unaccepted move, 2 the check could not run -- no verdict, which the leg posts as an `error` status
+# <out>/{base,head}/shape/ (the corpus-shape findings), <out>/base.txt (the base commit) and <out>/verdict.txt.
+# Exit: 0 passed, 1 an unaccepted move or a new suspect or corpus-shape finding, 2 the check could not run -- no verdict, which the leg posts as an `error` status
 # and fails on: a check that cannot compute its diff never passes.
 set -uo pipefail
 
@@ -111,10 +117,20 @@ echo "identity takes ($cc): base $base, head $head"
 git fetch -q --no-tags --depth=1 origin "$base" \
   || { echo "::error::identity takes ($cc): could not fetch base $base" | tee "$out/verdict.txt"; exit 2; }
 
-if [ "$base" = "$head" ] || git diff --quiet "$base" "$head" -- "${identity_paths[@]}"; then
-  echo "identity takes ($cc): no identity code changed since $base -- nothing can have moved" | tee "$out/verdict.txt"
+unchanged() { [ "$base" = "$head" ] || git diff --quiet "$base" "$head" -- "$@"; } # <paths...>
+# THE CORPUS SHAPE, judged the same way: the corpus-shape specs (SearchQueryMarkersSpec, CinemaSlotInvariantsSpec: the
+# `corpusShape*` alias the leg hands in as SHAPE_COMMAND) over this recording at the base and the head, and only a
+# finding the head made fails (scripts/ci/corpus_shape_diff.py). What can move one: the identity code (title rules, the
+# slot builder), the checks and their allowlists. Anything else cannot, and then neither side is run.
+shape_paths=("${identity_paths[@]}" e2e/src/test/scala/services/movies worker/src/fixtures)
+shape_command=${SHAPE_COMMAND:-}
+if [ -n "$shape_command" ] && ! unchanged "${shape_paths[@]}"; then shape_moves=1; else shape_moves=""; fi
+
+if unchanged "${identity_paths[@]}" && [ -z "$shape_moves" ]; then
+  echo "identity takes ($cc): no identity code changed since $base, nor a corpus-shape check or allowlist -- nothing can have moved" | tee "$out/verdict.txt"
   exit 0
 fi
+if unchanged "${identity_paths[@]}"; then takes_moves=""; else takes_moves=1; fi
 
 # THE STORE (see the header). A fill laid over the tree but never published names nothing a later run could match:
 # such a row neither reuses nor stores.
@@ -149,16 +165,10 @@ keep() { # <file> <asset>: store a head's result, on main only (the only commits
       | sort_by(.createdAt) | reverse | .[8:][] | .name" 2>/dev/null \
     | while read -r stale; do "$here/scripts/ci/gh-release.sh" delete-asset "$store" "$stale" -y > /dev/null || true; done
 }
-asset() { echo "takes-$1-$cc-$2.gz"; } # <decisions|final> <key>
+asset() { echo "takes-$1-$cc-$2.gz"; } # <decisions|final|shape> <key>
 
-SECONDS=0
-dump "$here" "$out/head" || { echo "::warning::identity takes ($cc): the head resolved nothing"; exit 2; }
-echo "identity takes ($cc): head resolved in ${SECONDS}s"
-keep "$out/head/decisions-$cc.jsonl" "$(asset decisions "$(decisions_key "$head")")"
-
-SECONDS=0
 tree="$RUNNER_TEMP/identity-takes-base"
-base_tree() { # the base checked out beside the head, once, for whichever of its resolves is not stored
+base_tree() { # the base checked out beside the head, once, for whichever of its results is not stored
   [ -d "$tree" ] && return 0
   git worktree add -q --detach "$tree" "$base" || return 1
   # The head's compiled classes and zinc state, so the base compiles only what differs between them.
@@ -169,54 +179,123 @@ base_tree() { # the base checked out beside the head, once, for whichever of its
   return 0
 }
 rm -rf "$tree"
-if reused "$(asset decisions "$(decisions_key "$base")")" "$out/base/decisions-$cc.jsonl"; then
-  echo "identity takes ($cc): base resolve reused from $(asset decisions "$(decisions_key "$base")") in ${SECONDS}s"
+: > "$out/verdict.txt"
+model=0 final=0 shape=0
+
+if [ -n "$takes_moves" ]; then
+  SECONDS=0
+  dump "$here" "$out/head" || { echo "::warning::identity takes ($cc): the head resolved nothing"; exit 2; }
+  echo "identity takes ($cc): head resolved in ${SECONDS}s"
+  keep "$out/head/decisions-$cc.jsonl" "$(asset decisions "$(decisions_key "$head")")"
+
+  SECONDS=0
+  if reused "$(asset decisions "$(decisions_key "$base")")" "$out/base/decisions-$cc.jsonl"; then
+    echo "identity takes ($cc): base resolve reused from $(asset decisions "$(decisions_key "$base")") in ${SECONDS}s"
+  else
+    base_tree || exit 2
+    dump "$tree" "$out/base" || { echo "::warning::identity takes ($cc): the base resolved nothing"; exit 2; }
+    echo "identity takes ($cc): base compiled and resolved in ${SECONDS}s"
+  fi
+
+  # THE FINAL TAKES: the decisions above are the MODEL's, before the agreement stage reads them again -- 9c8170f5e's range
+  # moved 213 UK listings in prod (and three right DE takes) with them at 0/0/0. The unmatched-cluster ratchet replays the
+  # model AND the agreement stage over the checked-in capture and its families' answers; run by the head and by the base
+  # over the head's capture, its takes are diffed as the decisions are. The base reads the head's capture: one input.
+  ratchet() { # <checkout> <out file>
+    rm -f "$1/target/identity-unmatched/ratchet-takes.tsv"
+    ( cd "$1" && sbt -J-Xmx"$heap" "worker/Test/testOnly services.identity.UnmatchedClustersRatchetSpec" > "$2.log" 2>&1 )
+    cp "$1/target/identity-unmatched/ratchet-takes.tsv" "$2" 2>/dev/null
+  }
+  SECONDS=0
+  ratchet "$here" "$out/head/ratchet-takes.tsv" || final=2
+  [ "$final" = 0 ] && keep "$out/head/ratchet-takes.tsv" "$(asset final "$(capture_key "$head")")"
+  if [ "$final" = 0 ] && reused "$(asset final "$(capture_key "$base")")" "$out/base/ratchet-takes.tsv"; then
+    echo "identity takes ($cc): base final takes reused"
+  elif [ "$final" = 0 ]; then
+    base_tree || exit 2
+    cp "$here"/test/resources/fixtures/identity-unmatched/*.json.gz "$here"/test/resources/fixtures/identity-unmatched/*.inputs \
+       "$tree/test/resources/fixtures/identity-unmatched/" 2>/dev/null
+    ratchet "$tree" "$out/base/ratchet-takes.tsv" || final=2
+  fi
+  echo "identity takes ($cc): final takes replayed in ${SECONDS}s"
 else
-  base_tree || exit 2
-  dump "$tree" "$out/base" || { echo "::warning::identity takes ($cc): the base resolved nothing"; exit 2; }
-  echo "identity takes ($cc): base compiled and resolved in ${SECONDS}s"
+  echo "identity takes ($cc): no identity code changed since $base -- no take can have moved" | tee -a "$out/verdict.txt"
 fi
 
-# THE FINAL TAKES: the decisions above are the MODEL's, before the agreement stage reads them again -- 9c8170f5e's range
-# moved 213 UK listings in prod (and three right DE takes) with them at 0/0/0. The unmatched-cluster ratchet replays the
-# model AND the agreement stage over the checked-in capture and its families' answers; run by the head and by the base
-# over the head's capture, its takes are diffed as the decisions are. The base reads the head's capture: one input.
-ratchet() { # <checkout> <out file>
-  rm -f "$1/target/identity-unmatched/ratchet-takes.tsv"
-  ( cd "$1" && sbt -J-Xmx"$heap" "worker/Test/testOnly services.identity.UnmatchedClustersRatchetSpec" > "$2.log" 2>&1 )
-  cp "$1/target/identity-unmatched/ratchet-takes.tsv" "$2" 2>/dev/null
+# THE CORPUS SHAPE (above): the specs' findings over the recording this row replays, at the head and at the base; a finding
+# fails the specs themselves, so their exit is not the verdict -- the findings files are (no file: the specs did not run).
+shape_run() { # <checkout> <out dir>
+  rm -f "$1"/target/convergence-diagnostics/corpus-shape-recorded-"$cc"-*.txt
+  mkdir -p "$2"
+  ( cd "$1" && KINOWO_IDENTITY_CORPUS_DIR="$here/test/resources/fixtures/corpus" \
+      sbt -J-Xmx"$heap" -J-Duser.language=en -J-Duser.country=US "$shape_command" > "$2.log" 2>&1 )
+  cp "$1"/target/convergence-diagnostics/corpus-shape-recorded-"$cc"-*.txt "$2/" 2>/dev/null
 }
-SECONDS=0
-final=0
-ratchet "$here" "$out/head/ratchet-takes.tsv" || final=2
-[ "$final" = 0 ] && keep "$out/head/ratchet-takes.tsv" "$(asset final "$(capture_key "$head")")"
-if [ "$final" = 0 ] && reused "$(asset final "$(capture_key "$base")")" "$out/base/ratchet-takes.tsv"; then
-  echo "identity takes ($cc): base final takes reused"
-elif [ "$final" = 0 ]; then
-  base_tree || exit 2
-  cp "$here"/test/resources/fixtures/identity-unmatched/*.json.gz "$here"/test/resources/fixtures/identity-unmatched/*.inputs \
-     "$tree/test/resources/fixtures/identity-unmatched/" 2>/dev/null
-  ratchet "$tree" "$out/base/ratchet-takes.tsv" || final=2
+shape_key() { # <sha>: the findings' inputs -- the checks' code and allowlists, and the recording
+  printf '%s\n' "$(git ls-tree -r "$1" -- "${shape_paths[@]}" | sha256sum | cut -c1-24)" "$cc" \
+    "${KINOWO_CONVERGENCE_PIN_CORPUS_RUN:-}" | sha256sum | cut -c1-24
+}
+if [ -n "$shape_moves" ]; then
+  SECONDS=0
+  if shape_run "$here" "$out/head/shape"; then
+    tar -cf "$out/head/shape.tar" -C "$out/head/shape" . && keep "$out/head/shape.tar" "$(asset shape "$(shape_key "$head")")"
+    if reused "$(asset shape "$(shape_key "$base")")" "$out/base/shape.tar"; then
+      mkdir -p "$out/base/shape" && tar -xf "$out/base/shape.tar" -C "$out/base/shape"
+      echo "identity takes ($cc): base corpus-shape findings reused"
+    else
+      base_tree || exit 2
+      if grep -q 'corpus-shape-' "$tree/e2e/src/test/scala/services/movies/CorpusShapeSpec.scala" 2>/dev/null; then
+        shape_run "$tree" "$out/base/shape" || shape=2
+      else
+        # A base from before the specs wrote their findings has none to diff: the head's are reported, none failed.
+        echo "identity takes ($cc): the base predates the corpus-shape findings files -- the head's are reported, not judged" \
+          | tee -a "$out/verdict.txt"
+        mkdir -p "$out/base/shape" && cp "$out/head/shape"/*.txt "$out/base/shape/"
+      fi
+    fi
+  else
+    shape=2
+  fi
+  echo "identity takes ($cc): corpus-shape specs ran in ${SECONDS}s"
+elif [ -n "$shape_command" ]; then
+  echo "identity takes ($cc): no corpus-shape check, allowlist or identity code changed since $base -- no finding can be new" \
+    | tee -a "$out/verdict.txt"
+else
+  echo "identity takes ($cc): corpus shape not checked (no SHAPE_COMMAND)" | tee -a "$out/verdict.txt"
 fi
-echo "identity takes ($cc): final takes replayed in ${SECONDS}s"
 [ -d "$tree" ] && { git worktree remove --force "$tree" || true; }
 
 diff_takes() { # <base> <head> [--final]
   python3 "$here/scripts/ci/identity_takes_diff.py" "$cc" "$1" "$2" "${@:3}" \
     --labels "$here/test/resources/fixtures/identity-unmatched/labels.tsv" \
     --accepted "$here/test/resources/fixtures/identity-takes/accepted.tsv" \
+    --baseline "$here/test/resources/fixtures/identity-suspects/baseline.tsv" \
     --base-name "${base:0:9}" --head-name "${head:0:9}" ${GITHUB_STEP_SUMMARY:+--summary "$GITHUB_STEP_SUMMARY"}
 }
-diff_takes "$out/base/decisions-$cc.jsonl" "$out/head/decisions-$cc.jsonl" | tee "$out/verdict.txt"
-model=${PIPESTATUS[0]}
-if [ "$final" = 0 ]; then
-  diff_takes "$out/base/ratchet-takes.tsv" "$out/head/ratchet-takes.tsv" --final | tee -a "$out/verdict.txt"
-  final=${PIPESTATUS[0]}
-else
-  echo "::error::identity takes ($cc): the final takes could not be replayed (the ratchet wrote no takes; $out/*/ratchet-takes.tsv.log)" \
-    | tee -a "$out/verdict.txt"
+# The verdict's first line is the commit status's description: the takes' line when they ran, else the shape's.
+verdict=$(mktemp)
+if [ -n "$takes_moves" ]; then
+  diff_takes "$out/base/decisions-$cc.jsonl" "$out/head/decisions-$cc.jsonl" | tee -a "$verdict"
+  model=${PIPESTATUS[0]}
+  if [ "$final" = 0 ]; then
+    diff_takes "$out/base/ratchet-takes.tsv" "$out/head/ratchet-takes.tsv" --final | tee -a "$verdict"
+    final=${PIPESTATUS[0]}
+  else
+    echo "::error::identity takes ($cc): the final takes could not be replayed (the ratchet wrote no takes; $out/*/ratchet-takes.tsv.log)" \
+      | tee -a "$verdict"
+  fi
 fi
-# An unaccepted move anywhere fails; failing that, a half that could not run is no verdict (2), never a pass.
-if [ "$model" = 1 ] || [ "$final" = 1 ]; then exit 1; fi
-if [ "$model" != 0 ] || [ "$final" != 0 ]; then exit 2; fi
+if [ -n "$shape_moves" ]; then
+  if [ "$shape" = 0 ]; then
+    python3 "$here/scripts/ci/corpus_shape_diff.py" "$cc" "$out/base/shape" "$out/head/shape" \
+      --base-name "${base:0:9}" --head-name "${head:0:9}" ${GITHUB_STEP_SUMMARY:+--summary "$GITHUB_STEP_SUMMARY"} | tee -a "$verdict"
+    shape=${PIPESTATUS[0]}
+  else
+    echo "::error::identity takes ($cc): the corpus-shape specs wrote no findings (their log: $out/*/shape.log)" | tee -a "$verdict"
+  fi
+fi
+cat "$out/verdict.txt" >> "$verdict" && mv "$verdict" "$out/verdict.txt"
+# A move or a new finding anywhere fails; failing that, a half that could not run is no verdict (2), never a pass.
+if [ "$model" = 1 ] || [ "$final" = 1 ] || [ "$shape" = 1 ]; then exit 1; fi
+if [ "$model" != 0 ] || [ "$final" != 0 ] || [ "$shape" != 0 ]; then exit 2; fi
 exit 0

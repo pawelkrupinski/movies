@@ -23,6 +23,16 @@ GAINED passes when labels.tsv calls the gained film `right`, fails when it calls
     (2022) as plain gains, read by no one, in run 38578038277;
   - an unflagged one passes, marked as needing judgement (WARN), never as a silent ok.
 
+SUSPECT TAKES, scoped to what the code changed. Every head row a suspect-take signal flags (its `suspect`) whose film
+no label judges (labels.tsv, read as above) and the suspect baseline (identity-suspects/baseline.tsv) does not list is
+classified against the base's row for the same listing:
+  standing  the base took the same film and flagged it too: data the code did not touch -- REPORTED, never failed
+            (the whole corpus's standing suspects are the Identity findings report's, identity-findings-report.yml);
+  new       the head took another film, or flags a take the base did not -- the code made it: FAILS, unless
+            accepted.tsv accepts the listing's move;
+  cured     the base's take was an unjudged suspect and the head's is not -- counted, never failed.
+A nightly recording changes base and head at once, so a suspect it brings is standing on both: it never fails here.
+
 THE FINAL TAKES. The decisions above are the MODEL's: the agreement stage (fills, corrections, the families' agreed
 takes, billedBeside on them) reads them again before anything is served, and a change there moved nothing in them --
 9c8170f5e's range dropped 213 UK takes in prod (211 "CBeebies Panto 2026: Treasure Island") with this check at 0/0/0.
@@ -30,9 +40,9 @@ With --final the inputs are instead the unmatched-cluster ratchet's `ratchet-tak
 the model and the agreement stage over the checked-in capture and its families' answers), written by the base and the
 head over the SAME capture: a listing absent from a side took no film there. The same verdicts apply.
 
-usage: identity_takes_diff.py <cc> <base.jsonl> <head.jsonl> [--labels F] [--accepted F] [--summary F]
+usage: identity_takes_diff.py <cc> <base.jsonl> <head.jsonl> [--labels F] [--accepted F] [--baseline F] [--summary F]
          [--base-name S] [--head-name S] [--final]
-Exit 1 when an unaccepted move is found, 2 on unreadable input.
+Exit 1 when an unaccepted move or a new suspect take is found, 2 on unreadable input.
 """
 
 import argparse
@@ -103,6 +113,25 @@ def accepted_of(path, cc):
     return out
 
 
+def baseline_of(path, cc):
+    """{(rawTitle single-spaced, film)} the suspect baseline lists for `cc` (SuspectTakesAudit.readBaseline): suspects
+    standing when the whole-corpus ratchet was armed, judged as listed."""
+    out = set()
+    if not path:
+        return out
+    try:
+        f = open(path, encoding="utf-8")
+    except FileNotFoundError:
+        return out
+    with f:
+        for n, line in enumerate(f):
+            cols = line.rstrip("\n").split("\t")
+            if n == 0 or len(cols) < 3 or cols[0] != cc:
+                continue
+            out.add((single_spaced(cols[1]), cols[2]))
+    return out
+
+
 def ratchet_ran(path):
     """Whether a ratchet-takes.tsv holds any take row, for any country: an empty file is a ratchet that never ran."""
     with open(path, encoding="utf-8") as f:
@@ -138,7 +167,8 @@ def final_sides(base_path, head_path, cc):
 
 
 def pair(base, head):
-    """(base row, head row) per listing, by key, then by venue + raw title for keys the change re-spelled -- only where
+    """(base row, head row) per listing, the count of listings on one side only, and the head's rows among those -- by
+    key, then by venue + raw title for keys the change re-spelled -- only where
     that title is billed ONCE at the venue on each side: two same-titled listings (Belle 2013 and Belle 2021) are never
     paired by guess, which could read as a swap or hide a move; they count as on one side only."""
     head_by_key = {r["key"]: r for r in head}
@@ -154,15 +184,18 @@ def pair(base, head):
         head_by_title.setdefault((h["venue"], h["rawTitle"]), []).append(h)
     for b in base_left:
         base_by_title.setdefault((b["venue"], b["rawTitle"]), []).append(b)
-    unpaired = 0
+    unpaired, heads_alone = 0, []
     for title, bs in base_by_title.items():
         hs = head_by_title.pop(title, [])
         if len(bs) == 1 and len(hs) == 1:
             pairs.append((bs[0], hs[0]))
         else:
             unpaired += len(bs) + len(hs)
-    unpaired += sum(len(v) for v in head_by_title.values())
-    return pairs, unpaired
+            heads_alone += hs
+    for hs in head_by_title.values():
+        unpaired += len(hs)
+        heads_alone += hs
+    return pairs, unpaired, heads_alone
 
 
 def kind_of(before, after):
@@ -175,12 +208,18 @@ def kind_of(before, after):
     return "changed"
 
 
+def accepted_move(move, accepted):
+    """Whether an accepted.tsv line accepts the listing's move from `before` to `after`."""
+    venue, title, before, after = move["venue"], move["rawTitle"], ref(move["before"]), ref(move["after"])
+    return any(a_venue in ("*", venue) and single_spaced(a_title) == single_spaced(title) and a_before in ("*", before)
+               and a_after in ("*", after) for a_venue, a_title, a_before, a_after in accepted)
+
+
 def verdict(cc, move, labels, accepted):
     """(accepted?, why) for one move."""
     venue, title, before, after = move["venue"], move["rawTitle"], ref(move["before"]), ref(move["after"])
-    for a_venue, a_title, a_before, a_after in accepted:
-        if a_venue in ("*", venue) and single_spaced(a_title) == single_spaced(title) and a_before in ("*", before) and a_after in ("*", after):
-            return True, "accepted.tsv"
+    if accepted_move(move, accepted):
+        return True, "accepted.tsv"
     now = label_of(labels, venue, title, after)
     was = label_of(labels, venue, title, before)
     if now == "wrong":
@@ -209,8 +248,7 @@ def film_name(row):
     return ref(take(row)) + (f" {row['filmTitle']}" if row.get("filmTitle") else "")
 
 
-def moves_of(cc, base, head, labels, accepted):
-    pairs, unpaired = pair(base, head)
+def moves_of(cc, pairs, labels, accepted):
     moves = []
     for b, h in pairs:
         kind = kind_of(take(b), take(h))
@@ -222,7 +260,37 @@ def moves_of(cc, base, head, labels, accepted):
         move["judge"] = move["verdict"].startswith("needs judgement")
         moves.append(move)
     moves.sort(key=lambda m: (m["accepted"], m["kind"], m["rawTitle"], m["venue"]))
-    return moves, unpaired
+    return moves
+
+
+def unjudged_suspect(row, labels, baseline):
+    """Whether `row` takes a film a suspect-take signal flags that neither labels.tsv nor the suspect baseline judges."""
+    film = take(row)
+    if film is None or not row.get("suspect"):
+        return False
+    return label_of(labels, row["venue"], row["rawTitle"], ref(film)) is None and \
+        (single_spaced(row["rawTitle"]), ref(film)) not in baseline
+
+
+def suspects_of(pairs, heads_alone, labels, baseline, accepted):
+    """{"new", "standing", "cured"}: the unjudged suspect takes, each classified against the base's row for its listing
+    (the module doc). A head row on one side only (its key re-spelled ambiguously) has no base to stand on: new."""
+    out = {"new": [], "standing": [], "cured": []}
+    def entry(b, h, flagged):
+        """The listing, its head film, its base film and the reasons flagging `flagged`'s take."""
+        return {"venue": h["venue"], "rawTitle": h["rawTitle"], "film": film_name(h), "base": film_name(b) if b else "-",
+                "reasons": list(flagged.get("suspect") or [])}
+    for b, h in pairs:
+        if unjudged_suspect(h, labels, baseline):
+            stood = take(b) == take(h) and bool(b.get("suspect"))
+            move = {"venue": h["venue"], "rawTitle": h["rawTitle"], "before": take(b), "after": take(h)}
+            out["standing" if stood or accepted_move(move, accepted) else "new"].append(entry(b, h, h))
+        elif unjudged_suspect(b, labels, baseline):
+            out["cured"].append(entry(b, h, b))
+    out["new"] += [entry(None, h, h) for h in heads_alone if unjudged_suspect(h, labels, baseline)]
+    for kind in out:
+        out[kind].sort(key=lambda e: (e["rawTitle"], e["venue"]))
+    return out
 
 
 def cell(text):
@@ -234,13 +302,40 @@ def mark(move, failed, judge, ok):
     return failed if not move["accepted"] else judge if move["judge"] else ok
 
 
-def render(cc, moves, unpaired, base_name, head_name, listings, what="identity takes", where="one recording"):
+def render_suspects(cc, suspects):
+    """(log lines, summary lines) of the suspect classification: every new one, then the standing ones as a report."""
+    new, standing, cured = suspects["new"], suspects["standing"], suspects["cured"]
+    line = (f"suspect takes ({cc}): {len(new)} new (the code's: fail until judged), {len(standing)} standing at base and "
+            f"head (reported, never failed), {len(cured)} cured")
+    def text(e, status):
+        return (f"  {status} suspect {e['venue']} | {e['rawTitle']}: {e['film']} (base {e['base']})\n"
+                f"        {'; '.join(e['reasons'])}")
+    log = [line] + [text(e, "FAIL") for e in new] + [text(e, "cured") for e in cured]
+    md = ["", f"#### Suspect takes ({cc})", "", line, ""]
+    if new:
+        md += ["| | venue | listing | head film | base film | reasons |", "|---|---|---|---|---|---|"]
+        md += [f"| ❌ | {cell(e['venue'])} | {cell(e['rawTitle'])} | {cell(e['film'])} | {cell(e['base'])} | "
+               f"{cell('; '.join(e['reasons']))} |" for e in new[:300]]
+        md += ["", "A new suspect is the code's: judge its film in `test/resources/fixtures/identity-unmatched/labels.tsv` "
+                   "(`scripts/label-lookup`, `scripts/identity-slice <cc> --venue V --title T`), or accept the move in "
+                   "`test/resources/fixtures/identity-takes/accepted.tsv`."]
+    if standing:
+        md += ["", f"<details><summary>{len(standing)} standing suspect(s): the recording's, untouched by this change -- "
+                   "triaged from the Identity findings report, never failed here</summary>", ""]
+        md += [f"- {cell(e['venue'])} \\| {cell(e['rawTitle'])}: {cell(e['film'])} -- {cell('; '.join(e['reasons']))}"
+               for e in standing[:200]]
+        md += ["", "</details>"]
+    return log, md
+
+
+def render(cc, moves, unpaired, base_name, head_name, listings, what="identity takes", where="one recording", suspects=None):
     failing = [m for m in moves if not m["accepted"]]
     counts = {k: sum(1 for m in moves if m["kind"] == k) for k in ("lost", "changed", "gained")}
     judge = sum(1 for m in moves if m["judge"])
     head_line = (f"{what} ({cc}): {listings} listings, base {base_name} vs head {head_name} on {where} -- "
                  f"lost {counts['lost']}, changed {counts['changed']}, gained {counts['gained']}; "
-                 f"{len(failing)} not accepted, {judge} need judgement" + (f"; {unpaired} listing(s) on one side only" if unpaired else ""))
+                 f"{len(failing)} not accepted, {judge} need judgement" + (f"; {unpaired} listing(s) on one side only" if unpaired else "")
+                 + (f"; {len(suspects['new'])} new suspect(s), {len(suspects['standing'])} standing" if suspects else ""))
     text = [head_line] + [
         f"  {mark(m, 'FAIL', 'WARN', 'ok  ')} {m['kind']:7} {m['venue']} | {m['rawTitle']}: {m['old']} -> {m['new']} "
         f"[{m['verdict']}]\n        base: {m['oldWhy']}\n        head: {m['newWhy']}" for m in moves]
@@ -259,6 +354,10 @@ def render(cc, moves, unpaired, base_name, head_name, listings, what="identity t
     if failing:
         md += ["", "To accept a move, label the head's film `right` in `test/resources/fixtures/identity-unmatched/labels.tsv`, "
                    "or add `country\tvenue|*\trawTitle\tbefore\tafter|*\tnote` to `test/resources/fixtures/identity-takes/accepted.tsv`."]
+    if suspects:
+        log, suspect_md = render_suspects(cc, suspects)
+        text += log
+        md += suspect_md
     return "\n".join(text), "\n".join(md) + "\n", failing
 
 
@@ -269,6 +368,7 @@ def main(argv=None):
     p.add_argument("head")
     p.add_argument("--labels")
     p.add_argument("--accepted")
+    p.add_argument("--baseline", help="the suspect baseline (test/resources/fixtures/identity-suspects/baseline.tsv)")
     p.add_argument("--summary")
     p.add_argument("--base-name", default="base")
     p.add_argument("--head-name", default="head")
@@ -287,12 +387,16 @@ def main(argv=None):
             print(f"identity takes ({a.cc}): an empty side (base {len(base)}, head {len(head)} listings) -- nothing resolved",
                   file=sys.stderr)
             return 2
-        moves, unpaired = moves_of(a.cc, base, head, labels_of(a.labels, a.cc), accepted_of(a.accepted, a.cc))
+        labels, accepted = labels_of(a.labels, a.cc), accepted_of(a.accepted, a.cc)
+        pairs, unpaired, heads_alone = pair(base, head)
+        moves = moves_of(a.cc, pairs, labels, accepted)
+        # the final takes carry no suspect signals: the model's decisions are where a suspect is judged
+        suspects = None if a.final else suspects_of(pairs, heads_alone, labels, baseline_of(a.baseline, a.cc), accepted)
     except (OSError, ValueError, KeyError, TypeError, IndexError) as e:
         print(f"identity takes ({a.cc}): could not read the inputs: {type(e).__name__}: {e}", file=sys.stderr)
         return 2
     text, md, failing = render(a.cc, moves, unpaired, a.base_name, a.head_name, len(head),
-                               *(("identity final takes", "one capture") if a.final else ()))
+                               *(("identity final takes", "one capture") if a.final else ()), suspects=suspects)
     print(text)
     for m in moves:
         if m["judge"] and m["accepted"]:
@@ -300,7 +404,7 @@ def main(argv=None):
     if a.summary:
         with open(a.summary, "a", encoding="utf-8") as f:
             f.write(md)
-    return 1 if failing else 0
+    return 1 if failing or (suspects and suspects["new"]) else 0
 
 
 if __name__ == "__main__":

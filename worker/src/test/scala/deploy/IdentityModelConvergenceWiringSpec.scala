@@ -82,7 +82,8 @@ class IdentityModelConvergenceWiringSpec extends AnyFlatSpec with Matchers {
 
   /** No row runs the ~100-film sample (2026-10-14): it replays a slice of the corpus every suite replays in full, so it
    *  only ever failed sooner, and once every row fit the lane's 10-minute target it cost more than that. Each row keeps
-   *  the one part of it the suite does not assert -- the corpus-shape specs, ahead of its suite -- and names its sample
+   *  the one part of it the suite does not assert -- the corpus-shape specs, judged base against head in its takes row
+   *  -- and names its sample
    *  alias for the auto-bisect, which still replays it per commit. */
   it should "run no sample, but every country's corpus-shape specs, and name each sample for the bisect" in {
     val rows = RepoFile.matrixRows(workflow)

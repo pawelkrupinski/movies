@@ -3169,13 +3169,26 @@ untranslated records); era on any old film three venues bill (+6 wrong pairs, bu
 "Hocus Pocus", "Drei Haselnüsse für Aschenbrödel" are programmes, not namesakes); a fragment of a current release
 (subtitles and local titles: "HAMNET - Halte dein Herz offen"). Those stay the agreement's and the labels' to settle.
 
-**The ratchet** (`CountryConvergenceBehaviour`, "the identity takes should hold no suspect take labels.tsv has not
+**The audit** (`CountryConvergenceBehaviour`, "the identity takes should report every suspect take labels.tsv has not
 judged"): after the settle, every take of the projection is judged by `tools.SuspectTakesAudit` — a suspect billing no
-label judges and `test/resources/fixtures/identity-suspects/baseline.tsv` does not list fails the leg, as does a take a
-label calls wrong; the suspects go to `<corpus>-suspect-takes.md` on the run's summary page, every suspect and the takes
-themselves (`<corpus>-takes/<cc>.json.gz`, what the measure reads with `--dumps`) to the diagnostics artifact. The
+label judges and `test/resources/fixtures/identity-suspects/baseline.tsv` does not list, and a take a label calls wrong,
+go to `<corpus>-suspect-takes.md` on the run's summary page and to `<corpus>-suspect-unjudged.txt`; every suspect and the
+takes themselves (`<corpus>-takes/<cc>.json.gz`, what the measure reads with `--dumps`) to the diagnostics artifact. The
 baseline was armed with the suspects standing on 2026-10-13 and only shrinks (`SuspectTakesAuditSpec`); a line no take
 stands for any more is named in the leg's log for striking.
+
+It REPORTS and never fails (2026-10-14). Armed as a whole-corpus gate (10-13), it judged each new recording as much as
+the code: a suspect last night's recording brought turned every push red, and the red-build gate held unrelated pushes
+behind it. Two halves now:
+
+- **The code's**: the identity takes check (`scripts/ci/identity_takes_diff.py`) resolves ONE recording at the base and
+  the head; an unjudged suspect the head takes that the base did not take, or did not flag, FAILS the row (unless
+  `accepted.tsv` accepts the move); one standing at both is listed on the summary, never failed; one the head no longer
+  takes is counted as cured.
+- **The recording's**: the newest recording's unjudged suspects (and its corpus-shape findings) go to the **Identity
+  findings report** (`.github/workflows/identity-findings-report.yml`) — one issue per country, updated in place with
+  the triage commands, closed when empty, and red once a finding has stood untriaged for more than three days. Not a
+  red-build gate: it is data to triage, which no code push breaks or mends.
 
 **The gauge** `kinowo_worker_identity_suspect_takes{country,signal}`: `SuspectTakeCount`, over every WRITTEN projection of
 the whole corpus (hourly) — never one the shrink guard held back — on a thread of its own, off the projection's path: the

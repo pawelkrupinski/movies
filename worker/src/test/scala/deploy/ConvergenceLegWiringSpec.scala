@@ -192,13 +192,21 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
       Seq("if: matrix.phase != 'takes'")
   }
 
-  /** What every row keeps of the sample it no longer runs: the corpus-shape specs over the recorded corpus
-   *  (`CinemaSlotInvariantsSpec`, `SearchQueryMarkersSpec`), which the convergence suite itself does not assert --
-   *  first, ahead of the suite, in the suite's own sbt run, recording or hermetic. */
-  it should "run the sample's corpus-shape specs ahead of every convergence row's suite" in {
-    RepoFile.step(RepoFile.block(leg, "convergence"), SuiteStep) should include(
-      "${{ matrix.phase == 'convergence' && inputs.shape-command || '' }} " +
-      "${{ matrix.phase == 'convergence' && inputs.command || matrix.phase == 'next-day' && inputs.next-day-command || inputs.order-command }}")
+  /** What every leg keeps of the sample it no longer runs: the corpus-shape specs over the recorded corpus
+   *  (`CinemaSlotInvariantsSpec`, `SearchQueryMarkersSpec`), which the convergence suite itself does not assert. A
+   *  HERMETIC leg's takes row runs them at the base and the head and fails only on a finding the head made
+   *  (`identity-takes-check.sh`); a RECORDING runs them ahead of its suite and only reports -- its findings are the
+   *  recording's (the Identity findings report's). Never on the suite's own sbt line: there a finding the recording
+   *  brought stopped the suite before its boot (run 38625654132, UK and DE). */
+  it should "judge the corpus shape in the takes row, report a recording's, and never run it on the suite's sbt line" in {
+    val convergence = RepoFile.block(leg, "convergence")
+    RepoFile.step(convergence, SuiteStep) should not include "shape-command"
+    val report = RepoFile.step(convergence, "Report the recording's corpus-shape findings")
+    report should include("if: inputs.mode == 'record' && matrix.phase == 'convergence' && inputs.shape-command != ''")
+    report should include("""sbt -J-Xmx${{ inputs.heap }} "${jvm[@]}" "${{ inputs.shape-command }}" > corpus-shape.log 2>&1 || true""")
+    convergence.indexOf("Report the recording's corpus-shape findings") should be < convergence.indexOf(s"name: $SuiteStep")
+    RepoFile.step(convergence, "Check which listings the code moved to another film") should include(
+      "SHAPE_COMMAND: ${{ inputs.shape-command }}")
     callers.foreach(_ should include("shape-command:"))
     rows.foreach { row =>
       val shape = row.getOrElse("shape", fail(s"${row("country")} names no `shape` alias, so its corpus-shape specs run nowhere"))
@@ -698,9 +706,9 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     leg should include ("if: always() && inputs.profile && matrix.phase != 'takes'")
     // A hand-dispatched JVM setting reaches every sbt run through the environment, never interpolated into the script.
     caller should include ("jvm-options:                   ${{ inputs.jvm-options || '' }}")
-    // Every sbt run of the leg: the suite, the pre-suite fill and a recording's corpus capture.
-    leg.linesIterator.count(_.trim == "JVM_OPTIONS:      ${{ inputs.jvm-options }}") shouldBe 3
-    leg.linesIterator.count(_.trim == "read -ra jvm <<< \"$JVM_OPTIONS\"") shouldBe 3
+    // Every sbt run of the leg: the suite, the pre-suite fill, a recording's corpus capture and its corpus-shape report.
+    leg.linesIterator.count(_.trim == "JVM_OPTIONS:      ${{ inputs.jvm-options }}") shouldBe 4
+    leg.linesIterator.count(_.trim == "read -ra jvm <<< \"$JVM_OPTIONS\"") shouldBe 4
     RepoFile.withoutComments(leg).linesIterator.filter(_.trim.startsWith("sbt ")).foreach { line =>
       withClue(s"$line: ")(line should include ("\"${jvm[@]}\""))
     }

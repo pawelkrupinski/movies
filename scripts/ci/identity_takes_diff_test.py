@@ -26,13 +26,17 @@ class TakesDiffTest(unittest.TestCase):
             f.write("".join(l if isinstance(l, str) else json.dumps(l) + "\n" for l in lines))
         return path
 
-    def run_diff(self, base, head, labels=None, accepted=None):
+    def run_diff(self, base, head, labels=None, accepted=None, baseline=None):
         summary = os.path.join(self.dir, "summary.md")
         args = ["pl", self.write("base.jsonl", base), self.write("head.jsonl", head), "--summary", summary]
+        if os.path.exists(summary):
+            os.remove(summary)
         if labels is not None:
             args += ["--labels", self.write("labels.tsv", labels)]
         if accepted is not None:
             args += ["--accepted", self.write("accepted.tsv", accepted)]
+        if baseline is not None:
+            args += ["--baseline", self.write("baseline.tsv", ["country\trawTitle\tfilm\ttitle\treasons\n"] + baseline)]
         code = d.main(args)
         with open(summary, encoding="utf-8") as f:
             return code, f.read()
@@ -203,6 +207,72 @@ class TakesDiffTest(unittest.TestCase):
         self.assertEqual(0, d.main(["es", base, head, "--final"]))
         empty = self.ratchet("e.tsv", [])
         self.assertEqual(2, d.main(["es", empty, empty, "--final"]))
+
+    # SUSPECT TAKES, scoped to the code. Recording 38625654132 (2026-10-14) failed PL's whole-corpus audit on suspects it
+    # brought itself -- Kino Kosmos' "KF Ambasada: Diabły" taken as Diabły (1971) among them -- and that red blocked every
+    # push. Base and head resolve ONE recording, so a suspect the recording brought is on both sides: standing, reported.
+    DIABLY = "fragment: 'Diabły' is 1 of the billing's words; 'kf ambasada' is no banner or decoration"
+
+    def suspect(self, venue, title, film, reasons, title_of=None):
+        return dict(row(venue, title, film, title_of=title_of), suspect=reasons)
+
+    def test_a_suspect_take_standing_at_base_and_head_is_reported_never_failed(self):
+        both = [self.suspect("Kino Kosmos", "KF Ambasada: Diabły", 31767, [self.DIABLY], "Diabły (1971)"), row("Muza", "Diuna", 7)]
+        code, md = self.run_diff(both, both)
+        self.assertEqual(0, code)
+        self.assertIn("suspect takes (pl): 0 new (the code's: fail until judged), 1 standing at base and head", md)
+        self.assertIn("- Kino Kosmos \\| KF Ambasada: Diabły: tmdb:31767 Diabły (1971) -- fragment:", md)
+
+    def test_a_code_move_onto_a_suspect_film_fails_even_when_the_move_itself_is_accepted(self):
+        base = [row("Kino Kosmos", "KF Ambasada: Diabły", 1000), row("Muza", "Diuna", 7)]
+        head = [self.suspect("Kino Kosmos", "KF Ambasada: Diabły", 31767, [self.DIABLY], "Diabły (1971)"), row("Muza", "Diuna", 7)]
+        # the base's film labelled wrong accepts the move off it; the film it moves to is still an unjudged suspect
+        labels = ["country\tvenue\trawTitle\tfilm\tverdict\tnote\n", "pl\t*\tKF Ambasada: Diabły\ttmdb:1000\twrong\t\n"]
+        code, md = self.run_diff(base, head, labels=labels)
+        self.assertEqual(1, code)
+        self.assertIn("| ✓ | changed | Kino Kosmos | KF Ambasada: Diabły |", md)
+        self.assertIn("1 new (the code's: fail until judged)", md)
+        self.assertIn("| ❌ | Kino Kosmos | KF Ambasada: Diabły | tmdb:31767 Diabły (1971) | tmdb:1000 | fragment:", md)
+
+    def test_a_take_the_head_flags_and_the_base_did_not_is_new(self):
+        # a signal change: the same film, flagged at head only -- the code's finding, not the recording's
+        base = [row("Kino Kosmos", "KF Ambasada: Diabły", 31767)]
+        head = [self.suspect("Kino Kosmos", "KF Ambasada: Diabły", 31767, [self.DIABLY])]
+        code, md = self.run_diff(base, head)
+        self.assertEqual(1, code)
+        self.assertIn("1 new", md)
+
+    def test_a_suspect_the_head_no_longer_takes_is_a_cure_counted_never_failed(self):
+        base = [self.suspect("Kino Kosmos", "KF Ambasada: Diabły", 31767, [self.DIABLY])]
+        head = [row("Kino Kosmos", "KF Ambasada: Diabły", None)]
+        labels = ["country\tvenue\trawTitle\tfilm\tverdict\tnote\n", "pl\t*\tKF Ambasada: Diabły\ttmdb:31767\twrong\t\n"]
+        code, md = self.run_diff(base, head, labels=labels)
+        self.assertEqual(0, code)  # judged wrong: neither side is an unjudged suspect, and the loss is accepted
+        self.assertIn("0 new", md)
+        code, md = self.run_diff(base, [row("Kino Kosmos", "KF Ambasada: Diabły", 31767)])
+        self.assertEqual(0, code)
+        self.assertIn("0 new (the code's: fail until judged), 0 standing at base and head (reported, never failed), 1 cured", md)
+
+    def test_a_judged_baselined_or_accepted_suspect_is_no_finding(self):
+        base = [row("Kino Kosmos", "KF Ambasada: Diabły", 1000)]
+        head = [self.suspect("Kino Kosmos", "KF Ambasada:  Diabły", 31767, [self.DIABLY])]
+        head[0]["key"] = base[0]["key"]
+        right = ["country\tvenue\trawTitle\tfilm\tverdict\tnote\n", "pl\tKino Kosmos\tKF Ambasada: Diabły\ttmdb:31767\tright\t\n"]
+        self.assertEqual(0, self.run_diff(base, head, labels=right)[0])
+        baselined = ["pl\tKF Ambasada: Diabły\ttmdb:31767\tDiabły (1971)\tfragment\n"]
+        self.assertEqual(1, self.run_diff(base, head, baseline=baselined)[0])  # baselined, but the move is still unaccepted
+        self.assertEqual(0, self.run_diff(base, head, baseline=baselined,
+                                          accepted=["pl\t*\tKF Ambasada: Diabły\ttmdb:1000\ttmdb:31767\tjudged\n"])[0])
+        code, md = self.run_diff(base, head, accepted=["pl\t*\tKF Ambasada: Diabły\ttmdb:1000\ttmdb:31767\tjudged\n"])
+        self.assertEqual(0, code)
+        self.assertIn("0 new (the code's: fail until judged), 1 standing", md)
+
+    def test_the_final_takes_judge_no_suspects(self):
+        base = self.ratchet("b.tsv", ["RIGHT\tpl\tRialto\tDiuna\ttmdb:7\tDiuna\tOwnMatch\t\t\t\n"])
+        summary = os.path.join(self.dir, "f.md")
+        self.assertEqual(0, d.main(["pl", base, base, "--final", "--summary", summary]))
+        with open(summary, encoding="utf-8") as f:
+            self.assertNotIn("Suspect takes", f.read())
 
 
 if __name__ == "__main__":

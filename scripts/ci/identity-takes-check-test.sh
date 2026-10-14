@@ -169,4 +169,53 @@ check "...and its final takes" "$(grep -c 'base final takes reused' "$work/log")
 check "...compiling and resolving nothing for the base" "$(base_calls)" 0
 check "...and the check still passes" "$code" 0
 
+# THE CORPUS SHAPE. c8 brings the specs that write their findings, c9 edits only them (an allowlist): no take can move,
+# so nothing resolves -- but the corpus-shape specs run at the head and the base over the one recording, and only a
+# finding the head made fails. The stub sbt writes the findings $SHAPE_HEAD / $SHAPE_BASE name (the base's checkout is
+# the worktree beside the head).
+mkdir -p "$work/src/e2e/src/test/scala/services/movies"
+echo 'ConvergenceDiagnostics.write(s"corpus-shape-...")' > "$work/src/e2e/src/test/scala/services/movies/CorpusShapeSpec.scala"
+scratch_git "$work/src" add e2e && scratch_git "$work/src" commit -q -m c8
+echo '// allowlist edited' >> "$work/src/e2e/src/test/scala/services/movies/CorpusShapeSpec.scala"
+scratch_git "$work/src" add e2e && scratch_git "$work/src" commit -q -m c9
+scratch_git "$work/src" push -q "$work/origin.git" HEAD:refs/heads/main
+c8=$(scratch_git "$work/src" rev-parse HEAD~1) c9=$(scratch_git "$work/src" rev-parse HEAD)
+cp "$(dirname "$script")/corpus_shape_diff.py" "$work/job/scripts/ci/"
+mv "$work/bin/sbt" "$work/bin/sbt-takes"
+cat > "$work/bin/sbt" <<'SBT'
+#!/usr/bin/env bash
+case "$*" in
+  *corpusShapePoland*)
+    pwd -P >> "$SBT_CALLS"
+    mkdir -p target/convergence-diagnostics
+    case "$(pwd -P)" in *identity-takes-base*) findings=$SHAPE_BASE ;; *) findings=$SHAPE_HEAD ;; esac
+    printf '%b' "$findings" > target/convergence-diagnostics/corpus-shape-recorded-pl-SearchQueryMarkers.txt
+    exit 1 ;; # a finding fails the specs themselves: their exit is never the verdict
+  *) exec "$(dirname "$0")/sbt-takes" "$@" ;;
+esac
+SBT
+chmod +x "$work/bin/sbt"
+arrietty='finding\tCineworld Barnsley\tArrietty (4K Restoration) Experience It In IMAX\tsearches it (4k)\n'
+preview='finding\tFilmRaum\tLa bola negra , Preview am Mi.\tsearches it (preview)\n'
+at "$c9"
+code=0; SHAPE_COMMAND=corpusShapePoland SHAPE_HEAD=$arrietty SHAPE_BASE=$arrietty TAKES_BASE=$c8 store_run "$c9" || code=$?
+check "an allowlist edit resolves no take" "$(grep -c 'no identity code changed' "$work/out/verdict.txt")" 1
+check "...runs the corpus-shape specs at the head and the base" "$(wc -l < "$work/sbt-calls" | tr -d ' ')" 2
+check "...and passes on a finding the recording brought, standing at both" "$code" 0
+check "...reporting it" "$(grep -c '0 new (the code.s: fail), 1 standing' "$work/out/verdict.txt")" 1
+code=0; SHAPE_COMMAND=corpusShapePoland SHAPE_HEAD="$arrietty$preview" SHAPE_BASE=$arrietty TAKES_BASE=$c8 store_run "$c9" || code=$?
+check "a finding only the head has fails the check" "$code" 1
+check "...naming it" "$(grep -c 'FAIL SearchQueryMarkers finding: FilmRaum' "$work/out/verdict.txt")" 1
+# c8's own check: its base c6 predates the findings files, and it stores the head's findings for c9's run to reuse.
+at "$c8"; code=0; SHAPE_COMMAND=corpusShapePoland SHAPE_HEAD=$arrietty SHAPE_BASE=$preview TAKES_BASE=$c6 store_run "$c8" || code=$?
+check "a base from before the specs wrote findings: the head's are reported, not judged" \
+  "$(grep -c 'the base predates the corpus-shape findings' "$work/out/verdict.txt")" 1
+check "...and pass" "$code" 0
+at "$c9"; code=0; SHAPE_COMMAND=corpusShapePoland SHAPE_HEAD="$arrietty$preview" SHAPE_BASE=$arrietty TAKES_BASE=$c8 store_run "$c9" || code=$?
+check "a base whose findings its own run stored is reused, not run" "$(grep -c identity-takes-base "$work/sbt-calls")" 0
+check "...and the head's new finding still fails" "$code" 1
+code=0; (cd "$work/job" && PATH="$work/bin:$PATH" GITHUB_REPOSITORY=o/r GITHUB_SHA=$c9 RUNNER_TEMP=$work SBT_CALLS="$work/sbt-calls" \
+  SHAPE_COMMAND=corpusShapeNowhere TAKES_BASE=$c8 "$script" pl "$work/out" > "$work/log" 2>&1) || code=$?
+check "specs that wrote no findings are no verdict, never a pass" "$code" 2
+
 [ "$fails" = 0 ] || { echo "$fails failure(s)"; exit 1; }

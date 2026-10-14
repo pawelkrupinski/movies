@@ -5,7 +5,7 @@ import tools.SpecClock.given
 import models.Country
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import tools.{FixtureTestWiring, SuiteConfiguration}
+import tools.{ConvergenceDiagnostics, FixtureTestWiring, SuiteConfiguration}
 
 /** An allowlisted listing: the venue (its `displayName`, the wire key) and the title it published. */
 final case class AllowedListing private (venue: String, listing: String)
@@ -69,7 +69,27 @@ abstract class CorpusShapeSpec extends AnyFlatSpec with Matchers with SuiteConfi
     val found: Seq[(AllowedListing, String)] = corpus.listings.flatMap { listing =>
       findings(corpus, listing).map(AllowedListing(listing.cinema.displayName, listing.raw) -> _)
     }.distinct
+    /** The findings no allowlist entry explains. */
+    val unexplained: Seq[(AllowedListing, String)] =
+      found.filter { case (at, _) => entryFor(at).isEmpty }.sortBy { case (at, finding) => (at.venue, at.listing, finding) }
+    private val explained       = found.flatMap { case (at, _) => entryFor(at) }.toSet
+    private val carriedAnywhere = carried ++ carried.map(at => AllowedListing.anywhere(at.listing))
+    /** Allowlisted, carried, re-recorded past their fix: reported, never failed. */
+    val cured: Set[AllowedListing] = ((allowlist.keySet & carriedAnywhere) -- explained) & awaitingReRecord
+    /** Allowlisted, carried, no longer breaking the rule: the entry is to drop. */
+    val stale: Seq[AllowedListing] =
+      AllowedListing.stale(allowlist.keySet, carriedAnywhere, explained, awaitingReRecord).toSeq.sortBy(_.toString)
+
+    // Both lists as the leg's diagnostics, one `finding|stale <venue> <listing> <what>` line each, tab-separated: what the
+    // identity takes check diffs base against head (scripts/ci/corpus_shape_diff.py), so a hermetic leg fails only on a
+    // finding the CODE made, and what the Identity findings report reads off a recording.
+    ConvergenceDiagnostics.write(s"corpus-shape-${corpus.label.replace(':', '-').replace(' ', '-')}-$specName",
+      unexplained.map { case (at, finding) => s"finding\t${at.venue}\t${at.listing}\t$finding" } ++
+        stale.map(at => s"stale\t${at.venue}\t${at.listing}\tallowlisted but no longer breaking the rule"))
   }
+
+  /** The spec's name in its findings' file: `SearchQueryMarkers`, `CinemaSlotInvariants`. */
+  private def specName: String = getClass.getSimpleName.stripSuffix("Spec")
 
   /** The allowlist entry `at` falls under, if any — its own venue's, or one for any venue. */
   private def entryFor(at: AllowedListing): Option[AllowedListing] =
@@ -79,19 +99,14 @@ abstract class CorpusShapeSpec extends AnyFlatSpec with Matchers with SuiteConfi
     s"the $label corpus" should rule in {
       val checked = corpus()
       checked.size should be > 100
-      val unexplained = checked.found.collect {
-        case (at, finding) if entryFor(at).isEmpty => s"${at.venue}: '${at.listing}' $finding"
-      }.distinct.sorted
+      val unexplained = checked.unexplained.map { case (at, finding) => s"${at.venue}: '${at.listing}' $finding" }
       withClue(s"${checked.name}: $remedy\n${unexplained.mkString("\n")}\n")(unexplained shouldBe empty)
     }
     it should "keep every allowlist entry it carries still breaking the rule (the backlog only shrinks)" in {
       val checked = corpus()
-      val carried = checked.carried ++ checked.carried.map(at => AllowedListing.anywhere(at.listing))
-      val passing = (allowlist.keySet & carried) -- checked.found.flatMap(f => entryFor(f._1))
-      val cured   = passing & awaitingReRecord
-      if (cured.nonEmpty) info(s"${checked.name}: re-recorded past their fix (drop once every corpus is): ${cured.toSeq.map(_.toString).sorted.mkString(", ")}")
-      val stale   = AllowedListing.stale(allowlist.keySet, carried, checked.found.flatMap(f => entryFor(f._1)).toSet, awaitingReRecord)
-      withClue("Allowlisted but no longer breaking the rule — drop the entry: ")(stale.toSeq.map(_.toString).sorted shouldBe empty)
+      if (checked.cured.nonEmpty)
+        info(s"${checked.name}: re-recorded past their fix (drop once every corpus is): ${checked.cured.toSeq.map(_.toString).sorted.mkString(", ")}")
+      withClue("Allowlisted but no longer breaking the rule — drop the entry: ")(checked.stale.map(_.toString) shouldBe empty)
     }
   }
 

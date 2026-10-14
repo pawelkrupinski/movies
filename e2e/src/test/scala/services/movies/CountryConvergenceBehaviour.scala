@@ -1370,9 +1370,16 @@ abstract class CountryConvergenceBehaviour(
    * a title covering a fragment of the billing, a film far older than its screening, a runtime or instalment the listing
    * contradicts, a feed's own TMDB id against it, a fill rule alone) is judged in `labels.tsv` or stands in the baseline
    * of the suspects the ratchet was armed over (which only shrinks); and no take is one a label calls wrong. Every
-   * suspect, with its reasons, goes to the leg's diagnostics; the unjudged ones to the run's summary page.
+   * suspect, with its reasons, goes to the leg's diagnostics; the unjudged ones to the run's summary page and to
+   * `<corpusKey>-suspect-unjudged.txt`.
+   *
+   * REPORTED, NEVER FAILED: whole-corpus, this judges the recording as much as the code, and a suspect a new recording
+   * brought turned every push red (10-13/14). What the CODE made is judged by the identity takes check instead
+   * (`scripts/ci/identity_takes_diff.py`: the same recording resolved at the base and the head, a suspect new or moved at
+   * the head fails), and the newest recording's unjudged ones are the Identity findings report's
+   * (`.github/workflows/identity-findings-report.yml`: one issue per country, red past three days untriaged).
    */
-  s"the ${country.displayName} identity takes" should "hold no suspect take labels.tsv has not judged, nor one it calls wrong" in {
+  s"the ${country.displayName} identity takes" should "report every suspect take labels.tsv has not judged, and every one it calls wrong" in {
     // the whole corpus's takes are what the labels and the baseline judge: a sample's slice resolves its clusters without
     // the neighbours that decide them, so its takes are no corpus's
     if (corpusKey.endsWith("-sample")) cancel(s"$corpusKey is a sample: the full leg judges the whole corpus's takes")
@@ -1401,12 +1408,17 @@ abstract class CountryConvergenceBehaviour(
     // the takes themselves, for tuning a signal on what this leg judged (`scripts.SuspectTakesMeasure --dumps`)
     tools.UnmatchedClusters.write(ConvergenceDiagnostics.Directory.resolve(s"$corpusKey-takes").resolve(s"${country.code}.json.gz"),
       tools.SuspectTakesAudit.capture(country, corpus, decided.decisions, model.listings))
-    val failing = verdict.fresh.map(_.render) ++ verdict.wrong.map(t => s"WRONG by labels.tsv: ${t.listing.venue}\t${t.listing.rawTitle}\t${t.film} ${t.record.title}")
-    if (failing.nonEmpty)
-      ConvergenceDiagnostics.summarise(name, s"${country.displayName}: suspect takes to judge into labels.tsv (all in $report)", failing)
-    withClue(failing.mkString(s"suspect takes no label judges (judge them into labels.tsv; every suspect in $report):\n", "\n", "\n")) {
-      failing shouldBe empty
-    }
+    val unjudged = verdict.fresh.map(_.render) ++ verdict.wrong.map(t => s"WRONG by labels.tsv: ${t.listing.venue}\t${t.listing.rawTitle}\t${t.film} ${t.record.title}")
+    // what the Identity findings report reads: `suspect|wrong <TAB> venues <TAB> rawTitle <TAB> film <TAB> title <TAB> reasons`
+    val unjudgedLines =
+      verdict.fresh.map(s => Seq("suspect", s.venues.mkString(", "), s.rawTitle, s.film, s.title, s.reasons.map(_.render).distinct.mkString("; "))) ++
+        verdict.wrong.map(t => Seq("wrong", t.listing.venue, t.listing.rawTitle, t.film,
+          s"${t.record.title} (${t.record.year.fold("?")(_.toString)})", tools.SuspectTakesAudit.WrongReason))
+    ConvergenceDiagnostics.write(s"$corpusKey-suspect-unjudged", unjudgedLines.map(_.map(tools.UnmatchedClusters.singleSpaced).mkString("\t")))
+    if (unjudged.nonEmpty)
+      ConvergenceDiagnostics.summarise(name, s"${country.displayName}: suspect takes to judge into labels.tsv -- reported, the " +
+        s"recording's as much as the code's (all in $report; the code's are the identity takes check's)", unjudged)
+    withClue("the settled projection took no listing, so there was nothing to judge: ")(corpus.takes should not be empty)
   }
 
   s"the ${country.displayName} corpus" should "strand no side rows and no drifted keys" in {

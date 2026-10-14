@@ -3,8 +3,15 @@
 #
 # NO ROW RUNS THE ~100-FILM SAMPLE (2026-10-14): it replays a slice of the corpus the suite replays in
 # full, so it only ever failed sooner, and once every row fit the lane's 10-minute target that cost more
-# than it saved. Each convergence row runs the sample's corpus-shape specs ahead of its suite instead;
-# the auto-bisect still replays the sample alias per commit (`sample-command`).
+# than it saved. The sample's corpus-shape specs run instead -- in a hermetic leg's `takes` row, judged
+# base against head; in a recording's convergence row, ahead of its suite, reported (`shape-command`).
+# The auto-bisect still replays the sample alias per commit (`sample-command`).
+#
+# DATA IS REPORTED, CODE IS JUDGED (2026-10-14). Whole-corpus findings -- a suspect take no label judges, a
+# screening marker left in a query -- are as much the recording's as the code's: armed as gates on 10-13,
+# a suspect or marker last night's recording brought turned every push red. The suite's suspect audit and a
+# recording's corpus-shape findings now only REPORT (the Identity findings report triages them, one issue a
+# country); what a commit's CODE made of them is the `takes` row's to fail, base against head.
 #
 # A HERMETIC convergence row first fetches, for at most ~90 s, what the previous leg's suite could not
 # answer from the pinned pair, publishes it under its own name, and lays it over its tree; only then
@@ -57,8 +64,10 @@ on:
                 description: The sbt alias running this country's full convergence leg.
                 required: true
                 type: string
-            # Run ahead of every convergence row's suite: the sample's corpus-shape specs, the one part of the
-            # sample the full suite does not cover.
+            # The sample's corpus-shape specs, the one part of the sample the full suite does not cover. A HERMETIC
+            # leg's `takes` row runs them at the base and the head over its recording and fails only on a finding the
+            # head made (identity-takes-check.sh); a RECORDING's convergence row runs them ahead of its suite and
+            # reports what they find -- the recording's, to triage from the Identity findings report -- never failing.
             shape-command:
                 description: The sbt alias running this country's corpus-shape specs (`corpusShape*`).
                 required: false
@@ -552,9 +561,30 @@ jobs:
                   echo "${PUBLISHED:-unpublished}" > "$RUNNER_TEMP/laid-fill"
 
             # NO SAMPLE RUNS IN A LEG ANY MORE (2026-10-14): every row's suite fits the lane's 10-minute target, so the
-            # ~100-film slice of the corpus the suite replays in full only cost a runner or minutes in front of it. Each
-            # convergence row runs the sample's corpus-shape specs ahead of its suite instead (`shape-command`). The
-            # SAMPLE ALIAS stays: the auto-bisect replays it per commit (`sample-command`).
+            # ~100-film slice of the corpus the suite replays in full only cost a runner or minutes in front of it. The
+            # sample's corpus-shape specs (`shape-command`) run in the `takes` row of a hermetic leg, base against head,
+            # and here, ahead of a RECORDING's suite. The SAMPLE ALIAS stays: the auto-bisect replays it per commit
+            # (`sample-command`).
+
+            # A RECORDING's corpus-shape findings, REPORTED: the newest recording's markers left in a query and slots
+            # read off the wrong node, written to the diagnostics (`corpus-shape-recorded-<cc>-*.txt`) the Identity
+            # findings report reads. Never failing, and never in front of the suite on its sbt line, where a finding
+            # stopped the suite before its boot (run 38625654132's UK and DE rows, on "Arrietty … Experience It In IMAX"
+            # and "Preview am Mi."). The specs fail on a finding by design; their findings files are the result.
+            - name: Report the recording's corpus-shape findings
+              if: inputs.mode == 'record' && matrix.phase == 'convergence' && inputs.shape-command != ''
+              shell: bash
+              env:
+                  JVM_OPTIONS:      ${{ inputs.jvm-options }}
+                  KINOWO_COUNTRY:   ${{ inputs.code }}
+                  KINOWO_COUNTRIES: ${{ inputs.code }}
+              run: |
+                  # As every sbt run of a leg: the runner's whole CPU beside it (cpu-sampler.sh).
+                  scripts/ci/cpu-sampler.sh 15 & sampler=$!; trap 'kill "$sampler"' EXIT
+                  read -ra jvm <<< "$JVM_OPTIONS"
+                  sbt -J-Xmx${{ inputs.heap }} "${jvm[@]}" "${{ inputs.shape-command }}" > corpus-shape.log 2>&1 || true
+                  ls target/convergence-diagnostics/corpus-shape-recorded-${{ inputs.code }}-*.txt \
+                    || { tail -50 corpus-shape.log; echo "::warning::the corpus-shape specs wrote no findings -- see the log above"; }
 
             # Bounded BELOW the job's ceiling, on purpose — the single most important line
             # in this file for a leg that runs long. Both numbers moved up together (from
@@ -597,7 +627,7 @@ jobs:
                       profile=("-J-XX:StartFlightRecording=filename=convergence.jfr,settings=profile,dumponexit=true")
                   fi
                   read -ra jvm <<< "$JVM_OPTIONS"
-                  sbt -J-Xmx${{ inputs.heap }} "${jvm[@]}" "${profile[@]}" -J-Djdk.http.auth.tunneling.disabledSchemes= ${{ matrix.phase == 'convergence' && inputs.shape-command || '' }} ${{ matrix.phase == 'convergence' && inputs.command || matrix.phase == 'next-day' && inputs.next-day-command || inputs.order-command }} 2>&1 | tee convergence.log || suite=$?
+                  sbt -J-Xmx${{ inputs.heap }} "${jvm[@]}" "${profile[@]}" -J-Djdk.http.auth.tunneling.disabledSchemes= ${{ matrix.phase == 'convergence' && inputs.command || matrix.phase == 'next-day' && inputs.next-day-command || inputs.order-command }} 2>&1 | tee convergence.log || suite=$?
                   # What the leg left in Mongo — the size a RAM-backed mongod would have to hold, and where its
                   # time went — on a red suite too, which is when it is read; then the suite's own verdict.
                   docker exec mongo du -sh /data/db || true
@@ -729,8 +759,11 @@ jobs:
             # resolved by the base commit and by the head -- the model's takes, and the FINAL takes (model and
             # agreement stage) over the checked-in capture -- and every listing the code moved to another film --
             # lost or changed, and accepted by neither labels.tsv nor identity-takes/accepted.tsv -- fails the row,
-            # listed in the step summary with both films and both reasons. Base vs head on one recording, so a new
-            # recording never fails it; only code does. Its commit status names the base the next run diffs from.
+            # listed in the step summary with both films and both reasons; so does an unjudged SUSPECT take the head
+            # took or flagged and the base did not, and a corpus-shape finding (`shape-command`, at both) only the head
+            # has. Base vs head on one recording, so a new recording never fails it; only code does -- what the
+            # recording brought stands at both and is listed, never failed. Its commit status names the base the next
+            # run diffs from.
             # Exit 2 (it could not run: no base, an unfetchable one, a resolve that wrote nothing) is no verdict, and never
             # a pass: it posts an `error` status and fails the row (run 38533191835 passed every leg on a base it could
             # not fetch).
@@ -738,8 +771,9 @@ jobs:
               id: takes
               if: ${{ !cancelled() && inputs.mode == 'hermetic' && matrix.phase == 'takes' }}
               shell: bash
-              # 25 for the two resolves, 20 for the two unmatched-cluster ratchet replays (the final takes)
-              timeout-minutes: 45
+              # 25 for the two resolves, 20 for the two unmatched-cluster ratchet replays (the final takes), 10 for the
+              # two corpus-shape runs (only when the checks, their allowlists or the identity code changed)
+              timeout-minutes: 55
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   HEAP: ${{ inputs.heap }}
@@ -747,6 +781,7 @@ jobs:
                   KINOWO_COUNTRIES: ${{ inputs.code }}
                   MONGODB_URI: mongodb://127.0.0.1:27017/?directConnection=true
                   TAKES_BASE: ${{ inputs.takes-base }}
+                  SHAPE_COMMAND: ${{ inputs.shape-command }}
                   # Where each head's resolve is stored for the run whose base it becomes (identity-takes-check.sh).
                   TAKES_STORE: ${{ env.FIXTURE_RELEASE_TAG }}
               run: |
