@@ -29,6 +29,15 @@
 # temporary worktree is used when an sbt check would share target/ with a live sbt in the
 # checkout (e.g. the DevPanel's `sbt web/run`): two compilers over one classes dir race.
 #
+# RED BUILDS GATE EVERY PUSH TO MAIN. Before any path check: when the newest COMPLETED run on main of a
+# gating workflow (Main, Identity model convergence, Record scrape fixtures; a cancelled run says nothing
+# and is passed over) is red, the push lands only as a fix for it — every pushed commit carries a
+# `Fixes-Red: <run id>` trailer naming one of the red runs. On 2026-10-13/14, 50 of 96 identity commits
+# landed while Identity model convergence was red: 3f11e2cc3's wrong switches hid behind a DE red for six
+# hours, and three gates and label batches each turned it red again. One `gh run list` a workflow, each
+# bounded; gh missing or unreachable is said out loud and does not block (it is no evidence of a red).
+# Bypass: PREPUSH_SKIP=redgate.
+#
 # BYPASS: `git push --no-verify` skips the whole hook. `PREPUSH_SKIP="ios sbt" git push` skips
 # the named checks. A tool that is not installed (actionlint, shellcheck, Docker, Xcode) is
 # skipped with a warning, never silently.
@@ -133,6 +142,56 @@ case "${1:-}" in
     --compile-plan) compile_plan; exit 0 ;;
 esac
 
+log()  { printf '\033[36m▸ pre-push\033[0m %s\n' "$*"; }
+warn() { printf '\033[33m! pre-push\033[0m %s\n' "$*" >&2; }
+skipped() { case " ${PREPUSH_SKIP:-} " in *" $1 "*) return 0 ;; *) return 1 ;; esac; }
+
+# ── Red builds gate the push ────────────────────────────────────────────────────────────────────
+GatingWorkflows=("Main" "Identity model convergence" "Record scrape fixtures")
+GhSeconds="${PREPUSH_GH_SECONDS:-15}"
+
+# `<conclusion> <run id> <url>` of a workflow's newest decided run on main (success or a failure of any kind; cancelled,
+# skipped and unfinished runs say nothing), empty when it has none; non-zero when gh cannot answer in time.
+newest_verdict() { # <workflow name>
+    perl -e 'alarm shift; exec @ARGV or exit 127' "$GhSeconds" \
+        gh run list --workflow "$1" --branch main --limit 30 --json databaseId,status,conclusion,url \
+        --jq '[.[] | select(.status == "completed" and (.conclusion | IN("cancelled", "skipped", "neutral", "") | not))][0] // empty
+              | "\(.conclusion) \(.databaseId) \(.url)"'
+}
+
+# Refuses a push to main while a gating workflow's newest verdict is red, unless every pushed commit names one of the
+# red runs in a `Fixes-Red: <run id>` trailer. <range>... the pushed commits.
+check_redgate() {
+    command -v gh >/dev/null || { warn "gh not installed: the gating workflows' verdicts are unread — red-build gate SKIPPED"; return 0; }
+    local workflow verdict conclusion id url reds="" commit fixes ok bad=0 r
+    for workflow in "${GatingWorkflows[@]}"; do
+        verdict="$(newest_verdict "$workflow" 2>&1)" \
+            || { warn "could not read $workflow's verdict in ${GhSeconds}s (${verdict%%$'\n'*}) — red-build gate SKIPPED for it"; continue; }
+        [ -n "$verdict" ] || continue
+        read -r conclusion id url <<< "$verdict"
+        if [ "$conclusion" != success ]; then
+            reds="$reds $id"
+            warn "$workflow is RED on main: run $id ($conclusion) $url"
+        fi
+    done
+    [ -z "$reds" ] && return 0
+    for r in "$@"; do
+        while IFS=$'\t' read -r commit fixes; do
+            ok=0
+            for id in $(printf '%s' "$fixes" | tr ',' ' '); do
+                case " $reds " in *" $id "*) ok=1 ;; esac
+            done
+            [ "$ok" = 1 ] && continue
+            warn "${commit:0:9} carries no Fixes-Red: trailer naming a red run (red:$reds)"
+            bad=1
+        done < <(git log --format='%H%x09%(trailers:key=Fixes-Red,valueonly,separator=%x2C)' "$r")
+    done
+    [ "$bad" = 0 ] && { log "every pushed commit is declared a fix for a red run"; return 0; }
+    warn "main is red: only a fix for it lands. Add 'Fixes-Red: <run id>' to each commit's message (git commit --amend"
+    warn "on unpushed commits), or bypass with PREPUSH_SKIP=redgate."
+    return 1
+}
+
 # ── What is being pushed ────────────────────────────────────────────────────────────────────────
 # git feeds "<local ref> <local sha> <remote ref> <remote sha>" per pushed ref. The base for a new
 # remote branch (or a remote sha this clone has never fetched) is its merge-base with origin/main.
@@ -149,16 +208,25 @@ base_for() {
 }
 
 ranges=()
+to_main=0
 if [ "${1:-}" = "--range" ]; then
     ranges+=("${2:?--range A..B}")
+    to_main=1   # a dry run is judged as a push to main
 else
-    while read -r _local_ref local_sha _remote_ref remote_sha; do
+    while read -r _local_ref local_sha remote_ref remote_sha; do
         [ "$local_sha" = "$Zero" ] && continue   # deleting a remote ref: nothing to check
         base="$(base_for "$local_sha" "$remote_sha")"
         [ -n "$base" ] && ranges+=("$base..$local_sha")
+        [ "$remote_ref" = refs/heads/main ] && to_main=1
     done
 fi
 [ "${#ranges[@]}" -eq 0 ] && exit 0
+
+if [ "$to_main" = 1 ]; then
+    if skipped redgate; then warn "redgate SKIPPED (PREPUSH_SKIP)"
+    else check_redgate "${ranges[@]}" || exit 1
+    fi
+fi
 
 # THREE dots: what the pushed commits changed since they left the base, not how the two tips
 # differ. A fetch by any agent moves origin/main under every worktree of this clone, and a two-dot
@@ -180,9 +248,6 @@ checks="$(printf '%s\n' "$changed" | plan)"
 [ -z "$checks" ] && exit 0
 
 # ── Running them ────────────────────────────────────────────────────────────────────────────────
-log()  { printf '\033[36m▸ pre-push\033[0m %s\n' "$*"; }
-warn() { printf '\033[33m! pre-push\033[0m %s\n' "$*" >&2; }
-skipped() { case " ${PREPUSH_SKIP:-} " in *" $1 "*) return 0 ;; *) return 1 ;; esac; }
 changed_matching() { printf '%s\n' "$changed" | grep -E "$1" || true; }
 
 check_eslint() {

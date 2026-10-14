@@ -44,7 +44,18 @@ workflows, shellcheck on scripts (only warnings the push adds), and
 `scripts/ios-compile-check.sh` on `ios/**` — the SwiftUI app target via
 `xcodebuild` and the SwiftPM package on Linux via Docker, the two
 compiles a Mac's `swift test` misses. It complements the layers above;
-it replaces none of them. Bypass: `PREPUSH_SKIP="ios sbt" git push`
+it replaces none of them.
+
+**Red builds gate every push to main.** Before its path checks the hook
+reads the newest COMPLETED run on main of Main, Identity model
+convergence and Record scrape fixtures (a cancelled run says nothing);
+while any is red, a push lands only as a fix for it: every pushed commit
+carries a `Fixes-Red: <run id>` trailer naming one of the red runs.
+2026-10-13/14 is why: 50 of 96 identity commits landed on a red
+convergence suite, 3f11e2cc3's wrong switches hid behind it for six
+hours, and three gates and label batches each turned it red again. One
+bounded `gh run list` a workflow; gh missing or unreachable is warned
+and does not block. Bypass: `PREPUSH_SKIP=redgate` — say so. Bypass: `PREPUSH_SKIP="ios sbt" git push`
 skips named checks, `git push --no-verify` skips all of them — say so
 when you do.
 

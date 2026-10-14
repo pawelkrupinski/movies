@@ -9,6 +9,28 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 # "Spec base" history onto a pushed branch). See scratch-git.sh.
 . "$REPO_ROOT/scripts/scratch-git.sh"
 
+# Every case below runs the hook as a push to main, which reads the gating workflows' verdicts first: a stub `gh`
+# answers `gh run list --workflow W` from $GH_MAIN / $GH_IMC / $GH_REC (JSON, default none) through the hook's own
+# --jq filter, so no case reads the real repository's runs.
+ghstub="$(mktemp -d)"
+cat > "$ghstub/gh" <<'STUB'
+#!/usr/bin/env bash
+[ -n "${GH_FAILS:-}" ] && { echo "HTTP 502: Bad Gateway" >&2; exit 1; }
+[ -n "${GH_HANGS:-}" ] && exec sleep 30
+workflow="" jqexpr=""
+while [ $# -gt 0 ]; do
+  case "$1" in --workflow) workflow="$2"; shift ;; --jq) jqexpr="$2"; shift ;; esac; shift
+done
+case "$workflow" in
+  Main) runs="${GH_MAIN:-[]}" ;; "Identity model convergence") runs="${GH_IMC:-[]}" ;; "Record scrape fixtures") runs="${GH_REC:-[]}" ;;
+  *) echo "unknown workflow $workflow" >&2; exit 1 ;;
+esac
+printf '%s' "$runs" | jq -r "$jqexpr"
+STUB
+chmod +x "$ghstub/gh"
+export PATH="$ghstub:$PATH"
+trap 'rm -rf "$ghstub"' EXIT
+
 printf '\033[36m▸\033[0m pre-push --plan\n'
 
 # plan <path>... -> the selected checks, space-separated
@@ -63,7 +85,7 @@ check "a dashboard alone compiles nothing extra" "" \
 printf '\033[36m▸\033[0m pre-push over a scratch repository\n'
 if command -v shellcheck >/dev/null; then
   scratch="$(mktemp -d)"
-  trap 'rm -rf "$scratch"' EXIT
+  trap 'rm -rf "$scratch" "$ghstub"' EXIT
   repo="$scratch/repo"
   mkdir -p "$repo/scripts/hooks"
   scratch_repo "$repo"
@@ -162,5 +184,49 @@ if command -v shellcheck >/dev/null; then
 else
   printf '  (shellcheck not installed — scratch-repository cases skipped)\n'
 fi
+
+# ── RED BUILDS GATE A PUSH TO MAIN: only a commit declared a fix for a red run lands ───────────────
+printf '\033[36m▸\033[0m pre-push: red builds gate a push to main\n'
+gate="$(mktemp -d)"
+grepo="$gate/repo"; mkdir -p "$grepo"
+scratch_repo "$grepo"
+echo a > "$grepo/README"; scratch_git "$grepo" add README; scratch_git "$grepo" commit -qm base
+gbase="$(scratch_git "$grepo" rev-parse HEAD)"
+echo b >> "$grepo/README"; scratch_git "$grepo" commit -qam "docs only" -m "Fixes-Red: 38520439037"
+fixing="$(scratch_git "$grepo" rev-parse HEAD)"
+echo c >> "$grepo/README"; scratch_git "$grepo" commit -qam "an undeclared change"
+plain="$(scratch_git "$grepo" rev-parse HEAD)"
+run_json() { printf '{"databaseId":%s,"status":"%s","conclusion":"%s","url":"https://x/%s"}' "$1" "$2" "$3" "$1"; }
+red="$(run_json 38520439037 completed failure 38520439037)"
+green="$(run_json 38487614044 completed success 38487614044)"
+cancelled="$(run_json 38470049143 completed cancelled 38470049143)"
+running="$(run_json 38529260149 in_progress "" 38529260149)"
+push() { # <range> -> exit code; stderr in $gate/err
+  (cd "$grepo" && bash "$REPO_ROOT/scripts/hooks/pre-push" --range "$1" >/dev/null 2>"$gate/err"); echo $?; }
+check "every workflow green: the push lands" "0" "$(GH_MAIN="[$green]" GH_IMC="[$green]" GH_REC="[$green]" push "$gbase..$plain")"
+check "a red Identity model convergence refuses an undeclared commit" "1" "$(GH_IMC="[$red,$green]" push "$gbase..$plain")"
+check "...naming the red run" "1" "$(grep -c 'Identity model convergence is RED on main: run 38520439037' "$gate/err")"
+check "...and the commit without the trailer" "1" "$(grep -c "${plain:0:9} carries no Fixes-Red" "$gate/err")"
+check "a red Main refuses it too" "1" "$(GH_MAIN="[$red]" push "$gbase..$plain")"
+check "a red nightly recording refuses it too" "1" "$(GH_REC="[$red]" push "$gbase..$plain")"
+check "a commit naming the red run in Fixes-Red: lands" "0" "$(GH_IMC="[$red,$green]" push "$gbase..$fixing")"
+check "every pushed commit must name it, not just one" "1" "$(GH_IMC="[$red,$green]" push "$gbase..$plain")"
+check "a Fixes-Red: naming another run is no declaration" "1" "$(GH_IMC="[$(run_json 1 completed failure 1)]" push "$gbase..$fixing")"
+check "a cancelled or running newest run says nothing: the decided one before it counts" "1" \
+  "$(GH_IMC="[$running,$cancelled,$red,$green]" push "$gbase..$plain")"
+check "...and a green one before them lets it land" "0" "$(GH_IMC="[$cancelled,$green,$red]" push "$gbase..$plain")"
+check "PREPUSH_SKIP=redgate bypasses it, said out loud" "0 1" \
+  "$(GH_IMC="[$red]" PREPUSH_SKIP=redgate push "$gbase..$plain") $(grep -c 'redgate SKIPPED' "$gate/err")"
+check "gh failing is said for each workflow, and does not block" "0 3" "$(GH_FAILS=1 push "$gbase..$plain") $(grep -c 'HTTP 502' "$gate/err")"
+start=$SECONDS
+code="$(GH_HANGS=1 PREPUSH_GH_SECONDS=1 push "$gbase..$plain")"
+check "gh hanging is cut off within its bound, and does not block" "0 yes" "$code $([ $((SECONDS - start)) -lt 10 ] && echo yes || echo no)"
+out="$(cd "$grepo" && printf 'refs/heads/x %s refs/heads/x %s\n' "$plain" "$gbase" \
+        | GH_IMC="[$red]" bash "$REPO_ROOT/scripts/hooks/pre-push" origin url 2>&1)"; code=$?
+check "a push to another branch than main is not gated" "0 0" "$code $(printf '%s\n' "$out" | grep -c 'RED on main')"
+out="$(cd "$grepo" && printf 'refs/heads/main %s refs/heads/main %s\n' "$plain" "$gbase" \
+        | GH_IMC="[$red]" bash "$REPO_ROOT/scripts/hooks/pre-push" origin url 2>&1)"; code=$?
+check "a real push to main reads git's stdin and is gated" "1" "$code"
+rm -rf "$gate"
 
 spec_summary
