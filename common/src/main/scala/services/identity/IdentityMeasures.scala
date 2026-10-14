@@ -1590,10 +1590,13 @@ object IdentityMeasures {
     f.titles.flatMap(t => PieceBreak.split(withoutYears(t)).toSeq).map(key).filter(_.nonEmpty).flatMap(StageWorks.resolver.named).toSet
   /** A stage broadcast a venue bills with no season but with its year — DE "Royal Ballet & Opera im Kino: Manon"
    *  [2026] — searched as its work's name and that year ("Manon 2026"): the house's season record carries both, while
-   *  the work alone ranks it below every namesake film. */
+   *  the work alone ranks it below every namesake film. A relay billing its house, a credit or a running time beside it,
+   *  is searched with the season its screenings fall in too: UK Picture House Uckfield's "Tosca (ROH)" {Oliver Mears}
+   *  [205′] and Flicks' "Royal Opera House: Carmen" [220′] ×13 screen the RBO 2026/27 relays, whose records the work's
+   *  name alone never reaches — which season's record it is stays the season rules' to tell ([[Listing.screenedSeason]]). */
   private def stageWorkQueries(l: Listing): Seq[String] =
     if (l.seasonYear.isDefined) Nil
-    else l.year.orElse(l.broadcastSeason).toSeq.flatMap(year =>
+    else l.year.orElse(l.broadcastSeason).orElse(l.screenedSeason.filter(_ => l.billsAStageHouse)).toSeq.flatMap(year =>
       stageWorksBilled(l.rawTitle.toSeq :+ l.title, seasonNamed = false).toSeq.sorted.flatMap(StageWorks.resolver.searchNames).map(name => s"$name $year"))
 
 
