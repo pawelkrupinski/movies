@@ -1,0 +1,9 @@
+# Line-per-entry judgement files merge by UNION: two branches that each add a label (or a known-wrong take, a suspect
+# baseline line, an accepted move, an expected match) rebase with both lines kept, never a hand-merge. A duplicate or
+# contradicting pair the union leaves is refused by scripts/ci/identity_judgements_lint.py (pre-push `judgements`, CI).
+# scripts/judgements-merge-test.sh. Keep these until the move to one identity-judgements.tsv removes the old paths.
+test/resources/fixtures/identity-unmatched/labels.tsv merge=union
+test/resources/fixtures/identity-unmatched/known-wrong.tsv merge=union
+test/resources/fixtures/identity-unmatched/expected-matches.tsv merge=union
+test/resources/fixtures/identity-suspects/baseline.tsv merge=union
+test/resources/fixtures/identity-takes/accepted.tsv merge=union

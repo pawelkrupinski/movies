@@ -69,6 +69,14 @@ class JudgementsLintTest(unittest.TestCase):
         found, _ = self.messages(extra={lint.LABELS: HEAD + "pl\tHelios\tLalka\ttmdb:1\tright\t\npl\tHelios\tLalka\ttmdb:1\twrong\t\n"})
         self.assertEqual(["labels.tsv judges tmdb:1 both right and wrong for pl Helios | Lalka"], found)
 
+    def test_a_judgement_two_branches_both_added_fails_as_a_duplicate(self):
+        # the judgement files merge by union (.gitattributes): two branches adding the same label rebase into two lines
+        labels = HEAD + "pl\tHelios\tLalka\ttmdb:1\tright\tone\npl\tHelios\tLalka\ttmdb:1\tright\ttwo\n"
+        known = self.files[lint.KNOWN_WRONG] + "de\tTriple\ttmdb:2\tT\tr\nde\tTriple\ttmdb:2\tT\tr2\n"
+        found, _ = self.messages(extra={lint.LABELS: labels, lint.KNOWN_WRONG: known})
+        self.assertEqual(["known-wrong.tsv lists de | Triple | tmdb:2 2 times: keep one line",
+                          "labels.tsv lists pl | Helios | Lalka | tmdb:1 | right 2 times: keep one line"], sorted(found))
+
     def test_a_venues_own_right_beside_every_venues_wrong_is_no_conflict(self):
         # PL "Lalka": Kino Iluzjon bills Has' 1968 film, every other venue the 2026 one -- read as the takes check reads it
         labels = HEAD + "pl\t*\tLalka\ttmdb:81315\twrong\t\npl\tKino Iluzjon\tLalka\ttmdb:81315\tright\t\n"

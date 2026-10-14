@@ -8,6 +8,8 @@ landed and turned a gate red after the push, where nothing ran them before it:
              lost"). 19890b7a5 accepted four Romeo & Juliet takes it called right, lost to a guard; the right fix is the
              guard, never the acceptance.
   conflict   one listing (country, venue, raw title, film) judged both right and wrong.
+  duplicate  one entry listed twice in a judgement file: the files merge by union (.gitattributes), so two branches
+             adding the same judgement rebase into two lines -- keep one.
   scattered  a billing judged WRONG one venue at a time at five venues or more, with no line for every venue ("*"):
              911d8f486 labelled 81 of 82 Odeons' "We're Going on a Bear Hunt+Tiger Who Came to..." and 7 of 8 DE
              "Triple: Der Herr der Ringe" venues; the one left out (Peterborough, Schwerin) failed the takes check when
@@ -121,6 +123,20 @@ def conflict_findings(label_rows):
         verdicts[(c[0], c[1], single_spaced(c[2]), c[3])].add(c[4])
     return [(("conflict",) + k, f"labels.tsv judges {k[3]} both right and wrong for {k[0]} {k[1]} | {k[2]}")
             for k, v in sorted(verdicts.items()) if len(v) > 1]
+
+
+# Each judgement file's entry key: its leading columns (the rest is a title, a note). A label's includes its verdict:
+# the same listing judged both ways is a conflict, not a duplicate.
+ENTRY_KEYS = {LABELS: 5, KNOWN_WRONG: 3, BASELINE: 3, ACCEPTED: 4, EXPECTED_MATCHES: 3}
+
+
+def duplicate_findings(rel, file_rows):
+    counts = defaultdict(int)
+    for c in file_rows:
+        counts[tuple(single_spaced(x) for x in c[:ENTRY_KEYS[rel]])] += 1
+    name = os.path.basename(rel)
+    return [(("duplicate", name) + k, f"{name} lists {' | '.join(k)} {n} times: keep one line")
+            for k, n in sorted(counts.items()) if n > 1]
 
 
 def scattered_findings(label_rows):
@@ -239,6 +255,7 @@ def lint(root, served_paths=(), labels_before=None, replay=None):
     labels = labels_by_country(label_rows)
     listed = {(c[0], single_spaced(c[1]), c[2]) for c in rows(p(BASELINE), 3) + rows(p(KNOWN_WRONG), 3)}
     found = (accepted_findings(rows(p(ACCEPTED), 5), labels) + conflict_findings(label_rows) + scattered_findings(label_rows)
+             + [f for rel in ENTRY_KEYS for f in duplicate_findings(rel, rows(p(rel), ENTRY_KEYS[rel]))]
              + expected_match_findings(rows(p(EXPECTED_MATCHES), 4), labels) + hard_cluster_findings(root, label_rows)
              + served(served_findings(served_paths, labels, listed,
                                       labels_by_country(rows(labels_before, 5)) if labels_before else None),
