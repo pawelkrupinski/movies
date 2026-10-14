@@ -10836,11 +10836,6 @@ services.identity.Scored
 services.identity.Scored$
 services.identity.Scored$$anon$1
 services.identity.Scored$$anon$2
-services.identity.ShadowCluster
-services.identity.ShadowCluster$
-services.identity.ShadowDiff$
-services.identity.ShadowFamily
-services.identity.ShadowFamily$
 services.identity.ShadowLiveFetch
 services.identity.ShadowLiveFetch$
 services.identity.ShadowLookupBudget

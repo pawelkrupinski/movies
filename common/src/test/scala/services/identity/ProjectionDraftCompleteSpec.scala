@@ -27,7 +27,7 @@ class ProjectionDraftCompleteSpec extends AnyFlatSpec with Matchers {
       showtimes = Seq(Showtime(LocalDateTime.of(2026, 10, 6, hour, 0), None))))
     val film    = ProjectedFilm(FilmId("diuna|2021"), 1L, "Diuna", Some(2021), "diuna|2021",
       MovieRecord(tmdbId = Some(438631), data = cinemas.map(c => at(c) -> slot(18)).toMap + (Tmdb -> SourceData(title = Some("Dune"), cast = cast))), Nil)
-    val draft   = ProjectionDraft(Nil, Nil, Nil, FilmIdCounters.empty, Nil, Regroupings(0, 0, 0, 0, 0), Map.empty,
+    val draft   = ProjectionDraft(Nil, Nil, Nil, FilmIdCounters.empty, Nil, Regroupings(0, 0, 0, 0, 0),
       venues = Map(1L -> cinemas.map(_ -> Nil).toMap), build = (cinema, _, _) => Seq(at(cinema) -> slot(20)))
 
     val Seq(completed) = draft.complete(Seq(film), _ => None)

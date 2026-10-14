@@ -62,7 +62,7 @@ class IdentityCutoverEndToEndSpec extends AnyFlatSpec with Matchers {
     // a yearless film's key): the next projection takes that in without regrouping anything...
     val settled = w.identityProjection.tick(whole = true)
     settled.plan.get.regroupings.isEmpty shouldBe true
-    settled.plan.get.canary.getOrElse(services.identity.ShadowRelation.Identical, 0) shouldBe tick.plan.get.films.size
+    settled.canary.getOrElse(services.identity.ShadowRelation.Identical, 0) shouldBe tick.plan.get.films.size
     settled.plan.get.films.map(_.id).toSet shouldBe tick.plan.get.films.map(_.id).toSet
     // ...and the one after it, over nothing new, writes nothing at all.
     val again = w.identityProjection.tick(whole = true)

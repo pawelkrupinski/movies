@@ -16,12 +16,12 @@ import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
 /** What one projection did: the resolution and the plan (none when it was refused before
- *  them), how many films it wrote and retired, the writes the store declined, and why it was
- *  refused, if it was. */
+ *  them), how many films it wrote and retired, the writes the store declined, why it was
+ *  refused, if it was, and the canary it reported ([[IdentityProjectionPlan.canary]]). */
 final case class ProjectionTick(resolution: Option[Resolution], plan: Option[ProjectionPlan], listings: Int, written: Int,
                                 retired: Int, declined: Int, refused: Option[String], phases: Seq[ProjectionPhase] = Nil,
                                 slotsReused: Int = 0, slotsBuilt: Int = 0, slotMisses: (Int, Int, Int) = (0, 0, 0),
-                                scoped: Boolean = false, changed: Seq[ProjectedFilm] = Nil) {
+                                scoped: Boolean = false, changed: Seq[ProjectedFilm] = Nil, canary: Map[ShadowRelation, Int] = Map.empty) {
   def wroteNothing: Boolean = written == 0 && retired == 0
   /** Whether projecting again would find nothing to do: it was taken, and wrote nothing. A refused one wrote nothing
    *  too, but a model not ready yet (a boot whose resolve ran past its budget) has every film still to write. */
@@ -284,7 +284,7 @@ final class IdentityProjection(
               case shrink =>
                 if (shrink.isDefined) logger.warn(s"identity projection: ${shrink.get} — held ${ProjectionGuard.Grace} projections, now written")
                 consecutiveShrinks = 0
-                val canary    = if (scope.whole) { canaries.reset(); draft.canary } else canaries.of(index, scope)
+                val canary    = if (scope.whole) { canaries.reset(); IdentityProjectionPlan.canary(index) } else canaries.of(index, scope)
                 val films     = stored.size - scopeStored.size + plan.films.size
                 val tick      = write(resolution, detailed, plan, stored, listed, films, canary, started, phases, patch = !scope.whole,
                   movedElsewhere = changes.fold(Set.empty[String])(_.films))
@@ -404,7 +404,7 @@ final class IdentityProjection(
     metrics.projected(films, listings, plan.regroupings, canary, seconds)
     reportTakes(plan, resolution, before, unwritten)
     val tick = ProjectionTick(Some(resolution), Some(plan), listings, changed.size - declined, plan.retired.size, declined, None, phases.all,
-      changed = changed)
+      changed = changed, canary = canary)
     tools.LogFields.info(logger.underlyingLogger, f"identity projection: $listings listings → $films films; wrote ${tick.written}, retired ${tick.retired}, " +
         s"declined $declined; ${plan.regroupings}; canary ${canary.toSeq.sortBy(_._1.ordinal).map { case (r, n) => s"${r.label} $n" }.mkString(", ")}" +
         f" in $seconds%.1fs (${phases.render})",

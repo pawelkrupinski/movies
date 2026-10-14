@@ -55,10 +55,9 @@ final case class ProjectedFilm(id: FilmId, counter: Long, title: String, year: O
 
 /** Everything one projection decides before anything is fetched: the drafts, the ids retired (and
  *  among them the `vanished` ones — stored films no published listing is on any more), the FilmId
- *  map extended over the previous films, the regroupings, and the canary — how the resolver's
- *  clusters relate to the films stored before it ran ([[ShadowDiff]]'s relations). */
+ *  map extended over the previous films, and the regroupings. */
 final case class ProjectionDraft(drafts: Seq[FilmDraft], retired: Seq[FilmId], vanished: Seq[FilmId], counters: FilmIdCounters,
-                                 additions: Seq[FilmIdCounter], regroupings: Regroupings, canary: Map[ShadowRelation, Int],
+                                 additions: Seq[FilmIdCounter], regroupings: Regroupings,
                                  venues: Map[Long, Map[Cinema, Seq[ListingKey]]] = Map.empty,
                                  build: (Cinema, Seq[ListingKey], IdentityProjectionPlan.VenueRows) => Seq[(Source, SourceData)] = (_, _, _) => Nil,
                                  rowsOf: Set[Cinema] => Map[Cinema, Seq[CinemaMovie]] = _ => Map.empty,
@@ -98,9 +97,9 @@ final case class ProjectionDraft(drafts: Seq[FilmDraft], retired: Seq[FilmId], v
 }
 
 /** A projection ready to write: the films (every key unique, every TMDB id on one film), the ids to
- *  retire, the FilmId-map entries it adds, and the draft's regroupings, canary and take changes. */
+ *  retire, the FilmId-map entries it adds, and the draft's regroupings and take changes. */
 final case class ProjectionPlan(films: Seq[ProjectedFilm], retired: Seq[FilmId], counterAdditions: Seq[FilmIdCounter],
-                                regroupings: Regroupings, canary: Map[ShadowRelation, Int], takes: Seq[TakeChange] = Nil)
+                                regroupings: Regroupings, takes: Seq[TakeChange] = Nil)
 
 /**
  * THE IDENTITY PROJECTION's decisions (docs/design/identity-resolver.md §2 "Projection", §6, §8
@@ -408,15 +407,17 @@ object IdentityProjectionPlan {
     // The listings of the scope whose TMDB film moved — read off the index's clusters, so nothing is built per listing.
     val takes = TakeChange.of(previousOf, l => index.clusterOf.get(l).flatMap(index.clusters.get).map(_.film))
     ProjectionDraft(drafts, retired, retired.filterNot(id => index.placed(id.value)), covered, index.additions, regroupings,
-      canaryOf(clusters, previousOf), venues, build, rowsOf, takes)
+      venues, build, rowsOf, takes)
   }
 
-  /** The canary over every cluster of `index`: what a projection reports, whichever films it drafted. */
+  /** The canary over every cluster of `index` — how the resolver's clusters relate to the films stored before it ran
+   *  ([[ShadowRelation]]), the films compared as STORED, one per TMDB film: what a projection reports, whichever films it
+   *  drafted. */
   def canary(index: ProjectionIndex): Map[ShadowRelation, Int] =
     canaryCounts(index.clusters.valuesIterator.map(relationOf(index, _)._1))
 
-  /** `ShadowDiff.clustersOf`'s relation of `cluster`, read off the index: a film's listings are `listingsOf` it, so nothing
-   *  is sorted into a decision or grouped by film again — on US that was ~100k keys sorted and grouped every five minutes.
+  /** `cluster`'s relation, read off the index: a film's listings are `listingsOf` it, so nothing is sorted into a
+   *  decision or grouped by film again — on US that was ~100k keys sorted and grouped every five minutes.
    *  With it, the films it read: each stored film its members are on, and that film's listings as the index holds them. */
   private[identity] def relationOf(index: ProjectionIndex, cluster: Cluster): (Option[ShadowRelation], Seq[(String, Set[ListingKey])]) = {
     val placed = cluster.members.filter(index.previousOf.contains)
@@ -436,12 +437,6 @@ object IdentityProjectionPlan {
     relations.foreach(_.foreach(r => counts(r) = counts.getOrElse(r, 0) + 1))
     ShadowRelation.values.map(r => r -> counts.getOrElse(r, 0)).toMap
   }
-
-  /** The canary compares the films as STORED — one per TMDB film — with the films before. */
-  private def canaryOf(clusters: Seq[(Set[ListingKey], Option[Int])], previousOf: Map[ListingKey, PipelineFilmRef]): Map[ShadowRelation, Int] =
-    ShadowDiff.counts(ShadowDiff.clustersOf(clusters.map { case (members, film) =>
-      ResolverDecision(members.toSeq.sorted, film, 1.0, ResolverDecision.Basis.OwnMatch, Nil)()
-    }, previousOf))
 
   /** Choose every film's title, year and key, and mint the id of every fresh one. `taken` says
    *  whether an id is live already (a fresh id must not be one). */
@@ -465,7 +460,7 @@ object IdentityProjectionPlan {
       ProjectedFilm(id, d.counter, title, year, key, d.record, d.members, d.touched)
     }
     val freshEntries = films.filter(f => draft.counters.filmIdOf(f.counter).isEmpty).map(f => FilmIdCounter(f.id.value, f.counter))
-    ProjectionPlan(films, draft.retired, draft.additions ++ freshEntries, draft.regroupings, draft.canary, draft.takes)
+    ProjectionPlan(films, draft.retired, draft.additions ++ freshEntries, draft.regroupings, draft.takes)
   }
 
   type VenueRows = VenueSlots.VenueRows
