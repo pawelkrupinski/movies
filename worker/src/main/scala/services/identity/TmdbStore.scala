@@ -288,7 +288,7 @@ object TmdbStore {
    *  fields a search or credit gave. `None` when neither is held (the film was never named). */
   def filmHit(id: Int, film: BsonDocument): Option[Hit] =
     Option(film.get("record")).filter(_.isDocument).flatMap(IdentityAnswerBson.filmOf)
-      .map(f => Hit(id, f.title, f.originalTitle, f.year, f.popularity.getOrElse(PopularityBucket.representative(PopularityBucket.of(0.0)))))
+      .map(f => Hit(id, f.title, f.originalTitle, f.year, f.popularity.getOrElse(PopularityBucket.rounded(0.0))))
       .orElse(Option(film.get("hit")).map(h => hitOf(id, h.asDocument)))
 
   /** The key a document is announced and tracked under (`ObservationReads`). */

@@ -45,7 +45,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     val client   = new TmdbClient(observed, apiKey = Some(settings.TmdbApiKey("k")), retrySleep = (_: Long) => ())
     val parsed   = client.identityRecord(film)
     parsed shouldBe defined
-    w.lookups.film(film) shouldBe Answer.Known(parsed.map(f => f.copy(popularity = f.popularity.map(p => PopularityBucket.representative(PopularityBucket.of(p))))))
+    w.lookups.film(film) shouldBe Answer.Known(parsed.map(f => f.copy(popularity = f.popularity.map(p => PopularityBucket.rounded(p)))))
     // What a film document holds: the two cut-down partials and the record — never the body's cast or synopsis.
     val stored = w.docs.get(TmdbKind.Film, Seq(film.toString))(film.toString)
     stored.keySet should contain allOf ("local", "english", "record")

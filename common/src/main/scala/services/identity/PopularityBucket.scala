@@ -13,4 +13,7 @@ object PopularityBucket {
   /** A popularity inside `bucket`, mid-way in log space, so [[of]] gives the bucket back exactly
    *  (never a floating-point edge at a power of two). */
   def representative(bucket: Int): Double = 1.5 * math.pow(2, bucket)
+
+  /** `popularity` as a stored record keeps it: its bucket's [[representative]]. */
+  def rounded(popularity: Double): Double = representative(of(popularity))
 }

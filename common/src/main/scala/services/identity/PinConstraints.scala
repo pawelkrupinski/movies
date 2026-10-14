@@ -13,7 +13,7 @@ import services.movies.ListingKey
  *  - [[resolvedFilm]] replaces a listing's own lookup answer: a pinned film wins, a denied one
  *    is dropped;
  *  - [[blockKeys]] are added to the listing's family block keys, so every pin edge joins two
- *    listings of one family (the closure stays complete, `FamilyClosure.check`);
+ *    listings of one family (the closure stays complete, `FamilyClosure.crossings`);
  *  - [[mustLinks]] go in as the strongest tier, [[cannotLinks]] beside the derived ones;
  *  - [[admits]] filters the DERIVED edges: a cannot-link inside a pinned group, or a must-link
  *    onto a film the pins deny, is dropped — the pin overrides the rule.
@@ -77,7 +77,7 @@ final case class PinConstraints(pins: Seq[Pin]) {
     filmOf(k).orElse(looked.filterNot(deniedFilms(k)))
 
   /** Extra family block keys: the group's own key, and the pinned and denied films' TMDB keys
-   *  (the same `id:` form `FamilyClosure.blockKeys` gives a resolved listing). */
+   *  (the same `id:` form [[Families]] gives a resolved listing). */
   def blockKeys(k: ListingKey): Set[String] =
     groupOf.get(k).map(head => s"pin:$head").toSet ++ (filmOf(k).toSet ++ deniedFilms(k)).map(id => s"id:$id")
 

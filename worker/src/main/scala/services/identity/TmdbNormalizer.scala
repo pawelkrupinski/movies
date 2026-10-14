@@ -98,7 +98,7 @@ object TmdbNormalizer {
       .flatMap(k => (body \ k).toOption.map(k -> _))
     // the whole day: a broadcast airs on it ([[services.identity.agreement.Broadcast]])
     val date = (body \ "release_date").asOpt[String].map(d => "release_date" -> Json.toJson(d.take(10)))
-    val popularity = (body \ "popularity").asOpt[Double].map(p => "popularity" -> Json.toJson(PopularityBucket.representative(PopularityBucket.of(p))))
+    val popularity = (body \ "popularity").asOpt[Double].map(p => "popularity" -> Json.toJson(PopularityBucket.rounded(p)))
     val countries = (body \ "production_countries").asOpt[Seq[JsValue]].map(cs =>
       "production_countries" -> JsArray(cs.flatMap(c => (c \ "iso_3166_1").asOpt[String]).map(iso => Json.obj("iso_3166_1" -> iso))))
     val alternatives = (body \ "alternative_titles" \ "titles").asOpt[Seq[JsValue]].map(ts =>

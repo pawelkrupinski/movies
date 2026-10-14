@@ -118,7 +118,7 @@ private[identity] object TitleLinks {
         .orElse(Option.when(besideTheForm(key))(s"banner beside the work '$form', its title's search form"))
         .orElse(Option.when(bannerSegment(key))("banner: no listing's whole title, and carried by many titles"))
     val (keptPieces, droppedPieces) = pieces.partition { case (_, key) => reasonToDrop(key).isEmpty }
-    val blocked: Set[String] = FamilyClosure.blockKeys(node.evidence.cleanTitle, node.evidence.originalTitle, None, normalizer,
+    val blocked: Set[String] = FamilyClosure.blockKeys(node.evidence.cleanTitle, node.evidence.originalTitle, normalizer,
       segments = keptPieces.map(_._1) :+ node.evidence.cleanTitle)
     val pinned: Seq[String] = pins.blockKeys(node.listings.head.key).toSeq.sorted
     val catalogued: Seq[String] = node.listings.flatMap(_.catalogueIds).distinct.sorted.map(_.key)

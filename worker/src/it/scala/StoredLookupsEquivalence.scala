@@ -54,7 +54,7 @@ object StoredLookupsEquivalence {
     val stored  = new StoredTmdbLookups(store, language.toLanguageTag, details, new ObservationReads)
     stored.prefetch(queries.keys, films.keys, Nil)
     val recorded = films.collect { case (id, Answer.Known(Some(_))) => id }.toSet
-    def bucketed(p: Double) = PopularityBucket.representative(PopularityBucket.of(p))
+
     val bucketsSeen = queries.values.toSeq.collect { case Answer.Known(hits) => hits }.flatten
       .groupMap(_.tmdbId)(h => PopularityBucket.of(h.popularity)).view.mapValues(_.toSet).toMap
     def sameHit(want: Hit, got: Hit) = want.tmdbId == got.tmdbId && (recorded(want.tmdbId) ||
@@ -68,7 +68,7 @@ object StoredLookupsEquivalence {
       }
     }
     val filmMismatches = films.toSeq.sortBy(_._1).flatMap { case (id, expected) =>
-      val want = expected match { case Answer.Known(f) => Answer.Known(f.map(r => r.copy(popularity = r.popularity.map(bucketed)))); case u => u }
+      val want = expected match { case Answer.Known(f) => Answer.Known(f.map(r => r.copy(popularity = r.popularity.map(PopularityBucket.rounded)))); case u => u }
       Option.when(want != stored.film(id))(s"film $id: recorded $want vs stored ${stored.film(id)}")
     }
     Result(queries.size, films.size, queryMismatches ++ filmMismatches, stored)
