@@ -530,6 +530,17 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     StageRelays.namesOneHouse(words("roh"), words("the metropolitan opera")) shouldBe false
   }
 
+  "a house's initials split by punctuation" should "name the house they spell" in {
+    // DE Kinopolis' "Carmen (RB+O 2026/27)" ×2 was denied its season's "RBO 2026/27: Carmen (The Royal Opera)" as another
+    // house's season production, and took the Salzburg Festival's 2026 "Carmen": "RB+O" folds to the words "rb" and "o"
+    def words(name: String) = name.split(" ").toSeq
+    StageRelays.namesOneHouse(words("rb o 2026 27"), words("rbo 2026 27 the royal opera")) shouldBe true
+    StageRelays.namesOneHouse(words("rb o live"), words("royal ballet opera")) shouldBe true
+    StageRelays.namesOneHouse(words("rb o"), words("the metropolitan opera")) shouldBe false
+    // short words that are no initials stay apart: "de la" spells no house
+    StageRelays.namesOneHouse(words("opera de la bastille"), words("teatro de la zarzuela")) shouldBe false
+  }
+
   "a stage house's relay" should "deny a record of another work, in no language its work goes by" in {
     val macbeth = Listing("MET Opera: Macbeth 2026", originalTitle = Some("The Metropolitan Opera: Eugene Onegin"))
     StageRelays.namesAnotherWork(macbeth, Film("MET Opera: Eugen Onegin", Some("The Metropolitan Opera: Eugene Onegin"))) shouldBe true
@@ -553,6 +564,26 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // Opera 2026" (recording 38326582997) took Argento's 1987 "Opera" by its "Opera" alone
     StageRelays.namesAnotherWork(Listing("Macbeth - Opera 2026"), Film("Opera")) shouldBe true
     StageRelays.namesAnotherWork(Listing("Macbeth - Opera 2026"), Film("The Metropolitan Opera 2026/27: Macbeth")) shouldBe false
+  }
+
+  "a stage house's relay" should "deny another house's record of its work from a season other than its screenings'" in {
+    // UK Savoy Boston's "Opéra De Paris Ballet - Notre-Dame de Paris" ×6, screening March 2027 (the Paris Opera's Dec 2025
+    // recording), took La Scala's 2013 "La Scala Ballet: Notre-Dame de Paris" (790330) by the work's name alone
+    val paris   = Listing("Opéra De Paris Ballet - Notre-Dame de Paris", screenedSeason = Some(2026))
+    val scala   = Film("La Scala Ballet: Notre-Dame de Paris", Some("Roland Petit: Notre-Dame de Paris (Teatro alla Scala)"), year = Some(2013))
+    StageRelays.anotherHousesOtherSeason(paris, scala) shouldBe true
+    // its own house's record of any season stays, and so does another house's of the season it screens in: UK's "RBO
+    // Cinema Season" relays the Met's productions of that season
+    StageRelays.anotherHousesOtherSeason(paris, Film("Paris Opera Ballet: Notre-Dame de Paris", year = Some(2013))) shouldBe false
+    StageRelays.anotherHousesOtherSeason(Listing("RBO Cinema Season 2026-27: Tosca", screenedSeason = Some(2026)),
+      Film("The Metropolitan Opera: Tosca", year = Some(2027))) shouldBe false
+    // a billing naming no house in particular, a record naming none, or no screenings to date it, denies nothing
+    StageRelays.anotherHousesOtherSeason(Listing("Ballet - Notre-Dame de Paris", screenedSeason = Some(2026)), scala) shouldBe false
+    StageRelays.anotherHousesOtherSeason(paris, Film("Notre-Dame de Paris", year = Some(1956))) shouldBe false
+    StageRelays.anotherHousesOtherSeason(paris.copy(screenedSeason = None), scala) shouldBe false
+    // DE Kleines Theater's encore of last season's relay: "RB&O" bills no house word, and "Ballett" names none in particular
+    StageRelays.anotherHousesOtherSeason(Listing("RB&O - Ballett \"La Fille mal gardée\"", screenedSeason = Some(2026)),
+      Film("RBO 2025/26: La Fille Mal Gardée (The Royal Ballet)", year = Some(2025))) shouldBe false
   }
 
   "a stage house's relay" should "know a record billing its house from one billing another's" in {

@@ -99,7 +99,7 @@ de	Gröben-Lichtspiele	Camouflage OmU	tmdb:1735950	right	open				2026-10-13	judg
 de	*	Camp der Verlorenen	tmdb:103203	right	open				2026-10-08	hand label: The Camp at Thiaroye (1988) Ousmane Sembène; Thierno Faty Sow
 de	Zeughauskino - Deutsches Historisches Museum	Camp der Verlorenen	tmdb:103203	right	open				2026-10-08	recall target: Camp de Thiaroye (1988)
 de	Babylon (Mitte)	Cargo 200	tmdb:34869	right	open				2026-10-13	judged 10-13: Balabanov 2007
-de	Kinopolis Bad Homburg	Carmen (RB+O 2026/27)	tmdb:1740965	wrong	known-wrong	served	Carmen: Salzburger Festspiele 2026 (2026)	listed in the suspect baseline as wrong by labels when it was armed; no reason recorded	2026-10-14	judged 10-14 (wrong-match hunt): "RB+O 2026/27" bills the Royal Ballet & Opera Carmen (tmdb 1702759, which Cineamo links), not the Salzburg Festival 2026 recording
+de	Kinopolis Bad Homburg	Carmen (RB+O 2026/27)	tmdb:1740965	wrong	open		Carmen: Salzburger Festspiele 2026 (2026)		2026-10-14	judged 10-14 (wrong-match hunt): "RB+O 2026/27" bills the Royal Ballet & Opera Carmen (tmdb 1702759, which Cineamo links), not the Salzburg Festival 2026 recording
 de	Kinopolis HafenCity	Carmen (RB+O 2026/27)	tmdb:1740965	wrong	open				2026-10-14	judged 10-14 (wrong-match hunt): "RB+O 2026/27" bills the Royal Ballet & Opera Carmen (tmdb 1702759, which Cineamo links), not the Salzburg Festival 2026 recording
 de	*	Casino Nostalgico: Das Piano	tmdb:713	right	open				2026-10-13	judged 10-13 (suspect audit): venue catalogue id cineamo 713 names it; year 1993 billed
 de	Lumière	Category: Woman	tmdb:956802	right	open				2026-10-14	judged 10-14 (wrong-match hunt): the exact title and TMDB's only hit, Phyllis Ellis's 2022 doc
@@ -1535,7 +1535,7 @@ uk	*	Once Upon A Time in America	filmweb:1038	right	open				2026-10-08	hand labe
 uk	Lumiere Romford	Once Upon A Time in America	imdb:tt0087843	right	open				2026-10-08	recall target: Once Upon A Time in America
 uk	*	Once Upon A Time in America	tmdb:311	right	open				2026-10-08	hand label: Once Upon a Time in America (1984) Sergio Leone
 uk	Lumiere Romford	Once Upon A Time in America	tmdb:311	right	open				2026-10-08	recall target: Once Upon a Time in America (1984)
-uk	Lonsdale Alhambra Penrith	Opéra de Paris: Notre-Dame De Paris	tmdb:973305	wrong	known-wrong	served	Notre-Dame de Paris (Opéra Bastille) (2021)	listed in the suspect baseline as wrong by labels when it was armed; no reason recorded	2026-10-14	judged 10-14 (wrong-match hunt, sole-result): the Paris Opera's Dec 2025 recording (in cinemas 14 Mar 2027), not the 2021 Opéra Bastille record
+uk	Lonsdale Alhambra Penrith	Opéra de Paris: Notre-Dame De Paris	tmdb:973305	wrong	open		Notre-Dame de Paris (Opéra Bastille) (2021)		2026-10-14	judged 10-14 (wrong-match hunt, sole-result): the Paris Opera's Dec 2025 recording (in cinemas 14 Mar 2027), not the 2021 Opéra Bastille record
 uk	*	Otello - The Met Opera	tmdb:1703634	right	open				2026-10-14	judged 10-14: the Met's 2026/27 relay of Otello, the record TMDB dates by the broadcast the venues screen it on
 uk	*	POC-DOCS Presents: North Sea, Nature Untamed	tmdb:1340711	right	open				2026-10-13	judged 10-13 (suspect audit): the venue's synopsis is the record's (Peter van Rodijnen)
 uk	*	Paddington Bear: Winter Warmers	imdb:tt39048323	right	open				2026-10-08	hand label: Paddington: Winter Warmers (2025)
@@ -1936,3 +1936,16 @@ us	*	Volcanoes 3D	tmdb:1028378	wrong	open				2026-10-08	hand label: Serengeti (2
 us	Fleet Science Center IMAX	Volcanoes 3D	tmdb:556541	right	open				2026-10-08	recall target: Volcanoes: The Fires of Creation (2018)
 us	OMNIMAX Theatre – Robert D. Lindner Family	Volcanoes 3D	tmdb:556541	right	open				2026-10-08	judged 10-05: the IMAX dome film Fleet Science Center's same title is (recall target), its poster matching the venue's
 us	*	WORLD OF ANIMATION: SPIRITED AWAY (SUBTITLED) - DRAG BRUNCH	tmdb:129	right	open				2026-10-13	judged 10-13 (suspect audit): Spirited Away (subtitled) at a drag brunch
+
+uk	*	Opéra de Paris: Notre Dame de Paris	tmdb:973305	wrong	open				2026-10-14	judged 10-14 (house-season rule): the Paris Opera's Dec 2025 recording screening in 2026/27 (as Penrith's label), not the 2021 Opéra Bastille record
+uk	*	Opéra De Paris Ballet - La Bayadère	tmdb:142479	wrong	open				2026-10-14	judged 10-14 (house-season rule): the Paris Opera Ballet's relay screening in 2026/27, not La Scala's record (La Scala Ballet: La Bayadère (2006))
+uk	*	Opéra De Paris Ballet - Notre-Dame de Paris	tmdb:790330	wrong	open				2026-10-14	judged 10-14 (house-season rule): the Paris Opera Ballet's relay screening in 2026/27, not La Scala's record (La Scala Ballet: Notre-Dame de Paris (2013))
+uk	*	Opera De Paris Ballet - Notre-Dame de Paris	tmdb:790330	wrong	open				2026-10-14	judged 10-14 (house-season rule): the Paris Opera Ballet's relay screening in 2026/27, not La Scala's record (La Scala Ballet: Notre-Dame de Paris (2013))
+uk	*	Opéra de Paris Ballet Season - La Bayadère	tmdb:142479	wrong	open				2026-10-14	judged 10-14 (house-season rule): the Paris Opera Ballet's relay screening in 2026/27, not La Scala's record (La Scala Ballet: La Bayadère (2006))
+uk	*	Opéra de Paris Ballet Season - Notre-Dame de Paris	tmdb:790330	wrong	open				2026-10-14	judged 10-14 (house-season rule): the Paris Opera Ballet's relay screening in 2026/27, not La Scala's record (La Scala Ballet: Notre-Dame de Paris (2013))
+uk	*	Opéra de Paris Ballet - La Bayadère (12A tbc)	tmdb:142479	wrong	open				2026-10-14	judged 10-14 (house-season rule): the Paris Opera Ballet's relay screening in 2026/27, not La Scala's record (La Scala Ballet: La Bayadère (2006))
+uk	*	Opéra de Paris Ballet - Notre Dame de Paris (12A tbc)	tmdb:790330	wrong	open				2026-10-14	judged 10-14 (house-season rule): the Paris Opera Ballet's relay screening in 2026/27, not La Scala's record (La Scala Ballet: Notre-Dame de Paris (2013))
+uk	*	Notre-Dame De Paris - Opera de Paris	tmdb:973305	wrong	open				2026-10-14	judged 10-14 (house-season rule): the Paris Opera's Dec 2025 recording screening in 2026/27 (as Penrith's label), not the 2021 Opéra Bastille record
+de	*	Carmen (RB+O 2026/27)	tmdb:1702759	right	open				2026-10-14	judged 10-14: "RB+O" is Royal Ballet & Opera's initials: its 2026/27 Carmen, which Cineamo links
+de	*	Carmen (RB+O Live 2026/27)	tmdb:1702759	right	open				2026-10-14	judged 10-14: "RB+O" is Royal Ballet & Opera's initials: its 2026/27 Carmen
+de	*	Carmen (RB+O Live 2026/27)	tmdb:1740965	wrong	open				2026-10-14	judged 10-14: the Royal Ballet & Opera Carmen its banner bills, not the Salzburg Festival 2026 recording
