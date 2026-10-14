@@ -5,7 +5,6 @@ de	Akten des Missbrauchs	tmdb:514847	The Hunt (2020)	wrong by labels.tsv
 de	Alpen Film Festival 2026	tmdb:1625266	How I Started A Film Festival (2026)	wrong by labels.tsv
 de	Alpha (dir. Ducournau)	tmdb:1122030	Alpha (2026)	wrong by labels.tsv
 de	Auf Augenhöhe - Jugend, Macht und Kinderschutz	tmdb:375111	Auf Augenhöhe (2016)	wrong by labels.tsv
-de	BARWY OCHRONNE / CAMOUFLAGE	tmdb:1735950	Камуфляж (2026)	wrong by labels.tsv
 de	Better World FF: Block 5	tmdb:1315522	Igrišča ne damo (2024)	fragment: 'Igrišča ne damo' is 2 of the billing's words; 'better ff' is no banner or decoration | undecided 10-13: festival programme block or the Slovene film "Block 5": no line-up found
 de	Carmen (RB+O 2026/27)	tmdb:1740965	Carmen: Salzburger Festspiele 2026 (2026)	wrong by labels.tsv
 de	DAS BOOT (DIRECTOR'S CUT)(WA:2023)	tmdb:1794076	Das Boot - Directors Cut (?)	wrong by labels.tsv
@@ -20,24 +19,25 @@ de	Ecrire la vie - Writing Life	tmdb:1579323	Giv os en chance (2025)	wrong by la
 de	Ein Neues Leben	tmdb:1398460	Sounds of Paris (2026)	wrong by labels.tsv
 de	Es	tmdb:346364	Es (2017)	runtime: the listing runs 72 minutes, the film 135 | undecided 10-13: the feed's cineamo id is Clara Bow's 1927 'It'; no venue page confirms 1927 or 2017
 de	FILMKUNST: Ein einfacher Unfall	tmdb:1691860	It Was Just an Accident (2026)	wrong by labels.tsv
+de	Film+Musikfest: Arthur Robison: THE INFORMER	tmdb:466081	The Informer (2019)	wrong by labels.tsv
 de	Free Ride Filmfestival	tmdb:1686112	IA, au cœur du cinéma (2026)	wrong by labels.tsv
 de	FreerideFilmFestival 2026	tmdb:1686112	IA, au cœur du cinéma (2026)	wrong by labels.tsv
 de	Friday the 13th: Legacy	tmdb:1556121	Legacy (?)	wrong by labels.tsv
-de	Frühstück - Heimsuchung	tmdb:1619543	Visitation (2026)	wrong by labels.tsv
 de	GINA - mit der Domschule Würzburg	tmdb:1193753	Gina (2022)	wrong by labels.tsv
 de	Gegen das Vergessen - Weilheim in der Zeit des Nationalsozialismus	tmdb:599503	Gegen das Vergessen (2015)	wrong by labels.tsv
-de	HEIMSUCHUNG - MittagsKINO	tmdb:1619543	Visitation (2026)	wrong by labels.tsv
-de	HEIMSUCHUNG -StrickKINO	tmdb:1619543	Visitation (2026)	wrong by labels.tsv
 de	Halloween (Horror-Filmnacht Special-Quiz um 21:30 Uhr / Filmbeginn ca. 22:30 Uhr))	tmdb:948	Halloween - Die Nacht des Grauens (1978)	fragment: 'Halloween - Die Nacht des Grauens' is 1 of the billing's words; 'filmbeginn ca' is no banner or decoration | undecided 10-13: a Halloween horror night: no page says 1978 or 2018
 de	Halloween [DF]	tmdb:948	Halloween - Die Nacht des Grauens (1978)	era: the film is from 1978, 48 years before the screening, nothing bills an old film, and the title's other billings take a film from 2018 | undecided 10-13: no page says 1978 or 2018
 de	Halloween [OV]	tmdb:948	Halloween - Die Nacht des Grauens (1978)	era: the film is from 1978, 48 years before the screening, nothing bills an old film, and the title's other billings take a film from 2018 | undecided 10-13: no page says 1978 or 2018
 de	Imagine Peace (GLOBALE)	tmdb:1094789	Imagine Peace (2010)	wrong by labels.tsv
 de	Island	tmdb:1192466	Island (2023)	wrong by labels.tsv
+de	Internationales Gitarrenfestival Tübingen - Eröffnungskonzert - Raíces	tmdb:1782337	Raíces (2022)	wrong by labels.tsv
+de	Jens Wawrczeck - Immer Ärger mit Harry	tmdb:11219	Immer Ärger mit Harry (1955)	wrong by labels.tsv
+de	Jüdische Filmwoche: Comedian Harmonists - Sechs Lebensläufe Teil 1 D, FSK folgt	tmdb:9524	Comedian Harmonists (1997)	wrong by labels.tsv
+de	Jüdische Filmwoche: Comedian Harmonists - sechs Lebensläufe Teil 2 D, FSK folgt	tmdb:9524	Comedian Harmonists (1997)	wrong by labels.tsv
 de	Karavan | Tschechisch-Deutsche Kulturtage 2026	tmdb:292875	Gefährliche Reise (1946)	wrong by labels.tsv
 de	Kohlhiesels Töchter	tmdb:175204	Kohlhiesels Töchter (1920)	wrong by labels.tsv
 de	König der Landstreicher	tmdb:1472167	Koning van de Zwervers (2025)	fragment: no title of 'Koning van de Zwervers' is in the billing | undecided 10-13: no source gives "König der Landstreicher" as the German title
 de	LILI - Lesebühne im Lichtspielhaus	tmdb:43350	Lili (1953)	wrong by labels.tsv
-de	L`Estive	tmdb:1279423	Summer Meadow (2024)	wrong by labels.tsv
 de	Leica	tmdb:1737142	Leica (2026)	wrong by labels.tsv
 de	Lieblingsmenschen	tmdb:788385	Lieblingsmenschen (2021)	wrong by labels.tsv
 de	Macbeth (2026)	tmdb:1723022	Macbeth (2026)	wrong by labels.tsv
@@ -54,7 +54,6 @@ de	Rodychi (UKRAJINA CINEMA)	tmdb:425505	Kin (2018)	wrong by labels.tsv
 de	SHINJUKUY BOYS // THE FISH WITH ONE SLEEVE	tmdb:797140	片袖の魚 (2021)	wrong by labels.tsv
 de	STUMMFILM MIT TOBIAS RANK:CHARLIE CHAPLIN	tmdb:1152327	Charlie Chaplin (1999)	wrong by labels.tsv
 de	THE BLACK HOLE	tmdb:9570	Das schwarze Loch (1979)	wrong by labels.tsv
-de	THE COMMUNITY	tmdb:1029804	The Community (2022)	wrong by labels.tsv
 de	Tanztheater : gleich – ähnlich – verschieden	tmdb:1148718	Gleich (2023)	wrong by labels.tsv
 de	The Killer	tmdb:970347	The Killer (2024)	wrong by labels.tsv
 de	The Stranger	tmdb:1429348	Der Fremde (2025)	wrong by labels.tsv

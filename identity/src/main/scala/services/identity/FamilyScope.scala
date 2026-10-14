@@ -199,6 +199,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
   private def denialByNode(node: EvidenceNode, id: Int): Option[String] =
     Option.when(pins.deniedFilms(node.listings.head.key)(id))("pinned never this film")
       .orElse(overruled(node).filter(_.film == id).map(_.denial))
+      .orElse(FeedLink.deniesShort(node, id, candidateById(id).film))
       .orElse(Option.when(namesOnlyItsVenue(node, candidateById(id)))("its title names it only by the venue's own name"))
       .orElse(Option.when(namesOnlyATag(node, candidateById(id)))("its title names it only by a programme tag billed beside many titles"))
       .orElse(Option.when(namesOnlyAProgrammeSlot(node, candidateById(id)))("its title names it only by a festival's programme slot"))

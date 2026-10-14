@@ -2389,13 +2389,26 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val r = shipped(linked ++ stated, films)
     withClue((linked ++ stated).map(l => r.decisionOf(l.key).render).distinct.mkString("\n"))(
       (linked ++ stated).map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(1555986)))
-    // the bare node's own reading: the short's 2026 is no backing beside Limkilde's credit and 85 minutes, so its release
-    // veto stands; and the copied original title's search ranks nothing
+    // the bare node's own reading: the 16-minute short is denied — a short beside the feed's link to another film, and
+    // its 2026 no backing beside Limkilde's credit and 85 minutes; and the copied original title's search ranks nothing
     val bare = IdentityResolver.candidatesOf(linked ++ stated, new FilmTable(films, normalizer), normalizer)(linked.contains).flatMap(_.candidates)
     withClue(bare.map(_.render).mkString("\n")) {
-      bare.filter(_.tmdbId == 1630377).map(_.denial.exists(ReleaseVeto.vetoes)).distinct shouldBe Seq(true)
+      bare.filter(_.tmdbId == 1630377).map(_.denial.exists(why => ReleaseVeto.vetoes(why) || why.startsWith("a short, its feed"))).distinct shouldBe Seq(true)
       bare.filter(_.tmdbId == 864101).map(_.searchRank).distinct shouldBe Seq(None)
     }
+  }
+
+  "A feed's TMDB link to one film" should "deny the listing a short its copied original title names" in {
+    // DE "L`Estive" ×3, recording 38363428661: Cineamo links 1729636m, Lenoir's 2026 feature documentary, copying its
+    // English title "Summer Meadow" — which TMDB's 3-minute 2024 short carries, with "L'Estive" among its other titles.
+    // The short took all three by favoured-calibrated at 62.5%: the link's own copied title pulling another film.
+    val films  = Seq(F(1279423, "Summer Meadow", 2024, "Ryland Bouchard", 3, 0.6, alternatives = Seq("L'Estive")),
+      F(1729636, "L'estive", 2026, "Anne Lenoir", 0, 0.4, searched = false))
+    val linked = Seq(KinoMikro, KinoOaza, KinoPalacowe).map(v =>
+      fed(listing(v, "L`Estive"), "cineamo", "1729636m").copy(originalTitle = Some("Summer Meadow")))
+    val r = shipped(linked, films)
+    withClue(linked.map(l => r.decisionOf(l.key).render).distinct.mkString("\n"))(
+      linked.map(l => r.decisionOf(l.key).film).distinct.filter(_.contains(1279423)) shouldBe empty)
   }
 
   "A bare title its credited siblings' facts give another record than the one carrying it" should "take the record their facts single out" in {
