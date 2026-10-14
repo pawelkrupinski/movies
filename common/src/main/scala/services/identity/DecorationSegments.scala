@@ -97,7 +97,7 @@ object DecorationSegments {
     "dyskusja", "rozmowa", "seans", "screening", "event", "special", "preview", "live", "talk", "intro", "introduced", "gesprach", "vorpremiere",
     "festiwal", "festival", "retransmisja", "koncert", "karnet", "maraton", "marathon")
   private[identity] val EditionWords = Set("cut", "remaster", "remastered", "restored", "restoration", "4k", "rerelease", "re", "release", "anniversary",
-    "aniversario", "rocznica", "edition", "extended", "director", "directors", "wersja", "rozszerzona", "jubileusz", "uncut", "redux")
+    "aniversario", "rocznica", "edition", "extended", "director", "directors", "wersja", "rozszerzona", "jubileusz", "uncut", "redux", "fassung", "restauriert", "restaurierte")
 
   /** Does a listing billed under `titles` name an EDITION of the film titled `filmTitles` — a word of [[EditionWords]]
    *  ("Extended Edition", "Director's Cut", "Redux") its titles carry and the film's do not? TMDB keeps one record for a

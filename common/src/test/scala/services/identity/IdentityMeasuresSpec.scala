@@ -43,6 +43,9 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.titleYearOf(Seq("Krimizeit (Krimifestival 2026)")) shouldBe None
     IdentityMeasures.titleYearOf(Seq("Jaws (Re-release 2025)")) shouldBe None
     IdentityMeasures.titleYearOf(Seq("Akira (4K 2025)")) shouldBe None
+    // DE Capitol Eisenach's "Metropolis (rest. Fassung 2010)": a German edition's word dates the restoration, not Lang's 1927 film —
+    // read as dated, it took Mizue's 2009 short "Metropolis"
+    IdentityMeasures.titleYearOf(Seq("Metropolis (rest. Fassung 2010)")) shouldBe None
   }
 
   // UK Lanternhouse's "Obsession (18)" (wrong-match hunt 10-14): the whole title, searched as billed, found only "80 Day
