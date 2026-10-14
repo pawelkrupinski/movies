@@ -35,7 +35,7 @@ class NoUnguardedReadModifyWriteSpec extends AnyFlatSpec with Matchers {
       "last-writer-wins by design: the whole-record path writes MovieCache's copy of the film, and the cache is the one " +
         "writer of `movies` and serialises a film's writes in-process; the read decides only whether the stored document " +
         "already equals the write (skip) and whether its identity collides (the unique index refuses a racing sibling)"),
-    ("common/src/main/scala/services/identity/IdentityTraceStore.scala", "write") -> (
+    ("identity/src/main/scala/services/identity/IdentityTraceStore.scala", "write") -> (
       "one writer thread per store (see the class doc): the read is the stored digests, deciding only whether a trace " +
         "moved; a trace another process wrote meanwhile is rewritten whole by the next model update"),
     ("common/src/main/scala/services/config/EnvRegistryStore.scala", "publish") -> (

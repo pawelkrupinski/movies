@@ -10,7 +10,7 @@ import java.nio.file.{Files, Path, Paths}
 /**
  * Learns the identity resolver's VENUE DECORATIONS (`TitleDecorationsLearner.learn`) from the recorded
  * corpora and the film records their answers hold, and writes them with their provenance to
- * `common/src/main/resources/identity-decorations.json` — the refit path of the decorations the
+ * `identity/src/main/resources/identity-decorations.json` — the refit path of the decorations the
  * resolver strips, run by `scripts/identity-calibrate.sh` before the weights are fitted (whose
  * title shapes read them). ONE rule for every country: the listings and records of every corpus
  * are pooled, and the artefact is a function of those sets and of the decorations `--out` already
@@ -20,7 +20,7 @@ import java.nio.file.{Files, Path, Paths}
  */
 object IdentityDecorationsLearn {
 
-  val Artefact: Path = Paths.get("common/src/main/resources", TitleDecorations.ResourcePath)
+  val Artefact: Path = Paths.get("identity/src/main/resources", TitleDecorations.ResourcePath)
 
   def main(args: Array[String]): Unit = {
     val opts = args.grouped(2).collect { case Array(k, v) => k.stripPrefix("--") -> v }.toMap

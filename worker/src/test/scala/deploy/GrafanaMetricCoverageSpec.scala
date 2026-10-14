@@ -387,7 +387,7 @@ class GrafanaMetricCoverageSpec extends AnyFlatSpec with Matchers {
    *  refused in any main source file that touches the Prometheus client. */
   "a metric name" should "never be interpolated, so the source scans can see every family" in {
     val prometheusSources =
-      Seq("worker", "web", "common").flatMap(m => filesUnder(new java.io.File(s"$m/src/main/scala"))(_.getName.endsWith(".scala")))
+      Seq("worker", "web", "common", "identity").flatMap(m => filesUnder(new java.io.File(s"$m/src/main/scala"))(_.getName.endsWith(".scala")))
         .filter(f => RepoFile.read(f.getPath).contains("io.prometheus"))
     prometheusSources.size should be > 10 // the walk reaches the metric classes
     val offenders = prometheusSources.filter(f => InterpolatedName.findFirstIn(RepoFile.read(f.getPath)).isDefined).map(_.getPath)

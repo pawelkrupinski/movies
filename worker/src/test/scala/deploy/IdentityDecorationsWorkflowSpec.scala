@@ -24,7 +24,7 @@ class IdentityDecorationsWorkflowSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "hand the learned file back as an artifact, never commit it" in {
-    learn should include("common/src/main/resources/identity-decorations.json")
+    learn should include("identity/src/main/resources/identity-decorations.json")
     workflow should not include "git push"
     workflow should not include "contents: write"
   }

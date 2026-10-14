@@ -50,7 +50,7 @@ identity_tree() {
     rm -rf "$dir.part"; mkdir -p "$dir.part"
     git -C "$IDENTITY_REPO" archive "$sha" -- . ':(exclude)test/resources' ':(exclude)ios' ':(exclude)android' | tar -x -C "$dir.part"
     # Seed the compile from this checkout's (APFS clones, no copy): sbt recompiles only what the ref changed.
-    for t in project/target common/target testkit/target worker/target target; do
+    for t in project/target common/target identity/target testkit/target worker/target target; do
       if [ -d "$IDENTITY_REPO/$t" ]; then mkdir -p "$dir.part/$(dirname "$t")"; cp -cR "$IDENTITY_REPO/$t" "$dir.part/$t" 2>/dev/null || cp -R "$IDENTITY_REPO/$t" "$dir.part/$t"; fi
     done
     rm -rf "$dir.part/target/identity-tools"
@@ -88,7 +88,7 @@ identity_newest_recording() {
 
 identity_classpath() {
   local tree=$1 cp=$1/target/identity-tools/classpath log=$1/target/identity-tools/sbt.log
-  if [ -s "$cp" ] && [ -z "$(find "$tree/common/src" "$tree/worker/src" "$tree/testkit/src" "$tree/build.sbt" -newer "$cp" -name '*.s*' -print -quit 2>/dev/null)" ]; then
+  if [ -s "$cp" ] && [ -z "$(find "$tree/common/src" "$tree/identity/src" "$tree/worker/src" "$tree/testkit/src" "$tree/build.sbt" -newer "$cp" -name '*.s*' -print -quit 2>/dev/null)" ]; then
     cat "$cp"; return
   fi
   mkdir -p "$(dirname "$cp")"

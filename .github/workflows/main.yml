@@ -122,6 +122,7 @@ jobs:
                   patterns: |
                       web/**
                       common/**
+                      identity/**
                       build.sbt
                       project/**
                       Dockerfile
@@ -157,6 +158,8 @@ jobs:
                       !worker/src/fixtures/**
                       common/**
                       !common/src/test/**
+                      identity/**
+                      !identity/src/test/**
                       build.sbt
                       project/**
                       Dockerfile

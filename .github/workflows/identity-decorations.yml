@@ -80,7 +80,7 @@ jobs:
               with:
                   name: identity-decorations-${{ inputs.recording }}
                   path: |
-                      common/src/main/resources/identity-decorations.json
+                      identity/src/main/resources/identity-decorations.json
                       decorations.log
                   retention-days: 14
 

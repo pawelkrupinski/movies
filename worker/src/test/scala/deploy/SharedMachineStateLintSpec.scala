@@ -66,7 +66,7 @@ class SharedMachineStateLintSpec extends AnyFlatSpec with Matchers {
   )
 
   private val Roots = Seq("scripts", ".github", "data", "android", "ios", "infra", "tools", "page-tests-playwright",
-    "common/src", "web/src", "worker/src", "testkit/src", "e2e/src")
+    "common/src", "identity/src", "web/src", "worker/src", "testkit/src", "e2e/src")
 
   /** Never descended into: dependencies, build output, test resources (recorded response bodies by
    *  the ten thousand, no test code), and the GitOps checkout `fetch-gitops` links in. */

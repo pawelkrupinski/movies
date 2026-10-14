@@ -27,7 +27,7 @@ class NoGlobalPoolInTestsSpec extends AnyFlatSpec with Matchers {
 
   private val Allowlist: Map[String, String] = Map(
     "worker/src/test/scala/tools/NoGlobalPoolInTestsSpec.scala" -> SelfTest,
-    "common/src/test/scala/tools/IndependentCases.scala" ->
+    "identity/src/test/scala/tools/IndependentCases.scala" ->
       "CPU-bound cases awaited with no bound: a busy pool only makes it slower, never time out",
     "common/src/test/scala/services/attempts/FilmAttemptReportSpec.scala" ->
       "the one use is a film with no tmdbId, which builds its report without scheduling any work",

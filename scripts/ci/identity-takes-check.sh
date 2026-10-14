@@ -46,7 +46,7 @@ here=$(pwd)
 mkdir -p "$out"
 
 # The paths whose change can move a take. Anything else -- docs, the web, workflows -- cannot.
-identity_paths=(common/src/main worker/src/main worker/src/it/scala/IdentityResolveDumpIntegrationSpec.scala
+identity_paths=(common/src/main identity/src/main worker/src/main worker/src/it/scala/IdentityResolveDumpIntegrationSpec.scala
                 worker/src/it/scala/IdentityShadow.scala testkit/src/main build.sbt project)
 
 # One page of the head's history before it, a line a commit: `<sha> <state of $context, or -> <parent sha>`, then

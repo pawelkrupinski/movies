@@ -89,11 +89,14 @@ check "worker's fixtures config also compiles web's, whose Page config builds on
   "$(compiles worker/src/fixtures/scala/tools/EnrichmentCache.scala)"
 check "an e2e spec compiles e2e alone" "e2e/Test/compile" "$(compiles e2e/src/test/scala/A.scala)"
 check "common compiles every module's test configs" \
-  "common/Test/compile testkit/Test/compile worker/Test/compile worker/It/compile web/Test/compile web/It/compile web/Page/compile e2e/Test/compile" \
+  "common/Test/compile identity/Test/compile testkit/Test/compile worker/Test/compile worker/It/compile web/Test/compile web/It/compile web/Page/compile e2e/Test/compile" \
   "$(compiles common/src/main/scala/A.scala)"
 check "the build compiles every module's test configs" \
-  "common/Test/compile testkit/Test/compile worker/Test/compile worker/It/compile web/Test/compile web/It/compile web/Page/compile e2e/Test/compile" \
+  "common/Test/compile identity/Test/compile testkit/Test/compile worker/Test/compile worker/It/compile web/Test/compile web/It/compile web/Page/compile e2e/Test/compile" \
   "$(compiles build.sbt)"
+check "an identity source compiles identity and every module built on it" \
+  "identity/Test/compile testkit/Test/compile worker/Test/compile worker/It/compile web/Test/compile web/It/compile web/Page/compile e2e/Test/compile" \
+  "$(compiles identity/src/main/scala/services/identity/A.scala)"
 check "a dashboard alone compiles nothing extra" "" \
   "$(compiles infra/nix/files/monitoring/grafana/dashboards/apps/kinowo-http.json)"
 

@@ -128,13 +128,14 @@ plan() {
 # ── Which test configs a set of changed paths has to compile ────────────────────────────────────
 # One line per path on stdin; prints the sbt compile tasks, one per line, in dependency order. A
 # module's own test configs plus those of every module that depends on it (build.sbt's dependsOn):
-# common → testkit → worker → web (page->fixtures) → e2e. The build itself touches them all.
+# common → identity → testkit → worker → web (page->fixtures) → e2e. The build itself touches them all.
 compile_plan() {
-    local common=0 testkit=0 worker=0 web=0 e2e=0 path
+    local common=0 identity=0 testkit=0 worker=0 web=0 e2e=0 path
     while IFS= read -r path; do
         case "$path" in
             build.sbt|project/*)  common=1 ;;
             common/*.scala|common/*.java)   common=1 ;;
+            identity/*.scala|identity/*.java) identity=1 ;;
             testkit/*.scala|testkit/*.java) testkit=1 ;;
             # web's Page config compiles against worker's fixtures config (page->fixtures).
             worker/src/fixtures/*)          worker=1; web=1 ;;
@@ -143,13 +144,15 @@ compile_plan() {
             e2e/*.scala|e2e/*.java)         e2e=1 ;;
         esac
     done
-    [ $common = 1 ] && testkit=1
+    [ $common = 1 ] && identity=1
+    [ $identity = 1 ] && testkit=1
     [ $testkit = 1 ] && worker=1
     [ $worker = 1 ] && e2e=1
     [ $web = 1 ] && e2e=1
     [ $common = 1 ] && web=1
     [ $testkit = 1 ] && web=1
     [ $common = 1 ] && echo common/Test/compile
+    [ $identity = 1 ] && echo identity/Test/compile
     [ $testkit = 1 ] && echo testkit/Test/compile
     [ $worker = 1 ] && printf '%s\n' worker/Test/compile worker/It/compile
     [ $web = 1 ] && printf '%s\n' web/Test/compile web/It/compile web/Page/compile

@@ -193,7 +193,7 @@ lazy val sharedTestDoubles = Def.setting(Seq("tools/MutableClock", "tools/Manual
 // ── Identity resolver ────────────────────────────────────────────────────────
 //
 // The identity model (`services.identity`): the resolver, its agreement stage, its stores and measures. Built on
-// common — its models, titles, Mongo — and nothing in common builds on it (`tools.CommonReachesNoIdentitySpec`); the
+// common — its models, titles, Mongo — and nothing in common builds on it (it cannot: common does not depend on it); the
 // worker runs it, the web app reads its traces and pins.
 lazy val identity = (project in file("identity"))
   .dependsOn(common)

@@ -8,8 +8,9 @@ the same task — before reporting the work as done. The list of
 layers and which kinds of changes they catch:
 
 - **`sbt testUnit`** — unit specs for controllers, services,
-  enrichment, clients, models. Any change under `web/src/main/`,
-  `worker/src/main/`, or `common/src/main/` that isn't pure view markup.
+  enrichment, clients, models, the identity resolver. Any change under
+  `web/src/main/`, `worker/src/main/`, `common/src/main/` or
+  `identity/src/main/` that isn't pure view markup.
 - **`sbt itAll`** — `*/src/it/scala/` specs wiring fakes + the real
   cache/repository. Required for any change to enrichment pipelines,
   cache layering, the read-model projection, or anything that crosses

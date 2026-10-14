@@ -18,7 +18,7 @@ import scala.util.hashing.MurmurHash3
 
 /**
  * Derives the identity resolver's weights, calibration, thresholds and cannot-link rules from
- * EVIDENCE, and writes them as data (`common/src/main/resources/identity-weights.json`) beside the
+ * EVIDENCE, and writes them as data (`identity/src/main/resources/identity-weights.json`) beside the
  * labelled set they were fitted on (`test/resources/fixtures/identity/identity-labels.json.gz`).
  * Run through `scripts/identity-calibrate.sh`; docs/design/identity-resolver.md §14
  * reports what it measured.
@@ -48,7 +48,7 @@ import scala.util.hashing.MurmurHash3
 object IdentityCalibrate {
 
   /** Where a refit writes: the RESOLVER's artefact, never the rating gate's pinned one. */
-  val ResolverArtefact: Path = Paths.get("common/src/main/resources", IdentityCalibration.ResolverResourcePath)
+  val ResolverArtefact: Path = Paths.get("identity/src/main/resources", IdentityCalibration.ResolverResourcePath)
 
   final case class Config(corpora: Path, fixtures: Path, hardClusters: Path, prod: Option[Path], weightsOut: Path,
                           labelsOut: Path, reportDir: Path, epsilon: Option[Double], countries: Seq[String], version: String,

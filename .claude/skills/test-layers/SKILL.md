@@ -14,7 +14,7 @@ is that the local toolchain is missing (e.g. no full Xcode for
 `xcodebuild test`); say so explicitly when reporting the work.
 
 - **`sbt testUnit`** — every module's unit specs in one run; or
-  `sbt web/Test/test` / `worker/Test/test` / `common/Test/test` /
+  `sbt web/Test/test` / `worker/Test/test` / `common/Test/test` / `identity/Test/test` (the resolver) /
   `testkit/Test/test` / `e2e/Test/test` to scope to one module.
   Unit specs for controllers, services, enrichment, clients, models.
 - **`sbt itAll`** (or `sbt web/IntegrationTest/test` /

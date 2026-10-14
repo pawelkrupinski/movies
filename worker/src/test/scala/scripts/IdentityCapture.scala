@@ -154,10 +154,10 @@ object IdentityCapture {
    *  normaliser that key its listings, its TMDB lookups, and the corpus replay that feeds it — never the agreement stage,
    *  whose new questions a fill answers. A change elsewhere that moves a decision anyway is what `--capture` is for. */
   val DecisionInputs: Seq[String] = Seq(
-    "common/src/main/scala/services/identity/", "common/src/main/resources/identity-", "common/src/main/scala/services/titlerules/",
+    "identity/src/main/scala/services/identity/", "identity/src/main/resources/identity-", "common/src/main/scala/services/titlerules/",
     "common/src/main/scala/services/movies/TitleNormalizer.scala", "worker/src/main/scala/services/identity/TmdbIdentityLookups.scala",
     "worker/src/main/scala/services/TmdbClient.scala", "worker/src/it/scala/IdentityShadow.scala")
-  val NotDecisionInputs: Seq[String] = Seq("common/src/main/scala/services/identity/agreement/")
+  val NotDecisionInputs: Seq[String] = Seq("identity/src/main/scala/services/identity/agreement/")
 
   def isDecisionInput(path: String): Boolean = DecisionInputs.exists(path.startsWith) && !NotDecisionInputs.exists(path.startsWith)
 

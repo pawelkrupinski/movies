@@ -128,7 +128,7 @@ class ConvergenceDispatchGateSpec extends AnyFlatSpec with Matchers with tools.S
       (seen ++ frontier, next -- seen -- frontier)
     }.dropWhile(_._2.nonEmpty).next()._1 ++ deps("e2e")
 
-    reached.map(_._1) should contain allOf ("common", "worker", "testkit", "web")
+    reached.map(_._1) should contain allOf ("common", "identity", "worker", "testkit", "web")
     val required = reached.toSeq.flatMap { (module, mapping) =>
       val dir = modules(module)._1
       (if (module == "web") Nil else Seq(s"$dir/src/main/Probe.scala")) ++

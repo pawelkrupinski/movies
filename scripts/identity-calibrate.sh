@@ -3,9 +3,9 @@
 # Regenerates the identity resolver's calibrated evidence model from data
 # (docs/design/identity-resolver.md §14):
 #
-#   common/src/main/resources/identity-decorations.json      the learned venue decorations, with provenance (learned first:
+#   identity/src/main/resources/identity-decorations.json      the learned venue decorations, with provenance (learned first:
 #                                                            the title shapes the weights are fitted on read them)
-#   common/src/main/resources/identity-weights.json          weights, calibration map, thresholds, cannot-link rules
+#   identity/src/main/resources/identity-weights.json          weights, calibration map, thresholds, cannot-link rules
 #   test/resources/fixtures/identity/identity-labels.json.gz  the labelled set, with its train/calibration/test split
 #   $REPORT/calibration-report.{md,json}, contradicted-prod-resolutions.tsv, prod-cross-check-mismatches.tsv
 #

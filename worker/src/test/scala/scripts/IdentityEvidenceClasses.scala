@@ -29,7 +29,7 @@ import java.util.zip.GZIPInputStream
  * bound. Nothing is chosen by hand: the bins, the target and the bound are the calibration's.
  *
  *   sbt "worker/Test/runMain scripts.IdentityEvidenceClasses --fixtures <dir of enrichment-<cc>/> \
- *        [--weights common/src/main/resources/identity-weights.json] [--labels test/resources/fixtures/identity/identity-labels.json.gz] \
+ *        [--weights identity/src/main/resources/identity-weights.json] [--labels test/resources/fixtures/identity/identity-labels.json.gz] \
  *        [--source '<what the trees are, for the provenance>']"
  *
  * rewrites only the artefact's `evidenceClasses`. `IdentityCalibrate` calls [[derive]] after it

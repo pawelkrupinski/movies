@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Rebuild the identity resolver's table of stage works — every opera and ballet Wikidata knows with five or more
 sitelinks, with its names (labels and aliases) in the languages our venues bill in — as
-common/src/main/resources/identity-stage-works.tsv: one work per line, `<wikidata id>\t<English name>\t<name>|<name>…`.
+identity/src/main/resources/identity-stage-works.tsv: one work per line, `<wikidata id>\t<English name>\t<name>|<name>…`.
 
 Cinemas show the same season broadcast under each country's name for the work ("Dziadek do orzechów", "Der
 Nussknacker", "El cascanueces" for "Royal Ballet & Opera 2026/27: The Nutcracker"), so the resolver reads a season
@@ -18,7 +18,7 @@ SELECT ?work ?name (LANG(?name) AS ?lang) ?kind WHERE {
   { ?work rdfs:label ?name BIND("label" AS ?kind) } UNION { ?work skos:altLabel ?name BIND("alias" AS ?kind) }
   FILTER(LANG(?name) IN (%s))
 }""" % ",".join(f'"{lang}"' for lang in LANGUAGES)
-OUT = os.path.join(os.path.dirname(__file__), "..", "common", "src", "main", "resources", "identity-stage-works.tsv")
+OUT = os.path.join(os.path.dirname(__file__), "..", "identity", "src", "main", "resources", "identity-stage-works.tsv")
 
 
 def main() -> None:

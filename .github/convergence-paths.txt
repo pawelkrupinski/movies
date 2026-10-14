@@ -8,6 +8,7 @@
 # `dir/**` is everything under `dir/`; anything else is an exact file path — the
 # `.github/actions/changed-paths/matches.sh` dialect.
 common/src/main/**
+identity/src/main/**
 worker/src/main/**
 worker/src/fixtures/**
 testkit/src/main/**

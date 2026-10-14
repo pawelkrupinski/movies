@@ -116,6 +116,15 @@ class K8sTierPathGatingSpec extends AnyFlatSpec with Matchers {
     matches(workerFilter, shared) shouldBe true
   }
 
+  // The identity resolver is its own module, which both apps are built with: the worker runs it, the web app reads its
+  // traces and pins. Its tests ship in neither image.
+  it should "redeploy both tiers when the identity module's code moves, and neither for its tests alone" in {
+    val resolver = Seq("identity/src/main/scala/services/identity/IncrementalResolver.scala")
+    matches(webFilter, resolver) shouldBe true
+    matches(workerFilter, resolver) shouldBe true
+    matches(workerFilter, Seq("identity/src/test/scala/services/identity/IncrementalResolverSpec.scala")) shouldBe false
+  }
+
   /**
    * The heap-dump budget script lives under infra/ (the Nix flake root, so the node's timer can run
    * the same file) but is copied into BOTH images as `bin/heap-dumps.sh` by build.sbt. A change to

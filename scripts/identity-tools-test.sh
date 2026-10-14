@@ -55,7 +55,7 @@ check "...with that ref's labels" "labels-at-ref" "$(cat "$(tools identity_captu
 check "a ref that is none fails" "2" "$(tools identity_capture no-such-ref pl > /dev/null; echo $?)"
 
 tree="$work/tree"
-mkdir -p "$tree/common/src" "$tree/worker/src" "$tree/testkit/src"
+mkdir -p "$tree/common/src" "$tree/identity/src" "$tree/worker/src" "$tree/testkit/src"
 echo 'object A' > "$tree/worker/src/A.scala"
 check "a tree's classpath is compiled and exported" "$tree/worker/target/scala-3.9.0/test-classes:/lib/a.jar" "$(tools identity_classpath "$tree")"
 rm -f "$work/calls"

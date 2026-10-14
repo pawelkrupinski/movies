@@ -316,7 +316,7 @@ object IdentityUnifiedStrategies {
     writeReview(opts.get("review").map(Paths.get(_)).getOrElse(ReviewFile), greedyReview)
   }
 
-  val RulesArtefact: Path = Paths.get("common/src/main/resources", services.identity.UnifiedRules.ResourcePath)
+  val RulesArtefact: Path = Paths.get("identity/src/main/resources", services.identity.UnifiedRules.ResourcePath)
 
   /** The stable steps as the pinned artefact, with what they measured — the hand-pinned rules ([[services.identity.UnifiedRules.pinned]])
    *  and their measures carried over from the shipped artefact, which no selection makes. */

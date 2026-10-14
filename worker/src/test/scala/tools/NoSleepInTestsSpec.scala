@@ -68,7 +68,7 @@ class NoSleepInTestsSpec extends AnyFlatSpec with Matchers {
     "e2e/src/test/scala/services/movies/CorpusComparisonSpec.scala"          -> Overlap,
     "common/src/test/scala/services/movies/MovieChangeStreamSpec.scala"      -> RaceWindow,
     "worker/src/it/scala/BootCorpusReadOnceIntegrationSpec.scala"            -> RaceWindow,
-    "common/src/test/scala/services/identity/CoalescedTraceWritesSpec.scala" ->
+    "identity/src/test/scala/services/identity/CoalescedTraceWritesSpec.scala" ->
       "a seeded 0-1 ms jitter that reorders two writers' interleaving per seed; the property holds for every order",
     "worker/src/test/scala/modules/wiring/ScrapeWiringFallbackSpec.scala" ->
       "a fetch that hangs far past the client's own timeout, so the spec proves the timeout fires (it never waits it out)",

@@ -15,7 +15,7 @@ trap 'rm -rf "$work"' EXIT
 mkdir -p "$work/bin"
 
 repo="$work/repo"
-mkdir -p "$repo/scripts" "$repo/worker/src/test/scala/services/identity" "$repo/worker/src/fixtures/scala/tools" "$repo/common/src" "$repo/testkit/src"
+mkdir -p "$repo/scripts" "$repo/worker/src/test/scala/services/identity" "$repo/worker/src/fixtures/scala/tools" "$repo/common/src" "$repo/identity/src" "$repo/testkit/src"
 cp "$REPO_ROOT/scripts/title-trace" "$REPO_ROOT/scripts/identity-tools.sh" "$repo/scripts/"
 for f in worker/src/test/scala/services/identity/TitleTrace.scala worker/src/fixtures/scala/tools/SearchQueryMarkers.scala \
   worker/src/fixtures/scala/tools/CinemaSlotInvariants.scala; do

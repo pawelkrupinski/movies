@@ -1,7 +1,7 @@
 name: Identity rule refit
 
 # Weekly re-tune of the numbers the identity resolver's EXISTING rules read from
-# common/src/main/resources/identity-weights.json — the acceptance cut, each scope's
+# identity/src/main/resources/identity-weights.json — the acceptance cut, each scope's
 # cannot-link cut, the learned cannot-links' numeric bounds and the listing-film signals'
 # weights — on the unmatched-cluster ratchet's ground truth (labels.tsv, which carries the
 # review answers once `ReviewLabelsCli export` has written them there and they are committed,
@@ -96,7 +96,7 @@ jobs:
             - name: Check for kept changes
               id: changed
               run: |
-                  if git diff --quiet -- common/src/main/resources/identity-weights.json; then
+                  if git diff --quiet -- identity/src/main/resources/identity-weights.json; then
                       echo "kept=false" >> "$GITHUB_OUTPUT"
                   else
                       echo "kept=true" >> "$GITHUB_OUTPUT"
@@ -106,7 +106,7 @@ jobs:
             - name: Identity specs and the unmatched-cluster ratchet
               if: steps.changed.outputs.kept == 'true'
               run: |
-                  sbt "common/testOnly services.identity.*" \
+                  sbt "identity/testOnly services.identity.*" \
                       "worker/testOnly services.identity.* scripts.IdentityCalibrateSpec scripts.IdentityRefitSpec"
 
             - name: Start MongoDB (single-node replica set, for the hard clusters)
@@ -200,7 +200,7 @@ jobs:
                   branch: chore/identity-refit
                   delete-branch: true
                   add-paths: |
-                      common/src/main/resources/identity-weights.json
+                      identity/src/main/resources/identity-weights.json
                       test/resources/fixtures/08-06-2026/*
                   commit-message: 'Re-tune the identity rules the weekly refit measured: right takes gained, none wrong, switched or lost'
                   title: 'Identity refit: re-tuned weights and thresholds'
