@@ -141,6 +141,7 @@ keep() { # <file> <asset>: store a head's result, on main only (the only commits
     || { echo "::warning::identity takes ($cc): could not store $2 -- the next run resolves its base again"; return 0; }
   # Only the newest few of a kind are ever a base again; the rest go (best effort -- one left is pruned next time).
   local kind=${2#takes-}; kind=${kind%%-*}
+  # allow-silenced: pruning is housekeeping -- a listing that fails to read prunes nothing now and everything next time.
   gh release view "$store" --json assets --jq ".assets | map(select(.name | startswith(\"takes-$kind-$cc-\"))) \
       | sort_by(.createdAt) | reverse | .[8:][] | .name" 2>/dev/null \
     | while read -r stale; do "$here/scripts/ci/gh-release.sh" delete-asset "$store" "$stale" -y > /dev/null || true; done
