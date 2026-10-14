@@ -131,6 +131,11 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
   private def feedLinked(node: EvidenceNode): Option[(CatalogueId, Int)] =
     if (scoring.generation.numbersFilmsByTmdbId) FeedLink.linked(node) else None
 
+  /** [[feedLinked]], where the original title on `node` is the feed's copy, only Support ([[SourceReliability.Fact.OriginalTitle]]):
+   *  the link the copied-title and short denials read — a venue's own original title is its claim, never a copy's pull. */
+  private def copyingLink(node: EvidenceNode): Option[(CatalogueId, Int)] =
+    feedLinked(node).filter(_ => node.listings.forall(listing => !SourceReliability.decides(listing, SourceReliability.Fact.OriginalTitle)))
+
   /** `node`'s feed link, when the title's other sources overrule it ([[FeedLink]]): once per node for this scope's life. */
   def overruled(node: EvidenceNode): Option[FeedLink] = overruledMemo.getOrElseUpdate(node.id, overrule(node))
   private val overruledMemo = mutable.HashMap.empty[String, Option[FeedLink]]
@@ -207,7 +212,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
    *  38529260149's DE model takes: 7 listings took a film only the copied title of another linked film named, all 7 wrong.
    *  A feed that is not TMDB-keyed names no film its copy is of, and its copied title stays evidence. */
   private def namedOnlyByCopiedTitle(node: EvidenceNode, candidate: Candidate): Option[String] =
-    feedLinked(node).filter(_._2 != candidate.tmdbId).flatMap { case (id, linkedFilm) =>
+    copyingLink(node).filter(_._2 != candidate.tmdbId).flatMap { case (id, linkedFilm) =>
       val listing = evidenceOf(node).measured
       // a year the listing states that the film shares — the linked film's, copied — makes the two one film under two
       // records: DE "Tabaluga und Leo - Die Weihnachtsgeschichte" [2003] links 1486412m and is the 2003 film 68030
@@ -229,7 +234,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
   private def denialByNode(node: EvidenceNode, id: Int): Option[String] =
     Option.when(pins.deniedFilms(node.listings.head.key)(id))("pinned never this film")
       .orElse(overruled(node).filter(_.film == id).map(_.denial))
-      .orElse(feedLinked(node).filter(_ => FeedLink.copiesAnotherTitle(evidenceOf(node).measured)).flatMap(FeedLink.deniesShort(_, id, candidateById(id).film)))
+      .orElse(copyingLink(node).filter(_ => FeedLink.copiesAnotherTitle(evidenceOf(node).measured)).flatMap(FeedLink.deniesShort(_, id, candidateById(id).film)))
       .orElse(namedOnlyByCopiedTitle(node, candidateById(id)))
       .orElse(Option.when(namesOnlyItsVenue(node, candidateById(id)))("its title names it only by the venue's own name"))
       .orElse(Option.when(namesOnlyATag(node, candidateById(id)))("its title names it only by a programme tag billed beside many titles"))
