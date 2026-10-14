@@ -1,0 +1,161 @@
+#!/usr/bin/env bash
+#
+# Reproduce ONE listing's identity take — matched or not, model and agreement — from a recording, in seconds, at one or
+# two git refs (docs/design/identity-slice.md). The listing's families and their corpus context are cut out of a "Record
+# scrape fixtures" recording with every answer they read (TMDB, IMDb, the families, posters, catalogue links, venue pages)
+# into a hermetic slice; each ref's code decides the slice again.
+#
+#   scripts/identity-slice <cc> SELECTOR... [--ref A [--ref B]] [--recording RUN] [--widen N] [--emit-case]
+#   scripts/identity-slice <cc> --batch FILE --ref BASE --ref HEAD [--recording RUN]
+#   scripts/identity-slice <cc> SELECTOR... --bisect A..B [--recording RUN]
+#   scripts/identity-slice --log '<take-change log line (JSON)>'
+#   scripts/identity-slice <cc> --faithfulness CONVERGENCE_RUN [--sample N] [--seed S]
+#
+#   SELECTOR      --venue S --title S (substrings, case and accents aside; either alone), or --key 'venue|raw title' (exact)
+#   --ref         decide under that ref's code (each laid out and compiled once into the cache); two refs print their takes
+#                 side by side, then every listing that moved. Without --ref: this checkout's code.
+#   --recording   the recording run (default: the newest successful "Record scrape fixtures" run). Every ref replays the
+#                 SAME recording: the comparison is the code's, never the input's.
+#   --widen N     N more rings of context: the context listings' own families joined to the slice
+#   --orders N    also feed the slice to the INCREMENTAL model in N shuffled arrival orders (the worker's path) and name
+#                 every listing whose take any order moves from the whole resolve's — nondeterminism, a mode flip
+#   --batch FILE  one selector a line (`venue<TAB>raw title`, `*` for every venue, or `--venue S --title S`): every slice
+#                 at both refs in ONE JVM per ref, and the moves tallied against labels.tsv — cured, lost, new-wrong
+#   --bisect A..B the first commit of A..B whose take of the selected listings differs from A's (one ref compiled at a time)
+#   --emit-case   pin the listing as a FAILING TEST: the slice copied to test/resources/fixtures/identity-slices/, its expected
+#                 film taken from labels.tsv (never from the take), each label shown with its own note; refused when
+#                 labels.tsv does not judge the listing. IdentitySliceCasesSpec replays every such slice.
+#   --labels TSV  judge the takes by this labels.tsv (default this checkout's) — the same labels at both refs
+#   --log LINE    a prod `identity take change:` line from VictoriaLogs: its country, venue and listing, at its build
+#   --faithfulness RUN  the slice's take of a sample of listings against what that "Identity model convergence" run's leg
+#                 took (its convergence-diagnostics `<cc>-takes`), at the run's commit and its pinned recording
+#
+# Everything downloaded or compiled is kept in $KINOWO_IDENTITY_CACHE (default ~/.cache/kinowo-identity), shared by every
+# worktree: recordings/<run>/, slice/<run>/{index-<cc>-<ref>.json.gz, slices/<selector>/}, refs/<sha>/. The first call on a
+# recording resolves its corpus whole once per ref (~30 s), later ones decide the slice alone (~1 s).
+set -euo pipefail
+
+usage() { sed -n '3,/^set /p' "$0" | sed '$d; s/^# \{0,1\}//'; }
+case "${1:-}" in -h|--help) usage; exit 0 ;; "") usage >&2; exit 2 ;; esac
+
+IDENTITY_TOOL=identity-slice
+# shellcheck source=scripts/identity-tools.sh
+. "$(dirname "$0")/identity-tools.sh"
+repo=$IDENTITY_REPO
+# a ref the clone's history does not reach — a shallow clone's — fails by name, never as some other commit's code
+need_ref() {
+  git -C "$repo" rev-parse --verify -q "$1^{commit}" > /dev/null && return 0
+  if [ "$(git -C "$repo" rev-parse --is-shallow-repository)" = true ]; then echo "no commit $1 in this SHALLOW clone: git fetch --unshallow" >&2
+  else echo "no commit $1" >&2; fi
+  exit 2
+}
+
+TOOL_FILES=(worker/src/test/scala/scripts/IdentitySlice.scala worker/src/test/scala/scripts/IdentityExplain.scala
+  worker/src/test/scala/services/identity/IdentitySlicing.scala worker/src/fixtures/scala/tools/RecordedCorpus.scala
+  worker/src/fixtures/scala/tools/SliceHttp.scala worker/src/fixtures/scala/tools/MemoLookups.scala
+  worker/src/fixtures/scala/tools/CatalogueFill.scala)
+
+labels="" cc="" refs=() run="" pass=() batch="" bisect="" log="" faith="" sample=50 seed=1
+if [ "$1" != "--log" ]; then cc=$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]'); shift; fi
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --ref) refs+=("$2"); shift 2 ;;
+    --recording) run=$2; shift 2 ;;
+    --venue|--title|--key|--widen|--orders) pass+=("$1" "$2"); shift 2 ;;
+    --batch) batch=$(cd "$(dirname "$2")" && pwd)/$(basename "$2"); shift 2 ;;
+    --bisect) bisect=$2; shift 2 ;;
+    --emit-case) pass+=(--emit-case "$IDENTITY_REPO/test/resources/fixtures/identity-slices"); shift ;;
+    --log) log=$2; shift 2 ;;
+    --faithfulness) faith=$2; shift 2 ;;
+    --sample) sample=$2; shift 2 ;;
+    --seed) seed=$2; shift 2 ;;
+    --labels) labels=$(cd "$(dirname "$2")" && pwd)/$(basename "$2"); shift 2 ;;
+    *) echo "unknown argument $1" >&2; usage >&2; exit 2 ;;
+  esac
+done
+
+if [ -n "$log" ]; then
+  # a take-change line: its fields name the listing and the build that took it
+  fields=$(printf '%s' "$log" | python3 -I -c 'import json,sys
+d=json.load(sys.stdin)
+print("\t".join([d.get("country",""), d.get("venue",""), d.get("listing",""), d.get("build",""), d.get("projection_mode","")]))')
+  IFS=$'\t' read -r lcc lvenue llisting lbuild lmode <<< "$fields"
+  [ -n "$lvenue" ] && [ -n "$llisting" ] || { echo "the log line names no venue and listing" >&2; exit 2; }
+  [ -n "$cc" ] || cc=$lcc
+  pass+=(--key "$lvenue|$llisting")
+  [ "${#refs[@]}" -gt 0 ] || { [ -n "$lbuild" ] && [ "$lbuild" != unknown ] && refs+=("$lbuild"); }
+  identity_log "the log line: $cc, '$lvenue' | '$llisting', build ${lbuild:-unknown}, projection ${lmode:-?} (the slice replays the whole resolve, as either mode does)"
+fi
+[ -n "$cc" ] || { usage >&2; exit 2; }
+[ "${#refs[@]}" -le 2 ] || { echo "at most two --ref" >&2; exit 2; }
+
+work=$(mktemp -d "${TMPDIR:-/tmp}/identity-slice.XXXXXX"); trap 'rm -rf "$work"' EXIT
+labels=${labels:-$repo/test/resources/fixtures/identity-unmatched/labels.tsv}
+
+# run <tree> <ref label> <out.tsv> <args...> -> that tree's IdentitySlice
+run_at() {
+  local tree=$1 ref=$2 out=$3 cp; shift 3
+  cp=$(identity_classpath "$tree") || return 1
+  (cd "$tree" && "${IDENTITY_JAVA[@]}" -cp "$cp" scripts.IdentitySlice "$cc" --recording "$recording" --cache "$IDENTITY_CACHE/slice/$run" \
+    --ref "$ref" --labels "$labels" --out "$out" "$@")
+}
+tree_of() { if [ "$1" = "." ]; then echo "$repo"; else need_ref "$1"; identity_tree "$1" "${TOOL_FILES[@]}"; fi; }
+sha_of() { if [ "$1" = "." ]; then echo "worktree"; else git -C "$repo" rev-parse --verify "$1^{commit}"; fi; }
+
+if [ -n "$faith" ]; then
+  # the leg's own takes, its commit and its pinned recording
+  diag=$IDENTITY_CACHE/diagnostics/$faith
+  if [ ! -f "$diag/$cc-takes/$cc.json.gz" ]; then
+    mkdir -p "$diag"
+    gh run download "$faith" -R "${KINOWO_REPO:-pawelkrupinski/movies}" --name "convergence-diagnostics-$cc-convergence" --dir "$diag" >&2
+  fi
+  [ -n "$run" ] || run=$(gh run view "$faith" -R "${KINOWO_REPO:-pawelkrupinski/movies}" --log 2>/dev/null \
+    | grep -m1 -oE 'KINOWO_CONVERGENCE_PIN_CORPUS_RUN: [0-9]+' | grep -oE '[0-9]+$' || true)
+  [ -n "$run" ] || { echo "no pinned recording in run $faith's log: name it with --recording" >&2; exit 1; }
+  head=$(gh run view "$faith" -R "${KINOWO_REPO:-pawelkrupinski/movies}" --json headSha -q .headSha)
+  recording=$(identity_recording "$run" "$cc")
+  identity_log "faithfulness: run $faith (commit ${head:0:9}) on recording $run, $sample listing(s)"
+  run_at "$(tree_of "$head")" "$head" "$work/faith.tsv" --faithfulness "$diag/$cc-takes/$cc.json.gz" --sample "$sample" --seed "$seed"
+  exit
+fi
+
+[ -n "$run" ] || run=$(identity_newest_recording)
+recording=$(identity_recording "$run" "$cc")
+[ -z "$batch" ] || pass+=(--batch "$batch")
+[ "${#pass[@]}" -gt 0 ] || { echo "no selector" >&2; usage >&2; exit 2; }
+
+if [ -n "$bisect" ]; then
+  from=${bisect%%..*} to=${bisect##*..}; need_ref "$from"; need_ref "$to"
+  commits=(); while IFS= read -r c; do commits+=("$c"); done < <(git -C "$repo" rev-list --reverse --first-parent "$from..$to")
+  [ "${#commits[@]}" -gt 0 ] || { echo "no commit in $bisect" >&2; exit 2; }
+  takes() { tail -n +2 "$1" | cut -f2,5 | sort; }
+  run_at "$(tree_of "$from")" "$(sha_of "$from")" "$work/base.tsv" "${pass[@]}" > /dev/null
+  identity_log "bisecting ${#commits[@]} commit(s) after ${from}: the take at $from is $(takes "$work/base.tsv" | cut -f2 | sort | uniq -c | tr '\n' ';')"
+  lo=0 hi=$(( ${#commits[@]} - 1 )) first=""
+  # is the take at the LAST commit moved at all?
+  run_at "$(tree_of "${commits[$hi]}")" "${commits[$hi]}" "$work/probe.tsv" "${pass[@]}" > /dev/null
+  if cmp -s <(takes "$work/base.tsv") <(takes "$work/probe.tsv"); then echo "no commit of $bisect moves the take"; exit 0; fi
+  while [ "$lo" -lt "$hi" ]; do
+    mid=$(( (lo + hi) / 2 ))
+    run_at "$(tree_of "${commits[$mid]}")" "${commits[$mid]}" "$work/probe.tsv" "${pass[@]}" > /dev/null
+    if cmp -s <(takes "$work/base.tsv") <(takes "$work/probe.tsv"); then lo=$(( mid + 1 )); else hi=$mid; fi
+  done
+  first=${commits[$lo]}
+  echo "first commit moving the take: $(git -C "$repo" log -1 --format='%h %s' "$first")"
+  run_at "$(tree_of "$first")" "$first" "$work/first.tsv" "${pass[@]}" > /dev/null
+  python3 -I "$repo/scripts/identity_slice_diff.py" "$work/base.tsv" "$work/first.tsv" "$(git -C "$repo" rev-parse --short "$first")~1" "$(git -C "$repo" rev-parse --short "$first")" "$labels"
+  exit
+fi
+
+[ "${#refs[@]}" -gt 0 ] || refs=(.)
+for i in "${!refs[@]}"; do
+  t=$(tree_of "${refs[$i]}") || exit 1
+  run_at "$t" "$(sha_of "${refs[$i]}")" "$work/$i.tsv" "${pass[@]}" > "$work/$i.txt" || { cat "$work/$i.txt"; exit 1; }
+done
+if [ "${#refs[@]}" -eq 1 ]; then
+  [ -n "$batch" ] || cat "$work/0.txt"
+else
+  [ -n "$batch" ] || { echo "### ${refs[0]}"; cat "$work/0.txt"; echo; echo "### ${refs[1]}"; cat "$work/1.txt"; echo; }
+  python3 -I "$repo/scripts/identity_slice_diff.py" "$work/0.tsv" "$work/1.tsv" "${refs[0]}" "${refs[1]}" "$labels"
+fi
+

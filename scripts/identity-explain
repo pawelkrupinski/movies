@@ -42,25 +42,7 @@ done
 [ "${#refs[@]}" -le 2 ] || { echo "at most two --ref" >&2; exit 2; }
 
 # tree <ref> -> a compiled-once copy of the ref's sources, this checkout's IdentityExplain dropped in
-tree() {
-  local sha dir t tool=worker/src/test/scala/scripts/IdentityExplain.scala
-  sha=$(git -C "$repo" rev-parse --verify "$1^{commit}") || { echo "no ref $1" >&2; return 2; }
-  dir=$IDENTITY_CACHE/refs/$sha
-  if [ ! -f "$dir/build.sbt" ]; then
-    identity_log "laying out $1 ($sha) in $dir"
-    rm -rf "$dir.part"; mkdir -p "$dir.part"
-    git -C "$repo" archive "$sha" -- . ':(exclude)test/resources' ':(exclude)ios' ':(exclude)android' | tar -x -C "$dir.part"
-    # Seed the compile from this checkout's (APFS clones, no copy): sbt recompiles only what the ref changed.
-    for t in project/target common/target testkit/target worker/target target; do
-      if [ -d "$repo/$t" ]; then mkdir -p "$dir.part/$(dirname "$t")"; cp -cR "$repo/$t" "$dir.part/$t" 2>/dev/null || cp -R "$repo/$t" "$dir.part/$t"; fi
-    done
-    rm -rf "$dir.part/target/identity-tools"
-    mv "$dir.part" "$dir"
-  fi
-  # copied only when it changed: an unchanged copy keeps its time, and the ref is not compiled again
-  cmp -s "$repo/$tool" "$dir/$tool" 2>/dev/null || cp "$repo/$tool" "$dir/$tool"
-  echo "$dir"
-}
+tree() { identity_tree "$1" worker/src/test/scala/scripts/IdentityExplain.scala; }
 
 captured=$(identity_capture "$fixture" "$cc")
 [ -f "$captured/$cc.json.gz" ] || { echo "no capture $captured/$cc.json.gz" >&2; exit 1; }

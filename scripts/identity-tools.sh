@@ -39,6 +39,53 @@ identity_capture() {
   echo "$dir"
 }
 
+# identity_tree <ref> <file>... -> a compiled-once copy of the ref's sources under the cache, each named file (a path
+# relative to the repository) dropped in from this checkout — the tool's own code, so a ref from before the tool works
+identity_tree() {
+  local sha dir t ref=$1; shift
+  sha=$(git -C "$IDENTITY_REPO" rev-parse --verify "$ref^{commit}") || { echo "no ref $ref" >&2; return 2; }
+  dir=$IDENTITY_CACHE/refs/$sha
+  if [ ! -f "$dir/build.sbt" ]; then
+    identity_log "laying out $ref ($sha) in $dir"
+    rm -rf "$dir.part"; mkdir -p "$dir.part"
+    git -C "$IDENTITY_REPO" archive "$sha" -- . ':(exclude)test/resources' ':(exclude)ios' ':(exclude)android' | tar -x -C "$dir.part"
+    # Seed the compile from this checkout's (APFS clones, no copy): sbt recompiles only what the ref changed.
+    for t in project/target common/target testkit/target worker/target target; do
+      if [ -d "$IDENTITY_REPO/$t" ]; then mkdir -p "$dir.part/$(dirname "$t")"; cp -cR "$IDENTITY_REPO/$t" "$dir.part/$t" 2>/dev/null || cp -R "$IDENTITY_REPO/$t" "$dir.part/$t"; fi
+    done
+    rm -rf "$dir.part/target/identity-tools"
+    mv "$dir.part" "$dir"
+  fi
+  # copied only when it changed: an unchanged copy keeps its time, and the ref is not compiled again
+  for t in "$@"; do
+    mkdir -p "$(dirname "$dir/$t")"
+    cmp -s "$IDENTITY_REPO/$t" "$dir/$t" 2>/dev/null || cp "$IDENTITY_REPO/$t" "$dir/$t"
+  done
+  echo "$dir"
+}
+
+# identity_recording <run> <cc> -> the directory holding that "Record scrape fixtures" run's corpus/ and enrichment-<cc>/,
+# downloaded once into the shared cache (scripts/identity-fetch-recording.sh), one download at a time across agents
+identity_recording() {
+  local run=$1 cc=$2 dir=$IDENTITY_CACHE/recordings/$1 lock
+  if [ ! -f "$dir/pair/test/resources/fixtures/corpus/cinema-scrapes-$cc.json.gz" ] || [ ! -d "$dir/pair/test/resources/fixtures/enrichment-$cc" ]; then
+    lock=$IDENTITY_CACHE/recordings/.lock-$run-$cc
+    mkdir -p "$IDENTITY_CACHE/recordings"
+    until mkdir "$lock" 2>/dev/null; do identity_log "waiting for another download of recording $run ($cc)"; sleep 10; done
+    if [ ! -d "$dir/pair/test/resources/fixtures/enrichment-$cc" ]; then
+      identity_log "downloading recording $run ($cc) into $dir"
+      "$IDENTITY_REPO/scripts/identity-fetch-recording.sh" "$run" "$dir" "$cc" >&2 || { rmdir "$lock"; return 1; }
+    fi
+    rmdir "$lock"
+  fi
+  echo "$dir/pair/test/resources/fixtures"
+}
+
+# identity_newest_recording -> the newest successful "Record scrape fixtures" run's id
+identity_newest_recording() {
+  gh run list -R "${KINOWO_REPO:-pawelkrupinski/movies}" --workflow "Record scrape fixtures" --status success -L 1 --json databaseId -q '.[0].databaseId'
+}
+
 identity_classpath() {
   local tree=$1 cp=$1/target/identity-tools/classpath log=$1/target/identity-tools/sbt.log
   if [ -s "$cp" ] && [ -z "$(find "$tree/common/src" "$tree/worker/src" "$tree/testkit/src" "$tree/build.sbt" -newer "$cp" -name '*.s*' -print -quit 2>/dev/null)" ]; then

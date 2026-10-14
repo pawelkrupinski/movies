@@ -15,8 +15,21 @@ shared by every worktree, so the second agent to ask pays nothing.
 
 ## Which tool
 
+**Start with `scripts/identity-slice`** for any one listing — matched or not, model or agreement. It cuts the listing's
+families and their corpus context out of a recording, with every answer they read, and decides them at each ref in
+~1 s (the first call on a recording resolves its corpus whole once per ref, ~30 s; a new ref compiles once, ~2 min).
+Design and limits: docs/design/identity-slice.md.
+
 | Question | Command |
 |---|---|
+| Why does «title» at a venue take film X (or none) — matched listings too? | `scripts/identity-slice de --venue cinestar --title "rückkehr des königs"` (or `--key 'venue\|raw title'`) |
+| Did commit Y change that? | `… --ref Y~1 --ref Y` — both refs on ONE recording (`--recording RUN`, default the newest green) |
+| A prod take-change log line | `scripts/identity-slice --log '<the line's JSON>'` (its `repro` field is the same command) |
+| Which commit of A..B moved it? | `… --bisect A..B` |
+| Measure a rule change over many listings | `scripts/identity-slice de --batch FILE --ref BASE --ref HEAD [--labels TSV]` → cured / lost / new-wrong |
+| Pin a repro as a failing test | `… --emit-case` → `test/resources/fixtures/identity-slices/`, `IdentitySliceCasesSpec` (expected film from labels.tsv only) |
+| Does arrival order (the worker's incremental model) move it? | `… --orders 12` |
+| Does the slice decide as the whole leg did? | `scripts/identity-slice de --faithfulness <convergence run id> --sample 60` |
 | Why did «title» at a venue take film X (or none)? | `scripts/identity-explain de --venue cinestar --title "rückkehr des königs"` |
 | Did commit Y change that, and how? | `… --ref Y~1 --ref Y` (side by side, then the traces' diff) |
 | The same on a newer capture (the capture branch, a capture run) | `… --fixture origin/chore/identity-capture` or `--fixture <identity-capture run id>` |
@@ -41,8 +54,8 @@ guards passed, signals); the take(s) and their verdict in `labels.tsv`.
 - Both refs replay the SAME capture: the comparison is the code's, never the input's.
 - Model decisions are CAPTURED (whole-corpus resolve at capture time); a model-side change shows in the
   "re-resolved" section, which resolves the capture's listings alone (neighbours outside the capture missing).
-- Not in the capture → the model matched it. Reproduce over the full corpus with `scripts/convergence-local.sh`
-  (see the identity convergence local-repro memory).
+- Not in the capture → the model matched it: use `scripts/identity-slice` (any listing, model decisions re-resolved by
+  the code against the whole corpus's context). `scripts/convergence-local.sh` only for what the pipeline itself does.
 
 ## identity-ratchet-report
 
@@ -86,8 +99,8 @@ only and have none of these.
   veto:/join:/apart:/refused: ids), `blocker`, `runner_up`, `fallback`, `unanswered`, `previous_basis`/
   `previous_confidence`/`previous_reason` (the take before; absent after an index rebuild), `listing_year`/
   `listing_runtime`/`listing_director`/`listing_original_title`, and `repro` — a ready
-  `scripts/identity-explain <cc> --venue '…' --title '…' --ref <build>` line (it finds the listing only if the
-  capture holds it unmatched; a model take needs `scripts/convergence-local.sh`).
+  `scripts/identity-slice <cc> --key 'venue|raw title' --ref <build>` line (any listing, matched or not; lines logged before
+  2026-10-14 name `scripts/identity-explain`, which finds the listing only if the capture holds it unmatched).
 - **`identity take change: summary …`** — one per tick that moved any: `take_changes`, `lost`, `changed`,
   `gained`, `logged`, `by_basis`.
 - **`identity projection: …`** — every written tick: `listings`, `films`, `written`, `retired`, `declined`,
