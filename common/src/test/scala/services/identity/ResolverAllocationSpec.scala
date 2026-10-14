@@ -14,15 +14,29 @@ import services.identity.IdentityMeasures.{Film, Listing, ListingFilm, ListingLi
 class ResolverAllocationSpec extends AnyFlatSpec with Matchers {
   private val model = IdentityCalibration.resolver
 
-  /** Bytes `body` allocates per call on this thread — its answer read as a primitive, never boxed — over its first
-   *  calls, before the optimising compiler can scalar-replace what it allocates: in the resolver, called through deep
-   *  megamorphic paths, it never does (the allocations stood in production's JFR). Once to load what it reads lazily. */
-  private def bytesPerCall(body: java.util.function.DoubleSupplier): Double = {
-    var sink = 0.0
-    sink += body.getAsDouble
-    val (_, bytes) = tools.ThreadAllocation.of { var j = 0; while (j < 2000) { sink += body.getAsDouble; j += 1 } }
+  /** `body` allocates fewer than `budget` bytes per call on this thread — its answer read as a primitive, never boxed:
+   *  the median of five batches of calls, after one unmeasured batch that loads and links what it reads lazily.
+   *
+   *  Measured ONLY in a JVM without escape analysis ([[ResolverAllocationBudgetSpec]] runs this suite in one): with it
+   *  on, what a call allocates depends on what C2 managed to scalar-replace, which depends on the JIT's state, not the
+   *  code — the dated-title check measured 28.3–28.9k bytes a call alone, 32.6k inside the parallel `common/test`
+   *  (other suites' calls had left the shared title code megamorphic), and 33.4k with escape analysis off. In production,
+   *  behind the resolver's deep megamorphic paths, none of it is scalar-replaced (the allocations stood in its JFR), so
+   *  the escape-free count is both the deterministic one and production's. In the shared test JVM this only runs `body`. */
+  private def allocatesUnder(budget: Double)(body: java.util.function.DoubleSupplier): Unit = {
+    val Batch = 2000
+    var sink  = 0.0
+    def batch(): Double = {
+      val (_, bytes) = tools.ThreadAllocation.of { var j = 0; while (j < Batch) { sink += body.getAsDouble; j += 1 } }
+      bytes.toDouble / Batch
+    }
+    if (!ResolverAllocationSpec.escapeAnalysisOff) sink += body.getAsDouble
+    else {
+      batch()
+      val perCall = Seq.fill(5)(batch()).sorted.apply(2)
+      perCall should be < budget
+    }
     if (sink.isNaN) fail("unreachable")
-    bytes / 2000.0
   }
 
   private val listing = Listing("Samson i Dalila", year = Some(2026), directors = Seq("Darko Tresnjak"), runtime = Some(180))
@@ -35,8 +49,8 @@ class ResolverAllocationSpec extends AnyFlatSpec with Matchers {
     Seq(ListingFilm -> measures, ListingListing -> pairMeasures).foreach { case (scope, m) =>
       model.logOdds(scope, m) shouldBe (model.scopes(scope).prior + model.contributions(scope, m).map(_._2).sum)
       model.contributionSum(scope, m) shouldBe model.contributions(scope, m).map(_._2).sum
-      withClue(s"$scope: ")(bytesPerCall(() => model.logOdds(scope, m)) should be < 8.0)
-      withClue(s"$scope: ")(bytesPerCall(() => model.contributionSum(scope, m)) should be < 8.0)
+      withClue(s"$scope: ")(allocatesUnder(8.0)(() => model.logOdds(scope, m)))
+      withClue(s"$scope: ")(allocatesUnder(8.0)(() => model.contributionSum(scope, m)))
     }
   }
 
@@ -48,7 +62,7 @@ class ResolverAllocationSpec extends AnyFlatSpec with Matchers {
     ConstraintSolver.forbids(cannot, film, 4, 5) shouldBe true
     ConstraintSolver.forbids(cannot, film, 4, 6) shouldBe false
     ConstraintSolver.forbids(cannot, film, 7, 8) shouldBe false
-    bytesPerCall(() => if (ConstraintSolver.forbids(cannot, film, 1, 4)) 1.0 else 0.0) should be < 8.0
+    allocatesUnder(8.0)(() => if (ConstraintSolver.forbids(cannot, film, 1, 4)) 1.0 else 0.0)
   }
 
   "a title token run" should "be judged without an iterator per call, as startsWith and endsWith judge it" in {
@@ -60,7 +74,7 @@ class ResolverAllocationSpec extends AnyFlatSpec with Matchers {
       withClue(s"$x / $y: ")(isTokenRun(x, y) shouldBe (x.nonEmpty && y.lengthIs > x.length && (y.startsWith(x) || y.endsWith(x))))
     }
     val (base, whole) = (tokens("Diuna"), tokens("Kino na leżakach: Diuna"))
-    bytesPerCall(() => if (isTokenRun(base, whole)) 1.0 else 0.0) should be < 8.0
+    allocatesUnder(8.0)(() => if (isTokenRun(base, whole)) 1.0 else 0.0)
   }
 
   "a candidate's own evidence" should "be summed without a tuple or box per signal, to the same sums" in {
@@ -72,8 +86,8 @@ class ResolverAllocationSpec extends AnyFlatSpec with Matchers {
     model.contributionSumWhere(ListingFilm, measures, (name, _) => name == "nothing") shouldBe 0.0
     val lent    = model.contributions(ListingFilm, measures).map { case (name, w) => if (weights.Priors(name)) math.max(0.0, w) else w }.sum
     model.contributionSumWhere(ListingFilm, measures, (_, _) => true, (name, w) => if (weights.Priors(name)) math.max(0.0, w) else w) shouldBe lent
-    bytesPerCall(() => weights.ownContributions(measures)) should be < 32.0
-    bytesPerCall(() => weights.factsProbability(measures)) should be < 96.0
+    allocatesUnder(32.0)(() => weights.ownContributions(measures))
+    allocatesUnder(96.0)(() => weights.factsProbability(measures))
   }
 
   "each listing's film id" should "be one hash table built to size, the same ids, with nothing copied as it grows" in {
@@ -98,7 +112,7 @@ class ResolverAllocationSpec extends AnyFlatSpec with Matchers {
     deburr("\u007f") shouldBe "\u007f"
     deburr("\u0080x") shouldBe "\u0080x"
     val ascii = "Kino na leżakach".filter(_ < 0x80)
-    bytesPerCall(() => deburr(ascii).length.toDouble) should be < 8.0
+    allocatesUnder(8.0)(() => deburr(ascii).length.toDouble)
   }
 
   "a listing's search groups against a film" should "key each title once, not per pair, to the same groups" in {
@@ -109,7 +123,7 @@ class ResolverAllocationSpec extends AnyFlatSpec with Matchers {
       l.searchTitles.map(IdentityMeasures.key).filter(titles).distinct
     }
     Seq(asked -> many, asked -> film, listing -> many).foreach { case (l, f) => IdentityMeasures.searchGroups(l, f) shouldBe reference(l, f) }
-    bytesPerCall(() => IdentityMeasures.searchGroups(asked, many).size.toDouble) should be < 512.0   // was 11,344
+    allocatesUnder(512.0)(() => IdentityMeasures.searchGroups(asked, many).size.toDouble)   // was 11,344
   }
 
   "a listing's measures against a film" should "be the map they were, held in slots, without a hash map and tuples per pair" in {
@@ -136,7 +150,7 @@ class ResolverAllocationSpec extends AnyFlatSpec with Matchers {
       model.probability(ListingFilm, m) shouldBe model.probability(ListingFilm, ref)
     }
     val title = IdentityMeasures.titleRelation(listing, film)
-    bytesPerCall(() => IdentityMeasures.listingFilmTitled(listing, film, Some(1), 2, 3, title).size.toDouble) should be < 2000.0   // was 3,600: the hash map, its nodes and an entry tuple each
+    allocatesUnder(2000.0)(() => IdentityMeasures.listingFilmTitled(listing, film, Some(1), 2, 3, title).size.toDouble)   // was 3,600: the hash map, its nodes and an entry tuple each
   }
 
   "a film's director credited by its house's name" should "be read from tokens worked out once per listing and film" in {
@@ -146,7 +160,7 @@ class ResolverAllocationSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.listingFilm(met, opera, Some(1), 0, 0)("director") shouldBe IdentityMeasures.Category("same_person")
     IdentityMeasures.listingFilm(alone, opera, Some(1), 0, 0)("director") shouldBe IdentityMeasures.MissingListing
     val title = IdentityMeasures.titleRelation(met, opera)
-    bytesPerCall(() => IdentityMeasures.listingFilmTitled(met, opera, Some(1), 0, 0, title).size.toDouble) should be < 6500.0   // was 8,469: every name and title tokenised per pair
+    allocatesUnder(6500.0)(() => IdentityMeasures.listingFilmTitled(met, opera, Some(1), 0, 0, title).size.toDouble)   // was 8,469: every name and title tokenised per pair
   }
 
   "a credit in Latin letters weighed against one in another script" should "be read as it is, not transliterated" in {
@@ -158,7 +172,7 @@ class ResolverAllocationSpec extends AnyFlatSpec with Matchers {
     }
     IdentityMeasures.listingFilm(Listing("Kaili Blues", directors = Seq("Bi Gan")), bi, Some(1), 0, 0)("director") shouldBe
       IdentityMeasures.Category("same_person")
-    bytesPerCall(() => new IdentityMeasures.Credits(Seq("Mikhail Ivanov")).inLatin.names.size.toDouble) should be < 512.0
+    allocatesUnder(512.0)(() => new IdentityMeasures.Credits(Seq("Mikhail Ivanov")).inLatin.names.size.toDouble)
   }
 
   "two titles one typo apart" should "be told without a vector of their differing words per pair, to the same answer" in {
@@ -174,7 +188,7 @@ class ResolverAllocationSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.oneTypoApart(tokens("Scary Movie 3"), tokens("Scary Movie 4")) shouldBe false
     IdentityMeasures.oneTypoApart(tokens("Another Round"), tokens("Anothre Rounds")) shouldBe false
     val (a, b) = (tokens("The Lord of the Rings Return of the King"), tokens("The Lord of the Rings Return of the Kings"))
-    bytesPerCall(() => if (IdentityMeasures.oneTypoApart(a, b)) 1.0 else 0.0) should be < 64.0
+    allocatesUnder(64.0)(() => if (IdentityMeasures.oneTypoApart(a, b)) 1.0 else 0.0)
   }
 
   // Every projection reads the model's listings (~100k on worker-us) for the keys it holds and to adopt its objects; as a
@@ -206,7 +220,7 @@ class ResolverAllocationSpec extends AnyFlatSpec with Matchers {
       }
     rivals.foreach(r => weights.fitsBetter(r, top) shouldBe reference(r))
     val rival = rivals(1)
-    bytesPerCall(() => if (weights.fitsBetter(rival, top)) 1.0 else 0.0) should be < 1000.0   // was 10,412
+    allocatesUnder(1000.0)(() => if (weights.fitsBetter(rival, top)) 1.0 else 0.0)   // was 10,412
   }
 
   "a title dated by the year its film is from" should "be read off titles tokenised once per listing and film" in {
@@ -218,6 +232,27 @@ class ResolverAllocationSpec extends AnyFlatSpec with Matchers {
       Scored(Candidate(id, film), model.probability(ListingFilm, m), m, denial = None, dated, Some(i + 1))
     }.sortBy(s => (-s.probability, s.candidate.tmdbId))
     acceptance.acceptedBy(ranked, 167179) shouldBe Some("dated-title")
-    bytesPerCall(() => acceptance.acceptedBy(ranked, 167179).size.toDouble) should be < 33000.0   // was 41,882: both films' and the listing's titles tokenised per call
+    allocatesUnder(35000.0)(() => acceptance.acceptedBy(ranked, 167179).size.toDouble)   // 33,392; was 41,882: both films' and the listing's titles tokenised per call
+  }
+}
+
+object ResolverAllocationSpec {
+  /** Whether this JVM runs without escape analysis, where [[ResolverAllocationSpec]]'s budgets are measured. */
+  val escapeAnalysisOff: Boolean =
+    java.lang.management.ManagementFactory.getPlatformMXBean(classOf[com.sun.management.HotSpotDiagnosticMXBean])
+      .getVMOption("DoEscapeAnalysis").getValue == "false"
+
+  /** Runs [[ResolverAllocationSpec]] in this JVM, exiting 1 unless it passes. */
+  def main(args: Array[String]): Unit =
+    if (!org.scalatest.tools.Runner.run(Array("-oW", "-s", classOf[ResolverAllocationSpec].getName))) System.exit(1)
+}
+
+/** [[ResolverAllocationSpec]]'s allocation budgets, measured in a fresh JVM without escape analysis: per call, the bytes
+ *  its code allocates, whatever the JIT made of it and whatever ran before it in the shared test JVM. */
+class ResolverAllocationBudgetSpec extends AnyFlatSpec with Matchers {
+  "the resolver's hottest helpers" should "allocate within their budgets with nothing scalar-replaced" in {
+    val (exit, output) = tools.ChildJvm(settings.ProcessConfiguration.resolve())
+      .run("services.identity.ResolverAllocationSpec", jvmArgs = Seq("-XX:-DoEscapeAnalysis", "-XX:AutoBoxCacheMax=16384"))
+    withClue(s"ResolverAllocationSpec without escape analysis said:\n$output\n")(exit shouldBe 0)
   }
 }
