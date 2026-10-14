@@ -31,6 +31,12 @@
 // `identity_listings`) and the films' records (`movies`, `web_movies`, and the resolver's
 // own TMDB records in `tmdb_films` for the candidates the corpus lacks, and their TMDB posters' paths
 // in `identity_family_answers`), and each listing's trace (`identity_traces`) for a card's "Why" fold-out.
+//
+// `identity_agreements` (the agreement stage's stored verdicts: the film each cluster's families agreed on or a fill
+// rule took) and `identity_pins` (operator pins) back no page either: they are prod state no recording holds, which
+// `scripts/identity-slice --prod-mirror` reads so a slice decides — and explains — as prod's stage does. Without them
+// an agreement take (Agreed, Filled, Poster, …) has no prod-side record at all: the model's families and traces hold
+// only the model's decision.
 const MIRRORED_COLLECTIONS = [
   "movies", "screenings", "movie_slots",
   "enrichment_attempts", "rating_cadence",
@@ -38,6 +44,7 @@ const MIRRORED_COLLECTIONS = [
   "cinema_scrapes",
   "identity_model_families", "identity_listings", "venue_pages", "tmdb_films",
   "identity_family_answers", "identity_traces",
+  "identity_agreements", "identity_pins",
 ];
 
 // Prod's per-country databases sit side by side on the ONE local mirror
