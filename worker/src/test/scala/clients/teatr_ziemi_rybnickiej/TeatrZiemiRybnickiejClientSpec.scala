@@ -163,4 +163,26 @@ class TeatrZiemiRybnickiejClientSpec extends AnyFlatSpec with Matchers with Opti
     movie.showtimes.head.bookingUrl shouldBe
       Some("https://bilety.teatrziemirybnickiej.pl/event/view/id/664576")
   }
+
+  // ── Credit lines are never the synopsis ──────────────────────────────────────
+  //
+  // trzy-pozegnania.html recorded 2026-10-14 (recording run 38498856157 scraped it as synopsis "Scenariusz: Enrico
+  // Audenino, Isabel CoixetP"). Its synopsis says "złe samopoczucie", which the price-row filter's bare "zł" threw out,
+  // and the "Scenariusz:" credit — no known label — was the next long line. Its runtime reads "Czas; 2h", a semicolon.
+
+  private val TrzyPozegnania = "https://www.teatrziemirybnickiej.pl/wydarzenia/trzy-pozegnania.html"
+
+  it should "read the synopsis and the semicolon-delimited runtime of Trzy pożegnania" in {
+    val movie = client.parseDetail(http.get(TrzyPozegnania), TrzyPozegnania).value
+    movie.synopsis.value should startWith ("Po rozstaniu z ukochanym Marta")
+    movie.movie.runtimeMinutes shouldBe Some(120)
+    movie.director shouldBe Seq("Isabel Coixet")
+    movie.movie.countries shouldBe Seq("Hiszpania", "Włochy")
+  }
+
+  it should "never take a credit line as the synopsis, even with no prose line on the page" in {
+    val page = org.jsoup.Jsoup.parse(http.get(TrzyPozegnania))
+    page.selectFirst("div.event-show .cmp-text:not(.dates) p").remove()
+    client.parseDetail(page.outerHtml(), TrzyPozegnania).value.synopsis shouldBe None
+  }
 }

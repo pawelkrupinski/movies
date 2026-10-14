@@ -86,13 +86,13 @@ class TeatrZiemiRybnickiejClient(http: HttpFetch) extends CinemaScraper {
       // Description blocks (everything but the "Terminy" date list). Each <p>
       // is split into its <br>-separated lines; meta lines open with a known
       // label, the synopsis is the first prose line that doesn't (and isn't a
-      // price row).
+      // price row — an amount in zł, not any "zł…" word: "złe samopoczucie").
       val lines = root.select(".cmp.cmp-text:not(.dates)").asScala.toSeq
         .flatMap(_.select("p").asScala)
         .flatMap(splitLines)
 
       val metaText = lines.filter(isMetaLine).mkString(" | ")
-      val synopsis = lines.find(l => !isMetaLine(l) && !l.contains("zł") && l.length > 40)
+      val synopsis = lines.find(l => !isMetaLine(l) && PriceRow.findFirstIn(l).isEmpty && l.length > 40)
 
       val (countries, year) = parseProduction(field(metaText, "Produkcja|Prod"))
 
@@ -128,23 +128,29 @@ class TeatrZiemiRybnickiejClient(http: HttpFetch) extends CinemaScraper {
       .filter(_.nonEmpty)
       .toSeq
 
+  private val PriceRow = """\d\s*zł""".r
+
   // Labels a metadata line can open with. Longer variants first so a value
-  // boundary lands on the full label ("Czas trwania" before "Czas").
+  // boundary lands on the full label ("Czas trwania" before "Czas"). The
+  // credits we don't read (Scenariusz, Zdjęcia, Muzyka) are labels too, so a
+  // credit line is never taken for the synopsis.
   private val AllLabels =
-    "Czas trwania|Czas|Scenariusz i reżyseria|Reżyseria|Reż|Produkcja|Prod|Gatunek|Obsada|Bilety"
-  // Anchor on the label's `:`/`.`/`-` delimiter rather than `\b` — Java's
+    "Czas trwania|Czas|Scenariusz i reżyseria|Scenariusz|Reżyseria|Reż|Produkcja|Prod|Gatunek|Obsada|Zdjęcia|Muzyka|Montaż|Bilety"
+  // Anchor on the label's `:`/`;`/`.`/`-` delimiter rather than `\b` — Java's
   // default `\w` excludes Polish letters, so a `\b` after "Reż" never matches.
-  private val MetaLineStart = ("""(?i)^(?:""" + AllLabels + """)\s*[:.\-]""").r
+  // A semicolon is a typo of the colon ("Czas; 2h").
+  private val Delimiter = """\s*[:;.\-]"""
+  private val MetaLineStart = ("""(?i)^(?:""" + AllLabels + """)""" + Delimiter).r
 
   private def isMetaLine(line: String): Boolean =
     MetaLineStart.findPrefixMatchOf(line).isDefined
 
   /** Value for `labels` from the joined meta text: everything after the label's
-   *  `:`/`.`/`-` delimiter up to the next known label, a ` | ` block boundary,
+   *  delimiter up to the next known label, a ` | ` block boundary,
    *  or the end. Returns `None` when the label is absent. */
   private def field(metaText: String, labels: String): Option[String] = {
-    val pat = ("""(?i)(?:""" + labels + """)\s*[:.\-]\s*(.+?)\s*""" +
-      """(?=(?:""" + AllLabels + """)\s*[:.\-]|\s*\||$)""").r
+    val pat = ("""(?i)(?:""" + labels + """)""" + Delimiter + """\s*(.+?)\s*""" +
+      """(?=(?:""" + AllLabels + """)""" + Delimiter + """|\s*\||$)""").r
     pat.findFirstMatchIn(metaText).map(_.group(1).trim).filter(_.nonEmpty)
   }
 
