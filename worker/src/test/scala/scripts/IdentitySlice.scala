@@ -55,6 +55,8 @@ object IdentitySlice {
                            faithfulness: Option[Path] = None, sample: Int = 50, seed: Long = 1, widen: Int = 0, orders: Int = 0, modes: Int = 0, families: Option[Path] = None, ref: String = "",
                            /** The LOCAL prod mirror's URI: prod's filed family answers, stored verdicts and pins read from it ([[tools.ProdMirror]]). */
                            prodMirror: Option[String] = None,
+                           /** The worker build prod runs (the `deployed-worker` tag): whose code wrote the mirror's state. */
+                           deployed: Option[String] = None,
                            pending: (Option[String], Option[String]) = (None, None), emitCase: Option[Path] = None)
 
   def parse(args: List[String], o: Options = Options()): Options = args match {
@@ -72,6 +74,7 @@ object IdentitySlice {
     case "--modes" :: v :: rest        => parse(rest, o.copy(modes = v.toInt))
     case "--families" :: v :: rest     => parse(rest, o.copy(families = Option.when(v != "none")(Path.of(v))))
     case "--prod-mirror" :: v :: rest  => parse(rest, o.copy(prodMirror = Some(v)))
+    case "--deployed" :: v :: rest     => parse(rest, o.copy(deployed = Some(v).filter(_.nonEmpty)))
     case "--widen" :: v :: rest        => parse(rest, o.copy(widen = v.toInt))
     case "--emit-case" :: v :: rest    => parse(rest, o.copy(emitCase = Some(Path.of(v))))
     case "--replay" :: v :: rest       => parse(rest, o.copy(replay = o.replay :+ Path.of(v)))
@@ -146,7 +149,9 @@ object IdentitySlice {
     private val recorded = new TmdbIdentityLookups(tmdb, new services.enrichment.ImdbClient(fetch), enrichers, gaps)
     /** The recording's answers, and the filed ones where it has none — each filed one read noted. */
     val filedLookups: Option[tools.FiledAnswers.Lookups] = Option.when(!filed.isEmpty)(new tools.FiledAnswers.Lookups(recorded, filed))
-    val lookups: IdentityLookups = filedLookups.getOrElse(recorded)
+    /** Every question the decisions over these reads asked and got no answer to: not the recording's, not filed. */
+    val asking = new Asking(filedLookups.getOrElse(recorded))
+    val lookups: IdentityLookups = asking
     val families: Seq[VoterFamily] = UnmatchedClusters.familiesOf(country)
     val sources: Map[VoterFamily, FamilySource] = Seq(new ImdbFamily(new services.enrichment.ImdbClient(fetch)),
       new WikiFamily(new services.enrichment.WikidataClient(fetch), country.language.getLanguage),
@@ -154,6 +159,33 @@ object IdentitySlice {
         services.cinemas.pl.FilmwebProgrammes.resolving(fetch, () => venueClock.todayInPoland).of),
       new RottenTomatoesFamily(new services.enrichment.RottenTomatoesClient(fetch)),
       new MetacriticFamily(new services.enrichment.MetacriticClient(fetch))).filter(s => families.contains(s.family)).map(s => s.family -> s).toMap
+  }
+
+  /** `inner`, every question it leaves unanswered noted as a trace renders it (`imdb "When Pigs Fly"`, `tmdb 149933`).
+   *  Overrides only what every ref this file is dropped into has (no `released`, no `prefetchAnswered`). */
+  final class Asking(inner: IdentityLookups) extends IdentityLookups {
+    val unanswered: java.util.Set[String] = java.util.concurrent.ConcurrentHashMap.newKeySet[String]()
+    private def noted[A](answer: Answer[A], question: => String): Answer[A] = { if (answer == Answer.Unknown) unanswered.add(question); answer }
+    override def hasDetail(listing: Listing): Boolean = inner.hasDetail(listing)
+    override def prefetch(queries: Iterable[CandidateQuery], films: Iterable[Int], details: Iterable[Listing]): Unit = inner.prefetch(queries, films, details)
+    override def detail(listing: Listing): Answer[Option[DetailFacts]] = noted(inner.detail(listing), s"page ${listing.page.getOrElse(listing.key.venue)}")
+    override def candidates(query: CandidateQuery): Answer[Seq[Hit]] = noted(inner.candidates(query), DecisionTrace.renderQuery(query))
+    override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = noted(inner.film(tmdbId), s"tmdb $tmdbId")
+    override def cast(tmdbId: Int): Answer[Option[Seq[String]]] = noted(inner.cast(tmdbId), s"cast $tmdbId")
+  }
+
+  /** Why this code's model decides a captured listing otherwise, from the questions it left unanswered: (a) a question
+   *  the capture's code never asked — a capture that keeps its live answers ([[tools.FiledAnswers.live]]) holds every
+   *  one its model read, so one it lacks was never asked: recapture; (b) without them, an answer the capture's model read
+   *  LIVE that neither the recording nor the capture kept, or (a) — the capture predates its live answers; recapture
+   *  (or slice at the capture's code) to tell. No question unanswered: the answers are all there and the CODE decides
+   *  otherwise. */
+  def modelMovedWhy(unanswered: Seq[String], filed: tools.FiledAnswers): String = {
+    val named = unanswered.sorted.take(4).mkString("; ") + (if (unanswered.size > 4) s"; … ${unanswered.size - 4} more" else "")
+    if (unanswered.isEmpty) "[code] every question answered — this code's model decides it otherwise on the same answers"
+    else if (filed.live.nonEmpty) s"[a: new question] asks what the capture's code never did ($named) — recapture"
+    else s"[a or b: capture keeps no live answers] unanswered: $named — the capture's model read these live and kept none, or " +
+      "never asked them; recapture (it now keeps them) or slice at the capture's code to tell"
   }
 
   def listingsOf(recording: Recording, rows: Seq[services.scrapes.ArchivedScrape]): Seq[Listing] = {
@@ -644,6 +676,9 @@ object IdentitySlice {
     var agreeStage = 0
     // with the prod mirror: the slice's take against what prod's stored state takes for the listing NOW
     var agreeProd  = 0
+    // (c) prod's stored state was written by the DEPLOYED build: a take this code decides otherwise may be the code's move
+    val otherBuild = o.deployed.filterNot(d => o.ref.startsWith(d) || d.startsWith(o.ref))
+      .map(d => s"prod's state is the deployed build ${d.take(9)}'s, this slice's code ${o.ref.take(9)}'s")
     var prodKnown  = 0
     val misses = scala.collection.mutable.ListBuffer.empty[String]
     sample.zipWithIndex.foreach { case (key, i) =>
@@ -651,13 +686,15 @@ object IdentitySlice {
       val selection = IdentitySlicing.select(index, Set(key), o.widen)
       val core      = selection.core.flatMap(ours.get).toSeq.sortBy(_.sortKey)
       val context   = selection.context.flatMap(ours.get).toSeq.sortBy(_.sortKey)
-      val decided   = decide(core, context, readsOf(opened, opened.fetch, opened.gaps, recording.recordedAt, Some(filed), prod), s"faithfulness $i")
+      val reads     = readsOf(opened, opened.fetch, opened.gaps, recording.recordedAt, Some(filed), prod)
+      val decided   = decide(core, context, reads, s"faithfulness $i")
+      val asked     = reads.asking.unanswered.asScala.toSeq
       val mine      = decided.agreed.decisionOf.get(key).map(filmOf).getOrElse("missing")
       val theirs    = legOf.get(key).map(filmOf).getOrElse("missing")
       val same      = mine == theirs
       val prodTake  = if (prod.name.isEmpty) None else prod.sides(Seq(key)).get(key).map(_.take).filterNot(_._1 == "missing")
       prodTake.foreach { case (film, _) => prodKnown += 1; if (film == mine) agreeProd += 1 }
-      val prodLine  = prodTake.fold("")(t => s"\tprod ${t._1} (${t._2}): ${if (t._1 == mine) "SAME" else "DIFF"}")
+      val prodLine  = prodTake.fold("")(t => s"\tprod ${t._1} (${t._2}): ${if (t._1 == mine) "SAME" else s"DIFF${otherBuild.fold("")(b => s" [c: $b]")}"}")
       if (same) alike += 1
       val legMembers = legOf.get(key).toSeq.flatMap(_.members).toSet
       val outside    = legMembers -- core.map(_.key)
@@ -674,7 +711,7 @@ object IdentitySlice {
         (s"\tstage over the captured model: ${if (film == theirs) "SAME" else s"DIFF $film"}",
           if (was.map(d => (filmOf(d), d.unanswered)) == now.map(d => (filmOf(d), d.unanswered))) ""
           else s"this code's model decides it otherwise than the captured one (${now.fold("-")(d => s"${d.basis}, ${d.unanswered} unanswered")} against " +
-            s"${was.fold("-")(d => s"${d.basis}, ${d.unanswered} unanswered")}): the captured model read an answer neither the recording nor the capture holds")
+            s"${was.fold("-")(d => s"${d.basis}, ${d.unanswered} unanswered")}): ${modelMovedWhy(asked, filed)}")
       }
       // a slice that differs is decided again one ring wider: what the next investigation of it should ask for
       def widened = {
@@ -698,6 +735,7 @@ object IdentitySlice {
     if (ofCapture) println(f"# the agreement stage alone, over the captured model decisions: $agreeStage of ${sample.size} take what the capture's replay took " +
       f"(${100.0 * agreeStage / math.max(1, sample.size)}%.1f%%)")
     if (prod.name.nonEmpty) println(f"# against prod's stored state now (local mirror ${prod.name}): $agreeProd of $prodKnown the mirror holds take what prod " +
-      f"takes (${100.0 * agreeProd / math.max(1, prodKnown)}%.1f%%); ${sample.size - prodKnown} not in prod's model now")
+      f"takes (${100.0 * agreeProd / math.max(1, prodKnown)}%.1f%%); ${sample.size - prodKnown} not in prod's model now" +
+      otherBuild.fold("")(b => s"\n#   $b — slice at the deployed build (--ref ${o.deployed.get.take(9)}) to compare like for like"))
   }
 }

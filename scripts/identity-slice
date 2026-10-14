@@ -35,6 +35,7 @@
 #                 families agree on nothing — as in a hermetic leg. The slice keeps those it read, named as prod's.
 #   --faithfulness capture  the agreement-taken listings (Agreed, Filled, Poster, …) of that capture as this code's agreement
 #                 takes them, each sliced alone on the capture's recording and compared
+#   --out TSV     keep the takes (of the last --ref) as a TSV: selector key venue rawTitle film title basis … verdict
 #   --labels TSV  judge the takes by this labels.tsv (default this checkout's) — the same labels at both refs
 #   --compiles REF  lay REF out with this checkout's tool files dropped in and compile it, nothing else: the tool must
 #                 compile into every ref it may be pointed at — a deployed worker's build, a bisect's oldest commit
@@ -60,7 +61,8 @@
 #
 # Everything downloaded or compiled is kept in $KINOWO_IDENTITY_CACHE (default ~/.cache/kinowo-identity), shared by every
 # worktree: recordings/<run>/, slice/<run>/{index-<cc>-<ref>.json.gz, slices/<selector>/}, refs/<sha>/. The first call on a
-# recording resolves its corpus whole once per ref (~30 s), later ones decide the slice alone (~1 s).
+# recording resolves its corpus whole once per ref (~30 s), later ones decide the slice alone (~1 s). A checkout's own code
+# is the ref worktree-<checkout>-<commit>-<uncommitted edits>: no two worktrees, commits or edits share an index.
 set -euo pipefail
 
 usage() { sed -n '3,/^set /p' "$0" | sed '$d; s/^# \{0,1\}//'; }
@@ -84,7 +86,7 @@ TOOL_FILES=(worker/src/test/scala/scripts/IdentitySlice.scala worker/src/test/sc
   worker/src/fixtures/scala/tools/CatalogueFill.scala worker/src/fixtures/scala/tools/FiledAnswers.scala
   worker/src/fixtures/scala/tools/ProdMirror.scala)
 
-families="" labels="" cc="" refs=() run="" pass=() batch="" bisect="" log="" faith="" sample=50 seed=1 explain=0 fixture="" mirror="" mirror_args=()
+families="" labels="" cc="" refs=() run="" pass=() batch="" bisect="" log="" faith="" sample=50 seed=1 explain=0 fixture="" keep="" mirror="" mirror_args=()
 if [ "$1" = "--compiles" ]; then
   need_ref "${2:?--compiles REF}"
   t=$(identity_tree "$2" "${TOOL_FILES[@]}") && identity_classpath "$t" > /dev/null && { identity_log "$2 compiles with this checkout's tool files"; exit 0; }
@@ -105,6 +107,7 @@ while [ "$#" -gt 0 ]; do
     --families) if [ "$2" = none ]; then families=none; else families=$(cd "$(dirname "$2")" && pwd)/$(basename "$2"); fi; shift 2 ;;
     --seed) seed=$2; shift 2 ;;
     --explain) explain=1; shift ;;
+    --out) keep=$(cd "$(dirname "$2")" && pwd)/$(basename "$2"); shift 2 ;;
     --prod-mirror) mirror=on
       if [ -n "${2:-}" ] && [[ $2 =~ ^[A-Za-z]{2}$ ]]; then mirror=$(printf '%s' "$2" | tr '[:upper:]' '[:lower:]'); shift; fi; shift ;;
     --fixture) fixture=$2; shift 2 ;;
@@ -150,6 +153,12 @@ except Exception: print("")' "$recording/corpus/prod-coverage-$cc.json")
     *) identity_log "no local prod mirror to read (above): scripts/local-mirror/service.sh install — --prod-mirror never reads prod itself"; exit 2 ;;
   esac
   mirror_args=(--prod-mirror "mongodb://127.0.0.1:${LOCAL_MIRROR_PORT:-28017}/?directConnection=true")
+  # whose code wrote that state: the worker build prod runs (the deploy moves `deployed-worker` once it is live)
+  local deployed=${KINOWO_DEPLOYED_WORKER:-$(timeout 15 git -C "$repo" ls-remote origin refs/tags/deployed-worker 2>/dev/null | cut -f1 || true)}
+  if [ -n "$deployed" ]; then
+    identity_log "prod's state was written by the deployed worker ${deployed:0:9}: a PROD line of another ref's slice mixes builds"
+    mirror_args+=(--deployed "$deployed")
+  fi
 }
 
 work=$(mktemp -d "${TMPDIR:-/tmp}/identity-slice.XXXXXX"); trap 'rm -rf "$work"' EXIT
@@ -166,7 +175,18 @@ run_at() {
     --ref "$ref" --labels "$labels" --families "$families" --out "$out" ${mirror_args[@]+"${mirror_args[@]}"} "$@")
 }
 tree_of() { if [ "$1" = "." ]; then echo "$repo"; else need_ref "$1"; identity_tree "$1" "${TOOL_FILES[@]}"; fi; }
-sha_of() { if [ "$1" = "." ]; then echo "worktree"; else git -C "$repo" rev-parse --verify "$1^{commit}"; fi; }
+# this checkout's code, keyed by WHICH checkout, its commit and its uncommitted code (tracked edits and new files): the
+# whole-corpus index cached under the key is never another worktree's, an older commit's or an earlier edit's
+worktree_key() {
+  local where head edits
+  where=$(printf '%s' "$repo" | shasum | cut -c1-8)
+  head=$(git -C "$repo" rev-parse --short=12 HEAD)
+  edits=$( { git -C "$repo" diff HEAD -- common worker testkit build.sbt project
+             git -C "$repo" ls-files -z --others --exclude-standard -- common worker testkit project \
+               | xargs -0 shasum 2>/dev/null; } | shasum | cut -c1-8)
+  echo "worktree-$where-$head-$edits"
+}
+sha_of() { if [ "$1" = "." ]; then worktree_key; else git -C "$repo" rev-parse --verify "$1^{commit}"; fi; }
 if [ "$explain" = 1 ]; then
   captured=$(identity_capture "$fixture" "$cc")
   [ -f "$captured/$cc.json.gz" ] || { echo "no capture $captured/$cc.json.gz" >&2; exit 1; }
@@ -275,6 +295,7 @@ for i in "${!refs[@]}"; do
     *) cat "$work/$i.txt"; exit 1 ;;
   esac
 done
+[ -z "$keep" ] || cp "$work/$(( ${#refs[@]} - 1 )).tsv" "$keep"
 if [ "${#refs[@]}" -eq 1 ]; then
   [ -n "$batch" ] || cat "$work/0.txt"
 else

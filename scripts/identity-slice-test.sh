@@ -100,6 +100,23 @@ out=$(cd "$work" && STUB_INCOMPLETE=1 slice de --recording 777 --batch b.tsv --r
 check "a batch whose slices met a request they lack still diffs the two refs, the incompleteness said at each ref" "1 2" \
   "$(grep -c '^TALLY' <<< "$out") $(grep -c 'incomplete' "$work/err")"
 
+check "--out keeps the takes of the (last) ref's batch, for another tool to read" "1" \
+  "$(cd "$work" && slice de --recording 777 --batch b.tsv --out "$work/takes.tsv" > /dev/null; grep -c $'^k\tKino|Sinn\tKino\tSinn\ttmdb:9' "$work/takes.tsv")"
+
+# this checkout's code (no --ref) is keyed by WHICH checkout, its commit and its uncommitted code: the whole-corpus index
+# cached under that key is never another worktree's, an older commit's or an earlier edit's
+refOf() { grep -o -- '--ref worktree[^ ]*' "$work/calls" | tail -1; }
+rm -f "$work/calls"; slice de --recording 777 --key 'Kino|Lalka' > /dev/null; here=$(refOf)
+scratch_git "$repo" worktree add -q "$work/wt2" HEAD~1
+rm -f "$work/calls"; STUB="$work" PATH="$work/bin:$PATH" KINOWO_IDENTITY_CACHE="$cache" "$work/wt2/scripts/identity-slice" de --recording 777 --key 'Kino|Lalka' > /dev/null 2>&1; there=$(refOf)
+check "two worktrees at different commits never share a key" "yes" "$([ -n "$here" ] && [ -n "$there" ] && [ "$here" != "$there" ] && echo yes || echo "no: '$here' '$there'")"
+echo "// edited" >> "$repo/worker/src/test/scala/services/identity/IdentitySlicing.scala"
+rm -f "$work/calls"; slice de --recording 777 --key 'Kino|Lalka' > /dev/null; edited=$(refOf)
+check "...nor one checkout before and after an uncommitted edit of its code" "yes" "$([ "$here" != "$edited" ] && echo yes || echo "no: '$here'")"
+scratch_git "$repo" checkout -q -- worker/src/test/scala/services/identity/IdentitySlicing.scala
+rm -f "$work/calls"; slice de --recording 777 --key 'Kino|Lalka' > /dev/null
+check "...and the same checkout at the same code keeps its key" "$here" "$(refOf)"
+
 rm -f "$work/calls" "$work/sbt-calls"
 check "--compiles lays a ref out with the tool files and compiles it, deciding nothing" "0 0" \
   "$(slice --compiles HEAD~1 > /dev/null; echo $?) $(grep -c . "$work/calls" 2>/dev/null || echo 0)"
@@ -110,6 +127,10 @@ slice de --recording 777 --key 'Kino|Lalka' --prod-mirror > /dev/null
 check "--prod-mirror checks the mirror's freshness against the recording's moment" "1" \
   "$(grep -c -- '^freshness de --quiet .*--not-before 2026-10-14T05:00:00Z' "$work/calls")"
 check "...then hands the slice the LOCAL mirror, never prod" "1" "$(grep -c -- '--prod-mirror mongodb://127.0.0.1:28017/' "$work/calls")"
+rm -f "$work/calls"
+KINOWO_DEPLOYED_WORKER=0123abcd slice de --recording 777 --key 'Kino|Lalka' --prod-mirror > /dev/null
+check "...and names the deployed worker build whose code wrote the mirror's state" "1 1" \
+  "$(grep -c -- '--deployed 0123abcd' "$work/calls") $(grep -c 'written by the deployed worker 0123abcd' "$work/err")"
 check "...the mirror reader dropped into a ref's tree" "1" "$(slice de --recording 777 --key 'Kino|Lalka' --ref HEAD --prod-mirror > /dev/null
   grep -c ProdMirror "$cache/refs/$head/worker/src/fixtures/scala/tools/ProdMirror.scala")"
 rm -f "$work/calls"
