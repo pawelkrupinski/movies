@@ -5,7 +5,7 @@ import models.{CinemaMovie, GermanCinema}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.common.{KinoheldClient, ListingReads}
-import services.identity.CatalogueSources
+import services.identity.SourceReliability
 import tools.HttpFetch
 
 import java.io.IOException
@@ -149,7 +149,7 @@ class KinoheldClientSpec extends AnyFlatSpec with Matchers {
   it should "point the film at kinoheld's catalogue page, which the resolver reads as a feed's claim" in {
     val shaun = film(capitol, "Shaun das Schaf – Spuk im Kürbisfeld")
     shaun.filmUrl shouldBe Some("https://www.kinoheld.de/film/shaun-das-schaf-spuk-im-kuerbisfeld-2026")
-    CatalogueSources.feedStated(Nil, shaun.filmUrl) shouldBe true
+    SourceReliability.feedStated(Nil, shaun.filmUrl) shouldBe true
   }
 
   it should "leave out a sneak preview, which names no film" in {

@@ -168,8 +168,8 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
     else reachMemo.getOrElseUpdate(node.id, scoring.generation.reachOf(CandidateQueries.of(node.evidence.titlesOnly)))
   private val reachMemo = mutable.HashMap.empty[String, CandidateGeneration.Reach]
 
-  /** Whose claim `node`'s facts are, for the sources backing a film ([[CatalogueSources.factSource]]). */
-  private def sourceOf(node: EvidenceNode): String = CatalogueSources.factSource(node.listings.head)
+  /** Whose claim `node`'s facts are, for the sources backing a film ([[SourceReliability.claimOf]]). */
+  private def sourceOf(node: EvidenceNode): String = SourceReliability.claimOf(node.listings.head)
 
   private val memo = mutable.HashMap.empty[String, Seq[Scored]]
   def of(node: EvidenceNode): Seq[Scored] = memo.getOrElseUpdate(node.id,

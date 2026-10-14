@@ -44,7 +44,7 @@ final case class KinoheldVenue(cinemaId: String, path: String)
  *
  * The linked film's facts — year, runtime, director, cast, poster — are kinoheld's
  * CATALOGUE claim, not the venue's, so `filmUrl` is the catalogue's film page
- * (`/film/<slug>`), which `CatalogueSources.FeedPages` names as a feed's.
+ * (`/film/<slug>`), which `SourceReliability.Kinoheld` names as a feed's.
  */
 class KinoheldClient(
   http: HttpFetch,

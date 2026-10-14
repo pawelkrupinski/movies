@@ -1760,7 +1760,7 @@ object IdentityMeasures {
     pool.collect { case (id, f, Some(1)) if titleRelation(l, f) == Category("exact") => id }.distinct.sorted
 
   /** Who backs a film from a title group: the listing's venue, and whose claim its facts are — the venue's own, or the feed
-   *  entry they were copied from (`CatalogueSources.factSource`) — kept as one string per group entry. A venue's own claim
+   *  entry they were copied from (`SourceReliability.claimOf`) — kept as one string per group entry. A venue's own claim
    *  is the venue's name itself, no new string per listing for the corpus's life; a feed's is `venue` and `source` joined
    *  by [[Backer.Join]]. */
   object Backer {

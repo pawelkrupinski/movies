@@ -63,7 +63,7 @@ object UnifiedEvidence {
    *  znikąd | uroczysty pokaz odrestaurowanego filmu", Kłyk's restored western: the model's and Filmweb's lean, and
    *  IMDb's take, are the 2010 Korean film).
    *  `family.feedLink`: a film database's family takes the film AND the listings' TMDB-keyed feed links it
-   *  ([[CatalogueSources.tmdbLinked]]) — the feed's link a hint no rule takes alone ([[FeedLink]]), a family's take of a
+   *  ([[SourceReliability.tmdbLinked]]) — the feed's link a hint no rule takes alone ([[FeedLink]]), a family's take of a
    *  bare title a namesake as often as the film (DE "Newborn", "Like Father, Like Son": Filmweb's namesakes, Cineamo
    *  linking other films); the two naming one film are two independent sources (DE 3001 Kino's "Amadeo", Cineamo's
    *  648574m and Filmweb's take, the 2023 film).
@@ -180,9 +180,9 @@ object UnifiedEvidence {
     val stageWork   = c.listings.exists(ListingShape.stagesAWork)
     val traced      = c.decision.trace.nodes.values.toSeq
     // the one TMDB film the listings' TMDB-keyed feeds link, where they link one ([[PinnedSignals]]' family.feedLink)
-    val feedLinked = Some(c.listings.flatMap(CatalogueSources.tmdbLinked).map(_._2).distinct).collect { case Seq(film) => film }
+    val feedLinked = Some(c.listings.flatMap(SourceReliability.tmdbLinked).map(_._2).distinct).collect { case Seq(film) => film }
     // the listings whose venue credits a director ([[PinnedSignals]]' family.director): a feed's credit is its entry's
-    val credited   = asStated.filter(listing => !listing.factsFromCatalogue && listing.directors.nonEmpty)
+    val credited   = asStated.filter(listing => SourceReliability.decides(listing, SourceReliability.Fact.Directors) && listing.directors.nonEmpty)
     // the namesakes the release veto kept beside one it took out ([[PinnedSignals]]' family.releaseKept)
     val releaseKept = c.nodes.flatMap(_.candidates).flatMap(_.releasedBeside).toSet
     // [[PinnedSignals]]' cast.venue: the one contender the venue's own text names two of the top-billed cast of, the cast

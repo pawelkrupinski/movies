@@ -20,19 +20,9 @@ object CatalogueSources {
   /** A Rotten Tomatoes film slug (P1258, "m/<slug>"), which a Flicks film page links. */
   val RottenTomatoes: Mapped = Mapped("rt", Seq("P1258"), "m/" + _)
 
-  /** Cineamo's film record id ("567m"), which its showings feed attaches to every German showing it lists. */
+  /** Cineamo's film record id ("567m"), which its showings feed attaches to every German showing it lists — how far each
+   *  feed's ids and facts are trusted is [[SourceReliability]]'s. */
   val Cineamo: String = "cineamo"
-
-  /** The catalogues an aggregator's showtimes FEED links a venue's screening to: Webedia's (Filmstarts in Germany,
-   *  SensaCine in Spain) and Cineamo's, by the id the feed attaches; kinoprogramm.com's, by the catalogue page it serves as the
-   *  listing's own (`/kinofilm/<slug>-<id>`); kinoheld.de's, by the film page of the film it linked a show to
-   *  (`/film/<slug>`, `KinoheldClient`). The feed copies its entry's title, year, directors, running time and
-   *  poster onto the listing, so they are that CATALOGUE's claim, not the venue's: the feed can link the wrong entry —
-   *  DE Roxy Kitzingen's "To The Bone", Noxon's 2017 feature on the venue's own page, linked to Filmstarts' 227420, Erin
-   *  Li's 2014 short, with the short's year, director and 8 minutes — and its facts then only repeat the wrong entry. */
-  val FeedIds: Set[String]       = Set(Webedia.source, Cineamo)
-  val FeedPages: Seq[String]     = Seq("https://www.kinoprogramm.com/", "https://kinoprogramm.com/",
-                                        "https://www.kinoheld.de/film/")
 
   /** Box offices whose ids number ONE installation's events, not a chain's films: every Spektrix client and every Savoy
    *  system keeps its own sequence, so two venues' ids meet by coincidence. Measured on UK recording 38326582997: 52 of
@@ -40,45 +30,6 @@ object CatalogueSources {
    *  "Heart of the Beast"); no Savoy id was shared at all, so scoping it loses no join. [[CatalogueId.of]] files such an
    *  id under its venue. */
   val BoxOfficeOwn: Set[String] = Set("spektrix", "savoy")
-
-  /** Film pages that are a listings site's own CATALOGUE ENTRY rather than the venue's: Flicks lists every UK and US venue's
-   *  programme for it, and every venue's listing links the same `/movie/<slug>/` page. The facts read off that page
-   *  (`FlicksFilmPage`: year, directors, countries) are Flicks' claim of which film the entry is — one mislinked entry
-   *  would otherwise veto the right film at every venue showing it. The day listing's own card (its directors, its
-   *  running time) stays the venue's: only the page's facts are the catalogue's ([[Listing.pageFacts]]). */
-  val CatalogueEntryPages: Seq[String] = Seq("https://www.flicks.co.uk/movie/", "https://www.flicks.us/movie/")
-
-  /** Is `page` a listings site's catalogue entry ([[CatalogueEntryPages]])? */
-  def catalogueEntry(page: String): Boolean = CatalogueEntryPages.exists(page.startsWith)
-
-  /** Feeds whose catalogue is TMDB's own: the id they attach IS the TMDB film they linked the screening to, and the facts
-   *  they copy are that record's. Cineamo files a film as its TMDB id and "m" ("9695m" is TMDB 9695 — every one of the
-   *  13,238 recorded DE Cineamo listings, recording 38196151886). Such a link is the feed's own guess at the film, its
-   *  copied facts the guess restated: they agree with the film it linked by construction, so they are no evidence that the
-   *  link is right ([[FeedLink]]). */
-  val TmdbKeyed: Map[String, String => Option[Int]] = Map(Cineamo -> (id => CineamoFilm.unapplySeq(id).flatMap(_.headOption).flatMap(_.toIntOption)))
-  private val CineamoFilm = """(\d+)m""".r
-
-  /** The TMDB film a TMDB-keyed feed linked `listing` to ([[TmdbKeyed]]), with the id that links it. */
-  def tmdbLinked(listing: Listing): Option[(CatalogueId, Int)] =
-    listing.catalogueIds.iterator.flatMap(id => TmdbKeyed.get(id.source).flatMap(_(id.id)).map(id -> _)).nextOption()
-
-  /** Whose claim `listing`'s facts are, for counting the sources that back a film ([[IdentityMeasures.VenueBacking]]): the
-   *  feed entry they were copied from ([[feedStated]]) — one claim however many venues the feed lists it at: its id, or
-   *  its page's last segment (kinoprogramm.com serves one entry under every venue's path) — else its venue's own: the
-   *  venue's name itself, so the corpus's title groups hold no new string for a venue's own claim
-   *  ([[IdentityMeasures.Backer]]). A feed's claim is keyed "c:…" or "p:…", no venue's name. */
-  def factSource(listing: Listing): String =
-    listing.catalogueIds.find(id => FeedIds(id.source)).map(_.key)
-      .orElse(listing.page.flatMap(page => FeedPages.find(page.startsWith).map(feed => s"p:$feed${page.reverse.takeWhile(_ != '/').reverse}")))
-      .getOrElse(listing.venue)
-
-  /** Are `listing`'s facts a feed catalogue's claim rather than its venue's ([[FeedIds]], [[FeedPages]])? */
-  def feedStated(listing: Listing): Boolean = feedStated(listing.catalogueIds, listing.page)
-
-  /** [[feedStated]] for a listing held as its catalogue ids and page alone (the review pages' stored listing). */
-  def feedStated(catalogueIds: Seq[CatalogueId], page: Option[String]): Boolean =
-    catalogueIds.exists(id => FeedIds(id.source)) || page.exists(page => FeedPages.exists(page.startsWith))
 
   /** Every catalogue Wikidata maps, by source. */
   val ByWikidata: Map[String, Mapped] = Seq(Webedia, Letterboxd, RottenTomatoes).map(m => m.source -> m).toMap

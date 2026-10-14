@@ -291,11 +291,11 @@ object ListingShape {
 
   // ── whose facts ────────────────────────────────────────────────────────────────────────────
 
-  /** Are the listing's facts all its VENUE's own — no feed catalogue's ([[CatalogueSources.feedStated]]), and no
-   *  listings site's catalogue entry linked as its page ([[CatalogueSources.catalogueEntry]]: Flicks' film page, which
+  /** Are the listing's facts all its VENUE's own — no feed catalogue's ([[SourceReliability.feedStated]]), and no
+   *  listings site's catalogue entry linked as its page ([[SourceReliability.listingsSiteEntry]]: Flicks' film page, which
    *  links a new relay to an old production's page), whether or not the entry's facts were read onto it? Broader than
    *  `!factsFromCatalogue`, which marks only facts read off such a page. */
   def venueStated(listing: Listing): Boolean =
-    !listing.factsFromCatalogue && !listing.page.exists(CatalogueSources.catalogueEntry)
+    SourceReliability.venueOnly(listing)
 
 }

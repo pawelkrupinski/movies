@@ -3,6 +3,8 @@ package services.identity.agreement
 import services.identity.{Acceptance, Answer, CandidateQuery, DetailFacts, FactRelations, Hit, IdentityCalibration, IdentityLookups, IdentityMeasures,
   IdentityResolver, Listing, ListingShape}
 import services.identity.toAnswer
+import services.identity.SourceReliability
+import services.identity.SourceReliability.{Fact, Trust}
 import services.movies.{TitleContainment, TitleNormalizer}
 
 import scala.collection.mutable
@@ -333,9 +335,8 @@ object Agreement {
    *  it is, which a family finding the entry's own record only repeats (DE "To The Bone": Wikidata's record of Erin Li's
    *  2014 short, the one Filmstarts' feed copied its facts from). */
   private[identity] def factVotes(listings: Seq[Listing], records: Seq[SourceRecord]): Set[String] = {
-    val (fed, venues) = listings.partition(_.factsFromCatalogue)
-    val own = listingVotes(venues, records)
-    if (own.nonEmpty || fed.isEmpty) own else if (listingVotes(fed, records).nonEmpty) Set(FeedFacts) else Set.empty
+    val own = listingVotes(listings.map(SourceReliability.stated(_, Trust.Decide)), records)
+    if (own.nonEmpty) own else if (listingVotes(listings.map(SourceReliability.stated(_, Trust.Support)), records).nonEmpty) Set(FeedFacts) else Set.empty
   }
 
   /** Every running time a record states — one per translation fetched ([[IdentityMeasures.Film.runtimes]]) — and its billed
@@ -352,16 +353,16 @@ object Agreement {
   }
 
   /** Does a listing's own year (more than one apart) or director (another person, in either script, sharing no name's
-   *  stem — "Marc Donskoi" is "Mark Donskoy": [[FactRelations.otherPeople]]) rule the film out — a listing whose VENUE states them? A feed catalogue's
-   *  facts ([[Listing.factsFromCatalogue]]) are no venue's statement: they rule nothing out on their own
-   *  ([[contradictedByTheCatalogue]]). */
+   *  stem — "Marc Donskoi" is "Mark Donskoy": [[FactRelations.otherPeople]]) rule the film out — facts their source may
+   *  DECIDE on ([[SourceReliability]]: a venue's)? A feed catalogue's facts are no venue's statement: they rule nothing out
+   *  on their own ([[contradictedByTheCatalogue]]). */
   private[identity] def contradictedByTheListing(listings: Seq[Listing], record: SourceRecord): Boolean =
-    listings.exists(listing => !listing.factsFromCatalogue && contradicts(listing, record))
+    listings.exists(contradicts(_, record, Trust.Decide))
 
   /** Do the facts a feed copied from its catalogue's entry onto a listing contradict the film, as a venue's would
    *  ([[contradictedByTheListing]])? The catalogue's claim: evidence for its entry's film, weighed, never a veto. */
   private[identity] def contradictedByTheCatalogue(listings: Seq[Listing], record: SourceRecord): Boolean =
-    listings.exists(listing => listing.factsFromCatalogue && contradicts(listing, record))
+    listings.exists(contradicts(_, record, Trust.Support))
 
   /** Does any listing's year or director contradict the film, whoever states it: what a lean must not be to dissent, and
    *  what a fill rule's guard reads — rules that weigh nothing against it. */
@@ -373,6 +374,13 @@ object Agreement {
       FactRelations.otherPeople(listing.directors, record.film.directors.getOrElse(Nil)) ||
       // a billing as a silent film dates it to the silent era (DE "STUMMFILM MIT TOBIAS RANK:NOSFERATU", not Eggers' 2024 film)
       (record.film.year.exists(_ > ListingShape.SilentEraEnd) && ListingShape.billsASilentFilm(listing))
+  /** [[contradicts]] by the facts the listing's source states with `trust` alone ([[SourceReliability]]). */
+  private def contradicts(listing: Listing, record: SourceRecord, trust: Trust): Boolean = {
+    val source = SourceReliability.factsOf(listing)
+    (source.trust(Fact.Year) == trust && (FactRelations.yearsApart(record.film.year, listing.year) ||
+      (record.film.year.exists(_ > ListingShape.SilentEraEnd) && ListingShape.billsASilentFilm(listing)))) ||
+      (source.trust(Fact.Directors) == trust && FactRelations.otherPeople(listing.directors, record.film.directors.getOrElse(Nil)))
+  }
 
   /** Is the listing's title another film's ORIGINAL title — one a family weighed — while it is none of the agreed film's
    *  records' original titles, only a translation they file? Then the venue may well bill that film by its own name:

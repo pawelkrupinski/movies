@@ -25,7 +25,7 @@ import scala.util.Try
  * ("Shaun the Sheep: The Beast of Mossy Bottom") — carried as the original title, a
  * search hint, never shown. `cineamoMovieId` names that record ("567m"), kept as the
  * listing's `cineamo` catalogue id: a feed's claim of which film the slot is
- * (`CatalogueSources.FeedIds`). The record's description is English and is left
+ * (`SourceReliability.Cineamo`). The record's description is English and is left
  * out, so the German synopsis enrichment finds no venue text to defer to.
  *
  * Start times are UTC instants; they are listed in German wall-clock time.

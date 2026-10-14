@@ -62,11 +62,9 @@ final case class Listing(
       countries = stated.countries, pageFacts = true)
   }
 
-  /** Are its year, directors, running time and poster an aggregator catalogue's claim, copied by the showtimes feed that
-   *  linked the screening to its entry, rather than its venue's own statement ([[CatalogueSources.feedStated]])? They are
-   *  evidence FOR that entry's film, never proof that the entry is the venue's film: they never confirm the feed's own
-   *  catalogue id, nor rule out another film outright. */
-  def factsFromCatalogue: Boolean = CatalogueSources.feedStated(this) || (pageFacts && page.exists(CatalogueSources.catalogueEntry))
+  /** Are its facts another source's claim than its venue's — a feed's, a listings site's entry's ([[SourceReliability]],
+   *  which says how far each fact of it is trusted)? */
+  def factsFromCatalogue: Boolean = SourceReliability.factsOf(this) ne SourceReliability.Venue
 
   /** The season a stage work billed with neither its season nor a year is broadcast in: the one its first screening
    *  falls in ([[ScreeningDays.season]]). A relay airs on its house's published dates — the Met's "Samson et Dalila"
@@ -229,7 +227,8 @@ object Listing {
    *  where a feed copied them from its catalogue entry. */
   private def venueNames(cinema: Cinema, cm: CinemaMovie): VenueNames = {
     val text = cm.synopsis.orElse(cm.synopsisExcerpt)
-    if ((text.isEmpty && cm.cast.isEmpty) || CatalogueSources.feedStated(CatalogueId.of(cinema, cm), cm.filmUrl.map(_.trim))) VenueNames.None
+    if ((text.isEmpty && cm.cast.isEmpty) ||
+        !SourceReliability.factsOf(CatalogueId.of(cinema, cm), cm.filmUrl.map(_.trim), pageFacts = false).decides(SourceReliability.Fact.Names)) VenueNames.None
     else VenueNames.of(text, cm.cast)
   }
 

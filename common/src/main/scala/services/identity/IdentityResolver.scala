@@ -99,7 +99,7 @@ object IdentityResolver {
     def screened = corroborated >= PieceCorroboration
     def stated   = IdentityMeasures.ownAgreement(scored.measures)._1.nonEmpty ||
       IdentityMeasures.runtimeGap(scored.measures).exists(_ <= PieceRuntimeAgreement) ||
-      node.listings.exists(listing => CatalogueSources.tmdbLinked(listing).exists(_._2 == scored.candidate.tmdbId))
+      node.listings.exists(listing => SourceReliability.tmdbLinked(listing).exists(_._2 == scored.candidate.tmdbId))
     // a current release — of its screenings' year or the one before, or one TMDB dates no release of yet — whose subtitle
     // or translation its venue bills beside it ("Über Unterbiberger – Vom Woid in die Welt", 2026, ten venues): the
     // namesakes a reading or a show is taken for are the catalogue's older films ("Immer Ärger mit Harry", 1955)

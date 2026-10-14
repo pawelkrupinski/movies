@@ -599,7 +599,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
    *  the listing does not ([[services.identity.Evidence.of]], as the model reads it): what the agreement's listing votes
    *  and title check read, never what rules a film out ([[Agreement.agreed]]). PL "The Taxidermist | Splat!FilmFest" bills no director; its page credits Paulo Nascimento.
    *  Marked as holding its page's facts (`pageFacts`), which are a catalogue's claim where the page is a listings site's
-   *  catalogue entry ([[services.identity.CatalogueSources.catalogueEntry]]: Flicks). */
+   *  catalogue entry ([[services.identity.SourceReliability.listingsSiteEntry]]: Flicks). */
   private def asStated(listing: Listing): Listing =
     if (!venues.hasDetail(listing)) listing
     else venues.detail(listing).toOption.flatten.fold(listing)(listing.withPage)
@@ -629,7 +629,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
    *  cast evidence reads ([[services.identity.CastEvidence]]): none of a listing whose facts a feed catalogue states, whose
    *  text describes the catalogue's own entry, maybe another film than the venue's. */
   private def venueNames(listings: Seq[Listing]): services.identity.VenueNames =
-    listings.filterNot(_.factsFromCatalogue).foldLeft(services.identity.VenueNames.None) { (named, listing) =>
+    listings.filter(services.identity.SourceReliability.decides(_, services.identity.SourceReliability.Fact.Names)).foldLeft(services.identity.VenueNames.None) { (named, listing) =>
       named ++ listing.names ++ venues.detail(listing).toOption.flatten.fold(services.identity.VenueNames.None)(_.names)
     }
 
@@ -783,7 +783,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
    *  2018–19 page). None for a cluster whose listings bill no stage work or link no such page, nor while a search the
    *  read asks has no answer. */
   private def uncatalogued(listings: Seq[Listing], lookups: IdentityLookups): Seq[Int] =
-    if (!listings.exists(ListingShape.stagesAWork) || !listings.exists(_.page.exists(services.identity.CatalogueSources.catalogueEntry))) Nil
+    if (!listings.exists(ListingShape.stagesAWork) || !listings.exists(_.page.exists(services.identity.SourceReliability.listingsSiteEntry))) Nil
     else {
       searchedFilms(listings, new AgreementStage.CatalogueBlind(lookups)).getOrElse(Nil)
     }
@@ -989,7 +989,7 @@ object AgreementStage {
 
   /** `inner`, a listings site's catalogue entry linked as a listing's page read as no page at all ([[uncatalogued]]). */
   private[agreement] final class CatalogueBlind(inner: IdentityLookups) extends IdentityLookups {
-    private def entry(listing: Listing) = listing.page.exists(services.identity.CatalogueSources.catalogueEntry)
+    private def entry(listing: Listing) = listing.page.exists(services.identity.SourceReliability.listingsSiteEntry)
     def hasDetail(listing: Listing): Boolean                     = !entry(listing) && inner.hasDetail(listing)
     def detail(listing: Listing): Answer[Option[DetailFacts]]    = if (entry(listing)) Answer.Known(None) else inner.detail(listing)
     def candidates(query: CandidateQuery): Answer[Seq[Hit]]      = inner.candidates(query)

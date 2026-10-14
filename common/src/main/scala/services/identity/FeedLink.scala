@@ -1,6 +1,6 @@
 package services.identity
 
-/** A TMDB-keyed feed's link of a node to one film ([[CatalogueSources.TmdbKeyed]]) that the title's other sources OVERRULE.
+/** A TMDB-keyed feed's link of a node to one film ([[SourceReliability.tmdbLinked]]: Cineamo's [[SourceReliability.Fact.Link]]) that the title's other sources OVERRULE.
  *
  *  The feed's id is a HINT, not ground truth: the venue's operator picked the film from TMDB, and the facts the feed copies
  *  onto the listing are that record's, so they agree with the linked film by construction and say nothing about whether
@@ -39,7 +39,7 @@ private[identity] object FeedLink {
 
   /** The one TMDB film a TMDB-keyed feed links every listing of `node` to, with the id that links it. */
   def linked(node: EvidenceNode): Option[(CatalogueId, Int)] =
-    node.listings.map(CatalogueSources.tmdbLinked).distinct match {
+    node.listings.map(SourceReliability.tmdbLinked).distinct match {
       case Seq(Some(link)) => Some(link)
       case _               => None
     }

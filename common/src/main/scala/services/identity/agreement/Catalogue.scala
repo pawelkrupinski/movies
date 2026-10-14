@@ -1,6 +1,7 @@
 package services.identity.agreement
 
-import services.identity.{Answer, CatalogueAnswers, CatalogueHit, CatalogueId, CatalogueQuestion, CatalogueSources, Listing, ListingShape}
+import services.identity.{Answer, CatalogueAnswers, CatalogueHit, CatalogueId, CatalogueQuestion, CatalogueSources, Listing, ListingShape, SourceReliability}
+import services.identity.SourceReliability.Trust
 
 import scala.collection.mutable
 
@@ -17,7 +18,7 @@ import scala.collection.mutable
  * item, or IMDb's title — exists and its year and director do not contradict a listing's own, or its venue page's
  * ([[Agreement.contradictedByTheListing]]: a venue linking the wrong film; US "A Night at the Opera", the Marx Brothers'
  * by its Flicks page, is left as the venue credits Edmund Goulding), and no listing bills several works. A feed's id
- * (Webedia's, [[services.identity.CatalogueSources.FeedIds]]) is the feed's link of a screening to its entry, and its
+ * (Webedia's: a link [[SourceReliability]] trusts only to support) is the feed's link of a screening to its entry, and its
  * facts are that entry's own: they rule nothing out and confirm nothing, so the film needs corroboration they do not
  * enter ([[corroborated]]: a venue's own facts, or TMDB's search of the title picking it). A stage work's
  * title is no guard here, as it is for a search: an id names its record whatever the title ("Die Nibelungen" is Lang's
@@ -107,19 +108,19 @@ object Catalogue {
         }
     }
 
-  /** Is the film named only by a feed's catalogue id ([[services.identity.CatalogueSources.FeedIds]]) — none the venue's
+  /** Is the film named only by catalogue ids that may not decide ([[SourceReliability.linkDecides]]: a feed's) — none the venue's
    *  page links, no other id of the cluster's? The feed's facts are that entry's own, so they cannot confirm it:
    *  agreeing with the record of the entry they were copied from, they say nothing of whether the feed linked the
    *  venue's film. */
   private def fedOnly(film: Named, listings: Seq[Listing]): Boolean =
-    !film.linked && listings.flatMap(_.catalogueIds).filter(CatalogueSources.mappable).forall(id => CatalogueSources.FeedIds(id.source))
+    !film.linked && listings.flatMap(_.catalogueIds).filter(CatalogueSources.mappable).forall(id => !SourceReliability.linkDecides(id))
 
   /** Could nothing corroborate what the listings' ids name ([[corroborated]]): every id they carry a feed's, no venue page
    *  to link another, no listing whose venue states a year, and no title search picking a film? */
   private def uncorroborable(listings: Seq[Listing], stated: Seq[Listing], titlePicks: () => Set[Int]): Boolean = {
     val ids = listings.flatMap(_.catalogueIds).filter(CatalogueSources.mappable)
-    ids.nonEmpty && ids.forall(id => CatalogueSources.FeedIds(id.source)) && listings.forall(_.page.isEmpty) &&
-      stated.forall(listing => listing.factsFromCatalogue || listing.year.isEmpty) && titlePicks().isEmpty
+    ids.nonEmpty && ids.forall(id => !SourceReliability.linkDecides(id)) && listings.forall(_.page.isEmpty) &&
+      stated.forall(listing => SourceReliability.stated(listing, Trust.Decide).year.isEmpty) && titlePicks().isEmpty
   }
 
   /** Is a feed's film corroborated by evidence the feed did not copy from its own entry: a venue's own year and director
@@ -130,7 +131,7 @@ object Catalogue {
    *  picks Noxon's 2017 feature. The model's own lean is no corroboration: it reads the feed's facts (it leans to the
    *  short). */
   private def corroborated(stated: Seq[Listing], facts: SourceRecord, tmdbFilm: Option[Int], titlePicks: () => Set[Int]): Boolean =
-    Agreement.listingVotes(stated.filterNot(_.factsFromCatalogue), Seq(facts)).nonEmpty || tmdbFilm.exists(titlePicks().contains)
+    Agreement.listingVotes(stated.map(SourceReliability.stated(_, Trust.Decide)), Seq(facts)).nonEmpty || tmdbFilm.exists(titlePicks().contains)
 
   /** Do the hits name one film: at most one Wikidata item, one TMDB id and one IMDb id among them? */
   private def oneFilm(hits: Seq[CatalogueHit]): Boolean =

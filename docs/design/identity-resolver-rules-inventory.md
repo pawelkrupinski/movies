@@ -198,7 +198,7 @@ catalogue match; `broadcast.take` via `Broadcast.take`). Rules: the fill `venues
 5. **Edition — 6.** `Agreement.editionOf(SourceRecord)` (same director, year no earlier, title tokens),
    `IdentityMeasures.editionOf(Film)` (segment/decorated relation, later year), `PosterEvidence.editionsApart` (numbers),
    `IdentityMeasures.billsAnEdition`, `DecorationWords.billsAnEdition` (`EditionWords`), `FilmCuts`.
-6. **Catalogue provenance — 4.** `CatalogueSources.feedStated`/`catalogueEntry`, `Listing.factsFromCatalogue`,
+6. **Catalogue provenance — one model.** `SourceReliability` (per source × fact: Decide / Support / Ignore), `Listing.factsFromCatalogue`,
    `Broadcast.superseded`'s `ownFacts` (re-derived, broader: any linked catalogue page), the catalogue-id-equals-pick test
    in `Agreement.supported` and `UnifiedEvidence` `listing.catalogue`.
 7. **Title names the film — 4.** `IdentityMeasures.names`/`NamingRelations`, `Agreement.namesIt` (own leading

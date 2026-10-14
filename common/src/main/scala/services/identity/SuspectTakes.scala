@@ -30,7 +30,7 @@ object SuspectTakes {
     /** The listing numbers another instalment than the film ([[IdentityMeasures.numbersAnotherInstalment]]): "Begegnungen
      *  der Seele 2" is not part 1. */
     case Sequel    extends Signal("sequel")
-    /** A TMDB-keyed feed linked the listing to another film ([[CatalogueSources.tmdbLinked]]). */
+    /** A TMDB-keyed feed linked the listing to another film ([[SourceReliability.tmdbLinked]]). */
     case FeedId    extends Signal("feed")
     /** The take rests on a fill rule alone ([[ResolverDecision.Basis.Filled]]). */
     case WeakRoute extends Signal("route")
@@ -261,7 +261,7 @@ object SuspectTakes {
     film.year.flatMap { year =>
       lazy val old = billsAnOldFilm(listing, measured, film)
       // a year a feed copied from its catalogue entry is that entry's, the very take in question: no statement of the venue's
-      Option.unless(listing.factsFromCatalogue)(measured.statedYear).flatten match {
+      Option.when(SourceReliability.decides(listing, SourceReliability.Fact.Year))(measured.statedYear).flatten match {
         // a year the venue states: the film's, or the year it shows a classic (an old film it bills as one)
         case Some(stated) =>
           Option.when(film.closestYear(stated, None).exists(y => math.abs(y - stated) > StatedYearSlack) && (year > stated || !old))(
@@ -313,7 +313,7 @@ object SuspectTakes {
    *  ([[FeedLink]]); a take on the agreement's or a fill's weaker evidence against the feed's is a question. */
   private[identity] def feed(listing: Listing, tmdb: Option[Int], decision: ResolverDecision): Option[Suspicion] =
     if (ModelBases(decision.basis)) None
-    else tmdb.flatMap(taken => CatalogueSources.tmdbLinked(listing).filter(_._2 != taken)).map { case (id, linked) =>
+    else tmdb.flatMap(taken => SourceReliability.tmdbLinked(listing).filter(_._2 != taken)).map { case (id, linked) =>
       Suspicion(Signal.FeedId, s"${id.source} links the listing to tmdb:$linked")
     }
 

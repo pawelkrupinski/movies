@@ -80,11 +80,11 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
   }
 
   /** What one catalogue id binds `node` by: the id itself — a chain's own catalogue lists one film under one id — but a
-   *  feed's ([[CatalogueSources.FeedIds]]) only beside the node's title: an aggregator links screenings to its entries
+   *  feed's ([[SourceReliability.linkDecides]]) only beside the node's title: an aggregator links screenings to its entries
    *  and can link two venues' different films to one (Filmstarts' placeholder 51988 "Film Program"), so its id joins
    *  only listings whose titles already agree. */
   def catalogueKey(id: CatalogueId, node: EvidenceNode): String =
-    if (CatalogueSources.FeedIds(id.source)) s"${id.key}\u0000${sanitized(node.evidence.cleanTitle)}" else id.key
+    if (!SourceReliability.linkDecides(id)) s"${id.key}\u0000${sanitized(node.evidence.cleanTitle)}" else id.key
 
   private def catalogueKeys(node: EvidenceNode): Seq[String] = node.listings.flatMap(_.catalogueIds).distinct.map(catalogueKey(_, node))
 
