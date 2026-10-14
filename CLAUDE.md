@@ -481,6 +481,28 @@ Each change's diff either deletes the displaced code alongside the new,
 or names the displacement out loud. Silently leaving the now-dead path
 is the failure mode.
 
+## Investigating identity, scraper or CI failures
+
+Before writing an ad-hoc test or running a full convergence leg, use the local tools: each answers in seconds
+what a leg answers in 10–90 minutes. The skill `.claude/skills/identity-investigation/SKILL.md` ("Which tool")
+has every flag; name these tools in every subagent brief.
+
+- Why does this listing take (or not take) a film; did commit X move it; first bad commit → `scripts/identity-slice`
+  (`--ref A --ref B`, `--bisect`, `--batch`); the whole WHY trace from the capture → `scripts/identity-slice --explain`
+- Why does a raw title clean / search / shape so; which title rule fired → `scripts/title-trace`
+- Is a scraper reading a venue's field wrong → `scripts/venue-replay`
+- Code or new data; what changed between two recordings → `scripts/recording-diff`
+- When / why a listing's take changed in prod, per deploy → `scripts/listing-history`
+- What the labels, known-wrong, expected, baseline and accepted lists say about a listing or film, who added each,
+  and whether prod still takes it so → `scripts/label-lookup`
+- A capture run's ratchet findings as a table → `scripts/identity-ratchet-report`
+- Judging unjudged takes → `scripts/identity-judge-cards`
+
+**Data sources.** The local prod mirror (`mongodb://127.0.0.1:28017`, databases `kinowo*_prod_mirror`) holds prod's
+current state — `identity_traces`, `identity_model_families`, `movie_slots`, `screenings`, … — and may be read
+(READ-ONLY; never `:27017`, never prod itself). Check it with `scripts/local-mirror/freshness <cc>` first. Recordings
+and captures are cached in `~/.cache/kinowo-identity`.
+
 ## Don't iterate on transient errors
 
 If a tool call fails with an error that smells like a build, cache,

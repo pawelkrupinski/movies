@@ -41,6 +41,54 @@ Design and limits: docs/design/identity-slice.md.
 | …a local ratchet run | `sbt "worker/testOnly services.identity.UnmatchedClustersRatchetSpec"`, then `scripts/identity-ratchet-report --local` |
 | Judge the UNJUDGED takes | `scripts/identity-judge-cards --fixtures origin/chore/identity-capture` → `target/identity-judge/` |
 | Which listings did a change move, over a WHOLE corpus (matched ones too)? | the convergence row's identity takes check (`scripts/ci/identity-takes-check.sh`, `identity_takes_diff.py`) |
+| Why does a raw title clean / search / shape the way it does? Which title rule fired? | `scripts/title-trace "<raw title>" --country de [--venue X]` — every step, each rule's name, before and after (below) |
+| Did commit Y change how a title cleans, searches or shapes? | `scripts/title-trace "<raw title>" --country de --ref Y~1 --ref Y` — both traces, then the steps that moved |
+| What do the labels / known-wrong / expected / baseline / accepted lists and MatchedTakesLabelSpec say about a listing or film, who added each, and does prod still take it so? | `scripts/label-lookup uk --title "RBO: Romeo & Juliet" [--venue X]` or `scripts/label-lookup uk --film tmdb:N` (below) |
+
+## title-trace
+
+`scripts/title-trace "<raw title>" --country <cc> [--venue X] [--ref A [--ref B]]` — no recording, no network: one
+JVM over the code alone (a ref compiled once into the shared cache, as identity-slice does; ~5 s warm). Prints, in
+production order, each step's own answer:
+
+1. **ingest** — `TitleText.tidy`, the venue's own rules (`--venue`: a roster name or a unique part of it; an unknown
+   name gets none), the format peel (`FormatTags.extractFormatTags`: tags, a filed article fronted) → the slot title;
+2. **canonical tier** → the slot key (`sanitize`);
+3. **search strip** — `recase`, each `TitleRules` / `ExtraTitleRules` rule that fired with its id and before → after,
+   the format re-peel → the search query (`TitleNormalizer.searchQuery`);
+4. **listing shape** — `NonMovieEventClassifier` (mystery incl. `isBareSneak`, non-screening, live, broadcast),
+   `MultiFilmBill`, `ListingShape` (billsSeveral, quotes, stage work, house, relays, silent, programme slot), the
+   pieces, and `billedBeside` against a film titled as each search candidate;
+5. **searches** — the identity model's title and IMDb queries (`CandidateQueries`), `SearchTitles.candidates`;
+6. **findings** — what `SearchQueryMarkersSpec` and `CinemaSlotInvariantsSpec` (title) would raise, before allowlists.
+
+```
+3. search strip — the lookup query (TitleNormalizer.searchQuery)
+  recase (banner-aware): 'Pokaz przyjazny osobom z ADHD: Kandydaci śmierci' (unchanged)
+    xtra-pp-przyjazny-audience [ExtraTitleRules, programmePrefix]: 'Pokaz przyjazny … ADHD: Kandydaci śmierci' → 'Kandydaci śmierci'
+  = search query 'Kandydaci śmierci'
+```
+
+The listing's take needs its candidates and families: that is `scripts/identity-slice`, not this.
+
+## label-lookup
+
+`scripts/label-lookup <cc> --title T [--venue V]` or `--film tmdb:N` — Python, no JVM, ~1 s. Reads `labels.tsv`,
+`known-wrong.tsv`, `expected-matches.tsv`, the suspect `baseline.tsv`, `accepted.tsv` and `MatchedTakesLabelSpec`'s
+`knownWrong` / `noLongerServed`, and prints:
+
+- with `--venue`, the **effective verdict** per film, read as every gate reads it (`identity_takes_diff.label_of`: a
+  `*` line covers the venue, the venue's own RIGHT overrules `*`'s WRONG), and a NOTE when two TMDB films come out
+  right at one venue (Lalka at Kino Iluzjon: the 1968 film by its own label, the 2026 one by `*`'s);
+- every **entry** with its verdict, note and the commit + date that last changed its line (`git blame`);
+- **prod's take now** from the local prod mirror's `identity_traces` (`--no-prod` skips it), its freshness by
+  `scripts/local-mirror/freshness`, each take judged by the labels — flagged when prod takes a film labelled WRONG, or
+  misses one labelled RIGHT (UK "RBO: Romeo & Juliet" at Filmhouse Newlyn: labelled and expected tmdb:1702789, prod
+  `none (Vetoed)`);
+- the **identity judgements lint**'s findings that touch it (`scripts/ci/identity_judgements_lint.py`'s own rules).
+
+A title is matched exactly (single-spaced) when any file holds it so, else as a part (case and accents aside:
+`--title Emil` finds "Emil und die Detektive").
 
 ## identity-slice --explain
 
