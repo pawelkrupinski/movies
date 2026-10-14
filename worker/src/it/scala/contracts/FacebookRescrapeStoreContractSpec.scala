@@ -52,6 +52,40 @@ class FacebookRescrapeStoreContractSpec extends AnyFlatSpec with Matchers with B
       store.waitingPages("us") shouldBe 2
     }
 
+    it should s"[$name] keep a claimed entry asked for again before it completed, due when the later request asked" in {
+      val store = fresh(cls)
+      store.add(Seq(page("a")))
+      val claimed = store.claim("us", RescrapeKind.Page, t0, 5.minutes).get
+      store.add(Seq(page("a", t0.plusSeconds(30)))) shouldBe 0
+      store.complete(claimed)
+      store.waitingPages("us") shouldBe 1
+      store.claim("us", RescrapeKind.Page, t0.plusSeconds(29), 5.minutes) shouldBe None
+      val again = store.claim("us", RescrapeKind.Page, t0.plusSeconds(30), 5.minutes).get
+      again.attempts shouldBe 1
+      store.complete(again)
+      store.waitingPages("us") shouldBe 0
+    }
+
+    it should s"[$name] complete an entry asked for again only BEFORE it was claimed" in {
+      val store = fresh(cls)
+      store.add(Seq(page("a")))
+      store.add(Seq(page("a")))
+      store.complete(store.claim("us", RescrapeKind.Page, t0, 5.minutes).get)
+      store.waitingPages("us") shouldBe 0
+    }
+
+    it should s"[$name] show the oldest due entries without claiming them, and discard one shown" in {
+      val store = fresh(cls)
+      store.add(Seq(page("a"), page("b", t0.plusSeconds(1)), page("c", t0.plusSeconds(2)), page("later", t0.plusSeconds(600))))
+      val shown = store.peekDue("us", RescrapeKind.Page, t0.plusSeconds(60), 2)
+      shown.map(_.key) shouldBe Seq(page("a").key, page("b").key)
+      store.peekDue("us", RescrapeKind.Page, t0.plusSeconds(60), 10).map(_.key) shouldBe Seq("a", "b", "c").map(page(_).key)
+      store.discard(shown.head)
+      store.claim("us", RescrapeKind.Page, t0.plusSeconds(60), 1.minute).map(_.key) shouldBe Some(page("b").key)
+      store.discard(shown(1))                                   // claimed since it was shown: stays
+      store.waitingPages("us") shouldBe 3
+    }
+
     it should s"[$name] hold a waiting entry to the later of two requests' due times, never the earlier" in {
       val store = fresh(cls)
       store.add(Seq(film("f", t0.plusSeconds(60))))

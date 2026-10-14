@@ -69,11 +69,19 @@ trait FacebookRescrapeStore {
   def add(entries: Seq[RescrapeEntry]): Int
   /** True when the country has an entry of `kind` due at `now`. */
   def hasDue(country: String, kind: RescrapeKind, now: Instant): Boolean
+  /** Up to `limit` of the country's due entries of `kind`, oldest first — read, not claimed: an
+   *  entry is settled by [[complete]] only while nobody claimed it since. */
+  def peekDue(country: String, kind: RescrapeKind, now: Instant, limit: Int): Seq[RescrapeEntry]
   /** The country's oldest-due entry of `kind`, leased: held back until `now + lease` and its
    *  `attempts` raised — the entry as claimed. */
   def claim(country: String, kind: RescrapeKind, now: Instant, lease: FiniteDuration): Option[RescrapeEntry]
-  /** Remove a claimed entry — unless it was claimed again since. */
+  /** Remove a claimed entry — unless it was claimed again since, or asked for again since it was
+   *  claimed: a request that lands while its page is being sent names a newer card than the one
+   *  Facebook fetched, so the entry waits again, due when that request asked, its attempts reset. */
   def complete(claimed: RescrapeEntry): Unit
+  /** Remove an entry as it was read — claimed or shown by [[peekDue]] — however often it was
+   *  asked for since: one not worth sending at all. Unless it was claimed since. */
+  def discard(entry: RescrapeEntry): Unit
   /** Put a claimed entry back, due at `at`; `countAttempt = false` gives the claim back. */
   def retry(claimed: RescrapeEntry, at: Instant, countAttempt: Boolean): Unit
   /** Take the quota's next slot, true when it was due. Slots are a SCHEDULE: the one after comes
@@ -122,7 +130,8 @@ class MongoFacebookRescrapeStore(collection: MongoCollection[Document]) extends 
     await(collection.updateOne(Filters.eq("_id", entry.key), Updates.combine(
       Updates.setOnInsert("country", entry.country), Updates.setOnInsert("kind", entry.kind.name), target,
       Updates.max("notBefore", date(entry.notBefore)), Updates.setOnInsert("enqueuedAt", date(entry.notBefore)),
-      Updates.setOnInsert("attempts", 0)), new UpdateOptions().upsert(true)).toFuture()).getUpsertedId != null
+      Updates.setOnInsert("attempts", 0), Updates.max(AskedAgainAt, date(entry.notBefore))),
+      new UpdateOptions().upsert(true)).toFuture()).getUpsertedId != null
   }
 
   private def due(country: String, kind: RescrapeKind, now: Instant) =
@@ -131,15 +140,29 @@ class MongoFacebookRescrapeStore(collection: MongoCollection[Document]) extends 
   def hasDue(country: String, kind: RescrapeKind, now: Instant): Boolean =
     await(collection.find(due(country, kind, now)).limit(1).toFuture()).nonEmpty
 
+  def peekDue(country: String, kind: RescrapeKind, now: Instant, limit: Int): Seq[RescrapeEntry] =
+    await(collection.find(due(country, kind, now)).sort(Sorts.ascending("enqueuedAt")).limit(limit)
+      .batchSize(limit).toFuture()).map(entryOf)
+
   def claim(country: String, kind: RescrapeKind, now: Instant, lease: FiniteDuration): Option[RescrapeEntry] =
     Option(await(collection.findOneAndUpdate(due(country, kind, now),
-      Updates.combine(Updates.set("notBefore", date(now.plusMillis(lease.toMillis))), Updates.inc("attempts", 1)),
+      Updates.combine(Updates.set("notBefore", date(now.plusMillis(lease.toMillis))), Updates.inc("attempts", 1), Updates.unset(AskedAgainAt)),
       new FindOneAndUpdateOptions().sort(Sorts.ascending("enqueuedAt")).returnDocument(ReturnDocument.AFTER)).toFutureOption()).orNull)
       .map(entryOf)
 
   private def claimed(entry: RescrapeEntry) = Filters.and(Filters.eq("_id", entry.key), Filters.eq("attempts", entry.attempts))
 
-  def complete(entry: RescrapeEntry): Unit = { await(collection.deleteOne(claimed(entry)).toFuture()); () }
+  def discard(entry: RescrapeEntry): Unit = { await(collection.deleteOne(claimed(entry)).toFuture()); () }
+
+  // `askedAgainAt` is the latest due time asked for since the entry was last claimed (set by every
+  // `add`, cleared by `claim`): present at completion, the entry waits again instead of going.
+  def complete(entry: RescrapeEntry): Unit =
+    if (await(collection.deleteOne(Filters.and(claimed(entry), Filters.exists(AskedAgainAt, false))).toFuture()).getDeletedCount == 0) {
+      await(collection.updateOne(Filters.and(claimed(entry), Filters.exists(AskedAgainAt)), Seq(
+        Document("$set" -> Document("notBefore" -> s"$$$AskedAgainAt", "attempts" -> 0)),
+        Document("$unset" -> AskedAgainAt))).toFuture())
+      ()
+    }
 
   def retry(entry: RescrapeEntry, at: Instant, countAttempt: Boolean): Unit = {
     val due = Updates.set("notBefore", date(at))
@@ -184,6 +207,7 @@ object MongoFacebookRescrapeStore {
   /** The collection, in the fleet database ([[services.FleetDatabase]]). */
   val Collection = "facebook_rescrapes"
   val QuotaId    = "quota"
+  private val AskedAgainAt = "askedAgainAt"
   private val Timeout = 10.seconds
   /** The claim index's first shape, the `notBefore` range before `enqueuedAt`'s sort. */
   private val SupersededClaimIndex = "country_1_kind_1_notBefore_1_enqueuedAt_1"
@@ -230,6 +254,7 @@ class FacebookRescrapeDrain(store: FacebookRescrapeStore, graph: FacebookGraph, 
 
   def tick(): Unit = {
     expandFilms()
+    dropUnfetched()
     sendPage()
     metrics.rescrapesWaiting(store.waitingPages(country))
   }
@@ -262,14 +287,24 @@ class FacebookRescrapeDrain(store: FacebookRescrapeStore, graph: FacebookGraph, 
 
   private def urlOf(page: RescrapeEntry): String = page.target match { case RescrapeTarget.Page(u) => u; case other => other.key }
 
-  /** The country's oldest due page Facebook holds a preview of. Each one ahead of it that Facebook
-   *  never fetched — queued before re-scrapes asked only for fetched pages, or fetched last before
-   *  its preview expired — is dropped on the way, up to [[UnfetchedPerSlot]] in one slot. */
+  /** Drop the country's oldest due pages Facebook never fetched — queued before re-scrapes asked
+   *  only for fetched pages, or fetched last before its preview expired — up to [[UnfetchedPerTick]]
+   *  a tick. They need no request, so they go whether or not the fleet is holding for Facebook. */
+  private def dropUnfetched(): Unit = {
+    val due = store.peekDue(country, RescrapeKind.Page, clock.instant(), UnfetchedPerTick)
+    if (due.nonEmpty) {
+      val kept = fetched(due.map(urlOf)).toSet
+      due.filterNot(page => kept(urlOf(page))).foreach(store.discard)
+    }
+  }
+
+  /** The country's oldest due page Facebook holds a preview of; one whose preview expired since
+   *  [[dropUnfetched]] looked is dropped on the way, up to [[UnfetchedPerTick]] in one slot. */
   @scala.annotation.tailrec
   private def nextFetchedPage(now: Instant, dropped: Int = 0): Option[RescrapeEntry] =
-    if (dropped >= UnfetchedPerSlot) None
+    if (dropped >= UnfetchedPerTick) None
     else store.claim(country, RescrapeKind.Page, now, Lease) match {
-      case Some(page) if fetched(Seq(urlOf(page))).isEmpty => store.complete(page); nextFetchedPage(now, dropped + 1)
+      case Some(page) if fetched(Seq(urlOf(page))).isEmpty => store.discard(page); nextFetchedPage(now, dropped + 1)
       case found                                           => found
     }
 
@@ -363,9 +398,9 @@ object FacebookRescrapeDrain {
   /** Films expanded per tick, so a backlog of films cannot hold one tick for long. */
   val FilmsPerTick: Int = 20
 
-  /** Pages Facebook never fetched dropped in one slot before it is given up: the backlog queued
-   *  before re-scrapes asked only for fetched pages goes in a few minutes, not a slot a page. */
-  val UnfetchedPerSlot: Int = 100
+  /** Pages Facebook never fetched dropped in one tick: the backlog queued before re-scrapes asked
+   *  only for fetched pages goes in minutes, held for Facebook or not. */
+  val UnfetchedPerTick: Int = 100
 
   /** The share of the app's hourly allowance (Facebook's `X-App-Usage`) at which the fleet stops
    *  for [[UsageHold]] rather than run on into Facebook's refusal and its hour-long hold. */

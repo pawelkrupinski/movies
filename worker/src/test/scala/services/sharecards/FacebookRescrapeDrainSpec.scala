@@ -91,6 +91,22 @@ class FacebookRescrapeDrainSpec extends AnyFlatSpec with Matchers {
     fleet.graph.sent.map(_._2).toSeq.sorted shouldBe (pagesOf("film", 3) :+ pagesOf("film", 3).head).sorted
   }
 
+  // A request that lands while its page is being sent names a card newer than the one Facebook is
+  // fetching: absorbed into the claimed entry, and the entry deleted once the send succeeded, the
+  // newer card was never asked for.
+  it should "send the page again when it was asked for while being sent" in {
+    var fleet: Fleet = null
+    var askedDuringSend = false
+    fleet = new Fleet(cities = 1, answer = { _ =>
+      if (!askedDuringSend) { askedDuringSend = true; fleet.store.add(Seq(RescrapeEntry("us", RescrapeTarget.Page(pagesOf("film", 1).head), fleet.clock.instant()))) }
+      FacebookScrape.Accepted
+    })
+    fleet.request("us", "film")
+    fleet.run(2.minutes)
+    fleet.graph.sent.map(_._2).toSeq shouldBe Seq.fill(2)(pagesOf("film", 1).head)
+    fleet.store.waiting shouldBe empty
+  }
+
   // Each request is due no sooner than when the card it names can be on web_movies. A second
   // request for a film still waiting names a NEWER card: absorbed, it still has to wait for it.
   it should "wait for the later of the two, so the newer card is on its pages when Facebook looks" in {
@@ -243,6 +259,21 @@ class FacebookRescrapeDrainSpec extends AnyFlatSpec with Matchers {
     fleet.graph.sent.map(_._2).toSeq shouldBe Seq(backlog(120), backlog(149))
     fleet.store.waiting shouldBe empty
     fleet.series.rescrapeCount("us", ShareCardMetrics.RescrapeOutcome.Unfetched) shouldBe 148.0
+  }
+
+  // Live on 2026-10-14 the backlog sat at 3,989 for the half hour the fleet held for Facebook's
+  // rate limit: dropping a page that needs no request waited for a request's slot.
+  it should "be dropped while the fleet holds for Facebook, the fetched pages kept for the slot" in {
+    val fleet = new Fleet(cities = 1)
+    val backlog = (1 to 150).map(i => s"https://us.showtimes.cc/old/city$i")
+    fleet.store.add(backlog.map(url => RescrapeEntry("us", RescrapeTarget.Page(url), T0)))
+    fleet.fetches.record(Map(backlog(120) -> T0))
+    fleet.store.holdSlots(T0.plusMillis(RateLimitHold.toMillis))
+    fleet.run(TickEvery * 3)
+    fleet.graph.sent shouldBe empty
+    fleet.store.waiting.map(_.key) shouldBe Seq(RescrapeTarget.Page(backlog(120)).key)
+    fleet.run(RateLimitHold)
+    fleet.graph.sent.map(_._2).toSeq shouldBe Seq(backlog(120))
   }
 
   // Facebook refused the app after 45-105 requests an hour on 2026-10-11/12, and each refusal held

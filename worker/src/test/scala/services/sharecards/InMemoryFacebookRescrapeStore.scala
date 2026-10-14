@@ -9,12 +9,15 @@ class InMemoryFacebookRescrapeStore extends FacebookRescrapeStore {
   // key -> (entry, enqueued at)
   private val entries  = collection.mutable.LinkedHashMap.empty[String, (RescrapeEntry, Instant)]
   private var nextSlot = Option.empty[Instant]
+  // key -> the latest due time a request asked for since the entry was last claimed
+  private val askedAgain = collection.mutable.Map.empty[String, Instant]
 
   def add(added: Seq[RescrapeEntry]): Int = synchronized {
     added.count { e =>
       entries.get(e.key) match {
         case Some((waiting, enqueued)) =>
           if (e.notBefore.isAfter(waiting.notBefore)) entries(e.key) = (waiting.copy(notBefore = e.notBefore), enqueued)
+          askedAgain(e.key) = askedAgain.get(e.key).filter(_.isAfter(e.notBefore)).getOrElse(e.notBefore)
           false
         case None =>
           entries(e.key) = (e.copy(attempts = 0), e.notBefore)
@@ -28,10 +31,15 @@ class InMemoryFacebookRescrapeStore extends FacebookRescrapeStore {
 
   def hasDue(country: String, kind: RescrapeKind, now: Instant): Boolean = synchronized(due(country, kind, now).nonEmpty)
 
+  def peekDue(country: String, kind: RescrapeKind, now: Instant, limit: Int): Seq[RescrapeEntry] = synchronized {
+    due(country, kind, now).toSeq.sortBy(_._2).take(limit).map(_._1)
+  }
+
   def claim(country: String, kind: RescrapeKind, now: Instant, lease: FiniteDuration): Option[RescrapeEntry] = synchronized {
     due(country, kind, now).toSeq.sortBy(_._2).headOption.map { case (e, enqueued) =>
       val claimed = e.copy(notBefore = now.plusMillis(lease.toMillis), attempts = e.attempts + 1)
       entries(e.key) = (claimed, enqueued)
+      askedAgain.remove(e.key)
       claimed
     }
   }
@@ -39,7 +47,14 @@ class InMemoryFacebookRescrapeStore extends FacebookRescrapeStore {
   private def ifStillClaimed(claimed: RescrapeEntry)(f: Instant => Unit): Unit =
     entries.get(claimed.key).filter(_._1.attempts == claimed.attempts).foreach { case (_, enqueued) => f(enqueued) }
 
-  def complete(claimed: RescrapeEntry): Unit = synchronized(ifStillClaimed(claimed)(_ => entries.remove(claimed.key)))
+  def complete(claimed: RescrapeEntry): Unit = synchronized(ifStillClaimed(claimed) { enqueued =>
+    askedAgain.remove(claimed.key) match {
+      case Some(at) => entries(claimed.key) = (claimed.copy(notBefore = at, attempts = 0), enqueued)
+      case None     => entries.remove(claimed.key)
+    }
+  })
+
+  def discard(entry: RescrapeEntry): Unit = synchronized(ifStillClaimed(entry) { _ => entries.remove(entry.key); askedAgain.remove(entry.key) })
 
   def retry(claimed: RescrapeEntry, at: Instant, countAttempt: Boolean): Unit = synchronized {
     ifStillClaimed(claimed)(enqueued =>
