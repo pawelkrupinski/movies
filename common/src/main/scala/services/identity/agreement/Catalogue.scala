@@ -101,7 +101,7 @@ object Catalogue {
                 val stands = tmdbFilm.fold(imdb.map(VoterFamily.Imdb.database -> _).orElse(film.item.map(VoterFamily.Wiki.database -> _)))(_ => None)
                 val as     = tmdbFilm.fold(stands.fold("no film")((source, at) => s"$source $at"))(tmdbId => s"TMDB $tmdbId")
                 val line   = s"catalogue id ${film.id.source}:${film.id.id}${if (film.linked) " (linked from the venue's page)" else ""} → $as via ${film.hit.via}" +
-                  film.hit.item.fold("")(q => s" ($q)") + s" '${facts.film.title}'" + facts.film.year.fold("")(year => s" ($year)")
+                  film.hit.item.fold("")(q => s" ($q)") + s" ${facts.film.titled}"
                 Answer.Known(Option.when(tmdbFilm.isDefined || stands.isDefined)(Taken(tmdbFilm, stands, Some(facts.film.title), facts.film.year, line)))
             }
         }

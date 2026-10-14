@@ -621,6 +621,8 @@ object IdentityMeasures {
                          *  ([[TmdbFilmRecord.releases]]); `None` when its release dates were not fetched. One string, as
                          *  [[releaseCountries]] is. */
                         releases: Option[String] = None) {
+    /** The film as a line names it: `'Lalka' (1968)`, its year left out where none is known. */
+    def titled: String = s"'$title'${year.fold("")(y => s" ($y)")}"
     /** Every running time TMDB states for the film, [[runtime]] first: what a listing's runtime is compared with. */
     def runtimes: Seq[Int] = (runtime.toSeq ++ alternativeRuntimes).filter(_ > 0)
     /** The cinema releases TMDB dates in `country` (the venue's, ISO-3166-1) — or in any country when it dates none there,

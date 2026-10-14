@@ -170,7 +170,7 @@ object DecisionTrace {
   /** A scored candidate as a trace shows it: `471328 2.4% rank 1 DENIED (…) 'BALLET LIVE. MANON. ROYAL ÓPERA HOUSE'`. */
   private[identity] def renderCandidate(scored: Scored): String =
     s"${scored.candidate.tmdbId} ${ResolverDecision.percent(scored.probability)} rank ${scored.rank.fold("-")(_.toString)}" +
-      s"${scored.denial.fold("")(why => s" DENIED ($why)")} '${scored.candidate.film.title}'${scored.candidate.film.year.fold("")(year => s" ($year)")}"
+      s"${scored.denial.fold("")(why => s" DENIED ($why)")} ${scored.candidate.film.titled}"
 
   /** What stopped a node no rule took alone, as one id the next investigation can be ranked by: its searches found
    *  no candidate (`search:found-nothing`, or `search:unanswered` when a lookup went unanswered), every candidate

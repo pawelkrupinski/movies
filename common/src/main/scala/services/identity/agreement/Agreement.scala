@@ -79,11 +79,6 @@ final case class FamilyPick(family: VoterFamily, id: String, record: SourceRecor
 final case class FamilyVerdict(family: VoterFamily, pick: Option[FamilyPick], weighed: Seq[SourceRecord] = Nil,
                                leaning: Option[SourceRecord] = None)
 
-object FamilyVerdict {
-  /** A family that took `pick`. */
-  def took(pick: FamilyPick): FamilyVerdict = FamilyVerdict(pick.family, Some(pick), Seq(pick.record))
-}
-
 /** The film a cluster's families agree on, with the families that named it, those whose evidence leaned to it, and what
  *  else corroborated it ([[Agreement.ListingFacts]], [[Agreement.ModelVote]]). */
 final case class AgreedFilm(families: Set[VoterFamily], record: SourceRecord, ids: Map[VoterFamily, String], leaning: Set[VoterFamily] = Set.empty,

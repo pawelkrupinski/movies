@@ -46,7 +46,7 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     val records = (family: VoterFamily) => new HeldFamilyAnswers(family, Map("1" -> SourceRecord(film("Znachor", 1937, "Michał Waszyński"))))
     val all     = Seq(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Filmweb).map(records)
     val series  = listing(KinoMuza, "Akademia Polskiego Filmu: Kino żydowskie w Polsce")
-    Agreement.agreed(Seq(series), all.map(f => FamilyVerdict.took(FamilyPick(f.family, "1", SourceRecord(film("Znachor", 1937, "Michał Waszyński")))))) shouldBe None
+    Agreement.agreed(Seq(series), all.map(f => FamilyTook(FamilyPick(f.family, "1", SourceRecord(film("Znachor", 1937, "Michał Waszyński")))))) shouldBe None
     val bill = listing(KinoMuza, "Znachor + Pan Tadeusz")
     ListingShape.billsSeveral(bill) shouldBe true
     // an event a "+" joins to the film is no second work: PL "11. UFF - Gala otwarcia + Demony", a discussion after a screening
@@ -54,7 +54,7 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     ListingShape.billsSeveral(listing(KinoMuza, "Pasażerka - premiera książki, pokaz filmu + dyskusja")) shouldBe false
     ListingShape.billsSeveral(listing(KinoMuza, "Toddler Club: Zog + The Snail & the Whale")) shouldBe true
     ListingShape.billsSeveral(listing(KinoMuza, "MOBILE SUIT GUNDAM HATHAWAY DOUBLE BILL")) shouldBe true
-    Agreement.agreed(Seq(bill), all.map(f => FamilyVerdict.took(FamilyPick(f.family, "1", SourceRecord(film("Znachor", 1937, "Michał Waszyński")))))) shouldBe None
+    Agreement.agreed(Seq(bill), all.map(f => FamilyTook(FamilyPick(f.family, "1", SourceRecord(film("Znachor", 1937, "Michał Waszyński")))))) shouldBe None
   }
 
   it should "join a family to the agreement through any agreeing family's record, not only the first family's" in {
@@ -64,8 +64,8 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     val wiki    = SourceRecord(film("Fantasy", 2025, "Kukla").copy(runtime = None), Map("imdb" -> "tt36112899", "wikidata" -> "Q135441923"))
     val filmweb = SourceRecord(film("Fantasy", 2025, "Kukla", 98))
     val bare    = Seq(listing(KinoMuza, "Fantasy", year = Some(2025)))
-    val agreed  = Agreement.agreed(bare, Seq(FamilyVerdict.took(FamilyPick(VoterFamily.Imdb, "tt36112899", imdb)),
-      FamilyVerdict.took(FamilyPick(VoterFamily.Wiki, "Q135441923", wiki)), FamilyVerdict.took(FamilyPick(VoterFamily.Filmweb, "10088643", filmweb))))
+    val agreed  = Agreement.agreed(bare, Seq(FamilyTook(FamilyPick(VoterFamily.Imdb, "tt36112899", imdb)),
+      FamilyTook(FamilyPick(VoterFamily.Wiki, "Q135441923", wiki)), FamilyTook(FamilyPick(VoterFamily.Filmweb, "10088643", filmweb))))
     agreed.map(_.families) shouldBe Some(Set(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Filmweb))
   }
 
@@ -75,7 +75,7 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     val command = SourceRecord(film("Command Performance", 2009, "Dolph Lundgren", 89), Map("imdb" -> "tt1210801"))
     val roeg    = SourceRecord(film("Performance", 1970, "Nicolas Roeg", 105))
     val bare    = Seq(listing(KinoMuza, "Command Performance"))
-    val took    = (family: VoterFamily, record: SourceRecord) => FamilyVerdict.took(FamilyPick(family, "1", record))
+    val took    = (family: VoterFamily, record: SourceRecord) => FamilyTook(FamilyPick(family, "1", record))
     val leaned  = (family: VoterFamily) => FamilyVerdict(family, None, Seq(command), leaning = Some(command))
     val five    = Seq(took(VoterFamily.Wiki, command), took(VoterFamily.Filmweb, command), leaned(VoterFamily.Imdb), leaned(VoterFamily.RottenTomatoes))
     Agreement.agreed(bare, five :+ took(VoterFamily.Metacritic, roeg)) should not be empty
@@ -91,7 +91,7 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     val tempo   = film("Tempo", 2003, "Eric Styles")
     val old     = SourceRecord(film("Old", 2021, "M. Night Shyamalan"), Map("imdb" -> "tt10954652"))
     val dance   = Seq(listing(KinoMuza, "Okładka „Tempo”"))
-    val takers  = Seq(VoterFamily.Filmweb, VoterFamily.RottenTomatoes, VoterFamily.Wiki).map(f => FamilyVerdict.took(FamilyPick(f, "1", SourceRecord(tempo))))
+    val takers  = Seq(VoterFamily.Filmweb, VoterFamily.RottenTomatoes, VoterFamily.Wiki).map(f => FamilyTook(FamilyPick(f, "1", SourceRecord(tempo))))
     val weighed = Seq(SourceRecord(tempo, Map("imdb" -> "tt0307553")), old)
     Agreement.agreed(dance, takers) should not be empty
     Agreement.agreed(dance, takers :+ FamilyVerdict(VoterFamily.Imdb, None, weighed, leaning = Some(old))) shouldBe None
@@ -104,7 +104,7 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     val old     = SourceRecord(film("Old", 2021, "M. Night Shyamalan"), Map("imdb" -> "tt10954652"))
     val bare    = Seq(listing(KinoMuza, "Tempo"))
     val takers  = Seq(VoterFamily.Wiki, VoterFamily.Filmweb, VoterFamily.RottenTomatoes, VoterFamily.Metacritic)
-      .map(f => FamilyVerdict.took(FamilyPick(f, "1", tempo)))
+      .map(f => FamilyTook(FamilyPick(f, "1", tempo)))
     val imdb    = FamilyVerdict(VoterFamily.Imdb, None, Seq(tempo, old), leaning = Some(old))
     Agreement.agreed(bare, takers :+ imdb) should not be empty
     Agreement.agreed(bare, takers.take(3) :+ imdb) shouldBe None
@@ -118,7 +118,7 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     val cut      = SourceRecord(IdentityMeasures.Film("Ken Russell's The Devils: The Director's Cut", directors = Some(Seq("Ken Russell"))),
       Map("rt" -> "ken_russells_the_devils"))
     val billed   = Seq(listing(KinoMuza, "Ken Russell's The Devils presented by Deeper Into Movies", director = Some("Ken Russell")))
-    val agreeing = Seq(FamilyVerdict.took(FamilyPick(VoterFamily.Imdb, "tt0066993", devils)), FamilyVerdict.took(FamilyPick(VoterFamily.Wiki, "Q655996", devils)),
+    val agreeing = Seq(FamilyTook(FamilyPick(VoterFamily.Imdb, "tt0066993", devils)), FamilyTook(FamilyPick(VoterFamily.Wiki, "Q655996", devils)),
       FamilyVerdict(VoterFamily.Metacritic, None, Seq(devils), leaning = Some(devils)))
     Agreement.agreed(billed, agreeing :+ FamilyVerdict(VoterFamily.RottenTomatoes, None, Seq(devils, cut), leaning = Some(cut))) should not be empty
     // a record crediting no director is no edition known to be the film's, and turns it down
@@ -132,7 +132,7 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     val survive2020 = SourceRecord(film("Survive", 2020, "Danial Miller", 80), Map("imdb" -> "tt11465950"))
     val survive2022 = SourceRecord(film("Survive", 2022, "Lee Yoon-ji", 92))
     val credited    = Seq(listing(KinoMuza, "Survive", year = Some(2020), director = Some("Danial Miller")))
-    val takers      = Seq(VoterFamily.Imdb, VoterFamily.Wiki).map(f => FamilyVerdict.took(FamilyPick(f, "1", survive2020)))
+    val takers      = Seq(VoterFamily.Imdb, VoterFamily.Wiki).map(f => FamilyTook(FamilyPick(f, "1", survive2020)))
     val filmweb     = FamilyVerdict(VoterFamily.Filmweb, None, Seq(survive2020, survive2022), leaning = Some(survive2022))
     Agreement.agreed(credited, takers :+ filmweb) should not be empty
     Agreement.agreed(Seq(listing(KinoMuza, "Survive")), takers :+ filmweb) shouldBe None
@@ -145,7 +145,7 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     val fed      = listing(KinoMuza, "To The Bone", year = Some(2014), director = Some("Erin Li"))
       .copy(catalogueIds = Seq(services.identity.CatalogueId("webedia", "227420")))
     fed.factsFromCatalogue shouldBe true
-    val three    = Seq(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.RottenTomatoes).map(f => FamilyVerdict.took(FamilyPick(f, "1", feature)))
+    val three    = Seq(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.RottenTomatoes).map(f => FamilyTook(FamilyPick(f, "1", feature)))
     val leaning  = FamilyVerdict(VoterFamily.Metacritic, None, Seq(feature), leaning = Some(feature))
     Agreement.agreed(Seq(fed), three) shouldBe None
     Agreement.agreed(Seq(fed), three :+ leaning).map(_.record) shouldBe Some(feature)
@@ -174,7 +174,7 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     val spider  = SourceRecord(film("Spider Baby or, The Maddest Story Ever Told", 1967, "Jack Hill", 81).copy(alternativeTitles = Seq("Spider Baby")),
       Map("imdb" -> "tt0058606"))
     val bare    = Seq(listing(KinoMuza, "Spider Baby"))
-    val takers  = Seq(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.RottenTomatoes).map(f => FamilyVerdict.took(FamilyPick(f, "1", spider)))
+    val takers  = Seq(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.RottenTomatoes).map(f => FamilyTook(FamilyPick(f, "1", spider)))
     Agreement.agreed(bare, takers :+ FamilyVerdict(VoterFamily.Metacritic, None, Seq(spider))) should not be empty
   }
 
@@ -183,7 +183,7 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     // the film its evidence favours; Tempo's IMDb weighed it at 2.9% under "Old" at 33%, and leaned to that
     val dress  = film("The Dress", 2020, "Tadeusz Łysiak", 30)
     val bare   = Seq(listing(KinoMuza, "Sukienka"))
-    val takers = Seq(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Filmweb).map(f => FamilyVerdict.took(FamilyPick(f, "1", SourceRecord(dress.copy(alternativeTitles = Seq("Sukienka"))))))
+    val takers = Seq(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Filmweb).map(f => FamilyTook(FamilyPick(f, "1", SourceRecord(dress.copy(alternativeTitles = Seq("Sukienka"))))))
     val rt     = SourceRecord(dress.copy(year = None))
     Agreement.agreed(bare, takers :+ FamilyVerdict(VoterFamily.RottenTomatoes, None, Seq(rt), leaning = Some(rt))) should not be empty
     Agreement.agreed(bare, takers :+ FamilyVerdict(VoterFamily.RottenTomatoes, None, Seq(rt), leaning = Some(SourceRecord(klondike1932)))) shouldBe None
@@ -195,7 +195,7 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     val capernaum = film("Capernaum", 2018, "Nadine Labaki", 126).copy(alternativeTitles = Seq("Kafarnaum"))
     val record    = SourceRecord(capernaum, Map("imdb" -> "tt8267604"))
     val bare      = Seq(listing(KinoMuza, "Kafarnaum"))
-    val took      = (family: VoterFamily) => FamilyVerdict.took(FamilyPick(family, "1", record))
+    val took      = (family: VoterFamily) => FamilyTook(FamilyPick(family, "1", record))
     val leaned    = (family: VoterFamily) => FamilyVerdict(family, None, Seq(record), leaning = Some(record))
     Agreement.agreed(bare, Seq(took(VoterFamily.Wiki), took(VoterFamily.Filmweb))) shouldBe None
     val agreed = Agreement.agreed(bare, Seq(took(VoterFamily.Wiki), took(VoterFamily.Filmweb), leaned(VoterFamily.Imdb)))
@@ -214,7 +214,7 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     val polish = SourceRecord(IdentityMeasures.Film("Obcy w domu", Some("Obcy w domu"), Nil, Some(1986), Some(72), Some(Nil), None, None),
       Map("imdb" -> "tt7605088"))
     val bare   = Seq(listing(KinoMuza, "Obcy w domu"))
-    val took   = (family: VoterFamily) => FamilyVerdict.took(FamilyPick(family, "1", hider))
+    val took   = (family: VoterFamily) => FamilyTook(FamilyPick(family, "1", hider))
     val imdb   = FamilyVerdict(VoterFamily.Imdb, None, Seq(hider, polish), leaning = Some(hider))
     Agreement.agreed(bare, Seq(took(VoterFamily.Wiki), took(VoterFamily.Filmweb), imdb)) shouldBe None
     Agreement.agreed(bare, Seq(took(VoterFamily.Wiki), took(VoterFamily.Filmweb), imdb.copy(weighed = Seq(hider)))) should not be empty
@@ -230,7 +230,7 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
       Some(Seq("Наталія Ворожбит")), None, None), Map("tmdb" -> "1085176", "imdb" -> "tt20149536"))
     val imdb    = SourceRecord(film("Demons", 2026, "Natalya Vorozhbit", 110), Map("imdb" -> "tt20149536"))
     val bare    = Seq(listing(KinoMuza, "Demony"))
-    val verdicts = Seq(FamilyVerdict.took(FamilyPick(VoterFamily.Filmweb, "10131126", filmweb)),
+    val verdicts = Seq(FamilyTook(FamilyPick(VoterFamily.Filmweb, "10131126", filmweb)),
       FamilyVerdict(VoterFamily.Imdb, None, Seq(imdb), leaning = Some(imdb)))
     val agreed = Agreement.agreed(bare, verdicts, modelVote = Some(tmdb))
     agreed.map(a => (a.families, a.leaning, a.corroborated)) shouldBe Some((Set(VoterFamily.Filmweb), Set(VoterFamily.Imdb), Set(Agreement.ModelVote)))
@@ -243,8 +243,8 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     // PL "Imago" (fixture identity-unmatched): the venue lists Filmweb's 872645, which Filmweb takes — Chajdas's 2023
     // film, which Metacritic takes undated
     val imago    = film("Imago", 2023, "Olga Chajdas", 113)
-    val verdicts = Seq(FamilyVerdict.took(FamilyPick(VoterFamily.Filmweb, "872645", SourceRecord(imago, Map("filmweb" -> "872645")))),
-      FamilyVerdict.took(FamilyPick(VoterFamily.Metacritic, "imago", SourceRecord(imago.copy(year = None), Map("metacritic" -> "imago")))))
+    val verdicts = Seq(FamilyTook(FamilyPick(VoterFamily.Filmweb, "872645", SourceRecord(imago, Map("filmweb" -> "872645")))),
+      FamilyTook(FamilyPick(VoterFamily.Metacritic, "imago", SourceRecord(imago.copy(year = None), Map("metacritic" -> "imago")))))
     def catalogued(id: String) = Seq(listing(KinoMuza, "Imago", year = Some(2023)).copy(catalogueIds = Seq(services.identity.CatalogueId("filmweb", id))))
     Agreement.agreed(catalogued("872645"), verdicts).map(_.corroborated) shouldBe Some(Set(Agreement.Catalogue))
     Agreement.agreed(catalogued("999"), verdicts) shouldBe None
@@ -261,7 +261,7 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     // DE "Die Story von Joanna" (fixture identity-unmatched): Wikidata and Filmweb take Damiano's 1975 film, which the venue
     // credits to him in 1975; US "AKW"-style: two takers and the TMDB film the model leans to, linked by its IMDb id
     val joanna = SourceRecord(film("Die Story von Joanna", 1975, "Gerard Damiano", 105), Map("imdb" -> "tt0073750"))
-    val took   = (family: VoterFamily) => FamilyVerdict.took(FamilyPick(family, "1", joanna))
+    val took   = (family: VoterFamily) => FamilyTook(FamilyPick(family, "1", joanna))
     val two    = Seq(took(VoterFamily.Wiki), took(VoterFamily.Filmweb))
     Agreement.agreed(Seq(listing(KinoMuza, "Die Story von Joanna")), two) shouldBe None
     Agreement.agreed(Seq(listing(KinoMuza, "Die Story von Joanna", year = Some(1975), director = Some("Gerard Damiano"))), two)
@@ -278,7 +278,7 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     // nowhere; the venues credit its three directors and its 59 minutes
     val mitmachkino = SourceRecord(IdentityMeasures.Film("Pettersson und Findus Mitmachkino 2", None, Nil, None, Some(59), Some(Seq("Dirk Hampel")),
       None, None), Map("imdb" -> "tt41600591"))
-    val imdb = Seq(FamilyVerdict.took(FamilyPick(VoterFamily.Imdb, "tt41600591", mitmachkino)))
+    val imdb = Seq(FamilyTook(FamilyPick(VoterFamily.Imdb, "tt41600591", mitmachkino)))
     def billed(year: Option[Int] = Some(2024), director: Option[String] = Some("Dirk Hampel"), runtime: Option[Int] = Some(59)) =
       Seq(listing(KinoMuza, "Pettersson und Findus Mitmachkino 2", year, director, runtime))
     Agreement.agreed(billed(), imdb).map(_.corroborated) shouldBe Some(Set(Agreement.ListingFacts, Agreement.ListingRuntime))
@@ -287,7 +287,7 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     Agreement.agreed(billed(director = Some("Jess Franco")), imdb) shouldBe None
     Agreement.agreed(billed(director = None), imdb) shouldBe None
     // a record dating the film ten years before the venue does is not it; one within a year is
-    val dated = (year: Int) => Seq(FamilyVerdict.took(FamilyPick(VoterFamily.Imdb, "tt41600591",
+    val dated = (year: Int) => Seq(FamilyTook(FamilyPick(VoterFamily.Imdb, "tt41600591",
       mitmachkino.copy(film = mitmachkino.film.copy(year = Some(year))))))
     Agreement.agreed(billed(), dated(2014)) shouldBe None
     Agreement.agreed(billed(), dated(2023)).map(_.corroborated) shouldBe Some(Set(Agreement.ListingFacts, Agreement.ListingRuntime))
@@ -300,7 +300,7 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     // TMDB and IMDb date "Apocalypse Now" at its 147 theatrical minutes; venues bill the Final Cut (183) and Redux (202)
     val apocalypse = SourceRecord(IdentityMeasures.Film("Apocalypse Now", None, Nil, Some(1979), Some(147), Some(Seq("Francis Ford Coppola")),
       None, None, imdbNumber = 78788), Map("imdb" -> "tt0078788"))
-    val imdb = Seq(FamilyVerdict.took(FamilyPick(VoterFamily.Imdb, "tt0078788", apocalypse)))
+    val imdb = Seq(FamilyTook(FamilyPick(VoterFamily.Imdb, "tt0078788", apocalypse)))
     def billed(runtime: Int) = Seq(listing(KinoMuza, "Apocalypse Now", Some(1979), Some("Francis Ford Coppola"), Some(runtime)))
     Agreement.agreed(billed(183), imdb).map(_.corroborated) shouldBe Some(Set(Agreement.ListingFacts, Agreement.ListingRuntime))
     Agreement.agreed(billed(202), imdb).map(_.corroborated) shouldBe Some(Set(Agreement.ListingFacts, Agreement.ListingRuntime))
@@ -312,7 +312,7 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     // record of 49 minutes, crediting nobody; the venue's page states 2025 and 49 minutes
     val reporterzy = SourceRecord(IdentityMeasures.Film("Reporterzy wolności", None, Nil, Some(2025), Some(49), None, None, None),
       Map("filmweb" -> "10131183"))
-    val filmweb = Seq(FamilyVerdict.took(FamilyPick(VoterFamily.Filmweb, "10131183", reporterzy)))
+    val filmweb = Seq(FamilyTook(FamilyPick(VoterFamily.Filmweb, "10131183", reporterzy)))
     def billed(year: Option[Int] = Some(2025), director: Option[String] = Some("Krzysztof Ridan"), runtime: Option[Int] = Some(49)) =
       Seq(listing(KinoMuza, "Reporterzy wolności - film i spotkanie z twórcami", year, director, runtime))
     Agreement.agreed(billed(), filmweb).map(_.corroborated) shouldBe Some(Set(Agreement.ListingFacts, Agreement.ListingRuntime))
@@ -323,7 +323,7 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     Agreement.agreed(billed(runtime = None), filmweb) shouldBe None
     Agreement.agreed(billed(year = None), filmweb) shouldBe None
     // a record that names its director is credited by the director, never by the year and running time instead
-    val directed = Seq(FamilyVerdict.took(FamilyPick(VoterFamily.Filmweb, "10131183",
+    val directed = Seq(FamilyTook(FamilyPick(VoterFamily.Filmweb, "10131183",
       reporterzy.copy(film = reporterzy.film.copy(directors = Some(Seq("Jess Franco")))))))
     Agreement.agreed(billed(director = None), directed) shouldBe None
   }
@@ -333,7 +333,7 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     // billed by over a hundred venues each; a one-venue "Zamki na piasku" has only its two takers
     val peppa  = SourceRecord(IdentityMeasures.Film("Festive Fun with Peppa Cinema Experience", None, Nil, Some(2026), Some(60), Some(Nil), None, None),
       Map("imdb" -> "tt46666063"))
-    val takers = Seq(VoterFamily.Imdb, VoterFamily.RottenTomatoes).map(f => FamilyVerdict.took(FamilyPick(f, "1", peppa)))
+    val takers = Seq(VoterFamily.Imdb, VoterFamily.RottenTomatoes).map(f => FamilyTook(FamilyPick(f, "1", peppa)))
     val venues = Seq(models.KinoMuza, models.KinoApollo, models.Rialto).map(listing(_, "Festive Fun with Peppa Cinema Experience"))
     Agreement.agreed(venues, takers, thisYear = Some(2026)).map(_.corroborated) shouldBe Some(Set(Agreement.Venues))
     Agreement.agreed(venues.take(2), takers, thisYear = Some(2026)) shouldBe None
@@ -350,14 +350,14 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     ListingShape.stagesAWork(listing(KinoMuza, "OPERA-COSI FAN TUTTE")) shouldBe true
     ListingShape.stagesAWork(listing(KinoMuza, "Met Opera 2026/27: Wolfgang Amadeus Mozart COSÌ FAN TUTTE")) shouldBe true
     val brass = film("Così fan tutte", 1992, "Tinto Brass")
-    Agreement.agreed(Seq(relay), Seq(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Filmweb).map(f => FamilyVerdict.took(FamilyPick(f, "1", SourceRecord(brass))))) shouldBe None
+    Agreement.agreed(Seq(relay), Seq(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Filmweb).map(f => FamilyTook(FamilyPick(f, "1", SourceRecord(brass))))) shouldBe None
   }
 
   it should "agree on a screen adaptation when no listing bills a house and TMDB's own evidence weighs the film best" in {
     // US "MOTHER!" (fixture identity-unmatched): Wikidata takes Aronofsky's film, Metacritic leans to it, and the model's
     // best candidate is it; "Mother" is also an opera's name, but nothing in the billing names a house or a season
     val mother = SourceRecord(film("mother!", 2017, "Darren Aronofsky", 121), Map("imdb" -> "tt5109784", "tmdb" -> "381283"))
-    val voters = Seq(FamilyVerdict.took(FamilyPick(VoterFamily.Wiki, "Q1", mother)),
+    val voters = Seq(FamilyTook(FamilyPick(VoterFamily.Wiki, "Q1", mother)),
       FamilyVerdict(VoterFamily.Metacritic, None, Seq(mother), leaning = Some(mother)))
     val bare   = listing(KinoMuza, "MOTHER!")
     ListingShape.stagesAWork(bare) shouldBe true
@@ -365,14 +365,14 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     // without the model's vote the families alone take no stage work's namesake; a house billed keeps it a relay
     Agreement.agreed(Seq(bare), voters) shouldBe None
     val brass  = SourceRecord(film("Così fan tutte", 1992, "Tinto Brass"), Map("tmdb" -> "45"))
-    val takers = Seq(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Filmweb).map(f => FamilyVerdict.took(FamilyPick(f, "1", brass)))
+    val takers = Seq(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Filmweb).map(f => FamilyTook(FamilyPick(f, "1", brass)))
     Agreement.agreed(Seq(listing(KinoMuza, "OPERA-COSI FAN TUTTE")), takers, modelVote = Some(brass)) shouldBe None
     Agreement.agreed(Seq(listing(KinoMuza, "ReTransmisje Met: Na żywo w HD - Così fan tutte")), takers, modelVote = Some(brass)) shouldBe None
     Agreement.agreed(Seq(listing(KinoMuza, "Così fan tutte")), takers, modelVote = Some(brass)) should not be empty
     // a house's season record is the relay itself, never a screen adaptation
     val season = SourceRecord(film("The Metropolitan Opera 2026/27: Così fan tutte", 2026, "Phelim McDermott"), Map("tmdb" -> "1703620"))
     Agreement.agreed(Seq(listing(KinoMuza, "Così fan tutte")), Seq(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Filmweb)
-      .map(f => FamilyVerdict.took(FamilyPick(f, "1", season))), modelVote = Some(season)) shouldBe None
+      .map(f => FamilyTook(FamilyPick(f, "1", season))), modelVote = Some(season)) shouldBe None
   }
 
   "A family's questions" should "fetch a hit's record only if its search ranked it first or its title shares a word, and at most six" in {
@@ -508,14 +508,14 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     // IMDb, Metacritic and RT take Eggers' 2024 "Nosferatu", Filmweb leans to it — Wikidata takes Murnau's 1922 film
     val eggers = SourceRecord(film("Nosferatu", 2024, "Robert Eggers", 132), Map("imdb" -> "tt5040012"))
     val murnau = SourceRecord(film("Nosferatu", 1922, "F. W. Murnau", 94), Map("imdb" -> "tt0013442"))
-    val takers = Seq(VoterFamily.Imdb, VoterFamily.Metacritic, VoterFamily.RottenTomatoes).map(f => FamilyVerdict.took(FamilyPick(f, "1", eggers)))
-    val wiki   = FamilyVerdict.took(FamilyPick(VoterFamily.Wiki, "Q151895", murnau))
+    val takers = Seq(VoterFamily.Imdb, VoterFamily.Metacritic, VoterFamily.RottenTomatoes).map(f => FamilyTook(FamilyPick(f, "1", eggers)))
+    val wiki   = FamilyTook(FamilyPick(VoterFamily.Wiki, "Q151895", murnau))
     val lean   = FamilyVerdict(VoterFamily.Filmweb, None, Seq(eggers, murnau), leaning = Some(eggers))
     val silent = Seq(listing(KinoMuza, "STUMMFILM MIT TOBIAS RANK:NOSFERATU"))
     Agreement.agreed(silent, takers ++ Seq(wiki, lean)) shouldBe None
     Agreement.agreed(Seq(listing(KinoMuza, "NOSFERATU")), takers ++ Seq(lean)) should not be empty
     // the silent film itself, the families agreeing on it
-    val murnauTakers = Seq(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Filmweb).map(f => FamilyVerdict.took(FamilyPick(f, "1", murnau)))
+    val murnauTakers = Seq(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Filmweb).map(f => FamilyTook(FamilyPick(f, "1", murnau)))
     Agreement.agreed(silent, murnauTakers).map(_.record.film.year) shouldBe Some(Some(1922))
     Seq("Stummfilm mit Live-Musik: Metropolis", "Silent film with live score: Metropolis", "Kino nieme: Metropolis",
       "Film niemy z muzyką na żywo: Metropolis", "Cine mudo: Metropolis", "Ciné-concert, film muet : Metropolis").foreach { title =>
@@ -532,7 +532,7 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     val segan   = SourceRecord(film("Blood Relatives", 2022, "Noah Segan", 88), Map("imdb" -> "tt21818188"))
     val chabrol = SourceRecord(film("Blood Relatives", 1978, "Claude Chabrol", 100).copy(originalTitle = Some("Les liens de sang")),
       Map("imdb" -> "tt0076313"))
-    val takers  = Seq(VoterFamily.Filmweb, VoterFamily.Metacritic, VoterFamily.RottenTomatoes).map(f => FamilyVerdict.took(FamilyPick(f, "1", segan)))
+    val takers  = Seq(VoterFamily.Filmweb, VoterFamily.Metacritic, VoterFamily.RottenTomatoes).map(f => FamilyTook(FamilyPick(f, "1", segan)))
     val imdb    = FamilyVerdict(VoterFamily.Imdb, Some(FamilyPick(VoterFamily.Imdb, "tt21818188", segan)), Seq(segan, chabrol))
     val wiki    = FamilyVerdict(VoterFamily.Wiki, Some(FamilyPick(VoterFamily.Wiki, "Q886823", chabrol)), Seq(chabrol))
     Agreement.agreed(Seq(listing(KinoMuza, "Hitchcock & Chabrol: Blood Relatives")), takers ++ Seq(imdb, wiki)) shouldBe None

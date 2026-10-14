@@ -90,8 +90,7 @@ object Broadcast {
                       IdentityMeasures.key(film.title) == IdentityMeasures.key(taken.title) &&
                         film.released.exists(day => day.isAfter(aired) && !day.isBefore(run(first)) && !day.isAfter(last))
                     }.sortBy { case (id, film) => (film.released.map(_.toEpochDay).getOrElse(0L), id) }.lastOption
-    } yield s"it screens from $first, over a year after its record was broadcast ($aired), and '${newer.title}'" +
-      s"${newer.year.fold("")(year => s" ($year)")} was broadcast ${newer.released.get}"
+    } yield s"it screens from $first, over a year after its record was broadcast ($aired), and ${newer.titled} was broadcast ${newer.released.get}"
   }
 
   private def chosen(days: ScreeningDays, billing: Seq[Billing], records: Seq[(Int, Film)], productions: Seq[Film]): Option[Taken] = {
@@ -104,7 +103,7 @@ object Broadcast {
       case _        => None
     }
     chosen.map { case ((id, film), when) =>
-      Taken(id, s"screens $when '${film.title}'${film.year.fold("")(year => s" ($year)")} was broadcast, ${film.released.get}")
+      Taken(id, s"screens $when ${film.titled} was broadcast, ${film.released.get}")
     }
   }
 

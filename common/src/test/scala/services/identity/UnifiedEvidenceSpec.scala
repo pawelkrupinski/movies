@@ -3,7 +3,7 @@ package services.identity
 import models.KinoMuza
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.agreement.{FamilyPick, FamilyVerdict, SourceRecord, VoterFamily}
+import services.identity.agreement.{FamilyPick, FamilyTook, FamilyVerdict, SourceRecord, VoterFamily}
 
 /** Every signal of the model and the agreement stage, read off one cluster as the unified model's features. */
 class UnifiedEvidenceSpec extends AnyFlatSpec with Matchers {
@@ -24,7 +24,7 @@ class UnifiedEvidenceSpec extends AnyFlatSpec with Matchers {
   private def evidence(nodes: Seq[IdentityResolver.NodeEvidence], verdicts: Seq[FamilyVerdict] = Nil, posters: Seq[Map[Int, Option[Int]]] = Nil,
                        decision: ResolverDecision = noMatch) =
     ClusterEvidence(bare, decision, nodes, verdicts, posters, _ => None, thisYear = 2026)
-  private def took(family: VoterFamily, record: SourceRecord) = FamilyVerdict.took(FamilyPick(family, "x", record))
+  private def took(family: VoterFamily, record: SourceRecord) = FamilyTook(FamilyPick(family, "x", record))
 
   "a cluster's contenders" should "be the TMDB candidates some node did not deny, each with the model's signals" in {
     val found = contenders(evidence(Seq(node(candidate(913760, klondike2022, 0.30), candidate(52000, klondike1932, 0.02, denied = true)))))

@@ -225,7 +225,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
               })(line => decision.copy(explanation = decision.explanation :+ line)(decision.trace))
             }
         }
-        if (now eq decision) decision else Option(takenAs.get(decision)).filter(_ == now).getOrElse { takenAs.put(decision, now); now }
+        if (now eq decision) decision else takenAsBefore(decision, now)
       }
     }
     val removed = held.keySet.toSet -- seen -- correcting
@@ -369,9 +369,14 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
       val explained = decision.explanation :+ outcome.line
       val taken = outcome.film.fold(decision.copy(film = None, basis = ResolverDecision.Basis.Withdrawn, explanation = explained)(decision.trace))(film =>
         decision.copy(film = Some(film), basis = ResolverDecision.Basis.Corrected, explanation = explained)(decision.trace))
-      Option(takenAs.get(decision)).filter(_ == taken).getOrElse { takenAs.put(decision, taken); taken }
+      takenAsBefore(decision, taken)
     }
   }
+
+  /** `taken`, what the model's `decision` is taken as now — handed back as the object it was last taken as while the two
+   *  are equal ([[takenAs]]). */
+  private def takenAsBefore(decision: ResolverDecision, taken: ResolverDecision): ResolverDecision =
+    Option(takenAs.get(decision)).filter(_ == taken).getOrElse { takenAs.put(decision, taken); taken }
 
   /** The evidence against the model's take read now: the venue posters and — once one names another film — the
    *  venues' programmes and the families ([[Correction]]). A part still waiting on an answer decides nothing yet, but a
@@ -385,7 +390,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
     val posterQs = mutable.Set.empty[AgreementStage.PosterQuestion]
     val finding  = mutable.Set.empty[String]
     def named(id: Int) = venues.film(id).toOption.flatten.orElse(tmdb.flatMap(_.film(id).toOption.flatten))
-    def title(id: Int) = named(id).fold(s"tmdb $id")(f => s"'${f.title}'${f.year.fold("")(y => s" ($y)")}")
+    def title(id: Int) = named(id).fold(s"tmdb $id")(_.titled)
     // a relay screening years after its record's broadcast, months after a newer record of its title: no production
     // the take can be, whatever else is read
     def superseded(film: IdentityMeasures.Film) =
@@ -424,7 +429,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
         // the TMDB film the programme's record is: one the other evidence or the cluster's own candidates reach
         val same = (reached ++ against.map(_._1)).distinct.filter(id => records(id).exists(Agreement.sameFilm(record, _)))
         Correction.Against(Correction.Filmweb, same.headOption.filter(_ => same.sizeIs == 1),
-          s"the venues' Filmweb programmes list '${record.film.title}'${record.film.year.fold("")(y => s" ($y)")} on their days")
+          s"the venues' Filmweb programmes list ${record.film.titled} on their days")
       } ++ vetoed.toSeq.map { case (other, bits) =>
         Correction.Against(Correction.Poster, Some(other), s"a venue poster matches ${title(other)} ($bits bits), not the take")
       } ++ against.toSeq.map { case (other, says) => Correction.Against(Correction.Families, Some(other), says.replace(s"tmdb $other", title(other))) }
@@ -447,8 +452,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
     else {
       def read[A](question: AgreementStage.PosterQuestion, answer: Answer[A]): Answer[A] = {
         reads(PosterAnswers.idOf(question)) = 0L
-        if (answer == Answer.Unknown || !reading.posters.fresh(question)) asked += question   // a stale one read, and asked again
-        answer
+        posterRead(question, answer, reading.posters, asked)
       }
       val venue = urls.map(url => url -> read(AgreementStage.PosterQuestion.Venue(url), reading.posters.venue(url)))
       val own   = read(AgreementStage.PosterQuestion.Film(model), reading.posters.film(model))
@@ -701,8 +705,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
     val tmdb = tmdbFilmOf(agreed.crossId("tmdb").flatMap(_.toIntOption), imdb)
     val leaning = Option.when(agreed.leaning.nonEmpty)(s", ${agreed.leaning.toSeq.map(_.label).sorted.mkString(", ")} leaning to it").getOrElse("") +
       Option.when(agreed.corroborated.nonEmpty)(s", corroborated by ${agreed.corroborated.toSeq.sorted.mkString(", ")}").getOrElse("")
-    val line = s"${agreed.families.toSeq.map(_.label).sorted.mkString(", ")}$leaning agree on '${agreed.record.film.title}'" +
-      agreed.record.film.year.fold("")(year => s" ($year)") + imdb.fold("")(id => s" $id")
+    val line = s"${agreed.families.toSeq.map(_.label).sorted.mkString(", ")}$leaning agree on ${agreed.record.film.titled}${imdb.fold("")(id => s" $id")}"
     val ids  = agreed.ids.map { case (family, id) => family.label -> id }
     def unlessVetoed(film: Option[Int])(take: => ResolverDecision): AgreementStage.Take = distances(film) match {
       case Answer.Known(found) => if (PosterEvidence.veto(film, found).isEmpty) AgreementStage.Take.Taken(take) else AgreementStage.Take.Vetoed
@@ -718,10 +721,8 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
       case Answer.Known(Some(film)) => unlessVetoed(Some(film))(
         decision.copy(film = Some(film), basis = ResolverDecision.Basis.Agreed, explanation = decision.explanation :+ line, agreed = ids)(decision.trace))
       case Answer.Known(None) => identityOf(agreed).fold[AgreementStage.Take](AgreementStage.Take.Untaken) { case (source, id) =>
-        // a film standing on another database's id carries its title and year, that a link to its page is built of
-        val named = Option.when(source != VoterFamily.Imdb.database)(agreed.record.film)
         unlessVetoed(None)(decision.copy(basis = ResolverDecision.Basis.Agreed, explanation = decision.explanation :+ line,
-          fallback = Some(ResolverDecision.Fallback(source, id, 1.0, named.map(_.title), named.flatMap(_.year))), agreed = ids)(decision.trace)) }
+          fallback = Some(AgreementStage.fallbackOn(source, id, Some(agreed.record.film.title), agreed.record.film.year)), agreed = ids)(decision.trace)) }
     }
   }
 
@@ -739,17 +740,14 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
       .toOption.flatten.map { taken =>
       val explained = decision.explanation :+ taken.line
       taken.film.fold(decision.copy(basis = ResolverDecision.Basis.Catalogue, explanation = explained,
-        fallback = taken.fallback.map { case (source, id) =>
-          // a film standing on Wikidata's item carries its title and year, that a link to its page is built of
-          val named = source != VoterFamily.Imdb.database
-          ResolverDecision.Fallback(source, id, 1.0, taken.title.filter(_ => named), taken.year.filter(_ => named)) })(decision.trace))(film =>
+        fallback = taken.fallback.map { case (source, id) => AgreementStage.fallbackOn(source, id, taken.title, taken.year) })(decision.trace))(film =>
         decision.copy(film = Some(film), basis = ResolverDecision.Basis.Catalogue, explanation = explained)(decision.trace))
     }
 
   /** The decision with the one candidate the venue posters match taken ([[PosterEvidence.vote]]). */
   private def voted(decision: ResolverDecision, distances: Answer[Seq[Map[Int, Option[Int]]]]): Option[ResolverDecision] =
     distances.toOption.flatMap(PosterEvidence.vote).map { case (film, bits) =>
-      val named = tmdb.flatMap(_.film(film).toOption.flatten).fold(s"tmdb $film")(f => s"'${f.title}'${f.year.fold("")(year => s" ($year)")}")
+      val named = tmdb.flatMap(_.film(film).toOption.flatten).fold(s"tmdb $film")(_.titled)
       decision.copy(film = Some(film), basis = ResolverDecision.Basis.Poster,
         explanation = decision.explanation :+ s"the venue's poster matches $named ($bits bits), no other candidate's within ${PosterEvidence.VoteBits}")(
         decision.trace)
@@ -819,6 +817,14 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
       clock.instant().isBefore(since.plusMillis(AgreementStage.RecordWait.toMillis))
   }
 
+  /** `answer`, `hashes`' to the poster `question`, the question noted in `asked` while it is `Unknown` or stale: a stale
+   *  answer is read, and asked again. */
+  private def posterRead[A](question: AgreementStage.PosterQuestion, answer: Answer[A], hashes: PosterAnswers,
+                            asked: mutable.Set[AgreementStage.PosterQuestion]): Answer[A] = {
+    if (answer == Answer.Unknown || !hashes.fresh(question)) asked += question
+    answer
+  }
+
   /** The nearest each of the cluster's candidates (and `also`, the film the families agree on) comes to each of its
    *  venue posters — none where no listing shows one; `Unknown`, each poster not hashed yet noted in `asked`, while one
    *  is not. A candidate numbering another edition than a listing showing a poster is not compared
@@ -830,9 +836,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
     val urls = PosterEvidence.urls(listings)
     if (urls.isEmpty || tmdb.isEmpty) Answer.Known(Nil)
     else {
-      val venue = urls.map(url => url -> hashes.venue(url))
-      venue.collect { case (url, answer) if answer == Answer.Unknown || !hashes.fresh(AgreementStage.PosterQuestion.Venue(url)) =>
-        asked += AgreementStage.PosterQuestion.Venue(url) }
+      val venue = urls.map(url => url -> posterRead(AgreementStage.PosterQuestion.Venue(url), hashes.venue(url), hashes, asked))
       if (venue.exists(_._2 == Answer.Unknown)) Answer.Unknown
       else {
         val shown: Seq[PosterHash] = venue.flatMap(_._2.toOption.flatten)
@@ -841,9 +845,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
           val showing = listings.filter(listing => PosterEvidence.shows(listing) && listing.poster.isDefined)
           def apart(film: Int) = tmdb.flatMap(_.film(film).toOption.flatten).exists(record => showing.exists(PosterEvidence.editionsApart(_, record)))
           val films  = (candidates(id, digest, listings).filterNot(apart) ++ also.filterNot(FallbackIds.isFallback)).distinct
-          val filmHashes = films.map(film => film -> hashes.film(film))
-          filmHashes.collect { case (film, answer) if answer == Answer.Unknown || !hashes.fresh(AgreementStage.PosterQuestion.Film(film)) =>
-            asked += AgreementStage.PosterQuestion.Film(film) }
+          val filmHashes = films.map(film => film -> posterRead(AgreementStage.PosterQuestion.Film(film), hashes.film(film), hashes, asked))
           if (filmHashes.exists(_._2 == Answer.Unknown)) Answer.Unknown
           else Answer.Known(shown.map(poster => filmHashes.map { case (film, answer) => film -> PosterEvidence.nearest(Seq(poster), answer.toOption.getOrElse(Nil)) }.toMap))
         }
@@ -921,6 +923,13 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
 }
 
 object AgreementStage {
+  /** A fallback film standing on `source`'s `id`: one standing on another database's id than IMDb's carries its `title`
+   *  and `year`, that a link to its page is built of. */
+  private def fallbackOn(source: String, id: String, title: Option[String], year: Option[Int]): ResolverDecision.Fallback = {
+    val named = source != VoterFamily.Imdb.database
+    ResolverDecision.Fallback(source, id, 1.0, title.filter(_ => named), year.filter(_ => named))
+  }
+
   /** 64 bits of `parts`' text, two MurmurHash3 seeds: stable across runs, as a stored digest must be. */
   def digest(parts: Seq[String]): Long = {
     val text = parts.mkString("\u0000")
