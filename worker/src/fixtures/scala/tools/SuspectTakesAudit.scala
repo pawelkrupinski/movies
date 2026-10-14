@@ -21,9 +21,10 @@ object SuspectTakesAudit {
   val BaselinePath: Path = Directory.resolve("baseline.tsv")
   /** The lines the baseline holds (armed 2026-10-13 with 307; 80 once those were judged the same day; 75, then 112 on
    *  10-14 when a whole-corpus wrong-match hunt labelled 37 more served takes wrong, 110 once two of those proved right, and
-   *  110 still when the sole-result coverage rule cured five and five UK takes the leg had never reached were listed):
-   *  it only shrinks, so a lower count replaces this as it does. */
-  val BaselineArmed = 110
+   *  110 still when the sole-result coverage rule cured five and five UK takes the leg had never reached were listed; 111 with
+   *  the UK leg's "Gremlins Special Event", taken as Innerspace by its director and running time alone): it only shrinks,
+   *  so a lower count replaces this as it does. */
+  val BaselineArmed = 111
 
   /** A billing taken as `film` that a signal suspects: every venue billing it and every reason. */
   final case class Suspect(country: String, rawTitle: String, film: String, title: String, venues: Seq[String], reasons: Seq[Suspicion]) {
