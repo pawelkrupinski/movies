@@ -513,7 +513,7 @@ class IdentityProjectionSpec extends AnyFlatSpec with Matchers {
     lost("previous_confidence") shouldBe 0.9
     lost("previous_reason") shouldBe "corrected Lalka"
     lost("listing_year") shouldBe 2026
-    lost("repro").toString should startWith(s"scripts/identity-explain pl --venue '${Helios.displayName}' --title 'Lalka'")
+    lost("repro").toString should startWith(s"scripts/identity-slice pl --key '${Helios.displayName}|Lalka'")
     val summary = events.find(_.getFormattedMessage.startsWith("identity take change: summary")).get
     summary.getFormattedMessage should include("5 take changes (changed 2, lost 3)")
     fieldsOf(summary)("lost") shouldBe 3

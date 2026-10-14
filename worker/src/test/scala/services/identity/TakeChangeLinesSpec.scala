@@ -24,9 +24,9 @@ class TakeChangeLinesSpec extends AnyFlatSpec with Matchers {
     fields("blocker") shouldBe Some("rule:below-the-cut")
     fields("reason_first") shouldBe Some("first why")
     fields("previous_basis") shouldBe None
-    fields("repro") shouldBe "scripts/identity-explain pl --venue 'Kino Muza' --title 'Ojciec chrzestny '\\''72' --ref 0e41a4812"
+    fields("repro") shouldBe "scripts/identity-slice pl --key 'Kino Muza|Ojciec chrzestny '\\''72' --ref 0e41a4812"
     line.message should startWith("identity take change: lost Kino Muza | Ojciec chrzestny '72: tmdb 238 (Ojciec chrzestny) -> none (f-12); " +
-      "reason BelowThreshold: last why: first why; explain: scripts/identity-explain pl")
+      "reason BelowThreshold: last why: first why; explain: scripts/identity-slice pl")
   }
 
   "A tick's summary" should "count every take by kind and basis, and say how many were not logged a line each" in {

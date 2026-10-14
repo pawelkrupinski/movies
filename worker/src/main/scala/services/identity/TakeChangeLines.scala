@@ -16,7 +16,7 @@ import settings.CommitSha
  *    took), `runner_up` (the candidate it beat, or the best it did not take), `fallback`, `unanswered`;
  *  - the take before: `previous_basis`, `previous_confidence`, `previous_reason` ([[LiveProjectionIndex.priorTake]]);
  *  - the listing's own facts: `listing_year`, `listing_runtime`, `listing_director`, `listing_original_title`;
- *  - `repro`: the `scripts/identity-explain` line that replays the listing under the build that took it.
+ *  - `repro`: the `scripts/identity-slice` line that replays the listing under the build that took it.
  *
  * The country, the build (`build`) and the projection (`projection_id`) are every line's own fields already.
  */
@@ -78,9 +78,10 @@ final class TakeChangeLines(country: Country, build: CommitSha) {
         TakeChange.Kind.values.toSeq.map(kind => kind.label -> byKind.getOrElse(kind.label, 0)))
   }
 
-  /** The command that replays `key` — its venue and billed title — under the code of the build that took it. */
+  /** The command that replays `key` — its venue and billed title, exactly — under the code of the build that took it:
+   *  `scripts/identity-slice`, which decides a matched listing as well as an unmatched one, model and agreement. */
   private def reproOf(key: services.movies.ListingKey): String =
-    s"scripts/identity-explain ${country.code} --venue ${quoted(key.venue)} --title ${quoted(key.rawTitle)}" +
+    s"scripts/identity-slice ${country.code} --key ${quoted(s"${key.venue}|${key.rawTitle}")}" +
       Option.when(build.value != "unknown")(s" --ref ${build.value}").getOrElse("")
 }
 
