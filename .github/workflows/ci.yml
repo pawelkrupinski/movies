@@ -224,6 +224,7 @@ jobs:
                       bash scripts/identity-fetch-recording-test.sh
                       bash scripts/identity-tools-test.sh
                       bash scripts/identity-slice-test.sh
+                      bash scripts/venue-replay-test.sh
                       bash scripts/identity-ratchet-report-test.sh
                       bash scripts/recording-diff-test.sh
                       python3 scripts/recording_diff_test.py

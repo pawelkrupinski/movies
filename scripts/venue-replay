@@ -1,0 +1,106 @@
+#!/usr/bin/env bash
+#
+# ONE venue's listings as the code at one or two git refs reads them, from a recording — never the network. Answers
+# "is this cinema's client reading a field wrong, and does commit X change that?" in seconds, where a convergence run
+# takes 10–90 minutes (.claude/skills/identity-investigation/SKILL.md, "which tool").
+#
+#   scripts/venue-replay <cc> <venue> [--recording RUN] [--ref A [--ref B]] [--title S]... [--fields]
+#                        [--fixtures DIR]... [--scrape [--date YYYY-MM-DD]] [--prod]
+#
+#   <venue>       a substring of its name, case and accents aside (an exact name wins)
+#   --recording   the "Record scrape fixtures" run (default: the newest green one), downloaded once into the shared cache
+#                 identity-slice uses. Its row for the venue is what PROD's client parsed then; each ref reads that row
+#                 into its slots and clean titles, and re-reads every detail page it fetches for it (a DetailEnricher's,
+#                 or a client's parseDetail(html, url)) from the recording's tree.
+#   --ref         read under that ref's code (laid out and compiled once into the cache); two refs print both, then
+#                 every listing and field that moved. Without --ref: this checkout. Both refs read the SAME input.
+#   --title S     only the listings whose raw title holds S (repeatable)
+#   --fields      every field of every listing, one a line
+#   --fixtures D  another recorded tree to serve from, after the recording's (a client's checked-in fixture tree,
+#                 e.g. test/resources/fixtures/kinoheld) — repeatable
+#   --scrape      re-run the venue's scraper itself (fetch()) over the trees, its clock on --date (default the
+#                 recording's scrape day). A recording holds no listing pages — it is prod's PARSED output — so this
+#                 needs --fixtures holding them.
+#   --prod        beside the replay, the venue's CURRENT prod state from the local prod mirror (:28017, read-only):
+#                 its cinema_scrapes row (read by the same code, held to the same rules), each listing's venue_pages
+#                 read, and whether identity_listings carries the same listings — after scripts/local-mirror/freshness
+#
+# Prints, per listing: raw title → clean title, the search query, format tags, year, runtime, director, synopsis head,
+# feed ids, detail URL, showtimes count, where its detail fields came from (and what a re-read page moved), every
+# CinemaSlotInvariantsSpec / SearchQueryMarkersSpec finding (the specs' allowlists, in e2e, may excuse one), and the
+# scripts/title-trace line for a title a rule moved. A request no recorded tree holds FAILS (exit 3) and is named —
+# whatever the client did with the failure.
+#
+# Code or data? Both refs here read ONE recording, so what moves is the code's. Whether the VENUE's data moved between
+# two recordings is `scripts/recording-diff <runA> <runB> --country cc --venue S`; one listing's titles and searches
+# rule by rule, `scripts/title-trace` (each moved title prints its line).
+set -euo pipefail
+
+usage() { sed -n '3,/^set /p' "$0" | sed '$d; s/^# \{0,1\}//'; }
+case "${1:-}" in -h|--help) usage; exit 0 ;; "") usage >&2; exit 2 ;; esac
+[ "$#" -ge 2 ] || { usage >&2; exit 2; }
+
+# shellcheck disable=SC2034 # read by identity-tools.sh's identity_log
+IDENTITY_TOOL="venue-replay"
+# shellcheck source=scripts/identity-tools.sh
+. "$(dirname "$0")/identity-tools.sh"
+repo=$IDENTITY_REPO
+# the tool and the recording reader it opens a recording with, dropped into each ref (as identity-slice does)
+TOOL_FILES=(worker/src/test/scala/scripts/VenueReplay.scala worker/src/fixtures/scala/tools/RecordedCorpus.scala
+  worker/src/fixtures/scala/tools/CinemaSlotInvariants.scala worker/src/fixtures/scala/tools/SearchQueryMarkers.scala)
+
+cc=$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]') venue=$2; shift 2
+refs=() run="" pass=() prod=0
+abs() { (cd "$(dirname "$1")" && echo "$(pwd)/$(basename "$1")"); }
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --ref) refs+=("$2"); shift 2 ;;
+    --recording) run=$2; shift 2 ;;
+    --title|--date) pass+=("$1" "$2"); shift 2 ;;
+    --fixtures) [ -d "$2" ] || { echo "no directory $2" >&2; exit 2; }; pass+=(--fixtures "$(abs "$2")"); shift 2 ;;
+    --fields|--scrape) pass+=("$1"); shift ;;
+    --prod) prod=1; shift ;;
+    *) echo "unknown argument $1" >&2; usage >&2; exit 2 ;;
+  esac
+done
+[ "${#refs[@]}" -le 2 ] || { echo "at most two --ref" >&2; exit 2; }
+
+work=$(mktemp -d "${TMPDIR:-/tmp}/venue-replay.XXXXXX"); trap 'rm -rf "$work"' EXIT
+
+[ -n "$run" ] || run=$(identity_newest_recording)
+recording=$(identity_recording "$run" "$cc")
+identity_log "recording $run: $recording"
+
+if [ "$prod" = 1 ]; then
+  # how current the mirror is first: a stale mirror is shown, but said to be stale
+  fresh=0; "$repo/scripts/local-mirror/freshness" "$cc" --need cinema_scrapes,identity_listings,venue_pages --quiet >&2 || fresh=$?
+  if [ "$fresh" = 2 ]; then identity_log "no local prod mirror for $cc: --prod skipped"
+  else
+    [ "$fresh" = 0 ] || identity_log "the freshness check WARNed (above): read prod's rows below with it in mind"
+    db=kinowo; [ "$cc" = pl ] || db=kinowo_$cc
+    mongosh --quiet "mongodb://127.0.0.1:${LOCAL_MIRROR_PORT:-28017}/${db}_prod_mirror?directConnection=true" \
+      --eval "var SELECTOR=$(python3 -I -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$venue")" \
+      --file "$repo/scripts/venue-replay-prod.js" > "$work/prod.json"
+    pass+=(--prod "$work/prod.json")
+  fi
+fi
+
+# run <tree> <ref label> <out.tsv> -> that tree's VenueReplay, in one JVM
+run_at() {
+  local tree=$1 ref=$2 out=$3 cp
+  cp=$(identity_classpath "$tree") || return 1
+  (cd "$tree" && "${IDENTITY_JAVA[@]}" -Dlogback.statusListenerClass=ch.qos.logback.core.status.NopStatusListener -cp "$cp" scripts.VenueReplay "$cc" --venue "$venue" \
+    --corpus "$recording/corpus/cinema-scrapes-$cc.json.gz" --recording "$recording" --ref "$ref" --out "$out" ${pass[@]+"${pass[@]}"})
+}
+tree_of() { if [ "$1" = "." ]; then echo "$repo"; else identity_tree "$1" "${TOOL_FILES[@]}"; fi; }
+
+[ "${#refs[@]}" -gt 0 ] || refs=(.)
+status=0
+for i in "${!refs[@]}"; do
+  t=$(tree_of "${refs[$i]}") || exit 1
+  s=0; run_at "$t" "${refs[$i]}" "$work/$i.tsv" > "$work/$i.txt" || s=$?
+  cat "$work/$i.txt"; [ "$s" = 0 ] || status=$s
+  [ "$s" = 0 ] || [ "$s" = 3 ] || exit "$s"
+done
+[ "${#refs[@]}" -eq 1 ] || python3 -I "$repo/scripts/venue_replay_diff.py" "$work/0.tsv" "$work/1.tsv" "${refs[0]}" "${refs[1]}"
+exit "$status"

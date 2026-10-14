@@ -49,6 +49,14 @@ object SearchQueryMarkers {
   def strippedBy(marker: String): String =
     if (FormatTags.FormatToken.contains(marker)) "FormatTags" else "the country's title rules (TitleRules / ExtraTitleRules)"
 
+  /** What `SearchQueryMarkersSpec` finds in the listing billed `raw` that searches `query`: the markers left in it and
+   *  where each belongs stripped — None when it carries none, or bills several films. */
+  def finding(country: Country, raw: String, query: String): Option[String] =
+    Option(raw).filter(_.nonEmpty).filterNot(billsSeveralFilms).flatMap { _ =>
+      val markers = markersIn(country, query)
+      Option.when(markers.nonEmpty)(s"searches '$query' (${markers.map(marker => s"$marker → ${strippedBy(marker)}").mkString(", ")})")
+    }
+
   /** The markers `query` still carries, in a stable order. */
   def markersIn(country: Country, query: String): Seq[String] =
     vocabularies(country).collect { case (word, pattern) if pattern.findFirstIn(query).isDefined => word } ++

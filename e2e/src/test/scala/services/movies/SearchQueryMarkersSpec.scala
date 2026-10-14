@@ -25,11 +25,7 @@ class SearchQueryMarkersSpec extends CorpusShapeSpec {
   protected def rule = "search every listing without a screening marker"
 
   protected def findings(corpus: ListingCorpus, listing: CorpusListing): Seq[String] =
-    Option(listing.raw).filter(_.nonEmpty).filterNot(billsSeveralFilms).toSeq.flatMap { _ =>
-      val query   = corpus.query(listing)
-      val markers = markersIn(corpus.country, query)
-      Option.when(markers.nonEmpty)(s"searches '$query' (${markers.map(marker => s"$marker → ${strippedBy(marker)}").mkString(", ")})")
-    }
+    tools.SearchQueryMarkers.finding(corpus.country, listing.raw, corpus.query(listing)).toSeq
 
   protected def remedy =
     "These listings search with a screening marker left in the query, which then finds no film. Add the spelling " +
