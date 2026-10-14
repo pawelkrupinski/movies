@@ -37,6 +37,16 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.searchQueries(Listing("Żyć by tańczyć")) shouldBe Seq("Żyć by tańczyć")
   }
 
+  // UK Lanternhouse's "Obsession (18)" (wrong-match hunt 10-14): the whole title, searched as billed, found only "80 Day
+  // Obsession: Day 18" — the box office's BBFC certificate read as the title's own number
+  "a box office's trailing certificate" should "be no part of any title shape or search" in {
+    IdentityMeasures.searchQueries(Listing("Obsession (18)")) shouldBe Seq("Obsession")
+    IdentityMeasures.titleShapes(Listing("Obsession (18)")) shouldBe Seq("Obsession")
+    IdentityMeasures.searchQueries(Listing("Romeo & Juliet (12A TBC)", rawTitle = Some("Romeo & Juliet (12A TBC)"))) shouldBe Seq("Romeo & Juliet")
+    // a number that is no certificate stays the title's own
+    IdentityMeasures.searchQueries(Listing("Sweet Sixteen (16)")) should contain ("Sweet Sixteen (16)")
+  }
+
   // PL Kino Fenix's Konwicki retrospective (review answer): "Konwicki Salto", "Konwicki Ostatni dzień lata" — the
   // director's surname heads each title, and no field credits him
   "a director's surname heading a title" should "credit the film's director whose surname it is, when the rest names the film" in {

@@ -909,7 +909,8 @@ object IdentityMeasures {
     // A worklist, each shape split once: what one round adds is what its NEW shapes split into — the older shapes'
     // pieces are all held already — in the order a round over every shape would add them (by splitter, then shape).
     val held     = scala.collection.mutable.LinkedHashSet.empty[String]
-    var frontier = titles.map(_.trim).filter(_.nonEmpty).distinct
+    // a box office's certificate is no part of any shape: searched whole, "Obsession (18)" finds "80 Day Obsession: Day 18"
+    var frontier = titles.map(SearchTitles.uncertified).filter(_.nonEmpty).distinct
     // a title quoting two works bills both: none of its spellings is cut to one quoted title
     val quotesOne = !frontier.exists(title => Quoted.findAllMatchIn(title).size >= 2)
     held ++= frontier

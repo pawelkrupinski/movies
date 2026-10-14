@@ -14,6 +14,8 @@ object SearchTitles {
   /** A UK box office's BBFC certificate ending the title ("Obsession (18)", "Romeo & Juliet (12 TBC)"): no part of any
    *  title, and searched whole it finds what the number names — "80 Day Obsession: Day 18 AAA" for "Obsession (18)". */
   private val TrailingCertificate = java.util.regex.Pattern.compile("""(?i)\s*\((?:U|PG|12A?|15|18)(?:\s+TBC)?\)\s*$""")
+  /** `title` without the certificate a box office ends it with ([[TrailingCertificate]]); itself when it has none. */
+  def uncertified(title: String): String = TrailingCertificate.matcher(title).replaceAll("").trim
 
   /** Search candidates for a row, in priority order: the row's title, the
    *  cinema-provided original title, then every other reported title (the row's
@@ -29,7 +31,7 @@ object SearchTitles {
    *  title a cinema printed (see [[wholeCandidates]]). */
   def candidates(title: String, originalTitle: Option[String], extraTitles: Iterable[String] = Nil): Seq[String] = {
     def deDecorate(certified: String): Seq[String] = {
-      val t = TrailingCertificate.matcher(certified).replaceAll("").trim
+      val t = uncertified(certified)
       val pipeParts       = if (t.contains(" | ")) PipeSeparator.split(t).toIndexedSeq else Nil
       // A programme banner is joined with a DASH as often as a pipe or a colon, and
       // the film's own title is the part after it. Hyphen, en dash and em dash all
