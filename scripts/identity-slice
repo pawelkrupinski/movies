@@ -64,6 +64,9 @@
 # recording resolves its corpus whole once per ref (~30 s), later ones decide the slice alone (~1 s). A checkout's own code
 # is the ref worktree-<checkout>-<commit>-<uncommitted edits>: no two worktrees, commits or edits share an index.
 set -euo pipefail
+# ONE compound command: bash reads all of it before running any, so an edit while it runs (a rebase, a pull, an agent's
+# edit) cannot shift the text under its read offset (`pt: command not found`, the 2026-10-14 UK session stats)
+{
 
 usage() { sed -n '3,/^set /p' "$0" | sed '$d; s/^# \{0,1\}//'; }
 case "${1:-}" in -h|--help) usage; exit 0 ;; "") usage >&2; exit 2 ;; esac
@@ -302,4 +305,5 @@ else
   [ -n "$batch" ] || { echo "### ${refs[0]}"; cat "$work/0.txt"; echo; echo "### ${refs[1]}"; cat "$work/1.txt"; echo; }
   python3 -I "$repo/scripts/identity_slice_diff.py" "$work/0.tsv" "$work/1.tsv" "${refs[0]}" "${refs[1]}" "$labels"
 fi
-
+exit
+}

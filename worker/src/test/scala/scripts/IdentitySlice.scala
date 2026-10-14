@@ -466,8 +466,7 @@ object IdentitySlice {
           case Some(takes) => faithfulness(recording, opened, index, takes, o, filed, out, prod)
           case None =>
             if (o.selectors.isEmpty) sys.error("no selector: --venue/--title, --key or --batch")
-            o.selectors.foreach { selector =>
-              val seeds = listings.filter(selector.selects).map(_.key).toSet
+            sameCluster(o.selectors.map(s => s -> listings.filter(s.selects).map(_.key).toSet), index, o.widen).foreach { case (selector, seeds) =>
               if (seeds.isEmpty) println(s"\n## ${selector.label}: no listing of recording ${recording.root} matches")
               else {
                 val dir   = o.slices.getOrElse(cache.resolve("slices")).resolve(selector.directoryName)
@@ -514,6 +513,18 @@ object IdentitySlice {
 
   /** Cuts the seeds' slice out of the recording and decides it through a noting fetch; what it read is the slice — merged
    *  into one `dir` holds already (another ref's), so one slice serves every ref asked of it. */
+  /** The selectors whose seeds cut the SAME core out of the index, merged into one — the first's, every seed of them — so
+   *  one slice decides them all: a batch of 210 CBeebies venues, each "core 219", is one slice, not 210. In order; a
+   *  selector matching nothing kept as it is. */
+  def sameCluster(selected: Seq[(Selector, Set[ListingKey])], index: IdentitySlicing.Index, widen: Int): Seq[(Selector, Set[ListingKey])] = {
+    val groups = scala.collection.mutable.LinkedHashMap.empty[Any, (Selector, Set[ListingKey])]
+    selected.zipWithIndex.foreach { case ((selector, seeds), i) =>
+      val core: Any = if (seeds.isEmpty) i else IdentitySlicing.select(index, seeds, widen).core
+      groups.updateWith(core) { case Some((first, before)) => Some(first -> (before ++ seeds)); case None => Some(selector -> seeds) }
+    }
+    groups.values.toSeq
+  }
+
   def extract(recording: Recording, opened: RecordedCorpus.Opened, index: IdentitySlicing.Index, seeds: Set[ListingKey], selector: String,
               widen: Int, dir: Path, ref: String, filed: tools.FiledAnswers, prod: tools.ProdState = tools.ProdState.none): Slice = {
     val selection = IdentitySlicing.select(index, seeds, widen)

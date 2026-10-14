@@ -74,6 +74,8 @@ h='selector\tkey\tvenue\trawTitle\tfilm\ttitle\tbasis\tconfidence\tmodel\trules\
   fi; } > "\$out"
 echo "decided"
 [ -z "\${STUB_INCOMPLETE:-}" ] || { echo "SLICE INCOMPLETE" >&2; exit 3; }
+# the script edited while it runs (a rebase, a pull, an agent's edit): its text shifted under bash's read offset
+[ -z "\${STUB_REWRITE:-}" ] || { { printf '%09000d\n' 0 | tr 0 '#'; cat "\$STUB_REWRITE"; } > "\$STUB_REWRITE.new"; cat "\$STUB_REWRITE.new" > "\$STUB_REWRITE"; }
 STUB
 chmod +x "$work/bin/sbt" "$work/bin/java"
 
@@ -102,6 +104,11 @@ check "a batch whose slices met a request they lack still diffs the two refs, th
 
 check "--out keeps the takes of the (last) ref's batch, for another tool to read" "1" \
   "$(cd "$work" && slice de --recording 777 --batch b.tsv --out "$work/takes.tsv" > /dev/null; grep -c $'^k\tKino|Sinn\tKino\tSinn\ttmdb:9' "$work/takes.tsv")"
+
+cp "$repo/scripts/identity-slice" "$work/identity-slice.orig"
+out=$(STUB_REWRITE="$repo/scripts/identity-slice" slice de --recording 777 --key 'Kino|Lalka' --ref HEAD~1 --ref HEAD); code=$?
+cp "$work/identity-slice.orig" "$repo/scripts/identity-slice"
+check "the script edited while it runs finishes as it started" "0 1" "$code $(grep -c '^TALLY' <<< "$out")"
 
 # this checkout's code (no --ref) is keyed by WHICH checkout, its commit and its uncommitted code: the whole-corpus index
 # cached under that key is never another worktree's, an older commit's or an earlier edit's
