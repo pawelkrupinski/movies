@@ -87,11 +87,13 @@ object CineamoClient {
 
   private def parseShowing(js: JsValue): Option[Showing] =
     for {
-      title    <- text(js \ "name")
+      billed   <- text(js \ "name")
       if (js \ "state").asOpt[String].forall(_ == "scheduled")
       instant  <- (js \ "startDatetime").asOpt[String].flatMap(s => Try(Instant.parse(s)).toOption)
     } yield {
       val content = js \ "_embedded" \ "content"
+      // A format the venue bills in the title ("ATMOS: Michael") is a tag, as the per-showing flags are.
+      val (title, billedFormat) = ScraperParse.extractFormatTags(billed)
       Showing(
         title          = title,
         originalTitle  = text(content \ "name").filter(_ != title),
@@ -101,7 +103,7 @@ object CineamoClient {
         trailerUrl     = text(content \ "trailerUrl"),
         dateTime       = instant.atZone(Zone).toLocalDateTime,
         bookingUrl     = text(js \ "onlineTicketUrl"),
-        format         = formatTokens(js)
+        format         = (formatTokens(js) ++ billedFormat).distinct
       )
     }
 

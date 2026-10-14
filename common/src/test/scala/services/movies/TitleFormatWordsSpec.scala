@@ -86,6 +86,7 @@ class TitleFormatWordsSpec extends AnyFlatSpec with Matchers {
     FormatTags.extractFormatTags("ATMOS/OV: Verity - Dunkle Geheimnisse") shouldBe ("Verity - Dunkle Geheimnisse", List("ATMOS", "OV"))
     FormatTags.extractFormatTags("Dolby Cinema/OV: Verity - Dunkle Geheimnisse") shouldBe ("Verity - Dunkle Geheimnisse", List("OV"))
     FormatTags.extractFormatTags("Dolby Cinema: Die Odyssee") shouldBe ("Die Odyssee", Nil)
+    FormatTags.extractFormatTags("ATMOS: Michael") shouldBe ("Michael", List("ATMOS"))
     FormatTags.extractFormatTags("3D: Forgotten Island") shouldBe ("Forgotten Island", List("3D"))
     FormatTags.extractFormatTags("(2D) Forgotten Island") shouldBe ("Forgotten Island", List("2D"))
     FormatTags.extractFormatTags("Forgotten Island (3-D)") shouldBe ("Forgotten Island", List("3D"))
