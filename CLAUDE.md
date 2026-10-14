@@ -38,8 +38,9 @@ with `scripts/install-hooks.sh`, which sets the shared, relative
 `core.hooksPath=scripts/hooks` so every worktree runs its own checkout's
 copy) runs the checks that otherwise fail CI in seconds, selected by the
 paths the push changes: ESLint on web JS, the generated-roster drift
-check, the read-model snapshot's input stamp, the wall-clock and
-metric-coverage lints (one warm `sbt` run, ~55s), actionlint on
+check, the read-model snapshot's input stamp, the wall-clock,
+metric-coverage and silenced-`gh`/`curl`-read lints (one warm `sbt`
+run, ~55s; the last also on any script or workflow), actionlint on
 workflows, shellcheck on scripts (only warnings the push adds), and
 `scripts/ios-compile-check.sh` on `ios/**` — the SwiftUI app target via
 `xcodebuild` and the SwiftPM package on Linux via Docker, the two

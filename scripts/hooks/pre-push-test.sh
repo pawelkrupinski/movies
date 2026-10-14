@@ -54,8 +54,8 @@ check "a recorded fixture runs the snapshot stamp check" "snapshot" \
 check "any Scala source runs the sbt lints" "sbt" "$(plan worker/src/test/scala/tools/FooSpec.scala)"
 check "a Grafana dashboard runs the dashboard tests and the metric-coverage lint" "dashboards sbt" \
   "$(plan infra/nix/files/monitoring/grafana/dashboards/apps/kinowo-http.json)"
-check "a workflow runs actionlint" "actionlint" "$(plan .github/workflows/ci.yml)"
-check "a shell script runs shellcheck" "shellcheck" "$(plan scripts/ci/order-seed.sh)"
+check "a workflow runs actionlint, and the silenced-read lint" "actionlint sbt" "$(plan .github/workflows/ci.yml)"
+check "a shell script runs shellcheck, and the silenced-read lint" "shellcheck sbt" "$(plan scripts/ci/order-seed.sh)"
 check "the hook itself runs shellcheck and its own test" "hooktest shellcheck" "$(plan scripts/hooks/pre-push)"
 check "an iOS view runs the iOS compile check" "ios" "$(plan ios/Kinowo/Views/FilmCard.swift)"
 check "an Android-only change runs nothing" "" "$(plan android/app/src/main/java/pl/kinowo/ui/X.kt)"

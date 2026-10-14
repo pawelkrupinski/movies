@@ -9,8 +9,9 @@
 #   `eslint`      web/src/main/assets/js/**, web/src/page/resources/**/*.js, eslint.config.js, eslint-rules/** (the repo's own rules), package*.json
 #   `drift`       the generated roster chain (scripts/ci/generated-artefacts-drift.sh)
 #   `snapshot`    the read-model snapshot's input stamp (scripts/read-model-snapshot-inputs.sh)
-#   `sbt`         NoWallClockInTestsSpec, NoWallClockInClientsSpec, and the two Grafana
-#                 metric-coverage specs, in ONE sbt run, on any Scala or dashboard change — and,
+#   `sbt`         NoWallClockInTestsSpec, NoWallClockInClientsSpec, the two Grafana metric-coverage
+#                 specs and NoSilencedGhCurlSpec, in ONE sbt run, on any Scala or dashboard change or any
+#                 script or workflow under scripts/, .github/ or infra/ — and,
 #                 ahead of them in that same run, the Test/It/Page configs of every module the push
 #                 touches and every module depending on one (`sbt compile` skips them all: f20a6b5dd
 #                 broke worker/It/compile and only CI saw it). `--compile-plan` prints that list.
@@ -84,6 +85,11 @@ plan() {
         esac
         case "$path" in
             *.scala|*.java|build.sbt|project/*|infra/nix/files/monitoring/grafana/dashboards/*) sbt=1 ;;
+        esac
+        # What NoSilencedGhCurlSpec reads: a script that silences a gh/curl read failed Main from a push this check never
+        # selected (de3fee075).
+        case "$path" in
+            scripts/*.sh|.github/*.sh|.github/*.yml|.github/*.yaml|infra/*.sh|infra/*.yml|infra/*.yaml) sbt=1 ;;
         esac
         case "$path" in
             infra/nix/files/monitoring/*|infra/test/test_dashboards.py) dashboards=1 ;;
@@ -351,7 +357,7 @@ check_sbt() {
     # shellcheck disable=SC2207 # task names carry no spaces
     compiles=($(printf '%s\n' "$changed" | compile_plan))
     sbt -batch -Dsbt.server.forcestart=false "${compiles[@]}" \
-        "worker/Test/testOnly tools.NoWallClockInTestsSpec services.cinemas.NoWallClockInClientsSpec deploy.GrafanaMetricCoverageSpec" \
+        "worker/Test/testOnly tools.NoWallClockInTestsSpec services.cinemas.NoWallClockInClientsSpec deploy.GrafanaMetricCoverageSpec deploy.NoSilencedGhCurlSpec" \
         "web/Test/testOnly deploy.GrafanaWebMetricCoverageSpec" > "$tmp/sbt.log" 2>&1 \
         || { grep -E '\*\*\* FAILED|\[error\]|should|Error' "$tmp/sbt.log" | head -60 >&2; warn "full log: $tmp/sbt.log"; return 1; }
 }
