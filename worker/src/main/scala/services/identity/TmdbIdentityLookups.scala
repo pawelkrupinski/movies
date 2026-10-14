@@ -82,7 +82,7 @@ object TmdbIdentityLookups {
    *  the title then names a film TMDB has no record of beside the one it has (Hayakawa's 2025 "Renoir" beside
    *  Bourdos's 2012 one), and the one found is not the ONE film IMDb lists under it. ONE reading for the live
    *  lookups and the store's. */
-  def everyTitled(found: Seq[Seq[Hit]]): Seq[Hit] = if (found.exists(_.isEmpty)) Nil else found.flatten.distinctBy(_.tmdbId)
+  private def everyTitled(found: Seq[Seq[Hit]]): Seq[Hit] = if (found.exists(_.isEmpty)) Nil else found.flatten.distinctBy(_.tmdbId)
 
   /** An IMDb-titled answer: the TMDB films found ([[everyTitled]]), and the ones TMDB holds no record of as fallback
    *  candidates ([[fallbackHits]]) — which no TMDB rule weighs. ONE reading for the live lookups and the store's. */
@@ -108,15 +108,6 @@ object TmdbIdentityLookups {
    *  live fallbacks): only a throw is `Unknown`, and lookups read side by side. */
   object NoGaps extends Gaps {
     def answered[A](read: => A): Answer[A] = Try(read).fold(_ => Answer.Unknown, Answer.Known(_))
-  }
-
-  /** A replay counting the requests it could not answer in one counter (`misses`): a lookup during
-   *  which it grew met a gap. The counter is the replay's, not the lookup's, so lookups take turns. */
-  final class CountedGaps(misses: () => Long) extends Gaps {
-    def answered[A](read: => A): Answer[A] = synchronized {
-      val before = misses()
-      Try(read).toOption.filter(_ => misses() == before).toAnswer
-    }
   }
 }
 

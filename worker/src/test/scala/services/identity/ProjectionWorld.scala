@@ -1,7 +1,7 @@
 package services.identity
 
 import models.{Cinema, CinemaMovie, CinemaShowing, Country, MovieRecord}
-import services.movies.{CacheKey, CaffeineMovieCache, CinemaSlotBuilder, InMemoryScrapeGuardLedger,
+import services.movies.{CacheKey, CaffeineMovieCache, CinemaSlotBuilder, InMemoryScrapeGuardLedger, ListingConstraints,
   ScreeningTokens, SingleCountryNormalizer, StringPool}
 import services.scrapes.{InMemoryScrapeArchiveRepository, ScrapeAttempt}
 
@@ -78,7 +78,11 @@ private[identity] final class ProjectionWorld(
 private[identity] object ProjectionWorld {
   val normalizer: services.movies.TitleNormalizer = SingleCountryNormalizer.titleNormalizer
 
-  /** The whole resolver over lookups that know no film. */
-  val unmatched: (() => Seq[Listing]) => Option[IdentityProjection.Resolved] =
-    IdentityProjection.resolving(() => NoFilmLookups, new InMemoryPinStore, normalizer, IdentityCalibration.resolver)
+  /** A WHOLE resolve of the listings a projection reads, over lookups that know no film — the projection before the
+   *  incremental model. */
+  val unmatched: (() => Seq[Listing]) => Option[IdentityProjection.Resolved] = read => {
+    val listings = read()
+    Some(IdentityProjection.Resolved(IdentityResolver.resolve(listings, NoFilmLookups, normalizer, IdentityCalibration.resolver,
+      ListingConstraints.pinned(new InMemoryPinStore().all())), listings.map(_.key).toSet))
+  }
 }

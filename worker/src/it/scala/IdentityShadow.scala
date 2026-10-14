@@ -41,7 +41,7 @@ object IdentityShadow {
                      val liveAnswers: () => Map[String, String] = () => Map.empty) {
     /** How the lookups tell a gap from an answer: by the gaps met on the asking thread when the corpus counts them per
      *  thread (lookups then read side by side), else by the replay's one counter, lookups taking turns. */
-    def gaps: TmdbIdentityLookups.Gaps = threadMisses.fold[TmdbIdentityLookups.Gaps](new TmdbIdentityLookups.CountedGaps(misses))(onThread =>
+    def gaps: TmdbIdentityLookups.Gaps = threadMisses.fold[TmdbIdentityLookups.Gaps](new CountedGaps(misses))(onThread =>
       new TmdbIdentityLookups.Gaps {
         def answered[A](read: => A): Answer[A] = {
           val before = onThread()
@@ -260,7 +260,7 @@ object IdentityShadow {
    *  ran one after another and made this suite the integration job's critical path (~3 min of
    *  its ~4 on a CI runner). Safe because a resolve is a pure function of its listings and its
    *  lookups, and the lookups beneath it are a [[Memo]] (concurrent maps) over
-   *  `TmdbIdentityLookups.CountedGaps`, which answers a fresh question under its own lock so a
+   *  `CountedGaps`, which answers a fresh question under its own lock so a
    *  recording miss is still attributed to the question that met it.
    *
    *  `threads` bounds how many run at once: a WHOLE-corpus resolve holds a country resident, and

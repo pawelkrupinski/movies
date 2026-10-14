@@ -8,7 +8,7 @@ import services.scrapes.{ArchivedScrape, ForwardingScrapeArchive, InMemoryScrape
 
 import java.time.{Clock, Instant, LocalDateTime, ZoneOffset}
 
-/** The projection's listing read (`IdentityListingIntake.projected`) holds what it read and reads again only the
+/** The projection's listing read (`IdentityListingIntake.projectedByVenue`) holds what it read and reads again only the
  *  venues whose listing moved — read whole, the two archives were most of Mongo's outbound traffic (the US's 308 MB
  *  every five minutes) — and always gives exactly what a whole read gives, a write filed at the same instant as the
  *  last included: the intake files an accepted listing at the wiring's clock, which a harness pins. */
@@ -40,8 +40,10 @@ class IdentityListingIntakeProjectedSpec extends AnyFlatSpec with Matchers {
     val intake   = new IdentityListingIntake(accepted, archive, new InMemoryScrapeGuardLedger, normalizer, 3, clock,
       services.movies.ListingIntakeMetrics.noop)
     def reads: Int = accepted.rowsRead + archive.rowsRead
-    /** `projected(venues)`, and the rows it read. */
-    def project(venues: Seq[Cinema] = live): (Seq[ProjectedListing], Int) = { val before = reads; val p = intake.projected(venues); (p, reads - before) }
+    /** `projectedByVenue(venues)`, flattened, and the rows it read. */
+    def project(venues: Seq[Cinema] = live): (Seq[ProjectedListing], Int) = {
+      val before = reads; val p = intake.projectedByVenue(venues).flatMap(_._2); (p, reads - before)
+    }
     /** `projectedChanged(venues)`, flattened, and the rows it read. */
     def changed(venues: Seq[Cinema] = live): (Seq[ProjectedListing], Int) = {
       val before = reads; val p = intake.projectedChanged(venues).flatMap(_._2); (p, reads - before)
@@ -78,7 +80,7 @@ class IdentityListingIntakeProjectedSpec extends AnyFlatSpec with Matchers {
     val intake = new IdentityListingIntake(accepted, archive, new InMemoryScrapeGuardLedger, normalizer, 3, clock,
       services.movies.ListingIntakeMetrics.noop)
     archive.store(Multikino, clock.instant(), film(Multikino, "OPERA-SAMSON I DALILA", 0), film(Multikino, "Lalka", 0))
-    def samson = intake.projected(live).map(_.listing).find(_.title.toUpperCase.contains("SAMSON")).get
+    def samson = intake.projectedByVenue(live).flatMap(_._2).map(_.listing).find(_.title.toUpperCase.contains("SAMSON")).get
     samson.screenings.isUnknown shouldBe true          // read, its days unknown — not "screens on none"
     failing = false
     samson.screenings.days shouldBe Seq(start.toLocalDate)   // the row never moved, yet read again
@@ -124,12 +126,12 @@ class IdentityListingIntakeProjectedSpec extends AnyFlatSpec with Matchers {
     val w = new World
     w.archive.store(Multikino, clock.instant(), film(Multikino, "Lalka", 0, 1))
     w.intake.recordCinemaScrape(Multikino, Seq(film(Multikino, "Lalka", 0, 1)), listingIsComplete = true, sourceKey = None, viaFallback = false)
-    w.intake.projected(live) shouldBe w.whole
+    w.intake.projectedByVenue(live).flatMap(_._2) shouldBe w.whole
     // The same clock instant, another listing: the stamp cannot tell, the write can.
     w.intake.recordCinemaScrape(Multikino, Seq(film(Multikino, "Lalka", 0, 1), film(Multikino, "Diuna", 5)), listingIsComplete = true,
       sourceKey = None, viaFallback = false)
-    w.intake.projected(live).map(_.listing.title).toSet shouldBe Set("Lalka", "Diuna")
-    w.intake.projected(live) shouldBe w.whole
+    w.intake.projectedByVenue(live).flatMap(_._2).map(_.listing.title).toSet shouldBe Set("Lalka", "Diuna")
+    w.intake.projectedByVenue(live).flatMap(_._2) shouldBe w.whole
   }
 
   it should "see a venue's archived scrape filed at the same instant as the one it holds, once the intake has taken it" in {

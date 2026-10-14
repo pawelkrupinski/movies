@@ -109,7 +109,7 @@ class ScopedProjectionEquivalenceSpec extends AnyFlatSpec with Matchers {
   private def indexAsBuilt(w: ProjectionWorld, s: Scenario): Unit = {
     val counters = FilmIdCounters.of(w.filmIds.allChecked().required).toOption.get
     val kept     = w.projection.keptIndex(counters)
-    val listings = w.intake.projected(venues)
+    val listings = w.intake.projectedByVenue(venues).flatMap(_._2)
     val resolved = s.resolve(() => listings.map(_.listing)).get
     val held     = resolved.listings.toSet
     val built    = IdentityProjectionPlan.index(listings.filter(l => held(l.listing.key)), resolved.resolution,

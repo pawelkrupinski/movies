@@ -7,7 +7,7 @@ import scala.util.chaining.scalaUtilChainingOps
 
 import models.{Cinema, CinemaMovie, MovieRecord}
 import play.api.Logging
-import services.movies.{CacheKey, LeanRecords, ListingKey, CinemaSlotBuilder, FilmId, ListingConstraints, MovieCache, ScreeningTokens,
+import services.movies.{CacheKey, LeanRecords, ListingKey, CinemaSlotBuilder, FilmId, MovieCache, ScreeningTokens,
   StoredMovieRecord, TitleNormalizer, WriteOutcome}
 
 import java.time.{Clock, LocalDateTime, ZoneOffset}
@@ -543,15 +543,6 @@ object IdentityProjection {
 
   /** A resolution, the listings it decided, and the model's objects of them (none for a resolve of the listings read). */
   final case class Resolved(resolution: Resolution, listings: Iterable[ListingKey], modelled: Seq[Listing] = Nil)
-
-  /** A WHOLE resolve of the listings a projection reads — the projection before the incremental
-   *  model, and the reference the specs hold it to. */
-  def resolving(lookups: () => IdentityLookups, pins: PinStore, normalizer: TitleNormalizer,
-                calibration: IdentityCalibration): (() => Seq[Listing]) => Option[Resolved] = read => {
-    val listings = read()
-    Some(Resolved(IdentityResolver.resolve(listings, lookups(), normalizer, calibration, ListingConstraints.pinned(pins.all())),
-      listings.map(_.key).toSet))
-  }
 
   /** The incremental model, brought up to now on its own thread — no resolve here. */
   def modelled(model: IdentityModelService, timeout: FiniteDuration): (() => Seq[Listing]) => Option[Resolved] = _ =>

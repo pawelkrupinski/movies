@@ -520,8 +520,8 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
   }
 
   "IMDb's films under a title" should "be none when one of them has no TMDB record: the one found is not the only one" in {
-    TmdbIdentityLookups.everyTitled(Seq(Seq(Hit(134673, "Renoir", None, Some(2012), 3.0)), Nil)) shouldBe empty
-    TmdbIdentityLookups.everyTitled(Seq(Seq(Hit(1404604, "Compostelle", None, Some(2026), 2.0)))).map(_.tmdbId) shouldBe Seq(1404604)
+    TmdbIdentityLookups.titledHits(Seq(Seq(Hit(134673, "Renoir", None, Some(2012), 3.0)), Nil), Nil) shouldBe empty
+    TmdbIdentityLookups.titledHits(Seq(Seq(Hit(1404604, "Compostelle", None, Some(2026), 2.0))), Nil).map(_.tmdbId) shouldBe Seq(1404604)
   }
 
   "A title's IMDb suggestions" should "be a gap to both questions they answer when their read met one" in {
@@ -534,7 +534,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
       override def post(url: String, body: String, contentType: String): String = get(url)
     }
     val live = new TmdbIdentityLookups(new TmdbClient(fetch, apiKey = Some(settings.TmdbApiKey("k")), retrySleep = (_: Long) => ()),
-      new services.enrichment.ImdbClient(fetch), Nil, new TmdbIdentityLookups.CountedGaps(() => misses))
+      new services.enrichment.ImdbClient(fetch), Nil, new CountedGaps(() => misses))
     live.candidates(CandidateQuery.ImdbTitled("B-Movie")) shouldBe Answer.Unknown
     live.candidates(CandidateQuery.Imdb("B-Movie")) shouldBe Answer.Unknown
   }

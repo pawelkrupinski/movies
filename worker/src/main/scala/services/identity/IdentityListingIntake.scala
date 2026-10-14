@@ -81,11 +81,10 @@ final class IdentityListingIntake(
    *  another object now. Read whole, the two archives were the most of Mongo's outbound traffic — the US's 308 MB
    *  every five minutes — for the one venue in twelve that re-scrapes between projections. Read whole anyway every
    *  [[IdentityListingIntake.WholeReadEvery]] calls, and whenever a stamp or keyed read could not be completed: a
-   *  partial read is not a smaller archive. */
-  def projected(live: Seq[Cinema]): Seq[ProjectedListing] = projectedByVenue(live).flatMap(_._2)
-
-  /** [[projected]] by venue, each venue's listing the SAME object as last time while the venue was not read again — how
-   *  the projection tells a venue that did not move from one that did without comparing their listings
+   *  partial read is not a smaller archive.
+   *
+   *  By venue, each venue's listing the SAME object as last time while the venue was not read again — how the
+   *  projection tells a venue that did not move from one that did without comparing their listings
    *  (`LiveProjectionIndex`). */
   def projectedByVenue(live: Seq[Cinema]): Seq[(Cinema, Seq[ProjectedListing])] = heldLock.synchronized {
     val read = if (calls % IdentityListingIntake.WholeReadEvery == 0) IdentityListingIntake.Read.Whole else IdentityListingIntake.Read.Stamped
