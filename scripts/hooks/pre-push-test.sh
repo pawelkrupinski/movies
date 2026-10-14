@@ -283,6 +283,22 @@ scratch_git "$hp/clone" config core.hooksPath "$hp/clone/scripts/hooks"
 echo again >> "$hp/wt/doc.md"; scratch_git "$hp/wt" commit -qam again
 out="$(PREPUSH_DELEGATED_FROM=/elsewhere scratch_git "$hp/wt" push origin HEAD:refs/heads/feature 2>&1)"
 check "a hook already handed over to runs itself (no recursion)" "old" "$(cat "$hp/ran" 2>/dev/null | tr '\n' ' ' | sed 's/ $//')"
+# install-hooks.sh puts the relative path back: an absolute path to THIS checkout's scripts/hooks is the same directory,
+# never "hooks that would stop running"; another directory holding hooks still is
+mkdir -p "$hp/wt/scripts"; cp "$REPO_ROOT/scripts/install-hooks.sh" "$hp/wt/scripts/install-hooks.sh"
+scratch_git "$hp/clone" config core.hooksPath "$hp/wt/scripts/hooks"
+out="$(cd "$hp/wt" && bash scripts/install-hooks.sh 2>&1)"; code=$?
+check "install-hooks rewrites an absolute path to this checkout's own scripts/hooks to the relative one" "0 scripts/hooks" \
+  "$code $(scratch_git "$hp/clone" config --get core.hooksPath)"
+scratch_git "$hp/clone" config core.hooksPath "$hp/clone/scripts/hooks"
+(cd "$hp/wt" && bash scripts/install-hooks.sh >/dev/null 2>&1); code=$?
+check "...and so is one to another worktree's scripts/hooks of this clone (what the IDE wrote)" "0 scripts/hooks" \
+  "$code $(scratch_git "$hp/clone" config --get core.hooksPath)"
+mkdir -p "$hp/foreign"; printf '#!/bin/sh\n' > "$hp/foreign/pre-commit"; chmod +x "$hp/foreign/pre-commit"
+scratch_git "$hp/clone" config core.hooksPath "$hp/foreign"
+(cd "$hp/wt" && bash scripts/install-hooks.sh >/dev/null 2>&1); code=$?
+check "...but a foreign directory's hooks, which would stop running, are still refused" "1 $hp/foreign" \
+  "$code $(scratch_git "$hp/clone" config --get core.hooksPath)"
 rm -rf "$hp"
 
 # ── RED BUILDS GATE A PUSH TO MAIN: only a commit declared a fix for a red run lands ───────────────
