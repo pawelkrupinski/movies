@@ -61,3 +61,13 @@ scripts/ci/recording_health.py
 scripts/ci/identity-takes-check.sh
 scripts/ci/identity_takes_diff.py
 test/resources/fixtures/identity-takes/**
+# The identity takes check's own tools: it replays listings with identity-slice (and its diff/lint helpers),
+# and identity-slice reads the local-mirror helpers it sources.
+scripts/ci/identity_judgements_lint.py
+scripts/identity-judge-cards
+scripts/identity-slice
+scripts/identity_slice_diff.py
+scripts/label-lookup
+scripts/local-mirror/freshness
+scripts/local-mirror/service.sh
+scripts/local-mirror/start-local-mongo.sh
