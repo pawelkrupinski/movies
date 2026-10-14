@@ -97,6 +97,43 @@ unset PREPUSH_DELEGATED_FROM
 # ── end of the hand-over ──
 cd "$root" || exit 1
 
+# ── core.hooksPath stays RELATIVE, and this hook proves it did not move it ──────────────────────
+# Absolute (an IDE wrote it three times on 2026-10-14, a fourth time with no IDE running, between two pushes), it sends
+# every worktree to ONE copy of the hooks. An absolute path that names a worktree of THIS clone's scripts/hooks holds
+# only this repository's own hooks, so it is set back to relative here (a foreign directory is left alone). The value
+# the hook starts with is then compared at EXIT: a hook that finds it moved while the checks ran says so, names the
+# processes that could have done it, and restores it — a writer inside the checks is caught, not guessed at.
+hooks_path_now() { git config --local --get core.hooksPath 2>/dev/null || true; }
+hooks_path_names_own_worktree() { # <absolute path> — true when it is scripts/hooks of any worktree of this clone
+    local dir wt
+    dir="$(cd "$1" 2>/dev/null && pwd -P)" || return 1
+    while IFS= read -r wt; do
+        [ "$dir" = "$(cd "$wt" 2>/dev/null && pwd -P)/scripts/hooks" ] && return 0
+    done < <(git worktree list --porcelain | sed -n 's/^worktree //p')
+    return 1
+}
+case "$(hooks_path_now)" in
+    /*)
+        if hooks_path_names_own_worktree "$(hooks_path_now)"; then
+            printf '\033[33m! pre-push\033[0m core.hooksPath was %s: set back to the relative scripts/hooks\n' "$(hooks_path_now)" >&2
+            git config --local core.hooksPath scripts/hooks
+        fi ;;
+esac
+hooks_path_at_start="$(hooks_path_now)"
+tree=""
+on_exit() {
+    local now
+    cd "$root" || return # a temporary checkout is about to go; git has to run somewhere that stays
+    if [ -n "$tree" ]; then git -C "$root" worktree remove --force "$tree" >/dev/null 2>&1; git -C "$root" worktree prune; fi
+    now="$(hooks_path_now)"
+    if [ "$now" != "$hooks_path_at_start" ]; then
+        printf '\033[31m! pre-push\033[0m core.hooksPath moved from "%s" to "%s" WHILE this hook ran — restoring it. Candidates:\n' "$hooks_path_at_start" "$now" >&2
+        ps -axo pid,ppid,command | grep -E 'git( |-)config|install-hooks|hooksPath' | grep -v grep >&2
+        if [ -n "$hooks_path_at_start" ]; then git config --local core.hooksPath "$hooks_path_at_start"; else git config --local --unset core.hooksPath; fi
+    fi
+}
+trap on_exit EXIT
+
 Zero=0000000000000000000000000000000000000000
 
 # ── Which checks a set of changed paths selects ─────────────────────────────────────────────────
@@ -509,7 +546,6 @@ fi
 if [ -n "$isolate_reason" ]; then
     tree="$tmp/tree"
     git worktree add -q --detach "$tree" "$head_sha" || { warn "cannot check out ${head_sha:0:9} to check it"; exit 1; }
-    trap 'git -C "$root" worktree remove --force "$tree" >/dev/null 2>&1; git -C "$root" worktree prune' EXIT
     [ -d "$root/node_modules" ] && ln -s "$root/node_modules" "$tree/node_modules"
     log "$isolate_reason: checking a temporary checkout of ${head_sha:0:9}"
     cd "$tree" || exit 1

@@ -20,6 +20,8 @@ cat > "$ghstub/gh" <<'STUB'
 #!/usr/bin/env bash
 [ -n "${GH_FAILS:-}" ] && { echo "HTTP 502: Bad Gateway" >&2; exit 1; }
 [ -n "${GH_HANGS:-}" ] && exec sleep 30
+# a check that rewrites core.hooksPath of the repository it runs in (what moved the shared config to an absolute path)
+[ -n "${GH_REWRITES_HOOKSPATH:-}" ] && git config core.hooksPath "$GH_REWRITES_HOOKSPATH"
 # `gh run download RUN -p … -D DIR`: a convergence leg's served takes, as the judgements check fetches them
 if [ "$1 $2" = "run download" ]; then
   while [ $# -gt 0 ]; do [ "$1" = -D ] && dir="$2"; shift; done
@@ -368,6 +370,26 @@ check "a push to another branch than main is not gated" "0 0" "$code $(printf '%
 out="$(cd "$grepo" && printf 'refs/heads/main %s refs/heads/main %s\n' "$plain" "$gbase" \
         | GH_IMC="[$red]" PREPUSH_SKIP="$pathchecks" bash "$REPO_ROOT/scripts/hooks/pre-push" origin url 2>&1)"; code=$?
 check "a real push to main reads git's stdin and is gated" "1" "$code"
+# ── core.hooksPath: the hook leaves it as it found it, mends an absolute path to its own clone, and catches a mover ──
+# The shared config's relative core.hooksPath turned absolute between two pushes on 2026-10-14 with no IDE running. The
+# hook runs with git's GIT_* variables (this spec's scratch_git clears them for its children, as the hook does for its
+# own); whatever it runs may write to the repository it was started in. It must not leave that written.
+mkdir -p "$grepo/scripts/hooks"
+hooks_path() { scratch_git "$grepo" config --local --get core.hooksPath; }
+all_green() { GH_MAIN="[$green]" GH_IMC="[$green]" GH_REC="[$green]" "$@"; }
+scratch_git "$grepo" config core.hooksPath scripts/hooks
+all_green push "$gbase..$plain" >/dev/null
+check "a push that moves nothing leaves the relative core.hooksPath as it was" "scripts/hooks" "$(hooks_path)"
+GH_REWRITES_HOOKSPATH="$grepo/scripts/hooks" all_green push "$gbase..$plain" >/dev/null
+check "a check that rewrites core.hooksPath to an absolute path is undone at the hook's exit" "scripts/hooks" "$(hooks_path)"
+check "...and the hook names the move" "1" "$(grep -c 'core.hooksPath moved from "scripts/hooks"' "$gate/err")"
+scratch_git "$grepo" config core.hooksPath "$grepo/scripts/hooks"
+all_green push "$gbase..$plain" >/dev/null
+check "an absolute core.hooksPath naming this clone's own scripts/hooks is set back to relative" "scripts/hooks" "$(hooks_path)"
+check "...with a warning naming what it was" "1" "$(grep -c "core.hooksPath was $grepo/scripts/hooks" "$gate/err")"
+scratch_git "$grepo" config core.hooksPath "$gate/foreign-hooks"
+all_green push "$gbase..$plain" >/dev/null
+check "an absolute core.hooksPath to some other directory is left alone" "$gate/foreign-hooks" "$(hooks_path)"
 rm -rf "$gate"
 
 spec_summary
