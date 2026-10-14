@@ -49,7 +49,13 @@ class MatchedTakesLabelSpec extends AnyFlatSpec with Matchers {
     ("pl", "Maraton Horrorów", "tmdb:1193501") -> multiFilmBill,
     ("uk", "The Dark Knight Trilogy", "tmdb:155") -> multiFilmBill,
     ("uk", "Triple Feature: Lord of the Rings", "tmdb:122") -> multiFilmBill,
-    ("us", "Triple Feature: Lord of the Rings", "tmdb:122") -> multiFilmBill)
+    ("us", "Triple Feature: Lord of the Rings", "tmdb:122") -> multiFilmBill,
+    ("uk", "We're Going on a Bear Hunt+Tiger Who Came to...", "tmdb:431591") ->
+      ("matched to no film since IdentityMeasures.billPieces: an unspaced \"+\" between two works of two words or more " +
+        "joins a double bill (IdentityResolverCasesSpec) — struck once the rows are re-emitted"),
+    ("de", "Karla", "tmdb:276944") ->
+      ("the 1965 Karla, as the rows' old model took it at Filmpalast Iserlohn; convergence run 38487614044 (2026-10-14) " +
+        "takes the 2025 film there, as at its 16 other venues — struck once the rows are re-emitted"))
 
   /** The model's wrong takes no safe fix removes yet, (country, raw title, taken film) → why — judged by the suspect-take
    *  audit 2026-10-13. */
@@ -59,7 +65,11 @@ class MatchedTakesLabelSpec extends AnyFlatSpec with Matchers {
         "the feed's own facts name the record, and no rule tells an episode from the film without losing right takes"),
     ("pl", "24. Festiwal TERRA - DIA DE MUERTOS - MEKSYKAŃSKI DZIEŃ ZMARŁYCH", "tmdb:378112") ->
       ("a talk on the Day of the Dead at a travel festival, its title the film's original title; the listing states " +
-        "nothing (no year, runtime or director) a rule could refuse it on"))
+        "nothing (no year, runtime or director) a rule could refuse it on"),
+    // found by the wrong-match hunt 2026-10-14 (feed-id detector): the venue's Cineamo link names another film
+    ("de", "The Killer", "tmdb:970347") ->
+      ("John Woo's 1989 film in its 2026 4K restoration (tmdb:10835, 8 venues), not his streaming-only 2024 remake: the " +
+        "listing states nothing, and its Cineamo link (800158m, Fincher's) names a third film"))
 
   private def take(row: IdentityUnifiedFit.Row): Take = Take(row.country, row.venue, row.rawTitle,
     row.film.stripPrefix("tmdb:").toIntOption.filter(_ => row.film.startsWith("tmdb:")),
