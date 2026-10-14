@@ -42,6 +42,8 @@ final class CoalescedTmdbDocuments(inner: TmdbDocuments, maxBatch: Int = Coalesc
   def get(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] = if (ids.isEmpty) Map.empty else reads(kind)(ids)
   def put(kind: TmdbKind, docs: Seq[(String, BsonDocument)]): Unit    = if (docs.nonEmpty) writes(kind)(docs)
 
+  // Forwarded each, never left to the trait's defaults: those read through `get`, which here is the batched whole-document
+  // read — and would bypass the inner store's own answers (its projection, or the cache that keeps them).
   override def answers(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] = inner.answers(kind, ids)
   override def filmHits(ids: Seq[String]): Map[String, Hit] = inner.filmHits(ids)
   override def answersReadThrough(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] = inner.answersReadThrough(kind, ids)

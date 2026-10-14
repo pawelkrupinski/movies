@@ -79,8 +79,7 @@ trait IdentityCutoverWiring { self: WorkerWiring =>
     new services.identity.agreement.AgreementStage(agreementFamilies.map(family => family -> familyAnswerStore.answers(family)).toMap,
       venueDetailLookups(),
       titleNormalizer, services.identity.IdentityCalibration.resolver,
-      tmdbOf = imdbId => identityTmdbStore.get(services.identity.TmdbKind.Query, Seq(services.identity.TmdbStore.findId(imdbId))).get(services.identity.TmdbStore.findId(imdbId))
-        .map(d => services.identity.TmdbStore.intsOf(d.get("ids")).headOption).toAnswer,
+      tmdbOf = imdbId => identityTmdbStore.foundFirst(imdbId).toAnswer,
       stored = agreementVerdicts,
       ask = open => services.identity.AgreementQuestions.enqueueOpen(taskQueue, open.questions, open.finds, clock, agreementQuestionMetrics, open.posters,
         open.catalogue, open.records),

@@ -28,7 +28,7 @@ private[identity] object DocumentDigest {
                 (write: (String, BsonDocument) => WriteModel[? <: Document]): Int = {
     val stored = Await.result(collection.find(Filters.in("_id", docs.map(_._1)*)).projection(Projections.include(field))
       .batchSize(tools.MongoReplies.Default).toFuture(), timeout)
-      .flatMap(d => d.get("_id").map(_.asString.getValue -> d.get(field).filter(_.isInt64).map(_.asInt64.getValue))).toMap
+      .flatMap(d => d.get("_id").map(_.asString.getValue -> d.get(field).flatMap(BsonFields.int64))).toMap
     val moved  = docs.filterNot { case (id, doc) => stored.get(id).flatten.contains(doc.getInt64(field).getValue) }
     if (moved.nonEmpty) Await.result(collection.bulkWrite(moved.map(write.tupled)).toFuture(), timeout)
     moved.size

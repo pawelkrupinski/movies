@@ -1,6 +1,6 @@
 package services.identity
 
-import org.bson.BsonDocument
+import org.bson.{BsonDocument, BsonValue}
 import services.enrichment.ImdbClient
 
 import java.util.concurrent.ConcurrentHashMap
@@ -29,7 +29,7 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
     this.films.clear()
     hits.clear()
     val asked = queries.toSeq
-    load(TmdbKind.Query, asked.flatMap(questionIds))
+    load(TmdbKind.Query, asked.map(TmdbStore.questionId(language, _)))
     // What the questions name: each person search's people, each IMDb title's finds.
     load(TmdbKind.Person, asked.collect { case CandidateQuery.Director(name) => personSearchOf(name) }
       .flatMap(heldDocument(TmdbKind.Query, _)).flatMap(d => intsOf(d).take(MaxPersonCandidates)).map(_.toString))
@@ -86,7 +86,7 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
     case CandidateQuery.ImdbTitled(title) =>
       document(TmdbKind.Query, TmdbStore.suggestionsId(ImdbClient.suggestionUrl(title))).fold[Answer[Seq[Hit]]](Answer.Unknown) { d =>
         val movies = suggestionsOf(d)
-        ImdbClient.titled(title, movies, tt => document(TmdbKind.Query, TmdbStore.imdbTitlesId(tt)).map(stringsOf(_, "titles")))
+        ImdbClient.titled(title, movies, tt => document(TmdbKind.Query, TmdbStore.imdbTitlesId(tt)).map(BsonFields.stringsOf(_, "titles")))
           .fold[Answer[Seq[Hit]]](Answer.Unknown) { ids =>
             val finds = ids.map(tt => tt -> document(TmdbKind.Query, TmdbStore.findId(tt)))
             if (finds.exists(_._2.isEmpty)) Answer.Unknown
@@ -144,15 +144,13 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
    *  the responses it was parsed from ([[TmdbStore.Partial]]) still hold TMDB's `imdb_id`. */
   private def withImdbNumber(film: IdentityMeasures.Film, d: BsonDocument): IdentityMeasures.Film =
     if (film.imdbNumber > 0) film
-    else TmdbStore.Partial.values.iterator.flatMap(partial => Option(d.get(partial.field)).filter(_.isDocument))
-      .flatMap(response => Option(response.asDocument.get("imdb_id")).filter(_.isString).map(_.asString.getValue))
-      .map(IdentityMeasures.imdbNumber).find(_ > 0).fold(film)(number => film.copy(imdbNumber = number))
+    else partialFields(d, "imdb_id").filter(_.isString).map(value => IdentityMeasures.imdbNumber(value.asString.getValue)).find(_ > 0)
+      .fold(film)(number => film.copy(imdbNumber = number))
 
   /** The film with every runtime its partial responses state ([[TmdbFilmRecord.runtimes]]), the record's own first: a record
    *  filed before records carried the other translation's runtime has only the localized one. */
   private def withRuntimes(film: IdentityMeasures.Film, d: BsonDocument): IdentityMeasures.Film = {
-    val stated = TmdbStore.Partial.values.toSeq.flatMap(partial => Option(d.get(partial.field)).filter(_.isDocument))
-      .flatMap(response => Option(response.asDocument.get("runtime")).filter(_.isInt32).map(_.asInt32.getValue))
+    val stated = partialFields(d, "runtime").filter(_.isInt32).map(_.asInt32.getValue).toSeq
     val runtimes = TmdbFilmRecord.runtimes(film.runtimes ++ stated)
     if (runtimes == film.runtimes) film else film.copy(runtime = runtimes.headOption, alternativeRuntimes = runtimes.drop(1))
   }
@@ -201,8 +199,6 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
     reads.read(TmdbStore.keyOf(TmdbKind.Film, key))
     Option(hits.get(key)).getOrElse(store.filmHits(Seq(key)).get(key))
   }
-
-  private def questionIds(query: CandidateQuery): Seq[String] = Seq(TmdbStore.questionId(language, query))
 }
 
 object StoredTmdbLookups {
@@ -214,7 +210,12 @@ object StoredTmdbLookups {
   private def personSearchOf(name: String): String =
     TmdbStore.personSearchId(CandidateQuery.personName(name))
 
-  private def intsOf(d: BsonDocument, field: String = "ids"): Seq[Int] = TmdbStore.intsOf(d.get(field))
+  /** What each of a film's partial responses ([[TmdbStore.Partial]]) holds under `field`, in their order. */
+  private def partialFields(d: BsonDocument, field: String): Iterator[BsonValue] =
+    TmdbStore.Partial.values.iterator.flatMap(partial => Option(d.get(partial.field)).filter(_.isDocument))
+      .flatMap(response => Option(response.asDocument.get(field)))
+
+  private def intsOf(d: BsonDocument, field: String = "ids"): Seq[Int] = BsonFields.intsOf(d.get(field))
 
   /** Does the film's localized response date it by its year alone ("2026")? TMDB never answers so — it states a whole
    *  day or none — so only the store's cut before records kept the day does. */
@@ -232,7 +233,4 @@ object StoredTmdbLookups {
       ImdbClient.Suggestion(s.getString("id").getValue, Option(s.get("title")).map(_.asString.getValue),
         Option(s.get("year")).map(_.asInt32.getValue), s.getInt32("rank").getValue)
     }
-
-  private def stringsOf(d: BsonDocument, field: String): Seq[String] =
-    Option(d.get(field)).filter(_.isArray).toSeq.flatMap(_.asArray.getValues.asScala.map(_.asString.getValue))
 }

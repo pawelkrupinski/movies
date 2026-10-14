@@ -3,8 +3,6 @@ package services.identity
 import org.mongodb.scala.bson.BsonArray
 import org.bson.{BsonDocument, BsonDouble, BsonInt32, BsonNull, BsonString, BsonValue}
 
-import scala.jdk.CollectionConverters._
-
 /** A film's record as native BSON — explicit, like [[ResolverDecisionBson]]: an absent field is
  *  absent (directors unknown ≠ none), "TMDB knows no such film" is `null`. */
 object IdentityAnswerBson {
@@ -25,16 +23,15 @@ object IdentityAnswerBson {
   }
 
   def filmOf(value: BsonValue): Option[IdentityMeasures.Film] = Option.when(!value.isNull)(value.asDocument).map { d =>
-    IdentityMeasures.Film(d.getString("title").getValue, string(d, "originalTitle"), stringsOf(d.get("alternativeTitles")),
-      int(d, "year"), int(d, "runtime"), Option(d.get("directors")).map(stringsOf), Option(d.get("countries")).map(stringsOf),
+    IdentityMeasures.Film(d.getString("title").getValue, string(d, "originalTitle"), BsonFields.stringsOf(d.get("alternativeTitles")),
+      int(d, "year"), int(d, "runtime"), Option(d.get("directors")).map(BsonFields.stringsOf(_)), Option(d.get("countries")).map(BsonFields.stringsOf(_)),
       Option(d.get("popularity")).map(_.asDouble.getValue), int(d, "imdbNumber").getOrElse(0),
       string(d, "released").flatMap(day => scala.util.Try(java.time.LocalDate.parse(day)).toOption), string(d, "releaseCountries"),
-      Option(d.get("alternativeRuntimes")).fold(Seq.empty[Int])(_.asArray.getValues.asScala.toSeq.map(_.asInt32.getValue)),
+      Option(d.get("alternativeRuntimes")).fold(Seq.empty[Int])(BsonFields.intsOf),
       string(d, "releases"))
   }
 
   private def strings(values: Seq[String]): BsonArray = BsonArray.fromIterable(values.map(BsonString(_)))
-  private def stringsOf(value: BsonValue): Seq[String] = value.asArray.getValues.asScala.toSeq.map(_.asString.getValue)
   private def string(d: BsonDocument, name: String): Option[String] = Option(d.get(name)).map(_.asString.getValue)
   private def int(d: BsonDocument, name: String): Option[Int] = Option(d.get(name)).map(_.asInt32.getValue)
 }

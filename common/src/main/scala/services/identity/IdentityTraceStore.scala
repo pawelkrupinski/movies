@@ -281,7 +281,7 @@ object MongoIdentityTraceStore {
   val WriteBatch = 1000
 
   def decode(d: BsonDocument): ListingTrace = {
-    def strings(name: String) = Option(d.get(name)).filter(_.isArray).fold(Seq.empty[String])(_.asArray.getValues.asScala.toSeq.map(_.asString.getValue))
+    def strings(name: String) = BsonFields.stringsOf(d, name)
     def int(name: String)     = Option(d.get(name)).filter(_.isInt32).map(_.asInt32.getValue)
     ListingTrace(ListingKeyBson.decode(d.getDocument("listing")), d.getString("family").getValue, int("film"),
       d.getString("basis").getValue, strings("rules"), Option(d.get("vetoedBy")).filter(_.isString).map(_.asString.getValue),

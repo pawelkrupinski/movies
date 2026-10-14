@@ -538,4 +538,13 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     live.candidates(CandidateQuery.ImdbTitled("B-Movie")) shouldBe Answer.Unknown
     live.candidates(CandidateQuery.Imdb("B-Movie")) shouldBe Answer.Unknown
   }
+
+  "A find of an IMDb id" should "name the first film it found, none when it found none, and be unknown until filed" in {
+    val w = new World
+    w.store.foundFirst("tt0166924") shouldBe None
+    w.store.question(TmdbStore.findId("tt0166924"), Seq(Hit(film, "Mulholland Drive", None, Some(2001), 8.9), Hit(7, "Other", None, None, 1.0)))
+    w.store.question(TmdbStore.findId("tt0000001"), Nil)
+    w.store.foundFirst("tt0166924") shouldBe Some(Some(film))
+    w.store.foundFirst("tt0000001") shouldBe Some(None)
+  }
 }

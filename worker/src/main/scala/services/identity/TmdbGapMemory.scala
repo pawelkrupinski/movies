@@ -35,7 +35,7 @@ final class TmdbGapMemory(docs: TmdbDocuments, language: String, clock: Clock, r
     val now   = clock.millis()
     // A failure marked before TMDB recovered from an outage is due at once: its backoff was the
     // outage's, and TMDB answers again.
-    val recovered = docs.get(TmdbKind.Query, Seq(HealthMarker)).get(HealthMarker).flatMap(long(_, RecoveredAt))
+    val recovered = docs.get(TmdbKind.Query, Seq(HealthMarker)).get(HealthMarker).flatMap(doc => BsonFields.int64(doc.get(RecoveredAt)))
     def recent(marker: String) = held.get(marker).exists(doc =>
       TmdbStore.fetchedAt(doc).exists(at => at > now - waitOf(doc) &&
         !(failureWaitOf(doc).isDefined && recovered.exists(at <= _))))
@@ -71,7 +71,7 @@ final class TmdbGapMemory(docs: TmdbDocuments, language: String, clock: Clock, r
    *  round. A read counts once it was wanted — failed, or deferred behind the host's back-off (an
    *  outage fails ONE read, then the budget defers the rest to that host). */
   def roundEnded(answered: Int, failed: Int, deferred: Int): Unit = {
-    lazy val inOutage = docs.get(TmdbKind.Query, Seq(HealthMarker)).get(HealthMarker).exists(doc => long(doc, OutageSince).isDefined)
+    lazy val inOutage = docs.get(TmdbKind.Query, Seq(HealthMarker)).get(HealthMarker).exists(doc => BsonFields.int64(doc.get(OutageSince)).isDefined)
     val now = clock.millis()
     if (failed > 0 && answered == 0 && failed + deferred >= MinOutageReads)
       docs.put(TmdbKind.Query, Seq(HealthMarker -> new BsonDocument(TmdbStore.FetchedAt, BsonInt64(now)).append(OutageSince, BsonInt64(now))))
@@ -85,9 +85,7 @@ final class TmdbGapMemory(docs: TmdbDocuments, language: String, clock: Clock, r
     if (markers.nonEmpty) docs.put(TmdbKind.Query, markers.map(marker => marker -> doc(marker)))
   }
 
-  private def failureWaitOf(doc: BsonDocument): Option[Long] = long(doc, FailureWait)
-  private def long(doc: BsonDocument, field: String): Option[Long] =
-    Option(doc.get(field)).filter(_.isInt64).map(_.asInt64.getValue)
+  private def failureWaitOf(doc: BsonDocument): Option[Long] = BsonFields.int64(doc.get(FailureWait))
   private def waitOf(doc: BsonDocument): Long = failureWaitOf(doc).getOrElse(retryAfter.toMillis)
 
   private def queryMarker(q: CandidateQuery) = s"$Prefix${TmdbStore.questionId(language, q)}"

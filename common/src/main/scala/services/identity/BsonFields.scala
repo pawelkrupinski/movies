@@ -1,11 +1,14 @@
 package services.identity
 
-import org.bson.{BsonInvalidOperationException, BsonReader, BsonType}
+import org.bson.{BsonDocument, BsonInvalidOperationException, BsonReader, BsonType, BsonValue}
+
+import scala.jdk.CollectionConverters._
 
 /** Reading a stored identity document field by field off a [[BsonReader]] — the wire bytes of a reply, or a
  *  `BsonDocumentReader` over a document in hand — straight into the model's types, with no tree of maps between:
  *  decoded as `BsonDocument`s first, a US take-up's families were ~400k maps and ~1M key strings, all garbage the
- *  moment the families were built from them. */
+ *  moment the families were built from them. And the few readers of one field of a `BsonDocument` already in hand
+ *  that the identity stores share. */
 private[identity] object BsonFields {
   /** The fields of the document the reader is at: `field` reads each value by name, or skips it. */
   def document(reader: BsonReader)(field: String => Unit): Unit = {
@@ -52,4 +55,16 @@ private[identity] object BsonFields {
   /** `value`, which a document must hold: absent, it is no document of this kind. */
   def required[A <: AnyRef](value: A, name: String): A =
     if (value == null) throw new BsonInvalidOperationException(s"no '$name' field") else value
+
+  // ── a field of a document already in hand ──────────────────────────────────────────
+
+  /** `value` when it is an Int64 (a stamp, a digest), else none — absent (`null`) included. */
+  def int64(value: BsonValue): Option[Long] = Option(value).filter(_.isInt64).map(_.asInt64.getValue)
+
+  /** An array of strings, which `value` must be. */
+  def stringsOf(value: BsonValue): Seq[String] = value.asArray.getValues.asScala.toSeq.map(_.asString.getValue)
+  /** `d`'s array of strings under `name`; none when it holds no array there. */
+  def stringsOf(d: BsonDocument, name: String): Seq[String] = Option(d.get(name)).filter(_.isArray).fold(Seq.empty[String])(stringsOf)
+  /** An array of Int32s, which `value` must be. */
+  def intsOf(value: BsonValue): Seq[Int] = value.asArray.getValues.asScala.toSeq.map(_.asInt32.getValue)
 }

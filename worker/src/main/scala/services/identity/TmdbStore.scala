@@ -269,6 +269,11 @@ final class TmdbStore(docs: TmdbDocuments, clock: java.time.Clock) {
   def filmHits(ids: Seq[String]): Map[String, Hit] = docs.filmHits(ids)
   /** What answers read, for a caller that keeps it decoded ([[TmdbDocuments.answersReadThrough]]). */
   def answersReadThrough(kind: TmdbKind, ids: Seq[String]): Map[String, BsonDocument] = docs.answersReadThrough(kind, ids)
+  /** The film TMDB's find of `imdbId` named first — `Some(None)` when it named none, `None` while no find is held. */
+  def foundFirst(imdbId: String): Option[Option[Int]] = {
+    val id = findId(imdbId)
+    docs.get(TmdbKind.Query, Seq(id)).get(id).map(d => BsonFields.intsOf(d.get("ids")).headOption)
+  }
 }
 
 object TmdbStore {
@@ -280,7 +285,7 @@ object TmdbStore {
   /** How often an unchanged answer is re-stamped at most — each re-stamp is a write. */
   val RenewEvery: FiniteDuration = 1.day
   private val Stamps = Seq(ChangedAt, FetchedAt)
-  def fetchedAt(d: BsonDocument): Option[Long] = Option(d.get(FetchedAt)).filter(_.isInt64).map(_.asInt64.getValue)
+  def fetchedAt(d: BsonDocument): Option[Long] = BsonFields.int64(d.get(FetchedAt))
   /** Was `d` given longer than `age` ago — or never stamped: an answer to ask again. */
   def olderThan(d: BsonDocument, age: FiniteDuration, clock: java.time.Clock): Boolean = fetchedAt(d).forall(clock.millis() - _ > age.toMillis)
 
@@ -319,7 +324,6 @@ object TmdbStore {
   def suggestionsId(url: String): String                     = s"imdb|${url.stripPrefix(services.enrichment.ImdbClient.SuggestionBase)}"
 
   private def ints(values: Seq[Int]): BsonArray = BsonArray.fromIterable(values.map(BsonInt32(_)))
-  def intsOf(value: BsonValue): Seq[Int] = value.asArray.getValues.asScala.toSeq.map(_.asInt32.getValue)
 
   /** A hit's fields as the resolver reads them — popularity as its bucket. */
   def hitDoc(hit: Hit): BsonDocument = {
