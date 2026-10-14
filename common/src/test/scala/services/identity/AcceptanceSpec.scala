@@ -176,6 +176,19 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     taken(ranked(listing, favreau, wajda)) shouldBe Some(225)
   }
 
+  it should "take the one record by that director its published ORIGINAL title names exactly, the billed title decorated" in {
+    // DE Casablanca Zwickau's "Ping Pong Session" (kinoheld: original "Ping Pong", {Yu Tianji}) is his 2025 short,
+    // eighteenth in TMDB's search for "Ping Pong" — taken only by the Filmweb fill dropped in ca4059b55
+    val listing = Listing("Ping Pong Session", originalTitle = Some("Ping Pong"), directors = Seq("Yu Tianji"))
+    val yu      = (1559695, Film("Ping Pong", year = Some(2025), runtime = Some(16), directors = Some(Seq("Yu Tianji"))), Some(18))
+    val first   = (68543, Film("Ping Pong", year = Some(1987), runtime = Some(100), directors = Some(Seq("Po-Chih Leong")), popularity = Some(3.0)), Some(1))
+    val other   = (859777, Film("Ping Pong", year = Some(1971)), Some(16))
+    acceptance.directorsTitle(ranked(listing, first, yu, other)).map(_._1.candidate.tmdbId) shouldBe Some(1559695)
+    // the original title naming only the director's longer title is no exact naming
+    val longer = (1559695, Film("Ping Pong Summer", year = Some(2025), directors = Some(Seq("Yu Tianji"))), Some(18))
+    acceptance.directorsTitle(ranked(listing, first, longer)) shouldBe None
+  }
+
   it should "take nothing when its runtime contradicts that record, or two such records are candidates" in {
     val listing = Listing("Man of Iron", directors = Seq("Andrzej Wajda"), runtime = Some(200))
     val wajda   = (225, Film("Man of Iron", year = Some(1981), runtime = Some(144), directors = Some(Seq("Andrzej Wajda"))), Some(7))

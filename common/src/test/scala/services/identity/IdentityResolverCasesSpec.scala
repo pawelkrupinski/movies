@@ -2621,6 +2621,16 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     filed.head.searchTitle.exists(_.endsWith(", Die")) shouldBe false
   }
 
+  "A listing publishing its original title and director" should "take the director's film that original title names exactly, its billed title decorated" in {
+    // DE Casablanca Zwickau's "Ping Pong Session" (kinoheld: original "Ping Pong", {Yu Tianji}): his 2025 short, 18th in
+    // TMDB's search for "Ping Pong" (capture 2026-10-13); only the Filmweb fill ca4059b55 dropped took it
+    val films = Seq(F(68543, "Ping Pong", 1987, "Po-Chih Leong", 100, 8), F(607487, "Ping Pong", 1968, "Someone Else", 90, 6),
+      F(1559695, "Ping Pong", 2025, "Yu Tianji", 16, 0.3), F(859777, "Ping Pong", 1971, "Another One", 80, 0.3))
+    val l = listing(Multikino, "Ping Pong Session", director = Some("Yu Tianji")).copy(originalTitle = Some("Ping Pong"))
+    val d = shipped(Seq(l), films).decisionOf(l.key)
+    withClue(d.render)(d.film shouldBe Some(1559695))
+  }
+
   "The calibration" should "load from an artefact in its own format, the fixture as the real one" in {
     weights.version shouldBe "test-fixture-2"
     IdentityCalibration.resolver.scopes.keySet shouldBe weights.scopes.keySet
