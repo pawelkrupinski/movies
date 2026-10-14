@@ -23,6 +23,12 @@
 #                 file that was already noisy can still be edited
 #   `ios`         scripts/ios-compile-check.sh (app target + Linux SwiftPM) on ios/** — this one
 #                 is minutes, not seconds, and only runs for iOS pushes
+#   `judgements`  scripts/ci/identity_judgements_lint.py on labels.tsv, accepted.tsv, the suspect and
+#                 known-wrong baselines and the expected matches and hard clusters: the judgements and
+#                 the files leaning on them agree. A labels.tsv change is also read against the takes
+#                 the newest Identity model convergence legs served (their diagnostics artifacts, cached
+#                 per run): a take the push newly calls wrong that no baseline lists fails here, not
+#                 in the leg after the push (911d8f486)
 #
 # WHAT IS CHECKED is the pushed commit's tree: in place when the checkout is that tree, else in a
 # temporary worktree of it (cold, so an sbt check there takes minutes, not seconds). The same
@@ -63,7 +69,7 @@ Zero=0000000000000000000000000000000000000000
 # ── Which checks a set of changed paths selects ─────────────────────────────────────────────────
 # One line per path on stdin; prints the selected check names, one per line, in run order.
 plan() {
-    local eslint=0 drift=0 snapshot=0 sbt=0 dashboards=0 hooktest=0 actionlint=0 shellcheck=0 ios=0 path
+    local eslint=0 drift=0 snapshot=0 sbt=0 dashboards=0 hooktest=0 actionlint=0 shellcheck=0 ios=0 judgements=0 path
     while IFS= read -r path; do
         case "$path" in
             web/src/main/assets/js/*.js|web/src/page/resources/*.js|eslint.config.js|eslint-rules/*.js|package.json|package-lock.json) eslint=1 ;;
@@ -92,7 +98,13 @@ plan() {
         case "$path" in
             ios/*) ios=1 ;;
         esac
+        case "$path" in
+            test/resources/fixtures/identity-unmatched/*.tsv|test/resources/fixtures/identity-takes/*|\
+            test/resources/fixtures/identity-suspects/*|test/resources/fixtures/corpus/expected-hard-clusters-*|\
+            scripts/ci/identity_judgements_lint*.py|scripts/ci/identity_takes_diff.py) judgements=1 ;;
+        esac
     done
+    [ $judgements = 1 ] && echo judgements
     [ $eslint = 1 ] && echo eslint
     [ $drift = 1 ] && echo drift
     [ $snapshot = 1 ] && echo snapshot
@@ -322,6 +334,34 @@ check_sbt() {
 
 check_ios() {
     scripts/ios-compile-check.sh
+}
+
+# The takes the newest decided Identity model convergence legs served, as `<dir>/<cc>-takes/<cc>.json.gz` under a cache
+# kept per run in the shared git dir; prints the files, or nothing (warned) when gh cannot fetch them in time.
+served_takes() {
+    local run cache
+    run="$(perl -e 'alarm shift; exec @ARGV or exit 127' "$GhSeconds" gh run list --workflow "Identity model convergence" \
+        --branch main --status completed --limit 30 --json databaseId,conclusion \
+        --jq '[.[] | select(.conclusion == "success" or .conclusion == "failure")][0].databaseId // empty' 2>/dev/null)" || run=""
+    [ -n "$run" ] || { warn "judgements: no Identity model convergence run to read served takes from — served check SKIPPED"; return 0; }
+    cache="$(git rev-parse --path-format=absolute --git-common-dir)/kinowo-cache/served-takes/$run"
+    if [ ! -d "$cache" ]; then
+        mkdir -p "$cache.part"
+        perl -e 'alarm shift; exec @ARGV or exit 127' 120 gh run download "$run" -p 'convergence-diagnostics-*-convergence' \
+            -D "$cache.part" >/dev/null 2>&1 && mv "$cache.part" "$cache" \
+            || { rm -rf "$cache.part"; warn "judgements: could not fetch run $run's served takes — served check SKIPPED"; return 0; }
+    fi
+    find "$cache" -path '*-takes/*.json.gz'
+}
+
+check_judgements() {
+    local served=() before=""
+    if printf '%s\n' "$changed" | grep -qx 'test/resources/fixtures/identity-unmatched/labels.tsv' && command -v gh >/dev/null; then
+        while IFS= read -r f; do [ -n "$f" ] && served+=("$f"); done < <(served_takes)
+        before="$tmp/labels-before.tsv"
+        git show "$base_sha:test/resources/fixtures/identity-unmatched/labels.tsv" > "$before" 2>/dev/null || before=""
+    fi
+    python3 scripts/ci/identity_judgements_lint.py ${served[@]+--served "${served[@]}"} ${before:+--labels-before "$before"}
 }
 
 tmp="$(mktemp -d)"

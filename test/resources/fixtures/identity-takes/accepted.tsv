@@ -5,10 +5,5 @@
 # A line, tab-separated: country, venue (or * for every venue), rawTitle, before, after (tmdb:<id>, none, or *), why.
 # Once the check passes on a commit that commit becomes the next base, so a line here is spent; prune at leisure.
 country	venue	rawTitle	before	after	note
-uk	Lighthouse Poole	RBO: Romeo & Juliet (ENCORE) - Cert TBC	tmdb:1702789	none	a right take lost to a precision guard (withdrawn: a sibling of its 15-venue family denies the film), the wrong-over-missing trade; judged 10-14 (takes check d7bf9d92c..0e41a4812)
-uk	Lighthouse Poole	RBO: Romeo & Juliet - Cert TBC	tmdb:1702789	none	a right take lost to a precision guard (withdrawn: a sibling of its 15-venue family denies the film), the wrong-over-missing trade; judged 10-14 (takes check d7bf9d92c..0e41a4812)
-uk	Pocklington Arts Centre	Royal Ballet & Opera: Romeo & Juliet	tmdb:1702789	none	a right take lost to a precision guard (withdrawn: a sibling of its 15-venue family denies the film), the wrong-over-missing trade; judged 10-14 (takes check d7bf9d92c..0e41a4812)
-uk	Gala Cinema Durham	The Royal Ballet: Romeo & Juliet	tmdb:1702789	none	a right take lost to a precision guard (withdrawn: a sibling of its 15-venue family denies the film), the wrong-over-missing trade; judged 10-14 (takes check d7bf9d92c..0e41a4812)
-uk	Palace Cinema Gorleston-on-Sea	RBO: TOSCA 2027	tmdb:1702784	none	a right take lost to a precision guard (a stage house's billing denies the work's screen namesake, and the relay record falls below the cut), the wrong-over-missing trade; judged 10-14 (takes check d7bf9d92c..0e41a4812)
 pl	Kino Powiśle	OPERA-OTELLO	tmdb:1703634	none	a right take lost to the sole-result coverage rule ("opera otello" is 2 of "The Metropolitan Opera 2026/27: Otello"'s words, its banner part touched in part), the wrong-over-missing trade: 11 wrong cured for 2 right lost; judged 10-14
 uk	Riverside Theatre Woodbridge	Andre Rieu Christmas 2026	tmdb:1707785	none	a right take lost to the sole-result coverage rule (3 of its record's 8 words), the wrong-over-missing trade: 11 wrong cured for 2 right lost; judged 10-14

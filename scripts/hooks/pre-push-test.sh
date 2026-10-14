@@ -57,6 +57,13 @@ check "docs run nothing" "" "$(plan docs/readme.md README.md)"
 check "checks come out once each, in run order" "eslint snapshot actionlint shellcheck sbt" \
   "$(plan web/src/main/assets/js/a.js build.sbt scripts/x.sh .github/workflows/a.yml worker/src/main/scala/A.scala test/resources/fixtures/08-06-2026/y)"
 
+check "a labels.tsv change runs the judgements lint" "judgements" "$(plan test/resources/fixtures/identity-unmatched/labels.tsv)"
+check "an accepted move or a suspect baseline line runs it" "judgements" \
+  "$(plan test/resources/fixtures/identity-takes/accepted.tsv test/resources/fixtures/identity-suspects/baseline.tsv)"
+check "a hard-cluster expectation runs it" "judgements" "$(plan test/resources/fixtures/corpus/expected-hard-clusters-pl.txt)"
+check "the lint itself runs it" "judgements" "$(plan scripts/ci/identity_judgements_lint.py)"
+check "an unmatched-cluster capture does not" "" "$(plan test/resources/fixtures/identity-unmatched/pl.json.gz)"
+
 # `sbt compile` skips the Test and It configs: f20a6b5dd's new `protected def wire` made a worker
 # it/ spec's local val ambiguous and reached CI unseen. The sbt check compiles the test configs of
 # every module the push touches AND every module that depends on one, in its one sbt run.
