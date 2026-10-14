@@ -10,8 +10,8 @@ import models.Country
  * A spec that IS about country scoping must NOT use it: build the instances
  * explicitly and hold two at once, the way `TitleNormalizerInstanceSpec` does.
  *
- * `common`'s own tests cannot see `testkit` (testkit depends on common), so an
- * identical helper lives in `common/src/test`; there is no module both can share.
+ * `common`'s and `identity`'s own tests cannot see `testkit` (testkit depends on both), so
+ * `build.sbt` compiles this source into their test configs too (`sharedTestDoubles`).
  */
 object SingleCountryNormalizer {
   /** A NEW Poland normalizer per call — never one every spec in the JVM shares,

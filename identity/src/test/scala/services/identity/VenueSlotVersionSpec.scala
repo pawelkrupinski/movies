@@ -15,15 +15,15 @@ class VenueSlotVersionSpec extends AnyFlatSpec with Matchers {
   private lazy val digested: Seq[String] = resource("/venue-slot-sources.txt").linesIterator.toSeq
 
   "the venue slot version" should "digest the code that builds a slot" in {
-    digested should contain allOf ("scala/services/identity/VenueSlots.scala", "scala/services/movies/CinemaSlotBuilder.scala",
-      "scala/services/movies/ScrapeListing.scala", "scala/services/movies/MovieRecordMerge.scala",
-      "scala/services/movies/ShowtimesDigest.scala", "scala/services/movies/TitleNormalizer.scala", "scala/models/SourceData.scala")
+    digested should contain allOf ("identity/src/main/scala/services/identity/VenueSlots.scala", "common/src/main/scala/services/movies/CinemaSlotBuilder.scala",
+      "common/src/main/scala/services/movies/ScrapeListing.scala", "common/src/main/scala/services/movies/MovieRecordMerge.scala",
+      "common/src/main/scala/services/movies/ShowtimesDigest.scala", "common/src/main/scala/services/movies/TitleNormalizer.scala", "common/src/main/scala/models/SourceData.scala")
   }
 
   it should "leave out the resolver, its learned data and the stores, which build no slot" in {
-    digested should contain noneOf ("scala/services/identity/IncrementalResolver.scala", "scala/services/identity/IdentityCalibration.scala",
-      "scala/services/identity/IdentityMeasures.scala", "scala/services/identity/TitleDecorations.scala",
-      "scala/services/movies/MovieRepository.scala", "resources/identity-decorations.json", "resources/identity-weights.json")
+    digested should contain noneOf ("identity/src/main/scala/services/identity/IncrementalResolver.scala", "identity/src/main/scala/services/identity/IdentityCalibration.scala",
+      "identity/src/main/scala/services/identity/IdentityMeasures.scala", "identity/src/main/scala/services/identity/TitleDecorations.scala",
+      "common/src/main/scala/services/movies/MovieRepository.scala", "identity/src/main/resources/identity-decorations.json", "identity/src/main/resources/identity-weights.json")
   }
 
   it should "lex every Scala source it digests, so a comment edit to none of them moves it" in {
@@ -33,8 +33,8 @@ class VenueSlotVersionSpec extends AnyFlatSpec with Matchers {
   it should "leave out the rest of the projection, which builds no slot" in {
     // The projection plan held the slot memo and the venue build until 2026-10-04: every change to the rest of it moved
     // the version, and the next boot rebuilt every slot (a US first tick 65 s and 3.1 GB, not ~25 s).
-    digested should contain noneOf ("scala/services/identity/IdentityProjectionPlan.scala", "scala/services/identity/LiveProjectionIndex.scala",
-      "scala/services/identity/ProjectionScope.scala")
+    digested should contain noneOf ("identity/src/main/scala/services/identity/IdentityProjectionPlan.scala", "identity/src/main/scala/services/identity/LiveProjectionIndex.scala",
+      "identity/src/main/scala/services/identity/ProjectionScope.scala")
   }
 
   it should "be what the memo's environment is made under" in {

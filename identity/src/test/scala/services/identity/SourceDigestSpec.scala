@@ -73,16 +73,16 @@ class SourceDigestSpec extends AnyFlatSpec with Matchers {
   }
 
   "the digest" should "not move on a comment-only or whitespace-only edit to a Scala source" in {
-    val before = Map("scala/A.scala" -> "object A {\n  val x = 1\n\n  val y = 2\n}\n")
-    val after  = Map("scala/A.scala" -> "/** A. */\nobject A {   \n  val x = 1 // one\n\n  /* two */\n\n  val y = 2\n}\n")
+    val before = Map("common/src/main/scala/A.scala" -> "object A {\n  val x = 1\n\n  val y = 2\n}\n")
+    val after  = Map("common/src/main/scala/A.scala" -> "/** A. */\nobject A {   \n  val x = 1 // one\n\n  /* two */\n\n  val y = 2\n}\n")
     digest(after) shouldBe digest(before)
   }
 
   it should "move on a code edit, and on any edit to a file that is not Scala" in {
-    val before = Map("scala/A.scala" -> "object A { val x = 1 }\n", "resources/a.json" -> "{\"a\": 1}")
-    digest(before + ("scala/A.scala" -> "object A { val x = 2 }\n")) should not be digest(before)
-    digest(before + ("scala/A.scala" -> "object A { val x = \"1 // 2\" }\n")) should not be digest(before + ("scala/A.scala" -> "object A { val x = \"1\" }\n"))
-    digest(before + ("resources/a.json" -> "{\"a\": 1} ")) should not be digest(before)
+    val before = Map("common/src/main/scala/A.scala" -> "object A { val x = 1 }\n", "common/src/main/resources/a.json" -> "{\"a\": 1}")
+    digest(before + ("common/src/main/scala/A.scala" -> "object A { val x = 2 }\n")) should not be digest(before)
+    digest(before + ("common/src/main/scala/A.scala" -> "object A { val x = \"1 // 2\" }\n")) should not be digest(before + ("common/src/main/scala/A.scala" -> "object A { val x = \"1\" }\n"))
+    digest(before + ("common/src/main/resources/a.json" -> "{\"a\": 1} ")) should not be digest(before)
   }
 
   private def digest(files: Map[String, String]): String =

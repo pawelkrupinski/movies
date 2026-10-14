@@ -146,31 +146,6 @@ lazy val itReportSettings = Seq(
 lazy val common = (project in file("common"))
   .settings(
     name := "common",
-    // The identity model's rules version (`services.identity.IdentityRules`): a digest of what the resolver is built
-    // from — the sources the compiler records the resolver and its store as reaching, and the resources none but other
-    // code names (`IdentityRulesSources`). A deploy that changes none of them keeps the model's families; one that
-    // changes any re-resolves them. The digested paths ship beside it (`identity-rules-sources.txt`).
-    // The identity projection's venue slot code is versioned the same way (`VenueSlotMemo.codeVersion`), from what builds
-    // a slot (`IdentityRulesSources.VenueSlotRoots`, not following the leaves that reach the resolver): a deploy that
-    // changes none of it keeps the fingerprints a restarted worker reuses its stored slots by.
-    // Both digest a Scala source's code, not its comments or spare whitespace (`project/SourceDigest.scala`): a
-    // comment-only edit moves neither.
-    Compile / resourceGenerators += Def.task {
-      val main     = baseDirectory.value / "src" / "main"
-      val analysis = (Compile / compile).value
-      Seq(("identity-rules", IdentityRulesSources.Roots, Set.empty[String]),
-          ("venue-slot", IdentityRulesSources.VenueSlotRoots, IdentityRulesSources.VenueSlotLeaves),
-          ("agreement-rules", IdentityRulesSources.AgreementRoots, Set.empty[String])).flatMap { case (name, roots, leaves) =>
-        val sources  = IdentityRulesSources.of(analysis, roots, leaves)
-        val resources = IdentityRulesSources.resources(main, sources.filterNot(leaves))
-        val paths    = sources ++ resources
-        val version = (Compile / resourceManaged).value / s"$name-version.txt"
-        val listed  = (Compile / resourceManaged).value / s"$name-sources.txt"
-        IO.write(version, kinowo.build.SourceDigest.of(paths, path => IO.readBytes(main / path)))
-        IO.write(listed, paths.mkString("\n"))
-        Seq(version, listed)
-      }
-    }.taskValue,
     // standard sbt layout: src/main/scala, src/test/scala, src/test/resources
     libraryDependencies ++= Seq(
       play,             // play.api.Logging (the only Play API the shared code uses)
@@ -199,13 +174,60 @@ lazy val common = (project in file("common"))
       scalatestPlay % Test,
       scalatestScalaCheck % Test,
     ),
-    // The hand-stepped time doubles and the polling helper live ONCE, in testkit, beside every other
-    // shared fake. common's own specs need them too, but common cannot depend on testkit (testkit depends on common), so
-    // compile those two sources into common's test config as well. common's test classpath is never
-    // on another module's, so the two compilations never meet.
-    Test / unmanagedSources ++= Seq("MutableClock", "ManualScheduler", "Eventually", "SpecClock", "SpecTimeouts").map { name =>
-      (LocalRootProject / baseDirectory).value / "testkit" / "src" / "main" / "scala" / "tools" / s"$name.scala"
-    },
+    // The shared time doubles (`sharedTestDoubles`).
+    Test / unmanagedSources ++= sharedTestDoubles.value
+  )
+  .settings(unitReportSettings, testOrderSettings)
+  .settings(noApiDocs)
+
+// The hand-stepped time doubles, the polling helper and the one-country title normalizer live ONCE, in testkit, beside
+// every other shared fake. common's
+// and identity's own specs need them too, but neither can depend on testkit (testkit depends on both), so those sources
+// are compiled into their test configs as well. A test classpath is never on another module's, so the compilations
+// never meet.
+lazy val sharedTestDoubles = Def.setting(Seq("tools/MutableClock", "tools/ManualScheduler", "tools/Eventually", "tools/SpecClock",
+  "tools/SpecTimeouts", "tools/ChildJvm", "services/movies/SingleCountryNormalizer").map { name =>
+  (LocalRootProject / baseDirectory).value / "testkit" / "src" / "main" / "scala" / s"$name.scala"
+})
+
+// ── Identity resolver ────────────────────────────────────────────────────────
+//
+// The identity model (`services.identity`): the resolver, its agreement stage, its stores and measures. Built on
+// common — its models, titles, Mongo — and nothing in common builds on it (`tools.CommonReachesNoIdentitySpec`); the
+// worker runs it, the web app reads its traces and pins.
+lazy val identity = (project in file("identity"))
+  .dependsOn(common)
+  .settings(
+    name := "identity",
+    // The identity model's rules version (`services.identity.IdentityRules`): a digest of what the resolver is built
+    // from — the sources the compiler records the resolver and its store as reaching, here and in common, and the
+    // resources none but other code names (`IdentityRulesSources`). A deploy that changes none of them keeps the model's
+    // families; one that changes any re-resolves them. The digested paths ship beside it (`identity-rules-sources.txt`).
+    // The identity projection's venue slot code is versioned the same way (`VenueSlotMemo.codeVersion`), from what builds
+    // a slot (`IdentityRulesSources.VenueSlotRoots`, not following the leaves that reach the resolver): a deploy that
+    // changes none of it keeps the fingerprints a restarted worker reuses its stored slots by.
+    // Both digest a Scala source's code, not its comments or spare whitespace (`project/SourceDigest.scala`): a
+    // comment-only edit moves neither. Paths are the repository's (`identity/src/main/...`, `common/src/main/...`).
+    Compile / resourceGenerators += Def.task {
+      val repo     = (LocalRootProject / baseDirectory).value
+      val modules  = Seq(
+        IdentityRulesSources.Module("identity", (Compile / compile).value),
+        IdentityRulesSources.Module("common", (common / Compile / compile).value))
+      Seq(("identity-rules", IdentityRulesSources.Roots, Set.empty[String]),
+          ("venue-slot", IdentityRulesSources.VenueSlotRoots, IdentityRulesSources.VenueSlotLeaves),
+          ("agreement-rules", IdentityRulesSources.AgreementRoots, Set.empty[String])).flatMap { case (name, roots, leaves) =>
+        val sources   = IdentityRulesSources.of(modules, roots, leaves)
+        val resources = IdentityRulesSources.resources(repo, modules.map(_.name), sources.filterNot(leaves))
+        val paths     = sources ++ resources
+        val version = (Compile / resourceManaged).value / s"$name-version.txt"
+        val listed  = (Compile / resourceManaged).value / s"$name-sources.txt"
+        IO.write(version, kinowo.build.SourceDigest.of(paths, path => IO.readBytes(repo / path)))
+        IO.write(listed, paths.mkString("\n"))
+        Seq(version, listed)
+      }
+    }.taskValue,
+    libraryDependencies ++= Seq(scalatestPlay % Test, scalatestScalaCheck % Test),
+    Test / unmanagedSources ++= sharedTestDoubles.value,
     // The build's source digest (the identity rules and venue slot versions), compiled here too so its specs check
     // the very code the build digests with.
     Test / unmanagedSources += (LocalRootProject / baseDirectory).value / "project" / "SourceDigest.scala"
@@ -223,7 +245,7 @@ lazy val common = (project in file("common"))
 // common. Depends on common for HttpFetch/MovieRepository/models; carries scalatest on
 // the compile classpath because Eventually returns an `org.scalatest.Assertion`.
 lazy val testkit = (project in file("testkit"))
-  .dependsOn(common)
+  .dependsOn(common, identity)
   .settings(testOrderSettings)
   .settings(
     name := "testkit",
@@ -243,7 +265,7 @@ lazy val worker = (project in file("worker"))
   // `it` too: the integration specs need the same shared doubles the unit specs do —
   // notably the repositories that report an INCOMPLETE read, which is the only way to
   // test that a caller honours a completeness flag.
-  .dependsOn(common, testkit % "test,it,fixtures->compile")
+  .dependsOn(common, identity, testkit % "test,it,fixtures->compile")
   .enablePlugins(JavaAppPackaging)
   .configs(IntegrationTest, Fixtures)
   .settings(
@@ -321,7 +343,7 @@ lazy val web = (project in file("web"))
   // Compile/Test stay independent: the deployed `web/stage` is built from
   // Compile, which never sees worker, so the two apps remain decoupled in
   // production. (Same cross-app shape as e2e.)
-  .dependsOn(common, testkit % Test, worker % "page->fixtures")
+  .dependsOn(common, identity, testkit % Test, worker % "page->fixtures")
   .configs(IntegrationTest, PageTest)
   .settings(
     name := "web",
@@ -414,7 +436,7 @@ lazy val e2e = (project in file("e2e"))
 // ── Root aggregator (no sources) ─────────────────────────────────────────────
 
 lazy val root = (project in file("."))
-  .aggregate(common, testkit, web, worker, e2e)
+  .aggregate(common, identity, testkit, web, worker, e2e)
   .settings(
     name := "movies",
     publish / skip := true,
@@ -494,7 +516,7 @@ def ensureLocalMongo(state: State, uri: String): Unit = {
 // first failing module. `testUnit` is the full local alias; keeping the
 // aggregating aliases means new modules join the existing CI jobs rather than
 // spawning new ones.
-addCommandAlias("testUnit", "; all common/Test/test testkit/Test/test web/Test/test worker/Test/test ; e2eShared")
+addCommandAlias("testUnit", "; all common/Test/test identity/Test/test testkit/Test/test web/Test/test worker/Test/test ; e2eShared")
 // The e2e module MINUS the country-scoped specs. Those install a country's
 // TitleRuleSet into the process-global TitleNormalizer, so sharing a JVM with the
 // Polish whole-corpus specs (or with each other) silently normalises the wrong
@@ -507,7 +529,7 @@ addCommandAlias("itAll", "all web/IntegrationTest/test worker/IntegrationTest/te
 // and the `e2e` module is itself FANNED OUT across four parallel shards (each
 // tagged heavy spec boots the full ~110s pipeline one or more times, so on one
 // runner the module was the long pole). See .github/workflows/ci.yml.
-addCommandAlias("testUnitNoE2e", "all common/Test/test testkit/Test/test web/Test/test worker/Test/test")
+addCommandAlias("testUnitNoE2e", "all common/Test/test identity/Test/test testkit/Test/test web/Test/test worker/Test/test")
 
 // e2e CI shards. The two heavy whole-corpus determinism specs (tagged
 // @CorpusReplay) run by name, one per runner; `e2eRest` runs EVERYTHING ELSE in
