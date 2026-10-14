@@ -231,8 +231,8 @@ class ResolverAllocationSpec extends AnyFlatSpec with Matchers {
       val m = IdentityMeasures.listingFilm(dated, film, Some(i + 1), 1, 0)
       Scored(Candidate(id, film), model.probability(ListingFilm, m), m, denial = None, dated, Some(i + 1))
     }.sortBy(s => (-s.probability, s.candidate.tmdbId))
-    acceptance.acceptedBy(ranked, 167179) shouldBe Some("dated-title")
-    allocatesUnder(35000.0)(() => acceptance.acceptedBy(ranked, 167179).size.toDouble)   // 33,392; was 41,882: both films' and the listing's titles tokenised per call
+    Acceptance.ruleTaking(acceptance.aloneNamed(ranked), 167179) shouldBe Some("dated-title")
+    allocatesUnder(35000.0)(() => Acceptance.ruleTaking(acceptance.aloneNamed(ranked), 167179).size.toDouble)   // 33,392; was 41,882: both films' and the listing's titles tokenised per call
   }
 }
 

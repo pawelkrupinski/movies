@@ -21,7 +21,10 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
         houseProduction = IdentityMeasures.billsUnderItsHouse(listing, film, houses))
     }.sortBy(scored => (-scored.probability, scored.candidate.tmdbId))
   }
-  private def taken(candidates: Seq[Scored]): Option[Int] = acceptance.alone(candidates).map(_._1.candidate.tmdbId)
+  private def alone(candidates: Seq[Scored]): Option[Scored.Accepted] = acceptance.aloneNamed(candidates).map(_._1)
+  private def taken(candidates: Seq[Scored]): Option[Int] = alone(candidates).map(_._1.candidate.tmdbId)
+  /** The rule a node's alone acceptance took `film` by, as the decision's explanation names it. */
+  private def acceptedBy(ranked: Seq[Scored], film: Int): Option[String] = Acceptance.ruleTaking(acceptance.aloneNamed(ranked), film)
 
   // Flicks' UK and US "NT Live: The Misanthrope" (155 listings): TMDB's search for the play ranks
   // three bare records of Molière's work above the National Theatre's 2026 broadcast.
@@ -282,7 +285,7 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     val finnish = (1273554, Film("Supermarsu ja suuri huijaus", year = Some(2025), directors = Some(Seq("Joona Tena"))), None)
     taken(ranked(futrzak, finnish)) shouldBe None
     val placed  = suggested(ranked(futrzak, finnish), 1, 1273554 -> 1)
-    acceptance.acceptedBy(placed, 1273554) shouldBe Some("imdb-suggested")
+    acceptedBy(placed, 1273554) shouldBe Some("imdb-suggested")
     // the director rung, among several suggestions
     val other = (9, Film("Inny", year = Some(2020), directors = Some(Seq("Ktoś Inny"))), None)
     byImdb(suggested(ranked(futrzak, finnish, other), 2, 9 -> 1, 1273554 -> 2)) shouldBe Some(1273554)
@@ -327,7 +330,7 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     // a double bill is neither film
     byImdb(suggested(ranked(Listing("Basia. Humor w paski mam + Kocia Szajka"), (2, Film("Basia. Humor w paski mam"), None)), 1, 2 -> 1)) shouldBe None
     // and a film only IMDb's other-language match reached is the IMDb rule's alone, however it scores
-    acceptance.acceptedBy(suggested(ranked(Listing("Kuźma", year = Some(2026)), (3, Film("Кузьма: Страшно веселий", year = Some(2026)), None)), 2, 3 -> 1)
+    acceptedBy(suggested(ranked(Listing("Kuźma", year = Some(2026)), (3, Film("Кузьма: Страшно веселий", year = Some(2026)), None)), 2, 3 -> 1)
       .map(_.copy(probability = 0.99)), 3) shouldBe Some("imdb-suggested")
   }
 
@@ -375,9 +378,9 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     val dated = Listing("Akademia Kina Polskiego: Drogówka (2012)")
     val film  = (167179, Film("Drogówka", year = Some(2013)), Some(1))
     val other = (900001, Film("Drogówka", year = Some(1978)), Some(2))
-    acceptance.acceptedBy(ranked(dated, film, other), 167179) shouldBe Some("dated-title")
+    acceptedBy(ranked(dated, film, other), 167179) shouldBe Some("dated-title")
     // undated, the one word names no film on its own
-    acceptance.acceptedBy(ranked(Listing("Akademia Kina Polskiego: Drogówka"), film, other), 167179) should not be Some("dated-title")
+    acceptedBy(ranked(Listing("Akademia Kina Polskiego: Drogówka"), film, other), 167179) should not be Some("dated-title")
   }
 
   "a double programme of two whole works" should "take neither film, whatever its facts back" in {
@@ -486,11 +489,11 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     val manOfIron = Listing("Man of Iron", directors = Seq("Andrzej Wajda"), runtime = Some(153))
     val wajda     = (225, Film("Man of Iron", year = Some(1981), runtime = Some(144), directors = Some(Seq("Andrzej Wajda"))), Some(7))
     val favreau   = (1726, Film("Iron Man", year = Some(2008), runtime = Some(126), directors = Some(Seq("Jon Favreau")), popularity = Some(40.0)), Some(1))
-    acceptance.acceptedBy(ranked(manOfIron, favreau, wajda), 225) shouldBe Some("directors-title")
+    acceptedBy(ranked(manOfIron, favreau, wajda), 225) shouldBe Some("directors-title")
     val troll = Seq((1180831, Film("Troll 2", year = Some(2025), popularity = Some(20.0)), Some(1)),
       (736526, Film("Troll", year = Some(2022), popularity = Some(10.0)), Some(2)), (33061, Film("Troll", year = Some(1986)), Some(3)))
-    acceptance.acceptedBy(ranked(Listing("Troll (1986)"), troll *), 33061) shouldBe Some("dated-title")
-    acceptance.acceptedBy(ranked(misanthrope, bare :+ national *), 1693710) shouldBe Some("house-production")
+    acceptedBy(ranked(Listing("Troll (1986)"), troll *), 33061) shouldBe Some("dated-title")
+    acceptedBy(ranked(misanthrope, bare :+ national *), 1693710) shouldBe Some("house-production")
     // never a record from another year than the title dates: US "MetOpera: Carmen (2009)" ×513 took the Met's 2024
     // Carmen this way, though Eyre's 2009 staging is another record
     val dated = Listing("NT Live: The Misanthrope (2009)", runtime = Some(180))
@@ -498,7 +501,7 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     acceptance.refusals(ranked(dated, bare :+ national *)).find(_.rule == "house-production").map(_.why) shouldBe
       Some("its house's record is from another year than its title dates")
     // A film no rule takes names none.
-    acceptance.acceptedBy(ranked(misanthrope, bare :+ national *), 511684) shouldBe None
+    acceptedBy(ranked(misanthrope, bare :+ national *), 511684) shouldBe None
   }
 
   "a listing whose title a record contains" should "not take a series sibling its title only overlaps, on facts that record leaves missing" in {
@@ -519,7 +522,7 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     val listing     = Listing("BTS World Tour 'ARIRANG' In Buenos Aires: Live", year = Some(2026), runtime = Some(195), directors = Seq("Jungjae Ha"))
     val buenosAires = (1770237, Film("BTS World Tour 'Arirang'  in Buenos Aires: Live Viewing", year = Some(2026)), Some(1))
     val busan       = (1701849, Film("BTS WORLD TOUR [ARIRANG] in Busan", year = Some(2026), runtime = Some(195), directors = Some(Seq("Ha Jung-jae"))), None)
-    acceptance.acceptedBy(ranked(listing, buenosAires, busan), 1770237) shouldBe Some("sole-work")
+    acceptedBy(ranked(listing, buenosAires, busan), 1770237) shouldBe Some("sole-work")
     // Two records billing that work are no answer, whichever TMDB ranks first.
     val encore = (1770238, Film("BTS World Tour 'Arirang' in Buenos Aires: Encore", year = Some(2026)), Some(2))
     taken(ranked(listing, buenosAires, encore, busan)) shouldBe None
@@ -585,10 +588,10 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     val foley    = Scored(Candidate(7183, stranger), 0.463, measures, denial = None, listing, Some(1))
     val andersen = Scored(Candidate(1193128, Film("قضية الغرباء", year = Some(2025), runtime = Some(103))), 0.478,
       measures + ("venues.corroborating" -> IdentityMeasures.Number(1)), denial = None, listing, None, suggestedOnly = true)
-    acceptance.alone(Seq(andersen, foley)) shouldBe None
+    alone(Seq(andersen, foley)) shouldBe None
     // one it outscores, or one no other venue's listing corroborates, is no reason to decline
-    acceptance.alone(Seq(foley, andersen.copy(probability = 0.2))).map(_._1.candidate.tmdbId) shouldBe Some(7183)
-    acceptance.alone(Seq(andersen.copy(measures = measures), foley)).map(_._1.candidate.tmdbId) shouldBe Some(7183)
+    alone(Seq(foley, andersen.copy(probability = 0.2))).map(_._1.candidate.tmdbId) shouldBe Some(7183)
+    alone(Seq(andersen.copy(measures = measures), foley)).map(_._1.candidate.tmdbId) shouldBe Some(7183)
   }
 
   "no rule" should "take a film the title numbers as another instalment, alone or pooled" in {

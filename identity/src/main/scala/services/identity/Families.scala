@@ -9,7 +9,7 @@ import scala.annotation.tailrec
 /** The FAMILIES: the closure over title keys and the films members accept, grown until stable —
  *  a node matching a film another family's listings match joins that family, and its pool. Each
  *  round scores every family ([[FamilyScope]]) and takes what each node accepts ALONE
- *  ([[Acceptance.alone]]), unless a title-linked sibling denies it ([[withoutSiblingDenials]]).
+ *  ([[Acceptance.aloneNamed]]), unless a title-linked sibling denies it ([[withoutSiblingDenials]]).
  *  `narrow` is the teeth tests' `Mutation.NarrowFamilies`: families by sanitised title only, never grown. */
 private[identity] final class Families(scoring: CandidateScoring, acceptance: Acceptance, links: TitleLinks,
                                        normalizer: TitleNormalizer, narrow: Boolean) {
@@ -18,10 +18,13 @@ private[identity] final class Families(scoring: CandidateScoring, acceptance: Ac
 
   val pinnedFilm: Map[String, Int] = nodes.flatMap(node => pins.filmOf(node.listings.head.key).map(node.id -> _)).toMap
 
+  /** A node's block keys: its title keys and the films `ids` holds it matched. */
+  private def keysOf(node: EvidenceNode, ids: Map[String, Set[Int]]): Set[String] =
+    links.titleKeys(node) ++ ids.getOrElse(node.id, Set.empty[Int]).map(filmId => s"id:${filmId}")
+
   private def familiesOf(ids: Map[String, Set[Int]]): Map[String, Int] =
     FamilyClosure.families(nodes.map(node => node.id -> (
-      if (narrow) Set("t:" + normalizer.sanitize(node.evidence.cleanTitle))
-      else links.titleKeys(node) ++ ids.getOrElse(node.id, Set.empty[Int]).map(filmId => s"id:${filmId}"))).toMap)
+      if (narrow) Set("t:" + normalizer.sanitize(node.evidence.cleanTitle)) else keysOf(node, ids))).toMap)
 
   /** A node's ALONE acceptance, withdrawn when a title-linked sibling that accepted nothing itself
    *  DENIES the film: a bare "Samson i Dalila" beside the same venue family's "…: live in hd
@@ -79,11 +82,12 @@ private[identity] final class Families(scoring: CandidateScoring, acceptance: Ac
    *  round merged are scored again. */
   @tailrec private def grow(matchedIds: Map[String, Set[Int]], familyOf: Map[String, Int],
                             scored: Map[Seq[String], FamilyScope] = Map.empty): Round = {
-    val scopes = nodes.groupBy(node => familyOf(node.id)).map { case (family, members) =>
+    val grouped = nodes.groupBy(node => familyOf(node.id))
+    val scopes = grouped.map { case (family, members) =>
       val sorted = members.sortBy(_.id)
       family -> scored.getOrElse(sorted.map(_.id), new FamilyScope(sorted, scoring, acceptance, () => listingsScored += 1, () => relationsRead += 1))
     }
-    val bestOf = nodes.groupBy(node => familyOf(node.id)).toSeq.flatMap { case (family, members) =>
+    val bestOf = grouped.toSeq.flatMap { case (family, members) =>
       val scope = scopes(family)
       withoutSiblingDenials(members, scope, members.flatMap(node => scope.takenAlone(node).map(taken => node.id -> taken._1)).toMap)
     }.toMap
@@ -108,7 +112,7 @@ private[identity] final class Families(scoring: CandidateScoring, acceptance: Ac
   val bestOf: Map[String, Accepted] = round.bestOf
   /** Each node's block keys: its title keys and the films its family's round matched. */
   val blockKeysOf: Map[String, Set[String]] =
-    nodes.map(node => node.id -> (links.titleKeys(node) ++ round.matchedIds.getOrElse(node.id, Set.empty[Int]).map(filmId => s"id:${filmId}"))).toMap
+    nodes.map(node => node.id -> keysOf(node, round.matchedIds)).toMap
 
   def scopeOf(node: EvidenceNode): FamilyScope = scopes(familyOf(node.id))
 

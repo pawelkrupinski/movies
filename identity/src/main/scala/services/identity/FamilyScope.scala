@@ -38,9 +38,10 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
     // own measure weighs, and IMDb's title names the film the listing's title is.
     lazy val untranslated = listing.copy(originalTitle = None)
     val titledBy   = IdentityMeasures.soleImdbTitled(imdbTitles).filter { case (id, _) =>
-      this.pool.exists(_.tmdbId == id) && !this.pool.exists(other => other.tmdbId != id &&
-        IdentityMeasures.TitlesItsOwn(IdentityMeasures.titleRelation(untranslated, other.film, houses, qualifiers).value)) &&
-        this.pool.find(_.tmdbId == id).exists(candidate => IdentityMeasures.takesImdbTitle(listing, candidate.film)) }
+      // a film of the pool's, its IMDb title its to take, that no other film of the pool carries as its own
+      this.pool.find(_.tmdbId == id).exists(candidate => IdentityMeasures.takesImdbTitle(listing, candidate.film)) &&
+        !this.pool.exists(other => other.tmdbId != id &&
+          IdentityMeasures.TitlesItsOwn(IdentityMeasures.titleRelation(untranslated, other.film, houses, qualifiers).value)) }
     val scoredPool = titledBy.fold(this.pool) { case (id, titles) => this.pool.map(candidate =>
       if (candidate.tmdbId == id) candidate.copy(film = IdentityMeasures.withVenueTitles(candidate.film, titles.toSeq.sorted)) else candidate) }
     val relationOf = titledBy.fold(related) { case (id, _) =>

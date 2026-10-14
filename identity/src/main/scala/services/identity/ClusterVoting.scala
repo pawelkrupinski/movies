@@ -12,11 +12,10 @@ private[identity] final class ClusterVoting(scoring: CandidateScoring, families:
   /** Does `n`'s own title evidence name `film`: its title searches returned it, or its title (a
    *  whole spelling, its original title or a segment) names the film's and not another
    *  instalment of its series (`IdentityMeasures.namesFilm`)? */
-  private def titleNames(node: EvidenceNode, film: Candidate): Boolean =
-    {
-      val scope = families.scopeOf(node)
-      scope.reach(node).search.contains(film.tmdbId) || IdentityMeasures.namesFilm(scope.evidenceOf(node).measured, film.film)
-    }
+  private def titleNames(node: EvidenceNode, film: Candidate): Boolean = {
+    val scope = families.scopeOf(node)
+    scope.reach(node).search.contains(film.tmdbId) || IdentityMeasures.namesFilm(scope.evidenceOf(node).measured, film.film)
+  }
 
   /** The group vote over a cluster's POOLED scoring: the accepted film — but a film no member's
    *  title names, which only a credited director's filmography reached, only when nothing else
