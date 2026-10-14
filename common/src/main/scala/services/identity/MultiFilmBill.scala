@@ -52,12 +52,18 @@ object MultiFilmBill {
   /** The marker by which one of `titles` bills several films, as its folded words read ("triple feature", "trilogy",
    *  "maraton"), when one does beside other words. */
   def marker(titles: Seq[String]): Option[String] =
+    titles.iterator.flatMap(title => HeadingBanner.findFirstMatchIn(title).map(_.group(1).toLowerCase(java.util.Locale.ROOT))).nextOption().orElse(
     titles.iterator.map(folded).flatMap { words =>
       Markers.iterator.flatMap(_.findFirstMatchIn(words)).find { m =>
         val rest = (words.substring(0, m.start) + " " + words.substring(m.end)).split(' ')
         rest.exists(word => word.length > 1 && word.exists(_.isLetter))
       }.map(_.matched)
-    }.nextOption()
+    }.nextOption())
+
+  /** "Triple" or "Double" heading a title as its banner, a colon after it and a title after that — DE Filmpalast's
+   *  "Triple: Der Herr der Ringe - Extended Versions" (Jackson's three back to back) — read on the title as billed, since
+   *  the folded words lose the colon that tells the banner from a film's own name ("Triple 9", "Double Trouble"). */
+  private val HeadingBanner = """(?i)^\s*(triple|double|quadruple)\s*:\s*\p{L}""".r
 
   /** A spaced dash between a title and its annotation. */
   private val DashPiece = """\s+[-\u2013\u2014]\s+""".r

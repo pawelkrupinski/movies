@@ -27,6 +27,11 @@ class MultiFilmBillSpec extends AnyFlatSpec with Matchers {
     // 2025 film titled "English" filled by the language its bracket bills
     marker("Lord Of The Rings Triple (Extended Version - English)") shouldBe Some("triple")
     marker("Das große Herr der Ringe Triple") shouldBe Some("triple")
+    // "Triple" or "Double" heading the title as its banner, a colon after it: DE Filmpalast's "Triple: Der Herr der
+    // Ringe - Extended Versions" ×8 (Jackson's three back to back) took Bakshi's 1978 animation (convergence 2026-10-14)
+    marker("Triple: Der Herr der Ringe - Extended Versions") shouldBe Some("triple")
+    marker("Double: Dune: Part One & Part Two (DBOX)") shouldBe Some("double")
+    MultiFilmBill.billsBeside(Seq("Triple: Der Herr der Ringe - Extended Versions (DBOX)"), Film("Der Herr der Ringe", year = Some(1978))) shouldBe true
     // DE recording 38355584482: a touring block of shorts and a short film day, each titled like The Who's 1979 film
     // and taken as it on IMDb's, Filmweb's and RT's agreement
     Seq("SHORTS ATTACK! THE KIDS ARE ALRIGHT", "Shorts Attack 2026: The Kids are alright", "Kurzfilmtag Oktober: The Kids Are Alright 2026",
@@ -39,7 +44,8 @@ class MultiFilmBillSpec extends AnyFlatSpec with Matchers {
     // the marker alone is a film's whole title, and "&", "Part Two", "2D" bill one film
     Seq("Marathon", "Double Feature", "Trilogy", "Fast & Furious", "Romeo & Juliet", "Dune: Part Two", "Wicked: Part 1 2D",
       "Avatar 2 (2022)", "Double Indemnity", "Body Double", "Triple Frontier", "Triple 9", "Triple Threat", "The Double Life of Veronique", "Krótki film o miłości",
-      "The Night Is Short, Walk on Girl", "Shorts", "Kurzfilm").foreach(title => withClue(title)(marker(title) shouldBe None))
+      "The Night Is Short, Walk on Girl", "Shorts", "Kurzfilm", "Triple 9: Extended", "Double Trouble: The Movie")
+      .foreach(title => withClue(title)(marker(title) shouldBe None))
   }
 
   "A film whose own title carries the marker" should "be no bill of others" in {
