@@ -3,7 +3,7 @@ package tools
 import play.api.Logging
 
 import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Path, Paths, StandardCopyOption}
+import java.nio.file.{Files, Path, Paths}
 import scala.concurrent.duration._
 import scala.jdk.CollectionConverters._
 import scala.util.{Try, Using}
@@ -71,18 +71,8 @@ class FileEnrichmentCacheStore(val root: Path, ttl: FiniteDuration = FileEnrichm
   /** Written via a temporary file and an atomic move, so a run killed mid-write
    *  leaves either the old entry or the new one — never a truncated file the next
    *  preload has to guess about. */
-  override def put(key: String, response: CachedResponse): Unit = {
-    val target = pathFor(key)
-    Files.createDirectories(target.getParent)
-    val temporary = Files.createTempFile(target.getParent, "entry", ".tmp")
-    try {
-      Files.write(temporary, FileEnrichmentCacheStore.encode(key, System.currentTimeMillis(), response))
-      Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
-      ()
-    } catch {
-      case failure: Throwable => Files.deleteIfExists(temporary); throw failure
-    }
-  }
+  override def put(key: String, response: CachedResponse): Unit =
+    AtomicFiles.write(pathFor(key), FileEnrichmentCacheStore.encode(key, System.currentTimeMillis(), response))
 
   /** Hashed, two levels deep. The key is a whole URL — far too long for a filename
    *  on any filesystem, and full of characters that are path separators on one of

@@ -1,12 +1,11 @@
 package clients.tools
 
 import settings.FixtureRoot
-import tools.HttpFetch
+import tools.{AtomicFiles, HttpFetch}
 
 import java.io.File
 import java.net.URI
 import java.nio.charset.StandardCharsets
-import java.nio.file.Files
 
 /** Pass-through `HttpFetch` that also writes every response body to a
  *  fixture file under `test/resources/fixtures/$fixtureDirectory/`. Used by
@@ -109,8 +108,10 @@ class RecordingHttpFetch(fixtureDirectory: String, delegate: HttpFetch, foldYear
     renameAncestorIfFile(file)
     file.getParentFile.mkdirs()
     val target = if (file.exists() && file.isDirectory) contentSibling(file) else file
-    target.createNewFile()
-    Files.write(target.toPath, content)
+    // Whole or not at all: a gap-fill leg's order passes each record the answer they share to the
+    // same file while the others replay it, and written in place a pass read it mid-truncate and
+    // scored /m/eternity_2025 with no Tomatometer where its siblings read 76 (run 38498856157).
+    AtomicFiles.write(target.toPath, content)
   }
 
   /** Walk up from `file` to find the deepest existing ancestor. If it's
