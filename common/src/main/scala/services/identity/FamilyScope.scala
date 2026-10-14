@@ -142,6 +142,16 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
       .map(candidate => candidate.tmdbId -> sources(candidate)).filter(_._2 >= FeedLink.OverrulingSources)
       .sortBy { case (rival, count) => (-count, rival) }.headOption
       .map { case (rival, count) => FeedLink(id, film, rival, count) }
+      .orElse(titledRival(node.evidence.titlesOnly.measured, film).map(rival => FeedLink(id, film, rival, FeedLink.TitledRival)))
+  }
+  /** The one film of the pool `titles` (a node's titles alone) name exactly, when they name the linked `film` not at all. */
+  private def titledRival(titles: IdentityMeasures.Listing, film: Int): Option[Int] = {
+    def relation(candidate: Candidate) = IdentityMeasures.titleRelation(titles, candidate.film, houses, qualifiers).value
+    if (!pool.exists(_.tmdbId == film) || pool.exists(candidate => candidate.tmdbId == film && IdentityMeasures.NamingRelations(relation(candidate)))) None
+    else pool.filter(candidate => candidate.tmdbId != film && relation(candidate) == "exact").map(_.tmdbId) match {
+      case Seq(rival) => Some(rival)
+      case _          => None
+    }
   }
 
   /** `node`'s evidence as this scope reads it: its titles alone when its feed link is overruled ([[FeedLink]]) — the facts

@@ -265,8 +265,13 @@ object IdentityMeasures {
    *  that the listing can tell. */
   def screenNamesake(listing: Listing, film: Film): Boolean =
     listing.billsAStageHouse && !film.ownTitleTokens.exists(_.exists(StageHouseWords))
-  /** Does one of `titles` name an opera or ballet house ([[StageHouseWords]])? */
-  private[identity] def billsAStageHouse(titles: Seq[String]): Boolean = titles.exists(title => TitleContainment.tokens(title).exists(StageHouseWords))
+  /** Does one of `titles` name an opera or ballet house ([[StageHouseWords]])? A house's initials only standing alone: DE
+   *  "Jin-Roh - Die Wolfsbrigade" is Okiura's anime, no Royal Opera House relay, whatever its hyphen splits off. */
+  private[identity] def billsAStageHouse(titles: Seq[String]): Boolean = titles.exists(title =>
+    TitleContainment.tokens(title).exists(word => StageHouseWords(word) && !HouseInitials(word)) ||
+      StandaloneHouseInitials.findFirstIn(title).isDefined)
+  private val HouseInitials: Set[String] = Set("rbo", "roh")
+  private val StandaloneHouseInitials = """(?i)(?<![\p{L}\d]-?)(?:rbo|roh)(?!-?[\p{L}\d])""".r
 
   /** What a stage house's relay title bills, read off its FRAGMENTS — its delimited pieces ([[pieces]]), each bracket
    *  apart from what it follows, digits out: a fragment naming a house ([[StageHouseWords]]) is a HOUSE, every other one

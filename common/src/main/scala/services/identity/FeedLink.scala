@@ -15,18 +15,27 @@ package services.identity
  *  credit to Antoine Fuqua. The node is then read on its titles alone
  *  ([[Evidence.titlesOnly]]) and the linked film is denied it; a link another source confirms, or one only a single
  *  source contradicts, stands (DE "Kohlhiesels Töchter": Cineamo's 1962 film at one venue, kinoheld's 1920 one at
- *  another — two films, each named once). */
+ *  another — two films, each named once).
+ *
+ *  Overruled too when no source backs the linked film and the venue's own title, read without the facts the feed copied,
+ *  names another film exactly and the linked one not at all ([[FeedLink.TitledRival]]): the operator typed the title
+ *  and picked the record from a search, and the title is the claim. DE Yorck's "Jin-Roh - Die Wolfsbrigade", linked to
+ *  Kim Jee-woon's 2018 "Illang" with its 139 minutes and original title copied, is Okiura's 1999 anime. */
 private[identity] final case class FeedLink(id: CatalogueId, film: Int, rival: Int, sources: Int) {
+  private def because: String =
+    if (sources == FeedLink.TitledRival) s"its title names $rival exactly and $film not at all" else s"$sources other source(s) back $rival"
   /** What the decision's explanation says of it. */
   def explanation: String =
-    s"feed ${id.source} ${id.id} links $film, overruled: $sources other source(s) back $rival and none backs $film — its copied facts set aside"
+    s"feed ${id.source} ${id.id} links $film, overruled: $because and none backs $film — its copied facts set aside"
   /** Why the linked film is denied the node. */
-  def denial: String = s"its feed's link (${id.source} ${id.id}) overruled: $sources other source(s) back $rival"
+  def denial: String = s"its feed's link (${id.source} ${id.id}) overruled: $because"
 }
 
 private[identity] object FeedLink {
   /** How many sources other than the feed's own entry must back a rival the title names to overrule the link. */
   val OverrulingSources = 2
+  /** The `sources` of a link overruled by the venue's own title naming another film exactly, no source backing either. */
+  val TitledRival = 0
 
   /** The one TMDB film a TMDB-keyed feed links every listing of `node` to, with the id that links it. */
   def linked(node: EvidenceNode): Option[(CatalogueId, Int)] =
