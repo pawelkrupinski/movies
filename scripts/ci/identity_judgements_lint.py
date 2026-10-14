@@ -58,9 +58,6 @@ GRANDFATHERED = {
         "identity takes (pl) passes past 7f939ee78 -- then strike the accepted.tsv line and this one",
     ("accepted", "uk", "Riverside Theatre Woodbridge", "Andre Rieu Christmas 2026", "tmdb:1707785"):
         "7f939ee78's sole-result coverage trade, as above: spent once identity takes (uk) passes past 7f939ee78",
-    ("expected", "pl", "hard-clusters", "ktoscalkiemobcy", "tmdb:7183"):
-        "c151636f1 regenerated the expectation to the take 25246b125 leaves at Kino Kryterium; the take is being fixed "
-        "(the Ktos calkiem obcy follow-up of the 2026-10-14 destabilization report) -- regenerate, then strike",
     ("expected", "pl", "hard-clusters", "obcywdomu", "tmdb:923171"):
         "the hard-cluster replay takes Wortman's 1986 short for U-jazdowski's block of three 2025-26 shorts billed "
         "'Obcy w domu' (labels.tsv, judged 10-06); 257ad0afd regenerated it so -- fix the take, regenerate, then strike",
