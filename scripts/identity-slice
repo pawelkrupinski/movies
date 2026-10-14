@@ -267,7 +267,13 @@ fi
 [ "${#refs[@]}" -gt 0 ] || refs=(.)
 for i in "${!refs[@]}"; do
   t=$(tree_of "${refs[$i]}") || exit 1
-  run_at "$t" "$(sha_of "${refs[$i]}")" "$work/$i.tsv" "${pass[@]}" > "$work/$i.txt" || { cat "$work/$i.txt"; exit 1; }
+  # 3: every take written, but some slice met a request it does not hold (read as unknown, as a leg reads a gap) — said, kept
+  rc=0; run_at "$t" "$(sha_of "${refs[$i]}")" "$work/$i.tsv" "${pass[@]}" > "$work/$i.txt" || rc=$?
+  case $rc in
+    0) ;;
+    3) identity_log "${refs[$i]}: some slices are incomplete (above) — their takes read the missing requests as unknown" ;;
+    *) cat "$work/$i.txt"; exit 1 ;;
+  esac
 done
 if [ "${#refs[@]}" -eq 1 ]; then
   [ -n "$batch" ] || cat "$work/0.txt"

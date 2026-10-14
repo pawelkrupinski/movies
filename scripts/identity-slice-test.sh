@@ -73,6 +73,7 @@ h='selector\tkey\tvenue\trawTitle\tfilm\ttitle\tbasis\tconfidence\tmodel\trules\
     printf 'k\tKino|Sinn\tKino\tSinn\ttmdb:9\tSinn (1990)\tOwnMatch\t0.8\ttmdb:9\t\t\t\tWRONG\twhy\n'
   fi; } > "\$out"
 echo "decided"
+[ -z "\${STUB_INCOMPLETE:-}" ] || { echo "SLICE INCOMPLETE" >&2; exit 3; }
 STUB
 chmod +x "$work/bin/sbt" "$work/bin/java"
 
@@ -95,6 +96,9 @@ check "...and decides it at the build that logged it" "1" "$(grep -c -- "--ref $
 check "a log line naming no listing is refused" "2" "$(slice --log '{"country":"de"}' > /dev/null; echo $?)"
 check "a ref the clone does not hold is refused by name" "1" "$(slice de --recording 777 --key 'Kino|Lalka' --ref 0123456789abcdef > /dev/null; grep -c 'no commit 0123456789abcdef' "$work/err")"
 check "a batch file is handed to the JVM by its absolute path" "1" "$(cd "$work" && printf 'Kino\tLalka\n' > b.tsv && slice de --recording 777 --batch b.tsv --ref HEAD > /dev/null; grep -c -- "--batch $work/b.tsv" "$work/calls")"
+out=$(cd "$work" && STUB_INCOMPLETE=1 slice de --recording 777 --batch b.tsv --ref HEAD~1 --ref HEAD)
+check "a batch whose slices met a request they lack still diffs the two refs, the incompleteness said at each ref" "1 2" \
+  "$(grep -c '^TALLY' <<< "$out") $(grep -c 'incomplete' "$work/err")"
 
 rm -f "$work/calls" "$work/sbt-calls"
 check "--compiles lays a ref out with the tool files and compiles it, deciding nothing" "0 0" \
