@@ -86,6 +86,15 @@ Captures from 2026-10-14 on keep those answers (`live`: every TMDB/IMDb response
 `LiveGapLeaf.answered`), and the slice answers its recording's gaps from them (`FiledAnswers.LiveLeaf`): the next
 capture closes the gap; re-measure with `--faithfulness capture` on it.
 
+Each DIFF whose model moved now says why: `[code]` (every question answered — the code decides otherwise), `[a: new
+question]` (the capture keeps its live answers and still lacks it — recapture), `[a or b]` (a capture without live
+answers cannot tell), and with `--prod-mirror` a prod DIFF of a slice at another build than the deployed worker's is
+marked `[c]`. Measured 2026-10-14, DE, 60 listings, recording 38363428661: at main 51/60 end to end, the stage alone
+60/60, prod 38/58; at the capture's own code (abea3a168) the same 9 misses — all unanswered `imdb`/`imdb-titled`
+questions, so (b) unkept live answers, not new questions; at the deployed worker (afa874093) 43/60, 53/60, 33/56. An
+earlier 43/60 read at main was a stale index: every checkout's own-code index was one shared
+`index-<cc>-worktree` file (now keyed by checkout, commit and uncommitted edits).
+
 UK CBeebies Panto (ca4059b55..9c8170f5e): without filed answers 0 moves (the recording's families answer nothing —
 the CI view); with them ca4059b55 takes tmdb 1710881 by Agreed at 210 venues (WRONG) and both b5e156555 and
 9c8170f5e drop all 210 — the forensics diff's 211 and prod's 213. At b5e156555 the first `--modes 4` flipped all 210

@@ -678,7 +678,7 @@ object IdentitySlice {
     var agreeProd  = 0
     // (c) prod's stored state was written by the DEPLOYED build: a take this code decides otherwise may be the code's move
     val otherBuild = o.deployed.filterNot(d => o.ref.startsWith(d) || d.startsWith(o.ref))
-      .map(d => s"prod's state is the deployed build ${d.take(9)}'s, this slice's code ${o.ref.take(9)}'s")
+      .map(d => s"prod's state is the deployed build ${d.take(9)}'s, this slice's code is ${if (o.ref.startsWith("worktree")) s"this checkout's (${o.ref})" else o.ref.take(9) + "'s"}")
     var prodKnown  = 0
     val misses = scala.collection.mutable.ListBuffer.empty[String]
     sample.zipWithIndex.foreach { case (key, i) =>
