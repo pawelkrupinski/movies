@@ -30,7 +30,8 @@ class AgreementBroadcastSpec extends AnyFlatSpec with Matchers {
   private def screening(title: String, days: String*): Listing =
     FilmTable.listing(Multikino, title).copy(screenings = ScreeningDays.of(days.map(LocalDate.parse)))
 
-  private def decided(listing: Listing): ResolverDecision = {
+  private def decided(listing: Listing): ResolverDecision = decidedIn(table)(listing)
+  private def decidedIn(table: FilmTable)(listing: Listing): ResolverDecision = {
     val resolution = Resolution(Seq(ResolverDecision(Seq(listing.key), None, 0.1, ResolverDecision.Basis.BelowThreshold, Nil)()),
       1, Map(listing.key -> 0), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
     new AgreementStage(silentFamilies, table, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None), new InMemoryAgreementVerdicts,
@@ -44,6 +45,21 @@ class AgreementBroadcastSpec extends AnyFlatSpec with Matchers {
     taken.explanation.last should include ("2026-12-05")
     // Kino Powiśle bills it run into the house's word
     decided(screening("Opera-samson i dalila", "2026-12-05")).film shouldBe Some(metSamson.id)
+  }
+
+  it should "take one broadcast its film database holds twice by the record every listing of it takes" in {
+    // UK Flicks' "Royal Opera House: Carmen" on 10 November 2026: TMDB holds the broadcast as 1151422 "Royal Opera House:
+    // Carmen" and 1702759 "Royal Ballet & Opera 2026/27: Carmen". Once the season's search reached the second record, two
+    // records aired that day and the join took neither — the season's record is the one (IdentityMeasures.broadcastRecordOrder)
+    val rohCarmen = FilmTable.F(1151422, "Royal Opera House: Carmen", 2026, "", 0, popularity = 1.0, released = Some(LocalDate.of(2026, 11, 10)))
+    val rboCarmen = FilmTable.F(1702759, "Royal Ballet & Opera 2026/27: Carmen", 2026, "", 0, popularity = 1.0, released = Some(LocalDate.of(2026, 11, 10)))
+    decidedIn(new FilmTable(Seq(rohCarmen), normalizer))(screening("Royal Opera House: Carmen", "2026-11-10")).film shouldBe Some(rohCarmen.id)
+    decidedIn(new FilmTable(Seq(rohCarmen, rboCarmen), normalizer))(screening("Royal Opera House: Carmen", "2026-11-10")).film shouldBe Some(rboCarmen.id)
+    // …and so when the cluster's listings reach one record each, neither denied beside the other in any one's pool
+    val listing = screening("Royal Opera House: Carmen", "2026-11-10")
+    def recordOf(f: FilmTable.F) = f.id -> new FilmTable(Seq(f), normalizer).film(f.id).toOption.flatten.get
+    Broadcast.take(Seq(listing), services.identity.Evidence.of(_, None).measured, Seq(recordOf(rohCarmen), recordOf(rboCarmen)))()
+      .toOption.flatten.map(_.film) shouldBe Some(rboCarmen.id)
   }
 
   it should "take none on another day, unless the title bills the production's house or season" in {
