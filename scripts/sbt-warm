@@ -95,7 +95,7 @@ seed() {
   [ -n "$missing" ] || return 0
   [ -n "$src" ] || src=$(seed_source | cut -d' ' -f2-)
   [ -n "$src" ] || { log "no local build of main to seed from: the first compile is cold"; return 0; }
-  log "seeding $(printf '%s' "$missing" | tr '\n' ' ')in $root from $src's build"
+  log "seeding $(printf '%s' "$missing" | tr '\n' ' ') in $root from $src's build"
   for m in $missing; do
     case "$m" in project/*) set -- "$src/$m" ;; *) set -- "$src/$m"/target/scala-* ;; esac
     for d in "$@"; do

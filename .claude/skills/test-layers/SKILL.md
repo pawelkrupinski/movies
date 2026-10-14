@@ -118,4 +118,4 @@ build ~50 s on the first call (7 s server start, one changed file compiled, the 
 
 **Fast iteration:** while iterating, one spec — `scripts/sbt-warm "worker/testOnly X -- -z 'case'"`;
 once before pushing, the whole suite the change touches (for the identity resolver:
-`scripts/sbt-warm "worker/testOnly services.identity.*"`), then the layers above.
+`scripts/sbt-warm identity/Test/test`), then the layers above.

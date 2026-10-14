@@ -54,7 +54,10 @@ every older ref until FiledAnswers read it off the file). `scripts/identity-slic
 ## Modes
 
 - two `--ref`s: side by side, then every moved listing with its labels.tsv verdict.
-- `--batch FILE`: many slices in one JVM per ref, moves tallied CURED / LOST / NEW-WRONG / WON / unjudged.
+- `--batch FILE`: many slices in one JVM per ref, `--threads` at a time in the batch's order, moves tallied CURED / LOST /
+  NEW-WRONG / WON / unjudged. Each slice's result is kept per (recording, ref, tool files, filed answers, the labels about
+  its listings) and read back by every checkout (`--fresh` decides again); `--serve` keeps the ref's JVM, recording and
+  index between batches.
 - `--bisect A..B`: binary search over `rev-list --first-parent`, one ref compiled at a time.
 - `--emit-case`: copies the slice to `test/resources/fixtures/identity-slices/` with the film labels.tsv calls right
   (never the current take; refused when unjudged); `IdentitySliceCasesSpec` replays every pinned slice.

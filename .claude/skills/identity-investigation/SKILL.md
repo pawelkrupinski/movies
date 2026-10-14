@@ -26,7 +26,7 @@ Design and limits: docs/design/identity-slice.md.
 | Did commit Y change that? | `… --ref Y~1 --ref Y` — both refs on ONE recording (`--recording RUN`, default the newest green) |
 | A prod take-change log line | `scripts/identity-slice --log '<the line's JSON>'` (its `repro` field is the same command) |
 | Which commit of A..B moved it? | `… --bisect A..B` |
-| Measure a rule change over many listings | `scripts/identity-slice de --batch FILE --ref BASE --ref HEAD [--labels TSV]` → cured / lost / new-wrong |
+| Measure a rule change over many listings | `scripts/identity-slice de --batch FILE --ref BASE --ref HEAD [--labels TSV]` → cured / lost / new-wrong (parallel, results shared — see "Fast batches") |
 | Pin a repro as a failing test | `… --emit-case` → `test/resources/fixtures/identity-slices/`, `IdentitySliceCasesSpec` (expected film from labels.tsv only) |
 | Does arrival order (the worker's incremental model) move it? | `… --orders 12` |
 | Does a CHANGED projection take it otherwise than the periodic one? | `… --modes 4` |
@@ -51,6 +51,26 @@ Design and limits: docs/design/identity-slice.md.
 | What do the labels / known-wrong / expected / baseline / accepted lists and MatchedTakesLabelSpec say about a listing or film, who added each, and does prod still take it so? | `scripts/label-lookup uk --title "RBO: Romeo & Juliet" [--venue X]` or `scripts/label-lookup uk --film tmdb:N` (below) |
 | Code or new data? What changed between two recordings (a red recording, a leg that moved)? | `scripts/recording-diff <runA> <runB> --country de [--venue X] [--title Y]` (below) |
 | When and why did prod's take of a listing change, per deploy? Would CI have reproduced it? | `scripts/listing-history uk --title "ties that bind" [--venue X] [--since 7d] [--replay]` (below) |
+
+## Fast batches, fast iteration
+
+- **Batches run in parallel** in one JVM per ref: `--threads N` slices at once (default half the cores, at most 8);
+  the output and `--out` keep the batch's order, the same takes as a serial run.
+- **Results are shared.** Each slice's result at a ref is kept in
+  `$KINOWO_IDENTITY_CACHE/slice/<run>/results/<ref>-<tool files>-<filed answers>/`, named by its selector, seeds,
+  `--widen/--orders/--modes` and the labels about its listings (a label of another billing does not invalidate it).
+  Any checkout replaying the same base (origin/main) reads it back. `--fresh` decides again; `--prod-mirror` and
+  `--emit-case` never read or keep one.
+- **`--serve`** keeps a JVM per (ref, recording, country) with the recording opened and the ref's index loaded, and
+  sends each batch to it (no JVM start or corpus load per call); it stops after `KINOWO_IDENTITY_SLICE_IDLE_MINUTES`
+  (30) idle minutes, `scripts/identity-slice --stop-served` stops them all. Worth it for many small batches.
+- Measured 2026-10-14, DE, recording 38547714686, refs c79eb901c → 4c0777340, load average ~150: the old serial
+  tool, 500 listings at both refs 937 s (≈78 min for 2,500); 2,500 listings (916 slices) at both refs 691 s, the
+  same takes; the same batch again (another checkout, results kept) 33 s. A 20-listing fresh batch: 25 s, 15 s
+  through a kept `--serve` JVM.
+- **Iterating on resolver code:** one spec through the kept sbt server (`scripts/sbt-warm "identity/testOnly X"`,
+  test-layers skill) and a handful of listings (`--key`) while iterating; the whole identity suite
+  (`scripts/sbt-warm identity/Test/test`) and one `--batch` at BASE and HEAD once, before pushing.
 
 ## title-trace
 
