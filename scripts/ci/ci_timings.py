@@ -18,8 +18,11 @@ Sources:
   copies ran side by side. Only logs of jobs over a minute are fetched; no shorter job has phases.
 
 Every sample of a run is stamped at the RUN'S START (`run_started_at`), one point per run on a chart.
-Prometheus's out-of-order window (12h, prometheus.yaml) is what admits a sample stamped at the start
-of a run hours long.
+Prometheus's out-of-order window (90d, prometheus.yaml) is what admits a sample stamped at the start
+of a run hours long -- and the HISTORY: `--history-days` reads every finished run on main of the last
+N days off GitHub (steps from its job API; no phases, which only logs hold), and `--push-file` pushes
+what it wrote, so the dashboard's trends reach back as far as Prometheus keeps (90 days). A run whose
+own `timings` job reported it is left out: it is in Prometheus already, with its phases.
 
 Pushed through grafana.kinowo.net's token-gated OTLP path (roles/public-proxy.nix
 `tokenGatedRequests`) with the deploy marker's Grafana token. Pushing never fails the job: a
@@ -35,6 +38,8 @@ A job's name is the `ci_job` label: Prometheus's own `job` is OTLP's `service.na
 
 Run:  python3 scripts/ci/ci_timings.py --repo OWNER/REPO --run-id ID [--push] [--exclude-job NAME]
       (by hand, too: re-pushing a finished run backfills it)
+      python3 scripts/ci/ci_timings.py --repo OWNER/REPO --history-days 90 --out history.jsonl   # a person's gh
+      python3 scripts/ci/ci_timings.py --push-file history.jsonl   # CI: `CI timings backfill` holds the token
 Test: python3 scripts/ci/ci_timings_test.py
 """
 import argparse
@@ -45,6 +50,7 @@ import re
 import subprocess
 import sys
 import urllib.request
+from pathlib import Path
 
 # `[uk] bootCutover done in 486.8s`, `[ukp0] replayCutover done in 604.0s`; never the indented
 # `[uk]   identityTick done in …` sub-phases (see the header).
@@ -55,6 +61,10 @@ ANSI = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
 SERVICE_NAME = "kinowo-ci"
 # No job this short prints a phase; skipping its log keeps a run's API calls bounded.
 PHASE_LOG_MIN_SECONDS = 60
+# The job .github/actions/report-timings runs in (`github.job`): a run holding one reported itself.
+REPORTER = "timings"
+# GitHub answers a filtered run listing with at most 1000 runs; Main runs ~150 a week.
+HISTORY_WINDOW_DAYS = 3
 
 
 def seconds_between(start, end):
@@ -253,6 +263,15 @@ class GitHub:
     def run(self, run_id):
         return self.json("actions/runs/%s" % run_id)[0]
 
+    def workflows(self):
+        return [w["id"] for page in self.json("actions/workflows?per_page=100") for w in page["workflows"]]
+
+    def workflow_runs(self, workflow_id, since, until):
+        """Finished runs on main created in [since, until), dates as YYYY-MM-DD."""
+        last = (datetime.date.fromisoformat(until) - datetime.timedelta(days=1)).isoformat()
+        return [run for page in self.json("actions/workflows/%s/runs?branch=main&status=completed&per_page=100&created=%s..%s"
+                                          % (workflow_id, since, last)) for run in page["workflow_runs"]]
+
     def jobs(self, run_id):
         return [job for page in self.json("actions/runs/%s/jobs?per_page=100" % run_id) for job in page["jobs"]]
 
@@ -262,6 +281,41 @@ class GitHub:
                               capture_output=True, text=True)
         return done.stdout if done.returncode == 0 else ""
 
+
+
+def history(github, days, today=None):
+    """One payload per finished run on main of the last `days` days, every workflow's -- but none a
+    `timings` job already reported (see the header)."""
+    today = today or datetime.datetime.now(datetime.timezone.utc).date()
+    start, end = today - datetime.timedelta(days=days), today + datetime.timedelta(days=1)
+    for workflow_id in github.workflows():
+        since = start
+        while since < end:
+            until = min(end, since + datetime.timedelta(days=HISTORY_WINDOW_DAYS))
+            for run in github.workflow_runs(workflow_id, since.isoformat(), until.isoformat()):
+                raw = github.jobs(run["id"])
+                if any(job["name"] == REPORTER for job in raw):
+                    continue
+                payload = otlp_payload(run, collect(raw, lambda _job_id: ""))
+                if payload:
+                    yield payload
+            since = until
+
+
+def push_file(path, url, token, batch=25, opener=urllib.request.build_opener(NoRedirect).open):
+    """Push a `--history-days` file, `batch` runs to a request: (runs pushed, runs not)."""
+    payloads = [json.loads(line) for line in Path(path).read_text().splitlines() if line.strip()]
+    pushed = failed = 0
+    for at in range(0, len(payloads), batch):
+        chunk = payloads[at:at + batch]
+        merged_ = {"resourceMetrics": [rm for payload in chunk for rm in payload["resourceMetrics"]]}
+        message = push(merged_, url, token, opener)
+        if message == "Pushed timings.":
+            pushed += len(chunk)
+        else:
+            failed += len(chunk)
+            print(message, file=sys.stderr)
+    return pushed, failed
 
 
 def handle(github, run, args, out=sys.stdout):
@@ -278,14 +332,35 @@ def handle(github, run, args, out=sys.stdout):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
-    parser.add_argument("--repo", required=True)
-    parser.add_argument("--run-id", required=True)
+    parser.add_argument("--repo")
+    parser.add_argument("--run-id")
+    parser.add_argument("--history-days", type=int, help="write the last N days' runs on main to --out, as payloads")
+    parser.add_argument("--out", help="where --history-days writes, one payload a line")
+    parser.add_argument("--push-file", help="push what --history-days wrote (GRAFANA_URL, GRAFANA_ANNOTATION_TOKEN)")
     parser.add_argument("--push", action="store_true", help="push to Prometheus (GRAFANA_URL, GRAFANA_ANNOTATION_TOKEN)")
     parser.add_argument("--exclude-job", action="append", default=[],
                         help="leave this job out (the reporting job, still running, names itself)")
     args = parser.parse_args(argv)
 
+    if args.push_file:
+        pushed, failed = push_file(args.push_file, os.environ.get("GRAFANA_URL"), os.environ.get("GRAFANA_ANNOTATION_TOKEN"))
+        print("pushed %d runs, %d not" % (pushed, failed))
+        return 1 if failed else 0
+    if not args.repo:
+        parser.error("--repo is required")
     github = GitHub(args.repo)
+    if args.history_days:
+        if not args.out:
+            parser.error("--history-days needs --out")
+        with open(args.out, "w", encoding="utf-8") as out:
+            count = 0
+            for payload in history(github, args.history_days):
+                out.write(json.dumps(payload) + "\n")
+                count += 1
+        print("wrote %d runs to %s" % (count, args.out))
+        return 0
+    if not args.run_id:
+        parser.error("--run-id is required")
     handle(github, github.run(args.run_id), args)
     return 0
 

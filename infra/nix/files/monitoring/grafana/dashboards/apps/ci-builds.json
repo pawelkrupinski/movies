@@ -155,6 +155,155 @@
   },
   {
    "type": "row",
+   "title": "Trends — has a build grown? 7-day rolling median of successful runs, last 90 days",
+   "collapsed": false,
+   "id": 14,
+   "gridPos": {
+    "h": 1,
+    "w": 24,
+    "x": 0,
+    "y": 3
+   },
+   "panels": []
+  },
+  {
+   "id": 15,
+   "title": "Every build: 7-day median wall clock",
+   "description": "Each workflow's median wall clock (first job start → last job end) over the 7 days before each point, successful runs on the chosen ref only -- a cancelled or failed run's length says nothing about the build's. A line that keeps rising is a build that grew; compare `First` and `Last` in the legend. GitHub's history before the in-run reporter was pushed once by `CI timings backfill` (no phases in it).",
+   "type": "timeseries",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "local-prometheus"
+   },
+   "gridPos": {
+    "h": 10,
+    "w": 12,
+    "x": 0,
+    "y": 4
+   },
+   "interval": "1h",
+   "timeFrom": "90d",
+   "fieldConfig": {
+    "defaults": {
+     "unit": "s",
+     "min": 0,
+     "custom": {
+      "drawStyle": "line",
+      "showPoints": "never",
+      "lineWidth": 2,
+      "fillOpacity": 0,
+      "spanNulls": true
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "table",
+     "placement": "right",
+     "calcs": [
+      "firstNotNull",
+      "lastNotNull",
+      "max"
+     ],
+     "sortBy": "Last *",
+     "sortDesc": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "quantile_over_time(0.5, kinowo_ci_run_seconds{measure=\"wall\",ref=~\"$ref\",conclusion=\"success\"}[7d])",
+     "legendFormat": "{{workflow}}",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "local-prometheus"
+     }
+    }
+   ]
+  },
+  {
+   "id": 16,
+   "title": "Identity model convergence: 7-day median of each country's slowest leg",
+   "description": "Per country, the median over the 7 days before each point of each of its legs' duration (successful legs), the slowest leg shown -- what bounds the run. Red line: the 10-minute target.",
+   "type": "timeseries",
+   "datasource": {
+    "type": "prometheus",
+    "uid": "local-prometheus"
+   },
+   "gridPos": {
+    "h": 10,
+    "w": 12,
+    "x": 12,
+    "y": 4
+   },
+   "interval": "1h",
+   "timeFrom": "90d",
+   "fieldConfig": {
+    "defaults": {
+     "unit": "s",
+     "min": 0,
+     "custom": {
+      "drawStyle": "line",
+      "showPoints": "never",
+      "lineWidth": 2,
+      "fillOpacity": 0,
+      "spanNulls": true,
+      "thresholdsStyle": {
+       "mode": "line"
+      }
+     },
+     "thresholds": {
+      "mode": "absolute",
+      "steps": [
+       {
+        "color": "green",
+        "value": null
+       },
+       {
+        "color": "red",
+        "value": 600
+       }
+      ]
+     }
+    },
+    "overrides": []
+   },
+   "options": {
+    "legend": {
+     "displayMode": "table",
+     "placement": "right",
+     "calcs": [
+      "firstNotNull",
+      "lastNotNull",
+      "max"
+     ],
+     "sortBy": "Last *",
+     "sortDesc": true
+    },
+    "tooltip": {
+     "mode": "multi",
+     "sort": "desc"
+    }
+   },
+   "targets": [
+    {
+     "refId": "A",
+     "expr": "max by (country) (label_replace(quantile_over_time(0.5, kinowo_ci_job_seconds{workflow=\"Identity model convergence\",ref=~\"$ref\",conclusion=\"success\"}[7d]), \"country\", \"$1\", \"ci_job\", \"([a-z-]+) / .*\"))",
+     "legendFormat": "{{country}}",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "local-prometheus"
+     }
+    }
+   ]
+  },
+  {
+   "type": "row",
    "title": "Identity model convergence — per country",
    "collapsed": false,
    "id": 11,
@@ -162,7 +311,7 @@
     "h": 1,
     "w": 24,
     "x": 0,
-    "y": 3
+    "y": 14
    },
    "panels": []
   },
@@ -179,7 +328,7 @@
     "h": 9,
     "w": 12,
     "x": 0,
-    "y": 4
+    "y": 15
    },
    "interval": "1m",
    "fieldConfig": {
@@ -255,7 +404,7 @@
     "h": 9,
     "w": 12,
     "x": 12,
-    "y": 4
+    "y": 15
    },
    "interval": "1m",
    "fieldConfig": {
@@ -331,7 +480,7 @@
     "h": 9,
     "w": 12,
     "x": 0,
-    "y": 13
+    "y": 24
    },
    "interval": "1m",
    "fieldConfig": {
@@ -407,7 +556,7 @@
     "h": 9,
     "w": 12,
     "x": 12,
-    "y": 13
+    "y": 24
    },
    "interval": "1m",
    "fieldConfig": {
@@ -467,7 +616,7 @@
     "h": 12,
     "w": 24,
     "x": 0,
-    "y": 22
+    "y": 33
    },
    "interval": "1m",
    "fieldConfig": {
@@ -527,7 +676,7 @@
     "h": 8,
     "w": 24,
     "x": 0,
-    "y": 34
+    "y": 45
    },
    "fieldConfig": {
     "defaults": {
@@ -587,14 +736,14 @@
     "h": 1,
     "w": 24,
     "x": 0,
-    "y": 42
+    "y": 53
    },
    "panels": []
   },
   {
    "id": 2,
    "title": "$workflow — run",
-   "description": "Wall clock from the first job's start to the last job's end (`wall`), and how long the run waited for its queue and runners before any job started (`queued`), by the run's conclusion.",
+   "description": "Wall clock from the first job's start to the last job's end (`wall`), and how long the run waited for its queue and runners before any job started (`queued`), by the run's conclusion. The 7-day median line is the trend: successful runs only.",
    "type": "timeseries",
    "datasource": {
     "type": "prometheus",
@@ -604,7 +753,7 @@
     "h": 9,
     "w": 12,
     "x": 0,
-    "y": 43
+    "y": 54
    },
    "interval": "1m",
    "fieldConfig": {
@@ -648,6 +797,15 @@
       "type": "prometheus",
       "uid": "local-prometheus"
      }
+    },
+    {
+     "refId": "B",
+     "expr": "quantile_over_time(0.5, kinowo_ci_run_seconds{workflow=\"$workflow\",ref=~\"$ref\",measure=\"wall\",conclusion=\"success\"}[7d])",
+     "legendFormat": "wall · 7-day median (successful)",
+     "datasource": {
+      "type": "prometheus",
+      "uid": "local-prometheus"
+     }
     }
    ]
   },
@@ -664,7 +822,7 @@
     "h": 9,
     "w": 12,
     "x": 12,
-    "y": 43
+    "y": 54
    },
    "interval": "1m",
    "fieldConfig": {

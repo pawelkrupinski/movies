@@ -14,11 +14,14 @@
 # address is read off its own host declaration rather than typed here twice.
 
 # CI's build timings (scripts/ci/ci_timings.py) arrive over OTLP stamped at their RUN'S START, hours
-# before they are pushed for a long run (convergence legs run up to 6h) -- and the sweep may push a run
-# after a newer one. 12h admits both; inside it a re-push of the same run is an identical duplicate.
+# before they are pushed for a long run (convergence legs run up to 6h) -- and their HISTORY, read off
+# GitHub's run list (`CI timings backfill`), is up to the 90 days Prometheus keeps (roles/prometheus.nix
+# `retention`): the dashboard's trends need all of it. Only samples actually out of order cost memory,
+# and only CI's are: every scrape target is pushed in order. Inside it a re-push of the same run is an
+# identical duplicate.
 storage:
   tsdb:
-    out_of_order_time_window: 12h
+    out_of_order_time_window: 90d
 
 global:
   # 15s, matching the `timeInterval` on both Prometheus datasources in roles/grafana.nix. A

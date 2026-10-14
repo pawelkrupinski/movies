@@ -358,7 +358,17 @@ class CiTimingsDashboard(unittest.TestCase):
         self.assertEqual({"workflow", "ref", "country"}, {v["name"] for v in document["templating"]["list"]})
         self.assertEqual(["apps/ci-builds.json"], self.boards_querying("kinowo_ci_phase_seconds"))
         rows = [p for p in document["panels"] if p["type"] == "row"]
-        self.assertEqual([None, "workflow"], [r.get("repeat") for r in rows])
+        self.assertEqual([None, None, "workflow"], [r.get("repeat") for r in rows])
+
+    def test_it_shows_whether_a_build_grew_over_the_90_days_prometheus_keeps(self):
+        # "whether the build duration sustainably grew over time" (user, 2026-10-14): a rolling median of successful
+        # runs, every build and every convergence country, over all the history Prometheus keeps (roles/prometheus.nix).
+        document = dict(dashboards())["apps/ci-builds.json"]
+        trends = [p for p in query_panels(document) if p.get("timeFrom") == "90d"]
+        exprs = [t["expr"] for p in trends for t in p["targets"]]
+        for metric in ("kinowo_ci_run_seconds", "kinowo_ci_job_seconds"):
+            self.assertTrue(any(metric in e and "quantile_over_time(0.5" in e and "[7d]" in e and 'conclusion="success"' in e
+                                for e in exprs), "no 7-day median trend of %s" % metric)
 
 
 class InProcessRecencyGauges(unittest.TestCase):
