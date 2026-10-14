@@ -62,10 +62,9 @@ final class IdentityListingIntake(
     val listings = read(live, lean = true, onAccepted = if (boot) accepted += _ else _ => (), onArchived = if (boot) archived += _ else _ => ())
     if (boot) heldLock.synchronized {
       if (calls == 0 && listings.nonEmpty) {
-        def project(rows: Seq[LeanListing]) = rows.map(row => row.cinema -> (row.at, row.films.map {
-          case (cm, showtimes) => ProjectedListing.of(Listing.of(row.cinema, cm, normalizer), cm, showtimes) }))
-        heldAccepted.seed(project(accepted.result()))
-        heldArchived.seed(project(archived.result()))
+        def projectAll(rows: Seq[LeanListing]) = rows.map(row => row.cinema -> (row.at, project(row.cinema, row.films)))
+        heldAccepted.seed(projectAll(accepted.result()))
+        heldArchived.seed(projectAll(archived.result()))
         calls = 1
       }
     }
@@ -103,14 +102,16 @@ final class IdentityListingIntake(
   private def projectedBy(live: Seq[Cinema], read: IdentityListingIntake.Read): Seq[(Cinema, Seq[ProjectedListing])] = {
     val wanted  = live.distinct.map(c => c.displayName -> c).toMap
     val written = dirty.synchronized { val names = dirty.toSet; dirty.clear(); names }
-    // A listing the identity model holds the same takes the model's object at the next [[adopt]], not here: a read
-    // needs no lookup of the model's 100k listings, and a venue read this tick is the only kind not yet adopted.
-    def project(cinema: Cinema, films: Seq[(CinemaMovie, Int)]) =
-      films.map { case (cm, showtimes) => ProjectedListing.of(Listing.of(cinema, cm, normalizer), cm, showtimes) }
     val acceptedNow = heldAccepted.refresh(accepted, wanted, written, read, project)
     val archivedNow = heldArchived.refresh(archive, wanted.filter { case (name, _) => !acceptedNow.contains(name) }, written, read, project)
-    live.distinct.sortBy(_.displayName).flatMap(c => acceptedNow.get(c.displayName).orElse(archivedNow.get(c.displayName)).flatten.map(c -> _))
+    IdentityListingIntake.acceptedElseArchived(live, c => acceptedNow.get(c.displayName), c => archivedNow.get(c.displayName))
   }
+
+  /** `films` of `cinema`, as the projection holds them. A listing the identity model holds the same takes the model's
+   *  object at the next [[adopt]], not here: a read needs no lookup of the model's 100k listings, and a venue read this
+   *  tick is the only kind not yet adopted. */
+  private def project(cinema: Cinema, films: Seq[(CinemaMovie, Int)]): Seq[ProjectedListing] =
+    films.map { case (cm, showtimes) => ProjectedListing.of(Listing.of(cinema, cm, normalizer), cm, showtimes) }
 
   /** The listings the identity model holds, as the projection last read them: each venue re-read from now on is projected
    *  with the model's object for a listing it holds the same, and each venue already held takes it now. Projected anew
@@ -145,7 +146,7 @@ final class IdentityListingIntake(
     val values          = new ListingValuePool
     val acceptedByVenue = IdentityListingIntake.lastListings(accepted, wanted, values, lean, onAccepted)
     val archivedByVenue = IdentityListingIntake.lastListings(archive, c => wanted(c) && !acceptedByVenue.contains(c), values, lean, onArchived)
-    live.distinct.sortBy(_.displayName).flatMap(c => acceptedByVenue.get(c).orElse(archivedByVenue.get(c)).flatten.map(c -> _))
+    IdentityListingIntake.acceptedElseArchived(live, acceptedByVenue.get, archivedByVenue.get)
   }
 
   // A venue's guard state and accepted listing are its own, so one venue's scrape waits only for
@@ -268,6 +269,12 @@ object IdentityListingIntake {
 
   /** How a projection read takes the archives: whole, by their rows' stamps, or only what this intake took since. */
   private[identity] enum Read { case Whole, Stamped, Changed }
+
+  /** Each venue of `live` publishing something, in venue-name order, with its listing: its accepted one, else the
+   *  archive's — each lookup `None` for a venue it holds no row of, `Some(None)` for one that listed nothing. */
+  private def acceptedElseArchived[A](live: Seq[Cinema], accepted: Cinema => Option[Option[A]],
+                                      archived: Cinema => Option[Option[A]]): Seq[(Cinema, A)] =
+    live.distinct.sortBy(_.displayName).flatMap(c => accepted(c).orElse(archived(c)).flatten.map(c -> _))
 
   /** Where each venue's accepted listing is kept. */
   val Collection = "identity_listings"

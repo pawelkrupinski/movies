@@ -130,21 +130,22 @@ final class IdentityModelService(
     // backoff — never again at once, which held the model's thread for a second full take-up
     // (117–259 s on US) per refused projection, with nothing to drain meanwhile.
     if (model.isEmpty && retryAt.isEmpty) tryTakeUp()
-    model.foreach(_ => safely("catch up") { drain(); () })
+    catchUp()
     model.map(snapshotOf)
   }
 
   /** Each listing's family, the model brought up to now as [[current]] brings it — which a snapshot's resolution does
    *  not carry. `None` as [[current]]'s. */
   def familyOf(timeout: FiniteDuration): Option[Map[services.movies.ListingKey, Int]] = onModel(timeout) {
-    model.foreach(_ => safely("catch up") { drain(); () })
+    catchUp()
     model.map(_.familyOf)
   }
 
   /** The model caught up with what queued, if it has been taken up — never a take-up: what the
    *  fill reads, which must not wait on one. */
   def peek(timeout: FiniteDuration): Option[ModelSnapshot] = onModel(timeout) {
-    model.flatMap { _ => safely("catch up") { drain(); () }; model.map(snapshotOf) }
+    catchUp()
+    model.map(snapshotOf)
   }
 
   // A snapshot is built only when read, on the model's thread — never per drain: on the US corpus
@@ -270,6 +271,9 @@ final class IdentityModelService(
       s"${engine.familiesResolved} re-resolved (${engine.timings.render}; ${reading()}); ${sizes.render}")
     safely("announce the take-up")(takenUp())
   }
+
+  /** Drain what queued into the model, if it has been taken up. */
+  private def catchUp(): Unit = model.foreach(_ => safely("catch up") { drain(); () })
 
   private def safely(what: String)(body: => Unit): Unit =
     try body
