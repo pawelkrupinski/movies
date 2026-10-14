@@ -3202,7 +3202,12 @@ on the unmatched-cluster capture (`UnmatchedClustersRatchetSpec`), each changed 
 | `family.director` (pinned): a database's take the venue's director credit names, no year stated | 0 | 0 | 1 (UK "The Misanthrope (NT Live)") | 0 |
 | **total** | **16** | **12** (Kaidan, Mozu, Ototo, Ping Pong Session, UNSPOKEN, Der nackte Wahnsinn, New Dawn, NADZIEJA, Wymarzony, Tschaikowsky, 2 × Camouflage) | **8** | **0** |
 
-`model.vetoedAbove` and `CandidateEvidence.releaseVetoed` went with the Filmweb fill, the only rule reading them. Left:
+`model.vetoedAbove` and `CandidateEvidence.releaseVetoed` went with the Filmweb fill, the only rule reading them.
+They came back (2026-10-14) for `family.releaseKept&!model.vetoedAbove`: a film database's take of the namesake the release
+veto KEPT — TMDB dates its release in the venue's country and took out a namesake beside it for having none — unless the
+vetoed namesake was the search's first hit. Two sources, a family's pick and a distributor's release; on the capture it
+wins back PL "NADZIEJA" (Mucha's 2007 documentary) and "Wymarzony" (Herry's 2018 film), no new take otherwise, and none of
+the 12 Filmweb-fill wrongs carries a veto; "Stan wyjątkowy" (the vetoed first hit was the venue's film) stays out. Left:
 DE "ATMOS: Michael" (Cineamo links Dreyer's 1924 film and copies its year; Filmweb takes it too — now
 `family.feedLink`), and `model.lean&count.leaning&title.namesIt&film.current`'s three (UK "Obsession (PG)", "Hocus
 Pocus", "Song Sung Blue- The Music of Neil Diamond"): a current namesake against a classic's re-run, no signal apart

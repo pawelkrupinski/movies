@@ -26,6 +26,9 @@
     "pinned.family.feedLink&film.current.gainedListings" : 2,
     "pinned.family.feedLink&film.current.gainedFilms" : 1,
     "pinned.family.feedLink&film.current.wrong" : 0,
+    "pinned.family.releaseKept&!model.vetoedAbove.gainedListings" : 2,
+    "pinned.family.releaseKept&!model.vetoedAbove.gainedFilms" : 2,
+    "pinned.family.releaseKept&!model.vetoedAbove.wrong" : 0,
     "pinned.and.leanTakers&!family.dissent&film.current.gainedListings" : 9,
     "pinned.and.leanTakers&!family.dissent&film.current.gainedFilms" : 8,
     "pinned.and.leanTakers&!family.dissent&film.current.wrong" : 0,
@@ -42,5 +45,5 @@
     "pinned.cast.venue.gainedFilms" : 0,
     "pinned.cast.venue.wrong" : 0
   },
-  "pinned" : [ "families.current", "family.facts", "family.director", "family.feedLink&!family.dissent", "family.feedLink&film.current", "and.leanTakers&!family.dissent&film.current", "and.leanTakers&!family.dissent&count.takers2", "count.takers2&venues.current", "model.lean&count.leaning&title.namesIt&film.current", "cast.venue" ]
+  "pinned" : [ "families.current", "family.facts", "family.director", "family.feedLink&!family.dissent", "family.feedLink&film.current", "family.releaseKept&!model.vetoedAbove", "and.leanTakers&!family.dissent&film.current", "and.leanTakers&!family.dissent&count.takers2", "count.takers2&venues.current", "model.lean&count.leaning&title.namesIt&film.current", "cast.venue" ]
 }
