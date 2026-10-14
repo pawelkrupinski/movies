@@ -86,6 +86,10 @@ check "a log line naming no listing is refused" "2" "$(slice --log '{"country":"
 check "a ref the clone does not hold is refused by name" "1" "$(slice de --recording 777 --key 'Kino|Lalka' --ref 0123456789abcdef > /dev/null; grep -c 'no commit 0123456789abcdef' "$work/err")"
 check "a batch file is handed to the JVM by its absolute path" "1" "$(cd "$work" && printf 'Kino\tLalka\n' > b.tsv && slice de --recording 777 --batch b.tsv --ref HEAD > /dev/null; grep -c -- "--batch $work/b.tsv" "$work/calls")"
 
+rm -f "$work/calls" "$work/sbt-calls"
+check "--compiles lays a ref out with the tool files and compiles it, deciding nothing" "0 0" \
+  "$(slice --compiles HEAD~1 > /dev/null; echo $?) $(grep -c . "$work/calls" 2>/dev/null || echo 0)"
+
 # --explain: the WHY trace of a listing the unmatched-cluster capture holds (scripts/identity-explain is its alias)
 rm -f "$work/calls"
 mkdir -p "$work/capture"; echo c > "$work/capture/de.json.gz"; printf 'country\n' > "$work/capture/labels.tsv"

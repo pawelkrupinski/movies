@@ -9,6 +9,7 @@
 #   scripts/identity-slice <cc> --batch FILE --ref BASE --ref HEAD [--recording RUN]
 #   scripts/identity-slice <cc> SELECTOR... --bisect A..B [--recording RUN]
 #   scripts/identity-slice --log '<take-change log line (JSON)>'
+#   scripts/identity-slice --compiles REF
 #   scripts/identity-slice <cc> --faithfulness CONVERGENCE_RUN [--sample N] [--seed S]
 #   scripts/identity-slice <cc> --explain [--venue S] [--title S] [--ref A [--ref B]] [--fixture SRC] [--limit N] [--no-resolve]
 #
@@ -35,6 +36,9 @@
 #   --faithfulness capture  the agreement-taken listings (Agreed, Filled, Poster, …) of that capture as this code's agreement
 #                 takes them, each sliced alone on the capture's recording and compared
 #   --labels TSV  judge the takes by this labels.tsv (default this checkout's) — the same labels at both refs
+#   --compiles REF  lay REF out with this checkout's tool files dropped in and compile it, nothing else: the tool must
+#                 compile into every ref it may be pointed at — a deployed worker's build, a bisect's oldest commit
+#                 (scripts/identity-slice-old-ref-test.sh)
 #   --log LINE    a prod `identity take change:` line from VictoriaLogs: its country, venue and listing, at its build
 #   --explain     WHY a listing the unmatched-cluster capture holds took (or did not take) its film: the whole trace —
 #                 billing and venue page, the captured model decision, the cluster re-resolved (keys, candidates, signals,
@@ -73,6 +77,11 @@ TOOL_FILES=(worker/src/test/scala/scripts/IdentitySlice.scala worker/src/test/sc
   worker/src/fixtures/scala/tools/CatalogueFill.scala worker/src/fixtures/scala/tools/FiledAnswers.scala)
 
 families="" labels="" cc="" refs=() run="" pass=() batch="" bisect="" log="" faith="" sample=50 seed=1 explain=0 fixture=""
+if [ "$1" = "--compiles" ]; then
+  need_ref "${2:?--compiles REF}"
+  t=$(identity_tree "$2" "${TOOL_FILES[@]}") && identity_classpath "$t" > /dev/null && { identity_log "$2 compiles with this checkout's tool files"; exit 0; }
+  exit 1
+fi
 if [ "$1" != "--log" ]; then cc=$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]'); shift; fi
 while [ "$#" -gt 0 ]; do
   case "$1" in
