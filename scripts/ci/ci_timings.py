@@ -1,11 +1,15 @@
 #!/usr/bin/env python3
 """Where a GitHub Actions run spent its time: every job and step, plus the `PhaseTimer` phases a
-convergence suite prints -- printed to the log (and the run summary), and pushed to Prometheus for
-the "CI — build timings" and "CI — identity model convergence timings" Grafana dashboards.
+convergence suite prints -- printed to the run's log and summary, and pushed to Prometheus for the
+"CI — build timings" and "CI — identity model convergence timings" Grafana dashboards.
 
-Sources, read once the run (or, in-run, the jobs before this one) have finished:
+Every workflow runs it as its last job, `timings` (.github/actions/report-timings,
+RunTimingsWiringSpec), so it reports the run's OTHER jobs: the run is still in progress, and its
+conclusion is read off those jobs rather than the run.
 
-- GitHub's own job and step timestamps, for every workflow.
+Sources:
+
+- GitHub's own job and step timestamps.
 - The jobs' logs, for `PhaseTimer` lines (`[uk] bootCutover done in 486.8s, cpu ...`). Only
   TOP-LEVEL phases are kept: the indented sub-phases (`[uk]   identityTick done in ...`) of a boot
   and of the order replays running beside it share one scope, so which of them a line belongs to
@@ -13,11 +17,9 @@ Sources, read once the run (or, in-run, the jobs before this one) have finished:
   seen more than once in a job keeps its LONGEST time -- what bounded the wall clock when the
   copies ran side by side. Only logs of jobs over a minute are fetched; no shorter job has phases.
 
-EVERY SAMPLE OF A RUN IS STAMPED AT THE RUN'S START (`run_started_at`), and every value is a pure
-function of the finished run. So pushing a run twice -- `workflow_run` and the sweep both seeing it
--- writes identical samples, which Prometheus accepts as duplicates; a different value at one
-timestamp would be rejected. Prometheus's out-of-order window (12h, prometheus.yaml) is what admits
-a sample stamped at the start of a run hours long.
+Every sample of a run is stamped at the RUN'S START (`run_started_at`), one point per run on a chart.
+Prometheus's out-of-order window (12h, prometheus.yaml) is what admits a sample stamped at the start
+of a run hours long.
 
 Pushed through grafana.kinowo.net's token-gated OTLP path (roles/public-proxy.nix
 `tokenGatedRequests`) with the deploy marker's Grafana token. Pushing never fails the job: a
@@ -29,11 +31,10 @@ dashboard is a reading aid, not a gate.
     # TYPE kinowo_ci_phase_seconds gauge
 
 A job's name is the `ci_job` label: Prometheus's own `job` is OTLP's `service.name`, kinowo-ci.
-
 (The `# TYPE` lines are what GrafanaMetricCoverageSpec reads to know these families exist.)
 
-Run:  python3 scripts/ci/ci_timings.py --repo OWNER/REPO --run-id ID [--push]
-      python3 scripts/ci/ci_timings.py --repo OWNER/REPO --since-minutes 180 [--push]   (the sweep)
+Run:  python3 scripts/ci/ci_timings.py --repo OWNER/REPO --run-id ID [--push] [--exclude-job NAME]
+      (by hand, too: re-pushing a finished run backfills it)
 Test: python3 scripts/ci/ci_timings_test.py
 """
 import argparse
@@ -52,9 +53,7 @@ PHASE_LINE = re.compile(r"\[([a-z]{2})(p\d+)?\] (\S[^\n]*?) done in ([0-9]+(?:\.
 COUNT = re.compile(r"\b\d{3,}\b")
 ANSI = re.compile(r"\x1b\[[0-9;]*[A-Za-z]")
 SERVICE_NAME = "kinowo-ci"
-# The collector's own runs are not builds.
-OWN_WORKFLOW = "CI timings"
-# No job this short prints a phase; skipping its log keeps a sweep's API calls bounded.
+# No job this short prints a phase; skipping its log keeps a run's API calls bounded.
 PHASE_LOG_MIN_SECONDS = 60
 
 
@@ -116,6 +115,17 @@ def run_measures(run, jobs):
     return {"wall": seconds_between(first, last), "queued": max(0.0, seconds_between(run_start(run), first))}
 
 
+def conclusion_of(run, jobs):
+    """The run's conclusion once it has one (a backfill); while it runs, its jobs' worst."""
+    if run.get("conclusion"):
+        return run["conclusion"]
+    seen = {job.conclusion for job in jobs}
+    for worst in ("failure", "timed_out", "cancelled"):
+        if worst in seen:
+            return worst
+    return "success" if jobs else "unknown"
+
+
 def ref_of(run):
     return "main" if run.get("head_branch") == "main" else "branch"
 
@@ -127,7 +137,7 @@ def minutes(secs):
 def report(run, jobs, out=sys.stdout):
     measures = run_measures(run, jobs)
     print("%s run %s (%s) -- wall %s, queued %s, %d jobs" % (
-        run.get("name", "?"), run["id"], run.get("conclusion") or "in progress",
+        run.get("name", "?"), run["id"], conclusion_of(run, jobs),
         minutes(measures.get("wall", 0)), minutes(measures.get("queued", 0)), len(jobs)), file=out)
     for job in jobs:
         print("", file=out)
@@ -174,7 +184,7 @@ def otlp_payload(run, jobs):
 
     metrics = [
         gauge("kinowo_ci_run_seconds",
-              [point(value, measure=measure, conclusion=run.get("conclusion") or "unknown")
+              [point(value, measure=measure, conclusion=conclusion_of(run, jobs))
                for measure, value in sorted(run_measures(run, jobs).items())]),
         gauge("kinowo_ci_job_seconds",
               [point(job.seconds, ci_job=job.name, conclusion=job.conclusion) for job in jobs]),
@@ -223,35 +233,6 @@ def push(payload, url, token, opener=urllib.request.build_opener(NoRedirect).ope
     return "Pushed timings."
 
 
-# Runs another workflow started with the GITHUB_TOKEN raise no `workflow_run` -- Main's convergence
-# dispatches, the bisect -- so the sweep is the only collector that ever sees them.
-TOKEN_ACTOR = "github-actions[bot]"
-
-
-def workflow_run_names(workflow_yaml):
-    """The workflows ci-timings.yml's `workflow_run` lists: the ones reported as they finish."""
-    names, inside = [], False
-    for line in workflow_yaml.splitlines():
-        if line.strip() == "workflows:":
-            inside = True
-        elif inside and line.strip().startswith("- "):
-            names.append(line.strip()[2:].strip())
-        elif inside:
-            break
-    return set(names)
-
-
-def due_for_sweep(runs, finished_after, reported_on_completion):
-    """Completed runs that finished inside the window (a run's `updated_at` is when it finished)
-    and that no `workflow_run` reported: an unlisted workflow's, or one the GITHUB_TOKEN started.
-    The collector's own excluded."""
-    return [run for run in runs
-            if run.get("name") != OWN_WORKFLOW and run.get("status") == "completed"
-            and (run.get("name") not in reported_on_completion
-                 or (run.get("triggering_actor") or {}).get("login") == TOKEN_ACTOR)
-            and parse_time(run["updated_at"]) >= finished_after]
-
-
 class GitHub:
     def __init__(self, repo):
         self.repo = repo
@@ -281,17 +262,13 @@ class GitHub:
                               capture_output=True, text=True)
         return done.stdout if done.returncode == 0 else ""
 
-    def completed_created_since(self, since):
-        stamp = since.strftime("%Y-%m-%dT%H:%M:%SZ")
-        return [run for page in self.json("actions/runs?status=completed&per_page=100&created=%%3E%%3D%s" % stamp)
-                for run in page["workflow_runs"]]
 
 
 def handle(github, run, args, out=sys.stdout):
     jobs = collect(github.jobs(run["id"]), github.log, exclude=set(args.exclude_job))
     report(run, jobs, out)
     summary = os.environ.get("GITHUB_STEP_SUMMARY")
-    if summary and args.run_id:
+    if summary:
         with open(summary, "a", encoding="utf-8") as handle_:
             handle_.write(summary_markdown(run, jobs))
     payload = otlp_payload(run, jobs)
@@ -299,34 +276,17 @@ def handle(github, run, args, out=sys.stdout):
         print(push(payload, os.environ.get("GRAFANA_URL"), os.environ.get("GRAFANA_ANNOTATION_TOKEN")), file=out)
 
 
-def main(argv=None, now=None):
+def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     parser.add_argument("--repo", required=True)
-    which = parser.add_mutually_exclusive_group(required=True)
-    which.add_argument("--run-id", help="report this run")
-    which.add_argument("--since-minutes", type=int,
-                       help="the sweep: every run no workflow_run reported that finished in the last N minutes")
-    parser.add_argument("--workflow-file", default=".github/workflows/ci-timings.yml",
-                        help="the collector's workflow, whose workflow_run list the sweep leaves alone")
+    parser.add_argument("--run-id", required=True)
     parser.add_argument("--push", action="store_true", help="push to Prometheus (GRAFANA_URL, GRAFANA_ANNOTATION_TOKEN)")
     parser.add_argument("--exclude-job", action="append", default=[],
-                        help="leave this job out (an in-run reporter, still running, names itself)")
+                        help="leave this job out (the reporting job, still running, names itself)")
     args = parser.parse_args(argv)
 
     github = GitHub(args.repo)
-    if args.run_id:
-        runs = [github.run(args.run_id)]
-    else:
-        now = now or datetime.datetime.now(datetime.timezone.utc)
-        window = datetime.timedelta(minutes=args.since_minutes)
-        # Created up to a day before the window: a six-hour convergence run created yesterday
-        # evening finished inside it.
-        with open(args.workflow_file, encoding="utf-8") as handle_:
-            listed = workflow_run_names(handle_.read())
-        runs = due_for_sweep(github.completed_created_since(now - window - datetime.timedelta(hours=24)), now - window, listed)
-    for run in runs:
-        handle(github, run, args)
-        print("")
+    handle(github, github.run(args.run_id), args)
     return 0
 
 

@@ -84,3 +84,25 @@ jobs:
                   tmdb-api-key: ${{ secrets.TMDB_API_KEY }}
                   proxy-user: ${{ secrets.DECODO_PROXY_USER }}
                   proxy-pass: ${{ secrets.DECODO_PROXY_PASS }}
+
+    # EVERY JOB'S AND STEP'S TIME, in this run's log and summary and on Grafana's CI dashboards
+    # (.github/actions/report-timings). After every other job but the failure report; never fails the run.
+    timings:
+        needs: [countries, fill]
+        if: ${{ !cancelled() }}
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        permissions:
+            actions: read
+            contents: read
+        steps:
+            - uses: actions/checkout@v5
+              with:
+                  sparse-checkout: |
+                      scripts/ci
+                      .github/actions/report-timings
+                  sparse-checkout-cone-mode: false
+            - uses: ./.github/actions/report-timings
+              with:
+                  grafana-url: ${{ secrets.GRAFANA_URL }}
+                  grafana-annotation-token: ${{ secrets.GRAFANA_ANNOTATION_TOKEN }}

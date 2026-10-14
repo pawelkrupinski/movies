@@ -145,35 +145,16 @@ class PayloadTest(unittest.TestCase):
         self.assertIn("phase    604.7s  replayCutover", out.getvalue())
 
 
-class SweepTest(unittest.TestCase):
-    WINDOW = datetime.datetime(2026, 10, 14, 9, 0, tzinfo=datetime.timezone.utc)
+class ConclusionTest(unittest.TestCase):
+    def test_a_run_in_progress_takes_its_jobs_worst(self):
+        self.assertEqual(timings.conclusion_of(dict(RUN, conclusion=None), jobs()), "failure")
 
-    @staticmethod
-    def run(name, updated="2026-10-14T09:30:00Z", actor="pawelkrupinski"):
-        return {"name": name, "status": "completed", "updated_at": updated, "triggering_actor": {"login": actor}}
+    def test_all_green_jobs_are_a_success(self):
+        green = [j for j in jobs() if j.conclusion == "success"]
+        self.assertEqual(timings.conclusion_of(dict(RUN, conclusion=None), green), "success")
 
-    def due(self, *runs):
-        return [r["name"] for r in timings.due_for_sweep(list(runs), self.WINDOW, {"Main", "Android"})]
-
-    def test_what_no_workflow_run_reported(self):
-        self.assertEqual(self.due(
-            self.run("Main"),                                                    # reported as it finished
-            self.run("Identity model convergence", actor="github-actions[bot]"),  # raised no workflow_run
-            self.run("Android", actor="github-actions[bot]"),                     # nor did this one
-            self.run("Convergence fill"),                                         # not listed at all
-        ), ["Identity model convergence", "Android", "Convergence fill"])
-
-    def test_only_inside_the_window_and_never_the_collector_itself(self):
-        self.assertEqual(self.due(
-            self.run("Convergence fill", updated="2026-10-14T07:00:00Z"),
-            self.run("CI timings"),
-        ), [])
-
-    def test_reads_the_list_from_the_collector_workflow(self):
-        workflow = (Path(__file__).parent.parent.parent / ".github" / "workflows" / "ci-timings.yml").read_text()
-        listed = timings.workflow_run_names(workflow)
-        self.assertIn("Main", listed)
-        self.assertNotIn("Identity model convergence", listed)
+    def test_a_finished_run_keeps_its_own(self):
+        self.assertEqual(timings.conclusion_of(dict(RUN, conclusion="cancelled"), jobs()), "cancelled")
 
 
 class Response:

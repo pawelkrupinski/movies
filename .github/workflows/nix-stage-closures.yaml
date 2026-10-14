@@ -388,3 +388,25 @@ jobs:
       - name: Remove the deploy key
         if: always()
         run: rm -f ~/.ssh/id_ed25519
+
+  # EVERY JOB'S AND STEP'S TIME, in this run's log and summary and on Grafana's CI dashboards
+  # (.github/actions/report-timings). After every other job but the failure report; never fails the run.
+  timings:
+    needs: [evaluate, stage]
+    if: ${{ !cancelled() }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      actions: read
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          sparse-checkout: |
+            scripts/ci
+            .github/actions/report-timings
+          sparse-checkout-cone-mode: false
+      - uses: ./.github/actions/report-timings
+        with:
+          grafana-url: ${{ secrets.GRAFANA_URL }}
+          grafana-annotation-token: ${{ secrets.GRAFANA_ANNOTATION_TOKEN }}

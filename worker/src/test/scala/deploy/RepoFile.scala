@@ -258,17 +258,6 @@ object RepoFile {
     yml.linesIterator.collectFirst { case s"name: $n" => n.trim }
       .getOrElse(throw new AssertionError("a workflow without a `name:`"))
 
-  /** The workflows (by `name:`) another workflow starts with the GITHUB_TOKEN -- `gh workflow
-   *  run <file>`, and Main's `kick-convergence.sh` dispatches. Their runs belong to
-   *  github-actions[bot] and raise no `workflow_run` (ConvergenceBisectTriggerSpec). */
-  def tokenDispatchedWorkflowNames(): Set[String] = {
-    val byFile = workflows().map(f => f.getName -> read(f.getPath)).toMap
-    val all    = byFile.values.mkString("\n")
-    ("""gh workflow run ([\w.-]+\.ya?ml)""".r.findAllMatchIn(all).map(m => workflowName(byFile(m.group(1)))) ++
-      """kick-convergence\.sh "\$GITHUB_SHA" "\$GITHUB_REF_NAME" (.*)""".r.findAllMatchIn(all)
-        .flatMap(m => "\"([^\"]+)\"".r.findAllMatchIn(m.group(1)).map(_.group(1)))).toSet
-  }
-
   /** Every composite action's `action.yml` under `.github/actions/`, sorted by path —
    *  the other half of what CI runs, enumerated for the same reason as [[workflows]]. */
   def compositeActions(): Seq[String] =

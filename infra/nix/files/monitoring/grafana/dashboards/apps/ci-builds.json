@@ -12,7 +12,7 @@
   "from": "now-7d",
   "to": "now"
  },
- "description": "Every GitHub Actions workflow's run wall clock and job durations, one chart per build. From scripts/ci/ci_timings.py via the `CI timings` workflow (workflow_run as each run finishes; a 30-minute sweep for GITHUB_TOKEN-dispatched runs).",
+ "description": "Every GitHub Actions workflow's run wall clock and job durations, one chart per build. From scripts/ci/ci_timings.py, run as each workflow's last job (`timings`).",
  "annotations": {
   "list": [
    {
@@ -117,7 +117,7 @@
    },
    "options": {
     "mode": "markdown",
-    "content": "One point per run, at the run's start. **Left: the run** (first job start → last job end, and the wait before any job started). **Right: each job of that build.** Every step and convergence phase is in Prometheus too (`kinowo_ci_step_seconds`, `kinowo_ci_phase_seconds`); per-country convergence detail is on *CI — identity model convergence timings*. A workflow appears once its first run is pushed; a new workflow must be listed in `ci-timings.yml`."
+    "content": "One point per run, at the run's start. **Left: the run** (first job start → last job end, and the wait before any job started). **Right: each job of that build.** Every step and convergence phase is in Prometheus too (`kinowo_ci_step_seconds`, `kinowo_ci_phase_seconds`); per-country convergence detail is on *CI — identity model convergence timings*. Pushed by each workflow's own last job, `timings` (`.github/actions/report-timings`), which prints the same table in that run's log and summary."
    }
   },
   {

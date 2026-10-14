@@ -13,7 +13,7 @@
   "from": "now-7d",
   "to": "now"
  },
- "description": "Where each Identity model convergence run spends its time, per country: run wall clock, every leg's job, its steps and its suite's top-level phases. From scripts/ci/ci_timings.py, pushed by the `CI timings` workflow's sweep (every 30 min) through grafana.kinowo.net's token-gated OTLP path.",
+ "description": "Where each Identity model convergence run spends its time, per country: run wall clock, every leg's job, its steps and its suite's top-level phases. From scripts/ci/ci_timings.py, pushed by the run's own `timings` job through grafana.kinowo.net's token-gated OTLP path.",
  "annotations": {
   "list": [
    {
@@ -125,7 +125,7 @@
    },
    "options": {
     "mode": "markdown",
-    "content": "One point per **Identity model convergence** run, at the run's start. **Target: every run under 10 minutes** (red band). Pushed by `CI timings` (`ci-timings.yml`) up to ~30 min after the run ends — Main dispatches this run with the GITHUB_TOKEN, so only the sweep sees it. Steps are GitHub's step timestamps; phases are the suite's top-level `PhaseTimer` lines (`[uk] bootCutover done in …`), the longest copy when several ran side by side (the order replays `[ukp0..2]`). The run's own `timings` job prints the same table in its log."
+    "content": "One point per **Identity model convergence** run, at the run's start. **Target: every run under 10 minutes** (red band). Pushed by the run's own last job, `timings`, as its legs finish. Steps are GitHub's step timestamps; phases are the suite's top-level `PhaseTimer` lines (`[uk] bootCutover done in …`), the longest copy when several ran side by side (the order replays `[ukp0..2]`). That job prints the same table in the run's log and summary."
    }
   },
   {

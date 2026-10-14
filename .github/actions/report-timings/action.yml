@@ -1,0 +1,31 @@
+name: Report run timings
+description: >-
+  Prints every job's and step's duration (and a convergence suite's PhaseTimer phases) to the log
+  and the run summary, and pushes them to Prometheus for the "CI — build timings" and
+  "CI — identity model convergence timings" Grafana dashboards (scripts/ci/ci_timings.py). Runs as
+  each workflow's `timings` job, after every other job but the scheduled-failure report
+  (RunTimingsWiringSpec). Never fails the run: a chart is not a gate.
+
+inputs:
+  grafana-url:
+    description: Base URL of the Grafana instance (secrets.GRAFANA_URL)
+    required: false
+    default: ''
+  grafana-annotation-token:
+    description: The deploy marker's Grafana token, which Grafana vouches for on the metrics path
+    required: false
+    default: ''
+
+runs:
+  using: composite
+  steps:
+      - shell: bash
+        env:
+            GH_TOKEN: ${{ github.token }}
+            GRAFANA_URL: ${{ inputs.grafana-url }}
+            GRAFANA_ANNOTATION_TOKEN: ${{ inputs.grafana-annotation-token }}
+            # The job running this, still in progress, is left out of its own report.
+            SELF: ${{ github.job }}
+        run: |
+            python3 "$GITHUB_WORKSPACE/scripts/ci/ci_timings.py" --repo "$GITHUB_REPOSITORY" \
+                --run-id "$GITHUB_RUN_ID" --exclude-job "$SELF" --push || true
