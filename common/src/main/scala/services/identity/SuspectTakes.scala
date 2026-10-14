@@ -138,7 +138,7 @@ object SuspectTakes {
     def newestTaken(listing: Listing): Option[Int] = newest.get(Billings.titleKey(listing))
   }
   object Billings {
-    /** In two works: the least that says a piece recurs across films (as `TitleDecorations.MinFilms`). */
+    /** In two works: the least that says a piece recurs across films (as `TitleDecorationsLearner.MinFilms`). */
     val MinWorks = 2
     /** The share of the corpus's works whose billings a word must be in to be one the corpus bills widely — three works at
      *  the least: PL's "klub", "filmowy" and "edukacja" are; DE's "Rückkehr" in a corpus five times the size is not. */
@@ -183,7 +183,7 @@ object SuspectTakes {
 
   /** An event, edition or format word: what a venue bills around a film, never a work's own title. */
   private def billed(word: String): Boolean =
-    FormatTags.FormatToken.contains(word) || DecorationSegments.EventWords(word) || DecorationSegments.EditionWords(word)
+    FormatTags.FormatToken.contains(word) || DecorationWords.EventWords(word) || DecorationWords.EditionWords(word)
 
   /** Words a venue bills around a film that are no part of another work's title: what it [[billed]] the film with,
    *  numbers, single letters. */
@@ -253,7 +253,7 @@ object SuspectTakes {
   private def billsAnOldFilm(listing: Listing, measured: IdentityMeasures.Listing, film: IdentityMeasures.Film): Boolean = {
     val titles = Seq(listing.title, listing.rawTitle, listing.cleanTitle) ++ listing.originalTitle
     val words  = titles.flatMap(TitleContainment.tokens).toSet
-    words.exists(OldFilmWords) || DecorationSegments.billsAnEdition(titles, film.titles) || ListingShape.billsASilentFilm(listing) ||
+    words.exists(OldFilmWords) || DecorationWords.billsAnEdition(titles, film.titles) || ListingShape.billsASilentFilm(listing) ||
       measured.anniversary.isDefined ||
       film.directors.getOrElse(Nil).exists(name => TitleContainment.tokens(name).lastOption.exists(words)) ||
       (listing.directors.nonEmpty && FactRelations.samePerson(listing.directors, film.directors.getOrElse(Nil)))

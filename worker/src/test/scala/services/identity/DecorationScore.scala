@@ -3,7 +3,7 @@ package services.identity
 import play.api.libs.json.{Json, OFormat}
 
 /**
- * How likely a CANDIDATE decoration ([[TitleDecorations.candidates]], [[TitleDecorations.aligned]]) is one whose
+ * How likely a CANDIDATE decoration ([[TitleDecorationsLearner.candidates]], [[TitleDecorationsLearner.aligned]]) is one whose
  * stripping takes listings right and none wrong — a logistic regression over what the corpus says of it
  * ([[DecorationScore.Features]]), FITTED (`scripts.IdentityDecorationScoreFit`) to the outcomes the detector measured
  * (`integration.IdentityDecorationCandidates`), never hand-weighted. The detector measures the candidates in the order
@@ -12,15 +12,15 @@ import play.api.libs.json.{Json, OFormat}
  */
 final case class DecorationScore(version: String, features: Seq[String], weights: Seq[Double], cut: Double, folds: Int,
                                  trainingRows: Int, heldOut: DecorationScore.HeldOut) {
-  def probability(f: DecorationScore.Features): Double = DecorationScore.sigmoid(DecorationScore.dot(weights, f.vector))
+  def probability(f: DecorationScore.Features): Double = LogisticFit.probability(weights.toIndexedSeq, f.vector.toIndexedSeq)
   def accepts(f: DecorationScore.Features): Boolean = probability(f) >= cut
 }
 
 object DecorationScore {
 
   /** What the corpus says of one candidate run:
-   *  @param aligned       inner titles it decorates beside a plain sibling of the same film ([[TitleDecorations.aligned]])
-   *  @param recurring     different inner titles it recurs around ([[TitleDecorations.candidates]])
+   *  @param aligned       inner titles it decorates beside a plain sibling of the same film ([[TitleDecorationsLearner.aligned]])
+   *  @param recurring     different inner titles it recurs around ([[TitleDecorationsLearner.candidates]])
    *  @param venues        venues billing it
    *  @param prefix        whether it leads the title (else it trails)
    *  @param tokens        its words
@@ -53,7 +53,7 @@ object DecorationScore {
     val weights = newton(sorted)
     val heldOut = sorted.groupBy(row => foldOf(row.key)).toSeq.sortBy(_._1).flatMap { case (fold, test) =>
       val model = newton(sorted.filterNot(row => foldOf(row.key) == fold))
-      test.map(row => row -> sigmoid(dot(model, row.features.vector)))
+      test.map(row => row -> LogisticFit.probability(model.toIndexedSeq, row.features.vector.toIndexedSeq))
     }
     val worstBad = heldOut.filter(_._1.bad).map(_._2).maxOption.getOrElse(0.0)
     val cut      = heldOut.map(_._2).filter(_ > worstBad).minOption.getOrElse(1.0)
@@ -65,10 +65,7 @@ object DecorationScore {
   private def foldOf(key: String): Int = Math.floorMod(scala.util.hashing.MurmurHash3.stringHash(key), Folds)
 
   private def newton(rows: Seq[Row]): Seq[Double] =
-    LogisticFit.fit(rows.map(_.features.vector.toArray).toArray, rows.map(row => if (row.good) 1.0 else 0.0).toArray, L2, Iterations)
-
-  private[identity] def sigmoid(z: Double): Double = LogisticFit.sigmoid(z)
-  private[identity] def dot(w: Seq[Double], x: Seq[Double]): Double = LogisticFit.dot(w.toIndexedSeq, x.toIndexedSeq)
+    LogisticFit.fitLabelled(rows.map(row => row.features.vector.toArray -> row.good), L2, Iterations)
 
   implicit val heldOutFormat: OFormat[HeldOut]       = Json.format[HeldOut]
   implicit val scoreFormat: OFormat[DecorationScore] = Json.format[DecorationScore]

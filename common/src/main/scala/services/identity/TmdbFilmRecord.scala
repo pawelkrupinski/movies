@@ -91,7 +91,7 @@ object TmdbFilmRecord {
         (result \ "release_dates").asOpt[Seq[JsValue]].getOrElse(Nil)
           .filter(release => (release \ "type").asOpt[Int].exists(CinemaReleaseTypes))
           .flatMap(release => (release \ "release_date").asOpt[String].flatMap(_.take(4).toIntOption).map { year =>
-            Release(country, year, (release \ "note").asOpt[String].exists(note => DecorationSegments.billsAnEdition(Seq(note), Nil)))
+            Release(country, year, (release \ "note").asOpt[String].exists(note => DecorationWords.billsAnEdition(Seq(note), Nil)))
           })
       }
     }.distinct.sortBy(r => (r.country, r.year, r.edition)).map(_.code).mkString

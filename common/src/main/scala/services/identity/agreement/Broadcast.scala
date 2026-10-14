@@ -1,6 +1,6 @@
 package services.identity.agreement
 
-import services.identity.{Answer, DecorationSegments, FactRelations, IdentityMeasures, Listing, ListingShape, ScreeningDays}
+import services.identity.{Answer, DecorationWords, FactRelations, IdentityMeasures, Listing, ListingShape, ScreeningDays}
 import services.identity.IdentityMeasures.Film
 
 
@@ -192,7 +192,7 @@ object Broadcast {
       titles.flatMap(IdentityMeasures.pieces)
         .filterNot(piece => billsWork(piece) || services.identity.StageWorks.resolver.named(IdentityMeasures.key(piece)).nonEmpty)
         .flatMap(piece => services.movies.TitleContainment.tokens(CamelCase.replaceAllIn(piece, " ")))
-        .filter(word => word.length >= 4 && !word.forall(_.isDigit) && !DecorationSegments.EventWords(word)).toSet
+        .filter(word => word.length >= 4 && !word.forall(_.isDigit) && !DecorationWords.EventWords(word)).toSet
 
     /** Does a listing's banner spell the record's house: every word of it the house's (an abbreviation: "Opera" of "The
      *  Metropolitan Opera"), or two of them at least ("Royal Ballet" of "Royal Ballet & Opera")? One shared word is a

@@ -503,9 +503,9 @@ No word list: a new venue's decoration is learned by the next refit.
 
 **Candidate decorations, measured.** What the learner cannot see — a programme banner around films no other
 listing bills ("Binti Edukacja Młode Horyzonty"), a run a record title also carries ("lektor", "dubbing") — the
-detector `integration.IdentityDecorationCandidates` proposes from two signals, `TitleDecorations.candidates`
+detector `integration.IdentityDecorationCandidates` proposes from two signals, `TitleDecorationsLearner.candidates`
 (an edge run recurring around ≥ 2–3 inner titles, the inner titles need not be billed elsewhere) and
-`TitleDecorations.aligned` (a run one venue adds to a film another venue bills plain, within the model's own
+`TitleDecorationsLearner.aligned` (a run one venue adds to a film another venue bills plain, within the model's own
 clusters), then MEASURES them on the recorded full corpora: every country resolved with the candidates beside the
 learned decorations, each moved listing put down to the candidates its title carries and judged by the ratchet's
 `labels.tsv` (a double programme taking a film counts wrong), a candidate with a wrong take or a moved match dropped,
@@ -517,7 +517,7 @@ Met's "… | metropolitan opera: live in hd 2026/27" suffix, a stage relay — a
 Alamo" → "The Alamo", "Klasyka SFR vol.2" → "Kill Bill 2") and 27 moved matches; the shipped cut admits nothing yet.
 
 **Decorations as title rules, weekly.** `scripts.DecorationDiscovery` (run by `decoration-discovery.yml` every
-Tuesday) mines the same `TitleDecorations.candidates` from the unmatched clusters' fixture alone — the listings no
+Tuesday) mines the same `TitleDecorationsLearner.candidates` from the unmatched clusters' fixture alone — the listings no
 take covers, as their search titles read — drops any run a known film title (the capture's TMDB records and search
 hits) starts with as a prefix or ends with as a suffix, and proposes each survivor as a SEARCH STRIP
 (`ExtraTitleRules.discovered`, query-only). Each is measured alone: the clusters its new search titles touch resolved
@@ -1265,8 +1265,8 @@ runtime or year differs at all (`runtime.delta >= 1 AND venue in {same}`: 26% he
 | Jeffreys α = 0.5 | smoothing | standard non-informative prior | none needed |
 | name words ≥ 3 letters (shared name), original-title words ≥ 4 | `IdentityMeasures` | what counts as a shared word | learn a word-weight table (IDF over the corpus) |
 | delimiter set of banner segments | `SearchTitles.candidates` | reused, not new | learn segments from co-occurring spellings (undelimited edge runs are learned already: `TitleDecorations`, §7b) |
-| a decoration recurs around ≥ 2 films | `TitleDecorations.MinFilms` | the smallest count that says "recurs", not a tuned number | none needed |
-| a decoration seen around one film recurs at ≥ 2 venues | `TitleDecorations.MinVenues` | the smallest count that says "recurs" across venues, not a tuned number | none needed |
+| a decoration recurs around ≥ 2 films | `TitleDecorationsLearner.MinFilms` | the smallest count that says "recurs", not a tuned number | none needed |
+| a decoration seen around one film recurs at ≥ 2 venues | `TitleDecorationsLearner.MinVenues` | the smallest count that says "recurs" across venues, not a tuned number | none needed |
 | ≤ 20 listing pairs per member in blocks over 41 | pair sampling | cost | none needed: sampling does not bias a unit-counted estimate |
 | 4 neutral missing values | fitting | sampling artefacts of the recorded trees | fetch every candidate's details in the recording pass (§9), then fit them |
 | title order `decorated ≥ overlap ≥ none` | `IdentityMeasures.EvidenceOrder` | more of the film's title named is never weaker evidence; an order, never a weight | derive the order from the relations' own containment (a category whose matches imply another's ranks above it) |
@@ -2490,7 +2490,7 @@ Calibrated = fitted from data today (`identity-weights.json`, §14). Feature = a
 | editions apart | listing and record number different editions | `PosterEvidence.editionsApart` | not compared | no | (input filter) |
 | family question policy | first hit or a shared word, ≤`Records` 6; director searches IMDb/Wikidata only; Latin-only titles for RT/MC | `FamilyLookups` | — | no | (what is asked, not evidence) |
 | same film across families | shared cross-id, else `equivalent` facts (year ±1, runtime ±2, director, shared title) | `Agreement.sameFilm` | — | no | (joins contenders) |
-| learned decorations, decoration score, segment / token models | strip venue banners and formats from titles | `TitleDecorations`, `DecorationScore`, `DecorationSegments`, `DecorationTokens` | learned | yes | upstream: search titles and the title relation |
+| learned decorations, decoration score, segment / token models | strip venue banners and formats from titles | `TitleDecorations` (the learners offline: `TitleDecorationsLearner`, `DecorationScore`, `DecorationSegments`, `DecorationTokens`) | learned | yes | upstream: search titles and the title relation |
 | constraint edges | must-links by tier (pinned, film, sanitised title, search form, segment, catalogue id); cannot-links | `ConstraintEdges`, `ConstraintSolver` | tiers | cannot-links yes | upstream: the clusters |
 | pins, fact (title) rules | curation; normaliser rules | `PinConstraints`, `TitleNormalizer` | hard | no | hard constraints, never weighed |
 | pending (combined branch, not on main 2026-10-05) | relays' broadcast date, programme banners, venue-page facts, catalogue-id votes, Filmweb/Wikidata identities, double programmes | agreement | — | no | phase 2 |
@@ -2515,7 +2515,7 @@ poster or a family names another film). The rows are checked in at
 `scripts.IdentityUnifiedFit`: an L2 (1.0) logistic regression, each weight held to its signal's direction
 (`LogisticFit.fitSigned`, an active set, deterministic); five folds by VENUE; the cut is the lowest held-out best
 contender above every held-out new-wrong take (by hand label) and every take moving today's film. Pinned in
-`common/src/main/resources/identity-unified-weights.json`; `IdentityUnifiedFitSpec` refits it from the checked-in rows.
+`worker/src/test/resources/identity-unified-weights.json` (offline: nothing in production reads it); `IdentityUnifiedFitSpec` refits it from the checked-in rows.
 Relearn: `CORPORA=… FIXTURES=… [FAMILY_SEED=…] [POSTER_CACHE=…] MONGODB_URI=<throwaway> scripts/identity-calibrate.sh --unified`.
 
 ### 20.4 Measured (2026-10-05, weights `unified-0773e56c`)

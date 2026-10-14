@@ -428,7 +428,7 @@ object IdentityMeasures {
    *  listing's banner spells the house ([[spellsItsHouse]]): TMDB filing the Paris Opera's works only
    *  under the Met's 2026/27 records teaches the Paris banner to be the Met. And not a banner numbering its edition otherwise than the record's: a
    *  house's name carries no number ("League of Legends Worlds 26" is not "… Worlds25"). Nor is a CUT or an edition a
-   *  house ([[DecorationSegments.EditionWords]]): DE "Das Boot - Director s Cut" is Petersen's film, not TMDB's yearless
+   *  house ([[DecorationWords.EditionWords]]): DE "Das Boot - Director s Cut" is Petersen's film, not TMDB's yearless
    *  "Das Boot - Directors Cut" record its "house" bills alike. */
   def billsUnderItsHouse(listing: Listing, film: Film, houses: Houses): Boolean =
     (listing.seasonYear.isEmpty || filmSeason(film).isEmpty) &&
@@ -437,7 +437,7 @@ object IdentityMeasures {
   /** A banner of edition words alone, a possessive's lone letter aside ("director s cut"). */
   private def namesAnEdition(banner: Seq[String]): Boolean = {
     val words = banner.filter(_.lengthIs > 1)
-    words.nonEmpty && words.forall(DecorationSegments.EditionWords)
+    words.nonEmpty && words.forall(DecorationWords.EditionWords)
   }
   /** Does the listing's banner SPELL the record's house — two of its words or more ("Royal Ballet and
    *  Opera" of "Royal Ballet & Opera")? A season-free listing takes a season's record only then: the
@@ -1433,7 +1433,7 @@ object IdentityMeasures {
    *  [[FilmCuts]] names — a listing running as any translation's cut runs as the film. Positive when the venue bills more
    *  minutes (an interval, an introduction, a short before the feature), negative when it bills fewer (another cut,
    *  another film); a gap the same size either way reads as the longer billing. Its table is fitted on each side of 0
-   *  ([[EvidenceDirection.Peaked]]); the hand-written rules read its size ([[runtimeGap]]). A listing billing an EDITION ([[DecorationSegments.billsAnEdition]]: "… (Extended Edition)",
+   *  ([[EvidenceDirection.Peaked]]); the hand-written rules read its size ([[runtimeGap]]). A listing billing an EDITION ([[DecorationWords.billsAnEdition]]: "… (Extended Edition)",
    *  "Director's Cut", "Redux") that runs LONGER than every one of them states nothing for or against it: TMDB keeps no
    *  record of an extended cut apart from its film's ("The Return of the King" is 201 minutes in every language, its
    *  extended edition 263), so the longer cut is neutral. A shorter one still counts: an edition never makes a film shorter. */
@@ -1456,11 +1456,11 @@ object IdentityMeasures {
       else Number(off.toDouble)
   }
 
-  /** Does the listing bill an edition of the film: by its title ([[DecorationSegments.billsAnEdition]]), or by its year, one
+  /** Does the listing bill an edition of the film: by its title ([[DecorationWords.billsAnEdition]]), or by its year, one
    *  TMDB dates a release of the film's edition in ([[Film.editionYear]]: Prince Charles's "Apocalypse Now", 2019, is
    *  its 2019 Final Cut)? */
   private def billsAnEdition(l: Listing, f: Film, country: Option[String]): Boolean =
-    DecorationSegments.billsAnEdition(Seq(l.title) ++ l.rawTitle, f.titles) || l.year.exists(f.editionYear(_, country))
+    DecorationWords.billsAnEdition(Seq(l.title) ++ l.rawTitle, f.titles) || l.year.exists(f.editionYear(_, country))
 
   private def absDelta(a: Option[Int], b: Option[Int]): Measure = delta(a, b) match {
     case Number(d) => Number(math.abs(d))
@@ -1559,7 +1559,7 @@ object IdentityMeasures {
   /** What a piece a bill joins after a film names when it names an event, not a work: a talk, a lecture, a workshop, a
    *  quiz, a gala, an exhibition or its opening, a concert, a (poster) tour, a signing — PL, EN, DE, ES — beside the
    *  segment model's event words. "OPĘTANIE + TRASA PLAKATOWA" (Światowid) is one film and a poster tour. */
-  private val EventTailWords: Set[String] = DecorationSegments.EventWords ++ Set(
+  private val EventTailWords: Set[String] = DecorationWords.EventWords ++ Set(
     "wstep", "wyklad", "warsztaty", "quiz", "gala", "wystawa", "wernisaz", "trasa", "debata", "podpisywanie", "autografy", "dyskusji",
     "lecture", "workshop", "exhibition", "vernissage", "concert", "tour", "signing", "discussion", "debate",
     "vortrag", "werkstatt", "ausstellung", "konzert", "tournee", "diskussion", "lesung",
@@ -1586,8 +1586,8 @@ object IdentityMeasures {
     else LabelledYear.findAllMatchIn(title).filterNot(m => TitleContainment.tokens(m.group(1)).exists(datesAScreening))
       .map(m => s"(${m.group(2)})")
   private def datesAScreening(word: String): Boolean =
-    DecorationSegments.EditionWords(word) || DecorationSegments.EventWords(word) || services.movies.FormatTags.FormatToken.contains(word) ||
-      MonthNames(word) || DecorationSegments.EventWords.exists(event => event.length >= 5 && word.length > event.length && word.contains(event))
+    DecorationWords.EditionWords(word) || DecorationWords.EventWords(word) || services.movies.FormatTags.FormatToken.contains(word) ||
+      MonthNames(word) || DecorationWords.EventWords.exists(event => event.length >= 5 && word.length > event.length && word.contains(event))
   /** Every locale's month names, as title words. */
   private lazy val MonthNames: Set[String] =
     (for { locale <- java.util.Locale.getAvailableLocales.iterator; month <- java.time.Month.values.iterator

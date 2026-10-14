@@ -66,7 +66,7 @@ object DecorationDiscovery {
    *  that neither `known` resolver decorations nor any `lexicon` title already carry, and that strip no real title. */
   def mine(titles: Seq[(String, String)], lexicon: Iterable[String], known: TitleDecorations, minRemainders: Int): Seq[Candidate] = {
     val edges = Edges(lexicon)
-    val all = TitleDecorations.candidates(titles, lexicon, known, minRemainders)
+    val all = TitleDecorationsLearner.candidates(titles, lexicon, known, minRemainders)
       .map(d => Candidate(d.side, d.decoration.split(" ").toSeq, d.films, d.venues, d.examples))
       .filterNot(c => edges.stripsRealTitle(c.side, c.run))
     // a run that only ever bills as part of a longer one ("dismember the" inside "dismember the alamo") is that run
@@ -74,11 +74,11 @@ object DecorationDiscovery {
       (if (c.side == "prefix") o.run.startsWith(c.run) else o.run.endsWith(c.run))))
   }
 
-  /** Every known title's leading and trailing token runs, up to [[TitleDecorations.CandidateRun]] words. */
+  /** Every known title's leading and trailing token runs, up to [[TitleDecorationsLearner.CandidateRun]] words. */
   final case class Edges(lexicon: Iterable[String]) {
     private val (prefixes, suffixes) = {
       val titles = lexicon.iterator.map(TitleContainment.tokens).filter(_.nonEmpty).toSet
-      val n = TitleDecorations.CandidateRun
+      val n = TitleDecorationsLearner.CandidateRun
       (titles.flatMap(t => (1 to math.min(n, t.size)).map(t.take)), titles.flatMap(t => (1 to math.min(n, t.size)).map(t.takeRight)))
     }
     /** Whether a known title STARTS with `run` (a prefix) or ENDS with it (a suffix): stripping it there would cut

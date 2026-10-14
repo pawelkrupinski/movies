@@ -22,7 +22,7 @@ object DecorationTokens {
       val before = title.substring(if (i == 0) 0 else ws(i - 1)._3, start)
       val after  = title.substring(end, if (i == ws.size - 1) title.length else ws(i + 1)._2)
       val text   = title.substring(start, end)
-      Word(token, before, after, text.exists(_.isLetter) && text.filter(_.isLetter).forall(_.isUpper))
+      Word(token, before, after, allCaps(text))
     }
   }
 
@@ -58,7 +58,6 @@ object DecorationTokens {
     def vector: Array[Double] = Array(1.0, math.min(edgeDistance, 5) / 5.0, if (edgeDistance == 0) 1.0 else 0.0, relative,
       flag(separatorBefore), flag(separatorAfter), flag(digits), flag(year), flag(format), flag(allCaps),
       math.log1p(spread.venues.toDouble), math.log1p(spread.films.toDouble), math.log1p(spread.records.toDouble), math.min(length, 12) / 12.0)
-    private def flag(b: Boolean) = if (b) 1.0 else 0.0
   }
   val Names: Seq[String] = Seq("intercept", "edgeDistance", "atEdge", "relativePosition", "separatorBefore", "separatorAfter", "digits", "year",
     "formatWord", "allCaps", "log1p(venues)", "log1p(films)", "log1p(records)", "titleLength")
@@ -76,14 +75,10 @@ object DecorationTokens {
   /** A fitted model: its weights over [[Names]], and the probability at which a word is decoration. */
   final case class Model(weights: Seq[Double], cut: Double = 0.5) {
     private val w = weights.toIndexedSeq
-    def probability(f: Features): Double = LogisticFit.sigmoid(LogisticFit.dot(w, f.vector.toIndexedSeq))
+    def probability(f: Features): Double = LogisticFit.probability(w, f.vector)
     /** The words of `ws` left once the edge runs the model reads as decoration are cut, from either end, one word kept. */
-    def inner(ws: IndexedSeq[Word], spread: String => Spread): Seq[String] = {
-      val p = ws.indices.map(i => probability(features(ws, i, spread)) >= cut)
-      val from  = p.indexWhere(!_) match { case -1 => ws.size; case k => k }
-      val until = p.lastIndexWhere(!_) + 1
-      if (from >= until) ws.map(_.token) else ws.slice(from, until).map(_.token)
-    }
+    def inner(ws: IndexedSeq[Word], spread: String => Spread): Seq[String] =
+      withoutDecoratedEdges(ws, ws.indices.map(i => probability(features(ws, i, spread)) >= cut)).map(_.token)
   }
 
   val L2 = 1.0
@@ -91,5 +86,20 @@ object DecorationTokens {
 
   /** The model `rows` (each word's features and whether it is decoration) fit. */
   def fit(rows: Seq[(Features, Boolean)]): Model =
-    Model(LogisticFit.fit(rows.map(_._1.vector).toArray, rows.map(r => if (r._2) 1.0 else 0.0).toArray, L2, Iterations))
+    Model(LogisticFit.fitLabelled(rows.map { case (f, decoration) => f.vector -> decoration }, L2, Iterations))
+
+  /** `items` without the runs at either edge `decoration` marks, from either end — all of them when every one is
+   *  marked: what a learner's model leaves of a title, word by word ([[Model.inner]]) or segment by segment
+   *  ([[DecorationSegments.Model.inner]]). */
+  private[identity] def withoutDecoratedEdges[A](items: IndexedSeq[A], decoration: IndexedSeq[Boolean]): IndexedSeq[A] = {
+    val from  = decoration.indexWhere(!_) match { case -1 => items.size; case k => k }
+    val until = decoration.lastIndexWhere(!_) + 1
+    if (from >= until) items else items.slice(from, until)
+  }
+
+  /** A learner's feature value for a yes/no signal. */
+  private[identity] def flag(b: Boolean): Double = if (b) 1.0 else 0.0
+
+  /** Is `text` written in capitals: some letter, and every letter upper case? */
+  private[identity] def allCaps(text: String): Boolean = text.exists(_.isLetter) && text.filter(_.isLetter).forall(_.isUpper)
 }

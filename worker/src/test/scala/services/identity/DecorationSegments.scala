@@ -1,5 +1,7 @@
 package services.identity
 
+import services.identity.DecorationTokens.{allCaps, flag, withoutDecoratedEdges}
+import services.identity.DecorationWords.{EditionWords, EventWords}
 import services.movies.{FormatTags, TitleContainment}
 
 /**
@@ -92,26 +94,8 @@ object DecorationSegments {
 
   private val Year        = """(19|20)\d\d""".r
   private val Roman       = Set("ii", "iii", "iv", "v", "vi", "vii", "viii", "ix", "x", "vol", "cz", "czesc", "part", "teil", "parte", "set")
-  /** Words naming an event around a screening, not a work ([[IdentityMeasures.billsTwoWholeWorks]] and the broadcast join read them too). */
-  private[identity] val EventWords = Set("spotkanie", "prelekcja", "prelekcja", "pokaz", "specjalny", "q", "a", "qa", "premiera", "przedpremiera", "konkurs",
-    "dyskusja", "rozmowa", "seans", "screening", "event", "special", "preview", "live", "talk", "intro", "introduced", "gesprach", "vorpremiere",
-    "festiwal", "festival", "retransmisja", "koncert", "karnet", "maraton", "marathon")
-  private[identity] val EditionWords = Set("cut", "remaster", "remastered", "restored", "restoration", "4k", "rerelease", "re", "release", "anniversary",
-    "aniversario", "rocznica", "edition", "extended", "director", "directors", "wersja", "rozszerzona", "jubileusz", "uncut", "redux", "fassung", "restauriert", "restaurierte")
-
-  /** Does a listing billed under `titles` name an EDITION of the film titled `filmTitles` — a word of [[EditionWords]]
-   *  ("Extended Edition", "Director's Cut", "Redux") its titles carry and the film's do not? TMDB keeps one record for a
-   *  film and its cuts, so an edition can run longer than every runtime the record states (`IdentityMeasures`' runtime
-   *  delta reads it). */
-  def billsAnEdition(titles: Seq[String], filmTitles: Seq[String]): Boolean = {
-    val filmWords = filmTitles.iterator.flatMap(TitleContainment.tokens).toSet
-    titles.iterator.flatMap(TitleContainment.tokens).exists(word => EditionWords(word) && !filmWords(word))
-  }
   private val PlaceWords  = Set("sala", "zl", "pln", "eur", "gbp", "usd", "bilet", "bilety", "dzieci", "kids", "seniora", "senior", "familie", "family")
   private val Stopwords   = Set("i", "w", "z", "na", "do", "the", "a", "of", "and", "in", "der", "die", "das", "und", "el", "la", "los", "las", "de", "y")
-
-  private def flag(b: Boolean) = if (b) 1.0 else 0.0
-  private def caps(text: String) = text.exists(_.isLetter) && text.filter(_.isLetter).forall(_.isUpper)
 
   /** Segment `i` of `segs` as every signal group sees it. */
   def features(segs: IndexedSeq[Segment], i: Int, ctx: Context): Seq[Feature] = {
@@ -123,7 +107,7 @@ object DecorationSegments {
       Delimiters.drop(1).map(d => s"before:$d" -> flag(s.before == d)) ++ Delimiters.drop(1).map(d => s"after:$d" -> flag(s.after == d)) ++
       Seq("quoted" -> flag(s.before == "quote" && s.after == "quote"), "words" -> math.min(n, 8) / 8.0,
         "punctuation" -> s.text.count(c => !c.isLetterOrDigit && !c.isWhitespace).toDouble / math.max(1, s.text.length),
-        "allCaps" -> flag(caps(s.text)), "caseChange" -> flag(segs.indices.exists(j => j != i && caps(segs(j).text) != caps(s.text))))
+        "allCaps" -> flag(allCaps(s.text)), "caseChange" -> flag(segs.indices.exists(j => j != i && allCaps(segs(j).text) != allCaps(s.text))))
     val lexicon = Seq("formatWords" -> share(FormatTags.FormatToken.contains), "eventWords" -> share(EventWords), "editionWords" -> share(EditionWords),
       "placeWords" -> share(t => PlaceWords(t) || t.endsWith("zl")), "numbered" -> share(t => Roman(t) || t.forall(_.isDigit) && t.length <= 2),
       "year" -> flag(years.nonEmpty), "yearInBrackets" -> flag(years.nonEmpty && s.before == "bracket" && ws.size == 1),
@@ -153,17 +137,12 @@ object DecorationSegments {
   final case class Model(names: Seq[String], weights: Seq[Double], cut: Double = 0.5) {
     private val w = weights.toIndexedSeq
     def vector(fs: Seq[Feature]): IndexedSeq[Double] = { val byName = fs.map(f => f.name -> f.value).toMap; (1.0 +: names.drop(1).map(byName.getOrElse(_, 0.0))).toIndexedSeq }
-    def probability(fs: Seq[Feature]): Double = LogisticFit.sigmoid(LogisticFit.dot(w, vector(fs)))
+    def probability(fs: Seq[Feature]): Double = LogisticFit.probability(w, vector(fs))
     /** The words left once the edge segments the model reads as decoration are cut, from either end, one segment kept;
      *  a title billing several works is left whole. */
     def inner(segs: IndexedSeq[Segment], featuresOf: Int => Seq[Feature]): Seq[String] =
       if (billsSeveral(segs)) segs.flatMap(_.tokens)
-      else {
-        val p     = segs.indices.map(i => probability(featuresOf(i)) >= cut)
-        val from  = p.indexWhere(!_) match { case -1 => segs.size; case k => k }
-        val until = p.lastIndexWhere(!_) + 1
-        (if (from >= until) segs else segs.slice(from, until)).flatMap(_.tokens)
-      }
+      else withoutDecoratedEdges(segs, segs.indices.map(i => probability(featuresOf(i)) >= cut)).flatMap(_.tokens)
   }
 
   val L2 = 1.0
@@ -173,6 +152,6 @@ object DecorationSegments {
   def fit(rows: Seq[(Seq[Feature], Boolean)], without: Set[String] = Set.empty): Model = {
     val names = "intercept" +: rows.headOption.toSeq.flatMap(_._1).filterNot(f => without(f.group)).map(_.name)
     val shell = Model(names, Seq.fill(names.size)(0.0))
-    Model(names, LogisticFit.fit(rows.map(r => shell.vector(r._1).toArray).toArray, rows.map(r => if (r._2) 1.0 else 0.0).toArray, L2, Iterations))
+    Model(names, LogisticFit.fitLabelled(rows.map { case (fs, decoration) => shell.vector(fs).toArray -> decoration }, L2, Iterations))
   }
 }

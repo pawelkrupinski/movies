@@ -28,8 +28,8 @@ import java.util.zip.GZIPInputStream
 object IdentityUnifiedFit {
 
   val Training: Path = Paths.get("test/resources/fixtures/identity-unified/training.tsv.gz")
-  val Artefact: Path = Paths.get("common/src/main/resources", UnifiedWeights.ResourcePath)
-  val HybridArtefact: Path = Paths.get("common/src/main/resources", UnifiedWeights.HybridResourcePath)
+  val Artefact: Path = Paths.get("worker/src/test/resources", UnifiedWeights.ResourcePath)
+  val HybridArtefact: Path = Paths.get("worker/src/test/resources", UnifiedWeights.HybridResourcePath)
   val L2    = 1.0
   val Folds = 5
 

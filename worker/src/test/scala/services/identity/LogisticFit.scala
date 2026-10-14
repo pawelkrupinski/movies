@@ -33,6 +33,10 @@ object LogisticFit {
     w.toSeq.map(x => math.rint(x * 1e6) / 1e6)
   }
 
+  /** [[fit]] over labelled rows: each row's features and whether it is a positive. */
+  def fitLabelled(rows: Seq[(Array[Double], Boolean)], l2: Double, iterations: Int): Seq[Double] =
+    fit(rows.map(_._1).toArray, rows.map(row => if (row._2) 1.0 else 0.0).toArray, l2, iterations)
+
   /** [[fit]] with each weight held to the sign `signs` gives it — +1 never below 0, −1 never above, 0 free; the
    *  intercept always free — the MONOTONE fit a signal with a known direction gets: a signal that can only speak for a
    *  film never weighs against it. An active set: weights breaking their sign are held at 0 and the rest refitted, and
@@ -110,6 +114,8 @@ object LogisticFit {
     w
   }
 
+  /** The probability weights `w` give the row `x`. */
+  def probability(w: collection.IndexedSeq[Double], x: collection.IndexedSeq[Double]): Double = sigmoid(dot(w, x))
   def sigmoid(z: Double): Double = 1.0 / (1.0 + math.exp(-z))
   def dot(w: collection.IndexedSeq[Double], x: collection.IndexedSeq[Double]): Double = {
     var s = 0.0; var i = 0

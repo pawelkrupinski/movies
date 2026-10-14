@@ -11,8 +11,8 @@ import scala.collection.mutable
 import scala.util.Try
 
 /**
- * The PROGRAMME- AND FORMAT-DECORATION DETECTOR: proposes the decorations [[TitleDecorations.learn]] cannot see yet
- * ([[TitleDecorations.candidates]] — "Edukacja Młode Horyzonty", "2D PL LOLO", "Weekend Seniora z Kulturą" around films
+ * The PROGRAMME- AND FORMAT-DECORATION DETECTOR: proposes the decorations [[TitleDecorationsLearner.learn]] cannot see yet
+ * ([[TitleDecorationsLearner.candidates]] — "Edukacja Młode Horyzonty", "2D PL LOLO", "Weekend Seniora z Kulturą" around films
  * no other listing bills), MEASURES them on the recorded full corpora, and keeps only those that take more listings
  * right and none wrong. Re-runnable as venues add programmes:
  *
@@ -27,7 +27,7 @@ import scala.util.Try
  * moves at all is a MOVE — never accepted on this evidence. A candidate with a wrong take or a move is dropped and the
  * rest resolved again, until a round drops nothing (at most `--rounds`). What survives with a right take is KEPT: written
  * to `<out>/kept.json` as [[TitleDecorations.Learned]] entries and, with `--write`, merged into the resolver's artefact
- * (`TitleDecorations.accumulate` keeps them across a relearn). Unjudged takes are listed for a hand label, never counted.
+ * (`TitleDecorationsLearner.accumulate` keeps them across a relearn). Unjudged takes are listed for a hand label, never counted.
  *
  * Only the model is measured — TMDB's searches (the recording, its gaps asked live with the live-gaps key) — not the
  * agreement stage's families: `UnmatchedClustersRatchetSpec`, re-captured, is the check that a kept decoration moves no
@@ -57,17 +57,17 @@ object IdentityDecorationCandidates {
         case "all" => learned
         case every => learned.zipWithIndex.collect { case (d, i) if i % every.toInt == 0 => d }
       }
-      val base = TitleDecorations.resolver.without(withheld.map(d => d.side -> d.decoration.split(" ").toSeq).toSet)
+      val base = TitleDecorationsLearner.without(TitleDecorations.resolver, withheld.map(d => d.side -> d.decoration.split(" ").toSeq).toSet)
       tsv(out.resolve("withheld.tsv"), "side\tdecoration\tfilms\tvenues", withheld.map(d => Seq(d.side, d.decoration, d.films, d.venues).mkString("\t")))
       val titled = loaded.flatMap(l => l.listings.flatMap(x => Seq(x.title, x.rawTitle).distinct.map(x.venue -> _)))
 
       val baseline = resolveAll(base)
       val reference = if (withheld.isEmpty) baseline else resolveAll(TitleDecorations.resolver)
       // two signals: runs recurring around many inner titles, and runs one venue adds to a film another bills plain
-      val recurring = TitleDecorations.candidates(titled, records, base, minRemainders)
+      val recurring = TitleDecorationsLearner.candidates(titled, records, base, minRemainders)
       val clusters  = baseline.toSeq.filter(_._2.film.nonEmpty).groupMap { case ((cc, _), t) => (cc, t.cluster) }(_._1).values
         .map(_.flatMap(byKey.get).flatMap(x => Seq(x.title, x.rawTitle).distinct.map(x.venue -> _)))
-      val aligned   = TitleDecorations.aligned(clusters, base)
+      val aligned   = TitleDecorationsLearner.aligned(clusters, base)
       val signalOf  = (recurring.map(d => (d.side, d.decoration) -> "recurring") ++ aligned.map(d => (d.side, d.decoration) -> "aligned"))
         .groupMap(_._1)(_._2).view.mapValues(_.distinct.sorted.mkString("+")).toMap
       val supplied  = opts.get("proposals").map(path => Files.readAllLines(Paths.get(path)).toArray(Array.empty[String]).toSeq.drop(1).filter(_.nonEmpty)
@@ -163,7 +163,7 @@ object IdentityDecorationCandidates {
       println(s"${if (settled) "settled" else "NOT settled"} after $round round(s): kept ${kept.size} decoration(s) → ${out.resolve("kept.json")}")
       opts.get("write").map(Paths.get(_)).filter(_ => kept.nonEmpty).foreach { artefact =>
         val earlier = Json.parse(Files.readString(artefact)).as[TitleDecorations.Artefact]
-        val merged  = earlier.copy(decorations = TitleDecorations.accumulate(earlier.decorations, kept, records))
+        val merged  = earlier.copy(decorations = TitleDecorationsLearner.accumulate(earlier.decorations, kept, records))
         Files.writeString(artefact, Json.prettyPrint(Json.toJson(merged)) + "\n")
         println(s"merged into $artefact")
       }

@@ -188,7 +188,7 @@ catalogue match; `broadcast.take` via `Broadcast.take`). Rules: the fill `venues
    `FactRelations`). The two contradiction semantics disagreed on names in two scripts — **finding F1**, unified.
 2. **Bill / several works — 7.** `Acceptance.billsSeveralWorks`, `Agreement.billsSeveral`/`billsSeveralBeside`/
    `billsSeveralBySigns` (zestaw, quoted), `IdentityMeasures.billsTwoWorks`/`billsTwoWholeWorks`, `MultiFilmBill`,
-   `DecorationSegments.billsSeveral`, `NonFilmEvents` "marathon" marker, `ConstraintEdges`:40.
+   `DecorationSegments.billsSeveral` (offline), `NonFilmEvents` "marathon" marker, `ConstraintEdges`:40.
 3. **Stage relay / house — 6.** `Agreement.stagesAWork`, `IdentityMeasures.billsStageWork`/`stageWorks`,
    `Agreement.billsAHouse` (hard-coded `HouseWords`), `Broadcast.billsAHouse(title)` (stage work + banner),
    `NonFilmEvents.relays`, `IdentityMeasures.billsUnderItsHouse` (learned `Houses`), `UnifiedEvidence` `stage.work`.
@@ -196,7 +196,7 @@ catalogue match; `broadcast.take` via `Broadcast.take`). Rules: the fill `venues
    (≥2 shared words, no subset case) — **finding F2**.
 5. **Edition — 6.** `Agreement.editionOf(SourceRecord)` (same director, year no earlier, title tokens),
    `IdentityMeasures.editionOf(Film)` (segment/decorated relation, later year), `PosterEvidence.editionsApart` (numbers),
-   `IdentityMeasures.billsAnEdition`, `DecorationSegments.billsAnEdition` (`EditionWords`), `FilmCuts`.
+   `IdentityMeasures.billsAnEdition`, `DecorationWords.billsAnEdition` (`EditionWords`), `FilmCuts`.
 6. **Catalogue provenance — 4.** `CatalogueSources.feedStated`/`catalogueEntry`, `Listing.factsFromCatalogue`,
    `Broadcast.superseded`'s `ownFacts` (re-derived, broader: any linked catalogue page), the catalogue-id-equals-pick test
    in `Agreement.supported` and `UnifiedEvidence` `listing.catalogue`.
@@ -223,7 +223,7 @@ catalogue match; `broadcast.take` via `Broadcast.take`). Rules: the fill `venues
   `and.posterTakers` and the IMDb-find join of a family pick (`AgreementStage.filledOf` builds the evidence with no
   posters and `tmdbOf = _ => None`); the `poster.otherMatches` guard is always false there (the veto is applied after,
   in `filledTake`; kept on purpose, §5 F5). `title.namesIt` and `title.namesNone` are exact complements.
-- Offline only (not dead, not production): `UnifiedWeights`, `DecorationScore`/`DecorationTokens`/`DecorationSegments`
+- Offline only (not dead, not production; in worker/src/test since 2026-10-14): `UnifiedWeights`, `LogisticFit`, `TitleDecorationsLearner`, `DecorationScore`/`DecorationTokens`/`DecorationSegments`
   fits (`DecorationScore.cut` = 1 accepts nothing).
 - Zero fires on the corpora, pinned by specs (kept): `cast.venue`, `same-catalogue-id`, contested catalogue ids, pins,
   `Correction` (no model take in the captures), the agreed-for-a-stage-work → broadcast branch (no stage-level spec —

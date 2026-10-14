@@ -126,7 +126,7 @@ object ListingShape {
    *  film:
    *  - a banner in the banner's slot, the leading piece a colon or a pipe closes ("Somali Film Festival: Lifeline"), or
    *    every piece of a segment ahead of the film's that names a screening programme or event (a strand's banner);
-   *  - an event, format or edition word ([[DecorationSegments.EventWords]], "IT FOLLOWS - HALLOWEEN SPECIAL"), a
+   *  - an event, format or edition word ([[DecorationWords.EventWords]], "IT FOLLOWS - HALLOWEEN SPECIAL"), a
    *    screening programme or its audience ([[ScreeningProgramme]]: "Fatherland - Film Club", "KÖNIG DROSSELBART - EIN
    *    ADVENTSMÄRCHEN FÜR KINDER"), a note in brackets ("Geliefert (ver.di)") or one a number carries ("Digger (15) 129
    *    mins", "ABO 10": one word of its own beside it), the film's own titles and director;
@@ -175,7 +175,7 @@ object ListingShape {
 
   /** An event, format or edition word: what a venue bills around a film. */
   private def billed(word: String): Boolean =
-    DecorationSegments.EventWords(word) || DecorationSegments.EditionWords(word) || services.movies.FormatTags.FormatToken.contains(word)
+    DecorationWords.EventWords(word) || DecorationWords.EditionWords(word) || services.movies.FormatTags.FormatToken.contains(word)
   /** A word naming a screening programme or its audience, as a stem a compound carries ("Filmmittwoch", "Kinderkino"). */
   private val ScreeningProgramme = """film|kin[oaie]|cine|movie|klub|club|kinder|kids|children|dzieci|familie|family|senior""".r
   private val PieceBreak = """\s*[:|•+]\s*|\s+[-–—]\s+|\s*[„”"“«»]\s*""".r

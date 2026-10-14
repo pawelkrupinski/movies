@@ -10,7 +10,7 @@ import scala.jdk.CollectionConverters._
 /**
  * Re-fits the candidate-decoration score ([[DecorationScore]]) from the outcomes the detector measured
  * (`integration.IdentityDecorationCandidates` writes `training.tsv`; the checked-in copy is [[Training]]) and writes it to
- * `common/src/main/resources/identity-decoration-score.json`. A function of the rows: `IdentityDecorationScoreFitSpec`
+ * `worker/src/test/resources/identity-decoration-score.json`. A function of the rows: `IdentityDecorationScoreFitSpec`
  * pins that the shipped weights are what this fits from the checked-in rows.
  *
  *   worker/Test/runMain scripts.IdentityDecorationScoreFit [--training <tsv>] [--out <json>] [--version <v>]
@@ -18,7 +18,7 @@ import scala.jdk.CollectionConverters._
 object IdentityDecorationScoreFit {
 
   val Training: Path = Paths.get("test/resources/fixtures/identity-decorations/training.tsv")
-  val Artefact: Path = Paths.get("common/src/main/resources", DecorationScore.ResourcePath)
+  val Artefact: Path = Paths.get("worker/src/test/resources", DecorationScore.ResourcePath)
   val Header: String = "key\taligned\trecurring\tvenues\tprefix\ttokens\tformatShare\tinnerResolved\tmatchedShare\tgood\tbad"
 
   def main(args: Array[String]): Unit = {

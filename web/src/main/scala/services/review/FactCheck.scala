@@ -1,6 +1,6 @@
 package services.review
 
-import services.identity.{DecorationSegments, FactRelations, IdentityMeasures, ListingShape}
+import services.identity.{DecorationWords, FactRelations, IdentityMeasures, ListingShape}
 
 /** One thing some venues state about a listing that the film contradicts — every venue stating it, once. */
 final case class Disagreement(venues: Seq[String], verb: Disagreement.Verb, claim: String) {
@@ -25,7 +25,7 @@ object Disagreement {
  *  - a director where the film credits a company ([[tools.OrganisationName]]), or where the listing
  *    relays a stage work or broadcast ([[ListingShape.relaysTitle]]: NT Live, an opera house's season) —
  *    its venue credits the stage director, its film record the screen director or the house;
- *  - a later year where the listing bills an edition or re-release ([[DecorationSegments.billsAnEdition]])
+ *  - a later year where the listing bills an edition or re-release ([[DecorationWords.billsAnEdition]])
  *    of the film, or its title dates the film's own year ("… (1939)").
  */
 object FactCheck {
@@ -48,7 +48,7 @@ object FactCheck {
    *  re-release ("(re-release)", "4K", "wersja …"), or a title dating the film's own year whatever the venue states. */
   private def reRelease(rawTitle: String, stated: Int, actual: Int, film: FilmFacts): Boolean =
     IdentityMeasures.titleYearOf(Seq(rawTitle)).exists(FactRelations.yearsNear(_, actual)) ||
-      stated > actual && DecorationSegments.billsAnEdition(Seq(rawTitle), film.title.toSeq)
+      stated > actual && DecorationWords.billsAnEdition(Seq(rawTitle), film.title.toSeq)
 
   /** Each disagreement as one line — what an answer stores and the labels export lists. */
   def warnings(members: Seq[ReviewMember], film: FilmFacts): Seq[String] = disagreements(members, film).map(_.render)
