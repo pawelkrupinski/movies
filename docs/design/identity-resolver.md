@@ -960,7 +960,7 @@ published are untouched.
   the r4 refit would have raised DE's false hides from 0 to 9. It changes only by a deliberate copy
   after `scripts.IdentityGateImpact --weights <candidate>` measures the candidate per country, with
   `RatingGateArtefactSpec`'s pin (version and SHA-256) updated in the same commit.
-- **Scored from the row's own evidence.** `RatingGate.fromEvidence(IdentityCalibration.ratingGate)`
+- **Scored from the row's own evidence.** `EvidenceRatingGate(IdentityCalibration.ratingGate)`
   reads each stored row through `StoredIdentityConfidence`: the TMDB slot is the film, each venue
   slot (with its detail-page facts) a listing, measured by the calibration's own
   `IdentityMeasures.listingFilm` — title, original title, year, director, runtime, country, and
@@ -1014,7 +1014,7 @@ published are untouched.
   same gate, so a withheld card is not reported as drift. The worker's `ReadModelWiring` passes
   `RatingGate.off` unless `KINOWO_IDENTITY_RATING_GATE=true`
   (`ProcessConfiguration.identityRatingGate`, a typed `IdentityRatingGateEnabled`), and
-  `RatingGate.fromEvidence` when it is. The switch is read per worker process, so it is flipped
+  `EvidenceRatingGate` when it is. The switch is read per worker process, so it is flipped
   per country in that country's worker env. This is a staged-migration switch (allowed here per
   the program brief), to be removed at cutover.
 - **Open.** Posters, synopsis and credits also come from the matched film and are equally

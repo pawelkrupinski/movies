@@ -20,7 +20,7 @@ enum PinClaim {
  * An admin's assertion about film identity — the emergency escape hatch for a case the
  * evidence cannot decide (docs/design/identity-resolver.md, "Phase 3: curation"). Not a
  * workflow: the resolver is expected to be right without pins, and a pin is data the resolver
- * reads as a hard constraint (`ListingConstraints.pinned`), never a patch to stored state.
+ * reads as a hard constraint (`PinConstraints`), never a patch to stored state.
  *
  * Its [[id]] is its CONTENT (the claim over the sorted listing set), so re-asserting a pin is a
  * no-op, not a second pin, and the id is the same on every replica.

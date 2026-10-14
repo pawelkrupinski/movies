@@ -353,9 +353,9 @@ class MongoScrapeArchiveRepository(
    *  instead, as it was written — and of a film billing a stage work, the days it screens on ([[LeanListing.leanFilm]]),
    *  asked of the server for those films alone ([[screeningDays]]). A venue holding a film written before the digest
    *  existed is read again whole once the lean scan is done — a row's next scrape writes it with one. */
-  override def scanLean(keep: Cinema => Boolean)(consume: Seq[LeanListing] => Unit): tools.ScanOutcome = {
+  override def scanLean(keep: Cinema => Boolean, keepsDays: CinemaMovie => Boolean)(consume: Seq[LeanListing] => Unit): tools.ScanOutcome = {
     val undigested = Set.newBuilder[String]
-    val stageTitles = new LeanListing.StageTitles
+    val stageTitles = new LeanListing.ByTitle(keepsDays)
     val lean = scanRows(keep, lean = true) { page =>
       val (digested, older) = page.partition(_.films.getOrElse(Nil).forall(_.showtimesDigest.isDefined))
       undigested ++= older.map(_._id)
@@ -384,7 +384,7 @@ class MongoScrapeArchiveRepository(
       })))
     }
     val whole = undigested.result()
-    if (whole.isEmpty) lean else lean.andThen(scanVenues(c => whole(c.displayName))(page => consume(page.flatMap(LeanListing.of))))
+    if (whole.isEmpty) lean else lean.andThen(scanVenues(c => whole(c.displayName))(page => consume(page.flatMap(LeanListing.of(_, keepsDays)))))
   }
 
   /** The days each of `films` — a venue, the film's place in its row and its raw title — screens on, with its showtimes'

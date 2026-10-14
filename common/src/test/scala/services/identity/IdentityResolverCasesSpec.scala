@@ -3,7 +3,7 @@ package services.identity
 import models.{CharlieMonroe, Cinema, CinemaCityKinepolis, CinemaCityKorona, CinemaCityPoznanPlaza, CinemaCityWroclavia, Helios, HeliosAlejaBielany, HeliosMagnolia, KinoApollo, KinoBulgarska, KinoCytadela, KinoDKFRumcajs, KinoMikro, KinoMuza, KinoOaza, KinoPalacowe, Kinoteka, Multikino, MultikinoPasazGrunwaldzki, Rialto, StacjaFalenica}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.{ListingConstraints, ListingKey, SingleCountryNormalizer}
+import services.movies.{ListingKey, SingleCountryNormalizer}
 
 /**
  * The resolver on hand-built families shaped like historical incidents. The film database is a
@@ -1919,7 +1919,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val dated = listing(Helios, "Opętanie", Some(1981), Some("Andrzej Żuławski"))
     val other = listing(KinoMuza, "Possession")
     def withPins(ps: Pin*) = IdentityResolver.resolve(Seq(bare, dated, other), new FilmTable(films, normalizer), normalizer, weights,
-      pins = ListingConstraints.pinned(ps))
+      pins = PinConstraints(ps))
 
     val none = withPins()
     none.decisionOf(dated.key).film shouldBe Some(1)
@@ -1956,7 +1956,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     alone.edges.filterNot(_.must) shouldBe empty
     val bareMeasures = IdentityMeasures.listingFilm(IdentityMeasures.Listing("Samson i Dalila"),
       IdentityMeasures.Film("Samson i Dalila", year = Some(1949), directors = Some(Seq("Cecil B. DeMille"))), None, 0, 0)
-    ListingConstraints.learned(withRule, "listing-film", bareMeasures, probability = 0.5) shouldBe None
+    LearnedCannotLinks.learned(withRule, "listing-film", bareMeasures, probability = 0.5) shouldBe None
   }
 
   // ── editions and cuts: a title plus a qualifier ────────────────────────────────────────

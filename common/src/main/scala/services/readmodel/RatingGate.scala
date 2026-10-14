@@ -1,4 +1,4 @@
-package services.identity
+package services.readmodel
 
 import models.{RatingSearchUrls, ResolvedMovie, ResolvedRatings}
 import services.movies.StoredMovieRecord
@@ -10,10 +10,10 @@ import services.movies.StoredMovieRecord
  * another film's. The title, showtimes and everything the venues published are untouched.
  *
  * The confidence is the calibration artefact's probability over the row's own stored evidence
- * ([[StoredIdentityConfidence]]), and the line is the artefact's `showRatings` threshold — both
+ * (`services.identity.StoredIdentityConfidence`), and the line is the artefact's `showRatings` threshold — both
  * fitted by `scripts.IdentityCalibrate`, neither set by hand. Off in production:
  * `ReadModelProjector` takes [[RatingGate.off]] unless the worker's composition root sets
- * `KINOWO_IDENTITY_RATING_GATE`.
+ * `KINOWO_IDENTITY_RATING_GATE` (`services.identity.EvidenceRatingGate`).
  */
 trait RatingGate {
   /** The card as served: `movie` itself, or with its ratings withheld. */
@@ -28,16 +28,6 @@ object RatingGate {
   val off: RatingGate = new RatingGate {
     def apply(stored: StoredMovieRecord, movie: ResolvedMovie): ResolvedMovie = movie
     val version = 0
-  }
-
-  /** The gate over each row's own stored evidence ([[StoredIdentityConfidence]]): a row whose
-   *  calibrated confidence is below the artefact's display threshold is withheld. A row with
-   *  nothing to measure (no TMDB record, no venue listing) keeps its card. */
-  def fromEvidence(calibration: IdentityCalibration): RatingGate = new RatingGate {
-    def apply(stored: StoredMovieRecord, movie: ResolvedMovie): ResolvedMovie =
-      if (StoredIdentityConfidence.of(stored.record, calibration).exists(p => !calibration.showsRatings(p))) withheld(movie)
-      else movie
-    val version = calibration.## | 1
   }
 
   /** `movie` with no rating, no IMDb link, each site's search page for the others, and the

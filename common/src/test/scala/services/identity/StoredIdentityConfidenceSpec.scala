@@ -7,7 +7,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.SingleCountryNormalizer.titleNormalizer
 import services.movies.StoredMovieRecord
-import services.readmodel.ReadModelProjection
+import services.readmodel.{RatingGate, ReadModelProjection}
 
 /** The rating gate's confidence in a STORED film's TMDB identity, read off the row's own
  *  evidence by the production calibration artefact (`identity-weights.json`). The rows are the
@@ -15,7 +15,7 @@ import services.readmodel.ReadModelProjection
 class StoredIdentityConfidenceSpec extends AnyFlatSpec with Matchers {
 
   private val calibration = IdentityCalibration.ratingGate
-  private val gate        = RatingGate.fromEvidence(calibration)
+  private val gate        = EvidenceRatingGate(calibration)
 
   private def tmdb(title: String, original: String, year: Int, runtime: Int, director: String, country: String,
                    english: Option[String] = None) =
@@ -117,9 +117,9 @@ class StoredIdentityConfidenceSpec extends AnyFlatSpec with Matchers {
   }
 
   "the gate's version" should "follow the calibration artefact" in {
-    RatingGate.fromEvidence(calibration).version shouldBe RatingGate.fromEvidence(calibration).version
-    RatingGate.fromEvidence(calibration.copy(version = "other")).version should not be RatingGate.fromEvidence(calibration).version
-    RatingGate.fromEvidence(calibration).version should not be RatingGate.off.version
+    EvidenceRatingGate(calibration).version shouldBe EvidenceRatingGate(calibration).version
+    EvidenceRatingGate(calibration.copy(version = "other")).version should not be EvidenceRatingGate(calibration).version
+    EvidenceRatingGate(calibration).version should not be RatingGate.off.version
   }
 
   // A bare title TMDB's own search for it knows as ONE film — "Osiem i pół" at a small venue, a

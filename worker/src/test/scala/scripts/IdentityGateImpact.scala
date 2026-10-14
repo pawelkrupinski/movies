@@ -13,7 +13,7 @@ import scala.jdk.CollectionConverters.*
 /**
  * What switching the rating gate on (`KINOWO_IDENTITY_RATING_GATE`) would hide, per country,
  * BEFORE it is switched: every rated film a venue lists that the gate
- * (`RatingGate.fromEvidence`, through [[StoredIdentityConfidence]]) would withhold, judged against
+ * (`EvidenceRatingGate`, through [[StoredIdentityConfidence]]) would withhold, judged against
  * the calibration's labelled set — a hide of a film the labels corroborate is a FALSE hide, of one
  * they contradict a TRUE hide.
  *

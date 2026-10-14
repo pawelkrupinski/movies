@@ -118,7 +118,7 @@ class ScrapeArchiveIntegrationSpec extends AnyFlatSpec with Matchers with Before
     try {
       repository.record(scraped(Noon, Seq(fullyPopulated, minimal)))
       val lean = Seq.newBuilder[services.scrapes.LeanListing]
-      repository.scanLean(_ == Multikino)(lean ++= _).isComplete shouldBe true
+      repository.scanLean(_ == Multikino, services.identity.LeanStageWorks.billsStageWork)(lean ++= _).isComplete shouldBe true
       lean.result().map(l => (l.cinema, l.at, l.films)) shouldBe
         Seq((Multikino, Noon, Seq(fullyPopulated, minimal).map(f => f.copy(showtimes = Nil) -> f.showtimes.##)))
     } finally purge()
@@ -134,8 +134,8 @@ class ScrapeArchiveIntegrationSpec extends AnyFlatSpec with Matchers with Before
     try {
       repository.record(scraped(Noon, Seq(fullyPopulated, relay, minimal)))
       val lean = Seq.newBuilder[services.scrapes.LeanListing]
-      repository.scanLean(_ == Multikino)(lean ++= _).isComplete shouldBe true
-      lean.result().flatMap(_.films) shouldBe Seq(fullyPopulated, relay, minimal).map(f => services.scrapes.LeanListing.leanFilm(f) -> f.showtimes.##)
+      repository.scanLean(_ == Multikino, services.identity.LeanStageWorks.billsStageWork)(lean ++= _).isComplete shouldBe true
+      lean.result().flatMap(_.films) shouldBe Seq(fullyPopulated, relay, minimal).map(f => services.scrapes.LeanListing.leanFilm(f, services.identity.LeanStageWorks.billsStageWork) -> f.showtimes.##)
       lean.result().flatMap(_.films).map(_._1.showtimes.map(_.dateTime.toLocalDate)) shouldBe
         Seq(Nil, Seq(java.time.LocalDate.of(2026, 12, 5), java.time.LocalDate.of(2026, 12, 26)), Nil)
     } finally purge()
@@ -151,7 +151,7 @@ class ScrapeArchiveIntegrationSpec extends AnyFlatSpec with Matchers with Before
     val relay = minimal.copy(movie = Movie("OPERA-SAMSON I DALILA"), showtimes = Seq(Showtime(LocalDateTime.of(2026, 12, 5, 18, 0), None)))
     def scanned() = {
       val lean = Seq.newBuilder[services.scrapes.LeanListing]
-      repository.scanLean(_ == Multikino)(lean ++= _).isComplete shouldBe true
+      repository.scanLean(_ == Multikino, services.identity.LeanStageWorks.billsStageWork)(lean ++= _).isComplete shouldBe true
       lean.result().flatMap(_.films).map(_._1)
     }
     try {
@@ -171,7 +171,7 @@ class ScrapeArchiveIntegrationSpec extends AnyFlatSpec with Matchers with Before
       Await.result(db.getCollection(ScrapeArchiveRepository.Collection).updateOne(Filters.eq("_id", Multikino.displayName),
         org.mongodb.scala.model.Updates.unset("films.$[].showtimesDigest")).toFuture(), SpecTimeouts.Io)
       val lean = Seq.newBuilder[services.scrapes.LeanListing]
-      repository.scanLean(_ == Multikino)(lean ++= _).isComplete shouldBe true
+      repository.scanLean(_ == Multikino, services.identity.LeanStageWorks.billsStageWork)(lean ++= _).isComplete shouldBe true
       lean.result().flatMap(_.films) shouldBe Seq(fullyPopulated, minimal).map(f => f.copy(showtimes = Nil) -> f.showtimes.##)
     } finally purge()
   }

@@ -1,7 +1,7 @@
 package services.identity
 
 import models.{Cinema, CinemaMovie, CinemaShowing, Country, MovieRecord}
-import services.movies.{CacheKey, CaffeineMovieCache, CinemaSlotBuilder, InMemoryScrapeGuardLedger, ListingConstraints,
+import services.movies.{CacheKey, CaffeineMovieCache, CinemaSlotBuilder, InMemoryScrapeGuardLedger,
   ScreeningTokens, SingleCountryNormalizer, StringPool}
 import services.scrapes.{InMemoryScrapeArchiveRepository, ScrapeAttempt}
 
@@ -83,6 +83,6 @@ private[identity] object ProjectionWorld {
   val unmatched: (() => Seq[Listing]) => Option[IdentityProjection.Resolved] = read => {
     val listings = read()
     Some(IdentityProjection.Resolved(IdentityResolver.resolve(listings, NoFilmLookups, normalizer, IdentityCalibration.resolver,
-      ListingConstraints.pinned(new InMemoryPinStore().all())), listings.map(_.key).toSet))
+      PinConstraints(new InMemoryPinStore().all())), listings.map(_.key).toSet))
   }
 }

@@ -226,7 +226,7 @@ object IdentityListingIntake {
       // venue's id to pick the rows (`scanLean`), half of a quiet read's documents.
       val complete =
         if (!wanted.valuesIterator.exists(reread)) tools.ScanOutcome.complete
-        else repository.scanLean(reread)(_.foreach(row =>
+        else repository.scanLean(reread, LeanStageWorks.billsStageWork)(_.foreach(row =>
           fresh += row.cinema.displayName -> Entry(row.cinema, Some(row.at), Option.when(row.films.nonEmpty)(project(row.cinema, row.films)))))
       entries = if (complete.isComplete) keep ++ fresh.result() else Map.empty
       entries.map { case (name, entry) => name -> entry.listings }
@@ -283,7 +283,7 @@ object IdentityListingIntake {
       pooled
     }
     val complete =
-      if (lean) repository.scanLean(keep)(_.foreach { row =>
+      if (lean) repository.scanLean(keep, LeanStageWorks.billsStageWork)(_.foreach { row =>
         val pooled = add(row.cinema, row.films.map(_._1))
         onRow(LeanListing(row.cinema, row.at, pooled.zip(row.films.map(_._2))))
       })

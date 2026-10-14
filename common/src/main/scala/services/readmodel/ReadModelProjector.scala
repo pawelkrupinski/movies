@@ -81,7 +81,7 @@ class ReadModelProjector(
   derivationHistory: Seq[Derivation] = ReadModelDerivation.History,
   // Confidence-gated ratings (identity phase 3): what each card's ratings are served as. `off`
   // — the card as projected — unless the worker's composition root switches it on.
-  ratingGate: services.identity.RatingGate = services.identity.RatingGate.off,
+  ratingGate: RatingGate = RatingGate.off,
   // What the boot reads take from the cache's boot hydrate in place of a corpus read of their own
   // (see [[BootCorpusStudy]]). Without one, they read the corpus themselves.
   bootStudy: Option[BootCorpusStudy] = None

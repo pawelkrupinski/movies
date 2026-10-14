@@ -464,9 +464,9 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
   // resolver computes may reach the read model until the composition root is told so.
   "the rating gate" should "be off unless KINOWO_IDENTITY_RATING_GATE switches it on" in {
     val budget = new SharedExecutionBudget(4)
-    new Probe(Country.Poland, budget).ratingGate shouldBe theSameInstanceAs(services.identity.RatingGate.off)
+    new Probe(Country.Poland, budget).ratingGate shouldBe theSameInstanceAs(services.readmodel.RatingGate.off)
     new Probe(Country.Poland, budget, tools.Env.of("KINOWO_IDENTITY_RATING_GATE" -> "true")).ratingGate should not be
-      theSameInstanceAs(services.identity.RatingGate.off)
+      theSameInstanceAs(services.readmodel.RatingGate.off)
   }
 
   // The model reads TMDB from its normalized store first (`StoredFirstLookups`): a question the
@@ -601,7 +601,7 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
                       runtimeMinutes = Some(131), director = Seq("Cecil B. DeMille"), countries = Seq("USA")))), normalizer)
     val movie = services.readmodel.ReadModelProjection.resolve(stored, normalizer)
     val gate = new Probe(Country.Poland, new SharedExecutionBudget(4), tools.Env.of("KINOWO_IDENTITY_RATING_GATE" -> "true")).ratingGate
-    gate(stored, movie) shouldBe services.identity.RatingGate.withheld(movie)
+    gate(stored, movie) shouldBe services.readmodel.RatingGate.withheld(movie)
   }
 
   // A pod that boots inside an hour a previous pod already claimed (`SettleReaper`'s window) still projects as soon as its

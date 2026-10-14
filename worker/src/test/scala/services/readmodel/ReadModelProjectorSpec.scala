@@ -116,9 +116,9 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val rm         = new InMemoryReadModelRepository()
     var withhold   = false
-    val gate = new services.identity.RatingGate {
+    val gate = new services.readmodel.RatingGate {
       def apply(stored: StoredMovieRecord, movie: ResolvedMovie): ResolvedMovie =
-        if (withhold) services.identity.RatingGate.withheld(movie) else movie
+        if (withhold) services.readmodel.RatingGate.withheld(movie) else movie
       def version: Int = if (withhold) 1 else 0
     }
     val projector = new ReadModelProjector(repository, rm, rm, clock = specClock, ratingGate = gate)

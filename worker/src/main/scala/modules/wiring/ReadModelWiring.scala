@@ -3,7 +3,8 @@ package modules.wiring
 import settings.ShareCardFirstHold
 
 import modules.WorkerWiring
-import services.identity.{IdentityCalibration, RatingGate}
+import services.identity.{EvidenceRatingGate, IdentityCalibration}
+import services.readmodel.RatingGate
 import services.readmodel.{BootCorpusStudy, MongoReadModelDerivationMarker, MongoReadModelRepository, ReadModelProjector, ReadModelReader, ReadModelWriter}
 
 /** ── Denormalised read model (web_movies + web_screenings) ───────────────────
@@ -28,5 +29,5 @@ trait ReadModelWiring { self: WorkerWiring =>
   // A staged-migration switch, off by default: on, a card whose stored evidence the calibration
   // artefact scores below its display threshold is served without ratings.
   lazy val ratingGate: RatingGate =
-    if (configuration.identityRatingGate.value) RatingGate.fromEvidence(IdentityCalibration.ratingGate) else RatingGate.off
+    if (configuration.identityRatingGate.value) EvidenceRatingGate(IdentityCalibration.ratingGate) else RatingGate.off
 }

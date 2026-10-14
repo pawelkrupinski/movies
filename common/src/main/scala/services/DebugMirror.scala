@@ -44,6 +44,10 @@ object DebugMirror {
   /** What the other film databases answered, and the posters' hashes (worker `TmdbKind.Family`): the review pages read
    *  a film's poster paths from it. */
   val FamilyAnswers    = "identity_family_answers"
+  /** The identity model's families and each listing's trace (`MongoIdentityModelStore`, `MongoIdentityTraceStore`, which
+   *  a spec holds to these names: the stores are the identity code's, which this mirror does not reach). */
+  val IdentityFamilies = "identity_model_families"
+  val IdentityTraces   = "identity_traces"
 
   val Collections: Set[String] = Set(
     // The corpus table: the film rows, their showtimes, and their per-cinema slots.
@@ -71,11 +75,11 @@ object DebugMirror {
     // which a card's "Why" fold-out reads when it is opened. ~190 MB over the five countries (2026-10-06).
     // And each candidate's TMDB poster, by the paths the poster corroboration filed beside its hashes
     // (`identity_family_answers`: 13 MB over the five countries, 2026-10-08).
-    services.identity.MongoIdentityModelStore.FamiliesCollection,
+    IdentityFamilies,
     VenuePages,
     IdentityListings,
     TmdbFilms,
     FamilyAnswers,
-    services.identity.MongoIdentityTraceStore.Collection
+    IdentityTraces
   )
 }

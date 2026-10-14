@@ -6,8 +6,9 @@ import services.movies.ListingKey
 
 /**
  * The pin set as the resolver reads it — HARD constraints, stronger than every derived rule
- * (docs/design/identity-resolver.md, "Phase 3: curation"). Reached through
- * `ListingConstraints.pinned`, so pins enter the one constraint model like every other rule.
+ * (docs/design/identity-resolver.md, "Phase 3: curation"): pins enter the one constraint model
+ * like every other rule, their reasons named by `ListingConstraints.CannotLink.PinnedNotFilm` and
+ * `MustLink.Pinned`.
  *
  * What the resolver does with it:
  *  - [[filmOf]] is a listing's film whatever its lookups answered (`Families.pinnedFilm`), and a

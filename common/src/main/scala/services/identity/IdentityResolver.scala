@@ -20,7 +20,7 @@ import services.movies.{ListingKey, TitleNormalizer}
  *      query named it, or a film title relates to its title) with the calibrated model
  *      ([[IdentityCalibration]] over [[IdentityMeasures]] — the same measurements the weights were
  *      fitted on, including `venues.corroborating`, the family's venue co-occurrence; [[FamilyScope]]).
- *      A candidate a node's evidence DENIES (`ListingConstraints.learnedListingFilm`: a learned
+ *      A candidate a node's evidence DENIES (`LearnedCannotLinks.learnedListingFilm`: a learned
  *      rule, or its OWN facts' probability below the certified cut, and only when the node
  *      publishes a fact the film can be compared on — a title relation alone is scored, never a
  *      veto; or a film of the node's credited director its title does not name, when its title
@@ -174,7 +174,7 @@ object IdentityResolver {
   /** Thrown when `count` edges cross a family: a rule was added without its block key. */
   final class FamilyCrossing(val count: Int, message: String) extends IllegalStateException(message)
 
-  /** `pins` are the curation's hard constraints (`ListingConstraints.pinned`): a pinned film
+  /** `pins` are the curation's hard constraints (`PinConstraints`): a pinned film
    *  replaces a listing's own match, a denied one is never eligible, a pinned group is must-linked
    *  above every derived tier, and a derived edge the pins contradict is dropped. */
   def resolve(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer,

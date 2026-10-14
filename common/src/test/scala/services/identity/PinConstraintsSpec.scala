@@ -8,11 +8,11 @@ import services.movies.{ListingConstraints, ListingKey}
 
 /**
  * Pins as HARD constraints: what the resolver reads from the pin set through
- * `ListingConstraints.pinned`.
+ * `PinConstraints`.
  */
 class PinConstraintsSpec extends AnyFlatSpec with Matchers {
 
-  private val pins = ListingConstraints.pinned(KnownCasePins.all)
+  private val pins = PinConstraints(KnownCasePins.all)
   private val stranger = ListingKey.Published("Kino Amok", "Samson i Dalila", None, Nil)
 
   "a same-film pin" should "must-link every pinned listing, from the group's smallest key" in {
@@ -50,7 +50,7 @@ class PinConstraintsSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "refuse a derived must-link onto the denied film" in {
-    val onto = ListingConstraints.pinned(KnownCasePins.all :+
+    val onto = PinConstraints(KnownCasePins.all :+
       Pin(Seq(stranger), PinClaim.IsFilm(DeMilleSamson), "fixture", "the bare listing is the 1949 film", At))
     onto.admits(Edge(metSamson, stranger, must = true, reason = "same title")) shouldBe false
     onto.admits(Edge(opetanie, stranger, must = true, reason = "same title")) shouldBe false // two pinned films
@@ -58,7 +58,7 @@ class PinConstraintsSpec extends AnyFlatSpec with Matchers {
 
   "the pin set" should "report pins that contradict each other, and no conflict for the fixture" in {
     pins.conflicts shouldBe empty
-    val contradicting = ListingConstraints.pinned(KnownCasePins.all ++ Seq(
+    val contradicting = PinConstraints(KnownCasePins.all ++ Seq(
       Pin(Seq(opetanie), PinClaim.NeverFilm(Possession1981), "fixture", "changed my mind", At),
       Pin(Seq(lalka.head), PinClaim.IsFilm(1), "fixture", "a", At),
       Pin(Seq(lalka.last), PinClaim.IsFilm(2), "fixture", "b", At)))
@@ -66,8 +66,8 @@ class PinConstraintsSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "be a function of the pin SET, not its order" in {
-    ListingConstraints.pinned(KnownCasePins.all.reverse).mustLinks shouldBe pins.mustLinks
-    ListingConstraints.pinned(KnownCasePins.all.reverse).blockKeys(lalka.last) shouldBe pins.blockKeys(lalka.last)
+    PinConstraints(KnownCasePins.all.reverse).mustLinks shouldBe pins.mustLinks
+    PinConstraints(KnownCasePins.all.reverse).blockKeys(lalka.last) shouldBe pins.blockKeys(lalka.last)
   }
 
   "a pin's id" should "be its content: the same claim on the same listings is the same pin" in {

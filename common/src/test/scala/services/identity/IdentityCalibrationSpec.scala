@@ -202,11 +202,11 @@ class IdentityCalibrationSpec extends AnyFlatSpec with Matchers {
   }
 
   private def listingsApart(a: Listing, b: Listing, sameVenue: Boolean) =
-    services.movies.ListingConstraints.learnedListingListing(model, IdentityMeasures.listingListing(a, b, sameVenue, sharedChainId = None))
+    LearnedCannotLinks.learnedListingListing(model, IdentityMeasures.listingListing(a, b, sameVenue, sharedChainId = None))
 
   private def filmDenied(l: Listing, f: Film, corroborating: Int) = {
     val measures = IdentityMeasures.listingFilm(l, f, searchRank = None, rivals = 0, corroboratingVenues = corroborating)
-    services.movies.ListingConstraints.learnedListingFilm(model, measures, new EvidenceWeights(model).factsProbability(measures))
+    LearnedCannotLinks.learnedListingFilm(model, measures, new EvidenceWeights(model).factsProbability(measures))
   }
 
   "a learned listing-film cannot-link" should "not deny a film on its probability when the facts the listing compares agree with it" in {

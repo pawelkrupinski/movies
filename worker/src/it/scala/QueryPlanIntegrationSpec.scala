@@ -138,7 +138,7 @@ class QueryPlanIntegrationSpec extends AnyFlatSpec with Matchers with tools.Inte
         listingComplete = true, films = Nil))
       repository.find(cinemas(1))
       repository.contentStamps()
-      repository.scanLean(_ => true)(_ => ()) shouldBe tools.ScanOutcome.Complete
+      repository.scanLean(_ => true, services.identity.LeanStageWorks.billsStageWork)(_ => ()) shouldBe tools.ScanOutcome.Complete
       repository.findAll() should have size 5
       repository.close()
     })

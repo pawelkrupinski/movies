@@ -1,6 +1,6 @@
 package services.scrapes
 
-import models.Cinema
+import models.{Cinema, CinemaMovie}
 
 /** A scrape archive that files every attempt in `underlying` and answers every read from it — the
  *  base of the archives that WATCH the scrapes going by (the identity model's feed, the gone-venue
@@ -21,8 +21,8 @@ abstract class ForwardingScrapeArchive(underlying: ScrapeArchiveRepository) exte
   override def scan(consume: Seq[ArchivedScrape] => Unit): tools.ScanOutcome = underlying.scan(consume)
   override def scanVenues(keep: Cinema => Boolean)(consume: Seq[ArchivedScrape] => Unit): tools.ScanOutcome =
     underlying.scanVenues(keep)(consume)
-  override def scanLean(keep: Cinema => Boolean)(consume: Seq[LeanListing] => Unit): tools.ScanOutcome =
-    underlying.scanLean(keep)(consume)
+  override def scanLean(keep: Cinema => Boolean, keepsDays: CinemaMovie => Boolean)(consume: Seq[LeanListing] => Unit): tools.ScanOutcome =
+    underlying.scanLean(keep, keepsDays)(consume)
   override def contentStamps(): Map[String, ContentStamp]         = underlying.contentStamps()
   override def close(): Unit                                      = underlying.close()
 }

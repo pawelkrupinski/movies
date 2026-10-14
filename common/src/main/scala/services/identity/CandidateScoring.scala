@@ -39,7 +39,7 @@ private[identity] final class CandidateScoring(val generation: CandidateGenerati
       // a credit or a running time never holds a record of another work: a screen director films many
       .orElse(Option.when(IdentityMeasures.namesAnotherWork(listing, film))(
         "a record of another work than its stage house's billing names"))
-      .orElse(ListingConstraints.learnedListingFilm(calibration, measures, weights.factsProbability(measures)).map(_.toString))
+      .orElse(LearnedCannotLinks.learnedListingFilm(calibration, measures, weights.factsProbability(measures)).map(_.toString))
 
   /** Does `n`'s title name the film only by a PIECE that is its venue's own name or place — every
    *  listing's, the venue's name or its city's? Kino Twierdza's "TWIERDZA - VINCENT. LEGENDA

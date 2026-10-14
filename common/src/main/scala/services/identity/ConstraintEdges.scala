@@ -50,7 +50,7 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
     lazy val measures = IdentityMeasures.listingListing(firstListing, secondListing, sameVenue = (first.venues intersect second.venues).nonEmpty, sharedChainId = None)
     ListingConstraints.seasonsApart(firstListing.seasonYear, secondListing.seasonYear, secondListing.year)
       .orElse(ListingConstraints.seasonsApart(secondListing.seasonYear, firstListing.seasonYear, firstListing.year))
-      .orElse(ListingConstraints.learnedListingListing(calibration, measures))
+      .orElse(LearnedCannotLinks.learnedListingListing(calibration, measures))
       .map(_.toString)
   }
 

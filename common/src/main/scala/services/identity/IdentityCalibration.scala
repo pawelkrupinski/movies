@@ -281,7 +281,7 @@ object IdentityCalibration {
   /** The RESOLVER's artefact on the classpath (common/src/main/resources): what
    *  `scripts/identity-calibrate.sh` writes, refitted as the resolver improves. */
   val ResolverResourcePath = "identity-weights.json"
-  /** The LIVE RATING GATE's artefact (`RatingGate.fromEvidence`): a PINNED copy of the artefact
+  /** The LIVE RATING GATE's artefact (`EvidenceRatingGate`): a PINNED copy of the artefact
    *  the gate was measured and switched on with. No refit writes it — a resolver refit moved the
    *  gate's false hides in DE from 0 to 9 — so it changes only by a deliberate copy, with the
    *  gate's impact measured first (`scripts.IdentityGateImpact`). */

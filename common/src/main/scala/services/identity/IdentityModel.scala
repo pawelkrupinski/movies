@@ -147,9 +147,8 @@ final class ScreeningDays private (private val epochDays: Array[Int]) {
 
 object ScreeningDays {
   val None: ScreeningDays = new ScreeningDays(Array.emptyIntArray)
-  /** The day standing for "not read" where days travel as showtimes (`services.scrapes.LeanListing.unread`): no venue
-   *  screens in year 1. */
-  val UnreadDay: java.time.LocalDate = java.time.LocalDate.of(1, 1, 1)
+  /** The day standing for "not read" where days travel as showtimes (`services.scrapes.LeanListing.unread`). */
+  val UnreadDay: java.time.LocalDate = services.scrapes.LeanListing.UnreadDay
   /** Days that could not be read. */
   val Unknown: ScreeningDays = new ScreeningDays(Array(UnreadDay.toEpochDay.toInt))
   /** The month a performing season opens in. */

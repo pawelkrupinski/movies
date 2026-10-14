@@ -136,7 +136,7 @@ class WorkerWiring(
     var tracked  = Option.empty[TrackedLookups]
     val model = new IdentityModelService(
       newModel   = () => {
-        val pins = services.movies.ListingConstraints.pinned(pinStore.all())
+        val pins = services.identity.PinConstraints(pinStore.all())
         val lookupsNow = new TrackedLookups(cutoverLookups(identityReads), identityReads, Some(identityPrefetchPool))
         tracked = Some(lookupsNow)
         new IncrementalResolver(lookupsNow, titleNormalizer, IdentityCalibration.resolver, pins,

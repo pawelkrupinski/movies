@@ -28,8 +28,8 @@ class IdentityListingIntakeProjectedSpec extends AnyFlatSpec with Matchers {
     def rowsRead: Int = wholeRowsRead + leanRowsRead
     override def scanVenues(keep: Cinema => Boolean)(consume: Seq[ArchivedScrape] => Unit): tools.ScanOutcome =
       super.scanVenues(keep) { rows => wholeRowsRead += rows.size; consume(rows) }
-    override def scanLean(keep: Cinema => Boolean)(consume: Seq[LeanListing] => Unit): tools.ScanOutcome =
-      super.scanLean(keep) { rows => leanRowsRead += rows.size; consume(rows) }
+    override def scanLean(keep: Cinema => Boolean, keepsDays: CinemaMovie => Boolean)(consume: Seq[LeanListing] => Unit): tools.ScanOutcome =
+      super.scanLean(keep, keepsDays) { rows => leanRowsRead += rows.size; consume(rows) }
     def store(cinema: Cinema, at: Instant, films: CinemaMovie*): Unit =
       record(ScrapeAttempt(cinema, Cinema.cityOf(cinema), at, listingComplete = true, films, error = None))
   }
@@ -73,9 +73,9 @@ class IdentityListingIntakeProjectedSpec extends AnyFlatSpec with Matchers {
     var failing = true
     val accepted = new Counting
     val archive = new Counting {
-      override def scanLean(keep: Cinema => Boolean)(consume: Seq[LeanListing] => Unit): tools.ScanOutcome =
-        super.scanLean(keep)(rows => consume(if (!failing) rows else rows.map(row => row.copy(films = row.films.map { case (cm, digest) =>
-          (if (LeanListing.billsStageWork(cm)) cm.copy(showtimes = LeanListing.unread) else cm) -> digest }))))
+      override def scanLean(keep: Cinema => Boolean, keepsDays: CinemaMovie => Boolean)(consume: Seq[LeanListing] => Unit): tools.ScanOutcome =
+        super.scanLean(keep, keepsDays)(rows => consume(if (!failing) rows else rows.map(row => row.copy(films = row.films.map { case (cm, digest) =>
+          (if (LeanStageWorks.billsStageWork(cm)) cm.copy(showtimes = LeanListing.unread) else cm) -> digest }))))
     }
     val intake = new IdentityListingIntake(accepted, archive, new InMemoryScrapeGuardLedger, normalizer, 3, clock,
       services.movies.ListingIntakeMetrics.noop)
