@@ -1702,6 +1702,8 @@ object IdentityMeasures {
   /** An IMDb id's title number ("tt0064570" → 64570), 0 for anything else. */
   def imdbNumber(imdbId: String): Int =
     Option.when(imdbId.startsWith("tt"))(imdbId.drop(2)).flatMap(_.toIntOption).filter(_ > 0).getOrElse(0)
+  /** The IMDb id of a title number (64570 → "tt0064570"); none for 0, no number. */
+  def imdbId(imdbNumber: Int): Option[String] = Option.when(imdbNumber > 0)(f"tt$imdbNumber%07d")
 
   /** The relations under which a film carries the listing's title as one of its own: whole, or as a delimited piece. */
   val TitlesItsOwn: Set[String] = Rivalling + "segment"

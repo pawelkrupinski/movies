@@ -385,8 +385,6 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
     val posterQs = mutable.Set.empty[AgreementStage.PosterQuestion]
     val finding  = mutable.Set.empty[String]
     def named(id: Int) = venues.film(id).toOption.flatten.orElse(tmdb.flatMap(_.film(id).toOption.flatten))
-    def recordOf(id: Int, film: IdentityMeasures.Film) =
-      SourceRecord(film, Map("tmdb" -> id.toString) ++ Option.when(film.imdbNumber > 0)("imdb" -> f"tt${film.imdbNumber}%07d"))
     def title(id: Int) = named(id).fold(s"tmdb $id")(f => s"'${f.title}'${f.year.fold("")(y => s" ($y)")}")
     // a relay screening years after its record's broadcast, months after a newer record of its title: no production
     // the take can be, whatever else is read
@@ -402,7 +400,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
       Broadcast.take(listings, listing => Evidence.of(listing, venues.detail(listing).toOption.flatten).measured, known)().toOption.flatten
     }.flatten.filter(_.film != model).map(taken => Correction.Outcome(Some(taken.film), s"corrected from ${title(model)} — ${taken.line}"))
     val outcome = named(model).flatMap(film => superseded(film).orElse(relayed(film)).orElse {
-      val modelRecord = recordOf(model, film)
+      val modelRecord = SourceRecord.ofTmdb(model, film)
       // (a) a venue poster matching another candidate, not the taken film
       val posters = correctionPosters(digested, model, reads, posterQs, reading)
       val vetoed  = posters.toOption.flatten
@@ -418,7 +416,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
       // (b) the families, asked only of a take another kind of evidence questions
       // the TMDB films the take's evidence reaches besides it: what a family's or the programme's record is matched to
       lazy val reached = (vetoed.map(_._1).toSeq ++ candidatesOf(digested.id, digested.digest, listings)).distinct.filter(_ != model)
-      val records = (id: Int) => named(id).map(recordOf(id, _))
+      val records = (id: Int) => named(id).map(SourceRecord.ofTmdb(id, _))
       val against = if (programme.isEmpty && !questioned) None
         // beside the programmes, the family whose site lists them is no second kind of evidence: its take is not counted
         else familiesAgainst(listings, model, modelRecord, reached, records, programme.flatMap(_ => listedOn), reads, gaps, finding).toOption.flatten
@@ -481,20 +479,13 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
   private def familiesAgainst(listings: Seq[Listing], model: Int, modelRecord: SourceRecord, reached: => Seq[Int], records: Int => Option[SourceRecord],
                               uncounted: Option[VoterFamily], reads: mutable.Map[String, Long], gaps: mutable.Set[(VoterFamily, String)],
                               finding: mutable.Set[String]): Answer[Option[(Int, String)]] = {
-    val verdicts = families.toSeq.sortBy(_._1.ordinal).map { case (_, answers) =>
-      Agreement.verdict(listings, new Recording(answers, gaps, reads), venues, normalizer, calibrations(answers.family))
-    }
+    val verdicts = verdictsOf(listings, gaps, reads)
     if (verdicts.contains(Answer.Unknown)) Answer.Unknown
     else {
       val mapped = verdicts.flatMap(_.toOption).flatMap(_.pick).filterNot(pick => uncounted.contains(pick.family)).map { pick =>
-        val id: Answer[Option[Int]] = pick.record.crossIds.get("tmdb").flatMap(_.toIntOption) match {
-          case Some(film) => Answer.Known(Some(film))
-          case None       => pick.record.crossIds.get("imdb").fold[Answer[Option[Int]]](Answer.Known(None)) { imdb =>
-            val found = tmdbOf(imdb)
-            if (found == Answer.Unknown) finding += imdb
-            found
-          }
-        }
+        val imdb = pick.record.crossIds.get("imdb")
+        val id   = tmdbFilmOf(pick.record.crossIds.get("tmdb").flatMap(_.toIntOption), imdb)
+        if (id == Answer.Unknown) imdb.foreach(finding += _)
         // a record linking no TMDB film (Filmweb's) is the one film the take's evidence reaches that its facts are
         pick -> (id match {
           case Answer.Known(None) => Answer.Known(reached.filter(film => records(film).exists(Agreement.sameFilm(pick.record, _))) match {
@@ -524,7 +515,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
     decision.leaning.orElse(decision.candidate).map { vote =>
       val ids = AgreementStage.leanRecord(vote)
       venues.film(vote.film).toOption.flatten.fold(ids)(film => SourceRecord(film,
-        ids.crossIds ++ Option.when(film.imdbNumber > 0)("imdb" -> f"tt${film.imdbNumber}%07d")))
+        ids.crossIds ++ IdentityMeasures.imdbId(film.imdbNumber).map("imdb" -> _)))
     }
 
   /** The listings as published, the people their own text names, and the venue detail page the picks read of each. */
@@ -559,6 +550,13 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
       checked(id) = (digest, version); true
     }
 
+  /** Every family's verdict on `listings`, in the families' order — each question read noted in `reads`, each gap in
+   *  `gaps`. */
+  private def verdictsOf(listings: Seq[Listing], gaps: mutable.Set[(VoterFamily, String)], reads: mutable.Map[String, Long]): Seq[Answer[FamilyVerdict]] =
+    families.toSeq.sortBy(_._1.ordinal).map { case (_, answers) =>
+      Agreement.verdict(listings, new Recording(answers, gaps, reads), venues, normalizer, calibrations(answers.family))
+    }
+
   /** The cluster's verdict, the resolver asked again over every family's answers now — `None`, and the cluster kept
    *  waiting on its questions, while one is a gap. */
   private def resolved(decision: ResolverDecision, id: String, digest: Long, listings: Seq[Listing], lean: Option[SourceRecord], version: Long,
@@ -566,9 +564,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
     resolves += 1
     val reads = mutable.Map.empty[String, Long]
     val gaps  = mutable.Set.empty[(VoterFamily, String)]
-    val verdicts = families.toSeq.sortBy(_._1.ordinal).map { case (_, answers) =>
-      Agreement.verdict(listings, new Recording(answers, gaps, reads), venues, normalizer, calibrations(answers.family))
-    }
+    val verdicts = verdictsOf(listings, gaps, reads)
     asked ++= gaps
     if (verdicts.contains(Answer.Unknown)) { waiting(id) = AgreementStage.Waiting(digest, gaps.toSet, clock.instant()); None }
     else {
@@ -638,8 +634,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
   private def filledTake(decision: ResolverDecision, verdict: StoredVerdict, finding: mutable.Set[String],
                          distances: Option[Int] => Answer[Seq[Map[Int, Option[Int]]]]): Option[ResolverDecision] =
     verdict.filled.flatMap { fill =>
-      val film: Answer[Option[Int]] = fill.tmdb.fold(fill.imdb.fold[Answer[Option[Int]]](Answer.Known(None))(tmdbOf))(id => Answer.Known(Some(id)))
-      film match {
+      tmdbFilmOf(fill.tmdb, fill.imdb) match {
         case Answer.Unknown => fill.imdb.foreach(finding += _); None
         case Answer.Known(tmdbFilm) => distances(tmdbFilm).toOption.filter(found => PosterEvidence.veto(tmdbFilm, found).isEmpty).flatMap { _ =>
           val explained = decision.explanation :+ fill.line
@@ -689,6 +684,11 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
    *  a subtitle, a performer, a show ([[ListingShape.billedBeside]]). Then the families' best match is that piece's namesake
    *  (DE "Femme - Frauen heilen die Welt" is a documentary, not the 2023 "Femme"), and no fill or poster is asked for a
    *  film either: what the billing names is no film the families found. */
+  /** The TMDB film a record names: its TMDB id, else the film TMDB finds by its IMDb id — `Unknown` while that find is
+   *  not answered yet (the caller notes the IMDb id to find). */
+  private def tmdbFilmOf(tmdb: Option[Int], imdb: Option[String]): Answer[Option[Int]] =
+    tmdb.fold(imdb.fold[Answer[Option[Int]]](Answer.Known(None))(tmdbOf))(film => Answer.Known(Some(film)))
+
   private def pieceOf(verdict: StoredVerdict, listings: Seq[Listing]): Option[String] =
     verdict.agreed.flatMap(agreed => listings.iterator.flatMap(ListingShape.billedBeside(_, Seq(agreed.record.film))).nextOption()
       .map(why => s"no film: the families agree on '${agreed.record.film.title}', one piece of the billing — $why"))
@@ -698,10 +698,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
   private def taken(decision: ResolverDecision, agreed: AgreedFilm, finding: mutable.Set[String],
                     distances: Option[Int] => Answer[Seq[Map[Int, Option[Int]]]]): AgreementStage.Take = {
     val imdb = agreed.crossId("imdb")
-    val tmdb: Answer[Option[Int]] = agreed.crossId("tmdb").flatMap(_.toIntOption) match {
-      case Some(film) => Answer.Known(Some(film))
-      case None       => imdb.fold[Answer[Option[Int]]](Answer.Known(None))(tmdbOf)
-    }
+    val tmdb = tmdbFilmOf(agreed.crossId("tmdb").flatMap(_.toIntOption), imdb)
     val leaning = Option.when(agreed.leaning.nonEmpty)(s", ${agreed.leaning.toSeq.map(_.label).sorted.mkString(", ")} leaning to it").getOrElse("") +
       Option.when(agreed.corroborated.nonEmpty)(s", corroborated by ${agreed.corroborated.toSeq.sorted.mkString(", ")}").getOrElse("")
     val line = s"${agreed.families.toSeq.map(_.label).sorted.mkString(", ")}$leaning agree on '${agreed.record.film.title}'" +
@@ -1049,7 +1046,7 @@ object AgreementStage {
   /** The TMDB film a no-match leans to, as the agreement links it: by its TMDB and IMDb ids alone. */
   def leanRecord(lean: ResolverDecision.Leaning): SourceRecord =
     SourceRecord(services.identity.IdentityMeasures.Film(""), Map("tmdb" -> lean.film.toString) ++
-      Option.when(lean.imdbNumber > 0)("imdb" -> f"tt${lean.imdbNumber}%07d"))
+      services.identity.IdentityMeasures.imdbId(lean.imdbNumber).map("imdb" -> _))
 
   /** What one [[AgreementStage.apply]] that read anything came to: the clusters waiting on a family's answer, the verdicts
    *  kept and how many agreed, the decisions taken as a TMDB film or an IMDb fallback, the questions still open per family

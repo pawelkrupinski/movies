@@ -139,11 +139,9 @@ object UnifiedEvidence {
   def contenders(c: ClusterEvidence): Seq[Contender] = {
     val scored   = c.nodes.flatMap(_.candidates).filterNot(candidate => FallbackIds.isFallback(candidate.tmdbId)).groupBy(_.tmdbId)
     val eligible = scored.filter(_._2.exists(!_.denied)).toSeq.sortBy(_._1)
-    def tmdbRecord(id: Int, film: IdentityMeasures.Film) =
-      SourceRecord(film, Map("tmdb" -> id.toString) ++ Option.when(film.imdbNumber > 0)("imdb" -> f"tt${film.imdbNumber}%07d"))
     val built = scala.collection.mutable.ArrayBuffer.from(eligible.map { case (id, candidates) =>
       val film = candidates.head.film
-      new Building(Some(id), Option.when(film.imdbNumber > 0)(f"tt${film.imdbNumber}%07d"), tmdbRecord(id, film))
+      new Building(Some(id), IdentityMeasures.imdbId(film.imdbNumber), SourceRecord.ofTmdb(id, film))
     })
     // the families' films first, each family's record joined to every other naming the same film (as the agreement joins
     // picks): a film IMDb names by its id alone and Wikidata by its TMDB id is one film, the TMDB candidate both name
@@ -165,7 +163,7 @@ object UnifiedEvidence {
     }
     // the agreement's own verdict and the posters' vote, as the stage reaches them: signals beside the evidence they rest on
     val modelVote = c.decision.leaning.orElse(c.decision.candidate).map(lean =>
-      scored.get(lean.film).map(cs => tmdbRecord(lean.film, cs.head.film)).getOrElse(AgreementStage.leanRecord(lean)))
+      scored.get(lean.film).map(cs => SourceRecord.ofTmdb(lean.film, cs.head.film)).getOrElse(AgreementStage.leanRecord(lean)))
     // as the stage reads it: the listings as their venues' own pages state them, and a film only review sites take is none
     val agreed    = (if (c.decision.film.isDefined) None else Agreement.agreed(c.listings, c.verdicts, modelVote, Some(c.thisYear), c.stated))
       .filter(_.families.exists(_.namesFilms))

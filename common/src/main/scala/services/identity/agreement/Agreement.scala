@@ -41,6 +41,12 @@ final case class SourceHit(id: String, title: String, originalTitle: Option[Stri
  *  (`"imdb" -> "tt0087843"`, `"tmdb" -> "311"`) — what links two families' films without comparing their facts. */
 final case class SourceRecord(film: IdentityMeasures.Film, crossIds: Map[String, String] = Map.empty)
 
+object SourceRecord {
+  /** TMDB's record of film `tmdbId`: linked by its TMDB id, and by the IMDb id TMDB names, if any. */
+  def ofTmdb(tmdbId: Int, film: IdentityMeasures.Film): SourceRecord =
+    SourceRecord(film, Map("tmdb" -> tmdbId.toString) ++ IdentityMeasures.imdbId(film.imdbNumber).map("imdb" -> _))
+}
+
 /** One film a venue's programme on a family's site screens — the family's own id for it — and the days it does. */
 final case class Showing(film: String, days: services.identity.ScreeningDays)
 

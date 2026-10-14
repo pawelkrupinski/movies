@@ -31,7 +31,7 @@ object FallbackIds {
       .flatMap { case (code, number) => Source.values.find(_.code == code).map(_ -> number) }
 
   /** The IMDb id an IMDb fallback id names ("tt0064570"). */
-  def imdbId(id: Int): Option[String] = unapply(id).collect { case (Source.Imdb, number) => f"tt$number%07d" }
+  def imdbId(id: Int): Option[String] = unapply(id).collect { case (Source.Imdb, number) => number }.flatMap(IdentityMeasures.imdbId)
 
   /** The fallback id of an IMDb id; `None` for anything else. */
   def ofImdbId(imdbId: String): Option[Int] =
