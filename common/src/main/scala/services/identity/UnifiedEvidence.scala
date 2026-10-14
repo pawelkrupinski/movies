@@ -69,8 +69,18 @@ object UnifiedEvidence {
    *  648574m and Filmweb's take, the 2023 film).
    *  `family.director`: a film database's family takes the film AND every listing whose venue credits a director credits
    *  one of the film's — `family.facts` for a venue stating no year (UK Picture House Uckfield's "The Misanthrope (NT
-   *  Live)", crediting Indhu Rubasingham: the National Theatre's 2026 production IMDb takes). */
-  val PinnedSignals: Seq[String] = Seq("families.current", "family.facts", "cast.venue", "film.current", "family.feedLink", "family.director")
+   *  Live)", crediting Indhu Rubasingham: the National Theatre's 2026 production IMDb takes).
+   *  `family.releaseKept`: a film database's family takes the film AND the release veto took out a namesake beside it
+   *  for having no release in the venue's country, while TMDB dates one of this film there ([[ReleaseVeto]]) — two
+   *  sources, a family's pick and a distributor's release, where a bare title's take alone is a namesake as often as the
+   *  film (PL Kino Kultura Gołdap's "NADZIEJA": Filmweb takes Mucha's 2007 documentary, released in Poland, the 2019
+   *  namesake not; Kino za Rogiem Cafe's "Wymarzony": Herry's 2018 film, not Coiro's 2013 one).
+   *  `model.vetoedAbove`: TMDB's search ranked first a namesake the release veto took out — the film stands only for the
+   *  veto, and a family's take of the bare title names the namesake its country knows just as the veto does: one signal,
+   *  no corroboration (PL Kino za Rogiem Cafe's "Stan wyjątkowy": TMDB's first hit, Hřebejk's 2024 film, vetoed; Filmweb
+   *  takes Brešan's 2018 one under it). */
+  val PinnedSignals: Seq[String] = Seq("families.current", "family.facts", "cast.venue", "film.current", "family.feedLink", "family.director",
+    "family.releaseKept", "model.vetoedAbove")
 
   /** The NON-COMPENSATORY guards: a contender one of these fires on is no film to take, whatever else speaks for it — the
    *  agreement stage's vetoes (several works billed, a stage work, another film's own title, the
@@ -175,6 +185,8 @@ object UnifiedEvidence {
     val feedLinked = Some(c.listings.flatMap(CatalogueSources.tmdbLinked).map(_._2).distinct).collect { case Seq(film) => film }
     // the listings whose venue credits a director ([[PinnedSignals]]' family.director): a feed's credit is its entry's
     val credited   = asStated.filter(listing => !listing.factsFromCatalogue && listing.directors.nonEmpty)
+    // the namesakes the release veto kept beside one it took out ([[PinnedSignals]]' family.releaseKept)
+    val releaseKept = c.nodes.flatMap(_.candidates).flatMap(_.releasedBeside).toSet
     // [[PinnedSignals]]' cast.venue: the one contender the venue's own text names two of the top-billed cast of, the cast
     // of no other contender — nor of a candidate the model denied — named at all ([[CastEvidence]]); a contender no TMDB
     // record holds has no cast known, and leaves it unread
@@ -254,6 +266,10 @@ object UnifiedEvidence {
       val familyFeedLink  = databaseTook && contender.tmdb.exists(feedLinked.contains)
       val familyDirector  = databaseTook && credited.nonEmpty &&
         credited.forall(listing => records.exists(record => FactRelations.samePerson(listing.directors, record.film.directors.getOrElse(Nil))))
+      val familyReleased  = databaseTook && contender.tmdb.exists(releaseKept)
+      // [[PinnedSignals]]' model.vetoedAbove: a node's search for it ranked first a namesake the release veto took out
+      val vetoedAbove = contender.tmdb.exists(id => c.nodes.exists(node => node.candidates.exists(_.tmdbId == id) &&
+        node.candidates.exists(first => first.tmdbId != id && first.releasedBeside.isDefined && first.rank.contains(1))))
       val castNamed       = castTake.collect { case (b, named) if b eq contender => named }.getOrElse(Nil)
       val counts = Seq("count.takers" -> takers, "count.leaning" -> leaning, "count.takersLessDissent" -> math.max(0.0, takers - dissent),
         "count.takers2" -> (if (takers >= 2) 1.0 else 0.0), "count.takers3" -> (if (takers >= 3) 1.0 else 0.0),
@@ -262,6 +278,7 @@ object UnifiedEvidence {
         "and.leanTakers" -> and(contender.tmdb.exists(id => c.decision.leaning.exists(_.film == id))),
         "families.current" -> (if (familiesCurrent) 1.0 else 0.0), "family.facts" -> (if (familyFacts) 1.0 else 0.0),
         "family.feedLink" -> (if (familyFeedLink) 1.0 else 0.0), "family.director" -> (if (familyDirector) 1.0 else 0.0),
+        "family.releaseKept" -> (if (familyReleased) 1.0 else 0.0), "model.vetoedAbove" -> (if (vetoedAbove) 1.0 else 0.0),
         "film.current" -> (if (current) 1.0 else 0.0),
         "cast.venue" -> castNamed.size.toDouble).filter(_._2 != 0.0)
       val signals = counts.toMap ++ flags.collect { case (name, true) => name -> 1.0 }.toMap ++

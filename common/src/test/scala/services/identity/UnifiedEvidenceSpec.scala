@@ -207,6 +207,28 @@ class UnifiedEvidenceSpec extends AnyFlatSpec with Matchers {
       Some("tmdb:1001315" -> "family.feedLink&film.current")
   }
 
+  "a film database's take of the namesake the release veto kept" should "fill it, unless the veto took out the search's first hit" in {
+    // PL Kino Kultura Gołdap's "NADZIEJA" (capture 2026-10-13): Filmweb takes Mucha's 2007 documentary (277730), which TMDB
+    // dates a Polish release of; the veto took out the 2019 namesake (616561, 15th in the search) for having none
+    val nadzieja = film("Nadzieja", 2007, "Stanisław Mucha", 87, imdb = 847750)
+    val later    = film("Nadzieja", 2019, "Maria Sødahl", 126, imdb = 8228538)
+    def fill(vetoedRank: Int) = {
+      val listings = Seq(listing(KinoMuza, "NADZIEJA"))
+      val decision = ResolverDecision(listings.map(_.key), None, 0.1, ResolverDecision.Basis.BelowThreshold, Nil)()
+      val kept     = candidate(277730, nadzieja, 0.03).copy(rank = Some(2))
+      val vetoed   = candidate(616561, later, 0.03, denied = true).copy(rank = Some(vetoedRank), releasedBeside = Some(277730))
+      UnifiedRules.resolver.filled(contenders(ClusterEvidence(listings, decision,
+        Seq(IdentityResolver.NodeEvidence(listings.map(_.key), Seq(kept, vetoed))), Seq(took(VoterFamily.Filmweb, recordOf(nadzieja))), Nil,
+        _ => None, thisYear = 2026))).map { case (contender, rule) => contender.film -> rule }
+    }
+    fill(vetoedRank = 15) shouldBe Some("tmdb:277730" -> "family.releaseKept&!model.vetoedAbove")
+    // PL Kino za Rogiem Cafe's "Stan wyjątkowy": the veto took out TMDB's FIRST hit (Hřebejk's 2024 film, the venue's) and
+    // Filmweb takes Brešan's 2018 namesake beside it — the take is the veto's own reading, nothing besides
+    fill(vetoedRank = 1) shouldBe None
+    // no namesake vetoed: Filmweb's take alone
+    filledBy(Seq(listing(KinoMuza, "NADZIEJA")), 277730, nadzieja, Seq(took(VoterFamily.Filmweb, recordOf(nadzieja)))) shouldBe None
+  }
+
   "a film database's take the venue's director credit names" should "fill the film, though the venue states no year" in {
     // UK Picture House Uckfield's "The Misanthrope (NT Live)", crediting Indhu Rubasingham: IMDb takes the 2026 production
     val misanthrope = film("The Misanthrope", 2026, "Indhu Rubasingham", 165, imdb = 39000001)

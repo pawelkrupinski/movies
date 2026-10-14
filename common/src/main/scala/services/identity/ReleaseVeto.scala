@@ -33,8 +33,14 @@ private[identity] object ReleaseVeto {
   /** The denial a vetoed namesake carries — the decision's explanation names the veto and the namesake it stands beside. */
   def why(country: String, released: Int): String = s"$Vetoed $country, as namesake $released is"
   private val Vetoed = "vetoed: not released in"
+  private val Beside = """^vetoed: not released in \S+, as namesake (\d+) is$""".r
   /** Is `denial` this veto's? */
   def vetoes(denial: String): Boolean = denial.startsWith(Vetoed)
+  /** The namesake released in the venue's country that this veto's `denial` stood the vetoed film beside ([[why]]). */
+  def releasedBeside(denial: String): Option[Int] = denial match {
+    case Beside(id) => id.toIntOption
+    case _          => None
+  }
 
   /** `measures` with the namesakes the veto took away from `scored`'s rivals taken out of its `rivals` count — never
    *  below none: the veto counts every namesake it took away, which can be more than `rivals` ranked against the film. */
