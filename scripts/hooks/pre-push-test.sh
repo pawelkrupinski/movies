@@ -100,6 +100,22 @@ check "an identity source compiles identity and every module built on it" \
 check "a dashboard alone compiles nothing extra" "" \
   "$(compiles infra/nix/files/monitoring/grafana/dashboards/apps/kinowo-http.json)"
 
+# The cheap CI lints that turned Main red on 2026-10-14 ride the same sbt run, each only for the paths it reads.
+printf '\033[36m▸\033[0m pre-push --lint-plan\n'
+lints() { printf '%s\n' "$@" | "$REPO_ROOT/scripts/hooks/pre-push" --lint-plan | tr '\n' ' ' | sed 's/ $//'; }
+Always="worker:tools.NoWallClockInTestsSpec worker:services.cinemas.NoWallClockInClientsSpec worker:deploy.GrafanaMetricCoverageSpec worker:deploy.NoSilencedGhCurlSpec web:deploy.GrafanaWebMetricCoverageSpec"
+check "a production Scala source runs the standing lints only" "$Always" "$(lints worker/src/main/scala/A.scala)"
+check "a script adds the self-test and convergence-dispatch lints" \
+  "$Always worker:deploy.ScriptSelfTestsRunInCiSpec worker:deploy.ConvergenceDispatchGateSpec" "$(lints scripts/x.sh)"
+check "...and so does a workflow" \
+  "$Always worker:deploy.ScriptSelfTestsRunInCiSpec worker:deploy.ConvergenceDispatchGateSpec" "$(lints .github/workflows/x.yml)"
+check "test code adds the literal-wait lint" "$Always worker:tools.NoLiteralWaitBoundSpec" \
+  "$(lints web/src/test/scala/ASpec.scala)"
+check "worker's fixtures config adds it too" "$Always worker:tools.NoLiteralWaitBoundSpec" \
+  "$(lints worker/src/fixtures/scala/tools/X.scala)"
+check "a Python self-test selects the sbt check, for the self-test lint" "sbt" "$(plan scripts/ci/x_test.py)"
+check "worker's fixtures config selects the sbt check" "sbt" "$(plan worker/src/fixtures/resources/x.json)"
+
 # ── Running for real, over a scratch clone: what is judged, and what is not silently passed ──
 printf '\033[36m▸\033[0m pre-push over a scratch repository\n'
 if command -v shellcheck >/dev/null; then

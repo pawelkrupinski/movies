@@ -11,7 +11,9 @@
 #   `snapshot`    the read-model snapshot's input stamp (scripts/read-model-snapshot-inputs.sh)
 #   `sbt`         NoWallClockInTestsSpec, NoWallClockInClientsSpec, the two Grafana metric-coverage
 #                 specs and NoSilencedGhCurlSpec, in ONE sbt run, on any Scala or dashboard change or any
-#                 script or workflow under scripts/, .github/ or infra/ — and,
+#                 script or workflow under scripts/, .github/ or infra/ (plus ScriptSelfTestsRunInCiSpec,
+#                 ConvergenceDispatchGateSpec and NoLiteralWaitBoundSpec for the paths they read:
+#                 `--lint-plan`) — and,
 #                 ahead of them in that same run, the Test/It/Page configs of every module the push
 #                 touches and every module depending on one (`sbt compile` skips them all: f20a6b5dd
 #                 broke worker/It/compile and only CI saw it). `--compile-plan` prints that list.
@@ -118,6 +120,12 @@ plan() {
         case "$path" in
             scripts/*.sh|.github/*.sh|.github/*.yml|.github/*.yaml|infra/*.sh|infra/*.yml|infra/*.yaml) sbt=1 ;;
         esac
+        # What the lints `--lint-plan` adds read: a script self-test no workflow runs (ScriptSelfTestsRunInCiSpec), a
+        # literal wait in test code (NoLiteralWaitBoundSpec) — each turned Main red on 2026-10-14.
+        case "$path" in
+            scripts/*test_*.py|scripts/*_test.py|scripts/*-test.sh|.github/*test_*.py|.github/*_test.py|.github/*-test.sh|\
+            worker/src/fixtures/*) sbt=1 ;;
+        esac
         case "$path" in
             infra/nix/files/monitoring/*|infra/test/test_dashboards.py) dashboards=1 ;;
         esac
@@ -187,9 +195,29 @@ compile_plan() {
     return 0
 }
 
+# ── Which lint specs the sbt check runs ─────────────────────────────────────────────────────────
+# One line per path on stdin; prints `<module>:<spec>`, one per line. The standing lints always; the cheap CI lints that
+# turned Main red on 2026-10-14 only when the push touches what they read (seconds each, in the same warm sbt run):
+#   ScriptSelfTestsRunInCiSpec    a script self-test no workflow runs          — scripts/, .github/
+#   ConvergenceDispatchGateSpec   the convergence dispatch gate and its paths  — scripts/, .github/
+#   NoLiteralWaitBoundSpec        a literal bound on a wait in test code       — test, it, page, fixtures, testkit
+lint_plan() {
+    local scripts=0 tests=0 path
+    while IFS= read -r path; do
+        case "$path" in scripts/*|.github/*) scripts=1 ;; esac
+        case "$path" in worker/src/fixtures/*|*/src/test/*|*/src/it/*|*/src/page/*|testkit/*) tests=1 ;; esac
+    done
+    printf '%s\n' worker:tools.NoWallClockInTestsSpec worker:services.cinemas.NoWallClockInClientsSpec \
+        worker:deploy.GrafanaMetricCoverageSpec worker:deploy.NoSilencedGhCurlSpec web:deploy.GrafanaWebMetricCoverageSpec
+    [ $scripts = 1 ] && printf '%s\n' worker:deploy.ScriptSelfTestsRunInCiSpec worker:deploy.ConvergenceDispatchGateSpec
+    [ $tests = 1 ] && echo worker:tools.NoLiteralWaitBoundSpec
+    return 0
+}
+
 case "${1:-}" in
     --plan)         plan; exit 0 ;;
     --compile-plan) compile_plan; exit 0 ;;
+    --lint-plan)    lint_plan; exit 0 ;;
 esac
 
 log()  { printf '\033[36m▸ pre-push\033[0m %s\n' "$*"; }
@@ -386,9 +414,12 @@ check_sbt() {
     local compiles
     # shellcheck disable=SC2207 # task names carry no spaces
     compiles=($(printf '%s\n' "$changed" | compile_plan))
-    sbt -batch -Dsbt.server.forcestart=false "${compiles[@]}" \
-        "worker/Test/testOnly tools.NoWallClockInTestsSpec services.cinemas.NoWallClockInClientsSpec deploy.GrafanaMetricCoverageSpec deploy.NoSilencedGhCurlSpec" \
-        "web/Test/testOnly deploy.GrafanaWebMetricCoverageSpec" > "$tmp/sbt.log" 2>&1 \
+    local lints module tests=()
+    lints="$(printf '%s\n' "$changed" | lint_plan)"
+    for module in worker web; do
+        tests+=("$module/Test/testOnly $(printf '%s\n' "$lints" | sed -n "s/^$module://p" | tr '\n' ' ' | sed 's/ $//')")
+    done
+    sbt -batch -Dsbt.server.forcestart=false "${compiles[@]}" "${tests[@]}" > "$tmp/sbt.log" 2>&1 \
         || { grep -E '\*\*\* FAILED|\[error\]|should|Error' "$tmp/sbt.log" | head -60 >&2; warn "full log: $tmp/sbt.log"; return 1; }
 }
 
