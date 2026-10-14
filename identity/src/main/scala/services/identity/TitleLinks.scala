@@ -52,7 +52,7 @@ private[identity] final class TitleLinks(nodes: Seq[EvidenceNode], normalizer: T
     // Segments are SANITISED (no spaces), so compare with the form sanitised too: the title's own
     // segment ("Pieśni lasu" in "Pieśni lasu | Pokaz …") is never another listing's title beside it.
     val formKey = sanitized(form)
-    val billed = IdentityMeasures.billedSecondTitle(node.evidence.published).map(sanitized).filter(_.nonEmpty)
+    val billed = MultiFilmBill.billedSecondTitle(node.evidence.published).map(sanitized).filter(_.nonEmpty)
     (segmentsOf(node.id) ++ billed).exists(seg => wholeTitle(seg) && seg != formKey && !formKey.contains(seg) && !seg.contains(formKey) &&
       (services.movies.TitleContainment.tokens(seg).toSet intersect words).isEmpty)
   }

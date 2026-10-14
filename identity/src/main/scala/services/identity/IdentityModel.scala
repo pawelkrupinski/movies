@@ -83,14 +83,14 @@ final case class Listing(
    *
    *  So is the season of one stating a year BEFORE that season opens: a relay screening in a later season than its year
    *  dates the staging's premiere by it, not the broadcast — UK Aldeburgh's "The Royal Ballet: Romeo & Juliet" [2025],
-   *  screening on 25 May 2027, the day the RBO's 2026/27 relay of it airs ([[IdentityMeasures.screenedSeasonRecord]]).
+   *  screening on 25 May 2027, the day the RBO's 2026/27 relay of it airs ([[StageRelays.screenedSeasonRecord]]).
    *  A year within or after the season is the venue's dating of the broadcast, and stays the only one read. */
   lazy val screenedSeason: Option[Int] =
     if (screenings.isEmpty) None
     else {
       val titles = Seq(title, rawTitle)
       Option.when(TitleSeason.of(titles).isEmpty && IdentityMeasures.titleYearOf(titles).isEmpty &&
-        IdentityMeasures.stageWorksBilled(titles, seasonNamed = false).nonEmpty)(()).flatMap(_ => screenings.season)
+        StageRelays.stageWorksBilled(titles, seasonNamed = false).nonEmpty)(()).flatMap(_ => screenings.season)
         .filter(season => year.forall(_ < season))
     }
 

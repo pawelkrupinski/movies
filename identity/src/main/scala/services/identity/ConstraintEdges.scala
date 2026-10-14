@@ -43,7 +43,7 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
     // alone. Their facts are compared as ever.
     // A double bill shares its first film's form and is neither film ("The Gruffalo + The Gruffalo's Child").
     val sameForm = sharedSearchForm(first, second)
-      .filterNot(_ => IdentityMeasures.billsTwoWorks(first.evidence.published) || IdentityMeasures.billsTwoWorks(second.evidence.published))
+      .filterNot(_ => MultiFilmBill.billsTwoWorks(first.evidence.published) || MultiFilmBill.billsTwoWorks(second.evidence.published))
     def titled(l: IdentityMeasures.Listing) = sameForm.fold(l)(form => l.copy(title = form, rawTitle = None))
     // as each node's scope reads its facts: an overruled feed link's copied facts keep no listing apart ([[FeedLink]])
     val (firstListing, secondListing) = (titled(families.scopeOf(first).evidenceOf(first).published), titled(families.scopeOf(second).evidenceOf(second).published))

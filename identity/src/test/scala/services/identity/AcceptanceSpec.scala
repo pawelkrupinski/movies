@@ -2,7 +2,8 @@ package services.identity
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.IdentityMeasures.{Film, Houses, Listing, ListingFilm, Qualifiers}
+import services.identity.IdentityMeasures.{Film, Listing, ListingFilm, Qualifiers}
+import services.identity.StageRelays.Houses
 
 /** The acceptance rules read one listing's RANKED candidates ([[Scored]]) — no resolve needed. */
 class AcceptanceSpec extends AnyFlatSpec with Matchers {
@@ -18,7 +19,7 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     films.map { case (tmdbId, film, rank) =>
       val measures = IdentityMeasures.listingFilm(listing, film, rank, close - (if (rivalling(film)) 1 else 0), 0, houses)
       Scored(Candidate(tmdbId, film), calibration.probability(ListingFilm, measures), measures, denial = None, listing, rank,
-        houseProduction = IdentityMeasures.billsUnderItsHouse(listing, film, houses))
+        houseProduction = StageRelays.billsUnderItsHouse(listing, film, houses))
     }.sortBy(scored => (-scored.probability, scored.candidate.tmdbId))
   }
   private def alone(candidates: Seq[Scored]): Option[Scored.Accepted] = acceptance.aloneNamed(candidates).map(_._1)
@@ -164,7 +165,7 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
       "The Met: Macbeth 26"                    -> macbeth, // The Beehive Honiton
       "Met Opera in Association with RBO: Macbeth (12A)" -> macbeth) // Theatr Mwldan Cardigan
     billed.filterNot { case (title, record) =>
-      IdentityMeasures.stageWorksBilled(Seq(title), seasonNamed = false).nonEmpty &&
+      StageRelays.stageWorksBilled(Seq(title), seasonNamed = false).nonEmpty &&
         taken(ranked(Listing(title, broadcastSeason = Some(2026), screenedSeason = Some(2026)), record)).contains(record._1)
     }.map(_._1) shouldBe empty
   }
@@ -465,13 +466,13 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     // at 3.4% over Cameron's film at 54% and split it from the film's other listings.
     val listing = Listing("Cellar Door x ThoughtBubble presents: Terminator 2: Judgment Day")
     val makingOf = Film("The Making of 'Terminator 2: Judgment Day'", year = Some(1991))
-    val learned = IdentityMeasures.billing(listing, makingOf).map(billed => Houses(Map(billed.listingHouse -> billed.filmHouse)))
+    val learned = StageRelays.billing(listing, makingOf).map(billed => Houses(Map(billed.listingHouse -> billed.filmHouse)))
     learned should not be empty
     val film = Film("Terminator 2: Judgment Day", year = Some(1991), runtime = Some(137))
     def scored(tmdbId: Int, candidate: Film, rank: Int) = {
       val measures = IdentityMeasures.listingFilm(listing, candidate, Some(rank), 0, 0, learned.get)
       Scored(Candidate(tmdbId, candidate), calibration.probability(ListingFilm, measures), measures, denial = None, listing, Some(rank),
-        houseProduction = IdentityMeasures.billsUnderItsHouse(listing, candidate, learned.get))
+        houseProduction = StageRelays.billsUnderItsHouse(listing, candidate, learned.get))
     }
     val candidates = Seq(scored(280, film, 1), scored(473793, makingOf, 2)).sortBy(candidate => -candidate.probability)
     candidates.find(_.candidate.tmdbId == 473793).map(_.houseProduction) shouldBe Some(true)

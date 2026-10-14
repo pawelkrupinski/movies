@@ -190,7 +190,7 @@ object DecorationDiscovery {
           val after   = is.get(k)
           val listing = billed.head
           judge(before, after.fold("")(_.film),
-            ListingShape.billsSeveral(listing) || IdentityMeasures.billsTwoWorks(IdentityMeasures.Listing(listing.title, Some(listing.rawTitle), decorations = TitleDecorations.resolver)),
+            ListingShape.billsSeveral(listing) || MultiFilmBill.billsTwoWorks(IdentityMeasures.Listing(listing.title, Some(listing.rawTitle), decorations = TitleDecorations.resolver)),
             after.flatMap(UnmatchedClusters.verdict(_, labels)))
             .map(v => Change(country.code, venue, raw, was.get(k).fold("")(t => s"${t.film} ${t.title}"), after.fold("")(t => s"${t.film} ${t.title}"), v))
         }

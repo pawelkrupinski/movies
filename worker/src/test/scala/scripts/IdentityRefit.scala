@@ -333,7 +333,7 @@ object IdentityRefit {
     val billsSeveral: ((String, String, String)) => Boolean = {
       val byListing = replays.flatMap(r => r.capture.listings.map(l => (r.capture.country.code, l.venue, l.rawTitle) -> l)).toMap
       k => byListing.get(k).exists(l => ListingShape.billsSeveral(l) ||
-        IdentityMeasures.billsTwoWorks(IdentityMeasures.Listing(l.title, Some(l.rawTitle), decorations = TitleDecorations.resolver)))
+        MultiFilmBill.billsTwoWorks(IdentityMeasures.Listing(l.title, Some(l.rawTitle), decorations = TitleDecorations.resolver)))
     }
     val pool = Executors.newFixedThreadPool(threads)
     implicit val ec: ExecutionContext = ExecutionContext.fromExecutor(pool)

@@ -50,7 +50,7 @@ class AgreementBroadcastSpec extends AnyFlatSpec with Matchers {
   it should "take one broadcast its film database holds twice by the record every listing of it takes" in {
     // UK Flicks' "Royal Opera House: Carmen" on 10 November 2026: TMDB holds the broadcast as 1151422 "Royal Opera House:
     // Carmen" and 1702759 "Royal Ballet & Opera 2026/27: Carmen". Once the season's search reached the second record, two
-    // records aired that day and the join took neither — the season's record is the one (IdentityMeasures.broadcastRecordOrder)
+    // records aired that day and the join took neither — the season's record is the one (StageRelays.broadcastRecordOrder)
     val rohCarmen = FilmTable.F(1151422, "Royal Opera House: Carmen", 2026, "", 0, popularity = 1.0, released = Some(LocalDate.of(2026, 11, 10)))
     val rboCarmen = FilmTable.F(1702759, "Royal Ballet & Opera 2026/27: Carmen", 2026, "", 0, popularity = 1.0, released = Some(LocalDate.of(2026, 11, 10)))
     decidedIn(new FilmTable(Seq(rohCarmen), normalizer))(screening("Royal Opera House: Carmen", "2026-11-10")).film shouldBe Some(rohCarmen.id)

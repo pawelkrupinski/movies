@@ -9,6 +9,6 @@ object LeanStageWorks {
   /** Does `film`'s title bill a stage work? */
   def billsStageWork(film: CinemaMovie): Boolean = {
     val raw = film.movie.rawTitle.getOrElse(film.movie.title)
-    IdentityMeasures.billsStageWork(Seq(film.movie.title, raw).distinct, raw)
+    StageRelays.billsStageWork(Seq(film.movie.title, raw).distinct, raw)
   }
 }

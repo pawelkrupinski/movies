@@ -93,13 +93,13 @@ object IdentityMeasures {
     /** How many years an anniversary the title or original title bills celebrates ("30th Anniversary"), once per listing. */
     private[identity] lazy val anniversary: Option[Int] = (ownTitles ++ originalTitle).iterator
       .flatMap(t => IdentityMeasures.AnniversaryYears.findFirstMatchIn(t)).map(_.group(1).toInt).nextOption()
-    /** The stage works its titles bill ([[IdentityMeasures.stageWorksBilled]]), no season named. */
-    private[identity] def billedStageWorks: Set[String] = IdentityMeasures.stageWorksBilled(titles, seasonNamed = false)
-    /** Does the title name an opera or ballet house ([[IdentityMeasures.screenNamesake]]), once per listing: every candidate asks. */
-    private[identity] lazy val billsAStageHouse: Boolean = IdentityMeasures.billsAStageHouse(titles)
-    /** Its title read as a stage house's relay ([[IdentityMeasures.Relay]]), once per listing: every candidate asks. */
-    private[identity] lazy val relay: IdentityMeasures.Relay =
-      if (billsAStageHouse) IdentityMeasures.Relay.of(titles) else IdentityMeasures.Relay.Unbilled
+    /** The stage works its titles bill ([[StageRelays.stageWorksBilled]]), no season named. */
+    private[identity] def billedStageWorks: Set[String] = StageRelays.stageWorksBilled(titles, seasonNamed = false)
+    /** Does the title name an opera or ballet house ([[StageRelays.screenNamesake]]), once per listing: every candidate asks. */
+    private[identity] lazy val billsAStageHouse: Boolean = StageRelays.billsAStageHouse(titles)
+    /** Its title read as a stage house's relay ([[StageRelays.Relay]]), once per listing: every candidate asks. */
+    private[identity] lazy val relay: StageRelays.Relay =
+      if (billsAStageHouse) StageRelays.Relay.of(titles) else StageRelays.Relay.Unbilled
     /** The title's words, once per listing: a director's surname heading it is read against every candidate. */
     private[identity] lazy val titleWords: Seq[String] = ownForms.head.words
     private[identity] lazy val shapeKeys: Seq[String] = shapes.map(IdentityMeasures.key)
@@ -114,7 +114,7 @@ object IdentityMeasures {
       ownTitles.map(t => IdentityMeasures.creditedWork(t).getOrElse(t)).flatMap(decorations.strip)
         .map(IdentityMeasures.words).filter(_.nonEmpty).distinct
     /** The title and raw title, each also as ingest cleans it ([[services.movies.FormatTags]]), as yearless tokens
-     *  (`billing`): a box office's certificate is no part of the house's billing. UK "NT LIVE: Golden Boy (15)" billed
+     *  (`StageRelays.billing`): a box office's certificate is no part of the house's billing. UK "NT LIVE: Golden Boy (15)" billed
      *  "Golden Boy" under no banner, its work not at the title's edge, and measured an `overlap` of "Golden Boy (NT Live)". */
     private[identity] lazy val billedTitles: Seq[Seq[String]] =
       ownTitles.flatMap(t => Seq(t, services.movies.FormatTags.stripFormatTags(t))).map(IdentityMeasures.yearlessTokens).distinct
@@ -128,13 +128,13 @@ object IdentityMeasures {
     /** The shapes as series and numbers (`numeralRelation`). */
     private[identity] lazy val numberedShapes: Seq[IdentityMeasures.Numbered] = shapes.map(IdentityMeasures.numbered)
     /** The directors, and those credited beside the year, parsed once per listing (`directorRelation`). */
-    private[identity] lazy val directorCredits: IdentityMeasures.Credits   = new IdentityMeasures.Credits(directors)
+    private[identity] lazy val directorCredits: CreditRelation.Credits   = new CreditRelation.Credits(directors)
     /** Its search titles' [[IdentityMeasures.key]]s, in order: worked out once, not per film it is weighed against. */
     private[identity] lazy val searchKeys: Seq[String] = searchTitles.map(IdentityMeasures.key)
     /** Each credited director's name as title tokens, in order. */
     private[identity] lazy val directorTokens: Seq[Seq[String]] = directors.map(TitleContainment.tokens)
-    private[identity] lazy val creditsBesideYear: IdentityMeasures.Credits =
-      if (yearCredits.isEmpty) directorCredits else new IdentityMeasures.Credits(creditedBesideYear)
+    private[identity] lazy val creditsBesideYear: CreditRelation.Credits =
+      if (yearCredits.isEmpty) directorCredits else new CreditRelation.Credits(creditedBesideYear)
     /** The original title, trimmed, as a comparison form, once per listing (`originalTitleRelation`). */
     private[identity] lazy val originalForm: Option[IdentityMeasures.OriginalForm] =
       originalTitle.map(_.trim).filter(_.nonEmpty).map(IdentityMeasures.OriginalForm(_))
@@ -160,356 +160,6 @@ object IdentityMeasures {
    *  one skips its regex. */
   private def hasAsciiDigit(t: String): Boolean = t.exists(c => c >= '0' && c <= '9')
 
-  /** Are two records ONE BROADCAST its film database holds twice: one house's ([[namesOneHouse]]) record of one stage
-   *  work ([[StageWorks]]), aired the same day? TMDB holds the Royal Opera's 10 November 2026 "Carmen" as 1151422 "Royal
-   *  Opera House: Carmen" and as 1702759 "Royal Ballet & Opera 2026/27: Carmen". */
-  def sameBroadcast(a: Film, b: Film): Boolean =
-    a.released.isDefined && a.released == b.released && a.stageWorkIds.exists(b.stageWorkIds) &&
-      a.houseNames.exists(x => b.houseNames.exists(namesOneHouse(x, _)))
-  /** Which of one broadcast's records ([[sameBroadcast]]) every listing of it takes, first in this order: the one dating
-   *  its season (the series the house files its season under), then one IMDb also holds, then the lower id — so all of
-   *  a broadcast's listings land on one card, whichever record each one's evidence reaches first. */
-  def broadcastRecordOrder(id: Int, f: Film): (Int, Int, Int) = (if (f.season.isDefined) 0 else 1, if (f.imdbNumber > 0) 0 else 1, id)
-
-  /** Does the film's own title name the listing's SEASON PRODUCTION: both name the same season,
-   *  and they share a whole title segment outside it — the work. "Met Opera 2026-27: Samson et
-   *  Dalila" and the film database's "The Metropolitan Opera 2026/27: Samson et Dalila" are one
-   *  season's production of one work, however each spells the house. Segments are the listing's
-   *  own delimiters (`SearchTitles.candidates`) on both sides; a segment carrying the season is
-   *  the banner, never the work. */
-  def namesSeasonProduction(l: Listing, f: Film): Boolean = {
-    val shared = seasonWorks(l) intersect seasonWorks(f)
-    shared.exists { case (work, _) => !work.startsWith("work:") } || (shared.nonEmpty && bannersMeet(l.ownTitles, f.titles))
-  }
-
-  /** Where a title's own delimiters cut it into pieces: a colon or pipe, or a dash or slash spaced on both sides. */
-  private val PieceBreak = java.util.regex.Pattern.compile("""\s*[:|]\s*|\s+[-–—/]\s+""")
-  /** A season production met only through a work named in two languages ([[StageWorks]]) is the record's only when
-   *  the two titles' banners — the pieces naming no work — share a word: PL "Balet z Opery Paryskiej 2026-2027:
-   *  Jezioro łabędzie" ×16 is the Paris Opera Ballet's Swan Lake, which TMDB has no record of, not "Royal Ballet & Opera
-   *  2026/27: Swan Lake"; "Royal Ballet and Opera Sezon Kinowy 2026-27: Dziadek do orzechów" shares "royal", "ballet",
-   *  "opera" with its record. Words of four letters or more, so "the" or "and" meets nothing. A banner naming a house in
-   *  particular meets only by such a word — never by the art form ([[HouseCommonWords]]) every house's name carries: DE
-   *  "Opera de Paris: Romeo et Juliette (2026/27)" ×7 took the Royal Ballet's record by "opera". One naming none ("OPERA
-   *  2026/2027 - MAKBET") meets by the art form. */
-  private def bannersMeet(listingTitles: Seq[String], filmTitles: Seq[String]): Boolean = {
-    def bannerWords(titles: Seq[String]) = titles.flatMap(pieces)
-      .filter(piece => StageWorks.resolver.named(key(piece)).isEmpty)
-      .flatMap(TitleContainment.tokens).filter(word => word.length >= 4 && !word.forall(_.isDigit)).toSet
-    val listing    = bannerWords(listingTitles)
-    val particular = listing.filterNot(HouseCommonWords)
-    ((if (particular.nonEmpty) particular else listing) intersect bannerWords(filmTitles)).nonEmpty
-  }
-
-  /** The (work, season) pairs a listing's title names: each whole segment outside its season, keyed,
-   *  beside the season. [[namesSeasonProduction]] is exactly two sides' pairs meeting, so a record
-   *  of the listing's season production can be found by pair, whoever searched it up. */
-  def seasonWorks(l: Listing): Set[(String, Int)] =
-    l.seasonYear.fold(Set.empty[(String, Int)])(season => seasonlessWorks(l.shapes).map(_ -> season))
-
-  /** A film's (work, season) pairs, as [[seasonWorks]] reads a listing's. */
-  def seasonWorks(f: Film): Set[(String, Int)] =
-    f.season.fold(Set.empty[(String, Int)])(season => seasonlessWorks(f.titles.flatMap(SearchTitles.candidates(_, None))).map(_ -> season))
-
-  /** Each segment's key — and each stage work it names, in whatever language ([[StageWorks]]): PL's "Royal Ballet and
-   *  Opera Sezon Kinowy 2026-27: Dziadek do orzechów" is the season's "Royal Ballet & Opera 2026/27: The Nutcracker". */
-  private val SentenceStop = java.util.regex.Pattern.compile("""\.\s+""")
-  private def seasonlessWorks(titles: Seq[String]): Set[String] = {
-    val seasonless = titles.filter(t => TitleSeason.of(Seq(t)).isEmpty)
-    val keys = seasonless.map(key).filter(_.nonEmpty).toSet
-    // a work's name may run on into a translated subtitle after a full stop: "Cosi fan tutte. Tak czynią wszystkie"
-    val named = keys ++ seasonless.map(t => key(SentenceStop.split(t, 2).head)).filter(_.nonEmpty)
-    keys ++ named.flatMap(StageWorks.resolver.named).map(work => s"work:$work")
-  }
-
-  /** A title read as a HOUSE BILLING A WORK: the work both titles carry as a whole delimited
-   *  piece (a title shape of each), and what each title adds to it along one edge — its banner,
-   *  "how the title spells its house" ("NT Live: Dr. Strangelove" and "National Theatre Live:
-   *  Dr. Strangelove" bill `drstrangelove` as `ntlive` and `nationaltheatrelive`). Seasons and
-   *  bracketed years are no part of a house's name, on either side. Keys, by [[key]]. */
-  final case class Billing(listingWords: Seq[String], filmWords: Seq[String], work: String) {
-    def listingHouse: String = listingWords.mkString
-    def filmHouse: String    = filmWords.mkString
-  }
-
-  /** How the listing and the film bill one work (the longest they share), when both titles add a
-   *  banner to it. `None`: no shared work, or one title is the work alone. */
-  def billing(l: Listing, f: Film): Option[Billing] = billings(l, f).headOption
-
-  /** EVERY way the listing and the film bill the longest work they share under banners, in
-   *  [[billing]]'s order: a record carrying its broadcast title beside an alternative streaming
-   *  title ("National Theatre at Home: …") bills the work under both. */
-  def billings(listing: Listing, film: Film): Seq[Billing] = {
-    val works = (listing.billedWorks intersect film.billedWorks).toSeq.sortBy(work => (-work.length, work.mkString(" ")))
-    works.iterator.map(work => billedUnder(listing, work, film, work, work.mkString)).find(_.nonEmpty).getOrElse(Nil)
-  }
-
-  /** The banners a title puts on a work it carries — its words before or after the work. */
-  private def bannerOf(title: Seq[String], work: Seq[String]): Option[Seq[String]] =
-    Option.when(title.lengthIs > work.length)(
-      if (title.endsWith(work)) Some(title.dropRight(work.length)) else if (title.startsWith(work)) Some(title.drop(work.length)) else None
-    ).flatten
-
-  /** Every way the listing bills `listingWork` and the film `filmWork` under banners, as the one work `work`. */
-  private def billedUnder(listing: Listing, listingWork: Seq[String], film: Film, filmWork: Seq[String], work: String): Seq[Billing] =
-    (for {
-      listingHouse <- listing.billedTitles.flatMap(bannerOf(_, listingWork))
-      filmHouse    <- film.billedTitles.flatMap(bannerOf(_, filmWork))
-    } yield Billing(listingHouse, filmHouse, work))
-      .sortBy(billed => (billed.listingHouse, billed.filmHouse, billed.listingWords.mkString(" "), billed.filmWords.mkString(" ")))
-
-  /** How the listing and the film bill one STAGE WORK under banners, each in its own language ([[StageWorks]]), when no
-   *  work of theirs is the same words: PL "Makbet | metropolitan opera: live in hd 2026/27" and the Met's "The
-   *  Metropolitan Opera 2026/27: Macbeth". What a season's banner is learned from ([[Houses.evidence]]): billed by its
-   *  literal works alone, Kino 1410's Met banner met only Royal Ballet & Opera's records of "Carmen" and "Così fan
-   *  tutte", and was learned as RBO's — whose season productions it then took. */
-  def stageBilling(listing: Listing, film: Film): Option[Billing] = {
-    def staged(works: Set[Seq[String]]) = works.toSeq.flatMap(work => StageWorks.resolver.named(key(work.mkString(" "))).map(_ -> work))
-    val filmWorks = staged(film.billedWorks).groupMap(_._1)(_._2)
-    staged(listing.billedWorks).sortBy { case (id, work) => (-work.length, id, work.mkString(" ")) }.iterator
-      .map { case (id, listingWork) => filmWorks.getOrElse(id, Nil).sortBy(_.mkString(" ")).flatMap(billedUnder(listing, listingWork, film, _, s"work:$id")) }
-      .find(_.nonEmpty).flatMap(_.headOption)
-  }
-
-  /** Words naming an opera or ballet HOUSE, or its relay, in the languages venues bill one in: a title carrying one bills a
-   *  STAGING ("Paris Opera Ballett: …", "RB&O Live: Tosca (Oper)", "Balet z Opery Paryskiej …", "RBO …", "ROH …"). The
-   *  word as its own token: "Dreigroschenoper" or "Operation" is no house. */
-  private val StageHouseWords: Set[String] = TitleWords.tokens(TitleWords.Concept.StageHouse)
-
-  /** Is `f` a SCREEN NAMESAKE of the work a stage house's relay bills: the listing's title names an opera or ballet house
-   *  beside the work ([[StageHouseWords]]) and none of the film's own titles bills one? A house's banner names its
-   *  STAGING: DE "Paris Opera Ballett: Romeo und Julia" is the ballet's relay, not Zeffirelli's 1968 film of the play,
-   *  however TMDB ranks it, and "RB&O Live: Tosca (Oper)" not the 1976 film. A staging's record bills its house ("RBO
-   *  2026/27: …", "The Metropolitan Opera: …", "BALLET LIVE. MANON. ROYAL ÓPERA HOUSE"); a bare one is no house's
-   *  that the listing can tell. */
-  def screenNamesake(listing: Listing, film: Film): Boolean =
-    listing.billsAStageHouse && !film.ownTitleTokens.exists(_.exists(StageHouseWords))
-  /** Does one of `titles` name an opera or ballet house ([[StageHouseWords]])? A house's initials only standing alone: DE
-   *  "Jin-Roh - Die Wolfsbrigade" is Okiura's anime, no Royal Opera House relay, whatever its hyphen splits off. */
-  private[identity] def billsAStageHouse(titles: Seq[String]): Boolean = titles.exists(title =>
-    TitleContainment.tokens(title).exists(word => StageHouseWords(word) && !HouseInitials(word)) ||
-      StandaloneHouseInitials.findFirstIn(title).isDefined)
-  private val HouseInitials: Set[String] = Set("rbo", "roh")
-  private val StandaloneHouseInitials = """(?i)(?<![\p{L}\d]-?)(?:rbo|roh)(?!-?[\p{L}\d])""".r
-
-  /** What a stage house's relay title bills, read off its FRAGMENTS — its delimited pieces ([[pieces]]), each bracket
-   *  apart from what it follows, digits out: a fragment naming a house ([[StageHouseWords]]) is a HOUSE, every other one
-   *  may be the WORK ("RBO Live 2026/27: Schwanensee (Royal Ballet)" bills "Schwanensee" under "RBO Live" and "Royal
-   *  Ballet"; "Live aus der MET: Verdi: Macbeth" bills "Live aus der MET", "Verdi" or "Macbeth"). `workWords`: the work
-   *  fragments' words of four letters or more, beside the house's common ones ([[HouseCommonWords]]) — a venue adds a
-   *  composer ("Giuseppe Verdi MACBETH"), a tag ("Macbeth ENCORE") or a translation ("Cosi fan tutte. Tak czynią
-   *  wszystkie") to the work's name; `workIds` the stage works the fragments name in any language ([[StageWorks]]);
-   *  `fragmentKeys` every fragment's words run together, a leading article off ([[wholeKey]]), a house's or not ("Das
-   *  Phantom der Oper") — never one of the art form alone ([[namesOnlyTheArt]]); `houses` the house fragments' words ([[houseWords]]). */
-  final case class Relay(workWords: Set[String], workIds: Set[String], fragmentKeys: Set[String], houses: Seq[Seq[String]])
-  object Relay {
-    val Unbilled: Relay = Relay(Set.empty, Set.empty, Set.empty, Nil)
-    def of(titles: Seq[String]): Relay = {
-      val all             = titles.flatMap(fragments).distinct
-      val (houses, works) = all.partition(fragment => TitleContainment.tokens(fragment).exists(StageHouseWords))
-      Relay(works.flatMap(wordsOf).filter(word => word.length >= 4 && !HouseCommonWords(word)).toSet,
-        works.flatMap(billedIn(_, seasonNamed = true)).toSet, all.filterNot(namesOnlyTheArt).map(wholeKey).filter(_.nonEmpty).toSet,
-        houses.map(houseWords).filter(_.nonEmpty).distinct)
-    }
-  }
-  /** Is `fragment` only the art form, a relay's word or a year ("Opera 2026", "Live")? It names no work and no house, so
-   *  no record carries it whole: UK "Macbeth - Opera 2026" took Argento's 1987 "Opera" so. */
-  private def namesOnlyTheArt(fragment: String): Boolean = wordsOf(fragment).forall(HouseCommonWords)
-  private val BracketedFragment = """[(\[]([^()\[\]]*)[)\]]""".r
-  /** A title's fragments: each delimited piece, and each bracket in it apart from what it follows. */
-  private def fragments(title: String): Seq[String] = pieces(title).flatMap { piece =>
-    BracketedFragment.findAllMatchIn(piece).map(_.group(1)).toSeq :+ BracketedFragment.replaceAllIn(piece, " ")
-  }.map(_.trim).filter(_.exists(_.isLetter))
-  /** A fragment's words, numbers out: a season ("26/27") or a screening's year ("Macbeth 2026") dates the relay, never names it. */
-  private def wordsOf(fragment: String): Seq[String] = TitleContainment.tokens(fragment).filterNot(_.forall(_.isDigit))
-  /** A house fragment's words, a stage work's name it opens or ends with out ([[billedIn]]'s runs): "OPERA-MANON" and
-   *  "OPERA- SILENT NIGHT" bill the work in the house's word, and name no house "Manon" that "BALLET LIVE. MANON. ROYAL
-   *  ÓPERA HOUSE" would share. */
-  private def houseWords(fragment: String): Seq[String] = {
-    val words = wordsOf(fragment).toIndexedSeq
-    val runs  = words.indices.map(_ -> words.length) ++ (1 until words.length).map(0 -> _)
-    val work  = runs.filter { case (from, until) => StageWorks.resolver.named(words.slice(from, until).mkString).nonEmpty }
-      .flatMap { case (from, until) => from until until }.toSet
-    words.indices.filterNot(work).map(words)
-  }
-  /** A fragment or a whole title as one key: its words ([[wordsOf]]) run together, a leading article off — "Das Phantom
-   *  der Oper" is TMDB's 1943 "Phantom der Oper" whole. */
-  private[identity] def wholeKey(title: String): String = withoutLeadingArticle(wordsOf(title)).mkString
-
-  /** Does the film's record bill ANOTHER WORK than the listing's stage-house relay: no title of the record carries a word
-   *  of the relay's work fragments ([[Relay]]) or is one of its fragments whole, nor names a stage work they name in
-   *  another language? DE "RBO Live 2026/27: Schwanensee (Royal Ballet)" ×80 took the house's "RBO 2026/27: Tosca (The
-   *  Royal Opera)" by pooled evidence, and Cinefactory's "MET Opera: Macbeth 2026" — its credits, running time and original title copied from last
-   *  season's Onegin — "MET Opera: Eugen Onegin" by those facts. A house bills many works; the title says which. A
-   *  title whose every fragment names its house says no work, and denies none. */
-  def namesAnotherWork(listing: Listing, film: Film): Boolean = listing.billsAStageHouse && {
-    val relay = listing.relay
-    (relay.workWords.nonEmpty || relay.workIds.nonEmpty) && !relay.workWords.exists(film.titleWords) &&
-      !relay.workIds.exists(film.stageWorkIds) && !relay.fragmentKeys.exists(film.wholeKeys)
-  }
-  /** [[namesAnotherWork]], the relay's work a STAGE WORK the record names in none of its languages: what a venue's title
-   *  is never learned as the record's own by ([[venueTitles]], [[titlesByFacts]]) — a misspelt work ("RBO Live 2026/27:
-   *  Gtterdmmerung (Royal Opera)") names no stage work, and is still its record's spelling. */
-  private def namesAnotherStageWork(listing: Listing, film: Film): Boolean = listing.relay.workIds.nonEmpty && namesAnotherWork(listing, film)
-
-  /** Does one of the film's titles name the house the listing's relay bills ([[Relay.houses]], [[namesOneHouse]]) — by
-   *  a word of its banner other than `besides`, the words a rival's titles share with it? PL "OPERA- SILENT NIGHT" names
-   *  no house by "silent" against the Met's "Silent Night", whose own title carries the word. */
-  def billsItsHouse(listing: Listing, film: Film, besides: Set[String] = Set.empty): Boolean =
-    listing.relay.houses.map(_.filterNot(besides)).exists(house => film.houseNames.exists(namesOneHouse(house, _)))
-  /** Do the film's titles name a house, and none the listing's relay bills: UK's "English National Ballet: The Sleeping
-   *  Beauty" and TMDB's 2017 "The Sleeping Beauty", also "The Sleeping Beauty (The Royal Ballet)"? */
-  def billsAnotherHouse(listing: Listing, film: Film): Boolean = film.houseNames.nonEmpty && !billsItsHouse(listing, film)
-
-  /** A relay's own words, which a house's name is billed WITH but never abbreviated by ("NT Live" of "National Theatre
-   *  Live" is "NT"). */
-  private val RelayWords = Set("live", "hd", "kino", "cinema", "im", "in", "aus", "at", "from", "presents", "season", "saison", "sezon", "kinowy")
-  /** Words a house's name shares with any other's — the art form in each language, the kind of institution ("National",
-   *  "Staatsoper", "Opera House", "Theatre", "Company": English National Ballet is not Dutch National Ballet, nor the Wiener
-   *  Staatsoper the Bayerische), articles, prepositions and a relay's own words ("Live", "im Kino", "Season") — which say
-   *  nothing about WHICH house. */
-  private val HouseCommonWords: Set[String] = RelayWords ++ Set("opera", "operas", "oper", "opern", "opery", "operze", "ballet", "ballets",
-    "ballett", "balet", "baletu", "balletto", "national", "nationale", "nacional", "nazionale", "narodowa", "narodowy", "staatsoper", "state",
-    "house", "company", "theatre", "theater", "teatro", "teatr", "the", "and", "und", "of", "de", "du", "des", "di", "del", "der", "die",
-    "das", "la", "le", "les", "el", "los", "las", "z", "w", "na")
-  /** Words a house's initials skip ("RBO" of "The Royal Ballet and Opera"). */
-  private val UninitialledWords: Set[String] = Set("the", "and", "und", "of")
-  /** A house name's words that say WHICH house: two letters or more, no number, none of [[HouseCommonWords]]. */
-  private def particularWords(name: Seq[String]): Seq[String] =
-    name.filter(word => word.length >= 2 && !word.forall(_.isDigit) && !HouseCommonWords(word))
-  /** Do two house names NAME one house: a word in common beyond [[HouseCommonWords]], one's word a prefix of the other's
-   *  ("Met", "Metropolitan"), or one's word the other's initials ("RBO" of "Royal Ballet & Opera", "ROH" of "Royal Opera
-   *  House"), or two names of one house ([[StageHouses]]: "ROH" and "Royal Ballet & Opera", the house renamed)? Never a
-   *  name of common words alone ("Opera", "The Ballet"): it names no house in particular. Numbers are no part of a name
-   *  ("RBO 26/27"). */
-  private[identity] def namesOneHouse(a: Seq[String], b: Seq[String]): Boolean = {
-    def own(name: Seq[String]) = particularWords(name)
-    def initials(name: Seq[String]) =
-      name.filterNot(word => word.forall(_.isDigit) || UninitialledWords(word)).flatMap(_.headOption).mkString
-    val (ownA, ownB) = (own(a), own(b))
-    ownA.exists(x => ownB.exists(y => x == y || (x.length >= 3 && y.startsWith(x)) || (y.length >= 3 && x.startsWith(y)))) ||
-      ownA.exists(x => x.length >= 2 && x == initials(b)) || ownB.exists(y => y.length >= 2 && y == initials(a)) ||
-      oneHouseRenamed(ownA.toSet, ownB.toSet)
-  }
-  /** Each multi-named house's names ([[StageHouses]]) as the words that say which house ([[particularWords]]). */
-  private lazy val housesByName: Seq[Set[Set[String]]] =
-    StageHouses.houses.map(_.map(name => particularWords(name).toSet).filter(_.nonEmpty).toSet)
-  /** Are `a` and `b` — particular words — exactly two names of one house: a banner spelling one of its names, nothing
-   *  more ("Royal Shakespeare" spells none of the Royal Opera House's)? */
-  private def oneHouseRenamed(a: Set[String], b: Set[String]): Boolean =
-    a.nonEmpty && b.nonEmpty && housesByName.exists(names => names(a) && names(b))
-
-  /** Is one house name the other's ABBREVIATION — one short word, its relay's words aside, the initials of the other's
-   *  several ("NT Live" of "National Theatre Live", "RBO" of "Royal Ballet & Opera")? A name, whatever house its banner
-   *  was learned as: UK "NT Live" was learned as itself, from one record filing "NT Live: …" among its alternatives, and
-   *  Flicks' "NT Live: Hay Fever" ×131 read its own record as an overlap. Initials only, never a word two houses share:
-   *  "Royal Shakespeare Company" is no "Royal Ballet & Opera", nor "National Theatre at Home" "NT Live". */
-  private[identity] def abbreviates(a: Seq[String], b: Seq[String]): Boolean = {
-    def words(name: Seq[String]) = name.filterNot(word => word.forall(_.isDigit) || RelayWords(word) || UninitialledWords(word))
-    def short(name: Seq[String]) = words(name) match {
-      case Seq(one) if one.length >= 2 && one.length <= 4 => Some(one)
-      case _                                             => None
-    }
-    def initials(name: Seq[String]) = Option(words(name)).filter(_.sizeIs >= 2).map(_.flatMap(_.headOption).mkString)
-    short(a).exists(initials(b).contains) || short(b).exists(initials(a).contains)
-  }
-
-  /** Does the film's record bill the listing's work under the listing's OWN house — the banner the
-   *  listing puts on the work, spelt as the record spells it or learned to be it (`Houses.same`)?
-   *  "NT Live: The Misanthrope" and "National Theatre Live: The Misanthrope" do — by any of the
-   *  record's titles, its "National Theatre at Home" alternative aside ([[billings]]); a record titled
-   *  the work alone ("The Misanthrope") bills no house at all. A listing naming a season takes only a
-   *  record naming none — one naming a season is `namesSeasonProduction`'s to read — whose year the
-   *  season spans (`ListingConstraints.seasonsApart` denies the rest): TMDB's US title of the Met's
-   *  2026 Così is "The Metropolitan Opera: Così fan tutte", which US "Met Opera 2026-27: Così fan
-   *  tutte" ×356 is. A season's record is a season-free listing's only when the
-   *  listing's banner spells the house ([[spellsItsHouse]]): TMDB filing the Paris Opera's works only
-   *  under the Met's 2026/27 records teaches the Paris banner to be the Met. And not a banner numbering its edition otherwise than the record's: a
-   *  house's name carries no number ("League of Legends Worlds 26" is not "… Worlds25"). Nor is a CUT or an edition a
-   *  house ([[DecorationWords.EditionWords]]): DE "Das Boot - Director s Cut" is Petersen's film, not TMDB's yearless
-   *  "Das Boot - Directors Cut" record its "house" bills alike. */
-  def billsUnderItsHouse(listing: Listing, film: Film, houses: Houses): Boolean =
-    (listing.seasonYear.isEmpty || film.season.isEmpty) &&
-      billings(listing, film).exists(billed => houses.same(billed) && numbersIn(billed.listingHouse) == numbersIn(billed.filmHouse) &&
-        !namesAnEdition(billed.listingWords) && !namesAnEdition(billed.filmWords) && (film.season.isEmpty || spellsItsHouse(billed)))
-  /** A banner of edition words alone, a possessive's lone letter aside ("director s cut"). */
-  private def namesAnEdition(banner: Seq[String]): Boolean = {
-    val words = banner.filter(_.lengthIs > 1)
-    words.nonEmpty && words.forall(DecorationWords.EditionWords)
-  }
-  /** Does the listing's banner SPELL the record's house — two of its words or more ("Royal Ballet and
-   *  Opera" of "Royal Ballet & Opera")? A season-free listing takes a season's record only then: the
-   *  Paris Opera's banner, learned as the Met from TMDB's filing, shares only "opera". */
-  private def spellsItsHouse(billed: Billing): Boolean = (billed.listingWords.toSet intersect billed.filmWords.toSet).sizeIs >= 2
-  private val Digits = "\\d+".r
-  private def numbersIn(house: String): Set[String] = Digits.findAllIn(house).toSet
-
-  /** Which house each listing banner is, LEARNED from how the film records of its works bill them
-   *  (`learn`): no house, banner or abbreviation is known in advance. */
-  final case class Houses(of: Map[String, String]) {
-    /** Do the listing and the film bill the work under one house — the same spelling, or the house
-     *  the listing's banner was learned to be? */
-    def same(b: Billing): Boolean =
-      b.listingHouse == b.filmHouse || of.get(b.listingHouse).contains(b.filmHouse) || abbreviates(b.listingWords, b.filmWords)
-    /** Is the listing's banner known to be ANOTHER house than the film's — and the two names not one house's
-     *  ([[namesOneHouse]])? DE's "RBO Live" banner was learned as the house records spelling it so bill, and then denied
-     *  "RBO Live 2026/27: Schwanensee (Royal Ballet)" ×80 the season's record billing it "RBO 26/27": one house, two
-     *  spellings. Nor is a banner of common words alone ([[particularWords]]) another house: it names none. A record
-     *  learning a venue's "Götterdämmerung ROYAL OPERA HOUSE" bills "Götterdämmerung Royal Opera" under "House", and once
-     *  "26/27" was a season that billing denied DE "RBO 26/27: Götterdämmerung (Royal Opera)" ×26 its own record. */
-    def other(b: Billing): Boolean =
-      !same(b) && of.contains(b.listingHouse) && particularWords(b.filmWords).nonEmpty && !namesOneHouse(b.listingWords, b.filmWords)
-  }
-  object Houses {
-    val Unknown: Houses = Houses(Map.empty)
-
-    /** A banner's house, among the houses whose records bill its works: the one whose name shares
-     *  the most of the banner's words ("metropolitan opera: live in hd" is the Metropolitan Opera,
-     *  though Royal Ballet & Opera's records bill more of its works), else — on a tie in words —
-     *  the one billing the most of its DISTINCT works, at least two: "RBO Cinema Season" is Royal
-     *  Ballet & Opera because its Swan Lake and Alice are, though TMDB files its Manon only under
-     *  the Met; "NT Live" is National Theatre Live because every play it bills is. One work is a
-     *  coincidence — a programme banner showing a film a house also staged — not a house, unless the
-     *  banner's words name it. A tie on both is no house. */
-    def learn(billings: Iterable[Billing]): Houses =
-      Houses(ranking(billings).flatMap { case (banner, ranked) => chosen(ranked).map(banner -> _.house) })
-
-    /** One house a banner's billings name, with how many of the banner's words its name shares
-     *  (of the `named` words its name has) and how many of the banner's DISTINCT works it bills. */
-    final case class Contender(house: String, spelt: Int, works: Int, named: Int = 1) {
-      /** Does the banner NAME the house — two of its words, or a one-word house's one? One word of more
-       *  ("maastricht" of "Love in Maastricht") is a coincidence of vocabulary, as one work is of billing. */
-      def spells: Boolean = spelt >= 2 || (spelt >= 1 && spelt == named)
-      def render: String = s"$house (words $spelt, works $works)"
-    }
-
-    /** Each banner's contending houses, best first — what [[learn]] chooses among. */
-    def ranking(billings: Iterable[Billing]): Map[String, Seq[Contender]] =
-      billings.toSeq.distinct.groupBy(_.listingHouse).map { case (banner, bannerBillings) =>
-        val words = bannerBillings.flatMap(_.listingWords).toSet
-        banner -> bannerBillings.groupBy(_.filmHouse).toSeq.map { case (house, houseBillings) =>
-          val houseWords = houseBillings.flatMap(_.filmWords).toSet
-          Contender(house, (houseWords intersect words).size, houseBillings.map(_.work).distinct.size, houseWords.size)
-        }.sortBy(contender => (-contender.spelt, -contender.works, contender.house))
-      }
-
-    /** The house [[learn]] takes from a banner's ranked contenders, if any. */
-    def chosen(ranked: Seq[Contender]): Option[Contender] = {
-      val best = ranked.head
-      val next = ranked.lift(1)
-      val spelt  = best.spells && next.forall(_.spelt < best.spelt)
-      val billed = best.works >= 2 && next.forall(runnerUp => runnerUp.spelt < best.spelt || runnerUp.works < best.works)
-      Option.when(spelt || billed)(best)
-    }
-
-    /** What a listing's candidates say about its banner: how each record of its work bills it — of
-     *  its season, when the listing names one (another season's record says nothing about which
-     *  house this season's broadcast is). */
-    def evidence(l: Listing, films: Iterable[Film]): Iterable[Billing] =
-      films.filter(f => l.seasonYear.isEmpty || namesSeasonProduction(l, f))
-        .flatMap(f => billing(l, f).orElse(Option.when(l.seasonYear.isDefined)(stageBilling(l, f)).flatten))
-  }
-
   /** Which pieces of a title are its QUALIFIER rather than its work, LEARNED from how the film
    *  records of one family's pool bill each piece, and on which SIDE of the work: TMDB bills
    *  "Director's Cut" after many works ("Chocolate - Director's Cut", "The Great War: Director's
@@ -524,7 +174,7 @@ object IdentityMeasures {
     private def count(piece: Seq[String], trails: Boolean): Int = companions.getOrElse((piece.mkString, trails), 0)
     /** The listing's qualifier pieces, by key: each piece its whole title adds another to along one
      *  edge, which records bill on the same side beside at least two works — one is a coincidence,
-     *  as a house's is ([[Houses.learn]]) — and beside more than they bill the rest of the title on
+     *  as a house's is ([[StageRelays.Houses.learn]]) — and beside more than they bill the rest of the title on
      *  its side. A tie is no qualifier, and neither is a piece the listing publishes as its original
      *  title: the venue names it as the film ("Cineworld 30: The Dark Knight", originally "The Dark
      *  Knight", though TMDB also bills "Enter the World of Hans Zimmer: The Dark Knight"). Nor is a
@@ -586,6 +236,11 @@ object IdentityMeasures {
     edition.year.exists(y => work.year.exists(_ <= y)) &&
       relations.exists(Set("segment", "decorated")) && !relations.exists(Rivalling)
   }
+
+  /** Where a title's own delimiters cut it into pieces: a colon or pipe, or a dash or slash spaced on both sides. */
+  private[identity] val PieceBreak = java.util.regex.Pattern.compile("""\s*[:|]\s*|\s+[-–—/]\s+""")
+  /** A title's delimited pieces, its seasons and bracketed years out. */
+  private[identity] def pieces(title: String): Seq[String] = PieceBreak.split(withoutYears(title)).toSeq.map(_.trim).filter(_.nonEmpty)
 
   /** A year in brackets ("(2026)"): a screening's or a production's date, as a season is. */
   private val BracketedYear = """[(\[]\s*(?:18|19|20)\d{2}\s*[)\]]""".r
@@ -666,16 +321,16 @@ object IdentityMeasures {
     private[identity] lazy val titleKeys: Set[String] = titles.map(IdentityMeasures.key).toSet
     /** Its own title's and original title's tokens: what a director credited by a house name is read against. */
     private[identity] lazy val ownTitleTokens: Seq[Seq[String]] = ownTitles.map(TitleContainment.tokens)
-    /** Every word of its titles, the stage works and houses they name, and their keys ([[IdentityMeasures.Relay]]), once per record:
-     *  a stage house's relay reads them of every candidate ([[IdentityMeasures.namesAnotherWork]]). */
+    /** Every word of its titles, the stage works and houses they name, and their keys ([[StageRelays.Relay]]), once per record:
+     *  a stage house's relay reads them of every candidate ([[StageRelays.namesAnotherWork]]). */
     private[identity] lazy val titleWords: Set[String] = titles.flatMap(TitleContainment.tokens).toSet
     private[identity] lazy val stageWorkIds: Set[String] =
-      IdentityMeasures.stageWorks(this) ++ IdentityMeasures.stageWorksBilled(titles, seasonNamed = true)
-    private[identity] lazy val wholeKeys: Set[String] = titles.map(IdentityMeasures.wholeKey).toSet
-    private[identity] lazy val houseNames: Seq[Seq[String]] = IdentityMeasures.Relay.of(titles).houses
+      StageRelays.stageWorks(this) ++ StageRelays.stageWorksBilled(titles, seasonNamed = true)
+    private[identity] lazy val wholeKeys: Set[String] = titles.map(StageRelays.wholeKey).toSet
+    private[identity] lazy val houseNames: Seq[Seq[String]] = StageRelays.Relay.of(titles).houses
     /** Its own title's and original title's yearless tokens. */
     private[identity] lazy val ownYearlessTitles: Seq[Seq[String]] = ownTitles.map(IdentityMeasures.yearlessTokens)
-    /** The film's titles and their delimited pieces as yearless tokens, once per record (`billing`). */
+    /** The film's titles and their delimited pieces as yearless tokens, once per record (`StageRelays.billing`). */
     private[identity] lazy val billedTitles: Seq[Seq[String]] =
       titles.map(IdentityMeasures.yearlessTokens).filter(_.nonEmpty).distinct
     /** Each of the film's title and original title's [[IdentityMeasures.Qualifiers.split]] alone, once per record:
@@ -691,7 +346,7 @@ object IdentityMeasures {
     /** The season its titles name, once per record: every node scoring it asks (`evidenceDenies`). */
     private[identity] lazy val season: Option[Int] = TitleSeason.of(titles)
     /** The credited directors, parsed once per record (`directorRelation`); `None` when not fetched. */
-    private[identity] lazy val directorCredits: Option[IdentityMeasures.Credits] = directors.map(new IdentityMeasures.Credits(_))
+    private[identity] lazy val directorCredits: Option[CreditRelation.Credits] = directors.map(new CreditRelation.Credits(_))
     /** The titles, trimmed and non-empty, as comparison forms once per record: the other side of
      *  every node's `originalTitleRelation` to this film. */
     private[identity] lazy val trimmedForms: Seq[IdentityMeasures.TitleForm] =
@@ -827,70 +482,13 @@ object IdentityMeasures {
 
   private def words(s: String): Seq[String] = TitleContainment.tokens(withoutPossessives(s))
 
-  private def credits(names: Iterable[String]): Seq[String] =
-    names.iterator.flatMap(_.split(",")).map(_.trim).filter(_.nonEmpty).toSeq
-
-  private def latin(names: Iterable[String]): Boolean =
-    names.exists(_.exists(c => Character.isLetter(c) && Character.UnicodeScript.of(c.toInt) == Character.UnicodeScript.LATIN))
-
-  /** A name in Latin letters: ICU's general Any-Latin transliteration, then to ASCII. Pinyin for
-   *  Han, ISO-style for Cyrillic, Greek, Georgian, …: no table of names. One instance per thread
-   *  (an ICU transliterator is not documented as safe to share). */
-  private val toLatin = ThreadLocal.withInitial(() => com.ibm.icu.text.Transliterator.getInstance("Any-Latin; Latin-ASCII"))
-  private[identity] def latinized(name: String): String = toLatin.get.transliterate(name)
-  private[identity] def isAscii(s: String): Boolean = { var i = 0; while (i < s.length && s.charAt(i) < 0x80) i += 1; i == s.length }
-
-  /** Credit lists as the director relation compares them, each written form found once. */
-  final class Credits(raw: Iterable[String]) {
-    val names: Seq[String] = credits(raw)
-    lazy val keys: Set[String]              = names.map(services.movies.PersonKey.of).filter(_.nonEmpty).toSet
-    lazy val words: Seq[Seq[String]]        = names.map(TitleContainment.tokens).filter(_.nonEmpty)
-    lazy val isLatin: Boolean               = latin(names)
-    // ASCII names are their own Latin form ("Any-Latin; Latin-ASCII" leaves them as they are): no transliteration —
-    // ICU's, per name, was ~150 MB of a PL hard-cluster run's resolve allocation, most of it on the Latin side.
-    lazy val inLatin: Credits               = if (names.forall(IdentityMeasures.isAscii)) this else new Credits(names.map(latinized))
-    def isEmpty: Boolean = keys.isEmpty
-
-    /** Some credit names the same person as some credit of `other`: the same words in any order
-     *  ([[services.movies.PersonKey]]) or the same letters split otherwise ([[sameLetters]]). */
-    def samePerson(other: Credits): Boolean =
-      (keys intersect other.keys).nonEmpty || words.exists(a => other.words.exists(b => sameLetters(a, b) || spelledAlike(a, b)))
-  }
-
-  /** Two credits of as many words, in some order each word the same or a letter apart where both
-   *  spellings run to five letters: a transliteration's spelling ("Rajeesh Parmeswaran", TMDB's
-   *  "Rajesh Parameswaran"). Short words are other names ("Jan"/"Jon"), not spellings. */
-  private def spelledAlike(a: Seq[String], b: Seq[String]): Boolean =
-    a.sizeIs >= 2 && a.size == b.size && a.sizeIs <= MaxOrderedWords && a != b &&
-      b.permutations.exists(p => a.zip(p).forall { case (x, y) => x == y || (x.length >= 5 && y.length >= 5 && tools.EditDistance.within(x, y, 1)) })
-
-  /** The most words a credit may have for [[sameLetters]] to try its orders (it enumerates them). */
-  private val MaxOrderedWords = 5
-
-  /** Two credits are one written name whatever its ORDER, CASE and SPLITTING: some order of each
-   *  one's words, written out, is the same letters ("Jungjae HA" and "Ha Jung-jae" are both
-   *  "hajungjae"). Every letter must be accounted for, so "Jung Ha" is not "Ha Jung-jae". */
-  private def sameLetters(a: Seq[String], b: Seq[String]): Boolean =
-    a.sizeIs <= MaxOrderedWords && b.sizeIs <= MaxOrderedWords && a.mkString.sorted == b.mkString.sorted && {
-      val written = b.permutations.map(_.mkString).toSet
-      a.permutations.exists(p => written(p.mkString))
-    }
-
-  private def byName(a: Credits, b: Credits, disagree: String): Category =
-    if (a.samePerson(b)) SamePersonMeasure
-    else {
-      val wa = a.keys.flatMap(_.split(" ")).filter(_.length >= 3)
-      val wb = b.keys.flatMap(_.split(" ")).filter(_.length >= 3)
-      Category(if ((wa intersect wb).nonEmpty) "shared_name" else disagree)
-    }
-
   /** How two credit lists relate: one person in common — the same words or letters in any order,
    *  case or splitting (`same_person`) — a shared name word only (a surname, a transliteration), or
    *  nobody in common. Credits in different scripts (a venue's "Bi Gan", TMDB's "毕赣") are compared in Latin letters
-   *  ([[latinized]]); nobody in common THERE is `different_script`, its own category, since a
+   *  ([[CreditRelation.latinized]]); nobody in common THERE is `different_script`, its own category, since a
    *  transliteration can miss a person a Latin spelling names (a Japanese reading of Kanji is not
    *  its pinyin). `incomparable` only when a side has no name left to compare in Latin letters. */
-  def directorRelation(a: Seq[String], b: Seq[String]): Measure = creditRelation(new Credits(a), new Credits(b))
+  def directorRelation(a: Seq[String], b: Seq[String]): Measure = CreditRelation.of(new CreditRelation.Credits(a), new CreditRelation.Credits(b))
 
   /** `measures`, the director read as the listing's own when its credits and the record's are in different
    *  scripts and no transliteration joins them, but the person TMDB finds by the listing's OWN spelling directed
@@ -921,23 +519,10 @@ object IdentityMeasures {
    *  vetoed the film. "Guillermo del Toro" of "Guillermo del Toro's Pinocchio" directed it, and stays a person. */
   private def namesItsHouse(name: String, words: Seq[String], f: Film): Boolean =
     words.sizeIs >= 2 && f.ownTitleTokens.exists(_.containsSlice(words)) &&
-      !f.directorCredits.exists(onePerson(new Credits(Seq(name)), _))
+      !f.directorCredits.exists(CreditRelation.onePerson(new CreditRelation.Credits(Seq(name)), _))
 
-  /** [[directorRelation]] over credits parsed once: a listing's and a record's directors meet every
-   *  pair of a family's pool, and re-parsing both per pair allocated the names again each time. */
-  private def creditRelation(ca: Credits, cb: Credits): Measure = {
-    if (ca.isEmpty) MissingListing
-    else if (cb.isEmpty) MissingFilm
-    else if (ca.isLatin == cb.isLatin) byName(ca, cb, "different")
-    else {
-      val (la, lb) = (ca.inLatin, cb.inLatin)
-      if (la.isEmpty || lb.isEmpty) Category("incomparable") else byName(la, lb, "different_script")
-    }
-  }
-  /** Do the two credit lists name one person ([[creditRelation]]'s `same_person`)? */
-  private def onePerson(ca: Credits, cb: Credits): Boolean = creditRelation(ca, cb) == SamePersonMeasure
-  /** Does the listing credit one of the film's directors ([[onePerson]])? */
-  private def creditsItsDirector(l: Listing, f: Film): Boolean = f.directorCredits.exists(onePerson(l.directorCredits, _))
+  /** Does the listing credit one of the film's directors ([[CreditRelation.onePerson]])? */
+  private[identity] def creditsItsDirector(l: Listing, f: Film): Boolean = f.directorCredits.exists(CreditRelation.onePerson(l.directorCredits, _))
 
   /** The pieces of a listing's title AS BILLED ([[shapes]]) that are written in capitals where the title is not — the
    *  case change a venue's programme tag makes beside a work's own spelling ("Alim | UFF", "DKF: Lalka"). None in a title
@@ -1087,19 +672,19 @@ object IdentityMeasures {
    *  nothing. The two containments are opposite evidence — a decoration names the film, a fragment
    *  names a shorter, often different one — so they are measured apart.
    *
-   *  A film record of the listing's season production ([[namesSeasonProduction]]) is a
+   *  A film record of the listing's season production ([[StageRelays.namesSeasonProduction]]) is a
    *  `segment`: the listing's work segment is the record's, under the same season. Only a FILM's
    *  record says so — two listings' banners do not tell one house from another (the Met's and the
    *  Royal Opera's "Carmen" of one season), so `listingListing` does not read it.
    *
-   *  So is a record BILLING the listing's work under the listing's house ([[billing]]): the same
+   *  So is a record BILLING the listing's work under the listing's house ([[StageRelays.billing]]): the same
    *  banner once seasons and bracketed years are dropped ("The Metropolitan Opera: Manon (2027)"
-   *  and "The Metropolitan Opera 2026/27: Manon"), one abbreviating the other ([[abbreviates]]), or
+   *  and "The Metropolitan Opera 2026/27: Manon"), one abbreviating the other ([[StageRelays.abbreviates]]), or
    *  the house the listing's banner was learned to be (`houses`). The first two are the names
    *  alone, so two listings read them too: UK "NT LIVE: Golden Boy (15)" [180′] and "National
    *  Theatre Live: Golden Boy" [150′] measured an `overlap`, which with the half hour between them
    *  kept them apart by the learned cut, and "NT Live: Golden Boy" ×5 with them. */
-  def titleRelation(l: Listing, f: Film, houses: Houses = Houses.Unknown, qualifiers: Qualifiers = Qualifiers.Unknown): Category =
+  def titleRelation(l: Listing, f: Film, houses: StageRelays.Houses = StageRelays.Houses.Unknown, qualifiers: Qualifiers = Qualifiers.Unknown): Category =
     titleRelation(l, f, Some(houses), qualifiers)
 
   /** `houses`: `None` for two listings, whose banners name no house on record.
@@ -1107,7 +692,7 @@ object IdentityMeasures {
    *  A record title that is only one of the listing's [[Qualifiers]] names nothing: "Director's
    *  Cut" (2016) shares the words of "Dark City: Director's Cut" but is not its film, so it is
    *  measured on the record's other titles, and as an `overlap` when it has none. */
-  private def titleRelation(l: Listing, f: Film, houses: Option[Houses], qualifiers: Qualifiers): Category = {
+  private def titleRelation(l: Listing, f: Film, houses: Option[StageRelays.Houses], qualifiers: Qualifiers): Category = {
     val ls  = l.ownForms
     val all = f.forms
     val own = l.ownKeys
@@ -1128,7 +713,7 @@ object IdentityMeasures {
     else if (alternativeForms.map(_.key).exists(own) || alternativeForms.exists(articleless)) Category("alternative")
     else (if (fs.isEmpty) None
           else containment(ls, l.shapeKeys, fs,
-            houses.isDefined && namesSeasonProduction(l, f) || billing(l, f).exists(houses.getOrElse(Houses.Unknown).same), l.shapeWords, l.undecoratedWords)).getOrElse(
+            houses.isDefined && StageRelays.namesSeasonProduction(l, f) || StageRelays.billing(l, f).exists(houses.getOrElse(StageRelays.Houses.Unknown).same), l.shapeWords, l.undecoratedWords)).getOrElse(
       if (ls.exists(a => all.exists(b => a.wordSet.exists(b.wordSet)))) Category("overlap") else Category("none"))
   }
 
@@ -1212,7 +797,7 @@ object IdentityMeasures {
    *    listing's facts' to tell, not a title the other eight gain; and
    *  - the title does not name the record already ([[NamingRelations]]): "Coraline (2009)",
    *    originally "Coraline", is a dated spelling of the record's title, not a translation; and
-   *  - it is no stage relay of another stage work than the record's ([[namesAnotherStageWork]]): DE Cinefactory's
+   *  - it is no stage relay of another stage work than the record's ([[StageRelays.namesAnotherStageWork]]): DE Cinefactory's
    *    "MET Opera: Macbeth 2026", its original title copied from last season's Onegin, is no title of "MET Opera: Eugen
    *    Onegin".
    *  Keyed by film id, each title once (its smallest spelling), sorted: a function of the two sets. */
@@ -1226,7 +811,7 @@ object IdentityMeasures {
     val byOriginal = unanimous.toSeq.flatMap { case (t, o) =>
       filmsByKey.getOrElse(o, Nil).distinctBy(_._1) match {
         case Seq((id, f)) if !NamingRelations(titleRelation(Listing(spelling(t)), f).value) &&
-          !namesAnotherStageWork(Listing(spelling(t)), f) => Some(id -> spelling(t))
+          !StageRelays.namesAnotherStageWork(Listing(spelling(t)), f) => Some(id -> spelling(t))
         case _ => None
       }
     }
@@ -1243,11 +828,11 @@ object IdentityMeasures {
    *  same one, no record of `films` their years do not rule out carries the title whole already (as its title, original
    *  or alternative title — this one or another), the title is no piece of the record's own (a tour's name is
    *  not its São Paulo film's), contains no OTHER record its years do not rule out, is no double bill's, and is no stage
-   *  relay of another stage work than the record's ([[namesAnotherStageWork]]). */
+   *  relay of another stage work than the record's ([[StageRelays.namesAnotherStageWork]]). */
   def titlesByFacts(listings: Iterable[Listing], films: Iterable[(Int, Film)]): Seq[(Int, String)] = {
     val pool = films.toSeq
     // A bill's title names two works: its facts may single out one, but the title is no record's own.
-    val singled = listings.iterator.filter(l => l.directors.nonEmpty && l.statedYear.isDefined && !joinsWorks(l.title)).map { l =>
+    val singled = listings.iterator.filter(l => l.directors.nonEmpty && l.statedYear.isDefined && !MultiFilmBill.joinsWorks(l.title)).map { l =>
       val year = l.statedYear.get
       val ids  = pool.collect { case (id, f) if f.year.exists(FactRelations.yearsNear(_, year)) &&
         creditsItsDirector(l, f) => id }.distinct
@@ -1270,7 +855,7 @@ object IdentityMeasures {
           def ruledOut(f: Film) = f.year.exists(y => years.nonEmpty && years.forall(l => !FactRelations.yearsNear(l, y)))
           // A title that is a piece of the record's own ("BTS World Tour 'ARIRANG'" of its São Paulo concert
           // film) names the tour, not the record: only a title sharing no part of it, a translation, is learned.
-          Option.when(pool.collectFirst { case (`id`, f) => !ContainingRelations(relation(f)) && !namesAnotherStageWork(Listing(spelling), f) }
+          Option.when(pool.collectFirst { case (`id`, f) => !ContainingRelations(relation(f)) && !StageRelays.namesAnotherStageWork(Listing(spelling), f) }
               .getOrElse(false) &&
             !pool.exists { case (_, f) => Rivalling(relation(f)) && !ruledOut(f) } &&
             !pool.exists { case (other, f) => other != id && ContainingRelations(relation(f)) && !ruledOut(f) })(id -> spelling)
@@ -1409,7 +994,7 @@ object IdentityMeasures {
   /** Does the listing's title NAME the film: a naming title relation ([[NamingRelations]]), and not
    *  another instalment of its series ([[numeralRelation]]) — "The Texas Chainsaw Massacre 2"
    *  carries the whole of "The Texas Chainsaw Massacre" and names its sequel. */
-  def namesFilm(l: Listing, f: Film, houses: Houses = Houses.Unknown): Boolean =
+  def namesFilm(l: Listing, f: Film, houses: StageRelays.Houses = StageRelays.Houses.Unknown): Boolean =
     names(titleRelation(l, f, houses).value, l, f)
   /** [[namesFilm]] on a title relation already measured. */
   def names(relation: String, l: Listing, f: Film): Boolean =
@@ -1467,7 +1052,7 @@ object IdentityMeasures {
    *  "Director's Cut", "Redux") that runs LONGER than every one of them states nothing for or against it: TMDB keeps no
    *  record of an extended cut apart from its film's ("The Return of the King" is 201 minutes in every language, its
    *  extended edition 263), so the longer cut is neutral. A shorter one still counts: an edition never makes a film shorter. */
-  private def runtimeDelta(l: Listing, f: Film, country: Option[String]): Measure = l.statedRuntime match {
+  private[identity] def runtimeDelta(l: Listing, f: Film, country: Option[String]): Measure = l.statedRuntime match {
     case None => MissingListing
     case Some(stated) =>
       // walked in place, not as a collection: every listing is measured against every candidate
@@ -1502,7 +1087,7 @@ object IdentityMeasures {
    *  re-release). ONE definition: the calibration's candidate pools, the resolver's queries and
    *  the recording sweep all read it. */
   def searchQueries(l: Listing): Seq[String] = {
-    val asked = l.shapes ++ l.originalTitle ++ seasonProductionQueries(l) ++ stageWorkQueries(l) ++ billedWorks(l) ++ uncredited(l)
+    val asked = l.shapes ++ l.originalTitle ++ StageRelays.seasonProductionQueries(l) ++ StageRelays.stageWorkQueries(l) ++ MultiFilmBill.billedWorks(l) ++ uncredited(l)
     (asked ++ asked.flatMap(beforeItsYear)).map(_.trim).filter(_.nonEmpty).distinct
   }
 
@@ -1530,20 +1115,6 @@ object IdentityMeasures {
   private[identity] def creditedWork(title: String): Option[String] =
     AuthorCredit.findFirstMatchIn(title).map(m => title.take(m.start).trim).filter(_.exists(_.isLetter))
 
-  private val BillJoin = """\s\+\s""".r
-  private val TightJoin = """(?<=\p{L}{2})\+(?=\p{L}{2})""".r
-  /** The pieces a bill's "+" joins in `title`: a spaced "+" always, an unspaced one only between two pieces of two words
-   *  or more — UK Odeon's "We're Going on a Bear Hunt+Tiger Who Came to..." — never inside one title's own words
-   *  ("Love+War"), a talk's ("Q+A") or a house's name ("RB+O 2026/27"). One piece when it joins none. */
-  private[identity] def billPieces(title: String): Seq[String] =
-    if (title.indexOf('+') < 0) Seq(title) // every rule asks, and almost no title holds a "+"
-    else BillJoin.split(title).toSeq.flatMap { piece =>
-      val parts = TightJoin.split(piece).toSeq
-      def words(part: String) = TitleContainment.tokens(part).count(word => word.length > 1 && word.exists(_.isLetter))
-      if (parts.sizeIs == 2 && parts.forall(words(_) >= 2)) parts else Seq(piece)
-    }
-  /** Does `title` join works by a bill's "+" ([[billPieces]])? */
-  private def joinsWorks(title: String): Boolean = title.indexOf('+') >= 0 && (BillJoin.findFirstIn(title).isDefined || billPieces(title).sizeIs > 1)
   /** May the piece of `l`'s title that names `f` stand for the whole, the rest a banner? Two words at least —
    *  a one-word piece is many films' title ("Bhutan – Trails of Happiness" is not the 1928 "Bhutan") — and no
    *  Roman numeral in the rest: a numbered set ("Bolek i Lolek – zestaw IV") is an instalment, not the film;
@@ -1558,44 +1129,6 @@ object IdentityMeasures {
         (years.isEmpty || f.year.forall(y => years.exists(FactRelations.yearsNear(_, y))))
     }
   }
-
-  /** What a double bill joins LAST with a "+" ([[billPieces]]: "… + The Tiger Who Came to Tea") — a film, or a talk. */
-  def billedSecondTitle(l: Listing): Option[String] = billPieces(l.decorations.withoutTail(l.title)).lastOption.filter(_ => billsTwoWorks(l)).map(_.trim)
-
-  /** Does the listing bill two works with a "+" ([[billPieces]]) — a double bill, whose facts are one of its films'? Not when
-   *  what it bills last is a learned event tail ([[TitleDecorations.withoutTail]]): "Punku + spotkanie z reżyserem". */
-  def billsTwoWorks(l: Listing): Boolean = l.ownTitles.exists(t => joinsWorks(l.decorations.withoutTail(t)))
-  /** Does the listing bill two WHOLE WORKS — two of the pieces its "+" joins ([[billPieces]]) naming no event, whatever a database
-   *  holds of either? A talk, a screening note or a format joined to one film ("+ prelekcja", "+ spotkanie z reżyserem",
-   *  "+ napisy EN", a bracketed "(AD + CC + PJM)") is no second work. PL Kino Pałacowe "… | Historia kina w Popielawach +
-   *  Pruska kultura" bills a 1908 short TMDB does not hold: no candidate stood for it, yet the bill is neither film. */
-  def billsTwoWholeWorks(l: Listing): Boolean =
-    l.ownTitles.exists { t =>
-      val pieces = billPieces(l.decorations.withoutTail(Bracketed.replaceAllIn(t, " ").trim))
-      // the programme the last work runs into after a spaced dash is the bill's ("… + Kocia Szajka - Festiwal TAURON
-      // Młode Horyzonty"): the work is what precedes it
-      (pieces.init :+ ProgrammeDash.pattern.split(pieces.last, 2).head).count(namesAWork) >= 2
-    }
-  private val Bracketed     = """\([^()]*\)|\[[^\[\]]*\]""".r
-  private val ProgrammeDash = """\s[-–—]\s""".r
-  private def namesAWork(piece: String): Boolean = {
-    // a one-letter word names nothing: "Q&A" is no work, and the "a" of "We're Going on a Bear Hunt" no event; a title
-    // of numbers is one ("2 x 2 = 4", billed after "Zakazane piosenki")
-    val all   = TitleContainment.tokens(piece)
-    val words = all.filter(_.length > 1)
-    (words.exists(_.exists(_.isLetter)) || all.sizeIs >= 3) &&
-      !words.exists(w => EventTailWords(w) || services.movies.FormatTags.FormatToken.contains(w))
-  }
-  /** What a piece a bill joins after a film names when it names an event, not a work: a talk, a lecture, a workshop, a
-   *  quiz, a gala, an exhibition or its opening, a concert, a (poster) tour, a signing — PL, EN, DE, ES — beside the
-   *  segment model's event words. "OPĘTANIE + TRASA PLAKATOWA" (Światowid) is one film and a poster tour. */
-  private val EventTailWords: Set[String] = DecorationWords.EventWords ++ TitleWords.tokens(TitleWords.Concept.SideEvent)
-  /** The works a DOUBLE BILL joins with a spaced "+" ("Basia. Humor w paski mam + Kocia Szajka"),
-   *  each searched on its own: the database has no record of the bill, so without them the only
-   *  candidates are what a credited director's filmography walks to. Searched, not shapes: a bill
-   *  is neither of its works, which is why its family keys leave them out. */
-  private def billedWorks(l: Listing): Seq[String] =
-    l.ownTitles.map(t => billPieces(l.decorations.withoutTail(t)).map(_.trim).filter(_.nonEmpty)).filter(_.sizeIs > 1).flatten
 
   /** A year titles put in as a delimited annotation ("(2026)"), outside any season. */
   def titleYearOf(titles: Seq[String]): Option[Int] = {
@@ -1620,115 +1153,6 @@ object IdentityMeasures {
            style <- Iterator(java.time.format.TextStyle.FULL, java.time.format.TextStyle.FULL_STANDALONE) }
       yield TitleContainment.tokens(month.getDisplayName(style, locale))).flatten.filter(_.length >= 3).toSet
   private val LabelledYear = """[(\[]\s*(\p{L}[\p{L}'’.&-]*(?:\s+\p{L}[\p{L}'’.&-]*)?)\s+((?:18|19|20)\d{2})\s*[)\]]""".r
-
-  /** Do `titles` (a listing's, `rawTitle` the venue's own) bill a stage work — the work named whole, or within a piece:
-   *  run into a house's word ("OPERA-COSI FAN TUTTE"), after its composer? */
-  def billsStageWork(titles: Seq[String], rawTitle: String): Boolean =
-    stageWorksBilled(titles, TitleSeason.of(titles).isDefined).nonEmpty ||
-      titles.map(title => Listing(title, Some(rawTitle).filter(_ != title))).exists(stageWorks(_).nonEmpty)
-
-  /** The stage works ([[StageWorks]]) the titles BILL: a piece naming one whole, or ending in one's name — after its
-   *  composer (DE "Met Opera 2026/27: Camille Saint-Saëns SAMSON ET DALILA") or a house's word run on ("OPERA-MAKBET") —
-   *  or, in a title naming its season (`seasonNamed`), opening with one before a venue's tag ("SAMSON I DALILA-
-   *  RETRANSMISJA"). Never a work a title only opens with otherwise: "Manon des sources" is no broadcast of "Manon". */
-  def stageWorksBilled(titles: Seq[String], seasonNamed: Boolean): Set[String] =
-    titles.map(billable).flatMap(t => (pieces(t) ++ fragments(t)).distinct :+ t).flatMap(billedIn(_, seasonNamed)).toSet
-
-  /** A box office's running time ending a title ("RB&O Romeo & Juliet (12 TBC) 170 mins"), and a bracket it never closes
-   *  ("The Metropolitan Opera: Macbeth [New Production"): neither part of the work, both hiding the end it is read off. */
-  private val TrailingRunningTime = """(?i)\s*\d{2,3}\s*mins?\.?\s*$""".r
-  private val UnclosedBracket     = """\s*[(\[][^)\]]*$""".r
-  /** Initials an ampersand joins ("RB&O"): one abbreviation, "RBO" — never "Romeo & Juliet", spaced. */
-  private val AmpersandInitials   = """(?<=\b\p{Lu}{1,3})&(?=\p{Lu}{1,3}\b)""".r
-  /** A title as its stage works and house are read off it ([[stageWorksBilled]], [[bannerNamesItsHouse]]): initials an
-   *  ampersand joins run together, any other "&" read as "and", its running time and an unclosed bracket's tail cut off
-   *  (the bracket's words kept as a piece of their own). */
-  private def billable(title: String): String = {
-    val untimed = TrailingRunningTime.replaceFirstIn(AmpersandInitials.replaceAllIn(title, "").replace("&", " and "), "")
-    UnclosedBracket.findFirstMatchIn(untimed).fold(untimed)(m => s"${m.before} | ${m.matched.trim.drop(1)}")
-  }
-
-  /** A title's delimited pieces, its seasons and bracketed years out. */
-  private[identity] def pieces(title: String): Seq[String] = PieceBreak.split(withoutYears(title)).toSeq.map(_.trim).filter(_.nonEmpty)
-
-  /** The stage works one title piece bills ([[stageWorksBilled]]) — a broadcast's year shortened behind the work out:
-   *  prod UK "RBO: Tosca 27", "RBO: Tosca '27", "The Met: Macbeth 26". */
-  private[identity] def billedIn(piece: String, seasonNamed: Boolean): Set[String] = {
-    val tokens = services.movies.TitleContainment.tokens(piece).toIndexedSeq
-      .reverse.dropWhile(token => token.length == 2 && token.forall(_.isDigit)).reverse
-    val runs   = tokens.indices.map(tokens.drop) ++ (if (seasonNamed) (1 until tokens.size).map(tokens.take) else Nil)
-    runs.flatMap(run => StageWorks.resolver.named(run.mkString)).toSet
-  }
-
-  /** The stage works ([[StageWorks]]) a listing's title pieces name, in whatever language. */
-  def stageWorks(l: Listing): Set[String] = stageWorksNamed(l.ownTitles.flatMap(t => pieces(t) :+ t))
-  /** The stage works a film's own titles name, as [[stageWorks]] reads a listing's. */
-  def stageWorks(f: Film): Set[String] = stageWorksNamed(f.titles.flatMap(pieces))
-  /** The stage works ([[StageWorks]]) the keys of `parts` name. */
-  private def stageWorksNamed(parts: Seq[String]): Set[String] = parts.map(key).filter(_.nonEmpty).flatMap(StageWorks.resolver.named).toSet
-  /** A stage broadcast a venue bills with no season but with its year — DE "Royal Ballet & Opera im Kino: Manon"
-   *  [2026] — searched as its work's name and that year ("Manon 2026"): the house's season record carries both, while
-   *  the work alone ranks it below every namesake film. A relay billing its house, a credit or a running time beside it,
-   *  is searched with the season its screenings fall in too: UK Picture House Uckfield's "Tosca (ROH)" {Oliver Mears}
-   *  [205′] and Flicks' "Royal Opera House: Carmen" [220′] ×13 screen the RBO 2026/27 relays, whose records the work's
-   *  name alone never reaches — which season's record it is stays the season rules' to tell ([[Listing.screenedSeason]]).
-   *  Beside a year it states as well: Flicks dates "Royal Opera House: Carmen" 2024, the year of the page it links, and
-   *  "Carmen 2024" finds the 2024 revival, never the 2026/27 broadcast its venues screen in November 2026.
-   *  KNOWN GAP (convergence 38627416973, accepted.tsv): UK Lonsdale Alhambra Penrith's "RB&O 26/27: <work>" ×3 reached
-   *  the season's record only by joining its other billings' cluster; once those took it alone, the learned
-   *  listing-listing cut kept Penrith apart and it takes none. Alone it takes the record (IdentityResolverCasesSpec's
-   *  short-season case): the follow-up is the corpus-level join. */
-  private def stageWorkQueries(l: Listing): Seq[String] =
-    if (l.seasonYear.isDefined) Nil
-    else (l.year.orElse(l.broadcastSeason).toSeq ++ l.screenedSeason.filter(_ => l.billsAStageHouse)).distinct.flatMap(year =>
-      l.billedStageWorks.toSeq.sorted.flatMap(StageWorks.resolver.searchNames).map(name => s"$name $year"))
-
-
-  private val BannerYear = """(?<![\p{N}])(20\d{2})(?![\p{N}/–—-])""".r
-  /** The one year a relay's banner dates its broadcast by — a piece of its title naming no stage work, beside one that
-   *  does: DE "RBO live 2027: Tosca". A year beside the work is the work's own ("Macbeth 2026" is [[stageWorkQueries]]'). */
-  def bannerYear(l: Listing): Option[Int] = {
-    val (works, banners) = l.ownTitles.flatMap(t => PieceBreak.split(withoutSeasons(t)).toSeq)
-      .partition(piece => StageWorks.resolver.named(key(BannerYear.replaceAllIn(piece, ""))).nonEmpty)
-    Option.when(works.nonEmpty)(banners.flatMap(BannerYear.findAllMatchIn).map(_.group(1).toInt).distinct).collect { case Seq(one) => one }
-  }
-
-  /** Is `f` the house's record of the very season `l`'s screenings broadcast its work in ([[Listing.screenedSeason]]): a
-   *  season record naming a stage work the listing bills, under the listing's house ([[bannerNamesItsHouse]])? A relay
-   *  airs on its house's published dates, so a venue screening it then screens that season's broadcast. */
-  def screenedSeasonRecord(l: Listing, f: Film): Boolean =
-    l.screenedSeason.exists(f.season.contains) &&
-      stageWorks(f).exists(l.billedStageWorks) && bannerNamesItsHouse(l, f)
-
-  /** Does the listing's banner name the house the record bills? A banner naming a house in particular — words beside
-   *  [[HouseCommonWords]], read off the title's fragments, its stage works out ([[houseWords]]) — must name the record's
-   *  ([[namesOneHouse]]: a prefix, "MET" of "The Metropolitan Opera"; initials, "RBO" of "Royal Ballet & Opera"): DE
-   *  "PARIS OPERA: ROMEO UND JULIA" is no Royal Ballet relay, nor UK "La Fanciulla Del West - Royal Opera" the Met's,
-   *  however "opera" meets. A relay's banner naming no house ("OPERA-PARSIFAL") names the record by its one stage work
-   *  alone — never by a name two works share: ES "Manon de Jules Massenet - Ópera" is no Royal Ballet "Manon". */
-  def bannerNamesItsHouse(l: Listing, f: Film): Boolean = {
-    val titles     = l.ownTitles
-    val particular = titles.map(billable).flatMap(fragments).map(houseWords).map(particularWords).filter(_.nonEmpty)
-    if (particular.nonEmpty) particular.exists(banner => f.houseNames.exists(namesOneHouse(banner, _)))
-    else l.billsAStageHouse && l.billedStageWorks.sizeIs == 1
-  }
-
-  /** A season production searched as its WORK AND ITS SEASON ("Manon 2026"): a house's record of
-   *  it ("Royal Ballet & Opera 2026/27: Manon") carries both, however the venue spells the house,
-   *  while the work alone ranks it below every namesake. Only the pieces of a title naming the
-   *  season ask it, without a bracketed year. */
-  private def seasonProductionQueries(l: Listing): Seq[String] =
-    l.seasonYear.toSeq.flatMap { season =>
-      val seasonTitles = l.ownTitles.filter(t => TitleSeason.of(Seq(t)).isDefined)
-      val works = shapes(seasonTitles).filter(t => TitleSeason.of(Seq(t)).isEmpty).map(withoutYears(_).trim).filter(_.nonEmpty).distinct
-      // a work named in another language than the record's is asked for by its search name too ("The Nutcracker 2026")
-      // — including one named before a translated subtitle ("Cosi fan tutte. Tak czynią wszystkie"), as the match reads it
-      // — and by every other name of the work it is filed under, a house's own ("Samson et Dalila 2026"), the work billed
-      // within the piece too ("Camille Saint-Saëns SAMSON ET DALILA")
-      val translated = works.flatMap(work => (StageWorks.resolver.named(key(work)) ++ StageWorks.resolver.named(key(SentenceStop.split(work, 2).head)) ++
-        stageWorksBilled(Seq(work), seasonNamed = true).toSeq).toSeq.sorted.distinct.flatMap(StageWorks.resolver.searchNames))
-      (works ++ translated).distinct.map(work => s"$work $season")
-    }
 
   /** The title relations under which another film RIVALS a listing's film: the listing's title
    *  names it as closely (`rivals`). */
@@ -1761,8 +1185,8 @@ object IdentityMeasures {
     // nor a year or director the venue publishes against it: "Afrykanska Przygoda 3D IMAX" [2007] {Ben Stassen} is not
     // the 1954 film IMDb also calls "Afrykańska przygoda"
     yearsWritten(l).forall(near) && l.statedYear.forall(near) &&
-      !f.directorCredits.exists(credits => creditRelation(l.directorCredits, credits) == Category("different")) &&
-      !numbersASet(l) && (stageWorks(l).isEmpty || f.season.isDefined)
+      !f.directorCredits.exists(credits => CreditRelation.of(l.directorCredits, credits) == Category("different")) &&
+      !numbersASet(l) && (StageRelays.stageWorks(l).isEmpty || f.season.isDefined)
   }
 
   /** The years the listing's title writes anywhere, bracketed or bare ("Miłość 2024"). */
@@ -1783,75 +1207,6 @@ object IdentityMeasures {
    *  (`scripts.IdentityEvidenceClasses`) read this one definition. */
   def exactTopHits(l: Listing, pool: Seq[(Int, Film, Option[Int])]): Seq[Int] =
     pool.collect { case (id, f, Some(1)) if titleRelation(l, f) == Category("exact") => id }.distinct.sorted
-
-  /** Who backs a film from a title group: the listing's venue, and whose claim its facts are — the venue's own, or the feed
-   *  entry they were copied from (`SourceReliability.claimOf`) — kept as one string per group entry. A venue's own claim
-   *  is the venue's name itself, no new string per listing for the corpus's life; a feed's is `venue` and `source` joined
-   *  by [[Backer.Join]]. */
-  object Backer {
-    val Join = '\u0001'
-    def apply(venue: String, source: String): String = if (source == venue) venue else s"$venue$Join$source"
-    def venue(key: String): String  = { val at = key.indexOf(Join); if (at < 0) key else key.substring(0, at) }
-    def source(key: String): String = { val at = key.indexOf(Join); if (at < 0) key else key.substring(at + 1) }
-  }
-
-  /** Every venue of `group` (the listings sharing the listing's title key, each with its [[Backer]]) whose OWN facts
-   *  back `f` — a title naming it, and its exact year or a credit of its director: what [[VenueBacking]] counts, the
-   *  asking venue taken out, as `venues.corroborating`. */
-  private[identity] def backingVenues(f: Film, group: Seq[(String, Listing)]): Set[String] = backers(f, group).map(Backer.venue)
-
-  /** Every [[Backer]] of `group` whose own facts back `f`. */
-  private def backers(f: Film, group: Seq[(String, Listing)]): Set[String] = {
-    // A node's venues share one listing: its answer is found once, not once per venue.
-    val backs = new java.util.IdentityHashMap[Listing, java.lang.Boolean]()
-    group.iterator.filter { case (_, l) => backs.computeIfAbsent(l, listing => Boolean.box(backsFilm(listing, f))) }.map(_._1).toSet
-  }
-  /** Do the listing's own facts back `f`? The venue's title must NAME the film: a year or a director
-   *  alone backs every film of that year or that director, and the walk of a director's filmography
-   *  turns up all of them. Nor may another fact it publishes rule the film out ([[factsRuleOut]]). */
-  private def backsFilm(l: Listing, f: Film): Boolean =
-    namesFilm(l, f) && (
-      l.statedYear.exists(y => f.year.contains(y)) ||
-        creditsItsDirector(l, f)) && !factsRuleOut(l, f)
-
-  /** Does a fact the listing publishes beside the year it shares with `f` rule the film out: another person credited in
-   *  the same script, sharing no name's stem ([[FactRelations.otherPeople]]: "Marc Donskoi" is "Mark Donskoy") — a credit
-   *  in another script is no other person here ("Wong Kar Wai" is TMDB's 王家衛) — or a runtime
-   *  [[RuntimeContradiction]] minutes or more off? A year is every film of that year's: DE kinoheld's "MIRA" [2026]
-   *  {Marie Limkilde} [85′] backed Daniella Saba's 16-minute 2026 "Mira", which then stood beside Limkilde's film for
-   *  every bare "Mira" as corroborated, its release veto lifted. Never the runtime of a stage house's relay billed
-   *  under the record's own house ([[billsItsHouse]]): the venue bills the performance with its intervals, UK "Royal
-   *  Ballet: La Bayadère" [2018] [170′] the house's 128-minute recording (555004), and ruled out, its two venues backed
-   *  nothing and it fell below the cut. */
-  private def factsRuleOut(l: Listing, f: Film): Boolean =
-    f.directors.exists(credits => FactRelations.otherPerson(l.directors, credits) && FactRelations.otherPeople(l.directors, credits)) ||
-      (runtimeDelta(l, f, None) match {
-        case Number(off) => math.abs(off) >= RuntimeContradiction && !(l.billsAStageHouse && billsItsHouse(l, f))
-        case _           => false
-      })
-
-  /** [[corroboratingVenues]] for every asker of the same title groups, each group's backing venues
-   *  of a film found once: a wide release lists one title at thousands of venues over one candidate
-   *  pool, and asking per member re-reads the whole group per member. A group no venue lists (an
-   *  undecorated title nobody lists bare) backs nothing. One per resolve or calibration pass; not
-   *  thread-safe. */
-  final class VenueBacking(groups: Map[String, Seq[(String, Listing)]]) {
-    // By the record INSTANCE, not its value: hashing a whole record (every title, credit and
-    // country) per lookup cost more than the backing it saved. An equal record held twice is only
-    // computed twice, to the same venues.
-    private val memo = scala.collection.mutable.HashMap.empty[String, java.util.IdentityHashMap[Film, Set[String]]]
-    private def backing(titleGroups: Seq[String], f: Film): Iterator[String] =
-      titleGroups.iterator.flatMap(group => memo.getOrElseUpdate(group, new java.util.IdentityHashMap[Film, Set[String]]())
-        .computeIfAbsent(f, film => backers(film, groups.getOrElse(group, Nil))))
-    /** The venues of `titleGroups` (a listing's [[titleGroups]]) other than `ownVenue` backing `f`. */
-    def corroborating(titleGroups: Seq[String], f: Film, ownVenue: String): Int =
-      (backing(titleGroups, f).map(Backer.venue).toSet - ownVenue).size
-    /** The SOURCES of `titleGroups` other than `ownSource` backing `f` ([[Backer.source]]): a feed entry's facts, copied
-     *  onto every venue it lists, are one claim, counted once — what a feed's own link is weighed against
-     *  (`services.identity.FeedLink`). */
-    def sources(titleGroups: Seq[String], f: Film, ownSource: String): Int =
-      (backing(titleGroups, f).map(Backer.source).toSet - ownSource).size
-  }
 
   /** The title groups (by [[key]]) whose venues' listings corroborate `l`: its own title's, and the
    *  title a learned venue decoration wraps (`TitleDecorations`) — the other venues list "Mistyczka
@@ -1972,11 +1327,11 @@ object IdentityMeasures {
    *                   (`exact`, `original` or `alternative`)
    * @param corroboratingVenues how many OTHER venues listing the same title publish this film's
    *                   exact year or credit its director — the family's pooled evidence
-   * @param houses     the houses the listings' banners were learned to be ([[Houses.learn]])
+   * @param houses     the houses the listings' banners were learned to be ([[StageRelays.Houses.learn]])
    * @param qualifiers the title pieces learned to be qualifiers, not works ([[Qualifiers.learn]])
    */
   def listingFilm(l: Listing, f: Film, searchRank: Option[Int], rivals: Int, corroboratingVenues: Int,
-                  houses: Houses = Houses.Unknown, qualifiers: Qualifiers = Qualifiers.Unknown, country: Option[String] = None): Map[String, Measure] =
+                  houses: StageRelays.Houses = StageRelays.Houses.Unknown, qualifiers: Qualifiers = Qualifiers.Unknown, country: Option[String] = None): Map[String, Measure] =
     listingFilmTitled(l, f, searchRank, rivals, corroboratingVenues, titleRelation(l, f, houses, qualifiers), country)
 
   /** [[listingFilm]] with the title relation already read — `titleRelation(l, f, houses, qualifiers)` —
@@ -2000,7 +1355,7 @@ object IdentityMeasures {
                   val persons = if (l.directors.isEmpty) l.directors else
                     l.directors.iterator.zip(l.directorTokens).collect { case (name, words) if !namesItsHouse(name, words, f) => name }.toSeq
                   f.directorCredits.fold[Measure](if (persons.exists(_.trim.nonEmpty)) MissingFilm else MissingListing)(
-                    creditRelation(if (persons.size == l.directors.size) l.directorCredits else new Credits(persons), _))
+                    CreditRelation.of(if (persons.size == l.directors.size) l.directorCredits else new CreditRelation.Credits(persons), _))
                 }
     slots(8)  = runtimeDelta(l, f, country)
     slots(9)  = countryRelation(l.countries, f.countries)
@@ -2012,13 +1367,13 @@ object IdentityMeasures {
   }
 
   /** `m` with the published year absent when it predates the season the listing's screenings broadcast its stage work
-   *  in ([[Listing.screenedSeason]]), against the house's record of that season ([[screenedSeasonRecord]]): the year dates
+   *  in ([[Listing.screenedSeason]]), against the house's record of that season ([[StageRelays.screenedSeasonRecord]]): the year dates
    *  the staging's premiere, not the broadcast. UK Aldeburgh's "The Royal Ballet: Romeo & Juliet" [2025], screening on 25
    *  May 2027, is "Royal Ballet & Opera 2026/27: Romeo and Juliet", aired that day — two years off its 2027, its title an
    *  overlap, it was denied, and the denial withdrew the record from every relay title-linked to it. Against any other
    *  record — the 2021/22 season's, the house's 2013 recording — the year stays the venue's fact. */
   private def premiereYear(l: Listing, f: Film, m: Map[String, Measure]): Map[String, Measure] =
-    if (l.year.isDefined && screenedSeasonRecord(l, f)) m ++ PublishedYear.map(_ -> MissingListing) else m
+    if (l.year.isDefined && StageRelays.screenedSeasonRecord(l, f)) m ++ PublishedYear.map(_ -> MissingListing) else m
 
   /** `m` with the published year absent when it is the year of an ANNIVERSARY the title bills: ES "Drácula. 30
    *  Aniversario" (original title "Bram Stoker's Dracula 30th Anniversary"), dated 2022, is Coppola's 1992 film — its
@@ -2056,7 +1411,7 @@ object IdentityMeasures {
    *  232-minute 2019 recording. */
   private def screeningYearAbsent(l: Listing, f: Film, title: Category, m: Map[String, Measure]): Map[String, Measure] =
     if (TitledRelations(title.value) && ownAgreement(m)._2("year") && !runtimeContradicts(m) &&
-        f.directorCredits.exists(onePerson(l.creditsBesideYear, _)))
+        f.directorCredits.exists(CreditRelation.onePerson(l.creditsBesideYear, _)))
       m ++ PublishedYear.map(_ -> MissingListing)
     else m
 

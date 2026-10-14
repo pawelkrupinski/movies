@@ -64,7 +64,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
       val probability = calibration.probability(ListingFilm, measures)
       val byNode = deniedByNode(candidate.tmdbId)
       Scored(candidate, probability, measures, byNode.orElse(evidenceDenial(listing, candidate.film, measures)), listing, ranks.get(candidate.tmdbId),
-        namesItsSeasonProduction(listing, candidate.film), byNode.isDefined, IdentityMeasures.billsUnderItsHouse(listing, candidate.film, houses),
+        namesItsSeasonProduction(listing, candidate.film), byNode.isDefined, StageRelays.billsUnderItsHouse(listing, candidate.film, houses),
         suggestedOnly = onlySuggested(candidate.tmdbId))
     }
     // A namesake the venue's country never saw released, beside one it did, that nothing backs is denied, and no
@@ -96,15 +96,15 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
     // beside its own house's: UK's "RBO Cinema Season" relays the Met's productions, which RBO never staged.
     // Its own house's by a banner word the other record lacks: "OPERA- SILENT NIGHT" names no house by "silent".
     val housed = if (listing.billsAStageHouse) candidates.filterNot(_.denied) else Nil
-    def besideItsOwnHouse(other: Scored) = !other.denied && IdentityMeasures.billsAnotherHouse(listing, other.candidate.film) &&
+    def besideItsOwnHouse(other: Scored) = !other.denied && StageRelays.billsAnotherHouse(listing, other.candidate.film) &&
       housed.exists(own => own.candidate.tmdbId != other.candidate.tmdbId &&
-        IdentityMeasures.billsItsHouse(listing, own.candidate.film, other.candidate.film.titleWords))
+        StageRelays.billsItsHouse(listing, own.candidate.film, other.candidate.film.titleWords))
     // One broadcast its film database holds twice is one film: the record every listing of it takes is the first in
-    // `broadcastRecordOrder`, and the other is no listing's ([[IdentityMeasures.sameBroadcast]]).
+    // `broadcastRecordOrder`, and the other is no listing's ([[StageRelays.sameBroadcast]]).
     def anotherRecordOfItsBroadcast(scored: Scored) = candidates.exists(other => other.candidate.tmdbId != scored.candidate.tmdbId &&
-      IdentityMeasures.sameBroadcast(scored.candidate.film, other.candidate.film) &&
-      Ordering[(Int, Int, Int)].lt(IdentityMeasures.broadcastRecordOrder(other.candidate.tmdbId, other.candidate.film),
-        IdentityMeasures.broadcastRecordOrder(scored.candidate.tmdbId, scored.candidate.film)))
+      StageRelays.sameBroadcast(scored.candidate.film, other.candidate.film) &&
+      Ordering[(Int, Int, Int)].lt(StageRelays.broadcastRecordOrder(other.candidate.tmdbId, other.candidate.film),
+        StageRelays.broadcastRecordOrder(scored.candidate.tmdbId, scored.candidate.film)))
     candidates.map(scored =>
       if (anotherRecordOfItsBroadcast(scored))
         scored.copy(denial = Some("another record of a broadcast its film database holds twice"))

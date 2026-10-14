@@ -22,7 +22,7 @@ object ListingShape {
    *  families find are the work's screen namesakes ("ReTransmisje Met: Così fan tutte" → Tinto Brass's 1992 "Così fan
    *  tutte", replay 2026-10-04), never the relay, whose record TMDB alone keeps. */
   def stagesAWork(listing: Listing): Boolean =
-    IdentityMeasures.billsStageWork(spellingsOf(listing), listing.rawTitle)
+    StageRelays.billsStageWork(spellingsOf(listing), listing.rawTitle)
 
   // ── a silent film ──────────────────────────────────────────────────────────────────────────
 
@@ -76,7 +76,7 @@ object ListingShape {
   private def spellingsOf(listing: Listing): Seq[String] = Seq(listing.title, listing.cleanTitle, listing.rawTitle).distinct
 
   private def relaysBesideLive(lowerTitle: String, titles: Seq[String], rawTitle: String): Boolean =
-    ConcertFilm.findFirstIn(lowerTitle).isDefined || IdentityMeasures.billsStageWork(titles, rawTitle) ||
+    ConcertFilm.findFirstIn(lowerTitle).isDefined || StageRelays.billsStageWork(titles, rawTitle) ||
       TitleSeason.of(Seq(rawTitle)).isDefined
 
   // ── a bill of several works ────────────────────────────────────────────────────────────────
@@ -86,7 +86,7 @@ object ListingShape {
    *  leaves it out), but no family's agreement, poster or catalogue id stands for one of its pieces. */
   private val SetOfWorks = """(?i)\bzestaw\b""".r
 
-  /** Does the listing bill several works — a "+" joining two whole works ([[IdentityMeasures.billsTwoWholeWorks]]: an
+  /** Does the listing bill several works — a "+" joining two whole works ([[MultiFilmBill.billsTwoWholeWorks]]: an
    *  event joined to the film, "11. UFF - Gala otwarcia + Demony", "… pokaz filmu + dyskusja", is none), a word billing
    *  a programme of films ([[MultiFilmBill]]: a double bill, a trilogy, a marathon, a block of shorts), a set, or two
    *  quoted titles? Read where no film is in hand: a film whose own title carries the word is let through only by
@@ -116,7 +116,7 @@ object ListingShape {
   private val JoinedQuotes = """(?iu)[„"“][^"”„]+["”]\s*(?:i|oraz|und|and|&|et|y|e)\s+[„"“][^"”„]+["”]\W*$""".r
   private def billsSeveralBySigns(listing: Listing): Boolean =
     SetOfWorks.findFirstIn(listing.rawTitle).isDefined || quotesSeveral(listing.rawTitle) ||
-      IdentityMeasures.billsTwoWholeWorks(Evidence.of(listing, None).measured)
+      MultiFilmBill.billsTwoWholeWorks(Evidence.of(listing, None).measured)
 
   // ── a piece billed beside the film ─────────────────────────────────────────────────────────
 

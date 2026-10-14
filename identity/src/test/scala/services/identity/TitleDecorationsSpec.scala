@@ -10,10 +10,10 @@ class TitleDecorationsSpec extends AnyFlatSpec with Matchers {
   "A learned bill tail" should "make a film billed with a talk no double bill, and its title before the talk a shape" in {
     val d = TitleDecorations(Set.empty, Set.empty, Set(Seq("spotkanie", "z")))
     val talk = IdentityMeasures.Listing("Kalafior przeznaczenia + spotkanie z reżyserką", decorations = d)
-    IdentityMeasures.billsTwoWorks(talk) shouldBe false
+    MultiFilmBill.billsTwoWorks(talk) shouldBe false
     d.strip("Kalafior przeznaczenia + spotkanie z reżyserką") should contain("Kalafior przeznaczenia")
-    IdentityMeasures.billsTwoWorks(IdentityMeasures.Listing("Basia + Kocia Szajka", decorations = d)) shouldBe true
-    IdentityMeasures.billsTwoWorks(IdentityMeasures.Listing("Basia + Kocia Szajka + spotkanie z autorką", decorations = d)) shouldBe true
+    MultiFilmBill.billsTwoWorks(IdentityMeasures.Listing("Basia + Kocia Szajka", decorations = d)) shouldBe true
+    MultiFilmBill.billsTwoWorks(IdentityMeasures.Listing("Basia + Kocia Szajka + spotkanie z autorką", decorations = d)) shouldBe true
   }
 
   "Stripping" should "cut a learned decoration off either edge, keeping the title's own text" in {

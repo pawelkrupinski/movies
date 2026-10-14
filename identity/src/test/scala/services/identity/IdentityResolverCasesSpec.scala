@@ -966,7 +966,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
   /** PL Kino 1410 bills the Met's relays "Carmen | metropolitan opera: live in hd 2026/27": TMDB holds no Met 2026/27
    *  Carmen, but Royal Ballet & Opera's of that season, and the banner — learned only from the RBO records its works
    *  reached — was RBO's, so its season production was taken. Its "Makbet" bills the Met's "Macbeth" in another language
-   *  ([[IdentityMeasures.stageBilling]]): the banner is the Met, and RBO's Carmen another house's production. */
+   *  ([[StageRelays.stageBilling]]): the banner is the Met, and RBO's Carmen another house's production. */
   "A season relay's banner" should "be the house it bills a stage work under in another language, not the other house of its works" in {
     val films = Seq(F(1702759, "Royal Ballet & Opera 2026/27: Carmen", 2026, "Damiano Michieletto", 200, 0.5),
       F(1703622, "The Metropolitan Opera 2026/27: Macbeth", 2026, "", 0, 0.5))
@@ -1041,25 +1041,25 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
       talks.map(l => r.decisionOf(l.key).film) shouldBe Some(157320) +: Seq.fill(3)(Some(42199))
     }
     // a second work titled in numbers is a work too: Pałacowe's "… | Zakazane piosenki + 2 x 2 = 4"
-    IdentityMeasures.billsTwoWholeWorks(IdentityMeasures.Listing("Od nowa | Zakazane piosenki + 2 x 2 = 4")) shouldBe true
-    IdentityMeasures.billsTwoWholeWorks(IdentityMeasures.Listing("Bez znieczulenia + Q&A")) shouldBe false
+    MultiFilmBill.billsTwoWholeWorks(IdentityMeasures.Listing("Od nowa | Zakazane piosenki + 2 x 2 = 4")) shouldBe true
+    MultiFilmBill.billsTwoWholeWorks(IdentityMeasures.Listing("Bez znieczulenia + Q&A")) shouldBe false
     // Światowid: a poster tour is an event, not a second work
-    IdentityMeasures.billsTwoWholeWorks(IdentityMeasures.Listing("OPĘTANIE + TRASA PLAKATOWA")) shouldBe false
+    MultiFilmBill.billsTwoWholeWorks(IdentityMeasures.Listing("OPĘTANIE + TRASA PLAKATOWA")) shouldBe false
     // the programme a bill's last work runs into is the bill's, not that work's: Helios's "Basia. Humor w paski mam +
     // Kocia Szajka - Festiwal TAURON Młode Horyzonty. Seanse HDD" bills two films (review page: matches neither)
-    IdentityMeasures.billsTwoWholeWorks(IdentityMeasures.Listing("Basia. Humor w paski mam + Kocia Szajka - Festiwal TAURON Młode Horyzonty. Seanse HDD")) shouldBe true
-    IdentityMeasures.billsTwoWholeWorks(IdentityMeasures.Listing("11. UFF - Gala otwarcia + Demony")) shouldBe false
-    IdentityMeasures.billsTwoWholeWorks(IdentityMeasures.Listing("Pasażerka - premiera książki, pokaz filmu + dyskusja")) shouldBe false
-    IdentityMeasures.billsTwoWholeWorks(IdentityMeasures.Listing("Punku + spotkanie z reżyserem - Kino Kultura")) shouldBe false
+    MultiFilmBill.billsTwoWholeWorks(IdentityMeasures.Listing("Basia. Humor w paski mam + Kocia Szajka - Festiwal TAURON Młode Horyzonty. Seanse HDD")) shouldBe true
+    MultiFilmBill.billsTwoWholeWorks(IdentityMeasures.Listing("11. UFF - Gala otwarcia + Demony")) shouldBe false
+    MultiFilmBill.billsTwoWholeWorks(IdentityMeasures.Listing("Pasażerka - premiera książki, pokaz filmu + dyskusja")) shouldBe false
+    MultiFilmBill.billsTwoWholeWorks(IdentityMeasures.Listing("Punku + spotkanie z reżyserem - Kino Kultura")) shouldBe false
     // an unspaced "+" between two works of two words or more joins them too: UK Odeon's "We're Going on a Bear
     // Hunt+Tiger Who Came to..." ×81 took Bear Hunt (convergence 2026-10-14); a "+" inside one title stays its own
     // ("Love+War", "Orwell: 2+2=5"), and so does one joining a word to a talk or a format ("Q+A", "RB+O 2026/27")
     val unspaced = IdentityMeasures.Listing("We're Going on a Bear Hunt+Tiger Who Came to...")
-    IdentityMeasures.billsTwoWholeWorks(unspaced) shouldBe true
-    IdentityMeasures.billsTwoWorks(unspaced) shouldBe true
+    MultiFilmBill.billsTwoWholeWorks(unspaced) shouldBe true
+    MultiFilmBill.billsTwoWorks(unspaced) shouldBe true
     Seq("Love+War", "Orwell: 2+2=5", "Panem-Mockingjay 1+2", "Carmen (RB+O 2026/27)", "Film+Gespräch: Elser",
       "London, From The Margins: Brick by Brick (Grime) Screening & Q+A Panel Talk", "Rocky  (Best of Cinema+Lichtperlen)")
-      .foreach(title => withClue(title)(IdentityMeasures.billsTwoWorks(IdentityMeasures.Listing(title)) shouldBe false))
+      .foreach(title => withClue(title)(MultiFilmBill.billsTwoWorks(IdentityMeasures.Listing(title)) shouldBe false))
   }
 
   "A listing billing several films by a word that says so" should "be none of them, while a film whose own title carries the word stays that film" in {

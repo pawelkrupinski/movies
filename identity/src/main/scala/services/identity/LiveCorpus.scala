@@ -60,10 +60,10 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
   private val titledBy      = mutable.HashMap.empty[String, Set[Int]]
   private val candidates    = mutable.LongMap.empty[Candidate]
   // houses, title groups, whole titles, reached-by-title
-  private val billingsOf   = mutable.HashMap.empty[NodeKey, Seq[IdentityMeasures.Billing]]
-  private val byBanner     = mutable.HashMap.empty[String, Map[NodeKey, Seq[IdentityMeasures.Billing]]]
+  private val billingsOf   = mutable.HashMap.empty[NodeKey, Seq[StageRelays.Billing]]
+  private val byBanner     = mutable.HashMap.empty[String, Map[NodeKey, Seq[StageRelays.Billing]]]
   private val houseOf      = mutable.HashMap.empty[String, String]
-  private val rankingOf    = mutable.HashMap.empty[String, Seq[IdentityMeasures.Houses.Contender]]
+  private val rankingOf    = mutable.HashMap.empty[String, Seq[StageRelays.Houses.Contender]]
   private val groups       = mutable.HashMap.empty[String, mutable.TreeMap[String, Seq[(String, IdentityMeasures.Listing)]]]
   private val wholes       = mutable.HashMap.empty[String, Int]
   // per title piece, the whole titles carrying it, with how many nodes carry each (`segmentSpread`)
@@ -76,11 +76,11 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
   // with it, never kept on the ~30k resident records (1.6M strings on the UK corpus when they were).
   def candidate(id: Int): Option[Candidate] = candidates.get(id).map(fresh)
   // Read many times per resolve, changed per event: each view is built once after it changes.
-  private var housesView: Option[IdentityMeasures.Houses] = None
+  private var housesView: Option[StageRelays.Houses] = None
   private val groupView   = mutable.HashMap.empty[String, Seq[(String, IdentityMeasures.Listing)]]
   private val reachedView = mutable.HashMap.empty[String, Seq[(String, Set[Int])]]
-  def houses: IdentityMeasures.Houses = housesView.getOrElse { val built = IdentityMeasures.Houses(houseOf.toMap); housesView = Some(built); built }
-  def houseRanking: Map[String, Seq[IdentityMeasures.Houses.Contender]] = rankingOf.toMap
+  def houses: StageRelays.Houses = housesView.getOrElse { val built = StageRelays.Houses(houseOf.toMap); housesView = Some(built); built }
+  def houseRanking: Map[String, Seq[StageRelays.Houses.Contender]] = rankingOf.toMap
   def titleGroup(key: String): Seq[(String, IdentityMeasures.Listing)] =
     groupView.getOrElseUpdate(key, groups.get(key).fold(Seq.empty)(_.values.flatten.toSeq))
   def wholeTitle(sanitised: String): Boolean = wholes.contains(sanitised)
@@ -226,7 +226,7 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
       val next = base.get(id).map(candidate => candidate.copy(film = IdentityMeasures.withVenueTitles(candidate.film,
         venueTitlesOf.get(id).fold(Seq.empty[String])(_.values.flatten.toSeq.distinct.sorted))))
       if (next != candidates.get(id)) {
-        def seasonWorksOf(candidate: Candidate) = if (FallbackIds.isFallback(id)) Set.empty[(String, Int)] else IdentityMeasures.seasonWorks(candidate.film)
+        def seasonWorksOf(candidate: Candidate) = if (FallbackIds.isFallback(id)) Set.empty[(String, Int)] else StageRelays.seasonWorks(candidate.film)
         val before = candidates.get(id).toSeq.flatMap(seasonWorksOf)
         next.fold(candidates.remove(id))(candidate => candidates.put(id, candidate))
         val after  = next.toSeq.flatMap(seasonWorksOf)
@@ -242,14 +242,14 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
     // a take-up bills every node, and a film reached by many nodes derived its title forms again for
     // each (6 of a UK take-up's 16 s). A node's billings are its films' in its reached order, which is
     // `Houses.evidence` over them all.
-    val billedBy  = mutable.HashMap.empty[NodeKey, Map[Int, Seq[IdentityMeasures.Billing]]]
+    val billedBy  = mutable.HashMap.empty[NodeKey, Map[Int, Seq[StageRelays.Billing]]]
     val billedOn  = billed.iterator.flatMap(key => nodes.get(key).map(live => key -> CorpusContext.billedFilms(live.reached,
       live.node.evidence.measured, seasonFilms.getOrElse(_, Set.empty)).filter(candidates.contains))).toMap
     val billersOf = billedOn.toSeq.flatMap { case (key, ids) => ids.map(_ -> key) }.groupMap(_._1)(_._2)
     billersOf.foreach { case (id, keys) =>
       val film = fresh(candidates(id)).film
       keys.foreach { key =>
-        val own = IdentityMeasures.Houses.evidence(nodes(key).node.evidence.measured, Seq(film)).toSeq
+        val own = StageRelays.Houses.evidence(nodes(key).node.evidence.measured, Seq(film)).toSeq
         if (own.nonEmpty) billedBy.updateWith(key)(held => Some(held.getOrElse(Map.empty) + (id -> own)))
       }
     }
@@ -268,8 +268,8 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
     }
     banners.foreach { banner =>
       val evidence = byBanner.getOrElse(banner, Map.empty).values.flatten.toSeq
-      IdentityMeasures.Houses.learn(evidence).of.get(banner).fold(houseOf.remove(banner))(house => houseOf.put(banner, house))
-      IdentityMeasures.Houses.ranking(evidence).get(banner).fold(rankingOf.remove(banner))(ranked => rankingOf.put(banner, ranked))
+      StageRelays.Houses.learn(evidence).of.get(banner).fold(houseOf.remove(banner))(house => houseOf.put(banner, house))
+      StageRelays.Houses.ranking(evidence).get(banner).fold(rankingOf.remove(banner))(ranked => rankingOf.put(banner, ranked))
     }
     if (banners.nonEmpty) housesView = None
     groupView --= titleKeys
@@ -288,7 +288,7 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
     val films   = dropped.flatMap(query => named.remove(query).flatten.getOrElse(Nil)).toSet
     films.foreach(id => bestHits.updateWith(id)(_.map(_ -- dropped).filter(_.nonEmpty)))
     old.reached.foreach(id => reachers.updateWith(id)(_.map(_ - key).filter(_.nonEmpty)))
-    IdentityMeasures.seasonWorks(old.node.evidence.measured).foreach(pair => seasonNodes.updateWith(pair)(_.map(_ - key).filter(_.nonEmpty)))
+    StageRelays.seasonWorks(old.node.evidence.measured).foreach(pair => seasonNodes.updateWith(pair)(_.map(_ - key).filter(_.nonEmpty)))
     groups.get(old.titleKey).foreach { byNode => byNode.remove(old.id); if (byNode.isEmpty) groups.remove(old.titleKey) }
     if (old.whole.nonEmpty) wholes.updateWith(old.whole)(_.map(_ - 1).filter(_ > 0))
     old.pieces.foreach(piece => spreads.get(piece).foreach { byWhole =>
@@ -311,8 +311,8 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
     }.toSet
     live.queries.foreach(query => askers.updateWith(query)(held => Some(held.getOrElse(Set.empty) + key)))
     live.reached.foreach(id => reachers.updateWith(id)(held => Some(held.getOrElse(Set.empty) + key)))
-    IdentityMeasures.seasonWorks(live.node.evidence.measured).foreach(pair => seasonNodes.updateWith(pair)(held => Some(held.getOrElse(Set.empty) + key)))
-    groups.getOrElseUpdate(live.titleKey, mutable.TreeMap.empty)(live.id) = live.node.listings.map(listing => IdentityMeasures.Backer(listing.venue, SourceReliability.claimOf(listing)) -> live.node.evidence.measured)
+    StageRelays.seasonWorks(live.node.evidence.measured).foreach(pair => seasonNodes.updateWith(pair)(held => Some(held.getOrElse(Set.empty) + key)))
+    groups.getOrElseUpdate(live.titleKey, mutable.TreeMap.empty)(live.id) = live.node.listings.map(listing => Backer(listing.venue, SourceReliability.claimOf(listing)) -> live.node.evidence.measured)
     if (live.whole.nonEmpty) wholes.updateWith(live.whole)(count => Some(count.getOrElse(0) + 1))
     live.pieces.foreach(piece => spreads.getOrElseUpdate(piece, mutable.HashMap.empty).updateWith(live.whole)(count => Some(count.getOrElse(0) + 1)))
     if (live.titleKey.nonEmpty) reachedByKey.getOrElseUpdate(live.titleKey, mutable.TreeMap.empty)(live.id) = live.reached.toSet

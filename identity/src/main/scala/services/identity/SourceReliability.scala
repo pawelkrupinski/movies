@@ -167,10 +167,10 @@ object SourceReliability {
   def tmdbLinked(listing: Listing): Option[(CatalogueId, Int)] =
     listing.catalogueIds.iterator.flatMap(id => byId(id).flatMap(_.tmdbFilm(id.id)).map(id -> _)).nextOption()
 
-  /** Whose claim `listing`'s facts are, for counting the sources that back a film ([[IdentityMeasures.VenueBacking]]): the
+  /** Whose claim `listing`'s facts are, for counting the sources that back a film ([[VenueBacking]]): the
    *  feed entry they were copied from — one claim however many venues the feed lists it at: its id, or its page's last
    *  segment (kinoprogramm.com serves one entry under every venue's path) — else its venue's own: the venue's name itself,
-   *  so the corpus's title groups hold no new string for a venue's own claim ([[IdentityMeasures.Backer]]). A feed's
+   *  so the corpus's title groups hold no new string for a venue's own claim ([[Backer]]). A feed's
    *  claim is keyed "c:…" or "p:…", no venue's name. */
   def claimOf(listing: Listing): String =
     listing.catalogueIds.find(id => byId(id).isDefined).map(_.key)

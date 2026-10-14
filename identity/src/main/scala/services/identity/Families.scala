@@ -43,7 +43,7 @@ private[identity] final class Families(scoring: CandidateScoring, acceptance: Ac
    *  it to the "…by Noël Coward" spelling crediting only the stage director at a longer runtime.
    *
    *  A node whose own title names the record's production — its house by its banner and its season
-   *  ([[Scored.seasonProduction]] and [[IdentityMeasures.billsItsHouse]]) — is withdrawn by no sibling: one house stages a
+   *  ([[Scored.seasonProduction]] and [[StageRelays.billsItsHouse]]) — is withdrawn by no sibling: one house stages a
    *  work once a season, so a sibling's denial (another season, another house, other credits) says the sibling is
    *  another production, never that the node is. And a node whose banner alone bills the record under its house
    *  ([[Scored.houseProduction]]) is withdrawn by no sibling denying the record as ANOTHER house's season production
@@ -55,7 +55,7 @@ private[identity] final class Families(scoring: CandidateScoring, acceptance: Ac
   def deniedBySibling(node: EvidenceNode, members: Seq[EvidenceNode], scope: FamilyScope, best: Scored,
                       takenAlone: String => Boolean): Option[(EvidenceNode, String)] = {
     lazy val ownFacts = IdentityMeasures.comparedFacts(ListingFilm, best.measures).keySet
-    val ownProduction = best.seasonProduction && IdentityMeasures.billsItsHouse(best.listing, best.candidate.film)
+    val ownProduction = best.seasonProduction && StageRelays.billsItsHouse(best.listing, best.candidate.film)
     def withdraws(denial: Scored) =
       !(best.houseProduction && denial.denial.contains(CandidateScoring.AnotherHousesSeason)) &&
         (!denial.deniedByCutOnly || (IdentityMeasures.comparedFacts(ListingFilm, denial.measures).keySet -- ownFacts).nonEmpty)

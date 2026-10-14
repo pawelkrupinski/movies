@@ -13,31 +13,31 @@ private[identity] final class CandidateScoring(val generation: CandidateGenerati
   import EvidenceNode.placesOf
 
   /** Which house each listing banner is, learned from how every node's candidates bill its works
-   *  (`IdentityMeasures.Houses`): the title relation reads a record of the listing's house as
+   *  (`StageRelays.Houses`): the title relation reads a record of the listing's house as
    *  naming it, and a season production must be of it when it is known. */
-  val houses: IdentityMeasures.Houses = generation.context.houses
+  val houses: StageRelays.Houses = generation.context.houses
   /** Each banner's contending houses, as [[houses]] ranked them — for a report reading why a banner is, or is not, a house. */
-  def houseRanking: Map[String, Seq[IdentityMeasures.Houses.Contender]] = generation.context.houseRanking
+  def houseRanking: Map[String, Seq[StageRelays.Houses.Contender]] = generation.context.houseRanking
   def namesItsSeasonProduction(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film): Boolean =
-    IdentityMeasures.namesSeasonProduction(listing, film) && !IdentityMeasures.billing(listing, film).exists(houses.other)
+    StageRelays.namesSeasonProduction(listing, film) && !StageRelays.billing(listing, film).exists(houses.other)
 
   /** Does the listing's own evidence rule the film out: a learned cannot-link, its facts'
    *  probability below the certified cut, a season its title names that the film is not of,
    *  its season's production of its work by ANOTHER house than its banner's (`houses`), a screen
-   *  namesake of the work its stage house's banner bills ([[IdentityMeasures.screenNamesake]]), or a record of
-   *  another work than that banner's relay names ([[IdentityMeasures.namesAnotherWork]]). */
+   *  namesake of the work its stage house's banner bills ([[StageRelays.screenNamesake]]), or a record of
+   *  another work than that banner's relay names ([[StageRelays.namesAnotherWork]]). */
   def evidenceDenies(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film, measures: Map[String, Measure]): Boolean =
     evidenceDenial(listing, film, measures).isDefined
 
   /** [[evidenceDenies]], saying which of its reasons rules the film out. */
   def evidenceDenial(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film, measures: Map[String, Measure]): Option[String] =
     ListingConstraints.seasonsApart(listing.seasonYear, film.season, film.year).map(_.toString)
-      .orElse(Option.when(IdentityMeasures.namesSeasonProduction(listing, film) && !namesItsSeasonProduction(listing, film))(CandidateScoring.AnotherHousesSeason))
+      .orElse(Option.when(StageRelays.namesSeasonProduction(listing, film) && !namesItsSeasonProduction(listing, film))(CandidateScoring.AnotherHousesSeason))
       // a credit the venue publishes names its staging's record whatever TMDB titles it
-      .orElse(Option.when(IdentityMeasures.screenNamesake(listing, film) && !IdentityMeasures.sameDirector(measures))(
+      .orElse(Option.when(StageRelays.screenNamesake(listing, film) && !IdentityMeasures.sameDirector(measures))(
         "a screen namesake of the work its stage house's billing names"))
       // a credit or a running time never holds a record of another work: a screen director films many
-      .orElse(Option.when(IdentityMeasures.namesAnotherWork(listing, film))(
+      .orElse(Option.when(StageRelays.namesAnotherWork(listing, film))(
         "a record of another work than its stage house's billing names"))
       .orElse(LearnedCannotLinks.learnedListingFilm(calibration, measures, weights.factsProbability(measures)).map(_.toString))
 
@@ -97,7 +97,7 @@ private[identity] final class CandidateScoring(val generation: CandidateGenerati
   /** Which venues back a listing's film, over the corpus's title groups (`CorpusContext.titleGroups`):
    *  every node's, not a family's — a title a learned decoration wraps (`IdentityMeasures.titleGroups`)
    *  is listed plain by venues whose listings are not title-linked to it, so not in its family. */
-  val backing: IdentityMeasures.VenueBacking = generation.context.backing
+  val backing: VenueBacking = generation.context.backing
 
 }
 

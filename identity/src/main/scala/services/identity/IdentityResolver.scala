@@ -322,7 +322,7 @@ object IdentityResolver {
     val stages = new Stages(listings, lookups, normalizer, calibration, Mutation.None, pins, decorations)
     import stages.scoring.{houseRanking, houses}
     focusedScored(stages)(focused).map { case (node, scored) =>
-      val banners = scored.flatMap(candidate => IdentityMeasures.billing(node.evidence.measured, candidate.candidate.film)).map(_.listingHouse).distinct.sorted
+      val banners = scored.flatMap(candidate => StageRelays.billing(node.evidence.measured, candidate.candidate.film)).map(_.listingHouse).distinct.sorted
       NodeCandidates(node.label, scored.map(CandidateScore.of(_, calibration)),
         banners.map(banner => s"banner '$banner' → ${houses.of.getOrElse(banner, "no house")}; contenders: " +
           houseRanking.getOrElse(banner, Nil).take(4).map(_.render).mkString(", ")))

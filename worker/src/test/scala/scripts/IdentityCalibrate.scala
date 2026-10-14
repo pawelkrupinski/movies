@@ -1,5 +1,6 @@
 package scripts
 
+import services.identity.{StageRelays, VenueBacking}
 import models.Country
 import play.api.libs.json.{JsArray, JsObject, Json}
 import services.identity.{IdentityCalibration, IdentityMeasures, TitleDecorations}
@@ -167,10 +168,10 @@ object IdentityCalibrate {
     val groups: Map[String, IndexedSeq[Int]] = obs.indices.groupBy(i => IdentityMeasures.key(obs(i).listing.title))
     val members = groups.view.mapValues(_.map(i => obs(i).venue -> obs(i).listing)).toMap
 
-    val backing = new IdentityMeasures.VenueBacking(members)
+    val backing = new VenueBacking(members)
     // The houses the banners bill, learned from the pools as the resolver learns them from its candidates.
-    val houses = IdentityMeasures.Houses.learn(obs.indices.flatMap(i =>
-      IdentityMeasures.Houses.evidence(obs(i).listing, pools(i).toSeq.sortBy(_._1).map(_._2._2))))
+    val houses = StageRelays.Houses.learn(obs.indices.flatMap(i =>
+      StageRelays.Houses.evidence(obs(i).listing, pools(i).toSeq.sortBy(_._1).map(_._2._2))))
 
     val lf = Seq.newBuilder[LfPair]
     obs.indices.foreach { i =>

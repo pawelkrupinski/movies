@@ -1,5 +1,6 @@
 package services.identity.agreement
 
+import services.identity.StageRelays
 import services.identity.{Answer, DecorationWords, FactRelations, IdentityMeasures, Listing, ListingShape, ScreeningDays}
 import services.identity.IdentityMeasures.Film
 
@@ -7,7 +8,7 @@ import services.identity.IdentityMeasures.Film
 /**
  * The BROADCAST DATE JOIN: a stage relay airs on its house's published dates — the Met's "Samson et Dalila" live on
  * 5 December 2026 — and TMDB dates each production's record by its broadcast. A cluster billing a stage work
- * ([[IdentityMeasures.stageWorksBilled]]) whose venues screen it on the very day one record of that work was
+ * ([[StageRelays.stageWorksBilled]]) whose venues screen it on the very day one record of that work was
  * broadcast is that production, whatever its title leaves out: PL "Samson i Dalila" names neither the house nor the
  * season, yet on 5 December 2026 it can only be the Met's. A strong prior, not the only date: an encore or a delayed
  * retransmission airs within [[EncoreDays]] after it, which a title BILLING the record's house or season still names.
@@ -59,7 +60,7 @@ object Broadcast {
 
   /** Why a relay's take is not the production its venues screen, if it is not. All of these must hold:
    *  - every listing is a house's RELAY of the record: it bills a house ([[ListingShape.billsAHouse]]) and puts a banner on
-   *    the work the record also bills under one ([[IdentityMeasures.billing]]: "NT Live: Hamlet", "National Theatre
+   *    the work the record also bills under one ([[StageRelays.billing]]: "NT Live: Hamlet", "National Theatre
    *    Live: Hamlet") — not a film whose own title holds a house's word (US "Stage Fright", Hitchcock's 1950 film);
    *  - nothing the venue states itself ties it to the record: no title dates the record's year, and no listing whose
    *    facts are its own, not a listings site's catalogue entry ([[ListingShape.venueStated]]: not Flicks' film
@@ -84,7 +85,7 @@ object Broadcast {
       first <- days.first.filter(_ => listings.nonEmpty && !days.isUnknown)
       last  <- days.last
       aired <- taken.released.filter(_.isBefore(run(first)))
-      if listings.forall(listing => ListingShape.billsAHouse(listing) && IdentityMeasures.billing(measured(listing), taken).isDefined &&
+      if listings.forall(listing => ListingShape.billsAHouse(listing) && StageRelays.billing(measured(listing), taken).isDefined &&
         !tiedToTaken(listing))
       (_, newer) <- others.filter { case (_, film) =>
                       IdentityMeasures.key(film.title) == IdentityMeasures.key(taken.title) &&
@@ -98,8 +99,8 @@ object Broadcast {
     // one broadcast its film database holds twice is one record, the one every listing of it takes: the cluster's listings
     // may each reach one of them (UK Flicks' "Royal Opera House: Carmen", 1151422 and 1702759)
     val fitting = fits.filterNot { case (id, film) => fits.exists { case (other, record) => other != id &&
-      IdentityMeasures.sameBroadcast(film, record) && Ordering[(Int, Int, Int)].lt(IdentityMeasures.broadcastRecordOrder(other, record),
-        IdentityMeasures.broadcastRecordOrder(id, film)) } }
+      StageRelays.sameBroadcast(film, record) && Ordering[(Int, Int, Int)].lt(StageRelays.broadcastRecordOrder(other, record),
+        StageRelays.broadcastRecordOrder(id, film)) } }
     val onDay   = fitting.filter { case (_, film) => film.released.exists(days.contains) }
     def encore(film: Film) = film.released.exists(aired => days.days.exists(day => !day.isBefore(aired) && !day.isAfter(aired.plusDays(EncoreDays))))
     val chosen = onDay match {
@@ -114,7 +115,7 @@ object Broadcast {
 
   /** Does a title bill a house's production: a stage work, and a banner beside it ("The Metropolitan Opera: Macbeth")? */
   def billsAProduction(title: String): Boolean =
-    IdentityMeasures.stageWorksBilled(Seq(title), false).nonEmpty && Billing.bannerOf(Seq(title), IdentityMeasures.billedIn(_, false).nonEmpty).nonEmpty
+    StageRelays.stageWorksBilled(Seq(title), false).nonEmpty && Billing.bannerOf(Seq(title), StageRelays.billedIn(_, false).nonEmpty).nonEmpty
 
   /** The days the cluster screens on and what each of its listings bills — `None` when it screens on none, or a listing
    *  bills no stage work. */
@@ -143,7 +144,7 @@ object Broadcast {
 
     /** [[fits]] on every count but the house the banner spells. */
     def fitsButTheHouse(film: Film): Boolean =
-      IdentityMeasures.stageWorks(film).exists(works) &&
+      StageRelays.stageWorks(film).exists(works) &&
         season.forall(own => film.season.forall(_ == own)) &&
         !FactRelations.yearsApart(stated.statedYear, film.year) && !FactRelations.otherPerson(stated.directors, film.directors.getOrElse(Nil))
 
@@ -157,10 +158,10 @@ object Broadcast {
      *  West") is never one. */
     def credits(film: Film, productions: Seq[Film]): Boolean = credited.nonEmpty && {
       val house = Billing.bannerOf(film.titles, _ => false)
-      val work  = IdentityMeasures.stageWorks(film).intersect(works)
+      val work  = StageRelays.stageWorks(film).intersect(works)
       house.nonEmpty && productions.exists { production =>
         FactRelations.samePerson(credited, production.directors.getOrElse(Nil)) &&
-          IdentityMeasures.stageWorks(production).exists(work) &&
+          StageRelays.stageWorks(production).exists(work) &&
           !FactRelations.yearsApart(production.year, film.year) &&
           { val own = Billing.bannerOf(production.titles, _ => false); own.nonEmpty && Billing.spells(own, house) }
       }
@@ -180,7 +181,7 @@ object Broadcast {
       val titles = Seq(listing.title, listing.rawTitle).distinct.map(tagApart)
       val named  = measured.seasonYear.isDefined
       val stated = if (ListingShape.venueStated(listing)) measured else services.identity.Evidence.of(listing, None).measured
-      Billing(IdentityMeasures.stageWorksBilled(titles, named), measured.seasonYear, bannerOf(titles, IdentityMeasures.billedIn(_, named).nonEmpty), measured,
+      Billing(StageRelays.stageWorksBilled(titles, named), measured.seasonYear, bannerOf(titles, StageRelays.billedIn(_, named).nonEmpty), measured,
         stated, measured.directors)
     }
 

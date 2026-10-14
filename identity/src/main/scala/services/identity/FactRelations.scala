@@ -46,7 +46,7 @@ object FactRelations {
 
   /** Could two credits name one person however each is SPELT — in another alphabet ("Bolshynska", "Большинська") or
    *  after another language's transliteration ("Konchalovsky", German "Kontschalowski", Polish "Konczałowski")? Both
-   *  are read in Latin letters ([[IdentityMeasures.latinized]]) and folded to [[spellingKey]], then compared by
+   *  are read in Latin letters ([[CreditRelation.latinized]]) and folded to [[spellingKey]], then compared by
    *  [[services.movies.SamePerson]], whose tolerances (word order, a missing first name, a letter's slip) still hold. */
   def samePersonInAnySpelling(a: String, b: String): Boolean =
     services.movies.SamePerson(a, b) || samePerson(Seq(a), Seq(b)) || services.movies.SamePerson(spellingKey(a), spellingKey(b))
@@ -55,15 +55,15 @@ object FactRelations {
    *  "c", "sz"/"sh"/"sch" as "s", "zh" as "z", "kh" as "h", "w" as "v", "y"/"j" as "i", the soft sign and apostrophes
    *  dropped. Loose by design — only ever a reason to call two credits one person, never two. */
   private[identity] def spellingKey(name: String): String =
-    SpellingFolds.foldLeft(tools.TextNormalization.deburr(IdentityMeasures.latinized(name)).toLowerCase(java.util.Locale.ROOT).replaceAll("[ʹʼ'’`]", "")) {
+    SpellingFolds.foldLeft(tools.TextNormalization.deburr(CreditRelation.latinized(name)).toLowerCase(java.util.Locale.ROOT).replaceAll("[ʹʼ'’`]", "")) {
       case (s, (from, to)) => s.replace(from, to)
     }
   private val SpellingFolds = Seq("tsch" -> "c", "tch" -> "c", "sch" -> "s", "ch" -> "c", "cz" -> "c", "sz" -> "s", "sh" -> "s",
     "zh" -> "z", "kh" -> "h", "w" -> "v", "y" -> "i", "j" -> "i")
 
-  /** Each name's words of four letters or more, in Latin letters ([[IdentityMeasures.latinized]]), folded to ASCII and cut
+  /** Each name's words of four letters or more, in Latin letters ([[CreditRelation.latinized]]), folded to ASCII and cut
    *  to their first four. */
   def namePrefixes(names: Seq[String]): Set[String] =
-    names.flatMap(name => tools.TextNormalization.deburr(IdentityMeasures.latinized(name)).toLowerCase(java.util.Locale.ROOT).split("[^a-z]+"))
+    names.flatMap(name => tools.TextNormalization.deburr(CreditRelation.latinized(name)).toLowerCase(java.util.Locale.ROOT).split("[^a-z]+"))
       .filter(_.length >= 4).map(_.take(4)).toSet
 }

@@ -7,7 +7,7 @@ import services.movies.{TitleContainment, TitleWords}
  *  offline segment learner (`DecorationSegments`, worker tests) reads them as features too. */
 object DecorationWords {
 
-  /** Words naming an event around a screening, not a work ([[IdentityMeasures.billsTwoWholeWorks]] and the broadcast join read them too):
+  /** Words naming an event around a screening, not a work ([[MultiFilmBill.billsTwoWholeWorks]] and the broadcast join read them too):
    *  a premiere, a talk, the screening as an event, a festival, a relay, a concert, a marathon — the word table's
    *  ([[TitleWords]]), in every language a country bills in. */
   private[identity] val EventWords: Set[String] = {

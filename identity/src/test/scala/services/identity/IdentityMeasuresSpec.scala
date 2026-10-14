@@ -3,7 +3,8 @@ package services.identity
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.TitleSeason
-import services.identity.IdentityMeasures.{Billing, Category, Film, Houses, Listing, ListingListing, Missing, Number}
+import services.identity.IdentityMeasures.{Category, Film, Listing, ListingListing, Missing, Number}
+import services.identity.StageRelays.{Billing, Houses}
 
 /** What the calibrated score reads must separate facts that mean different things: a venue's
  *  published year, a year the venue put in its title, a season a broadcast names, and whether a
@@ -184,45 +185,45 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // PL venues bill the RBO's 2026/27 season in Polish: "Dziadek do orzechów" is the record's "The Nutcracker"
     // (Wikidata Q193705, StageWorks), as "Jezioro łabędzie" is Swan Lake — not The Nutcracker
     val nutcracker = Film("Royal Ballet & Opera 2026/27: The Nutcracker", year = Some(2026))
-    IdentityMeasures.namesSeasonProduction(Listing("Royal Ballet and Opera Sezon Kinowy 2026-27: Dziadek do orzechów"), nutcracker) shouldBe true
-    IdentityMeasures.namesSeasonProduction(Listing("Royal Ballet and Opera Sezon Kinowy 2026-27: Jezioro łabędzie"), nutcracker) shouldBe false
-    IdentityMeasures.namesSeasonProduction(Listing("Royal Ballet and Opera Sezon Kinowy 2025-26: Dziadek do orzechów"), nutcracker) shouldBe false
+    StageRelays.namesSeasonProduction(Listing("Royal Ballet and Opera Sezon Kinowy 2026-27: Dziadek do orzechów"), nutcracker) shouldBe true
+    StageRelays.namesSeasonProduction(Listing("Royal Ballet and Opera Sezon Kinowy 2026-27: Jezioro łabędzie"), nutcracker) shouldBe false
+    StageRelays.namesSeasonProduction(Listing("Royal Ballet and Opera Sezon Kinowy 2025-26: Dziadek do orzechów"), nutcracker) shouldBe false
     // one work, another house: PL "Balet z Opery Paryskiej 2026-2027: Jezioro łabędzie" ×16 is the Paris Opera Ballet's
     // Swan Lake, which TMDB has no record of — not the Royal Ballet's (recording 37116030016 took it)
     val rboSwanLake = Film("Royal Ballet & Opera 2026/27: Swan Lake", year = Some(2026))
-    IdentityMeasures.namesSeasonProduction(Listing("Balet z Opery Paryskiej 2026-2027: Jezioro łabędzie"), rboSwanLake) shouldBe false
+    StageRelays.namesSeasonProduction(Listing("Balet z Opery Paryskiej 2026-2027: Jezioro łabędzie"), rboSwanLake) shouldBe false
     // nor by the art form both houses' names carry: DE "Opera de Paris: Romeo et Juliette (2026/27)" ×7 took the Royal
     // Ballet's 2026/27 record by "opera" (identity measure on recording 38363428661)
-    IdentityMeasures.namesSeasonProduction(Listing("Opera de Paris: Romeo et Juliette (2026/27)"),
+    StageRelays.namesSeasonProduction(Listing("Opera de Paris: Romeo et Juliette (2026/27)"),
       Film("RBO 2026/27: Romeo und Julia (The Royal Ballet)", originalTitle = Some("Royal Ballet & Opera 2026/27: Romeo and Juliet"),
         year = Some(2027))) shouldBe false
-    IdentityMeasures.namesSeasonProduction(Listing("Royal Ballet and Opera Sezon Kinowy 2026-27: Jezioro łabędzie"), rboSwanLake) shouldBe true
-    IdentityMeasures.namesSeasonProduction(Listing("OPERA 2026/2027 - MAKBET"),
+    StageRelays.namesSeasonProduction(Listing("Royal Ballet and Opera Sezon Kinowy 2026-27: Jezioro łabędzie"), rboSwanLake) shouldBe true
+    StageRelays.namesSeasonProduction(Listing("OPERA 2026/2027 - MAKBET"),
       Film("The Metropolitan Opera 2026/27: Macbeth", year = Some(2026))) shouldBe true
     // Wheeldon's Alice, under five sitelinks, from the extra; a work's name running on into a translated subtitle
-    IdentityMeasures.namesSeasonProduction(Listing("Royal Ballet and Opera Sezon Kinowy 2026-27: Alicja w Krainie Czarów"),
+    StageRelays.namesSeasonProduction(Listing("Royal Ballet and Opera Sezon Kinowy 2026-27: Alicja w Krainie Czarów"),
       Film("Royal Ballet & Opera 2026/27: Alice's Adventures in Wonderland", year = Some(2027))) shouldBe true
-    IdentityMeasures.namesSeasonProduction(Listing("Royal Ballet and Opera Sezon Kinowy 2026-27: Cosi fan tutte. Tak czynią wszystkie"),
+    StageRelays.namesSeasonProduction(Listing("Royal Ballet and Opera Sezon Kinowy 2026-27: Cosi fan tutte. Tak czynią wszystkie"),
       Film("Royal Ballet & Opera 2026/27: Così fan tutte", year = Some(2027))) shouldBe true
     // and is searched for by its own name in the season, not only by the whole subtitled piece
     IdentityMeasures.searchQueries(Listing("Royal Ballet and Opera Sezon Kinowy 2026-27: Cosi fan tutte. Tak czynią wszystkie")) should
       contain ("Così fan tutte 2026")
     // a venue's spelling Wikidata lacks, from the hand-kept extra: "Zaczarowany flet" is The Magic Flute
-    IdentityMeasures.namesSeasonProduction(Listing("OPERA 2026/2027 - ZACZAROWANY FLET"),
+    StageRelays.namesSeasonProduction(Listing("OPERA 2026/2027 - ZACZAROWANY FLET"),
       Film("The Metropolitan Opera 2026/27: The Magic Flute", year = Some(2026))) shouldBe true
   }
 
   "a film record of a broadcast's season production" should "be a segment of the listing's title, and only for a film" in {
     val met = Listing("Met Opera 2026-27: Samson et Dalila")
     val record = Film("The Metropolitan Opera 2026/27: Samson et Dalila", year = Some(2026))
-    IdentityMeasures.namesSeasonProduction(met, record) shouldBe true
+    StageRelays.namesSeasonProduction(met, record) shouldBe true
     IdentityMeasures.titleRelation(met, record) shouldBe Category("segment")
-    IdentityMeasures.namesSeasonProduction(Listing("Samson i dalila | metropolitan opera: live in hd 2026/27"),
+    StageRelays.namesSeasonProduction(Listing("Samson i dalila | metropolitan opera: live in hd 2026/27"),
       record.copy(alternativeTitles = Seq("The Metropolitan Opera 2026/27: Samson i Dalila"))) shouldBe true
     // Another season, another work of the season, or no season on one side: not its production.
     IdentityMeasures.titleRelation(met, record.copy(title = "The Metropolitan Opera 2025/26: Samson et Dalila")) shouldBe Category("overlap")
-    IdentityMeasures.namesSeasonProduction(met, Film("The Metropolitan Opera 2026/27: Macbeth")) shouldBe false
-    IdentityMeasures.namesSeasonProduction(Listing("Samson et Dalila"), record) shouldBe false
+    StageRelays.namesSeasonProduction(met, Film("The Metropolitan Opera 2026/27: Macbeth")) shouldBe false
+    StageRelays.namesSeasonProduction(Listing("Samson et Dalila"), record) shouldBe false
     // Two listings' banners do not say which house staged the work: the Met's and the RBO's
     // "Carmen" of one season are not one production by title.
     IdentityMeasures.listingListing(Listing("Met Opera 2026-27: Carmen"), Listing("RBO Cinema Season 2026-27: Carmen"),
@@ -366,8 +367,8 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     val group = (1 to 5).map(i => s"Venue $i" -> Listing("Candyman (1992)", directors = Seq("Bernard Rose")))
     val candyman = Film("Candyman", year = Some(1992), directors = Some(Seq("Bernard Rose")))
     val other    = Film("Paperhouse", year = Some(1988), directors = Some(Seq("Bernard Rose")))
-    (IdentityMeasures.backingVenues(candyman, group) - "Venue 1").size shouldBe 4
-    (IdentityMeasures.backingVenues(other, group) - "Venue 1").size shouldBe 0
+    (VenueBacking.backingVenues(candyman, group) - "Venue 1").size shouldBe 4
+    (VenueBacking.backingVenues(other, group) - "Venue 1").size shouldBe 0
   }
 
   "a group's venue backing" should "count, for every member and film, exactly what corroboratingVenues counts" in {
@@ -377,9 +378,9 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
       s"Venue ${i % 5}" -> Listing(if (i % 4 == 0) "Candyman (1992)" else "Candyman", year = Option.when(i % 3 == 0)(if (i % 2 == 0) 2021 else 1992),
         directors = if (i % 5 == 1) Seq("Nia DaCosta") else Nil)
     }
-    val backing = new IdentityMeasures.VenueBacking(Map("candyman" -> group))
+    val backing = new VenueBacking(Map("candyman" -> group))
     for (f <- films; (venue, _) <- group :+ ("Elsewhere" -> Listing("Candyman")))
-      withClue(s"$venue ${f.year}")(backing.corroborating(Seq("candyman"), f, venue) shouldBe (IdentityMeasures.backingVenues(f, group) - venue).size)
+      withClue(s"$venue ${f.year}")(backing.corroborating(Seq("candyman"), f, venue) shouldBe (VenueBacking.backingVenues(f, group) - venue).size)
   }
 
   it should "count nothing for a title group no venue lists" in {
@@ -388,18 +389,18 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     val decorated = Listing("Pucio 2D DUB", decorations = TitleDecorations(Set.empty, Set(Seq("2d", "dub"))))
     val groups    = IdentityMeasures.titleGroups(decorated)
     groups should contain (IdentityMeasures.key("Pucio"))
-    val backing = new IdentityMeasures.VenueBacking(Map(IdentityMeasures.key(decorated.title) -> Seq("Kino 1" -> decorated)))
+    val backing = new VenueBacking(Map(IdentityMeasures.key(decorated.title) -> Seq("Kino 1" -> decorated)))
     backing.corroborating(groups, Film("Pucio", year = Some(2026)), "Kino 2") shouldBe 0
   }
 
   "a title's billing" should "be the work two titles share and how each spells its house, and a banner's house the one most of its works name" in {
-    IdentityMeasures.billing(Listing("RBO Cinema Season 2026-27: Manon"), Film("The Metropolitan Opera 2026/27: Manon")) shouldBe
+    StageRelays.billing(Listing("RBO Cinema Season 2026-27: Manon"), Film("The Metropolitan Opera 2026/27: Manon")) shouldBe
       Some(Billing(Seq("rbo", "cinema", "season"), Seq("the", "metropolitan", "opera"), "manon"))
-    IdentityMeasures.billing(Listing("NT Live: Les Liaisons Dangereuses (2025)"), Film("National Theatre Live: Les Liaisons Dangereuses")) shouldBe
+    StageRelays.billing(Listing("NT Live: Les Liaisons Dangereuses (2025)"), Film("National Theatre Live: Les Liaisons Dangereuses")) shouldBe
       Some(Billing(Seq("nt", "live"), Seq("national", "theatre", "live"), "lesliaisonsdangereuses"))
     // The work alone on either side bills no house.
-    IdentityMeasures.billing(Listing("Manon"), Film("The Metropolitan Opera 2026/27: Manon")) shouldBe None
-    IdentityMeasures.billing(Listing("Throwback: Manon"), Film("Manon")) shouldBe None
+    StageRelays.billing(Listing("Manon"), Film("The Metropolitan Opera 2026/27: Manon")) shouldBe None
+    StageRelays.billing(Listing("Throwback: Manon"), Film("Manon")) shouldBe None
     def b(banner: String, house: String, work: String) = Billing(Seq(banner), Seq(house), work)
     val houses = Houses.learn(Seq(b("rbo", "royal", "swanlake"), b("rbo", "royal", "alice"), b("rbo", "met", "manon"), b("rbo", "royal", "swanlake"),
       b("met", "met", "manon"), b("met", "met", "otello"), b("tie", "royal", "a"), b("tie", "met", "b"), b("tie", "royal", "c"), b("tie", "met", "d"),
@@ -461,7 +462,7 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     val konesera = Listing("Kino Konesera: Róża", searchTitles = Seq("Róża"))
     IdentityMeasures.searchGroups(konesera, rose) shouldBe Seq("roza")
     val plain   = Seq("Rialto", "Apollo").map(venue => venue -> Listing("Róża", year = Some(2026), directors = Seq("Markus Schleinzer")))
-    val backing = new IdentityMeasures.VenueBacking(Map("roza" -> plain))
+    val backing = new VenueBacking(Map("roza" -> plain))
     backing.corroborating(IdentityMeasures.titleGroups(konesera), rose, "Oskard") shouldBe 0
     backing.corroborating(IdentityMeasures.titleGroups(konesera) ++ IdentityMeasures.searchGroups(konesera, rose), rose, "Oskard") shouldBe 2
     // a search form that is no title of the film names no group: "ANDRÉ RIEU - NIECH ŻYJE MAASTRICHT!", searched
@@ -474,9 +475,9 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // UK venues list "Royal Ballet and Opera: Così fan tutte" beside TMDB's "Royal Ballet & Opera
     // 2026/27: Così fan tutte"; the Paris Opera's banner, learned as the Met, shares only "opera".
     val houses = Houses(Map("royalballetandopera" -> "royalballetopera", "operanationaldeparis" -> "themetropolitanopera"))
-    IdentityMeasures.billsUnderItsHouse(Listing("Royal Ballet and Opera: Così fan tutte"),
+    StageRelays.billsUnderItsHouse(Listing("Royal Ballet and Opera: Così fan tutte"),
       Film("Royal Ballet & Opera 2026/27: Così fan tutte"), houses) shouldBe true
-    IdentityMeasures.billsUnderItsHouse(Listing("Opéra National de Paris: La fanciulla del West"),
+    StageRelays.billsUnderItsHouse(Listing("Opéra National de Paris: La fanciulla del West"),
       Film("The Metropolitan Opera 2026/27: La Fanciulla del West"), houses) shouldBe false
   }
 
@@ -485,7 +486,7 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // Home" streaming title and the bare play: Flicks' "NT Live: The Misanthrope" is its house's.
     val record = Film("National Theatre Live: The Misanthrope", originalTitle = Some("National Theatre Live: The Misanthrope"),
       alternativeTitles = Seq("National Theatre at Home: The Misanthrope", "The Misanthrope"), year = Some(2026), runtime = Some(105))
-    IdentityMeasures.billsUnderItsHouse(Listing("NT Live: The Misanthrope"), record, Houses(Map("ntlive" -> "nationaltheatrelive"))) shouldBe true
+    StageRelays.billsUnderItsHouse(Listing("NT Live: The Misanthrope"), record, Houses(Map("ntlive" -> "nationaltheatrelive"))) shouldBe true
   }
 
   "a title transliterated from another script" should "name the record carrying it in that script" in {
@@ -522,57 +523,57 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
   "two names of one renamed house" should "name one house, and no other house that shares a word with one of them" in {
     // UK "Tosca (ROH)" beside TMDB's "Royal Ballet & Opera 2026/27: Tosca": the Royal Opera House renamed itself in 2024
     def words(name: String) = name.split(" ").toSeq
-    IdentityMeasures.namesOneHouse(words("roh"), words("royal ballet opera")) shouldBe true
-    IdentityMeasures.namesOneHouse(words("rbo live"), words("royal opera house")) shouldBe true
-    IdentityMeasures.namesOneHouse(words("roh"), words("rbo")) shouldBe true
-    IdentityMeasures.namesOneHouse(words("roh"), words("royal shakespeare company")) shouldBe false
-    IdentityMeasures.namesOneHouse(words("roh"), words("the metropolitan opera")) shouldBe false
+    StageRelays.namesOneHouse(words("roh"), words("royal ballet opera")) shouldBe true
+    StageRelays.namesOneHouse(words("rbo live"), words("royal opera house")) shouldBe true
+    StageRelays.namesOneHouse(words("roh"), words("rbo")) shouldBe true
+    StageRelays.namesOneHouse(words("roh"), words("royal shakespeare company")) shouldBe false
+    StageRelays.namesOneHouse(words("roh"), words("the metropolitan opera")) shouldBe false
   }
 
   "a stage house's relay" should "deny a record of another work, in no language its work goes by" in {
     val macbeth = Listing("MET Opera: Macbeth 2026", originalTitle = Some("The Metropolitan Opera: Eugene Onegin"))
-    IdentityMeasures.namesAnotherWork(macbeth, Film("MET Opera: Eugen Onegin", Some("The Metropolitan Opera: Eugene Onegin"))) shouldBe true
-    IdentityMeasures.namesAnotherWork(macbeth, Film("The Metropolitan Opera 2026/27: Macbeth")) shouldBe false
+    StageRelays.namesAnotherWork(macbeth, Film("MET Opera: Eugen Onegin", Some("The Metropolitan Opera: Eugene Onegin"))) shouldBe true
+    StageRelays.namesAnotherWork(macbeth, Film("The Metropolitan Opera 2026/27: Macbeth")) shouldBe false
     val swan = Listing("RBO Live 2026/27: Schwanensee (Royal Ballet)")
-    IdentityMeasures.namesAnotherWork(swan, Film("RBO 2026/27: Tosca (The Royal Opera)", Some("Royal Ballet & Opera 2026/27: Tosca"))) shouldBe true
-    IdentityMeasures.namesAnotherWork(swan, Film("Royal Ballet & Opera 2026/27: Swan Lake")) shouldBe false
+    StageRelays.namesAnotherWork(swan, Film("RBO 2026/27: Tosca (The Royal Opera)", Some("Royal Ballet & Opera 2026/27: Tosca"))) shouldBe true
+    StageRelays.namesAnotherWork(swan, Film("Royal Ballet & Opera 2026/27: Swan Lake")) shouldBe false
     // a title naming nothing but its house names no work, and a film's title naming no house is no relay's
-    IdentityMeasures.namesAnotherWork(Listing("Royal Ballet & Opera Live"), Film("RBO 2026/27: Tosca (The Royal Opera)")) shouldBe false
-    IdentityMeasures.namesAnotherWork(Listing("Das Phantom der Oper"), Film("The Phantom of the Opera")) shouldBe false
-    IdentityMeasures.namesAnotherWork(Listing("Macbeth 2026"), Film("MET Opera: Eugen Onegin")) shouldBe false
+    StageRelays.namesAnotherWork(Listing("Royal Ballet & Opera Live"), Film("RBO 2026/27: Tosca (The Royal Opera)")) shouldBe false
+    StageRelays.namesAnotherWork(Listing("Das Phantom der Oper"), Film("The Phantom of the Opera")) shouldBe false
+    StageRelays.namesAnotherWork(Listing("Macbeth 2026"), Film("MET Opera: Eugen Onegin")) shouldBe false
     // a venue's composer, tag or translation beside the work's name, and a work billed whole under a programme banner
     val met = Film("The Metropolitan Opera 2026/27: Macbeth")
     Seq("The Metropolitan Opera: Macbeth ENCORE (2026)", "Met Opera 2026/27: Giuseppe Verdi MACBETH", "MET Opera: Macbeth-Verdi (2026)")
-      .foreach(title => withClue(title)(IdentityMeasures.namesAnotherWork(Listing(title), met) shouldBe false))
-    IdentityMeasures.namesAnotherWork(Listing("Royal Ballet and Opera Sezon Kinowy 2026-27: Cosi fan tutte. Tak czynią wszystkie"),
+      .foreach(title => withClue(title)(StageRelays.namesAnotherWork(Listing(title), met) shouldBe false))
+    StageRelays.namesAnotherWork(Listing("Royal Ballet and Opera Sezon Kinowy 2026-27: Cosi fan tutte. Tak czynią wszystkie"),
       Film("Royal Ballet & Opera 2026/27: Così fan tutte")) shouldBe false
-    IdentityMeasures.namesAnotherWork(Listing("MUSICAL MITTWOCH - Das Phantom der Oper"), Film("Das Phantom der Oper")) shouldBe false
-    IdentityMeasures.namesAnotherWork(Listing("MUSICAL MITTWOCH - Das Phantom der Oper"), Film("Phantom der Oper")) shouldBe false
+    StageRelays.namesAnotherWork(Listing("MUSICAL MITTWOCH - Das Phantom der Oper"), Film("Das Phantom der Oper")) shouldBe false
+    StageRelays.namesAnotherWork(Listing("MUSICAL MITTWOCH - Das Phantom der Oper"), Film("Phantom der Oper")) shouldBe false
     // a fragment naming only the art form is no title a record can carry whole: UK Riverside Theatre Woodbridge's "Macbeth -
     // Opera 2026" (recording 38326582997) took Argento's 1987 "Opera" by its "Opera" alone
-    IdentityMeasures.namesAnotherWork(Listing("Macbeth - Opera 2026"), Film("Opera")) shouldBe true
-    IdentityMeasures.namesAnotherWork(Listing("Macbeth - Opera 2026"), Film("The Metropolitan Opera 2026/27: Macbeth")) shouldBe false
+    StageRelays.namesAnotherWork(Listing("Macbeth - Opera 2026"), Film("Opera")) shouldBe true
+    StageRelays.namesAnotherWork(Listing("Macbeth - Opera 2026"), Film("The Metropolitan Opera 2026/27: Macbeth")) shouldBe false
   }
 
   "a stage house's relay" should "know a record billing its house from one billing another's" in {
     val enb = Listing("English National Ballet: The Sleeping Beauty")
-    IdentityMeasures.billsItsHouse(enb, Film("English National Ballet presents The Sleeping Beauty")) shouldBe true
-    IdentityMeasures.billsAnotherHouse(enb, Film("The Sleeping Beauty", alternativeTitles = Seq("The Sleeping Beauty (The Royal Ballet)"))) shouldBe true
-    IdentityMeasures.billsAnotherHouse(enb, Film("The Sleeping Beauty")) shouldBe false
+    StageRelays.billsItsHouse(enb, Film("English National Ballet presents The Sleeping Beauty")) shouldBe true
+    StageRelays.billsAnotherHouse(enb, Film("The Sleeping Beauty", alternativeTitles = Seq("The Sleeping Beauty (The Royal Ballet)"))) shouldBe true
+    StageRelays.billsAnotherHouse(enb, Film("The Sleeping Beauty")) shouldBe false
     val rbo = Listing("RBO Live 2026/27: Manon (Royal Ballet)")
-    IdentityMeasures.billsItsHouse(rbo, Film("RBO 2026/27: Manon (The Royal Ballet)", Some("Royal Ballet & Opera 2026/27: Manon"))) shouldBe true
-    IdentityMeasures.billsAnotherHouse(rbo, Film("The Metropolitan Opera 2026/27: Manon")) shouldBe true
-    IdentityMeasures.billsItsHouse(Listing("MET Opera Live im Kino: Manon"), Film("The Metropolitan Opera 2026/27: Manon")) shouldBe true
-    IdentityMeasures.billsItsHouse(Listing("ROH: Tosca"), Film("Royal Opera House: Tosca")) shouldBe true
+    StageRelays.billsItsHouse(rbo, Film("RBO 2026/27: Manon (The Royal Ballet)", Some("Royal Ballet & Opera 2026/27: Manon"))) shouldBe true
+    StageRelays.billsAnotherHouse(rbo, Film("The Metropolitan Opera 2026/27: Manon")) shouldBe true
+    StageRelays.billsItsHouse(Listing("MET Opera Live im Kino: Manon"), Film("The Metropolitan Opera 2026/27: Manon")) shouldBe true
+    StageRelays.billsItsHouse(Listing("ROH: Tosca"), Film("Royal Opera House: Tosca")) shouldBe true
     // a work billed in the house's word names no house: PL "OPERA-MANON" is no relay of Royal Opera House's "Manon"
-    IdentityMeasures.billsItsHouse(Listing("OPERA-MANON"), Film("BALLET LIVE. MANON. ROYAL ÓPERA HOUSE")) shouldBe false
-    IdentityMeasures.billsItsHouse(Listing("OPERA- SILENT NIGHT"), Film("Silent Night (Opera North)")) shouldBe false
+    StageRelays.billsItsHouse(Listing("OPERA-MANON"), Film("BALLET LIVE. MANON. ROYAL ÓPERA HOUSE")) shouldBe false
+    StageRelays.billsItsHouse(Listing("OPERA- SILENT NIGHT"), Film("Silent Night (Opera North)")) shouldBe false
     // the kind of institution names no house: records the unmatched-cluster captures hold of other national companies
-    IdentityMeasures.billsItsHouse(enb, Film("The Sleeping Beauty (Dutch National Ballet)")) shouldBe false
-    IdentityMeasures.billsAnotherHouse(enb, Film("The Sleeping Beauty (Dutch National Ballet)")) shouldBe true
-    IdentityMeasures.billsItsHouse(Listing("English National Ballet: Swan Lake"), Film("Swan Lake - Ballet Company of the National Opera of Ukraine")) shouldBe false
-    IdentityMeasures.billsItsHouse(Listing("Wiener Staatsoper: Tosca"), Film("Bayerische Staatsoper: Tosca")) shouldBe false
-    IdentityMeasures.billsItsHouse(Listing("Royal Opera House: Carmen"), Film("Sydney Opera House: Carmen")) shouldBe false
+    StageRelays.billsItsHouse(enb, Film("The Sleeping Beauty (Dutch National Ballet)")) shouldBe false
+    StageRelays.billsAnotherHouse(enb, Film("The Sleeping Beauty (Dutch National Ballet)")) shouldBe true
+    StageRelays.billsItsHouse(Listing("English National Ballet: Swan Lake"), Film("Swan Lake - Ballet Company of the National Opera of Ukraine")) shouldBe false
+    StageRelays.billsItsHouse(Listing("Wiener Staatsoper: Tosca"), Film("Bayerische Staatsoper: Tosca")) shouldBe false
+    StageRelays.billsItsHouse(Listing("Royal Opera House: Carmen"), Film("Sydney Opera House: Carmen")) shouldBe false
   }
 
   "a record billing the listing's work under its learned house" should "be a segment of its title, and only under that house" in {
@@ -591,26 +592,26 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
       // TMDB files the Paris Opera's broadcasts' works only under the Met's records, so its banner is
       // learned as the Met; League of Legends' two finals banners share every word but the number.
       "operanationaldeparis" -> "themetropolitanopera", "leagueoflegendsworlds26" -> "leagueoflegendsworlds25"))
-    IdentityMeasures.billsUnderItsHouse(Listing("NT Live: The Misanthrope"), Film("National Theatre Live: The Misanthrope"), houses) shouldBe true
-    IdentityMeasures.billsUnderItsHouse(Listing("NT Live: The Misanthrope"), Film("The Misanthrope"), houses) shouldBe false
+    StageRelays.billsUnderItsHouse(Listing("NT Live: The Misanthrope"), Film("National Theatre Live: The Misanthrope"), houses) shouldBe true
+    StageRelays.billsUnderItsHouse(Listing("NT Live: The Misanthrope"), Film("The Misanthrope"), houses) shouldBe false
     // A record of one SEASON's broadcast names its production by the season, which the listing does not.
-    IdentityMeasures.billsUnderItsHouse(Listing("Opéra National de Paris: La fanciulla del West"),
+    StageRelays.billsUnderItsHouse(Listing("Opéra National de Paris: La fanciulla del West"),
       Film("The Metropolitan Opera 2026/27: La Fanciulla del West"), houses) shouldBe false
     // A listing naming a season takes its house's record naming none (seasonsApart bounds its year), but never one
     // naming a season: that is the season rule's to read.
-    IdentityMeasures.billsUnderItsHouse(Listing("MetOpera 2025-26: La Sonnambula"), Film("The Metropolitan Opera: La Sonnambula"),
+    StageRelays.billsUnderItsHouse(Listing("MetOpera 2025-26: La Sonnambula"), Film("The Metropolitan Opera: La Sonnambula"),
       Houses(Map("metopera" -> "themetropolitanopera"))) shouldBe true
-    IdentityMeasures.billsUnderItsHouse(Listing("MetOpera 2025-26: La Sonnambula"), Film("The Metropolitan Opera 2024/25: La Sonnambula"),
+    StageRelays.billsUnderItsHouse(Listing("MetOpera 2025-26: La Sonnambula"), Film("The Metropolitan Opera 2024/25: La Sonnambula"),
       Houses(Map("metopera" -> "themetropolitanopera"))) shouldBe false
     // A banner numbering its edition otherwise than the record's is another edition.
-    IdentityMeasures.billsUnderItsHouse(Listing("League of Legends Worlds 26 | Finals in Cinema"),
+    StageRelays.billsUnderItsHouse(Listing("League of Legends Worlds 26 | Finals in Cinema"),
       Film("League of Legends Worlds25 - Finals in Cinema"), houses) shouldBe false
-    IdentityMeasures.billsUnderItsHouse(Listing("Berliner Philharmoniker LIVE: New Year’s Eve Concert 2025"),
+    StageRelays.billsUnderItsHouse(Listing("Berliner Philharmoniker LIVE: New Year’s Eve Concert 2025"),
       Film("Berliner Philharmoniker: New Year’s Eve Concert 2025"), Houses(Map("berlinerphilharmonikerlive" -> "berlinerphilharmoniker"))) shouldBe true
     // A cut or an edition is no house: DE Movietown Brandenburg's "Das Boot - Director s Cut" took TMDB's yearless "Das
     // Boot - Directors Cut" record as the house production of "Das Boot", not Petersen's film.
-    IdentityMeasures.billsUnderItsHouse(Listing("Das Boot - Director s Cut"), Film("Das Boot - Directors Cut"), Houses.Unknown) shouldBe false
-    IdentityMeasures.billsUnderItsHouse(Listing("DAS BOOT (DIRECTOR'S CUT)(WA:2023)"), Film("Das Boot - Directors Cut"), Houses.Unknown) shouldBe false
+    StageRelays.billsUnderItsHouse(Listing("Das Boot - Director s Cut"), Film("Das Boot - Directors Cut"), Houses.Unknown) shouldBe false
+    StageRelays.billsUnderItsHouse(Listing("DAS BOOT (DIRECTOR'S CUT)(WA:2023)"), Film("Das Boot - Directors Cut"), Houses.Unknown) shouldBe false
   }
 
   "qualifiers" should "be the pieces records bill beside more works than the rest of the listing's title" in {
@@ -996,7 +997,7 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.namesFilm(Listing("Cineworld 30: The Matrix"), Film("The Matrix")) shouldBe true
     // So no venue's own facts back the original on a sequel's title.
     val group = Seq("a", "b").map(_ -> listing.copy(directors = Seq("Tobe Hooper")))
-    IdentityMeasures.backingVenues(original.copy(directors = Some(Seq("Tobe Hooper"))), group) shouldBe empty
+    VenueBacking.backingVenues(original.copy(directors = Some(Seq("Tobe Hooper"))), group) shouldBe empty
   }
 
   "a listing that publishes nothing but its title" should "be told from one that publishes a fact" in {

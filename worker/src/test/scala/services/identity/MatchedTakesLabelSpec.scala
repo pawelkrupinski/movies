@@ -54,7 +54,7 @@ class MatchedTakesLabelSpec extends AnyFlatSpec with Matchers {
     ("uk", "Triple Feature: Lord of the Rings", "tmdb:122") -> multiFilmBill,
     ("us", "Triple Feature: Lord of the Rings", "tmdb:122") -> multiFilmBill,
     ("uk", "We're Going on a Bear Hunt+Tiger Who Came to...", "tmdb:431591") ->
-      ("matched to no film since IdentityMeasures.billPieces: an unspaced \"+\" between two works of two words or more " +
+      ("matched to no film since MultiFilmBill.billPieces: an unspaced \"+\" between two works of two words or more " +
         "joins a double bill (IdentityResolverCasesSpec) — struck once the rows are re-emitted"),
     ("de", "Karla", "tmdb:276944") ->
       ("the 1965 Karla, as the rows' old model took it at Filmpalast Iserlohn; convergence run 38487614044 (2026-10-14) " +

@@ -68,8 +68,8 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
   private def firstHit(ranked: Seq[Scored]): String = ranked.find(_.rank.contains(1)).fold("its search returned nothing")(hit => s"first hit ${Acceptance.named(hit)}")
   /** The first-ranked candidate, the listing every rule reads off it — refused when there is none. */
   private def firstCandidate(ranked: Seq[Scored]): Either[Refused, Scored] = ranked.headOption.toRight(Refused("no candidate"))
-  /** Refuses a listing billing two works ([[IdentityMeasures.billsTwoWorks]]): a double bill is neither film. */
-  private def notADoubleBill(listing: IdentityMeasures.Listing): Either[Refused, Unit] = need(!IdentityMeasures.billsTwoWorks(listing), "a double bill")
+  /** Refuses a listing billing two works ([[MultiFilmBill.billsTwoWorks]]): a double bill is neither film. */
+  private def notADoubleBill(listing: IdentityMeasures.Listing): Either[Refused, Unit] = need(!MultiFilmBill.billsTwoWorks(listing), "a double bill")
   /** `scored` accepted at its own probability. */
   private def atOwn(scored: Scored): Accepted = scored -> scored.probability
   private def cut(probability: Double) = f"${probability * 100}%.1f%% < ${calibration.ratingCut * 100}%.1f%%"
@@ -142,7 +142,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
       other.probability >= taken.probability)
 
   /** A DOUBLE PROGRAMME: two quoted works a conjunction joins ([[ListingShape.quotesTwoJoined]], PL "„Mieszkanie” i „Owoce
-   *  rajskich drzew spożywamy”"), or a "+" joining two whole works ([[IdentityMeasures.billsTwoWholeWorks]]), whatever is held
+   *  rajskich drzew spożywamy”"), or a "+" joining two whole works ([[MultiFilmBill.billsTwoWholeWorks]]), whatever is held
    *  of them, is neither film (user rule) — UK "We're Going on a Bear Hunt + The Tiger Who Came to Tea" {Joanna
    *  Harrison, Robin Shaw} ×133, its two films scored 91–93% and popularity's coin picking one; PL Kino Pałacowe's
    *  "Historia kina w Popielawach + Pruska kultura", a 1908 short TMDB does not hold. A talk joined to one film
@@ -152,8 +152,8 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  Man"), and then only that film may be taken ([[takesNoBill]]). */
   def billsSeveralWorks(ranked: Seq[Scored]): Boolean = ranked.headOption.exists { any =>
     any.listing.rawTitle.exists(ListingShape.quotesSeveralDated) || (any.listing.title +: any.listing.rawTitle.toSeq).exists(ListingShape.quotesTwoJoined) ||
-    (IdentityMeasures.billsTwoWorks(any.listing) && !eligibleOf(ranked).exists(_.category("title").contains("exact")) &&
-      IdentityMeasures.billsTwoWholeWorks(any.listing)) ||
+    (MultiFilmBill.billsTwoWorks(any.listing) && !eligibleOf(ranked).exists(_.category("title").contains("exact")) &&
+      MultiFilmBill.billsTwoWholeWorks(any.listing)) ||
       markerOf(ranked).exists(marker => !eligibleOf(ranked).exists(scored => MultiFilmBill.namedBy(marker, scored.candidate.film)) &&
         billedAlone(ranked).isEmpty)
   }
@@ -422,7 +422,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  film, its 1965 namesake 3.3%; "Lalka" leans to the 2026 film at 68.1%, not the 1968 one the old pipeline rated
    *  it as; "Bolek i Lolek" (28.9% beside "Reksio" at 28.9%) and the 1986 and 2025 "Caravaggio" lean to neither. */
   def leaning(ranked: Seq[Scored]): Option[Scored] =
-    Option.when(ranked.headOption.forall(any => !IdentityMeasures.billsTwoWorks(any.listing)) && !billsSeveralWorks(ranked))(eligibleOf(ranked))
+    Option.when(ranked.headOption.forall(any => !MultiFilmBill.billsTwoWorks(any.listing)) && !billsSeveralWorks(ranked))(eligibleOf(ranked))
       .flatMap(eligible => eligible.headOption.filter(best => eligible.lift(1).forall(runnerUp =>
         best.probability >= Acceptance.LeanMargin * runnerUp.probability) && closerThan(best, eligible).isEmpty))
 
@@ -511,7 +511,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
     // on the source's own record only — one parsed from IMDb's answer always holds its principal credits — never the
     // title and year a suggestion gave before the record was filed, which no credit or running time could rule out
     val titled = eligibleOf(ranked).filter(scored => scored.category("title").exists(IdentityMeasures.Rivalling) && scored.candidate.film.directors.isDefined)
-    titled.headOption.filter(best => !IdentityMeasures.billsTwoWorks(best.listing) && !contradicted(best) && corroborated(best) &&
+    titled.headOption.filter(best => !MultiFilmBill.billsTwoWorks(best.listing) && !contradicted(best) && corroborated(best) &&
       !best.category("director").contains("different") && titled.drop(1).forall(favours(best, _)))
   }
 
@@ -571,7 +571,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
     // only record billing that work, whatever its running time: two seasons of one staging (Oliver Mears's Tosca,
     // 2025/26 and 2026/27, the later with no credits or running time yet) are the season's to tell apart, not this rule's
     // — counting every record billing it that credits no OTHER director: a season's record often credits nobody yet.
-    def bills(scored: Scored) = IdentityMeasures.billings(scored.listing, scored.candidate.film).nonEmpty
+    def bills(scored: Scored) = StageRelays.billings(scored.listing, scored.candidate.film).nonEmpty
     lazy val billedAlike = eligibleOf(ranked).count(scored => bills(scored) && !scored.category("director").contains("different"))
     def billedWork(scored: Scored) = IdentityMeasures.sameDirector(scored.measures) && bills(scored) && billedAlike == 1 &&
       IdentityMeasures.runtimeGap(scored.measures).exists(_ <= BilledRuntime)
@@ -659,7 +659,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
 
   /** A stage broadcast billed with no season but with its year — in its field or its title: the one eligible SEASON
    *  record naming the same stage work ([[StageWorks]], in any language), billing the listing's house
-   *  ([[IdentityMeasures.bannerNamesItsHouse]]), from the very year the venue publishes, that no running time contradicts. DE
+   *  ([[StageRelays.bannerNamesItsHouse]]), from the very year the venue publishes, that no running time contradicts. DE
    *  "Royal Ballet & Opera im Kino: Manon" [2026] {Kenneth MacMillan} ×59 is "Royal Ballet & Opera 2026/27: Manon"
    *  (October 2026), not the Met's 2026/27 Manon (April 2027), which "MET Opera Live im Kino: Manon" [2027] ×4 is; DE
    *  "RBO live 2027: Tosca" is the RBO's 2026/27 record, not the ROH's 2011 one IMDb suggests. It pre-empts every rule
@@ -669,11 +669,11 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
     for {
       any    <- firstCandidate(ranked)
       _      <- need(any.listing.seasonYear.isEmpty, "the title names its season")
-      year   <- any.listing.statedYear.orElse(IdentityMeasures.bannerYear(any.listing)).toRight(Refused("the listing publishes no year"))
-      works   = IdentityMeasures.stageWorks(any.listing)
+      year   <- any.listing.statedYear.orElse(StageRelays.bannerYear(any.listing)).toRight(Refused("the listing publishes no year"))
+      works   = StageRelays.stageWorks(any.listing)
       _      <- need(works.nonEmpty, "the title names no stage work")
       record <- one(eligibleOf(ranked).filter(scored => scored.candidate.film.season.isDefined &&
-                  IdentityMeasures.stageWorks(scored.candidate.film).exists(works) && IdentityMeasures.bannerNamesItsHouse(any.listing, scored.candidate.film) &&
+                  StageRelays.stageWorks(scored.candidate.film).exists(works) && StageRelays.bannerNamesItsHouse(any.listing, scored.candidate.film) &&
                   scored.candidate.film.year.contains(year) && !contradicted(scored)),
                   "no season record of its work from its year", "two season records of its work from its year", s"works ${works.toSeq.sorted.mkString(",")}, $year")
     } yield atOwn(record)
@@ -686,7 +686,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  one; a fact contradicting it, or another director, refuses it.
    *
    *  So is the record of the very season the listing's screenings broadcast it in that names its stage work under its
-   *  house ([[IdentityMeasures.bannerNamesItsHouse]]), however the venue shortens the banner: prod UK 2026-10-13 "MET:
+   *  house ([[StageRelays.bannerNamesItsHouse]]), however the venue shortens the banner: prod UK 2026-10-13 "MET:
    *  Macbeth" (17 October 2026), "RBO: Tosca 27" and "Macbeth (Met Opera)" are the Met's and RBO's 2026/27 records. */
   private def seasonRecord(ranked: Seq[Scored]): Option[Accepted] = ownInstalment(seasonRecordWhy(ranked)).toOption
   /** [[seasonRecord]]'s answer when it is a record of the season the listing's screenings broadcast it in: it pre-empts
@@ -708,7 +708,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
       own     = (Seq(listing.title) ++ listing.rawTitle).map(plain).toSet
       record <- one(ofItsBroadcastSeason(ranked.filter(scored => (isEligible(scored) || scored.deniedByCutOnly) &&
                   scored.candidate.film.season.isDefined &&
-                  (scored.candidate.film.titles.exists(t => own(plain(IdentityMeasures.withoutSeasons(t)))) || IdentityMeasures.screenedSeasonRecord(listing, scored.candidate.film)))),
+                  (scored.candidate.film.titles.exists(t => own(plain(IdentityMeasures.withoutSeasons(t)))) || StageRelays.screenedSeasonRecord(listing, scored.candidate.film)))),
                   "no season record carries its title or its work under its house", "two seasons' records carry its title")
       _      <- needOf(!contradicted(record), "a published fact contradicts it", record, contradiction(record))
       // a season spans two years: a year the listing states outside them is another season's broadcast (UK Aldeburgh's
@@ -716,7 +716,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
       // record of the season its screenings broadcast it in, whose year it predates: that year dates the staging's premiere
       // (Aldeburgh's, screening on 25 May 2027, is "Royal Ballet & Opera 2026/27: Romeo and Juliet", aired that day)
       _      <- needOf(listing.year.forall(year => record.candidate.film.season.forall(season => year == season || year == season + 1)) ||
-                  IdentityMeasures.screenedSeasonRecord(listing, record.candidate.film), "the year it states is another season's", record)
+                  StageRelays.screenedSeasonRecord(listing, record.candidate.film), "the year it states is another season's", record)
       _      <- needOf(!record.category("director").exists(Set("different", "different_script")), "it credits another director", record)
     } yield atOwn(record)
   }

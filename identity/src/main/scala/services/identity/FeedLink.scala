@@ -8,7 +8,7 @@ package services.identity
  *  "Momo" at four to the 1986 one (2265m, its year copied), while every other source listing the title — Filmstarts'
  *  entry, kinoheld's page, Cineamo's own other entry — states the 2025 film's year and director.
  *
- *  Overruled when no source other than the feed's own entry backs the linked film ([[IdentityMeasures.VenueBacking]]:
+ *  Overruled when no source other than the feed's own entry backs the linked film ([[VenueBacking]]:
  *  a title naming it beside its year or director) while [[OverrulingSources]] or more back one film the title names as
  *  its own, whole or as one delimited piece — a link no one confirms against a film others independently state. DE Astor's
  *  "ATMOS: Michael", linked to Dreyer's 1924 film with its year copied, is the "Michael" other sources date 2026 and

@@ -167,12 +167,12 @@ class ResolverAllocationSpec extends AnyFlatSpec with Matchers {
     val bi    = Film("Kaili Blues", year = Some(2015), directors = Some(Seq("毕赣")))
     val names = Seq("Bi Gan", "Mikhail Ivanov", "Pedro Almodóvar", "Ivanov, Petrov", "Иван Петров", "")
     names.foreach { name =>
-      val credits = new IdentityMeasures.Credits(Seq(name))
+      val credits = new CreditRelation.Credits(Seq(name))
       credits.inLatin.names shouldBe credits.names.map(n => com.ibm.icu.text.Transliterator.getInstance("Any-Latin; Latin-ASCII").transliterate(n))
     }
     IdentityMeasures.listingFilm(Listing("Kaili Blues", directors = Seq("Bi Gan")), bi, Some(1), 0, 0)("director") shouldBe
       IdentityMeasures.Category("same_person")
-    allocatesUnder(512.0)(() => new IdentityMeasures.Credits(Seq("Mikhail Ivanov")).inLatin.names.size.toDouble)
+    allocatesUnder(512.0)(() => new CreditRelation.Credits(Seq("Mikhail Ivanov")).inLatin.names.size.toDouble)
   }
 
   "two titles one typo apart" should "be told without a vector of their differing words per pair, to the same answer" in {

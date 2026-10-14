@@ -4,8 +4,8 @@ import services.identity.IdentityMeasures.Measure
 
 /** A candidate scored for `listing`, which its own title searches ranked at `rank` (best,
  *  1-based). `seasonProduction`: the film's record names the listing's season production
- *  (`IdentityMeasures.namesSeasonProduction`). `houseProduction`: the film's record bills the
- *  listing's work under the listing's own house (`IdentityMeasures.billsUnderItsHouse`).
+ *  (`StageRelays.namesSeasonProduction`). `houseProduction`: the film's record bills the
+ *  listing's work under the listing's own house (`StageRelays.billsUnderItsHouse`).
  *  `deniedByPin`: a pin, not the listing's evidence, is (part of) why it is `denied`. */
 private[identity] final case class Scored(candidate: Candidate, probability: Double, measures: Map[String, Measure], denial: Option[String],
                                           listing: IdentityMeasures.Listing, rank: Option[Int],

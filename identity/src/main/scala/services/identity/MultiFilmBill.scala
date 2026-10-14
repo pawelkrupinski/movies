@@ -1,6 +1,6 @@
 package services.identity
 
-import services.movies.TitleContainment
+import services.movies.{TitleContainment, TitleWords}
 
 /**
  * A listing billing SEVERAL films as one programme by a word that says so — a double or triple feature, a trilogy, a
@@ -16,7 +16,7 @@ import services.movies.TitleContainment
  * [[namedBy]] answers for the film a rule would take. An alternative title is not its own: "Whistle" is filed under
  * "Maraton horrorów" somewhere, and that is how the marathon took it.
  *
- * The "+" joining two whole works ([[IdentityMeasures.billsTwoWholeWorks]]) is the structural half of the same rule.
+ * The "+" joining two whole works ([[MultiFilmBill.billsTwoWholeWorks]]) is the structural half of the same rule.
  */
 object MultiFilmBill {
 
@@ -84,4 +84,57 @@ object MultiFilmBill {
   def billsBeside(titles: Seq[String], film: IdentityMeasures.Film): Boolean = marker(titles).exists(!namedBy(_, film))
 
   private def folded(title: String): String = TitleContainment.tokens(title).mkString(" ")
+
+  private val BillJoin = """\s\+\s""".r
+  private val TightJoin = """(?<=\p{L}{2})\+(?=\p{L}{2})""".r
+  /** The pieces a bill's "+" joins in `title`: a spaced "+" always, an unspaced one only between two pieces of two words
+   *  or more — UK Odeon's "We're Going on a Bear Hunt+Tiger Who Came to..." — never inside one title's own words
+   *  ("Love+War"), a talk's ("Q+A") or a house's name ("RB+O 2026/27"). One piece when it joins none. */
+  private[identity] def billPieces(title: String): Seq[String] =
+    if (title.indexOf('+') < 0) Seq(title) // every rule asks, and almost no title holds a "+"
+    else BillJoin.split(title).toSeq.flatMap { piece =>
+      val parts = TightJoin.split(piece).toSeq
+      def words(part: String) = TitleContainment.tokens(part).count(word => word.length > 1 && word.exists(_.isLetter))
+      if (parts.sizeIs == 2 && parts.forall(words(_) >= 2)) parts else Seq(piece)
+    }
+  /** Does `title` join works by a bill's "+" ([[billPieces]])? */
+  private[identity] def joinsWorks(title: String): Boolean = title.indexOf('+') >= 0 && (BillJoin.findFirstIn(title).isDefined || billPieces(title).sizeIs > 1)
+
+  /** What a double bill joins LAST with a "+" ([[billPieces]]: "… + The Tiger Who Came to Tea") — a film, or a talk. */
+  def billedSecondTitle(l: IdentityMeasures.Listing): Option[String] = billPieces(l.decorations.withoutTail(l.title)).lastOption.filter(_ => billsTwoWorks(l)).map(_.trim)
+
+  /** Does the listing bill two works with a "+" ([[billPieces]]) — a double bill, whose facts are one of its films'? Not when
+   *  what it bills last is a learned event tail ([[TitleDecorations.withoutTail]]): "Punku + spotkanie z reżyserem". */
+  def billsTwoWorks(l: IdentityMeasures.Listing): Boolean = l.ownTitles.exists(t => joinsWorks(l.decorations.withoutTail(t)))
+  /** Does the listing bill two WHOLE WORKS — two of the pieces its "+" joins ([[billPieces]]) naming no event, whatever a database
+   *  holds of either? A talk, a screening note or a format joined to one film ("+ prelekcja", "+ spotkanie z reżyserem",
+   *  "+ napisy EN", a bracketed "(AD + CC + PJM)") is no second work. PL Kino Pałacowe "… | Historia kina w Popielawach +
+   *  Pruska kultura" bills a 1908 short TMDB does not hold: no candidate stood for it, yet the bill is neither film. */
+  def billsTwoWholeWorks(l: IdentityMeasures.Listing): Boolean =
+    l.ownTitles.exists { t =>
+      val pieces = billPieces(l.decorations.withoutTail(Bracketed.replaceAllIn(t, " ").trim))
+      // the programme the last work runs into after a spaced dash is the bill's ("… + Kocia Szajka - Festiwal TAURON
+      // Młode Horyzonty"): the work is what precedes it
+      (pieces.init :+ ProgrammeDash.pattern.split(pieces.last, 2).head).count(namesAWork) >= 2
+    }
+  private val Bracketed     = """\([^()]*\)|\[[^\[\]]*\]""".r
+  private val ProgrammeDash = """\s[-–—]\s""".r
+  private def namesAWork(piece: String): Boolean = {
+    // a one-letter word names nothing: "Q&A" is no work, and the "a" of "We're Going on a Bear Hunt" no event; a title
+    // of numbers is one ("2 x 2 = 4", billed after "Zakazane piosenki")
+    val all   = TitleContainment.tokens(piece)
+    val words = all.filter(_.length > 1)
+    (words.exists(_.exists(_.isLetter)) || all.sizeIs >= 3) &&
+      !words.exists(w => EventTailWords(w) || services.movies.FormatTags.FormatToken.contains(w))
+  }
+  /** What a piece a bill joins after a film names when it names an event, not a work: a talk, a lecture, a workshop, a
+   *  quiz, a gala, an exhibition or its opening, a concert, a (poster) tour, a signing — PL, EN, DE, ES — beside the
+   *  segment model's event words. "OPĘTANIE + TRASA PLAKATOWA" (Światowid) is one film and a poster tour. */
+  private val EventTailWords: Set[String] = DecorationWords.EventWords ++ TitleWords.tokens(TitleWords.Concept.SideEvent)
+  /** The works a DOUBLE BILL joins with a spaced "+" ("Basia. Humor w paski mam + Kocia Szajka"),
+   *  each searched on its own: the database has no record of the bill, so without them the only
+   *  candidates are what a credited director's filmography walks to. Searched, not shapes: a bill
+   *  is neither of its works, which is why its family keys leave them out. */
+  private[identity] def billedWorks(l: IdentityMeasures.Listing): Seq[String] =
+    l.ownTitles.map(t => billPieces(l.decorations.withoutTail(t)).map(_.trim).filter(_.nonEmpty)).filter(_.sizeIs > 1).flatten
 }

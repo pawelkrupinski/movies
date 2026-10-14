@@ -24,13 +24,13 @@ class ListingShapeSpec extends AnyFlatSpec with Matchers {
   "a listing's backer in its title group" should "be its venue's name itself for the venue's own claim, a feed's entry joined to it" in {
     // held for every listing for the corpus's life: a venue's own claim costs no string of its own
     val own = listing(KinoMuza, "Karla")
-    IdentityMeasures.Backer(own.venue, SourceReliability.claimOf(own)) should be theSameInstanceAs own.venue
+    Backer(own.venue, SourceReliability.claimOf(own)) should be theSameInstanceAs own.venue
     // one feed entry listed at many venues is one source, its venue kept beside it
     val fed    = own.copy(catalogueIds = Seq(CatalogueId(CatalogueSources.Webedia.source, "1000023315")))
-    val backer = IdentityMeasures.Backer(fed.venue, SourceReliability.claimOf(fed))
-    IdentityMeasures.Backer.venue(backer) shouldBe own.venue
-    IdentityMeasures.Backer.source(backer) shouldBe CatalogueId(CatalogueSources.Webedia.source, "1000023315").key
-    IdentityMeasures.Backer.source(IdentityMeasures.Backer(own.venue, SourceReliability.claimOf(own))) shouldBe SourceReliability.claimOf(own)
+    val backer = Backer(fed.venue, SourceReliability.claimOf(fed))
+    Backer.venue(backer) shouldBe own.venue
+    Backer.source(backer) shouldBe CatalogueId(CatalogueSources.Webedia.source, "1000023315").key
+    Backer.source(Backer(own.venue, SourceReliability.claimOf(own))) shouldBe SourceReliability.claimOf(own)
   }
 
   "a programme slot" should "be a festival's or season's banner and a slot of its programme, nothing else" in {
