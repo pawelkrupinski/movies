@@ -72,6 +72,9 @@ HISTORY_WINDOW_DAYS = 7
 HISTORY_SKIPPED = {"cancelled", "skipped"}
 # A run's jobs asked this many times before the run is skipped (with a warning), and how many runs' jobs are read at once.
 HISTORY_ATTEMPTS = 3
+# Prometheus takes no sample older than its out-of-order window (prometheus.yaml, 90d) behind now; the margin keeps one
+# a few minutes from the edge from crossing it in flight.
+PUSH_MAX_AGE = datetime.timedelta(days=90) - datetime.timedelta(hours=1)
 HISTORY_READERS = 6
 
 
@@ -334,11 +337,30 @@ def jobs_of(github, run):
     return None
 
 
-def push_file(path, url, token, batch=25, opener=urllib.request.build_opener(NoRedirect).open):
+def started_at(payload):
+    """The stamp every sample of a payload carries (see otlp_payload), as a datetime."""
+    nanos = payload["resourceMetrics"][0]["scopeMetrics"][0]["metrics"][0]["gauge"]["dataPoints"][0]["timeUnixNano"]
+    return datetime.datetime.fromtimestamp(int(nanos) / 1e9, datetime.timezone.utc)
+
+
+def push_file(path, url, token, batch=25, opener=urllib.request.build_opener(NoRedirect).open, now=None):
     """Push a `--history-days` file, `batch` runs to a request: (runs pushed, runs not). Prometheus refuses a request
-    whole for one sample it will not take -- a run that slipped past the out-of-order window since it was read -- so a
-    refused batch is pushed again one run at a time, and only the runs refused alone count as not pushed."""
-    payloads = [json.loads(line) for line in Path(path).read_text().splitlines() if line.strip()]
+    whole for one sample it will not take, so a refused batch is pushed again one run at a time, and only the runs
+    refused alone count as not pushed. A run older than PUSH_MAX_AGE is past the out-of-order window -- a file read at
+    `--history-days 90` ages into it before it is pushed, and Prometheus answers 400 -- so it is skipped, said so, and
+    is neither pushed nor failed: it can never be taken, and failing the push for it would keep the file for ever."""
+    now = now or datetime.datetime.now(datetime.timezone.utc)
+    payloads = []
+    for line in Path(path).read_text().splitlines():
+        if not line.strip():
+            continue
+        payload = json.loads(line)
+        stamp = started_at(payload)
+        if now - stamp > PUSH_MAX_AGE:
+            print("skipped a run started %s: older than Prometheus's 90d window, it cannot be taken" % stamp.isoformat(),
+                  file=sys.stderr)
+        else:
+            payloads.append(payload)
 
     def pushed_(chunk):
         return push({"resourceMetrics": [rm for payload in chunk for rm in payload["resourceMetrics"]]}, url, token, opener)
@@ -355,7 +377,7 @@ def push_file(path, url, token, batch=25, opener=urllib.request.build_opener(NoR
                 pushed += 1
             else:
                 failed += 1
-                print(message, file=sys.stderr)
+                print("%s (run started %s)" % (message, started_at(payload).isoformat()), file=sys.stderr)
     return pushed, failed
 
 

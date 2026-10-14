@@ -27,6 +27,7 @@ REPO = Path(__file__).resolve().parents[2]
 
 RUN = {"id": 7, "name": "Identity model convergence", "head_branch": "main", "conclusion": "failure",
        "created_at": "2026-10-14T07:59:00Z", "run_started_at": "2026-10-14T08:00:00Z"}
+NOW = datetime.datetime(2026, 10, 14, 21, 22, tzinfo=datetime.timezone.utc)  # when run 38639671004 pushed
 STAMP = "1791964800000000000"  # 2026-10-14T08:00:00Z, the run's start
 
 
@@ -315,7 +316,7 @@ class PushFileTest(unittest.TestCase):
             body = json.loads(request.data)
             posted.append(len(body["resourceMetrics"]))
             return Response(200 if len(posted) == 1 else 400)
-        pushed, failed = timings.push_file(path, "https://grafana.example", "t", batch=3, opener=opener)
+        pushed, failed = timings.push_file(path, "https://grafana.example", "t", batch=3, opener=opener, now=NOW)
         self.assertEqual(posted, [3, 2, 1, 1])
         self.assertEqual((pushed, failed), (3, 2))
 
@@ -330,7 +331,23 @@ class PushFileTest(unittest.TestCase):
             stamps = {dp["timeUnixNano"] for rm in json.loads(request.data)["resourceMetrics"] for sm in rm["scopeMetrics"]
                       for m in sm["metrics"] for dp in m["gauge"]["dataPoints"]}
             return Response(400 if any(int(stamp) < 1790000000000000000 for stamp in stamps) else 200)
-        self.assertEqual(timings.push_file(path, "https://grafana.example", "t", batch=25, opener=opener), (2, 1))
+        self.assertEqual(timings.push_file(path, "https://grafana.example", "t", batch=25, opener=opener,
+                                           now=datetime.datetime(2026, 7, 2, tzinfo=datetime.timezone.utc)), (2, 1))
+
+    def test_a_run_past_the_90_day_window_is_skipped_not_failed(self):
+        # Run 38639671004 pushed a 90-day file 90 days and a few hours after its oldest runs (2026-07-16T06:11:50Z, 06:11:54Z,
+        # 08:03:23Z): Prometheus answered each 400, `pushed 3772 runs, 3 not`, exit 1, and the file was never deleted.
+        too_old = [dict(RUN, run_started_at=started) for started in ("2026-07-16T06:11:50Z", "2026-07-16T06:11:54Z", "2026-07-16T08:03:23Z")]
+        path = Path(tempfile.mkdtemp()) / "history.jsonl"
+        path.write_text("\n".join(json.dumps(timings.otlp_payload(run, jobs())) for run in too_old + [RUN, RUN]) + "\n")
+        posted = []
+
+        def opener(request, timeout):
+            posted.append(json.loads(request.data))
+            return Response(200)
+        self.assertEqual(timings.push_file(path, "https://grafana.example", "t", batch=25, opener=opener, now=NOW), (2, 0))
+        self.assertEqual(len(posted), 1)
+        self.assertEqual(len(posted[0]["resourceMetrics"]), 2)
 
 
 @unittest.skipUnless(shutil.which("prometheus"), "no prometheus on PATH")
