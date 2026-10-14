@@ -11,12 +11,12 @@ import java.nio.file.{Files, Paths}
  *
  * {{{
  *   sbt "web/runMain services.review.ReviewLabelsCli import <all-answers.json>"
- *   sbt "web/runMain services.review.ReviewLabelsCli export [labels.tsv]"
+ *   sbt "web/runMain services.review.ReviewLabelsCli export [identity-judgements.tsv]"
  * }}}
  *
  * `import` adds the answers given on the hand-built review pages (skipping any already imported);
- * `export` writes every current answer into `labels.tsv` (the checkout's, by default) — the page's
- * "Export to labels.tsv" button. Both print what they did, contradiction warnings included.
+ * `export` writes every current answer into `identity-judgements.tsv` (the checkout's, by default) — the page's
+ * "Export to identity-judgements.tsv" button. Both print what they did, contradiction warnings included.
  */
 object ReviewLabelsCli {
   def main(args: Array[String]): Unit = {
@@ -43,6 +43,6 @@ object ReviewLabelsCli {
       val history = answers.history()
       s"$path\n" + LabelsExport.exportTo(path, history, FilmIdentity.linking(history, sources)).render
     case _ =>
-      "usage: ReviewLabelsCli import <answers.json> | export [labels.tsv]"
+      "usage: ReviewLabelsCli import <answers.json> | export [identity-judgements.tsv]"
   }
 }

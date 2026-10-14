@@ -11,6 +11,14 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import identity_takes_diff as d  # noqa: E402
 
 
+def judged(cc, venue, title, film, verdict, state="open", reason=""):
+    """A row of identity-judgements.tsv."""
+    return "\t".join([cc, venue, title, film, verdict, state, "", "", reason, "2026-10-14", ""]) + "\n"
+
+
+JUDGEMENTS_HEADER = "country\tvenue\trawTitle\tfilm\tverdict\tstate\tscope\tfilmTitle\treason\tjudged\tevidence\n"
+
+
 def row(venue, title, film, key=None, title_of=None, basis="OwnMatch", why="title + year"):
     return {"key": key or f"{venue}|{title}", "venue": venue, "rawTitle": title, "film": film,
             "filmTitle": title_of, "basis": basis, "explanation": [why], "blocker": None if film else "pooled:no-film"}
@@ -26,17 +34,31 @@ class TakesDiffTest(unittest.TestCase):
             f.write("".join(l if isinstance(l, str) else json.dumps(l) + "\n" for l in lines))
         return path
 
-    def run_diff(self, base, head, labels=None, accepted=None, baseline=None):
+    def run_diff(self, base, head, labels=None, accepted=None, baseline=None, judgements=None):
+        """The check over `base` and `head`, judged by identity-judgements.tsv rows built from the old files' lines:
+        a label (cc, venue, title, film, verdict, note) is an open row, an accepted loss (cc, venue, title, film, none,
+        note) the base film's row in state accepted-loss, a baseline line (cc, title, film, ...) an undecided row in scope
+        `served` for every venue."""
         summary = os.path.join(self.dir, "summary.md")
         args = ["pl", self.write("base.jsonl", base), self.write("head.jsonl", head), "--summary", summary]
         if os.path.exists(summary):
             os.remove(summary)
-        if labels is not None:
-            args += ["--labels", self.write("labels.tsv", labels)]
-        if accepted is not None:
-            args += ["--accepted", self.write("accepted.tsv", accepted)]
-        if baseline is not None:
-            args += ["--baseline", self.write("baseline.tsv", ["country\trawTitle\tfilm\ttitle\treasons\n"] + baseline)]
+        if judgements is not None:
+            args += ["--judgements", self.write("identity-judgements.tsv", [JUDGEMENTS_HEADER] + judgements)]
+        elif labels is not None or accepted is not None or baseline is not None:
+            rows = {}
+            for line in (l for l in labels or [] if l.strip() and not l.startswith(("country\t", "#"))):
+                c = line.rstrip("\n").split("\t")
+                rows[(c[0], c[1], c[2], c[3])] = [c[0], c[1], c[2], c[3], c[4], "open", "", "", "", "2026-10-14", ""]
+            for line in (l for l in accepted or [] if l.strip() and not l.startswith(("country\t", "#"))):
+                c = line.rstrip("\n").split("\t")
+                assert c[4] == "none", "the judgements accept only a loss: " + line
+                r = rows.setdefault((c[0], c[1], c[2], c[3]), [c[0], c[1], c[2], c[3], "wrong", "open", "", "", "", "2026-10-14", ""])
+                r[5], r[8] = ("accepted-right-loss" if r[4] == "right" else "accepted-loss"), (c[5] if len(c) > 5 else "") or "accepted"
+            for line in (l for l in baseline or [] if l.strip() and not l.startswith(("country\t", "#"))):
+                c = line.rstrip("\n").split("\t")
+                rows.setdefault((c[0], "*", c[1], c[2]), [c[0], "*", c[1], c[2], "undecided", "open", "served", "", "", "2026-10-14", ""])
+            args += ["--judgements", self.write("identity-judgements.tsv", [JUDGEMENTS_HEADER] + ["\t".join(r) + "\n" for r in rows.values()])]
         code = d.main(args)
         with open(summary, encoding="utf-8") as f:
             return code, f.read()
@@ -94,54 +116,53 @@ class TakesDiffTest(unittest.TestCase):
         code, _ = self.run_diff(self.BASE, head)
         self.assertEqual(0, code)
 
-    def test_labels_accept_a_move_to_a_right_film_or_off_a_wrong_one_and_reject_a_wrong_new_one(self):
+    def test_judgements_accept_a_move_to_a_right_film_or_off_a_wrong_one_and_reject_a_wrong_new_one(self):
         head = [row("Helios", "Lalka", None), row("Rialto", "Obcy", 602), row("Muza", "Diuna", 7)]
-        labels = ["country\tvenue\trawTitle\tfilm\tverdict\tnote\n",
-                  "pl\tHelios\tLalka\ttmdb:501\twrong\t\n",
-                  "pl\tRialto\tObcy\ttmdb:602\tright\t\n",
-                  "pl\tMuza\tDiuna\ttmdb:7\twrong\t\n",
-                  "de\tMuza\tDiuna\ttmdb:7\tright\tanother country\n"]
-        code, md = self.run_diff(self.BASE, head, labels=labels)
+        judgements = [judged("pl", "Helios", "Lalka", "tmdb:501", "wrong"), judged("pl", "Rialto", "Obcy", "tmdb:602", "right"),
+                      judged("pl", "Muza", "Diuna", "tmdb:7", "wrong"), judged("de", "Muza", "Diuna", "tmdb:7", "right")]
+        code, md = self.run_diff(self.BASE, head, judgements)
         self.assertEqual(1, code)
         self.assertIn("| ✓ | lost | Helios | Lalka |", md)
         self.assertIn("| ✓ | changed | Rialto | Obcy |", md)
         self.assertIn("| ❌ | gained | Muza | Diuna |", md)
 
     def test_a_label_for_every_venue_judges_a_move_at_each_and_a_venues_own_right_label_overrules_its_wrong(self):
-        # PL "League of Legends Worlds 26 | Finals in Cinema": labels.tsv calls the 2025 final's record wrong at every
+        # PL "League of Legends Worlds 26 | Finals in Cinema": identity-judgements.tsv calls the 2025 final's record wrong at every
         # venue ("*"), as UnmatchedClusters.verdict reads it; a venue's own label calling a film right overrules that.
         base = [row("Cinema City Arkadia", "Worlds 26", 1552059), row("Cinema City Bonarka", "Worlds 26", 1552059),
                 row("Helios", "Lalka", 81315), row("Kino Iluzjon", "Lalka", 81315)]
         head = [row("Cinema City Arkadia", "Worlds 26", None), row("Cinema City Bonarka", "Worlds 26", None),
                 row("Helios", "Lalka", 1321666), row("Kino Iluzjon", "Lalka", 1321666)]
-        labels = ["country\tvenue\trawTitle\tfilm\tverdict\tnote\n",
-                  "pl\t*\tWorlds 26\ttmdb:1552059\twrong\tthe 2025 final\n",
-                  "pl\t*\tLalka\ttmdb:81315\twrong\t1968\n",
-                  "pl\tKino Iluzjon\tLalka\ttmdb:81315\tright\tthe archive bills Has' 1968 film\n"]
-        code, md = self.run_diff(base, head, labels=labels)
+        judgements = [judged("pl", "*", "Worlds 26", "tmdb:1552059", "wrong"), judged("pl", "*", "Lalka", "tmdb:81315", "wrong"),
+                      judged("pl", "Kino Iluzjon", "Lalka", "tmdb:81315", "right")]
+        code, md = self.run_diff(base, head, judgements)
         self.assertEqual(1, code)
         self.assertIn("| ✓ | lost | Cinema City Arkadia | Worlds 26 |", md)
         self.assertIn("| ✓ | lost | Cinema City Bonarka | Worlds 26 |", md)
         self.assertIn("| ✓ | changed | Helios | Lalka |", md)
         self.assertIn("| ❌ | changed | Kino Iluzjon | Lalka |", md)
 
-    def test_a_label_judges_the_billing_spelled_alike_but_for_its_runs_of_spaces(self):
-        # DE Caligari billed "ES  (ULRICH SCHAMONI)" when it was judged, "ES (ULRICH SCHAMONI)" a recording later: the
-        # same billing, as UnmatchedClusters.singleSpaced keys it
-        base = [row("Caligari", "ES (ULRICH SCHAMONI)", 346364)]
-        head = [row("Caligari", "ES (ULRICH SCHAMONI)", None)]
-        labels = ["country\tvenue\trawTitle\tfilm\tverdict\tnote\n",
-                  "pl\t*\tES  (ULRICH SCHAMONI)\ttmdb:346364\twrong\tSchamoni's 1966 Es, not the 2017 It\n"]
-        code, md = self.run_diff(base, head, labels=labels)
+    def test_a_judgement_judges_the_billing_spelled_alike_but_for_its_runs_of_spaces(self):
+        # DE Caligari billed "ES (ULRICH SCHAMONI)" when it was judged, "ES  (ULRICH SCHAMONI)" a recording later: the
+        # same billing, as identity_judgements.normalise keys it
+        base = [row("Caligari", "ES  (ULRICH SCHAMONI)", 346364)]
+        head = [row("Caligari", "ES  (ULRICH SCHAMONI)", None)]
+        code, md = self.run_diff(base, head, judgements=[judged("pl", "*", "ES (ULRICH SCHAMONI)", "tmdb:346364", "wrong")])
         self.assertEqual(0, code)
-        self.assertIn("| ✓ | lost | Caligari | ES (ULRICH SCHAMONI) |", md)
+        self.assertIn("| ✓ | lost | Caligari | ES  (ULRICH SCHAMONI) |", md)
 
-    def test_accepted_tsv_accepts_a_move_at_every_venue_with_a_wildcard(self):
+    def test_an_accepted_loss_accepts_losing_the_film_at_every_venue_its_row_names_and_no_other_move(self):
         base = [row("Helios", "Lalka", 501), row("Rialto", "Lalka", 501)]
-        head = [row("Helios", "Lalka", 9), row("Rialto", "Lalka", 9)]
-        code, _ = self.run_diff(base, head, accepted=["# why\n", "pl\t*\tLalka\ttmdb:501\ttmdb:9\tthe 2026 remake\n"])
+        lost = [row("Helios", "Lalka", None), row("Rialto", "Lalka", None)]
+        trade = judged("pl", "*", "Lalka", "tmdb:501", "undecided", "accepted-loss", "the wrong-over-missing trade")
+        code, md = self.run_diff(base, lost, judgements=["# why\n", trade])
         self.assertEqual(0, code)
-        code, _ = self.run_diff(base, head, accepted=["uk\t*\tLalka\t*\t*\tanother country\n"])
+        self.assertIn("judgements: an accepted loss", md)
+        code, _ = self.run_diff(base, lost, judgements=[judged("pl", "Helios", "Lalka", "tmdb:501", "undecided", "accepted-loss", "one venue")])
+        self.assertEqual(1, code)  # Rialto's loss is not accepted
+        code, _ = self.run_diff(base, [row("Helios", "Lalka", 9), row("Rialto", "Lalka", 9)], judgements=[trade])
+        self.assertEqual(1, code)  # a CHANGE to another film is accepted by judging it right, not by an accepted loss
+        code, _ = self.run_diff(base, lost, judgements=[judged("uk", "*", "Lalka", "tmdb:501", "undecided", "accepted-loss", "another country")])
         self.assertEqual(1, code)
 
     def test_two_same_titled_listings_at_a_venue_are_never_paired_by_guess(self):
@@ -156,7 +177,7 @@ class TakesDiffTest(unittest.TestCase):
 
     def test_unreadable_inputs_exit_2_never_1(self):
         base = self.write("b.jsonl", self.BASE)
-        self.assertEqual(2, d.main(["pl", base, base, "--labels", os.path.join(self.dir, "missing.tsv")]))
+        self.assertEqual(2, d.main(["pl", base, base, "--judgements", os.path.join(self.dir, "missing.tsv")]))
         broken = self.write("broken.jsonl", [{"key": "k", "venue": "Helios", "film": 1}])
         self.assertEqual(2, d.main(["pl", base, broken]))
 
@@ -177,12 +198,12 @@ class TakesDiffTest(unittest.TestCase):
                                        "RIGHT\tde\tCinema Münster\tTransit\ttmdb:471853\tTransit (2018)\tAgreed\t\t\tagreed\n",
                                        "RIGHT\tde\tKino X\tStays\ttmdb:5\tStays\tOwnMatch\t\t\t\n"])
         head = self.ratchet("h.tsv", ["RIGHT\tde\tKino X\tStays\ttmdb:5\tStays\tOwnMatch\t\t\t\n"])
-        labels = self.write("labels.tsv", ["country\tvenue\trawTitle\tfilm\tverdict\tnote\n",
-                                           "uk\t*\tCBeebies Panto 2026: Treasure Island\ttmdb:1710881\twrong\tthe BBC panto\n",
-                                           "de\tCinema Münster\tTransit\ttmdb:471853\tright\tPetzold's\n"])
+        judgements = self.write("identity-judgements.tsv", [JUDGEMENTS_HEADER,
+                                                             judged("uk", "*", "CBeebies Panto 2026: Treasure Island", "tmdb:1710881", "wrong"),
+                                                             judged("de", "Cinema Münster", "Transit", "tmdb:471853", "right")])
         summary = os.path.join(self.dir, "s.md")
-        self.assertEqual(0, d.main(["uk", base, head, "--final", "--labels", labels, "--summary", summary]))
-        self.assertEqual(1, d.main(["de", base, head, "--final", "--labels", labels, "--summary", summary]))
+        self.assertEqual(0, d.main(["uk", base, head, "--final", "--judgements", judgements, "--summary", summary]))
+        self.assertEqual(1, d.main(["de", base, head, "--final", "--judgements", judgements, "--summary", summary]))
         with open(summary, encoding="utf-8") as f:
             md = f.read()
         self.assertIn("identity final takes (uk): 1 listings, base base vs head head on one capture -- lost 1", md)
@@ -261,12 +282,9 @@ class TakesDiffTest(unittest.TestCase):
         self.assertEqual(0, self.run_diff(base, head, labels=right)[0])
         baselined = ["pl\tKF Ambasada: Diabły\ttmdb:31767\tDiabły (1971)\tfragment\n"]
         self.assertEqual(1, self.run_diff(base, head, baseline=baselined)[0])  # baselined, but the move is still unaccepted
-        self.assertEqual(0, self.run_diff(base, head, baseline=baselined,
-                                          accepted=["pl\t*\tKF Ambasada: Diabły\ttmdb:1000\ttmdb:31767\tjudged\n"])[0])
-        code, md = self.run_diff(base, head, accepted=["pl\t*\tKF Ambasada: Diabły\ttmdb:1000\ttmdb:31767\tjudged\n"])
-        self.assertEqual(0, code)
-        self.assertIn("0 new (the code's: fail until judged), 0 standing at base and head (reported, never failed), 0 cured, "
-                      "1 moved onto by a move accepted.tsv accepts", md)
+        # a change is accepted by judging the base's film wrong (the judgements accept only a loss as a trade)
+        wrong = ["pl\tKino Kosmos\tKF Ambasada: Diabły\ttmdb:1000\twrong\t\n"]
+        self.assertEqual(0, self.run_diff(base, head, labels=wrong, baseline=baselined)[0])
 
     def test_the_final_takes_judge_no_suspects(self):
         base = self.ratchet("b.tsv", ["RIGHT\tpl\tRialto\tDiuna\ttmdb:7\tDiuna\tOwnMatch\t\t\t\n"])

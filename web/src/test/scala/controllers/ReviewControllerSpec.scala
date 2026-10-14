@@ -112,7 +112,7 @@ class ReviewControllerSpec extends AnyFlatSpec with Matchers {
     contentAsString(controller(Mode.Dev).recent(Some("pl"), 0, 60, false)(FakeRequest())) should not include "Klondike"
   }
 
-  "an answer" should "take its cluster out of the queue, an undo bring it back, and export to labels.tsv" in {
+  "an answer" should "take its cluster out of the queue, an undo bring it back, and export to identity-judgements.tsv" in {
     val answers = new ReviewAnswers(new InMemoryReviewAnswerStore)
     val labels  = Files.createTempFile("labels", ".tsv")
     val c       = controller(Mode.Dev, answers, labels)

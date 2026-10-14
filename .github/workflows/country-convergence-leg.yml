@@ -758,7 +758,7 @@ jobs:
             # THE IDENTITY TAKES CHECK (scripts/ci/identity-takes-check.sh): the pinned pair this row replays,
             # resolved by the base commit and by the head -- the model's takes, and the FINAL takes (model and
             # agreement stage) over the checked-in capture -- and every listing the code moved to another film --
-            # lost or changed, and accepted by neither labels.tsv nor identity-takes/accepted.tsv -- fails the row,
+            # lost or changed, and accepted by no identity judgement (identity-judgements.tsv) -- fails the row,
             # listed in the step summary with both films and both reasons; so does an unjudged SUSPECT take the head
             # took or flagged and the base did not, and a corpus-shape finding (`shape-command`, at both) only the head
             # has. Base vs head on one recording, so a new recording never fails it; only code does -- what the

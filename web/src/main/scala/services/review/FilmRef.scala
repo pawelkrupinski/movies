@@ -5,7 +5,7 @@ import java.util.Locale
 import scala.util.Try
 
 /**
- * A film named in another database, in the `source:id` form `labels.tsv` files its `film` column
+ * A film named in another database, in the `source:id` form `identity-judgements.tsv` files its `film` column
  * in (`tmdb:291289`, `imdb:tt4020156`, `filmweb:10008278`, `wikidata:Q101245192`,
  * `rt:1018413-scrooge`, `letterboxd:13-souls`, `metacritic:a-prayer-for-the-dying`).
  */
@@ -54,7 +54,7 @@ object FilmRef {
     }
   }
 
-  /** `source:id` as `labels.tsv` spells it. */
+  /** `source:id` as `identity-judgements.tsv` spells it. */
   def formed(text: String): Option[FilmRef] = text.split(":", 2) match {
     case Array(source, id) if Sources(source.toLowerCase(Locale.ROOT)) && id.trim.nonEmpty =>
       val s = source.toLowerCase(Locale.ROOT)

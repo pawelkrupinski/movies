@@ -1368,8 +1368,9 @@ abstract class CountryConvergenceBehaviour(
    * The SUSPECT-TAKE ratchet ([[tools.SuspectTakesAudit]]) over every take of the settled corpus — the whole corpus, not
    * only the unmatched clusters `UnmatchedClustersRatchetSpec` replays: a take a signal suspects ([[services.identity.SuspectTakes]]:
    * a title covering a fragment of the billing, a film far older than its screening, a runtime or instalment the listing
-   * contradicts, a feed's own TMDB id against it, a fill rule alone) is judged in `labels.tsv` or stands in the baseline
-   * of the suspects the ratchet was armed over (which only shrinks); and no take is one a label calls wrong. Every
+   * contradicts, a feed's own TMDB id against it, a fill rule alone) is judged in `identity-judgements.tsv` or tolerated
+   * there in scope `served` (an undecided suspect standing since the ratchet was armed, which only shrinks, or a known-wrong
+   * take); and no take is one a judgement calls wrong but those. Every
    * suspect, with its reasons, goes to the leg's diagnostics; the unjudged ones to the run's summary page and to
    * `<corpusKey>-suspect-unjudged.txt`.
    *
@@ -1379,7 +1380,7 @@ abstract class CountryConvergenceBehaviour(
    * the head fails), and the newest recording's unjudged ones are the Identity findings report's
    * (`.github/workflows/identity-findings-report.yml`: one issue per country, red past three days untriaged).
    */
-  s"the ${country.displayName} identity takes" should "report every suspect take labels.tsv has not judged, and every one it calls wrong" in {
+  s"the ${country.displayName} identity takes" should "report every suspect take the judgements have not judged, and every one they call wrong" in {
     // the whole corpus's takes are what the labels and the baseline judge: a sample's slice resolves its clusters without
     // the neighbours that decide them, so its takes are no corpus's
     if (corpusKey.endsWith("-sample")) cancel(s"$corpusKey is a sample: the full leg judges the whole corpus's takes")
@@ -1391,9 +1392,10 @@ abstract class CountryConvergenceBehaviour(
     val (corpus, reading) = tools.ThreadAllocation.of(services.identity.SuspectTakes.corpus(decided, model.listings, lookups,
       id => lookups.film(id).toOption.flatten))
     val year     = java.time.LocalDate.ofInstant(clock.instant(), CorpusCoverage.zoneOf(country)).getYear
-    val labels   = tools.UnmatchedClusters.readLabels(tools.UnmatchedClusters.Directory.resolve("labels.tsv"))
+    val judged   = tools.IdentityJudgements.read()
+    val labels   = tools.IdentityJudgements.labels(judged)
     val (verdict, judging) = tools.ThreadAllocation.of(tools.SuspectTakesAudit.judge(country.code, corpus, year, labels,
-      tools.SuspectTakesAudit.readBaseline()))
+      tools.IdentityJudgements.tolerated(judged, tools.IdentityJudgements.Scope.Served).keySet))
     // what the worker's count costs, on its own thread, per written projection of the whole corpus (`SuspectTakeCount`): held, nothing
     val counted = tools.Stopwatch.start()
     val (_, counting) = tools.ThreadAllocation.of(new services.identity.SuspectTakeCount(lookups,
@@ -1402,13 +1404,13 @@ abstract class CountryConvergenceBehaviour(
     info(f"${country.displayName}: the worker's suspect-take count took ${counted.seconds}%.1fs and allocated ${counting / 1000000} MB")
     info(s"${country.displayName}: ${corpus.takes.size} listings' takes, ${verdict.suspects.size} suspect billing(s), ${verdict.fresh.size} unjudged; " +
       s"${tools.SuspectTakesAudit.byCount(verdict.suspects)}; allocated ${reading / 1000000} MB reading the takes, ${judging / 1000000} MB judging them" +
-      (if (verdict.gone.isEmpty) "" else s"; ${verdict.gone.size} baseline line(s) no longer suspect — strike them"))
+      (if (verdict.gone.isEmpty) "" else s"; ${verdict.gone.size} served tolerance(s) no longer suspect — strike them"))
     val name = s"$corpusKey-suspect-takes"
     val report = ConvergenceDiagnostics.write(name, verdict.suspects.map(_.line) ++ verdict.gone.map(g => s"GONE\t${g.productIterator.mkString("\t")}"))
     // the takes themselves, for tuning a signal on what this leg judged (`scripts.SuspectTakesMeasure --dumps`)
     tools.UnmatchedClusters.write(ConvergenceDiagnostics.Directory.resolve(s"$corpusKey-takes").resolve(s"${country.code}.json.gz"),
       tools.SuspectTakesAudit.capture(country, corpus, decided.decisions, model.listings))
-    val unjudged = verdict.fresh.map(_.render) ++ verdict.wrong.map(t => s"WRONG by labels.tsv: ${t.listing.venue}\t${t.listing.rawTitle}\t${t.film} ${t.record.title}")
+    val unjudged = verdict.fresh.map(_.render) ++ verdict.wrong.map(t => s"WRONG by identity-judgements.tsv: ${t.listing.venue}\t${t.listing.rawTitle}\t${t.film} ${t.record.title}")
     // what the Identity findings report reads: `suspect|wrong <TAB> venues <TAB> rawTitle <TAB> film <TAB> title <TAB> reasons`
     val unjudgedLines =
       verdict.fresh.map(s => Seq("suspect", s.venues.mkString(", "), s.rawTitle, s.film, s.title, s.reasons.map(_.render).distinct.mkString("; "))) ++
@@ -1416,7 +1418,7 @@ abstract class CountryConvergenceBehaviour(
           s"${t.record.title} (${t.record.year.fold("?")(_.toString)})", tools.SuspectTakesAudit.WrongReason))
     ConvergenceDiagnostics.write(s"$corpusKey-suspect-unjudged", unjudgedLines.map(_.map(tools.UnmatchedClusters.singleSpaced).mkString("\t")))
     if (unjudged.nonEmpty)
-      ConvergenceDiagnostics.summarise(name, s"${country.displayName}: suspect takes to judge into labels.tsv -- reported, the " +
+      ConvergenceDiagnostics.summarise(name, s"${country.displayName}: suspect takes to judge into identity-judgements.tsv -- reported, the " +
         s"recording's as much as the code's (all in $report; the code's are the identity takes check's)", unjudged)
     withClue("the settled projection took no listing, so there was nothing to judge: ")(corpus.takes should not be empty)
   }

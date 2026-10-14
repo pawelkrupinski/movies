@@ -1,6 +1,6 @@
 ---
 name: identity-investigation
-description: Tools for identity-resolver investigations — why a listing took (or did not take) a film, what prod's projection moved and why (LogsQL over the take-change log fields), base vs HEAD for a handful of listings, the ratchet's WRONG/UNJUDGED/LOST takes as a table, and evidence cards with suggested verdicts for judging UNJUDGED takes into labels.tsv. Use before writing an ad-hoc resolver test, downloading a recording, scraping a CI log for ratchet results, or researching takes by hand.
+description: Tools for identity-resolver investigations — why a listing took (or did not take) a film, what prod's projection moved and why (LogsQL over the take-change log fields), base vs HEAD for a handful of listings, the ratchet's WRONG/UNJUDGED/LOST takes as a table, and evidence cards with suggested verdicts for judging UNJUDGED takes into identity-judgements.tsv (the one file every identity judgement lives in). Use before writing an ad-hoc resolver test, downloading a recording, scraping a CI log for ratchet results, or researching takes by hand.
 ---
 
 # Investigating an identity take
@@ -27,7 +27,7 @@ Design and limits: docs/design/identity-slice.md.
 | A prod take-change log line | `scripts/identity-slice --log '<the line's JSON>'` (its `repro` field is the same command) |
 | Which commit of A..B moved it? | `… --bisect A..B` |
 | Measure a rule change over many listings | `scripts/identity-slice de --batch FILE --ref BASE --ref HEAD [--labels TSV]` → cured / lost / new-wrong (parallel, results shared — see "Fast batches") |
-| Pin a repro as a failing test | `… --emit-case` → `test/resources/fixtures/identity-slices/`, `IdentitySliceCasesSpec` (expected film from labels.tsv only) |
+| Pin a repro as a failing test | `… --emit-case` → `test/resources/fixtures/identity-slices/`, `IdentitySliceCasesSpec` (expected film from the judgements only) |
 | Does arrival order (the worker's incremental model) move it? | `… --orders 12` |
 | Does a CHANGED projection take it otherwise than the periodic one? | `… --modes 4` |
 | Agreement takes (Agreed, Filled, Poster): read prod's filed family answers | default `--families` = this checkout's capture; without them the families agree on nothing (as in every hermetic leg) |
@@ -50,7 +50,7 @@ Design and limits: docs/design/identity-slice.md.
 | Is a venue's client reading a field wrong (synopsis, director, runtime, year, title, format)? What did one venue scrape? | `scripts/venue-replay pl "ziemi rybnickiej" [--title trzy] [--fields]` — every listing, its clean title and search, fields, detail page re-read, shape checks (below) |
 | Did commit Y change what a venue's client reads? | `scripts/venue-replay … --ref Y~1 --ref Y` (+ `--fixtures <client tree>` for pages the recording lacks, `--scrape` to re-run the listing parser) |
 | …and what does prod hold for it right now? | `… --prod` — the local mirror's cinema_scrapes / venue_pages / identity_listings beside the replay |
-| What do the labels / known-wrong / expected / baseline / accepted lists and MatchedTakesLabelSpec say about a listing or film, who added each, and does prod still take it so? | `scripts/label-lookup uk --title "RBO: Romeo & Juliet" [--venue X]` or `scripts/label-lookup uk --film tmdb:N` (below) |
+| What do the judgements (`identity-judgements.tsv`: verdict, known-wrong / accepted state, scope, reason) and the expected matches say about a listing or film, who added each, and does prod still take it so? | `scripts/label-lookup uk --title "RBO: Romeo & Juliet" [--venue X]` or `scripts/label-lookup uk --film tmdb:N` (below) |
 | Code or new data? What changed between two recordings (a red recording, a leg that moved)? | `scripts/recording-diff <runA> <runB> --country de [--venue X] [--title Y]` (below) |
 | When and why did prod's take of a listing change, per deploy? Would CI have reproduced it? | `scripts/listing-history uk --title "ties that bind" [--venue X] [--since 7d] [--replay]` (below) |
 
@@ -138,19 +138,40 @@ recordings is `scripts/recording-diff`. Cases pinned in `scripts.VenueReplaySpec
 
 ## label-lookup
 
-`scripts/label-lookup <cc> --title T [--venue V]` or `--film tmdb:N` — Python, no JVM, ~1 s. Reads `labels.tsv`,
-`known-wrong.tsv`, `expected-matches.tsv`, the suspect `baseline.tsv`, `accepted.tsv` and `MatchedTakesLabelSpec`'s
-`knownWrong` / `noLongerServed`, and prints:
+`scripts/label-lookup <cc> --title T [--venue V]` or `--film tmdb:N` — Python, no JVM, ~1 s. Reads the one judgements
+file, `test/resources/fixtures/identity-judgements.tsv` (each row: verdict, state, scope, reason, judged, evidence),
+and `expected-matches.tsv`, and prints:
 
-- with `--venue`, the **effective verdict** per film, read as every gate reads it (`identity_takes_diff.label_of`: a
-  `*` line covers the venue, the venue's own RIGHT overrules `*`'s WRONG), and a NOTE when two TMDB films come out
+- with `--venue`, the **effective verdict** per film, read as every gate reads it (`identity_judgements.label_of`: a
+  `*` row covers the venue, the venue's own row overrides it), and a NOTE when two TMDB films come out
   right at one venue (Lalka at Kino Iluzjon: the 1968 film by its own label, the 2026 one by `*`'s);
 - every **entry** with its verdict, note and the commit + date that last changed its line (`git blame`);
 - **prod's take now** from the local prod mirror's `identity_traces` (`--no-prod` skips it), its freshness by
   `scripts/local-mirror/freshness`, each take judged by the labels — flagged when prod takes a film labelled WRONG, or
   misses one labelled RIGHT (UK "RBO: Romeo & Juliet" at Filmhouse Newlyn: labelled and expected tmdb:1702789, prod
   `none (Vetoed)`);
-- the **identity judgements lint**'s findings that touch it (`scripts/ci/identity_judgements_lint.py`'s own rules).
+- the **identity judgements lint**'s findings that touch it (`scripts/ci/identity_judgements_lint.py`'s own rules),
+  and the policy's named exceptions (`accepted-right-loss`) among its rows.
+
+### The judgements file
+
+ONE row per (country, venue or `*`, raw title normalised, film); columns `country venue rawTitle film verdict state
+scope filmTitle reason judged evidence` (documented in `scripts/ci/identity_judgements.py`; the Scala reader is
+`tools.IdentityJudgements`, both held to `identity-judgements-normalise.jsonl`). To record a judgement:
+
+- right / wrong: a row, `state` `open`. A venue's row overrides the `*` row.
+- a WRONG take that is served and has no safe fix: `state` `known-wrong`, `scope` the gates it stands in (`capture`:
+  the unmatched-cluster ratchet; `served`: a leg's suspect gate; `rows`: MatchedTakesLabelSpec; `hard-clusters`: an
+  expected-hard-clusters file), `reason` why. Covers every venue billing the title. A scope no take needs any more fails
+  as stale (capture, rows, hard-clusters) or is named GONE (served): strike it.
+- a loss the takes check should accept: `state` `accepted-loss` with `reason`; of a take judged RIGHT only as
+  `accepted-right-loss` (the lint names each on every run). A move to another film is accepted by judging that film
+  right, or the old one wrong.
+- `undecided` rows are the suspects standing since the suspect gate was armed (2026-10-13): never add one.
+
+The lint (`python3 scripts/ci/identity_judgements_lint.py`, a second) fails a second row for one key — a listing judged
+both ways, or a `merge=union` merge (`.gitattributes`) that kept both sides of one edited row — keys not normalised, a
+word outside the vocabulary, and everything the old lint did.
 
 A title is matched exactly (single-spaced) when any file holds it so, else as a part (case and accents aside:
 `--title Emil` finds "Emil und die Detektive").
@@ -218,7 +239,7 @@ Prints, per matching cluster: the billing (title, clean/search title, year, runt
 and venue page facts, listings billed alike collapsed; the **captured** model decision; the cluster
 **re-resolved by the code** (family keys and why, the chain into its family, every candidate with its
 signals, each acceptance rule's refusal, the blocker); the **agreement stage** by the code (basis, fill rule,
-guards passed, signals); the take(s) and their verdict in `labels.tsv`.
+guards passed, signals); the take(s) and their verdict in the judgements.
 
 - Selectors are substrings, case and accents aside. At least one of `--venue`/`--title`.
 - With `--ref`, each ref's tree is laid out once under the cache (sources by `git archive`, compiled classes
@@ -247,7 +268,7 @@ names another film of that database, runtime >30% off, a short billed as a featu
 after the year billed, or year AND directors both disagreeing. A card with reasons both ways stays open.
 
 - Writes `cards.md`, `labels-draft.tsv` (decisive suggestions, each noted `— CONFIRM`) and `open.tsv`.
-  It never touches `labels.tsv`: confirm a draft line, then copy it in.
+  The drafts are `identity-judgements.tsv` rows; it never touches the file itself: confirm a draft row, then copy it in.
 - `--all` cards the judged takes too and prints how many decisive suggestions disagree with the labels —
   run it after changing the rules.
 - Records the capture never read come from TMDB live when `TMDB_API_KEY` is set (`--live` reads it from the

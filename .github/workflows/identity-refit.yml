@@ -3,7 +3,7 @@ name: Identity rule refit
 # Weekly re-tune of the numbers the identity resolver's EXISTING rules read from
 # identity/src/main/resources/identity-weights.json — the acceptance cut, each scope's
 # cannot-link cut, the learned cannot-links' numeric bounds and the listing-film signals'
-# weights — on the unmatched-cluster ratchet's ground truth (labels.tsv, which carries the
+# weights — on the unmatched-cluster ratchet's ground truth (identity-judgements.tsv, which carries the
 # review answers once `ReviewLabelsCli export` has written them there and they are committed,
 # and expected-matches.tsv). No new rule, no new feature: approach B, proposed for review in ONE PR.
 #

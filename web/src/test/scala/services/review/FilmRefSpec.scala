@@ -5,7 +5,7 @@ import org.scalatest.matchers.should.Matchers
 
 class FilmRefSpec extends AnyFlatSpec with Matchers {
 
-  "a pasted film link" should "parse into the ref labels.tsv files it under" in {
+  "a pasted film link" should "parse into the ref identity-judgements.tsv files it under" in {
     val cases = Seq(
       "https://www.themoviedb.org/movie/1703622-rbo-cinema-season-2026-27-macbeth?language=pl" -> "tmdb:1703622",
       "themoviedb.org/movie/291289"                                                        -> "tmdb:291289",

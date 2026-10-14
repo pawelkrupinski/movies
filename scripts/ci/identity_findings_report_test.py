@@ -67,8 +67,20 @@ class FindingsReportTest(unittest.TestCase):
             self.file(os.path.join(name, cc, file), lines)
         return os.path.join(self.dir, name)
 
+    def judgements(self):
+        """identity-judgements.tsv rows of this test's labels (open rows) and suspect baseline (undecided, scope served)."""
+        rows = {}
+        with open(self.labels, encoding="utf-8") as f:
+            for c in (line.rstrip("\n").split("\t") for line in f.readlines()[1:] if line.strip()):
+                rows[(c[0], c[1], c[2], c[3])] = [c[0], c[1], c[2], c[3], c[4], "open", "", "", "", "2026-10-14", ""]
+        with open(self.baseline, encoding="utf-8") as f:
+            for c in (line.rstrip("\n").split("\t") for line in f.readlines()[1:] if line.strip()):
+                rows.setdefault((c[0], "*", c[1], c[2]), [c[0], "*", c[1], c[2], "undecided", "open", "served", "", "", "2026-10-14", ""])
+        return self.file("identity-judgements.tsv", ["country\tvenue\trawTitle\tfilm\tverdict\tstate\tscope\tfilmTitle\treason\tjudged\tevidence\n"] +
+                         ["\t".join(row) + "\n" for row in rows.values()])
+
     def run_report(self, diagnostics, today, countries="pl,uk,de"):
-        return r.main(["--run", "38625654132", "--countries", countries, "--labels", self.labels, "--baseline", self.baseline,
+        return r.main(["--run", "38625654132", "--countries", countries, "--judgements", self.judgements(),
                        "--today", today, "--diagnostics", diagnostics, "--repo", "o/r", "--assignee", "owner"], run_gh=self.gh)
 
     RED = {("pl", "pl-suspect-unjudged.txt"): [DIABLY, NOC],

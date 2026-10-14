@@ -10,7 +10,7 @@ import java.nio.file.{Files, Path}
 
 /**
  * Every contender of every cluster the unmatched-cluster fixture's replay leaves untaken, with its signals and the facts a
- * weak signal reads (popularity, release, running time, poster distance, programme), judged by `labels.tsv` — the rows
+ * weak signal reads (popularity, release, running time, poster distance, programme), judged by `identity-judgements.tsv` — the rows
  * a conjunction of weak signals is screened on offline before it is built.
  *
  *   sbt "worker/Test/runMain scripts.IdentityConjunctionProbe target/probe/contenders.tsv"
@@ -36,7 +36,7 @@ object IdentityConjunctionProbe {
   def main(args: Array[String]): Unit = {
     if (args.headOption.contains("--alloc")) { allocation(args.lift(1).fold(10)(_.toInt)); return }
     val out    = Path.of(args.headOption.getOrElse("target/probe/contenders.tsv"))
-    val labels = UnmatchedClusters.readLabels(UnmatchedClusters.Directory.resolve("labels.tsv"))
+    val labels = tools.IdentityJudgements.labels()
     val today  = java.time.LocalDate.ofInstant(tools.SpecClock.Pinned.instant(), java.time.ZoneOffset.UTC)
     val header = Seq("country", "cluster", "venues", "listings", "rawTitle", "film", "title", "right", "wrong", "taken", "contenders",
       "popularity", "year", "runtime", "released", "releasedHere", "filmCountries", "posterBits", "modelP", "rank", "listingYear",

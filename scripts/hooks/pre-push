@@ -26,12 +26,12 @@
 #                 file that was already noisy can still be edited
 #   `ios`         scripts/ios-compile-check.sh (app target + Linux SwiftPM) on ios/** — this one
 #                 is minutes, not seconds, and only runs for iOS pushes
-#   `judgements`  scripts/ci/identity_judgements_lint.py on labels.tsv, accepted.tsv, the suspect and
-#                 known-wrong baselines and the expected matches and hard clusters: the judgements and
-#                 the files leaning on them agree. A labels.tsv change is also read against the takes
-#                 the newest Identity model convergence legs served (their diagnostics artifacts, cached
-#                 per run): a take the push newly calls wrong that no baseline lists fails here, not
-#                 in the leg after the push (911d8f486)
+#   `judgements`  scripts/ci/identity_judgements_lint.py on identity-judgements.tsv, the expected
+#                 matches and hard clusters: the judgements are well formed and the files leaning on
+#                 them agree. A judgements change is also read against the takes the newest Identity
+#                 model convergence legs served (their diagnostics artifacts, cached per run): a take
+#                 the push newly calls wrong that no known-wrong row tolerates fails here, not in the
+#                 leg after the push (911d8f486)
 #
 # WHAT IS CHECKED is the pushed commit's tree: in place when the checkout is that tree, else in a
 # temporary worktree of it (cold, so an sbt check there takes minutes, not seconds). The same
@@ -180,9 +180,9 @@ plan() {
             ios/*) ios=1 ;;
         esac
         case "$path" in
-            test/resources/fixtures/identity-unmatched/*.tsv|test/resources/fixtures/identity-takes/*|\
-            test/resources/fixtures/identity-suspects/*|test/resources/fixtures/corpus/expected-hard-clusters-*|\
-            scripts/ci/identity_judgements_lint*.py|scripts/ci/identity_takes_diff.py) judgements=1 ;;
+            test/resources/fixtures/identity-judgements.tsv|test/resources/fixtures/identity-unmatched/*.tsv|\
+            test/resources/fixtures/corpus/expected-hard-clusters-*|\
+            scripts/ci/identity_judgements*.py|scripts/ci/identity_takes_diff.py) judgements=1 ;;
         esac
     done
     [ $judgements = 1 ] && echo judgements
@@ -491,13 +491,15 @@ served_takes() {
 
 check_judgements() {
     local served=() before=""
-    if printf '%s\n' "$changed" | grep -qx 'test/resources/fixtures/identity-unmatched/labels.tsv' && command -v gh >/dev/null; then
+    if printf '%s\n' "$changed" | grep -qx 'test/resources/fixtures/identity-judgements.tsv' && command -v gh >/dev/null; then
         while IFS= read -r f; do [ -n "$f" ] && served+=("$f"); done < <(served_takes)
-        before="$tmp/labels-before.tsv"
-        git show "$base_sha:test/resources/fixtures/identity-unmatched/labels.tsv" > "$before" 2>/dev/null || before=""
+        before="$tmp/judgements-before.tsv"
+        # a base from before the judgements were one file (the push that migrates them): its legacy labels.tsv
+        git show "$base_sha:test/resources/fixtures/identity-judgements.tsv" > "$before" 2>/dev/null ||
+            git show "$base_sha:test/resources/fixtures/identity-unmatched/labels.tsv" > "$before" 2>/dev/null || before=""
     fi
-    # --replay-head: the takes the push newly labels wrong judged at the PUSHED code (identity-slice), not the last leg's
-    python3 scripts/ci/identity_judgements_lint.py ${served[@]+--served "${served[@]}"} ${before:+--labels-before "$before" --replay-head}
+    # --replay-head: the takes the push newly judges wrong judged at the PUSHED code (identity-slice), not the last leg's
+    python3 scripts/ci/identity_judgements_lint.py ${served[@]+--served "${served[@]}"} ${before:+--before "$before" --replay-head}
 }
 
 tmp="$(mktemp -d)"

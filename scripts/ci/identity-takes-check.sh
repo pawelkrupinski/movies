@@ -267,9 +267,7 @@ fi
 
 diff_takes() { # <base> <head> [--final]
   python3 "$here/scripts/ci/identity_takes_diff.py" "$cc" "$1" "$2" "${@:3}" \
-    --labels "$here/test/resources/fixtures/identity-unmatched/labels.tsv" \
-    --accepted "$here/test/resources/fixtures/identity-takes/accepted.tsv" \
-    --baseline "$here/test/resources/fixtures/identity-suspects/baseline.tsv" \
+    --judgements "$here/test/resources/fixtures/identity-judgements.tsv" \
     --base-name "${base:0:9}" --head-name "${head:0:9}" ${GITHUB_STEP_SUMMARY:+--summary "$GITHUB_STEP_SUMMARY"}
 }
 # The verdict's first line is the commit status's description: the takes' line when they ran, else the shape's.

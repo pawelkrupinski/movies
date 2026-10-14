@@ -21,7 +21,7 @@ import java.util.regex.Pattern
  *  - the clusters a proposal's new search titles touch are resolved again with it and without it (the control),
  *    and the agreement stage replayed over both — a TMDB question the capture lacks answered live when a TMDB key
  *    is configured, else the proposal is UNMEASURED and not kept;
- *  - each listing whose take moved is judged: one that took a film is RIGHT or WRONG by `labels.tsv` (a double
+ *  - each listing whose take moved is judged: one that took a film is RIGHT or WRONG by `identity-judgements.tsv` (a double
  *    programme taking a film is wrong), else UNJUDGED; one whose film switched is SWITCHED; one that lost its film
  *    is LOST — fine, as long as no part of a real title was stripped, which is checked before: no known film title
  *    (the capture's TMDB records, original and alternative titles, and every search hit) may START with a prefix
@@ -257,7 +257,7 @@ object DecorationDiscovery {
     val opts   = args.sliding(2).collect { case Array(k, v) if k.startsWith("--") && !v.startsWith("--") => k.stripPrefix("--") -> v }.toMap
     val limit  = opts.get("limit").map(_.toInt).getOrElse(60)
     val min    = opts.get("min-remainders").map(_.toInt).getOrElse(TitleDecorations.MinCandidateRemainders)
-    val labels = UnmatchedClusters.readLabels(UnmatchedClusters.Directory.resolve("labels.tsv"))
+    val labels = tools.IdentityJudgements.labels()
     val benches = CaptureReplay.all().map(new Bench(_, labels))
     println(s"TMDB gaps: ${if (CaptureReplay.asksLive) "asked live" else "NOT asked (no TMDB_API_KEY) — a proposal asking one is unmeasured"}")
     val lexicon  = benches.flatMap(_.lexicon).distinct

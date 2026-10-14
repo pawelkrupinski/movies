@@ -12,7 +12,7 @@ triaged from here instead. Each `Record scrape fixtures` run's convergence rows 
   corpus-shape-recorded-<cc>-<spec>.txt   finding|stale <TAB> venue <TAB> listing <TAB> what (CorpusShapeSpec)
 
 Per country this updates ONE issue, "Identity findings: <cc>", in place: every finding with its ready triage commands,
-when it was first seen, and its age. A suspect labels.tsv (or the suspect baseline) has judged since the recording is
+when it was first seen, and its age. A suspect the identity judgements have judged (or tolerate in scope `served`) since the recording is
 dropped at once; the rest drop when a recording no longer carries them. An empty report closes the issue; a finding
 reopens it. First-seen dates ride in the issue body, so the report needs no store of its own.
 
@@ -20,7 +20,7 @@ AGE LIMIT: a finding untriaged for more than --max-age-days (3) days turns the r
 red-build gate (scripts/hooks/pre-push's GatingWorkflows): a push neither makes nor mends a recording's data, so holding
 pushes behind it is the very coupling this report exists to undo. It reaches the owner through the issue instead.
 
-usage: identity_findings_report.py --run RUN [--countries pl,de,uk,es,us] [--labels F] [--baseline F] [--today D]
+usage: identity_findings_report.py --run RUN [--countries pl,de,uk,es,us] [--judgements F] [--today D]
          [--max-age-days N] [--assignee LOGIN] [--server URL] [--repo OWNER/NAME] [--work DIR] [--dry-run]
 Exit 0 when every finding is within its age, 1 when one is overdue, 2 when no country's findings could be read.
 """
@@ -37,7 +37,7 @@ import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from identity_takes_diff import baseline_of, labels_of, label_of, single_spaced  # noqa: E402  (the one reading of a label)
+from identity_takes_diff import judgements_of, label_of, single_spaced  # noqa: E402  (the one reading of a judgement)
 
 COUNTRIES = ["pl", "de", "uk", "es", "us"]
 STATE = re.compile(r"<!-- identity-findings-state: (\{.*?\}) -->", re.S)
@@ -93,7 +93,7 @@ def merged(findings):
 
 
 def still_unjudged(finding, labels, baseline):
-    """Whether a suspect the recording found is still unjudged by labels.tsv and the baseline as they stand now: a
+    """Whether a suspect the recording found is still unjudged by the identity judgements as they stand now: a
     judgement made since the recording takes it off the report at once."""
     if finding["kind"] != "suspect":
         return True
@@ -132,7 +132,7 @@ def commands(cc, finding, recording):
 
 SECTIONS = [
     ("suspect", "Suspect takes no label judges",
-     "Judge the film into `test/resources/fixtures/identity-unmatched/labels.tsv` -- `right`, or `wrong` and fixed."),
+     "Judge the film into `test/resources/fixtures/identity-judgements.tsv` -- `right`, or `wrong` and fixed."),
     ("wrong", "Takes a label calls wrong",
      "The recording still takes a film labelled wrong: fix the rule that takes it."),
     ("shape-finding", "Corpus-shape findings",
@@ -173,7 +173,7 @@ def render_at(cc, findings, seen, today, max_age, run, run_url, detailed, listed
              f"Recording [run {run}]({run_url}): no finding to triage.", "",
              "These are the RECORDING's: no commit made them, so no build fails on them -- the identity takes check fails "
              "only what a commit's code makes, base against head. A finding untriaged for more than "
-             f"{max_age} days turns the Identity findings report red. A suspect judged into labels.tsv leaves this issue on "
+             f"{max_age} days turns the Identity findings report red. A suspect judged into identity-judgements.tsv leaves this issue on "
              "the next report; the rest leave when a recording no longer carries them. Updated in place by "
              "`scripts/ci/identity_findings_report.py`."]
     for kind, heading, how in SECTIONS:
@@ -233,7 +233,7 @@ def publish(cc, body, has_findings, run_gh, assignee):
     return "updated"
 
 
-def report(countries, run, directory_of, labels_path, baseline_path, today, max_age, run_url, run_gh, assignee, dry_run):
+def report(countries, run, directory_of, judgements_path, today, max_age, run_url, run_gh, assignee, dry_run):
     """(overdue total, countries read)."""
     overdue_total, read = 0, 0
     for cc in countries:
@@ -242,7 +242,7 @@ def report(countries, run, directory_of, labels_path, baseline_path, today, max_
             print(f"::warning::{title_of(cc)}: run {run} left no findings for {cc} -- its issue stays as it was")
             continue
         read += 1
-        labels, baseline = labels_of(labels_path, cc), baseline_of(baseline_path, cc)
+        labels, _, baseline = judgements_of(judgements_path, cc)
         found = [f for f in found if still_unjudged(f, labels, baseline)]
         issue = None if dry_run else find_issue(cc, run_gh)
         seen = first_seen_of(issue[2] if issue else "")
@@ -271,8 +271,7 @@ def main(argv=None, run_gh=gh):
     p = argparse.ArgumentParser()
     p.add_argument("--run", required=True, help="the Record scrape fixtures run whose recording to report")
     p.add_argument("--countries", default=",".join(COUNTRIES))
-    p.add_argument("--labels", default="test/resources/fixtures/identity-unmatched/labels.tsv")
-    p.add_argument("--baseline", default="test/resources/fixtures/identity-suspects/baseline.tsv")
+    p.add_argument("--judgements", default="test/resources/fixtures/identity-judgements.tsv")
     p.add_argument("--today", help="YYYY-MM-DD, default today (UTC)")
     p.add_argument("--max-age-days", type=int, default=3)
     p.add_argument("--assignee", default="")
@@ -286,7 +285,7 @@ def main(argv=None, run_gh=gh):
     run_url = f"{a.server}/{a.repo}/actions/runs/{a.run}"
     def directory_of(cc):
         return os.path.join(a.diagnostics, cc) if a.diagnostics else download(a.run, cc, a.work, run_gh)
-    overdue, read = report([c for c in a.countries.split(",") if c], a.run, directory_of, a.labels, a.baseline, today,
+    overdue, read = report([c for c in a.countries.split(",") if c], a.run, directory_of, a.judgements, today,
                            a.max_age_days, run_url, run_gh, a.assignee, a.dry_run)
     if read == 0:
         print(f"::error::run {a.run} left no country's findings -- nothing was reported")

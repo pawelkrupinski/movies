@@ -94,9 +94,9 @@ done
 scratch_git "$work/src" push -q "$work/origin.git" HEAD:refs/heads/main
 c4=$(scratch_git "$work/src" rev-parse HEAD~1) c5=$(scratch_git "$work/src" rev-parse HEAD)
 rm -rf "$work/job" && mkdir -p "$work/job" && scratch_git "$work/job" clone -q --depth=1 --branch main "file://$work/origin.git" .
-mkdir -p "$work/job/test/resources/fixtures/identity-unmatched" "$work/job/scripts/ci"
-: > "$work/job/test/resources/fixtures/identity-unmatched/labels.tsv"
-cp "$(dirname "$script")/identity_takes_diff.py" "$(dirname "$script")/gh-release.sh" "$work/job/scripts/ci/"
+mkdir -p "$work/job/test/resources/fixtures" "$work/job/scripts/ci"
+printf 'country\tvenue\trawTitle\tfilm\tverdict\tstate\tscope\tfilmTitle\treason\tjudged\tevidence\n' > "$work/job/test/resources/fixtures/identity-judgements.tsv"
+cp "$(dirname "$script")/identity_takes_diff.py" "$(dirname "$script")/identity_judgements.py" "$(dirname "$script")/gh-release.sh" "$work/job/scripts/ci/"
 cat > "$work/bin/sbt" <<'SBT'
 #!/usr/bin/env bash
 pwd -P >> "$SBT_CALLS"

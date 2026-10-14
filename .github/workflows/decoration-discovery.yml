@@ -9,7 +9,7 @@ name: Decoration discovery
 # recorded corpora, a Mongo and prod's family answers, so the bot reads the checked-in one,
 # re-captured weekly by identity-capture.yml), measures every proposal alone
 # against the fixture's replay — TMDB searches the capture lacks asked live with TMDB_API_KEY —
-# and keeps one only when it takes at least one listing right by labels.tsv, none wrong, switches
+# and keeps one only when it takes at least one listing right by identity-judgements.tsv, none wrong, switches
 # no existing take, and strips nothing a known film title starts (prefix) or ends (suffix) with.
 # A lost take is reported, not refused. The kept rules are written into ExtraTitleRules.scala;
 # the job then runs the checks a title-rule change needs — the rule specs, the unmatched-cluster

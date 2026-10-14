@@ -2,13 +2,13 @@ package scripts
 
 import services.identity.{IdentityMeasures, ResolverDecision, SuspectTakes}
 import services.identity.SuspectTakes.{Signal, Take}
-import tools.{SuspectTakesAudit, UnmatchedClusters}
+import tools.{IdentityJudgements, SuspectTakesAudit, UnmatchedClusters}
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path, Paths}
 
 /**
- * How well the suspect-take signals ([[SuspectTakes]]) find the takes `labels.tsv` calls wrong, over the takes
+ * How well the suspect-take signals ([[SuspectTakes]]) find the takes the identity judgements call wrong, over the takes
  * `integration.SuspectTakesDump` wrote — or a convergence leg did (`<corpus>-takes/<cc>.json.gz` among its diagnostics):
  *
  *   sbt "worker/Test/runMain scripts.SuspectTakesMeasure --dumps target/suspect-takes [--year 2026] [--out <file>] [--missed <file>]"
@@ -18,7 +18,7 @@ import java.nio.file.{Files, Path, Paths}
  * decision when today takes that film, else the film put to the listing as a take no rule made (no route to suspect) —
  * and each signal's recall on the labelled-wrong pairs and flag rate on the labelled-right ones printed; then today's
  * takes' suspects no label judges, per country: the queue a person judges. `--out` writes the queue, every reason, and
- * every take a label calls wrong, in the baseline's form (`SuspectTakesAudit.BaselinePath`); `--missed` the wrong labels no
+ * every take a label calls wrong (`SuspectTakesAudit.QueueHeader`); `--missed` the wrong labels no
  * signal suspects, and beside it the right ones a signal does.
  */
 object SuspectTakesMeasure {
@@ -27,8 +27,9 @@ object SuspectTakesMeasure {
     val opts   = args.grouped(2).collect { case Array(k, v) => k.stripPrefix("--") -> v }.toMap
     val dumps  = Paths.get(opts.getOrElse("dumps", "target/suspect-takes"))
     val year   = opts.get("year").map(_.toInt).getOrElse(2026)
-    val labels = UnmatchedClusters.readLabels(UnmatchedClusters.Directory.resolve("labels.tsv"))
-    val baseline = SuspectTakesAudit.readBaseline()
+    val judged = IdentityJudgements.read()
+    val labels = IdentityJudgements.labels(judged)
+    val tolerated = IdentityJudgements.tolerated(judged, IdentityJudgements.Scope.Served).keySet
     val countries = models.Country.all.map(c => c.code -> dumps.resolve(s"${c.code}.json.gz")).filter(p => Files.exists(p._2))
 
     final case class Graded(country: String, label: UnmatchedClusters.Label, signals: Set[Signal], reasons: Seq[String], today: Boolean)
@@ -46,8 +47,9 @@ object SuspectTakesMeasure {
       val stated  = (l: services.identity.Listing) => if (venues.hasDetail(l)) venues.detail(l).toOption.flatten.fold(l)(l.withPage) else l
 
       // every labelled pair as a take
+      val byTitle = dump.listings.groupBy(l => UnmatchedClusters.singleSpaced(l.rawTitle))
       labels.filter(_.country == cc).foreach { label =>
-        val listings = dump.listings.filter(l => l.rawTitle == label.rawTitle && (label.venue == "*" || label.venue == l.venue))
+        val listings = byTitle.getOrElse(UnmatchedClusters.singleSpaced(label.rawTitle), Nil).filter(l => label.venue == "*" || label.venue == l.venue)
         val record: Option[(String, Option[Int], IdentityMeasures.Film)] = label.film.split(":", 2) match {
           case Array("tmdb", id) => id.toIntOption.flatMap(i => films.get(i).map(f => (s"tmdb:$i", Some(i), f)))
           case Array("imdb", id) => byImdb.get(id).map { case (i, f) => (s"tmdb:$i", Some(i), f) }
@@ -72,7 +74,7 @@ object SuspectTakesMeasure {
         }
       }
 
-      val verdict = SuspectTakesAudit.judge(cc, corpus, year, labels, baseline)
+      val verdict = SuspectTakesAudit.judge(cc, corpus, year, labels, tolerated)
       // what the worker's count of the same corpus costs, on its own thread, per written projection of the whole of it (`SuspectTakeCount`)
       val counting = tools.Stopwatch.start()
       val (_, allocated) = tools.ThreadAllocation.of(new services.identity.SuspectTakeCount(venues, ids => ids.flatMap(id => films.get(id).map(id -> _)).toMap,
@@ -117,7 +119,7 @@ object SuspectTakesMeasure {
     opts.get("out").foreach { file =>
       val out: Path = Paths.get(file)
       Option(out.getParent).foreach(Files.createDirectories(_))
-      Files.write(out, (SuspectTakesAudit.BaselineHeader +: queue.result().distinct.sorted).mkString("", "\n", "\n").getBytes(StandardCharsets.UTF_8))
+      Files.write(out, (SuspectTakesAudit.QueueHeader +: queue.result().distinct.sorted).mkString("", "\n", "\n").getBytes(StandardCharsets.UTF_8))
       println(s"wrote $out")
     }
   }

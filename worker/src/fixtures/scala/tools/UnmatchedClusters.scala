@@ -206,23 +206,14 @@ object UnmatchedClusters {
   // ── labels: what each listing is, and is not ─────────────────────────────────────────────
 
   /** A judgement of one listing (`venue` "*" for every venue billing `rawTitle`): `film` ("tmdb:913760",
-   *  "imdb:tt16315948") is `right` or `wrong` for it. */
+   *  "imdb:tt16315948") is `right` or `wrong` for it — a row of [[IdentityJudgements]] judging it. */
   final case class Label(country: String, venue: String, rawTitle: String, film: String, right: Boolean, note: String) {
     def covers(take: Take): Boolean =
       take.country == country && singleSpaced(take.rawTitle) == singleSpaced(rawTitle) && (venue == "*" || venue == take.venue)
   }
 
-  /** A billing as every judgement file keys it: its runs of whitespace — a tab, a line break, a no-break space, two
-   *  spaces — one space, none at the ends. A venue's spacing is not a new billing: DE Caligari's "ES  (ULRICH SCHAMONI)",
-   *  judged and baselined so, came back "ES (ULRICH SCHAMONI)" a recording later. */
-  def singleSpaced(raw: String): String = raw.replaceAll("(?U)\\s+", " ").trim
-
-  def readLabels(path: Path): Seq[Label] = Files.readAllLines(path, StandardCharsets.UTF_8).asScala.toSeq.drop(1).filter(_.nonEmpty).map { line =>
-    line.split("\t", -1) match {
-      case Array(country, venue, raw, film, verdict, note) => Label(country, venue, raw, film, verdict == "right", note)
-      case _ => throw new IllegalArgumentException(s"malformed label line: $line")
-    }
-  }
+  /** A billing as every judgement keys it ([[IdentityJudgements.normalise]]). */
+  def singleSpaced(raw: String): String = IdentityJudgements.normalise(raw)
 
   /** A take's verdict by the labels: `Some(true)` right, `Some(false)` wrong — a label denies its film, or the labels
    *  name its listing's right film in a database the take has an id in and this is not it — `None` unjudged. The take's
@@ -244,20 +235,11 @@ object UnmatchedClusters {
     if (!Files.exists(path)) Set.empty
     else Files.readAllLines(path, StandardCharsets.UTF_8).asScala.toSeq.drop(1).filter(_.nonEmpty).map(_.split("\t", -1)).map(a => (a(0), a(1), a(2), a(3))).toSet
 
-  // ── the known-wrong baseline: the WRONG takes no safe fix removes, a list that only shrinks ──
+  // ── the known-wrong takes: the WRONG takes no safe fix removes, a list that only shrinks ──
 
-  /** The WRONG takes the ratchet lets stand, each with why no safe fix removes it — keyed, as the suspect-take audit's
-   *  baseline is ([[SuspectTakesAudit]]: country, raw title, film, title, reasons), by country, raw title and film: one
-   *  line covers every venue billing it. */
-  val KnownWrongPath: Path = Directory.resolve("known-wrong.tsv")
-
-  def readKnownWrong(path: Path): Set[(String, String, String)] =
-    if (!Files.exists(path)) Set.empty
-    else Files.readAllLines(path, StandardCharsets.UTF_8).asScala.toSeq.drop(1).filter(_.nonEmpty).map(_.split("\t", -1))
-      .map(a => (a(0), a(1), a(2))).toSet
-
-  /** The wrong takes the baseline does not list (`fresh`: each fails the ratchet), and the baseline's lines no wrong take
-   *  is any more (`stale`: each fails too, to strike — the fixture is checked in, so a cured line is cured for good). */
+  /** The wrong takes `known` does not list (`fresh`: each fails the ratchet), and its billings — (country, raw title,
+   *  film), every venue billing it: the judgements' known-wrong rows of [[IdentityJudgements.Scope.Capture]] — no wrong
+   *  take is any more (`stale`: each fails too, to strike — the fixture is checked in, so a cured row is cured for good). */
   final case class WrongAudit(fresh: Seq[Take], stale: Seq[(String, String, String)])
 
   def auditWrong(wrong: Seq[Take], known: Set[(String, String, String)]): WrongAudit = {

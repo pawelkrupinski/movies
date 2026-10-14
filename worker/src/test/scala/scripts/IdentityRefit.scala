@@ -16,7 +16,7 @@ import scala.util.hashing.MurmurHash3
 /**
  * The weekly identity RULE REFIT (`.github/workflows/identity-refit.yml`): re-tunes the numbers the resolver's EXISTING
  * rules read from `identity-weights.json` — never a new rule, never a new feature — against the ground truth the
- * unmatched-cluster ratchet holds: `labels.tsv` (recall targets, must-not pairs, hand labels, and the review answers
+ * unmatched-cluster ratchet holds: `identity-judgements.tsv` (recall targets, must-not pairs, hand labels, and the review answers
  * `ReviewLabelsCli export` writes there — an answer reaches the refit once exported and committed) and
  * `expected-matches.tsv`.
  *
@@ -143,7 +143,8 @@ object IdentityRefit {
    *  labelled listing's node — the film a right label names same, any other (or one a wrong label names) different. */
   def labelledUnits(capture: UnmatchedClusters.Capture, labels: Seq[UnmatchedClusters.Label], calibration: IdentityCalibration): Seq[LabelledUnit] = {
     val code   = capture.country.code
-    val about  = capture.listings.map(l => l.key -> labels.filter(b => b.country == code && b.rawTitle == l.rawTitle && (b.venue == "*" || b.venue == l.venue))).toMap
+    val byTitle = labels.filter(_.country == code).groupBy(b => UnmatchedClusters.singleSpaced(b.rawTitle))
+    val about  = capture.listings.map(l => l.key -> byTitle.getOrElse(UnmatchedClusters.singleSpaced(l.rawTitle), Nil).filter(b => b.venue == "*" || b.venue == l.venue)).toMap
     val judged = about.filter(_._2.nonEmpty)
     if (judged.isEmpty) Nil else {
       val nodes = IdentityResolver.evidenceOf(capture.listings, new UnmatchedClusters.Replay(capture),
@@ -380,7 +381,7 @@ object IdentityRefit {
     val base = start.version.replaceAll("-refit-[0-9a-f]+$", "")
     val id   = f"${MurmurHash3.seqHash(kept.map(k => s"${k.change.parameter}:${k.change.to}"))}%08x"
     refitted.copy(version = s"$base-refit-$id", provenance = start.provenance.updated("refit",
-      s"scripts.IdentityRefit on the unmatched-cluster ratchet (labels.tsv, expected-matches.tsv): " +
+      s"scripts.IdentityRefit on the unmatched-cluster ratchet (identity-judgements.tsv, expected-matches.tsv): " +
         kept.map(k => s"${k.change.parameter} ${k.change.from} → ${k.change.to}").mkString("; ")))
   }
 
@@ -390,7 +391,7 @@ object IdentityRefit {
   def report(kept: Seq[Measured], rounds: Seq[Seq[Measured]], units: String): String = {
     val sb = new StringBuilder
     sb ++= s"## Identity rule refit\n\nRe-tuned the existing rules' numbers in `identity-weights.json` on the unmatched-cluster ratchet " +
-      s"(the five captures, `labels.tsv` and `expected-matches.tsv`; $units). A change is kept only with 0 wrong, 0 unjudged, 0 switched, " +
+      s"(the five captures, `identity-judgements.tsv` and `expected-matches.tsv`; $units). A change is kept only with 0 wrong, 0 unjudged, 0 switched, " +
       s"no right or expected take lost, nothing unanswered, and at least $MinSupport labelled films of the fitting fold newly right; " +
       s"films hashed into fold 0 of $Folds are held out (never counted by a weight refit) and reported apart. Steps are capped " +
       s"(cuts ±$MaxCutStep, bounds ±${(BoundStepShare * 100).toInt}%, weights ±$MaxWeightStep log-odds).\n\n"
@@ -416,7 +417,7 @@ object IdentityRefit {
     val toJudge = rounds.flatten.filter(m => m.wrong == 0 && m.switched == 0 && m.lostRight == 0 && m.unjudged > 0)
       .flatMap(_.moved.filter(_.verdict == DecorationDiscovery.Unjudged)).distinctBy(m => (m.country, m.venue, m.rawTitle, m.after))
     if (toJudge.nonEmpty) {
-      sb ++= "\n### Takes to judge\n\nOnly unjudged takes held these proposals back: judged in `labels.tsv` (by the review page, then " +
+      sb ++= "\n### Takes to judge\n\nOnly unjudged takes held these proposals back: judged in `identity-judgements.tsv` (by the review page, then " +
         "`ReviewLabelsCli export`), the next run measures them.\n\n| country | venue | listing | would take |\n|---|---|---|---|\n"
       toJudge.foreach(m => sb ++= s"| ${m.country} | ${cell(m.venue)} | ${cell(m.rawTitle)} | ${cell(m.after)} |\n")
     }
@@ -426,7 +427,7 @@ object IdentityRefit {
   def main(args: Array[String]): Unit = {
     val apply   = args.contains("--apply")
     val opts    = args.sliding(2).collect { case Array(k, v) if k.startsWith("--") && !v.startsWith("--") => k.stripPrefix("--") -> v }.toMap
-    val labels  = UnmatchedClusters.readLabels(UnmatchedClusters.Directory.resolve("labels.tsv"))
+    val labels  = tools.IdentityJudgements.labels()
     val expected = UnmatchedClusters.readTakeLines(UnmatchedClusters.Directory.resolve("expected-matches.tsv"))
     val relearn = opts.get("relearn").toSeq.flatMap(_.split(",")).map(_.trim).filter(_.nonEmpty).toSet
     // `--weights <file>`: refit (and with --apply, write) another artefact than the shipped one — a positive control

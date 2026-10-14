@@ -12,24 +12,23 @@ Per listing (matched by its serialised key, else by venue and raw title):
   changed  the head takes another TMDB film
   gained   the base took none, the head takes one
 
-LOST and CHANGED fail the check unless accepted, either way:
-  - labels.tsv (test/resources/fixtures/identity-unmatched; a `*` venue labels every venue) says the head's film is `right` for the
-    listing, or the base's film is `wrong` (and the head's is not labelled wrong);
-  - accepted.tsv (test/resources/fixtures/identity-takes) lists the move:
-    country, venue (or *), rawTitle, before, after (tmdb:<id> or none, or *), note.
-GAINED passes when labels.tsv calls the gained film `right`, fails when it calls it `wrong`, and otherwise NEEDS JUDGEMENT:
+LOST and CHANGED fail the check unless accepted by the identity judgements (test/resources/fixtures/
+identity-judgements.tsv, read by identity_judgements.py; a `*` row judges every venue, a venue's own row overrides it):
+  - they call the head's film `right` for the listing, or the base's film `wrong` (and the head's not wrong);
+  - a LOST take's row is in state accepted-loss (or accepted-right-loss): the loss is a trade accepted with why.
+GAINED passes when the judgements call the gained film `right`, fails when it calls it `wrong`, and otherwise NEEDS JUDGEMENT:
   - a gained take a suspect-take signal flags (the head row's `suspect`: SuspectTakes' fragment, era, runtime, sequel,
-    feed, route) fails until labelled -- 648580662 gained DE "Punkabend #93" -> '93 (2025) and "Tino Bomelino" -> Tino
+    feed, route) fails until judged -- 648580662 gained DE "Punkabend #93" -> '93 (2025) and "Tino Bomelino" -> Tino
     (2022) as plain gains, read by no one, in run 38578038277;
   - an unflagged one passes, marked as needing judgement (WARN), never as a silent ok.
 
 SUSPECT TAKES, scoped to what the code changed. Every head row a suspect-take signal flags (its `suspect`) whose film
-no label judges (labels.tsv, read as above) and the suspect baseline (identity-suspects/baseline.tsv) does not list is
+no judgement judges (read as above) and the judgements do not tolerate in scope `served` is
 classified against the base's row for the same listing:
   standing  the base took the same film and flagged it too: data the code did not touch -- REPORTED, never failed
             (the whole corpus's standing suspects are the Identity findings report's, identity-findings-report.yml);
   new       the head took another film, or flags a take the base did not -- the code made it: FAILS, unless
-            accepted.tsv accepts the listing's move (then counted as accepted);
+            an accepted loss accepts the listing's move (then counted as accepted);
   cured     the base's take was an unjudged suspect and the head's is not -- counted, never failed.
 A nightly recording changes base and head at once, so a suspect it brings is standing on both: it never fails here.
 
@@ -40,14 +39,18 @@ With --final the inputs are instead the unmatched-cluster ratchet's `ratchet-tak
 the model and the agreement stage over the checked-in capture and its families' answers), written by the base and the
 head over the SAME capture: a listing absent from a side took no film there. The same verdicts apply.
 
-usage: identity_takes_diff.py <cc> <base.jsonl> <head.jsonl> [--labels F] [--accepted F] [--baseline F] [--summary F]
+usage: identity_takes_diff.py <cc> <base.jsonl> <head.jsonl> [--judgements F] [--summary F]
          [--base-name S] [--head-name S] [--final]
 Exit 1 when an unaccepted move or a new suspect take is found, 2 on unreadable input.
 """
 
 import argparse
 import json
+import os
 import sys
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from identity_judgements import accepted as accepted_rows, label_of, labels_by_country, normalise, read, tolerated  # noqa: E402
 
 
 def load(path):
@@ -64,72 +67,19 @@ def ref(film):
     return "none" if film is None else f"tmdb:{film}"
 
 
-def labels_of(path, cc):
-    out = {}
+def judgements_of(path, cc):
+    """(labels, accepted moves, tolerated suspects) for `cc`: what label_of reads; each accepted loss as the move
+    (venue, rawTitle, film, "none") it accepts; and the {(rawTitle, film)} the judgements tolerate in scope `served`."""
     if not path:
-        return out
-    with open(path, encoding="utf-8") as f:
-        for n, line in enumerate(f):
-            cols = line.rstrip("\n").split("\t")
-            if n == 0 or len(cols) < 5 or cols[0] != cc:
-                continue
-            out[(cols[1], single_spaced(cols[2]), cols[3])] = cols[4]
-    return out
+        return {}, [], set()
+    rows = read(path)
+    return (labels_by_country(rows)[cc], [(venue, title, film, "none") for venue, title, film in accepted_rows(rows, cc)],
+            {(title, film) for country, title, film in tolerated(rows, "served") if country == cc})
 
 
 def single_spaced(title):
-    """A billing as every judgement file keys it (UnmatchedClusters.singleSpaced): its runs of whitespace one space, none at
-    the ends -- a venue that re-spaces a billing between recordings bills the same listing."""
-    return " ".join(title.split())
-
-
-def label_of(labels, venue, title, film):
-    """The verdict labels.tsv gives `film` for the listing, read as UnmatchedClusters.verdict reads it: a label for every
-    venue ("*") covers this one too, and the venue's own label calling the film right overrules every venue's calling it
-    wrong (PL Kino Iluzjon's "Lalka" is Has' 1968 film, the bare "Lalka" everywhere else the 2026 one)."""
-    title = single_spaced(title)
-    own, every = labels.get((venue, title, film)), labels.get(("*", title, film))
-    if own == "right" or every is None:
-        return own
-    return "wrong" if "wrong" in (own, every) else every
-
-
-def accepted_of(path, cc):
-    out = []
-    if not path:
-        return out
-    try:
-        f = open(path, encoding="utf-8")
-    except FileNotFoundError:
-        return out
-    with f:
-        for line in f:
-            if not line.strip() or line.startswith("#"):
-                continue
-            cols = line.rstrip("\n").split("\t")
-            if cols[0] == "country" or len(cols) < 5 or cols[0] != cc:
-                continue
-            out.append(tuple(cols[1:5]))
-    return out
-
-
-def baseline_of(path, cc):
-    """{(rawTitle single-spaced, film)} the suspect baseline lists for `cc` (SuspectTakesAudit.readBaseline): suspects
-    standing when the whole-corpus ratchet was armed, judged as listed."""
-    out = set()
-    if not path:
-        return out
-    try:
-        f = open(path, encoding="utf-8")
-    except FileNotFoundError:
-        return out
-    with f:
-        for n, line in enumerate(f):
-            cols = line.rstrip("\n").split("\t")
-            if n == 0 or len(cols) < 3 or cols[0] != cc:
-                continue
-            out.add((single_spaced(cols[1]), cols[2]))
-    return out
+    """A billing as every judgement keys it: identity_judgements.normalise."""
+    return normalise(title)
 
 
 def ratchet_ran(path):
@@ -209,7 +159,7 @@ def kind_of(before, after):
 
 
 def accepted_move(move, accepted):
-    """Whether an accepted.tsv line accepts the listing's move from `before` to `after`."""
+    """Whether an accepted loss accepts the listing's move from `before` to `after`."""
     venue, title, before, after = move["venue"], move["rawTitle"], ref(move["before"]), ref(move["after"])
     return any(a_venue in ("*", venue) and single_spaced(a_title) == single_spaced(title) and a_before in ("*", before)
                and a_after in ("*", after) for a_venue, a_title, a_before, a_after in accepted)
@@ -219,21 +169,21 @@ def verdict(cc, move, labels, accepted):
     """(accepted?, why) for one move."""
     venue, title, before, after = move["venue"], move["rawTitle"], ref(move["before"]), ref(move["after"])
     if accepted_move(move, accepted):
-        return True, "accepted.tsv"
+        return True, "judgements: an accepted loss"
     now = label_of(labels, venue, title, after)
     was = label_of(labels, venue, title, before)
     if now == "wrong":
-        return False, f"labels.tsv: {after} is WRONG"
+        return False, f"judgements: {after} is WRONG"
     if move["kind"] == "gained":
         if now == "right":
-            return True, "gained (labelled right)"
+            return True, "gained (judged right)"
         if move.get("suspect"):
             return False, "needs judgement, suspect: " + "; ".join(move["suspect"])
         return True, "needs judgement (unjudged gain)"
     if now == "right":
-        return True, f"labels.tsv: {after} is right"
+        return True, f"judgements: {after} is right"
     if was == "wrong":
-        return True, f"labels.tsv: {before} was wrong"
+        return True, f"judgements: {before} was wrong"
     return False, "not accepted"
 
 
@@ -264,7 +214,7 @@ def moves_of(cc, pairs, labels, accepted):
 
 
 def unjudged_suspect(row, labels, baseline):
-    """Whether `row` takes a film a suspect-take signal flags that neither labels.tsv nor the suspect baseline judges."""
+    """Whether `row` takes a film a suspect-take signal flags that no judgement judges nor tolerates."""
     film = take(row)
     if film is None or not row.get("suspect"):
         return False
@@ -307,7 +257,7 @@ def render_suspects(cc, suspects):
     new, standing, cured = suspects["new"], suspects["standing"], suspects["cured"]
     line = (f"suspect takes ({cc}): {len(new)} new (the code's: fail until judged), {len(standing)} standing at base and "
             f"head (reported, never failed), {len(cured)} cured" +
-            (f", {len(suspects['accepted'])} moved onto by a move accepted.tsv accepts" if suspects["accepted"] else ""))
+            (f", {len(suspects['accepted'])} moved onto by an accepted loss" if suspects["accepted"] else ""))
     def text(e, status):
         return (f"  {status} suspect {e['venue']} | {e['rawTitle']}: {e['film']} (base {e['base']})\n"
                 f"        {'; '.join(e['reasons'])}")
@@ -317,9 +267,9 @@ def render_suspects(cc, suspects):
         md += ["| | venue | listing | head film | base film | reasons |", "|---|---|---|---|---|---|"]
         md += [f"| ❌ | {cell(e['venue'])} | {cell(e['rawTitle'])} | {cell(e['film'])} | {cell(e['base'])} | "
                f"{cell('; '.join(e['reasons']))} |" for e in new[:300]]
-        md += ["", "A new suspect is the code's: judge its film in `test/resources/fixtures/identity-unmatched/labels.tsv` "
-                   "(`scripts/label-lookup`, `scripts/identity-slice <cc> --venue V --title T`), or accept the move in "
-                   "`test/resources/fixtures/identity-takes/accepted.tsv`."]
+        md += ["", "A new suspect is the code's: judge its film in `test/resources/fixtures/identity-judgements.tsv` "
+                   "(`scripts/label-lookup`, `scripts/identity-slice <cc> --venue V --title T`), or accept the loss there "
+                   "(state `accepted-loss`, with its reason)."]
     if standing:
         md += ["", f"<details><summary>{len(standing)} standing suspect(s): the recording's, untouched by this change -- "
                    "triaged from the Identity findings report, never failed here</summary>", ""]
@@ -350,11 +300,12 @@ def render(cc, moves, unpaired, base_name, head_name, listings, what="identity t
         if len(moves) > 300:
             md.append(f"\n... and {len(moves) - 300} more (the job log has them all)")
     if judge:
-        md += ["", "To judge a gain, label its film `right` or `wrong` in `test/resources/fixtures/identity-unmatched/labels.tsv` "
+        md += ["", "To judge a gain, judge its film `right` or `wrong` in `test/resources/fixtures/identity-judgements.tsv` "
                    "(`scripts/label-lookup`, `scripts/identity-judge-cards` for the evidence)."]
     if failing:
-        md += ["", "To accept a move, label the head's film `right` in `test/resources/fixtures/identity-unmatched/labels.tsv`, "
-                   "or add `country\tvenue|*\trawTitle\tbefore\tafter|*\tnote` to `test/resources/fixtures/identity-takes/accepted.tsv`."]
+        md += ["", "To accept a move, judge the head's film `right` (or the base's `wrong`) in "
+                   "`test/resources/fixtures/identity-judgements.tsv`; to accept a loss as a trade, set the base film's row to "
+                   "state `accepted-loss` with its reason."]
     if suspects:
         log, suspect_md = render_suspects(cc, suspects)
         text += log
@@ -367,9 +318,7 @@ def main(argv=None):
     p.add_argument("cc")
     p.add_argument("base")
     p.add_argument("head")
-    p.add_argument("--labels")
-    p.add_argument("--accepted")
-    p.add_argument("--baseline", help="the suspect baseline (test/resources/fixtures/identity-suspects/baseline.tsv)")
+    p.add_argument("--judgements", help="test/resources/fixtures/identity-judgements.tsv")
     p.add_argument("--summary")
     p.add_argument("--base-name", default="base")
     p.add_argument("--head-name", default="head")
@@ -388,11 +337,11 @@ def main(argv=None):
             print(f"identity takes ({a.cc}): an empty side (base {len(base)}, head {len(head)} listings) -- nothing resolved",
                   file=sys.stderr)
             return 2
-        labels, accepted = labels_of(a.labels, a.cc), accepted_of(a.accepted, a.cc)
+        labels, accepted, baseline = judgements_of(a.judgements, a.cc)
         pairs, unpaired, heads_alone = pair(base, head)
         moves = moves_of(a.cc, pairs, labels, accepted)
         # the final takes carry no suspect signals: the model's decisions are where a suspect is judged
-        suspects = None if a.final else suspects_of(pairs, heads_alone, labels, baseline_of(a.baseline, a.cc), accepted)
+        suspects = None if a.final else suspects_of(pairs, heads_alone, labels, baseline, accepted)
     except (OSError, ValueError, KeyError, TypeError, IndexError) as e:
         print(f"identity takes ({a.cc}): could not read the inputs: {type(e).__name__}: {e}", file=sys.stderr)
         return 2

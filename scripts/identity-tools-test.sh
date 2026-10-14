@@ -35,9 +35,13 @@ chmod +x "$work/bin/gh" "$work/bin/sbt"
 repo="$work/repo"
 mkdir -p "$repo/test/resources/fixtures/identity-unmatched"
 echo pl-at-ref > "$repo/test/resources/fixtures/identity-unmatched/pl.json.gz"
-echo "labels-at-ref" > "$repo/test/resources/fixtures/identity-unmatched/labels.tsv"
-scratch_repo "$repo" && scratch_git "$repo" add -A && scratch_git "$repo" commit -qm capture
-echo "labels-here" > "$repo/test/resources/fixtures/identity-unmatched/labels.tsv"
+echo "legacy-labels" > "$repo/test/resources/fixtures/identity-unmatched/labels.tsv"
+scratch_repo "$repo" && scratch_git "$repo" add -A && scratch_git "$repo" commit -qm "capture, judged by labels.tsv"
+legacy=$(scratch_git "$repo" rev-parse HEAD)
+scratch_git "$repo" rm -q test/resources/fixtures/identity-unmatched/labels.tsv
+echo "labels-at-ref" > "$repo/test/resources/fixtures/identity-judgements.tsv"
+scratch_git "$repo" add -A && scratch_git "$repo" commit -qm "the judgements, one file"
+echo "labels-here" > "$repo/test/resources/fixtures/identity-judgements.tsv"
 
 tools() {
   STUB="$work" PATH="$work/bin:$PATH" KINOWO_IDENTITY_CACHE="$work/cache" bash -c \
@@ -46,12 +50,16 @@ tools() {
 
 check "no source is this checkout's capture" "$repo/test/resources/fixtures/identity-unmatched" "$(tools identity_capture "" pl)"
 check "a run id downloads that country's capture into the cache" "de-capture" "$(cat "$(tools identity_capture 987654 de)/de.json.gz")"
-check "...judged by this checkout's labels" "labels-here" "$(cat "$work/cache/captures/run-987654/labels.tsv")"
+check "...judged by this checkout's judgements" "labels-here" "$(cat "$work/cache/captures/run-987654/identity-judgements.tsv")"
 rm -f "$work/calls"
 tools identity_capture 987654 de > /dev/null
 check "...and is not downloaded again" "0" "$(grep -c 'run download' "$work/calls" 2>/dev/null || echo 0)"
 check "a ref's capture is read from git, without a checkout" "pl-at-ref" "$(cat "$(tools identity_capture HEAD pl)/pl.json.gz")"
-check "...with that ref's labels" "labels-at-ref" "$(cat "$(tools identity_capture HEAD pl)/labels.tsv")"
+check "...with that ref's judgements" "labels-at-ref" "$(cat "$(tools identity_capture HEAD pl)/identity-judgements.tsv")"
+check "...a ref from before the judgements were one file: its labels.tsv" "legacy-labels" \
+  "$(cat "$(tools identity_capture "$legacy" pl)/identity-judgements.tsv")"
+check "this checkout's capture is judged by this checkout's judgements" "$repo/test/resources/fixtures/identity-judgements.tsv" \
+  "$(tools identity_judgements "$(tools identity_capture "" pl)")"
 check "a ref that is none fails" "2" "$(tools identity_capture no-such-ref pl > /dev/null; echo $?)"
 
 tree="$work/tree"

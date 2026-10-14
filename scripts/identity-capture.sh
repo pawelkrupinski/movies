@@ -38,7 +38,7 @@
 #   4. prints each phase's time and throughput, and exits non-zero, naming them, when any country's JVM
 #      failed, was killed or printed no capture.
 #
-# Then judge every new take into labels.tsv and re-baseline expected-matches.tsv (the ratchet,
+# Then judge every new take into identity-judgements.tsv and re-baseline expected-matches.tsv (the ratchet,
 # worker/src/test/scala/services/identity/UnmatchedClustersRatchetSpec.scala).
 set -euo pipefail
 self="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"

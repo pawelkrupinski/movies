@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# The judgement files merge by UNION (.gitattributes): two branches that each add a line-per-entry judgement — a label,
-# a known-wrong take, a suspect baseline line, an accepted move, an expected match — rebase and merge with BOTH lines
+# The judgement files merge by UNION (.gitattributes): two branches that each add a line-per-entry judgement — a row of
+# identity-judgements.tsv, an expected match — rebase and merge with BOTH lines
 # kept and no conflict to resolve by hand. A duplicate or contradicting pair the union produces is the judgements lint's
 # (scripts/ci/identity_judgements_lint.py) to refuse, not git's. Run: bash scripts/judgements-merge-test.sh
 set -uo pipefail
@@ -8,9 +8,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 . "$REPO_ROOT/scripts/shell-spec.sh"
 . "$REPO_ROOT/scripts/scratch-git.sh"
 
-Files=(test/resources/fixtures/identity-unmatched/labels.tsv test/resources/fixtures/identity-unmatched/known-wrong.tsv
-  test/resources/fixtures/identity-suspects/baseline.tsv test/resources/fixtures/identity-takes/accepted.tsv
-  test/resources/fixtures/identity-unmatched/expected-matches.tsv)
+Files=(test/resources/fixtures/identity-judgements.tsv test/resources/fixtures/identity-unmatched/expected-matches.tsv)
 
 scratch="$(mktemp -d)"; trap 'rm -rf "$scratch"' EXIT
 repo="$scratch/repo"

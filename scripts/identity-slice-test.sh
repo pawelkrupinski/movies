@@ -37,7 +37,7 @@ echo "de  kinowo_de_prod_mirror: synced …"
 exit "${FRESHNESS_EXIT:-0}"
 STUB
 chmod +x "$repo/scripts/local-mirror/freshness"
-printf 'country\tvenue\trawTitle\tfilm\tverdict\tnote\n' > "$repo/test/resources/fixtures/identity-unmatched/labels.tsv"
+printf 'country\tvenue\trawTitle\tfilm\tverdict\tstate\tscope\tfilmTitle\treason\tjudged\tevidence\n' > "$repo/test/resources/fixtures/identity-judgements.tsv"
 scratch_repo "$repo" && scratch_git "$repo" add -A && scratch_git "$repo" commit -qm base
 echo "// head" >> "$repo/build.sbt"
 scratch_git "$repo" commit -qam head
@@ -193,16 +193,16 @@ check "...and a slice without it reads no mirror" "0" "$(rm -f "$work/calls"; sl
 
 # --explain: the WHY trace of a listing the unmatched-cluster capture holds (scripts/identity-explain is its alias)
 rm -f "$work/calls"
-mkdir -p "$work/capture"; echo c > "$work/capture/de.json.gz"; printf 'country\n' > "$work/capture/labels.tsv"
+mkdir -p "$work/capture"; echo c > "$work/capture/de.json.gz"; printf 'country\n' > "$work/capture/identity-judgements.tsv"
 slice de --explain --fixture "$work/capture" --venue Kino --title Lalka --ref HEAD > /dev/null
-check "--explain replays the capture it is handed, judged by its labels" "1" \
-  "$(grep -c -- "scripts.IdentityExplain de --fixture $work/capture/de.json.gz --labels $work/capture/labels.tsv --venue Kino --title Lalka" "$work/calls")"
+check "--explain replays the capture it is handed, judged by its judgements" "1" \
+  "$(grep -c -- "scripts.IdentityExplain de --fixture $work/capture/de.json.gz --labels $work/capture/identity-judgements.tsv --venue Kino --title Lalka" "$work/calls")"
 check "...under the ref's code, the explainer dropped into its tree" "1 // worker/src/test/scala/scripts/IdentityExplain.scala" \
   "$(grep -c "java $cache/refs/$head " "$work/calls") $(cat "$cache/refs/$head/worker/src/test/scala/scripts/IdentityExplain.scala")"
 check "...and no recording is fetched for it" "0" "$(grep -c -- '--recording' "$work/calls")"
 rm -f "$work/calls"
 STUB="$work" PATH="$work/bin:$PATH" KINOWO_IDENTITY_CACHE="$cache" "$repo/scripts/identity-explain" de --fixture "$work/capture" --venue Kino > /dev/null 2>&1
 check "scripts/identity-explain is identity-slice --explain" "1" \
-  "$(grep -c -- "scripts.IdentityExplain de --fixture $work/capture/de.json.gz --labels $work/capture/labels.tsv --venue Kino" "$work/calls")"
+  "$(grep -c -- "scripts.IdentityExplain de --fixture $work/capture/de.json.gz --labels $work/capture/identity-judgements.tsv --venue Kino" "$work/calls")"
 
 spec_summary

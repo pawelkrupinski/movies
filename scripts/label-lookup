@@ -5,22 +5,20 @@
   scripts/label-lookup <cc> --film tmdb:N [--no-prod] [--no-history] [--root DIR]
 
 Reads, for the country:
-  labels.tsv, known-wrong.tsv, expected-matches.tsv     test/resources/fixtures/identity-unmatched/
-  baseline.tsv                                          test/resources/fixtures/identity-suspects/
-  accepted.tsv                                          test/resources/fixtures/identity-takes/
-  MatchedTakesLabelSpec's knownWrong / noLongerServed   worker/src/test/scala/services/identity/
+  identity-judgements.tsv     test/resources/fixtures/ (every judgement: its verdict, state, scope, reason, evidence)
+  expected-matches.tsv        test/resources/fixtures/identity-unmatched/ (the ratchet's regenerated right takes)
 each entry with its verdict, note, and the commit and date that last changed its line (git blame).
 
   --title   the listing's raw title, single-spaced as every judgement file keys it; exact when any file holds it so,
             else every title holding it (case and accents aside)
   --venue   the venue: a line for every venue ("*") covers it too, and the venue's own RIGHT overrules "*"'s WRONG
-            (identity_takes_diff.label_of, the reading every gate shares); the effective verdict per film is printed
+            (identity_judgements.label_of, the reading every gate shares); the effective verdict per film is printed
   --film    every entry naming that film, in any file
   --no-prod skip what prod takes now: the local prod mirror's identity_traces (mongodb://127.0.0.1:28017,
             kinowo[_<cc>]_prod_mirror, read-only; $LOCAL_MIRROR_PORT overrides), its freshness checked first by
             scripts/local-mirror/freshness
 Conflicts are the identity judgements lint's own findings (scripts/ci/identity_judgements_lint.py) that touch the
-listing or film, grandfathered ones marked.
+listing or film; the policy's exceptions (accepted-right-loss) are named as notes.
 """
 
 import argparse
@@ -35,10 +33,9 @@ from datetime import datetime, timezone
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "ci"))
+import identity_judgements as store  # noqa: E402  (the one reader of the judgements)
 import identity_judgements_lint as lint  # noqa: E402  (the lint's rules, never a copy of them)
-from identity_takes_diff import label_of, single_spaced  # noqa: E402
-
-MATCHED_SPEC = "worker/src/test/scala/services/identity/MatchedTakesLabelSpec.scala"
+from identity_judgements import label_of, normalise as single_spaced  # noqa: E402
 MIRROR_URI = f"mongodb://127.0.0.1:{os.environ.get('LOCAL_MIRROR_PORT', '28017')}"
 
 
@@ -74,61 +71,23 @@ def col(cols, i):
     return cols[i] if len(cols) > i else ""
 
 
-SHAPES = [
-    (lint.LABELS, lambda c: (c[0], c[1], c[2], [c[3]], c[4], col(c, 5)) if len(c) >= 5 else None),
-    (lint.KNOWN_WRONG, lambda c: (c[0], "", c[1], [c[2]], "known wrong", f"{col(c, 3)}: {col(c, 4)}") if len(c) >= 3 else None),
-    (lint.EXPECTED_MATCHES, lambda c: (c[0], c[1], c[2], [c[3]], "expected take", col(c, 4)) if len(c) >= 4 else None),
-    (lint.BASELINE, lambda c: (c[0], "", c[1], [c[2]], "suspect baseline", f"{col(c, 3)}: {col(c, 4)}") if len(c) >= 3 else None),
-    (lint.ACCEPTED, lambda c: (c[0], c[1], c[2], [c[3], c[4]], f"accepted move {c[3]} -> {c[4]}", col(c, 5)) if len(c) >= 5 else None),
-]
-
-SCALA_ENTRY = re.compile(r'^\s*\("(?P<cc>[a-z]{2})",\s*"(?P<title>(?:[^"\\]|\\.)*)",\s*"(?P<film>[a-z]+:[^"]+)"\)\s*->(?P<rest>.*)$')
-SCALA_STRING = re.compile(r'"((?:[^"\\]|\\.)*)"')
-
-
-def matched_spec_entries(root):
-    """MatchedTakesLabelSpec's two maps: each `("cc", "title", "film") -> why`, the why's string literals joined (a name
-    standing for one, `multiFilmBill`, read off its `lazy val`)."""
-    path = os.path.join(root, MATCHED_SPEC)
-    if not os.path.exists(path):
-        return []
-    lines = open(path, encoding="utf-8").read().split("\n")
-    named = {}
-    for i, line in enumerate(lines):
-        m = re.match(r"\s*private (?:lazy )?val (\w+)\s*=\s*$", line)
-        if m:
-            named[m.group(1)] = "".join(SCALA_STRING.findall(lines[i + 1]))
-    out, section = [], None
-    for i, line in enumerate(lines):
-        m = re.match(r"\s*private val (noLongerServed|knownWrong)\b", line)
-        if m:
-            section = m.group(1)
-        m = SCALA_ENTRY.match(line)
-        if not (m and section):
-            continue
-        why, j = [], i
-        rest = m.group("rest")
-        while True:
-            why += SCALA_STRING.findall(rest)
-            ident = re.fullmatch(r"\s*(\w+)\s*,?\s*\)?\s*", rest)
-            if ident and ident.group(1) in named:
-                why.append(named[ident.group(1)])
-            j += 1
-            if j >= len(lines) or SCALA_ENTRY.match(lines[j]) or not lines[j].strip() or lines[j].strip().startswith(("//", "/**", "private", "*")):
-                break
-            rest = lines[j]
-        verdict = "no longer served (matched)" if section == "noLongerServed" else "known wrong (matched)"
-        title = m.group("title").encode().decode("unicode_escape").encode("latin-1").decode("utf-8")
-        out.append(Entry(MATCHED_SPEC, i + 1, m.group("cc"), "", title, [m.group("film")], verdict, "".join(why)))
+def judgement_entries(root):
+    """Each row of the judgements file: its verdict, and its state, scope and reason beside the evidence."""
+    out = []
+    for r in store.read_at(root):
+        state = "" if r.state == "open" else f" {r.state}" + (f" ({r.scope})" if r.scope else "")
+        verdict = r.verdict + state if state else r.verdict
+        note = "; ".join(x for x in (r.reason and f"reason: {r.reason}", r.evidence, r.judged and f"judged {r.judged}") if x)
+        out.append(Entry(store.PATH, r.line, r.country, r.venue, r.rawTitle, [r.film], verdict, note))
     return out
 
 
 def all_entries(root):
-    out = []
-    for rel, shape in SHAPES:
-        if os.path.exists(os.path.join(root, rel)):
-            out += tsv_entries(root, rel, shape)
-    return out + matched_spec_entries(root)
+    out = judgement_entries(root)
+    if os.path.exists(os.path.join(root, lint.EXPECTED_MATCHES)):
+        out += tsv_entries(root, lint.EXPECTED_MATCHES,
+                           lambda c: (c[0], c[1], c[2], [c[3]], "expected take", col(c, 4)) if len(c) >= 4 else None)
+    return out
 
 
 def blame(root, entries):
@@ -201,8 +160,8 @@ print(JSON.stringify(db.identity_traces.find(sel, {listing: 1, film: 1, basis: 1
 def lookup(root, cc, title=None, venue=None, film=None, prod=True, history=True):
     out = []
     entries = [e for e in all_entries(root) if e.cc == cc]
-    label_rows = lint.rows(os.path.join(root, lint.LABELS), 5)
-    labels = lint.labels_by_country(label_rows)[cc]
+    judgements = store.read_at(root)
+    labels = store.labels_by_country(judgements)[cc]
 
     exact = None
     if film:
@@ -220,18 +179,18 @@ def lookup(root, cc, title=None, venue=None, film=None, prod=True, history=True)
     films = sorted({f for e in hits for f in e.films if re.match(r"^(tmdb|imdb):", f)})
 
     if venue and not film:
-        out.append(f"effective verdict at '{venue}' (labels.tsv: the venue's own RIGHT overrules '*'):")
+        out.append(f"effective verdict at '{venue}' (the judgements: the venue's own row overrides '*'):")
         judged = False
         for t in titles:
-            for f in sorted({e.films[0] for e in hits if e.path == lint.LABELS and e.title == t}):
+            for f in sorted({e.films[0] for e in hits if e.path == store.PATH and e.title == t}):
                 own, every = labels.get((venue, t, f)), labels.get(("*", t, f))
                 why = ("the venue's own" if own and not every else "'*'" if every and not own else
                        f"the venue's own {own} beside '*' {every}" if own and every else "")
                 out.append(f"  {t} · {f}: {(label_of(labels, venue, t, f) or '-').upper()} ({why})")
                 judged = True
         if not judged:
-            out.append("  none: labels.tsv judges no film for it")
-        right = {e.films[0] for e in hits if e.path == lint.LABELS and e.films[0].startswith("tmdb:") and label_of(labels, venue, e.title, e.films[0]) == "right"}
+            out.append("  none: the judgements judge no film for it")
+        right = {e.films[0] for e in hits if e.path == store.PATH and e.films[0].startswith("tmdb:") and label_of(labels, venue, e.title, e.films[0]) == "right"}
         if len(right) > 1:
             out.append(f"  NOTE {len(right)} films judged right for one venue: {', '.join(sorted(right))} (two listings, or a label to settle)")
 
@@ -240,7 +199,9 @@ def lookup(root, cc, title=None, venue=None, film=None, prod=True, history=True)
     out.append(f"entries ({len(hits)}):")
     for e in sorted(hits, key=lambda e: (e.path, e.title, e.venue, e.line)):
         where = f"{e.venue} | {e.title}" if e.venue else e.title
-        out.append(f"  {os.path.basename(e.path)}:{e.line}  {where}  {' '.join(e.films)}  {e.verdict.upper() if e.verdict in ('right', 'wrong') else e.verdict}")
+        shown = e.verdict.split(" ", 1)
+        shown[0] = shown[0].upper() if shown[0] in ("right", "wrong") else shown[0]
+        out.append(f"  {os.path.basename(e.path)}:{e.line}  {where}  {' '.join(e.films)}  {' '.join(shown)}")
         if e.note:
             out.append(f"      note: {e.note}")
         if e.history:
@@ -254,7 +215,7 @@ def lookup(root, cc, title=None, venue=None, film=None, prod=True, history=True)
                 query["venue"] = venue
             fresh, takes = prod_takes(cc, query)
             out.append(f"prod takes now (local mirror {mirror_db(cc)}, identity_traces; {fresh}):")
-            right_films = defaultdict(set)  # title -> the tmdb films labels.tsv names for it, judged per venue below
+            right_films = defaultdict(set)  # title -> the tmdb films the judgements name for it, judged per venue below
             for (lv, lt, lf) in labels:
                 if lf.startswith("tmdb:"):
                     right_films[lt].add(lf)
@@ -271,9 +232,9 @@ def lookup(root, cc, title=None, venue=None, film=None, prod=True, history=True)
 
             def warning(verdicts):
                 if "wrong" in verdicts:
-                    return "  <- prod takes a film labels.tsv calls WRONG"
+                    return "  <- prod takes a film the judgements call WRONG"
                 if any(j.startswith("misses") for j in verdicts):
-                    return "  <- prod misses the film labels.tsv calls RIGHT"
+                    return "  <- prod misses the film the judgements call RIGHT"
                 return ""
 
             if len(takes) <= 12:
@@ -296,10 +257,7 @@ def lookup(root, cc, title=None, venue=None, film=None, prod=True, history=True)
             if not takes and not fresh.startswith("no mirror"):
                 out.append("  none: prod's identity traces hold no such listing")
 
-    found = (lint.accepted_findings(lint.rows(os.path.join(root, lint.ACCEPTED), 5), lint.labels_by_country(label_rows)) +
-             lint.conflict_findings(label_rows) + lint.scattered_findings(label_rows) +
-             lint.expected_match_findings(lint.rows(os.path.join(root, lint.EXPECTED_MATCHES), 4), lint.labels_by_country(label_rows)) +
-             lint.hard_cluster_findings(root, label_rows))
+    found = lint.lint(root)
     keys_titles = {lint.key(t) for t in titles}
 
     def touches(k):
@@ -312,7 +270,9 @@ def lookup(root, cc, title=None, venue=None, film=None, prod=True, history=True)
     mine = [(k, m) for k, m in found if touches(k)]
     out.append(f"conflicts (identity_judgements_lint): {'none' if not mine else len(mine)}")
     for k, m in mine:
-        out.append(f"  {'grandfathered: ' if k in lint.GRANDFATHERED else ''}{k[0]}: {m}")
+        out.append(f"  {k[0]}: {m}")
+    for m in lint.notices([r for r in judgements if r.country == cc and (film == r.film if film else single_spaced(r.rawTitle) in titles)]):
+        out.append(f"  note: {m}")
     return out
 
 

@@ -3,7 +3,7 @@ package services.identity
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import scripts.IdentityUnifiedFit
-import tools.UnmatchedClusters
+import tools.{IdentityJudgements, UnmatchedClusters}
 import tools.UnmatchedClusters.Take
 
 /**
@@ -12,83 +12,35 @@ import tools.UnmatchedClusters.Take
  * invisible to it (2026-10-06: four such takes found only by an offline ML audit of the unified rows).
  *
  * Every cluster of the unified evidence rows ([[IdentityUnifiedFit.Training]]: every cluster of the five recorded
- * corpora, matched ones included) whose take the model makes is judged by `labels.tsv` as the ratchet judges a take, by
- * the cluster's venue and most common raw title. The rows hold the MODEL's take, before the agreement stage reads it
- * again (`agreement.Correction`), and as the code stood when they were emitted (`integration.IdentityUnifiedDataset`).
- * So a wrong take fails unless it is listed below as one a later stage or a later change no longer serves — each with
- * the spec that proves it — or as one KNOWN WRONG that no safe fix removes yet, each with why (the matched takes'
- * counterpart of `known-wrong.tsv`, which lists the unmatched clusters' and fails a line their capture lacks). Both
- * lists only shrink: a line the rows no longer hold is struck.
+ * corpora, matched ones included) whose take the model makes is judged by the identity judgements as the ratchet judges
+ * a take, by the cluster's venue and most common raw title. The rows hold the MODEL's take, before the agreement stage
+ * reads it again (`agreement.Correction`), and as the code stood when they were emitted
+ * (`integration.IdentityUnifiedDataset`). So a wrong take fails unless the judgements hold it known-wrong in scope `rows`
+ * — one a later stage or a later change no longer serves ("no longer served: …", with the spec that proves it), or one
+ * no safe fix removes yet — each with why. They only shrink: a row the rows no longer hold is struck.
  */
 class MatchedTakesLabelSpec extends AnyFlatSpec with Matchers {
 
-  private val labels = UnmatchedClusters.readLabels(UnmatchedClusters.Directory.resolve("labels.tsv"))
+  private val judged = IdentityJudgements.read()
+  private val labels = IdentityJudgements.labels(judged)
   private val rows   = IdentityUnifiedFit.read(IdentityUnifiedFit.Training)
-
-  private lazy val multiFilmBill =
-    "matched to no film since 4456afbbc (MultiFilmBill): a word bills several films — struck once the rows are re-emitted"
-
-  /** The model's wrong takes in the recorded rows that prod no longer serves, (country, raw title, taken film) → why. */
-  private val noLongerServed: Map[(String, String, String), String] = Map(
-    ("pl", "Teksańska masakra piłą mechaniczną", "tmdb:632727") ->
-      "corrected to the 1974 film by the venue poster and the families (AgreementCorrectionSpec; live in prod 2026-10-06)",
-    ("pl", "Ktoś całkiem obcy", "tmdb:7183") ->
-      ("corrected once Kino Kryterium's poster is hashed through its Zyte route, or read without it once given up on " +
-        "(AgreementCorrectionSpec, AgreementPostersSpec, ArchiveReplayEnrichmentWiringSpec)"),
-    ("us", "NT Live: All My Sons", "tmdb:568683") ->
-      "withdrawn as a superseded relay: TMDB dates it 2019, the screenings and the 2026 record of its title 2026 (AgreementCorrectionSpec)",
-    ("uk", "CBeebies Panto 2026: Treasure Island", "tmdb:6646") ->
-      ("unmatched in prod (BelowThreshold, 2026-10-06; read-only check of kinowo_uk identity_model_families): the title bills " +
-        "2026, which `edition.apart` holds apart from the 1950 record — struck once the rows are re-emitted"),
-    ("uk", "Unrestricted View Horror Film Festival 2026: Opening Night", "tmdb:311764") ->
-      ("matched to no film since ListingShape.programmeSlotOf: a festival's programme slot names no film, an event " +
-        "(IdentityResolverCasesSpec, NonFilmEventsSpec) — struck once the rows are re-emitted"),
-    ("pl", "„Mieszkanie” i „Owoce rajskich drzew spożywamy”", "tmdb:80080") ->
-      ("matched to no film since ListingShape.quotesTwoJoined: two quoted works a conjunction joins are a double bill " +
-        "(IdentityResolverCasesSpec) — struck once the rows are re-emitted"),
-    ("pl", "24. Festiwal TERRA - DIA DE MUERTOS - MEKSYKAŃSKI DZIEŃ ZMARŁYCH", "tmdb:378112") ->
-      ("matched to no film since IdentityResolver.billedAsPiece: the billing names the film as one piece beside a talk on " +
-        "the Day of the Dead (IdentityResolverCasesSpec) — struck once the rows are re-emitted"),
-    ("pl", "Maraton Horrorów", "tmdb:1193501") -> multiFilmBill,
-    ("uk", "The Dark Knight Trilogy", "tmdb:155") -> multiFilmBill,
-    ("uk", "Triple Feature: Lord of the Rings", "tmdb:122") -> multiFilmBill,
-    ("us", "Triple Feature: Lord of the Rings", "tmdb:122") -> multiFilmBill,
-    ("uk", "We're Going on a Bear Hunt+Tiger Who Came to...", "tmdb:431591") ->
-      ("matched to no film since MultiFilmBill.billPieces: an unspaced \"+\" between two works of two words or more " +
-        "joins a double bill (IdentityResolverCasesSpec) — struck once the rows are re-emitted"),
-    ("de", "Karla", "tmdb:276944") ->
-      ("the 1965 Karla, as the rows' old model took it at Filmpalast Iserlohn; convergence run 38487614044 (2026-10-14) " +
-        "takes the 2025 film there, as at its 16 other venues — struck once the rows are re-emitted"),
-    ("es", "El Cascanueces (BALLET)", "tmdb:471321") ->
-      ("the 2019 ROH Nutcracker, as the rows' old model took it at Ocine Blanes; the relay season's search takes the " +
-        "2026/27 relay (1702761) it screens on the day of — struck once the rows are re-emitted"))
-
-  /** The model's wrong takes no safe fix removes yet, (country, raw title, taken film) → why — judged by the suspect-take
-   *  audit 2026-10-13. */
-  private val knownWrong: Map[(String, String, String), String] = Map(
-    ("de", "München Mord: Leben und Sterben in Schwabing", "tmdb:655654") ->
-      ("a TV crime episode the venue's feed files under its director's other 2019 film (webedia 273417, Sascha Bigler): " +
-        "the feed's own facts name the record, and no rule tells an episode from the film without losing right takes"),
-    // found by the wrong-match hunt 2026-10-14 (feed-id detector): the venue's Cineamo link names another film
-    ("de", "The Killer", "tmdb:970347") ->
-      ("John Woo's 1989 film in its 2026 4K restoration (tmdb:10835, 8 venues), not his streaming-only 2024 remake: the " +
-        "listing states nothing, and its Cineamo link (800158m, Fincher's) names a third film"))
 
   private def take(row: IdentityUnifiedFit.Row): Take = Take(row.country, row.venue, row.rawTitle,
     row.film.stripPrefix("tmdb:").toIntOption.filter(_ => row.film.startsWith("tmdb:")),
     Option.when(row.film.startsWith("imdb:"))(row.film.stripPrefix("imdb:")), "", row.filmTitle)
 
-  private def listed = noLongerServed.keySet ++ knownWrong.keySet
+  private val listed = IdentityJudgements.tolerated(judged, IdentityJudgements.Scope.Rows).keySet
+  private def key(take: Take) = (take.country, IdentityJudgements.normalise(take.rawTitle), take.film)
 
   private lazy val wrong = rows.filter(_.today).map(take).filter(UnmatchedClusters.verdict(_, labels).contains(false))
 
-  "the model's matched takes" should "take no film a hand label denies or contradicts, beyond those prod no longer serves" in {
-    val standing = wrong.filterNot(t => listed.contains((t.country, t.rawTitle, t.film)))
+  "the model's matched takes" should "take no film a judgement denies or contradicts, beyond those known-wrong in scope rows" in {
+    val standing = wrong.filterNot(t => listed.contains(key(t)))
     withClue(standing.map(UnmatchedClusters.takeLine).mkString("WRONG matched takes:\n", "\n", "\n")) { standing shouldBe empty }
   }
 
   it should "list only takes the rows still hold — one gone from them is struck" in {
-    val stale = listed -- wrong.map(t => (t.country, t.rawTitle, t.film)).toSet
-    withClue(stale.mkString("no longer in the rows — remove from `noLongerServed` or `knownWrong`:\n", "\n", "\n")) { stale shouldBe empty }
+    val stale = listed -- wrong.map(key).toSet
+    withClue(stale.mkString("no longer in the rows — drop `rows` from the known-wrong judgement's scope:\n", "\n", "\n")) { stale shouldBe empty }
   }
 }

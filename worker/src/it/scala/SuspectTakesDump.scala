@@ -9,7 +9,7 @@ import scala.collection.mutable
 
 /**
  * Every take of the recorded full corpora with the evidence [[SuspectTakes]] reads — what `scripts.SuspectTakesMeasure`
- * grades the suspect-take signals on against `labels.tsv`, in seconds, as often as a signal is tuned:
+ * grades the suspect-take signals on against `identity-judgements.tsv`, in seconds, as often as a signal is tuned:
  *
  *   KINOWO_IDENTITY_FULL=pl,uk,de,es,us KINOWO_IDENTITY_CORPUS_DIR=test/resources/fixtures/corpus
  *   scripts/it-local.sh "worker/IntegrationTest/runMain integration.SuspectTakesDump --out target/suspect-takes"

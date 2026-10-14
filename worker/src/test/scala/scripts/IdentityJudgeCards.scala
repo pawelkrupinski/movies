@@ -3,7 +3,7 @@ package scripts
 import models.Country
 import services.identity.{Answer, IdentityLookups, IdentityMeasures, SuspectTakes, TmdbIdentityLookups}
 import services.movies.ListingKey
-import tools.UnmatchedClusters
+import tools.{IdentityJudgements, UnmatchedClusters}
 import tools.UnmatchedClusters.{Capture, Label, Take}
 
 import java.nio.charset.StandardCharsets
@@ -25,12 +25,12 @@ import scala.concurrent.{Await, ExecutionContext, Future}
  *    fill route) — shown to the judge, never deciding;
  *  - a SUGGESTED verdict only where the evidence is decisive ([[JudgeEvidence.suggest]]), every other card left open.
  *
- * Writes `cards.md`, `labels-draft.tsv` (the decisive suggestions as labels.tsv lines, each noted "suggested … confirm")
- * and `open.tsv` (the rest, verdict blank) — never `labels.tsv` itself. `--all` cards the judged takes too and writes
+ * Writes `cards.md`, `labels-draft.tsv` (the decisive suggestions as identity-judgements.tsv lines, each noted "suggested … confirm")
+ * and `open.tsv` (the rest, verdict blank) — never `identity-judgements.tsv` itself. `--all` cards the judged takes too and writes
  * `suggestions.tsv` beside the labels' verdict: how often a decisive suggestion agrees with a label.
  *
  * {{{
- *   IdentityJudgeCards [--fixtures dir] [--labels labels.tsv] [--country cc] [--out dir] [--all] [--offline]
+ *   IdentityJudgeCards [--fixtures dir] [--labels identity-judgements.tsv] [--country cc] [--out dir] [--all] [--offline]
  * }}}
  */
 object IdentityJudgeCards {
@@ -61,7 +61,7 @@ object IdentityJudgeCards {
   def main(args: Array[String]): Unit = {
     val options  = parse(args.toList)
     val started  = System.nanoTime()
-    val labels   = UnmatchedClusters.readLabels(options.labels.getOrElse(options.fixtures.resolve("labels.tsv")))
+    val labels   = IdentityJudgements.labels(options.labels.getOrElse(IdentityJudgements.CheckedIn))
     val captures = Country.all.filter(c => options.countries.isEmpty || options.countries.contains(c.code))
       .map(c => options.fixtures.resolve(s"${c.code}.json.gz")).filter(Files.exists(_)).map(UnmatchedClusters.read)
     val live     = if (options.offline) None else liveLookups()
@@ -146,19 +146,21 @@ object IdentityJudgeCards {
 
   def write(out: Path, cards: Seq[Card], all: Boolean, today: java.time.LocalDate): Unit = {
     Files.createDirectories(out)
+    // identity-judgements.tsv rows: a confirmed one is pasted in as it stands
     def labelLines(card: Card, verdict: String, note: String): Seq[String] =
-      (if (card.everyVenue) Seq("*") else card.venues).map(venue => Seq(card.country, venue, card.rawTitle, card.film, verdict, note).mkString("\t"))
+      (if (card.everyVenue) Seq("*") else card.venues).map(venue => Seq(card.country, venue, IdentityJudgements.normalise(card.rawTitle), card.film,
+        verdict, "open", "", card.record.fold("")(_.line), "", today.toString, note).map(_.replace('\t', ' ')).mkString("\t"))
     val open      = cards.filter(_.labelled.isEmpty)
     val draft     = open.filter(_.suggestion.verdict.isDefined).flatMap { card =>
       labelLines(card, verdictWord(card.suggestion.verdict), s"suggested $today by identity-judge-cards: ${card.suggestion.reasons.mkString("; ")} — CONFIRM")
     }
     val undecided = open.filter(_.suggestion.verdict.isEmpty).flatMap(card => labelLines(card, "",
       (card.record.fold("no record")(r => r.line) +: card.suspicions.map(s => s"suspect — $s")).mkString("; ")))
-    val header    = "country\tvenue\trawTitle\tfilm\tverdict\tnote"
+    val header    = IdentityJudgements.Columns.mkString("\t")
     Files.writeString(out.resolve("labels-draft.tsv"), (header +: draft).mkString("", "\n", "\n"), StandardCharsets.UTF_8)
     Files.writeString(out.resolve("open.tsv"), (header +: undecided).mkString("", "\n", "\n"), StandardCharsets.UTF_8)
     Files.writeString(out.resolve("cards.md"), open.sortBy(c => (c.suggestion.verdict.isEmpty, c.country, c.rawTitle)).map(markdown).mkString(
-      s"# Evidence cards: ${open.size} unjudged take group(s)\n\nSuggestions are DRAFTS: confirm each before copying a line of labels-draft.tsv into labels.tsv.\n\n", "\n", ""),
+      s"# Evidence cards: ${open.size} unjudged take group(s)\n\nSuggestions are DRAFTS: confirm each before copying a line of labels-draft.tsv into identity-judgements.tsv.\n\n", "\n", ""),
       StandardCharsets.UTF_8)
     if (all) Files.writeString(out.resolve("suggestions.tsv"), ("country\trawTitle\tfilm\ttakes\tlabel\tsuggested\treasons" +: cards.map(c =>
       Seq(c.country, c.rawTitle, c.film, c.takes.size.toString, c.labelled.fold("")(v => verdictWord(Some(v))), c.suggestion.verdict.fold("")(v => verdictWord(Some(v))),

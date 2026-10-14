@@ -4,15 +4,15 @@
 # directors, catalogue ids and synopsis from the recording beside the taken record's title, original title, year,
 # runtime and directors — with a verdict SUGGESTED only where the evidence decides it (a year and a director shared →
 # right; a record running >30% longer than the venue's slot, a short billed as a feature, the year and the directors
-# both disagreeing → wrong; scripts.JudgeEvidence.suggest). Everything else stays open. Writes drafts for a human or an agent to confirm; it NEVER edits labels.tsv.
+# both disagreeing → wrong; scripts.JudgeEvidence.suggest). Everything else stays open. Writes drafts for a human or an agent to confirm; it NEVER edits identity-judgements.tsv.
 #
 #   scripts/identity-judge-cards [--fixtures SRC] [--country cc[,cc]] [--out DIR] [--all] [--live|--offline]
 #
 #   --fixtures SRC  the capture (default: this checkout's): a directory, an "Identity capture" run id, or a git ref
-#                   (origin/chore/identity-capture — the weekly capture's branch, read without checking it out). Its labels
-#                   come with it (a run's: this checkout's).
+#                   (origin/chore/identity-capture — the weekly capture's branch, read without checking it out). Its
+#                   judgements come with it (a run's: this checkout's).
 #   --out DIR       default target/identity-judge: cards.md (one card per title × film, decisive ones first),
-#                   labels-draft.tsv (the decisive suggestions as labels.tsv lines, noted "— CONFIRM"), open.tsv
+#                   labels-draft.tsv (the decisive suggestions as identity-judgements.tsv rows, noted "— CONFIRM"), open.tsv
 #   --all           card the judged takes too, and write suggestions.tsv beside each label's verdict: how far the
 #                   suggestions can be trusted
 #   --live          read TMDB_API_KEY from the Touch ID vault when it is not set, for the records the capture never
@@ -51,4 +51,4 @@ IFS=, read -r -a ccs <<< "$countries"
 dir=$(identity_capture "$fixtures" "${ccs[@]}")
 cp=$(identity_classpath "$IDENTITY_REPO")
 cd "$IDENTITY_REPO"
-"${IDENTITY_JAVA[@]}" -cp "$cp" scripts.IdentityJudgeCards --fixtures "$dir" --labels "$dir/labels.tsv" ${pass[@]+"${pass[@]}"}
+"${IDENTITY_JAVA[@]}" -cp "$cp" scripts.IdentityJudgeCards --fixtures "$dir" --labels "$(identity_judgements "$dir")" ${pass[@]+"${pass[@]}"}

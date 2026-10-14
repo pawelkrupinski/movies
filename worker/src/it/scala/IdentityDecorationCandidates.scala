@@ -23,7 +23,7 @@ import scala.util.Try
  * The measure: every country's corpus resolved with the learned decorations (the baseline), then with every surviving
  * candidate beside them, in ROUNDS. Each listing whose film moved is put down to the candidates its own title (else a
  * cluster-mate's) carries, and judged: a listing the baseline left unmatched now taking a film is RIGHT or WRONG by
- * `labels.tsv` (the hand labels of the unmatched-cluster ratchet) or UNJUDGED; a listing the baseline matched that
+ * `identity-judgements.tsv` (the hand labels of the unmatched-cluster ratchet) or UNJUDGED; a listing the baseline matched that
  * moves at all is a MOVE — never accepted on this evidence. A candidate with a wrong take or a move is dropped and the
  * rest resolved again, until a round drops nothing (at most `--rounds`). What survives with a right take is KEPT: written
  * to `<out>/kept.json` as [[TitleDecorations.Learned]] entries and, with `--write`, merged into the resolver's artefact
@@ -43,7 +43,7 @@ object IdentityDecorationCandidates {
     val rounds = opts.get("rounds").map(_.toInt).getOrElse(4)
     val minRemainders = opts.get("min-remainders").map(_.toInt).getOrElse(TitleDecorations.MinCandidateRemainders)
     val configuration = settings.ProcessConfiguration.resolve()
-    val labels    = UnmatchedClusters.readLabels(UnmatchedClusters.Directory.resolve("labels.tsv"))
+    val labels    = tools.IdentityJudgements.labels()
     val storages  = mutable.ListBuffer.empty[ConvergenceStorage]
     Files.createDirectories(out)
     try {

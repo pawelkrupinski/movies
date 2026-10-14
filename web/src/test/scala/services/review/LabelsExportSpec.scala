@@ -19,7 +19,7 @@ class LabelsExportSpec extends AnyFlatSpec with Matchers {
 
   "an answer" should "become the rows its verdict means" in {
     LabelsExport.rowsOf(answer(ReviewVerdict.Right)).map(_.line) shouldBe
-      Seq("pl\tKino Opalenica\tFRANZ KAFKA\ttmdb:1157322\tright\treview page: right: Franz (2025)")
+      Seq("pl\tKino Opalenica\tFRANZ KAFKA\ttmdb:1157322\tright\topen\t\t\t\t\treview page: right: Franz (2025)")
     LabelsExport.rowsOf(answer(ReviewVerdict.Wrong)).map(r => r.verdict -> r.film) shouldBe Seq("wrong" -> "tmdb:1157322")
     Seq(ReviewVerdict.NoneOfThese -> "none of the candidates", ReviewVerdict.Event -> "not a film", ReviewVerdict.Bill -> "double bill")
       .foreach { case (verdict, note) =>
@@ -56,7 +56,7 @@ class LabelsExportSpec extends AnyFlatSpec with Matchers {
     LabelsExport.rowsOf(answer(ReviewVerdict.NoneOfThese, shown = None)) shouldBe empty
   }
 
-  "merging into labels.tsv" should "add a new row, never duplicate one the file holds, and flip a contradicted one" in {
+  "merging into the judgements" should "add a new row, never duplicate one the file holds, and flip a contradicted one" in {
     val existing = Seq(
       LabelRow("pl", "*", "FRANZ KAFKA", "tmdb:1157322", "right", "recall target: Franz (2025)"),
       LabelRow("pl", "Kino Grajfka", "Klondike", "tmdb:913760", "right", "recall target: Klondike (2022)"))
@@ -194,15 +194,31 @@ class LabelsExportSpec extends AnyFlatSpec with Matchers {
     } finally { Files.deleteIfExists(LabelsTsv.usedPath(path)); Files.deleteIfExists(path); Files.deleteIfExists(dir): Unit }
   }
 
-  "the labels file" should "round-trip byte for byte through read and write" in {
+  "the judgements file" should "round-trip byte for byte through read and write, its opening comments kept" in {
     val path  = LabelsTsv.locate()
     val bytes = Files.readAllBytes(path)
-    val copy  = Files.createTempFile("labels", ".tsv")
+    val copy  = Files.createTempFile("identity-judgements", ".tsv")
     try {
+      Files.copy(path, copy, java.nio.file.StandardCopyOption.REPLACE_EXISTING)
       LabelsTsv.write(copy, LabelsTsv.read(path))
       Files.readAllBytes(copy) shouldBe bytes
       LabelsExport.exportTo(copy, Seq(answer(ReviewVerdict.Wrong, shown = Some(dawnWall)))).added shouldBe 1
       LabelsTsv.read(copy).size shouldBe LabelsTsv.read(path).size + 1
     } finally { Files.deleteIfExists(LabelsTsv.usedPath(copy)); Files.deleteIfExists(copy): Unit }
+  }
+
+  "a billing" should "be keyed as the judgements' own readers key it, by the cases they all read" in {
+    val cases = Files.readAllLines(LabelsTsv.locate().resolveSibling("identity-judgements-normalise.jsonl")).toArray.toSeq.map(_.toString)
+      .filter(_.nonEmpty).map(line => play.api.libs.json.Json.parse(line).as[Seq[String]])
+    cases should not be empty
+    cases.foreach { case Seq(raw, normalised) => withClue(raw)(LabelsTsv.normalise(raw) shouldBe normalised) }
+  }
+
+  "an exported row" should "key its billing normalised, and judge the billing spaced apart as the same one" in {
+    val spaced = ReviewMember("Kino Opalenica", "FRANZ  KAFKA ", None)
+    LabelsExport.rowsOf(answer(ReviewVerdict.Right, members = Seq(spaced))).map(_.rawTitle) shouldBe Seq("FRANZ KAFKA")
+    val (rows, summary) = LabelsExport.merge(Seq(LabelRow("pl", "*", "FRANZ KAFKA", "tmdb:1157322", "right", "recall target")),
+      Seq(answer(ReviewVerdict.Right, members = Seq(spaced))))
+    (rows.size, summary.unchanged) shouldBe ((1, 1))
   }
 }

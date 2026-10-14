@@ -2,23 +2,19 @@ package services.identity
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import tools.UnmatchedClusters
+import tools.IdentityJudgements
 import tools.UnmatchedClusters.Label
 
 /**
- * `labels.tsv` agrees with itself and with the lists judged from it. Several agents label at once, and a listing judged
- * both ways is judged by whichever line [[UnmatchedClusters.verdict]] reads first — a verdict nobody chose.
+ * The identity judgements agree with themselves (one listing judged both ways is a duplicate key the judgements lint,
+ * `scripts/ci/identity_judgements_lint.py`, fails, as it fails an expectation or a tolerance they contradict):
  *
- *  - One listing (its venue, or every venue's "*") never calls one film both right and wrong. A venue's own label
- *    overruling every venue's is no contradiction: that is how a venue billing the other film is told apart (PL Kino
- *    Iluzjon's "Lalka", Has' 1968 film where every other "Lalka" is Kawalski's).
  *  - One listing is right for one film of a database, unless it is listed below with why: TMDB holding one film twice,
- *    or a venue billing two films under one title, which the label's venue key cannot tell apart.
- *  - `expected-matches.tsv` holds no take the labels call wrong, `known-wrong.tsv` none they call right.
+ *    or a venue billing two films under one title, which a judgement's venue key cannot tell apart.
  */
 class LabelsConsistencySpec extends AnyFlatSpec with Matchers {
 
-  private val labels = UnmatchedClusters.readLabels(UnmatchedClusters.Directory.resolve("labels.tsv"))
+  private val labels = IdentityJudgements.labels()
 
   private val RoyalOperaCarmen =
     "TMDB holds the Royal Opera's 10 November 2026 Carmen broadcast twice: 1151422 and 1702759, the season's record taken first"
@@ -35,41 +31,15 @@ class LabelsConsistencySpec extends AnyFlatSpec with Matchers {
     ("de", "Apollo Hannover", "Emil und die Detektive", "tmdb") ->
       "the venue bills Franziska Buch's 2001 film and David Dietl's 2026 one under one title, each kinoheld page stating its own")
 
-  "a listing" should "never be labelled both right and wrong for one film by the same venue (or by every venue)" in {
-    val both = labels.groupBy(l => (l.country, l.venue, l.rawTitle, l.film)).filter(_._2.map(_.right).distinct.sizeIs > 1)
-    withClue(both.keys.toSeq.sorted.map(_.productIterator.mkString("\t")).mkString("judged both right and wrong:\n", "\n", "\n")) {
-      both shouldBe empty
-    }
-  }
-
-  it should "be right for one film of a database, or say why it is two" in {
+  "a listing" should "be right for one film of a database, or say why it is two" in {
     val two = labels.filter(_.right).groupBy(l => (l.country, l.venue, l.rawTitle, database(l))).filter(_._2.map(_.film).distinct.sizeIs > 1)
     val unexplained = two.keySet -- twoRight.keySet
     withClue(unexplained.toSeq.sorted.map(key => s"${key.productIterator.mkString("\t")}: ${two(key).map(_.film).distinct.sorted.mkString(", ")}")
         .mkString("right for two films of one database:\n", "\n", "\n")) {
       unexplained shouldBe empty
     }
-    withClue("struck from labels.tsv — strike the exemption: ")((twoRight.keySet -- two.keySet) shouldBe empty)
-  }
-
-  "expected-matches.tsv" should "hold no take the labels call wrong" in {
-    val wrong = UnmatchedClusters.readTakeLines(UnmatchedClusters.Directory.resolve("expected-matches.tsv")).filter { case (cc, venue, raw, film) =>
-      verdictOf(cc, venue, raw, film).contains(false)
-    }
-    withClue(wrong.toSeq.sorted.mkString("labelled wrong:\n", "\n", "\n"))(wrong shouldBe empty)
-  }
-
-  "known-wrong.tsv" should "hold no take the labels call right at every venue" in {
-    val right = UnmatchedClusters.readKnownWrong(UnmatchedClusters.KnownWrongPath)
-      .filter { case (cc, raw, film) => verdictOf(cc, "*", raw, film).contains(true) }
-    withClue(right.toSeq.sorted.mkString("labelled right:\n", "\n", "\n"))(right shouldBe empty)
+    withClue("struck from the judgements — strike the exemption: ")((twoRight.keySet -- two.keySet) shouldBe empty)
   }
 
   private def database(label: Label): String = label.film.takeWhile(_ != ':')
-
-  /** The verdict the labels give `film` at `venue`, its own label overruling every venue's ([[UnmatchedClusters.verdict]]). */
-  private def verdictOf(cc: String, venue: String, raw: String, film: String): Option[Boolean] = {
-    val about = labels.filter(l => l.country == cc && l.rawTitle == raw && l.film == film)
-    about.find(_.venue == venue).orElse(about.find(_.venue == "*")).map(_.right)
-  }
 }

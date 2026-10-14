@@ -302,7 +302,7 @@ class ReviewPageSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll wi
     }
   }
 
-  it should "export the answers into labels.tsv from the page's button" in {
+  it should "export the answers into identity-judgements.tsv from the page's button" in {
     onQueue { page =>
       page.eval("document.getElementById('export-labels').click()")
       page.waitFor("document.getElementById('export-summary').textContent.indexOf('added') >= 0")

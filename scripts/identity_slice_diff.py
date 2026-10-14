@@ -1,5 +1,5 @@
 """The takes of identity slices at two refs, compared (scripts/identity-slice): every listing whose final take moved, with
-its labels.tsv verdict at each ref, and the moves tallied — CURED (a WRONG take gone), LOST (a RIGHT take gone),
+its identity-judgements.tsv verdict at each ref, and the moves tallied — CURED (a WRONG take gone), LOST (a RIGHT take gone),
 NEW-WRONG (a take now WRONG), and the unjudged moves.
 
     python3 identity_slice_diff.py BASE.tsv HEAD.tsv BASE_NAME HEAD_NAME LABELS.tsv

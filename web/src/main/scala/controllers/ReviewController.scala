@@ -17,7 +17,7 @@ import scala.util.{Failure, Success, Try}
  * The dev-only identity review pages (`/debug/review*`): the clusters the resolver left unmatched, those
  * it rated matchable and still left, and those it matched lately — each a card with the venues' own
  * facts, the films it weighed, its explanation, and the answer buttons. Answers go to the local
- * `review_answers` store and from there into `labels.tsv`.
+ * `review_answers` store and from there into `identity-judgements.tsv`.
  *
  * Every read is of the LOCAL read-mirror (`sources`, built by the wiring from
  * `MONGODB_MOVIES_MIRROR_URI` alone); with no mirror configured the pages say so and list nothing.
@@ -153,7 +153,7 @@ class ReviewController(cc: ControllerComponents,
     }
   }
 
-  /** Brings the checkout's `labels.tsv` up to the answers given since the last export ([[LabelsExport.exportTo]]). */
+  /** Brings the checkout's `identity-judgements.tsv` up to the answers given since the last export ([[LabelsExport.exportTo]]). */
   def exportLabels(): Action[AnyContent] = Action {
     devOnly {
       val history = answers.history()

@@ -14,15 +14,15 @@ name: Identity capture
 # The publish job puts the countries' fixtures back together, runs the ratchet over them, commits the
 # result with the candidate expected-matches.tsv the ratchet re-baselined, and pushes it as a fresh
 # chore/identity-capture branch off main -- a BRANCH, not a PR. What the ratchet says (the takes to
-# judge into labels.tsv, any WRONG or lost take) goes to the run's summary and its `identity-ratchet`
+# judge into identity-judgements.tsv, any WRONG or lost take) goes to the run's summary and its `identity-ratchet`
 # artifact (scripts/identity-ratchet-report <run id>). A country that failed keeps its old fixture and
 # says so.
 #
 # A PR is a request for a build, so it is opened only when there is one worth running: when the
-# ratchet over the recapture is GREEN (every WRONG take listed in known-wrong.tsv, none UNJUDGED, none
+# ratchet over the recapture is GREEN (every WRONG take known-wrong in scope capture, none UNJUDGED, none
 # LOST). A recapture almost always makes new takes, whose Branch CI would only be red on the ratchet
 # until someone judged them -- ten such PRs in two days (#223-#232), each closed by the next run. So
-# judging happens on the branch (commit labels.tsv / known-wrong.tsv there), and then
+# judging happens on the branch (commit identity-judgements.tsv there), and then
 #     gh workflow run identity-capture.yml -f open-pr=true
 # skips the capture, re-runs the ratchet on the judged branch, commits any re-baselined
 # expected-matches.tsv onto it, and opens the PR only if the ratchet is green.
@@ -213,7 +213,7 @@ jobs:
 
             # The ratchet is the review list and the PR's gate, not the job's: a recapture is EXPECTED
             # to make takes no label judges yet, so red only means "judge on the branch first". Green
-            # (no WRONG take known-wrong.tsv does not list, none UNJUDGED, none LOST) means land-ready.
+            # (no WRONG take but those known-wrong in scope capture, none UNJUDGED, none LOST) means land-ready.
             # The candidate expected-matches.tsv it writes replaces the checked-in one either way.
             - name: Run the ratchet over the recapture
               id: ratchet
@@ -253,7 +253,7 @@ jobs:
                       if [ "$GREEN" = true ]; then
                           echo "The ratchet is green: check \`expected-matches.tsv\`, then land it by fast-forwarding main once Branch CI passes."
                       else
-                          echo "The ratchet is red, so no PR yet: judge every UNJUDGED take into \`labels.tsv\` (and any WRONG one into \`known-wrong.tsv\`) on \`$BRANCH\`, push, then \`gh workflow run identity-capture.yml -f open-pr=true\` -- it re-runs the ratchet there and opens the PR once it is green."
+                          echo "The ratchet is red, so no PR yet: judge every UNJUDGED take into \`identity-judgements.tsv\` (and any WRONG one there as known-wrong, scope capture, with why) on \`$BRANCH\`, push, then \`gh workflow run identity-capture.yml -f open-pr=true\` -- it re-runs the ratchet there and opens the PR once it is green."
                       fi
                       if [ -d captures ]; then
                           echo

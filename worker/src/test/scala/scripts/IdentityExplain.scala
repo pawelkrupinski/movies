@@ -3,7 +3,7 @@ package scripts
 import models.Country
 import services.identity.{IdentityResolver, Listing, ResolverDecision}
 import services.movies.{ListingKey, TitleNormalizer}
-import tools.UnmatchedClusters
+import tools.{IdentityJudgements, UnmatchedClusters}
 
 import java.nio.file.Path
 import java.util.Locale
@@ -18,13 +18,13 @@ import java.util.Locale
  *    code over the capture's listings — family keys, the chain into its family, each candidate scored with its signals;
  *  - the agreement stage over the captured decision, by this code: the basis (agreed, poster, broadcast, filled, …), the
  *    fill rule and the guards it passed, and the film it took;
- *  - the verdict `labels.tsv` gives the take.
+ *  - the verdict `identity-judgements.tsv` gives the take.
  *
  * Self-contained on purpose: the script copies this one file into an older ref's tree to explain that ref, so it reads
  * only [[UnmatchedClusters]] and [[IdentityResolver.explain]].
  *
  * {{{
- *   IdentityExplain <cc> [--venue S] [--title S] [--fixture <cc>.json.gz] [--labels labels.tsv] [--no-resolve] [--limit N]
+ *   IdentityExplain <cc> [--venue S] [--title S] [--fixture <cc>.json.gz] [--labels identity-judgements.tsv] [--no-resolve] [--limit N]
  * }}}
  */
 object IdentityExplain {
@@ -57,7 +57,7 @@ object IdentityExplain {
       "usage: IdentityExplain <cc> [--venue S] [--title S] [--fixture path] [--labels path] [--no-resolve]")
     val country = Country.all.find(_.code == options.country).getOrElse(sys.error(s"no country ${options.country}"))
     val fixture = options.fixture.getOrElse(UnmatchedClusters.fixturePath(country))
-    val labels  = UnmatchedClusters.readLabels(options.labels.getOrElse(UnmatchedClusters.Directory.resolve("labels.tsv")))
+    val labels  = IdentityJudgements.labels(options.labels.getOrElse(IdentityJudgements.CheckedIn))
     val started = System.nanoTime()
     val capture = UnmatchedClusters.read(fixture)
     val chosen  = capture.listings.filter(selects(options))

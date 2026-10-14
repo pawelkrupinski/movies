@@ -2,13 +2,16 @@
 # What scripts/identity-slice (and its --explain) and scripts/identity-judge-cards share: the shared cache, the unmatched-cluster capture
 # fetched from wherever it is named, and a tree's worker test classpath compiled once. Sourcing it defines functions only.
 #
-#   identity_capture <src> <cc>...  -> prints the directory holding <cc>.json.gz for each cc, and labels.tsv
+#   identity_capture <src> <cc>...  -> prints the directory holding <cc>.json.gz for each cc, and (a run's or a ref's)
+#        the judgements that judge it, identity-judgements.tsv (a ref from before they were one file: its labels.tsv)
+#   identity_judgements <dir>       -> the judgements that judge the capture in <dir>: its own, else this checkout's
 #        src: "" (this checkout's), a directory, an "Identity capture" run id, or a git ref
 #   identity_classpath <tree>       -> prints the tree's worker test classpath, sbt run only when a source is newer
 
 IDENTITY_REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 IDENTITY_CACHE=${KINOWO_IDENTITY_CACHE:-$HOME/.cache/kinowo-identity}
 IDENTITY_FIXTURES=test/resources/fixtures/identity-unmatched
+IDENTITY_JUDGEMENTS=test/resources/fixtures/identity-judgements.tsv
 identity_log() { echo "[${IDENTITY_TOOL:-identity}] $*" >&2; }
 
 identity_capture() {
@@ -24,8 +27,8 @@ identity_capture() {
       gh run download "$src" -R "${KINOWO_REPO:-pawelkrupinski/movies}" --name "identity-capture-$cc" --dir "$dir/dl-$cc" >&2 || return 1
       cp "$(find "$dir/dl-$cc" -name "$cc.json.gz" | head -1)" "$dir/$cc.json.gz"
     done
-    # a run's capture is judged by this checkout's labels
-    cp "$IDENTITY_REPO/$IDENTITY_FIXTURES/labels.tsv" "$dir/labels.tsv"
+    # a run's capture is judged by this checkout's judgements
+    cp "$IDENTITY_REPO/$IDENTITY_JUDGEMENTS" "$dir/identity-judgements.tsv"
     echo "$dir"; return
   fi
   sha=$(git -C "$IDENTITY_REPO" rev-parse --verify "$src^{commit}") || { echo "no directory, run id or ref $src" >&2; return 2; }
@@ -35,8 +38,15 @@ identity_capture() {
     [ -f "$dir/$cc.json.gz" ] && continue
     git -C "$IDENTITY_REPO" show "$sha:$IDENTITY_FIXTURES/$cc.json.gz" > "$dir/$cc.json.gz.part" && mv "$dir/$cc.json.gz.part" "$dir/$cc.json.gz"
   done
-  [ -f "$dir/labels.tsv" ] || git -C "$IDENTITY_REPO" show "$sha:$IDENTITY_FIXTURES/labels.tsv" > "$dir/labels.tsv"
+  # a ref's capture is judged by that ref's judgements -- or, from before they were one file, its labels.tsv, which
+  # tools.IdentityJudgements reads too
+  [ -s "$dir/identity-judgements.tsv" ] || git -C "$IDENTITY_REPO" show "$sha:$IDENTITY_JUDGEMENTS" > "$dir/identity-judgements.tsv" 2>/dev/null \
+    || git -C "$IDENTITY_REPO" show "$sha:$IDENTITY_FIXTURES/labels.tsv" > "$dir/identity-judgements.tsv"
   echo "$dir"
+}
+
+identity_judgements() {
+  if [ -f "$1/identity-judgements.tsv" ]; then echo "$1/identity-judgements.tsv"; else echo "$IDENTITY_REPO/$IDENTITY_JUDGEMENTS"; fi
 }
 
 # identity_tree <ref> <file>... -> a compiled-once copy of the ref's sources under the cache, each named file (a path

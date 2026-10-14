@@ -43,7 +43,7 @@ object ReviewPage {
 }
 
 /** One listing of a cluster, as an answer remembers it: enough to tell it again after the cluster's
- *  membership moves, and to write its `labels.tsv` row. `year`/`directors` are what the VENUE stated. */
+ *  membership moves, and to write its `identity-judgements.tsv` row. `year`/`directors` are what the VENUE stated. */
 final case class ReviewMember(venue: String, rawTitle: String, page: Option[String],
                               year: Option[Int] = None, directors: Seq[String] = Nil) {
   /** The listing this member is: its venue and page, or its venue and raw title when it has no page. */

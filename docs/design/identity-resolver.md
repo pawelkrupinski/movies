@@ -2503,7 +2503,7 @@ recorded full corpora — the unmatched ones as the unmatched-cluster fixture ho
 takes by `UnmatchedClusters.replay` — every CONTENDER (a TMDB candidate some node did not deny, or a film a family took
 or leans to, joined across families and to TMDB by ids, else by facts) with every signal above. Offline: the families'
 answers come from the fixture and prod's export (`KINOWO_IDENTITY_FAMILY_SEED`), posters from
-`KINOWO_IDENTITY_POSTER_CACHE` only — nothing new is asked. Labels: HAND (`identity-unmatched/labels.tsv`, judged per
+`KINOWO_IDENTITY_POSTER_CACHE` only — nothing new is asked. Labels: HAND (`identity-judgements.tsv`, judged per
 listing as the ratchet judges a take; the known wrong model takes, Teksańska masakra at JDK and Ktoś całkiem obcy, are
 added there) and WEAK (the model's take on a matched cluster, its other contenders negative; left out where a venue
 poster or a family names another film). The rows are checked in at
@@ -3170,7 +3170,7 @@ untranslated records); era on any old film three venues bill (+6 wrong pairs, bu
 
 **The audit** (`CountryConvergenceBehaviour`, "the identity takes should report every suspect take labels.tsv has not
 judged"): after the settle, every take of the projection is judged by `tools.SuspectTakesAudit` — a suspect billing no
-label judges and `test/resources/fixtures/identity-suspects/baseline.tsv` does not list, and a take a label calls wrong,
+judgement judges and `test/resources/fixtures/identity-judgements.tsv` does not tolerate in scope `served`, and a take a label calls wrong,
 go to `<corpus>-suspect-takes.md` on the run's summary page and to `<corpus>-suspect-unjudged.txt`; every suspect and the
 takes themselves (`<corpus>-takes/<cc>.json.gz`, what the measure reads with `--dumps`) to the diagnostics artifact. The
 baseline was armed with the suspects standing on 2026-10-13 and only shrinks (`SuspectTakesAuditSpec`); a line no take

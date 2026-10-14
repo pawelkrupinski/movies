@@ -23,11 +23,11 @@
 #   --orders N    also feed the slice to the INCREMENTAL model in N shuffled arrival orders (the worker's path) and name
 #                 every listing whose take any order moves from the whole resolve's — nondeterminism, a mode flip
 #   --batch FILE  one selector a line (`venue<TAB>raw title`, `*` for every venue, or `--venue S --title S`): every slice
-#                 at both refs in ONE JVM per ref, and the moves tallied against labels.tsv — cured, lost, new-wrong
+#                 at both refs in ONE JVM per ref, and the moves tallied against the judgements — cured, lost, new-wrong
 #   --bisect A..B the first commit of A..B whose take of the selected listings differs from A's (one ref compiled at a time)
 #   --emit-case   pin the listing as a FAILING TEST: the slice copied to test/resources/fixtures/identity-slices/, its expected
-#                 film taken from labels.tsv (never from the take), each label shown with its own note; refused when
-#                 labels.tsv does not judge the listing. IdentitySliceCasesSpec replays every such slice.
+#                 film taken from the judgements (never from the take), each shown with its own evidence; refused when
+#                 they do not judge the listing. IdentitySliceCasesSpec replays every such slice.
 #   --modes N     also take the slice through N CHANGED projections — the periodic one's own agreement stage again, over
 #                 EVERY listing with those at a random half of the venues republished, as tickChanged reads them (the
 #                 scraped venues re-read, every other venue's held) — and name every listing whose take a changed one flips
@@ -43,7 +43,7 @@
 #                 the batch to it: no JVM start or corpus load per call (stops after $KINOWO_IDENTITY_SLICE_IDLE_MINUTES,
 #                 default 30, idle minutes; `scripts/identity-slice --stop-served` stops every kept one)
 #   --out TSV     keep the takes (of the last --ref) as a TSV: selector key venue rawTitle film title basis … verdict
-#   --labels TSV  judge the takes by this labels.tsv (default this checkout's) — the same labels at both refs
+#   --labels TSV  judge the takes by this identity-judgements.tsv (default this checkout's) — the same at both refs
 #   --compiles REF  lay REF out with this checkout's tool files dropped in and compile it, nothing else: the tool must
 #                 compile into every ref it may be pointed at — a deployed worker's build, a bisect's oldest commit
 #                 (scripts/identity-slice-old-ref-test.sh)
@@ -54,7 +54,7 @@
 #                 not a recording; a listing the MODEL took is not in it (slice it instead). scripts/identity-explain is an
 #                 alias kept for the `repro` field prod's take-change lines print.
 #     --fixture SRC  the capture to explain from (default: this checkout's): a directory holding <cc>.json.gz, an
-#                 "Identity capture" run id, or a git ref holding one. Its labels judge it (a run's: this checkout's).
+#                 "Identity capture" run id, or a git ref holding one. Its judgements judge it (a run's: this checkout's).
 #     --limit N, --no-resolve  at most N clusters; skip the re-resolve (the captured decision and the agreement only)
 #   --faithfulness RUN  the slice's take of a sample of listings against what that "Identity model convergence" run's leg
 #                 took (its convergence-diagnostics `<cc>-takes`), at the run's commit and its pinned recording
@@ -94,7 +94,7 @@ TOOL_FILES=(worker/src/test/scala/scripts/IdentitySlice.scala worker/src/test/sc
   worker/src/test/scala/services/identity/IdentitySlicing.scala worker/src/fixtures/scala/tools/RecordedCorpus.scala
   worker/src/fixtures/scala/tools/SliceHttp.scala worker/src/fixtures/scala/tools/MemoLookups.scala
   worker/src/fixtures/scala/tools/CatalogueFill.scala worker/src/fixtures/scala/tools/FiledAnswers.scala
-  worker/src/fixtures/scala/tools/ProdMirror.scala)
+  worker/src/fixtures/scala/tools/ProdMirror.scala worker/src/fixtures/scala/tools/IdentityJudgements.scala)
 
 threads="" fresh=0 serve=0 families="" labels="" cc="" refs=() run="" pass=() batch="" bisect="" log="" faith="" sample=50 seed=1 explain=0 fixture="" keep="" mirror="" mirror_args=()
 if [ "$1" = "--compiles" ]; then
@@ -184,7 +184,7 @@ except Exception: print("")' "$recording/corpus/prod-coverage-$cc.json")
 
 work=$(mktemp -d "${TMPDIR:-/tmp}/identity-slice.XXXXXX"); trap 'rm -rf "$work"' EXIT
 
-labels=${labels:-$repo/test/resources/fixtures/identity-unmatched/labels.tsv}
+labels=${labels:-$repo/test/resources/fixtures/identity-judgements.tsv}
 # prod's filed family answers (no recording holds them): this checkout's unmatched-cluster capture unless named
 families=${families:-$repo/test/resources/fixtures/identity-unmatched/$cc.json.gz}
 
@@ -281,7 +281,7 @@ if [ "$explain" = 1 ]; then
     local cp
     cp=$(identity_classpath "$1") || return 1
     (cd "$1" && "${IDENTITY_JAVA[@]}" -cp "$cp" scripts.IdentityExplain "$cc" --fixture "$captured/$cc.json.gz" \
-      --labels "$captured/labels.tsv" ${pass[@]+"${pass[@]}"})
+      --labels "$(identity_judgements "$captured")" ${pass[@]+"${pass[@]}"})
   }
   [ "${#refs[@]}" -gt 0 ] || { explain_at "$repo"; exit; }
   for i in "${!refs[@]}"; do

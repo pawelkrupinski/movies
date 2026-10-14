@@ -5,7 +5,7 @@ identity corpus, and how do they compare with today's resolver at ZERO wrong tak
 Input: the unified evidence model's contender rows, test/resources/fixtures/identity-unified/training.tsv.gz
 (integration.IdentityUnifiedDataset: every cluster of the five recorded full corpora, every contender film, every
 signal of the resolver's model and the agreement stage as UnifiedEvidence extracts them — the very features the
-shipped fit, scripts.IdentityUnifiedFit, reads), labelled HAND (labels.tsv) or WEAK (today's model take on a matched
+shipped fit, scripts.IdentityUnifiedFit, reads), labelled HAND (identity-judgements.tsv) or WEAK (today's model take on a matched
 cluster no label judges).
 
 Evaluation: per cluster the model takes its best-scoring contender when the score clears a threshold; a take is right

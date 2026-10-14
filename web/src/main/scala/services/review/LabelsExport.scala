@@ -5,21 +5,28 @@ import java.nio.file.{Files, Path, Paths}
 import java.time.Instant
 import scala.jdk.CollectionConverters._
 
-/** One row of `test/resources/fixtures/identity-unmatched/labels.tsv`: a listing (country, the venue
- *  or `*` for every venue billing the raw title, the raw title) judged right or wrong for `film`. */
-final case class LabelRow(country: String, venue: String, rawTitle: String, film: String, verdict: String, note: String) {
-  def line: String = Seq(country, venue, rawTitle, film, verdict, note).mkString("\t")
+/** One row of `test/resources/fixtures/identity-judgements.tsv` (its columns: `scripts/ci/identity_judgements.py`): a
+ *  listing (country, the venue or `*` for every venue billing the raw title, the raw title) judged right or wrong for
+ *  `film`, `note` its evidence; the state, scope, film title, reason and date ride along as the file holds them. */
+final case class LabelRow(country: String, venue: String, rawTitle: String, film: String, verdict: String, note: String,
+                          state: String = "open", scope: String = "", filmTitle: String = "", reason: String = "", judged: String = "") {
+  def line: String = Seq(country, venue, rawTitle, film, verdict, state, scope, filmTitle, reason, judged, note).mkString("\t")
   def right: Boolean = verdict == "right"
   /** Whether this row and `other` judge the same listing against the same film. */
   def sameJudgement(other: LabelRow): Boolean =
-    country == other.country && rawTitle == other.rawTitle && film == other.film &&
+    country == other.country && LabelsTsv.normalise(rawTitle) == LabelsTsv.normalise(other.rawTitle) && film == other.film &&
       (venue == other.venue || venue == "*" || other.venue == "*")
 }
 
 object LabelsTsv {
-  val Header = "country\tvenue\trawTitle\tfilm\tverdict\tnote"
+  val Header = "country\tvenue\trawTitle\tfilm\tverdict\tstate\tscope\tfilmTitle\treason\tjudged\tevidence"
   /** Where the checkout keeps it, relative to the repository root. */
-  val RelativePath: Path = Paths.get("test", "resources", "fixtures", "identity-unmatched", "labels.tsv")
+  val RelativePath: Path = Paths.get("test", "resources", "fixtures", "identity-judgements.tsv")
+
+  /** A billing as every judgement keys it -- runs of whitespace one space, none at the ends -- as the judgements' own
+   *  readers key it (tools.IdentityJudgements, scripts/ci/identity_judgements.py), all three held to the same cases
+   *  (`identity-judgements-normalise.jsonl`). */
+  def normalise(raw: String): String = raw.replaceAll("(?U)\\s+", " ").stripPrefix(" ").stripSuffix(" ")
 
   /** The checkout's labels file, from the working directory or one above it (`sbt web/run` runs from the root,
    *  a forked `web` process from `web/`). */
@@ -28,18 +35,22 @@ object LabelsTsv {
       .find(Files.exists(_)).getOrElse(from.resolve(RelativePath))
 
   def parse(lines: Seq[String]): Seq[LabelRow] =
-    lines.filter(_.nonEmpty).filterNot(_ == Header).map { line =>
+    lines.filter(_.nonEmpty).filterNot(_.startsWith("#")).filterNot(_ == Header).map { line =>
       line.split("\t", -1) match {
-        case Array(country, venue, raw, film, verdict, note) => LabelRow(country, venue, raw, film, verdict, note)
-        case other => throw new IllegalArgumentException(s"labels.tsv: ${other.length} fields, want 6: $line")
+        case Array(country, venue, raw, film, verdict, state, scope, filmTitle, reason, judged, note) =>
+          LabelRow(country, venue, raw, film, verdict, note, state, scope, filmTitle, reason, judged)
+        case other => throw new IllegalArgumentException(s"identity-judgements.tsv: ${other.length} fields, want 11: $line")
       }
     }
 
   def read(path: Path): Seq[LabelRow] =
     if (Files.exists(path)) parse(Files.readAllLines(path, StandardCharsets.UTF_8).asScala.toSeq) else Nil
 
-  def write(path: Path, rows: Seq[LabelRow]): Unit =
-    Files.write(path, (Header +: rows.map(_.line)).mkString("", "\n", "\n").getBytes(StandardCharsets.UTF_8)): Unit
+  /** The rows, after the comment lines the file opens with. */
+  def write(path: Path, rows: Seq[LabelRow]): Unit = {
+    val preamble = if (Files.exists(path)) Files.readAllLines(path, StandardCharsets.UTF_8).asScala.toSeq.takeWhile(_.startsWith("#")) else Nil
+    Files.write(path, (preamble ++ (Header +: rows.map(_.line))).mkString("", "\n", "\n").getBytes(StandardCharsets.UTF_8)): Unit
+  }
 
   /** Beside the labels file: when the newest review answer already turned into its rows was given. Checked in with
    *  the rows, so an export takes only the answers given since — never re-applies one a later edit overruled — and
@@ -54,7 +65,7 @@ object LabelsTsv {
 }
 
 /**
- * Review answers as `labels.tsv` rows, merged into the rows the file already holds — only the answers given since
+ * Review answers as `identity-judgements.tsv` rows, merged into the rows the file already holds — only the answers given since
  * the last export ([[LabelsTsv.usedUntil]]).
  *
  *  - right / wrong: that verdict for the film the card showed;
@@ -73,7 +84,7 @@ object LabelsExport {
   final case class Summary(added: Int, flipped: Int, unchanged: Int, unexportable: Seq[String], warnings: Seq[String],
                            alreadyUsed: Int = 0, withdrawn: Int = 0) {
     def render: String =
-      ((s"labels.tsv: $added added, $flipped flipped, $unchanged already there" +
+      ((s"identity-judgements.tsv: $added added, $flipped flipped, $unchanged already there" +
         (if (alreadyUsed > 0) s"; $alreadyUsed answer${if (alreadyUsed == 1) "" else "s"} already used, skipped" else "") +
         (if (withdrawn > 0) s"; $withdrawn row${if (withdrawn == 1) "" else "s"} of withdrawn answers taken back" else "")) +:
         (unexportable.map("not exported: " + _) ++ warnings.map("WARNING: " + _))).mkString("\n")
@@ -83,7 +94,7 @@ object LabelsExport {
     def rows(film: FilmFacts, right: Boolean, note: String): Seq[LabelRow] =
       answer.members.groupBy(_.rawTitle).toSeq.sortBy(_._1).map { case (raw, members) =>
         val venues = members.map(_.venue).distinct
-        LabelRow(answer.country, if (venues.size == 1) venues.head else "*", raw, film.ref.render,
+        LabelRow(answer.country, if (venues.size == 1) venues.head else "*", LabelsTsv.normalise(raw), film.ref.render,
           if (right) "right" else "wrong", s"review page: $note")
       }
     val shown = answer.shown.toSeq

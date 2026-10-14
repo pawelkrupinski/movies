@@ -62,8 +62,7 @@ jobs:
               with:
                   sparse-checkout: |
                       scripts/ci
-                      test/resources/fixtures/identity-unmatched/labels.tsv
-                      test/resources/fixtures/identity-suspects/baseline.tsv
+                      test/resources/fixtures/identity-judgements.tsv
                   sparse-checkout-cone-mode: false
             - name: Report each country's findings
               env:

@@ -2,7 +2,7 @@ package services.identity
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import tools.UnmatchedClusters
+import tools.{IdentityJudgements, UnmatchedClusters}
 import tools.UnmatchedClusters.Take
 
 import java.nio.charset.StandardCharsets
@@ -12,16 +12,17 @@ import java.nio.file.{Files, Path}
  * The clusters the identity model leaves unmatched on the recorded full corpora ([[UnmatchedClusters]]' fixture),
  * resolved and put to the agreement stage again over their captured answers — the ratchet for matching more of them:
  *
- *  - ZERO WRONG: but those `known-wrong.tsv` lists (no safe fix removes them; a cured line fails as stale, so the list
- *    only shrinks), no take a label denies (`labels.tsv`: the recall targets, the must-not pairs, hand labels), none
- *    contradicting the right film a label names, and every take judged — a take no label covers fails, to be judged
- *    and added to `labels.tsv` before it counts;
+ *  - ZERO WRONG: but those the identity judgements hold known-wrong in scope `capture` (no safe fix removes them; a
+ *    cured row fails as stale, so they only shrink), no take a judgement denies (`identity-judgements.tsv`: the recall
+ *    targets, the must-not pairs, hand labels), none contradicting the right film one names, and every take judged — a
+ *    take no judgement covers fails, to be judged there before it counts;
  *  - ONLY MORE: every right take of `expected-matches.tsv` is still taken. A run that takes more right ones writes the
  *    new list to `target/identity-unmatched/expected-matches.tsv` — copy it over the checked-in one to ratchet.
  */
 class UnmatchedClustersRatchetSpec extends AnyFlatSpec with Matchers {
 
-  private val labels   = UnmatchedClusters.readLabels(UnmatchedClusters.Directory.resolve("labels.tsv"))
+  private val judged   = IdentityJudgements.read()
+  private val labels   = IdentityJudgements.labels(judged)
   private val expected = UnmatchedClusters.Directory.resolve("expected-matches.tsv")
   private val captures = models.Country.all.map(UnmatchedClusters.fixturePath).filter(Files.exists(_)).map(UnmatchedClusters.read)
   private lazy val takes: Seq[Take] = captures.flatMap { capture =>
@@ -60,20 +61,21 @@ class UnmatchedClustersRatchetSpec extends AnyFlatSpec with Matchers {
   }
 
   private lazy val wrongAudit = UnmatchedClusters.auditWrong(reported.filter(take => UnmatchedClusters.verdict(take, labels).contains(false)),
-    UnmatchedClusters.readKnownWrong(UnmatchedClusters.KnownWrongPath))
+    IdentityJudgements.tolerated(judged, IdentityJudgements.Scope.Capture).keySet)
 
-  "the resolver and the agreement over the unmatched clusters" should "take no film a label denies or contradicts, but those known-wrong.tsv lists" in {
+  "the resolver and the agreement over the unmatched clusters" should "take no film a judgement denies or contradicts, but those known-wrong in scope capture" in {
     val wrong = wrongAudit.fresh
     withClue(wrong.map(UnmatchedClusters.takeLine).mkString("WRONG takes:\n", "\n", "\n")) { wrong shouldBe empty }
   }
 
-  it should "still take every wrong film known-wrong.tsv lists — a cured line is struck, so the list only shrinks" in {
-    withClue(wrongAudit.stale.map(_.productIterator.mkString("\t")).mkString("known-wrong.tsv lines no longer taken (STALE — strike them):\n", "\n", "\n")) {
+  it should "still take every wrong film known-wrong in scope capture — a cured row is struck, so they only shrink" in {
+    withClue(wrongAudit.stale.map(_.productIterator.mkString("\t")).mkString("known-wrong (capture) judgements no longer taken (STALE — " +
+        "drop `capture` from the row's scope, or the row's state back to open):\n", "\n", "\n")) {
       wrongAudit.stale shouldBe empty
     }
   }
 
-  it should "take only films judged right — a new take is judged in labels.tsv before it counts" in {
+  it should "take only films judged right — a new take is judged in identity-judgements.tsv before it counts" in {
     val unjudged = reported.filter(take => UnmatchedClusters.verdict(take, labels).isEmpty)
     withClue(unjudged.map(take => s"${UnmatchedClusters.takeLine(take)}\t${take.basis}\t${take.ids.mkString(",")}").mkString("UNJUDGED takes:\n", "\n", "\n")) {
       unjudged shouldBe empty

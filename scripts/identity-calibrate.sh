@@ -25,7 +25,7 @@
 # --refit-signal <signal> refits one listing-film table (and the cannot-links reading it) in place; see below.
 #
 # --refit re-tunes the shipped identity-weights.json on the unmatched-cluster ratchet (no CORPORA, FIXTURES or PROD:
-# the checked-in captures and labels.tsv) — the weekly identity-refit.yml job, run by hand (scripts.IdentityRefit;
+# the checked-in captures and identity-judgements.tsv) — the weekly identity-refit.yml job, run by hand (scripts.IdentityRefit;
 # docs/design/identity-resolver.md §14.10). RELEARN=<signal,…> refits those signals from the fresh units alone.
 #
 # --decorations-only relearns identity-decorations.json alone (CORPORA and FIXTURES only; PROD is not read)

@@ -6,7 +6,7 @@ import play.api.libs.json.Json
 import services.identity._
 import services.identity.agreement.{AgreementStage, InMemoryAgreementVerdicts, VoterFamily}
 import services.movies.{ListingKey, TitleNormalizer}
-import tools.{CatalogueFill, MemoLookups, RecordedCorpus, SliceHttp, UnmatchedClusters}
+import tools.{CatalogueFill, IdentityJudgements, MemoLookups, RecordedCorpus, SliceHttp, UnmatchedClusters}
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}
@@ -410,8 +410,8 @@ object IdentitySlice {
           node.refusals.foreach(r => println(s"  refused by ${r.rule}: ${r.why}${r.film.fold("")(f => s" (tmdb $f)")}${if (r.detail.nonEmpty) s" — ${r.detail}" else ""}"))
           node.blocker.foreach(b => println(s"  blocker: $b"))
           val pool = node.candidates.map(_.takeWhile(_.isDigit)).toSet
-          labels.filter(l => l.country == slice.country.code && l.rawTitle == first.rawTitle && (l.venue == "*" || l.venue == first.venue) && l.right &&
-            l.film.startsWith("tmdb:") && !pool(l.film.drop(5))).foreach(l => println(s"  NOT IN POOL: ${l.film}, which labels.tsv calls right (${l.venue}: ${l.note})"))
+          labels.filter(l => l.country == slice.country.code && UnmatchedClusters.singleSpaced(l.rawTitle) == UnmatchedClusters.singleSpaced(first.rawTitle) && (l.venue == "*" || l.venue == first.venue) && l.right &&
+            l.film.startsWith("tmdb:") && !pool(l.film.drop(5))).foreach(l => println(s"  NOT IN POOL: ${l.film}, which the judgements call right (${l.venue}: ${l.note})"))
         }
       }
       decided.agreed.decisionOf.get(first).foreach { d =>
@@ -419,7 +419,7 @@ object IdentitySlice {
         d.explanation.foreach(line => println(s"    $line"))
       }
       takes.filter(t => keys.contains(t.key)).groupBy(t => (t.film, t.title, t.basis, t.verdict)).toSeq.sortBy(_._1._1).foreach { case ((film, title, basis, verdict), at) =>
-        val about = labels.filter(l => l.country == slice.country.code && at.exists(t => t.key.rawTitle == l.rawTitle && (l.venue == "*" || l.venue == t.key.venue)))
+        val about = labels.filter(l => l.country == slice.country.code && at.exists(t => UnmatchedClusters.singleSpaced(t.key.rawTitle) == UnmatchedClusters.singleSpaced(l.rawTitle) && (l.venue == "*" || l.venue == t.key.venue)))
           .map(l => s"${if (l.right) "right" else "wrong"} ${l.film} at ${l.venue} (${l.note})").distinct
         println(s"TAKE ${if (at.size == 1) at.head.key.venue else s"at ${at.size} venues"}: $film '$title' via $basis — $verdict" +
           (if (about.nonEmpty) about.mkString(" [", "; ", "]") else ""))
@@ -442,7 +442,7 @@ object IdentitySlice {
   def main(args: Array[String]): Unit = {
     val o = parse(args.toList)
     val country = Country.all.find(_.code == o.country).getOrElse(sys.error(s"no country '${o.country}'"))
-    val labels  = o.labels.filter(Files.exists(_)).fold(Seq.empty[UnmatchedClusters.Label])(UnmatchedClusters.readLabels)
+    val labels  = o.labels.filter(Files.exists(_)).fold(Seq.empty[UnmatchedClusters.Label])(IdentityJudgements.labels)
     val started = System.nanoTime()
     val out     = o.out.map { p => Files.createDirectories(p.toAbsolutePath.getParent); new java.io.PrintWriter(Files.newBufferedWriter(p, StandardCharsets.UTF_8)) }
     out.foreach(_.println(TakeHeader))
@@ -596,7 +596,7 @@ object IdentitySlice {
   private def request(session: Session, base: Options, args: List[String]): Int = {
     val started = System.nanoTime()
     val o       = parse(args, Options(country = base.country, ref = base.ref, cache = base.cache, slices = base.slices))
-    val labels  = o.labels.filter(Files.exists(_)).fold(Seq.empty[UnmatchedClusters.Label])(UnmatchedClusters.readLabels)
+    val labels  = o.labels.filter(Files.exists(_)).fold(Seq.empty[UnmatchedClusters.Label])(IdentityJudgements.labels)
     val out     = o.out.map { p => Files.createDirectories(p.toAbsolutePath.getParent); new java.io.PrintWriter(Files.newBufferedWriter(p, StandardCharsets.UTF_8)) }
     out.foreach(_.println(TakeHeader))
     if (o.selectors.isEmpty) sys.error("no selector: --venue/--title, --key or --batch")
@@ -766,7 +766,7 @@ object IdentitySlice {
 
   // ── a slice pinned as a test case ────────────────────────────────────────────────────────
 
-  /** What a pinned slice's listing must take, as labels.tsv judged it: `film` right for it, with the label's own note.
+  /** What a pinned slice's listing must take, as the identity judgements judged it: `film` right for it, with the label's own note.
    *  Set by hand in a case's expected.tsv, `film` may instead be `none` (it takes no film) or `not:<film>` (it takes any
    *  but that one): a listing whose right film its own evidence cannot reach yet must at least not take the wrong one;
    *  either prefixed `pending:` while the fix it waits for has not landed. */
@@ -785,20 +785,20 @@ object IdentitySlice {
   def readExpected(dir: Path): Seq[Expected] = Files.readAllLines(dir.resolve("expected.tsv"), StandardCharsets.UTF_8).asScala.toSeq.drop(1)
     .filter(_.nonEmpty).map(_.split("\t", -1)).map(a => Expected(a(0), a(1), a(2), a.lift(3).getOrElse("")))
 
-  /** The right film labels.tsv names for `key` — its venue's own label first, then every venue's (`*`). */
+  /** The right film the identity judgements name for `key` — its venue's own label first, then every venue's (`*`). */
   def rightLabel(key: ListingKey, country: Country, labels: Seq[UnmatchedClusters.Label]): Option[UnmatchedClusters.Label] = {
-    val about = labels.filter(l => l.country == country.code && l.rawTitle == key.rawTitle && l.right)
+    val about = labels.filter(l => l.country == country.code && UnmatchedClusters.singleSpaced(l.rawTitle) == UnmatchedClusters.singleSpaced(key.rawTitle) && l.right)
     about.find(_.venue == key.venue).orElse(about.find(_.venue == "*"))
   }
 
-  /** Copies `slice` (kept in `from`) to `target` with the film labels.tsv calls right for each seed — NEVER the take: a
-   *  seed labels.tsv does not judge is left out, and a slice none of whose seeds it judges is refused. Each expectation is
+  /** Copies `slice` (kept in `from`) to `target` with the film the judgements call right for each seed — NEVER the take:
+   *  a seed they do not judge is left out, and a slice none of whose seeds it judges is refused. Each expectation is
    *  shown beside its label's own note, so a wrong label is seen before it is pinned. */
   def emitCase(slice: Slice, from: Path, labels: Seq[UnmatchedClusters.Label], target: Path): Unit = {
     val judged = slice.seeds.toSeq.sortBy(ListingKey.serialised).map(key => key -> rightLabel(key, slice.country, labels))
     val (known, unknown) = judged.partition(_._2.isDefined)
-    unknown.foreach { case (key, _) => println(s"--emit-case: labels.tsv does not judge ${key.venue} | ${key.rawTitle} — not pinned (judge it first)") }
-    if (known.isEmpty) println(s"--emit-case REFUSED for ${slice.selector}: labels.tsv judges none of its ${judged.size} listing(s); judge them first")
+    unknown.foreach { case (key, _) => println(s"--emit-case: the judgements do not judge ${key.venue} | ${key.rawTitle} — not pinned (judge it first)") }
+    if (known.isEmpty) println(s"--emit-case REFUSED for ${slice.selector}: the judgements judge none of its ${judged.size} listing(s); judge them first")
     else {
       Files.createDirectories(target)
       Seq("slice.json.gz", "rows.json.gz", "http.jsonl.gz").foreach(name => Files.copy(from.resolve(name), target.resolve(name), java.nio.file.StandardCopyOption.REPLACE_EXISTING))

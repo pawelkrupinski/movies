@@ -69,11 +69,11 @@ check "docs run nothing" "" "$(plan docs/readme.md README.md)"
 check "checks come out once each, in run order" "eslint snapshot actionlint shellcheck sbt" \
   "$(plan web/src/main/assets/js/a.js build.sbt scripts/x.sh .github/workflows/a.yml worker/src/main/scala/A.scala test/resources/fixtures/08-06-2026/y)"
 
-check "a labels.tsv change runs the judgements lint" "judgements" "$(plan test/resources/fixtures/identity-unmatched/labels.tsv)"
-check "an accepted move or a suspect baseline line runs it" "judgements" \
-  "$(plan test/resources/fixtures/identity-takes/accepted.tsv test/resources/fixtures/identity-suspects/baseline.tsv)"
+check "a judgements change runs the judgements lint" "judgements" "$(plan test/resources/fixtures/identity-judgements.tsv)"
+check "an expected match runs it" "judgements" "$(plan test/resources/fixtures/identity-unmatched/expected-matches.tsv)"
 check "a hard-cluster expectation runs it" "judgements" "$(plan test/resources/fixtures/corpus/expected-hard-clusters-pl.txt)"
-check "the lint itself runs it" "judgements" "$(plan scripts/ci/identity_judgements_lint.py)"
+check "the lint itself runs it, and the judgements' reader" "judgements judgements" \
+  "$(plan scripts/ci/identity_judgements_lint.py) $(plan scripts/ci/identity_judgements.py)"
 check "an unmatched-cluster capture does not" "" "$(plan test/resources/fixtures/identity-unmatched/pl.json.gz)"
 
 # `sbt compile` skips the Test and It configs: f20a6b5dd's new `protected def wire` made a worker
@@ -227,19 +227,20 @@ if command -v shellcheck >/dev/null; then
   check "with git's GIT_DIR exported, a check in the temporary checkout sees the pushed commit" \
     "$scala" "$(cat "$scratch/sbt-saw-head" 2>/dev/null)"
 
-  # A labels.tsv change: the judgements lint reads the last convergence leg's served takes, and replays the takes the
-  # push newly labels wrong at the PUSHED code (--replay-head), so a push that labels a take wrong and cures it lands.
-  mkdir -p "$repo/scripts/ci" "$repo/test/resources/fixtures/identity-unmatched"
+  # A judgements change: the judgements lint reads the last convergence leg's served takes, and replays the takes the
+  # push newly judges wrong at the PUSHED code (--replay-head), so a push that judges a take wrong and cures it lands.
+  mkdir -p "$repo/scripts/ci" "$repo/test/resources/fixtures"
   printf '#!/usr/bin/env python3\nimport sys\nopen("%s/lint-args", "w").write(" ".join(sys.argv[1:]))\n' "$scratch" \
     > "$repo/scripts/ci/identity_judgements_lint.py"
-  printf 'country\tvenue\trawTitle\tfilm\tverdict\tnote\n' > "$repo/test/resources/fixtures/identity-unmatched/labels.tsv"
-  scratch_git "$repo" add -A; scratch_git "$repo" commit -qm "labels"
-  printf 'de\tUnion\tDer Diplomat\ttmdb:1\twrong\t\n' >> "$repo/test/resources/fixtures/identity-unmatched/labels.tsv"
-  scratch_git "$repo" commit -qam "labels a take wrong"
+  printf 'country\tvenue\trawTitle\tfilm\tverdict\tstate\tscope\tfilmTitle\treason\tjudged\tevidence\n' \
+    > "$repo/test/resources/fixtures/identity-judgements.tsv"
+  scratch_git "$repo" add -A; scratch_git "$repo" commit -qm "judgements"
+  printf 'de\tUnion\tDer Diplomat\ttmdb:1\twrong\topen\t\t\t\t2026-10-14\t\n' >> "$repo/test/resources/fixtures/identity-judgements.tsv"
+  scratch_git "$repo" commit -qam "judges a take wrong"
   (cd "$repo" && GH_IMC="[$(printf '{"databaseId":7,"status":"completed","conclusion":"success","url":"u"}')]" \
      PATH="$scratch/bin:$PATH" bash scripts/hooks/pre-push --range "HEAD~1..HEAD" >/dev/null 2>&1)
-  check "a labels.tsv push replays its newly-wrong served takes at the pushed code" "1 1 1" \
-    "$(grep -c -- '--served .*de.json.gz' "$scratch/lint-args") $(grep -c -- '--labels-before' "$scratch/lint-args") $(grep -c -- '--replay-head' "$scratch/lint-args")"
+  check "a judgements push replays its newly-wrong served takes at the pushed code" "1 1 1" \
+    "$(grep -c -- '--served .*de.json.gz' "$scratch/lint-args") $(grep -c -- '--before' "$scratch/lint-args") $(grep -c -- '--replay-head' "$scratch/lint-args")"
 
   # git's own stdin, with no origin/main to find a new branch's base from: said, not silently passed.
   out="$(cd "$repo" && printf 'refs/heads/x %s refs/heads/x %s\n' "$head" 0000000000000000000000000000000000000000 \

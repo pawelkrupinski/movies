@@ -11,14 +11,14 @@ import java.util.concurrent.ConcurrentHashMap
 
 /**
  * [[NonFilmEvents]] over the clusters the model leaves unmatched on the recorded full corpora ([[UnmatchedClusters]]'
- * fixture): its precision against `labels.tsv` and the ratchet's right takes — no listing a film is right for is an
+ * fixture): its precision against `identity-judgements.tsv` and the ratchet's right takes — no listing a film is right for is an
  * event — what it finds per country, and what the agreement stage no longer spends on what it finds: the families'
  * questions and the posters it would hash. Writes the events it finds to `target/identity-unmatched/non-film-events.tsv`
  * for review.
  */
 class NonFilmEventsFixtureSpec extends AnyFlatSpec with Matchers {
 
-  private val labels   = UnmatchedClusters.readLabels(UnmatchedClusters.Directory.resolve("labels.tsv"))
+  private val labels   = tools.IdentityJudgements.labels()
   private val takes    = UnmatchedClusters.readTakeLines(UnmatchedClusters.Directory.resolve("expected-matches.tsv"))
   private val captures = models.Country.all.map(UnmatchedClusters.fixturePath).filter(Files.exists(_)).map(UnmatchedClusters.read)
 

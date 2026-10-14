@@ -3,32 +3,19 @@ package tools
 import services.identity.SuspectTakes
 import services.identity.SuspectTakes.{Suspicion, Take}
 
-import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Path}
-import scala.jdk.CollectionConverters._
-
 /**
  * The suspect-take RATCHET over a whole corpus's takes ([[SuspectTakes]]): every take a signal suspects is judged in
- * `labels.tsv` ([[UnmatchedClusters.Label]]) or listed in the baseline of the suspects standing when the ratchet was
- * armed (`baseline.tsv`, which only ever shrinks), and no take is one a label calls wrong. A suspect neither judges is
- * a NEW one: judge it into `labels.tsv` (right, or wrong and fixed).
+ * the identity judgements ([[IdentityJudgements]]: right or wrong) or tolerated by them in the served gate — an
+ * undecided suspect standing since the ratchet was armed, or a known-wrong take of scope `served` — and no take is one
+ * they call wrong but those. A suspect neither judges is a NEW one: judge it (right, or wrong and fixed).
  *
- * Keyed by country, raw title and film: one judgement of a billing covers every venue billing it, as the baseline does.
+ * Keyed by country, raw title and film: one judgement of a billing covers every venue billing it, as a tolerance does.
  */
 object SuspectTakesAudit {
 
-  val Directory: Path = Path.of("test", "resources", "fixtures", "identity-suspects")
-  val BaselinePath: Path = Directory.resolve("baseline.tsv")
-  /** The lines the baseline holds (armed 2026-10-13 with 307; 80 once those were judged the same day; 75, then 112 on
-   *  10-14 when a whole-corpus wrong-match hunt labelled 37 more served takes wrong, 110 once two of those proved right, and
-   *  110 still when the sole-result coverage rule cured five and five UK takes the leg had never reached were listed; 111 with
-   *  the UK leg's "Gremlins Special Event", taken as Innerspace by its director and running time alone; 82 once 29 model takes
-   *  billed as one piece beside another thing were cured): it only shrinks, so a lower count replaces this as it does. */
-  val BaselineArmed = 82
-
   /** A billing taken as `film` that a signal suspects: every venue billing it and every reason. */
   final case class Suspect(country: String, rawTitle: String, film: String, title: String, venues: Seq[String], reasons: Seq[Suspicion]) {
-    /** As the baseline keys it: a raw title single-spaced ([[UnmatchedClusters.singleSpaced]]). */
+    /** As a tolerance keys it: a raw title single-spaced ([[UnmatchedClusters.singleSpaced]]). */
     def key: (String, String, String) = (country, clean(rawTitle), film)
     def signals: Seq[SuspectTakes.Signal] = reasons.map(_.signal).distinct
     def line: String = Seq(country, rawTitle, film, title, reasons.map(_.render).distinct.mkString("; ")).map(clean).mkString("\t")
@@ -38,7 +25,7 @@ object SuspectTakesAudit {
   private def clean(text: String) = UnmatchedClusters.singleSpaced(text)
 
   /** A take as the labels judge it ([[UnmatchedClusters.verdict]]): its raw title single-spaced, as a TSV line holds it
-   *  and the baseline keys it. */
+   *  and a tolerance keys it. */
   def labelled(country: String, take: Take): UnmatchedClusters.Take =
     UnmatchedClusters.Take(country, take.listing.venue, clean(take.listing.rawTitle), take.tmdb, take.film.stripPrefix("imdb:") match {
       case id if take.film.startsWith("imdb:") => Some(id)
@@ -58,10 +45,9 @@ object SuspectTakesAudit {
           found.map(_._2).distinct)
       }.sortBy(_.key)
 
-  /** What the ratchet makes of a corpus's takes: the suspects no label judges and the baseline does not list (`fresh`),
-   *  the billings taken as a film a label calls wrong that the baseline does not list (`wrong`), and the baseline's lines
-   *  no suspect or wrong take of this corpus is any more (`gone`: to strike from the baseline, never a failure — a corpus
-   *  moves nightly). */
+  /** What the ratchet makes of a corpus's takes: the suspects no label judges and `tolerated` does not list (`fresh`),
+   *  the billings taken as a film a label calls wrong that it does not list (`wrong`), and its billings no suspect or
+   *  wrong take of this corpus is any more (`gone`: to strike, never a failure — a corpus moves nightly). */
   final case class Verdict(suspects: Seq[Suspect], fresh: Seq[Suspect], wrong: Seq[Take], gone: Seq[(String, String, String)]) {
     def failed: Boolean = fresh.nonEmpty || wrong.nonEmpty
   }
@@ -69,18 +55,18 @@ object SuspectTakesAudit {
   private def key(country: String, take: Take) = (country, clean(take.listing.rawTitle), take.film)
 
   def judge(country: String, corpus: SuspectTakes.Corpus, screeningYear: Int, labels: Seq[UnmatchedClusters.Label],
-            baseline: Set[(String, String, String)]): Verdict = {
+            tolerated: Set[(String, String, String)]): Verdict = {
     val all       = suspects(country, corpus, screeningYear)
     val byTitle   = labels.filter(_.country == country).groupBy(label => clean(label.rawTitle))
     val verdicts  = corpus.takes.map(take => take -> byTitle.get(clean(take.listing.rawTitle)).flatMap(verdict(country, take, _)))
     val judged    = verdicts.collect { case (take, Some(_)) => key(country, take) }.toSet
     val wrongAll  = verdicts.collect { case (take, Some(false)) => take }.distinctBy(key(country, _))
     def keyed(line: (String, String, String)) = (line._1, clean(line._2), line._3)
-    val listed    = baseline.map(keyed)
+    val listed    = tolerated.map(keyed)
     val fresh     = all.filterNot(s => judged(s.key) || listed(s.key))
     val wrong     = wrongAll.filterNot(take => listed(key(country, take)))
     val standing  = all.map(_.key).toSet ++ wrongAll.map(key(country, _))
-    Verdict(all, fresh, wrong, baseline.filter(line => line._1 == country && !standing(keyed(line))).toSeq.sorted)
+    Verdict(all, fresh, wrong, tolerated.filter(line => line._1 == country && !standing(keyed(line))).toSeq.sorted)
   }
 
   /** A corpus's takes as a file the measure reads again (`scripts.SuspectTakesMeasure --dumps`, as
@@ -94,10 +80,10 @@ object SuspectTakesAudit {
       corpus.takes.flatMap(t => t.tmdb.map(_ -> Option(t.record))).toMap, Map.empty, Set.empty, Map.empty, Map.empty)
   }
 
-  /** The reason a baseline line gives a take a label calls wrong. */
-  val WrongReason = "wrong by labels.tsv"
+  /** The reason a queue line gives a take a judgement calls wrong. */
+  val WrongReason = "wrong by the judgements"
 
-  /** A take a label calls wrong, as a baseline line. */
+  /** A take a label calls wrong, as a line of the queue `scripts.SuspectTakesMeasure --out` writes. */
   def wrongLine(country: String, take: Take): String =
     Seq(country, take.listing.rawTitle, take.film, s"${take.record.title} (${take.record.year.fold("?")(_.toString)})", WrongReason)
       .map(clean).mkString("\t")
@@ -106,10 +92,6 @@ object SuspectTakesAudit {
   def byCount(suspects: Seq[Suspect]): String =
     SuspectTakes.Signal.values.map(s => s"${s.label} ${suspects.count(_.signals.contains(s))}").mkString(", ")
 
-  def readBaseline(path: Path = BaselinePath): Set[(String, String, String)] =
-    if (!Files.exists(path)) Set.empty
-    else Files.readAllLines(path, StandardCharsets.UTF_8).asScala.toSeq.drop(1).filter(_.nonEmpty).map(_.split("\t", -1))
-      .map(a => (a(0), a(1), a(2))).toSet
-
-  val BaselineHeader = "country\trawTitle\tfilm\ttitle\treasons"
+  /** The header of that queue: a suspect's line ([[Suspect.line]]) or a wrong take's ([[wrongLine]]). */
+  val QueueHeader = "country\trawTitle\tfilm\ttitle\treasons"
 }

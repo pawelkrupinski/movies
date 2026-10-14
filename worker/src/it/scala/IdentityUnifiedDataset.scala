@@ -28,7 +28,7 @@ import scala.jdk.CollectionConverters._
  * `KINOWO_IDENTITY_POSTER_CACHE` alone: nothing is asked of a family or a poster host here, a question no answer holds is
  * a missing signal. Labels, per contender:
  *
- *  - HAND (`labels.tsv`, the unmatched ratchet's labels, judged per listing as the ratchet judges a take): right, wrong,
+ *  - HAND (`identity-judgements.tsv`, the unmatched ratchet's labels, judged per listing as the ratchet judges a take): right, wrong,
  *    and every other contender of a cluster whose right film a label names is wrong;
  *  - WEAK: a cluster the model matched and no label judges — its film right, its other contenders wrong — unless a venue
  *    poster names another candidate against it, or a family took another film its title names: those are left out.
@@ -58,7 +58,7 @@ object IdentityUnifiedDataset {
     val out     = Paths.get(opts.getOrElse("out", sys.error("--out <dir>")))
     val threads = opts.get("threads").map(_.toInt).getOrElse(6)
     val configuration = settings.ProcessConfiguration.resolve()
-    val labels   = UnmatchedClusters.readLabels(UnmatchedClusters.Directory.resolve("labels.tsv"))
+    val labels   = tools.IdentityJudgements.labels()
     val storages = mutable.ListBuffer.empty[ConvergenceStorage]
     Files.createDirectories(out)
     try {

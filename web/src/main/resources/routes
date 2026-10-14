@@ -255,7 +255,7 @@ GET     /admin/share-cards               controllers.ShareCardGalleryController.
 # Dev-only (404 in prod, like the rest of /debug): the clusters the resolver left
 # unmatched, those it rated matchable and still left, and those it matched lately,
 # read from the LOCAL mirror only, with answer buttons. Answers land in the local
-# `review_answers` store; export writes them into labels.tsv. nocsrf because the
+# `review_answers` store; export writes them into identity-judgements.tsv. nocsrf because the
 # page POSTs JSON via fetch; DevMode is the gate.
 GET     /debug/review                    controllers.ReviewController.queue(country: Option[String] ?= None, limit: Int ?= 20, answered: Boolean ?= false)
 GET     /debug/review/matchable          controllers.ReviewController.matchable(country: Option[String] ?= None, min: Double ?= 0.5, basis: Option[String] ?= None, limit: Int ?= 20, answered: Boolean ?= false)

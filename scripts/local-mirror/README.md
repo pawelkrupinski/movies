@@ -194,10 +194,10 @@ answer; nothing is rewritten (an Undo is a newer answer). From a terminal:
 
 ```
 sbt "web/runMain services.review.ReviewLabelsCli import <all-answers.json>"   # the hand-built pages' answers, once
-sbt "web/runMain services.review.ReviewLabelsCli export"                      # → test/resources/fixtures/identity-unmatched/labels.tsv
+sbt "web/runMain services.review.ReviewLabelsCli export"                      # → test/resources/fixtures/identity-judgements.tsv
 ```
 
-`export` is the pages' "Export to labels.tsv" button; `GET /debug/review/answers`
+`export` is the pages' "Export to identity-judgements.tsv" button; `GET /debug/review/answers`
 lists the whole history as JSON.
 
 ## How the mirror stays in sync
