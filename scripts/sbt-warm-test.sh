@@ -18,7 +18,7 @@ export PATH="$scratch/bin:$PATH"
 origin="$scratch/origin.git"; repo="$scratch/repo"
 scratch_repo "$origin" --bare
 scratch_repo "$repo"
-echo a > "$repo/a"; scratch_git "$repo" add a; scratch_git "$repo" commit -qm one
+mkdir -p "$repo/worker/src"; echo a > "$repo/a"; echo s > "$repo/worker/src/s"; scratch_git "$repo" add -A; scratch_git "$repo" commit -qm one
 scratch_git "$repo" remote add origin "$origin"
 echo b >> "$repo/a"; scratch_git "$repo" commit -qam two
 scratch_git "$repo" push -q origin HEAD:main; scratch_git "$repo" fetch -q origin
@@ -45,6 +45,25 @@ check "a checkout with compiled output is never seeded over" "stale" "$(cat "$sc
 scratch_git "$repo" worktree add -q -b other "$scratch/other" origin/main
 (cd "$scratch/other" && KINOWO_SBT_WARM_SEED="$scratch/old" "$REPO_ROOT/scripts/sbt-warm" --seed >/dev/null 2>&1)
 check "KINOWO_SBT_WARM_SEED names the source instead" "old" "$(cat "$scratch/other/worker/target/scala-3.9.0/zinc/from" 2>/dev/null)"
+
+# a module new since the checkout was seeded (identity/, 2026-10-14) is seeded on its own; the modules built stay
+mkdir -p "$KINOWO_IDENTITY_CACHE/refs/$(scratch_git "$repo" rev-parse HEAD)/identity/target/scala-3.9.0/zinc"
+echo newest > "$KINOWO_IDENTITY_CACHE/refs/$(scratch_git "$repo" rev-parse HEAD)/identity/target/scala-3.9.0/zinc/from"
+mkdir -p "$scratch/other/identity/src"
+(cd "$scratch/other" && "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
+check "a module the checkout has not built yet is seeded, the built ones kept" "newest old" \
+  "$(cat "$scratch/other/identity/target/scala-3.9.0/zinc/from" 2>/dev/null) $(cat "$scratch/other/worker/target/scala-3.9.0/zinc/from")"
+
+# the build changed under the kept server (a rebase onto a new module): it reloads before running the commands
+(cd "$scratch/other" && exec -a "java -jar /fake/sbt-launch.jar --detach-stdio" sleep 300) &
+server=$!
+for _ in $(seq 1 100); do pgrep -f 'fake/sbt-launch.jar --detach' >/dev/null && break; sleep 0.1; done
+echo 'lazy val x = 1' > "$scratch/other/build.sbt"
+(cd "$scratch/other" && "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
+check "a changed build is reloaded first" "--client reload; compile" "$(tail -1 "$scratch/sbt-calls" | cut -d'|' -f2)"
+(cd "$scratch/other" && "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
+check "...once" "--client compile" "$(tail -1 "$scratch/sbt-calls" | cut -d'|' -f2)"
+kill "$server" 2>/dev/null; wait "$server" 2>/dev/null
 
 # a removed checkout's server is stopped by the next call from anywhere
 sleep 300 & sleeper=$!

@@ -79,21 +79,38 @@ seed_source() {
   done | sort -rn | head -1
 }
 
+# What this checkout has not built: project/target, and each module (a directory with src/) without Zinc state.
+unbuilt() {
+  local m
+  [ -d "$root/project/target" ] || printf '%s\n' project/target project/project/target
+  for m in "$root"/*/src; do
+    m=$(basename "$(dirname "$m")")
+    compgen -G "$root/$m/target/scala-*/zinc" > /dev/null || echo "$m"
+  done
+}
+
 seed() {
-  compgen -G "$root/worker/target/scala-*/zinc" > /dev/null && return 0
-  local src=${KINOWO_SBT_WARM_SEED:-} d started=$SECONDS
+  local missing src=${KINOWO_SBT_WARM_SEED:-} d m started=$SECONDS
+  missing=$(unbuilt)
+  [ -n "$missing" ] || return 0
   [ -n "$src" ] || src=$(seed_source | cut -d' ' -f2-)
   [ -n "$src" ] || { log "no local build of main to seed from: the first compile is cold"; return 0; }
-  log "seeding $root from $src's build"
-  for d in project/target project/project/target "$src"/*/target/scala-*; do
-    d=${d#"$src"/}
-    [ -d "$src/$d" ] || continue
-    mkdir -p "$root/$(dirname "$d")"
-    rm -rf "${root:?}/$d"
-    cp -cR "$src/$d" "$root/$d" 2>/dev/null || cp -R "$src/$d" "$root/$d"
+  log "seeding $(printf '%s' "$missing" | tr '\n' ' ')in $root from $src's build"
+  for m in $missing; do
+    case "$m" in project/*) set -- "$src/$m" ;; *) set -- "$src/$m"/target/scala-* ;; esac
+    for d in "$@"; do
+      d=${d#"$src"/}
+      [ -d "$src/$d" ] || continue
+      mkdir -p "$root/$(dirname "$d")"
+      rm -rf "${root:?}/$d"
+      cp -cR "$src/$d" "$root/$d" 2>/dev/null || cp -R "$src/$d" "$root/$d"
+    done
   done
   log "seeded in $((SECONDS - started))s"
 }
+
+# The build definition's digest: a server started on another one runs `reload` first.
+build_digest() { (cd "$root" && cat build.sbt project/*.sbt project/*.scala project/build.properties 2>/dev/null) | shasum | cut -c1-16; }
 
 # The watchdog beside a server: stops it once the checkout is gone, or idle past the timeout.
 watch() { # <pid>
@@ -124,6 +141,13 @@ touch "$State/$key.used"
 fresh=0
 server_pid "$root" > /dev/null || fresh=1
 command=$(printf '%s; ' "$@"); command=${command%; }
+# the build changed under a kept server (a rebase onto a new module): sbt --client would run the old one
+digest=$(build_digest)
+if [ "$fresh" = 0 ] && [ -f "$State/$key.build" ] && [ "$(cat "$State/$key.build")" != "$digest" ]; then
+  log "the build changed since the server loaded it: reload first"
+  command="reload; $command"
+fi
+echo "$digest" > "$State/$key.build"
 # sbt --client starts the server (in the background, outliving this call) when the checkout has none
 (cd "$root" && sbt --client "$command"); rc=$?
 touch "$State/$key.used"
