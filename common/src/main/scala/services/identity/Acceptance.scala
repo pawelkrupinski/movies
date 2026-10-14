@@ -319,12 +319,27 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
   def soleResult(ranked: Seq[Scored]): Option[Accepted] = ownInstalment(soleResultWhy(ranked)).toOption
   /** Is every word of the listing's whole title one of the film's title's — two words at least, or the film's title
    *  before its dash or colon — as the old pipeline took a whole title's only search result: "Dzień Dziecka księdza
-   *  Kaczkowskiego" is "Dzień Dziecka księdza Jana Kaczkowskiego", "TAFITI" is "Tafiti – Ab durch die Wüste". */
+   *  Kaczkowskiego" is "Dzień Dziecka księdza Jana Kaczkowskiego", "TAFITI" is "Tafiti – Ab durch die Wüste". Two words
+   *  or more must cover the film's title ([[coversItsTitle]]): an event billed in a few words is not every longer title
+   *  that happens to hold them. */
   private def wordsOfIts(scored: Scored): Boolean = {
     val own = IdentityMeasures.yearlessTokens(scored.listing.title)
     own.nonEmpty && (Seq(scored.candidate.film.title) ++ scored.candidate.film.originalTitle).exists { title =>
       own.forall(IdentityMeasures.yearlessTokens(title).contains) &&
-        (own.sizeIs >= 2 || IdentityMeasures.yearlessTokens(MainTitleBreak.split(title).head) == own)
+        ((own.sizeIs >= 2 && coversItsTitle(own, title)) || IdentityMeasures.yearlessTokens(MainTitleBreak.split(title).head) == own)
+    }
+  }
+  /** Do the listing's words `own`, all of them the film's `title`'s, cover that title: more than half its words, or every
+   *  part of it ([[TitlePartBreak]]) they touch whole — "BALLET LIVE. MANON. ROYAL ÓPERA HOUSE" for "Manon (BALLET LIVE)".
+   *  Fewer are words scattered over a longer title (the wrong-match hunt, 10-14, 9 wrong to 1 right): DE "Simply
+   *  Christmas", a band's Advent concert, is no "Steve's Simply Happy Christmas Cook-A-Long", "DAS GEHEIME FILMARCHIV",
+   *  a secret-classic series, no "Das geheime Filmarchiv der Eva Braun". */
+  private def coversItsTitle(own: Seq[String], title: String): Boolean = {
+    val words = own.toSet
+    val theirs = IdentityMeasures.yearlessTokens(title).toSet
+    words.size * 2 > theirs.size || {
+      val parts = TitlePartBreak.split(title).toSeq.map(IdentityMeasures.yearlessTokens).filter(_.nonEmpty)
+      parts.filter(_.exists(words)).forall(_.forall(words))
     }
   }
   /** Denied only by the probability cut — no learned rule, no pin — while every word of the listing's title is the
@@ -334,6 +349,8 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
   private def cutOnly(scored: Scored): Boolean =
     !scored.suggestedOnly && scored.deniedByCutOnly && wordsOfIts(scored)
   private val MainTitleBreak = java.util.regex.Pattern.compile("""\s+[-–—]\s+|:\s""")
+  /** What parts a title: a spaced dash, a colon, a full stop or a middle dot before a space. */
+  private val TitlePartBreak = java.util.regex.Pattern.compile("""\s+[-–—·]\s+|[:.]\s""")
   private def soleResultWhy(ranked: Seq[Scored]): Verdict = {
     val eligible = eligibleOf(ranked)
     for {

@@ -298,6 +298,22 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     bySole(sole(ranked(Listing("Wüste"), (1437198, Film("Tafiti - Ab durch die Wüste", year = Some(2025)), Some(1))), 1437198)) shouldBe None
   }
 
+  it should "not take it on words scattered over a longer title, covering half its words or fewer" in {
+    // the wrong-match hunt, 10-14: an event a venue bills in two or three words, its search's only result a longer title
+    // that happens to hold them — DE "Simply Christmas" (a band's Advent concert), "80ER PARTY", "Anime Nights" (six
+    // nights of different films), "DAS GEHEIME FILMARCHIV" (a secret-classic series), "Bodies in Translation" (a stage show)
+    def sole(l: String, film: String) =
+      acceptance.soleResult(ranked(Listing(l), (9, Film(film, year = Some(2022)), Some(1))).map(_.copy(soleResult = true))).map(_._1.candidate.tmdbId)
+    sole("Simply Christmas", "Steve's Simply Happy Christmas Cook-A-Long") shouldBe None
+    sole("80ER PARTY", "Die Stärksten 80er Clips – Saturn-Party Edition") shouldBe None
+    sole("Anime Nights", "Crunchyroll Anime Nights - Mob Psycho 100") shouldBe None
+    sole("DAS GEHEIME FILMARCHIV", "Das geheime Filmarchiv der Eva Braun") shouldBe None
+    sole("Bodies in Translation", "Purple, Bodies in Translation – Part II of A Yellow Memory from the Yellow Age") shouldBe None
+    // more than half its words, or every part of it the billing touches whole: still the film
+    sole("Dzień Dziecka księdza Kaczkowskiego", "Dzień Dziecka księdza Jana Kaczkowskiego") shouldBe Some(9)
+    sole("Manon (BALLET LIVE)", "BALLET LIVE. MANON. ROYAL ÓPERA HOUSE") shouldBe Some(9)
+  }
+
   "a programme dating a one-word film's title" should "take that film by its year" in {
     // PL Kino NCKF EC1's "Akademia Kina Polskiego: Drogówka (2012)": "Drogówka" alone is many films' title, but not
     // beside the year that dates it — Smarzowski's 2013 film, a year off.

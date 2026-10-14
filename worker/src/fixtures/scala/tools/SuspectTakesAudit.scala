@@ -20,7 +20,8 @@ object SuspectTakesAudit {
   val Directory: Path = Path.of("test", "resources", "fixtures", "identity-suspects")
   val BaselinePath: Path = Directory.resolve("baseline.tsv")
   /** The lines the baseline holds (armed 2026-10-13 with 307; 80 once those were judged the same day; 75, then 112 on
-   *  10-14 when a whole-corpus wrong-match hunt labelled 37 more served takes wrong, 110 once two of those proved right):
+   *  10-14 when a whole-corpus wrong-match hunt labelled 37 more served takes wrong, 110 once two of those proved right, and
+   *  110 still when the sole-result coverage rule cured five and five UK takes the leg had never reached were listed):
    *  it only shrinks, so a lower count replaces this as it does. */
   val BaselineArmed = 110
 
