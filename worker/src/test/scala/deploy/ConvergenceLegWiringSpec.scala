@@ -183,8 +183,8 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
 
   it should "gate each country's full leg on that same country's sample" in {
     countries.foreach { case (country, (command, sample)) =>
-      // A full row whose order-independence replay runs in a row of its own is the same country's suite.
-      withClue(s"$country: ") { sample shouldBe s"${command.stripSuffix("WithoutOrder")}Sample" }
+      // A full row whose order-independence replay (or next-day test) runs in a row of its own is the same country's suite.
+      withClue(s"$country: ") { sample shouldBe s"${command.stripSuffix("WithoutOrder").stripSuffix("WithoutNextDay")}Sample" }
     }
   }
 
@@ -227,7 +227,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
   it should "run the sample's corpus-shape specs ahead of a hermetic row's suite, where no sample runs" in {
     RepoFile.step(RepoFile.block(leg, "convergence"), SuiteStep) should include(
       "${{ matrix.phase == 'convergence' && !inputs.sample-row && inputs.mode != 'record' && inputs.shape-command || '' }} " +
-      "${{ matrix.phase == 'convergence' && inputs.command || inputs.order-command }}")
+      "${{ matrix.phase == 'convergence' && inputs.command || matrix.phase == 'next-day' && inputs.next-day-command || inputs.order-command }}")
     callers.foreach(_ should include("shape-command:  ${{ matrix.shape || '' }}"))
     rows.filterNot(_.get("sampleRow").contains("true")).foreach { row =>
       val shape = row.getOrElse("shape", fail(s"${row("country")} runs no sample in a hermetic row, and names no `shape` alias"))
@@ -455,9 +455,9 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     }
     legDirectives should not include "if: inputs.order-command"
     RepoFile.block(leg, "convergence") should include(
-      """phase: ${{ fromJson(format('["convergence"{0}{1}]', inputs.order-command != '' && (inputs.order-split && """ +
+      """phase: ${{ fromJson(format('["convergence"{0}{1}{2}]', inputs.order-command != '' && (inputs.order-split && """ +
         """',"order-independence-p01","order-independence-p12"' || ',"order-independence"') || '', """ +
-        """inputs.sample-row && ',"sample"' || '')) }}""")
+        """inputs.sample-row && ',"sample"' || '', inputs.next-day-command != '' && ',"next-day"' || '')) }}""")
   }
 
   /** A country whose single order row ran past the 10-minute target splits it into two rows of two
@@ -468,6 +468,21 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     suite should include("""KINOWO_CONVERGENCE_ORDER_PASSES: ${{ matrix.phase == 'order-independence-p01' && '0,1' || """ +
       """matrix.phase == 'order-independence-p12' && '1,2' || '' }}""")
     RepoFile.block(leg, "order-split") should include("default: false")
+  }
+
+  /** The United States' convergence row ran 11.4 minutes with no replays in it; its next-day test, which reads only
+   *  the booted corpus, runs on a boot of its own in a `next-day` row. Excluded from the convergence row by the same
+   *  tag that selects it, so the test runs exactly once. */
+  it should "run the United States' next-day test in a row of its own, and nowhere else in that leg" in {
+    val convergence = RepoFile.read(".github/workflows/identity-model-convergence.yml")
+    val rows = RepoFile.matrixRows(convergence)
+    rows.filter(_.contains("nextDay")).flatMap(_.get("code")) shouldBe Seq("us")
+    val us = rows.find(_.get("code").contains("us")).get
+    RepoFile.commandAlias(us("cmd")) should include("-l services.movies.NextDay")
+    RepoFile.commandAlias(us("nextDay")) should endWith("-n services.movies.NextDay")
+    convergence should include("next-day-command:              ${{ matrix.nextDay || '' }}")
+    RepoFile.block(leg, "convergence") should include(
+      "matrix.phase == 'next-day' && inputs.next-day-command || inputs.order-command")
   }
 
   it should "split only the countries whose order replay ran past 10 minutes" in {
@@ -501,7 +516,8 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     val block = RepoFile.block(leg, "convergence")
     // Each as the fallback of the row's own expression: `inputs.order-command` alone also
     // matches the phase matrix's `inputs.order-command != ''`, which stays when the alias goes.
-    Seq("inputs.command || inputs.order-command }}", "inputs.job-timeout-minutes || inputs.order-job-timeout-minutes }}",
+    Seq("inputs.command || matrix.phase == 'next-day' && inputs.next-day-command || inputs.order-command }}",
+        "inputs.job-timeout-minutes || inputs.order-job-timeout-minutes }}",
         "inputs.suite-timeout-minutes || inputs.order-suite-timeout-minutes }}").foreach { input =>
       withClue(s"$input: the replay row would fall back to the full leg's: ") {
         block should include(input)

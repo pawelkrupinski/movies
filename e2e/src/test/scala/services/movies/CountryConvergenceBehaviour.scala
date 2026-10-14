@@ -1584,7 +1584,7 @@ abstract class CountryConvergenceBehaviour(
    * test before it asserts the first day.
    */
   s"the ${country.displayName} pipeline" should
-    "take the next day's listings — films leave, films gain venues, a failed venue keeps its own — and move nothing else" in {
+    "take the next day's listings — films leave, films gain venues, a failed venue keeps its own — and move nothing else" taggedAs NextDay in {
     {
       val (w, _) = shared
       val normalizer = w.movieCache.normalizer

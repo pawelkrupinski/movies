@@ -572,6 +572,9 @@ addCommandAlias("convergenceUkOrder",        "e2e/Test/testOnly services.movies.
 // splits in the pipeline lane — Poland's replays cost 287s and Germany's 439s, so theirs stay
 // inline there, and every sample leg keeps the ~100-film version of the claim. See `OrderIndependence`.
 addCommandAlias("convergenceUs",      "e2e/Test/testOnly services.movies.UnitedStatesConvergenceSpec -- -l services.movies.OrderIndependence")
+// The identity lane's US leg, split once more: the next-day test on a boot of its own (`NextDay`).
+addCommandAlias("convergenceUsWithoutNextDay", "e2e/Test/testOnly services.movies.UnitedStatesConvergenceSpec -- -l services.movies.OrderIndependence -l services.movies.NextDay")
+addCommandAlias("convergenceUsNextDay",        "e2e/Test/testOnly services.movies.UnitedStatesConvergenceSpec -- -n services.movies.NextDay")
 addCommandAlias("convergenceUsOrder", "e2e/Test/testOnly services.movies.UnitedStatesConvergenceSpec -- -n services.movies.OrderIndependence")
 // The IDENTITY lane splits Germany the same way, for wall clock rather than to fit a job: its
 // three replays were ~5 of the slowest row's 11.3 minutes (run 37148209974, three lockstep passes

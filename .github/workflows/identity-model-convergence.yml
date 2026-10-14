@@ -80,7 +80,8 @@ jobs:
     # Mongo that holds at most 1.5 GB. A country whose leg ran past the 10-minute target runs its order-independence
     # replay in rows of its own -- Germany, the United Kingdom (14.1m with its replays beside the boot) and the United
     # States -- and those rows split in two (`orderSplit`: passes 0,1 and 1,2), since three passes on one 4-core runner
-    # ran 12.9-13.5m. Poland and Spain, under 10 minutes, keep theirs beside the boot (run 38548739769). The United States runs its sample in a row of its
+    # ran 12.9-13.5m. Poland and Spain, under 10 minutes, keep theirs beside the boot (run 38548739769). The United
+    # States' convergence row, 11.4m with no replays at all, runs its next-day test on a boot of its own (`nextDay`). The United States runs its sample in a row of its
     # own too (`sampleRow`), beside its suite rather than in front of it: 79 s of the lane's 10.0-minute
     # critical path (run 37150307201), its convergence row then ungated — a red sample costs a
     # runner, not wall time. `heap` is the sbt JVM's `-Xmx`: the US holds its
@@ -96,7 +97,7 @@ jobs:
                     - { country: germany,        code: de, cmd: convergenceGermanyWithoutOrder, sample: convergenceGermanySample, shape: corpusShapeGermany, job: 155, suite: 120, sampleSuite: 20, heap: 4g, mongoTmpfs: 6g, order: convergenceGermanyOrder, orderJob: 155, orderSuite: 120, orderSplit: true }
                     - { country: united-kingdom, code: uk, cmd: convergenceUkWithoutOrder, sample: convergenceUkSample, shape: corpusShapeUk, job: 155, suite: 120, sampleSuite: 20, heap: 7g, mongoTmpfs: 3g, order: convergenceUkOrder, orderJob: 155, orderSuite: 120, orderSplit: true }
                     - { country: spain,          code: es, cmd: convergenceSpain,   sample: convergenceSpainSample,   shape: corpusShapeSpain, job: 155, suite: 120, sampleSuite: 20, heap: 7g, mongoTmpfs: 3g }
-                    - { country: united-states,  code: us, cmd: convergenceUs,      sample: convergenceUsSample,      job: 350, suite: 315, sampleSuite: 20, heap: 10g, order: convergenceUsOrder, orderJob: 350, orderSuite: 315, orderSplit: true, sampleRow: true }
+                    - { country: united-states,  code: us, cmd: convergenceUsWithoutNextDay, nextDay: convergenceUsNextDay, sample: convergenceUsSample, job: 350, suite: 315, sampleSuite: 20, heap: 10g, order: convergenceUsOrder, orderJob: 350, orderSuite: 315, orderSplit: true, sampleRow: true }
         uses: ./.github/workflows/country-convergence-leg.yml
         permissions:
             contents: write
@@ -116,6 +117,7 @@ jobs:
             order-job-timeout-minutes:     ${{ matrix.orderJob || 155 }}
             order-suite-timeout-minutes:   ${{ matrix.orderSuite || 120 }}
             order-split:                   ${{ matrix.orderSplit == true }}
+            next-day-command:              ${{ matrix.nextDay || '' }}
             sample-row:                    ${{ matrix.sampleRow == true }}
             heap:                          ${{ matrix.heap }}
             # RAM-backed Mongo where the heap leaves the room: 4g + mongod's 2g cache + at most 6g of data

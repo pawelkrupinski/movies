@@ -119,6 +119,13 @@ on:
                 required: false
                 type: string
                 default: ''
+            # The next-day test on a boot of its own, as a `next-day` row beside the convergence row
+            # (`NextDay`): for a leg the test keeps past 10 minutes once its replays have moved out.
+            next-day-command:
+                description: The sbt alias running only this country's next-day test, as a row of its own. Empty runs it in the convergence row.
+                required: false
+                type: string
+                default: ''
             # ONE ORDER ROW PAST 10 MINUTES IS SPLIT IN TWO: passes 0,1 and passes 1,2, each row's two
             # replays on a runner of their own instead of three sharing one. A pass is compared only
             # with the others in its row, so each row holds two and they overlap on pass 1 -- 0 = 1 and
@@ -321,7 +328,7 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                phase: ${{ fromJson(format('["convergence"{0}{1}]', inputs.order-command != '' && (inputs.order-split && ',"order-independence-p01","order-independence-p12"' || ',"order-independence"') || '', inputs.sample-row && ',"sample"' || '')) }}
+                phase: ${{ fromJson(format('["convergence"{0}{1}{2}]', inputs.order-command != '' && (inputs.order-split && ',"order-independence-p01","order-independence-p12"' || ',"order-independence"') || '', inputs.sample-row && ',"sample"' || '', inputs.next-day-command != '' && ',"next-day"' || '')) }}
         runs-on: ${{ inputs.runner }}
         # 45 was not enough headroom and cost a real run: on 2026-07-28 the Germany
         # and UK legs were CANCELLED at exactly 45m while Poland finished in 8,
@@ -331,7 +338,7 @@ jobs:
         # so the ceiling now sits well clear of the expected run rather than just
         # above it. A leg that approaches this is a signal to re-measure the shape,
         # not to raise the number again. It holds the sample step's ceiling too.
-        timeout-minutes: ${{ matrix.phase == 'convergence' && inputs.job-timeout-minutes || inputs.order-job-timeout-minutes }}
+        timeout-minutes: ${{ (matrix.phase == 'convergence' || matrix.phase == 'next-day') && inputs.job-timeout-minutes || inputs.order-job-timeout-minutes }}
         permissions:
             # `contents: write` for the rolling release the fixture trees live in —
             # see "Publish" below for why that, rather than an artifact. The replay row never
@@ -695,7 +702,7 @@ jobs:
               id: suite
               if: matrix.phase != 'sample'
               shell: bash
-              timeout-minutes: ${{ matrix.phase == 'convergence' && inputs.suite-timeout-minutes || inputs.order-suite-timeout-minutes }}
+              timeout-minutes: ${{ (matrix.phase == 'convergence' || matrix.phase == 'next-day') && inputs.suite-timeout-minutes || inputs.order-suite-timeout-minutes }}
               run: |
                   set -o pipefail
                   # A recording's sample, above, wrote its JUnit XML here; the report below is this suite's.
@@ -709,7 +716,7 @@ jobs:
                       profile=("-J-XX:StartFlightRecording=filename=convergence.jfr,settings=profile,dumponexit=true")
                   fi
                   read -ra jvm <<< "$JVM_OPTIONS"
-                  sbt -J-Xmx${{ inputs.heap }} "${jvm[@]}" "${profile[@]}" -J-Djdk.http.auth.tunneling.disabledSchemes= ${{ matrix.phase == 'convergence' && !inputs.sample-row && inputs.mode != 'record' && inputs.shape-command || '' }} ${{ matrix.phase == 'convergence' && inputs.command || inputs.order-command }} 2>&1 | tee convergence.log || suite=$?
+                  sbt -J-Xmx${{ inputs.heap }} "${jvm[@]}" "${profile[@]}" -J-Djdk.http.auth.tunneling.disabledSchemes= ${{ matrix.phase == 'convergence' && !inputs.sample-row && inputs.mode != 'record' && inputs.shape-command || '' }} ${{ matrix.phase == 'convergence' && inputs.command || matrix.phase == 'next-day' && inputs.next-day-command || inputs.order-command }} 2>&1 | tee convergence.log || suite=$?
                   # What the leg left in Mongo — the size a RAM-backed mongod would have to hold, and where its
                   # time went — on a red suite too, which is when it is read; then the suite's own verdict.
                   docker exec mongo du -sh /data/db || true
