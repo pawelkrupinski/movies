@@ -25,21 +25,19 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
   private val held = TmdbKind.values.map(_ -> new ConcurrentHashMap[String, Held]()).toMap
 
   override def prefetch(queries: Iterable[CandidateQuery], films: Iterable[Int], pages: Iterable[Listing]): Unit = {
-    held.values.foreach(_.clear())
-    this.films.clear()
-    hits.clear()
+    release()
     val asked = queries.toSeq
     load(TmdbKind.Query, asked.map(TmdbStore.questionId(language, _)))
     // What the questions name: each person search's people, each IMDb title's finds.
     load(TmdbKind.Person, asked.collect { case CandidateQuery.Director(name) => personSearchOf(name) }
       .flatMap(heldDocument(TmdbKind.Query, _)).flatMap(d => intsOf(d).take(MaxPersonCandidates)).map(_.toString))
     load(TmdbKind.Query, asked.collect { case CandidateQuery.Imdb(title) => title }.flatMap { title =>
-      heldDocument(TmdbKind.Query, TmdbStore.suggestionsId(ImdbClient.suggestionUrl(title))).toSeq
+      heldDocument(TmdbKind.Query, TmdbStore.imdbSuggestionsId(title)).toSeq
         .flatMap(suggestionIds(_, title)).map(TmdbStore.findId)
     })
     // Each IMDb-titled question's suggestions: their titles, then the finds of those IMDb lists under the title.
     val titled = asked.collect { case CandidateQuery.ImdbTitled(title) => title }.flatMap { title =>
-      heldDocument(TmdbKind.Query, TmdbStore.suggestionsId(ImdbClient.suggestionUrl(title))).toSeq.flatMap(suggestionsOf).take(ImdbClient.SuggestedMovies).map(_.id)
+      heldDocument(TmdbKind.Query, TmdbStore.imdbSuggestionsId(title)).toSeq.flatMap(suggestionsOf).take(ImdbClient.SuggestedMovies).map(_.id)
     }.distinct
     load(TmdbKind.Query, titled.map(TmdbStore.imdbTitlesId) ++ titled.map(TmdbStore.findId))
     // And every film any of them names, for its hit; the records asked for, read through — whoever asks for a
@@ -56,7 +54,10 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
   // The documents a prefetch read stay only while its own asks are answered: held until the next
   // prefetch, a slice's searches and every film they name sat in the heap through the slice's build
   // and the resolves after it, and UK's take-up spent 72% of its time in full GCs.
-  override def prefetchAnswered(): Unit = { held.values.foreach(_.clear()); films.clear(); hits.clear(); details.prefetchAnswered() }
+  override def prefetchAnswered(): Unit = { release(); details.prefetchAnswered() }
+
+  /** Let go of every document, film and hit the last prefetch holds. */
+  private def release(): Unit = { held.values.foreach(_.clear()); films.clear(); hits.clear() }
 
   /** How many documents and hits the last prefetch still holds. */
   private[identity] def heldDocuments: Int = held.values.map(_.size).sum + hits.size
@@ -77,20 +78,16 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
         }).map(_.flatten.distinctBy(_.tmdbId))
       }
     case CandidateQuery.Imdb(title) =>
-      val id = TmdbStore.suggestionsId(ImdbClient.suggestionUrl(title))
-      document(TmdbKind.Query, id).fold[Answer[Seq[Hit]]](Answer.Unknown) { d =>
-        val finds = suggestionIds(d, title).map(tt => document(TmdbKind.Query, TmdbStore.findId(tt)))
-        if (finds.exists(_.isEmpty)) Answer.Unknown
-        else Answer.sequence(finds.flatten.map(f => hitsOf(intsOf(f).take(1)))).map(_.flatten.distinctBy(_.tmdbId))
+      document(TmdbKind.Query, TmdbStore.imdbSuggestionsId(title)).fold[Answer[Seq[Hit]]](Answer.Unknown) { d =>
+        firstFilms(suggestionIds(d, title).map(tt => document(TmdbKind.Query, TmdbStore.findId(tt)))).map(_.flatten.distinctBy(_.tmdbId))
       }
     case CandidateQuery.ImdbTitled(title) =>
-      document(TmdbKind.Query, TmdbStore.suggestionsId(ImdbClient.suggestionUrl(title))).fold[Answer[Seq[Hit]]](Answer.Unknown) { d =>
+      document(TmdbKind.Query, TmdbStore.imdbSuggestionsId(title)).fold[Answer[Seq[Hit]]](Answer.Unknown) { d =>
         val movies = suggestionsOf(d)
         ImdbClient.titled(title, movies, tt => document(TmdbKind.Query, TmdbStore.imdbTitlesId(tt)).map(BsonFields.stringsOf(_, "titles")))
           .fold[Answer[Seq[Hit]]](Answer.Unknown) { ids =>
             val finds = ids.map(tt => tt -> document(TmdbKind.Query, TmdbStore.findId(tt)))
-            if (finds.exists(_._2.isEmpty)) Answer.Unknown
-            else Answer.sequence(finds.flatMap(_._2).map(f => hitsOf(intsOf(f).take(1)))).map(found =>
+            firstFilms(finds.map(_._2)).map(found =>
               TmdbIdentityLookups.titledHits(found, TmdbIdentityLookups.fallbackHits(finds.collect { case (tt, Some(f)) if intsOf(f).isEmpty => tt }, movies)))
           }
       }
@@ -122,7 +119,7 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
   override def releaseDay(tmdbId: Int): Answer[Option[java.time.LocalDate]] = film(tmdbId) match {
     // the whole document, read only for a record stating no day: an answer reads no partial's date, and the answer cache
     // holding one per film would cost every film its bytes for the few stage relays that read it
-    case Answer.Known(Some(record)) if record.released.isEmpty && store.get(TmdbKind.Film, Seq(tmdbId.toString)).get(tmdbId.toString).exists(yearOnly) =>
+    case Answer.Known(Some(record)) if record.released.isEmpty && wholeFilm(tmdbId).exists(yearOnly) =>
       Answer.Unknown
     case Answer.Known(record) => Answer.Known(record.flatMap(_.released))
     case Answer.Unknown       => Answer.Unknown
@@ -134,7 +131,7 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
    *  only by the agreement stage's fill, for an unmatched cluster's candidates. */
   override def cast(tmdbId: Int): Answer[Option[Seq[String]]] =
     if (FallbackIds.isFallback(tmdbId)) Answer.Known(None)
-    else store.get(TmdbKind.Film, Seq(tmdbId.toString)).get(tmdbId.toString) match {
+    else wholeFilm(tmdbId) match {
       case Some(d) => Answer.Known(Option(d.get(TmdbStore.Partial.Local.field)).filter(_.isDocument)
         .flatMap(local => TmdbFilmRecord.cast(Seq(TmdbStore.jsonOf(local)))))
       case None    => Answer.Unknown
@@ -180,6 +177,13 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
   }
 
   private def heldDocument(kind: TmdbKind, id: String): Option[BsonDocument] = Option(held(kind).get(id)).flatMap(_.document)
+
+  /** Each of `finds`' first film, as its hit reads — `Unknown` while any find, or any of those films, is not held. */
+  private def firstFilms(finds: Seq[Option[BsonDocument]]): Answer[Seq[Seq[Hit]]] =
+    if (finds.exists(_.isEmpty)) Answer.Unknown else Answer.sequence(finds.flatten.map(f => hitsOf(intsOf(f).take(1))))
+
+  /** The store's whole document of TMDB film `id` — every partial response, not only what an answer reads. */
+  private def wholeFilm(id: Int): Option[BsonDocument] = store.get(TmdbKind.Film, Seq(id.toString)).get(id.toString)
 
   /** The films `ids` name, each as its record or hit reads — `Unknown` while any is not held. */
   private def hitsOf(ids: Seq[Int]): Answer[Seq[Hit]] = {

@@ -311,8 +311,8 @@ object TmdbStore {
   def questionId(language: String, query: CandidateQuery): String = query match {
     case CandidateQuery.Title(text)    => titleSearchId(language, text)
     case CandidateQuery.Director(name) => personSearchId(CandidateQuery.personName(name))
-    case CandidateQuery.Imdb(title)    => suggestionsId(services.enrichment.ImdbClient.suggestionUrl(title))
-    case CandidateQuery.ImdbTitled(t)  => suggestionsId(services.enrichment.ImdbClient.suggestionUrl(t))
+    case CandidateQuery.Imdb(title)    => imdbSuggestionsId(title)
+    case CandidateQuery.ImdbTitled(t)  => imdbSuggestionsId(t)
   }
 
   // Question ids, by the parameters that decide their answer.
@@ -322,6 +322,8 @@ object TmdbStore {
   def imdbTitlesId(imdbId: String): String                   = s"imdbtitles|$imdbId"
   def imdbRecordId(imdbId: String): String                   = s"imdbrecord|$imdbId"
   def suggestionsId(url: String): String                     = s"imdb|${url.stripPrefix(services.enrichment.ImdbClient.SuggestionBase)}"
+  /** The suggestions document IMDb's suggestions for `title` are filed under. */
+  def imdbSuggestionsId(title: String): String               = suggestionsId(services.enrichment.ImdbClient.suggestionUrl(title))
 
   private def ints(values: Seq[Int]): BsonArray = BsonArray.fromIterable(values.map(BsonInt32(_)))
 
