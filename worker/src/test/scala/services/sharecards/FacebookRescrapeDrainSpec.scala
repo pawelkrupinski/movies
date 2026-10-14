@@ -234,46 +234,31 @@ class FacebookRescrapeDrainSpec extends AnyFlatSpec with Matchers {
     graph.sent shouldBe empty
   }
 
-  // Facebook holds a preview only of a page it fetched: one somebody shared. Re-scraping any other
-  // page refreshes nothing and creates a preview every later card change has to refresh — on
-  // 2026-10-12 Germany's first week queued ~4,100 city pages while Facebook fetched 30-140 a day.
-  "A film's pages Facebook has not fetched within a preview's lifetime" should "not be asked for; the ones it fetched should" in {
+  // Facebook holds a preview only of a page it fetched: one somebody shared — a stale one after the
+  // card changes. A page it never fetched is still worth asking for (its first share then finds
+  // the card ready), but with what the allowance leaves: on 2026-10-12 Germany's first week queued
+  // ~4,100 city pages while Facebook had fetched 30-140 a day.
+  "A film's pages Facebook has not fetched within a preview's lifetime" should "be asked for after the ones it fetched" in {
     val fleet = new Fleet(cities = 4)
     val pages = pagesOf("film", 4)
     fleet.fetches.record(Map(pages(0) -> T0, pages(2) -> T0.minusSeconds(29L * 86400), pages(1) -> T0.minusSeconds(31L * 86400)))
     new FacebookRescrapeQueue(fleet.store, "us").request("film", T0)
     fleet.run(5.minutes)
-    fleet.graph.sent.map(_._2).toSeq.sorted shouldBe Seq(pages(0), pages(2))
-    fleet.series.rescrapeCount("us", ShareCardMetrics.RescrapeOutcome.Unfetched) shouldBe 2.0
+    val sent = fleet.graph.sent.map(_._2).toSeq
+    sent.take(2).toSet shouldBe Set(pages(0), pages(2))
+    sent.drop(2).toSet shouldBe Set(pages(1), pages(3))
     fleet.store.waiting shouldBe empty
   }
 
-  // The pages queued before the drain asked only for fetched ones: dropped as they come up, many to
-  // a slot — one each would have kept the 4,100 waiting for a day of slots.
-  "A backlog of pages Facebook never fetched" should "be dropped as it comes up, without spending a slot on each" in {
+  "Pages Facebook never fetched" should "wait behind fetched pages queued after them" in {
     val fleet = new Fleet(cities = 1)
-    val backlog = (1 to 150).map(i => s"https://us.showtimes.cc/old/city$i")
-    fleet.store.add(backlog.map(url => RescrapeEntry("us", RescrapeTarget.Page(url), T0)))
-    fleet.fetches.record(Map(backlog(120) -> T0, backlog(149) -> T0))
-    fleet.run(Spacing * 4)
-    fleet.graph.sent.map(_._2).toSeq shouldBe Seq(backlog(120), backlog(149))
+    val unfetched = (1 to 3).map(i => s"https://us.showtimes.cc/old/city$i")
+    fleet.store.add(unfetched.map(url => RescrapeEntry("us", RescrapeTarget.Page(url, previewed = false), T0)))
+    fleet.clock.advanceSeconds(60)
+    fleet.request("us", "film")
+    fleet.run(Spacing * 5)
+    fleet.graph.sent.map(_._2).toSeq shouldBe (pagesOf("film", 1) ++ unfetched)
     fleet.store.waiting shouldBe empty
-    fleet.series.rescrapeCount("us", ShareCardMetrics.RescrapeOutcome.Unfetched) shouldBe 148.0
-  }
-
-  // Live on 2026-10-14 the backlog sat at 3,989 for the half hour the fleet held for Facebook's
-  // rate limit: dropping a page that needs no request waited for a request's slot.
-  it should "be dropped while the fleet holds for Facebook, the fetched pages kept for the slot" in {
-    val fleet = new Fleet(cities = 1)
-    val backlog = (1 to 150).map(i => s"https://us.showtimes.cc/old/city$i")
-    fleet.store.add(backlog.map(url => RescrapeEntry("us", RescrapeTarget.Page(url), T0)))
-    fleet.fetches.record(Map(backlog(120) -> T0))
-    fleet.store.holdSlots(T0.plusMillis(RateLimitHold.toMillis))
-    fleet.run(TickEvery * 3)
-    fleet.graph.sent shouldBe empty
-    fleet.store.waiting.map(_.key) shouldBe Seq(RescrapeTarget.Page(backlog(120)).key)
-    fleet.run(RateLimitHold)
-    fleet.graph.sent.map(_._2).toSeq shouldBe Seq(backlog(120))
   }
 
   // Facebook refused the app after 45-105 requests an hour on 2026-10-11/12, and each refusal held
@@ -293,10 +278,11 @@ class FacebookRescrapeDrainSpec extends AnyFlatSpec with Matchers {
     resumed.drop(1).zip(resumed.drop(2)).map { case (a, b) => java.time.Duration.between(a, b).toMillis }.max should be <= (Spacing + TickEvery).toMillis
   }
 
-  "The waiting gauge" should "count the country's pages still to send" in {
+  "The waiting gauge" should "count the country's pages still to send, fetched by Facebook or not" in {
     val fleet = new Fleet(cities = 4)
     fleet.request("us", "film")
+    fleet.store.add(Seq(RescrapeEntry("us", RescrapeTarget.Page("https://us.showtimes.cc/never/city1", previewed = false), T0)))
     fleet.drains("us").tick()
-    fleet.series.rescrapesWaitingFor("us") shouldBe 3.0
+    fleet.series.rescrapesWaitingFor("us") shouldBe 4.0
   }
 }

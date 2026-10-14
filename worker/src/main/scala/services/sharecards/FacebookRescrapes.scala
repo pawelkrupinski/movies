@@ -37,18 +37,26 @@ sealed trait RescrapeTarget { def key: String }
 object RescrapeTarget {
   /** A film whose pages are to be re-scraped — expanded into [[Page]]s when due. */
   final case class FilmPages(country: String, filmId: String) extends RescrapeTarget { val key = s"film|$country|$filmId" }
-  /** One page URL. */
-  final case class Page(url: String) extends RescrapeTarget { val key = s"page|$url" }
+  /** One page URL; `previewed` when Facebook fetched it within its preview's lifetime
+   *  ([[services.facebook.FacebookFetches]]) — so holds a preview a card change made stale — and
+   *  sent before every page it did not. One entry per URL, whichever: the kind it was queued as stays. */
+  final case class Page(url: String, previewed: Boolean = true) extends RescrapeTarget { val key = s"page|$url" }
 }
 
-/** The two kinds of waiting entry, as the store filters on them. */
+/** The kinds of waiting entry, as the store filters on them. */
 sealed abstract class RescrapeKind(val name: String)
 object RescrapeKind {
   case object Film extends RescrapeKind("film")
+  /** A page Facebook holds a preview of. */
   case object Page extends RescrapeKind("page")
+  /** A page Facebook never fetched: sent with what the allowance leaves after [[Page]]s. */
+  case object UnfetchedPage extends RescrapeKind("unfetched_page")
+  /** The page kinds, in the order the drain sends them. */
+  val Pages: Seq[RescrapeKind] = Seq(Page, UnfetchedPage)
   def of(target: RescrapeTarget): RescrapeKind = target match {
-    case _: RescrapeTarget.FilmPages => Film
-    case _: RescrapeTarget.Page      => Page
+    case _: RescrapeTarget.FilmPages                  => Film
+    case RescrapeTarget.Page(_, previewed) if previewed => Page
+    case _: RescrapeTarget.Page                       => UnfetchedPage
   }
 }
 
@@ -69,9 +77,6 @@ trait FacebookRescrapeStore {
   def add(entries: Seq[RescrapeEntry]): Int
   /** True when the country has an entry of `kind` due at `now`. */
   def hasDue(country: String, kind: RescrapeKind, now: Instant): Boolean
-  /** Up to `limit` of the country's due entries of `kind`, oldest first — read, not claimed: an
-   *  entry is settled by [[complete]] only while nobody claimed it since. */
-  def peekDue(country: String, kind: RescrapeKind, now: Instant, limit: Int): Seq[RescrapeEntry]
   /** The country's oldest-due entry of `kind`, leased: held back until `now + lease` and its
    *  `attempts` raised — the entry as claimed. */
   def claim(country: String, kind: RescrapeKind, now: Instant, lease: FiniteDuration): Option[RescrapeEntry]
@@ -79,9 +84,6 @@ trait FacebookRescrapeStore {
    *  claimed: a request that lands while its page is being sent names a newer card than the one
    *  Facebook fetched, so the entry waits again, due when that request asked, its attempts reset. */
   def complete(claimed: RescrapeEntry): Unit
-  /** Remove an entry as it was read — claimed or shown by [[peekDue]] — however often it was
-   *  asked for since: one not worth sending at all. Unless it was claimed since. */
-  def discard(entry: RescrapeEntry): Unit
   /** Put a claimed entry back, due at `at`; `countAttempt = false` gives the claim back. */
   def retry(claimed: RescrapeEntry, at: Instant, countAttempt: Boolean): Unit
   /** Take the quota's next slot, true when it was due. Slots are a SCHEDULE: the one after comes
@@ -125,7 +127,7 @@ class MongoFacebookRescrapeStore(collection: MongoCollection[Document]) extends 
   def add(entries: Seq[RescrapeEntry]): Int = entries.count { entry =>
     val target = entry.target match {
       case RescrapeTarget.FilmPages(_, filmId) => Updates.setOnInsert("filmId", filmId)
-      case RescrapeTarget.Page(url)            => Updates.setOnInsert("url", url)
+      case RescrapeTarget.Page(url, _)         => Updates.setOnInsert("url", url)
     }
     await(collection.updateOne(Filters.eq("_id", entry.key), Updates.combine(
       Updates.setOnInsert("country", entry.country), Updates.setOnInsert("kind", entry.kind.name), target,
@@ -140,10 +142,6 @@ class MongoFacebookRescrapeStore(collection: MongoCollection[Document]) extends 
   def hasDue(country: String, kind: RescrapeKind, now: Instant): Boolean =
     await(collection.find(due(country, kind, now)).limit(1).toFuture()).nonEmpty
 
-  def peekDue(country: String, kind: RescrapeKind, now: Instant, limit: Int): Seq[RescrapeEntry] =
-    await(collection.find(due(country, kind, now)).sort(Sorts.ascending("enqueuedAt")).limit(limit)
-      .batchSize(limit).toFuture()).map(entryOf)
-
   def claim(country: String, kind: RescrapeKind, now: Instant, lease: FiniteDuration): Option[RescrapeEntry] =
     Option(await(collection.findOneAndUpdate(due(country, kind, now),
       Updates.combine(Updates.set("notBefore", date(now.plusMillis(lease.toMillis))), Updates.inc("attempts", 1), Updates.unset(AskedAgainAt)),
@@ -151,8 +149,6 @@ class MongoFacebookRescrapeStore(collection: MongoCollection[Document]) extends 
       .map(entryOf)
 
   private def claimed(entry: RescrapeEntry) = Filters.and(Filters.eq("_id", entry.key), Filters.eq("attempts", entry.attempts))
-
-  def discard(entry: RescrapeEntry): Unit = { await(collection.deleteOne(claimed(entry)).toFuture()); () }
 
   // `askedAgainAt` is the latest due time asked for since the entry was last claimed (set by every
   // `add`, cleared by `claim`): present at completion, the entry waits again instead of going.
@@ -191,13 +187,13 @@ class MongoFacebookRescrapeStore(collection: MongoCollection[Document]) extends 
   }
 
   def waitingPages(country: String): Long =
-    await(collection.countDocuments(Filters.and(Filters.eq("country", country), Filters.eq("kind", RescrapeKind.Page.name))).toFuture())
+    await(collection.countDocuments(Filters.and(Filters.eq("country", country), Filters.in("kind", RescrapeKind.Pages.map(_.name)*))).toFuture())
 
   private def entryOf(d: Document): RescrapeEntry = {
     def text(field: String) = d.get(field).map(_.asString().getValue).getOrElse("")
     val country = text("country")
     val target  = if (text("kind") == RescrapeKind.Film.name) RescrapeTarget.FilmPages(country, text("filmId"))
-                  else RescrapeTarget.Page(text("url"))
+                  else RescrapeTarget.Page(text("url"), previewed = text("kind") != RescrapeKind.UnfetchedPage.name)
     RescrapeEntry(country, target, d.get("notBefore").map(v => Instant.ofEpochMilli(v.asDateTime().getValue)).getOrElse(Instant.EPOCH),
       d.get("attempts").map(_.asInt32().getValue).getOrElse(0))
   }
@@ -240,8 +236,8 @@ class FacebookRescrapeQueue(store: FacebookRescrapeStore, country: String) exten
  * no task-worker slot, so card renders never queue behind re-scrapes.
  *
  * Each tick expands the country's due films into their pages (no quota: that is a read-model
- * read) — only the pages Facebook holds a preview of ([[FacebookFetches]]) — then, when the
- * country has a page due and the fleet's next slot has come round, sends ONE page. Sent: gone,
+ * read), then — when the country has a page due and the fleet's next slot has come round — sends
+ * ONE page: one Facebook holds a preview of ([[FacebookFetches]]) before any it never fetched. Sent: gone,
  * and when Facebook says the app's hourly allowance is nearly spent the fleet waits
  * [[UsageHold]] before the next. Rate-limited: the whole fleet's quota waits [[RateLimitHold]] and
  * the page goes back without spending an attempt. Unavailable (unreachable, a 5xx): the same for
@@ -254,7 +250,6 @@ class FacebookRescrapeDrain(store: FacebookRescrapeStore, graph: FacebookGraph, 
 
   def tick(): Unit = {
     expandFilms()
-    dropUnfetched()
     sendPage()
     metrics.rescrapesWaiting(store.waitingPages(country))
   }
@@ -263,9 +258,9 @@ class FacebookRescrapeDrain(store: FacebookRescrapeStore, graph: FacebookGraph, 
     Iterator.continually(store.claim(country, RescrapeKind.Film, clock.instant(), Lease)).take(FilmsPerTick)
       .takeWhile(_.isDefined).flatten.foreach { film =>
         val filmId = film.target match { case RescrapeTarget.FilmPages(_, id) => id; case other => other.key }
-        Try(fetched(pages(filmId))) match {
+        Try(previewed(pages(filmId))) match {
           case Success(urls) =>
-            store.add(urls.map(url => RescrapeEntry(country, RescrapeTarget.Page(url), clock.instant())))
+            store.add(urls.map { case (url, seen) => RescrapeEntry(country, RescrapeTarget.Page(url, seen), clock.instant()) })
             store.complete(film)
           case Failure(e) if film.attempts >= MaxAttempts =>
             logger.warn(s"share card: re-scrape of $filmId dropped, its pages could not be read ${film.attempts} times: ${e.getMessage}")
@@ -276,71 +271,50 @@ class FacebookRescrapeDrain(store: FacebookRescrapeStore, graph: FacebookGraph, 
         }
       }
 
-  /** Those of `urls` Facebook holds a preview of — fetched within its preview's lifetime; each
-   *  other one counted, not asked for. */
-  private def fetched(urls: Seq[String]): Seq[String] = {
-    val previewed = fetches.fetchedSince(urls, clock.instant().minusMillis(FacebookFetches.PreviewLifetime.toMillis))
-    val (kept, unfetched) = urls.partition(previewed)
-    if (unfetched.nonEmpty) metrics.rescrape(ShareCardMetrics.RescrapeOutcome.Unfetched, unfetched.size)
-    kept
+  /** Each of `urls` with whether Facebook holds a preview of it — fetched within its preview's lifetime. */
+  private def previewed(urls: Seq[String]): Seq[(String, Boolean)] = {
+    val seen = fetches.fetchedSince(urls, clock.instant().minusMillis(FacebookFetches.PreviewLifetime.toMillis))
+    urls.map(url => url -> seen(url))
   }
 
-  private def urlOf(page: RescrapeEntry): String = page.target match { case RescrapeTarget.Page(u) => u; case other => other.key }
-
-  /** Drop the country's oldest due pages Facebook never fetched — queued before re-scrapes asked
-   *  only for fetched pages, or fetched last before its preview expired — up to [[UnfetchedPerTick]]
-   *  a tick. They need no request, so they go whether or not the fleet is holding for Facebook. */
-  private def dropUnfetched(): Unit = {
-    val due = store.peekDue(country, RescrapeKind.Page, clock.instant(), UnfetchedPerTick)
-    if (due.nonEmpty) {
-      val kept = fetched(due.map(urlOf)).toSet
-      due.filterNot(page => kept(urlOf(page))).foreach(store.discard)
-    }
-  }
-
-  /** The country's oldest due page Facebook holds a preview of; one whose preview expired since
-   *  [[dropUnfetched]] looked is dropped on the way, up to [[UnfetchedPerTick]] in one slot. */
-  @scala.annotation.tailrec
-  private def nextFetchedPage(now: Instant, dropped: Int = 0): Option[RescrapeEntry] =
-    if (dropped >= UnfetchedPerTick) None
-    else store.claim(country, RescrapeKind.Page, now, Lease) match {
-      case Some(page) if fetched(Seq(urlOf(page))).isEmpty => store.discard(page); nextFetchedPage(now, dropped + 1)
-      case found                                           => found
-    }
+  private def urlOf(page: RescrapeEntry): String = page.target match { case RescrapeTarget.Page(u, _) => u; case other => other.key }
 
   private def sendPage(): Unit = {
     val now = clock.instant()
-    if (store.hasDue(country, RescrapeKind.Page, now) && store.takeSlot(now, Spacing, TickEvery))
-      nextFetchedPage(now).foreach { page =>
-        val url   = urlOf(page)
-        val reply = graph.scrape(url)
-        reply.usage.foreach(paceOn)
-        reply.outcome match {
-          case FacebookScrape.Accepted =>
-            metrics.rescrape(ShareCardMetrics.RescrapeOutcome.Sent)
-            store.complete(page)
-          case FacebookScrape.RateLimited(why) =>
-            metrics.rescrape(ShareCardMetrics.RescrapeOutcome.RateLimited)
-            val until = clock.instant().plusMillis(RateLimitHold.toMillis)
-            logger.warn(s"share card: Facebook rate-limited the re-scrape of $url ($why) — every country waits until $until")
-            store.holdSlots(until)
-            store.retry(page, until, countAttempt = false)
-          case FacebookScrape.Unavailable(why) =>
-            metrics.rescrape(ShareCardMetrics.RescrapeOutcome.Failed)
-            val until = clock.instant().plusMillis(UnavailableHold.toMillis)
-            logger.info(s"share card: Facebook unavailable for the re-scrape of $url ($why) — every country waits until $until")
-            store.holdSlots(until)
-            store.retry(page, until, countAttempt = false)
-          case FacebookScrape.Refused(why) if page.attempts >= MaxAttempts =>
-            metrics.rescrape(ShareCardMetrics.RescrapeOutcome.Failed)
-            logger.warn(s"share card: Facebook re-scrape of $url dropped after ${page.attempts} attempts: $why")
-            store.complete(page)
-          case FacebookScrape.Refused(why) =>
-            metrics.rescrape(ShareCardMetrics.RescrapeOutcome.Failed)
-            logger.info(s"share card: Facebook re-scrape of $url failed: $why")
-            store.retry(page, clock.instant().plusMillis(backoff(page.attempts).toMillis), countAttempt = true)
-        }
+    // The pages Facebook holds a preview of first; the ones it never fetched with what is left.
+    for {
+      kind <- RescrapeKind.Pages.find(store.hasDue(country, _, now)) if store.takeSlot(now, Spacing, TickEvery)
+      page <- store.claim(country, kind, now, Lease)
+    } {
+      val url   = urlOf(page)
+      val reply = graph.scrape(url)
+      reply.usage.foreach(paceOn)
+      reply.outcome match {
+        case FacebookScrape.Accepted =>
+          metrics.rescrape(ShareCardMetrics.RescrapeOutcome.Sent)
+          store.complete(page)
+        case FacebookScrape.RateLimited(why) =>
+          metrics.rescrape(ShareCardMetrics.RescrapeOutcome.RateLimited)
+          val until = clock.instant().plusMillis(RateLimitHold.toMillis)
+          logger.warn(s"share card: Facebook rate-limited the re-scrape of $url ($why) — every country waits until $until")
+          store.holdSlots(until)
+          store.retry(page, until, countAttempt = false)
+        case FacebookScrape.Unavailable(why) =>
+          metrics.rescrape(ShareCardMetrics.RescrapeOutcome.Failed)
+          val until = clock.instant().plusMillis(UnavailableHold.toMillis)
+          logger.info(s"share card: Facebook unavailable for the re-scrape of $url ($why) — every country waits until $until")
+          store.holdSlots(until)
+          store.retry(page, until, countAttempt = false)
+        case FacebookScrape.Refused(why) if page.attempts >= MaxAttempts =>
+          metrics.rescrape(ShareCardMetrics.RescrapeOutcome.Failed)
+          logger.warn(s"share card: Facebook re-scrape of $url dropped after ${page.attempts} attempts: $why")
+          store.complete(page)
+        case FacebookScrape.Refused(why) =>
+          metrics.rescrape(ShareCardMetrics.RescrapeOutcome.Failed)
+          logger.info(s"share card: Facebook re-scrape of $url failed: $why")
+          store.retry(page, clock.instant().plusMillis(backoff(page.attempts).toMillis), countAttempt = true)
       }
+    }
   }
 
   /** Facebook's word on how much of the app's hourly allowance is spent: at [[UsageCeiling]] the
@@ -380,7 +354,8 @@ object FacebookRescrapeDrain {
    *  allows: it refused the app (code 4) after 45-105 requests each hour on 2026-10-11/12, and each
    *  refusal held the fleet an hour. So the pace is Facebook's own word on the allowance
    *  ([[UsageCeiling]]); demand is kept under it by re-scraping only a card whose picture moved
-   *  beyond its rating badges ([[ShareCardService.render]]), and only on pages Facebook fetched. */
+   *  beyond its rating badges ([[ShareCardService.render]]); the pages Facebook holds a preview of go
+   *  first, so a burst of new films' pages waits behind them. */
   val Spacing: FiniteDuration = 20.seconds
   /** How often each country looks for due work. Under [[Spacing]], so one country alone keeps up
    *  with the quota. */
@@ -398,9 +373,6 @@ object FacebookRescrapeDrain {
   /** Films expanded per tick, so a backlog of films cannot hold one tick for long. */
   val FilmsPerTick: Int = 20
 
-  /** Pages Facebook never fetched dropped in one tick: the backlog queued before re-scrapes asked
-   *  only for fetched pages goes in minutes, held for Facebook or not. */
-  val UnfetchedPerTick: Int = 100
 
   /** The share of the app's hourly allowance (Facebook's `X-App-Usage`) at which the fleet stops
    *  for [[UsageHold]] rather than run on into Facebook's refusal and its hour-long hold. */

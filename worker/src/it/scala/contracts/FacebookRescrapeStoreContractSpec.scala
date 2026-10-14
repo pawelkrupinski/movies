@@ -74,16 +74,13 @@ class FacebookRescrapeStoreContractSpec extends AnyFlatSpec with Matchers with B
       store.waitingPages("us") shouldBe 0
     }
 
-    it should s"[$name] show the oldest due entries without claiming them, and discard one shown" in {
+    it should s"[$name] keep pages Facebook never fetched apart, claimed by their own kind, counted with the rest" in {
       val store = fresh(cls)
-      store.add(Seq(page("a"), page("b", t0.plusSeconds(1)), page("c", t0.plusSeconds(2)), page("later", t0.plusSeconds(600))))
-      val shown = store.peekDue("us", RescrapeKind.Page, t0.plusSeconds(60), 2)
-      shown.map(_.key) shouldBe Seq(page("a").key, page("b").key)
-      store.peekDue("us", RescrapeKind.Page, t0.plusSeconds(60), 10).map(_.key) shouldBe Seq("a", "b", "c").map(page(_).key)
-      store.discard(shown.head)
-      store.claim("us", RescrapeKind.Page, t0.plusSeconds(60), 1.minute).map(_.key) shouldBe Some(page("b").key)
-      store.discard(shown(1))                                   // claimed since it was shown: stays
-      store.waitingPages("us") shouldBe 3
+      store.add(Seq(RescrapeEntry("us", RescrapeTarget.Page("never", previewed = false), t0), page("seen", t0.plusSeconds(1))))
+      store.waitingPages("us") shouldBe 2
+      store.claim("us", RescrapeKind.Page, t0.plusSeconds(60), 1.minute).map(_.target) shouldBe Some(RescrapeTarget.Page("seen"))
+      store.claim("us", RescrapeKind.UnfetchedPage, t0.plusSeconds(60), 1.minute).map(_.target) shouldBe
+        Some(RescrapeTarget.Page("never", previewed = false))
     }
 
     it should s"[$name] hold a waiting entry to the later of two requests' due times, never the earlier" in {

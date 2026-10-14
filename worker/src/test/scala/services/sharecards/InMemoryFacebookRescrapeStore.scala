@@ -31,10 +31,6 @@ class InMemoryFacebookRescrapeStore extends FacebookRescrapeStore {
 
   def hasDue(country: String, kind: RescrapeKind, now: Instant): Boolean = synchronized(due(country, kind, now).nonEmpty)
 
-  def peekDue(country: String, kind: RescrapeKind, now: Instant, limit: Int): Seq[RescrapeEntry] = synchronized {
-    due(country, kind, now).toSeq.sortBy(_._2).take(limit).map(_._1)
-  }
-
   def claim(country: String, kind: RescrapeKind, now: Instant, lease: FiniteDuration): Option[RescrapeEntry] = synchronized {
     due(country, kind, now).toSeq.sortBy(_._2).headOption.map { case (e, enqueued) =>
       val claimed = e.copy(notBefore = now.plusMillis(lease.toMillis), attempts = e.attempts + 1)
@@ -54,8 +50,6 @@ class InMemoryFacebookRescrapeStore extends FacebookRescrapeStore {
     }
   })
 
-  def discard(entry: RescrapeEntry): Unit = synchronized(ifStillClaimed(entry) { _ => entries.remove(entry.key); askedAgain.remove(entry.key) })
-
   def retry(claimed: RescrapeEntry, at: Instant, countAttempt: Boolean): Unit = synchronized {
     ifStillClaimed(claimed)(enqueued =>
       entries(claimed.key) = (claimed.copy(notBefore = at, attempts = if (countAttempt) claimed.attempts else claimed.attempts - 1), enqueued))
@@ -72,7 +66,7 @@ class InMemoryFacebookRescrapeStore extends FacebookRescrapeStore {
 
   def holdSlots(until: Instant): Unit = synchronized { nextSlot = Some(nextSlot.fold(until)(s => if (s.isAfter(until)) s else until)) }
 
-  def waitingPages(country: String): Long = synchronized(entries.values.count { case (e, _) => e.country == country && e.kind == RescrapeKind.Page }.toLong)
+  def waitingPages(country: String): Long = synchronized(entries.values.count { case (e, _) => e.country == country && RescrapeKind.Pages.contains(e.kind) }.toLong)
 
   /** Test seam: every waiting entry. */
   def waiting: Seq[RescrapeEntry] = synchronized(entries.values.map(_._1).toSeq)
