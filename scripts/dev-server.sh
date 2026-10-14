@@ -28,6 +28,20 @@
 # THIS process only (verified: effective MaxHeapSize 2504MB).
 #
 # Raise it back by passing your own, e.g. `scripts/dev-server.sh -J-Xmx4g`.
+#
+# MONGO. The local, password-free :28017 Mongo, hardcoded — the same one `sbt localStack` uses:
+# the app reads its playground `kinowo_local`, /debug reads the prod-synced `kinowo_prod_mirror`
+# (scripts/local-mirror/README.md). The app reads config from the process only (no .env.local
+# since 2026-10-12), so without these it refused to boot. Anything already exported wins; for
+# prod itself, `scripts/with-prod-mongo.sh scripts/dev-server.sh` (the vault + the ssh tunnel).
+# The Mongo is started when nothing answers on :28017 (DEV_SERVER_MONGO_UP=1 skips the check).
 set -euo pipefail
 cd "$(dirname "$0")/.."
+local_mongo='mongodb://127.0.0.1:28017'
+export MONGODB_URI="${MONGODB_URI:-$local_mongo/?directConnection=true}"
+export MONGODB_DB="${MONGODB_DB:-kinowo_local}"
+export MONGODB_MOVIES_MIRROR_URI="${MONGODB_MOVIES_MIRROR_URI:-$local_mongo/kinowo_prod_mirror?directConnection=true}"
+if [ -z "${DEV_SERVER_MONGO_UP:-}" ] && ! (echo >/dev/tcp/127.0.0.1/28017) 2>/dev/null; then
+  scripts/local-mirror/start-local-mongo.sh >&2
+fi
 exec sbt -J-Xmx2500m "$@" web/run

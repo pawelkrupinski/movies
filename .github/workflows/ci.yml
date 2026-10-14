@@ -209,6 +209,7 @@ jobs:
                       bash scripts/ci/identity-takes-check-test.sh
                       bash scripts/vault-env-test.sh
                       bash scripts/with-prod-mongo-test.sh
+                      bash scripts/dev-server-test.sh
                       bash scripts/identity-capture-test.sh
                       bash scripts/reset-corpus-test.sh
                       bash scripts/local-mirror/mongosh-at-spec.sh
