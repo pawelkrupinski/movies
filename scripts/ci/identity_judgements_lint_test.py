@@ -142,6 +142,48 @@ class JudgementsLintTest(unittest.TestCase):
         self.assertEqual(1, len(found))
         self.assertIn("Simply Christmas", found[0])
 
+    def newly_wrong(self, replay):
+        """Two takes the push newly labels wrong; the head's code replayed by `replay`."""
+        cap = self.served([{"film": 1, "members": [{"venue": "Union", "rawTitle": "Der Diplomat"}]},
+                           {"film": 2, "members": [{"venue": "Thalia", "rawTitle": "Blutgericht in Texas"}]}])
+        before = self.write("before.tsv", HEAD)
+        labels = HEAD + "de\tUnion\tDer Diplomat\ttmdb:1\twrong\t\nde\tThalia\tBlutgericht in Texas\ttmdb:2\twrong\t\n"
+        for rel, text in dict(self.files, **{lint.LABELS: labels}).items():
+            self.write(rel, text)
+        findings, _ = lint.lint(self.root, [cap], before, replay)
+        return [m for _, m in findings]
+
+    def test_a_take_the_pushed_code_cures_is_no_served_finding(self):
+        # the push labels a take wrong AND cures it: the last leg still served it, the head does not
+        asked = []
+        def replay(cc, listings):
+            asked.append((cc, sorted(listings)))
+            return {("Union", "Der Diplomat"): "tmdb:9", ("Thalia", "Blutgericht in Texas"): "tmdb:2"}
+        found = self.newly_wrong(replay)
+        self.assertEqual([("de", [("Thalia", "Blutgericht in Texas"), ("Union", "Der Diplomat")])], asked)
+        self.assertEqual(1, len(found))
+        self.assertIn("Blutgericht in Texas", found[0])
+        self.assertIn("the pushed code still serves it", found[0])
+
+    def test_without_a_replay_the_last_legs_takes_judge_saying_so(self):
+        def replay(cc, listings):
+            raise RuntimeError("no recording")
+        found = self.newly_wrong(replay)
+        self.assertEqual(2, len(found))
+        self.assertTrue(all("the last convergence leg's takes (the pushed code could not be replayed: no recording)" in m
+                            for m in found))
+
+    def test_the_slice_replay_reads_identity_slices_takes_at_the_checked_out_code(self):
+        # a stub identity-slice: the batch it is handed and the takes TSV it writes where --out says
+        stub = self.write("identity-slice", "#!/usr/bin/env bash\n"
+                          "while [ $# -gt 0 ]; do case $1 in --batch) b=$2;; --out) o=$2;; esac; shift; done\n"
+                          "cp \"$b\" \"$(dirname \"$o\")/batch-seen\"\n"
+                          "printf 'selector\\tkey\\tvenue\\trawTitle\\tfilm\\n' > \"$o\"\n"
+                          "printf 'k\\tUnion|Der Diplomat\\tUnion\\tDer Diplomat\\tnone\\n' >> \"$o\"\n")
+        os.chmod(stub, 0o755)
+        takes = lint.slice_replay(stub)("de", [("Union", "Der Diplomat")])
+        self.assertEqual({("Union", "Der Diplomat"): "none"}, takes)
+
     def test_a_grandfathered_finding_stands_and_one_no_longer_found_fails_as_stale(self):
         per_venue = "".join(f"uk\tV{n}\tX\ttmdb:1\twrong\t\n" for n in range(5))
         with mock.patch.object(lint, "GRANDFATHERED", {("scattered", "uk", "X", "tmdb:1"): "why",

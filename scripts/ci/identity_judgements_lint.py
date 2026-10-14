@@ -19,20 +19,26 @@ landed and turned a gate red after the push, where nothing ran them before it:
              wrong that neither the suspect baseline nor known-wrong.tsv lists -- what the leg's suspect gate fails
              after the push (911d8f486's 48 wrong labels: DE, ES red), said before it. With --labels-before (the
              labels the push started from) only the takes the push newly calls wrong: the leg's takes are the last
-             leg's, whose other wrong takes the code since may have cured.
+             leg's, whose other wrong takes the code since may have cured. With --replay-head too, those newly-wrong
+             takes are replayed at the PUSHED code (scripts/identity-slice --batch, a handful of listings) and only the
+             ones it still serves fail: a push that labels a take wrong and cures it lands (Der Diplomat, Blutgericht in
+             Texas, 2026-10-14). Where the slice cannot run, the last leg's takes judge, said so.
 
 The labels are read as identity_takes_diff.label_of reads them (a venue's own label overrules every venue's).
 
-usage: identity_judgements_lint.py [--root DIR] [--served FILE.json.gz ...] [--labels-before FILE]
+usage: identity_judgements_lint.py [--root DIR] [--served FILE.json.gz ...] [--labels-before FILE] [--replay-head]
 Exit 1 on any finding, 2 on unreadable input.
 """
 
 import argparse
+import csv
 import gzip
 import json
 import os
 import re
+import subprocess
 import sys
+import tempfile
 import unicodedata
 from collections import defaultdict
 
@@ -178,20 +184,65 @@ def served_findings(served_paths, labels, listed, before=None):
                     continue
                 k = ("served", cc, title, film)
                 out.setdefault(k, (k, f"{cc} serves {film} for '{title}' (at {m['venue']}), which labels.tsv calls wrong and "
-                                      f"neither the suspect baseline nor known-wrong.tsv lists: fix it, or list it with why"))
+                                      f"neither the suspect baseline nor known-wrong.tsv lists: fix it, or list it with why", []))
+                out[k][2].append(m["venue"])
     return list(out.values())
 
 
-def lint(root, served_paths=(), labels_before=None):
-    """(findings, stale grandfathered keys): each finding (key, message), the grandfathered ones left out."""
+def at_head(found, replay):
+    """The served findings `found` (key, message, venues) judged by the PUSHED code: each listing replayed by `replay`
+    (cc, [(venue, title)]) -> {(venue, title): film}, a finding kept only where the head still serves its film; a
+    country the replay cannot answer judged by the last leg's takes, said so."""
+    out = []
+    by_cc = defaultdict(list)
+    for f in found:
+        by_cc[f[0][1]].append(f)
+    for cc, fs in sorted(by_cc.items()):
+        listings = sorted({(v, f[0][2]) for f in fs for v in f[2][:3]})
+        try:
+            takes = replay(cc, listings)
+        except Exception as e:  # noqa: BLE001 -- any failure to replay falls back, said
+            out += [(k, f"{m} [judged by the last convergence leg's takes (the pushed code could not be replayed: {e})]")
+                    for k, m, _ in fs]
+            continue
+        for k, m, venues in fs:
+            if any(takes.get((v, k[2])) == k[3] for v in venues[:3]):
+                out.append((k, f"{m} [the pushed code still serves it]"))
+    return out
+
+
+def slice_replay(command):
+    """A replay by scripts/identity-slice at the checked-out code: one --batch per country, its takes read off --out."""
+    def replay(cc, listings):
+        with tempfile.TemporaryDirectory() as d:
+            batch, takes = os.path.join(d, "batch.tsv"), os.path.join(d, "takes.tsv")
+            with open(batch, "w", encoding="utf-8") as f:
+                f.writelines(f"{venue}\t{title}\n" for venue, title in listings)
+            r = subprocess.run([command, cc, "--batch", batch, "--out", takes], capture_output=True, text=True, timeout=1800)
+            if r.returncode not in (0, 3) or not os.path.exists(takes):
+                raise RuntimeError(f"identity-slice exited {r.returncode}: {(r.stderr or '').strip().splitlines()[-1:] or ''}")
+            with open(takes, encoding="utf-8") as f:
+                return {(row["venue"], single_spaced(row["rawTitle"])): row["film"]
+                        for row in csv.DictReader(f, delimiter="\t", quoting=csv.QUOTE_NONE)}
+    return replay
+
+
+def served(found, replay):
+    return at_head(found, replay) if replay else [(k, m) for k, m, _ in found]
+
+
+def lint(root, served_paths=(), labels_before=None, replay=None):
+    """(findings, stale grandfathered keys): each finding (key, message), the grandfathered ones left out. `replay`
+    (with `labels_before`): the newly-wrong served takes judged at the pushed code ([[at_head]])."""
     p = lambda rel: os.path.join(root, rel)  # noqa: E731
     label_rows = rows(p(LABELS), 5)
     labels = labels_by_country(label_rows)
     listed = {(c[0], single_spaced(c[1]), c[2]) for c in rows(p(BASELINE), 3) + rows(p(KNOWN_WRONG), 3)}
     found = (accepted_findings(rows(p(ACCEPTED), 5), labels) + conflict_findings(label_rows) + scattered_findings(label_rows)
              + expected_match_findings(rows(p(EXPECTED_MATCHES), 4), labels) + hard_cluster_findings(root, label_rows)
-             + served_findings(served_paths, labels, listed,
-                               labels_by_country(rows(labels_before, 5)) if labels_before else None))
+             + served(served_findings(served_paths, labels, listed,
+                                      labels_by_country(rows(labels_before, 5)) if labels_before else None),
+                      replay if labels_before else None))
     keys = {k for k, _ in found}
     return [f for f in found if f[0] not in GRANDFATHERED], sorted(k for k in GRANDFATHERED if k not in keys)
 
@@ -201,9 +252,12 @@ def main(argv=None):
     ap.add_argument("--root", default=".")
     ap.add_argument("--served", nargs="*", default=[])
     ap.add_argument("--labels-before")
+    ap.add_argument("--replay-head", action="store_true",
+                    help="replay the newly-wrong served takes at the checked-out code (scripts/identity-slice, or $IDENTITY_SLICE)")
     a = ap.parse_args(argv)
+    replay = slice_replay(os.environ.get("IDENTITY_SLICE", os.path.join(a.root, "scripts/identity-slice"))) if a.replay_head else None
     try:
-        findings, stale = lint(a.root, a.served, a.labels_before)
+        findings, stale = lint(a.root, a.served, a.labels_before, replay)
     except (OSError, ValueError, KeyError) as e:
         print(f"identity judgements: unreadable input: {e}", file=sys.stderr)
         return 2

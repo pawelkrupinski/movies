@@ -385,7 +385,8 @@ check_judgements() {
         before="$tmp/labels-before.tsv"
         git show "$base_sha:test/resources/fixtures/identity-unmatched/labels.tsv" > "$before" 2>/dev/null || before=""
     fi
-    python3 scripts/ci/identity_judgements_lint.py ${served[@]+--served "${served[@]}"} ${before:+--labels-before "$before"}
+    # --replay-head: the takes the push newly labels wrong judged at the PUSHED code (identity-slice), not the last leg's
+    python3 scripts/ci/identity_judgements_lint.py ${served[@]+--served "${served[@]}"} ${before:+--labels-before "$before" --replay-head}
 }
 
 tmp="$(mktemp -d)"

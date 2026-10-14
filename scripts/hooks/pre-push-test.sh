@@ -17,6 +17,12 @@ cat > "$ghstub/gh" <<'STUB'
 #!/usr/bin/env bash
 [ -n "${GH_FAILS:-}" ] && { echo "HTTP 502: Bad Gateway" >&2; exit 1; }
 [ -n "${GH_HANGS:-}" ] && exec sleep 30
+# `gh run download RUN -p … -D DIR`: a convergence leg's served takes, as the judgements check fetches them
+if [ "$1 $2" = "run download" ]; then
+  while [ $# -gt 0 ]; do [ "$1" = -D ] && dir="$2"; shift; done
+  mkdir -p "$dir/convergence-diagnostics-de-convergence/de-takes"; echo takes > "$dir/convergence-diagnostics-de-convergence/de-takes/de.json.gz"
+  exit 0
+fi
 workflow="" jqexpr=""
 while [ $# -gt 0 ]; do
   case "$1" in --workflow) workflow="$2"; shift ;; --jq) jqexpr="$2"; shift ;; esac; shift
@@ -182,6 +188,20 @@ if command -v shellcheck >/dev/null; then
   (cd "$repo" && GIT_DIR="$(pwd)/.git" PATH="$scratch/bin:$PATH" bash scripts/hooks/pre-push --range "$scala~1..$scala" >/dev/null 2>&1)
   check "with git's GIT_DIR exported, a check in the temporary checkout sees the pushed commit" \
     "$scala" "$(cat "$scratch/sbt-saw-head" 2>/dev/null)"
+
+  # A labels.tsv change: the judgements lint reads the last convergence leg's served takes, and replays the takes the
+  # push newly labels wrong at the PUSHED code (--replay-head), so a push that labels a take wrong and cures it lands.
+  mkdir -p "$repo/scripts/ci" "$repo/test/resources/fixtures/identity-unmatched"
+  printf '#!/usr/bin/env python3\nimport sys\nopen("%s/lint-args", "w").write(" ".join(sys.argv[1:]))\n' "$scratch" \
+    > "$repo/scripts/ci/identity_judgements_lint.py"
+  printf 'country\tvenue\trawTitle\tfilm\tverdict\tnote\n' > "$repo/test/resources/fixtures/identity-unmatched/labels.tsv"
+  scratch_git "$repo" add -A; scratch_git "$repo" commit -qm "labels"
+  printf 'de\tUnion\tDer Diplomat\ttmdb:1\twrong\t\n' >> "$repo/test/resources/fixtures/identity-unmatched/labels.tsv"
+  scratch_git "$repo" commit -qam "labels a take wrong"
+  (cd "$repo" && GH_IMC="[$(printf '{"databaseId":7,"status":"completed","conclusion":"success","url":"u"}')]" \
+     PATH="$scratch/bin:$PATH" bash scripts/hooks/pre-push --range "HEAD~1..HEAD" >/dev/null 2>&1)
+  check "a labels.tsv push replays its newly-wrong served takes at the pushed code" "1 1 1" \
+    "$(grep -c -- '--served .*de.json.gz' "$scratch/lint-args") $(grep -c -- '--labels-before' "$scratch/lint-args") $(grep -c -- '--replay-head' "$scratch/lint-args")"
 
   # git's own stdin, with no origin/main to find a new branch's base from: said, not silently passed.
   out="$(cd "$repo" && printf 'refs/heads/x %s refs/heads/x %s\n' "$head" 0000000000000000000000000000000000000000 \
