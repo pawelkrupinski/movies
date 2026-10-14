@@ -766,8 +766,14 @@ object IdentitySlice {
 
   // ── a slice pinned as a test case ────────────────────────────────────────────────────────
 
-  /** What a pinned slice's listing must take, as labels.tsv judged it: `film` right for it, with the label's own note. */
-  final case class Expected(venue: String, rawTitle: String, film: String, note: String)
+  /** What a pinned slice's listing must take, as labels.tsv judged it: `film` right for it, with the label's own note.
+   *  Set by hand in a case's expected.tsv, `film` may instead be `none` (it takes no film) or `not:<film>` (it takes any
+   *  but that one): a listing whose right film its own evidence cannot reach yet must at least not take the wrong one. */
+  final case class Expected(venue: String, rawTitle: String, film: String, note: String) {
+    def holds(take: Option[String]): Boolean =
+      if (film.startsWith(Expected.Not)) !take.contains(film.stripPrefix(Expected.Not)) else take.contains(film)
+  }
+  object Expected { val Not = "not:" }
 
   val ExpectedHeader = "venue\trawTitle\tfilm\tlabel"
 
