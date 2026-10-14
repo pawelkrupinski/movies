@@ -2,7 +2,7 @@ package services.metrics
 
 import io.prometheus.metrics.core.metrics.{Counter, Gauge}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
-import services.identity.{IdentityProjectionMetrics, Regroupings, ShadowRelation, SuspectTakes}
+import services.identity.{IdentityProjectionMetrics, Regroupings, SuspectTakes}
 
 /**
  * The identity projection of a cut-over country (`IdentityProjection`, docs/design/identity-resolver.md
@@ -16,10 +16,6 @@ import services.identity.{IdentityProjectionMetrics, Regroupings, ShadowRelation
  *    retired ids, per projection. §10's churn acceptance: after the first projection of a cutover,
  *    merges / splits / moves stay at 0 on an unchanged listing set (P2); fresh and retired follow the
  *    venues' programmes;
- *  - `kinowo_worker_identity_cutover_canary{relation}` — the resolver's clusters against the films stored
- *    BEFORE the projection (the shadow diff's relations, `ShadowRelation`). On the first projection
- *    of a cutover that is the old path's films, so it is the old-vs-new canary; afterwards anything
- *    but `identical` is a regrouping the projection is about to write;
  *  - `kinowo_worker_identity_projection_refusals_total{reason}` — projections refused: a family
  *    crossing, an unreadable FilmId map, a shrink past `ProjectionGuard`'s shares, a model not ready,
  *    or a projection that threw (`failed`);
@@ -61,12 +57,6 @@ final class IdentityCutoverMetrics(registry: PrometheusRegistry) {
     .name("kinowo_worker_identity_regroupings_total")
     .help("Identity projection regroupings: merge, split, move (listings), fresh (ids), retire (ids).")
     .labelNames("country", "kind")
-    .register(registry)
-
-  private val canary: Gauge = Gauge.builder()
-    .name("kinowo_worker_identity_cutover_canary")
-    .help("The last projection's clusters by relation to the films stored before it (identical / split / merged / moved).")
-    .labelNames("country", "relation")
     .register(registry)
 
   private val refusals: Counter = Counter.builder()
@@ -128,12 +118,11 @@ final class IdentityCutoverMetrics(registry: PrometheusRegistry) {
       takeReversals.labelValues(country).inc(reversals.note(changes).size.toDouble)
     }
     def reconciled(measured: Boolean): Unit = reconciles.labelValues(country, measured.toString).inc()
-    def projected(filmCount: Int, listingCount: Int, moved: Regroupings, relations: Map[ShadowRelation, Int], took: Double): Unit = {
+    def projected(filmCount: Int, listingCount: Int, moved: Regroupings, took: Double): Unit = {
       films.labelValues(country, "projection").set(filmCount.toDouble)
       listings.labelValues(country, "projection").set(listingCount.toDouble)
       Seq("merge" -> moved.merges, "split" -> moved.splits, "move" -> moved.moves, "fresh" -> moved.fresh, "retire" -> moved.retired)
         .foreach { case (kind, n) => regroupings.labelValues(country, kind).inc(n.toDouble) }
-      ShadowRelation.values.foreach(r => canary.labelValues(country, r.label).set(relations.getOrElse(r, 0).toDouble))
       seconds.labelValues(country).set(took)
     }
     def refused(reason: IdentityProjectionMetrics.Refusal): Unit = refusals.labelValues(country, reason.label).inc()

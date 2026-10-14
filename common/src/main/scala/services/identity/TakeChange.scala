@@ -28,7 +28,7 @@ object TakeChange {
   /** Every listing of `previousOf` (a listing → the stored film it was on) whose cluster now (`filmOf`: none when the
    *  listing is in no cluster) takes another TMDB film than that film held, sorted by listing. One pass over the
    *  listings given, nothing kept: only the changes are allocated. */
-  def of(previousOf: Iterable[(ListingKey, PipelineFilmRef)], filmOf: ListingKey => Option[Option[Int]]): Seq[TakeChange] =
+  def of(previousOf: Iterable[(ListingKey, StoredFilmRef)], filmOf: ListingKey => Option[Option[Int]]): Seq[TakeChange] =
     previousOf.iterator.flatMap { case (listing, was) =>
       filmOf(listing).filter(_ != was.tmdbId).map(now => TakeChange(listing, was.id, was.tmdbId, now))
     }.toSeq.sortBy(_.listing)

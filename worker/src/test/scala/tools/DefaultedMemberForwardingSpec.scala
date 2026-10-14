@@ -55,8 +55,8 @@ class DefaultedMemberForwardingSpec extends AnyFlatSpec with Matchers {
       classOf[FallbackHttpFetch]           -> ((d: HttpFetch) => new FallbackHttpFetch(Seq("only" -> d))),
       classOf[SessionWarmingHttpFetch]     -> ((d: HttpFetch) => new SessionWarmingHttpFetch(d, "https://decorator.test/")),
       // A budget with room: every call reaches the fetch it decorates.
-      classOf[services.identity.ShadowLiveFetch] -> ((d: HttpFetch) =>
-        new services.identity.ShadowLiveFetch(d, new services.identity.ShadowLookupBudget(Int.MaxValue, 0.seconds, _ => ()))),
+      classOf[services.identity.LookupFillLiveFetch] -> ((d: HttpFetch) =>
+        new services.identity.LookupFillLiveFetch(d, new services.identity.LookupFillBudget(Int.MaxValue, 0.seconds, _ => ()))),
       // Normalizes what it sees into a store as a side effect; every call reaches the fetch it decorates.
       classOf[services.identity.NormalizingHttpFetch] -> ((d: HttpFetch) =>
         new services.identity.NormalizingHttpFetch(d, new services.identity.TmdbNormalizer(
@@ -68,7 +68,7 @@ class DefaultedMemberForwardingSpec extends AnyFlatSpec with Matchers {
       Seq(classOf[RateLimitedHttpFetch], classOf[ThrottledHttpFetch], classOf[HostCircuitBreakerHttpFetch],
           classOf[MemoizedHttpFetch], classOf[CachingDetailFetch], classOf[MongoCachingDetailFetch],
           classOf[MonitoringHttpFetch], classOf[CountingHttpFetch], classOf[StickyShardHttpFetch],
-          classOf[FallbackHttpFetch], classOf[SessionWarmingHttpFetch], classOf[services.identity.ShadowLiveFetch],
+          classOf[FallbackHttpFetch], classOf[SessionWarmingHttpFetch], classOf[services.identity.LookupFillLiveFetch],
           classOf[services.identity.NormalizingHttpFetch])
         .map(c => (c: Class[?], getAsync) -> "the default async get goes through the decorator's own get").toMap ++
       Map(

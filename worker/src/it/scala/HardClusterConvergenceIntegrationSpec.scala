@@ -255,7 +255,7 @@ class HardClusterConvergenceIntegrationSpec extends AnyFlatSpec with Matchers wi
     // refresh schedule does, and the projection takes the answers in.
     down.set(false)
     clock.advance(java.time.Duration.ofHours(1))
-    w.shadowLookupFill.round()
+    w.lookupFill.round()
     settle(w)
     Outage(unmatched, films(w, normalizer), refused.get)
   }

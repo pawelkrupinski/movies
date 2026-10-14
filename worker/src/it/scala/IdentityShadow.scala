@@ -189,7 +189,7 @@ object IdentityShadow {
       PipelineFilm(f.id.value, f.record.tmdbId,
         f.record.tmdbId.map(_ => IdentityMeasures.Film(tmdb.flatMap(_.title).getOrElse(f.title), tmdb.flatMap(_.originalTitle), Nil,
           tmdb.flatMap(_.releaseYear), tmdb.flatMap(_.runtimeMinutes), tmdb.map(_.director).filter(_.nonEmpty), None)),
-        PipelineFilms.slotsOf(f), f.record.tmdbBasis)
+        StoredFilmSlots.slotsOf(f), f.record.tmdbBasis)
     }.sortBy(_.key)
   }
 
@@ -230,9 +230,9 @@ object IdentityShadow {
     }
   }
 
-  /** Each listing's pipeline film (`PipelineFilms`, the rule the production shadow diff uses). */
+  /** Each listing's pipeline film (`StoredFilmSlots`, the rule the production shadow diff uses). */
   def pipelineFilmOf(listings: Seq[Listing], films: Seq[PipelineFilm], normalizer: TitleNormalizer): Map[ListingKey, Int] =
-    PipelineFilms.assign(listings, films.zipWithIndex.map { case (f, i) => i -> f.slots }, normalizer)
+    StoredFilmSlots.assign(listings, films.zipWithIndex.map { case (f, i) => i -> f.slots }, normalizer)
 
   // ── the resolver ──────────────────────────────────────────────────────────────────────
 

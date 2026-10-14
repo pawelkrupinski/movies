@@ -4,7 +4,7 @@ import models._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.{ListingKey, SingleCountryNormalizer}
-import settings.{IdentityShadowInterval, IdentityShadowLookupRate}
+import settings.{IdentityLookupFillInterval, IdentityLookupFillRate}
 import tools.{DaemonExecutors, HttpFetch, HttpStatusException, RateLimitedHttpFetch, TestWiring}
 
 import java.time.{Clock, Instant, ZoneOffset}
@@ -14,7 +14,7 @@ import scala.concurrent.duration._
 /** The shadow run's paced live lookup fill: asks exactly the resolver's unanswered questions, once
  *  each, into the model's normalized TMDB store only; never more than its rate allows; stops at the
  *  first sign of overload; and the next shadow resolve reads what it filed. */
-class ShadowLookupFillSpec extends AnyFlatSpec with Matchers {
+class LookupFillSpec extends AnyFlatSpec with Matchers {
 
   private val normalizer = SingleCountryNormalizer.titleNormalizer
   private def listing(venue: Cinema, title: String, year: Option[Int], director: Seq[String]): Listing =
@@ -44,12 +44,12 @@ class ShadowLookupFillSpec extends AnyFlatSpec with Matchers {
   }
 
   private def fill(store: TmdbStore, service: HttpFetch, rate: Int = 600, sleeps: mutable.Buffer[Long] = mutable.Buffer.empty,
-                   rounds: mutable.Buffer[ShadowLookupRound] = mutable.Buffer.empty,
+                   rounds: mutable.Buffer[LookupFillRound] = mutable.Buffer.empty,
                    beforeRound: () => Unit = () => (), refreshes: () => Seq[CandidateQuery] = () => Nil,
                    gaps: TmdbStore => AnswersChanged = modelGaps, gapMemory: Option[TmdbGapMemory] = None,
                    fillClock: java.time.Clock = Clock.fixed(TestWiring.FixedInstant, ZoneOffset.UTC)) =
-    new ShadowLookupFill(() => gaps(store), new clients.TmdbClient(_, apiKey = Some(settings.TmdbApiKey("k")), retrySleep = (_: Long) => ()),
-      service, new TmdbNormalizer(store), IdentityShadowLookupRate(rate), IdentityShadowInterval(30.minutes), rounds += _,
+    new LookupFill(() => gaps(store), new clients.TmdbClient(_, apiKey = Some(settings.TmdbApiKey("k")), retrySleep = (_: Long) => ()),
+      service, new TmdbNormalizer(store), IdentityLookupFillRate(rate), IdentityLookupFillInterval(30.minutes), rounds += _,
       DaemonExecutors.directExecutor(), sleeps += _, beforeRound, refreshes, gapMemory, fillClock)
 
   /** What the identity model over the store's answers finds unanswered — what a round asks. */
@@ -73,7 +73,7 @@ class ShadowLookupFillSpec extends AnyFlatSpec with Matchers {
       gaps = _ => AnswersChanged.Empty).round()
     swept shouldBe 1
     service.requests.map(u => java.net.URLDecoder.decode(u, "UTF-8")).count(_.contains("query=Aged film")) shouldBe round.asked
-    round.asked should (be > 0 and be <= IdentityShadowLookupRate(60).allowanceOver(IdentityShadowInterval(30.minutes).value))
+    round.asked should (be > 0 and be <= IdentityLookupFillRate(60).allowanceOver(IdentityLookupFillInterval(30.minutes).value))
   }
 
   "a fill round" should "ask every unanswered question once, into the model's store, so the next shadow resolve has no gap" in {
@@ -121,14 +121,14 @@ class ShadowLookupFillSpec extends AnyFlatSpec with Matchers {
   it should "stop asking the paced service at its first overload, and run the next round at half the rate, doubling back once clean" in {
     val tmdb    = "api.themoviedb.org"
     val service = new Service(failHost = Some(tmdb))
-    val rounds  = mutable.Buffer.empty[ShadowLookupRound]
+    val rounds  = mutable.Buffer.empty[LookupFillRound]
     val f       = fill(store(), service, rate = 8, rounds = rounds)
     val first   = f.round()
     first.backedOff shouldBe true
     service.requests.count(_.contains(tmdb)) shouldBe 1
-    f.effectiveRate shouldBe IdentityShadowLookupRate(4)
-    f.round().rate shouldBe IdentityShadowLookupRate(4)
-    f.effectiveRate shouldBe IdentityShadowLookupRate(8)
+    f.effectiveRate shouldBe IdentityLookupFillRate(4)
+    f.round().rate shouldBe IdentityLookupFillRate(4)
+    f.effectiveRate shouldBe IdentityLookupFillRate(8)
     rounds.map(_.rate.perMinute) shouldBe Seq(8, 4)
   }
 
@@ -149,7 +149,7 @@ class ShadowLookupFillSpec extends AnyFlatSpec with Matchers {
       rest.size should be > 1
     }
     round.backedOff shouldBe true
-    f.effectiveRate shouldBe IdentityShadowLookupRate(600)
+    f.effectiveRate shouldBe IdentityLookupFillRate(600)
   }
 
   // A read that FAILED taught nothing about the film. One that failed without overloading (a 403, an
@@ -182,7 +182,7 @@ class ShadowLookupFillSpec extends AnyFlatSpec with Matchers {
 
   "a background round" should "end quietly when the worker's shutdown interrupts it, leaving the interrupt set, not escape as uncaught" in {
     var interrupt = true
-    val rounds    = mutable.Buffer.empty[ShadowLookupRound]
+    val rounds    = mutable.Buffer.empty[LookupFillRound]
     val shadow    = fill(store(), new Service, rounds = rounds,
       beforeRound = () => if (interrupt) throw new InterruptedException("sleep interrupted"))
     noException should be thrownBy shadow.start()
@@ -194,7 +194,7 @@ class ShadowLookupFillSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "log a failed sweep or round WITH its stack: the catch-all's cause is unknown, and its message alone rarely names it" in {
-    val warned = (shadow: ShadowLookupFill) => tools.LogCapture.thisThread(classOf[ShadowLookupFill].getName)(shadow.start())
+    val warned = (shadow: LookupFill) => tools.LogCapture.thisThread(classOf[LookupFill].getName)(shadow.start())
       .filter(_.getLevel == ch.qos.logback.classic.Level.WARN).map(e => Option(e.getThrowableProxy).map(_.getMessage))
     warned(fill(store(), new Service, beforeRound = () => throw new IllegalStateException("sweep down"))) shouldBe Seq(Some("sweep down"))
     warned(fill(store(), new Service, gaps = _ => throw new IllegalStateException("store down"))) shouldBe Seq(Some("store down"))
@@ -210,9 +210,9 @@ class ShadowLookupFillSpec extends AnyFlatSpec with Matchers {
       override def get(url: String): String                                    = "{}"
       override def post(url: String, body: String, contentType: String): String = "{}"
     }, _ => Some(interval.millis), clock = clock, sleep = ms => clock.advanceMillis(ms))
-    val rate     = IdentityShadowLookupRate(6)   // one every 10 s
-    val budget   = new ShadowLookupBudget(rate.allowanceOver(10.minutes), rate.pace, _ => ())
-    val live     = new ShadowLiveFetch(pacer, budget)
+    val rate     = IdentityLookupFillRate(6)   // one every 10 s
+    val budget   = new LookupFillBudget(rate.allowanceOver(10.minutes), rate.pace, _ => ())
+    val live     = new LookupFillLiveFetch(pacer, budget)
     val horizon  = 10.minutes.toMillis
     val events   = ((0L until horizon by interval).map(_ -> "pipeline") ++ (0L until horizon by rate.pace.toMillis).map(_ -> "shadow"))
       .sortBy { case (t, who) => (t, who) }
@@ -229,15 +229,15 @@ class ShadowLookupFillSpec extends AnyFlatSpec with Matchers {
 
   // What ends a host's asks for the round is the host overloading — never a permanent answer. An open breaker and a
   // network failure (a timeout is an IOException) are overload; a replayed fixture's miss and a parse error are not.
-  "ShadowLiveFetch.isOverload" should "read a breaker, a network failure and a 429/5xx as overload, and nothing else" in {
+  "LookupFillLiveFetch.isOverload" should "read a breaker, a network failure and a 429/5xx as overload, and nothing else" in {
     def status(code: Int) = new HttpStatusException(code, "GET", "https://api.themoviedb.org/3/x", None)
-    ShadowLiveFetch.isOverload(status(429)) shouldBe true
-    ShadowLiveFetch.isOverload(status(503)) shouldBe true
-    ShadowLiveFetch.isOverload(status(403)) shouldBe false
-    ShadowLiveFetch.isOverload(new tools.CircuitOpenException("api.themoviedb.org", 30000L)) shouldBe true
-    ShadowLiveFetch.isOverload(new java.net.http.HttpTimeoutException("request timed out")) shouldBe true
-    ShadowLiveFetch.isOverload(new java.net.ConnectException("refused")) shouldBe true
-    ShadowLiveFetch.isOverload(new java.io.FileNotFoundException("no fixture")) shouldBe false
-    ShadowLiveFetch.isOverload(new IllegalArgumentException("bad json")) shouldBe false
+    LookupFillLiveFetch.isOverload(status(429)) shouldBe true
+    LookupFillLiveFetch.isOverload(status(503)) shouldBe true
+    LookupFillLiveFetch.isOverload(status(403)) shouldBe false
+    LookupFillLiveFetch.isOverload(new tools.CircuitOpenException("api.themoviedb.org", 30000L)) shouldBe true
+    LookupFillLiveFetch.isOverload(new java.net.http.HttpTimeoutException("request timed out")) shouldBe true
+    LookupFillLiveFetch.isOverload(new java.net.ConnectException("refused")) shouldBe true
+    LookupFillLiveFetch.isOverload(new java.io.FileNotFoundException("no fixture")) shouldBe false
+    LookupFillLiveFetch.isOverload(new IllegalArgumentException("bad json")) shouldBe false
   }
 }

@@ -535,19 +535,19 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
   "the identity model's live lookup fill" should "be wired on a claimed schedule of its own that starts a round, at its configured rate" in {
     val rounds = new java.util.concurrent.atomic.AtomicInteger()
     val wiring = new Probe(Country.Spain, new SharedExecutionBudget(4)) {
-      override protected lazy val shadowLookupExecutor: java.util.concurrent.ExecutorService = new java.util.concurrent.AbstractExecutorService {
+      override protected lazy val lookupFillExecutor: java.util.concurrent.ExecutorService = new java.util.concurrent.AbstractExecutorService {
         def execute(command: Runnable): Unit = { rounds.incrementAndGet(); () }
         def shutdown(): Unit = (); def shutdownNow(): java.util.List[Runnable] = java.util.List.of()
         def isShutdown: Boolean = false; def isTerminated: Boolean = false
         def awaitTermination(timeout: Long, unit: java.util.concurrent.TimeUnit): Boolean = true
       }
     }
-    wiring.shadowLookupFill.effectiveRate shouldBe WorkerWiring.DefaultShadowLookupRate
+    wiring.lookupFill.effectiveRate shouldBe WorkerWiring.DefaultLookupFillRate
     wiring.identityLookupRefreshSchedule.tickIfClaimed() shouldBe true
     rounds.get shouldBe 1
     wiring.stop()
     new Probe(Country.Spain, new SharedExecutionBudget(4), tools.Env.of("KINOWO_IDENTITY_SHADOW_LOOKUP_RATE" -> "12"))
-      .shadowLookupFill.effectiveRate shouldBe settings.IdentityShadowLookupRate(12)
+      .lookupFill.effectiveRate shouldBe settings.IdentityLookupFillRate(12)
   }
 
   // The model's thread and its prefetch pool outlived `stop()`: a drain still writing families to a

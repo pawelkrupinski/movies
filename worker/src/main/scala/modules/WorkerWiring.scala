@@ -240,8 +240,8 @@ class WorkerWiring(
   // (`TmdbRefreshes`), a record TMDB changed since (`TmdbChangesSweep`) — and any question still open.
   // Through the lookup chain (`enrichmentFetch`: its 429 gate, breaker and pace), at most
   // `KINOWO_IDENTITY_SHADOW_LOOKUP_RATE` per minute, the answers filed in the model's TMDB store.
-  lazy val shadowLookupFill: services.identity.ShadowLookupFill =
-    new services.identity.ShadowLookupFill(
+  lazy val lookupFill: services.identity.LookupFill =
+    new services.identity.LookupFill(
       questions   = () => identityModel.peek(WorkerWiring.IdentityModelPeek).fold(services.identity.AnswersChanged.Empty)(_.gaps),
       tmdb        = tmdbClientOver,
       liveFetch   = enrichmentFetch,
@@ -250,31 +250,31 @@ class WorkerWiring(
       gapMemory   = Some(new services.identity.TmdbGapMemory(identityTmdbDocuments, country.language.toLanguageTag, clock)),
       refreshes   = () => identityModel.peek(WorkerWiring.IdentityModelPeek)
         .fold(Seq.empty[services.identity.CandidateQuery])(snapshot => identityTmdbRefreshes.due(snapshot.questions)),
-      rate        = configuration.identityShadowLookupRate(WorkerWiring.DefaultShadowLookupRate),
-      window      = identityShadowInterval,
-      metrics     = workerMetrics.identityShadow.lookupsForCountry(country.code),
-      executor    = shadowLookupExecutor,
-      sleep       = shadowLookupSleep,
+      rate        = configuration.identityLookupFillRate(WorkerWiring.DefaultLookupFillRate),
+      window      = identityLookupFillInterval,
+      metrics     = workerMetrics.identityLookupFill.lookupsForCountry(country.code),
+      executor    = lookupFillExecutor,
+      sleep       = lookupFillSleep,
       clock       = clock)
 
   /** Fills the model's gaps as a drain finds them, not only on the period below (which stays for what ages: refreshes
    *  due, TMDB's changes, gaps remembered as unanswered). A round asks what the rate allows since the last. */
   lazy val identityFillTrigger: services.identity.EventTrigger =
-    new services.identity.EventTrigger(() => { shadowLookupFill.start(); true }, services.movies.MovieChangeStream.Debounce.Worker,
+    new services.identity.EventTrigger(() => { lookupFill.start(); true }, services.movies.MovieChangeStream.Debounce.Worker,
       identityProjectionTriggerScheduler, clock)
 
-  def identityShadowInterval: settings.IdentityShadowInterval =
-    configuration.identityShadowInterval(WorkerWiring.DefaultIdentityShadowInterval)
+  def identityLookupFillInterval: settings.IdentityLookupFillInterval =
+    configuration.identityLookupFillInterval(WorkerWiring.DefaultLookupFillInterval)
   /** The fill's rounds, every `KINOWO_IDENTITY_SHADOW_INTERVAL_SECONDS` (30 minutes). */
   lazy val identityLookupRefreshSchedule: services.tasks.ClaimedPeriodicTask = managedResources.stopping(
-    new services.tasks.ClaimedPeriodicTask("identity-lookup-refresh", () => shadowLookupFill.start(), identityShadowInterval.value,
-      configuration.identityShadowInitialDelay(WorkerWiring.DefaultIdentityShadowInitialDelay).value, scheduledRunStore, clock))
+    new services.tasks.ClaimedPeriodicTask("identity-lookup-refresh", () => lookupFill.start(), identityLookupFillInterval.value,
+      configuration.identityLookupFillInitialDelay(WorkerWiring.DefaultIdentityShadowInitialDelay).value, scheduledRunStore, clock))
 
   /** How the fill waits its pace between asks: real time, except in a replay harness. */
-  protected def shadowLookupSleep: Long => Unit = Thread.sleep
+  protected def lookupFillSleep: Long => Unit = Thread.sleep
 
   /** One daemon thread for the fill's rounds, which sleep their pace between asks. */
-  protected lazy val shadowLookupExecutor: java.util.concurrent.ExecutorService =
+  protected lazy val lookupFillExecutor: java.util.concurrent.ExecutorService =
     managedResources.executor("identity shadow lookups")(tools.DaemonExecutors.boundedEC(s"identity-shadow-lookups-${country.code}", 1))
 
   // ── Filmweb (per-country) ───────────────────────────────────────────────────
@@ -533,8 +533,8 @@ object WorkerWiring {
   val DefaultBackgroundConcurrency: BackgroundConcurrency = BackgroundConcurrency(4)
 
   /** `KINOWO_IDENTITY_SHADOW_LOOKUP_RATE`'s compiled-in default: 60 asks a minute, about 2% of
-   *  TMDB's ~50 req/s ceiling, so the pipeline's own lookups keep the rest (see `shadowLookupFill`). */
-  val DefaultShadowLookupRate: settings.IdentityShadowLookupRate = settings.IdentityShadowLookupRate(60)
+   *  TMDB's ~50 req/s ceiling, so the pipeline's own lookups keep the rest (see `lookupFill`). */
+  val DefaultLookupFillRate: settings.IdentityLookupFillRate = settings.IdentityLookupFillRate(60)
 
   /** How long the fill waits for the model's thread to catch up and hand it a snapshot — a drain,
    *  never a take-up. */
@@ -554,11 +554,11 @@ object WorkerWiring {
 
   /** The fill's cadence: the settle's former 30 minutes, which its per-round allowance was measured
    *  against. */
-  val DefaultIdentityShadowInterval: settings.IdentityShadowInterval =
-    settings.IdentityShadowInterval(scala.concurrent.duration.Duration(30, "minutes"))
+  val DefaultLookupFillInterval: settings.IdentityLookupFillInterval =
+    settings.IdentityLookupFillInterval(scala.concurrent.duration.Duration(30, "minutes"))
   /** Clear of the boot's scrape burst and the model's take-up. */
-  val DefaultIdentityShadowInitialDelay: settings.IdentityShadowInitialDelay =
-    settings.IdentityShadowInitialDelay(scala.concurrent.duration.Duration(5, "minutes"))
+  val DefaultIdentityShadowInitialDelay: settings.IdentityLookupFillInitialDelay =
+    settings.IdentityLookupFillInitialDelay(scala.concurrent.duration.Duration(5, "minutes"))
 
   /** The closure sweep's cadence: its evidence moves in days (a gone venue is re-probed
    *  daily), so a daily verdict loses nothing. */

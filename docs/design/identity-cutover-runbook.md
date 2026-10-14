@@ -85,8 +85,8 @@ out the grace.
 
 ## 4. Reading it (worker-diagnostics dashboard, "Identity cutover" panels)
 
-- `kinowo_worker_identity_cutover_canary{country,relation}` on the first projection: the old path's
-  films against the projection's. `identical` should match the shadow run's figure from the gate.
+- (The cut-over canary, `kinowo_worker_identity_cutover_canary`, was retired on 2026-10-14 once every country was cut
+  over: after the first projection it only restated the regroupings below.)
 - `kinowo_worker_identity_regroupings_total{kind=merge|split|move}`: 0 after the first projection on
   an unchanged corpus (P2) — §10's churn acceptance, together with `kinowo_worker_rekeys_total` and
   `kinowo_worker_merges_total{reason!="imdb-identity"}` at 0 for 7 days.

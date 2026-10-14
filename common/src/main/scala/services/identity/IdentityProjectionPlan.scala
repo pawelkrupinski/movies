@@ -107,7 +107,7 @@ final case class ProjectionPlan(films: Seq[ProjectedFilm], retired: Seq[FilmId],
  * decisions over them, the films stored before, and the persisted FilmId map:
  *
  *  1. every stored film is the set of today's listings its slots hold (the slot's own listing key,
- *     else the shadow diff's mapping by slot, `PipelineFilms`), numbered through the FilmId map ([[FilmIdCounters]], largest film first
+ *     else the shadow diff's mapping by slot, `StoredFilmSlots`), numbered through the FilmId map ([[FilmIdCounters]], largest film first
  *     for a film not yet mapped) — so a legacy `title|year` id keeps its counter and its URL;
  *  2. the resolver's clusters, with the clusters of one TMDB film joined (`movies` holds one
  *     document per film — its unique `tmdbId` index), get ids by OVERLAP ([[IdAssigner]]): a merge
@@ -148,12 +148,12 @@ object IdentityProjectionPlan {
     // The stored films as listing sets, numbered.
     // A listing is on the stored film whose slot it IS (the slot's own listing key); a listing no slot
     // names — one a venue's same-title fold hid behind another's slot — on the film holding its slot.
-    val slotOwner: Map[ListingKey, PipelineFilmRef] = stored.flatMap { r =>
-      val ref = PipelineFilmRef(r.id.value, r.record.tmdbId)
+    val slotOwner: Map[ListingKey, StoredFilmRef] = stored.flatMap { r =>
+      val ref = StoredFilmRef(r.id.value, r.record.tmdbId)
       slotsOf(r).flatMap(_.key.map(_ -> ref))
     }.groupMap(_._1)(_._2).flatMap { case (k, refs) => ownerOf(refs.toSet).map(k -> _) }
-    val previousOf: Map[ListingKey, PipelineFilmRef] =
-      PipelineFilms.of(byKey.values.map(_.listing).toSeq, stored, normalizer) ++ slotOwner.filter { case (k, _) => byKey.contains(k) }
+    val previousOf: Map[ListingKey, StoredFilmRef] =
+      StoredFilmSlots.of(byKey.values.map(_.listing).toSeq, stored, normalizer) ++ slotOwner.filter { case (k, _) => byKey.contains(k) }
     val listingsOf = previousOf.toSeq.groupMap(_._2.id)(_._1).view.mapValues(_.toSet).toMap
     val covered    = counters.covering(listingsOf.toSeq.map { case (id, ls) => IdSeeding.Film(id, ls) })
     val additions  = covered.entries.filterNot(e => counters.counterOf(e.filmId).isDefined)
@@ -193,7 +193,7 @@ object IdentityProjectionPlan {
     Slot(source match { case cs: CinemaShowing => Some(cs.cinema.displayName -> cs.titleKey); case _ => None }, sd, ListingKey.ofSource(source, sd))
 
   /** The film a listing is the slot of, of the films whose slot it is: the smallest id. */
-  def ownerOf(refs: Set[PipelineFilmRef]): Option[PipelineFilmRef] = refs.minByOption(_.id)
+  def ownerOf(refs: Set[StoredFilmRef]): Option[StoredFilmRef] = refs.minByOption(_.id)
 
   /** The cluster a decision is part of: its TMDB film's, or for no film its own. */
   def clusterIdOf(d: ResolverDecision): ClusterId = d.film.fold[ClusterId](ClusterId.Unmatched(d.members.min))(ClusterId.Matched(_))
@@ -410,34 +410,6 @@ object IdentityProjectionPlan {
       venues, build, rowsOf, takes)
   }
 
-  /** The canary over every cluster of `index` — how the resolver's clusters relate to the films stored before it ran
-   *  ([[ShadowRelation]]), the films compared as STORED, one per TMDB film: what a projection reports, whichever films it
-   *  drafted. */
-  def canary(index: ProjectionIndex): Map[ShadowRelation, Int] =
-    canaryCounts(index.clusters.valuesIterator.map(relationOf(index, _)._1))
-
-  /** `cluster`'s relation, read off the index: a film's listings are `listingsOf` it, so nothing is sorted into a
-   *  decision or grouped by film again — on US that was ~100k keys sorted and grouped every five minutes.
-   *  With it, the films it read: each stored film its members are on, and that film's listings as the index holds them. */
-  private[identity] def relationOf(index: ProjectionIndex, cluster: Cluster): (Option[ShadowRelation], Seq[(String, Set[ListingKey])]) = {
-    val placed = cluster.members.filter(index.previousOf.contains)
-    val films  = placed.iterator.map(index.previousOf).toSet
-    val read   = films.toSeq.map(f => f.id -> index.listingsOf.getOrElse(f.id, Set.empty))
-    val relation =
-      if (films.isEmpty) None
-      else if (films.sizeIs > 1) Some(ShadowRelation.Merged)
-      else if (index.listingsOf.getOrElse(films.head.id, Set.empty) != placed) Some(ShadowRelation.Split)
-      else if (films.head.tmdbId == cluster.film) Some(ShadowRelation.Identical)
-      else Some(ShadowRelation.Moved)
-    (relation, read)
-  }
-
-  private[identity] def canaryCounts(relations: Iterator[Option[ShadowRelation]]): Map[ShadowRelation, Int] = {
-    val counts = scala.collection.mutable.HashMap.empty[ShadowRelation, Int]
-    relations.foreach(_.foreach(r => counts(r) = counts.getOrElse(r, 0) + 1))
-    ShadowRelation.values.map(r => r -> counts.getOrElse(r, 0)).toMap
-  }
-
   /** Choose every film's title, year and key, and mint the id of every fresh one. `taken` says
    *  whether an id is live already (a fresh id must not be one). */
   def finish(draft: ProjectionDraft, normalizer: TitleNormalizer, taken: FilmId => Boolean)(using LatestTitleYear): ProjectionPlan = {
@@ -584,35 +556,4 @@ object FilmShapes {
   def apply(): FilmShapes = new FilmShapes(keeping = true)
   /** Shapes of nothing: every film drafted whole. */
   def none: FilmShapes = new FilmShapes(keeping = false)
-}
-
-/**
- * The canary over every cluster of the index ([[IdentityProjectionPlan.canary]]), kept from one projection to the next:
- * a scoped projection works out again only the relations of its scope's clusters and of the last one's. A cluster's
- * relation reads its members, their previous films and those films' listings, and a scope is closed over every one of
- * them that moved ([[ProjectionScope.close]]); the last scope's clusters are read again because its writes — after its
- * canary — may have put their listings on other films. Every other cluster's relation is the one it had: on worker-us,
- * walking every cluster's members each tick was 6% of a light projection.
- */
-final class CanaryTally {
-  private final case class Kept(relation: Option[ShadowRelation], films: Seq[(String, Set[ListingKey])])
-  private val relations = scala.collection.mutable.HashMap.empty[ClusterId, Kept]
-  private var last      = Set.empty[ClusterId]
-
-  /** The canary of `index`, a scoped projection of `scope` reading it. */
-  def of(index: ProjectionIndex, scope: ProjectionScope): Map[ShadowRelation, Int] = {
-    (scope.clusters.iterator ++ last.iterator).foreach(relations.remove)
-    // A listing that left a film moved it, though the scope reaches the listing's new film only: the film's listings,
-    // held as one set replaced on each change, are another object.
-    relations.filterInPlace((id, kept) => index.clusters.contains(id) &&
-      kept.films.forall { case (film, listings) => index.listingsOf.getOrElse(film, Set.empty) eq listings })
-    index.clusters.foreach { case (id, cluster) =>
-      if (!relations.contains(id)) relations(id) = { val (relation, films) = IdentityProjectionPlan.relationOf(index, cluster); Kept(relation, films) }
-    }
-    last = scope.clusters
-    IdentityProjectionPlan.canaryCounts(relations.valuesIterator.map(_.relation))
-  }
-
-  /** A projection of the whole corpus reported its own canary, and wrote any cluster's films: the next works out all. */
-  def reset(): Unit = { relations.clear(); last = Set.empty }
 }

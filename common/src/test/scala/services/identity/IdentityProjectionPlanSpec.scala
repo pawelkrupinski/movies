@@ -99,8 +99,6 @@ class IdentityProjectionPlanSpec extends AnyFlatSpec with Matchers {
     second.films.map(f => (f.id, f.key, f.record)) should contain theSameElementsAs withDetails.films.map(f => (f.id, f.key, f.record))
     second.regroupings.isEmpty shouldBe true
     second.counterAdditions shouldBe empty
-    IdentityProjectionPlan.canary(IdentityProjectionPlan.index(lalka.reverse ++ obcy, r, storedOf(withDetails), counters(first), normalizer))(
-      ShadowRelation.Identical) shouldBe 2
   }
 
   // The stored record's map is kept wherever a slot drafted is the very one it holds (the cache keeps the projection's lean

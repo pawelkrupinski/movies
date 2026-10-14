@@ -27,7 +27,7 @@ class WorkerWiringLifecycleSpec extends AnyFlatSpec with Matchers {
 
   private class PooledWiring extends TestWiring {
     /** Build the pools a running worker builds as it goes, so the stop has them to shut. */
-    def buildPools(): Unit = { identityPrefetchPool; identityModelScheduler; shadowLookupExecutor; () }
+    def buildPools(): Unit = { identityPrefetchPool; identityModelScheduler; lookupFillExecutor; () }
   }
 
   "A started and stopped worker wiring" should "shut every pool it registered and leave no thread of its own" in {

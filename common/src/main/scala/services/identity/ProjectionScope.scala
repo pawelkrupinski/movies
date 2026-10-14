@@ -20,7 +20,7 @@ final case class Cluster(members: Set[ListingKey], film: Option[Int], fallback: 
  *  slot it is, else the one whose slot it folds into), each stored film's listings, the FilmId map extended over them,
  *  and the clusters, one per film, with each listing's. What [[ProjectionScope]] closes a tick's changes over. */
 final case class ProjectionIndex(byKey: Map[ListingKey, ProjectedListing], storedById: Map[String, StoredMovieRecord],
-                                 previousOf: Map[ListingKey, PipelineFilmRef], listingsOf: Map[String, Set[ListingKey]],
+                                 previousOf: Map[ListingKey, StoredFilmRef], listingsOf: Map[String, Set[ListingKey]],
                                  covered: FilmIdCounters, additions: Seq[FilmIdCounter],
                                  clusters: Map[ClusterId, Cluster], clusterOf: Map[ListingKey, ClusterId]) {
   /** Whether some published listing is on stored film `id`. */

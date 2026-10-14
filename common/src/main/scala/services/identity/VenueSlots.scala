@@ -213,7 +213,7 @@ private[identity] object VenueSlots {
   /** `cinema`'s slots on a film from the rows it publishes under `keys` (of `byKey`, its rows now): per slot,
    *  the venue's rows unioned as the landing's fold unions them (every showtime kept), built over the slot the
    *  representative listing's previous film held there. */
-  private[identity] def buildVenue(cinema: Cinema, keys: Seq[ListingKey], byKey: VenueRows, previousOf: Map[ListingKey, PipelineFilmRef],
+  private[identity] def buildVenue(cinema: Cinema, keys: Seq[ListingKey], byKey: VenueRows, previousOf: Map[ListingKey, StoredFilmRef],
                          storedById: Map[String, StoredMovieRecord], normalizer: TitleNormalizer, slots: CinemaSlotBuilder,
                          tokens: ScreeningTokens)(using LatestTitleYear): Seq[(Source, SourceData)] = {
     val rows     = keys.flatMap(key => byKey.get(key).map(merged(cinema, _, normalizer)))

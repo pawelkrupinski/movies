@@ -219,7 +219,7 @@ class ScopedProjectionEquivalenceSpec extends AnyFlatSpec with Matchers {
           theirs.diff(mine).map(render).mkString("\n    "))
         scoped.filmIds.allChecked().required.sortBy(_.counter) shouldBe whole.filmIds.allChecked().required.sortBy(_.counter)
         scoped.announced.map(_.toString).sorted shouldBe whole.announced.map(_.toString).sorted
-        scoped.reported shouldBe whole.reported   // the films and the canary they report
+        scoped.reported shouldBe whole.reported   // the films they report
         if (a.refused.isEmpty) indexAsBuilt(scoped, s)
         whole.drifts.filter(_ != 0) shouldBe empty
         scoped.drifts.filter(_ != 0) shouldBe empty

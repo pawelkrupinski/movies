@@ -2,7 +2,7 @@ package services.identity
 
 import clients.TmdbClient
 import play.api.Logging
-import settings.IdentityShadowLookupRate
+import settings.IdentityLookupFillRate
 import tools.{CircuitOpenException, HttpFetch, HttpStatusException}
 
 import java.util.concurrent.ExecutorService
@@ -14,7 +14,7 @@ import scala.util.control.NonFatal
  *  overloaded. `deferred` counts the gaps it had no budget left for. Single-threaded by
  *  construction (a round is one question walk on one thread); the counters are atomic for the metrics
  *  reader. */
-final class ShadowLookupBudget(allowance: Int, pace: FiniteDuration, sleep: Long => Unit) {
+final class LookupFillBudget(allowance: Int, pace: FiniteDuration, sleep: Long => Unit) {
   private var used       = 0
   private val overloaded = scala.collection.mutable.Set.empty[String]
   // Each host's DISTINCT requests: one asked again (a title's IMDb suggestions, read both as the films IMDb suggests
@@ -54,7 +54,7 @@ final class ShadowLookupBudget(allowance: Int, pace: FiniteDuration, sleep: Long
  *  429 gate, breaker and meters — normalized into the model's TMDB store, the only place its answer
  *  goes), each taking one slot of the round's `budget`. Without a slot it is deferred: a
  *  [[LookupGap]], as unanswered as before. An overload ends the round's asks. */
-final class ShadowLiveFetch(fetch: HttpFetch, budget: ShadowLookupBudget) extends HttpFetch with Logging {
+final class LookupFillLiveFetch(fetch: HttpFetch, budget: LookupFillBudget) extends HttpFetch with Logging {
 
   override def get(url: String): String = ask(url)(_.get(url))
   override def get(url: String, headers: Map[String, String]): String = ask(url)(_.get(url, headers))
@@ -62,7 +62,7 @@ final class ShadowLiveFetch(fetch: HttpFetch, budget: ShadowLookupBudget) extend
   override def getBytes(url: String): Array[Byte] = ask(url)(_.getBytes(url))
 
   private def ask[A](url: String)(call: HttpFetch => A): A = {
-    val host = ShadowLiveFetch.hostOf(url)
+    val host = LookupFillLiveFetch.hostOf(url)
     if (!budget.acquire(host, url)) throw new LookupGap(s"deferred: $url")
     else try { val a = call(fetch); budget.answered.incrementAndGet(); a }
     catch {
@@ -71,16 +71,16 @@ final class ShadowLiveFetch(fetch: HttpFetch, budget: ShadowLookupBudget) extend
         budget.answered.incrementAndGet(); throw absent
       case NonFatal(e) =>
         budget.failed.incrementAndGet()
-        val overload = ShadowLiveFetch.isOverload(e)
+        val overload = LookupFillLiveFetch.isOverload(e)
         // The host only: a URL may carry a key.
-        logger.info(s"identity shadow fill: $host failed (${e.getClass.getSimpleName}${if (overload) ", overload" else ""})")
+        logger.info(s"identity lookup fill: $host failed (${e.getClass.getSimpleName}${if (overload) ", overload" else ""})")
         if (overload) budget.backOff(host)
         throw e
     }
   }
 }
 
-object ShadowLiveFetch {
+object LookupFillLiveFetch {
   def hostOf(url: String): String = scala.util.Try(java.net.URI.create(url).getHost).toOption.flatMap(Option(_)).getOrElse(url.takeWhile(_ != '?'))
 
   /** The service asking us to slow down, or not answering: a 429, a 5xx, an open breaker, a
@@ -96,29 +96,28 @@ object ShadowLiveFetch {
 }
 
 /** One fill round's outcome. */
-final case class ShadowLookupRound(asked: Int, answered: Int, failed: Int, deferred: Int, gaps: Long, backedOff: Boolean,
-                                   rate: IdentityShadowLookupRate)
+final case class LookupFillRound(asked: Int, answered: Int, failed: Int, deferred: Int, gaps: Long, backedOff: Boolean,
+                                   rate: IdentityLookupFillRate)
 
 /** Where the fill reports: its last round's asks, answers and deferrals. */
-trait ShadowLookupMetrics {
-  def round(r: ShadowLookupRound): Unit
+trait LookupFillMetrics {
+  def round(r: LookupFillRound): Unit
 }
 
-object ShadowLookupMetrics {
-  val noop: ShadowLookupMetrics = _ => ()
+object LookupFillMetrics {
+  val noop: LookupFillMetrics = _ => ()
 }
 
 /**
- * The PACED LIVE LOOKUP FILL for the identity shadow run (docs/design/identity-resolver.md §19):
- * the shadow run answers only from the model's normalized TMDB store, and most of the resolver's questions
- * (yearless searches, director walks, candidate records) are ones the pipeline never asks. After
- * each shadow tick, a round takes the identity model's GAPS (`IncrementalResolver.gaps`: the
- * questions its nodes asked that the store cannot answer, and the records it lacks) — so the
- * questions are exactly the resolver's own (`CandidateQueries`), with no second list — and asks each unanswered TMDB or IMDb
- * suggestion question live, at most `rate` per minute over the round's `window` (the shadow run's interval, so a
- * round's allowance is what fits before the next tick), through `liveFetch` (the pipeline's
- * shared lookup chain: its 429 gate, breaker and pace), filed ONLY into the store. The next tick
- * reads them. Nothing here writes a pipeline cache or row.
+ * The PACED LIVE LOOKUP FILL of the identity model (docs/design/identity-resolver.md §19): the model
+ * answers only from its normalized TMDB store, and most of the resolver's questions (yearless
+ * searches, director walks, candidate records) are ones nothing else asks. Each round takes the
+ * model's GAPS (`IncrementalResolver.gaps`: the questions its nodes asked that the store cannot
+ * answer, and the records it lacks) — so the questions are exactly the resolver's own
+ * (`CandidateQueries`), with no second list — and asks each unanswered TMDB or IMDb suggestion
+ * question live, at most `rate` per minute over the round's `window` (the fill's interval, so a
+ * round's allowance is what fits before the next), through `liveFetch` (the shared lookup chain:
+ * its 429 gate, breaker and pace), filed ONLY into the store, which the model then reads.
  *
  * Venue details are NOT asked: the pipeline's own detail enrichment reads every listing's page into
  * venue_pages on its own cadence, and the model reads it from there (`VenuePageIndex`).
@@ -127,14 +126,14 @@ object ShadowLookupMetrics {
  * round runs at half the rate; each clean round doubles it back, up to the configured rate. One
  * round at a time; a tick that finds one running starts none.
  */
-final class ShadowLookupFill(
+final class LookupFill(
   questions:   () => AnswersChanged,
   tmdb:        HttpFetch => TmdbClient,
   liveFetch:   HttpFetch,
   normalizer:  TmdbNormalizer,
-  rate:        => IdentityShadowLookupRate,
-  window:      => settings.IdentityShadowInterval,
-  metrics:     ShadowLookupMetrics,
+  rate:        => IdentityLookupFillRate,
+  window:      => settings.IdentityLookupFillInterval,
+  metrics:     LookupFillMetrics,
   executor:    ExecutorService,
   sleep:       Long => Unit = Thread.sleep,
   beforeRound: () => Unit = () => (),
@@ -147,57 +146,57 @@ final class ShadowLookupFill(
   @volatile private var lastRound: Option[java.time.Instant] = None
 
   private val running = new AtomicBoolean(false)
-  @volatile private var current: Option[IdentityShadowLookupRate] = None
+  @volatile private var current: Option[IdentityLookupFillRate] = None
 
   /** The rate the next round runs at: the configured one, less any back-off still in force. */
-  def effectiveRate: IdentityShadowLookupRate = current.filter(_.perMinute < rate.perMinute).getOrElse(rate)
+  def effectiveRate: IdentityLookupFillRate = current.filter(_.perMinute < rate.perMinute).getOrElse(rate)
 
   /** One round, on the calling thread. */
-  def round(): ShadowLookupRound = {
+  def round(): LookupFillRound = {
     val at     = effectiveRate
     val now    = clock.instant()
     val span   = lastRound.fold(window.value)(was => FiniteDuration(java.time.Duration.between(was, now).toMillis.max(0L),
       java.util.concurrent.TimeUnit.MILLISECONDS).min(window.value))
     lastRound  = Some(now)
-    val budget = new ShadowLookupBudget(at.allowanceOver(span), at.pace, sleep)
+    val budget = new LookupFillBudget(at.allowanceOver(span), at.pace, sleep)
     // Live within the budget, every answer normalized into the model's TMDB store — where the model's
     // gaps are, by definition, not yet.
     val gaps    = new LookupGaps
-    val fetch   = new NormalizingHttpFetch(new ShadowLiveFetch(liveFetch, budget), normalizer)
+    val fetch   = new NormalizingHttpFetch(new LookupFillLiveFetch(liveFetch, budget), normalizer)
     val lookups = new TmdbIdentityLookups(tmdb(fetch), new services.enrichment.ImdbClient(fetch), Nil, gaps)
     // Exactly the questions the identity model found unanswered, and the records it lacks — never
     // a walk of every listing's questions: the model knows its gaps. A record a newly answered
     // search names is the model's gap after its next drain, and the next round's question.
     // TMDB's edits first (`TmdbChangesSweep`, when one is due): what changed is fetched again
     // before the model's gaps and refreshes are chosen.
-    try beforeRound() catch { case NonFatal(e) => logger.warn("identity shadow fill: TMDB changes not swept, this round", e) }
+    try beforeRound() catch { case NonFatal(e) => logger.warn("identity lookup fill: TMDB changes not swept, this round", e) }
     val asked = gapMemory.fold(questions())(_.due(questions()))
     // Asked and still unanswered — not deferred for want of budget — is remembered (`TmdbGapMemory`):
     // a durable non-answer is asked again a day later, one whose read failed on a short backoff.
-    def outcome[A](answer: => Answer[A]): ShadowLookupFill.Asked = {
+    def outcome[A](answer: => Answer[A]): LookupFill.Asked = {
       val (deferred, failed) = (budget.deferred.get, budget.failed.get)
       // A read that failed wins over the deferrals its back-off then caused within the same question.
-      if (answer.isKnown) ShadowLookupFill.Asked.Settled
-      else if (budget.failed.get != failed) ShadowLookupFill.Asked.Failed
-      else if (budget.deferred.get != deferred) ShadowLookupFill.Asked.Settled
-      else ShadowLookupFill.Asked.Unanswered
+      if (answer.isKnown) LookupFill.Asked.Settled
+      else if (budget.failed.get != failed) LookupFill.Asked.Failed
+      else if (budget.deferred.get != deferred) LookupFill.Asked.Settled
+      else LookupFill.Asked.Unanswered
     }
     val queryOutcomes = asked.queries.toSeq.sorted.map(q => q -> outcome(lookups.candidates(q)))
     val filmOutcomes  = asked.films.toSeq.sorted.map(id => id -> outcome(lookups.film(id)))
-    def those[K](outcomes: Seq[(K, ShadowLookupFill.Asked)], kind: ShadowLookupFill.Asked) = outcomes.collect { case (k, `kind`) => k }
+    def those[K](outcomes: Seq[(K, LookupFill.Asked)], kind: LookupFill.Asked) = outcomes.collect { case (k, `kind`) => k }
     gapMemory.foreach { memory =>
-      memory.unanswered(those(queryOutcomes, ShadowLookupFill.Asked.Unanswered), those(filmOutcomes, ShadowLookupFill.Asked.Unanswered))
-      memory.failed(those(queryOutcomes, ShadowLookupFill.Asked.Failed), those(filmOutcomes, ShadowLookupFill.Asked.Failed))
+      memory.unanswered(those(queryOutcomes, LookupFill.Asked.Unanswered), those(filmOutcomes, LookupFill.Asked.Unanswered))
+      memory.failed(those(queryOutcomes, LookupFill.Asked.Failed), those(filmOutcomes, LookupFill.Asked.Failed))
     }
     // Then, with what the allowance has left, questions asked again because they have aged
     // (`TmdbRefreshes`) — through the same live fetch.
     refreshes().iterator.takeWhile(_ => budget.remaining > 0).foreach(lookups.candidates)
     gapMemory.foreach(_.roundEnded(budget.answered.get, budget.failed.get, budget.deferred.get))
-    current = Some(if (budget.paceOverloaded) at.halved else IdentityShadowLookupRate((at.perMinute * 2).min(rate.perMinute)))
-    val r = ShadowLookupRound(budget.asked.get, budget.answered.get, budget.failed.get, budget.deferred.get, gaps.total,
+    current = Some(if (budget.paceOverloaded) at.halved else IdentityLookupFillRate((at.perMinute * 2).min(rate.perMinute)))
+    val r = LookupFillRound(budget.asked.get, budget.answered.get, budget.failed.get, budget.deferred.get, gaps.total,
       budget.backedOff, at)
     metrics.round(r)
-    logger.info(s"identity shadow fill: asked ${r.asked} (${r.answered} answered, ${r.failed} failed), deferred ${r.deferred} " +
+    logger.info(s"identity lookup fill: asked ${r.asked} (${r.answered} answered, ${r.failed} failed), deferred ${r.deferred} " +
       s"at ${at.perMinute}/min${if (r.backedOff) s" — backed off ${budget.overloadedHosts.toSeq.sorted.mkString(", ")}" else ""}")
     r
   }
@@ -210,13 +209,13 @@ final class ShadowLookupFill(
       executor.execute { () =>
         try round() catch {
           case _: InterruptedException => Thread.currentThread().interrupt()
-          case NonFatal(e)             => logger.warn("identity shadow fill: round failed", e)
+          case NonFatal(e)             => logger.warn("identity lookup fill: round failed", e)
         }
         finally running.set(false)
       }
 }
 
-object ShadowLookupFill {
+object LookupFill {
   /** What one asked gap came to in a round. */
   private[identity] sealed trait Asked
   private[identity] object Asked {

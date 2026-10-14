@@ -206,12 +206,12 @@ final class ProcessConfiguration(val env: Env) {
     ReadModelColdRetryInterval(seconds("KINOWO_READMODEL_COLD_RETRY_SECONDS", default.value))
   /** `KINOWO_IDENTITY_RATING_GATE` (`1` or `true`) — confidence-gated ratings; off unless set. */
   def identityRatingGate: IdentityRatingGateEnabled = IdentityRatingGateEnabled(env.flag("KINOWO_IDENTITY_RATING_GATE"))
-  def identityShadowInterval(default: IdentityShadowInterval): IdentityShadowInterval =
-    IdentityShadowInterval(seconds("KINOWO_IDENTITY_SHADOW_INTERVAL_SECONDS", default.value))
-  def identityShadowInitialDelay(default: IdentityShadowInitialDelay): IdentityShadowInitialDelay =
-    IdentityShadowInitialDelay(seconds("KINOWO_IDENTITY_SHADOW_INITIAL_DELAY_SECONDS", default.value))
-  def identityShadowLookupRate(default: IdentityShadowLookupRate): IdentityShadowLookupRate =
-    IdentityShadowLookupRate(count("KINOWO_IDENTITY_SHADOW_LOOKUP_RATE", default.perMinute))
+  def identityLookupFillInterval(default: IdentityLookupFillInterval): IdentityLookupFillInterval =
+    IdentityLookupFillInterval(seconds("KINOWO_IDENTITY_SHADOW_INTERVAL_SECONDS", default.value))
+  def identityLookupFillInitialDelay(default: IdentityLookupFillInitialDelay): IdentityLookupFillInitialDelay =
+    IdentityLookupFillInitialDelay(seconds("KINOWO_IDENTITY_SHADOW_INITIAL_DELAY_SECONDS", default.value))
+  def identityLookupFillRate(default: IdentityLookupFillRate): IdentityLookupFillRate =
+    IdentityLookupFillRate(count("KINOWO_IDENTITY_SHADOW_LOOKUP_RATE", default.perMinute))
   def readModelAuditSample(default: ReadModelAuditSample): ReadModelAuditSample =
     ReadModelAuditSample(count("KINOWO_READMODEL_AUDIT_SAMPLE", default.value))
 

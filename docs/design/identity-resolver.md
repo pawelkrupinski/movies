@@ -2152,7 +2152,7 @@ self-heal near-no-op to it. Each tick:
   (Until 2026-09-30 it read the observation store, §9a.) Since the incremental model, a tick no longer
   resolves at all: it diffs the model's current resolution (`ShadowIdentityReaper.modelled`).
 - **Pins**: `identity_pins`, through `ListingConstraints.pinned`.
-- **Diff** (`ShadowDiff`): each cluster against the pipeline's films of the same listings (`PipelineFilms`,
+- **Diff** (`ShadowDiff`): each cluster against the pipeline's films of the same listings (`StoredFilmSlots`,
   by slot — the rule the offline harness uses): `identical`, `split`, `merged`, `moved`; a family whose
   clusters are not all identical is itemised.
 - **Writes**: `identity_shadow_decisions` (a document per cluster) and `identity_shadow_diff` (per
@@ -2169,8 +2169,8 @@ self-heal near-no-op to it. Each tick:
   while a country's run is off.
 
 **Switches** (staged-migration, read per worker process, off by default):
-`KINOWO_IDENTITY_SHADOW` (`ProcessConfiguration.identityShadow`) wires the run;
-`KINOWO_IDENTITY_SHADOW_LOOKUPS` (`ShadowLookupFill`) fills the TMDB store it reads; with the fill off it
+`KINOWO_IDENTITY_SHADOW` (`ProcessConfiguration.identityLookupFill`) wires the run;
+`KINOWO_IDENTITY_SHADOW_LOOKUPS` (`LookupFill`) fills the TMDB store it reads; with the fill off it
 reads what the pipeline's own lookups filed there (`identityLookupFetch`).
 
 ### 17.2 Proof
@@ -2244,7 +2244,7 @@ it, rollback, per-country blockers, the phase-6 deletion list) is
   write. `IdentityListingIntake` keeps it in `identity_listings` (the archive's shape and rules),
   reading `cinema_scrapes`' last listing for a venue it has none for — how a cutover starts.
 - **The projection.** `IdentityProjectionPlan` (common, pure) and `IdentityProjection` (worker):
-  1. stored films → listing sets (the slot's own `ListingKey`, else `PipelineFilms`), numbered
+  1. stored films → listing sets (the slot's own `ListingKey`, else `StoredFilmSlots`), numbered
      through `identity_film_ids` (`FilmIdCounters.covering`: a legacy `title|year` id keeps its
      counter);
   2. the resolver's clusters, one per TMDB film (`movies`' unique `tmdbId`), get ids by overlap
@@ -2271,9 +2271,7 @@ it, rollback, per-country blockers, the phase-6 deletion list) is
   on the next pass.
 - **Metrics** (`IdentityCutoverMetrics`, charted on worker-diagnostics):
   `kinowo_worker_identity_cutover_films|listings{country,path}`,
-  `kinowo_worker_identity_regroupings_total{country,kind}`,
-  `kinowo_worker_identity_cutover_canary{country,relation}` (the shadow diff's relations, against
-  the films stored before each projection), `kinowo_worker_identity_projection_refusals_total`,
+  `kinowo_worker_identity_regroupings_total{country,kind}`, `kinowo_worker_identity_projection_refusals_total`,
   `kinowo_worker_identity_projection_seconds`.
 
 ### 18.2 Proof
@@ -2383,7 +2381,7 @@ projects the whole corpus. A stored film another writer changed is projected on 
 searches, director walks, candidate records) are ones the pipeline never asks: over the Poznań
 capture, 4,559 lookups were unobserved and 337 of 723 clusters matched.
 
-`ShadowLookupFill` (worker, `services.identity`) closes that gap. On its own cluster-claimed
+`LookupFill` (worker, `services.identity`) closes that gap. On its own cluster-claimed
 schedule (`WorkerWiring.identityLookupRefreshSchedule`, the `identity-lookup-refresh` task, every
 `KINOWO_IDENTITY_SHADOW_INTERVAL_SECONDS`, default 30 minutes), on its own daemon thread, one round
 at a time:
@@ -2393,7 +2391,7 @@ at a time:
   (`CandidateQueries`) — no second list, and no walk of every listing's questions per round; a record
   a newly answered search names is the model's gap after its next drain, and the next round's question;
 - each TMDB or IMDb-suggestion question the store cannot answer is asked live through a
-  `ShadowLiveFetch` over `enrichmentFetch`, the pipeline's own lookup chain (its 429 gate, breaker
+  `LookupFillLiveFetch` over `enrichmentFetch`, the pipeline's own lookup chain (its 429 gate, breaker
   and meters), and the answer is normalized (`TmdbNormalizer`) into the model's TMDB store
   (`TmdbStore`) ONLY. No pipeline cache or row is written; dedupe is the store's question key;
 - at most `KINOWO_IDENTITY_SHADOW_LOOKUP_RATE` asks a minute (default 60, ~2% of TMDB's ~50 req/s),
@@ -2410,7 +2408,7 @@ had while it fed the shadow run went with it.
 
 **The pipeline is never delayed beyond the cap.** TMDB is unpaced here, so the fill competes only
 through the shared 429 gate, which it stops feeding at its first overload. On a paced host, each
-shadow ask costs the pipeline at most one interval (`ShadowLookupFillSpec` simulates a shared pacer
+shadow ask costs the pipeline at most one interval (`LookupFillSpec` simulates a shared pacer
 at full pipeline load). `ObservationCaptureEndToEndSpec` (removed with the observation store) ran a tick,
 a round and a tick with every switch on: `expected-schedules.txt` and the read-model snapshot unchanged.
 

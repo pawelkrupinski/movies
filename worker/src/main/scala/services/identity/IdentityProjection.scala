@@ -16,12 +16,12 @@ import scala.util.control.NonFatal
 import scala.util.{Failure, Success, Try}
 
 /** What one projection did: the resolution and the plan (none when it was refused before
- *  them), how many films it wrote and retired, the writes the store declined, why it was
- *  refused, if it was, and the canary it reported ([[IdentityProjectionPlan.canary]]). */
+ *  them), how many films it wrote and retired, the writes the store declined, and why it was
+ *  refused, if it was. */
 final case class ProjectionTick(resolution: Option[Resolution], plan: Option[ProjectionPlan], listings: Int, written: Int,
                                 retired: Int, declined: Int, refused: Option[String], phases: Seq[ProjectionPhase] = Nil,
                                 slotsReused: Int = 0, slotsBuilt: Int = 0, slotMisses: (Int, Int, Int) = (0, 0, 0),
-                                scoped: Boolean = false, changed: Seq[ProjectedFilm] = Nil, canary: Map[ShadowRelation, Int] = Map.empty) {
+                                scoped: Boolean = false, changed: Seq[ProjectedFilm] = Nil) {
   def wroteNothing: Boolean = written == 0 && retired == 0
   /** Whether projecting again would find nothing to do: it was taken, and wrote nothing. A refused one wrote nothing
    *  too, but a model not ready yet (a boot whose resolve ran past its budget) has every film still to write. */
@@ -53,10 +53,9 @@ private[identity] final class ProjectionPhases {
   def render: String            = (all.map(_.render) ++ notes).mkString(", ")
 }
 
-/** Where a projection reports: its films and listings, what moved, the canary (the resolver's
- *  clusters against the films stored before it), a refusal, and how long it took. */
+/** Where a projection reports: its films and listings, what moved, a refusal, and how long it took. */
 trait IdentityProjectionMetrics {
-  def projected(films: Int, listings: Int, regroupings: Regroupings, canary: Map[ShadowRelation, Int], seconds: Double): Unit
+  def projected(films: Int, listings: Int, regroupings: Regroupings, seconds: Double): Unit
   def refused(reason: IdentityProjectionMetrics.Refusal): Unit
   /** A reconciling projection of the whole corpus changed `films` films a scoped projection would have left as they were. */
   def drifted(films: Int): Unit
@@ -75,7 +74,7 @@ object IdentityProjectionMetrics {
     def label: String = toString.toLowerCase(Locale.ROOT)
   }
   val noop: IdentityProjectionMetrics = new IdentityProjectionMetrics {
-    def projected(films: Int, listings: Int, regroupings: Regroupings, canary: Map[ShadowRelation, Int], seconds: Double): Unit = ()
+    def projected(films: Int, listings: Int, regroupings: Regroupings, seconds: Double): Unit = ()
     def refused(reason: Refusal): Unit = ()
     def drifted(films: Int): Unit = ()
     def reconciled(measured: Boolean): Unit = ()
@@ -177,8 +176,6 @@ final class IdentityProjection(
   private var live = new LiveProjectionIndex(normalizer)
   /** Each film as last drafted, so a scoped projection works out only the venues of a film that moved. */
   private var shapes = FilmShapes()
-  /** Each cluster's canary relation, so a scoped projection works out only the relations its scope can move. */
-  private val canaries = new CanaryTally
   /** The kept index over `counters`: what a spec holds to the index built afresh from the same corpus. */
   private[identity] def keptIndex(counters: FilmIdCounters): ProjectionIndex = synchronized(live.index(counters))
 
@@ -284,9 +281,8 @@ final class IdentityProjection(
               case shrink =>
                 if (shrink.isDefined) logger.warn(s"identity projection: ${shrink.get} — held ${ProjectionGuard.Grace} projections, now written")
                 consecutiveShrinks = 0
-                val canary    = if (scope.whole) { canaries.reset(); IdentityProjectionPlan.canary(index) } else canaries.of(index, scope)
                 val films     = stored.size - scopeStored.size + plan.films.size
-                val tick      = write(resolution, detailed, plan, stored, listed, films, canary, started, phases, patch = !scope.whole,
+                val tick      = write(resolution, detailed, plan, stored, listed, films, started, phases, patch = !scope.whole,
                   movedElsewhere = changes.fold(Set.empty[String])(_.films))
                 // the corpus's suspect takes, of a projection of the whole of it once written — what is served, never what the
                 // guard held back — handed to a count of its own, off this projection's path: never a reason to stop one
@@ -373,7 +369,7 @@ final class IdentityProjection(
     }
 
   private def write(resolution: Resolution, detailed: ProjectionDraft, plan: ProjectionPlan, stored: Seq[StoredMovieRecord], listings: Int,
-                    films: Int, canary: Map[ShadowRelation, Int], started: tools.Stopwatch.Started,
+                    films: Int, started: tools.Stopwatch.Started,
                     phases: ProjectionPhases, patch: Boolean, movedElsewhere: Set[String] = Set.empty): ProjectionTick = {
     val before    = stored.map(r => r.id -> r).toMap
     // A film another writer moved since this projection last wrote it may differ anywhere: compared and written whole. So
@@ -401,12 +397,12 @@ final class IdentityProjection(
       Try(announce(CacheKey.stored(f.title, f.key), f.record)).failed.foreach(e => logger.warn(s"identity projection: announcing ${f.id} (${f.title}) failed", e))
     }
     val seconds = started.seconds
-    metrics.projected(films, listings, plan.regroupings, canary, seconds)
+    metrics.projected(films, listings, plan.regroupings, seconds)
     reportTakes(plan, resolution, before, unwritten)
     val tick = ProjectionTick(Some(resolution), Some(plan), listings, changed.size - declined, plan.retired.size, declined, None, phases.all,
-      changed = changed, canary = canary)
+      changed = changed)
     tools.LogFields.info(logger.underlyingLogger, f"identity projection: $listings listings → $films films; wrote ${tick.written}, retired ${tick.retired}, " +
-        s"declined $declined; ${plan.regroupings}; canary ${canary.toSeq.sortBy(_._1.ordinal).map { case (r, n) => s"${r.label} $n" }.mkString(", ")}" +
+        s"declined $declined; ${plan.regroupings}" +
         f" in $seconds%.1fs (${phases.render})",
       Seq("listings" -> listings, "films" -> films, "written" -> tick.written, "retired" -> tick.retired, "declined" -> declined,
         "take_changes" -> plan.takes.size, "seconds" -> math.round(seconds * 10) / 10.0, "scoped" -> patch,

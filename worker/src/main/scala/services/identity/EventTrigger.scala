@@ -8,7 +8,7 @@ import scala.concurrent.duration._
 
 /**
  * Runs `run` a short while after it is asked to, as events arrive — the identity projection of what moved
- * ([[IdentityProjection.tickChanged]]) and the fill of the gaps the model found ([[ShadowLookupFill]]): each request pushes
+ * ([[IdentityProjection.tickChanged]]) and the fill of the gaps the model found ([[LookupFill]]): each request pushes
  * the run to `debounce.quiet` after it, never past `debounce.cap` after the first request it gathers (the read model's
  * change debounce, `MovieChangeStream.Debounce`). What an event moved is acted on within the cap, a burst in one run,
  * with no period between.

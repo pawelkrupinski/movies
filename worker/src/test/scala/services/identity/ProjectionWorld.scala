@@ -39,8 +39,8 @@ private[identity] final class ProjectionWorld(
   val takes      = scala.collection.mutable.ListBuffer.empty[TakeChange]
   /** Each count of suspect takes the projection asked for: how many decisions and listings it was handed. */
   val suspected  = scala.collection.mutable.ListBuffer.empty[(Int, Int)]
-  /** What the last projection reported: its films and canary. */
-  var reported: Option[(Int, Map[ShadowRelation, Int])] = None
+  /** What the last projection reported: its films. */
+  var reported: Option[Int] = None
   val cache      = new CaffeineMovieCache(repository, normalizer = normalizer, clock = _root_.tools.SpecClock.Pinned)
   val intake     = new IdentityListingIntake(accepted, archive, new InMemoryScrapeGuardLedger, normalizer, 3, clock,
     services.movies.ListingIntakeMetrics.noop)
@@ -54,8 +54,8 @@ private[identity] final class ProjectionWorld(
     announce = (k, _) => { if (announceFails) throw new IllegalStateException(s"bus down for ${k.cleanTitle}"); announced += k; () },
     normalizer = normalizer, slots = slots,
     tokens = ScreeningTokens.of(Country.Poland), metrics = new IdentityProjectionMetrics {
-      def projected(films: Int, listings: Int, regroupings: Regroupings, canary: Map[ShadowRelation, Int], seconds: Double): Unit =
-        reported = Some(films -> canary)
+      def projected(films: Int, listings: Int, regroupings: Regroupings, seconds: Double): Unit =
+        reported = Some(films)
       def refused(reason: IdentityProjectionMetrics.Refusal): Unit = { refusals += reason; () }
       def drifted(films: Int): Unit = { drifts += films; () }
       def reconciled(measured: Boolean): Unit = { reconciles += measured; () }

@@ -2,10 +2,10 @@ package services.metrics
 
 import io.prometheus.metrics.core.metrics.Gauge
 import io.prometheus.metrics.model.registry.PrometheusRegistry
-import services.identity.{ShadowLookupMetrics, ShadowLookupRound}
+import services.identity.{LookupFillMetrics, LookupFillRound}
 
 /**
- * The identity model's paced live lookup fill (`ShadowLookupFill`, docs/design/identity-resolver.md §19),
+ * The identity model's paced live lookup fill (`LookupFill`, docs/design/identity-resolver.md §19),
  * a gauge with a leading `country` label written after every round:
  *
  *  - `kinowo_worker_identity_shadow_lookups{outcome}` — the last round: `asked` live, of those `answered`
@@ -14,7 +14,7 @@ import services.identity.{ShadowLookupMetrics, ShadowLookupRound}
  *
  * Nothing is seeded: a country that has run no round exports no series.
  */
-final class IdentityShadowMetrics(registry: PrometheusRegistry) {
+final class IdentityLookupFillMetrics(registry: PrometheusRegistry) {
 
   private val lookups: Gauge = Gauge.builder()
     .name("kinowo_worker_identity_shadow_lookups")
@@ -23,7 +23,7 @@ final class IdentityShadowMetrics(registry: PrometheusRegistry) {
     .labelNames("country", "outcome")
     .register(registry)
 
-  def lookupsForCountry(country: String): ShadowLookupMetrics = (r: ShadowLookupRound) => {
+  def lookupsForCountry(country: String): LookupFillMetrics = (r: LookupFillRound) => {
     Seq("asked" -> r.asked, "answered" -> r.answered, "failed" -> r.failed, "deferred" -> r.deferred, "rate" -> r.rate.perMinute)
       .foreach { case (outcome, n) => lookups.labelValues(country, outcome).set(n.toDouble) }
   }
