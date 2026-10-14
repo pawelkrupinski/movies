@@ -6,6 +6,7 @@ set -uo pipefail
 # push below, and its red-gate cases failed (2026-10-14). Each case names what it skips itself.
 unset PREPUSH_SKIP
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+export REPO_ROOT  # the quoted-heredoc stub gh below sources scratch-git.sh from it
 . "$REPO_ROOT/scripts/shell-spec.sh"
 # Run as pre-push's own `hooktest` check, this inherits the GIT_DIR the hook was handed; the scratch
 # repositories below would otherwise BE the repository being pushed (it once committed this spec's
@@ -21,7 +22,7 @@ cat > "$ghstub/gh" <<'STUB'
 [ -n "${GH_FAILS:-}" ] && { echo "HTTP 502: Bad Gateway" >&2; exit 1; }
 [ -n "${GH_HANGS:-}" ] && exec sleep 30
 # a check that rewrites core.hooksPath of the repository it runs in (what moved the shared config to an absolute path)
-[ -n "${GH_REWRITES_HOOKSPATH:-}" ] && git config core.hooksPath "$GH_REWRITES_HOOKSPATH"
+[ -n "${GH_REWRITES_HOOKSPATH:-}" ] && { . "$REPO_ROOT/scripts/scratch-git.sh"; scratch_git "$PWD" config core.hooksPath "$GH_REWRITES_HOOKSPATH"; }
 # `gh run download RUN -p … -D DIR`: a convergence leg's served takes, as the judgements check fetches them
 if [ "$1 $2" = "run download" ]; then
   while [ $# -gt 0 ]; do [ "$1" = -D ] && dir="$2"; shift; done
