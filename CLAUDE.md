@@ -490,7 +490,8 @@ has every flag; name these tools in every subagent brief.
 - Why does this listing take (or not take) a film; did commit X move it; first bad commit → `scripts/identity-slice`
   (`--ref A --ref B`, `--bisect`, `--batch`); the whole WHY trace from the capture → `scripts/identity-slice --explain`
 - Why does a raw title clean / search / shape so; which title rule fired → `scripts/title-trace`
-- Is a scraper reading a venue's field wrong → `scripts/venue-replay`
+- Is a scraper reading a venue's field wrong; did commit X change what it reads; what prod holds for it now →
+  `scripts/venue-replay <cc> <venue>` (`--ref A --ref B`, `--prod`)
 - Code or new data; what changed between two recordings → `scripts/recording-diff`
 - When / why a listing's take changed in prod, per deploy → `scripts/listing-history`
 - What the labels, known-wrong, expected, baseline and accepted lists say about a listing or film, who added each,

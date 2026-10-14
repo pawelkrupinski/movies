@@ -45,6 +45,9 @@ Design and limits: docs/design/identity-slice.md.
 | Which listings did a change move, over a WHOLE corpus (matched ones too)? | the convergence row's identity takes check (`scripts/ci/identity-takes-check.sh`, `identity_takes_diff.py`) |
 | Why does a raw title clean / search / shape the way it does? Which title rule fired? | `scripts/title-trace "<raw title>" --country de [--venue X]` — every step, each rule's name, before and after (below) |
 | Did commit Y change how a title cleans, searches or shapes? | `scripts/title-trace "<raw title>" --country de --ref Y~1 --ref Y` — both traces, then the steps that moved |
+| Is a venue's client reading a field wrong (synopsis, director, runtime, year, title, format)? What did one venue scrape? | `scripts/venue-replay pl "ziemi rybnickiej" [--title trzy] [--fields]` — every listing, its clean title and search, fields, detail page re-read, shape checks (below) |
+| Did commit Y change what a venue's client reads? | `scripts/venue-replay … --ref Y~1 --ref Y` (+ `--fixtures <client tree>` for pages the recording lacks, `--scrape` to re-run the listing parser) |
+| …and what does prod hold for it right now? | `… --prod` — the local mirror's cinema_scrapes / venue_pages / identity_listings beside the replay |
 | What do the labels / known-wrong / expected / baseline / accepted lists and MatchedTakesLabelSpec say about a listing or film, who added each, and does prod still take it so? | `scripts/label-lookup uk --title "RBO: Romeo & Juliet" [--venue X]` or `scripts/label-lookup uk --film tmdb:N` (below) |
 | Code or new data? What changed between two recordings (a red recording, a leg that moved)? | `scripts/recording-diff <runA> <runB> --country de [--venue X] [--title Y]` (below) |
 | When and why did prod's take of a listing change, per deploy? Would CI have reproduced it? | `scripts/listing-history uk --title "ties that bind" [--venue X] [--since 7d] [--replay]` (below) |
@@ -74,6 +77,42 @@ production order, each step's own answer:
 ```
 
 The listing's take needs its candidates and families: that is `scripts/identity-slice`, not this.
+
+## venue-replay
+
+`scripts/venue-replay <cc> <venue> [--recording RUN] [--ref A [--ref B]] [--title S]... [--fields] [--fixtures DIR]...
+[--scrape [--date D]] [--prod]` — one venue's listings as each ref's code reads them, from a recording (default the newest
+green; the cache identity-slice uses), never the network. Per listing: raw → clean title, search query, formats, year,
+runtime, director, synopsis head, feed ids, detail URL, showtimes, where the detail fields came from (and `RE-READ … was`
+for each field a re-read page moved), the CinemaSlotInvariantsSpec / SearchQueryMarkersSpec findings (their allowlists,
+in e2e, may excuse one) and a `title-trace` line for a title a rule moved. Two refs: both, then every listing and field
+that moved. One JVM per ref; ~8 s warm, ~14 s for two refs, ~2 min the first time a ref compiles.
+
+```
+- Trzy pożegnania   [search: Trzy pożegnania]                                     (d880f62cc~1)
+    formats - · year - · runtime - · director Isabel Coixet · … · detail page re-read (client parseDetail)
+    synopsis Scenariusz: Enrico Audenino, Isabel CoixetP
+    CHECK CinemaSlotInvariants synopsis-is-credits: Scenariusz: Enrico Audenino, Isabel CoixetP
+== d880f62cc~1 → d880f62cc
+~ Trzy pożegnania
+    runtime: '-' → '120'
+    synopsis: 'Scenariusz: Enrico Audenino, Isabel CoixetP' → 'Po rozstaniu z ukochanym Marta, …'
+```
+
+What a recording can and cannot replay — it is prod's `cinema_scrapes` (the clients' PARSED output) plus the detail
+pages the identity sweep read, never a scraper's listing pages:
+
+- **Every venue**: its recorded row, read by the ref's code — slots, title rules, format peel, search query, checks.
+  A title-rule or slot change shows; a listing-parser change does NOT (the row is what prod's parser made of it).
+- **Detail pages, re-read by the ref's parser**: every `DetailEnricher` whose pages the recording holds (PL ~30
+  clients, UK Cineworld + Flicks, US Alamo + Flicks; DE and ES record none), and a client with its own
+  `parseDetail(html, url)` (Teatr Ziemi Rybnickiej) when `--fixtures` holds the page.
+- **`--scrape`** re-runs `fetch()` itself, clock on `--date` — only over a tree holding the venue's listing pages: a
+  client's checked-in fixture tree (`test/resources/fixtures/kinoheld` for Filmwerk Gütersloh, `--date 2026-10-11`).
+- A request no tree holds FAILS (exit 3), named, whatever the client did with it — `--title` narrows to what you hold.
+
+Code or data: both refs read ONE recording, so what moves is the code's; whether the venue's data moved between two
+recordings is `scripts/recording-diff`. Cases pinned in `scripts.VenueReplaySpec` (`test/resources/fixtures/venue-replay/`).
 
 ## label-lookup
 
