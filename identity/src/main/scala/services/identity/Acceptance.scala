@@ -152,11 +152,38 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  Man"), and then only that film may be taken ([[takesNoBill]]). */
   def billsSeveralWorks(ranked: Seq[Scored]): Boolean = ranked.headOption.exists { any =>
     any.listing.rawTitle.exists(ListingShape.quotesSeveralDated) || (any.listing.title +: any.listing.rawTitle.toSeq).exists(ListingShape.quotesTwoJoined) ||
+    slashesTwoWorks(any.listing, ranked) ||
     (MultiFilmBill.billsTwoWorks(any.listing) && !eligibleOf(ranked).exists(_.category("title").contains("exact")) &&
       MultiFilmBill.billsTwoWholeWorks(any.listing)) ||
       markerOf(ranked).exists(marker => !eligibleOf(ranked).exists(scored => MultiFilmBill.namedBy(marker, scored.candidate.film)) &&
         billedAlone(ranked).isEmpty)
   }
+
+  /** Does a SLASH join two works — every piece of the title a slash parts the whole title of one candidate, a leading
+   *  article aside, and no candidate titled as two pieces? UK Savoy Cinema Corby's "We're Going on a Bear Hunt / Tiger
+   *  Who Came to Tea" bills the two shorts as one programme, as the "+" bills do; one film's titles either side of the
+   *  slash ("Le Fabuleux Destin d'Amélie Poulain / Die fabelhafte Welt der Amélie") are its own, and a piece naming no
+   *  candidate ("/ Baby Friendly") no second work. */
+  private def slashesTwoWorks(listing: IdentityMeasures.Listing, ranked: Seq[Scored]): Boolean = {
+    def key(text: String) = {
+      val words = services.movies.TitleContainment.tokens(text)
+      if (words.sizeIs >= 2 && IdentityMeasures.LeadingArticles(words.head)) words.tail else words
+    }
+    def slashed(title: String) = {
+      val parts  = SlashBreak.split(title).toSeq
+      val pieces = parts.map(key).filter(_.nonEmpty)
+      // a format, a screening note or an event after the slash is no second work, whatever film carries its name
+      // ("Baranek Shaun i kudłata bestia / dubbing", '"LALKA" / Premiera')
+      pieces.sizeIs >= 2 && parts.forall(MultiFilmBill.namesAWork) && {
+        val named = pieces.map(piece => eligibleOf(ranked).filter(_.candidate.film.titles.exists(key(_) == piece)).map(_.candidate.tmdbId).toSet)
+        named.forall(_.nonEmpty) && named.combinations(2).forall { case Seq(a, b) => (a intersect b).isEmpty }
+      }
+    }
+    // read for every rule's every ranking: a title with no slash is split for nothing
+    def read(title: String) = title.indexOf('/') >= 0 && slashed(title)
+    read(listing.title) || listing.rawTitle.exists(raw => raw != listing.title && read(raw))
+  }
+  private val SlashBreak = """\s+/\s+""".r
 
   /** The one film a marathon billing one title names ([[MultiFilmBill.billedOne]]): the one eligible candidate titled
    *  exactly so, when no eligible candidate's title extends it — PL "Inna Mamusia - maraton" is Inna mamusia (2026);

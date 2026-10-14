@@ -67,7 +67,6 @@ uk	Social Reckoning	tmdb:556984	The Trial of the Chicago 7 (2020)	wrong by label
 uk	Social Reckoning - Baby Friendly	tmdb:556984	The Trial of the Chicago 7 (2020)	wrong by labels.tsv
 uk	The Nutcracker (ROH)	tmdb:904108	ROH Live: The Nutcracker (2021)	wrong by labels.tsv
 uk	The Tiger Who Came for Tea and We're Going on a Bear Hunt	tmdb:644120	The Tiger Who Came to Tea (2022)	wrong by labels.tsv
-uk	We're Going on a Bear Hunt / Tiger Who Came to Tea	tmdb:431591	We're Going on a Bear Hunt (2016)	wrong by labels.tsv
 us	NT Live: Hamlet	tmdb:396227	National Theatre Live: Hamlet (2015)	wrong by labels.tsv
 de	Ukrainian Film Festival Berlin: CAMOUFLAGE	tmdb:56085	Camouflage - Alles nur Tarnung (2001)	known wrong: c1ef3a56c (deny a short to a listing its feed links to another film) cured Acud's "BARWY OCHRONNE / CAMOUFLAGE", whose wrong take carried the family vote IL KINO's listing (stating nothing) reached Gibalenko's 1735950 by; alone it pools to the 2001 top hit at 39%, kept apart by the Cineamo-56085m listings that deny it. Follow-up: a listing should not take a film by pooling alone when listings of its title kept apart from it deny that film (withdrawn-vote rule, measured cured 1 / lost 0 on DE; needs a reproducing test)
 de	Island	tmdb:1192466	Island (2023)	wrong by labels.tsv

@@ -410,6 +410,26 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     acceptance.billsSeveralWorks(ranked(Listing("La Perra | BEST FILM on Tour | POKAZ FILMU + SPOTKANIE"), perra, talk)) shouldBe false
   }
 
+  it should "be read the same when a slash joins the two works, each piece another film's whole title" in {
+    // UK Savoy Cinema Corby "We're Going on a Bear Hunt / Tiger Who Came to Tea" (59 minutes, 2026-10-14 wrong-match
+    // hunt): the slash bill took Bear Hunt, its search having dropped what follows the slash
+    val bear  = (431591, Film("We're Going on a Bear Hunt", year = Some(2016)), Some(1))
+    val tiger = (644120, Film("The Tiger Who Came to Tea", year = Some(2019)), Some(2))
+    val bill  = Listing("We're Going on a Bear Hunt / Tiger Who Came to Tea", runtime = Some(59))
+    acceptance.billsSeveralWorks(ranked(bill, bear, tiger)) shouldBe true
+    taken(ranked(bill, bear, tiger)) shouldBe None
+    // one film's two titles either side of the slash are its own: no bill
+    val amelie = (194, Film("Le Fabuleux Destin d'Amélie Poulain", Some("Die fabelhafte Welt der Amélie"), year = Some(2001)), Some(1))
+    acceptance.billsSeveralWorks(ranked(Listing("Le Fabuleux Destin d'Amélie Poulain / Die fabelhafte Welt der Amélie"), amelie)) shouldBe false
+    // nor a title only one side of which names a film
+    acceptance.billsSeveralWorks(ranked(Listing("We're Going on a Bear Hunt / Baby Friendly"), bear)) shouldBe false
+    // nor a format or an event after the slash, though a film carries its name (PL "… / dubbing", "… / Premiera")
+    val dubbing  = (99001, Film("Dubbing", year = Some(2011)), Some(2))
+    val premiera = (99002, Film("Premiera", year = Some(2015)), Some(2))
+    acceptance.billsSeveralWorks(ranked(Listing("We're Going on a Bear Hunt / dubbing"), bear, dubbing)) shouldBe false
+    acceptance.billsSeveralWorks(ranked(Listing("We're Going on a Bear Hunt / Premiera"), bear, premiera)) shouldBe false
+  }
+
   "a listing dating its title" should "take the one record its title names exactly from that year, however the database ranks it" in {
     // US "Troll (1986)": TMDB ranks "Troll 2" and the 2022 "Troll" above the 1986 film.
     val troll = Listing("Troll (1986)")

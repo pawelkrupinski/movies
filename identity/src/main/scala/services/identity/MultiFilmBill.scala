@@ -119,7 +119,7 @@ object MultiFilmBill {
     }
   private val Bracketed     = """\([^()]*\)|\[[^\[\]]*\]""".r
   private val ProgrammeDash = """\s[-–—]\s""".r
-  private def namesAWork(piece: String): Boolean = {
+  private[identity] def namesAWork(piece: String): Boolean = {
     // a one-letter word names nothing: "Q&A" is no work, and the "a" of "We're Going on a Bear Hunt" no event; a title
     // of numbers is one ("2 x 2 = 4", billed after "Zakazane piosenki")
     val all   = TitleContainment.tokens(piece)
