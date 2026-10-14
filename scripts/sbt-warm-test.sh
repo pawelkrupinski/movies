@@ -84,6 +84,25 @@ check "a changed build is reloaded first" "--client reload; compile" "$(tail -1 
 check "...once" "--client compile" "$(tail -1 "$scratch/sbt-calls" | cut -d'|' -f2)"
 kill "$server" 2>/dev/null; wait "$server" 2>/dev/null
 
+# 2026-10-15: a seed ran every call (a module that never gets Zinc state) and removed active.json under the LIVE server,
+# so each call started a new one — 69 leaked servers. A live server's active.json survives a seeding call...
+fake_server() { (cd "$1" && exec -a "java -jar /fake/sbt-launch.jar --detach-stdio" sleep 300) & }
+mkdir -p "$scratch/other/e2e/src"
+fake_server "$scratch/other"; server=$!
+for _ in $(seq 1 100); do pgrep -f 'fake/sbt-launch.jar --detach' >/dev/null && break; sleep 0.1; done
+echo '{"uri":"local://elsewhere/sock"}' > "$scratch/other/project/target/active.json"
+(cd "$scratch/other" && "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
+check "a seeding call leaves the live server's active.json alone" "elsewhere" \
+  "$(sed -n 's|.*local://\(.*\)/sock.*|\1|p' "$scratch/other/project/target/active.json")"
+# ...and several servers in one checkout are stopped, so a call starts exactly one
+fake_server "$scratch/other"; second=$!
+sleep 0.5
+(cd "$scratch/other" && "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
+sleep 0.3
+check "several servers in one checkout are all stopped" "stopped stopped" \
+  "$(kill -0 "$server" 2>/dev/null && echo running || echo stopped) $(kill -0 "$second" 2>/dev/null && echo running || echo stopped)"
+kill "$server" "$second" 2>/dev/null
+
 # a removed checkout's server is stopped by the next call from anywhere
 sleep 300 & sleeper=$!
 for f in "$KINOWO_SBT_WARM_STATE"/*.root; do echo "$sleeper" > "${f%.root}.pid"; done

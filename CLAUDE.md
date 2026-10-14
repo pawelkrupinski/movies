@@ -509,7 +509,7 @@ has every flag; name these tools in every subagent brief.
 - A capture run's ratchet findings as a table → `scripts/identity-ratchet-report`
 - Judging unjudged takes → `scripts/identity-judge-cards`
 
-**Speed.** Run sbt through `scripts/sbt-warm "<command>"` (one kept server per worktree, a fresh worktree seeded from
+**Speed.** Run sbt through `scripts/sbt-warm "<command>"` (one kept server per worktree — extras are stopped on the next call, and it exits after 30 idle minutes; a fresh worktree seeded from
 the newest local main build: a cold 232 s spec run becomes ~50 s, then the spec's own 41 s); one spec while
 iterating, the module's suite once before pushing. `identity-slice --batch` runs slices in parallel and shares each
 slice's result per (recording, ref) across checkouts — a 2,500-listing DE batch at two refs went from ≈78 min to

@@ -10,6 +10,9 @@
 #   scripts/sbt-warm --stop              stop this checkout's server
 #   scripts/sbt-warm --reap              stop every kept server whose checkout is gone, or idle past the timeout
 #
+# ONE SERVER: a call finding several servers in the checkout stops them all and starts one; a seed never touches
+# project/target/active.json of a checkout whose server lives (that made every call start a new server, 2026-10-15).
+#
 # SEEDING: a checkout with no worker/target/scala-* gets the compiled classes and Zinc state of the newest local build of
 # a main commit — another worktree's, the root checkout's, or an identity tool's ref tree (~/.cache/kinowo-identity/refs)
 # — whose commit origin/main contains: project/target, project/project/target and */target/scala-*, the paths the CI's
@@ -17,7 +20,7 @@
 # compile recompiles only what differs from that commit. KINOWO_SBT_WARM_SEED=<dir> names the source instead.
 #
 # THE SERVER is sbt's own (`sbt --client`, one per checkout directory; each call logs the checkout and server it uses). A watchdog beside it stops it when the checkout
-# is removed, or after $KINOWO_SBT_WARM_IDLE_MINUTES (default 60) minutes without a call through this script; every call
+# is removed, or after $KINOWO_SBT_WARM_IDLE_MINUTES (default 30) minutes without a call through this script; every call
 # also reaps the servers of removed checkouts. Its state: $KINOWO_SBT_WARM_STATE (default ~/.cache/kinowo-sbt-warm).
 #
 # A plain `sbt -batch` in the same checkout while the server lives would compile into the same target/ — two Zincs over
@@ -25,7 +28,7 @@
 set -uo pipefail
 
 State=${KINOWO_SBT_WARM_STATE:-$HOME/.cache/kinowo-sbt-warm}
-IdleMinutes=${KINOWO_SBT_WARM_IDLE_MINUTES:-60}
+IdleMinutes=${KINOWO_SBT_WARM_IDLE_MINUTES:-30}
 IdentityRefs=${KINOWO_IDENTITY_CACHE:-$HOME/.cache/kinowo-identity}/refs
 log() { echo "[sbt-warm] $*" >&2; }
 
@@ -34,15 +37,35 @@ root=$(cd "$root" && pwd -P)
 key=$(printf '%s' "$root" | shasum | cut -c1-12)
 mkdir -p "$State"
 
-# The pid of the sbt server whose working directory is <root>, if one runs.
-server_pid() { # <root>
+# The pids of every sbt server whose working directory is <root> (newest last), if any runs.
+server_pids() { # <root>
   local pid cwd
   for pid in $(pgrep -f 'xsbt\.boot\.Boot|sbt-launch' 2>/dev/null); do
     ps -o args= -p "$pid" 2>/dev/null | grep -q -- '--detach-stdio' || continue   # a server (sbt --client's), not a one-shot sbt
     cwd=$(lsof -a -p "$pid" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p')
-    [ -n "$cwd" ] && [ "$(cd "$cwd" 2>/dev/null && pwd -P)" = "$1" ] && { echo "$pid"; return 0; }
-  done
-  return 1
+    [ -n "$cwd" ] && [ "$(cd "$cwd" 2>/dev/null && pwd -P)" = "$1" ] && echo "$pid"
+  done | sort -n
+}
+
+# The pid of the one sbt server of <root>, if one runs.
+server_pid() { # <root>
+  local pids
+  pids=$(server_pids "$1")
+  [ -n "$pids" ] || return 1
+  echo "$pids" | tail -1
+}
+
+# At most ONE server per checkout. 2026-10-15: 69 leaked servers, ~40 in one worktree — so when a checkout has several,
+# they are all stopped and one started afresh.
+dedupe() { # <root>
+  local pids pid
+  pids=$(server_pids "$1")
+  [ "$(echo "$pids" | grep -c .)" -gt 1 ] || return 0
+  log "$(echo "$pids" | grep -c .) servers run in $1 ($(echo $pids)): stopping all, starting one"
+  for pid in $pids; do kill "$pid" 2>/dev/null; done
+  for _ in 1 2 3 4 5 6 7 8 9 10; do [ -z "$(server_pids "$1")" ] && break; sleep 1; done
+  for pid in $(server_pids "$1"); do kill -9 "$pid" 2>/dev/null; done
+  rm -f "$1/project/target/active.json"
 }
 
 # Stops the server of every registered checkout that is gone (or, with "idle", unused past the timeout).
@@ -106,7 +129,6 @@ seed() {
       cp -cR "$src/$d" "$root/$d" 2>/dev/null || cp -R "$src/$d" "$root/$d"
     done
   done
-  rm -f "$root/project/target/active.json"   # the source's server: sbt --client would run this checkout's commands there
   log "seeded in $((SECONDS - started))s"
 }
 
@@ -136,6 +158,7 @@ case "${1:-}" in
 esac
 
 reap
+dedupe "$root"
 seed
 echo "$root" > "$State/$key.root"
 touch "$State/$key.used"
@@ -145,7 +168,8 @@ if pid=$(server_pid "$root"); then
 else
   fresh=1
   # sbt --client runs the commands in whichever live server project/target/active.json names — another checkout's, when
-  # it was copied in (a seed before 2026-10-14) — so without a server of this checkout's own, it must name none
+  # it was copied in by a seed — so without a server of this checkout's own, it must name none. ONLY then: removed while
+  # a server lives (as a seed's cleanup once did, every call, 2026-10-15), it starts a new server per call.
   rm -f "$root/project/target/active.json"
   log "checkout $root, server none: starting one"
 fi
