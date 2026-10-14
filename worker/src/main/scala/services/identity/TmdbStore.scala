@@ -281,6 +281,8 @@ object TmdbStore {
   val RenewEvery: FiniteDuration = 1.day
   private val Stamps = Seq(ChangedAt, FetchedAt)
   def fetchedAt(d: BsonDocument): Option[Long] = Option(d.get(FetchedAt)).filter(_.isInt64).map(_.asInt64.getValue)
+  /** Was `d` given longer than `age` ago — or never stamped: an answer to ask again. */
+  def olderThan(d: BsonDocument, age: FiniteDuration, clock: java.time.Clock): Boolean = fetchedAt(d).forall(clock.millis() - _ > age.toMillis)
 
   /** A film's hit as the questions naming it read it: from its record once known, else the hit
    *  fields a search or credit gave. `None` when neither is held (the film was never named). */

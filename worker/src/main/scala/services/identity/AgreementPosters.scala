@@ -60,7 +60,7 @@ final class PosterAnswerStore(answers: FamilyAnswerStore, clock: Clock) extends 
   def wanted(question: PosterQuestion): Boolean = document(idOf(question)).forall { d =>
     val unreadVenue = isUnread(d) || (question.isInstanceOf[PosterQuestion.Venue] && hashesOf(d).isEmpty)
     val age         = if (unreadVenue) UnreadAge else Age
-    Option(d.get(TmdbStore.FetchedAt)).filter(_.isInt64).forall(at => clock.millis() - at.asInt64.getValue > age.toMillis)
+    TmdbStore.olderThan(d, age, clock)
   }
 
   private def document(id: String): Option[BsonDocument] = answers.document(id)
@@ -150,15 +150,9 @@ final class AgreementPosterHandler(store: PosterAnswerStore, hashing: PosterHash
   def handle(task: Task): HandlerOutcome = AgreementQuestions.posterOf(task).fold[HandlerOutcome](Skipped) { question =>
     if (!store.wanted(question)) { metrics.asked(AgreementQuestionMetrics.Poster, AgreementQuestionMetrics.Fresh); Skipped }
     else {
-      val outcome = try {
-        store.file(question, hashing.of(question))
-        filed(); Done
-      } catch { case scala.util.control.NonFatal(e) => AgreementQuestions.failed(e, s"poster ${PosterAnswers.idOf(question)}", clock) }
-      metrics.asked(AgreementQuestionMetrics.Poster, outcome match {
-        case Done                   => AgreementQuestionMetrics.Answered
-        case _: HandlerOutcome.Deferred => AgreementQuestionMetrics.Deferred
-        case _                      => AgreementQuestionMetrics.Failed
-      })
+      val outcome = AgreementQuestions.asked(AgreementQuestionMetrics.Poster, s"poster ${PosterAnswers.idOf(question)}", metrics, clock, filed) {
+        store.file(question, hashing.of(question)); AgreementQuestionMetrics.Answered
+      }
       outcome match {
         // its last attempt failed too: given up on, read as unread rather than waited on for ever
         case _: HandlerOutcome.Reschedule if task.attempts >= PosterAnswerStore.GiveUpAttempts => store.giveUp(question); filed(); Done

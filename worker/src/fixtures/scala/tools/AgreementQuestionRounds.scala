@@ -54,7 +54,7 @@ final class AgreementQuestionRounds(store: FamilyAnswerStore, sources: Map[Voter
   }
 
   private def ask(family: VoterFamily, question: (VoterFamily, String)): Unit =
-    try AgreementQuestions.file(store, family, sources(family), question._2)
+    try { AgreementQuestions.file(store, family, sources(family), question._2); () }
     catch { case NonFatal(e) =>
       val n = failures.merge(question, 1, (a, b) => a + b)
       println(s"[$label] ${family.label} '${question._2}' failed (attempt $n of $attempts): ${e.getMessage}")

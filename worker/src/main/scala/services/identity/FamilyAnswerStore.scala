@@ -58,10 +58,8 @@ final class FamilyAnswerStore(docs: TmdbDocuments, clock: Clock) extends service
   def fileShowing(family: VoterFamily, venue: String, found: Seq[Showing]): Unit     = put(showingId(family, venue), showingsDoc(found))
 
   /** Is the question's answer missing, or older than its kind keeps it ([[SearchAge]], [[RecordAge]], [[ShowingAge]])? */
-  def wanted(id: String): Boolean = document(id).forall { d =>
-    val age = Option(d.get(TmdbStore.FetchedAt)).filter(_.isInt64).map(at => clock.millis() - at.asInt64.getValue)
-    age.forall(_ > (if (id.contains("|record|")) RecordAge else if (id.contains("|showing|")) ShowingAge else SearchAge).toMillis)
-  }
+  def wanted(id: String): Boolean =
+    document(id).forall(TmdbStore.olderThan(_, if (id.contains("|record|")) RecordAge else if (id.contains("|showing|")) ShowingAge else SearchAge, clock))
 
   private def hits(id: String): Answer[Seq[SourceHit]] =
     document(id).fold[Answer[Seq[SourceHit]]](Answer.Unknown)(d => Answer.Known(hitsOf(d)))

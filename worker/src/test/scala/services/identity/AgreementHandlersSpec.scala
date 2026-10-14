@@ -95,11 +95,18 @@ class AgreementHandlersSpec extends AnyFlatSpec with Matchers {
     enqueues.toSeq shouldBe Seq("imdb" -> true, "tmdb-find" -> true, "imdb" -> false)
     val store = world()
     val handler = new AgreementQuestionHandler(store, Map(VoterFamily.Imdb -> new Answering(VoterFamily.Imdb),
-      VoterFamily.Metacritic -> new Answering(VoterFamily.Metacritic, Some(new HttpStatusException(503, "GET", "https://www.metacritic.com/x", None)))),
+      VoterFamily.Metacritic -> new Answering(VoterFamily.Metacritic, Some(new HttpStatusException(503, "GET", "https://www.metacritic.com/x", None))),
+      VoterFamily.Filmweb -> new Answering(VoterFamily.Filmweb, Some(new HttpStatusException(404, "GET", "https://www.filmweb.pl/x", None))),
+      VoterFamily.RottenTomatoes -> new Answering(VoterFamily.RottenTomatoes, Some(new CircuitOpenException("www.rottentomatoes.com", 60000L)))),
       () => (), clock, metrics)
     handler.handle(task(VoterFamily.Imdb, "title|Klondike")); handler.handle(task(VoterFamily.Imdb, "title|Klondike"))
-    handler.handle(task(VoterFamily.Metacritic, "title|Dune"))
-    outcomes.toSeq shouldBe Seq("imdb" -> "answered", "imdb" -> "fresh", "metacritic" -> "failed")
+    handler.handle(task(VoterFamily.Metacritic, "title|Dune")); handler.handle(task(VoterFamily.Filmweb, "title|Dune"))
+    handler.handle(task(VoterFamily.RottenTomatoes, "title|Dune"))
+    val finds = new AgreementFindHandler(id => if (id == "tt2") throw new CircuitOpenException("api.themoviedb.org", 60000L) else
+      if (id == "tt3") throw new java.io.IOException("reset") else (), _ => (), () => (), clock, metrics)
+    Seq("tt1", "tt2", "tt3").foreach(id => finds.handle(Task(id, TaskType.AgreementFind, s"agreement-find|$id", Map("imdbId" -> id), 1)))
+    outcomes.toSeq shouldBe Seq("imdb" -> "answered", "imdb" -> "fresh", "metacritic" -> "failed", "filmweb" -> "nothing",
+      "rt" -> "deferred", "tmdb-find" -> "answered", "tmdb-find" -> "deferred", "tmdb-find" -> "failed")
   }
 
   "a find's handler" should "ask TMDB about the agreed IMDb id and ask for a projection" in {

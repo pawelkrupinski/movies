@@ -33,38 +33,37 @@ object AgreementQuestions {
   def enqueueOpen(queue: TaskQueue, wanted: Set[(VoterFamily, String)], finds: Set[String], clock: Clock,
                   metrics: AgreementQuestionMetrics = AgreementQuestionMetrics.Silent, posters: Set[PosterQuestion] = Set.empty,
                   catalogue: Set[CatalogueQuestion] = Set.empty, records: Set[Int] = Set.empty): Unit = {
+    def behind(label: String, taskType: TaskType, key: String, payload: Map[String, String]): Unit =
+      enqueueBehind(queue, clock, metrics, label, taskType, key, payload)
     wanted.toSeq.sortBy { case (family, question) => (family.ordinal, question) }.foreach { case (family, question) =>
-      metrics.enqueued(family.label, queue.enqueue(TaskType.AgreementQuestion, s"agreement|${family.label}|$question",
-        Map(Family -> family.label, Question -> question), submittedAt = clock.instant(), claimAhead = -Behind) == EnqueueResult.Added)
+      behind(family.label, TaskType.AgreementQuestion, s"agreement|${family.label}|$question", Map(Family -> family.label, Question -> question))
     }
-    finds.toSeq.sorted.foreach(imdbId =>
-      metrics.enqueued(AgreementQuestionMetrics.TmdbFind, queue.enqueue(TaskType.AgreementFind, s"agreement-find|$imdbId",
-        Map(ImdbId -> imdbId), submittedAt = clock.instant(), claimAhead = -Behind) == EnqueueResult.Added))
+    finds.toSeq.sorted.foreach(imdbId => behind(AgreementQuestionMetrics.TmdbFind, TaskType.AgreementFind, s"agreement-find|$imdbId", Map(ImdbId -> imdbId)))
     // a TMDB question as a find is: one task type, so a worker that predates records skips the task rather than failing it
     records.toSeq.sorted.foreach(tmdbId =>
-      metrics.enqueued(AgreementQuestionMetrics.TmdbRecord, queue.enqueue(TaskType.AgreementFind, s"agreement-record|$tmdbId",
-        Map(TmdbRecord -> tmdbId.toString), submittedAt = clock.instant(), claimAhead = -Behind) == EnqueueResult.Added))
+      behind(AgreementQuestionMetrics.TmdbRecord, TaskType.AgreementFind, s"agreement-record|$tmdbId", Map(TmdbRecord -> tmdbId.toString)))
     posters.toSeq.map(question => question -> PosterAnswers.idOf(question)).sortBy(_._2).foreach { case (question, id) =>
       val payload = question match {
         case PosterQuestion.Venue(url)   => Map(VenuePoster -> url)
         case PosterQuestion.Film(tmdbId) => Map(FilmPoster -> tmdbId.toString)
       }
-      metrics.enqueued(AgreementQuestionMetrics.Poster, queue.enqueue(TaskType.AgreementPoster, s"agreement-$id", payload,
-        submittedAt = clock.instant(), claimAhead = -Behind) == EnqueueResult.Added)
+      behind(AgreementQuestionMetrics.Poster, TaskType.AgreementPoster, s"agreement-$id", payload)
     }
     AgreementCatalogueQuestions.enqueue(queue, catalogue, clock, metrics)
   }
+
+  /** One question as a task claimed [[Behind]] every other, counted under `label` — added, or already queued. */
+  def enqueueBehind(queue: TaskQueue, clock: Clock, metrics: AgreementQuestionMetrics, label: String, taskType: TaskType,
+                    key: String, payload: Map[String, String]): Unit =
+    metrics.enqueued(label, queue.enqueue(taskType, key, payload, submittedAt = clock.instant(), claimAhead = -Behind) == EnqueueResult.Added)
 
   /** The statuses that answer a question with nothing — a query the site refuses (Filmweb's 400 for an overlong title),
    *  a page that is not there — filed as such. */
   val NothingThere: Set[Int] = Set(400, 404, 410)
 
   /** `family`'s answer to `question` (`title|<text>`, `director|<name>`, `record|<id>`, `showing|<venue>`), asked of
-   *  `source` and filed. */
-  def file(store: FamilyAnswerStore, family: VoterFamily, source: FamilySource, question: String): Unit = { fileAs(store, family, source, question); () }
-
-  /** [[file]], saying whether the family answered or said there was nothing there. */
-  def fileAs(store: FamilyAnswerStore, family: VoterFamily, source: FamilySource, question: String): String = {
+   *  `source` and filed — saying whether the family answered or said there was nothing there. */
+  def file(store: FamilyAnswerStore, family: VoterFamily, source: FamilySource, question: String): String = {
     var outcome = AgreementQuestionMetrics.Answered
     def answer[A](read: => A, nothing: A): A =
       try read catch { case e: HttpStatusException if NothingThere(e.code) => outcome = AgreementQuestionMetrics.Nothing; nothing }
@@ -85,6 +84,20 @@ object AgreementQuestions {
     case other                      => Reschedule(Some(s"$what: ${other.getMessage}"))
   }
 
+  /** One question asked as every agreement handler asks it: `ask` run — it says how it came out — then a projection
+   *  asked for (`filed`); a failure [[failed]]. Counted under `label` as the ask said, [[AgreementQuestionMetrics.Deferred]]
+   *  or [[AgreementQuestionMetrics.Failed]]. */
+  def asked(label: String, what: String, metrics: AgreementQuestionMetrics, clock: Clock, filed: () => Unit)(ask: => String): HandlerOutcome =
+    try { val outcome = ask; filed(); metrics.asked(label, outcome); Done }
+    catch { case scala.util.control.NonFatal(e) =>
+      val outcome = failed(e, what, clock)
+      metrics.asked(label, outcome match {
+        case _: Deferred => AgreementQuestionMetrics.Deferred
+        case _           => AgreementQuestionMetrics.Failed
+      })
+      outcome
+    }
+
   def familyOf(task: Task): Option[VoterFamily] = task.payload.get(Family).flatMap(label => VoterFamily.values.find(_.label == label))
   def questionOf(task: Task): Option[String]    = task.payload.get(Question)
   def imdbIdOf(task: Task): Option[String]      = task.payload.get(ImdbId)
@@ -103,16 +116,9 @@ final class AgreementQuestionHandler(store: FamilyAnswerStore, sources: Map[Vote
     val asked = for { family <- AgreementQuestions.familyOf(task); question <- AgreementQuestions.questionOf(task); source <- sources.get(family) }
       yield (family, question, source)
     asked.fold[HandlerOutcome](Skipped) { case (family, question, source) =>
-      val outcome: HandlerOutcome =
-        if (!store.wanted(FamilyAnswerStore.questionId(family, question))) { metrics.asked(family.label, AgreementQuestionMetrics.Fresh); Skipped }
-        else try { metrics.asked(family.label, AgreementQuestions.fileAs(store, family, source, question)); filed(); Done }
-        catch { case scala.util.control.NonFatal(e) => AgreementQuestions.failed(e, s"${family.label} '$question'", clock) }
-      outcome match {
-        case _: Deferred   => metrics.asked(family.label, AgreementQuestionMetrics.Deferred)
-        case _: Reschedule => metrics.asked(family.label, AgreementQuestionMetrics.Failed)
-        case _             => ()
-      }
-      outcome
+      if (!store.wanted(FamilyAnswerStore.questionId(family, question))) { metrics.asked(family.label, AgreementQuestionMetrics.Fresh); Skipped }
+      else AgreementQuestions.asked(family.label, s"${family.label} '$question'", metrics, clock, filed)(
+        AgreementQuestions.file(store, family, source, question))
     }
   }
 }
@@ -128,16 +134,8 @@ final class AgreementFindHandler(find: String => Unit, reread: Int => Unit, file
       .orElse(AgreementQuestions.tmdbRecordOf(task).map(film => asked(AgreementQuestionMetrics.TmdbRecord, s"TMDB record $film")(reread(film))))
       .getOrElse(Skipped)
 
-  private def asked(label: String, what: String)(ask: => Unit): HandlerOutcome = {
-    val outcome = try { ask; filed(); Done }
-    catch { case scala.util.control.NonFatal(e) => AgreementQuestions.failed(e, what, clock) }
-    metrics.asked(label, outcome match {
-      case Done          => AgreementQuestionMetrics.Answered
-      case _: Deferred   => AgreementQuestionMetrics.Deferred
-      case _             => AgreementQuestionMetrics.Failed
-    })
-    outcome
-  }
+  private def asked(label: String, what: String)(ask: => Unit): HandlerOutcome =
+    AgreementQuestions.asked(label, what, metrics, clock, filed) { ask; AgreementQuestionMetrics.Answered }
 }
 
 /** Where the agreement's questions report: each one enqueued (`added`, or already queued), and each one asked, by how it

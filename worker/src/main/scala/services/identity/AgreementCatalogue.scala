@@ -3,8 +3,8 @@ package services.identity
 import org.bson.{BsonDocument, BsonInt32, BsonString}
 import org.mongodb.scala.bson.BsonArray
 import services.enrichment.{LetterboxdClient, WikidataClient}
-import services.tasks.HandlerOutcome.{Done, Skipped}
-import services.tasks.{EnqueueResult, HandlerOutcome, Task, TaskHandler, TaskQueue, TaskType}
+import services.tasks.HandlerOutcome.Skipped
+import services.tasks.{HandlerOutcome, Task, TaskHandler, TaskQueue, TaskType}
 import tools.{HttpFetch, HttpRead, HttpStatusException}
 
 import java.time.Clock
@@ -47,9 +47,7 @@ final class CatalogueAnswerStore(answers: FamilyAnswerStore, clock: Clock, pages
       case CatalogueQuestion.Page(url) => (pageId(url), PageAge)
       case CatalogueQuestion.Id(of)    => (idOf(of), if (answers.document(idOf(of)).exists(d => hitsOf(d).nonEmpty)) MappedAge else UnmappedAge)
     }
-    answers.document(id).forall { d =>
-      Option(d.get(TmdbStore.FetchedAt)).filter(_.isInt64).forall(at => clock.millis() - at.asInt64.getValue > age.toMillis)
-    }
+    answers.document(id).forall(TmdbStore.olderThan(_, age, clock))
   }
 }
 
@@ -121,12 +119,12 @@ object AgreementCatalogueQuestions {
     val pages = questions.toSeq.collect { case CatalogueQuestion.Page(url) => url }.sorted
     ids.groupBy(_.source).toSeq.sortBy(_._1).foreach { case (source, of) =>
       of.map(_.id).sorted.grouped(Batch).foreach { batch =>
-        metrics.enqueued(AgreementQuestionMetrics.Catalogue, queue.enqueue(TaskType.AgreementCatalogue, s"agreement-catalogue|$source|${batch.mkString(",")}",
-          Map(Source -> source, Ids -> batch.mkString(",")), submittedAt = clock.instant(), claimAhead = -AgreementQuestions.Behind) == EnqueueResult.Added)
+        AgreementQuestions.enqueueBehind(queue, clock, metrics, AgreementQuestionMetrics.Catalogue, TaskType.AgreementCatalogue,
+          s"agreement-catalogue|$source|${batch.mkString(",")}", Map(Source -> source, Ids -> batch.mkString(",")))
       }
     }
-    pages.foreach(url => metrics.enqueued(AgreementQuestionMetrics.Catalogue, queue.enqueue(TaskType.AgreementCatalogue,
-      s"agreement-catalogue-page|$url", Map(Page -> url), submittedAt = clock.instant(), claimAhead = -AgreementQuestions.Behind) == EnqueueResult.Added))
+    pages.foreach(url => AgreementQuestions.enqueueBehind(queue, clock, metrics, AgreementQuestionMetrics.Catalogue, TaskType.AgreementCatalogue,
+      s"agreement-catalogue-page|$url", Map(Page -> url)))
   }
 
   /** The questions a task asks. */
@@ -155,15 +153,8 @@ final class AgreementCatalogueHandler(store: CatalogueAnswerStore, mapping: Cata
     val questions = AgreementCatalogueQuestions.of(task)
     if (questions.isEmpty) Skipped
     else if (!questions.exists(store.wanted)) { metrics.asked(AgreementQuestionMetrics.Catalogue, AgreementQuestionMetrics.Fresh); Skipped }
-    else {
-      val outcome = try { AgreementCatalogueQuestions.file(store, mapping, pages, questions); filed(); Done }
-      catch { case scala.util.control.NonFatal(e) => AgreementQuestions.failed(e, s"catalogue ${task.payload.values.mkString(" ")}", clock) }
-      metrics.asked(AgreementQuestionMetrics.Catalogue, outcome match {
-        case Done                       => AgreementQuestionMetrics.Answered
-        case _: HandlerOutcome.Deferred => AgreementQuestionMetrics.Deferred
-        case _                          => AgreementQuestionMetrics.Failed
-      })
-      outcome
+    else AgreementQuestions.asked(AgreementQuestionMetrics.Catalogue, s"catalogue ${task.payload.values.mkString(" ")}", metrics, clock, filed) {
+      AgreementCatalogueQuestions.file(store, mapping, pages, questions); AgreementQuestionMetrics.Answered
     }
   }
 }
