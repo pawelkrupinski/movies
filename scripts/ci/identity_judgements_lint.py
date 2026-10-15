@@ -5,7 +5,8 @@ files that lean on it, before a push lands.
 Every gate that judges a take reads identity-judgements.tsv. Over 2026-10-13/14 the disagreements below each landed and
 turned a gate red after the push, where nothing ran them before it:
 
-  store      a row breaking the file's rules (identity_judgements.problems): a second row for one listing and film (a
+  store      a blank line (65884e94e's broke LabelsExportSpec's byte-for-byte round trip), or a row breaking the file's
+             rules (identity_judgements.problems): a second row for one listing and film (a
              listing judged both right and wrong, or a union merge that doubled one), a key not normalised (double
              spaces), a word outside the vocabulary, a known-wrong row naming no scope or reason, an undecided suspect
              added after the suspect gate was armed, an accepted-loss of a take judged RIGHT -- 19890b7a5 accepted four
@@ -81,8 +82,10 @@ def key(title):
     return "".join(ch for ch in folded.lower() if ch.isalnum() and not unicodedata.combining(ch))
 
 
-def store_findings(judged):
-    return [(("store", r.country, r.venue, normalise(r.rawTitle), r.film), m) for r, m in j.problems(judged)]
+def store_findings(root, judged):
+    blank = [(("store", "blank", str(n)), f"{JUDGEMENTS}:{n}: a blank line -- drop it (the file is rewritten byte for byte)")
+             for n in j.blank_lines(os.path.join(root, JUDGEMENTS))]
+    return blank + [(("store", r.country, r.venue, normalise(r.rawTitle), r.film), m) for r, m in j.problems(judged)]
 
 
 def accepted_findings(judged, labels):
@@ -239,7 +242,7 @@ def lint(root, served_paths=(), before=None, replay=None):
     judged = j.read_at(root)
     labels = j.labels_by_country(judged)
     listed = j.tolerated(judged, "served") | j.tolerated(judged, "capture")
-    return (store_findings(judged) + accepted_findings(judged, labels) + scattered_findings(judged)
+    return (store_findings(root, judged) + accepted_findings(judged, labels) + scattered_findings(judged)
             + tolerated_right_findings(judged, labels)
             + expected_match_findings(rows(os.path.join(root, EXPECTED_MATCHES), 4), labels) + hard_cluster_findings(root, judged)
             + served(served_findings(served_paths, labels, listed, j.labels_by_country(j.read(before)) if before else None),

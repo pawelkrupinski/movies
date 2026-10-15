@@ -57,6 +57,13 @@ class JudgementsLintTest(unittest.TestCase):
         self.assertEqual(1, len(found))
         self.assertIn("is not normalised", found[0])
 
+    def test_a_blank_line_fails(self):
+        # 65884e94e appended rows after a blank line: LabelsExportSpec's byte-for-byte round trip failed in web testUnit
+        found = self.messages([row("pl", "*", "Lalka", "tmdb:1", "right"), "\n", row("pl", "*", "Diuna", "tmdb:2", "right"), " \t\n"])
+        self.assertEqual(2, len(found), found)
+        self.assertIn(f"{lint.JUDGEMENTS}:3: a blank line", found[0])
+        self.assertIn(f"{lint.JUDGEMENTS}:5: a blank line", found[1])
+
     def test_the_vocabulary_and_what_each_state_asks(self):
         found = self.messages([row("xx", "*", "A", "tmdb:1", "right"), row("pl", "*", "B", "tmdb:Kinoteka", "right"),
                                row("pl", "*", "C", "tmdb:3", "maybe"), row("pl", "*", "D", "tmdb:4", "right", "known-wrong", "capture", reason="r"),

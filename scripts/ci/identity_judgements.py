@@ -98,6 +98,13 @@ def read(path):
     return out
 
 
+def blank_lines(path):
+    """The numbers of `path`'s blank (or whitespace-only) lines: `read` skips them, but the file is rewritten byte for
+    byte (LabelsExport, `write`), so one is a diff waiting to happen."""
+    with open(path, encoding="utf-8") as f:
+        return [n for n, line in enumerate(f, 1) if not line.strip()]
+
+
 def read_at(root, rel=PATH):
     return read(os.path.join(root, rel))
 
