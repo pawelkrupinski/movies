@@ -1,6 +1,7 @@
 """The takes of identity slices at two refs, compared (scripts/identity-slice): every listing whose final take moved, with
 its identity-judgements.tsv verdict at each ref, and the moves tallied — CURED (a WRONG take gone), LOST (a RIGHT take gone),
-NEW-WRONG (a take now WRONG), and the unjudged moves.
+NEW-WRONG (a take now WRONG), and the unjudged moves. The buckets are scripts/ci/identity_takes.py's `outcome`, shared with the identity
+takes check's reading of a move.
 
     python3 identity_slice_diff.py BASE.tsv HEAD.tsv BASE_NAME HEAD_NAME LABELS.tsv
 
@@ -10,7 +11,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "ci"))
-from identity_takes import table  # noqa: E402
+from identity_takes import OUTCOMES, outcome, table  # noqa: E402
 
 
 def read(path):
@@ -18,18 +19,9 @@ def read(path):
 
 
 def classify(a, b):
-    """What a listing's move from take `a` to take `b` (rows; None when the slice did not decide it) did."""
-    va = a["verdict"] if a else "-"
-    vb = b["verdict"] if b else "-"
-    if va == "WRONG" and vb != "WRONG":
-        return "cured"
-    if va == "RIGHT" and vb != "RIGHT":
-        return "lost"
-    if vb == "WRONG" and va != "WRONG":
-        return "new-wrong"
-    if vb == "RIGHT" and va != "RIGHT":
-        return "won"
-    return "moved (unjudged)"
+    """What a listing's move from take `a` to take `b` (rows; None when the slice did not decide it) did, by the verdicts
+    the slice gave each."""
+    return outcome(a["verdict"] if a else "-", b["verdict"] if b else "-")
 
 
 def take(r):
@@ -46,7 +38,7 @@ def main(argv):
              if (base.get(k) or {}).get("film") != (head.get(k) or {}).get("film")]
     tally = {}
     print(f"\n{len(keys)} listing(s) decided; {len(moves)} moved between {base_name} and {head_name}")
-    for kind in ("cured", "lost", "new-wrong", "won", "moved (unjudged)"):
+    for kind in OUTCOMES:
         of_kind = [m for m in moves if classify(m[1], m[2]) == kind]
         tally[kind] = len(of_kind)
         if not of_kind:

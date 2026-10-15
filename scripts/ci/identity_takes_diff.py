@@ -51,7 +51,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from identity_judgements import judgements_of, label_of, normalise  # noqa: E402
-from identity_takes import table  # noqa: E402
+from identity_takes import moved, table  # noqa: E402
 
 
 def load(path):
@@ -129,16 +129,6 @@ def pair(base, head):
     return pairs, unpaired, heads_alone
 
 
-def kind_of(before, after):
-    if before == after:
-        return None
-    if after is None:
-        return "lost"
-    if before is None:
-        return "gained"
-    return "changed"
-
-
 def accepted_move(move, accepted):
     """Whether an accepted loss accepts the listing's move from `before` to `after`."""
     venue, title, before, after = move["venue"], move["rawTitle"], ref(move["before"]), ref(move["after"])
@@ -182,7 +172,7 @@ def film_name(row):
 def moves_of(cc, pairs, labels, accepted):
     moves = []
     for b, h in pairs:
-        kind = kind_of(take(b), take(h))
+        kind = moved(take(b), take(h))
         if kind is None:
             continue
         move = {"kind": kind, "venue": b["venue"], "rawTitle": b["rawTitle"], "before": take(b), "after": take(h),

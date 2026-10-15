@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""identity_takes.py: the take files read one way.
+"""identity_takes.py: the take files read one way, and a take's move by its film and by its verdicts.
 
     python3 scripts/ci/identity_takes_test.py
 """
@@ -42,6 +42,20 @@ class TablesTest(unittest.TestCase):
                                    "pl\tKino\tEmil\ttmdb:2\nuk\tBEAM\tShort\n")
         self.assertEqual([(2, "pl", "Kino", "Lalka", "tmdb:1", "Lalka (1968)"), (3, "pl", "Kino", "Emil", "tmdb:2", "")],
                          t.expected_matches(path))
+
+
+
+class MoveTest(unittest.TestCase):
+    def test_a_move_by_its_film(self):
+        self.assertEqual([None, None, "lost", "gained", "changed"],
+                         [t.moved(1, 1), t.moved(None, None), t.moved(1, None), t.moved(None, 1), t.moved(1, 2)])
+
+    def test_a_move_by_its_verdicts_a_wrong_take_gone_first(self):
+        cases = {("WRONG", "RIGHT"): "cured", ("WRONG", "-"): "cured", ("RIGHT", "WRONG"): "lost", ("RIGHT", "-"): "lost",
+                 ("-", "WRONG"): "new-wrong", ("UNJUDGED", "WRONG"): "new-wrong", ("-", "RIGHT"): "won",
+                 ("WRONG", "WRONG"): "moved (unjudged)", ("RIGHT", "RIGHT"): "moved (unjudged)", ("-", "UNJUDGED"): "moved (unjudged)"}
+        self.assertEqual(cases, {k: t.outcome(*k) for k in cases})
+        self.assertEqual(set(cases.values()), set(t.OUTCOMES))
 
 
 if __name__ == "__main__":
