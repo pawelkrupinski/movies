@@ -50,6 +50,22 @@ check "a commit with no test-side file: exit 2" "2" "$rc"
 out="$(cd "$repo" && "$tool" --files 'probe.txt' -- 'test "$(bash greet.sh)" = "hello world"' 2>&1)"; rc=$?
 check "--files redefines test-side: only probe.txt is carried over, yes/yes" "0" "$rc"
 
+# A run cut off by the deadline proves nothing: a hang is no "failed before". And the deadline ends the WHOLE run —
+# the JVM an sbt test command forks, not just its shell — or it outlives fail-before, holding the worktree it removes.
+printf 'sleep 30 & echo $! > "$GRANDCHILD"; wait\n' > "$repo/hang-test.sh"
+scratch_git "$repo" add -A
+scratch_git "$repo" commit -qm "a test that hangs"
+export GRANDCHILD="$base/grandchild"
+start=$SECONDS
+out="$(cd "$repo" && KINOWO_FAIL_BEFORE_TIMEOUT=1 "$tool" -- bash hang-test.sh 2>&1)"; rc=$?
+check "a run past the deadline: exit 2, no verdict, said" "2 0 1" \
+  "$rc $(printf '%s\n' "$out" | grep -c '^FAIL-BEFORE: yes') $(printf '%s\n' "$out" | grep -c 'timed out')"
+check "...within the deadline, not the hang's 30 s" "yes" "$([ $((SECONDS - start)) -lt 20 ] && echo yes || echo no)"
+sleep 0.5
+check "...and the run's own children are stopped with it" "stopped" \
+  "$(kill -0 "$(cat "$GRANDCHILD" 2>/dev/null)" 2>/dev/null && echo running || echo stopped)"
+kill "$(cat "$GRANDCHILD" 2>/dev/null)" 2>/dev/null
+
 check "no worktree is left in the scratch repository" "1" "$(scratch_git "$repo" worktree list | wc -l | tr -d ' ')"
 check "no work directory is left" "0" "$(ls -A "$base/work" | wc -l | tr -d ' ')"
 

@@ -10,7 +10,7 @@
 #   AFTER   <commit> itself.
 # The command (run through `bash -c`, from the worktree's root) must FAIL in BEFORE and PASS in AFTER.
 #   FAIL-BEFORE: yes|no     PASS-AFTER: yes|no     (and the tail of each output)
-# Exit 0 only for yes/yes; 1 otherwise; 2 for a usage or setup error.
+# Exit 0 only for yes/yes; 1 otherwise; 2 for a usage or setup error, or a run that timed out (no verdict).
 #
 # TEST-SIDE FILES (the only ones copied into BEFORE): */src/test|it|fixtures/**, *_test.py, *-test.sh,
 # test/resources/**, .claude/**. --files <glob> (repeatable; a shell `case` pattern over the repo-relative
@@ -23,8 +23,8 @@
 # SAFETY: the caller's worktree is never touched. The worktrees live in $KINOWO_FAIL_BEFORE_DIR (default
 # ~/.cache/kinowo-fail-before), are removed by a trap, and are the only change to the shared .git (its
 # worktree list). Every GIT_* variable is dropped first, so a hook's exported GIT_DIR cannot redirect git
-# (see scripts/scratch-git.sh). KINOWO_FAIL_BEFORE_TIMEOUT (seconds, default 3000) bounds each run when
-# `timeout`/`gtimeout` exists.
+# (see scripts/scratch-git.sh). KINOWO_FAIL_BEFORE_TIMEOUT (seconds, default 3000) bounds each run, its
+# whole process group (an sbt-forked JVM too): a run past it is ended and gives no verdict.
 set -uo pipefail
 
 while IFS= read -r v; do unset "$v"; done < <(compgen -e | grep '^GIT_')
@@ -88,15 +88,31 @@ while IFS= read -r path; do
 done < <(git -C "$top" diff-tree --no-commit-id --name-only -r --diff-filter=AMCR "$sha")
 [ "$copied" -gt 0 ] || die "$sha changes no test-side file (see --files): nothing to prove"
 
-limit=$(command -v timeout || command -v gtimeout || true)
+# Each run in a process group of its own, ended whole at the deadline (exit 124) — the JVM an sbt test forks too, not
+# just the shell — and on fail-before's own INT/TERM. Perl, not `timeout`: macOS has none, and the run went unbounded.
 run_in() { # <worktree> <log>
-  (cd "$1" && ${limit:+$limit "${KINOWO_FAIL_BEFORE_TIMEOUT:-3000}"} bash -c "$command_line") > "$2" 2>&1
+  (cd "$1" && perl -e '
+    my $seconds = shift;
+    my $pid = fork() // die "fork: $!";
+    if ($pid == 0) { setpgrp(0, 0); exec @ARGV or exit 127; }
+    my $stop = sub { kill "TERM", -$pid; sleep 2; kill "KILL", -$pid; exit $_[0]; };
+    $SIG{ALRM} = sub { $stop->(124) };
+    $SIG{INT} = $SIG{TERM} = sub { $stop->(130) };
+    alarm $seconds;
+    waitpid($pid, 0);
+    exit($? & 127 ? 128 + ($? & 127) : $? >> 8);' "${KINOWO_FAIL_BEFORE_TIMEOUT:-3000}" bash -c "$command_line") > "$2" 2>&1
 }
 
 printf 'fail-before: %s (%d test-side file(s) copied onto %s)\n' "$sha" "$copied" "$(git -C "$top" rev-parse --short "$parent")"
 run_in "$before" "$work/before.log"; before_rc=$?
 run_in "$after" "$work/after.log"; after_rc=$?
 
+for rc in "$before_rc" "$after_rc"; do
+  [ "$rc" -ne 124 ] && continue
+  printf '\n--- BEFORE (exit %s) ---\n' "$before_rc"; tail -n 15 "$work/before.log"
+  printf '\n--- AFTER (exit %s) ---\n' "$after_rc"; tail -n 15 "$work/after.log"
+  die "a run timed out after ${KINOWO_FAIL_BEFORE_TIMEOUT:-3000}s (exit 124): no verdict — a hang is not a failure"
+done
 fail_before=$([ "$before_rc" -ne 0 ] && echo yes || echo no)
 pass_after=$([ "$after_rc" -eq 0 ] && echo yes || echo no)
 printf '\n--- BEFORE (exit %s), last lines ---\n' "$before_rc"; tail -n 15 "$work/before.log"
