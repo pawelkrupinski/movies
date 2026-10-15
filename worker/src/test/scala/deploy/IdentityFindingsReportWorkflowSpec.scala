@@ -23,11 +23,12 @@ class IdentityFindingsReportWorkflowSpec extends AnyFlatSpec with Matchers {
 
   it should "report only main's recordings — a branch recording pins nothing anyone replays" in {
     findings should include("github.event.workflow_run.head_branch == 'main'")
-    report should include("--branch main")
+    withClue("the newest recording, when none is named, is resolved by the script — main's only (its test holds the query): ")(
+      report should include("python3 scripts/ci/identity_findings_report.py --run \"${INPUT_RUN:-$EVENT_RUN}\""))
   }
 
   it should "read the findings the recording left, through the report script, and re-run no suite" in {
-    report should include("python3 scripts/ci/identity_findings_report.py --run \"$run\"")
+    report should include("python3 scripts/ci/identity_findings_report.py --run")
     RepoFile.withoutComments(findings) should not include "sbt"
     withClue("the report reads the judgements to tell triaged from untriaged: ")(
       findings should include("test/resources/fixtures/identity-judgements.tsv"))
@@ -35,7 +36,10 @@ class IdentityFindingsReportWorkflowSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "fail, not report nothing, when there is no recording to read" in {
-    report should include("""[ -n "$run" ] || { echo "::error::no completed Record scrape fixtures run to report"; exit 2; }""")
+    val script = RepoFile.read("scripts/ci/identity_findings_report.py")
+    script should include("::error::no completed Record scrape fixtures run to report")
+    withClue("held by identity_findings_report_test.py's no-run-named case, which the runner runs: ")(
+      ScriptTests.runInCi("scripts/ci/identity_findings_report_test.py") shouldBe true)
   }
 
   it should "take the dispatched run id through the environment, never spliced into the script" in {

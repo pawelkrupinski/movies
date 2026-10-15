@@ -22,10 +22,12 @@ class FakeGitHub:
     """`gh` over an in-memory set of issues, recording every call."""
 
     def __init__(self):
-        self.issues, self.calls = {}, []
+        self.issues, self.calls, self.recordings = {}, [], []
 
     def __call__(self, args, stdin=None):
         self.calls.append(args)
+        if args[:2] == ["run", "list"]:
+            return json.dumps([{"databaseId": n} for n in self.recordings])
         if args[:2] == ["issue", "list"]:
             return json.dumps([dict(i, number=n) for n, i in self.issues.items()])
         if args[:2] == ["issue", "create"]:
@@ -139,6 +141,18 @@ class FindingsReportTest(unittest.TestCase):
         self.assertEqual(2, self.run_report(empty, "2026-10-15", countries="pl"))
         self.assertEqual("OPEN", self.gh.state("pl"))
         self.assertIn("**2 finding(s)**", self.gh.body("pl"))
+
+    def test_no_run_named_reports_the_newest_completed_recording_on_main_and_none_is_an_error(self):
+        red = self.recording("a", self.RED)
+        args = ["--countries", "pl", "--judgements", self.judgements(), "--today", "2026-10-14", "--diagnostics", red, "--repo", "o/r"]
+        self.assertEqual(2, r.main(args, run_gh=self.gh))
+        self.assertEqual({}, self.gh.issues)
+        self.gh.recordings = [38625654132]
+        self.assertEqual(0, r.main(args, run_gh=self.gh))
+        self.assertIn("actions/runs/38625654132", self.gh.body("pl"))
+        listed = next(c for c in self.gh.calls if c[:2] == ["run", "list"])
+        for flag in (["--workflow", "Record scrape fixtures"], ["--branch", "main"], ["--status", "completed"], ["--limit", "1"]):
+            self.assertIn(flag[1], listed[listed.index(flag[0]) + 1:listed.index(flag[0]) + 2], flag)
 
     def test_a_row_that_left_half_its_findings_keeps_its_issue_never_closing_the_half_it_did_not_write(self):
         # the suite writes the suspects, the corpus-shape specs (run ahead of it) the shape findings: a suite that died

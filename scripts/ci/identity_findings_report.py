@@ -21,9 +21,11 @@ AGE LIMIT: a finding untriaged for more than --max-age-days (3) days turns the r
 red-build gate (scripts/hooks/pre-push's GatingWorkflows): a push neither makes nor mends a recording's data, so holding
 pushes behind it is the very coupling this report exists to undo. It reaches the owner through the issue instead.
 
-usage: identity_findings_report.py --run RUN [--countries pl,de,uk,es,us] [--judgements F] [--today D]
+usage: identity_findings_report.py [--run RUN] [--countries pl,de,uk,es,us] [--judgements F] [--today D]
          [--max-age-days N] [--assignee LOGIN] [--server URL] [--repo OWNER/NAME] [--work DIR] [--dry-run]
-Exit 0 when every finding is within its age, 1 when one is overdue, 2 when no country's findings could be read.
+--run defaults (also when empty) to the newest completed `Record scrape fixtures` run on main.
+Exit 0 when every finding is within its age, 1 when one is overdue, 2 when there is no recording to report or no
+country's findings could be read.
 """
 
 import argparse
@@ -274,9 +276,18 @@ def download(run, cc, work, run_gh):
     return target
 
 
+def newest_recording(run_gh):
+    """The newest completed `Record scrape fixtures` run on main, or None. Main's only: a branch recording pins nothing
+    anyone replays."""
+    listed = json.loads(run_gh(["run", "list", "--workflow", "Record scrape fixtures", "--branch", "main",
+                                "--status", "completed", "--limit", "1", "--json", "databaseId"]) or "[]")
+    return str(listed[0]["databaseId"]) if listed else None
+
+
 def main(argv=None, run_gh=gh):
     p = argparse.ArgumentParser()
-    p.add_argument("--run", required=True, help="the Record scrape fixtures run whose recording to report")
+    p.add_argument("--run", default="", help="the Record scrape fixtures run whose recording to report "
+                                             "(default the newest completed one on main)")
     p.add_argument("--countries", default=",".join(COUNTRIES))
     p.add_argument("--judgements", default="test/resources/fixtures/identity-judgements.tsv")
     p.add_argument("--today", help="YYYY-MM-DD, default today (UTC)")
@@ -288,6 +299,11 @@ def main(argv=None, run_gh=gh):
     p.add_argument("--diagnostics", help="read <dir>/<cc>/ instead of downloading the run's artifacts")
     p.add_argument("--dry-run", action="store_true", help="print the bodies' verdicts, touch no issue")
     a = p.parse_args(argv)
+    a.run = a.run or newest_recording(run_gh)
+    if not a.run:
+        print("::error::no completed Record scrape fixtures run to report")
+        return 2
+    print(f"reporting the findings of recording run {a.run}")
     today = datetime.date.fromisoformat(a.today) if a.today else datetime.datetime.now(datetime.timezone.utc).date()
     run_url = f"{a.server}/{a.repo}/actions/runs/{a.run}"
     def directory_of(cc):
