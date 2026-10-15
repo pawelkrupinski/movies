@@ -46,16 +46,18 @@ jobs:
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
                   RECORDING: ${{ inputs.recording }}
+                  KINOWO_REPO: ${{ github.repository }}
               run: |
                   set -euo pipefail
-                  for cc in pl uk de us es; do
-                      gh run download "$RECORDING" --name "scrape-fixtures-$cc" --dir "scrape-$cc"
-                      .github/scripts/unpack-fixture-archive.sh "scrape-$cc/scrapes-$cc.tar.gz"
-                      # `.tar.*`: the pinned tree is zstd, or gzip when pinned before that.
-                      gh release download "$FIXTURE_RELEASE_TAG" --pattern "enrichment-$cc-$RECORDING.tar.*" --dir tree --clobber
-                      .github/scripts/unpack-fixture-archive.sh tree/enrichment-"$cc-$RECORDING".tar.*
-                      rm -rf "scrape-$cc" tree
+                  # Laid out beside the checkout by the tool a local replay uses, then moved in: the learner
+                  # reads the checkout's fixtures, the hard clusters beside the corpora included.
+                  scripts/identity-fetch-recording.sh "$RECORDING" "$RUNNER_TEMP/recording" pl uk de us es
+                  pair="$RUNNER_TEMP/recording/pair/test/resources/fixtures"
+                  for entry in "$pair"/*; do
+                      target="test/resources/fixtures/$(basename "$entry")"
+                      if [ -e "$target" ]; then cp -a "$entry/." "$target/"; else mv "$entry" "$target"; fi
                   done
+                  rm -rf "$RUNNER_TEMP/recording"
                   for f in test/resources/fixtures/corpus/cinema-scrapes-??.json.gz; do echo "corpus $f"; done
 
             # A relearn compiles only the learner: no build cache worth restoring.
