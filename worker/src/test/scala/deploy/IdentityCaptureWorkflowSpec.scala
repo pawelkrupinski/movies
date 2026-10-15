@@ -78,4 +78,12 @@ class IdentityCaptureWorkflowSpec extends AnyFlatSpec with Matchers {
     publish should include(tools.UnmatchedClusters.FindingsPath.toString)
     RepoFile.read("scripts/identity-ratchet-report") should include("\"identity-ratchet\"")
   }
+
+  /** The report's findings are the ratchet's TSV through the one tool that tables it, not a second grep of the log. */
+  it should "write its report from the ratchet's findings TSV, through scripts/identity-ratchet-report" in {
+    val report = RepoFile.stepScript(workflow, "Write the report")
+    report should include(s"scripts/ci/identity-capture-report.sh captures ${tools.UnmatchedClusters.FindingsPath} ratchet.log")
+    report should not include "grep"
+    RepoFile.read("scripts/ci/identity-capture-report.sh") should include("identity-ratchet-report\" \"$takes\"")
+  }
 }

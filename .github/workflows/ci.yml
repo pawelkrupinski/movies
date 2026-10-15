@@ -235,6 +235,7 @@ jobs:
                       python3 scripts/identity_measure_test.py
                       python3 scripts/identity_slice_diff_test.py
                       bash scripts/ci/identity-takes-check-test.sh
+                      bash scripts/ci/identity-capture-report-test.sh
                       bash scripts/vault-env-test.sh
                       bash scripts/with-prod-mongo-test.sh
                       bash scripts/dev-server-test.sh

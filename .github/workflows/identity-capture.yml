@@ -226,37 +226,8 @@ jobs:
                   GREEN: ${{ steps.ratchet.outputs.green }}
               run: |
                   set -euo pipefail
-                  {
-                      if [ "$OPEN_PR" = true ]; then
-                          echo "The judged recapture of the unmatched-cluster fixture on \`$BRANCH\`, re-checked by [identity-capture.yml](../blob/main/.github/workflows/identity-capture.yml) run ${GITHUB_RUN_ID}."
-                      else
-                          echo "The weekly recapture of the unmatched-cluster fixture ([identity-capture.yml](../blob/main/.github/workflows/identity-capture.yml), run ${GITHUB_RUN_ID}), on \`$BRANCH\`."
-                      fi
-                      echo
-                      if [ "$GREEN" = true ]; then
-                          echo "The ratchet is green: check \`expected-matches.tsv\`, then land it by fast-forwarding main once Branch CI passes."
-                      else
-                          echo "The ratchet is red, so no PR yet: judge every UNJUDGED take into \`identity-judgements.tsv\` (and any WRONG one there as known-wrong, scope capture, with why) on \`$BRANCH\`, push, then \`gh workflow run identity-capture.yml -f open-pr=true\` -- it re-runs the ratchet there and opens the PR once it is green."
-                      fi
-                      if [ -d captures ]; then
-                          echo
-                          echo "### Per country"
-                          echo
-                          echo '```'
-                          cat captures/identity-capture-*/identity-capture-*.txt 2>/dev/null \
-                              | grep -E '^\[identity-capture\] [a-z]{2}: (CAPTURE|FILL|FAILED)|captured [0-9]+ listings|filled after|^  [a-z ]+ +[0-9hms]+' || echo "no country reported"
-                          echo '```'
-                      fi
-                      echo
-                      echo "### The ratchet"
-                      echo
-                      echo "Every finding, untruncated and with its decision's explanation: \`scripts/identity-ratchet-report ${GITHUB_RUN_ID} --explain\`; evidence cards for the UNJUDGED takes: \`scripts/identity-judge-cards --fixtures origin/$BRANCH\`."
-                      echo
-                      echo '```'
-                      sed -E 's/^\[info\] ?//' ratchet.log \
-                          | grep -E 'right takes|WRONG takes|UNJUDGED takes|LOST|^ *[a-z]{2}[[:blank:]]|FAILED|lacks answers' | head -400 || true
-                      echo '```'
-                  } > identity-capture-report.md
+                  scripts/ci/identity-capture-report.sh captures target/identity-unmatched/ratchet-takes.tsv ratchet.log \
+                      > identity-capture-report.md
                   cat identity-capture-report.md >> "$GITHUB_STEP_SUMMARY"
 
             - name: Check for a refreshed fixture
