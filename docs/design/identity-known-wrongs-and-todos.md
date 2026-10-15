@@ -199,6 +199,15 @@ Each a production change: measure with `scripts/identity-measure`, land one at a
 - [ ] A `ci / test` prometheus FileNotFoundError was reported once on main; not reproduced.
 - [ ] Judge a random sample of the ~95% unjudged served listings per country (`scripts/identity-judge-cards`) to
   estimate the unknown wrong rate.
+- [ ] Tooling review leftovers (CI): `convergence-fill.yml`'s one fixed concurrency group lets a newer dispatch for
+  other countries replace a pending one; `identity-measure.yml`'s cached base-boot key leaves out the tree and fill
+  assets; `identity-model-convergence.yml`'s `report` job can never run (no schedule); the recording-health step still
+  warns and stays green when it cannot read the run's start or the last manifest; `ci_timings.py`'s gh calls are
+  unbounded; stale "sample rows" comments in `country-convergence-leg.yml` and the convergence-publish/-setup actions;
+  `infra/nix/files/monitoring/prometheus.yaml` and `ci-builds.json` still name the deleted `CI timings backfill`
+  (production path).
+- [ ] Nothing sweeps orphaned `measure/*` branches a SIGKILLed `scripts/identity-measure` leaves (recover one with
+  `--run <id>`).
 
 ### Machine and tooling
 - [ ] `core.hooksPath` is rewritten to the absolute root path by Claude Code whenever it creates an
@@ -210,3 +219,16 @@ Each a production change: measure with `scripts/identity-measure`, land one at a
   unmerged commits each, from before 10-14 12:15; purpose unknown); `worktree-agent-a27df4eb26ac5be7e` (RB+O, landed
   in ported form as 65884e94e, so it can go); `movies-red2`, `movies-wt-convergence-timings`, the
   kinowo-mobile-release temp worktree (`scripts/agent-procs` marks them removable).
+- [ ] `~/.local/bin/reap-stale-jvms.sh` rule C groups sbt processes by cwd without requiring `--detach-stdio`, so it can
+  kill an older LIVE run sharing a cwd (another agent's identity run in one `~/.cache/kinowo-identity/refs/<sha>`, or
+  the server a client is attached to); its gone-dir rule also kills JVMs whose ref dir was renamed from `.part`. Only
+  `--detach-stdio` servers not named by an `active.json` should be reaped.
+- [ ] `scripts/local-mirror/prod-tunnel.sh` binds fixed port 27017: one script closing its tunnel cuts another's
+  mid-command. sbt-warm has no per-checkout lock when starting a server.
+- [ ] Every checkout copies its own tool files into the shared `refs/<sha>` tree, so two checkouts with different tool
+  versions can compile a mix; `identity-slice --stop-served` kills whatever now holds the saved pid; venue-replay's
+  `mongosh` call has no timeout; `identity-capture.sh` still finds its recording in Scala, not identity-tools.sh.
+- [ ] No shell self-test yet for `scripts/local-mirror/freshness` and `sync-enrichment-cache.sh`;
+  `mirror-sync-spec.sh` needs the live :28017 replica set and stays run-by-hand.
+- [ ] `agent-procs kill --mine` ended two agents' own tool shells (exit 143) on 10-15; the ancestry is now read from
+  the process table (the probable cause, a `ps -p` hop failing, reproduced only with a fake ps). Re-check if it recurs.
