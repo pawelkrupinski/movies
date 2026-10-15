@@ -21,6 +21,7 @@ name: Order independence
 #                        (android/scripts/devtest-shuffled.sh).
 #   swift                every `swift test` case ALONE, in a seeded order
 #                        (ios/scripts/swift-test-shuffled.sh); the sync model at 10x.
+#                        Also every script self-test under macOS's /bin/bash 3.2 (see there).
 #   ios                  every XCUITest class ALONE, in its own xcodebuild run: a class
 #                        that only passes after another has set state up fails here.
 #
@@ -63,7 +64,7 @@ jobs:
         name: scala (${{ matrix.order }})
         needs: seed
         runs-on: ubuntu-latest
-        timeout-minutes: 90
+        timeout-minutes: 105
         strategy:
             fail-fast: false
             matrix:
@@ -240,7 +241,7 @@ jobs:
     swift:
         needs: seed
         runs-on: macos-latest
-        timeout-minutes: 90
+        timeout-minutes: 105
         steps:
             - uses: actions/checkout@v5
 
@@ -261,6 +262,18 @@ jobs:
               run: swift test --package-path ios --filter StateSyncModelTests
               env:
                   SYNC_MODEL_SEEDS: '2000'
+
+            # Not an order leg, but the one nightly macOS job: the script tools promise macOS's /bin/bash 3.2 and
+            # /usr/bin/python3 3.9 (scripts/run-script-tests' PythonFloor), and ci.yml's Linux run has neither, so a
+            # bash-4-only construct ($BASHPID, an empty "${a[@]}" under set -u) or 3.10+ syntax passed there. Every
+            # self-test under this image's own /bin/bash; the floor lint run BY /usr/bin/python3 compiles every Python
+            # file as 3.9 does (python_floor_lint.py).
+            - name: Script self-tests under macOS /bin/bash 3.2, Python at the floor
+              if: ${{ !cancelled() }}
+              run: |
+                  /bin/bash --version | head -1
+                  scripts/run-script-tests --bash /bin/bash
+                  /usr/bin/python3 scripts/ci/python_floor_lint.py
 
     ios:
         runs-on: macos-latest

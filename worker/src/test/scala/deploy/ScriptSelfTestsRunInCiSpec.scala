@@ -66,6 +66,12 @@ class ScriptSelfTestsRunInCiSpec extends AnyFlatSpec with Matchers {
     ScriptTests.ciRunsAll shouldBe true
   }
 
+  "the nightly macOS job" should "run every self-test under macOS's /bin/bash 3.2, the floor the tools promise" in {
+    // ci.yml's Linux bash is 5: a bash-4-only construct passes there and breaks every Mac
+    RepoFile.runSteps(RepoFile.read(".github/workflows/order-independence.yml"))
+      .exists(_.script.linesIterator.exists(_.trim == "scripts/run-script-tests --bash /bin/bash")) shouldBe true
+  }
+
   "a tagged self-test" should "say why it leaves the default run" in {
     ScriptTests.all.filter(test => test.tag.nonEmpty && test.reason.trim.isEmpty).map(_.path) shouldBe empty
   }
