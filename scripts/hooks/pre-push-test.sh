@@ -453,6 +453,16 @@ runner_head="$(scratch_git "$grepo" rev-parse HEAD)"
 floor=$(floor_bash 3)
 check "a runner that predates --bash runs them once, even on a Mac" "0 --changed $runner_base" "$(script_push) $(cat "$gate/args")"
 floor=""
+# A runner with --linux: the same tests on Linux, in the background beside the native run.
+printf '#!/usr/bin/env bash\necho "$*" >> "$STUB_RUNNER_ARGS"\ncase "$*" in *--linux*) [ -z "${STUB_NO_DOCKER:-}" ] || { echo "run-script-tests: --linux needs a running Docker" >&2; exit 2; }; exit "${STUB_LINUX_EXIT:-0}" ;; esac; exit 0\n' > "$grepo/scripts/run-script-tests"
+scratch_git "$grepo" add scripts/run-script-tests && scratch_git "$grepo" commit -qm "a runner with --linux"
+runner_head="$(scratch_git "$grepo" rev-parse HEAD)"
+check "with --linux, the same tests run on Linux too" "0 --changed $runner_base|--linux --changed $runner_base" \
+  "$(script_push) $(LC_ALL=C sort "$gate/args" | paste -sd'|' -)"
+check "...and a failure only there blocks the push" "1 1" "$(script_push STUB_LINUX_EXIT=1) $(grep -c 'scripttests FAILED' "$gate/err")"
+check "...Docker not running: never blocking" "0 1" "$(script_push STUB_NO_DOCKER=1) $(grep -c -- '--linux' "$gate/args")"
+check "...and PREPUSH_SKIP=linux skips just that" "0 --changed $runner_base" \
+  "$(script_push PREPUSH_SKIP="${pathchecks/scripttests/} linux") $(cat "$gate/args")"
 rm -rf "$gate"
 
 spec_summary

@@ -25,7 +25,8 @@
 #                 .github/scripts|actions, android/scripts, ios/scripts, infra/bin, data): only the self-tests whose test,
 #                 tool, or a file they name the push changed -- this hook's own test among them (it names
 #                 install-hooks.sh and hooks-path.sh), since a new check changes what the hook plans; on a Mac, run
-#                 again under its /bin/bash 3.2 (`--bash /bin/bash`), the bash the tools promise to run on
+#                 again under its /bin/bash 3.2 (`--bash /bin/bash`), the bash the tools promise to run on; and,
+#                 Docker running, beside them on Linux (`--linux`, CI's ubuntu-26.04; PREPUSH_SKIP=linux skips it)
 #   `actionlint`  changed workflow files (with shellcheck over their `run:` blocks), and changed
 #                 composite actions' `run:` blocks (scripts/ci/shellcheck-action-runs.sh)
 #   `shellcheck`  changed *.sh and hook scripts — fails only on warnings the push ADDS, so a
@@ -445,9 +446,27 @@ check_dashboards() {
 }
 
 check_scripttests() {
+    # Beside them, in the background, the same tests on Linux (`--linux`: CI's ubuntu-26.04, in Docker) -- GNU tools a
+    # Mac's BSD ones hide (03b3a6825). Warm, it adds ~4 s to a run the native one outlasts: ~0 s of wall time.
+    local linux_pid=""
+    if ! skipped linux && grep -q -e '--linux' scripts/run-script-tests 2>/dev/null; then
+        scripts/run-script-tests --linux --changed "$base_sha" > "$tmp/scripttests-linux.log" 2>&1 &
+        linux_pid=$!
+    fi
     scripts/run-script-tests --changed "$base_sha" > "$tmp/scripttests.log" 2>&1 \
-        || { grep -v '^PASS\|✓' "$tmp/scripttests.log" | head -80 >&2; return 1; }
+        || { grep -v '^PASS\|✓' "$tmp/scripttests.log" | head -80 >&2; [ -z "$linux_pid" ] || wait "$linux_pid"; return 1; }
     tail -1 "$tmp/scripttests.log"
+    if [ -n "$linux_pid" ]; then
+        if wait "$linux_pid"; then
+            echo "on Linux: $(tail -1 "$tmp/scripttests-linux.log")"
+        elif grep -q -- '--linux needs a running Docker' "$tmp/scripttests-linux.log"; then
+            echo "on Linux: SKIPPED (Docker is not running -- start Rancher/Docker Desktop to run them as CI does)"
+        else
+            echo "on Linux (scripts/run-script-tests --linux; PREPUSH_SKIP=linux skips it):" >&2
+            grep -v '^PASS\|✓' "$tmp/scripttests-linux.log" | head -80 >&2
+            return 1
+        fi
+    fi
     # On a Mac, again under its /bin/bash 3.2, the floor the tools promise: a bash-4-only construct is caught at the push,
     # not by the nightly macOS job (PREPUSH_FLOOR_BASH stands in for /bin/bash in the hook's test)
     local floor=${PREPUSH_FLOOR_BASH:-/bin/bash} major
