@@ -2,9 +2,9 @@ package integration
 
 import services.identity._
 import services.movies.ListingKey
-import tools.{ConvergenceStorage, UnmatchedClusters}
+import tools.{CommandLine, ConvergenceStorage, UnmatchedClusters}
 
-import java.nio.file.{Files, Paths}
+import java.nio.file.Files
 import scala.collection.mutable
 
 /**
@@ -21,9 +21,11 @@ import scala.collection.mutable
  */
 object SuspectTakesDump {
 
+  val commandLine: CommandLine = CommandLine("SuspectTakesDump", "Dumps every take of the recorded full corpora with the evidence SuspectTakes reads.",
+    CommandLine.Value("out", "dir", "where <cc>.json.gz is written (required)"))
+
   def main(args: Array[String]): Unit = {
-    val opts = args.grouped(2).collect { case Array(k, v) => k.stripPrefix("--") -> v }.toMap
-    val out  = Paths.get(opts.getOrElse("out", sys.error("--out <dir>")))
+    val out  = commandLine.parseOrExit(args).requiredPath("out")
     val configuration = settings.ProcessConfiguration.resolve()
     val storages = mutable.ListBuffer.empty[ConvergenceStorage]
     Files.createDirectories(out)

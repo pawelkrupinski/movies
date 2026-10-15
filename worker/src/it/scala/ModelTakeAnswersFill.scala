@@ -2,9 +2,9 @@ package integration
 
 import services.identity._
 import services.identity.agreement.{Agreement, AgreementStage, FamilyAnswers, FamilyVerdict, SourceHit, SourceRecord, VoterFamily}
-import tools.{ConvergenceStorage, UnmatchedClusters}
+import tools.{CommandLine, ConvergenceStorage, UnmatchedClusters}
 
-import java.nio.file.{Files, Path, Paths}
+import java.nio.file.{Files, Path}
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
 import scala.util.Try
@@ -27,16 +27,25 @@ import scala.util.Try
  */
 object ModelTakeAnswersFill {
 
+  val commandLine: CommandLine = CommandLine("ModelTakeAnswersFill", "Asks the family and poster questions the model's takes leave open, into a seed.",
+    CommandLine.Value("out", "dir", "the seed directory written (required)"),
+    CommandLine.Value("rounds", "n", "the most rounds asked", default = Some("8")),
+    CommandLine.Value("threads", "n", "asking threads", default = Some("6")),
+    CommandLine.Value("posters", "true|false", "ask the posters", default = Some("true")),
+    CommandLine.Value("families", "true|false", "ask the families", default = Some("true")),
+    CommandLine.Value("only", "file", "the clusters asked, one least member key a line (default: all)"),
+    CommandLine.Value("sample", "n", "ask a sample of this many clusters"))
+
   def main(args: Array[String]): Unit = {
-    val opts    = args.grouped(2).collect { case Array(k, v) => k.stripPrefix("--") -> v }.toMap
-    val out     = Paths.get(opts.getOrElse("out", sys.error("--out <dir>")))
-    val rounds  = opts.get("rounds").map(_.toInt).getOrElse(8)
-    val threads = opts.get("threads").map(_.toInt).getOrElse(6)
-    val askPosters  = opts.get("posters").forall(_ != "false")
-    val askFamilies = opts.get("families").forall(_ != "false")
+    val arguments = commandLine.parseOrExit(args)
+    val out     = arguments.requiredPath("out")
+    val rounds  = arguments.requiredInt("rounds")
+    val threads = arguments.requiredInt("threads")
+    val askPosters  = arguments.get("posters").forall(_ != "false")
+    val askFamilies = arguments.get("families").forall(_ != "false")
     // the clusters to ask families of (each by its least serialised member key, as the dataset names it), else all
-    val only = opts.get("only").map(f => Files.readAllLines(Paths.get(f)).asScala.filter(_.nonEmpty).toSet)
-    val sample = opts.get("sample").map(_.toInt)
+    val only = arguments.path("only").map(f => Files.readAllLines(f).asScala.filter(_.nonEmpty).toSet)
+    val sample = arguments.int("sample")
     val configuration = settings.ProcessConfiguration.resolve()
     val cache    = configuration.identityAgreementCache.getOrElse(sys.error("KINOWO_IDENTITY_AGREEMENT_CACHE")).value
     val storages = mutable.ListBuffer.empty[ConvergenceStorage]

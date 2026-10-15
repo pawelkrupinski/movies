@@ -3,10 +3,10 @@ package integration
 import play.api.libs.json.Json
 import services.identity._
 import services.movies.{ListingKey, TitleContainment}
-import tools.{ConvergenceStorage, UnmatchedClusters}
+import tools.{CommandLine, ConvergenceStorage, UnmatchedClusters}
 
 import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Path, Paths}
+import java.nio.file.{Files, Path}
 import scala.collection.mutable
 import scala.util.Try
 
@@ -37,11 +37,21 @@ object IdentityDecorationCandidates {
 
   final case class Judged(country: String, venue: String, rawTitle: String, before: String, after: String, verdict: String, by: Seq[String])
 
+  val commandLine: CommandLine = CommandLine("IdentityDecorationCandidates", "Proposes title decorations and keeps those that take listings right and none wrong.",
+    CommandLine.Value("out", "dir", "where kept.json, measured.tsv and training.tsv are written (required)"),
+    CommandLine.Value("rounds", "n", "the most measuring rounds", default = Some("4")),
+    CommandLine.Value("min-remainders", "n", "the fewest distinct remainders a candidate needs",
+      default = Some(TitleDecorations.MinCandidateRemainders.toString)),
+    CommandLine.Value("withhold", "all|n", "a hold-out measure: every learned run, or every n-th, left out"),
+    CommandLine.Value("proposals", "tsv", "measure these proposals instead of detecting them"),
+    CommandLine.Value("version", "v", "the version the kept decorations are noted with", default = Some("unversioned")),
+    CommandLine.Value("write", "json", "the resolver artefact the kept decorations are merged into"))
+
   def main(args: Array[String]): Unit = {
-    val opts = args.grouped(2).collect { case Array(k, v) => k.stripPrefix("--") -> v }.toMap
-    val out  = Paths.get(opts.getOrElse("out", sys.error("--out <dir>")))
-    val rounds = opts.get("rounds").map(_.toInt).getOrElse(4)
-    val minRemainders = opts.get("min-remainders").map(_.toInt).getOrElse(TitleDecorations.MinCandidateRemainders)
+    val arguments = commandLine.parseOrExit(args)
+    val out  = arguments.requiredPath("out")
+    val rounds = arguments.requiredInt("rounds")
+    val minRemainders = arguments.requiredInt("min-remainders")
     val configuration = settings.ProcessConfiguration.resolve()
     val labels    = tools.IdentityJudgements.labels()
     val storages  = mutable.ListBuffer.empty[ConvergenceStorage]
@@ -53,9 +63,11 @@ object IdentityDecorationCandidates {
       // out of the decorations this run resolves with, to see whether the detector finds them again. A withheld run's
       // take that restores the film the full decorations give is `restored`, a good outcome.
       val learned  = TitleDecorations.fromResource(TitleDecorations.ResourcePath).toSeq.flatMap(_.decorations).filter(d => d.side != TitleDecorations.Tail)
-      val withheld = opts.get("withhold").fold(Seq.empty[TitleDecorations.Learned]) {
+      val withheld = arguments.get("withhold").fold(Seq.empty[TitleDecorations.Learned]) {
         case "all" => learned
-        case every => learned.zipWithIndex.collect { case (d, i) if i % every.toInt == 0 => d }
+        case _     =>
+          val every = arguments.requiredInt("withhold")
+          learned.zipWithIndex.collect { case (d, i) if i % every == 0 => d }
       }
       val base = TitleDecorationsLearner.without(TitleDecorations.resolver, withheld.map(d => d.side -> d.decoration.split(" ").toSeq).toSet)
       tsv(out.resolve("withheld.tsv"), "side\tdecoration\tfilms\tvenues", withheld.map(d => Seq(d.side, d.decoration, d.films, d.venues).mkString("\t")))
@@ -70,7 +82,7 @@ object IdentityDecorationCandidates {
       val aligned   = TitleDecorationsLearner.aligned(clusters, base)
       val signalOf  = (recurring.map(d => (d.side, d.decoration) -> "recurring") ++ aligned.map(d => (d.side, d.decoration) -> "aligned"))
         .groupMap(_._1)(_._2).view.mapValues(_.distinct.sorted.mkString("+")).toMap
-      val supplied  = opts.get("proposals").map(path => Files.readAllLines(Paths.get(path)).toArray(Array.empty[String]).toSeq.drop(1).filter(_.nonEmpty)
+      val supplied  = arguments.path("proposals").map(path => Files.readAllLines(path).toArray(Array.empty[String]).toSeq.drop(1).filter(_.nonEmpty)
         .map(_.split("\t", -1)).map(a => TitleDecorations.Learned(a(0), a(1), a(2).toInt, a(3).toInt, a(4).toInt, Nil, Some("given"))))
       val proposed  = supplied.getOrElse(recurring ++ aligned).groupBy(d => (d.side, d.decoration)).values.map(_.maxBy(_.films))
         .map(d => d.copy(measured = signalOf.get((d.side, d.decoration)))).toSeq.sortBy(d => (-d.films, d.side, d.decoration))
@@ -151,7 +163,7 @@ object IdentityDecorationCandidates {
         .mkString("", "\n", "\n"), StandardCharsets.UTF_8)
       val kept = proposed.filter(d => rows.exists(r => r.key == keyOf(d) && r.good) && score.forall(_.accepts(features(keyOf(d))))).map { d =>
         d.copy(measured = Some(s"${d.measured.getOrElse("")}: ${rightOf(d)} right, 0 wrong, 0 moved, ${unjudgedOf(d)} unjudged" +
-          score.fold("")(s => f", score ${s.probability(features(keyOf(d)))}%.3f") + s" (${opts.getOrElse("version", "unversioned")})"))
+          score.fold("")(s => f", score ${s.probability(features(keyOf(d)))}%.3f") + s" (${arguments.required("version")})"))
       }
       tsv(out.resolve("measured.tsv"), "side\tdecoration\toutcome\tright\tunjudged\tscore\tfilms\tvenues\texamples",
         proposed.map { d =>
@@ -161,7 +173,7 @@ object IdentityDecorationCandidates {
         })
       Files.writeString(out.resolve("kept.json"), Json.prettyPrint(Json.toJson(kept)) + "\n")
       println(s"${if (settled) "settled" else "NOT settled"} after $round round(s): kept ${kept.size} decoration(s) → ${out.resolve("kept.json")}")
-      opts.get("write").map(Paths.get(_)).filter(_ => kept.nonEmpty).foreach { artefact =>
+      arguments.path("write").filter(_ => kept.nonEmpty).foreach { artefact =>
         val earlier = Json.parse(Files.readString(artefact)).as[TitleDecorations.Artefact]
         val merged  = earlier.copy(decorations = TitleDecorationsLearner.accumulate(earlier.decorations, kept, records))
         Files.writeString(artefact, Json.prettyPrint(Json.toJson(merged)) + "\n")

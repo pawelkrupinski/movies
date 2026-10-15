@@ -5,10 +5,10 @@ import play.api.libs.json.Json
 import services.identity.{DecorationSegments, DecorationTokens, IdentityMeasures, TitleDecorations}
 import services.identity.ListingShape
 import services.movies.{ListingKey, TitleContainment}
-import tools.ConvergenceStorage
+import tools.{CommandLine, ConvergenceStorage}
 
 import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Path, Paths}
+import java.nio.file.{Files, Path}
 import scala.collection.mutable
 import scala.util.Try
 
@@ -23,9 +23,11 @@ import scala.util.Try
  */
 object IdentityDecorationTokens {
 
+  val commandLine: CommandLine = CommandLine("IdentityDecorationTokens", "Learns decoration stripping supervised and writes the detector's proposals.",
+    CommandLine.Value("out", "dir", "where the model and proposals.tsv are written (required)"))
+
   def main(args: Array[String]): Unit = {
-    val opts = args.grouped(2).collect { case Array(k, v) => k.stripPrefix("--") -> v }.toMap
-    val out  = Paths.get(opts.getOrElse("out", sys.error("--out <dir>")))
+    val out  = commandLine.parseOrExit(args).requiredPath("out")
     val storages = mutable.ListBuffer.empty[ConvergenceStorage]
     Files.createDirectories(out)
     try {
