@@ -75,21 +75,22 @@ no known-wrong/accepted row covers.
 
 ## 3. Open work (TODO)
 
-### Landing queue (paused: the landing agent was stopped 2026-10-15)
-- [ ] **Arsenal Berlin client** — `worktree-agent-ac9de0e136fc1735d` (ported onto the judgements store). Measure
-  with `scripts/identity-measure`, land once convergence is green, then dispatch Record scrape fixtures (new
-  screening-page lookups). Still unmatched with it: Mozu (TMDB credits the director in kanji), West Indies.
-- [ ] **a083-fix** — branch `a083-fix`, tip 474bc600a, LANDABLE (run 38683085033: 12 cures, 0 right lost, 0 new
-  wrong). Rebase, re-measure, land. Supersedes `worktree-agent-a083ade05cde02267`. Cures expected: UK SISTER ACT,
-  Gremlins, Social Reckoning, About Time; DE GINA, THE COMMUNITY, RAY WILSON, München Mord; PL Okładka "AI";
-  Fallen Angels by Noël Coward (UK). Check whether it also cures DE Fallen Angels ×5. Manhunter and the second
-  Social Reckoning did not move in the measured corpus.
+### Landing queue (landed 2026-10-15)
+- [x] **Arsenal Berlin client** — landed a2e50ec85..f58b71add (measure 38708378594: 0 moves, as the recording held only
+  Cineamo's Arsenal rows; recording 38713274617 green). Kazahana is known-wrong (served) until a recording reads Arsenal's
+  own calendar. Its cures (Kaidan, Ototo, Ningen no joken II/III, Kazahana) show only in a recording taken after prod
+  deploys the client — check then and strike the Kazahana row. Still unmatched with it: Mozu, West Indies.
+- [x] **a083-fix** — landed 9f9b41682..6abe17876 (measure 38737196525, LANDABLE: PL 1 cure, UK 2 cures + 1 gained right,
+  DE 4 cures + 6 gained right, 0 right lost, 0 new wrong; convergence 38749834547 green). Its factless-short rule was
+  dropped in the rebase (main's ShortFilms.untaken already cures GINA and THE COMMUNITY). It does NOT move DE Fallen
+  Angels: the current recording already takes 1702350 (right).
 - [ ] Then re-run the state tally (§1) on the mirror once prod has deployed.
 
 ### Live wrong matches with no fix yet
 - [ ] **DE "League of Legends Worlds 26 - Finals in Cinema" ×23** → the 2025 final record. Unlisted. Class 4/event:
   a yearly event must match its own year's record, or none.
-- [ ] **DE "Fallen Angels by Noël Coward" ×5** → Wong Kar-wai 1995. Unlisted. See a083-fix.
+- [ ] **DE "Fallen Angels by Noël Coward" ×5** → Wong Kar-wai 1995. Unlisted. The current recording already takes the
+  right 2026 record (1702350); check prod's ×5 after the next deploy (`scripts/listing-history de --title 'Fallen Angels'`).
 - [ ] **NT Live: Hamlet ×2 (US)** — the 2026 record never enters the candidates; Flicks' 2015 year is counted once per
   venue reading the same Flicks page.
 - [ ] **ESCAPE ROOM 2 (ES)** — bare title, 2021 film at 57% vs the 2026 one backed by 63 venues.
@@ -215,10 +216,9 @@ Each a production change: measure with `scripts/identity-measure`, land one at a
   and `scripts/install-hooks.sh` restores it.
 - [ ] The JVM reaper (`~/.local/bin/reap-stale-jvms.sh`, with the new duplicate-sbt-server rule C) lives outside the
   repo, unversioned.
-- [ ] Worktrees to review: `agent-a8e8055c5959ed512`, `agent-ad334852f5d655d25`, `agent-afc695e6b0db42819` (1–2
-  unmerged commits each, from before 10-14 12:15; purpose unknown); `worktree-agent-a27df4eb26ac5be7e` (RB+O, landed
-  in ported form as 65884e94e, so it can go); `movies-red2`, `movies-wt-convergence-timings`, the
-  kinowo-mobile-release temp worktree (`scripts/agent-procs` marks them removable).
+- [x] Worktrees reviewed 2026-10-15: a8e8055c, ad334852, afc695e6 (their commits were on main under the same subjects),
+  the RB+O, Arsenal and a083 worktrees and `movies-wt-convergence-timings` removed. Left: `movies-red2` and the
+  kinowo-mobile-release temp worktree (other sessions').
 - [ ] `~/.local/bin/reap-stale-jvms.sh` rule C groups sbt processes by cwd without requiring `--detach-stdio`, so it can
   kill an older LIVE run sharing a cwd (another agent's identity run in one `~/.cache/kinowo-identity/refs/<sha>`, or
   the server a client is attached to); its gone-dir rule also kills JVMs whose ref dir was renamed from `.part`. Only
