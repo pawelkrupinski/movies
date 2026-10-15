@@ -215,6 +215,12 @@ lazy val sharedTestDoubles = Def.setting(Seq("tools/MutableClock", "tools/Manual
   (LocalRootProject / baseDirectory).value / "testkit" / "src" / "main" / "scala" / s"$name.scala"
 })
 
+// The identity stores' in-memory fakes, in testkit beside the rest, compiled into identity's own test config as the
+// time doubles are.
+lazy val identityTestDoubles = Def.setting(Seq("InMemoryIdentityTraceStore", "InMemoryPinStore").map { name =>
+  (LocalRootProject / baseDirectory).value / "testkit" / "src" / "main" / "scala" / "services" / "identity" / s"$name.scala"
+})
+
 // ── Identity resolver ────────────────────────────────────────────────────────
 //
 // The identity model (`services.identity`): the resolver, its agreement stage, its stores and measures. Built on
@@ -256,7 +262,7 @@ lazy val identity = (project in file("identity"))
       // another script (TMDB's "毕赣") with a venue's Latin spelling ("Bi Gan"). The JDK has none.
       Dependencies.icu4j,
       scalatestPlay % Test, scalatestScalaCheck % Test),
-    Test / unmanagedSources ++= sharedTestDoubles.value,
+    Test / unmanagedSources ++= sharedTestDoubles.value ++ identityTestDoubles.value,
     // The build's source digest (the identity rules and venue slot versions), compiled here too so its specs check
     // the very code the build digests with.
     Test / unmanagedSources += (LocalRootProject / baseDirectory).value / "project" / "SourceDigest.scala"

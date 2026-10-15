@@ -47,13 +47,6 @@ trait PinStore {
   def delete(id: String): Boolean
 }
 
-final class InMemoryPinStore extends PinStore {
-  private val pins = new java.util.concurrent.ConcurrentHashMap[String, Pin]()
-  def all(): Seq[Pin]              = { import scala.jdk.CollectionConverters._; pins.values.asScala.toSeq }
-  def insert(pin: Pin): Unit       = { pins.put(pin.id, pin); () }
-  def delete(id: String): Boolean  = pins.remove(id) != null
-}
-
 /** The pin rules above the store: what a pin must carry, and that the pin set never
  *  contradicts itself (a listing pinned to two films, or to a film it is pinned never to be). */
 final class Pins(store: PinStore, clock: Clock) {

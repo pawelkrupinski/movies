@@ -198,7 +198,8 @@ Each a production change: measure with `scripts/identity-measure`, land one at a
   `Kind` — the release veto carries the namesake's id, the cut and another house's season their own kinds).
 - [ ] `SuspectTakes.billsAnOldFilm` reads the film's own title words ("Silent Night" bills old); `billsAnEdition`
   excludes them.
-- [ ] Test-only members still in main: `CachedTmdbDocuments.holdsAnswer`, `IdentityProjection.keptIndex`/`atRest`,
+- [ ] Test-only members still in main (the fakes `InMemoryIdentityTraceStore`, `InMemoryPinStore` moved to testkit 10-16; the
+  members below read their class's private state, so moving them means a test seam of their own): `CachedTmdbDocuments.holdsAnswer`, `IdentityProjection.keptIndex`/`atRest`,
   `StoredTmdbLookups.heldDocuments`, `LiveCorpus.candidateCount`, `IncrementalResolver.familyKeys`/`familyNodeTexts`/
   `nodeTextOf`, `Acceptance.aloneOrder`/`pooledOrder`, `SourceReliability.FeedIdSources`; the fakes
   `InMemoryIdentityTraceStore`, `InMemoryPinStore`. The `Option(d.get(f)).filter(_.isArray)…` BSON read is written
