@@ -279,6 +279,12 @@ Rules:
   a measure, a slice, an sbt suite, a local convergence leg), idle gaps,
   sbt runs by shape, the pre-push hook; `--agent <id>` lists one agent's
   slowest steps.
+- **Wait on CI with `scripts/ci-wait`**, never a hand-written `gh run view`/`sleep` loop (one took jq's
+  "null null null" for a verdict): `--run <id>`; `--workflow <w> --sha <commit>` (waits for the run to appear,
+  then to finish); several `--workflow`s at once for a set; `--or-later` for a green run at that commit or a
+  later one, `--until-green` to wait through reds; `--any-completed` for each workflow's newest verdict. A
+  cancelled run is followed to the run that superseded it (`--no-follow`: exit 3). Exit 0 green, 1 red,
+  2 timeout/unreadable, 3 cancelled. Run it in the background and act on its notification.
 - **Agent speed habits** (2026-10-15: a 2h22m agent was ~45 min of work behind four serial CI runs and a broken
   push). Dispatch every variant of a CI experiment at once (refit and measure dispatches each get their own lane);
   a CI speed-up counts only when a CI run proves it (a Mac is not the 2-core runner); run a changed script's

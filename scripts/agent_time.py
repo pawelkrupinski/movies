@@ -25,7 +25,7 @@ import sys
 from collections import Counter
 
 IDLE_GAP_SECONDS = 180
-POLL = re.compile(r"\bsleep\s+\d|\buntil\b|\bwhile\b|for \w+ in \$\(seq|\bgh run watch\b")
+POLL = re.compile(r"\bsleep\s+\d|\buntil\b|\bwhile\b|for \w+ in \$\(seq|\bgh run watch\b|\bci-wait\b")
 RUN_ID = re.compile(r"\b3\d{10}\b")
 TASK_OUTPUT = re.compile(r"tasks/(b[a-z0-9]+)\.output")
 LAUNCHED = re.compile(r"running in background with ID: (b[a-z0-9]+)")
@@ -61,7 +61,7 @@ def launch_kind(command: str) -> str:
         return "local convergence"
     if re.search(r"sbt-warm|\bsbt\b", command):
         return "sbt suite"
-    if re.search(r"\bgh run (watch|view|list)\b", command) or RUN_ID.search(command):
+    if re.search(r"\bgh run (watch|view|list)\b|\bci-wait\b", command) or RUN_ID.search(command):
         return "CI wait"
     if re.search(r"mongodump|mongoexport|\bdump\b", command):
         return "dump"
@@ -109,7 +109,7 @@ def bash_bucket(command: str, launches: Launches) -> str:
             return "poll: measure"
         if "identity-slice" in command:
             return "poll: slice"
-        if re.search(r"\bgh (run|api)\b|record-scrape", command) or RUN_ID.search(command):
+        if re.search(r"\bgh (run|api)\b|\bci-wait\b|record-scrape", command) or RUN_ID.search(command):
             return "poll: CI wait"
         if re.search(r"=== \w+ exit|legs|conv-|convergence|order\.log", command):
             return "poll: local convergence"

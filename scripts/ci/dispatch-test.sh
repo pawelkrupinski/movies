@@ -54,11 +54,18 @@ wait_until_no_runs w.yml 'true' 0 "busy" 2> /dev/null; check "...until the deadl
 reset; answer 1 "fail HTTP 502"
 wait_until_no_runs w.yml 'true' 60 "busy" 2> /dev/null; check "a failed listing is not 'none waiting'" "1 1" "$? $(calls)"
 
-reset; answer 1 "fail connection refused"; answer 2 "$(printf 'in_progress\t')"; DEFAULT=$(printf 'completed\tfailure')
+# gh run view's JSON, as GitHub answers it: <status> [<conclusion>]
+view() { printf '{"databaseId":7,"headSha":"%s","headBranch":"b","workflowName":"w","status":"%s","conclusion":"%s"}' \
+  "$(printf 'a%.0s' $(seq 40))" "$1" "${2:-}"; }
+reset; answer 1 "fail connection refused"; answer 2 "$(view in_progress)"; DEFAULT=$(view completed failure)
 wait_for_run 7 60 2> /dev/null; check "a run is waited on through a read blip to its conclusion" "0 failure 3" "$? $RUN_CONCLUSION $(calls)"
+reset; answer 1 'null'; answer 2 '{"databaseId":null,"headSha":null,"status":null}'; DEFAULT=$(view completed success)
+wait_for_run 7 60 2> /dev/null; check "...through null answers, never taken for one" "0 success 3" "$? $RUN_CONCLUSION $(calls)"
+reset; DEFAULT=$(view completed cancelled)
+wait_for_run 7 60 2> /dev/null; check "a cancelled run is a conclusion, not followed" "0 cancelled 1" "$? $RUN_CONCLUSION $(calls)"
 reset; DEFAULT="fail connection refused"
 wait_for_run 7 60 2> /dev/null; check "ten failed reads in a row end the wait" "1 10" "$? $(calls)"
-reset; DEFAULT=$(printf 'in_progress\t')
+reset; DEFAULT=$(view in_progress)
 wait_for_run 7 0 2> /dev/null; check "a run not done by the deadline ends the wait" "1 ''" "$? '$RUN_CONCLUSION'"
 
 spec_summary

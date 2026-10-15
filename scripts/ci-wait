@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+#
+# Wait for GitHub Actions runs, bounded -- the one way a tool or an agent waits on CI. Never a hand-written
+# `while gh run view ...; sleep` loop: one took jq's "null null null" for a verdict (2026-10-15).
+#
+#   scripts/ci-wait --run <id> [--run <id>...]                    each run to its conclusion
+#   scripts/ci-wait --workflow <file|name> [--workflow ...] --sha <commit> [--branch main]
+#                                                                 each workflow's run for that commit: waits for it to
+#                                                                 APPEAR, then to complete
+#   scripts/ci-wait --workflow <w> [--workflow ...] --any-completed [--branch main]
+#                                                                 each workflow's newest completed, uncancelled run
+#                                                                 (waits only while there is none)
+#
+#   --or-later     a run at the commit OR at any later commit descending from it on the branch: the first of them to
+#                  complete uncancelled answers ("is main green at X or after?"; a path-filtered workflow X never ran)
+#   --until-green  with --or-later: wait through failures for the first GREEN run at or after the commit (a red main
+#                  being fixed); a failure is then the answer only at --timeout
+#   --no-follow    a cancelled run is the answer (exit 3), never followed to the run that superseded it
+#   --timeout T    60 (minutes; or 90s / 20m / 2h)        --interval T  30 (seconds; CI_WAIT_POLL_SECONDS)
+#   --repo O/R     another repository than this checkout's
+#
+# CANCELLED / SUPERSEDED. By default a cancelled run is followed: main.yml's `cancel-in-progress` cancels a run when a
+# newer push starts one, and that newer run tests a superset. The verdict is then the first run of the same workflow
+# on the same branch, at a commit descending from the cancelled one's, to complete uncancelled -- printed with
+# "superseded run <id>". A cancelled run nothing superseded (cancelled by hand) is exit 3.
+#
+# A SET. Several --run / --workflow wait together: exit 0 once every one is green, at the first failure 1 (the rest
+# printed "pending"). `--workflow main.yml --workflow identity-model-convergence.yml --sha HEAD --or-later` is "a
+# green set of builds at this commit or a later one".
+#
+# Output: one line per state change on stderr; at the end one line per target on stdout,
+#   <run id> <sha> <conclusion> <workflow> [<note>]       (tab-separated; conclusion "timeout"/"pending"/"unreadable"
+#                                                          and run id "-" when it has none)
+# Exit: 0 every target green; 1 any failed (or another conclusion: timed_out, startup_failure...); 2 timeout, or
+# CI_WAIT_MAX_MISSES (10) unreadable reads in a row -- a null/partial answer from gh is asked again, never a verdict;
+# 3 cancelled (not superseded, or --no-follow). Each gh call is bounded by CI_WAIT_GH_TIMEOUT (60 s).
+# Run it in the background (run_in_background) and act on its notification; never sleep-poll a run by hand.
+# The logic and its tests: scripts/ci_wait.py, scripts/ci_wait_test.py.
+set -euo pipefail
+# shellcheck source=scripts/tool-conventions.sh
+. "$(dirname "$0")/tool-conventions.sh" # usage_from_header
+case "${1:-}" in -h|--help) usage_from_header; exit 0 ;; "") usage_from_header >&2; exit 2 ;; esac
+exec python3 -I "$(dirname "$0")/ci_wait.py" "$@"

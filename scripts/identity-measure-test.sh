@@ -73,13 +73,16 @@ case "$1 $2" in
   "run view")
     case "$json" in
       url) echo "https://example.test/runs/777" ;;
-      status,conclusion) [ -n "${VIEW_FAILS:-}" ] && exit 1
+      # scripts/ci-wait's read: the whole run object, as GitHub answers it
+      *status,conclusion*) [ -n "${VIEW_FAILS:-}" ] && exit 1
                          [ -n "${VIEW_BLIPS:-}" ] && [ ! -f "$STUB/blipped" ] && { touch "$STUB/blipped"; exit 1; }
-                         [ -n "${IN_PROGRESS:-}" ] && { touch "$STUB/watched"; printf 'in_progress\t\n'; exit 0; }
+                         view() { printf '{"databaseId":777,"headSha":"%s","headBranch":"measure/abc-1","workflowName":"w","status":"%s","conclusion":"%s"}\n' \
+                                    "${HEAD_SHA:-abc1230000000000000000000000000000000000}" "$1" "${2:-}"; }
+                         [ -n "${IN_PROGRESS:-}" ] && { touch "$STUB/watched"; view in_progress; exit 0; }
                          # CANCELS=n: the first n runs end cancelled, replaced in the lane by a newer dispatch
                          reads=$(( $(cat "$STUB/reads" 2>/dev/null || echo 0) + 1 )); echo "$reads" > "$STUB/reads"
-                         [ "$reads" -le "${CANCELS:-0}" ] && { printf 'completed\tcancelled\n'; exit 0; }
-                         printf 'completed\tsuccess\n' ;;
+                         [ "$reads" -le "${CANCELS:-0}" ] && { view completed cancelled; exit 0; }
+                         view completed success ;;
       createdAt,startedAt,updatedAt,jobs)
         # gh applies --jq itself: so does the stub, to what GitHub answers
         jq -r "$jq_filter" <<'JSON'

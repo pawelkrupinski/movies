@@ -27,7 +27,9 @@ case "$1 $2" in
     else echo 4242; fi ;;
   "run view")
     if [[ "$*" == *status,conclusion* ]]; then
-      if [ -n "$CONCLUSION" ]; then printf 'completed\t%s\n' "$CONCLUSION"; else printf 'in_progress\t\n'; fi
+      if [ -n "$CONCLUSION" ]; then status=completed; else status=in_progress; fi
+      printf '{"databaseId":4242,"headSha":"%s","headBranch":"main","workflowName":"w","status":"%s","conclusion":"%s"}\n' \
+        abc1230000000000000000000000000000000000 "$status" "$CONCLUSION"
     else echo "https://example.test/run/4242"; fi ;;
   "run download")
     [ "$DOWNLOAD" != hangs ] || exec sleep 3 # long enough to be ended mid-download

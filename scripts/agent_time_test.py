@@ -144,5 +144,13 @@ class AgentTimeTest(unittest.TestCase):
             self.assertEqual(agent_time.main([os.path.join(self.root, "nowhere")]), 2)
 
 
+class CiWaitTest(unittest.TestCase):
+    def test_a_ci_wait_is_a_ci_wait(self):
+        launches = agent_time.Launches()
+        command = "cd /w && scripts/ci-wait --workflow main.yml --sha HEAD --or-later"
+        self.assertEqual(agent_time.bash_bucket(command, launches), "poll: CI wait")
+        self.assertEqual(agent_time.launch_kind(command), "CI wait")
+
+
 if __name__ == "__main__":
     unittest.main()

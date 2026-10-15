@@ -16,7 +16,9 @@
 #   wait_until_no_runs <workflow> <jq predicate over a run> <timeout seconds> <what is waited for> [gh run list args...]
 #       Polls the workflow's newest 20 runs until none matches (fields: status, conclusion).
 #   wait_for_run <run id> <timeout seconds>
-#       Until the run completes; sets RUN_CONCLUSION. Ten failed reads in a row end the wait -- one is a blip.
+#       Until the run completes; sets RUN_CONCLUSION (cancelled included: never followed to a superseding run).
+#       scripts/ci-wait --run --no-follow: ten unreadable reads in a row end the wait -- one is a blip, and a
+#       null or partial answer is never a conclusion.
 #
 # The answers are variables, not stdout: a wait run as `x=$(wait_for_run ...)` is a subshell, and a SIGTERM
 # to the caller is deferred until that subshell's wait ends -- hours -- so its clean-up trap never ran.
@@ -80,20 +82,19 @@ wait_until_no_runs() {
 }
 
 wait_for_run() {
-  local run=$1 timeout=$2 state status conclusion misses=0 deadline
+  local run=$1 timeout=$2 out status
   RUN_CONCLUSION=""
-  deadline=$((SECONDS + timeout))
-  while :; do
-    if state=$(_dispatch_gh run view "$run" --json status,conclusion --jq '[.status, .conclusion] | @tsv'); then
-      misses=0
-      IFS=$'\t' read -r status conclusion <<< "$state"
-      [ "$status" = completed ] && { RUN_CONCLUSION=$conclusion; return 0; }
-    else
-      misses=$((misses + 1))
-      [ "$misses" -lt 10 ] || { _dispatch_say "could not read run $run ($misses reads in a row)"; return 1; }
-      _dispatch_say "could not read run $run (read $misses of 10): retrying"
-    fi
-    [ "$SECONDS" -lt "$deadline" ] || { _dispatch_say "run $run still ${status:-unread} after ${timeout}s"; return 1; }
-    sleep "${DISPATCH_POLL_SECONDS:-30}"
-  done
+  out=$(mktemp)
+  # In the background and `wait`ed for: a signal to the caller is handled at once, not after the run ends -- and
+  # ci-wait, its parent gone, stops at its next poll.
+  "$(dirname "${BASH_SOURCE[0]}")/../ci-wait" --run "$run" --no-follow --timeout "${timeout}s" \
+    --interval "${DISPATCH_POLL_SECONDS:-30}s" > "$out" &
+  wait $!
+  status=$?
+  RUN_CONCLUSION=$(cut -f3 "$out")
+  rm -f "$out"
+  case "$status" in
+    0|1|3) return 0 ;;
+    *) RUN_CONCLUSION=""; _dispatch_say "run $run gave no conclusion within ${timeout}s (or could not be read)"; return 1 ;;
+  esac
 }
