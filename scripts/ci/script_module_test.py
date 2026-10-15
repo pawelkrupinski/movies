@@ -30,6 +30,11 @@ class ScriptModuleTest(unittest.TestCase):
         path = self.tool("identity-report", "#!/usr/bin/env python3\nRAN = []\nif __name__ == '__main__':\n    RAN.append(1)\n")
         self.assertEqual([], script_module.load(path).RAN)
 
+    def test_a_dataclass_under_postponed_annotations_loads(self):
+        # dataclasses resolves the class's module through sys.modules: a module not registered there fails to load
+        body = "from __future__ import annotations\nfrom dataclasses import dataclass\n\n@dataclass\nclass Take:\n    film: str\n"
+        self.assertEqual("x", script_module.load(self.tool("take-tool.py", body)).Take("x").film)
+
     def test_a_name_can_be_given(self):
         self.assertEqual("findings", script_module.load(self.tool("convergence-findings.py", ""), "findings").__name__)
 
