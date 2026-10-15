@@ -15,12 +15,14 @@ final class MemoLookups(inner: IdentityLookups) extends IdentityLookups {
   override def candidates(q: CandidateQuery): Answer[Seq[Hit]] = queries.computeIfAbsent(q, _ => inner.candidates(q))
   override def film(id: Int): Answer[Option[IdentityMeasures.Film]]      = films.computeIfAbsent(id, _ => inner.film(id))
   // What a resolve announces it will ask, answered ahead on a few threads: a live-gap replay
-  // (`settings.IdentityLiveGaps`) otherwise asks its live questions one after another.
+  // (`settings.IdentityLiveGaps`) otherwise asks its live questions one after another, and a recorded corpus's detail
+  // pages -- decompressed and parsed, a third of the US resolve's 285 s (JFR, 2026-10-15) -- are read on the idle cores.
   override def prefetch(qs: Iterable[CandidateQuery], ids: Iterable[Int], pages: Iterable[Listing]): Unit = {
     inner.prefetch(qs, ids, pages)
     val pool = java.util.concurrent.Executors.newFixedThreadPool(MemoLookups.PrefetchThreads)
     try {
-      (qs.toSeq.map(q => () => { candidates(q); () }) ++ ids.toSeq.map(id => () => { film(id); () }))
+      (qs.toSeq.map(q => () => { candidates(q); () }) ++ ids.toSeq.map(id => () => { film(id); () }) ++
+        pages.toSeq.map(l => () => { detail(l); () }))
         .map(task => pool.submit(new java.util.concurrent.Callable[Unit] { def call(): Unit = task() })).foreach(_.get())
     } finally pool.shutdown()
   }
