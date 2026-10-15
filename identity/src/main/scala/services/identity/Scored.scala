@@ -12,9 +12,13 @@ private[identity] final case class Scored(candidate: Candidate, probability: Dou
                                           seasonProduction: Boolean = false, deniedByPin: Boolean = false,
                                           houseProduction: Boolean = false, imdb: Option[Scored.ImdbPlace] = None,
                                           suggestedOnly: Boolean = false, soleResult: Boolean = false, imdbTitled: Set[String] = Set.empty,
-                                          vetoedRivals: Int = 0) {
+                                          vetoedRivals: Int = 0, untaken: Option[String] = None) {
   /** Is the film ruled out for this listing — `denial` says why. */
   def denied: Boolean = denial.isDefined
+  /** May a rule take it? Not a denied film, nor an UNTAKEN one — `untaken` says why: a film no rule takes that stays in
+   *  the pool as a rival, so that leaving it out lifts no other candidate (a short beside the feature its title names,
+   *  [[ShortFilms]]). */
+  def takeable: Boolean = !denied && untaken.isEmpty
   /** Denied by the probability cut alone — no learned rule, no pin: the weakest denial, the listing's title and few facts
    *  reading low, which another listing's own match outweighs (`Families.deniedBySibling`, `Acceptance.soleResult`). */
   def deniedByCutOnly: Boolean = !deniedByPin && denial.exists(_.contains(Scored.ProbabilityCut))

@@ -303,3 +303,20 @@ house-banner	en	season
 house-banner	pl	sezon
 house-banner	de	Spielzeit
 house-banner	es	temporada
+
+# ── short-film: a short billed as one — a venue screening a short says so (ShortFilms.billsAShort) ──
+short-film	en	short film*
+short-film	en	short
+short-film	en	shorts
+short-film	de	*kurzfilm*
+short-film	de	Vorfilm*
+short-film	pl	krótkometrażow*
+short-film	pl	krótki metraż
+short-film	pl	short*
+short-film	es	cortometraje*
+short-film	es	corto
+short-film	es	cortos
+short-film	fr	court métrage*
+short-film	fr	courts métrages
+short-film	pt	curta metragem
+short-film	pt	curtas metragens

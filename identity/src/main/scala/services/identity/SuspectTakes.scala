@@ -76,8 +76,6 @@ object SuspectTakes {
   /** How many years a venue's stated year may stand from the film's: a festival's or a print's year beside the
    *  release's ("Podglądacz" 1957 for Powell's 1960 film). */
   val StatedYearSlack = 3
-  /** A film running under this many minutes is a short. */
-  val ShortMinutes = 40
   /** A listing running at least this many minutes runs feature length. */
   val FeatureMinutes = 60
   /** The fewest words of the billing, outside the film's title and every decoration, that make it a fragment. */
@@ -282,15 +280,15 @@ object SuspectTakes {
 
   private[identity] def runtime(measured: IdentityMeasures.Listing, film: IdentityMeasures.Film, billings: Billings,
                                 listing: Listing): Option[Suspicion] = {
-    val runs = (film.runtimes ++ FilmCuts.of(film.imdbNumber).map(_.runtime)).distinct
+    val runs = ShortFilms.runtimesOf(film)
     val stated = measured.statedRuntime
     // a short several venues bill at once: no programme of shorts is a wide release
     lazy val venues = billings.venuesBilling(listing)
-    if (stated.isEmpty && runs.nonEmpty && runs.max < ShortMinutes && venues >= Agreement.WidelyBilled)
+    if (stated.isEmpty && ShortFilms.isShort(film) && venues >= Agreement.WidelyBilled)
       Some(Suspicion(Signal.Runtime, s"a ${runs.max}-minute short taken for a title $venues venues bill"))
     else stated.filter(_ => runs.nonEmpty).flatMap { stated =>
-      if (stated < ShortMinutes) None // a venue billing a short: its programme, not the film's running time
-      else if (runs.max < ShortMinutes && stated >= FeatureMinutes)
+      if (stated <= ShortFilms.MaxMinutes) None // a venue billing a short: its programme, not the film's running time
+      else if (ShortFilms.isShort(film) && stated >= FeatureMinutes)
         Some(Suspicion(Signal.Runtime, s"a ${runs.max}-minute short taken for a listing running $stated minutes"))
       else Option.when(runs.forall(x => math.abs(stated - x) >= math.max(IdentityMeasures.RuntimeContradiction.toDouble, stated * 0.3)))(
         Suspicion(Signal.Runtime, s"the listing runs $stated minutes, the film ${runs.sorted.mkString("/")}"))

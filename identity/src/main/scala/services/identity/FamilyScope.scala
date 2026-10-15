@@ -27,7 +27,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
    *  (`CandidateScoring.evidenceDenial`), which are never eligible. */
   def score(listing: IdentityMeasures.Listing, venue: String, ranks: Map[Int, Int], walked: Set[Int], shared: Set[Int],
             deniedByNode: Int => Option[String], suggested: Set[Int] = Set.empty, directedBy: Set[Int] = Set.empty,
-            imdbTitles: Map[Int, Set[String]] = Map.empty, country: Option[String] = None): Seq[Scored] = {
+            imdbTitles: Map[Int, Set[String]] = Map.empty, country: Option[String] = None, linked: Set[Int] = Set.empty): Seq[Scored] = {
     counted()
     val related    = pool.map(candidate => candidate.tmdbId -> titleRelation(listing, candidate)).toMap
     // The ONE film IMDb lists under the listing's title (an AKA TMDB does not carry), when no film beside it carries the
@@ -105,6 +105,17 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
       StageRelays.sameBroadcast(scored.candidate.film, other.candidate.film) &&
       Ordering[(Int, Int, Int)].lt(StageRelays.broadcastRecordOrder(other.candidate.tmdbId, other.candidate.film),
         StageRelays.broadcastRecordOrder(scored.candidate.tmdbId, scored.candidate.film)))
+    // A short beside a feature the title names as its own is that feature's namesake, unless the venue bills a short: no
+    // rule takes it, and it stays a rival ([[ShortFilms]]): DE "GINA - mit der Domschule Würzburg" is no 7-minute "Gina"
+    // beside three feature-length ones.
+    // A short of the director the listing credits is its own film, unless a feature of that director carries the title
+    // too (DE Filmmuseum München's "Nuisance Bear" {Osio Vanden, Weisman}: their 2026 feature, not their 2021 short).
+    val features = candidates.filter(scored => !scored.denied && !ShortFilms.isShort(scored.candidate.film) &&
+      IdentityMeasures.TitlesItsOwn(relation(scored.candidate.tmdbId)))
+    val creditedFeature = features.exists(scored => IdentityMeasures.sameDirector(scored.measures))
+    def shortUntaken(scored: Scored) =
+      if (scored.denied || (IdentityMeasures.sameDirector(scored.measures) && !creditedFeature)) None
+      else ShortFilms.untaken(listing, scored.candidate.tmdbId, scored.candidate.film, linked, features.nonEmpty)
     candidates.map(scored =>
       if (anotherRecordOfItsBroadcast(scored))
         scored.copy(denial = Some("another record of a broadcast its film database holds twice"))
@@ -114,7 +125,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
         scored.copy(denial = Some("another instalment than the one the title numbers"))
       else if (housed.nonEmpty && besideItsOwnHouse(scored))
         scored.copy(denial = Some("another house's staging of its work, beside its own house's record"))
-      else scored)
+      else scored.copy(untaken = shortUntaken(scored)))
       .sortBy(scored => (-scored.probability, scored.candidate.tmdbId))
   }
 
@@ -186,7 +197,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
   def of(node: EvidenceNode): Seq[Scored] = memo.getOrElseUpdate(node.id,
     { val reached = reach(node)
       score(evidenceOf(node).measured, node.venue, reached.search, reached.walk, sharedOf(node),
-        id => denialByNode(node, id), reached.imdbOnly, reached.directed, reached.imdbTitled, node.country).map(placedByImdb(Seq(node)))
+        id => denialByNode(node, id), reached.imdbOnly, reached.directed, reached.imdbTitled, node.country, feedLinked(node).map(_._2).toSet).map(placedByImdb(Seq(node)))
         .map(scored => if (reached.soleResults(scored.candidate.tmdbId)) scored.copy(soleResult = true) else scored)
         .map(scored => reached.imdbTitled.get(scored.candidate.tmdbId).fold(scored)(titles => scored.copy(imdbTitled = titles))) })
 
@@ -302,7 +313,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
     score(listing, lead.venue, ranks, reached.flatMap(_.walk).toSet, cluster.flatMap(sharedOf).toSet,
       id => cluster.iterator.flatMap(denialByNode(_, id)).nextOption(), reached.flatMap(_.imdbOnly).toSet -- ranks.keySet,
       reached.flatMap(_.directed).toSet,
-      reached.flatMap(_.imdbTitled).groupMapReduce(_._1)(_._2)(_ ++ _), lead.country)
+      reached.flatMap(_.imdbTitled).groupMapReduce(_._1)(_._2)(_ ++ _), lead.country, cluster.flatMap(feedLinked(_).map(_._2)).toSet)
       .map(scored => if (scored.denied || cluster.forall(node => !of(node).exists(other => other.candidate.tmdbId == scored.candidate.tmdbId && other.denied))) scored else scored.copy(denial = Some("a member's own evidence rules it out")))
       .map(placedByImdb(cluster))
       .map(scored => reached.flatMap(_.imdbTitled.getOrElse(scored.candidate.tmdbId, Set.empty)).toSet match {

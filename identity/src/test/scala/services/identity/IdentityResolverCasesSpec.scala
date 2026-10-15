@@ -951,7 +951,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
    *  read 18.4% for Wajda's 2009 film beside the 1965 one. Two namesakes only an IMDb lookup found, alike in all but
    *  their credit, or a double bill, lean to none. */
   "A no-match" should "name the one film its evidence leans to, and none on a tie or a double bill" in {
-    val films = Seq(F(1, "Tatarak", 2009, "Andrzej Wajda", 85, 1), F(2, "Tatarak", 1965, "Someone Else", 20, 0.3),
+    val films = Seq(F(1, "Tatarak", 2009, "Andrzej Wajda", 85, 1), F(2, "Tatarak", 1965, "Someone Else", 75, 0.3),
       F(3, "Lalka", 1968, "Wojciech Has", 159, 1, searched = false), F(4, "Lalka", 1968, "Another Has", 150, 1, searched = false))
     val lean   = listing(KinoMuza, "Tatarak")
     val tie    = listing(KinoMuza, "Lalka")
@@ -2434,11 +2434,11 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val r = shipped(linked ++ stated, films)
     withClue((linked ++ stated).map(l => r.decisionOf(l.key).render).distinct.mkString("\n"))(
       (linked ++ stated).map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(Some(1555986)))
-    // the bare node's own reading: the 16-minute short is denied — a short beside the feed's link to another film, and
+    // the bare node's own reading: the 16-minute short is untaken — a short beside the feature its title names — or denied,
     // its 2026 no backing beside Limkilde's credit and 85 minutes; and the copied original title's search ranks nothing
     val bare = IdentityResolver.candidatesOf(linked ++ stated, new FilmTable(films, normalizer), normalizer)(linked.contains).flatMap(_.candidates)
     withClue(bare.map(_.render).mkString("\n")) {
-      bare.filter(_.tmdbId == 1630377).map(_.denial.exists(why => ReleaseVeto.vetoes(why) || why.startsWith("a short, its feed"))).distinct shouldBe Seq(true)
+      bare.filter(_.tmdbId == 1630377).map(candidate => candidate.denial.exists(ReleaseVeto.vetoes) || candidate.untaken.isDefined).distinct shouldBe Seq(true)
       bare.filter(_.tmdbId == 864101).map(_.searchRank).distinct shouldBe Seq(None)
     }
   }
@@ -2890,6 +2890,47 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     // a re-release's year in the bracket dates no film
     val rerelease = listing(KinoMuza, "DRACULA (Re-release 2025)", runtime = Some(86))
     withClue(shipped(Seq(rerelease), films).decisionOf(rerelease.key).render)(shipped(Seq(rerelease), films).decisionOf(rerelease.key).film should not be Some(1246049))
+  }
+
+  "A short" should "not be taken for a screening billing no running time and no shorts, its title naming a feature too" in {
+    // DE Central im Bürgerbräu's "GINA - mit der Domschule Würzburg" (recording 38666576506) pooled to TMDB's 7-minute
+    // "Gina", beside three feature-length "Gina"s: a slot billing a title and nothing else screens the feature. Its slice
+    // (IdentitySliceCasesSpec) holds the pooled take; here the bare title's own reading.
+    val films = Seq(F(1193753, "Gina", 2022, "Ayu Lestari", 7, 3), F(1292252, "Gina", 2024, "Someone Else", 98, 0.4),
+      F(1555773, "Gina", 2025, "Another One", 97, 0.3), F(673591, "Gina", 2026, "A Third", 95, 0.3))
+    val ls    = Seq(Multikino, Helios).map(listing(_, "Gina"))
+    val r     = shipped(ls, films)
+    // a no-match's card keeps the ratings of the film it leans to: no more the short's than its take
+    withClue(ls.map(l => r.decisionOf(l.key).render).distinct.mkString("\n"))(
+      ls.flatMap(l => r.decisionOf(l.key).film ++ r.decisionOf(l.key).leaning.map(_.film)) should not contain 1193753)
+  }
+
+  it should "still be taken alone where no feature shares its title" in {
+    val films = Seq(F(1193753, "Gina", 2022, "Ayu Lestari", 7, 1))
+    val l = listing(Multikino, "Gina")
+    shipped(Seq(l), films).decisionOf(l.key).film shouldBe Some(1193753)
+  }
+
+  it should "not be taken for a listing stating a feature's running time, which its evidence weighs" in {
+    val films = Seq(F(1193753, "Gina", 2022, "Ayu Lestari", 7, 1))
+    val l = listing(Multikino, "Gina", runtime = Some(95))
+    val d = shipped(Seq(l), films).decisionOf(l.key)
+    withClue(d.render)(d.film shouldBe None)
+  }
+
+  it should "still be taken where the venue bills a short: by its running time, or by its billing's words" in {
+    val films = Seq(F(1193753, "Gina", 2022, "Ayu Lestari", 7, 1))
+    val timed = listing(Multikino, "Gina", runtime = Some(7))
+    shipped(Seq(timed), films).decisionOf(timed.key).film shouldBe Some(1193753)
+    val billed = listing(Multikino, "Gina (Kurzfilm)")
+    shipped(Seq(billed), films).decisionOf(billed.key).film shouldBe Some(1193753)
+  }
+
+  it should "still be taken where the venue's TMDB-keyed feed links that very short" in {
+    val films = Seq(F(1193753, "Gina", 2022, "Ayu Lestari", 7, 1))
+    val l = listing(Multikino, "Gina").copy(catalogueIds = Seq(CatalogueId("cineamo", "1193753m")))
+    val d = shipped(Seq(l), films).decisionOf(l.key)
+    withClue(d.render)(d.film shouldBe Some(1193753))
   }
 
   "The calibration" should "load from an artefact in its own format, the fixture as the real one" in {

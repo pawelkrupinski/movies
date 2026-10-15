@@ -201,17 +201,19 @@ object IdentityResolver {
 
   /** One candidate as a node's family scored it, for a report reading why a listing took what it took. */
   final case class CandidateScore(tmdbId: Int, title: String, year: Option[Int], probability: Double, searchRank: Option[Int],
-                                  denial: Option[String], seasonProduction: Boolean, houseProduction: Boolean, explanation: String) {
+                                  denial: Option[String], seasonProduction: Boolean, houseProduction: Boolean, explanation: String,
+                                  untaken: Option[String] = None) {
     def denied: Boolean = denial.isDefined
     def render: String =
       f"$tmdbId%8d ${ResolverDecision.percent(probability)}%6s rank ${searchRank.fold("-")(_.toString)}%2s" +
-        s"${denial.fold("")(why => s" DENIED ($why)")}${if (seasonProduction) " season" else ""}${if (houseProduction) " house" else ""} " +
+        s"${denial.fold("")(why => s" DENIED ($why)")}${untaken.fold("")(why => s" UNTAKEN ($why)")}${if (seasonProduction) " season" else ""}${if (houseProduction) " house" else ""} " +
         s"'$title'${year.fold("")(filmYear => s" ($filmYear)")} — $explanation"
   }
   object CandidateScore {
     private[identity] def of(scored: services.identity.Scored, calibration: IdentityCalibration): CandidateScore =
       CandidateScore(scored.candidate.tmdbId, scored.candidate.film.title, scored.candidate.film.year, scored.probability, scored.rank,
-        scored.denial, scored.seasonProduction, scored.houseProduction, calibration.explain(IdentityMeasures.ListingFilm, scored.measures))
+        scored.denial, scored.seasonProduction, scored.houseProduction, calibration.explain(IdentityMeasures.ListingFilm, scored.measures),
+        scored.untaken)
   }
 
   /** A focused node, its candidates as its family scores them (best first), and each banner its

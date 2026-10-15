@@ -47,7 +47,7 @@ private[identity] final class ResolverDecisions(scoring: CandidateScoring, famil
     val vote  = clusterVotes.flatMap(_.majority).headOption.orElse(clusterVotes.headOption.map(v =>
       s"pooled evidence of ${cluster.size} node(s) → ${v.film} at ${ResolverDecision.percent(v.probability)}"))
     val best  = scored.headOption.filter(scored => !film.contains(scored.candidate.tmdbId)).map(scored =>
-      s"best ${if (scored.denied) "vetoed" else "rejected"} candidate ${scored.candidate.tmdbId} at ${ResolverDecision.percent(scored.probability)}${scored.denial.fold("")(why => s", denied: $why,")} (${calibration.explain(ListingFilm, scored.measures)})")
+      s"best ${if (scored.denied) "vetoed" else "rejected"} candidate ${scored.candidate.tmdbId} at ${ResolverDecision.percent(scored.probability)}${scored.denial.orElse(scored.untaken).fold("")(why => s", ${if (scored.denied) "denied" else "untaken"}: $why,")} (${calibration.explain(ListingFilm, scored.measures)})")
     val gaps  = Option.when(unknown > 0)(s"$unknown lookup(s) unanswerable")
     // a cluster no TMDB film was taken for, every question answered: the one fallback film its members take
     val fallback = if (film.isDefined || unknown > 0) None else fallbackOf(cluster, scope)
@@ -62,7 +62,7 @@ private[identity] final class ResolverDecisions(scoring: CandidateScoring, famil
     // where the release veto took out a film ranked above it, as the veto adds no evidence for its namesake
     // ([[ReleaseVeto]]: PL "Stan wyjątkowy", Brešan's 2018 film best only once Hřebejk's 2024 one was vetoed)
     val candidate = if (film.isDefined || scored.takeWhile(_.denied).exists(_.denial.exists(ReleaseVeto.vetoes))) None
-      else eligible.headOption.map(_.candidate)
+      else eligible.headOption.filter(_.untaken.isEmpty).map(_.candidate)
       .filterNot(best => cluster.exists(node => families.denies(node, best.tmdbId)))
       .map(best => ResolverDecision.Leaning(best.tmdbId, best.film.imdbNumber))
     ResolverDecision(cluster.flatMap(_.listings.map(_.key)).sorted, film, confidence, basis,

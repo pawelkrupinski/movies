@@ -22,8 +22,11 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
   /** An acceptance rule, by the name an explanation gives it. Whichever condition took the film, no rule takes one whose
    *  title numbers its series OTHERWISE than the listing's ([[ownInstalment]]). */
   private final case class Rule(name: String, why: Seq[Scored] => Verdict) {
-    def accepts(ranked: Seq[Scored]): Verdict = ownInstalment(why(ranked))
+    def accepts(ranked: Seq[Scored]): Verdict = ownInstalment(why(ranked)).flatMap(takeable)
   }
+  /** Refuses an UNTAKEN film ([[Scored.untaken]]) whichever rule took it: it stays a rival, never a take. */
+  private def takeable(accepted: Accepted): Verdict =
+    accepted._1.untaken.fold[Verdict](Right(accepted))(why => Left(Acceptance.Refused("untaken", Some(accepted._1.candidate.tmdbId), why)))
   /** Refuses a film both titles number, differently: PL Cinema City's and UK Odeon's "League of Legends Worlds 26 |
    *  Finals in Cinema" is not TMDB's "League of Legends Worlds25 - Finals in Cinema", its only search hit. A number only
    *  one side carries is weaker — TMDB files a two-part film's halves by their subtitles ("De Gaulle: Liberté" is UK
@@ -224,7 +227,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
   private def takenBy(ranked: Seq[Scored], keep: ((Accepted, String)) => Boolean = _ => true)
                      (rules: => Option[(Accepted, String)]): Option[(Accepted, String)] =
     if (billsSeveralWorks(ranked)) None
-    else seasonProduction(ranked).map(_.map(_ -> "season-production")).getOrElse(rules).filter(keep)
+    else seasonProduction(ranked).map(_.map(_ -> "season-production")).getOrElse(rules).filter(keep).filter(_._1._1.untaken.isEmpty)
       .map { case (accepted, rule) => editionNamed(ranked)(accepted) -> rule }.filter(takesNoBill(ranked))
 
   /** The probability that `film` is the listing's film — the decision's confidence, on the scale
@@ -464,7 +467,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  it as; "Bolek i Lolek" (28.9% beside "Reksio" at 28.9%) and the 1986 and 2025 "Caravaggio" lean to neither. */
   def leaning(ranked: Seq[Scored]): Option[Scored] =
     Option.when(ranked.headOption.forall(any => !MultiFilmBill.billsTwoWorks(any.listing)) && !billsSeveralWorks(ranked))(eligibleOf(ranked))
-      .flatMap(eligible => eligible.headOption.filter(best => eligible.lift(1).forall(runnerUp =>
+      .flatMap(eligible => eligible.headOption.filter(_.untaken.isEmpty).filter(best => eligible.lift(1).forall(runnerUp =>
         best.probability >= Acceptance.LeanMargin * runnerUp.probability) && closerThan(best, eligible).isEmpty))
 
   /** The eligible record the listing's title sits inside ([[titledCloser]]) whose answered facts

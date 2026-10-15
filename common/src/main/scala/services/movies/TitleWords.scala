@@ -54,6 +54,8 @@ object TitleWords {
     /** `ListingShape.HouseWords`. */
     case Stage           extends Concept("stage")
     case HouseBanner     extends Concept("house-banner")
+    /** `services.identity.ShortFilms.billsAShort`: a listing billing a short may take one. */
+    case ShortFilm       extends Concept("short-film")
   }
   object Concept {
     val byId: Map[String, Concept] = values.map(c => c.id -> c).toMap
