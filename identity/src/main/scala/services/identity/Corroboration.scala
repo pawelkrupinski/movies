@@ -67,6 +67,15 @@ private[identity] object Corroboration {
     case _                                => 0
   }
 
+  /** Is the listing's whole title, which names the film taken whole (`taken`, its [[naming]]), the WORK `rival`'s title
+   *  heads before its subtitle — not another instalment of it? Then the listing names the rival by its short title as
+   *  closely as the film it took by its whole one: DE CineStar's bare "Lieblingsmenschen" (three venues) took a 65-minute
+   *  2021 indie while 23 venues link Hufnagel's 2026 "Lieblingsmenschen - Die außergewöhnliche Freundschaft von Agnes
+   *  & Amir" by their feed's id. "Dune" heads "Dune: Part Two" too, but numbers no instalment of it. */
+  private def headedBy(rival: Scored, taken: Int): Boolean =
+    taken == 3 && IdentityMeasures.titleIsWorkOf(rival.listing, rival.candidate.film).isDefined &&
+      !rival.category("numeral").exists(IdentityMeasures.OtherInstalment)
+
   /** How many nodes must take a namesake on their own facts for it to stand against a bare node's take. */
   val EvidencedNamesake = 2
 
@@ -91,8 +100,8 @@ private[identity] object Corroboration {
       val own    = scored(node).find(_.candidate.tmdbId == film)
       val taken  = own.fold(0)(naming)
       val pieces = own.fold(Set.empty[Seq[String]])(scored => IdentityMeasures.namingPieces(scored.listing, scored.candidate.film))
-      scored(node).find(rival => rival.candidate.tmdbId != film && naming(rival) > 0 && naming(rival) >= taken &&
-        pieces.subsetOf(IdentityMeasures.namingPieces(rival.listing, rival.candidate.film)) && {
+      scored(node).find(rival => rival.candidate.tmdbId != film && (naming(rival) > 0 && naming(rival) >= taken &&
+        pieces.subsetOf(IdentityMeasures.namingPieces(rival.listing, rival.candidate.film)) || headedBy(rival, taken)) && {
         val rivalBacking = support.getOrElse(rival.candidate.tmdbId, 0)
         rivalBacking >= EvidencedNamesake && rivalBacking > backing
       }).map(rival => s"namesake ${rival.candidate.tmdbId} is taken on their own facts by ${support(rival.candidate.tmdbId)} node(s), $film by $backing")
