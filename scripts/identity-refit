@@ -29,6 +29,8 @@
 # root checkout: its results are changed files in THIS worktree — the weights, the snapshots — and the report.
 set -euo pipefail
 cd "$(dirname "$0")/.."
+# shellcheck source=scripts/tool-conventions.sh
+. scripts/tool-conventions.sh # die: a runtime failure, exit 1
 
 usage() { sed -n '3,28p' "$0" | sed 's/^# \{0,1\}//'; }
 
@@ -45,7 +47,6 @@ while [ $# -gt 0 ]; do
 done
 
 log() { echo "[identity-refit $(date -u +%H:%M:%S)] $*" >&2; }
-die() { echo "[identity-refit] $*" >&2; exit 1; }
 
 Weights=identity/src/main/resources/identity-weights.json
 Fixtures=test/resources/fixtures/08-06-2026

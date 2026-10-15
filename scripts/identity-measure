@@ -14,7 +14,8 @@
 #        scripts/identity-measure --run <run id> [--countries ...] [--keep-branch] [--json] [--no-wait] [--timeout <minutes>]
 #   <commit>       default HEAD (uncommitted changes are NOT measured: commit them first)
 #   --base         default the commit's merge-base with origin/main; the commit's parent when it is on main already
-#   --countries    the countries reported and judged (every leg runs: the workflow's matrix is fixed)
+#   --countries    the countries reported and judged (every leg runs: the workflow's matrix is fixed); also a
+#                  repeatable --country cc[,cc], as the other identity tools take it
 #   --keep-branch  leave the temporary branch on origin
 #   --no-wait      dispatch, print the run, keep the branch, and exit: collect later with --run <id> (which deletes it)
 #   --full         run the whole convergence suite, not only the takes rows (never reused, never stored)
@@ -51,11 +52,12 @@ here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 # shellcheck source=scripts/identity-tools.sh
 . "$here/identity-tools.sh" # identity_locked, identity_put; tool-conventions.sh's bounded, usage_from_header, countries
 workflow=identity-model-convergence.yml
-ref="" base="" countries=$(kinowo_countries_csv) keep="" nowait="" full="" fresh="" json="" run="" timeout_min=120
+ref="" base="" keep="" nowait="" full="" fresh="" json="" run="" timeout_min=120
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --base) base=$2; shift ;;
-    --countries) countries=$2; shift ;;
+    # one parser for both spellings (tool-conventions.sh): --countries pl,de and a repeatable --country cc
+    --country|--countries|--country=*|--countries=*) country_flag "$@"; shift $((COUNTRY_FLAG_ARGS - 1)) ;;
     --keep-branch) keep=1 ;;
     --no-wait) nowait=1 ;;
     --full) full=1 ;;
@@ -64,14 +66,16 @@ while [ "$#" -gt 0 ]; do
     --run) run=$2; shift ;;
     --timeout) timeout_min=$2; shift ;;
     -h|--help) usage_from_header; exit 0 ;;
-    -*) echo "identity-measure: unknown option $1" >&2; exit 2 ;;
+    -*) usage_error "unknown option $1" ;;
     *) ref=$1 ;;
   esac
   shift
 done
+countries=$(selected_countries_csv)
 
 say() { echo "identity-measure: $*" >&2; }
-die() { say "$*"; exit 2; }
+# Exit 2 is "the measurement could not be made" (above), a failure and a usage slip alike: tool-conventions.sh's die.
+DIE_STATUS=2
 # Dispatching, finding the run and waiting on it: scripts/ci/dispatch.sh. Every gh call is bounded: a hung API read
 # must not hold the measurement (and its branch) forever.
 . "$here/ci/dispatch.sh"

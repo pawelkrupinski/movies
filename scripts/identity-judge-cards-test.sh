@@ -71,6 +71,9 @@ check "a run lacking a country's capture stops before the JVM" "1 0" \
   "$(cards --fixtures 987654 --country de,uk) $(grep -c '^java' "$work/calls")"
 rm -f "$work/calls" "$repo/target/identity-tools/classpath"; touch "$work/calls"
 check "a compile that fails stops before the JVM" "1 0" "$(SBT_FAILS=1 cards --country pl) $(grep -c '^java' "$work/calls")"
+check "--countries, the other tools' spelling, is the same flag" "0 --country pl,de" \
+  "$(cards --countries PL --country=de) $(java_line | sed 's/.*scripts.IdentityJudgeCards .*--labels [^ ]* //')"
+check "a country no tool knows is a usage error, before any download" "2 1" "$(cards --countries pl,xx) $(grep -c 'unknown country xx' "$work/err")"
 check "an unknown argument is a usage error" "2" "$(cards --bogus)"
 check "--help prints the usage" "0 1" "$(cards --help) $(grep -q -- '--fixtures SRC' "$work/out" && echo 1)"
 

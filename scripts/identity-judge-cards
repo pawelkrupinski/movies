@@ -6,7 +6,8 @@
 # right; a record running >30% longer than the venue's slot, a short billed as a feature, the year and the directors
 # both disagreeing → wrong; scripts.JudgeEvidence.suggest). Everything else stays open. Writes drafts for a human or an agent to confirm; it NEVER edits identity-judgements.tsv.
 #
-#   scripts/identity-judge-cards [--fixtures SRC] [--country cc[,cc]] [--out DIR] [--all] [--live|--offline]
+#   scripts/identity-judge-cards [--fixtures SRC] [--country cc[,cc]]... [--out DIR] [--all] [--live|--offline]
+#                                (--countries a,b alike)
 #
 #   --fixtures SRC  the capture (default: this checkout's): a directory, an "Identity capture" run id, or a git ref
 #                   (origin/chore/identity-capture — the weekly capture's branch, read without checking it out). Its
@@ -28,7 +29,7 @@ case "${1:-}" in -h|--help) usage; exit 0 ;; esac
 IDENTITY_TOOL=identity-judge-cards
 # shellcheck source=scripts/identity-tools.sh
 . "$(dirname "$0")/identity-tools.sh"
-fixtures="" countries=$(kinowo_countries_csv) pass=() live=false offline=false
+fixtures="" pass=() live=false offline=false
 for arg in "$@"; do [ "$arg" = --live ] && live=true; done
 if $live && [ -z "${TMDB_API_KEY:-}" ]; then
   # shellcheck source=scripts/vault-env.sh
@@ -38,7 +39,8 @@ fi
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --fixtures) fixtures=$2; shift 2 ;;
-    --country) countries=$2; pass+=("$1" "$2"); shift 2 ;;
+    # one parser for both spellings (tool-conventions.sh): --country cc[,cc] (repeatable) and --countries a,b
+    --country|--countries|--country=*|--countries=*) country_flag "$@"; shift "$COUNTRY_FLAG_ARGS" ;;
     --out) pass+=("$1" "$(mkdir -p "$2" && cd "$2" && pwd)"); shift 2 ;;
     --all) pass+=("$1"); shift ;;
     --offline) offline=true; pass+=("$1"); shift ;;
@@ -50,7 +52,8 @@ if ! $offline && [ -z "${TMDB_API_KEY:-}" ]; then
   identity_log "no TMDB_API_KEY: a record the capture never read stays unknown (--live reads the key from the vault)"
 fi
 
-IFS=, read -r -a ccs <<< "$countries"
+[ ${#SELECTED_COUNTRIES[@]} -eq 0 ] || pass=(--country "$(selected_countries_csv)" ${pass[@]+"${pass[@]}"})
+IFS=, read -r -a ccs <<< "$(selected_countries_csv)"
 dir=$(identity_capture "$fixtures" "${ccs[@]}")
 cp=$(identity_classpath "$IDENTITY_REPO")
 cd "$IDENTITY_REPO"

@@ -15,12 +15,16 @@
 # Exit: 0 the run succeeded, 1 it did not; 2 it could not be dispatched, found or waited on.
 set -euo pipefail
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-. "$here/tool-conventions.sh" # bounded, kinowo_countries_csv
+# shellcheck source=scripts/tool-conventions.sh
+. "$here/tool-conventions.sh" # bounded, kinowo_countries_csv, die, usage_error
 . "$here/ci/dispatch.sh"
-variant=${1:?usage: identity-measure-ci.sh <variant> [out-dir]}
+TOOL_NAME=identity-measure-ci
+# Exit 2 is "it could not be dispatched, found or waited on" (above): tool-conventions.sh's die, at that status.
+DIE_STATUS=2
+[ $# -ge 1 ] || usage_error "usage: identity-measure-ci.sh <variant> [out-dir]"
+variant=$1
 out=${2:-target/identity-measure/$variant}
 workflow=identity-measure.yml
-die() { echo "identity-measure-ci: $*" >&2; exit 2; }
 # One scratch directory for the throwaway index and the download, removed however this ends (Ctrl-C included).
 scratch=$(mktemp -d "${TMPDIR:-/tmp}/identity-measure-ci.XXXXXX") || die "could not make a scratch directory"
 trap 'rm -rf "$scratch"' EXIT

@@ -60,6 +60,11 @@ check "...each run's start is asked once" "2" "$(grep -c 'gh api' "$work/calls")
 diff_ 100 200 --country de > /dev/null
 check "...and kept: a second comparison asks for nothing" "2" "$(grep -c 'gh api' "$work/calls")"
 
+out=$(diff_ 100 200 --countries de)
+check "--countries, the other tools' spelling, is the same flag" "1" "$(grep -c 'RE-SPELLED (whitespace) at 1 venue' <<< "$out")"
+diff_ 100 200 --country de,xx > /dev/null
+check "a country no tool knows is a usage error" "2 1" "$? $(grep -c 'unknown country xx' "$work/err")"
+
 out=$(diff_ 100 200 --country de --title lieblings)
 check "--title shows the listing one by one" "1" "$(grep -c '«Lieblingsmenschen - Die  Freundschaft» → «Lieblingsmenschen - Die Freundschaft»: RE-SPELLED (whitespace), fields alike' <<< "$out")"
 

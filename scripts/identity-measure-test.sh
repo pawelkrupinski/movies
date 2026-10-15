@@ -161,6 +161,8 @@ check "...and nothing else of main's" "false" \
   "$(scratch_git "$repo" cat-file -e "$pushed:rule.txt" 2>/dev/null && echo true || echo false)"
 
 check "a run read that fails once is retried, not the end of the measurement" "0" "$(VIEW_BLIPS=1 measure landable --countries pl)"
+check "--country, the other tools' spelling, is the same flag" "0" "$(VIEW_BLIPS=1 measure landable --country pl)"
+check "a country no tool knows is a usage error" "2" "$(measure landable --countries pl,xx)"
 check "a run that cannot be read is no measurement" "2" "$(VIEW_FAILS=1 measure landable --countries pl)"
 check "...and its branch is still deleted" "0" "$(measure_branches)"
 

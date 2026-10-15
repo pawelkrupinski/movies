@@ -11,7 +11,7 @@
 #   scripts/recording-diff <runA> <runB> [--country cc]... [--venue S] [--title S] [--limit N] [--corpus-only]
 #
 #   runA, runB     "Record scrape fixtures" run ids, older first (the report reads A → B)
-#   --country      one country (repeatable; default pl de uk us es)
+#   --country      one country or a list (repeatable; --countries a,b alike; default pl de uk us es)
 #   --venue S      only venues whose name holds S (case and accents aside), each listed listing by listing
 #   --title S      the listings whose title holds S, one by one (with --venue, at those venues only)
 #   --limit N      at most N rows a section (default 15)
@@ -36,16 +36,17 @@ repo=$IDENTITY_REPO
 
 run_a=$1 run_b=$2; shift 2
 for run in "$run_a" "$run_b"; do [[ $run =~ ^[0-9]+$ ]] || { echo "not a run id: $run" >&2; exit 2; }; done
-countries=() pass=() corpus_only=0
+pass=() corpus_only=0
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    --country) countries+=("$(printf '%s' "$2" | tr '[:upper:]' '[:lower:]')"); shift 2 ;;
+    # one parser for both spellings (tool-conventions.sh): a repeatable --country cc[,cc] and --countries a,b
+    --country|--countries|--country=*|--countries=*) country_flag "$@"; shift "$COUNTRY_FLAG_ARGS" ;;
     --venue|--title|--limit) pass+=("$1" "$2"); shift 2 ;;
     --corpus-only) corpus_only=1; shift ;;
     *) echo "unknown argument: $1" >&2; usage >&2; exit 2 ;;
   esac
 done
-[ "${#countries[@]}" -gt 0 ] || countries=("${KINOWO_COUNTRIES[@]}")
+IFS=, read -r -a countries <<< "$(selected_countries_csv)"
 
 # started <run> -> the run's start (ISO-8601), which tells a response the run recorded from one it restored; kept
 started() {
