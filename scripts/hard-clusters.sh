@@ -18,45 +18,69 @@
 #
 # Inputs, each defaulting to what CI's convergence leg has already restored:
 #   KINOWO_HARD_CLUSTERS_CORPUS_DIR  directory holding cinema-scrapes-<code>.json.gz
-#                                    (default test/resources/fixtures/corpus; fetched
-#                                    from the newest "Record scrape fixtures" run when
-#                                    absent)
+#                                    (default test/resources/fixtures/corpus)
 #   KINOWO_FIXTURE_ROOT              directory holding enrichment-<code>/ (default
-#                                    test/resources/fixtures; fetched from the
-#                                    convergence-fixtures release when absent)
+#                                    test/resources/fixtures)
 #   MONGODB_URI                      a THROWAWAY Mongo (default the local 28017 one)
+# When the corpus or a tree is absent, both come from ONE recording: the newest successful
+# "Record scrape fixtures" run holding the first country's corpus (or KINOWO_HARD_CLUSTERS_RECORDING),
+# its corpus and enrichment trees downloaded once into the shared cache (scripts/identity-tools.sh).
+# A recording that cannot be found or downloaded stops the script, naming it.
 #
 # Commit what it changes under test/resources/fixtures/corpus/ (hard-clusters-*) with
 # the fix the finding led to.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
+# shellcheck disable=SC2034 # read by identity-tools.sh's identity_log
+IDENTITY_TOOL=hard-clusters
+# shellcheck source=scripts/identity-tools.sh
+. scripts/identity-tools.sh
+
 mode=${1:-}; shift || true
 export MONGODB_URI=${MONGODB_URI:-mongodb://127.0.0.1:28017/?directConnection=true}
 corpus_dir=${KINOWO_HARD_CLUSTERS_CORPUS_DIR:-test/resources/fixtures/corpus}
 fixture_root=${KINOWO_FIXTURE_ROOT:-test/resources/fixtures}
+run=${KINOWO_HARD_CLUSTERS_RECORDING:-}
 scratch=$(mktemp -d "${TMPDIR:-/tmp}/hard-clusters.XXXXXX")
 trap 'rm -rf "$scratch"' EXIT
+
+# recorded <code> -> sets `recorded` to the shared cache's fixtures directory of the ONE recording every absent input
+# comes from (the first asked for picks it)
+recorded() {
+    local code=$1
+    if [ -z "$run" ]; then
+        run=$(identity_newest_recording "$code") || { echo "[hard-clusters] no recording to fetch the $code inputs from (above)" >&2; exit 1; }
+    fi
+    recorded=$(identity_recording "$run" "$code") || { echo "[hard-clusters] could not fetch recording $run's $code corpus and tree (above)" >&2; exit 1; }
+}
 
 ensure_corpus() {
     local code=$1
     [ -f "$corpus_dir/cinema-scrapes-$code.json.gz" ] && return 0
-    local run
-    run=$(gh run list --workflow "Record scrape fixtures" --status success --limit 1 --json databaseId --jq '.[0].databaseId')
-    echo "[hard-clusters] fetching the $code corpus from recording run $run"
-    gh run download "$run" --name "scrape-fixtures-$code" --dir "$scratch/scrapes-$code"
-    tar -xzf "$scratch/scrapes-$code/scrapes-$code.tar.gz" -C "$scratch/scrapes-$code" 2>/dev/null || true
-    corpus_dir="$scratch/scrapes-$code/test/resources/fixtures/corpus"
+    recorded "$code"
+    corpus_dir=$recorded/corpus
+    echo "[hard-clusters] the $code corpus: recording run $run ($corpus_dir)"
 }
 
 ensure_tree() {
     local code=$1
     [ -d "$fixture_root/enrichment-$code" ] && return 0
-    echo "[hard-clusters] fetching the $code enrichment tree from the convergence-fixtures release"
-    gh release download convergence-fixtures --pattern "enrichment-$code.tar.*" --dir "$scratch" --clobber
-    "$(dirname "$0")/../.github/scripts/unpack-fixture-archive.sh" "$(compgen -G "$scratch/enrichment-$code.tar.*" | head -1)" "$scratch"
     # A real directory, not a symlink: FakeHttpFetch refuses a path whose real form differs.
-    fixture_root="$scratch/test/resources/fixtures"
+    recorded "$code"
+    fixture_root=$recorded
+    echo "[hard-clusters] the $code enrichment tree: recording run $run ($fixture_root)"
+}
+
+# sbt_step <log> <sbt args...> -> sbt, its lines worth reading shown; a failed sbt fails the script
+sbt_step() {
+    local log=$1; shift
+    if ! sbt -batch "$@" > "$log" 2>&1; then
+        tail -40 "$log" >&2
+        echo "[hard-clusters] sbt $* failed (log above)" >&2
+        exit 1
+    fi
+    grep -E '\[hard-clusters\]|recorded [0-9]+ responses|Tests:|FAILED|error' "$log" || true
 }
 
 record() {
@@ -65,8 +89,7 @@ record() {
     for code in "${codes[@]}"; do ensure_tree "$code"; done
     KINOWO_HARD_CLUSTERS_RECORD=1 KINOWO_FIXTURE_ROOT="$(cd "$fixture_root" && pwd)" \
     KINOWO_HARD_CLUSTERS_COUNTRIES=$(IFS=,; echo "${codes[*]}") \
-        sbt -batch "worker/IntegrationTest/testOnly integration.HardClusterConvergenceIntegrationSpec" \
-        | grep -E '\[hard-clusters\]|recorded [0-9]+ responses|Tests:|FAILED' || true
+        sbt_step "$scratch/record.log" "worker/IntegrationTest/testOnly integration.HardClusterConvergenceIntegrationSpec"
 }
 
 case "$mode" in
@@ -79,14 +102,13 @@ case "$mode" in
         fi
         echo "[hard-clusters] findings:"; sed 's/^/  /' "$scratch/findings.tsv"
         ensure_corpus "$code"
-        sbt -batch "worker/Test/runMain scripts.BuildHardClusters extend $corpus_dir $scratch/findings.tsv" \
-            | grep -E '\[hard-clusters\]|error' || true
+        sbt_step "$scratch/extend.log" "worker/Test/runMain scripts.BuildHardClusters extend $corpus_dir $scratch/findings.tsv"
         record "$code"
         ;;
     record)
         record "$@"
         ;;
     *)
-        sed -n '3,27p' "$0"; exit 2
+        sed -n '3,31p' "$0"; exit 2
         ;;
 esac

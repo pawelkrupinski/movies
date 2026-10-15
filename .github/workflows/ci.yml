@@ -241,6 +241,7 @@ jobs:
                       python3 scripts/listing_history_test.py
                       bash scripts/label-lookup-test.sh
                       bash scripts/title-trace-test.sh
+                      bash scripts/hard-clusters-test.sh
                       bash .github/actions/drop-bot-branch/drop-test.sh
                   '
 
