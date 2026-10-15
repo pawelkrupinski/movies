@@ -1032,6 +1032,16 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     withClue(d.render)(d.film shouldBe None)
   }
 
+  it should "count a current release only when no current film its title heads stands beside it" in {
+    // DE CineStar's bare "Lieblingsmenschen" took a 65-minute 2021 indie TMDB dates a 2025 release of, while 23 venues
+    // link Hufnagel's 2026 "Lieblingsmenschen - Die außergewöhnliche Freundschaft von Agnes & Amir", which it heads
+    val films = Seq(F(788385, "Lieblingsmenschen", 2021, "Jana Lange", 65, 20, releases = Some("DE2025-")),
+      F(1185542, "Lieblingsmenschen - Die außergewöhnliche Freundschaft von Agnes & Amir", 2026, "Ingo Hufnagel", 98, 3, releases = Some("DE2026-")))
+    val l = screening(listing(Multikino, "Lieblingsmenschen"), "2026-11-18")
+    val d = shipped(Seq(l), films).decisionOf(l.key)
+    withClue(d.render)(d.film should not be Some(788385))
+  }
+
   it should "take the film its cluster's listing billed under the same title credits" in {
     // a bare listing beside one crediting the year and director under the very title is that cluster's film
     val films = Seq(F(585216, "Escape Room 2", 2021, "Adam Robitel", 88, 40), F(1573952, "Escape Room 2", 2026, "Hèctor Claramunt", 88, 2))

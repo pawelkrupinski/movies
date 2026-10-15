@@ -16,7 +16,8 @@ package services.identity
  *  - `feed id`: a TMDB-keyed feed's id linking it to `f` ([[SourceReliability.tmdbLinked]]);
  *  - `season`: a stage relay's screening days placing it in the season its record names ([[Scored.seasonProduction]]);
  *  - `current release`: its first screening falls within [[CurrentRelease]] years of a cinema release TMDB dates of the
- *    film in the venue's country (any country's when it dates none there) while no namesake's does — the venue's own
+ *    film in the venue's country (any country's when it dates none there) while no namesake's, nor a film's whose work
+ *    its title heads, does (DE CineStar's bare "Lieblingsmenschen" beside Hufnagel's 2026 film) — the venue's own
  *    showtimes, not its title: a bare "Eliminacja" screening in the month it opens is that release, a bare "Patagonien"
  *    three years after Bozzelli's "Patagonia" opened is a guess at it.
  *
@@ -55,7 +56,9 @@ private[identity] object Corroboration {
     val screened   = node.listings.flatMap(_.screenings.first).filterNot(_ == ScreeningDays.UnreadDay).minOption.map(_.getYear)
     def current(scored: Scored) = screened.exists(year => releaseYears(scored.candidate.film, node.country).exists(released =>
       math.abs(year - released) <= CurrentRelease))
-    val released   = current(own) && !rivals.exists(rival => (rival ne own) && rival.candidate.tmdbId != own.candidate.tmdbId && rival.titleNamesIt && current(rival))
+    // a rival the title names, or whose work it heads ([[headedBy]]), released as recently tells neither apart
+    val released   = current(own) && !rivals.exists(rival => (rival ne own) && rival.candidate.tmdbId != own.candidate.tmdbId &&
+      (rival.titleNamesIt || headedBy(rival, naming(own))) && current(rival))
     Seq("year" -> agree("year"), "director" -> agree("director"), "original title" -> original, "runtime" -> runtime, "feed id" -> linked,
       "season" -> season, "current release" -> released)
       .collect { case (name, true) => name }
