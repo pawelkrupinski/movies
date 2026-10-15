@@ -165,9 +165,17 @@ keep() { # <file> <asset> [base]: store a result, never failing the check
   # commit, and a key names the code and every input, never the ref that resolved them -- so the next measurement of the
   # same base (five agents measuring against one origin/main) downloads it instead of compiling and resolving it again.
   [ -n "$store" ] && [ -n "$2" ] && { [ "${3:-}" = base ] || [ "${GITHUB_REF:-}" = refs/heads/main ]; } && [ -s "$1" ] || return 0
-  gzip -c "$1" > "$RUNNER_TEMP/$2" \
-    && "$here/scripts/ci/gh-release.sh" upload "$store" "$RUNNER_TEMP/$2" --clobber > /dev/null \
-    || { echo "::warning::identity takes ($cc): could not store $2 -- the next run resolves its base again"; return 0; }
+  # Measurements running side by side resolve one base at once and race to store it: a refused upload of an asset the
+  # release holds by then is the race lost to an equal result (the key names every input), not a store missing.
+  if ! { gzip -c "$1" > "$RUNNER_TEMP/$2" && "$here/scripts/ci/gh-release.sh" upload "$store" "$RUNNER_TEMP/$2" --clobber > /dev/null; }; then
+    # allow-silenced: a read that fails is no proof the asset is there, and falls through to the warning below.
+    if gh release view "$store" --json assets --jq ".assets[] | select(.name == \"$2\") | .name" 2> /dev/null | grep -qx "$2"; then
+      echo "identity takes ($cc): $2 was stored by another run meanwhile"
+    else
+      echo "::warning::identity takes ($cc): could not store $2 -- the next run resolves its base again"
+    fi
+    return 0
+  fi
   # Only the newest few of a kind are ever a base again; the rest go (best effort -- one left is pruned next time).
   local kind=${2#takes-}; kind=${kind%%-*}
   # allow-silenced: pruning is housekeeping -- a listing that fails to read prunes nothing now and everything next time.

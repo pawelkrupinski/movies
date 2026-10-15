@@ -166,6 +166,13 @@ scratch_git "$repo" push -q origin "$tip:refs/heads/measure/abc-1"
 check "--run collects a finished run" "1" "$(HEAD_SHA=$tip measure lost --run 777 --countries pl)"
 check "...and deletes its measure/ branch" "0" "$(measure_branches)"
 check "...dispatching nothing" "false" "$([ -f "$work/stub/dispatch" ] && echo true || echo false)"
+# --run re-classifies with the checkout's judgements, made since the run and not yet committed: Lalka judged wrong
+# since, its loss is a cure.
+cp "$repo/test/resources/fixtures/identity-judgements.tsv" "$work/judgements.orig"
+sed -i.bak 's/\tright\topen\t/\twrong\topen\t/' "$repo/test/resources/fixtures/identity-judgements.tsv"
+scratch_git "$repo" push -q origin "$tip:refs/heads/measure/abc-1"
+check "--run classifies with the checkout's newer judgements" "0" "$(HEAD_SHA=$tip measure lost --run 777 --countries pl)"
+cp "$work/judgements.orig" "$repo/test/resources/fixtures/identity-judgements.tsv"; rm -f "$repo/test/resources/fixtures/identity-judgements.tsv.bak"
 
 # THE BRANCH ON EVERY EXIT PATH: whatever ends a measurement after the push, origin keeps no measure/ branch.
 check "a dispatch refused after the push is no measurement" "2" "$(DISPATCH_FAILS=1 measure landable --countries pl)"

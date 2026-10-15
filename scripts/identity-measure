@@ -91,8 +91,8 @@ timeout 120 git fetch -q origin main || die "could not fetch origin main"
 # ── collect: one finished run's takes rows → the table ───────────────────────────────────────────
 code_of() { case "$1" in poland) echo pl ;; germany) echo de ;; united-kingdom) echo uk ;; spain) echo es ;; united-states) echo us ;; *) echo "$1" ;; esac; }
 
-collect() { # <run id> <commit whose judgements classify>
-  local id=$1 commit=$2 cache dl url rows judgements jobs
+collect() { # <run id> <commit whose judgements classify> [checkout: classify with its working tree's judgements]
+  local id=$1 commit=$2 cache dl url rows judgements jobs checkout_judgements
   cache=${KINOWO_IDENTITY_CACHE:-$HOME/.cache/kinowo-identity}/measure/$id
   dl=$cache/artifacts rows=$cache/rows.json judgements=$cache/identity-judgements.tsv
   mkdir -p "$cache"
@@ -114,7 +114,11 @@ collect() { # <run id> <commit whose judgements classify>
       say "run $id: no identity-takes artifact could be downloaded (a run from before the takes rows uploaded theirs?)"
     fi
   fi
-  if ! git show "$commit:test/resources/fixtures/identity-judgements.tsv" > "$judgements"; then
+  # --run re-classifies an older run with the judgements made since -- the checkout's, committed or not.
+  checkout_judgements=${3:+$(git rev-parse --show-toplevel)/test/resources/fixtures/identity-judgements.tsv}
+  if [ -n "$checkout_judgements" ] && [ -f "$checkout_judgements" ]; then
+    cp "$checkout_judgements" "$judgements" && say "classifying with this checkout's judgements ($checkout_judgements)"
+  elif ! git show "$commit:test/resources/fixtures/identity-judgements.tsv" > "$judgements"; then
     say "$commit holds no identity-judgements.tsv: classifying with origin/main's"
     git show origin/main:test/resources/fixtures/identity-judgements.tsv > "$judgements" || die "no judgements to classify with"
   fi
@@ -153,7 +157,7 @@ if [ -n "$run" ]; then
   IFS=$'\t' read -r status run_branch run_sha <<< "$view"
   [ "$status" = completed ] || { say "run $run is $status: collect it once it completes"; exit 2; }
   case "$run_branch" in measure/*) branch=$run_branch ;; esac
-  collect "$run" "$run_sha"
+  collect "$run" "$run_sha" checkout
   exit $?
 fi
 

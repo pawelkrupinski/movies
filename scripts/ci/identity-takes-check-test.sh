@@ -122,8 +122,9 @@ cat > "$work/bin/gh" <<GH
 #!/usr/bin/env bash
 case "\$1 \$2" in
   "release download") [ -f "$work/release/\$5" ] && cp "$work/release/\$5" "\$7" ;;
-  "release upload")   mkdir -p "$work/release" && cp "\$4" "$work/release/" ;;
-  "release view")     echo ;;
+  "release upload")   [ -n "\${UPLOAD_RACES:-}" ] && { mkdir -p "$work/release" && cp "\$4" "$work/release/"; exit 1; }
+                      mkdir -p "$work/release" && cp "\$4" "$work/release/" ;;
+  "release view")     for f in "$work"/release/*; do [ -f "\$f" ] && basename "\$f"; done ;;
   *) exec "$work/bin/gh-history" "\$@" ;;
 esac
 GH
@@ -150,6 +151,12 @@ check "a measurement stores the base it resolved, not its head" "$(ls "$work/rel
 REF=refs/heads/measure/c5-2 TAKES_BASE=$c4 store_run "$c5" || true
 check "...so the next measurement against that base resolves only its head" "$(base_calls)" 0
 check "...timing the base as reused" "$(grep -c 'base-resolve.*reused' "$work/out/timings.tsv")" 1
+# Two measurements of one base at once: the one whose upload is refused because the other's landed first says so, and
+# warns of nothing (a warning there read as "the store is broken").
+rm -rf "$work/release"
+UPLOAD_RACES=1 REF=refs/heads/measure/c5-3 TAKES_BASE=$c4 store_run "$c5" || true
+check "an upload refused because another run stored the asset meanwhile is no warning" \
+  "0 1" "$(grep -c 'could not store' "$work/log") $(grep -c 'takes-decisions-pl-.* was stored by another run meanwhile' "$work/log")"
 
 # A capture lacking a lookup the code asks: the final takes are still replayed, the gap read as unknown and named --
 # only this row's country's (run 38694072183 lost every country's final takes to one UK Rotten Tomatoes record).
