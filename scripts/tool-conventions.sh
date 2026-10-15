@@ -114,23 +114,28 @@ usage_error() {
 # `--flag=value`. In a tool's argument loop:
 #   --country|--countries|--country=*|--countries=*) country_flag "$@"; shift "$COUNTRY_FLAG_ARGS" ;;
 # and after it `selected_countries_csv` (every country when none was named). Codes are lower-cased, a repeat dropped,
-# and one KINOWO_COUNTRIES lacks — or a flag without its value — is a usage_error. COUNTRY_FLAG_ARGS is always 1 or 2.
+# and one KINOWO_COUNTRIES lacks — or a flag without its value, or one naming no code (`,`) — is a usage_error. COUNTRY_FLAG_ARGS is always 1 or 2.
 SELECTED_COUNTRIES=()
 # shellcheck disable=SC2034 # COUNTRY_FLAG_ARGS is the calling loop's
 country_flag() {
-  local flag=$1 value cc known
+  local flag=$1 value cc known codes=() named=0
   COUNTRY_FLAG_ARGS=1
   case "$flag" in
     --country=*|--countries=*) value=${flag#*=}; flag=${flag%%=*} ;;
     *) value=${2:-}; COUNTRY_FLAG_ARGS=2; [ $# -ge 2 ] || COUNTRY_FLAG_ARGS=1 ;;
   esac
   [ -n "$value" ] && [ "${value#-}" = "$value" ] || usage_error "$flag needs a country code (one of $(kinowo_countries_csv))"
-  for cc in $(printf '%s' "$value" | tr '[:upper:],' '[:lower:] '); do
+  # split on commas and spaces into an array, never through an unquoted expansion: a `*` stays a `*`
+  IFS=', ' read -r -a codes <<< "$(printf '%s' "$value" | tr '[:upper:]' '[:lower:]')"
+  for cc in ${codes[@]+"${codes[@]}"}; do
+    [ -n "$cc" ] || continue
+    named=1
     known=""
     case ",$(kinowo_countries_csv)," in *",$cc,"*) known=1 ;; esac
     [ -n "$known" ] || usage_error "unknown country $cc (one of $(kinowo_countries_csv))"
     case " ${SELECTED_COUNTRIES[*]:-} " in *" $cc "*) ;; *) SELECTED_COUNTRIES+=("$cc") ;; esac
   done
+  [ "$named" = 1 ] || usage_error "$flag names no country code (one of $(kinowo_countries_csv))"
 }
 selected_countries_csv() {
   if [ ${#SELECTED_COUNTRIES[@]} -eq 0 ]; then kinowo_countries_csv; else local IFS=,; echo "${SELECTED_COUNTRIES[*]}"; fi

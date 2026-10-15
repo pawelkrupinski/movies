@@ -44,6 +44,11 @@ check "--country a,b (a list too)" "uk,de rest=|exit=0" "$(countries --country u
 check "--country=… and --countries=…, upper case and repeats folded" "de,pl rest=|exit=0" "$(countries --country=DE --countries=pl,de)"
 check "a code no tool knows is a usage error" "demo: unknown country xx (one of pl,de,uk,us,es)|demo: see demo --help|exit=2" \
   "$(countries --countries pl,xx)"
+check "a value naming no code (a lone comma) is a usage error, not every country" \
+  "demo: --country names no country code (one of pl,de,uk,us,es)|demo: see demo --help|exit=2" "$(countries --country ,)"
+mkdir -p "$work/glob" && touch "$work/glob/pl"
+check "a glob is no country code, never the files it matches (here: pl)" "demo: unknown country * (one of pl,de,uk,us,es)|demo: see demo --help|exit=2" \
+  "$(cd "$work/glob" && countries --country "'*'")"
 check "a flag without its value is a usage error" "demo: --country needs a country code (one of pl,de,uk,us,es)|demo: see demo --help|exit=2" \
   "$(countries --country)"
 
