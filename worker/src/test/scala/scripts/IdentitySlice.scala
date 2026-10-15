@@ -9,7 +9,7 @@ import services.movies.{ListingKey, TitleNormalizer}
 import tools.{CatalogueFill, IdentityJudgements, MemoLookups, RecordedCorpus, SliceHttp, UnmatchedClusters}
 
 import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Path}
+import java.nio.file.{Files, Path, Paths}
 import java.time.{Clock, Instant, ZoneOffset}
 import java.util.Locale
 import scala.jdk.CollectionConverters._
@@ -527,7 +527,8 @@ object IdentitySlice {
             val dir   = o.slices.getOrElse(session.cache.resolve("slices")).resolve(selector.directoryName)
             val slice = extract(session.recording, session.opened, session.index, seeds, selector.label, o.widen, dir, o.ref, session.filed, prod)
             val lacked = replaySlice(slice, None, labels, Some(new java.io.PrintWriter(takes)), o.orders, o.modes, prod)
-            o.emitCase.foreach(target => emitCase(slice, dir, labels, target.resolve(s"${country.code}-${selector.directoryName}")))
+            o.emitCase.foreach(target => emitCase(slice, dir, labels, target.resolve(s"${country.code}-${selector.directoryName}"),
+              o.families.flatMap(checkoutOf).toSeq :+ Paths.get("")))
             lacked
           }
           SliceResult(report.toString(StandardCharsets.UTF_8), takes.toString.linesIterator.filter(_.nonEmpty).toSeq, lacked)
@@ -809,10 +810,20 @@ object IdentitySlice {
     rightLabel(key, country, labels).map(label => Seq(Expected(key.venue, key.rawTitle, label.film, s"${label.venue}: ${label.note}")))
       .getOrElse(wrongLabels(key, country, labels).map(label => Expected(key.venue, key.rawTitle, Expected.Not + label.film, s"${label.venue}: ${label.note}")))
 
+  /** `source` with every one of `checkouts` taken off the paths it names: a case names its filed answers from a checkout,
+   *  not from this machine's path to one — under `--ref` the slice runs in the ref's checkout, and the families file it
+   *  read (`--families`) is in the checkout the tool was called from. */
+  def checkoutRelative(source: String, checkouts: Seq[Path]): String =
+    checkouts.map(_.toAbsolutePath.normalize.toString + java.io.File.separator).distinct.sortBy(-_.length).foldLeft(source)(_.replace(_, ""))
+
+  /** The checkout holding `file`: its nearest directory with a `.git` (a worktree's is a file). */
+  def checkoutOf(file: Path): Option[Path] =
+    Iterator.iterate(file.toAbsolutePath.normalize.getParent)(_.getParent).takeWhile(_ != null).find(d => Files.exists(d.resolve(".git")))
+
   /** Copies `slice` (kept in `from`) to `target` with what the judgements expect of each seed ([[expectationsOf]]) — NEVER the
    *  take: a seed they do not judge is left out, and a slice none of whose seeds it judges is refused. Each expectation is
    *  shown beside its label's own note, so a wrong label is seen before it is pinned. */
-  def emitCase(slice: Slice, from: Path, labels: Seq[UnmatchedClusters.Label], target: Path): Unit = {
+  def emitCase(slice: Slice, from: Path, labels: Seq[UnmatchedClusters.Label], target: Path, checkouts: Seq[Path] = Seq(Paths.get(""))): Unit = {
     val judged = slice.seeds.toSeq.sortBy(ListingKey.serialised).map(key => key -> expectationsOf(key, slice.country, labels))
     val (known, unknown) = judged.partition(_._2.nonEmpty)
     unknown.foreach { case (key, _) => println(s"--emit-case: the judgements do not judge ${key.venue} | ${key.rawTitle} — not pinned (judge it first)") }
@@ -822,10 +833,7 @@ object IdentitySlice {
       Seq("slice.json.gz", "rows.json.gz", "http.jsonl.gz").foreach(name => Files.copy(from.resolve(name), target.resolve(name), java.nio.file.StandardCopyOption.REPLACE_EXISTING))
       // the filed answers the slice's decision read beside the recording's: without them the replay's agreement asks its
       // families afresh, questions the slice never recorded — named from the checkout, not this machine's path to it
-      if (!slice.filed.isEmpty) {
-        val checkout = java.nio.file.Paths.get("").toAbsolutePath.toString + java.io.File.separator
-        tools.FiledAnswers.write(target, slice.filed.copy(source = slice.filed.source.replace(checkout, "")))
-      }
+      if (!slice.filed.isEmpty) tools.FiledAnswers.write(target, slice.filed.copy(source = checkoutRelative(slice.filed.source, checkouts)))
       val expected = known.flatMap(_._2)
       val lines = expected.map(e => Seq(e.venue, e.rawTitle, e.film, e.note).mkString("\t"))
       Files.writeString(target.resolve("expected.tsv"), (ExpectedHeader +: lines).mkString("", "\n", "\n"), StandardCharsets.UTF_8)
