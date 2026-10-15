@@ -36,11 +36,15 @@
 #   CORPORA=… FIXTURES=… PROD=… [REPORT=…] [EPSILON=certified|<rate>] [CASES=<jsonl>] [WEIGHTS=… LABELS=…] scripts/identity-calibrate.sh [--extract-prod]
 #   CASES lists {"listingKey","tmdbId","name"} whose probabilities the report shows under both the
 #   naive-Bayes and the joint model (evaluation only). WEIGHTS/LABELS redirect the two artefacts.
+#   VERSION names the artefact (default calibration-<TODAY>, decorations-<TODAY> for --decorations-only); TODAY
+#   (YYYY-MM-DD, default today in UTC) is the clock, injectable for the test.
+# Tested by scripts/identity-calibrate-test.sh against a stub sbt, scripts/identity-refit and prod tunnel.
 set -euo pipefail
 self="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 cd "$(dirname "$0")/.."
 # shellcheck source=scripts/identity-tools.sh
 . scripts/identity-tools.sh # IDENTITY_SBT: sbt in the en-US locale the report formats its numbers in
+TODAY="${TODAY:-$(date -u +%Y-%m-%d)}"
 
 if [[ "${1:-}" == "--refit" ]]; then
   exec scripts/identity-refit --skip-checks --report "${REPORT:-target/identity-calibration}/refit-report.md" ${RELEARN:+--relearn "$RELEARN"}
@@ -57,12 +61,12 @@ if [[ "${1:-}" == "--unified" ]]; then
   mkdir -p "$REPORT/unified"
   env KINOWO_IDENTITY_FULL="${COUNTRIES:-pl,uk,de,es,us}" KINOWO_IDENTITY_CORPUS_DIR="$CORPORA" KINOWO_FIXTURE_ROOT="$FIXTURES" \
     ${FAMILY_SEED:+KINOWO_IDENTITY_FAMILY_SEED=$FAMILY_SEED} ${POSTER_CACHE:+KINOWO_IDENTITY_POSTER_CACHE=$POSTER_CACHE} \
-    sbt -J-Xmx12g -batch "worker/IntegrationTest/runMain integration.IdentityUnifiedDataset --out $REPORT/unified"
+    "${IDENTITY_SBT[@]}" -J-Xmx12g -batch "worker/IntegrationTest/runMain integration.IdentityUnifiedDataset --out $REPORT/unified"
   cp "$REPORT/unified/training.tsv.gz" test/resources/fixtures/identity-unified/training.tsv.gz
   exec "${IDENTITY_SBT[@]}" -J-Xmx8g -batch "worker/Test/runMain scripts.IdentityUnifiedFit --report $REPORT/unified-report.md"
 fi
 if [[ "${1:-}" == "--decorations-only" ]]; then
-  exec "${IDENTITY_SBT[@]}" -J-Xmx12g -batch "worker/Test/runMain scripts.IdentityDecorationsLearn --corpora $CORPORA --fixtures $FIXTURES --version ${VERSION:-decorations-$(date -u +%Y-%m-%d)}"
+  exec "${IDENTITY_SBT[@]}" -J-Xmx12g -batch "worker/Test/runMain scripts.IdentityDecorationsLearn --corpora $CORPORA --fixtures $FIXTURES --version ${VERSION:-decorations-$TODAY}"
 fi
 : "${PROD:?set PROD to the dir of the production snapshot (prod-<db>.jsonl)}"
 # --refit-signal <listing-film signal> refits that one table, and the cannot-links reading it, in the shipped
@@ -72,7 +76,7 @@ if [[ "${1:-}" == "--refit-signal" ]]; then
 fi
 REPORT="${REPORT:-target/identity-calibration}"
 EPSILON="${EPSILON:-certified}"
-VERSION="${VERSION:-calibration-$(date -u +%Y-%m-%d)}"
+VERSION="${VERSION:-calibration-$TODAY}"
 
 if [[ "${1:-}" == "--extract-prod" ]]; then
   # shellcheck source=scripts/local-mirror/prod-tunnel.sh
