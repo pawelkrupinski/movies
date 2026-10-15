@@ -41,7 +41,10 @@ copy) runs the checks that otherwise fail CI in seconds, selected by the
 paths the push changes: ESLint on web JS, the generated-roster drift
 check, the read-model snapshot's input stamp, the wall-clock,
 metric-coverage and silenced-`gh`/`curl`-read lints (one warm `sbt`
-run, ~55s; the last also on any script or workflow), actionlint on
+run, ~55s; any change under `scripts/`, `.github/`, `.claude/`, `CLAUDE.md`,
+`build.sbt`, `project/` or `*/src/test|it/` also runs every other repo-reading
+lint spec — all `deploy/` specs and the `No*`/`*Lint*` source lints — in
+that run; `PREPUSH_SKIP=lintspecs` skips just those), actionlint on
 workflows, shellcheck on scripts (only warnings the push adds), and
 `scripts/ios-compile-check.sh` on `ios/**` — the SwiftUI app target via
 `xcodebuild` and the SwiftPM package on Linux via Docker, the two

@@ -11,9 +11,11 @@
 #   `snapshot`    the read-model snapshot's input stamp (scripts/read-model-snapshot-inputs.sh)
 #   `sbt`         NoWallClockInTestsSpec, NoWallClockInClientsSpec, the two Grafana metric-coverage
 #                 specs and NoSilencedGhCurlSpec, in ONE sbt run, on any Scala or dashboard change or any
-#                 script or workflow under scripts/, .github/ or infra/ (plus ScriptSelfTestsRunInCiSpec,
-#                 ConvergenceDispatchGateSpec and NoLiteralWaitBoundSpec for the paths they read:
-#                 `--lint-plan`) — and,
+#                 script or workflow under scripts/, .github/ or infra/ -- plus, on any change under scripts/,
+#                 .github/, .claude/, CLAUDE.md, build.sbt, project/ or */src/test|it/ (`--lint-plan`, ~30 s warm),
+#                 every other repo-reading lint spec: all deploy/ specs and the No*/*Lint* source lints, bar the
+#                 ones listed at lint_plan (GitOps manifests or a booted server needed); `lintspecs` skips just
+#                 those -- and,
 #                 ahead of them in that same run, the Test/It/Page configs of every module the push
 #                 touches and every module depending on one (`sbt compile` skips them all: f20a6b5dd
 #                 broke worker/It/compile and only CI saw it). `--compile-plan` prints that list.
@@ -136,6 +138,8 @@ trap on_exit EXIT
 
 Zero=0000000000000000000000000000000000000000
 
+skipped() { case " ${PREPUSH_SKIP:-} " in *" $1 "*) return 0 ;; *) return 1 ;; esac; }
+
 # ── Which checks a set of changed paths selects ─────────────────────────────────────────────────
 # One line per path on stdin; prints the selected check names, one per line, in run order.
 plan() {
@@ -158,11 +162,10 @@ plan() {
         case "$path" in
             scripts/*.sh|.github/*.sh|.github/*.yml|.github/*.yaml|infra/*.sh|infra/*.yml|infra/*.yaml) sbt=1 ;;
         esac
-        # What the lints `--lint-plan` adds read: a script self-test no workflow runs (ScriptSelfTestsRunInCiSpec), a
-        # literal wait in test code (NoLiteralWaitBoundSpec) — each turned Main red on 2026-10-14.
+        # What the repo-reading lint specs `--lint-plan` adds read: scripts, workflows, tests, fixtures, skills, the docs and
+        # the build -- each turned Main red from a push this check never selected (2026-10-13..15).
         case "$path" in
-            scripts/*test_*.py|scripts/*_test.py|scripts/*-test.sh|.github/*test_*.py|.github/*_test.py|.github/*-test.sh|\
-            worker/src/fixtures/*) sbt=1 ;;
+            scripts/*|.github/*|.claude/*|CLAUDE.md|*/src/test/*|*/src/it/*|*/src/page/*.scala|worker/src/fixtures/*|testkit/*) sbt=1 ;;
         esac
         case "$path" in
             infra/nix/files/monitoring/*|infra/test/test_dashboards.py) dashboards=1 ;;
@@ -234,21 +237,46 @@ compile_plan() {
 }
 
 # ── Which lint specs the sbt check runs ─────────────────────────────────────────────────────────
-# One line per path on stdin; prints `<module>:<spec>`, one per line. The standing lints always; the cheap CI lints that
-# turned Main red on 2026-10-14 only when the push touches what they read (seconds each, in the same warm sbt run):
-#   ScriptSelfTestsRunInCiSpec    a script self-test no workflow runs          — scripts/, .github/
-#   ConvergenceDispatchGateSpec   the convergence dispatch gate and its paths  — scripts/, .github/
-#   NoLiteralWaitBoundSpec        a literal bound on a wait in test code       — test, it, page, fixtures, testkit
+# One line per path on stdin; prints `<module>:<spec>`, one per line. The standing lints always. Every other spec that
+# only READS THE REPO'S FILES (never boots the app, never needs the network) runs when the push touches what such a spec
+# reads: scripts/, .github/, .claude/, CLAUDE.md, build.sbt, project/, */src/test|it|page/, worker/src/fixtures, testkit/
+# (~30 s warm in all). The set is read off the directories, so a new lint spec joins it by existing:
+#   <module>/src/test/scala/deploy/*Spec.scala     every workflow / wiring / budget / gate spec
+#   <module>/src/test/scala/tools/{No*,*Lint*}Spec the source lints (common, worker, web)
+# except what stays out, and why:
+#   needs the GitOps manifests, which live in another repository (infra/kubernetes/ is absent here; CI checks them out):
+#       NodeCpuBudgetSpec NodeMemoryBudgetSpec ChangeStreamSilenceAlertSpec CinemaScrapeStalenessAlertSpec
+#       WorkerRolloutStaggerSpec FluxImageAutomationSpec JdkParityOptionsSpec AotCacheOptionsSpec K8sTierPathGatingSpec
+#       PrometheusNodePortAgreementSpec WorkerScrapeCadenceConfigSpec SharedUsersDatabaseConfigSpec WebRolloutAvailabilitySpec
+#   boots a fixture server (not a file lint): FixtureServerBootSpec FixtureServerBootOverlapSpec
+# Skip just these with PREPUSH_SKIP=lintspecs (the standing five still run under `sbt`).
+LintSpecsNeedingGitOps="NodeCpuBudgetSpec NodeMemoryBudgetSpec ChangeStreamSilenceAlertSpec CinemaScrapeStalenessAlertSpec WorkerRolloutStaggerSpec FluxImageAutomationSpec JdkParityOptionsSpec AotCacheOptionsSpec K8sTierPathGatingSpec PrometheusNodePortAgreementSpec WorkerScrapeCadenceConfigSpec SharedUsersDatabaseConfigSpec WebRolloutAvailabilitySpec"
+LintSpecsBootingServers="FixtureServerBootSpec FixtureServerBootOverlapSpec"
 lint_plan() {
-    local scripts=0 tests=0 path
+    local reads_repo=0 path module dir file spec
     while IFS= read -r path; do
-        case "$path" in scripts/*|.github/*) scripts=1 ;; esac
-        case "$path" in worker/src/fixtures/*|*/src/test/*|*/src/it/*|*/src/page/*|testkit/*) tests=1 ;; esac
+        case "$path" in
+            scripts/*|.github/*|.claude/*|CLAUDE.md|build.sbt|project/*|*/src/test/*|*/src/it/*|*/src/page/*.scala|worker/src/fixtures/*|testkit/*) reads_repo=1 ;;
+        esac
     done
     printf '%s\n' worker:tools.NoWallClockInTestsSpec worker:services.cinemas.NoWallClockInClientsSpec \
         worker:deploy.GrafanaMetricCoverageSpec worker:deploy.NoSilencedGhCurlSpec web:deploy.GrafanaWebMetricCoverageSpec
-    [ $scripts = 1 ] && printf '%s\n' worker:deploy.ScriptSelfTestsRunInCiSpec worker:deploy.ConvergenceDispatchGateSpec
-    [ $tests = 1 ] && echo worker:tools.NoLiteralWaitBoundSpec
+    if [ $reads_repo = 1 ] && ! skipped lintspecs; then
+        for module in common worker web; do
+            for dir in deploy tools; do
+                for file in "$module"/src/test/scala/$dir/*Spec.scala; do
+                    [ -f "$file" ] || continue
+                    spec="$(basename "$file" .scala)"
+                    case "$dir:$spec" in tools:No*|tools:*Lint*|deploy:*) ;; *) continue ;; esac
+                    case " $LintSpecsNeedingGitOps $LintSpecsBootingServers " in *" $spec "*) continue ;; esac
+                    case "$module:$dir.$spec" in
+                        worker:tools.NoWallClockInTestsSpec|worker:deploy.GrafanaMetricCoverageSpec|worker:deploy.NoSilencedGhCurlSpec|web:deploy.GrafanaWebMetricCoverageSpec) continue ;;
+                    esac
+                    echo "$module:$dir.$spec"
+                done
+            done
+        done
+    fi
     return 0
 }
 
@@ -260,7 +288,6 @@ esac
 
 log()  { printf '\033[36m▸ pre-push\033[0m %s\n' "$*"; }
 warn() { printf '\033[33m! pre-push\033[0m %s\n' "$*" >&2; }
-skipped() { case " ${PREPUSH_SKIP:-} " in *" $1 "*) return 0 ;; *) return 1 ;; esac; }
 
 # ── Red builds gate the push ────────────────────────────────────────────────────────────────────
 GatingWorkflows=("Main" "Identity model convergence" "Record scrape fixtures")
@@ -454,7 +481,7 @@ check_sbt() {
     compiles=($(printf '%s\n' "$changed" | compile_plan))
     local lints module tests=()
     lints="$(printf '%s\n' "$changed" | lint_plan)"
-    for module in worker web; do
+    for module in common worker web; do
         tests+=("$module/Test/testOnly $(printf '%s\n' "$lints" | sed -n "s/^$module://p" | tr '\n' ' ' | sed 's/ $//')")
     done
     local run=(sbt -batch -Dsbt.server.forcestart=false "${compiles[@]}" "${tests[@]}")

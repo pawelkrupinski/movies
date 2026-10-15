@@ -61,8 +61,8 @@ check "any Scala source runs the sbt lints" "sbt" "$(plan worker/src/test/scala/
 check "a Grafana dashboard runs the dashboard tests and the metric-coverage lint" "dashboards sbt" \
   "$(plan infra/nix/files/monitoring/grafana/dashboards/apps/kinowo-http.json)"
 check "a workflow runs actionlint, and the silenced-read lint" "actionlint sbt" "$(plan .github/workflows/ci.yml)"
-check "a shell script runs shellcheck, and the silenced-read lint" "shellcheck sbt" "$(plan scripts/ci/order-seed.sh)"
-check "the hook itself runs shellcheck and its own test" "hooktest shellcheck" "$(plan scripts/hooks/pre-push)"
+check "a shell script runs shellcheck, and the lint specs" "shellcheck sbt" "$(plan scripts/ci/order-seed.sh)"
+check "the hook itself runs shellcheck and its own test" "hooktest shellcheck sbt" "$(plan scripts/hooks/pre-push)"
 check "an iOS view runs the iOS compile check" "ios" "$(plan ios/Kinowo/Views/FilmCard.swift)"
 check "an Android-only change runs nothing" "" "$(plan android/app/src/main/java/pl/kinowo/ui/X.kt)"
 check "docs run nothing" "" "$(plan docs/readme.md README.md)"
@@ -72,7 +72,7 @@ check "checks come out once each, in run order" "eslint snapshot actionlint shel
 check "a judgements change runs the judgements lint" "judgements" "$(plan test/resources/fixtures/identity-judgements.tsv)"
 check "an expected match runs it" "judgements" "$(plan test/resources/fixtures/identity-unmatched/expected-matches.tsv)"
 check "a hard-cluster expectation runs it" "judgements" "$(plan test/resources/fixtures/corpus/expected-hard-clusters-pl.txt)"
-check "the lint itself runs it, and the judgements' reader" "judgements judgements" \
+check "the lint itself runs it, and the judgements' reader" "judgements sbt judgements sbt" \
   "$(plan scripts/ci/identity_judgements_lint.py) $(plan scripts/ci/identity_judgements.py)"
 check "an unmatched-cluster capture does not" "" "$(plan test/resources/fixtures/identity-unmatched/pl.json.gz)"
 
@@ -103,19 +103,26 @@ check "an identity source compiles identity and every module built on it" \
 check "a dashboard alone compiles nothing extra" "" \
   "$(compiles infra/nix/files/monitoring/grafana/dashboards/apps/kinowo-http.json)"
 
-# The cheap CI lints that turned Main red on 2026-10-14 ride the same sbt run, each only for the paths it reads.
+# The repo-reading lint specs ride the same sbt run, for the paths they read (every deploy/ spec and the No*/*Lint* source
+# lints, minus the ones that need the GitOps manifests or boot a server).
 printf '\033[36m▸\033[0m pre-push --lint-plan\n'
 lints() { printf '%s\n' "$@" | "$REPO_ROOT/scripts/hooks/pre-push" --lint-plan | tr '\n' ' ' | sed 's/ $//'; }
 Always="worker:tools.NoWallClockInTestsSpec worker:services.cinemas.NoWallClockInClientsSpec worker:deploy.GrafanaMetricCoverageSpec worker:deploy.NoSilencedGhCurlSpec web:deploy.GrafanaWebMetricCoverageSpec"
+has() { case " $1 " in *" $2 "*) echo yes ;; *) echo no ;; esac; }
 check "a production Scala source runs the standing lints only" "$Always" "$(lints worker/src/main/scala/A.scala)"
-check "a script adds the self-test and convergence-dispatch lints" \
-  "$Always worker:deploy.ScriptSelfTestsRunInCiSpec worker:deploy.ConvergenceDispatchGateSpec" "$(lints scripts/x.sh)"
-check "...and so does a workflow" \
-  "$Always worker:deploy.ScriptSelfTestsRunInCiSpec worker:deploy.ConvergenceDispatchGateSpec" "$(lints .github/workflows/x.yml)"
-check "test code adds the literal-wait lint" "$Always worker:tools.NoLiteralWaitBoundSpec" \
-  "$(lints web/src/test/scala/ASpec.scala)"
-check "worker's fixtures config adds it too" "$Always worker:tools.NoLiteralWaitBoundSpec" \
-  "$(lints worker/src/fixtures/scala/tools/X.scala)"
+for changed in scripts/x.sh .github/workflows/x.yml .claude/skills/x/SKILL.md CLAUDE.md build.sbt web/src/test/scala/ASpec.scala \
+  worker/src/fixtures/scala/tools/X.scala worker/src/it/scala/XSpec.scala; do
+  out="$(lints "$changed")"
+  check "$changed runs the self-test, dispatch-gate, literal-wait, raw-git and sleep lints" \
+    "yes yes yes yes yes" "$(has "$out" worker:deploy.ScriptSelfTestsRunInCiSpec) $(has "$out" worker:deploy.ConvergenceDispatchGateSpec) $(has "$out" worker:tools.NoLiteralWaitBoundSpec) $(has "$out" worker:deploy.SharedMachineStateLintSpec) $(has "$out" worker:tools.NoSleepInTestsSpec)"
+done
+out="$(lints scripts/x.sh)"
+check "...and the common source lints" "yes" "$(has "$out" common:tools.SourceControlCharactersLintSpec)"
+check "...but not a spec that needs the GitOps manifests, nor one that boots a server" "no no" \
+  "$(has "$out" worker:deploy.NodeCpuBudgetSpec) $(has "$out" worker:deploy.FixtureServerBootSpec)"
+check "PREPUSH_SKIP=lintspecs drops them, keeping the standing lints" "$Always" \
+  "$(PREPUSH_SKIP=lintspecs lints scripts/x.sh)"
+check "an iOS-only push selects no sbt check" "ios" "$(plan ios/Kinowo/Views/A.swift)"
 check "a Python self-test selects the sbt check, for the self-test lint" "sbt" "$(plan scripts/ci/x_test.py)"
 check "worker's fixtures config selects the sbt check" "sbt" "$(plan worker/src/fixtures/resources/x.json)"
 
