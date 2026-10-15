@@ -19,7 +19,8 @@ package services.identity
  *  A node with none still takes the film when another node of its cluster billed under the SAME title corroborates it on
  *  its own — its title, clean title or search title alike — or joined to such a node by a [[Vouching]] must-link (US
  *  Showcase's chain id joins "El laberinto del fauno" to its credited "Pan's Labyrinth"): a bare "Frankenstein" beside
- *  the venues crediting del Toro is the cluster's film, not a guess. A node with neither is decided apart, as no film
+ *  the venues crediting del Toro is the cluster's film, not a guess — unless the family takes an evidenced namesake under
+ *  that very title on more nodes' facts, when only a catalogue id vouches. A node with neither is decided apart, as no film
  *  ([[IdentityResolver]]), only where its take is wrong-shaped ([[refused]]): a fact of its own against the film, or a
  *  namesake its family's corroborated nodes take more often. */
 private[identity] object Corroboration {
@@ -85,15 +86,6 @@ private[identity] object Corroboration {
     val own = cluster.map(node => node -> scored(node).find(_.candidate.tmdbId == film).fold(Seq.empty[String])(facts(node, _, scored(node)))).toMap
     def titles(node: EvidenceNode) = node.listings.flatMap(listing => Seq(listing.title, listing.cleanTitle) ++ listing.searchTitle).map(IdentityMeasures.key).toSet
     val ids    = cluster.map(_.id).toSet
-    val linked = edges.filter(edge => edge.must && Vouching(edge.reason) && ids(edge.a) && ids(edge.b))
-      .flatMap(edge => Seq(edge.a -> edge.b, edge.b -> edge.a)).groupMap(_._1)(_._2)
-    val vouched = scala.collection.mutable.Set.from(cluster.filter(own(_).nonEmpty).map(_.id))
-    val titled  = cluster.filter(own(_).nonEmpty).flatMap(titles).toSet
-    cluster.filter(node => titles(node).exists(titled)).foreach(vouched += _.id)
-    var frontier = vouched.toSeq
-    while (frontier.nonEmpty) {
-      frontier = frontier.flatMap(linked.getOrElse(_, Nil)).filter(vouched.add)
-    }
     val backing = support.getOrElse(film, 0)
     def namesake(node: EvidenceNode): Option[String] =
       val own    = scored(node).find(_.candidate.tmdbId == film)
@@ -104,7 +96,22 @@ private[identity] object Corroboration {
         val rivalBacking = support.getOrElse(rival.candidate.tmdbId, 0)
         rivalBacking >= EvidencedNamesake && rivalBacking > backing
       }).map(rival => s"namesake ${rival.candidate.tmdbId} is taken on their own facts by ${support(rival.candidate.tmdbId)} node(s), $film by $backing")
-    cluster.filterNot(node => vouched(node.id)).flatMap(node => namesake(node).map(why =>
+    // A title vouches only for a node no evidenced namesake shares it with: where the family takes another film under
+    // the node's own spelling on more nodes' facts, the spelling is that film's at least as much (DE "The Killer" ×5,
+    // bare, joined to the two venues dating Woo's 2024 remake while seven bill his 1989 film). A catalogue id still does.
+    val disputed = cluster.filter(own(_).isEmpty).flatMap(node => namesake(node).map(node.id -> _)).toMap
+    val linked = edges.filter(edge => edge.must && Vouching(edge.reason) && ids(edge.a) && ids(edge.b))
+      .flatMap(edge => Seq(edge.a -> (edge.b, edge.reason), edge.b -> (edge.a, edge.reason))).groupMap(_._1)(_._2)
+    val vouched = scala.collection.mutable.Set.from(cluster.filter(own(_).nonEmpty).map(_.id))
+    val titled  = cluster.filter(own(_).nonEmpty).flatMap(titles).toSet
+    cluster.filter(node => !disputed.contains(node.id) && titles(node).exists(titled)).foreach(vouched += _.id)
+    var frontier = vouched.toSeq
+    while (frontier.nonEmpty) {
+      frontier = frontier.flatMap(linked.getOrElse(_, Nil)).collect {
+        case (id, reason) if reason == "same-catalogue-id" || !disputed.contains(id) => id
+      }.filter(vouched.add)
+    }
+    cluster.filterNot(node => vouched(node.id)).flatMap(node => disputed.get(node.id).map(why =>
       node -> s"uncorroborated namesake: no year, director, original title, discriminating runtime, feed id or season of its own names tmdb $film, and $why"))
   }
 }
