@@ -148,7 +148,7 @@ class RecordCorpusInLegWiringSpec extends AnyFlatSpec with Matchers {
    *  pair before an identity measure dispatched on it could restore it (measure 37114004953). */
   "the publish" should "keep each country's newest five pinned trees" in {
     RepoFile.read(".github/scripts/convergence-publish.sh") should include("| sort -r | tail -n +6 | cut -f2")
-    RepoFile.read(".github/workflows/ci.yml") should include("bash .github/scripts/convergence-publish-test.sh")
+    ScriptTests.runInCi(".github/scripts/convergence-publish-test.sh") shouldBe true
     RepoFile.read(".github/scripts/restore-enrichment-tree.sh") should include("(it keeps the newest five)")
   }
 }

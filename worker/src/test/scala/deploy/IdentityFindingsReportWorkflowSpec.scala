@@ -31,7 +31,7 @@ class IdentityFindingsReportWorkflowSpec extends AnyFlatSpec with Matchers {
     RepoFile.withoutComments(findings) should not include "sbt"
     withClue("the report reads the judgements to tell triaged from untriaged: ")(
       findings should include("test/resources/fixtures/identity-judgements.tsv"))
-    RepoFile.read(".github/workflows/ci.yml") should include("python3 scripts/ci/identity_findings_report_test.py")
+    ScriptTests.runInCi("scripts/ci/identity_findings_report_test.py") shouldBe true
   }
 
   it should "fail, not report nothing, when there is no recording to read" in {
