@@ -21,6 +21,12 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
   private lazy val publish  = RepoFile.read(".github/actions/convergence-publish/action.yml")
   private lazy val verdictCallers = Seq(RepoFile.read(".github/workflows/identity-model-convergence.yml"))
 
+  /** One subcommand's function in the script the setup's fixture steps run: from `<name>() {` to its closing `}`. */
+  private def scriptFunction(name: String): String = {
+    val lines = RepoFile.read(".github/scripts/convergence-setup.sh").linesIterator.toSeq
+    lines.dropWhile(_ != s"$name() {").drop(1).takeWhile(_ != "}").mkString("\n")
+  }
+
   private def directives(yaml: String): String =
     yaml.linesIterator.filterNot(_.trim.startsWith("#")).mkString("\n")
 
@@ -49,10 +55,12 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
   // Falling back to live filling when no pair is pinned would reopen exactly the flake
   // this exists to close, and do it silently.
   it should "fail, not fall back to the network, when no recorded pair is pinned" in {
-    val resolve = RepoFile.step(setup, "Resolve the recorded pair to replay")
-    resolve should not include "continue-on-error"
+    val resolveStep = RepoFile.step(setup, "Resolve the recorded pair to replay")
+    resolveStep should not include "continue-on-error"
+    resolveStep should include(".github/scripts/convergence-setup.sh pair")
+    val resolve = scriptFunction("pair")
     resolve should include("exit 1")
-    resolve should include(s"hermetic-$${{ inputs.code }}.txt")
+    resolve should include("hermetic-$code.txt")
     RepoFile.step(publish, "Pin this recording as the pair hermetic legs replay") should include("hermetic-$code.txt")
   }
 
@@ -65,18 +73,21 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
       val afterErrors = lines.zip(lines.drop(1)).collect { case (line, next) if line.startsWith("echo \"::error::") => next }
       withClue(s"$name: ")(afterErrors.toSet shouldBe exits.toSet)
     }
-    val corpus = RepoFile.step(setup, "Restore the recorded scrape corpus")
-    exitsAfterErrors("the corpus", corpus, "exit 1")
+    val corpusStep = RepoFile.step(setup, "Restore the recorded scrape corpus")
+    corpusStep should include(".github/scripts/convergence-setup.sh corpus")
+    exitsAfterErrors("the corpus", scriptFunction("corpus"), "exit 1")
     // ...and the exit must END the leg: a step that continues on error swallowed it, and run
     // 36968897208 replayed an expired pin's empty tree into five legs of "not recorded" 404s.
-    corpus.linesIterator.map(_.trim).filter(_.startsWith("continue-on-error:")).foreach(_ shouldBe "continue-on-error: ${{ inputs.mode == 'record' }}")
+    corpusStep.linesIterator.map(_.trim).filter(_.startsWith("continue-on-error:")).foreach(_ shouldBe "continue-on-error: ${{ inputs.mode == 'record' }}")
     // The tree is fetched in the background (restore-enrichment-tree.sh) and its verdict collected
     // where it is moved in: a missing pin exits 3 there, which only a RECORDING may pass; a release
     // that could not be read at all exits 4, which no leg may pass.
     exitsAfterErrors("the tree", RepoFile.read(".github/scripts/restore-enrichment-tree.sh"), "exit 3", "exit 4")
-    val unpack = RepoFile.step(setup, "Unpack whichever fixtures are present")
-    unpack should not include "continue-on-error"
-    unpack should include("""if [ "$tree_status" -ne 0 ] && ! { [ "$tree_status" -eq 3 ] && [ "$MODE" = "record" ]; }; then""")
+    val unpackStep = RepoFile.step(setup, "Unpack whichever fixtures are present")
+    unpackStep should not include "continue-on-error"
+    unpackStep should include(".github/scripts/convergence-setup.sh unpack")
+    val unpack = scriptFunction("unpack")
+    unpack should include("""if [ "$tree_status" -ne 0 ] && ! { [ "$tree_status" -eq 3 ] && [ "$mode" = "record" ]; }; then""")
     unpack should include("""exit "$tree_status"""")
   }
 

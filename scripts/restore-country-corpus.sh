@@ -39,18 +39,23 @@ countries=(pl de uk es us)
 fail() { echo "restore-country-corpus: $*" >&2; exit 1; }
 
 restore() {
-  local code="$1" work marker present corpus recorded tree fills archive stage
+  local code="$1" work marker status pair present corpus recorded tree fills archive stage
   work="$(mktemp -d)"
   # shellcheck disable=SC2064 # expand now: `work` is local to this call
   trap "rm -rf '$work'" RETURN
 
+  # The pin's one reader, shared with CI's convergence-setup.
   marker="hermetic-$code.txt"
-  present=$("$repo/scripts/ci/gh-optional.sh" release download "$FIXTURE_RELEASE_TAG" --pattern "$marker" --dir "$work" --clobber) ||
-    fail "could not read release $FIXTURE_RELEASE_TAG for $marker (gh auth?)"
-  [ "$present" = present ] ||
+  status=0
+  pair=$("$repo/.github/scripts/convergence-setup.sh" pinned "$code") || status=$?
+  case "$status" in
+    0) ;;
+    2) fail "$marker is malformed" ;;
+    *) fail "could not read release $FIXTURE_RELEASE_TAG for $marker (gh auth?)" ;;
+  esac
+  [ -n "$pair" ] ||
     fail "no recorded pair pinned for $code ($marker in release $FIXTURE_RELEASE_TAG). Record one: gh workflow run \"Record scrape fixtures\" --ref main"
-  read -r corpus recorded tree _ < "$work/$marker"
-  [ -n "${tree:-}" ] || fail "$marker is malformed: '$(head -1 "$work/$marker")'"
+  read -r corpus recorded tree _ <<< "$pair"
   echo "==> $code: corpus from recording run $corpus ($recorded), tree $tree"
 
   present=$("$repo/scripts/ci/gh-optional.sh" run download "$corpus" --name "scrape-fixtures-$code" --dir "$work/corpus") ||

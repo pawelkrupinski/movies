@@ -199,6 +199,7 @@ jobs:
                       bash scripts/ci/in-background-test.sh
                       bash scripts/ci/cpu-sampler-test.sh
                       bash .github/scripts/restore-enrichment-tree-test.sh
+                      bash .github/scripts/convergence-setup-test.sh
                       bash scripts/restore-country-corpus-test.sh
                       bash infra/bin/push-k8s-secrets-test.sh
                       bash .github/scripts/convergence-fill-test.sh

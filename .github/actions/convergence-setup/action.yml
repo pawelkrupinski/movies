@@ -155,43 +155,7 @@ runs:
           MODE: ${{ inputs.mode }}
           GIVEN: ${{ inputs.hermetic-pair }}
           CORPUS_RUN: ${{ inputs.corpus-run }}
-      run: |
-          set -uo pipefail
-          if [ "$MODE" = "record" ]; then
-              [ -n "$CORPUS_RUN" ] && echo "KINOWO_CONVERGENCE_PIN_CORPUS_RUN=$CORPUS_RUN" >> "$GITHUB_ENV"
-              # A glob: the working tree is `.tar.zst` since it moved off gzip, `.tar.gz` until a
-              # country's first zstd publish replaces (and deletes) it.
-              echo "KINOWO_CONVERGENCE_TREE_ASSET=enrichment-${{ inputs.code }}.tar.*" >> "$GITHUB_ENV"
-              echo "recording leg: corpus ${CORPUS_RUN:-newest}, working tree enrichment-${{ inputs.code }}.tar.*"
-              exit 0
-          fi
-          pair="$GIVEN"
-          if [ -z "$pair" ]; then
-              marker="hermetic-${{ inputs.code }}.txt"
-              present=$("$GITHUB_WORKSPACE"/scripts/ci/gh-optional.sh release download "$FIXTURE_RELEASE_TAG" --pattern "$marker" --dir hermetic-marker --clobber)
-              if [ "$present" = present ]; then
-                  pair=$(head -1 "hermetic-marker/$marker")
-              fi
-          fi
-          read -r corpus recorded tree fills <<< "$pair"
-          if [ -z "${tree:-}" ]; then
-              echo "::error::No recorded pair pinned for ${{ inputs.code }} (release asset hermetic-${{ inputs.code }}.txt) — a hermetic leg replays nothing else. Record one: gh workflow run \"Record scrape fixtures\" --ref main"
-              exit 1
-          fi
-          # The FILLS published over this tree (convergence-fill.sh) — earlier legs' convergence rows' pre-suite
-          # fills and any hand-dispatched `Convergence fill` — named here, once: a convergence row lays its own
-          # published pre-suite fill over them, and its bisect request carries all of them in the pair. Every one
-          # is laid over, or the restore fails (restore-enrichment-tree.sh): the pair never names a fill the leg
-          # replayed without.
-          if [ -z "$GIVEN" ]; then
-              fills=$(FIXTURE_RELEASE_TAG="$FIXTURE_RELEASE_TAG" "$GITHUB_WORKSPACE"/.github/scripts/convergence-fill.sh fills "${{ inputs.code }}" "$corpus")
-              pair="$corpus $recorded $tree${fills:+ $fills}"
-          fi
-          echo "hermetic leg: corpus from recording run $corpus ($recorded), tree $tree, fills: ${fills:-none}"
-          echo "KINOWO_CONVERGENCE_PIN_CORPUS_RUN=$corpus" >> "$GITHUB_ENV"
-          echo "KINOWO_CONVERGENCE_TREE_ASSET=$tree" >> "$GITHUB_ENV"
-          echo "KINOWO_CONVERGENCE_FILL_ASSETS=${fills:-}" >> "$GITHUB_ENV"
-          echo "pair=$pair" >> "$GITHUB_OUTPUT"
+      run: '"$GITHUB_WORKSPACE"/.github/scripts/convergence-setup.sh pair "${{ inputs.code }}" "$MODE" "$GIVEN" "$CORPUS_RUN"'
 
     # The enrichment tree, fetched and unpacked in the BACKGROUND from here on — beside the
     # JDK, sbt and build-cache restores below, which it shares nothing with — into a stage
@@ -293,48 +257,7 @@ runs:
       continue-on-error: ${{ inputs.mode == 'record' }}
       env:
           GH_TOKEN: ${{ inputs.token }}
-      run: |
-          set -uo pipefail
-          mkdir -p scrape-archive
-          pinned="${KINOWO_CONVERGENCE_PIN_CORPUS_RUN:-}"
-          # A recording leg's own run: the leg records the corpus itself, in a step after this
-          # action ("Record <country>'s corpus" in country-convergence-leg.yml), so there is
-          # nothing to download — only the provenance to name.
-          if [ -n "$pinned" ] && [ "$pinned" = "${{ github.run_id }}" ]; then
-              echo "scrape corpus recorded by this job, in recorder run $pinned"
-              echo "KINOWO_CONVERGENCE_CORPUS_RUN=$pinned" >> "$GITHUB_ENV"
-              echo "KINOWO_CONVERGENCE_CORPUS_RECORDED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)" >> "$GITHUB_ENV"
-              exit 0
-          fi
-          if [ -n "$pinned" ]; then
-              present=$("$GITHUB_WORKSPACE"/scripts/ci/gh-optional.sh run download "$pinned" --name "scrape-fixtures-${{ inputs.code }}" --dir scrape-archive)
-              if [ "$present" = present ]; then
-                  # allow-silenced: the recording date only labels the log line and the provenance env.
-                  recorded=$(gh run view "$pinned" --json createdAt --jq .createdAt 2>/dev/null || echo unknown)
-                  echo "scrape corpus from PINNED recording run $pinned ($recorded)"
-                  echo "KINOWO_CONVERGENCE_CORPUS_RUN=$pinned" >> "$GITHUB_ENV"
-                  echo "KINOWO_CONVERGENCE_CORPUS_RECORDED_AT=$recorded" >> "$GITHUB_ENV"
-                  ls -l scrape-archive/
-              else
-                  echo "::error::recording run $pinned's corpus is no longer downloadable — the pinned pair has expired; re-run Record scrape fixtures"
-                  exit 1
-              fi
-              exit 0
-          fi
-          # `id recordedAt` per line; the pair is exported so the spec can say WHICH
-          # corpus it replayed (`CorpusProvenance`) and a green leg can record it.
-          while read -r run recorded; do
-              present=$("$GITHUB_WORKSPACE"/scripts/ci/gh-optional.sh run download "$run" --name "scrape-fixtures-${{ inputs.code }}" --dir scrape-archive)
-              if [ "$present" = present ]; then
-                  echo "scrape corpus from recording run $run ($recorded)"
-                  echo "KINOWO_CONVERGENCE_CORPUS_RUN=$run" >> "$GITHUB_ENV"
-                  echo "KINOWO_CONVERGENCE_CORPUS_RECORDED_AT=$recorded" >> "$GITHUB_ENV"
-                  ls -l scrape-archive/
-                  exit 0
-              fi
-          done < <(gh run list --workflow "Record scrape fixtures" --status success \
-                       --limit 10 --json databaseId,createdAt --jq '.[] | "\(.databaseId) \(.createdAt)"')
-          echo "no recorded scrape corpus for ${{ inputs.code }} — the leg will fail and say so"
+      run: '"$GITHUB_WORKSPACE"/.github/scripts/convergence-setup.sh corpus "${{ inputs.code }}"'
 
     # The corpus this country's last GREEN full leg replayed — recorded by that leg as
     # `corpus-green-<code>.txt` in the fixture release — and, when today's differs, that
@@ -372,65 +295,7 @@ runs:
       shell: bash
       env:
           MODE: ${{ inputs.mode }}
-      run: |
-          set -euo pipefail
-          # The enrichment tree, fetched and unpacked in the background since the top of this
-          # action ("Fetch the enrichment tree in the background"). A replay leg's missing pin
-          # (exit 3) ends the leg; a recording falls through to fetching live.
-          tree_status=0
-          "$GITHUB_WORKSPACE"/scripts/ci/in-background.sh wait tree-restore 900 || tree_status=$?
-          if [ "$tree_status" -ne 0 ] && ! { [ "$tree_status" -eq 3 ] && [ "$MODE" = "record" ]; }; then
-              exit "$tree_status"
-          fi
-          # Moved in by rename (same filesystem), entry by entry; a directory already present is
-          # merged into rather than replaced.
-          stage="$RUNNER_TEMP/tree-stage/test/resources/fixtures"
-          mkdir -p test/resources/fixtures
-          for entry in "$stage"/* "$stage"/.[!.]*; do
-              [ -e "$entry" ] || continue
-              target="test/resources/fixtures/$(basename "$entry")"
-              if [ -e "$target" ]; then cp -a "$entry/." "$target/"; else mv "$entry" "$target"; fi
-          done
-          # The scrape corpus, by its magic (`unpack-fixture-archive.sh`), as the tree was.
-          archive="scrape-archive/scrapes-${{ inputs.code }}.tar.gz"
-          if [ -f "$archive" ]; then
-              "$GITHUB_WORKSPACE/.github/scripts/unpack-fixture-archive.sh" "$archive"
-              echo "restored $archive ($(du -h "$archive" | cut -f1))"
-          else
-              echo "no $archive — this leg fetches live for it and the recorder captures it next"
-          fi
-          # `|| true` and a subshell: a MISSING fixture directory is the normal
-          # fallback path, not an error — the leg then fetches live and the
-          # recorder captures it next. Without this, `find` exiting non-zero on
-          # an absent path tripped `set -euo pipefail` and failed the whole leg
-          # AFTER printing the count, which is how three legs died 40 seconds in
-          # with both restores reporting success.
-          available=$( { find test/resources/fixtures/corpus \
-                              "test/resources/fixtures/enrichment-${{ inputs.code }}" \
-                              -type f 2>/dev/null || true; } | wc -l )
-          echo "fixture files available: $available"
-
-          # Count the REMEMBERED-ANSWER cache separately from the recorded
-          # responses, because they fail independently and only one of them is
-          # visible in the file count above.
-          #
-          # The tree records what a fetch RETURNED. Half a country's films never
-          # resolve and still cost three or four rating-slug guesses that 404,
-          # and a 404 returns nothing to record — so those verdicts live only in
-          # `.enrichment-cache`, and a leg that arrives without it re-asks every
-          # one of them live and rate-paced. That is a 22-minute Poland leg
-          # versus a 12-minute one, and the ONLY symptom is the clock: nothing
-          # errors, coverage is identical, and the run still passes. Printing the
-          # entry count on both sides of the artifact hop is what makes the
-          # difference between "warm" and "silently cold" legible in the log.
-          cache="test/resources/fixtures/enrichment-${{ inputs.code }}/.enrichment-cache"
-          remembered=$( { find "$cache" -name '*.entry' 2>/dev/null || true; } | wc -l )
-          if [ "$remembered" -gt 0 ]; then
-              echo "remembered enrichment answers restored: $remembered"
-          else
-              echo "NO remembered-answer cache in the artifact — this leg re-asks every"
-              echo "unresolved film's rating slugs live, and publishes the cache it builds."
-          fi
+      run: '"$GITHUB_WORKSPACE"/.github/scripts/convergence-setup.sh unpack "${{ inputs.code }}" "$MODE"'
 
     - name: Wait for MongoDB, started in the background above
       if: inputs.replay == 'true'

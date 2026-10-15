@@ -84,6 +84,10 @@ check "an expired corpus artifact fails rather than replaying anything else" "1"
 case "$verdict" in *'is gone'*) named=yes ;; *) named=no ;; esac
 check "…and says the artifact is gone" "yes" "$named"
 
+echo "44 2026-10-11T02:00:00Z" > "$release/hermetic-us.txt"
+verdict=$(restore us)
+check "a pin without a tree fails as malformed" "1|yes" "${verdict%%|*}|$(case "$verdict" in *malformed*) echo yes ;; *) echo no ;; esac)"
+
 status=$(bash "$REPO_ROOT/scripts/restore-country-corpus.sh" xx >/dev/null 2>&1; echo $?)
 check "an unknown country is a usage error" "64" "$status"
 

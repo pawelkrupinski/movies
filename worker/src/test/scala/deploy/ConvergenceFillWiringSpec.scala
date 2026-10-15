@@ -205,9 +205,10 @@ class ConvergenceFillWiringSpec extends AnyFlatSpec with Matchers {
   }
 
   "a hermetic leg's pair" should "name its fills once, at setup, and carry them to a bisect" in {
-    val resolve = RepoFile.step(setup, "Resolve the recorded pair to replay")
+    RepoFile.step(setup, "Resolve the recorded pair to replay") should include(".github/scripts/convergence-setup.sh pair")
+    val resolve = RepoFile.read(".github/scripts/convergence-setup.sh")
     resolve should include("read -r corpus recorded tree fills <<< \"$pair\"")
-    resolve should include("convergence-fill.sh fills")
+    resolve should include("convergence-fill.sh\" fills")
     resolve should include("""pair="$corpus $recorded $tree${fills:+ $fills}"""")
     resolve should include("KINOWO_CONVERGENCE_FILL_ASSETS=")
     RepoFile.read(".github/scripts/restore-enrichment-tree.sh") should include("""convergence-fill.sh" unpack "$stage" "${fills[@]}"""")
