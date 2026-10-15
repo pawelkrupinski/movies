@@ -508,10 +508,14 @@ served_takes() {
     [ -n "$run" ] || { warn "judgements: no Identity model convergence run to read served takes from — served check SKIPPED"; return 0; }
     cache="$(git rev-parse --path-format=absolute --git-common-dir)/kinowo-cache/served-takes/$run"
     if [ ! -d "$cache" ]; then
-        mkdir -p "$cache.part"
-        perl -e 'alarm shift; exec @ARGV or exit 127' 120 gh run download "$run" -p 'convergence-diagnostics-*-convergence' \
-            -D "$cache.part" >/dev/null 2>&1 && mv "$cache.part" "$cache" \
-            || { rm -rf "$cache.part"; warn "judgements: could not fetch run $run's served takes — served check SKIPPED"; return 0; }
+        # Agents push at once and share this cache: each downloads into a directory of its own, and only the first to
+        # finish renames it into place (rename(2) onto a filled directory fails; `mv` would nest it inside).
+        local part
+        mkdir -p "$(dirname "$cache")" && part="$(mktemp -d "$cache.part.XXXXXX")" \
+            && perl -e 'alarm shift; exec @ARGV or exit 127' 120 gh run download "$run" -p 'convergence-diagnostics-*-convergence' \
+            -D "$part" >/dev/null 2>&1 \
+            || { [ -n "${part:-}" ] && rm -rf "$part"; warn "judgements: could not fetch run $run's served takes — served check SKIPPED"; return 0; }
+        perl -e 'rename($ARGV[0], $ARGV[1]) or exit 1' "$part" "$cache" 2>/dev/null || rm -rf "$part"
     fi
     find "$cache" -path '*-takes/*.json.gz'
 }

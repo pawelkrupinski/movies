@@ -27,6 +27,11 @@ cat > "$ghstub/gh" <<'STUB'
 if [ "$1 $2" = "run download" ]; then
   while [ $# -gt 0 ]; do [ "$1" = -D ] && dir="$2"; shift; done
   mkdir -p "$dir/convergence-diagnostics-de-convergence/de-takes"; echo takes > "$dir/convergence-diagnostics-de-convergence/de-takes/de.json.gz"
+  # another agent's hook, fetching the same run, finishes first: the run's cache directory appears meanwhile
+  if [ -n "${GH_DOWNLOAD_RACE:-}" ]; then
+    final="${dir%.part*}"; mkdir -p "$final/convergence-diagnostics-de-convergence/de-takes"
+    echo takes > "$final/convergence-diagnostics-de-convergence/de-takes/de.json.gz"
+  fi
   exit 0
 fi
 workflow="" jqexpr=""
@@ -248,6 +253,12 @@ if command -v shellcheck >/dev/null; then
      PATH="$scratch/bin:$PATH" bash scripts/hooks/pre-push --range "HEAD~1..HEAD" >/dev/null 2>&1)
   check "a judgements push replays its newly-wrong served takes at the pushed code" "1 1 1" \
     "$(grep -c -- '--served .*de.json.gz' "$scratch/lint-args") $(grep -c -- '--before' "$scratch/lint-args") $(grep -c -- '--replay-head' "$scratch/lint-args")"
+  # Agents push at once, and their hooks share the served-takes cache in the common git dir: a download finishing
+  # second must neither nest itself inside the first one's directory nor hand the lint the same leg's takes twice.
+  (cd "$repo" && GH_DOWNLOAD_RACE=1 GH_IMC="[$(printf '{"databaseId":8,"status":"completed","conclusion":"success","url":"u"}')]" \
+     PATH="$scratch/bin:$PATH" bash scripts/hooks/pre-push --range "HEAD~1..HEAD" >/dev/null 2>&1)
+  check "a served-takes download racing another hook's for the same run hands the lint one copy of each leg" "1 0" \
+    "$(tr ' ' '\n' < "$scratch/lint-args" | grep -c 'de.json.gz$') $(find "$repo/.git/kinowo-cache/served-takes" -name '*.part*' | wc -l | tr -d ' ')"
 
   # git's own stdin, with no origin/main to find a new branch's base from: said, not silently passed.
   out="$(cd "$repo" && printf 'refs/heads/x %s refs/heads/x %s\n' "$head" 0000000000000000000000000000000000000000 \
