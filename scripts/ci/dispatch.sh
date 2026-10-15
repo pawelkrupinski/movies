@@ -84,6 +84,8 @@ wait_until_no_runs() {
 wait_for_run() {
   local run=$1 timeout=$2 out status
   RUN_CONCLUSION=""
+  # a deadline already past (a caller's `deadline - SECONDS` that ticked over) still reads the run once
+  [ "$timeout" -ge 0 ] 2> /dev/null || timeout=0
   out=$(mktemp)
   # In the background and `wait`ed for: a signal to the caller is handled at once, not after the run ends -- and
   # ci-wait, its parent gone, stops at its next poll.

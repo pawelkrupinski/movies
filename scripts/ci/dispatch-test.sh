@@ -65,6 +65,8 @@ reset; DEFAULT=$(view completed cancelled)
 wait_for_run 7 60 2> /dev/null; check "a cancelled run is a conclusion, not followed" "0 cancelled 1" "$? $RUN_CONCLUSION $(calls)"
 reset; DEFAULT="fail connection refused"
 wait_for_run 7 60 2> /dev/null; check "ten failed reads in a row end the wait" "1 10" "$? $(calls)"
+reset; DEFAULT=$(view completed success)
+wait_for_run 7 -1 2> /dev/null; check "a deadline already past still reads the run once" "0 success 1" "$? $RUN_CONCLUSION $(calls)"
 reset; DEFAULT=$(view in_progress)
 wait_for_run 7 0 2> /dev/null; check "a run not done by the deadline ends the wait" "1 ''" "$? '$RUN_CONCLUSION'"
 
