@@ -68,19 +68,7 @@ jobs:
                   TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
               run: scripts/ci/preflight.sh TMDB_API_KEY
 
-            - uses: ./.github/actions/setup-jdk
-              with:
-                  distribution: temurin
-                  java-version: 27
-                  cache: sbt
-
-            - uses: sbt/setup-sbt@v1
-
-            - uses: ./.github/actions/sbt-target-cache
-              with:
-                  key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/it/**/*.scala', 'web/src/main/resources/**') }}
-                  restore-keys: |
-                      sbt-target-${{ runner.os }}-
+            - uses: ./.github/actions/setup-sbt-build
 
             # The hard clusters' Mongo and the page snapshots' Chrome, ready for scripts/identity-refit's checks (run only
             # when a step is kept).

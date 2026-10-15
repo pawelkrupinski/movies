@@ -58,12 +58,10 @@ jobs:
                   done
                   for f in test/resources/fixtures/corpus/cinema-scrapes-??.json.gz; do echo "corpus $f"; done
 
-            - uses: ./.github/actions/setup-jdk
+            # A relearn compiles only the learner: no build cache worth restoring.
+            - uses: ./.github/actions/setup-sbt-build
               with:
-                  distribution: temurin
-                  java-version: 27
-                  cache: sbt
-            - uses: sbt/setup-sbt@v1
+                  target-cache: 'false'
 
             - name: Learn the decorations
               shell: bash

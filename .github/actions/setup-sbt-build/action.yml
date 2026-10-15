@@ -1,0 +1,53 @@
+# A Scala job's build setup in one step: the JDK (through setup-jdk, which retries), the sbt
+# runner, and the sbt build cache (through sbt-target-cache, which owns the path list) — the trio
+# every sbt job repeated, copy for copy, with the same `sbt-target-` key in each.
+#
+# The JVM's heap is NOT here: it is each sbt invocation's own `-J-Xmx`, and a job's calls differ
+# (identity-refit's unit-test run takes the default, its refit 12g), so it stays on the command line.
+# (SharedSbtBuildSetupSpec)
+name: Set up the sbt build
+description: Install the JDK and sbt, and restore (and save) the sbt build cache.
+inputs:
+  java-version:
+    description: The JDK to install.
+    required: false
+    default: '27'
+  sbt-disk-cache:
+    description: setup-sbt's sbt-2 disk cache ('false' where it restores and saves nothing, at a workspace glob's cost).
+    required: false
+    default: 'true'
+  target-cache:
+    description: "'false' for a job that compiles too little to be worth restoring a build cache for."
+    required: false
+    default: 'true'
+  target-cache-key:
+    description: >-
+      The build cache's exact key. Empty, the shared `sbt-target-<os>-` family keyed on every source a full
+      build compiles, falling back to that family's newest entry.
+    required: false
+    default: ''
+  target-cache-restore-keys:
+    description: Fallback prefixes for a `target-cache-key` of the caller's own, one per line.
+    required: false
+    default: ''
+  target-cache-restore-only:
+    description: "'true' to restore the build cache without saving it."
+    required: false
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - uses: ./.github/actions/setup-jdk
+      with:
+        distribution: temurin
+        java-version: ${{ inputs.java-version }}
+        cache: sbt
+    - uses: sbt/setup-sbt@v1
+      with:
+        disk-cache: ${{ inputs.sbt-disk-cache }}
+    - if: inputs.target-cache == 'true'
+      uses: ./.github/actions/sbt-target-cache
+      with:
+        key: ${{ inputs.target-cache-key != '' && inputs.target-cache-key || format('sbt-target-{0}-{1}', runner.os, hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/it/**/*.scala', 'web/src/main/resources/**')) }}
+        restore-keys: ${{ inputs.target-cache-key != '' && inputs.target-cache-restore-keys || format('sbt-target-{0}-', runner.os) }}
+        restore-only: ${{ inputs.target-cache-restore-only }}
