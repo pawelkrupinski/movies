@@ -78,6 +78,7 @@ set -euo pipefail
 usage() { sed -n '3,/^set /p' "$0" | sed '$d; s/^# \{0,1\}//'; }
 case "${1:-}" in -h|--help) usage; exit 0 ;; "") usage >&2; exit 2 ;; esac
 
+# shellcheck disable=SC2034 # read by identity-tools.sh's identity_log
 IDENTITY_TOOL=identity-slice
 # shellcheck source=scripts/identity-tools.sh
 . "$(dirname "$0")/identity-tools.sh"
@@ -224,8 +225,17 @@ serve_at() { # <tree> <ref key> <out.tsv> <args...>
           --cache "$IDENTITY_CACHE/slice/$run" --ref "$ref" --families "$families" --serve "$sock" \
           --idle-minutes "${KINOWO_IDENTITY_SLICE_IDLE_MINUTES:-30}" > "$IDENTITY_CACHE/serve/$key.log" 2>&1 < /dev/null &
         echo $! > "$IDENTITY_CACHE/serve/$key.pid"; })
+      # a JVM alive but never listening (stuck loading, a deadlock) is stopped at the deadline, not waited on forever
+      local started=$SECONDS limit=${KINOWO_IDENTITY_SLICE_START_SECONDS:-900}
       until [ -S "$sock" ]; do
         kill -0 "$(cat "$IDENTITY_CACHE/serve/$key.pid")" 2>/dev/null || { tail -20 "$IDENTITY_CACHE/serve/$key.log" >&2; identity_log "the kept JVM did not start"; return 1; }
+        if [ $(( SECONDS - started )) -ge "$limit" ]; then
+          kill "$(cat "$IDENTITY_CACHE/serve/$key.pid")" 2>/dev/null || true
+          rm -f "$IDENTITY_CACHE/serve/$key.pid"
+          tail -20 "$IDENTITY_CACHE/serve/$key.log" >&2
+          identity_log "the kept JVM did not listen within ${limit}s: stopped (\$KINOWO_IDENTITY_SLICE_START_SECONDS)"
+          return 1
+        fi
         sleep 1
       done
     fi
@@ -327,14 +337,27 @@ fi
 if [ -n "$faith" ]; then
   # the leg's own takes, its commit and its pinned recording
   diag=$IDENTITY_CACHE/diagnostics/$faith
-  if [ ! -f "$diag/$cc-takes/$cc.json.gz" ]; then
-    mkdir -p "$diag"
-    gh run download "$faith" -R "${KINOWO_REPO:-pawelkrupinski/movies}" --name "convergence-diagnostics-$cc-convergence" --dir "$diag" >&2
+  # the leg's diagnostics artifact, downloaded beside the cache's copy and moved in whole
+  faith_download() {
+    local dl
+    [ -f "$diag/$cc-takes/$cc.json.gz" ] && return 0
+    mkdir -p "$diag"; dl=$(mktemp -d "$diag.dl.XXXXXX")
+    if identity_gh "$IDENTITY_GH_DOWNLOAD" run download "$faith" -R "${KINOWO_REPO:-pawelkrupinski/movies}" \
+         --name "convergence-diagnostics-$cc-convergence" --dir "$dl" >&2 && [ -f "$dl/$cc-takes/$cc.json.gz" ]; then
+      rm -rf "$diag/$cc-takes"; mv "$dl/$cc-takes" "$diag/$cc-takes"; rm -rf "$dl"
+    else
+      rm -rf "$dl"; identity_log "could not download run $faith's convergence-diagnostics-$cc-convergence (gh failed or timed out, or it holds no $cc-takes)"; return 1
+    fi
+  }
+  [ -f "$diag/$cc-takes/$cc.json.gz" ] || identity_locked "diagnostics-$faith-$cc" faith_download || exit 1
+  if [ -z "$run" ]; then
+    log_text=$(identity_gh "$IDENTITY_GH_DOWNLOAD" run view "$faith" -R "${KINOWO_REPO:-pawelkrupinski/movies}" --log) ||
+      { echo "could not read run $faith's log (gh failed or timed out): name its recording with --recording" >&2; exit 1; }
+    run=$(grep -m1 -oE 'KINOWO_CONVERGENCE_PIN_CORPUS_RUN: [0-9]+' <<< "$log_text" | grep -oE '[0-9]+$' || true)
   fi
-  [ -n "$run" ] || run=$(gh run view "$faith" -R "${KINOWO_REPO:-pawelkrupinski/movies}" --log 2>/dev/null \
-    | grep -m1 -oE 'KINOWO_CONVERGENCE_PIN_CORPUS_RUN: [0-9]+' | grep -oE '[0-9]+$' || true)
   [ -n "$run" ] || { echo "no pinned recording in run $faith's log: name it with --recording" >&2; exit 1; }
-  head=$(gh run view "$faith" -R "${KINOWO_REPO:-pawelkrupinski/movies}" --json headSha -q .headSha)
+  head=$(identity_gh "$IDENTITY_GH_READ" run view "$faith" -R "${KINOWO_REPO:-pawelkrupinski/movies}" --json headSha -q .headSha) && [ -n "$head" ] ||
+    { echo "could not read run $faith's commit (gh failed or timed out)" >&2; exit 1; }
   recording=$(identity_recording "$run" "$cc")
   use_mirror
   identity_log "faithfulness: run $faith (commit ${head:0:9}) on recording $run, $sample listing(s)"
