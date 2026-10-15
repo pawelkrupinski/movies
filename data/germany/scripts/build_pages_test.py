@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Tests for Germany's build_pages.py on a synthetic map (no gazetteer), and for
 the committed pages.json. The clustering rule itself is Poland's and Spain's too
-and is tested in data/pl/scripts/test_build_pages.py; these cover what Germany
+and is tested in data/pl/scripts/build_pages_test.py; these cover what Germany
 adds — majors by population, its tighter radii, town aliases, pinned
 coordinates, German slugs, and where a retired region's URL goes.
 
-    python3 data/germany/scripts/test_build_pages.py
+    python3 data/germany/scripts/build_pages_test.py
 """
 import json
 import math

@@ -30,7 +30,7 @@ set -uo pipefail
 # shellcheck source=scripts/tool-conventions.sh
 . "$(dirname "${BASH_SOURCE[0]}")/tool-conventions.sh" # bounded: each test under its timeout, Ctrl-C reaching it
 
-Roots="scripts .github/scripts .github/actions android/scripts ios/scripts infra/bin"
+Roots="scripts .github/scripts .github/actions android/scripts ios/scripts infra/bin data"
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 jobs=8 timeout_s=600 list=0 all=0 tag="" changed_base="" filters=()

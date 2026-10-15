@@ -33,7 +33,7 @@ mkdir -p data/pl/geonames
 curl -sL https://download.geonames.org/export/dump/PL.zip -o data/pl/geonames/PL.zip
 unzip -o data/pl/geonames/PL.zip -d data/pl/geonames
 python3 data/pl/scripts/build_pages.py            # -> data/pl/pages.json
-python3 data/pl/scripts/test_build_pages.py
+python3 data/pl/scripts/build_pages_test.py
 python3 data/pl/scripts/build_venue_towns.py      # -> data/pl/venues.json
 python3 data/pl/scripts/generate_polish_pages.py  # -> PolishPages.scala + the apps' city lists
 python3 data/scripts/generate_venue_towns.py      # -> models.VenueTowns
@@ -65,7 +65,7 @@ mkdir -p data/pl/geonames
 curl -sL https://download.geonames.org/export/dump/PL.zip -o data/pl/geonames/PL.zip
 unzip -o data/pl/geonames/PL.zip -d data/pl/geonames
 python3 data/pl/scripts/build_venue_towns.py      # -> data/pl/venues.json
-python3 data/pl/scripts/test_build_venue_towns.py
+python3 data/pl/scripts/build_venue_towns_test.py
 rm -rf data/pl/geonames                            # ~4MB dump, not checked in
 python3 data/pl/scripts/build_venue_towns.py --audit   # needs no dump
 python3 data/scripts/generate_venue_towns.py       # -> models.VenueTowns

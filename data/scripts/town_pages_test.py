@@ -2,7 +2,7 @@
 """Tests for the shared page rule's reach cap (`town_pages.within_reach`, step 4)
 and the retired-slug succession every country's build writes through.
 
-    python3 data/scripts/test_town_pages.py
+    python3 data/scripts/town_pages_test.py
 """
 import math
 import sys

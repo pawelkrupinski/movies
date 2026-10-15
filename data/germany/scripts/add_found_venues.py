@@ -22,7 +22,7 @@ keeps, and a page for it would sit empty.
 Idempotent: a venue already in venues.json (by theaterId or feed) is left alone.
 
 Run:  python3 data/germany/scripts/add_found_venues.py <path to GeoNames DE.txt>
-      then build_pages.py, test_build_pages.py, generate_roster.py, generate_sources.py
+      then build_pages.py, build_pages_test.py, generate_roster.py, generate_sources.py
 """
 
 import json

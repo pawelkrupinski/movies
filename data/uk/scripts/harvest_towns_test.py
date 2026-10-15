@@ -13,7 +13,7 @@ obvious first guess) scores 86/87, and the one it misses is the shape that
 matters: "…, Speke Road, L24 8QB, Speke, Merseyside" ends in a COUNTY. The
 postcode, not the position, is what marks the town.
 
-Run: python3 data/uk/scripts/test_harvest_towns.py
+Run: python3 data/uk/scripts/harvest_towns_test.py
 """
 import importlib.util
 import json

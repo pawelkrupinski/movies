@@ -17,7 +17,7 @@ chain venues that only fall back to it).
 The town is the last address line before the postcode. That rule is not
 guessed: `town_of` is checked against Cineworld's and Odeon's OWN `city` fields,
 which the recorded fixtures carry for 189 of these venues — see
-test_harvest_towns.py, which fails if agreement drops.
+harvest_towns_test.py, which fails if agreement drops.
 
 Usage:  python3 data/uk/scripts/harvest_towns.py [--limit N]
 """
@@ -126,7 +126,7 @@ def town_of(address: str) -> str:
     So: find the postcode, and take the town off the part holding it, or off the
     part after it when it stands alone. Reading the last part instead answers
     "Merseyside" to the third — which is how this rule was found, against
-    Cineworld's own `city` field (see test_harvest_towns.py).
+    Cineworld's own `city` field (see harvest_towns_test.py).
     """
     parts = [p.strip() for p in address.split(",") if p.strip()]
     if not parts:

@@ -15,7 +15,7 @@ and the refusal path: a name+town+province collision that survives both
 qualification passes must make the script exit non-zero rather than
 silently emit a duplicate displayName.
 
-Run: python3 data/spain/scripts/test_build_provinces.py
+Run: python3 data/spain/scripts/build_provinces_test.py
 """
 import importlib.util
 import os

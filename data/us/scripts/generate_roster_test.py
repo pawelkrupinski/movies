@@ -2,7 +2,7 @@
 """Tests for the US generate_roster.py: the wire keys (display names) it emits,
 and the clock it gives a page and the venues on another one.
 
-Run: python3 data/us/scripts/test_generate_roster.py
+Run: python3 data/us/scripts/generate_roster_test.py
 """
 import os
 import sys

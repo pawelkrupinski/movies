@@ -7,7 +7,7 @@ the aggregator page to answer a clean 404/410 (a 200, a runner blocked with 403,
 answer at all keep it) AND a page about the venue itself to re-confirm the closure:
 an aggregator dropping a venue is not the venue closing (ACME Screening Room).
 
-Run: python3 data/scripts/test_retire_venues.py
+Run: python3 data/scripts/retire_venues_test.py
 """
 import re
 import importlib.util

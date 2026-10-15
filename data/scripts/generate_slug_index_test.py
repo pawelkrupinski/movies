@@ -2,7 +2,7 @@
 """Tests for generate_slug_index.py — the slugs a country answers to besides its
 pages'.
 
-    python3 data/scripts/test_generate_slug_index.py
+    python3 data/scripts/generate_slug_index_test.py
 """
 import sys
 from pathlib import Path

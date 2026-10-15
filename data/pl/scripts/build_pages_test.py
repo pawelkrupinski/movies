@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Tests for build_pages.py's clustering rule, on a synthetic map (no GeoNames).
 
-    python3 data/pl/scripts/test_build_pages.py
+    python3 data/pl/scripts/build_pages_test.py
 """
 import sys
 from pathlib import Path

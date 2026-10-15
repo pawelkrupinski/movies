@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 """Tests for the UK build_pages.py on a synthetic map, and for the committed
 pages.json. The clustering rule itself is Poland's, Spain's, Germany's and the
-US's too and is tested in data/pl/scripts/test_build_pages.py; these cover what
+US's too and is tested in data/pl/scripts/build_pages_test.py; these cover what
 the UK adds — the 40 km cap on how far a page reaches, no cluster across water,
 two towns of one name, a slug that is the UK's own, and where a retired county
 page's URL goes.
 
-    python3 data/uk/scripts/test_build_pages.py
+    python3 data/uk/scripts/build_pages_test.py
 """
 import collections
 import json

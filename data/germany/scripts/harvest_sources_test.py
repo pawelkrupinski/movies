@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """The decisions harvest_sources.py and sweep_filmstarts_ids.py make about a venue.
 
-Run: python3 data/germany/scripts/test_harvest_sources.py
+Run: python3 data/germany/scripts/harvest_sources_test.py
 """
 import json
 import pathlib

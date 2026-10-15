@@ -2,7 +2,7 @@
 """Tests for geocode_towns.py — which town each UK venue is in — on a synthetic
 GeoNames extract, and for the committed towns.json.
 
-    python3 data/uk/scripts/test_geocode_towns.py
+    python3 data/uk/scripts/geocode_towns_test.py
 """
 import json
 import sys

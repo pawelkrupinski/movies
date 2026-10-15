@@ -124,7 +124,7 @@ the town is pinned in `TOWN_COORDS`.
 
    ```
    python3 data/germany/scripts/build_pages.py
-   python3 data/germany/scripts/test_build_pages.py
+   python3 data/germany/scripts/build_pages_test.py
    python3 data/germany/scripts/generate_roster.py
    ```
 
@@ -183,7 +183,7 @@ and 82 venues list shows on Filmstarts that Cineamo has no upcoming show for —
 1,115 shows in the fortnight, only 6 of them seasonal (drive-ins, a tent cinema).
 Neither condition held, so each venue keeps its own measured primary: of the 1,515
 venues rostered before, Cineamo 719, Filmstarts 708, kinoheld 82, kinoprogramm.com 6.
-`test_harvest_sources.py` pins the split's two numbers against the rule.
+`harvest_sources_test.py` pins the split's two numbers against the rule.
 
 A few open venues are on none of the four: a house that sells its own tickets and
 publishes a dated programme only on its own site. Those sites are kept by hand in

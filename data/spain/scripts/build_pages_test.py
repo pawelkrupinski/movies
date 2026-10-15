@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """Tests for Spain's build_pages.py on a synthetic map (no GeoNames), and for the
 committed pages.json. The clustering rule itself is Poland's too and is tested in
-data/pl/scripts/test_build_pages.py; these cover what Spain adds — majors by
+data/pl/scripts/build_pages_test.py; these cover what Spain adds — majors by
 population, islands, and where a retired province's URL goes.
 
-    python3 data/spain/scripts/test_build_pages.py
+    python3 data/spain/scripts/build_pages_test.py
 """
 import json
 import sys

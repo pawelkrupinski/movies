@@ -59,7 +59,7 @@ holding MOST of its venues (`/west-yorkshire/` → Leeds). Retired slugs are kep
 across builds and re-pointed when the page they landed on itself goes.
 
     python3 data/uk/scripts/build_pages.py
-    python3 data/uk/scripts/test_build_pages.py
+    python3 data/uk/scripts/build_pages_test.py
     python3 data/uk/scripts/generate_roster.py
 """
 import collections

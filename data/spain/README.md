@@ -70,9 +70,9 @@ D=$(mktemp -d)
 curl -sL https://download.geonames.org/export/dump/ES.zip -o $D/ES.zip && unzip -oq $D/ES.zip -d $D
 mkdir $D/zip && curl -sL https://download.geonames.org/export/zip/ES.zip -o $D/zip/ES.zip && unzip -oq $D/zip/ES.zip -d $D/zip
 python3 data/spain/scripts/build_venue_towns.py $D/ES.txt $D/zip/ES.txt   # -> town-coords.json
-python3 data/spain/scripts/test_build_venue_towns.py
+python3 data/spain/scripts/build_venue_towns_test.py
 python3 data/spain/scripts/build_pages.py                                 # -> pages.json
-python3 data/spain/scripts/test_build_pages.py
+python3 data/spain/scripts/build_pages_test.py
 python3 data/spain/scripts/generate_roster.py                             # -> SpanishRosterData.scala
 rm -rf $D
 ```
@@ -162,7 +162,7 @@ A new page has no share card until it has deployed; list it in
    curl -sL https://download.geonames.org/export/dump/ES.zip -o data/spain/geonames/ES.zip
    unzip -o data/spain/geonames/ES.zip -d data/spain/geonames
    python3 data/spain/scripts/build_town_names.py
-   python3 data/spain/scripts/test_build_town_names.py
+   python3 data/spain/scripts/build_town_names_test.py
    rm -rf data/spain/geonames
    ```
 4. **Build** (`scripts/build_provinces.py`) — joins the crawl + geocode
@@ -194,11 +194,11 @@ script refuses to emit — non-zero exit naming the offending displayName(s)
 — rather than silently colliding two cinemas onto one wire key.
 
 The real 595-venue harvest has zero duplicate raw names, so none of the
-qualification branches fire on real data. `scripts/test_build_provinces.py`
+qualification branches fire on real data. `scripts/build_provinces_test.py`
 exercises all three cases (pass-through, town-qualified, town+province
 -qualified) plus the refusal path directly against synthetic data:
 ```
-python3 data/spain/scripts/test_build_provinces.py
+python3 data/spain/scripts/build_provinces_test.py
 ```
 
 ## Counts
@@ -258,7 +258,7 @@ moved venue's fallback (`ScrapeWiring`, after two failed runs).
 
 ```
 python3 data/spain/scripts/harvest_taquilla.py      # ~25 min, 5 workers at 2 req/s, cached
-python3 data/spain/scripts/test_harvest_taquilla.py
+python3 data/spain/scripts/harvest_taquilla_test.py
 python3 data/spain/scripts/generate_own_sources.py
 ```
 

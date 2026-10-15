@@ -17,14 +17,14 @@ town each venue's address names).
 
 ```
 python3 data/uk/scripts/harvest_towns.py --sync   # only the venues venues.json lacks
-python3 data/uk/scripts/test_harvest_towns.py
+python3 data/uk/scripts/harvest_towns_test.py
 python3 data/scripts/generate_venue_towns.py      # -> VenueTowns.scala
 curl -sO https://download.geonames.org/export/dump/cities1000.zip && unzip cities1000.zip
 python3 data/uk/scripts/geocode_towns.py cities1000.txt   # -> towns.json
 python3 data/uk/scripts/build_pages.py                    # -> pages.json
 python3 data/uk/scripts/generate_roster.py                # -> UkPages.scala + the apps' lists
-python3 data/uk/scripts/test_geocode_towns.py
-python3 data/uk/scripts/test_build_pages.py
+python3 data/uk/scripts/geocode_towns_test.py
+python3 data/uk/scripts/build_pages_test.py
 ```
 
 `harvest_towns.py` needs no venue list of its own: every UK venue's Flicks slug
@@ -50,7 +50,7 @@ and the obvious "take the last part" rule answers "Merseyside". A county or an
 island after the town is walked past (`COUNTIES`: "Paradise Place, Goole, East
 Riding of Yorkshire" is Goole).
 
-That rule is scored, not assumed: `test_harvest_towns.py` runs it against the
+That rule is scored, not assumed: `harvest_towns_test.py` runs it against the
 87 UK venues in the recorded Cineworld fixture, which carry the chain's OWN
 `addressInfo.city` alongside the address. It has to agree on every one.
 
@@ -111,7 +111,7 @@ with Poland's and Spain's radii, since British towns are close together:
 
 264 pages (88 major, 75 town, 101 cluster), 60 with one cinema; a page's furthest
 venue is a median 4 km from its namesake, p95 26 km, at most 35 km.
-`test_build_pages.py` and `UkPagesSpec` hold the 40 km cap over the generated
+`build_pages_test.py` and `UkPagesSpec` hold the 40 km cap over the generated
 pages.
 
 **One conurbation, many majors.** Postal towns cut a conurbation into its

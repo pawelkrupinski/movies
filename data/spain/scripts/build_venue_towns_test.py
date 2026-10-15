@@ -2,7 +2,7 @@
 """Tests for build_venue_towns.py's municipality resolution, on synthetic GeoNames
 rows (no dump), and for the committed town-coords.json.
 
-    python3 data/spain/scripts/test_build_venue_towns.py
+    python3 data/spain/scripts/build_venue_towns_test.py
 """
 import json
 import sys

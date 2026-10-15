@@ -16,11 +16,12 @@ import scala.jdk.CollectionConverters.*
  * no test may hide under another scheme (`test_*.py`, `*-spec.sh`) it would miss. A test tagged
  * `# script-test: <tag> <why>` leaves the default run and says why; unless `manual` (it needs what no CI
  * job has, or tests nothing), some workflow runs it by name where its toolchain is. The `data/` roster
- * generators' `test_*.py` are named one by one by the workflows that build the rosters.
+ * generators' tests are under the same scheme since 2026-10-15: they were `test_*.py`, named one by one by a
+ * ci.yml step that a new one could miss.
  */
 class ScriptSelfTestsRunInCiSpec extends AnyFlatSpec with Matchers {
 
-  private val RunnerRoots = Seq("scripts", ".github/scripts", ".github/actions", "android/scripts", "ios/scripts", "infra/bin")
+  private val RunnerRoots = Seq("scripts", ".github/scripts", ".github/actions", "android/scripts", "ios/scripts", "infra/bin", "data")
   private val SelfTest = """([\w-]+_test\.py|[\w-]+-test\.sh)""".r
   private val OffScheme = """(test_[\w-]+\.py|[\w-]+_spec\.py|[\w-]+-spec\.sh)""".r
   /** The assertion harness the shell specs source: named like a spec, it tests nothing itself. */
@@ -44,7 +45,7 @@ class ScriptSelfTestsRunInCiSpec extends AnyFlatSpec with Matchers {
 
   // Run by a `run:` step — a comment, a `paths:` trigger or a step name runs nothing — that names its path,
   // or its file name from a `working-directory` of the test's own directory. Never by file name alone:
-  // Spain's and the US's roster generators both have a `test_generate_roster.py`.
+  // Spain's and the US's roster generators both have a `generate_roster_test.py`.
   private def runByName(path: String): Boolean = {
     val file = Paths.get(path)
     runs.exists(r => r.script.contains(path) ||
@@ -71,11 +72,5 @@ class ScriptSelfTestsRunInCiSpec extends AnyFlatSpec with Matchers {
 
   it should "be run by name by some workflow, unless it is manual" in {
     ScriptTests.all.filter(_.tag.exists(_ != "manual")).map(_.path).filterNot(runByName) shouldBe empty
-  }
-
-  "every data self-test" should "be run by some workflow's `run:` step" in {
-    val dataTests = named("""(test_[\w-]+\.py|[\w-]+_test\.py|[\w-]+-test\.sh)""".r, Seq("data"))
-    dataTests should not be empty
-    dataTests.filterNot(runByName) shouldBe empty
   }
 }

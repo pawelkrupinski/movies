@@ -2,7 +2,7 @@
 """Tests for geocode_towns.py: which GeoNames town a venue is matched to, on a
 synthetic gazetteer written in GeoNames' own format.
 
-    python3 data/us/scripts/test_geocode_towns.py
+    python3 data/us/scripts/geocode_towns_test.py
 """
 import itertools
 import math

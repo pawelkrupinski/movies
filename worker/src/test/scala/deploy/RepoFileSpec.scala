@@ -20,7 +20,7 @@ class RepoFileSpec extends AnyFlatSpec with Matchers {
       |              working-directory: data/es
       |              run: |
       |                  # scripts/a-shell-comment-test.sh
-      |                  python3 test_generate_roster.py
+      |                  python3 generate_roster_test.py
       |            - run: bash scripts/inline-test.sh
       |""".stripMargin
 
@@ -32,7 +32,7 @@ class RepoFileSpec extends AnyFlatSpec with Matchers {
   "runSteps" should "read every run: script with its step's working directory" in {
     RepoFile.runSteps(workflow) shouldBe Seq(
       RepoFile.RunStep("echo first", None),
-      RepoFile.RunStep("python3 test_generate_roster.py", Some("data/es")),
+      RepoFile.RunStep("python3 generate_roster_test.py", Some("data/es")),
       RepoFile.RunStep("bash scripts/inline-test.sh", None))
   }
 

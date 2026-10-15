@@ -4,7 +4,7 @@ and whether Taquilla should serve it -- and generate_own_sources' refusals. Each
 mapping that would compile and scrape the WRONG cinema, or swap a venue onto a thinner
 feed.
 
-Run: python3 data/spain/scripts/test_harvest_taquilla.py
+Run: python3 data/spain/scripts/harvest_taquilla_test.py
 """
 import importlib.util
 import os

@@ -30,7 +30,7 @@ Every page — and every town on it — is reported with the province it is in; 
 picker groups by the anchor's province.
 
     python3 data/spain/scripts/build_pages.py
-    python3 data/spain/scripts/test_build_pages.py
+    python3 data/spain/scripts/build_pages_test.py
     python3 data/spain/scripts/generate_roster.py
 """
 import collections

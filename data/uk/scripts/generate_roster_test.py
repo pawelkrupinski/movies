@@ -2,7 +2,7 @@
 """Tests for the UK generate_roster.py — pages.json into UkPages.scala and the
 apps' fallback lists — on synthetic pages, and the committed output against it.
 
-    python3 data/uk/scripts/test_generate_roster.py
+    python3 data/uk/scripts/generate_roster_test.py
 """
 import json
 import sys

@@ -7,7 +7,7 @@ straight onto the page. The thing that makes that safe is that it can only ever
 re-spell a town, never substitute one: a GeoNames name is a candidate only when
 it folds to the same ASCII as the harvested name. These pin that.
 
-Run: python3 data/spain/scripts/test_build_town_names.py
+Run: python3 data/spain/scripts/build_town_names_test.py
 """
 import importlib.util
 import os

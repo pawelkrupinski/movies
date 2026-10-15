@@ -40,7 +40,7 @@ it, and a slug another country already serves is qualified with it.
 Adding venues: append them to venues.json, then
 
     python3 data/germany/scripts/build_pages.py
-    python3 data/germany/scripts/test_build_pages.py
+    python3 data/germany/scripts/build_pages_test.py
     python3 data/germany/scripts/generate_roster.py
 
 The build refuses a town placed more than 60 km from the page its venues were on

@@ -38,7 +38,7 @@ the page now holding MOST of its venues. Retired slugs are kept across builds
 and re-pointed when the page they landed on itself goes.
 
     python3 data/us/scripts/build_pages.py
-    python3 data/us/scripts/test_build_pages.py
+    python3 data/us/scripts/build_pages_test.py
     python3 data/us/scripts/generate_roster.py
 
 The build refuses a venue more than 1,500 km from the rest of its state (a

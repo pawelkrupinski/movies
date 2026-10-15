@@ -3,7 +3,7 @@
 Ocine table that no longer lines up with the harvest — each a roster that
 compiles and silently loses a venue or its scrape.
 
-Run: python3 data/spain/scripts/test_generate_roster.py
+Run: python3 data/spain/scripts/generate_roster_test.py
 """
 import importlib.util
 import os

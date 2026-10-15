@@ -78,7 +78,7 @@ jobs:
             # itself against the 87 UK venues whose recorded Cineworld fixture
             # carries the chain's own city beside the address.
             - name: Unit-test the town parser
-              run: python3 data/uk/scripts/test_harvest_towns.py
+              run: python3 data/uk/scripts/harvest_towns_test.py
 
             # Enumerate Flicks, diff, and splice new venues into the two source
             # files (--apply). Stdlib only — no pip install. Writes the markdown

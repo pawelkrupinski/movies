@@ -2,7 +2,7 @@
 """Unit tests for Germany's generate_roster: what it refuses, and the tuple shape
 `GermanRoster` reads.
 
-Run: python3 data/germany/scripts/test_generate_roster.py
+Run: python3 data/germany/scripts/generate_roster_test.py
 """
 import sys
 from pathlib import Path

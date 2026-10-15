@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Unit tests for seasonal_venues: which names make a venue seasonal, and which do not.
 
-Run: python3 data/scripts/test_seasonal_venues.py
+Run: python3 data/scripts/seasonal_venues_test.py
 """
 import sys
 from pathlib import Path

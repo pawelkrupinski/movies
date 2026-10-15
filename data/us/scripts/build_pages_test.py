@@ -1,11 +1,11 @@
 #!/usr/bin/env python3
 """Tests for the US build_pages.py on a synthetic map, and for the committed
 pages.json. The clustering rule itself is Poland's, Spain's and Germany's too and
-is tested in data/pl/scripts/test_build_pages.py; these cover what the US adds —
+is tested in data/pl/scripts/build_pages_test.py; these cover what the US adds —
 majors by population, its wider radii, clusters across a state line, a slug that
 keeps meaning the town it was named after, and where a retired page's URL goes.
 
-    python3 data/us/scripts/test_build_pages.py
+    python3 data/us/scripts/build_pages_test.py
 """
 import json
 import math

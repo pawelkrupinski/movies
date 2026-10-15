@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Where harvest_kinoprogramm.py caches its responses.
 
-Run: python3 data/germany/scripts/test_harvest_kinoprogramm.py
+Run: python3 data/germany/scripts/harvest_kinoprogramm_test.py
 """
 import importlib.util
 import os

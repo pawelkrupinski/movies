@@ -83,7 +83,7 @@ split states among them; retirements are kept and re-pointed on every build.
 
 ```
 python3 data/us/scripts/build_pages.py
-python3 data/us/scripts/test_build_pages.py
+python3 data/us/scripts/build_pages_test.py
 python3 data/us/scripts/generate_roster.py      # needs timezonefinder
 ```
 
@@ -150,8 +150,8 @@ page.
 A wrong coordinate never fails quietly into a wrong page: the town match is by
 name within 30 km of the venue's own point, so `Regal Largo Mall` (Largo, 33771)
 arriving as city "Key Largo" is matched to Largo, and `Sky Vu Drive In Monroe`
-(53566) arriving as "Tomah" to Monroe. `test_geocode_towns.py`,
-`test_build_pages.py` and `test_generate_roster.py` cover the matching, the page
+(53566) arriving as "Tomah" to Monroe. `geocode_towns_test.py`,
+`build_pages_test.py` and `generate_roster_test.py` cover the matching, the page
 rule, the redirects and the clocks.
 
 Everything is a pure function of the committed files — same input,

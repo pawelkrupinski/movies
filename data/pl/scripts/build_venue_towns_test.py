@@ -6,7 +6,7 @@ onto the page. These pin the two things that matter: that a real town is read
 out of the shapes they are actually written in, and that something which is not
 a town is refused rather than served.
 
-Run: python3 data/pl/scripts/test_build_venue_towns.py
+Run: python3 data/pl/scripts/build_venue_towns_test.py
 """
 import importlib.util
 import os
