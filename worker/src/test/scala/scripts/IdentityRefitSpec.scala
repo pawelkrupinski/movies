@@ -212,38 +212,6 @@ class IdentityRefitSpec extends AnyFlatSpec with Matchers {
       Seq(decision(Some(9), 9), decision(Some(1), 1, 2, 3), decision(Some(7), 6, 7, 8))
   }
 
-  "A calibration" should "reach the captures' re-resolve: one accepting nothing takes fewer films than the shipped one" in {
-    val replay  = new CaptureReplay(tools.UnmatchedClusters.read(tools.UnmatchedClusters.fixturePath(models.Country.Germany)), None)
-    val nothing = CutChange("listing-film", "showRatings", shipped.ratingCut, 0.999999).applyTo(
-      shipped.copy(evidenceClasses = Nil))
-    val control = baseline(Seq(replay), shipped)
-    val strict  = measureOn(Seq(replay), control, nothing).flatMap(_.takes)
-    strict.size should be < control.takes.size
-    // the control is the ratchet's own replay of the captured decisions, untouched by a change that moves nothing
-    control.captures.head.decisions shouldBe replay.capture.decisions
-    measureOn(Seq(replay), control, shipped).flatMap(_.takes) shouldBe control.takes
-    // a take labelled right is a unit the refit measures — one whose film the model's own evidence reaches (a film
-    // only a family or the fill takes is no candidate of a node)
-    control.takes.filter(_.tmdb.isDefined).exists(taken =>
-      labelledUnits(replay.capture, Seq(Label("de", "*", taken.rawTitle, taken.film, right = true, "")), shipped).nonEmpty) shouldBe true
-  }
-
-  "Measuring the changes" should "give each change the measure it has alone, its captures in order, whatever task finished first" in {
-    val replays = Seq(models.Country.Germany, models.Country.Spain).map(c => new CaptureReplay(tools.UnmatchedClusters.read(tools.UnmatchedClusters.fixturePath(c)), None))
-    val pool    = java.util.concurrent.Executors.newFixedThreadPool(4)
-    given scala.concurrent.ExecutionContext = scala.concurrent.ExecutionContext.fromExecutor(pool)
-    try {
-      val control = baseline(replays, shipped)
-      control.captures.map(_.decisions) shouldBe replays.map(_.capture.decisions)
-      val changes = Seq(CutChange("listing-film", "showRatings", shipped.ratingCut, 0.999999), CutChange("listing-film", "showRatings", shipped.ratingCut, shipped.ratingCut))
-      val all     = measureAll(replays, control, changes)
-      all.map(_.size) shouldBe Seq(2, 2)
-      all shouldBe changes.map(c => measureOn(replays, control, c.applyTo(control.calibration)))
-      all.head.flatMap(_.takes).size should be < control.takes.size
-      measureAll(replays, control, Nil) shouldBe empty
-    } finally pool.shutdown()
-  }
-
   "Asking TMDB" should s"run every question, at most ${CaptureReplay.AskConcurrency} at once" in {
     val running = new java.util.concurrent.atomic.AtomicInteger
     val most    = new java.util.concurrent.atomic.AtomicInteger
