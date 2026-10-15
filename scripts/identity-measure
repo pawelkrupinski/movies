@@ -30,8 +30,8 @@
 #
 # REUSE. A measurement is the takes rows' base and head resolves over the pinned recording, classified HERE with the
 # judgements. An earlier run of (B0, H0) answers (B1, H1) -- collected again, no push, no dispatch -- when
-#   - the change is the same: `git patch-id --stable` of B..H over the files under .github/convergence-paths.txt (the
-#     paths that can change a leg's verdict; tests and docs are not among them) is equal, AND
+#   - the change is the same: `git patch-id --stable` of B..H over the files that can move a take -- the paths under
+#     .github/convergence-paths.txt less the CI plumbing (.github/, scripts/ but the takes check's own) -- is equal, AND
 #   - main moved only outside them: `git diff B0 B1` touches none (matched by .github/actions/changed-paths/matches.sh,
 #     as kick-convergence.sh matches them), so the base resolves alike and, the same patch over it, the head too.
 # identity-judgements.tsv is left out of both: it moves no take, and collecting classifies with the head's own. A run is
@@ -175,12 +175,18 @@ timings() { # <run id> <artifacts dir>
   done
 }
 
-# ── reuse: an earlier measurement of the same change, main moved only outside the convergence paths ─────────────────
+# ── reuse: an earlier measurement of the same change, main moved only outside the paths that move a take ─────────────────
 reuse_root=$KINOWO_IDENTITY_CACHE/measure/reuse
-# The convergence paths at <ref>, judgements excluded (matches.sh's `!`), as a patterns file; empty when <ref> has none.
+# The paths that can move a TAKE, as a patterns file; empty when <ref> has no convergence paths. The convergence paths
+# less the judgements (matches.sh's `!`) and less the CI plumbing a leg runs (.github/, scripts/): a change there makes a
+# run fail or report differently, never resolve differently -- 2026-10-15 a landing re-measured a083 for 13 minutes
+# because main had moved only convergence-setup.sh and its siblings. The takes check's own scripts stay: they write
+# the takes the measurement reads.
 convergence_patterns() { # <ref> -> file
   local f; f=$(mktemp)
-  if git show "$1:.github/convergence-paths.txt" > "$f" 2> /dev/null; then
+  if git show "$1:.github/convergence-paths.txt" 2> /dev/null \
+      | grep -v -E '^[[:space:]]*(\.github/|scripts/)' > "$f"; then
+    git show "$1:.github/convergence-paths.txt" | grep -E '^scripts/ci/(identity-takes-check\.sh|identity_takes[a-z_]*\.py|corpus_shape_diff\.py)$' >> "$f"
     echo '!test/resources/fixtures/identity-judgements.tsv' >> "$f"; echo "$f"
   else rm -f "$f"; fi
 }
@@ -254,7 +260,7 @@ base=$(git rev-parse --verify -q "$base^{commit}") || die "no base commit $base"
 
 if [ -z "$fresh$full" ] && found=$(find_measurement "$base" "$commit"); then
   read -r reused_run reused_base <<< "$found"
-  if [ "$reused_base" = "$base" ]; then how="the same base"; else how="main moved only outside convergence paths"; fi
+  if [ "$reused_base" = "$base" ]; then how="the same base"; else how="main moved only outside the paths that move a take"; fi
   say "REUSED measurement of run $reused_run (base ${reused_base:0:9}, same change, $how) -- --fresh to dispatch"
   say "commit $(git log --oneline -1 "$commit")"
   say "base   $(git log --oneline -1 "$base")"

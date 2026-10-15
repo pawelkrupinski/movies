@@ -24,7 +24,7 @@ printf 'country\tvenue\trawTitle\tfilm\tverdict\tstate\tscope\tfilmTitle\treason
 printf 'pl\t*\tLalka\ttmdb:1\tright\topen\t\t\t\t2026-10-14\t\n' >> "$repo/test/resources/fixtures/identity-judgements.tsv"
 echo "phase: convergence" > "$repo/.github/workflows/country-convergence-leg.yml"
 # What can change a leg's verdict, in the matches.sh dialect: the resolver (rule.txt, engine/**) and the judgements.
-printf '# the paths\nrule.txt\nengine/**\ntest/resources/fixtures/identity-judgements.tsv\n' > "$repo/.github/convergence-paths.txt"
+printf '# the paths\nrule.txt\nengine/**\n.github/scripts/convergence-setup.sh\ntest/resources/fixtures/identity-judgements.tsv\n' > "$repo/.github/convergence-paths.txt"
 echo "old" > "$repo/scripts/ci/identity-takes-check.sh"
 scratch_git "$repo" add -A && scratch_git "$repo" commit -qm "old main, before takes-only"
 old=$(scratch_git "$repo" rev-parse HEAD)
@@ -223,7 +223,7 @@ check "the change rebased onto a main moved outside the convergence paths is ans
 check "...without a dispatch" "false" "$(dispatched)"
 check "...or a measure/ branch" "0" "$(measure_branches)"
 check "...saying which run it reused, and why" "true" \
-  "$(grep -q 'REUSED measurement of run 777 (base [0-9a-f]*, same change, main moved only outside convergence paths)' "$work/out" && echo true || echo false)"
+  "$(grep -q 'REUSED measurement of run 777 (base [0-9a-f]*, same change, main moved only outside the paths that move a take)' "$work/out" && echo true || echo false)"
 check "...with the same verdict" "true" "$(grep -q '^LANDABLE' "$work/out" && echo true || echo false)"
 check "--fresh dispatches all the same" "0" "$(KEEP_CACHE=1 measure landable --fresh --countries pl)"
 check "...a run" "true" "$(dispatched)"
@@ -233,6 +233,9 @@ rm -f "$repo/test/resources/fixtures/identity-judgements.tsv.bak"
 scratch_git "$repo" checkout -q main && scratch_git "$repo" commit -qam "main: Lalka judged wrong" && scratch_git "$repo" push -q origin main
 branch_onto_main "rule v2"
 check "main moved only its judgements: reused" "false" "$(KEEP_CACHE=1 measure landable --countries pl > /dev/null; dispatched)"
+on_main .github/scripts/convergence-setup.sh "a leg's plumbing"; branch_onto_main "rule v2"
+check "main moved only a leg's CI plumbing (a convergence path that moves no take): reused" "false" \
+  "$(KEEP_CACHE=1 measure landable --countries pl > /dev/null; dispatched)"
 on_main engine/match.txt "a resolver change on main"; branch_onto_main "rule v2"
 check "main moved inside the convergence paths: dispatched" "true" "$(KEEP_CACHE=1 measure landable --countries pl > /dev/null; dispatched)"
 branch_onto_main "rule v3"
