@@ -82,7 +82,14 @@ xcodebuild archive \
 ok "archived"
 
 say "export"
-xcodebuild -exportArchive -archivePath "$BUILD_DIR/Kinowo.xcarchive" \
+# Xcode's IPA packaging spawns `rsync` off PATH and expects the system one: a
+# Homebrew rsync 3.x ahead of /usr/bin dies mid-copy, which the export reports
+# only as "exportArchive Copy failed" (the rsync error is in the
+# .xcdistributionlogs). Pin just rsync, so every other tool still resolves as usual.
+system_rsync="$BUILD_DIR/system-rsync"
+mkdir -p "$system_rsync"
+ln -sf /usr/bin/rsync "$system_rsync/rsync"
+PATH="$system_rsync:$PATH" xcodebuild -exportArchive -archivePath "$BUILD_DIR/Kinowo.xcarchive" \
     -exportOptionsPlist "$BUILD_DIR/ExportOptions.plist" -exportPath "$BUILD_DIR/export" \
     > "$BUILD_DIR/export.log" 2>&1 || die "export failed — see $BUILD_DIR/export.log"
 ipa="$BUILD_DIR/export/Kinowo.ipa"

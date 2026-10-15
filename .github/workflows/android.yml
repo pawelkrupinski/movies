@@ -228,6 +228,7 @@ jobs:
                   scripts/mobile-release-test.sh
                   scripts/tag-mobile-release-test.sh
                   scripts/app-store-credentials-test.sh
+                  scripts/ios-release-test.sh
                   scripts/ci/gh-release-test.sh
                   scripts/ci/gh-optional-test.sh
                   scripts/seeded-order-test.sh
