@@ -424,9 +424,21 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     }
     legDirectives should not include "if: inputs.order-command"
     RepoFile.block(leg, "convergence") should include(
-      """phase: ${{ fromJson(format('["convergence"{0}{1}{2}]', inputs.order-command != '' && (inputs.order-split && """ +
+      """phase: ${{ fromJson(inputs.takes-only && '["takes"]' || format('["convergence"{0}{1}{2}]', inputs.order-command != '' && (inputs.order-split && """ +
         """',"order-independence-p01","order-independence-p12"' || ',"order-independence"') || '', """ +
         """inputs.next-day-command != '' && ',"next-day"' || '', inputs.mode == 'hermetic' && ',"takes"' || '')) }}""")
+  }
+
+  /** scripts/identity-measure's whole-corpus measurement: a takes-only dispatch expands every leg to its `takes` row alone,
+   *  and that row uploads the check's own output -- both sides' takes and the verdict -- for the tool to classify. */
+  "a takes-only dispatch" should "run only the takes row, which uploads the check's output" in {
+    RepoFile.read(".github/workflows/identity-model-convergence.yml") should include(
+      "takes-only:                    ${{ inputs.takes-only == true }}")
+    RepoFile.block(leg, "takes-only") should include("default: false")
+    val suite = RepoFile.block(leg, "convergence")
+    suite should include("name: identity-takes-${{ inputs.code }}")
+    suite should include("path: ${{ runner.temp }}/identity-takes/")
+    RepoFile.read("scripts/identity-measure") should include("takes-only=true")
   }
 
   /** A country whose single order row ran past the 10-minute target splits it into two rows of two

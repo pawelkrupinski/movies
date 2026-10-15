@@ -1,0 +1,214 @@
+#!/usr/bin/env bash
+# WHOLE-CORPUS MEASURE OF A RESOLVER CHANGE, before landing it: every take a commit moves, in every country's whole
+# pinned recording, split by what the judgements (test/resources/fixtures/identity-judgements.tsv) make of it.
+#
+# A selector-only `identity-slice --batch` measures the listings it is handed: twice it missed regressions the whole
+# corpus showed (26e48897d lost 9 PL "Lalka" and 9 UK takes; branch a083 lost UK "Fallen Angels" x8 and DE
+# "Schwanensee"), and a local whole-corpus slice is ~192k listings, >10 hours. CI's identity takes check
+# (scripts/ci/identity-takes-check.sh) resolves the whole recording at a base and a head in ~15 minutes a country.
+# This dispatches that check, and only that check (`takes-only`), for one commit, then classifies its moves
+# (scripts/identity_measure.py) and prints LANDABLE or NOT LANDABLE.
+#
+# usage: scripts/identity-measure [<commit-or-branch>] [--base <sha>] [--countries pl,uk,de,us,es] [--keep-branch]
+#                                 [--no-wait] [--full] [--json] [--timeout <minutes>]
+#        scripts/identity-measure --run <run id> [--countries ...] [--keep-branch] [--json]
+#   <commit>       default HEAD (uncommitted changes are NOT measured: commit them first)
+#   --base         default the commit's merge-base with origin/main; the commit's parent when it is on main already
+#   --countries    the countries reported and judged (every leg runs: the workflow's matrix is fixed)
+#   --keep-branch  leave the temporary branch on origin
+#   --no-wait      dispatch, print the run, keep the branch, and exit: collect later with --run <id> (which deletes it)
+#   --full         run the whole convergence suite, not only the takes rows
+#   --json         machine output (scripts/identity_measure.py --json)
+#   --run          collect an existing run instead (its identity-takes-<cc> artifacts); deletes its measure/ branch
+#
+# THE BRANCH. The workflow runs a commit only from a ref, so the commit is pushed as `measure/<short sha>-<random>` --
+# the one kind of branch push this repository allows besides main, ONLY to run a build -- and deleted at the end:
+# success, failure, Ctrl-C (which also cancels the run) alike. Pushed with --no-verify: it never lands. A commit
+# whose workflows predate the takes-only dispatch gets main's .github/ and scripts/ci/ laid over it in a commit of
+# its own (no identity path: the check diffs only identity code, so the measured code is the commit's).
+#
+# THE LANE. The convergence suite has one lane: a newer dispatch replaces the one waiting. So this waits until no run
+# is waiting (never replacing someone's -- main's -- pending run), and re-dispatches if a newer one replaced its own.
+#
+# Exit: 0 LANDABLE, 1 NOT LANDABLE, 2 the measurement could not be made.
+set -uo pipefail
+
+here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+workflow=identity-model-convergence.yml
+ref="" base="" countries="pl,uk,de,us,es" keep="" nowait="" full="" json="" run="" timeout_min=120
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --base) base=$2; shift ;;
+    --countries) countries=$2; shift ;;
+    --keep-branch) keep=1 ;;
+    --no-wait) nowait=1 ;;
+    --full) full=1 ;;
+    --json) json=1 ;;
+    --run) run=$2; shift ;;
+    --timeout) timeout_min=$2; shift ;;
+    -h|--help) sed -n '2,/^set -uo/p' "$0" | sed '$d; s/^# \{0,1\}//'; exit 0 ;;
+    -*) echo "identity-measure: unknown option $1" >&2; exit 2 ;;
+    *) ref=$1 ;;
+  esac
+  shift
+done
+
+say() { echo "identity-measure: $*" >&2; }
+die() { say "$*"; exit 2; }
+# Every gh call is bounded: a hung API read must not hold the measurement (and its branch) forever.
+ghb() { timeout "${IDENTITY_MEASURE_GH_TIMEOUT:-90}" gh "$@"; }
+poll=${IDENTITY_MEASURE_POLL:-30}
+
+branch="" dispatched_run="" finished=""
+cleanup() {
+  # Ctrl-C mid-run: the run would replay a branch about to vanish -- cancel it first.
+  if [ -n "$dispatched_run" ] && [ -z "$finished" ]; then
+    say "cancelling run $dispatched_run"
+    ghb run cancel "$dispatched_run" > /dev/null || say "could not cancel run $dispatched_run -- cancel it by hand"
+  fi
+  if [ -n "$branch" ] && [ -z "$keep" ]; then
+    git push -q --no-verify origin --delete "refs/heads/$branch" \
+      && say "deleted branch $branch" || say "could not delete branch $branch -- git push origin --delete $branch"
+  elif [ -n "$branch" ]; then
+    say "kept branch $branch"
+  fi
+}
+trap cleanup EXIT
+trap 'exit 130' INT TERM
+
+timeout 120 git fetch -q origin main || die "could not fetch origin main"
+
+# ── collect: one finished run's takes rows → the table ───────────────────────────────────────────
+code_of() { case "$1" in poland) echo pl ;; germany) echo de ;; united-kingdom) echo uk ;; spain) echo es ;; united-states) echo us ;; *) echo "$1" ;; esac; }
+
+collect() { # <run id> <commit whose judgements classify>
+  local id=$1 commit=$2 cache dl url rows judgements jobs
+  cache=${KINOWO_IDENTITY_CACHE:-$HOME/.cache/kinowo-identity}/measure/$id
+  dl=$cache/artifacts rows=$cache/rows.json judgements=$cache/identity-judgements.tsv
+  mkdir -p "$cache"
+  url=$(ghb run view "$id" --json url --jq .url) || die "could not read run $id"
+  jobs=$(ghb run view "$id" --json jobs --jq '.jobs[] | select(.name | endswith(" / takes")) | [.name, .conclusion] | @tsv') \
+    || die "could not read run $id's jobs"
+  { echo "{"; first=1
+    while IFS=$'\t' read -r name conclusion; do
+      [ -n "$name" ] || continue
+      [ -n "$first" ] || echo ","; first=""
+      printf '"%s": "%s"' "$(code_of "${name% / takes}")" "${conclusion:-unfinished}"
+    done <<< "$jobs"
+    echo "}"; } > "$rows"
+  if [ ! -f "$cache/downloaded" ]; then
+    rm -rf "$dl"; mkdir -p "$dl"
+    if ghb run download "$id" --pattern 'identity-takes-*' --dir "$dl"; then
+      touch "$cache/downloaded"
+    else
+      say "run $id: no identity-takes artifact could be downloaded (a run from before the takes rows uploaded theirs?)"
+    fi
+  fi
+  if ! git show "$commit:test/resources/fixtures/identity-judgements.tsv" > "$judgements"; then
+    say "$commit holds no identity-judgements.tsv: classifying with origin/main's"
+    git show origin/main:test/resources/fixtures/identity-judgements.tsv > "$judgements" || die "no judgements to classify with"
+  fi
+  python3 -I "$here/identity_measure.py" "$dl" --judgements "$judgements" --countries "$countries" --rows "$rows" \
+    --run-url "$url" ${json:+--json}
+}
+
+if [ -n "$run" ]; then
+  view=$(ghb run view "$run" --json status,headBranch,headSha --jq '[.status, .headBranch, .headSha] | @tsv') \
+    || die "could not read run $run"
+  IFS=$'\t' read -r status run_branch run_sha <<< "$view"
+  [ "$status" = completed ] || { say "run $run is $status: collect it once it completes"; exit 2; }
+  case "$run_branch" in measure/*) branch=$run_branch ;; esac
+  collect "$run" "$run_sha"
+  exit $?
+fi
+
+# ── measure: push, dispatch, wait, collect ────────────────────────────────────────────────────────
+commit=$(git rev-parse --verify -q "${ref:-HEAD}^{commit}") || die "no commit ${ref:-HEAD}"
+[ -z "$ref" ] && [ -n "$(git status --porcelain --untracked-files=no)" ] && say "WARNING: uncommitted changes are not measured -- only $commit"
+if [ -z "$base" ]; then
+  base=$(git merge-base "$commit" origin/main) || die "no merge-base of $commit and origin/main"
+  [ "$base" = "$commit" ] && base=$(git rev-parse "$commit^")
+fi
+base=$(git rev-parse --verify -q "$base^{commit}") || die "no base commit $base"
+
+# The commit's own workflows must know the takes-only dispatch and upload the check's output; an older commit gets
+# main's laid over it.
+push=$commit
+if ! git show "$commit:.github/workflows/country-convergence-leg.yml" | grep -q 'takes-only'; then
+  index=$(mktemp)
+  GIT_INDEX_FILE=$index git read-tree "$commit" \
+    && GIT_INDEX_FILE=$index git rm -rqf --cached --ignore-unmatch .github scripts/ci \
+    && GIT_INDEX_FILE=$index git read-tree --prefix=.github/ "origin/main:.github" \
+    && GIT_INDEX_FILE=$index git read-tree --prefix=scripts/ci/ "origin/main:scripts/ci" \
+    && tree=$(GIT_INDEX_FILE=$index git write-tree) \
+    && push=$(git commit-tree "$tree" -p "$commit" -m "measure: origin/main's CI over ${commit:0:9}") \
+    || { rm -f "$index"; die "could not lay main's CI over $commit"; }
+  rm -f "$index"
+  say "$commit predates the takes-only dispatch: measuring it under origin/main's .github/ and scripts/ci/ ($push)"
+fi
+
+branch="measure/${commit:0:9}-$(od -An -N3 -tx1 /dev/urandom | tr -d ' \n')"
+say "commit $(git log --oneline -1 "$commit")"
+say "base   $(git log --oneline -1 "$base")"
+git push -q --no-verify origin "$push:refs/heads/$branch" || { branch=""; die "could not push the measure branch"; }
+say "pushed $branch"
+
+lane_clear() { # wait until no run of the lane is waiting: a dispatch now would replace it
+  local waiting start=$SECONDS
+  while :; do
+    waiting=$(ghb run list --workflow "$workflow" --limit 20 --json status \
+      --jq '[.[] | select(.status == "queued" or .status == "pending" or .status == "waiting" or .status == "requested")] | length') \
+      || die "could not read the lane's runs"
+    [ "$waiting" = 0 ] && return 0
+    [ $((SECONDS - start)) -lt $((timeout_min * 60)) ] || die "the lane held a waiting run for $timeout_min minutes"
+    say "a convergence run is waiting in the lane: dispatching after it starts"
+    sleep "$poll"
+  done
+}
+
+dispatch() { # → dispatched_run
+  local since found="" _
+  lane_clear
+  since=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  local only=(-f takes-only=true)
+  [ -n "$full" ] && only=()
+  ghb workflow run "$workflow" --ref "$branch" -f takes-base="$base" ${only[@]+"${only[@]}"} > /dev/null \
+    || die "could not dispatch $workflow on $branch"
+  for _ in $(seq 1 24); do
+    found=$(ghb run list --workflow "$workflow" --branch "$branch" --event workflow_dispatch --limit 10 \
+      --json databaseId,headSha,createdAt \
+      --jq "[.[] | select(.headSha == \"$push\" and .createdAt >= \"$since\")] | sort_by(.createdAt) | last | .databaseId // empty") \
+      || die "could not list $branch's runs"
+    [ -n "$found" ] && break
+    sleep 5
+  done
+  [ -n "$found" ] || die "dispatched, but no run of $push on $branch appeared"
+  dispatched_run=$found
+  say "run $(ghb run view "$found" --json url --jq .url || echo "$found")"
+}
+
+dispatch
+if [ -n "$nowait" ]; then
+  keep=1 finished=1
+  say "not waiting: collect with  scripts/identity-measure --run $dispatched_run   (it deletes $branch)"
+  exit 0
+fi
+
+attempts=1 start=$SECONDS
+while :; do
+  state=$(ghb run view "$dispatched_run" --json status,conclusion --jq '[.status, .conclusion] | @tsv') \
+    || die "could not read run $dispatched_run"
+  IFS=$'\t' read -r status conclusion <<< "$state"
+  if [ "$status" = completed ]; then
+    if [ "$conclusion" = cancelled ] && [ "$attempts" -lt 3 ]; then
+      say "run $dispatched_run was cancelled (a newer dispatch replaced it in the lane): dispatching again"
+      attempts=$((attempts + 1)); dispatch; continue
+    fi
+    break
+  fi
+  [ $((SECONDS - start)) -lt $((timeout_min * 60)) ] || die "run $dispatched_run still $status after $timeout_min minutes (--timeout)"
+  sleep "$poll"
+done
+finished=1
+say "run $dispatched_run: $conclusion"
+collect "$dispatched_run" "$commit"

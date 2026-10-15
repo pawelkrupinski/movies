@@ -236,6 +236,13 @@ on:
                 required: false
                 type: string
                 default: ''
+            # Only the `takes` row: what scripts/identity-measure dispatches to measure a commit's moved takes over every
+            # country's whole corpus, without the convergence, order and next-day rows. False on every dispatch Main makes.
+            takes-only:
+                description: Run only the identity takes row (a hermetic leg's).
+                required: false
+                type: boolean
+                default: false
             # A JFR CPU profile of the suite, uploaded as `convergence-profile-<code>-<phase>`: where a
             # leg's CPU goes, for whoever is making the lane faster. Off on every dispatch Main makes.
             profile:
@@ -301,7 +308,7 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
-                phase: ${{ fromJson(format('["convergence"{0}{1}{2}]', inputs.order-command != '' && (inputs.order-split && ',"order-independence-p01","order-independence-p12"' || ',"order-independence"') || '', inputs.next-day-command != '' && ',"next-day"' || '', inputs.mode == 'hermetic' && ',"takes"' || '')) }}
+                phase: ${{ fromJson(inputs.takes-only && '["takes"]' || format('["convergence"{0}{1}{2}]', inputs.order-command != '' && (inputs.order-split && ',"order-independence-p01","order-independence-p12"' || ',"order-independence"') || '', inputs.next-day-command != '' && ',"next-day"' || '', inputs.mode == 'hermetic' && ',"takes"' || '')) }}
         runs-on: ${{ inputs.runner }}
         # 45 was not enough headroom and cost a real run: on 2026-07-28 the Germany
         # and UK legs were CANCELLED at exactly 45m while Poland finished in 8,
@@ -798,6 +805,16 @@ jobs:
                       *) echo "::error title=identity takes (${{ inputs.code }})::the check could not run, so nothing was judged -- see the step log" ;;
                   esac
                   exit "$code"
+
+            # The check's own output -- both sides' decisions and final takes, base.txt, verdict.txt -- for
+            # scripts/identity-measure, which classifies every move against the judgements (scripts/identity_measure.py).
+            - uses: actions/upload-artifact@v6
+              if: ${{ !cancelled() && inputs.mode == 'hermetic' && matrix.phase == 'takes' }}
+              with:
+                  name: identity-takes-${{ inputs.code }}
+                  path: ${{ runner.temp }}/identity-takes/
+                  if-no-files-found: ignore
+                  retention-days: 7
 
             # The capture this leg just spent an hour building back to the release it was restored from.
             #

@@ -208,6 +208,8 @@ jobs:
                       bash scripts/ci/sbt-sources-key-test.sh
                       bash scripts/ci/wait-for-run-artifact-test.sh
                       bash scripts/identity-measure-ci-test.sh
+                      bash scripts/identity-measure-test.sh
+                      python3 scripts/identity_measure_test.py
                       bash scripts/ci/identity-takes-check-test.sh
                       bash scripts/vault-env-test.sh
                       bash scripts/with-prod-mongo-test.sh

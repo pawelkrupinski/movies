@@ -515,6 +515,7 @@ has every flag; name these tools in every subagent brief.
   still takes it so → `scripts/label-lookup`
 - A capture run's ratchet findings as a table → `scripts/identity-ratchet-report`
 - Judging unjudged takes → `scripts/identity-judge-cards`
+- Whole-corpus measure before landing a resolver change → `scripts/identity-measure`
 
 **Every identity judgement lives in ONE file**, `test/resources/fixtures/identity-judgements.tsv`: one row per
 (country, venue or `*`, raw title, film) with its verdict (right / wrong / undecided), its state (`open`;
