@@ -46,6 +46,12 @@ inputs:
     description: That account's read-only access token. A composite action cannot read secrets itself.
     required: false
     default: ''
+  takes:
+    description: >-
+      'true' for a leg's identity takes row: it compiles worker/Test and worker/It (scripts/ci/identity-takes-check.sh),
+      which no other row does, so it restores main's newest takes entry (`sbt-target-takes-`) first.
+    required: false
+    default: 'false'
   replay:
     description: >-
       'false' for a job that replays nothing — the `Convergence fill` workflow's, which needs the pair's name
@@ -54,6 +60,9 @@ inputs:
     default: 'true'
 
 outputs:
+  sbt-sources:
+    description: This commit's convergence sources key (scripts/ci/sbt-sources-key.sh convergence), for a family saved later.
+    value: ${{ steps.sbt-key.outputs.convergence }}
   hermetic-pair:
     description: The recorded pair this job restored (hermetic mode), for the steps after it.
     value: ${{ steps.pair.outputs.pair }}
@@ -239,6 +248,7 @@ runs:
       run: |
           echo "key=sbt-target-convergence-${{ runner.os }}-$("$GITHUB_WORKSPACE"/scripts/ci/sbt-sources-key.sh convergence)" >> "$GITHUB_OUTPUT"
           echo "e2e=$("$GITHUB_WORKSPACE"/scripts/ci/sbt-sources-key.sh e2e)" >> "$GITHUB_OUTPUT"
+          echo "convergence=$("$GITHUB_WORKSPACE"/scripts/ci/sbt-sources-key.sh convergence)" >> "$GITHUB_OUTPUT"
     # NOT the root `target/`: every module writes its JUnit XML into the one root-level
     # `target/test-reports/unit/` (`unitReportSettings` in build.sbt), and the restore-keys
     # fall through to the key `ci.yml`'s unit job saves. Cached, it handed a leg a report
@@ -249,14 +259,19 @@ runs:
     - uses: ./.github/actions/sbt-target-cache
       with:
           key: ${{ steps.sbt-key.outputs.key }}
+          # A takes row's own family first: every other entry lacks worker/Test and worker/It, and the row compiled all
+          # 957 of their sources each run, ~3 min a row (run 38703015688). Blank for any other row (actions/cache drops it).
           restore-keys: |
+              ${{ inputs.takes == 'true' && format('sbt-target-takes-{0}-', runner.os) || '' }}
               sbt-target-e2e-${{ runner.os }}-${{ steps.sbt-key.outputs.e2e }}
               sbt-target-convergence-${{ runner.os }}-
               sbt-target-e2e-${{ runner.os }}-
               sbt-target-${{ runner.os }}-
           # A job that replays nothing compiles only the worker's fixtures, and must not become the
           # key's entry ahead of the rows that compile the suites: whichever job saves a key first owns it.
-          restore-only: ${{ inputs.replay != 'true' }}
+          # A measure/* branch (scripts/identity-measure) saves nothing: a branch's cache is restorable only from that
+          # branch and main, and a measure branch is never run again -- each saved 82 MB toward the 10 GB cap for no one.
+          restore-only: ${{ inputs.replay != 'true' || startsWith(github.ref, 'refs/heads/measure/') }}
 
     # The scrape corpus, from the ARTIFACT of a `Record scrape fixtures` run (the
     # pinned one, else the newest) — not from the actions cache it also writes.

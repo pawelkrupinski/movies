@@ -85,9 +85,36 @@ class SbtCachePathsSpec extends AnyFlatSpec with Matchers {
     keyStep(setup) should include("scripts/ci/sbt-sources-key.sh e2e")
     keyStep(e2eJob) should include("scripts/ci/sbt-sources-key.sh e2e")
     e2eJob should include("key: sbt-target-e2e-${{ runner.os }}-${{ steps.sbt-key.outputs.e2e }}")
-    val restoreKeys = setup.linesIterator.dropWhile(!_.trim.startsWith("restore-keys:")).drop(1).map(_.trim).toSeq
-    restoreKeys.headOption shouldBe Some("sbt-target-e2e-${{ runner.os }}-${{ steps.sbt-key.outputs.e2e }}")
-    restoreKeys.indexOf("sbt-target-convergence-${{ runner.os }}-") should be > 0
+    restoreKeys.lift(1) shouldBe Some("sbt-target-e2e-${{ runner.os }}-${{ steps.sbt-key.outputs.e2e }}")
+    restoreKeys.indexOf("sbt-target-convergence-${{ runner.os }}-") should be > 1
+  }
+
+  private lazy val restoreKeys =
+    setup.linesIterator.dropWhile(!_.trim.startsWith("restore-keys:")).drop(1).map(_.trim).takeWhile(_.nonEmpty).toSeq
+  private lazy val leg = RepoFile.read(".github/workflows/country-convergence-leg.yml")
+
+  /** A leg's takes row compiles worker/Test and worker/It (identity-takes-check.sh), which no other row does, and the
+   *  convergence key's entry is whichever row saves first -- a suite row's, without them: every takes row, on main and
+   *  in every measurement, compiled all 957 of their sources, ~3 min a row (runs 38693633421, 38703015688). So main's
+   *  takes row saves a family of its own once they exist, and a takes row restores that family first. */
+  "a leg's takes row" should "restore main's newest takes build first, and only a takes row" in {
+    restoreKeys.headOption shouldBe Some("${{ inputs.takes == 'true' && format('sbt-target-takes-{0}-', runner.os) || '' }}")
+    leg should include("takes:         ${{ matrix.phase == 'takes' }}")
+  }
+
+  it should "save its worker test and it classes as that family, on main, once they were compiled" in {
+    val save = leg.linesIterator.dropWhile(!_.contains("key: sbt-target-takes-")).take(2).mkString("\n")
+    save should include("key: sbt-target-takes-${{ runner.os }}-${{ steps.setup.outputs.sbt-sources }}")
+    save should include("save-only: 'true'")
+    RepoFile.step(leg, "Did the takes check compile worker's test and it classes?") should include("github.ref == 'refs/heads/main'")
+    RepoFile.step(leg, "Did the takes check compile worker's test and it classes?") should include("it-classes")
+    keyStep(setup) should include("scripts/ci/sbt-sources-key.sh convergence")
+  }
+
+  /** A branch's cache is restorable only from that branch and main, and a measure branch never runs again: each
+   *  measurement saved 82 MB toward the repository's 10 GB cap for no one. */
+  "a measurement's legs" should "save no build cache" in {
+    setup should include("restore-only: ${{ inputs.replay != 'true' || startsWith(github.ref, 'refs/heads/measure/') }}")
   }
 
   "ci.yml" should "run the cache key script's own spec" in {

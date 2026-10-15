@@ -348,6 +348,7 @@ jobs:
                   mode:          ${{ inputs.mode }}
                   corpus-run:    ${{ inputs.corpus-run }}
                   mongo-tmpfs:   ${{ inputs.mongo-tmpfs }}
+                  takes:         ${{ matrix.phase == 'takes' }}
 
             # A RECORDING leg records its own country's corpus FIRST, in this job — the sample
             # and the suite below then replay what it wrote to test/resources/fixtures/corpus.
@@ -805,6 +806,25 @@ jobs:
                       *) echo "::error title=identity takes (${{ inputs.code }})::the check could not run, so nothing was judged -- see the step log" ;;
                   esac
                   exit "$code"
+
+            # THE TAKES ROW'S BUILD, for the next takes row to restore (convergence-setup's `takes`): the check compiled
+            # worker/Test and worker/It, which no other row does, and the job-end entry under the convergence key is
+            # whichever row finishes first -- a suite row's, without them (run 38693633421: Spain's, 60 MB). On main
+            # only: a branch's entry is restorable from that branch alone. Saved only once they exist (a check that
+            # found no identity code changed compiles nothing).
+            - name: Did the takes check compile worker's test and it classes?
+              id: takes-build
+              if: ${{ !cancelled() && inputs.mode == 'hermetic' && matrix.phase == 'takes' && github.ref == 'refs/heads/main' }}
+              shell: bash
+              run: |
+                  if compgen -G 'worker/target/scala-*/test-classes/*' > /dev/null && compgen -G 'worker/target/scala-*/it-classes/*' > /dev/null; then
+                      echo "compiled=true" >> "$GITHUB_OUTPUT"
+                  fi
+            - uses: ./.github/actions/sbt-target-cache
+              if: ${{ !cancelled() && steps.takes-build.outputs.compiled == 'true' }}
+              with:
+                  key: sbt-target-takes-${{ runner.os }}-${{ steps.setup.outputs.sbt-sources }}
+                  save-only: 'true'
 
             # The check's own output -- both sides' decisions and final takes, base.txt, verdict.txt -- for
             # scripts/identity-measure, which classifies every move against the judgements (scripts/identity_measure.py).

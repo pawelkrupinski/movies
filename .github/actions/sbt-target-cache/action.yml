@@ -16,16 +16,23 @@ inputs:
     description: The exact cache key, scoped to the sources this job compiles.
     required: true
   restore-keys:
-    description: Prefixes to fall back to on a miss, newest-matching first, one per line.
-    required: true
+    description: Prefixes to fall back to on a miss, newest-matching first, one per line (unused by save-only).
+    required: false
+    default: ''
   restore-only:
     description: "'true' to restore without saving (a job whose compile must not become the family's entry)."
+    required: false
+    default: 'false'
+  save-only:
+    description: >-
+      'true' to save what this job compiled under `key` NOW, restoring nothing -- a second family from one job, beside
+      the entry its restoring call saves at the job's end (the takes row's worker test and it classes).
     required: false
     default: 'false'
 runs:
   using: composite
   steps:
-    - if: inputs.restore-only != 'true'
+    - if: inputs.restore-only != 'true' && inputs.save-only != 'true'
       uses: actions/cache@v5
       with:
         path: |
@@ -35,7 +42,7 @@ runs:
           !*/target/scala-*/*.jar
         key: ${{ inputs.key }}
         restore-keys: ${{ inputs.restore-keys }}
-    - if: inputs.restore-only == 'true'
+    - if: inputs.restore-only == 'true' && inputs.save-only != 'true'
       uses: actions/cache/restore@v5
       with:
         path: |
@@ -45,3 +52,13 @@ runs:
           !*/target/scala-*/*.jar
         key: ${{ inputs.key }}
         restore-keys: ${{ inputs.restore-keys }}
+    # The same path list as above, or the entry's version would differ and no restore could read it.
+    - if: inputs.save-only == 'true'
+      uses: actions/cache/save@v5
+      with:
+        path: |
+          project/target
+          project/project/target
+          */target/scala-*
+          !*/target/scala-*/*.jar
+        key: ${{ inputs.key }}

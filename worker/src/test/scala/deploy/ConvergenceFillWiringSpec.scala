@@ -178,7 +178,7 @@ class ConvergenceFillWiringSpec extends AnyFlatSpec with Matchers {
 
   it should "replay nothing and compile only the fixtures, without becoming the build cache's entry" in {
     fill should include("replay: 'false'")
-    setup should include("restore-only: ${{ inputs.replay != 'true' }}")
+    setup should include("restore-only: ${{ inputs.replay != 'true' || startsWith(github.ref, 'refs/heads/measure/') }}")
     Seq("Start MongoDB (single-node replica set, for change streams)", "Fetch the enrichment tree in the background",
         "Restore the recorded scrape corpus", "Unpack whichever fixtures are present", "Wait for MongoDB, started in the background above")
       .foreach(name => withClue(s"$name: ")(RepoFile.step(setup, name) should include("if: inputs.replay == 'true'")))
