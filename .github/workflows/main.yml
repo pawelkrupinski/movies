@@ -434,10 +434,8 @@ jobs:
                   username: ${{ github.actor }}
                   password: ${{ secrets.GITHUB_TOKEN }}
 
-            - uses: docker/setup-buildx-action@v3
-              with:
-                  # BuildKit from Docker Hub's mirror, not Docker Hub (CiImageMirrorSpec).
-                  driver-opts: image=mirror.gcr.io/moby/buildkit:buildx-stable-1
+            # BuildKit from Docker Hub's mirror, Docker Hub only when the mirror fails (CiImageMirrorSpec).
+            - uses: ./.github/actions/setup-buildx
 
             - name: Build and push under this commit's SHA tag only
               uses: docker/build-push-action@v6

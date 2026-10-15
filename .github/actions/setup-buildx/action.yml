@@ -1,0 +1,21 @@
+name: Set up buildx
+description: >-
+    A buildx builder booting BuildKit from mirror.gcr.io (CiImageMirrorSpec), and -- only when the mirror cannot serve
+    it -- the same pinned BuildKit from Docker Hub. 2026-10-15 (run 38788714642) the mirror answered "could not fetch
+    content descriptor ... not found" for a layer of the image another job of the same run had just pulled from it,
+    and the web image build went red on that alone. Pinned rather than the floating buildx-stable-1, so both pulls
+    boot one version.
+
+runs:
+    using: composite
+    steps:
+        - id: mirror
+          uses: docker/setup-buildx-action@v3
+          continue-on-error: true
+          with:
+              driver-opts: image=mirror.gcr.io/moby/buildkit:v0.33.1
+
+        - if: steps.mirror.outcome == 'failure'
+          uses: docker/setup-buildx-action@v3
+          with:
+              driver-opts: image=moby/buildkit:v0.33.1

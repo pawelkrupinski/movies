@@ -33,13 +33,21 @@ class CiImageMirrorSpec extends AnyFlatSpec with Matchers {
     all(images.map(_.dropWhile(_ != ' ').trim)) should startWith(Mirror)
   }
 
-  "every buildx builder" should "boot BuildKit from the mirror" in {
-    for (file <- RepoFile.workflows()) {
-      val text = RepoFile.read(file.getPath)
-      withClue(s"${file.getName}: every docker/setup-buildx-action needs driver-opts image=${Mirror}moby/buildkit: ") {
-        s"image=${Mirror}moby/buildkit:".r.findAllIn(text).size shouldBe "uses: docker/setup-buildx-action@".r.findAllIn(text).size
-      }
-    }
+  "every buildx builder" should "come from the shared setup-buildx action, never set up by hand" in {
+    val byHand = RepoFile.workflows().filter(f => RepoFile.read(f.getPath).contains("uses: docker/setup-buildx-action@")).map(_.getName)
+    withClue("set up buildx through ./.github/actions/setup-buildx: ")(byHand shouldBe empty)
+  }
+
+  /** 2026-10-15 (run 38788714642): the mirror lacked a layer of the BuildKit image another job of the same run had just
+   *  pulled from it, and the web image build went red on that alone. */
+  "the shared setup-buildx action" should "boot BuildKit from the mirror first, and the same pinned version from Docker Hub only when that fails" in {
+    val action = RepoFile.read(".github/actions/setup-buildx/action.yml")
+    val images = """image=(\S+)""".r.findAllMatchIn(action).map(_.group(1)).toSeq
+    images.size shouldBe 2
+    images.head should startWith(s"${Mirror}moby/buildkit:v")
+    images(1) shouldBe images.head.stripPrefix(Mirror)
+    action should include("continue-on-error: true")
+    action should include("if: steps.mirror.outcome == 'failure'")
   }
 
   "the CI mongod" should "be pulled from the mirror first" in {
