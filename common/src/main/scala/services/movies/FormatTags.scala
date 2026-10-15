@@ -33,7 +33,7 @@ object FormatTags {
    *  ATMOS badge, so "Dolby Atmos" and a bare "Atmos" both surface one ATMOS.) */
   val FormatToken: Map[String, String] = Map(
     "napisy" -> "NAP", "nap" -> "NAP", "dubbing" -> "DUB", "dub" -> "DUB", "dubb" -> "DUB",
-    "lektor" -> "LEK", "2d" -> "2D", "3d" -> "3D", "imax" -> "IMAX", "4dx" -> "4DX",
+    "lektor" -> "LEK", "lek" -> "LEK", "2d" -> "2D", "3d" -> "3D", "imax" -> "IMAX", "4dx" -> "4DX",
     "atmos" -> "ATMOS",
     // English-language venues' version words, and the print/projection a repertory screening names
     // ("Spirited Away (Dubbed)", "Collateral (35mm)"); SUB/DUB take the country's own spelling in
@@ -51,11 +51,9 @@ object FormatTags {
   // card (like a programme prefix or "+ event"), so those words are never stripped
   // — and keeping them out also avoids partial-stripping a multi-word event label
   // ("UROCZYSTA POLSKA PREMIERA" would otherwise lose only its last word).
-  private val FormatVersionWords = Set(
-    "2d", "3d", "imax", "4dx", "dolby", "atmos",
-    "dubbing", "dubb", "dub", "napisy", "nap", "lektor", "lek",
-    "sub", "subs", "subtitled", "subtitles", "dubbed", "35mm", "70mm", "4k",
-    "ov", "omu", "omeu", "df", "engl", "originalversion")
+  // Every word of a badge ([[FormatToken]]), and the two that carry none: "dolby", "Dolby Atmos"'s carrier, and "engl",
+  // a version's language ("engl. OV").
+  private val FormatVersionWords = FormatToken.keySet ++ Set("dolby", "engl")
   private val FormatSeparators = Set("-", "–", "—", "|", "/", ":")
   // "… - ON 35MM", "… in 70mm", Kino Kolory's "REQUIEM DLA SNU w 4K", "Carmen in 3D", "… The Tour Live In 3D": a
   // print or a screen is billed with a preposition, which goes with it (left behind, the title ended "REQUIEM DLA

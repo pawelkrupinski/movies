@@ -184,8 +184,8 @@ Each a production change: measure with `scripts/identity-measure`, land one at a
   `CandidateScoring.namesOnlyItsVenue` and the edition year the Alamo series.
 - [ ] **More venue-named global strips** in `ExtraTitleRules`: `xtra-kobiece-strands` (`TOMI dla Kobiet`, `Kobiece
   Wieczory w Kino Cafe`) and others naming one venue's strand. Each a learned decoration or a per-cinema rule; measure.
-- [ ] **Two copies of one list**: `FormatTags.FormatVersionWords` repeats `FormatToken`'s keys (and "lek" has no LEK
-  badge: "Lalka 2D LEK" shows none); `TitleText.FiledArticles` (ein/eine, no gli) vs `IdentityMeasures.LeadingArticles`
+- [ ] **Two copies of one list**: ~~`FormatTags.FormatVersionWords` repeats `FormatToken`'s keys (and "lek" has no LEK
+  badge: "Lalka 2D LEK" shows none)~~ (done: derived from `FormatToken`, "lek" badged LEK); `TitleText.FiledArticles` (ein/eine, no gli) vs `IdentityMeasures.LeadingArticles`
   (gli, no ein/eine); `TitleText.stripPunct`'s own NFD strip drops "ł" where `TextNormalization.deburr` folds it.
 - [x] **The silent-era denial reads two ways** (done: `ListingShape.silentBillingDenies`; the node and the listing it is
   asked of stay each stage's): `FamilyScope.denialByNode` if any listing of the node bills silent,

@@ -12,6 +12,8 @@ class TitleFormatWordsSpec extends AnyFlatSpec with Matchers {
   "A title's format words" should "come off it as tokens" in {
     FormatTags.extractFormatTags("Resident evil 2d sub") shouldBe ("Resident evil", List("2D", "SUB"))
     FormatTags.extractFormatTags("Spirited Away (Dubbed)") shouldBe ("Spirited Away", List("DUB"))
+    // "lek", lektor's short form, was peeled with no badge: "Lalka 2D LEK" showed none
+    FormatTags.extractFormatTags("Lalka 2D LEK") shouldBe ("Lalka", List("2D", "LEK"))
     FormatTags.extractFormatTags("Yuri!!! on Ice (Subtitled)") shouldBe ("Yuri!!! on Ice", List("SUB"))
     FormatTags.extractFormatTags("Collateral (35mm)") shouldBe ("Collateral", List("35MM"))
     FormatTags.extractFormatTags("The Odyssey | 70MM IMAX") shouldBe ("The Odyssey", List("70MM", "IMAX"))
