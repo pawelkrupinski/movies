@@ -1,6 +1,6 @@
 package scripts
 
-import play.api.libs.json.Json
+import play.api.libs.json.{Format, Json}
 import services.identity._
 import services.identity.IdentityCalibration.{Bin, SignalWeights, Threshold}
 import services.identity.IdentityMeasures.{Category, Measure, Missing, Number}
@@ -11,6 +11,7 @@ import java.nio.file.{Files, Path}
 import java.util.concurrent.{Executors, TimeUnit}
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.jdk.CollectionConverters._
 import scala.util.hashing.MurmurHash3
 
 /**
@@ -263,6 +264,10 @@ object IdentityRefit {
     }
   }
 
+  /** Every change a round may make from `c`, in the one order every round, shard and merge proposes them in. */
+  def proposals(c: IdentityCalibration, units: Seq[LabelledUnit], relearn: Set[String]): Seq[Change] =
+    cutChanges(c) ++ boundChanges(c) ++ weightChanges(c, units, relearn)
+
   // ── measuring ─────────────────────────────────────────────────────────────────────────────
 
   /** One listing whose take a change moved, judged ([[DecorationDiscovery.judge]]; a lost take that was right is lost). */
@@ -335,52 +340,127 @@ object IdentityRefit {
     (moved, (held -- nowIs).toSeq.sorted.map(_.productIterator.mkString("\t")))
   }
 
-  /** The whole refit: each round every change not yet made measured on top of the changes kept so far (in parallel), the
-   *  best kept one made; until none is kept or `maxChanges` are. */
-  def search(replays: Seq[CaptureReplay], labels: Seq[UnmatchedClusters.Label], expected: Set[(String, String, String, String)], start: IdentityCalibration,
-             relearn: Set[String], maxChanges: Int, threads: Int, log: String => Unit): (IdentityCalibration, Seq[Measured], Seq[Seq[Measured]]) = {
-    val units = replays.flatMap(r => labelledUnits(r.capture, labels, start))
-    log(s"labelled units: ${units.size} (${units.count(_.same)} same film, ${units.count(u => heldOut(u.group))} held out)")
+  /** What every round of one refit measures against: the captures, the labels and expected takes judging them, the
+   *  labelled units a weight refit counts, and which listings bill several films. */
+  case class Ground(replays: Seq[CaptureReplay], labels: Seq[UnmatchedClusters.Label], expected: Set[(String, String, String, String)],
+                          start: IdentityCalibration, relearn: Set[String], log: String => Unit) {
+    val units: Seq[LabelledUnit] = replays.flatMap(r => labelledUnits(r.capture, labels, start))
     val billsSeveral: ((String, String, String)) => Boolean = {
       val byListing = replays.flatMap(r => r.capture.listings.map(l => (r.capture.country.code, l.venue, l.rawTitle) -> l)).toMap
       k => byListing.get(k).exists(l => ListingShape.billsSeveral(l) ||
         MultiFilmBill.billsTwoWorks(IdentityMeasures.Listing(l.title, Some(l.rawTitle), decorations = TitleDecorations.resolver)))
     }
-    val pool = Executors.newFixedThreadPool(threads)
-    implicit val ec: ExecutionContext = ExecutionContext.fromExecutor(pool)
-    try {
-      var base = baseline(replays, start)
+    log(s"labelled units: ${units.size} (${units.count(_.same)} same film, ${units.count(u => heldOut(u.group))} held out)")
+
+    def propose(c: IdentityCalibration): Seq[Change] = proposals(c, units, relearn)
+
+    /** The captured decisions under `start`: what round 1 measures from. */
+    def control(using ExecutionContext): Baseline = {
+      val base     = baseline(replays, start)
       val verdicts = base.takes.map(UnmatchedClusters.verdict(_, labels))
       log(s"control (the captured decisions, as the ratchet reads them): ${base.takes.size} takes, ${verdicts.count(_.contains(true))} right, " +
         s"${verdicts.count(_.contains(false))} wrong, ${verdicts.count(_.isEmpty)} unjudged; ${base.gaps} TMDB questions its resolve asks unanswered")
-      var kept   = Vector.empty[Measured]
-      var rounds = Vector.empty[Seq[Measured]]
-      var done   = false
-      while (!done && kept.size < maxChanges) {
-        val made     = kept.map(_.change.parameter).toSet
-        val from     = base
-        val proposed = (cutChanges(from.calibration) ++ boundChanges(from.calibration) ++ weightChanges(from.calibration, units, relearn))
-          .filterNot(c => made(c.parameter))
-        log(s"round ${rounds.size + 1}: ${proposed.size} proposals")
-        val measured = proposed.zip(measureAll(replays, from, proposed)).map { (change, after) =>
-          val (moved, lost) = judged(from.takes, after.flatMap(_.takes), labels, expected, billsSeveral)
-          Measured(change, moved, math.max(0, after.map(_.gaps).sum - from.gaps), lost, after)
-        }
-        measured.filter(_.moved.nonEmpty).foreach(m => log(f"  ${if (m.kept) "KEPT" else "    "} ${m.change.parameter}%-70s ${m.change.from} → ${m.change.to}: " +
-          s"right ${m.right} (${m.supportFitting.size} films fitting, ${m.supportHeldOut.size} held out) wrong ${m.wrong} switched ${m.switched} " +
-          s"lost ${m.lost}+${m.lostRight} unjudged ${m.unjudged}${if (m.kept) "" else m.failures.mkString(" — ", ", ", "")}" +
-          m.moved.filterNot(x => x.verdict == DecorationDiscovery.Right || x.verdict == DecorationDiscovery.Lost).take(5)
-            .map(x => s"\n         ${x.verdict}: ${x.country} ${x.venue} '${x.rawTitle}' ${x.before} → ${x.after}").mkString))
-        rounds :+= measured
-        measured.filter(_.kept).sortBy(m => (-m.supportFitting.size, -m.right, m.change.parameter)).headOption match {
-          case Some(m) =>
-            kept :+= m
-            base = Baseline(m.change.applyTo(from.calibration), m.after)
-          case None => done = true
-        }
+      base
+    }
+
+    /** `changes` measured on top of `from`, each judged. */
+    def measure(from: Baseline, changes: Seq[Change])(using ExecutionContext): Seq[Measured] =
+      changes.zip(measureAll(replays, from, changes)).map { (change, after) =>
+        val (moved, lost) = judged(from.takes, after.flatMap(_.takes), labels, expected, billsSeveral)
+        Measured(change, moved, math.max(0, after.map(_.gaps).sum - from.gaps), lost, after)
       }
-      (base.calibration, kept, rounds)
-    } finally { pool.shutdown(); pool.awaitTermination(1, TimeUnit.MINUTES) }
+  }
+
+  private def withPool[A](threads: Int)(body: ExecutionContext ?=> A): A = {
+    val pool = Executors.newFixedThreadPool(threads)
+    try body(using ExecutionContext.fromExecutor(pool)) finally { pool.shutdown(); pool.awaitTermination(1, TimeUnit.MINUTES) }
+  }
+
+  /** The whole refit: each round every change not yet made measured on top of the changes kept so far (in parallel), the
+   *  best kept one made; until none is kept or `maxChanges` are. `firstRound`, given, answers round 1's measures instead
+   *  — what the shards measured, merged ([[merged]]) — and the control is then resolved only once a change is kept. */
+  def search(ground: Ground, maxChanges: Int, threads: Int, firstRound: Option[Seq[Change] => Seq[Measured]] = None)
+      : (IdentityCalibration, Seq[Measured], Seq[Seq[Measured]]) = withPool(threads) {
+    lazy val control = ground.control
+    var base   = Option.empty[Baseline]
+    var kept   = Vector.empty[Measured]
+    var rounds = Vector.empty[Seq[Measured]]
+    var done   = false
+    while (!done && kept.size < maxChanges) {
+      val made     = kept.map(_.change.parameter).toSet
+      val at       = base.fold(ground.start)(_.calibration)
+      val proposed = ground.propose(at).filterNot(c => made(c.parameter))
+      ground.log(s"round ${rounds.size + 1}: ${proposed.size} proposals")
+      val measured = firstRound.filter(_ => rounds.isEmpty).fold(ground.measure(base.getOrElse(control), proposed))(_(proposed))
+      measured.filter(_.moved.nonEmpty).foreach(m => ground.log(f"  ${if (m.kept) "KEPT" else "    "} ${m.change.parameter}%-70s ${m.change.from} → ${m.change.to}: " +
+        s"right ${m.right} (${m.supportFitting.size} films fitting, ${m.supportHeldOut.size} held out) wrong ${m.wrong} switched ${m.switched} " +
+        s"lost ${m.lost}+${m.lostRight} unjudged ${m.unjudged}${if (m.kept) "" else m.failures.mkString(" — ", ", ", "")}" +
+        m.moved.filterNot(x => x.verdict == DecorationDiscovery.Right || x.verdict == DecorationDiscovery.Lost).take(5)
+          .map(x => s"\n         ${x.verdict}: ${x.country} ${x.venue} '${x.rawTitle}' ${x.before} → ${x.after}").mkString))
+      rounds :+= measured
+      measured.filter(_.kept).sortBy(m => (-m.supportFitting.size, -m.right, m.change.parameter)).headOption match {
+        case Some(m) =>
+          kept :+= m
+          val from = base.getOrElse(control)
+          val now  = m.change.applyTo(from.calibration)
+          // a merged measure carries no captures: measured again on top of its control, as the shard measured it
+          base = Some(Baseline(now, if (m.after.nonEmpty) m.after else measureOn(ground.replays, from, now)))
+        case None => done = true
+      }
+    }
+    (base.fold(ground.start)(_.calibration), kept, rounds)
+  }
+
+  // ── sharding round 1 across runners ───────────────────────────────────────────────────────
+
+  /** One shard of `of`: round 1's proposals whose index is `index` modulo `of`. */
+  final case class Shard(index: Int, of: Int) {
+    require(of >= 1 && index >= 0 && index < of, s"shard $index/$of")
+    def owns(proposal: Int): Boolean = proposal % of == index
+  }
+  object Shard {
+    def parse(text: String): Shard = text.split("/") match {
+      case Array(i, n) if i.forall(_.isDigit) && n.forall(_.isDigit) && i.nonEmpty && n.nonEmpty => Shard(i.toInt, n.toInt)
+      case _ => throw new IllegalArgumentException(s"--shard $text: give it as <index>/<count>, e.g. 0/4")
+    }
+  }
+
+  /** One proposal's measure as a shard writes it: the change named by its index in round 1's proposals, and what it
+   *  moved — everything the report and the choice read; the captures under it are measured again only if it is kept. */
+  final case class MeasuredRecord(index: Int, parameter: String, from: String, to: String, moved: Seq[Moved], gaps: Int, expectedLost: Seq[String])
+  /** A shard's file: which shard, of how many proposals, and its measures. */
+  final case class ShardFile(shard: Int, of: Int, proposals: Int, measured: Seq[MeasuredRecord])
+  given Format[Moved]          = Json.format[Moved]
+  given Format[MeasuredRecord] = Json.format[MeasuredRecord]
+  given Format[ShardFile]      = Json.format[ShardFile]
+
+  /** Round 1's proposals this shard owns, measured on top of the control. */
+  def measureShard(ground: Ground, shard: Shard, threads: Int): ShardFile = withPool(threads) {
+    val proposed = ground.propose(ground.start)
+    val mine     = proposed.zipWithIndex.filter((_, i) => shard.owns(i))
+    ground.log(s"shard ${shard.index}/${shard.of}: ${mine.size} of round 1's ${proposed.size} proposals")
+    val measured = ground.measure(ground.control, mine.map(_._1))
+    ShardFile(shard.index, shard.of, proposed.size, mine.zip(measured).map { case ((c, i), m) =>
+      MeasuredRecord(i, c.parameter, c.from, c.to, m.moved, m.gaps, m.expectedLost) })
+  }
+
+  /** Every shard's measures, in `proposed`'s order — exactly one per proposal, each the change it names (the same
+   *  parameter, from and to: a shard that proposed otherwise measured another refit), or a failure saying what is off. */
+  def merged(proposed: Seq[Change], shards: Seq[ShardFile]): Seq[Measured] = {
+    def fail(why: String) = throw new IllegalStateException(s"the shards' measures do not merge: $why")
+    if (shards.isEmpty) fail("no shard files")
+    val of = shards.map(_.of).distinct
+    if (of.size != 1 || shards.map(_.shard).sorted != (0 until of.head)) fail(s"shards ${shards.map(s => s"${s.shard}/${s.of}").sorted.mkString(", ")}, not one of each")
+    shards.find(_.proposals != proposed.size).foreach(s => fail(s"shard ${s.shard} measured ${s.proposals} proposals, this refit proposes ${proposed.size}"))
+    val byIndex = shards.flatMap(_.measured).groupBy(_.index)
+    proposed.zipWithIndex.map { (c, i) =>
+      byIndex.get(i) match {
+        case Some(Seq(r)) if (r.parameter, r.from, r.to) == (c.parameter, c.from, c.to) => Measured(c, r.moved, r.gaps, r.expectedLost)
+        case Some(Seq(r)) => fail(s"proposal $i is ${c.parameter} ${c.from} → ${c.to} here, ${r.parameter} ${r.from} → ${r.to} in a shard")
+        case Some(_)      => fail(s"proposal $i measured more than once")
+        case None         => fail(s"proposal $i (${c.parameter}) measured by no shard")
+      }
+    }
   }
 
   // ── writing ───────────────────────────────────────────────────────────────────────────────
@@ -439,17 +519,22 @@ object IdentityRefit {
     CommandLine.Value("max-changes", "n", "the most changes kept", default = Some("5")),
     CommandLine.Value("relearn", "signal,…", "signals refitted from fresh units alone, their stored counts dropped"),
     CommandLine.Value("weights", "file", "the artefact refitted", default = Some(Artefact.toString)),
-    CommandLine.Value("threads", "n", "measuring threads (default: half the processors)"))
+    CommandLine.Value("threads", "n", "measuring threads (default: half the processors)"),
+    CommandLine.Value("shard", "i/n", "measure only round 1's proposals i, i+n, … and write them to --shard-out; no report, no artefact"),
+    CommandLine.Value("shard-out", "file.json", "where --shard writes its measures"),
+    CommandLine.Value("merge", "dir", "round 1 answered by the shard files (*.json) in dir, the rest of the refit as ever"))
 
   /** One refit run as its command line asks it. */
-  final case class Run(apply: Boolean, artefact: Path, report: Option[Path], maxChanges: Int, relearn: Set[String], threads: Int)
+  final case class Run(apply: Boolean, artefact: Path, report: Option[Path], maxChanges: Int, relearn: Set[String], threads: Int,
+                       shard: Option[Shard] = None, shardOut: Option[Path] = None, merge: Option[Path] = None)
 
   object Run {
     // `--weights <file>`: refit (and with --apply, write) another artefact than the shipped one — a positive control
     // starts from a deliberately mistuned copy and must find its way back
     def of(arguments: CommandLine.Arguments): Run = Run(arguments.flag("apply"), arguments.requiredPath("weights"), arguments.path("report"),
       arguments.requiredInt("max-changes"), arguments.get("relearn").toSeq.flatMap(_.split(",")).map(_.trim).filter(_.nonEmpty).toSet,
-      arguments.int("threads").getOrElse(math.max(1, Runtime.getRuntime.availableProcessors / 2)))
+      arguments.int("threads").getOrElse(math.max(1, Runtime.getRuntime.availableProcessors / 2)),
+      arguments.get("shard").map(Shard.parse), arguments.path("shard-out"), arguments.path("merge"))
   }
 
   /** The changes a search from `start` kept, and every round it measured. */
@@ -485,7 +570,21 @@ object IdentityRefit {
     }
     val replays = CaptureReplay.all()
     println(s"TMDB gaps: ${if (CaptureReplay.asksLive) "asked live" else "NOT asked (no TMDB_API_KEY) — a proposal asking one is unmeasured"}")
-    val units = s"${labels.size} labels, ${expected.size} expected takes${if (run.relearn.isEmpty) "" else s"; relearned from fresh units: ${run.relearn.toSeq.sorted.mkString(", ")}"}"
-    refit(run, start, units, search(replays, labels, expected, _, run.relearn, run.maxChanges, run.threads, println), println)
+    val ground = Ground(replays, labels, expected, start, run.relearn, println)
+    run.shard match {
+      case Some(shard) =>
+        val out = run.shardOut.getOrElse(throw new IllegalArgumentException("--shard needs --shard-out <file.json>"))
+        Files.createDirectories(out.toAbsolutePath.getParent)
+        Files.writeString(out, Json.stringify(Json.toJson(measureShard(ground, shard, run.threads))), StandardCharsets.UTF_8)
+        println(s"wrote $out")
+      case None =>
+        val firstRound = run.merge.map { dir =>
+          val files = Files.list(dir).iterator.asScala.filter(_.toString.endsWith(".json")).toSeq.sorted
+          println(s"round 1 from ${files.size} shard file(s) in $dir")
+          merged(_, files.map(f => Json.parse(Files.readString(f)).as[ShardFile]))
+        }
+        val units = s"${labels.size} labels, ${expected.size} expected takes${if (run.relearn.isEmpty) "" else s"; relearned from fresh units: ${run.relearn.toSeq.sorted.mkString(", ")}"}"
+        refit(run, start, units, _ => search(ground, run.maxChanges, run.threads, firstRound), println)
+    }
   }
 }
