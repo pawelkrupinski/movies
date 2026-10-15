@@ -39,8 +39,8 @@ final class CaptureReplay(val capture: UnmatchedClusters.Capture, live: Option[I
       rounds += 1
       done = result._2 == 0 || live.isEmpty || rounds > 4
       live.filterNot(_ => done).foreach { tmdb =>
-        missingQ.toSeq.foreach(q => tmdb.candidates(q).toOption.foreach(queries.put(q, _)))
-        missingF.toSeq.foreach(id => tmdb.film(id).toOption.foreach(films.put(id, _)))
+        asked(missingQ.toSeq.map(q => () => tmdb.candidates(q).toOption.foreach(queries.put(q, _))) ++
+          missingF.toSeq.map(id => () => tmdb.film(id).toOption.foreach(films.put(id, _))))
       }
     }
     result
@@ -80,6 +80,22 @@ final class CaptureReplay(val capture: UnmatchedClusters.Capture, live: Option[I
 }
 
 object CaptureReplay {
+  /** How many TMDB questions are in flight at once, across every capture and measure: TMDB allows ~50 requests a
+   *  second, and a question is one or two round trips (the external-api-rate-limits skill: 10 workers is fine). */
+  val AskConcurrency = 8
+  private lazy val askPool = {
+    val pool = java.util.concurrent.Executors.newFixedThreadPool(AskConcurrency, (r: Runnable) => { val t = new Thread(r, "tmdb-ask"); t.setDaemon(true); t })
+    scala.concurrent.ExecutionContext.fromExecutor(pool)
+  }
+
+  /** Every ask run, [[AskConcurrency]] at a time, returning once all have: a control's hundreds of unanswered questions
+   *  asked one after another were most of a CI run's control (1,308 of them, ~9 minutes, 2026-10-15). */
+  private[scripts] def asked(asks: Seq[() => Unit]): Unit = {
+    import scala.concurrent.{Await, Future}
+    given scala.concurrent.ExecutionContext = askPool
+    Await.result(Future.traverse(asks)(ask => Future(ask())), scala.concurrent.duration.Duration.Inf)
+  }
+
   /** A calibration's measure over one capture ([[CaptureReplay.measure]]). */
   final case class Measure(takes: Seq[UnmatchedClusters.Take], gaps: Int, decisions: Seq[ResolverDecision], resolved: Seq[ResolverDecision])
 
@@ -116,7 +132,8 @@ object CaptureReplay {
     val configuration = settings.ProcessConfiguration.resolve()
     models.Country.all.map(UnmatchedClusters.fixturePath).filter(java.nio.file.Files.exists(_)).map(UnmatchedClusters.read).map { capture =>
       val live = configuration.tmdbApiKey.map(key => new TmdbIdentityLookups(new clients.TmdbClient(new tools.RealHttpFetch(), apiKey = Some(key),
-        language = capture.country.language, retrySleep = (_: Long) => ()), new services.enrichment.ImdbClient(new tools.RealHttpFetch()), Nil))
+        // a real backoff on a 429 or a 5xx: asked AskConcurrency at a time, a retry at once would meet the same limit
+        language = capture.country.language), new services.enrichment.ImdbClient(new tools.RealHttpFetch()), Nil))
       new CaptureReplay(capture, live)
     }
   }

@@ -296,13 +296,23 @@ object IdentityRefit {
     def gaps: Int = captures.map(_.gaps).sum
   }
 
-  /** The ratchet as captured, under `calibration`: every capture's decisions, the agreement replayed. */
-  def baseline(replays: Seq[CaptureReplay], calibration: IdentityCalibration): Baseline =
-    Baseline(calibration, replays.map(r => r.measure(r.capture.decisions, r.resolved(calibration), calibration)))
+  /** The ratchet as captured, under `calibration`: every capture's decisions, the agreement replayed — the captures
+   *  measured side by side on `ec`. */
+  def baseline(replays: Seq[CaptureReplay], calibration: IdentityCalibration)(using ec: ExecutionContext = ExecutionContext.parasitic): Baseline =
+    Baseline(calibration, Await.result(Future.traverse(replays)(r => Future(r.measure(r.capture.decisions, r.resolved(calibration), calibration))), Duration.Inf))
 
   /** Every capture measured under `calibration` on top of `base` ([[CaptureReplay.measure]]). */
   def measureOn(replays: Seq[CaptureReplay], base: Baseline, calibration: IdentityCalibration): Seq[CaptureReplay.Measure] =
     replays.zip(base.captures).map((r, b) => r.measure(b.decisions, b.resolved, calibration))
+
+  /** Every change measured on top of `base`, each capture of each change one task on `ec` — the captures of one change
+   *  differ several-fold in size, so a change per task left the pool idle behind its largest captures. In `changes`'
+   *  order, each with its captures in `replays`' order. */
+  def measureAll(replays: Seq[CaptureReplay], base: Baseline, changes: Seq[Change])(using ec: ExecutionContext): Seq[Seq[CaptureReplay.Measure]] = {
+    val tasks = for (change <- changes; calibration = change.applyTo(base.calibration); (r, b) <- replays.zip(base.captures))
+      yield Future(r.measure(b.decisions, b.resolved, calibration))
+    Await.result(Future.sequence(tasks), Duration.Inf).grouped(math.max(1, replays.size)).toSeq.padTo(changes.size, Nil)
+  }
 
   private def byListing(takes: Seq[UnmatchedClusters.Take]) = takes.groupMapReduce(t => (t.country, t.venue, t.rawTitle))(identity)((a, _) => a)
 
@@ -352,11 +362,10 @@ object IdentityRefit {
         val proposed = (cutChanges(from.calibration) ++ boundChanges(from.calibration) ++ weightChanges(from.calibration, units, relearn))
           .filterNot(c => made(c.parameter))
         log(s"round ${rounds.size + 1}: ${proposed.size} proposals")
-        val measured = Await.result(Future.traverse(proposed) { change => Future {
-          val after = measureOn(replays, from, change.applyTo(from.calibration))
+        val measured = proposed.zip(measureAll(replays, from, proposed)).map { (change, after) =>
           val (moved, lost) = judged(from.takes, after.flatMap(_.takes), labels, expected, billsSeveral)
           Measured(change, moved, math.max(0, after.map(_.gaps).sum - from.gaps), lost, after)
-        } }, Duration.Inf)
+        }
         measured.filter(_.moved.nonEmpty).foreach(m => log(f"  ${if (m.kept) "KEPT" else "    "} ${m.change.parameter}%-70s ${m.change.from} → ${m.change.to}: " +
           s"right ${m.right} (${m.supportFitting.size} films fitting, ${m.supportHeldOut.size} held out) wrong ${m.wrong} switched ${m.switched} " +
           s"lost ${m.lost}+${m.lostRight} unjudged ${m.unjudged}${if (m.kept) "" else m.failures.mkString(" — ", ", ", "")}" +

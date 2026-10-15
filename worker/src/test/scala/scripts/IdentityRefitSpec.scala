@@ -198,4 +198,36 @@ class IdentityRefitSpec extends AnyFlatSpec with Matchers {
     control.takes.filter(_.tmdb.isDefined).exists(taken =>
       labelledUnits(replay.capture, Seq(Label("de", "*", taken.rawTitle, taken.film, right = true, "")), shipped).nonEmpty) shouldBe true
   }
+
+  "Measuring the changes" should "give each change the measure it has alone, its captures in order, whatever task finished first" in {
+    val replays = Seq(models.Country.Germany, models.Country.Spain).map(c => new CaptureReplay(tools.UnmatchedClusters.read(tools.UnmatchedClusters.fixturePath(c)), None))
+    val pool    = java.util.concurrent.Executors.newFixedThreadPool(4)
+    given scala.concurrent.ExecutionContext = scala.concurrent.ExecutionContext.fromExecutor(pool)
+    try {
+      val control = baseline(replays, shipped)
+      control.captures.map(_.decisions) shouldBe replays.map(_.capture.decisions)
+      val changes = Seq(CutChange("listing-film", "showRatings", shipped.ratingCut, 0.999999), CutChange("listing-film", "showRatings", shipped.ratingCut, shipped.ratingCut))
+      val all     = measureAll(replays, control, changes)
+      all.map(_.size) shouldBe Seq(2, 2)
+      all shouldBe changes.map(c => measureOn(replays, control, c.applyTo(control.calibration)))
+      all.head.flatMap(_.takes).size should be < control.takes.size
+      measureAll(replays, control, Nil) shouldBe empty
+    } finally pool.shutdown()
+  }
+
+  "Asking TMDB" should s"run every question, at most ${CaptureReplay.AskConcurrency} at once" in {
+    val running = new java.util.concurrent.atomic.AtomicInteger
+    val most    = new java.util.concurrent.atomic.AtomicInteger
+    val done    = new java.util.concurrent.atomic.AtomicInteger
+    // the first asks hold until AskConcurrency of them are in flight together: asked one at a time, none ever is
+    val full    = new java.util.concurrent.CountDownLatch(CaptureReplay.AskConcurrency)
+    CaptureReplay.asked(Seq.fill(40)(() => {
+      most.accumulateAndGet(running.incrementAndGet(), math.max)
+      full.countDown()
+      full.await(tools.SpecTimeouts.Settle.toMillis, java.util.concurrent.TimeUnit.MILLISECONDS)
+      running.decrementAndGet(); done.incrementAndGet(); ()
+    }))
+    done.get shouldBe 40
+    most.get shouldBe CaptureReplay.AskConcurrency
+  }
 }
