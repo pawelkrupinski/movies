@@ -516,20 +516,24 @@ object IdentityMeasures {
       measures + ("director" -> SamePersonMeasure)
     else measures
 
-  /** `measures`, the director read as credited when the listing credits nobody but its title heads the film's title with
-   *  the surname of one of its directors ("Konwicki Salto", "Konwicki: Salto" — PL Kino Fenix's retrospective of
-   *  Tadeusz Konwicki): the rest of the title must be one of the film's titles whole, and the surname five letters at
-   *  least. */
+  /** `measures`, the director read as credited when the listing credits nobody but its title bills the film under a
+   *  banner naming one of its directors ([[bannerNamesItsDirector]]). */
   def creditedByTitle(l: Listing, f: Film, measures: Map[String, Measure]): Map[String, Measure] =
-    if (!measures.get("director").contains(MissingListing) || l.directors.nonEmpty) measures
-    else {
-      val words = l.titleWords
-      val named = words.sizeIs >= 2 && words.head.length >= 5 && f.directors.exists(_.exists { director =>
-        val surname = IdentityMeasures.words(director).lastOption
-        surname.exists(s => s.length >= 5 && s == words.head) && f.titleKeys.contains(words.tail.mkString)
-      })
-      if (named) measures + ("director" -> SamePersonMeasure) else measures
+    if (!measures.get("director").contains(MissingListing) || l.directors.nonEmpty || !bannerNamesItsDirector(l, f)) measures
+    else measures + ("director" -> SamePersonMeasure)
+
+  /** Does the listing's title bill one of the film's titles whole under a BANNER naming one of its directors — the
+   *  surname, five letters at least, among the words before it? "Konwicki Salto", "Konwicki: Salto" (PL Kino Fenix's
+   *  retrospective of Tadeusz Konwicki), and a series' banner naming two: DE Babylon (Mitte)'s "Hitchcock & Chabrol:
+   *  Spellbound" is Hitchcock's 1945 film. A banner the resolver learned and peels off ([[TitleDecorations]]) still says
+   *  so: the peeled title is searched, the banner stays evidence. Only for a listing crediting nobody. */
+  private[identity] def bannerNamesItsDirector(l: Listing, f: Film): Boolean = l.directors.isEmpty && {
+    val words = l.titleWords
+    words.sizeIs >= 2 && f.directors.exists { names =>
+      val surnames = names.flatMap(name => IdentityMeasures.words(name).lastOption).filter(_.length >= 5).toSet
+      surnames.nonEmpty && (1 until words.size).exists(k => f.titleKeys.contains(words.drop(k).mkString) && words.take(k).exists(surnames))
     }
+  }
 
   /** Is a listing's credited "director" the film's HOUSE — a name two words or more long that runs inside the film's
    *  own title, and none of the people the film credits? UK venues credit "The Metropolitan Opera" for its 2026/27

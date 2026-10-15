@@ -316,6 +316,19 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     r.violations shouldBe 0
   }
 
+  it should "keep the directors its peeled banner names as what narrows its namesakes" in {
+    // DE Babylon (Mitte)'s "Hitchcock & Chabrol: Spellbound", nothing else published: "Hitchcock & Chabrol" is a learned
+    // banner (the cinema's series, recording 38666576506), and peeled it left a bare "Spellbound" that pooled to the most
+    // popular record of the title, the 2024 animation (measure run 38703015688). The banner still names whose film it
+    // shows: of the films the title names, Hitchcock's 1945 one — never a namesake none of its names directed.
+    val films   = Seq(F(592983, "Spellbound", 2024, "Vicky Jenson", 109, 60), F(4174, "Spellbound", 1945, "Alfred Hitchcock", 111, 15),
+      F(92499, "Spellbound", 2011, "Hwang In-ho", 100, 8))
+    val l       = listing(KinoApollo, "Hitchcock & Chabrol: Spellbound")
+    val learned = TitleDecorations(Set(Seq("hitchcock", "chabrol")), Set.empty)
+    val d = IdentityResolver.resolve(Seq(l), new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver, decorations = learned).decisionOf(l.key)
+    withClue(d.render)(d.film shouldBe Some(4174))
+  }
+
   "A listing that publishes only a title" should
     "not be denied its credited siblings' film by the title relation alone" in {
     // PL, the Polish title of a foreign film: TMDB's record carries only the original title, so a
@@ -2889,6 +2902,27 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val ls = credited ++ plaza
     val r  = shipped(ls, toscaRecords)
     withClue(rendered(r, ls))(films(r, ls) shouldBe Seq(Some(1702784)))
+  }
+
+  "A relay screening two seasons after its house's season record of the work" should "not take that record, and take its own season's" in {
+    // UK Cineworld's "Royal Ballet and Opera: Alice’s Adventures in Wonderland" {Christopher Wheeldon} [170′] ×126 and Act
+    // One's "ROYAL BALLET & OPERA LIVE_ ALICE’S ADVENTURES IN WONDERLAND" [170′] (recording 38713274617) screen on 23 March
+    // 2027, the day TMDB's "Royal Ballet & Opera 2026/27: Alice's Adventures in Wonderland" (1702778) airs, and took the
+    // house's 2024/25 relay of the same staging: the possessive kept "Alice’s" from reading as the stage work, so neither
+    // listing was read as a relay screening in a season at all. A season's record is that season's relay, encored the next
+    // at most.
+    val uk      = ukVenues
+    val days    = Seq(java.time.LocalDate.of(2027, 3, 23))
+    val earlier = F(1307003, "Royal Ballet & Opera 2024/25: Alice's Adventures in Wonderland", 2024, "Christopher Wheeldon", 170, 1.5)
+    val own     = F(1702778, "Royal Ballet & Opera 2026/27: Alice's Adventures in Wonderland", 2027, "", 0, 0.75,
+      released = Some(java.time.LocalDate.of(2027, 3, 23)))
+    val namesake = F(789958, "Alice's Adventures in Wonderland", 2014, "Someone", 90, 3)
+    val ls = uk.take(3).map(scraped(_, "Royal Ballet and Opera: Alice’s Adventures in Wonderland", director = Some("Christopher Wheeldon"),
+      runtime = Some(170), days = days)) :+ scraped(uk(3), "ROYAL BALLET & OPERA LIVE_ ALICE’S ADVENTURES IN WONDERLAND", runtime = Some(170), days = days)
+    val withoutOwn = shipped(ls, Seq(earlier, namesake))
+    withClue(rendered(withoutOwn, ls))(films(withoutOwn, ls).flatten should not contain 1307003)
+    val r = shipped(ls, Seq(earlier, own, namesake))
+    withClue(rendered(r, ls))(films(r, ls) shouldBe Seq(Some(1702778)))
   }
 
   "A house's encore of its own recording" should "take that recording beside another house's relays of the work" in {

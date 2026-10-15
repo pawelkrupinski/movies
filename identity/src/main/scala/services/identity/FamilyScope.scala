@@ -84,6 +84,11 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
     // name, is not the listing's — however its runtime or year fits. A director's filmography is a path to candidates, never a reason to leave
     // the one its title names (Syndicated's "Zodiac", Fincher, 139 minutes, is not Fight Club).
     val titled = candidates.exists(scored => !scored.denied && IdentityMeasures.Rivalling(relation(scored.candidate.tmdbId)) && IdentityMeasures.sameDirector(scored.measures))
+    // A billing naming the director of a film its title names ([[IdentityMeasures.bannerNamesItsDirector]]: a series'
+    // banner, "Hitchcock & Chabrol: Spellbound") says whose film of the title it shows: a namesake none of the directors
+    // it names made is not it, however popular — the 2024 animated "Spellbound" is no Hitchcock.
+    val directorBilled = candidates.exists(scored => !scored.denied && IdentityMeasures.TitlesItsOwn(relation(scored.candidate.tmdbId)) &&
+      IdentityMeasures.bannerNamesItsDirector(listing, scored.candidate.film))
     // The listing's title numbers its instalment as an eligible record of its series does
     // (`numeral` `same`): another instalment of that series — one the listing numbers and it
     // does not, or numbers otherwise — is another film, however its crew or runtime fits (Kinoteka's
@@ -140,6 +145,9 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
         scored.copy(denial = Some("another record of a broadcast its film database holds twice"))
       else if (titled && !IdentityMeasures.NamingRelations(relation(scored.candidate.tmdbId)) && IdentityMeasures.sameDirector(scored.measures))
         scored.copy(denial = Some("its director's other film, which the title does not name"))
+      else if (directorBilled && IdentityMeasures.NamingRelations(relation(scored.candidate.tmdbId)) &&
+               !IdentityMeasures.bannerNamesItsDirector(listing, scored.candidate.film))
+        scored.copy(denial = Some("a namesake of the film whose director its billing names"))
       else if (instalment && scored.category("numeral").exists(IdentityMeasures.OtherInstalment))
         scored.copy(denial = Some("another instalment than the one the title numbers"))
       else if (housed.nonEmpty && besideItsOwnHouse(scored))

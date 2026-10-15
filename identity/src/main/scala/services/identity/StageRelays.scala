@@ -232,16 +232,28 @@ object StageRelays {
    *    2027, is not La Scala's 2013 record; DE Kleines Theater's "RB&O - Ballett "La Fille mal gardée"" in 2026 is the
    *    house's 2025/26 encore; and UK Chichester's "Phantom of the Opera" bills no banner at all, "opera" being the work's
    *    own word.
-   *  Never the listing's own house's record of another season: a house's relays are encored years after it staged them
-   *  (UK "NT Live: A Streetcar Named Desire" is the 2014 broadcast, "Royal Ballet: La Bayadère" the 2018 recording), and a
+   *  Any house's SEASON record ([[anotherSeasonsRelay]]) two seasons or more from the screenings' is another production too.
+   *  Never otherwise the listing's own house's record of another year: a house's recordings are encored years after it
+   *  staged them (UK "NT Live: A Streetcar Named Desire" is the 2014 broadcast, "Royal Ballet: La Bayadère" the 2018 recording), and a
    *  title's banner shared by a film series reads as a house (DE "Der Herr der Ringe - Die Gefährten (Extended Version)").
    *  KNOWN GAP: so US "NT Live: Hamlet", screening November 2026 — the National Theatre's 2026 Hamlet, which no search of
    *  it reaches — keeps the 2015 broadcast the shared Flicks page dates it by. */
   def anotherProduction(listing: Listing, film: Film): Boolean =
-    listing.billsAStageHouse && billsAnotherHouse(listing, film) && listing.screenedSeason.exists(season =>
-      if (listing.relay.houses.exists(house => particularWords(initialsJoined(house)).nonEmpty))
-        services.movies.ListingConstraints.seasonsApart(Some(season), film.season, film.year).isDefined
-      else listing.year.isEmpty && listing.relay.workIds.nonEmpty && datedAway(film, season))
+    listing.billsAStageHouse && listing.screenedSeason.exists(season =>
+      anotherSeasonsRelay(film, season) || billsAnotherHouse(listing, film) && (
+        if (listing.relay.houses.exists(house => particularWords(initialsJoined(house)).nonEmpty))
+          services.movies.ListingConstraints.seasonsApart(Some(season), film.season, film.year).isDefined
+        else listing.year.isEmpty && listing.relay.workIds.nonEmpty && datedAway(film, season)))
+  /** Is the record a SEASON's relay ([[Film.season]]: its title names the season, "Royal Ballet & Opera 2024/25: …") from
+   *  two seasons or more before or after `season`, whatever house it bills? A season's record is the broadcast of that
+   *  season's staging, encored the next season at most: a house restaging a work relays it anew, under the new season's
+   *  record — UK Cineworld's "Royal Ballet and Opera: Alice’s Adventures in Wonderland" ×126, screening on 23 March 2027,
+   *  the day TMDB's 2026/27 record airs, is not the house's 2024/25 relay. A record dated by a year alone ("Opéra national
+   *  de Paris 2024: Schwanensee") names no season, and stays [[datedAway]]'s. */
+  private def anotherSeasonsRelay(film: Film, season: Int): Boolean =
+    film.season.exists(recorded => math.abs(recorded - season) > SeasonEncoreLag)
+  /** How many seasons after its own a season's record is still encored: the next one. */
+  private val SeasonEncoreLag = 1
   /** Is the record dated — by its season, else its year — more than [[RecordingLag]] years from `season`? */
   private def datedAway(film: Film, season: Int): Boolean =
     film.season.orElse(film.year).exists(dated => math.abs(dated - season) > RecordingLag)
@@ -441,9 +453,11 @@ object StageRelays {
   }
 
   /** The stage works one title piece bills ([[stageWorksBilled]]) — a broadcast's year shortened behind the work out:
-   *  prod UK "RBO: Tosca 27", "RBO: Tosca '27", "The Met: Macbeth 26". */
+   *  prod UK "RBO: Tosca 27", "RBO: Tosca '27", "The Met: Macbeth 26". Its words as a work's name is keyed, a possessive
+   *  off ([[IdentityMeasures.withoutPossessives]]): "Alice’s Adventures in Wonderland" read as "alice", "s", … named no
+   *  work, so UK Cineworld's "Royal Ballet and Opera: Alice’s Adventures in Wonderland" ×126 was no relay of one. */
   private[identity] def billedIn(piece: String, seasonNamed: Boolean): Set[String] = {
-    val tokens = services.movies.TitleContainment.tokens(piece).toIndexedSeq
+    val tokens = services.movies.TitleContainment.tokens(IdentityMeasures.withoutPossessives(piece)).toIndexedSeq
       .reverse.dropWhile(token => token.length == 2 && token.forall(_.isDigit)).reverse
     val runs   = tokens.indices.map(tokens.drop) ++ (if (seasonNamed) (1 until tokens.size).map(tokens.take) else Nil)
     runs.flatMap(run => StageWorks.resolver.named(run.mkString)).toSet
