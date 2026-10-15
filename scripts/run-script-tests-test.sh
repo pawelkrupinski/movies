@@ -91,5 +91,14 @@ for jobs in 1 2; do
   check "--jobs $jobs: at most $jobs at once" "$jobs" "$(sort -n "$work/running.max" | tail -1 | tr -d ' ')"
 done
 
+# The Python floor: a python3 older than every script supports fails the run, loudly, before any test.
+mkdir -p "$work/oldpy"
+printf '%s\n' '#!/bin/sh' 'case "$1" in -V|--version) echo "Python 3.8.10" ;; -c) exit 1 ;; *) exit 0 ;; esac' > "$work/oldpy/python3"
+chmod +x "$work/oldpy/python3"
+check "a python3 below the floor fails a run with Python tests" "1" "$(PATH="$work/oldpy:$PATH" run scripts/ci)"
+check "...saying which python3 and which floor" "1" "$(grep -c 'Python 3.8.10.*3\.9 or newer' "$work/out")"
+check "...and runs no test" "0" "$(grep -c '^PASS' "$work/out")"
+check "a run with no Python test does not ask" "0" "$(PATH="$work/oldpy:$PATH" run scripts/a-test.sh)"
+
 check "an unknown option is a usage error" "64" "$(run --bogus)"
 spec_summary

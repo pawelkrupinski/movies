@@ -31,6 +31,9 @@ set -uo pipefail
 . "$(dirname "${BASH_SOURCE[0]}")/tool-conventions.sh" # bounded: each test under its timeout, Ctrl-C reaching it
 
 Roots="scripts .github/scripts .github/actions android/scripts ios/scripts infra/bin data"
+# The oldest python3 every Python tool runs on: macOS's /usr/bin/python3 (3.9). scripts/ci/python_floor_lint.py holds
+# the code to it -- no syntax, and no annotation evaluated at runtime, newer than this.
+PythonFloor="3.9"
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 jobs=8 timeout_s=600 list=0 all=0 tag="" changed_base="" filters=()
@@ -127,6 +130,13 @@ if [ "$list" = 1 ]; then cat "$work/selected"; exit 0; fi
 if [ ! -s "$work/selected" ]; then
   if [ -n "$changed_base" ]; then echo "run-script-tests: no script tests selected by the changes since ${changed_base}"; exit 0; fi
   echo "run-script-tests: no script test matches ${filters[*]:-the roots}${tag:+ tagged $tag}" >&2
+  exit 1
+fi
+
+# A python3 below the floor fails every Python test in its own way (a TypeError on `str | None`, a SyntaxError on
+# `match`); say so once, instead.
+if grep -q '\.py	' "$work/selected" && ! python3 -c "import sys; sys.exit(sys.version_info < (${PythonFloor/./, }))" 2>/dev/null; then
+  echo "run-script-tests: $(python3 --version 2>&1) is too old -- the Python tools need ${PythonFloor} or newer" >&2
   exit 1
 fi
 
