@@ -107,7 +107,8 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
         StageRelays.broadcastRecordOrder(scored.candidate.tmdbId, scored.candidate.film)))
     // A short beside a feature the title names as its own is that feature's namesake, unless the venue bills a short: no
     // rule takes it, and it stays a rival ([[ShortFilms]]): DE "GINA - mit der Domschule Würzburg" is no 7-minute "Gina"
-    // beside three feature-length ones.
+    // beside three feature-length ones. So is a short the title names only by a piece of a billing saying more: DE
+    // "UNLESS WE DANCE - QUEERE FILME ZUR LÄNGSTEN NACHT" is an evening named after the 14-minute short, no feature beside it.
     // A short of the director the listing credits is its own film, unless a feature of that director carries the title
     // too (DE Filmmuseum München's "Nuisance Bear" {Osio Vanden, Weisman}: their 2026 feature, not their 2021 short).
     val features = candidates.filter(scored => !scored.denied && !ShortFilms.isShort(scored.candidate.film) &&
@@ -115,7 +116,8 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
     val creditedFeature = features.exists(scored => IdentityMeasures.sameDirector(scored.measures))
     def shortUntaken(scored: Scored) =
       if (scored.denied || (IdentityMeasures.sameDirector(scored.measures) && !creditedFeature)) None
-      else ShortFilms.untaken(listing, scored.candidate.tmdbId, scored.candidate.film, linked, features.nonEmpty)
+      else ShortFilms.untaken(listing, scored.candidate.tmdbId, scored.candidate.film, linked,
+        features.nonEmpty || !IdentityMeasures.Rivalling(relation(scored.candidate.tmdbId)))
     candidates.map(scored =>
       if (anotherRecordOfItsBroadcast(scored))
         scored.copy(denial = Some("another record of a broadcast its film database holds twice"))
