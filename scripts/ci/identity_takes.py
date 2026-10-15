@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """THE TAKES: the identity tools' files of takes, each read one way, and what a listing's take moving between two of them
 is -- shared by the identity takes check (identity_takes_diff.py), scripts/identity-slice's diff (identity_slice_diff.py),
-the judgements lint, scripts/label-lookup and scripts/identity-ratchet-report. The judgements themselves are
+the judgements lint, the label-lookup and identity-ratchet-report tools. The judgements themselves are
 identity_judgements.py's.
 
 The files, every one tab-separated and led by a header line:
