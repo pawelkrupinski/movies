@@ -57,8 +57,10 @@ gh_read=${IDENTITY_TAKES_GH_TIMEOUT:-120}
 gh_download=${IDENTITY_TAKES_DOWNLOAD_TIMEOUT:-600}
 
 # The paths whose change can move a take. Anything else -- docs, the web, workflows -- cannot.
-identity_paths=(common/src/main identity/src/main worker/src/main worker/src/it/scala/IdentityResolveDumpIntegrationSpec.scala
-                worker/src/it/scala/IdentityShadow.scala testkit/src/main build.sbt project)
+# (IdentityResolveDumpIntegrationSpec: the resolve as a spec, before it was a tool -- still a base's)
+identity_paths=(common/src/main identity/src/main worker/src/main worker/src/it/scala/IdentityResolveDump.scala
+                worker/src/it/scala/IdentityResolveDumpIntegrationSpec.scala worker/src/it/scala/IdentityShadow.scala testkit/src/main
+                build.sbt project)
 
 # One page of the head's history before it, a line a commit: `<sha> <state of $context, or -> <parent sha>`, then
 # `NEXT <cursor>` when there is more. GraphQL hands a commit's statuses with it: a page is one call, not 100.
@@ -98,11 +100,21 @@ pick_base() {
   echo "$head_parent" # never judged in the last 2,000 commits: the check's first run
 }
 
+# The resolve of one checkout over the recording: its exit and its decisions both say it ran. A checkout from before the
+# resolve was a tool (a base, often) runs it as the spec it was, configured by its environment.
 dump() { # <checkout> <out dir>
-  ( cd "$1" && KINOWO_IDENTITY_DUMP="$2" KINOWO_IDENTITY_FULL="$cc" \
-      KINOWO_IDENTITY_CORPUS_DIR="$here/test/resources/fixtures/corpus" KINOWO_FIXTURE_ROOT="$here/test/resources/fixtures" \
-      "${IDENTITY_SBT[@]}" -J-Xmx"$heap" \
-        "worker/IntegrationTest/testOnly integration.IdentityResolveDumpIntegrationSpec" 2>&1 | tee "$2.log" | grep -E '\] \[full-|error|Total time' )
+  local corpus="$here/test/resources/fixtures/corpus" fixtures="$here/test/resources/fixtures" status
+  if [ -f "$1/worker/src/it/scala/IdentityResolveDump.scala" ]; then
+    ( cd "$1" && "${IDENTITY_SBT[@]}" -J-Xmx"$heap" \
+        "worker/IntegrationTest/runMain integration.IdentityResolveDump --out $2 --full $cc --corpus-dir $corpus --fixtures $fixtures" 2>&1 \
+        | tee "$2.log" | grep -E '\[full-|error|Total time'; exit "${PIPESTATUS[0]}" )
+  else
+    ( cd "$1" && KINOWO_IDENTITY_DUMP="$2" KINOWO_IDENTITY_FULL="$cc" KINOWO_IDENTITY_CORPUS_DIR="$corpus" KINOWO_FIXTURE_ROOT="$fixtures" \
+        "${IDENTITY_SBT[@]}" -J-Xmx"$heap" "worker/IntegrationTest/testOnly integration.IdentityResolveDumpIntegrationSpec" 2>&1 \
+        | tee "$2.log" | grep -E '\[full-|error|Total time'; exit "${PIPESTATUS[0]}" )
+  fi
+  status=$?
+  [ "$status" = 0 ] || { echo "::warning::identity takes ($cc): the resolve exited $status (its log: $2.log)"; return 1; }
   [ -s "$2/decisions-$cc.jsonl" ]
 }
 

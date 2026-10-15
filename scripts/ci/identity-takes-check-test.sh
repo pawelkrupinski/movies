@@ -91,12 +91,13 @@ rm "$work/status-$c2"
 
 # THE STORE. c4 and c5 each touch identity code, so c5's check resolves; its base c4 ran the check before it, on main,
 # over the same pinned pair, and stored what it resolved. A stub `sbt` writes one take and logs which checkout ran it, and
-# how; a stub release (a directory) holds what `upload` stored and answers `download` from it. c5 brings the ratchet as a
-# tool: c4, from before it, runs it as the spec it was.
+# how; a stub release (a directory) holds what `upload` stored and answers `download` from it. c5 brings the resolve and
+# the ratchet as tools: c4, from before them, runs them as the specs they were.
 for n in 4 5; do
   mkdir -p "$work/src/common/src/main" && echo "$n" > "$work/src/common/src/main/Identity.scala"
   if [ "$n" = 5 ]; then
-    mkdir -p "$work/src/worker/src/test/scala/scripts"
+    mkdir -p "$work/src/worker/src/it/scala" "$work/src/worker/src/test/scala/scripts"
+    echo 'object IdentityResolveDump' > "$work/src/worker/src/it/scala/IdentityResolveDump.scala"
     echo 'object UnmatchedClustersRatchet' > "$work/src/worker/src/test/scala/scripts/UnmatchedClustersRatchet.scala"
     scratch_git "$work/src" add worker
   fi
@@ -168,8 +169,10 @@ check "...and the head's decisions and final takes, and the base's it resolved, 
 check "...each phase timed, saying which it resolved" "phase:how head-resolve:resolved base-resolve:resolved head-final:replayed base-final:replayed " \
   "$(cut -f1,3 "$work/out/timings.tsv" | tr '\t\n' ': ')"
 check "...and why the base was not stored" 1 "$(grep -c 'the base resolve not stored -- takes-decisions-pl-.* not on release fixtures: resolving it' "$work/log")"
-check "...the head replaying with the ratchet tool" "dump-spec ratchet-tool" "$(grep -v identity-takes-base "$work/sbt-calls" | cut -d' ' -f2 | xargs)"
-check "...its base, from before it, with the spec it was" "dump-spec ratchet-spec" "$(grep identity-takes-base "$work/sbt-calls" | cut -d' ' -f2 | xargs)"
+check "...the head resolving and replaying with the tools" "dump-tool ratchet-tool" "$(grep -v identity-takes-base "$work/sbt-calls" | cut -d' ' -f2 | xargs)"
+check "...its base, from before them, with the specs they were" "dump-spec ratchet-spec" "$(grep identity-takes-base "$work/sbt-calls" | cut -d' ' -f2 | xargs)"
+code=0; STUB_DUMP_EXIT=1 TAKES_BASE=$c4 store_run "$c5" || code=$?
+check "a resolve that fails, whatever it wrote, is no verdict" "2 1" "$code $(grep -c 'the resolve exited 1' "$work/log")"
 code=0; STUB_RATCHET_EXIT=1 TAKES_BASE=$c4 store_run "$c5" || code=$?
 check "a ratchet that fails measuring, whatever it wrote, is no verdict" "2 1" "$code $(grep -c 'the ratchet exited 1' "$work/log")"
 rm -rf "$work/release"

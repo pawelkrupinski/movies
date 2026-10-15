@@ -15,7 +15,7 @@ import scala.jdk.CollectionConverters._
  * was): CPU, bytes allocated and wall time of a cold apply (a fresh stage over the verdicts a running worker kept, as at
  * a restart), of a warm one (the same stage, one answer filed elsewhere) and of a first deploy's (no correction kept
  * yet: one budget of takes read), medians of 5 after a warm-up, and the heap the stages keep after an apply (used heap
- * after a full GC). The answers are those a whole-corpus dump filed (`answers-<cc>.jsonl`, `IdentityResolveDumpIntegrationSpec`).
+ * after a full GC). The answers are those a whole-corpus dump filed (`answers-<cc>.jsonl`, `IdentityResolveDump`).
  *
  *   KINOWO_IDENTITY_FULL=pl,uk,de,es,us KINOWO_IDENTITY_CORPUS_DIR=<dir> KINOWO_FIXTURE_ROOT=<dir> KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY=<key>
  *   MONGODB_URI=<throwaway> MONGODB_DB=<unique>

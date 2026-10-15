@@ -10,7 +10,7 @@ equivalence harness's commit, on `c1cc08eb9`).
 - **Fires** on the five recorded corpora come from two runs, both deterministic and both the equivalence proof of
   every later phase:
   - the FULL corpora (recording `seed-20261002`: PL 9,484 listings, UK 29,755, DE 19,553, US 101,514, ES 4,855) through
-    `IdentityResolveDumpIntegrationSpec` — every listing's decision, explanation and trace rules (`accept:`, `pooled:`,
+    `integration.IdentityResolveDump` — every listing's decision, explanation and trace rules (`accept:`, `pooled:`,
     `veto:`, `join:`, `apart:`, `refused:`) and its candidates' denials. Counted **per listing**. The recording answers
     part of the corpus only (unanswered queries PL 4,135, UK 1,979, DE 3,345, US 2,612, ES 469), so the counts are the
     rules' reach on what it answers, not prod's;

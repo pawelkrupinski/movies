@@ -8,7 +8,7 @@ class IntegrationToolCommandLinesSpec extends AnyFlatSpec with Matchers {
 
   "every runMain of an integration tool in the scripts, workflows and skills" should "parse against the tool's command line" in {
     val checked = ToolCallers.calls("integration").flatMap(call => ToolCallers.commandLineOf(call.tool).map(call -> _))
-    checked.map(_._1.tool) should contain("integration.IdentityUnifiedDataset")
+    checked.map(_._1.tool) should contain allOf ("integration.IdentityUnifiedDataset", "integration.IdentityResolveDump")
     checked.foreach { case (call, line) =>
       withClue(s"${call.file}: ${call.tool} ${call.args.mkString(" ")}") { line.accepts(call.args).isRight shouldBe true }
     }
@@ -33,5 +33,14 @@ class IntegrationToolCommandLinesSpec extends AnyFlatSpec with Matchers {
     (fill.requiredInt("rounds"), fill.requiredInt("threads"), fill.get("posters"), fill.int("sample")) shouldBe (8, 6, Some("false"), None)
     SuspectTakesDump.commandLine.parse(Seq("--out", "o")).toOption.get.requiredPath("out") shouldBe java.nio.file.Paths.get("o")
     IdentityDecorationTokens.commandLine.parse(Seq("--outt", "o")).isLeft shouldBe true
+  }
+
+  "IdentityResolveDump" should "require its out, countries and corpus directory, the fixture root its own option" in {
+    val arguments = IdentityResolveDump.commandLine.parse(Seq("--out", "o", "--full", "pl,uk", "--corpus-dir", "c")).toOption.get
+    arguments.required("full") shouldBe "pl,uk"
+    arguments.path("fixtures") shouldBe None
+    an[tools.CommandLine.InvalidArguments] should be thrownBy IdentityResolveDump.commandLine.parse(Seq("--out", "o")).toOption.get.required("full")
+    // KINOWO_IDENTITY_DUMP named the directory once; a flag left without its value is refused, never read as the next
+    IdentityResolveDump.commandLine.parse(Seq("--out", "--full", "pl")).isLeft shouldBe true
   }
 }

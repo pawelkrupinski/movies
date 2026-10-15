@@ -1,102 +1,126 @@
 package integration
 
-import org.scalatest.BeforeAndAfterAll
-import org.scalatest.flatspec.AnyFlatSpec
-import org.scalatest.matchers.should.Matchers
+import models.Country
 import play.api.libs.json.{JsArray, JsNull, JsNumber, JsObject, JsString, Json}
 import services.identity._
 import services.movies.ListingKey
 import tools._
 
-import java.nio.file.Files
+import java.nio.file.{Files, Path}
 import scala.collection.mutable
 import scala.util.Try
 
 /**
  * The resolver alone over a recorded full corpus, every listing's decision written out — the fast loop for
  * a resolver change: seconds per country, no pipeline boot, against the same recording the CI measure
- * replays. `decisions-<cc>.jsonl` holds one line per listing (its serialised key, venue, raw title, the
- * film its cluster takes, the decision's explanation and what [[SuspectTakes]] finds against the take); with `KINOWO_IDENTITY_FOCUS` the focused titles'
- * explanations and candidates are written beside it, as the CI measure's focus mode prints them.
+ * replays, and the identity takes check's resolve of its base and its head (`scripts/ci/identity-takes-check.sh`):
  *
- * Opt-in: runs when `KINOWO_IDENTITY_DUMP` (the output directory), `KINOWO_IDENTITY_FULL`,
- * `KINOWO_IDENTITY_CORPUS_DIR` and `KINOWO_FIXTURE_ROOT` are set. With `KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY`
- * what the recording cannot answer is asked of TMDB and IMDb live — the loop for a change asking new questions. Nothing is judged here — the CI measure
- * judges; this says what moved.
+ * {{{
+ *   scripts/it-local.sh "worker/IntegrationTest/runMain integration.IdentityResolveDump --out target/dump --full pl \
+ *     --corpus-dir test/resources/fixtures/corpus"
+ * }}}
+ *
+ * `decisions-<cc>.jsonl` holds one line per listing (its serialised key, venue, raw title, the film its cluster takes,
+ * the decision's explanation and what [[SuspectTakes]] finds against the take); with `KINOWO_IDENTITY_FOCUS` the
+ * focused titles' explanations and candidates are written beside it (`focus-<cc>.txt`), as the CI measure's focus mode
+ * prints them; with `KINOWO_IDENTITY_AGREEMENT_CACHE` the agreement stage runs over the no-matches too (`agreed-`,
+ * `answers-`, `final-`, `catalogue-<cc>.jsonl`). With `KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY` what the recording cannot
+ * answer is asked of TMDB and IMDb live — the loop for a change asking new questions. `MONGODB_URI` names the throwaway
+ * Mongo the corpus is seeded into. Nothing is judged here — the CI measure judges; this says what moved.
+ *
+ * Exit: 0 every country named written; 1 a country's corpus is not in `--corpus-dir`, or its resolve failed; 2 usage.
  */
-class IdentityResolveDumpIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with IntegrationMongoSuite {
+object IdentityResolveDump {
 
   import IdentityShadow._
 
-  private val storages = mutable.ListBuffer.empty[ConvergenceStorage]
-  private val out      = configuration.identityDump
-  private val corpora: Seq[Corpus] = for {
-    _      <- out.toSeq
-    dir    <- configuration.identityCorpusDirectory.toSeq
-    corpus <- IdentityShadow.full(configuration.identityFullCorpora.value, dir.value, configuration.fixtureRoot, configuration.identityLiveGaps)
-  } yield corpus
+  val commandLine: CommandLine = CommandLine("IdentityResolveDump", "Writes every listing's decision of the resolver over recorded full corpora.",
+    CommandLine.Value("out", "dir", "where decisions-<cc>.jsonl is written (required)"),
+    CommandLine.Value("full", "codes", "the countries whose recorded corpora are resolved, comma-separated (required)"),
+    CommandLine.Value("corpus-dir", "dir", "the directory holding cinema-scrapes-<cc>.json.gz (required)"),
+    CommandLine.Value("fixtures", "dir", "the directory holding enrichment-<cc>/ (default: KINOWO_FIXTURE_ROOT, else the repository's)"))
 
-  corpora.foreach { c =>
-    "The resolver" should s"write every listing's decision on ${c.label}" in {
-      val dir      = out.get.value
-      val w        = wiring(mongoTarget, c, storages, configuration.fixtureRoot, configuration.env)
-      val listings = listingsOf(w, c.normalizer)
-      val lookups  = new Memo(new TmdbIdentityLookups(new clients.TmdbClient(c.fetch, apiKey = Some(settings.TmdbApiKey(StubTmdbKey)),
-        language = c.country.language, retrySleep = (_: Long) => ()), new services.enrichment.ImdbClient(c.fetch), w.detailEnrichers,
-        c.gaps))
-      val (resolution, seconds) = timed(IdentityResolver.resolve(listings, lookups, c.normalizer, IdentityCalibration.resolver))
-      val clusterOf = resolution.decisions.zipWithIndex.flatMap { case (d, i) => d.members.map(_ -> i) }.toMap
-      // what argues against each take (SuspectTakes), which the takes check asks a person to judge before a gain passes
-      val suspects  = {
-        val corpus = SuspectTakes.corpus(resolution, listings, lookups, _ => None)
-        val year   = listings.flatMap(_.screenings.first).map(_.getYear).maxOption.getOrElse(SpecClock.PinnedDay.getYear)
-        SuspectTakes.suspected(corpus.takes, year, corpus.billings).collect { case (t, found) if found.nonEmpty => t.listing.key -> found.map(_.render) }.toMap
-      }
-      Files.createDirectories(dir)
-      val lines = listings.map { l =>
-        val d = resolution.decisionOf(l.key)
-        Json.stringify(JsObject(Seq(
-          "key"         -> JsString(ListingKey.serialised(l.key)),
-          "venue"       -> JsString(l.key.venue),
-          "rawTitle"    -> JsString(l.key.rawTitle),
-          "cluster"     -> JsNumber(clusterOf.getOrElse(l.key, -1)),
-          "film"        -> d.film.fold[play.api.libs.json.JsValue](JsNull)(JsNumber(_)),
-          "filmTitle"   -> d.film.flatMap(resolution.films.get).fold[play.api.libs.json.JsValue](JsNull)(f => JsString(s"${f.title} (${f.year.getOrElse("?")})")),
-          "confidence"  -> JsNumber(BigDecimal(d.confidence).setScale(4, BigDecimal.RoundingMode.HALF_UP)),
-          "basis"       -> JsString(d.basis.toString),
-          "explanation" -> JsArray(d.explanation.take(4).map(JsString(_))),
-          "suspect"     -> JsArray(suspects.getOrElse(l.key, Nil).map(JsString(_))),
-          "rules"       -> JsArray((d.trace.rulesOf(l.key) ++ c.normalizer.firedRules(l.cinema, l.rawTitle)).map(JsString(_))),
-          // why not: what stopped a listing left with no film, what it searched, what it weighed
-          "blocker"     -> (if (d.film.isDefined) JsNull else JsString(d.trace.nodes.get(l.key).flatMap(_.blocker).getOrElse("pooled:no-film"))),
-          "searched"    -> JsArray(d.trace.nodes.get(l.key).toSeq.flatMap(_.searched).map(JsString(_))),
-          "candidates"  -> JsArray(d.trace.nodes.get(l.key).toSeq.flatMap(_.candidates).map(JsString(_))),
-          "refusals"    -> JsArray(d.trace.nodes.get(l.key).toSeq.flatMap(_.refusals).map(r =>
-            JsString(s"${r.rule}: ${r.why}${r.film.fold("")(id => s" [tmdb $id]")}${if (r.detail.nonEmpty) s" — ${r.detail}" else ""}"))))))
-      }
-      Files.writeString(dir.resolve(s"decisions-${c.country.code}.jsonl"), lines.mkString("", "\n", "\n"))
-      configuration.identityFocus.foreach { f =>
-        val tokens  = (l: Listing) => services.movies.TitleContainment.tokens(l.rawTitle).toSet ++ services.movies.TitleContainment.tokens(l.cleanTitle).toSet
-        val focused = listings.filter(l => f.covers(tokens(l))).map(_.key).toSet
-        val trace   = mutable.ListBuffer.empty[String]
-        IdentityResolver.explain(listings, lookups, c.normalizer, IdentityCalibration.resolver)(focused).foreach(_.render.foreach(trace += _))
-        IdentityResolver.candidatesOf(listings, lookups, c.normalizer, IdentityCalibration.resolver)(l => focused(l.key)).foreach { node =>
-          trace += node.label
-          node.banners.foreach(b => trace += s"  $b")
-          node.candidates.take(8).foreach(cand => trace += s"  ${cand.render}")
-        }
-        Files.writeString(dir.resolve(s"focus-${c.country.code}.txt"), trace.mkString("", "\n", "\n"))
-      }
-      configuration.identityAgreementCache.foreach(cache => agreed(c, w, lookups, listings, resolution, cache, dir))
-      println(f"[${c.label}] ${listings.size} listings → ${resolution.decisions.size} clusters " +
-        f"(${resolution.decisions.count(_.film.isDefined)} with a film) in $seconds%.1fs; unanswered queries ${resolution.unknownQueries}")
+  def main(args: Array[String]): Unit = {
+    val arguments = commandLine.parseOrExit(args)
+    val countries = arguments.required("full").split(",").toSeq.map(_.trim).filter(_.nonEmpty).map(code =>
+      Country.byCode(code).getOrElse(arguments.fail(s"--full: no country $code (one of ${Country.all.map(_.code).mkString(", ")})")))
+    val out       = arguments.requiredPath("out")
+    val corpusDir = arguments.requiredPath("corpus-dir")
+    val configuration = settings.ProcessConfiguration.resolve()
+    val root      = arguments.path("fixtures").map(settings.FixtureRoot(_)).getOrElse(configuration.fixtureRoot)
+    val target    = IntegrationMongoTarget.from(configuration).getOrElse(arguments.fail("MONGODB_URI names no throwaway Mongo to seed the corpora into"))
+    target.requireThrowaway()
+    val corpora   = IdentityShadow.full(countries.toSet, corpusDir, root, configuration.identityLiveGaps)
+    val missing   = countries.filterNot(c => corpora.exists(_.country == c))
+    missing.foreach(c => System.err.println(s"[IdentityResolveDump] no cinema-scrapes-${c.code}.json.gz in $corpusDir"))
+    val storages  = mutable.ListBuffer.empty[ConvergenceStorage]
+    val failed    = try corpora.filterNot { c =>
+      Try(dump(configuration, target, root, c, out, storages)).fold({ e =>
+        System.err.println(s"[${c.label}] FAILED: $e"); e.printStackTrace(); false }, _ => true)
+    } finally storages.foreach(s => Try(s.close()))
+    if (missing.nonEmpty || failed.nonEmpty) sys.exit(1)
+  }
+
+  /** Every listing of `c` resolved and its decision written to `<out>/decisions-<cc>.jsonl` (and the rest, above). */
+  private def dump(configuration: settings.ProcessConfiguration, target: IntegrationMongoTarget, root: settings.FixtureRoot, c: Corpus, dir: Path,
+                   storages: mutable.ListBuffer[ConvergenceStorage]): Unit = {
+    val w        = wiring(target, c, storages, root, configuration.env)
+    val listings = listingsOf(w, c.normalizer)
+    val lookups  = new Memo(new TmdbIdentityLookups(new clients.TmdbClient(c.fetch, apiKey = Some(settings.TmdbApiKey(StubTmdbKey)),
+      language = c.country.language, retrySleep = (_: Long) => ()), new services.enrichment.ImdbClient(c.fetch), w.detailEnrichers,
+      c.gaps))
+    val (resolution, seconds) = timed(IdentityResolver.resolve(listings, lookups, c.normalizer, IdentityCalibration.resolver))
+    val clusterOf = resolution.decisions.zipWithIndex.flatMap { case (d, i) => d.members.map(_ -> i) }.toMap
+    // what argues against each take (SuspectTakes), which the takes check asks a person to judge before a gain passes
+    val suspects  = {
+      val corpus = SuspectTakes.corpus(resolution, listings, lookups, _ => None)
+      val year   = listings.flatMap(_.screenings.first).map(_.getYear).maxOption.getOrElse(SpecClock.PinnedDay.getYear)
+      SuspectTakes.suspected(corpus.takes, year, corpus.billings).collect { case (t, found) if found.nonEmpty => t.listing.key -> found.map(_.render) }.toMap
     }
+    Files.createDirectories(dir)
+    val lines = listings.map { l =>
+      val d = resolution.decisionOf(l.key)
+      Json.stringify(JsObject(Seq(
+        "key"         -> JsString(ListingKey.serialised(l.key)),
+        "venue"       -> JsString(l.key.venue),
+        "rawTitle"    -> JsString(l.key.rawTitle),
+        "cluster"     -> JsNumber(clusterOf.getOrElse(l.key, -1)),
+        "film"        -> d.film.fold[play.api.libs.json.JsValue](JsNull)(JsNumber(_)),
+        "filmTitle"   -> d.film.flatMap(resolution.films.get).fold[play.api.libs.json.JsValue](JsNull)(f => JsString(s"${f.title} (${f.year.getOrElse("?")})")),
+        "confidence"  -> JsNumber(BigDecimal(d.confidence).setScale(4, BigDecimal.RoundingMode.HALF_UP)),
+        "basis"       -> JsString(d.basis.toString),
+        "explanation" -> JsArray(d.explanation.take(4).map(JsString(_))),
+        "suspect"     -> JsArray(suspects.getOrElse(l.key, Nil).map(JsString(_))),
+        "rules"       -> JsArray((d.trace.rulesOf(l.key) ++ c.normalizer.firedRules(l.cinema, l.rawTitle)).map(JsString(_))),
+        // why not: what stopped a listing left with no film, what it searched, what it weighed
+        "blocker"     -> (if (d.film.isDefined) JsNull else JsString(d.trace.nodes.get(l.key).flatMap(_.blocker).getOrElse("pooled:no-film"))),
+        "searched"    -> JsArray(d.trace.nodes.get(l.key).toSeq.flatMap(_.searched).map(JsString(_))),
+        "candidates"  -> JsArray(d.trace.nodes.get(l.key).toSeq.flatMap(_.candidates).map(JsString(_))),
+        "refusals"    -> JsArray(d.trace.nodes.get(l.key).toSeq.flatMap(_.refusals).map(r =>
+          JsString(s"${r.rule}: ${r.why}${r.film.fold("")(id => s" [tmdb $id]")}${if (r.detail.nonEmpty) s" — ${r.detail}" else ""}"))))))
+    }
+    Files.writeString(dir.resolve(s"decisions-${c.country.code}.jsonl"), lines.mkString("", "\n", "\n"))
+    configuration.identityFocus.foreach { f =>
+      val tokens  = (l: Listing) => services.movies.TitleContainment.tokens(l.rawTitle).toSet ++ services.movies.TitleContainment.tokens(l.cleanTitle).toSet
+      val focused = listings.filter(l => f.covers(tokens(l))).map(_.key).toSet
+      val trace   = mutable.ListBuffer.empty[String]
+      IdentityResolver.explain(listings, lookups, c.normalizer, IdentityCalibration.resolver)(focused).foreach(_.render.foreach(trace += _))
+      IdentityResolver.candidatesOf(listings, lookups, c.normalizer, IdentityCalibration.resolver)(l => focused(l.key)).foreach { node =>
+        trace += node.label
+        node.banners.foreach(b => trace += s"  $b")
+        node.candidates.take(8).foreach(cand => trace += s"  ${cand.render}")
+      }
+      Files.writeString(dir.resolve(s"focus-${c.country.code}.txt"), trace.mkString("", "\n", "\n"))
+    }
+    configuration.identityAgreementCache.foreach(cache => agreed(configuration, c, w, lookups, listings, resolution, cache, dir))
+    println(f"[${c.label}] ${listings.size} listings → ${resolution.decisions.size} clusters " +
+      f"(${resolution.decisions.count(_.film.isDefined)} with a film) in $seconds%.1fs; unanswered queries ${resolution.unknownQueries}")
   }
 
   /** The agreement stage over the resolution's no-matches, the families answered from the experiment's cache, else live —
    *  asked until nothing is open — and every cluster it takes (agreed, by a poster, a broadcast day or a fill rule) written
    *  to `agreed-<cc>.jsonl`. */
-  private def agreed(c: Corpus, w: ArchiveReplayWiring, lookups: IdentityLookups, listings: Seq[Listing], resolution: Resolution,
+  private def agreed(configuration: settings.ProcessConfiguration, c: Corpus, w: ArchiveReplayWiring, lookups: IdentityLookups, listings: Seq[Listing], resolution: Resolution,
                      cache: settings.IdentityAgreementCache, dir: java.nio.file.Path): Unit = {
     import services.identity.agreement.{AgreementStage, VoterFamily}
     val fetch    = new ExperimentCacheFetch(cache.value)
@@ -200,10 +224,5 @@ class IdentityResolveDumpIntegrationSpec extends AnyFlatSpec with Matchers with 
     }
     Files.writeString(dir.resolve(s"catalogue-${c.country.code}.jsonl"), lines.mkString("", "\n", "\n"))
     println(s"[${c.label}] catalogue report: ${lines.size} cluster(s) with a mappable id after $rounds round(s)")
-  }
-
-  override protected def afterAll(): Unit = {
-    storages.foreach(s => Try(s.close()))
-    super.afterAll()
   }
 }

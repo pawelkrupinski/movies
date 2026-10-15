@@ -23,7 +23,7 @@ def judged(cc, venue, title, film, verdict, state="open", scope="", reason=""):
 
 
 def decision(venue, title, film, title_of=None):
-    """One line of decisions-<cc>.jsonl, as IdentityResolveDumpIntegrationSpec writes it."""
+    """One line of decisions-<cc>.jsonl, as integration.IdentityResolveDump writes it."""
     return {"key": f"{venue}|{title}", "venue": venue, "rawTitle": title, "film": film, "filmTitle": title_of,
             "basis": "OwnMatch" if film else "none", "explanation": ["title + year"], "blocker": None if film else "no film",
             "suspect": []}

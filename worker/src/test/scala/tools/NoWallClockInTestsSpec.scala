@@ -51,7 +51,7 @@ class NoWallClockInTestsSpec extends AnyFlatSpec with Matchers {
 
   /** file → why it may read the wall clock. Keep each reason specific enough to check. */
   private val Allowlist: Map[String, String] = Map(
-    "worker/src/it/scala/IdentityResolveDumpIntegrationSpec.scala" ->
+    "worker/src/it/scala/IdentityResolveDump.scala" ->
       "a live capture/fill tool against Filmweb: asks for today's programmes, which only the real date names (the stores keep their pinned clock)",
     "worker/src/it/scala/UnmatchedClustersCaptureIntegrationSpec.scala" ->
       "a live capture/fill tool against Filmweb: asks for today's programmes, which only the real date names (the stores keep their pinned clock)",

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """THE IDENTITY TAKES CHECK: which listings a code change moved to another film, on one recording.
 
-Both inputs are `decisions-<cc>.jsonl` files `IdentityResolveDumpIntegrationSpec` writes (one line a
+Both inputs are `decisions-<cc>.jsonl` files `integration.IdentityResolveDump` writes (one line a
 listing: key, venue, rawTitle, film, filmTitle, basis, explanation, blocker, suspect), resolved from the SAME
 pinned recording -- one by the base commit, one by the head. The recording is identical, so every
 listing whose film differs was moved by the code between them, never by new data: a nightly
