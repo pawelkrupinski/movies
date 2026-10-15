@@ -30,13 +30,16 @@ object WriteTicketsolve {
   private val Recorded = Set("mwldan", "nervecentre", "pocklingtonartscentre", "watershed", "chapter", "theatrcolwyn",
     "pontardaweartscentre", "neuadddwyfor", "number8")
 
+  val commandLine: _root_.tools.CommandLine = VenueMeasure.commandLine("WriteTicketsolve", "Measures every UK Ticketsolve venue live.")
+
+  def runOf(arguments: _root_.tools.CommandLine.Arguments): VenueMeasure.Run = VenueMeasure.runOf(arguments, Venues.map(_._1))
+
   def main(args: Array[String]): Unit = {
-    val record = args.contains("--record")
-    val asked  = args.filterNot(_ == "--record").toSet
+    val run    = runOf(commandLine.parseOrExit(args))
     val live   = new RealHttpFetch()
     val today  = VenueClock.system.today(TimeZones.UnitedKingdom)
-    Venues.filter { case (client, _) => asked.isEmpty || asked(client) }.foreach { case (client, cinema) =>
-      val http = if (record && Recorded(client)) new RecordingHttpFetch("ticketsolve", live) else live
+    Venues.filter { case (client, _) => run.wants(client) }.foreach { case (client, cinema) =>
+      val http = if (run.record && Recorded(client)) new RecordingHttpFetch("ticketsolve", live) else live
       scala.util.Try(new TicketsolveClient(http, client, cinema, today).fetch()).fold(
         e => println(s"MEASURE\t${cinema.displayName}\t$client\tFAILED ${e.getMessage}"),
         movies => {

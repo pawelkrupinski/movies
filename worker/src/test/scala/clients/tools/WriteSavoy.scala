@@ -46,13 +46,17 @@ object WriteSavoy {
   private val Recorded: Set[Cinema] = Set(PhoenixCinemaEastFinchley, SavoyCinemaCorby, IlkleyCinema, PhoenixCinemaAndArtCentreLeicester,
     WetherbyFilmTheatre, TheatrGwaunFishguard)
 
+  val commandLine: _root_.tools.CommandLine = VenueMeasure.commandLine("WriteSavoy", "Measures the live Savoy Systems venues, by cinema name.")
+
+  def runOf(arguments: _root_.tools.CommandLine.Arguments): VenueMeasure.Run =
+    VenueMeasure.runOf(arguments, (WhatsOnSites ++ BoxOffices).map(_._2.displayName))
+
   def main(args: Array[String]): Unit = {
-    val record = args.contains("--record")
-    val asked  = args.filterNot(_ == "--record").toSet
+    val run    = runOf(commandLine.parseOrExit(args))
     val live   = new RealHttpFetch()
     val today  = VenueClock.system.today(TimeZones.UnitedKingdom)
-    def wanted(cinema: Cinema) = asked.isEmpty || asked.contains(cinema.displayName)
-    def http(cinema: Cinema) = if (record && Recorded(cinema)) new RecordingHttpFetch("savoy", live) else live
+    def wanted(cinema: Cinema) = run.wants(cinema.displayName)
+    def http(cinema: Cinema) = if (run.record && Recorded(cinema)) new RecordingHttpFetch("savoy", live) else live
 
     WhatsOnSites.filter { case (_, cinema) => wanted(cinema) }.foreach { case (dllBase, cinema) =>
       measure(cinema, new SavoyClient(http(cinema), dllBase, cinema, today))

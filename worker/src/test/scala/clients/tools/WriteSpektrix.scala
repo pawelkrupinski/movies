@@ -59,13 +59,16 @@ object WriteSpektrix {
   private val Recorded = Set("ica", "galadurham", "broadwaynottingham", "theatresevern", "theploughartscentre", "dundeeca",
     "brewhousetaunton")
 
+  val commandLine: _root_.tools.CommandLine = VenueMeasure.commandLine("WriteSpektrix", "Measures every UK Spektrix venue live.")
+
+  def runOf(arguments: _root_.tools.CommandLine.Arguments): VenueMeasure.Run = VenueMeasure.runOf(arguments, Venues.map(_._1))
+
   def main(args: Array[String]): Unit = {
-    val record = args.contains("--record")
-    val asked  = args.filterNot(_ == "--record")
+    val run    = runOf(commandLine.parseOrExit(args))
     val live   = new RealHttpFetch()
     val today  = VenueClock.system.today(TimeZones.UnitedKingdom)
-    Venues.filter { case (client, _, _) => asked.isEmpty || asked.contains(client) }.foreach { case (client, cinema, venue) =>
-      val http = if (record && Recorded(client)) new RecordingHttpFetch("spektrix", live) else live
+    Venues.filter { case (client, _, _) => run.wants(client) }.foreach { case (client, cinema, venue) =>
+      val http = if (run.record && Recorded(client)) new RecordingHttpFetch("spektrix", live) else live
       scala.util.Try(new SpektrixClient(http, client, cinema, today, venue).fetch()).fold(
         e => println(s"MEASURE\t${cinema.displayName}\t$client\tFAILED ${e.getMessage}"),
         movies => {
