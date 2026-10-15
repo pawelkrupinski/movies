@@ -79,4 +79,8 @@ scripts/local-mirror/freshness
 scripts/local-mirror/service.sh
 scripts/local-mirror/start-local-mongo.sh
 scripts/ci/identity_judgements.py
+# What the convergence-fill and takes-check scripts source: the identity tools' lib (IDENTITY_SBT) and the conventions
+# every Bash tool shares (bounded).
+scripts/identity-tools.sh
+scripts/tool-conventions.sh
 test/resources/fixtures/identity-judgements.tsv
