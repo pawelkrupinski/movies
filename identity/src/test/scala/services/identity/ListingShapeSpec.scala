@@ -173,6 +173,12 @@ class ListingShapeSpec extends AnyFlatSpec with Matchers {
     ListingShape.billsAHouse(listing(KinoMuza, "Jin-Roh - Die Wolfsbrigade")) shouldBe false
     ListingShape.billsAHouse(listing(KinoMuza, "Tosca (ROH)")) shouldBe true
     ListingShape.billsAHouse(listing(KinoMuza, "Carmen (RB+O 2026/27)")) shouldBe true
+    // a span of years far from its screenings is the title's text, no season: DE "Warschau 1944/45" read as a relay
+    val october = ScreeningDays.of(Seq(java.time.LocalDate.of(2026, 10, 20)))
+    val warsaw  = listing(KinoMuza, "Warschau 1944/45").copy(screenings = october)
+    ListingShape.billsAHouse(warsaw) shouldBe false
+    Evidence.of(warsaw, None).measured.seasonYear shouldBe None
+    Evidence.of(listing(KinoMuza, "Royal Ballet 2026/27: Carmen").copy(screenings = october), None).measured.seasonYear shouldBe Some(2026)
     val concert = listing(KinoMuza, "Hauser symfonicznie z Royal Albert Hall")
     ListingShape.relays(concert, concert.rawTitle.toLowerCase(java.util.Locale.ROOT)) shouldBe true
     val film = listing(KinoMuza, "Klondike")

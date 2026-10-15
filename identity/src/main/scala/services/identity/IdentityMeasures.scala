@@ -34,7 +34,10 @@ object IdentityMeasures {
                            broadcastSeason: Option[Int] = None,
                            /** The season its screenings fall in, whatever it states ([[services.identity.Listing.screenedSeason]]):
                             *  what picks among a house's records of its work's seasons, never searched. */
-                           screenedSeason: Option[Int] = None) {
+                           screenedSeason: Option[Int] = None,
+                           /** The season its first screening falls in, unconditionally ([[services.identity.ScreeningDays.season]]):
+                            *  the seasons its title can name ([[TitleSeason.near]]). */
+                           screeningsSeason: Option[Int] = None) {
     private def titles: Seq[String] = rawTitle.toSeq :+ title
     /** Its title, then the raw title the venue published — title first, as the title relations read them. */
     def ownTitles: Seq[String] = Seq(title) ++ rawTitle
@@ -65,7 +68,7 @@ object IdentityMeasures {
      *  read took its year and its credits from different listings (`yearCredits`). */
     def creditedBesideYear: Seq[String] = yearCredits.getOrElse(directors)
     /** The season the title names ("2026/27"), by its first year. */
-    lazy val seasonYear: Option[Int] = TitleSeason.of(titles)
+    lazy val seasonYear: Option[Int] = TitleSeason.of(titles, screeningsSeason)
     /** The word the title bills several films by ([[MultiFilmBill.marker]]), once per listing: every rule asks. */
     private[identity] lazy val billMarker: Option[String] = MultiFilmBill.marker(titles)
     /** The one title a marathon billed after a dash names ([[MultiFilmBill.billedOne]]), once per listing. */

@@ -52,7 +52,7 @@ object ListingShape {
    *  house's initials as [[StageRelays.billsAStageHouse]] reads them ("Tosca (ROH)", never "Jin-Roh")? */
   def billsAHouse(listing: Listing): Boolean = {
     val titles = spellingsOf(listing)
-    TitleSeason.of(titles).isDefined || titles.exists(title => TitleContainment.tokens(title).exists(HouseWords)) ||
+    TitleSeason.of(titles, listing.screenings.season).isDefined || titles.exists(title => TitleContainment.tokens(title).exists(HouseWords)) ||
       StageRelays.billsAStageHouse(titles)
   }
 
@@ -64,25 +64,25 @@ object ListingShape {
    *  ("Balet z Opery Paryskiej 2026-2027: Bajadera", "ReTransmisje Met: Na żywo w HD - Così fan tutte")? Cinema the
    *  broadcast take names, never an event however its vocabulary reads. `title`: its raw title in lower case. */
   def relays(listing: Listing, title: String): Boolean =
-    relaysBilled(title, spellingsOf(listing), listing.rawTitle)
+    relaysBilled(title, spellingsOf(listing), listing.rawTitle, listing.screenings.season)
 
   /** [[relays]] for a venue's raw title alone, where no listing is in hand (the review app's fact check). */
-  def relaysTitle(rawTitle: String): Boolean = relaysBilled(rawTitle.toLowerCase(java.util.Locale.ROOT), Seq(rawTitle), rawTitle)
+  def relaysTitle(rawTitle: String): Boolean = relaysBilled(rawTitle.toLowerCase(java.util.Locale.ROOT), Seq(rawTitle), rawTitle, None)
 
-  private def relaysBilled(lowerTitle: String, titles: Seq[String], rawTitle: String): Boolean =
-    NonMovieEventClassifier.isScreenedBroadcast(lowerTitle) || relaysBesideLive(lowerTitle, titles, rawTitle)
+  private def relaysBilled(lowerTitle: String, titles: Seq[String], rawTitle: String, screenedIn: Option[Int]): Boolean =
+    NonMovieEventClassifier.isScreenedBroadcast(lowerTitle) || relaysBesideLive(lowerTitle, titles, rawTitle, screenedIn)
 
   /** [[relays]] by what names a broadcast — a broadcast's own name, a concert film's place, a stage work, a season — and
    *  not by the bare word "live", which a performer billed in person carries too ("Jan Logemann LIVE: …"). */
   def relaysNamed(listing: Listing, title: String): Boolean =
-    NonMovieEventClassifier.isNamedBroadcast(title) || relaysBesideLive(title, spellingsOf(listing), listing.rawTitle)
+    NonMovieEventClassifier.isNamedBroadcast(title) || relaysBesideLive(title, spellingsOf(listing), listing.rawTitle, listing.screenings.season)
 
   /** Every spelling the listing carries of its title: as shown, cleaned, and as the venue published it. */
   private def spellingsOf(listing: Listing): Seq[String] = Seq(listing.title, listing.cleanTitle, listing.rawTitle).distinct
 
-  private def relaysBesideLive(lowerTitle: String, titles: Seq[String], rawTitle: String): Boolean =
+  private def relaysBesideLive(lowerTitle: String, titles: Seq[String], rawTitle: String, screenedIn: Option[Int]): Boolean =
     ConcertFilm.findFirstIn(lowerTitle).isDefined || StageRelays.billsStageWork(titles, rawTitle) ||
-      TitleSeason.of(Seq(rawTitle)).isDefined
+      TitleSeason.of(Seq(rawTitle), screenedIn).isDefined
 
   // ── a bill of several works ────────────────────────────────────────────────────────────────
 

@@ -162,7 +162,9 @@ Each a production change: measure with `scripts/identity-measure`, land one at a
   `xtra-certificate-suffix`, `xtra-certificate-year-suffix` (a3d3ece23) and `xtra-subtitle-paren-tag` repeat
   `FormatTags`' `AsteriskNote`/`BracketedRunningTime`/`CertificateNote`/`FormatParenTag` (1573686c3, a9b51f710) and
   disagree with them (any-character asterisks, a bare "100 mins"). Keep one.
-- [ ] **TitleSeason reads any year range from 1800 as a season**: "Warschau 1944/45" gets a season, `SeasonsApart` then
+- [x] **TitleSeason reads any year range from 1800 as a season** (done: a listing's season must fall from 20 seasons before
+  its first screening's (the relay era: encores bill 2017/18) to the next, `TitleSeason.of(titles, screenedIn)`; a
+  record's stays any. Current-or-next only lost 5 US right takes and made 15 UK ones wrong: RBO 2024-25 encores): "Warschau 1944/45" gets a season, `SeasonsApart` then
   denies every film not dated 1944–45 and the listing reads as a relay. Bound it near `LatestTitleYear`.
 - [x] **Venue-named rules**: `NonFilmEvents`' `dismember the alamo` (one chain's series), `xtra-helios-replay-suffix`
   (`w Helios RePlay`) — deleted: Helios's per-cinema rule and the learned `w helios replay` decoration cover the strand,

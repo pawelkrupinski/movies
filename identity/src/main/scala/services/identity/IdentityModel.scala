@@ -89,7 +89,7 @@ final case class Listing(
     if (screenings.isEmpty) None
     else {
       val titles = Seq(title, rawTitle)
-      Option.when(TitleSeason.of(titles).isEmpty && IdentityMeasures.titleYearOf(titles).isEmpty &&
+      Option.when(TitleSeason.of(titles, screenings.season).isEmpty && IdentityMeasures.titleYearOf(titles).isEmpty &&
         StageRelays.stageWorksBilled(titles, seasonNamed = false).nonEmpty)(()).flatMap(_ => screenings.season)
         .filter(season => year.forall(_ < season))
     }
@@ -304,18 +304,25 @@ final case class Evidence(title: String, cleanTitle: String, rawTitle: String, y
                            *  what its title is searched with, never a fact it states. */
                           broadcastSeason: Option[Int] = None,
                           /** The season its screenings fall in, whatever it states ([[Listing.screenedSeason]]). */
-                          screenedSeason: Option[Int] = None) {
+                          screenedSeason: Option[Int] = None,
+                          /** The season its first screening falls in, unconditionally: the seasons its title can name
+                           *  ([[services.movies.TitleSeason.near]]), never a fact it states. */
+                          screeningsSeason: Option[Int] = None) {
   lazy val key: String =
     Seq(title, cleanTitle, rawTitle, year.fold("")(_.toString), directors.sorted.mkString(","),
       runtime.fold("")(_.toString), originalTitle.getOrElse(""), countries.sorted.mkString(",")).mkString("\u0000") +
       broadcastSeason.fold("")(season => s"\u0000broadcast:$season") +
-      screenedSeason.filterNot(broadcastSeason.contains).fold("")(season => s"\u0000screened:$season")
+      screenedSeason.filterNot(broadcastSeason.contains).fold("")(season => s"\u0000screened:$season") +
+      // only where it bounds what the title names, so every other listing keeps its key
+      screeningsSeason.filter(_ => TitleSeason.of(Seq(title, rawTitle)) != TitleSeason.of(Seq(title, rawTitle), screeningsSeason))
+        .fold("")(season => s"\u0000screenings:$season")
 
   /** The evidence as the calibrated measures read a listing, its title shapes undecorated by the
    *  resolve's learned `decorations` (the same for every listing of a resolve, so not in [[key]]). */
   lazy val measured: IdentityMeasures.Listing =
     IdentityMeasures.Listing(title, Some(rawTitle).filter(_ != title), originalTitle, year, runtime, directors, countries,
-      decorations = decorations, searchTitles = searchTitle.toSeq, broadcastSeason = broadcastSeason, screenedSeason = screenedSeason)
+      decorations = decorations, searchTitles = searchTitle.toSeq, broadcastSeason = broadcastSeason, screenedSeason = screenedSeason,
+      screeningsSeason = screeningsSeason)
 
   /** [[measured]] with the title shapes the venue's own delimiters leave, no learned decoration nor search title
    *  stripped: what relates two LISTINGS (their families, title must-links and listing-listing
@@ -347,7 +354,8 @@ object Evidence {
     searchTitle   = listing.searchTitle,
     // a year the detail page states dates the relay as a year the venue's own field does
     broadcastSeason = listing.broadcastSeason.filter(_ => detail.flatMap(_.year).isEmpty),
-    screenedSeason  = listing.screenedSeason.filter(_ => detail.flatMap(_.year).isEmpty))
+    screenedSeason  = listing.screenedSeason.filter(_ => detail.flatMap(_.year).isEmpty),
+    screeningsSeason = listing.screenings.season)
 }
 
 /** One film a lookup NAMED: a search result or a filmography credit. Only what the list itself
