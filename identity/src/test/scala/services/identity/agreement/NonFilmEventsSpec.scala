@@ -18,7 +18,6 @@ class NonFilmEventsSpec extends AnyFlatSpec with Matchers {
       "Koncert jazzowy połączony z degustacją wina"  -> "live event",
       "Halloweenowy Maraton Horrorów"               -> "marathon",
       "Rawska \"Noc horrorów\"-edycja 2026"         -> "marathon",
-      "Dismember the Alamo 2026 - Brooklyn"         -> "marathon",
       "Secret Screening - 12th October"             -> "mystery screening",
       "Scream Unseen (20 October)"                  -> "mystery screening",
       "$5 Secret Movie 10/5/26"                     -> "mystery screening",
@@ -35,6 +34,12 @@ class NonFilmEventsSpec extends AnyFlatSpec with Matchers {
       "Schöne Aussicht - Die Slam Poetry & Songwriting Show - mit The Lake and the Wolf und Andreas Weber" -> "non-screening",
       "Melanie Raabe liest aus: Daisy"              -> "non-screening"
     ).foreach { case (title, why) => withClue(title) { NonFilmEvents.of(titled(title)) shouldBe Some(why) } }
+  }
+
+  it should "read a marathon by its genre or its night, never by one circuit's series name" in {
+    // Alamo Drafthouse's "Dismember the Alamo" had a marker of its own; the model reads its city piece as the
+    // venue's (CandidateScoring.namesOnlyItsVenue) and its year as the edition's, as any venue's own series
+    NonFilmEvents.of(titled("Dismember the Alamo 2026 - Brooklyn")) shouldBe None
   }
 
   it should "not be one when it names a film beside the event, or a relay of cinema content" in {

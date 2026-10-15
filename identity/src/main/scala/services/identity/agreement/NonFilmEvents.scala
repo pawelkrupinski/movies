@@ -32,7 +32,7 @@ object NonFilmEvents {
    *  ("Maraton Horrorów", "Halloweenowy Maraton", "Maraton Halloween"). */
   private val Markers: Seq[(String, scala.util.matching.Regex)] = Seq(
     // a night of several films sold as one ticket
-    "marathon"          -> """\bmaraton\s+(horror|hallow|grozy|film)|\bhalloween\p{L}*\s+maraton|\bhorror\s+marathon|\bnoc\s+(horror|grozy)|wiecz[oó]r\s+grozy|\bdismember\s+the\s+alamo""".r,
+    "marathon"          -> """\bmaraton\s+(horror|hallow|grozy|film)|\bhalloween\p{L}*\s+maraton|\bhorror\s+marathon|\bnoc\s+(horror|grozy)|wiecz[oó]r\s+grozy""".r,
     "esports"           -> """\bleague\s+of\s+legends|\bworlds\s+\d\d\b.*\bfinals""".r,
     // classes and evenings sold through the same ticketing
     "class"             -> """\bmedytacj|\bneurojog|\bmilong|\bslajd""".r,

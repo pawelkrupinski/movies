@@ -509,11 +509,10 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Volver | FKS"                                         -> "Volver",
     "Amelia | EKO-KINO"                                    -> "Amelia",
     // Sixteenth-wave (2026-07-06) TMDB-no-match audit: authorship suffix with a
-    // leading comma, the '(YYYY) 4K' restoration tag, and the Helios RePlay strand.
+    // leading comma and the '(YYYY) 4K' restoration tag.
     "Przekleństwa niewinności, reż. Sofia Coppola (2021)"  -> "Przekleństwa niewinności",
     "Generał (1926) 4K"                                    -> "Generał (1926)",
     "Ghost in the shell (1995) 4K"                         -> "Ghost in the shell (1995)",
-    "Wejście smoka w Helios RePlay"                        -> "Wejście smoka",
     // Eighteenth-wave (2026-07-09) TMDB-no-match audit: English-subtitled-screening
     // marker (dash + bracketed shapes, 'eng' abbreviation). Query-only strip — the
     // EN-subtitle screening keeps its own row (like the Ukrainian version markers) but
@@ -587,6 +586,12 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     searchStripCases.foreach { case (in, _) =>
       withClue(s"seedOnly.search('$in') should be unchanged: ")(seedOnly.search(in) shouldBe in)
     }
+  }
+
+  it should "name no one venue's strand: Helios's own tag is its per-cinema rule's, and the identity model's learned decorations" in {
+    // "w Helios RePlay" is peeled by Helios's own rules at ingest and learned as a suffix decoration
+    // (identity-decorations.json) by the identity model; a global strip of it named one chain
+    withExtras.search("Wejście smoka w Helios RePlay") shouldBe "Wejście smoka w Helios RePlay"
   }
 
   it should "strip a '- seans' suffix only when the dash is spaced, never a hyphenated compound" in {

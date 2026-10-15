@@ -814,7 +814,6 @@ object ExtraTitleRules {
     searchStrip("xtra-restored-adjective-first-suffix", """(?iu)\s*[-–—|.]\s*(?:odrestaurowan\w*|zremasterowan\w*|zrekonstruowan\w*)\s+wersj\w*\s*$""", "'<film> - odrestaurowana wersja [4K]' restoration suffix with the ADJECTIVE first — the mirror of 'xtra-rerelease-suffix', which only spells 'wersja odrestaurowana' (DKF: Absolwent → TMDB 1443)"),
     searchStrip("xtra-subtitle-paren-tag",             """(?iu)\s*\((?:napisy|dubbing|lektor)(?:\s+\p{L}{2,})?\)\s*$""", "'<film> (napisy PL)' / '(dubbing)' / '(lektor)' parenthesised language tag left on a title that reached the resolver — FormatTags peels these at ingest, this catches the ones that get through (Andy Warhol. Amerykański sen → TMDB 1108437)"),
     searchStrip("xtra-rerelease-paren-suffix",         """(?iu)\s*\(re[-\s]?release\)\s*$""", "'<film> (re-release)' re-issue marker — the same film (Auta (re-release) → Auta)"),
-    searchStrip("xtra-helios-replay-suffix",        """(?iu)\s+w\s+Helios\s+RePlay\s*$""",                "'<film> w Helios RePlay' Helios classics re-release strand suffix (Wejście smoka w Helios RePlay → TMDB 9461)"),
     // Eighteenth-wave (2026-07-09) audit of the TMDB-no-match corpus (prod mirror,
     // 200 rating-less rows). An English-subtitled screening is a DISTINCT version
     // (separate audience), so — exactly like the Ukrainian-language rule above — it

@@ -163,8 +163,11 @@ Each a production change: measure with `scripts/identity-measure`, land one at a
   disagree with them (any-character asterisks, a bare "100 mins"). Keep one.
 - [ ] **TitleSeason reads any year range from 1800 as a season**: "Warschau 1944/45" gets a season, `SeasonsApart` then
   denies every film not dated 1944–45 and the listing reads as a relay. Bound it near `LatestTitleYear`.
-- [ ] **Venue-named rules**: `NonFilmEvents`' `dismember the alamo` (one chain's series), `xtra-helios-replay-suffix`
-  (`w Helios RePlay`). A general shape or a word-table concept each.
+- [x] **Venue-named rules**: `NonFilmEvents`' `dismember the alamo` (one chain's series), `xtra-helios-replay-suffix`
+  (`w Helios RePlay`) — deleted: Helios's per-cinema rule and the learned `w helios replay` decoration cover the strand,
+  `CandidateScoring.namesOnlyItsVenue` and the edition year the Alamo series.
+- [ ] **More venue-named global strips** in `ExtraTitleRules`: `xtra-kobiece-strands` (`TOMI dla Kobiet`, `Kobiece
+  Wieczory w Kino Cafe`) and others naming one venue's strand. Each a learned decoration or a per-cinema rule; measure.
 - [ ] **Two copies of one list**: `FormatTags.FormatVersionWords` repeats `FormatToken`'s keys (and "lek" has no LEK
   badge: "Lalka 2D LEK" shows none); `TitleText.FiledArticles` (ein/eine, no gli) vs `IdentityMeasures.LeadingArticles`
   (gli, no ein/eine); `TitleText.stripPunct`'s own NFD strip drops "ł" where `TextNormalization.deburr` folds it.
