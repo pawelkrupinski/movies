@@ -287,7 +287,6 @@ model=0 final=0 shape=0
 # below, is the verdict. Only this row's country is replayed (--countries): the diff reads only its takes, and the other
 # four captures were most of every row's replay.
 corpus="$here/test/resources/fixtures/corpus" fixtures="$here/test/resources/fixtures"
-ratchet_args="--measure --out target/identity-unmatched"
 ratchet_out() { # <checkout> <out file>: what a ratchet run in <checkout> wrote, beside <out file>
   cp "$1/target/identity-unmatched/capture-gaps.tsv" "$(dirname "$2")/capture-gaps.tsv" 2>/dev/null
   cp "$1/target/identity-unmatched/ratchet-takes.tsv" "$2" 2>/dev/null
@@ -300,7 +299,7 @@ ratchet() { # <checkout> <out file>
   local tool="$1/worker/src/test/scala/scripts/UnmatchedClustersRatchet.scala" scope=""
   grep -q '"countries"' "$tool" 2>/dev/null && scope=" --countries $cc"
   if [ -f "$tool" ]; then
-    ( cd "$1" && sbt -J-Xmx"$ratchet_heap" "worker/Test/runMain scripts.UnmatchedClustersRatchet $ratchet_args$scope" > "$2.log" 2>&1 ) \
+    ( cd "$1" && sbt -J-Xmx"$ratchet_heap" "worker/Test/runMain scripts.UnmatchedClustersRatchet --measure --out target/identity-unmatched$scope" > "$2.log" 2>&1 ) \
       || { echo "::warning::identity takes ($cc): the ratchet exited $? ($2.log)"; return 1; }
   else
     ( cd "$1" && KINOWO_RATCHET_CAPTURE_GAPS_UNKNOWN=1 \
@@ -423,7 +422,7 @@ fi
 # what says it ran: the ratchet first (seconds, and the resolve is no verdict without it), the corpus shape last (its
 # specs FAIL on a finding, which is no failure here).
 head_commands=()
-[ -n "$takes_moves" ] && head_commands+=("worker/IntegrationTest/runMain scripts.UnmatchedClustersRatchet $ratchet_args --countries $cc"
+[ -n "$takes_moves" ] && head_commands+=("worker/IntegrationTest/runMain scripts.UnmatchedClustersRatchet --measure --out target/identity-unmatched --countries $cc"
   "worker/IntegrationTest/runMain integration.IdentityResolveDump --out $out/head --full $cc --corpus-dir $corpus --fixtures $fixtures")
 [ -n "$shape_moves" ] && head_commands+=("$shape_command")
 if [ "${#head_commands[@]}" -gt 0 ]; then
