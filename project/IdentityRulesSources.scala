@@ -76,11 +76,13 @@ object IdentityRulesSources {
     require(missing.isEmpty, s"versioned roots not compiled: ${missing.mkString(", ")}")
     val rootClasses = all.flatMap { case (m, r) => r.classes.all.collect { case (src, cls) if roots(rel(m, src)) => cls } }.toSet
     // Another module's classes are recorded by their binary names ("services.movies.ScrapeHealth$",
-    // "services.movies.ListingConstraints$CannotLink"), its own by their source names.
-    def sourceName(binary: String): String = binary.stripSuffix("$").replace('$', '.')
+    // "services.movies.ListingConstraints$CannotLink", a file's top-level definitions "services.movies.Foo$package"), its
+    // own by their source names: the module that compiled the class maps one to the other.
+    val sourceNameOf: Map[String, String] = all.flatMap { case (_, r) =>
+      r.productClassName.all.map { case (sourceName, binaryName) => binaryName -> sourceName } }.toMap
     def depends(cls: String): Set[String] =
       all.flatMap { case (_, r) =>
-        r.internalClassDep.forward(cls) ++ r.externalClassDep.forward(cls).map(c => if (sourceOf.contains(c)) c else sourceName(c)).filter(sourceOf.contains)
+        r.internalClassDep.forward(cls) ++ r.externalClassDep.forward(cls).map(c => sourceNameOf.getOrElse(c, c)).filter(sourceOf.contains)
       }.toSet
     val classes     = closure(rootClasses, cls =>
       if (sourceOf.getOrElse(cls, Set.empty[String]).exists(leaves)) Set.empty else depends(cls))
