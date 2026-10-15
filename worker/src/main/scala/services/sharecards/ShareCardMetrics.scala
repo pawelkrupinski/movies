@@ -110,7 +110,7 @@ object ShareCardMetrics {
       .help("The country's film pages waiting in the fleet's Facebook re-scrape queue. Read from the shared queue: max by country across replicas.")
       .labelNames("country").register(registry)
     private[ShareCardMetrics] val appUsage = Gauge.builder().name("kinowo_worker_share_cards_facebook_app_usage")
-      .help("Facebook's X-App-Usage on the country's latest re-scrape: the highest share (%) of the app's hourly allowance spent. One app for the whole fleet; from 85% the fleet's re-scrapes wait five minutes, doubled for every point over, up to an hour.")
+      .help("Facebook's X-App-Usage on the country's latest re-scrape: the highest share (%) of the app's hourly allowance spent. One app for the whole fleet; from 75% the fleet's re-scrapes wait five minutes, doubled for every point over, up to an hour.")
       .labelNames("country").register(registry)
 
     private[ShareCardMetrics] val volumeFree = Gauge.builder().name("kinowo_worker_share_cards_volume_free_bytes")

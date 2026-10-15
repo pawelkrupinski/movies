@@ -2417,7 +2417,7 @@
       "id": 68,
       "type": "timeseries",
       "title": "Facebook app usage — % of the hourly allowance spent (X-App-Usage)",
-      "description": "`kinowo_worker_share_cards_facebook_app_usage`: the highest of the percentages Facebook's X-App-Usage header reports (call_count, total_time, total_cputime) on a re-scrape. One Facebook app for the whole fleet, so this is one line for the fleet, ignoring the country filter: the highest reading among the workers that sent a re-scrape in the last 10 minutes (a worker that stopped sending keeps its old reading, so it is left out). From 85% (the dashed line) the fleet's re-scrapes wait five minutes, doubled for every point over (up to an hour), so the allowance's rolling hour frees calls before Facebook refuses the app (code 4) and the fleet waits an hour. Gap = no worker sent a re-scrape in the last 10 minutes, or Facebook sent no header.",
+      "description": "`kinowo_worker_share_cards_facebook_app_usage`: the highest of the percentages Facebook's X-App-Usage header reports (call_count, total_time, total_cputime) on a re-scrape. One Facebook app for the whole fleet, so this is one line for the fleet, ignoring the country filter: the highest reading among the workers that sent a re-scrape in the last 10 minutes (a worker that stopped sending keeps its old reading, so it is left out). From 75% (the dashed line) the fleet's re-scrapes wait five minutes, doubled for every point over (up to an hour), so the allowance's rolling hour frees calls before Facebook refuses the app (code 4) and the fleet waits an hour. Gap = no worker sent a re-scrape in the last 10 minutes, or Facebook sent no header.",
       "datasource": {
         "type": "prometheus",
         "uid": "local-prometheus"
@@ -2461,7 +2461,7 @@
               },
               {
                 "color": "red",
-                "value": 85
+                "value": 75
               }
             ]
           }

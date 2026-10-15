@@ -291,6 +291,20 @@ class FacebookRescrapeDrainSpec extends AnyFlatSpec with Matchers {
     fleet.graph.sent.size shouldBe 2
   }
 
+  // The worst hour: a backlog from an idle start, so none of the hour's calls age out, each request
+  // spending ~1.5% of the allowance (2026-10-15), and Facebook's reading LAGGING five requests behind
+  // what it has counted. The fleet still stops short of 90%, ten points under the refusal: what
+  // reached 99% under a flat hold at 90 drew no refusal, but where Facebook refuses is unmeasured.
+  it should "keep the real usage under 90% through an hour no call ages out of, with a reading five requests late" in {
+    val PerRequest = 1.5
+    val Lag = 5
+    var sent = 0
+    val fleet = new Fleet(cities = 200, usage = () => { sent += 1; Some(AppUsage(((sent - Lag).max(0) * PerRequest).toInt)) })
+    fleet.request("us", "big-film")
+    fleet.run(1.hour)
+    (sent * PerRequest) should be < 90.0
+  }
+
   "The waiting gauge" should "count the country's pages still to send, fetched by Facebook or not" in {
     val fleet = new Fleet(cities = 4)
     fleet.request("us", "film")

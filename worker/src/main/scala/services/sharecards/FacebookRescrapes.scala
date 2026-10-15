@@ -375,10 +375,13 @@ object FacebookRescrapeDrain {
 
 
   /** The share of the app's hourly allowance (Facebook's `X-App-Usage`) at which the fleet stops
-   *  for [[usageHold]] rather than run on into Facebook's refusal and its hour-long hold. Under 90:
-   *  one request spends ~1.5% of the allowance (2026-10-15), so the ceiling leaves room for the few
-   *  that land while the hold grows. */
-  val UsageCeiling: Int = 85
+   *  for [[usageHold]] rather than run on into Facebook's refusal and its hour-long hold. One request
+   *  spends ~1.5% of the allowance (2026-10-15), and the reading may lag what Facebook has counted
+   *  and miss the web's Facebook sign-ins on the same app, so the ceiling sits 25 points under the
+   *  refusal: through an hour none of whose calls age out, with the reading five requests late, the
+   *  fleet stops short of 90%. A lower ceiling costs little: once the hour's calls age out the pace is
+   *  set by how fast they do, not by the level it is held at. */
+  val UsageCeiling: Int = 75
   /** How long the fleet waits at [[UsageCeiling]]: the allowance is a rolling hour, so a few
    *  minutes frees a few of its calls once the hour's oldest have aged out. */
   val UsageHold: FiniteDuration = 5.minutes

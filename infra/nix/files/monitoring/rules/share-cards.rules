@@ -243,6 +243,26 @@ groups:
             above the quota -- a flood of card changes; see `kinowo_worker_share_cards_render_total`
             by reason.
 
+      # FACEBOOK REFUSED THE APP. Every refusal (codes 4/17/32/613, HTTP 429) holds the whole fleet's
+      # re-scrapes an hour, and the drain paces on Facebook's X-App-Usage
+      # (FacebookRescrapeDrain.UsageCeiling) so that it never happens: ONE is a page. The counter's
+      # `rate_limited` series is published at zero from boot, so `increase` sees the first refusal.
+      - alert: ShareCardFacebookRateLimited
+        expr: >-
+          sum by (country) (increase(kinowo_worker_share_cards_rescrape_total{outcome="rate_limited"}[30m])) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "Facebook rate-limited the app on {{ $labels.country }}'s re-scrape: the fleet's re-scrapes wait an hour"
+          description: >-
+            `kinowo_worker_share_cards_rescrape_total{outcome="rate_limited"}` counted a refusal: Facebook
+            said the app's hourly allowance is spent, so every country's re-scrapes wait an hour. The
+            drain holds itself from UsageCeiling of `kinowo_worker_share_cards_facebook_app_usage`, so
+            read that gauge just before the refusal (worker diagnostics, "Facebook app usage"): a
+            refusal BELOW the ceiling means Facebook's real limit is lower, or something else spent
+            the allowance -- the web's Facebook sign-ins use the same app. The worker logs the
+            refusal's code.
+
       # THE VOLUME UNDER THE CARDS RUNNING LOW. The worker writes no NEW file once the volume's free
       # space is under KINOWO_SHARE_CARD_MIN_FREE_MB (`_min_free_bytes`, 4 GiB by default; see
       # ShareCardRoom), so the cards never fill k3s-worker-1's root. Twice that floor for a quarter

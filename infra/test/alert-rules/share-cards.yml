@@ -472,3 +472,28 @@ tests:
             exp_annotations:
               summary: "us has a current share card for only 80% of its cities"
               description: "`kinowo_worker_share_cards_city_coverage_ratio` -- the country's cities whose card was rendered within two weeks -- has been under 95% for six hours. A city without one shows its country's home card in previews; a stale one shows last week's films. Read `kinowo_worker_share_cards_city_render_total` by outcome: `refused` is the cap (ShareCardWritesRefused), `failed` a drawing fault (the worker logs `city card: <slug> could not be drawn`), nothing at all means the `city-card` reaper or the RenderCityCard handler is not running."
+
+  # FACEBOOK RATE LIMIT: one refusal fires at once, and only for that country; the counter starts
+  # at zero (published from boot), so the first refusal is an increase, through a restart gap.
+  - interval: 1m
+    input_series:
+      - series: 'kinowo_worker_share_cards_rescrape_total{country="de",outcome="rate_limited",instance="w1",job="kinowo-worker"}'
+        values: '0x20 1x10 stale _x2 0x10'
+      - series: 'kinowo_worker_share_cards_rescrape_total{country="uk",outcome="rate_limited",instance="w1",job="kinowo-worker"}'
+        values: '0x45'
+      - series: 'kinowo_worker_share_cards_rescrape_total{country="uk",outcome="sent",instance="w1",job="kinowo-worker"}'
+        values: '0+3x45'
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: ShareCardFacebookRateLimited
+        exp_alerts: []
+      - eval_time: 22m
+        alertname: ShareCardFacebookRateLimited
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+              country: de
+            exp_annotations:
+              summary: "Facebook rate-limited the app on de's re-scrape: the fleet's re-scrapes wait an hour"
+              description: "`kinowo_worker_share_cards_rescrape_total{outcome=\"rate_limited\"}` counted a refusal: Facebook said the app's hourly allowance is spent, so every country's re-scrapes wait an hour. The drain holds itself from UsageCeiling of `kinowo_worker_share_cards_facebook_app_usage`, so read that gauge just before the refusal (worker diagnostics, \"Facebook app usage\"): a refusal BELOW the ceiling means Facebook's real limit is lower, or something else spent the allowance -- the web's Facebook sign-ins use the same app. The worker logs the refusal's code."
+
