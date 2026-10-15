@@ -79,13 +79,13 @@ CORPORA=c FIXTURES=f REPORT="$work/r" calibrate --unified
 check "--unified: the rows re-emitted, then the unified weights refitted" "2" "$(calls sbt | wc -l | tr -d ' ')"
 check "...both in the en-US locale" "2" "$(calls sbt | grep -c -- "^sbt $locale ")"
 check "...the rows checked in" "rows" "$(cat "$tree/test/resources/fixtures/identity-unified/training.tsv.gz" 2>/dev/null)"
-check "...the fit's report under REPORT" "yes" "$(calls sbt | tail -1 | grep -q 'IdentityUnifiedFit --report W/r/unified-report.md' && echo yes || echo no)"
+check "...the fit's report under REPORT" "yes" "$(grep -q 'IdentityUnifiedFit --report W/r/unified-report.md' <<<"$(calls sbt | tail -1)" && echo yes || echo no)"
 
 CORPORA=c FIXTURES=f PROD="$work/prod" MONGODB_URI=mongodb://prod/ calibrate --extract-prod
 check "--extract-prod reads every country database through the tunnel, then calibrates" \
   "kinowo kinowo_uk kinowo_de kinowo_es kinowo_us" "$(calls mongosh | awk '{print $2}' | paste -sd' ' -)"
 check "...over the tunnelled URI, the read-only extract" "yes" \
-  "$(calls mongosh | head -1 | grep -q 'tunnelled:mongodb://prod/ --quiet --file scripts/identity-calibrate/extract-prod.js' && echo yes || echo no)"
+  "$(grep -q 'tunnelled:mongodb://prod/ --quiet --file scripts/identity-calibrate/extract-prod.js' <<<"$(calls mongosh | head -1)" && echo yes || echo no)"
 check "...each into its own snapshot" "{\"db\":\"kinowo_us\"}" "$(cat "$work/prod/prod-kinowo_us.jsonl" 2>/dev/null)"
 check "...the tunnel closed after" "tunnel closed" "$(calls tunnel | tail -1)"
 check "...and the calibration run over the snapshot" "1" "$(calls sbt | grep -c "IdentityCalibrate --corpora c --fixtures f --prod W/prod")"

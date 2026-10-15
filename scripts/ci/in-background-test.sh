@@ -33,7 +33,7 @@ out="$(bash "$bg" wait hung 1)"; status=$?
 check "a chore past its deadline fails the wait" "1" "$status"
 check "...within the deadline, not the chore's own time" "true" \
   "$([ $((SECONDS - started)) -lt 10 ] && echo true || echo false)"
-check "...and shows how far it got" "true" "$(printf '%s' "$out" | grep -q 'half way' && echo true || echo false)"
+check "...and shows how far it got" "true" "$(grep -q 'half way' <<<"$out" && echo true || echo false)"
 pkill -f 'echo "half way"; sleep 30' 2>/dev/null
 
 spec_summary

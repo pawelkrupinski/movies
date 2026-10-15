@@ -49,7 +49,7 @@ run_script() {
     "${@/#/--file=}" >/dev/null 2>&1
 }
 
-if ! m 'db.adminCommand({ping:1}).ok' | grep -q 1; then
+if ! grep -q 1 <<<"$(m 'db.adminCommand({ping:1}).ok')"; then
   echo "[spec] mirror sync: SKIPPED — no Mongo on 127.0.0.1:28017"
   echo "       start one with scripts/local-mirror/start-local-mongo.sh to run these cases"
   exit 0

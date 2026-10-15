@@ -213,7 +213,7 @@ if command -v shellcheck >/dev/null; then
   live_sbt=$!
   # The hook finds it by name: wait until the background shell has exec'd under it, or a busy
   # runner's hook looks before it has, and checks in place (Main run 36374330375).
-  for _ in $(seq 1 100); do ps -o args= -p "$live_sbt" 2>/dev/null | grep -q 'fake/sbt-launch.jar' && break; sleep 0.1; done
+  for _ in $(seq 1 100); do grep -q 'fake/sbt-launch.jar' <<<"$(ps -o args= -p "$live_sbt" 2>/dev/null)" && break; sleep 0.1; done
   rm -f "$scratch/sbt-ran-in"
   out="$(cd "$repo" && PATH="$scratch/bin:$PATH" bash scripts/hooks/pre-push --range "$scala~1..$scala" 2>&1)"
   kill "$live_sbt" 2>/dev/null; wait "$live_sbt" 2>/dev/null
@@ -228,7 +228,7 @@ if command -v shellcheck >/dev/null; then
   printf '#!/usr/bin/env bash\necho "$(pwd -P) $1" > "%s/sbt-ran-in"\n' "$scratch" > "$scratch/bin/sbt"
   (cd "$repo" && exec -a "java -jar /fake/sbt-launch.jar --detach-stdio" sleep 300) &
   live_sbt=$!
-  for _ in $(seq 1 100); do ps -o args= -p "$live_sbt" 2>/dev/null | grep -q 'fake/sbt-launch.jar --detach' && break; sleep 0.1; done
+  for _ in $(seq 1 100); do grep -q 'fake/sbt-launch.jar --detach' <<<"$(ps -o args= -p "$live_sbt" 2>/dev/null)" && break; sleep 0.1; done
   rm -f "$scratch/sbt-ran-in"
   out="$(cd "$repo" && PATH="$scratch/bin:$PATH" bash scripts/hooks/pre-push --range "$scala~1..$scala" 2>&1)"
   kill "$live_sbt" 2>/dev/null; wait "$live_sbt" 2>/dev/null

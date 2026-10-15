@@ -62,7 +62,7 @@ in_terminal() { # [ctrl-c] <shell line> -> what the terminal showed, \r dropped
   local interrupt=""; [ "$1" = ctrl-c ] && { interrupt=1; shift; }
   rm -f "$work/ready" "$work/done" "$work/shell"
   local line='echo $$ > "$2/shell"; . "$1"; TOOL_NAME=demo; '"$1"'; touch "$2/done"' run
-  if script -V 2>&1 | grep -q util-linux; then
+  if grep -q util-linux <<<"$(script -V 2>&1)"; then
     run=(script -qec "$(printf '%q ' bash -c "$line" _ "$REPO_ROOT/scripts/tool-conventions.sh" "$work")" /dev/null)
   else
     run=(script -q /dev/null bash -c "$line" _ "$REPO_ROOT/scripts/tool-conventions.sh" "$work")

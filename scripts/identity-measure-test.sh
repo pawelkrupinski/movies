@@ -308,7 +308,7 @@ for p in $read_paths; do
 done
 check "every path the takes check reads is one a reuse treats as moving a take" "" "$uncovered"
 check "...read from the takes check (identity_paths and the specs it runs)" "true" \
-  "$(echo "$read_paths" | grep -q UnmatchedClustersRatchetSpec && echo "$read_paths" | grep -q '^identity/src/main$' && echo true || echo false)"
+  "$(grep -q UnmatchedClustersRatchetSpec <<<"$read_paths" && grep -q '^identity/src/main$' <<<"$read_paths" && echo true || echo false)"
 
 # SIGTERM (Ctrl-C alike) while waiting on the run: the run is cancelled and the branch deleted.
 rm -rf "$work/stub" "$work/cache"; mkdir -p "$work/stub"

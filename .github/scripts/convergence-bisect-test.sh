@@ -123,7 +123,7 @@ check "...two replays to confirm, one halving" "3" "$(replays)"
 v=$(bisect "$good" "$bad" MAX_STEPS=0)
 check "no halving allowed: the whole range, after 0 replays" yes "$(has "Stopped after 0 replay(s)" "$v")"
 check "...every pipeline commit listed" "6" "$(printf '%s\n' "$v" | grep -c '^- ')"
-check "...the docs commit not among them" yes "$(printf '%s\n' "$v" | grep -q 'docs only' && echo "no: listed" || echo yes)"
+check "...the docs commit not among them" yes "$(grep -q 'docs only' <<<"$v" && echo "no: listed" || echo yes)"
 
 v=$(bisect "$good" "$bad" BUDGET_MINUTES=0)
 check "a budget that cannot fit one more step starts none" yes "$(has "Stopped after 0 replay(s)" "$v")"

@@ -59,7 +59,7 @@ check "a seeded checkout's commands run in its own server, against its own edite
   "$(tail -1 "$scratch/sbt-sources")"
 out=$(cd "$scratch/fresh" && "$REPO_ROOT/scripts/sbt-warm" "worker/test" 2>&1 >/dev/null)
 check "each call names the checkout and server it uses" "yes" \
-  "$(printf '%s' "$out" | grep -q "checkout $scratch/fresh, server " && echo yes || echo "no: $out")"
+  "$(grep -q "checkout $scratch/fresh, server " <<<"$out" && echo yes || echo "no: $out")"
 echo stale > "$scratch/fresh/worker/target/scala-3.9.0/zinc/from"
 (cd "$scratch/fresh" && "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
 check "a checkout with compiled output is never seeded over" "stale" "$(cat "$scratch/fresh/worker/target/scala-3.9.0/zinc/from")"
@@ -107,7 +107,7 @@ check "several servers in one checkout are all stopped" "stopped stopped" \
 kill "$server" "$second" 2>/dev/null
 
 # fake_server's pid once it carries the server's command line (the background shell has exec'd)
-await_server() { for _ in $(seq 1 100); do ps -o args= -p "$1" 2>/dev/null | grep -q -- --detach-stdio && return; sleep 0.1; done; }
+await_server() { for _ in $(seq 1 100); do grep -q -- --detach-stdio <<<"$(ps -o args= -p "$1" 2>/dev/null)" && return; sleep 0.1; done; }
 
 # a removed checkout's server is stopped by the next call from anywhere
 fresh_key=$(grep -lx "$scratch/fresh" "$KINOWO_SBT_WARM_STATE"/*.root); fresh_key=${fresh_key%.root}
