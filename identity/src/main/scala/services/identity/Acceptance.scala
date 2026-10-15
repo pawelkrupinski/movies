@@ -360,8 +360,22 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
   private def wordsOfIts(scored: Scored): Boolean = {
     val own = IdentityMeasures.yearlessTokens(scored.listing.title)
     own.nonEmpty && (Seq(scored.candidate.film.title) ++ scored.candidate.film.originalTitle).exists { title =>
-      own.forall(IdentityMeasures.yearlessTokens(title).contains) &&
+      own.forall(IdentityMeasures.yearlessTokens(title).contains) && touchesPartsWhole(own, title) &&
         ((own.sizeIs >= 2 && coversItsTitle(own, title)) || IdentityMeasures.yearlessTokens(MainTitleBreak.split(title).head) == own)
+    }
+  }
+  /** Does the billing touch every part of `title` ([[TitlePartBreak]]) it touches at all by half that part's words or more?
+   *  Or by its leading words alone, a title the venue cut short ("Shaun The Sheep : The Beast"). A part touched otherwise
+   *  holds the billing's words only by chance — a banner's that recur in it: UK Watershed's "About
+   *  Time: Once Upon a Time", an episode of Berger's series, touches "All About My Mother" by one word in four, so it is not
+   *  "Once Upon a Time… All About My Mother". A part the billing bills in its own order is still touched whole
+   *  ("GÖTTERDÄMMERUNG Royal Opera" of "Royal Ballet & Opera 2026/27: Götterdämmerung"). */
+  private def touchesPartsWhole(own: Seq[String], title: String): Boolean = {
+    val words = own.toSet
+    TitlePartBreak.split(title).toSeq.map(IdentityMeasures.yearlessTokens).filter(_.nonEmpty).forall { part =>
+      val touched = part.count(words)
+      // its leading words alone: the venue cut the title short ("Shaun The Sheep : The Beast")
+      touched == 0 || touched * 2 >= part.size || part.takeWhile(words).size == touched
     }
   }
   /** Do the listing's words `own`, all of them the film's `title`'s, cover that title: more than half its words, or every
@@ -384,8 +398,8 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
   private def cutOnly(scored: Scored): Boolean =
     !scored.suggestedOnly && scored.deniedByCutOnly && wordsOfIts(scored)
   private val MainTitleBreak = java.util.regex.Pattern.compile("""\s+[-–—]\s+|:\s""")
-  /** What parts a title: a spaced dash, a colon, a full stop or a middle dot before a space. */
-  private val TitlePartBreak = java.util.regex.Pattern.compile("""\s+[-–—·]\s+|[:.]\s""")
+  /** What parts a title: a spaced dash, a colon, a full stop, an ellipsis or a middle dot before a space. */
+  private val TitlePartBreak = java.util.regex.Pattern.compile("""\s+[-–—·]\s+|[:.…]\s""")
   /** The ONLY film one of the listing's own title searches returned — the old pipeline's `searchUnique`, which
    *  took it unless a fact CONTRADICTED it: "Loving Karma" [78′] is TMDB's 85-minute record, the one "Loving
    *  Karma" finds, though seven minutes weigh against it in the probability. The title must name it — a piece

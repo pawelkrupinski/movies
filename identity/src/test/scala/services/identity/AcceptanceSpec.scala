@@ -368,6 +368,15 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     sole("Anime Nights", "Crunchyroll Anime Nights - Mob Psycho 100") shouldBe None
     sole("DAS GEHEIME FILMARCHIV", "Das geheime Filmarchiv der Eva Braun") shouldBe None
     sole("Bodies in Translation", "Purple, Bodies in Translation – Part II of A Yellow Memory from the Yellow Age") shouldBe None
+    // a part of the film's title the billing touches by fewer than half its words holds them by chance: UK Watershed's
+    // "About Time: Once Upon a Time" (an episode of John Berger's 1985 series) is not "Once Upon a Time… All About My Mother"
+    sole("About Time: Once Upon a Time", "Once Upon a Time… All About My Mother") shouldBe None
+    // a part touched whole, in any order or with a word the venue repeats, is still the film's (the measure, 10-15)
+    sole("GÖTTERDÄMMERUNG Royal Opera", "Royal Ballet & Opera 2026/27: Götterdämmerung") shouldBe Some(9)
+    sole("Shaun the Sheep: The Beast of the Mossy Bottom", "Shaun the Sheep: The Beast of Mossy Bottom") shouldBe Some(9)
+    sole("A Sad And A Beautiful World", "A Sad and Beautiful World") shouldBe Some(9)
+    // or by its leading words alone, a title the venue cut short (UK Maona Cinema Oswestry)
+    sole("Shaun The Sheep : The Beast", "Shaun the Sheep: The Beast of Mossy Bottom") shouldBe Some(9)
     // more than half its words, or every part of it the billing touches whole: still the film
     sole("Dzień Dziecka księdza Kaczkowskiego", "Dzień Dziecka księdza Jana Kaczkowskiego") shouldBe Some(9)
     sole("Manon (BALLET LIVE)", "BALLET LIVE. MANON. ROYAL ÓPERA HOUSE") shouldBe Some(9)
