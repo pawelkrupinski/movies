@@ -58,5 +58,15 @@ check "a command switching the root checkout's branch is reported" 2 "$(bash_run
 check "...naming both branches" 1 "$(grep -c 'from main to side' "$testroot/post.err")"
 check "a post with no pre for its session never blocks" 0 "$(printf '{"session_id":"none"}' | python3 "$guard" bash-post --repo "$wt"; echo $?)"
 
+start() { # <cwd> -> how many times the session-start context names the root checkout
+  printf '{"session_id":"s2","cwd":"%s"}' "$1" | python3 "$guard" session-start --repo "$wt" | grep -c 'started in the shared ROOT checkout'
+}
+printf '\033[36m▸\033[0m session start\n'
+check "a session starting in the root checkout is told to make a worktree" 1 "$(start "$root")"
+check "...also from a subdirectory of it" 1 "$(start "$root/target")"
+check "a session starting in a linked worktree is told nothing" 0 "$(start "$wt")"
+check "a session starting in a nested worktree is told nothing" 0 "$(start "$root/.claude/worktrees/agent")"
+check "a session starting outside every checkout is told nothing" 0 "$(start "$testroot")"
+
 if [ "$fails" -ne 0 ]; then echo "root-checkout-guard: $fails failed"; exit 1; fi
 echo "root-checkout-guard: all checks passed"

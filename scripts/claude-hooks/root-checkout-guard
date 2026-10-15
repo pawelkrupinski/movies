@@ -13,6 +13,8 @@ clean -- CLAUDE.md's "don't work in the root checkout". A rule in prose was not 
   bash-post  PostToolUse on Bash: ...and, when the command dirtied a new root path or switched its branch,
              says so to the agent (exit 2), which then moves the change into its worktree and undoes it.
              A Bash command cannot be read reliably before it runs, so this one reports after it.
+  session-start  SessionStart: when the session starts IN the root checkout, tells the agent (as context) to make
+             its worktree first -- so it starts there instead of learning it from a denied edit. Silent elsewhere.
 
 "The root checkout" is the main worktree of the repository this script lives in (git-dir == common dir), so the
 hook needs no path configured and leaves every other repository alone. Errors in the guard itself never block:
@@ -99,6 +101,18 @@ def state_file(event):
     return os.path.join(d, key + ".json")
 
 
+def guard_session_start(event, repo):
+    root = root_checkout(repo)
+    cwd = event.get("cwd") or os.getcwd()
+    code, top = git(nearest_dir(cwd), "rev-parse", "--show-toplevel")
+    if root and code == 0 and real(top.strip()) == root:
+        print(json.dumps({"hookSpecificOutput": {"hookEventName": "SessionStart", "additionalContext": (
+            "This session started in the shared ROOT checkout (%s). Edits to its files are denied and commits "
+            "refused. Before changing anything, make a worktree of your own -- `git worktree add -b <branch> "
+            "../movies-<name> origin/main` -- and `cd` into it in every command." % root)}}))
+    return 0
+
+
 def guard_bash_pre(event, repo):
     root = root_checkout(repo)
     if root:
@@ -134,13 +148,14 @@ def guard_bash_post(event, repo):
 
 
 def main(argv):
-    if len(argv) < 2 or argv[1] not in ("edit", "bash-pre", "bash-post"):
-        sys.stderr.write("usage: root-checkout-guard edit|bash-pre|bash-post [--repo DIR] < hook-event.json\n")
+    if len(argv) < 2 or argv[1] not in ("edit", "bash-pre", "bash-post", "session-start"):
+        sys.stderr.write("usage: root-checkout-guard edit|bash-pre|bash-post|session-start [--repo DIR] < hook-event.json\n")
         return 64
     repo = argv[argv.index("--repo") + 1] if "--repo" in argv else HERE
     try:
         event = json.load(sys.stdin)
-        return {"edit": guard_edit, "bash-pre": guard_bash_pre, "bash-post": guard_bash_post}[argv[1]](event, repo)
+        return {"edit": guard_edit, "bash-pre": guard_bash_pre, "bash-post": guard_bash_post,
+                "session-start": guard_session_start}[argv[1]](event, repo)
     except Exception as e:  # the guard failing must never block a session
         sys.stderr.write("root_checkout_guard: %s (not blocking)\n" % e)
         return 0

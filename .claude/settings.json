@@ -1,5 +1,10 @@
 {
   "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [{ "type": "command", "command": "python3 \"$CLAUDE_PROJECT_DIR/scripts/claude-hooks/root-checkout-guard\" session-start", "timeout": 30 }]
+      }
+    ],
     "PreToolUse": [
       {
         "matcher": "Edit|Write|MultiEdit|NotebookEdit",
