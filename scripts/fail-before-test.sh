@@ -50,6 +50,15 @@ check "a commit with no test-side file: exit 2" "2" "$rc"
 out="$(cd "$repo" && "$tool" --files 'probe.txt' -- 'test "$(bash greet.sh)" = "hello world"' 2>&1)"; rc=$?
 check "--files redefines test-side: only probe.txt is carried over, yes/yes" "0" "$rc"
 
+# Several arguments are one command, each kept whole: an sbt test filter (`-- -z "some case"`) must reach sbt as one
+# argument, not be split by the shell into words that run the whole module.
+printf 'echo hello world again\n' > "$repo/greet.sh"
+printf 'test "$#" = 1 && test "$1" = "two words" && test "$(bash greet.sh)" = "hello world again"\n' > "$repo/args-test.sh"
+scratch_git "$repo" add -A
+scratch_git "$repo" commit -qm "a test taking an argument with a space"
+out="$(cd "$repo" && "$tool" -- bash args-test.sh "two words" 2>&1)"; rc=$?
+check "a command's argument holding a space arrives whole: yes/yes" "0" "$rc"
+
 # A run cut off by the deadline proves nothing: a hang is no "failed before". And the deadline ends the WHOLE run —
 # the JVM an sbt test command forks, not just its shell — or it outlives fail-before, holding the worktree it removes.
 printf 'sleep 30 & echo $! > "$GRANDCHILD"; wait\n' > "$repo/hang-test.sh"

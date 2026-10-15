@@ -8,7 +8,8 @@
 #   BEFORE  <commit>'s parent, with ONLY the commit's test-side files copied over from <commit>
 #           (so the new test meets the old production code);
 #   AFTER   <commit> itself.
-# The command (run through `bash -c`, from the worktree's root) must FAIL in BEFORE and PASS in AFTER.
+# The command (one argument: a shell line, run through `bash -c`; several: one command, each argument kept whole), run
+# from the worktree's root, must FAIL in BEFORE and PASS in AFTER.
 #   FAIL-BEFORE: yes|no     PASS-AFTER: yes|no     (and the tail of each output)
 # Exit 0 only for yes/yes; 1 otherwise; 2 for a usage or setup error, or a run that timed out (no verdict).
 #
@@ -43,7 +44,9 @@ while [ $# -gt 0 ]; do
   esac
 done
 [ $# -gt 0 ] || die "usage: scripts/fail-before [<commit>] [--files <glob>]... -- <test command...>"
-command_line="$*"
+# One argument is a shell line, run as written ('a && b'); several are ONE command, each argument kept whole -- joined
+# bare they were split again by `bash -c`, and `scripts/sbt-warm "identity/testOnly X -- -z some case"` ran the whole module.
+if [ $# -eq 1 ]; then command_line=$1; else command_line=$(printf '%q ' "$@"); fi
 [ ${#patterns[@]} -gt 0 ] || patterns=('*/src/test/*' '*/src/it/*' '*/src/fixtures/*' '*_test.py' '*-test.sh' 'test/resources/*' '.claude/*')
 
 top=$(git rev-parse --show-toplevel 2>/dev/null) || die "not inside a git checkout"
