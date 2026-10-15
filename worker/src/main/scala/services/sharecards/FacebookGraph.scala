@@ -2,6 +2,7 @@ package services.sharecards
 
 import models.{CityPath, Country}
 import play.api.libs.json.Json
+import services.facebook.AppUsage
 import services.readmodel.{FilmSlugs, ReadModelReader}
 
 import java.net.URI
@@ -19,18 +20,6 @@ trait FacebookGraph {
 /** What Facebook said to one re-scrape request, and how much of the app's hourly allowance it
  *  says is spent — when it says. */
 final case class FacebookReply(outcome: FacebookScrape, usage: Option[AppUsage] = None)
-
-/** The share (%) of the app's hourly allowance Facebook says is spent: past 100 it refuses the
- *  app (code 4) until enough of the last hour's calls have aged out. */
-final case class AppUsage(percent: Int)
-object AppUsage {
-  /** The `X-App-Usage` header, `{"call_count":28,"total_time":25,"total_cputime":25}` — each a
-   *  percentage of its own allowance, so the highest is the one that limits. None for a header
-   *  that names no percentage. */
-  def parse(header: String): Option[AppUsage] =
-    Try(Json.parse(header)).toOption.collect { case o: play.api.libs.json.JsObject => o }
-      .flatMap(_.values.flatMap(_.asOpt[Int]).maxOption).map(AppUsage(_))
-}
 
 /** What Facebook said to one re-scrape request. */
 sealed trait FacebookScrape
@@ -79,7 +68,7 @@ class HttpFacebookGraph(appId: settings.FacebookAppId, appSecret: settings.Faceb
         .header("Content-Type", "application/x-www-form-urlencoded").POST(HttpRequest.BodyPublishers.ofString(body)).build()
       val response = client.send(request, HttpResponse.BodyHandlers.ofString())
       FacebookReply(FacebookScrape.of(response.statusCode(), response.body()),
-        Option(response.headers().firstValue("x-app-usage").orElse(null)).flatMap(AppUsage.parse))
+        AppUsage.of(response.headers()))
     } catch {
       case e: java.io.IOException => FacebookReply(FacebookScrape.Unavailable(e.getClass.getSimpleName))   // refused, reset, timed out
       case e: Exception           => FacebookReply(FacebookScrape.Refused(e.getClass.getSimpleName))

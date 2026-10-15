@@ -8,7 +8,7 @@ import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.model.{Filters, Indexes, Sorts, Updates}
 import play.api.Logging
 import services.MongoErrors
-import services.facebook.FacebookFetches
+import services.facebook.{AppUsage, FacebookFetches, FacebookSlots, FacebookUsageBrake, MongoFacebookSlots}
 import tools.{DaemonExecutors, LogThrottle}
 
 import java.time.{Clock, Instant}
@@ -70,7 +70,7 @@ final case class RescrapeEntry(country: String, target: RescrapeTarget, notBefor
 
 /** Where the fleet's re-scrapes wait, and the quota they share. Storage only: what to do with an
  *  entry is [[FacebookRescrapeDrain]]'s. */
-trait FacebookRescrapeStore {
+trait FacebookRescrapeStore extends FacebookSlots {
   /** Add each entry unless one with its key is waiting already — that one is then due no sooner
    *  than either asked (a second request names a newer card, which needs its own wait); how many
    *  were added. */
@@ -90,8 +90,6 @@ trait FacebookRescrapeStore {
    *  `spacing` after this one, or after `now - slack` if that is later — so a taker a few seconds
    *  late does not push every later slot back, and an idle quota banks at most `slack`. */
   def takeSlot(now: Instant, spacing: FiniteDuration, slack: FiniteDuration): Boolean
-  /** No slot before `until`, whatever was due. */
-  def holdSlots(until: Instant): Unit
   /** The country's waiting pages. */
   def waitingPages(country: String): Long
 }
@@ -171,7 +169,7 @@ class MongoFacebookRescrapeStore(collection: MongoCollection[Document]) extends 
   // which `$max` ranks below any date.
   def takeSlot(now: Instant, spacing: FiniteDuration, slack: FiniteDuration): Boolean =
     Try(await(collection.updateOne(
-      Filters.and(Filters.eq("_id", QuotaId), Filters.lte("nextSlot", date(now))),
+      Filters.and(Filters.eq("_id", MongoFacebookSlots.QuotaId), Filters.lte("nextSlot", date(now))),
       Seq(Document("$set" -> Document("nextSlot" -> Document("$add" -> BsonArray(
         Document("$max" -> BsonArray(BsonString("$nextSlot"), BsonDateTime(now.toEpochMilli - slack.toMillis))),
         BsonInt64(spacing.toMillis)))))),
@@ -181,10 +179,8 @@ class MongoFacebookRescrapeStore(collection: MongoCollection[Document]) extends 
       case Failure(e)                                                            => throw e
     }
 
-  def holdSlots(until: Instant): Unit = {
-    await(collection.updateOne(Filters.eq("_id", QuotaId), Updates.max("nextSlot", date(until)), new UpdateOptions().upsert(true)).toFuture())
-    ()
-  }
+  private val slots = new MongoFacebookSlots(collection)
+  def holdSlots(until: Instant): Unit = slots.holdSlots(until)
 
   def waitingPages(country: String): Long =
     await(collection.countDocuments(Filters.and(Filters.eq("country", country), Filters.in("kind", RescrapeKind.Pages.map(_.name)*))).toFuture())
@@ -200,9 +196,6 @@ class MongoFacebookRescrapeStore(collection: MongoCollection[Document]) extends 
 }
 
 object MongoFacebookRescrapeStore {
-  /** The collection, in the fleet database ([[services.FleetDatabase]]). */
-  val Collection = "facebook_rescrapes"
-  val QuotaId    = "quota"
   private val AskedAgainAt = "askedAgainAt"
   private val Timeout = 10.seconds
   /** The claim index's first shape, the `notBefore` range before `enqueuedAt`'s sort. */
@@ -239,7 +232,7 @@ class FacebookRescrapeQueue(store: FacebookRescrapeStore, country: String) exten
  * read), then — when the country has a page due and the fleet's next slot has come round — sends
  * ONE page: one Facebook holds a preview of ([[FacebookFetches]]) before any it never fetched. Sent: gone,
  * and when Facebook says the app's hourly allowance is nearly spent the fleet waits
- * [[usageHold]] before the next. Rate-limited: the whole fleet's quota waits [[RateLimitHold]] and
+ * ([[FacebookUsageBrake]]) before the next. Rate-limited: the whole fleet's quota waits [[RateLimitHold]] and
  * the page goes back without spending an attempt. Unavailable (unreachable, a 5xx): the same for
  * [[UnavailableHold]]. Refused: that page alone retries, backing off, and is dropped after
  * [[MaxAttempts]].
@@ -247,6 +240,8 @@ class FacebookRescrapeQueue(store: FacebookRescrapeStore, country: String) exten
 class FacebookRescrapeDrain(store: FacebookRescrapeStore, graph: FacebookGraph, pages: String => Seq[String],
                             fetches: FacebookFetches, country: String, metrics: ShareCardMetrics, clock: Clock) extends services.Stoppable with Logging {
   import FacebookRescrapeDrain.*
+
+  private val brake = new FacebookUsageBrake(store, clock)
 
   def tick(): Unit = {
     expandFilms()
@@ -317,16 +312,12 @@ class FacebookRescrapeDrain(store: FacebookRescrapeStore, graph: FacebookGraph, 
     }
   }
 
-  /** Facebook's word on how much of the app's hourly allowance is spent: at [[UsageCeiling]] the
-   *  whole fleet waits [[usageHold]], longer the further over, so the next request comes after some of the hour's calls
-   *  have aged out rather than into a refusal and its hour's hold. */
+  /** Facebook's word on how much of the app's hourly allowance is spent, acted on by the fleet's
+   *  [[FacebookUsageBrake]] — the same one the web's Facebook sign-ins report to. */
   private def paceOn(usage: AppUsage): Unit = {
     metrics.appUsage(usage.percent)
-    if (usage.percent >= UsageCeiling) {
-      val until = clock.instant().plusMillis(usageHold(usage.percent).toMillis)
-      logger.info(s"share card: Facebook says ${usage.percent}% of the app's hourly allowance is spent — every country waits until $until")
-      store.holdSlots(until)
-    }
+    brake.observe(usage).foreach(until =>
+      logger.info(s"share card: Facebook says ${usage.percent}% of the app's hourly allowance is spent — every country waits until $until"))
   }
 
   // One tick at a time on one thread; a failed tick (the fleet database unreachable) is logged
@@ -353,7 +344,7 @@ object FacebookRescrapeDrain {
    *  than 15 s (the slot schedule's [[TickEvery]] of slack) — 180 an hour, ABOVE what Facebook
    *  allows: it refused the app (code 4) after 45-105 requests each hour on 2026-10-11/12, and each
    *  refusal held the fleet an hour. So the pace is Facebook's own word on the allowance
-   *  ([[UsageCeiling]]); demand is kept under it by re-scraping only a card whose picture moved
+   *  ([[FacebookUsageBrake.UsageCeiling]]); demand is kept under it by re-scraping only a card whose picture moved
    *  beyond its rating badges ([[ShareCardService.render]]); the pages Facebook holds a preview of go
    *  first, so a burst of new films' pages waits behind them. */
   val Spacing: FiniteDuration = 20.seconds
@@ -363,33 +354,14 @@ object FacebookRescrapeDrain {
   /** A claimed entry is held back this long — so an entry whose worker died mid-request is
    *  claimed again, and never while its request (20 s timeout) may still be running. */
   val Lease: FiniteDuration = 5.minutes
-  /** How long the whole fleet waits after Facebook names its rate limit. The limit is a rolling
-   *  hour; on 2026-09-25 requests were refused for about that long. */
-  val RateLimitHold: FiniteDuration = 1.hour
+  /** How long the whole fleet waits after Facebook names its rate limit: as long as its refusal. */
+  val RateLimitHold: FiniteDuration = FacebookUsageBrake.RefusalHold
   /** How long the whole fleet waits after Facebook could not be reached or answered a 5xx. */
   val UnavailableHold: FiniteDuration = 5.minutes
   /** Refusals (or unreadable pages) before an entry is given up. */
   val MaxAttempts: Int = 5
   /** Films expanded per tick, so a backlog of films cannot hold one tick for long. */
   val FilmsPerTick: Int = 20
-
-
-  /** The share of the app's hourly allowance (Facebook's `X-App-Usage`) at which the fleet stops
-   *  for [[usageHold]] rather than run on into Facebook's refusal and its hour-long hold. One request
-   *  spends ~1.5% of the allowance (2026-10-15), and the reading may lag what Facebook has counted
-   *  and miss the web's Facebook sign-ins on the same app, so the ceiling sits 25 points under the
-   *  refusal: through an hour none of whose calls age out, with the reading five requests late, the
-   *  fleet stops short of 90%. A lower ceiling costs little: once the hour's calls age out the pace is
-   *  set by how fast they do, not by the level it is held at. */
-  val UsageCeiling: Int = 75
-  /** How long the fleet waits at [[UsageCeiling]]: the allowance is a rolling hour, so a few
-   *  minutes frees a few of its calls once the hour's oldest have aged out. */
-  val UsageHold: FiniteDuration = 5.minutes
-  /** The wait for a reading of `percent`: [[UsageHold]], doubled for every point over
-   *  [[UsageCeiling]], at most [[RateLimitHold]]. A flat hold let every resume add one more request
-   *  while the hour's first calls had not aged out yet: 91% → 96% → 99% on 2026-10-15. */
-  def usageHold(percent: Int): FiniteDuration =
-    (UsageHold * (1L << (percent - UsageCeiling).max(0).min(4))).min(RateLimitHold)
 
   /** A refused page's wait before its next attempt: 1, 2, 4, 8 minutes. */
   def backoff(attempts: Int): FiniteDuration = 1.minute * (1L << (attempts - 1).max(0).min(10))

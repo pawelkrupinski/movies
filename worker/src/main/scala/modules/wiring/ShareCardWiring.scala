@@ -76,7 +76,7 @@ trait ShareCardWiring { self: WorkerWiring =>
   /** The fleet's re-scrape queue, when there is anything to send with and anywhere to queue. */
   private lazy val facebookRescrapeStore: Option[FacebookRescrapeStore] =
     facebookGraph.flatMap(_ => fleetMongoConnection.database).map(db =>
-      new MongoFacebookRescrapeStore(db.getCollection(MongoFacebookRescrapeStore.Collection)))
+      new MongoFacebookRescrapeStore(db.getCollection(services.facebook.MongoFacebookSlots.Collection)))
 
   /** The film pages Facebook has fetched, as the web records them: the only pages worth a
    *  re-scrape. Present whenever the queue is — the same database. */

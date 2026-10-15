@@ -2,9 +2,10 @@ package modules.webwiring
 
 import controllers.{AuthController, FacebookDataDeletionController, UserStateController}
 import modules.Wiring
-import services.auth.{AppleTokenValidator, AuthExchangeCodeStore, AuthExchangeCodes, FacebookOauthProvider, FacebookTokenValidator, GoogleOauthProvider, GoogleTokenValidator, InMemoryAuthExchangeCodeStore, MongoAuthExchangeCodeStore, OauthProvider}
+import services.auth.{AppleTokenValidator, AuthExchangeCodeStore, AuthExchangeCodes, FacebookGraphFetch, FacebookOauthProvider, FacebookTokenValidator, GoogleOauthProvider, GoogleTokenValidator, InMemoryAuthExchangeCodeStore, MongoAuthExchangeCodeStore, OauthProvider}
 import services.users.{AccountDeletion, CaffeineUserChangeTimeCache, MongoUserRepository, MongoUserStateRepository, UserRepository, UserStateRepository}
-import tools.{HttpFetch, MonitoringHttpFetch, RealHttpFetch}
+import services.facebook.{FacebookUsageBrake, MongoFacebookSlots}
+import tools.{HttpFetch, MonitoringHttpFetch, RealHttpFetch, TlsTrust}
 
 /** ── Accounts ──────────────────────────────────────────────────────────────
  *  The signed-in visitor: the users + user-state repositories on the shared
@@ -16,6 +17,13 @@ trait UsersWiring { self: Wiring =>
   // OAuth providers + token validators make outbound HTTP; the monitoring
   // wrapper records their latency on the same /uptime surface the worker feeds.
   lazy val httpFetch: HttpFetch = new MonitoringHttpFetch(new RealHttpFetch(), uptimeMonitor)
+
+  // Facebook's sign-in calls spend the app's hourly allowance the worker's re-scrapes pace on, so
+  // each reports Facebook's usage reading to the fleet's brake on them (the fleet database's
+  // re-scrape quota). Without the fleet database, the plain fetch: nothing to hold.
+  lazy val facebookHttpFetch: HttpFetch = fleetConnection.database.fold(httpFetch)(db =>
+    new MonitoringHttpFetch(new FacebookGraphFetch(new FacebookUsageBrake(
+      new MongoFacebookSlots(db.getCollection(MongoFacebookSlots.Collection)), clock), TlsTrust.newContext()), uptimeMonitor))
 
   // The SHARED users database, read by every pod directly — nothing between it
   // and the controllers. One person is served by several processes at once:
@@ -54,7 +62,7 @@ trait UsersWiring { self: Wiring =>
     val facebook = for {
       id     <- processConfiguration.facebookAppId
       secret <- processConfiguration.facebookAppSecret
-    } yield new FacebookOauthProvider(httpFetch, id, secret)
+    } yield new FacebookOauthProvider(facebookHttpFetch, id, secret)
     Seq(google, facebook).flatten.map(p => p.name -> (p: OauthProvider)).toMap
   }
 
@@ -65,7 +73,7 @@ trait UsersWiring { self: Wiring =>
     for {
       id     <- processConfiguration.facebookAppId
       secret <- processConfiguration.facebookAppSecret
-    } yield new FacebookTokenValidator(httpFetch, id, secret)
+    } yield new FacebookTokenValidator(facebookHttpFetch, id, secret)
 
   lazy val appleTokenValidator: Option[AppleTokenValidator] =
     Some(new AppleTokenValidator(httpFetch, processConfiguration.appleBundleId, clock))

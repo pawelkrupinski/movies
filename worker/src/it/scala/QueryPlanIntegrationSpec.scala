@@ -81,8 +81,8 @@ class QueryPlanIntegrationSpec extends AnyFlatSpec with Matchers with tools.Inte
 
   "the fleet's Facebook re-scrape queue" should "claim its oldest due entry off the index, sorting nothing in memory" in {
     assertIndexed(plansOf("rescrapes") { db =>
-      val store = new MongoFacebookRescrapeStore(db.getCollection[Document](MongoFacebookRescrapeStore.Collection))
-      awaitIndexes(db, MongoFacebookRescrapeStore.Collection, 2)
+      val store = new MongoFacebookRescrapeStore(db.getCollection[Document](services.facebook.MongoFacebookSlots.Collection))
+      awaitIndexes(db, services.facebook.MongoFacebookSlots.Collection, 2)
       val t0 = Far
       store.add((1 to 30).map(i => RescrapeEntry("pl", RescrapeTarget.Page(s"https://kinowo.net/f/$i"), t0.plusSeconds(i.toLong * (if (i % 2 == 0) 1 else 1000)))))
       store.add(Seq(RescrapeEntry("us", RescrapeTarget.FilmPages("us", "film-1"), t0)))

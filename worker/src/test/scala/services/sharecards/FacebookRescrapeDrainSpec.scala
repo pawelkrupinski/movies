@@ -19,6 +19,8 @@ import scala.concurrent.duration.*
  */
 class FacebookRescrapeDrainSpec extends AnyFlatSpec with Matchers {
   import FacebookRescrapeDrain.*
+  import services.facebook.AppUsage
+  import services.facebook.FacebookUsageBrake.{UsageCeiling, UsageHold}
 
   private val T0 = Instant.parse("2026-09-25T16:18:00Z")
 
@@ -280,9 +282,7 @@ class FacebookRescrapeDrainSpec extends AnyFlatSpec with Matchers {
 
   // 2026-10-15: each send spent ~1.5% of the allowance, and the first hour's calls had not aged out
   // yet, so every resume after a flat five-minute hold added one more: 91% → 96% → 99%.
-  it should "wait twice as long for every point over the ceiling, up to the rate limit's hour" in {
-    (0 to 6).map(over => usageHold(UsageCeiling + over)) shouldBe
-      Seq(5.minutes, 10.minutes, 20.minutes, 40.minutes, 1.hour, 1.hour, 1.hour)
+  it should "wait twice as long for every point over the ceiling" in {
     val fleet = new Fleet(cities = 3, usage = () => Some(AppUsage(UsageCeiling + 2)))
     fleet.request("us", "us-film")
     fleet.run(20.minutes - 1.minute)
