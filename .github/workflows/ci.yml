@@ -242,6 +242,8 @@ jobs:
                       bash scripts/label-lookup-test.sh
                       bash scripts/title-trace-test.sh
                       bash scripts/hard-clusters-test.sh
+                      bash scripts/identity-explain-test.sh
+                      bash scripts/identity-judge-cards-test.sh
                       bash .github/actions/drop-bot-branch/drop-test.sh
                   '
 

@@ -22,6 +22,7 @@ set -euo pipefail
 usage() { sed -n '3,/^set /p' "$0" | sed '$d; s/^# \{0,1\}//'; }
 case "${1:-}" in -h|--help) usage; exit 0 ;; esac
 
+# shellcheck disable=SC2034 # read by identity-tools.sh's identity_log
 IDENTITY_TOOL=identity-judge-cards
 # shellcheck source=scripts/identity-tools.sh
 . "$(dirname "$0")/identity-tools.sh"

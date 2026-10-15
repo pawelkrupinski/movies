@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 #
 # An alias of `scripts/identity-slice <cc> --explain …` (see its --help): WHY a listing of the unmatched-cluster capture
-# took (or did not take) its film. Kept because prod's take-change lines print it as their `repro` (TakeChangeLines).
+# took (or did not take) its film. Kept for the name older take-change lines printed; prod's lines print an
+# `identity-slice <cc> --key … --ref …` line as their `repro` now (TakeChangeLines).
 #
 #   scripts/identity-explain <cc> [--venue S] [--title S] [--ref A [--ref B]] [--fixture SRC] [--limit N] [--no-resolve]
 set -euo pipefail
