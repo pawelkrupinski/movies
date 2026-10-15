@@ -794,21 +794,36 @@ object IdentitySlice {
     about.find(_.venue == key.venue).orElse(about.find(_.venue == "*"))
   }
 
-  /** Copies `slice` (kept in `from`) to `target` with the film the judgements call right for each seed — NEVER the take:
-   *  a seed they do not judge is left out, and a slice none of whose seeds it judges is refused. Each expectation is
+  /** The films the identity judgements call WRONG for `key` — each by its venue's own label first, then every venue's (`*`):
+   *  a film the venue's row calls right is not among them. */
+  def wrongLabels(key: ListingKey, country: Country, labels: Seq[UnmatchedClusters.Label]): Seq[UnmatchedClusters.Label] = {
+    val about = labels.filter(l => l.country == country.code && IdentityJudgements.normalise(l.rawTitle) == IdentityJudgements.normalise(key.rawTitle) &&
+      (l.venue == key.venue || l.venue == "*"))
+    about.groupBy(_.film).values.toSeq.flatMap(of => of.find(_.venue == key.venue).orElse(of.find(_.venue == "*"))).filterNot(_.right).sortBy(_.film)
+  }
+
+  /** What a seed must take, as the judgements say: the film they call right, or — when they call none right — none of the
+   *  films they call wrong (`not:<film>`, one row each): a wrong take judged before its right film is known is still a case. */
+  def expectationsOf(key: ListingKey, country: Country, labels: Seq[UnmatchedClusters.Label]): Seq[Expected] =
+    rightLabel(key, country, labels).map(label => Seq(Expected(key.venue, key.rawTitle, label.film, s"${label.venue}: ${label.note}")))
+      .getOrElse(wrongLabels(key, country, labels).map(label => Expected(key.venue, key.rawTitle, Expected.Not + label.film, s"${label.venue}: ${label.note}")))
+
+  /** Copies `slice` (kept in `from`) to `target` with what the judgements expect of each seed ([[expectationsOf]]) — NEVER the
+   *  take: a seed they do not judge is left out, and a slice none of whose seeds it judges is refused. Each expectation is
    *  shown beside its label's own note, so a wrong label is seen before it is pinned. */
   def emitCase(slice: Slice, from: Path, labels: Seq[UnmatchedClusters.Label], target: Path): Unit = {
-    val judged = slice.seeds.toSeq.sortBy(ListingKey.serialised).map(key => key -> rightLabel(key, slice.country, labels))
-    val (known, unknown) = judged.partition(_._2.isDefined)
+    val judged = slice.seeds.toSeq.sortBy(ListingKey.serialised).map(key => key -> expectationsOf(key, slice.country, labels))
+    val (known, unknown) = judged.partition(_._2.nonEmpty)
     unknown.foreach { case (key, _) => println(s"--emit-case: the judgements do not judge ${key.venue} | ${key.rawTitle} — not pinned (judge it first)") }
     if (known.isEmpty) println(s"--emit-case REFUSED for ${slice.selector}: the judgements judge none of its ${judged.size} listing(s); judge them first")
     else {
       Files.createDirectories(target)
       Seq("slice.json.gz", "rows.json.gz", "http.jsonl.gz").foreach(name => Files.copy(from.resolve(name), target.resolve(name), java.nio.file.StandardCopyOption.REPLACE_EXISTING))
-      val lines = known.collect { case (key, Some(label)) => Seq(key.venue, key.rawTitle, label.film, s"${label.venue}: ${label.note}").mkString("\t") }
+      val expected = known.flatMap(_._2)
+      val lines = expected.map(e => Seq(e.venue, e.rawTitle, e.film, e.note).mkString("\t"))
       Files.writeString(target.resolve("expected.tsv"), (ExpectedHeader +: lines).mkString("", "\n", "\n"), StandardCharsets.UTF_8)
       println(s"\n--emit-case: ${known.size} listing(s) pinned in $target (IdentitySliceCasesSpec replays it):")
-      known.collect { case (key, Some(label)) => println(s"  ${key.venue} | ${key.rawTitle} must take ${label.film} — label (${label.venue}): ${label.note}") }
+      expected.foreach(e => println(s"  ${e.venue} | ${e.rawTitle} must take ${e.film} — label ${e.note}"))
     }
   }
 
