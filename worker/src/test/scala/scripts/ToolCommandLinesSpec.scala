@@ -18,7 +18,7 @@ class ToolCommandLinesSpec extends AnyFlatSpec with Matchers {
     val checked = calls.flatMap(call => ToolCallers.commandLineOf(call.tool).map(call -> _))
     checked.map(_._1.tool).toSet should contain allOf ("scripts.IdentityRefit", "scripts.DecorationDiscovery", "scripts.IdentityUnifiedFit",
       "scripts.ReapOrphanedFilmRows", "scripts.IdentityCalibrate", "scripts.IdentityDecorationsLearn",
-      "scripts.RecordCorpusFixture", "scripts.BuildHardClusters")
+      "scripts.RecordCorpusFixture", "scripts.BuildHardClusters", "scripts.FillMissingFixtures")
     checked.foreach { case (call, line) =>
       withClue(s"${call.file}: ${call.tool} ${call.args.mkString(" ")}") { line.accepts(call.args).isRight shouldBe true }
     }
@@ -144,6 +144,18 @@ class ToolCommandLinesSpec extends AnyFlatSpec with Matchers {
     RecordUsChains.dayOf(parsed(RecordUsChains.commandLine)) shouldBe None
     an[CommandLine.InvalidArguments] should be thrownBy RecordUsChains.dayOf(parsed(RecordUsChains.commandLine, "12.10.2026"))
     refused(RecordUsChains.commandLine, "2026-10-12", "extra") shouldBe true
+  }
+
+  "FillMissingFixtures" should "read the convergence fill's six arguments, and refuse a seventh, a bad code or a deadline that is no number" in {
+    val run = FillMissingFixtures.runOf(parsed(FillMissingFixtures.commandLine, "de", "refetch.tsv", "held", "out", "1760000000", "refused.tsv"))
+    run shouldBe FillMissingFixtures.Run(models.Country.Germany, Paths.get("refetch.tsv"), Paths.get("held"), Paths.get("out"), 1760000000L,
+      Some(Paths.get("refused.tsv")))
+    def refusedRun(args: String*) = an[CommandLine.InvalidArguments] should be thrownBy FillMissingFixtures.runOf(parsed(FillMissingFixtures.commandLine, args*))
+    // `rest*` ignored a seventh argument; `until.toLong` died on a NumberFormatException
+    refused(FillMissingFixtures.commandLine, "de", "l", "h", "o", "1", "r", "extra") shouldBe true
+    refusedRun("de", "l", "h", "o", "tomorrow")
+    refusedRun("ger", "l", "h", "o", "1")
+    refusedRun("de", "l", "h", "o")
   }
 
   "every program under worker's test tree" should "have a main the JVM can start" in {
