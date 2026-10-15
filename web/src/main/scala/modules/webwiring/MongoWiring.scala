@@ -55,8 +55,9 @@ trait MongoWiring { self: Wiring =>
 
   // ── Fleet ─────────────────────────────────────────────────────────────────
   // The database every country's deployment shares with the workers (`services.FleetDatabase`):
-  // the web writes the film pages Facebook's crawler fetched there. Optional: unreachable or
-  // refused, it is only that record that stops.
+  // the web writes the film pages Facebook's crawler fetched there, and holds the workers'
+  // re-scrapes when a Facebook sign-in reads the app's allowance nearly spent. Optional:
+  // unreachable or refused, it is only those that stop.
   lazy val fleetConnection: MongoConnection = Wiring.connectionTo(
     ownDbName    = mongoAddress.databaseFor(country),
     sharedDbName = services.FleetDatabase.Name,
