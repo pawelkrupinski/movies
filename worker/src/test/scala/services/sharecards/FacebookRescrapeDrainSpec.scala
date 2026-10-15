@@ -278,6 +278,19 @@ class FacebookRescrapeDrainSpec extends AnyFlatSpec with Matchers {
     resumed.drop(1).zip(resumed.drop(2)).map { case (a, b) => java.time.Duration.between(a, b).toMillis }.max should be <= (Spacing + TickEvery).toMillis
   }
 
+  // 2026-10-15: each send spent ~1.5% of the allowance, and the first hour's calls had not aged out
+  // yet, so every resume after a flat five-minute hold added one more: 91% → 96% → 99%.
+  it should "wait twice as long for every point over the ceiling, up to the rate limit's hour" in {
+    (0 to 6).map(over => usageHold(UsageCeiling + over)) shouldBe
+      Seq(5.minutes, 10.minutes, 20.minutes, 40.minutes, 1.hour, 1.hour, 1.hour)
+    val fleet = new Fleet(cities = 3, usage = () => Some(AppUsage(UsageCeiling + 2)))
+    fleet.request("us", "us-film")
+    fleet.run(20.minutes - 1.minute)
+    fleet.graph.sent.size shouldBe 1
+    fleet.run(1.minute + Spacing)
+    fleet.graph.sent.size shouldBe 2
+  }
+
   "The waiting gauge" should "count the country's pages still to send, fetched by Facebook or not" in {
     val fleet = new Fleet(cities = 4)
     fleet.request("us", "film")

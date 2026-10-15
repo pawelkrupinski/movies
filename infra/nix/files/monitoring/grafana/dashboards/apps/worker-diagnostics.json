@@ -2417,7 +2417,7 @@
       "id": 68,
       "type": "timeseries",
       "title": "Facebook app usage — % of the hourly allowance spent (X-App-Usage)",
-      "description": "`kinowo_worker_share_cards_facebook_app_usage`: the highest of the percentages Facebook's X-App-Usage header reports (call_count, total_time, total_cputime) on each country's latest re-scrape. One Facebook app for the whole fleet, so every country reads the same allowance; the series of the country that sent last is the current one. At 90% (the dashed line) the fleet's re-scrapes wait five minutes, so the allowance's rolling hour frees calls before Facebook refuses the app (code 4) and the fleet waits an hour. Absent = no re-scrape has been sent since the worker started, or Facebook sent no header.",
+      "description": "`kinowo_worker_share_cards_facebook_app_usage`: the highest of the percentages Facebook's X-App-Usage header reports (call_count, total_time, total_cputime) on a re-scrape. One Facebook app for the whole fleet, so this is one line for the fleet, ignoring the country filter: the highest reading among the workers that sent a re-scrape in the last 10 minutes (a worker that stopped sending keeps its old reading, so it is left out). From 85% (the dashed line) the fleet's re-scrapes wait five minutes, doubled for every point over (up to an hour), so the allowance's rolling hour frees calls before Facebook refuses the app (code 4) and the fleet waits an hour. Gap = no worker sent a re-scrape in the last 10 minutes, or Facebook sent no header.",
       "datasource": {
         "type": "prometheus",
         "uid": "local-prometheus"
@@ -2435,8 +2435,8 @@
             "type": "prometheus",
             "uid": "local-prometheus"
           },
-          "expr": "max by (country) (kinowo_worker_share_cards_facebook_app_usage{country=~\"$country\"})",
-          "legendFormat": "{{country}}"
+          "expr": "max(kinowo_worker_share_cards_facebook_app_usage and on (country) (sum by (country) (increase(kinowo_worker_share_cards_rescrape_total{outcome!=\"disabled\"}[10m])) > 0))",
+          "legendFormat": "fleet"
         }
       ],
       "fieldConfig": {
@@ -2461,7 +2461,7 @@
               },
               {
                 "color": "red",
-                "value": 90
+                "value": 85
               }
             ]
           }

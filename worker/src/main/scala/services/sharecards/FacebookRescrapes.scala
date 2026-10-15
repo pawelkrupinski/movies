@@ -239,7 +239,7 @@ class FacebookRescrapeQueue(store: FacebookRescrapeStore, country: String) exten
  * read), then — when the country has a page due and the fleet's next slot has come round — sends
  * ONE page: one Facebook holds a preview of ([[FacebookFetches]]) before any it never fetched. Sent: gone,
  * and when Facebook says the app's hourly allowance is nearly spent the fleet waits
- * [[UsageHold]] before the next. Rate-limited: the whole fleet's quota waits [[RateLimitHold]] and
+ * [[usageHold]] before the next. Rate-limited: the whole fleet's quota waits [[RateLimitHold]] and
  * the page goes back without spending an attempt. Unavailable (unreachable, a 5xx): the same for
  * [[UnavailableHold]]. Refused: that page alone retries, backing off, and is dropped after
  * [[MaxAttempts]].
@@ -318,12 +318,12 @@ class FacebookRescrapeDrain(store: FacebookRescrapeStore, graph: FacebookGraph, 
   }
 
   /** Facebook's word on how much of the app's hourly allowance is spent: at [[UsageCeiling]] the
-   *  whole fleet waits [[UsageHold]], so the next request comes after some of the hour's calls
+   *  whole fleet waits [[usageHold]], longer the further over, so the next request comes after some of the hour's calls
    *  have aged out rather than into a refusal and its hour's hold. */
   private def paceOn(usage: AppUsage): Unit = {
     metrics.appUsage(usage.percent)
     if (usage.percent >= UsageCeiling) {
-      val until = clock.instant().plusMillis(UsageHold.toMillis)
+      val until = clock.instant().plusMillis(usageHold(usage.percent).toMillis)
       logger.info(s"share card: Facebook says ${usage.percent}% of the app's hourly allowance is spent — every country waits until $until")
       store.holdSlots(until)
     }
@@ -375,11 +375,18 @@ object FacebookRescrapeDrain {
 
 
   /** The share of the app's hourly allowance (Facebook's `X-App-Usage`) at which the fleet stops
-   *  for [[UsageHold]] rather than run on into Facebook's refusal and its hour-long hold. */
-  val UsageCeiling: Int = 90
-  /** How long the fleet waits once Facebook's usage reaches [[UsageCeiling]]: the allowance is a
-   *  rolling hour, so a few minutes frees a few of its calls. */
+   *  for [[usageHold]] rather than run on into Facebook's refusal and its hour-long hold. Under 90:
+   *  one request spends ~1.5% of the allowance (2026-10-15), so the ceiling leaves room for the few
+   *  that land while the hold grows. */
+  val UsageCeiling: Int = 85
+  /** How long the fleet waits at [[UsageCeiling]]: the allowance is a rolling hour, so a few
+   *  minutes frees a few of its calls once the hour's oldest have aged out. */
   val UsageHold: FiniteDuration = 5.minutes
+  /** The wait for a reading of `percent`: [[UsageHold]], doubled for every point over
+   *  [[UsageCeiling]], at most [[RateLimitHold]]. A flat hold let every resume add one more request
+   *  while the hour's first calls had not aged out yet: 91% → 96% → 99% on 2026-10-15. */
+  def usageHold(percent: Int): FiniteDuration =
+    (UsageHold * (1L << (percent - UsageCeiling).max(0).min(4))).min(RateLimitHold)
 
   /** A refused page's wait before its next attempt: 1, 2, 4, 8 minutes. */
   def backoff(attempts: Int): FiniteDuration = 1.minute * (1L << (attempts - 1).max(0).min(10))
