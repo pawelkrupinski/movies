@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+# PRE-COMMIT: no commit is made in the ROOT checkout (the clone's main worktree). It is shared by every
+# agent session and stays clean on main; every change is committed in a worktree of its own and lands as
+# `git push origin HEAD:main` from there (CLAUDE.md: "don't work in the root checkout"). The Claude Code
+# hooks in scripts/claude-hooks/root-checkout-guard stop the edits; this stops the commit, from any tool.
+#
+# Bypass (a person, on purpose): ALLOW_ROOT_COMMIT=1 git commit ..., or git commit --no-verify.
+set -euo pipefail
+
+[ -n "${ALLOW_ROOT_COMMIT:-}" ] && exit 0
+git_dir="$(cd "$(git rev-parse --git-dir)" && pwd -P)"
+common_dir="$(cd "$(git rev-parse --git-common-dir)" && pwd -P)"
+[ "$git_dir" != "$common_dir" ] && exit 0 # a linked worktree: commit away
+
+cat >&2 <<EOF
+pre-commit: refusing to commit in the ROOT checkout ($(git rev-parse --show-toplevel)).
+Commit in a worktree of your own instead:
+  git worktree add -b <branch> ../movies-<name> origin/main
+Bypass on purpose: ALLOW_ROOT_COMMIT=1 git commit ...  (or --no-verify)
+EOF
+exit 1

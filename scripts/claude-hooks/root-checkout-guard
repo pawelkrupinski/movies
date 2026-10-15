@@ -1,0 +1,150 @@
+#!/usr/bin/env python3
+"""Keep agents out of the ROOT checkout: every change is made in a worktree of its own.
+
+The root checkout (the clone's main worktree, on `main`) is shared by every agent session and must stay
+clean -- CLAUDE.md's "don't work in the root checkout". A rule in prose was not enough: one session found
+92 files of uncommitted WIP sitting on it. This is the structural half, run as Claude Code hooks from
+.claude/settings.json (the third half, scripts/hooks/pre-commit, refuses a commit there from any tool):
+
+  edit       PreToolUse on Edit|Write|NotebookEdit: DENIES a write to a path of the root checkout that git
+             would report (tracked, or untracked and not ignored). Ignored files (.claude/settings.local.json,
+             target/, ...) and every other worktree -- .claude/worktrees/* included -- are allowed.
+  bash-pre   PreToolUse on Bash: remembers what the root checkout's `git status` and branch were...
+  bash-post  PostToolUse on Bash: ...and, when the command dirtied a new root path or switched its branch,
+             says so to the agent (exit 2), which then moves the change into its worktree and undoes it.
+             A Bash command cannot be read reliably before it runs, so this one reports after it.
+
+"The root checkout" is the main worktree of the repository this script lives in (git-dir == common dir), so the
+hook needs no path configured and leaves every other repository alone. Errors in the guard itself never block:
+it exits 0 (a broken guard must not wedge every session). Stdin is the hook's JSON; stdout/stderr per Claude Code.
+"""
+import hashlib
+import json
+import os
+import subprocess
+import sys
+import tempfile
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+
+ADVICE = (
+    "Work in a worktree of your own: `git worktree add -b <branch> ../movies-<name> origin/main`, then edit "
+    "there and `cd` into it in every command (CLAUDE.md: \"don't work in the root checkout\")."
+)
+
+
+def git(cwd, *args):
+    env = dict(os.environ, GIT_OPTIONAL_LOCKS="0")  # a status here must never take another agent's index lock
+    for k in ("GIT_DIR", "GIT_WORK_TREE", "GIT_INDEX_FILE", "GIT_COMMON_DIR"):
+        env.pop(k, None)
+    r = subprocess.run(["git", "-C", cwd, *args], capture_output=True, text=True, env=env, timeout=20)
+    return r.returncode, r.stdout
+
+
+def real(path):
+    return os.path.realpath(path)
+
+
+def root_checkout(repo):
+    """The main worktree of `repo`'s repository, or None when it has none we can find."""
+    code, out = git(repo, "rev-parse", "--path-format=absolute", "--git-common-dir")
+    if code != 0:
+        return None
+    common = real(out.strip())
+    code, out = git(repo, "worktree", "list", "--porcelain")
+    if code != 0:
+        return None
+    first = out.splitlines()[0] if out else ""
+    if not first.startswith("worktree ") or real(os.path.join(first[len("worktree "):], ".git")) != common:
+        return None  # a bare repository: no checkout to guard
+    return real(first[len("worktree "):])
+
+
+def nearest_dir(path):
+    d = path if os.path.isdir(path) else os.path.dirname(path)
+    while d and not os.path.isdir(d):
+        d = os.path.dirname(d)
+    return d or "/"
+
+
+def guard_edit(event, repo):
+    path = (event.get("tool_input") or {}).get("file_path") or (event.get("tool_input") or {}).get("notebook_path")
+    root = root_checkout(repo)
+    if not path or not root:
+        return 0
+    existing = nearest_dir(path)  # a new file (or directory) resolves through the part of its path that exists
+    path = os.path.join(real(existing), os.path.relpath(path, existing))
+    code, top = git(real(existing), "rev-parse", "--show-toplevel")
+    if code != 0 or real(top.strip()) != root:
+        return 0  # outside any checkout, or in another worktree (its own top level)
+    if git(root, "check-ignore", "-q", "--", os.path.relpath(path, root))[0] == 0:
+        return 0  # ignored: never shows in `git status`, so never strands work
+    sys.stderr.write(
+        "BLOCKED: %s is in the shared ROOT checkout (%s), which must stay clean for every agent. %s\n"
+        % (path, root, ADVICE)
+    )
+    return 2
+
+
+def root_state(root):
+    _, branch = git(root, "symbolic-ref", "-q", "--short", "HEAD")
+    _, status = git(root, "status", "--porcelain", "--untracked-files=all")
+    return branch.strip() or "(detached)", set(status.splitlines())
+
+
+def state_file(event):
+    key = "%s-%s" % (event.get("session_id") or "nosession", hashlib.sha1(HERE.encode()).hexdigest()[:8])
+    d = os.path.join(tempfile.gettempdir(), "root-checkout-guard")
+    os.makedirs(d, exist_ok=True)
+    return os.path.join(d, key + ".json")
+
+
+def guard_bash_pre(event, repo):
+    root = root_checkout(repo)
+    if root:
+        branch, status = root_state(root)
+        with open(state_file(event), "w") as f:
+            json.dump({"branch": branch, "status": sorted(status)}, f)
+    return 0
+
+
+def guard_bash_post(event, repo):
+    root = root_checkout(repo)
+    try:
+        with open(state_file(event)) as f:
+            before = json.load(f)
+    except (OSError, ValueError):
+        return 0
+    if not root:
+        return 0
+    branch, status = root_state(root)
+    new = sorted(status - set(before["status"]))
+    lines = []
+    if branch != before["branch"]:
+        lines.append("switched the ROOT checkout's branch from %s to %s -- switch it back" % (before["branch"], branch))
+    if new:
+        lines.append("left these paths dirty in the ROOT checkout (%s):" % root)
+        lines += ["  " + s for s in new[:20]] + (["  ... and %d more" % (len(new) - 20)] if len(new) > 20 else [])
+        lines.append("Move the change into your worktree and restore these in the root (only the ones you made: "
+                     "another agent's WIP stays where it is).")
+    if not lines:
+        return 0
+    sys.stderr.write("That command " + "\n".join(lines) + "\n" + ADVICE + "\n")
+    return 2
+
+
+def main(argv):
+    if len(argv) < 2 or argv[1] not in ("edit", "bash-pre", "bash-post"):
+        sys.stderr.write("usage: root-checkout-guard edit|bash-pre|bash-post [--repo DIR] < hook-event.json\n")
+        return 64
+    repo = argv[argv.index("--repo") + 1] if "--repo" in argv else HERE
+    try:
+        event = json.load(sys.stdin)
+        return {"edit": guard_edit, "bash-pre": guard_bash_pre, "bash-post": guard_bash_post}[argv[1]](event, repo)
+    except Exception as e:  # the guard failing must never block a session
+        sys.stderr.write("root_checkout_guard: %s (not blocking)\n" % e)
+        return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv))

@@ -244,6 +244,11 @@ Rules:
   checkout.** `git worktree add -b <branch> <path> origin/main`. The
   root checkout is for orchestration/inspection only — never edit
   production files there. (See the standing worktree-per-change rule.)
+  This is enforced: `.claude/settings.json` runs
+  `scripts/claude-hooks/root-checkout-guard`, which denies an Edit/Write to any
+  non-ignored root path and reports a Bash command that dirties the root or
+  switches its branch; `scripts/hooks/pre-commit` refuses a commit there
+  (`ALLOW_ROOT_COMMIT=1` for a person doing it on purpose).
 - **Never finish or yield a turn with a dirty tree you own.** Before you
   consider a task done — and before you hand off, pause, or could be
   terminated — either **commit** your changes (preferred; see the commit
