@@ -18,7 +18,7 @@ class ToolCommandLinesSpec extends AnyFlatSpec with Matchers {
     val checked = calls.flatMap(call => ToolCallers.commandLineOf(call.tool).map(call -> _))
     checked.map(_._1.tool).toSet should contain allOf ("scripts.IdentityRefit", "scripts.DecorationDiscovery", "scripts.IdentityUnifiedFit",
       "scripts.ReapOrphanedFilmRows", "scripts.IdentityCalibrate", "scripts.IdentityDecorationsLearn",
-      "scripts.RecordCorpusFixture")
+      "scripts.RecordCorpusFixture", "scripts.BuildHardClusters")
     checked.foreach { case (call, line) =>
       withClue(s"${call.file}: ${call.tool} ${call.args.mkString(" ")}") { line.accepts(call.args).isRight shouldBe true }
     }
