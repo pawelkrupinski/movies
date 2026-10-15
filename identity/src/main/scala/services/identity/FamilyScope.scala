@@ -230,8 +230,9 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
         })(s"named only by the title its feed (${id.source} ${id.id}) copied from $linkedFilm")
     }
 
-  /** Why `node` rules `id` out before its evidence is scored: a pin, a feed link's copied title, a title naming it only
-   *  by the venue's own name, a programme tag or slot, or a title billing a film festival alone. */
+  /** Why `node` rules `id` out before its evidence is scored: a pin, an overruled feed link, a short its feed links
+   *  another film beside, a feed link's copied title, a title naming it only by the venue's own name, a programme tag or
+   *  slot, a title billing a film festival alone, or a billing as a silent film of a sound-era film. */
   private def denialByNode(node: EvidenceNode, id: Int): Option[String] =
     Option.when(pins.deniedFilms(node.listings.head.key)(id))("pinned never this film")
       .orElse(overruled(node).filter(_.film == id).map(_.denial))

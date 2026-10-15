@@ -5,8 +5,8 @@ import java.util.Locale
 /**
  * The single source of truth for peeling a screen-format / language tag off a
  * film title — `(Napisy PL)`, `[2D DUBBING]`, `- 2D dubbing`, `/napisy`,
- * `…_3D`, a bare trailing `NAPISY 2D` — into display tokens (2D / 3D / IMAX /
- * 4DX / ATMOS / DUB / NAP / LEK) while rewriting the title to its clean base (the format
+ * `…_3D`, a bare trailing `NAPISY 2D` — into display tokens ([[FormatToken]]'s values:
+ * 2D / 3D / IMAX / 4DX / ATMOS / DUB / NAP / LEK / SUB, prints and language versions among them) while rewriting the title to its clean base (the format
  * words AND their adjacent brackets / slashes / dashes removed). With them, stacked in any order, the showing's
  * notes that carry no badge: a box office's certificate and running time, a note between asterisks, a German
  * re-release mark.
@@ -232,7 +232,7 @@ object FormatTags {
    *  whole `(...)`/`[...]` tag) into `out`. */
   private def captureTagWords(chunk: String, out: scala.collection.mutable.Set[String]): Unit =
     chunk.split("""[\s\[\]()/:,*]+""").iterator
-      .map(w => bareWord(w))
+      .map(bareWord)
       .filter(FormatToken.contains)
       .foreach(out.add)
 

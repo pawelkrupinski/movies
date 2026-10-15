@@ -75,11 +75,11 @@ final case class Listing(
     // Findlay} is her RSC Live record, US "Royal Opera House: Otello" [190′] the ROH's 2017 one, which the season's Met
     // records of the work would only stand beside
     screenedSeason.filter(_ => year.isEmpty && directors.isEmpty && runtime.isEmpty)
-  /** The season a stage work billed with neither its season nor a year screens in, whatever else it states: what tells
+  /** The season a stage work billed with no season and no year of its own screens in, whatever else it states: what tells
    *  apart a house's records of the work's SEASONS ([[Acceptance.seasonRecord]]), where a credit or a running time names
    *  no season — UK "Royal Ballet and Opera: Tosca" {Oliver Mears} [195′] ×123, screening on 5 May 2027, is the house's
-   *  2026/27 relay of his production, not its 2025/26 one, which alone credits him. Never searched with its work, as
-   *  [[broadcastSeason]] is.
+   *  2026/27 relay of his production, not its 2025/26 one, which alone credits him. Searched with its work only where the
+   *  billing names its house ([[StageRelays.stageWorkQueries]]); [[broadcastSeason]] is searched wherever it is set.
    *
    *  So is the season of one stating a year BEFORE that season opens: a relay screening in a later season than its year
    *  dates the staging's premiere by it, not the broadcast — UK Aldeburgh's "The Royal Ballet: Romeo & Juliet" [2025],

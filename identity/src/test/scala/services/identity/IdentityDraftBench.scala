@@ -9,9 +9,9 @@ import java.time.{Instant, LocalDateTime}
 
 /** A steady identity-projection draft at worker-us's size (~100k listings, ~2.1k films, a skewed
  *  venue spread), timed and allocation-counted per tick: run with
- *  `sbt "common/Test/runMain services.identity.IdentityDraftBench"`. Not a spec — a measuring tool. */
+ *  `sbt "identity/Test/runMain services.identity.IdentityDraftBench"`. Not a spec — a measuring tool. */
 object IdentityDraftBench {
-  // `sbt "common/Test/runMain services.identity.IdentityDraftBench 8 300 <dir> [adopt]"` projects 8 ticks, re-reading 300 venues
+  // `sbt "identity/Test/runMain services.identity.IdentityDraftBench 8 300 <dir> [adopt]"` projects 8 ticks, re-reading 300 venues
   // a tick, scopes after the first as production does, and writes class histograms of the state kept between ticks to
   // <dir> (optional); a trailing `whole` projects the whole corpus every tick. `shifts=N` moves N rows a tick (200);
   // `churn=N` runs N young collections of garbage after each tick, as the ~2 minutes between two of worker-us's light

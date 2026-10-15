@@ -321,7 +321,7 @@ final case class UnifiedRules(version: String, guards: Seq[String], fill: Seq[St
 object UnifiedRules {
   implicit val format: OFormat[UnifiedRules] = Json.using[Json.WithDefaultValues].format[UnifiedRules]
   /** Does the rule `signal` fire on a contender's `features`: every `&`-joined term does — a signal above 0, or, written
-   *  `!signal`, one that is 0 ("family.filmweb.took&!model.unscored"). */
+   *  `!signal`, one that is 0 ("family.feedLink&!model.unscored"). */
   def fires(signal: String, features: String => Double): Boolean =
     signal.split('&').forall(term => if (term.startsWith("!")) features(term.drop(1)) == 0.0 else features(term) > 0.0)
   val ResourcePath = "identity-unified-rules.json"

@@ -749,7 +749,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
   }
 
   /** Of several season records of one stage work, the one season the listing's screenings broadcast it in
-   *  ([[IdentityMeasures.Listing.broadcastSeason]]) when exactly that season's records are among them; all of them
+   *  ([[IdentityMeasures.Listing.screenedSeason]]) when exactly that season's records are among them; all of them
    *  otherwise. A relay airs on its house's published dates: UK "Royal Ballet & Opera: Swan Lake" (recording
    *  38342304766, ~30 venues billing no season or year), screening on 22 April 2027, is the 2026/27 record, not the
    *  house's 2024/25 one. */
