@@ -26,6 +26,8 @@ code="${1:?usage: restore-enrichment-tree.sh <code> <mode> <stage dir>}"
 mode="${2:?usage: restore-enrichment-tree.sh <code> <mode> <stage dir>}"
 stage="${3:?usage: restore-enrichment-tree.sh <code> <mode> <stage dir>}"
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=scripts/tool-conventions.sh
+. "$here/../../scripts/tool-conventions.sh" # gh_download
 
 TAG="${FIXTURE_RELEASE_TAG:?FIXTURE_RELEASE_TAG names the rolling release}"
 # The pinned pair's tree for a hermetic leg, the working tree for a recording one. Unpacked by
@@ -35,17 +37,20 @@ ASSET="${KINOWO_CONVERGENCE_TREE_ASSET:-enrichment-$code.tar.*}"
 archives="$stage.archive"
 mkdir -p "$archives" "$stage"
 
-# Only gh's own "no assets match" means the release lacks the tree. Any other failure — a network
-# blip, a 5xx, an expired token — is a read that did not happen, not an empty release: a recording
-# that took it for one would fetch every lookup live and publish that over the tree it never read.
-download_errors="$archives.stderr"
-if gh release download "$TAG" --pattern "$ASSET" --dir "$archives" --clobber 2>"$download_errors"; then
+# Only gh's own "no assets match" means the release lacks the tree (gh_download's 3). Any other failure — a
+# network blip, a 5xx, an expired token — is a read that did not happen, not an empty release: a recording
+# that took it for one would fetch every lookup live and publish that over the tree it never read. gh_download
+# bounds each attempt (RESTORE_TREE_DOWNLOAD_TIMEOUT seconds, 1200) and asks a failed read again: one GitHub 5xx
+# used to fail the leg's setup.
+gh_download "${RESTORE_TREE_DOWNLOAD_TIMEOUT:-1200}" release download "$TAG" --pattern "$ASSET" --dir "$archives" --clobber
+download_status=$?
+if [ "$download_status" -eq 0 ]; then
     # Both spellings of the working tree only in the moment between a first zstd publish and its
     # deleting the gzip it replaced: the zstd one is the newer.
     if compgen -G "$archives/*.tar.zst" >/dev/null; then rm -f "$archives"/*.tar.gz; fi
     echo "enrichment tree $ASSET from release $TAG"
-elif ! grep -q 'no assets match' "$download_errors"; then
-    echo "::error::could not read release $TAG for $ASSET: $(tr '\n' ' ' < "$download_errors")"
+elif [ "$download_status" -ne 3 ]; then
+    echo "::error::could not read release $TAG for $ASSET (gh's error above)"
     exit 4
 elif [ "$mode" != "record" ]; then
     echo "::error::the pinned tree $ASSET is not in release $TAG (it keeps the newest five) — a hermetic leg replays nothing else"

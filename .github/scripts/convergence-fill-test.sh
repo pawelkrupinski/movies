@@ -115,6 +115,9 @@ check "a fill whose download fails once and then answers is laid over" "0" \
 
 check "the NEWEST refetch list of the pair is the one read" "2" "$(run gaps us 100 "$work/gaps.tsv" 2>/dev/null)"
 check "...written where it was asked for" "true" "$(grep -q 'movie/b/' "$work/gaps.tsv" && echo true || echo false)"
+rm -f "$work/failed-download-once"
+check "a refetch list whose download fails once is asked again, not read as no gaps" "2" \
+  "$(STUB_DOWNLOAD_FAILS_ONCE=1 run gaps us 100 "$work/gaps-blip.tsv" 2>/dev/null)"
 check "a pair with no list has no gaps" "0" "$(run gaps es 100 "$work/none.tsv" 2>/dev/null)"
 # A re-run's list is a later attempt of the same run, and newer than its first attempt's.
 printf '# 1\nc\tGET\thttps://www.flicks.us/movie/c/\n' > "$work/release/refetch-us-100-201-2.tsv"

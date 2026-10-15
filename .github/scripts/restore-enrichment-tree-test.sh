@@ -21,6 +21,7 @@ cat > "$work/bin/gh" <<'STUB'
 #!/usr/bin/env bash
 if [ "$1 $2" = "release download" ]; then
   [ -z "${STUB_UNREACHABLE:-}" ] || { echo "HTTP 502: Bad Gateway" >&2; exit 1; }
+  [ ! -f "${STUB_BLIP:-/nonexistent}" ] || { rm -f "$STUB_BLIP"; echo "HTTP 500: Internal Server Error" >&2; exit 1; }
   [ -n "${STUB_ASSET:-}" ] || { echo "no assets match the file pattern" >&2; exit 1; }
   while [ "$#" -gt 0 ]; do case "$1" in --dir) dir="$2" ;; --pattern) pattern="$2" ;; esac; shift; done
   case "$pattern" in fill-*) cp "$STUB_FILL" "$dir/$pattern"; exit 0 ;; esac
@@ -35,7 +36,7 @@ chmod +x "$work/bin/gh"
 
 # restore <label> <mode> [asset] -> exit status; the stage is $work/stage-<label>, the output $work/out-<label>
 restore() {
-  STUB_ASSET="${3:-}" PATH="$work/bin:$PATH" FIXTURE_RELEASE_TAG=convergence-fixtures \
+  STUB_ASSET="${3:-}" PATH="$work/bin:$PATH" FIXTURE_RELEASE_TAG=convergence-fixtures GH_DOWNLOAD_BACKOFF=0 \
     bash "$REPO_ROOT/.github/scripts/restore-enrichment-tree.sh" uk "$2" "$work/stage-$1" > "$work/out-$1" 2>&1
   echo $?
 }
@@ -66,6 +67,9 @@ check "...and asked nothing but the release (no run artifacts publish a tree any
 status="$(STUB_UNREACHABLE=1 restore unreachable record)"
 check "a recording whose release cannot be read fails, rather than fetching everything live" "4" "$status"
 check "...and says why" "true" "$(grep -q 'HTTP 502' "$work/out-unreachable" && echo true || echo false)"
+touch "$work/blip"
+check "a release read that fails once (a GitHub 5xx) is asked again, not the leg's setup failed" "0 recorded" \
+  "$(STUB_BLIP="$work/blip" restore blip hermetic "$work/enrichment-uk.tar.zst") $(cat "$work/stage-blip/test/resources/fixtures/enrichment-uk/api.themoviedb.org/search" 2>/dev/null)"
 status="$(restore broken record "$work/enrichment-uk-broken.tar.zst")"
 check "an archive that will not unpack fails, and not as a missing pin" "true" \
   "$([ "$status" -ne 0 ] && [ "$status" -ne 3 ] && echo true || echo false)"
