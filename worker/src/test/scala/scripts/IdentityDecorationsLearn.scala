@@ -3,7 +3,8 @@ package scripts
 import models.Country
 import play.api.libs.json.Json
 import services.identity.{TitleDecorations, TitleDecorationsLearner}
-import scripts.IdentityCalibrationData.{ProdSnapshot, TmdbAnswers, languageOf, listings, queries, responsesFile}
+import scripts.IdentityCalibrationData.{ProdSnapshot, listings, queries}
+import tools.CommandLine
 
 import java.nio.file.{Files, Path, Paths}
 
@@ -22,32 +23,28 @@ object IdentityDecorationsLearn {
 
   val Artefact: Path = Paths.get("identity/src/main/resources", TitleDecorations.ResourcePath)
 
+  val commandLine: CommandLine = CommandLine("IdentityDecorationsLearn", "Learns the title decorations from every country's recorded corpora.",
+    RecordedCorpora.options ++ Seq(
+      CommandLine.Value("out", "json", "the artefact relearned on top of and written", default = Some(Artefact.toString)),
+      CommandLine.Value("version", "v", "the version the artefact is filed under", default = Some("unversioned")))*)
+
   def main(args: Array[String]): Unit = {
-    val opts = args.grouped(2).collect { case Array(k, v) => k.stripPrefix("--") -> v }.toMap
-    def path(k: String) = opts.get(k).map(Paths.get(_))
-    val corpora  = path("corpora").getOrElse(sys.error("--corpora <dir of cinema-scrapes-<cc>.json.gz>"))
-    val fixtures = path("fixtures").getOrElse(sys.error("--fixtures <dir of enrichment-<cc>/ trees>"))
-    val hard     = path("hard-clusters").getOrElse(Paths.get("test/resources/fixtures/corpus"))
-    val out      = path("out").getOrElse(Artefact)
+    val arguments = commandLine.parseOrExit(args)
+    val out      = arguments.requiredPath("out")
     // Relearned on top of what `out` holds: a recording sees only that week's programmes (`TitleDecorationsLearner.accumulate`).
     val earlier = Option.when(Files.exists(out))(Json.parse(Files.readString(out)).as[TitleDecorations.Artefact])
-    write(learn(corpora, fixtures, hard, opts.getOrElse("version", "unversioned"), earlier.fold(Seq.empty[TitleDecorations.Learned])(_.decorations)), out)
+    write(learn(RecordedCorpora.of(arguments), arguments.required("version"), earlier.fold(Seq.empty[TitleDecorations.Learned])(_.decorations)), out)
     println(s"wrote $out")
   }
 
   /** Every corpus listing's venue and titles, and every recorded film record's titles, of every
    *  country, learned from as one pool. */
-  def learn(corpora: Path, fixtures: Path, hardClusters: Path, version: String,
-            earlier: Seq[TitleDecorations.Learned] = Nil): TitleDecorations.Artefact = {
+  def learn(inputs: RecordedCorpora, version: String, earlier: Seq[TitleDecorations.Learned] = Nil): TitleDecorations.Artefact = {
     val perCountry = Country.all.map { country =>
       val cc = country.code
-      val sources = Seq(
-        "full" -> corpora.resolve(s"cinema-scrapes-$cc.json.gz"),
-        "hard-clusters" -> hardClusters.resolve(s"cinema-scrapes-hard-clusters-$cc.json.gz")).filter(p => Files.exists(p._2))
-      val observed = listings(country, sources, ProdSnapshot(Map.empty, Nil), 0)
+      val observed = listings(country, inputs.sources(country), ProdSnapshot(Map.empty, Nil), 0)
       val titled = observed.flatMap(o => (Seq(o.listing.title) ++ o.listing.rawTitle).distinct.map(o.venue -> _))
-      val answers = new TmdbAnswers(Seq(fixtures.resolve(s"enrichment-$cc")).filter(Files.isDirectory(_)),
-        responsesFile(hardClusters.resolve(s"hard-clusters-responses-$cc.json.gz")), languageOf(country))
+      val answers = inputs.answers(country)
       // Whether each listing title's own searches were all recorded and all found nothing.
       val searches = observed.flatMap { o =>
         val qs = queries(o.listing)

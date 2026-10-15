@@ -17,10 +17,27 @@ class ToolCommandLinesSpec extends AnyFlatSpec with Matchers {
     calls.map(_.tool) should contain allOf ("scripts.IdentityRefit", "scripts.DecorationDiscovery", "scripts.IdentityUnifiedFit")
     val checked = calls.flatMap(call => ToolCallers.commandLineOf(call.tool).map(call -> _))
     checked.map(_._1.tool).toSet should contain allOf ("scripts.IdentityRefit", "scripts.DecorationDiscovery", "scripts.IdentityUnifiedFit",
-      "scripts.ReapOrphanedFilmRows")
+      "scripts.ReapOrphanedFilmRows", "scripts.IdentityCalibrate", "scripts.IdentityDecorationsLearn")
     checked.foreach { case (call, line) =>
       withClue(s"${call.file}: ${call.tool} ${call.args.mkString(" ")}") { line.parse(call.args).isRight shouldBe true }
     }
+  }
+
+  "IdentityCalibrate and IdentityDecorationsLearn" should "read the recorded corpora alike, the hard clusters defaulted" in {
+    Seq(IdentityCalibrate.commandLine, IdentityDecorationsLearn.commandLine).foreach { line =>
+      RecordedCorpora.of(parsed(line, "--corpora", "c", "--fixtures", "f")) shouldBe
+        RecordedCorpora(Paths.get("c"), Paths.get("f"), Paths.get("test/resources/fixtures/corpus"))
+      an[CommandLine.InvalidArguments] should be thrownBy RecordedCorpora.of(parsed(line, "--fixtures", "f"))
+    }
+  }
+
+  "IdentityCalibrate" should "read --monotone-only with its artefact anywhere, and the epsilon as a number or certified" in {
+    val monotone = parsed(IdentityCalibrate.commandLine, "--monotone-only", "w.json")
+    monotone.flag("monotone-only") shouldBe true
+    monotone.positional("artefact") shouldBe Some("w.json")
+    parsed(IdentityCalibrate.commandLine, "--corpora", "c", "--epsilon", "0.01").double("epsilon") shouldBe Some(0.01)
+    parsed(IdentityCalibrate.commandLine).get("epsilon") shouldBe Some("certified")
+    parsed(IdentityDecorationsLearn.commandLine).requiredPath("out") shouldBe IdentityDecorationsLearn.Artefact
   }
 
   "IdentityRefit" should "read the weekly workflow's command line, a bare --apply first" in {

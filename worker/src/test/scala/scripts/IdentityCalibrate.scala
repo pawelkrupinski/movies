@@ -8,6 +8,7 @@ import services.identity.agreement.Agreement
 import services.identity.IdentityCalibration.{Bin, Calibration, CannotLinkRule, Condition, ScopeModel, SignalWeights, Threshold}
 import services.identity.IdentityMeasures.{Category, Film, Measure, Missing, Number}
 import scripts.IdentityCalibrationData.*
+import tools.CommandLine
 
 import java.io.{BufferedWriter, OutputStreamWriter}
 import java.nio.charset.StandardCharsets
@@ -51,42 +52,54 @@ object IdentityCalibrate {
   /** Where a refit writes: the RESOLVER's artefact, never the rating gate's pinned one. */
   val ResolverArtefact: Path = Paths.get("identity/src/main/resources", IdentityCalibration.ResolverResourcePath)
 
-  final case class Config(corpora: Path, fixtures: Path, hardClusters: Path, prod: Option[Path], weightsOut: Path,
+  final case class Config(inputs: RecordedCorpora, prod: Option[Path], weightsOut: Path,
                           labelsOut: Path, reportDir: Path, epsilon: Option[Double], countries: Seq[String], version: String,
                           cases: Option[Path] = None, decorationsOut: Path = IdentityDecorationsLearn.Artefact)
 
+  val commandLine: CommandLine = CommandLine("IdentityCalibrate", "Derives the identity resolver's weights, calibration, thresholds and cannot-links from the recorded corpora.",
+    RecordedCorpora.options ++ Seq(
+      CommandLine.Value("prod", "dir", "the production snapshots prod-<db>.jsonl"),
+      CommandLine.Value("weights", "json", "where the resolver artefact is written", default = Some(ResolverArtefact.toString)),
+      CommandLine.Value("labels", "json.gz", "where the labelled set is written", default = Some("test/resources/fixtures/identity/identity-labels.json.gz")),
+      CommandLine.Value("report", "dir", "where the report goes", default = Some("target/identity-calibration")),
+      // "certified": a cannot-link must never have fired on a same-film unit; a number relaxes that to a bound on the
+      // false-veto rate.
+      CommandLine.Value("epsilon", "certified|rate", "a cannot-link's false-veto bound", default = Some("certified")),
+      CommandLine.Value("countries", "cc,…", "the countries relearned (default: every country)"),
+      CommandLine.Value("version", "v", "the version the artefact is filed under", default = Some("unversioned")),
+      // A JSONL of {"listingKey", "tmdbId", "name"}: evaluation only, never an input to a weight.
+      CommandLine.Value("cases", "jsonl", "cases whose two models' probabilities the report lists side by side"),
+      CommandLine.Value("decorations", "json", "where the title decorations are written", default = Some(IdentityDecorationsLearn.Artefact.toString)),
+      CommandLine.Value("refit-signal", "signal", "refit that one listing-film table, and the cannot-links reading it, in place"),
+      CommandLine.Flag("monotone-only", "refit the artefact's directed numeric signals from their own counts, in place: no corpus")
+    )*).withPositionals(CommandLine.Positional("artefact", "with --monotone-only: the artefact refitted (default: the resolver's)"))
+
   def main(args: Array[String]): Unit = {
-    // `--monotone-only [weights path]`: the shipped artefact's directed numeric signals refitted by
-    // [[monotone]] from their own counts, in place — no corpus, no relearn ([[monotoneOnly]]).
-    if (args.headOption.contains("--monotone-only")) {
-      val file  = args.lift(1).map(Paths.get(_)).getOrElse(ResolverArtefact)
-      val model = Json.parse(Files.readString(file)).as[IdentityCalibration]
-      Files.writeString(file, Json.prettyPrint(Json.toJson(monotoneOnly(model))) + "\n")
-      println(s"refitted monotone: $file")
-      return
+    val arguments = commandLine.parseOrExit(args)
+    if (arguments.flag("monotone-only")) refitMonotoneInPlace(arguments.positional("artefact").fold(ResolverArtefact)(Paths.get(_)))
+    else {
+      if (arguments.positionals.nonEmpty) arguments.fail(s"${arguments.positionals.head}: an artefact is named only with --monotone-only")
+      val cfg = Config(
+        inputs         = RecordedCorpora.of(arguments),
+        prod           = arguments.path("prod"),
+        weightsOut     = arguments.requiredPath("weights"),
+        labelsOut      = arguments.requiredPath("labels"),
+        reportDir      = arguments.requiredPath("report"),
+        epsilon        = arguments.get("epsilon").filter(_ != "certified").flatMap(_ => arguments.double("epsilon")),
+        countries      = arguments.get("countries").map(_.split(",").toSeq).getOrElse(Country.all.map(_.code)),
+        version        = arguments.required("version"),
+        cases          = arguments.path("cases"),
+        decorationsOut = arguments.requiredPath("decorations"))
+      arguments.get("refit-signal").fold(run(cfg))(refitSignal(cfg, _))
     }
-    val opts = args.grouped(2).collect { case Array(k, v) => k.stripPrefix("--") -> v }.toMap
-    def path(k: String) = opts.get(k).map(Paths.get(_))
-    val cfg = Config(
-      corpora      = path("corpora").getOrElse(sys.error("--corpora <dir of cinema-scrapes-<cc>.json.gz>")),
-      fixtures     = path("fixtures").getOrElse(sys.error("--fixtures <dir of enrichment-<cc>/ trees>")),
-      hardClusters = path("hard-clusters").getOrElse(Paths.get("test/resources/fixtures/corpus")),
-      prod         = path("prod"),
-      weightsOut   = path("weights").getOrElse(ResolverArtefact),
-      labelsOut    = path("labels").getOrElse(Paths.get("test/resources/fixtures/identity/identity-labels.json.gz")),
-      reportDir    = path("report").getOrElse(Paths.get("target/identity-calibration")),
-      // Default "certified": a cannot-link must never have fired on a same-film unit. A number
-      // relaxes that to a bound on the false-veto rate.
-      epsilon      = opts.get("epsilon").filter(_ != "certified").map(_.toDouble),
-      countries    = opts.get("countries").map(_.split(",").toSeq).getOrElse(Country.all.map(_.code)),
-      version      = opts.getOrElse("version", "unversioned"),
-      // A JSONL of {"listingKey", "tmdbId", "name"}: cases whose two models' probabilities the
-      // report lists side by side — evaluation only, never an input to a weight.
-      cases        = path("cases"),
-      decorationsOut = path("decorations").getOrElse(IdentityDecorationsLearn.Artefact))
-    // `--refit-signal <listing-film signal>`: that one table, and the cannot-links reading it, refitted in place
-    // ([[refitSignal]]) — the rest of the artefact, its calibration map and its cut, as they are.
-    opts.get("refit-signal").fold(run(cfg))(refitSignal(cfg, _))
+  }
+
+  /** The artefact's directed numeric signals refitted by [[monotone]] from their own counts, in place — no corpus, no
+   *  relearn ([[monotoneOnly]]). */
+  private def refitMonotoneInPlace(file: Path): Unit = {
+    val model = Json.parse(Files.readString(file)).as[IdentityCalibration]
+    Files.writeString(file, Json.prettyPrint(Json.toJson(monotoneOnly(model))) + "\n")
+    println(s"refitted monotone: $file")
   }
 
   // ── labels ────────────────────────────────────────────────────────────────────────────
@@ -134,13 +147,10 @@ object IdentityCalibrate {
 
   private def load(cfg: Config, country: Country, startIdx: Int, decorations: TitleDecorations): CountryData = {
     val cc = country.code
-    val corpora = Seq(
-      "full" -> cfg.corpora.resolve(s"cinema-scrapes-$cc.json.gz"),
-      "hard-clusters" -> cfg.hardClusters.resolve(s"cinema-scrapes-hard-clusters-$cc.json.gz")).filter(p => Files.exists(p._2))
+    val corpora = cfg.inputs.sources(country)
     val prod = cfg.prod.map(d => prodSnapshot(d.resolve(s"prod-${country.mongoDb}.jsonl"))).getOrElse(ProdSnapshot(Map.empty, Nil))
     val obs = listings(country, corpora, prod, startIdx, decorations).toIndexedSeq
-    val answers = new TmdbAnswers(Seq(cfg.fixtures.resolve(s"enrichment-$cc")).filter(Files.isDirectory(_)),
-      responsesFile(cfg.hardClusters.resolve(s"hard-clusters-responses-$cc.json.gz")), languageOf(country))
+    val answers = cfg.inputs.answers(country)
     println(s"[$cc] ${obs.size} listings (${obs.groupMapReduce(_.source)(_ => 1)(_ + _)}), ${prod.films.size} production films")
 
     // Candidate pools: every film the listing's own title queries returned, best rank kept.
@@ -796,7 +806,7 @@ object IdentityCalibrate {
         model.cannotLinks.filterNot(rule => rule.scope == scope && rule.all.exists(c => c.signal == signal || c.signal == ruleNumber)) ++
           learned.map(_._1)),
       provenance = model.provenance + (s"refit:$signal" ->
-        s"scripts.IdentityCalibrate --refit-signal $signal over ${cfg.corpora.getFileName} and production ${cfg.prod.fold("not used")(_.getFileName.toString)}"))
+        s"scripts.IdentityCalibrate --refit-signal $signal over ${cfg.inputs.corpora.getFileName} and production ${cfg.prod.fold("not used")(_.getFileName.toString)}"))
     Files.writeString(cfg.weightsOut, Json.prettyPrint(Json.toJson(refitted)) + "\n")
     println(s"$signal (${table.positives} same / ${table.negatives} different units):")
     table.weights.bins.foreach(bin => println(f"  ${bin.atLeast.fold("-inf")(_.toString)}..${bin.atMost.fold("inf")(_.toString)}: ${bin.weight}%+.3f (${bin.positives} / ${bin.negatives})"))
@@ -814,7 +824,7 @@ object IdentityCalibrate {
     Files.createDirectories(cfg.reportDir)
     // The venue decorations first (`IdentityDecorationsLearn`): the title shapes every pair below is
     // measured on read them, as the resolver's do.
-    val decorations = IdentityDecorationsLearn.learn(cfg.corpora, cfg.fixtures, cfg.hardClusters, cfg.version)
+    val decorations = IdentityDecorationsLearn.learn(cfg.inputs, cfg.version)
     IdentityDecorationsLearn.write(decorations, cfg.decorationsOut)
     val Prepared(data, obsAll, familyOf, split, evidence, lfRows, llRows) = prepare(cfg, decorations.decorationsOf)
 
@@ -1253,7 +1263,7 @@ object IdentityCalibrate {
     } finally out.close()
 
     // The evidence classes are measured on the labels just written, against the artefact just written.
-    IdentityEvidenceClasses.derive(cfg.fixtures, cfg.labelsOut, cfg.weightsOut, s"the --fixtures trees (${cfg.fixtures.getFileName})")
+    IdentityEvidenceClasses.derive(cfg.inputs.fixtures, cfg.labelsOut, cfg.weightsOut, s"the --fixtures trees (${cfg.inputs.fixtures.getFileName})")
 
     val reportJs = Json.obj("listingFilm" -> lfQuality, "listingListing" -> llQuality,
       "existingVetoes" -> Json.obj("listingFilm" -> lfExisting, "listingListing" -> llExisting))
