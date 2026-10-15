@@ -83,7 +83,9 @@ classpath=$(sed $'s/\x1b\\[[0-9;]*[A-Za-z]//g' "$sbt_out" | grep -E '^/[^ ]*(\.j
 [ -n "$classpath" ] || { tail -20 "$sbt_out" >&2; die "sbt exported no worker/Test classpath (above)"; }
 
 # 2. the measure, in its own JVM
-log "measuring every step on $threads thread(s) — the log in $measure_log"
+# the processor too: hosted runners differ in it, and a run's time is read against it
+cpu=$( { lscpu 2>/dev/null | sed -n 's/^Model name: *//p'; sysctl -n machdep.cpu.brand_string 2>/dev/null; } | head -1)
+log "measuring every step on $threads thread(s) of $(getconf _NPROCESSORS_ONLN) processors (${cpu:-cpu unknown}) — the log in $measure_log"
 java "-Xmx${IDENTITY_REFIT_HEAP:-12g}" -XX:AutoBoxCacheMax=16384 -Djava.awt.headless=true -Duser.language=en -Duser.country=US \
     "-Xlog:gc,gc+cpu:file=$gc_log:uptime" "-XX:StartFlightRecording=filename=$jfr_file,settings=profile" -cp "$classpath" scripts.IdentityRefit --apply --report "$report" --threads "$threads" ${relearn:+--relearn "$relearn"} 2>&1 | tee "$measure_log"
 [ -z "${GITHUB_STEP_SUMMARY:-}" ] || cat "$report" >> "$GITHUB_STEP_SUMMARY"
