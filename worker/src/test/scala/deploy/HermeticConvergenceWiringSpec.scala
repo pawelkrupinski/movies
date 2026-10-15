@@ -171,7 +171,8 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
   "the publish action" should "upload the pinned tree in the same call as the working tree, not after it" in {
     val tree = publishFunction("publish_tree")
     val pin  = publishFunction("pin_pair")
-    tree should include(""""$RELEASE" upload "$TAG" "$ARCHIVE" "${pin[@]}" --clobber""")
+    // `${pin[@]+…}`: an empty pin under `set -u` on macOS bash 3.2 is otherwise an unbound variable.
+    tree should include(""""$RELEASE" upload "$TAG" "$ARCHIVE" ${pin[@]+"${pin[@]}"} --clobber""")
     withClue("the pin step must not upload the tree a second time: ") {
       pin should not include ".tar.zst"
       pin should not include "enrichment-upload/"
