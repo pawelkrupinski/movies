@@ -161,6 +161,16 @@ object RepoFile {
     (lines(start) +: body).mkString("\n")
   }
 
+  /** The body of the top-level shell function `name` in the script at `path` — from its `name() {`
+   *  line to the closing `}` at column 0 — for a spec asserting on what one subcommand of an
+   *  extracted CI script does, which the script's other functions must not satisfy. */
+  def shellFunction(path: String, name: String): String = {
+    val lines = read(path).linesIterator.toSeq
+    val start = lines.indexOf(s"$name() {")
+    require(start >= 0, s"$path defines no top-level `$name() {`")
+    lines.drop(start + 1).takeWhile(_ != "}").mkString("\n")
+  }
+
   /** One `run:` of a workflow or composite action: the shell it runs (comment lines dropped) and
    *  its step's `working-directory`, if it names one. */
   final case class RunStep(script: String, workingDirectory: Option[String])

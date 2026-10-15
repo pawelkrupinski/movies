@@ -19,19 +19,10 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
   private lazy val recorder = RepoFile.read(".github/workflows/record-scrape-fixtures.yml")
   private lazy val setup    = RepoFile.read(".github/actions/convergence-setup/action.yml")
   private lazy val publish  = RepoFile.read(".github/actions/convergence-publish/action.yml")
-  private lazy val publisher = RepoFile.read(".github/scripts/convergence-publish.sh")
-  /** One shell function's body in the publish script: what the `tree` and `pin` commands run. */
-  private def publishes(function: String): String = {
-    val start = RepoFile.positionOf(publisher, s"\n$function() {\n")
-    publisher.substring(start, publisher.indexOf("\n}\n", start))
-  }
   private lazy val verdictCallers = Seq(RepoFile.read(".github/workflows/identity-model-convergence.yml"))
-
-  /** One subcommand's function in the script the setup's fixture steps run: from `<name>() {` to its closing `}`. */
-  private def scriptFunction(name: String): String = {
-    val lines = RepoFile.read(".github/scripts/convergence-setup.sh").linesIterator.toSeq
-    lines.dropWhile(_ != s"$name() {").drop(1).takeWhile(_ != "}").mkString("\n")
-  }
+  /** What one subcommand of the scripts the setup and publish actions run does. */
+  private def setupFunction(name: String)   = RepoFile.shellFunction(".github/scripts/convergence-setup.sh", name)
+  private def publishFunction(name: String) = RepoFile.shellFunction(".github/scripts/convergence-publish.sh", name)
 
   private def directives(yaml: String): String =
     yaml.linesIterator.filterNot(_.trim.startsWith("#")).mkString("\n")
@@ -64,12 +55,12 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     val resolveStep = RepoFile.step(setup, "Resolve the recorded pair to replay")
     resolveStep should not include "continue-on-error"
     resolveStep should include(".github/scripts/convergence-setup.sh pair")
-    val resolve = scriptFunction("pair")
+    val resolve = setupFunction("pair")
     resolve should include("exit 1")
     resolve should include("hermetic-$code.txt")
     RepoFile.step(publish, "Pin this recording as the pair hermetic legs replay") should include(
       """convergence-publish.sh pin "$CODE"""")
-    publishes("pin_pair") should include("hermetic-$code.txt")
+    publishFunction("pin_pair") should include("hermetic-$code.txt")
   }
 
   // ...nor when the pinned pair has EXPIRED. The rolling release keeps the two newest trees, so an
@@ -83,7 +74,7 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     }
     val corpusStep = RepoFile.step(setup, "Restore the recorded scrape corpus")
     corpusStep should include(".github/scripts/convergence-setup.sh corpus")
-    exitsAfterErrors("the corpus", scriptFunction("corpus"), "exit 1")
+    exitsAfterErrors("the corpus", setupFunction("corpus"), "exit 1")
     // ...and the exit must END the leg: a step that continues on error swallowed it, and run
     // 36968897208 replayed an expired pin's empty tree into five legs of "not recorded" 404s.
     corpusStep.linesIterator.map(_.trim).filter(_.startsWith("continue-on-error:")).foreach(_ shouldBe "continue-on-error: ${{ inputs.mode == 'record' }}")
@@ -94,7 +85,7 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     val unpackStep = RepoFile.step(setup, "Unpack whichever fixtures are present")
     unpackStep should not include "continue-on-error"
     unpackStep should include(".github/scripts/convergence-setup.sh unpack")
-    val unpack = scriptFunction("unpack")
+    val unpack = setupFunction("unpack")
     unpack should include("""if [ "$tree_status" -ne 0 ] && ! { [ "$tree_status" -eq 3 ] && [ "$mode" = "record" ]; }; then""")
     unpack should include("""exit "$tree_status"""")
   }
@@ -168,9 +159,9 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     treeStep should include("COMPLETE: ${{ inputs.complete }}")
     treeStep should include("""convergence-publish.sh tree "$CODE" "$COMPLETE" "$LOG"""")
     // The decision is taken where the pinned tree is uploaded, and handed to the marker's step.
-    publishes("publish_tree") should include("""boot complete""")
-    publishes("publish_tree") should include("""[ "$complete" = "true" ]""")
-    publishes("pin_pair") should include("""pinned="${KINOWO_PINNED_TREE:-}"""")
+    publishFunction("publish_tree") should include("""boot complete""")
+    publishFunction("publish_tree") should include("""[ "$complete" = "true" ]""")
+    publishFunction("pin_pair") should include("""pinned="${KINOWO_PINNED_TREE:-}"""")
     RepoFile.block(leg, "convergence") should include("complete: ${{ inputs.mode == 'record' && steps.suite.outcome != 'cancelled' }}")
   }
 
@@ -178,8 +169,8 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
   // uploading the pinned copy after the working tree was a second, sequential 18 s of the UK
   // recording's critical path (run 37071880312). One call carries both; the marker stays last.
   "the publish action" should "upload the pinned tree in the same call as the working tree, not after it" in {
-    val tree = publishes("publish_tree")
-    val pin  = publishes("pin_pair")
+    val tree = publishFunction("publish_tree")
+    val pin  = publishFunction("pin_pair")
     tree should include(""""$RELEASE" upload "$TAG" "$ARCHIVE" "${pin[@]}" --clobber""")
     withClue("the pin step must not upload the tree a second time: ") {
       pin should not include ".tar.zst"
