@@ -36,7 +36,7 @@ STUB
 cat > "$work/bin/gh" <<'STUB'
 #!/usr/bin/env bash
 while [ "$#" -gt 0 ]; do case "$1" in --dir) dir="$2" ;; --name) name="$2" ;; esac; shift; done
-[ -d "$STUB/artifacts/$name" ] || exit 1
+[ -d "$STUB/artifacts/$name" ] || { echo "no artifact matches any of the names or patterns provided" >&2; exit 1; }
 mkdir -p "$dir"; cp -R "$STUB/artifacts/$name/." "$dir/"
 STUB
 chmod +x "$work/bin/sbt" "$work/bin/java" "$work/bin/gh"

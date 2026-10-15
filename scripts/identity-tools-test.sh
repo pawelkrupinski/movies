@@ -23,7 +23,8 @@ cat > "$work/bin/gh" <<'STUB'
 #!/usr/bin/env bash
 echo "gh $*" >> "$STUB/calls"
 while [ "$#" -gt 0 ]; do case "$1" in --dir) dir="$2" ;; --name) name="$2" ;; esac; shift; done
-[ -d "$STUB/artifacts/$name" ] || exit 1
+[ -f "$STUB/blip" ] && { rm -f "$STUB/blip"; echo "HTTP 500: Internal Server Error" >&2; exit 1; }
+[ -d "$STUB/artifacts/$name" ] || { echo "no artifact matches any of the names or patterns provided" >&2; exit 1; }
 mkdir -p "$dir"; cp -R "$STUB/artifacts/$name/." "$dir/"
 STUB
 cat > "$work/bin/sbt" <<'STUB'
@@ -47,7 +48,7 @@ scratch_git "$repo" add -A && scratch_git "$repo" commit -qm "the judgements, on
 echo "labels-here" > "$repo/test/resources/fixtures/identity-judgements.tsv"
 
 tools() {
-  STUB="$work" PATH="$work/bin:$PATH" KINOWO_IDENTITY_CACHE="$work/cache" bash -c \
+  STUB="$work" PATH="$work/bin:$PATH" KINOWO_IDENTITY_CACHE="$work/cache" GH_DOWNLOAD_BACKOFF=0 bash -c \
     '. "$1"; IDENTITY_REPO="$2"; shift 2; "$@"' _ "$REPO_ROOT/scripts/identity-tools.sh" "$repo" "$@" 2> "$work/err"
 }
 
@@ -57,6 +58,9 @@ check "...judged by this checkout's judgements" "labels-here" "$(cat "$work/cach
 rm -f "$work/calls"
 tools identity_capture 987654 de > /dev/null
 check "...and is not downloaded again" "0" "$(grep -c 'run download' "$work/calls" 2>/dev/null || echo 0)"
+touch "$work/blip"
+check "a capture download that fails once (a GitHub 5xx) is asked again" "de-capture" \
+  "$(cat "$(tools identity_capture 987655 de)/de.json.gz" 2>/dev/null)"
 check "a ref's capture is read from git, without a checkout" "pl-at-ref" "$(cat "$(tools identity_capture HEAD pl)/pl.json.gz")"
 check "...with that ref's judgements" "labels-at-ref" "$(cat "$(tools identity_capture HEAD pl)/identity-judgements.tsv")"
 check "...a ref from before the judgements were one file: its labels.tsv" "legacy-labels" \
@@ -158,7 +162,7 @@ mkdir -p "$work/artifacts/identity-capture-uk"
 cat > "$work/bin/gh" <<'STUB'
 #!/usr/bin/env bash
 while [ "$#" -gt 0 ]; do case "$1" in --dir) dir="$2" ;; --name) name="$2" ;; esac; shift; done
-[ -d "$STUB/artifacts/$name" ] || exit 1
+[ -d "$STUB/artifacts/$name" ] || { echo "no artifact matches any of the names or patterns provided" >&2; exit 1; }
 mkdir -p "$dir"; cp -R "$STUB/artifacts/$name/." "$dir/"
 STUB
 check "a run's artifact holding no capture of the country fails" "1" "$(tools identity_capture 987655 uk > /dev/null; echo $?)"

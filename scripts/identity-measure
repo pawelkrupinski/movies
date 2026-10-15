@@ -117,11 +117,13 @@ measure_download() {
   local id=$1 cache=$2 dl=$2/artifacts
   [ -f "$cache/downloaded" ] && return 0
   rm -rf "$dl"; mkdir -p "$dl"
-  if identity_gh "$DISPATCH_GH_TIMEOUT" run download "$id" --pattern 'identity-takes-*' --dir "$dl"; then
-    touch "$cache/downloaded"
-  else
-    say "run $id: no identity-takes artifact could be downloaded (a run from before the takes rows uploaded theirs?)"
-  fi
+  # gh_download: bounded, a failed read asked again; absent (3) is a run without takes, a failed read (1) no answer
+  gh_download "$DISPATCH_GH_TIMEOUT" run download "$id" --pattern 'identity-takes-*' --dir "$dl"
+  case $? in
+    0) touch "$cache/downloaded" ;;
+    3) say "run $id: no identity-takes artifact to download (a run from before the takes rows uploaded theirs?)" ;;
+    *) say "could not download run $id's identity-takes artifacts (gh failed or timed out)"; return 1 ;;
+  esac
 }
 
 collect() { # <run id> <commit whose judgements classify> [checkout: classify with its working tree's judgements]
@@ -142,7 +144,7 @@ collect() { # <run id> <commit whose judgements classify> [checkout: classify wi
       printf '"%s": "%s"' "$(code_of "${name% / takes}")" "${conclusion:-unfinished}"
     done <<< "$jobs"
     echo "}"; } > "$rows"
-  identity_locked "measure-$id" measure_download "$id" "$cache" || die "could not take the lock on run $id's download"
+  identity_locked "measure-$id" measure_download "$id" "$cache" || die "run $id's takes could not be downloaded (above)"
   # --run re-classifies an older run with the judgements made since -- the checkout's, committed or not.
   checkout_judgements=${3:+$(git rev-parse --show-toplevel)/test/resources/fixtures/identity-judgements.tsv}
   if [ -n "$checkout_judgements" ] && [ -f "$checkout_judgements" ]; then

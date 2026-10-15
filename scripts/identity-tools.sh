@@ -96,7 +96,7 @@ identity_capture_download() {
   identity_log "downloading identity-capture-$cc of run $run"
   mkdir -p "$dir"
   dl=$(mktemp -d "$dir/dl-$cc.XXXXXX")
-  if ! identity_gh "$IDENTITY_GH_DOWNLOAD" run download "$run" -R "${KINOWO_REPO:-pawelkrupinski/movies}" --name "identity-capture-$cc" --dir "$dl" >&2; then
+  if ! gh_download "$IDENTITY_GH_DOWNLOAD" run download "$run" -R "${KINOWO_REPO:-pawelkrupinski/movies}" --name "identity-capture-$cc" --dir "$dl" >&2; then
     rm -rf "$dl"; identity_log "could not download identity-capture-$cc of run $run (gh failed or timed out)"; return 1
   fi
   file=$(find "$dl" -name "$cc.json.gz" | head -1)

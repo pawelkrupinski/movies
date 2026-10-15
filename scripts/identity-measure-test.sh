@@ -94,7 +94,9 @@ JSON
                                  printf 'completed\tmeasure/abc-1\t%s\n' "$HEAD_SHA" ;;
       jobs) printf 'poland / takes\tfailure\n' ;;
     esac ;;
-  "run download") while [ "$#" -gt 0 ]; do [ "$1" = --dir ] && dir=$2; shift; done; cp -R "$ARTIFACT/." "$dir/" ;;
+  "run download") [ -n "${DOWNLOAD_FAILS:-}" ] && { echo "HTTP 502: Bad Gateway" >&2; exit 1; }
+                  [ -n "${DOWNLOAD_BLIPS:-}" ] && [ ! -f "$STUB/download-blipped" ] && { touch "$STUB/download-blipped"; echo "HTTP 500" >&2; exit 1; }
+                  while [ "$#" -gt 0 ]; do [ "$1" = --dir ] && dir=$2; shift; done; cp -R "$ARTIFACT/." "$dir/" ;;
   "run cancel") echo cancelled > "$STUB/cancelled"
                 # A second signal while the script cleans up (a second Ctrl-C): gh's parent is `timeout`, its parent the script.
                 [ -z "${SIGNAL_ON_CANCEL:-}" ] || kill -TERM "$(ps -o ppid= -p "$PPID" | tr -d ' ')" ;;
@@ -118,7 +120,7 @@ measure() { # <artifact> <args...>: exit code; output in $work/out
   rm -rf "$work/stub"; mkdir -p "$work/stub"
   [ -n "${KEEP_CACHE:-}" ] || rm -rf "$work/cache"
   ( cd "$repo" && STUB="$work/stub" ORIGIN="$origin" ARTIFACT="$work/$art" HEAD_SHA="${HEAD_SHA:-}" \
-      KINOWO_IDENTITY_CACHE="$work/cache" IDENTITY_MEASURE_POLL=0 PATH="$work/bin:$PATH" \
+      KINOWO_IDENTITY_CACHE="$work/cache" IDENTITY_MEASURE_POLL=0 GH_DOWNLOAD_BACKOFF=0 PATH="$work/bin:$PATH" \
       "$REPO_ROOT/scripts/identity-measure" "$@" > "$work/out" 2>&1 )
   echo $?
 }
@@ -163,6 +165,9 @@ check "...and nothing else of main's" "false" \
 check "a run read that fails once is retried, not the end of the measurement" "0" "$(VIEW_BLIPS=1 measure landable --countries pl)"
 check "--country, the other tools' spelling, is the same flag" "0" "$(VIEW_BLIPS=1 measure landable --country pl)"
 check "a country no tool knows is a usage error" "2" "$(measure landable --countries pl,xx)"
+check "a takes download that fails once is asked again, not the end of the measurement" "0" "$(DOWNLOAD_BLIPS=1 measure landable --countries pl)"
+check "a takes download that keeps failing is no measurement, not a run without takes" "2 1" \
+  "$(DOWNLOAD_FAILS=1 measure landable --countries pl) $(grep -c "could not download run 777's identity-takes" "$work/out")"
 check "a run that cannot be read is no measurement" "2" "$(VIEW_FAILS=1 measure landable --countries pl)"
 check "...and its branch is still deleted" "0" "$(measure_branches)"
 
