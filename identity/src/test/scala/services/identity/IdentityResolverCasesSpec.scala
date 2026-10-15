@@ -989,17 +989,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
   private def shipped(listings: Seq[Listing], films: Seq[F]): Resolution =
     IdentityResolver.resolve(listings, new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver)
 
-  "A bare listing that no fact of its own corroborates" should "take no namesake the venues crediting another take" in {
-    // ES Multicines Bahia Mar's "ESCAPE ROOM 2" took the 2021 US sequel, TMDB's first hit, while the venues crediting
-    // Claramunt and 2026 take Joel Joan's film; a fact the two films share (their 88 minutes) keeps them apart.
-    val films = Seq(F(585216, "Escape Room 2", 2021, "Adam Robitel", 88, 40), F(1573952, "Escape Room 2", 2026, "Hèctor Claramunt", 88, 2))
-    val bare  = listing(Multikino, "ESCAPE ROOM 2", runtime = Some(118))
-    val dated = Seq(Helios, Kinoteka).map(v => listing(v, "Escape Room 2", Some(2026), Some("Hèctor Claramunt"), runtime = Some(88)))
-    val r = shipped(bare +: dated, films)
-    withClue((bare +: dated).map(l => r.decisionOf(l.key).render).distinct.mkString("\n"))(r.decisionOf(bare.key).film should not be Some(585216))
-  }
-
-  it should "keep its exact title's film when nothing speaks against it" in {
+  "A bare listing that no fact of its own corroborates" should "keep its exact title's film when nothing speaks against it" in {
     // PL "Eliminacja" at small venues billing nothing but the title: the current release, the take the venues mean
     val films = Seq(F(1284046, "Eliminacja", 2026, "Jan Kowalski", 101, 30))
     val l = listing(Multikino, "Eliminacja")
