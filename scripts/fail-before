@@ -33,6 +33,7 @@ while IFS= read -r v; do unset "$v"; done < <(compgen -e | grep '^GIT_')
 # shellcheck source=scripts/tool-conventions.sh
 . "$(dirname "$0")/tool-conventions.sh"
 # The exit contract above: a setup that fails gives no verdict, 2, as a usage slip does (tool-conventions.sh's die).
+# shellcheck disable=SC2034 # read by tool-conventions.sh (die, usage_error)
 DIE_STATUS=2
 
 commit=HEAD

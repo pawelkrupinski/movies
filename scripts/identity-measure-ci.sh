@@ -19,8 +19,10 @@ here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 # shellcheck source=scripts/tool-conventions.sh
 . "$here/tool-conventions.sh" # bounded, kinowo_countries_csv, die, usage_error
 . "$here/ci/dispatch.sh"
+# shellcheck disable=SC2034 # read by tool-conventions.sh (die, usage_error)
 TOOL_NAME=identity-measure-ci
 # Exit 2 is "it could not be dispatched, found or waited on" (above): tool-conventions.sh's die, at that status.
+# shellcheck disable=SC2034 # read by tool-conventions.sh (die, usage_error)
 DIE_STATUS=2
 [ $# -ge 1 ] || usage_error "usage: identity-measure-ci.sh <variant> [out-dir]"
 variant=$1

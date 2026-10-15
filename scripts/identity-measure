@@ -75,6 +75,7 @@ countries=$(selected_countries_csv)
 
 say() { echo "identity-measure: $*" >&2; }
 # Exit 2 is "the measurement could not be made" (above), a failure and a usage slip alike: tool-conventions.sh's die.
+# shellcheck disable=SC2034 # read by tool-conventions.sh (die, usage_error)
 DIE_STATUS=2
 # Dispatching, finding the run and waiting on it: scripts/ci/dispatch.sh. Every gh call is bounded: a hung API read
 # must not hold the measurement (and its branch) forever.
