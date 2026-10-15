@@ -136,19 +136,33 @@ lazy val testOrderSettings: Seq[Setting[?]] = sys.env.get("TEST_ORDER_SEED").toS
   )
 }
 
-// CI'S INTEGRATION ROWS. `itAll` on one runner was CPU-bound (828 s of suites on 4 cores, 2026-10-15), so CI
-// runs it on two: `IT_ROW=identity` runs only the whole-corpus identity specs below, which each fill a runner's
-// cores; `IT_ROW=rest` runs every other integration spec, by exclusion, so a new spec always lands in a row.
-// Unset, nothing changes. A filter rather than `testOnly` aliases: `all` (keep going past a failing module)
-// takes no input task's arguments.
+// CI ROWS. A layer too CPU-heavy for one 4-core runner runs on several, each selecting its suites through a
+// filter named by an environment variable: every row runs the same command, so `all` still keeps going past a
+// failing module (it takes no `testOnly` arguments). The LAST row of each is "every suite no other row selects",
+// so a new suite always lands in exactly one row. Unset or empty, nothing is filtered (local runs).
+def rowSettings(variable: String, config: Configuration, rows: Seq[(String, String => Boolean)]): Seq[Setting[?]] =
+  sys.env.get(variable).filter(_.nonEmpty).toSeq.map { row =>
+    val selected: String => Boolean = rows.toMap.get(row) match {
+      case Some(select) => select
+      case None if row == "rest" => suite => !rows.exists(_._2(suite))
+      case None => sys.error(s"$variable=$row: expected one of ${(rows.map(_._1) :+ "rest").mkString(", ")}")
+    }
+    config / testOptions += Tests.Filter(selected)
+  }
+
+// `itAll` on one runner was CPU-bound (828 s of suites on 4 cores, 2026-10-15): `IT_ROW=identity` runs the two
+// whole-corpus identity specs, which each fill a runner's cores; `IT_ROW=rest` every other integration spec.
 lazy val IdentityIntegrationSuites = Set(
   "integration.HardClusterConvergenceIntegrationSpec",
   "integration.IdentityShadowIntegrationSpec")
-lazy val itRowSettings: Seq[Setting[?]] = sys.env.get("IT_ROW").toSeq.map {
-  case "identity" => IntegrationTest / testOptions += Tests.Filter(IdentityIntegrationSuites)
-  case "rest"     => IntegrationTest / testOptions += Tests.Filter(!IdentityIntegrationSuites(_))
-  case other      => sys.error(s"IT_ROW=$other: expected identity or rest")
-}
+lazy val itRowSettings = rowSettings("IT_ROW", IntegrationTest, Seq("identity" -> IdentityIntegrationSuites))
+
+// The worker's ~6,300 unit tests on one runner were CPU-bound too (409 s of suites at 4 cores, 2026-10-15), split by
+// package into rows of roughly equal suite time: the identity tooling's capture re-resolves (`scripts`), the
+// resolver's corpus specs with the tools they drive, and `rest`.
+lazy val workerRowSettings = rowSettings("WORKER_ROW", Test, Seq(
+  "scripts"  -> (_.startsWith("scripts.")),
+  "identity" -> (suite => suite.startsWith("services.identity.") || suite.startsWith("tools."))))
 
 lazy val itReportSettings = Seq(
   IntegrationTest / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-o", "-u",
@@ -334,7 +348,7 @@ lazy val worker = (project in file("worker"))
       scalatestScalaCheck % Test,
     ),
   )
-  .settings(unitReportSettings, testOrderSettings)
+  .settings(unitReportSettings, testOrderSettings, workerRowSettings)
   .settings(itReportSettings, itRowSettings)
   // Fails the it run when a repository write failed and was swallowed into a WARN.
   .settings(WriteFailureTripwire.settings(IntegrationTest))
@@ -540,16 +554,13 @@ addCommandAlias("e2eShared", "e2e/Test/testOnly * -- -l services.movies.CountryS
 addCommandAlias("itAll", "all web/IntegrationTest/test worker/IntegrationTest/test")
 // `testUnit` is the full local alias. In CI the modules are spread across
 // parallel jobs to keep each off the deploy-gating critical path, all under the
-// 20-runner cap: `test` runs `testUnitNoE2e` split across two rows —
-// `testUnitWorker` (the heaviest module alone) and `testUnitRest` — `integration-test` runs `itAll`,
+// 20-runner cap: `test` runs `testUnitNoE2e` split across rows — `testUnitWorker`
+// (the heaviest module, itself split by WORKER_ROW) and `testUnitRest` — `integration-test` runs `itAll` (split by IT_ROW),
 // and the `e2e` module is itself FANNED OUT across four parallel shards (each
 // tagged heavy spec boots the full ~110s pipeline one or more times, so on one
 // runner the module was the long pole). See .github/workflows/ci.yml.
 addCommandAlias("testUnitNoE2e", "all common/Test/test identity/Test/test testkit/Test/test web/Test/test worker/Test/test")
-// CI's unit rows. The worker module is split in two by package: `scripts.*` (the identity tooling's specs, which
-// re-resolve recorded captures) and everything else, by exclusion, so a new package always lands in a row.
-addCommandAlias("testUnitWorkerScripts", "worker/Test/testOnly scripts.*")
-addCommandAlias("testUnitWorker", "worker/Test/testOnly * -scripts.*")
+addCommandAlias("testUnitWorker", "worker/Test/test")
 addCommandAlias("testUnitRest", "all common/Test/test identity/Test/test testkit/Test/test web/Test/test")
 
 // e2e CI shards. The two heavy whole-corpus determinism specs (tagged

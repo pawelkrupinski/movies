@@ -17,7 +17,7 @@ on:
 
 # Pipeline shape:
 #
-#   test × 3 (worker ×2, rest) ─────┐
+#   test × 4 (worker ×3, rest) ─────┐
 #   integration-test × 2 ───────────┤
 #   e2e × 3 shards (+stage, eslint) ┤  (all independent; every shipping job in
 #   mobile-local-server (iOS+And) ──┤   main.yml `needs` this whole workflow)
@@ -39,7 +39,7 @@ on:
 # slot from an existing one or eats into that headroom on purpose
 # (CiRunnerBudgetSpec).
 #
-# Current split: 3 test + 2 integration + 2 e2e + 1 mobile + 6 page-tests.
+# Current split: 4 test + 2 integration + 2 e2e + 1 mobile + 6 page-tests.
 # Staging the dists and eslint ride the `e2e (corpus)` row, and iOS +
 # Android LocalServer share one `mobile-local-server` job (one FixtureServerMain
 # boot for both). The original ~13-min long pole was the single `e2e` job (two
@@ -75,24 +75,29 @@ permissions:
     contents: read
 
 jobs:
-    # The unit tests, SPLIT across three runners: the worker module (~6,300 tests, the heaviest) in
-    # two by package — `scripts.*`, the identity tooling's capture re-resolves, and everything else
-    # by exclusion (the testUnitWorker* aliases in build.sbt) — and every other module on the third.
-    # One runner running all five modules' suites at once on its 4 cores was the build's long pole
-    # (an `sbt testUnitNoE2e` of 7-10 min, 2026-10-15 — the zinc cache hit, so it was test CPU, not
-    # compile). The slots came from merging the Chromium phone shards (2 → 1) and the WebKit ones
-    # (4 → 2). The non-sbt checks (roster drift, actionlint, the script self-tests, …) ride the
-    # `rest` row; the gitops manifests ride `worker`, whose deploy specs read them.
+    # The unit tests, SPLIT across four runners: the worker module (~6,300 tests, the heaviest) in
+    # three by package through build.sbt's WORKER_ROW filter, and every other module on the fourth.
+    # Every row is CPU-bound on its 4 vCPUs — a row's CI time runs ~1.1x the sum of its suites'
+    # times on a 4-core Mac — so the rows are cut to roughly equal suite time. One runner running all
+    # five modules was the build's long pole (an `sbt testUnitNoE2e` of 7-10 min, 2026-10-15). The
+    # slots came from merging the Chromium phone shards (2 → 1) and the WebKit ones (4 → 2), and one
+    # was the budget's fifteenth, unused until then. The non-sbt checks (roster drift, actionlint, the script
+    # self-tests, …) ride `worker-identity`, the lightest row; the gitops manifests ride `worker`,
+    # whose deploy specs read them.
     test:
         name: test (${{ matrix.shard }})
         strategy:
             fail-fast: false
             matrix:
                 include:
-                    - { shard: worker-scripts, cmd: testUnitWorkerScripts }
-                    - { shard: worker,         cmd: testUnitWorker }
-                    - { shard: rest,           cmd: testUnitRest }
+                    - { shard: worker-scripts,  cmd: testUnitWorker, suites: scripts }
+                    - { shard: worker-identity, cmd: testUnitWorker, suites: identity }
+                    - { shard: worker,          cmd: testUnitWorker, suites: rest }
+                    - { shard: rest,            cmd: testUnitRest }
         runs-on: ubuntu-26.04
+        # The worker rows' suite filter (build.sbt `workerRowSettings`); empty on `rest`, which runs no worker suite.
+        env:
+            WORKER_ROW: ${{ matrix.suites }}
         # `checks: write` so action-junit-report can post the failure
         # check-run + summary.
         permissions:
@@ -131,7 +136,7 @@ jobs:
             # (scripts/ci/generated-artefacts-drift.sh). Gated on the chain's paths — it
             # fetches GeoNames and PyPI, which an unrelated push should not depend on.
             - name: Did this change touch the generated roster's sources?
-              if: matrix.shard == 'rest'
+              if: matrix.shard == 'worker-identity'
               id: roster
               uses: ./.github/actions/changed-paths
               with:
@@ -156,7 +161,7 @@ jobs:
             # half a second instead of the e2e shard's ~110s corpus replay. See
             # scripts/read-model-snapshot-inputs.sh for what the stamp does and does not cover.
             - name: The read-model snapshot is stamped for this fixture corpus
-              if: matrix.shard == 'rest'
+              if: matrix.shard == 'worker-identity'
               run: scripts/read-model-snapshot-inputs.sh check HEAD
 
             # actionlint over every workflow (shellcheck over their `run:` blocks), and the composite
@@ -164,7 +169,7 @@ jobs:
             # The pre-push hook runs both over what a push changes, but skips a tool that is not
             # installed — this is the check that cannot be skipped. Pinned by version and checksum.
             - name: Workflows pass actionlint, and composite actions' run blocks pass shellcheck
-              if: matrix.shard == 'rest'
+              if: matrix.shard == 'worker-identity'
               env:
                   ACTIONLINT_VERSION: 1.7.12
                   ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
@@ -186,7 +191,7 @@ jobs:
             # nothing with: run first in the foreground they held the unit run back by their own
             # ~21-25 s (run 37121131703). Waited for, and failing as they would have, just before it.
             - name: Script self-tests, in the background
-              if: matrix.shard == 'rest'
+              if: matrix.shard == 'worker-identity'
               run: scripts/ci/in-background.sh start script-tests scripts/run-script-tests
 
             # The JDK, sbt and the build cache (.github/actions/setup-sbt-build). Warm zinc state
@@ -204,7 +209,7 @@ jobs:
                       sbt-target-${{ runner.os }}-
 
             - name: The script self-tests passed
-              if: matrix.shard == 'rest'
+              if: matrix.shard == 'worker-identity'
               run: scripts/ci/in-background.sh wait script-tests 600
 
             # This row's modules' unit tests in one sbt run; `all` keeps going so a
