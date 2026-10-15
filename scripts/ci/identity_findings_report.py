@@ -34,6 +34,7 @@ import json
 import os
 import re
 import shlex
+import shutil
 import subprocess
 import sys
 
@@ -260,9 +261,12 @@ def report(countries, run, directory_of, judgements_path, today, max_age, run_ur
 
 
 def download(run, cc, work, run_gh):
-    """The row's diagnostics artifact of `run`, unpacked under `work`; the directory (empty when there is none)."""
+    """The row's diagnostics artifact of `run`, unpacked under `work`; the directory (empty when there is none). Emptied
+    first: a `--work` reused from an earlier run would otherwise refuse to unpack ("file exists") and leave that run's
+    files to be reported as this one's."""
     target = os.path.join(work, cc)
-    os.makedirs(target, exist_ok=True)
+    shutil.rmtree(target, ignore_errors=True)
+    os.makedirs(target)
     try:
         run_gh(["run", "download", str(run), "--name", f"convergence-diagnostics-{cc}-convergence", "--dir", target])
     except subprocess.CalledProcessError as e:

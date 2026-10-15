@@ -149,6 +149,28 @@ class FindingsReportTest(unittest.TestCase):
             self.assertEqual("OPEN", self.gh.state("pl"))
             self.assertIn("**2 finding(s)**", self.gh.body("pl"))
 
+    def test_a_reused_work_directory_never_reports_an_earlier_runs_files(self):
+        with tempfile.TemporaryDirectory() as work:
+            stale = os.path.join(work, "pl", "pl-suspect-unjudged.txt")
+            os.makedirs(os.path.dirname(stale))
+            with open(stale, "w") as f:
+                f.write(DIABLY)
+
+            def no_artifact(args, stdin=None):
+                raise r.subprocess.CalledProcessError(1, args, stderr="no artifact")
+
+            self.assertEqual(os.listdir(r.download(2, "pl", work, no_artifact)), [])
+
+            def unpacks(args, stdin=None):
+                target = args[args.index("--dir") + 1]
+                if os.listdir(target):
+                    raise r.subprocess.CalledProcessError(1, args, stderr="file exists")
+                with open(os.path.join(target, "pl-suspect-unjudged.txt"), "w") as f:
+                    f.write(NOC)
+
+            with open(os.path.join(r.download(3, "pl", work, unpacks), "pl-suspect-unjudged.txt")) as f:
+                self.assertEqual(f.read(), NOC)
+
     def test_a_body_too_long_for_github_lists_the_rest_one_line_each(self):
         many = [f"finding\tKino {n}\tFilm {n} PREMIERA\tsearches 'Film {n} PREMIERA' ({'x' * 300})\n" for n in range(400)]
         self.assertEqual(0, self.run_report(self.recording("a", {("pl", "pl-suspect-unjudged.txt"): [],
