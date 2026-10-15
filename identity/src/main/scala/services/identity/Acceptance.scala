@@ -363,7 +363,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
   private def wordsOfIts(scored: Scored): Boolean = {
     val own = IdentityMeasures.yearlessTokens(scored.listing.title)
     own.nonEmpty && (Seq(scored.candidate.film.title) ++ scored.candidate.film.originalTitle).exists { title =>
-      own.forall(IdentityMeasures.yearlessTokens(title).contains) && touchesPartsWhole(own, title) &&
+      own.forall(IdentityMeasures.yearlessTokens(title).contains) && touchesPartsWhole(own, title, scored.listing.title) &&
         ((own.sizeIs >= 2 && coversItsTitle(own, title)) || IdentityMeasures.yearlessTokens(MainTitleBreak.split(title).head) == own)
     }
   }
@@ -372,13 +372,18 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  holds the billing's words only by chance — a banner's that recur in it: UK Watershed's "About
    *  Time: Once Upon a Time", an episode of Berger's series, touches "All About My Mother" by one word in four, so it is not
    *  "Once Upon a Time… All About My Mother". A part the billing bills in its own order is still touched whole
-   *  ("GÖTTERDÄMMERUNG Royal Opera" of "Royal Ballet & Opera 2026/27: Götterdämmerung"). */
-  private def touchesPartsWhole(own: Seq[String], title: String): Boolean = {
-    val words = own.toSet
+   *  ("GÖTTERDÄMMERUNG Royal Opera" of "Royal Ballet & Opera 2026/27: Götterdämmerung"). A part touched by a whole part of
+   *  the BILLING is no chance either: Leiston's "Ballet - Notre-Dame de Paris" [2013] bills "Ballet" as a part of its own,
+   *  which "La Scala Ballet: Notre-Dame de Paris" holds in its first part — where "About Time" touches "All About My
+   *  Mother" by half a part of the billing. */
+  private def touchesPartsWhole(own: Seq[String], title: String, billing: String): Boolean = {
+    val words  = own.toSet
+    val billed = TitlePartBreak.split(billing).toSeq.map(IdentityMeasures.yearlessTokens(_).toSet).filter(_.nonEmpty)
     TitlePartBreak.split(title).toSeq.map(IdentityMeasures.yearlessTokens).filter(_.nonEmpty).forall { part =>
-      val touched = part.count(words)
+      val touched = part.filter(words)
       // its leading words alone: the venue cut the title short ("Shaun The Sheep : The Beast")
-      touched == 0 || touched * 2 >= part.size || part.takeWhile(words).size == touched
+      touched.isEmpty || touched.size * 2 >= part.size || part.takeWhile(words).size == touched.size ||
+        billed.exists(_.subsetOf(touched.toSet))
     }
   }
   /** Do the listing's words `own`, all of them the film's `title`'s, cover that title: more than half its words, or every
