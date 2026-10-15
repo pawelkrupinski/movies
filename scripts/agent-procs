@@ -1,0 +1,305 @@
+#!/usr/bin/env python3
+"""Audit, and safely clean up after, the agents working this repository in parallel.
+
+WHY IT EXISTS. Many agents share one Mac: one root checkout, a worktree per change under
+.claude/worktrees/agent-*, sibling ~/projects/movies-* checkouts. One session found 69 leaked sbt servers
+(load 479), an agent's `pkill -f identity-slice` killing other agents' batches, and finished agents' worktrees
+holding commits nobody knew were unmerged. Auditing that by hand (ps, lsof cwd, git cherry per worktree) is
+the job of this tool; killing by process-name pattern is never the answer, because other agents' processes
+match the same pattern.
+
+  scripts/agent-procs                     list every worktree: branch, dirty files, unmerged commits vs origin/main
+                                          (git cherry, so rebased-equal commits count as merged), last commit age,
+                                          lock owner pid and whether it lives, the processes whose cwd is inside it,
+                                          and a SUGGESTION: removable | orphan-procs | keep. Then the heavy
+                                          processes (RSS > 1 GB or lifetime CPU > 50%) that belong to no worktree.
+  scripts/agent-procs kill --mine         SIGTERM the processes under the CURRENT worktree (never this process or
+                                          its ancestors — your own shell and agent)
+  scripts/agent-procs kill --worktree P   the same for worktree P
+  scripts/agent-procs prune [--yes]       remove the `removable` worktrees and their fully merged branches; prints
+                                          the plan, acts only with --yes
+
+There is deliberately no pattern-wide kill. `--dry-run` and `--force` (SIGKILL) apply to kill.
+
+Test seams (scripts/agent-procs-test.sh): AGENT_PROCS_PS_COMMAND prints `pid ppid rss-kb cputime etime command`
+per process; AGENT_PROCS_CWD_COMMAND prints `lsof -Fpn` records (p<pid> / n<cwd>); AGENT_PROCS_REPO names the
+repository when the working directory is not inside it.
+"""
+import argparse
+import concurrent.futures
+import os
+import re
+import shlex
+import signal
+import subprocess
+import sys
+import time
+
+GIB_KB = 1024 * 1024
+HEAVY_CPU_SHARE = 0.5
+# Processes that are only somebody's open terminal or agent session: they sit in a worktree without working in it.
+IDLE_COMMANDS = {"zsh", "-zsh", "bash", "-bash", "sh", "login", "claude", "tmux", "less", "man", "ssh"}
+WORK_KEYWORDS = ("sbt", "java", "identity-slice", "convergence-local", "mongod", "playwright", "chrome", "node ")
+
+
+def run(command, cwd=None):
+    environment = {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+    return subprocess.run(command, cwd=cwd, env=environment, capture_output=True, text=True)
+
+
+def git(root, *args):
+    return run(["git", "-C", root, *args]).stdout
+
+
+def parse_clock(text):
+    """ps etime / cputime: [[dd-]hh:]mm:ss[.cc] -> seconds."""
+    days = 0
+    if "-" in text:
+        day_part, text = text.split("-", 1)
+        days = int(day_part)
+    seconds = 0.0
+    for part in text.split(":"):
+        seconds = seconds * 60 + float(part)
+    return days * 86400 + seconds
+
+
+def humanize(seconds):
+    seconds = int(seconds)
+    for unit, size in (("d", 86400), ("h", 3600), ("m", 60)):
+        if seconds >= size:
+            return f"{seconds // size}{unit}"
+    return f"{seconds}s"
+
+
+class Process:
+    def __init__(self, pid, ppid, rss_kb, cpu_seconds, age_seconds, command):
+        self.pid, self.ppid, self.rss_kb = pid, ppid, rss_kb
+        self.cpu_seconds, self.age_seconds, self.command = cpu_seconds, age_seconds, command
+        self.cwd = None
+
+    @property
+    def idle(self):
+        first = os.path.basename(self.command.split()[0]) if self.command.split() else ""
+        return first in IDLE_COMMANDS and not any(k in self.command for k in WORK_KEYWORDS)
+
+    def describe(self):
+        return (f"pid {self.pid:<6} rss {self.rss_kb // 1024:>5}MB cpu {humanize(self.cpu_seconds):>4} "
+                f"age {humanize(self.age_seconds):>4}  {self.command[:110]}")
+
+
+def processes():
+    override = os.environ.get("AGENT_PROCS_PS_COMMAND")
+    command = shlex.split(override) if override else \
+        ["ps", "-U", str(os.getuid()), "-o", "pid=,ppid=,rss=,cputime=,etime=,command="]
+    found = {}
+    for line in run(command).stdout.splitlines():
+        fields = line.split(None, 5)
+        if len(fields) < 6:
+            continue
+        try:
+            pid, ppid, rss = int(fields[0]), int(fields[1]), int(fields[2])
+            found[pid] = Process(pid, ppid, rss, parse_clock(fields[3]), parse_clock(fields[4]), fields[5])
+        except ValueError:
+            continue
+    override = os.environ.get("AGENT_PROCS_CWD_COMMAND")
+    command = shlex.split(override) if override else ["lsof", "-a", "-d", "cwd", "-u", str(os.getuid()), "-Fpn"]
+    current = None
+    for line in run(command).stdout.splitlines():
+        if line.startswith("p") and line[1:].isdigit():
+            current = found.get(int(line[1:]))
+        elif line.startswith("n") and current is not None:
+            current.cwd = line[1:]
+    return found
+
+
+class Worktree:
+    def __init__(self, path, branch, lock):
+        self.path, self.branch, self.lock = path, branch, lock
+        self.processes = []
+
+    def under(self, cwd):
+        return cwd == self.path or cwd.startswith(self.path.rstrip("/") + "/")
+
+
+def worktrees(root):
+    found, current = [], None
+    for line in git(root, "worktree", "list", "--porcelain").splitlines() + [""]:
+        if line.startswith("worktree "):
+            current = Worktree(line[9:], None, None)
+        elif current and line.startswith("branch "):
+            current.branch = line[7:].removeprefix("refs/heads/")
+        elif current and line == "detached":
+            current.branch = "(detached)"
+        elif current and line.startswith("locked"):
+            current.lock = line[6:].strip() or "locked"
+        elif not line and current:
+            found.append(current)
+            current = None
+    return found
+
+
+def alive(pid):
+    try:
+        os.kill(pid, 0)
+        return True
+    except PermissionError:
+        return True
+    except OSError:
+        return False
+
+
+def owner_of(worktree, found):
+    """The most specific worktree a process's cwd lies in (the root checkout contains the others)."""
+    best = None
+    for candidate in found:
+        if candidate.path and candidate.under(worktree) and (best is None or len(candidate.path) > len(best.path)):
+            best = candidate
+    return best
+
+
+def inspect(all_worktrees, main_path, origin):
+    # Three git calls per worktree, on a machine that is busy by definition: fan them out.
+    with concurrent.futures.ThreadPoolExecutor(max_workers=8) as pool:
+        list(pool.map(lambda tree: inspect_one(tree, main_path, origin), all_worktrees))
+
+
+def inspect_one(tree, main_path, origin):
+    tree.exists = os.path.isdir(tree.path)
+    tree.dirty = len([l for l in git(tree.path, "status", "--porcelain").splitlines() if l]) if tree.exists else 0
+    cherry = git(tree.path, "cherry", origin, "HEAD").splitlines() if tree.exists else []
+    tree.unmerged = len([l for l in cherry if l.startswith("+")])
+    stamp = git(tree.path, "log", "-1", "--format=%ct").strip() if tree.exists else ""
+    tree.commit_age = time.time() - int(stamp) if stamp.isdigit() else None
+    match = re.search(r"pid (\d+)", tree.lock or "")
+    tree.lock_pid = int(match.group(1)) if match else None
+    tree.live_owner = tree.lock_pid is not None and alive(tree.lock_pid)
+    tree.is_main = tree.path == main_path
+    if tree.is_main or tree.dirty or tree.unmerged or tree.live_owner:
+        tree.suggestion = "keep"
+    elif any(not p.idle for p in tree.processes):
+        tree.suggestion = "orphan-procs"
+    else:
+        tree.suggestion = "removable"
+
+
+def notable(process):
+    """Worth a line in the listing: a build, a JVM, a tool run, or anything big — not an open shell or a sleep."""
+    return not process.idle and (process.rss_kb >= 100 * 1024 or any(k in process.command for k in WORK_KEYWORDS))
+
+
+def list_command(root, all_worktrees, found, args):
+    for tree in all_worktrees:
+        lock = "unlocked" if tree.lock is None else (
+            f"locked by pid {tree.lock_pid} ({'alive' if tree.live_owner else 'DEAD'})" if tree.lock_pid else "locked")
+        age = humanize(tree.commit_age) if tree.commit_age is not None else "?"
+        state = "" if tree.exists else "  [directory missing]"
+        print(f"{tree.suggestion.upper():<13} {tree.path}{state}")
+        print(f"    branch {tree.branch}  dirty {tree.dirty}  unmerged {tree.unmerged}  last commit {age} ago  {lock}")
+        shown = [p for p in tree.processes if notable(p)]
+        for process in sorted(shown, key=lambda p: -p.rss_kb):
+            print(f"      {process.describe()}")
+        if len(tree.processes) > len(shown):
+            print(f"      (+{len(tree.processes) - len(shown)} idle shells, agents and small helpers)")
+    owned = {p.pid for tree in all_worktrees for p in tree.processes}
+    heavy = [p for p in found.values() if p.pid not in owned and p.pid != os.getpid() and
+             (p.rss_kb > GIB_KB or (p.age_seconds > 60 and p.cpu_seconds / p.age_seconds > HEAVY_CPU_SHARE))]
+    print("\nHeavy processes (RSS > 1 GB or lifetime CPU > 50%) outside every worktree:")
+    for process in sorted(heavy, key=lambda p: -p.rss_kb):
+        print(f"      {process.describe()}")
+    if not heavy:
+        print("      none")
+
+
+def ancestors():
+    """This process and every parent up the real process tree — the caller's shell and agent session."""
+    chain, pid = set(), os.getpid()
+    while pid > 1 and pid not in chain:
+        chain.add(pid)
+        parent = run(["ps", "-o", "ppid=", "-p", str(pid)]).stdout.strip()
+        pid = int(parent) if parent.isdigit() else 0
+    return chain
+
+
+def kill_command(all_worktrees, found, args, here):
+    if args.mine:
+        target = owner_of(here, all_worktrees)
+    else:
+        target = owner_of(os.path.realpath(args.worktree), all_worktrees)
+        if target is None or target.path != os.path.realpath(args.worktree):
+            sys.exit(f"agent-procs: {args.worktree} is not a worktree of this repository")
+    if target is None:
+        sys.exit("agent-procs: the current directory is in no worktree of this repository")
+    protected = ancestors()
+    victims = [p for p in target.processes if p.pid not in protected]
+    print(f"{len(victims)} process(es) under {target.path}")
+    for process in victims:
+        print(f"  {'would kill' if args.dry_run else 'kill'} {process.describe()}")
+        if not args.dry_run:
+            try:
+                os.kill(process.pid, signal.SIGKILL if args.force else signal.SIGTERM)
+            except OSError as error:
+                print(f"    {error}")
+
+
+def prune_command(root, all_worktrees, args, here):
+    removable = [t for t in all_worktrees if t.suggestion == "removable" and t is not owner_of(here, all_worktrees)]
+    if not removable:
+        print("nothing removable")
+        return
+    for tree in removable:
+        deletable = tree.branch not in (None, "(detached)", "main")
+        print(f"remove worktree {tree.path}" + (f" and branch {tree.branch}" if deletable else ""))
+    if not args.yes:
+        print("(dry run — pass --yes to act)")
+        return
+    for tree in removable:
+        # A dead-owner lock needs -f twice; the owner is gone, which is what `removable` established.
+        forced = ["-f", "-f"] if tree.lock is not None else ["-f"]
+        result = run(["git", "-C", root, "worktree", "remove", *forced, tree.path])
+        print(f"  removed {tree.path}" if result.returncode == 0 else f"  FAILED {tree.path}: {result.stderr.strip()}")
+        if result.returncode == 0 and tree.branch not in (None, "(detached)", "main"):
+            # `removable` means git cherry found nothing unmerged, so the force-delete (needed for
+            # rebased/squashed branches `-d` cannot see through) is safe.
+            run(["git", "-C", root, "branch", "-D", tree.branch])
+    run(["git", "-C", root, "worktree", "prune"])
+
+
+def main():
+    parser = argparse.ArgumentParser(prog="agent-procs", description="Audit and clean up parallel agents' worktrees and processes.")
+    sub = parser.add_subparsers(dest="command")
+    kill = sub.add_parser("kill", help="kill processes under one worktree")
+    group = kill.add_mutually_exclusive_group(required=True)
+    group.add_argument("--mine", action="store_true")
+    group.add_argument("--worktree")
+    kill.add_argument("--dry-run", action="store_true")
+    kill.add_argument("--force", action="store_true", help="SIGKILL instead of SIGTERM")
+    prune = sub.add_parser("prune", help="remove removable worktrees and their merged branches")
+    prune.add_argument("--yes", action="store_true")
+    args = parser.parse_args()
+
+    start = os.environ.get("AGENT_PROCS_REPO") or os.getcwd()
+    common = git(start, "rev-parse", "--path-format=absolute", "--git-common-dir").strip()
+    if not common:
+        sys.exit("agent-procs: not inside a git repository")
+    root = os.path.realpath(os.path.dirname(common))
+    here = os.path.realpath(git(start, "rev-parse", "--show-toplevel").strip() or start)
+    all_worktrees = worktrees(root)
+    for tree in all_worktrees:
+        tree.path = os.path.realpath(tree.path)
+    found = processes()
+    for process in found.values():
+        if process.cwd and process.pid != os.getpid():
+            owner = owner_of(os.path.realpath(process.cwd), all_worktrees)
+            if owner:
+                owner.processes.append(process)
+    inspect(all_worktrees, root, "origin/main")
+    if args.command == "kill":
+        kill_command(all_worktrees, found, args, here)
+    elif args.command == "prune":
+        prune_command(root, all_worktrees, args, here)
+    else:
+        list_command(root, all_worktrees, found, args)
+
+
+if __name__ == "__main__":
+    main()

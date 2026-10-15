@@ -252,6 +252,12 @@ Rules:
 - **Touch only what's yours.** If the tree holds dirty files you didn't
   create, leave them — they're a co-agent's WIP. Surface them; don't
   `git add -A`, commit, stash, or discard them.
+- **Never `pkill -f` / `killall` by pattern**: other agents' processes
+  match it too (one `pkill -f identity-slice` killed other agents'
+  batches). Use `scripts/agent-procs kill --mine`.
+- **Run `scripts/agent-procs` to audit** every worktree (dirty, unmerged
+  vs `origin/main`, lock owner, the processes in it) and
+  `scripts/agent-procs prune` to clean up the removable ones.
 
 ## Commit at every stable state
 
