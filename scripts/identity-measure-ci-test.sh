@@ -30,6 +30,7 @@ case "$1 $2" in
       if [ -n "$CONCLUSION" ]; then printf 'completed\t%s\n' "$CONCLUSION"; else printf 'in_progress\t\n'; fi
     else echo "https://example.test/run/4242"; fi ;;
   "run download")
+    [ "$DOWNLOAD" != hangs ] || exec sleep 3 # long enough to be ended mid-download
     [ "$DOWNLOAD" = reports ] || { echo "no valid artifacts found to download" >&2; exit 1; }
     while [ "$#" -gt 0 ]; do [ "$1" = "--dir" ] && dir="$2"; shift; done
     mkdir -p "$dir/identity-measure-v-pl"; echo decided > "$dir/identity-measure-v-pl/full-pl-decisions.txt" ;;
@@ -57,5 +58,18 @@ check "...nothing dispatched" "0" "$(dispatched)"
 check "Main's runs that cannot be read are not 'Main is idle'" "2" "$(measure success reports unreadable)"
 check "...nothing dispatched" "0" "$(dispatched)"
 check "a run still going past MEASURE_MINUTES ends the wait, no measurement" "2" "$(measure "" reports)"
+
+# Ctrl-C (TERM alike) mid-download: the scratch files and directories it made (a mktemp logging each) go with it.
+mkdir -p "$work/logged"; : > "$work/calls"; : > "$work/made"
+printf '#!/usr/bin/env bash\np=$(%q "$@") || exit 1; echo "$p" >> %q; echo "$p"\n' "$(command -v mktemp)" "$work/made" > "$work/logged/mktemp"
+chmod +x "$work/logged/mktemp"
+( cd "$work" && CONCLUSION=success DOWNLOAD=hangs MAIN=idle CALLS="$work/calls" \
+    DISPATCH_POLL_SECONDS=0 MAIN_IDLE_MINUTES=0 MEASURE_MINUTES=0 PATH="$work/logged:$work/bin:$PATH" \
+    exec bash "$REPO_ROOT/scripts/identity-measure-ci.sh" v "$work/out-hangs" > "$work/log-hangs" 2>&1 ) &
+pid=$!
+for _ in $(seq 1 100); do grep -q '^run download' "$work/calls" && break; sleep 0.1; done
+kill -TERM "$pid"; wait "$pid" 2> /dev/null
+check "a measurement ended mid-download leaves none of its scratch files behind" "made, 0 left" \
+  "$([ -s "$work/made" ] && echo made), $(while read -r p; do [ ! -e "$p" ] || echo "$p"; done < "$work/made" | grep -c .) left"
 
 spec_summary

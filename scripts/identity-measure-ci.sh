@@ -8,25 +8,30 @@
 # uncommitted changes and new files alike — sent as a patch, so no branch is ever pushed.
 #
 # usage: scripts/identity-measure-ci.sh <variant> [out-dir]
-#   COUNTRIES=pl,uk,de,us,es  ROBUSTNESS=off  FOCUS="phrase,phrase"  BASE_ONLY=1 (measure the base, no patch)
+#   COUNTRIES=pl,de,uk,us,es  ROBUSTNESS=off  FOCUS="phrase,phrase"  BASE_ONLY=1 (measure the base, no patch)
 #   RECORDING=<Record scrape fixtures run id>: replay that recording in every country, so measurements compare
 #   on one input (the default, each country's pinned pair, moves whenever a new recording is pinned)
 #   MAIN_IDLE_MINUTES=120 how long to wait for Main to go idle; MEASURE_MINUTES=360 how long for the run
 # Exit: 0 the run succeeded, 1 it did not; 2 it could not be dispatched, found or waited on.
 set -euo pipefail
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+. "$here/tool-conventions.sh" # bounded, kinowo_countries_csv
 . "$here/ci/dispatch.sh"
 variant=${1:?usage: identity-measure-ci.sh <variant> [out-dir]}
 out=${2:-target/identity-measure/$variant}
 workflow=identity-measure.yml
 die() { echo "identity-measure-ci: $*" >&2; exit 2; }
+# One scratch directory for the throwaway index and the download, removed however this ends (Ctrl-C included).
+scratch=$(mktemp -d "${TMPDIR:-/tmp}/identity-measure-ci.XXXXXX") || die "could not make a scratch directory"
+trap 'rm -rf "$scratch"' EXIT
+trap 'exit 130' INT TERM
 
-timeout 120 git fetch -q origin main || die "could not fetch origin main"
+bounded 120 git fetch -q origin main || die "could not fetch origin main"
 base=$(git merge-base HEAD origin/main)
 patch=""
 if [ -z "${BASE_ONLY:-}" ]; then
   # A throwaway index sees new files too, without touching the worktree's own index.
-  index=$(mktemp); trap 'rm -f "$index"' EXIT
+  index=$scratch/index
   GIT_INDEX_FILE=$index git read-tree HEAD
   GIT_INDEX_FILE=$index git add -A
   patch=$(GIT_INDEX_FILE=$index git diff --cached --binary "$base" | gzip -9 | base64 | tr -d '\n')
@@ -42,12 +47,12 @@ wait_until_no_runs main.yml '.status != "completed"' $((${MAIN_IDLE_MINUTES:-120
 
 since=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 dispatch_workflow "$workflow" main -f variant="$variant" -f base="$base" -f patch="$patch" \
-  -f countries="${COUNTRIES:-pl,uk,de,us,es}" -f robustness="${ROBUSTNESS:-off}" -f focus="${FOCUS:-}" -f recording="${RECORDING:-}" \
+  -f countries="${COUNTRIES:-$(kinowo_countries_csv)}" -f robustness="${ROBUSTNESS:-off}" -f focus="${FOCUS:-}" -f recording="${RECORDING:-}" \
   || die "could not dispatch $workflow"
 find_dispatched_run "$workflow" "$since" ".displayTitle == \"identity measure $variant\"" \
   || die "dispatched, but no run named 'identity measure $variant' was found"
 run=$DISPATCHED_RUN
-echo "run $run: $(timeout 60 gh run view "$run" --json url --jq .url || echo "$run")"
+echo "run $run: $(bounded 60 gh run view "$run" --json url --jq .url || echo "$run")"
 
 wait_for_run "$run" $((${MEASURE_MINUTES:-360} * 60)) || die "run $run gave no conclusion within ${MEASURE_MINUTES:-360} minutes"
 echo "run $run: $RUN_CONCLUSION"
@@ -55,14 +60,14 @@ status=0
 [ "$RUN_CONCLUSION" = success ] || status=1
 
 rm -rf "$out"; mkdir -p "$out"
-dl=$(mktemp -d)
+dl=$scratch/download
+mkdir -p "$dl"
 # A run that failed or was cancelled before uploading has nothing to download: say so and still
 # exit with the RUN's status below, rather than dying here under `set -e` with the download's.
-if timeout 600 gh run download "$run" --pattern "identity-measure-$variant-*" --dir "$dl"; then
+if bounded 600 gh run download "$run" --pattern "identity-measure-$variant-*" --dir "$dl"; then
   for d in "$dl"/*/; do if [ -d "$d" ]; then cp -R "$d". "$out/"; fi; done
 else
   echo "run $run left no reports to download" >&2
 fi
-rm -rf "$dl"
 echo "reports in $out:"; find "$out" -maxdepth 1 -name "full-*-decisions.txt"
 exit "$status"
