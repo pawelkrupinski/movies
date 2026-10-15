@@ -35,6 +35,7 @@ test/resources/fixtures/corpus/**
 .github/scripts/unpack-fixture-archive.sh
 .github/scripts/restore-enrichment-tree.sh
 .github/scripts/convergence-fill.sh
+.github/scripts/convergence-setup.sh
 .github/scripts/convergence-publish.sh
 .github/scripts/convergence-findings-summary.sh
 .github/scripts/convergence-bisect.sh
