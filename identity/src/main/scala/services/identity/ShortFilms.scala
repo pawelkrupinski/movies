@@ -44,7 +44,7 @@ private[identity] object ShortFilms {
   def billedBeyond(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film, venue: String): Boolean = {
     val filmTitles = film.forms.map(_.words).filter(_.nonEmpty)
     val venueWords = TitleContainment.tokens(venue).toSet
-    listing.ownTitles.map(IdentityMeasures.words).exists { billed =>
+    listing.ownForms.map(_.words).exists { billed =>
       // past the LONGEST of its titles the billing opens on: "After Eight - The Story of Satpal Ram + Q&A" goes on past
       // the record's "After Eight" only by its own full title
       val opening = filmTitles.filter(title => billed.sizeIs >= title.size && billed.startsWith(title)).maxByOption(_.size)

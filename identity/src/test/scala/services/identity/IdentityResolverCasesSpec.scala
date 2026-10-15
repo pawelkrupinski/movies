@@ -3061,13 +3061,16 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     untaken("Lichtwerk", "WIEDERBEGEGNUNGEN MIT EINEM FILM: NUIT ET BROUILLARD", night) shouldBe false
     untaken("Phoenix Cinema and Art Centre Leicester", "After Eight - The Story of Satpal Ram + Q&A", afterEight) shouldBe false
     untaken("Nasze Kino", "Warsztat Świętego Mikołaja / dubbing - Nasze Kino", workshop) shouldBe false
-    untaken("Caligari FilmBühne Wiesbaden", "UNLESS WE DANCE - QUEERE FILME ZUR LÄNGSTEN NACHT",
-      F(1103660, "Unless We Dance", 2023, "Someone", 14, 1)) shouldBe true
+    val unless = F(1103660, "Unless We Dance", 2023, "Someone", 14, 1)
+    untaken("Caligari FilmBühne Wiesbaden", "UNLESS WE DANCE - QUEERE FILME ZUR LÄNGSTEN NACHT", unless) shouldBe true
+    // what dates or prints a screening is no word of the billing's own: a format, a month, an edition
+    untaken("Caligari FilmBühne Wiesbaden", "UNLESS WE DANCE (OmU)", unless) shouldBe false
+    untaken("Caligari FilmBühne Wiesbaden", "UNLESS WE DANCE - Oktober", unless) shouldBe false
+    untaken("Caligari FilmBühne Wiesbaden", "UNLESS WE DANCE 2026", unless) shouldBe false
     val banner = listing(Multikino, "WIEDERBEGEGNUNGEN MIT EINEM FILM: NUIT ET BROUILLARD")
     withClue(shipped(Seq(banner), Seq(night)).decisionOf(banner.key).render)(
       shipped(Seq(banner), Seq(night)).decisionOf(banner.key).film shouldBe Some(803))
   }
-
 
   it should "still be taken alone where no feature shares its title" in {
     val films = Seq(F(1193753, "Gina", 2022, "Ayu Lestari", 7, 1))

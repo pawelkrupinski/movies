@@ -114,9 +114,9 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
         Option.when(sameFilm)((1, "same-film")),
         // One chain lists them under one catalogue id: its one film, whatever each venue calls it (a feed's id, only
         // where their titles agree: `catalogueKey`).
-        Option.when(sharesCatalogueId(first, second))((2, "same-catalogue-id")),
-        Option.when(titleX.nonEmpty && titleX == sanitized(secondEvidence.cleanTitle))((2, "same-title")),
-        Option.when(sharedSearchForm(first, second).isDefined)((3, "same-search-form")),
+        Option.when(sharesCatalogueId(first, second))((2, ConstraintEdges.SameCatalogueId)),
+        Option.when(titleX.nonEmpty && titleX == sanitized(secondEvidence.cleanTitle))((2, ConstraintEdges.SameTitle)),
+        Option.when(sharedSearchForm(first, second).isDefined)((3, ConstraintEdges.SameSearchForm)),
         Option.when(originals.contains(titleX) || originals.contains(sanitized(secondEvidence.cleanTitle)) ||
           (firstEvidence.originalTitle.isDefined && firstEvidence.originalTitle.map(sanitized) == secondEvidence.originalTitle.map(sanitized) && originals.nonEmpty))((3, "original-title")),
         // One listing's whole title is a delimited SEGMENT of the other's ("Oficjalna premiera:
@@ -124,13 +124,19 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
         // voting and the venue signal reach it. Whole segments only — "Zärtlich kreist die Faust"
         // has no delimiter before "Faust" — and the ambiguity rule leaves a spelling whose segment
         // names two films apart, as it does one whose rest names a film of its own (`namesBeside`).
-        Option.when((segmentOf(first, second) && !namesBeside(second, firstEvidence.cleanTitle)) || (segmentOf(second, first) && !namesBeside(first, secondEvidence.cleanTitle)))((4, "title-segment"))
+        Option.when((segmentOf(first, second) && !namesBeside(second, firstEvidence.cleanTitle)) || (segmentOf(second, first) && !namesBeside(first, secondEvidence.cleanTitle)))((4, ConstraintEdges.TitleSegment))
       ).flatten
       cannots.map(edge(must = false, 0, _)) ++ musts.sortBy(_._1).take(1).map { case (tier, reason) => edge(must = true, tier, reason) }
     }.filter(admitted)
 }
 
 private[identity] object ConstraintEdges {
+  /** The must-link reasons a title or a catalogue id gives — the ones [[Corroboration.Vouching]] lets vouch for a node. */
+  val SameTitle        = "same-title"
+  val SameCatalogueId  = "same-catalogue-id"
+  val SameSearchForm   = "same-search-form"
+  val TitleSegment     = "title-segment"
+
   /** The must-link tiers a title draws: same title, same search form or original title, one
    *  title a segment of the other. */
   val TitleTiers: Set[Int] = Set(2, 3, 4)

@@ -47,7 +47,7 @@ private[identity] object Corroboration {
    *  delimited segment of the other's title — never the original title alone, which a feed copies from the entry it
    *  linked and so pulls in that entry's namesakes (DE CITY 46's "THE BLACK HOLE", its copied "The Black Hole" beside
    *  "Das schwarze Loch"). */
-  val Vouching: Set[String] = Set("same-title", "same-catalogue-id", "same-search-form", "title-segment")
+  val Vouching: Set[String] = Set(ConstraintEdges.SameTitle, ConstraintEdges.SameCatalogueId, ConstraintEdges.SameSearchForm, ConstraintEdges.TitleSegment)
 
   /** How many nodes of `clusters` take each film on a fact of their own ([[facts]]) — a film's standing in its title
    *  family, against which a bare node's namesake take is weighed ([[refused]]). `filmOf` is a cluster's film. */
@@ -61,7 +61,7 @@ private[identity] object Corroboration {
    *  every piece the film taken is named by (DE Acud's "BARWY OCHRONNE / CAMOUFLAGE" names Zanussi's film by both, the
    *  2026 Ukrainian "Camouflage" by one). */
   private def naming(scored: Scored): Int = scored.category("title") match {
-    case Some("exact") | Some("original") => 3
+    case Some("exact") | Some("original") => Whole
     case Some("alternative")              => 2
     case Some("segment") | Some("decorated") => 1
     case _                                => 0
@@ -73,8 +73,11 @@ private[identity] object Corroboration {
    *  2021 indie while 23 venues link Hufnagel's 2026 "Lieblingsmenschen - Die außergewöhnliche Freundschaft von Agnes
    *  & Amir" by their feed's id. "Dune" heads "Dune: Part Two" too, but numbers no instalment of it. */
   private def headedBy(rival: Scored, taken: Int): Boolean =
-    taken == 3 && IdentityMeasures.titleIsWorkOf(rival.listing, rival.candidate.film).isDefined &&
+    taken == Whole && IdentityMeasures.titleIsWorkOf(rival.listing, rival.candidate.film).isDefined &&
       !rival.category("numeral").exists(IdentityMeasures.OtherInstalment)
+
+  /** [[naming]]'s tier of a title naming the film whole: its own title or its original. */
+  private val Whole = 3
 
   /** How many nodes must take a namesake on their own facts for it to stand against a bare node's take. */
   val EvidencedNamesake = 2
@@ -98,15 +101,17 @@ private[identity] object Corroboration {
     val backing = support.getOrElse(film, 0)
     def namesake(node: EvidenceNode): Option[String] =
       val own    = scored(node).find(_.candidate.tmdbId == film)
-      val taken  = own.fold(0)(naming)
-      val pieces = own.fold(Set.empty[Seq[String]])(scored => IdentityMeasures.namingPieces(scored.listing, scored.candidate.film))
-      scored(node).find(rival => rival.candidate.tmdbId != film && (naming(rival) > 0 && naming(rival) >= taken &&
-        pieces.subsetOf(IdentityMeasures.namingPieces(rival.listing, rival.candidate.film)) || headedBy(rival, taken)) && {
+      lazy val taken  = own.fold(0)(naming)
+      lazy val pieces = own.fold(Set.empty[Seq[String]])(scored => IdentityMeasures.namingPieces(scored.listing, scored.candidate.film))
+      // the support lookup first: most rivals no node takes on its own facts, and naming them costs a title walk each
+      scored(node).find(rival => rival.candidate.tmdbId != film && {
         val rivalBacking = support.getOrElse(rival.candidate.tmdbId, 0)
         rivalBacking >= EvidencedNamesake && rivalBacking > backing
-      }).map(rival => s"namesake ${rival.candidate.tmdbId} is taken on their own facts by ${support(rival.candidate.tmdbId)} node(s), $film by $backing")
-    // A title vouches only for a node no evidenced namesake shares it with: where the family takes another film under
-    // the node's own spelling on more nodes' facts, the spelling is that film's at least as much (DE "The Killer" ×5,
+      } && (naming(rival) > 0 && naming(rival) >= taken &&
+        pieces.subsetOf(IdentityMeasures.namingPieces(rival.listing, rival.candidate.film)) || headedBy(rival, taken))).map(rival => s"namesake ${rival.candidate.tmdbId} is taken on their own facts by ${support(rival.candidate.tmdbId)} node(s), $film by $backing")
+    // A title vouches only for a node no evidenced namesake shares it with: where the family takes another film its title
+    // names as closely (or heads, [[headedBy]]) on more nodes' facts, under any spelling, the title is that film's at least
+    // as much (DE "The Killer" ×5,
     // bare, joined to the two venues dating Woo's 2024 remake while seven bill his 1989 film). A catalogue id still does.
     val disputed = cluster.filter(own(_).isEmpty).flatMap(node => namesake(node).map(node.id -> _)).toMap
     val linked = edges.filter(edge => edge.must && Vouching(edge.reason) && ids(edge.a) && ids(edge.b))
@@ -117,7 +122,7 @@ private[identity] object Corroboration {
     var frontier = vouched.toSeq
     while (frontier.nonEmpty) {
       frontier = frontier.flatMap(linked.getOrElse(_, Nil)).collect {
-        case (id, reason) if reason == "same-catalogue-id" || !disputed.contains(id) => id
+        case (id, reason) if reason == ConstraintEdges.SameCatalogueId || !disputed.contains(id) => id
       }.filter(vouched.add)
     }
     cluster.filterNot(node => vouched(node.id)).flatMap(node => disputed.get(node.id).map(why =>

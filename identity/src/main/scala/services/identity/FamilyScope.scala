@@ -122,7 +122,8 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
     def shortUntaken(scored: Scored) =
       if (scored.denied || (IdentityMeasures.sameDirector(scored.measures) && !creditedFeature)) None
       else ShortFilms.untaken(listing, scored.candidate.tmdbId, scored.candidate.film, linked,
-        features.nonEmpty || !IdentityMeasures.Rivalling(relation(scored.candidate.tmdbId)) && ShortFilms.billedBeyond(listing, scored.candidate.film, venue))
+        features.nonEmpty || ShortFilms.isShort(scored.candidate.film) && !IdentityMeasures.Rivalling(relation(scored.candidate.tmdbId)) &&
+          ShortFilms.billedBeyond(listing, scored.candidate.film, venue))
     // A film of the venue's own language is billed by its title: one the listing's titles share no word with is another
     // film, however its director's credit or running time fits — a director's filmography is a path to candidates, never a
     // title. UK Picture House Uckfield's "Gremlins Special Event" {Joe Dante} [120′] took Innerspace,
