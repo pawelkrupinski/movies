@@ -9,10 +9,9 @@
 #
 # A composite action rather than a copy per job: the leg runs the suite from two matrix
 # rows now (the full leg and, for a country whose corpus has outgrown one, the
-# order-independence replay), and both want the same report. The `grep` below is the
-# part that must not drift — it is a list of what counts as narration versus
-# application logging, and a copy that fell behind would silently stop rendering the
-# phase timings that are the only way to diagnose a leg while it is still running.
+# order-independence replay), and both want the same report. The filter lives in
+# .github/scripts/convergence-findings-summary.sh, tested beside it: it is the part
+# that must not drift.
 #
 name: Convergence findings
 description: Render one convergence run's ScalaTest narration and phase timings onto the job summary.
@@ -35,49 +34,10 @@ runs:
     using: composite
     steps:
         - shell: bash
-          run: |
-              set -uo pipefail
-              if [ ! -s "${{ inputs.log }}" ]; then
-                  echo "### ${{ inputs.title }}" >> "$GITHUB_STEP_SUMMARY"
-                  echo "The suite produced no output — see the job log." >> "$GITHUB_STEP_SUMMARY"
-                  exit 0
-              fi
-              # sbt colours its output; the escapes are noise in markdown.
-              # `|| true` on every grep. The step declares `shell: bash`, which runs
-              # with `-e`, and grep exits 1 when it matches NOTHING — so a run with no
-              # `Tests:` line killed this step before it printed a character. That is
-              # precisely the cancelled-or-crashed run whose partial output the report
-              # exists to salvage: it failed only when it was most needed, and blamed
-              # the reporting rather than the run.
-              clean=$(sed -E 's/\x1b\[[0-9;]*m//g' "${{ inputs.log }}")
-              totals=$(printf '%s\n' "$clean" | { grep -E '^\[info\] Tests: ' || true; } | tail -1 | sed 's/^\[info\] //')
-              {
-                  echo "### ${{ inputs.title }}"
-                  echo
-                  if [ -n "$totals" ]; then echo "**$totals**"; else echo "**No test totals — the suite did not finish.**"; fi
-                  echo
-                  echo '```'
-                  # The spec's own structure — suite, `should` clauses, the `+` info
-                  # lines — PLUS the `[pl] phase done in …` timings the harness prints
-                  # as it goes. Those are how a slow leg is diagnosed without attaching
-                  # a profiler to a live JVM, so they belong in the report rather than
-                  # only in a 5 MB job log. Everything else on stdout is application
-                  # logging, which is not a report.
-                  #
-                  # The scope is TWO LETTERS PLUS AN OPTIONAL PASS NUMBER: the
-                  # order-independence replays run `Passes` of them concurrently and each
-                  # names itself `[usp0]`, `[usp1]`, … so the interleaved heartbeats say
-                  # which pass wrote them. A `[a-z]{2}`-only filter dropped every one.
-                  #
-                  # `sed -n …; 1,150p` keeps the first 150 lines but READS TO THE END. A
-                  # `| head -150` closed the pipe early, sed died writing into it ("couldn't
-                  # flush stdout: Broken pipe", exit 4), and under `pipefail` that failed a
-                  # green leg the moment its report passed 150 lines (Spain, run 37096642753).
-                  printf '%s\n' "$clean" \
-                    | { grep -E '^(\[info\] )?([A-Za-z0-9]+Spec:|- should |  \+ |the |\[[a-z]{2}[0-9]*\] )' || true; } \
-                    | sed -n 's/^\[info\] //; 1,150p'
-                  echo '```'
-              } >> "$GITHUB_STEP_SUMMARY"
+          env:
+              TITLE: ${{ inputs.title }}
+              LOG:   ${{ inputs.log }}
+          run: '"$GITHUB_WORKSPACE"/.github/scripts/convergence-findings-summary.sh "$TITLE" "$LOG" >> "$GITHUB_STEP_SUMMARY"'
 
         # What the suite wrote for a reader beyond its log (`tools.ConvergenceDiagnostics`): the per-film
         # account of a coverage band against production, an order replay's differing films. Each `.md` is the

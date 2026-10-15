@@ -670,10 +670,12 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
    *  SIGPIPE: Spain's green recording leg failed its findings step (exit 4) once its report passed
    *  150 lines (run 37096642753). The report must keep its first lines by READING to the end. */
   "the convergence findings report" should "never cut its summary with an early-closing head" in {
-    val commands = RepoFile.read(".github/actions/convergence-findings/action.yml").linesIterator
-      .filterNot(_.trim.startsWith("#")).mkString("\n")
+    RepoFile.read(".github/actions/convergence-findings/action.yml") should include(
+      ".github/scripts/convergence-findings-summary.sh \"$TITLE\" \"$LOG\" >> \"$GITHUB_STEP_SUMMARY\"")
+    val commands = RepoFile.withoutComments(RepoFile.read(".github/scripts/convergence-findings-summary.sh"))
     commands should not include regex ("""\|\s*head\s+-[0-9]+""")
     commands should include("sed -n 's/^\\[info\\] //; 1,150p'")
+    RepoFile.read(".github/workflows/ci.yml") should include("bash .github/scripts/convergence-findings-summary-test.sh")
   }
 
   /** A red leg names its films in `target/convergence-diagnostics` (`tools.ConvergenceDiagnostics`); the report puts
