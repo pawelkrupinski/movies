@@ -1,0 +1,6 @@
+# scripts/ml-identity/identity_ml_experiment.py's third-party packages, pinned so two runs of the experiment
+# compare models rather than library versions. The newest releases that still install on the repository's
+# Python floor (3.9, scripts/run-script-tests' PythonFloor), as pip resolved them on 2026-10-15.
+lightgbm==4.6.0
+numpy==2.0.2
+scikit-learn==1.6.1

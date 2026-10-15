@@ -19,7 +19,7 @@ then applied to the hold-out, whose wrong takes are counted as they fall).
 
 Writes target/identity-ml/results.json, the LightGBM model dumps (for the JVM scorer bench) and prints a report.
 
-    python3 -m venv <env> && <env>/bin/pip install scikit-learn lightgbm numpy
+    python3 -m venv <env> && <env>/bin/pip install -r scripts/ml-identity/requirements.txt
     timeout 1800 <env>/bin/python scripts/ml-identity/identity_ml_experiment.py
 """
 import json

@@ -8,7 +8,7 @@ Code: `scripts/ml-identity/identity_ml_experiment.py` (the fits and the measurem
 `worker/src/test/scala/scripts/IdentityMlScorerBench.scala` (an in-JVM scorer for the boosted trees, with
 `IdentityMlScorerBenchSpec`). To rerun:
 
-    python3 -m venv <env> && <env>/bin/pip install scikit-learn lightgbm numpy
+    python3 -m venv <env> && <env>/bin/pip install -r scripts/ml-identity/requirements.txt
     timeout 1800 <env>/bin/python scripts/ml-identity/identity_ml_experiment.py        # ~6 min; target/identity-ml/
     sbt "worker/Test/runMain scripts.IdentityMlScorerBench target/identity-ml/gbm-d2.json target/identity-ml/scores-d2.txt"
 
