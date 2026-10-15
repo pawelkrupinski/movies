@@ -49,6 +49,13 @@ is that the local toolchain is missing (e.g. no full Xcode for
 - **`swift test --package-path ios`** — iOS unit / integration suites
   without the live server. Quicker; required for any change to iOS
   model / parser logic regardless of whether you also need LocalServer.
+- **`scripts/run-script-tests`** — every script self-test (`<tool>-test.sh`,
+  `<tool>_test.py` under scripts/, .github/, android/scripts, ios/scripts,
+  infra/bin), found by name and run in parallel; ci.yml runs it whole.
+  `scripts/run-script-tests scripts/ci identity-slice` narrows by path or
+  name, `--changed origin/main` runs only the tests whose test, tool or a
+  file they name changed (the pre-push hook's `scripttests`), `--list --all`
+  shows the `# script-test: <tag>` ones kept out of the default run.
 
 ## Per-country convergence suites (e2e, `@CountryScoped`)
 

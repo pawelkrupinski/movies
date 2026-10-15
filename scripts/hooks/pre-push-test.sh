@@ -8,7 +8,7 @@ unset PREPUSH_SKIP
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 export REPO_ROOT  # the quoted-heredoc stub gh below sources scratch-git.sh from it
 . "$REPO_ROOT/scripts/shell-spec.sh"
-# Run as pre-push's own `hooktest` check, this inherits the GIT_DIR the hook was handed; the scratch
+# Run by pre-push's `scripttests` check (scripts/run-script-tests), this inherits the GIT_DIR the hook was handed; the scratch
 # repositories below would otherwise BE the repository being pushed (it once committed this spec's
 # "Spec base" history onto a pushed branch). See scratch-git.sh.
 . "$REPO_ROOT/scripts/scratch-git.sh"
@@ -68,22 +68,24 @@ check "any Scala source runs the sbt lints" "sbt" "$(plan worker/src/test/scala/
 check "a Grafana dashboard runs the dashboard tests and the metric-coverage lint" "dashboards sbt" \
   "$(plan infra/nix/files/monitoring/grafana/dashboards/apps/kinowo-http.json)"
 check "a workflow runs actionlint, and the silenced-read lint" "actionlint sbt" "$(plan .github/workflows/ci.yml)"
-check "a composite action runs actionlint (its run blocks' shellcheck), and the lint specs" "actionlint sbt" \
+check "a composite action runs actionlint (its run blocks' shellcheck), the self-tests, and the lint specs" "scripttests actionlint sbt" \
   "$(plan .github/actions/convergence-setup/action.yml)"
-check "a shell script runs shellcheck, and the lint specs" "shellcheck sbt" "$(plan scripts/ci/order-seed.sh)"
-check "the hook itself runs shellcheck and its own test" "hooktest shellcheck sbt" "$(plan scripts/hooks/pre-push)"
-check "the hooks-path helper and install-hooks.sh, both exercised here, run this test" "hooktest shellcheck sbt hooktest shellcheck sbt" \
+check "a shell script runs its self-tests, shellcheck, and the lint specs" "scripttests shellcheck sbt" "$(plan scripts/ci/order-seed.sh)"
+check "the hook itself runs shellcheck and the self-tests, its own among them" "scripttests shellcheck sbt" "$(plan scripts/hooks/pre-push)"
+check "the hooks-path helper and install-hooks.sh, both exercised here, run the self-tests" "scripttests shellcheck sbt scripttests shellcheck sbt" \
   "$(plan scripts/hooks-path.sh) $(plan scripts/install-hooks.sh)"
 check "an iOS view runs the iOS compile check" "ios" "$(plan ios/Kinowo/Views/FilmCard.swift)"
 check "an Android-only change runs nothing" "" "$(plan android/app/src/main/java/pl/kinowo/ui/X.kt)"
+check "a mobile or fleet script runs the self-tests" "scripttests shellcheck|scripttests shellcheck ios|scripttests" \
+  "$(plan android/scripts/store-graphics.sh)|$(plan ios/scripts/x.sh)|$(plan infra/bin/x)"
 check "docs run nothing" "" "$(plan docs/readme.md README.md)"
-check "checks come out once each, in run order" "eslint snapshot actionlint shellcheck sbt" \
+check "checks come out once each, in run order" "eslint snapshot scripttests actionlint shellcheck sbt" \
   "$(plan web/src/main/assets/js/a.js build.sbt scripts/x.sh .github/workflows/a.yml worker/src/main/scala/A.scala test/resources/fixtures/08-06-2026/y)"
 
 check "a judgements change runs the judgements lint" "judgements" "$(plan test/resources/fixtures/identity-judgements.tsv)"
 check "an expected match runs it" "judgements" "$(plan test/resources/fixtures/identity-unmatched/expected-matches.tsv)"
 check "a hard-cluster expectation runs it" "judgements" "$(plan test/resources/fixtures/corpus/expected-hard-clusters-pl.txt)"
-check "the lint itself runs it, the judgements' reader and the take files'" "judgements sbt judgements sbt judgements sbt" \
+check "the lint itself runs it, the judgements' reader and the take files'" "judgements scripttests sbt judgements scripttests sbt judgements scripttests sbt" \
   "$(plan scripts/ci/identity_judgements_lint.py) $(plan scripts/ci/identity_judgements.py) $(plan scripts/ci/identity_takes.py)"
 check "an unmatched-cluster capture does not" "" "$(plan test/resources/fixtures/identity-unmatched/pl.json.gz)"
 
@@ -134,7 +136,7 @@ check "...but not a spec that needs the GitOps manifests, nor one that boots a s
 check "PREPUSH_SKIP=lintspecs drops them, keeping the standing lints" "$Always" \
   "$(PREPUSH_SKIP=lintspecs lints scripts/x.sh)"
 check "an iOS-only push selects no sbt check" "ios" "$(plan ios/Kinowo/Views/A.swift)"
-check "a Python self-test selects the sbt check, for the self-test lint" "sbt" "$(plan scripts/ci/x_test.py)"
+check "a Python self-test runs the self-tests, and the sbt check for the self-test lint" "scripttests sbt" "$(plan scripts/ci/x_test.py)"
 check "worker's fixtures config selects the sbt check" "sbt" "$(plan worker/src/fixtures/resources/x.json)"
 
 # ── Running for real, over a scratch clone: what is judged, and what is not silently passed ──
@@ -346,7 +348,7 @@ green="$(run_json 38487614044 completed success 38487614044)"
 cancelled="$(run_json 38470049143 completed cancelled 38470049143)"
 running="$(run_json 38529260149 in_progress "" 38529260149)"
 # Only the gate is under test here: the path checks the pushed paths select are skipped (the cases above cover them).
-pathchecks="judgements eslint drift snapshot dashboards sbt hooktest actionlint shellcheck ios"
+pathchecks="judgements eslint drift snapshot dashboards sbt scripttests actionlint shellcheck ios"
 push() { # <range> -> exit code; stderr in $gate/err
   (cd "$grepo" && PREPUSH_SKIP="${PREPUSH_SKIP:-} $pathchecks" bash "$REPO_ROOT/scripts/hooks/pre-push" --range "$1" >/dev/null 2>"$gate/err"); echo $?; }
 check "every workflow green: the push lands" "0" "$(GH_MAIN="[$green]" GH_IMC="[$green]" GH_REC="[$green]" push "$gbase..$plain")"
@@ -413,6 +415,17 @@ check "...with a warning naming what it was" "1" "$(grep -c "core.hooksPath was 
 scratch_git "$grepo" config core.hooksPath "$gate/foreign-hooks"
 all_green push "$gbase..$plain" >/dev/null
 check "an absolute core.hooksPath to some other directory is left alone" "$gate/foreign-hooks" "$(hooks_path)"
+# ── scripttests: the runner over what the push changed, from its base, blocking on a failure ──
+printf '#!/usr/bin/env bash\necho "$*" > "$STUB_RUNNER_ARGS"; exit "${STUB_RUNNER_EXIT:-0}"\n' > "$grepo/scripts/run-script-tests"
+chmod +x "$grepo/scripts/run-script-tests"
+runner_base="$(scratch_git "$grepo" rev-parse HEAD)"
+scratch_git "$grepo" add scripts/run-script-tests && scratch_git "$grepo" commit -qm "a runner stub"
+runner_head="$(scratch_git "$grepo" rev-parse HEAD)"
+script_push() { (cd "$grepo" && all_green env PREPUSH_SKIP="${pathchecks/scripttests/}" STUB_RUNNER_ARGS="$gate/args" "$@" \
+  bash "$REPO_ROOT/scripts/hooks/pre-push" --range "$runner_base..$runner_head" >/dev/null 2>"$gate/err"); echo $?; }
+check "a script push runs the self-tests its changes select, from the push's base" "0 --changed $runner_base" \
+  "$(script_push) $(cat "$gate/args")"
+check "...and a failing one blocks the push" "1 1" "$(script_push STUB_RUNNER_EXIT=1) $(grep -c 'scripttests FAILED' "$gate/err")"
 rm -rf "$gate"
 
 spec_summary
