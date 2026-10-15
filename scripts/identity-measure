@@ -27,8 +27,9 @@
 # whose workflows predate the takes-only dispatch gets main's .github/ and scripts/ci/ laid over it in a commit of
 # its own (no identity path: the check diffs only identity code, so the measured code is the commit's).
 #
-# THE LANE. The convergence suite has one lane: a newer dispatch replaces the one waiting. So this waits until no run
-# is waiting (never replacing someone's -- main's -- pending run), and re-dispatches if a newer one replaced its own.
+# THE LANE. A measure/* branch runs in a convergence lane of its own (identity-model-convergence.yml's concurrency):
+# it replaces no one's waiting run and waits behind no other measurement, only for runners. A run cancelled anyway
+# (by hand) is dispatched again until the deadline.
 #
 # Exit: 0 LANDABLE, 1 NOT LANDABLE, 2 the measurement could not be made.
 set -uo pipefail
@@ -124,16 +125,16 @@ collect() { # <run id> <commit whose judgements classify>
   return $verdict
 }
 
-# Where a measurement's time went, on stderr (the table, or --json, stays alone on stdout): the run's wait for a runner
+# Where a measurement's time went, on stderr (the table, or --json, stays alone on stdout): the run's wait for runners
 # and its length, each takes row's job, and each row's phases from identity-takes-check.sh's timings.tsv -- which
 # phases a stored result spared ("reused") and which were resolved. A row from before the file was written has none.
 timings() { # <run id> <artifacts dir>
   local id=$1 dl=$2 times cc file
   times=$(ghb run view "$id" --json createdAt,startedAt,updatedAt,jobs --jq '
       def s: if . == null or . == "" then null else fromdateiso8601 end;
-      # The run "starts" when created; it is the first job that waited for the lane and a runner.
+      # The run "starts" when created; it is the first job that waited for a runner (and, on the main lane, for the lane).
       ([.jobs[].startedAt | s | select(. != null)] | min) as $first |
-      "run: created \(.createdAt), waited for the lane \(($first - (.createdAt|s)) // "?")s, then ran \(((.updatedAt|s) - $first) // "?")s",
+      "run: created \(.createdAt), waited for runners \(($first - (.createdAt|s)) // "?")s, then ran \(((.updatedAt|s) - $first) // "?")s",
       (.jobs[] | select(.name | endswith(" / takes")) |
         "  \(.name): \(((.completedAt|s) - (.startedAt|s)) // "?")s \(.conclusion // "unfinished")")') \
     || { say "run $id: could not read its timings"; return 0; }
@@ -190,16 +191,12 @@ say "base   $(git log --oneline -1 "$base")"
 timeout 300 git push -q --no-verify origin "$push:refs/heads/$branch" || die "could not push the measure branch"
 say "pushed $branch"
 
-# One deadline for the whole measurement: the lane, every (re-)dispatch and the run.
+# One deadline for the whole measurement: every (re-)dispatch and the run.
 deadline=$((SECONDS + timeout_min * 60))
-waiting='.status == "queued" or .status == "pending" or .status == "waiting" or .status == "requested"'
 dispatch() { # → measured_run
-  local since only=(-f takes-only=true) waited=$SECONDS
+  local since only=(-f takes-only=true)
   [ -n "$full" ] && only=()
-  # A dispatch while a run of the lane waits would replace it: wait until that one starts.
-  wait_until_no_runs "$workflow" "$waiting" $((deadline - SECONDS)) "a convergence run is waiting in the lane" \
-    || die "the lane still held a waiting run, or could not be read, within --timeout $timeout_min minutes"
-  say "lane free after $((SECONDS - waited))s (attempt $attempts)"
+  say "dispatching (attempt $attempts)"
   since=$(date -u +%Y-%m-%dT%H:%M:%SZ)
   dispatch_workflow "$workflow" "$branch" -f takes-base="$base" ${only[@]+"${only[@]}"} \
     || die "could not dispatch $workflow on $branch"
@@ -222,10 +219,9 @@ while :; do
   wait_for_run "$measured_run" $((deadline - SECONDS)) \
     || die "run $measured_run gave no conclusion within --timeout $timeout_min minutes"
   conclusion=$RUN_CONCLUSION
-  # Two measurements that both saw the lane free dispatch in the same second, and the later replaces the earlier
-  # (2026-10-15 07:23:44: classes 2 and 5 of one task): dispatch again until the deadline, not a fixed few times.
+  # Cancelled by hand, or by a lane shared after all: dispatch again until the deadline, not a fixed few times.
   if [ "$conclusion" = cancelled ] && [ "$SECONDS" -lt "$deadline" ]; then
-    say "run $measured_run was cancelled (a newer dispatch replaced it in the lane): dispatching again"
+    say "run $measured_run was cancelled: dispatching again"
     attempts=$((attempts + 1)); dispatch; continue
   fi
   break

@@ -66,7 +66,7 @@ case "$1 $2" in
       # the run exists only once the commit is on origin's measure/ branch: record what was pushed
       for f in "$ORIGIN"/refs/heads/measure/*; do [ -f "$f" ] && { basename "$f" > "$STUB/branch"; cat "$f" > "$STUB/pushed"; }; done
       [ -f "$STUB/pushed" ] && echo 777
-    else echo 0; fi ;;
+    else echo "${LANE_BUSY:-0}"; fi ;;
   "run view")
     case "$json" in
       url) echo "https://example.test/runs/777" ;;
@@ -127,15 +127,16 @@ check "...dispatching only the takes rows against the commit's parent (it is on 
 check "...and the branch is deleted afterwards" "0" "$(measure_branches)"
 check "...printing the verdict" "true" "$(grep -q '^LANDABLE' "$work/out" && echo true || echo false)"
 check "...and the takes row's own conclusion" "true" "$(grep -Eq '^pl +model .*failure' "$work/out" && echo true || echo false)"
-check "...and where its time went: the wait for the lane, from the first job's start, not the run's" "true" \
-  "$(grep -q 'waited for the lane 1188s, then ran 1256s' "$work/out" && echo true || echo false)"
+check "...and where its time went: the wait for runners, from the first job's start, not the run's" "true" \
+  "$(grep -q 'waited for runners 1188s, then ran 1256s' "$work/out" && echo true || echo false)"
 check "...each takes row's job" "true" "$(grep -q 'poland / takes: 582s failure' "$work/out" && echo true || echo false)"
 check "...and each row's phases, saying which a stored result spared" "true" \
   "$(grep -q 'pl phases: head-resolve 546s (resolved), base-resolve 3s (reused)' "$work/out" && echo true || echo false)"
-check "...and how long the lane took to free" "true" "$(grep -q 'lane free after [0-9]*s (attempt 1)' "$work/out" && echo true || echo false)"
 
-check "a run replaced in the lane more than twice is dispatched again until it runs" "0" "$(CANCELS=3 measure landable --countries pl)"
-check "...four dispatches in all" "true" "$(grep -q 'lane free after [0-9]*s (attempt 4)' "$work/out" && echo true || echo false)"
+check "a run cancelled more than twice is dispatched again until it runs" "0" "$(CANCELS=3 measure landable --countries pl)"
+check "...four dispatches in all" "true" "$(grep -q 'dispatching (attempt 4)' "$work/out" && echo true || echo false)"
+check "a measurement does not wait behind another run of the workflow: it has a lane of its own" "0" \
+  "$(LANE_BUSY=1 measure landable --timeout 0 --countries pl)"
 
 check "a right take lost is NOT LANDABLE" "1" "$(measure lost --base "$parent" --countries pl)"
 check "...naming the bucket" "true" "$(grep -q 'pl model: 1 right-lost' "$work/out" && echo true || echo false)"
