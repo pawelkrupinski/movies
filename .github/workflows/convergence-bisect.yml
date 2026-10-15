@@ -220,10 +220,15 @@ jobs:
                   chmod +x "$tools/step.sh"
                   export STEP_COMMAND="$tools/step.sh"
                   git checkout -q -- test/resources
-                  if ! good=$("$tools/convergence-bisect.sh" last-green); then
+                  good=$("$tools/convergence-bisect.sh" last-green); found=$?
+                  if [ "$found" -eq 1 ]; then
                       echo "### Convergence bisect — $COUNTRY" >> "$GITHUB_STEP_SUMMARY"
                       echo "No green $COUNTRY leg in the last 60 runs — nothing to bisect from." >> "$GITHUB_STEP_SUMMARY"
                       exit 0
+                  elif [ "$found" -ne 0 ]; then
+                      # An unreadable run list is an outage, not "no green leg": fail, so it is seen.
+                      echo "::error::could not read the earlier $WORKFLOW runs to find the last green $COUNTRY leg"
+                      exit 1
                   fi
                   "$tools/convergence-bisect.sh" bisect "$good" "$BAD"
                   if [ -s "$FIRST_BAD_FILE" ]; then

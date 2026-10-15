@@ -17,7 +17,8 @@
 # What it could not narrow further it reports as a range, never as a guess.
 #
 # Usage:
-#   convergence-bisect.sh last-green              print the newest SHA whose leg was green
+#   convergence-bisect.sh last-green              print the newest SHA whose leg was green (exit 1: none;
+#                                                 2: the runs could not be read)
 #   convergence-bisect.sh bisect <good> <bad>     bisect and write the verdict
 #
 # Environment:
@@ -46,17 +47,19 @@ paths_file="${CONVERGENCE_PATHS_FILE:-$here/../convergence-paths.txt}"
 # `mapfile`: the spec runs this on macOS too, where /bin/bash is still 3.2.
 pathspecs() { grep -Ev '^[[:space:]]*(#|$)' "$paths_file" | sed -E 's#/\*\*$#/#'; }
 
+# Exit 1: no run's full leg passed. Exit 2: the runs could not be read -- an outage, not "nothing to
+# bisect from", so the job fails instead of reporting a quiet nothing.
 last_green() {
     local runs run sha
-    runs=$(gh run list --workflow "$WORKFLOW" --branch main --limit 60 \
-               --json databaseId,headSha --jq '.[] | "\(.databaseId) \(.headSha)"') || return 1
+    runs=$(timeout 60 gh run list --workflow "$WORKFLOW" --branch main --limit 60 \
+               --json databaseId,headSha --jq '.[] | "\(.databaseId) \(.headSha)"') || return 2
     while read -r run sha; do
         [ -z "$run" ] && continue
         [ "$run" = "${RUN_ID:-}" ] && continue
         # The FULL leg's job, green — a sample alone passing says nothing about the full leg.
         # A run that cannot be read is not a red one: stop rather than bisect from an older base.
-        green=$(gh run view "$run" --json jobs \
-               --jq ".jobs[] | select(.name == \"$COUNTRY / convergence\" and .conclusion == \"success\") | .name") || return 1
+        green=$(timeout 60 gh run view "$run" --json jobs \
+               --jq ".jobs[] | select(.name == \"$COUNTRY / convergence\" and .conclusion == \"success\") | .name") || return 2
         if [ -n "$green" ]; then
             echo "$sha"
             return 0

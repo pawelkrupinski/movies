@@ -237,4 +237,24 @@ class ConvergenceBisectSpec extends AnyFlatSpec with Matchers with tools.SuiteCo
 
     out shouldBe history.good
   }
+
+  // The workflow reads exit 1 as "no green leg in 60 runs — nothing to bisect" and goes green: a GitHub
+  // outage must not read the same way, or a red leg is silently never bisected.
+  it should "exit 2 when a run cannot be read, and 1 only when no run's full leg passed" in {
+    val history = new History(badAt = 4)
+    def lastGreen(viewFails: Boolean): Int = {
+      val gh = history.repo.script("gh",
+        s"""case "$$1 $$2" in
+           |  "run list")  printf '20 ${history.firstBad}\\n10 ${history.good}\\n' ;;
+           |  "run view")  ${if (viewFails) "echo 'HTTP 502' >&2; exit 1" else "exit 0"} ;;
+           |esac
+           |exit 0
+           |""".stripMargin)
+      val path = s"${gh.getParent}:${configuration.executableSearchPath.value.mkString(java.io.File.pathSeparator)}"
+      history.repo.process(Seq("bash", Script.toString, "last-green"),
+        "PATH" -> path, "COUNTRY" -> "poland", "WORKFLOW" -> "Identity model convergence", "RUN_ID" -> "30").!(ProcessLogger(_ => ()))
+    }
+    lastGreen(viewFails = true) shouldBe 2
+    lastGreen(viewFails = false) shouldBe 1
+  }
 }
