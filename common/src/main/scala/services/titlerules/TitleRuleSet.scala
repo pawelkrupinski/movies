@@ -54,6 +54,7 @@ case class TitleRuleSet(rules: Seq[TitleRule], placeholders: Map[String, String]
   private val structuralRules = tier(GlobalStructural)
   private val canonicalRules  = tier(Canonical)
   private val spellingRules   = canonicalRules.filter(_.replacement.nonEmpty)
+  private val properNameRules = canonicalRules.filter(_.writesProperName)
   private val perCinemaRules: Map[String, Seq[TitleRule]] =
     effectiveRules.iterator.filter(_.scope == PerCinema).toSeq
       .groupBy(_.cinemaId.getOrElse(""))
@@ -126,6 +127,11 @@ case class TitleRuleSet(rules: Seq[TitleRule], placeholders: Map[String, String]
    *  supposed. Identity keeps the full fold; only display takes this subset. */
   def spellingUnified(t: String): String =
     spellingUnifiedCache.get(t, k => fold(spellingRules, k.trim))
+
+  /** The canonical tier's PROPER-NAME rewrites alone ([[TitleRule.writesProperName]]): a broadcaster's banner under
+   *  one of its short names spelled as the broadcaster files its records ("NT Live: Hamlet" → "National Theatre Live:
+   *  Hamlet"). What an external search may ask besides the venue's spelling. Uncached: asked once per listing built. */
+  def properNamed(t: String): String = fold(properNameRules, t.trim)
 
   /** Per-cinema raw → clean cleanup (the old per-client `cleanTitle`). Unknown
    *  cinema → identity. NO implicit trim — clients that trimmed carry an explicit

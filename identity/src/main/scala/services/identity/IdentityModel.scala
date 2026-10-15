@@ -214,13 +214,24 @@ object Listing {
       originalTitle = cm.movie.originalTitle.map(_.trim).filter(_.nonEmpty),
       countries     = cm.movie.countries.map(_.trim).filter(_.nonEmpty).distinct.sorted,
       catalogueIds  = CatalogueId.of(cinema, cm),
-      searchTitle   = Some(normalizer.apiQuery(title).trim).filter(q => q.nonEmpty && q != title.trim),
+      searchTitle   = searchTitleOf(title, normalizer),
       // as the card serves it ([[services.movies.CinemaSlotBuilder]]): absolute against its page, escaped — a site-relative
       // `img src` (PL Kino Roma's "/app/assets/movie/…") is a link no poster fetch takes
       poster        = SlotFields.url(cm.posterUrl, SlotFields.url(cm.filmUrl, None)),
       screenings    = ScreeningDays.of(cm.showtimes.map(_.dateTime.toLocalDate)),
       names         = venueNames(cinema, cm))
   }
+
+  /** The title external lookups are asked for besides the venue's own, if any: the one its rules ask
+   *  (`TitleNormalizer.apiQuery`: programme prefixes, accessibility tags, "+ event" suffixes off), else a broadcaster's
+   *  banner spelled by its proper name (`TitleNormalizer.properNamed`) — US "NT Live: Hamlet" is TMDB's "National Theatre
+   *  Live: Hamlet" (2026), which neither the venue's spelling nor the bare work reaches. */
+  private[identity] def searchTitleOf(title: String, normalizer: TitleNormalizer): Option[String] = {
+    def own(query: String) = Some(query.trim).filter(q => q.nonEmpty && q != title.trim)
+    // the venue's own dash after the banner the name replaced is no part of the work: "NT Live - Hay Fever"
+    own(normalizer.apiQuery(title)).orElse(own(BannerDash.replaceFirstIn(normalizer.properNamed(title), ": ")))
+  }
+  private val BannerDash = """:\s*[-–—]\s*""".r
 
   /** What `cm`'s own synopsis and cast field name — its matching-only excerpt where the venue cut the synopsis (MSI) — none
    *  where a feed copied them from its catalogue entry. */

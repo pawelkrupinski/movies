@@ -105,6 +105,10 @@ class TitleNormalizer(val rules: TitleRuleSet, memoEntries: Long = TitleRuleSet.
    *  the since-deleted `FilmCanonicalizer.groupByFilm`'s search-title edge. */
   def apiQuery(display: String): String = rules.search(display)
 
+  /** `title` with a broadcaster's banner spelled by its proper name ([[services.titlerules.TitleRuleSet.properNamed]]):
+   *  "NT Live: Hamlet" → "National Theatre Live: Hamlet". Itself when no such banner opens or closes it. */
+  def properNamed(title: String): String = rules.properNamed(title)
+
   /** The external-search form of a title: `apiQuery` (decoration strip) over the
    *  banner-aware re-cased title, so the query a resolver sends is normalised
    *  regardless of how a cinema spelled it (ALL-CAPS, all-lower, mixed). A pure

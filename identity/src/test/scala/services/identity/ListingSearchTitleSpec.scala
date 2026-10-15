@@ -45,6 +45,19 @@ class ListingSearchTitleSpec extends AnyFlatSpec with Matchers {
     search("Klub Filmowy: pokaz filmu Mira") shouldBe "Mira"
   }
 
+  "A broadcaster's banner under one of its short names" should "search the name the broadcaster files its records under" in {
+    // US Burns Court / Film Streams "NT Live: Hamlet": TMDB holds the National Theatre's 2026 Hamlet (1507580) as
+    // "National Theatre Live: Hamlet", which neither "NT Live: Hamlet" nor "Hamlet" reaches. The canonical tier's
+    // proper-name rule (`xtra-canonical-nt-live`) spells it so; the search asks that spelling too.
+    val l = listing("NT Live: Hamlet")
+    l.searchTitle shouldBe Some("National Theatre Live: Hamlet")
+    IdentityMeasures.searchQueries(Evidence.of(l, None).measured) should contain allOf ("National Theatre Live: Hamlet", "NT Live: Hamlet")
+    // the venue's dash after the banner is no part of the work (UK Keswick Alhambra's "NT Live - Hayfever")
+    listing("NT Live - Hayfever").searchTitle shouldBe Some("National Theatre Live: Hayfever")
+    // a strip the search asks still wins: the venue's programme off is the search title it always was
+    listing("Kino bez barier: Lalka (AD + CC + PJM) + spotkanie z twórcami").searchTitle shouldBe Some("Lalka (AD + CC + PJM)")
+  }
+
   "A plain title" should "have no search title of its own" in {
     listing("Lalka").searchTitle shouldBe None
   }
