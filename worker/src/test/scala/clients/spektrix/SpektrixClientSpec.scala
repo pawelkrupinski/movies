@@ -4,7 +4,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import org.scalatest.OptionValues
 import clients.tools.FakeHttpFetch
-import models.{BroadwayCinemaNottingham, DundeeContemporaryArtsDCA, GalaCinemaDurham, InstituteOfContemporaryArts, OldMarketHallShrewsbury, TauntonBrewhouse}
+import models.{BroadwayCinemaNottingham, DundeeContemporaryArtsDCA, GalaCinemaDurham, HydeParkPictureHouse, InstituteOfContemporaryArts, OldMarketHallShrewsbury, TauntonBrewhouse}
 import play.api.libs.json.{JsObject, Json}
 import services.cinemas.uk.SpektrixClient
 
@@ -116,19 +116,16 @@ class SpektrixClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     SpektrixClient.filmsOf(events).map(e => (e \ "id").as[String]) shouldBe Seq("1", "4", "5")
   }
 
-  "SpektrixClient.parse" should "read the building off its site and venue attributes, not a website's" in {
-    // `attribute_Website`, `attribute_TheatreWebsiteGenre`, `attribute_EDISiteNumber` carry
-    // "site" inside another word: read as the building, they put the performance elsewhere
-    // and their value came off the title as a building tag.
-    val events = Json.parse(
-      """[{"id":"1","name":"Nosferatu (Drama)","attribute_Film":true,"attribute_Sitename":"Gala",
-        |  "attribute_TheatreWebsiteGenre":"Drama"}]""".stripMargin).as[play.api.libs.json.JsArray]
-    val instances = Json.parse(
-      """[{"event":{"id":"1"},"start":"2026-10-20T19:30:00","attribute_Website":"https://gala.example",
-        |  "attribute_TheatreWebsiteCommission":"No","attribute_EDISiteNumber":"50110"}]""".stripMargin).as[play.api.libs.json.JsArray]
-    val films = SpektrixClient.parse(events, instances, GalaCinemaDurham, today, venue = Some("Gala"))
-    films.map(_.movie.title) shouldBe Seq("Nosferatu (Drama)")
-    films.flatMap(_.showtimes).map(_.dateTime) shouldBe Seq(LocalDateTime.of(2026, 10, 20, 19, 30))
+  // Replays a 2026-10-16 capture of Leeds Heritage Theatres' Spektrix events and instances (`WriteSpektrix --record
+  // leedsheritagetheatres`), trimmed to its films: the only Spektrix client billing `attribute_Website` ("HPPH", the
+  // Hyde Park Picture House) beside `attribute_TheatreWebsiteGenre` and `attribute_TheatreWebsiteCommission`.
+  "SpektrixClient.fetch (Leeds Heritage)" should "read the building off its site and venue attributes, not a website's" in {
+    // each carries "site" inside another word: read as the building, they put the performance elsewhere and their value
+    // came off the title as a building tag
+    val films = new SpektrixClient(new FakeHttpFetch("spektrix"), "leedsheritagetheatres", HydeParkPictureHouse,
+      LocalDate.of(2026, 10, 16), Some("Hyde Park Picture House")).fetch().map(cm => cm.movie.title -> cm).toMap
+    films.keySet.filter(_.contains("HPPH")) shouldBe empty
+    films("Blue Velvet").showtimes.map(_.dateTime) shouldBe Seq(LocalDateTime.of(2026, 10, 24, 22, 30))
   }
 
   // Replays a 2026-10-13 capture of DCA's Spektrix events and instances (`WriteSpektrix --record dundeeca`): its

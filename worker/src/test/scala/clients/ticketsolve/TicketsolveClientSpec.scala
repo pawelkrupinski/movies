@@ -167,14 +167,16 @@ class TicketsolveClientSpec extends AnyFlatSpec with Matchers with OptionValues 
   }
 
   "TicketsolveClient.parse" should "not read a venue's age limit on an uncategorised show as a film certificate" in {
-    // Mwldan files a club night "Clwb Mwldan: Sonic Sounds (18+)"; uncategorised, it would be no film.
-    val feed =
-      """<venues><venue><shows>
-        |<show id="1"><name>Club Night (18+)</name><event_category></event_category><events><event>
-        |<date_time_iso>2026-10-20T22:00:00+01:00</date_time_iso></event></events></show>
-        |</shows></venue></venues>""".stripMargin
-    TicketsolveClient.parse(feed, WatershedBristol, today) shouldBe empty
-    TicketsolveClient.parse(feed.replace("(18+)", "(18)"), WatershedBristol, today).map(_.movie.title) shouldBe Seq("Club Night")
+    // Mwldan's own "Clwb Mwldan: Sonic Sounds (18+)" club night, as its recorded feed holds it (show 873691292), its
+    // category blanked: no feed has billed an uncategorised one yet, and so filed it would be no film.
+    val recorded = scala.io.Source.fromFile("test/resources/fixtures/ticketsolve/mwldan.ticketsolve.com/shows.xml", "UTF-8").mkString
+    val from     = recorded.indexOf("<show id=\"873691292\">")
+    val show     = recorded.substring(from, recorded.indexOf("</show>", from) + "</show>".length)
+      .replaceAll("(?s)<event_category>.*?</event_category>", "<event_category></event_category>")
+    val feed     = s"<venues><venue><shows>$show</shows></venue></venues>"
+    TicketsolveClient.parse(feed, TheatrMwldanCardigan, today) shouldBe empty
+    TicketsolveClient.parse(feed.replace("(18+)", "(18)"), TheatrMwldanCardigan, today).map(_.movie.title) shouldBe
+      Seq("Clwb Mwldan: Sonic Sounds")
   }
 
   it should "refuse a page that is no feed rather than call it an empty programme" in {

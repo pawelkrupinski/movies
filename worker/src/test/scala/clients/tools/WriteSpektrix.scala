@@ -57,7 +57,7 @@ object WriteSpektrix {
 
   /** The clients SpektrixClientSpec replays; the rest are fetched to measure only. */
   private val Recorded = Set("ica", "galadurham", "broadwaynottingham", "theatresevern", "theploughartscentre", "dundeeca",
-    "brewhousetaunton")
+    "brewhousetaunton", "leedsheritagetheatres")
 
   val commandLine: _root_.tools.CommandLine = VenueMeasure.commandLine("WriteSpektrix", "Measures every UK Spektrix venue live.")
 

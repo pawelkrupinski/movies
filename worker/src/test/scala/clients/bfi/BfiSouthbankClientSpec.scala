@@ -70,21 +70,25 @@ class BfiSouthbankClientSpec extends AnyFlatSpec with Matchers with OptionValues
     scrape(LocalDate.of(2026, 10, 24)).flatMap(_.showtimes).map(_.dateTime.toLocalDate).min shouldBe LocalDate.of(2026, 10, 24)
   }
 
+  // Each a film page's `section#shows` as cinemas.bfi.org.uk served it on 2026-10-16
+  // (https://cinemas.bfi.org.uk/whats-on/<slug>), trimmed of its scripts and icons.
+  private def shows(page: String) =
+    scala.io.Source.fromFile(s"test/resources/fixtures/bfi/shows-sections/$page.html", "UTF-8").mkString
+
   "BfiSouthbankClient.performances" should "read the blocks of a page that carries no calendar" in {
-    BfiSouthbankClient.performances(
-      shows("Mon 16 Nov", """<a href="https://whatson.bfi.org.uk/x" aria-label="14:00 Monday 16 November NFT1">14:00</a>""", "NFT1"),
-      today) shouldBe Seq(models.Showtime(LocalDateTime.of(2026, 11, 16, 14, 0), Some("https://whatson.bfi.org.uk/x"), room = Some("NFT1")))
+    val dryWhite = BfiSouthbankClient.performances(shows("a-dry-white-season"), today)
+    dryWhite.map(s => (s.dateTime, s.room)) shouldBe Seq(
+      LocalDateTime.of(2026, 10, 23, 20, 40) -> Some("NFT3"),
+      LocalDateTime.of(2026, 11, 2, 18, 20)  -> Some("NFT4"),
+      LocalDateTime.of(2026, 11, 25, 18, 10) -> Some("NFT2"))
+    dryWhite.flatMap(_.bookingUrl).foreach(_ should startWith ("https://whatson.bfi.org.uk/"))
+    // sold out: a disabled button under its day heading, no booking link
+    BfiSouthbankClient.performances(shows("sold-out-cunk-on-cinema"), today) shouldBe
+      Seq(models.Showtime(LocalDateTime.of(2026, 11, 3, 18, 15), None, room = Some("NFT1")))
   }
 
   it should "leave out the talks the site sells in the BFI Reuben Library" in {
-    BfiSouthbankClient.performances(
-      shows("Thu 5 Nov", """<a href="https://whatson.bfi.org.uk/x" aria-label="18:30 Thursday 5 November BFI Reuben Library">18:30</a>""", "BFI Reuben Library"),
-      today) shouldBe empty
+    // UEA Film50's talk on the James Bond franchise, 30 Nov, in the Reuben Library
+    BfiSouthbankClient.performances(shows("reuben-library-talk-james-bond-franchise"), today) shouldBe empty
   }
-
-  /** A film page's `section#shows` with one day and one Southbank performance on `screen`,
-   *  shaped as the recorded pages are. */
-  private def shows(day: String, time: String, screen: String) =
-    s"""<section id="shows"><div><h3>$day</h3><ul><li><div class="performanceDetails" data-ga-vanue="BFI Southbank">""" +
-      s"""<div><div>$time</div></div><div><p>From £9.50</p><p><span>BFI Southbank</span></p><p>$screen</p></div></div></li></ul></div></section>"""
 }
