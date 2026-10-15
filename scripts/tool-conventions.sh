@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # What every Bash tool in this repository shares, one copy each: a bounded command that works on stock macOS, the usage
-# text read from a tool's own header, the country codes, and the shared identity cache's path. Sourcing it defines
+# text read from a tool's own header, how a tool fails, its country flag, a bounded and retried gh download, the
+# country codes, and the shared identity cache's path. Sourcing it defines
 # functions and constants only (and exports KINOWO_IDENTITY_CACHE, so a Python tool started from a Bash one reads the
 # same cache). bash 3.2 compatible: no mapfile, no associative arrays, no ${x,,}.
 #
@@ -24,6 +25,9 @@
 #        first `set ` line, the `# ` stripped, a leading blank line dropped
 #   KINOWO_COUNTRIES                -> the country codes every tool loops over, in one order (kinowo_countries_csv: "pl,de,…")
 #   KINOWO_IDENTITY_CACHE           -> the cache every identity tool shares (default ~/.cache/kinowo-identity)
+#   die / usage_error <message...>  -> exit 1 (DIE_STATUS) for a runtime failure, 2 for a caller's mistake (below)
+#   country_flag / selected_countries_csv -> `--country cc[,cc]` and `--countries a,b`, one parser (below)
+#   gh_download <seconds> <gh download args...> -> 0 got it, 3 absent, 1 failed: bounded and retried (below)
 #   local_mongo_port / local_mongo_uri [database] -> the local, password-free Mongo the prod mirror, the it/ suites
 #        and the identity tools share: 127.0.0.1:$LOCAL_MIRROR_PORT (default 28017), a direct connection
 
@@ -61,3 +65,78 @@ bounded() {
 }
 
 usage_from_header() { sed -n '2,/^set /p' "${1:-$0}" | sed -e '$d' -e 's/^# \{0,1\}//' -e 's/^#$//' | sed -e '1{/^$/d;}'; }
+
+# ── Failing: a runtime failure, or the caller's mistake ─────────────────────────────────────────────
+#   die <message...>          -> "<tool>: <message>" on stderr, then exit $DIE_STATUS (default 1): the tool could not do
+#        its work. A tool whose documented exit contract gives "no verdict" a status of its own (fail-before's,
+#        identity-measure's and identity-measure-ci's 2, beside their 1 for a verdict of "no") sets DIE_STATUS=2 once,
+#        next to that contract.
+#   usage_error <message...>  -> the same and a pointer to --help, then exit 2 whatever DIE_STATUS says: asked wrongly.
+#   TOOL_NAME (default the running script's file name) names the tool in both.
+die() { echo "${TOOL_NAME:-$(basename "$0")}: $*" >&2; exit "${DIE_STATUS:-1}"; }
+usage_error() {
+  local tool=${TOOL_NAME:-$(basename "$0")}
+  echo "$tool: $*" >&2
+  echo "$tool: see $tool --help" >&2
+  exit 2
+}
+
+# ── The country flag ────────────────────────────────────────────────────────────────────────────────
+# One flag, both spellings the tools grew: `--country cc[,cc]` (repeatable) and `--countries a,b`, each also as
+# `--flag=value`. In a tool's argument loop:
+#   --country|--countries|--country=*|--countries=*) country_flag "$@"; shift "$COUNTRY_FLAG_ARGS" ;;
+# and after it `selected_countries_csv` (every country when none was named). Codes are lower-cased, a repeat dropped,
+# and one KINOWO_COUNTRIES lacks — or a flag without its value — is a usage_error. COUNTRY_FLAG_ARGS is always 1 or 2.
+SELECTED_COUNTRIES=()
+# shellcheck disable=SC2034 # COUNTRY_FLAG_ARGS is the calling loop's
+country_flag() {
+  local flag=$1 value cc known
+  COUNTRY_FLAG_ARGS=1
+  case "$flag" in
+    --country=*|--countries=*) value=${flag#*=}; flag=${flag%%=*} ;;
+    *) value=${2:-}; COUNTRY_FLAG_ARGS=2; [ $# -ge 2 ] || COUNTRY_FLAG_ARGS=1 ;;
+  esac
+  [ -n "$value" ] && [ "${value#-}" = "$value" ] || usage_error "$flag needs a country code (one of $(kinowo_countries_csv))"
+  for cc in $(printf '%s' "$value" | tr '[:upper:],' '[:lower:] '); do
+    known=""
+    case ",$(kinowo_countries_csv)," in *",$cc,"*) known=1 ;; esac
+    [ -n "$known" ] || usage_error "unknown country $cc (one of $(kinowo_countries_csv))"
+    case " ${SELECTED_COUNTRIES[*]:-} " in *" $cc "*) ;; *) SELECTED_COUNTRIES+=("$cc") ;; esac
+  done
+}
+selected_countries_csv() {
+  if [ ${#SELECTED_COUNTRIES[@]} -eq 0 ]; then kinowo_countries_csv; else local IFS=,; echo "${SELECTED_COUNTRIES[*]}"; fi
+}
+
+# ── Downloading from GitHub ─────────────────────────────────────────────────────────────────────────
+#   gh_download <seconds> <run|release> download <args...> -> 0 downloaded; 3 ABSENT (gh says there is nothing to
+#        download: no asset matches, no such or an expired artifact, a 404); 1 a FAILED read — every attempt failed,
+#        each ended once it outlasts <seconds> (a hung gh is a failed attempt, not a wait forever).
+#   A failed read is asked again, GH_DOWNLOAD_ATTEMPTS times in all (3), the wait doubling from GH_DOWNLOAD_BACKOFF
+#   seconds (5): one GitHub 5xx is not a download that cannot be made. An absent one is an answer, never asked again —
+#   and never confused with a failed one, which a caller treating "absent" as "carry on with less" must not read as it.
+#   A `run download`'s --dir is emptied before each retry (gh refuses to overwrite what a cut-short attempt left), so
+#   it must be a directory of the download's own. gh's own messages go to stderr.
+gh_download() {
+  local seconds=$1 attempt=1 err status dir="" arg prev=""
+  shift
+  for arg in "$@"; do [ "$prev" = --dir ] && dir=$arg; prev=$arg; done
+  err=$(mktemp "${TMPDIR:-/tmp}/gh-download.XXXXXX") || return 1
+  while :; do
+    bounded "$seconds" gh "$@" 2> "$err"
+    status=$?
+    cat "$err" >&2
+    [ "$status" -eq 0 ] && { rm -f "$err"; return 0; }
+    if grep -Eq 'no assets match|release not found|no artifact matches|no valid artifacts found|HTTP 404' "$err"; then
+      rm -f "$err"; return 3
+    fi
+    if [ "$attempt" -ge "${GH_DOWNLOAD_ATTEMPTS:-3}" ]; then
+      echo "gh $1 $2: failed after $attempt attempt(s) (exit $status)" >&2
+      rm -f "$err"; return 1
+    fi
+    echo "gh $1 $2: attempt $attempt failed (exit $status); asking again" >&2
+    sleep $(( ${GH_DOWNLOAD_BACKOFF:-5} << (attempt - 1) ))
+    if [ "$1" = run ] && [ -n "$dir" ] && [ -d "$dir" ]; then find "$dir" -mindepth 1 -delete; fi
+    attempt=$((attempt + 1))
+  done
+}
