@@ -63,7 +63,7 @@ for cc in "${CCS[@]}"; do
     elif [ $? -eq 2 ]; then echo "$cc: could not read release $RELEASE (see gh's error above)" >&2; exit 1; fi
   fi
   # a download cut short earlier leaves files gh will not overwrite
-  rm -rf "$DEST/archive/scrape-$cc"
+  rm -rf "$DEST/archive/scrape-$cc"; mkdir -p "$DEST/archive/scrape-$cc"
   timeout "$LIMIT" gh run download "$RUN" -R "$REPO" --name "scrape-fixtures-$cc" --dir "$DEST/archive/scrape-$cc" ||
     { echo "$cc: could not download run $RUN's scrape-fixtures-$cc (gh failed or timed out)" >&2; exit 1; }
   corpus=$(compgen -G "$DEST/archive/scrape-$cc/scrapes-$cc.tar.*" | head -1 || true)

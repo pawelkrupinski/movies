@@ -48,34 +48,24 @@ done
 # started <run> -> the run's start (ISO-8601), which tells a response the run recorded from one it restored; kept
 started() {
   local file=$IDENTITY_CACHE/recordings/$1/started_at
-  if [ ! -s "$file" ]; then
-    mkdir -p "$(dirname "$file")"
-    gh api "repos/${KINOWO_REPO:-pawelkrupinski/movies}/actions/runs/$1" --jq .run_started_at > "$file.part" && mv "$file.part" "$file"
-  fi
+  [ -s "$file" ] || identity_put "$file" identity_gh "$IDENTITY_GH_READ" api "repos/${KINOWO_REPO:-pawelkrupinski/movies}/actions/runs/$1" --jq .run_started_at ||
+    { identity_log "could not read run $1's start (gh failed or timed out): its origins cannot be judged"; return 1; }
   cat "$file"
-}
-
-# corpus <run> <cc> -> the fixtures directory holding the run's corpus/ for cc, downloading only the scrape corpus
-corpus() {
-  local dir=$IDENTITY_CACHE/recordings/$1/pair/test/resources/fixtures archive
-  if [ ! -f "$dir/corpus/cinema-scrapes-$2.json.gz" ]; then
-    identity_log "downloading run $1's $2 scrape corpus"
-    archive=$IDENTITY_CACHE/recordings/$1/archive/scrape-$2
-    rm -rf "$archive"; mkdir -p "$archive"
-    gh run download "$1" -R "${KINOWO_REPO:-pawelkrupinski/movies}" --name "scrape-fixtures-$2" --dir "$archive" >&2
-    bash "$repo/.github/scripts/unpack-fixture-archive.sh" "$(compgen -G "$archive/scrapes-$2.tar.*" | head -1)" "$IDENTITY_CACHE/recordings/$1/pair"
-  fi
-  echo "$dir"
 }
 
 status=0
 for cc in "${countries[@]}"; do
   if [ "$corpus_only" = 1 ]; then
-    if ! { dir_a=$(corpus "$run_a" "$cc") && dir_b=$(corpus "$run_b" "$cc"); }; then status=1; continue; fi
+    if ! { dir_a=$(identity_recording "$run_a" "$cc" corpus) && dir_b=$(identity_recording "$run_b" "$cc" corpus); }; then
+      identity_log "$cc: not compared (above)"; status=1; continue
+    fi
     since=()
   else
-    if ! { dir_a=$(identity_recording "$run_a" "$cc") && dir_b=$(identity_recording "$run_b" "$cc"); }; then status=1; continue; fi
-    since=(--since-a "$(started "$run_a")" --since-b "$(started "$run_b")")
+    if ! { dir_a=$(identity_recording "$run_a" "$cc") && dir_b=$(identity_recording "$run_b" "$cc") &&
+           since_a=$(started "$run_a") && since_b=$(started "$run_b"); }; then
+      identity_log "$cc: not compared (above)"; status=1; continue
+    fi
+    since=(--since-a "$since_a" --since-b "$since_b")
   fi
   python3 -I "$repo/scripts/recording_diff.py" "$cc" "$dir_a" "$dir_b" ${since[@]+"${since[@]}"} \
     --label-a "$run_a" --label-b "$run_b" --health-cache "$IDENTITY_CACHE/recording-diff" ${pass[@]+"${pass[@]}"} || status=1

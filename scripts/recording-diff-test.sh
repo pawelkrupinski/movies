@@ -74,4 +74,13 @@ check "...the two corpora still compared" "1" "$(grep -c 'RE-SPELLED (whitespace
 
 check "a run id that is not one is refused" "2" "$(diff_ 100 abc > /dev/null; echo $?)"
 
+# a run whose start cannot be read (the stub knows only 100 and 200) is not compared as if it had none
+recording 600 de "Lieblingsmenschen" www.cineworld.co.uk ok
+out=$(diff_ 100 600 --country de); code=$?
+check "a run whose start cannot be read fails, comparing nothing" "1 0 1" \
+  "$code $(grep -c 'RE-SPELLED\|REFUSING' <<< "$out") $(grep -c "could not read run 600's start" "$work/err")"
+# a corpus that cannot be downloaded fails by name
+out=$(diff_ 300 700 --country de --corpus-only); code=$?
+check "a corpus that cannot be downloaded fails, said" "1 1" "$code $(grep -c 'de: not compared' "$work/err")"
+
 spec_summary
