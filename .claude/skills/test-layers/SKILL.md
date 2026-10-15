@@ -53,9 +53,12 @@ is that the local toolchain is missing (e.g. no full Xcode for
   `<tool>_test.py` under scripts/, .github/, android/scripts, ios/scripts,
   infra/bin), found by name and run in parallel; ci.yml runs it whole.
   `scripts/run-script-tests scripts/ci identity-slice` narrows by path or
-  name, `--changed origin/main` runs only the tests whose test, tool or a
-  file they name changed (the pre-push hook's `scripttests`), `--list --all`
-  shows the `# script-test: <tag>` ones kept out of the default run.
+  name, `--changed origin/main` runs only the tests whose test, tool, a
+  file they name, or a library they source/import (transitively) changed
+  (the pre-push hook's `scripttests`), `--list --all` shows the
+  `# script-test: <tag>` ones kept out of the default run. `--bash /bin/bash`
+  runs them under macOS's bash 3.2, the floor the tools promise (the nightly
+  Order independence `swift` job does); run it after a shell change.
 
 ## Per-country convergence suites (e2e, `@CountryScoped`)
 
