@@ -2,10 +2,9 @@ package services.movies
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import testsupport.RepoRoot
+import testsupport.ModuleSources
 
 import java.nio.file.{Files, Path}
-import scala.jdk.CollectionConverters.*
 
 /**
  * Keeps every `movie_slots` / `screenings` write on the path that stamps the row's `listingKey`
@@ -27,13 +26,9 @@ import scala.jdk.CollectionConverters.*
  */
 class ListingKeyWritePathLintSpec extends AnyFlatSpec with Matchers {
 
-  private val root = RepoRoot.dir.toPath
-
   private val mainSources: Seq[Path] =
-    Seq("common", "worker", "web").map(module => root.resolve(s"$module/src/main/scala")).filter(Files.isDirectory(_))
-      .flatMap(dir => Files.walk(dir).iterator().asScala.filter(_.toString.endsWith(".scala")).toSeq)
+    ModuleSources.productionScalaFiles
 
-  private def named(path: Path): String = root.relativize(path).toString
 
   /** The source with comments removed, so a rule reads code, not the prose describing it. */
   private def code(path: Path): String =
@@ -45,7 +40,7 @@ class ListingKeyWritePathLintSpec extends AnyFlatSpec with Matchers {
     mainSources.flatMap { path =>
       val src = code(path).replace(s"case class $name(", "")
       val n   = call.findAllMatchIn(src).size
-      Option.when(n > 0)(named(path) -> n)
+      Option.when(n > 0)(ModuleSources.named(path) -> n)
     }
   }
 
@@ -81,7 +76,7 @@ class ListingKeyWritePathLintSpec extends AnyFlatSpec with Matchers {
     val offenders = mainSources.filter { path =>
       val src = code(path)
       names.findFirstIn(src).isDefined && writes.findFirstIn(src).isDefined
-    }.map(named).filterNot(allowed)
+    }.map(ModuleSources.named).filterNot(allowed)
     withClue("write `movie_slots` / `screenings` through SlotsRepository / ScreeningsRepository, which stamp `listingKey`: ") {
       offenders shouldBe empty
     }

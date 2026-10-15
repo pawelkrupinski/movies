@@ -3,7 +3,7 @@ package services.movies
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import java.io.File
+import testsupport.ModuleSources
 
 /**
  * A film's cinemas live in two side collections keyed by `filmId` — `screenings`
@@ -55,20 +55,10 @@ class SideCollectionDeleteOwnershipSpec extends AnyFlatSpec with Matchers {
     "getCollection(\"movie_slots\")", "getCollection(\"screenings\")",
     "getCollection[Document](\"movie_slots\")", "getCollection[Document](\"screenings\")")
 
-  private def mainScalaFiles(dir: File): Seq[File] =
-    if (!dir.isDirectory) Seq.empty
-    else Option(dir.listFiles()).toSeq.flatten.flatMap { f =>
-      if (f.isDirectory) mainScalaFiles(f)
-      else if (f.getName.endsWith(".scala")) Seq(f)
-      else Seq.empty
-    }
-
-  private val modules = Seq("common", "worker", "web").map(m => new File(s"$m/src/main/scala"))
-
   "deleting a film's side-collection rows" should "stay with the repositories that own them" in {
     // Premise: the scan actually reached the source tree. Without this the spec would pass
     // vacuously from any working directory that isn't the build root.
-    val files = modules.flatMap(mainScalaFiles)
+    val files = ModuleSources.productionScalaFiles.map(_.toFile)
     withClue("no production sources found — the scan is looking in the wrong place: ") {
       files.size should be > 100
     }

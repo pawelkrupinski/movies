@@ -2,10 +2,9 @@ package tools
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import testsupport.RepoRoot
+import testsupport.ModuleSources
 
 import java.nio.file.{Files, Path}
-import scala.jdk.CollectionConverters.*
 
 /**
  * Unit specs share one JVM per module and run IN PARALLEL, so a spec that switches a JVM-wide
@@ -31,22 +30,13 @@ class JvmDefaultsLintSpec extends AnyFlatSpec with Matchers {
   private val PropertyMutators =
     """\bSystem\s*\.\s*(setProperty|clearProperty|setProperties)\s*\(|\bsys\s*\.\s*props\s*(\+\+?=|--?=|\.\s*(update|put|remove|clear|addOne|subtractOne)\b|\([^()]*\)\s*=(?!=))""".r
 
-  private def testSources: Seq[Path] = {
-    val root = RepoRoot.dir.toPath
-    for {
-      module <- Seq("common", "testkit", "worker", "web", "e2e")
-      layer  <- Seq("test", "it", "page", "fixtures")
-      dir     = root.resolve(s"$module/src/$layer")
-      if Files.isDirectory(dir)
-      file   <- Files.walk(dir).iterator().asScala.filter(_.toString.endsWith(".scala")).toSeq
-      if file.getFileName.toString != "JvmDefaultsLintSpec.scala"
-    } yield file
-  }
+  private def testSources: Seq[Path] =
+    ModuleSources.scalaFiles("test", "it", "page", "fixtures").filter(_.getFileName.toString != "JvmDefaultsLintSpec.scala")
 
   "specs" should "never change the JVM's default locale or time zone" in {
     val offenders = testSources.filter(path => Mutators.findFirstIn(Files.readString(path)).isDefined)
     withClue("run the code under that default in a ChildJvm started with it (-Duser.language=…, -Duser.timezone=…): ") {
-      offenders.map(RepoRoot.dir.toPath.relativize(_).toString) shouldBe empty
+      offenders.map(ModuleSources.named) shouldBe empty
     }
   }
 
@@ -55,7 +45,7 @@ class JvmDefaultsLintSpec extends AnyFlatSpec with Matchers {
     withClue("hand the code under test a typed value (a Country, a MongoAddress, an Env.of(...)) resolved from the " +
       "process only at its composition root; for a property the JDK itself reads, run the code in a ChildJvm " +
       "started with it (-Dname=value): ") {
-      offenders.map(RepoRoot.dir.toPath.relativize(_).toString).sorted shouldBe empty
+      offenders.map(ModuleSources.named).sorted shouldBe empty
     }
   }
 }

@@ -2,7 +2,7 @@ package tools
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import testsupport.RepoRoot
+import testsupport.{ModuleSources, RepoRoot}
 
 import java.nio.file.{Files, Path}
 import scala.jdk.CollectionConverters.*
@@ -59,28 +59,20 @@ class ProcessAccessLintSpec extends AnyFlatSpec with Matchers {
   )
 
   /** Every module's production sources and the worker's shared fixture harness. */
-  private val ProductionDirectories =
-    Seq("common/src/main", "testkit/src/main", "worker/src/main", "worker/src/fixtures", "web/src/main", "e2e/src/main")
+  private val ProductionDirectories = ModuleSources.configDirectories("main", "fixtures")
 
   /** Every spec, integration spec, page test, e2e suite and the tool/script mains that live
    *  beside them. A spec is the root of its own run: it resolves ONE ProcessConfiguration
    *  (`tools.SuiteConfiguration`) or builds the typed values it needs directly. */
-  private val SpecDirectories = for {
-    module <- Seq("common", "testkit", "worker", "web", "e2e")
-    config <- Seq("test", "it", "page")
-  } yield s"$module/src/$config"
+  private val SpecDirectories = ModuleSources.configDirectories("test", "it", "page")
 
-  private def sources(directories: Seq[String]): Seq[Path] = {
-    val root = RepoRoot.dir.toPath
+  private def sources(directories: Seq[Path]): Seq[Path] =
     for {
-      directory <- directories
-      dir        = root.resolve(directory)
-      if Files.isDirectory(dir)
-      file      <- Files.walk(dir).iterator().asScala.toSeq
-      name       = file.getFileName.toString
+      dir  <- directories
+      file <- Files.walk(dir).iterator().asScala.toSeq
+      name  = file.getFileName.toString
       if name.endsWith(".scala") || name.endsWith(".scala.html") || name.endsWith(".java")
     } yield file
-  }
 
   /** Source with block, line, Scaladoc and Twirl comments removed, so a comment that NAMES
    *  the forbidden calls (as this project's comments often do) is not mistaken for one. */
@@ -93,7 +85,7 @@ class ProcessAccessLintSpec extends AnyFlatSpec with Matchers {
   }
 
   private def offenders(pattern: scala.util.matching.Regex, allowed: Map[String, String],
-                        directories: Seq[String] = ProductionDirectories): Seq[String] = {
+                        directories: Seq[Path] = ProductionDirectories): Seq[String] = {
     val root = RepoRoot.dir.toPath
     sources(directories).flatMap { path =>
       val relative = root.relativize(path).toString
