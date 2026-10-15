@@ -104,6 +104,24 @@ class PosterEvidenceSpec extends AnyFlatSpec with Matchers {
     PosterEvidence.editionsApart(FilmTable.listing(Multikino, "Siostry"), IdentityMeasures.Film("Siostry", year = Some(2005))) shouldBe false
   }
 
+  it should "date a listing away from a film only by a year its title bills, never by an anniversary's number" in {
+    // DE "Weihnachten mit den Drei Herren 2026", a band's Christmas show, agreed as Epstein's 1927 "The Three-Sided Mirror"
+    val show = FilmTable.listing(Multikino, "Weihnachten mit den Drei Herren 2026")
+    PosterEvidence.datedApart(show, IdentityMeasures.Film("The Three-Sided Mirror", year = Some(1927))) shouldBe true
+    PosterEvidence.datedApart(show, IdentityMeasures.Film("Weihnachten mit den Drei Herren", year = Some(2026))) shouldBe false
+    // UK "Manhunter - 40th Anniversary": a family's record titled with its own year numbers what editionsApart reads apart
+    // from the 40th — no year dates the listing away
+    PosterEvidence.datedApart(FilmTable.listing(Multikino, "Manhunter - 40th Anniversary"), IdentityMeasures.Film("Manhunter (1986)", year = Some(1986))) shouldBe false
+    // a festival's year beside the work dates the festival: only the pieces naming the film date it
+    PosterEvidence.datedApart(FilmTable.listing(Multikino, "O vecech nadprirozených - Von übernatürlichen Dingen | Tschechischer Filmmittwoch | TDKT 2026"),
+      IdentityMeasures.Film("O vecech nadprirozených", year = Some(1958))) shouldBe false
+    PosterEvidence.datedApart(FilmTable.listing(Multikino, "Toddler Club: Disney Junior Cinema Club 2026"),
+      IdentityMeasures.Film("Disney Junior Cinema Club", year = Some(2024))) shouldBe true
+    // a year the film's own title carries is its own, however its record dates it
+    PosterEvidence.datedApart(FilmTable.listing(Multikino, "1984"), IdentityMeasures.Film("1984", year = Some(1956))) shouldBe false
+    PosterEvidence.datedApart(FilmTable.listing(Multikino, "Weihnachten"), IdentityMeasures.Film("Weihnachten", year = Some(1927))) shouldBe false
+  }
+
   it should "number another instalment where the listing numbers the very title the film's own titles number none of" in {
     // DE recapture 2026-10-13: "Begegnungen der Seele 2" ×5 was filled with the 2025 "Begegnungen der Seele", its first part
     val sequel = IdentityMeasures.Film("Begegnungen der Seele", year = Some(2025))

@@ -296,6 +296,19 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     Agreement.agreed(widely, dated(2026), thisYear = Some(2026)) shouldBe None
   }
 
+  "A year the title bills" should "rule out a film it dates away, but not a festival's year beside the work" in {
+    // DE "Weihnachten mit den Drei Herren 2026", a band's Christmas show its feed filed as Epstein's 1927 "The Three-Sided
+    // Mirror": the families searched the copied original title and took the 1927 film
+    def took(record: IdentityMeasures.Film) = Seq(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Filmweb)
+      .map(family => FamilyTook(FamilyPick(family, "1", SourceRecord(record, Map("imdb" -> "tt0017938")))))
+    val mirror = film("Weihnachten mit den Drei Herren", 1927, "Jean Epstein", 40)
+    Agreement.agreed(Seq(listing(KinoMuza, "Weihnachten mit den Drei Herren 2026")), took(mirror)) shouldBe None
+    Agreement.agreed(Seq(listing(KinoMuza, "Weihnachten mit den Drei Herren")), took(mirror)).map(_.record.film.year) shouldBe Some(Some(1927))
+    val nadprirozenych = film("O vecech nadprirozených", 1958, "Jirí Krejcík", 90)
+    Agreement.agreed(Seq(listing(KinoMuza, "O vecech nadprirozených - Von übernatürlichen Dingen | Tschechischer Filmmittwoch | TDKT 2026")),
+      took(nadprirozenych)).map(_.record.film.year) shouldBe Some(Some(1958))
+  }
+
   "A listing billing a cut of the film" should "run as the record, at the cut's running time" in {
     // TMDB and IMDb date "Apocalypse Now" at its 147 theatrical minutes; venues bill the Final Cut (183) and Redux (202)
     val apocalypse = SourceRecord(IdentityMeasures.Film("Apocalypse Now", None, Nil, Some(1979), Some(147), Some(Seq("Francis Ford Coppola")),

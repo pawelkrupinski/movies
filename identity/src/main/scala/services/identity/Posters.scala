@@ -1,6 +1,7 @@
 package services.identity
 
 import java.awt.image.BufferedImage
+import services.movies.TitleContainment
 import scala.jdk.CollectionConverters._
 
 /**
@@ -195,6 +196,22 @@ object PosterEvidence {
       val billed = yearsOf(listing.rawTitle) ++ yearsOf(listing.title)
       billed.nonEmpty && billed.forall(year => !FactRelations.yearsNear(year, released))
     }
+  }
+
+  /** Does a year the listing's title bills date it away from the film — every year it bills more than one from the film's
+   *  release, and none of them a year the film's own titles carry? DE "Weihnachten mit den Drei Herren 2026", a band's
+   *  Christmas show, is no 1927 film. Years alone, not every number [[editionsApart]] reads: an anniversary ("Manhunter -
+   *  40th Anniversary") numbers no edition against a record titled with its own year. Of a title in pieces, only the
+   *  pieces naming the film date it: a festival's year beside the work ("O vecech nadprirozených - Von übernatürlichen
+   *  Dingen | Tschechischer Filmmittwoch | TDKT 2026") dates the festival, not the 1958 film. The agreement's guard
+   *  ([[services.identity.agreement.Agreement.agreed]]); [[editionsApart]] is the fill's. */
+  def datedApart(listing: Listing, film: IdentityMeasures.Film): Boolean = film.year.exists { released =>
+    val billed = Seq(listing.rawTitle, listing.title).distinct.flatMap { title =>
+      val pieces = IdentityMeasures.pieces(title)
+      if (pieces.sizeIs <= 1) yearsOf(title)
+      else pieces.filter(piece => film.titles.map(TitleContainment.tokens).exists(named => named.nonEmpty && TitleContainment.tokens(piece).containsSlice(named))).flatMap(yearsOf)
+    }.toSet
+    billed.nonEmpty && billed.forall(year => !FactRelations.yearsNear(year, released)) && !film.titles.exists(yearsOf(_).exists(billed))
   }
 
   /** Does a title piece of the listing number the very title the film's own titles number none of — "Begegnungen der

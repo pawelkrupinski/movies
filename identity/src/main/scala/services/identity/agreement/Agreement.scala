@@ -1,7 +1,7 @@
 package services.identity.agreement
 
 import services.identity.{Acceptance, Answer, CandidateQuery, DetailFacts, FactRelations, Hit, IdentityCalibration, IdentityLookups, IdentityMeasures,
-  IdentityResolver, Listing, ListingShape}
+  IdentityResolver, Listing, ListingShape, PosterEvidence}
 import services.identity.toAnswer
 import services.identity.SourceReliability
 import services.identity.SourceReliability.{Fact, Trust}
@@ -229,7 +229,9 @@ object Agreement {
    *  (DE "Der kleine Maulwurf", the venues' 1968 Miler, not IMDb's and Wikidata's 2011 compilation); the listing's title
    *  names it ([[namesIt]]) — and, where leans or corroboration complete the quorum, is no other film's own
    *  ([[anothersOwnTitle]]); its billing names no namesake's director instead of its own ([[billsAnothersDirector]]); the
-   *  listing bills one work ([[ListingShape.billsSeveral]]) and no stage work ([[ListingShape.stagesAWork]]). The
+   *  listing bills one work ([[ListingShape.billsSeveral]]) and no stage work ([[ListingShape.stagesAWork]]); and no year its
+   *  title bills dates it away from a taker's record ([[PosterEvidence.datedApart]]: DE "Weihnachten mit den Drei Herren
+   *  2026", a band's Christmas show, is no 1927 "The Three-Sided Mirror" its feed's original title searched). The
    *  experiment's one wrong without the title guard: "Akademia Polskiego Filmu: Kino żydowskie w Polsce" → "Znachor"
    *  (1937), whose year and director fit a series' episode. */
   def agreed(listings: Seq[Listing], verdicts: Seq[FamilyVerdict], modelVote: Option[SourceRecord] = None,
@@ -252,6 +254,7 @@ object Agreement {
         !billsAnothersDirector(listings, film.records, verdicts) &&
         !taken.exists(contradictedByTheListing(listings, _)) &&
         listings.forall(listing => !ListingShape.billsSeveralBeside(listing, film.agreed.record.film) &&
+          !taken.exists(record => PosterEvidence.datedApart(listing, record.film)) &&
           (!ListingShape.stagesAWork(listing) || screenAdaptation(listings, film.agreed))))(film.agreed)
     }
   }
