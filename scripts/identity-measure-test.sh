@@ -187,6 +187,10 @@ check "--run waits for a run still in progress, then collects it" "1" "$(RUN_PEN
 check "...saying it waits" "true" "$(grep -q 'waiting for run 777' "$work/out" && echo true || echo false)"
 rm -f "$work/stub/pending"; scratch_git "$repo" push -q origin "$tip:refs/heads/measure/abc-1"
 check "--run --no-wait leaves a run in progress for later" "2" "$(RUN_PENDING=1 HEAD_SHA=$tip measure lost --run 777 --no-wait --countries pl)"
+rm -f "$work/stub/pending"
+check "--run gives up on a run still in progress at --timeout" "2" "$(RUN_PENDING=1 IN_PROGRESS=1 HEAD_SHA=$tip measure lost --run 777 --timeout 0 --countries pl)"
+check "...saying so" "true" "$(grep -q 'gave no conclusion within --timeout 0 minutes' "$work/out" && echo true || echo false)"
+check "...keeping the branch of the run still going" "1" "$(measure_branches)"
 scratch_git "$repo" push -q origin --delete refs/heads/measure/abc-1
 # --run re-classifies with the checkout's judgements, made since the run and not yet committed: Lalka judged wrong
 # since, its loss is a cure.

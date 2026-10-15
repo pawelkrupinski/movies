@@ -124,7 +124,9 @@ while [ "$#" -gt 0 ]; do
     --batch) batch=$(cd "$(dirname "$2")" && pwd)/$(basename "$2"); shift 2 ;;
     --bisect) bisect=$2; shift 2 ;;
     # through a kept JVM: pinning cases one after another, each call reads the recording and the index once, not again
-    --emit-case) pass+=(--emit-case "$IDENTITY_REPO/test/resources/fixtures/identity-slices"); serve=${KINOWO_IDENTITY_SLICE_EMIT_SERVE:-1}; shift ;;
+    # KINOWO_IDENTITY_SLICE_EMIT_ROOT pins elsewhere than the checkout's cases (scripts/identity-slice-refresh: a scratch root)
+    --emit-case) pass+=(--emit-case "${KINOWO_IDENTITY_SLICE_EMIT_ROOT:-$IDENTITY_REPO/test/resources/fixtures/identity-slices}")
+                 serve=${KINOWO_IDENTITY_SLICE_EMIT_SERVE:-1}; shift ;;
     --log) log=$2; shift 2 ;;
     --faithfulness) faith=$2; shift 2 ;;
     --sample) sample=$2; shift 2 ;;

@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
-# scripts/identity-slice-refresh: a case is re-emitted with every listing its expected.tsv names, its slice files land in
-# its own directory whatever name identity-slice pinned it under, its hand expected.tsv survives, and a failed re-emit
-# leaves the case as it was. identity-slice is a stub.
+# scripts/identity-slice-refresh: a case is re-emitted with every listing its expected.tsv names (once each, a last line
+# without its newline too), into a scratch root; its slice files land in its own directory, its hand expected.tsv
+# survives, and no other case is touched. A re-emit that fails -- even after writing -- or that pins the listings as
+# several slices leaves the case as it was. identity-slice is a stub.
 # Run: bash scripts/identity-slice-refresh-test.sh
 set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -14,48 +15,58 @@ trap 'rm -rf "$work"' EXIT
 cases="$work/identity-slices"
 mkdir -p "$cases"
 
-# the stub records its arguments, writes fresh slice files under PIN_AS (default: a new name) and says where;
-# EMIT_FAILS makes it fail
+# The stub records its arguments and pins under the emit root it is handed (KINOWO_IDENTITY_SLICE_EMIT_ROOT, as
+# scripts/identity-slice reads it), saying where. PIN_AS names the directory (default "uk-new-name-0000"; it may name an
+# existing case: the stub must not reach it); TWO_SLICES pins a second one; FAIL_AFTER_WRITE writes, then fails.
 cat > "$work/identity-slice" <<'STUB'
 #!/usr/bin/env bash
-printf '%s\n' "$*" > "$CASES/../calls"
-[ -z "${EMIT_FAILS:-}" ] || { echo "the recording lacks it" >&2; exit 3; }
-dir="$CASES/${PIN_AS:-uk-new-name-0000}"
-mkdir -p "$dir"
-for f in slice.json.gz rows.json.gz http.jsonl.gz filed.json.gz; do echo fresh > "$dir/$f"; done
-printf 'venue\trawTitle\tfilm\tlabel\nX\tY\ttmdb:1\tfrom the judgements\n' > "$dir/expected.tsv"
-echo "--emit-case: 2 listing(s) pinned in $dir (IdentitySliceCasesSpec replays it):"
+printf '%s\n' "$*" > "$CALLS"
+root=${KINOWO_IDENTITY_SLICE_EMIT_ROOT:?the refresh must hand identity-slice an emit root}
+pin() {
+  dir="$root/$1"; mkdir -p "$dir"
+  for f in slice.json.gz rows.json.gz http.jsonl.gz filed.json.gz; do echo fresh > "$dir/$f"; done
+  printf 'venue\trawTitle\tfilm\tlabel\nX\tY\ttmdb:1\tfrom the judgements\n' > "$dir/expected.tsv"
+  echo "--emit-case: 1 listing(s) pinned in $dir (IdentitySliceCasesSpec replays it):"
+}
+pin "${PIN_AS:-uk-new-name-0000}"
+[ -z "${TWO_SLICES:-}" ] || pin uk-second-cluster-9999
+[ -z "${FAIL_AFTER_WRITE:-}" ] || { echo "SLICE INCOMPLETE" >&2; exit 3; }
 STUB
 chmod +x "$work/identity-slice"
 
 make_case() {
   rm -rf "${cases:?}/$1"; mkdir -p "$cases/$1"
   for f in slice.json.gz rows.json.gz http.jsonl.gz; do echo stale > "$cases/$1/$f"; done
-  printf 'venue\trawTitle\tfilm\tlabel\nFilmhouse Newlyn\tFallen Angels By Noël Coward\tnot:tmdb:7\tby hand\nRegent Christchurch\tFallen Angels\ttmdb:9\tjudged\n' \
+  # the same listing twice (a `not:` case's rows), the last line without its newline
+  printf 'venue\trawTitle\tfilm\tlabel\nFilmhouse Newlyn\tFallen Angels By Noël Coward\tnot:tmdb:7\tby hand\nFilmhouse Newlyn\tFallen Angels By Noël Coward\tnot:tmdb:8\tby hand\nRegent Christchurch\tFallen Angels\ttmdb:9\tjudged' \
     > "$cases/$1/expected.tsv"
 }
-refresh() { CASES="$cases" IDENTITY_SLICE="$work/identity-slice" "$REPO_ROOT/scripts/identity-slice-refresh" "$@" > /dev/null 2>&1; echo $?; }
+untouched() { echo "$(cat "$cases/$1/slice.json.gz") $(sed -n 2p "$cases/$1/expected.tsv" | cut -f3)"; }
+refresh() { CALLS="$work/calls" IDENTITY_SLICE="$work/identity-slice" "$REPO_ROOT/scripts/identity-slice-refresh" "$@" > /dev/null 2>&1; echo $?; }
 
 make_case uk-fallen-angels-1111
-check "a case re-pinned under another name succeeds" "0" "$(refresh --recording 38713274617 "$cases/uk-fallen-angels-1111")"
-check "...asking its country with every listing its expected.tsv names, on the recording given" \
+make_case uk-new-name-0000 # another case the emitted directory's name matches
+check "a case re-pins" "0" "$(refresh --recording 38713274617 "$cases/uk-fallen-angels-1111")"
+check "...asking its country with each listing its expected.tsv names once, the unterminated last line too" \
   "uk --recording 38713274617 --key Filmhouse Newlyn|Fallen Angels By Noël Coward --key Regent Christchurch|Fallen Angels --emit-case" \
   "$(cat "$work/calls")"
 check "...its slice files replaced by the fresh ones" "fresh" "$(cat "$cases/uk-fallen-angels-1111/slice.json.gz")"
 check "...the filed answers carried too" "fresh" "$(cat "$cases/uk-fallen-angels-1111/filed.json.gz" 2>/dev/null)"
 check "...its hand expectation kept" "not:tmdb:7" "$(sed -n 2p "$cases/uk-fallen-angels-1111/expected.tsv" | cut -f3)"
-check "...and no copy left under the other name" "false" "$([ -e "$cases/uk-new-name-0000" ] && echo true || echo false)"
-
-make_case uk-in-place-2222
-check "a case re-pinned in place succeeds" "0" "$(PIN_AS=uk-in-place-2222 refresh "$cases/uk-in-place-2222")"
-check "...its hand expectation restored over the judgements'" "not:tmdb:7" "$(sed -n 2p "$cases/uk-in-place-2222/expected.tsv" | cut -f3)"
-check "...its slice fresh" "fresh" "$(cat "$cases/uk-in-place-2222/slice.json.gz")"
+check "...and the case of the emitted directory's name untouched" "stale not:tmdb:7" "$(untouched uk-new-name-0000)"
+check "...nor any directory added" "2" "$(find "$cases" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')"
 
 make_case uk-unrecorded-3333
-check "a re-emit that fails is a failure" "1" "$(EMIT_FAILS=1 refresh "$cases/uk-unrecorded-3333")"
-check "...leaving the case as it was" "stale not:tmdb:7" \
-  "$(cat "$cases/uk-unrecorded-3333/slice.json.gz") $(sed -n 2p "$cases/uk-unrecorded-3333/expected.tsv" | cut -f3)"
+check "a re-emit that writes, then fails, is a failure" "1" "$(FAIL_AFTER_WRITE=1 refresh "$cases/uk-unrecorded-3333")"
+check "...leaving the case as it was" "stale not:tmdb:7" "$(untouched uk-unrecorded-3333)"
 
+make_case uk-two-clusters-4444
+check "listings pinned as two slices are a failure" "1" "$(TWO_SLICES=1 refresh "$cases/uk-two-clusters-4444")"
+check "...leaving the case as it was" "stale not:tmdb:7" "$(untouched uk-two-clusters-4444)"
+check "...and adding no case" "false" "$([ -e "$cases/uk-second-cluster-9999" ] && echo true || echo false)"
+
+mkdir -p "$cases/uk-empty-5555"; printf 'venue\trawTitle\tfilm\tlabel\n' > "$cases/uk-empty-5555/expected.tsv"
+check "an expected.tsv naming no listing is a failure" "1" "$(refresh "$cases/uk-empty-5555")"
 check "a directory without expected.tsv is no case" "1" "$(refresh "$work")"
 check "no case at all is a usage error" "2" "$(refresh)"
 
