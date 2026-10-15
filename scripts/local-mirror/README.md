@@ -76,6 +76,8 @@ collection holding nothing (a collection newly added to `mirror-targets.js` stay
 daemon's checkout has it — the launchd agent runs the root checkout, so `git pull` there — and its staleness
 audit re-seeds). The rule is `freshness-rule.js`, asserted with
 `mongosh --nodb --quiet --file staleness-rule.js --file freshness-rule.js --file freshness-rule-spec.js`.
+`scripts/local-mirror/rules-test.sh` runs all four pure-rule specs (staleness, freshness, stream start, targets
+digest) in one go, under Node (`nodb.js`) when there is no mongosh; CI runs it beside the other script self-tests.
 
 ## One-time setup
 
@@ -161,7 +163,7 @@ login (it's a `brew services` agent). `start-local-mongo.sh` asks `brew services
 for whichever `mongodb-community[@X.Y]` formula is installed, and when `brew
 services` cannot start it falls back to `mongod --config $(brew --prefix)/etc/mongod.conf
 --fork` (same config, but no restart at login) — both paths asserted against stubs by
-`scripts/local-mirror/start-local-mongo-spec.sh`. Logs:
+`scripts/local-mirror/start-local-mongo-test.sh`. Logs:
 `~/Library/Logs/kinowo-local-mirror.log`, trimmed to its last 2000 lines
 whenever it passes 8MB (in place — launchd holds an append fd on it, so renaming
 would strand the agent writing to the old inode). Prereqs: `MONGODB_URI` in the
@@ -276,7 +278,9 @@ mongosh --nodb --quiet --file scripts/local-mirror/stream-start.js \
 
 and the handover itself is asserted end-to-end against the local replica set —
 seed, delete a row, start the tailer, and the mirror must still lose the row
-(`mirror-sync-spec.sh`, which also covers the ghost signal below):
+(`mirror-sync-spec.sh`, which also covers the ghost signal below; it needs the live :28017 replica set and
+mongosh, so no CI job can run it and it is deliberately not named `*-test.sh` — run it by hand after touching
+seed.js, tail.js or staleness.js):
 
 ```
 scripts/local-mirror/mirror-sync-spec.sh
@@ -422,7 +426,7 @@ therefore wraps itself (`set +e` … `set -e`, or `|| continue`), and the shape 
 asserted against stubs — no Mongo, no tunnel:
 
 ```
-scripts/local-mirror/mirror-resilience-spec.sh
+scripts/local-mirror/mirror-resilience-test.sh
 ```
 
 It covers the tunnel too: that a dead backend does not read as healthy, that a

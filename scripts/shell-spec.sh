@@ -13,7 +13,7 @@
 # screenshot library" also mean "the way we assert things", and the next script
 # that wants only assertions would have to drag screenshots in to get them.
 #
-# scripts/local-mirror/mirror-resilience-spec.sh is intentionally left out — its
+# scripts/local-mirror/mirror-resilience-test.sh is intentionally left out — its
 # harness is a genuinely different one (it reports per-case rather than
 # accumulating), and rewriting a passing spec to fit a shared shape is churn, not
 # deduplication.

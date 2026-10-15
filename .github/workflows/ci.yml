@@ -216,7 +216,10 @@ jobs:
                       bash scripts/dev-server-test.sh
                       bash scripts/identity-capture-test.sh
                       bash scripts/reset-corpus-test.sh
-                      bash scripts/local-mirror/mongosh-at-spec.sh
+                      bash scripts/local-mirror/mongosh-at-test.sh
+                      bash scripts/local-mirror/mirror-resilience-test.sh
+                      bash scripts/local-mirror/start-local-mongo-test.sh
+                      bash scripts/local-mirror/rules-test.sh
                       python3 scripts/ci/flake_verdict_test.py
                       python3 scripts/ci/ci_timings_test.py
                       python3 scripts/test_aot_class_list.py

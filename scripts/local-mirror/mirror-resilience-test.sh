@@ -5,7 +5,7 @@
 # no tunnel: mirror.sh is sourced for its functions and every collaborator is
 # stubbed, so this runs anywhere bash does.
 #
-#   scripts/local-mirror/mirror-resilience-spec.sh
+#   scripts/local-mirror/mirror-resilience-test.sh
 #
 # Exits 0 when every case passes, 1 on the first failure.
 #
@@ -18,6 +18,7 @@
 # days. The recovery paths are the whole point of this daemon, so they get a
 # test that fails when one of them stops recovering.
 
+# shellcheck disable=SC2034 # the cases set variables the SOURCED mirror.sh functions read (AUDIT_POLLS, MONGOSH_AT, …)
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
@@ -63,7 +64,7 @@ echo "[spec] mirror supervision"
 # FAIL, never hang: the stub exits the shell on cycle 2, `sleep` is stubbed to
 # return instantly, and the whole thing is capped by a wall-clock watchdog.
 survives_a_failing_seed() {
-  local work; work="$(mktemp -d -t kinowo-mirror-spec)"
+  local work; work="$(mktemp -d "${TMPDIR:-/tmp}/kinowo-mirror-spec.XXXXXX")"
   local cycles="$work/cycles" reached="$work/reached-second-cycle"
 
   (
@@ -109,7 +110,7 @@ check "a failed seed retries on the next cycle instead of killing the supervisor
 # Bounded the same three ways as the case above, so a regression can only FAIL,
 # never hang.
 reseeds_when_it_drifts_while_tailing() {
-  local work; work="$(mktemp -d -t kinowo-mirror-spec)"
+  local work; work="$(mktemp -d "${TMPDIR:-/tmp}/kinowo-mirror-spec.XXXXXX")"
   local asked="$work/gate-answers" reached="$work/reseeded"
 
   (
@@ -137,8 +138,11 @@ reseeds_when_it_drifts_while_tailing() {
     # Stands in for tail.js — a stream that runs a while and then ends. It ends
     # ON ITS OWN so this case never has to kill anything: the assertion is about
     # WHEN the re-seed happens, and a supervisor with no audit reaches one too,
-    # just not until the stream is over.
-    mongosh() { command sleep "$TAIL_SECONDS"; }
+    # just not until the stream is over. A SCRIPT in $MONGOSH_AT's place, as the
+    # tailer is launched: a `mongosh` function never reached it (mongosh-at.sh
+    # execs the binary), so the case leaned on a real mongosh hanging on connect.
+    printf '#!/bin/sh\nexec sleep %s\n' "$TAIL_SECONDS" > "$work/tailer"; chmod +x "$work/tailer"
+    MONGOSH_AT="$work/tailer"
 
     reseed() { touch "$reached"; exit 0; }
 
@@ -180,7 +184,7 @@ check "a mirror that drifts while tailing is re-seeded without waiting for the s
 # Driven against a COPY of the script directory, so the case can edit files
 # without touching the repo: every function here reads through `$HERE`.
 notices_its_own_code_changing() {
-  local work; work="$(mktemp -d -t kinowo-mirror-spec)"
+  local work; work="$(mktemp -d "${TMPDIR:-/tmp}/kinowo-mirror-spec.XXXXXX")"
   cp "$HERE"/* "$work"/ 2>/dev/null
 
   (
@@ -297,7 +301,7 @@ a_dead_backend_is_not_healthy() {
     . "$HERE/prod-tunnel.sh"
     TUNNEL_PROBE_URI="mongodb://u:p@127.0.0.1:27017/x?serverSelectionTimeoutMS=10000"
     nc()      { return 0; }        # the port accepts — the stale proxy's whole trick
-    mongosh() { return 1; }        # …but nothing behind it answers
+    mongosh_at() { return 1; }     # …but nothing behind it answers
     ssh()     { touch "$SPY_SSH"; return 0; }
     prod_tunnel_answers && return 1                 # must NOT read as healthy
     ensure_prod_tunnel 2>/dev/null && return 1      # must NOT claim success
@@ -306,7 +310,7 @@ a_dead_backend_is_not_healthy() {
     return 0
   )
 }
-SPY_SSH="$(mktemp -t kinowo-tunnel-spy)"; rm -f "$SPY_SSH"
+SPY_SSH="$(mktemp "${TMPDIR:-/tmp}/kinowo-tunnel-spy.XXXXXX")"; rm -f "$SPY_SSH"
 check "a tunnel whose backend is dead does not read as healthy" a_dead_backend_is_not_healthy
 rm -f "$SPY_SSH"
 
@@ -319,7 +323,7 @@ close_only_touches_our_own() {
     . "$HERE/prod-tunnel.sh"
     TUNNEL_PROBE_URI="mongodb://u:p@127.0.0.1:27017/x"
     nc()      { return 0; }
-    mongosh() { return 1; }
+    mongosh_at() { return 1; }
     ensure_prod_tunnel >/dev/null 2>&1
     [ -z "$PROD_TUNNEL_PID" ] || return 1     # never adopted a pid that isn't ours
     close_prod_tunnel                          # and closing is a no-op, not a stray kill
@@ -353,7 +357,7 @@ check "the ssh target defaults to mongo-1 and is overridable by the environment"
 # under `secrets run movies MONGODB_URI`. A fake `secrets` on PATH records how it
 # was called; the real vault is never touched.
 echo "[spec] secrets"
-FAKE_BIN="$(mktemp -d -t kinowo-fake-secrets)"
+FAKE_BIN="$(mktemp -d "${TMPDIR:-/tmp}/kinowo-fake-secrets.XXXXXX")"
 SECRETS_CALLS="$FAKE_BIN/calls"
 cat > "$FAKE_BIN/secrets" <<'FAKE'
 #!/usr/bin/env bash
@@ -397,7 +401,7 @@ check "an exported MONGODB_URI is used, via the tunnel, without touching the vau
 # so the agent's program is `service.sh agent`: it reads MONGODB_URI from the
 # vault ONCE and then restarts mirror.sh itself, with the variable inherited.
 agent_reads_the_vault_once() {
-  local home; home="$(mktemp -d -t kinowo-agent-home)"
+  local home; home="$(mktemp -d "${TMPDIR:-/tmp}/kinowo-agent-home.XXXXXX")"
   printf '#!/bin/sh\nexit 0\n' > "$FAKE_BIN/launchctl"; chmod +x "$FAKE_BIN/launchctl"
   HOME="$home" PATH="$FAKE_BIN:$PATH" "$BASH" "$HERE/service.sh" install >/dev/null 2>&1 || { rm -rf "$home"; return 1; }
   local plist="$home/Library/LaunchAgents/pl.kinowo.local-mirror.plist" args

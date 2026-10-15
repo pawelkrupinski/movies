@@ -6,7 +6,7 @@
 # record what they were asked, and the config lands in a temp prefix, so this
 # never touches the machine's own Mongo.
 #
-#   scripts/local-mirror/start-local-mongo-spec.sh
+#   scripts/local-mirror/start-local-mongo-test.sh
 #
 # Exits 0 when every case passes, 1 otherwise (the shared scripts/shell-spec.sh harness).
 #

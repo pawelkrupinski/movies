@@ -39,7 +39,7 @@
 #   * call `close_prod_tunnel` from your own EXIT/INT/TERM trap
 #
 # Sourcing this file must stay side-effect free: mirror.sh sources it at load
-# time, and mirror-resilience-spec.sh asserts that sourcing mirror.sh asks the
+# time, and mirror-resilience-test.sh asserts that sourcing mirror.sh asks the
 # vault for nothing and starts nothing. So everything below is a function
 # definition.
 #

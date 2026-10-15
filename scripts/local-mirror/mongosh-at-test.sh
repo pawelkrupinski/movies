@@ -2,7 +2,7 @@
 # Assertions for prod-tunnel.sh's mongosh_at: it must stay a drop-in for `mongosh URI …` — the same
 # process to kill when backgrounded, the same stdout. No vault, no prod.
 #
-#   scripts/local-mirror/mongosh-at-spec.sh
+#   scripts/local-mirror/mongosh-at-test.sh
 set -uo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$HERE/../shell-spec.sh"

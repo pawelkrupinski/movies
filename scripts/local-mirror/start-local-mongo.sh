@@ -18,7 +18,7 @@
 # failed outright (`set -e`, nothing started) on a machine whose `brew services`
 # could not find/load that service. And when `brew services` cannot start it for
 # any reason, this falls back to a plain `mongod --config … --fork` — same config,
-# just not restarted at login. `start-local-mongo-spec.sh` holds both paths.
+# just not restarted at login. `start-local-mongo-test.sh` holds both paths.
 set -euo pipefail
 
 PORT="${LOCAL_MIRROR_PORT:-28017}"

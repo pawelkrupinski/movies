@@ -45,7 +45,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 . "$HERE/prod-tunnel.sh"
 . "$HERE/local-mongo.sh"
 
-# Reading the endpoints is a STARTUP step, not a load-time one: mirror-resilience-spec.sh
+# Reading the endpoints is a STARTUP step, not a load-time one: mirror-resilience-test.sh
 # sources this file for `supervise_db` alone and supplies its own endpoints, and it
 # must not need — or touch — real credentials to do that. MONGODB_URI is already
 # in the environment by now: the startup body re-execs under the vault first. The
@@ -347,7 +347,7 @@ await_supervisor_exit() {
 
 # ── Fan out: one supervised tailer per database ──────────────────────────────
 # Everything below runs only when this file is EXECUTED. Sourced (by
-# mirror-resilience-spec.sh, which drives `supervise_db` against stubs) it must
+# mirror-resilience-test.sh, which drives `supervise_db` against stubs) it must
 # define the functions and stop — no vault lookup, no tunnel, no children.
 [ "${BASH_SOURCE[0]}" = "${0}" ] || return 0
 
@@ -360,7 +360,7 @@ ensure_vault_env MONGODB_URI -- "$BASH" "$0" "$@" || exit 1
 # flyctl proxy on exit — extend it to take the children down with us, so Ctrl-C
 # doesn't strand N background mongosh processes.
 load_endpoints
-TARGETS_FP_FILE="$(mktemp -t kinowo-mirror-targets)"
+TARGETS_FP_FILE="$(mktemp "${TMPDIR:-/tmp}/kinowo-mirror-targets.XXXXXX")"
 FORCE_RESEED="$([ "${1:-}" = "--reseed" ] && echo 1 || echo 0)"
 until ensure_local_mongo && ensure_tunnel; do echo "[mirror] waiting for local Mongo + tunnel…"; sleep 5; done
 

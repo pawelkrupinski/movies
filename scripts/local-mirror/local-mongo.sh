@@ -11,7 +11,7 @@
 # other two honoured $LOCAL_MIRROR_PORT. A copy that drifts silently is the whole
 # argument for one definition.
 #
-# Sourcing must stay side-effect free (mirror-resilience-spec.sh asserts that
+# Sourcing must stay side-effect free (mirror-resilience-test.sh asserts that
 # sourcing mirror.sh asks the vault for nothing and starts nothing), so this file is a
 # function definition and nothing else.
 
