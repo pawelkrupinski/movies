@@ -410,7 +410,7 @@ object IdentitySlice {
           node.refusals.foreach(r => println(s"  refused by ${r.rule}: ${r.why}${r.film.fold("")(f => s" (tmdb $f)")}${if (r.detail.nonEmpty) s" — ${r.detail}" else ""}"))
           node.blocker.foreach(b => println(s"  blocker: $b"))
           val pool = node.candidates.map(_.takeWhile(_.isDigit)).toSet
-          labels.filter(l => l.country == slice.country.code && UnmatchedClusters.singleSpaced(l.rawTitle) == UnmatchedClusters.singleSpaced(first.rawTitle) && (l.venue == "*" || l.venue == first.venue) && l.right &&
+          labels.filter(l => l.country == slice.country.code && IdentityJudgements.normalise(l.rawTitle) == IdentityJudgements.normalise(first.rawTitle) && (l.venue == "*" || l.venue == first.venue) && l.right &&
             l.film.startsWith("tmdb:") && !pool(l.film.drop(5))).foreach(l => println(s"  NOT IN POOL: ${l.film}, which the judgements call right (${l.venue}: ${l.note})"))
         }
       }
@@ -419,7 +419,7 @@ object IdentitySlice {
         d.explanation.foreach(line => println(s"    $line"))
       }
       takes.filter(t => keys.contains(t.key)).groupBy(t => (t.film, t.title, t.basis, t.verdict)).toSeq.sortBy(_._1._1).foreach { case ((film, title, basis, verdict), at) =>
-        val about = labels.filter(l => l.country == slice.country.code && at.exists(t => UnmatchedClusters.singleSpaced(t.key.rawTitle) == UnmatchedClusters.singleSpaced(l.rawTitle) && (l.venue == "*" || l.venue == t.key.venue)))
+        val about = labels.filter(l => l.country == slice.country.code && at.exists(t => IdentityJudgements.normalise(t.key.rawTitle) == IdentityJudgements.normalise(l.rawTitle) && (l.venue == "*" || l.venue == t.key.venue)))
           .map(l => s"${if (l.right) "right" else "wrong"} ${l.film} at ${l.venue} (${l.note})").distinct
         println(s"TAKE ${if (at.size == 1) at.head.key.venue else s"at ${at.size} venues"}: $film '$title' via $basis — $verdict" +
           (if (about.nonEmpty) about.mkString(" [", "; ", "]") else ""))
@@ -612,10 +612,8 @@ object IdentitySlice {
   /** A slice's result's name in the results directory: its selector and seeds, the options that move a take, and the
    *  labels about its listings (a label of another billing changes nothing here; one of these changes the verdict). */
   def resultKey(selector: Selector, seeds: Set[ListingKey], o: Options, labels: Seq[UnmatchedClusters.Label], country: Country): String = {
-    // UnmatchedClusters.singleSpaced, which refs before 5a1c2a1bb lack: this file is dropped into them
-    def spaced(raw: String) = raw.replaceAll("(?U)\\s+", " ").trim
-    val titles = seeds.map(k => spaced(k.rawTitle))
-    val about  = labels.filter(l => l.country == country.code && titles(spaced(l.rawTitle)))
+    val titles = seeds.map(k => IdentityJudgements.normalise(k.rawTitle))
+    val about  = labels.filter(l => l.country == country.code && titles(IdentityJudgements.normalise(l.rawTitle)))
       .map(l => Seq(l.venue, l.rawTitle, l.film, l.right, l.note).mkString("\t")).sorted
     val text = (Seq(selector.label, s"widen ${o.widen} orders ${o.orders} modes ${o.modes}") ++ seeds.toSeq.map(ListingKey.serialised).sorted ++ about)
       .mkString("\n")
@@ -787,7 +785,7 @@ object IdentitySlice {
 
   /** The right film the identity judgements name for `key` — its venue's own label first, then every venue's (`*`). */
   def rightLabel(key: ListingKey, country: Country, labels: Seq[UnmatchedClusters.Label]): Option[UnmatchedClusters.Label] = {
-    val about = labels.filter(l => l.country == country.code && UnmatchedClusters.singleSpaced(l.rawTitle) == UnmatchedClusters.singleSpaced(key.rawTitle) && l.right)
+    val about = labels.filter(l => l.country == country.code && IdentityJudgements.normalise(l.rawTitle) == IdentityJudgements.normalise(key.rawTitle) && l.right)
     about.find(_.venue == key.venue).orElse(about.find(_.venue == "*"))
   }
 
