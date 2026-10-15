@@ -233,21 +233,6 @@ def notices(judged):
             for r in judged if r.state == "accepted-right-loss"]
 
 
-def labels_before(path):
-    """The labels the push started from: its judgements file, or -- a base from before the judgements were one file
-    (the push that migrates them) -- its legacy labels.tsv (country, venue, rawTitle, film, verdict, note)."""
-    with open(path, encoding="utf-8") as f:
-        first = f.readline()
-    if first.startswith("country\tvenue\trawTitle\tfilm\tverdict\tnote"):
-        out = defaultdict(dict)
-        with open(path, encoding="utf-8") as f:
-            for c in (line.rstrip("\n").split("\t") for line in f.readlines()[1:]):
-                if len(c) >= 5 and c[4] in ("right", "wrong"):
-                    out[c[0]][(c[1], normalise(c[2]), c[3])] = c[4]
-        return out
-    return j.labels_by_country(j.read(path))
-
-
 def lint(root, served_paths=(), before=None, replay=None):
     """Every finding (key, message). `before`: the judgements file the push started from; `replay` (with it): the newly
     wrong served takes judged at the pushed code ([[at_head]])."""
@@ -257,7 +242,7 @@ def lint(root, served_paths=(), before=None, replay=None):
     return (store_findings(judged) + accepted_findings(judged, labels) + scattered_findings(judged)
             + tolerated_right_findings(judged, labels)
             + expected_match_findings(rows(os.path.join(root, EXPECTED_MATCHES), 4), labels) + hard_cluster_findings(root, judged)
-            + served(served_findings(served_paths, labels, listed, labels_before(before) if before else None),
+            + served(served_findings(served_paths, labels, listed, j.labels_by_country(j.read(before)) if before else None),
                      replay if before else None))
 
 

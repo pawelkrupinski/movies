@@ -21,20 +21,6 @@ def row(cc, venue, title, film, verdict, state="open", scope="", film_title="", 
     return "\t".join([cc, venue, title, film, verdict, state, scope, film_title, reason, judged, evidence]) + "\n"
 
 
-class JudgementsTest(unittest.TestCase):
-    def test_the_labels_a_push_started_from_read_a_legacy_labels_file_too(self):
-        # the push migrating the judgements into one file starts from a base whose labels are labels.tsv
-        with tempfile.TemporaryDirectory() as d:
-            legacy = os.path.join(d, "labels.tsv")
-            with open(legacy, "w", encoding="utf-8") as f:
-                f.write("country\tvenue\trawTitle\tfilm\tverdict\tnote\npl\tKino Oaza\tKtoś  całkiem obcy\ttmdb:7183\twrong\tx\n")
-            self.assertEqual({("Kino Oaza", "Ktoś całkiem obcy", "tmdb:7183"): "wrong"}, dict(lint.labels_before(legacy)["pl"]))
-            store = os.path.join(d, "identity-judgements.tsv")
-            with open(store, "w", encoding="utf-8") as f:
-                f.write(j.HEADER + "\npl\t*\tLalka\ttmdb:1\tright\topen\t\t\t\t2026-10-14\t\n")
-            self.assertEqual({("*", "Lalka", "tmdb:1"): "right"}, dict(lint.labels_before(store)["pl"]))
-
-
 class JudgementsLintTest(unittest.TestCase):
     def setUp(self):
         self.root = tempfile.mkdtemp()
