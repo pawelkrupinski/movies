@@ -3,7 +3,7 @@ package scripts
 import play.api.libs.json._
 import services.enrichment.FilmwebClient
 import services.movies.StoredMovieRecord
-import tools.{RealHttpFetch, TextNormalization}
+import tools.{CommandLine, RealHttpFetch, TextNormalization}
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -32,44 +32,153 @@ import scala.util.Try
  *
  * Writes the full per-card field set the report page reads to accepts.jsonl.
  *
- *   TMDB_API_KEY=... MONGODB_URI=... sbt 'worker/Test/runMain scripts.GateReport [out.jsonl] [capPerMode]'
+ *   TMDB_API_KEY=... MONGODB_URI=... sbt 'worker/Test/runMain scripts.GateReport [ratings] [out.jsonl] [capPerMode]'
  */
 object GateReport {
+
+  val commandLine: CommandLine = CommandLine("GateReport", "Resolves rows by synopsis, gated on an independent corroborator, and reports each card.")
+    .withPositionals(CommandLine.Positional("arguments", "[ratings] [out.jsonl] [capPerMode]: `ratings` evaluates the rating gaps", repeatable = true))
+
+  val DefaultOut        = "docs/synopsis-resolution/archive/accepts.jsonl"
+  val DefaultRatingsOut = "docs/synopsis-resolution/archive/ratings-eval.jsonl"
+  val Modes: Seq[String] = Seq("tmdb-pl", "filmweb-pl", "imdb-eng")
+  /** The stem-IDF synopsis floor (scores run low; corroborators carry precision). */
+  val Tau = 0.06
+
+  /** One run: whether it evaluates the rating gaps (every evaluation emitted, accepted or abstained) or resolves the
+   *  links (accepts only), where it writes, how many films per mode at most, and its modes. */
+  final case class Run(ratings: Boolean, out: String, cap: Option[Int]) {
+    def modes: Seq[String] = if (ratings) Seq("imdb-eng", "filmweb-pl") else Modes
+  }
+
+  def runOf(arguments: CommandLine.Arguments): Run = {
+    val supplied = arguments.positionalsFrom("arguments")
+    val ratings  = supplied.headOption.contains("ratings")
+    val rest     = if (ratings) supplied.drop(1) else supplied
+    if (rest.size > 2) arguments.fail(s"unexpected argument ${rest(2)}")
+    Run(ratings, rest.headOption.filter(_.nonEmpty).getOrElse(if (ratings) DefaultRatingsOut else DefaultOut),
+      rest.lift(1).map(cap => cap.toIntOption.getOrElse(arguments.fail(s"<capPerMode> wants a whole number, got $cap"))))
+  }
+
   def main(args: Array[String]): Unit = {
+    val run  = runOf(commandLine.parseOrExit(args))
     val http = new RealHttpFetch
-    new GateReport(http, new FilmwebClient(http), _root_.settings.ProcessConfiguration.resolve()).run(args)
+    new GateReport(http, new FilmwebClient(http), _root_.settings.ProcessConfiguration.resolve()).run(run)
+  }
+
+  final case class Cand(key: String, url: String, title: String, year: Option[Int], text: String,
+                        directors: Set[String], cast: Set[String], characters: Set[String] = Set.empty)
+
+  /** Whether `mode` resolves this row: a cinema synopsis and no TMDB id (`tmdb-pl`), a TMDB id but no Filmweb link
+   *  (`filmweb-pl`), a TMDB id but no IMDb id (`imdb-eng`). */
+  def selects(mode: String, rec: models.MovieRecord): Boolean = mode match {
+    case "tmdb-pl"    => rec.tmdbId.isEmpty && rec.synopsisCinema.exists(_.trim.nonEmpty)
+    case "filmweb-pl" => rec.tmdbId.nonEmpty && rec.filmwebUrl.forall(_.isEmpty)
+    case "imdb-eng"   => rec.imdbId.forall(_.isEmpty) && rec.tmdbId.nonEmpty
+    case _            => false
+  }
+
+  /** What the row is known by: its directors, cast, character names and year, and the titles it is searched under. */
+  final case class Known(directors: Set[String], cast: Set[String], characters: Set[String], year: Option[Int], queries: Seq[String])
+
+  /** One candidate against the row: its synopsis similarity, the names both hold, and what contradicts it. */
+  final case class Evaluation(candidate: Cand, sim: Double, characters: Seq[String], cast: Seq[String], directors: Seq[String],
+                              exact: Boolean, yearContradicts: Boolean, directorContradicts: Boolean) {
+    /** HARD REJECT a director contradiction, or a year off by more than 1 with no exact title; ACCEPT an exact title or
+     *  a director overlap (corroborated), or a synopsis at least `Tau` with a character name or two cast (domain signal). */
+    def eligible: Boolean = !directorContradicts && !(yearContradicts && !exact) &&
+      (exact || directors.nonEmpty || (sim >= Tau && (characters.nonEmpty || cast.size >= 2)))
+    def corroborated: Boolean = exact || directors.nonEmpty
+    def via: String = if (directors.nonEmpty) "director" else if (exact) "exact-title" else if (characters.nonEmpty) "character-name" else "cast"
+  }
+
+  /** `c` against the row known as `known`, its synopsis `ref`: in `tmdb-pl` the candidate's character names are looked
+   *  for in the row's synopsis, otherwise the row's names in the candidate's. */
+  def evaluate(mode: String, ref: String, sim: Double, known: Known, c: Cand): Evaluation = {
+    val chars     = if (mode == "tmdb-pl") c.characters else known.characters
+    val checkText = if (mode == "tmdb-pl") ref else c.text
+    val matchedDirs = matchedNames(known.directors, c.directors)
+    val qset = known.queries.map(norm).toSet
+    Evaluation(c, sim, chars.filter(ch => containsName(checkText, ch)).toSeq, matchedNames(known.cast, c.cast), matchedDirs,
+      exact = qset.exists(q => q == norm(c.title) || (c.title.nonEmpty && norm(c.title).startsWith(q) && q.length >= 4)),
+      yearContradicts = (for { ry <- known.year; cy <- c.year } yield math.abs(ry - cy) > 1).getOrElse(false),
+      directorContradicts = known.directors.nonEmpty && c.directors.nonEmpty && matchedDirs.isEmpty)
+  }
+
+  /** The candidate accepted — the corroborated first, then the most similar — and whether it was; with `emitAll`, the
+   *  most similar when none is, so an abstained row still shows its best synopsis match. */
+  def decide(evaluations: Seq[Evaluation], emitAll: Boolean): Option[(Evaluation, Boolean)] =
+    evaluations.filter(_.eligible).sortBy(e => (!e.corroborated, -e.sim)).headOption.map(_ -> true)
+      .orElse(if (emitAll) evaluations.sortBy(-_.sim).headOption.map(_ -> false) else None)
+
+  // ── signals + text ─────────────────────────────────────────────────────────
+  def containsName(text: String, name: String): Boolean = {
+    val n = norm(name); val parts = n.split(" ").filter(_.length >= 4)
+    parts.nonEmpty && parts.forall(p => norm(text).contains(p))
+  }
+  def matchedNames(a: Set[String], b: Set[String]): Seq[String] = {
+    val nb = b.map(norm)
+    a.toSeq.filter { x => val nx = norm(x); nb.exists(y => nx == y || (nx.length > 4 && y.contains(nx)) || (y.length > 4 && nx.contains(y))) }
+  }
+
+  private val StopPL = Set("i","w","na","z","ze","do","że","się","to","jest","są","nie","o","a","po","od","za","jako","który","która","które","przez","ich","jego","jej","ale","dla","gdy","czy","też","już","być","co","jak","ten","oraz","pod","nad","bez","przy")
+  private val StopEN = Set("the","a","an","of","to","and","in","on","for","with","his","her","their","its","is","are","as","by","at","from","that","this","who","when","after","into","but","or","he","she","they","it","was","has","have","not","which")
+  private def stopwords(lang: String) = if (lang == "pl") StopPL else StopEN
+  private val SufPL = Seq("iejszego","owania","ości","ami","ach","owi","ego","emu","iej","ych","ymi","owie","owa","owe","owy","nie","cie","ką","ek","ę","ą","y","i","a","e","u","o")
+  private val SufEN = Seq("ization","ational","ation","ement","ments","able","ible","ing","ies","ied","ment","ness","tion","sion","ous","ive","ed","ly","es","s")
+  private def stem(t: String, lang: String) = {
+    val sufs = if (lang == "pl") SufPL else SufEN
+    sufs.find(s => t.length - s.length >= 3 && t.endsWith(s)).map(s => t.dropRight(s.length)).getOrElse(t)
+  }
+  def tokens(s: String, lang: String): Seq[String] =
+    TextNormalization.deburr(TextNormalization.stripUrls(s)).toLowerCase.split("[^\\p{L}]+").iterator
+      .filter(_.length > 2).filterNot(stopwords(lang)).map(stem(_, lang)).toSeq
+  def buildIdf(docs: Seq[String], lang: String): Map[String, Double] = {
+    val n = math.max(1, docs.size); val df = scala.collection.mutable.HashMap.empty[String, Int]
+    docs.foreach(d => tokens(d, lang).distinct.foreach(t => df.update(t, df.getOrElse(t, 0) + 1)))
+    df.iterator.map { case (t, c) => t -> math.log(n.toDouble / c) }.toMap
+  }
+  def vec(s: String, lang: String, idf: Map[String, Double]): Map[String, Double] = {
+    val maxIdf = if (idf.isEmpty) 1.0 else idf.valuesIterator.max
+    tokens(s, lang).groupMapReduce(identity)(_ => 1)(_ + _).map { case (t, c) => t -> c.toDouble * idf.getOrElse(t, maxIdf) }
+  }
+  def cosine(a: Map[String, Double], b: Map[String, Double]): Double = {
+    if (a.isEmpty || b.isEmpty) return 0.0
+    val dot = a.iterator.collect { case (k, v) if b.contains(k) => v * b(k) }.sum
+    val na = math.sqrt(a.valuesIterator.map(v => v * v).sum); val nb = math.sqrt(b.valuesIterator.map(v => v * v).sum)
+    if (na == 0 || nb == 0) 0.0 else dot / (na * nb)
+  }
+
+  def norm(s: String): String = TextNormalization.deburr(s).toLowerCase.trim.replaceAll("\\s+", " ")
+  /** The other titles a row is searched under: without its parentheses, each `|` part, and what follows a colon. */
+  def stripVariants(t: String): Seq[String] = {
+    val noParen = t.replaceAll("\\s*\\([^)]*\\)", "").trim
+    val pipe = t.split("[|]").map(_.trim).filter(_.nonEmpty).toSeq
+    val colon = if (t.contains(":")) Seq(t.substring(t.indexOf(":") + 1).trim) else Seq.empty
+    (Seq(noParen) ++ pipe ++ colon).filter(_.nonEmpty)
   }
 }
 
 /** The run's HTTP client, Filmweb client and configuration are the instance's, built by `main` —
  *  not shared object state. */
 private final class GateReport(http: RealHttpFetch, filmweb: FilmwebClient, configuration: _root_.settings.ProcessConfiguration) {
+  import GateReport.*
 
   private val ApiKey = configuration.tmdbApiKey.fold("")(_.value)
-  // Relative to the sbt working directory (the repo root): the frozen inputs of the
-  // 2026-06 investigation live under docs/synopsis-resolution/archive/.
-  private val DefaultOut = "docs/synopsis-resolution/archive/accepts.jsonl"
-  private val DefaultRatingsOut = "docs/synopsis-resolution/archive/ratings-eval.jsonl"
-  private val Tau = 0.06 // stem-IDF synopsis floor (scores run low; corroborators carry precision)
-  private val Modes = Seq("tmdb-pl", "filmweb-pl", "imdb-eng")
 
   private case class Meta(title: String, origTitle: Option[String], year: Option[Int], overview: String,
                           directors: Set[String], cast: Set[String], characters: Set[String])
-  private case class Cand(key: String, url: String, title: String, year: Option[Int], text: String,
-                          directors: Set[String], cast: Set[String], characters: Set[String] = Set.empty)
   private case class Film(id: String, title: String, search: String, year: Option[Int], tmdbId: Option[Int],
                           queries: Seq[String], cinemaSyn: String, dirs: Set[String])
 
-  def run(args: Array[String]): Unit = {
-    // `ratings` mode: select the synopsis-matchable rating gaps (link missing,
-    // tmdbId present → a reference synopsis exists) and emit EVERY evaluation,
-    // accepted or abstained, so the report can show how often / how strongly
-    // synopsis actually helps. Default mode emits accepts only (link resolution).
-    val ratings = args.headOption.contains("ratings")
-    val rest = if (ratings) args.drop(1) else args
-    val out = rest.headOption.filter(_.nonEmpty).getOrElse(if (ratings) DefaultRatingsOut else DefaultOut)
-    val cap = rest.lift(1).map(_.toInt)
-    val modes = if (ratings) Seq("imdb-eng", "filmweb-pl") else Modes
+  // `ratings` mode: select the synopsis-matchable rating gaps (link missing,
+  // tmdbId present → a reference synopsis exists) and emit EVERY evaluation,
+  // accepted or abstained, so the report can show how often / how strongly
+  // synopsis actually helps. Default mode emits accepts only (link resolution).
+  // The outputs are relative to the sbt working directory (the repo root): the frozen inputs of the
+  // 2026-06 investigation live under docs/synopsis-resolution/archive/.
+  def run(run: Run): Unit = {
+    val Run(ratings, out, cap) = run
 
     val repo = AmbientMovieRepository.open(configuration, java.time.Clock.systemUTC())
     if (!repo.enabled) { println("MONGODB_URI not set — nothing to read."); sys.exit(1) }
@@ -83,7 +192,7 @@ private final class GateReport(http: RealHttpFetch, filmweb: FilmwebClient, conf
     println(s"\ncorpus: ${corpus.size} rows")
 
     Files.write(Paths.get(out), Array.emptyByteArray) // truncate once
-    modes.foreach(m => runMode(m, corpus, out, cap, emitAll = ratings))
+    run.modes.foreach(m => runMode(m, corpus, out, cap, emitAll = ratings))
     repo.close()
     println(s"\n→ wrote $out")
   }
@@ -93,13 +202,7 @@ private final class GateReport(http: RealHttpFetch, filmweb: FilmwebClient, conf
 
   private def buildFilms(mode: String, corpus: Seq[StoredMovieRecord]): Seq[Film] = corpus.flatMap { r =>
     val rec = r.record
-    val keep = mode match {
-      case "tmdb-pl"    => rec.tmdbId.isEmpty && rec.synopsisCinema.exists(_.trim.nonEmpty)
-      case "filmweb-pl" => rec.tmdbId.nonEmpty && rec.filmwebUrl.forall(_.isEmpty)
-      case "imdb-eng"   => rec.imdbId.forall(_.isEmpty) && rec.tmdbId.nonEmpty
-      case _            => false
-    }
-    if (!keep) None
+    if (!selects(mode, rec)) None
     else {
       val search = rec.searchTitle.map(_.trim).filter(_.nonEmpty).getOrElse(r.title)
       Some(Film(
@@ -132,44 +235,25 @@ private final class GateReport(http: RealHttpFetch, filmweb: FilmwebClient, conf
       val knownCast = rowMeta.map(_.cast).getOrElse(Set.empty)
       val knownChars = rowMeta.map(_.characters).getOrElse(Set.empty)
       val knownYear = if (mode == "tmdb-pl") f.year else rowMeta.flatMap(_.year).orElse(f.year)
-      val qset = f.queries.map(norm).toSet
+      val known = Known(knownDirs, knownCast, knownChars, knownYear, f.queries)
 
-      val evals = cands.map { c =>
-        val sim = cosine(vec(ref, lang, idf), vec(c.text, lang, idf))
-        val chars = if (mode == "tmdb-pl") c.characters else knownChars
-        val checkText = if (mode == "tmdb-pl") ref else c.text
-        val matchedChars = chars.filter(ch => containsName(checkText, ch)).toSeq
-        val matchedCast = matchedNames(knownCast, c.cast)
-        val matchedDirs = matchedNames(knownDirs, c.directors)
-        val exact = qset.exists(q => q == norm(c.title) || (c.title.nonEmpty && norm(c.title).startsWith(q) && q.length >= 4))
-        val yearContradict = (for { ry <- knownYear; cy <- c.year } yield math.abs(ry - cy) > 1).getOrElse(false)
-        val dirContradict = knownDirs.nonEmpty && c.directors.nonEmpty && matchedDirs.isEmpty
-        (c, sim, matchedChars, matchedCast, matchedDirs, exact, yearContradict, dirContradict)
-      }
-      val eligible = evals.filter { case (_, sim, mChars, mCast, mDirs, exact, yc, dc) =>
-        !dc && !(yc && !exact) && (exact || mDirs.nonEmpty || (sim >= Tau && (mChars.nonEmpty || mCast.size >= 2)))
-      }
-      val accept = eligible.sortBy { case (_, sim, _, _, mDirs, exact, _, _) => (!(exact || mDirs.nonEmpty), -sim) }.headOption
-      // When emitting all evaluations, fall back to the single best-by-synopsis
-      // candidate so abstained rows still appear on the report (with their sim).
-      val toEmit = accept.orElse(if (emitAll) evals.sortBy { case (_, sim, _, _, _, _, _, _) => -sim }.headOption else None)
-      val isAccept = accept.isDefined
+      val evals = cands.map(c => evaluate(mode, ref, cosine(vec(ref, lang, idf), vec(c.text, lang, idf)), known, c))
+      val decided = decide(evals, emitAll)
+      val isAccept = decided.exists(_._2)
       if (isAccept) accepted += 1 else abstained += 1
-      toEmit.foreach { case (c, sim, mChars, mCast, mDirs, exact, _, _) =>
-        val corroborated = exact || mDirs.nonEmpty
-        if (isAccept) { if (corroborated) corrob += 1 else domainOnly += 1 }
-        val via =
-          if (isAccept) { if (mDirs.nonEmpty) "director" else if (exact) "exact-title" else if (mChars.nonEmpty) "character-name" else "cast" }
-          else "none" // abstained: best candidate failed the corroboration gate
+      decided.foreach { case (e, _) =>
+        val c = e.candidate
+        if (isAccept) { if (e.corroborated) corrob += 1 else domainOnly += 1 }
+        val via = if (isAccept) e.via else "none" // abstained: best candidate failed the corroboration gate
         val yearMatch = (for { ry <- knownYear; cy <- c.year } yield ry == cy).getOrElse(false)
         writer.append(Json.stringify(Json.obj(
           "src" -> src, "outcome" -> (if (isAccept) "accepted" else "abstained"),
           "filmId" -> f.id, "filmTitle" -> f.title, "filmYear" -> f.year.map(_.toString).getOrElse(""),
           "searchTitle" -> f.search, "extUrl" -> c.url, "extTitle" -> c.title, "extYear" -> c.year.map(_.toString).getOrElse(""),
-          "via" -> via, "corroborated" -> corroborated, "sim" -> f"$sim%.3f",
+          "via" -> via, "corroborated" -> e.corroborated, "sim" -> f"${e.sim}%.3f",
           "refSyn" -> ref, "candSyn" -> c.text,
           "rowDirectors" -> knownDirs.toSeq.sorted, "candDirectors" -> c.directors.toSeq.sorted,
-          "matchedDirectors" -> mDirs.sorted, "matchedCharacters" -> mChars.sorted, "matchedCast" -> mCast.sorted,
+          "matchedDirectors" -> e.directors.sorted, "matchedCharacters" -> e.characters.sorted, "matchedCast" -> e.cast.sorted,
           "yearMatch" -> yearMatch
         ))).append("\n")
       }
@@ -275,52 +359,7 @@ private final class GateReport(http: RealHttpFetch, filmweb: FilmwebClient, conf
     }.toOption
   }
 
-  // ── signals + text ─────────────────────────────────────────────────────────
-  private def containsName(text: String, name: String): Boolean = {
-    val n = norm(name); val parts = n.split(" ").filter(_.length >= 4)
-    parts.nonEmpty && parts.forall(p => norm(text).contains(p))
-  }
-  private def matchedNames(a: Set[String], b: Set[String]): Seq[String] = {
-    val nb = b.map(norm)
-    a.toSeq.filter { x => val nx = norm(x); nb.exists(y => nx == y || (nx.length > 4 && y.contains(nx)) || (y.length > 4 && nx.contains(y))) }
-  }
-
-  private val StopPL = Set("i","w","na","z","ze","do","że","się","to","jest","są","nie","o","a","po","od","za","jako","który","która","które","przez","ich","jego","jej","ale","dla","gdy","czy","też","już","być","co","jak","ten","oraz","pod","nad","bez","przy")
-  private val StopEN = Set("the","a","an","of","to","and","in","on","for","with","his","her","their","its","is","are","as","by","at","from","that","this","who","when","after","into","but","or","he","she","they","it","was","has","have","not","which")
-  private def stopwords(lang: String) = if (lang == "pl") StopPL else StopEN
-  private val SufPL = Seq("iejszego","owania","ości","ami","ach","owi","ego","emu","iej","ych","ymi","owie","owa","owe","owy","nie","cie","ką","ek","ę","ą","y","i","a","e","u","o")
-  private val SufEN = Seq("ization","ational","ation","ement","ments","able","ible","ing","ies","ied","ment","ness","tion","sion","ous","ive","ed","ly","es","s")
-  private def stem(t: String, lang: String) = {
-    val sufs = if (lang == "pl") SufPL else SufEN
-    sufs.find(s => t.length - s.length >= 3 && t.endsWith(s)).map(s => t.dropRight(s.length)).getOrElse(t)
-  }
-  private def tokens(s: String, lang: String) =
-    TextNormalization.deburr(TextNormalization.stripUrls(s)).toLowerCase.split("[^\\p{L}]+").iterator
-      .filter(_.length > 2).filterNot(stopwords(lang)).map(stem(_, lang)).toSeq
-  private def buildIdf(docs: Seq[String], lang: String): Map[String, Double] = {
-    val n = math.max(1, docs.size); val df = scala.collection.mutable.HashMap.empty[String, Int]
-    docs.foreach(d => tokens(d, lang).distinct.foreach(t => df.update(t, df.getOrElse(t, 0) + 1)))
-    df.iterator.map { case (t, c) => t -> math.log(n.toDouble / c) }.toMap
-  }
-  private def vec(s: String, lang: String, idf: Map[String, Double]): Map[String, Double] = {
-    val maxIdf = if (idf.isEmpty) 1.0 else idf.valuesIterator.max
-    tokens(s, lang).groupMapReduce(identity)(_ => 1)(_ + _).map { case (t, c) => t -> c.toDouble * idf.getOrElse(t, maxIdf) }
-  }
-  private def cosine(a: Map[String, Double], b: Map[String, Double]): Double = {
-    if (a.isEmpty || b.isEmpty) return 0.0
-    val dot = a.iterator.collect { case (k, v) if b.contains(k) => v * b(k) }.sum
-    val na = math.sqrt(a.valuesIterator.map(v => v * v).sum); val nb = math.sqrt(b.valuesIterator.map(v => v * v).sum)
-    if (na == 0 || nb == 0) 0.0 else dot / (na * nb)
-  }
-
-  private def norm(s: String) = TextNormalization.deburr(s).toLowerCase.trim.replaceAll("\\s+", " ")
   private def enc(s: String) = URLEncoder.encode(s, StandardCharsets.UTF_8)
-  private def stripVariants(t: String): Seq[String] = {
-    val noParen = t.replaceAll("\\s*\\([^)]*\\)", "").trim
-    val pipe = t.split("[|]").map(_.trim).filter(_.nonEmpty).toSeq
-    val colon = if (t.contains(":")) Seq(t.substring(t.indexOf(":") + 1).trim) else Seq.empty
-    (Seq(noParen) ++ pipe ++ colon).filter(_.nonEmpty)
-  }
   private def runPool[A, B](workers: Int, items: Seq[A])(f: A => B): Seq[B] = {
     val pool = Executors.newFixedThreadPool(workers); implicit val ec: ExecutionContext = ExecutionContext.fromExecutor(pool)
     val done = new AtomicInteger(0)
