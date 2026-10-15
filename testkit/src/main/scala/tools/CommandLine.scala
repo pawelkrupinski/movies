@@ -9,7 +9,8 @@ import java.nio.file.{Path, Paths}
  * valued option with no value (at the end, or followed by another `--option`), a single option given twice, one
  * positional too many, or a value its reader cannot convert stops the tool with the message and the help text on
  * stderr and exit code 2 — never a silently dropped flag or a shifted pair, the way `args.grouped(2)` read
- * `--apply --report r.md`. `--help` (or `-h`) prints the help text, built from the declarations, and exits 0.
+ * `--apply --report r.md`. `--help` (or `-h`) in option position — not an option's value, nor after `--` — prints
+ * the help text, built from the declarations, and exits 0.
  *
  * {{{
  *   val arguments = CommandLine("IdentityRefit", "re-tunes the identity weights",
@@ -54,17 +55,17 @@ final case class CommandLine(tool: String, summary: String, options: Seq[Command
   def parseOrExit(args: Array[String]): Arguments = exiting(tool, help)(refuse => read(args.toSeq, refuse))
 
   private def read(args: Seq[String], fail: String => Nothing): Either[Stop, Arguments] = {
-    if (args.exists(a => a == "--help" || a == "-h")) return Left(Help(help))
     val byName  = options.map(o => o.name -> o).toMap
     val flags   = Set.newBuilder[String]
     val values  = scala.collection.mutable.LinkedHashMap.empty[String, Vector[String]]
     val free    = Vector.newBuilder[String]
-    def take(value: Value, supplied: String): Option[Invalid] =
+    def take(value: Value, supplied: String): Option[Stop] =
       if (values.contains(value.name) && !value.repeatable) Some(Invalid(s"--${value.name} given twice"))
       else { values.update(value.name, values.getOrElse(value.name, Vector.empty) :+ supplied); None }
-    def loop(rest: List[String]): Option[Invalid] = rest match {
+    def loop(rest: List[String]): Option[Stop] = rest match {
       case Nil                                 => None
       case "--" :: tail                        => free ++= tail; None
+      case ("--help" | "-h") :: _              => Some(Help(help))
       case token :: tail if token.startsWith("--") =>
         val (name, inline) = token.drop(2).split("=", 2) match {
           case Array(n, v) => (n, Some(v))
@@ -85,7 +86,7 @@ final case class CommandLine(tool: String, summary: String, options: Seq[Command
       case token :: tail                       => free += token; loop(tail)
     }
     loop(args.toList) match {
-      case Some(invalid) => Left(invalid)
+      case Some(stop) => Left(stop)
       case None =>
         val positional = free.result()
         val room       = if (positionals.lastOption.exists(_.repeatable)) Int.MaxValue else positionals.size

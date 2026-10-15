@@ -95,6 +95,14 @@ class CommandLineSpec extends AnyFlatSpec with Matchers with SuiteConfiguration 
     }
   }
 
+  it should "read -h or --help as help only in option position: never as a value, a positional, or after --" in {
+    line.parse(Seq("-h")).left.toOption.get shouldBe a[Help]
+    line.parse(Seq("--apply", "-h")).left.toOption.get shouldBe a[Help]
+    parsed("--report", "-h").get("report") shouldBe Some("-h")
+    parsed("--", "-h").positional("country") shouldBe Some("-h")
+    parsed("--", "--help").positional("country") shouldBe Some("--help")
+  }
+
   it should "read a positional as a number or a country, and stop on one that is neither" in {
     val countries = CommandLine("Census", "counts").withPositionals(Positional("country", "measured"), Positional("ticks", "how many"))
     def read(args: String*) = countries.parse(args).toOption.get
