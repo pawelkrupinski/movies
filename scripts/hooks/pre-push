@@ -502,10 +502,10 @@ check_sbt() {
     for module in common worker web; do
         tests+=("$module/Test/testOnly $(printf '%s\n' "$lints" | sed -n "s/^$module://p" | tr '\n' ' ' | sed 's/ $//')")
     done
-    local run=(sbt -batch -Dsbt.server.forcestart=false "${compiles[@]}" "${tests[@]}")
+    local run=(sbt -batch -Dsbt.server.forcestart=false ${compiles[@]+"${compiles[@]}"} "${tests[@]}")
     if [ "$sbt_client" = 1 ]; then
         local line
-        line="$(printf '%s; ' "${compiles[@]}" "${tests[@]}")"
+        line="$(printf '%s; ' ${compiles[@]+"${compiles[@]}"} "${tests[@]}")"
         run=(sbt --client "${line%; }")
     fi
     "${run[@]}" > "$tmp/sbt.log" 2>&1 \

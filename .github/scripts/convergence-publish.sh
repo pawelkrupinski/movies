@@ -47,8 +47,8 @@ Not a version of anything; do not treat as a release." || true
         pin=("enrichment-upload/$pinned")
         echo "KINOWO_PINNED_TREE=$pinned" >> "$GITHUB_ENV"
     fi
-    "$RELEASE" upload "$TAG" "$ARCHIVE" "${pin[@]}" --clobber || return 1
-    echo "published $ARCHIVE ${pin[*]} to release $TAG"
+    "$RELEASE" upload "$TAG" "$ARCHIVE" ${pin[@]+"${pin[@]}"} --clobber || return 1
+    echo "published $ARCHIVE ${pin[*]:-} to release $TAG"
     # The gzip working tree this zstd one replaces: left beside it, readers' glob (`enrichment-<code>.tar.*`)
     # would download both. Gone after a country's first zstd publish, so a no-op from then on.
     legacy="enrichment-$code.tar.gz"
