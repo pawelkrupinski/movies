@@ -41,4 +41,24 @@ check "the prod URI's password never reaches mongosh's command line, where ps sh
   "" "$(grep -F 'u:p@' "$ARGV_LOG")"
 check "a matching exported MONGODB_DB is accepted" "kinowo_uk" "$(target "$(reset uk kinowo_uk)")"
 
+# A real (not dry) prod reset scales web + worker to ZERO around the wipe. Anything failing on the way must not leave the
+# country's web tier down: the tunnel is opened before anything is scaled, and a failed wipe scales both back up.
+export KUBECTL_LOG="$SCRATCH/kubectl"
+printf '#!/bin/sh\necho "$*" >> "$KUBECTL_LOG"\n' > "$FAKE/kubectl"
+printf '#!/usr/bin/env bash\n[ -n "${SSH_FAILS:-}" ] && exit 255\ntouch "$TUNNEL_UP"; exec sleep 30\n' > "$FAKE/ssh"
+printf '#!/bin/sh\necho "$*" >> "$ARGV_LOG"\n[ -e "$TUNNEL_UP" ] || exit 1\ncase "$*" in *getSiblingDB*) if [ -n "${DROP_FAILS:-}" ]; then exit 1; fi ;; esac\necho 0\n' > "$FAKE/mongosh"
+wipe() { # [VAR=value...]
+  rm -f "$TUNNEL_UP" "$KUBECTL_LOG"
+  ( cd "$REPO_ROOT" && env -u MONGODB_URI -u MONGODB_DB KINOWO_RESET_COUNTRY=pl PATH="$FAKE:$PATH" "$@" \
+      scripts/reset-corpus.sh --yes >/dev/null 2>&1 ); }
+scaled() { grep -o 'scale deploy/[a-z-]* --replicas=[0-9]*' "$KUBECTL_LOG" 2>/dev/null | sed 's/scale deploy\///' | tr '\n' ' ' | sed 's/ $//'; }
+wipe; status=$?
+check "a reset scales both down, wipes, and scales both back up" "0 web-pl --replicas=0 worker-pl --replicas=0 worker-pl --replicas=1 web-pl --replicas=1" \
+  "$status $(scaled)"
+wipe SSH_FAILS=1; status=$?
+check "prod unreachable: refused before anything is scaled" "1 " "$status $(scaled)"
+wipe DROP_FAILS=1; status=$?
+check "a wipe that fails half-way still scales both back up" "1 web-pl --replicas=0 worker-pl --replicas=0 worker-pl --replicas=1 web-pl --replicas=1" \
+  "$status $(scaled)"
+
 spec_summary

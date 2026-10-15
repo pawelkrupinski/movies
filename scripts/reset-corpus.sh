@@ -137,7 +137,17 @@ scale_deploy() {
 # an ssh forward. See scripts/local-mirror/prod-tunnel.sh, the single definition
 # every prod-sourced local script shares.
 init_prod_tunnel "reset" "$URI"
-cleanup() { close_prod_tunnel; }
+# Set from the first scale-down until the scale-up: any exit in between (a failed drop, a rollout timeout) brings both
+# back, rather than leaving the country's web tier at zero.
+SCALED_DOWN=""
+cleanup() {
+  if [ -n "$SCALED_DOWN" ]; then
+    echo "[reset] the reset did not finish — scaling worker-$COUNTRY and web-$COUNTRY back up" >&2
+    kubectl -n "$KUBE_NAMESPACE" scale "deploy/worker-$COUNTRY" --replicas=1 || true
+    kubectl -n "$KUBE_NAMESPACE" scale "deploy/web-$COUNTRY" --replicas=1 || true
+  fi
+  close_prod_tunnel
+}
 trap cleanup EXIT
 
 open_tunnel() {
@@ -155,8 +165,9 @@ require_local_mongo() {
 
 # --- run ---------------------------------------------------------------------
 if [ "$MODE" = "prod" ]; then
-  [ -z "$DRY" ] && { scale_deploy "web-$COUNTRY" 0; scale_deploy "worker-$COUNTRY" 0; }
+  # The tunnel FIRST: scaled to zero and then finding prod unreachable, the script exited with the web tier down.
   open_tunnel               # needed to query, even for --dry-run
+  if [ -z "$DRY" ]; then SCALED_DOWN=1; scale_deploy "web-$COUNTRY" 0; scale_deploy "worker-$COUNTRY" 0; fi
 else
   require_local_mongo
 fi
@@ -178,6 +189,7 @@ mongosh_at "$URI" --quiet --eval "
 "
 
 if [ "$MODE" = "prod" ] && [ -z "$DRY" ]; then
+  SCALED_DOWN=""
   scale_deploy "worker-$COUNTRY" 1
   scale_deploy "web-$COUNTRY" 1
 fi
