@@ -106,6 +106,11 @@ if [ -n "${KINOWO_IDENTITY_DUMP:-}" ]; then
     > "$KINOWO_IDENTITY_DUMP/decisions-$KINOWO_IDENTITY_FULL.jsonl"
 else
   mkdir -p target/identity-unmatched
+  # STUB_GAPS: the capture lacks a lookup this code asks -- the ratchet writes takes only reading it as unknown
+  if [ -n "${STUB_GAPS:-}" ]; then
+    [ "${KINOWO_RATCHET_CAPTURE_GAPS:-}" = unknown ] || { echo "the fixture lacks answers this resolve asks"; exit 1; }
+    printf 'country\tkind\tlookup\npl\tfamily\t(RottenTomatoes, record|x)\nuk\ttmdb\tsearch y\n' > target/identity-unmatched/capture-gaps.tsv
+  fi
   printf 'country\tvenue\trawTitle\tstatus\tfilm\ttitle\tbasis\npl\tv\tt\tRIGHT\ttmdb:1\tF\tb\n' > target/identity-unmatched/ratchet-takes.tsv
 fi
 echo "[success] Total time: 1 s"
@@ -145,6 +150,17 @@ check "a measurement stores the base it resolved, not its head" "$(ls "$work/rel
 REF=refs/heads/measure/c5-2 TAKES_BASE=$c4 store_run "$c5" || true
 check "...so the next measurement against that base resolves only its head" "$(base_calls)" 0
 check "...timing the base as reused" "$(grep -c 'base-resolve.*reused' "$work/out/timings.tsv")" 1
+
+# A capture lacking a lookup the code asks: the final takes are still replayed, the gap read as unknown and named --
+# only this row's country's (run 38694072183 lost every country's final takes to one UK Rotten Tomatoes record).
+rm -rf "$work/release"
+code=0; STUB_GAPS=1 TAKES_BASE=$c4 store_run "$c5" || code=$?
+check "a capture lacking a lookup the code asks still has its final takes replayed, and the check passes" "$code" 0
+check "...naming the row's own gap as a blind spot" \
+  "$(grep -c "the head's final takes read 1 lookup(s) the capture lacks as UNKNOWN.*family (RottenTomatoes, record|x)" "$work/out/verdict.txt")" 1
+check "...and not another country's" "$(grep -c 'search y' "$work/out/verdict.txt")" 0
+rm -rf "$work/release"
+code=0; TAKES_BASE=$c4 store_run "$c5" || code=$?
 
 # c4's own check, then c5's again: its base c4 is now stored.
 TAKES_BASE=$c2 store_run "$c4" || true

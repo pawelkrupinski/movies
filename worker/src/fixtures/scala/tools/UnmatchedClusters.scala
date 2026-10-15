@@ -127,6 +127,41 @@ object UnmatchedClusters {
       .copy(unanswered = lookups.unanswered, missingQueries = lookups.queries.asScala.toSet, missingFilms = lookups.films.asScala.toSet.map(_.toInt))
   }
 
+  // ── the capture's gaps ─────────────────────────────────────────────────────────────────────
+
+  /** A lookup the replay asked that the capture holds no answer to — `kind` the seam (model, family, imdb-find, poster,
+   *  catalogue, record, tmdb) and the lookup as rendered. */
+  final case class Gap(country: String, kind: String, lookup: String)
+
+  /** Every gap of `capture`'s replay `outcome`: the ratchet's re-capture questions, in one list. A replay reads each as
+   *  `Unknown` — the leg's reading of a recording gap, and identity-slice's UNANSWERED — so the takes it makes stand. */
+  def gaps(capture: Capture, outcome: Outcome): Seq[Gap] = {
+    val cc = capture.country.code
+    def all(kind: String, lookups: Iterable[String]) = lookups.toSeq.sorted.map(Gap(cc, kind, _))
+    all("model", Seq(outcome.model.unknownQueries -> "queries", outcome.model.unknownFilms -> "films")
+        .collect { case (n, what) if n > 0 => s"$n $what unanswered" }) ++
+      // a question the capture gave up on as unreachable is left open as production leaves a failed fetch's
+      all("family", unasked(capture, outcome.stage.wanted).map { case (family, key) => s"($family, $key)" }) ++
+      all("imdb-find", outcome.stage.wantedFinds) ++
+      all("poster", outcome.stage.wantedPosters.map(_.toString)) ++
+      all("catalogue", outcome.stage.wantedCatalogue.map(_.toString)) ++
+      all("record", outcome.stage.wantedRecords.map(id => s"tmdb $id")) ++
+      // TMDB's answers the stage's own resolves ask — a fill rule's, a poster's candidates — that the capture never held
+      all("tmdb", outcome.unanswered)
+  }
+
+  /** What the takes check sets (`KINOWO_RATCHET_CAPTURE_GAPS=unknown`) to MEASURE a change over a capture that lacks the
+   *  lookups it newly asks: the ratchet then reads them as unknown, writes them to [[GapsPath]] and still writes its
+   *  takes, where it otherwise fails the capture as stale — every country's takes lost to one country's gap. */
+  val GapsEnv = "KINOWO_RATCHET_CAPTURE_GAPS"
+  def gapsAsUnknown(env: Map[String, String]): Boolean = env.get(GapsEnv).contains("unknown")
+  val GapsPath: Path = Path.of("target", "identity-unmatched", "capture-gaps.tsv")
+  def writeGaps(path: Path, gaps: Seq[Gap]): Unit = {
+    Files.createDirectories(path.toAbsolutePath.getParent)
+    Files.writeString(path, "country\tkind\tlookup\n" + gaps.map(gap => s"${gap.country}\t${gap.kind}\t${gap.lookup}\n").mkString,
+      StandardCharsets.UTF_8)
+  }
+
   /** One listing's take: the film its cluster took (TMDB's, or a fallback film), the IMDb id it is known by, and the
    *  fallback film's id where another database's stands for it ("filmweb:10105049", "wikidata:Q141180912"). */
   final case class Take(country: String, venue: String, rawTitle: String, tmdb: Option[Int], imdb: Option[String], basis: String, title: String,

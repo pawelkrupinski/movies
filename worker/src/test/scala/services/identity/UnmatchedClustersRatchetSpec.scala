@@ -25,22 +25,20 @@ class UnmatchedClustersRatchetSpec extends AnyFlatSpec with Matchers {
   private val labels   = IdentityJudgements.labels(judged)
   private val expected = UnmatchedClusters.Directory.resolve("expected-matches.tsv")
   private val captures = models.Country.all.map(UnmatchedClusters.fixturePath).filter(Files.exists(_)).map(UnmatchedClusters.read)
-  private lazy val takes: Seq[Take] = captures.flatMap { capture =>
-    val outcome = UnmatchedClusters.replay(capture)
-    withClue(s"${capture.country.code}: the fixture lacks answers this resolve asks — re-capture it " +
-      "(UnmatchedClustersCaptureIntegrationSpec): ") {
-      outcome.model.unknownQueries shouldBe 0
-      outcome.model.unknownFilms shouldBe 0
-      // a question the capture gave up on as unreachable is left open as production leaves a failed fetch's
-      UnmatchedClusters.unasked(capture, outcome.stage.wanted) shouldBe empty
-      outcome.stage.wantedFinds shouldBe empty
-      outcome.stage.wantedPosters shouldBe empty
-      outcome.stage.wantedCatalogue shouldBe empty
-      outcome.stage.wantedRecords shouldBe empty
-      // TMDB's answers the stage's own resolves ask — a fill rule's, a poster's candidates — that the capture never held
-      outcome.unanswered shouldBe empty
+  /** A measurement (the takes check) reads the capture's gaps as unknown and lists them; the ratchet fails on any. */
+  private val gapsAsUnknown = UnmatchedClusters.gapsAsUnknown(sys.env)
+  private lazy val takes: Seq[Take] = {
+    val replayed = captures.map(capture => (capture, UnmatchedClusters.replay(capture)))
+    val gaps     = replayed.flatMap { case (capture, outcome) => UnmatchedClusters.gaps(capture, outcome) }
+    if (gapsAsUnknown) UnmatchedClusters.writeGaps(UnmatchedClusters.GapsPath, gaps)
+    else replayed.foreach { case (capture, _) =>
+      val its = gaps.filter(_.country == capture.country.code)
+      withClue(s"${capture.country.code}: the fixture lacks answers this resolve asks — re-capture it " +
+        s"(UnmatchedClustersCaptureIntegrationSpec): ${its.take(5).map(gap => s"${gap.kind} ${gap.lookup}").mkString("; ")}: ") {
+        its shouldBe empty
+      }
     }
-    UnmatchedClusters.takes(capture, outcome)
+    replayed.flatMap { case (capture, outcome) => UnmatchedClusters.takes(capture, outcome) }
   }
   private def line(take: Take) = (take.country, take.venue, take.rawTitle, take.film)
 

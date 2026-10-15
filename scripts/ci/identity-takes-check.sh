@@ -222,10 +222,25 @@ if [ -n "$takes_moves" ]; then
   # moved 213 UK listings in prod (and three right DE takes) with them at 0/0/0. The unmatched-cluster ratchet replays the
   # model AND the agreement stage over the checked-in capture and its families' answers; run by the head and by the base
   # over the head's capture, its takes are diffed as the decisions are. The base reads the head's capture: one input.
+  # A lookup the capture lacks -- one a change newly asks (a relay's season search, a Rotten Tomatoes record) -- is read
+  # as UNKNOWN here (KINOWO_RATCHET_CAPTURE_GAPS=unknown), as identity-slice reads a recording gap, and listed: failed
+  # as a stale capture, it left EVERY country without final takes (run 38694072183: one UK RT record). The ratchet
+  # itself, outside a measurement, still fails a capture that lacks them.
   ratchet() { # <checkout> <out file>
-    rm -f "$1/target/identity-unmatched/ratchet-takes.tsv"
-    ( cd "$1" && sbt -J-Xmx"$heap" "worker/Test/testOnly services.identity.UnmatchedClustersRatchetSpec" > "$2.log" 2>&1 )
+    rm -f "$1/target/identity-unmatched/ratchet-takes.tsv" "$1/target/identity-unmatched/capture-gaps.tsv"
+    ( cd "$1" && KINOWO_RATCHET_CAPTURE_GAPS=unknown \
+        sbt -J-Xmx"$heap" "worker/Test/testOnly services.identity.UnmatchedClustersRatchetSpec" > "$2.log" 2>&1 )
+    cp "$1/target/identity-unmatched/capture-gaps.tsv" "$(dirname "$2")/capture-gaps.tsv" 2>/dev/null
     cp "$1/target/identity-unmatched/ratchet-takes.tsv" "$2" 2>/dev/null
+  }
+  gaps_of() { # <side>: this country's gaps the side's final takes read as unknown, said with up to five of them
+    local file="$out/$1/capture-gaps.tsv" n
+    [ -f "$file" ] || return 0
+    n=$(awk -F'\t' -v cc="$cc" 'NR > 1 && $1 == cc' "$file" | wc -l | tr -d ' ')
+    [ "$n" -gt 0 ] || return 0
+    echo "identity takes ($cc): the $1's final takes read $n lookup(s) the capture lacks as UNKNOWN -- a blind spot of this" \
+      "measurement, not a failure (re-capture to close it): $(awk -F'\t' -v cc="$cc" 'NR > 1 && $1 == cc { printf "%s%s %s", sep, $2, $3; sep = "; " }' "$file" \
+      | cut -c1-400)" | tee -a "$out/verdict.txt" ${GITHUB_STEP_SUMMARY:+"$GITHUB_STEP_SUMMARY"}
   }
   SECONDS=0 replayed=0
   ratchet "$here" "$out/head/ratchet-takes.tsv" || final=2
@@ -243,6 +258,7 @@ if [ -n "$takes_moves" ]; then
     [ "$final" = 0 ] && keep "$out/base/ratchet-takes.tsv" "$(asset final "$(capture_key "$base")")" base
   fi
   echo "identity takes ($cc): final takes replayed in $((replayed + SECONDS))s"
+  gaps_of head; gaps_of base
 else
   echo "identity takes ($cc): no identity code changed since $base -- no take can have moved" | tee -a "$out/verdict.txt"
 fi
