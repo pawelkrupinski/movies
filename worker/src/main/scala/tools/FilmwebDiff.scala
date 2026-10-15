@@ -35,7 +35,8 @@ import scala.util.{Failure, Success, Try}
  *   sbt "worker/runMain tools.FilmwebDiff 3 out.txt out.csv [city-slug …]"
  * args: [daysAhead] [out.txt] [out.csv] [city-slug …] — order-independent for the
  * paths (a `*.txt` is the text report, a `*.csv` the summary); bare city slugs
- * restrict to those cities. Always exits 0 (per-cinema network errors are
+ * restrict to those cities; anything else stops it with exit 2 before any fetch
+ * (`Options.parse`). Past that it always exits 0 (per-cinema network errors are
  * Try-wrapped and reported, never fatal) so a scheduled job's artifact uploads.
  *
  * `def main`, not `extends App`: App-body static-init throws (and pages Sentry
@@ -86,29 +87,54 @@ object FilmwebDiff {
     fwByFilm:   Map[String, Seq[LocalDateTime]]
   )
 
+  /** The run asked: the days ahead, the three report paths, and the cities it is restricted to (none: all). */
+  final case class Options(daysAhead: Int = 3, txt: String = "/temporary/filmweb-diff-output.txt",
+                           csv: String = "/temporary/filmweb-diff-summary.csv", json: String = "/temporary/filmweb-diff-output.json",
+                           cities: Set[String] = Set.empty)
+
+  /** `[daysAhead] [out.txt] [out.csv] [out.json] [city-slug …]`, the paths classified by extension in any order — or
+   *  why not. (A worker `main` tool: testkit's CommandLine is not on its classpath.) The old reading dropped whatever
+   *  it could not classify: a mistyped city slug diffed every city, a days count that was no number diffed 3 days, and
+   *  a path given first was taken for the days and lost. */
+  def parse(args: Seq[String], knownSlugs: Set[String]): Either[String, Options] = {
+    val (days, rest) = args.headOption.flatMap(_.toIntOption) match {
+      case Some(n) if n >= 0 => (n, args.drop(1))
+      case _                 => (Options().daysAhead, args)
+    }
+    rest.foldLeft(Right(Options(daysAhead = days)): Either[String, Options]) { (read, arg) =>
+      read.flatMap { o =>
+        def path(taken: Boolean, set: Options => Options, kind: String) =
+          if (taken) Left(s"a second $kind report path: $arg") else Right(set(o))
+        val defaults = Options()
+        if (arg.endsWith(".txt"))       path(o.txt != defaults.txt, _.copy(txt = arg), "text")
+        else if (arg.endsWith(".csv"))  path(o.csv != defaults.csv, _.copy(csv = arg), "CSV")
+        else if (arg.endsWith(".json")) path(o.json != defaults.json, _.copy(json = arg), "JSON")
+        else if (knownSlugs(arg))       Right(o.copy(cities = o.cities + arg))
+        else Left(s"'$arg' is no report path (*.txt, *.csv, *.json), Polish city slug, or leading days count")
+      }
+    }
+  }
+
   def main(args: Array[String]): Unit = {
+    val knownSlugs = models.Country.Poland.cities.map(_.slug).toSet   // Filmweb is Poland's
+    val options    = parse(args.toSeq, knownSlugs).fold(why => { System.err.println(s"FilmwebDiff: $why"); sys.exit(2) }, identity)
     // Before any handshake — see IssuerCertificateFetching.
     // Before any request: Multikino / biletyna / ck105 tunnel through the residential proxy,
     // and the JDK reads this once — see ProxyTunnelAuthentication.
     ProxyTunnelAuthentication.BasicAllowed.applyToJvm()
     IssuerCertificateFetching.Enabled.applyToJvm()
     val process = settings.ProcessConfiguration.resolve()
-    val daysAhead = args.headOption.flatMap(a => Try(a.toInt).toOption).getOrElse(3)
+    val daysAhead = options.daysAhead
     val now       = models.VenueClock.system.now(models.TimeZones.Poland)
     val today     = now.toLocalDate
     val windowEnd = today.plusDays(daysAhead.toLong)
 
-    // Path args: a `*.txt` → text report, a `*.csv` → summary CSV, a `*.json` →
-    // the deterministic JSON report. Bare slugs (matching a known city) restrict
-    // the diff to those cities. Order-independent: classified by extension, so the
-    // documented `<days> <txt> <csv> <json>` order works and omitting the json
-    // path just defaults it (doesn't break older 2-3 arg invocations).
-    val knownSlugs  = models.Country.Poland.cities.map(_.slug).toSet   // Filmweb is Poland's
-    val pathArgs    = args.tail.filter(a => a.endsWith(".txt") || a.endsWith(".csv") || a.endsWith(".json") || a.startsWith("/"))
-    val cityFilter  = args.tail.filter(knownSlugs).toSet
-    val txtPath     = pathArgs.find(_.endsWith(".txt")).getOrElse("/temporary/filmweb-diff-output.txt")
-    val csvPath     = pathArgs.find(_.endsWith(".csv")).getOrElse("/temporary/filmweb-diff-summary.csv")
-    val jsonPath    = pathArgs.find(_.endsWith(".json")).getOrElse("/temporary/filmweb-diff-output.json")
+    // A `*.txt` → text report, a `*.csv` → summary CSV, a `*.json` → the deterministic JSON report, each defaulted
+    // when omitted (older 2-3 arg invocations still read); bare slugs restrict the diff to those cities.
+    val cityFilter  = options.cities
+    val txtPath     = options.txt
+    val csvPath     = options.csv
+    val jsonPath    = options.json
 
     val http     = new RealHttpFetch()
     // Filmweb is Polish-only, so a Filmweb title is a Polish title by definition.

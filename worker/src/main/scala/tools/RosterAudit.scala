@@ -34,7 +34,17 @@ object RosterAudit {
   /** Filmweb soft-blocks past ~5 concurrent callers (external-api-rate-limits skill). */
   private val Workers = 5
 
+  /** The one optional argument: the file the report is appended to (the workflow's step summary) — or why not: a
+   *  second argument, or a flag, which the old `args.headOption` ignored after a whole audit's reads. */
+  def reportPath(args: Seq[String]): Either[String, Option[java.nio.file.Path]] = args match {
+    case Seq()                               => Right(None)
+    case Seq(path) if !path.startsWith("-")  => Right(Some(Paths.get(path)))
+    case Seq(flag)                           => Left(s"unknown option $flag (usage: RosterAudit [report.md])")
+    case _ +: extra +: _                     => Left(s"unexpected argument $extra (usage: RosterAudit [report.md])")
+  }
+
   def main(args: Array[String]): Unit = {
+    val reportFile = reportPath(args.toSeq).fold(why => { System.err.println(s"RosterAudit: $why"); sys.exit(2) }, identity)
     val clock = java.time.Clock.systemUTC()   // the tool's composition root: its one clock, handed down
     // Before the ~170 direct reads below: the chain lists that follow them tunnel through
     // the residential proxy, and the JDK reads this once — see ProxyTunnelAuthentication.
@@ -65,8 +75,8 @@ object RosterAudit {
     val report   = RosterLocationAudit.markdown(readings, findings, s"Done: ${stats.summary}.")
 
     println(report)
-    args.headOption.foreach { path =>
-      Files.writeString(Paths.get(path), report + "\n", StandardCharsets.UTF_8,
+    reportFile.foreach { path =>
+      Files.writeString(path, report + "\n", StandardCharsets.UTF_8,
         StandardOpenOption.CREATE, StandardOpenOption.APPEND)
     }
     val failing = findings.count(_.failing)
