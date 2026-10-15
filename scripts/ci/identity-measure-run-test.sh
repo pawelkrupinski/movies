@@ -13,7 +13,7 @@ mkdir -p "$work/bin"
 # The fake sbt records its arguments and the identity environment it was given, and narrates one line.
 cat > "$work/bin/sbt" <<'SBT'
 #!/usr/bin/env bash
-{ printf 'arg %s\n' "$@"; env | grep -E '^(MONGODB_URI|KINOWO_IDENTITY_[A-Z_]+)=' | sort; } > "$FAKE_SBT_CALL"
+{ printf 'arg %s\n' "$@"; env | grep -E '^(MONGODB_URI|KINOWO_IDENTITY_(BOOT_ONLY|CORPUS_DIR|FULL|OUT|PIPELINE_CACHE|ROBUSTNESS|FOCUS))=' | sort; } > "$FAKE_SBT_CALL"
 echo "[info] Tests: succeeded 1, failed 0"
 exit "${FAKE_SBT_STATUS:-0}"
 SBT
