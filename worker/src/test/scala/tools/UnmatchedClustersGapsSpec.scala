@@ -37,7 +37,7 @@ class UnmatchedClustersGapsSpec extends AnyFlatSpec with Matchers {
     java.nio.file.Files.readString(out.resolve("capture-gaps.tsv")) should include("es\ttmdb\t")
     java.nio.file.Files.exists(out.resolve("ratchet-takes.tsv")) shouldBe true
     val (judged, notMeasured) = run(measure = false)
-    judged.left.toOption.get should startWith("es: the fixture lacks answers this resolve asks")
+    judged.left.toOption.get should startWith("es: the fixture lacks answers this resolve asks — fill them: scripts/identity-capture.sh --fill es:")
     java.nio.file.Files.exists(notMeasured.resolve("ratchet-takes.tsv")) shouldBe false
   }
 

@@ -72,7 +72,9 @@ object UnmatchedClustersRatchet {
         UnmatchedClusters.findings(taken, labels, UnmatchedClusters.readTakeLines(expected)))
       taken
     }.left.map { case (cc, its) =>
-      s"$cc: the fixture lacks answers this resolve asks — re-capture it (scripts/identity-capture.sh): " +
+      // a change that asks more of the captured clusters (a listing it leaves unmatched, a new search) needs only those
+      // answers: a fill, minutes, not a capture of the whole corpus
+      s"$cc: the fixture lacks answers this resolve asks — fill them: scripts/identity-capture.sh --fill $cc: " +
         its.take(5).map(gap => s"${gap.kind} ${gap.lookup}").mkString("; ")
     }
 
