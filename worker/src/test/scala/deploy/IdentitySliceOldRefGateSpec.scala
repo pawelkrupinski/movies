@@ -57,4 +57,17 @@ class IdentitySliceOldRefGateSpec extends AnyFlatSpec with Matchers {
     // Started before itAll, so the tree it lays out copies the restored target/ before sbt writes to it.
     ci.indexOf("Start identity-slice's old-ref compile") should be < ci.indexOf("run: sbt itAll")
   }
+
+  /** The compiled old tree is cached by the tool files: one the key missed would restore a tree compiled with its old
+   *  copy as an EXACT hit — no save, and no difference for zinc to see beyond the file's own mtime. */
+  it should "restore the compiled old ref before the compile, keyed by every tool file" in {
+    val ci      = RepoFile.read(".github/workflows/ci.yml")
+    val restore = RepoFile.step(ci, "Restore identity-slice's compiled old ref")
+    restore should include("if: matrix.row == 'rest' && steps.slice-tools.outputs.changed == 'true'")
+    restore should include("path: ${{ runner.temp }}/kinowo-identity/refs")
+    ci.indexOf("Restore identity-slice's compiled old ref") should be < ci.indexOf("Start identity-slice's old-ref compile")
+    val hashed = """hashFiles\(([^)]*)\)""".r.findFirstMatchIn(restore).map(_.group(1)).getOrElse(fail("the key hashes no files"))
+      .split(",").map(_.trim.stripPrefix("'").stripSuffix("'")).toSeq
+    (toolFiles :+ "scripts/identity-slice").filterNot(f => hashed.exists(covers(_, f))) shouldBe empty
+  }
 }

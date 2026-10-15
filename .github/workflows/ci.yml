@@ -83,7 +83,7 @@ jobs:
     # running all five modules was the build's long pole (an `sbt testUnitNoE2e` of 7-10 min,
     # 2026-10-15). The slots came from merging the Chromium phone shards (2 → 1) and the WebKit ones
     # (4 → 2), and one was the budget's fifteenth, unused until then. The non-sbt checks (roster
-    # drift, actionlint, the script self-tests, …) ride `worker-scripts`, the lightest row; the gitops
+    # drift, actionlint, the script self-tests, …) ride `worker-identity`, the lightest row; the gitops
     # manifests ride `worker`, whose deploy specs read them.
     test:
         name: test (${{ matrix.shard }})
@@ -137,7 +137,7 @@ jobs:
             # (scripts/ci/generated-artefacts-drift.sh). Gated on the chain's paths — it
             # fetches GeoNames and PyPI, which an unrelated push should not depend on.
             - name: Did this change touch the generated roster's sources?
-              if: matrix.shard == 'worker-scripts'
+              if: matrix.shard == 'worker-identity'
               id: roster
               uses: ./.github/actions/changed-paths
               with:
@@ -162,7 +162,7 @@ jobs:
             # half a second instead of the e2e shard's ~110s corpus replay. See
             # scripts/read-model-snapshot-inputs.sh for what the stamp does and does not cover.
             - name: The read-model snapshot is stamped for this fixture corpus
-              if: matrix.shard == 'worker-scripts'
+              if: matrix.shard == 'worker-identity'
               run: scripts/read-model-snapshot-inputs.sh check HEAD
 
             # actionlint over every workflow (shellcheck over their `run:` blocks), and the composite
@@ -170,7 +170,7 @@ jobs:
             # The pre-push hook runs both over what a push changes, but skips a tool that is not
             # installed — this is the check that cannot be skipped. Pinned by version and checksum.
             - name: Workflows pass actionlint, and composite actions' run blocks pass shellcheck
-              if: matrix.shard == 'worker-scripts'
+              if: matrix.shard == 'worker-identity'
               env:
                   ACTIONLINT_VERSION: 1.7.12
                   ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
@@ -192,7 +192,7 @@ jobs:
             # nothing with: run first in the foreground they held the unit run back by their own
             # ~21-25 s (run 37121131703). Waited for, and failing as they would have, just before it.
             - name: Script self-tests, in the background
-              if: matrix.shard == 'worker-scripts'
+              if: matrix.shard == 'worker-identity'
               run: scripts/ci/in-background.sh start script-tests scripts/run-script-tests
 
             # The JDK, sbt and the build cache (.github/actions/setup-sbt-build). Warm zinc state
@@ -210,7 +210,7 @@ jobs:
                       sbt-target-${{ runner.os }}-
 
             - name: The script self-tests passed
-              if: matrix.shard == 'worker-scripts'
+              if: matrix.shard == 'worker-identity'
               run: scripts/ci/in-background.sh wait script-tests 600
 
             # This row's modules' unit tests in one sbt run; `all` keeps going so a
@@ -506,6 +506,20 @@ jobs:
                       scripts/identity-slice-old-ref-test.sh
                       .github/actions/setup-sbt-build/**
                       .github/workflows/ci.yml
+
+            # The old ref's laid-out, COMPILED tree, kept across runs: the ref is pinned, so a run that finds it
+            # recompiles only the tool files it drops in. Without it, each run recompiled the whole old tree from
+            # this checkout's target/ (2.5-3 min, 166 s on run 38804880394), and beside itAll that doubled the
+            # row's sbt run (143 s → 308 s on run 38821863769). Keyed by the tool files, so an unchanged set
+            # restores an exact match; a changed set restores the newest tree and compiles the difference.
+            - name: Restore identity-slice's compiled old ref
+              if: matrix.row == 'rest' && steps.slice-tools.outputs.changed == 'true'
+              uses: actions/cache@v5
+              with:
+                  path: ${{ runner.temp }}/kinowo-identity/refs
+                  key: identity-old-ref-c2974e3aaea73fb841096a24316fb5e872154de9-${{ hashFiles('worker/src/test/scala/scripts/IdentitySlice.scala', 'worker/src/test/scala/scripts/IdentityExplain.scala', 'worker/src/test/scala/services/identity/IdentitySlicing.scala', 'worker/src/fixtures/scala/tools/**', 'scripts/identity-slice', 'scripts/identity-tools.sh') }}
+                  restore-keys: |
+                      identity-old-ref-c2974e3aaea73fb841096a24316fb5e872154de9-
 
             - name: Start identity-slice's old-ref compile, in the background
               if: matrix.row == 'rest' && steps.slice-tools.outputs.changed == 'true'
