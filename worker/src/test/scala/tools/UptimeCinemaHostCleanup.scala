@@ -35,13 +35,15 @@ import scala.concurrent.duration._
  *  ```
  */
 object UptimeCinemaHostCleanup {
+  private val clock = java.time.Clock.systemUTC()
+
 
   /** The host set to purge, single-sourced from the live scraper catalog so it
    *  can't drift from what `MonitoringHttpFetch` suppresses. A no-op `http` is
    *  fine: building the catalog only constructs client objects — it fetches
    *  nothing — and `scrapeHosts` reads their declared hosts. */
   def cinemaHosts: Set[String] =
-    new CinemaScraperCatalog(new RealHttpFetch(), models.VenueClock.system, java.time.Clock.systemUTC()).scrapeHosts
+    new CinemaScraperCatalog(new RealHttpFetch(), new models.VenueClock(clock), clock).scrapeHosts
 
   def main(args: Array[String]): Unit = {
     val configuration = _root_.settings.ProcessConfiguration.resolve()

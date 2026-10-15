@@ -28,6 +28,8 @@ import scala.jdk.CollectionConverters._
  * Exits 0 whatever it fetched: a fill is best effort, and what it missed the next leg's fill asks.
  */
 object FillMissingFixtures {
+  private val clock = java.time.Clock.systemUTC()
+
 
   def main(args: Array[String]): Unit = args match {
     case Array(code, list, held, out, until, rest*) =>
@@ -45,7 +47,7 @@ object FillMissingFixtures {
       val tls   = TlsTrust.newContext()
       val pace  = new InMemoryFleetHostPace
       def paced(leaf: HttpFetch): HttpFetch =
-        modules.wiring.HttpWiring.pacedWire(leaf, configuration, pace, java.time.Clock.systemUTC(), Thread.sleep)
+        modules.wiring.HttpWiring.pacedWire(leaf, configuration, pace, clock, Thread.sleep)
       // The residential proxy, when the process holds its credentials: what the origin refuses directly is asked again
       // through it, as production reaches those origins (`MissingFixtureFill.route`).
       val proxy = MissingFixtureFill.residentialProxy(configuration, tls).map(paced)
@@ -55,9 +57,9 @@ object FillMissingFixtures {
         MissingFixtureFill.recordingInto(settings.FixtureRoot(Path.of(out)), tree, live),
         threads = 8,
         sign = tools.FillCredentials.from(configuration).sign)
-      val started = System.nanoTime()
-      val outcome = fill.fill(gaps, (until.toLong - java.time.Instant.now().getEpochSecond).max(0L).seconds)
-      val seconds = (System.nanoTime() - started) / 1e9
+      val started = tools.Stopwatch.start()
+      val outcome = fill.fill(gaps, (until.toLong - clock.instant().getEpochSecond).max(0L).seconds)
+      val seconds = started.seconds
       val line = f"${country.displayName}: ${outcome.describe} in $seconds%.0fs " +
         f"(${(outcome.fetched + outcome.failed) / seconds.max(1.0)}%.1f req/s)"
       println(s"[fill] $line")

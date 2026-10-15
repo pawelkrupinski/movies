@@ -42,15 +42,17 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  * buried (and fires a fatal Sentry event through Play's logback appender).
  */
 object ProfileDetailReaper {
+  private val clock = java.time.Clock.systemUTC()
+
 
   private def ms(nanos: Long): String = f"${nanos / 1e6}%9.2f ms"
 
   private def time[A](label: String, reps: Int)(body: => A): A = {
-    val t0 = System.nanoTime()
+    val t0 = tools.Stopwatch.start()
     var i = 0
     var last: A = null.asInstanceOf[A]
     while (i < reps) { last = body; i += 1 }
-    val elapsed = System.nanoTime() - t0
+    val elapsed = t0.elapsed.toNanos
     println(f"  $label%-52s ${ms(elapsed / reps)} / pass")
     last
   }
@@ -71,7 +73,7 @@ object ProfileDetailReaper {
       // The cache holds STITCHED rows — slots unioned from the `movie_slots` side
       // collection — so the raw decode above is NOT the shape DetailReaper walks.
       // Go through the repository, which is what MovieCache hydrates from.
-      val repository = new services.movies.MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), normalizer = titleNormalizer)
+      val repository = new services.movies.MongoMovieRepository(Some(db), clock, normalizer = titleNormalizer)
       val rows: Seq[StoredMovieRecord] = repository.findAll()
       val records: Seq[MovieRecord] = rows.map(_.record)
       println(s"  STITCHED repository.findAll(): ${records.size} records\n")
@@ -106,7 +108,7 @@ object ProfileDetailReaper {
       // THE REAL LOOP. `detailEnrichers` collects INSTANCES — one CineworldClient per
       // venue — so the inner loop runs once per venue per row, and `nativeDetailRef`
       // recomputes `cinemaData` (a sort + Map build) every single time.
-      val catalog   = new services.cinemas.CinemaScraperCatalog(new tools.RealHttpFetch(), models.VenueClock.system, java.time.Clock.systemUTC())
+      val catalog   = new services.cinemas.CinemaScraperCatalog(new tools.RealHttpFetch(), new models.VenueClock(clock), clock)
       val enrichers = catalog.all.collect { case de: services.cinemas.common.DetailEnricher => de }
       println(s"\n  --- the ACTUAL nested loop: ${records.size} records x ${enrichers.size} enricher INSTANCES ---")
       time(s"tick() inner loop as written (recompute per enricher)", 3) {

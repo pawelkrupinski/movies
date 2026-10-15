@@ -24,6 +24,8 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  *  hosts at once from one IP.
  */
 object ProbeBurst {
+  private val venueClock = models.VenueClock.system
+
 
   /** Per-client instrumented fetch. `inFlight` is bumped when an async GET
    *  starts and dropped when it completes; `maxInFlight` is the high-water
@@ -73,15 +75,15 @@ object ProbeBurst {
   /** name -> build a scraper over the given fetch. */
   private val builders: Map[String, HttpFetch => CinemaScraper] = Map(
     "rialto"        -> (f => new RialtoClient(f)),
-    "nowe-horyzonty"-> (f => new NoweHoryzontyClient(f, today = models.VenueClock.system.todayInPoland)),
+    "nowe-horyzonty"-> (f => new NoweHoryzontyClient(f, today = venueClock.todayInPoland)),
     "dcf"           -> (f => new DcfClient(f)),
     "cytadela"      -> (f => new CytadelaClient(f)),
-    "muranow"       -> (f => new MuranowClient(f, today = models.VenueClock.system.todayInPoland)),
-    "iluzjon"       -> (f => new IluzjonClient(f, today = models.VenueClock.system.todayInPoland)),
+    "muranow"       -> (f => new MuranowClient(f, today = venueClock.todayInPoland)),
+    "iluzjon"       -> (f => new IluzjonClient(f, today = venueClock.todayInPoland)),
     "amondo"        -> (f => new AmondoClient(f)),
-    "kinomuzeum"    -> (f => new KinomuzeumClient(f, today = models.VenueClock.system.todayInPoland)),
+    "kinomuzeum"    -> (f => new KinomuzeumClient(f, today = venueClock.todayInPoland)),
     "kinoteka"      -> (f => new KinotekaClient(f, titles = titleNormalizer)),
-    "ujazdowski"    -> (f => new UjazdowskiClient(f, today = models.VenueClock.system.todayInPoland)),
+    "ujazdowski"    -> (f => new UjazdowskiClient(f, today = venueClock.todayInPoland)),
     "kino-kultura"  -> (f => new KinoKulturaClient(f)),
     "falenica"      -> (f => new FalenicaClient(f)),
     "sdk"           -> (f => new SdkClient(f)),
@@ -90,8 +92,8 @@ object ProbeBurst {
     "nove-kino"     -> (f => new NoveKinoClient(f, "atlantic", KinoAtlantic)),
     "luna"          -> (f => new Bilety24Client(f, "https://kinoluna.bilety24.pl", KinoLuna, titles = titleNormalizer)),
     "elektronik"    -> (f => new Bilety24OrganizerClient(f, "https://www.bilety24.pl/kino/organizator/kino-elektronik-631", KinoElektronik, titles = titleNormalizer)),
-    "na-boku"       -> (f => new BokClient(f, "kino-na-boku", KinoNaBoku, titles = titleNormalizer, today = models.VenueClock.system.todayInPoland)),
-    "glebocka"      -> (f => new BokClient(f, "kino-glebocka-66", KinoGlebocka66, titles = titleNormalizer, today = models.VenueClock.system.todayInPoland)),
+    "na-boku"       -> (f => new BokClient(f, "kino-na-boku", KinoNaBoku, titles = titleNormalizer, today = venueClock.todayInPoland)),
+    "glebocka"      -> (f => new BokClient(f, "kino-glebocka-66", KinoGlebocka66, titles = titleNormalizer, today = venueClock.todayInPoland)),
     "kinogram"      -> (f => new KinoGramClient(f))
   )
 
@@ -103,11 +105,11 @@ object ProbeBurst {
         case None => println(s"!! unknown client: $name")
         case Some(build) =>
           val fetch = new Instrumented(new RealHttpFetch())
-          val t0    = System.currentTimeMillis()
+          val t0    = tools.Stopwatch.start()
           val movies = try build(fetch).fetch() catch {
             case t: Throwable => println(s"$name: fetch threw ${t.getClass.getSimpleName}: ${t.getMessage}"); Seq.empty
           }
-          val ms = System.currentTimeMillis() - t0
+          val ms = t0.millis
           rows += ((name, fetch.total.get, fetch.maxInFlight.get, fetch.failures.size, ms, movies.size))
           println(f"$name%-15s reqs=${fetch.total.get}%-4d maxBurst=${fetch.maxInFlight.get}%-4d fails=${fetch.failures.size}%-3d ${ms}%5dms movies=${movies.size}")
           fetch.failures.take(8).foreach(x => println(s"      ! $x"))

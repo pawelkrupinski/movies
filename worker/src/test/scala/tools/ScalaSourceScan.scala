@@ -57,6 +57,10 @@ object ScalaSourceScan {
       Using.resource(Files.walk(root))(_.iterator.asScala.filter(_.toString.endsWith(suffix)).toList)
     }.sortBy(_.toString)
 
+  /** A runnable program under a test tree — `def main` outside a `*Spec.scala`: a backfill, recorder,
+   *  probe or bench run by an operator, not a spec. The spec lints skip it; the program rules hold it. */
+  def isProgram(p: Path): Boolean = !p.toString.endsWith("Spec.scala") && read(p).contains("def main(")
+
   def read(p: Path): String = new String(Files.readAllBytes(p), StandardCharsets.UTF_8)
 
   /** The line with any `//` comment dropped, or "" for a Scaladoc/block-comment line. */

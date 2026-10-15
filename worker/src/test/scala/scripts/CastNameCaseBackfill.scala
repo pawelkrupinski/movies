@@ -136,12 +136,12 @@ object CastNameCaseBackfill {
             else "DRY RUN — nothing is written. Pass --apply to write.")
     println(s"Countries: ${countries.map(c => s"${c.displayName} (${c.mongoDb})").mkString(", ")}\n")
 
-    val startedAtMs = System.currentTimeMillis()
+    val startedAtMs = tools.Stopwatch.start()
     val total = countries.foldLeft(Counts()) { (accumulated, country) =>
       accumulated + backfill(country, apply)
     }
 
-    val seconds = (System.currentTimeMillis() - startedAtMs) / 1000.0
+    val seconds = startedAtMs.seconds
     println(f"\nTOTAL  ${total.describe}")
     println(f"Done in $seconds%.1fs · ${total.rows} row(s) scanned · ${total.rows / math.max(seconds, 0.001)}%.0f rows/s")
     sys.exit(0)
@@ -150,7 +150,7 @@ object CastNameCaseBackfill {
   private def backfill(country: Country, apply: Boolean): Counts = {
     // `country.mongoDb`, never the address's own database — see the class comment.
     val (connection, database) = CountryDatabase.open(country)
-    val startedAtMs = System.currentTimeMillis()
+    val startedAtMs = tools.Stopwatch.start()
     val normalizer  = TitleNormalizer.forCountry(country)
 
     val counts =
@@ -159,7 +159,7 @@ object CastNameCaseBackfill {
           sharedDb = Some(database), clock = java.time.Clock.systemUTC(), normalizer = normalizer), apply) +
         backfillReadModel(new MongoReadModelRepository(Some(database)), apply)
 
-    val seconds = (System.currentTimeMillis() - startedAtMs) / 1000.0
+    val seconds = startedAtMs.seconds
     println(f"${country.displayName}%-15s ${counts.describe} · $seconds%.1fs " +
       f"(${counts.rows / math.max(seconds, 0.001)}%.0f rows/s)")
     connection.close()

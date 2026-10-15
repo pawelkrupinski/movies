@@ -34,8 +34,10 @@ import services.readmodel.{MongoReadModelRepository, ReadModelProjection, ReadMo
  *   scripts/with-prod-mongo.sh sbt "worker/Test/runMain scripts.BackfillReadModel"
  */
 object BackfillReadModel {
+  private val clock = java.time.Clock.systemUTC()
+
   // The latest year a title may name (`LatestTitleYear`), read off this clock at each ask.
-  private given LatestTitleYear = LatestTitleYear(java.time.Clock.systemUTC())
+  private given LatestTitleYear = LatestTitleYear(clock)
 
   /** Project every `movies` row into the read model and prune derived documents no
    *  longer produced. Pure over the repository traits, so `BackfillReadModelSpec`
@@ -93,7 +95,7 @@ object BackfillReadModel {
    *  `BackfillReadModelStitchIntegrationSpec` drives this against a real Mongo. */
   def corpusReader(db: org.mongodb.scala.MongoDatabase): MovieRepository =
     new MongoMovieRepository(
-      Some(db), java.time.Clock.systemUTC(), normalizer = titleNormalizer,
+      Some(db), clock, normalizer = titleNormalizer,
       screenings = Some(new MongoScreeningsRepository(Some(db))),
       slots      = Some(new MongoSlotsRepository(Some(db)))
     )
@@ -108,10 +110,10 @@ object BackfillReadModel {
       require(movieRepository.enabled,     s"movies repository not enabled for $dbName")
       require(readModelRepository.enabled, s"read-model repository not enabled for $dbName")
 
-      val started = System.nanoTime()
+      val started = tools.Stopwatch.start()
       println(s"@@ backfilling read model from $dbName.movies …")
       val (movies, screenings, prunedM, prunedS) = run(movieRepository, readModelRepository)
-      val secs = (System.nanoTime() - started) / 1e9
+      val secs = started.seconds
       println(f"@@ done in $secs%.1fs — wrote web_movies=$movies, web_screenings=$screenings" +
               s"${if (prunedM + prunedS > 0) s" (pruned $prunedM movie + $prunedS screening stale document(s))" else ""}")
     } finally conn.close()

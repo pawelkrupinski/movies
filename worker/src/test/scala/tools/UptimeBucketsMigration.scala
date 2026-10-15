@@ -85,7 +85,7 @@ object UptimeBucketsMigration {
       // Skip the current + previous slot: writers may still be flushing them,
       // and a deploy that landed inside one leaves a flushed-merged boundary
       // document that summing would double-count. Everything older is frozen.
-      val cutoff = UptimeMonitor.bucketTimestamp(System.currentTimeMillis()) - UptimeMonitor.BucketDurationMs
+      val cutoff = UptimeMonitor.bucketTimestamp(java.time.Clock.systemUTC().millis()) - UptimeMonitor.BucketDurationMs
 
       val documents = Await.result(coll.find().toFuture(), 60.seconds)
       val rows = documents.flatMap { document =>

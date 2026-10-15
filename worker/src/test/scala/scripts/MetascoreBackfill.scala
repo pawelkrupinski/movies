@@ -47,7 +47,7 @@ object MetascoreBackfill {
     implicit val executionContext: ExecutionContextExecutorService = DaemonExecutors.boundedEC("metascore-backfill", Workers)
     val done        = new AtomicInteger(0)
     val total       = rows.size
-    val startedAtMs = System.currentTimeMillis()
+    val startedAtMs = tools.Stopwatch.start()
 
     val tasks = rows.map { case StoredMovieRecord(title, year, e, _, _) =>
       Future {
@@ -100,7 +100,7 @@ object MetascoreBackfill {
     if (stillNoneWithUrl.size > sampleSize)
       println(s"  (+ ${stillNoneWithUrl.size - sampleSize} more — MC has the page but hasn't aggregated reviews yet)")
 
-    val elapsedSec = (System.currentTimeMillis() - startedAtMs) / 1000.0
+    val elapsedSec = startedAtMs.seconds
     val rps        = if (elapsedSec > 0) f"${total / elapsedSec}%.1f" else "—"
 
     println()

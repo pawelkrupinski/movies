@@ -448,7 +448,7 @@ object IdentitySlice {
     val o = parse(args.toList)
     val country = Country.all.find(_.code == o.country).getOrElse(sys.error(s"no country '${o.country}'"))
     val labels  = o.labels.filter(Files.exists(_)).fold(Seq.empty[UnmatchedClusters.Label])(IdentityJudgements.labels)
-    val started = System.nanoTime()
+    val started = tools.Stopwatch.start()
     val out     = o.out.map { p => Files.createDirectories(p.toAbsolutePath.getParent); new java.io.PrintWriter(Files.newBufferedWriter(p, StandardCharsets.UTF_8)) }
     out.foreach(_.println(TakeHeader))
     val lacked = scala.collection.mutable.ListBuffer.empty[String]
@@ -457,11 +457,11 @@ object IdentitySlice {
     // and prod's own state, from the local prod mirror, in preference to the capture's — never prod itself
     val mirror = o.prodMirror.map(tools.ProdMirror.open(_, country))
     val (filed, prod) = mirror.fold((captured, tools.ProdState.none)) { m =>
-      val started  = System.nanoTime()
+      val started  = tools.Stopwatch.start()
       val families = m.familyAnswers()
       val state    = m.state()
       System.err.println(f"[identity-slice] prod mirror ${m.database}: ${families.size} family answer(s), ${state.verdicts.size} stored verdict(s), " +
-        f"${state.pins.size} pin(s) read in ${(System.nanoTime() - started) / 1e9}%.1fs")
+        f"${state.pins.size} pin(s) read in ${started.seconds}%.1fs")
       (tools.FiledAnswers.preferring(captured, families, s"prod mirror ${m.database}"), state)
     }
     try {
@@ -491,7 +491,7 @@ object IdentitySlice {
         }
       }
     } finally { out.foreach(_.close()); mirror.foreach(_.close()) }
-    System.err.println(f"[identity-slice] ${(System.nanoTime() - started) / 1e9}%.1fs")
+    System.err.println(f"[identity-slice] ${started.seconds}%.1fs")
     if (lacked.nonEmpty) {
       System.err.println(s"[identity-slice] SLICE INCOMPLETE — the replay asked ${lacked.size} request(s) the slice does not hold (re-run with " +
         s"--recording to widen it from the recording):\n  ${lacked.distinct.take(20).mkString("\n  ")}")
@@ -570,11 +570,12 @@ object IdentitySlice {
     Files.deleteIfExists(socket)
     val server = ServerSocketChannel.open(java.net.StandardProtocolFamily.UNIX)
     server.bind(java.net.UnixDomainSocketAddress.of(socket))
-    val last = new java.util.concurrent.atomic.AtomicLong(System.currentTimeMillis())
+    // Since the last request ended; None while one is being served.
+    val idleSince = new java.util.concurrent.atomic.AtomicReference(Option(tools.Stopwatch.start()))
     val idle = base.idleMinutes * 60000L
     val watchdog = new Thread(() => while (server.isOpen) {
       Thread.sleep(5000)
-      if (System.currentTimeMillis() - last.get > idle) { Files.deleteIfExists(socket); server.close() }
+      if (idleSince.get.exists(_.millis > idle)) { Files.deleteIfExists(socket); server.close() }
     })
     watchdog.setDaemon(true)
     watchdog.start()
@@ -582,7 +583,7 @@ object IdentitySlice {
       s"stopping after ${base.idleMinutes} idle minute(s)")
     try while (true) {
       val client = server.accept()
-      last.set(Long.MaxValue / 2)
+      idleSince.set(None)
       try {
         val in   = new java.io.DataInputStream(Channels.newInputStream(client))
         val args = new String(in.readNBytes(in.readInt()), StandardCharsets.UTF_8).split('\u0000').toList.filter(_.nonEmpty)
@@ -592,21 +593,21 @@ object IdentitySlice {
         answer.print(s"\u0000EXIT $code\n")
         answer.flush()
       } catch { case e: java.io.IOException => System.err.println(s"[identity-slice] a client went away: $e") }
-      finally { client.close(); last.set(System.currentTimeMillis()) }
+      finally { client.close(); idleSince.set(Some(tools.Stopwatch.start())) }
     } catch { case _: java.nio.channels.ClosedChannelException => System.err.println("[identity-slice] idle: stopped") }
     finally Files.deleteIfExists(socket)
   }
 
   /** One batch asked of a served session; its exit code (3: some slice lacked a request). */
   private def request(session: Session, base: Options, args: List[String]): Int = {
-    val started = System.nanoTime()
+    val started = tools.Stopwatch.start()
     val o       = parse(args, Options(country = base.country, ref = base.ref, cache = base.cache, slices = base.slices))
     val labels  = o.labels.filter(Files.exists(_)).fold(Seq.empty[UnmatchedClusters.Label])(IdentityJudgements.labels)
     val out     = o.out.map { p => Files.createDirectories(p.toAbsolutePath.getParent); new java.io.PrintWriter(Files.newBufferedWriter(p, StandardCharsets.UTF_8)) }
     out.foreach(_.println(TakeHeader))
     if (o.selectors.isEmpty) sys.error("no selector: --venue/--title, --key or --batch")
     val lacked = try slices(session, o, labels, out, tools.ProdState.none) finally out.foreach(_.close())
-    System.err.println(f"[identity-slice] served a request of ${o.selectors.size} selector(s) in ${(System.nanoTime() - started) / 1e9}%.1fs")
+    System.err.println(f"[identity-slice] served a request of ${o.selectors.size} selector(s) in ${started.seconds}%.1fs")
     if (lacked.isEmpty) 0
     else {
       println(s"[identity-slice] SLICE INCOMPLETE — ${lacked.size} request(s) the slices do not hold:\n  ${lacked.distinct.take(20).mkString("\n  ")}")
@@ -657,12 +658,12 @@ object IdentitySlice {
   def indexOf(path: Path, listings: Seq[Listing], opened: RecordedCorpus.Opened): IdentitySlicing.Index =
     if (Files.exists(path)) readIndex(path, listings)
     else {
-      val started = System.nanoTime()
+      val started = tools.Stopwatch.start()
       System.err.println(s"[identity-slice] resolving the recording's ${listings.size} listings whole, once (kept in $path)")
       val reads = readsOf(opened, opened.fetch, opened.gaps, Instant.EPOCH)
       val index = IdentitySlicing.index(listings, new MemoLookups(reads.lookups), reads.normalizer)
       writeIndex(path, index)
-      System.err.println(f"[identity-slice] indexed in ${(System.nanoTime() - started) / 1e9}%.1fs")
+      System.err.println(f"[identity-slice] indexed in ${started.seconds}%.1fs")
       index
     }
 
@@ -707,14 +708,14 @@ object IdentitySlice {
     val widen     = recording.map(r => new SliceHttp.Noting(r.fetch, () => r.leaf.metOnThread))
     val replaying = new SliceHttp.Replaying(slice.http, widen)
     val reads     = new Reads(slice.country, replaying, replaying.gaps, Clock.fixed(slice.recordedAt, ZoneOffset.UTC), slice.filed, prod)
-    val started   = System.nanoTime()
+    val started   = tools.Stopwatch.start()
     val decided   = decide(slice.core, slice.context, reads, slice.selector)
     val wanted    = slice.seeds.toSeq.sortBy(ListingKey.serialised)
     val films     = (id: Int) => reads.lookups.film(id).toOption.flatten
     val takes     = rows(slice.selector, wanted, decided, labels, slice.country, films)
     println(s"\n## ${slice.selector}: ${wanted.size} listing(s); slice core ${slice.core.size}, context ${slice.context.size}, " +
       s"${slice.http.size} answers (${slice.http.values.count(_ == SliceHttp.Outcome.Gap)} recording gaps); decided in " +
-      f"${(System.nanoTime() - started) / 1e9}%.1fs at ${slice.recordedAt}")
+      f"${started.seconds}%.1fs at ${slice.recordedAt}")
     report(slice, wanted, decided, takes, labels)
     // what prod's stored state takes for each listing now, and why: beside the slice's take, from the mirror
     if (prod.name.nonEmpty) {
@@ -874,7 +875,7 @@ object IdentitySlice {
     var prodKnown  = 0
     val misses = scala.collection.mutable.ListBuffer.empty[String]
     sample.zipWithIndex.foreach { case (key, i) =>
-      val started   = System.nanoTime()
+      val started   = tools.Stopwatch.start()
       val selection = IdentitySlicing.select(index, Set(key), o.widen)
       val core      = selection.core.flatMap(ours.get).toSeq.sortBy(_.sortKey)
       val context   = selection.context.flatMap(ours.get).toSeq.sortBy(_.sortKey)
@@ -917,7 +918,7 @@ object IdentitySlice {
       val why = if (same) "" else if (modelMoved.nonEmpty) modelMoved else (if (outside.nonEmpty) s"the leg's cluster holds ${outside.size} listing(s) outside the slice's core (e.g. ${outside.take(2).map(k => s"${k.venue} | ${k.rawTitle}").mkString("; ")})"
                 else "same members — the slice lacks context the whole corpus gave it (a neighbouring family's facts or agreement)") + widened
       val line = f"${if (same) "SAME" else "DIFF"}\t${key.venue}\t${key.rawTitle}\tslice $mine (${decided.agreed.decisionOf.get(key).map(_.basis.toString).getOrElse("-")})\t" +
-        f"leg $theirs (${legOf.get(key).map(_.basis.toString).getOrElse("-")})\tcore ${core.size} context ${context.size}\t${(System.nanoTime() - started) / 1e9}%.1fs\t$why$stageLine$prodLine"
+        f"leg $theirs (${legOf.get(key).map(_.basis.toString).getOrElse("-")})\tcore ${core.size} context ${context.size}\t${started.seconds}%.1fs\t$why$stageLine$prodLine"
       println(line)
       out.foreach(_.println(line))
       if (!same) misses += line

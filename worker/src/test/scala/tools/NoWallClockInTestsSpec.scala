@@ -31,8 +31,11 @@ import java.time.{LocalDate, ZoneOffset}
  *     This rule reads today's date itself, deliberately: a literal already in the past can
  *     only stay past, so the verdict can go from failing to passing over time, never back.
  *
- * Runnable programs under the test trees (`def main` — backfills, recorders, probes) are
- * operator tools talking to the live world, not specs, and are out of scope.
+ * Runnable programs under the test trees (`def main` — backfills, recorders, probes) talk to the
+ * live world, so rules 1–2 do not fit them; rule 4 holds them instead: a program reads the wall
+ * clock through ONE `Clock.systemUTC()`, built where it is wired and handed to everything that
+ * needs the time, exactly as the worker's composition root does. Without it a tool's "today" is
+ * read in five places, and the logic under it cannot be run at a pinned date by a spec.
  */
 class NoWallClockInTestsSpec extends AnyFlatSpec with Matchers {
 
@@ -72,7 +75,7 @@ class NoWallClockInTestsSpec extends AnyFlatSpec with Matchers {
     "UnreadyRoundTripProjectionIntegrationSpec"
   ).map(spec => s"worker/src/it/scala/$spec.scala" -> MongoPath)
 
-  import ScalaSourceScan.{TestRoots, argumentsAt, code, read, scalaFiles}
+  import ScalaSourceScan.{TestRoots, argumentsAt, code, isProgram, read, scalaFiles}
 
   private val Now = """\b(?:Instant|LocalDate|LocalDateTime|LocalTime|ZonedDateTime|OffsetDateTime|Year|YearMonth)\.now\(""".r
   private val OtherReads = """System\.currentTimeMillis\(|Clock\.system(?:UTC|DefaultZone)\(|new (?:java\.util\.)?Date\(\)""".r
@@ -90,7 +93,7 @@ class NoWallClockInTestsSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  private val testFiles: Seq[Path] = scalaFiles(TestRoots).filterNot(p => read(p).contains("def main("))
+  private val testFiles: Seq[Path] = scalaFiles(TestRoots).filterNot(isProgram)
 
   "Test sources" should "not read the wall clock outside a default parameter or the allowlist" in {
     testFiles.nonEmpty shouldBe true
@@ -114,6 +117,51 @@ class NoWallClockInTestsSpec extends AnyFlatSpec with Matchers {
     }
     withClue("Allowlisted but no longer reading the wall clock — drop the entry:\n" + stale.mkString("\n") + "\n") {
       stale shouldBe empty
+    }
+  }
+
+  // ── rule 4 ─────────────────────────────────────────────────────────────────
+
+  /** A program's wall-clock source — `Clock.systemUTC()`, or `VenueClock.system`, which wraps one. */
+  private val SystemClock = """Clock\.systemUTC\(|\bVenueClock\.system\b""".r
+  /** A system clock in a zone: a second wall-clock source beside the program's one. */
+  private val ZonedSystemClock = """Clock\.system\(""".r
+  private val VenueSystemClock = """\bVenueClock\.system\b""".r
+
+  /** Each wall-clock read on the line: a `now(…)` not handed a clock, or one of the other reads. */
+  private def programReads(line: String): Seq[String] =
+    Now.findAllMatchIn(line).collect { case m if !argumentsAt(line, m.end - 1).toLowerCase.contains("clock") => m.matched }.toSeq ++
+      (OtherReads.findAllMatchIn(line) ++ ZonedSystemClock.findAllMatchIn(line) ++ VenueSystemClock.findAllMatchIn(line)).map(_.matched)
+
+  /** Every wall-clock read in a program's source but its one `Clock.systemUTC()`, as `file:line: text`. */
+  private[tools] def programOffenders(path: String, src: String): Seq[String] = {
+    val reads = src.linesIterator.zipWithIndex.flatMap { case (raw, index) =>
+      programReads(code(raw)).map(read => (read, s"$path:${index + 1}: ${raw.trim}"))
+    }.toSeq
+    val (systemClocks, others) = reads.partition { case (read, _) => SystemClock.findFirstIn(read).isDefined }
+    (others ++ (if (systemClocks.size > 1) systemClocks else Nil)).map(_._2)
+  }
+
+  "the program matcher" should "keep one Clock.systemUTC() and refuse every other read" in {
+    programOffenders("A.scala", "val clock = Clock.systemUTC()\nval today = LocalDate.now(clock)") shouldBe empty
+    programOffenders("A.scala", "val clock = Clock.systemUTC()\nval t = Clock.systemUTC()") should have size 2
+    programOffenders("A.scala", "LocalDate.now(ZoneId.of(\"UTC\"))") shouldBe Seq("A.scala:1: LocalDate.now(ZoneId.of(\"UTC\"))")
+    programOffenders("A.scala", "val t0 = System.currentTimeMillis()\nval n = Instant.now()") should have size 2
+    programOffenders("A.scala", "def f(at: Instant = Instant.now()) = at") should have size 1
+    programOffenders("A.scala", "val clock = Clock.systemUTC()\nval zoned = Clock.system(zone)") should have size 1
+    programOffenders("A.scala", "val clock = Clock.systemUTC()\nval venues = VenueClock.system") should have size 2
+    programOffenders("A.scala", "val venues = VenueClock.system\nval today = venues.todayInPoland") shouldBe empty
+  }
+
+  "Programs under the test trees" should "read the wall clock only through one Clock.systemUTC(), handed down" in {
+    val programs = scalaFiles(TestRoots).filter(isProgram)
+    programs.nonEmpty shouldBe true
+    val offenders = programs.flatMap(path => programOffenders(path.toString, read(path)))
+    withClue(
+      "These programs read the wall clock outside their one Clock.systemUTC(). Build `val clock = Clock.systemUTC()` " +
+        "once where the program is wired, pass it down (LocalDate.now(clock), clock.instant()), and time work with " +
+        "tools.Stopwatch:\n" + offenders.mkString("\n") + "\n") {
+      offenders shouldBe empty
     }
   }
 

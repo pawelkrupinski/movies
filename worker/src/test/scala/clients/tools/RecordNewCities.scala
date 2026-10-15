@@ -22,6 +22,8 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  * `today` to the date this recorder ran.
  */
 object RecordNewCities {
+  private val venueClock = models.VenueClock.system
+
   def main(args: Array[String]): Unit = {
     val real = new RealHttpFetch()
     val record  = new RecordingHttpFetch("new-cities", real)
@@ -49,11 +51,11 @@ object RecordNewCities {
     }
 
     Seq(HeliosNuxt.Radom, HeliosNuxt.Sosnowiec, HeliosNuxt.Kielce, HeliosNuxt.Rzeszow).foreach { config =>
-      report(s"Helios ${config.cinema.displayName}")(new HeliosClient(record, config, titles = titleNormalizer, today = models.VenueClock.system.todayInPoland).fetch().size)
+      report(s"Helios ${config.cinema.displayName}")(new HeliosClient(record, config, titles = titleNormalizer, today = venueClock.todayInPoland).fetch().size)
     }
 
     report("Kino Zorza (Rzeszów)")(
-      new KinoZorzaClient(new RecordingHttpFetch("kino-zorza", real), KinoZorza, today = models.VenueClock.system.todayInPoland).fetch().size
+      new KinoZorzaClient(new RecordingHttpFetch("kino-zorza", real), KinoZorza, today = venueClock.todayInPoland).fetch().size
     )
   }
 }

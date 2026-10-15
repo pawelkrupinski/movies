@@ -6,12 +6,14 @@ import services.cinemas.pl.BokClient
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
 object WriteBok {
+  private val venueClock = models.VenueClock.system
+
   def main(args: Array[String]): Unit = {
-    val naBoku = new BokClient(new RecordingHttpFetch("kino-na-boku", new RealHttpFetch()), "kino-na-boku", KinoNaBoku, titles = titleNormalizer, today = models.VenueClock.system.todayInPoland)
+    val naBoku = new BokClient(new RecordingHttpFetch("kino-na-boku", new RealHttpFetch()), "kino-na-boku", KinoNaBoku, titles = titleNormalizer, today = venueClock.todayInPoland)
     println("=== na Boku ===")
     naBoku.fetch().foreach(println)
 
-    val glebocka = new BokClient(new RecordingHttpFetch("kino-glebocka-66", new RealHttpFetch()), "kino-glebocka-66", KinoGlebocka66, titles = titleNormalizer, today = models.VenueClock.system.todayInPoland)
+    val glebocka = new BokClient(new RecordingHttpFetch("kino-glebocka-66", new RealHttpFetch()), "kino-glebocka-66", KinoGlebocka66, titles = titleNormalizer, today = venueClock.todayInPoland)
     println("=== Głębocka 66 ===")
     glebocka.fetch().foreach(println)
   }

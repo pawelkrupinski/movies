@@ -76,7 +76,7 @@ object IdentityUnifiedDataset {
                       threads: Int): Seq[Row] = {
     val c        = l.c
     val code     = c.country.code
-    val started  = System.nanoTime()
+    val started  = tools.Stopwatch.start()
     val resolution = IdentityResolver.resolve(l.listings, l.lookups, c.normalizer, IdentityCalibration.resolver)
     val nodeOf   = IdentityResolver.evidenceOf(l.listings, l.lookups, c.normalizer)(_ => true).flatMap(n => n.keys.map(_ -> n)).toMap
     val byKey    = l.listings.map(x => x.key -> x).toMap
@@ -207,7 +207,7 @@ object IdentityUnifiedDataset {
     val labelled = rows.groupBy(_.source).view.mapValues(_.size).toMap
     println(f"[${c.label}] ${clusters.size} clusters (${fixture.size} from the unmatched fixture) → ${rows.size} contender rows " +
       s"$labelled; ${stats.asScala.toSeq.sortBy(_._1).map { case (k, v) => s"$k ${v.get}" }.mkString(", ")} " +
-      f"in ${(System.nanoTime() - started) / 1e9}%.0fs")
+      f"in ${started.seconds}%.0fs")
     rows
   }
 }

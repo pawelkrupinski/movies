@@ -23,13 +23,15 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  * Re-run whenever you want fresh coverage; commit the regenerated fixture.
  */
 object SnapshotProdTitlesToFixture {
+  private val clock = java.time.Clock.systemUTC()
+
   // The latest year a title may name (`LatestTitleYear`), read off this clock at each ask.
-  private given LatestTitleYear = LatestTitleYear(java.time.Clock.systemUTC())
+  private given LatestTitleYear = LatestTitleYear(clock)
   private val Out = Paths.get("common/src/test/resources/fixtures/prod-movies/titles.txt")
 
   def main(args: Array[String]): Unit = {
     val connection = MongoConnection.forProcess(_root_.settings.ProcessConfiguration.resolve(), required = services.MongoRequirement.Required)
-    val repository = new MongoMovieRepository(connection.database, java.time.Clock.systemUTC(), normalizer = titleNormalizer)
+    val repository = new MongoMovieRepository(connection.database, clock, normalizer = titleNormalizer)
     try {
       val records = repository.findAll()
       val titles = records

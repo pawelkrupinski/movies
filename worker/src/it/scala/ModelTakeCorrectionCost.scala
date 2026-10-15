@@ -81,9 +81,9 @@ object ModelTakeCorrectionCost {
       def measured(run: => Unit): (Long, Long, Long) = {
         System.gc()
         var allocated = 0L
-        val (c0, w0) = (os.getProcessCpuTime, System.nanoTime())
+        val (c0, w0) = (os.getProcessCpuTime, tools.Stopwatch.start())
         tools.ThreadAllocation.measure(allocated = _)(run)   // the stages apply on this thread
-        (os.getProcessCpuTime - c0, allocated, System.nanoTime() - w0)
+        (os.getProcessCpuTime - c0, allocated, w0.elapsed.toNanos)
       }
       def median(xs: Seq[Long]) = xs.sorted.apply(xs.size / 2)
       (1 to 2).foreach(_ => { cold(true); cold(false); first() })   // warm up both, the finds asked

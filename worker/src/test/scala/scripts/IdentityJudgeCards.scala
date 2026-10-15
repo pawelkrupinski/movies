@@ -60,7 +60,7 @@ object IdentityJudgeCards {
 
   def main(args: Array[String]): Unit = {
     val options  = parse(args.toList)
-    val started  = System.nanoTime()
+    val started  = tools.Stopwatch.start()
     val labels   = IdentityJudgements.labels(options.labels.getOrElse(IdentityJudgements.CheckedIn))
     val captures = Country.all.filter(c => options.countries.isEmpty || options.countries.contains(c.code))
       .map(c => options.fixtures.resolve(s"${c.code}.json.gz")).filter(Files.exists(_)).map(UnmatchedClusters.read)
@@ -71,7 +71,7 @@ object IdentityJudgeCards {
     write(options.out, cards, options.all, today)
     val decisive = cards.filter(_.labelled.isEmpty).count(_.suggestion.verdict.isDefined)
     println(f"[identity-judge-cards] ${cards.count(_.labelled.isEmpty)} unjudged card(s) (${cards.filter(_.labelled.isEmpty).map(_.takes.size).sum} takes), " +
-      f"$decisive with a decisive suggestion; written to ${options.out} in ${(System.nanoTime() - started) / 1e9}%.1fs")
+      f"$decisive with a decisive suggestion; written to ${options.out} in ${started.seconds}%.1fs")
     if (options.all) {
       val judged = cards.filter(c => c.labelled.isDefined && c.suggestion.verdict.isDefined)
       val wrong  = judged.filter(c => c.labelled != c.suggestion.verdict)
@@ -133,11 +133,11 @@ object IdentityJudgeCards {
     val pool = Executors.newFixedThreadPool(6)
     implicit val ec: ExecutionContext = ExecutionContext.fromExecutorService(pool)
     try {
-      val started = System.nanoTime()
+      val started = tools.Stopwatch.start()
       val got = Await.result(Future.traverse(ids)(id => Future(id -> lookups.film(id))), Duration.Inf).collect {
         case (id, Answer.Known(Some(film))) => id -> film
       }.toMap
-      if (ids.nonEmpty) println(f"[identity-judge-cards] TMDB live: ${got.size}/${ids.size} record(s) in ${(System.nanoTime() - started) / 1e9}%.1fs")
+      if (ids.nonEmpty) println(f"[identity-judge-cards] TMDB live: ${got.size}/${ids.size} record(s) in ${started.seconds}%.1fs")
       got
     } finally pool.shutdown()
   }

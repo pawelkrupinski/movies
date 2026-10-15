@@ -80,11 +80,11 @@ object MeasureStartup {
       fmt(s"3. find().toFuture() — full cursor drain (${rows.size} documents)", t3 - t2)
 
       // Phase 4: Per-document timing via streaming Observable.
-      val cursorOpen = System.nanoTime()
+      val cursorOpen = tools.Stopwatch.start()
       val timings    = collection.mutable.ArrayBuffer.empty[Long]
       val streamDone = Promise[Unit]()
       movies.find().subscribe(
-        (_: StoredMovieDto) => timings += (System.nanoTime() - cursorOpen),
+        (_: StoredMovieDto) => timings += cursorOpen.elapsed.toNanos,
         (exception: Throwable)     => { System.err.println(s"   stream error: ${exception.getMessage}"); streamDone.tryFailure(exception) },
         ()                  => streamDone.trySuccess(())
       )
@@ -151,7 +151,7 @@ object MeasureStartup {
           .toList.sorted
         val chunks = ids.grouped(math.ceil(ids.size.toDouble / n).toInt).toList
         val rangedColl = db.getCollection[StoredMovieDto]("movies")
-        val tStart = System.nanoTime()
+        val tStart = tools.Stopwatch.start()
         import scala.concurrent.ExecutionContext.Implicits.global
         val futures: List[scala.concurrent.Future[Seq[StoredMovieDto]]] = chunks.map { chunk =>
           val first = chunk.head
@@ -166,7 +166,7 @@ object MeasureStartup {
         val combined: scala.concurrent.Future[List[Seq[StoredMovieDto]]] = scala.concurrent.Future.sequence(futures)
         val rs: List[Seq[StoredMovieDto]] = Await.result(combined, 60.seconds)
         val total = rs.map(_.size).sum
-        val elapsed = System.nanoTime() - tStart
+        val elapsed = tStart.elapsed.toNanos
         println(f"  ${"7. parallel find() × " + n + s" — $total documents"}%-50s ${ms(elapsed)}")
         elapsed
       }

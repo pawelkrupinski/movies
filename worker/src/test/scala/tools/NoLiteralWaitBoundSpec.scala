@@ -36,7 +36,7 @@ import java.nio.file.{Files, Path, Paths}
  */
 class NoLiteralWaitBoundSpec extends AnyFlatSpec with Matchers {
 
-  import ScalaSourceScan.{TestRoots, argumentsAt, codeOf, read, scalaFiles, topLevelParts}
+  import ScalaSourceScan.{TestRoots, argumentsAt, codeOf, isProgram, read, scalaFiles, topLevelParts}
 
   // (file, a substring of the flagged line) → why that bound is a deliberate literal.
   private val Allowlist: Map[(String, String), String] = Map(
@@ -108,8 +108,6 @@ class NoLiteralWaitBoundSpec extends AnyFlatSpec with Matchers {
     val direct = DirectShapes.iterator.flatMap(_.findAllMatchIn(src)).map(m => lineOf(m.start))
     (awaits ++ javaWaits ++ eventuallyPositional ++ direct).toSeq.distinct.sorted
   }
-
-  private def isProgram(path: Path): Boolean = !path.toString.endsWith("Spec.scala") && read(path).contains("def main(")
 
   private lazy val sources: Seq[(Path, String)] =
     scalaFiles(TestRoots).filterNot(isProgram).map(p => p -> codeOf(p))

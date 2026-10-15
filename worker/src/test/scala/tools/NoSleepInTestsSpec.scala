@@ -28,7 +28,7 @@ import java.nio.file.{Files, Path, Paths}
  */
 class NoSleepInTestsSpec extends AnyFlatSpec with Matchers {
 
-  import ScalaSourceScan.{TestRoots, argumentsAt, codeOf, read, scalaFiles, topLevelParts}
+  import ScalaSourceScan.{TestRoots, argumentsAt, codeOf, isProgram, read, scalaFiles, topLevelParts}
 
   // Why a file may still sleep. A "TODO(sleep-backlog)" entry is debt this lint only lets shrink:
   // migrate the file and its entry must go (the stale-entry test fails until it does).
@@ -114,8 +114,6 @@ class NoSleepInTestsSpec extends AnyFlatSpec with Matchers {
 
   private def clockLines(src: String): Seq[Int] =
     ClockSubclass.findAllMatchIn(src).map(m => src.substring(0, m.start).count(_ == '\n') + 1).toSeq
-
-  private def isProgram(path: Path): Boolean = !path.toString.endsWith("Spec.scala") && read(path).contains("def main(")
 
   private lazy val sources: Seq[(Path, String)] =
     scalaFiles(TestRoots).filterNot(isProgram).map(p => p -> codeOf(p))

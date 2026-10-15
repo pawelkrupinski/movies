@@ -80,7 +80,7 @@ object FilmwebReset {
     implicit val executionContext: ExecutionContextExecutorService = DaemonExecutors.boundedEC("filmweb-reset", Workers)
     val done       = new AtomicInteger(0)
     val total      = before.size
-    val startedAt  = System.currentTimeMillis()
+    val startedAt  = tools.Stopwatch.start()
 
     println(s"Re-resolving each row with $Workers workers…\n")
 
@@ -138,7 +138,7 @@ object FilmwebReset {
     val cleared    = outcomes.count(_._3 == Cleared)
     val alreadyNone = outcomes.count(_._3 == NoChangeAlreadyClear)
 
-    val elapsedSec = (System.currentTimeMillis() - startedAt) / 1000.0
+    val elapsedSec = startedAt.seconds
     val rps        = if (elapsedSec > 0) f"${total / elapsedSec}%.1f" else "—"
 
     println()

@@ -21,6 +21,8 @@ import java.lang.management.ManagementFactory
  * The bench writes only its own database (the re-filed listings, the empty accepted-listings collection).
  */
 object IdentityListingsBench {
+  private val clock = java.time.Clock.systemUTC()
+
   def main(args: Array[String]): Unit = {
     val database = args(0)
     val country  = args.lift(1).flatMap(Country.byCode).getOrElse(Country.UnitedStates)
@@ -31,13 +33,13 @@ object IdentityListingsBench {
     val archive  = new MongoScrapeArchiveRepository(conn.database)
     val accepted = new MongoScrapeArchiveRepository(conn.database, IdentityListingIntake.Collection)
     val intake   = new IdentityListingIntake(accepted, archive, new InMemoryScrapeGuardLedger, TitleNormalizer.forCountry(country),
-      maxRejections = 3, java.time.Clock.systemUTC(), services.movies.ListingIntakeMetrics.noop)
+      maxRejections = 3, clock, services.movies.ListingIntakeMetrics.noop)
     val live     = archive.contentStamps().keys.flatMap(Cinema.byDisplayName.get).toSeq
     val threads  = ManagementFactory.getThreadMXBean.asInstanceOf[com.sun.management.ThreadMXBean]
     val memory   = ManagementFactory.getMemoryMXBean
     def usedAfterGc() = { System.gc(); Thread.sleep(200); System.gc(); memory.getHeapMemoryUsage.getUsed }
     val baseline = usedAfterGc()
-    var instant  = java.time.Instant.now()
+    var instant  = clock.instant()
     (1 to passes).foreach { n =>
       if (n > 1) live.take(churn).foreach { cinema =>
         instant = instant.plusMillis(1)

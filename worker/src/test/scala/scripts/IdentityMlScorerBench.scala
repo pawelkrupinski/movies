@@ -98,9 +98,9 @@ object IdentityMlScorerBench {
     def pass(): Unit = { var i = 0; while (i < x.length) { scores(i) = model.probability(x(i)); i += 1 } }
     (1 to 20).foreach(_ => pass()) // warm
     val runs = (1 to 20).map { _ =>
-      val started = System.nanoTime()
+      val started = tools.Stopwatch.start()
       val (_, bytes) = tools.ThreadAllocation.of(pass())
-      (System.nanoTime() - started, bytes)
+      (started.elapsed.toNanos, bytes)
     }
     val nanos = runs.map(_._1).sorted.apply(runs.size / 2)
     val bytes = runs.map(_._2).sorted.apply(runs.size / 2)

@@ -24,6 +24,8 @@ import java.time.Instant
  *   sbt "worker/Test/runMain scripts.VenuePageBackfill --apply pl uk"   # WRITE
  */
 object VenuePageBackfill {
+  private val clock = java.time.Clock.systemUTC()
+
 
   /** A page's stamp: read, or found gone. */
   final case class Stamp(key: VenuePageKey, gone: Boolean)
@@ -123,7 +125,7 @@ object VenuePageBackfill {
 
   private def seed(country: Country, apply: Boolean): Unit = {
     val (connection, database) = CountryDatabase.open(country)
-    val started = System.nanoTime()
+    val started = tools.Stopwatch.start()
     val slots   = slotsOf(database)
     val freshness = ListingKeyBackfill.ids(database, "freshness")
     val paged   = stampsOf(freshness)
@@ -131,7 +133,7 @@ object VenuePageBackfill {
     val pagedIds = paged.iterator.map(_.key.id).toSet
     val stamps  = paged ++ marked.filterNot(m => pagedIds(m.key.id))
     val stored  = ListingKeyBackfill.ids(database, MongoVenuePageStore.Collection).toSet
-    val p       = plan(stamps, slots, stored, Instant.now())
+    val p       = plan(stamps, slots, stored, clock.instant())
     val reads   = p.writes.count(_.outcome.isInstanceOf[VenuePage.Read])
     println(f"${country.displayName}%-15s ${paged.size} page stamps + ${marked.size} pages from per-film markers ($unplaced markers unplaced), ${slots.size} slots · ${p.alreadyStored} already in venue_pages · " +
       s"to write ${p.writes.size} ($reads read, ${p.writes.size - reads} gone) · ${p.readWithoutSlot.size} read with no slot left · " +
@@ -144,7 +146,7 @@ object VenuePageBackfill {
       val written = p.writes.count(page => store.get(page.key).isEmpty && store.put(page))
       println(s"    wrote $written of ${p.writes.size}")
     }
-    println(f"    in ${(System.nanoTime() - started) / 1e9}%.1fs")
+    println(f"    in ${started.seconds}%.1fs")
     connection.close()
   }
 

@@ -28,7 +28,7 @@ object SuspectTakesDump {
     val storages = mutable.ListBuffer.empty[ConvergenceStorage]
     Files.createDirectories(out)
     try new DecorationCorpora(configuration, storages).loaded.foreach { l =>
-      val started  = System.nanoTime()
+      val started  = tools.Stopwatch.start()
       val c        = l.c
       val scored   = IdentityResolver.resolveScored(l.listings, l.lookups, c.normalizer, IdentityCalibration.resolver)
       val model    = scored.resolution
@@ -50,7 +50,7 @@ object SuspectTakesDump {
         details.map(_._1).toSet, Map.empty, Map.empty)
       UnmatchedClusters.write(out.resolve(s"${c.country.code}.json.gz"), dump)
       println(f"[${c.label}] ${l.listings.size} listings, ${decisions.size} decisions (${agreed.size} from the fixture), ${films.size} films " +
-        f"in ${(System.nanoTime() - started) / 1e9}%.0fs")
+        f"in ${started.seconds}%.0fs")
     } finally storages.foreach(s => scala.util.Try(s.close()))
   }
 }

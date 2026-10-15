@@ -20,9 +20,9 @@ object IdentityConjunctionProbe {
   private def allocation(runs: Int): Unit = {
     val captures = models.Country.all.filter(c => Files.exists(UnmatchedClusters.fixturePath(c))).map(c => UnmatchedClusters.read(UnmatchedClusters.fixturePath(c)))
     def once(): (Long, Long) = {
-      val t = System.nanoTime()
+      val t = tools.Stopwatch.start()
       val (_, allocated) = tools.ThreadAllocation.of(captures.foreach(UnmatchedClusters.replay(_)))
-      (allocated, System.nanoTime() - t)
+      (allocated, t.elapsed.toNanos)
     }
     (1 to 3).foreach(_ => once())
     val measured = (1 to runs).map(_ => once())

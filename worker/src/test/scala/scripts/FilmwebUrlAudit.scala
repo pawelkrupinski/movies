@@ -59,7 +59,7 @@ object FilmwebUrlAudit {
     implicit val executionContext: ExecutionContextExecutorService = DaemonExecutors.boundedEC("fw-audit", Workers)
     val done       = new AtomicInteger(0)
     val total      = candidates.size
-    val startedAt  = System.currentTimeMillis()
+    val startedAt  = tools.Stopwatch.start()
 
     val tasks = candidates.map { case StoredMovieRecord(title, year, _, _, _) =>
       Future {
@@ -88,7 +88,7 @@ object FilmwebUrlAudit {
     val dropped   = outcomes.collect { case (t, y, d: FilmwebRatings.Dropped)   => (t, y, d) }
     val noUrl     = outcomes.collect { case (_, _, FilmwebRatings.NoUrl)        => () }
 
-    val elapsedSec = (System.currentTimeMillis() - startedAt) / 1000.0
+    val elapsedSec = startedAt.seconds
     val rps        = if (elapsedSec > 0) f"${total / elapsedSec}%.1f" else "—"
 
     println()

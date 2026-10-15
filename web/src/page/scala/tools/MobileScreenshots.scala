@@ -88,7 +88,7 @@ object MobileScreenshots {
           "index" -> "/",
           "film"  -> filmQuery
         )
-        val t0 = System.currentTimeMillis()
+        val t0 = tools.Stopwatch.start()
         var count = 0
         for ((slug, path) <- pages) {
           chrome.openPage(server.baseUrl + path) { page =>
@@ -114,7 +114,7 @@ object MobileScreenshots {
             }
           }
         }
-        val dtMs = System.currentTimeMillis() - t0
+        val dtMs = t0.millis
         println(f"done in ${dtMs / 1000.0}%.1fs, $count captures")
       } finally server.close()
     } finally chrome.close()

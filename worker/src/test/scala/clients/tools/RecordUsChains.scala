@@ -23,7 +23,7 @@ import java.time.{LocalDate, ZoneId}
  */
 object RecordUsChains {
   def main(args: Array[String]): Unit = {
-    val today = args.headOption.map(LocalDate.parse).getOrElse(LocalDate.now(ZoneId.of("America/Chicago")))
+    val today = args.headOption.map(LocalDate.parse).getOrElse(models.VenueClock.system.today(ZoneId.of("America/Chicago")))
     println(s"recording for today=$today")
 
     def cinema(name: String) =

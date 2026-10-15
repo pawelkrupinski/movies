@@ -17,10 +17,12 @@ import services.tasks.{EnqueueResult, MongoTaskQueue, RatingTasks, TaskType}
  *   sbt "worker/Test/runMain scripts.CountryRatingRefresh uk"   # or `pl`
  */
 object CountryRatingRefresh {
+  private val clock = java.time.Clock.systemUTC()
+
   def main(args: Array[String]): Unit = {
     val country = args.headOption.flatMap(Country.byCode).getOrElse(Country.UnitedKingdom)
     val (conn, db) = CountryDatabase.open(country)
-    val repo  = AmbientMovieRepository.over(Some(db), TitleNormalizer.forCountry(country), java.time.Clock.systemUTC())
+    val repo  = AmbientMovieRepository.over(Some(db), TitleNormalizer.forCountry(country), clock)
     val queue = new MongoTaskQueue(Some(db))
 
     val affected = repo.findAll().filter(r =>
@@ -32,7 +34,7 @@ object CountryRatingRefresh {
       // would: the tmdbId-keyed RT dedup key + the title/year payload the handler decodes.
       val dedup   = s"${FreshnessKind.RtRating.label}|tmdb:${r.record.tmdbId.get}"
       val payload = Map(RatingTasks.TitleKey -> r.title, RatingTasks.YearKey -> r.year.map(_.toString).getOrElse(""))
-      queue.enqueue(TaskType.RtRating, dedup, payload, submittedAt = java.time.Clock.systemUTC().instant()) match {
+      queue.enqueue(TaskType.RtRating, dedup, payload, submittedAt = clock.instant()) match {
         case EnqueueResult.Added => added += 1
         case _                   => dup += 1
       }

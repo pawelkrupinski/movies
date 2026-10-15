@@ -125,7 +125,7 @@ object ListingKeyBackfill {
 
   private def backfill(country: Country, apply: Boolean, exportDir: Option[Path]): Unit = {
     val (connection, database) = CountryDatabase.open(country)
-    val started = System.nanoTime()
+    val started = tools.Stopwatch.start()
     val slots = slotRows(database)
     val screenings = scan(database.getCollection[Document](ScreeningsRepository.Collection),
       Projections.include("filmId", "slotKey", "listingKey")) { d =>
@@ -152,7 +152,7 @@ object ListingKeyBackfill {
       val written = stamp(database, SlotsRepository.Collection, p.slotUpdates) + stamp(database, ScreeningsRepository.Collection, p.screeningUpdates)
       println(s"    wrote $written of ${p.slotUpdates.size + p.screeningUpdates.size} (the rest changed since the scan and were skipped)")
     }
-    val seconds = (System.nanoTime() - started) / 1e9
+    val seconds = started.seconds
     println(f"    ${slots.size + screenings.size} rows in $seconds%.1fs (${(slots.size + screenings.size) / math.max(seconds, 0.001)}%.0f rows/s)")
     connection.close()
   }

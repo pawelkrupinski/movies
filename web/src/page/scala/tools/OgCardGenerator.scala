@@ -125,7 +125,7 @@ object OgCardGenerator {
    *  after `Attempts` tries leaves any prior card on disk untouched — never
    *  overwritten with a broken render. Returns whether a card was written. */
   private def writeCard(chrome: Chrome, country: Country, screenshotUrl: String, tagline: String, out: java.nio.file.Path, label: String): Boolean = {
-    val t0 = System.currentTimeMillis()
+    val t0 = tools.Stopwatch.start()
     val Attempts = 3
     var attempt  = 0
     while (attempt < Attempts) {
@@ -134,7 +134,7 @@ object OgCardGenerator {
         val bg   = screenshotCity(chrome, screenshotUrl)
         val card = renderCard(chrome, bg, tagline, country)
         Files.write(out, downscale(card))
-        println(f"✓ $label%-20s ${(System.currentTimeMillis() - t0) / 1000.0}%4.1fs  $out")
+        println(f"✓ $label%-20s ${t0.seconds}%4.1fs  $out")
         return true
       } catch {
         case e: Throwable =>

@@ -66,7 +66,7 @@ object RottenTomatoesBackfill {
     val started = new AtomicInteger(0)
     val done    = new AtomicInteger(0)
     val total   = rows.size
-    val t0      = System.currentTimeMillis()
+    val t0      = tools.Stopwatch.start()
 
     val tasks = rows.map { case StoredMovieRecord(title, year, e, _, _) =>
       Future {
@@ -141,7 +141,7 @@ object RottenTomatoesBackfill {
     val scoreFixed   = outcomes.count { case (_, _: ScoreCorrected) => true; case _ => false }
     val scoreClearedN = outcomes.count { case (_, _: ScoreCleared)   => true; case _ => false }
 
-    val elapsedSec = (System.currentTimeMillis() - t0) / 1000.0
+    val elapsedSec = t0.seconds
     val rps        = if (elapsedSec > 0) f"${total / elapsedSec}%.1f" else "—"
 
     println()

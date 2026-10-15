@@ -73,7 +73,7 @@ object MetacriticDiagnostics {
     implicit val executionContext: ExecutionContextExecutorService = DaemonExecutors.boundedEC("mc-diag", Workers)
     val done        = new AtomicInteger(0)
     val httpProbes  = new AtomicInteger(0)
-    val startedAtMs = System.currentTimeMillis()
+    val startedAtMs = tools.Stopwatch.start()
 
     val tasks = missing.map { case StoredMovieRecord(title, year, e, _, _) =>
       Future {
@@ -150,7 +150,7 @@ object MetacriticDiagnostics {
       println(s"  $t (${y.getOrElse("?")})$origStr")
     }
 
-    val elapsedSec = (System.currentTimeMillis() - startedAtMs) / 1000.0
+    val elapsedSec = startedAtMs.seconds
     val rps        = if (elapsedSec > 0) f"${httpProbes.get() / elapsedSec}%.1f" else "—"
     println(f"\nDone in $elapsedSec%.1fs · ${httpProbes.get()} MC probes total · ~$rps req/s across $Workers workers.")
 

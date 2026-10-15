@@ -44,7 +44,7 @@ object FilmIdCounterSeed {
 
   private def seed(country: Country, apply: Boolean): Unit = {
     val (connection, database) = CountryDatabase.open(country)
-    val started = System.nanoTime()
+    val started = tools.Stopwatch.start()
     val today   = films(ListingKeyBackfill.slotRows(database), ListingKeyBackfill.ids(database, MovieRepository.Collection))
     val mapping = new FilmIdMapping(new MongoFilmIdCounterStore(database))
     mapping.plan(today) match {
@@ -56,7 +56,7 @@ object FilmIdCounterSeed {
         additions.take(5).foreach(a => println(s"    ${a.counter} ← ${a.filmId}"))
         if (apply) println(s"    wrote ${mapping.append(today).fold(why => s"nothing: $why", _.toString)} entr(ies)")
     }
-    println(f"    ${(System.nanoTime() - started) / 1e9}%.1fs")
+    println(f"    ${started.seconds}%.1fs")
     connection.close()
   }
 }

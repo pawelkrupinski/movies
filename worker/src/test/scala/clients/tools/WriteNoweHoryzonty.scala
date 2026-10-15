@@ -9,7 +9,7 @@ object WriteNoweHoryzonty {
   def main(args: Array[String]): Unit = {
     // Pin `today` to the capture date so the recorded `rep.json?dzien=…` URLs
     // (and thus the fixture filenames) match what the spec replays.
-    val today  = args.headOption.map(LocalDate.parse).getOrElse(LocalDate.now())
+    val today  = args.headOption.map(LocalDate.parse).getOrElse(models.VenueClock.system.todayInPoland)
     val client = new NoweHoryzontyClient(new RecordingHttpFetch("nowe-horyzonty", new RealHttpFetch()), today)
     val movies = client.fetch()
     movies.foreach(println)

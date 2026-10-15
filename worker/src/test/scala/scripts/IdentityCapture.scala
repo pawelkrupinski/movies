@@ -434,11 +434,11 @@ object IdentityCapture {
    *  captures alone (a fill reads neither), then each country's JVM. True when every country did its job. */
   def capture(options: Options, env: Map[String, String], layout: Layout, effects: Effects, classpath: String,
               jvmopts: Seq[String], code: String, memoryGb: Long, out: String => Unit): Boolean = {
-    val started = System.nanoTime()
+    val started = tools.Stopwatch.start()
     val phases  = Seq.newBuilder[Phase]
     def timed[A](name: String)(body: => A)(amount: A => Option[(Double, String)]): A = {
-      val t0 = System.nanoTime(); val a = body
-      phases.synchronized { phases += Phase(name, (System.nanoTime() - t0) / 1e9, amount(a)) }; a
+      val t0 = tools.Stopwatch.start(); val a = body
+      phases.synchronized { phases += Phase(name, t0.seconds, amount(a)) }; a
     }
     val cs = options.countries
     out(s"[identity-capture] countries ${cs.mkString(" ")}; work in ${layout.work}${if (options.dryRun) "; DRY RUN" else ""}")
@@ -494,7 +494,7 @@ object IdentityCapture {
         out(s"[identity-capture] $cc: $verb$suffix (log ${j.log})")
         j -> timed(s"$verb $cc$suffix")(effects.run(j))(r => capturedListings(r.log).map(_.toDouble -> "listings"))
       }
-      val t0 = System.nanoTime()
+      val t0 = tools.Stopwatch.start()
       // a capture that read pages captures again to answer them; its answers can leave a new cluster whose page it then
       // reads, so again while each one reads, up to `MaxCaptures`
       @scala.annotation.tailrec def until(previous: (Job, Ran), n: Int): (Job, Ran) =
@@ -511,16 +511,16 @@ object IdentityCapture {
         // a capture's decisions are now those of this recording under this code: what the next run compares with
         if (mode == Mode.Capture && !options.dryRun) run.foreach(r => Files.writeString(fixtures.resolve(s"$cc.inputs"), Inputs(r, code).render))
       }
-      (failed.isEmpty, (System.nanoTime() - t0) / 1e9)
+      (failed.isEmpty, t0.seconds)
     }
-    val countriesStarted = System.nanoTime()
+    val countriesStarted = tools.Stopwatch.start()
     val pool = java.util.concurrent.Executors.newFixedThreadPool(plan.parallel)
     val results = try plans.map { case (choice, _, run) => pool.submit(() => one(choice, run)) }.map(_.get) finally pool.shutdown()
     val failed  = plans.zip(results).collect { case ((choice, _, _), (false, _)) => choice.cc }
-    val countriesWall = (System.nanoTime() - countriesStarted) / 1e9
+    val countriesWall = countriesStarted.seconds
 
     if (!options.dryRun) {
-      out(report(phases.synchronized(phases.result()), (System.nanoTime() - started) / 1e9))
+      out(report(phases.synchronized(phases.result()), started.seconds))
       val summed = results.map(_._2).sum
       out("  %s of country time in %s, %d side by side: %.1fx".formatLocal(java.util.Locale.ROOT, duration(summed), duration(countriesWall),
         plan.parallel, summed / math.max(1e-9, countriesWall)))

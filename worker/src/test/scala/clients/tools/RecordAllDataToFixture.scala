@@ -141,15 +141,15 @@ final class RecordAllDataToFixture(configuration: _root_.settings.ProcessConfigu
     val rows  = movieCache.snapshot()
     val total = rows.size
     println(s"Sync-pass: re-running enrichment for $total cache row(s) across $SyncPassWorkers worker(s)…")
-    val startedAt = System.currentTimeMillis()
+    val startedAt = tools.Stopwatch.start()
     implicit val syncPool: ExecutionContextExecutorService = DaemonExecutors.boundedEC("sync-pass", SyncPassWorkers)
     val done = new AtomicInteger(0)
 
     val futures = rows.map { row =>
       Future {
-        val t0       = System.currentTimeMillis()
+        val t0       = tools.Stopwatch.start()
         val outcome  = scala.util.Try(fullySyncOne(row.title, row.year))
-        val elapsed  = System.currentTimeMillis() - t0
+        val elapsed  = t0.millis
         val n        = done.incrementAndGet()
         val label    = f"  [$n%3d/$total%3d]"
         val title    = s"'${row.title}' (${row.year.getOrElse("?")})"
@@ -166,7 +166,7 @@ final class RecordAllDataToFixture(configuration: _root_.settings.ProcessConfigu
     // single call bounded.
     Await.result(Future.sequence(futures), Duration.Inf)
     syncPool.shutdown()
-    println(f"Sync-pass: done in ${(System.currentTimeMillis() - startedAt) / 1000.0}%.1f s.")
+    println(f"Sync-pass: done in ${startedAt.seconds}%.1f s.")
 
     // 3. Daily cleanup pass — exercises the "rows with no current
     //    screenings" code path so its (lack of) HTTP is captured too.
@@ -192,7 +192,7 @@ final class RecordAllDataToFixture(configuration: _root_.settings.ProcessConfigu
     file.getParentFile.mkdirs()
     java.nio.file.Files.write(
       file.toPath,
-      s"date=$date\ncaptured_at=${java.time.OffsetDateTime.now()}\n".getBytes("UTF-8"))
+      s"date=$date\ncaptured_at=${venueClock.instant.atOffset(java.time.ZoneOffset.UTC)}\n".getBytes("UTF-8"))
     ()
   }
 }

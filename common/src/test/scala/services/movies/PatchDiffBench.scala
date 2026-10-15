@@ -22,8 +22,8 @@ object PatchDiffBench {
       showtimes = Seq(Showtime(start.plusHours(99), None)))))
     def time(label: String)(body: => Any): Unit = {
       (1 to 30).foreach(_ => body)
-      val n = 200; val t = System.nanoTime(); (1 to n).foreach(_ => body)
-      println(f"$label%-28s ${(System.nanoTime() - t) / 1e6 / n}%.3f ms")
+      val n = 200; val t = tools.Stopwatch.start(); (1 to n).foreach(_ => body)
+      println(f"$label%-28s ${t.elapsed.toNanos / 1e6 / n}%.3f ms")
     }
     time("SlotsRepository.slotOps")(SlotsRepository.slotOps(before.data, after.data))
     time("ScreeningsSplit.writesFor")(ScreeningsSplit.writesFor(before.data, after.data))

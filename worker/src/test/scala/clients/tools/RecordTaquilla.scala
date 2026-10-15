@@ -7,7 +7,6 @@ import tools.RealHttpFetch
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path, Paths}
-import java.time.LocalDate
 import scala.jdk.CollectionConverters._
 
 /**
@@ -34,7 +33,7 @@ object RecordTaquilla {
     val cinema = SpanishRoster.theaterIdByCinema.collectFirst { case (c, TheaterId) => c }
       .getOrElse(sys.error(s"no Spanish roster venue with SensaCine id $TheaterId (mk2 El Ingenio)"))
     val client = new TaquillaClient(new RecordingHttpFetch("taquilla", new RealHttpFetch()), Venue, cinema,
-      today = LocalDate.now(TaquillaClient.Zone))
+      today = models.VenueClock.system.today(TaquillaClient.Zone))
     val films     = client.fetch()
     val showtimes = films.flatMap(_.showtimes)
     val days      = showtimes.map(_.dateTime.toLocalDate).distinct.sorted

@@ -68,7 +68,7 @@ object ModelTakeAnswersFill {
                       threads: Int, askPosters: Boolean, askFamilies: Boolean, only: Option[Set[String]], sample: Option[Int]): Unit = {
     val c       = l.c
     val code    = c.country.code
-    val started = System.nanoTime()
+    val started = tools.Stopwatch.start()
     val resolution = IdentityResolver.resolve(l.listings, l.lookups, c.normalizer, IdentityCalibration.resolver)
     val byKey   = l.listings.map(x => x.key -> x).toMap
     val clusters = resolution.decisions.filter(d => d.film.isDefined && d.basis != ResolverDecision.Basis.Pinned)
@@ -115,14 +115,14 @@ object ModelTakeAnswersFill {
     try {
       while (!open.isEmpty && round < rounds) {
         round += 1
-        val roundStart = System.nanoTime()
+        val roundStart = tools.Stopwatch.start()
         val questions = open.asScala.toSeq
         println(s"[$code] round $round: ${questions.size} open question(s) ${questions.groupBy(_._1.label).view.mapValues(_.size).toMap}")
         tools.ConcurrentAsks.inLanes(questions.groupBy(_._1).values, atOnce = 4) { case (family, question) =>
           Try(AgreementQuestions.file(store, family, sources(family), question)); ()
         }
         asked += questions.size
-        val seconds = (System.nanoTime() - roundStart) / 1e9
+        val seconds = roundStart.seconds
         println(f"[$code] round $round filed ${questions.size} in $seconds%.0fs (${questions.size / math.max(seconds, 0.001)}%.1f/s)")
         save()
         open = java.util.concurrent.ConcurrentHashMap.newKeySet[(VoterFamily, String)]()
@@ -162,12 +162,12 @@ object ModelTakeAnswersFill {
           else urls.map(AgreementStage.PosterQuestion.Venue(_)) ++ films.map(AgreementStage.PosterQuestion.Film(_))
         }
       }.distinct
-      val posterStart = System.nanoTime()
+      val posterStart = tools.Stopwatch.start()
       CachedPosters.of(configuration, c.country).file(new PosterAnswerStore(store, tools.SpecClock.Pinned), questions)
-      val seconds = (System.nanoTime() - posterStart) / 1e9
+      val seconds = posterStart.seconds
       save()
       println(f"[$code] posters: ${questions.size} question(s) in $seconds%.0fs (${questions.size / math.max(seconds, 0.001)}%.1f/s)")
     }
-    println(f"[$code] done in ${(System.nanoTime() - started) / 1e9}%.0fs")
+    println(f"[$code] done in ${started.seconds}%.0fs")
   }
 }

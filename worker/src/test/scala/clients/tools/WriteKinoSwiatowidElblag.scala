@@ -9,7 +9,7 @@ object WriteKinoSwiatowidElblag {
   def main(args: Array[String]): Unit = {
     // Pin `today` to the capture date so the recorded `repertuar?dzien=…` URLs
     // (and thus the fixture filenames) match what the spec replays.
-    val today  = args.headOption.map(LocalDate.parse).getOrElse(LocalDate.now())
+    val today  = args.headOption.map(LocalDate.parse).getOrElse(models.VenueClock.system.todayInPoland)
     val client = new KinoSwiatowidElblagClient(new RecordingHttpFetch("kino-swiatowid-elblag", new RealHttpFetch()), today = today)
     val movies = client.fetch()
     movies.foreach(println)

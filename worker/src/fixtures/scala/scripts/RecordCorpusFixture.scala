@@ -27,8 +27,10 @@ import tools.{Alongside, CorpusFixture, CorpusSample, CountryScrapeCorpus, ProdC
  *     sbt "worker/Fixtures/runMain scripts.RecordCorpusFixture"
  */
 object RecordCorpusFixture {
+  private val clock = java.time.Clock.systemUTC()
+
   // The latest year a title may name (`LatestTitleYear`), read off this clock at each ask.
-  private given LatestTitleYear = LatestTitleYear(java.time.Clock.systemUTC())
+  private given LatestTitleYear = LatestTitleYear(clock)
 
   def main(args: Array[String]): Unit = {
     val configuration = _root_.settings.ProcessConfiguration.resolve()
@@ -52,7 +54,7 @@ object RecordCorpusFixture {
       // only closer to the same instant — the reason they are captured here at all (below).
       val database = client.getDatabase(databaseName)
       val read     = tools.Stopwatch.start()
-      val now      = java.time.Instant.now()
+      val now      = clock.instant()
       val (rows, prodFilms) = Alongside(
         archive.findAll().filter(row => known.contains(row.cinema) && row.films.nonEmpty))(
         ProdCoverage.films(database, now))

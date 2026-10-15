@@ -58,7 +58,7 @@ object IdentityExplain {
     val country = Country.all.find(_.code == options.country).getOrElse(sys.error(s"no country ${options.country}"))
     val fixture = options.fixture.getOrElse(UnmatchedClusters.fixturePath(country))
     val labels  = IdentityJudgements.labels(options.labels.getOrElse(IdentityJudgements.CheckedIn))
-    val started = System.nanoTime()
+    val started = tools.Stopwatch.start()
     val capture = UnmatchedClusters.read(fixture)
     val chosen  = capture.listings.filter(selects(options))
     if (chosen.isEmpty) {
@@ -120,7 +120,7 @@ object IdentityExplain {
       if (listings.forall(l => takes.get((l.venue, l.rawTitle)).isEmpty)) println("TAKE none: the cluster stays without a film")
     }
     if (byCluster.size > options.limit) println(s"\n… ${byCluster.size - options.limit} more cluster(s); narrow with --venue/--title or raise --limit")
-    System.err.println(f"[identity-explain] ${(System.nanoTime() - started) / 1e9}%.1fs")
+    System.err.println(f"[identity-explain] ${started.seconds}%.1fs")
   }
 
   /** A listing's key as one line: its fields' separators (NUL) as " · ". */

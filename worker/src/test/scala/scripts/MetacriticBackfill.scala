@@ -61,7 +61,7 @@ object MetacriticBackfill {
     val started     = new AtomicInteger(0)
     val done        = new AtomicInteger(0)
     val total       = rows.size
-    val startedAtMs = System.currentTimeMillis()
+    val startedAtMs = tools.Stopwatch.start()
 
     val tasks = rows.map { case StoredMovieRecord(title, year, e, _, _) =>
       Future {
@@ -148,7 +148,7 @@ object MetacriticBackfill {
     if (unchangedStillNone.size > sampleSize)
       println(s"  (+ ${unchangedStillNone.size - sampleSize} more — Polish art-house, foreign classics, live events; MC doesn't index them)")
 
-    val elapsedMs  = System.currentTimeMillis() - startedAtMs
+    val elapsedMs  = startedAtMs.millis
     val elapsedSec = elapsedMs / 1000.0
     val rps        = if (elapsedSec > 0) f"${total / elapsedSec}%.1f" else "—"
 
