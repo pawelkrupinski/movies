@@ -15,6 +15,7 @@ package services.identity
  *    fit both "Escape Room 2"s, so they tell neither apart;
  *  - `feed id`: a TMDB-keyed feed's id linking it to `f` ([[SourceReliability.tmdbLinked]]);
  *  - `season`: a stage relay's screening days placing it in the season its record names ([[Scored.seasonProduction]]);
+ *  - `house`: a stage relay's billing naming the house whose record of its work the film is ([[Scored.houseProduction]]);
  *  - `current release`: its first screening falls within [[CurrentRelease]] years of a cinema release TMDB dates of the
  *    film in the venue's country (any country's when it dates none there) while no namesake's, nor a film's whose work
  *    its title heads, does (DE CineStar's bare "Lieblingsmenschen" beside Hufnagel's 2026 film) — the venue's own
@@ -60,15 +61,16 @@ private[identity] object Corroboration {
     val released   = current(own) && !rivals.exists(rival => (rival ne own) && rival.candidate.tmdbId != own.candidate.tmdbId &&
       (rival.titleNamesIt || headedBy(rival, naming(own))) && current(rival))
     Seq("year" -> agree("year"), "director" -> agree("director"), "original title" -> original, "runtime" -> runtime, "feed id" -> linked,
-      "season" -> season, "current release" -> released)
+      "season" -> season, "house" -> own.houseProduction, "current release" -> released)
       .collect { case (name, true) => name }
   }
 
-  /** The must-links that vouch a node to a corroborated one: its title, clean or search title, catalogue id or a
-   *  delimited segment of the other's title — never the original title alone, which a feed copies from the entry it
+  /** The must-links that vouch a node to a corroborated one: its title, clean or search title, catalogue id, a curator's
+   *  same-film pin or a delimited segment of the other's title — never the original title alone, which a feed copies from the entry it
    *  linked and so pulls in that entry's namesakes (DE CITY 46's "THE BLACK HOLE", its copied "The Black Hole" beside
    *  "Das schwarze Loch"). */
-  val Vouching: Set[String] = Set(ConstraintEdges.SameTitle, ConstraintEdges.SameCatalogueId, ConstraintEdges.SameSearchForm, ConstraintEdges.TitleSegment)
+  val Vouching: Set[String] = Set(ConstraintEdges.SameTitle, ConstraintEdges.SameCatalogueId, ConstraintEdges.SameSearchForm, ConstraintEdges.TitleSegment,
+    services.movies.ListingConstraints.MustLink.Pinned.toString)
 
   /** How many nodes of `clusters` take each film on a fact of their own ([[facts]]) — a film's standing in its title
    *  family, against which a bare node's namesake take is weighed ([[refused]]). `filmOf` is a cluster's film. */
@@ -150,7 +152,7 @@ private[identity] object Corroboration {
       }.filter(vouched.add)
     }
     cluster.filterNot(node => vouched(node.id) || !corroborated && !disputed.contains(node.id)).map(node => node ->
-      (s"uncorroborated: no year, director, original title, discriminating runtime, feed id, season or current release of its own names tmdb $film" +
+      (s"uncorroborated: no year, director, original title, discriminating runtime, feed id, season, house or current release of its own names tmdb $film" +
         disputed.get(node.id).fold("")(why => s", and $why")))
   }
 }

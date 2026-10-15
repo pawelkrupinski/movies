@@ -1019,7 +1019,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val l = screening(listing(Multikino, "Patagonien"), "2026-10-20")
     val d = shipped(Seq(l), films).decisionOf(l.key)
     withClue(d.render)(d.film shouldBe None)
-    d.render should include("no year, director, original title, discriminating runtime, feed id, season or current release")
+    d.render should include("no year, director, original title, discriminating runtime, feed id, season, house or current release")
   }
 
   it should "count a current release only when no namesake it names as closely is current too" in {
