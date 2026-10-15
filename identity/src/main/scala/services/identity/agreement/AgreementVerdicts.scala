@@ -4,7 +4,7 @@ import org.mongodb.scala.bson.collection.immutable.Document
 import org.mongodb.scala.bson.{BsonArray, BsonDocument, BsonInt32, BsonInt64, BsonNull, BsonString, BsonValue}
 import org.mongodb.scala.model.{Filters, ReplaceOneModel, ReplaceOptions}
 import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture}
-import services.identity.IdentityMeasures
+import services.identity.{BsonFields, IdentityMeasures}
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -105,8 +105,8 @@ object AgreementVerdicts {
         AgreedFilm(a.getArray("families").getValues.asScala.flatMap(v => byLabel.get(v.asString.getValue)).toSet,
           SourceRecord(film, stringsOf(a.getDocument("crossIds"))),
           stringsOf(a.getDocument("ids")).flatMap { case (label, id) => byLabel.get(label).map(_ -> id) },
-          Option(a.get("leaning")).filter(_.isArray).fold(Set.empty[VoterFamily])(_.asArray.getValues.asScala.flatMap(v => byLabel.get(v.asString.getValue)).toSet),
-          Option(a.get("corroborated")).filter(_.isArray).fold(Set.empty[String])(_.asArray.getValues.asScala.map(_.asString.getValue).toSet))
+          BsonFields.elementsOf(a, "leaning").flatMap(v => byLabel.get(v.asString.getValue)).toSet,
+          BsonFields.stringsOf(a, "corroborated").toSet)
       }, Option(d.get("rules")).filter(_.isString).fold("")(_.asString.getValue),
       Option(d.get("filled")).filter(_.isDocument).map(_.asDocument).map(f => StoredFill(f.getString("rule").getValue,
         Option(f.get("tmdb")).map(_.asInt32.getValue), Option(f.get("imdb")).map(_.asString.getValue), f.getString("line").getValue)),

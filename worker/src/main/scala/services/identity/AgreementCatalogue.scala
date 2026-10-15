@@ -9,7 +9,6 @@ import tools.{HttpFetch, HttpRead, HttpStatusException}
 
 import java.time.Clock
 import scala.concurrent.duration._
-import scala.jdk.CollectionConverters._
 
 /**
  * The catalogue mappings the agreement's catalogue take reads ([[agreement.Catalogue]]): what each catalogue id maps to,
@@ -60,12 +59,12 @@ object CatalogueAnswerStore {
   def pageId(page: String): String  = s"catalogue-page|$page"
 
   private def hitsOf(d: BsonDocument): Seq[CatalogueHit] =
-    Option(d.get("hits")).filter(_.isArray).toSeq.flatMap(_.asArray.getValues.asScala.map(_.asDocument)).map { h =>
+    BsonFields.documentsOf(d, "hits").map { h =>
       CatalogueHit(Option(h.get("item")).map(_.asString.getValue), Option(h.get("tmdb")).map(_.asInt32.getValue),
         Option(h.get("imdb")).map(_.asString.getValue), h.getString("via").getValue)
     }
   private def linksOf(d: BsonDocument): Seq[CatalogueId] =
-    Option(d.get("links")).filter(_.isArray).toSeq.flatMap(_.asArray.getValues.asScala.map(_.asDocument))
+    BsonFields.documentsOf(d, "links")
       .map(l => CatalogueId(l.getString("source").getValue, l.getString("id").getValue))
 }
 

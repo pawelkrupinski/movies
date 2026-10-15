@@ -286,11 +286,11 @@ object MongoIdentityTraceStore {
     ListingTrace(ListingKeyBson.decode(d.getDocument("listing")), d.getString("family").getValue, int("film"),
       d.getString("basis").getValue, strings("rules"), Option(d.get("vetoedBy")).filter(_.isString).map(_.asString.getValue),
       strings("evidence"), int("weighedFilm"),
-      Option(d.get("refusals")).filter(_.isArray).fold(Seq.empty[DecisionTrace.Refusal])(_.asArray.getValues.asScala.toSeq.map { value =>
+      BsonFields.elementsOf(d, "refusals").map { value =>
         val r = value.asDocument
         DecisionTrace.Refusal(r.getString("rule").getValue, r.getString("why").getValue,
           Option(r.get("film")).filter(_.isInt32).map(_.asInt32.getValue), Option(r.get("detail")).filter(_.isString).fold("")(_.asString.getValue))
-      }), strings("searched"), strings("candidates"), Option(d.get("blocker")).filter(_.isString).map(_.asString.getValue))
+      }, strings("searched"), strings("candidates"), Option(d.get("blocker")).filter(_.isString).map(_.asString.getValue))
   }
 
   private[identity] def encode(trace: ListingTrace): BsonDocument = new BsonDocument()

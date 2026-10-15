@@ -10,7 +10,6 @@ import services.tasks.{HandlerOutcome, Task, TaskHandler, TaskType}
 import java.nio.file.Files
 import java.time.Clock
 import scala.concurrent.duration._
-import scala.jdk.CollectionConverters._
 
 /**
  * The posters' hashes the agreement stage reads ([[PosterEvidence]]): a venue's poster by its URL, and a TMDB film's
@@ -79,7 +78,7 @@ object PosterAnswerStore {
   private def isUnread(d: BsonDocument): Boolean = d.getBoolean(Unread, org.bson.BsonBoolean.FALSE).getValue
 
   private def hashesOf(d: BsonDocument): Seq[PosterHash] =
-    Option(d.get("hashes")).filter(_.isArray).toSeq.flatMap(_.asArray.getValues.asScala.map(v => PosterHash(v.asInt64.getValue)))
+    BsonFields.elementsOf(d, "hashes").map(v => PosterHash(v.asInt64.getValue))
 }
 
 /** A poster hashed: where it was read from — a venue's URL, a TMDB film poster's path — and its hash. */

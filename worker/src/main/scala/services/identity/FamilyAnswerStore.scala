@@ -100,7 +100,7 @@ object FamilyAnswerStore {
       d
     }))
   private def hitsOf(d: BsonDocument): Seq[SourceHit] =
-    Option(d.get("hits")).filter(_.isArray).toSeq.flatMap(_.asArray.getValues.asScala.map(_.asDocument)).map { h =>
+    BsonFields.documentsOf(d, "hits").map { h =>
       SourceHit(h.getString("id").getValue, h.getString("title").getValue, Option(h.get("originalTitle")).map(_.asString.getValue),
         Option(h.get("year")).map(_.asInt32.getValue))
     }
@@ -110,7 +110,7 @@ object FamilyAnswerStore {
     new BsonDocument("films", BsonArray.fromIterable(found.map(showing => BsonString(showing.film))))
       .append("days", BsonArray.fromIterable(found.map(showing => BsonArray.fromIterable(showing.days.days.map(day => BsonInt32(day.toEpochDay.toInt))))))
   private def showingsOf(d: BsonDocument): Seq[Showing] =
-    Option(d.get("films")).filter(_.isArray).toSeq.flatMap(_.asArray.getValues.asScala).zip(d.getArray("days").getValues.asScala).map { case (film, days) =>
+    BsonFields.elementsOf(d, "films").zip(d.getArray("days").getValues.asScala).map { case (film, days) =>
       Showing(film.asString.getValue, ScreeningDays.of(days.asArray.getValues.asScala.map(day => java.time.LocalDate.ofEpochDay(day.asInt32.getValue.toLong))))
     }
 

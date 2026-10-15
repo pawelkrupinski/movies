@@ -61,10 +61,15 @@ private[identity] object BsonFields {
   /** `value` when it is an Int64 (a stamp, a digest), else none — absent (`null`) included. */
   def int64(value: BsonValue): Option[Long] = Option(value).filter(_.isInt64).map(_.asInt64.getValue)
 
+  /** `d`'s array under `name`, element by element; none when it holds no array there. */
+  def elementsOf(d: BsonDocument, name: String): Seq[BsonValue] =
+    Option(d.get(name)).filter(_.isArray).toSeq.flatMap(_.asArray.getValues.asScala)
+  /** `d`'s array of documents under `name`; none when it holds no array there. */
+  def documentsOf(d: BsonDocument, name: String): Seq[BsonDocument] = elementsOf(d, name).map(_.asDocument)
   /** An array of strings, which `value` must be. */
   def stringsOf(value: BsonValue): Seq[String] = value.asArray.getValues.asScala.toSeq.map(_.asString.getValue)
   /** `d`'s array of strings under `name`; none when it holds no array there. */
-  def stringsOf(d: BsonDocument, name: String): Seq[String] = Option(d.get(name)).filter(_.isArray).fold(Seq.empty[String])(stringsOf)
+  def stringsOf(d: BsonDocument, name: String): Seq[String] = elementsOf(d, name).map(_.asString.getValue)
   /** An array of Int32s, which `value` must be. */
   def intsOf(value: BsonValue): Seq[Int] = value.asArray.getValues.asScala.toSeq.map(_.asInt32.getValue)
 }

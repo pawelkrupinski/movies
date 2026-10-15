@@ -2,7 +2,6 @@ package services.identity
 
 import java.awt.image.BufferedImage
 import services.movies.TitleContainment
-import scala.jdk.CollectionConverters._
 
 /**
  * A poster's perceptual hash (pHash, 63 bits): the signs of the lowest 8×8 DCT frequencies of its 32×32 grey image,
@@ -101,7 +100,7 @@ object PosterAnswers {
 
   /** The TMDB poster paths filed in a poster document, in its hashes' order; none for a venue's, or one filed before them. */
   def pathsOf(d: org.bson.BsonDocument): Seq[String] =
-    Option(d.get(Paths)).filter(_.isArray).toSeq.flatMap(_.asArray.getValues.asScala.collect { case v if v.isString => v.asString.getValue })
+    BsonFields.elementsOf(d, Paths).collect { case v if v.isString => v.asString.getValue }
 
   /** The id a poster's hashes are filed under among the families' answers: `poster|venue|<url>`, `poster|film|<tmdbId>`. */
   def idOf(question: agreement.AgreementStage.PosterQuestion): String = question match {

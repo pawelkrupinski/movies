@@ -200,7 +200,7 @@ Each a production change: measure with `scripts/identity-measure`, land one at a
   `StoredTmdbLookups.heldDocuments`, `LiveCorpus.candidateCount`, `IncrementalResolver.familyKeys`/`familyNodeTexts`/
   `nodeTextOf`, `Acceptance.aloneOrder`/`pooledOrder`, `SourceReliability.FeedIdSources`; the fakes
   `InMemoryIdentityTraceStore`, `InMemoryPinStore`. The `Option(d.get(f)).filter(_.isArray)…` BSON read is written
-  out 8 times beside `BsonFields` (FamilyAnswerStore, AgreementCatalogue, AgreementPosters, Posters, AgreementVerdicts,
+  out 8 times beside `BsonFields` (done: `BsonFields.elementsOf` / `documentsOf`; the web review stores keep theirs, outside the package) (FamilyAnswerStore, AgreementCatalogue, AgreementPosters, Posters, AgreementVerdicts,
   IdentityTraceStore): a `BsonFields.documentsOf`. Removal needs identity-measure's 0 moves.
 - [ ] Judgements: ~50 venue rows repeat their `*` row (same film, verdict, state; e.g. Camp der Verlorenen, PL Lalka
   `imdb:tt0064570` ×3) — check that no venue-scoped reader needs them, then let `identity_judgements.py` flag and drop
