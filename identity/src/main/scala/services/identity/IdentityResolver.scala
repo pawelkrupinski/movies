@@ -146,6 +146,25 @@ object IdentityResolver {
     def language(country: String) = models.Country.all.find(_.language.getCountry == country).map(_.language.getLanguage)
     language(a).exists(language(b).contains)
   }
+  /** The members QUOTING their cluster's film within words of their own, at a venue another member of the cluster bills
+   *  the film by itself at: what that venue screens beside the film — a warm-up, a talk — not the film. The quotes name
+   *  the work (PL "Festiwal Korelacje: „Zemsta” z autorską narracją Artura Andrusa", [[ListingShape.billedBeside]]),
+   *  but a venue billing the work on its own as well bills this as another thing: DE Kleines Theater am Weingarten's
+   *  "Mystery-Vorfilm als Warm-up zu „Miles Davis – Birth of The Cool“" beside its "MILES DAVIS: BIRTH OF THE COOL". */
+  private[identity] def besideItsScreening(members: Seq[EvidenceNode], cluster: Seq[EvidenceNode]): Seq[(EvidenceNode, String)] = {
+    def quotes(node: EvidenceNode) = QuotedWithin.findFirstMatchIn(node.evidence.rawTitle).exists { m =>
+      val around = node.evidence.rawTitle.take(m.start) + " " + node.evidence.rawTitle.drop(m.end)
+      around.exists(_.isLetter)
+    }
+    members.filter(quotes).flatMap { node =>
+      val venues = node.listings.map(_.cinema).toSet
+      cluster.find(other => (other ne node) && !Quote.findFirstIn(other.evidence.rawTitle).isDefined &&
+          other.listings.exists(listing => venues(listing.cinema)))
+        .map(other => node -> s"no film: it quotes the film its venue bills by itself as '${other.evidence.rawTitle}'")
+    }
+  }
+  private val QuotedWithin = """[„"“«]([^"”„“«»]*\p{L}[^"”„“«»]*)["”“»]""".r
+  private val Quote        = """[„"“«»”]""".r
   /** How many years before its screenings' a film's may be and still be a current release ([[billedAsPiece]]). */
   val CurrentRelease = 1
   /** The fewest letters a word shares with its venue's name or city to name it: "Kadr" in "Kino w Kadrze". */
@@ -525,7 +544,7 @@ object IdentityResolver {
           val scored       = unbilled.flatMap(node => scope.of(node).find(_.candidate.tmdbId == film).map(node -> _))
           val corroborated = scored.flatMap(_._2.number("venues.corroborating")).maxOption.getOrElse(0.0)
           scored.flatMap { case (node, own) => IdentityResolver.billedAsPiece(node, own, corroborated, recurs, answered).map(node -> _) }
-        }.toMap
+        }.toMap ++ film.filterNot(_ => pinned).toSeq.flatMap(_ => IdentityResolver.besideItsScreening(unbilled, cluster)).toMap
         val placed = unbilled.filterNot(piecesOf.contains)
         // a member nothing of its own corroborates the film by, whose take a fact or an evidenced namesake speaks against
         val weak   = film.filterNot(_ => pinned).toSeq.flatMap(Corroboration.refused(placed, _, scope.of, familyEdges, backed)).toMap
