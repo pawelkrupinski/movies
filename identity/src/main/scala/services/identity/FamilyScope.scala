@@ -279,7 +279,16 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
       // a year the listing states that the film shares — the linked film's, copied — makes the two one film under two
       // records: DE "Tabaluga und Leo - Die Weihnachtsgeschichte" [2003] links 1486412m and is the 2003 film 68030
       def sameYear = listing.year.exists(year => candidate.film.year.exists(film => math.abs(film - year) <= 1))
-      Option.when(listing.originalTitle.nonEmpty && !sameYear && !billsItsWords &&
+      // a SHORT ([[ShortFilms.isShort]]) beside a TMDB-keyed feed's link to another film is the copy's pull whatever the
+      // billed title names, and whatever year: the feed's pick is a programme's film, the year and an English title a short
+      // carries too the pick's restated (DE "L`Estive" ×3: Cineamo links Lenoir's 2026 documentary, copying its English
+      // title "Summer Meadow", which a 3-minute 2024 short carries beside "L'Estive"; "HEIMSUCHUNG - MittagsKINO" took the
+      // 18-minute "Visitation", the English title of Schlöndorff's "Heimsuchung"; Kino Gelnhausen's "FILMKUNST: Ein einfacher
+      // Unfall", Panahi's 2025 film beside a 2025 short). Only where the feed copied a title the venue does not bill
+      // ([[FeedLink.copiesAnotherTitle]]): a short the venue's own original title is, is its namesake
+      if (linked.isDefined && FeedLink.copiesAnotherTitle(listing) && ShortFilms.isShort(candidate.film))
+        Some(s"a short, its feed ($feed) linking ${linked.fold("")(_.toString)}")
+      else Option.when(listing.originalTitle.nonEmpty && !sameYear && !billsItsWords &&
         IdentityMeasures.names(titleRelation(listing, candidate).value, listing, candidate.film) && {
           // the billed titles — without the copied original, nor a search title that is only it again — against the
           // record as its database holds it: the venue titles the corpus learned for it by that very original
@@ -296,13 +305,12 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
         })(s"named only by the title its feed ($feed) copied" + linked.fold("")(film => s" from $film"))
     }
 
-  /** Why `node` rules `id` out before its evidence is scored: a pin, an overruled feed link, a short its feed links
-   *  another film beside, a feed link's copied title, a title naming it only by the venue's own name, a programme tag or
+  /** Why `node` rules `id` out before its evidence is scored: a pin, an overruled feed link, a feed link's copied title
+   *  (a short its feed links another film beside among them), a title naming it only by the venue's own name, a programme tag or
    *  slot, a title billing a film festival alone, or a billing as a silent film of a sound-era film. */
   private def denialByNode(node: EvidenceNode, id: Int): Option[Denial] =
     (Option.when(pins.deniedFilms(node.listings.head.key)(id))("pinned never this film")
       .orElse(overruled(node).filter(_.film == id).map(_.denial))
-      .orElse(copyingLink(node).filter(_ => FeedLink.copiesAnotherTitle(evidenceOf(node).measured)).flatMap(FeedLink.deniesShort(_, id, candidateById(id).film)))
       .orElse(namedOnlyByCopiedTitle(node, candidateById(id)))
       .orElse(Option.when(namesOnlyItsVenue(node, candidateById(id)))("its title names it only by the venue's own name"))
       .orElse(Option.when(namesOnlyATag(node, candidateById(id)))("its title names it only by a programme tag billed beside many titles"))

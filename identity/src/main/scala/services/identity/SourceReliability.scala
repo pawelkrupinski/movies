@@ -97,7 +97,7 @@ object SourceReliability {
     rules(copied(Fact.Year, Fact.Directors, Fact.Runtime)*) ++
     rules((Fact.OriginalTitle, Trust.Support, CopiedFromTheEntry + "; and the linked film's English title restated, so a namesake " +
       "only it names, or a short where the venue bills another title, is the copy's pull and denied the listing when the link " +
-      "names another film (FamilyScope.namedOnlyByCopiedTitle, FeedLink.deniesShort: DE \"Rodychi\" took the 2018 \"Kin\", " +
+      "names another film (FamilyScope.namedOnlyByCopiedTitle: DE \"Rodychi\" took the 2018 \"Kin\", " +
       "\"L`Estive\" a 3-minute \"Summer Meadow\")")) ++ rules(EntrysPoster, EntrysText),
     tmdbFilm = id => CineamoFilm.unapplySeq(id).flatMap(_.headOption).flatMap(_.toIntOption))
 

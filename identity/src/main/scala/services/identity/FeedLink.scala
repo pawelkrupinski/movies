@@ -37,21 +37,6 @@ private[identity] object FeedLink {
   /** The `sources` of a link overruled by the venue's own title naming another film exactly, no source backing either. */
   val TitledRival = 0
 
-  /** Why a TMDB-keyed feed's `link` of a node to another film denies it `film` (`tmdbId`), a SHORT ([[ShortFilms.isShort]]): the
-   *  feed's pick is a programme's film, and the facts it copies are the pick's — an English title a short carries too is
-   *  the pick restated, not a second film. DE "L`Estive" ×3: Cineamo links Lenoir's 2026 documentary (1729636m), copying
-   *  its English title "Summer Meadow", which a 3-minute 2024 short carries and took at 62.5%; "HEIMSUCHUNG - MittagsKINO"
-   *  took the 18-minute "Visitation" while Cineamo links Schlöndorff's "Heimsuchung", whose English title it is. Asked only
-   *  where the feed copied a title the venue does not bill ([[copiesAnotherTitle]]): a short the venue's own title names
-   *  is the venue's namesake, not the copy's pull, and denying it only lifted another namesake past the cut (DE
-   *  Filmklubb's "UNSPOKEN", linked to 68360m "Unspoken": the 2021 short denied, a 2026 Chinese film TMDB titles
-   *  "Unspoken" among its others took it). */
-  def deniesShort(link: (CatalogueId, Int), tmdbId: Int, film: IdentityMeasures.Film): Option[String] = {
-    val (id, linkedFilm) = link
-    Option.when(linkedFilm != tmdbId && ShortFilms.isShort(film))(
-      s"a short, its feed (${id.source} ${id.id}) linking $linkedFilm")
-  }
-
   /** Did the feed copy an original title the venue bills no title of — a title the link added, not the venue's? */
   def copiesAnotherTitle(listing: IdentityMeasures.Listing): Boolean =
     listing.originalTitle.exists(copied => !(listing.rawTitle.toSeq :+ listing.title).map(IdentityMeasures.key).contains(IdentityMeasures.key(copied)))

@@ -155,7 +155,9 @@ Each a production change: measure with `scripts/identity-measure`, land one at a
 - [ ] **screenedSeason's earlier-year bypass is unbounded** (8545f8cb7: `IdentityModel.screenedSeason`'s
   `year.forall(_ < season)`, `StageRelays.screenedSeasonRecord`): an encore of a 2019 capture screening in 2027 clears
   its year against the 2026/27 record. Bound it (a year or two), or ask for a screening on the record's air day.
-- [ ] **FeedLink.deniesShort vs FamilyScope.namedOnlyByCopiedTitle**: the second covers most of the first's cases and
+- [x] **FeedLink.deniesShort vs FamilyScope.namedOnlyByCopiedTitle** (done: folded into `namedOnlyByCopiedTitle` as its
+  first case, unchanged: the same-year guard must not cover it — Kino Gelnhausen's "FILMKUNST: Ein einfacher Unfall",
+  Panahi's 2025 film beside a 2025 short, IdentitySliceCasesSpec): the second covers most of the first's cases and
   has a same-year guard the first lacks; `deniesShort` still denies a short the venue's own billed title names.
 - [x] **House initials are one house's list** (done: `StageHouses.initials` derives them from every house name of three
   initialled words; `ListingShape.billsAHouse` reads them through `StageRelays.billsAStageHouse`): `StageRelays.HouseInitials = Set("rbo","roh")` plus a regex spelling them
