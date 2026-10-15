@@ -43,8 +43,8 @@ exit 0
 STUB
 chmod +x "$work/tree/scripts/restore-country-corpus.sh" "$work/bin/"*
 
-closed_port() { python3 -c 'import socket; s=socket.socket(); s.bind(("127.0.0.1",0)); print(s.getsockname()[1]); s.close()'; }
-mirror_port=$(closed_port) fallback_port=$(closed_port)
+# Ports nothing listens on: privileged ones, which no user process can bind (connecting is refused at once).
+mirror_port=1 fallback_port=2
 
 local_leg() { # <args...> -> the script's output; its exit status in $work/status. Environment: what the caller set.
   rm -f "$work/calls" "$work/sbt-env"
@@ -95,9 +95,19 @@ check "a container that never answers is given up on, not waited for forever" "1
 check "...said, and sbt never run" "yes " "$(grep -q 'never answered' "$work/out" && echo yes || echo no) $(grep '^sbt' "$work/calls")"
 rm -f "$work/mongo-never-up"
 
-python3 -c 'import socket,sys,time; s=socket.socket(); s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1); s.bind(("127.0.0.1",int(sys.argv[1]))); s.listen(5); time.sleep(60)' "$mirror_port" &
+# An itAll mongod: a listener on a port the system picks, kept bound while the leg runs (its port printed once bound).
+cat > "$work/listen.py" <<'PY'
+import socket, time
+s = socket.socket()
+s.bind(("127.0.0.1", 0))
+s.listen(5)
+print(s.getsockname()[1], flush=True)  # the port it holds, never released while the leg runs
+time.sleep(60)
+PY
+python3 "$work/listen.py" > "$work/listener-port" &
 listener=$!
-for _ in 1 2 3 4 5 6 7 8 9 10; do (echo > "/dev/tcp/127.0.0.1/$mirror_port") 2>/dev/null && break; sleep 0.2; done
+for _ in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15 16 17 18 19 20; do [ -s "$work/listener-port" ] && break; sleep 0.2; done
+mirror_port=$(cat "$work/listener-port")
 TMDB_API_KEY=tmdb local_leg pl
 check "the itAll mongod answering: reused, no container" "mongodb://127.0.0.1:$mirror_port/?directConnection=true " \
   "$(env_of MONGODB_URI) $(grep '^docker' "$work/calls")"

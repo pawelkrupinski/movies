@@ -82,7 +82,7 @@ bad=$(commit pipeline/a 6 "pipeline change 6")
 
 cat > "$work/step" <<STEP
 #!/usr/bin/env bash
-sha=\$(git rev-parse HEAD)
+sha=\$(cat .git/HEAD) # the bisect checks each commit out detached: HEAD holds its sha, no git asked
 echo "\$sha" >> "$work/replays"
 grep -qx "\$sha" "$work/untestable" 2>/dev/null && exit 125
 grep -qx broken pipeline/state && exit 1
