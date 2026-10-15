@@ -126,7 +126,7 @@ chmod +x "$work/bin/gh"
 store_run() { # <head>: the check of <head>, on main, storing on the release
   rm -rf "$work/out" "$work/identity-takes-base"; : > "$work/sbt-calls"
   (cd "$work/job" && PATH="$work/bin:$PATH" GITHUB_REPOSITORY=o/r GITHUB_SHA=$1 GITHUB_REF=refs/heads/main RUNNER_TEMP=$work \
-    SBT_CALLS="$work/sbt-calls" TAKES_STORE=fixtures KINOWO_CONVERGENCE_PIN_CORPUS_RUN=${PIN:-42} "$script" pl "$work/out" > "$work/log" 2>&1)
+    SBT_CALLS="$work/sbt-calls" TAKES_STORE=fixtures KINOWO_CONVERGENCE_PIN_CORPUS_RUN=${PIN-42} "$script" pl "$work/out" > "$work/log" 2>&1)
 }
 base_calls() { grep -c "identity-takes-base" "$work/sbt-calls" || true; }
 code=0; TAKES_BASE=$c4 store_run "$c5" || code=$?
@@ -150,6 +150,12 @@ echo unpublished > "$work/laid-fill"
 TAKES_BASE=$c4 store_run "$c5" || true
 check "a fill laid but never published names no key: nothing is reused" "$(base_calls)" 2
 rm -f "$work/laid-fill"
+
+# No pinned recording names the decisions' inputs: their key would match another unpinned run's over other data.
+rm -rf "$work/release"; PIN="" TAKES_BASE=$c2 store_run "$c4" || true
+PIN="" TAKES_BASE=$c4 store_run "$c5" || true
+check "with no recording pinned the base's decisions are resolved, never reused from a key naming no recording" "$(base_calls)" 1
+check "...nor stored under one" "$(find "$work/release" -name "*decisions*" | wc -l | tr -d " ")" 0
 
 # c6 touches no identity code, so its own check passed unresolved and stored nothing -- and it is the base of c7's. Its
 # identity code is c5's, which c5's run stored: the key is the identity code, not the commit, so c7 reuses c5's results

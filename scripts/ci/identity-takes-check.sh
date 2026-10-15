@@ -149,12 +149,12 @@ capture_key() { # <sha>: the final takes' inputs -- the code and the capture it 
       "$here"/test/resources/fixtures/identity-unmatched/*.inputs 2>/dev/null; } | sha256sum | cut -c1-24
 }
 reused() { # <asset> <file>: whether a stored result was fetched into <file>
-  [ -n "$store" ] || return 1
+  [ -n "$store" ] && [ -n "$1" ] || return 1
   mkdir -p "$(dirname "$2")"
   gh release download "$store" -p "$1" -O "$2.gz" --clobber > /dev/null 2>&1 && gunzip -f "$2.gz" && [ -s "$2" ]
 }
 keep() { # <file> <asset>: store a head's result, on main only (the only commits a later base is), never failing the check
-  [ -n "$store" ] && [ "${GITHUB_REF:-}" = refs/heads/main ] && [ -s "$1" ] || return 0
+  [ -n "$store" ] && [ -n "$2" ] && [ "${GITHUB_REF:-}" = refs/heads/main ] && [ -s "$1" ] || return 0
   gzip -c "$1" > "$RUNNER_TEMP/$2" \
     && "$here/scripts/ci/gh-release.sh" upload "$store" "$RUNNER_TEMP/$2" --clobber > /dev/null \
     || { echo "::warning::identity takes ($cc): could not store $2 -- the next run resolves its base again"; return 0; }
@@ -165,7 +165,9 @@ keep() { # <file> <asset>: store a head's result, on main only (the only commits
       | sort_by(.createdAt) | reverse | .[8:][] | .name" 2>/dev/null \
     | while read -r stale; do "$here/scripts/ci/gh-release.sh" delete-asset "$store" "$stale" -y > /dev/null || true; done
 }
-asset() { echo "takes-$1-$cc-$2.gz"; } # <decisions|final|shape> <key>
+# <decisions|final|shape> <key>: none for a result over the recording when no recording is pinned -- its key would name
+# no data, and match another unpinned run's over other data. The final takes read only the checked-in capture.
+asset() { [ "$1" = final ] || [ -n "${KINOWO_CONVERGENCE_PIN_CORPUS_RUN:-}" ] || return 0; echo "takes-$1-$cc-$2.gz"; }
 
 tree="$RUNNER_TEMP/identity-takes-base"
 base_tree() { # the base checked out beside the head, once, for whichever of its results is not stored
