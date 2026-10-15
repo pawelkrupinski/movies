@@ -59,6 +59,10 @@ class IdentityCaptureWorkflowSpec extends AnyFlatSpec with Matchers {
     ratchet should include("services.identity.UnmatchedClustersRatchetSpec")
     ratchet should include("green=true")
     ratchet should not include "|| true"
+    // A build that never reached the ratchet is no "judge the UNJUDGED takes": no findings written, the job fails.
+    ratchet should include(s"rm -f ${tools.UnmatchedClusters.FindingsPath}")
+    ratchet should include(s"elif [ -f ${tools.UnmatchedClusters.FindingsPath} ]; then")
+    ratchet should include("::error::the ratchet did not run")
   }
 
   it should "re-check the judged branch on demand and open its PR then, without capturing again" in {

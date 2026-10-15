@@ -219,10 +219,17 @@ jobs:
               id: ratchet
               run: |
                   set -o pipefail
+                  # Red means the ratchet RAN and found takes to judge. A build that never reached it (a compile
+                  # error, a crash) writes no findings -- and must fail the job, not ask for judgements. The
+                  # restored target cache may hold an older run's findings: they go first.
+                  rm -f target/identity-unmatched/ratchet-takes.tsv
                   if sbt "worker/testOnly services.identity.UnmatchedClustersRatchetSpec" 2>&1 | tee ratchet.log; then
                       echo "green=true" >> "$GITHUB_OUTPUT"
-                  else
+                  elif [ -f target/identity-unmatched/ratchet-takes.tsv ]; then
                       echo "green=false" >> "$GITHUB_OUTPUT"
+                  else
+                      echo "::error::the ratchet did not run: sbt failed before it wrote its findings (see the log above)"
+                      exit 1
                   fi
                   if [ -f target/identity-unmatched/expected-matches.tsv ]; then
                       cp target/identity-unmatched/expected-matches.tsv test/resources/fixtures/identity-unmatched/expected-matches.tsv
