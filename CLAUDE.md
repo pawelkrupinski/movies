@@ -29,6 +29,12 @@ layers and which kinds of changes they catch:
 - **`swift test --package-path ios`** — iOS unit / integration suites
   without the live server. Required for any change to iOS model /
   parser logic regardless of whether you also need LocalServer.
+- **`scripts/run-script-tests`** — every script self-test (`<tool>-test.sh`,
+  `<tool>_test.py`), found by name and run in parallel. Required for any
+  change under `scripts/`, `.github/scripts/`, `.github/actions/` or the
+  mobile `*/scripts/`; `--changed origin/main` runs just the tests whose
+  tool, test or named files the change touched. A new self-test needs no
+  wiring — name it by the scheme and CI runs it.
 
 Exact commands, the module-scoping variants, and the `testOnly` / `-z`
 narrowing that cuts a run from minutes to seconds are in the
@@ -45,7 +51,9 @@ run, ~55s; any change under `scripts/`, `.github/`, `.claude/`, `CLAUDE.md`,
 `build.sbt`, `project/` or `*/src/test|it/` also runs every other repo-reading
 lint spec — all `deploy/` specs and the `No*`/`*Lint*` source lints — in
 that run; `PREPUSH_SKIP=lintspecs` skips just those), actionlint on
-workflows, shellcheck on scripts (only warnings the push adds), and
+workflows and shellcheck on composite actions' `run:` blocks, the script
+self-tests the push touches (`scripttests`: `scripts/run-script-tests
+--changed <push base>`), shellcheck on scripts (only warnings the push adds), and
 `scripts/ios-compile-check.sh` on `ios/**` — the SwiftUI app target via
 `xcodebuild` and the SwiftPM package on Linux via Docker, the two
 compiles a Mac's `swift test` misses. It complements the layers above;
