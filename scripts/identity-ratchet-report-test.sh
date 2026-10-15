@@ -35,8 +35,10 @@ cat > "$work/bin/gh" <<'STUB'
 #!/usr/bin/env bash
 echo "$*" >> "$STUB/calls"
 case "$1 $2" in
-  "run download") while [ "$#" -gt 0 ]; do case "$1" in --dir) dir="$2" ;; esac; shift; done
-                  run=$(basename "$dir"); [ -d "$STUB/artifacts/$run" ] || { echo "no artifact" >&2; exit 1; }
+  "run download") run=$3; while [ "$#" -gt 0 ]; do case "$1" in --dir) dir="$2" ;; esac; shift; done
+                  [ -z "${GH_DOWN:-}" ] || { echo "HTTP 502: Bad Gateway" >&2; exit 1; }
+                  [ -z "${GH_HANGS:-}" ] || sleep 20
+                  [ -d "$STUB/artifacts/$run" ] || { echo "no artifact matches any of the names or patterns provided" >&2; exit 1; }
                   cp "$STUB/artifacts/$run/"* "$dir/" ;;
   "pr view")      echo '{"body":"The weekly recapture (identity-capture.yml, run 111111).\n\nTo land: judge"}' ;;
   "run view")     if [[ " $* " == *" --log "* ]]; then cat "$STUB/old.log"
@@ -67,6 +69,14 @@ check "...its WRONG take, colours stripped" "1" "$(grep -c "^WRONG${tab}pl${tab}
 check "...its UNJUDGED take with basis and ids" "1" "$(grep -c "^UNJUDGED${tab}uk${tab}Act One${tab}THE COMIC STRIP${tab}tmdb:396598${tab}The Comic Strip (1981)${tab}Filled${tab}tmdb:396598,imdb:tt0478854" "$work/out")"
 check "...its LOST take, a comma in the title kept" "1" "$(grep -c "^LOST${tab}de${tab}Brotfabrik${tab}Jeder Acker, jede Fabrik${tab}${tab}${tab}${tab}${tab}wikidata:Q141180912" "$work/out")"
 check "...and nothing from the Scala dumps" "4" "$(grep -vc '^\[identity-ratchet-report\]' "$work/out")"
+rm -f "$work/calls"
+check "a download that fails is not read as an absent artifact" "1 0" "$(GH_DOWN=1 report 333333) $(grep -c 'run view' "$work/calls")"
+check "...it says it could not download, and keeps no findings" "1 no" \
+  "$(grep -c "could not download run 333333's identity-ratchet artifact: HTTP 502" "$work/out") \
+$([ -e "$work/cache/ratchet/333333/ratchet-takes.tsv" ] && echo yes || echo no)"
+started=$SECONDS
+check "a gh that hangs is cut off, and fails" "1" "$(GH_HANGS=1 KINOWO_IDENTITY_DOWNLOAD_TIMEOUT=1 report 444444)"
+check "...within its timeout" "yes" "$([ $(( SECONDS - started )) -lt 10 ] && echo yes || echo "no: $(( SECONDS - started ))s")"
 check "--help prints the usage" "0" "$(report --help)"
 check "...naming the sources" "1" "$(grep -c 'run id | PR number' "$work/out")"
 check "an unknown source is a usage error" "2" "$(report nonsense)"

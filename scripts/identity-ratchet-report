@@ -21,8 +21,10 @@ import csv
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
+import tempfile
 from collections import Counter
 
 REPO = os.environ.get("KINOWO_REPO", "pawelkrupinski/movies")
@@ -32,8 +34,25 @@ ORDER = ["WRONG", "UNJUDGED", "MOVED", "LOST", "NEW", "RIGHT"]
 LOCAL = os.path.join("target", "identity-unmatched", "ratchet-takes.tsv")
 
 
+GH_TIMEOUT = int(os.environ.get("KINOWO_IDENTITY_DOWNLOAD_TIMEOUT", "1800"))
+# what gh prints when a run holds no such artifact (scripts/ci/gh-optional.sh): anything else is a read that failed
+ABSENT = re.compile(r"no artifact matches|no valid artifacts found|HTTP 404")
+
+
+def gh_run(*args):
+    """gh, bounded: (exit status, stdout, stderr), a timeout an exit status like any other failure."""
+    try:
+        done = subprocess.run(["gh", *args], capture_output=True, text=True, timeout=GH_TIMEOUT)
+    except subprocess.TimeoutExpired:
+        return 124, "", f"gh {' '.join(args)} timed out after {GH_TIMEOUT}s"
+    return done.returncode, done.stdout, done.stderr
+
+
 def gh(*args):
-    return subprocess.run(["gh", *args], check=True, capture_output=True, text=True).stdout
+    code, out, err = gh_run(*args)
+    if code != 0:
+        sys.exit(f"[identity-ratchet-report] could not read gh {' '.join(args[:2])}: {err.strip() or f'exit {code}'}")
+    return out
 
 
 def read_tsv(path):
@@ -101,10 +120,18 @@ def findings_of_run(run):
     if os.path.exists(cached):
         return read_tsv(cached)
     os.makedirs(folder, exist_ok=True)
-    got = subprocess.run(["gh", "run", "download", run, "-R", REPO, "--name", "identity-ratchet", "--dir", folder],
-                         capture_output=True, text=True)
-    if got.returncode == 0 and os.path.exists(cached):
-        return read_tsv(cached)
+    # downloaded beside the cache's copy, moved in whole: a download cut short is never read back as the findings
+    part = tempfile.mkdtemp(prefix="dl.", dir=folder)
+    try:
+        code, _, err = gh_run("run", "download", run, "-R", REPO, "--name", "identity-ratchet", "--dir", part)
+        if code == 0 and os.path.exists(os.path.join(part, "ratchet-takes.tsv")):
+            os.replace(os.path.join(part, "ratchet-takes.tsv"), cached)
+            return read_tsv(cached)
+    finally:
+        shutil.rmtree(part, ignore_errors=True)
+    # only an artifact gh says is not there sends the read to the log: a failed download is not an absent artifact
+    if code != 0 and not ABSENT.search(err):
+        sys.exit(f"[identity-ratchet-report] could not download run {run}'s identity-ratchet artifact: {err.strip() or f'exit {code}'}")
     print(f"[identity-ratchet-report] run {run} has no identity-ratchet artifact: reading its pull-request job's log",
           file=sys.stderr)
     jobs = json.loads(gh("run", "view", run, "-R", REPO, "--json", "jobs"))["jobs"]
