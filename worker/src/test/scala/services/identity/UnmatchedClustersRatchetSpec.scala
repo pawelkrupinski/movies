@@ -19,14 +19,14 @@ import java.nio.file.{Files, Path}
  *  - ONLY MORE: every right take of `expected-matches.tsv` is still taken. A run that takes more right ones writes the
  *    new list to `target/identity-unmatched/expected-matches.tsv` — copy it over the checked-in one to ratchet.
  */
-class UnmatchedClustersRatchetSpec extends AnyFlatSpec with Matchers {
+class UnmatchedClustersRatchetSpec extends AnyFlatSpec with Matchers with tools.SuiteConfiguration {
 
   private val judged   = IdentityJudgements.read()
   private val labels   = IdentityJudgements.labels(judged)
   private val expected = UnmatchedClusters.Directory.resolve("expected-matches.tsv")
   private val captures = models.Country.all.map(UnmatchedClusters.fixturePath).filter(Files.exists(_)).map(UnmatchedClusters.read)
   /** A measurement (the takes check) reads the capture's gaps as unknown and lists them; the ratchet fails on any. */
-  private val gapsAsUnknown = UnmatchedClusters.gapsAsUnknown(sys.env)
+  private lazy val gapsAsUnknown = configuration.captureGapsAsUnknown.value
   private lazy val takes: Seq[Take] = {
     val replayed = captures.map(capture => (capture, UnmatchedClusters.replay(capture)))
     val gaps     = replayed.flatMap { case (capture, outcome) => UnmatchedClusters.gaps(capture, outcome) }

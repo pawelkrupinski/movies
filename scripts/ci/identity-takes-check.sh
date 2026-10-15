@@ -223,12 +223,12 @@ if [ -n "$takes_moves" ]; then
   # model AND the agreement stage over the checked-in capture and its families' answers; run by the head and by the base
   # over the head's capture, its takes are diffed as the decisions are. The base reads the head's capture: one input.
   # A lookup the capture lacks -- one a change newly asks (a relay's season search, a Rotten Tomatoes record) -- is read
-  # as UNKNOWN here (KINOWO_RATCHET_CAPTURE_GAPS=unknown), as identity-slice reads a recording gap, and listed: failed
+  # as UNKNOWN here (KINOWO_RATCHET_CAPTURE_GAPS_UNKNOWN), as identity-slice reads a recording gap, and listed: failed
   # as a stale capture, it left EVERY country without final takes (run 38694072183: one UK RT record). The ratchet
   # itself, outside a measurement, still fails a capture that lacks them.
   ratchet() { # <checkout> <out file>
     rm -f "$1/target/identity-unmatched/ratchet-takes.tsv" "$1/target/identity-unmatched/capture-gaps.tsv"
-    ( cd "$1" && KINOWO_RATCHET_CAPTURE_GAPS=unknown \
+    ( cd "$1" && KINOWO_RATCHET_CAPTURE_GAPS_UNKNOWN=1 \
         sbt -J-Xmx"$heap" "worker/Test/testOnly services.identity.UnmatchedClustersRatchetSpec" > "$2.log" 2>&1 )
     cp "$1/target/identity-unmatched/capture-gaps.tsv" "$(dirname "$2")/capture-gaps.tsv" 2>/dev/null
     cp "$1/target/identity-unmatched/ratchet-takes.tsv" "$2" 2>/dev/null

@@ -25,9 +25,9 @@ class UnmatchedClustersGapsSpec extends AnyFlatSpec with Matchers {
   }
 
   "The ratchet's gap mode" should "read gaps as unknown only when the measurement asks for it" in {
-    UnmatchedClusters.gapsAsUnknown(Map.empty) shouldBe false
-    UnmatchedClusters.gapsAsUnknown(Map(UnmatchedClusters.GapsEnv -> "unknown")) shouldBe true
-    UnmatchedClusters.gapsAsUnknown(Map(UnmatchedClusters.GapsEnv -> "fail")) shouldBe false
+    def mode(vars: (String, String)*) = new settings.ProcessConfiguration(Env.of(vars*)).captureGapsAsUnknown
+    mode() shouldBe settings.CaptureGapsAsUnknown(false)
+    mode("KINOWO_RATCHET_CAPTURE_GAPS_UNKNOWN" -> "1") shouldBe settings.CaptureGapsAsUnknown(true)
   }
 
   it should "write each country's gaps as a TSV row a measurement lists" in {

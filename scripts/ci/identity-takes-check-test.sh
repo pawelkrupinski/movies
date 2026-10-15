@@ -108,7 +108,7 @@ else
   mkdir -p target/identity-unmatched
   # STUB_GAPS: the capture lacks a lookup this code asks -- the ratchet writes takes only reading it as unknown
   if [ -n "${STUB_GAPS:-}" ]; then
-    [ "${KINOWO_RATCHET_CAPTURE_GAPS:-}" = unknown ] || { echo "the fixture lacks answers this resolve asks"; exit 1; }
+    [ "${KINOWO_RATCHET_CAPTURE_GAPS_UNKNOWN:-}" = 1 ] || { echo "the fixture lacks answers this resolve asks"; exit 1; }
     printf 'country\tkind\tlookup\npl\tfamily\t(RottenTomatoes, record|x)\nuk\ttmdb\tsearch y\n' > target/identity-unmatched/capture-gaps.tsv
   fi
   printf 'country\tvenue\trawTitle\tstatus\tfilm\ttitle\tbasis\npl\tv\tt\tRIGHT\ttmdb:1\tF\tb\n' > target/identity-unmatched/ratchet-takes.tsv

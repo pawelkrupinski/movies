@@ -150,11 +150,9 @@ object UnmatchedClusters {
       all("tmdb", outcome.unanswered)
   }
 
-  /** What the takes check sets (`KINOWO_RATCHET_CAPTURE_GAPS=unknown`) to MEASURE a change over a capture that lacks the
-   *  lookups it newly asks: the ratchet then reads them as unknown, writes them to [[GapsPath]] and still writes its
-   *  takes, where it otherwise fails the capture as stale — every country's takes lost to one country's gap. */
-  val GapsEnv = "KINOWO_RATCHET_CAPTURE_GAPS"
-  def gapsAsUnknown(env: Map[String, String]): Boolean = env.get(GapsEnv).contains("unknown")
+  /** Where the ratchet writes the gaps it read as unknown (`settings.CaptureGapsAsUnknown`, which the takes check sets to
+   *  MEASURE a change over a capture lacking the lookups it newly asks) — the takes it still writes, where it otherwise
+   *  fails the capture as stale and every country's takes are lost to one country's gap. */
   val GapsPath: Path = Path.of("target", "identity-unmatched", "capture-gaps.tsv")
   def writeGaps(path: Path, gaps: Seq[Gap]): Unit = {
     Files.createDirectories(path.toAbsolutePath.getParent)
