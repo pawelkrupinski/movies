@@ -152,9 +152,17 @@ object IdentityResolver {
    *  but a venue billing the work on its own as well bills this as another thing: DE Kleines Theater am Weingarten's
    *  "Mystery-Vorfilm als Warm-up zu „Miles Davis – Birth of The Cool“" beside its "MILES DAVIS: BIRTH OF THE COOL". */
   private[identity] def besideItsScreening(members: Seq[EvidenceNode], cluster: Seq[EvidenceNode]): Seq[(EvidenceNode, String)] = {
-    def quotes(node: EvidenceNode) = QuotedWithin.findFirstMatchIn(node.evidence.rawTitle).exists { m =>
-      val around = node.evidence.rawTitle.take(m.start) + " " + node.evidence.rawTitle.drop(m.end)
-      around.exists(_.isLetter)
+    // the film quoted mid-sentence, a word of the venue's running into the quote ("… als Warm-up zu „…“"): a quote heading
+    // the billing ("„Baranek Shaun i kudłata bestia” Rodzinne Poranki Filmowe") or after a break names the evening's film
+    def quotes(node: EvidenceNode) = QuotedWithin.findAllMatchIn(node.evidence.rawTitle).exists { m =>
+      val before = node.evidence.rawTitle.take(m.start).trim
+      before.lastOption.exists(_.isLetter) && namesAFilmOf(m.group(1), node)
+    }
+    def namesAFilmOf(quoted: String, node: EvidenceNode) = {
+      import services.movies.TitleContainment.tokens
+      val words = tokens(quoted)
+      cluster.exists(other => (other ne node) && tokens(other.evidence.rawTitle) == words) ||
+        cluster.exists(other => (other ne node) && IdentityMeasures.key(other.evidence.rawTitle) == IdentityMeasures.key(quoted))
     }
     members.filter(quotes).flatMap { node =>
       val venues = node.listings.map(_.cinema).toSet
