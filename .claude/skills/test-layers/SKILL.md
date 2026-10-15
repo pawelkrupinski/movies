@@ -106,7 +106,7 @@ A plain `sbt -batch` pays a JVM start and, in a fresh worktree, a cold compile o
 checkout (`sbt --client`), and seeds a fresh worktree's `project/target` and `*/target/scala-*`
 from the newest local build of a main commit (another worktree's, the root checkout's, or an
 identity tool's ref tree; APFS clones), so the first compile is incremental. A watchdog stops the
-server when the worktree is removed or after an idle hour (`KINOWO_SBT_WARM_IDLE_MINUTES`);
+server when the worktree is removed or after 30 idle minutes (`KINOWO_SBT_WARM_IDLE_MINUTES`);
 `--status`, `--stop`, `--reap`, `--seed`. The pre-push hook runs its sbt check through the kept
 server too (3–5 s instead of a ~55 s sbt JVM). Don't mix it with a plain `sbt` in the same
 checkout while the server lives: two compilers over one target/ delete each other's classes.

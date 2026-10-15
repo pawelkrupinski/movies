@@ -26,7 +26,7 @@
 #   scratch_git "$repo" commit -qm base  # git -C "$repo" ..., refusing this checkout itself
 #
 # scripts/scratch-git-test.sh proves the isolation against a decoy repository; the
-# ScratchGitIsolationSpec lint fails the build on a test script that calls `git` directly.
+# SharedMachineStateLintSpec (worker/src/test/scala/deploy) fails the build on a test script that calls `git` directly.
 
 while IFS= read -r _scratch_git_var; do
   unset "$_scratch_git_var"

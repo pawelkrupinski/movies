@@ -509,6 +509,7 @@ has every flag; name these tools in every subagent brief.
 
 - Why does this listing take (or not take) a film; did commit X move it; first bad commit → `scripts/identity-slice`
   (`--ref A --ref B`, `--bisect`, `--batch`); the whole WHY trace from the capture → `scripts/identity-slice --explain`
+  (alias `scripts/identity-explain`); what prod takes for it now, beside the slice's take → `--prod-mirror`
 - Why does a raw title clean / search / shape so; which title rule fired → `scripts/title-trace`
 - Is a scraper reading a venue's field wrong; did commit X change what it reads; what prod holds for it now →
   `scripts/venue-replay <cc> <venue>` (`--ref A --ref B`, `--prod`)
@@ -530,6 +531,7 @@ hand. Edit a row in place, never add a second for one key; a venue's row overrid
 or made known-wrong (with why) in the same commit; a cured known-wrong scope fails as stale until struck; a new suspect
 is judged, never added undecided. `python3 scripts/ci/identity_judgements_lint.py` checks all of it in a second (the
 pre-push hook runs it; its test runs it in CI). Columns and rules: `scripts/ci/identity_judgements.py`.
+
 **Speed.** Run sbt through `scripts/sbt-warm "<command>"` (one kept server per worktree — extras are stopped on the next call, and it exits after 30 idle minutes; a fresh worktree seeded from
 the newest local main build: a cold 232 s spec run becomes ~50 s, then the spec's own 41 s); one spec while
 iterating, the module's suite once before pushing. `identity-slice --batch` runs slices in parallel and shares each
@@ -539,7 +541,8 @@ slice's result per (recording, ref) across checkouts — a 2,500-listing DE batc
 **Data sources.** The local prod mirror (`mongodb://127.0.0.1:28017`, databases `kinowo*_prod_mirror`) holds prod's
 current state — `identity_traces`, `identity_model_families`, `movie_slots`, `screenings`, … — and may be read
 (READ-ONLY; never `:27017`, never prod itself). Check it with `scripts/local-mirror/freshness <cc>` first. Recordings
-and captures are cached in `~/.cache/kinowo-identity`.
+and captures are cached in `~/.cache/kinowo-identity`; a tool's default recording is the newest green "Record scrape
+fixtures" run that holds the country's corpus, and a recording it cannot fetch fails the tool, never falls back.
 
 ## Don't iterate on transient errors
 

@@ -5,8 +5,9 @@ description: Tools for identity-resolver investigations — why a listing took (
 
 # Investigating an identity take
 
-Four tools replace the mechanics that used to eat an investigation's hours. All of them read the
-**unmatched-cluster capture** (`test/resources/fixtures/identity-unmatched/<cc>.json.gz`, a few MB per
+The tools below replace the mechanics that used to eat an investigation's hours. `identity-slice` (and
+`venue-replay`, `recording-diff`, `listing-history --replay`) read a **recording**; `identity-slice --explain`,
+`identity-judge-cards` and the ratchet report read the **unmatched-cluster capture** (`test/resources/fixtures/identity-unmatched/<cc>.json.gz`, a few MB per
 country): a recording's clusters the model left unmatched, with every answer the resolver and the agreement
 stage read for them. Replaying it is a pure function — no Mongo, no network, no 100–400 MB recording tree.
 
@@ -23,7 +24,7 @@ Design and limits: docs/design/identity-slice.md.
 | Question | Command |
 |---|---|
 | Why does «title» at a venue take film X (or none) — matched listings too? | `scripts/identity-slice de --venue cinestar --title "rückkehr des königs"` (or `--key 'venue\|raw title'`) |
-| Did commit Y change that? | `… --ref Y~1 --ref Y` — both refs on ONE recording (`--recording RUN`, default the newest green) |
+| Did commit Y change that? | `… --ref Y~1 --ref Y` — both refs on ONE recording (`--recording RUN`, default the newest green recording that holds the country's corpus) |
 | A prod take-change log line | `scripts/identity-slice --log '<the line's JSON>'` (its `repro` field is the same command) |
 | Which commit of A..B moved it? | `… --bisect A..B` |
 | Measure a rule change over many listings | `scripts/identity-slice de --batch FILE --ref BASE --ref HEAD [--labels TSV]` → cured / lost / new-wrong (parallel, results shared — see "Fast batches") |
@@ -76,7 +77,8 @@ Design and limits: docs/design/identity-slice.md.
 
 ## title-trace
 
-`scripts/title-trace "<raw title>" --country <cc> [--venue X] [--ref A [--ref B]]` — no recording, no network: one
+`scripts/title-trace "<raw title>" --country <cc> [--venue X] [--ref A [--ref B]]` (or `--batch FILE` of
+`country<TAB>venue<TAB>raw title` lines, one JVM per ref for all of them) — no recording, no network: one
 JVM over the code alone (a ref compiled once into the shared cache, as identity-slice does; ~5 s warm). Prints, in
 production order, each step's own answer:
 
@@ -138,7 +140,8 @@ recordings is `scripts/recording-diff`. Cases pinned in `scripts.VenueReplaySpec
 
 ## label-lookup
 
-`scripts/label-lookup <cc> --title T [--venue V]` or `--film tmdb:N` — Python, no JVM, ~1 s. Reads the one judgements
+`scripts/label-lookup <cc> --title T [--venue V]` or `--film tmdb:N` (`--no-prod` skips the mirror, `--no-history`
+each row's last-changing commit) — Python, no JVM, ~1 s. Reads the one judgements
 file, `test/resources/fixtures/identity-judgements.tsv` (each row: verdict, state, scope, reason, judged, evidence),
 and `expected-matches.tsv`, and prints:
 
@@ -230,10 +233,12 @@ one listing's take over time, ~15 s without `--replay`:
   `LISTING_HISTORY_SLICE=<other checkout>/scripts/identity-slice` replays with another identity-slice — needed while
   this checkout's tool files no longer compile at the deployed refs (from 83b869548, `FiledAnswers` reads
   `Capture.live`, which refs before it lack: every ref before it fails to compile).
+  Where the local prod mirror is readable a third view replays with **prod's state now** (`--prod-mirror`).
+  `--replay-limit N` (default 6) bounds how many deploys are replayed.
 
 ## identity-slice --explain
 
-`scripts/identity-explain <cc> …` is its alias (prod's older take-change `repro` lines print it).
+`scripts/identity-explain <cc> …` is its alias (prod's take-change `repro` lines printed it until a355c464e).
 
 Prints, per matching cluster: the billing (title, clean/search title, year, runtime, directors, catalogue ids)
 and venue page facts, listings billed alike collapsed; the **captured** model decision; the cluster

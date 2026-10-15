@@ -13,7 +13,7 @@ the decision's explanation — from an "Identity capture" run, the PR it opened,
               `sbt "worker/testOnly services.identity.UnmatchedClustersRatchetSpec"`.
   --status    only these (default WRONG,UNJUDGED,MOVED,LOST); ALL for every finding
   --explain   print each take's explanation under it
-  --tsv       print the findings as TSV (the artifact's columns) instead of the table — for scripts/identity-judge-cards
+  --tsv       print the findings as TSV (the artifact's columns) instead of the table, for a script or a spreadsheet
 
 Downloads are kept in $KINOWO_IDENTITY_CACHE/ratchet/<run>/ (default ~/.cache/kinowo-identity): a repeat is instant.
 """
