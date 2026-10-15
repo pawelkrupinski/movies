@@ -64,7 +64,7 @@ jobs:
             checks: write
             packages: write
 
-    # The images are BUILT WHILE ci RUNS and only PUBLISHED here. ci's `image-web` and this workflow's
+    # The images are BUILT WHILE ci RUNS and only PUBLISHED here. ci's `e2e (corpus)` row and this workflow's
     # `image-worker` build them from the dists ci's `e2e (corpus)` row staged, while ci's slowest rows
     # still run, and push them under the commit SHA alone — a tag nothing deploys. `publish-web` /
     # `publish-worker` below `needs: ci` (the worker's also `needs: image-worker`),
@@ -288,7 +288,7 @@ jobs:
     #
     # PUBLISH AND RECORD IN ONE JOB. The marker write used to be a `record-<tier>` job of its own,
     # so the `contents: write` token never sat in a job that ran a Docker build of project code.
-    # The images are built elsewhere now (ci's `image-web`, `image-worker` below) and this job only
+    # The images are built elsewhere now (ci's `e2e (corpus)` row, `image-worker` below) and this job only
     # copies registry tags with the runner's own docker CLI: no project code and no third-party
     # action runs here, so the split bought nothing but a second job hop on every push.
     publish-web:
@@ -335,7 +335,7 @@ jobs:
                   echo "value=main-$(date -u +%Y%m%d%H%M%S)-${sha:0:7}" >> "$GITHUB_OUTPUT"
 
             - name: Publish the image ci built under the tags that ship it
-              # ci's `image-web` job built this commit's image while the rest of ci ran, and pushed it
+              # ci's `e2e (corpus)` row built this commit's image while the rest of ci ran, and pushed it
               # under its SHA tag ONLY — a tag nothing deploys. This job runs only once ci is green, and
               # gives those same bytes the two names that ship: `main-<utc>-<sha7>`, the one Flux's image
               # automation sorts and DEPLOYS, and `latest`, so a hand-applied manifest resolves to

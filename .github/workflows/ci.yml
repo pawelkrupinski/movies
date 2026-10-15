@@ -582,6 +582,8 @@ jobs:
         permissions:
             contents: read
             checks: write
+            # The corpus row builds and pushes the web image (SHA tag only) with the built-in GITHUB_TOKEN.
+            packages: write
         steps:
             - uses: actions/checkout@v5
 
@@ -646,9 +648,9 @@ jobs:
             # STAGING row only, the lightest e2e shard, which has compiled the apps
             # already. (This used to close the `test` job, Main's longest ci row,
             # whose tail it lengthened by ~1 min of staging + uploads + lint.) On a
-            # push to main the dists are then handed to the `image-web` job below
-            # and main.yml's `image-worker` (through the uploads that follow), which
-            # would otherwise restage them from a cold compile
+            # push to main the web dist then becomes its image right here, and the
+            # worker's is handed to main.yml's `image-worker` (the upload below), which
+            # would otherwise restage it from a cold compile
             # on the post-CI critical path. On a PR run (branch-ci.yml never
             # reaches main.yml) this staging is the only place a dist that stopped
             # linking, or a reappearing Scaladoc tree, is caught at all.
@@ -671,19 +673,44 @@ jobs:
                       exit 1
                   fi
 
-            - name: Hand the staged web dist to main.yml's image build
-              # Not on a PR run (branch-ci.yml's only trigger), which nothing downloads from;
-              # every main.yml run — push or workflow_dispatch — needs it. Uncompressed — the dist is
-              # jars, already zipped, so compressing again only costs upload time — and
-              # kept one day, since its one consumer runs minutes after this job.
+            # THE WEB IMAGE, BUILT HERE, from the dist this row just staged — pushed under this commit's SHA tag
+            # ONLY. Nothing deploys a SHA tag; main.yml's `publish-web` gives these bytes the tags that ship
+            # (`main-<utc>-<sha7>`, `latest`) only once ci is green and the tier's paths changed
+            # (DeployImageReuseSpec). It was a job of its own, `image-web`, which `needs: e2e` held until the
+            # `rest` row finished too and then queued for a runner: it ended at 5.5 min on run 38810289586, after
+            # every ci row. Here it costs this row ~1 min and no runner. Never on a PR run.
+            - name: Lay the staged web dist where the Dockerfile's whitelisted context sees it
               if: matrix.shard == 'corpus' && github.event_name != 'pull_request'
-              uses: actions/upload-artifact@v6
+              # `stage/`, the only path .dockerignore lets through.
+              run: cp -R web/target/universal/stage stage
+
+            - if: matrix.shard == 'corpus' && github.event_name != 'pull_request'
+              uses: docker/login-action@v3
               with:
-                  name: stage-web
-                  path: web/target/universal/stage
-                  compression-level: 0
-                  retention-days: 1
-                  if-no-files-found: error
+                  registry: ghcr.io
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+
+            # BuildKit from Docker Hub's mirror, Docker Hub only when the mirror fails (CiImageMirrorSpec).
+            - if: matrix.shard == 'corpus' && github.event_name != 'pull_request'
+              uses: ./.github/actions/setup-buildx
+
+            - name: Build and push the web image under this commit's SHA tag only
+              if: matrix.shard == 'corpus' && github.event_name != 'pull_request'
+              uses: docker/build-push-action@v6
+              with:
+                  context: .
+                  # amd64 ONLY: the cluster is Hetzner x86_64.
+                  platforms: linux/amd64
+                  push: true
+                  build-args: |
+                      BIN=web
+                      COMMIT_SHA=${{ github.sha }}
+                  tags: ghcr.io/${{ github.repository_owner }}/movies-web:${{ github.sha }}
+                  # INLINE cache, restored from the image last shipped: the layers worth reusing (base
+                  # OS, JRE) are all in `latest`, and inline metadata rides the push itself.
+                  cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/movies-web:latest
+                  cache-to: type=inline
 
             - name: Hand the staged worker dist to main.yml's image build
               # Not on a PR run (branch-ci.yml's only trigger), which nothing downloads from;
@@ -716,57 +743,6 @@ jobs:
               run: npm ci
             - if: matrix.shard == 'corpus'
               run: npm run lint
-
-    # THE WEB IMAGE, BUILT WHILE THE REST OF ci RUNS. It needs only the dist the e2e corpus row
-    # staged, which is ready minutes before the slowest ci row finishes, so it rides runners the e2e rows
-    # have just given back (no slot at t=0 — CiRunnerBudgetSpec counts only jobs without `needs`).
-    # SAFETY: it pushes this commit's SHA tag ONLY. Nothing deploys a SHA tag; main.yml's
-    # `publish-web` gives these bytes the tags that ship (`main-<utc>-<sha7>`, `latest`) only once
-    # ci is green and the tier's paths changed (DeployImageReuseSpec). Never on a PR run.
-    image-web:
-        needs: e2e
-        if: github.event_name != 'pull_request'
-        runs-on: ubuntu-26.04
-        permissions:
-            contents: read
-            # The built-in GITHUB_TOKEN can push to GHCR; no new credential.
-            packages: write
-        steps:
-            - uses: actions/checkout@v5
-
-            - name: Fetch the web distribution the e2e corpus row staged
-              # Straight into `stage/`, the only path the Dockerfile's whitelisted context
-              # (.dockerignore) can see. The artifact drops file modes; the Dockerfile's
-              # `chmod +x bin/*` restores the one that matters.
-              uses: actions/download-artifact@v6
-              with:
-                  name: stage-web
-                  path: stage
-
-            - uses: docker/login-action@v3
-              with:
-                  registry: ghcr.io
-                  username: ${{ github.actor }}
-                  password: ${{ secrets.GITHUB_TOKEN }}
-
-            # BuildKit from Docker Hub's mirror, Docker Hub only when the mirror fails (CiImageMirrorSpec).
-            - uses: ./.github/actions/setup-buildx
-
-            - name: Build and push under this commit's SHA tag only
-              uses: docker/build-push-action@v6
-              with:
-                  context: .
-                  # amd64 ONLY: the cluster is Hetzner x86_64.
-                  platforms: linux/amd64
-                  push: true
-                  build-args: |
-                      BIN=web
-                      COMMIT_SHA=${{ github.sha }}
-                  tags: ghcr.io/${{ github.repository_owner }}/movies-web:${{ github.sha }}
-                  # INLINE cache, restored from the image last shipped: the layers worth reusing (base
-                  # OS, JRE) are all in `latest`, and inline metadata rides the push itself.
-                  cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/movies-web:latest
-                  cache-to: type=inline
 
     # Cross-browser page tests, split into one matrix job per engine
     # family so the CI checks list groups red rows by browser. Every

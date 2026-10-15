@@ -21,10 +21,11 @@ class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
   private lazy val publishWorker = RepoFile.block(mainYml, "publish-worker")
   private lazy val ciYml       = RepoFile.read(".github/workflows/ci.yml")
 
-  /** Where each tier's image job lives: the web's in ci, the worker's in main.yml — outside ci, so
-   *  `publish-web`, which `needs: ci`, never waits for the worker's AOT training. */
+  /** Where each tier's image is built: the web's at the end of ci's `e2e (corpus)` row, which staged its dist;
+   *  the worker's in main.yml's `image-worker` — outside ci, so `publish-web`, which `needs: ci`, never waits for
+   *  the worker's AOT training. */
   private def imageJob(tier: String): String =
-    if (tier == "web") RepoFile.block(ciYml, "image-web") else RepoFile.block(mainYml, "image-worker")
+    if (tier == "web") RepoFile.block(ciYml, "e2e") else RepoFile.block(mainYml, "image-worker")
 
   // ONE IMAGE PER TIER, built once in ci. A Fly build of the same Dockerfile (on a
   // builder this project does not run) failed roughly two runs in five; with the
@@ -120,12 +121,18 @@ class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
     for ((tier, publish) <- Seq("web" -> publishWeb, "worker" -> publishWorker)) {
       withClue(s"$tier: ") {
         val image = imageJob(tier)
-        ciYml should include(s"name: stage-$tier")
-        image should include("actions/download-artifact")
-        image should include(s"name: stage-$tier")
-        // The web's job `needs:` the e2e rows inside ci; the worker's, outside ci, waits for its dist.
-        if (tier == "web") image should include("needs: e2e")
-        else image should include("""scripts/ci/wait-for-run-artifact.sh stage-worker "e2e (corpus)"""")
+        // The web's image is built where its dist was staged, from the stage on disk; the worker's, outside ci,
+        // downloads the dist that row uploads once it is there.
+        if (tier == "web") {
+          ciYml should not include "name: stage-web"
+          RepoFile.positionOf(image, """sbt "web/stage"""") should be < RepoFile.positionOf(image, "cp -R web/target/universal/stage stage")
+          RepoFile.positionOf(image, "cp -R web/target/universal/stage stage") should be < RepoFile.positionOf(image, "build-push-action")
+        } else {
+          ciYml should include("name: stage-worker")
+          image should include("actions/download-artifact")
+          image should include("name: stage-worker")
+          image should include("""scripts/ci/wait-for-run-artifact.sh stage-worker "e2e (corpus)"""")
+        }
         commands(publish) should not include "sbt "
         commands(publish) should not include "build-push-action"
         commands(publish) should include("docker buildx imagetools create")
@@ -149,8 +156,9 @@ class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
         val tags = image.linesIterator.map(_.trim).filter(_.startsWith("tags:")).toSeq
         tags shouldBe Seq(s"tags: ghcr.io/$${{ github.repository_owner }}/movies-$tier:$${{ github.sha }}")
         image should not include "steps.tag.outputs.value"
-        // The web's job sits in ci, which a PR run calls too; the worker's in main.yml, push-only.
-        if (tier == "web") image should include("if: github.event_name != 'pull_request'")
+        // The web's build sits in ci, which a PR run calls too; the worker's in main.yml, push-only.
+        if (tier == "web") RepoFile.step(ciYml, "Build and push the web image under this commit's SHA tag only") should include(
+          "if: matrix.shard == 'corpus' && github.event_name != 'pull_request'")
         publish should include(if (tier == "web") "needs: [ci, gates]" else "needs: [ci, gates, image-worker]")
         publish should include(s"-t ghcr.io/$${{ github.repository_owner }}/movies-$tier:$${{ steps.tag.outputs.value }}")
         publish should include(s"-t ghcr.io/$${{ github.repository_owner }}/movies-$tier:latest")
