@@ -21,6 +21,8 @@
 #        timeout(1)'s contract without timeout(1), which stock macOS lacks: the command runs in a process group of its
 #        own, ended whole (TERM, then KILL two seconds later: an sbt-forked JVM too); and unlike GNU timeout, which
 #        leaves the terminal's group, a Ctrl-C reaches it — passed on to the group, then to the caller as the signal.
+#        Run in a terminal's foreground with it on stdin, the command's group holds the foreground while it runs, so
+#        one touching the terminal (stty, a prompt) is not stopped, and a Ctrl-C there reaches the caller too.
 #   usage_from_header [file]        -> the header comment of <file> (default the running script, $0): from line 2 to the
 #        first `set ` line, the `# ` stripped, a leading blank line dropped
 #   KINOWO_COUNTRIES                -> the country codes every tool loops over, in one order (kinowo_countries_csv: "pl,de,…")
@@ -44,14 +46,30 @@ bounded() {
   perl -e '
     use POSIX ":sys_wait_h";
     my $seconds = shift;
+    # The terminal: when bounded runs in its foreground with it on stdin, the command'"'"'s group is handed the foreground
+    # while it runs, and it is taken back after -- a group of its own in the background is stopped (SIGTTOU/SIGTTIN)
+    # the moment it touches the terminal (stty, a password prompt, a JLine sbt client), until the deadline.
+    my $home = getpgrp();
+    my $tty = (-t STDIN && POSIX::tcgetpgrp(0) == $home) ? 0 : undef;
+    $SIG{TTOU} = "IGNORE" if defined $tty; # a group out of the foreground may then move it, as a shell does
     my $pid = fork() // die "fork: $!";
-    if ($pid == 0) { setpgrp(0, 0); exec @ARGV or exit 127; }
+    if ($pid == 0) {
+      setpgrp(0, 0);
+      if (defined $tty) { POSIX::tcsetpgrp($tty, $$); $SIG{TTOU} = "DEFAULT"; }
+      exec @ARGV or exit 127;
+    }
+    if (defined $tty) { setpgrp($pid, $pid); POSIX::tcsetpgrp($tty, $pid); } # whichever of the two runs first
+    my $take_back = sub { POSIX::tcsetpgrp($tty, $home) if defined $tty; };
     # the whole group: TERM, a moment to go, then KILL whatever is left of it (a forked JVM included)
+    my $end_group = sub {
+      kill "TERM", -$pid;
+      for (1 .. 20) { waitpid($pid, WNOHANG); last unless kill 0, -$pid; select(undef, undef, undef, 0.1); }
+      kill "KILL", -$pid;
+      $take_back->();
+    };
     my $stop = sub {
       my ($code, $signal) = @_;
-      kill "TERM", -$pid;
-      for (1 .. 20) { last if waitpid($pid, WNOHANG) == $pid; select(undef, undef, undef, 0.1); }
-      kill "KILL", -$pid;
+      $end_group->();
       # a signal is passed on as one: the calling shell sees it interrupted, as it would the command itself
       if ($signal) { $SIG{$signal} = "DEFAULT"; kill $signal, $$; }
       exit $code;
@@ -61,7 +79,17 @@ bounded() {
     $SIG{TERM} = sub { $stop->(143, "TERM") };
     alarm $seconds;
     waitpid($pid, 0);
-    exit($? & 127 ? 128 + ($? & 127) : $? >> 8);' "$@"
+    my $status = $?;
+    $take_back->();
+    # A Ctrl-C at the terminal reached only the command, the foreground: what it left running (a background job,
+    # which ignores it) is ended with it, and the signal passed on to the group bounded was called from, as the
+    # terminal would have sent it, so the caller stops as it would had the command run in its group.
+    if (defined $tty && grep { ($status & 127) == $_ } (2, 3)) {
+      $end_group->();
+      $SIG{INT} = $SIG{QUIT} = "DEFAULT";
+      kill $status & 127, -$home;
+    }
+    exit($status & 127 ? 128 + ($status & 127) : $status >> 8);' "$@"
 }
 
 usage_from_header() { sed -n '2,/^set /p' "${1:-$0}" | sed -e '$d' -e 's/^# \{0,1\}//' -e 's/^#$//' | sed -e '1{/^$/d;}'; }

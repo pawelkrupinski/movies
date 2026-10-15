@@ -47,6 +47,41 @@ check "a code no tool knows is a usage error" "demo: unknown country xx (one of 
 check "a flag without its value is a usage error" "demo: --country needs a country code (one of pl,de,uk,us,es)|demo: see demo --help|exit=2" \
   "$(countries --country)"
 
+# ── bounded under a terminal ──────────────────────────────────────────────────────────────────────
+# A pseudo-terminal from script(1) (BSD's/macOS's and util-linux's take their arguments differently): the line runs in
+# its foreground with it on stdin, as a tool run by hand does. The feed holds the terminal's input open until the line
+# is done or its shell gone (writing a Ctrl-C into it once the line says it is ready, with `ctrl-c`), all bounded.
+# shellcheck disable=SC2016 # the lines are run by the shell in the terminal
+in_terminal() { # [ctrl-c] <shell line> -> what the terminal showed, \r dropped
+  local interrupt=""; [ "$1" = ctrl-c ] && { interrupt=1; shift; }
+  rm -f "$work/ready" "$work/done" "$work/shell"
+  local line='echo $$ > "$2/shell"; . "$1"; TOOL_NAME=demo; '"$1"'; touch "$2/done"' run
+  if script -V 2>&1 | grep -q util-linux; then
+    run=(script -qec "$(printf '%q ' bash -c "$line" _ "$REPO_ROOT/scripts/tool-conventions.sh" "$work")" /dev/null)
+  else
+    run=(script -q /dev/null bash -c "$line" _ "$REPO_ROOT/scripts/tool-conventions.sh" "$work")
+  fi
+  { for _ in $(seq 1 200); do
+      [ -e "$work/done" ] && break
+      [ -s "$work/shell" ] && ! kill -0 "$(cat "$work/shell")" 2>/dev/null && break
+      if [ -n "$interrupt" ] && [ -e "$work/ready" ]; then printf '\003'; interrupt=""; fi
+      sleep 0.1
+    done; } | bounded 30 "${run[@]}" 2>&1 | tr -d '\r'
+}
+if command -v script > /dev/null; then
+  check "in a terminal, a command touching it is not stopped (SIGTTOU) until the deadline" "tty-ok rc=0" \
+    "$(in_terminal 'bounded 10 sh -c "stty -echo; stty echo; echo tty-ok"; echo rc=$?' | grep -E 'tty-ok|rc=' | paste -sd' ' -)"
+  check "...the terminal the caller's again once the command ends, at the deadline too" "rc=124 back" \
+    "$(in_terminal 'bounded 1 sleep 20; echo rc=$?; stty -echo; stty echo; echo back' | grep -E 'rc=|back' | paste -sd' ' -)"
+  check "...a Ctrl-C there ends the command's whole group and its caller" "gone" \
+    "$(in_terminal ctrl-c 'bounded 30 sh -c "sleep 30 & echo \$! > $2/grandchild; touch $2/ready; sleep 30"; echo carried-on' > "$work/terminal"
+       if grep -q carried-on "$work/terminal"; then echo "the caller carried on"
+       elif kill -0 "$(cat "$work/grandchild")" 2>/dev/null; then echo alive; kill "$(cat "$work/grandchild")"
+       else echo gone; fi)"
+else
+  echo "  - no script(1): bounded under a terminal not checked"
+fi
+
 # ── gh_download ───────────────────────────────────────────────────────────────────────────────────
 # gh: answers each call from the next line of $STUB/answers ("ok", "absent", "fail", "hang"), recording it
 cat > "$work/bin/gh" <<'STUB'
