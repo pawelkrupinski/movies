@@ -178,7 +178,9 @@ targets_fingerprint() {
 
 # What the children compare against. Falls back to the last good value rather
 # than to empty, so one failed read can't look like an edit.
-published_fingerprint() { cat "${TARGETS_FP_FILE:-}" 2>/dev/null; }
+# `|| true`: under `set -e` an unreadable file (none published yet, the temp file
+# swept away) would otherwise end the supervisor that asked, not read as "don't know".
+published_fingerprint() { cat "${TARGETS_FP_FILE:-}" 2>/dev/null || true; }
 
 # ── Noticing that the daemon's own CODE changed under it ─────────────────────
 # The tailers re-read the .js files each time one STARTS, but the supervisor is
@@ -366,7 +368,6 @@ ensure_vault_env MONGODB_URI -- "$BASH" "$0" "$@" || exit 1
 # flyctl proxy on exit — extend it to take the children down with us, so Ctrl-C
 # doesn't strand N background mongosh processes.
 load_endpoints
-TARGETS_FP_FILE="$(mktemp "${TMPDIR:-/tmp}/kinowo-mirror-targets.XXXXXX")"
 FORCE_RESEED="$([ "${1:-}" = "--reseed" ] && echo 1 || echo 0)"
 until ensure_local_mongo && ensure_tunnel; do echo "[mirror] waiting for local Mongo + tunnel…"; sleep 5; done
 
@@ -376,7 +377,10 @@ echo "[mirror] mirroring: $DBS"
 
 CHILDREN=()
 cleanup_children() { for pid in "${CHILDREN[@]:-}"; do kill "$pid" 2>/dev/null || true; done; }
-trap 'cleanup_children; rm -f "$TARGETS_FP_FILE"; cleanup' EXIT INT TERM
+trap 'cleanup_children; rm -f "${TARGETS_FP_FILE:-}"; cleanup' EXIT INT TERM
+# Made only once the trap above removes it: made earlier, every exit before here (no
+# database found, Ctrl-C while waiting for the tunnel) left one behind in $TMPDIR.
+TARGETS_FP_FILE="$(mktemp "${TMPDIR:-/tmp}/kinowo-mirror-targets.XXXXXX")"
 
 # Publish the current collection-list digest BEFORE the tailers start, so each
 # one has something to compare against from its first poll.
