@@ -292,14 +292,14 @@ check "search plain ASCII" "manchester" "$(search_term "Manchester")"
 # --help must survive the header block growing: the new option near the top AND
 # the env vars on the last line both have to survive, which a fixed line range
 # stopped doing the moment the docs got longer.
-check "usage documents --all-top" "1" "$(usage | grep -q -- '--all-top' && echo 1 || echo 0)"
-check "usage documents the start rank" "1" "$(usage | grep -q -- '--all-top 2 4' && echo 1 || echo 0)"
-check "usage documents --country-top" "1" "$(usage | grep -q -- '--country-top' && echo 1 || echo 0)"
-check "usage documents the one-run-at-a-time rule" "1" "$(usage | grep -qi 'ONE capture run at a time' && echo 1 || echo 0)"
-check "usage documents the emulator revive" "1" "$(usage | grep -qi 're-boots it on the same port' && echo 1 || echo 0)"
-check "usage documents skipping a bad city" "1" "$(usage | grep -qi 'SKIPPED, not fatal' && echo 1 || echo 0)"
-check "usage documents EMULATORS"  "1" "$(usage | grep -q 'EMULATORS' && echo 1 || echo 0)"
-check "usage reaches the last header line" "1" "$(usage | grep -q 'NO_OPEN' && echo 1 || echo 0)"
+check "usage documents --all-top" "1" "$(usage | grep -- '--all-top' >/dev/null && echo 1 || echo 0)"
+check "usage documents the start rank" "1" "$(usage | grep -- '--all-top 2 4' >/dev/null && echo 1 || echo 0)"
+check "usage documents --country-top" "1" "$(usage | grep -- '--country-top' >/dev/null && echo 1 || echo 0)"
+check "usage documents the one-run-at-a-time rule" "1" "$(usage | grep -i 'ONE capture run at a time' >/dev/null && echo 1 || echo 0)"
+check "usage documents the emulator revive" "1" "$(usage | grep -i 're-boots it on the same port' >/dev/null && echo 1 || echo 0)"
+check "usage documents skipping a bad city" "1" "$(usage | grep -i 'SKIPPED, not fatal' >/dev/null && echo 1 || echo 0)"
+check "usage documents EMULATORS"  "1" "$(usage | grep 'EMULATORS' >/dev/null && echo 1 || echo 0)"
+check "usage reaches the last header line" "1" "$(usage | grep 'NO_OPEN' >/dev/null && echo 1 || echo 0)"
 check "usage stops at the code" "" "$(usage | grep 'set -euo' || true)"
 
 # type_ must send spaces as %s — `adb shell input text` otherwise types only the
