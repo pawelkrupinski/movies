@@ -150,6 +150,12 @@ class MeasureTest(unittest.TestCase):
         self.assertIn("es: no identity-takes artifact", out)
         self.assertRegex(out, r"pl +model .* success")
 
+    def test_the_takes_row_column_quotes_the_takes_line_over_the_corpus_shape_one(self):
+        self.artifact("pl", BASE[:1], BASE[:1], self.final_none(), self.final_none(),
+                      verdict="corpus shape (pl): 1 new finding\nidentity takes (pl): 9 listings -- lost 0")
+        code, out = self.run_measure("--countries", "pl")
+        self.assertRegex(out, r"pl +model .*: identity takes \(pl\): 9 listings")
+
 
 if __name__ == "__main__":
     unittest.main()

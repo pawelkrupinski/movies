@@ -166,7 +166,8 @@ def render(countries, rows, examples=3):
     table = [head]
     for cc, c in countries.items():
         row_state = rows.get(cc, "?")
-        first = (c["verdict"] or [""])[0][:70]
+        # the takes' own line ("identity takes (cc): ... lost N, changed N ...") when the check wrote one
+        first = next((l for l in c["verdict"] if l.startswith("identity takes")), (c["verdict"] or [""])[0])[:70]
         if c["missing"] and not c["stages"]:
             table.append([cc, "-", "-", "-", "-"] + ["-"] * len(BUCKETS) + [f"{row_state}: {c['missing']}"])
             continue

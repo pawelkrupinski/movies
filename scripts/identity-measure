@@ -194,10 +194,16 @@ if [ -n "$nowait" ]; then
   exit 0
 fi
 
-attempts=1 start=$SECONDS
+attempts=1 start=$SECONDS misses=0
 while :; do
-  state=$(ghb run view "$dispatched_run" --json status,conclusion --jq '[.status, .conclusion] | @tsv') \
-    || die "could not read run $dispatched_run"
+  # A blip (a refused connection once ended a 20-minute measurement) is retried; ten failed reads in a row are not one.
+  if ! state=$(ghb run view "$dispatched_run" --json status,conclusion --jq '[.status, .conclusion] | @tsv'); then
+    misses=$((misses + 1))
+    [ "$misses" -lt 10 ] || die "could not read run $dispatched_run ($misses reads in a row)"
+    say "could not read run $dispatched_run (read $misses of 10): retrying"
+    sleep "$poll"; continue
+  fi
+  misses=0
   IFS=$'\t' read -r status conclusion <<< "$state"
   if [ "$status" = completed ]; then
     if [ "$conclusion" = cancelled ] && [ "$attempts" -lt 3 ]; then

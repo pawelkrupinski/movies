@@ -67,7 +67,9 @@ case "$1 $2" in
   "run view")
     case "$json" in
       url) echo "https://example.test/runs/777" ;;
-      status,conclusion) [ -n "${VIEW_FAILS:-}" ] && exit 1; printf 'completed\tsuccess\n' ;;
+      status,conclusion) [ -n "${VIEW_FAILS:-}" ] && exit 1
+                         [ -n "${VIEW_BLIPS:-}" ] && [ ! -f "$STUB/blipped" ] && { touch "$STUB/blipped"; exit 1; }
+                         printf 'completed\tsuccess\n' ;;
       status,headBranch,headSha) printf 'completed\tmeasure/abc-1\t%s\n' "$HEAD_SHA" ;;
       jobs) printf 'poland / takes\tfailure\n' ;;
     esac ;;
@@ -114,6 +116,7 @@ check "...and main's scripts/ci" "new" "$(scratch_git "$repo" show "$pushed:scri
 check "...and nothing else of main's" "false" \
   "$(scratch_git "$repo" cat-file -e "$pushed:rule.txt" 2>/dev/null && echo true || echo false)"
 
+check "a run read that fails once is retried, not the end of the measurement" "0" "$(VIEW_BLIPS=1 measure landable --countries pl)"
 check "a run that cannot be read is no measurement" "2" "$(VIEW_FAILS=1 measure landable --countries pl)"
 check "...and its branch is still deleted" "0" "$(measure_branches)"
 
