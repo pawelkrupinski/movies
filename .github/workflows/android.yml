@@ -94,7 +94,7 @@ jobs:
     # a platform. PRs build unsigned by design (see the header), so only other events require
     # the secrets. scripts/ci/preflight.sh never prints a value. (PreflightWiringSpec)
     preflight:
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:
             contents: read
@@ -165,7 +165,7 @@ jobs:
 
     build:
         needs: preflight
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         # `checks: write` so action-junit-report can post the failure
         # check-run + summary from the Gradle JUnit XML. `contents: write`
         # so the rolling-release step can create/update the public
@@ -413,7 +413,7 @@ jobs:
     instrumented:
         needs: [preflight, build]
         if: needs.preflight.outputs.emulator == 'true'
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 35
         permissions:
             contents: read
@@ -516,7 +516,7 @@ jobs:
     timings:
         needs: [preflight, build, instrumented]
         if: ${{ !cancelled() }}
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:
             actions: read

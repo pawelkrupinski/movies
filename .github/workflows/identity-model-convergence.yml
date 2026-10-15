@@ -39,7 +39,7 @@ on:
                 description: The runner label every leg runs on (country-convergence-leg.yml), e.g. ubuntu-24.04-arm.
                 required: false
                 type: string
-                default: ubuntu-latest
+                default: ubuntu-26.04
             takes-base:
                 description: The identity takes check's base commit, overriding the newest green one (re-judge a range a check passed unjudged).
                 required: false
@@ -69,7 +69,7 @@ jobs:
     # Seconds, first: the secrets the jobs below read are set, so a missing one fails here
     # rather than hours into a leg. (PreflightWiringSpec)
     preflight:
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         steps:
             - uses: actions/checkout@v5
@@ -136,7 +136,7 @@ jobs:
             mode:                          hermetic
             profile:                       ${{ inputs.profile == true }}
             jvm-options:                   ${{ inputs.jvm-options || '' }}
-            runner:                        ${{ inputs.runner || 'ubuntu-latest' }}
+            runner:                        ${{ inputs.runner || 'ubuntu-26.04' }}
             takes-base:                    ${{ inputs.takes-base || '' }}
             takes-only:                    ${{ inputs.takes-only == true }}
         # TMDB_API_KEY (the pre-suite fill signs TMDB's gaps with it), DECODO_PROXY_USER / DECODO_PROXY_PASS (the
@@ -155,7 +155,7 @@ jobs:
     request-bisect:
         needs: [leg]
         if: ${{ !cancelled() && needs.leg.result == 'failure' && github.ref == 'refs/heads/main' }}
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:
             actions: write
@@ -173,7 +173,7 @@ jobs:
     timings:
         needs: [preflight, leg, request-bisect]
         if: ${{ !cancelled() }}
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:
             actions: read
@@ -195,7 +195,7 @@ jobs:
     report:
         needs: [preflight, leg, request-bisect, timings]
         if: always() && !cancelled() && github.event_name == 'schedule'
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:
             contents: read

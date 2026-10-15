@@ -5391,7 +5391,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
    *  Pinning to Arial with `Liberation Sans` as the fallback gives
    *  identical metrics on both platforms (Liberation Sans was designed
    *  to be byte-for-byte metric-compatible with Arial; both ship by
-   *  default on ubuntu-latest GitHub runners and on macOS). Arial is
+   *  default on the Ubuntu GitHub runners and on macOS). Arial is
    *  also a hair wider than SF Pro / Roboto, so the test runs as a
    *  worst-case font width — passing the assertion here means real
    *  users on narrower system fonts are even more comfortably inside

@@ -30,7 +30,7 @@ permissions:
 
 jobs:
     roster-audit:
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 30
         steps:
             - uses: actions/checkout@v5
@@ -58,7 +58,7 @@ jobs:
     timings:
         needs: [roster-audit]
         if: ${{ !cancelled() }}
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:
             actions: read
@@ -80,7 +80,7 @@ jobs:
     report:
         needs: [roster-audit, timings]
         if: always() && !cancelled() && github.event_name == 'schedule'
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:
             contents: read

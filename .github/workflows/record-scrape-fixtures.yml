@@ -74,7 +74,7 @@ jobs:
     # rather than hours into a leg. The tunnel key for each leg's corpus capture, the TMDB key for its enrichment recording. scripts/ci/preflight.sh never prints a value.
     # (PreflightWiringSpec)
     preflight:
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         steps:
             - uses: actions/checkout@v5
@@ -164,7 +164,7 @@ jobs:
     timings:
         needs: [preflight, enrichment]
         if: ${{ !cancelled() }}
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:
             actions: read
@@ -188,7 +188,7 @@ jobs:
     report:
         needs: [preflight, enrichment, timings]
         if: always() && !cancelled() && github.event_name == 'schedule'
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:
             contents: read

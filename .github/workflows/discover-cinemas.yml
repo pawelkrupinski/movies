@@ -46,7 +46,7 @@ permissions:
 
 jobs:
     discover-cinemas:
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 30
         steps:
             # Short-lived installation token for the "Kinowo Sync Bot" GitHub App,
@@ -178,7 +178,7 @@ jobs:
     timings:
         needs: [discover-cinemas]
         if: ${{ !cancelled() }}
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:
             actions: read
@@ -200,7 +200,7 @@ jobs:
     report:
         needs: [discover-cinemas, timings]
         if: always() && !cancelled() && github.event_name == 'schedule'
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:
             contents: read

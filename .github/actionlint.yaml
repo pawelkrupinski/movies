@@ -1,0 +1,6 @@
+# actionlint's built-in GitHub-hosted label list (1.7.12) predates the Ubuntu 26.04 image, a hosted
+# runner GitHub announced in actions/runner-images#14748. Listed here so the lint knows it; drop the
+# entry once actionlint ships it.
+self-hosted-runner:
+    labels:
+        - ubuntu-26.04

@@ -43,7 +43,7 @@ jobs:
     timings:
         needs: [ci]
         if: ${{ !cancelled() }}
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:
             actions: read

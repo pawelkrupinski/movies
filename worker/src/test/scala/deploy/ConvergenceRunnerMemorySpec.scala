@@ -6,7 +6,7 @@ import org.scalatest.matchers.should.Matchers
 /**
  * Keeps the convergence legs inside the RUNNER, not just inside their own `-Xmx`.
  *
- * A leg runs two memory-hungry processes on one `ubuntu-latest` box: the sbt JVM
+ * A leg runs two memory-hungry processes on one `ubuntu-26.04` box: the sbt JVM
  * holding a whole country resident, and a mongod holding that country's databases.
  * Both default to sizing themselves as if they owned the machine — mongod's
  * WiredTiger cache is half of (RAM - 1GB), about 7.5 GB of the runner's 16 — so the
@@ -28,7 +28,7 @@ class ConvergenceRunnerMemorySpec extends AnyFlatSpec with Matchers {
   private lazy val leg      = RepoFile.read(".github/workflows/country-convergence-leg.yml")
   private lazy val callers  = Seq(".github/workflows/identity-model-convergence.yml").map(RepoFile.read)
 
-  /** `ubuntu-latest`, which every convergence job runs on. */
+  /** `ubuntu-26.04`, which every convergence job runs on. */
   private val RunnerGb = 16
 
   /** What the box owes everything that is neither the JVM heap nor the WiredTiger

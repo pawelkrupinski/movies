@@ -46,7 +46,7 @@ jobs:
     # `script:`, or this run's id. The legs read it through `env:`, never `${{ }}` in a
     # script body -- see OrderIndependenceSeedSpec.
     seed:
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         outputs:
             seed: ${{ steps.pick.outputs.seed }}
@@ -63,7 +63,7 @@ jobs:
     scala:
         name: scala (${{ matrix.order }})
         needs: seed
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 105
         strategy:
             fail-fast: false
@@ -106,7 +106,7 @@ jobs:
 
     android:
         needs: seed
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 45
         defaults:
             run:
@@ -149,7 +149,7 @@ jobs:
 
     android-instrumented:
         needs: seed
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 120
         defaults:
             run:
@@ -360,7 +360,7 @@ jobs:
     timings:
         needs: [seed, scala, android, android-instrumented, swift, ios]
         if: ${{ !cancelled() }}
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:
             actions: read
@@ -382,7 +382,7 @@ jobs:
     report:
         needs: [seed, scala, android, android-instrumented, swift, ios, timings]
         if: always() && !cancelled() && github.event_name == 'schedule'
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:
             contents: read

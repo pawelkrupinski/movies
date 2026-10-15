@@ -70,7 +70,7 @@ jobs:
     # rather than hours into a leg. OMDB_API_KEY is left out: the legs read it, but it is not a repository secret and they run without it. scripts/ci/preflight.sh never prints a value.
     # (PreflightWiringSpec)
     preflight:
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         steps:
             - uses: actions/checkout@v5
@@ -86,7 +86,7 @@ jobs:
     # so its CONCLUSION is not read: the requests are the gate, since only a red hermetic leg on
     # main leaves one.
     plan:
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:
             actions: read
@@ -136,7 +136,7 @@ jobs:
             fail-fast: false
             matrix:
                 request: ${{ fromJson(needs.plan.outputs.requests) }}
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         # Above everything the script may spend, so its own cap is what stops it and the
         # verdict it has so far still reaches the summary: up to two replays before bisecting
         # (the red commit when only the full leg failed, and the last green one under this
@@ -239,7 +239,7 @@ jobs:
     tell:
         needs: [plan, bisect]
         if: ${{ !cancelled() && needs.bisect.result != 'skipped' }}
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:
             contents: write
@@ -275,7 +275,7 @@ jobs:
     timings:
         needs: [preflight, plan, bisect, tell]
         if: ${{ !cancelled() }}
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:
             actions: read

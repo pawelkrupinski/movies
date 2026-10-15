@@ -44,21 +44,48 @@ class ActionPinningSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  /** `swift-actions/setup-swift@v2` refuses any Ubuntu outside its own list (20.04 / 22.04 /
-   *  24.04: `Version "26.04" of Ubuntu is not supported`), and swift.org publishes no 5.10 build
-   *  for 26.04 — so a job that installs Swift on `ubuntu-latest` turns red the day the label
-   *  moves (actions/runner-images#14748, rolling out 2026-10-19 → 11-19). It names the image. */
-  "every job installing Swift via setup-swift" should "pin its Ubuntu runner, not ubuntu-latest" in {
-    val unpinned = for {
+  /** `ubuntu-latest` is a label GitHub moves under us — to 26.04 from 2026-10-19
+   *  (actions/runner-images#14748) — so a job on it changes OS with no commit here, and nothing
+   *  to bisect when it turns red. Every job, and every runner input's default, names its image. */
+  "every CI job" should "run on a named Ubuntu image, not ubuntu-latest" in {
+    val floating = for {
+      path <- RepoFile.ciFiles()
+      line <- RepoFile.withoutComments(RepoFile.read(path)).linesIterator
+      if line.contains("ubuntu-latest")
+    } yield s"$path: ${line.trim}"
+
+    withClue("`ubuntu-latest` moves to a new Ubuntu with no commit here: ") {
+      floating shouldBe empty
+    }
+  }
+
+  /** `swift-actions/setup-swift@v2` refuses any Ubuntu outside its own list
+   *  (`Version "26.04" of Ubuntu is not supported`), and swift.org publishes no 5.10 build for
+   *  26.04 — so a job that installs Swift stays on an image setup-swift knows. */
+  private val SetupSwiftUbuntus = Set("20.04", "22.04", "24.04")
+
+  "every job installing Swift via setup-swift" should "run on an Ubuntu setup-swift supports" in {
+    val RunsOn = """runs-on:\s*ubuntu-(\d\d\.\d\d)\s""".r
+    val unsupported = for {
       file        <- RepoFile.workflows()
       (name, job) <- RepoFile.jobs(RepoFile.read(file.getPath))
-      code        = RepoFile.withoutComments(job)
+      code         = RepoFile.withoutComments(job)
       if code.contains("swift-actions/setup-swift@")
-      if !"""runs-on:\s*ubuntu-\d\d\.\d\d\s""".r.findFirstIn(code).isDefined
+      if !RunsOn.findFirstMatchIn(code).exists(m => SetupSwiftUbuntus(m.group(1)))
     } yield s"${file.getName}: $name"
 
-    withClue("setup-swift supports only the Ubuntu versions it lists; `ubuntu-latest` moves under it: ") {
-      unpinned shouldBe empty
+    withClue(s"setup-swift@v2 runs only on Ubuntu ${SetupSwiftUbuntus.toSeq.sorted.mkString(" / ")}: ") {
+      unsupported shouldBe empty
     }
+  }
+
+  /** Playwright's browser builds and the apt debs `--with-deps` pulls are per Ubuntu release
+   *  (`chromium-<rev>` is the same directory name on 24.04 and 26.04). Keyed on `runner.os`
+   *  alone, a 24.04 cache would restore onto a 26.04 runner and be reused forever. */
+  "the Playwright browser and apt-deb caches" should "key on the runner image" in {
+    val action = RepoFile.read(".github/actions/run-page-test/action.yml")
+    val keys   = """(?m)^\s*key:\s*(playwright-.*)$""".r.findAllMatchIn(action).map(_.group(1)).toSeq
+    keys should have size 2
+    all(keys) should include ("steps.browser-slug.outputs.image")
   }
 }

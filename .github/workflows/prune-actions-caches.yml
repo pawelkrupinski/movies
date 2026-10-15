@@ -35,7 +35,7 @@ permissions:
 
 jobs:
     prune:
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         steps:
             - uses: actions/checkout@v5
@@ -52,7 +52,7 @@ jobs:
     timings:
         needs: [prune]
         if: ${{ !cancelled() }}
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:
             actions: read
@@ -74,7 +74,7 @@ jobs:
     report:
         needs: [prune, timings]
         if: always() && !cancelled() && github.event_name == 'schedule'
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:
             contents: read

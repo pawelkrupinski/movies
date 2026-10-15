@@ -33,7 +33,7 @@ permissions:
 jobs:
     learn:
         name: learn
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 90
         permissions:
             contents: read
@@ -90,7 +90,7 @@ jobs:
     timings:
         needs: [learn]
         if: ${{ !cancelled() }}
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:
             actions: read

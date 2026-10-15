@@ -38,7 +38,7 @@ permissions:
 
 jobs:
     races:
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         # ~25s an iteration for the in-JVM set measured locally, the Mongo set more; 50 of both
         # fit well inside this, and a hung harness still stops.
         timeout-minutes: 180
@@ -84,7 +84,7 @@ jobs:
                     - { shard: 2/4, label: webkit-stress-2-4 }
                     - { shard: 3/4, label: webkit-stress-3-4 }
                     - { shard: 4/4, label: webkit-stress-4-4 }
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 90
         permissions:
             contents: read
@@ -104,7 +104,7 @@ jobs:
     timings:
         needs: [races, webkit-phones]
         if: ${{ !cancelled() }}
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:
             actions: read
@@ -126,7 +126,7 @@ jobs:
     report:
         needs: [races, webkit-phones, timings]
         if: always() && !cancelled() && github.event_name == 'schedule'
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:
             contents: read

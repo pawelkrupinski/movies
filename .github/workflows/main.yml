@@ -91,7 +91,7 @@ jobs:
     # here: the Grafana marker's are optional by design (mark-grafana-deploy skips without them), and
     # nothing else in this workflow reads one beyond what ci.yml's own jobs check.
     gates:
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         # EACH TIER'S GATE, answered here at t=0 rather than inside its build job after ci, so both
         # builds start the moment ci is green. A marker that moves between t=0 and ci's end can only
@@ -207,7 +207,7 @@ jobs:
         needs: gates
         # A failed tier gate (a deployed-marker read) says nothing about the commit: dispatch anyway.
         if: ${{ !cancelled() }}
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         permissions:
             actions: write
             contents: read
@@ -237,7 +237,7 @@ jobs:
     flake-ledger:
         needs: ci
         if: always() && needs.ci.result == 'failure' && github.ref == 'refs/heads/main'
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:
             contents: read
@@ -294,7 +294,7 @@ jobs:
     publish-web:
         needs: [ci, gates]
         if: needs.gates.outputs.web-changed == 'true'
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 10
 
         permissions:
@@ -403,7 +403,7 @@ jobs:
     image-worker:
         needs: gates
         if: needs.gates.outputs.worker-changed == 'true'
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 30
         permissions:
             contents: read
@@ -459,7 +459,7 @@ jobs:
     publish-worker:
         needs: [ci, gates, image-worker]
         if: needs.gates.outputs.worker-changed == 'true'
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 10
 
         permissions:
@@ -560,7 +560,7 @@ jobs:
     timings:
         needs: [ci, gates, kick-convergence, flake-ledger, publish-web, image-worker, publish-worker]
         if: ${{ !cancelled() }}
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:
             actions: read

@@ -41,7 +41,7 @@ permissions:
 jobs:
     # The countries asked for, as the fill's matrix — only the five that have a convergence leg.
     countries:
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 2
         outputs:
             codes: ${{ steps.codes.outputs.codes }}
@@ -65,7 +65,7 @@ jobs:
             fail-fast: false
             matrix:
                 code: ${{ fromJson(needs.countries.outputs.codes) }}
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         # `minutes` (at most 30) plus the grace for requests in flight, the pack and the publish.
         timeout-minutes: 40
         permissions:
@@ -90,7 +90,7 @@ jobs:
     timings:
         needs: [countries, fill]
         if: ${{ !cancelled() }}
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:
             actions: read

@@ -40,7 +40,7 @@
 # HOW THIS DIFFERS FROM THE WORKFLOW IT WAS PORTED FROM, since the difference is most of the file:
 # THERE IS NO SELF-HOSTED RUNNER HERE. That repository builds on a `[self-hosted, builder]` box that
 # lives inside the private network, has a persistent /nix volume, and reaches hosts over 10.0.0.0/8.
-# This repository has none, so every job below runs on `ubuntu-latest` with `cachix/install-nix-
+# This repository has none, so every job below runs on `ubuntu-26.04` with `cachix/install-nix-
 # action`, and closures are copied over each host's PUBLIC address. Three consequences worth knowing
 # rather than discovering:
 #
@@ -145,7 +145,7 @@ jobs:
   # defined"), or a module that does not parse.
   evaluate:
     name: nix-evaluate
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@v4
 
@@ -289,7 +289,7 @@ jobs:
 
   stage:
     name: nix-stage
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     # NEVER FROM A PULL REQUEST, AND NEVER FROM A BRANCH, and this needs a guard of its own rather
     # than relying on the trigger list. On a host running fleet.autoApply, STAGING IS THE TRIGGER:
     # writing the pin starts the applier within about a second. So a PR that staged would be a PR
@@ -394,7 +394,7 @@ jobs:
   timings:
     needs: [evaluate, stage]
     if: ${{ !cancelled() }}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     permissions:
       actions: read

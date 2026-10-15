@@ -57,7 +57,7 @@ permissions:
 
 jobs:
     refit:
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 150
         steps:
             # main's tip, not the triggering commit: a long run can see main gain a
@@ -157,7 +157,7 @@ jobs:
     timings:
         needs: [refit]
         if: ${{ !cancelled() }}
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:
             actions: read
@@ -179,7 +179,7 @@ jobs:
     report:
         needs: [refit, timings]
         if: always() && !cancelled() && github.event_name == 'schedule'
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:
             contents: read

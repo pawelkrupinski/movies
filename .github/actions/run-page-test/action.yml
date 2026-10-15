@@ -135,7 +135,11 @@ runs:
       if: inputs.kind == 'playwright'
       id: browser-slug
       shell: bash
-      run: echo "name=$(echo '${{ inputs.browsers }}' | tr ' ' '-')" >> "$GITHUB_OUTPUT"
+      # `image` (the runner's `ImageOS`, e.g. `ubuntu26`) keys the two OS-specific caches below:
+      # Playwright's browser builds and apt's debs differ per Ubuntu release.
+      run: |
+        echo "name=$(echo '${{ inputs.browsers }}' | tr ' ' '-')" >> "$GITHUB_OUTPUT"
+        echo "image=${ImageOS:-$(. /etc/os-release && echo "$ID$VERSION_ID")}" >> "$GITHUB_OUTPUT"
 
     # Cache the Playwright browser binaries for this row. Keyed on
     # package-lock + the row's engine list so a Playwright bump pulls
@@ -144,11 +148,11 @@ runs:
       if: inputs.kind == 'playwright'
       with:
         path: ~/.cache/ms-playwright
-        key: playwright-${{ runner.os }}-${{ steps.browser-slug.outputs.name }}-${{ hashFiles('page-tests-playwright/package-lock.json') }}
+        key: playwright-${{ runner.os }}-${{ steps.browser-slug.outputs.image }}-${{ steps.browser-slug.outputs.name }}-${{ hashFiles('page-tests-playwright/package-lock.json') }}
         # Fall back to any prior cache for this engine list so a package-lock
         # bump restores the old binary instead of a cold re-download.
         restore-keys: |
-          playwright-${{ runner.os }}-${{ steps.browser-slug.outputs.name }}-
+          playwright-${{ runner.os }}-${{ steps.browser-slug.outputs.image }}-${{ steps.browser-slug.outputs.name }}-
 
     - name: Install npm deps
       if: inputs.kind == 'playwright'
@@ -171,9 +175,9 @@ runs:
       if: inputs.kind == 'playwright'
       with:
         path: ~/apt-deb-cache/${{ steps.browser-slug.outputs.name }}
-        key: playwright-aptdebs-${{ runner.os }}-${{ steps.browser-slug.outputs.name }}-${{ hashFiles('page-tests-playwright/package-lock.json') }}
+        key: playwright-aptdebs-${{ runner.os }}-${{ steps.browser-slug.outputs.image }}-${{ steps.browser-slug.outputs.name }}-${{ hashFiles('page-tests-playwright/package-lock.json') }}
         restore-keys: |
-          playwright-aptdebs-${{ runner.os }}-${{ steps.browser-slug.outputs.name }}-
+          playwright-aptdebs-${{ runner.os }}-${{ steps.browser-slug.outputs.image }}-${{ steps.browser-slug.outputs.name }}-
 
     - name: Install Playwright browsers + system deps
       if: inputs.kind == 'playwright'

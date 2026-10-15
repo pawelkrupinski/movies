@@ -39,7 +39,7 @@ permissions:
 
 jobs:
     discover:
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 120
         steps:
             # main's tip, not the triggering commit: a long run can see main gain a
@@ -170,7 +170,7 @@ jobs:
     timings:
         needs: [discover]
         if: ${{ !cancelled() }}
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:
             actions: read
@@ -192,7 +192,7 @@ jobs:
     report:
         needs: [discover, timings]
         if: always() && !cancelled() && github.event_name == 'schedule'
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:
             contents: read

@@ -749,7 +749,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
       withClue(s"$line: ")(line should include ("\"${jvm[@]}\""))
     }
     // ...and a hand-dispatched runner label reaches every leg, x64 unless asked.
-    caller should include ("runner:                        ${{ inputs.runner || 'ubuntu-latest' }}")
+    caller should include ("runner:                        ${{ inputs.runner || 'ubuntu-26.04' }}")
     leg should include ("runs-on: ${{ inputs.runner }}")
     // Main's kick passes no inputs, so every push-dispatched run stays unprofiled.
     RepoFile.read(".github/workflows/main.yml") should not include ("-f profile")

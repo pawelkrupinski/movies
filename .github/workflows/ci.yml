@@ -74,7 +74,7 @@ permissions:
 
 jobs:
     test:
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         # `checks: write` so action-junit-report can post the failure
         # check-run + summary.
         permissions:
@@ -405,7 +405,7 @@ jobs:
                   if-no-files-found: ignore
 
     integration-test:
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         permissions:
             contents: read
             checks: write
@@ -510,7 +510,7 @@ jobs:
                 include:
                     - { shard: corpus,   cmd: e2eCorpus }
                     - { shard: rest,     cmd: e2eRest }
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         permissions:
             contents: read
             checks: write
@@ -658,7 +658,7 @@ jobs:
     image-web:
         needs: e2e
         if: github.event_name != 'pull_request'
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         permissions:
             contents: read
             # The built-in GITHUB_TOKEN can push to GHCR; no new credential.
@@ -795,7 +795,7 @@ jobs:
                       runs: |
                           chromium-galaxy-s10 ; @agnostic ; axe-core ;
                           chrome-desktop ; ; axe-core|@agnostic ;
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         permissions:
             contents: read
             checks: write
@@ -863,7 +863,7 @@ jobs:
                       browsers: webkit
                       label: webkit-behaviour
                       runs: 'webkit-iphone-13 ; @agnostic ; axe-core ;'
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         permissions:
             contents: read
             checks: write

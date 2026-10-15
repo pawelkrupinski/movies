@@ -60,7 +60,7 @@ permissions:
 jobs:
     # Seconds, first: every secret the jobs below read is set. (PreflightWiringSpec)
     preflight:
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         steps:
             - uses: actions/checkout@v5
@@ -80,7 +80,7 @@ jobs:
         name: capture (${{ matrix.code }})
         needs: preflight
         if: ${{ !inputs.open-pr }}
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 300
         permissions:
             contents: read
@@ -142,7 +142,7 @@ jobs:
     publish:
         needs: [preflight, capture]
         if: always() && !cancelled() && needs.preflight.result == 'success'
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 30
         permissions:
             contents: write
@@ -291,7 +291,7 @@ jobs:
     timings:
         needs: [preflight, capture, publish]
         if: ${{ !cancelled() }}
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:
             actions: read
@@ -313,7 +313,7 @@ jobs:
     report:
         needs: [preflight, capture, publish, timings]
         if: always() && !cancelled() && github.event_name == 'schedule'
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-26.04
         timeout-minutes: 5
         permissions:
             contents: read
