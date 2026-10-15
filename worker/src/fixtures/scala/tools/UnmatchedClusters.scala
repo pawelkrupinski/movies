@@ -19,7 +19,7 @@ import scala.jdk.CollectionConverters._
  * the other film database families' (`identity_family_answers` documents, as [[FamilyAnswerStore]] files them) and the
  * venue and TMDB posters' hashes (filed beside them by [[PosterAnswerStore]]) —
  * so the resolver plus the agreement over them is a pure function of one checked-in file per country
- * (`test/resources/fixtures/identity-unmatched/<cc>.json.gz`). `UnmatchedClustersCaptureIntegrationSpec`
+ * (`test/resources/fixtures/identity-unmatched/<cc>.json.gz`). `integration.UnmatchedClustersCapture`
  * records it from the recorded corpora and the signal-combination experiment's answer cache (real answers, never
  * hand-written); `UnmatchedClustersRatchetSpec` replays it: zero wrong takes, and the right ones only ever grow.
  */
@@ -306,7 +306,7 @@ object UnmatchedClusters {
   }
 
   /** The captured answers as the resolver's lookups, every TMDB question it holds no answer to noted — `queries` and
-   *  `films`, named in `unanswered` — to be asked live (`UnmatchedClustersFillIntegrationSpec`). A venue page not read
+   *  `films`, named in `unanswered` — to be asked live (`integration.UnmatchedClustersFill`). A venue page not read
    *  is no TMDB question: only a re-capture reads it. */
   final class Replay(capture: Capture) extends IdentityLookups {
     val queries = ConcurrentHashMap.newKeySet[CandidateQuery]()

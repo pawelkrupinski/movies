@@ -10,8 +10,9 @@ import scala.util.Try
  * The unmatched-cluster fixture's recapture in ONE command (`scripts/identity-capture.sh [cc...]`, which compiles the
  * integration classpath and runs this on it): the newest successful "Record scrape fixtures" run's corpora and the
  * enrichment trees recorded with them, fetched unless already here; prod's `identity_family_answers` exported read-only;
- * then each country's `UnmatchedClustersCaptureIntegrationSpec` in a JVM of its own, every variable it reads defaulted
- * ([[environment]]), and a report of each phase's time and throughput.
+ * then each country's `integration.UnmatchedClustersCapture` (or `UnmatchedClustersFill`) in a JVM of its own, its
+ * arguments defaulted to the layout's directories ([[captureArguments]], [[fillArguments]]) and its exit its verdict, and
+ * a report of each phase's time and throughput.
  *
  * Everything that touches the network, prod, git or a child process sits behind [[Effects]]: `--dry-run` swaps in
  * [[DryRun]], which prints what the real run would do and touches nothing.
@@ -26,13 +27,13 @@ object IdentityCapture {
    *  de 244, uk 211, pl 127, es 42), the capture's work growing with the corpus it resolves. */
   val Countries: Seq[String] = Seq("us", "de", "uk", "pl", "es")
 
-  /** The spec each country's JVM runs. */
-  val CaptureSpec = "integration.UnmatchedClustersCaptureIntegrationSpec"
+  /** The tool each country's JVM runs to capture. */
+  val CaptureTool = "integration.UnmatchedClustersCapture"
 
   /** The prod Mongo the family answers are exported from (read-only): set by the shell script, after its tunnel. */
   val FamilyUri = "KINOWO_IDENTITY_FAMILY_URI"
 
-  /** Every variable the run reads from its environment, each defaulted where unset ([[environment]]). */
+  /** Every variable the run reads from its environment, each defaulted where unset ([[captureArguments]], [[environment]]). */
   val Variables: Seq[String] = Seq("KINOWO_IDENTITY_UNMATCHED_CAPTURE", "KINOWO_IDENTITY_CORPUS_DIR", "KINOWO_FIXTURE_ROOT",
     "KINOWO_IDENTITY_AGREEMENT_CACHE", "KINOWO_IDENTITY_FAMILY_SEED", "KINOWO_IDENTITY_POSTER_CACHE",
     "KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY", "MONGODB_URI", FamilyUri, "KINOWO_IDENTITY_CAPTURE_WORK")
@@ -112,9 +113,9 @@ object IdentityCapture {
   // ── capture or fill ──────────────────────────────────────────────────────────────────────
 
   /** A CAPTURE resolves the whole corpus again and records the clusters left unmatched and every answer read for them
-   *  (`UnmatchedClustersCaptureIntegrationSpec`: hours, prod's family answers, the recording). A FILL keeps the
+   *  (`integration.UnmatchedClustersCapture`: hours, prod's family answers, the recording). A FILL keeps the
    *  fixture's clusters and decisions and only answers the questions a change newly asks of them
-   *  (`UnmatchedClustersFillIntegrationSpec`: minutes). */
+   *  (`integration.UnmatchedClustersFill`: minutes). */
   enum Mode { case Capture, Fill }
 
   /** What a fixture's decisions are a function of: the recording whose corpus was resolved, and the code that decides
@@ -181,30 +182,28 @@ object IdentityCapture {
 
   // ── the environment each country's JVM is handed ─────────────────────────────────────────
 
-  /** Every variable the capture spec reads, each the caller's own where set, else this layout's — and the country's own
-   *  `MONGODB_DB`, so two captures never seed one database, and its share of the live reads per host ([[budget]]). The
-   *  family export's prod URI is never passed on: the capture reads the export, not prod. */
-  def environment(cc: String, env: Map[String, String], layout: Layout, perHost: Int): Map[String, String] = {
-    val defaults = Map(
-      "KINOWO_IDENTITY_UNMATCHED_CAPTURE" -> layout.fixtures.toString,
-      "KINOWO_IDENTITY_CORPUS_DIR"        -> layout.corpusDir.toString,
-      "KINOWO_FIXTURE_ROOT"               -> layout.fixtureRoot.toString,
-      "KINOWO_IDENTITY_AGREEMENT_CACHE"   -> layout.agreementCache.toString,
-      "KINOWO_IDENTITY_FAMILY_SEED"       -> layout.families.toString,
-      "KINOWO_IDENTITY_POSTER_CACHE"      -> layout.posters.toString,
-      "MONGODB_URI"                       -> LocalMongo)
-    defaults.map { case (name, default) => name -> env.getOrElse(name, default) } ++
-      env.get("KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY").map("KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY" -> _) +
-      ("KINOWO_IDENTITY_FULL" -> cc) + ("MONGODB_DB" -> s"kinowo_capture_$cc") + ("KINOWO_IDENTITY_LIVE_PER_HOST" -> perHost.toString)
+  /** A capture's arguments: the country and every directory it reads or writes, each the caller's own where set (the
+   *  variable of the same meaning), else this layout's. */
+  def captureArguments(cc: String, env: Map[String, String], layout: Layout): Seq[String] = {
+    def dir(name: String, default: Path) = env.getOrElse(name, default.toString)
+    Seq(cc, "--out", dir("KINOWO_IDENTITY_UNMATCHED_CAPTURE", layout.fixtures), "--corpus-dir", dir("KINOWO_IDENTITY_CORPUS_DIR", layout.corpusDir),
+      "--fixtures", dir("KINOWO_FIXTURE_ROOT", layout.fixtureRoot), "--agreement-cache", dir("KINOWO_IDENTITY_AGREEMENT_CACHE", layout.agreementCache),
+      "--family-seed", dir("KINOWO_IDENTITY_FAMILY_SEED", layout.families), "--poster-cache", dir("KINOWO_IDENTITY_POSTER_CACHE", layout.posters))
   }
 
-  /** A fill's variables: the fixture directory to fill, the country, and where its live answers come from and are kept. */
-  def fillEnvironment(cc: String, env: Map[String, String], layout: Layout, perHost: Int): Map[String, String] =
-    Map(
-      "KINOWO_IDENTITY_UNMATCHED_FILL"  -> env.getOrElse("KINOWO_IDENTITY_UNMATCHED_CAPTURE", layout.fixtures.toString),
-      "KINOWO_IDENTITY_AGREEMENT_CACHE" -> env.getOrElse("KINOWO_IDENTITY_AGREEMENT_CACHE", layout.agreementCache.toString),
-      "KINOWO_IDENTITY_POSTER_CACHE"    -> env.getOrElse("KINOWO_IDENTITY_POSTER_CACHE", layout.posters.toString),
-      "KINOWO_IDENTITY_FULL"            -> cc, "KINOWO_IDENTITY_LIVE_PER_HOST" -> perHost.toString) ++
+  /** A fill's arguments: the country, the fixture directory it fills, and where its live answers come from and are kept. */
+  def fillArguments(cc: String, env: Map[String, String], layout: Layout): Seq[String] =
+    Seq(cc, "--capture", env.getOrElse("KINOWO_IDENTITY_UNMATCHED_CAPTURE", layout.fixtures.toString),
+      "--agreement-cache", env.getOrElse("KINOWO_IDENTITY_AGREEMENT_CACHE", layout.agreementCache.toString),
+      "--poster-cache", env.getOrElse("KINOWO_IDENTITY_POSTER_CACHE", layout.posters.toString))
+
+  /** What a country's JVM is handed beside its arguments: the throwaway Mongo the capture seeds (the caller's, else the
+   *  local one) in a database of the country's own, so two captures never seed one; the TMDB key its gaps are asked live
+   *  with, never on a command line; and its share of the live reads per host ([[budget]]). The family export's prod URI
+   *  is never passed on: the capture reads the export, not prod. */
+  def environment(cc: String, env: Map[String, String], perHost: Int): Map[String, String] =
+    Map("MONGODB_URI" -> env.getOrElse("MONGODB_URI", LocalMongo), "MONGODB_DB" -> s"kinowo_capture_$cc",
+      "KINOWO_IDENTITY_LIVE_PER_HOST" -> perHost.toString) ++
       env.get("KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY").map("KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY" -> _)
 
   /** Whether the corpora are this script's to fetch: not when the caller named a directory of their own. */
@@ -246,18 +245,10 @@ object IdentityCapture {
   def jvmOptions(jvmopts: Seq[String], heap: String): Seq[String] =
     s"-Xmx$heap" +: jvmopts.map(_.trim).filter(o => o.nonEmpty && !o.startsWith("#") && !o.startsWith("-Xmx"))
 
-  /** A country's JVM did its job when its spec printed what it captured — not merely when ScalaTest ran: a suite
-   *  CANCELLED for a missing variable is no failure to ScalaTest. Its exit status is [[failure]]'s to read. */
-  def succeeded(cc: String, mode: Mode, log: Seq[String]): Boolean = mode match {
-    case Mode.Capture => log.exists(_.contains(s"[full-$cc] captured "))
-    case Mode.Fill    => log.exists(_.contains(s"[$cc] filled after "))
-  }
-
-  /** Why a country's JVM failed, if it did: it exited non-zero (killed — Spain's, hung on an IMDb body read on
-   *  2026-10-07 — or crashed past its last line), or its spec printed no capture or fill. */
-  def failure(cc: String, mode: Mode, ran: Ran): Option[String] =
-    if (ran.exit != 0) Some(s"its JVM exited ${ran.exit}${if (ran.exit > 128) s" (killed by signal ${ran.exit - 128})" else ""}")
-    else Option.when(!succeeded(cc, mode, ran.log))(s"the spec printed no ${mode.toString.toLowerCase(java.util.Locale.ROOT)}")
+  /** Why a country's JVM failed, if it did: it exited non-zero — the tool's own verdict (no corpus, a capture that does
+   *  not replay, a question a fill left open), or killed (Spain's, hung on an IMDb body read on 2026-10-07). */
+  def failure(ran: Ran): Option[String] =
+    Option.when(ran.exit != 0)(s"its JVM exited ${ran.exit}${if (ran.exit > 128) s" (killed by signal ${ran.exit - 128})" else ""}")
 
   /** A capture that read venue pages the recorded tree lacks says so ("capture again"): the next run answers them from
    *  the stored pages. The run captures such a country again, while each capture reads more, up to [[MaxCaptures]]. */
@@ -427,8 +418,8 @@ object IdentityCapture {
   /** The family-answer export's database for a country (`kinowo` is Poland's). */
   def database(cc: String): String = if (cc == "pl") "kinowo" else s"kinowo_$cc"
 
-  /** The spec a fill runs. */
-  val FillSpec = "integration.UnmatchedClustersFillIntegrationSpec"
+  /** The tool a fill runs. */
+  val FillTool = "integration.UnmatchedClustersFill"
 
   /** The run, over `effects`: each country's choice made and said, the recording and the family answers fetched for the
    *  captures alone (a fill reads neither), then each country's JVM. True when every country did its job. */
@@ -479,14 +470,15 @@ object IdentityCapture {
     val plan = budget(options.parallel, plans.size, options.heap, memoryGb)
     out(s"[identity-capture] ${plan.parallel} side by side (${options.heap} heap each, $memoryGb GB here); " +
       s"${plan.perHost} live read(s) at once per host each")
-    val jvm = Seq("java") ++ jvmOptions(jvmopts, options.heap) ++ Seq("-cp", classpath, "org.scalatest.tools.Runner", "-oDW", "-s")
+    val jvm = Seq("java") ++ jvmOptions(jvmopts, options.heap) ++ Seq("-cp", classpath)
     def one(choice: Choice, run: Option[String]): (Boolean, Double) = {
       val Choice(cc, mode, _) = choice
       val verb = mode.toString.toLowerCase(java.util.Locale.ROOT)
       def job(again: Boolean, n: Int) = mode match {
-        case Mode.Capture => Job(cc, jvm :+ CaptureSpec, environment(cc, env, layout, plan.perHost),
+        case Mode.Capture => Job(cc, (jvm :+ CaptureTool) ++ captureArguments(cc, env, layout), environment(cc, env, plan.perHost),
           layout.logs.resolve(if (!again) s"$cc-capture.log" else if (n == 1) s"$cc-capture-again.log" else s"$cc-capture-again-$n.log"))
-        case Mode.Fill    => Job(cc, jvm :+ FillSpec, fillEnvironment(cc, env, layout, plan.perHost), layout.logs.resolve(s"$cc-fill.log"))
+        case Mode.Fill    => Job(cc, (jvm :+ FillTool) ++ fillArguments(cc, env, layout), environment(cc, env, plan.perHost),
+          layout.logs.resolve(s"$cc-fill.log"))
       }
       def attempt(again: Boolean, n: Int): (Job, Ran) = {
         val j      = job(again, n)
@@ -498,13 +490,13 @@ object IdentityCapture {
       // a capture that read pages captures again to answer them; its answers can leave a new cluster whose page it then
       // reads, so again while each one reads, up to `MaxCaptures`
       @scala.annotation.tailrec def until(previous: (Job, Ran), n: Int): (Job, Ran) =
-        if (mode == Mode.Capture && !options.dryRun && n < MaxCaptures && failure(cc, mode, previous._2).isEmpty &&
+        if (mode == Mode.Capture && !options.dryRun && n < MaxCaptures && failure(previous._2).isEmpty &&
             capturesAgain(previous._2.log)) {
           out(s"[identity-capture] $cc: its capture read venue pages the tree lacks — capturing once more to answer them")
           until(attempt(again = true, n), n + 1)
         } else previous
       val (last, ran) = until(attempt(again = false, 1), 1)
-      val failed = if (options.dryRun) None else failure(cc, mode, ran)
+      val failed = if (options.dryRun) None else failure(ran)
       failed.foreach(why => out(s"[identity-capture] $cc: FAILED — $why; see ${last.log}"))
       if (failed.isEmpty) {
         ran.log.filter(l => l.contains(s"[full-$cc]") || l.contains(s"[$cc]")).foreach(l => out(s"  $l"))

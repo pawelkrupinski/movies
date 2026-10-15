@@ -128,11 +128,7 @@ object IdentityResolveDump {
     val store    = new FamilyAnswerStore(answered, new tools.MutableClock(java.time.Instant.parse("2026-10-04T00:00:00Z")))
     val families = Seq(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Metacritic, VoterFamily.RottenTomatoes) ++
       Option.when(Set("pl", "de", "es")(c.country.code))(VoterFamily.Filmweb)
-    val sources: Map[VoterFamily, FamilySource] = Seq(new ImdbFamily(new services.enrichment.ImdbClient(fetch)),
-      new WikiFamily(new services.enrichment.WikidataClient(fetch), c.country.language.getLanguage),
-      new FilmwebFamily(new services.enrichment.FilmwebClient(fetch), services.cinemas.pl.FilmwebProgrammes.resolving(fetch, () => new models.VenueClock(java.time.Clock.systemUTC()).todayInPoland).of),
-      new RottenTomatoesFamily(new services.enrichment.RottenTomatoesClient(fetch)),
-      new MetacriticFamily(new services.enrichment.MetacriticClient(fetch))).filter(source => families.contains(source.family)).map(s => s.family -> s).toMap
+    val sources  = LiveFamilySources.of(fetch, c.country, families)
     val tmdb  = new clients.TmdbClient(c.fetch, apiKey = Some(settings.TmdbApiKey(StubTmdbKey)), language = c.country.language, retrySleep = (_: Long) => ())
     // the venue and TMDB posters' hashes, of the images KINOWO_IDENTITY_POSTER_CACHE keeps, else downloaded
     val posterStore = new PosterAnswerStore(store, new tools.MutableClock(java.time.Instant.parse("2026-10-04T00:00:00Z")))

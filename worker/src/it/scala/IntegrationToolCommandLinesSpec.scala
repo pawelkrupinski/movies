@@ -43,4 +43,18 @@ class IntegrationToolCommandLinesSpec extends AnyFlatSpec with Matchers {
     // KINOWO_IDENTITY_DUMP named the directory once; a flag left without its value is refused, never read as the next
     IdentityResolveDump.commandLine.parse(Seq("--out", "--full", "pl")).isLeft shouldBe true
   }
+
+  "the unmatched-cluster capture and fill" should "read the command lines scripts.IdentityCapture builds for them" in {
+    import scripts.IdentityCapture._
+    val layout = Layout(java.nio.file.Path.of("/repo"), java.nio.file.Path.of("/repo/target/identity-capture"))
+    val capture = UnmatchedClustersCapture.commandLine.parse(captureArguments("uk", Map.empty, layout)).toOption.get
+    UnmatchedClustersCapture.countryOf(capture) shouldBe models.Country.all.find(_.code == "uk").get
+    capture.requiredPath("out") shouldBe layout.fixtures
+    capture.path("family-seed") shouldBe Some(layout.families)
+    val fill = UnmatchedClustersFill.commandLine.parse(fillArguments("de", Map.empty, layout)).toOption.get
+    fill.requiredPath("capture") shouldBe layout.fixtures
+    an[tools.CommandLine.InvalidArguments] should be thrownBy
+      UnmatchedClustersCapture.countryOf(UnmatchedClustersCapture.commandLine.parse(Seq("gb", "--out", "o")).toOption.get)
+    UnmatchedClustersFill.commandLine.parse(Seq("de", "pl")).isLeft shouldBe true
+  }
 }

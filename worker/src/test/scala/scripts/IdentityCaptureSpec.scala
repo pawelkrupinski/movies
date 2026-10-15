@@ -181,44 +181,37 @@ class IdentityCaptureSpec extends AnyFlatSpec with Matchers {
     isDecisionInput("web/src/main/scala/controllers/MovieController.scala") shouldBe false
   }
 
-  "A fill" should "hand its JVM the fixture to fill, the country, and the live answers' sources" in {
-    val env = fillEnvironment("de", Map("KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY" -> "k", FamilyUri -> "mongodb://prod"), layout, perHost = 2)
-    env shouldBe Map(
-      "KINOWO_IDENTITY_UNMATCHED_FILL"     -> "/repo/test/resources/fixtures/identity-unmatched",
-      "KINOWO_IDENTITY_FULL"               -> "de",
-      "KINOWO_IDENTITY_AGREEMENT_CACHE"    -> "/repo/target/identity-capture/agreement-cache",
-      "KINOWO_IDENTITY_POSTER_CACHE"       -> "/repo/target/identity-capture/posters",
-      "KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY" -> "k",
-      "KINOWO_IDENTITY_LIVE_PER_HOST"      -> "2")
-  }
-
-  it should "count as done only when its spec said it filled" in {
-    succeeded("de", Mode.Fill, Seq("[de] filled after 2 round(s): 40 family answers, 3 finds")) shouldBe true
-    succeeded("de", Mode.Fill, Seq("[full-de] captured 1 listings")) shouldBe false
+  "A fill" should "hand its tool the country, the fixture to fill, and where its live answers come from and are kept" in {
+    fillArguments("de", Map("KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY" -> "k", FamilyUri -> "mongodb://prod"), layout) shouldBe Seq("de",
+      "--capture", "/repo/test/resources/fixtures/identity-unmatched",
+      "--agreement-cache", "/repo/target/identity-capture/agreement-cache",
+      "--poster-cache", "/repo/target/identity-capture/posters")
   }
 
   // ── the environment each country's JVM is handed ──
 
-  "A country's environment" should "default every variable the capture reads, and give the country its own Mongo database" in {
-    val env = environment("uk", Map("KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY" -> "k"), layout, perHost = 2)
-    env shouldBe Map(
-      "KINOWO_IDENTITY_UNMATCHED_CAPTURE" -> "/repo/test/resources/fixtures/identity-unmatched",
-      "KINOWO_IDENTITY_FULL"              -> "uk",
-      "KINOWO_IDENTITY_CORPUS_DIR"        -> "/repo/target/identity-capture/corpus",
-      "KINOWO_FIXTURE_ROOT"               -> "/repo/target/identity-capture/trees/test/resources/fixtures",
-      "KINOWO_IDENTITY_AGREEMENT_CACHE"   -> "/repo/target/identity-capture/agreement-cache",
-      "KINOWO_IDENTITY_FAMILY_SEED"       -> "/repo/target/identity-capture/families",
-      "KINOWO_IDENTITY_POSTER_CACHE"      -> "/repo/target/identity-capture/posters",
+  "A country's capture" should "be handed every directory it reads or writes, each the layout's where the caller named none" in {
+    captureArguments("uk", Map.empty, layout) shouldBe Seq("uk",
+      "--out", "/repo/test/resources/fixtures/identity-unmatched",
+      "--corpus-dir", "/repo/target/identity-capture/corpus",
+      "--fixtures", "/repo/target/identity-capture/trees/test/resources/fixtures",
+      "--agreement-cache", "/repo/target/identity-capture/agreement-cache",
+      "--family-seed", "/repo/target/identity-capture/families",
+      "--poster-cache", "/repo/target/identity-capture/posters")
+    captureArguments("pl", Map("KINOWO_IDENTITY_CORPUS_DIR" -> "/mine"), layout).sliding(2).toSeq should contain(Seq("--corpus-dir", "/mine"))
+  }
+
+  "A country's environment" should "give the country its own Mongo database, the TMDB key off its command line" in {
+    environment("uk", Map("KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY" -> "k"), perHost = 2) shouldBe Map(
       "KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY" -> "k",
       "MONGODB_URI"                       -> "mongodb://127.0.0.1:28017/?directConnection=true",
       "MONGODB_DB"                        -> "kinowo_capture_uk",
       "KINOWO_IDENTITY_LIVE_PER_HOST"     -> "2")
   }
 
-  it should "keep a variable the caller set, and never hand the family export's prod URI to the capture" in {
-    val env = environment("pl", Map("KINOWO_IDENTITY_CORPUS_DIR" -> "/mine", "MONGODB_URI" -> "mongodb://127.0.0.1:27017/",
-      FamilyUri -> "mongodb://prod", "KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY" -> "k"), layout, perHost = 4)
-    env("KINOWO_IDENTITY_CORPUS_DIR") shouldBe "/mine"
+  it should "keep the caller's Mongo, and never hand the family export's prod URI to the capture" in {
+    val env = environment("pl", Map("MONGODB_URI" -> "mongodb://127.0.0.1:27017/", FamilyUri -> "mongodb://prod",
+      "KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY" -> "k"), perHost = 4)
     env("MONGODB_URI") shouldBe "mongodb://127.0.0.1:27017/"
     env.values.toSeq should not contain "mongodb://prod"
   }
@@ -267,10 +260,18 @@ class IdentityCaptureSpec extends AnyFlatSpec with Matchers {
       Seq("-Xmx12g", "-XX:+ExitOnOutOfMemoryError", "-Djava.awt.headless=true")
   }
 
-  it should "count as done only when its spec said it captured" in {
-    succeeded("uk", Mode.Capture, Seq("noise", "[full-uk] captured 812 listings in 640 clusters; 5 queries")) shouldBe true
-    succeeded("uk", Mode.Capture, Seq("[full-pl] captured 812 listings")) shouldBe false
-    succeeded("uk", Mode.Capture, Seq("Run completed", "All tests passed.")) shouldBe false
+  it should "run the capture tool and the fill tool, never a spec, and fail on their exit alone" in {
+    val commands = java.util.Collections.synchronizedList(new java.util.ArrayList[Seq[String]])
+    val (ok, said) = runOf(Seq("pl", "de"), { job =>
+      commands.add(job.command)
+      // a tool's exit is its verdict: a capture printed in full does not stand when it exited 1
+      if (job.cc == "de") Ran(1, captured("de").log) else captured(job.cc)
+    })
+    commands.asScala.map(_.dropWhile(_ != "cp").drop(1).take(2)).toSet shouldBe Set(Seq(CaptureTool, "de"), Seq(CaptureTool, "pl"))
+    commands.asScala.flatten should not contain "org.scalatest.tools.Runner"
+    ok shouldBe false
+    said should include("de: FAILED — its JVM exited 1")
+    failure(Ran(0, Nil)) shouldBe None
   }
 
   it should "report the listings it captured" in {

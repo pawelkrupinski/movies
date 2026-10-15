@@ -9,7 +9,7 @@ import scala.util.control.NonFatal
 
 /**
  * The agreement's open family questions asked of their live sources round after round — what the unmatched-cluster
- * capture and fill (`UnmatchedClustersCaptureIntegrationSpec`, `UnmatchedClustersFillIntegrationSpec`) run until the
+ * capture and fill (`integration.UnmatchedClustersCapture`, `integration.UnmatchedClustersFill`) run until the
  * stage asks nothing more: each round asks what the stage wants — at most `perFamily` at a time per family, every
  * family at once ([[ConcurrentAsks]]) — files the answers in `store`, and agrees again.
  *

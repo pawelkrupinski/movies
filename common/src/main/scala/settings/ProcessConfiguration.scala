@@ -313,15 +313,6 @@ final class ProcessConfiguration(val env: Env) {
    *  (`agreement.AgreementStage`), the families answered from this directory (`<host>/<sha256 of "METHOD url body">`, the
    *  signal-combination experiment's cache), else live — a measuring loop, never in CI. */
   def identityAgreementCache: Option[IdentityAgreementCache] = text("KINOWO_IDENTITY_AGREEMENT_CACHE").map(dir => IdentityAgreementCache(Path.of(dir)))
-  /** `KINOWO_IDENTITY_UNMATCHED_CAPTURE` — a directory the unmatched-cluster capture (`UnmatchedClustersCaptureIntegrationSpec`)
-   *  writes each country's fixture to (`<cc>.json.gz`): the checked-in `test/resources/fixtures/identity-unmatched` to
-   *  re-capture it. Never in CI. */
-  def identityUnmatchedCapture: Option[IdentityUnmatchedCapture] =
-    text("KINOWO_IDENTITY_UNMATCHED_CAPTURE").map(dir => IdentityUnmatchedCapture(Path.of(dir)))
-  /** `KINOWO_IDENTITY_UNMATCHED_FILL` — the unmatched-cluster fixture directory whose questions a change newly asks of the
-   *  same clusters `UnmatchedClustersFillIntegrationSpec` answers in place, the model's decisions kept. Never in CI. */
-  def identityUnmatchedFill: Option[IdentityUnmatchedCapture] =
-    text("KINOWO_IDENTITY_UNMATCHED_FILL").map(dir => IdentityUnmatchedCapture(Path.of(dir)))
   /** `KINOWO_IDENTITY_POSTER_CACHE` — posters and TMDB poster lists the unmatched-cluster capture hashes before fetching
    *  any live (and files what it fetched into), for the agreement's poster evidence. Never in CI. */
   def identityPosterCache: Option[IdentityPosterCache] = text("KINOWO_IDENTITY_POSTER_CACHE").map(dir => IdentityPosterCache(Path.of(dir)))

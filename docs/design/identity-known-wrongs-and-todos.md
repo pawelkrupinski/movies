@@ -121,7 +121,7 @@ Order by the live tally: 4 (relays, 33 of 70 live wrong listings), then 2, 3, 1,
   `FormatTags.CertificateNote` already holds the shape. Fix: `uncertified` = `CertificateNote.replaceFirstIn(t, "$1").trim`
   (test: `SearchTitles.candidates("Digger - Cert 15", None) shouldBe Seq("Digger")`, fails before). Tried 2026-10-15:
   the new queries leave `UnmatchedClustersRatchetSpec` asking answers the recording lacks (uk "Double Bill: The
-  Snowman (1982) / The Snowman and the Snowdog (2012)"), so it needs `UnmatchedClustersCaptureIntegrationSpec`
+  Snowman (1982) / The Snowman and the Snowdog (2012)"), so it needs `integration.UnmatchedClustersCapture`
   re-captured and `scripts/identity-measure` LANDABLE first. `IdentityMeasures.searchQueries` (identity module) calls it too.
 - [ ] **Five UK BBFC value lists besides the `CERT` placeholder**: `TicketsolveClient.TitleCertificate`,
   `SpektrixClient.Bbfc`, `BfiSouthbankClient.BbfcBadge` (adds R18) and `SearchTitles`. One `BbfcCertificate` object

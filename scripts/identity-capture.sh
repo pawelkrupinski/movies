@@ -14,7 +14,7 @@
 #   --dry-run   print the plan — what it would download, export and run, with every variable — and
 #               touch neither prod nor the network
 #
-# CAPTURE OR FILL, per country, said and logged: a FILL (UnmatchedClustersFillIntegrationSpec, minutes)
+# CAPTURE OR FILL, per country, said and logged: a FILL (integration.UnmatchedClustersFill, minutes)
 # answers only the questions a change newly asks of the fixture's clusters; a CAPTURE resolves the
 # whole corpus again. It fills when <cc>.json.gz exists and its decisions are unchanged under the
 # current code — <cc>.inputs, stamped by each capture, names the same recording and the same hash of
@@ -29,8 +29,8 @@
 #      (scripts/local-mirror/prod-tunnel.sh; the URI is the Touch ID vault's MONGODB_URI, unless
 #      exported, rewritten to the tunnel by prod_tunnel_uri and never printed) — or over
 #      $KINOWO_IDENTITY_FAMILY_URI where the caller (CI) already holds a read-only route;
-#   3. runs each country's UnmatchedClustersCaptureIntegrationSpec in a JVM of its own, against the
-#      it/ Mongo (127.0.0.1:28017) in a database of its own, every variable defaulted (a variable you
+#   3. runs each country's integration.UnmatchedClustersCapture in a JVM of its own, against the
+#      it/ Mongo (127.0.0.1:28017) in a database of its own, every directory defaulted (a variable you
 #      set is kept), the TMDB key read from the Touch ID vault (TMDB_API_KEY) unless
 #      KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY is set — both secrets in ONE `secrets run` (one Touch ID):
 #      the script re-runs itself under it before compiling, naming only the keys still missing; a country whose capture read venue pages live
