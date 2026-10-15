@@ -48,6 +48,9 @@ while [ $# -gt 0 ]; do [ "$1" = "--report" ] && { mkdir -p "$(dirname "$2")"; ec
 [ -z "${KEEP:-}" ] || echo '{"version":"v1-refit-1"}' > identity/src/main/resources/identity-weights.json
 echo "kept 0: "
 STUB
+# the processor as a Linux runner names it: lscpu answers, sysctl knows no machdep key (and fails)
+printf '#!/usr/bin/env bash\necho "Model name:            Test CPU 9000"\n' > "$work/bin/lscpu"
+printf '#!/usr/bin/env bash\nexit 255\n' > "$work/bin/sysctl"
 chmod +x "$repo/scripts/"* "$work/bin/"*
 scratch_git "$repo" init -q -b main && scratch_git "$repo" add -A && scratch_git "$repo" commit -qm init
 tree="$work/tree"
@@ -79,6 +82,7 @@ check "nothing kept: done after the measure" "0" "$(CI='' TMDB_API_KEY='' refit 
 check "...the spec and the classpath in ONE sbt-warm call" "1" "$(calls | grep -c '^sbt-warm worker/testOnly scripts.IdentityRefitSpec export worker/Test/fullClasspath$')"
 check "...the measure on that classpath, applied, on the threads asked" "1" \
     "$(calls | grep -c -- '^java -Xmx12g .* -cp /cp/a.jar:/cp/test-classes scripts.IdentityRefit --apply --report target/identity-refit/report.md --threads 3$')"
+check "...naming the processor, though sysctl fails (a Linux runner)" "1" "$(grep -c 'processors (Test CPU 9000)' "$work/out")"
 check "...no check run" "2" "$(calls | wc -l | tr -d ' ')"
 check "...without a TMDB key, proposals asking TMDB said unmeasured" "1" "$(grep -c 'no TMDB_API_KEY.*unmeasured' "$work/out")"
 check "...the measure's log beside the report" "1" "$(grep -c 'kept 0' "$tree/target/identity-refit/refit.log")"
