@@ -87,6 +87,18 @@ check "...no check run" "2" "$(calls | wc -l | tr -d ' ')"
 check "...without a TMDB key, proposals asking TMDB said unmeasured" "1" "$(grep -c 'no TMDB_API_KEY.*unmeasured' "$work/out")"
 check "...the measure's log beside the report" "1" "$(grep -c 'kept 0' "$tree/target/identity-refit/refit.log")"
 
+check "a shard: round 1's share measured, nothing else" "0" "$(CI='' TMDB_API_KEY=k refit "$tree" --shard 1/4 --shard-out shards/s1.json --threads 3)"
+check "...the classpath alone, no spec (the merging run tests the refit)" "1 0" \
+    "$(calls | grep -c '^sbt-warm export worker/Test/fullClasspath$') $(calls | grep -c IdentityRefitSpec)"
+check "...the shard measured into its file: no report, no weights written" "1" \
+    "$(calls | grep -c -- '^java -Xmx12g .* -cp /cp/a.jar:/cp/test-classes scripts.IdentityRefit --shard 1/4 --shard-out shards/s1.json --threads 3$')"
+check "...no check run" "2" "$(calls | wc -l | tr -d ' ')"
+check "a shard needs a file to write" "2" "$(refit "$tree" --shard 1/4)"
+check "merged: round 1 from the shards' files, the rest as ever" "0" "$(CI='' TMDB_API_KEY=k refit "$tree" --threads 3 --merge shards)"
+check "...the measure applied, its round 1 merged" "1" \
+    "$(calls | grep -c -- '^java .* scripts.IdentityRefit --apply --report target/identity-refit/report.md --threads 3 --merge shards$')"
+check "...the spec still run first" "1" "$(calls | grep -c '^sbt-warm worker/testOnly scripts.IdentityRefitSpec export worker/Test/fullClasspath$')"
+
 check "a red refit spec stops it before the measure" "1" "$(CI='' SPEC_FAILS=1 refit "$tree")"
 check "...no measure run" "0" "$(calls | grep -c '^java')"
 

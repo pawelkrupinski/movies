@@ -12,12 +12,17 @@
 #      snapshots regenerated (delete, write, re-run to prove them stable) — the films that moved appended to the
 #      report. A red check fails the script (in CI: no PR).
 #
-# Usage: scripts/identity-refit [--skip-checks] [--relearn <signal,…>] [--threads <n>] [--report <file.md>] [--help]
+# Usage: scripts/identity-refit [--skip-checks] [--relearn <signal,…>] [--threads <n>] [--report <file.md>] [--merge <dir>] [--help]
+#        scripts/identity-refit --shard <i/n> --shard-out <file.json> [--relearn …] [--threads <n>]
 #
 #   --skip-checks   measure (and write the kept steps) only; no step 3
 #   --relearn       listing-film signals whose inputs changed, refitted from the fresh units alone (year.delta,…)
 #   --threads       proposals measured at once (default: every core; each holds a re-resolve of the five captures)
 #   --report        where the report goes (default target/identity-refit/report.md); the measure's log beside it
+#   --shard i/n     measure only round 1's proposals i, i+n, … (no spec, no report, no weights written) into
+#                   --shard-out: one of n runners measuring round 1 side by side (.github/workflows/identity-refit.yml)
+#   --merge dir     round 1 answered by the shard files in dir, the rest as ever: the report and the weights byte for
+#                   byte an unsharded run's (scripts.IdentityRefit refuses shards that measured another refit)
 #
 # TMDB: the captures' unanswered TMDB questions are asked live only with TMDB_API_KEY in the ENVIRONMENT — never read
 # from .env.local. Locally: `secrets run movies TMDB_API_KEY -- scripts/identity-refit`. Without it a proposal that
@@ -32,9 +37,9 @@ cd "$(dirname "$0")/.."
 # shellcheck source=scripts/tool-conventions.sh
 . scripts/tool-conventions.sh # die: a runtime failure, exit 1
 
-usage() { sed -n '3,28p' "$0" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '3,34p' "$0" | sed 's/^# \{0,1\}//'; }
 
-skip_checks=""; relearn=""; threads=""; report="target/identity-refit/report.md"
+skip_checks=""; relearn=""; threads=""; report="target/identity-refit/report.md"; shard=""; shard_out=""; merge=""
 while [ $# -gt 0 ]; do
     case "$1" in
         --help|-h) usage; exit 0 ;;
@@ -42,11 +47,15 @@ while [ $# -gt 0 ]; do
         --relearn) relearn=${2:?--relearn needs a signal list}; shift 2 ;;
         --threads) threads=${2:?--threads needs a number}; shift 2 ;;
         --report) report=${2:?--report needs a file}; shift 2 ;;
+        --shard) shard=${2:?--shard needs i/n}; shift 2 ;;
+        --shard-out) shard_out=${2:?--shard-out needs a file}; shift 2 ;;
+        --merge) merge=${2:?--merge needs a directory}; shift 2 ;;
         *) echo "identity-refit: unknown argument '$1'" >&2; usage >&2; exit 2 ;;
     esac
 done
 
 log() { echo "[identity-refit $(date -u +%H:%M:%S)] $*" >&2; }
+if [ -n "$shard" ] && [ -z "$shard_out" ]; then echo "identity-refit: --shard needs --shard-out <file.json>" >&2; exit 2; fi
 
 Weights=identity/src/main/resources/identity-weights.json
 Fixtures=test/resources/fixtures/08-06-2026
@@ -68,11 +77,13 @@ gc_log="$(dirname "$report")/refit-gc.log" # every collection with its pause and
 if [ -n "${TMDB_API_KEY:-}" ]; then log "TMDB: asked live (TMDB_API_KEY from the environment)"
 else log "TMDB: no TMDB_API_KEY — a proposal asking TMDB anything is unmeasured (locally: secrets run movies TMDB_API_KEY -- $0)"; fi
 
-# 1. the refit's own spec, and the classpath the measure runs on — one sbt call
-log "unit-testing the refit"
+# 1. the refit's own spec, and the classpath the measure runs on — one sbt call (a shard only the classpath: the run
+#    that merges it tests the refit, and a shard's proposals are checked against that run's when merged)
+spec="worker/testOnly scripts.IdentityRefitSpec"
+if [ -n "$shard" ]; then spec=""; log "shard $shard: the classpath"; else log "unit-testing the refit"; fi
 sbt_out=$(mktemp "${TMPDIR:-/tmp}/identity-refit-sbt.XXXXXX")
 trap 'rm -f "$sbt_out"' EXIT
-if ! sbt_run "worker/testOnly scripts.IdentityRefitSpec" "export worker/Test/fullClasspath" > "$sbt_out" 2>&1; then
+if ! sbt_run ${spec:+"$spec"} "export worker/Test/fullClasspath" > "$sbt_out" 2>&1; then
     tail -60 "$sbt_out" >&2
     die "the refit's spec failed (above): its proposals are not trusted"
 fi
@@ -83,9 +94,15 @@ classpath=$(sed $'s/\x1b\\[[0-9;]*[A-Za-z]//g' "$sbt_out" | grep -E '^/[^ ]*(\.j
 # 2. the measure, in its own JVM
 # the processor too: hosted runners differ in it, and a run's time is read against it
 cpu=$( { lscpu 2>/dev/null | sed -n 's/^Model name: *//p'; sysctl -n machdep.cpu.brand_string 2>/dev/null; } | head -1 || true)
+if [ -n "$shard" ]; then
+    log "measuring round 1, shard $shard, on $threads thread(s) of $(getconf _NPROCESSORS_ONLN) processors (${cpu:-cpu unknown})"
+    java "-Xmx${IDENTITY_REFIT_HEAP:-12g}" -XX:AutoBoxCacheMax=16384 -Djava.awt.headless=true -Duser.language=en -Duser.country=US \
+        -cp "$classpath" scripts.IdentityRefit --shard "$shard" --shard-out "$shard_out" --threads "$threads" ${relearn:+--relearn "$relearn"}
+    exit 0
+fi
 log "measuring every step on $threads thread(s) of $(getconf _NPROCESSORS_ONLN) processors (${cpu:-cpu unknown}) — the log in $measure_log"
 java "-Xmx${IDENTITY_REFIT_HEAP:-12g}" -XX:AutoBoxCacheMax=16384 -Djava.awt.headless=true -Duser.language=en -Duser.country=US \
-    "-Xlog:gc,gc+cpu:file=$gc_log:uptime" -cp "$classpath" scripts.IdentityRefit --apply --report "$report" --threads "$threads" ${relearn:+--relearn "$relearn"} 2>&1 | tee "$measure_log"
+    "-Xlog:gc,gc+cpu:file=$gc_log:uptime" -cp "$classpath" scripts.IdentityRefit --apply --report "$report" --threads "$threads" ${relearn:+--relearn "$relearn"} ${merge:+--merge "$merge"} 2>&1 | tee "$measure_log"
 [ -z "${GITHUB_STEP_SUMMARY:-}" ] || cat "$report" >> "$GITHUB_STEP_SUMMARY"
 
 if git diff --quiet -- "$Weights"; then

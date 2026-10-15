@@ -8,7 +8,8 @@ name: Identity rule refit
 # and expected-matches.tsv). No new rule, no new feature: approach B, proposed for review in ONE PR.
 #
 # The whole job is ONE script, `scripts/identity-refit`, which a local run uses the same way
-# (`secrets run movies TMDB_API_KEY -- scripts/identity-refit` in a worktree of your own).
+# (`secrets run movies TMDB_API_KEY -- scripts/identity-refit` in a worktree of your own). Its round 1 is measured
+# on four runners first (the `measure` matrix, `--shard i/4`) and merged into the refit job (`--merge`).
 #
 # `scripts.IdentityRefit` (worker/src/test/scala/scripts) measures every bounded step of every
 # parameter as the ratchet measures: the five captures (test/resources/fixtures/identity-unmatched/
@@ -42,6 +43,11 @@ on:
                 description: 'Proposals measured at once (scripts/identity-refit --threads); empty = the script default'
                 required: false
                 default: ''
+            sharded:
+                description: 'Measure round 1 on four runners (false: on the refit job alone, as before -- the control a sharded run is compared to)'
+                type: boolean
+                required: false
+                default: true
 
     # Thursday 05:00 UTC — its own slot, clear of Tuesday's decoration discovery.
     schedule:
@@ -59,7 +65,50 @@ permissions:
     pull-requests: write
 
 jobs:
+    # ROUND 1 ON FOUR RUNNERS. It is the refit's measure: ~58 proposals, each the five captures re-resolved, CPU-bound
+    # (JFR: 97.5% of the runner in the resolver), 17-21 of the measure step's 20-24 minutes on one 4-vCPU runner, where
+    # 4 threads beat 2 by only 1.2-1.35x. Shard i measures proposals i, i+4, ... on top of the control
+    # (scripts/identity-refit --shard i/4); the refit job merges them (--merge) and goes on as ever: the same proposals in
+    # the same order, the same choice and tie-break, the report and the weights byte for byte the unsharded run's
+    # (IdentityRefitMeasureAllSpec). Later rounds -- only after a change is kept -- run on the refit job. 4 jobs at once
+    # on Thursday 05:00 UTC, well inside the 20-runner budget (CiRunnerBudgetSpec). At the triggering commit: the refit
+    # job merges them only if main has not moved what they measured (below).
+    measure:
+        if: ${{ github.event_name == 'schedule' || inputs.sharded }}
+        runs-on: ubuntu-26.04 # no Mongo here: the kernel is no matter
+        timeout-minutes: 60
+        strategy:
+            fail-fast: true
+            matrix:
+                shard: [0, 1, 2, 3]
+        steps:
+            - uses: actions/checkout@v5
+              with:
+                  ref: ${{ github.sha }}
+
+            - name: Check the TMDB key is set
+              env:
+                  TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+              run: scripts/ci/preflight.sh TMDB_API_KEY
+
+            - uses: ./.github/actions/setup-sbt-build
+
+            - name: Measure round 1, shard ${{ matrix.shard }} of 4
+              env:
+                  TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
+                  RELEARN: ${{ github.event.inputs.relearn }}
+                  THREADS: ${{ github.event.inputs.threads }}
+              run: scripts/identity-refit --shard "${{ matrix.shard }}/4" --shard-out "shards/shard-${{ matrix.shard }}.json" ${RELEARN:+--relearn "$RELEARN"} ${THREADS:+--threads "$THREADS"}
+
+            - uses: actions/upload-artifact@v6
+              with:
+                  name: identity-refit-shard-${{ matrix.shard }}
+                  path: shards/shard-${{ matrix.shard }}.json
+                  retention-days: 3
+
     refit:
+        needs: [measure]
+        if: ${{ !cancelled() && (needs.measure.result == 'success' || needs.measure.result == 'skipped') }}
         runs-on: ubuntu-24.04 # mongod 8.3 will not start on 26.04's kernel 7.0 (MongoServerVersionParitySpec)
         timeout-minutes: 150
         steps:
@@ -91,6 +140,26 @@ jobs:
               with:
                   chrome-version: stable
 
+            - uses: actions/download-artifact@v5
+              if: needs.measure.result == 'success'
+              with:
+                  pattern: identity-refit-shard-*
+                  path: shards
+                  merge-multiple: true
+
+            # The shards measured the triggering commit; this job refits main's tip. Merged only when nothing they
+            # measured with moved between the two (the code, the captures, the judgements, the build): else round 1 is
+            # measured here, whole, as an unsharded run measures it.
+            - name: Merge the shards' round 1?
+              id: shards
+              if: needs.measure.result == 'success'
+              run: |
+                  if git diff --quiet ${{ github.sha }} HEAD -- common identity worker test/resources build.sbt project; then
+                      echo "merge=shards" >> "$GITHUB_OUTPUT"
+                  else
+                      echo "::warning::main moved what the shards measured since ${{ github.sha }}: round 1 measured here, whole"
+                  fi
+
             # The whole refit, as a local run makes it (scripts/identity-refit --help): the refit's spec, the measure
             # (kept steps written into identity-weights.json, the report to identity-refit-report.md, its log to
             # refit.log), and when a step is kept the checks a calibration change answers to — the identity specs and
@@ -105,7 +174,8 @@ jobs:
                   MONGODB_URI: mongodb://127.0.0.1:27017/kinowo?directConnection=true
                   MONGODB_DB: kinowo
                   CDP_BROWSER_BIN: ${{ steps.setup-chrome.outputs.chrome-path }}
-              run: scripts/identity-refit --report identity-refit-report.md ${RELEARN:+--relearn "$RELEARN"} ${THREADS:+--threads "$THREADS"}
+                  MERGE: ${{ steps.shards.outputs.merge }}
+              run: scripts/identity-refit --report identity-refit-report.md ${RELEARN:+--relearn "$RELEARN"} ${THREADS:+--threads "$THREADS"} ${MERGE:+--merge "$MERGE"}
 
             - name: Check for kept changes
               id: changed
@@ -158,7 +228,7 @@ jobs:
     # EVERY JOB'S AND STEP'S TIME, in this run's log and summary and on Grafana's CI dashboards
     # (.github/actions/report-timings). After every other job but the failure report; never fails the run.
     timings:
-        needs: [refit]
+        needs: [measure, refit]
         if: ${{ !cancelled() }}
         runs-on: ubuntu-26.04
         timeout-minutes: 5
@@ -180,7 +250,7 @@ jobs:
     # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --
     # see .github/actions/report-scheduled-run (ScheduledRunReportSpec).
     report:
-        needs: [refit, timings]
+        needs: [measure, refit, timings]
         if: always() && !cancelled() && github.event_name == 'schedule'
         runs-on: ubuntu-26.04
         timeout-minutes: 5
