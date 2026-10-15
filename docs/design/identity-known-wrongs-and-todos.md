@@ -202,7 +202,8 @@ Each a production change: measure with `scripts/identity-measure`, land one at a
   `InMemoryIdentityTraceStore`, `InMemoryPinStore`. The `Option(d.get(f)).filter(_.isArray)…` BSON read is written
   out 8 times beside `BsonFields` (done: `BsonFields.elementsOf` / `documentsOf`; the web review stores keep theirs, outside the package) (FamilyAnswerStore, AgreementCatalogue, AgreementPosters, Posters, AgreementVerdicts,
   IdentityTraceStore): a `BsonFields.documentsOf`. Removal needs identity-measure's 0 moves.
-- [ ] Judgements: ~50 venue rows repeat their `*` row (same film, verdict, state; e.g. Camp der Verlorenen, PL Lalka
+- [x] Judgements: ~50 venue rows repeat their `*` row (done: 51 dropped, the lint's `repeated` rule flags a new one;
+  INNA MAMUSIA judged right as its other spelling; `tour`/`gira` stay in both concepts — a touring edition and a side event) (same film, verdict, state; e.g. Camp der Verlorenen, PL Lalka
   `imdb:tt0064570` ×3) — check that no venue-scoped reader needs them, then let `identity_judgements.py` flag and drop
   them. `INNA MAMUSIA - MARATON` (undecided) vs `Inna Mamusia - maraton` (right), one film, keys a case apart.
   title-words.tsv holds `en tour`/`es gira` in both festival-edition and side-event (and `tour` twice in festival-edition).

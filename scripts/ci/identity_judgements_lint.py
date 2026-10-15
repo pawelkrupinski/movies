@@ -19,6 +19,9 @@ turned a gate red after the push, where nothing ran them before it:
              "Triple: Der Herr der Ringe" venues; the one left out (Peterborough, Schwerin) failed the takes check when
              e741882f6 dropped the wrong take everywhere.
   tolerated  a known-wrong row whose film the judgements call right at every venue ("*").
+  repeated   a venue's row saying what its "*" row says -- the same verdict, state and scope for the same listing and
+             film: it overrides the "*" row with itself, and drifts from it the day one of them is edited (51 of them on
+             2026-10-16, e.g. DE Zeughauskino's "Camp der Verlorenen", PL "Lalka" imdb:tt0064570 at three venues).
   expected   a checked-in expectation encoding a take the judgements call WRONG: an expected-matches.tsv line, or a film
              of expected-hard-clusters-<cc>.txt (c151636f1 regenerated PL's to the 2007 "Ktos calkiem obcy", wrong at every
              venue) -- unless a known-wrong row of scope hard-clusters stands for it; such a row no expectation needs any
@@ -99,6 +102,16 @@ def scattered_findings(judged):
     return [(("scattered",) + k, f"the judgements call {k[2]} wrong for {k[0]} '{k[1]}' at {len(v)} venues one by one: "
              f"judge it once for every venue ('*'), or the venue left out fails the takes check")
             for k, v in sorted(venues.items()) if len(v) >= SCATTERED_AT and k not in every]
+
+
+def repeated_findings(judged):
+    every = {(r.country, normalise(r.rawTitle), r.film): r for r in judged if r.venue == "*"}
+    def same(r, s):
+        return (r.verdict, r.state, r.scope) == (s.verdict, s.state, s.scope)
+    return [(("repeated", r.country, r.venue, normalise(r.rawTitle), r.film),
+             f"{r.country} {r.venue} | {r.rawTitle}: {r.film} says what its '*' row says ({r.verdict}, {r.state}"
+             f"{', ' + r.scope if r.scope else ''}) -- drop the venue's row")
+            for r in judged if r.venue != "*" and (k := (r.country, normalise(r.rawTitle), r.film)) in every and same(r, every[k])]
 
 
 def tolerated_right_findings(judged, labels):
@@ -228,7 +241,7 @@ def lint(root, served_paths=(), before=None, replay=None):
     labels = j.labels_by_country(judged)
     listed = j.tolerated(judged, "served") | j.tolerated(judged, "capture")
     return (store_findings(root, judged) + accepted_findings(judged, labels) + scattered_findings(judged)
-            + tolerated_right_findings(judged, labels)
+            + repeated_findings(judged) + tolerated_right_findings(judged, labels)
             + expected_match_findings(identity_takes.expected_matches(os.path.join(root, EXPECTED_MATCHES)), labels) + hard_cluster_findings(root, judged)
             + served(served_findings(served_paths, labels, listed, j.labels_by_country(j.read(before)) if before else None),
                      replay if before else None))

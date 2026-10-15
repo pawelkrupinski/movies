@@ -97,7 +97,6 @@ de	Lichtspielhaus Deggendorf	Camouflage	tmdb:1735950	right	open				2026-10-13	ju
 de	Metro-Kino im Schloßhof	Camouflage	tmdb:1735950	right	open				2026-10-13	judged 10-13: Gibalenko's Camouflage, German release 2026-10-08 (filmstarts 1000049621)
 de	Gröben-Lichtspiele	Camouflage OmU	tmdb:1735950	right	open				2026-10-13	judged 10-14: the listing dates 2026 and Cineamo links 1735950m, Gibalenko's Camouflage (German release 2026-10-08)
 de	*	Camp der Verlorenen	tmdb:103203	right	open				2026-10-08	hand label: The Camp at Thiaroye (1988) Ousmane Sembène; Thierno Faty Sow
-de	Zeughauskino - Deutsches Historisches Museum	Camp der Verlorenen	tmdb:103203	right	open				2026-10-08	recall target: Camp de Thiaroye (1988)
 de	Babylon (Mitte)	Cargo 200	tmdb:34869	right	open				2026-10-13	judged 10-13: Balabanov 2007
 de	Kinopolis Bad Homburg	Carmen (RB+O 2026/27)	tmdb:1740965	wrong	open		Carmen: Salzburger Festspiele 2026 (2026)		2026-10-14	judged 10-14 (wrong-match hunt): "RB+O 2026/27" bills the Royal Ballet & Opera Carmen (tmdb 1702759, which Cineamo links), not the Salzburg Festival 2026 recording
 de	Kinopolis HafenCity	Carmen (RB+O 2026/27)	tmdb:1740965	wrong	open				2026-10-14	judged 10-14 (wrong-match hunt): "RB+O 2026/27" bills the Royal Ballet & Opera Carmen (tmdb 1702759, which Cineamo links), not the Salzburg Festival 2026 recording
@@ -120,7 +119,6 @@ de	*	Command Performance	filmweb:486026	right	open				2026-10-08	hand label: Mor
 de	*	Command Performance	imdb:tt0020780	wrong	open				2026-10-08	hand label: Command Performance (1931) Walter Lang
 de	*	Command Performance	imdb:tt1210801	right	open				2026-10-08	hand label: Command Performance (2009) Dolph Lundgren
 de	*	Command Performance	tmdb:23404	right	open				2026-10-08	hand label: Command Performance (2009) Dolph Lundgren
-de	Kino Cafe Trauma	Command Performance	tmdb:23404	right	open				2026-10-08	recall target: Command Performance (2009)
 de	*	Command Performance	wikidata:Q18914912	wrong	open				2026-10-08	hand label: Command Performance (1931) Walter Lang
 de	Kinopolis Bad Homburg	Cosi fan tutte (RB+O 2026/27)	tmdb:1702775	right	open				2026-10-13	judged 10-13: the RBO relay; Cineamo 1702775m
 de	Kinopolis HafenCity	Cosi fan tutte (RB+O 2026/27)	tmdb:1702775	right	open				2026-10-13	judged 10-13: the RBO relay; Cineamo 1702775m
@@ -179,7 +177,6 @@ de	Cineplex Münster	Die Killerhand	tmdb:6552	right	open				2026-10-14	judged 10
 de	Pollux by Cineplex Paderborn	Die Killerhand	tmdb:6552	right	open				2026-10-14	judged 10-14 (wrong-match hunt): Die Killerhand is the German title of Idle Hands (1999), at a Cineplex genre night; Cineamo links a 22m short
 de	*	Die Liebe ist ein seltsames Spiel - eine Schlagerreise mit Rainer Moritz	tmdb:238511	wrong	open				2026-10-13	judged 10-13 (suspect audit): a talk "eine Schlagerreise mit Rainer Moritz", not the 1961 film Cariño mío
 de	*	Die Nibelungen - Teil 1: Siegfried	tmdb:31506	right	open				2026-10-08	hand label: Lang 1924
-de	Rex Wuppertal	Die Nibelungen - Teil 1: Siegfried	tmdb:31506	right	open				2026-10-08	recall target: Die Nibelungen: Siegfried (1924)
 de	*	Die Nibelungen - Teil 1: Siegfried	tmdb:5608	wrong	open				2026-10-08	hand label: Die Nibelungen, Teil 1 - Siegfried (1966) Harald Reinl
 de	*	Die Nibelungen - Teil 1: Siegfried	wikidata:Q18051442	wrong	open				2026-10-08	hand label: Die Nibelungen: Kriemhilds Rache (1924) Fritz Lang
 de	*	Die Nibelungen - Teil 1: Siegfried	wikidata:Q18341272	right	open				2026-10-08	hand label: Die Nibelungen: Siegfried (1924) Fritz Lang
@@ -238,7 +235,6 @@ de	*	Fallen Angels by Noël Coward (OV)	tmdb:1702350	right	open				2026-10-14	ju
 de	*	Fantasy	filmweb:10088643	right	open				2026-10-08	hand label: Fantasy (2025) Kukla
 de	*	Fantasy	rt:fantasy_2025	right	open				2026-10-08	hand label: 
 de	*	Fantasy	tmdb:1318829	right	open				2026-10-08	hand label: Fantasy (2025) Kukla Kesherovic
-de	Cine K Oldenburg	Fantasy	tmdb:1318829	right	open				2026-10-08	recall target: Fantasy (2026)
 de	Union Filmtheater Friedrichshagen	Femme - Frauen heilen die Welt	tmdb:976581	wrong	open				2026-10-13	judged 10-13: Itier's 2013 documentary Femme: Women Healing the World, not the 2023 thriller
 de	*	Film+Musikfest: Arthur Robison: THE INFORMER	tmdb:466081	wrong	open				2026-10-13	judged 10-13 (suspect audit): a silent film with live music (Film+Musikfest): Arthur Robison's 1929 "The Informer", not the 2019 film
 de	*	Film+Musikfest: Greta Garbo: The Temptress	tmdb:95956	right	open				2026-10-13	judged 10-13 (suspect audit): Greta Garbo's 1926 "The Temptress" in a silent-film-and-music festival
@@ -277,7 +273,6 @@ de	*	Ghost School	filmweb:10099678	right	open				2026-10-08	hand label: Ghost Sc
 de	Cinema Quadrat e.V.	Ghost School	imdb:tt37547768	right	open				2026-10-08	recall target: Ghost School
 de	*	Ghost School	rt:ghost_school	right	open				2026-10-08	hand label: Ghost School () Seemab Gul
 de	*	Ghost School	tmdb:1516456	right	open				2026-10-08	hand label: Ghost School (2025) Seemab Gul
-de	Cinema Quadrat e.V.	Ghost School	tmdb:1516456	right	open				2026-10-08	recall target: Ghost School (2026)
 de	*	Ghost School	tmdb:1599768	right	open				2026-10-08	hand label: Geisterschule (2026) Seemab Guul
 de	Babylon (Mitte)	Giorgia Fumo - OUT OF OFFICE	tmdb:1015172	wrong	open				2026-10-13	judged 10-13: the comedian's stand-up show, not the 2022 film
 de	Cineplex Olpe	Gloria!	tmdb:1231035	right	open				2026-10-13	judged 10-13: Vicario 2024; Cineamo 1231035m
@@ -312,7 +307,6 @@ de	aka-Filmclub	How to Make Millions Before Grandma Dies	tmdb:1103621	right	open
 de	*	How to blow up a Pipeline (Filmreihe Jung und Radikal )	tmdb:1008048	right	open				2026-10-13	judged 10-13 (suspect audit): venue catalogue id cineamo 1008048 names it
 de	Tivoli-Filmtheater	Hungarian Rhapsody: Queen - Live In Budapest	imdb:tt8378126	right	open				2026-10-08	recall target: Hungarian Rhapsody: Queen - Live In Buda
 de	*	Hungarian Rhapsody: Queen - Live In Budapest	tmdb:142773	right	open				2026-10-08	hand label: Magic – Queen in Budapest (1987) János Zsombolyai
-de	Tivoli-Filmtheater	Hungarian Rhapsody: Queen - Live In Budapest	tmdb:142773	right	open				2026-10-08	recall target: Queen: Budapest (2012)
 de	Cineplex Kristallpalast Dresden	Hybe Cheering Party	imdb:tt46659669	right	open				2026-10-13	judged 10-13: the relay the title names
 de	Cineplex Mannheim	Hybe Cheering Party	imdb:tt46659669	right	open				2026-10-13	judged 10-13: the relay the title names
 de	Neues Arena	IN THE MOOD FOR LOVE	tmdb:843	right	open				2026-10-13	judged 10-13: record matches production/film; runtime/director consistent
@@ -453,10 +447,8 @@ de	Gloria Palast	Manon (RB+O Live 2026/27)	tmdb:1702757	right	open				2026-10-13
 de	Metro-Kino im Schloßhof	Maria	tmdb:1038263	right	open				2026-10-14	judged 10-14 (wrong-match hunt): Larraín's Maria at an arthouse; Cineamo links a 17m short
 de	*	Maria's Lovers	filmweb:30917	right	open				2026-10-08	hand label: Kochankowie Marii (1984) Andriej Konczałowski
 de	*	Maria's Lovers	tmdb:77985	right	open				2026-10-08	hand label: Maria's Lovers (1984) Andrei Konchalovsky
-de	Kino im Druckluft	Maria's Lovers	tmdb:77985	right	open				2026-10-08	recall target: Maria's Lovers (1984)
 de	*	Maschen & Movies: Casablanca	tmdb:289	right	open				2026-10-13	judged 10-13 (suspect audit): venue catalogue id cineamo 289 names it
 de	*	Mein neues altes Ich - Eine Reise in das Mysterium der Menopause	tmdb:1627786	right	open				2026-10-08	hand label: Mein Neues Altes Ich (2026) Louise Unmack Kjeldsen
-de	Audi Programmkino	Mein neues altes Ich - Eine Reise in das Mysterium der Menopause	tmdb:1627786	right	open				2026-10-08	recall target: Menopause Mystery (2026)
 de	*	Mein neues altes Ich - Eine Reise in das Mysterium der Menopause	wikidata:Q138644118	right	open				2026-10-08	hand label: Mein neues altes Ich (2026) Louise Kjeldsen
 de	*	Mein neues altes Ich - Eine Reise in das Mysterium der Menopause	wikipedia:Q138644118	right	open				2026-10-08	hand label: Mein neues altes Ich (2026) Louise Kjeldsen
 de	ScharfrichterKino	Melt	tmdb:1559209	right	open				2026-10-13	judged 10-13: Geyrhalter 2025
@@ -750,7 +742,6 @@ es	*	DUNE - PARTE TRES	tmdb:1170608	right	open				2026-10-13	judged 10-13 (suspe
 es	*	Drácula. 30 Aniversario	tmdb:6114	right	open				2026-10-08	review page: confirmed
 es	Multicines Bahia Mar	ESCAPE ROOM 2	tmdb:585216	wrong	known-wrong	served	Escape Room 2: Mueres por salir (2021)	listed in the suspect baseline as wrong by labels when it was armed; no reason recorded	2026-10-14	judged 10-14 (wrong-match hunt): at a Spanish multiplex in October 2026 it is Joel Joan's Catalan Escape Room 2 (tmdb 1573952, 61 venues), not the 2021 US sequel
 es	*	El Cascanueces (BALLET)	tmdb:1702761	right	open				2026-10-14	judged 10-14: every Ocine venue billing it (Blanes, Gavarres, Girona, Màgic, Platja d'Aro, Premium Los Fresnos) screens it 1 Dec 2026, 140′ — the Royal Ballet & Opera 2026/27 Nutcracker relay's day (prod mirror cinema_scrapes)
-es	Ocine Blanes	El Cascanueces (BALLET)	tmdb:1702761	right	open				2026-10-14	judged 10-14: screens 1 Dec 2026, 140′ — the Royal Ballet & Opera 2026/27 Nutcracker relay's day
 es	Ocine Blanes	El Cascanueces (BALLET)	tmdb:471321	wrong	known-wrong	rows		no longer served: the 2019 ROH Nutcracker, as the rows' old model took it at Ocine Blanes; the relay season's search takes the 2026/27 relay (1702761) it screens on the day of — struck once the rows are re-emitted	2026-10-14	wrong by the right film the labels name at Ocine Blanes
 es	*	La leyenda del innombrable	filmweb:559450	right	open				2026-10-08	hand label: La Llegenda de l'innombrable (2010) Salomón Shang
 es	*	La leyenda del innombrable	imdb:tt1549862	right	open				2026-10-08	hand label: La llegenda de l'innombrable (2010) Salomón Shang
@@ -840,11 +831,9 @@ pl	*	Akademia Polskiego Filmu: wykład dr. Łukasza Biskupskiego: „Bestia”, 
 pl	*	Akademia Polskiego Filmu: wykład dr. Łukasza Biskupskiego: „Bestia”, reż. Aleksander Hertz (1917), „Cud nad Wisłą”, reż. Ryszard Bolesławski (1921)	tmdb:319754	wrong	open				2026-10-08	judged 10-05: a double programme (Bestia + Cud nad Wisłą) matches neither film (user rule) — was: hand label: The Polish Dancer (1917) Aleksander Hertz
 pl	*	Alim | UFF	tmdb:1048075	right	open				2026-10-08	judged 10-06: Amondo's page: the 1926 Crimean Tatar silent drama Алім (tt8785262)
 pl	*	Alim | UFF	tmdb:850957	wrong	open				2026-10-08	judged 10-06: 'UFF' is the Ukrainian Film Festival's tag, not Uff (2020, IN)
-pl	Kino Amondo	Alim | UFF	tmdb:850957	wrong	open				2026-10-08	review page: wrong: Uff (2020)
 pl	Kino 1410	André Rieu: Niech żyje Maastricht. Letni koncert 2026	tmdb:1702801	right	open				2026-10-08	recall target: André Rieu's 2026 Summer Concert: Viva Maastricht! (2026)
 pl	*	Atlantyda | UFF	tmdb:618245	right	open				2026-10-08	judged 10-06: Amondo's synopsis is Vasyanovych's Atlantis (Атлантида, tt10749786)
 pl	*	Atlantyda | UFF	tmdb:850957	wrong	open				2026-10-08	judged 10-06: 'UFF' is the Ukrainian Film Festival's tag, not Uff (2020, IN)
-pl	Kino Amondo	Atlantyda | UFF	tmdb:850957	wrong	open				2026-10-08	review page: wrong: Uff (2020)
 pl	*	Audiencja | Kinoteka Kultury i Sztuki	tmdb:209149	right	open				2026-10-08	hand label: The Audience (2013) Stephen Daldry; Robin Lough
 pl	*	Audiencja | Kinoteka Kultury i Sztuki	tmdb:786422	wrong	open				2026-10-08	hand label: The Audience (2020)
 pl	*	Audiencja | Kinoteka Kultury i Sztuki	tmdb:81775	wrong	open				2026-10-08	hand label: The Audience () Marco Ferreri
@@ -948,7 +937,6 @@ pl	Centrum Kultury Nowy Pafawag	Festiwal Korelacje: „Nie lubię poniedziałku�
 pl	Centrum Kultury Nowy Pafawag	Festiwal Korelacje: „Zemsta” z autorską narracją Artura Andrusa	tmdb:19721	right	open				2026-10-12	judged 10-13: Korelacje opens with Wajda's 2002 Zemsta screened with Artur Andrus's live narration (wroclaw.pl, spidersweb.pl), not a reading of Fredro's play
 pl	*	Filmowa Bryza czyli Pomorze w Kadrze: Ostatni dzień lata	filmweb:8423	right	open				2026-10-08	hand label: Ostatni dzień lata (1958) Tadeusz Konwicki
 pl	*	Filmowa Bryza czyli Pomorze w Kadrze: Ostatni dzień lata	tmdb:227245	right	open				2026-10-08	hand label: Ostatni dzień lata (1958) Tadeusz Konwicki
-pl	Kino Żak	Filmowa Bryza czyli Pomorze w Kadrze: Ostatni dzień lata	tmdb:227245	right	open				2026-10-08	recall target: The Last Day of Summer (1958)
 pl	*	Filmowe popołudnie dla dzieci: Jesień	tmdb:12417	wrong	open				2026-10-08	hand label: Autumn (2008) Özcan Alper
 pl	Kino Kosmos	Filmowe popołudnie dla dzieci: Robaczki	tmdb:140870	wrong	open				2026-10-08	review page: none of the candidates: Robaczki z Zaginionej Doliny (2013)
 pl	*	Fonomo 26 - Cała reszta to szum reż. Nicolas Pereda	tmdb:1616861	right	open				2026-10-13	judged 10-13 (suspect audit): the billing names Nicolás Pereda; "Cała reszta to szum" is "Lo demás es ruido"
@@ -961,7 +949,6 @@ pl	Gdyńskie Centrum Filmowe	Gdynia Filmowa 2026 | My Grandmother Is a Skydiver 
 pl	*	Ghost in the shell	filmweb:31866	right	open				2026-10-08	hand label: Ghost in the Shell (1995) Mamoru Oshii
 pl	Kinoteka	Ghost in the shell	imdb:tt1219827	wrong	open				2026-10-08	must not: 2017 remake; listing is the 1995 film
 pl	*	Ghost in the shell	tmdb:9323	right	open				2026-10-08	hand label: Ghost in the Shell (1995) Mamoru Oshii
-pl	Kinoteka	Ghost in the shell	tmdb:9323	right	open				2026-10-08	recall target: Ghost in the Shell (1995)
 pl	*	HANIA DEREJ	filmweb:340886	wrong	open				2026-10-08	hand label: Hania (2007) Janusz Kamiński
 pl	*	HER DOCS: Posprzątaj ze mną + Czasem myślę o Hawajach	tmdb:152601	wrong	open				2026-10-08	hand label: Her (2014) Spike Jonze
 pl	*	HER Docs - To nie jest świat dla ludzi z menopauzą	filmweb:10134515	right	open				2026-10-08	hand label: To nie jest świat dla ludzi z menopauzą (2026)
@@ -970,19 +957,17 @@ pl	*	HYBE CHEERING PARTY	imdb:tt46659669	right	open				2026-10-08	hand label: Hy
 pl	Kinoteka	Hedwig and the Angry Inch | Sounds gay, I’m in [pokaz z dyskusją]	tmdb:13403	right	open				2026-10-14	judged 10-14 (PL leg, recording 38498856157): Mitchell's Hedwig and the Angry Inch (Polish title Cal do szczęścia, 2001) in the "Sounds gay, I'm in" series with a discussion
 pl	Kino MDK Wągrowiec	Homo sapiens?	tmdb:1471345	right	open				2026-10-08	review page: right: Homo Sapiens? (2025)
 pl	*	Hucułka Ksenia / Гуцулка Ксеня / Hutsulka Ksenya	tmdb:580854	right	open				2026-10-13	judged 10-13 (suspect audit): the venue states 2019 and Olena Demyanenko, as the record does
-pl	*	INNA MAMUSIA - MARATON	tmdb:1400837	undecided	open	served	Inna mamusia (2026)	fragment: the billing bills several works beside 'Inna mamusia' | undecided 10-13: MultiFilmBill reads "<title> - maraton" as one film's marathon; no programme found	2026-10-13	
+pl	*	INNA MAMUSIA - MARATON	tmdb:1400837	right	open		Inna mamusia (2026)	right 10-16: the capitalised spelling of "Inna Mamusia - maraton", judged right from its review page (2026-10-08)	2026-10-16	
 pl	*	Ice Cream Man	tmdb:1477712	right	open				2026-10-08	review page: right: Ice Cream Man (2026)
 pl	Kino MOK Międzyrzecz	Ice Cream Man 2D napisy	tmdb:1477712	right	open				2026-10-08	review page: right: Ice Cream Man (2026)
 pl	*	Imago	filmweb:872645	right	open				2026-10-08	hand label: Imago (2023) Olga Chajdas
 pl	*	Imago	imdb:tt14417122	right	open				2026-10-08	hand label: Imago (2023) Olga Chajdas
-pl	Dyskusyjny Klub Filmowy Politechnika	Imago	imdb:tt14417122	right	open				2026-10-08	recall target: Imago
 pl	*	Imago	metacritic:imago	right	open				2026-10-08	hand label: Imago () Olga Chajdas
 pl	*	Imago	tmdb:1139774	right	open				2026-10-08	hand label: Imago (2023)
 pl	*	Inna Mamusia - maraton	tmdb:1400837	right	open				2026-10-08	review page: right: Inna mamusia (2026)
 pl	*	Johnny	filmweb:625571	wrong	open				2026-10-08	hand label: Kiedy dorosnę (2010) D. David Morin
 pl	*	Johnny	filmweb:847549	right	open				2026-10-08	hand label: Johnny (2022) Daniel Jaroszek
 pl	*	Johnny	tmdb:920220	right	open				2026-10-08	hand label: Johnny (2022) Daniel Jaroszek
-pl	Kino Goplana	Johnny	tmdb:920220	right	open				2026-10-08	recall target: Johnny (2022)
 pl	Kino Goplana	Johnny	tmdb:9486	wrong	open				2026-10-08	review page: must not: Johnny English (2003)
 pl	Kino Kosmos	KF Ambasada: Diabły	tmdb:31767	right	open				2026-10-14	judged 10-14: Ken Russell's The Devils (1971), its 4K director's cut, from Aldous Huxley's book as the venue's synopsis says, at the KF Ambasada film club
 pl	Kino Kosmos	KF Ambasada: Faust z muzyką na żywo | 200. spotkanie klubu & 100. rocznica filmu	tmdb:1468383	wrong	open				2026-10-08	hand label: Murnau's 1926 "Faust" with live music (its 100th anniversary), not the 2026 "Faust"
@@ -1011,7 +996,6 @@ pl	Kino Grajfka	Klondike	imdb:tt16315948	right	open				2026-10-08	recall target:
 pl	*	Klondike	metacritic:klondike	right	open				2026-10-08	hand label: Klondike (2023) Maryna Er Gorbach
 pl	*	Klondike	rt:klondike_2022	right	open				2026-10-08	hand label: Klondike (2023) Maryna Er Gorbach
 pl	*	Klondike	tmdb:913760	right	open				2026-10-08	hand label: Klondike (2022) Maryna Er Gorbach
-pl	Kino Grajfka	Klondike	tmdb:913760	right	open				2026-10-08	recall target: Klondike (2022)
 pl	*	Klondike	wikidata:Q110492062	right	open				2026-10-08	hand label: Klondike (2022) Maryna Er Gorbach
 pl	*	Klub Filmowy WCK "Odlot"	filmweb:436704	right	open				2026-10-08	hand label: Odlot (2009) Pete Docter; Bob Peterson
 pl	Bałtyk	Klub Konesera: Homo sapiens?	tmdb:1471345	right	open				2026-10-08	review page: right: Homo Sapiens? (2025)
@@ -1045,14 +1029,10 @@ pl	*	Lalka	filmweb:10057628	right	open				2026-10-08	hand label: Lalka (2026) Ma
 pl	*	Lalka	filmweb:1174	wrong	open				2026-10-08	hand label: Lalka (1968) Wojciech Has
 pl	Kino Iluzjon	Lalka	filmweb:1174	right	open				2026-10-13	judged 10-13: the archive page (iluzjon.fn.org.pl/filmy/info/2457) bills Lalka 1968, Wojciech Jerzy Has, 166 min
 pl	*	Lalka	imdb:tt0064570	wrong	open				2026-10-08	hand label: Lalka (1968) Wojciech Has
-pl	Kino CK Lublin	Lalka	imdb:tt0064570	wrong	open				2026-10-08	must not: the 2026 film; 1968 film's id carried
-pl	Kino CKiB Nowa Sarzyna	Lalka	imdb:tt0064570	wrong	open				2026-10-08	must not: the 2026 film; 1968 film's id carried
 pl	Kino Iluzjon	Lalka	imdb:tt0064570	right	open				2026-10-13	judged 10-13: the archive page (iluzjon.fn.org.pl/filmy/info/2457) bills Lalka 1968, Wojciech Jerzy Has, 166 min
-pl	Kino Kadr Staszów	Lalka	imdb:tt0064570	wrong	open				2026-10-08	must not: the 2026 film; 1968 film's id carried
 pl	*	Lalka	imdb:tt37082105	right	open				2026-10-08	hand label: Lalka (2026) Maciej Kawalski
 pl	*	Lalka	rt:lalka_1969	wrong	open				2026-10-08	hand label: Lalka () Lola Doillon
 pl	*	Lalka	tmdb:1321666	right	open				2026-10-08	hand label: Lalka (2026) Maciej Kawalski
-pl	Kino CK Lublin	Lalka	tmdb:1321666	right	open				2026-10-08	recall target: The Doll (2026)
 pl	*	Lalka	tmdb:81315	wrong	open				2026-10-08	hand label: Lalka (1968) Wojciech Jerzy Has
 pl	Kino Iluzjon	Lalka	tmdb:81315	right	open				2026-10-13	judged 10-13: the archive page (iluzjon.fn.org.pl/filmy/info/2457) bills Lalka 1968, Wojciech Jerzy Has, 166 min
 pl	*	Lalka	wikidata:Q139380938	right	open				2026-10-08	hand label: Lalka (2026) Maciej Kawalski
@@ -1117,7 +1097,6 @@ pl	*	My Fair Lady	filmweb:487823	wrong	open				2026-10-08	hand label: My Fair La
 pl	*	My Fair Lady	imdb:tt10214520	wrong	open				2026-10-08	hand label: My Fair Lady (2019) Razvan Dinca
 pl	*	My Fair Lady	rt:my_fair_lady	wrong	open				2026-10-08	review page: not a film (event), the 1964 film in this database too; was: hand label: My Fair Lady (1964) George Cukor
 pl	*	My Fair Lady	tmdb:11113	wrong	open				2026-10-08	review page: not a film (event); was: hand label: My Fair Lady (1964) George Cukor
-pl	Kino PCKul	My Fair Lady	tmdb:11113	wrong	open				2026-10-08	review page: not a film (event); was: recall target: My Fair Lady (1964)
 pl	*	My Fair Lady	wikidata:Q201215	wrong	open				2026-10-08	review page: not a film (event), the 1964 film in this database too; was: hand label: My Fair Lady (1964) George Cukor
 pl	*	My Fair Lady	wikipedia:Q201215	wrong	open				2026-10-08	review page: not a film (event), the 1964 film in this database too; was: hand label: My Fair Lady (1964) George Cukor
 pl	*	NADZIEJA	cinemeta:tt0847750	right	open				2026-10-08	hand label: Nadzieja (2007)
@@ -1137,7 +1116,6 @@ pl	Centrum 3D	Niedziela 53. Międzynarodowy festiwal pianistów jazzowych	tmdb:1
 pl	Kino Kultura	Nigdy w życiu! + spotkanie z Iloną Łepkowską i Michałem Toczkiem	tmdb:143240	right	open				2026-10-13	judged 10-13: screening with its screenwriter Ilona Łepkowska
 pl	*	Norymberga	filmweb:10072415	right	open				2026-10-08	hand label: Norymberga (2025) James Vanderbilt
 pl	*	Norymberga	tmdb:1214931	right	open				2026-10-08	hand label: Nuremberg (2025) James Vanderbilt
-pl	GOK Promyk	Norymberga	tmdb:1214931	right	open				2026-10-08	recall target: Nuremberg (2025)
 pl	*	Norymberga	wikidata:Q124393313	right	open				2026-10-08	hand label: Norymberga (2025) James Vanderbilt
 pl	*	Norymberga	wikipedia:Q124393313	right	open				2026-10-08	hand label: Norymberga (2025) James Vanderbilt
 pl	KINOMUZEUM	Notatki z Nagi	tmdb:1448971	right	open				2026-10-14	judged 10-14 (PL leg, recording 38498856157): the Polish release title of Kōji Fukada's Nagi Notes (2026)
@@ -1192,7 +1170,6 @@ pl	*	Palestyna 36 + dyskusja	tmdb:1432596	right	open				2026-10-13	judged 10-13 
 pl	*	Palestyna 36 | Gdyńska premiera filmu + prelekcja	tmdb:1432596	right	open				2026-10-13	judged 10-13 (suspect audit): "Palestyna 36" is "Palestine 36", with a talk
 pl	*	Pamiętasz, Edith?	rt:edith	wrong	open				2026-10-08	hand label: Edith (2016) Christian Cooke
 pl	*	Pasażerka - premiera książki, pokaz filmu + dyskusja	tmdb:25939	right	open				2026-10-08	hand label: Passenger (1963) Andrzej Munk; Witold Lesiewicz
-pl	Kino Kultura	Pasażerka - premiera książki, pokaz filmu + dyskusja	tmdb:25939	right	open				2026-10-08	recall target: Passenger (1963)
 pl	*	Pianista - Kino Konesera	filmweb:32225	right	open				2026-10-08	hand label: Pianista (2002) Roman Polański
 pl	Kasyno Oficerskie	Pianista - Kino Konesera	tmdb:10376	wrong	open				2026-10-08	review page: must not: 1900 Człowiek legenda (1998)
 pl	*	Pianista - Kino Konesera	tmdb:423	right	open				2026-10-08	hand label: The Pianist (2002) Roman Polanski
@@ -1226,7 +1203,6 @@ pl	*	SEVENTEEN WORLD TOUR ‘NEW_'	imdb:tt46658626	right	open				2026-10-08	hand
 pl	*	SEVENTEEN WORLD TOUR ‘NEW_'	rt:seventeen_world_tour_new_in_japan_live_viewing	wrong	open				2026-10-08	hand label: SEVENTEEN WORLD TOUR [NEW_] IN JAPAN: LIVE VIEWING (2025) Oh Yoon-dong
 pl	*	SKRZYŻOWANIE - 50 na 51 - spotkanie z Janem Englertem	filmweb:10036467	right	open				2026-10-08	hand label: Skrzyżowanie (2024) Dominika Montean-Pańków
 pl	*	SKRZYŻOWANIE - 50 na 51 - spotkanie z Janem Englertem	tmdb:1207497	right	open				2026-10-08	hand label: Skrzyżowanie (2025) Dominika Montean-Pańków
-pl	Kino Sokół	SKRZYŻOWANIE - 50 na 51 - spotkanie z Janem Englertem	tmdb:1207497	right	open				2026-10-08	recall target: The Crossroads (2025)
 pl	*	SMOK (Spotkania Młodych Odkrywców Kina): Kanał	tmdb:29933	right	open				2026-10-13	judged 10-13 (suspect audit): Wajda's "Kanał" in a young-viewers series
 pl	*	SUPERFUTRZAK I ZŁOŚLIWA WIEWIÓRKA	tmdb:1273554	right	open				2026-10-13	judged 10-13 (suspect audit): "Superfutrzak i złośliwa wiewiórka" is the Polish title of "Super Furball and the Lying Squirrel"
 pl	*	SYRENKA PICASSA - FDC	tmdb:1707431	right	open				2026-10-14	judged 10-14 (billedBeside on model takes): the 2026 film; FDC a venue tag
@@ -1246,7 +1222,6 @@ pl	*	Silent Night	wikipedia:Q112078051	wrong	open				2026-10-08	hand label: Sile
 pl	*	Siostry (1972)	filmweb:9559	right	open				2026-10-08	hand label: Siostry (1972) Brian De Palma
 pl	Kino Kameralne Cafe	Siostry (1972)	imdb:tt0070698	right	open				2026-10-08	recall target: Siostry (1972)
 pl	*	Siostry (1972)	tmdb:22307	right	open				2026-10-08	hand label: Sisters (1972) Brian De Palma
-pl	Kino Kameralne Cafe	Siostry (1972)	tmdb:22307	right	open				2026-10-08	recall target: Sisters (1973)
 pl	*	Skrzypek na dachu. 55 rocznica premiery filmu	tmdb:14811	right	open				2026-10-13	judged 10-13 (suspect audit): the 1971 film's 55th-anniversary screening
 pl	Centrum 3D	Sobota 53. Międzynarodowy festiwal pianistów jazzowych	tmdb:247935	wrong	open				2026-10-08	hand label: a day of the 53rd jazz pianists festival, not "Sobota" (1945)
 pl	*	Splat! FilmFest ON TOUR: Grzesznicy nie zaznają spokoju	tmdb:1486475	right	open				2026-10-13	judged 10-13 (suspect audit): "Grzesznicy nie zaznają spokoju" is the Polish title of "No Rest for the Wicked" (Splat! venues' synopses: Baldur, Faroe Islands)
@@ -1269,13 +1244,11 @@ pl	*	TAJNY AGENT	cinemeta:tt13679280	wrong	open				2026-10-08	hand label: Tajný
 pl	*	TAJNY AGENT	filmweb:10075964	right	open				2026-10-08	hand label: Tajny agent (2025) Kleber Mendonça Filho
 pl	*	TAJNY AGENT	imdb:tt27847051	right	open				2026-10-08	hand label: The Secret Agent (2025) Kleber Mendonça Filho
 pl	*	TAJNY AGENT	tmdb:1220564	right	open				2026-10-08	hand label: Tajny agent (2025) Kleber Mendonça Filho
-pl	Kino Opalenica	TAJNY AGENT	tmdb:1220564	right	open				2026-10-08	recall target: The Secret Agent (2025)
 pl	*	TAJNY AGENT	tmdb:12684	wrong	open				2026-10-08	hand label: Tajny agent (1936) Alfred Hitchcock
 pl	*	TAJNY AGENT	wikidata:Q101245192	wrong	open				2026-10-08	hand label: Agent kret (2020) Maite Alberdi
 pl	*	TAJNY AGENT - Klub Filmowy	cinemeta:tt13679280	wrong	open				2026-10-08	hand label: Tajný agent (2020)
 pl	*	TAJNY AGENT - Klub Filmowy	imdb:tt27847051	right	open				2026-10-08	hand label: The Secret Agent (2025) Kleber Mendonça Filho
 pl	*	TAJNY AGENT - Klub Filmowy	tmdb:1220564	right	open				2026-10-08	hand label: Tajny agent (2025) Kleber Mendonça Filho
-pl	Kino za Rogiem Brusy	TAJNY AGENT - Klub Filmowy	tmdb:1220564	right	open				2026-10-08	recall target: The Secret Agent (2025)
 pl	*	TAJNY AGENT - Klub Filmowy	tmdb:12684	wrong	open				2026-10-08	hand label: Tajny agent (1936) Alfred Hitchcock
 pl	*	TAJNY AGENT - Klub Filmowy	wikidata:Q101245192	wrong	open				2026-10-08	hand label: Agent kret (2020) Maite Alberdi
 pl	*	TOMORROW X TOGETHER WORLD TOUR 'ACT : TOMORROW	tmdb:1688795	right	open				2026-10-13	judged 10-13 (suspect audit): the concert film; 100 min is the venue's slot
@@ -1302,7 +1275,6 @@ pl	*	WAJDA: re- wizje. Przegląd filmów Andrzeja Wajdy w 100. rocznicę urodzin
 pl	*	WAJDA: re-wizje: BEZ ZNIECZULENIA | 15+	tmdb:42199	right	open				2026-10-08	hand label: Bez znieczulenia (1978) Andrzej Wajda
 pl	Kino Światowid Elbląg	WAJDA: re-wizje: Bez znieczulenia	tmdb:149136	wrong	open				2026-10-08	judged 10-06: Krajobraz po bitwie had its own page /repertuar/874 at this venue; /repertuar/895 reuses that text under the Bez znieczulenia title (see the 42199 row)
 pl	*	WAJDA: re-wizje: Bez znieczulenia	tmdb:42199	right	open				2026-10-08	judged 10-06: kino.swiatowid.elblag.pl/repertuar/895 is headed "WAJDA: re-wizje: Bez znieczulenia" but its body ("101 min ... Krajobraz po bitwie jest jednym z najbardziej gorzkich filmów Wajdy ... Produkcja: Polska 1970 Obsada: Daniel Olbrychski, Stanisława Celińska") is a verbatim copy of its own earlier page /repertuar/874 "WAJDA: re-wizje: Krajobraz po bitwie" (same text, 101 min); the SKS cycle's October slot is Bez znieczulenia (Kino Starówka lists "WAJDA: re-wizje: BEZ ZNIECZULENIA" 13.10) — the title is right, the text is stale
-pl	Kino Światowid Elbląg	WAJDA: re-wizje: Bez znieczulenia	tmdb:42199	right	open				2026-10-08	recall target: Without Anesthesia (1978)
 pl	*	Weekend Seniora z Kulturą: Vivaldi i ja [2D LEKTOR] (seans z audiodeskrypcją)	tmdb:1365683	right	open				2026-10-08	hand label: Primavera (2025) Damiano Michieletto
 pl	Kino Zamek	Whistler. Prekursor modernizmu z tate britain	tmdb:1035090	wrong	open				2026-10-08	review page: wrong: Nowy Vermeer. Wystawa wszech czasów (2023)
 pl	*	Wideoteka „POPtok”: Przewiń taśmę: „Inni”, reż. Alejandro Amenábar (2001), 104’	tmdb:1933	right	open				2026-10-13	judged 10-13 (suspect audit): the billing names Alejandro Amenábar and 2001, as the record does
@@ -1310,7 +1282,6 @@ pl	Kinoteatr Rialto	Wielka Sztuka w Kinoteatrze Rialto - Frida: Viva la Vida	imd
 pl	*	Wielka Sztuka w Kinoteatrze Rialto - Frida: Viva la Vida	rt:frida_viva_la_vida	right	open				2026-10-08	hand label: Frida. Viva la Vida (2019) Gianni Troilo
 pl	*	Wielka Sztuka w Kinoteatrze Rialto - Frida: Viva la Vida	tmdb:1212009	wrong	open				2026-10-08	hand label: Viva La Vida (2024) Han Yan
 pl	*	Wielka Sztuka w Kinoteatrze Rialto - Frida: Viva la Vida	tmdb:649244	right	open				2026-10-08	hand label: Frida. Viva la Vida (2019) Giovanni Troilo
-pl	Kinoteatr Rialto	Wielka Sztuka w Kinoteatrze Rialto - Frida: Viva la Vida	tmdb:649244	right	open				2026-10-08	recall target: Frida. Viva la Vida (2019)
 pl	*	Wishbone ash – road warriors	filmweb:875866	wrong	open				2026-10-08	hand label: Road Warriors (1995) Andy Cadiff
 pl	*	Wishbone ash – road warriors	rt:road_warriors	wrong	open				2026-10-08	hand label: Road Warriors () Danny Lee
 pl	*	Wrocławski Klub Ojca - DIY zabawki z drewna z recyklingu	cinemeta:tt0816711	wrong	open				2026-10-08	hand label: World War Z (2013) Marc Forster
@@ -1334,7 +1305,6 @@ pl	*	edukacja MH: Johnny	filmweb:625571	wrong	open				2026-10-08	hand label: Kie
 pl	*	edukacja MH: Johnny	filmweb:847549	right	open				2026-10-08	hand label: Johnny (2022) Daniel Jaroszek
 pl	Janosik	edukacja MH: Johnny	imdb:tt15538570	right	open				2026-10-08	recall target: Johnny
 pl	*	edukacja MH: Johnny	tmdb:920220	right	open				2026-10-08	hand label: Johnny (2022) Daniel Jaroszek
-pl	Janosik	edukacja MH: Johnny	tmdb:920220	right	open				2026-10-08	recall target: Johnny (2022)
 pl	Janosik	edukacja MH: Johnny	tmdb:9486	wrong	open				2026-10-08	review page: must not: Johnny English (2003)
 pl	*	edukacja MH: Żałuję!	tmdb:193418	right	open				2026-10-13	judged 10-13 (suspect audit): "Żałuję!" is the Polish title of the Dutch bullying drama "Spijt!", in a school-education series
 pl	*	Діґґер	tmdb:1248832	right	open				2026-10-08	review page: right: Digger (2026)
@@ -1411,7 +1381,6 @@ uk	Brewery Arts Centre Kendal	Funny Girl - The Musical	imdb:tt37775809	wrong	ope
 uk	*	Funny Girl - The Musical	imdb:tt8851198	right	open				2026-10-08	hand label: Funny Girl (2018) Robert Delamere
 uk	*	Funny Girl - The Musical	tmdb:1579941	wrong	open				2026-10-08	matchable page: wrong: The Musical (2026) Giselle Bonilla
 uk	*	Funny Girl - The Musical	tmdb:567896	right	open				2026-10-08	hand label: Funny Girl (2018) Michael Mayer; Robert Delamere
-uk	Brewery Arts Centre Kendal	Funny Girl - The Musical	tmdb:567896	right	open				2026-10-08	recall target: Funny Girl (2018)
 uk	Ciné Lumière London	Gavagai FFFL	tmdb:1214833	right	open				2026-10-13	judged 10-13: title/season/year/runtime consistent with record
 uk	*	George Michael: The Faith Tour Party Screening	tmdb:1649403	right	open				2026-10-13	judged 10-13: record matches production/film; runtime/director consistent
 uk	*	Go (1999)	tmdb:9430	right	open				2026-10-13	judged 10-13 (suspect audit): the venue credits Doug Liman, as the record does
@@ -1450,7 +1419,6 @@ uk	*	Ken Russell's The Devils presented by Deeper Into Movies	filmweb:32858	righ
 uk	*	Ken Russell's The Devils presented by Deeper Into Movies	rt:the_devils	right	open				2026-10-08	hand label: The Devils (1971) Ken Russell
 uk	*	Ken Russell's The Devils presented by Deeper Into Movies	tmdb:11542	wrong	open				2026-10-08	hand label: Altered States (1980) Ken Russell
 uk	*	Ken Russell's The Devils presented by Deeper Into Movies	tmdb:31767	right	open				2026-10-08	hand label: The Devils (1971) Ken Russell
-uk	Everyman Screen on the Green Islington	Ken Russell's The Devils presented by Deeper Into Movies	tmdb:31767	right	open				2026-10-08	recall target: The Devils (1971)
 uk	*	Kids Club: CBeebies Panto 2026: Treasure Island	tmdb:1710881	wrong	open				2026-10-13	judged 10-13: CBeebies panto, not Ridley Scott 2027 Treasure Island
 uk	*	Kids Club: Festive Fun with Peppa Cinema Experience	imdb:tt46666063	right	open				2026-10-13	judged 10-13: record matches production/film; runtime/director consistent
 uk	Theatr Gwaun Fishguard	Kind Hearts and Coronets - A Derek Webb Comedy play	tmdb:11898	wrong	open		Kind Hearts and Coronets (1949)		2026-10-15	judged 10-15: Derek Webb's stage comedy of the story, billed as a play, not the 1949 Ealing film
@@ -1513,7 +1481,6 @@ uk	Prince Charles London	NT Live: A Streetcar Named Desire	tmdb:291289	right	ope
 uk	*	NT Live: A Streetcar Named Desire	tmdb:702	wrong	open				2026-10-08	hand label: A Streetcar Named Desire (1951) Elia Kazan
 uk	Depot Lewes	NT Live: All My Sons (2026)	imdb:tt39544163	right	open				2026-10-08	recall target: NT Live: All My Sons (2026)
 uk	*	NT Live: All My Sons (2026)	tmdb:1620001	right	open				2026-10-08	hand label: All My Sons (2026) Ivo van Hove
-uk	Depot Lewes	NT Live: All My Sons (2026)	tmdb:1620001	right	open				2026-10-08	recall target: National Theatre Live: All My Sons (2026)
 uk	*	NT Live: Golden Boy	tmdb:1723978	right	open				2026-10-13	judged 10-13 (suspect audit): the venues credit Sam Yates, as the record does
 uk	*	NT Live: Goldenboy	tmdb:1723978	right	open				2026-10-13	judged 10-13 (suspect audit): the venue's synopsis is NT Live's "Golden Boy" (Josh O'Connor, Odets)
 uk	*	NT Live: Hay Fever	tmdb:1791571	right	open				2026-10-13	judged 10-13: record matches production/film; runtime/director consistent
@@ -1531,13 +1498,11 @@ uk	Lanternhouse Cinema	Obsession (18)	tmdb:625824	wrong	open				2026-10-14	judge
 uk	Quad Derby	Obsession (PG)	tmdb:1339713	wrong	known-wrong	capture	Obsession (2026)	era: 96 min PG against the 2026 film's 109 min, 18 — but a record of this year keeps TMDB's provisional running time (UK Street Fighter, Dune: Part Three moved wrong when runtime-short ruled fills out, measure 38810436113), and no record holds a certificate (10-16)	2026-10-13	judged 10-13 (#232): a PG at 96 min; Barker's 2026 horror runs 109 min and is rated 18/R (De Palma's 1976 film fits)
 uk	*	Ocean Odyssey	cinemeta:tt1869597	wrong	open				2026-10-08	hand label: Ocean Odyssey (2008)
 uk	*	Ocean Odyssey	imdb:tt14727208	right	open				2026-10-08	hand label: Ocean Odyssey (2021) Nick Robinson
-uk	IMAX at Glasgow Science Centre	Ocean Odyssey	imdb:tt14727208	right	open				2026-10-08	recall target: Ocean Odyssey
 uk	*	Ocean Odyssey	rt:ocean_odyssey_3d	right	open				2026-10-08	hand label: Ocean Odyssey () Nick Robinson
 uk	*	On Screen: The Metropolitan Opera LA FANCIULLA DEL WEST (12A)	imdb:tt43746527	right	open				2026-10-13	judged 10-13: title/season/year/runtime consistent with record
 uk	*	Once Upon A Time in America	filmweb:1038	right	open				2026-10-08	hand label: Dawno temu w Ameryce (1984) Sergio Leone
 uk	Lumiere Romford	Once Upon A Time in America	imdb:tt0087843	right	open				2026-10-08	recall target: Once Upon A Time in America
 uk	*	Once Upon A Time in America	tmdb:311	right	open				2026-10-08	hand label: Once Upon a Time in America (1984) Sergio Leone
-uk	Lumiere Romford	Once Upon A Time in America	tmdb:311	right	open				2026-10-08	recall target: Once Upon a Time in America (1984)
 uk	Lonsdale Alhambra Penrith	Opéra de Paris: Notre-Dame De Paris	tmdb:973305	wrong	open		Notre-Dame de Paris (Opéra Bastille) (2021)		2026-10-14	judged 10-14 (wrong-match hunt, sole-result): the Paris Opera's Dec 2025 recording (in cinemas 14 Mar 2027), not the 2021 Opéra Bastille record
 uk	*	Otello - The Met Opera	tmdb:1703634	right	open				2026-10-14	judged 10-14: the Met's 2026/27 relay of Otello, the record TMDB dates by the broadcast the venues screen it on
 uk	*	POC-DOCS Presents: North Sea, Nature Untamed	tmdb:1340711	right	open				2026-10-13	judged 10-13 (suspect audit): the venue's synopsis is the record's (Peter van Rodijnen)
@@ -1735,7 +1700,6 @@ uk	*	The Royal Ballet: Swan Lake (2027)	tmdb:1702782	right	open				2026-10-13	ju
 uk	The Maltings Berwick-Upon-Tweed	The Royal Ballet: Swan Lake [Revival]	tmdb:1702782	right	open				2026-10-13	judged 10-13 (#232): the relay of this RBO 2026/27 production, screened on (or after) its broadcast day
 uk	*	The Royal Ballet: THE NUTCRACKER	tmdb:1702761	right	open				2026-10-13	judged 10-13: title/year/venue evidence consistent with record
 uk	*	The Royal Ballet: The Nutcracker	tmdb:1702761	right	open				2026-10-13	judged 10-13: title/era/runtime consistent with record
-uk	Cineworld Bradford	The Royal Ballet: The Nutcracker	tmdb:1702761	right	open				2026-10-08	recall target: Royal Ballet & Opera 2026/27: The Nutcracker (2026)
 uk	The Maltings Berwick-Upon-Tweed	The Royal Ballet: The Nutcracker [Revival]	tmdb:1702761	right	open				2026-10-13	judged 10-14 (takes check d7bf9d92c..0e41a4812): an Oct 2026 corpus bills the coming RBO 2026/27 season relay (the venue's Tosca [Revival] is labelled the 2026/27 record too)
 uk	The Maltings Berwick-Upon-Tweed	The Royal Opera: Così fan tutte [New Production] (LIVE)	tmdb:1702775	right	open				2026-10-13	judged 10-13 (#232): the relay of this RBO 2026/27 production, screened on (or after) its broadcast day
 uk	*	The Royal Opera: TOSCA	tmdb:1702784	right	open				2026-10-13	judged 10-13: title/era/runtime consistent with record
@@ -1784,7 +1748,6 @@ us	*	A Night at the Opera	cinemeta:tt0026778	right	open				2026-10-08	hand label
 us	*	A Night at the Opera	filmweb:31509	right	open				2026-10-08	hand label: Noc w operze (1935) Sam Wood; Edmund Goulding
 us	Lakewood Ranch Cinemas 6	A Night at the Opera	imdb:tt0026778	right	open				2026-10-08	recall target: A Night at the Opera
 us	*	A Night at the Opera	tmdb:37719	right	open				2026-10-08	hand label: A Night at the Opera (1935) Sam Wood; Edmund Goulding
-us	Lakewood Ranch Cinemas 6	A Night at the Opera	tmdb:37719	right	open				2026-10-08	recall target: A Night at the Opera (1935)
 us	*	A Night at the Opera	tmdb:44919	wrong	open				2026-10-08	hand label: The Old Maid (1939) Edmund Goulding
 us	*	A Night at the Opera	wikidata:Q2547032	wrong	open				2026-10-08	hand label: The Old Maid (1939) Edmund Goulding
 us	*	A Night at the Opera	wikipedia:Q2547032	wrong	open				2026-10-08	hand label: The Old Maid (1939) Edmund Goulding
@@ -1792,7 +1755,6 @@ us	*	A Prayer for the Dying	cinemeta:tt0093771	wrong	open				2026-10-08	judged 1
 us	*	A Prayer for the Dying	filmweb:10113419	right	open				2026-10-08	judged 10-05: drafthouse.com's schedule bills it as "the acid western, hot off its Fantastic Fest 2026 premiere" (one show for every Alamo) — Dara Van Dusen's 2026 film, whose TMDB poster the venue's matches at 2 bits
 us	*	A Prayer for the Dying	filmweb:7794	wrong	open				2026-10-08	judged 10-05: drafthouse.com's schedule bills it as "the acid western, hot off its Fantastic Fest 2026 premiere" (one show for every Alamo) — Dara Van Dusen's 2026 film, whose TMDB poster the venue's matches at 2 bits
 us	*	A Prayer for the Dying	imdb:tt0093771	wrong	open				2026-10-08	judged 10-05: drafthouse.com's schedule bills it as "the acid western, hot off its Fantastic Fest 2026 premiere" (one show for every Alamo) — Dara Van Dusen's 2026 film, whose TMDB poster the venue's matches at 2 bits
-us	Alamo Drafthouse Lower Manhattan	A Prayer for the Dying	imdb:tt0093771	wrong	open				2026-10-08	judged 10-05: drafthouse.com's schedule bills it as "the acid western, hot off its Fantastic Fest 2026 premiere" (one show for every Alamo) — Dara Van Dusen's 2026 film, whose TMDB poster the venue's matches at 2 bits
 us	*	A Prayer for the Dying	imdb:tt31183803	right	open				2026-10-08	judged 10-05: drafthouse.com's schedule bills it as "the acid western, hot off its Fantastic Fest 2026 premiere" (one show for every Alamo) — Dara Van Dusen's 2026 film, whose TMDB poster the venue's matches at 2 bits
 us	*	A Prayer for the Dying	metacritic:a-prayer-for-the-dying	right	open				2026-10-08	judged 10-05: drafthouse.com's schedule bills it as "the acid western, hot off its Fantastic Fest 2026 premiere" (one show for every Alamo) — Dara Van Dusen's 2026 film, whose TMDB poster the venue's matches at 2 bits
 us	*	A Prayer for the Dying	rt:a_prayer_for_the_dying	wrong	open				2026-10-08	judged 10-05: drafthouse.com's schedule bills it as "the acid western, hot off its Fantastic Fest 2026 premiere" (one show for every Alamo) — Dara Van Dusen's 2026 film, whose TMDB poster the venue's matches at 2 bits
@@ -1828,9 +1790,7 @@ us	Alamo Drafthouse Yonkers	Dismember the Alamo 2026 - Yonkers	tmdb:11209	wrong	
 us	Ron Robinson Theater	Exhibition on Screen: Goya	tmdb:381710	right	open				2026-10-12	judged 10-13: Flicks' page (2015, UK, 90′, the National Gallery's 'Goya: The Portraits') is Bickerstaff's Goya: Visions of Flesh and Blood (90′)
 us	*	Exhibition on Screen: John Singer Sargent	rt:exhibition_on_screen_john_singer_sargent_fashion_and_swagger	right	open				2026-10-08	hand label: Exhibition on Screen: John Singer Sargent - Fashion & Swagger (2024) David Bickerstaff
 us	*	Exhibition on Screen: John Singer Sargent	tmdb:1220518	right	open				2026-10-08	hand label: John Singer Sargent: Fashion and Swagger (2024) David Bickerstaff
-us	Glenwood Arts Theater	Exhibition on Screen: John Singer Sargent	tmdb:1220518	right	open				2026-10-08	recall target: John Singer Sargent: Fashion and Swagger (2024)
 us	*	Exhibition on Screen: Rembrandt	imdb:tt6449472	right	open				2026-10-08	hand label: Exhibition on Screen: Rembrandt (2018)
-us	Enzian Theater	Exhibition on Screen: Rembrandt	imdb:tt6449472	right	open				2026-10-08	recall target: Rembrandt
 us	*	Exhibition on Screen: Rembrandt	rt:rembrandt-1999	wrong	open				2026-10-08	hand label: Rembrandt (1999) Charles Matton
 us	*	Exhibition on Screen: Rembrandt	tmdb:208028	wrong	open				2026-10-08	hand label: Exhibition (2014) Joanna Hogg
 us	Enzian Theater	Exhibition on Screen: Rembrandt	tmdb:527092	right	open				2026-10-08	recall target: Rembrandt: From the National Gallery, London and Rijksmuseum, Amsterdam (2018)
@@ -1846,7 +1806,6 @@ us	*	It (2017)	tmdb:346364	right	open				2026-10-13	judged 10-13 (suspect audit)
 us	*	Lady Frankenstein	imdb:tt0067321	right	open				2026-10-08	hand label: Lady Frankenstein (1971) Mel Welles; Aureliano Luppi
 us	*	Lady Frankenstein	imdb:tt0175621	wrong	open				2026-10-08	hand label: Lust for Frankenstein (1998) Jesús Franco
 us	*	Lady Frankenstein	tmdb:3122	right	open				2026-10-08	hand label: Lady Frankenstein (1971)
-us	Alamo Drafthouse Wrigleyville	Lady Frankenstein	tmdb:3122	right	open				2026-10-08	recall target: Lady Frankenstein (1971)
 us	*	Lady Frankenstein	wikidata:Q3267834	wrong	open				2026-10-08	hand label: Lust for Frankenstein (1998) Jesús Franco
 us	*	Last Shot	filmweb:10116476	wrong	open				2026-10-08	hand label: Last Shot (2025) Parham Rahimzadeh
 us	*	Last Shot	imdb:tt0357054	wrong	open				2026-10-08	hand label: The Last Shot (2004) Jeff Nathanson
@@ -1861,7 +1820,6 @@ us	Alamo Drafthouse Indianapolis	MOTHER!	imdb:tt5109784	right	open				2026-10-08
 us	*	MOTHER!	metacritic:mother!	right	open				2026-10-08	hand label: mother! (2017) Darren Aronofsky
 us	*	MOTHER!	rt:mother_2017	right	open				2026-10-08	hand label: mother! (2017) Darren Aronofsky
 us	*	MOTHER!	tmdb:381283	right	open				2026-10-08	hand label: Mother! (2017) Darren Aronofsky
-us	Alamo Drafthouse Indianapolis	MOTHER!	tmdb:381283	right	open				2026-10-08	recall target: mother! (2017)
 us	*	MOTHER!	wikipedia:Q25339558	right	open				2026-10-08	hand label: Mother! (2017) Darren Aronofsky
 us	*	Met Opera 2026-27: Così fan tutte	tmdb:1702775	wrong	open				2026-10-08	must not: Royal Ballet & Opera 2026/27: Così fan tutte, another house's production
 us	*	Met Opera 2026-27: Così fan tutte	tmdb:1703620	right	open				2026-10-08	hand label: The Metropolitan Opera: Così fan tutte (2026) Phelim McDermott — TMDB's US title names no season
@@ -1875,7 +1833,6 @@ us	*	MetOpera: Rigoletto (2022)	imdb:tt19363622	wrong	open				2026-10-08	hand la
 us	Oriental Theatre Milwaukee	NT Live: All My Sons	tmdb:1620001	right	open				2026-10-08	recall target: National Theatre Live: All My Sons (2026)
 us	Oriental Theatre Milwaukee	NT Live: All My Sons	tmdb:568683	wrong	known-wrong	rows		no longer served: withdrawn as a superseded relay: TMDB dates it 2019, the screenings and the 2026 record of its title 2026 (AgreementCorrectionSpec)	2026-10-08	judged 10-06: Milwaukee Film's page (mkefilm.org/films/6a5a41a0fefb55f649a84678) bills NT Live: All My Sons 2026, Ivo van Hove, Bryan Cranston, Oct 10-11 12:00 at the Oriental; Flicks links the listing to its 2019 Old Vic page (Herrin, Sally Field), the feed's link wrong
 us	*	NT Live: Hamlet	tmdb:1507580	right	open				2026-10-13	judged 10-13: the National Theatre's 2026 Hamlet (Robert Hastie, Hiran Abeysekera), what Burns Court's own page bills for the Flicks feed every venue shares
-us	Burns Court Cinemas Sarasota	NT Live: Hamlet	tmdb:1507580	right	open				2026-10-08	judged 10-06: the venue's page bills the National Theatre's 2026 Hamlet (Robert Hastie, Hiran Abeysekera)
 us	*	NT Live: Hamlet	tmdb:396227	wrong	known-wrong	served	National Theatre Live: Hamlet (2015)	listed in the suspect baseline as wrong by labels when it was armed; no reason recorded	2026-10-13	judged 10-13: both venues billing it (Burns Court Sarasota, Film Streams Omaha) read one Flicks page (id 3058) still carrying Cumberbatch's 2015 year and runtime, screening 24 Nov-2 Dec 2026; Burns Court's own page bills the 2026 production (Robert Hastie, Hiran Abeysekera), the NT Live release then touring
 us	Burns Court Cinemas Sarasota	NT Live: Hamlet	tmdb:396227	wrong	open				2026-10-08	judged 10-06: the venue's page (filmsociety.org filID=3393) bills NT Live: Hamlet 2026, Robert Hastie, Hiran Abeysekera, opening 24 Nov 2026; Flicks links it to Cumberbatch's 2015 page
 us	*	NT Live: Hamlet	tmdb:436484	wrong	open				2026-10-08	review page: must not: National Theatre Live: Hamlet (2010)
@@ -1889,9 +1846,7 @@ us	*	Penguin Island	tmdb:1678907	right	open				2026-10-08	hand label: Penguin Is
 us	*	Psycho Cinema's PsychoRama Sleepover	filmweb:107050	wrong	open				2026-10-08	hand label: Piżama party (2004) Joe Nussbaum
 us	*	Reel Rock 19	filmweb:10134643	right	open				2026-10-08	hand label: Reel Rock 19 (2025)
 us	*	Reel Rock 19	tmdb:1451675	right	open				2026-10-08	hand label: Reel Rock 19 (2025) Josh Lowell
-us	Sky Cinemas Santa Fe	Reel Rock 19	tmdb:1451675	right	open				2026-10-08	recall target: Reel Rock 19 (2025)
 us	*	Ringu: VHS Version	tmdb:2671	right	open				2026-10-08	hand label: Ringu (1998) Hideo Nakata
-us	Alamo Drafthouse South Lamar	Ringu: VHS Version	tmdb:2671	right	open				2026-10-08	recall target: Ring (1998)
 us	*	SEVENTEEN World Tour 'NEW_'	imdb:tt46658626	right	open				2026-10-08	hand label: Seventeen World Tour (New_) (2026) Taehwa Um
 us	*	SEVENTEEN World Tour 'NEW_'	rt:seventeen_world_tour_new_in_japan_live_viewing	wrong	open				2026-10-08	hand label: SEVENTEEN WORLD TOUR [NEW_] IN JAPAN: LIVE VIEWING (2025) Oh Yoon-dong
 us	*	SEVENTEEN World Tour 'NEW_'	tmdb:1443823	wrong	open				2026-10-08	hand label: SEVENTEEN WORLD TOUR [RIGHT HERE] IN CINEMAS (2025) Yoon Dong Oh
@@ -1903,7 +1858,6 @@ us	*	Scrooge	wikidata:Q1058952	wrong	open				2026-10-08	hand label: Scrooge (195
 us	*	Scrooge	wikipedia:Q2249404	right	open				2026-10-08	hand label: Scrooge (1970) Ronald Neame
 us	*	Spider Baby	filmweb:479516	wrong	open				2026-10-08	hand label: Spider Baby (2009) Jeff Broadstreet
 us	*	Spider Baby	tmdb:28504	right	open				2026-10-08	hand label: Spider Baby or, The Maddest Story Ever Told (1967) Jack Hill
-us	Alamo Drafthouse Cedars Dallas	Spider Baby	tmdb:28504	right	open				2026-10-08	recall target: Spider Baby (1967)
 us	*	Spirited Away 25th Anniversary - Studio Ghibli Fest 2026	tmdb:129	right	open				2026-10-13	judged 10-13 (suspect audit): the venues credit Hayao Miyazaki, as the record does: a 25th-anniversary re-release
 us	Camelot Theatres Palm Springs	Stage Fright	tmdb:1978	right	open				2026-10-08	judged 10-06: Camelot Theatres' Hitchcock retrospective shows Stage Fright (1950; Wyman, Dietrich) on 13 Nov 2026 — not Gofnung's 2026 film
 us	*	Student Bodies	cinemeta:tt0083133	right	open				2026-10-08	hand label: Student Bodies (1981)
@@ -1913,7 +1867,6 @@ us	*	Student Bodies	imdb:tt3132422	wrong	open				2026-10-08	hand label: Beginner
 us	*	Student Bodies	metacritic:student-bodies	right	open				2026-10-08	hand label: Student Bodies (1981) Mickey Rose; Michael Ritchie
 us	*	Student Bodies	rt:student_bodies	right	open				2026-10-08	hand label: Student Bodies (1981) Mickey Rose
 us	*	Student Bodies	tmdb:21515	right	open				2026-10-08	hand label: Student Bodies (1981) Mickey Rose
-us	Alamo Drafthouse Indianapolis	Student Bodies	tmdb:21515	right	open				2026-10-08	recall target: Student Bodies (1981)
 us	*	TERROR TUESDAY: THE EXORCIST - ON 35MM	tmdb:9552	right	open				2026-10-13	judged 10-13 (suspect audit): Friedkin's "The Exorcist" on 35mm in a horror series
 us	*	THE BRIDE OF FRANKENSTEIN	filmweb:615902	wrong	open				2026-10-08	hand label: The Bride of Frankenstein (2012) Justin Michael; Jacob Reed
 us	*	THE BRIDE OF FRANKENSTEIN	tmdb:229	right	open				2026-10-08	hand label: Bride of Frankenstein (1935) James Whale
@@ -1925,11 +1878,9 @@ us	*	The City of The Dead	cinemeta:tt0053719	right	open				2026-10-08	hand label
 us	*	The City of The Dead	filmweb:36590	right	open				2026-10-08	hand label: Miasto umarłych (1960) John Llewellyn Moxey
 us	*	The City of The Dead	rt:the_city_of_the_dead	wrong	open				2026-10-08	hand label: The City of the Dead () Sérgio Tréfaut
 us	*	The City of The Dead	tmdb:39890	right	open				2026-10-08	hand label: Horror Hotel (1960) John Llewellyn Moxey
-us	Alamo Drafthouse Brooklyn	The City of The Dead	tmdb:39890	right	open				2026-10-08	recall target: The City of the Dead (1960)
 us	*	The City of The Dead	wikidata:Q194106	right	open				2026-10-08	hand label: The City of the Dead (1960) John Llewellyn Moxey
 us	*	The Scout	cinemeta:tt0099392	wrong	open				2026-10-08	hand label: The Scout (1989)
 us	*	The Scout	imdb:tt0111094	wrong	open				2026-10-08	judged 10-05: drafthouse.com's schedule bills it first-run, "a day in the life of a location scout for a TV show" — Paula Gonzalez-Nasser's 2026 film, whose TMDB poster the venue's matches at 2 bits
-us	Alamo Drafthouse Downtown LA	The Scout	imdb:tt0111094	wrong	open				2026-10-08	judged 10-05: drafthouse.com's schedule bills it first-run, "a day in the life of a location scout for a TV show" — Paula Gonzalez-Nasser's 2026 film, whose TMDB poster the venue's matches at 2 bits
 us	*	The Scout	imdb:tt36590599	right	open				2026-10-08	judged 10-05: drafthouse.com's schedule bills it first-run, "a day in the life of a location scout for a TV show" — Paula Gonzalez-Nasser's 2026 film, whose TMDB poster the venue's matches at 2 bits
 us	*	The Scout	metacritic:the-scout	right	open				2026-10-08	judged 10-05: drafthouse.com's schedule bills it first-run, "a day in the life of a location scout for a TV show" — Paula Gonzalez-Nasser's 2026 film, whose TMDB poster the venue's matches at 2 bits
 us	*	The Scout	rt:scout	wrong	open				2026-10-08	judged 10-05: drafthouse.com's schedule bills it first-run, "a day in the life of a location scout for a TV show" — Paula Gonzalez-Nasser's 2026 film, whose TMDB poster the venue's matches at 2 bits
@@ -2057,9 +2008,7 @@ de	KNUP – Soziokulturelles Zentrum Oerlinghausen	Bergstadt-Advent	tmdb:423739	
 uk	Magic Lantern Tywyn	Fallen Angels	tmdb:11220	wrong	open		Fallen Angels (1995)		2026-10-15	judged 10-15 (class 2, namesake vouching): the venue's synopsis is Coward's play ('Two upper-class wives ... from one of theatre's comedy masters'), 125 min, one show 2026-11-07 -- the filmed stage production 189 venues bill as 'Fallen Angels by Noël Coward', not Wong Kar-wai's 1995 film (96 min)
 uk	Magic Lantern Tywyn	Fallen Angels	tmdb:1702350	right	open				2026-10-15	judged 10-15 (class 2, namesake vouching): the venue's synopsis is Coward's play ('Two upper-class wives ... from one of theatre's comedy masters'), 125 min, one show 2026-11-07 -- the filmed stage production 189 venues bill as 'Fallen Angels by Noël Coward', not Wong Kar-wai's 1995 film (96 min)
 uk	Pocklington Arts Centre	Royal Ballet & Opera: Alice's Adventures in Wonderland	tmdb:1307003	wrong	open		Royal Ballet & Opera 2024/25: Alice's Adventures in Wonderland (2024)		2026-10-15	judged 10-15 (class 2, namesake vouching): screens 2027-03-23 (mirror cinema_scrapes), the 2026/27 season's relay (tmdb 1702778, which 200 venues take as 'RBO 2026-27: Alice...'), not the 2024/25 production
-uk	Pocklington Arts Centre	Royal Ballet & Opera: Alice's Adventures in Wonderland	tmdb:1702778	right	open				2026-10-15	judged 10-15 (class 2, namesake vouching): screens 2027-03-23 (mirror cinema_scrapes), the 2026/27 season's relay (tmdb 1702778, which 200 venues take as 'RBO 2026-27: Alice...'), not the 2024/25 production
 uk	Theatr Mwldan Cardigan	Royal Ballet & Opera: Alice's Adventures in Wonderland (12A As Live tbc)	tmdb:1307003	wrong	open		Royal Ballet & Opera 2024/25: Alice's Adventures in Wonderland (2024)		2026-10-15	judged 10-15 (class 2, namesake vouching): screens 2027-03-23 (mirror cinema_scrapes), the 2026/27 season's relay (tmdb 1702778, which 200 venues take as 'RBO 2026-27: Alice...'), not the 2024/25 production
-uk	Theatr Mwldan Cardigan	Royal Ballet & Opera: Alice's Adventures in Wonderland (12A As Live tbc)	tmdb:1702778	right	open				2026-10-15	judged 10-15 (class 2, namesake vouching): screens 2027-03-23 (mirror cinema_scrapes), the 2026/27 season's relay (tmdb 1702778, which 200 venues take as 'RBO 2026-27: Alice...'), not the 2024/25 production
 de	Eulenspiegel Filmtheater	The Killer	tmdb:10835	right	open				2026-10-15	judged 10-15 (class 2, namesake vouching): John Woo's 1989 film in its 2026 4K restoration (tmdb 10835, which 7 venues bill with year and director Oct 29-Nov 2), not his streaming-only 2024 remake: bare, its Cineamo link 800158m the same (wrong) one as Montabaur, Cinenova and Kino im Filmhaus, judged 10-14
 de	Metropolis Bochum	The Killer	tmdb:10835	right	open				2026-10-15	judged 10-15 (class 2, namesake vouching): John Woo's 1989 film in its 2026 4K restoration (tmdb 10835, which 7 venues bill with year and director Oct 29-Nov 2), not his streaming-only 2024 remake: bare, billed OmU (original 'The Killer (OmU)') Oct 30-Nov 3, the 1989 restoration's week
 de	Rex am Ring	The Killer	tmdb:10835	right	open				2026-10-15	judged 10-15 (class 2, namesake vouching): John Woo's 1989 film in its 2026 4K restoration (tmdb 10835, which 7 venues bill with year and director Oct 29-Nov 2), not his streaming-only 2024 remake: bare, billed OmU (original 'The Killer (OmU)') Oct 30, the 1989 restoration's week

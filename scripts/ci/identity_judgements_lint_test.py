@@ -107,8 +107,19 @@ class JudgementsLintTest(unittest.TestCase):
         found = self.messages(per_venue)
         self.assertEqual(1, len(found))
         self.assertIn("at 5 venues one by one", found[0])
-        self.assertEqual([], self.messages(per_venue + [row("uk", "*", "Bear Hunt+Tiger", "tmdb:431591", "wrong")]))
+        self.assertEqual([], self.messages([row("uk", "*", "Bear Hunt+Tiger", "tmdb:431591", "wrong")]))
         self.assertEqual([], self.messages(per_venue[:4]))
+
+    def test_a_venue_row_saying_what_its_every_venue_row_says_fails(self):
+        # 51 venue rows on 2026-10-16 repeated their "*" row: same film, verdict, state and scope
+        every = row("pl", "*", "Lalka", "imdb:tt0064570", "right")
+        found = self.messages([every, row("pl", "Kino Iluzjon", "Lalka", "imdb:tt0064570", "right")])
+        self.assertEqual(1, len(found))
+        self.assertIn("says what its '*' row says", found[0])
+        # a venue's own verdict, state or scope is no repeat
+        self.assertEqual([], self.messages([every, row("pl", "Kino Iluzjon", "Lalka", "imdb:tt0064570", "wrong")]))
+        self.assertEqual([], self.messages([row("pl", "*", "Lalka", "tmdb:2", "wrong", "known-wrong", "capture", reason="x"),
+                                            row("pl", "Muza", "Lalka", "tmdb:2", "wrong", "known-wrong", "served", reason="x")]))
 
     def test_a_known_wrong_take_the_judgements_call_right_everywhere_fails(self):
         found = self.messages([row("uk", "*", "Romeo and Juliet", "tmdb:6003", "right"),
