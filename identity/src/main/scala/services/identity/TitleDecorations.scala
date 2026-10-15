@@ -119,6 +119,11 @@ object TitleDecorations {
    *  sentence's stop, a spaced dash or slash — inside the cut, past its own edges, split it into two worded pieces then. */
   private[identity] def onePiece(cut: String): Boolean =
     PieceSeparator.split(trimmed(cut)).count(_.exists(Character.isLetterOrDigit)) <= 1
+  /** Not [[IdentityMeasures.PieceBreak]], which cuts a title into the pieces it is SEARCHED by, and so leaves a bracket and
+   *  a sentence's stop inside its piece ("Basia. Humor w paski mam" is one title, a bracketed year is taken out before it
+   *  splits): this one asks whether a cut runs over the edge of a piece, and a bracket or a stop is such an edge
+   *  ("Renoir und die Liebe (Exhibition On Screen)"). Its colon needs the space after it, so a clock or a colon glued into
+   *  a word ("20:15", "Re:Zero") stays inside the cut, as a venue's tag carries it; the dash and slash are PieceBreak's. */
   private val PieceSeparator = java.util.regex.Pattern.compile("""[()\[\]{}|]|:\s|\.\s|\s[-–—/]\s""")
   private val LeadingSeparators  = java.util.regex.Pattern.compile("""^[\s\-–—:|/)\]},;.]+""")
   private val TrailingSeparators = java.util.regex.Pattern.compile("""[\s\-–—:|/(\[{,;]+$""")
