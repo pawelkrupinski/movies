@@ -164,7 +164,7 @@ object ListingShape {
       // the banner segment each piece is in: a colon or a pipe closes one
       val segment = parts.indices.map(k => breaks.take(k).count(b => b == ":" || b == "|"))
       def programme(piece: Seq[String]) = piece.exists(word => ScreeningProgramme.findFirstIn(word).isDefined)
-      def programmeWords(piece: Seq[String]) = programme(piece) || piece.exists(billed)
+      def programmeWords(piece: Seq[String]) = programme(piece) || piece.exists(billed) || DecorationWords.namesAnEvent(piece)
       // a film of the silent era under a screening programme: the billing is the programme's, its accompanist's (DE
       // "Film+Musikfest: Greta Garbo: The Temptress", 1926), as one billing it silent is
       // the film's own tagline, its subtitle ("Frauen bildet Banden - Eine Spurensuche zur Geschichte der Roten Zora")
@@ -188,7 +188,7 @@ object ListingShape {
       // a film titled only by a screening note's words ("Q & A", "Talk"): the billing's note, not a film, beside the
       // billing's other pieces (UK The Garden Cinema's "Köln Tracks: The Legend Of Keith Jarrett’s Köln Concert + Q&A")
       val noted = run.filter { case (from, to) =>
-        films.forall(f => { val title = TitleContainment.tokens(f.title); title.nonEmpty && title.forall(NoteWords) }) &&
+        films.forall(f => { val title = TitleContainment.tokens(f.title); title.nonEmpty && (title.forall(NoteWords) || NotePhrase.matches(title.mkString(" "))) }) &&
           words.indices.exists(k => (k < from || k >= to) && words(k).nonEmpty)
       }.map(_ => s"'${films.head.title}' is a screening note's words, billed beside the billing's own pieces")
       noted orElse run.filterNot { case (from, to) => silent || reworded || opens || words.indices.exists(k => (k < from || k >= to) && words(k).exists(credits)) }.flatMap { case (from, to) =>
@@ -233,6 +233,8 @@ object ListingShape {
   /** The words of a screening's note — a talk, a Q&A, the screening as an event ([[TitleWords]]): a title of these alone
    *  names the note. */
   private val NoteWords = TitleWords.tokens(TitleWords.Concept.Talk, TitleWords.Concept.Screening)
+  /** One whole phrase of a screening's note, folded — "Q & A", whose letters [[NoteWords]] holds no word of. */
+  private val NotePhrase = TitleWords.foldedPattern(TitleWords.Concept.Talk, TitleWords.Concept.Screening).r
   /** An event, format or edition word: what a venue bills around a film. */
   private def billed(word: String): Boolean =
     DecorationWords.EventWords(word) || DecorationWords.EditionWords(word) || services.movies.FormatTags.FormatToken.contains(word)

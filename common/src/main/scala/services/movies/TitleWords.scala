@@ -83,12 +83,13 @@ object TitleWords {
   /** The languages a concept holds a word in. */
   def languages(concept: Concept): Set[String] = entries.collect { case e if e.concept == concept => e.language }.toSet
 
-  /** Every word of the concepts' phrases, folded as [[TitleContainment.tokens]] folds a title's. A stem has no word to
-   *  hold, so a concept read this way may not have one. */
+  /** Every word of the concepts' phrases, folded as [[TitleContainment.tokens]] folds a title's, of two letters or more:
+   *  a phrase's single letter is no word of the concept ("Q&A" folds to "q", "a" — the article of every English title).
+   *  A stem has no word to hold, so a concept read this way may not have one. */
   def tokens(concepts: Concept*): Set[String] = {
     val all = phrases(concepts*)
     all.find(_.contains('*')).foreach(p => throw new IllegalStateException(s"'$p' is a stem: ${concepts.map(_.id).mkString(", ")} are read as words"))
-    all.flatMap(TitleContainment.tokens).toSet
+    all.flatMap(TitleContainment.tokens).filter(_.lengthIs > 1).toSet
   }
 
   /** The concepts' phrases as one alternation over FOLDED text (a title's [[TitleContainment.tokens]] joined by single

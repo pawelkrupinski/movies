@@ -232,7 +232,7 @@ object SuspectTakes {
         // a piece beside the film's: a work's title unless it is a banner the corpus bills beside other titles, or holds a
         // decoration word; the film's own piece: the words its title leaves
         val (beside, within) = placed.partition { case (_, (from, to)) => to <= start || from >= start + length }
-        val rest    = beside.map(_._1).filterNot(p => billings.banner(p) || p.words.exists(billed)).flatMap(_.words).filter(own)
+        val rest    = beside.map(_._1).filterNot(p => billings.banner(p) || p.words.exists(billed) || DecorationWords.namesAnEvent(p.words)).flatMap(_.words).filter(own)
         val inPiece = within.flatMap { case (p, (from, _)) =>
           p.words.indices.filter(i => from + i < start || from + i >= start + length).map(p.words) }.filter(own)
         Option.when(rest.sizeIs >= FragmentRest || (inPiece.sizeIs >= FragmentRest && inPiece.size > length))(

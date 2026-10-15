@@ -10,10 +10,16 @@ object DecorationWords {
   /** Words naming an event around a screening, not a work ([[MultiFilmBill.billsTwoWholeWorks]] and the broadcast join read them too):
    *  a premiere, a talk, the screening as an event, a festival, a relay, a concert, a marathon — the word table's
    *  ([[TitleWords]]), in every language a country bills in. */
-  private[identity] val EventWords: Set[String] = {
+  private[identity] val EventWords: Set[String] = TitleWords.tokens(EventConcepts*)
+  private def EventConcepts = {
     import TitleWords.Concept.*
-    TitleWords.tokens(Premiere, Talk, Screening, Festival, Relay, Performance, Marathon)
+    Seq(Premiere, Talk, Screening, Festival, Relay, Performance, Marathon)
   }
+  /** The event concepts' whole phrases over folded words: "Q & A", whose single letters [[EventWords]] holds none of. */
+  private val EventPhrase = TitleWords.foldedPattern(EventConcepts*).r
+  /** Do the folded `words` of a piece name an event around a screening — one of [[EventWords]], or a whole phrase of one
+   *  ("Anschließendes Q&A mit Regisseurin Ute Aurand")? */
+  def namesAnEvent(words: Seq[String]): Boolean = words.exists(EventWords) || EventPhrase.findFirstIn(words.mkString(" ")).isDefined
   /** Words naming an EDITION of a film — a cut, a restoration, a re-release, an anniversary ([[TitleWords]]). */
   private[identity] val EditionWords: Set[String] = TitleWords.tokens(TitleWords.Concept.Edition, TitleWords.Concept.Anniversary)
 

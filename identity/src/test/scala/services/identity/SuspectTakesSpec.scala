@@ -26,6 +26,8 @@ class SuspectTakesSpec extends AnyFlatSpec with Matchers {
     signals(take(listing(KinoMuza, "The Tea Alchemist - World Premiere + Q&A"), film("World Premiere", 1941))) should contain(Signal.Fragment)
     signals(take(listing(KinoMuza, "Jan Logemann LIVE: Herr Logemann hebt ab! -AUSVERKAUFT!-"), film("Ausverkauft!", 1999))) should
       contain(Signal.Fragment)
+    // "A" is no event word: a tribute show's subtitle beside the 1992 film it shares a title with (convergence 38687290714, UK)
+    signals(take(listing(KinoMuza, "Straight Talk: A Tribute to Dolly Parton"), film("Straight Talk", 1992))) should contain(Signal.Fragment)
     // a double bill names neither of its works alone
     signals(take(listing(KinoMuza, "The Gruffalo + The Gruffalo's Child"), film("The Gruffalo", 2009))) should contain(Signal.Fragment)
   }
@@ -42,6 +44,9 @@ class SuspectTakesSpec extends AnyFlatSpec with Matchers {
     val banner = corpus(billed(KinoMuza, "Akademia Kina Polskiego: Psy", 1, 1992), billed(KinoMuza, "Akademia Kina Polskiego: Krzyżacy", 2, 1960))
     signals(take(listing(KinoMuza, "Akademia Kina Polskiego: Psy"), film("Psy", 1992)), banner) shouldNot contain(Signal.Fragment)
     signals(take(listing(KinoMuza, "Nigdy w życiu! + spotkanie z reżyserką"), film("Nigdy w życiu!", 2004))) shouldNot contain(Signal.Fragment)
+    // a talk's whole phrase in a piece of its own words, "Q&A" — its letters no event words (convergence 38687290714, DE)
+    signals(take(listing(KinoMuza, "SPECIAL: RASENDES GRÜN MIT PFERDEN (Anschließendes Q&A mit Regisseurin Ute Aurand)"),
+      film("Rasendes Grün mit Pferden", 2021))) shouldNot contain(Signal.Fragment)
     signals(take(listing(KinoMuza, "Lalka 2D NAPISY"), film("Lalka", 1968))) shouldNot contain(Signal.Fragment)
     signals(take(listing(KinoMuza, "Konwicki: Salto"), film("Salto", 1965, directors = Seq("Tadeusz Konwicki")))) shouldNot contain(Signal.Fragment)
     signals(take(listing(KinoMuza, "Clockwork Orange - Uhrwerk Orange"), film("Uhrwerk Orange", 1971).copy(originalTitle = Some("A Clockwork Orange")))) shouldNot

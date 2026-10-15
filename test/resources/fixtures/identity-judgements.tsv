@@ -501,6 +501,7 @@ de	CITY 46 / Kommunalkino Bremen e.V.	Newborn	tmdb:1663100	wrong	open				2026-10
 de	Kommunales Kino im Künstlerhaus	Newborn	tmdb:1663100	wrong	open				2026-10-13	judged 10-13 (#232): Cineamo links Newborn (2026, tmdb 787844), the model's lean; Filmweb's 2018 namesake filled alone
 de	CITY 46 / Kommunalkino Bremen e.V.	Newborn	tmdb:787844	right	open				2026-10-13	judged 10-14: Cineamo links 787844m, this film; the model leans to it, Metacritic takes it
 de	Kommunales Kino im Künstlerhaus	Newborn	tmdb:787844	right	open				2026-10-13	judged 10-14: Cineamo links 787844m, this film; the model leans to it, Metacritic takes it
+de	KiTT - Kino und Kleinkunst Tettnang e.V.	Nosferatu – The Journal Of A Broken Man	tmdb:653	wrong	known-wrong	served	Nosferatu, eine Symphonie des Grauens (1922)	served at base and head; a suspect once "a" stopped being an event word (convergence 38687290714)	2026-10-15	judged 10-15: Tim Brownlow's performance "Nosferatu: The Journal of a Broken Man" (as the * row of its other billing), not Murnau's 1922 film
 de	*	Notting Hill - Lady&apos;s Night	tmdb:509	right	open				2026-10-13	judged 10-13 (suspect audit): venue catalogue id cineamo 509 names it
 de	*	Nur für Verrückte	imdb:tt43695441	right	open				2026-10-08	hand label: Nur für Verrückte (2026) Matthias Lehmann
 de	Apollo Aachen	Nur geträumt	tmdb:1404684	right	open				2026-10-14	judged 10-14 (wrong-match hunt): Nur geträumt is the German title of Nakache/Toledano's 2026 film; Cineamo links an empty stub
@@ -1451,6 +1452,7 @@ uk	*	Ken Russell's The Devils presented by Deeper Into Movies	tmdb:31767	right	o
 uk	Everyman Screen on the Green Islington	Ken Russell's The Devils presented by Deeper Into Movies	tmdb:31767	right	open				2026-10-08	recall target: The Devils (1971)
 uk	*	Kids Club: CBeebies Panto 2026: Treasure Island	tmdb:1710881	wrong	open				2026-10-13	judged 10-13: CBeebies panto, not Ridley Scott 2027 Treasure Island
 uk	*	Kids Club: Festive Fun with Peppa Cinema Experience	imdb:tt46666063	right	open				2026-10-13	judged 10-13: record matches production/film; runtime/director consistent
+uk	Theatr Gwaun Fishguard	Kind Hearts and Coronets - A Derek Webb Comedy play	tmdb:11898	wrong	open		Kind Hearts and Coronets (1949)		2026-10-15	judged 10-15: Derek Webb's stage comedy of the story, billed as a play, not the 1949 Ealing film
 uk	*	Kino KILN: Portrait of a Lady on Fire	tmdb:531428	right	open				2026-10-13	judged 10-13: title/year/venue evidence consistent with record
 uk	*	Kokuho - Film Club	tmdb:1379266	right	open				2026-10-13	judged 10-13: title/year/venue evidence consistent with record
 uk	*	Köln Tracks: The Legend Of Keith Jarrett’s Köln Concert + Q&A	tmdb:31598	wrong	open				2026-10-13	judged 10-13 (suspect audit): the documentary about Keith Jarrett's Köln Concert (the venue's synopsis), not Sidney Lumet's "Q & A"
@@ -1681,6 +1683,7 @@ uk	*	Social Reckoning - Baby Friendly	tmdb:556984	wrong	known-wrong	served	The T
 uk	*	Somali Film Festival: Lifeline	tmdb:1078812	right	open				2026-10-13	judged 10-13: record matches production/film; runtime/director consistent
 uk	*	Song Sung Blue- The Music of Neil Diamond	tmdb:1371185	wrong	known-wrong	capture	Song Sung Blue (2025)	event: a tribute concert filled as the 2025 film	2026-10-13	judged 10-13: page: live tribute concert, not the 2025 film
 uk	*	Spooked: Videodrome (18) - Introduction with Johnathan Ilott	tmdb:837	right	open				2026-10-13	judged 10-13 (suspect audit): Cronenberg's "Videodrome" with an introduction
+uk	Electric Palace Hastings	Straight Talk: A Tribute to Dolly Parton	tmdb:37264	wrong	known-wrong	served	Straight Talk (1992)	served at base and head; a suspect once "a" stopped being an event word (convergence 38687290714)	2026-10-15	judged 10-15: a Dolly Parton tribute show named after her song, not the 1992 film she starred in
 uk	Savoy Cinema Catterick Garrison	Street Fighter	tmdb:1153576	right	open				2026-10-13	judged 10-13: title/era/runtime consistent with record
 uk	*	Swan Lake (ROH)	tmdb:1702782	right	open				2026-10-14	judged 10-14: Royal Ballet & Opera's 2026/27 relay of Swan Lake, the record TMDB dates by the broadcast the venues screen it on
 uk	*	Swan Lake - Royal Ballet & Opera 26/27	tmdb:1702782	right	open				2026-10-14	judged 10-14: Royal Ballet & Opera's 2026/27 relay of Swan Lake, the record TMDB dates by the broadcast the venues screen it on
