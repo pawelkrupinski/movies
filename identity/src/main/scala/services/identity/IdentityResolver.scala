@@ -552,7 +552,7 @@ object IdentityResolver {
           scored.flatMap { case (node, own) => IdentityResolver.billedAsPiece(node, own, corroborated, recurs, answered).map(node -> _) }
         }.toMap ++ film.filterNot(_ => pinned || !pieces).toSeq.flatMap(_ => IdentityResolver.besideItsScreening(unbilled)).toMap
         val placed = unbilled.filterNot(piecesOf.contains)
-        // a member nothing of its own corroborates the film by, whose take a fact or an evidenced namesake speaks against
+        // a member nothing of its own corroborates the film by, nor a member billed alike or title-linked to one
         val weak   = film.filterNot(_ => pinned).toSeq.flatMap(Corroboration.refused(placed, _, scope.of, familyEdges, backed)).toMap
         val rest   = placed.filterNot(weak.contains)
         if ((bills.isEmpty && piecesOf.isEmpty && weak.isEmpty) || film.isEmpty)
@@ -566,7 +566,7 @@ object IdentityResolver {
           Option.when(rest.nonEmpty)(decisions.of(rest, scope, filmOf, accepted, votes, familyEdges, clusterIndex)).toSeq ++
             Option.when(bills.nonEmpty)(none(bills, Seq("bills several works: none of them"), "bills both works")) ++
             Option.when(piecesOf.nonEmpty)(none(unbilled.filter(piecesOf.contains), unbilled.flatMap(piecesOf.get).distinct, "billed as one piece")) ++
-            Option.when(weak.nonEmpty)(none(placed.filter(weak.contains), placed.flatMap(weak.get).distinct, "uncorroborated namesake"))
+            Option.when(weak.nonEmpty)(none(placed.filter(weak.contains), placed.flatMap(weak.get).distinct, "uncorroborated"))
         }
       }
       (familyEdges, decided, violations)

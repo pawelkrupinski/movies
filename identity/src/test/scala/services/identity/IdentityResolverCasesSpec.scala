@@ -1002,12 +1002,34 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
   private def shipped(listings: Seq[Listing], films: Seq[F]): Resolution =
     IdentityResolver.resolve(listings, new FilmTable(films, normalizer), normalizer, IdentityCalibration.resolver)
 
-  "A bare listing that no fact of its own corroborates" should "keep its exact title's film when nothing speaks against it" in {
+  private def screening(l: Listing, days: String*): Listing = l.copy(screenings = ScreeningDays.of(days.map(java.time.LocalDate.parse)))
+
+  "A bare listing that no fact of its own corroborates" should "keep its exact title's film when it screens in the film's release" in {
     // PL "Eliminacja" at small venues billing nothing but the title: the current release, the take the venues mean
-    val films = Seq(F(1284046, "Eliminacja", 2026, "Jan Kowalski", 101, 30))
-    val l = listing(Multikino, "Eliminacja")
+    val films = Seq(F(1284046, "Eliminacja", 2026, "Jan Kowalski", 101, 30, releases = Some("PL2026-")))
+    val l = screening(listing(Multikino, "Eliminacja"), "2026-10-20")
     val d = shipped(Seq(l), films).decisionOf(l.key)
     withClue(d.render)(d.film shouldBe Some(1284046))
+  }
+
+  it should "take no film whose release its screenings are years past" in {
+    // DE Kinopolis Freiberg's bare "Patagonien", a travel-lecture show: TMDB's "Patagonia" is Bozzelli's 2023 drama,
+    // released three years before the screening, and nothing the venue states names it — a guess, better left untaken
+    val films = Seq(F(1010170, "Patagonien", 2023, "Simone Bozzelli", 112, 4, releases = Some("DE2023-IT2023-")))
+    val l = screening(listing(Multikino, "Patagonien"), "2026-10-20")
+    val d = shipped(Seq(l), films).decisionOf(l.key)
+    withClue(d.render)(d.film shouldBe None)
+    d.render should include("no year, director, original title, discriminating runtime, feed id, season or current release")
+  }
+
+  it should "count a current release only when no namesake it names as closely is current too" in {
+    // two "Escape Room 2"s released in the screening's year: their release tells neither apart, so a bare listing
+    // with nothing else takes neither
+    val films = Seq(F(585216, "Escape Room 2", 2026, "Adam Robitel", 88, 40, releases = Some("ES2026-")),
+      F(1573952, "Escape Room 2", 2026, "Hèctor Claramunt", 88, 2, releases = Some("ES2026-")))
+    val l = screening(listing(Multikino, "ESCAPE ROOM 2"), "2026-10-20")
+    val d = shipped(Seq(l), films).decisionOf(l.key)
+    withClue(d.render)(d.film shouldBe None)
   }
 
   it should "take the film its cluster's listing billed under the same title credits" in {
