@@ -244,7 +244,11 @@ needs_reseed() {
 # Nothing here is fatal: a down tunnel, a stopped Mongo, or a wiped mirror all
 # recover on the next cycle instead of killing the sync.
 supervise_db() {
-  local srcdb="$1" force="$2" code fails=0 backoff
+  local srcdb="$1" force="$2" code fails=0 backoff tailpid=""
+  # The parent stops this supervisor with TERM (its exit trap), and the tailer is
+  # OUR background child: left alone it streamed on as an orphan, and the restarted
+  # daemon tailed the same database a second time beside it.
+  trap '[ -z "$tailpid" ] || kill "$tailpid" 2>/dev/null; exit 143' TERM INT
   while true; do
     if ! ensure_local_mongo; then echo "[mirror] $srcdb: local Mongo unavailable — retrying in 5s"; sleep 5; continue; fi
     if ! ensure_tunnel;     then echo "[mirror] $srcdb: tunnel unavailable — retrying in 5s";     sleep 5; continue; fi
@@ -263,11 +267,12 @@ supervise_db() {
     set +e
     "$MONGOSH_AT" "$SRCZ" --quiet --eval "var DST='$DST'; var SRC_DB='$srcdb'" \
       --file "$HERE/mirror-targets.js" --file "$HERE/stream-start.js" --file "$HERE/tail.js" &
-    local tailpid=$!
+    tailpid=$!
     # Watch for a retarget while the tailer streams. An empty reading means the
     # digest could not be computed — treated as "unchanged", never as an edit.
     while kill -0 "$tailpid" 2>/dev/null; do
-      sleep "$TARGETS_POLL"
+      # Backgrounded and waited for, so a TERM is handled now, not a poll later.
+      sleep "$TARGETS_POLL" & wait "$!"
       local now; now="$(published_fingerprint)"
       if [ -n "$now" ] && [ -n "$launched_with" ] && [ "$now" != "$launched_with" ]; then
         echo "[mirror] $srcdb: mirrored-collection list changed — restarting tailer to pick it up"

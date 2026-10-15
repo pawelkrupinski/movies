@@ -227,6 +227,45 @@ notices_its_own_code_changing() {
 check "the supervisor sees an edit to code it runs, and ignores one to a spec" \
   notices_its_own_code_changing
 
+# ── A stopped supervisor must take its tailer with it ────────────────────────
+# The parent's exit trap TERMs each `supervise_db` subshell, but the tailer is
+# that subshell's own background child: unhandled, the TERM ended the subshell
+# and left its mongosh streaming into the mirror — and launchd's (or service.sh's)
+# restart then started a SECOND tailer for the same database beside the orphan.
+# The tailer stub records its pid and streams until killed.
+tailer_dies_with_its_supervisor() {
+  local work; work="$(mktemp -d "${TMPDIR:-/tmp}/kinowo-mirror-spec.XXXXXX")"
+  printf '#!/bin/sh\necho $$ > "%s/tailer.pid"\nexec sleep 30\n' "$work" > "$work/tailer"; chmod +x "$work/tailer"
+  (
+    # shellcheck source=/dev/null
+    . "$HERE/mirror.sh"
+    # In the daemon this subshell is forked with `&`, which resets the parent's
+    # traps; sourced here, mirror.sh's top-level `trap cleanup … TERM` would
+    # swallow the TERM instead.
+    trap - EXIT INT TERM
+    ensure_local_mongo()    { return 0; }
+    ensure_tunnel()         { return 0; }
+    needs_reseed()          { return 1; }
+    published_fingerprint() { echo unchanged; }
+    SRCZ=stub-source-uri DST=stub-mirror-uri MONGOSH_AT="$work/tailer" TARGETS_POLL=30
+    supervise_db kinowo 0
+  ) >/dev/null 2>&1 &
+  local supervisor=$! deadline=$((SECONDS + 5))
+  while [ ! -s "$work/tailer.pid" ] && [ "$SECONDS" -lt "$deadline" ]; do command sleep 0.05; done
+  local tailer; tailer="$(cat "$work/tailer.pid" 2>/dev/null)"
+  kill -TERM "$supervisor" 2>/dev/null
+  await_child "$supervisor" 5
+  deadline=$((SECONDS + 3))
+  while [ -n "$tailer" ] && kill -0 "$tailer" 2>/dev/null && [ "$SECONDS" -lt "$deadline" ]; do command sleep 0.05; done
+  local orphaned=no
+  [ -n "$tailer" ] && kill -0 "$tailer" 2>/dev/null && { orphaned=yes; kill "$tailer" 2>/dev/null; }
+  rm -rf "$work"
+  [ -n "$tailer" ] && [ "$orphaned" = no ]
+}
+
+check "a supervisor stopped by the parent stops its tailer too, within seconds" \
+  tailer_dies_with_its_supervisor
+
 # ── A dead supervisor must take the whole agent down with it ─────────────────
 # The two cases above are about a supervisor RECOVERING. This one is about the
 # supervisor that doesn't: every `supervise_db` runs in a background subshell,
