@@ -23,8 +23,17 @@ import java.nio.file.{Files, Path, Paths}
  *  2. No test-side `extends Clock` except testkit's [[MutableClock]] — five specs had each grown a
  *     private copy of it.
  *
- * Runnable programs under the test trees (a non-spec file with `def main`) talk to the live world
- * and are out of scope.
+ * Runnable programs under the test trees (a non-spec file with `def main`, `ScalaSourceScan.isProgram`)
+ * stay exempt, on purpose. The failure this lint prevents is an ASSERTION that rides on a sleep having
+ * been long enough — flaky under load, vacuous when the code is merely slow. A program asserts nothing:
+ * each of its sleeps (2026-10-15: a GC settle before a heap reading in two benches, Chrome's paint
+ * settle in the screenshot tools, IdentitySlice's server poll, a retry back-off handed to a live
+ * TmdbClient) waits on the live world while an operator watches, and the one MutableClock /
+ * ManualScheduler / latch repair has nothing to step there. The exemption is per FILE, so it would
+ * also cover a sleep inside the pure functions a program's spec calls (BuildHardClusters, GateReport,
+ * IdentityRefit, SuspectTakesMeasure keep their logic beside their `main`); none of those sleeps, and
+ * one that needs pacing takes it as a parameter (the `retrySleep: Long => Unit` shape) so its spec
+ * passes a no-op. Requiring an injected `sleep` in every `main` would add a seam no caller ever swaps.
  */
 class NoSleepInTestsSpec extends AnyFlatSpec with Matchers {
 

@@ -18,7 +18,7 @@ import java.nio.file.{Files, Path, Paths}
  * [[SpecTimeouts]] holds those bounds, scaled by `KINOWO_SPEC_TIME_SCALE` for a slower runner.
  *
  * A literal is flagged in each of a wait's bound positions, over every test-side tree (comments
- * and string literals stripped; runnable programs, which talk to the live world, out of scope):
+ * and string literals stripped; runnable programs out of scope, as below):
  *
  *  1. the last argument of `Await.result` / `Await.ready`;
  *  2. a Java timed wait — `.await` / `.get` / `.poll` / `.offer` / `.tryAcquire` / `.tryLock` /
@@ -33,6 +33,18 @@ import java.nio.file.{Files, Path, Paths}
  * `SpecTimeouts.quiet(window)`, which this lint reads as named. A spec asserting that a wait
  * DOES time out keeps its literal on the allowlist below, with why, and should bound the
  * elapsed time from above too.
+ *
+ * Runnable programs (`ScalaSourceScan.isProgram`: a non-spec file with `def main`) stay exempt, on
+ * purpose. [[SpecTimeouts]] exists so a loaded CI runner does not outlast a bound and turn a green
+ * build red; its values scale with `KINOWO_SPEC_TIME_SCALE`, a knob for test runners. A program's
+ * bound (2026-10-15: about fifteen — a Mongo read over the prod tunnel, a pool of live fetches, a
+ * bulk write) bounds a wait on a live service an operator is running it against: running out is a
+ * real answer the operator sees and reruns, never a false red in a build, and no runner scale applies
+ * to how long prod's Mongo takes. Routing those through SpecTimeouts would tie operator tools to a
+ * test policy; demanding a named constant for each would rename the literal without changing what it
+ * bounds or who reads it (where a program reuses a bound, it already names one: SharedUsersMigration's
+ * `ReadTimeout`). The functions a program's spec calls wait on nothing: their waits stay in `main`'s
+ * live wiring.
  */
 class NoLiteralWaitBoundSpec extends AnyFlatSpec with Matchers {
 
