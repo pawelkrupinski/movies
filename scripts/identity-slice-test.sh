@@ -15,6 +15,19 @@ printf '\033[36m▸\033[0m identity-slice\n'
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 mkdir -p "$work/bin"
+# xargs as GNU's, CI's: with no input it still runs its command once -- macOS's runs nothing -- so a key hashing "no
+# untracked file" through `xargs shasum` hashed shasum's empty stdin on Linux alone (main 38707274817, green on a Mac).
+real_xargs=$(command -v xargs)
+cat > "$work/bin/xargs" <<XARGS
+#!/usr/bin/env bash
+input=\$(mktemp); cat > "\$input"
+if [ ! -s "\$input" ]; then
+  while [ "\${1:-}" != "\${1#-}" ]; do shift; done
+  rm -f "\$input"; exec "\$@" < /dev/null
+fi
+exec "$real_xargs" "\$@" < "\$input"
+XARGS
+chmod +x "$work/bin/xargs"
 
 # A repository holding the tool (its scripts and the files it drops into a ref's tree) at two commits.
 repo="$work/repo"

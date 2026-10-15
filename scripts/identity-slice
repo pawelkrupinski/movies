@@ -204,13 +204,16 @@ results_of() { # <code key>
 # a ref runs -- its main code, the fixtures package and the build -- with THIS checkout's tool files dropped in. Keyed by
 # content, not commit: a commit that changes no code (a judgement, a spec, a doc) resolves nothing again. Measured
 # 2026-10-15: recording 38547714686 held 252 indexes under 252 commits and worktree edits -- 12 distinct ones.
+# The shasum of each NUL-separated path on stdin, and nothing for none -- not `xargs -0 shasum`: GNU xargs (CI's) runs
+# shasum once on no input, hashing its empty stdin, so a checkout with no new file keyed otherwise than its commit.
+hash_each() { local path; while IFS= read -r -d '' path; do shasum "$path" 2>/dev/null; done; }
 CODE_PATHS=(common/src/main identity/src/main worker/src/main worker/src/fixtures testkit/src/main build.sbt project)
 code_key() { # <ref, or . for this checkout's code with its uncommitted edits>
   local listing
   if [ "$1" = "." ]; then
     listing=$( { git -C "$repo" ls-tree -r HEAD -- "${CODE_PATHS[@]}"
                  git -C "$repo" diff HEAD -- "${CODE_PATHS[@]}"
-                 git -C "$repo" ls-files -z --others --exclude-standard -- "${CODE_PATHS[@]}" | (cd "$repo" && xargs -0 shasum 2>/dev/null); } )
+                 git -C "$repo" ls-files -z --others --exclude-standard -- "${CODE_PATHS[@]}" | (cd "$repo" && hash_each); } )
   else
     listing=$(git -C "$repo" ls-tree -r "$(git -C "$repo" rev-parse --verify "$1^{commit}")" -- "${CODE_PATHS[@]}")
   fi
@@ -316,7 +319,7 @@ worktree_key() {
   edits=$( { git -C "$repo" diff HEAD -- common identity worker testkit build.sbt project
              # hashed from the repository's root, where ls-files' paths are -- from anywhere else a new file hashed nothing
              git -C "$repo" ls-files -z --others --exclude-standard -- common identity worker testkit project \
-               | (cd "$repo" && xargs -0 shasum 2>/dev/null); } | shasum | cut -c1-8)
+               | (cd "$repo" && hash_each); } | shasum | cut -c1-8)
   echo "worktree-$where-$head-$edits"
 }
 sha_of() { if [ "$1" = "." ]; then worktree_key; else git -C "$repo" rev-parse --verify "$1^{commit}"; fi; }
