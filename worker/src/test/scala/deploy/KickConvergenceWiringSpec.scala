@@ -5,7 +5,7 @@ import org.scalatest.matchers.should.Matchers
 
 /**
  * How main.yml starts the convergence suites: which workflows it dispatches, and
- * that it does so the moment ci is green rather than behind anything else.
+ * that it does so at the push rather than behind ci or anything else.
  *
  * Tests run with the repo root as CWD, so the workflow path resolves directly.
  */
@@ -27,13 +27,15 @@ class KickConvergenceWiringSpec extends AnyFlatSpec with Matchers {
   }
 
   /**
-   * Convergence hangs off `ci` alone, so the suite starts the moment the build is
-   * green. Nothing gates a deploy on convergence and nothing gates convergence on a
-   * machine having restarted (it runs entirely against its own Mongo container and
-   * a recorded corpus), so making it wait on anything else buys only latency — it
-   * used to queue behind a flyctl deploy for exactly that nothing.
+   * Convergence hangs off `gates` alone (seconds), so the suite starts at the push. Nothing
+   * gates a deploy on convergence and nothing gates convergence on a machine having restarted
+   * or on Main's tests (it builds the commit itself, against its own Mongo container and a
+   * recorded corpus), so making it wait on anything else buys only latency — and behind `ci`
+   * a cancelled or red Main run never dispatched at all (2026-10-15: 1 h 40 min between the
+   * Arsenal client's push and its first convergence run). `gates`, not nothing: the runner
+   * budget's t=0 set stays `gates` alone (CiRunnerBudgetSpec).
    */
-  it should "start the convergence suite as soon as ci is green" in {
-    job("kick-convergence") should include("needs: ci\n")
+  it should "start the convergence suite at the push, behind only the tier gates" in {
+    job("kick-convergence") should include("needs: gates\n")
   }
 }

@@ -170,9 +170,14 @@ jobs:
                       .github/actions/changed-paths/**
 
 
-    # Kick the country convergence suite off ALONGSIDE the image builds — same
-    # `needs: ci` they have, so the dispatch goes out the moment the build is
-    # green.
+    # Kick the convergence suite off AT THE PUSH, behind only `gates` (seconds), never
+    # behind `ci`. Convergence builds and judges the commit itself; Main's tests add
+    # nothing to its answer. Hung off `ci`, a push whose Main run was cancelled by the
+    # next push, or went red on an unrelated spec, never dispatched at all: on 2026-10-15
+    # the Arsenal client's push (f58b71add, 09:29 UTC) got its first convergence run at
+    # 11:08, after three cancelled and two red Main runs, while a landing waited on it.
+    # `needs: gates` rather than no `needs:` keeps the runner budget's t=0 set to `gates`
+    # alone (CiRunnerBudgetSpec): this job takes the slot gates has just given back.
     #
     # Two shapes this deliberately is not:
     #
@@ -199,7 +204,9 @@ jobs:
     # behind it, replacing only whatever was queued before. Two lanes, two dispatches:
     # the US runs the same leg from its own workflow.
     kick-convergence:
-        needs: ci
+        needs: gates
+        # A failed tier gate (a deployed-marker read) says nothing about the commit: dispatch anyway.
+        if: ${{ !cancelled() }}
         runs-on: ubuntu-latest
         permissions:
             actions: write
