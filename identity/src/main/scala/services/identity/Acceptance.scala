@@ -476,13 +476,16 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
     } yield taken
   }
 
-  /** Another eligible film of `best`'s credited director, when the listing's title names nothing of `best` (`title=none`):
-   *  walking a director's credit reaches his films, and a title naming none of them picks none — DE "München Mord: Leben
-   *  und Sterben in Schwabing" [2019] {Sascha Bigler}, a TV episode, is neither of his 2019 films; UK "Gremlins Special
-   *  Event" {Joe Dante} is not his "Innerspace", however its 120 minutes fit. */
+  /** Another eligible film of `best`'s credited director that the title names, or that the listing's year dates as
+   *  closely, when the title names nothing of `best` (`title=none`): walking a director's credit reaches his films, and a
+   *  title naming none of two his facts fit alike picks neither — DE "München Mord: Leben und Sterben in Schwabing" [2019]
+   *  {Sascha Bigler}, a TV episode, is neither of his 2019 films; UK "Gremlins Special Event" {Joe Dante} is not his
+   *  "Innerspace", however its 120 minutes fit, beside the Gremlins it names. A translation the facts single out stands
+   *  (PL "Fach" is Rossi's "Il Mestiere"). */
   private def anotherOfItsDirector(best: Scored, eligible: Seq[Scored]): Option[Scored] =
     if (!best.category("title").contains("none") || !IdentityMeasures.sameDirector(best.measures) || inflects(best)) None
-    else eligible.find(other => (other ne best) && IdentityMeasures.sameDirector(other.measures))
+    else eligible.find(other => (other ne best) && IdentityMeasures.sameDirector(other.measures) &&
+      (other.titleNamesIt || (best.number("year.delta").isDefined && other.number("year.delta") == best.number("year.delta"))))
   /** Does a word of the billing inflect a word of the record's title ("Osobliwy świat Hieronymusa Boscha" of "The
    *  Curious World of Hieronymus Bosch"): a title in another language naming the film, though it shares no word whole. */
   private def inflects(scored: Scored): Boolean = {
