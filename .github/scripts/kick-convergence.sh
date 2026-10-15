@@ -31,9 +31,10 @@ head_sha="$1"; ref="$2"; shift 2
 # A refused dispatch fails the job (after the other suites are tried): a green job that
 # dispatched nothing reads as "nothing to verify" when a pipeline change went unverified.
 failed=0
-# A 5xx is GitHub's own blip (2026-10-12: one HTTP 500 left a pipeline push unverified), so
+# A 5xx is GitHub's own blip (2026-10-12: one HTTP 500 left a pipeline push unverified), and a spent API
+# rate limit (2026-10-15: run 38818736115) resets within the hour, so
 # dispatch_workflow (scripts/ci/dispatch.sh) retries it, twice, after a pause
-# (DISPATCH_RETRY_SECONDS); any other refusal (403, 404, 422) fails at once.
+# (DISPATCH_RETRY_SECONDS), and waits a near rate-limit reset out; any other refusal (403, 404, 422) fails at once.
 . "$here/../../scripts/ci/dispatch.sh"
 # bounded (tool-conventions.sh, which dispatch.sh sources), not timeout(1): stock macOS has none, and there every read
 # of a suite's last run failed, so a local run dispatched every suite whatever the push touched.

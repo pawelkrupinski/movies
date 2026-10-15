@@ -7,8 +7,10 @@
 # so the caller decides what a failure means -- and a failed READ is never taken for "nothing there".
 #
 #   dispatch_workflow <workflow> <ref> [gh workflow run args...]
-#       `gh workflow run`, a 5xx (GitHub's own blip) retried twice after DISPATCH_RETRY_SECONDS (15);
-#       any other refusal (403, 404, 422) fails at once.
+#       `gh workflow run`, a 5xx (GitHub's own blip) retried twice after DISPATCH_RETRY_SECONDS (15); a
+#       refusal for the token's spent API rate limit waited out to its reset when that is at most
+#       DISPATCH_RATE_LIMIT_MAX_WAIT (900 s) away (60 s for a secondary limit), then tried again; any other
+#       refusal (403, 404, 422) fails at once.
 #   find_dispatched_run <workflow> <since ISO-8601> <jq predicate over a run> [gh run list args...]
 #       Sets DISPATCHED_RUN to the newest run created at or after <since> matching the predicate (fields:
 #       databaseId, headSha, createdAt, displayTitle), polled for DISPATCH_FIND_SECONDS (120): a dispatch's
@@ -32,6 +34,19 @@ _dispatch_say() { echo "dispatch: $*" >&2; }
 . "$(dirname "${BASH_SOURCE[0]}")/../tool-conventions.sh" # bounded
 _dispatch_gh() { bounded "${DISPATCH_GH_TIMEOUT:-60}" gh "$@"; }
 
+# Sets RATE_LIMIT_WAIT to the seconds until the token's core limit resets (+DISPATCH_RATE_LIMIT_PAD, 5), or
+# 60 when the core limit is not spent (a secondary limit, which asks for a pause); fails when that is beyond
+# DISPATCH_RATE_LIMIT_MAX_WAIT (900) or the limit is unreadable. Reading /rate_limit costs no request.
+_dispatch_rate_limit_wait() {
+  local limit remaining reset
+  limit=$(_dispatch_gh api rate_limit --jq '.resources.core | "\(.remaining) \(.reset)"' 2> /dev/null) || return 1
+  read -r remaining reset <<< "$limit"
+  [[ "$remaining" =~ ^[0-9]+$ && "$reset" =~ ^[0-9]+$ ]] || return 1
+  if [ "$remaining" -gt 0 ]; then RATE_LIMIT_WAIT=60; else RATE_LIMIT_WAIT=$((reset - $(date +%s) + ${DISPATCH_RATE_LIMIT_PAD:-5})); fi
+  [ "$RATE_LIMIT_WAIT" -ge 0 ] || RATE_LIMIT_WAIT=0
+  [ "$RATE_LIMIT_WAIT" -le "${DISPATCH_RATE_LIMIT_MAX_WAIT:-900}" ]
+}
+
 dispatch_workflow() {
   local workflow=$1 ref=$2 attempt err
   shift 2
@@ -39,9 +54,16 @@ dispatch_workflow() {
   for attempt in 1 2 3; do
     if _dispatch_gh workflow run "$workflow" --ref "$ref" "$@" > /dev/null 2> "$err"; then rm -f "$err"; return 0; fi
     cat "$err" >&2
-    grep -Eq 'HTTP 5[0-9][0-9]' "$err" && [ "$attempt" -lt 3 ] || break
-    _dispatch_say "$workflow: GitHub answered 5xx, retrying in ${DISPATCH_RETRY_SECONDS:-15}s (attempt $attempt of 3)"
-    sleep "${DISPATCH_RETRY_SECONDS:-15}"
+    [ "$attempt" -lt 3 ] || break
+    if grep -Eq 'HTTP 5[0-9][0-9]' "$err"; then
+      _dispatch_say "$workflow: GitHub answered 5xx, retrying in ${DISPATCH_RETRY_SECONDS:-15}s (attempt $attempt of 3)"
+      sleep "${DISPATCH_RETRY_SECONDS:-15}"
+    elif grep -Eqi 'rate limit' "$err" && _dispatch_rate_limit_wait; then
+      _dispatch_say "$workflow: the API rate limit is spent, retrying in ${RATE_LIMIT_WAIT}s, at its reset (attempt $attempt of 3)"
+      sleep "$RATE_LIMIT_WAIT"
+    else
+      break
+    fi
   done
   rm -f "$err"
   _dispatch_say "could not dispatch $workflow on $ref"
