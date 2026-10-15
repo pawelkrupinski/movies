@@ -12,13 +12,15 @@ import scala.concurrent.duration._
  *
  *   - Babylon (Mitte), Berlin: Filmstarts lists 23 of its shows in a fortnight, Cineamo 52
  *     — the venue the per-venue source choice exists for; twelve pages;
- *   - Cineplex Cineworld Dettelbach: a multiplex fifteen pages deep, 3D and D-BOX.
+ *   - Cineplex Cineworld Dettelbach: a multiplex fifteen pages deep, 3D and D-BOX;
+ *   - Astor Film Lounge HafenCity, Hamburg: bills a Dolby Atmos screening as "ATMOS: <film>".
  *
  *  Replay-first, like [[WriteKinoheld]]. Pass the recording day, which the spec pins. */
 object WriteCineamo {
   val Venues: Seq[(String, CineamoClient.CinemaId)] = Seq(
     "Babylon (Mitte)"               -> CineamoClient.CinemaId("997"),
-    "Cineplex Cineworld Dettelbach" -> CineamoClient.CinemaId("1"))
+    "Cineplex Cineworld Dettelbach" -> CineamoClient.CinemaId("1"),
+    "Astor Film Lounge HafenCity"   -> CineamoClient.CinemaId("1243"))
 
   def main(args: Array[String]): Unit = {
     val today = LocalDate.parse(args.headOption.getOrElse(sys.error("usage: WriteCineamo <yyyy-MM-dd>")))

@@ -110,14 +110,15 @@ class CineamoClientSpec extends AnyFlatSpec with Matchers {
     formats.count(_.contains("ATMOS")) shouldBe 22
   }
 
-  // Astor Film Lounge HafenCity bills its Dolby Atmos screening "ATMOS: Michael": the format comes off the
-  // title as a tag, so the listing is the film's own title beside its other screenings.
+  // Astor Film Lounge HafenCity bills its Dolby Atmos screenings "ATMOS: Dune: Part Three" and "ATMOS/OmU: Verity -
+  // Dunkle Geheimnisse": the format comes off the title as a tag, so the listing is the film's own title beside
+  // its other screenings.
   it should "peel a screen format billed in front of the title into the showing's format" in {
-    val body =
-      """{"_page_count":1,"_embedded":{"showings":[{"name":"ATMOS: Michael","state":"scheduled",
-        |"startDatetime":"2026-10-14T18:00:00Z","_embedded":{"content":{"name":"Michael"}}}]}}""".stripMargin
-    val showings = CineamoClient.parsePage(body).showings
-    showings.map(s => (s.title, s.format, s.originalTitle)) shouldBe Seq(("Michael", List("ATMOS"), None))
+    val astor = client("Astor Film Lounge HafenCity").fetch()
+    astor.map(_.movie.title).filter(_.toUpperCase.startsWith("ATMOS")) shouldBe empty
+    val dune = film(astor, "Dune: Part Three")
+    dune.showtimes.count(_.format.contains("ATMOS")) should be > 0
+    film(astor, "Verity - Dunkle Geheimnisse").showtimes.flatMap(_.format).toSet should contain allOf ("ATMOS", "OmU")
   }
 
   "CineamoClient.formatTokens" should "mark the language version: OmU, OmeU, OV, or nothing for German and dubs" in {
