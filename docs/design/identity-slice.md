@@ -38,8 +38,12 @@ A directory, cut from ONE "Record scrape fixtures" recording (`--recording RUN`,
 
 1. The recording opened Mongo-free (`tools.RecordedCorpus`: tree → remembered verdicts → gap leaf — the chain
    `IdentityShadow` and the capture use).
-2. Once per (recording, country, ref): the whole corpus resolved (`IdentitySlicing.index`, ~25 s for DE) and kept
-   as `index-<cc>-<ref>.json.gz` — each listing's family and each node's context keys.
+2. Once per (recording, country, CODE): the whole corpus resolved (`IdentitySlicing.index`, ~25 s for DE idle, ~50 s
+   under load) and kept as `index-<cc>-<code key>.json.gz` — each listing's family and each node's context keys. The
+   code key (`code_key` in the script) hashes what resolves it: the ref's main code, `worker/src/fixtures`, the build,
+   and this checkout's tool files dropped in — never the commit, so a commit or an edit changing no code (a judgement,
+   a spec, a doc) reads the index another made. Measured 2026-10-15: recording 38547714686 held 252 indexes made under
+   252 commits and worktree edits, 12 of them distinct.
 3. Per slice: model (`IdentitySlicing.resolve`), then the agreement stage with its family question rounds, posters
    and catalogue fills answered through the same fetch (`IdentitySlice.decide`). Extraction decides through a NOTING
    fetch; what it read is the slice. A slice extracted at a second ref is merged (union), so one slice serves both.

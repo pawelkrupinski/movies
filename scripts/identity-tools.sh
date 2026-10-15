@@ -118,6 +118,13 @@ identity_tree() {
     mkdir -p "$(dirname "$dir/$t")"
     cmp -s "$IDENTITY_REPO/$t" "$dir/$t" 2>/dev/null || cp "$IDENTITY_REPO/$t" "$dir/$t"
   done
+  # a classpath kept from a seed (identity_tree_layout) holds the classes of the SEED's tool files: one differing from
+  # those now dropped in is made newer than it, and compiles
+  local seed=$dir/target/identity-tools/seed
+  if [ -f "$seed" ]; then
+    for t in "$@"; do [ ! -f "$dir/$t" ] || cmp -s "$(cat "$seed")/$t" "$dir/$t" 2>/dev/null || touch "$dir/$t"; done
+    rm -f "$seed"
+  fi
   echo "$dir"
 }
 
@@ -129,12 +136,54 @@ identity_tree_layout() {
   part=$dir.part
   rm -rf "$part" "$dir"; mkdir -p "$part"
   git -C "$IDENTITY_REPO" archive "$sha" -- . ':(exclude)test/resources' ':(exclude)ios' ':(exclude)android' | tar -x -C "$part" || return 1
-  # Seed the compile from this checkout's (APFS clones, no copy): sbt recompiles only what the ref changed.
+  # Seed the compile from the nearest compiled code (APFS clones, no copy): sbt recompiles only what the ref changed.
+  local seed apart=""
+  seed=$(identity_nearest_compiled "$sha")
+  [ -z "$seed" ] || { apart=$(identity_seed_distance "$seed" "$sha"); identity_log "seeding its compile from ${seed} ($apart source file(s) apart)"; }
   for t in project/target common/target identity/target testkit/target worker/target target; do
-    if [ -d "$IDENTITY_REPO/$t" ]; then mkdir -p "$part/$(dirname "$t")"; cp -cR "$IDENTITY_REPO/$t" "$part/$t" 2>/dev/null || cp -R "$IDENTITY_REPO/$t" "$part/$t"; fi
+    if [ -n "$seed" ] && [ -d "$seed/$t" ]; then mkdir -p "$part/$(dirname "$t")"; cp -cR "$seed/$t" "$part/$t" 2>/dev/null || cp -R "$seed/$t" "$part/$t"; fi
   done
   rm -rf "$part/target/identity-tools"
+  # The very sources of a compiled ref (a commit changing no source: a judgement, a doc): its classes ARE this ref's, so
+  # its classpath is kept, pointed here -- no sbt start to find nothing to compile (~15 s). The tool files dropped in
+  # afterwards (identity_tree) are newer than it when they differ, and recompile as ever.
+  if [ "$apart" = 0 ] && [ "$seed" != "$IDENTITY_REPO" ] && [ -s "$seed/target/identity-tools/classpath" ]; then
+    mkdir -p "$part/target/identity-tools"
+    sed "s#$seed/#$dir/#g" "$seed/target/identity-tools/classpath" > "$part/target/identity-tools/classpath"
+    echo "$seed" > "$part/target/identity-tools/seed"
+  fi
   mv "$part" "$dir"
+}
+
+# The source paths a compile reads: how far two commits' compiles stand apart is how many of these files differ.
+IDENTITY_COMPILED_PATHS=(common/src identity/src worker/src testkit/src build.sbt project)
+# identity_seed_distance <tree> <sha> -> the source files the compiled <tree> differs from <sha> by (this checkout: its HEAD's)
+identity_seed_distance() {
+  local from
+  if [ "$1" = "$IDENTITY_REPO" ]; then from=$(git -C "$IDENTITY_REPO" rev-parse HEAD); else from=$(basename "$1"); fi
+  # a commit this clone lacks (another clone's tree) is no distance -- never a failed diff read as none
+  git -C "$IDENTITY_REPO" cat-file -e "$from^{commit}" 2>/dev/null || return 0
+  local files
+  files=$(git -C "$IDENTITY_REPO" diff --name-only "$from" "$2" -- "${IDENTITY_COMPILED_PATHS[@]}") || return 0
+  if [ -z "$files" ]; then echo 0; else printf '%s\n' "$files" | wc -l | tr -d ' '; fi
+}
+# identity_nearest_compiled <sha> -> the compiled tree nearest <sha> by changed source files: this checkout, or one of the
+# cache's most recently compiled refs (a fresh worktree has nothing compiled: seeded from it, a new ref compiled all
+# 1,766 sources, 108 s idle and ~10 min with five agents compiling beside it -- 2026-10-15). Empty when none is compiled.
+identity_nearest_compiled() {
+  local sha=$1 best="" best_n="" t n candidates=()
+  [ -d "$IDENTITY_REPO/worker/target" ] && candidates+=("$IDENTITY_REPO")
+  while IFS= read -r t; do candidates+=("$(dirname "$(dirname "$(dirname "$t")")")"); done < <(
+    ls -t "$IDENTITY_CACHE"/refs/*/target/identity-tools/classpath 2>/dev/null | head -n "${KINOWO_IDENTITY_SEED_CANDIDATES:-40}")
+  for t in ${candidates[@]+"${candidates[@]}"}; do
+    [ "$(basename "$t")" != "$sha" ] || continue
+    # a tree compiling now (identity_classpath_compile holds its lock) may hold half-written classes
+    [ ! -d "$IDENTITY_CACHE/locks/classpath-$(printf '%s' "$t" | shasum | cut -c1-12)" ] || continue
+    n=$(identity_seed_distance "$t" "$sha")
+    [ -n "$n" ] || continue
+    if [ -z "$best_n" ] || [ "$n" -lt "$best_n" ]; then best=$t best_n=$n; fi
+  done
+  echo "$best"
 }
 
 # identity_recording <run> <cc> [corpus] -> the directory holding that "Record scrape fixtures" run's corpus/ and

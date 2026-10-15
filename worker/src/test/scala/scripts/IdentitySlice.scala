@@ -61,10 +61,14 @@ object IdentitySlice {
                            /** How many slices are decided at once (one JVM, a bounded pool; the output keeps the batch's order). */
                            threads: Int = math.max(1, math.min(8, Runtime.getRuntime.availableProcessors / 2)),
                            /** Where each slice's result is kept, shared by every checkout (scripts/identity-slice names it per
-                            *  recording, ref, tool files and filed answers). */
+                            *  recording, code key and filed answers). */
                            results: Option[Path] = None,
                            /** `--serve SOCKET`: keep the session and decide each batch asked over the socket ([[serve]]). */
-                           serve: Option[Path] = None, idleMinutes: Int = 30)
+                           serve: Option[Path] = None, idleMinutes: Int = 30,
+                           /** What the whole-corpus index is kept under (scripts/identity-slice's code key: the code that
+                            *  resolves it, by content, so a commit changing no code reads the index another commit made);
+                            *  the ref when not given. */
+                           indexKey: Option[String] = None)
 
   def parse(args: List[String], o: Options = Options()): Options = args match {
     case Nil => flush(o)
@@ -74,6 +78,7 @@ object IdentitySlice {
     case "--labels" :: v :: rest       => parse(rest, o.copy(labels = Some(Path.of(v))))
     case "--out" :: v :: rest          => parse(rest, o.copy(out = Some(Path.of(v))))
     case "--ref" :: v :: rest          => parse(rest, o.copy(ref = v))
+    case "--index-key" :: v :: rest    => parse(rest, o.copy(indexKey = Some(v)))
     case "--faithfulness" :: v :: rest => parse(rest, o.copy(faithfulness = Some(Path.of(v))))
     case "--sample" :: v :: rest       => parse(rest, o.copy(sample = v.toInt))
     case "--seed" :: v :: rest         => parse(rest, o.copy(seed = v.toLong))
@@ -472,7 +477,7 @@ object IdentitySlice {
         val listings  = listingsOf(recording, opened.rows)
         // the index of a resolve that read a capture's live answers is that capture's own
         val live      = if (filed.live.isEmpty) "" else s"-live${Integer.toHexString(filed.live.keySet.hashCode)}"
-        val index     = indexOf(cache.resolve(s"index-${country.code}-${o.ref}$live.json.gz"), listings, opened)
+        val index     = indexOf(cache.resolve(s"index-${country.code}-${o.indexKey.getOrElse(o.ref)}$live.json.gz"), listings, opened)
         o.faithfulness match {
           case Some(takes) => faithfulness(recording, opened, index, takes, o, filed, out, prod)
           case None =>
@@ -504,7 +509,7 @@ object IdentitySlice {
   final case class SliceResult(report: String, takes: Seq[String], lacked: Seq[String])
 
   /** The selected slices, decided `o.threads` at a time and printed in the batch's order — the same output whatever the
-   *  pool — each result read from, or kept in, `o.results` (a directory per recording, ref, tool files and filed answers,
+   *  pool — each result read from, or kept in, `o.results` (a directory per recording, code key and filed answers,
    *  shared by every checkout) under its selector, seeds, options and the labels about its listings: five agents
    *  replaying origin/main over one recording decide each slice once. Returns what the slices lacked. */
   def slices(session: Session, o: Options, labels: Seq[UnmatchedClusters.Label], out: Option[java.io.PrintWriter],

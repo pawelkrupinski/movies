@@ -24,7 +24,8 @@ cp "$REPO_ROOT/scripts/identity-slice" "$REPO_ROOT/scripts/identity-explain" "$R
 for f in worker/src/test/scala/scripts/IdentitySlice.scala worker/src/test/scala/scripts/IdentityExplain.scala \
   worker/src/test/scala/services/identity/IdentitySlicing.scala worker/src/fixtures/scala/tools/RecordedCorpus.scala \
   worker/src/fixtures/scala/tools/SliceHttp.scala worker/src/fixtures/scala/tools/MemoLookups.scala worker/src/fixtures/scala/tools/CatalogueFill.scala \
-  worker/src/fixtures/scala/tools/FiledAnswers.scala worker/src/fixtures/scala/tools/ProdMirror.scala; do
+  worker/src/fixtures/scala/tools/FiledAnswers.scala worker/src/fixtures/scala/tools/ProdMirror.scala \
+  worker/src/fixtures/scala/tools/IdentityJudgements.scala; do
   echo "// $f" > "$repo/$f"
 done
 echo "build" > "$repo/build.sbt"
@@ -148,10 +149,50 @@ rm -f "$work/calls" "$work/sbt-calls"
 check "--compiles lays a ref out with the tool files and compiles it, deciding nothing" "0 0" \
   "$(slice --compiles HEAD~1 > /dev/null; echo $?) $(grep -c . "$work/calls" 2>/dev/null || echo 0)"
 
-# each slice's result at a ref is kept for every checkout asking it again: per recording, ref, tool files, filed answers
+# each slice's result is kept for every checkout asking it again: per recording, CODE (by content) and filed answers
 rm -f "$work/calls"; slice de --recording 777 --key 'Kino|Lalka' --ref HEAD --threads 3 > /dev/null
-check "a ref's results are kept per recording, ref, tool files and filed answers; --threads reaches the JVM" "1 1" \
-  "$(grep -c -- "--results $cache/slice/777/results/$head-[0-9a-f]\{8\}-none " "$work/calls") $(grep -c -- '--threads 3' "$work/calls")"
+check "a ref's results are kept per recording, code and filed answers; --threads reaches the JVM" "1 1" \
+  "$(grep -c -- "--results $cache/slice/777/results/code-[0-9a-f]\{24\}-none " "$work/calls") $(grep -c -- '--threads 3' "$work/calls")"
+
+# THE CODE KEY: the whole-corpus index and the results are keyed by the code a ref runs, never its commit -- a commit
+# changing no code (a judgement, a doc) resolves nothing again (2026-10-15: 252 indexes under one recording, 12 distinct)
+keyOf() { grep -o -- '--index-key [^ ]*' "$work/calls" | tail -1; }
+rm -f "$work/calls"; slice de --recording 777 --key 'Kino|Lalka' --ref HEAD > /dev/null; at_head=$(keyOf)
+echo "a judgement" > "$repo/test/resources/fixtures/identity-judgements.tsv.note"; echo "docs" > "$repo/README.md"
+scratch_git "$repo" add -A && scratch_git "$repo" commit -qm "no code"
+docs=$(scratch_git "$repo" rev-parse HEAD)
+rm -f "$work/calls"; slice de --recording 777 --key 'Kino|Lalka' --ref "$docs" > /dev/null
+check "a commit changing no code reads the index its parent's code made" "$at_head" "$(keyOf)"
+check "...under a key naming the code, not a commit" "yes" "$([[ "$at_head" == "--index-key code-"* ]] && echo yes || echo "no: '$at_head'")"
+rm -f "$work/calls"; slice de --recording 777 --key 'Kino|Lalka' --ref "$base" > /dev/null
+check "a commit changing code (build.sbt) reads another" "yes" "$([ "$(keyOf)" != "$at_head" ] && echo yes || echo no)"
+rm -f "$work/calls"; slice de --recording 777 --key 'Kino|Lalka' > /dev/null; mine=$(keyOf)
+check "this checkout's code, unedited, is its commit's" "$at_head" "$mine"
+mkdir -p "$repo/identity/src/main"; echo "// edited" >> "$repo/identity/src/main/Resolver.scala"
+rm -f "$work/calls"; slice de --recording 777 --key 'Kino|Lalka' > /dev/null
+check "...and an uncommitted edit of its code is other code" "yes" "$([ "$(keyOf)" != "$mine" ] && echo yes || echo no)"
+rm -rf "$repo/identity/src/main"
+echo "// a new tool" >> "$repo/worker/src/test/scala/scripts/IdentitySlice.scala"
+rm -f "$work/calls"; slice de --recording 777 --key 'Kino|Lalka' --ref "$docs" > /dev/null
+check "...as is an edit of the tool files dropped into every ref" "yes" "$([ "$(keyOf)" != "$at_head" ] && echo yes || echo no)"
+scratch_git "$repo" checkout -q -- worker/src/test/scala/scripts/IdentitySlice.scala
+
+# THE COMPILE SEED: a new ref's tree is seeded from the nearest compiled one (this checkout has none compiled here), and
+# one with the very sources of a compiled ref keeps its classpath -- no sbt at all
+slice de --recording 777 --key 'Kino|Lalka' --ref "$docs" > /dev/null   # its tree's tool files this checkout's again
+echo "docs again" >> "$repo/README.md"; scratch_git "$repo" commit -qam "no code again"
+again=$(scratch_git "$repo" rev-parse HEAD)
+rm -f "$work/calls"; slice de --recording 777 --key 'Kino|Lalka' --ref "$again" > /dev/null
+check "a new ref is seeded from the nearest compiled ref" "1" "$(grep -c "seeding its compile from $cache/refs/$docs (0 source file(s) apart)" "$work/err")"
+check "...and, its sources the seed's, compiles nothing" "0" "$(grep -c "^sbt $cache/refs/$again" "$work/calls")"
+check "...its classpath the seed's, pointed at its own tree" "1" \
+  "$(grep -c -- "-cp $cache/refs/$again/worker/target/scala-3.9.0/test-classes:/lib/a.jar" "$work/calls")"
+echo "docs a third time" >> "$repo/README.md"; scratch_git "$repo" commit -qam "no code, a third"
+third=$(scratch_git "$repo" rev-parse HEAD)
+echo "// this checkout's own tool" >> "$repo/worker/src/test/scala/services/identity/IdentitySlicing.scala"
+rm -f "$work/calls"; slice de --recording 777 --key 'Kino|Lalka' --ref "$third" > /dev/null
+check "...but a tool file dropped in that differs from the seed's compiles it" "1" "$(grep -c "^sbt $cache/refs/$third" "$work/calls")"
+scratch_git "$repo" checkout -q -- worker/src/test/scala/services/identity/IdentitySlicing.scala
 rm -f "$work/calls"; slice de --recording 777 --key 'Kino|Lalka' --ref HEAD --fresh > /dev/null
 check "--fresh decides every slice again" "0" "$(grep -c -- '--results' "$work/calls")"
 
@@ -168,6 +209,19 @@ STUB="$work" PATH="$work/bin:$PATH" KINOWO_IDENTITY_CACHE="$cache" "$repo/script
 check "--stop-served stops every kept JVM" "0" "$(find "$cache/serve" -name '*.pid' | wc -l | tr -d ' ')"
 rm -f "$work/calls"; slice de --recording 777 --key 'Kino|Lalka' --ref HEAD --serve > /dev/null
 check "...and the next --serve starts another" "1" "$(grep -c -- "--serve $cache/serve/" "$work/calls")"
+STUB="$work" PATH="$work/bin:$PATH" KINOWO_IDENTITY_CACHE="$cache" "$repo/scripts/identity-slice" --stop-served 2> /dev/null
+# --emit-case goes through a kept JVM: pinning cases one after another reads the recording and the index once
+rm -f "$work/calls"; slice de --recording 777 --key 'Kino|Lalka' --ref "$head" --emit-case > /dev/null
+check "--emit-case starts a kept JVM and asks it for the case" "1 1" \
+  "$(grep -c -- "--serve $cache/serve/" "$work/calls") $(grep -c "^request .*--emit-case $repo/test/resources/fixtures/identity-slices" "$work/calls")"
+STUB="$work" PATH="$work/bin:$PATH" KINOWO_IDENTITY_CACHE="$cache" "$repo/scripts/identity-slice" --stop-served 2> /dev/null
+# an edit of this checkout's code is a new ref key: the kept JVM of its older state is stopped, never left holding 6 GB
+slice de --recording 777 --key 'Kino|Lalka' --serve > /dev/null
+mkdir -p "$repo/identity/src/main"; echo "// edited" > "$repo/identity/src/main/Resolver.scala"
+slice de --recording 777 --key 'Kino|Lalka' --serve > /dev/null
+check "an edit's kept JVM stops the one of the checkout's older state" "1 1" \
+  "$(grep -c 'stopped the kept JVM of an older state' "$work/err") $(find "$cache/serve" -name '*.pid' | wc -l | tr -d ' ')"
+rm -rf "$repo/identity/src/main"
 STUB="$work" PATH="$work/bin:$PATH" KINOWO_IDENTITY_CACHE="$cache" "$repo/scripts/identity-slice" --stop-served 2> /dev/null
 started=$SECONDS
 code=$(STUB_SERVE_HANG=1 KINOWO_IDENTITY_SLICE_START_SECONDS=2 slice de --recording 777 --key 'Kino|Lalka' --ref HEAD~1 --serve > /dev/null; echo $?)
@@ -208,7 +262,7 @@ check "...and a slice without it reads no mirror" "0" "$(rm -f "$work/calls"; sl
 # --explain: the WHY trace of a listing the unmatched-cluster capture holds (scripts/identity-explain is its alias)
 rm -f "$work/calls"
 mkdir -p "$work/capture"; echo c > "$work/capture/de.json.gz"; printf 'country\n' > "$work/capture/identity-judgements.tsv"
-slice de --explain --fixture "$work/capture" --venue Kino --title Lalka --ref HEAD > /dev/null
+slice de --explain --fixture "$work/capture" --venue Kino --title Lalka --ref "$head" > /dev/null
 check "--explain replays the capture it is handed, judged by its judgements" "1" \
   "$(grep -c -- "scripts.IdentityExplain de --fixture $work/capture/de.json.gz --labels $work/capture/identity-judgements.tsv --venue Kino --title Lalka" "$work/calls")"
 check "...under the ref's code, the explainer dropped into its tree" "1 // worker/src/test/scala/scripts/IdentityExplain.scala" \

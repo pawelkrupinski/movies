@@ -59,8 +59,8 @@ Design and limits: docs/design/identity-slice.md.
 
 - **Batches run in parallel** in one JVM per ref: `--threads N` slices at once (default half the cores, at most 8);
   the output and `--out` keep the batch's order, the same takes as a serial run.
-- **Results are shared.** Each slice's result at a ref is kept in
-  `$KINOWO_IDENTITY_CACHE/slice/<run>/results/<ref>-<tool files>-<filed answers>/`, named by its selector, seeds,
+- **Results are shared.** Each slice's result is kept in
+  `$KINOWO_IDENTITY_CACHE/slice/<run>/results/<code key>-<filed answers>/`, named by its selector, seeds,
   `--widen/--orders/--modes` and the labels about its listings (a label of another billing does not invalidate it).
   Any checkout replaying the same base (origin/main) reads it back. `--fresh` decides again; `--prod-mirror` and
   `--emit-case` never read or keep one.
@@ -71,6 +71,15 @@ Design and limits: docs/design/identity-slice.md.
   tool, 500 listings at both refs 937 s (≈78 min for 2,500); 2,500 listings (916 slices) at both refs 691 s, the
   same takes; the same batch again (another checkout, results kept) 33 s. A 20-listing fresh batch: 25 s, 15 s
   through a kept `--serve` JVM.
+- **A new ref is cheap.** The whole-corpus index and the results are keyed by the CODE a ref runs, not its commit
+  (`code_key`): a commit changing no code reads what another made. A new ref's compile is seeded from the nearest
+  compiled ref in the cache; one with no source changed keeps that ref's classpath, no sbt at all. Measured 2026-10-15,
+  DE, recording 38666576506, a fresh worktree: a new ref's first slice 151 s (a full 1,766-file compile 125 s, index
+  23 s) → 88 s with new code under load 105 (5 files recompiled, 30 s; index 47 s) → 20 s for a commit changing no code
+  (index reused).
+- **`--emit-case` goes through a kept JVM** (`--serve`, started when none is; `KINOWO_IDENTITY_SLICE_EMIT_SERVE=0`
+  opts out): 8-11 s a call before, now ~11 s for the first and ~2 s for each after (measured 2026-10-15). An edit of
+  this checkout's code stops the kept JVM of its older state.
 - **Iterating on resolver code:** one spec through the kept sbt server (`scripts/sbt-warm "identity/testOnly X"`,
   test-layers skill) and a handful of listings (`--key`) while iterating; the whole identity suite
   (`scripts/sbt-warm identity/Test/test`) and one `--batch` at BASE and HEAD once, before pushing.
