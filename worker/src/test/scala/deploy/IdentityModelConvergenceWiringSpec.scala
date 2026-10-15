@@ -100,7 +100,7 @@ class IdentityModelConvergenceWiringSpec extends AnyFlatSpec with Matchers {
   }
 
   /** One lane for main's runs: finish the run in flight, keep one newer run pending, and let each newer dispatch
-   *  replace that pending one. A measurement's measure/ branch runs in a lane of its own (the group's exact
+   *  replace that pending one. Any other branch's run has a lane of its own (the group's exact
    *  expression: ConvergenceConcurrencyConfigSpec). */
   it should "hold one lane for main's runs, superseding only the run that waits, and one per measurement" in {
     val concurrency = RepoFile.block(workflow, "concurrency")

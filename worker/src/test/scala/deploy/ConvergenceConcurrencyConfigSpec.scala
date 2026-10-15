@@ -32,10 +32,11 @@ import org.scalatest.matchers.should.Matchers
  *     side for an hour, six heavyweight legs at once, because
  *     `refs/heads/convergence-imdb-ladder` != `refs/heads/main`.
  *
- * ONE exception, by name: a MEASUREMENT's `measure/` branch (scripts/identity-measure, the takes rows alone) gets a
- * lane of its own, so agents' measurements neither queue behind each other nor replace one another (2026-10-15: five
- * of them waited about an hour each on main's lane). Every other ref -- main, a co-agent's branch -- still shares the
- * one constant lane.
+ * ONE exception, by the user's choice (2026-10-15): main's runs share the one constant lane, and every run from any
+ * OTHER branch -- a measurement's measure/ branch, a co-agent's own -- gets a lane of its own, keyed by its run id, so
+ * several from one branch run at the same time and none queues behind or replaces another (five agents' measurements
+ * had waited about an hour each on main's lane). The cost is the 2026-08-01 one above, accepted: branch runs side by
+ * side with main's, past the 20-runner allowance, wait for runners rather than lanes.
  */
 class ConvergenceConcurrencyConfigSpec extends AnyFlatSpec with Matchers {
   private def concurrencyOf(path: String) = RepoFile.block(RepoFile.read(path), "concurrency")
@@ -48,11 +49,11 @@ class ConvergenceConcurrencyConfigSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  it should "not key their lane on anything that varies per run, but a measurement's own branch" in {
+  it should "key main's lane on nothing that varies per run, and give every other branch's run a lane of its own" in {
     Files.foreach { path =>
       val group = concurrencyOf(path).linesIterator.find(_.trim.startsWith("group:")).getOrElse("").trim
       withClue(s"$path: ")(group shouldBe
-        "group: identity-model-convergence${{ startsWith(github.ref, 'refs/heads/measure/') && format('-{0}', github.ref_name) || '' }}")
+        "group: identity-model-convergence${{ github.ref != 'refs/heads/main' && format('-{0}', github.run_id) || '' }}")
     }
   }
 }

@@ -27,8 +27,8 @@
 # whose workflows predate the takes-only dispatch gets main's .github/ and scripts/ci/ laid over it in a commit of
 # its own (no identity path: the check diffs only identity code, so the measured code is the commit's).
 #
-# THE LANE. A measure/* branch runs in a convergence lane of its own (identity-model-convergence.yml's concurrency):
-# it replaces no one's waiting run and waits behind no other measurement, only for runners. A run cancelled anyway
+# THE LANE. A run from any branch but main has a convergence lane of its own (identity-model-convergence.yml's
+# concurrency): it replaces no one's waiting run and waits behind no other measurement, only for runners. A run cancelled anyway
 # (by hand) is dispatched again until the deadline.
 #
 # Exit: 0 LANDABLE, 1 NOT LANDABLE, 2 the measurement could not be made.

@@ -51,11 +51,12 @@ on:
                 type: boolean
                 default: false
 
-# Main's runs hold ONE lane: a run in flight finishes, one newer waits, and a newer dispatch replaces that one. A
-# measurement (scripts/identity-measure, a measure/* branch) runs in a lane of its OWN: it replaces nothing and waits
-# for nothing but runners -- five agents' measurements queued behind each other for about an hour (2026-10-15).
+# Main's runs hold ONE lane: a run in flight finishes, one newer waits, and a newer dispatch replaces that one. Every
+# run from any other branch -- a measurement (scripts/identity-measure's measure/*), an agent's own branch -- runs in a
+# lane of its OWN, keyed by the run, so several from one branch run at the same time: it replaces nothing and waits for
+# nothing but runners (2026-10-15: five agents' measurements queued behind each other for about an hour each).
 concurrency:
-    group: identity-model-convergence${{ startsWith(github.ref, 'refs/heads/measure/') && format('-{0}', github.ref_name) || '' }}
+    group: identity-model-convergence${{ github.ref != 'refs/heads/main' && format('-{0}', github.run_id) || '' }}
     cancel-in-progress: false
 
 # Least privilege by default: every job that needs more than reading the
