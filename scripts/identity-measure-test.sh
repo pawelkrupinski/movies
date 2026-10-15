@@ -47,6 +47,7 @@ artifact() { # <dir> <lose?>
   else
     cp "$d/base/decisions-pl.jsonl" "$d/head/decisions-pl.jsonl"
   fi
+  printf 'phase\tseconds\thow\nhead-resolve\t546\tresolved\nbase-resolve\t3\treused\n' > "$d/timings.tsv"
   for side in base head; do echo "status${tab}country${tab}venue${tab}rawTitle${tab}film${tab}title${tab}basis${tab}ids${tab}was${tab}explanation" > "$d/$side/ratchet-takes.tsv"; done
 }
 artifact "$work/landable"
@@ -56,8 +57,8 @@ mkdir -p "$work/bin"
 cat > "$work/bin/gh" <<'STUB'
 #!/usr/bin/env bash
 echo "$*" >> "$STUB/calls"
-json=""; prev=""
-for a in "$@"; do [ "$prev" = --json ] && json=$a; prev=$a; done
+json=""; jq_filter=""; prev=""
+for a in "$@"; do [ "$prev" = --json ] && json=$a; [ "$prev" = --jq ] && jq_filter=$a; prev=$a; done
 case "$1 $2" in
   "workflow run") echo "$*" > "$STUB/dispatch"; [ -z "${DISPATCH_FAILS:-}" ] || exit 1 ;;
   "run list")
@@ -72,7 +73,18 @@ case "$1 $2" in
       status,conclusion) [ -n "${VIEW_FAILS:-}" ] && exit 1
                          [ -n "${VIEW_BLIPS:-}" ] && [ ! -f "$STUB/blipped" ] && { touch "$STUB/blipped"; exit 1; }
                          [ -n "${IN_PROGRESS:-}" ] && { touch "$STUB/watched"; printf 'in_progress\t\n'; exit 0; }
+                         # CANCELS=n: the first n runs end cancelled, replaced in the lane by a newer dispatch
+                         reads=$(( $(cat "$STUB/reads" 2>/dev/null || echo 0) + 1 )); echo "$reads" > "$STUB/reads"
+                         [ "$reads" -le "${CANCELS:-0}" ] && { printf 'completed\tcancelled\n'; exit 0; }
                          printf 'completed\tsuccess\n' ;;
+      createdAt,startedAt,updatedAt,jobs)
+        # gh applies --jq itself: so does the stub, to what GitHub answers
+        jq -r "$jq_filter" <<'JSON'
+{"createdAt":"2026-10-15T06:42:54Z","startedAt":"2026-10-15T06:42:54Z","updatedAt":"2026-10-15T07:23:38Z",
+ "jobs":[{"name":"preflight","startedAt":"2026-10-15T07:02:42Z","completedAt":"2026-10-15T07:02:47Z","conclusion":"success"},
+         {"name":"poland / takes","startedAt":"2026-10-15T07:02:49Z","completedAt":"2026-10-15T07:12:31Z","conclusion":"failure"}]}
+JSON
+        ;;
       status,headBranch,headSha) printf 'completed\tmeasure/abc-1\t%s\n' "$HEAD_SHA" ;;
       jobs) printf 'poland / takes\tfailure\n' ;;
     esac ;;
@@ -115,6 +127,15 @@ check "...dispatching only the takes rows against the commit's parent (it is on 
 check "...and the branch is deleted afterwards" "0" "$(measure_branches)"
 check "...printing the verdict" "true" "$(grep -q '^LANDABLE' "$work/out" && echo true || echo false)"
 check "...and the takes row's own conclusion" "true" "$(grep -Eq '^pl +model .*failure' "$work/out" && echo true || echo false)"
+check "...and where its time went: the wait for the lane, from the first job's start, not the run's" "true" \
+  "$(grep -q 'waited for the lane 1188s, then ran 1256s' "$work/out" && echo true || echo false)"
+check "...each takes row's job" "true" "$(grep -q 'poland / takes: 582s failure' "$work/out" && echo true || echo false)"
+check "...and each row's phases, saying which a stored result spared" "true" \
+  "$(grep -q 'pl phases: head-resolve 546s (resolved), base-resolve 3s (reused)' "$work/out" && echo true || echo false)"
+check "...and how long the lane took to free" "true" "$(grep -q 'lane free after [0-9]*s (attempt 1)' "$work/out" && echo true || echo false)"
+
+check "a run replaced in the lane more than twice is dispatched again until it runs" "0" "$(CANCELS=3 measure landable --countries pl)"
+check "...four dispatches in all" "true" "$(grep -q 'lane free after [0-9]*s (attempt 4)' "$work/out" && echo true || echo false)"
 
 check "a right take lost is NOT LANDABLE" "1" "$(measure lost --base "$parent" --countries pl)"
 check "...naming the bucket" "true" "$(grep -q 'pl model: 1 right-lost' "$work/out" && echo true || echo false)"

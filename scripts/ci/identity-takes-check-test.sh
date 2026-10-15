@@ -125,14 +125,26 @@ GH
 chmod +x "$work/bin/gh"
 store_run() { # <head>: the check of <head>, on main, storing on the release
   rm -rf "$work/out" "$work/identity-takes-base"; : > "$work/sbt-calls"
-  (cd "$work/job" && PATH="$work/bin:$PATH" GITHUB_REPOSITORY=o/r GITHUB_SHA=$1 GITHUB_REF=refs/heads/main RUNNER_TEMP=$work \
+  (cd "$work/job" && PATH="$work/bin:$PATH" GITHUB_REPOSITORY=o/r GITHUB_SHA=$1 GITHUB_REF=${REF-refs/heads/main} RUNNER_TEMP=$work \
     SBT_CALLS="$work/sbt-calls" TAKES_STORE=fixtures KINOWO_CONVERGENCE_PIN_CORPUS_RUN=${PIN-42} "$script" pl "$work/out" > "$work/log" 2>&1)
 }
 base_calls() { grep -c "identity-takes-base" "$work/sbt-calls" || true; }
 code=0; TAKES_BASE=$c4 store_run "$c5" || code=$?
 check "with nothing stored, the base is checked out and resolved" "$(base_calls)" 2
 check "...and the check passes on the same takes" "$code" 0
-check "...and the head's decisions and final takes are stored for the run whose base it becomes" "$(ls "$work/release" | wc -l | tr -d ' ')" 2
+check "...and the head's decisions and final takes, and the base's it resolved, are stored" "$(ls "$work/release" | wc -l | tr -d ' ')" 4
+check "...each phase timed, saying which it resolved" "$(cut -f1,3 "$work/out/timings.tsv" | tr '\t\n' ': ')" \
+  "phase:how head-resolve:resolved base-resolve:resolved head-final:replayed base-final:replayed "
+check "...and why the base was not stored" "$(grep -c 'the base resolve not stored -- takes-decisions-pl-.* not on release fixtures: resolving it' "$work/log")" 1
+
+# A measure/ branch (scripts/identity-measure) stores the BASE it resolved -- main's commit, under a key naming its code
+# and inputs, never the ref -- and never its own head: the next measurement against the same base reuses it.
+rm -rf "$work/release"
+code=0; REF=refs/heads/measure/c5-1 TAKES_BASE=$c4 store_run "$c5" || code=$?
+check "a measurement stores the base it resolved, not its head" "$(ls "$work/release" | wc -l | tr -d ' ')" 2
+REF=refs/heads/measure/c5-2 TAKES_BASE=$c4 store_run "$c5" || true
+check "...so the next measurement against that base resolves only its head" "$(base_calls)" 0
+check "...timing the base as reused" "$(grep -c 'base-resolve.*reused' "$work/out/timings.tsv")" 1
 
 # c4's own check, then c5's again: its base c4 is now stored.
 TAKES_BASE=$c2 store_run "$c4" || true

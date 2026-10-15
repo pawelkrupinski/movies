@@ -148,13 +148,23 @@ capture_key() { # <sha>: the final takes' inputs -- the code and the capture it 
   { printf '%s\n' "$(code_of "$1")" "$cc"; cat "$here"/test/resources/fixtures/identity-unmatched/*.json.gz \
       "$here"/test/resources/fixtures/identity-unmatched/*.inputs 2>/dev/null; } | sha256sum | cut -c1-24
 }
-reused() { # <asset> <file>: whether a stored result was fetched into <file>
-  [ -n "$store" ] && [ -n "$1" ] || return 1
-  mkdir -p "$(dirname "$2")"
-  gh release download "$store" -p "$1" -O "$2.gz" --clobber > /dev/null 2>&1 && gunzip -f "$2.gz" && [ -s "$2" ]
+reused() { # <asset> <file> <what>: whether a stored result was fetched into <file>; says why not when it was not
+  local why=""
+  if [ -z "$store" ]; then why="no store (TAKES_STORE empty, or a fill laid unpublished)"
+  elif [ -z "$1" ]; then why="no key (no recording pinned)"
+  else
+    mkdir -p "$(dirname "$2")"
+    gh release download "$store" -p "$1" -O "$2.gz" --clobber > /dev/null 2>&1 && gunzip -f "$2.gz" && [ -s "$2" ] && return 0
+    why="$1 not on release $store"
+  fi
+  echo "identity takes ($cc): $3 not stored -- $why: resolving it"
+  return 1
 }
-keep() { # <file> <asset>: store a head's result, on main only (the only commits a later base is), never failing the check
-  [ -n "$store" ] && [ -n "$2" ] && [ "${GITHUB_REF:-}" = refs/heads/main ] && [ -s "$1" ] || return 0
+keep() { # <file> <asset> [base]: store a result, never failing the check
+  # A head's only on main: the only commits a later base is. A BASE's on any ref -- a measure/ branch's base is main's
+  # commit, and a key names the code and every input, never the ref that resolved them -- so the next measurement of the
+  # same base (five agents measuring against one origin/main) downloads it instead of compiling and resolving it again.
+  [ -n "$store" ] && [ -n "$2" ] && { [ "${3:-}" = base ] || [ "${GITHUB_REF:-}" = refs/heads/main ]; } && [ -s "$1" ] || return 0
   gzip -c "$1" > "$RUNNER_TEMP/$2" \
     && "$here/scripts/ci/gh-release.sh" upload "$store" "$RUNNER_TEMP/$2" --clobber > /dev/null \
     || { echo "::warning::identity takes ($cc): could not store $2 -- the next run resolves its base again"; return 0; }
@@ -180,23 +190,32 @@ base_tree() { # the base checked out beside the head, once, for whichever of its
   done
   return 0
 }
+# <phase> <how>: the seconds since SECONDS was last reset, as a row of <out>/timings.tsv (uploaded with the check's
+# output) -- scripts/identity-measure prints them per country, so a slow measurement says which phase was slow and
+# whether a stored result spared it.
+timing() { printf '%s\t%s\t%s\n' "$1" "$SECONDS" "$2" >> "$out/timings.tsv"; }
 rm -rf "$tree"
 : > "$out/verdict.txt"
+printf 'phase\tseconds\thow\n' > "$out/timings.tsv"
 model=0 final=0 shape=0
 
 if [ -n "$takes_moves" ]; then
   SECONDS=0
   dump "$here" "$out/head" || { echo "::warning::identity takes ($cc): the head resolved nothing"; exit 2; }
   echo "identity takes ($cc): head resolved in ${SECONDS}s"
+  timing head-resolve resolved
   keep "$out/head/decisions-$cc.jsonl" "$(asset decisions "$(decisions_key "$head")")"
 
   SECONDS=0
-  if reused "$(asset decisions "$(decisions_key "$base")")" "$out/base/decisions-$cc.jsonl"; then
+  if reused "$(asset decisions "$(decisions_key "$base")")" "$out/base/decisions-$cc.jsonl" "the base resolve"; then
     echo "identity takes ($cc): base resolve reused from $(asset decisions "$(decisions_key "$base")") in ${SECONDS}s"
+    timing base-resolve reused
   else
     base_tree || exit 2
     dump "$tree" "$out/base" || { echo "::warning::identity takes ($cc): the base resolved nothing"; exit 2; }
     echo "identity takes ($cc): base compiled and resolved in ${SECONDS}s"
+    timing base-resolve resolved
+    keep "$out/base/decisions-$cc.jsonl" "$(asset decisions "$(decisions_key "$base")")" base
   fi
 
   # THE FINAL TAKES: the decisions above are the MODEL's, before the agreement stage reads them again -- 9c8170f5e's range
@@ -208,18 +227,22 @@ if [ -n "$takes_moves" ]; then
     ( cd "$1" && sbt -J-Xmx"$heap" "worker/Test/testOnly services.identity.UnmatchedClustersRatchetSpec" > "$2.log" 2>&1 )
     cp "$1/target/identity-unmatched/ratchet-takes.tsv" "$2" 2>/dev/null
   }
-  SECONDS=0
+  SECONDS=0 replayed=0
   ratchet "$here" "$out/head/ratchet-takes.tsv" || final=2
+  timing head-final replayed; replayed=$SECONDS; SECONDS=0
   [ "$final" = 0 ] && keep "$out/head/ratchet-takes.tsv" "$(asset final "$(capture_key "$head")")"
-  if [ "$final" = 0 ] && reused "$(asset final "$(capture_key "$base")")" "$out/base/ratchet-takes.tsv"; then
+  if [ "$final" = 0 ] && reused "$(asset final "$(capture_key "$base")")" "$out/base/ratchet-takes.tsv" "the base final takes"; then
     echo "identity takes ($cc): base final takes reused"
+    timing base-final reused
   elif [ "$final" = 0 ]; then
     base_tree || exit 2
     cp "$here"/test/resources/fixtures/identity-unmatched/*.json.gz "$here"/test/resources/fixtures/identity-unmatched/*.inputs \
        "$tree/test/resources/fixtures/identity-unmatched/" 2>/dev/null
     ratchet "$tree" "$out/base/ratchet-takes.tsv" || final=2
+    timing base-final replayed
+    [ "$final" = 0 ] && keep "$out/base/ratchet-takes.tsv" "$(asset final "$(capture_key "$base")")" base
   fi
-  echo "identity takes ($cc): final takes replayed in ${SECONDS}s"
+  echo "identity takes ($cc): final takes replayed in $((replayed + SECONDS))s"
 else
   echo "identity takes ($cc): no identity code changed since $base -- no take can have moved" | tee -a "$out/verdict.txt"
 fi
@@ -238,16 +261,21 @@ shape_key() { # <sha>: the findings' inputs -- the checks' code and allowlists, 
     "${KINOWO_CONVERGENCE_PIN_CORPUS_RUN:-}" | sha256sum | cut -c1-24
 }
 if [ -n "$shape_moves" ]; then
-  SECONDS=0
+  SECONDS=0 shaped=0
   if shape_run "$here" "$out/head/shape"; then
+    timing head-shape ran; shaped=$SECONDS; SECONDS=0
     tar -cf "$out/head/shape.tar" -C "$out/head/shape" . && keep "$out/head/shape.tar" "$(asset shape "$(shape_key "$head")")"
-    if reused "$(asset shape "$(shape_key "$base")")" "$out/base/shape.tar"; then
+    if reused "$(asset shape "$(shape_key "$base")")" "$out/base/shape.tar" "the base corpus-shape findings"; then
       mkdir -p "$out/base/shape" && tar -xf "$out/base/shape.tar" -C "$out/base/shape"
       echo "identity takes ($cc): base corpus-shape findings reused"
+      timing base-shape reused
     else
       base_tree || exit 2
       if grep -q 'corpus-shape-' "$tree/e2e/src/test/scala/services/movies/CorpusShapeSpec.scala" 2>/dev/null; then
         shape_run "$tree" "$out/base/shape" || shape=2
+        timing base-shape ran
+        [ "$shape" = 0 ] && tar -cf "$out/base/shape.tar" -C "$out/base/shape" . \
+          && keep "$out/base/shape.tar" "$(asset shape "$(shape_key "$base")")" base
       else
         # A base from before the specs wrote their findings has none to diff: the head's are reported, none failed.
         echo "identity takes ($cc): the base predates the corpus-shape findings files -- the head's are reported, not judged" \
@@ -258,7 +286,7 @@ if [ -n "$shape_moves" ]; then
   else
     shape=2
   fi
-  echo "identity takes ($cc): corpus-shape specs ran in ${SECONDS}s"
+  echo "identity takes ($cc): corpus-shape specs ran in $((shaped + SECONDS))s"
 elif [ -n "$shape_command" ]; then
   echo "identity takes ($cc): no corpus-shape check, allowlist or identity code changed since $base -- no finding can be new" \
     | tee -a "$out/verdict.txt"

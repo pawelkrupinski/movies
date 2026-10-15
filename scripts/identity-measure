@@ -119,6 +119,31 @@ collect() { # <run id> <commit whose judgements classify>
   fi
   python3 -I "$here/identity_measure.py" "$dl" --judgements "$judgements" --countries "$countries" --rows "$rows" \
     --run-url "$url" ${json:+--json}
+  local verdict=$?
+  timings "$id" "$dl"
+  return $verdict
+}
+
+# Where a measurement's time went, on stderr (the table, or --json, stays alone on stdout): the run's wait for a runner
+# and its length, each takes row's job, and each row's phases from identity-takes-check.sh's timings.tsv -- which
+# phases a stored result spared ("reused") and which were resolved. A row from before the file was written has none.
+timings() { # <run id> <artifacts dir>
+  local id=$1 dl=$2 times cc file
+  times=$(ghb run view "$id" --json createdAt,startedAt,updatedAt,jobs --jq '
+      def s: if . == null or . == "" then null else fromdateiso8601 end;
+      # The run "starts" when created; it is the first job that waited for the lane and a runner.
+      ([.jobs[].startedAt | s | select(. != null)] | min) as $first |
+      "run: created \(.createdAt), waited for the lane \(($first - (.createdAt|s)) // "?")s, then ran \(((.updatedAt|s) - $first) // "?")s",
+      (.jobs[] | select(.name | endswith(" / takes")) |
+        "  \(.name): \(((.completedAt|s) - (.startedAt|s)) // "?")s \(.conclusion // "unfinished")")') \
+    || { say "run $id: could not read its timings"; return 0; }
+  say "timings of run $id"
+  while IFS= read -r line; do say "  $line"; done <<< "$times"
+  for file in "$dl"/identity-takes-*/timings.tsv; do
+    [ -f "$file" ] || continue
+    cc=${file%/timings.tsv}; cc=${cc##*/identity-takes-}
+    say "  $cc phases: $(awk -F'\t' 'NR > 1 { printf "%s%s %ss (%s)", sep, $1, $2, $3; sep = ", " }' "$file")"
+  done
 }
 
 if [ -n "$run" ]; then
@@ -169,11 +194,12 @@ say "pushed $branch"
 deadline=$((SECONDS + timeout_min * 60))
 waiting='.status == "queued" or .status == "pending" or .status == "waiting" or .status == "requested"'
 dispatch() { # → measured_run
-  local since only=(-f takes-only=true)
+  local since only=(-f takes-only=true) waited=$SECONDS
   [ -n "$full" ] && only=()
   # A dispatch while a run of the lane waits would replace it: wait until that one starts.
   wait_until_no_runs "$workflow" "$waiting" $((deadline - SECONDS)) "a convergence run is waiting in the lane" \
     || die "the lane still held a waiting run, or could not be read, within --timeout $timeout_min minutes"
+  say "lane free after $((SECONDS - waited))s (attempt $attempts)"
   since=$(date -u +%Y-%m-%dT%H:%M:%SZ)
   dispatch_workflow "$workflow" "$branch" -f takes-base="$base" ${only[@]+"${only[@]}"} \
     || die "could not dispatch $workflow on $branch"
@@ -183,6 +209,7 @@ dispatch() { # → measured_run
   say "run $(ghb run view "$measured_run" --json url --jq .url || echo "$measured_run")"
 }
 
+attempts=1
 dispatch
 if [ -n "$nowait" ]; then
   keep=1 finished=1
@@ -190,13 +217,14 @@ if [ -n "$nowait" ]; then
   exit 0
 fi
 
-attempts=1
 while :; do
   # A read blip (a refused connection once ended a 20-minute measurement) is retried by wait_for_run.
   wait_for_run "$measured_run" $((deadline - SECONDS)) \
     || die "run $measured_run gave no conclusion within --timeout $timeout_min minutes"
   conclusion=$RUN_CONCLUSION
-  if [ "$conclusion" = cancelled ] && [ "$attempts" -lt 3 ]; then
+  # Two measurements that both saw the lane free dispatch in the same second, and the later replaces the earlier
+  # (2026-10-15 07:23:44: classes 2 and 5 of one task): dispatch again until the deadline, not a fixed few times.
+  if [ "$conclusion" = cancelled ] && [ "$SECONDS" -lt "$deadline" ]; then
     say "run $measured_run was cancelled (a newer dispatch replaced it in the lane): dispatching again"
     attempts=$((attempts + 1)); dispatch; continue
   fi
