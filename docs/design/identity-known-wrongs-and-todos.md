@@ -154,7 +154,8 @@ Each a production change: measure with `scripts/identity-measure`, land one at a
   its year against the 2026/27 record. Bound it (a year or two), or ask for a screening on the record's air day.
 - [ ] **FeedLink.deniesShort vs FamilyScope.namedOnlyByCopiedTitle**: the second covers most of the first's cases and
   has a same-year guard the first lacks; `deniesShort` still denies a short the venue's own billed title names.
-- [ ] **House initials are one house's list**: `StageRelays.HouseInitials = Set("rbo","roh")` plus a regex spelling them
+- [x] **House initials are one house's list** (done: `StageHouses.initials` derives them from every house name of three
+  initialled words; `ListingShape.billsAHouse` reads them through `StageRelays.billsAStageHouse`): `StageRelays.HouseInitials = Set("rbo","roh")` plus a regex spelling them
   again; `ListingShape.HouseWords` takes the bare tokens (and royal/live/met/hd/season), so "Jin-Roh" bills a house.
   Tag initials in the StageHouse word table and read them in one place.
 - [ ] **Search-tier copies of the ingest peels**: `ExtraTitleRules`' `xtra-asterisk-note-suffix`, `xtra-runtime-suffix`,

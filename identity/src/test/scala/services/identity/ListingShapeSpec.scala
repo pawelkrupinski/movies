@@ -169,6 +169,10 @@ class ListingShapeSpec extends AnyFlatSpec with Matchers {
     ListingShape.stagesAWork(listing(KinoMuza, "Le Corsaire (Cine)").copy(cleanTitle = "Le Corsaire")) shouldBe true
     ListingShape.billsAHouse(listing(KinoMuza, "OPERA-MAKBET - retransmisja")) shouldBe true
     ListingShape.billsAHouse(listing(KinoMuza, "Klondike")) shouldBe false
+    // "roh" was a bare house word here: Okiura's anime billed a house; a house's initials read as the stage relay reads them
+    ListingShape.billsAHouse(listing(KinoMuza, "Jin-Roh - Die Wolfsbrigade")) shouldBe false
+    ListingShape.billsAHouse(listing(KinoMuza, "Tosca (ROH)")) shouldBe true
+    ListingShape.billsAHouse(listing(KinoMuza, "Carmen (RB+O 2026/27)")) shouldBe true
     val concert = listing(KinoMuza, "Hauser symfonicznie z Royal Albert Hall")
     ListingShape.relays(concert, concert.rawTitle.toLowerCase(java.util.Locale.ROOT)) shouldBe true
     val film = listing(KinoMuza, "Klondike")

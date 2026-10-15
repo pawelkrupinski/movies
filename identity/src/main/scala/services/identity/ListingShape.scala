@@ -48,10 +48,12 @@ object ListingShape {
   /** Words a billing names a stage show by — a theatre, a musical, a stage ([[TitleWords.Concept.Stage]]). */
   val StageWords: Set[String] = TitleWords.tokens(TitleWords.Concept.Stage)
 
-  /** Does the listing bill a house, a relay or a season ("OPERA-MAKBET - retransmisja", "Met Opera 2026/27: …")? */
+  /** Does the listing bill a house, a relay or a season ("OPERA-MAKBET - retransmisja", "Met Opera 2026/27: …"), or a
+   *  house's initials as [[StageRelays.billsAStageHouse]] reads them ("Tosca (ROH)", never "Jin-Roh")? */
   def billsAHouse(listing: Listing): Boolean = {
     val titles = spellingsOf(listing)
-    TitleSeason.of(titles).isDefined || titles.exists(title => TitleContainment.tokens(title).exists(HouseWords))
+    TitleSeason.of(titles).isDefined || titles.exists(title => TitleContainment.tokens(title).exists(HouseWords)) ||
+      StageRelays.billsAStageHouse(titles)
   }
 
   /** A concert FILM, recorded where a cinema relays it from: event cinema TMDB may hold ("Hauser symfonicznie z Royal

@@ -1,6 +1,7 @@
 # Stage houses billed under more than one name — a former name, a rename, their abbreviations — one house per line, its
 # names `|` between them: banners naming two names of one line name one house (`StageHouses`, read by
 # `IdentityMeasures.namesOneHouse`). Only names the banner's own words cannot tie together: "Royal Opera House" and "Royal
-# Ballet and Opera" already share "Royal"; "ROH" and "RBO" are each one name's initials, and the other's nothing.
+# Ballet and Opera" already share "Royal". A name's initials ("RBO", "ROH") are derived from it (`StageHouses.initials`):
+# never list them.
 # Covent Garden's house renamed itself Royal Ballet and Opera in 2024; venues and TMDB still bill it under both.
-Royal Ballet and Opera|Royal Opera House|RBO|ROH
+Royal Ballet and Opera|Royal Opera House

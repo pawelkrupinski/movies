@@ -278,8 +278,6 @@ stage-house	de	Bolschoi
 stage-house	pl	Bolszoj
 stage-house	de	Staatsoper
 stage-house	en	Glyndebourne
-stage-house	en	RBO	Royal Ballet and Opera — counted only standing alone
-stage-house	en	ROH	Royal Opera House — counted only standing alone
 
 # ── stage: a theatre or a staged show ──
 stage	pl	teatr
