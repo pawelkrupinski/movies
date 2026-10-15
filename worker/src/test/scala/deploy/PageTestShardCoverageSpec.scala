@@ -12,7 +12,8 @@ import org.scalatest.matchers.should.Matchers
  *
  *  1. Shard coverage. A project set split `i/N` covers everything only if every
  *     `i` in `1..N` has a row. Dropping row 5 of 8 drops an eighth of the WebKit
- *     suite and nothing goes red.
+ *     suite and nothing goes red. An unsharded set (the Chromium phones since
+ *     they went to one row) must have exactly one row, or it runs twice.
  *
  *  2. Where the `@agnostic` specs run. Those ~13 viewport-INDEPENDENT spec
  *     files used to be re-run at every viewport of every phone — 208 of each
@@ -58,13 +59,18 @@ class PageTestShardCoverageSpec extends AnyFlatSpec with Matchers {
     phoneSets should have size 2 // one sharded phone set per engine
   }
 
-  it should "cover every shard of every sharded project set" in {
+  it should "cover every shard of every sharded project set, and run an unsharded one exactly once" in {
     phoneSets.foreach { set =>
+      val rows   = selections.filter(_.project == set)
       val shards = shardsOf(set)
-      val total  = shards.head.split("/")(1).toInt
       withClue(s"$set: ") {
-        shards.map(_.split("/")(1).toInt).distinct shouldBe Vector(total)
-        shards.map(_.split("/")(0).toInt).sorted shouldBe (1 to total).toVector
+        if (shards.isEmpty) rows should have size 1
+        else {
+          val total = shards.head.split("/")(1).toInt
+          shards should have size rows.size.toLong
+          shards.map(_.split("/")(1).toInt).distinct shouldBe Vector(total)
+          shards.map(_.split("/")(0).toInt).sorted shouldBe (1 to total).toVector
+        }
       }
     }
   }

@@ -526,11 +526,14 @@ addCommandAlias("e2eShared", "e2e/Test/testOnly * -- -l services.movies.CountryS
 addCommandAlias("itAll", "all web/IntegrationTest/test worker/IntegrationTest/test")
 // `testUnit` is the full local alias. In CI the modules are spread across
 // parallel jobs to keep each off the deploy-gating critical path, all under the
-// 20-runner cap: `test` runs `testUnitNoE2e`, `integration-test` runs `itAll`,
+// 20-runner cap: `test` runs `testUnitNoE2e` split across two rows —
+// `testUnitWorker` (the heaviest module alone) and `testUnitRest` — `integration-test` runs `itAll`,
 // and the `e2e` module is itself FANNED OUT across four parallel shards (each
 // tagged heavy spec boots the full ~110s pipeline one or more times, so on one
 // runner the module was the long pole). See .github/workflows/ci.yml.
 addCommandAlias("testUnitNoE2e", "all common/Test/test identity/Test/test testkit/Test/test web/Test/test worker/Test/test")
+addCommandAlias("testUnitWorker", "worker/Test/test")
+addCommandAlias("testUnitRest", "all common/Test/test identity/Test/test testkit/Test/test web/Test/test")
 
 // e2e CI shards. The two heavy whole-corpus determinism specs (tagged
 // @CorpusReplay) run by name, one per runner; `e2eRest` runs EVERYTHING ELSE in

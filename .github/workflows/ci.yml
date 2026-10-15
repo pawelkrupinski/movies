@@ -17,11 +17,11 @@ on:
 
 # Pipeline shape:
 #
-#   test (unit) ────────────────────┐
+#   test × 2 (worker, rest) ────────┐
 #   integration-test ───────────────┤
 #   e2e × 3 shards (+stage, eslint) ┤  (all independent; every shipping job in
 #   mobile-local-server (iOS+And) ──┤   main.yml `needs` this whole workflow)
-#   page-tests × 9 ─────────────────┘
+#   page-tests × 8 ─────────────────┘
 #
 # RUNNER BUDGET — 15 here, and no more. GitHub Free allows 20 concurrent jobs
 # ACROSS THE ACCOUNT. On a push to main, `main.yml` adds one more at t=0 (its
@@ -33,11 +33,12 @@ on:
 # over 12 Main runs to 2026-10-01, ci rows started a median 1.2-2.0 min late, and
 # a queued row is pure added wall-clock. The four came from the Playwright phone
 # shards (WebKit 7 → 4, Chromium 3 → 2), which after the `@agnostic` sweeps moved
-# out ran ~40 s of tests behind ~1.5 min of setup each. A new job here takes its
+# out ran ~40 s of tests behind ~1.5 min of setup each. (Chromium 2 → 1 later gave
+# its runner to the unit tests' second row, not to the headroom.) A new job here takes its
 # slot from an existing one or eats into that headroom on purpose
 # (CiRunnerBudgetSpec).
 #
-# Current split: 1 test + 1 integration + 2 e2e + 1 mobile + 9 page-tests.
+# Current split: 2 test + 1 integration + 2 e2e + 1 mobile + 8 page-tests.
 # Staging the dists and eslint ride the `e2e (corpus)` row, and iOS +
 # Android LocalServer share one `mobile-local-server` job (one FixtureServerMain
 # boot for both). The original ~13-min long pole was the single `e2e` job (two
@@ -73,7 +74,21 @@ permissions:
     contents: read
 
 jobs:
+    # The unit tests, SPLIT across two runners by module: `worker` (~6,300 tests, the heaviest
+    # module) on one, every other module on the other. One runner running all five modules'
+    # suites at once on its 4 cores was the build's long pole (an `sbt testUnitNoE2e` of 7-10 min,
+    # 2026-10-15 — the zinc cache hit, so it was test CPU, not compile); each row now gets the
+    # runner to itself. The slot came from merging the two Chromium phone shards below. The
+    # non-sbt checks (roster drift, actionlint, the script self-tests, …) ride the `rest` row;
+    # the gitops manifests ride `worker`, whose deploy specs read them.
     test:
+        name: test (${{ matrix.shard }})
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - { shard: worker, cmd: testUnitWorker }
+                    - { shard: rest,   cmd: testUnitRest }
         runs-on: ubuntu-26.04
         # `checks: write` so action-junit-report can post the failure
         # check-run + summary.
@@ -99,7 +114,8 @@ jobs:
             # `main`, not a pinned ref: these specs should test what is actually DEPLOYED. A pin
             # would go stale silently, which is the failure this repository keeps having to design
             # away. No credential -- the config repo is public, like this one.
-            - uses: actions/checkout@v5
+            - if: matrix.shard == 'worker'
+              uses: actions/checkout@v5
               with:
                   repository: pawelkrupinski/movies-gitops
                   path: infra/kubernetes
@@ -110,18 +126,9 @@ jobs:
             # links below it compiles and passes every spec that reads the stale output. So
             # when the chain's sources change, regenerate it and fail on any difference
             # (scripts/ci/generated-artefacts-drift.sh). Gated on the chain's paths — it
-            # fetches GeoNames and PyPI, which an unrelated push should not depend on. The
-            # base commit is fetched treeless-shallow: changed-paths only diffs names.
-            - name: Fetch this push's base, for the roster filter
-              if: github.event_name == 'push'
-              env:
-                  BASE: ${{ github.event.before }}
-              run: |
-                  if [ -n "$BASE" ] && [ "$BASE" != 0000000000000000000000000000000000000000 ]; then
-                      git fetch --no-tags --depth=1 --filter=blob:none origin "$BASE"
-                  fi
-
+            # fetches GeoNames and PyPI, which an unrelated push should not depend on.
             - name: Did this change touch the generated roster's sources?
+              if: matrix.shard == 'rest'
               id: roster
               uses: ./.github/actions/changed-paths
               with:
@@ -146,6 +153,7 @@ jobs:
             # half a second instead of the e2e shard's ~110s corpus replay. See
             # scripts/read-model-snapshot-inputs.sh for what the stamp does and does not cover.
             - name: The read-model snapshot is stamped for this fixture corpus
+              if: matrix.shard == 'rest'
               run: scripts/read-model-snapshot-inputs.sh check HEAD
 
             # actionlint over every workflow (shellcheck over their `run:` blocks), and the composite
@@ -153,6 +161,7 @@ jobs:
             # The pre-push hook runs both over what a push changes, but skips a tool that is not
             # installed — this is the check that cannot be skipped. Pinned by version and checksum.
             - name: Workflows pass actionlint, and composite actions' run blocks pass shellcheck
+              if: matrix.shard == 'rest'
               env:
                   ACTIONLINT_VERSION: 1.7.12
                   ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
@@ -174,30 +183,35 @@ jobs:
             # nothing with: run first in the foreground they held the unit run back by their own
             # ~21-25 s (run 37121131703). Waited for, and failing as they would have, just before it.
             - name: Script self-tests, in the background
+              if: matrix.shard == 'rest'
               run: scripts/ci/in-background.sh start script-tests scripts/run-script-tests
 
             # The JDK, sbt and the build cache (.github/actions/setup-sbt-build). Warm zinc state
             # across pushes so an unchanged push is near-instant, in the `sbt-target-` family
             # `integration-test` shares. The exact key is scoped to the sources this job compiles
-            # (unit = every module's main + test, not the action's default it scope); the fallback
-            # to any recent sbt-target entry keeps zinc warm on a miss.
+            # (unit = every module's main + test, not the action's default it scope) and to the row:
+            # each row compiles only its own modules' tests, so a shared entry would hand one row
+            # the other's half and recompile its own. Each row falls back to its own newest entry,
+            # then to any recent sbt-target entry, to keep zinc warm on a miss.
             - uses: ./.github/actions/setup-sbt-build
               with:
-                  target-cache-key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', 'web/src/main/resources/**') }}
+                  target-cache-key: sbt-target-${{ runner.os }}-unit-${{ matrix.shard }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', 'web/src/main/resources/**') }}
                   target-cache-restore-keys: |
+                      sbt-target-${{ runner.os }}-unit-${{ matrix.shard }}-
                       sbt-target-${{ runner.os }}-
 
             - name: The script self-tests passed
+              if: matrix.shard == 'rest'
               run: scripts/ci/in-background.sh wait script-tests 600
 
-            # Every module's unit tests except `e2e` in one sbt run; `all` keeps
-            # going so a failure in one module still runs the rest. The `e2e`
-            # module (the whole-corpus staging specs) rides the integration-test
-            # job instead — it doubled this step's wall-clock once staging ingest
-            # went always-on, and this is the deploy-gating job, so keep it off
-            # the critical path. See the `testUnitNoE2e` alias in build.sbt.
+            # This row's modules' unit tests in one sbt run; `all` keeps going so a
+            # failure in one module still runs the rest. The `e2e` module (the
+            # whole-corpus staging specs) has its own sharded job below — it doubled
+            # this step's wall-clock once staging ingest went always-on, and this is
+            # the deploy-gating job, so keep it off the critical path. See the
+            # `testUnitWorker` / `testUnitRest` aliases in build.sbt.
             - id: unit
-              run: sbt testUnitNoE2e
+              run: sbt ${{ matrix.cmd }}
               env:
                   TMDB_API_KEY:    ${{ secrets.TMDB_API_KEY }}
 
@@ -209,7 +223,7 @@ jobs:
             - name: Rerun the failed unit tests, to tell a flake from a break
               if: failure() && steps.unit.outcome == 'failure'
               timeout-minutes: 20
-              run: scripts/ci/rerun-failed-sbt.sh target/test-reports/unit "unit tests" target/flake-rerun
+              run: scripts/ci/rerun-failed-sbt.sh target/test-reports/unit "unit tests (${{ matrix.shard }})" target/flake-rerun
               env:
                   TMDB_API_KEY:    ${{ secrets.TMDB_API_KEY }}
 
@@ -217,7 +231,7 @@ jobs:
               if: failure() && hashFiles('target/flake-rerun/flaky.tsv') != ''
               uses: actions/upload-artifact@v6
               with:
-                  name: flaky-unit
+                  name: flaky-unit-${{ matrix.shard }}
                   path: target/flake-rerun/flaky.tsv
                   retention-days: 7
 
@@ -225,14 +239,14 @@ jobs:
             # what they expected; a committed file they rewrote is a stale snapshot, whether
             # or not the spec itself noticed. See scripts/ci/tree-unchanged.sh.
             - name: The unit run left every checked-in file unchanged
-              run: scripts/ci/tree-unchanged.sh "sbt testUnitNoE2e"
+              run: scripts/ci/tree-unchanged.sh "sbt ${{ matrix.cmd }}"
 
             - name: Publish test report
               if: always()
               uses: mikepenz/action-junit-report@v5
               with:
                   report_paths: 'target/test-reports/unit/**/*.xml'
-                  check_name: unit tests
+                  check_name: unit tests (${{ matrix.shard }})
                   detailed_summary: true
                   include_passed: false
 
@@ -483,7 +497,28 @@ jobs:
             # scripts/identity-slice drops this checkout's tool files into every ref it slices; they must compile
             # into old code too (83b869548 broke every older ref). A real sbt compile of c2974e3aa, seeded from this
             # job's compiled target/ — here, where sbt and the JDK are set up and off the deploy-gating unit job.
+            # The old ref is pinned, so only what this checkout brings to it can change the verdict: the tool files
+            # (identity-slice's TOOL_FILES, every one listed below — IdentitySliceOldRefGateSpec), the scripts that
+            # lay the ref out, and the JDK/sbt setup. A push touching none of them skips its 2-3 min, which sat
+            # on the end of this job and made it the build's long pole beside the unit tests (2026-10-15).
+            - name: Did this change touch what identity-slice brings to an old ref?
+              id: slice-tools
+              uses: ./.github/actions/changed-paths
+              with:
+                  patterns: |
+                      worker/src/test/scala/scripts/IdentitySlice.scala
+                      worker/src/test/scala/scripts/IdentityExplain.scala
+                      worker/src/test/scala/services/identity/IdentitySlicing.scala
+                      worker/src/fixtures/scala/tools/**
+                      scripts/identity-slice
+                      scripts/identity-tools.sh
+                      scripts/tool-conventions.sh
+                      scripts/identity-slice-old-ref-test.sh
+                      .github/actions/setup-sbt-build/**
+                      .github/workflows/ci.yml
+
             - name: identity-slice's tool files still compile into a ref from before them
+              if: steps.slice-tools.outputs.changed == 'true'
               run: |
                   git fetch --no-tags --depth=1 origin c2974e3aaea73fb841096a24316fb5e872154de9
                   OLD_REF=c2974e3aaea73fb841096a24316fb5e872154de9 KINOWO_IDENTITY_CACHE="$RUNNER_TEMP/kinowo-identity" \
@@ -752,11 +787,12 @@ jobs:
                     # list — measured 552/552 at two ways, dead even — so the
                     # rows finish together.
                     #
-                    # Two, not the three it once was: the split has to EQUALISE the
-                    # two tiers, and since the `@agnostic` sweeps left the phone
-                    # rows a three-way row ran only ~35-50 s of tests behind its
-                    # ~1.5 min of setup. Two rows (216 listed each, 2026-10-01)
-                    # stay under the WebKit rows and give a runner back.
+                    # One row, not the three and then two it once was: since the
+                    # `@agnostic` sweeps left the phone rows a two-way row ran
+                    # ~2.5-2.7 min in all, most of it the ~1.5 min of setup, and
+                    # finished minutes before the unit tests did. One row runs the
+                    # whole set behind one setup, still inside the unit rows' time,
+                    # and gives its runner to the unit tests' second row.
                     #
                     # And they no longer re-run the `@agnostic` set. Those ~13
                     # viewport-INDEPENDENT spec files were being executed at all
@@ -769,16 +805,11 @@ jobs:
                     # galaxy-s10, redundant for catching layout breaks. The
                     # project stays in playwright.config.ts so a local
                     # `npx playwright test --project chromium-pixel-9` still runs.
-                    - variant: pw phones 1/2
+                    - variant: pw phones
                       kind: playwright
                       browsers: chromium
-                      label: chromium-phones-1-2
-                      runs: 'chromium-galaxy-s10*,chromium-galaxy-s25*,chromium-pixel-9-pro* ; ; axe-core|@agnostic ; 1/2'
-                    - variant: pw phones 2/2
-                      kind: playwright
-                      browsers: chromium
-                      label: chromium-phones-2-2
-                      runs: 'chromium-galaxy-s10*,chromium-galaxy-s25*,chromium-pixel-9-pro* ; ; axe-core|@agnostic ; 2/2'
+                      label: chromium-phones
+                      runs: 'chromium-galaxy-s10*,chromium-galaxy-s25*,chromium-pixel-9-pro* ; ; axe-core|@agnostic ;'
 
                     # Two cheap slices sharing one runner: the viewport-independent
                     # specs once on mobile Chromium (touch emulation — `card-tap`

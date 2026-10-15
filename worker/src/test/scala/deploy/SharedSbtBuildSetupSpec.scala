@@ -52,12 +52,15 @@ class SharedSbtBuildSetupSpec extends AnyFlatSpec with Matchers {
   }
 
   /** Moving onto the action kept each job's cache entry: the shared family where the job compiled the it scope
-   *  (the action's default key), and its own key where it had one. */
+   *  (the action's default key), and its own key where it had one. The unit job, split into two rows since,
+   *  keys each row's entry apart inside the shared family (`-unit-<row>-`): a row compiles only its own modules'
+   *  tests, so one shared entry would hand each row the other's half. */
   "Main's sbt jobs" should "keep the build cache keys they had before the trio was shared" in {
     val ci = RepoFile.read(".github/workflows/ci.yml")
     val unit = RepoFile.jobs(ci)("test")
-    unit should include("target-cache-key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', 'web/src/main/resources/**') }}")
-    unit should include("sbt-target-${{ runner.os }}-")
+    unit should include("target-cache-key: sbt-target-${{ runner.os }}-unit-${{ matrix.shard }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', 'web/src/main/resources/**') }}")
+    unit should include("sbt-target-${{ runner.os }}-unit-${{ matrix.shard }}-\n")
+    unit should include("sbt-target-${{ runner.os }}-\n")
     val android = RepoFile.jobs(ci)("mobile-local-server")
     android should include("java-version: 21")
     android should include("target-cache-key: sbt-target-android-ls-${{ runner.os }}-")

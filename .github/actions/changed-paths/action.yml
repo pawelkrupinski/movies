@@ -56,8 +56,10 @@ runs:
         # fail the job. Failing open would restart the worker on a transient — the exact cost this
         # gate exists to avoid — and failing closed would silently stop deploying a tier, which is
         # how `kinowo-worker-de` once missed deploys for days. A red job is the only outcome
-        # somebody notices. The checkout in the calling job is `fetch-depth: 0`, so the base is
-        # there.
+        # somebody notices. A caller whose checkout is shallow has no base commit; fetch it
+        # treeless (names are all this diffs), and a fetch that fails fails the job.
+        git cat-file -e "$BASE^{commit}" 2>/dev/null \
+            || git fetch --no-tags --depth=1 --filter=blob:none origin "$BASE"
         printf '%s\n' "$PATTERNS" > "$RUNNER_TEMP/changed-paths-patterns"
         git diff --name-only "$BASE" "$HEAD" > "$RUNNER_TEMP/changed-paths-files"
 
