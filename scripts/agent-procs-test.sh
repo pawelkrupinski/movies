@@ -87,6 +87,12 @@ listing="$(cd "$root" && "$TOOL")"
 suggestion() { printf '%s\n' "$listing" | sed -n "s|^\([A-Z-]*\) *$work/$1\$|\1|p"; }
 block() { printf '%s\n' "$listing" | sed -n "\|^[A-Z-]* *$work/$1\$|,/^[A-Z-]* *\//p"; }
 
+check "a root checkout on main and clean: no warning" "0" "$(printf '%s\n' "$listing" | grep -c 'WARNING: the root checkout')"
+scratch_git "$root" checkout -q --detach
+detached="$(cd "$work/wt-merged" && "$TOOL")"
+scratch_git "$root" checkout -q main
+check "a detached root checkout is warned about first, with the fix" "1" \
+  "$(printf '%s\n' "$detached" | head -1 | grep -c "WARNING: the root checkout $root is on a DETACHED HEAD.*Fix: git -C $root checkout main && git -C $root merge --ff-only origin/main")"
 check "a merged, clean, unowned worktree is removable" "REMOVABLE" "$(suggestion wt-merged)"
 check "a worktree with commits origin/main lacks is kept" "KEEP" "$(suggestion wt-unmerged)"
 check "a worktree with uncommitted files is kept" "KEEP" "$(suggestion wt-dirty)"

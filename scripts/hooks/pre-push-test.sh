@@ -286,7 +286,7 @@ scratch_repo "$hp/clone"
 mkdir -p "$hp/clone/scripts/hooks"
 # stamp <copy> <word>: the hook with a line, right after its hand-over, recording which copy went on to run
 stamp() { awk -v w="$2" -v m="$hp/ran" '{ print } /^# ── end of the hand-over ──/ { print "echo " w " >> " m }' \
-  "$REPO_ROOT/scripts/hooks/pre-push" > "$1"; chmod +x "$1"; cp "$REPO_ROOT/scripts/hooks-path.sh" "$REPO_ROOT/scripts/tool-conventions.sh" "$(dirname "$1")/../"; }
+  "$REPO_ROOT/scripts/hooks/pre-push" > "$1"; chmod +x "$1"; cp "$REPO_ROOT/scripts/hooks-path.sh" "$REPO_ROOT/scripts/tool-conventions.sh" "$REPO_ROOT/scripts/root-checkout-check" "$(dirname "$1")/../"; }
 stamp "$hp/clone/scripts/hooks/pre-push" old
 echo base > "$hp/clone/README"; scratch_git "$hp/clone" add -A; scratch_git "$hp/clone" commit -qm base
 scratch_git "$hp/clone" remote add origin "$hp/origin.git"; scratch_git "$hp/clone" push -q origin HEAD:main 2>/dev/null
@@ -305,6 +305,16 @@ echo more >> "$hp/wt/doc.md"; scratch_git "$hp/wt" commit -qam more
 out="$(scratch_git "$hp/wt" push origin HEAD:refs/heads/feature 2>&1)"
 check "the relative hooksPath runs the worktree's own hook once, no hand-over and no warning" "new 0" \
   "$(cat "$hp/ran" 2>/dev/null | tr '\n' ' ' | sed 's/ $//') $(printf '%s\n' "$out" | grep -c 'core.hooksPath is absolute')"
+# the shared root checkout left detached: every push says so, and none is blocked for it
+scratch_git "$hp/clone" checkout -q --detach
+rm -f "$hp/ran"
+echo detached >> "$hp/wt/doc.md"; scratch_git "$hp/wt" commit -qam detached
+# the checks this scratch clone cannot run (no run-script-tests, no sbt) skipped: what is left is the warning's verdict
+out="$(PREPUSH_SKIP="scripttests shellcheck sbt" scratch_git "$hp/wt" push origin HEAD:refs/heads/feature 2>&1)"; code=$?
+check "a detached root checkout is warned about on a push from a worktree" "1" \
+  "$(printf '%s\n' "$out" | grep -c "WARNING: the root checkout .* is on a DETACHED HEAD.*Fix: git -C .* checkout main")"
+check "...and the push still lands" "0 new" "$code $(cat "$hp/ran" 2>/dev/null | tr '\n' ' ' | sed 's/ $//')"
+scratch_git "$hp/clone" checkout -q main
 # a worktree whose hook is the very file the path names, or one handed over already, never hands over again
 rm -f "$hp/ran"
 scratch_git "$hp/clone" config core.hooksPath "$hp/clone/scripts/hooks"

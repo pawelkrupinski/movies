@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# Warn when this clone's ROOT checkout (its main worktree: the one whose git dir is the common dir) is not on branch
+# `main` or is dirty. It is shared by every agent and must stay on main and clean (CLAUDE.md): a root left detached
+# (another agent's `git checkout <sha>` there) or on a branch strands the next agent's rebase/pull and runs a stale
+# copy of every tool started from it. Warns only -- never changes the root.
+#
+#   scripts/root-checkout-check [<any path inside the clone>]     (default: the current directory)
+#
+# Prints nothing when the root is on main and clean; else one WARNING line naming the state and the fix. Exit 0 clean,
+# 1 warned, 2 not inside a git clone. scripts/agent-procs (list) and the pre-push hook run it.
+set -uo pipefail
+# a hook's GIT_DIR / GIT_WORK_TREE would point every git below at the pushing worktree instead of the root
+unset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_COMMON_DIR GIT_PREFIX
+here=${1:-.}
+case "$here" in -h|--help) sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;; esac
+# the first `worktree` of the porcelain listing is always the main worktree
+root=$(git -C "$here" worktree list --porcelain 2>/dev/null | sed -n '1s/^worktree //p') || true
+[ -n "$root" ] || { echo "root-checkout-check: $here is not inside a git clone" >&2; exit 2; }
+[ -d "$root" ] || exit 0 # a bare clone, or one whose main worktree is gone: nothing to check
+branch=$(git -C "$root" symbolic-ref --quiet --short HEAD 2>/dev/null) || branch=""
+dirty=$(git -C "$root" status --porcelain 2>/dev/null | wc -l | tr -d ' ')
+problems=()
+if [ -z "$branch" ]; then
+  problems+=("on a DETACHED HEAD ($(git -C "$root" rev-parse --short HEAD 2>/dev/null))")
+elif [ "$branch" != main ]; then
+  problems+=("on branch '$branch', not main")
+fi
+[ "$dirty" -eq 0 ] || problems+=("DIRTY ($dirty path(s) changed -- someone's WIP; never discard it)")
+[ ${#problems[@]} -gt 0 ] || exit 0
+state=$(IFS=';'; echo "${problems[*]}" | sed 's/;/; /g')
+if [ "$dirty" -eq 0 ]; then
+  fix="git -C $root checkout main && git -C $root merge --ff-only origin/main"
+else
+  fix="ask who owns the changes (scripts/agent-procs); only once it is clean: git -C $root checkout main && git -C $root merge --ff-only origin/main"
+fi
+echo "WARNING: the root checkout $root is $state. Fix: $fix"
+exit 1

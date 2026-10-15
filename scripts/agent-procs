@@ -8,7 +8,8 @@ holding commits nobody knew were unmerged. Auditing that by hand (ps, lsof cwd, 
 the job of this tool; killing by process-name pattern is never the answer, because other agents' processes
 match the same pattern.
 
-  scripts/agent-procs                     list every worktree: branch, dirty files, unmerged commits vs origin/main
+  scripts/agent-procs                     a WARNING first when the root checkout is off main or dirty
+                                          (scripts/root-checkout-check); then list every worktree: branch, dirty files, unmerged commits vs origin/main
                                           (git cherry, so rebased-equal commits count as merged), last commit age,
                                           lock owner pid and whether it lives, the processes whose cwd is inside it,
                                           and a SUGGESTION: removable | orphan-procs | keep. Then the heavy
@@ -191,7 +192,16 @@ def notable(process):
     return not process.idle and (process.rss_kb >= 100 * 1024 or any(k in process.command for k in WORK_KEYWORDS))
 
 
+def root_checkout_warning(root):
+    """scripts/root-checkout-check's warning about the shared root checkout (detached, off main, dirty), or ''."""
+    check = os.path.join(os.path.dirname(os.path.realpath(__file__)), "root-checkout-check")
+    return run([check, root]).stdout.strip() if os.path.exists(check) else ""
+
+
 def list_command(root, all_worktrees, found, args):
+    warning = root_checkout_warning(root)
+    if warning:
+        print(warning + "\n")
     for tree in all_worktrees:
         lock = "unlocked" if tree.lock is None else (
             f"locked by pid {tree.lock_pid} ({'alive' if tree.live_owner else 'DEAD'})" if tree.lock_pid else "locked")
