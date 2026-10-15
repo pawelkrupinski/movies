@@ -435,16 +435,6 @@ jobs:
                       "test/resources/fixtures/corpus/prod-films-${{ inputs.code }}-sample.json.gz"
                   ls -l scrape-archive/
 
-            # Run-id-suffixed so each capture is a new entry; readers restore by prefix and so
-            # always take the newest.
-            - uses: actions/cache/save@v5
-              if: inputs.mode == 'record' && matrix.phase == 'convergence'
-              with:
-                  # The directory, as the recorder job always saved it: a cache entry's version
-                  # hashes its paths, so a restore naming `scrape-archive` misses any other spelling.
-                  path: scrape-archive
-                  key: scrape-fixtures-${{ inputs.code }}-${{ github.run_id }}
-
             # Every later leg's corpus: the hermetic legs replay a pinned run's
             # `scrape-fixtures-<code>`, and the provenance diff the last green one's.
             - uses: actions/upload-artifact@v6
@@ -452,10 +442,10 @@ jobs:
               with:
                   name: scrape-fixtures-${{ inputs.code }}
                   path: scrape-archive/scrapes-${{ inputs.code }}.tar.gz
-                  # 14 days, not 3. This artifact is the ONLY durable copy a convergence leg
-                  # reads — the cache entry beside it is evicted within hours by 7 GB of
+                  # 14 days, not 3. This artifact is the ONLY copy a convergence leg reads (a
+                  # cache entry once saved beside it was evicted within hours by 7 GB of
                   # sbt-target builds, which is how the UK corpus went missing and the leg
-                  # silently replayed invented films instead. Three days is two nights of slack
+                  # silently replayed invented films instead). Three days is two nights of slack
                   # on a nightly job: one failed run over a weekend and every country's corpus
                   # expires at once. The tarballs together are ~12 MB, so the margin costs nothing.
                   retention-days: 14

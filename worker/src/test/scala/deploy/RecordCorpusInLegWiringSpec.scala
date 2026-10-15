@@ -65,7 +65,7 @@ class RecordCorpusInLegWiringSpec extends AnyFlatSpec with Matchers {
 
   "a recording leg" should "record, close the tunnel and upload its corpus before the suite replays it" in {
     val order = Seq("uses: ./.github/actions/convergence-setup", s"- name: $Tunnel", s"- name: $Record",
-      s"- name: $Close", s"- name: $Pack", "uses: actions/cache/save@", "uses: actions/upload-artifact@", s"- name: $Suite")
+      s"- name: $Close", s"- name: $Pack", "uses: actions/upload-artifact@", s"- name: $Suite")
     order.map(at) shouldBe order.map(at).sorted
   }
 
@@ -126,7 +126,9 @@ class RecordCorpusInLegWiringSpec extends AnyFlatSpec with Matchers {
         "prod-films-${{ inputs.code }}-sample.json.gz").foreach { file =>
       RepoFile.step(convergence, Pack) should include(s"\"test/resources/fixtures/corpus/$file\"")
     }
-    convergence should include("path: scrape-archive\n                  key: scrape-fixtures-${{ inputs.code }}-${{ github.run_id }}")
+    // The artifact is the one copy readers read (hermetic legs, the provenance diff, restore-country-corpus.sh);
+    // a cache entry beside it had no reader and was evicted within hours anyway.
+    convergence should not include("key: scrape-fixtures-")
     convergence should include("name: scrape-fixtures-${{ inputs.code }}\n                  path: scrape-archive/scrapes-${{ inputs.code }}.tar.gz")
     convergence should include("retention-days: 14")
   }
