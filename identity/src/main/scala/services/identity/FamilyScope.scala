@@ -230,13 +230,14 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
         })(s"named only by the title its feed (${id.source} ${id.id}) copied from $linkedFilm")
     }
 
-  /** Why `node` rules `id` out before its evidence is scored: a pin, a feed link's copied title, a title naming it only
-   *  by the venue's own name, a programme tag or slot, or a title billing a film festival alone. */
+  /** Why `node` rules `id` out before its evidence is scored: a pin, a feed link's copied title, a short it bills none of
+   *  ([[ShortFilms]]), a title naming it only by the venue's own name, a programme tag or slot, or a title billing a film festival alone. */
   private def denialByNode(node: EvidenceNode, id: Int): Option[String] =
     Option.when(pins.deniedFilms(node.listings.head.key)(id))("pinned never this film")
       .orElse(overruled(node).filter(_.film == id).map(_.denial))
       .orElse(copyingLink(node).filter(_ => FeedLink.copiesAnotherTitle(evidenceOf(node).measured)).flatMap(FeedLink.deniesShort(_, id, candidateById(id).film)))
       .orElse(namedOnlyByCopiedTitle(node, candidateById(id)))
+      .orElse(ShortFilms.denial(evidenceOf(node).measured, id, candidateById(id).film, feedLinked(node).map(_._2)))
       .orElse(Option.when(namesOnlyItsVenue(node, candidateById(id)))("its title names it only by the venue's own name"))
       .orElse(Option.when(namesOnlyATag(node, candidateById(id)))("its title names it only by a programme tag billed beside many titles"))
       .orElse(Option.when(namesOnlyAProgrammeSlot(node, candidateById(id)))("its title names it only by a festival's programme slot"))

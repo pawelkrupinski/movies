@@ -2860,6 +2860,38 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     withClue(shipped(Seq(rerelease), films).decisionOf(rerelease.key).render)(shipped(Seq(rerelease), films).decisionOf(rerelease.key).film should not be Some(1246049))
   }
 
+  "A short" should "not be taken for a screening billing no running time and no shorts" in {
+    // DE Central im Bürgerbräu's "GINA - mit der Domschule Würzburg" and Kommunales Kino Freiburg's "THE COMMUNITY"
+    // (recording 38666576506) pooled to TMDB's 7-minute "Gina" and 4-minute "The Community": a cinema's slot billing a
+    // title and nothing else screens a feature, not a few minutes.
+    val films = Seq(F(1193753, "Gina", 2022, "Ayu Lestari", 7, 1))
+    val ls    = Seq(Multikino, Helios).map(listing(_, "Gina"))
+    val r     = shipped(ls, films)
+    withClue(ls.map(l => r.decisionOf(l.key).render).distinct.mkString("\n"))(ls.map(l => r.decisionOf(l.key).film).distinct shouldBe Seq(None))
+  }
+
+  it should "not be taken for a listing stating a feature's running time" in {
+    val films = Seq(F(1193753, "Gina", 2022, "Ayu Lestari", 7, 1))
+    val l = listing(Multikino, "Gina", runtime = Some(95))
+    val d = shipped(Seq(l), films).decisionOf(l.key)
+    withClue(d.render)(d.film shouldBe None)
+  }
+
+  it should "still be taken where the venue bills a short: by its running time, or by its billing's words" in {
+    val films = Seq(F(1193753, "Gina", 2022, "Ayu Lestari", 7, 1))
+    val timed = listing(Multikino, "Gina", runtime = Some(7))
+    shipped(Seq(timed), films).decisionOf(timed.key).film shouldBe Some(1193753)
+    val billed = listing(Multikino, "Gina (Kurzfilm)")
+    shipped(Seq(billed), films).decisionOf(billed.key).film shouldBe Some(1193753)
+  }
+
+  it should "still be taken where the venue's TMDB-keyed feed links that very short" in {
+    val films = Seq(F(1193753, "Gina", 2022, "Ayu Lestari", 7, 1))
+    val l = listing(Multikino, "Gina").copy(catalogueIds = Seq(CatalogueId("cineamo", "1193753m")))
+    val d = shipped(Seq(l), films).decisionOf(l.key)
+    withClue(d.render)(d.film shouldBe Some(1193753))
+  }
+
   "The calibration" should "load from an artefact in its own format, the fixture as the real one" in {
     weights.version shouldBe "test-fixture-2"
     IdentityCalibration.resolver.scopes.keySet shouldBe weights.scopes.keySet
