@@ -19,8 +19,10 @@
 #
 # Every collection runs on a real MongoDB replica set (change streams and the staging fold's
 # transaction both need one). MONGODB_URI if given; else the itAll mongod on :28017 if it
-# answers; else a throwaway mongo:8.3.11 container on :27117. Each run's databases are created
+# answers; else a throwaway mongo:8.3.11 container on :27117 (CONVERGENCE_LOCAL_MONGO_PORT), waited for at most
+# CONVERGENCE_LOCAL_MONGO_WAIT seconds (120) a step. Each run's databases are created
 # under a MONGODB_DB prefix unique to it and dropped by the suite (`ConvergenceStorage.close`).
+# Tested by scripts/convergence-local-test.sh against stub sbt, docker, secrets and restore.
 set -euo pipefail
 
 CODE="${1:-}"
@@ -36,6 +38,8 @@ SPEC="${2:-$SPEC}"
 cd "$(dirname "$0")/.."
 # shellcheck source=scripts/tool-conventions.sh
 . scripts/tool-conventions.sh # local_mongo_port, local_mongo_uri
+FALLBACK_PORT="${CONVERGENCE_LOCAL_MONGO_PORT:-27117}"
+MONGO_WAIT="${CONVERGENCE_LOCAL_MONGO_WAIT:-120}"
 
 scripts/restore-country-corpus.sh "$CODE"
 echo "    (overwrites any committed corpus for $CODE — 'git checkout -- test/resources/fixtures/corpus' restores it)"
@@ -52,19 +56,30 @@ if [ -n "${MONGODB_URI:-}" ]; then
 elif (echo >"/dev/tcp/127.0.0.1/$(local_mongo_port)") 2>/dev/null; then
     MONGODB_URI="$(local_mongo_uri)"
     echo "==> reusing the itAll MongoDB on :$(local_mongo_port)"
-elif (echo >/dev/tcp/127.0.0.1/27117) 2>/dev/null; then
+elif (echo >"/dev/tcp/127.0.0.1/$FALLBACK_PORT") 2>/dev/null; then
     # REUSE whatever already answers on the port: `docker run -p` fails outright when it is taken.
-    MONGODB_URI="mongodb://127.0.0.1:27117/?directConnection=true"
-    echo "==> reusing the MongoDB already listening on :27117"
+    MONGODB_URI="mongodb://127.0.0.1:$FALLBACK_PORT/?directConnection=true"
+    echo "==> reusing the MongoDB already listening on :$FALLBACK_PORT"
 else
-    echo "==> starting a throwaway mongo:8.3.11 single-node replica set on :27117"
+    echo "==> starting a throwaway mongo:8.3.11 single-node replica set on :$FALLBACK_PORT"
     docker rm -f convergence-local-mongo >/dev/null 2>&1 || true
-    docker run -d --name convergence-local-mongo -p 27117:27017 mongo:8.3.11 --replSet rs0 --bind_ip_all >/dev/null
-    until docker exec convergence-local-mongo mongosh --quiet --eval 'db.runCommand({ping:1})' >/dev/null 2>&1; do sleep 1; done
+    docker run -d --name convergence-local-mongo -p "$FALLBACK_PORT:27017" mongo:8.3.11 --replSet rs0 --bind_ip_all >/dev/null
+    # Each wait has a deadline: a container that never comes up (an image pull refused, a crash loop) used to hold
+    # this forever, printing nothing.
+    until_mongo() { # <what> <command...>
+        local what=$1 waited=0; shift
+        until "$@"; do
+            [ "$waited" -lt "$MONGO_WAIT" ] || { echo "the throwaway MongoDB never answered ($what) in ${MONGO_WAIT}s — docker logs convergence-local-mongo" >&2; exit 1; }
+            sleep 1; waited=$((waited + 1))
+        done
+    }
+    ping_mongo() { docker exec convergence-local-mongo mongosh --quiet --eval 'db.runCommand({ping:1})' >/dev/null 2>&1; }
+    primary() { docker exec convergence-local-mongo mongosh --quiet --eval 'rs.status().myState' 2>/dev/null | grep -q '^1$'; }
+    until_mongo ping ping_mongo
     docker exec convergence-local-mongo mongosh --quiet --eval \
         'try { rs.status().ok } catch (e) { rs.initiate({_id:"rs0",members:[{_id:0,host:"127.0.0.1:27017"}]}) }' >/dev/null
-    until docker exec convergence-local-mongo mongosh --quiet --eval 'rs.status().myState' 2>/dev/null | grep -q '^1$'; do sleep 1; done
-    MONGODB_URI="mongodb://127.0.0.1:27117/?directConnection=true"
+    until_mongo "a primary" primary
+    MONGODB_URI="mongodb://127.0.0.1:$FALLBACK_PORT/?directConnection=true"
 fi
 MONGODB_DB="${MONGODB_DB:-kinowo_conv_${CODE}_$$}"
 echo "    databases under the prefix $MONGODB_DB"
