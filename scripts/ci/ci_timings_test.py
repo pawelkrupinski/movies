@@ -27,7 +27,6 @@ REPO = Path(__file__).resolve().parents[2]
 
 RUN = {"id": 7, "name": "Identity model convergence", "head_branch": "main", "conclusion": "failure",
        "created_at": "2026-10-14T07:59:00Z", "run_started_at": "2026-10-14T08:00:00Z"}
-NOW = datetime.datetime(2026, 10, 14, 21, 22, tzinfo=datetime.timezone.utc)  # when run 38639671004 pushed
 STAMP = "1791964800000000000"  # 2026-10-14T08:00:00Z, the run's start
 
 
@@ -213,141 +212,21 @@ class PushTest(unittest.TestCase):
         self.assertEqual(message, "::warning::timings not pushed: HTTP Error 302: Found")
 
 
-class FakeGitHub:
-    """Runs by workflow, and each run's jobs, as `GitHub` reads them."""
-
-    def __init__(self, runs, jobs_of):
-        self.runs, self.jobs_of, self.asked = runs, jobs_of, []
-
-    def workflow_runs(self, workflow_id, since, until):
-        self.asked.append((workflow_id, since, until))
-        return [run for run in self.runs if run["workflow_id"] == workflow_id and since <= run["created_at"][:10] < until]
-
-    def workflows(self):
-        return sorted({run["workflow_id"] for run in self.runs})
-
-    def workflow_name(self, workflow_id):
-        return "Workflow %s" % workflow_id
-
-    def jobs(self, run_id):
-        return self.jobs_of.get(run_id, [])
-
-    def log(self, job_id):
-        raise AssertionError("the history reads no logs")
-
-
-# A run from before the in-run reporter: no `timings` job among its jobs.
-UNREPORTED = [j for j in JOBS if j["name"] != "timings"]
-
-
-class HistoryTest(unittest.TestCase):
-    """The last N days of runs on main, from GitHub's run history, as payloads to push once."""
-
-    def run_(self, run_id, created, conclusion="success", workflow_id=1):
-        return dict(RUN, id=run_id, workflow_id=workflow_id, created_at=created, run_started_at=created, conclusion=conclusion)
-
-    def test_every_finished_run_of_every_workflow_its_steps_but_no_phases(self):
-        github = FakeGitHub([self.run_("a", "2026-09-01T10:00:00Z"), self.run_("b", "2026-09-20T10:00:00Z", workflow_id=2)],
-                            {"a": UNREPORTED, "b": UNREPORTED})
-        payloads = list(timings.history(github, days=60, today=datetime.date(2026, 10, 14)))
-        self.assertEqual(len(payloads), 2)
-        names = {m["name"] for p in payloads for m in p["resourceMetrics"][0]["scopeMetrics"][0]["metrics"]}
-        self.assertEqual(names, {"kinowo_ci_run_seconds", "kinowo_ci_job_seconds", "kinowo_ci_step_seconds"})
-
-    def test_a_run_its_own_timings_job_reported_is_not_pushed_again(self):
-        github = FakeGitHub([self.run_("a", "2026-10-14T10:00:00Z")], {"a": JOBS})   # JOBS holds its `timings` job
-        self.assertEqual(list(timings.history(github, days=60, today=datetime.date(2026, 10, 14))), [])
-
-    def test_a_skipped_or_cancelled_run_is_left_out_without_reading_its_jobs(self):
-        github = FakeGitHub([self.run_("a", "2026-10-01T10:00:00Z", conclusion="skipped"),
-                             self.run_("b", "2026-10-02T10:00:00Z", conclusion="cancelled")], {})
-        github.jobs = lambda run_id: self.fail("read the jobs of %s" % run_id)
-        self.assertEqual(list(timings.history(github, days=60, today=datetime.date(2026, 10, 14))), [])
-
-    def test_asks_in_windows_github_answers_whole(self):
-        # GitHub answers a filtered run listing with at most 1000 runs: Main alone runs more in 90 days.
-        github = FakeGitHub([self.run_("a", "2026-10-01T10:00:00Z")], {"a": UNREPORTED})
-        list(timings.history(github, days=90, today=datetime.date(2026, 10, 14)))
-        spans = [(datetime.date.fromisoformat(until) - datetime.date.fromisoformat(since)).days for _, since, until in github.asked]
-        self.assertTrue(all(span <= timings.HISTORY_WINDOW_DAYS for span in spans))
-        self.assertEqual(github.asked[0][1], "2026-07-16")
-        self.assertEqual(github.asked[-1][2], "2026-10-15")
-
-
 class WorkflowNameTest(unittest.TestCase):
     """A workflow with a `run-name:` (identity measure, identity decorations) titles each run its own way, and GitHub
     names the run by that title: charted by it, each run would be a workflow of its own on the board."""
 
+    class Named:
+        def workflow_name(self, workflow_id):
+            return "Workflow %s" % workflow_id
+
     def test_a_run_is_charted_under_its_workflow_s_name_not_its_run_name(self):
-        run = HistoryTest.run_(None, "a", "2026-10-01T10:00:00Z", workflow_id=3)
-        run["name"] = "identity measure w7v2"
-        github = FakeGitHub([run], {"a": UNREPORTED})
-        [payload] = timings.history(github, days=60, today=datetime.date(2026, 10, 14))
+        run = dict(RUN, workflow_id=3, name="identity measure w7v2")
+        named = timings.named(self.Named(), run)
+        self.assertEqual(named["name"], "Workflow 3")
         labels = {a["key"]: a["value"]["stringValue"] for a in
-                  payload["resourceMetrics"][0]["scopeMetrics"][0]["metrics"][0]["gauge"]["dataPoints"][0]["attributes"]}
+                  timings.otlp_payload(named, jobs())["resourceMetrics"][0]["scopeMetrics"][0]["metrics"][0]["gauge"]["dataPoints"][0]["attributes"]}
         self.assertEqual(labels["workflow"], "Workflow 3")
-        self.assertEqual(timings.named(github, run)["name"], "Workflow 3")
-
-
-class FlakyHistoryTest(unittest.TestCase):
-    def test_a_run_whose_jobs_cannot_be_read_is_asked_again_then_skipped_and_the_rest_still_written(self):
-        runs = [HistoryTest.run_(None, run_id, "2026-10-0%dT10:00:00Z" % day) for run_id, day in (("a", 1), ("b", 2), ("c", 3))]
-        asked = []
-
-        class Flaky(FakeGitHub):
-            def jobs(self, run_id):
-                asked.append(run_id)
-                if run_id == "b":
-                    raise subprocess.CalledProcessError(1, ["gh"])
-                return UNREPORTED
-        payloads = list(timings.history(Flaky(runs, {}), days=60, today=datetime.date(2026, 10, 14)))
-        self.assertEqual(len(payloads), 2)
-        self.assertEqual(asked.count("b"), timings.HISTORY_ATTEMPTS)
-
-
-class PushFileTest(unittest.TestCase):
-    def test_pushes_every_payload_in_batches_and_counts_what_failed(self):
-        payload = timings.otlp_payload(RUN, jobs())
-        path = Path(tempfile.mkdtemp()) / "history.jsonl"
-        path.write_text("\n".join(json.dumps(payload) for _ in range(5)) + "\n")
-        posted = []
-
-        def opener(request, timeout):
-            body = json.loads(request.data)
-            posted.append(len(body["resourceMetrics"]))
-            return Response(200 if len(posted) == 1 else 400)
-        pushed, failed = timings.push_file(path, "https://grafana.example", "t", batch=3, opener=opener, now=NOW)
-        self.assertEqual(posted, [3, 2, 1, 1])
-        self.assertEqual((pushed, failed), (3, 2))
-
-    def test_a_batch_refused_for_one_run_pushes_the_rest_of_it_one_by_one(self):
-        # One run past the out-of-order window (a history pushed hours after it was read) failed its whole batch of 25:
-        # run 38639023800 lost 72 good runs with 3 too old.
-        too_old = dict(RUN, run_started_at="2026-07-01T00:00:00Z")
-        path = Path(tempfile.mkdtemp()) / "history.jsonl"
-        path.write_text("\n".join(json.dumps(timings.otlp_payload(run, jobs())) for run in (RUN, too_old, RUN)) + "\n")
-
-        def opener(request, timeout):
-            stamps = {dp["timeUnixNano"] for rm in json.loads(request.data)["resourceMetrics"] for sm in rm["scopeMetrics"]
-                      for m in sm["metrics"] for dp in m["gauge"]["dataPoints"]}
-            return Response(400 if any(int(stamp) < 1790000000000000000 for stamp in stamps) else 200)
-        self.assertEqual(timings.push_file(path, "https://grafana.example", "t", batch=25, opener=opener,
-                                           now=datetime.datetime(2026, 7, 2, tzinfo=datetime.timezone.utc)), (2, 1))
-
-    def test_a_run_past_the_90_day_window_is_skipped_not_failed(self):
-        # Run 38639671004 pushed a 90-day file 90 days and a few hours after its oldest runs (2026-07-16T06:11:50Z, 06:11:54Z,
-        # 08:03:23Z): Prometheus answered each 400, `pushed 3772 runs, 3 not`, exit 1, and the file was never deleted.
-        too_old = [dict(RUN, run_started_at=started) for started in ("2026-07-16T06:11:50Z", "2026-07-16T06:11:54Z", "2026-07-16T08:03:23Z")]
-        path = Path(tempfile.mkdtemp()) / "history.jsonl"
-        path.write_text("\n".join(json.dumps(timings.otlp_payload(run, jobs())) for run in too_old + [RUN, RUN]) + "\n")
-        posted = []
-
-        def opener(request, timeout):
-            posted.append(json.loads(request.data))
-            return Response(200)
-        self.assertEqual(timings.push_file(path, "https://grafana.example", "t", batch=25, opener=opener, now=NOW), (2, 0))
-        self.assertEqual(len(posted), 1)
-        self.assertEqual(len(posted[0]["resourceMetrics"]), 2)
 
 
 @unittest.skipUnless(shutil.which("prometheus"), "no prometheus on PATH")
@@ -382,14 +261,6 @@ class RealPrometheusTest(unittest.TestCase):
                                                  headers={"Content-Type": "application/json"}, method="POST")
                 with urllib.request.urlopen(request, timeout=10) as response:
                     self.assertEqual(response.status, 200)
-            # The history backfill: a run two months old, as `--history-days` reads it off GitHub, admitted too --
-            # Prometheus keeps 90 days (roles/prometheus.nix `retention`), and a trend needs them all.
-            old = datetime.datetime.now(datetime.timezone.utc) - datetime.timedelta(days=60)
-            history = timings.otlp_payload(dict(RUN, run_started_at=old.strftime("%Y-%m-%dT%H:%M:%SZ")), jobs())
-            request = urllib.request.Request(base + "/api/v1/otlp/v1/metrics", data=json.dumps(history).encode(),
-                                             headers={"Content-Type": "application/json"}, method="POST")
-            with urllib.request.urlopen(request, timeout=10) as response:
-                self.assertEqual(response.status, 200)
             query = 'last_over_time(kinowo_ci_phase_seconds{ci_job="united-kingdom / convergence",phase="replayCutover"}[6h])'
             with urllib.request.urlopen(base + "/api/v1/query?" + urllib.parse.urlencode({"query": query})) as response:
                 result = json.load(response)
