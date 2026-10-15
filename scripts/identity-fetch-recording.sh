@@ -6,9 +6,10 @@
 # enrichment-<cc>}), to replay or diff an older recording against today's. scripts/identity-capture.sh
 # and scripts/convergence-local.sh fetch only the newest (or pinned) recording, into the checkout.
 #
-#   scripts/identity-fetch-recording.sh [--corpus-only] <recording run id> <dest dir> [cc ...]   (default: pl de uk us es)
-#
+#   scripts/identity-fetch-recording.sh [--corpus-only | --no-overlay] <recording run id> <dest dir> [cc ...]
+#                                                                         (default: pl de uk us es)
 #   --corpus-only  the scrape corpus alone: no enrichment tree, no overlay
+#   --no-overlay   the corpus and enrichment tree, without the identity overlay (what the decorations relearn reads)
 #
 # Each country's corpus is laid out LAST, its cinema-scrapes-<cc>.json.gz moved in by a rename: that file
 # there means the country is laid out whole (identity_recorded in scripts/identity-tools.sh, which
@@ -24,8 +25,11 @@ set -euo pipefail
 . "$(dirname "$0")/tool-conventions.sh"
 usage() { usage_from_header; }
 case "${1:-}" in -h|--help) usage; exit 0 ;; esac
-corpus_only=0
-[ "${1:-}" != --corpus-only ] || { corpus_only=1; shift; }
+corpus_only=0 overlay=1
+case "${1:-}" in
+  --corpus-only) corpus_only=1; shift ;;
+  --no-overlay) overlay=0; shift ;;
+esac
 [ "$#" -ge 2 ] || { usage >&2; exit 2; }
 
 RUN=$1 DEST=$2
@@ -62,7 +66,8 @@ for cc in "${CCS[@]}"; do
     else echo "$cc: release $RELEASE holds no enrichment-$cc-$RUN" >&2; exit 1; fi
     bash "$UNPACK" "$tree" "$DEST/pair"
     # the overlay is optional: absent is fine, a failed read is not
-    if overlay=$(fetch "identity-overlay-$cc-$RUN"); then bash "$UNPACK" "$overlay" "$DEST/pair"
+    if [ "$overlay" = 0 ]; then :
+    elif archive=$(fetch "identity-overlay-$cc-$RUN"); then bash "$UNPACK" "$archive" "$DEST/pair"
     elif [ $? -eq 2 ]; then echo "$cc: could not read release $RELEASE (see gh's error above)" >&2; exit 1; fi
   fi
   # a download cut short earlier leaves files gh will not overwrite

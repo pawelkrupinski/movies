@@ -50,8 +50,9 @@ jobs:
               run: |
                   set -euo pipefail
                   # Laid out beside the checkout by the tool a local replay uses, then moved in: the learner
-                  # reads the checkout's fixtures, the hard clusters beside the corpora included.
-                  scripts/identity-fetch-recording.sh "$RECORDING" "$RUNNER_TEMP/recording" pl uk de us es
+                  # reads the checkout's fixtures, the hard clusters beside the corpora included. The corpus and
+                  # tree only, as the relearn always read them: the identity overlay is not its input.
+                  scripts/identity-fetch-recording.sh --no-overlay "$RECORDING" "$RUNNER_TEMP/recording" pl uk de us es
                   pair="$RUNNER_TEMP/recording/pair/test/resources/fixtures"
                   for entry in "$pair"/*; do
                       target="test/resources/fixtures/$(basename "$entry")"

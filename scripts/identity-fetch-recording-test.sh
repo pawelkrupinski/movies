@@ -67,6 +67,10 @@ cp "$work/bin/gh" "$work/gh.real"; cp "$work/bin/slow-gh" "$work/bin/gh"
 check "a gh that hangs is cut off, and the fetch fails" "1" "$(KINOWO_IDENTITY_DOWNLOAD_TIMEOUT=1 fetch --corpus-only 81 "$work/slow" uk)"
 cp "$work/gh.real" "$work/bin/gh"
 
+check "--no-overlay lays out the tree without the identity overlay" "0 tree no-overlay" \
+  "$(fetch --no-overlay 77 "$work/plain" uk) $(cat "$work/plain/pair/test/resources/fixtures/enrichment-uk/api.themoviedb.org/search" 2>/dev/null) \
+$([ -e "$work/plain/pair/test/resources/fixtures/enrichment-uk/identity/answers" ] && echo overlay || echo no-overlay)"
+
 rm "$work/assets/identity-overlay-uk-77.tar.gz"
 check "a run without an overlay is laid out too" "0" "$(fetch 77 "$work/no-overlay" uk)"
 check "a run the release holds no tree for fails" "1" "$(fetch 78 "$work/missing" uk)"
