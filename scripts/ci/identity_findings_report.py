@@ -14,7 +14,8 @@ triaged from here instead. Each `Record scrape fixtures` run's convergence rows 
 Per country this updates ONE issue, "Identity findings: <cc>", in place: every finding with its ready triage commands,
 when it was first seen, and its age. A suspect the identity judgements have judged (or tolerate in scope `served`) since the recording is
 dropped at once; the rest drop when a recording no longer carries them. An empty report closes the issue; a finding
-reopens it. First-seen dates ride in the issue body, so the report needs no store of its own.
+reopens it. First-seen dates ride in the issue body, so the report needs no store of its own. A row whose diagnostics
+lack either file (its suite died before the audit) reports nothing for its country: the issue stays as it was.
 
 AGE LIMIT: a finding untriaged for more than --max-age-days (3) days turns the report run red. That red is NOT a
 red-build gate (scripts/hooks/pre-push's GatingWorkflows): a push neither makes nor mends a recording's data, so holding
@@ -48,23 +49,24 @@ def title_of(cc):
 
 
 def read_findings(directory, cc):
-    """The findings a convergence row's diagnostics hold for `cc`, each a dict with its `id`; None when the directory
-    holds neither the suspect file nor a corpus-shape file (the row never reached them)."""
+    """The findings a convergence row's diagnostics hold for `cc`, each a dict with its `id`; None unless they hold
+    both the suspect file and a corpus-shape file. Each is written findings or none, so one missing is a half the row
+    never reached (a suite that died before its audit): reporting the other alone would drop -- and close -- findings
+    nobody looked for."""
     suspects = os.path.join(directory, f"{cc}-suspect-unjudged.txt")
     shapes = sorted(glob.glob(os.path.join(directory, f"corpus-shape-recorded-{cc}-*.txt")))
-    if not os.path.exists(suspects) and not shapes:
+    if not os.path.exists(suspects) or not shapes:
         return None
     out = []
-    if os.path.exists(suspects):
-        with open(suspects, encoding="utf-8") as f:
-            for line in f:
-                cols = line.rstrip("\n").split("\t")
-                if len(cols) < 6:
-                    continue
-                kind, venues, raw, film, title, reasons = cols[:6]
-                venue = venues.split(", ")[0]
-                out.append({"kind": kind, "venue": venue, "venues": venues, "rawTitle": raw, "film": film, "title": title,
-                            "what": reasons, "id": f"{kind}|{normalise(raw)}|{film}"})
+    with open(suspects, encoding="utf-8") as f:
+        for line in f:
+            cols = line.rstrip("\n").split("\t")
+            if len(cols) < 6:
+                continue
+            kind, venues, raw, film, title, reasons = cols[:6]
+            venue = venues.split(", ")[0]
+            out.append({"kind": kind, "venue": venue, "venues": venues, "rawTitle": raw, "film": film, "title": title,
+                        "what": reasons, "id": f"{kind}|{normalise(raw)}|{film}"})
     for path in shapes:
         spec = os.path.basename(path)[len(f"corpus-shape-recorded-{cc}-"):-len(".txt")]
         with open(path, encoding="utf-8") as f:
@@ -239,7 +241,8 @@ def report(countries, run, directory_of, judgements_path, today, max_age, run_ur
     for cc in countries:
         found = read_findings(directory_of(cc), cc)
         if found is None:
-            print(f"::warning::{title_of(cc)}: run {run} left no findings for {cc} -- its issue stays as it was")
+            print(f"::warning::{title_of(cc)}: run {run} left no suspect file or no corpus-shape file for {cc} -- "
+                  "its issue stays as it was")
             continue
         read += 1
         labels, _, baseline = judgements_of(judgements_path, cc)

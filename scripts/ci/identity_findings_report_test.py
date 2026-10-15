@@ -140,9 +140,19 @@ class FindingsReportTest(unittest.TestCase):
         self.assertEqual("OPEN", self.gh.state("pl"))
         self.assertIn("**2 finding(s)**", self.gh.body("pl"))
 
+    def test_a_row_that_left_half_its_findings_keeps_its_issue_never_closing_the_half_it_did_not_write(self):
+        # the suite writes the suspects, the corpus-shape specs (run ahead of it) the shape findings: a suite that died
+        # before its audit leaves no suspect file -- its suspects were not cleared, they were not looked for
+        self.run_report(self.recording("a", self.RED), "2026-10-14", countries="pl")
+        for n, half in enumerate(({("pl", "corpus-shape-recorded-pl-SearchQueryMarkers.txt"): []}, {("pl", "pl-suspect-unjudged.txt"): []})):
+            self.assertEqual(2, self.run_report(self.recording(f"b{n}", half), "2026-10-15", countries="pl"))
+            self.assertEqual("OPEN", self.gh.state("pl"))
+            self.assertIn("**2 finding(s)**", self.gh.body("pl"))
+
     def test_a_body_too_long_for_github_lists_the_rest_one_line_each(self):
         many = [f"finding\tKino {n}\tFilm {n} PREMIERA\tsearches 'Film {n} PREMIERA' ({'x' * 300})\n" for n in range(400)]
-        self.assertEqual(0, self.run_report(self.recording("a", {("pl", "corpus-shape-recorded-pl-SearchQueryMarkers.txt"): many}),
+        self.assertEqual(0, self.run_report(self.recording("a", {("pl", "pl-suspect-unjudged.txt"): [],
+                                                                 ("pl", "corpus-shape-recorded-pl-SearchQueryMarkers.txt"): many}),
                                             "2026-10-14", countries="pl"))
         body = self.gh.body("pl")
         self.assertLessEqual(len(body), r.BODY_LIMIT)
