@@ -8,7 +8,8 @@
 #                        [--fixtures DIR]... [--scrape [--date YYYY-MM-DD]] [--prod]
 #
 #   <venue>       a substring of its name, case and accents aside (an exact name wins)
-#   --recording   the "Record scrape fixtures" run (default: the newest green one), downloaded once into the shared cache
+#   --recording   the "Record scrape fixtures" run (default: the newest green one holding the country's corpus, each newer
+#                 one skipped said), downloaded once into the shared cache
 #                 identity-slice uses. Its row for the venue is what PROD's client parsed then; each ref reads that row
 #                 into its slots and clean titles, and re-reads every detail page it fetches for it (a DetailEnricher's,
 #                 or a client's parseDetail(html, url)) from the recording's tree.

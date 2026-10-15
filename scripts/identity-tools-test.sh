@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# identity-tools.sh (what identity-slice --explain and identity-judge-cards share): a capture fetched once into the shared
-# cache from a run's artifacts or a git ref, and a tree's classpath compiled only when a source is newer.
+# identity-tools.sh (what the local identity tools share): a capture fetched once into the shared cache from a run's
+# artifacts or a git ref, a tree's classpath compiled only when a source is newer, the newest recording holding a
+# country, a recording or a ref's tree laid out once under a lock a dead holder cannot strand, and no gh unbounded or
+# failure read as an answer.
 # Run: bash scripts/identity-tools-test.sh
 set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
