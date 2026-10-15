@@ -90,10 +90,16 @@ check "...saying so in the verdict the leg posts" 1 "$(grep -c 'could not fetch 
 rm "$work/status-$c2"
 
 # THE STORE. c4 and c5 each touch identity code, so c5's check resolves; its base c4 ran the check before it, on main,
-# over the same pinned pair, and stored what it resolved. A stub `sbt` writes one take and logs which checkout ran it; a
-# stub release (a directory) holds what `upload` stored and answers `download` from it.
+# over the same pinned pair, and stored what it resolved. A stub `sbt` writes one take and logs which checkout ran it, and
+# how; a stub release (a directory) holds what `upload` stored and answers `download` from it. c5 brings the ratchet as a
+# tool: c4, from before it, runs it as the spec it was.
 for n in 4 5; do
   mkdir -p "$work/src/common/src/main" && echo "$n" > "$work/src/common/src/main/Identity.scala"
+  if [ "$n" = 5 ]; then
+    mkdir -p "$work/src/worker/src/test/scala/scripts"
+    echo 'object UnmatchedClustersRatchet' > "$work/src/worker/src/test/scala/scripts/UnmatchedClustersRatchet.scala"
+    scratch_git "$work/src" add worker
+  fi
   scratch_git "$work/src" add common && scratch_git "$work/src" commit -q -m "c$n"
 done
 scratch_git "$work/src" push -q "$work/origin.git" HEAD:refs/heads/main
@@ -104,20 +110,35 @@ printf 'country\tvenue\trawTitle\tfilm\tverdict\tstate\tscope\tfilmTitle\treason
 cp "$(dirname "$script")"/identity_*.py "$(dirname "$script")/gh-release.sh" "$work/job/scripts/ci/"
 cat > "$work/bin/sbt" <<'SBT'
 #!/usr/bin/env bash
-pwd -P >> "$SBT_CALLS"
-if [ -n "${KINOWO_IDENTITY_DUMP:-}" ]; then
-  mkdir -p "$KINOWO_IDENTITY_DUMP"
-  echo '{"key":"k","venue":"v","rawTitle":"t","film":1,"filmTitle":"F","basis":"b","explanation":[],"blocker":null}' \
-    > "$KINOWO_IDENTITY_DUMP/decisions-$KINOWO_IDENTITY_FULL.jsonl"
-else
+# The sbt command is the last argument; the tools' flags are read from it, the specs' variables from the environment.
+command=${*: -1}
+read -ra words <<< "$command"
+flag() { local i; for i in "${!words[@]}"; do [ "${words[$i]}" = "$1" ] && { echo "${words[$((i + 1))]:-yes}"; return; }; done; }
+called() { echo "$(pwd -P) $1" >> "$SBT_CALLS"; }
+decisions() { # <dir> <cc>
+  mkdir -p "$1"
+  echo '{"key":"k","venue":"v","rawTitle":"t","film":1,"filmTitle":"F","basis":"b","explanation":[],"blocker":null}' > "$1/decisions-$2.jsonl"
+}
+takes() { # <gaps read as unknown: 1 or empty>
   mkdir -p target/identity-unmatched
   # STUB_GAPS: the capture lacks a lookup this code asks -- the ratchet writes takes only reading it as unknown
   if [ -n "${STUB_GAPS:-}" ]; then
-    [ "${KINOWO_RATCHET_CAPTURE_GAPS_UNKNOWN:-}" = 1 ] || { echo "the fixture lacks answers this resolve asks"; exit 1; }
+    [ "$1" = 1 ] || { echo "the fixture lacks answers this resolve asks"; exit 1; }
     printf 'country\tkind\tlookup\npl\tfamily\t(RottenTomatoes, record|x)\nuk\ttmdb\tsearch y\n' > target/identity-unmatched/capture-gaps.tsv
   fi
   printf 'country\tvenue\trawTitle\tstatus\tfilm\ttitle\tbasis\npl\tv\tt\tRIGHT\ttmdb:1\tF\tb\n' > target/identity-unmatched/ratchet-takes.tsv
-fi
+}
+case "$command" in
+  *"runMain integration.IdentityResolveDump "*)
+    called dump-tool; decisions "$(flag --out)" "$(flag --full)"; [ -z "${STUB_DUMP_EXIT:-}" ] || exit "$STUB_DUMP_EXIT" ;;
+  *IdentityResolveDumpIntegrationSpec*)
+    called dump-spec; decisions "$KINOWO_IDENTITY_DUMP" "$KINOWO_IDENTITY_FULL" ;;
+  *"runMain scripts.UnmatchedClustersRatchet "*)
+    called ratchet-tool; [ "$(flag --out)" = target/identity-unmatched ] || exit 2
+    takes "$([ -n "$(flag --measure)" ] && echo 1)"; [ -z "${STUB_RATCHET_EXIT:-}" ] || exit "$STUB_RATCHET_EXIT" ;;
+  *UnmatchedClustersRatchetSpec*)
+    called ratchet-spec; takes "${KINOWO_RATCHET_CAPTURE_GAPS_UNKNOWN:-}" ;;
+esac
 echo "[success] Total time: 1 s"
 SBT
 chmod +x "$work/bin/sbt"
@@ -147,6 +168,11 @@ check "...and the head's decisions and final takes, and the base's it resolved, 
 check "...each phase timed, saying which it resolved" "phase:how head-resolve:resolved base-resolve:resolved head-final:replayed base-final:replayed " \
   "$(cut -f1,3 "$work/out/timings.tsv" | tr '\t\n' ': ')"
 check "...and why the base was not stored" 1 "$(grep -c 'the base resolve not stored -- takes-decisions-pl-.* not on release fixtures: resolving it' "$work/log")"
+check "...the head replaying with the ratchet tool" "dump-spec ratchet-tool" "$(grep -v identity-takes-base "$work/sbt-calls" | cut -d' ' -f2 | xargs)"
+check "...its base, from before it, with the spec it was" "dump-spec ratchet-spec" "$(grep identity-takes-base "$work/sbt-calls" | cut -d' ' -f2 | xargs)"
+code=0; STUB_RATCHET_EXIT=1 TAKES_BASE=$c4 store_run "$c5" || code=$?
+check "a ratchet that fails measuring, whatever it wrote, is no verdict" "2 1" "$code $(grep -c 'the ratchet exited 1' "$work/log")"
+rm -rf "$work/release"
 # (a mktemp that fails: macOS's ignores TMPDIR)
 mkdir -p "$work/no-tmp" && printf '#!/usr/bin/env bash\necho "mktemp: no temporary directory" >&2; exit 1\n' > "$work/no-tmp/mktemp"
 chmod +x "$work/no-tmp/mktemp"

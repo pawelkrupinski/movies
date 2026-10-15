@@ -159,8 +159,6 @@ final case class HardClusterRecording(value: Boolean) extends AnyVal
 final case class HardClusterCountries(value: Set[models.Country]) extends AnyVal
 /** `KINOWO_HARD_CLUSTERS_DUMP` (`1` or `true`) — print every hard-cluster pass's films. */
 final case class HardClusterDump(value: Boolean) extends AnyVal
-/** `KINOWO_RATCHET_CAPTURE_GAPS_UNKNOWN` (`1` or `true`) — the ratchet reads the capture's gaps as unknown and lists them. */
-final case class CaptureGapsAsUnknown(value: Boolean) extends AnyVal
 /** `KINOWO_IDENTITY_CORPUS_DIR` — recorded corpora the listing-key spec sweeps. */
 final case class IdentityCorpusDirectory(value: Path) extends AnyVal
 /** `KINOWO_IDENTITY_GATE=strict` — the identity query-coverage gate fails on any gap. */

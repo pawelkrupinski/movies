@@ -295,10 +295,6 @@ final class ProcessConfiguration(val env: Env) {
     text("KINOWO_HARD_CLUSTERS_COUNTRIES").map(codes => HardClusterCountries(codes.split(",").iterator.map(_.trim).flatMap(Country.byCode).toSet))
   /** `KINOWO_HARD_CLUSTERS_DUMP` (`1` or `true`) — print every pass's films. */
   def hardClusterDump: HardClusterDump = HardClusterDump(env.flag("KINOWO_HARD_CLUSTERS_DUMP"))
-  /** `KINOWO_RATCHET_CAPTURE_GAPS_UNKNOWN` (`1` or `true`) — set by the identity takes check, which MEASURES a change: the
-   *  unmatched-cluster ratchet reads a lookup its capture lacks as unknown and lists it, where it otherwise fails the
-   *  capture as stale (tools.UnmatchedClusters.gaps). */
-  def captureGapsAsUnknown: CaptureGapsAsUnknown = CaptureGapsAsUnknown(env.flag("KINOWO_RATCHET_CAPTURE_GAPS_UNKNOWN"))
 
   /** `KINOWO_IDENTITY_CORPUS_DIR` — recorded corpora the listing-key spec widens its sweep to. */
   def identityCorpusDirectory: Option[IdentityCorpusDirectory] =

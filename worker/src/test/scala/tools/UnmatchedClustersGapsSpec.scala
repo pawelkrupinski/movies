@@ -24,10 +24,21 @@ class UnmatchedClustersGapsSpec extends AnyFlatSpec with Matchers {
     noException should be thrownBy UnmatchedClusters.takes(lacking, outcome)
   }
 
-  "The ratchet's gap mode" should "read gaps as unknown only when the measurement asks for it" in {
-    def mode(vars: (String, String)*) = new settings.ProcessConfiguration(Env.of(vars*)).captureGapsAsUnknown
-    mode() shouldBe settings.CaptureGapsAsUnknown(false)
-    mode("KINOWO_RATCHET_CAPTURE_GAPS_UNKNOWN" -> "1") shouldBe settings.CaptureGapsAsUnknown(true)
+  "The ratchet" should "read a capture's gaps as unknown and list them only when it measures, failing the capture otherwise" in {
+    val fixtures = java.nio.file.Files.createTempDirectory("ratchet-fixtures")
+    UnmatchedClusters.write(fixtures.resolve("es.json.gz"), es.copy(queries = Map.empty))
+    def run(measure: Boolean) = {
+      val out = java.nio.file.Files.createTempDirectory("ratchet-out")
+      val run = new scripts.UnmatchedClustersRatchet.Run(fixtures, IdentityJudgements.CheckedIn, out, measure)
+      (run.reported, out)
+    }
+    val (measured, out) = run(measure = true)
+    measured.isRight shouldBe true
+    java.nio.file.Files.readString(out.resolve("capture-gaps.tsv")) should include("es\ttmdb\t")
+    java.nio.file.Files.exists(out.resolve("ratchet-takes.tsv")) shouldBe true
+    val (judged, notMeasured) = run(measure = false)
+    judged.left.toOption.get should startWith("es: the fixture lacks answers this resolve asks")
+    java.nio.file.Files.exists(notMeasured.resolve("ratchet-takes.tsv")) shouldBe false
   }
 
   it should "write each country's gaps as a TSV row a measurement lists" in {

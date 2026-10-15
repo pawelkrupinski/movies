@@ -236,13 +236,20 @@ if [ -n "$takes_moves" ]; then
   # model AND the agreement stage over the checked-in capture and its families' answers; run by the head and by the base
   # over the head's capture, its takes are diffed as the decisions are. The base reads the head's capture: one input.
   # A lookup the capture lacks -- one a change newly asks (a relay's season search, a Rotten Tomatoes record) -- is read
-  # as UNKNOWN here (KINOWO_RATCHET_CAPTURE_GAPS_UNKNOWN), as identity-slice reads a recording gap, and listed: failed
-  # as a stale capture, it left EVERY country without final takes (run 38694072183: one UK RT record). The ratchet
-  # itself, outside a measurement, still fails a capture that lacks them.
+  # as UNKNOWN here (the ratchet's --measure), as identity-slice reads a recording gap, and listed: failed as a stale
+  # capture, it left EVERY country without final takes (run 38694072183: one UK RT record). The ratchet itself, outside
+  # a measurement, still fails a capture that lacks them. Measuring, its exit is whether it wrote the takes -- their diff,
+  # below, is the verdict. A checkout from before the ratchet was a tool runs it as the spec it was, whose exit was its
+  # own verdict: there the takes file alone says it ran.
   ratchet() { # <checkout> <out file>
     rm -f "$1/target/identity-unmatched/ratchet-takes.tsv" "$1/target/identity-unmatched/capture-gaps.tsv"
-    ( cd "$1" && KINOWO_RATCHET_CAPTURE_GAPS_UNKNOWN=1 \
-        sbt -J-Xmx"$heap" "worker/Test/testOnly services.identity.UnmatchedClustersRatchetSpec" > "$2.log" 2>&1 )
+    if [ -f "$1/worker/src/test/scala/scripts/UnmatchedClustersRatchet.scala" ]; then
+      ( cd "$1" && sbt -J-Xmx"$heap" "worker/Test/runMain scripts.UnmatchedClustersRatchet --measure --out target/identity-unmatched" > "$2.log" 2>&1 ) \
+        || { echo "::warning::identity takes ($cc): the ratchet exited $? ($2.log)"; return 1; }
+    else
+      ( cd "$1" && KINOWO_RATCHET_CAPTURE_GAPS_UNKNOWN=1 \
+          sbt -J-Xmx"$heap" "worker/Test/testOnly services.identity.UnmatchedClustersRatchetSpec" > "$2.log" 2>&1 )
+    fi
     cp "$1/target/identity-unmatched/capture-gaps.tsv" "$(dirname "$2")/capture-gaps.tsv" 2>/dev/null
     cp "$1/target/identity-unmatched/ratchet-takes.tsv" "$2" 2>/dev/null
   }

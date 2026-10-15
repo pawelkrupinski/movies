@@ -18,7 +18,7 @@ class ToolCommandLinesSpec extends AnyFlatSpec with Matchers {
     val checked = calls.flatMap(call => ToolCallers.commandLineOf(call.tool).map(call -> _))
     checked.map(_._1.tool).toSet should contain allOf ("scripts.IdentityRefit", "scripts.DecorationDiscovery", "scripts.IdentityUnifiedFit",
       "scripts.ReapOrphanedFilmRows", "scripts.IdentityCalibrate", "scripts.IdentityDecorationsLearn",
-      "scripts.RecordCorpusFixture", "scripts.BuildHardClusters", "scripts.FillMissingFixtures")
+      "scripts.RecordCorpusFixture", "scripts.BuildHardClusters", "scripts.FillMissingFixtures", "scripts.UnmatchedClustersRatchet")
     checked.foreach { case (call, line) =>
       withClue(s"${call.file}: ${call.tool} ${call.args.mkString(" ")}") { line.accepts(call.args).isRight shouldBe true }
     }
@@ -176,5 +176,15 @@ class ToolCommandLinesSpec extends AnyFlatSpec with Matchers {
   "ReapOrphanedFilmRows" should "read its cap" in {
     parsed(ReapOrphanedFilmRows.commandLine).requiredInt("max") shouldBe 5000
     parsed(ReapOrphanedFilmRows.commandLine, "--apply", "--max", "10").requiredInt("max") shouldBe 10
+  }
+
+  "UnmatchedClustersRatchet" should "read the checked-in captures and judgements by default, and the takes check's --measure" in {
+    val defaults = parsed(UnmatchedClustersRatchet.commandLine)
+    defaults.flag("measure") shouldBe false
+    defaults.requiredPath("fixtures") shouldBe tools.UnmatchedClusters.Directory
+    defaults.requiredPath("judgements") shouldBe tools.IdentityJudgements.CheckedIn
+    defaults.requiredPath("out") shouldBe tools.UnmatchedClusters.FindingsPath.getParent
+    parsed(UnmatchedClustersRatchet.commandLine, "--measure", "--out", "o").flag("measure") shouldBe true
+    refused(UnmatchedClustersRatchet.commandLine, "--labels", "l.tsv") shouldBe true
   }
 }
