@@ -185,6 +185,7 @@ jobs:
                   scripts/ci/in-background.sh start ci-helper-specs bash -e -c '
                       bash scripts/hooks/pre-push-test.sh
                       bash scripts/scratch-git-test.sh
+                      bash scripts/fail-before-test.sh
                       bash scripts/judgements-merge-test.sh
                       bash scripts/sbt-warm-test.sh
                       bash scripts/ci/preflight-test.sh

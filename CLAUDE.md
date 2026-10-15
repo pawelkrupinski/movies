@@ -142,7 +142,8 @@ and is there now*: a test that fails before your change and passes
 after. If no such test can be written, the change is not ready to
 commit. This is the exact bar `Commit at every stable state` means when
 it calls an untested production change "not stable" — it is a gate, not
-a suggestion.
+a suggestion. `scripts/fail-before -- <test command>` proves it: the commit's test-side
+files run against its parent (must fail), then at the commit (must pass).
 
 **"Test" means any layer that reaches the behaviour — not just a unit
 test.** The fail-before / pass-after gate is satisfied by whichever

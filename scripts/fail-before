@@ -1,0 +1,105 @@
+#!/usr/bin/env bash
+#
+# Proves the commit gate: a test that FAILS before the change and PASSES after it.
+#
+#   scripts/fail-before [<commit>] [--files <glob>]... -- <test command...>
+#
+# <commit> (default HEAD) is the change under test. Two throwaway detached worktrees are made:
+#   BEFORE  <commit>'s parent, with ONLY the commit's test-side files copied over from <commit>
+#           (so the new test meets the old production code);
+#   AFTER   <commit> itself.
+# The command (run through `bash -c`, from the worktree's root) must FAIL in BEFORE and PASS in AFTER.
+#   FAIL-BEFORE: yes|no     PASS-AFTER: yes|no     (and the tail of each output)
+# Exit 0 only for yes/yes; 1 otherwise; 2 for a usage or setup error.
+#
+# TEST-SIDE FILES (the only ones copied into BEFORE): */src/test|it|fixtures/**, *_test.py, *-test.sh,
+# test/resources/**, .claude/**. --files <glob> (repeatable; a shell `case` pattern over the repo-relative
+# path, `*` crosses `/`) replaces that default list.
+#
+# SBT: a command that goes through scripts/sbt-warm runs against each worktree's own kept server (the
+# worktree's own copy of the script); both servers are stopped afterwards. A cold worktree compiles from
+# the seed, so expect minutes.
+#
+# SAFETY: the caller's worktree is never touched. The worktrees live in $KINOWO_FAIL_BEFORE_DIR (default
+# ~/.cache/kinowo-fail-before), are removed by a trap, and are the only change to the shared .git (its
+# worktree list). Every GIT_* variable is dropped first, so a hook's exported GIT_DIR cannot redirect git
+# (see scripts/scratch-git.sh). KINOWO_FAIL_BEFORE_TIMEOUT (seconds, default 3000) bounds each run when
+# `timeout`/`gtimeout` exists.
+set -uo pipefail
+
+while IFS= read -r v; do unset "$v"; done < <(compgen -e | grep '^GIT_')
+
+die() { printf 'fail-before: %s\n' "$*" >&2; exit 2; }
+
+commit=HEAD
+patterns=()
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --) shift; break ;;
+    --files) [ $# -ge 2 ] || die "--files needs a glob"; patterns+=("$2"); shift 2 ;;
+    -h|--help) sed -n '3,/^set /p' "$0" | sed '$d; s/^# \{0,1\}//'; exit 0 ;;
+    -*) die "unknown option $1" ;;
+    *) commit=$1; shift ;;
+  esac
+done
+[ $# -gt 0 ] || die "usage: scripts/fail-before [<commit>] [--files <glob>]... -- <test command...>"
+command_line="$*"
+[ ${#patterns[@]} -gt 0 ] || patterns=('*/src/test/*' '*/src/it/*' '*/src/fixtures/*' '*_test.py' '*-test.sh' 'test/resources/*' '.claude/*')
+
+top=$(git rev-parse --show-toplevel 2>/dev/null) || die "not inside a git checkout"
+sha=$(git -C "$top" rev-parse --verify -q "$commit^{commit}") || die "no such commit: $commit"
+parent=$(git -C "$top" rev-parse --verify -q "$sha^") || die "$commit has no parent"
+
+base=${KINOWO_FAIL_BEFORE_DIR:-$HOME/.cache/kinowo-fail-before}
+mkdir -p "$base" || die "cannot create $base"
+work=$(mktemp -d "$base/run.XXXXXX") || die "cannot create a work directory"
+before="$work/before" after="$work/after"
+
+stop_servers() { # <worktree>
+  case "$command_line" in
+    *sbt-warm*) if [ -x "$1/scripts/sbt-warm" ]; then (cd "$1" && scripts/sbt-warm --stop) >/dev/null 2>&1; fi ;;
+  esac
+  return 0
+}
+cleanup() {
+  for wt in "$before" "$after"; do
+    stop_servers "$wt"
+    git -C "$top" worktree remove --force "$wt" >/dev/null 2>&1
+  done
+  git -C "$top" worktree prune >/dev/null 2>&1
+  rm -rf "$work"
+}
+trap cleanup EXIT
+trap 'exit 130' INT TERM
+
+git -C "$top" worktree add -q --detach "$before" "$parent" >/dev/null 2>&1 || die "cannot make the BEFORE worktree"
+git -C "$top" worktree add -q --detach "$after" "$sha" >/dev/null 2>&1 || die "cannot make the AFTER worktree"
+
+copied=0
+while IFS= read -r path; do
+  [ -n "$path" ] || continue
+  match=0
+  for p in "${patterns[@]}"; do case "$path" in $p) match=1; break ;; esac; done
+  [ "$match" = 1 ] || continue
+  mkdir -p "$before/$(dirname "$path")"
+  git -C "$top" show "$sha:$path" > "$before/$path" || die "cannot copy $path"
+  if [ -x "$after/$path" ]; then chmod +x "$before/$path"; fi
+  copied=$((copied + 1))
+done < <(git -C "$top" diff-tree --no-commit-id --name-only -r --diff-filter=AMCR "$sha")
+[ "$copied" -gt 0 ] || die "$sha changes no test-side file (see --files): nothing to prove"
+
+limit=$(command -v timeout || command -v gtimeout || true)
+run_in() { # <worktree> <log>
+  (cd "$1" && ${limit:+$limit "${KINOWO_FAIL_BEFORE_TIMEOUT:-3000}"} bash -c "$command_line") > "$2" 2>&1
+}
+
+printf 'fail-before: %s (%d test-side file(s) copied onto %s)\n' "$sha" "$copied" "$(git -C "$top" rev-parse --short "$parent")"
+run_in "$before" "$work/before.log"; before_rc=$?
+run_in "$after" "$work/after.log"; after_rc=$?
+
+fail_before=$([ "$before_rc" -ne 0 ] && echo yes || echo no)
+pass_after=$([ "$after_rc" -eq 0 ] && echo yes || echo no)
+printf '\n--- BEFORE (exit %s), last lines ---\n' "$before_rc"; tail -n 15 "$work/before.log"
+printf '\n--- AFTER (exit %s), last lines ---\n' "$after_rc"; tail -n 15 "$work/after.log"
+printf '\nFAIL-BEFORE: %s\nPASS-AFTER: %s\n' "$fail_before" "$pass_after"
+[ "$fail_before" = yes ] && [ "$pass_after" = yes ]
