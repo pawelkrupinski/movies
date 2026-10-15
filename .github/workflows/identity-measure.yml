@@ -143,17 +143,10 @@ jobs:
               if: steps.booted.outputs.cache-hit != 'true'
               shell: bash
               timeout-minutes: 120
-              run: |
-                  set -o pipefail
-                  sbt -J-Xmx10g -J-Duser.language=en -J-Duser.country=US \
-                      "worker/IntegrationTest/testOnly integration.IdentityShadowIntegrationSpec"
+              # scripts/ci/identity-measure-run.sh: the same run on a laptop, given the corpus staged.
+              run: scripts/ci/identity-measure-run.sh boot "$CC" "$RUNNER_TEMP/identity-boot" "$RUNNER_TEMP/identity-pipeline-cache"
               env:
-                  MONGODB_URI:                    mongodb://127.0.0.1:27017/?directConnection=true
-                  KINOWO_IDENTITY_FULL:           ${{ matrix.code }}
-                  KINOWO_IDENTITY_CORPUS_DIR:     ${{ github.workspace }}/test/resources/fixtures/corpus
-                  KINOWO_IDENTITY_OUT:            ${{ runner.temp }}/identity-boot
-                  KINOWO_IDENTITY_PIPELINE_CACHE: ${{ runner.temp }}/identity-pipeline-cache
-                  KINOWO_IDENTITY_BOOT_ONLY:      'true'
+                  CC: ${{ matrix.code }}
 
             - name: Apply the variant's patch
               if: inputs.patch != ''
@@ -168,22 +161,11 @@ jobs:
             - name: Measure the ${{ matrix.code }} corpus
               shell: bash
               timeout-minutes: 300
-              run: |
-                  set -o pipefail
-                  mkdir -p "$KINOWO_IDENTITY_OUT"
-                  { git log --oneline -1; echo "recording ${KINOWO_CONVERGENCE_CORPUS_RUN:-?} tree ${KINOWO_CONVERGENCE_TREE_ASSET:-?}"; } \
-                      > "$KINOWO_IDENTITY_OUT/variant-${{ matrix.code }}.txt"
-                  sbt -J-Xmx10g -J-Duser.language=en -J-Duser.country=US \
-                      "worker/IntegrationTest/testOnly integration.IdentityShadowIntegrationSpec" 2>&1 \
-                      | tee "$KINOWO_IDENTITY_OUT/run-${{ matrix.code }}.log"
+              run: scripts/ci/identity-measure-run.sh measure "$CC" "$RUNNER_TEMP/identity-out" "$RUNNER_TEMP/identity-pipeline-cache"
               env:
-                  MONGODB_URI:                    mongodb://127.0.0.1:27017/?directConnection=true
-                  KINOWO_IDENTITY_FULL:           ${{ matrix.code }}
-                  KINOWO_IDENTITY_CORPUS_DIR:     ${{ github.workspace }}/test/resources/fixtures/corpus
-                  KINOWO_IDENTITY_OUT:            ${{ runner.temp }}/identity-out
-                  KINOWO_IDENTITY_PIPELINE_CACHE: ${{ runner.temp }}/identity-pipeline-cache
-                  KINOWO_IDENTITY_ROBUSTNESS:     ${{ inputs.robustness }}
-                  KINOWO_IDENTITY_FOCUS:          ${{ inputs.focus }}
+                  CC:                         ${{ matrix.code }}
+                  KINOWO_IDENTITY_ROBUSTNESS: ${{ inputs.robustness }}
+                  KINOWO_IDENTITY_FOCUS:      ${{ inputs.focus }}
 
             - uses: actions/upload-artifact@v6
               if: always()

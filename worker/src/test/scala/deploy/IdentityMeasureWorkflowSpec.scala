@@ -12,6 +12,8 @@ class IdentityMeasureWorkflowSpec extends AnyFlatSpec with Matchers {
   private lazy val workflow = RepoFile.read(".github/workflows/identity-measure.yml")
   private lazy val helper   = RepoFile.read("scripts/identity-measure-ci.sh")
   private lazy val measure  = RepoFile.jobs(workflow)("measure")
+  /** The job's two sbt runs, one script a laptop runs too. */
+  private lazy val run      = RepoFile.read("scripts/ci/identity-measure-run.sh")
 
   private def triggers: Set[String] =
     RepoFile.block(workflow, "on").linesIterator.drop(1).map(_.trim)
@@ -28,7 +30,8 @@ class IdentityMeasureWorkflowSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "resolve one country per job, as the per-country TitleRuleSet requires" in {
-    measure should include("KINOWO_IDENTITY_FULL:           ${{ matrix.code }}")
+    measure should include("CC: ${{ matrix.code }}")
+    run should include("KINOWO_IDENTITY_FULL=\"$cc\"")
   }
 
   it should "skip the robustness re-resolves unless asked" in {
@@ -49,7 +52,10 @@ class IdentityMeasureWorkflowSpec extends AnyFlatSpec with Matchers {
     val patch = measure.indexOf("- name: Apply the variant's patch")
     boot should be > 0
     patch should be > boot
-    RepoFile.step(measure, "Boot the base's production into the cache") should include("KINOWO_IDENTITY_BOOT_ONLY:      'true'")
+    RepoFile.step(measure, "Boot the base's production into the cache") should include("scripts/ci/identity-measure-run.sh boot")
+    RepoFile.step(measure, s"Measure the $${{ matrix.code }} corpus") should include("scripts/ci/identity-measure-run.sh measure")
+    run should include("KINOWO_IDENTITY_BOOT_ONLY=true")
+    ScriptTests.runInCi("scripts/ci/identity-measure-run-test.sh") shouldBe true
   }
 
   // Only main reaches origin: a variant travels as a patch on a base commit.
@@ -61,7 +67,7 @@ class IdentityMeasureWorkflowSpec extends AnyFlatSpec with Matchers {
 
   // Five countries download into one directory: a shared name keeps only the last country's log.
   it should "keep each country's log under its own name" in {
-    measure should include("run-${{ matrix.code }}.log")
+    run should include("run-$cc.log")
   }
 
   // It takes one runner per country from the 20 Main's run needs.
@@ -73,7 +79,7 @@ class IdentityMeasureWorkflowSpec extends AnyFlatSpec with Matchers {
   // A new recording re-pins the pair between two dispatches: comparable measurements name one.
   it should "replay a named recording in every country, and say which it replayed" in {
     measure should include("hermetic-pair: ${{ steps.recording.outputs.pair }}")
-    measure should include("recording ${KINOWO_CONVERGENCE_CORPUS_RUN:-?}")
+    run should include("recording ${KINOWO_CONVERGENCE_CORPUS_RUN:-?}")
     helper should include("-f recording=\"${RECORDING:-}\"")
   }
 }
