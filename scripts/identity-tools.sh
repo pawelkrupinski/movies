@@ -52,7 +52,9 @@ identity_locked() {
     [ $(( waited % 60 )) -ne 0 ] || identity_log "waiting for another agent's $name (pid ${holder:-?})"
     sleep 2; waited=$(( waited + 2 ))
   done
-  ( echo "$BASHPID" > "$lock/pid"; trap 'rm -rf "$lock"' EXIT; "$@" )
+  # the holder is this subshell: sh's parent (bash 3.2, macOS's /bin/bash, has no $BASHPID, and $$ is the caller's)
+  # shellcheck disable=SC2016 # sh expands it
+  ( sh -c 'echo "$PPID"' > "$lock/pid"; trap 'rm -rf "$lock"' EXIT; "$@" )
 }
 
 identity_capture() {

@@ -147,6 +147,16 @@ check "a live holder is waited for until the deadline, then this fails naming th
   "$(KINOWO_IDENTITY_LOCK_WAIT=2 tools identity_recording 504 pl > /dev/null; echo $?) $(grep -c 'gave up after .*recording-504-pl' "$work/err")"
 kill "$live" 2>/dev/null; wait "$live" 2>/dev/null
 
+# The lock names its holder: the subshell running the command, a live pid -- also under macOS's /bin/bash 3.2 and set -u
+# (no $BASHPID there: the lock was left behind, or held under an empty pid another agent took over after a minute).
+cat > "$work/holder" <<'HOLDER'
+holder=$(cat "$KINOWO_IDENTITY_CACHE/locks/held/pid")
+if [ "$holder" = "$PPID" ] && kill -0 "$holder"; then echo same; else echo "holder <$holder>, runner $PPID"; fi
+HOLDER
+check "a held lock names the holder running the command, under set -u" "same 0" \
+  "$(out=$(KINOWO_IDENTITY_CACHE="$work/cache" bash -c 'set -u; . "$1"; identity_locked held sh "$2"' _ "$REPO_ROOT/scripts/identity-tools.sh" "$work/holder" 2>&1); echo "$out $?")"
+check "...and lets it go" "0" "$(find "$work/cache/locks" -mindepth 1 -maxdepth 1 -name held | wc -l | tr -d ' ')"
+
 # identity_tree: a layout cut short leaves no tree another call takes for whole
 head=$(scratch_git "$repo" rev-parse HEAD)
 mkdir -p "$work/cache/refs/$head/stray"
