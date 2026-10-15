@@ -35,6 +35,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(HERE, "ci"))
 import identity_judgements as store  # noqa: E402  (the one reader of the judgements)
 import identity_judgements_lint as lint  # noqa: E402  (the lint's rules, never a copy of them)
+import identity_takes as takes  # noqa: E402  (the one reader of the take files)
 from identity_judgements import label_of, normalise as single_spaced  # noqa: E402
 MIRROR_URI = f"mongodb://127.0.0.1:{os.environ.get('LOCAL_MIRROR_PORT', '28017')}"
 
@@ -51,26 +52,6 @@ class Entry:
         self.history = ""
 
 
-def tsv_entries(root, rel, shape):
-    """Entries of one TSV: `shape(cols)` -> (cc, venue, title, films, verdict, note) or None for a header or comment."""
-    out = []
-    with open(os.path.join(root, rel), encoding="utf-8") as f:
-        for n, line in enumerate(f, 1):
-            if not line.strip() or line.startswith("#"):
-                continue
-            cols = line.rstrip("\n").split("\t")
-            if cols[0] == "country":
-                continue
-            got = shape(cols)
-            if got:
-                out.append(Entry(rel, n, *got))
-    return out
-
-
-def col(cols, i):
-    return cols[i] if len(cols) > i else ""
-
-
 def judgement_entries(root):
     """Each row of the judgements file: its verdict, and its state, scope and reason beside the evidence."""
     out = []
@@ -84,9 +65,10 @@ def judgement_entries(root):
 
 def all_entries(root):
     out = judgement_entries(root)
-    if os.path.exists(os.path.join(root, lint.EXPECTED_MATCHES)):
-        out += tsv_entries(root, lint.EXPECTED_MATCHES,
-                           lambda c: (c[0], c[1], c[2], [c[3]], "expected take", col(c, 4)) if len(c) >= 4 else None)
+    expected = os.path.join(root, takes.EXPECTED_MATCHES)
+    if os.path.exists(expected):
+        out += [Entry(takes.EXPECTED_MATCHES, n, cc, venue, title, [film], "expected take", note)
+                for n, cc, venue, title, film, note in takes.expected_matches(expected)]
     return out
 
 

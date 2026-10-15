@@ -51,6 +51,7 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from identity_judgements import judgements_of, label_of, normalise  # noqa: E402
+from identity_takes import table  # noqa: E402
 
 
 def load(path):
@@ -69,25 +70,20 @@ def ref(film):
 
 def ratchet_ran(path):
     """Whether a ratchet-takes.tsv holds any take row, for any country: an empty file is a ratchet that never ran."""
-    with open(path, encoding="utf-8") as f:
-        f.readline()
-        return any(line.strip() for line in f)
+    return bool(table(path))
 
 
 def ratchet_rows(path, cc):
     """{(venue, rawTitle): row} of the takes a ratchet-takes.tsv holds for `cc` -- every status but LOST (an expected take
     now taking none) carries the film the listing takes; a TMDB id only, as the model's decisions carry."""
     out = {}
-    with open(path, encoding="utf-8") as f:
-        header = f.readline().rstrip("\n").split("\t")
-        for line in f:
-            cols = dict(zip(header, line.rstrip("\n").split("\t")))
-            if cols.get("country") != cc or cols.get("status") == "LOST" or not cols.get("film", "").startswith("tmdb:"):
-                continue
-            out[(cols["venue"], cols["rawTitle"])] = {
-                "key": f"{cols['venue']}|{cols['rawTitle']}", "venue": cols["venue"], "rawTitle": cols["rawTitle"],
-                "film": int(cols["film"][5:]), "filmTitle": cols.get("title"), "basis": cols.get("basis"),
-                "explanation": [cols.get("explanation", "")], "blocker": None}
+    for cols in table(path):
+        if cols.get("country") != cc or cols.get("status") == "LOST" or not cols.get("film", "").startswith("tmdb:"):
+            continue
+        out[(cols["venue"], cols["rawTitle"])] = {
+            "key": f"{cols['venue']}|{cols['rawTitle']}", "venue": cols["venue"], "rawTitle": cols["rawTitle"],
+            "film": int(cols["film"][5:]), "filmTitle": cols.get("title"), "basis": cols.get("basis"),
+            "explanation": [cols.get("explanation", "")], "blocker": None}
     return out
 
 

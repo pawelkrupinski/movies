@@ -17,7 +17,6 @@ the decision's explanation — from an "Identity capture" run, the PR it opened,
 
 Downloads are kept in $KINOWO_IDENTITY_CACHE/ratchet/<run>/ (default ~/.cache/kinowo-identity): a repeat is instant.
 """
-import csv
 import json
 import os
 import re
@@ -26,6 +25,9 @@ import subprocess
 import sys
 import tempfile
 from collections import Counter
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "ci"))
+import identity_takes  # noqa: E402  (the one reader of the take files)
 
 REPO = os.environ.get("KINOWO_REPO", "pawelkrupinski/movies")
 CACHE = os.environ.get("KINOWO_IDENTITY_CACHE", os.path.expanduser("~/.cache/kinowo-identity"))
@@ -56,9 +58,7 @@ def gh(*args):
 
 
 def read_tsv(path):
-    with open(path, encoding="utf-8", newline="") as f:
-        rows = list(csv.DictReader(f, delimiter="\t", quoting=csv.QUOTE_NONE))
-    return [{c: (r.get(c) or "") for c in COLUMNS} for r in rows]
+    return [{c: (r.get(c) or "") for c in COLUMNS} for r in identity_takes.table(path)]
 
 
 def write_tsv(rows, out):

@@ -179,7 +179,7 @@ plan() {
         case "$path" in
             test/resources/fixtures/identity-judgements.tsv|test/resources/fixtures/identity-unmatched/*.tsv|\
             test/resources/fixtures/corpus/expected-hard-clusters-*|\
-            scripts/ci/identity_judgements*.py|scripts/ci/identity_takes_diff.py) judgements=1 ;;
+            scripts/ci/identity_judgements*.py|scripts/ci/identity_takes*.py) judgements=1 ;;
         esac
     done
     [ $judgements = 1 ] && echo judgements

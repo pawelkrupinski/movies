@@ -229,6 +229,7 @@ jobs:
                       python3 scripts/test_convergence_findings.py
                       python3 scripts/ci/recording_health_test.py
                       python3 scripts/ci/identity_takes_diff_test.py
+                      python3 scripts/ci/identity_takes_test.py
                       python3 scripts/ci/corpus_shape_diff_test.py
                       python3 scripts/ci/identity_findings_report_test.py
                       python3 scripts/ci/identity_judgements_test.py

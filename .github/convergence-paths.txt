@@ -62,6 +62,7 @@ scripts/ci/recording_health.py
 # that accept a move and that the suspect gate reads (an acceptance re-runs the lane, which turns the check green again).
 scripts/ci/identity-takes-check.sh
 scripts/ci/identity_takes_diff.py
+scripts/ci/identity_takes.py
 scripts/ci/corpus_shape_diff.py
 test/resources/fixtures/identity-takes/**
 # The identity takes check's own tools: it replays listings with identity-slice (and its diff/lint helpers),

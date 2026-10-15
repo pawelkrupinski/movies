@@ -6,14 +6,15 @@ NEW-WRONG (a take now WRONG), and the unjudged moves.
 
 Each TSV is scripts.IdentitySlice's `--out` (header: selector key venue rawTitle film title basis confidence model rules
 blocker runnerUp verdict explanation)."""
-import csv
+import os
 import sys
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "ci"))
+from identity_takes import table  # noqa: E402
 
 
 def read(path):
-    with open(path, encoding="utf-8") as f:
-        rows = list(csv.DictReader(f, delimiter="\t", quoting=csv.QUOTE_NONE))
-    return {r["key"]: r for r in rows}
+    return {r["key"]: r for r in table(path)}
 
 
 def classify(a, b):

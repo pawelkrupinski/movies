@@ -31,6 +31,7 @@ Columns, tab-separated, a header line first (lines starting "#" are comments):
 The lint (identity_judgements_lint.py) checks the file's shape with `problems`.
 """
 
+import gzip
 import os
 import re
 from collections import defaultdict
@@ -79,22 +80,30 @@ class Row:
         return [getattr(self, c) for c in COLUMNS]
 
 
+def lines(path):
+    """[(line number, fields)] of a tab-separated file -- this one, or any of the identity tools' others
+    (identity_takes.table) -- its blank lines and "#" comments skipped; a ".gz" file is read through gzip."""
+    out = []
+    with (gzip.open(path, "rt", encoding="utf-8") if path.endswith(".gz") else open(path, encoding="utf-8")) as f:
+        for n, line in enumerate(f, 1):
+            text = line.rstrip("\n")
+            if text.strip() and not text.startswith("#"):
+                out.append((n, text.split("\t")))
+    return out
+
+
 def read(path):
     """Every row, in file order. Raises ValueError on a malformed line."""
     out = []
-    with open(path, encoding="utf-8") as f:
-        for n, line in enumerate(f, 1):
-            text = line.rstrip("\n")
-            if not text.strip() or text.startswith("#"):
-                continue
-            cols = text.split("\t")
-            if cols[0] == "country":
-                if tuple(cols) != COLUMNS:
-                    raise ValueError(f"{path}:{n}: header is not {HEADER!r}")
-                continue
-            if len(cols) != len(COLUMNS):
-                raise ValueError(f"{path}:{n}: {len(cols)} fields, want {len(COLUMNS)}: {text}")
-            out.append(Row(cols, n))
+    for n, cols in lines(path):
+        if cols[0] == "country":
+            if tuple(cols) != COLUMNS:
+                raise ValueError(f"{path}:{n}: header is not {HEADER!r}")
+            continue
+        if len(cols) != len(COLUMNS):
+            text = "\t".join(cols)
+            raise ValueError(f"{path}:{n}: {len(cols)} fields, want {len(COLUMNS)}: {text}")
+        out.append(Row(cols, n))
     return out
 
 

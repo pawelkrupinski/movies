@@ -81,8 +81,8 @@ check "checks come out once each, in run order" "eslint snapshot actionlint shel
 check "a judgements change runs the judgements lint" "judgements" "$(plan test/resources/fixtures/identity-judgements.tsv)"
 check "an expected match runs it" "judgements" "$(plan test/resources/fixtures/identity-unmatched/expected-matches.tsv)"
 check "a hard-cluster expectation runs it" "judgements" "$(plan test/resources/fixtures/corpus/expected-hard-clusters-pl.txt)"
-check "the lint itself runs it, and the judgements' reader" "judgements sbt judgements sbt" \
-  "$(plan scripts/ci/identity_judgements_lint.py) $(plan scripts/ci/identity_judgements.py)"
+check "the lint itself runs it, the judgements' reader and the take files'" "judgements sbt judgements sbt judgements sbt" \
+  "$(plan scripts/ci/identity_judgements_lint.py) $(plan scripts/ci/identity_judgements.py) $(plan scripts/ci/identity_takes.py)"
 check "an unmatched-cluster capture does not" "" "$(plan test/resources/fixtures/identity-unmatched/pl.json.gz)"
 
 # `sbt compile` skips the Test and It configs: f20a6b5dd's new `protected def wire` made a worker

@@ -22,7 +22,6 @@ Writes target/identity-ml/results.json, the LightGBM model dumps (for the JVM sc
     python3 -m venv <env> && <env>/bin/pip install scikit-learn lightgbm numpy
     timeout 1800 <env>/bin/python scripts/ml-identity/identity_ml_experiment.py
 """
-import gzip
 import json
 import os
 import sys
@@ -36,6 +35,9 @@ from sklearn.metrics import roc_auc_score
 from sklearn.preprocessing import StandardScaler
 
 ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
+sys.path.insert(0, os.path.join(ROOT, "scripts", "ci"))
+from identity_judgements import lines  # noqa: E402  (the one reader of the identity tools' tab-separated files)
+
 TRAINING = os.path.join(ROOT, "test/resources/fixtures/identity-unified/training.tsv.gz")
 OUT = os.path.join(ROOT, "target/identity-ml")
 SEED = 7
@@ -53,9 +55,7 @@ UNCONSTRAINED = {"model.unscored", "rule.proposal"}
 
 
 def load():
-    with gzip.open(TRAINING, "rt", encoding="utf-8") as f:
-        lines = [l.rstrip("\n").split("\t") for l in f if l.strip()]
-    header, rows = lines[0], lines[1:]
+    header, *rows = [cols for _, cols in lines(TRAINING)]
     features = header[13:]
     X = np.array([[float(v) for v in r[13:]] for r in rows])
     meta = [dict(country=r[0], cluster=(r[0], r[1]), origin=r[2], venue=r[3], listings=int(r[4]), raw=r[5], film=r[6],

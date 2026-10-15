@@ -37,7 +37,6 @@ Exit 1 on any finding, 2 on unreadable input.
 """
 
 import argparse
-import csv
 import gzip
 import json
 import os
@@ -50,10 +49,11 @@ from collections import defaultdict
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import identity_judgements as j  # noqa: E402  (the one reader of the judgements, shared with the takes check)
+import identity_takes  # noqa: E402  (the one reader of the take files)
 from identity_judgements import label_of, normalise  # noqa: E402
 
 JUDGEMENTS = j.PATH
-EXPECTED_MATCHES = "test/resources/fixtures/identity-unmatched/expected-matches.tsv"
+EXPECTED_MATCHES = identity_takes.EXPECTED_MATCHES
 HARD_CLUSTERS = "test/resources/fixtures/corpus/expected-hard-clusters-{cc}.txt"
 COUNTRIES = j.COUNTRIES
 
@@ -61,19 +61,6 @@ COUNTRIES = j.COUNTRIES
 SCATTERED_AT = 5
 
 RIGHT_LOST_NOTE = re.compile(r"\bright take(s)? lost\b", re.IGNORECASE)
-
-
-def rows(path, min_cols):
-    with open(path, encoding="utf-8") as f:
-        out = []
-        for line in f:
-            if not line.strip() or line.startswith("#"):
-                continue
-            cols = line.rstrip("\n").split("\t")
-            if cols[0] == "country" or len(cols) < min_cols:
-                continue
-            out.append(cols)
-        return out
 
 
 def key(title):
@@ -120,10 +107,10 @@ def tolerated_right_findings(judged, labels):
             for r in judged if r.state == "known-wrong" and labels[r.country].get(("*", normalise(r.rawTitle), r.film)) == "right"]
 
 
-def expected_match_findings(expected_rows, labels):
-    return [(("expected", c[0], c[1], c[2], c[3]), f"expected-matches.tsv expects {c[3]} for {c[0]} {c[1]} | {c[2]}, "
+def expected_match_findings(expected, labels):
+    return [(("expected", cc, venue, title, film), f"expected-matches.tsv expects {film} for {cc} {venue} | {title}, "
              f"which the judgements call wrong")
-            for c in expected_rows if label_of(labels[c[0]], c[1], c[2], c[3]) == "wrong"]
+            for _, cc, venue, title, film, _ in expected if label_of(labels[cc], venue, title, film) == "wrong"]
 
 
 HARD_LINE = re.compile(r"^(?P<key>[^|\t]*)\|[^\t]*\t.*\btmdb=(?P<tmdb>\d+)\b.*\bcinemas=\[(?P<cinemas>[^\]]*)\]")
@@ -220,9 +207,7 @@ def slice_replay(command):
             r = subprocess.run([command, cc, "--batch", batch, "--out", takes], capture_output=True, text=True, timeout=1800)
             if r.returncode not in (0, 3) or not os.path.exists(takes):
                 raise RuntimeError(f"identity-slice exited {r.returncode}: {(r.stderr or '').strip().splitlines()[-1:] or ''}")
-            with open(takes, encoding="utf-8") as f:
-                return {(row["venue"], normalise(row["rawTitle"])): row["film"]
-                        for row in csv.DictReader(f, delimiter="\t", quoting=csv.QUOTE_NONE)}
+            return {(row["venue"], normalise(row["rawTitle"])): row["film"] for row in identity_takes.table(takes)}
     return replay
 
 
@@ -244,7 +229,7 @@ def lint(root, served_paths=(), before=None, replay=None):
     listed = j.tolerated(judged, "served") | j.tolerated(judged, "capture")
     return (store_findings(root, judged) + accepted_findings(judged, labels) + scattered_findings(judged)
             + tolerated_right_findings(judged, labels)
-            + expected_match_findings(rows(os.path.join(root, EXPECTED_MATCHES), 4), labels) + hard_cluster_findings(root, judged)
+            + expected_match_findings(identity_takes.expected_matches(os.path.join(root, EXPECTED_MATCHES)), labels) + hard_cluster_findings(root, judged)
             + served(served_findings(served_paths, labels, listed, j.labels_by_country(j.read(before)) if before else None),
                      replay if before else None))
 
