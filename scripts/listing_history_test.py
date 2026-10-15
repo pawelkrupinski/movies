@@ -5,14 +5,13 @@ shown — every outside call answered by a fake runner.
 
     python3 scripts/listing_history_test.py
 """
-import importlib.util
 import json
-import pathlib
+import os
+import sys
 import unittest
 
-spec = importlib.util.spec_from_file_location("listing_history", pathlib.Path(__file__).with_name("listing_history.py"))
-history = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(history)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import listing_history as history  # noqa: E402
 
 GAINED = {
     "_time": "2026-10-14T06:51:29.723Z", "_msg": "identity take change: gained Casablanca-Programmkino | Der mit dem Wolf "

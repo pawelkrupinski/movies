@@ -4,16 +4,15 @@
     python3 scripts/recording_diff_test.py
 """
 import gzip
-import importlib.util
 import json
 import os
 import pathlib
+import sys
 import tempfile
 import unittest
 
-spec = importlib.util.spec_from_file_location("recording_diff", pathlib.Path(__file__).with_name("recording_diff.py"))
-diff = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(diff)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import recording_diff as diff  # noqa: E402
 
 
 def film(title, raw=None, **fields):

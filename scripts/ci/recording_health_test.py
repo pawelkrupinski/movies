@@ -4,17 +4,15 @@
     python3 scripts/ci/recording_health_test.py
 """
 import gzip
-import importlib.util
 import json
 import os
 import pathlib
+import sys
 import tempfile
 import unittest
 
-spec = importlib.util.spec_from_file_location(
-    "recording_health", pathlib.Path(__file__).with_name("recording_health.py"))
-health = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(health)
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import recording_health as health  # noqa: E402
 
 SINCE = 1_760_000_000          # the recording's start, epoch seconds
 BEFORE = SINCE - 86_400        # a day earlier: restored from the last recording
