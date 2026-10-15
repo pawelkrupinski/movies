@@ -17,11 +17,11 @@ on:
 
 # Pipeline shape:
 #
-#   test × 2 (worker, rest) ────────┐
-#   integration-test ───────────────┤
+#   test × 3 (worker ×2, rest) ─────┐
+#   integration-test × 2 ───────────┤
 #   e2e × 3 shards (+stage, eslint) ┤  (all independent; every shipping job in
 #   mobile-local-server (iOS+And) ──┤   main.yml `needs` this whole workflow)
-#   page-tests × 8 ─────────────────┘
+#   page-tests × 6 ─────────────────┘
 #
 # RUNNER BUDGET — 15 here, and no more. GitHub Free allows 20 concurrent jobs
 # ACROSS THE ACCOUNT. On a push to main, `main.yml` adds one more at t=0 (its
@@ -33,12 +33,13 @@ on:
 # over 12 Main runs to 2026-10-01, ci rows started a median 1.2-2.0 min late, and
 # a queued row is pure added wall-clock. The four came from the Playwright phone
 # shards (WebKit 7 → 4, Chromium 3 → 2), which after the `@agnostic` sweeps moved
-# out ran ~40 s of tests behind ~1.5 min of setup each. (Chromium 2 → 1 later gave
-# its runner to the unit tests' second row, not to the headroom.) A new job here takes its
+# out ran ~40 s of tests behind ~1.5 min of setup each. (Chromium 2 → 1 and WebKit
+# 4 → 2 later gave their runners to splitting the unit and integration rows, not to
+# the headroom.) A new job here takes its
 # slot from an existing one or eats into that headroom on purpose
 # (CiRunnerBudgetSpec).
 #
-# Current split: 2 test + 1 integration + 2 e2e + 1 mobile + 8 page-tests.
+# Current split: 3 test + 2 integration + 2 e2e + 1 mobile + 6 page-tests.
 # Staging the dists and eslint ride the `e2e (corpus)` row, and iOS +
 # Android LocalServer share one `mobile-local-server` job (one FixtureServerMain
 # boot for both). The original ~13-min long pole was the single `e2e` job (two
@@ -74,21 +75,23 @@ permissions:
     contents: read
 
 jobs:
-    # The unit tests, SPLIT across two runners by module: `worker` (~6,300 tests, the heaviest
-    # module) on one, every other module on the other. One runner running all five modules'
-    # suites at once on its 4 cores was the build's long pole (an `sbt testUnitNoE2e` of 7-10 min,
-    # 2026-10-15 — the zinc cache hit, so it was test CPU, not compile); each row now gets the
-    # runner to itself. The slot came from merging the two Chromium phone shards below. The
-    # non-sbt checks (roster drift, actionlint, the script self-tests, …) ride the `rest` row;
-    # the gitops manifests ride `worker`, whose deploy specs read them.
+    # The unit tests, SPLIT across three runners: the worker module (~6,300 tests, the heaviest) in
+    # two by package — `scripts.*`, the identity tooling's capture re-resolves, and everything else
+    # by exclusion (the testUnitWorker* aliases in build.sbt) — and every other module on the third.
+    # One runner running all five modules' suites at once on its 4 cores was the build's long pole
+    # (an `sbt testUnitNoE2e` of 7-10 min, 2026-10-15 — the zinc cache hit, so it was test CPU, not
+    # compile). The slots came from merging the Chromium phone shards (2 → 1) and the WebKit ones
+    # (4 → 2). The non-sbt checks (roster drift, actionlint, the script self-tests, …) ride the
+    # `rest` row; the gitops manifests ride `worker`, whose deploy specs read them.
     test:
         name: test (${{ matrix.shard }})
         strategy:
             fail-fast: false
             matrix:
                 include:
-                    - { shard: worker, cmd: testUnitWorker }
-                    - { shard: rest,   cmd: testUnitRest }
+                    - { shard: worker-scripts, cmd: testUnitWorkerScripts }
+                    - { shard: worker,         cmd: testUnitWorker }
+                    - { shard: rest,           cmd: testUnitRest }
         runs-on: ubuntu-26.04
         # `checks: write` so action-junit-report can post the failure
         # check-run + summary.
@@ -418,8 +421,23 @@ jobs:
                   path: /tmp/fixture-server/log
                   if-no-files-found: ignore
 
+    # The integration specs, SPLIT across two runners by build.sbt's `IT_ROW` filter: `identity` runs the two
+    # whole-corpus identity specs (HardClusterConvergence, IdentityShadow), each of which fills a runner's cores;
+    # `rest` runs every other spec, by exclusion. One runner running all of `itAll` was CPU-bound — 828 s of
+    # suites on 4 cores, the build's long pole beside the unit tests (2026-10-15). The slot came from the WebKit
+    # phone shards (4 → 2). Both rows run `itAll`, so `all` still keeps going past a failing module.
     integration-test:
+        name: integration-test (${{ matrix.row }})
+        strategy:
+            fail-fast: false
+            matrix:
+                include:
+                    - { row: identity }
+                    - { row: rest }
         runs-on: ubuntu-24.04 # mongod 8.3 will not start on 26.04's kernel 7.0 (MongoServerVersionParitySpec)
+        # Every sbt step of the row — the run and the flake reruns — sees the same filter.
+        env:
+            IT_ROW: ${{ matrix.row }}
         permissions:
             contents: read
             checks: write
@@ -471,7 +489,7 @@ jobs:
             - name: Rerun the failed integration tests, to tell a flake from a break
               if: failure() && steps.it.outcome == 'failure'
               timeout-minutes: 20
-              run: scripts/ci/rerun-failed-sbt.sh target/test-reports/it "integration tests" target/flake-rerun
+              run: scripts/ci/rerun-failed-sbt.sh target/test-reports/it "integration tests (${{ matrix.row }})" target/flake-rerun
               env:
                   TMDB_API_KEY:    ${{ secrets.TMDB_API_KEY }}
                   MONGODB_URI:     mongodb://127.0.0.1:27017/kinowo?directConnection=true
@@ -481,7 +499,7 @@ jobs:
               if: failure() && hashFiles('target/flake-rerun/flaky.tsv') != ''
               uses: actions/upload-artifact@v6
               with:
-                  name: flaky-it
+                  name: flaky-it-${{ matrix.row }}
                   path: target/flake-rerun/flaky.tsv
                   retention-days: 7
 
@@ -490,7 +508,7 @@ jobs:
               uses: mikepenz/action-junit-report@v5
               with:
                   report_paths: 'target/test-reports/it/**/*.xml'
-                  check_name: integration tests
+                  check_name: integration tests (${{ matrix.row }})
                   detailed_summary: true
                   include_passed: false
 
@@ -502,6 +520,7 @@ jobs:
             # lay the ref out, and the JDK/sbt setup. A push touching none of them skips its 2-3 min, which sat
             # on the end of this job and made it the build's long pole beside the unit tests (2026-10-15).
             - name: Did this change touch what identity-slice brings to an old ref?
+              if: matrix.row == 'identity'
               id: slice-tools
               uses: ./.github/actions/changed-paths
               with:
@@ -518,7 +537,7 @@ jobs:
                       .github/workflows/ci.yml
 
             - name: identity-slice's tool files still compile into a ref from before them
-              if: steps.slice-tools.outputs.changed == 'true'
+              if: matrix.row == 'identity' && steps.slice-tools.outputs.changed == 'true'
               run: |
                   git fetch --no-tags --depth=1 origin c2974e3aaea73fb841096a24316fb5e872154de9
                   OLD_REF=c2974e3aaea73fb841096a24316fb5e872154de9 KINOWO_IDENTITY_CACHE="$RUNNER_TEMP/kinowo-identity" \
@@ -866,18 +885,17 @@ jobs:
                     # behaviour row, the phone set is small: `--list` sizes
                     # (2026-10-01, runtime skips included — about half run) are
                     # 3 → 144-170, 4 → 109-124, 5 → 82-103, 7 → 56-72. At seven,
-                    # each row ran ~45 s of tests behind its ~1.5 min of setup; four
-                    # keeps the largest row near ~90 s of tests, under the unit and
-                    # integration rows, and gives three runners back to the account
-                    # (see RUNNER BUDGET at the top). Re-measure with `--list` before
-                    # changing this rather than
+                    # each row ran ~45 s of tests behind its ~1.5 min of setup. Four
+                    # rows ran 2.2-3.2 min each (2026-10-15), well inside the unit and
+                    # integration rows; two carry about twice the tests behind the same
+                    # setup, ~3.8 min, still inside them, and give two runners to
+                    # splitting those rows (see RUNNER BUDGET at the top). Re-measure
+                    # with `--list` before changing this rather than
                     # assuming more shards is faster. Coverage of every width is
                     # unchanged. Firefox stays dropped from CI (the firefox-desktop
                     # project remains in playwright.config.ts for local runs).
-                    - { variant: pw phones 1/4, kind: playwright, browsers: webkit, label: webkit-phones-1-4, runs: 'webkit-iphone-se*,webkit-iphone-13*,webkit-iphone-17-pro-max*,webkit-desktop ; ; axe-core|@agnostic ; 1/4' }
-                    - { variant: pw phones 2/4, kind: playwright, browsers: webkit, label: webkit-phones-2-4, runs: 'webkit-iphone-se*,webkit-iphone-13*,webkit-iphone-17-pro-max*,webkit-desktop ; ; axe-core|@agnostic ; 2/4' }
-                    - { variant: pw phones 3/4, kind: playwright, browsers: webkit, label: webkit-phones-3-4, runs: 'webkit-iphone-se*,webkit-iphone-13*,webkit-iphone-17-pro-max*,webkit-desktop ; ; axe-core|@agnostic ; 3/4' }
-                    - { variant: pw phones 4/4, kind: playwright, browsers: webkit, label: webkit-phones-4-4, runs: 'webkit-iphone-se*,webkit-iphone-13*,webkit-iphone-17-pro-max*,webkit-desktop ; ; axe-core|@agnostic ; 4/4' }
+                    - { variant: pw phones 1/2, kind: playwright, browsers: webkit, label: webkit-phones-1-2, runs: 'webkit-iphone-se*,webkit-iphone-13*,webkit-iphone-17-pro-max*,webkit-desktop ; ; axe-core|@agnostic ; 1/2' }
+                    - { variant: pw phones 2/2, kind: playwright, browsers: webkit, label: webkit-phones-2-2, runs: 'webkit-iphone-se*,webkit-iphone-13*,webkit-iphone-17-pro-max*,webkit-desktop ; ; axe-core|@agnostic ; 2/2' }
                     # The viewport-independent specs once, on the representative
                     # 390px portrait (matches the `iPhone 13` base in webkitUse).
                     #

@@ -47,6 +47,6 @@ class IdentitySliceOldRefGateSpec extends AnyFlatSpec with Matchers {
   it should "be what the compile step is conditioned on" in {
     RepoFile.step(RepoFile.read(".github/workflows/ci.yml"),
       "identity-slice's tool files still compile into a ref from before them") should include(
-      "if: steps.slice-tools.outputs.changed == 'true'")
+      "if: matrix.row == 'identity' && steps.slice-tools.outputs.changed == 'true'")
   }
 }

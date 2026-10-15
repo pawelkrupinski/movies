@@ -136,6 +136,20 @@ lazy val testOrderSettings: Seq[Setting[?]] = sys.env.get("TEST_ORDER_SEED").toS
   )
 }
 
+// CI'S INTEGRATION ROWS. `itAll` on one runner was CPU-bound (828 s of suites on 4 cores, 2026-10-15), so CI
+// runs it on two: `IT_ROW=identity` runs only the whole-corpus identity specs below, which each fill a runner's
+// cores; `IT_ROW=rest` runs every other integration spec, by exclusion, so a new spec always lands in a row.
+// Unset, nothing changes. A filter rather than `testOnly` aliases: `all` (keep going past a failing module)
+// takes no input task's arguments.
+lazy val IdentityIntegrationSuites = Set(
+  "integration.HardClusterConvergenceIntegrationSpec",
+  "integration.IdentityShadowIntegrationSpec")
+lazy val itRowSettings: Seq[Setting[?]] = sys.env.get("IT_ROW").toSeq.map {
+  case "identity" => IntegrationTest / testOptions += Tests.Filter(IdentityIntegrationSuites)
+  case "rest"     => IntegrationTest / testOptions += Tests.Filter(!IdentityIntegrationSuites(_))
+  case other      => sys.error(s"IT_ROW=$other: expected identity or rest")
+}
+
 lazy val itReportSettings = Seq(
   IntegrationTest / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-o", "-u",
     ((LocalRootProject / baseDirectory).value / "target" / "test-reports" / "it").toString)
@@ -321,7 +335,7 @@ lazy val worker = (project in file("worker"))
     ),
   )
   .settings(unitReportSettings, testOrderSettings)
-  .settings(itReportSettings)
+  .settings(itReportSettings, itRowSettings)
   // Fails the it run when a repository write failed and was swallowed into a WARN.
   .settings(WriteFailureTripwire.settings(IntegrationTest))
   .settings(noApiDocs, heapDumpScript)
@@ -407,7 +421,7 @@ lazy val web = (project in file("web"))
     PlayKeys.externalizeResources := false,
   )
   .settings(unitReportSettings, testOrderSettings)
-  .settings(itReportSettings)
+  .settings(itReportSettings, itRowSettings)
   .settings(WriteFailureTripwire.settings(IntegrationTest))
   .settings(noApiDocs, heapDumpScript)
   .settings(launcherOptions("jdk25-parity.options", "jdk25-parity-g1.options", "web.options"))
@@ -532,7 +546,10 @@ addCommandAlias("itAll", "all web/IntegrationTest/test worker/IntegrationTest/te
 // tagged heavy spec boots the full ~110s pipeline one or more times, so on one
 // runner the module was the long pole). See .github/workflows/ci.yml.
 addCommandAlias("testUnitNoE2e", "all common/Test/test identity/Test/test testkit/Test/test web/Test/test worker/Test/test")
-addCommandAlias("testUnitWorker", "worker/Test/test")
+// CI's unit rows. The worker module is split in two by package: `scripts.*` (the identity tooling's specs, which
+// re-resolve recorded captures) and everything else, by exclusion, so a new package always lands in a row.
+addCommandAlias("testUnitWorkerScripts", "worker/Test/testOnly scripts.*")
+addCommandAlias("testUnitWorker", "worker/Test/testOnly * -scripts.*")
 addCommandAlias("testUnitRest", "all common/Test/test identity/Test/test testkit/Test/test web/Test/test")
 
 // e2e CI shards. The two heavy whole-corpus determinism specs (tagged
