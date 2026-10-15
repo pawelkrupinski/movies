@@ -21,16 +21,15 @@ class ListingShapeSpec extends AnyFlatSpec with Matchers {
     ListingShape.venueStated(own.copy(page = Some("https://kinomuza.pl/film/all-my-sons"))) shouldBe true
   }
 
-  "a listing's backer in its title group" should "be its venue's name itself for the venue's own claim, a feed's entry joined to it" in {
-    // held for every listing for the corpus's life: a venue's own claim costs no string of its own
+  "a listing's backer in its title group" should "be its venue's name for the venue's own claim, a feed entry's one shared string for its" in {
+    // held for every listing for the corpus's life: no claim costs a string of its own per listing
     val own = listing(KinoMuza, "Karla")
     Backer(own.venue, SourceReliability.claimOf(own)) should be theSameInstanceAs own.venue
-    // one feed entry listed at many venues is one source, its venue kept beside it
-    val fed    = own.copy(catalogueIds = Seq(CatalogueId(CatalogueSources.Webedia.source, "1000023315")))
-    val backer = Backer(fed.venue, SourceReliability.claimOf(fed))
-    Backer.venue(backer) shouldBe own.venue
-    Backer.source(backer) shouldBe CatalogueId(CatalogueSources.Webedia.source, "1000023315").key
-    Backer.source(Backer(own.venue, SourceReliability.claimOf(own))) shouldBe SourceReliability.claimOf(own)
+    // one feed entry listed at many venues is one origin, one string every venue it lists shares
+    val fed       = own.copy(catalogueIds = Seq(CatalogueId(CatalogueSources.Webedia.source, "1000023315")))
+    val elsewhere = listing(models.Rialto, "Karla").copy(catalogueIds = fed.catalogueIds)
+    Backer(fed.venue, SourceReliability.claimOf(fed)) shouldBe CatalogueId(CatalogueSources.Webedia.source, "1000023315").key
+    Backer(fed.venue, SourceReliability.claimOf(fed)) should be theSameInstanceAs Backer(elsewhere.venue, SourceReliability.claimOf(elsewhere))
   }
 
   "a programme slot" should "be a festival's or season's banner and a slot of its programme, nothing else" in {

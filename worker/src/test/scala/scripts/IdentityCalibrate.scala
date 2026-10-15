@@ -1,6 +1,6 @@
 package scripts
 
-import services.identity.{StageRelays, VenueBacking}
+import services.identity.{Backer, CatalogueId, SourceReliability, StageRelays, VenueBacking}
 import models.Country
 import play.api.libs.json.{JsArray, JsObject, Json}
 import services.identity.{IdentityCalibration, IdentityMeasures, TitleDecorations}
@@ -176,7 +176,9 @@ object IdentityCalibrate {
 
     // Venue co-occurrence: per title group, which venues' own facts back each candidate.
     val groups: Map[String, IndexedSeq[Int]] = obs.indices.groupBy(i => IdentityMeasures.key(obs(i).listing.title))
-    val members = groups.view.mapValues(_.map(i => obs(i).venue -> obs(i).listing)).toMap
+    // each member keyed by its venue and whose claim its facts are, as the resolver's corpus keys them
+    def claimOf(o: Obs) = SourceReliability.claimOf(o.chainIds.toSeq.sorted.map(CatalogueId(_, _)), o.filmUrl, o.venue)
+    val members = groups.view.mapValues(_.map(i => Backer(obs(i).venue, claimOf(obs(i))) -> obs(i).listing)).toMap
 
     val backing = new VenueBacking(members)
     // The houses the banners bill, learned from the pools as the resolver learns them from its candidates.
@@ -193,7 +195,7 @@ object IdentityCalibrate {
       pool.foreach { case (id, (rank, f)) =>
         val own = closeTitles(id)
         val rivals = close - (if (IdentityMeasures.Rivalling(own)) 1 else 0)
-        val venues = backing.corroborating(g, f, o.venue)
+        val venues = backing.corroborating(g, f, o.venue, claimOf(o))
         lf += LfPair(o.idx, id, IdentityMeasures.listingFilm(o.listing, f, rank, rivals, venues, houses, qualifiers))
       }
     }
