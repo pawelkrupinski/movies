@@ -100,12 +100,11 @@ class IdentityModelConvergenceWiringSpec extends AnyFlatSpec with Matchers {
   }
 
   /** One lane for main's runs: finish the run in flight, keep one newer run pending, and let each newer dispatch
-   *  replace that pending one. A measurement's measure/ branch (scripts/identity-measure) runs in a lane of its own,
-   *  replacing nothing and queued behind no other measurement. */
+   *  replace that pending one. A measurement's measure/ branch runs in a lane of its own (the group's exact
+   *  expression: ConvergenceConcurrencyConfigSpec). */
   it should "hold one lane for main's runs, superseding only the run that waits, and one per measurement" in {
     val concurrency = RepoFile.block(workflow, "concurrency")
-    concurrency should include(
-      "group: identity-model-convergence${{ startsWith(github.ref, 'refs/heads/measure/') && format('-{0}', github.ref_name) || '' }}")
+    concurrency should include("group: identity-model-convergence")
     concurrency should include("cancel-in-progress: false")
   }
 

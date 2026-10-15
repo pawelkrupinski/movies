@@ -31,6 +31,11 @@ import org.scalatest.matchers.should.Matchers
  *     `convergence-imdb-ladder` dispatch and a main deploy dispatch ran side by
  *     side for an hour, six heavyweight legs at once, because
  *     `refs/heads/convergence-imdb-ladder` != `refs/heads/main`.
+ *
+ * ONE exception, by name: a MEASUREMENT's `measure/` branch (scripts/identity-measure, the takes rows alone) gets a
+ * lane of its own, so agents' measurements neither queue behind each other nor replace one another (2026-10-15: five
+ * of them waited about an hour each on main's lane). Every other ref -- main, a co-agent's branch -- still shares the
+ * one constant lane.
  */
 class ConvergenceConcurrencyConfigSpec extends AnyFlatSpec with Matchers {
   private def concurrencyOf(path: String) = RepoFile.block(RepoFile.read(path), "concurrency")
@@ -43,10 +48,11 @@ class ConvergenceConcurrencyConfigSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  it should "not key their lane on anything that varies per run" in {
+  it should "not key their lane on anything that varies per run, but a measurement's own branch" in {
     Files.foreach { path =>
-      val group = concurrencyOf(path).linesIterator.find(_.trim.startsWith("group:")).getOrElse("")
-      withClue(s"$path: ")(group should not include "${{")
+      val group = concurrencyOf(path).linesIterator.find(_.trim.startsWith("group:")).getOrElse("").trim
+      withClue(s"$path: ")(group shouldBe
+        "group: identity-model-convergence${{ startsWith(github.ref, 'refs/heads/measure/') && format('-{0}', github.ref_name) || '' }}")
     }
   }
 }
