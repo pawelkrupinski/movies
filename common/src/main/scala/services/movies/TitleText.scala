@@ -16,10 +16,9 @@ object TitleText {
   // Precompiled hot-path patterns. `sanitize` / `stripPunct` run per movie ×
   // per cinema × per tick (plus every staging row and read-model projection);
   // `String.replaceAll` recompiles its `Pattern` on every call, so we compile
-  // these once. `CombiningMarks` mirrors the NFD combining-mark strip; the
+  // these once. The accents go through `TextNormalization.deburr`; the
   // `NonAlnum*` pair drops the residual punctuation/whitespace, one Unicode-aware
   // (keeps Cyrillic/Greek/CJK letters) and one ASCII-only.
-  private val CombiningMarks  = Pattern.compile("\\p{M}")
   private val NonAlnumUnicode = Pattern.compile("[^\\p{L}\\p{N}]+")
   private val NonAlnumAscii   = Pattern.compile("[^a-z0-9]+")
 
@@ -55,8 +54,10 @@ object TitleText {
    *  `&quot;` is a quote mark or that a sentence mark is followed by a space. */
   def tidy(title: String): String = frontArticle(spaceAfterSentenceMark(decodeEntities(title)))
 
-  /** The articles a library-style title files at its end, in each served language and the ones films keep untranslated. */
-  private val FiledArticles = Set("the", "a", "an", "der", "die", "das", "ein", "eine", "le", "la", "les", "el", "los", "las", "il", "lo")
+  /** The articles a title leads with — English, German, French, Spanish, Italian: the ones a library-style title files at
+   *  its end ([[frontArticle]]) and a venue drops (`IdentityMeasures.LeadingArticles`). One list for both. */
+  val Articles: Set[String] =
+    Set("the", "a", "an", "der", "die", "das", "ein", "eine", "le", "la", "les", "el", "los", "las", "il", "lo", "gli")
   private val TrailingArticle = """^(.+?),\s+(\p{Lu}\p{L}{0,3})$""".r
 
   /** Put a title's article back at its front: German venues' box-office systems file a film library-style,
@@ -64,8 +65,8 @@ object TitleText {
    *  key apart from every venue spelling it "The Piano Tuner". Only a capitalised article: Polish "Powiedz mi, a" ends
    *  on a conjunction, not a filed article. */
   def frontArticle(title: String): String = title match {
-    case TrailingArticle(head, article) if FiledArticles(article.toLowerCase(Locale.ROOT)) => s"$article $head"
-    case _                                                                                  => title
+    case TrailingArticle(head, article) if Articles(article.toLowerCase(Locale.ROOT)) => s"$article $head"
+    case _                                                                             => title
   }
 
   // Numeric (`&#233;` / `&#xE9;`) and the named entities that actually turn up in
@@ -150,16 +151,12 @@ object TitleText {
 
   // Last-resort collapse for titles that share words + order but differ only
   // in punctuation/whitespace ("Top Gun Maverick" vs "Top Gun: Maverick").
-  // Lowercased, accents stripped, every non-alphanumeric char dropped. Used
+  // Lowercased, accents folded as everywhere (`deburr`: "ł" is "l"), every non-alphanumeric char dropped. Used
   // by `mergeKeyLookup` ONLY when at least two distinct corpus titles reduce
   // to the same form — so it never collapses a standalone film into siblings
   // that merely share a prefix.
-  private[movies] def stripPunct(t: String): String = {
-    val deburred = CombiningMarks.matcher(
-      java.text.Normalizer.normalize(t, java.text.Normalizer.Form.NFD)
-    ).replaceAll("").toLowerCase(Locale.ROOT)
-    NonAlnumAscii.matcher(deburred).replaceAll("")
-  }
+  private[movies] def stripPunct(t: String): String =
+    NonAlnumAscii.matcher(tools.TextNormalization.deburr(t).toLowerCase(Locale.ROOT)).replaceAll("")
 
   private[movies] def strippedKey(t: String): String =
     NonAlnumUnicode.matcher(

@@ -18,6 +18,17 @@ class TitleTidySpec extends AnyFlatSpec with Matchers {
 
   private val pl = TitleNormalizer.forCountry(models.Country.Poland)
 
+  "frontArticle" should "front every article the title readers know, Italian's \"gli\" among them" in {
+    // one list with IdentityMeasures.LeadingArticles: "gli" was the measures' only, "ein"/"eine" this one's only
+    TitleText.frontArticle("Intoccabili, Gli") shouldBe "Gli Intoccabili"
+    TitleText.frontArticle("Perfekte Urlaub, Der") shouldBe "Der Perfekte Urlaub"
+  }
+
+  "stripPunct" should "fold \"ł\" as every other accent fold does" in {
+    // its own NFD strip dropped "ł" (no combining mark), where TextNormalization.deburr folds it to "l"
+    TitleText.stripPunct("Diabeł: Ostatni") shouldBe TitleText.stripPunct("Diabel Ostatni")
+  }
+
   "decodeEntities" should "resolve the entities cinema listings actually publish" in {
     TitleText.decodeEntities("""André Rieu &quot;Niech żyje Maastricht&quot;""") shouldBe
       """André Rieu "Niech żyje Maastricht""""

@@ -516,7 +516,7 @@ object IdentityMeasures {
    *  Verlorenen" bills TMDB's "Das Camp der Verlorenen". ONE list for every rule that reads a title without its article:
    *  the measures' article-less exact title ([[TitleForm.afterArticle]]) and the agreement's naming
    *  ([[services.identity.agreement.Agreement]]). */
-  val LeadingArticles: Set[String] = Set("the", "a", "an", "der", "die", "das", "le", "la", "les", "el", "los", "las", "il", "lo", "gli")
+  val LeadingArticles: Set[String] = services.movies.TitleText.Articles
   /** A title's words without the article it leads with ([[LeadingArticles]]) — when a word is left beside it. */
   def withoutLeadingArticle(words: Seq[String]): Seq[String] =
     if (words.sizeIs >= 2 && LeadingArticles(words.head)) words.tail else words

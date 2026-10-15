@@ -176,6 +176,10 @@ Each a production change: measure with `scripts/identity-measure`, land one at a
   `xtra-certificate-suffix`, `xtra-certificate-year-suffix` (a3d3ece23) and `xtra-subtitle-paren-tag` repeat
   `FormatTags`' `AsteriskNote`/`BracketedRunningTime`/`CertificateNote`/`FormatParenTag` (1573686c3, a9b51f710) and
   disagree with them (any-character asterisks, a bare "100 mins"). Keep one.
+  Tried 2026-10-16, deleting the five copies: they are load-bearing where another strip EXPOSES a note — `apiQuery`,
+  the identity model's search title (`IdentityModel`'s `searchTitle`), runs no format re-peel, so "BARANEK SHAUN I
+  KUDŁATA BESTIA (DUBBING) (PREMIERA)" kept "(DUBBING)" once "(PREMIERA)" went (SearchOnlyAffixesSpec). Share
+  FormatTags' shapes with the rules as placeholders (as `CERT` is), and measure the widths they disagree on.
 - [x] **TitleSeason reads any year range from 1800 as a season** (done: a listing's season must fall from 20 seasons before
   its first screening's (the relay era: encores bill 2017/18) to the next, `TitleSeason.of(titles, screenedIn)`; a
   record's stays any. Current-or-next only lost 5 US right takes and made 15 UK ones wrong: RBO 2024-25 encores): "Warschau 1944/45" gets a season, `SeasonsApart` then
@@ -185,9 +189,10 @@ Each a production change: measure with `scripts/identity-measure`, land one at a
   `CandidateScoring.namesOnlyItsVenue` and the edition year the Alamo series.
 - [ ] **More venue-named global strips** in `ExtraTitleRules`: `xtra-kobiece-strands` (`TOMI dla Kobiet`, `Kobiece
   Wieczory w Kino Cafe`) and others naming one venue's strand. Each a learned decoration or a per-cinema rule; measure.
-- [ ] **Two copies of one list**: ~~`FormatTags.FormatVersionWords` repeats `FormatToken`'s keys (and "lek" has no LEK
-  badge: "Lalka 2D LEK" shows none)~~ (done: derived from `FormatToken`, "lek" badged LEK); `TitleText.FiledArticles` (ein/eine, no gli) vs `IdentityMeasures.LeadingArticles`
-  (gli, no ein/eine); `TitleText.stripPunct`'s own NFD strip drops "ł" where `TextNormalization.deburr` folds it.
+- [x] **Two copies of one list**: ~~`FormatTags.FormatVersionWords` repeats `FormatToken`'s keys (and "lek" has no LEK
+  badge: "Lalka 2D LEK" shows none)~~ (done: derived from `FormatToken`, "lek" badged LEK); ~~`TitleText.FiledArticles` (ein/eine, no gli) vs `IdentityMeasures.LeadingArticles`
+  (gli, no ein/eine); `TitleText.stripPunct`'s own NFD strip drops "ł" where `TextNormalization.deburr` folds it~~ (done:
+  `TitleText.Articles`, read by both; `stripPunct` folds through `deburr`).
 - [x] **The silent-era denial reads two ways** (done: `ListingShape.silentBillingDenies`; the node and the listing it is
   asked of stay each stage's): `FamilyScope.denialByNode` if any listing of the node bills silent,
   `Agreement` per listing. One predicate.
