@@ -71,6 +71,30 @@ check "...saying so" "1" "$(grep -c 'no script tests selected' "$work/out")"
 rm "$tree/docs/readme.md"
 check "--changed: a base that is not a commit fails" "2" "$(run --changed no-such-ref)"
 
+# --changed follows what a test's tool sources or imports, however deep: a library's edit selects every test reaching
+# it, though none of them names it.
+mkdir -p "$tree/scripts/lib"
+put scripts/k.sh "$(printf '%s\n' '# shellcheck source=scripts/lib/shared.sh' '. "$(dirname "${BASH_SOURCE[0]}")/lib/shared.sh"' 'shared')"
+put scripts/k-test.sh 'bash scripts/k.sh'
+put scripts/lib/shared.sh "$(printf '%s\n' 'source "$(dirname "${BASH_SOURCE[0]}")/deeper.sh"' 'shared() { deeper; }')"
+put scripts/lib/deeper.sh 'deeper() { echo deep; }'
+put scripts/ci/m.py "$(printf '%s\n' 'import os' 'from takes_lib import take' 'print(take())')"
+put scripts/ci/m_test.py "$(printf '%s\n' 'import m')"
+put scripts/ci/n_test.py "$(printf '%s\n' 'import sys' 'import takes_lib')"
+put scripts/ci/takes_lib.py 'def take(): return 1'
+put scripts/ci/unrelated_test.py 'print(1)'
+scratch_git "$tree" add -A && scratch_git "$tree" commit -qm libraries
+libs="$(scratch_git "$tree" rev-parse HEAD)"
+echo '# edited' >> "$tree/scripts/lib/shared.sh"
+check "--changed: a library a test's tool sources selects that test" "scripts/k-test.sh" "$(listed --changed "$libs")"
+scratch_git "$tree" checkout -q -- scripts/lib/shared.sh
+echo '# edited' >> "$tree/scripts/lib/deeper.sh"
+check "...and one that library sources in turn" "scripts/k-test.sh" "$(listed --changed "$libs")"
+scratch_git "$tree" checkout -q -- scripts/lib/deeper.sh
+echo '# edited' >> "$tree/scripts/ci/takes_lib.py"
+check "--changed: a module a test or its tool imports selects it" "scripts/ci/m_test.py scripts/ci/n_test.py" "$(listed --changed "$libs")"
+scratch_git "$tree" checkout -q -- scripts/ci/takes_lib.py
+
 # The timeout: a hung test is killed at its bound and FAILS as a timeout.
 put scripts/slow-test.sh 'sleep 30'
 start=$SECONDS

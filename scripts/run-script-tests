@@ -4,7 +4,8 @@
 #
 #   scripts/run-script-tests                       # every self-test (the untagged ones)
 #   scripts/run-script-tests scripts/ci identity   # only those whose path is under / contains / matches one of these
-#   scripts/run-script-tests --changed origin/main # only those whose test, tool or a file they name changed
+#   scripts/run-script-tests --changed origin/main # only those whose test, tool, a file they name, or one they
+#                                                  # source or import (transitively) changed
 #   scripts/run-script-tests --list [--all]        # what would run: path, tag, reason (tab-separated)
 #   scripts/run-script-tests --tag manual          # only the tests tagged so (see TAGS)
 #   scripts/run-script-tests --bash /bin/bash      # every self-test under that bash (macOS's 3.2: the floor)
@@ -40,7 +41,7 @@ PythonFloor="3.9"
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 jobs=8 timeout_s=600 list=0 all=0 tag="" changed_base="" test_bash="" filters=()
-usage() { sed -n '2,16p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' >&2; exit 64; }
+usage() { sed -n '2,17p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' >&2; exit 64; }
 while [ $# -gt 0 ]; do
   case "$1" in
     --jobs) jobs="${2:?--jobs N}"; shift ;;
@@ -100,17 +101,69 @@ changed_paths() {
 stem() { # <file name> -> the tool name a test or tool shares, - and _ alike, extension dropped
   local n="${1%.*}"; n="${n%-test}"; n="${n%_test}"; printf '%s' "$n" | tr _ -; }
 
+# A library's change reaches the tests of every tool that uses it, though none of them names it: what a changed file
+# is sourced or imported by (bash `. f` / `source f` / `# shellcheck source=f`; python `import m` / `from m import`),
+# however deep, counts as changed too. A sourced or imported name is resolved among the checkout's own scripts by file
+# name, the importer's directory's alone when it has one (a module a tool finds through the sys.path it extends is
+# named so too); a name none of them has (os, json) is the standard library's. One grep and one awk, whatever the size.
+script_index() { # the checkout's scripts: what a source or an import can name
+  # shellcheck disable=SC2086 # the roots, a word each
+  { git ls-files -- $Roots; git ls-files --others --exclude-standard -- $Roots; } 2>/dev/null \
+    | grep -E '\.(sh|py)$|(^|/)[^./]+$' | LC_ALL=C sort -u
+}
+with_their_users() { # <changed paths file> -> those paths, and every script that sources or imports one, transitively
+  script_index > "$work/index"
+  tr '\n' '\0' < "$work/index" | xargs -0 grep -HE \
+    '^[[:space:]]*(\.|source)[[:space:]]|shellcheck[[:space:]]+source=|^[[:space:]]*(import|from)[[:space:]]+[A-Za-z_]' \
+    2>/dev/null > "$work/uses"
+  awk '
+    function dir_of(p) { return p ~ /\// ? substr(p, 1, match(p, /\/[^\/]*$/) - 1) : "." }
+    function base_of(p) { sub(/.*\//, "", p); return p }
+    function use(importer, name,   d, n, i, paths) {
+      d = dir_of(importer)
+      if ((d "/" name) in indexed) { users[d "/" name] = users[d "/" name] " " importer; return }
+      n = split(named[name], paths, " ")
+      for (i = 1; i <= n; i++) if (paths[i] != importer) users[paths[i]] = users[paths[i]] " " importer
+    }
+    FILENAME == ARGV[1] { indexed[$0] = 1; named[base_of($0)] = named[base_of($0)] " " $0; next }
+    FILENAME == ARGV[2] {
+      colon = index($0, ":"); importer = substr($0, 1, colon - 1); line = substr($0, colon + 1)
+      if (line ~ /^[[:space:]]*(import|from)[[:space:]]/) {
+        if (importer ~ /\.sh$/) next
+        sub(/^[[:space:]]*(import|from)[[:space:]]+/, "", line); match(line, /^[A-Za-z_][A-Za-z0-9_]*/)
+        use(importer, substr(line, 1, RLENGTH) ".py"); next
+      }
+      while (match(line, /[A-Za-z0-9_.-]+\.sh/)) { use(importer, substr(line, RSTART, RLENGTH)); line = substr(line, RSTART + RLENGTH) }
+      next
+    }
+    { if (!($0 in out)) { out[$0] = 1; queue[++tail] = $0 } }
+    END {
+      for (head = 1; head <= tail; head++) {
+        print queue[head]
+        n = split(users[queue[head]], more, " ")
+        for (i = 1; i <= n; i++) if (!(more[i] in out)) { out[more[i]] = 1; queue[++tail] = more[i] }
+      }
+    }' "$work/index" "$work/uses" "$1"
+}
+
+# What touched_by reads, worked out once a run rather than once a test and a changed path: the changed paths, each one's
+# "<dir> <stem>" (its test's, were it a tool), and a pattern a test naming it matches.
+changed_keys() { # <changed paths file> -> $work/changed.keys and $work/changed.names
+  awk -v keys="$work/changed.keys" -v names="$work/changed.names" '
+    NF {
+      dir = $0 ~ /\// ? substr($0, 1, match($0, /\/[^\/]*$/) - 1) : "."
+      name = $0; sub(/.*\//, "", name)
+      stem = name; sub(/\.[^.]*$/, "", stem); sub(/-test$/, "", stem); sub(/_test$/, "", stem); gsub(/_/, "-", stem)
+      print dir " " stem > keys
+      if (name ~ /\./) { gsub(/[.[\\*^$]/, "\\\\&", name); print "(^|[^A-Za-z0-9_.-])" name "([^A-Za-z0-9_-]|$)" > names }
+    }' "$1"
+  touch "$work/changed.keys" "$work/changed.names"
+}
+
 touched_by() { # <test path> <changed paths file>: the test, its tool, or a file whose name it mentions, changed
-  local test="$1" c dir name
-  dir="$(dirname "$test")"
-  while IFS= read -r c; do
-    [ -z "$c" ] && continue
-    [ "$c" = "$test" ] && return 0
-    name="$(basename "$c")"
-    [ "$(dirname "$c")" = "$dir" ] && [ "$(stem "$name")" = "$(stem "$(basename "$test")")" ] && return 0
-    case "$name" in *.*) grep -qE "(^|[^A-Za-z0-9_.-])$(printf '%s' "$name" | sed 's/[.[\*^$]/\\&/g')([^A-Za-z0-9_-]|$)" "$test" 2>/dev/null && return 0 ;; esac
-  done < "$2"
-  return 1
+  grep -qxF "$1" "$2" && return 0
+  grep -qxF "$(dirname "$1") $(stem "$(basename "$1")")" "$work/changed.keys" && return 0
+  [ -s "$work/changed.names" ] && grep -qEf "$work/changed.names" "$1" 2>/dev/null
 }
 
 work="$(mktemp -d)"
@@ -121,7 +174,9 @@ if [ -n "$test_bash" ]; then
   PATH="$work/bash-bin:$PATH"; export PATH
 fi
 if [ -n "$changed_base" ]; then
-  changed_paths > "$work/changed" || exit 2
+  changed_paths > "$work/changed.direct" || exit 2
+  with_their_users "$work/changed.direct" > "$work/changed"
+  changed_keys "$work/changed"
 fi
 
 : > "$work/selected"
