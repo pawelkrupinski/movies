@@ -205,104 +205,150 @@ keep() { # <file> <asset> [base]: store a result, never failing the check
 # no data, and match another unpinned run's over other data. The final takes read only the checked-in capture.
 asset() { [ "$1" = final ] || [ -n "${KINOWO_CONVERGENCE_PIN_CORPUS_RUN:-}" ] || return 0; echo "takes-$1-$cc-$2.gz"; }
 
-beside() { # <dir> <commit>: the commit checked out beside the head, once
-  [ -d "$1" ] && return 0
-  git worktree prune # one an earlier run in this RUNNER_TEMP removed by hand
-  git worktree add -q --detach "$1" "$2" || return 1
-  # The head's compiled classes and zinc state, so it compiles only what differs from the head.
+tree="$RUNNER_TEMP/identity-takes-base"
+base_tree() { # the base checked out beside the head, once, for whichever of its results is not stored
+  [ -d "$tree" ] && return 0
+  git worktree add -q --detach "$tree" "$base" || return 1
+  # The head's compiled classes and zinc state, so the base compiles only what differs between them.
   # The sbt-target-cache's paths (.github/actions/sbt-target-cache): classes and analysis, no jars.
   for d in project/target project/project/target */target/scala-*; do
-    [ -d "$here/$d" ] && mkdir -p "$1/$d" && cp -a "$here/$d/." "$1/$d/"
+    [ -d "$here/$d" ] && mkdir -p "$tree/$d" && cp -a "$here/$d/." "$tree/$d/"
   done
   return 0
 }
-tree="$RUNNER_TEMP/identity-takes-base"
-base_tree() { beside "$tree" "$base"; } # for whichever of the base's results is not stored
-# THE HEAD'S RESOLVE RUNS IN A CHECKOUT OF ITS OWN, beside the final takes: one sbt a directory, and the resolve reads
-# the recording through the head's paths. It was most of the row -- the US's 6 of its 10 minutes (run 38749305893) --
-# with the two ratchet replays queued behind it; beside it they cost no wall time.
-resolving="$RUNNER_TEMP/identity-takes-head"
-# The ratchets' heap beside the resolve's: a country's capture replays in 1.5g (Germany's, the largest), every
-# country's (a base from before --countries) in less than 3g. The corpus-shape specs need the row's heap -- the US's
-# over 4g -- and run after the resolve.
+# The base ratchet's heap, beside the head's session: a country's capture replays in 1.5g (Germany's, the largest), every
+# country's (a base from before --countries) in less than 3g.
 ratchet_heap=${TAKES_RATCHET_HEAP:-3g}
 # <phase> <how>: the seconds since SECONDS was last reset, as a row of <out>/timings.tsv (uploaded with the check's
 # output) -- scripts/identity-measure prints them per country, so a slow measurement says which phase was slow and
 # whether a stored result spared it.
 timing() { printf '%s\t%s\t%s\n' "$1" "$SECONDS" "$2" >> "$out/timings.tsv"; }
-rm -rf "$tree" "$resolving"
+rm -rf "$tree"
 : > "$out/verdict.txt"
 printf 'phase\tseconds\thow\n' > "$out/timings.tsv"
 model=0 final=0 shape=0
 
-if [ -n "$takes_moves" ]; then
-  beside "$resolving" "$head" || exit 2
-  resolve_started=$(date +%s)
-  dump "$resolving" "$out/head" > "$out/head-resolve.out" 2>&1 &
-  resolve_pid=$!
-  trap 'kill "$resolve_pid" 2> /dev/null' EXIT # an exit before its wait below leaves no resolve behind (best effort)
+# THE FINAL TAKES: the resolve's decisions are the MODEL's, before the agreement stage reads them again -- 9c8170f5e's
+# range moved 213 UK listings in prod (and three right DE takes) with them at 0/0/0. The unmatched-cluster ratchet replays
+# the model AND the agreement stage over the checked-in capture and its families' answers; run by the head and by the base
+# over the head's capture, its takes are diffed as the decisions are. The base reads the head's capture: one input.
+# A lookup the capture lacks -- one a change newly asks (a relay's season search, a Rotten Tomatoes record) -- is read
+# as UNKNOWN here (the ratchet's --measure), as identity-slice reads a recording gap, and listed: failed as a stale
+# capture, it left EVERY country without final takes (run 38694072183: one UK RT record). The ratchet itself, outside
+# a measurement, still fails a capture that lacks them. Measuring, its exit is whether it wrote the takes -- their diff,
+# below, is the verdict. Only this row's country is replayed (--countries): the diff reads only its takes, and the other
+# four captures were most of every row's replay.
+corpus="$here/test/resources/fixtures/corpus" fixtures="$here/test/resources/fixtures"
+ratchet_args="--measure --out target/identity-unmatched"
+ratchet_out() { # <checkout> <out file>: what a ratchet run in <checkout> wrote, beside <out file>
+  cp "$1/target/identity-unmatched/capture-gaps.tsv" "$(dirname "$2")/capture-gaps.tsv" 2>/dev/null
+  cp "$1/target/identity-unmatched/ratchet-takes.tsv" "$2" 2>/dev/null
+}
+# A BASE's ratchet, in the base's checkout: one from before the ratchet was a tool runs it as the spec it was, whose
+# exit was its own verdict -- there the takes file alone says it ran; one from before --countries replays every capture.
+ratchet() { # <checkout> <out file>
+  rm -f "$1/target/identity-unmatched/ratchet-takes.tsv" "$1/target/identity-unmatched/capture-gaps.tsv"
+  mkdir -p "$(dirname "$2")"
+  local tool="$1/worker/src/test/scala/scripts/UnmatchedClustersRatchet.scala" scope=""
+  grep -q '"countries"' "$tool" 2>/dev/null && scope=" --countries $cc"
+  if [ -f "$tool" ]; then
+    ( cd "$1" && sbt -J-Xmx"$ratchet_heap" "worker/Test/runMain scripts.UnmatchedClustersRatchet $ratchet_args$scope" > "$2.log" 2>&1 ) \
+      || { echo "::warning::identity takes ($cc): the ratchet exited $? ($2.log)"; return 1; }
+  else
+    ( cd "$1" && KINOWO_RATCHET_CAPTURE_GAPS_UNKNOWN=1 \
+        sbt -J-Xmx"$ratchet_heap" "worker/Test/testOnly services.identity.UnmatchedClustersRatchetSpec" > "$2.log" 2>&1 )
+  fi
+  ratchet_out "$1" "$2"
+}
+gaps_of() { # <side>: this country's gaps the side's final takes read as unknown, said with up to five of them
+  local file="$out/$1/capture-gaps.tsv" n
+  [ -f "$file" ] || return 0
+  n=$(awk -F'\t' -v cc="$cc" 'NR > 1 && $1 == cc' "$file" | wc -l | tr -d ' ')
+  [ "$n" -gt 0 ] || return 0
+  echo "identity takes ($cc): the $1's final takes read $n lookup(s) the capture lacks as UNKNOWN -- a blind spot of this" \
+    "measurement, not a failure (re-capture to close it): $(awk -F'\t' -v cc="$cc" 'NR > 1 && $1 == cc { printf "%s%s %s", sep, $2, $3; sep = "; " }' "$file" \
+    | cut -c1-400)" | tee -a "$out/verdict.txt" ${GITHUB_STEP_SUMMARY:+"$GITHUB_STEP_SUMMARY"}
+}
+# THE CORPUS SHAPE (above): the specs' findings over the recording this row replays, at the head and at the base; a finding
+# fails the specs themselves, so their exit is not the verdict -- the findings files are (no file: the specs did not run).
+shape_found() { # <checkout> <out dir>: the findings a shape run in <checkout> wrote, into <out dir>
+  mkdir -p "$2"
+  cp "$1"/target/convergence-diagnostics/corpus-shape-recorded-"$cc"-*.txt "$2/" 2>/dev/null
+}
+shape_run() { # <checkout> <out dir>
+  rm -f "$1"/target/convergence-diagnostics/corpus-shape-recorded-"$cc"-*.txt
+  mkdir -p "$2"
+  ( cd "$1" && KINOWO_IDENTITY_CORPUS_DIR="$corpus" "${IDENTITY_SBT[@]}" -J-Xmx"$heap" "$shape_command" > "$2.log" 2>&1 )
+  shape_found "$1" "$2"
+}
+shape_key() { # <sha>: the findings' inputs -- the checks' code and allowlists, and the recording
+  printf '%s\n' "$(git ls-tree -r "$1" -- "${shape_paths[@]}" | sha256sum | cut -c1-24)" "$cc" \
+    "${KINOWO_CONVERGENCE_PIN_CORPUS_RUN:-}" | sha256sum | cut -c1-24
+}
 
-  # THE FINAL TAKES: the decisions the resolve writes are the MODEL's, before the agreement stage reads them again -- 9c8170f5e's range
-  # moved 213 UK listings in prod (and three right DE takes) with them at 0/0/0. The unmatched-cluster ratchet replays the
-  # model AND the agreement stage over the checked-in capture and its families' answers; run by the head and by the base
-  # over the head's capture, its takes are diffed as the decisions are. The base reads the head's capture: one input.
-  # A lookup the capture lacks -- one a change newly asks (a relay's season search, a Rotten Tomatoes record) -- is read
-  # as UNKNOWN here (the ratchet's --measure), as identity-slice reads a recording gap, and listed: failed as a stale
-  # capture, it left EVERY country without final takes (run 38694072183: one UK RT record). The ratchet itself, outside
-  # a measurement, still fails a capture that lacks them. Measuring, its exit is whether it wrote the takes -- their diff,
-  # below, is the verdict. A checkout from before the ratchet was a tool runs it as the spec it was, whose exit was its
-  # own verdict: there the takes file alone says it ran. Only this row's country is replayed (--countries) where the
-  # tool can: the diff reads only its takes, and the other four captures were most of every row's replay.
-  ratchet() { # <checkout> <out file>
-    rm -f "$1/target/identity-unmatched/ratchet-takes.tsv" "$1/target/identity-unmatched/capture-gaps.tsv"
-    mkdir -p "$(dirname "$2")"
-    local tool="$1/worker/src/test/scala/scripts/UnmatchedClustersRatchet.scala" scope=""
-    grep -q '"countries"' "$tool" 2>/dev/null && scope=" --countries $cc"
-    if [ -f "$tool" ]; then
-      ( cd "$1" && sbt -J-Xmx"$ratchet_heap" "worker/Test/runMain scripts.UnmatchedClustersRatchet --measure --out target/identity-unmatched$scope" > "$2.log" 2>&1 ) \
-        || { echo "::warning::identity takes ($cc): the ratchet exited $? ($2.log)"; return 1; }
-    else
-      ( cd "$1" && KINOWO_RATCHET_CAPTURE_GAPS_UNKNOWN=1 \
-          sbt -J-Xmx"$ratchet_heap" "worker/Test/testOnly services.identity.UnmatchedClustersRatchetSpec" > "$2.log" 2>&1 )
-    fi
-    cp "$1/target/identity-unmatched/capture-gaps.tsv" "$(dirname "$2")/capture-gaps.tsv" 2>/dev/null
-    cp "$1/target/identity-unmatched/ratchet-takes.tsv" "$2" 2>/dev/null
-  }
-  gaps_of() { # <side>: this country's gaps the side's final takes read as unknown, said with up to five of them
-    local file="$out/$1/capture-gaps.tsv" n
-    [ -f "$file" ] || return 0
-    n=$(awk -F'\t' -v cc="$cc" 'NR > 1 && $1 == cc' "$file" | wc -l | tr -d ' ')
-    [ "$n" -gt 0 ] || return 0
-    echo "identity takes ($cc): the $1's final takes read $n lookup(s) the capture lacks as UNKNOWN -- a blind spot of this" \
-      "measurement, not a failure (re-capture to close it): $(awk -F'\t' -v cc="$cc" 'NR > 1 && $1 == cc { printf "%s%s %s", sep, $2, $3; sep = "; " }' "$file" \
-      | cut -c1-400)" | tee -a "$out/verdict.txt" ${GITHUB_STEP_SUMMARY:+"$GITHUB_STEP_SUMMARY"}
-  }
-  SECONDS=0 replayed=0
-  ratchet "$here" "$out/head/ratchet-takes.tsv" || final=2
-  timing head-final replayed; replayed=$SECONDS; SECONDS=0
-  [ "$final" = 0 ] && keep "$out/head/ratchet-takes.tsv" "$(asset final "$(capture_key "$head")")"
-  if [ "$final" = 0 ] && reused "$(asset final "$(capture_key "$base")")" "$out/base/ratchet-takes.tsv" "the base final takes"; then
+# THE BASE'S FINAL TAKES, stored or replayed in the base's checkout BESIDE the head's session below: they read nothing
+# the head writes, and the session leaves the runner's other cores idle most of its time.
+if [ -n "$takes_moves" ]; then
+  mkdir -p "$out/head" "$out/base"
+  SECONDS=0
+  if reused "$(asset final "$(capture_key "$base")")" "$out/base/ratchet-takes.tsv" "the base final takes"; then
     echo "identity takes ($cc): base final takes reused"
     timing base-final reused
-  elif [ "$final" = 0 ]; then
+  else
     base_tree || exit 2
     cp "$here"/test/resources/fixtures/identity-unmatched/*.json.gz "$here"/test/resources/fixtures/identity-unmatched/*.inputs \
        "$tree/test/resources/fixtures/identity-unmatched/" 2>/dev/null
-    ratchet "$tree" "$out/base/ratchet-takes.tsv" || final=2
-    timing base-final replayed
+    base_started=$(date +%s)
+    ratchet "$tree" "$out/base/ratchet-takes.tsv" > "$out/base-final.out" 2>&1 &
+    base_final_pid=$!
+    trap 'kill "$base_final_pid" 2> /dev/null' EXIT # an exit before its wait below leaves no replay behind (best effort)
+  fi
+fi
+
+# THE HEAD IN ONE sbt: its final takes, its resolve and its corpus shape, each a command of one JVM. Each its own sbt
+# was a JVM start, a project load and a cold JIT apiece -- the head ratchet's 1-2 minutes were mostly that, the replay
+# seconds. sbt stops at a command that fails (a tool's exit takes the JVM with it), so each command's "[success]" is
+# what says it ran: the ratchet first (seconds, and the resolve is no verdict without it), the corpus shape last (its
+# specs FAIL on a finding, which is no failure here).
+head_commands=()
+[ -n "$takes_moves" ] && head_commands+=("worker/IntegrationTest/runMain scripts.UnmatchedClustersRatchet $ratchet_args --countries $cc"
+  "worker/IntegrationTest/runMain integration.IdentityResolveDump --out $out/head --full $cc --corpus-dir $corpus --fixtures $fixtures")
+[ -n "$shape_moves" ] && head_commands+=("$shape_command")
+if [ "${#head_commands[@]}" -gt 0 ]; then
+  rm -f "$here/target/identity-unmatched/ratchet-takes.tsv" "$here/target/identity-unmatched/capture-gaps.tsv" \
+        "$here"/target/convergence-diagnostics/corpus-shape-recorded-"$cc"-*.txt
+  mkdir -p "$out/head"
+  SECONDS=0
+  ( cd "$here" && KINOWO_IDENTITY_CORPUS_DIR="$corpus" "${IDENTITY_SBT[@]}" -J-Xmx"$heap" "${head_commands[@]}" > "$out/head.log" 2>&1 )
+  session=$?
+  grep -E '\[full-|\[ratchet\]|error|Total time' "$out/head.log"
+  # each command's seconds, in order: sbt's "[success] Total time: N s" after every command that succeeded
+  took=()
+  while read -r t; do took+=("$t"); done < <(sed 's/\x1b\[[0-9;]*m//g' "$out/head.log" | sed -n 's/^\[success\] Total time: \([0-9]*\) s.*/\1/p')
+  echo "identity takes ($cc): the head's session ran in ${SECONDS}s (sbt exit $session)"
+fi
+
+if [ -n "$takes_moves" ]; then
+  if [ "${#took[@]}" -ge 1 ]; then
+    ratchet_out "$here" "$out/head/ratchet-takes.tsv"
+    SECONDS=${took[0]}; timing head-final replayed
+    keep "$out/head/ratchet-takes.tsv" "$(asset final "$(capture_key "$head")")"
+  else
+    echo "::warning::identity takes ($cc): the ratchet exited $session ($out/head.log)"; final=2
+  fi
+  if [ "${#took[@]}" -ge 2 ] && [ -s "$out/head/decisions-$cc.jsonl" ]; then
+    SECONDS=${took[1]}; timing head-resolve resolved
+    keep "$out/head/decisions-$cc.jsonl" "$(asset decisions "$(decisions_key "$head")")"
+  else
+    echo "::warning::identity takes ($cc): the resolve exited $session (its log: $out/head.log)"; exit 2
+  fi
+  if [ -n "${base_final_pid:-}" ]; then
+    wait "$base_final_pid" || final=2
+    cat "$out/base-final.out"
+    SECONDS=$(( $(date +%s) - base_started )); timing base-final replayed
     [ "$final" = 0 ] && keep "$out/base/ratchet-takes.tsv" "$(asset final "$(capture_key "$base")")" base
   fi
-  echo "identity takes ($cc): final takes replayed in $((replayed + SECONDS))s, beside the head's resolve"
   gaps_of head; gaps_of base
-
-  wait "$resolve_pid"; resolved=$?
-  cat "$out/head-resolve.out"
-  git worktree remove --force "$resolving" || true
-  [ "$resolved" = 0 ] || { echo "::warning::identity takes ($cc): the head resolved nothing"; exit 2; }
-  SECONDS=$(( $(date +%s) - resolve_started ))
-  echo "identity takes ($cc): head resolved in ${SECONDS}s"
-  timing head-resolve resolved
-  keep "$out/head/decisions-$cc.jsonl" "$(asset decisions "$(decisions_key "$head")")"
 
   SECONDS=0
   if reused "$(asset decisions "$(decisions_key "$base")")" "$out/base/decisions-$cc.jsonl" "the base resolve"; then
@@ -319,23 +365,10 @@ else
   echo "identity takes ($cc): no identity code changed since $base -- no take can have moved" | tee -a "$out/verdict.txt"
 fi
 
-# THE CORPUS SHAPE (above): the specs' findings over the recording this row replays, at the head and at the base; a finding
-# fails the specs themselves, so their exit is not the verdict -- the findings files are (no file: the specs did not run).
-shape_run() { # <checkout> <out dir>
-  rm -f "$1"/target/convergence-diagnostics/corpus-shape-recorded-"$cc"-*.txt
-  mkdir -p "$2"
-  ( cd "$1" && KINOWO_IDENTITY_CORPUS_DIR="$here/test/resources/fixtures/corpus" \
-      "${IDENTITY_SBT[@]}" -J-Xmx"$heap" "$shape_command" > "$2.log" 2>&1 )
-  cp "$1"/target/convergence-diagnostics/corpus-shape-recorded-"$cc"-*.txt "$2/" 2>/dev/null
-}
-shape_key() { # <sha>: the findings' inputs -- the checks' code and allowlists, and the recording
-  printf '%s\n' "$(git ls-tree -r "$1" -- "${shape_paths[@]}" | sha256sum | cut -c1-24)" "$cc" \
-    "${KINOWO_CONVERGENCE_PIN_CORPUS_RUN:-}" | sha256sum | cut -c1-24
-}
 if [ -n "$shape_moves" ]; then
-  SECONDS=0 shaped=0
-  if shape_run "$here" "$out/head/shape"; then
-    timing head-shape ran; shaped=$SECONDS; SECONDS=0
+  shape_found "$here" "$out/head/shape"
+  if [ -n "$(ls "$out/head/shape" 2>/dev/null)" ]; then
+    SECONDS=${took[${#took[@]}-1]:-0}; timing head-shape ran; shaped=$SECONDS; SECONDS=0
     tar -cf "$out/head/shape.tar" -C "$out/head/shape" . && keep "$out/head/shape.tar" "$(asset shape "$(shape_key "$head")")"
     if reused "$(asset shape "$(shape_key "$base")")" "$out/base/shape.tar" "the base corpus-shape findings"; then
       mkdir -p "$out/base/shape" && tar -xf "$out/base/shape.tar" -C "$out/base/shape"

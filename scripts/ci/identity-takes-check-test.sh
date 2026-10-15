@@ -111,9 +111,9 @@ printf 'country\tvenue\trawTitle\tfilm\tverdict\tstate\tscope\tfilmTitle\treason
 cp "$(dirname "$script")"/identity_*.py "$(dirname "$script")/gh-release.sh" "$work/job/scripts/ci/"
 cat > "$work/bin/sbt" <<'SBT'
 #!/usr/bin/env bash
-# The sbt command is the last argument; the tools' flags are read from it, the specs' variables from the environment.
-command=${*: -1}
-read -ra words <<< "$command"
+# Every argument not a flag is an sbt command, run in order as sbt runs them: "[success]" after each, and the first that
+# fails (a tool's exit, which takes sbt's JVM with it) ends the run. The tools' flags are read from the command, the
+# specs' variables from the environment.
 flag() { local i; for i in "${!words[@]}"; do [ "${words[$i]}" = "$1" ] && { echo "${words[$((i + 1))]:-yes}"; return; }; done; }
 called() { echo "$(pwd -P) $1" >> "$SBT_CALLS"; }
 decisions() { # <dir> <cc>
@@ -129,6 +129,7 @@ takes() { # <gaps read as unknown: 1 or empty>
   fi
   printf 'country\tvenue\trawTitle\tstatus\tfilm\ttitle\tbasis\npl\tv\tt\tRIGHT\ttmdb:1\tF\tb\n' > target/identity-unmatched/ratchet-takes.tsv
 }
+run_one() {
 case "$command" in
   *"runMain integration.IdentityResolveDump "*)
     called dump-tool; decisions "$(flag --out)" "$(flag --full)"; [ -z "${STUB_DUMP_EXIT:-}" ] || exit "$STUB_DUMP_EXIT" ;;
@@ -140,7 +141,14 @@ case "$command" in
   *UnmatchedClustersRatchetSpec*)
     called ratchet-spec; takes "${KINOWO_RATCHET_CAPTURE_GAPS_UNKNOWN:-}" ;;
 esac
-echo "[success] Total time: 1 s"
+}
+pwd -P >> "$SBT_CALLS.runs"
+for command in "$@"; do
+  case "$command" in -*) continue ;; esac
+  read -ra words <<< "$command"
+  run_one
+  echo "[success] Total time: 1 s"
+done
 SBT
 chmod +x "$work/bin/sbt"
 # gh: the history stub above, plus a release kept in $work/release.
@@ -157,7 +165,7 @@ esac
 GH
 chmod +x "$work/bin/gh"
 store_run() { # <head>: the check of <head>, on main, storing on the release
-  rm -rf "$work/out" "$work/identity-takes-base"; : > "$work/sbt-calls"
+  rm -rf "$work/out" "$work/identity-takes-base"; : > "$work/sbt-calls"; : > "$work/sbt-calls.runs"
   (cd "$work/job" && PATH="$work/bin:$PATH" GITHUB_REPOSITORY=o/r GITHUB_SHA=$1 GITHUB_REF=${REF-refs/heads/main} RUNNER_TEMP=$work \
     SBT_CALLS="$work/sbt-calls" TAKES_STORE=fixtures KINOWO_CONVERGENCE_PIN_CORPUS_RUN=${PIN-42} "$script" pl "$work/out" > "$work/log" 2>&1)
 }
@@ -166,12 +174,11 @@ code=0; TAKES_BASE=$c4 store_run "$c5" || code=$?
 check "with nothing stored, the base is checked out and resolved" 2 "$(base_calls)"
 check "...and the check passes on the same takes" 0 "$code"
 check "...and the head's decisions and final takes, and the base's it resolved, are stored" 4 "$(ls "$work/release" | wc -l | tr -d ' ')"
-check "...each phase timed, saying which it resolved" "phase:how head-final:replayed base-final:replayed head-resolve:resolved base-resolve:resolved " \
+check "...each phase timed, saying which it resolved" "phase:how head-final:replayed head-resolve:resolved base-final:replayed base-resolve:resolved " \
   "$(cut -f1,3 "$work/out/timings.tsv" | tr '\t\n' ': ')"
 check "...and why the base was not stored" 1 "$(grep -c 'the base resolve not stored -- takes-decisions-pl-.* not on release fixtures: resolving it' "$work/log")"
 check "...the head resolving and replaying with the tools" "dump-tool ratchet-tool" "$(grep -v identity-takes-base "$work/sbt-calls" | cut -d' ' -f2 | sort | xargs)"
-check "...the head resolving in a checkout of its own, beside the replay in the job's" "identity-takes-head job" \
-  "$(grep -v identity-takes-base "$work/sbt-calls" | sort -k2 | cut -d' ' -f1 | xargs -n1 basename | xargs)"
+check "...both in one sbt" 1 "$(grep -vc identity-takes-base "$work/sbt-calls.runs")"
 check "...its base, from before them, with the specs they were" "dump-spec ratchet-spec" "$(grep identity-takes-base "$work/sbt-calls" | cut -d' ' -f2 | sort | xargs)"
 code=0; STUB_DUMP_EXIT=1 TAKES_BASE=$c4 store_run "$c5" || code=$?
 check "a resolve that fails, whatever it wrote, is no verdict" "2 1" "$code $(grep -c 'the resolve exited 1' "$work/log")"
@@ -267,15 +274,20 @@ cp "$(dirname "$script")/corpus_shape_diff.py" "$work/job/scripts/ci/"
 mv "$work/bin/sbt" "$work/bin/sbt-takes"
 cat > "$work/bin/sbt" <<'SBT'
 #!/usr/bin/env bash
-case "$*" in
-  *corpusShapePoland*)
-    pwd -P >> "$SBT_CALLS"
-    mkdir -p target/convergence-diagnostics
-    case "$(pwd -P)" in *identity-takes-base*) findings=$SHAPE_BASE ;; *) findings=$SHAPE_HEAD ;; esac
-    printf '%b' "$findings" > target/convergence-diagnostics/corpus-shape-recorded-pl-SearchQueryMarkers.txt
-    exit 1 ;; # a finding fails the specs themselves: their exit is never the verdict
-  *) exec "$(dirname "$0")/sbt-takes" "$@" ;;
-esac
+# the corpus-shape command here, every other one by the takes stub -- in order, each in one sbt
+flags=(); for a in "$@"; do case "$a" in -*) flags+=("$a") ;; esac; done
+for command in "$@"; do
+  case "$command" in
+    -*) ;;
+    *corpusShapePoland*)
+      pwd -P >> "$SBT_CALLS"
+      mkdir -p target/convergence-diagnostics
+      case "$(pwd -P)" in *identity-takes-base*) findings=$SHAPE_BASE ;; *) findings=$SHAPE_HEAD ;; esac
+      printf '%b' "$findings" > target/convergence-diagnostics/corpus-shape-recorded-pl-SearchQueryMarkers.txt
+      exit 1 ;; # a finding fails the specs themselves: their exit is never the verdict
+    *) "$(dirname "$0")/sbt-takes" "${flags[@]}" "$command" || exit ;;
+  esac
+done
 SBT
 chmod +x "$work/bin/sbt"
 arrietty='finding\tCineworld Barnsley\tArrietty (4K Restoration) Experience It In IMAX\tsearches it (4k)\n'
