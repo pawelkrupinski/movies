@@ -394,7 +394,7 @@ object IdentityResolver {
   def resolveScored(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer,
                     calibration: IdentityCalibration = IdentityCalibration.resolver): Scored = {
     val stages = new Stages(listings, lookups, normalizer, calibration, Mutation.None, PinConstraints(Nil), TitleDecorations.resolver)
-    new Scored(run(stages, Mutation.None, pieces = false), stages)
+    new Scored(run(stages, Mutation.None, pieces = false, corroborated = false), stages)
   }
 
   /** The corpus-wide facts a resolve of `listings` reads ([[CorpusContext]]): what one family,
@@ -459,8 +459,10 @@ object IdentityResolver {
   }
 
   /** `pieces`: whether a member billing its cluster's film as one piece beside another thing is decided apart, as no film
-   *  ([[billedAsPiece]]) — the model's own takes; not a family's verdict ([[resolveScored]]). */
-  private def run(stages: Stages, mutation: Mutation, pieces: Boolean = true): Resolution = {
+   *  ([[billedAsPiece]]) — the model's own takes; not a family's verdict ([[resolveScored]]). `corroborated`: whether a
+   *  member no fact of its own corroborates is decided apart too ([[Corroboration.refused]]) — the model's own takes; a
+   *  family's verdict refuses only an evidenced namesake's. */
+  private def run(stages: Stages, mutation: Mutation, pieces: Boolean = true, corroborated: Boolean = true): Resolution = {
     import stages.{acceptance, families, generation, links, ordered, scoring}
     import generation.{answers, candidateOf, details, issued, nodeById, nodes, records}
     import families.{familyOf, scopes}
@@ -553,7 +555,7 @@ object IdentityResolver {
         }.toMap ++ film.filterNot(_ => pinned || !pieces).toSeq.flatMap(_ => IdentityResolver.besideItsScreening(unbilled)).toMap
         val placed = unbilled.filterNot(piecesOf.contains)
         // a member nothing of its own corroborates the film by, nor a member billed alike or title-linked to one
-        val weak   = film.filterNot(_ => pinned).toSeq.flatMap(Corroboration.refused(placed, _, scope.of, familyEdges, backed)).toMap
+        val weak   = film.filterNot(_ => pinned).toSeq.flatMap(Corroboration.refused(placed, _, scope.of, familyEdges, backed, corroborated)).toMap
         val rest   = placed.filterNot(weak.contains)
         if ((bills.isEmpty && piecesOf.isEmpty && weak.isEmpty) || film.isEmpty)
           Seq(decisions.of(cluster, scope, filmOf, accepted, votes, familyEdges, clusterIndex))

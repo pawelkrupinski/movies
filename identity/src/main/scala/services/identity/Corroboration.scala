@@ -108,9 +108,14 @@ private[identity] object Corroboration {
    *  facts — and [[EvidencedNamesake]] at least ([[support]]) — that namesake: ES Bahia Mar's bare "ESCAPE ROOM 2" beside
    *  the 2026 film the venues crediting Claramunt take, UK Savoy's "Home Alone (Pyjama Party)" pooled to "Home Alone 3".
    *  Measured 2026-10-15 without the `current release` fact: 46 wrong takes cured, ~2,000 lost (402 judged right) — most
-   *  of them a current release billed by its bare title, which that fact now corroborates. */
+   *  of them a current release billed by its bare title, which that fact now corroborates.
+   *
+   *  `corroborated` false — a review family's verdict (`agreement.Agreement.verdict`), whose take is that database's VOTE,
+   *  not the listing's film — refuses only the node an evidenced namesake disputes: a bare title its databases agree on
+   *  is the agreement's corroboration to weigh, and refused there it took the right fill from DE "Newborn", which its
+   *  Cineamo id links. */
   def refused(cluster: Seq[EvidenceNode], film: Int, scored: EvidenceNode => Seq[Scored], edges: Seq[ResolverEdge],
-              support: Map[Int, Int]): Seq[(EvidenceNode, String)] = {
+              support: Map[Int, Int], corroborated: Boolean = true): Seq[(EvidenceNode, String)] = {
     val own = cluster.map(node => node -> scored(node).find(_.candidate.tmdbId == film).fold(Seq.empty[String])(facts(node, _, scored(node)))).toMap
     def titles(node: EvidenceNode) = node.listings.flatMap(listing => Seq(listing.title, listing.cleanTitle) ++ listing.searchTitle).map(IdentityMeasures.key).toSet
     val ids    = cluster.map(_.id).toSet
@@ -141,7 +146,7 @@ private[identity] object Corroboration {
         case (id, reason) if reason == ConstraintEdges.SameCatalogueId || !disputed.contains(id) => id
       }.filter(vouched.add)
     }
-    cluster.filterNot(node => vouched(node.id)).map(node => node ->
+    cluster.filterNot(node => vouched(node.id) || !corroborated && !disputed.contains(node.id)).map(node => node ->
       (s"uncorroborated: no year, director, original title, discriminating runtime, feed id, season or current release of its own names tmdb $film" +
         disputed.get(node.id).fold("")(why => s", and $why")))
   }
