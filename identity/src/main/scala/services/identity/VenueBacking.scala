@@ -2,18 +2,15 @@ package services.identity
 
 import services.identity.IdentityMeasures.*
 
-/** Who backs a film from a title group: the listing's venue, and whose claim its facts are — the venue's own, or the feed
- *  entry they were copied from (`SourceReliability.claimOf`) — kept as one string per group entry. A venue's own claim
- *  is the venue's name itself, no new string per listing for the corpus's life; a feed's is `venue` and `source` joined
- *  by [[Backer.Join]]. */
+/** Who backs a film from a title group: the ORIGIN of a listing's facts — its venue's own statement, keyed by the venue's
+ *  name itself, or the feed entry they were copied from (`SourceReliability.claimOf`), keyed by that entry's claim, one
+ *  string every venue it lists shares. Held for every listing for the corpus's life, so neither costs a string per
+ *  listing: one feed entry at a hundred venues is one origin and one string. */
 object Backer {
-  val Join = '\u0001'
-  def apply(venue: String, source: String): String = if (source == venue) venue else s"$venue$Join$source"
-  def venue(key: String): String  = { val at = key.indexOf(Join); if (at < 0) key else key.substring(0, at) }
-  def source(key: String): String = { val at = key.indexOf(Join); if (at < 0) key else key.substring(at + 1) }
+  def apply(venue: String, source: String): String = if (source == venue) venue else source.intern()
 }
 
-/** The venues backing a film for every asker of the same title groups, each group's backing venues
+/** The origins backing a film for every asker of the same title groups, each group's backing origins
  *  of a film found once: a wide release lists one title at thousands of venues over one candidate
  *  pool, and asking per member re-reads the whole group per member. A group no venue lists (an
  *  undecorated title nobody lists bare) backs nothing. One per resolve or calibration pass; not
@@ -26,14 +23,17 @@ final class VenueBacking(groups: Map[String, Seq[(String, Listing)]]) {
   private def backing(titleGroups: Seq[String], f: Film): Iterator[String] =
     titleGroups.iterator.flatMap(group => memo.getOrElseUpdate(group, new java.util.IdentityHashMap[Film, Set[String]]())
       .computeIfAbsent(f, film => VenueBacking.backers(film, groups.getOrElse(group, Nil))))
-  /** The venues of `titleGroups` (a listing's [[titleGroups]]) other than `ownVenue` backing `f`. */
-  def corroborating(titleGroups: Seq[String], f: Film, ownVenue: String): Int =
-    (backing(titleGroups, f).map(Backer.venue).toSet - ownVenue).size
-  /** The SOURCES of `titleGroups` other than `ownSource` backing `f` ([[Backer.source]]): a feed entry's facts, copied
-   *  onto every venue it lists, are one claim, counted once — what a feed's own link is weighed against
+  /** The ORIGINS of `titleGroups` (a listing's [[titleGroups]]) backing `f` besides the listing's own — its venue's own
+   *  statement, `ownVenue`, and the claim its facts are, `ownSource` ([[Backer]]): the `venues.corroborating` measure. A
+   *  feed entry's facts back a film once however many venues it copies them onto: US "NT Live: Hamlet" at Burns Court
+   *  Sarasota counted Film Streams Omaha's listing as a second venue dating it 2015, when both read the one Flicks page
+   *  that dated it so; DE "The Killer"'s remake was backed by six venues carrying two feed entries' facts. */
+  def corroborating(titleGroups: Seq[String], f: Film, ownVenue: String, ownSource: String): Int =
+    (backing(titleGroups, f).toSet - ownVenue - ownSource).size
+  /** The ORIGINS of `titleGroups` other than `ownSource` backing `f`: what a feed's own link is weighed against
    *  (`services.identity.FeedLink`). */
   def sources(titleGroups: Seq[String], f: Film, ownSource: String): Int =
-    (backing(titleGroups, f).map(Backer.source).toSet - ownSource).size
+    (backing(titleGroups, f).toSet - ownSource).size
 }
 
 object VenueBacking {

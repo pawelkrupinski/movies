@@ -45,6 +45,20 @@ class SourceReliabilitySpec extends AnyFlatSpec with Matchers {
     SourceReliability.venueOnly(own) shouldBe true
   }
 
+  "A listing's claim" should "be one per origin: a feed entry's however many venues it lists, else the venue's own" in {
+    val elsewhere = listing(models.Rialto, "To The Bone")
+    val webedia   = Seq(CatalogueId("webedia", "227420"))
+    SourceReliability.claimOf(own.copy(catalogueIds = webedia)) shouldBe SourceReliability.claimOf(elsewhere.copy(catalogueIds = webedia))
+    SourceReliability.claimOf(own) shouldBe own.venue
+    SourceReliability.claimOf(elsewhere) should not be SourceReliability.claimOf(own)
+    // US Burns Court Sarasota and Film Streams Omaha read ONE Flicks page for "NT Live: Hamlet", its 2015 year
+    // Cumberbatch's: one claim, not one per venue
+    val hamlet = Some("https://www.flicks.us/movie/nt-live-hamlet/")
+    SourceReliability.claimOf(own.copy(page = hamlet)) shouldBe SourceReliability.claimOf(elsewhere.copy(page = hamlet))
+    SourceReliability.claimOf(own.copy(page = hamlet)) should not be
+      SourceReliability.claimOf(own.copy(page = Some("https://www.flicks.us/movie/hamlet-2026/")))
+  }
+
   "A feed's id" should "name its TMDB film when the feed is TMDB-keyed, and decide nothing alone" in {
     val linked = own.copy(catalogueIds = Seq(CatalogueId(CatalogueSources.Cineamo, "9695m")))
     SourceReliability.tmdbLinked(linked) shouldBe Some(CatalogueId(CatalogueSources.Cineamo, "9695m") -> 9695)

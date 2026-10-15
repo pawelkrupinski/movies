@@ -395,8 +395,22 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     val candyman = Film("Candyman", year = Some(1992), directors = Some(Seq("Bernard Rose")))
     val other    = Film("Paperhouse", year = Some(1988), directors = Some(Seq("Bernard Rose")))
     val backing  = new VenueBacking(Map("candyman" -> group))
-    backing.corroborating(Seq("candyman"), candyman, "Venue 1") shouldBe 4
-    backing.corroborating(Seq("candyman"), other, "Venue 1") shouldBe 0
+    backing.corroborating(Seq("candyman"), candyman, "Venue 1", "Venue 1") shouldBe 4
+    backing.corroborating(Seq("candyman"), other, "Venue 1", "Venue 1") shouldBe 0
+  }
+
+  it should "count a feed entry's facts once, however many venues it copies them onto" in {
+    // DE "The Killer": Webedia's entry 131724 and kinoheld's page "the-killer-" each date it 2024 and credit John Woo at
+    // several venues — two claims of the remake, not one per venue; a venue's own statement stays its own
+    val woo     = Film("The Killer", year = Some(2024), directors = Some(Seq("John Woo")))
+    val copy    = Listing("The Killer", year = Some(2024), directors = Seq("John Woo"))
+    val group   = Seq(Backer("Rex", "c:webedia:131724") -> copy, Backer("Bambi", "c:webedia:131724") -> copy,
+      Backer("Lichtblick", "c:webedia:131724") -> copy, Backer("Savoy", "p:https://www.kinoheld.de/film/the-killer-") -> copy,
+      Backer("Cinenova", "p:https://www.kinoheld.de/film/the-killer-") -> copy, "Metropolis" -> copy)
+    val backing = new VenueBacking(Map("the killer" -> group))
+    backing.corroborating(Seq("the killer"), woo, "Elsewhere", "Elsewhere") shouldBe 3
+    // the asking listing's own claim backs nothing beside it: a venue of the Webedia entry has the kinoheld page and Metropolis
+    backing.corroborating(Seq("the killer"), woo, "Rex", "c:webedia:131724") shouldBe 2
   }
 
   "a group's venue backing" should "count, for every member and film, what a backing that never asked before counts" in {
@@ -408,8 +422,8 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     }
     val backing = new VenueBacking(Map("candyman" -> group))
     for (f <- films; (venue, _) <- group :+ ("Elsewhere" -> Listing("Candyman")))
-      withClue(s"$venue ${f.year}")(backing.corroborating(Seq("candyman"), f, venue) shouldBe
-        new VenueBacking(Map("candyman" -> group)).corroborating(Seq("candyman"), f, venue))
+      withClue(s"$venue ${f.year}")(backing.corroborating(Seq("candyman"), f, venue, venue) shouldBe
+        new VenueBacking(Map("candyman" -> group)).corroborating(Seq("candyman"), f, venue, venue))
   }
 
   it should "count nothing for a title group no venue lists" in {
@@ -419,7 +433,7 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     val groups    = IdentityMeasures.titleGroups(decorated)
     groups should contain (IdentityMeasures.key("Pucio"))
     val backing = new VenueBacking(Map(IdentityMeasures.key(decorated.title) -> Seq("Kino 1" -> decorated)))
-    backing.corroborating(groups, Film("Pucio", year = Some(2026)), "Kino 2") shouldBe 0
+    backing.corroborating(groups, Film("Pucio", year = Some(2026)), "Kino 2", "Kino 2") shouldBe 0
   }
 
   "a title's billing" should "be the work two titles share and how each spells its house, and a banner's house the one most of its works name" in {
@@ -495,8 +509,8 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.searchGroups(konesera, rose) shouldBe Seq("roza")
     val plain   = Seq("Rialto", "Apollo").map(venue => venue -> Listing("Róża", year = Some(2026), directors = Seq("Markus Schleinzer")))
     val backing = new VenueBacking(Map("roza" -> plain))
-    backing.corroborating(IdentityMeasures.titleGroups(konesera), rose, "Oskard") shouldBe 0
-    backing.corroborating(IdentityMeasures.titleGroups(konesera) ++ IdentityMeasures.searchGroups(konesera, rose), rose, "Oskard") shouldBe 2
+    backing.corroborating(IdentityMeasures.titleGroups(konesera), rose, "Oskard", "Oskard") shouldBe 0
+    backing.corroborating(IdentityMeasures.titleGroups(konesera) ++ IdentityMeasures.searchGroups(konesera, rose), rose, "Oskard", "Oskard") shouldBe 2
     // a search form that is no title of the film names no group: "ANDRÉ RIEU - NIECH ŻYJE MAASTRICHT!", searched
     // as "André Rieu", is not "André Rieu - Love in Maastricht"
     IdentityMeasures.searchGroups(Listing("ANDRÉ RIEU - NIECH ŻYJE MAASTRICHT!", searchTitles = Seq("André Rieu")),
@@ -1097,7 +1111,7 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.namesFilm(Listing("Cineworld 30: The Matrix"), Film("The Matrix")) shouldBe true
     // So no venue's own facts back the original on a sequel's title.
     val group = Seq("a", "b").map(_ -> listing.copy(directors = Seq("Tobe Hooper")))
-    new VenueBacking(Map("sequel" -> group)).corroborating(Seq("sequel"), original.copy(directors = Some(Seq("Tobe Hooper"))), "") shouldBe 0
+    new VenueBacking(Map("sequel" -> group)).corroborating(Seq("sequel"), original.copy(directors = Some(Seq("Tobe Hooper"))), "", "") shouldBe 0
   }
 
   "a listing that publishes nothing but its title" should "be told from one that publishes a fact" in {

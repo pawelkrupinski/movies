@@ -177,16 +177,20 @@ object SourceReliability {
 
   /** Whose claim `listing`'s facts are, for counting the sources that back a film ([[VenueBacking]]): the
    *  feed entry they were copied from — one claim however many venues the feed lists it at: its id, or its page's last
-   *  segment (kinoprogramm.com serves one entry under every venue's path) — else its venue's own: the venue's name itself,
+   *  segment (kinoprogramm.com serves one entry under every venue's path; a listings site's entry page, Flicks', is one
+   *  page every venue it lists links, whether or not its facts were read off it yet) — else its venue's own: the venue's name itself,
    *  so the corpus's title groups hold no new string for a venue's own claim ([[Backer]]). A feed's
    *  claim is keyed "c:…" or "p:…", no venue's name. */
-  def claimOf(listing: Listing): String =
-    listing.catalogueIds.find(id => byId(id).isDefined).map(_.key)
-      .orElse(listing.page.flatMap(page => Feeds.iterator.flatMap(_.recognition match {
+  def claimOf(listing: Listing): String = claimOf(listing.catalogueIds, listing.page, listing.venue)
+  /** [[claimOf]] of the listing at `venue` carrying `catalogueIds` and `page` — what the calibration's observations hold. */
+  def claimOf(catalogueIds: Seq[CatalogueId], page: Option[String], venue: String): String =
+    catalogueIds.find(id => byId(id).isDefined).map(_.key)
+      .orElse(page.flatMap(page => Others.iterator.flatMap(_.recognition match {
         case Recognition.Pages(prefixes) => prefixes.find(page.startsWith)
+        case Recognition.EntryPages(prefixes) => prefixes.find(page.startsWith)
         case _                           => None
-      }).nextOption().map(prefix => s"p:$prefix${page.reverse.takeWhile(_ != '/').reverse}")))
-      .getOrElse(listing.venue)
+      }).nextOption().map(prefix => s"p:$prefix${page.stripSuffix("/").reverse.takeWhile(_ != '/').reverse}")))
+      .getOrElse(venue)
 
   /** `listing` with only the facts its source states with `trust` — the others empty: a reader weighing the venues' own
    *  facts reads `stated(listing, Decide)`, one weighing a feed's claim `stated(listing, Support)`. A listing whose every
