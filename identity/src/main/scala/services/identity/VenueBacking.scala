@@ -29,6 +29,11 @@ final class VenueBacking(groups: Map[String, Seq[(String, Listing)]]) {
   /** The venues of `titleGroups` (a listing's [[titleGroups]]) other than `ownVenue` backing `f`. */
   def corroborating(titleGroups: Seq[String], f: Film, ownVenue: String): Int =
     (backing(titleGroups, f).map(Backer.venue).toSet - ownVenue).size
+  /** How many venues of `titleGroups` other than `ownVenue` back `f` on their OWN claim — facts no feed copied onto them
+   *  ([[Backer]]): what may back a namesake past the release veto, where a feed entry's claim, copied onto every venue
+   *  it lists, would back its entry at all of them. */
+  def ownClaims(titleGroups: Seq[String], f: Film, ownVenue: String): Int =
+    (backing(titleGroups, f).filter(key => Backer.source(key) == Backer.venue(key)).map(Backer.venue).toSet - ownVenue).size
   /** The SOURCES of `titleGroups` other than `ownSource` backing `f` ([[Backer.source]]): a feed entry's facts, copied
    *  onto every venue it lists, are one claim, counted once — what a feed's own link is weighed against
    *  (`services.identity.FeedLink`). */

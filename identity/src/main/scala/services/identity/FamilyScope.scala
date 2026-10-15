@@ -27,7 +27,8 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
    *  (`CandidateScoring.evidenceDenial`), which are never eligible. */
   def score(listing: IdentityMeasures.Listing, venue: String, ranks: Map[Int, Int], walked: Set[Int], shared: Set[Int],
             deniedByNode: Int => Option[String], suggested: Set[Int] = Set.empty, directedBy: Set[Int] = Set.empty,
-            imdbTitles: Map[Int, Set[String]] = Map.empty, country: Option[String] = None, linked: Set[Int] = Set.empty): Seq[Scored] = {
+            imdbTitles: Map[Int, Set[String]] = Map.empty, country: Option[String] = None, linked: Set[Int] = Set.empty,
+            decided: Option[IdentityMeasures.Listing] = None): Seq[Scored] = {
     counted()
     val related    = pool.map(candidate => candidate.tmdbId -> titleRelation(listing, candidate)).toMap
     // The ONE film IMDb lists under the listing's title (an AKA TMDB does not carry), when no film beside it carries the
@@ -70,9 +71,20 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
     // A namesake the venue's country never saw released, beside one it did, that nothing backs is denied, and no
     // rival in the evidence class of the namesakes left ([[ReleaseVeto]]). A namesake here is a film the title names
     // EXACTLY: an original or alternative title is the venue's spelling of another language's film, not its own.
+    // What backs a namesake past the veto is a fact its source DECIDES ([[SourceReliability]]): the listing's facts
+    // a feed did not copy (`decided`), another venue's own claim — never a feed entry's claim, however many venues it is
+    // copied onto. DE City-Kinos' "The Killer" [2024] {John Woo} [125′], Filmstarts' entry for Woo's streaming-only 2024
+    // remake, took it beside the 1989 film whose 4K restoration seven venues date and Germany saw released.
+    def ownFacts(scored: Scored): Boolean = decided.fold(acceptance.weights.factsSupport(scored)) { stated =>
+      val candidate = scored.candidate
+      acceptance.weights.factsSupport(scored.copy(measures = IdentityMeasures.creditedByTitle(stated, candidate.film, IdentityMeasures.creditedBySearch(
+        IdentityMeasures.listingFilmTitled(stated, candidate.film, ranks.get(candidate.tmdbId), 0, 0, relationOf(candidate.tmdbId), country),
+        directedBy(candidate.tmdbId)))))
+    }
     val vetoed = country.fold(Map.empty[Int, String])(ReleaseVeto.of(_, measured, scored =>
       relation(scored.candidate.tmdbId) == "exact" && !onlySuggested(scored.candidate.tmdbId),
-      scored => scored.number("venues.corroborating").exists(_ > 0) || acceptance.weights.factsSupport(scored)))
+      scored => backing.ownClaims((groups ++ IdentityMeasures.searchGroups(listing, scored.candidate.film)).distinct, scored.candidate.film, venue) > 0 ||
+        ownFacts(scored)))
     val candidates = if (vetoed.isEmpty) measured else measured.map { scored =>
       val id = scored.candidate.tmdbId
       if (vetoed.contains(id)) scored.copy(denial = scored.denial.orElse(vetoed.get(id)))
@@ -208,6 +220,22 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
    *  were the link's, restated — else its own. */
   def evidenceOf(node: EvidenceNode): Evidence = if (overruled(node).isEmpty) node.evidence else node.evidence.titlesOnly
 
+  /** `node`'s evidence ([[evidenceOf]]) with only the facts their source DECIDES ([[SourceReliability.Trust.Decide]]) —
+   *  a fact the listing states read as its own source's, one only its page states as the page's — or `None` when every
+   *  fact it holds is so: what may back a film past the release veto. */
+  private[identity] def decidedOf(node: EvidenceNode): Option[IdentityMeasures.Listing] = {
+    import SourceReliability.Fact
+    val listing = node.listings.head
+    val stated  = evidenceOf(node)
+    def decides(fact: Fact, ownField: Boolean) = SourceReliability.decides(if (ownField) listing else listing.copy(pageFacts = true), fact)
+    val decided = stated.copy(
+      year          = stated.year.filter(_ => decides(Fact.Year, listing.year.isDefined)),
+      directors     = if (decides(Fact.Directors, listing.directors.nonEmpty)) stated.directors else Nil,
+      runtime       = stated.runtime.filter(_ => decides(Fact.Runtime, listing.runtime.isDefined)),
+      originalTitle = stated.originalTitle.filter(_ => decides(Fact.OriginalTitle, listing.originalTitle.isDefined)))
+    Option.when(decided != stated)(decided.measured)
+  }
+
   /** What `node`'s own queries reached, as this scope reads its evidence ([[evidenceOf]]): an overruled link's node only
    *  what its titles' queries did — a search for the original title the feed copied is the link's own pull, restated. DE
    *  Cineamo's "Mira", linked to a record TMDB no longer holds, copied the original title "Last Signal", whose search
@@ -225,7 +253,8 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
   def of(node: EvidenceNode): Seq[Scored] = memo.getOrElseUpdate(node.id,
     { val reached = reach(node)
       score(evidenceOf(node).measured, node.venue, reached.search, reached.walk, sharedOf(node),
-        id => denialByNode(node, id), reached.imdbOnly, reached.directed, reached.imdbTitled, node.country, feedLinked(node).map(_._2).toSet).map(placedByImdb(Seq(node)))
+        id => denialByNode(node, id), reached.imdbOnly, reached.directed, reached.imdbTitled, node.country, feedLinked(node).map(_._2).toSet,
+        decidedOf(node)).map(placedByImdb(Seq(node)))
         .map(scored => if (reached.soleResults(scored.candidate.tmdbId)) scored.copy(soleResult = true) else scored)
         .map(scored => reached.imdbTitled.get(scored.candidate.tmdbId).fold(scored)(titles => scored.copy(imdbTitled = titles))) })
 

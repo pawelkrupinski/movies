@@ -1993,6 +1993,11 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
       IdentityResolver.resolve(Seq(l), new FilmTable(films, normalizer), normalizer, withTopHitClass(0.5)).decisionOf(l.key).film
     // The year the venue states is the unreleased namesake's: it is not vetoed, and stays a rival.
     film(listing(Rialto, "Obcy w domu", year = Some(1989)), Seq(released, namesake)) should not be Some(923171)
+    // A year a feed copied from its catalogue entry is that entry's claim, not the venue's: it backs nothing past the veto.
+    // DE City-Kinos' "The Killer" [2024] {John Woo} [125′], Filmstarts' entry for Woo's streaming-only 2024 remake, which
+    // TMDB dates no German release of, while the 1989 film it re-releases is
+    film(listing(Rialto, "Obcy w domu", year = Some(1989)).copy(catalogueIds = Seq(CatalogueId(CatalogueSources.Webedia.source, "131724"))),
+      Seq(released, namesake)) should not be Some(56669)
     // A namesake whose release dates are unknown vetoes nothing.
     film(listing(Rialto, "Obcy w domu"), Seq(released, namesake.copy(releaseCountries = None))) shouldBe None
     // Neither is released in the venue's country: nothing to tell them apart by.
