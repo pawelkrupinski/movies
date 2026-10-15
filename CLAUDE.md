@@ -519,7 +519,7 @@ has every flag; name these tools in every subagent brief.
   still takes it so → `scripts/label-lookup`
 - A capture run's ratchet findings as a table → `scripts/identity-ratchet-report`
 - Judging unjudged takes → `scripts/identity-judge-cards`
-- Whole-corpus measure before landing a resolver change → `scripts/identity-measure`
+- Whole-corpus measure before landing a resolver change → `scripts/identity-measure` (reuses an earlier run of the same change when main moved only outside the convergence paths; `--fresh` to dispatch)
 - Re-tune identity-weights.json on the ratchet (the weekly refit, its checks and snapshots) → `scripts/identity-refit`
   (`secrets run movies TMDB_API_KEY -- scripts/identity-refit`, in your own worktree)
 

@@ -23,6 +23,8 @@ printf 'country\tvenue\trawTitle\tfilm\tverdict\tstate\tscope\tfilmTitle\treason
   > "$repo/test/resources/fixtures/identity-judgements.tsv"
 printf 'pl\t*\tLalka\ttmdb:1\tright\topen\t\t\t\t2026-10-14\t\n' >> "$repo/test/resources/fixtures/identity-judgements.tsv"
 echo "phase: convergence" > "$repo/.github/workflows/country-convergence-leg.yml"
+# What can change a leg's verdict, in the matches.sh dialect: the resolver (rule.txt, engine/**) and the judgements.
+printf '# the paths\nrule.txt\nengine/**\ntest/resources/fixtures/identity-judgements.tsv\n' > "$repo/.github/convergence-paths.txt"
 echo "old" > "$repo/scripts/ci/identity-takes-check.sh"
 scratch_git "$repo" add -A && scratch_git "$repo" commit -qm "old main, before takes-only"
 old=$(scratch_git "$repo" rev-parse HEAD)
@@ -41,6 +43,7 @@ artifact() { # <dir> <lose?>
   local d="$1/identity-takes-pl"
   mkdir -p "$d/base" "$d/head"
   echo "identity takes (pl): lost ${2:-0}" > "$d/verdict.txt"
+  echo "$parent" > "$d/base.txt"
   echo '{"key":"Helios|Lalka","venue":"Helios","rawTitle":"Lalka","film":1,"filmTitle":"Lalka (2026)","basis":"OwnMatch","explanation":[],"blocker":null,"suspect":[]}' > "$d/base/decisions-pl.jsonl"
   if [ -n "${2:-}" ]; then
     echo '{"key":"Helios|Lalka","venue":"Helios","rawTitle":"Lalka","film":null,"filmTitle":null,"basis":"none","explanation":[],"blocker":"no film","suspect":[]}' > "$d/head/decisions-pl.jsonl"
@@ -109,7 +112,8 @@ chmod +x "$work/bin/git"
 
 measure() { # <artifact> <args...>: exit code; output in $work/out
   local art=$1; shift
-  rm -rf "$work/stub" "$work/cache"; mkdir -p "$work/stub"
+  rm -rf "$work/stub"; mkdir -p "$work/stub"
+  [ -n "${KEEP_CACHE:-}" ] || rm -rf "$work/cache"
   ( cd "$repo" && STUB="$work/stub" ORIGIN="$origin" ARTIFACT="$work/$art" HEAD_SHA="${HEAD_SHA:-}" \
       KINOWO_IDENTITY_CACHE="$work/cache" IDENTITY_MEASURE_POLL=0 PATH="$work/bin:$PATH" \
       "$REPO_ROOT/scripts/identity-measure" "$@" > "$work/out" 2>&1 )
@@ -188,6 +192,50 @@ check "...leaving no branch" "0" "$(measure_branches)"
 for f in "$origin"/refs/heads/measure/*; do
   [ -f "$f" ] && scratch_git "$repo" push -q origin --delete "refs/heads/measure/$(basename "$f")"
 done
+
+# REUSE: a branch measured once, then rebased onto a main that moved, is collected again -- not dispatched -- when the
+# change is the same and main moved outside the convergence paths.
+dispatched() { [ -f "$work/stub/dispatch" ] && echo true || echo false; }
+on_main() { # <file> <content>: a commit on origin's main
+  scratch_git "$repo" checkout -q main && mkdir -p "$(dirname "$repo/$1")" && echo "$2" > "$repo/$1" && scratch_git "$repo" add "$1" \
+    && scratch_git "$repo" commit -qm "main: $1" && scratch_git "$repo" push -q origin main
+}
+branch_onto_main() { # <rule content>: the one-commit feature branch, (re)made on main's tip
+  scratch_git "$repo" checkout -q -B feature main && echo "$1" > "$repo/rule.txt" \
+    && scratch_git "$repo" commit -qam "feature: a resolver change"
+}
+rm -rf "$work/cache"
+branch_onto_main "rule v2"
+check "a first measurement of a change dispatches" "0" "$(KEEP_CACHE=1 measure landable --countries pl)"
+check "...a run" "true" "$(dispatched)"
+on_main docs.txt "a doc"; branch_onto_main "rule v2"
+check "the change rebased onto a main moved outside the convergence paths is answered" "0" \
+  "$(KEEP_CACHE=1 measure landable --countries pl)"
+check "...without a dispatch" "false" "$(dispatched)"
+check "...or a measure/ branch" "0" "$(measure_branches)"
+check "...saying which run it reused, and why" "true" \
+  "$(grep -q 'REUSED measurement of run 777 (base [0-9a-f]*, same change, main moved only outside convergence paths)' "$work/out" && echo true || echo false)"
+check "...with the same verdict" "true" "$(grep -q '^LANDABLE' "$work/out" && echo true || echo false)"
+check "--fresh dispatches all the same" "0" "$(KEEP_CACHE=1 measure landable --fresh --countries pl)"
+check "...a run" "true" "$(dispatched)"
+# Main judges Lalka wrong since: the judgements move no take, so the run is reused (collecting classifies with the head's).
+sed -i.bak 's/\tright\topen\t/\twrong\topen\t/' "$repo/test/resources/fixtures/identity-judgements.tsv"
+rm -f "$repo/test/resources/fixtures/identity-judgements.tsv.bak"
+scratch_git "$repo" checkout -q main && scratch_git "$repo" commit -qam "main: Lalka judged wrong" && scratch_git "$repo" push -q origin main
+branch_onto_main "rule v2"
+check "main moved only its judgements: reused" "false" "$(KEEP_CACHE=1 measure landable --countries pl > /dev/null; dispatched)"
+on_main engine/match.txt "a resolver change on main"; branch_onto_main "rule v2"
+check "main moved inside the convergence paths: dispatched" "true" "$(KEEP_CACHE=1 measure landable --countries pl > /dev/null; dispatched)"
+branch_onto_main "rule v3"
+check "the change itself changed: dispatched" "true" "$(KEEP_CACHE=1 measure landable --countries pl > /dev/null; dispatched)"
+scratch_git "$repo" checkout -q main
+# A run collected with --run (after --no-wait) is stored too: its base from the artifact, its head the run's commit.
+rm -rf "$work/cache"
+scratch_git "$repo" push -q origin "$tip:refs/heads/measure/abc-1"
+KEEP_CACHE=1 HEAD_SHA=$tip measure lost --run 777 --countries pl > /dev/null
+check "a run collected with --run answers its change later" "1" "$(KEEP_CACHE=1 measure landable "$tip" --base "$parent" --countries pl)"
+check "...without a dispatch" "false" "$(dispatched)"
+check "...the same base" "true" "$(grep -q 'REUSED measurement of run 777 (base [0-9a-f]*, same change, the same base)' "$work/out" && echo true || echo false)"
 
 # SIGTERM (Ctrl-C alike) while waiting on the run: the run is cancelled and the branch deleted.
 rm -rf "$work/stub" "$work/cache"; mkdir -p "$work/stub"

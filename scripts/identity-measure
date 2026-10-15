@@ -10,14 +10,15 @@
 # (scripts/identity_measure.py) and prints LANDABLE or NOT LANDABLE.
 #
 # usage: scripts/identity-measure [<commit-or-branch>] [--base <sha>] [--countries pl,uk,de,us,es] [--keep-branch]
-#                                 [--no-wait] [--full] [--json] [--timeout <minutes>]
+#                                 [--no-wait] [--full] [--fresh] [--json] [--timeout <minutes>]
 #        scripts/identity-measure --run <run id> [--countries ...] [--keep-branch] [--json]
 #   <commit>       default HEAD (uncommitted changes are NOT measured: commit them first)
 #   --base         default the commit's merge-base with origin/main; the commit's parent when it is on main already
 #   --countries    the countries reported and judged (every leg runs: the workflow's matrix is fixed)
 #   --keep-branch  leave the temporary branch on origin
 #   --no-wait      dispatch, print the run, keep the branch, and exit: collect later with --run <id> (which deletes it)
-#   --full         run the whole convergence suite, not only the takes rows
+#   --full         run the whole convergence suite, not only the takes rows (never reused, never stored)
+#   --fresh        dispatch even when an earlier measurement of the same change answers it (below)
 #   --json         machine output (scripts/identity_measure.py --json)
 #   --run          collect an existing run instead (its identity-takes-<cc> artifacts); deletes its measure/ branch
 #
@@ -26,6 +27,17 @@
 # success, failure, Ctrl-C (which also cancels the run) alike. Pushed with --no-verify: it never lands. A commit
 # whose workflows predate the takes-only dispatch gets main's .github/ and scripts/ci/ laid over it in a commit of
 # its own (no identity path: the check diffs only identity code, so the measured code is the commit's).
+#
+# REUSE. A measurement is the takes rows' base and head resolves over the pinned recording, classified HERE with the
+# judgements. An earlier run of (B0, H0) answers (B1, H1) -- collected again, no push, no dispatch -- when
+#   - the change is the same: `git patch-id --stable` of B..H over the files under .github/convergence-paths.txt (the
+#     paths that can change a leg's verdict; tests and docs are not among them) is equal, AND
+#   - main moved only outside them: `git diff B0 B1` touches none (matched by .github/actions/changed-paths/matches.sh,
+#     as kick-convergence.sh matches them), so the base resolves alike and, the same patch over it, the head too.
+# identity-judgements.tsv is left out of both: it moves no take, and collecting classifies with the head's own. A run is
+# reused for at most IDENTITY_MEASURE_REUSE_HOURS (default 24): the pinned recording is renewed nightly, and a fresh
+# dispatch measures over the newest. Stored per change under <cache>/measure/reuse/<patch-id>/<base>, written whole
+# (temp file + mv), only for a run whose takes artifacts are downloaded in the cache -- by a measurement or a --run.
 #
 # THE LANE. A run from any branch but main has a convergence lane of its own (identity-model-convergence.yml's
 # concurrency): it replaces no one's waiting run and waits behind no other measurement, only for runners. A run cancelled anyway
@@ -36,7 +48,7 @@ set -uo pipefail
 
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 workflow=identity-model-convergence.yml
-ref="" base="" countries="pl,uk,de,us,es" keep="" nowait="" full="" json="" run="" timeout_min=120
+ref="" base="" countries="pl,uk,de,us,es" keep="" nowait="" full="" fresh="" json="" run="" timeout_min=120
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --base) base=$2; shift ;;
@@ -44,6 +56,7 @@ while [ "$#" -gt 0 ]; do
     --keep-branch) keep=1 ;;
     --no-wait) nowait=1 ;;
     --full) full=1 ;;
+    --fresh) fresh=1 ;;
     --json) json=1 ;;
     --run) run=$2; shift ;;
     --timeout) timeout_min=$2; shift ;;
@@ -151,6 +164,56 @@ timings() { # <run id> <artifacts dir>
   done
 }
 
+# ── reuse: an earlier measurement of the same change, main moved only outside the convergence paths ─────────────────
+reuse_root=${KINOWO_IDENTITY_CACHE:-$HOME/.cache/kinowo-identity}/measure/reuse
+# The convergence paths at <ref>, judgements excluded (matches.sh's `!`), as a patterns file; empty when <ref> has none.
+convergence_patterns() { # <ref> -> file
+  local f; f=$(mktemp)
+  if git show "$1:.github/convergence-paths.txt" > "$f" 2> /dev/null; then
+    echo '!test/resources/fixtures/identity-judgements.tsv' >> "$f"; echo "$f"
+  else rm -f "$f"; fi
+}
+in_convergence_paths() { "$here/../.github/actions/changed-paths/matches.sh" "$1"; } # <patterns> < paths -> true|false
+# The change B..H as one patch-id over its convergence-path files; "empty" when it touches none of them.
+change_id() { # <base> <head> <patterns>
+  local files=() f id
+  while IFS= read -r f; do
+    [ -n "$f" ] && [ "$(printf '%s\n' "$f" | in_convergence_paths "$3")" = true ] && files+=("$f")
+  done < <(git diff --name-only --no-renames "$1" "$2")
+  [ "${#files[@]}" -gt 0 ] || { echo empty; return; }
+  id=$(git diff --no-renames "$1" "$2" -- "${files[@]}" | git patch-id --stable | cut -d' ' -f1)
+  [ -n "$id" ] && echo "$id"
+}
+# store_measurement <base> <head> <run id>: the run answers this change from this base, written whole.
+store_measurement() {
+  local patterns id dir part
+  [ -f "${KINOWO_IDENTITY_CACHE:-$HOME/.cache/kinowo-identity}/measure/$3/downloaded" ] || return 0
+  patterns=$(convergence_patterns "$1"); [ -n "$patterns" ] || return 0
+  id=$(change_id "$1" "$2" "$patterns"); rm -f "$patterns"
+  [ -n "$id" ] || return 0
+  dir=$reuse_root/$id; mkdir -p "$dir"
+  part=$(mktemp "$dir/.$1.XXXXXX") && printf '%s\t%s\t%s\n' "$3" "$2" "$(date +%s)" > "$part" && mv -f "$part" "$dir/$1"
+}
+# find_measurement <base> <head> -> "<run> <stored base>" of a stored measurement answering it; 1 when none does.
+find_measurement() {
+  local patterns id entry b0 run h0 at now max moved
+  patterns=$(convergence_patterns "$1"); [ -n "$patterns" ] || return 1
+  id=$(change_id "$1" "$2" "$patterns")
+  [ -n "$id" ] && [ -d "$reuse_root/$id" ] || { rm -f "$patterns"; return 1; }
+  now=$(date +%s) max=$(( ${IDENTITY_MEASURE_REUSE_HOURS:-24} * 3600 ))
+  for entry in $(ls -t "$reuse_root/$id"); do
+    b0=$entry
+    IFS=$'\t' read -r run h0 at < "$reuse_root/$id/$entry" || continue
+    [ $((now - at)) -le "$max" ] || continue
+    [ -f "${KINOWO_IDENTITY_CACHE:-$HOME/.cache/kinowo-identity}/measure/$run/downloaded" ] || continue
+    git cat-file -e "$b0^{commit}" 2> /dev/null || continue
+    moved=$(git diff --name-only --no-renames "$b0" "$1" | in_convergence_paths "$patterns") || continue
+    [ "$moved" = false ] || continue
+    rm -f "$patterns"; echo "$run $b0"; return 0
+  done
+  rm -f "$patterns"; return 1
+}
+
 if [ -n "$run" ]; then
   view=$(ghb run view "$run" --json status,headBranch,headSha --jq '[.status, .headBranch, .headSha] | @tsv') \
     || die "could not read run $run"
@@ -158,7 +221,15 @@ if [ -n "$run" ]; then
   [ "$status" = completed ] || { say "run $run is $status: collect it once it completes"; exit 2; }
   case "$run_branch" in measure/*) branch=$run_branch ;; esac
   collect "$run" "$run_sha" checkout
-  exit $?
+  verdict=$?
+  # A takes-only measure run is stored for reuse: its base from the artifact, its head the commit (not main's CI laid
+  # over it). A run whose head this clone lacks is not.
+  run_base=$(cat "${KINOWO_IDENTITY_CACHE:-$HOME/.cache/kinowo-identity}/measure/$run"/artifacts/identity-takes-*/base.txt 2> /dev/null | head -1)
+  if [ "$verdict" -le 1 ] && [ -n "$branch" ] && [ -n "$run_base" ] && git cat-file -e "$run_sha^{commit}" 2> /dev/null; then
+    [[ "$(git log -1 --format=%s "$run_sha")" == "measure: origin/main's CI over "* ]] && run_sha=$(git rev-parse "$run_sha^")
+    store_measurement "$run_base" "$run_sha" "$run"
+  fi
+  exit $verdict
 fi
 
 # ── measure: push, dispatch, wait, collect ────────────────────────────────────────────────────────
@@ -169,6 +240,16 @@ if [ -z "$base" ]; then
   [ "$base" = "$commit" ] && base=$(git rev-parse "$commit^")
 fi
 base=$(git rev-parse --verify -q "$base^{commit}") || die "no base commit $base"
+
+if [ -z "$fresh$full" ] && found=$(find_measurement "$base" "$commit"); then
+  read -r reused_run reused_base <<< "$found"
+  if [ "$reused_base" = "$base" ]; then how="the same base"; else how="main moved only outside convergence paths"; fi
+  say "REUSED measurement of run $reused_run (base ${reused_base:0:9}, same change, $how) -- --fresh to dispatch"
+  say "commit $(git log --oneline -1 "$commit")"
+  say "base   $(git log --oneline -1 "$base")"
+  collect "$reused_run" "$commit"
+  exit $?
+fi
 
 # The commit's own workflows must know the takes-only dispatch and upload the check's output; an older commit gets
 # main's laid over it.
@@ -233,3 +314,6 @@ done
 finished=1
 say "run $measured_run: $conclusion"
 collect "$measured_run" "$commit"
+verdict=$?
+[ "$verdict" -gt 1 ] || [ -n "$full" ] || [ "$conclusion" = cancelled ] || store_measurement "$base" "$commit" "$measured_run"
+exit $verdict
