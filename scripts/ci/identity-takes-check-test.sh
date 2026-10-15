@@ -34,6 +34,7 @@ mkdir -p "$work/bin"
 cat > "$work/bin/gh" <<EOF
 #!/usr/bin/env bash
 [ -n "\${HISTORY_FAILS:-}" ] && { echo "HTTP 502" >&2; exit 1; }
+[ -n "\${HISTORY_HANGS:-}" ] && exec sleep 30
 state() { cat "$work/status-\$1" 2>/dev/null || echo -; }
 case "\$*" in
   "api repos/o/r/commits/"*) short="\${2##*/}"; for c in $c1 $c2 $c3; do [ "\${c#\$short}" != "\$c" ] && { echo "\$c"; exit 0; }; done
@@ -69,6 +70,10 @@ rm "$work/status-$c2"
 
 code=0; HISTORY_FAILS=1 run || code=$?
 check "a failed history read stops the check" "$code" 2
+started=$SECONDS
+code=0; HISTORY_HANGS=1 IDENTITY_TAKES_GH_TIMEOUT=1 run || code=$?
+check "a history read that hangs is cut off, and stops the check" "$code" 2
+check "...within its bound" "$([ $((SECONDS - started)) -lt 15 ] && echo yes || echo "no: $((SECONDS - started))s")" yes
 
 # Run 38533191835 was dispatched with takes-base=c2974e3aa: a fetch asks for a FULL object name, so every leg failed to
 # fetch it -- and passed. A short base is expanded through the API; one naming no commit, or one the fetch cannot reach,
@@ -142,6 +147,12 @@ check "...and the head's decisions and final takes, and the base's it resolved, 
 check "...each phase timed, saying which it resolved" "$(cut -f1,3 "$work/out/timings.tsv" | tr '\t\n' ': ')" \
   "phase:how head-resolve:resolved base-resolve:resolved head-final:replayed base-final:replayed "
 check "...and why the base was not stored" "$(grep -c 'the base resolve not stored -- takes-decisions-pl-.* not on release fixtures: resolving it' "$work/log")" 1
+# (a mktemp that fails: macOS's ignores TMPDIR)
+mkdir -p "$work/no-tmp" && printf '#!/usr/bin/env bash\necho "mktemp: no temporary directory" >&2; exit 1\n' > "$work/no-tmp/mktemp"
+chmod +x "$work/no-tmp/mktemp"
+code=0; PATH="$work/no-tmp:$PATH" TAKES_BASE=$c4 store_run "$c5" || code=$?
+check "the check writes nothing outside its out dir: no temporary directory loses no verdict" \
+  "$code $(grep -c 'identity final takes (pl): 1 listings' "$work/out/verdict.txt")" "0 1"
 
 # A measure/ branch (scripts/identity-measure) stores the BASE it resolved -- main's commit, under a key naming its code
 # and inputs, never the ref -- and never its own head: the next measurement against the same base reuses it.

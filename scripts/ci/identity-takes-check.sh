@@ -50,6 +50,11 @@ context=${STATUS_CONTEXT:-identity takes ($cc)}
 heap=${HEAP:-6g}
 here=$(pwd)
 mkdir -p "$out"
+# shellcheck source=scripts/identity-tools.sh
+. "$(dirname "${BASH_SOURCE[0]}")/../identity-tools.sh" # IDENTITY_SBT, and tool-conventions.sh's `bounded`
+# Every gh call is bounded: a hung API read is no verdict (exit 2), never a row that waits out the job's own timeout.
+gh_read=${IDENTITY_TAKES_GH_TIMEOUT:-120}
+gh_download=${IDENTITY_TAKES_DOWNLOAD_TIMEOUT:-600}
 
 # The paths whose change can move a take. Anything else -- docs, the web, workflows -- cannot.
 identity_paths=(common/src/main identity/src/main worker/src/main worker/src/it/scala/IdentityResolveDumpIntegrationSpec.scala
@@ -59,7 +64,7 @@ identity_paths=(common/src/main identity/src/main worker/src/main worker/src/it/
 # `NEXT <cursor>` when there is more. GraphQL hands a commit's statuses with it: a page is one call, not 100.
 history_page() { # [cursor]
   local after=${1:+, after: \$cursor}
-  gh api graphql -f owner="${GITHUB_REPOSITORY%/*}" -f name="${GITHUB_REPOSITORY#*/}" -f expr="$head~1" \
+  bounded "$gh_read" gh api graphql -f owner="${GITHUB_REPOSITORY%/*}" -f name="${GITHUB_REPOSITORY#*/}" -f expr="$head~1" \
     ${1:+-f cursor="$1"} -f query="query(\$owner: String!, \$name: String!, \$expr: String!${1:+, \$cursor: String}) {
       repository(owner: \$owner, name: \$name) { object(expression: \$expr) { ... on Commit {
         history(first: 100$after) { pageInfo { hasNextPage endCursor }
@@ -96,7 +101,7 @@ pick_base() {
 dump() { # <checkout> <out dir>
   ( cd "$1" && KINOWO_IDENTITY_DUMP="$2" KINOWO_IDENTITY_FULL="$cc" \
       KINOWO_IDENTITY_CORPUS_DIR="$here/test/resources/fixtures/corpus" KINOWO_FIXTURE_ROOT="$here/test/resources/fixtures" \
-      sbt -J-Xmx"$heap" -J-Duser.language=en -J-Duser.country=US \
+      "${IDENTITY_SBT[@]}" -J-Xmx"$heap" \
         "worker/IntegrationTest/testOnly integration.IdentityResolveDumpIntegrationSpec" 2>&1 | tee "$2.log" | grep -E '\] \[full-|error|Total time' )
   [ -s "$2/decisions-$cc.jsonl" ]
 }
@@ -108,13 +113,13 @@ base=${TAKES_BASE:-$(pick_base)} || { echo "::error::identity takes ($cc): could
 # A base named by hand may be abbreviated ("c2974e3aa"), and a fetch asks the server for a FULL object name: run
 # 38533191835's every leg failed to fetch its short takes-base and passed unjudged. Expanded through the API first.
 if ! [[ "$base" =~ ^[0-9a-f]{40}$ ]]; then
-  full=$(gh api "repos/$GITHUB_REPOSITORY/commits/$base" --jq .sha) \
+  full=$(bounded "$gh_read" gh api "repos/$GITHUB_REPOSITORY/commits/$base" --jq .sha) \
     || { echo "::error::identity takes ($cc): no commit $base in $GITHUB_REPOSITORY" | tee "$out/verdict.txt"; exit 2; }
   base=$full
 fi
 echo "$base" > "$out/base.txt"
 echo "identity takes ($cc): base $base, head $head"
-git fetch -q --no-tags --depth=1 origin "$base" \
+bounded "$gh_download" git fetch -q --no-tags --depth=1 origin "$base" \
   || { echo "::error::identity takes ($cc): could not fetch base $base" | tee "$out/verdict.txt"; exit 2; }
 
 unchanged() { [ "$base" = "$head" ] || git diff --quiet "$base" "$head" -- "$@"; } # <paths...>
@@ -154,7 +159,7 @@ reused() { # <asset> <file> <what>: whether a stored result was fetched into <fi
   elif [ -z "$1" ]; then why="no key (no recording pinned)"
   else
     mkdir -p "$(dirname "$2")"
-    gh release download "$store" -p "$1" -O "$2.gz" --clobber > /dev/null 2>&1 && gunzip -f "$2.gz" && [ -s "$2" ] && return 0
+    bounded "$gh_download" gh release download "$store" -p "$1" -O "$2.gz" --clobber > /dev/null 2>&1 && gunzip -f "$2.gz" && [ -s "$2" ] && return 0
     why="$1 not on release $store"
   fi
   echo "identity takes ($cc): $3 not stored -- $why: resolving it"
@@ -169,7 +174,7 @@ keep() { # <file> <asset> [base]: store a result, never failing the check
   # release holds by then is the race lost to an equal result (the key names every input), not a store missing.
   if ! { gzip -c "$1" > "$RUNNER_TEMP/$2" && "$here/scripts/ci/gh-release.sh" upload "$store" "$RUNNER_TEMP/$2" --clobber > /dev/null; }; then
     # allow-silenced: a read that fails is no proof the asset is there, and falls through to the warning below.
-    if gh release view "$store" --json assets --jq ".assets[] | select(.name == \"$2\") | .name" 2> /dev/null | grep -qx "$2"; then
+    if bounded "$gh_read" gh release view "$store" --json assets --jq ".assets[] | select(.name == \"$2\") | .name" 2> /dev/null | grep -qx "$2"; then
       echo "identity takes ($cc): $2 was stored by another run meanwhile"
     else
       echo "::warning::identity takes ($cc): could not store $2 -- the next run resolves its base again"
@@ -179,7 +184,7 @@ keep() { # <file> <asset> [base]: store a result, never failing the check
   # Only the newest few of a kind are ever a base again; the rest go (best effort -- one left is pruned next time).
   local kind=${2#takes-}; kind=${kind%%-*}
   # allow-silenced: pruning is housekeeping -- a listing that fails to read prunes nothing now and everything next time.
-  gh release view "$store" --json assets --jq ".assets | map(select(.name | startswith(\"takes-$kind-$cc-\"))) \
+  bounded "$gh_read" gh release view "$store" --json assets --jq ".assets | map(select(.name | startswith(\"takes-$kind-$cc-\"))) \
       | sort_by(.createdAt) | reverse | .[8:][] | .name" 2>/dev/null \
     | while read -r stale; do "$here/scripts/ci/gh-release.sh" delete-asset "$store" "$stale" -y > /dev/null || true; done
 }
@@ -277,7 +282,7 @@ shape_run() { # <checkout> <out dir>
   rm -f "$1"/target/convergence-diagnostics/corpus-shape-recorded-"$cc"-*.txt
   mkdir -p "$2"
   ( cd "$1" && KINOWO_IDENTITY_CORPUS_DIR="$here/test/resources/fixtures/corpus" \
-      sbt -J-Xmx"$heap" -J-Duser.language=en -J-Duser.country=US "$shape_command" > "$2.log" 2>&1 )
+      "${IDENTITY_SBT[@]}" -J-Xmx"$heap" "$shape_command" > "$2.log" 2>&1 )
   cp "$1"/target/convergence-diagnostics/corpus-shape-recorded-"$cc"-*.txt "$2/" 2>/dev/null
 }
 shape_key() { # <sha>: the findings' inputs -- the checks' code and allowlists, and the recording
@@ -325,7 +330,9 @@ diff_takes() { # <base> <head> [--final]
     --base-name "${base:0:9}" --head-name "${head:0:9}" ${GITHUB_STEP_SUMMARY:+--summary "$GITHUB_STEP_SUMMARY"}
 }
 # The verdict's first line is the commit status's description: the takes' line when they ran, else the shape's.
-verdict=$(mktemp)
+# Beside the out dir, never in TMPDIR: nothing outside it to leak on an early exit, and no TMPDIR to fail on.
+verdict="$out/verdict.txt.part"
+: > "$verdict"
 if [ -n "$takes_moves" ]; then
   diff_takes "$out/base/decisions-$cc.jsonl" "$out/head/decisions-$cc.jsonl" | tee -a "$verdict"
   model=${PIPESTATUS[0]}
