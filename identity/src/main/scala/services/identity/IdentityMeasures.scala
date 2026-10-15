@@ -134,6 +134,10 @@ object IdentityMeasures {
         countries.nonEmpty || (originalTitle.exists(_.trim.nonEmpty) && !IdentityMeasures.repeatsItsTitle(this))
     /** The shapes as series and numbers (`numeralRelation`). */
     private[identity] lazy val numberedShapes: Seq[IdentityMeasures.Numbered] = shapes.map(IdentityMeasures.numbered)
+    /** The shapes of the BILLING alone, as series and numbers: without an original title that is but a spelling of it
+     *  ([[originalStandsApart]]), the copy whose number `numeralRelation` never takes over the billing's own. */
+    private[identity] lazy val numberedBilledShapes: Seq[IdentityMeasures.Numbered] =
+      if (originalStandsApart) numberedShapes else copy(originalTitle = None).numberedShapes
     /** The directors, and those credited beside the year, parsed once per listing (`directorRelation`). */
     private[identity] lazy val directorCredits: CreditRelation.Credits   = new CreditRelation.Credits(directors)
     /** Its search titles' [[IdentityMeasures.key]]s, in order: worked out once, not per film it is weighed against. */
@@ -813,7 +817,10 @@ object IdentityMeasures {
    *    originally "Coraline", is a dated spelling of the record's title, not a translation; and
    *  - it is no stage relay of another stage work than the record's ([[StageRelays.namesAnotherStageWork]]): DE Cinefactory's
    *    "MET Opera: Macbeth 2026", its original title copied from last season's Onegin, is no title of "MET Opera: Eugen
-   *    Onegin".
+   *    Onegin"; and
+   *  - it numbers no other instalment than the record's ([[numeralRelation]] `different`): DE UFA Palast's "League of
+   *    Legends Worlds 26 - Finals in Cinema", its original title copied from the 2025 final's "League of Legends
+   *    Worlds25 - Finals in Cinema", is no title of that record.
    *  Keyed by film id, each title once (its smallest spelling), sorted: a function of the two sets. */
   def venueTitles(listings: Iterable[Listing], films: Iterable[(Int, Film)]): Map[Int, Seq[String]] = {
     val translated = listings.iterator.flatMap(l => l.originalTitle.map(o => (key(l.title), key(o), l.title)))
@@ -825,7 +832,8 @@ object IdentityMeasures {
     val byOriginal = unanimous.toSeq.flatMap { case (t, o) =>
       filmsByKey.getOrElse(o, Nil).distinctBy(_._1) match {
         case Seq((id, f)) if !NamingRelations(titleRelation(Listing(spelling(t)), f).value) &&
-          !StageRelays.namesAnotherStageWork(Listing(spelling(t)), f) => Some(id -> spelling(t))
+          !StageRelays.namesAnotherStageWork(Listing(spelling(t)), f) &&
+          numeralRelation(Listing(spelling(t)), f) != Category("different") => Some(id -> spelling(t))
         case _ => None
       }
     }
@@ -988,9 +996,19 @@ object IdentityMeasures {
    *  names the film) or when no reading names the film's series (`unrelated`: the title relation
    *  weighs that). A remake, or a title whose number IS its name ("1917", "Se7en", "Ocean's
    *  Eleven"), has nothing to compare; nor has a house's SEASON record, whose relay a venue numbers by its season
-   *  (`season`: "RBO: Tosca 27" is "Royal Ballet & Opera 2026/27: Tosca"). */
+   *  (`season`: "RBO: Tosca 27" is "Royal Ballet & Opera 2026/27: Tosca"). An original title that is but a spelling of
+   *  the billing ([[Listing.originalStandsApart]]) never numbers it the film's way where the billing numbers itself
+   *  otherwise: a feed copies a search hit's title, number and all — DE UFA Palast's "League of Legends Worlds 26 -
+   *  Finals in Cinema" carried "League of Legends Worlds25 - Finals in Cinema", the 2025 final's record. */
   def numeralRelation(l: Listing, f: Film): Measure = {
-    lazy val related = for (a <- l.numberedShapes; b <- f.numberedTitles if sameSeries(a, b)) yield (a.numbers, b.numbers)
+    val relation = numeralRelation(l.numberedShapes, f)
+    if (relation == Category("same") && (l.numberedBilledShapes ne l.numberedShapes)) {
+      val billed = numeralRelation(l.numberedBilledShapes, f)
+      if (billed == Category("different")) billed else relation
+    } else relation
+  }
+  private def numeralRelation(shapes: Seq[Numbered], f: Film): Measure = {
+    lazy val related = for (a <- shapes; b <- f.numberedTitles if sameSeries(a, b)) yield (a.numbers, b.numbers)
     if (f.season.isDefined) Missing("season")
     else if (related.isEmpty) Missing("unrelated")
     else if (related.exists { case (a, b) => a.nonEmpty && a == b }) Category("same")
