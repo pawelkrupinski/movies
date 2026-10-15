@@ -68,10 +68,10 @@ object IdentityDecorationsLearn {
       s"an edge token run of listing titles whose remainder is another listing's whole title, for >= ${TitleDecorationsLearner.MinFilms} " +
         s"different remainders — or for one remainder that is a recorded film record's title exactly, at >= ${TitleDecorationsLearner.MinVenues} venues, " +
         "where the decorated title's own recorded searches found nothing and no longer record title runs on from the remainder into " +
-        "the run — that no recorded film record's title, original title or " +
-        "alternative title carries",
+        "the run, and the remainder is two words or five letters and the run ends in no number range — that no recorded film " +
+        "record's title, original title or alternative title carries, and that the resolver cuts off some title billing it",
       Map("listingTitles" -> titled.size, "venues" -> titled.map(_._1).distinct.size, "recordTitles" -> records.distinct.size),
-      TitleDecorationsLearner.accumulate(earlier, TitleDecorationsLearner.learn(titled, records, perCountry.flatMap(_._3)), records))
+      TitleDecorationsLearner.accumulate(earlier, TitleDecorationsLearner.learn(titled, records, perCountry.flatMap(_._3)), records, titled))
   }
 
   def write(artefact: TitleDecorations.Artefact, out: Path): Unit = {

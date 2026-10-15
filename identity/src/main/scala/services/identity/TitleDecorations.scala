@@ -23,7 +23,10 @@ import services.movies.TitleContainment
  *    Like Girls Unlimited Screening" beside the record "Girls Like Girls"; never "Friday the 13th
  *    (1980)" beside "Friday", whose title names the record "Friday the 13th", nor "Michael Mann's
  *    Manhunter: The Final Cut" beside "Michael", whose search finds "Manhunter", nor the double
- *    bill "Basia. Humor w paski mam + Kocia Szajka"); and
+ *    bill "Basia. Humor w paski mam + Kocia Szajka"), and the remainder says enough to be a film's
+ *    title — two words or five letters ("Rise Fly Fishing Film Tour" is no banner around "Tour") —
+ *    and the run ends in no number range ("Twilight Teil 1-5" bills five films); and
+ *  - the resolver cuts it off some title billing it ([[TitleDecorations.onePiece]]); and
  *  - no film record's title, original title or alternative title carries it anywhere: "OPERA",
  *    "Exhibition on Screen", "Throwback" and "The" are words TMDB titles use, so they are the
  *    film's, not the venue's.

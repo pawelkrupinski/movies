@@ -1,10 +1,10 @@
 {
   "version" : "decorations-38713274617",
-  "basis" : "an edge token run of listing titles whose remainder is another listing's whole title, for >= 2 different remainders — or for one remainder that is a recorded film record's title exactly, at >= 2 venues, where the decorated title's own recorded searches found nothing and no longer record title runs on from the remainder into the run — that no recorded film record's title, original title or alternative title carries",
+  "basis" : "an edge token run of listing titles whose remainder is another listing's whole title, for >= 2 different remainders — or for one remainder that is a recorded film record's title exactly, at >= 2 venues, where the decorated title's own recorded searches found nothing and no longer record title runs on from the remainder into the run, and the remainder is two words or five letters and the run ends in no number range — that no recorded film record's title, original title or alternative title carries, and that the resolver cuts off some title billing it",
   "inputs" : {
     "listingTitles" : 189752,
     "venues" : 7558,
-    "recordTitles" : 291155
+    "recordTitles" : 291154
   },
   "decorations" : [ {
     "side" : "suffix",
@@ -1140,13 +1140,6 @@
     "venues" : 3,
     "titles" : 3,
     "examples" : [ "2046", "in the mood for love", "the last emperor" ]
-  }, {
-    "side" : "prefix",
-    "decoration" : "pokaz specjalny z okazji 10 lecia reaktywacji kina bajka",
-    "films" : 3,
-    "venues" : 1,
-    "titles" : 3,
-    "examples" : [ "czas ktory nie nadszedl", "powiedz mi co czujesz", "roza" ]
   }, {
     "side" : "prefix",
     "decoration" : "pora dla seniora",
@@ -2472,13 +2465,6 @@
     "examples" : [ "corpus delicti", "vaterland" ]
   }, {
     "side" : "suffix",
-    "decoration" : "dubbing nasze kino",
-    "films" : 2,
-    "venues" : 1,
-    "titles" : 2,
-    "examples" : [ "pikkuli i swiateczny renifer", "vincent legenda oceanu" ]
-  }, {
-    "side" : "suffix",
     "decoration" : "dys kino swiat",
     "films" : 2,
     "venues" : 1,
@@ -3046,32 +3032,11 @@
     "examples" : [ "crash", "nakarmic kruki" ]
   }, {
     "side" : "prefix",
-    "decoration" : "avarachan",
-    "films" : 1,
-    "venues" : 9,
-    "titles" : 1,
-    "examples" : [ "sons" ]
-  }, {
-    "side" : "prefix",
     "decoration" : "fallen angels by noel",
     "films" : 1,
     "venues" : 688,
     "titles" : 1,
     "examples" : [ "coward" ]
-  }, {
-    "side" : "prefix",
-    "decoration" : "rise fly fishing film",
-    "films" : 1,
-    "venues" : 2,
-    "titles" : 1,
-    "examples" : [ "tour" ]
-  }, {
-    "side" : "prefix",
-    "decoration" : "sztuka na ekranie egon schiele poza",
-    "films" : 1,
-    "venues" : 2,
-    "titles" : 1,
-    "examples" : [ "tabu" ]
   }, {
     "side" : "suffix",
     "decoration" : "25 rocznica w helios replay",
@@ -3170,13 +3135,6 @@
     "venues" : 39,
     "titles" : 1,
     "examples" : [ "her private hell" ]
-  }, {
-    "side" : "suffix",
-    "decoration" : "teil 1 5",
-    "films" : 1,
-    "venues" : 2,
-    "titles" : 1,
-    "examples" : [ "twilight" ]
   }, {
     "side" : "suffix",
     "decoration" : "ukrains",

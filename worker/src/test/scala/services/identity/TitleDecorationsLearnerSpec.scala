@@ -56,10 +56,11 @@ class TitleDecorationsLearnerSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "keep a run that starts with another film's title: the title is a programme of two" in {
-    // PL, Helios's "Basia. Humor w paski mam + Kocia Szajka - Festiwal TAURON Młode Horyzonty…".
-    val bill = Seq("Helios Alfa", "Helios Bielany").map(_ -> "Basia. Humor w paski mam + Kocia Szajka - Seanse HDD") :+
+    // PL, Helios's "Basia. Humor w paski mam + Kocia Szajka - Festiwal TAURON Młode Horyzonty…" (billed here as one piece,
+    // which the resolver would cut: a spaced dash in the run is refused before this rule is asked).
+    val bill = Seq("Helios Alfa", "Helios Bielany").map(_ -> "Basia. Humor w paski mam + Kocia Szajka Seanse HDD") :+
       ("Kino Muza" -> "Basia. Humor w paski mam")
-    val empty = Seq("Basia. Humor w paski mam + Kocia Szajka - Seanse HDD" -> true)
+    val empty = Seq("Basia. Humor w paski mam + Kocia Szajka Seanse HDD" -> true)
     TitleDecorationsLearner.learn(bill, Seq("Basia. Humor w paski mam", "Kocia Szajka"), empty) shouldBe Nil
     TitleDecorationsLearner.learn(bill, Seq("Basia. Humor w paski mam"), empty).map(_.decoration) shouldBe Seq("kocia szajka seanse hdd")
   }
@@ -74,12 +75,38 @@ class TitleDecorationsLearnerSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "keep a run a longer record's title continues into: the rest is not the film the title names" in {
-    // "Friday the 13th (1980)" beside a listing of F. Gary Gray's "Friday": the title names the
-    // record "Friday the 13th", whose words run on past "Friday" into the run.
-    val listings = Seq("Picture House" -> "Friday the 13th (1980)", "Prince Charles" -> "Friday the 13th (1980)", "Cinema B" -> "Friday")
-    val empty    = Seq("Friday the 13th (1980)" -> true)
+    // "Friday the 13th Uncut" beside a listing of F. Gary Gray's "Friday": the title names the
+    // record "Friday the 13th", whose words run on past "Friday" into the run. (Billed "Friday the 13th (1980)", the cut
+    // " the 13th (1980)" is two pieces, which the resolver refuses before this rule is asked.)
+    val listings = Seq("Picture House" -> "Friday the 13th Uncut", "Prince Charles" -> "Friday the 13th Uncut", "Cinema B" -> "Friday")
+    val empty    = Seq("Friday the 13th Uncut" -> true)
     TitleDecorationsLearner.learn(listings, Seq("Friday", "Friday the 13th"), empty) shouldBe Nil
-    TitleDecorationsLearner.learn(listings, Seq("Friday"), empty).map(_.decoration) shouldBe Seq("the 13th 1980")
+    TitleDecorationsLearner.learn(listings, Seq("Friday"), empty).map(_.decoration) shouldBe Seq("the 13th uncut")
+  }
+
+  it should "keep a run whose one remainder is a single short word, or which ends in a number range" in {
+    // DE "Rise Fly Fishing Film Tour" ×2 peeled to "Tour", and "Twilight Teil 1-5" ×7 to "Twilight": a festival's name
+    // and a five-film marathon, neither a banner around the film the remainder names.
+    def oneFilm(decorated: String, rest: String) =
+      TitleDecorationsLearner.learn(Seq("Kino A" -> decorated, "Kino B" -> decorated, "Kino C" -> rest), Seq(rest), Seq(decorated -> true))
+    oneFilm("Rise Fly Fishing Film Tour", "Tour") shouldBe Nil
+    oneFilm("Twilight Teil 1-5", "Twilight") shouldBe Nil
+    // Two words, or five letters, say enough; a run ending in one number is a year or an anniversary, not a range.
+    oneFilm("Rise Fly Fishing Film Tour 2026", "Tour 2026").map(_.decoration) shouldBe Seq("rise fly fishing film")
+    oneFilm("Twilight Teil 1", "Twilight").map(_.decoration) shouldBe Seq("teil 1")
+    oneFilm("Pre-Release Screening Verity", "Verity").map(_.decoration) shouldBe Seq("pre release screening")
+  }
+
+  it should "keep a run the resolver cuts off no title billing it: the cut takes more than one piece of billing" in {
+    // DE "Renoir und die Liebe (Exhibition On Screen)": the run swallows the title's own words with the bracket after
+    // them, and `TitleDecorations.onePiece` refuses that cut wherever it is billed.
+    val renoir = "Renoir und die Liebe (Exhibition On Screen)"
+    TitleDecorationsLearner.learn(Seq("Kino A" -> renoir, "Kino B" -> renoir, "Kino C" -> "Renoir"), Seq("Renoir"), Seq(renoir -> true)) shouldBe Nil
+    // DE "RBO Live 2026/27: The Royal Opera: Carmen" beside "The Royal Opera: Carmen" and "Royal Opera: Carmen": "rbo live
+    // 2026 27" and "rbo live 2026 27 the" around many works, every cut of the second "RBO Live 2026/27: The", two pieces.
+    val rbo = Seq("Carmen", "Tosca", "Manon").flatMap(w =>
+      Seq("Kino A" -> s"RBO Live 2026/27: The Royal Opera: $w", "Kino B" -> s"The Royal Opera: $w", "Kino C" -> s"Royal Opera: $w"))
+    TitleDecorationsLearner.learn(rbo, Seq("The Royal Opera")).map(_.decoration) shouldBe Seq("rbo live 2026 27")
   }
 
   "Learning what a bill joins last" should "take a run that starts it after different films' titles, as an event's tail" in {
@@ -125,6 +152,19 @@ class TitleDecorationsLearnerSpec extends AnyFlatSpec with Matchers {
     merged shouldBe merged.sortBy(d => (-d.films, d.side, d.decoration))
   }
 
+  it should "drop an earlier decoration learning refuses now: weak around its one remainder, or never cut where it is billed" in {
+    val earlier = Seq(
+      TitleDecorations.Learned("prefix", "rise fly fishing film", 1, 2, 1, Seq("tour")),
+      TitleDecorations.Learned("suffix", "teil 1 5", 1, 2, 1, Seq("twilight")),
+      TitleDecorations.Learned("suffix", "und die liebe exhibition on screen", 1, 2, 1, Seq("renoir")),
+      TitleDecorations.Learned("suffix", "unlimited screening", 1, 87, 1, Seq("girls like girls")))
+    val billed = Seq("Kino A" -> "Renoir und die Liebe (Exhibition On Screen)", "Kino B" -> "Girls Like Girls Unlimited Screening")
+    TitleDecorationsLearner.accumulate(earlier, Nil, Nil, billed).map(_.decoration) shouldBe Seq("unlimited screening")
+    // A run no listing bills now is not judged by its spellings.
+    TitleDecorationsLearner.accumulate(earlier, Nil, Nil).map(_.decoration) should contain theSameElementsAs
+      Seq("und die liebe exhibition on screen", "unlimited screening")
+  }
+
   "Proposing candidates" should "offer a banner around films no other listing bills, which learning cannot see" in {
     val programme = Seq("Kino X" -> "Binti Edukacja Młode Horyzonty", "Kino X" -> "Fritzi – przyjaźń bez granic Edukacja Młode Horyzonty",
       "Kino X" -> "Lydia i Władca Burz Edukacja Młode Horyzonty", "Kino Y" -> "Bez końca 2D PL LOLO", "Kino Y" -> "Ministranci 2D PL LOLO",
@@ -168,6 +208,7 @@ class TitleDecorationsLearnerSpec extends AnyFlatSpec with Matchers {
       Set("prefix", "suffix", "tail") should contain(d.side)
       d.films should be >= 1
       if (d.films < TitleDecorationsLearner.MinFilms) d.venues should be >= TitleDecorationsLearner.MinVenues
+      withClue(s"${d.side} \"${d.decoration}\" around ${d.examples.mkString(", ")}: ") { TitleDecorationsLearner.weak(d) shouldBe false }
       d.examples should not be empty
     }
     artefact.decorations shouldBe artefact.decorations.sortBy(d => (-d.films, d.side, d.decoration))

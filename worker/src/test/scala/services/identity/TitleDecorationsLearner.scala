@@ -20,6 +20,10 @@ object TitleDecorationsLearner {
   /** "Recurs" for a run seen around ONE film: two venues carrying it. */
   val MinVenues = 2
 
+  /** The least a ONE remainder must spell when it is not two words: "Rise Fly Fishing Film Tour" learned "rise fly fishing
+   *  film" around "tour", and the bare word left is a title of many films. */
+  val MinRemainderLetters = 5
+
   /** The remainders a [[Learned]] decoration keeps as its provenance. */
   val ProvenanceExamples = 5
 
@@ -55,9 +59,9 @@ object TitleDecorationsLearner {
    *  any order of either learns the same list. */
   def learn(listings: Iterable[(String, String)], recordTitles: Iterable[String],
             searches: Iterable[(String, Boolean)] = Nil): Seq[Learned] = {
-    val byTokens: Map[Seq[String], Set[String]] = listings.iterator
-      .map { case (venue, title) => TitleContainment.tokens(title) -> venue }.filter(_._1.nonEmpty).toSeq
-      .groupMap(_._1)(_._2).view.mapValues(_.toSet).toMap
+    val tokenised = listings.iterator.map { case (venue, title) => (TitleContainment.tokens(title), venue, title) }.filter(_._1.nonEmpty).toSeq
+    val byTokens: Map[Seq[String], Set[String]] = tokenised.groupMap(_._1)(_._2).view.mapValues(_.toSet).toMap
+    val spellings: Map[Seq[String], Set[String]] = tokenised.groupMap(_._1)(_._3).view.mapValues(_.toSet).toMap
     val seen: Seen[(String, Seq[String])] = mutable.HashMap.empty
     byTokens.foreach { case (tokens, venues) =>
       (1 until tokens.size).foreach { k =>
@@ -78,9 +82,13 @@ object TitleDecorationsLearner {
       val nextFilm = (1 to run.size).exists(n => recordKeys(if (side == "prefix") run.takeRight(n) else run.take(n)))
       recordKeys(rest) && searchedEmpty(decorated) && byRest.values.flatten.toSet.size >= MinVenues && !runsOn && !nextFilm
     }
+    /** Some title billing `run` around one of `rests` is one the resolver would cut it off. */
+    def cutSomewhere(side: String, run: Seq[String], rests: Iterable[Seq[String]]): Boolean =
+      rests.exists(rest => spellings.getOrElse(if (side == "prefix") run ++ rest else rest ++ run, Set.empty).exists(cuts(side, run)))
     val recurring = seen.toSeq.map { case (key, byRest) => key -> (byRest, distinctFilms(byRest.keySet)) }
       .filter { case ((side, run), (byRest, films)) =>
-        films.size >= MinFilms || (films.size == 1 && aroundOneFilm(side, run, byRest, films.head)) }
+        (films.size >= MinFilms || (films.size == 1 && aroundOneFilm(side, run, byRest, films.head) && !weakAroundOne(run, films.head))) &&
+          cutSomewhere(side, run, byRest.keySet) }
     val recurringTails = tailsOf(listings, byTokens.keySet)
     val inRecords = carried(recordTitles, (recurring.map(_._1._2) ++ recurringTails.map(_._1)).toSet)
     val edgeRuns = recurring.collect { case ((side, run), (byRest, films)) if !inRecords(run) => learned(side, run, byRest, films) }
@@ -153,12 +161,52 @@ object TitleDecorationsLearner {
   /** `learned` — this recording's decorations — with every `earlier` one it did not learn again, unless a title of
    *  `recordTitles` now carries it. A recording sees only the programmes billed that week: a banner learned around two
    *  films stays a banner after its season ends ("WAJDA: re-wizje"), and comes back with the next one. What both learned
-   *  is this recording's; the list is ordered as [[learn]] orders it. */
-  def accumulate(earlier: Seq[Learned], learned: Seq[Learned], recordTitles: Iterable[String]): Seq[Learned] = {
+   *  is this recording's; the list is ordered as [[learn]] orders it. An earlier one [[learn]] would refuse now goes too:
+   *  one weak around its one remainder ([[weakAroundOne]]), or one `listings` bill only in spellings the resolver never
+   *  cuts ([[cuts]]). */
+  def accumulate(earlier: Seq[Learned], learned: Seq[Learned], recordTitles: Iterable[String],
+                 listings: Iterable[(String, String)] = Nil): Seq[Learned] = {
     val relearned = learned.map(d => (d.side, d.decoration)).toSet
-    val kept      = earlier.filterNot(d => relearned((d.side, d.decoration)))
-    val inRecords = carried(recordTitles, kept.map(d => d.decoration.split(" ").toSeq).toSet)
-    strongestFirst(learned ++ kept.filterNot(d => inRecords(d.decoration.split(" ").toSeq)))
+    val kept      = earlier.filterNot(d => relearned((d.side, d.decoration)) || weak(d))
+    val inRecords = carried(recordTitles, kept.map(runOf).toSet)
+    val refused   = refusedWherever(listings, kept.filter(_.side != Tail))
+    strongestFirst(learned ++ kept.filterNot(d => inRecords(runOf(d)) || refused((d.side, runOf(d)))))
+  }
+
+  private def runOf(d: Learned): Seq[String] = d.decoration.split(" ").toSeq
+
+  /** Does the resolver cut `run` off `title` on `side` ([[TitleDecorations.strip]] holding it alone)? It never cuts one
+   *  that takes off more than one piece of billing ([[TitleDecorations.onePiece]]): DE "Renoir und die Liebe (Exhibition
+   *  On Screen)" bills "und die liebe exhibition on screen" around "renoir", and no title is ever cut so. A run the
+   *  resolver refuses in every spelling it was seen in is no decoration it could use. */
+  private def cuts(side: String, run: Seq[String])(title: String): Boolean =
+    (if (side == "prefix") TitleDecorations(Set(run), Set.empty) else TitleDecorations(Set.empty, Set(run))).strip(title).nonEmpty
+
+  /** A run learned around ONE remainder that says too little to be a banner: the remainder is a single short word
+   *  ("rise fly fishing film" around "tour"), or the run ends in a number range ("teil 1 5" after "Twilight": a
+   *  five-film marathon, not the 2008 film). */
+  private def weakAroundOne(run: Seq[String], rest: Seq[String]): Boolean =
+    (rest.sizeIs < 2 && rest.mkString.count(_.isLetter) < MinRemainderLetters) ||
+      (run.sizeIs >= 2 && run.takeRight(2).forall(w => w.nonEmpty && w.forall(_.isDigit)))
+
+  /** An earlier decoration [[learn]] would not take now for what it was learned around: [[weakAroundOne]] of its one
+   *  remainder (kept as its only example). */
+  private[identity] def weak(d: Learned): Boolean =
+    d.side != Tail && d.films == 1 && d.examples.headOption.exists(rest => weakAroundOne(runOf(d), rest.split(" ").toSeq))
+
+  /** The edge runs of `decorations` that `listings` bill around something, every such title one the resolver refuses
+   *  to cut ([[cuts]]). A run no listing bills now is not judged. */
+  private def refusedWherever(listings: Iterable[(String, String)], decorations: Seq[Learned]): Set[(String, Seq[String])] = {
+    val wanted = decorations.map(d => (d.side, runOf(d))).toSet
+    if (wanted.isEmpty) Set.empty
+    else {
+      val longest = wanted.map(_._2.size).max
+      val billed: Map[(String, Seq[String]), Set[String]] = listings.iterator.map(_._2).distinct.flatMap { title =>
+        val tokens = TitleContainment.tokens(title)
+        (1 to math.min(longest, tokens.size - 1)).flatMap(k => edges(tokens, k).map { case (side, (run, _)) => (side, run) }).filter(wanted).map(_ -> title)
+      }.toSeq.groupMap(_._1)(_._2).view.mapValues(_.toSet).toMap
+      billed.collect { case (key @ (side, run), titles) if !titles.exists(cuts(side, run)) => key }.toSet
+    }
   }
 
   /** `decorations` without `withheld` edge runs (side, words) — what a hold-out measure of the detector resolves with,
