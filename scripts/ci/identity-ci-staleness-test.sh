@@ -91,6 +91,11 @@ uncovered_young=$(commit worker/src/main/B.scala 0)
 check "an uncovered pipeline commit under 3h old is not yet due a run" ok "$(check_out convergence-unrun)"
 scratch_git "$repo" reset -q --hard "$docs"
 [ -n "$uncovered_young" ]
+mkdir -p "$work/not-a-checkout"
+check "a history that cannot be read is stale, not 'no commit touches the paths'" stale \
+  "$( (cd "$work/not-a-checkout" && PATH="$work/bin:$PATH" NOW="$NOW_EPOCH" STUB_RUNS="$work/runs" GIT_CEILING_DIRECTORIES="$work" \
+       CONVERGENCE_PATHS_FILE="$work/paths.txt" bash "$REPO_ROOT/scripts/ci/identity-ci-staleness.sh" 2>/dev/null) \
+     | grep -E '^(::error::|ok  )convergence-unrun:' | sed -e 's/^::error::.*/stale/' -e 's/^ok  .*/ok/')"
 
 echo "recording-stale"
 runs identity-model-convergence.yml "$(run_json "$docs" completed success 1 0)"

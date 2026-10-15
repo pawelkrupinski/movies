@@ -50,7 +50,7 @@ verdict() {  # verdict <check> <stale|fresh> <message>
 }
 
 runs() {  # runs <workflow file> -> JSON array, newest first
-  gh run list --workflow "$1" --branch main --limit 100 \
+  timeout 60 gh run list --workflow "$1" --branch main --limit 100 \
     --json headSha,status,conclusion,createdAt,updatedAt,url
 }
 
@@ -88,8 +88,11 @@ while IFS= read -r pattern; do
   pathspecs+=("${pattern%\*\*}")
 done < <(sed -e 's/[[:space:]]*#.*//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' "$paths_file" | grep -v '^$' | grep -v '^!')
 
-read -r pipeline_sha pipeline_time < <(git log -1 --first-parent --format='%H %ct' HEAD -- "${pathspecs[@]}")
-if [ -z "${pipeline_sha:-}" ]; then
+# A history that cannot be read (no checkout, a broken one) is not "no commit touches the paths".
+pipeline_sha="" pipeline_time=""
+if ! newest=$(git log -1 --first-parent --format='%H %ct' HEAD -- "${pathspecs[@]}"); then
+  verdict convergence-unrun stale "could not read this checkout's history"
+elif read -r pipeline_sha pipeline_time <<< "$newest" && [ -z "${pipeline_sha:-}" ]; then
   verdict convergence-unrun fresh "no commit touches the convergence paths"
 else
   covered=""
