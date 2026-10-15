@@ -47,8 +47,11 @@ on:
     schedule:
         - cron: '0 5 * * 4'
 
+# The weekly run is one lane: never two scheduled refits at once. A dispatch is a lane of its own, so measurements
+# (threads, relearn) run side by side rather than queueing ~30 minutes each behind one another (2026-10-15: four
+# thread-count runs, 15:19 to 17:30, one after another).
 concurrency:
-    group: identity-refit
+    group: identity-refit${{ github.event_name != 'schedule' && format('-{0}', github.run_id) || '' }}
     cancel-in-progress: false
 
 permissions:

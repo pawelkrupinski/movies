@@ -15,6 +15,9 @@ import org.scalatest.matchers.should.Matchers
  *      `-${{ inputs.roster }}`, `-${{ inputs.suite }}`): dispatch-only work whose input names its own unit.
  *    - `identity-model-convergence`'s run-id form: main's runs in one lane, every other branch's run in a lane of
  *      its own (the user's choice, 2026-10-15; ConvergenceConcurrencyConfigSpec).
+ *    - `identity-refit`'s run-id form: the scheduled runs in one lane, every dispatch (a thread-count measurement,
+ *      a relearn) in a lane of its own, so measurements run side by side (the user's choice, 2026-10-15;
+ *      IdentityRefitWorkflowSpec).
  *
  *  `cancel-in-progress` is NOT part of the convention: each workflow chooses it for its own reason and says so
  *  beside it (Main's `true` is deliberate — CLAUDE.md "Batch pushes to main"; a recording's or a measurement's
@@ -31,7 +34,7 @@ class WorkflowConcurrencyConventionSpec extends AnyFlatSpec with Matchers {
   private val LaneLess = Set("discover-cinemas", "country-fixture-artifact", "filmweb-diff", "order-independence",
     "renovate", "roster-audit", "security-headers", "scala-steward")
 
-  private val Key = """(-\$\{\{ github\.ref \}\}|-\$\{\{ inputs\.[a-z-]+ \}\}|\$\{\{ github\.ref != 'refs/heads/main' && format\('-\{0\}', github\.run_id\) \|\| '' \}\})?"""
+  private val Key = """(-\$\{\{ github\.ref \}\}|-\$\{\{ inputs\.[a-z-]+ \}\}|\$\{\{ github\.ref != 'refs/heads/main' && format\('-\{0\}', github\.run_id\) \|\| '' \}\}|\$\{\{ github\.event_name != 'schedule' && format\('-\{0\}', github\.run_id\) \|\| '' \}\})?"""
 
   private lazy val workflows: Seq[(String, String)] =
     RepoFile.workflows().map(f => f.getName.replaceAll("""\.ya?ml$""", "") -> RepoFile.read(f.getPath))
