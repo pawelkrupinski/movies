@@ -50,6 +50,7 @@ context=${STATUS_CONTEXT:-identity takes ($cc)}
 heap=${HEAP:-6g}
 here=$(pwd)
 mkdir -p "$out"
+out=$(cd "$out" && pwd) # absolute: every sbt run below runs in a checkout of its own
 # shellcheck source=scripts/identity-tools.sh
 . "$(dirname "${BASH_SOURCE[0]}")/../identity-tools.sh" # IDENTITY_SBT, and tool-conventions.sh's `bounded`
 # Every gh call is bounded: a hung API read is no verdict (exit 2), never a row that waits out the job's own timeout.
@@ -161,9 +162,9 @@ decisions_key() { # <sha>: the decisions dump's inputs
   printf '%s\n' "$(code_of "$1")" "$cc" "${KINOWO_CONVERGENCE_PIN_CORPUS_RUN:-}" "${KINOWO_CONVERGENCE_TREE_ASSET:-}" \
     "${KINOWO_CONVERGENCE_FILL_ASSETS:-}" "$laid" | sha256sum | cut -c1-24
 }
-capture_key() { # <sha>: the final takes' inputs -- the code and the capture it replays (always the head's)
-  { printf '%s\n' "$(code_of "$1")" "$cc"; cat "$here"/test/resources/fixtures/identity-unmatched/*.json.gz \
-      "$here"/test/resources/fixtures/identity-unmatched/*.inputs 2>/dev/null; } | sha256sum | cut -c1-24
+capture_key() { # <sha>: the final takes' inputs -- the code and the country's capture it replays (always the head's)
+  { printf '%s\n' "$(code_of "$1")" "$cc"; cat "$here/test/resources/fixtures/identity-unmatched/$cc.json.gz" \
+      "$here/test/resources/fixtures/identity-unmatched/$cc.inputs" 2>/dev/null; } | sha256sum | cut -c1-24
 }
 reused() { # <asset> <file> <what>: whether a stored result was fetched into <file>; says why not when it was not
   local why=""
@@ -186,7 +187,7 @@ keep() { # <file> <asset> [base]: store a result, never failing the check
   # release holds by then is the race lost to an equal result (the key names every input), not a store missing.
   if ! { gzip -c "$1" > "$RUNNER_TEMP/$2" && "$here/scripts/ci/gh-release.sh" upload "$store" "$RUNNER_TEMP/$2" --clobber > /dev/null; }; then
     # allow-silenced: a read that fails is no proof the asset is there, and falls through to the warning below.
-    if bounded "$gh_read" gh release view "$store" --json assets --jq ".assets[] | select(.name == \"$2\") | .name" 2> /dev/null | grep -qx "$2"; then
+    if bounded "$gh_read" gh release view "$store" --json assets --jq ".assets[] | select(.name == \"$2\") | .name" 2> /dev/null | grep -x "$2" > /dev/null; then # all of it: -q would leave gh a broken pipe, which pipefail counts
       echo "identity takes ($cc): $2 was stored by another run meanwhile"
     else
       echo "::warning::identity takes ($cc): could not store $2 -- the next run resolves its base again"
@@ -204,46 +205,44 @@ keep() { # <file> <asset> [base]: store a result, never failing the check
 # no data, and match another unpinned run's over other data. The final takes read only the checked-in capture.
 asset() { [ "$1" = final ] || [ -n "${KINOWO_CONVERGENCE_PIN_CORPUS_RUN:-}" ] || return 0; echo "takes-$1-$cc-$2.gz"; }
 
-tree="$RUNNER_TEMP/identity-takes-base"
-base_tree() { # the base checked out beside the head, once, for whichever of its results is not stored
-  [ -d "$tree" ] && return 0
-  git worktree add -q --detach "$tree" "$base" || return 1
-  # The head's compiled classes and zinc state, so the base compiles only what differs between them.
+beside() { # <dir> <commit>: the commit checked out beside the head, once
+  [ -d "$1" ] && return 0
+  git worktree prune # one an earlier run in this RUNNER_TEMP removed by hand
+  git worktree add -q --detach "$1" "$2" || return 1
+  # The head's compiled classes and zinc state, so it compiles only what differs from the head.
   # The sbt-target-cache's paths (.github/actions/sbt-target-cache): classes and analysis, no jars.
   for d in project/target project/project/target */target/scala-*; do
-    [ -d "$here/$d" ] && mkdir -p "$tree/$d" && cp -a "$here/$d/." "$tree/$d/"
+    [ -d "$here/$d" ] && mkdir -p "$1/$d" && cp -a "$here/$d/." "$1/$d/"
   done
   return 0
 }
+tree="$RUNNER_TEMP/identity-takes-base"
+base_tree() { beside "$tree" "$base"; } # for whichever of the base's results is not stored
+# THE HEAD'S RESOLVE RUNS IN A CHECKOUT OF ITS OWN, beside the final takes: one sbt a directory, and the resolve reads
+# the recording through the head's paths. It was most of the row -- the US's 6 of its 10 minutes (run 38749305893) --
+# with the two ratchet replays queued behind it; beside it they cost no wall time.
+resolving="$RUNNER_TEMP/identity-takes-head"
+# The ratchets' heap beside the resolve's: a country's capture replays in 1.5g (Germany's, the largest), every
+# country's (a base from before --countries) in less than 3g. The corpus-shape specs need the row's heap -- the US's
+# over 4g -- and run after the resolve.
+ratchet_heap=${TAKES_RATCHET_HEAP:-3g}
 # <phase> <how>: the seconds since SECONDS was last reset, as a row of <out>/timings.tsv (uploaded with the check's
 # output) -- scripts/identity-measure prints them per country, so a slow measurement says which phase was slow and
 # whether a stored result spared it.
 timing() { printf '%s\t%s\t%s\n' "$1" "$SECONDS" "$2" >> "$out/timings.tsv"; }
-rm -rf "$tree"
+rm -rf "$tree" "$resolving"
 : > "$out/verdict.txt"
 printf 'phase\tseconds\thow\n' > "$out/timings.tsv"
 model=0 final=0 shape=0
 
 if [ -n "$takes_moves" ]; then
-  SECONDS=0
-  dump "$here" "$out/head" || { echo "::warning::identity takes ($cc): the head resolved nothing"; exit 2; }
-  echo "identity takes ($cc): head resolved in ${SECONDS}s"
-  timing head-resolve resolved
-  keep "$out/head/decisions-$cc.jsonl" "$(asset decisions "$(decisions_key "$head")")"
+  beside "$resolving" "$head" || exit 2
+  resolve_started=$(date +%s)
+  dump "$resolving" "$out/head" > "$out/head-resolve.out" 2>&1 &
+  resolve_pid=$!
+  trap 'kill "$resolve_pid" 2> /dev/null' EXIT # an exit before its wait below leaves no resolve behind (best effort)
 
-  SECONDS=0
-  if reused "$(asset decisions "$(decisions_key "$base")")" "$out/base/decisions-$cc.jsonl" "the base resolve"; then
-    echo "identity takes ($cc): base resolve reused from $(asset decisions "$(decisions_key "$base")") in ${SECONDS}s"
-    timing base-resolve reused
-  else
-    base_tree || exit 2
-    dump "$tree" "$out/base" || { echo "::warning::identity takes ($cc): the base resolved nothing"; exit 2; }
-    echo "identity takes ($cc): base compiled and resolved in ${SECONDS}s"
-    timing base-resolve resolved
-    keep "$out/base/decisions-$cc.jsonl" "$(asset decisions "$(decisions_key "$base")")" base
-  fi
-
-  # THE FINAL TAKES: the decisions above are the MODEL's, before the agreement stage reads them again -- 9c8170f5e's range
+  # THE FINAL TAKES: the decisions the resolve writes are the MODEL's, before the agreement stage reads them again -- 9c8170f5e's range
   # moved 213 UK listings in prod (and three right DE takes) with them at 0/0/0. The unmatched-cluster ratchet replays the
   # model AND the agreement stage over the checked-in capture and its families' answers; run by the head and by the base
   # over the head's capture, its takes are diffed as the decisions are. The base reads the head's capture: one input.
@@ -252,15 +251,19 @@ if [ -n "$takes_moves" ]; then
   # capture, it left EVERY country without final takes (run 38694072183: one UK RT record). The ratchet itself, outside
   # a measurement, still fails a capture that lacks them. Measuring, its exit is whether it wrote the takes -- their diff,
   # below, is the verdict. A checkout from before the ratchet was a tool runs it as the spec it was, whose exit was its
-  # own verdict: there the takes file alone says it ran.
+  # own verdict: there the takes file alone says it ran. Only this row's country is replayed (--countries) where the
+  # tool can: the diff reads only its takes, and the other four captures were most of every row's replay.
   ratchet() { # <checkout> <out file>
     rm -f "$1/target/identity-unmatched/ratchet-takes.tsv" "$1/target/identity-unmatched/capture-gaps.tsv"
-    if [ -f "$1/worker/src/test/scala/scripts/UnmatchedClustersRatchet.scala" ]; then
-      ( cd "$1" && sbt -J-Xmx"$heap" "worker/Test/runMain scripts.UnmatchedClustersRatchet --measure --out target/identity-unmatched" > "$2.log" 2>&1 ) \
+    mkdir -p "$(dirname "$2")"
+    local tool="$1/worker/src/test/scala/scripts/UnmatchedClustersRatchet.scala" scope=""
+    grep -q '"countries"' "$tool" 2>/dev/null && scope=" --countries $cc"
+    if [ -f "$tool" ]; then
+      ( cd "$1" && sbt -J-Xmx"$ratchet_heap" "worker/Test/runMain scripts.UnmatchedClustersRatchet --measure --out target/identity-unmatched$scope" > "$2.log" 2>&1 ) \
         || { echo "::warning::identity takes ($cc): the ratchet exited $? ($2.log)"; return 1; }
     else
       ( cd "$1" && KINOWO_RATCHET_CAPTURE_GAPS_UNKNOWN=1 \
-          sbt -J-Xmx"$heap" "worker/Test/testOnly services.identity.UnmatchedClustersRatchetSpec" > "$2.log" 2>&1 )
+          sbt -J-Xmx"$ratchet_heap" "worker/Test/testOnly services.identity.UnmatchedClustersRatchetSpec" > "$2.log" 2>&1 )
     fi
     cp "$1/target/identity-unmatched/capture-gaps.tsv" "$(dirname "$2")/capture-gaps.tsv" 2>/dev/null
     cp "$1/target/identity-unmatched/ratchet-takes.tsv" "$2" 2>/dev/null
@@ -289,8 +292,29 @@ if [ -n "$takes_moves" ]; then
     timing base-final replayed
     [ "$final" = 0 ] && keep "$out/base/ratchet-takes.tsv" "$(asset final "$(capture_key "$base")")" base
   fi
-  echo "identity takes ($cc): final takes replayed in $((replayed + SECONDS))s"
+  echo "identity takes ($cc): final takes replayed in $((replayed + SECONDS))s, beside the head's resolve"
   gaps_of head; gaps_of base
+
+  wait "$resolve_pid"; resolved=$?
+  cat "$out/head-resolve.out"
+  git worktree remove --force "$resolving" || true
+  [ "$resolved" = 0 ] || { echo "::warning::identity takes ($cc): the head resolved nothing"; exit 2; }
+  SECONDS=$(( $(date +%s) - resolve_started ))
+  echo "identity takes ($cc): head resolved in ${SECONDS}s"
+  timing head-resolve resolved
+  keep "$out/head/decisions-$cc.jsonl" "$(asset decisions "$(decisions_key "$head")")"
+
+  SECONDS=0
+  if reused "$(asset decisions "$(decisions_key "$base")")" "$out/base/decisions-$cc.jsonl" "the base resolve"; then
+    echo "identity takes ($cc): base resolve reused from $(asset decisions "$(decisions_key "$base")") in ${SECONDS}s"
+    timing base-resolve reused
+  else
+    base_tree || exit 2
+    dump "$tree" "$out/base" || { echo "::warning::identity takes ($cc): the base resolved nothing"; exit 2; }
+    echo "identity takes ($cc): base compiled and resolved in ${SECONDS}s"
+    timing base-resolve resolved
+    keep "$out/base/decisions-$cc.jsonl" "$(asset decisions "$(decisions_key "$base")")" base
+  fi
 else
   echo "identity takes ($cc): no identity code changed since $base -- no take can have moved" | tee -a "$out/verdict.txt"
 fi

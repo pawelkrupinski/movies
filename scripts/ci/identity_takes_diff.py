@@ -69,8 +69,11 @@ def ref(film):
 
 
 def ratchet_ran(path):
-    """Whether a ratchet-takes.tsv holds any take row, for any country: an empty file is a ratchet that never ran."""
-    return bool(table(path))
+    """Whether a ratchet wrote this ratchet-takes.tsv: it writes its header whole with every row at once, so the header
+    alone is a ratchet that ran and took nothing -- a row scoped to Spain, whose capture takes none -- and an empty file
+    one that never wrote it."""
+    with open(path, encoding="utf-8") as f:
+        return f.readline().startswith("status\t")
 
 
 def ratchet_rows(path, cc):

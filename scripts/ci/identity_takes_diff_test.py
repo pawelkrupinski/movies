@@ -214,8 +214,8 @@ class TakesDiffTest(unittest.TestCase):
     def test_the_final_takes_read_a_lost_expected_take_as_none_and_an_imdb_only_take_not_at_all(self):
         base = self.ratchet("b.tsv", ["LOST\tpl\tHelios\tLalka\ttmdb:1\tLalka\tnone\t\ttmdb:1\t\n",
                                        "NEW\tpl\tMuza\tObcy\timdb:tt1\tObcy\tAgreed\t\t\t\n"])
-        head = self.ratchet("h.tsv", [])
-        self.assertEqual(2, d.main(["pl", base, head, "--final"]))  # a head ratchet that wrote no takes: no verdict
+        head = self.write("h.tsv", [])
+        self.assertEqual(2, d.main(["pl", base, head, "--final"]))  # a head ratchet that wrote nothing: no verdict
         base = self.ratchet("b.tsv", ["RIGHT\tpl\tRialto\tDiuna\ttmdb:7\tDiuna\tOwnMatch\t\t\t\n"])
         head = self.ratchet("h.tsv", ["RIGHT\tpl\tRialto\tDiuna\ttmdb:7\tDiuna\tOwnMatch\t\t\t\n"])
         self.assertEqual(0, d.main(["pl", base, head, "--final"]))
@@ -226,8 +226,14 @@ class TakesDiffTest(unittest.TestCase):
         base = self.ratchet("b.tsv", ["RIGHT\tpl\tRialto\tDiuna\ttmdb:7\tDiuna\tOwnMatch\t\t\t\n"])
         head = self.ratchet("h.tsv", ["RIGHT\tpl\tRialto\tDiuna\ttmdb:7\tDiuna\tOwnMatch\t\t\t\n"])
         self.assertEqual(0, d.main(["es", base, head, "--final"]))
-        empty = self.ratchet("e.tsv", [])
-        self.assertEqual(2, d.main(["es", empty, empty, "--final"]))
+        never = self.write("n.tsv", [])
+        self.assertEqual(2, d.main(["es", never, never, "--final"]))
+
+    # A ratchet scoped to the row's country (--countries es) writes its header and no row when the capture takes nothing:
+    # it ran, and there is no move.
+    def test_a_ratchet_scoped_to_a_country_that_took_nothing_passes(self):
+        scoped = self.ratchet("s.tsv", [])
+        self.assertEqual(0, d.main(["es", scoped, scoped, "--final"]))
 
     # SUSPECT TAKES, scoped to the code. Recording 38625654132 (2026-10-14) failed PL's whole-corpus audit on suspects it
     # brought itself -- Kino Kosmos' "KF Ambasada: Diabły" taken as Diabły (1971) among them -- and that red blocked every

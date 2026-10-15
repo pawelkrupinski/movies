@@ -166,11 +166,13 @@ code=0; TAKES_BASE=$c4 store_run "$c5" || code=$?
 check "with nothing stored, the base is checked out and resolved" 2 "$(base_calls)"
 check "...and the check passes on the same takes" 0 "$code"
 check "...and the head's decisions and final takes, and the base's it resolved, are stored" 4 "$(ls "$work/release" | wc -l | tr -d ' ')"
-check "...each phase timed, saying which it resolved" "phase:how head-resolve:resolved base-resolve:resolved head-final:replayed base-final:replayed " \
+check "...each phase timed, saying which it resolved" "phase:how head-final:replayed base-final:replayed head-resolve:resolved base-resolve:resolved " \
   "$(cut -f1,3 "$work/out/timings.tsv" | tr '\t\n' ': ')"
 check "...and why the base was not stored" 1 "$(grep -c 'the base resolve not stored -- takes-decisions-pl-.* not on release fixtures: resolving it' "$work/log")"
-check "...the head resolving and replaying with the tools" "dump-tool ratchet-tool" "$(grep -v identity-takes-base "$work/sbt-calls" | cut -d' ' -f2 | xargs)"
-check "...its base, from before them, with the specs they were" "dump-spec ratchet-spec" "$(grep identity-takes-base "$work/sbt-calls" | cut -d' ' -f2 | xargs)"
+check "...the head resolving and replaying with the tools" "dump-tool ratchet-tool" "$(grep -v identity-takes-base "$work/sbt-calls" | cut -d' ' -f2 | sort | xargs)"
+check "...the head resolving in a checkout of its own, beside the replay in the job's" "identity-takes-head job" \
+  "$(grep -v identity-takes-base "$work/sbt-calls" | sort -k2 | cut -d' ' -f1 | xargs -n1 basename | xargs)"
+check "...its base, from before them, with the specs they were" "dump-spec ratchet-spec" "$(grep identity-takes-base "$work/sbt-calls" | cut -d' ' -f2 | sort | xargs)"
 code=0; STUB_DUMP_EXIT=1 TAKES_BASE=$c4 store_run "$c5" || code=$?
 check "a resolve that fails, whatever it wrote, is no verdict" "2 1" "$code $(grep -c 'the resolve exited 1' "$work/log")"
 code=0; STUB_RATCHET_EXIT=1 TAKES_BASE=$c4 store_run "$c5" || code=$?

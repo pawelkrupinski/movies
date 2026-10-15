@@ -41,6 +41,17 @@ class UnmatchedClustersGapsSpec extends AnyFlatSpec with Matchers {
     java.nio.file.Files.exists(notMeasured.resolve("ratchet-takes.tsv")) shouldBe false
   }
 
+  it should "replay only the countries it is scoped to, and write only their takes" in {
+    val out = java.nio.file.Files.createTempDirectory("ratchet-scoped")
+    val run = new scripts.UnmatchedClustersRatchet.Run(UnmatchedClusters.Directory, IdentityJudgements.CheckedIn, out, measure = true,
+      countries = Set("es"))
+    run.captures.map(_.country.code) shouldBe Seq("es")
+    run.reported.isRight shouldBe true
+    run.checks.flatMap(_.failure) shouldBe empty // another country's expected or known-wrong takes are not this run's
+    val countries = java.nio.file.Files.readAllLines(out.resolve("ratchet-takes.tsv")).toArray.toSeq.drop(1).map(_.toString.split('\t')(1)).toSet
+    countries -- Set("es") shouldBe empty
+  }
+
   it should "write each country's gaps as a TSV row a measurement lists" in {
     val path = java.nio.file.Files.createTempFile("capture-gaps", ".tsv")
     UnmatchedClusters.writeGaps(path, Seq(UnmatchedClusters.Gap("uk", "family", "(RottenTomatoes, record|lhistoire_de_richard_o)")))

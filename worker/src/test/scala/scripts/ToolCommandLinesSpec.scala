@@ -192,6 +192,7 @@ class ToolCommandLinesSpec extends AnyFlatSpec with Matchers {
     defaults.requiredPath("judgements") shouldBe tools.IdentityJudgements.CheckedIn
     defaults.requiredPath("out") shouldBe tools.UnmatchedClusters.FindingsPath.getParent
     parsed(UnmatchedClustersRatchet.commandLine, "--measure", "--out", "o").flag("measure") shouldBe true
+    parsed(UnmatchedClustersRatchet.commandLine, "--countries", "us").get("countries") shouldBe Some("us")
     refused(UnmatchedClustersRatchet.commandLine, "--labels", "l.tsv") shouldBe true
   }
 }
