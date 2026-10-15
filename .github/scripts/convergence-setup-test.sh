@@ -14,10 +14,18 @@ mkdir -p "$stub" "$release" "$runs"
 setup="$REPO_ROOT/.github/scripts/convergence-setup.sh"
 
 # Release assets by pattern, a run's artifact by name, a run's createdAt, the green-run listing
-# (STUB_RUN_LIST), and the release's asset listing (for the fills). STUB_FAIL makes every read 5xx.
+# (STUB_RUN_LIST), and the release's asset listing (for the fills). STUB_FAIL makes every read 5xx;
+# STUB_THROTTLED makes the first that many artifact downloads answer as Actions' storage did in run 38763455103.
 cat > "$stub/gh" <<'STUB'
 #!/usr/bin/env bash
 [ -z "${STUB_FAIL:-}" ] || { echo "HTTP 502: Bad Gateway" >&2; exit 1; }
+if [ "$1 $2" = "run download" ] && [ -n "${STUB_THROTTLED:-}" ]; then
+  n=$(( $(cat "$STUB_RUNS/throttled" 2>/dev/null || echo 0) + 1 )); echo "$n" > "$STUB_RUNS/throttled"
+  if [ "$n" -le "$STUB_THROTTLED" ]; then
+    echo "error downloading scrape-fixtures-de: HTTP 503: 503 Egress is over the account limit. (https://productionresultssa17.blob.core.windows.net/x.zip)" >&2
+    exit 1
+  fi
+fi
 dir=""; pattern=""; name=""
 args=("$@")
 for ((i = 0; i < ${#args[@]}; i++)); do
@@ -55,7 +63,7 @@ step() {
   rm -rf "$work/ws"; mkdir -p "$work/ws"
   : > "$work/env"; : > "$work/output"
   (cd "$work/ws" && PATH="$stub:$PATH" STUB_RELEASE="$release" STUB_RUNS="$runs" FIXTURE_RELEASE_TAG=t \
-     CONVERGENCE_FILL_LIST_BACKOFF=0 GITHUB_ENV="$work/env" GITHUB_OUTPUT="$work/output" \
+     CONVERGENCE_FILL_LIST_BACKOFF=0 GH_DOWNLOAD_BACKOFF=0 GITHUB_ENV="$work/env" GITHUB_OUTPUT="$work/output" \
      bash "$setup" "$@") > "$work/log" 2>&1
   status=$?
 }
@@ -69,7 +77,7 @@ check "no pin prints nothing and succeeds" "0|" \
 check "a pin without a tree is malformed (exit 2)" "2" \
   "$(PATH="$stub:$PATH" STUB_RELEASE="$release" FIXTURE_RELEASE_TAG=t bash "$setup" pinned es >/dev/null 2>&1; echo $?)"
 check "a failed read is not an absent pin (exit 1)" "1" \
-  "$(PATH="$stub:$PATH" STUB_FAIL=1 FIXTURE_RELEASE_TAG=t bash "$setup" pinned de >/dev/null 2>&1; echo $?)"
+  "$(PATH="$stub:$PATH" STUB_FAIL=1 GH_DOWNLOAD_BACKOFF=0 FIXTURE_RELEASE_TAG=t bash "$setup" pinned de >/dev/null 2>&1; echo $?)"
 
 # ---- pair
 step pair de record "" 900
@@ -100,7 +108,16 @@ check "the pinned run's corpus is downloaded" "0|pinned" "$status|$(cat "$work/w
 check "…and its provenance exported" "KINOWO_CONVERGENCE_CORPUS_RUN=42 KINOWO_CONVERGENCE_CORPUS_RECORDED_AT=2026-10-01T01:00:00Z" \
   "$(tr '\n' ' ' < "$work/env" | sed 's/ $//')"
 KINOWO_CONVERGENCE_PIN_CORPUS_RUN=41 step corpus de
-check "an expired pinned corpus ends the leg" "1|yes" "$status|$(logged '::error::recording run 41')"
+check "an expired pinned corpus ends the leg, sending the reader to re-record" "1|yes" \
+  "$status|$(logged "::error::recording run 41's corpus is no longer downloadable.*re-run Record scrape fixtures")"
+rm -f "$runs/throttled"
+STUB_THROTTLED=2 KINOWO_CONVERGENCE_PIN_CORPUS_RUN=42 step corpus de
+check "a throttled artifact storage (503 Egress is over the account limit) is asked again, and the corpus comes" "0|pinned" \
+  "$status|$(cat "$work/ws/scrape-archive/scrapes-de.tar.gz" 2>/dev/null)"
+rm -f "$runs/throttled"
+STUB_THROTTLED=99 KINOWO_CONVERGENCE_PIN_CORPUS_RUN=42 step corpus de
+check "a throttle outlasting every attempt ends the leg as a FAILED read, gh's error shown, never as an expired pair" "1|yes|yes|no" \
+  "$status|$(logged 'Egress is over the account limit')|$(logged "::error::could not download recording run 42's corpus")|$(logged 'the pinned pair has expired')"
 KINOWO_CONVERGENCE_PIN_CORPUS_RUN=77 GITHUB_RUN_ID=77 step corpus de
 check "this job's own recording downloads nothing, only names itself" "0|KINOWO_CONVERGENCE_CORPUS_RUN=77|no" \
   "$status|$(head -1 "$work/env")|$([ -e "$work/ws/scrape-archive/scrapes-de.tar.gz" ] && echo yes || echo no)"

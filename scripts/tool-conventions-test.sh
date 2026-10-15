@@ -90,7 +90,8 @@ else
 fi
 
 # ── gh_download ───────────────────────────────────────────────────────────────────────────────────
-# gh: answers each call from the next line of $STUB/answers ("ok", "absent", "fail", "hang"), recording it
+# gh: answers each call from the next line of $STUB/answers ("ok", "absent", "gone", "expired", "partial", "egress",
+# "busy", "fail", "hang"), recording it
 cat > "$work/bin/gh" <<'STUB'
 #!/usr/bin/env bash
 n=$(( $(cat "$STUB/n" 2>/dev/null || echo 0) + 1 )); echo "$n" > "$STUB/n"
@@ -100,11 +101,15 @@ case "$(sed -n "${n}p" "$STUB/answers")" in
   ok) [ -z "$dir" ] || { mkdir -p "$dir"; echo payload > "$dir/got"; }; exit 0 ;;
   absent) echo "no assets match the file pattern" >&2; exit 1 ;;
   gone) echo "no valid artifacts found to download" >&2; exit 1 ;;
+  expired) echo "HTTP 410: Gone (https://api.github.com/repos/o/r/actions/artifacts/9/zip)" >&2; exit 1 ;;
   partial) [ -z "$dir" ] || { mkdir -p "$dir"; echo half > "$dir/got"; }; echo "HTTP 502: Bad Gateway" >&2; exit 1 ;;
+  # what Actions' artifact storage (Azure) answered run 38763455103 while it throttled a shared storage account
+  egress) echo "error downloading a: HTTP 503: 503 Egress is over the account limit. (https://productionresultssa17.blob.core.windows.net/x.zip)" >&2; exit 1 ;;
+  busy) echo "HTTP 429: API rate limit exceeded" >&2; exit 1 ;;
   hang) sleep 30 ;;
   stdout) echo "the asset, on stdout"; echo "a warning" >&2; exit 0 ;;
-  stdout-absent) echo "no assets match, said on stdout"; echo "HTTP 500: Internal Server Error" >&2; exit 1 ;;
-  *) echo "HTTP 500: Internal Server Error" >&2; exit 1 ;;
+  stdout-absent) echo "no assets match, said on stdout"; echo "HTTP 403: Resource not accessible by integration" >&2; exit 1 ;;
+  *) echo "HTTP 403: Resource not accessible by integration" >&2; exit 1 ;;
 esac
 STUB
 chmod +x "$work/bin/gh"
@@ -120,6 +125,15 @@ check "a failed read is asked again (GH_DOWNLOAD_ATTEMPTS, 3): 0 on the second" 
 check "...and fails (1) once every attempt failed" "1 3" "$(download "fail fail fail ok" run download 1 --name a --dir "$work/d3")"
 check "nothing there (gh's 'no assets match') is absent (3), not asked again" "3 1" "$(download "absent ok" release download t --pattern a --dir "$work/d4")"
 check "...an expired artifact likewise" "3 1" "$(download "gone ok" run download 1 --name a --dir "$work/d5")"
+check "...a 410 (an expired artifact's zip) likewise" "3 1" "$(download "expired ok" run download 1 --name a --dir "$work/d8")"
+check "a throttled storage (503 Egress is over the account limit) is asked again past the 3 attempts" "0 6" \
+  "$(download "egress egress egress egress egress ok" run download 1 --name a --dir "$work/d9")"
+check "...as is a 429 rate limit" "0 4" "$(download "busy busy busy ok" release download t --pattern a --dir "$work/d10")"
+check "...but not forever: GH_DOWNLOAD_TRANSIENT_ATTEMPTS (10) and it fails (1)" "1 10" \
+  "$(download "egress egress egress egress egress egress egress egress egress egress ok" run download 1 --name a --dir "$work/d11")"
+rm -f "$work/n" "$work/calls"; echo egress > "$work/answers"
+check "gh's own error is printed, not a guess at it" "yes" \
+  "$(lib "GH_DOWNLOAD_BACKOFF=0 GH_DOWNLOAD_TRANSIENT_ATTEMPTS=1 gh_download 2 run download 1 --name a --dir $work/d12" | grep -c 'HTTP 503: 503 Egress is over the account limit' | sed 's/^[1-9][0-9]*$/yes/')"
 check "a hung gh is ended by the bound (2 s here) and asked again" "0 2" "$(download "hang ok" release download t --pattern a --dir "$work/d6")"
 rm -f "$work/n" "$work/calls"; printf 'stdout\n' > "$work/answers"
 lib 'gh_download 2 release download t --pattern a --output - 2> "$STUB/stderr"' > "$work/stdout"

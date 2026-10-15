@@ -20,7 +20,7 @@
 #
 #   convergence-setup.sh corpus <code>
 #       "Restore the recorded scrape corpus" into ./scrape-archive: this job's own recording (no
-#       download), the pinned run's artifact (gone = exit 1), else the newest of the last 10 green
+#       download), the pinned run's artifact (gone or unreadable = exit 1, each said apart), else the newest of the last 10 green
 #       `Record scrape fixtures` runs that still has one.
 #
 #   convergence-setup.sh unpack <code> <mode>
@@ -105,7 +105,13 @@ corpus() {
     exit 0
   fi
   if [ -n "$pinned" ]; then
-    present=$("$gh_optional" run download "$pinned" --name "scrape-fixtures-$code" --dir scrape-archive)
+    # A failed read (gh-optional.sh has asked a throttled storage again for ~15 minutes already) is not
+    # an expired pair: run 38763455103 told its reader to re-record over a 503 "Egress is over the
+    # account limit" that cleared within the hour.
+    present=$("$gh_optional" run download "$pinned" --name "scrape-fixtures-$code" --dir scrape-archive) || {
+      echo "::error::could not download recording run $pinned's corpus (scrape-fixtures-$code) — a failed read (gh's error above), not an expired pair; re-run the failed job once GitHub answers"
+      exit 1
+    }
     if [ "$present" = present ]; then
       # allow-silenced: the recording date only labels the log line and the provenance env.
       recorded=$(gh run view "$pinned" --json createdAt --jq .createdAt 2>/dev/null || echo unknown)

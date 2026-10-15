@@ -54,7 +54,7 @@ check "...one file per report" "decided" "$(cat "$work/out-reports/full-pl-decis
 check "a run that failed before uploading anything exits 1, the RUN's verdict, not the download's" \
   "1" "$(measure failure none)"
 check "...saying it found no reports" "true" "$(grep -q 'no reports to download' "$work/log-none" && echo true || echo false)"
-check "reports that cannot be downloaded (gh failing, asked again) are no measurement, not 'none uploaded'" "2 3" \
+check "reports that cannot be downloaded (a 502, asked again as a throttle: GH_DOWNLOAD_TRANSIENT_ATTEMPTS) are no measurement, not 'none uploaded'" "2 10" \
   "$(measure success broken) $(grep -c '^run download' "$work/calls")"
 check "Main still running past MAIN_IDLE_MINUTES is no dispatch" "2" "$(measure success reports busy)"
 check "...nothing dispatched" "0" "$(dispatched)"

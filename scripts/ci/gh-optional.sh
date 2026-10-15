@@ -7,29 +7,24 @@
 # absent one: gh's stderr is shown and the script exits non-zero. The call sites used to run
 # `gh ... 2>/dev/null` inside an `if`, which read an outage exactly like "no marker yet".
 #
+# The download is tool-conventions.sh's gh_download — one classifier of absent against failed, one retry: a throttled
+# artifact storage (a 5xx, "Egress is over the account limit") is asked again with a jittered backoff before it is a
+# failed read. Each attempt is bounded by GH_OPTIONAL_TIMEOUT seconds (default 1800).
+#
 # Use it as an assignment, so `set -e` (GitHub's default `bash -eo pipefail`) stops on a failure:
 #   present=$(scripts/ci/gh-optional.sh release download "$TAG" --pattern "$marker" --dir d --clobber)
 #   if [ "$present" = present ]; then …
 # Tested by scripts/ci/gh-optional-test.sh against a stub `gh`.
 set -uo pipefail
 
-err="$(mktemp)"
-trap 'rm -f "$err"' EXIT
+# shellcheck source=scripts/tool-conventions.sh
+. "$(dirname "${BASH_SOURCE[0]}")/../tool-conventions.sh" # gh_download
 
 # gh's own stdout goes to stderr, so this script's stdout carries only the verdict.
-gh "$@" >&2 2> "$err"
-status=$?
-if [ "$status" -eq 0 ]; then
-  cat "$err" >&2
-  echo present
-  exit 0
-fi
-cat "$err" >&2
-# What gh prints when the thing asked for is not there: a release asset pattern matching nothing,
-# a missing release, a run with no such (or an expired) artifact, a run or release that 404s.
-if grep -Eq 'no assets match|release not found|no artifact matches|no valid artifacts found|HTTP 404' "$err"; then
-  echo absent
-  exit 0
-fi
-echo "::error::gh $* failed (exit $status) — a failed read, not an absent one" >&2
-exit "$status"
+gh_download "${GH_OPTIONAL_TIMEOUT:-1800}" "$@" >&2
+case $? in
+  0) echo present; exit 0 ;;
+  3) echo absent; exit 0 ;;
+esac
+echo "::error::gh $* failed — a failed read, not an absent one (gh's error above)" >&2
+exit 1

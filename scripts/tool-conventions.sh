@@ -143,15 +143,21 @@ selected_countries_csv() {
 
 # ── Downloading from GitHub ─────────────────────────────────────────────────────────────────────────
 #   gh_download <seconds> <run|release> download <args...> -> 0 downloaded; 3 ABSENT (gh says there is nothing to
-#        download: no asset matches, no such or an expired artifact, a 404); 1 a FAILED read — every attempt failed,
-#        each ended once it outlasts <seconds> (a hung gh is a failed attempt, not a wait forever).
+#        download: no asset matches, no such or an expired artifact, a 404 or 410); 1 a FAILED read — every attempt
+#        failed, each ended once it outlasts <seconds> (a hung gh is a failed attempt, not a wait forever).
 #   A failed read is asked again, GH_DOWNLOAD_ATTEMPTS times in all (3), the wait doubling from GH_DOWNLOAD_BACKOFF
-#   seconds (5): one GitHub 5xx is not a download that cannot be made. An absent one is an answer, never asked again —
-#   and never confused with a failed one, which a caller treating "absent" as "carry on with less" must not read as it.
+#   seconds (5). A THROTTLED one — a 5xx, a 429 or a rate limit, Azure's "Egress is over the account limit" from the
+#   artifact storage — is asked up to GH_DOWNLOAD_TRANSIENT_ATTEMPTS times (10): 5, 10, 20, 40, 80, then 120 s
+#   (GH_DOWNLOAD_MAX_WAIT) a wait, each plus up to half again of jitter, ~11-16 minutes in all. The storage account
+#   behind Actions artifacts is shared by many repositories and throttles in bursts (run 38763455103: one leg's
+#   download refused while its 16 sibling jobs' succeeded, the same artifact downloading in 3 s two hours later);
+#   jitter keeps a matrix's legs from asking again in step, and past ~15 minutes it is an outage a re-run answers, not
+#   a wait worth a runner. An absent one is an answer, never asked again — and never confused with a failed one,
+#   which a caller treating "absent" as "carry on with less" must not read as it.
 #   A `run download`'s --dir is emptied before each retry (gh refuses to overwrite what a cut-short attempt left), so
 #   it must be a directory of the download's own. gh's own messages go to stderr.
 gh_download() {
-  local seconds=$1 attempt=1 err status dir="" arg prev=""
+  local seconds=$1 attempt=1 attempts err status dir="" arg prev="" wait
   shift
   for arg in "$@"; do [ "$prev" = --dir ] && dir=$arg; prev=$arg; done
   while :; do
@@ -160,15 +166,22 @@ gh_download() {
     { err=$(bounded "$seconds" gh "$@" 2>&1 1>&3 3>&-); status=$?; } 3>&1
     [ -z "$err" ] || printf '%s\n' "$err" >&2
     [ "$status" -eq 0 ] && return 0
-    if printf '%s' "$err" | grep -Eq 'no assets match|release not found|no artifact matches|no valid artifacts found|HTTP 404'; then
+    if printf '%s' "$err" | grep -Eq 'no assets match|release not found|no artifact matches|no valid artifacts found|HTTP 404|HTTP 410'; then
       return 3
     fi
-    if [ "$attempt" -ge "${GH_DOWNLOAD_ATTEMPTS:-3}" ]; then
+    attempts=${GH_DOWNLOAD_ATTEMPTS:-3}
+    if printf '%s' "$err" | grep -Eiq 'HTTP 5[0-9][0-9]|HTTP 429|rate limit|Egress is over|ServerBusy'; then
+      attempts=${GH_DOWNLOAD_TRANSIENT_ATTEMPTS:-10}
+    fi
+    if [ "$attempt" -ge "$attempts" ]; then
       echo "gh $1 $2: failed after $attempt attempt(s) (exit $status)" >&2
       return 1
     fi
-    echo "gh $1 $2: attempt $attempt failed (exit $status); asking again" >&2
-    sleep $(( ${GH_DOWNLOAD_BACKOFF:-5} << (attempt - 1) ))
+    wait=$(( ${GH_DOWNLOAD_BACKOFF:-5} << (attempt - 1) ))
+    [ "$wait" -le "${GH_DOWNLOAD_MAX_WAIT:-120}" ] || wait=${GH_DOWNLOAD_MAX_WAIT:-120}
+    wait=$(( wait + RANDOM % (wait / 2 + 1) ))
+    echo "gh $1 $2: attempt $attempt of $attempts failed (exit $status); asking again in ${wait}s" >&2
+    sleep "$wait"
     if [ "$1" = run ] && [ -n "$dir" ] && [ -d "$dir" ]; then find "$dir" -mindepth 1 -delete; fi
     attempt=$((attempt + 1))
   done

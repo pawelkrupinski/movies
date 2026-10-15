@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# gh-optional.sh against a stub `gh` that answers with STUB_EXIT and STUB_ERR on stderr.
+# gh-optional.sh against a stub `gh` that answers with STUB_EXIT and STUB_ERR on stderr — for its first STUB_TIMES calls
+# when that is set, succeeding after them.
 # Run: bash scripts/ci/gh-optional-test.sh
 set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -12,6 +13,10 @@ trap 'rm -rf "$stub_dir"' EXIT
 cat > "$stub_dir/gh" <<'STUB'
 #!/usr/bin/env bash
 echo "gh stdout noise"
+if [ -n "${STUB_TIMES:-}" ]; then
+  n=$(( $(cat "$STUB_COUNT" 2>/dev/null || echo 0) + 1 )); echo "$n" > "$STUB_COUNT"
+  [ "$n" -le "$STUB_TIMES" ] || exit 0
+fi
 [ -n "${STUB_ERR:-}" ] && echo "$STUB_ERR" >&2
 exit "${STUB_EXIT:-0}"
 STUB
@@ -20,7 +25,8 @@ chmod +x "$stub_dir/gh"
 # optional <exit> <stderr>  -> prints "<verdict on stdout>|<exit status>"
 optional() {
   local out status
-  out=$(STUB_EXIT="$1" STUB_ERR="$2" PATH="$stub_dir:$PATH" bash "$REPO_ROOT/scripts/ci/gh-optional.sh" release download t 2>/dev/null)
+  rm -f "$stub_dir/count"
+  out=$(STUB_EXIT="$1" STUB_ERR="$2" STUB_COUNT="$stub_dir/count" GH_DOWNLOAD_BACKOFF=0 PATH="$stub_dir:$PATH" bash "$REPO_ROOT/scripts/ci/gh-optional.sh" release download t 2>/dev/null)
   status=$?
   echo "$out|$status"
 }
@@ -33,10 +39,16 @@ check "an expired artifact reads as absent" "absent|0" "$(optional 1 "no valid a
 check "a 404 run reads as absent" "absent|0" "$(optional 1 "HTTP 404: Not Found (https://api.github.com/repos/o/r/actions/runs/1)")"
 check "a refused token is a FAILED read, not absent" "|1" "$(optional 1 "HTTP 403: Resource not accessible by integration")"
 check "a 5xx is a FAILED read, not absent" "|1" "$(optional 1 "HTTP 502: Bad Gateway")"
+check "a 410 (an expired artifact's zip) reads as absent" "absent|0" "$(optional 1 "HTTP 410: Gone")"
+egress="error downloading scrape-fixtures-pl: HTTP 503: 503 Egress is over the account limit. (https://productionresultssa17.blob.core.windows.net/x.zip)"
+check "a throttled artifact storage is asked again, and present once it answers" "present|0|3" \
+  "$(STUB_TIMES=2 optional 1 "$egress")|$(cat "$stub_dir/count")"
+check "...and a throttle that outlasts every attempt is a FAILED read, never absent" "|1|10" \
+  "$(STUB_TIMES=99 optional 1 "$egress")|$(cat "$stub_dir/count")"
 check "a network failure is a FAILED read, not absent" "|1" "$(optional 1 "dial tcp: lookup api.github.com: no such host")"
 
 # The assignment pattern the call sites use stops a `set -e` script on a failed read.
-caller=$(STUB_EXIT=1 STUB_ERR="HTTP 500" PATH="$stub_dir:$PATH" bash -e -c \
+caller=$(STUB_EXIT=1 STUB_ERR="HTTP 500" GH_DOWNLOAD_BACKOFF=0 PATH="$stub_dir:$PATH" bash -e -c \
   "present=\$(bash '$REPO_ROOT/scripts/ci/gh-optional.sh' release download t); echo reached" 2>/dev/null)
 check "a set -e caller stops at a failed read instead of carrying on as if absent" "" "$caller"
 
