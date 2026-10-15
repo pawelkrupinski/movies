@@ -63,7 +63,7 @@ check "a country's leg: its pinned pair restored, then its suite" "restore de|sb
 check "...on the MongoDB given" "mongodb://given:1/" "$(env_of MONGODB_URI)"
 check "...hermetic, on that country's recorded enrichment tree" "true enrichment-de de de" \
   "$(env_of KINOWO_CONVERGENCE_HERMETIC) $(env_of KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES) $(env_of KINOWO_COUNTRY) $(env_of KINOWO_COUNTRIES)"
-check "...its databases under a prefix of its own" "yes" "$(case "$(env_of MONGODB_DB)" in kinowo_conv_de_*) echo yes ;; *) echo no ;; esac)"
+check "...its databases under a prefix of its own" "yes" "$([[ $(env_of MONGODB_DB) == kinowo_conv_de_* ]] && echo yes || echo no)"
 check "...and no OMDb key, said" "yes" "$(grep -q 'no OMDB_API_KEY' "$work/out" && echo yes || echo no)"
 
 MONGODB_URI=mongodb://given:1/ TMDB_API_KEY=tmdb MONGODB_DB=mine local_leg us convergenceUsQuick
