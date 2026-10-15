@@ -19,6 +19,12 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
   private lazy val recorder = RepoFile.read(".github/workflows/record-scrape-fixtures.yml")
   private lazy val setup    = RepoFile.read(".github/actions/convergence-setup/action.yml")
   private lazy val publish  = RepoFile.read(".github/actions/convergence-publish/action.yml")
+  private lazy val publisher = RepoFile.read(".github/scripts/convergence-publish.sh")
+  /** One shell function's body in the publish script: what the `tree` and `pin` commands run. */
+  private def publishes(function: String): String = {
+    val start = RepoFile.positionOf(publisher, s"\n$function() {\n")
+    publisher.substring(start, publisher.indexOf("\n}\n", start))
+  }
   private lazy val verdictCallers = Seq(RepoFile.read(".github/workflows/identity-model-convergence.yml"))
 
   /** One subcommand's function in the script the setup's fixture steps run: from `<name>() {` to its closing `}`. */
@@ -61,7 +67,9 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     val resolve = scriptFunction("pair")
     resolve should include("exit 1")
     resolve should include("hermetic-$code.txt")
-    RepoFile.step(publish, "Pin this recording as the pair hermetic legs replay") should include("hermetic-$code.txt")
+    RepoFile.step(publish, "Pin this recording as the pair hermetic legs replay") should include(
+      """convergence-publish.sh pin "$CODE"""")
+    publishes("pin_pair") should include("hermetic-$code.txt")
   }
 
   // ...nor when the pinned pair has EXPIRED. The rolling release keeps the two newest trees, so an
@@ -154,13 +162,15 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
   // Only a leg that got through the boot has recorded every request the corpus makes; the
   // spec prints the line, the publish reads it (CountryConvergenceBehaviour.BootComplete).
   it should "pin a pair only from a full recording leg whose boot completed" in {
-    val pin  = RepoFile.step(publish, "Pin this recording as the pair hermetic legs replay")
-    val tree = RepoFile.step(publish, "Publish the tree to the rolling release")
-    pin should include("inputs.mode == 'record' && inputs.complete == 'true'")
+    val pinStep  = RepoFile.step(publish, "Pin this recording as the pair hermetic legs replay")
+    val treeStep = RepoFile.step(publish, "Publish the tree to the rolling release")
+    pinStep should include("inputs.mode == 'record' && inputs.complete == 'true'")
+    treeStep should include("COMPLETE: ${{ inputs.complete }}")
+    treeStep should include("""convergence-publish.sh tree "$CODE" "$COMPLETE" "$LOG"""")
     // The decision is taken where the pinned tree is uploaded, and handed to the marker's step.
-    tree should include("""boot complete""")
-    tree should include("""[ "${{ inputs.complete }}" = "true" ]""")
-    pin should include("""pinned="${KINOWO_PINNED_TREE:-}"""")
+    publishes("publish_tree") should include("""boot complete""")
+    publishes("publish_tree") should include("""[ "$complete" = "true" ]""")
+    publishes("pin_pair") should include("""pinned="${KINOWO_PINNED_TREE:-}"""")
     RepoFile.block(leg, "convergence") should include("complete: ${{ inputs.mode == 'record' && steps.suite.outcome != 'cancelled' }}")
   }
 
@@ -168,8 +178,8 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
   // uploading the pinned copy after the working tree was a second, sequential 18 s of the UK
   // recording's critical path (run 37071880312). One call carries both; the marker stays last.
   "the publish action" should "upload the pinned tree in the same call as the working tree, not after it" in {
-    val tree = RepoFile.step(publish, "Publish the tree to the rolling release")
-    val pin  = RepoFile.step(publish, "Pin this recording as the pair hermetic legs replay")
+    val tree = publishes("publish_tree")
+    val pin  = publishes("pin_pair")
     tree should include(""""$RELEASE" upload "$TAG" "$ARCHIVE" "${pin[@]}" --clobber""")
     withClue("the pin step must not upload the tree a second time: ") {
       pin should not include ".tar.zst"

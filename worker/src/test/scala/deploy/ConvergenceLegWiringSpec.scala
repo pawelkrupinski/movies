@@ -587,10 +587,12 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "publish the tree as zstd, retire the gzip working asset, and prune pinned pairs of either kind" in {
-    val publish = RepoFile.read(".github/actions/convergence-publish/action.yml")
-    publish should include("enrichment-upload/enrichment-${{ inputs.code }}.tar.zst")
+    RepoFile.read(".github/actions/convergence-publish/action.yml") should include(
+      "enrichment-upload/enrichment-${{ inputs.code }}.tar.zst")
+    val publish = RepoFile.read(".github/scripts/convergence-publish.sh")
+    publish should include("ARCHIVE=\"enrichment-upload/enrichment-$code.tar.zst\"")
     publish should include("pinned=\"enrichment-$code-$KINOWO_CONVERGENCE_CORPUS_RUN.tar.zst\"")
-    publish should include("""legacy="enrichment-${{ inputs.code }}.tar.gz"""")
+    publish should include("""legacy="enrichment-$code.tar.gz"""")
     publish should include("delete-asset \"$TAG\" \"$legacy\"")
     publish should include("""\\.tar\\\\.(gz|zst)$""")
   }

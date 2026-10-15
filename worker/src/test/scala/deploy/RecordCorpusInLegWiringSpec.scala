@@ -147,8 +147,8 @@ class RecordCorpusInLegWiringSpec extends AnyFlatSpec with Matchers {
   /** Recordings land every ~15 min; keeping only the newest two pinned trees per country evicted a
    *  pair before an identity measure dispatched on it could restore it (measure 37114004953). */
   "the publish" should "keep each country's newest five pinned trees" in {
-    val publish = RepoFile.read(".github/actions/convergence-publish/action.yml")
-    publish should include("| sort -r | tail -n +6 | cut -f2")
+    RepoFile.read(".github/scripts/convergence-publish.sh") should include("| sort -r | tail -n +6 | cut -f2")
+    RepoFile.read(".github/workflows/ci.yml") should include("bash .github/scripts/convergence-publish-test.sh")
     RepoFile.read(".github/scripts/restore-enrichment-tree.sh") should include("(it keeps the newest five)")
   }
 }

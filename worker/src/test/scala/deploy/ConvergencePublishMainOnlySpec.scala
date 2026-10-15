@@ -18,8 +18,9 @@ class ConvergencePublishMainOnlySpec extends AnyFlatSpec with Matchers {
 
   "the convergence publish action" should "upload to the shared release only from main" in {
     val publish = RepoFile.step(action, "Publish the tree to the rolling release")
-    publish should include("\"$RELEASE\" upload")
+    publish should include(".github/scripts/convergence-publish.sh tree")
     publish should include(MainOnly)
+    RepoFile.read(".github/scripts/convergence-publish.sh") should include("\"$RELEASE\" upload")
   }
 
   "the convergence workflows" should "write the shared release nowhere except through that gated action" in {

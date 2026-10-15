@@ -215,7 +215,8 @@ class ConvergenceFillWiringSpec extends AnyFlatSpec with Matchers {
   }
 
   "a new pin" should "prune the fills — a row's and a re-run's included — and lists of the pairs it prunes" in {
-    RepoFile.step(publish, "Pin this recording as the pair hermetic legs replay") should include(
+    RepoFile.step(publish, "Pin this recording as the pair hermetic legs replay") should include("convergence-publish.sh pin")
+    RepoFile.read(".github/scripts/convergence-publish.sh") should include(
       "^(fill|refetch|refused)-$code-[0-9]+-[0-9]+(-[0-9]+)?(-[a-z][a-z-]*)?\\\\.(tar\\\\.zst|tsv)$")
   }
 

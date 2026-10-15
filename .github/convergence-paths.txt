@@ -35,6 +35,8 @@ test/resources/fixtures/corpus/**
 .github/scripts/unpack-fixture-archive.sh
 .github/scripts/restore-enrichment-tree.sh
 .github/scripts/convergence-fill.sh
+.github/scripts/convergence-publish.sh
+.github/scripts/convergence-findings-summary.sh
 .github/scripts/convergence-bisect.sh
 # The CI plumbing a leg runs: its preflight, the release reads and writes behind its pinned
 # pair, and the status that IS its verdict on the commit. (ConvergenceDispatchGateSpec walks
