@@ -24,6 +24,14 @@ class ToolCommandLinesSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  "a caller's command line" should "be read across its backslash continuations, a flag on the next line included" in {
+    val script = Paths.get("scripts/example.sh")
+    ToolCallers.callsIn(script, "sbt \"Test/runMain scripts.IdentityRefit --apply \\\n    --repport r.md\"\n", "scripts") shouldBe
+      Seq(ToolCallers.Call(script, "scripts.IdentityRefit", Seq("--apply", "--repport", "r.md")))
+    ToolCallers.callsIn(script, "java -cp \"$cp\" integration.UnmatchedClustersFill de \\\n  --capture \"$dir\" \\\n  --bogus 2>&1 | tee log\n",
+      "integration") shouldBe Seq(ToolCallers.Call(script, "integration.UnmatchedClustersFill", Seq("de", "--capture", "x", "--bogus")))
+  }
+
   "IdentityCalibrate and IdentityDecorationsLearn" should "read the recorded corpora alike, the hard clusters defaulted" in {
     Seq(IdentityCalibrate.commandLine, IdentityDecorationsLearn.commandLine).foreach { line =>
       RecordedCorpora.of(parsed(line, "--corpora", "c", "--fixtures", "f")) shouldBe
