@@ -761,7 +761,7 @@ pl	Kino PCKul	(Nie) wszystko Ci oddam	tmdb:43539	wrong	open				2026-10-08	review
 pl	Kino PCKul	(Nie) wszystko Ci oddam	tmdb:744452	wrong	open				2026-10-08	hand label: "(Nie) wszystko Ci oddam", not the 2020 "Nie"
 pl	*	100 LAT Z MARILYN. ŚWIATŁO I CIEŃ | Przystanek autobusowy | prelekcja Oliw Salwy + pokaz	tmdb:24010	right	open				2026-10-13	judged 10-13 (suspect audit): "Przystanek autobusowy" is Bus Stop (1956), in a Marilyn Monroe retrospective
 pl	*	11. UFF - Cicha powódź	tmdb:1423191	wrong	open				2026-10-08	hand label: Resident Evil (2026) Zach Cregger
-pl	*	11. UFF - Cicha powódź	tmdb:951038	right	open				2026-10-13	judged 10-13 (suspect audit): "Cicha powódź" is the Polish title of "Silent Flood" (UA), at the Ukrainian film festival
+pl	*	11. UFF - Cicha powódź	tmdb:951038	right	accepted-right-loss			a right take lost to the director-walk rule (another film of its director, "Красна Маланка", stands beside it and the billing names neither in Polish), the wrong-over-missing trade: München Mord and Gremlins cured for this one lost; judged 10-15	2026-10-13	judged 10-13 (suspect audit): "Cicha powódź" is the Polish title of "Silent Flood" (UA), at the Ukrainian film festival
 pl	*	11. UFF - Demony	filmweb:10131126	right	open				2026-10-08	hand label: Demony (2026) Natalya Vorozhbit
 pl	*	11. UFF - Demony	imdb:tt20149536	right	open				2026-10-08	hand label: Demons (2026) Natalya Vorozhbit
 pl	*	11. UFF - Demony	metacritic:primetime	wrong	open				2026-10-08	hand label: Primetime (2026) Lance Oppenheim
@@ -1945,6 +1945,8 @@ us	*	Volcanoes 3D	tmdb:1028378	wrong	open				2026-10-08	hand label: Serengeti (2
 us	Fleet Science Center IMAX	Volcanoes 3D	tmdb:556541	right	open				2026-10-08	recall target: Volcanoes: The Fires of Creation (2018)
 us	OMNIMAX Theatre – Robert D. Lindner Family	Volcanoes 3D	tmdb:556541	right	open				2026-10-08	judged 10-05: the IMAX dome film Fleet Science Center's same title is (recall target), its poster matching the venue's
 us	*	WORLD OF ANIMATION: SPIRITED AWAY (SUBTITLED) - DRAG BRUNCH	tmdb:129	right	open				2026-10-13	judged 10-13 (suspect audit): Spirited Away (subtitled) at a drag brunch
+us	National Gallery of Art	Salesman (1968)	tmdb:27375	right	open				2026-10-15	judged 10-15: the Maysles brothers' and Charlotte Zwerin's "Salesman" (TMDB 27375, premiered 1968, released 1969, 85-91m) — the billing credits all three, 85m (flicks:8093)
+us	National Gallery of Art	Salesman (1968)	tmdb:192158	wrong	open				2026-10-15	judged 10-15: "Journey to Jerusalem" (1968) is another Maysles film reached by the director walk; the billing titles "Salesman"
 uk	*	Opéra de Paris: Notre Dame de Paris	tmdb:973305	wrong	open				2026-10-14	judged 10-14 (house-season rule): the Paris Opera's Dec 2025 recording screening in 2026/27 (as Penrith's label), not the 2021 Opéra Bastille record
 uk	*	Opéra De Paris Ballet - La Bayadère	tmdb:142479	wrong	open				2026-10-14	judged 10-14 (house-season rule): the Paris Opera Ballet's relay screening in 2026/27, not La Scala's record (La Scala Ballet: La Bayadère (2006))
 uk	*	Opéra De Paris Ballet - Notre-Dame de Paris	tmdb:790330	wrong	open				2026-10-14	judged 10-14 (house-season rule): the Paris Opera Ballet's relay screening in 2026/27, not La Scala's record (La Scala Ballet: Notre-Dame de Paris (2013))
