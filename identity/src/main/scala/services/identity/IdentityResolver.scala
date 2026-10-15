@@ -394,7 +394,7 @@ object IdentityResolver {
   def resolveScored(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer,
                     calibration: IdentityCalibration = IdentityCalibration.resolver): Scored = {
     val stages = new Stages(listings, lookups, normalizer, calibration, Mutation.None, PinConstraints(Nil), TitleDecorations.resolver)
-    new Scored(run(stages, Mutation.None, pieces = false, corroborated = false), stages)
+    new Scored(run(stages, Mutation.None, pieces = false), stages)
   }
 
   /** The corpus-wide facts a resolve of `listings` reads ([[CorpusContext]]): what one family,
