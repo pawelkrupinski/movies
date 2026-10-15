@@ -107,7 +107,8 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
         StageRelays.broadcastRecordOrder(scored.candidate.tmdbId, scored.candidate.film)))
     // A short beside a feature the title names as its own is that feature's namesake, unless the venue bills a short: no
     // rule takes it, and it stays a rival ([[ShortFilms]]): DE "GINA - mit der Domschule Würzburg" is no 7-minute "Gina"
-    // beside three feature-length ones.
+    // beside three feature-length ones. So is a short the billing opens on and goes on past ([[ShortFilms.billedBeyond]]): DE
+    // "UNLESS WE DANCE - QUEERE FILME ZUR LÄNGSTEN NACHT" is an evening named after the 14-minute short, no feature beside it.
     // A short of the director the listing credits is its own film, unless a feature of that director carries the title
     // too (DE Filmmuseum München's "Nuisance Bear" {Osio Vanden, Weisman}: their 2026 feature, not their 2021 short).
     val features = candidates.filter(scored => !scored.denied && !ShortFilms.isShort(scored.candidate.film) &&
@@ -115,7 +116,8 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
     val creditedFeature = features.exists(scored => IdentityMeasures.sameDirector(scored.measures))
     def shortUntaken(scored: Scored) =
       if (scored.denied || (IdentityMeasures.sameDirector(scored.measures) && !creditedFeature)) None
-      else ShortFilms.untaken(listing, scored.candidate.tmdbId, scored.candidate.film, linked, features.nonEmpty)
+      else ShortFilms.untaken(listing, scored.candidate.tmdbId, scored.candidate.film, linked,
+        features.nonEmpty || !IdentityMeasures.Rivalling(relation(scored.candidate.tmdbId)) && ShortFilms.billedBeyond(listing, scored.candidate.film, venue))
     // A film of the venue's own language is billed by its title: one the listing's titles share no word with is another
     // film, however its director's credit or running time fits — a director's filmography is a path to candidates, never a
     // title. UK Picture House Uckfield's "Gremlins Special Event" {Joe Dante} [120′] took Innerspace,

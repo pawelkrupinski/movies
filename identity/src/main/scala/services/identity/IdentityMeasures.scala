@@ -498,7 +498,7 @@ object IdentityMeasures {
   def withoutLeadingArticle(words: Seq[String]): Seq[String] =
     if (words.sizeIs >= 2 && LeadingArticles(words.head)) words.tail else words
 
-  private def words(s: String): Seq[String] = TitleContainment.tokens(withoutPossessives(s))
+  private[identity] def words(s: String): Seq[String] = TitleContainment.tokens(withoutPossessives(s))
 
   /** How two credit lists relate: one person in common — the same words or letters in any order,
    *  case or splitting (`same_person`) — a shared name word only (a surname, a transliteration), or
@@ -1197,7 +1197,7 @@ object IdentityMeasures {
     if (!hasAsciiDigit(title)) Iterator.empty
     else LabelledYear.findAllMatchIn(title).filterNot(m => TitleContainment.tokens(m.group(1)).exists(datesAScreening))
       .map(m => s"(${m.group(2)})")
-  private def datesAScreening(word: String): Boolean =
+  private[identity] def datesAScreening(word: String): Boolean =
     DecorationWords.EditionWords(word) || DecorationWords.EventWords(word) || services.movies.FormatTags.FormatToken.contains(word) ||
       MonthNames(word) || DecorationWords.EventWords.exists(event => event.length >= 5 && word.length > event.length && word.contains(event))
   /** Every locale's month names, as title words. */

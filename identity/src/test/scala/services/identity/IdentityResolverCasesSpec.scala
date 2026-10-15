@@ -3001,6 +3001,40 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
       ls.flatMap(l => r.decisionOf(l.key).film ++ r.decisionOf(l.key).leaning.map(_.film)) should not contain 1193753)
   }
 
+  it should "not be taken by one piece of a billing that says more than its title, the venue billing no short" in {
+    // DE Caligari FilmBühne Wiesbaden's "UNLESS WE DANCE - QUEERE FILME ZUR LÄNGSTEN NACHT" (recording 38713274617) took
+    // TMDB's 14-minute "A Menos que bailemos" ("Unless We Dance") by its first piece: an evening of queer films named
+    // after the short, no feature beside it. A short screened alone is billed by its own title; one a billing names only
+    // by a piece is the programme's namesake. Its slice (IdentitySliceCasesSpec) holds the take.
+    val films = Seq(F(1103660, "Unless We Dance", 2023, "Someone", 14, 1))
+    val programme = listing(Multikino, "UNLESS WE DANCE - QUEERE FILME ZUR LÄNGSTEN NACHT")
+    val d = shipped(Seq(programme), films).decisionOf(programme.key)
+    withClue(d.render)(d.film shouldBe None)
+    // the venue billing a short by its running time still takes it
+    val timed = listing(Multikino, "UNLESS WE DANCE - QUEERE FILME ZUR LÄNGSTEN NACHT", runtime = Some(14))
+    shipped(Seq(timed), films).decisionOf(timed.key).film shouldBe Some(1103660)
+  }
+
+  it should "still be taken under a series' banner before it, with a talk after it, or signed with its venue's name" in {
+    // DE "WIEDERBEGEGNUNGEN MIT EINEM FILM: NUIT ET BROUILLARD" ×2 is Resnais's 32-minute film; UK Phoenix Leicester's
+    // "After Eight - The Story of Satpal Ram + Q&A" the 2025 short (TMDB also titles it "After Eight") with its talk; PL
+    // Nasze Kino's "Warsztat Świętego Mikołaja / dubbing - Nasze Kino" Disney's 1932 short.
+    val night = F(803, "Nuit et brouillard", 1956, "Alain Resnais", 32, 3)
+    val afterEight = F(1576335, "After Eight: The Story of Satpal Ram", 2025, "Someone", 30, 1, alternatives = Seq("After Eight"))
+    val workshop = F(67167, "Warsztat Świętego Mikołaja", 1932, "Wilfred Jackson", 7, 1)
+    val untaken = (venue: String, title: String, f: F) => ShortFilms.billedBeyond(IdentityMeasures.Listing(title),
+      IdentityMeasures.Film(f.title, f.original, f.alternatives, Some(f.year), Some(f.runtime)), venue)
+    untaken("Lichtwerk", "WIEDERBEGEGNUNGEN MIT EINEM FILM: NUIT ET BROUILLARD", night) shouldBe false
+    untaken("Phoenix Cinema and Art Centre Leicester", "After Eight - The Story of Satpal Ram + Q&A", afterEight) shouldBe false
+    untaken("Nasze Kino", "Warsztat Świętego Mikołaja / dubbing - Nasze Kino", workshop) shouldBe false
+    untaken("Caligari FilmBühne Wiesbaden", "UNLESS WE DANCE - QUEERE FILME ZUR LÄNGSTEN NACHT",
+      F(1103660, "Unless We Dance", 2023, "Someone", 14, 1)) shouldBe true
+    val banner = listing(Multikino, "WIEDERBEGEGNUNGEN MIT EINEM FILM: NUIT ET BROUILLARD")
+    withClue(shipped(Seq(banner), Seq(night)).decisionOf(banner.key).render)(
+      shipped(Seq(banner), Seq(night)).decisionOf(banner.key).film shouldBe Some(803))
+  }
+
+
   it should "still be taken alone where no feature shares its title" in {
     val films = Seq(F(1193753, "Gina", 2022, "Ayu Lestari", 7, 1))
     val l = listing(Multikino, "Gina")
