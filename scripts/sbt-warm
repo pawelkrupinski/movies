@@ -7,7 +7,8 @@
 #                                        in this checkout's server — started, and seeded, when there is none
 #   scripts/sbt-warm --seed              only seed this checkout's compiled output (when it has none)
 #   scripts/sbt-warm --status            this checkout's server, and every kept one
-#   scripts/sbt-warm --stop              stop this checkout's server
+#   scripts/sbt-warm --stop              stop this checkout's server (by pid, its own only: never `sbt --client shutdown`,
+#                                        which reaches whatever server active.json names)
 #   scripts/sbt-warm --reap              stop every kept server whose checkout is gone, or idle past the timeout
 #
 # ONE SERVER: a call finding several servers in the checkout stops them all and starts one; a seed never touches
@@ -68,6 +69,23 @@ dedupe() { # <root>
   rm -f "$1/project/target/active.json"
 }
 
+# Stops <root>'s own servers, by pid: never `sbt --client shutdown`, which reaches whichever server
+# project/target/active.json names (a seed's source: another worktree's live run) and starts one when none answers.
+stop_servers_of() { # <root>
+  local pid stopped=1
+  for pid in $(server_pids "$1"); do kill "$pid" 2>/dev/null && { log "stopped the server of $1 (pid $pid)"; stopped=0; }; done
+  return "$stopped"
+}
+
+# Whether <pid> is an sbt server whose checkout directory is gone. A pid file outlives its process, and the pid comes
+# back as someone else's: anything else is left alone.
+server_of_removed_checkout() { # <pid>
+  local cwd
+  ps -o args= -p "$1" 2>/dev/null | grep -q -- '--detach-stdio' || return 1
+  cwd=$(lsof -a -p "$1" -d cwd -Fn 2>/dev/null | sed -n 's/^n//p')
+  [ -z "$cwd" ] || [ ! -d "$cwd" ]
+}
+
 # Stops the server of every registered checkout that is gone (or, with "idle", unused past the timeout).
 reap() { # [idle]
   local f r pid
@@ -76,10 +94,11 @@ reap() { # [idle]
     r=$(cat "$f")
     if [ ! -d "$r" ]; then
       pid=$(cat "${f%.root}.pid" 2>/dev/null || true)
-      [ -n "$pid" ] && kill "$pid" 2>/dev/null && log "stopped the server of the removed checkout $r (pid $pid)"
+      [ -n "$pid" ] && server_of_removed_checkout "$pid" && kill "$pid" 2>/dev/null \
+        && log "stopped the server of the removed checkout $r (pid $pid)"
       rm -f "${f%.root}".*
     elif [ "${1:-}" = idle ] && [ -n "$(find "${f%.root}.used" -mmin +"$IdleMinutes" 2>/dev/null)" ]; then
-      (cd "$r" && sbt --client shutdown >/dev/null 2>&1) && log "stopped the idle server of $r"
+      stop_servers_of "$(cd "$r" && pwd -P)" || true
       rm -f "${f%.root}".*
     fi
   done
@@ -129,6 +148,8 @@ seed() {
       cp -cR "$src/$d" "$root/$d" 2>/dev/null || cp -R "$src/$d" "$root/$d"
     done
   done
+  # the source's server socket came with project/target: sbt --client here would run in THAT server
+  case "$missing" in *project/target*) rm -f "$root/project/target/active.json" ;; esac
   log "seeded in $((SECONDS - started))s"
 }
 
@@ -139,17 +160,19 @@ build_digest() { (cd "$root" && cat build.sbt project/*.sbt project/*.scala proj
 watch() { # <pid>
   ( set -m; nohup bash -c '
       pid=$1 root=$2 used=$3 idle=$4
-      while kill -0 "$pid" 2>/dev/null; do
+      # still the server, not a process that inherited its pid during the sleep
+      server() { ps -o args= -p "$pid" 2>/dev/null | grep -q -- --detach-stdio; }
+      while server; do
         sleep 60
-        if [ ! -d "$root" ]; then kill "$pid"; break; fi
-        if [ -n "$(find "$used" -mmin +"$idle" 2>/dev/null)" ]; then (cd "$root" && sbt --client shutdown); break; fi
+        if [ ! -d "$root" ]; then server && kill "$pid"; break; fi
+        if [ -n "$(find "$used" -mmin +"$idle" 2>/dev/null)" ]; then server && kill "$pid"; break; fi
       done' watchdog "$1" "$root" "$State/$key.used" "$IdleMinutes" > /dev/null 2>&1 < /dev/null & )
 }
 
 case "${1:-}" in
   --reap) reap idle; exit 0 ;;
   --seed) seed; exit 0 ;;
-  --stop) (cd "$root" && sbt --client shutdown); rm -f "$State/$key".*; exit 0 ;;
+  --stop) stop_servers_of "$root" || log "no server of $root to stop"; rm -f "$State/$key".*; exit 0 ;;
   --status)
     pid=$(server_pid "$root") && echo "this checkout ($root): server pid $pid" || echo "this checkout ($root): no server"
     for f in "$State"/*.root; do [ -f "$f" ] && echo "kept: $(cat "$f") (pid $(cat "${f%.root}.pid" 2>/dev/null || echo ?), last used $(stat -f %Sm "${f%.root}.used" 2>/dev/null))"; done
