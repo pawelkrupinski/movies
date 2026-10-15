@@ -53,7 +53,7 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 load_endpoints() {
   [ -n "${MONGODB_URI:-}" ] || { echo "[mirror] MONGODB_URI is not set (prod tunnel = sync source)" >&2; exit 1; }
   SRC="$(prod_tunnel_uri "$MONGODB_URI")"
-  DST="${MONGODB_MOVIES_MIRROR_URI:-mongodb://127.0.0.1:${LOCAL_MIRROR_PORT:-28017}/kinowo_prod_mirror?directConnection=true}"
+  DST="${MONGODB_MOVIES_MIRROR_URI:-$(local_mongo_uri kinowo_prod_mirror)}"
 
   # Tune the prod source connection: zlib wire compression so the seed cursor and
   # change stream carry ~6x less data over the tunnel (the uncompressed mongodump

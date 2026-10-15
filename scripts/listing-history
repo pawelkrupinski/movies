@@ -19,5 +19,7 @@
 # LISTING_HISTORY_SLICE names another identity-slice for --replay (one whose tool files still compile at old refs).
 # The logic and its tests: scripts/listing_history.py, scripts/listing_history_test.py.
 set -euo pipefail
-case "${1:-}" in -h|--help) sed -n '3,/^set /p' "$0" | sed '$d; s/^# \{0,1\}//'; exit 0 ;; "") sed -n '3,/^set /p' "$0" | sed '$d; s/^# \{0,1\}//' >&2; exit 2 ;; esac
+# shellcheck source=scripts/tool-conventions.sh
+. "$(dirname "$0")/tool-conventions.sh" # usage_from_header
+case "${1:-}" in -h|--help) usage_from_header; exit 0 ;; "") usage_from_header >&2; exit 2 ;; esac
 exec python3 -I "$(dirname "$0")/listing_history.py" "$@"

@@ -55,7 +55,7 @@ for arg in "$@"; do
     *) echo "[enrich-cache] unknown argument: $arg (see the header for usage)" >&2; exit 1 ;;
   esac
 done
-[ ${#COUNTRIES[@]} -gt 0 ] || COUNTRIES=(pl de uk us es)
+[ ${#COUNTRIES[@]} -gt 0 ] || COUNTRIES=("${KINOWO_COUNTRIES[@]}") # tool-conventions.sh, via local-mongo.sh
 
 
 # An exported MONGODB_URI stands in for the root one, as it always has; only when
@@ -63,7 +63,7 @@ done
 [ -n "${MONGODB_URI:-}" ] || ensure_vault_env MONGO_ROOT_URI -- "$BASH" "$0" "$@" || exit 1
 # The vault's URIs name the in-cluster address; the dump goes through the tunnel.
 SRC="$(prod_tunnel_uri "${MONGO_ROOT_URI:-${MONGODB_URI:-}}")"
-DST="${LOCAL_MONGO_URI:-mongodb://127.0.0.1:${LOCAL_MIRROR_PORT:-28017}/?directConnection=true}"
+DST="${LOCAL_MONGO_URI:-$(local_mongo_uri)}"
 
 # ── ensure the prod tunnel (source), starting our OWN ssh forward only when
 # nothing already serves :27017 — never fighting a tunnel someone else owns.

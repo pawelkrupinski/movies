@@ -16,6 +16,8 @@
 # country has no mirror database or the mirror Mongo does not answer.
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=scripts/tool-conventions.sh
+. "$HERE/../tool-conventions.sh" # usage_from_header, KINOWO_COUNTRIES, local_mongo_uri, local_mongo_port
 ccs=() max_lag_hours=6 not_before="" need="" quiet=false
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -23,13 +25,13 @@ while [ "$#" -gt 0 ]; do
     --not-before) not_before=$2; shift 2 ;;
     --need) need=$2; shift 2 ;;
     --quiet) quiet=true; shift ;;
-    -h|--help) sed -n '3,/^set /p' "$0" | sed '$d; s/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) usage_from_header; exit 0 ;;
     -*) echo "unknown argument $1" >&2; exit 2 ;;
     *) ccs+=("$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]')"); shift ;;
   esac
 done
-[ "${#ccs[@]}" -gt 0 ] || ccs=(pl de uk es us)
-uri="mongodb://127.0.0.1:${LOCAL_MIRROR_PORT:-28017}/?directConnection=true&serverSelectionTimeoutMS=5000"
+[ "${#ccs[@]}" -gt 0 ] || ccs=("${KINOWO_COUNTRIES[@]}")
+uri="$(local_mongo_uri)&serverSelectionTimeoutMS=5000"
 js_list() { local out="" x; for x in "$@"; do [ -n "$x" ] && out="$out${out:+,}'$x'"; done; echo "[$out]"; }
 IFS=, read -r -a needs <<< "$need"
 not_before_ms=null
@@ -48,5 +50,5 @@ status=$?
 set -e
 case "$status" in
   0|2|3) exit "$status" ;;
-  *) echo "[freshness] the local mirror on :${LOCAL_MIRROR_PORT:-28017} did not answer (scripts/local-mirror/start-local-mongo.sh)" >&2; exit 2 ;;
+  *) echo "[freshness] the local mirror on :$(local_mongo_port) did not answer (scripts/local-mirror/start-local-mongo.sh)" >&2; exit 2 ;;
 esac
