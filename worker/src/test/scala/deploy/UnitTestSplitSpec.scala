@@ -28,16 +28,21 @@ class UnitTestSplitSpec extends AnyFlatSpec with Matchers {
     """"(\w+)"\s*->""".r.findAllMatchIn(call).map(_.group(1)).toSet + "rest"
   }
 
-  "ci.yml's unit rows" should "run testUnitNoE2e's other modules on one row and the worker's rows on the rest" in {
+  /** The rows' commands: each worker row runs the worker's unit tests (filtered), one of them beside other modules. */
+  private val WorkerCommands = Set("testUnitWorker", "testUnitWorkerAndWeb")
+
+  "ci.yml's unit rows" should "run every module testUnitNoE2e runs, each on one row but the filtered worker" in {
     val rows = RepoFile.matrixRows(testJob)
-    rows.map(_("cmd")).toSet shouldBe Set("testUnitWorker", "testUnitRest")
-    RepoFile.commandAlias("testUnitWorker") shouldBe "worker/Test/test"
-    tasks("testUnitRest") shouldBe tasks("testUnitNoE2e") - "worker/Test/test"
+    rows.map(_("cmd")).toSet shouldBe WorkerCommands + "testUnitRest"
+    WorkerCommands.foreach(alias => withClue(alias)(tasks(alias) should contain("worker/Test/test")))
+    val others = WorkerCommands.toSeq.map(tasks(_) - "worker/Test/test") :+ tasks("testUnitRest")
+    others.flatten should contain theSameElementsAs others.flatten.distinct  // no module on two rows
+    others.flatten.toSet + "worker/Test/test" shouldBe tasks("testUnitNoE2e")
     RepoFile.withoutComments(testJob) should include("run: sbt ${{ matrix.cmd }}")
   }
 
   they should "give every worker row a filter build.sbt knows, each exactly once, the catch-all among them" in {
-    val workerRows = RepoFile.matrixRows(testJob).filter(_("cmd") == "testUnitWorker").map(_("suites"))
+    val workerRows = RepoFile.matrixRows(testJob).filter(row => WorkerCommands(row("cmd"))).map(_("suites"))
     workerRows should contain theSameElementsAs rowsOf("WORKER_ROW").toSeq
     testJob should include("WORKER_ROW: ${{ matrix.suites }}")
     // Only the worker carries the filter: the rest row runs no worker suite and sets none.

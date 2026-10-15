@@ -159,10 +159,10 @@ lazy val itRowSettings = rowSettings("IT_ROW", IntegrationTest, Seq("identity" -
 
 // The worker's ~6,300 unit tests on one runner were CPU-bound too (409 s of suites at 4 cores, 2026-10-15), split by
 // package into rows of roughly equal suite time: the identity tooling's capture re-resolves (`scripts`), the
-// resolver's corpus specs with the tools they drive, and `rest`.
+// resolver's corpus specs (`identity`), and `rest`, which CI runs beside the web module's unit tests.
 lazy val workerRowSettings = rowSettings("WORKER_ROW", Test, Seq(
   "scripts"  -> (_.startsWith("scripts.")),
-  "identity" -> (suite => suite.startsWith("services.identity.") || suite.startsWith("tools."))))
+  "identity" -> (_.startsWith("services.identity."))))
 
 lazy val itReportSettings = Seq(
   IntegrationTest / testOptions += Tests.Argument(TestFrameworks.ScalaTest, "-o", "-u",
@@ -561,7 +561,8 @@ addCommandAlias("itAll", "all web/IntegrationTest/test worker/IntegrationTest/te
 // runner the module was the long pole). See .github/workflows/ci.yml.
 addCommandAlias("testUnitNoE2e", "all common/Test/test identity/Test/test testkit/Test/test web/Test/test worker/Test/test")
 addCommandAlias("testUnitWorker", "worker/Test/test")
-addCommandAlias("testUnitRest", "all common/Test/test identity/Test/test testkit/Test/test web/Test/test")
+addCommandAlias("testUnitWorkerAndWeb", "all worker/Test/test web/Test/test")
+addCommandAlias("testUnitRest", "all common/Test/test identity/Test/test testkit/Test/test")
 
 // e2e CI shards. The two heavy whole-corpus determinism specs (tagged
 // @CorpusReplay) run by name, one per runner; `e2eRest` runs EVERYTHING ELSE in
