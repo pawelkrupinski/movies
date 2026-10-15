@@ -33,7 +33,9 @@ layers and which kinds of changes they catch:
   `<tool>_test.py`), found by name and run in parallel. Required for any
   change under `scripts/`, `.github/scripts/`, `.github/actions/` or the
   mobile `*/scripts/`; `--changed origin/main` runs just the tests whose
-  tool, test or named files the change touched. A new self-test needs no
+  tool, test or named files the change touched; `--linux` runs them in an
+  ubuntu-26.04 container as CI does (Docker / Rancher Desktop; the pre-push hook
+  does it beside the native run when Docker is up). A new self-test needs no
   wiring — name it by the scheme and CI runs it.
 
 Exact commands, the module-scoping variants, and the `testOnly` / `-z`
@@ -271,7 +273,8 @@ Rules:
 - **Never `pkill -f` / `killall` by pattern**: other agents' processes
   match it too (one `pkill -f identity-slice` killed other agents'
   batches). Use `scripts/agent-procs kill --mine`.
-- **Run `scripts/agent-procs` to audit** every worktree (dirty, unmerged
+- **Run `scripts/agent-procs` to audit** (it and every push warn when the root checkout is off `main` or dirty:
+  `scripts/root-checkout-check`) every worktree (dirty, unmerged
   vs `origin/main`, lock owner, the processes in it) and
   `scripts/agent-procs prune` to clean up the removable ones.
 - **Run `scripts/agent-time`** to see where a session's subagents spent
