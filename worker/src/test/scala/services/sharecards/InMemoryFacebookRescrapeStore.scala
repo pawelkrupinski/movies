@@ -16,7 +16,8 @@ class InMemoryFacebookRescrapeStore extends FacebookRescrapeStore {
     added.count { e =>
       entries.get(e.key) match {
         case Some((waiting, enqueued)) =>
-          if (e.notBefore.isAfter(waiting.notBefore)) entries(e.key) = (waiting.copy(notBefore = e.notBefore), enqueued)
+          val promoted = if (e.kind == RescrapeKind.Page) waiting.copy(target = e.target) else waiting
+          entries(e.key) = (if (e.notBefore.isAfter(waiting.notBefore)) promoted.copy(notBefore = e.notBefore) else promoted, enqueued)
           askedAgain(e.key) = askedAgain.get(e.key).filter(_.isAfter(e.notBefore)).getOrElse(e.notBefore)
           false
         case None =>

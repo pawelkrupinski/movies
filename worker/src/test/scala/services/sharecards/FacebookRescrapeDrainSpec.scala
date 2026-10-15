@@ -7,6 +7,7 @@ import tools.MutableClock
 
 import java.time.Instant
 import scala.concurrent.duration.*
+import scala.util.Try
 
 /**
  * The fleet's Facebook re-scrapes: every country's worker drains ONE queue on ONE quota.
@@ -40,9 +41,9 @@ class FacebookRescrapeDrainSpec extends AnyFlatSpec with Matchers {
   /** Two countries' workers on one store and one clock, each with its own graph (its own app
    *  credentials — the same app), each film having `cities` pages. */
   private final class Fleet(cities: Int, answer: String => FacebookScrape = _ => FacebookScrape.Accepted,
-                            latency: java.time.Duration = java.time.Duration.ZERO, usage: () => Option[AppUsage] = () => None) {
+                            latency: java.time.Duration = java.time.Duration.ZERO, usage: () => Option[AppUsage] = () => None,
+                            val store: InMemoryFacebookRescrapeStore = new InMemoryFacebookRescrapeStore) {
     val clock = new MutableClock(T0)
-    val store = new InMemoryFacebookRescrapeStore
     val fetches = new InMemoryFacebookFetches
     val graph = new RecordingGraph(clock, answer, latency, usage)
     val series = new ShareCardMetrics.Series(Seq("us", "uk"), new io.prometheus.metrics.model.registry.PrometheusRegistry)
@@ -303,6 +304,21 @@ class FacebookRescrapeDrainSpec extends AnyFlatSpec with Matchers {
     fleet.request("us", "big-film")
     fleet.run(1.hour)
     (sent * PerRequest) should be < 90.0
+  }
+
+  // The hold is written after Facebook answered: a fleet database that refuses it must not leave
+  // the accepted page claimed, to be sent again when its lease runs out.
+  "A usage hold the fleet database cannot take" should "not send the page Facebook accepted again" in {
+    val refusing = new InMemoryFacebookRescrapeStore {
+      override def holdSlots(until: Instant): Unit = throw new IllegalStateException("fleet database down")
+    }
+    val fleet = new Fleet(cities = 1, usage = () => Some(AppUsage(UsageCeiling)), store = refusing)
+    fleet.request("us", "film")
+    (1L to (Lease + 1.minute).toMillis / TickEvery.toMillis).foreach { _ =>
+      Try(fleet.drains("us").tick()); fleet.clock.advance(java.time.Duration.ofMillis(TickEvery.toMillis))
+    }
+    fleet.graph.sent.size shouldBe 1
+    fleet.store.waiting shouldBe empty
   }
 
   "The waiting gauge" should "count the country's pages still to send, fetched by Facebook or not" in {

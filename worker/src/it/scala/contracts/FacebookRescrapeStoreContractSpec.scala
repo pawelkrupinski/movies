@@ -83,6 +83,18 @@ class FacebookRescrapeStoreContractSpec extends AnyFlatSpec with Matchers with B
         Some(RescrapeTarget.Page("never", previewed = false))
     }
 
+    // A page queued before Facebook fetched it (nobody had shared it) gains a preview the moment
+    // someone shares it; the next card change asks for it as previewed, and it must not keep
+    // waiting behind every page Facebook never fetched.
+    it should s"[$name] move a page waiting as never fetched to the previewed kind once it is asked for as previewed, never back" in {
+      val store = fresh(cls)
+      store.add(Seq(RescrapeEntry("us", RescrapeTarget.Page("p", previewed = false), t0)))
+      store.add(Seq(page("p", t0))) shouldBe 0
+      store.add(Seq(RescrapeEntry("us", RescrapeTarget.Page("p", previewed = false), t0))) shouldBe 0
+      store.hasDue("us", RescrapeKind.UnfetchedPage, t0.plusSeconds(60)) shouldBe false
+      store.claim("us", RescrapeKind.Page, t0.plusSeconds(60), 1.minute).map(_.target) shouldBe Some(RescrapeTarget.Page("p"))
+    }
+
     it should s"[$name] hold a waiting entry to the later of two requests' due times, never the earlier" in {
       val store = fresh(cls)
       store.add(Seq(film("f", t0.plusSeconds(60))))

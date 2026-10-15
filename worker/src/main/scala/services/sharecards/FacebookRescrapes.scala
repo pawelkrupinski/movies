@@ -39,7 +39,8 @@ object RescrapeTarget {
   final case class FilmPages(country: String, filmId: String) extends RescrapeTarget { val key = s"film|$country|$filmId" }
   /** One page URL; `previewed` when Facebook fetched it within its preview's lifetime
    *  ([[services.facebook.FacebookFetches]]) — so holds a preview a card change made stale — and
-   *  sent before every page it did not. One entry per URL, whichever: the kind it was queued as stays. */
+   *  sent before every page it did not. One entry per URL, whichever: a page waiting as never
+   *  fetched becomes previewed when it is asked for as previewed, and never goes back. */
   final case class Page(url: String, previewed: Boolean = true) extends RescrapeTarget { val key = s"page|$url" }
 }
 
@@ -128,11 +129,16 @@ class MongoFacebookRescrapeStore(collection: MongoCollection[Document]) extends 
       case RescrapeTarget.Page(url, _)         => Updates.setOnInsert("url", url)
     }
     await(collection.updateOne(Filters.eq("_id", entry.key), Updates.combine(
-      Updates.setOnInsert("country", entry.country), Updates.setOnInsert("kind", entry.kind.name), target,
+      Updates.setOnInsert("country", entry.country), kindOf(entry.kind), target,
       Updates.max("notBefore", date(entry.notBefore)), Updates.setOnInsert("enqueuedAt", date(entry.notBefore)),
       Updates.setOnInsert("attempts", 0), Updates.max(AskedAgainAt, date(entry.notBefore))),
       new UpdateOptions().upsert(true)).toFuture()).getUpsertedId != null
   }
+
+  // A page asked for as previewed is one from then on, whatever it waited as: Facebook fetched it
+  // since it was queued. Never the other way — a preview does not go away with one request.
+  private def kindOf(kind: RescrapeKind) =
+    if (kind == RescrapeKind.Page) Updates.set("kind", kind.name) else Updates.setOnInsert("kind", kind.name)
 
   private def due(country: String, kind: RescrapeKind, now: Instant) =
     Filters.and(Filters.eq("country", country), Filters.eq("kind", kind.name), Filters.lte("notBefore", date(now)))
@@ -283,7 +289,6 @@ class FacebookRescrapeDrain(store: FacebookRescrapeStore, graph: FacebookGraph, 
     } {
       val url   = urlOf(page)
       val reply = graph.scrape(url)
-      reply.usage.foreach(paceOn)
       reply.outcome match {
         case FacebookScrape.Accepted =>
           metrics.rescrape(ShareCardMetrics.RescrapeOutcome.Sent)
@@ -309,6 +314,9 @@ class FacebookRescrapeDrain(store: FacebookRescrapeStore, graph: FacebookGraph, 
           logger.info(s"share card: Facebook re-scrape of $url failed: $why")
           store.retry(page, clock.instant().plusMillis(backoff(page.attempts).toMillis), countAttempt = true)
       }
+      // After the page's own outcome is stored: a hold the fleet database refuses fails the tick,
+      // and must not leave a page Facebook accepted claimed, to be sent again.
+      reply.usage.foreach(paceOn)
     }
   }
 
