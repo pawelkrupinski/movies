@@ -69,11 +69,12 @@ in git: each replays the PAIR `Record scrape fixtures` pinned — the country's 
 corpus (artifact `scrape-fixtures-<code>` of the pinned recording run, 14-day retention)
 and its enrichment tree plus fills (release `convergence-fixtures`, pinned by
 `hermetic-<code>.txt`). One command restores the pair and runs the full leg hermetically,
-exactly as CI does:
+exactly as CI does. It refuses without `--i-need-a-local-leg`: for which takes a change moves use
+`scripts/identity-slice` / `scripts/identity-measure` instead (seconds / ~8 min, not tens of minutes):
 
 ```
-scripts/convergence-local.sh de               # or pl / uk / es / us
-scripts/convergence-local.sh de convergenceGermanySample   # any alias, same pair
+scripts/convergence-local.sh --i-need-a-local-leg de      # or pl / uk / es / us
+scripts/convergence-local.sh --i-need-a-local-leg de convergenceGermanySample   # any alias, same pair
 ```
 
 It reads `TMDB_API_KEY` (required) and `OMDB_API_KEY` (optional) from the environment or,

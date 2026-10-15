@@ -2,7 +2,13 @@
 #
 # Run a country's convergence leg locally against the SAME recorded inputs CI uses.
 #
-#   scripts/convergence-local.sh <pl|de|uk|us|es> [sbt alias, default the full leg's]
+#   scripts/convergence-local.sh --i-need-a-local-leg <pl|de|uk|us|es> [sbt alias, default the full leg's]
+#
+# REFUSED WITHOUT --i-need-a-local-leg. A leg runs tens of minutes and loads the whole Mac, and most agents ran one only
+# to see which takes a change moved: on 2026-10-15 agents spent ~31 of 219 agent-hours polling local legs. That
+# question has faster tools -- `scripts/identity-slice` (seconds, per listing) and `scripts/identity-measure`
+# (the whole corpus in CI, ~8 min). The flag is for what only the pipeline itself answers (scrape, enrichment,
+# projection), said on purpose.
 #
 # CI's verdict legs are HERMETIC: they replay the corpus + enrichment-tree PAIR `Record scrape
 # fixtures` pinned (`hermetic-<code>.txt` in the `convergence-fixtures` release) and never touch the
@@ -25,6 +31,12 @@
 # Tested by scripts/convergence-local-test.sh against stub sbt, docker, secrets and restore.
 set -euo pipefail
 
+local_leg=""
+args=()
+for a in "$@"; do
+    if [ "$a" = --i-need-a-local-leg ]; then local_leg=1; else args+=("$a"); fi
+done
+set -- ${args[@]+"${args[@]}"}
 CODE="${1:-}"
 case "$CODE" in
     pl) SPEC=convergencePoland  ;;
@@ -32,8 +44,22 @@ case "$CODE" in
     uk) SPEC=convergenceUk      ;;
     us) SPEC=convergenceUs      ;;
     es) SPEC=convergenceSpain   ;;
-    *)  echo "usage: $0 <pl|de|uk|us|es> [sbt alias]" >&2; exit 2 ;;
+    *)  echo "usage: $0 --i-need-a-local-leg <pl|de|uk|us|es> [sbt alias]" >&2; exit 2 ;;
 esac
+faster_tools() {
+    cat >&2 <<'MSG'
+  Which takes a change moves:  scripts/identity-slice (--ref A --ref B, --batch, --explain), seconds per listing
+  The whole corpus, base vs head: scripts/identity-measure (CI, ~8 min, LANDABLE / NOT LANDABLE)
+MSG
+}
+if [ -z "$local_leg" ]; then
+    echo "convergence-local: refused -- a local leg runs tens of minutes and loads the whole machine." >&2
+    faster_tools
+    echo "  Only the pipeline itself (scrape, enrichment, projection) needs a leg: add --i-need-a-local-leg." >&2
+    exit 2
+fi
+echo "convergence-local: running a local leg (tens of minutes). If you only need take changes, stop and use:" >&2
+faster_tools
 SPEC="${2:-$SPEC}"
 cd "$(dirname "$0")/.."
 # shellcheck source=scripts/tool-conventions.sh

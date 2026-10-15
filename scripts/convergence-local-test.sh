@@ -49,10 +49,19 @@ mirror_port=1 fallback_port=2
 local_leg() { # <args...> -> the script's output; its exit status in $work/status. Environment: what the caller set.
   rm -f "$work/calls" "$work/sbt-env"
   STUB="$work" PATH="$work/bin:$PATH" LOCAL_MIRROR_PORT="$mirror_port" CONVERGENCE_LOCAL_MONGO_PORT="$fallback_port" \
-    CONVERGENCE_LOCAL_MONGO_WAIT=3 bounded 60 bash "$work/tree/scripts/convergence-local.sh" "$@" > "$work/out" 2>&1
+    CONVERGENCE_LOCAL_MONGO_WAIT=3 bounded 60 bash "$work/tree/scripts/convergence-local.sh" ${BARE-"--i-need-a-local-leg"} "$@" > "$work/out" 2>&1
   echo $? > "$work/status"
 }
 env_of() { sed -n "s/^$1=//p" "$work/sbt-env" 2>/dev/null; }
+
+MONGODB_URI=mongodb://given:1/ TMDB_API_KEY=tmdb BARE='' local_leg de
+check "without --i-need-a-local-leg a leg is refused" "2" "$(cat "$work/status")"
+check "...restoring and running nothing" "" "$(cat "$work/calls" 2>/dev/null)"
+check "...and naming the faster tools" "yes" "$(grep -q 'identity-measure' "$work/out" && grep -q 'identity-slice' "$work/out" && echo yes || echo no)"
+
+MONGODB_URI=mongodb://given:1/ TMDB_API_KEY=tmdb local_leg de
+check "with --i-need-a-local-leg the leg runs, still naming the faster tools" "0 yes" \
+  "$(cat "$work/status") $(grep -q 'running a local leg' "$work/out" && grep -q 'identity-measure' "$work/out" && echo yes || echo no)"
 
 local_leg xx
 check "an unknown country is a usage error" "2" "$(cat "$work/status")"
