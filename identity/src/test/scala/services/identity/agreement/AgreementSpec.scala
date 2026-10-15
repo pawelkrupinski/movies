@@ -296,6 +296,25 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     Agreement.agreed(widely, dated(2026), thisYear = Some(2026)) shouldBe None
   }
 
+  "A venue's own running time" should "rule out an older film it runs well short of, never a current one nor a silent one" in {
+    // DE Neue Post's "WHEN PIGS FLY" at 80 minutes: Riedmayr's 2026 documentary, not Sara Driver's 94-minute 1993 film,
+    // which IMDb, Wikidata and Filmweb take
+    def took(record: IdentityMeasures.Film) = Seq(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Filmweb)
+      .map(family => FamilyTook(FamilyPick(family, "1", SourceRecord(record, Map("imdb" -> "tt0108554")))))
+    def billed(title: String, runtime: Int) = Seq(listing(KinoMuza, title, runtime = Some(runtime)))
+    val pigs = film("When Pigs Fly", 1993, "Sara Driver", 94)
+    Agreement.agreed(billed("WHEN PIGS FLY", 80), took(pigs), thisYear = Some(2026)) shouldBe None
+    // within the slack, or longer (adverts, a relay's intervals), it says nothing
+    Agreement.agreed(billed("WHEN PIGS FLY", 86), took(pigs), thisYear = Some(2026)).map(_.record.film.title) shouldBe Some("When Pigs Fly")
+    Agreement.agreed(billed("WHEN PIGS FLY", 130), took(pigs), thisYear = Some(2026)).map(_.record.film.title) shouldBe Some("When Pigs Fly")
+    // a record of this year may hold its running time before the cut is final (UK "Street Fighter")
+    Agreement.agreed(billed("Street Fighter", 100), took(film("Street Fighter", 2026, "Kitao Sakurai", 127)), thisYear = Some(2026))
+      .map(_.record.film.title) shouldBe Some("Street Fighter")
+    // a silent film runs at the speed it is projected (PL "Dni Kina Niemego - 100 lat temu: SYMFONIA ZMYSŁÓW")
+    Agreement.agreed(billed("Flesh and the Devil", 90), took(film("Flesh and the Devil", 1926, "Clarence Brown", 112)), thisYear = Some(2026))
+      .map(_.record.film.title) shouldBe Some("Flesh and the Devil")
+  }
+
   "A year the title bills" should "rule out a film it dates away, but not a festival's year beside the work" in {
     // DE "Weihnachten mit den Drei Herren 2026", a band's Christmas show its feed filed as Epstein's 1927 "The Three-Sided
     // Mirror": the families searched the copied original title and took the 1927 film

@@ -236,7 +236,9 @@ object UnifiedEvidence {
         "production.house"    -> open.exists(_.houseProduction),
         "listing.facts"       -> votes(Agreement.ListingFacts),
         "listing.runtime"     -> votes(Agreement.ListingRuntime),
-        "listing.contradicts" -> Agreement.contradictedByAnyListing(c.listings, contender.record),
+        // its year or director, whoever states them, or the venue's own running time well short of an older film's
+        "listing.contradicts" -> (Agreement.contradictedByAnyListing(c.listings, contender.record) ||
+          Agreement.runsLongerThanTheListing(c.listings, contender.record, Some(c.thisYear))),
         "venues.current"      -> (venues >= Agreement.WidelyBilled && current),
         "title.namesIt"       -> namesIt,
         "title.namesNone"     -> !namesIt,
