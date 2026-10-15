@@ -55,6 +55,7 @@ on:
 # run from any other branch -- a measurement (scripts/identity-measure's measure/*), an agent's own branch -- runs in a
 # lane of its OWN, keyed by the run, so several from one branch run at the same time: it replaces nothing and waits for
 # nothing but runners (2026-10-15: five agents' measurements queued behind each other for about an hour each).
+# Every workflow's group follows one convention, written down in WorkflowConcurrencyConventionSpec.
 concurrency:
     group: identity-model-convergence${{ github.ref != 'refs/heads/main' && format('-{0}', github.run_id) || '' }}
     cancel-in-progress: false
