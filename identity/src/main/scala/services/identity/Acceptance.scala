@@ -21,12 +21,12 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
 
   /** An acceptance rule, by the name an explanation gives it. Whichever condition took the film, no rule takes one whose
    *  title numbers its series OTHERWISE than the listing's ([[ownInstalment]]), nor one its title names nothing of beside
-   *  another film of its director ([[anotherOfItsDirector]]). */
+   *  another film of its director the title names, or the listing's year dates as closely ([[anotherOfItsDirector]]). */
   private final case class Rule(name: String, why: Seq[Scored] => Verdict) {
     def accepts(ranked: Seq[Scored]): Verdict = ownInstalment(why(ranked)).flatMap(pickedByItsTitle(ranked)).flatMap(takeable)
   }
   private def pickedByItsTitle(ranked: Seq[Scored])(accepted: Accepted): Verdict =
-    noneOf(anotherOfItsDirector(accepted._1, eligibleOf(ranked)), "its title names nothing of it, and another film of its director stands beside it",
+    noneOf(anotherOfItsDirector(accepted._1, eligibleOf(ranked)), "its title names nothing of it, and another film of its director it names or dates as closely stands beside it",
       accepted._1).map(_ => accepted)
   /** Refuses an UNTAKEN film ([[Scored.untaken]]) whichever rule took it: it stays a rival, never a take. */
   private def takeable(accepted: Accepted): Verdict =
@@ -341,10 +341,9 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
     // Legacy", a fan film, is not David Slade's undated "Legacy" IMDb lists under its last word, while "Spooked: Ringu"
     // is the 1998 "Ring" and "Gina (Kurzfilm)" is "Gina"
     def titledByMoreThanAWord(scored: Scored): Boolean = scored.candidate.film.year.isDefined || scored.imdbTitled.exists { title =>
-      import services.movies.TitleContainment.tokens
-      val words = tokens(title)
+      val words = IdentityMeasures.words(title)
       scored.listing.ownKeys(IdentityMeasures.key(title)) || words.sizeIs >= 2 ||
-        scored.listing.ownTitles.exists(billed => tokens(billed).startsWith(words))
+        scored.listing.ownForms.exists(_.words.startsWith(words))
     }
     def rung(scored: Scored): Boolean = titledRung(scored) || scored.imdb.exists { place =>
       (place.place == 1 && scored.number("year.delta").contains(0.0)) ||

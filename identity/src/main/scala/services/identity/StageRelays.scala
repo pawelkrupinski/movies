@@ -219,8 +219,8 @@ object StageRelays {
   /** Do the film's titles name a house, and none the listing's relay bills: UK's "English National Ballet: The Sleeping
    *  Beauty" and TMDB's 2017 "The Sleeping Beauty", also "The Sleeping Beauty (The Royal Ballet)"? */
   def billsAnotherHouse(listing: Listing, film: Film): Boolean = film.houseNames.nonEmpty && !billsItsHouse(listing, film)
-  /** Is `f` ANOTHER PRODUCTION than the stage house's relay the listing screens — another house's record of its work, from
-   *  another season than the one its screenings fall in ([[Listing.screenedSeason]])? Nothing but the work's name then
+  /** Is `f` ANOTHER PRODUCTION than the stage house's relay the listing screens — a record of its work from another season
+   *  than the one its screenings fall in ([[Listing.screenedSeason]]): another house's, or any house's season record? Nothing but the work's name then
    *  ties the record to the listing.
    *  - A banner naming a house in particular ([[Relay.houses]]) is not the record's: UK Savoy's "Opéra De Paris Ballet -
    *    Notre-Dame de Paris" ×6, screening in March 2027, is no 2013 "La Scala Ballet: Notre-Dame de Paris". Another
@@ -254,9 +254,10 @@ object StageRelays {
     film.season.exists(recorded => math.abs(recorded - season) > SeasonEncoreLag)
   /** How many seasons after its own a season's record is still encored: the next one. */
   private val SeasonEncoreLag = 1
-  /** Is the record dated — by its season, else its year — more than [[RecordingLag]] years from `season`? */
+  /** Is a record naming no season dated by its year more than [[RecordingLag]] years from `season`? A season's record is
+   *  [[anotherSeasonsRelay]]'s to judge. */
   private def datedAway(film: Film, season: Int): Boolean =
-    film.season.orElse(film.year).exists(dated => math.abs(dated - season) > RecordingLag)
+    film.season.isEmpty && film.year.exists(dated => math.abs(dated - season) > RecordingLag)
   /** How many years a house's record may stand from the season a venue screens it in and still be the relay it airs: an
    *  encore of last season's, or a recording a house releases to cinemas seasons after it staged it — DE Cinema
    *  Wolfhagen's "National Opera Paris: Schwanensee", screening December 2026, is the Paris Opera's "Opéra national de
@@ -457,7 +458,7 @@ object StageRelays {
    *  off ([[IdentityMeasures.withoutPossessives]]): "Alice’s Adventures in Wonderland" read as "alice", "s", … named no
    *  work, so UK Cineworld's "Royal Ballet and Opera: Alice’s Adventures in Wonderland" ×126 was no relay of one. */
   private[identity] def billedIn(piece: String, seasonNamed: Boolean): Set[String] = {
-    val tokens = services.movies.TitleContainment.tokens(IdentityMeasures.withoutPossessives(piece)).toIndexedSeq
+    val tokens = IdentityMeasures.words(piece).toIndexedSeq
       .reverse.dropWhile(token => token.length == 2 && token.forall(_.isDigit)).reverse
     val runs   = tokens.indices.map(tokens.drop) ++ (if (seasonNamed) (1 until tokens.size).map(tokens.take) else Nil)
     runs.flatMap(run => StageWorks.resolver.named(run.mkString)).toSet

@@ -107,7 +107,7 @@ object IdentityMeasures {
     /** Its title read as a stage house's relay ([[StageRelays.Relay]]), once per listing: every candidate asks. */
     private[identity] lazy val relay: StageRelays.Relay =
       if (billsAStageHouse) StageRelays.Relay.of(titles) else StageRelays.Relay.Unbilled
-    /** The title's words, once per listing: a director's surname heading it is read against every candidate. */
+    /** The title's words, once per listing: a banner word before the title naming a director is read against every candidate. */
     private[identity] lazy val titleWords: Seq[String] = ownForms.head.words
     private[identity] lazy val shapeKeys: Seq[String] = shapes.map(IdentityMeasures.key)
     private[identity] lazy val shapeWords: Seq[Seq[String]] = shapes.map(IdentityMeasures.words)
@@ -519,7 +519,7 @@ object IdentityMeasures {
   /** `measures`, the director read as credited when the listing credits nobody but its title bills the film under a
    *  banner naming one of its directors ([[bannerNamesItsDirector]]). */
   def creditedByTitle(l: Listing, f: Film, measures: Map[String, Measure]): Map[String, Measure] =
-    if (!measures.get("director").contains(MissingListing) || l.directors.nonEmpty || !bannerNamesItsDirector(l, f)) measures
+    if (!measures.get("director").contains(MissingListing) || !bannerNamesItsDirector(l, f)) measures
     else measures + ("director" -> SamePersonMeasure)
 
   /** Does the listing's title bill one of the film's titles whole under a BANNER naming one of its directors — the
@@ -625,7 +625,9 @@ object IdentityMeasures {
    *  the title's only quotes: two quoted titles bill two works, and a quote further in names what a talk, a concert or a
    *  show is about ('Wojciech Cejrowski i „Prawo Dżungli”', 'ZADUSZKI JAZZOWE GABA JANUSZ "NIEOBECNI"'). */
   private val Quoted        = """[„"“«][^"”„“«»]*["”“»]""".r
-  private val LeadingQuoted = """^\s*[„"“«]([^"”„“«»]*\p{L}[^"”„“«»]*)["”“»]""".r
+  /** A quoted title of words, wherever it stands: its words the first group. */
+  private[identity] val QuotedTitle = """[„"“«]([^"”„“«»]*\p{L}[^"”„“«»]*)["”“»]""".r
+  private val LeadingQuoted = ("""^\s*""" + QuotedTitle.regex).r
   private val SpacedSlash     = """\s+/\s*|\s*/\s+""".r
   /** A dash with a space on ONE side ("Fregata dla seniorów- 500 Mil"); both sides is `SearchTitles`'s. */
   private val HalfSpacedDash  = """(?<=\S)[-–—]\s+|\s+[-–—](?=\S)""".r

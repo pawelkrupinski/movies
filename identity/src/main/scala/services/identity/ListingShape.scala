@@ -273,7 +273,8 @@ object ListingShape {
   private val ListedWorks = 3
   private val PieceBreak = """\s*[:|•+]\s*|\s+[-–—]\s+|\s*[„”"“«»]\s*""".r
   private val Bracketed  = """\([^)]*\)|\[[^\]]*]""".r
-  private val Quote      = """[„”"“«»]""".r
+  /** Any quotation mark a title may carry. */
+  private[identity] val Quote = """[„”"“«»]""".r
   private def quotesAFilm(raw: String, films: Seq[IdentityMeasures.Film]): Boolean = {
     val titles = films.flatMap(_.titles).map(t => withoutLeadingArticle(TitleContainment.tokens(t))).toSet
     Quoted.findAllMatchIn(raw).exists(m => titles(withoutLeadingArticle(TitleContainment.tokens(m.group(1)))))

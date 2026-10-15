@@ -152,32 +152,25 @@ object IdentityResolver {
     }
   }
   /** The members QUOTING their cluster's film within words of their own, at a venue another member of the cluster bills
-   *  the film by itself at: what that venue screens beside the film — a warm-up, a talk — not the film. The quotes name
+   *  the film by itself at — that very title, unquoted, no bill: what that venue screens beside the film — a warm-up, a talk — not the film. The quotes name
    *  the work (PL "Festiwal Korelacje: „Zemsta” z autorską narracją Artura Andrusa", [[ListingShape.billedBeside]]),
    *  but a venue billing the work on its own as well bills this as another thing: DE Kleines Theater am Weingarten's
    *  "Mystery-Vorfilm als Warm-up zu „Miles Davis – Birth of The Cool“" beside its "MILES DAVIS: BIRTH OF THE COOL". */
-  private[identity] def besideItsScreening(members: Seq[EvidenceNode], cluster: Seq[EvidenceNode]): Seq[(EvidenceNode, String)] = {
+  private[identity] def besideItsScreening(members: Seq[EvidenceNode]): Seq[(EvidenceNode, String)] = {
     // the film quoted mid-sentence, a word of the venue's running into the quote ("… als Warm-up zu „…“"): a quote heading
     // the billing ("„Baranek Shaun i kudłata bestia” Rodzinne Poranki Filmowe") or after a break names the evening's film
-    def quotes(node: EvidenceNode) = QuotedWithin.findAllMatchIn(node.evidence.rawTitle).exists { m =>
-      val before = node.evidence.rawTitle.take(m.start).trim
-      before.lastOption.exists(_.isLetter) && namesAFilmOf(m.group(1), node)
-    }
-    def namesAFilmOf(quoted: String, node: EvidenceNode) = {
-      import services.movies.TitleContainment.tokens
-      val words = tokens(quoted)
-      cluster.exists(other => (other ne node) && tokens(other.evidence.rawTitle) == words) ||
-        cluster.exists(other => (other ne node) && IdentityMeasures.key(other.evidence.rawTitle) == IdentityMeasures.key(quoted))
-    }
-    members.filter(quotes).flatMap { node =>
+    def quotedMidSentence(node: EvidenceNode): Seq[String] =
+      IdentityMeasures.QuotedTitle.findAllMatchIn(node.evidence.rawTitle).toSeq
+        .filter(m => node.evidence.rawTitle.take(m.start).trim.lastOption.exists(_.isLetter)).map(m => IdentityMeasures.key(m.group(1)))
+    members.flatMap { node =>
+      val quoted = quotedMidSentence(node).toSet
       val venues = node.listings.map(_.cinema).toSet
-      cluster.find(other => (other ne node) && !Quote.findFirstIn(other.evidence.rawTitle).isDefined &&
-          other.listings.exists(listing => venues(listing.cinema)))
+      Option.when(quoted.nonEmpty)(()).flatMap(_ => members.find(other => (other ne node) &&
+          ListingShape.Quote.findFirstIn(other.evidence.rawTitle).isEmpty && quoted(IdentityMeasures.key(other.evidence.rawTitle)) &&
+          other.listings.exists(listing => venues(listing.cinema))))
         .map(other => node -> s"no film: it quotes the film its venue bills by itself as '${other.evidence.rawTitle}'")
     }
   }
-  private val QuotedWithin = """[„"“«]([^"”„“«»]*\p{L}[^"”„“«»]*)["”“»]""".r
-  private val Quote        = """[„"“«»”]""".r
   /** How many years before its screenings' a film's may be and still be a current release ([[billedAsPiece]]). */
   val CurrentRelease = 1
   /** The fewest letters a word shares with its venue's name or city to name it: "Kadr" in "Kino w Kadrze". */
@@ -557,7 +550,7 @@ object IdentityResolver {
           val scored       = unbilled.flatMap(node => scope.of(node).find(_.candidate.tmdbId == film).map(node -> _))
           val corroborated = scored.flatMap(_._2.number("venues.corroborating")).maxOption.getOrElse(0.0)
           scored.flatMap { case (node, own) => IdentityResolver.billedAsPiece(node, own, corroborated, recurs, answered).map(node -> _) }
-        }.toMap ++ film.filterNot(_ => pinned).toSeq.flatMap(_ => IdentityResolver.besideItsScreening(unbilled, cluster)).toMap
+        }.toMap ++ film.filterNot(_ => pinned || !pieces).toSeq.flatMap(_ => IdentityResolver.besideItsScreening(unbilled)).toMap
         val placed = unbilled.filterNot(piecesOf.contains)
         // a member nothing of its own corroborates the film by, whose take a fact or an evidenced namesake speaks against
         val weak   = film.filterNot(_ => pinned).toSeq.flatMap(Corroboration.refused(placed, _, scope.of, familyEdges, backed)).toMap
