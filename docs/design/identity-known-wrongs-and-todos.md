@@ -229,6 +229,6 @@ Each a production change: measure with `scripts/identity-measure`, land one at a
   versions can compile a mix; `identity-slice --stop-served` kills whatever now holds the saved pid; venue-replay's
   `mongosh` call has no timeout; `identity-capture.sh` still finds its recording in Scala, not identity-tools.sh.
 - [ ] No shell self-test yet for `scripts/local-mirror/freshness` and `sync-enrichment-cache.sh`;
-  `mirror-sync-spec.sh` needs the live :28017 replica set and stays run-by-hand.
+  `mirror-sync-test.sh` needs the live :28017 replica set and stays run-by-hand (`# script-test: manual`).
 - [ ] `agent-procs kill --mine` ended two agents' own tool shells (exit 143) on 10-15; the ancestry is now read from
   the process table (the probable cause, a `ps -p` hop failing, reproduced only with a fake ps). Re-check if it recurs.

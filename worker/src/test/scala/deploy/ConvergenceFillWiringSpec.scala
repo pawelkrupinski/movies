@@ -221,6 +221,6 @@ class ConvergenceFillWiringSpec extends AnyFlatSpec with Matchers {
   }
 
   "the fill's release script" should "be run by CI's shell specs" in {
-    RepoFile.read(".github/workflows/ci.yml") should include("bash .github/scripts/convergence-fill-test.sh")
+    ScriptTests.runInCi(".github/scripts/convergence-fill-test.sh") shouldBe true
   }
 }

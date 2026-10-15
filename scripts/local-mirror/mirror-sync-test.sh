@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# script-test: manual needs the local mirror replica set on 127.0.0.1:28017 (scripts/local-mirror/mirror.sh), where it creates and drops throwaway databases; no CI job has one
 #
 # Assertions for the parts of the sync that only a real replica set can show:
 # where a tailer opens its stream, and whether the staleness gate can see a
@@ -7,7 +8,7 @@
 # so it runs against the local mirror Mongo (:28017) that mirror.sh already
 # manages, in throwaway databases it drops afterwards. It never touches prod.
 #
-#   scripts/local-mirror/mirror-sync-spec.sh
+#   scripts/local-mirror/mirror-sync-test.sh
 #
 # Exits 0 when every case passes, 1 on the first failure, and 0 with a loud SKIP
 # line when no local Mongo is running.

@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# script-test: own-job compiles the tool into an old ref through the real sbt (minutes cold); ci.yml's integration job runs it where sbt and a compiled target/ are
 # scripts/identity-slice drops THIS checkout's tool files (IdentitySlice, FiledAnswers, …) into every ref it slices, so
 # they must compile against old code too: a deployed worker's build, a bisect's first commit. 83b869548's FiledAnswers
 # read `Capture.live`, which no older ref has, and every `--ref <old>`, `--bisect` and listing-history replay failed to

@@ -190,90 +190,16 @@ jobs:
                   SHELLCHECK_OPTS='-S warning' "$RUNNER_TEMP/actionlint"
                   scripts/ci/shellcheck-action-runs.sh
 
-            # The CI-structure scripts' own specs, seconds each: which checks the pre-push hook
-            # selects for which paths, what the workflows' preflight jobs accept and refuse, and
-            # how a failed test is judged DETERMINISTIC or FLAKY and ledgered, and how the test
-            # jobs' throwaway MongoDB is started.
+            # Every script self-test (`*-test.sh`, `*_test.py` under scripts/, .github/, android/scripts,
+            # ios/scripts and infra/bin), found by name and run in parallel by scripts/run-script-tests: which
+            # checks the pre-push hook selects, what the preflight jobs accept, how a failed test is judged
+            # and ledgered, how the throwaway MongoDB starts, the identity and release tooling. A new test
+            # runs here the moment it exists; one tagged `# script-test: <tag>` runs where its toolchain is.
             # IN THE BACKGROUND, beside the JDK, sbt and build-cache restores (~22 s) they share
             # nothing with: run first in the foreground they held the unit run back by their own
             # ~21-25 s (run 37121131703). Waited for, and failing as they would have, just before it.
-            - name: Pre-push hook, preflight, flake-detection and CI-helper specs, in the background
-              run: |
-                  scripts/ci/in-background.sh start ci-helper-specs bash -e -c '
-                      bash scripts/hooks/pre-push-test.sh
-                      bash scripts/scratch-git-test.sh
-                      bash scripts/fail-before-test.sh
-                      bash scripts/agent-procs-test.sh
-                      bash scripts/judgements-merge-test.sh
-                      bash scripts/sbt-warm-test.sh
-                      bash scripts/ci/preflight-test.sh
-                      bash scripts/ci/flake-ledger-test.sh
-                      bash scripts/ci/leg-verdict-test.sh
-                      bash scripts/ci/rerun-failed-sbt-test.sh
-                      bash scripts/ci/start-mongo-replset-test.sh
-                      bash scripts/ci/mongo-top-test.sh
-                      bash scripts/ci/install-apt-package-test.sh
-                      bash scripts/ci/in-background-test.sh
-                      bash scripts/ci/shellcheck-action-runs-test.sh
-                      bash scripts/ci/cpu-sampler-test.sh
-                      bash .github/scripts/restore-enrichment-tree-test.sh
-                      bash .github/scripts/convergence-setup-test.sh
-                      bash scripts/restore-country-corpus-test.sh
-                      bash infra/bin/push-k8s-secrets-test.sh
-                      bash .github/scripts/convergence-fill-test.sh
-                      bash .github/scripts/convergence-bisect-step-test.sh
-                      bash .github/scripts/convergence-findings-summary-test.sh
-                      bash .github/scripts/convergence-publish-test.sh
-                      bash scripts/ci/close-mongo-tunnel-test.sh
-                      bash scripts/ci/install-playwright-test.sh
-                      bash scripts/ci/prune-actions-caches-test.sh
-                      bash scripts/ci/sbt-sources-key-test.sh
-                      bash scripts/ci/wait-for-run-artifact-test.sh
-                      bash scripts/ci/dispatch-test.sh
-                      bash scripts/identity-measure-ci-test.sh
-                      bash scripts/identity-measure-test.sh
-                      python3 scripts/identity_measure_test.py
-                      python3 scripts/identity_slice_diff_test.py
-                      bash scripts/ci/identity-takes-check-test.sh
-                      bash scripts/ci/identity-capture-report-test.sh
-                      bash scripts/vault-env-test.sh
-                      bash scripts/with-prod-mongo-test.sh
-                      bash scripts/dev-server-test.sh
-                      bash scripts/identity-capture-test.sh
-                      bash scripts/reset-corpus-test.sh
-                      bash scripts/it-local-test.sh
-                      bash scripts/local-mirror/mongosh-at-test.sh
-                      bash scripts/local-mirror/mirror-resilience-test.sh
-                      bash scripts/local-mirror/start-local-mongo-test.sh
-                      bash scripts/local-mirror/rules-test.sh
-                      python3 scripts/ci/flake_verdict_test.py
-                      python3 scripts/ci/ci_timings_test.py
-                      python3 scripts/aot_class_list_test.py
-                      python3 scripts/convergence_findings_test.py
-                      python3 scripts/ci/recording_health_test.py
-                      python3 scripts/ci/identity_takes_diff_test.py
-                      python3 scripts/ci/identity_takes_test.py
-                      python3 scripts/ci/corpus_shape_diff_test.py
-                      python3 scripts/ci/identity_findings_report_test.py
-                      python3 scripts/ci/identity_judgements_test.py
-                      python3 scripts/ci/identity_judgements_lint_test.py
-                      python3 scripts/ops/dumpheap_test.py
-                      bash scripts/identity-fetch-recording-test.sh
-                      bash scripts/identity-tools-test.sh
-                      bash scripts/identity-slice-test.sh
-                      bash scripts/venue-replay-test.sh
-                      bash scripts/identity-ratchet-report-test.sh
-                      bash scripts/recording-diff-test.sh
-                      python3 scripts/recording_diff_test.py
-                      python3 scripts/listing_history_test.py
-                      bash scripts/label-lookup-test.sh
-                      bash scripts/title-trace-test.sh
-                      bash scripts/hard-clusters-test.sh
-                      bash scripts/identity-refit-test.sh
-                      bash scripts/identity-explain-test.sh
-                      bash scripts/identity-judge-cards-test.sh
-                      bash .github/actions/drop-bot-branch/drop-test.sh
-                  '
+            - name: Script self-tests, in the background
+              run: scripts/ci/in-background.sh start script-tests scripts/run-script-tests
 
             - uses: ./.github/actions/setup-jdk
               with:
@@ -296,8 +222,8 @@ jobs:
                   restore-keys: |
                       sbt-target-${{ runner.os }}-
 
-            - name: The pre-push hook, preflight, flake-detection and CI-helper specs passed
-              run: scripts/ci/in-background.sh wait ci-helper-specs 600
+            - name: The script self-tests passed
+              run: scripts/ci/in-background.sh wait script-tests 600
 
             # Every module's unit tests except `e2e` in one sbt run; `all` keeps
             # going so a failure in one module still runs the rest. The `e2e`

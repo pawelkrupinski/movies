@@ -224,7 +224,7 @@ then fail with "Value expected to be of type DOUBLE is of unexpected type
 INT32". Both copy paths therefore read with `promoteValues: false` — `seed.js`
 on its `find()`, `tail.js` on its `watch()` — which keeps every number as its
 BSON wrapper (`Double`, `Int32`, `Long`; `Decimal128` was never promoted) and
-writes it back unchanged. `mirror-sync-spec.sh` asserts each field's `$type`
+writes it back unchanged. `mirror-sync-test.sh` asserts each field's `$type`
 after a seed and after a tailed insert and update.
 
 A mirror seeded before that fix still holds Int32-mangled documents — the tailer
@@ -278,12 +278,12 @@ mongosh --nodb --quiet --file scripts/local-mirror/stream-start.js \
 
 and the handover itself is asserted end-to-end against the local replica set —
 seed, delete a row, start the tailer, and the mirror must still lose the row
-(`mirror-sync-spec.sh`, which also covers the ghost signal below; it needs the live :28017 replica set and
+(`mirror-sync-test.sh`, which also covers the ghost signal below; it needs the live :28017 replica set and
 mongosh, so no CI job can run it and it is deliberately not named `*-test.sh` — run it by hand after touching
 seed.js, tail.js or staleness.js):
 
 ```
-scripts/local-mirror/mirror-sync-spec.sh
+scripts/local-mirror/mirror-sync-test.sh
 ```
 
 ### The staleness gate — why a mirror can't quietly rot

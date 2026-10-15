@@ -12,12 +12,11 @@ import org.scalatest.matchers.should.Matchers
  * has no dex or R8 outputs, and re-ran both every time. Most of the 10.8 GB was superseded
  * per-commit entries (sbt-target-e2e-Linux-<hash> and friends) that no restore ever reads.
  * scripts/ci/prune-actions-caches.sh deletes those; its own spec,
- * scripts/ci/prune-actions-caches-test.sh, pins which entries, and runs in ci.yml.
+ * scripts/ci/prune-actions-caches-test.sh, pins which entries, and runs in ci.yml through scripts/run-script-tests.
  */
 class ActionsCachePruneWiringSpec extends AnyFlatSpec with Matchers {
 
   private lazy val prune = RepoFile.read(".github/workflows/prune-actions-caches.yml")
-  private lazy val ci = RepoFile.read(".github/workflows/ci.yml")
 
   /** `name:` of the workflows that save per-commit sbt-target or gradle-home caches on main and
    *  are started by a person or a cron, so their completion raises a `workflow_run`. The
@@ -52,6 +51,6 @@ class ActionsCachePruneWiringSpec extends AnyFlatSpec with Matchers {
   }
 
   "ci.yml" should "run the prune script's own spec" in {
-    ci should include ("bash scripts/ci/prune-actions-caches-test.sh")
+    ScriptTests.runInCi("scripts/ci/prune-actions-caches-test.sh") shouldBe true
   }
 }

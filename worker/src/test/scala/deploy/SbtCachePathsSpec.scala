@@ -118,6 +118,6 @@ class SbtCachePathsSpec extends AnyFlatSpec with Matchers {
   }
 
   "ci.yml" should "run the cache key script's own spec" in {
-    RepoFile.read(".github/workflows/ci.yml") should include("bash scripts/ci/sbt-sources-key-test.sh")
+    ScriptTests.runInCi("scripts/ci/sbt-sources-key-test.sh") shouldBe true
   }
 }

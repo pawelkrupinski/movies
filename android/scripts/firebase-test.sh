@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# script-test: manual not a self-test: submits the on-device deep-link test to Firebase Test Lab (gcloud, a Firebase project)
 #
 # Run the on-device deep-link test on a real Xiaomi/Redmi in Firebase Test Lab.
 #
