@@ -66,7 +66,10 @@ object FlicksFilmPage {
    *  block is a `<script>` whose own opening tag names the type, so a mention in inline JS is no block, and each is
    *  kept once: ranges strictly in order, never overlapping. */
   private def keptRanges(html: String): Array[Int] = html.indexOf(TabsMark) match {
-    case tabs if tabs < 0 || html.lastIndexOf(HeroMark) > tabs => Array(0, html.length)
+    // forward from the tabs, never `lastIndexOf` from the end: a page with any non-Latin-1 character is a UTF-16 string,
+    // whose backward search is a plain loop over the whole ~350 KB -- 16% of a US resolve (JFR, 2026-10-15) -- where
+    // the forward one is the JVM's vectorised intrinsic
+    case tabs if tabs < 0 || html.indexOf(HeroMark, tabs) >= 0 => Array(0, html.length)
     case tabs =>
       val cut    = html.lastIndexOf('<', tabs)
       val ranges = Array.newBuilder[Int]
