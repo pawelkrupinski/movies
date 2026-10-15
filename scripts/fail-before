@@ -30,6 +30,8 @@ set -uo pipefail
 
 while IFS= read -r v; do unset "$v"; done < <(compgen -e | grep '^GIT_')
 
+# shellcheck source=scripts/tool-conventions.sh
+. "$(dirname "$0")/tool-conventions.sh"
 die() { printf 'fail-before: %s\n' "$*" >&2; exit 2; }
 
 commit=HEAD
@@ -38,7 +40,7 @@ while [ $# -gt 0 ]; do
   case "$1" in
     --) shift; break ;;
     --files) [ $# -ge 2 ] || die "--files needs a glob"; patterns+=("$2"); shift 2 ;;
-    -h|--help) sed -n '3,/^set /p' "$0" | sed '$d; s/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) usage_from_header; exit 0 ;;
     -*) die "unknown option $1" ;;
     *) commit=$1; shift ;;
   esac
@@ -91,19 +93,10 @@ while IFS= read -r path; do
 done < <(git -C "$top" diff-tree --no-commit-id --name-only -r --diff-filter=AMCR "$sha")
 [ "$copied" -gt 0 ] || die "$sha changes no test-side file (see --files): nothing to prove"
 
-# Each run in a process group of its own, ended whole at the deadline (exit 124) — the JVM an sbt test forks too, not
-# just the shell — and on fail-before's own INT/TERM. Perl, not `timeout`: macOS has none, and the run went unbounded.
+# Each run bounded (tool-conventions.sh's `bounded`): in a process group of its own, ended whole at the deadline (exit
+# 124) — the JVM an sbt test forks too, not just the shell — and on fail-before's own INT/TERM.
 run_in() { # <worktree> <log>
-  (cd "$1" && perl -e '
-    my $seconds = shift;
-    my $pid = fork() // die "fork: $!";
-    if ($pid == 0) { setpgrp(0, 0); exec @ARGV or exit 127; }
-    my $stop = sub { kill "TERM", -$pid; sleep 2; kill "KILL", -$pid; exit $_[0]; };
-    $SIG{ALRM} = sub { $stop->(124) };
-    $SIG{INT} = $SIG{TERM} = sub { $stop->(130) };
-    alarm $seconds;
-    waitpid($pid, 0);
-    exit($? & 127 ? 128 + ($? & 127) : $? >> 8);' "${KINOWO_FAIL_BEFORE_TIMEOUT:-3000}" bash -c "$command_line") > "$2" 2>&1
+  (cd "$1" && bounded "${KINOWO_FAIL_BEFORE_TIMEOUT:-3000}" bash -c "$command_line") > "$2" 2>&1
 }
 
 printf 'fail-before: %s (%d test-side file(s) copied onto %s)\n' "$sha" "$copied" "$(git -C "$top" rev-parse --short "$parent")"

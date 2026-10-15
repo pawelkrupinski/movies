@@ -144,7 +144,7 @@ if command -v shellcheck >/dev/null; then
   repo="$scratch/repo"
   mkdir -p "$repo/scripts/hooks"
   scratch_repo "$repo"
-  cp "$REPO_ROOT/scripts/hooks/pre-push" "$repo/scripts/hooks/pre-push"; cp "$REPO_ROOT/scripts/hooks-path.sh" "$repo/scripts/hooks-path.sh"
+  cp "$REPO_ROOT/scripts/hooks/pre-push" "$repo/scripts/hooks/pre-push"; cp "$REPO_ROOT/scripts/hooks-path.sh" "$repo/scripts/hooks-path.sh"; cp "$REPO_ROOT/scripts/tool-conventions.sh" "$repo/scripts/tool-conventions.sh"
   printf '#!/usr/bin/env bash\necho "$1"\n' > "$repo/a.sh"
   scratch_git "$repo" add -A; scratch_git "$repo" commit -qm base
   base="$(scratch_git "$repo" rev-parse HEAD)"
@@ -283,7 +283,7 @@ scratch_repo "$hp/clone"
 mkdir -p "$hp/clone/scripts/hooks"
 # stamp <copy> <word>: the hook with a line, right after its hand-over, recording which copy went on to run
 stamp() { awk -v w="$2" -v m="$hp/ran" '{ print } /^# ── end of the hand-over ──/ { print "echo " w " >> " m }' \
-  "$REPO_ROOT/scripts/hooks/pre-push" > "$1"; chmod +x "$1"; cp "$REPO_ROOT/scripts/hooks-path.sh" "$(dirname "$1")/../hooks-path.sh"; }
+  "$REPO_ROOT/scripts/hooks/pre-push" > "$1"; chmod +x "$1"; cp "$REPO_ROOT/scripts/hooks-path.sh" "$REPO_ROOT/scripts/tool-conventions.sh" "$(dirname "$1")/../"; }
 stamp "$hp/clone/scripts/hooks/pre-push" old
 echo base > "$hp/clone/README"; scratch_git "$hp/clone" add -A; scratch_git "$hp/clone" commit -qm base
 scratch_git "$hp/clone" remote add origin "$hp/origin.git"; scratch_git "$hp/clone" push -q origin HEAD:main 2>/dev/null

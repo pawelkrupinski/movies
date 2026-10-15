@@ -13,7 +13,7 @@
 #
 # Sourcing must stay side-effect free (mirror-resilience-test.sh asserts that
 # sourcing mirror.sh asks the vault for nothing and starts nothing), so this file is a
-# function definition and nothing else.
+# function definition and nothing else (the port it reads: tool-conventions.sh's local_mongo_port).
 
 # Ensure the local mirror Mongo (native, brew-managed) answers, re-running the
 # idempotent starter only when it does not — so a stopped service self-heals.
@@ -24,8 +24,10 @@
 #
 # The log tag is $TUNNEL_TAG, which every caller already sets for prod-tunnel.sh —
 # reusing it is what removes the only difference the three copies had.
+# shellcheck source=scripts/tool-conventions.sh
+. "$(dirname "${BASH_SOURCE[0]}")/../tool-conventions.sh" # local_mongo_port
 ensure_local_mongo() {
-  local port="${LOCAL_MIRROR_PORT:-28017}"
+  local port; port="$(local_mongo_port)"
   nc -z -w2 127.0.0.1 "$port" 2>/dev/null && return 0
   echo "[${TUNNEL_TAG:-local-mongo}] local Mongo not reachable on :$port — (re)starting"
   "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/start-local-mongo.sh" || return 1

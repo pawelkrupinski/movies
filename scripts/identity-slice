@@ -77,7 +77,9 @@ set -euo pipefail
 # edit) cannot shift the text under its read offset (`pt: command not found`, the 2026-10-14 UK session stats)
 {
 
-usage() { sed -n '3,/^set /p' "$0" | sed '$d; s/^# \{0,1\}//'; }
+# shellcheck source=scripts/tool-conventions.sh
+. "$(dirname "$0")/tool-conventions.sh"
+usage() { usage_from_header; }
 case "${1:-}" in -h|--help) usage; exit 0 ;; "") usage >&2; exit 2 ;; esac
 
 # shellcheck disable=SC2034 # read by identity-tools.sh's identity_log
@@ -177,9 +179,9 @@ except Exception: print("")' "$recording/corpus/prod-coverage-$cc.json")
     3) identity_log "WARNING — THE PROD MIRROR IS NOT FRESH (above): prod's state it reads is not the recording's moment; read every PROD line with that in mind" ;;
     *) identity_log "no local prod mirror to read (above): scripts/local-mirror/service.sh install — --prod-mirror never reads prod itself"; exit 2 ;;
   esac
-  mirror_args=(--prod-mirror "mongodb://127.0.0.1:${LOCAL_MIRROR_PORT:-28017}/?directConnection=true")
+  mirror_args=(--prod-mirror "$(local_mongo_uri)")
   # whose code wrote that state: the worker build prod runs (the deploy moves `deployed-worker` once it is live)
-  local deployed=${KINOWO_DEPLOYED_WORKER:-$(timeout 15 git -C "$repo" ls-remote origin refs/tags/deployed-worker 2>/dev/null | cut -f1 || true)}
+  local deployed=${KINOWO_DEPLOYED_WORKER:-$(bounded 15 git -C "$repo" ls-remote origin refs/tags/deployed-worker 2>/dev/null | cut -f1 || true)}
   if [ -n "$deployed" ]; then
     identity_log "prod's state was written by the deployed worker ${deployed:0:9}: a PROD line of another ref's slice mixes builds"
     mirror_args+=(--deployed "$deployed")

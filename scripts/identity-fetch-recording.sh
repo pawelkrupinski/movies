@@ -12,15 +12,17 @@
 #
 # Each country's corpus is laid out LAST, its cinema-scrapes-<cc>.json.gz moved in by a rename: that file
 # there means the country is laid out whole (identity_recorded in scripts/identity-tools.sh, which
-# calls this one download at a time). Every gh call is bounded by `timeout` (KINOWO_IDENTITY_DOWNLOAD_TIMEOUT
-# seconds, default 1800).
+# calls this one download at a time). Every gh call is bounded (tool-conventions.sh's `bounded`):
+# KINOWO_IDENTITY_DOWNLOAD_TIMEOUT seconds, default 1800.
 #
 # Needs `gh` signed in. KINOWO_REPO (default pawelkrupinski/movies) and FIXTURE_RELEASE_TAG (default
 # convergence-fixtures) name where the recording lives. Archives are zstd or gzip; each is unpacked by
 # its magic bytes (.github/scripts/unpack-fixture-archive.sh). Downloads are kept in <dest>/archive.
 set -euo pipefail
 
-usage() { sed -n '3,/^set /p' "$0" | sed '$d; s/^# \{0,1\}//'; }
+# shellcheck source=scripts/tool-conventions.sh
+. "$(dirname "$0")/tool-conventions.sh"
+usage() { usage_from_header; }
 case "${1:-}" in -h|--help) usage; exit 0 ;; esac
 corpus_only=0
 [ "${1:-}" != --corpus-only ] || { corpus_only=1; shift; }
@@ -29,7 +31,7 @@ corpus_only=0
 RUN=$1 DEST=$2
 shift 2
 CCS=("$@")
-[ "${#CCS[@]}" -gt 0 ] || CCS=(pl de uk us es)
+[ "${#CCS[@]}" -gt 0 ] || CCS=("${KINOWO_COUNTRIES[@]}")
 REPO=${KINOWO_REPO:-pawelkrupinski/movies}
 RELEASE=${FIXTURE_RELEASE_TAG:-convergence-fixtures}
 UNPACK="$(cd "$(dirname "$0")/.." && pwd)/.github/scripts/unpack-fixture-archive.sh"
@@ -43,7 +45,7 @@ fetch() {
   local ext present
   for ext in tar.zst tar.gz; do
     # absent (this compressor did not pack it) moves on to the next; a failed read stops the fetch
-    present=$(timeout "$LIMIT" "$GH_OPTIONAL" release download "$RELEASE" -R "$REPO" --pattern "$1.$ext" --dir "$DEST/archive" --clobber) || return 2
+    present=$(bounded "$LIMIT" "$GH_OPTIONAL" release download "$RELEASE" -R "$REPO" --pattern "$1.$ext" --dir "$DEST/archive" --clobber) || return 2
     if [ "$present" = present ]; then
       echo "$DEST/archive/$1.$ext"
       return 0
@@ -64,7 +66,7 @@ for cc in "${CCS[@]}"; do
   fi
   # a download cut short earlier leaves files gh will not overwrite
   rm -rf "$DEST/archive/scrape-$cc"; mkdir -p "$DEST/archive/scrape-$cc"
-  timeout "$LIMIT" gh run download "$RUN" -R "$REPO" --name "scrape-fixtures-$cc" --dir "$DEST/archive/scrape-$cc" ||
+  bounded "$LIMIT" gh run download "$RUN" -R "$REPO" --name "scrape-fixtures-$cc" --dir "$DEST/archive/scrape-$cc" ||
     { echo "$cc: could not download run $RUN's scrape-fixtures-$cc (gh failed or timed out)" >&2; exit 1; }
   corpus=$(compgen -G "$DEST/archive/scrape-$cc/scrapes-$cc.tar.*" | head -1 || true)
   [ -n "$corpus" ] || { echo "$cc: run $RUN's scrape-fixtures-$cc holds no scrapes-$cc.tar.*" >&2; exit 1; }

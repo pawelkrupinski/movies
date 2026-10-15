@@ -37,7 +37,9 @@
 # rule by rule, `scripts/title-trace` (each moved title prints its line).
 set -euo pipefail
 
-usage() { sed -n '3,/^set /p' "$0" | sed '$d; s/^# \{0,1\}//'; }
+# shellcheck source=scripts/tool-conventions.sh
+. "$(dirname "$0")/tool-conventions.sh"
+usage() { usage_from_header; }
 case "${1:-}" in -h|--help) usage; exit 0 ;; "") usage >&2; exit 2 ;; esac
 [ "$#" -ge 2 ] || { usage >&2; exit 2; }
 
@@ -79,7 +81,7 @@ if [ "$prod" = 1 ]; then
   else
     [ "$fresh" = 0 ] || identity_log "the freshness check WARNed (above): read prod's rows below with it in mind"
     db=kinowo; [ "$cc" = pl ] || db=kinowo_$cc
-    mongosh --quiet "mongodb://127.0.0.1:${LOCAL_MIRROR_PORT:-28017}/${db}_prod_mirror?directConnection=true" \
+    mongosh --quiet "$(local_mongo_uri "${db}_prod_mirror")" \
       --eval "var SELECTOR=$(python3 -I -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$venue")" \
       --file "$repo/scripts/venue-replay-prod.js" > "$work/prod.json"
     pass+=(--prod "$work/prod.json")

@@ -26,7 +26,9 @@
 # shellcheck disable=SC2034  # DISPATCHED_RUN and RUN_CONCLUSION are the sourcing caller's.
 
 _dispatch_say() { echo "dispatch: $*" >&2; }
-_dispatch_gh() { timeout "${DISPATCH_GH_TIMEOUT:-60}" gh "$@"; }
+# shellcheck source=scripts/tool-conventions.sh
+. "$(dirname "${BASH_SOURCE[0]}")/../tool-conventions.sh" # bounded
+_dispatch_gh() { bounded "${DISPATCH_GH_TIMEOUT:-60}" gh "$@"; }
 
 dispatch_workflow() {
   local workflow=$1 ref=$2 attempt err

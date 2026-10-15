@@ -39,6 +39,8 @@
 set -euo pipefail
 self="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
 cd "$(dirname "$0")/.."
+# shellcheck source=scripts/identity-tools.sh
+. scripts/identity-tools.sh # IDENTITY_SBT: sbt in the en-US locale the report formats its numbers in
 
 if [[ "${1:-}" == "--refit" ]]; then
   exec scripts/identity-refit --skip-checks --report "${REPORT:-target/identity-calibration}/refit-report.md" ${RELEARN:+--relearn "$RELEARN"}
@@ -57,16 +59,16 @@ if [[ "${1:-}" == "--unified" ]]; then
     ${FAMILY_SEED:+KINOWO_IDENTITY_FAMILY_SEED=$FAMILY_SEED} ${POSTER_CACHE:+KINOWO_IDENTITY_POSTER_CACHE=$POSTER_CACHE} \
     sbt -J-Xmx12g -batch "worker/IntegrationTest/runMain integration.IdentityUnifiedDataset --out $REPORT/unified"
   cp "$REPORT/unified/training.tsv.gz" test/resources/fixtures/identity-unified/training.tsv.gz
-  exec sbt -J-Xmx8g -J-Duser.language=en -J-Duser.country=US -batch "worker/Test/runMain scripts.IdentityUnifiedFit --report $REPORT/unified-report.md"
+  exec "${IDENTITY_SBT[@]}" -J-Xmx8g -batch "worker/Test/runMain scripts.IdentityUnifiedFit --report $REPORT/unified-report.md"
 fi
 if [[ "${1:-}" == "--decorations-only" ]]; then
-  exec sbt -J-Xmx12g -J-Duser.language=en -J-Duser.country=US -batch "worker/Test/runMain scripts.IdentityDecorationsLearn --corpora $CORPORA --fixtures $FIXTURES --version ${VERSION:-decorations-$(date -u +%Y-%m-%d)}"
+  exec "${IDENTITY_SBT[@]}" -J-Xmx12g -batch "worker/Test/runMain scripts.IdentityDecorationsLearn --corpora $CORPORA --fixtures $FIXTURES --version ${VERSION:-decorations-$(date -u +%Y-%m-%d)}"
 fi
 : "${PROD:?set PROD to the dir of the production snapshot (prod-<db>.jsonl)}"
 # --refit-signal <listing-film signal> refits that one table, and the cannot-links reading it, in the shipped
 # artefact (scripts.IdentityCalibrate.refitSignal): every other weight, rule, the calibration map and the cut stay.
 if [[ "${1:-}" == "--refit-signal" ]]; then
-  exec sbt -J-Xmx12g -J-Duser.language=en -J-Duser.country=US -batch "worker/Test/runMain scripts.IdentityCalibrate --refit-signal ${2:?signal} --corpora $CORPORA --fixtures $FIXTURES --prod $PROD ${COUNTRIES:+--countries $COUNTRIES} ${WEIGHTS:+--weights $WEIGHTS}"
+  exec "${IDENTITY_SBT[@]}" -J-Xmx12g -batch "worker/Test/runMain scripts.IdentityCalibrate --refit-signal ${2:?signal} --corpora $CORPORA --fixtures $FIXTURES --prod $PROD ${COUNTRIES:+--countries $COUNTRIES} ${WEIGHTS:+--weights $WEIGHTS}"
 fi
 REPORT="${REPORT:-target/identity-calibration}"
 EPSILON="${EPSILON:-certified}"
@@ -87,4 +89,4 @@ if [[ "${1:-}" == "--extract-prod" ]]; then
   done
 fi
 
-sbt -J-Xmx12g -J-Duser.language=en -J-Duser.country=US -batch "worker/Test/runMain scripts.IdentityCalibrate --corpora $CORPORA --fixtures $FIXTURES --prod $PROD --report $REPORT --epsilon $EPSILON --version $VERSION ${COUNTRIES:+--countries $COUNTRIES} ${CASES:+--cases $CASES} ${WEIGHTS:+--weights $WEIGHTS} ${LABELS:+--labels $LABELS}"
+"${IDENTITY_SBT[@]}" -J-Xmx12g -batch "worker/Test/runMain scripts.IdentityCalibrate --corpora $CORPORA --fixtures $FIXTURES --prod $PROD --report $REPORT --epsilon $EPSILON --version $VERSION ${COUNTRIES:+--countries $COUNTRIES} ${CASES:+--cases $CASES} ${WEIGHTS:+--weights $WEIGHTS} ${LABELS:+--labels $LABELS}"

@@ -27,7 +27,7 @@ STUB
 # sbt records each call and the tree it was handed; SBT_FAILS makes it fail
 cat > "$work/bin/sbt" <<'STUB'
 #!/usr/bin/env bash
-echo "sbt $* root=${KINOWO_FIXTURE_ROOT:-} countries=${KINOWO_HARD_CLUSTERS_COUNTRIES:-}" >> "$STUB/calls"
+echo "sbt $* root=${KINOWO_FIXTURE_ROOT:-} countries=${KINOWO_HARD_CLUSTERS_COUNTRIES:-} uri=${MONGODB_URI:-}" >> "$STUB/calls"
 [ -z "${SBT_FAILS:-}" ] || { echo "[error] compilation failed"; exit 1; }
 echo "[hard-clusters] recorded 3 responses"
 STUB
@@ -49,6 +49,10 @@ check "...and the tree recorded against is its tree" "1" "$(grep -c "root=$fixtu
 rm -f "$work/calls"
 check "gh unreachable: no recording, stopped before sbt" "1 0" "$(GH_DOWN=1 hc record de) $(grep -c . "$work/calls" 2>/dev/null || echo 0)"
 check "...naming why" "1" "$(grep -c 'no recording to fetch the de inputs from' "$work/out")"
+
+rm -f "$work/calls"
+check "no MONGODB_URI: the local Mongo, on the port the local mirror names" "0 1" \
+  "$(MONGODB_URI="" LOCAL_MIRROR_PORT=28999 hc record de) $(grep -c 'uri=mongodb://127.0.0.1:28999/?directConnection=true' "$work/calls")"
 
 check "a failed sbt fails the script" "1" "$(SBT_FAILS=1 hc record de)"
 check "...showing sbt's log" "1" "$(grep -c 'compilation failed' "$work/out")"

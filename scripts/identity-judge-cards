@@ -19,14 +19,16 @@
 #                   read (default: TMDB_API_KEY if set, else those records stay unknown); --offline: never ask TMDB
 set -euo pipefail
 
-usage() { sed -n '3,/^set /p' "$0" | sed '$d; s/^# \{0,1\}//'; }
+# shellcheck source=scripts/tool-conventions.sh
+. "$(dirname "$0")/tool-conventions.sh"
+usage() { usage_from_header; }
 case "${1:-}" in -h|--help) usage; exit 0 ;; esac
 
 # shellcheck disable=SC2034 # read by identity-tools.sh's identity_log
 IDENTITY_TOOL=identity-judge-cards
 # shellcheck source=scripts/identity-tools.sh
 . "$(dirname "$0")/identity-tools.sh"
-fixtures="" countries="pl,de,uk,us,es" pass=() live=false offline=false
+fixtures="" countries=$(kinowo_countries_csv) pass=() live=false offline=false
 for arg in "$@"; do [ "$arg" = --live ] && live=true; done
 if $live && [ -z "${TMDB_API_KEY:-}" ]; then
   # shellcheck source=scripts/vault-env.sh

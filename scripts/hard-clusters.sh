@@ -38,7 +38,8 @@ IDENTITY_TOOL=hard-clusters
 . scripts/identity-tools.sh
 
 mode=${1:-}; shift || true
-export MONGODB_URI=${MONGODB_URI:-mongodb://127.0.0.1:28017/?directConnection=true}
+MONGODB_URI=${MONGODB_URI:-$(local_mongo_uri)}
+export MONGODB_URI
 corpus_dir=${KINOWO_HARD_CLUSTERS_CORPUS_DIR:-test/resources/fixtures/corpus}
 fixture_root=${KINOWO_FIXTURE_ROOT:-test/resources/fixtures}
 run=${KINOWO_HARD_CLUSTERS_RECORDING:-}

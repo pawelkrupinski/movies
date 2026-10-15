@@ -42,6 +42,8 @@
 # worker/src/test/scala/services/identity/UnmatchedClustersRatchetSpec.scala).
 set -euo pipefail
 self="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
+# shellcheck source=scripts/identity-tools.sh
+. "$(dirname "$self")/identity-tools.sh" # identity_classpath_line; tool-conventions.sh's usage_from_header
 cd "$(dirname "$0")/.."
 
 dry=false
@@ -50,7 +52,7 @@ for arg in "$@"; do
     case "$arg" in
         --dry-run) dry=true ;;
         --fill) fill_only=true ;;
-        -h|--help) sed -n '3,42p' "$self"; exit 0 ;;
+        -h|--help) usage_from_header "$self"; exit 0 ;;
     esac
 done
 
@@ -84,7 +86,7 @@ if ! sbt -batch "worker/IntegrationTest/compile" "export worker/IntegrationTest/
     echo "[identity-capture] sbt failed to compile the integration classpath (log above)" >&2
     exit 1
 fi
-grep -E '^/[^ ]*worker/target/[^ ]*test-classes' "$work/sbt.log" | tail -n 1 > "$work/classpath" || true
+identity_classpath_line "$work/sbt.log" > "$work/classpath" || true
 classes=$(tr ':' '\n' < "$work/classpath" | grep -E '/worker/target/[^/]+/test-classes$' || true)
 if [ -z "$classes" ] || [ ! -f "$classes/scripts/IdentityCapture.class" ]; then
     cat "$work/sbt.log" >&2

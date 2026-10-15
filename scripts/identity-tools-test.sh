@@ -171,15 +171,25 @@ conventions="$REPO_ROOT/scripts/tool-conventions.sh"
 started=$SECONDS
 check "bounded ends a command that outlasts it, 124" "124" "$(bash -c '. "$1"; bounded 1 sleep 20' _ "$conventions"; echo $?)"
 check "...within its bound" "yes" "$([ $(( SECONDS - started )) -lt 8 ] && echo yes || echo "no: $(( SECONDS - started ))s")"
-# stock macOS: neither timeout nor gtimeout on the PATH, only perl
+# stock macOS: no timeout(1) on the PATH, only perl
 mkdir -p "$work/bare"
 for c in perl sleep bash; do ln -sf "$(command -v "$c")" "$work/bare/$c"; done
 bare() { PATH="$work/bare" "$work/bare/bash" -c '. "$1"; shift; "$@"' _ "$conventions" "$@"; }
-check "without timeout or gtimeout (stock macOS) bounded still ends it, 124" "124" "$(bare bounded 1 sleep 20; echo $?)"
+check "without timeout(1) (stock macOS) bounded still ends it, 124" "124" "$(bare bounded 1 sleep 20; echo $?)"
 check "...and hands back a command's own status" "3" "$(bare bounded 5 bash -c 'exit 3'; echo $?)"
 bare bounded 1 bash -c 'sleep 30 & echo $! > "$1"; wait' _ "$work/grandchild" > /dev/null
 check "...ending its whole process group: what it started too" "gone" \
   "$(if kill -0 "$(cat "$work/grandchild")" 2>/dev/null; then echo alive; kill "$(cat "$work/grandchild")"; else echo gone; fi)"
+# Ctrl-C: the terminal signals bounded itself (GNU timeout leaves the terminal's group, and a Ctrl-C never reached
+# what it ran): it ends the command's group and is ended by the signal, as the caller expects.
+rm -f "$work/grandchild" "$work/command"
+bash -c '. "$1"; bounded 30 bash -c "sleep 30 & echo \$! > $2; echo \$\$ > $3; wait"' _ "$conventions" "$work/grandchild" "$work/command" &
+caller=$!
+for _ in $(seq 1 50); do [ -s "$work/command" ] && [ -s "$work/grandchild" ] && break; sleep 0.1; done
+kill -INT "$(ps -o ppid= -p "$(cat "$work/command")" | tr -d ' ')"
+wait "$caller"; status=$?
+check "a Ctrl-C to bounded ends the command's whole group, the caller seeing the interrupt" "gone 130" \
+  "$(if kill -0 "$(cat "$work/grandchild")" 2>/dev/null; then echo alive; kill "$(cat "$work/grandchild")"; else echo gone; fi) $status"
 printf '#!/usr/bin/env bash\n#\n# Do one thing.\n#   -x  extra\nset -euo pipefail\necho body\n' > "$work/tool"
 check "usage_from_header prints the header comment, unprefixed" "Do one thing.|  -x  extra" \
   "$(bash -c '. "$1"; usage_from_header "$2"' _ "$conventions" "$work/tool" | paste -sd'|' -)"

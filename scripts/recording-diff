@@ -22,7 +22,9 @@
 # them (recording-diff/<run>-<cc>.json), so a second comparison over a run reads no tree again.
 set -euo pipefail
 
-usage() { sed -n '3,/^set /p' "$0" | sed '$d; s/^# \{0,1\}//'; }
+# shellcheck source=scripts/tool-conventions.sh
+. "$(dirname "$0")/tool-conventions.sh"
+usage() { usage_from_header; }
 case "${1:-}" in -h|--help) usage; exit 0 ;; "") usage >&2; exit 2 ;; esac
 [ "$#" -ge 2 ] || { usage >&2; exit 2; }
 
@@ -43,7 +45,7 @@ while [ "$#" -gt 0 ]; do
     *) echo "unknown argument: $1" >&2; usage >&2; exit 2 ;;
   esac
 done
-[ "${#countries[@]}" -gt 0 ] || countries=(pl de uk us es)
+[ "${#countries[@]}" -gt 0 ] || countries=("${KINOWO_COUNTRIES[@]}")
 
 # started <run> -> the run's start (ISO-8601), which tells a response the run recorded from one it restored; kept
 started() {

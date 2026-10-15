@@ -59,6 +59,8 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # local Mongo starter. Sourcing is side-effect free by contract, so an early
 # source starts nothing.
 . "$HERE/local-mirror/prod-tunnel.sh"
+# shellcheck source=scripts/tool-conventions.sh
+. "$HERE/tool-conventions.sh" # local_mongo_uri
 
 # The country whose Deployments are scaled around the wipe. `MONGODB_DB` names the
 # database (kinowo / kinowo_uk / …); the overlays are suffixed by country code.
@@ -89,7 +91,7 @@ done
 
 
 if [ "$MODE" = "local" ]; then
-  URI="${LOCAL_MONGO_URI:-mongodb://127.0.0.1:${LOCAL_MIRROR_PORT:-28017}/?directConnection=true}"
+  URI="${LOCAL_MONGO_URI:-$(local_mongo_uri)}"
   DB="${LOCAL_MONGO_DB:-kinowo_local}"
 else
   ensure_vault_env MONGODB_URI -- "$BASH" "$0" "$@" || exit 1

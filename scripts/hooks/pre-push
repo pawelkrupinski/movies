@@ -109,6 +109,8 @@ cd "$root" || exit 1
 hooks_path_now() { git config --local --get core.hooksPath 2>/dev/null || true; }
 # shellcheck source=scripts/hooks-path.sh
 . "$(dirname "${BASH_SOURCE[0]}")/../hooks-path.sh"
+# shellcheck source=scripts/tool-conventions.sh
+. "$(dirname "${BASH_SOURCE[0]}")/../tool-conventions.sh" # bounded: every gh read below has a deadline
 case "$(hooks_path_now)" in
     /*)
         if hooks_path_is_own "$(hooks_path_now)"; then
@@ -291,7 +293,7 @@ GhSeconds="${PREPUSH_GH_SECONDS:-15}"
 # `<conclusion> <run id> <url>` of a workflow's newest decided run on main (success or a failure of any kind; cancelled,
 # skipped and unfinished runs say nothing), empty when it has none; non-zero when gh cannot answer in time.
 newest_verdict() { # <workflow name>
-    perl -e 'alarm shift; exec @ARGV or exit 127' "$GhSeconds" \
+    bounded "$GhSeconds" \
         gh run list --workflow "$1" --branch main --limit 30 --json databaseId,status,conclusion,url \
         --jq '[.[] | select(.status == "completed" and (.conclusion | IN("cancelled", "skipped", "neutral", "") | not))][0] // empty
               | "\(.conclusion) \(.databaseId) \(.url)"'
@@ -515,7 +517,7 @@ check_ios() {
 # kept per run in the shared git dir; prints the files, or nothing (warned) when gh cannot fetch them in time.
 served_takes() {
     local run cache
-    run="$(perl -e 'alarm shift; exec @ARGV or exit 127' "$GhSeconds" gh run list --workflow "Identity model convergence" \
+    run="$(bounded "$GhSeconds" gh run list --workflow "Identity model convergence" \
         --branch main --status completed --limit 30 --json databaseId,conclusion \
         --jq '[.[] | select(.conclusion == "success" or .conclusion == "failure")][0].databaseId // empty' 2>/dev/null)" || run=""
     [ -n "$run" ] || { warn "judgements: no Identity model convergence run to read served takes from — served check SKIPPED"; return 0; }
@@ -525,7 +527,7 @@ served_takes() {
         # finish renames it into place (rename(2) onto a filled directory fails; `mv` would nest it inside).
         local part
         mkdir -p "$(dirname "$cache")" && part="$(mktemp -d "$cache.part.XXXXXX")" \
-            && perl -e 'alarm shift; exec @ARGV or exit 127' 120 gh run download "$run" -p 'convergence-diagnostics-*-convergence' \
+            && bounded 120 gh run download "$run" -p 'convergence-diagnostics-*-convergence' \
             -D "$part" >/dev/null 2>&1 \
             || { [ -n "${part:-}" ] && rm -rf "$part"; warn "judgements: could not fetch run $run's served takes — served check SKIPPED"; return 0; }
         perl -e 'rename($ARGV[0], $ARGV[1]) or exit 1' "$part" "$cache" 2>/dev/null || rm -rf "$part"

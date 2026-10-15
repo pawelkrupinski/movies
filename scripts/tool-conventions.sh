@@ -16,13 +16,16 @@
 #   A write into a cache another agent reads goes through identity_locked/identity_put (scripts/identity-tools.sh).
 #   -h/--help prints the tool's header comment: usage_from_header.
 #
-#   bounded <seconds> <command...>  -> the command, ended (its whole process group: TERM, then KILL seconds later) once it
-#        outlasts <seconds>: exit 124 then, else the command's own status. `timeout` (GNU coreutils), else `gtimeout`
-#        (Homebrew's coreutils), else perl — stock macOS has neither.
+#   bounded <seconds> <command...>  -> the command, ended once it outlasts <seconds> (exit 124), else its own status.
+#        timeout(1)'s contract without timeout(1), which stock macOS lacks: the command runs in a process group of its
+#        own, ended whole (TERM, then KILL two seconds later: an sbt-forked JVM too); and unlike GNU timeout, which
+#        leaves the terminal's group, a Ctrl-C reaches it — passed on to the group, then to the caller as the signal.
 #   usage_from_header [file]        -> the header comment of <file> (default the running script, $0): from line 2 to the
 #        first `set ` line, the `# ` stripped, a leading blank line dropped
 #   KINOWO_COUNTRIES                -> the country codes every tool loops over, in one order (kinowo_countries_csv: "pl,de,…")
 #   KINOWO_IDENTITY_CACHE           -> the cache every identity tool shares (default ~/.cache/kinowo-identity)
+#   local_mongo_port / local_mongo_uri [database] -> the local, password-free Mongo the prod mirror, the it/ suites
+#        and the identity tools share: 127.0.0.1:$LOCAL_MIRROR_PORT (default 28017), a direct connection
 
 KINOWO_COUNTRIES=(pl de uk us es)
 kinowo_countries_csv() { local IFS=,; echo "${KINOWO_COUNTRIES[*]}"; }
@@ -30,25 +33,31 @@ kinowo_countries_csv() { local IFS=,; echo "${KINOWO_COUNTRIES[*]}"; }
 KINOWO_IDENTITY_CACHE=${KINOWO_IDENTITY_CACHE:-$HOME/.cache/kinowo-identity}
 export KINOWO_IDENTITY_CACHE
 
+local_mongo_port() { echo "${LOCAL_MIRROR_PORT:-28017}"; }
+local_mongo_uri() { echo "mongodb://127.0.0.1:$(local_mongo_port)/${1:-}?directConnection=true"; }
+
 bounded() {
-  local seconds=$1; shift
-  if command -v timeout > /dev/null 2>&1; then timeout -k 5 "$seconds" "$@"
-  elif command -v gtimeout > /dev/null 2>&1; then gtimeout -k 5 "$seconds" "$@"
-  else
-    # timeout's semantics: the command in a process group of its own (an sbt-forked JVM is ended with it), TERM at the
-    # deadline then KILL, 124; this shell's own INT/TERM passed on to the group.
-    perl -e '
-      my $seconds = shift;
-      my $pid = fork() // die "fork: $!";
-      if ($pid == 0) { setpgrp(0, 0); exec @ARGV or exit 127; }
-      my $stop = sub { kill "TERM", -$pid; sleep 2; kill "KILL", -$pid; exit $_[0]; };
-      $SIG{ALRM} = sub { $stop->(124) };
-      $SIG{INT} = sub { $stop->(130) };
-      $SIG{TERM} = sub { $stop->(143) };
-      alarm $seconds;
-      waitpid($pid, 0);
-      exit($? & 127 ? 128 + ($? & 127) : $? >> 8);' "$seconds" "$@"
-  fi
+  perl -e '
+    use POSIX ":sys_wait_h";
+    my $seconds = shift;
+    my $pid = fork() // die "fork: $!";
+    if ($pid == 0) { setpgrp(0, 0); exec @ARGV or exit 127; }
+    # the whole group: TERM, a moment to go, then KILL whatever is left of it (a forked JVM included)
+    my $stop = sub {
+      my ($code, $signal) = @_;
+      kill "TERM", -$pid;
+      for (1 .. 20) { last if waitpid($pid, WNOHANG) == $pid; select(undef, undef, undef, 0.1); }
+      kill "KILL", -$pid;
+      # a signal is passed on as one: the calling shell sees it interrupted, as it would the command itself
+      if ($signal) { $SIG{$signal} = "DEFAULT"; kill $signal, $$; }
+      exit $code;
+    };
+    $SIG{ALRM} = sub { $stop->(124) };
+    $SIG{INT} = sub { $stop->(130, "INT") };
+    $SIG{TERM} = sub { $stop->(143, "TERM") };
+    alarm $seconds;
+    waitpid($pid, 0);
+    exit($? & 127 ? 128 + ($? & 127) : $? >> 8);' "$@"
 }
 
 usage_from_header() { sed -n '2,/^set /p' "${1:-$0}" | sed -e '$d' -e 's/^# \{0,1\}//' -e 's/^#$//' | sed -e '1{/^$/d;}'; }

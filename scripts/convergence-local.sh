@@ -34,6 +34,8 @@ case "$CODE" in
 esac
 SPEC="${2:-$SPEC}"
 cd "$(dirname "$0")/.."
+# shellcheck source=scripts/tool-conventions.sh
+. scripts/tool-conventions.sh # local_mongo_port, local_mongo_uri
 
 scripts/restore-country-corpus.sh "$CODE"
 echo "    (overwrites any committed corpus for $CODE — 'git checkout -- test/resources/fixtures/corpus' restores it)"
@@ -47,9 +49,9 @@ OMDB_API_KEY="${OMDB_API_KEY:-$(secrets get movies OMDB_API_KEY 2>/dev/null || t
 
 if [ -n "${MONGODB_URI:-}" ]; then
     echo "==> MongoDB from MONGODB_URI"
-elif (echo >/dev/tcp/127.0.0.1/28017) 2>/dev/null; then
-    MONGODB_URI="mongodb://127.0.0.1:28017/?directConnection=true"
-    echo "==> reusing the itAll MongoDB on :28017"
+elif (echo >"/dev/tcp/127.0.0.1/$(local_mongo_port)") 2>/dev/null; then
+    MONGODB_URI="$(local_mongo_uri)"
+    echo "==> reusing the itAll MongoDB on :$(local_mongo_port)"
 elif (echo >/dev/tcp/127.0.0.1/27117) 2>/dev/null; then
     # REUSE whatever already answers on the port: `docker run -p` fails outright when it is taken.
     MONGODB_URI="mongodb://127.0.0.1:27117/?directConnection=true"
