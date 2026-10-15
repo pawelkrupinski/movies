@@ -29,6 +29,7 @@ Design and limits: docs/design/identity-slice.md.
 | Which commit of A..B moved it? | `… --bisect A..B` |
 | Measure a rule change over many listings | `scripts/identity-slice de --batch FILE --ref BASE --ref HEAD [--labels TSV]` → cured / lost / new-wrong (parallel, results shared — see "Fast batches") |
 | Pin a repro as a failing test | `… --emit-case` → `test/resources/fixtures/identity-slices/`, `IdentitySliceCasesSpec` (expected film from the judgements only) |
+| A pinned case fails "lacks answers" after a resolver change (its listings now ask more) | `scripts/identity-slice-refresh [--recording RUN] <case dir>...` — re-emits each case with every listing its expected.tsv names, in place, its hand expected.tsv kept |
 | Does arrival order (the worker's incremental model) move it? | `… --orders 12` |
 | Does a CHANGED projection take it otherwise than the periodic one? | `… --modes 4` |
 | Agreement takes (Agreed, Filled, Poster): read prod's filed family answers | default `--families` = this checkout's capture; without them the families agree on nothing (as in every hermetic leg) |

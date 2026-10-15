@@ -1,0 +1,62 @@
+#!/usr/bin/env bash
+# Re-pin identity slice cases on this checkout's code, in place, keeping each case's expected.tsv.
+#
+#   scripts/identity-slice-refresh [--recording RUN] <case dir>...
+#
+# A pinned case (test/resources/fixtures/identity-slices/<dir>, IdentitySliceCasesSpec) holds every answer its listings
+# read when it was emitted. A resolver change that makes them ask more -- a listing it leaves unmatched asks the
+# agreement's lookups, a new banner a new search -- fails the case with "lacks answers" though nothing it pins moved.
+# This re-emits each case (scripts/identity-slice --emit-case) with every listing its expected.tsv names, on the
+# recording given (default identity-slice's), then puts the new slice files into the case's own directory and its
+# expected.tsv back as it was: a hand expectation ("not:<film>", "pending:…") survives, and the case keeps its name.
+#
+# The country is the directory name's prefix (de-…, uk-…). Exit 1 when any case could not be re-emitted (that case is
+# left as it was), 2 on a usage error.
+set -euo pipefail
+here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=scripts/tool-conventions.sh
+. "$here/tool-conventions.sh" # usage_from_header
+slice=${IDENTITY_SLICE:-$here/identity-slice}
+recording=()
+cases=()
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --recording) recording=(--recording "$2"); shift ;;
+    -h|--help) usage_from_header; exit 0 ;;
+    -*) echo "identity-slice-refresh: unknown option $1" >&2; exit 2 ;;
+    *) cases+=("${1%/}") ;;
+  esac
+  shift
+done
+[ "${#cases[@]}" -gt 0 ] || { usage_from_header >&2; exit 2; }
+
+say() { echo "identity-slice-refresh: $*" >&2; }
+scratch=$(mktemp -d)
+trap 'rm -rf "$scratch"' EXIT
+failed=0
+for dir in "${cases[@]}"; do
+  [ -f "$dir/expected.tsv" ] || { say "$dir: no expected.tsv -- not a slice case"; failed=1; continue; }
+  name=$(basename "$dir")
+  cc=${name%%-*}
+  keys=()
+  while IFS=$'\t' read -r venue raw _; do keys+=(--key "$venue|$raw"); done < <(tail -n +2 "$dir/expected.tsv")
+  cp "$dir/expected.tsv" "$scratch/expected.tsv"
+  if ! out=$("$slice" "$cc" "${recording[@]+"${recording[@]}"}" "${keys[@]}" --emit-case 2>&1); then
+    printf '%s\n' "$out" | tail -5 >&2
+    say "$dir: re-emit failed, left as it was"; failed=1; continue
+  fi
+  # identity-slice names the directory it pinned: "--emit-case: N listing(s) pinned in <path> (…"
+  emitted=$(printf '%s\n' "$out" | sed -n 's/^--emit-case: .* pinned in \(.*\) (IdentitySliceCasesSpec.*$/\1/p' | tail -1)
+  [ -n "$emitted" ] && [ -d "$emitted" ] || { say "$dir: identity-slice named no pinned directory"; failed=1; continue; }
+  if [ "$(cd "$emitted" && pwd -P)" != "$(cd "$dir" && pwd -P)" ]; then
+    # pinned under another name (its first listing's): its slice files replace the case's, the copy goes
+    for f in slice.json.gz rows.json.gz http.jsonl.gz filed.json.gz filed.source; do
+      rm -f "${dir:?}/${f:?}"
+      [ ! -f "$emitted/$f" ] || cp "$emitted/$f" "$dir/$f"
+    done
+    rm -rf "${emitted:?}"
+  fi
+  cp "$scratch/expected.tsv" "$dir/expected.tsv"
+  say "$dir: re-pinned ($(( ${#keys[@]} / 2 )) listing(s))"
+done
+exit "$failed"
