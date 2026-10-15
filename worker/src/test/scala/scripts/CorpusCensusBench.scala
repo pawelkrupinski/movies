@@ -6,6 +6,7 @@ import services.metrics.{CorpusCensus, ReferenceCensus, WorkerCorpusMetrics, Wor
 import services.movies.{CaffeineMovieCache, TitleNormalizer}
 import services.{MongoConnection, MongoRequirement}
 import settings.{MongoDatabaseName, MongoUri}
+import tools.CommandLine
 
 import java.lang.management.ManagementFactory
 import scala.jdk.CollectionConverters._
@@ -21,9 +22,18 @@ import scala.jdk.CollectionConverters._
  * Add `-XX:StartFlightRecording=filename=…` to `.jvmopts` for a profile of the same work.
  */
 object CorpusCensusBench {
+
+  val commandLine: CommandLine = CommandLine("CorpusCensusBench", "Measures the corpus census against a country's local prod mirror.")
+    .withPositionals(CommandLine.Positional("country", "the country measured (default: us)"),
+      CommandLine.Positional("ticks", "the census publishes measured after its first count (default: 5)"))
+
+  final case class Run(country: Country, ticks: Int)
+
+  def runOf(arguments: CommandLine.Arguments): Run =
+    Run(arguments.country("country").getOrElse(Country.UnitedStates), arguments.positionalInt("ticks").getOrElse(5))
+
   def main(args: Array[String]): Unit = {
-    val country = args.headOption.flatMap(Country.byCode).getOrElse(Country.UnitedStates)
-    val ticks   = args.lift(1).map(_.toInt).getOrElse(5)
+    val Run(country, ticks) = runOf(commandLine.parseOrExit(args))
     val conn    = new MongoConnection(Some(MongoUri("mongodb://127.0.0.1:28017/?directConnection=true")),
       MongoDatabaseName(s"${country.mongoDb}_prod_mirror"), MongoRequirement.Required)
     val normalizer = TitleNormalizer.forCountry(country)

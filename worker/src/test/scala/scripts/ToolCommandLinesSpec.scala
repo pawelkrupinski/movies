@@ -98,6 +98,44 @@ class ToolCommandLinesSpec extends AnyFlatSpec with Matchers {
     refused(RecordCorpusFixture.commandLine, "pl", "uk") shouldBe true
   }
 
+  "the country benches and audits" should "measure the country named, their default when none is, and stop on a code no country has" in {
+    // each read args.headOption.flatMap(Country.byCode): a mistyped `gb` ran on the US (or Germany) instead
+    CorpusCensusBench.runOf(parsed(CorpusCensusBench.commandLine, "uk", "3")) shouldBe CorpusCensusBench.Run(models.Country.UnitedKingdom, 3)
+    CorpusCensusBench.runOf(parsed(CorpusCensusBench.commandLine)) shouldBe CorpusCensusBench.Run(models.Country.UnitedStates, 5)
+    an[CommandLine.InvalidArguments] should be thrownBy CorpusCensusBench.runOf(parsed(CorpusCensusBench.commandLine, "gb"))
+    an[CommandLine.InvalidArguments] should be thrownBy CorpusCensusBench.runOf(parsed(CorpusCensusBench.commandLine, "us", "five"))
+    GenreLanguageAudit.runOf(parsed(GenreLanguageAudit.commandLine, "pl", "Lalka")) shouldBe GenreLanguageAudit.Run(models.Country.Poland, Some("Lalka"))
+    GenreLanguageAudit.runOf(parsed(GenreLanguageAudit.commandLine)) shouldBe GenreLanguageAudit.Run(models.Country.Germany, None)
+    an[CommandLine.InvalidArguments] should be thrownBy GenreLanguageAudit.runOf(parsed(GenreLanguageAudit.commandLine, "deu"))
+    IdentityListingsBench.runOf(parsed(IdentityListingsBench.commandLine, "bench_db", "es")) shouldBe
+      IdentityListingsBench.Run("bench_db", models.Country.Spain, passes = 6, churn = 70)
+    an[CommandLine.InvalidArguments] should be thrownBy IdentityListingsBench.runOf(parsed(IdentityListingsBench.commandLine, "bench_db", "sp"))
+    an[CommandLine.InvalidArguments] should be thrownBy IdentityListingsBench.runOf(parsed(IdentityListingsBench.commandLine))
+  }
+
+  "FilmIdCounterSeed" should "seed the countries named, every country when none is, and refuse a flag it does not know" in {
+    FilmIdCounterSeed.runOf(parsed(FilmIdCounterSeed.commandLine, "--apply", "es")) shouldBe FilmIdCounterSeed.Run(apply = true, Seq(models.Country.Spain))
+    FilmIdCounterSeed.runOf(parsed(FilmIdCounterSeed.commandLine)) shouldBe FilmIdCounterSeed.Run(apply = false, models.Country.all)
+    // args.filterNot(_.startsWith("--")) dropped a mistyped --aply: the run went ahead, every country, dry
+    refused(FilmIdCounterSeed.commandLine, "--aply", "es") shouldBe true
+    an[CommandLine.InvalidArguments] should be thrownBy FilmIdCounterSeed.runOf(parsed(FilmIdCounterSeed.commandLine, "es", "gb"))
+  }
+
+  "every program under worker's test tree" should "have a main the JVM can start" in {
+    // `def main(args)(using LatestTitleYear)` compiles to main(String[], LatestTitleYear): `runMain` finds no entry point
+    val Package = """(?m)^package ([\w.]+)""".r
+    val Object  = """(?m)^object (\w+)""".r
+    val programs = tools.ScalaSourceScan.scalaFiles(Seq("worker/src/test")).filter(tools.ScalaSourceScan.isProgram)
+      .filter(path => """"(?:[^"\\\n]|\\.)*"""".r.replaceAllIn(tools.ScalaSourceScan.codeOf(path), "").contains("def main("))
+    programs.size should be > 20
+    val unstartable = programs.filterNot { path =>
+      val source = tools.ScalaSourceScan.read(path)
+      val prefix = Package.findFirstMatchIn(source).fold("")(_.group(1) + ".")
+      Object.findAllMatchIn(source).exists(o => scala.util.Try(Class.forName(prefix + o.group(1)).getMethod("main", classOf[Array[String]])).isSuccess)
+    }
+    unstartable shouldBe empty
+  }
+
   "ReapOrphanedFilmRows" should "read its cap" in {
     parsed(ReapOrphanedFilmRows.commandLine).requiredInt("max") shouldBe 5000
     parsed(ReapOrphanedFilmRows.commandLine, "--apply", "--max", "10").requiredInt("max") shouldBe 10

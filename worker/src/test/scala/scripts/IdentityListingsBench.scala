@@ -23,11 +23,19 @@ import java.lang.management.ManagementFactory
 object IdentityListingsBench {
   private val clock = java.time.Clock.systemUTC()
 
+  val commandLine: tools.CommandLine = tools.CommandLine("IdentityListingsBench", "Measures the identity listing intake's re-filing over a copied archive.")
+    .withPositionals(tools.CommandLine.Positional("database", "the bench's own database on :28017 (required)"),
+      tools.CommandLine.Positional("country", "the country whose title rules file the listings (default: us)"),
+      tools.CommandLine.Positional("passes", "re-filing passes measured (default: 6)"),
+      tools.CommandLine.Positional("churn", "listings churned per pass (default: 70)"))
+
+  final case class Run(database: String, country: Country, passes: Int, churn: Int)
+
+  def runOf(arguments: tools.CommandLine.Arguments): Run = Run(arguments.requiredPositional("database"),
+    arguments.country("country").getOrElse(Country.UnitedStates), arguments.positionalInt("passes").getOrElse(6), arguments.positionalInt("churn").getOrElse(70))
+
   def main(args: Array[String]): Unit = {
-    val database = args(0)
-    val country  = args.lift(1).flatMap(Country.byCode).getOrElse(Country.UnitedStates)
-    val passes   = args.lift(2).map(_.toInt).getOrElse(6)
-    val churn    = args.lift(3).map(_.toInt).getOrElse(70)
+    val Run(database, country, passes, churn) = runOf(commandLine.parseOrExit(args))
     val conn     = new MongoConnection(Some(MongoUri("mongodb://127.0.0.1:28017/?directConnection=true")),
       MongoDatabaseName(database), MongoRequirement.Required)
     val archive  = new MongoScrapeArchiveRepository(conn.database)

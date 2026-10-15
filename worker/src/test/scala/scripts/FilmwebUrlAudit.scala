@@ -38,9 +38,13 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  */
 object FilmwebUrlAudit {
 
-  def main(args: Array[String])(using LatestTitleYear): Unit = {
+  private val clock = java.time.Clock.systemUTC()
+  // The latest year a title may name (`LatestTitleYear`), read off this clock at each ask.
+  private given LatestTitleYear = LatestTitleYear(clock)
+
+  def main(args: Array[String]): Unit = {
     val configuration = _root_.settings.ProcessConfiguration.resolve()
-    val repository = AmbientMovieRepository.open(configuration, java.time.Clock.systemUTC())
+    val repository = AmbientMovieRepository.open(configuration, clock)
     if (!repository.enabled) {
       println("MONGODB_URI not set — nothing to audit.")
       sys.exit(1)

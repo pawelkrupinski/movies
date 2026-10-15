@@ -1,10 +1,8 @@
 package scripts
 
-import services.movies.LatestTitleYear
-
-
 import models.{Country, Filmweb, Source, Tmdb}
-import services.movies.TitleNormalizer
+import services.movies.{LatestTitleYear, TitleNormalizer}
+import tools.CommandLine
 
 /**
  * Read-only diagnostic: for a country's corpus, report WHICH source slot supplies
@@ -33,14 +31,26 @@ object GenreLanguageAudit {
   private def isPolish(genres: Seq[String]): Boolean =
     genres.exists(g => PolishGenres.contains(g.trim.toLowerCase))
 
-  def main(args: Array[String])(using LatestTitleYear): Unit = {
-    val country = args.headOption.flatMap(Country.byCode).getOrElse(Country.Germany)
-    val filter  = args.drop(1).headOption
+  private val clock = java.time.Clock.systemUTC()
+  // The latest year a title may name (`LatestTitleYear`), read off this clock at each ask.
+  private given LatestTitleYear = LatestTitleYear(clock)
+
+  val commandLine: CommandLine = CommandLine("GenreLanguageAudit", "Reports which source supplies each row's genres, and each Tmdb slot's language.")
+    .withPositionals(CommandLine.Positional("country", "the country audited (default: de)"),
+      CommandLine.Positional("title", "only the rows whose title holds this, each printed in full"))
+
+  final case class Run(country: Country, title: Option[String])
+
+  def runOf(arguments: CommandLine.Arguments): Run =
+    Run(arguments.country("country").getOrElse(Country.Germany), arguments.positional("title"))
+
+  def main(args: Array[String]): Unit = {
+    val Run(country, filter) = runOf(commandLine.parseOrExit(args))
     val dbName  = country.mongoDb
     val (conn, db) = CountryDatabase.open(country)
     // The audited country's rules: its rows' keys were sanitized by them, not by Poland's.
     val titleNormalizer = TitleNormalizer.forCountry(country)
-    val repo = AmbientMovieRepository.over(Some(db), titleNormalizer, java.time.Clock.systemUTC())
+    val repo = AmbientMovieRepository.over(Some(db), titleNormalizer, clock)
     val all  = repo.findAll()
     val rows = all.filter(s => filter.forall(f => s.title.toLowerCase.contains(f.toLowerCase)))
 

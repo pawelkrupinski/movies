@@ -29,14 +29,17 @@ object FilmIdCounterSeed {
     (movieIds ++ slots.map(_.filmId)).distinct.sorted.map(id => IdSeeding.Film(id, listings.getOrElse(id, Nil).toSet))
   }
 
+  val commandLine: tools.CommandLine = tools.CommandLine("FilmIdCounterSeed", "Seeds the persisted FilmId map from today's films; a dry run unless --apply.",
+    tools.CommandLine.Flag("apply", "write the missing map entries"))
+    .withPositionals(tools.CommandLine.Positional("countries", "the countries seeded (default: every country)", repeatable = true))
+
+  final case class Run(apply: Boolean, countries: Seq[Country])
+
+  def runOf(arguments: tools.CommandLine.Arguments): Run =
+    Run(arguments.flag("apply"), Some(arguments.countries("countries")).filter(_.nonEmpty).getOrElse(Country.all))
+
   def main(args: Array[String]): Unit = {
-    val apply     = args.contains("--apply")
-    val countries = args.filterNot(_.startsWith("--")).toSeq match {
-      case Seq()     => Country.all
-      case requested => requested.map(code => Country.byCode(code).getOrElse {
-        println(s"Unknown country code '$code' — expected one of ${Country.all.map(_.code).mkString(", ")}."); sys.exit(1)
-      })
-    }
+    val Run(apply, countries) = runOf(commandLine.parseOrExit(args))
     println(if (apply) "APPLY — missing FilmId map entries will be WRITTEN." else "DRY RUN — nothing is written. Pass --apply to write.")
     countries.foreach(seed(_, apply))
     sys.exit(0)
