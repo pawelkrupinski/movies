@@ -121,18 +121,18 @@ gh_download() {
   local seconds=$1 attempt=1 err status dir="" arg prev=""
   shift
   for arg in "$@"; do [ "$prev" = --dir ] && dir=$arg; prev=$arg; done
-  err=$(mktemp "${TMPDIR:-/tmp}/gh-download.XXXXXX") || return 1
   while :; do
-    bounded "$seconds" gh "$@" 2> "$err"
+    # gh's stderr read into a variable, its stdout left where it was: no temporary file for a signal to strand
+    err=$( { bounded "$seconds" gh "$@" 2>&1 1>&3 3>&-; } 3>&1 )
     status=$?
-    cat "$err" >&2
-    [ "$status" -eq 0 ] && { rm -f "$err"; return 0; }
-    if grep -Eq 'no assets match|release not found|no artifact matches|no valid artifacts found|HTTP 404' "$err"; then
-      rm -f "$err"; return 3
+    [ -z "$err" ] || printf '%s\n' "$err" >&2
+    [ "$status" -eq 0 ] && return 0
+    if printf '%s' "$err" | grep -Eq 'no assets match|release not found|no artifact matches|no valid artifacts found|HTTP 404'; then
+      return 3
     fi
     if [ "$attempt" -ge "${GH_DOWNLOAD_ATTEMPTS:-3}" ]; then
       echo "gh $1 $2: failed after $attempt attempt(s) (exit $status)" >&2
-      rm -f "$err"; return 1
+      return 1
     fi
     echo "gh $1 $2: attempt $attempt failed (exit $status); asking again" >&2
     sleep $(( ${GH_DOWNLOAD_BACKOFF:-5} << (attempt - 1) ))

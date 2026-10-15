@@ -31,6 +31,7 @@ case "$1 $2" in
     else echo "https://example.test/run/4242"; fi ;;
   "run download")
     [ "$DOWNLOAD" != hangs ] || exec sleep 3 # long enough to be ended mid-download
+    [ "$DOWNLOAD" != broken ] || { echo "HTTP 502: Bad Gateway" >&2; exit 1; }
     [ "$DOWNLOAD" = reports ] || { echo "no valid artifacts found to download" >&2; exit 1; }
     while [ "$#" -gt 0 ]; do [ "$1" = "--dir" ] && dir="$2"; shift; done
     mkdir -p "$dir/identity-measure-v-pl"; echo decided > "$dir/identity-measure-v-pl/full-pl-decisions.txt" ;;
@@ -42,7 +43,7 @@ chmod +x "$work/bin/git" "$work/bin/gh"
 measure() { # <conclusion> <download> [main state]: exit code; output in $work/log-<download>, gh calls in $work/calls
   : > "$work/calls"
   ( cd "$work" && CONCLUSION="$1" DOWNLOAD="$2" MAIN="${3:-idle}" CALLS="$work/calls" BASE_ONLY=1 \
-      DISPATCH_POLL_SECONDS=0 MAIN_IDLE_MINUTES=0 MEASURE_MINUTES=0 PATH="$work/bin:$PATH" \
+      DISPATCH_POLL_SECONDS=0 GH_DOWNLOAD_BACKOFF=0 MAIN_IDLE_MINUTES=0 MEASURE_MINUTES=0 PATH="$work/bin:$PATH" \
       bash "$REPO_ROOT/scripts/identity-measure-ci.sh" v "$work/out-$2" > "$work/log-$2" 2>&1 )
   echo $?
 }
@@ -53,6 +54,8 @@ check "...one file per report" "decided" "$(cat "$work/out-reports/full-pl-decis
 check "a run that failed before uploading anything exits 1, the RUN's verdict, not the download's" \
   "1" "$(measure failure none)"
 check "...saying it found no reports" "true" "$(grep -q 'no reports to download' "$work/log-none" && echo true || echo false)"
+check "reports that cannot be downloaded (gh failing, asked again) are no measurement, not 'none uploaded'" "2 3" \
+  "$(measure success broken) $(grep -c '^run download' "$work/calls")"
 check "Main still running past MAIN_IDLE_MINUTES is no dispatch" "2" "$(measure success reports busy)"
 check "...nothing dispatched" "0" "$(dispatched)"
 check "Main's runs that cannot be read are not 'Main is idle'" "2" "$(measure success reports unreadable)"

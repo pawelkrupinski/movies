@@ -12,7 +12,8 @@
 #   RECORDING=<Record scrape fixtures run id>: replay that recording in every country, so measurements compare
 #   on one input (the default, each country's pinned pair, moves whenever a new recording is pinned)
 #   MAIN_IDLE_MINUTES=120 how long to wait for Main to go idle; MEASURE_MINUTES=360 how long for the run
-# Exit: 0 the run succeeded, 1 it did not; 2 it could not be dispatched, found or waited on.
+# Exit: 0 the run succeeded, 1 it did not; 2 it could not be dispatched, found or waited on, or its reports could not
+# be downloaded (gh failing, not a run that uploaded none).
 set -euo pipefail
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 # shellcheck source=scripts/tool-conventions.sh
@@ -66,12 +67,15 @@ status=0
 rm -rf "$out"; mkdir -p "$out"
 dl=$scratch/download
 mkdir -p "$dl"
-# A run that failed or was cancelled before uploading has nothing to download: say so and still
-# exit with the RUN's status below, rather than dying here under `set -e` with the download's.
-if bounded 600 gh run download "$run" --pattern "identity-measure-$variant-*" --dir "$dl"; then
-  for d in "$dl"/*/; do if [ -d "$d" ]; then cp -R "$d". "$out/"; fi; done
-else
-  echo "run $run left no reports to download" >&2
-fi
+# A run that failed or was cancelled before uploading has nothing to download (gh_download's 3): say so and still
+# exit with the RUN's status below. A download that failed (asked again first) is no answer: reports it never read
+# are not "none".
+download_status=0
+gh_download 600 run download "$run" --pattern "identity-measure-$variant-*" --dir "$dl" || download_status=$?
+case $download_status in
+  0) for d in "$dl"/*/; do if [ -d "$d" ]; then cp -R "$d". "$out/"; fi; done ;;
+  3) echo "run $run left no reports to download" >&2 ;;
+  *) die "could not download run $run's reports (gh failed or timed out)" ;;
+esac
 echo "reports in $out:"; find "$out" -maxdepth 1 -name "full-*-decisions.txt"
 exit "$status"
