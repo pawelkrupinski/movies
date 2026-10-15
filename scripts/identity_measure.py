@@ -40,7 +40,7 @@ import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "ci"))
 import identity_takes_diff as takes  # noqa: E402
-from identity_judgements import accepted as accepted_rows, labels_by_country, label_of, normalise, read  # noqa: E402
+from identity_judgements import country_views, label_of, normalise, own_or_every, read  # noqa: E402
 
 COUNTRIES = ("pl", "uk", "de", "us", "es")
 BUCKETS = ("cure", "right-lost", "right->wrong", "wrong->wrong", "new-wrong", "gained-right", "gained-unjudged",
@@ -78,15 +78,9 @@ def states_of(rows, cc):
     return out
 
 
-def state_of(states, venue, title, film):
-    title = normalise(title)
-    return states.get((venue, title, film)) or states.get(("*", title, film))
-
-
 def classify(cc, base, head, rows):
     """{bucket: [move]} for one country and stage: the check's moves (identity_takes_diff.moves_of), each bucketed."""
-    labels = labels_by_country(rows)[cc]
-    accepted = [(v, t, f, "none") for v, t, f in accepted_rows(rows, cc)]
+    labels, accepted, _ = country_views(rows, cc)
     pairs, _, _ = takes.pair(base, head)
     states = states_of(rows, cc)
     out = {b: [] for b in BUCKETS}
@@ -98,7 +92,7 @@ def classify(cc, base, head, rows):
         entry = {"kind": m["kind"], "venue": m["venue"], "rawTitle": m["rawTitle"], "before": m["old"], "after": m["new"],
                  "headWhy": m["newWhy"]}
         if b == "wrong->wrong":
-            entry["target"] = state_of(states, m["venue"], m["rawTitle"], takes.ref(m["after"])) or "open"
+            entry["target"] = own_or_every(states, m["venue"], m["rawTitle"], takes.ref(m["after"])) or "open"
         out[b].append(entry)
     return out
 

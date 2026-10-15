@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 """identity_judgements_lint.py: each disagreement within the judgements, or between them and the files leaning on them,
-fails, as the 2026-10-13/14 commits that landed them would have; consistent files pass. And identity_judgements.py, the
-one reader: its keys are the Scala reader's, its views what the gates read."""
+fails, as the 2026-10-13/14 commits that landed them would have; consistent files pass."""
 
 import gzip
 import json
@@ -34,36 +33,6 @@ class JudgementsTest(unittest.TestCase):
             with open(store, "w", encoding="utf-8") as f:
                 f.write(j.HEADER + "\npl\t*\tLalka\ttmdb:1\tright\topen\t\t\t\t2026-10-14\t\n")
             self.assertEqual({("*", "Lalka", "tmdb:1"): "right"}, dict(lint.labels_before(store)["pl"]))
-
-    def test_a_billing_is_keyed_as_the_scala_reader_keys_it(self):
-        # the cases tools.IdentityJudgementsSpec reads too
-        with open(os.path.join(REPO, "test/resources/fixtures/identity-judgements-normalise.jsonl"), encoding="utf-8") as f:
-            cases = [json.loads(line) for line in f if line.strip()]
-        self.assertTrue(cases)
-        for raw, normalised in cases:
-            self.assertEqual(normalised, j.normalise(raw), repr(raw))
-
-    def test_a_venues_row_overrides_every_venues(self):
-        labels = {("*", "Lalka", "tmdb:1"): "wrong", ("Kino Iluzjon", "Lalka", "tmdb:1"): "right", ("Helios", "Tosca", "tmdb:2"): "wrong",
-                  ("*", "Tosca", "tmdb:2"): "right"}
-        self.assertEqual("right", j.label_of(labels, "Kino Iluzjon", "Lalka", "tmdb:1"))
-        self.assertEqual("wrong", j.label_of(labels, "Helios", "Lalka", "tmdb:1"))
-        self.assertEqual("wrong", j.label_of(labels, "Helios", "Tosca", "tmdb:2"))
-        self.assertEqual("right", j.label_of(labels, "Rialto", "Tosca  ", "tmdb:2"))
-        self.assertIsNone(j.label_of(labels, "Rialto", "Diuna", "tmdb:3"))
-
-    def test_the_views(self):
-        path = os.path.join(tempfile.mkdtemp(), "j.tsv")
-        with open(path, "w", encoding="utf-8") as f:
-            f.write(HEAD + row("de", "Caligari", "ES (ULRICH SCHAMONI)", "tmdb:1", "wrong", "known-wrong", "capture,served", reason="why")
-                    + row("de", "*", "Halloween [OV]", "tmdb:2", "undecided", "open", "served", reason="which", judged="2026-10-13")
-                    + row("pl", "Kino Powiśle", "OPERA-OTELLO", "tmdb:3", "right", "accepted-right-loss", reason="a trade"))
-        rows = j.read(path)
-        self.assertEqual({("de", "ES (ULRICH SCHAMONI)", "tmdb:1")}, j.tolerated(rows, "capture"))
-        self.assertEqual({("de", "ES (ULRICH SCHAMONI)", "tmdb:1"), ("de", "Halloween [OV]", "tmdb:2")}, j.tolerated(rows, "served"))
-        self.assertEqual([("Kino Powiśle", "OPERA-OTELLO", "tmdb:3")], j.accepted(rows, "pl"))
-        self.assertEqual({"de": {("Caligari", "ES (ULRICH SCHAMONI)", "tmdb:1"): "wrong"}, "pl": {("Kino Powiśle", "OPERA-OTELLO", "tmdb:3"): "right"}},
-                         dict(j.labels_by_country(rows)))
 
 
 class JudgementsLintTest(unittest.TestCase):

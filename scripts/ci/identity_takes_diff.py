@@ -50,7 +50,7 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from identity_judgements import accepted as accepted_rows, label_of, labels_by_country, normalise, read, tolerated  # noqa: E402
+from identity_judgements import judgements_of, label_of, normalise  # noqa: E402
 
 
 def load(path):
@@ -65,21 +65,6 @@ def take(row):
 
 def ref(film):
     return "none" if film is None else f"tmdb:{film}"
-
-
-def judgements_of(path, cc):
-    """(labels, accepted moves, tolerated suspects) for `cc`: what label_of reads; each accepted loss as the move
-    (venue, rawTitle, film, "none") it accepts; and the {(rawTitle, film)} the judgements tolerate in scope `served`."""
-    if not path:
-        return {}, [], set()
-    rows = read(path)
-    return (labels_by_country(rows)[cc], [(venue, title, film, "none") for venue, title, film in accepted_rows(rows, cc)],
-            {(title, film) for country, title, film in tolerated(rows, "served") if country == cc})
-
-
-def single_spaced(title):
-    """A billing as every judgement keys it: identity_judgements.normalise."""
-    return normalise(title)
 
 
 def ratchet_ran(path):
@@ -161,7 +146,7 @@ def kind_of(before, after):
 def accepted_move(move, accepted):
     """Whether an accepted loss accepts the listing's move from `before` to `after`."""
     venue, title, before, after = move["venue"], move["rawTitle"], ref(move["before"]), ref(move["after"])
-    return any(a_venue in ("*", venue) and single_spaced(a_title) == single_spaced(title) and a_before in ("*", before)
+    return any(a_venue in ("*", venue) and normalise(a_title) == normalise(title) and a_before in ("*", before)
                and a_after in ("*", after) for a_venue, a_title, a_before, a_after in accepted)
 
 
@@ -219,7 +204,7 @@ def unjudged_suspect(row, labels, baseline):
     if film is None or not row.get("suspect"):
         return False
     return label_of(labels, row["venue"], row["rawTitle"], ref(film)) is None and \
-        (single_spaced(row["rawTitle"]), ref(film)) not in baseline
+        (normalise(row["rawTitle"]), ref(film)) not in baseline
 
 
 def suspects_of(pairs, heads_alone, labels, baseline, accepted):

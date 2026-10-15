@@ -225,6 +225,7 @@ jobs:
                       python3 scripts/ci/identity_takes_diff_test.py
                       python3 scripts/ci/corpus_shape_diff_test.py
                       python3 scripts/ci/identity_findings_report_test.py
+                      python3 scripts/ci/identity_judgements_test.py
                       python3 scripts/ci/identity_judgements_lint_test.py
                       python3 scripts/ci/changed_line_coverage_test.py
                       python3 scripts/ops/jfr_rank_test.py

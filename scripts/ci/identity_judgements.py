@@ -15,8 +15,9 @@ Columns, tab-separated, a header line first (lines starting "#" are comments):
   state      open                  a plain judgement: a take of a wrong film fails every gate
              known-wrong           a WRONG take that is served and no safe fix removes yet; `scope` names the gates that
                                    let it stand, each failing once it is cured (shrink-only), `reason` says why
-             accepted-loss         the identity takes check accepts the listing's take moving OFF this film (to none, or
-                                   to a film not judged wrong): a trade within the rate, `reason` says which
+             accepted-loss         the identity takes check accepts the listing's take moving OFF this film to none (a
+                                   move to another film is judged by both films' verdicts): a trade within the rate,
+                                   `reason` says which
              accepted-right-loss   the same for a film judged RIGHT -- the lint's policy forbids accepting a right take's
                                    loss, so this state is that policy's explicit exception, named on every lint run
   scope      for known-wrong (and an undecided suspect), comma-separated: capture (the unmatched-cluster ratchet),
@@ -122,12 +123,29 @@ def labels_by_country(rows):
     return out
 
 
+def country_views(rows, cc):
+    """(labels, accepted moves, tolerated suspects) for `cc`: what label_of reads; each accepted loss as the move
+    (venue, rawTitle, film, "none") it accepts; and the {(rawTitle, film)} the judgements tolerate in scope `served`."""
+    return (labels_by_country(rows)[cc], [(venue, title, film, "none") for venue, title, film in accepted(rows, cc)],
+            {(title, film) for country, title, film in tolerated(rows, "served") if country == cc})
+
+
+def judgements_of(path, cc):
+    """country_views of the judgements at `path`; none when no path is given."""
+    return country_views(read(path), cc) if path else ({}, [], set())
+
+
+def own_or_every(table, venue, title, film):
+    """`table`'s entry for the listing: the venue's own row's, else the row for every venue ("*")'s."""
+    title = normalise(title)
+    own = table.get((venue, title, film))
+    return own if own is not None else table.get(("*", title, film))
+
+
 def label_of(labels, venue, title, film):
     """The verdict the judgements give `film` for the listing (one country's labels_by_country), as
     UnmatchedClusters.verdict reads it: a "*" row covers every venue, and the venue's own row overrides it."""
-    title = normalise(title)
-    own, every = labels.get((venue, title, film)), labels.get(("*", title, film))
-    return own if own is not None else every
+    return own_or_every(labels, venue, title, film)
 
 
 def tolerated(rows, scope):

@@ -37,7 +37,7 @@ import subprocess
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from identity_takes_diff import judgements_of, label_of, single_spaced  # noqa: E402  (the one reading of a judgement)
+from identity_judgements import judgements_of, label_of, normalise  # noqa: E402  (the one reading of a judgement)
 
 COUNTRIES = ["pl", "de", "uk", "es", "us"]
 STATE = re.compile(r"<!-- identity-findings-state: (\{.*?\}) -->", re.S)
@@ -64,7 +64,7 @@ def read_findings(directory, cc):
                 kind, venues, raw, film, title, reasons = cols[:6]
                 venue = venues.split(", ")[0]
                 out.append({"kind": kind, "venue": venue, "venues": venues, "rawTitle": raw, "film": film, "title": title,
-                            "what": reasons, "id": f"{kind}|{single_spaced(raw)}|{film}"})
+                            "what": reasons, "id": f"{kind}|{normalise(raw)}|{film}"})
     for path in shapes:
         spec = os.path.basename(path)[len(f"corpus-shape-recorded-{cc}-"):-len(".txt")]
         with open(path, encoding="utf-8") as f:
@@ -74,7 +74,7 @@ def read_findings(directory, cc):
                     continue
                 kind, venue, listing = cols[:3]
                 out.append({"kind": f"shape-{kind}", "spec": spec, "venue": venue, "venues": venue, "rawTitle": listing,
-                            "what": cols[3] if len(cols) > 3 else "", "id": f"shape|{spec}|{kind}|{single_spaced(listing)}"})
+                            "what": cols[3] if len(cols) > 3 else "", "id": f"shape|{spec}|{kind}|{normalise(listing)}"})
     return merged(out)
 
 
@@ -100,7 +100,7 @@ def still_unjudged(finding, labels, baseline):
     venues = [v for v in finding["venues"].split(", ") if v] or ["*"]
     if any(label_of(labels, venue, finding["rawTitle"], finding["film"]) is not None for venue in venues):
         return False
-    return (single_spaced(finding["rawTitle"]), finding["film"]) not in baseline
+    return (normalise(finding["rawTitle"]), finding["film"]) not in baseline
 
 
 def first_seen_of(body):
