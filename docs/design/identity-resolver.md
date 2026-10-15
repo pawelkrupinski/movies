@@ -238,8 +238,7 @@ Consequences:
 A resolve is scoped to a **family**: the union-find closure of every listing's block keys. The
 block keys are the sanitised title, the search form, the original title (both forms) and the
 TMDB id once resolved. `services.identity.FamilyClosure` (prerequisite c) implements
-`blockKeys`, `families`, `crossings`, `merges` and the `check` hook (`FamilyClosureMetrics`, a
-logging implementation, not yet wired to Prometheus).
+`blockKeys`, `families` and `crossings`.
 
 - The closure is **complete by construction**: every edge is drawn between nodes that share a
   block key, so a family-by-family resolve equals the global one. Checked on 10 corpora and 150
@@ -248,8 +247,9 @@ logging implementation, not yet wired to Prometheus).
   PL / UK / DE / US *(proof)*. A programme banner puts the real title anywhere in the string, and
   a shared TMDB id joins any two strings.
 - The closure is only complete *relative to the rules*. A rule whose endpoints share no block key
-  (raw-title containment, which is the Faust bug) breaks it silently. `FamilyClosure.check`
-  returns the crossing edges, and the resolver must then **fail rather than scope**.
+  (raw-title containment, which is the Faust bug) breaks it silently. `FamilyClosure.crossings`
+  returns the crossing edges, and the resolver then **fails rather than scopes**: it throws
+  `IdentityResolver.FamilyCrossing`.
 - The cost is family size: the largest are 3,179 listings (US) and 657 (UK). But a family is one
   wide release's venues, and its node count is small.
 - Routing a new listing to its family needs only its own keys, so an incremental resolve
@@ -418,7 +418,7 @@ does it in rounds, each a function of the previous round's partition:
    to name the answer instead (C17, reverted) cost 110 right PL listings.
 3. Stop when Pk+1 = Pk.
 
-**A facts-free cluster follows its title family's clear majority** (`IdentityResolver.familyMajority`).
+**A facts-free cluster follows its title family's clear majority** (`ClusterVoting.familyMajority`).
 A cluster whose listings publish nothing but a title (no year in a field, bracket or season, no
 runtime, director, country or original title of its own) has no evidence of its own to vote with:
 its pooled vote is the database's ranking. When the siblings its round-A title must-links join it
@@ -884,7 +884,7 @@ Cineworld from an IP it serves. No recording from a runner can close them.
    instalment. Fix the rule, or demote it from cannot-link to a tier penalty?
 7. **Family-size ceiling.** The US wide releases reach 3,179 listings. The resolve is O(nodes)
    per family, but a pathological bridge could join two blockbusters. Should there be a size alarm
-   on `FamilyClosure.merges`?
+   on the families `FamilyClosure.families` joins?
 8. **The US shadow diff** — *answered in §15: booted the convergence-leg way (`bootCorpus`), US takes 342–583 s.* Originally: the diff was missing; ES has landed (236 of 236 identical). The replay boot
    (`PipelineReplay`, one staging advance per venue) did not finish US's 4,452 venues in 65
    minutes. Options: advance staging per *batch* of venues, or diff against the pipeline output
@@ -921,7 +921,7 @@ is refused rather than duplicated, and the id is the same everywhere.
 **Into the constraint model.** `ListingConstraints.pinned(pins)` returns `PinConstraints`, the
 adapter the resolver consumes:
 
-- `resolvedFilm(key, looked)`: the pinned film, else the listing's own answer unless denied;
+- `filmOf(key)` / `deniedFilms(key)` (was `resolvedFilm(key, looked)`: the pinned film, else the listing's own answer unless denied);
 - `blockKeys(key)`: a `pin:<group>` key per pinned group plus `id:<tmdbId>` for pinned and denied
   films, added to `FamilyClosure.blockKeys`. Every pin edge therefore joins two listings of one
   family, and the closure stays complete (§5);
@@ -965,7 +965,7 @@ published are untouched.
   `IdentityMeasures.listingFilm` — title, original title, year, director, runtime, country, and
   `venues.corroborating` over the row's venues sharing the title key — and the film's standing in
   each listing title's own yearless TMDB search (`search.rank`, `rivals`), which the resolution
-  records on the TMDB slot (`SourceData.titleSearches`, `IdentityMeasures.titleSearch`, in TMDB's
+  records on the TMDB slot (`SourceData.titleSearches`, `PinnedGateMeasures.titleSearch`, in TMDB's
   own result order as the calibration measured it; `backfill-title-searches.js` fills rows resolved
   before). A title with no stored search leaves both out; popularity is never used. The search
   standing can lend a listing confidence, never withdraw it (the larger of the probability with and
@@ -1045,7 +1045,7 @@ Chrome: it pins the ticked listing, removes the pin, and shows a refusal.
   `AdminWiring` (the worker's rating gate scores stored evidence instead, §13.2).
 - The resolver must read pins through `ListingConstraints.pinned` (§13.1): add `blockKeys` to the
   family keys, solve `mustLinks` as tier 0, apply `admits` to its derived edges, and resolve each
-  listing through `resolvedFilm`.
+  listing through `PinConstraints.filmOf`.
   *Done on `identity-resolver` (§15):* `ResolverDecision` implements `Decision`, and
   `IdentityResolver.resolve(…, pins = ListingConstraints.pinned(pins))` does all four (a pinned
   listing's decision has basis `Pinned` and confidence 1).
@@ -1855,18 +1855,18 @@ Re-run this section's commands once phase 1's recording pass is pinned and `iden
 | `FormatTags` format vocabulary (8 tokens) | `ScrapeListing.cleanTitle` | as above | the same banner-by-co-occurrence signal |
 | `SequelMarker` franchise table (Hunger Games, Bring It On) and ordinal word lists | inside `describeDifferentFilms`, the listing-listing cannot-link when no learned rules exist | the calibration's learned listing-listing rules have not landed | learned cannot-links (the evaluator exists); different instalments already split through "different-films", because their candidates differ |
 | `YearWindow` constants | the incremental pipeline's predicates only; since round 2 the resolver's vetoes are the artefact's learned rules and cuts | — | done (§15.7) |
-| The season pattern: a year and the next ("2026/27", "2026-2027"), and a season's production spanning those two years | `IdentityMeasures.seasonYear`, `ListingConstraints.seasonsApart`, `IdentityResolver.seasonProductionOf` | the fitted weights do not read `season.delta` yet, so a season's production is accepted and its out-of-season namesakes vetoed structurally | refit with `season.delta` and let the learned cannot-links and weights replace the veto and the acceptance |
-| A banner's house: the one its own words spell (sharing words no rival house shares), else the film banner billing the most of its distinct works — at least two, strictly more than any other | `IdentityMeasures.Billing`/`Houses.learn`, `IdentityResolver.houses` (the title relation reads a record of the listing's house as a `segment`; a season's production of another house is denied) | learned per resolve (and per country in the calibration) from how the records of each banner's works bill them, of its season when it names one — "NT Live" is National Theatre Live and "MetOpera" the Metropolitan Opera because their works' records are, "RBO Cinema Season" Royal Ballet & Opera because its Swan Lake and Alice are; seasons and bracketed years are dropped from both sides (`withoutYears`); the two-work floor and the plurality are the only constants; "metropolitan opera: live in hd" is the Met by its words though RBO's records bill more of its works | a calibrated house-agreement measure once the labels hold house productions |
-| A title piece that is a QUALIFIER (an edition, a cut, a house's banner), not the work: a record titled only it does not name the listing | `IdentityMeasures.Qualifiers`, `IdentityResolver.FamilyScope.qualifiers` (the title relation drops such a record title; with none left it is an `overlap`) | learned per family from how its pool's records bill each piece and on which side of the work: the piece they bill on the listing's side beside at least two distinct works, and beside more than they bill the rest on its side — TMDB bills "Director's Cut" beside Chocolate, The Great War and The Promise, "The Final Cut" beside Pink Floyd and Straw Dogs, so neither "Director's Cut" (2016) nor "The Final Cut" (2004) names "Dark City: Director's Cut" or "Michael Mann's Manhunter: The Final Cut"; a tie is no qualifier; a franchise leads its sequels' titles ("Obcy: Przymierze"), so under a banner ("Tani wtorek: Obcy") it is still the work; records only and family-local (A3) | a calibrated measure once the labels hold edition listings |
+| The season pattern: a year and the next ("2026/27", "2026-2027"), and a season's production spanning those two years | `IdentityMeasures.Listing.seasonYear`, `ListingConstraints.seasonsApart`, `StageRelays.namesSeasonProduction` | the fitted weights do not read `season.delta` yet, so a season's production is accepted and its out-of-season namesakes vetoed structurally | refit with `season.delta` and let the learned cannot-links and weights replace the veto and the acceptance |
+| A banner's house: the one its own words spell (sharing words no rival house shares), else the film banner billing the most of its distinct works — at least two, strictly more than any other | `StageRelays.Billing`/`StageRelays.Houses.learn`, `CorpusContext.houses` (the title relation reads a record of the listing's house as a `segment`; a season's production of another house is denied) | learned per resolve (and per country in the calibration) from how the records of each banner's works bill them, of its season when it names one — "NT Live" is National Theatre Live and "MetOpera" the Metropolitan Opera because their works' records are, "RBO Cinema Season" Royal Ballet & Opera because its Swan Lake and Alice are; seasons and bracketed years are dropped from both sides (`withoutYears`); the two-work floor and the plurality are the only constants; "metropolitan opera: live in hd" is the Met by its words though RBO's records bill more of its works | a calibrated house-agreement measure once the labels hold house productions |
+| A title piece that is a QUALIFIER (an edition, a cut, a house's banner), not the work: a record titled only it does not name the listing | `IdentityMeasures.Qualifiers`, `FamilyScope.qualifiers` (the title relation drops such a record title; with none left it is an `overlap`) | learned per family from how its pool's records bill each piece and on which side of the work: the piece they bill on the listing's side beside at least two distinct works, and beside more than they bill the rest on its side — TMDB bills "Director's Cut" beside Chocolate, The Great War and The Promise, "The Final Cut" beside Pink Floyd and Straw Dogs, so neither "Director's Cut" (2016) nor "The Final Cut" (2004) names "Dark City: Director's Cut" or "Michael Mann's Manhunter: The Final Cut"; a tie is no qualifier; a franchise leads its sequels' titles ("Obcy: Przymierze"), so under a banner ("Tani wtorek: Obcy") it is still the work; records only and family-local (A3) | a calibrated measure once the labels hold edition listings |
 | The EDITION of the accepted film the listing names whole: a later record carrying one of the film's titles under a qualifier | `IdentityMeasures.editionOf`, `Acceptance.editionNamed` | the listing's facts chose the work and an edition carries them (the venue credits Murnau, TMDB the edition's maker), so they do not deny the edition; only when the listing names the edition more as its own than the work — the work only by a piece, or only by one of its alternative titles while the edition by its own title (then the edition is read against the work's own titles, and a record crediting another person than the listing is a remake, not an edition: TMDB files "Caligula: The Ultimate Cut" among the 1979 film's alternatives beside the re-cut's record, and "Nosferatu: A Symphony of Horror" among Murnau's beside Fisher's 2023 remake) — never when it names the work by its title or its own original title, and exactly one edition fits; each of the edition's titles is read alone, so a translated namesake ("Die Puppe" 1975, originally "The Doll") is no edition of "Lalka"; a pin still denies — "Radiohead X Nosferatu: A Symphony of Horror" is its 2025 record, not Murnau's 1922 | none: a structural relation between two records |
 | A season production's work searched with its season ("Manon 2026") | `IdentityMeasures.searchQueries` | the work alone ranks a house's season record below every namesake, and a venue's spelling of the house ("RBO Cinema Season 2026-27") finds nothing | none needed: a structural query from the listing's own title |
-| The prior/fact split of the measures (`search.rank`, `popularity.log2`, `rivals`, `venues.corroborating` are priors) | `IdentityResolver.Priors` | a classification of the calibration's measure names, not a weight or threshold | the calibration could publish it in the artefact |
+| The prior/fact split of the measures (`search.rank`, `popularity.log2`, `rivals`, `venues.corroborating` are priors) | `EvidenceWeights.Priors` | a classification of the calibration's measure names, not a weight or threshold | the calibration could publish it in the artefact |
 | The bracketed-runtime marks (a prime, an apostrophe or "min" after a bracketed 2–3 digit number) | `IdentityMeasures.bracketedRuntime` | the only way a number in a title says it is a duration ("DZIADKU WIEJEMY (97’)"); 8 PL listings | learn per-venue title annotations from their agreement with the film's runtime |
-| The evidence-path rule (a candidate is scored only when the listing's own query named it or its title relates) | `IdentityResolver.reachable` | structural pruning, with no constant | none needed |
+| The evidence-path rule (a candidate is scored only when the listing's own query named it or its title relates) | `FamilyScope.reachable` | structural pruning, with no constant | none needed |
 | An instalment number: an Arabic numeral of at most three digits (four are a year) — standing alone or closing a word ("Worlds25") — or a Roman one from I to XXXIX closing a delimited piece of the title | `IdentityMeasures.numbered` | a grammar, not a list: "2", "II" and "Part 2" are 2; L/C/D/M and a mid-piece "i" (Polish "and") spell words; a number inside a word ("Se7en", "M3GAN") is its name | none needed; its weight is fitted (`numeral`) |
 | Two films named apart by PLACE: every naming piece of each placed in the title at spans that share no word | `IdentityMeasures.namedApart` | a structural relation of the title's words, no constant | none needed |
 | A venue's title for a record: its original title names exactly one candidate, unanimously | `IdentityMeasures.venueTitles` | structural; "one record" and "unanimous" are the only counts | none needed |
-| The confidence of a title family's "clear" majority: the one-sided 95% Wilson lower bound of its venue share, against the show-ratings cut | `IdentityResolver.familyMajority`, `RateBounds` | the same one-sided 95% the calibration certifies its thresholds at; the cut is the artefact's | none needed |
+| The confidence of a title family's "clear" majority: the one-sided 95% Wilson lower bound of its venue share, against the show-ratings cut | `ClusterVoting.familyMajority`, `RateBounds` | the same one-sided 95% the calibration certifies its thresholds at; the cut is the artefact's | none needed |
 
 The resolver has no per-title, per-venue, per-chain or per-franchise rule of its own. Every constant above is inherited from the constraint model or the normaliser, and a learned counterpart for it is pending.
 
@@ -1877,18 +1877,18 @@ The resolver has no per-title, per-venue, per-chain or per-franchise rule of its
 - The resolver scores with `IdentityCalibration` over `IdentityMeasures`, which is the artefact and the measurement definitions the weights were fitted on. `Signals`, `IdentityWeights`, the interim weights and `scripts.IdentityInterimFit` are deleted.
 - The calibration and the resolver now share one definition each of:
   - the search shapes (`IdentityMeasures.searchQueries`);
-  - the venue co-occurrence count (`corroboratingVenues`);
+  - the venue co-occurrence count (`VenueBacking.corroborating`);
   - own-evidence agreement (`ownAgreement`);
   - the TMDB record parser (`TmdbFilmRecord`).
 - `IdentityLookupSweep` **is** a resolve over the recording chains. It asks exactly the resolver's candidate searches, filmographies, detail pages and candidate identity records (`TmdbClient.identityRecord`). A recording runs it to file every such answer into the tree it pins (§9a).
 - Cannot-links are the artefact's learned rules and certified cuts, reached through `ListingConstraints.learned`. The probability cut reads the listing's **own facts** only, not the ranking priors. A candidate is not vetoed for ranking second in TMDB's search.
 - A node accepts a film **alone** only when its own facts favour it over the runner-up. Otherwise it follows the film its cluster's credited members chose, or the pooled vote. The confidence is the calibrated probability.
 - One member's denial never vetoes the pooled vote for the whole cluster. When the whole cluster's pooled facts (modal year, median runtime, every director) still carry the vote's best film, the members whose own evidence denies it split off (a `denies-film` cannot-link), and the rest take it when their own pooled facts carry it too: a fact compared, and the facts-only probability over the cut. UK "Ozzy & Black Sabbath: Back to the Beginning" (229 listings) was vetoed whole by the 46 venues crediting only a co-director TMDB does not name.
-- Two spellings sharing a search form are not must-linked by it (tier 3) when either names a film, or carries another listing's whole title as a segment, BESIDE the form (`IdentityResolver.besideItsForm`): PL Kino Oaza bills a festival's films as "\"Kumotry\" - film, V FESTIWAL WAPI 2026", which the title rules search as the festival's suffix, so every film of the festival shared one search form.
-- A decorated spelling joins its plain sibling through a whole-segment must-link (tier 4) — unless the rest of its title names a film of its own (`IdentityResolver.namesBeside`): PL "Lalka (Dolly)" carries "Lalka" whole, but its "Dolly" names Blackhurst's horror, which Polish venues also bill as "Lalka"; the segment linked it to Kawalski's film.
-- A title that names two candidates by DISJOINT pieces (`IdentityMeasures.namedApart`) names both alike, so "own facts favour it" compares them without the title relation (`IdentityResolver.favours`). Nested pieces are no tie: "Joker: Folie à deux" names its film whole. Disjoint is by PLACE as well as by words: UK Odeon's double bill "The Gruffalo + The Gruffalo's Child" (×39, 53 minutes, both films' directors) names each film by its own span of the title, though both spans spell "The Gruffalo", so its facts — which fit both alike — decide, and it takes neither; the pooled vote had taken *The Gruffalo's Child*. Every piece of each film must find a place: "Tokyo Story (Tôkyô monogatari)" names Ozu's film by both its titles and leaves "Tokyo" no span of its own, and a film whose own title joins two others' ("Romeo + Juliet", "Fast & Furious") is named by the whole title, which every piece overlaps. (Nowe Horyzonty's "Basia … + Kocia Szajka" abstains through the screening-year rule instead: its year stays a fact beside a `decorated` title. That rule needs a year and a same-director credit, so it does not reach Odeon's bill; the placement rule needs no fact at all.)
+- Two spellings sharing a search form are not must-linked by it (tier 3) when either names a film, or carries another listing's whole title as a segment, BESIDE the form (`ConstraintEdges.sharedSearchForm`): PL Kino Oaza bills a festival's films as "\"Kumotry\" - film, V FESTIWAL WAPI 2026", which the title rules search as the festival's suffix, so every film of the festival shared one search form.
+- A decorated spelling joins its plain sibling through a whole-segment must-link (tier 4) — unless the rest of its title names a film of its own (`ConstraintEdges.namesBeside`): PL "Lalka (Dolly)" carries "Lalka" whole, but its "Dolly" names Blackhurst's horror, which Polish venues also bill as "Lalka"; the segment linked it to Kawalski's film.
+- A title that names two candidates by DISJOINT pieces (`IdentityMeasures.namedApart`) names both alike, so "own facts favour it" compares them without the title relation (`EvidenceWeights.favours`). Nested pieces are no tie: "Joker: Folie à deux" names its film whole. Disjoint is by PLACE as well as by words: UK Odeon's double bill "The Gruffalo + The Gruffalo's Child" (×39, 53 minutes, both films' directors) names each film by its own span of the title, though both spans spell "The Gruffalo", so its facts — which fit both alike — decide, and it takes neither; the pooled vote had taken *The Gruffalo's Child*. Every piece of each film must find a place: "Tokyo Story (Tôkyô monogatari)" names Ozu's film by both its titles and leaves "Tokyo" no span of its own, and a film whose own title joins two others' ("Romeo + Juliet", "Fast & Furious") is named by the whole title, which every piece overlaps. (Nowe Horyzonty's "Basia … + Kocia Szajka" abstains through the screening-year rule instead: its year stays a fact beside a `decorated` title. That rule needs a year and a same-director credit, so it does not reach Odeon's bill; the placement rule needs no fact at all.)
 - The pooled vote (`Acceptance.pooled`) does not take a film when the title names another candidate by the very same pieces and the pooled published facts fit that one better: four PL "Camino dla opornych" (original title "Santiago", 113 minutes) took the 93-minute 1956 "Santiago" TMDB ranked first over the 113-minute one it ranked fourth. A rival the title names less specifically ("Mad Max" inside "Mad Max 2: The Road Warrior", whose venues' runtime fits the first film) or not at all is no such rival, and namesakes the facts fit alike stay the calibration's to separate — its ranking priors and the family's venue count are measured evidence there (a bare "Resident Evil" at 148 UK venues, "The Omen" at 78): requiring a compared fact, or comparing whole own evidence (where "The Omen" as an alternative title of a Taiwanese film outscores Donner's exact title), cost 500–900 right UK/US listings in the measurement. Two films the title names by disjoint pieces are not namesakes, so only the facts may pick one.
-- A title piece that is the listing's own venue — its name or its city's (`IdentityResolver.namesOnlyItsVenue`, from the roster, no word list) — names no film: Kino Twierdza's "TWIERDZA - VINCENT. LEGENDA OCEANU" took *The Rock* (Polish "Twierdza"), and the Alamo Drafthouse circuit's "Dismember the Alamo 2026 - Chicago / Corpus Christi / Omaha" took *Chicago*, Komasa's *Corpus Christi* and *Omaha* at the venues of those cities. The whole title still names its film at any venue.
+- A title piece that is the listing's own venue — its name or its city's (`CandidateScoring.namesOnlyItsVenue`, from the roster, no word list) — names no film: Kino Twierdza's "TWIERDZA - VINCENT. LEGENDA OCEANU" took *The Rock* (Polish "Twierdza"), and the Alamo Drafthouse circuit's "Dismember the Alamo 2026 - Chicago / Corpus Christi / Omaha" took *Chicago*, Komasa's *Corpus Christi* and *Omaha* at the venues of those cities. The whole title still names its film at any venue.
 - A film of the listing's credited director is denied when the listing's WHOLE title (or its original or an alternative title) names another film of that director and names this one not at all (`FamilyScope.score`): the walk is a path to candidates. US Syndicated's "Zodiac" (Fincher, 139 minutes) took *Fight Club* on the runtime. Only a whole-title name: a segment or a decoration does not pin the film (ENB's "The Sleeping Beauty" record bills it "English National Ballet presents …", an `overlap`).
 - Neither scope's learned veto fires on a title relation alone: a listing-film pair must compare a fact the listing published (`learnedListingFilm`), a listing-listing pair a fact both published (`learnedListingListing`: year, bracket year, season, director, runtime, original title, chain id — not the title, not the venue). A pair comparing nothing is scored, never vetoed; a contradicting fact still vetoes, film or no film. The listing-film score cut vetoes only when the film's own facts (the compared facts but the runtime) pull the score down: a venue's runtime is its screening's — a lecture, a Halloween night, a pre-premiere's round 120 — and vetoes through the learned `runtime.gap` rules certified on it (CK Lublin's "Martwe zło 2" at 121 against 84, Kino Piast's "Ojczyzna" at 120 against 82). The listing-listing title relation reads one title as a whole `segment` of the other's in either order.
 - A published year never counts against a film the same director made (`IdentityMeasures.listingFilm` reads it as `missing:listing` there), in the score or a veto: beside the same person, a year that denies the film dates the screening or a release (Helios RePlay's and Kinoteka's 2026 "Diabły" is Ken Russell's 1971 film; Kinoteka's 2026 "Tuvalu" is Veit Helmer's 1999 one). An agreeing year still scores, so that director's film of the listing's year wins when the pool has it (Haneke's 1997 and 2007 "Funny Games"). Until 2026-09-27 the year was only kept out of the veto, and its −7.77 still sank these below the cut.
@@ -2168,7 +2168,7 @@ self-heal near-no-op to it. Each tick:
   while a country's run is off.
 
 **Switches** (staged-migration, read per worker process, off by default):
-`KINOWO_IDENTITY_SHADOW` (`ProcessConfiguration.identityLookupFill`) wires the run;
+`KINOWO_IDENTITY_SHADOW` (`ProcessConfiguration.identityShadow`, both since retired) wired the run;
 `KINOWO_IDENTITY_SHADOW_LOOKUPS` (`LookupFill`) fills the TMDB store it reads; with the fill off it
 reads what the pipeline's own lookups filed there (`identityLookupFetch`).
 
@@ -2469,7 +2469,7 @@ Calibrated = fitted from data today (`identity-weights.json`, §14). Feature = a
 | learned cannot-links (28), evidence class (1) | conjunctions vetoing / crediting a pair | `identity-weights.json` | learned | yes | `model.deniedBySome` (denied by every node: no contender) |
 | acceptance rules (12 alone, 3 pooled, season-production) | sole-work, exact/segment-top-hit, sole-result, dated-title; directors-work/-title; favoured/unrivalled-calibrated; imdb-suggested; house/stage-production, season-record | `Acceptance` | rule order; `LeanMargin` 2.0, `BilledRuntime` 15, `RuntimeContradiction` | no | `rule.title`, `rule.director`, `rule.calibrated`, `rule.imdb`, `rule.stage`, `rule.pooled` |
 | season / house production | record names the listing's season / house production | `Scored` | pre-empts the rules | no | `production.season`, `production.house` |
-| double programme | a "+" joining two whole works, whatever a database holds (`IdentityMeasures.billsTwoWholeWorks`) | `Acceptance.billsTwoWholeWorks` | takes neither | no | — (the fill guards it as `bill.several`) |
+| double programme | a "+" joining two whole works, whatever a database holds (`MultiFilmBill.billsTwoWholeWorks`) | `Acceptance.billsTwoWholeWorks` | takes neither | no | — (the fill guards it as `bill.several`) |
 | model lean / best candidate | `ResolverDecision.leaning` (≥2× runner-up) / `candidate` | `ResolverDecisions` | the agreement's TMDB vote | no | `model.lean`, `model.best` |
 | family take (imdb, wiki, filmweb, metacritic, rt) | the resolver over the family's answers takes one film | `Agreement.verdict` | one vote each; `priorSpread` 1.5/0.5/0.5/1.0/1.5 (cross-validated) | spread only | `family.<f>.took` |
 | family lean | best undenied ≥ `LeanMargin` × runner-up | `Agreement.leaningOf` | completes a quorum | no | `family.<f>.leans` |
@@ -2619,7 +2619,7 @@ recorded corpora (`IdentityResolveDumpIntegrationSpec`, replay only), all identi
 - **`Agreement.Takers`** (1): a film is weighed only as a group of families' picks, so it always has a taker; leans
   and corroboration still never make an agreement alone.
 - **The older double-bill rule**: a title billing two works its facts both fit. The newer one — a "+" joining two
-  whole works is neither film (`billsTwoWholeWorks`) — refuses every bill it did (PL 25 and UK 227 listings refused
+  whole works is neither film (`MultiFilmBill.billsTwoWholeWorks`) — refuses every bill it did (PL 25 and UK 227 listings refused
   in the dump, before and after), and the fill's `bill.bothWorks` guard went with it: `bill.several` already refuses
   any "+" bill a fill could take. The unified weights were refit without the signal; the selected rules are unchanged.
 
@@ -2643,7 +2643,7 @@ filed each under retrieval, scoring, a guard, or the agreement. What it added, e
 - **A title naming a film whose own title leads with an article the venue drops** (`Agreement.namesIt`): DE
   "Camp der Verlorenen" names TMDB's "Das Camp der Verlorenen" (Sembène's *Camp de Thiaroye*), which `title.namesNone`
   vetoed. Two words after the article at least. Ratchet: +1 listing, 1 film, 0 wrong.
-- **An event a "+" joins to the film is no second work** (`Agreement.billsSeveral` reads `billsTwoWholeWorks`, the
+- **An event a "+" joins to the film is no second work** (`Agreement.billsSeveral` reads `MultiFilmBill.billsTwoWholeWorks`, the
   model's own rule, in place of any spaced "+"): PL "11. UFF - Gala otwarcia + Demony", which IMDb and Filmweb take.
   Ratchet: +1 listing, 1 film, 0 wrong (the venue posters the newly open clusters show filed by the fill spec).
 - **A screen adaptation of a stage work** (`Agreement.screenAdaptation`): a listing naming a stage work vetoed every
@@ -2785,7 +2785,7 @@ live to *I Was a Stranger* (1193128) by the families and its poster.
 Vic page, so the listing states 2019 and Herrin, and the model took the 2019 record. A relay's take is WITHDRAWN when
 all of these hold:
 - every listing bills a house's relay of the record: a house word, and a banner on the work the record also bills
-  under one (`IdentityMeasures.billing`);
+  under one (`StageRelays.billing`);
 - nothing the venue states itself ties it to the record. No title dates the record's year. No listing whose facts are
   its own, rather than a listings site's catalogue entry (Flicks' film page), states the record's year or director;
 - TMDB dates the record's broadcast more than a year (`RelayRunDays`) before the first screening;
@@ -2893,7 +2893,7 @@ general mechanism, ≥1 right gained, 0 wrong. **No production change shipped: r
 allocation unchanged** (`--alloc 5`: 3,197 MB median per replay of every capture, heap after GC 360 MB, against main's
 3,197 MB, measured with `ThreadAllocation`). One constraint applies to every retrieval fix: the ratchet replays the
 CAPTURED model decisions, and its `Replay` fails on any TMDB question the capture does not hold (`unanswered`). A new
-search, in the resolver (`IdentityResolver.candidatesOf`, which the stage also calls at `AgreementStage.scala:733`) or in
+search, in the resolver (`IdentityResolver.candidatesOf`, which the stage also calls through `AgreementStage.searchedFilms`) or in
 the stage, cannot be graded until the fixture is re-captured (below).
 
 1. **Programme prefixes whose film TMDB's search misses.** The prefix is no cause: "19. FGA:" is stripped into

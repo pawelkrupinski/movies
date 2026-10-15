@@ -113,8 +113,8 @@ decorated, fragment, overlap, none); `numeralRelation` :1097; `namesSeasonProduc
 `Qualifiers` :325; `editionOf` :373; `namingPieces` :887; `titleIsWorkOf`/`sharesWork` :788–811; `standsForTheWhole` :1226;
 `takesImdbTitle` :1364; `originalFormRelation` :1032; `venueTitles` :941; `titlesByFacts` :967; `shapes` :698;
 `directorRelation`/`creditRelation` :647/667 (+ `creditedBySearch`); `countryRelation` :1140; `runtimeDelta` :1170
-(+ `FilmCuts`, `billsAnEdition`); `runtimeContradicts` :1461 (30 min); `corroboratingVenues` :1395; `billsStageWork`
-:1284; `billsTwoWorks`/`billsTwoWholeWorks` :1242/1247; `MultiFilmBill.marker`/`billedOne`/`namedBy`/`billsBeside`;
+(+ `FilmCuts`, `billsAnEdition`); `runtimeContradicts` :1461 (30 min); `VenueBacking.corroborating`; `StageRelays.billsStageWork`;
+`MultiFilmBill.billsTwoWorks`/`billsTwoWholeWorks`; `MultiFilmBill.marker`/`billedOne`/`namedBy`/`billsBeside`;
 `TitleLinks.titleLinked`/`titlesBeside`/`Cut`; `CastEvidence.take` (≥2 names). All pinned by IdentityMeasuresSpec /
 IRC / TitleDecorationsSpec / MultiFilmBillSpec / FilmCutsSpec / CastEvidenceSpec.
 
@@ -188,12 +188,12 @@ catalogue match; `broadcast.take` via `Broadcast.take`). Rules: the fill `venues
    :1522 and `Acceptance` :212/:520/:560 (`PublishedAdjacency`, literal 1). **Consolidated** (phase 1:
    `FactRelations`). The two contradiction semantics disagreed on names in two scripts — **finding F1**, unified.
 2. **Bill / several works — 7.** `Acceptance.billsSeveralWorks`, `Agreement.billsSeveral`/`billsSeveralBeside`/
-   `billsSeveralBySigns` (zestaw, quoted), `IdentityMeasures.billsTwoWorks`/`billsTwoWholeWorks`, `MultiFilmBill`,
+   `billsSeveralBySigns` (zestaw, quoted), `MultiFilmBill.billsTwoWorks`/`billsTwoWholeWorks`, `MultiFilmBill`,
    `DecorationSegments.billsSeveral` (offline), `NonFilmEvents` "marathon" marker, `ConstraintEdges`:40.
-3. **Stage relay / house — 6.** `Agreement.stagesAWork`, `IdentityMeasures.billsStageWork`/`stageWorks`,
+3. **Stage relay / house — 6.** `Agreement.stagesAWork`, `StageRelays.billsStageWork`/`stageWorks`,
    `Agreement.billsAHouse` (hard-coded `HouseWords`), `Broadcast.billsAHouse(title)` (stage work + banner),
-   `NonFilmEvents.relays`, `IdentityMeasures.billsUnderItsHouse` (learned `Houses`), `UnifiedEvidence` `stage.work`.
-4. **Banner spelling — 2.** `Broadcast.Billing.spells` (subset, or ≥2 shared words) vs `IdentityMeasures.spellsItsHouse`
+   `NonFilmEvents.relays`, `StageRelays.billsUnderItsHouse` (learned `Houses`), `UnifiedEvidence` `stage.work`.
+4. **Banner spelling — 2.** `Broadcast.Billing.spells` (subset, or ≥2 shared words) vs `StageRelays.spellsItsHouse`
    (≥2 shared words, no subset case) — **finding F2**.
 5. **Edition — 6.** `Agreement.editionOf(SourceRecord)` (same director, year no earlier, title tokens),
    `IdentityMeasures.editionOf(Film)` (segment/decorated relation, later year), `PosterEvidence.editionsApart` (numbers),
@@ -202,7 +202,7 @@ catalogue match; `broadcast.take` via `Broadcast.take`). Rules: the fill `venues
    `Broadcast.superseded`'s `ownFacts` (re-derived, broader: any linked catalogue page), the catalogue-id-equals-pick test
    in `Agreement.supported` and `UnifiedEvidence` `listing.catalogue`.
 7. **Title names the film — 4.** `IdentityMeasures.names`/`NamingRelations`, `Agreement.namesIt` (own leading
-   articles), `IdentityMeasures.backsFilm`, `Agreement.namedWithinAnother`. Two leading-article lists were one each —
+   articles), `VenueBacking.backsFilm`, `Agreement.namedWithinAnother`. Two leading-article lists were one each —
    **finding F3**, unified into `IdentityMeasures.LeadingArticles` (15, five languages).
 8. **Runtime tolerance — 5.** `runtimeDelta`, `runtimeContradicts` (30), `Agreement.runsAsTheListing` (±5, own lookup
    incl. `FilmCuts`), `Agreement.equivalent` (±2), `Acceptance.BilledRuntime` (15).
@@ -287,13 +287,13 @@ loops' own overhead is the confirming `grow` round (grouping, `takenAlone` memo 
 - **F1 — a credit in another script. UNIFIED.** The agreement's listing contradiction (`Agreement.contradicts`) read
   only names in one script as other people; a correction's (`Correction.contradicts`, `shareDirector`) read
   `different_script` too. Now one reading, `FactRelations.otherPeople`: other people in either script, sharing no
-  name's stem — the stems taken in Latin letters (`IdentityMeasures.latinized`), so "Andrei Tarkovsky" and
+  name's stem — the stems taken in Latin letters (`CreditRelation.latinized`), so "Andrei Tarkovsky" and
   "Андрей Тарковский" share "andr"/"tark" and contradict nothing (before, a Cyrillic name had no stem at all, and the
   correction's across-script read could not tell one person transliterated from another). The agreement's guard is the
   stricter of the two now (it rules out more, takes nothing more). Ratchet 507 right / 0 wrong before and after;
   FilmScheduleEndToEndSpec unchanged.
 - **F2 — spelling a house.** `Broadcast.Billing.spells` accepts a banner that is a subset of the house's words ("Opera"
-  of "The Metropolitan Opera"), `IdentityMeasures.spellsItsHouse` only two shared words. Not a bug: the resolver's
+  of "The Metropolitan Opera"), `StageRelays.spellsItsHouse` only two shared words. Not a bug: the resolver's
   rule takes a season record on the banner alone, where a subset would teach the Paris Opera's banner to be the Met;
   the broadcast join has the screening day beside it. Kept apart on purpose.
 - **F3 — leading articles. UNIFIED.** `IdentityMeasures`' article-less exact title knew "the", "a", "an";
