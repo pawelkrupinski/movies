@@ -8,14 +8,8 @@ a town is refused rather than served.
 
 Run: python3 data/pl/scripts/build_venue_towns_test.py
 """
-import importlib.util
-import os
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-spec = importlib.util.spec_from_file_location(
-    "build_venue_towns", os.path.join(HERE, "build_venue_towns.py"))
-bvt = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(bvt)
+import build_venue_towns as bvt  # beside this test, whose directory leads sys.path
 
 # A gazetteer standing in for the GeoNames dump.
 EXACT = {bvt.fold(t) for t in [

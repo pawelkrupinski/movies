@@ -10,13 +10,10 @@ an aggregator dropping a venue is not the venue closing (ACME Screening Room).
 Run: python3 data/scripts/retire_venues_test.py
 """
 import re
-import importlib.util
 import os
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-spec = importlib.util.spec_from_file_location("retire_venues", os.path.join(HERE, "retire_venues.py"))
-rv = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(rv)
+import retire_venues as rv  # noqa: E402  (this file's directory leads sys.path)
 
 PAGE = "https://example.test/kino/{id}/"
 SITE = "https://kino.example/"

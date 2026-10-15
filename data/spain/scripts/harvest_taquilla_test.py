@@ -6,22 +6,10 @@ feed.
 
 Run: python3 data/spain/scripts/harvest_taquilla_test.py
 """
-import importlib.util
-import os
 import sys
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-
-
-def _load(name):
-    spec = importlib.util.spec_from_file_location(name, os.path.join(HERE, f"{name}.py"))
-    module = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(module)
-    return module
-
-
-ht = _load("harvest_taquilla")
-gos = _load("generate_own_sources")
+import generate_own_sources as gos  # beside this test, whose directory leads sys.path
+import harvest_taquilla as ht
 
 # The parts of https://www.taquilla.com/madrid/cine-yelmo-la-vaguada-madrid the harvest
 # reads, verbatim from the 2026-10-12 page.

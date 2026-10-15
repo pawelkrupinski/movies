@@ -5,14 +5,8 @@ compiles and silently loses a venue or its scrape.
 
 Run: python3 data/spain/scripts/generate_roster_test.py
 """
-import importlib.util
-import os
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-spec = importlib.util.spec_from_file_location(
-    "generate_roster", os.path.join(HERE, "generate_roster.py"))
-gr = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(gr)
+import generate_roster as gr  # beside this test, whose directory leads sys.path
 
 
 def test_every_venue_on_exactly_one_page():

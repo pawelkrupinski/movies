@@ -9,14 +9,8 @@ it folds to the same ASCII as the harvested name. These pin that.
 
 Run: python3 data/spain/scripts/build_town_names_test.py
 """
-import importlib.util
-import os
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-spec = importlib.util.spec_from_file_location(
-    "build_town_names", os.path.join(HERE, "build_town_names.py"))
-btn = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(btn)
+import build_town_names as btn  # beside this test, whose directory leads sys.path
 
 
 def index(*names):

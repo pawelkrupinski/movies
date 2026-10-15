@@ -3,14 +3,9 @@
 
 Run: python3 data/germany/scripts/harvest_kinoprogramm_test.py
 """
-import importlib.util
-import os
 import pathlib
 
-HERE = pathlib.Path(__file__).resolve().parent
-spec = importlib.util.spec_from_file_location("harvest", HERE / "harvest_kinoprogramm.py")
-harvest = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(harvest)
+import harvest_kinoprogramm as harvest  # beside this test, whose directory leads sys.path
 
 
 def test_the_cache_survives_a_session_rather_than_living_in_one_agents_scratchpad():

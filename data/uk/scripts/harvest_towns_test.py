@@ -15,7 +15,6 @@ postcode, not the position, is what marks the town.
 
 Run: python3 data/uk/scripts/harvest_towns_test.py
 """
-import importlib.util
 import json
 import os
 
@@ -26,9 +25,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 # run from 2026-09-21 failed on the missing file).
 CINEWORLD_VENUES = os.path.join(HERE, "testdata", "cineworld-venues.json")
 
-spec = importlib.util.spec_from_file_location("harvest_towns", os.path.join(HERE, "harvest_towns.py"))
-ht = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(ht)
+import harvest_towns as ht  # noqa: E402  (this file's directory leads sys.path)
 
 
 def test_town_carries_the_postcode():

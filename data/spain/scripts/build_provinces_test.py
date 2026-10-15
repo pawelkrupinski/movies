@@ -17,13 +17,8 @@ silently emit a duplicate displayName.
 
 Run: python3 data/spain/scripts/build_provinces_test.py
 """
-import importlib.util
-import os
 
-_here = os.path.dirname(os.path.abspath(__file__))
-_spec = importlib.util.spec_from_file_location("build_provinces", os.path.join(_here, "build_provinces.py"))
-bp = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(bp)
+import build_provinces as bp  # beside this test, whose directory leads sys.path
 
 
 def theater(theater_id, name, town, province):
