@@ -74,4 +74,9 @@ class SharedSbtBuildSetupSpec extends AnyFlatSpec with Matchers {
   "the decorations relearn" should "restore no build cache, as before the trio was shared" in {
     RepoFile.read(".github/workflows/identity-decorations.yml") should include("target-cache: 'false'")
   }
+
+  "a caller's own target-cache key" should "fall back only to the prefixes it names, never the shared family" in {
+    RepoFile.read(Action) should include(
+      "restore-keys: ${{ inputs.target-cache-key == '' && format('sbt-target-{0}-', runner.os) || inputs.target-cache-restore-keys }}")
+  }
 }

@@ -49,5 +49,5 @@ runs:
       uses: ./.github/actions/sbt-target-cache
       with:
         key: ${{ inputs.target-cache-key != '' && inputs.target-cache-key || format('sbt-target-{0}-{1}', runner.os, hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/it/**/*.scala', 'web/src/main/resources/**')) }}
-        restore-keys: ${{ inputs.target-cache-key != '' && inputs.target-cache-restore-keys || format('sbt-target-{0}-', runner.os) }}
+        restore-keys: ${{ inputs.target-cache-key == '' && format('sbt-target-{0}-', runner.os) || inputs.target-cache-restore-keys }}
         restore-only: ${{ inputs.target-cache-restore-only }}
