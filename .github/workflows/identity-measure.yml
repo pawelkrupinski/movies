@@ -107,6 +107,13 @@ jobs:
             - uses: actions/checkout@v5
               with:
                   ref: ${{ inputs.base }}
+            # The measurement's runner script from THIS workflow's ref, beside the base: a base from before the script
+            # existed (an old merge-base, a hand-dispatched commit) is still measured, the same way.
+            - uses: actions/checkout@v5
+              with:
+                  path: .measure-tools
+                  sparse-checkout: scripts/ci/identity-measure-run.sh
+                  sparse-checkout-cone-mode: false
 
             - name: Name the recording to replay
               id: recording
@@ -144,7 +151,7 @@ jobs:
               shell: bash
               timeout-minutes: 120
               # scripts/ci/identity-measure-run.sh: the same run on a laptop, given the corpus staged.
-              run: scripts/ci/identity-measure-run.sh boot "$CC" "$RUNNER_TEMP/identity-boot" "$RUNNER_TEMP/identity-pipeline-cache"
+              run: IDENTITY_MEASURE_REPO="$GITHUB_WORKSPACE" .measure-tools/scripts/ci/identity-measure-run.sh boot "$CC" "$RUNNER_TEMP/identity-boot" "$RUNNER_TEMP/identity-pipeline-cache"
               env:
                   CC: ${{ matrix.code }}
 
@@ -161,7 +168,7 @@ jobs:
             - name: Measure the ${{ matrix.code }} corpus
               shell: bash
               timeout-minutes: 300
-              run: scripts/ci/identity-measure-run.sh measure "$CC" "$RUNNER_TEMP/identity-out" "$RUNNER_TEMP/identity-pipeline-cache"
+              run: IDENTITY_MEASURE_REPO="$GITHUB_WORKSPACE" .measure-tools/scripts/ci/identity-measure-run.sh measure "$CC" "$RUNNER_TEMP/identity-out" "$RUNNER_TEMP/identity-pipeline-cache"
               env:
                   CC:                         ${{ matrix.code }}
                   KINOWO_IDENTITY_ROBUSTNESS: ${{ inputs.robustness }}

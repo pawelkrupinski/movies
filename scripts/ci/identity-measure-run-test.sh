@@ -50,4 +50,11 @@ check "a country that is not a code is refused" "64" "$status"
 run "$script" sample pl "$work/out3" "$work/cache" > /dev/null 2>&1; status=$?
 check "and so is a mode that is neither boot nor measure" "64" "$status"
 
+# The workflow runs ITS OWN copy of this script against a base checked out from before the script existed.
+mkdir -p "$work/base"
+run env IDENTITY_MEASURE_REPO="$work/base" "$script" boot pl "$work/boot2" "$work/cache" > /dev/null; status=$?
+check "a base checkout named by IDENTITY_MEASURE_REPO is the one booted" "0" "$status"
+check "...its corpus the default, not this script's checkout's" "KINOWO_IDENTITY_CORPUS_DIR=$work/base/test/resources/fixtures/corpus" \
+  "$(grep '^KINOWO_IDENTITY_CORPUS_DIR=' "$work/call")"
+
 spec_summary

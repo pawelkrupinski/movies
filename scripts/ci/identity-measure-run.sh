@@ -8,7 +8,9 @@
 #
 # Environment (each optional): MONGODB_URI (default the local mongod on 27017), KINOWO_IDENTITY_CORPUS_DIR (default this
 # checkout's test/resources/fixtures/corpus), and for `measure` KINOWO_IDENTITY_ROBUSTNESS (default off) and
-# KINOWO_IDENTITY_FOCUS; KINOWO_CONVERGENCE_CORPUS_RUN / KINOWO_CONVERGENCE_TREE_ASSET name the recording replayed.
+# KINOWO_IDENTITY_FOCUS; KINOWO_CONVERGENCE_CORPUS_RUN / KINOWO_CONVERGENCE_TREE_ASSET name the recording replayed;
+# IDENTITY_MEASURE_REPO, the checkout to run in (default this script's own) — the workflow runs its own copy of this
+# script against a base checked out from before the script existed.
 # `measure` writes <out>/variant-<cc>.txt (the commit and recording) and <out>/run-<cc>.log (the suite's output).
 # Exits with the suite's status; 64 on a bad argument.
 # Tested by scripts/ci/identity-measure-run-test.sh.
@@ -19,7 +21,7 @@ usage() { echo "usage: $0 boot|measure <cc> <out-dir> <pipeline-cache-dir>" >&2;
 mode="$1" cc="$2" out="$3" cache="$4"
 case "$mode" in boot|measure) ;; *) usage ;; esac
 [[ "$cc" =~ ^[a-z]{2}$ ]] || { echo "$0: '$cc' is not a country code" >&2; exit 64; }
-repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+repo="${IDENTITY_MEASURE_REPO:-$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)}"
 
 export MONGODB_URI="${MONGODB_URI:-mongodb://127.0.0.1:27017/?directConnection=true}"
 export KINOWO_IDENTITY_CORPUS_DIR="${KINOWO_IDENTITY_CORPUS_DIR:-$repo/test/resources/fixtures/corpus}"

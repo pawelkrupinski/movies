@@ -58,6 +58,16 @@ class IdentityMeasureWorkflowSpec extends AnyFlatSpec with Matchers {
     ScriptTests.runInCi("scripts/ci/identity-measure-run-test.sh") shouldBe true
   }
 
+  it should "run its own ref's measurement script against the base, so a base older than the script still measures" in {
+    measure should include("path: .measure-tools")
+    measure should include("sparse-checkout: scripts/ci/identity-measure-run.sh")
+    RepoFile.step(measure, "Boot the base's production into the cache") should include(
+      "IDENTITY_MEASURE_REPO=\"$GITHUB_WORKSPACE\" .measure-tools/scripts/ci/identity-measure-run.sh boot")
+    RepoFile.step(measure, s"Measure the $${{ matrix.code }} corpus") should include(
+      "IDENTITY_MEASURE_REPO=\"$GITHUB_WORKSPACE\" .measure-tools/scripts/ci/identity-measure-run.sh measure")
+    run should include("IDENTITY_MEASURE_REPO")
+  }
+
   // Only main reaches origin: a variant travels as a patch on a base commit.
   "the helper" should "dispatch the workflow with the worktree's diff as a patch, pushing nothing" in {
     helper should include("dispatch_workflow \"$workflow\" main")
