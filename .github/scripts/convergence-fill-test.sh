@@ -35,6 +35,7 @@ release="$(dirname "$0")/../release"
 if [ "$1 $2" = "release view" ]; then
   echo x >> "$release/../views"
   [ -z "${STUB_UNREACHABLE:-}" ] || exit 1
+  [ -z "${STUB_HANGS:-}" ] || exec sleep 30
   # A GitHub 5xx on the first listing only.
   if [ -n "${STUB_FAILS_ONCE:-}" ] && [ ! -e "$release/../failed-once" ]; then : > "$release/../failed-once"; exit 1; fi
   ls "$release"; exit 0
@@ -81,6 +82,11 @@ STUB_UNREACHABLE=1 run fills us 100 > /dev/null 2>&1
 check "...but only after asking three times" "3" "$(views)"
 check "...and the gaps too, rather than reporting none" "1" \
   "$(STUB_UNREACHABLE=1 run gaps us 100 "$work/unreachable.tsv" > /dev/null 2>&1; echo "$?")"
+# A listing that hangs is a failed attempt, cut off, never a leg waiting out its job's timeout.
+started=$SECONDS
+check "a listing that hangs is cut off, and fails the fills after three attempts" "1" \
+  "$(STUB_HANGS=1 CONVERGENCE_FILL_GH_TIMEOUT=1 run fills us 100 > /dev/null 2>&1; echo "$?")"
+check "...within its bound" "yes" "$([ $((SECONDS - started)) -lt 15 ] && echo yes || echo "no: $((SECONDS - started))s")"
 # One GitHub 5xx is not a release that cannot be listed: a single failed listing must not fail the leg.
 rm -f "$work/views" "$work/failed-once"
 check "a listing that fails once and then answers gives the pair's fills" "0:fill-us-100-35.tar.zst fill-us-100-201.tar.zst" \

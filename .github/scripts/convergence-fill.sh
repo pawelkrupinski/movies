@@ -29,6 +29,12 @@ set -uo pipefail
 
 TAG="${FIXTURE_RELEASE_TAG:?FIXTURE_RELEASE_TAG names the rolling release}"
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=scripts/tool-conventions.sh
+. "$here/../../scripts/tool-conventions.sh" # bounded
+# Every gh call is bounded: a hung read or download is a failed attempt (retried as any other), never a leg that waits
+# out its job's timeout.
+GH_READ="${CONVERGENCE_FILL_GH_TIMEOUT:-120}"
+GH_DOWNLOAD="${CONVERGENCE_FILL_DOWNLOAD_TIMEOUT:-1200}"
 # How many of the newest refused lists a fill skips the gaps of: a gap an origin refused is asked again only once
 # this many later fills have published lists without it — never every run through paid egress.
 REFUSED_KEPT="${CONVERGENCE_FILL_REFUSED_KEPT:-4}"
@@ -41,7 +47,7 @@ backoff() { sleep "$(( ${CONVERGENCE_FILL_LIST_BACKOFF:-5} << ($1 - 1) ))"; }
 # Every asset name in the release, one per line; an error and a non-zero status when it cannot be listed.
 assets() {
   local names attempt=1
-  until names=$(gh release view "$TAG" --json assets --jq '.assets[].name'); do
+  until names=$(bounded "$GH_READ" gh release view "$TAG" --json assets --jq '.assets[].name'); do
     if [ "$attempt" -ge "$attempts" ]; then
       echo "::error::could not list release $TAG after $attempts attempts — its fills are unknown, not none" >&2
       return 1
@@ -77,7 +83,7 @@ case "${1:-}" in
     for fill in "$@"; do
       attempt=1
       # allow-silenced: gh's own message is noise beside the error below, which names the fill.
-      until gh release download "$TAG" --pattern "$fill" --dir "$downloads" --clobber 2>/dev/null &&
+      until bounded "$GH_DOWNLOAD" gh release download "$TAG" --pattern "$fill" --dir "$downloads" --clobber 2>/dev/null &&
             "$here/unpack-fixture-archive.sh" "$downloads/$fill" "$stage"; do
         if [ "$attempt" -ge "$attempts" ]; then
           echo "::error::fill $fill could not be restored after $attempts attempts — the pair names it, so this leg will not replay without it"
@@ -99,13 +105,13 @@ case "${1:-}" in
     refused=$(printf '%s\n' "$refused" | tail -n "$REFUSED_KEPT")
     : > "$out"
     # allow-silenced: a list that cannot be read is no gaps this time — the next leg's fill reads it again.
-    if [ -n "$newest" ] && gh release download "$TAG" --pattern "$newest" --output "$out" --clobber 2>/dev/null; then
+    if [ -n "$newest" ] && bounded "$GH_DOWNLOAD" gh release download "$TAG" --pattern "$newest" --output "$out" --clobber 2>/dev/null; then
       echo "::notice::$newest lists $(grep -c "$(printf '\t')" "$out" || true) fetchable gap(s)" >&2
       skip="$out.refused"
       : > "$skip"
       for list in $refused; do
         # allow-silenced: a refused list that cannot be read only means its gaps are asked again.
-        gh release download "$TAG" --pattern "$list" --output "$skip.part" --clobber 2>/dev/null && cat "$skip.part" >> "$skip"
+        bounded "$GH_DOWNLOAD" gh release download "$TAG" --pattern "$list" --output "$skip.part" --clobber 2>/dev/null && cat "$skip.part" >> "$skip"
       done
       if [ -s "$skip" ]; then
         before=$(grep -c "$(printf '\t')" "$out" || true)
