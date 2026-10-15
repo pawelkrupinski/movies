@@ -90,7 +90,7 @@ identity_newest_recording() {
   [ -n "$cc" ] || { echo "${ids%%$'\n'*}"; return; }
   for id in $ids; do
     if [ -f "$IDENTITY_CACHE/recordings/$id/pair/test/resources/fixtures/corpus/cinema-scrapes-$cc.json.gz" ] ||
-       [ -n "$(gh api "repos/$repo/actions/runs/$id/artifacts?per_page=100" --paginate -q ".artifacts[] | select(.name == \"scrape-fixtures-$cc\" and (.expired | not)) | .name" 2>/dev/null)" ]; then
+       [ -n "$(gh api "repos/$repo/actions/runs/$id/artifacts?per_page=100" --paginate -q ".artifacts[] | select(.name == \"scrape-fixtures-$cc\" and (.expired | not)) | .name")" ]; then
       identity_log "recording $id: the newest holding a $cc corpus"
       echo "$id"; return
     fi
