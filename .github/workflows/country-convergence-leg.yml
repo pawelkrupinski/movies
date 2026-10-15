@@ -219,7 +219,7 @@ on:
                 description: The runner label the leg runs on.
                 required: false
                 type: string
-                default: ubuntu-26.04
+                default: ubuntu-24.04 # mongod 8.3 will not start on 26.04's kernel 7.0 (MongoServerVersionParitySpec)
             # Extra sbt JVM options for every sbt run of the leg (`-J-XX:+UseParallelGC`) — the corpus capture,
             # the pre-suite fill and the suite; not a bisect the leg requests, which replays with the
             # bisect's own settings: how a hand-dispatched run tries a JVM setting on the runner it would ship to.

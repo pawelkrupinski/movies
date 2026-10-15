@@ -98,7 +98,7 @@ runs:
     # are both rejected by a standalone mongod, and both are on the path.
     #
     # `--wiredTigerCacheSizeGB` because mongod's DEFAULT is half of (RAM - 1GB),
-    # which on a 16 GB `ubuntu-26.04` runner is ~7.5 GB — sized for a host it owns,
+    # which on a 16 GB `ubuntu-24.04` runner is ~7.5 GB — sized for a host it owns,
     # and this one it shares with a JVM holding a whole country resident. The two
     # defaults together ask for more than the box has, which is why the heaviest
     # leg's `-Xmx` could not be raised without capping this first. 2 GB is ample:

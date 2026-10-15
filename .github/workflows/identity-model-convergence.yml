@@ -39,7 +39,7 @@ on:
                 description: The runner label every leg runs on (country-convergence-leg.yml), e.g. ubuntu-24.04-arm.
                 required: false
                 type: string
-                default: ubuntu-26.04
+                default: ubuntu-24.04 # mongod 8.3 will not start on 26.04's kernel 7.0 (MongoServerVersionParitySpec)
             takes-base:
                 description: The identity takes check's base commit, overriding the newest green one (re-judge a range a check passed unjudged).
                 required: false
@@ -136,7 +136,7 @@ jobs:
             mode:                          hermetic
             profile:                       ${{ inputs.profile == true }}
             jvm-options:                   ${{ inputs.jvm-options || '' }}
-            runner:                        ${{ inputs.runner || 'ubuntu-26.04' }}
+            runner:                        ${{ inputs.runner || 'ubuntu-24.04' }}
             takes-base:                    ${{ inputs.takes-base || '' }}
             takes-only:                    ${{ inputs.takes-only == true }}
         # TMDB_API_KEY (the pre-suite fill signs TMDB's gaps with it), DECODO_PROXY_USER / DECODO_PROXY_PASS (the
