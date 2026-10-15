@@ -16,7 +16,9 @@ export REPO_ROOT  # the quoted-heredoc stub gh below sources scratch-git.sh from
 # Every case below runs the hook as a push to main, which reads the gating workflows' verdicts first: a stub `gh`
 # answers `gh run list --workflow W` from $GH_MAIN / $GH_IMC / $GH_REC (JSON, default none) through the hook's own
 # --jq filter, so no case reads the real repository's runs.
-ghstub="$(mktemp -d)"
+# One temporary root for everything below, removed however the spec exits.
+testroot="$(mktemp -d)"
+ghstub="$testroot/gh"; mkdir -p "$ghstub"
 cat > "$ghstub/gh" <<'STUB'
 #!/usr/bin/env bash
 [ -n "${GH_FAILS:-}" ] && { echo "HTTP 502: Bad Gateway" >&2; exit 1; }
@@ -46,7 +48,7 @@ printf '%s' "$runs" | jq -r "$jqexpr"
 STUB
 chmod +x "$ghstub/gh"
 export PATH="$ghstub:$PATH"
-trap 'rm -rf "$ghstub"' EXIT
+trap 'rm -rf "$testroot"' EXIT
 
 printf '\033[36m▸\033[0m pre-push --plan\n'
 
@@ -136,8 +138,7 @@ check "worker's fixtures config selects the sbt check" "sbt" "$(plan worker/src/
 # ── Running for real, over a scratch clone: what is judged, and what is not silently passed ──
 printf '\033[36m▸\033[0m pre-push over a scratch repository\n'
 if command -v shellcheck >/dev/null; then
-  scratch="$(mktemp -d)"
-  trap 'rm -rf "$scratch" "$ghstub"' EXIT
+  scratch="$testroot/scratch"; mkdir -p "$scratch"
   repo="$scratch/repo"
   mkdir -p "$repo/scripts/hooks"
   scratch_repo "$repo"
@@ -177,10 +178,8 @@ if command -v shellcheck >/dev/null; then
   # (NoClassDefFoundError: services/movies/MovieRepository$, twice on 2026-09-26). So with one
   # running, the sbt check moves to a temporary checkout of its own.
   mkdir -p "$scratch/bin"
-  printf '#!/usr/bin/env bash\npwd -P > "%s/sbt-ran-in"\n' "$scratch" > "$scratch/bin/sbt"
-  chmod +x "$scratch/bin/sbt"
   # The test-config compiles ride the lints' ONE sbt run, ahead of them.
-  printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$@" > "%s/sbt-args"\n' "$scratch" > "$scratch/bin/sbt"
+  printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$@" > "%s/sbt-args"\n' "$scratch" > "$scratch/bin/sbt"; chmod +x "$scratch/bin/sbt"
   mkdir -p "$repo/worker/src/it/scala"; echo 'object B' > "$repo/worker/src/it/scala/B.scala"
   scratch_git "$repo" add worker; scratch_git "$repo" commit -qm "adds a worker it/ source"
   (cd "$repo" && PATH="$scratch/bin:$PATH" bash scripts/hooks/pre-push --range "HEAD~1..HEAD" >/dev/null 2>&1)
@@ -209,7 +208,7 @@ if command -v shellcheck >/dev/null; then
   live_sbt=$!
   # The hook finds it by name: wait until the background shell has exec'd under it, or a busy
   # runner's hook looks before it has, and checks in place (Main run 36374330375).
-  for _ in $(seq 1 100); do pgrep -f 'fake/sbt-launch.jar' >/dev/null && break; sleep 0.1; done
+  for _ in $(seq 1 100); do ps -o args= -p "$live_sbt" 2>/dev/null | grep -q 'fake/sbt-launch.jar' && break; sleep 0.1; done
   rm -f "$scratch/sbt-ran-in"
   out="$(cd "$repo" && PATH="$scratch/bin:$PATH" bash scripts/hooks/pre-push --range "$scala~1..$scala" 2>&1)"
   kill "$live_sbt" 2>/dev/null; wait "$live_sbt" 2>/dev/null
@@ -224,7 +223,7 @@ if command -v shellcheck >/dev/null; then
   printf '#!/usr/bin/env bash\necho "$(pwd -P) $1" > "%s/sbt-ran-in"\n' "$scratch" > "$scratch/bin/sbt"
   (cd "$repo" && exec -a "java -jar /fake/sbt-launch.jar --detach-stdio" sleep 300) &
   live_sbt=$!
-  for _ in $(seq 1 100); do pgrep -f 'fake/sbt-launch.jar --detach' >/dev/null && break; sleep 0.1; done
+  for _ in $(seq 1 100); do ps -o args= -p "$live_sbt" 2>/dev/null | grep -q 'fake/sbt-launch.jar --detach' && break; sleep 0.1; done
   rm -f "$scratch/sbt-ran-in"
   out="$(cd "$repo" && PATH="$scratch/bin:$PATH" bash scripts/hooks/pre-push --range "$scala~1..$scala" 2>&1)"
   kill "$live_sbt" 2>/dev/null; wait "$live_sbt" 2>/dev/null
@@ -276,7 +275,7 @@ fi
 # IDE's git integration) rewrote it to the ROOT checkout's absolute path three times on 2026-10-14, and every worktree's
 # push then ran the root checkout's OLD hook. The hook hands itself over to the pushing worktree's copy.
 printf '\033[36m▸\033[0m pre-push under an absolute core.hooksPath\n'
-hp="$(mktemp -d)"
+hp="$testroot/hp"; mkdir -p "$hp"
 scratch_repo "$hp/origin.git" --bare
 scratch_repo "$hp/clone"
 mkdir -p "$hp/clone/scripts/hooks"
@@ -327,7 +326,7 @@ rm -rf "$hp"
 
 # ── RED BUILDS GATE A PUSH TO MAIN: only a commit declared a fix for a red run lands ───────────────
 printf '\033[36m▸\033[0m pre-push: red builds gate a push to main\n'
-gate="$(mktemp -d)"
+gate="$testroot/gate"; mkdir -p "$gate"
 grepo="$gate/repo"; mkdir -p "$grepo"
 scratch_repo "$grepo"
 # touch <path>... and commit them with the given message lines; prints the new commit.
