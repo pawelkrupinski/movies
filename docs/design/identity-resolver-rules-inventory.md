@@ -187,12 +187,12 @@ catalogue match; `broadcast.take` via `Broadcast.take`). Rules: the fill `venues
    (`PublishedAdjacency`, literal 1), `Posters.editionsApart` (year > 1), `IdentityMeasures` :972/:988/:1009/:1233/:1365/
    :1522 and `Acceptance` :212/:520/:560 (`PublishedAdjacency`, literal 1). **Consolidated** (phase 1:
    `FactRelations`). The two contradiction semantics disagreed on names in two scripts — **finding F1**, unified.
-2. **Bill / several works — 7.** `Acceptance.billsSeveralWorks`, `Agreement.billsSeveral`/`billsSeveralBeside`/
+2. **Bill / several works — 7.** `Acceptance.billsSeveralWorks`, `ListingShape.billsSeveral`/`billsSeveralBeside`/
    `billsSeveralBySigns` (zestaw, quoted), `MultiFilmBill.billsTwoWorks`/`billsTwoWholeWorks`, `MultiFilmBill`,
    `DecorationSegments.billsSeveral` (offline), `NonFilmEvents` "marathon" marker, `ConstraintEdges`:40.
-3. **Stage relay / house — 6.** `Agreement.stagesAWork`, `StageRelays.billsStageWork`/`stageWorks`,
+3. **Stage relay / house — 6.** `ListingShape.stagesAWork`, `StageRelays.billsStageWork`/`stageWorks`,
    `Agreement.billsAHouse` (hard-coded `HouseWords`), `Broadcast.billsAHouse(title)` (stage work + banner),
-   `NonFilmEvents.relays`, `StageRelays.billsUnderItsHouse` (learned `Houses`), `UnifiedEvidence` `stage.work`.
+   `ListingShape.relays`, `StageRelays.billsUnderItsHouse` (learned `Houses`), `UnifiedEvidence` `stage.work`.
 4. **Banner spelling — 2.** `Broadcast.Billing.spells` (subset, or ≥2 shared words) vs `StageRelays.spellsItsHouse`
    (≥2 shared words, no subset case) — **finding F2**.
 5. **Edition — 6.** `Agreement.editionOf(SourceRecord)` (same director, year no earlier, title tokens),

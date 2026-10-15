@@ -2469,7 +2469,7 @@ Calibrated = fitted from data today (`identity-weights.json`, §14). Feature = a
 | learned cannot-links (28), evidence class (1) | conjunctions vetoing / crediting a pair | `identity-weights.json` | learned | yes | `model.deniedBySome` (denied by every node: no contender) |
 | acceptance rules (12 alone, 3 pooled, season-production) | sole-work, exact/segment-top-hit, sole-result, dated-title; directors-work/-title; favoured/unrivalled-calibrated; imdb-suggested; house/stage-production, season-record | `Acceptance` | rule order; `LeanMargin` 2.0, `BilledRuntime` 15, `RuntimeContradiction` | no | `rule.title`, `rule.director`, `rule.calibrated`, `rule.imdb`, `rule.stage`, `rule.pooled` |
 | season / house production | record names the listing's season / house production | `Scored` | pre-empts the rules | no | `production.season`, `production.house` |
-| double programme | a "+" joining two whole works, whatever a database holds (`MultiFilmBill.billsTwoWholeWorks`) | `Acceptance.billsTwoWholeWorks` | takes neither | no | — (the fill guards it as `bill.several`) |
+| double programme | a "+" joining two whole works, whatever a database holds (`MultiFilmBill.billsTwoWholeWorks`) | `Acceptance.billsSeveralWorks` | takes neither | no | — (the fill guards it as `bill.several`) |
 | model lean / best candidate | `ResolverDecision.leaning` (≥2× runner-up) / `candidate` | `ResolverDecisions` | the agreement's TMDB vote | no | `model.lean`, `model.best` |
 | family take (imdb, wiki, filmweb, metacritic, rt) | the resolver over the family's answers takes one film | `Agreement.verdict` | one vote each; `priorSpread` 1.5/0.5/0.5/1.0/1.5 (cross-validated) | spread only | `family.<f>.took` |
 | family lean | best undenied ≥ `LeanMargin` × runner-up | `Agreement.leaningOf` | completes a quorum | no | `family.<f>.leans` |
@@ -2482,7 +2482,7 @@ Calibrated = fitted from data today (`identity-weights.json`, §14). Feature = a
 | venues (wide billing) | ≥`WidelyBilled` 3 venues, the film this year or last | `Agreement.supported` | +1 vote | no | `venues.current` |
 | title names it | the title is, or carries whole (≥4 letters), a record title | `Agreement.namesIt` | required | no | `title.namesIt` |
 | another's own title | the title is another weighed film's original title, a translation of the agreed one | `Agreement.anothersOwnTitle` | veto when completed | no | `title.anothersOwn` |
-| bills several / stage work | "+", double bill, two quoted titles / an opera or ballet (`StageWorks`) | `Agreement.billsSeveral`, `stagesAWork` | veto | no | `bill.several`, `stage.work` |
+| bills several / stage work | "+", double bill, two quoted titles / an opera or ballet (`StageWorks`) | `ListingShape.billsSeveral`, `stagesAWork` | veto | no | `bill.several`, `stage.work` |
 | poster vote | the one candidate a venue poster matches within `VoteBits` 4, none vetoing | `PosterEvidence.vote` | takes the film | no | `poster.vote`, `poster.match` |
 | poster near | nearest 5..`VetoMatchBits` 8 bits | `PosterEvidence` | — | no | `poster.near` |
 | poster veto | another candidate ≤8 bits while this one >`VetoBits` 10 | `PosterEvidence.veto` | veto | no | `poster.otherMatches` |
@@ -2643,7 +2643,7 @@ filed each under retrieval, scoring, a guard, or the agreement. What it added, e
 - **A title naming a film whose own title leads with an article the venue drops** (`Agreement.namesIt`): DE
   "Camp der Verlorenen" names TMDB's "Das Camp der Verlorenen" (Sembène's *Camp de Thiaroye*), which `title.namesNone`
   vetoed. Two words after the article at least. Ratchet: +1 listing, 1 film, 0 wrong.
-- **An event a "+" joins to the film is no second work** (`Agreement.billsSeveral` reads `MultiFilmBill.billsTwoWholeWorks`, the
+- **An event a "+" joins to the film is no second work** (`ListingShape.billsSeveral` reads `MultiFilmBill.billsTwoWholeWorks`, the
   model's own rule, in place of any spaced "+"): PL "11. UFF - Gala otwarcia + Demony", which IMDb and Filmweb take.
   Ratchet: +1 listing, 1 film, 0 wrong (the venue posters the newly open clusters show filed by the fill spec).
 - **A screen adaptation of a stage work** (`Agreement.screenAdaptation`): a listing naming a stage work vetoed every
@@ -2919,7 +2919,7 @@ the stage, cannot be graded until the fixture is re-captured (below).
      The model would then score the record, and the pinned `family.filmweb.took&!model.unscored` fill could take it: at
      most +1 listing. Not built, because it asks TMDB searches the capture does not hold. Measure it after a re-capture
      (item 5), with `UnmatchedClustersFillIntegrationSpec` asking the new searches live.
-2. **"NT Live: Hamlet" (US ×4) → 396227 (2015).** The guard is `stage.work` (`Agreement.stagesAWork`, `Agreement.scala:478`;
+2. **"NT Live: Hamlet" (US ×4) → 396227 (2015).** The guard is `stage.work` (`ListingShape.stagesAWork`;
    `UnifiedEvidence.scala:199`): `identity-stage-works.tsv:342` lists Q631016, Ambroise Thomas's opera *Hamlet*. Narrowing
    the guard to keep plays out frees nothing, because 396227 has no signal to take it on. Its only signal is IMDb's
    suggestion order (IMDb leans; one family). The model's best is the labelled-wrong 2010 production (436484, 37.1%:
@@ -3001,7 +3001,7 @@ take nothing).
 | **A relay's credited production** (`Broadcast.Billing.credits`): the broadcast join's banner check passes for a record of ANOTHER house when a film database's record of that house's production of the work (its title billing the house and the work, within a year) credits the director every listing credits — the families' answers for the listings' own searches (`AgreementStage.productionsOf`), read only for a record every listing fits but by its banner. UK Flicks' "RBO Cinema Season 2026-27" credits Richard Jones (IMDb's and RT's Met *Fanciulla*: Jones, 195′, as the venue) and Louisa Proske (RT's Met *Macbeth*); TMDB's records credit nobody | +70 listings, 2 films (Fanciulla ×46 on the Met's day and its encores, Macbeth ×24 three days after) | 0 | 0 (e2e unmoved) | **kept** |
 | the same reading the banner "RBO Cinema Season" as no house (dropping the banner check where a listing credits a director) | – | – | – | rejected unmeasured: a listing crediting any director would take another house's record ("ROH Live: Macbeth" crediting Phyllida Lloyd → the Met's); the credit must be the record's house's production's |
 | **A marathon of one title** (`MultiFilmBill.billedOne`, `Acceptance.billedAlone`): a programme word that is the whole piece after a spaced dash ("Inna Mamusia - maraton") no longer refuses the one eligible candidate titled exactly as the piece before it, when no eligible candidate's title extends that piece (a franchise) | 0 on the ratchet (not in the fixture); unit test: Inna mamusia taken, "Piraci z Karaibów - maraton" and "Władca Pierścieni - maraton (wersja reżyserska)" (both in the PL corpus) refused | 0 | 0 (e2e unmoved) | **kept** (gate: unit + e2e; needs a re-capture to grade) |
-| the same in the families' agreement (`Agreement.billsSeveral`) | – | – | – | rejected: without the candidate set it cannot see the franchise — "Władca Pierścieni - maraton" would agree on Bakshi's 1978 film |
+| the same in the families' agreement (`ListingShape.billsSeveral`) | – | – | – | rejected: without the candidate set it cannot see the franchise — "Władca Pierścieni - maraton" would agree on Bakshi's 1978 film |
 | a quote further into a billing as its title ("55 rocznica premiery „Skrzypka na dachu”") | – | – | – | rejected: §20.9 keeps such quotes out on purpose (a talk's or concert's subject: 'Wojciech Cejrowski i „Prawo Dżungli”'), and the quoted form is a genitive ("Skrzypka", the film "Skrzypek") TMDB's search would not find |
 | a bracketed current year as a re-release's ("GONE WITH THE WIND (2026)" → 1939) | – | – | – | rejected: the `edition.apart` guard refuses exactly this (§20.13), and a 2026 remake of the title would read the same |
 | a director's surname heading the title ("Konwicki Ostatni dzień lata") | – | – | – | not built: nothing but retrieval (a surname alone searches no person); needs a re-capture to measure |
