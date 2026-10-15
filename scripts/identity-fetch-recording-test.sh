@@ -20,7 +20,7 @@ pack() {
 }
 pack "$work/assets/enrichment-uk-77.tar.zst" enrichment-uk/api.themoviedb.org/search tree zstd
 pack "$work/assets/identity-overlay-uk-77.tar.gz" enrichment-uk/identity/answers overlay gzip
-pack "$work/artifacts/scrape-fixtures-uk/scrapes-uk.tar.gz" corpus/uk.json corpus gzip
+pack "$work/artifacts/scrape-fixtures-uk/scrapes-uk.tar.gz" corpus/cinema-scrapes-uk.json.gz corpus gzip
 
 # `release download` hands over the asset its --pattern names when the release holds it; `run download`
 # copies the named artifact's files into --dir.
@@ -45,7 +45,25 @@ check "a run's pair is laid out" "0" "$(fetch 77 "$work/dest" uk)"
 pair="$work/dest/pair/test/resources/fixtures"
 check "...its enrichment tree, unpacked from zstd" "tree" "$(cat "$pair/enrichment-uk/api.themoviedb.org/search" 2>/dev/null)"
 check "...its identity overlay, unpacked from gzip" "overlay" "$(cat "$pair/enrichment-uk/identity/answers" 2>/dev/null)"
-check "...and its scrape corpus" "corpus" "$(cat "$pair/corpus/uk.json" 2>/dev/null)"
+check "...and its scrape corpus" "corpus" "$(cat "$pair/corpus/cinema-scrapes-uk.json.gz" 2>/dev/null)"
+
+check "--corpus-only lays out the scrape corpus alone" "0 corpus no-tree" \
+  "$(fetch --corpus-only 79 "$work/corpus-only" uk) $(cat "$work/corpus-only/pair/test/resources/fixtures/corpus/cinema-scrapes-uk.json.gz") \
+$([ -d "$work/corpus-only/pair/test/resources/fixtures/enrichment-uk" ] && echo tree || echo no-tree)"
+# a download an earlier run left behind (cut short) does not stop this one
+mkdir -p "$work/dest/archive/scrape-uk"; echo junk > "$work/dest/archive/scrape-uk/scrapes-uk.tar.gz"
+check "a scrape download an earlier run left behind is fetched again" "0 corpus" \
+  "$(fetch 77 "$work/dest" uk) $(cat "$pair/corpus/cinema-scrapes-uk.json.gz" 2>/dev/null)"
+# a scrape archive without the country's corpus file lays out no corpus: identity_recorded reads the file as "laid out whole"
+pack "$work/artifacts/scrape-fixtures-uk/scrapes-uk.tar.gz" corpus/other.json other gzip
+check "a scrape archive holding no cinema-scrapes-<cc>.json.gz fails, laying no corpus out" "1 none" \
+  "$(fetch --corpus-only 80 "$work/no-corpus" uk) $(ls "$work/no-corpus/pair/test/resources/fixtures/corpus" 2>/dev/null | head -1 || true)none"
+check "...naming what is missing" "1" "$(grep -c 'holds no cinema-scrapes-uk.json.gz' "$work/out")"
+pack "$work/artifacts/scrape-fixtures-uk/scrapes-uk.tar.gz" corpus/cinema-scrapes-uk.json.gz corpus gzip
+printf '#!/usr/bin/env bash\nsleep 20\n' > "$work/bin/slow-gh"; chmod +x "$work/bin/slow-gh"
+cp "$work/bin/gh" "$work/gh.real"; cp "$work/bin/slow-gh" "$work/bin/gh"
+check "a gh that hangs is cut off, and the fetch fails" "1" "$(KINOWO_IDENTITY_DOWNLOAD_TIMEOUT=1 fetch --corpus-only 81 "$work/slow" uk)"
+cp "$work/gh.real" "$work/bin/gh"
 
 rm "$work/assets/identity-overlay-uk-77.tar.gz"
 check "a run without an overlay is laid out too" "0" "$(fetch 77 "$work/no-overlay" uk)"
