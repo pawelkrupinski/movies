@@ -121,6 +121,7 @@ jobs:
                       identity-refit-report.md
                       refit.log
                       refit-gc.log
+                      refit.jfr
                   retention-days: 14
 
             # A fresh branch off main every run, never a force-push over a stale one --
