@@ -141,6 +141,50 @@ Order by the live tally: 4 (relays, 33 of 70 live wrong listings), then 2, 3, 1,
   Party)" ×6. The IL KINO Camouflage case is a `pending:` slice case (f772906e9). Re-measure with
   `scripts/identity-measure` before trying again.
 
+### Review of the 10-12..15 identity changes (2026-10-15)
+Each a production change: measure with `scripts/identity-measure`, land one at a time.
+- [ ] **billedBeside keeps differ by stage.** The model's `IdentityResolver.billedAsPiece` keeps a take on six signals
+  (≥5 venues, a stated fact, a feed link, a current release, an untranslated title, a recurring banner/tag); the
+  agreement's `AgreementStage.pieceOf` calls `ListingShape.billedBeside` with none, so it denies agreed films the model
+  keeps. One keep predicate, read by both.
+- [ ] **screenedSeason's earlier-year bypass is unbounded** (8545f8cb7: `IdentityModel.screenedSeason`'s
+  `year.forall(_ < season)`, `StageRelays.screenedSeasonRecord`): an encore of a 2019 capture screening in 2027 clears
+  its year against the 2026/27 record. Bound it (a year or two), or ask for a screening on the record's air day.
+- [ ] **FeedLink.deniesShort vs FamilyScope.namedOnlyByCopiedTitle**: the second covers most of the first's cases and
+  has a same-year guard the first lacks; `deniesShort` still denies a short the venue's own billed title names.
+- [ ] **House initials are one house's list**: `StageRelays.HouseInitials = Set("rbo","roh")` plus a regex spelling them
+  again; `ListingShape.HouseWords` takes the bare tokens (and royal/live/met/hd/season), so "Jin-Roh" bills a house.
+  Tag initials in the StageHouse word table and read them in one place.
+- [ ] **Search-tier copies of the ingest peels**: `ExtraTitleRules`' `xtra-asterisk-note-suffix`, `xtra-runtime-suffix`,
+  `xtra-certificate-suffix`, `xtra-certificate-year-suffix` (a3d3ece23) and `xtra-subtitle-paren-tag` repeat
+  `FormatTags`' `AsteriskNote`/`BracketedRunningTime`/`CertificateNote`/`FormatParenTag` (1573686c3, a9b51f710) and
+  disagree with them (any-character asterisks, a bare "100 mins"). Keep one.
+- [ ] **TitleSeason reads any year range from 1800 as a season**: "Warschau 1944/45" gets a season, `SeasonsApart` then
+  denies every film not dated 1944–45 and the listing reads as a relay. Bound it near `LatestTitleYear`.
+- [ ] **Venue-named rules**: `NonFilmEvents`' `dismember the alamo` (one chain's series), `xtra-helios-replay-suffix`
+  (`w Helios RePlay`). A general shape or a word-table concept each.
+- [ ] **Two copies of one list**: `FormatTags.FormatVersionWords` repeats `FormatToken`'s keys (and "lek" has no LEK
+  badge: "Lalka 2D LEK" shows none); `TitleText.FiledArticles` (ein/eine, no gli) vs `IdentityMeasures.LeadingArticles`
+  (gli, no ein/eine); `TitleText.stripPunct`'s own NFD strip drops "ł" where `TextNormalization.deburr` folds it.
+- [ ] **The silent-era denial reads two ways**: `FamilyScope.denialByNode` if any listing of the node bills silent,
+  `Agreement` per listing. One predicate.
+- [ ] `SourceReliability.tmdbLinked` is read without a37454e82's `numbersFilmsByTmdbId` gate in
+  `IdentityResolver.billedAsPiece` and `SuspectTakes`; "the feed links one film" is defined twice (`UnifiedEvidence`
+  counts the linked listings only, `FeedLink.linked` asks every listing). Check, then one definition.
+- [ ] Denials are told apart by their text (`ReleaseVeto.vetoes`' `startsWith`): a typed denial.
+- [ ] `SuspectTakes.billsAnOldFilm` reads the film's own title words ("Silent Night" bills old); `billsAnEdition`
+  excludes them.
+- [ ] Test-only members still in main: `CachedTmdbDocuments.holdsAnswer`, `IdentityProjection.keptIndex`/`atRest`,
+  `StoredTmdbLookups.heldDocuments`, `LiveCorpus.candidateCount`, `IncrementalResolver.familyKeys`/`familyNodeTexts`/
+  `nodeTextOf`, `Acceptance.aloneOrder`/`pooledOrder`, `SourceReliability.FeedIdSources`; the fakes
+  `InMemoryIdentityTraceStore`, `InMemoryPinStore`. The `Option(d.get(f)).filter(_.isArray)…` BSON read is written
+  out 8 times beside `BsonFields` (FamilyAnswerStore, AgreementCatalogue, AgreementPosters, Posters, AgreementVerdicts,
+  IdentityTraceStore): a `BsonFields.documentsOf`. Removal needs identity-measure's 0 moves.
+- [ ] Judgements: ~50 venue rows repeat their `*` row (same film, verdict, state; e.g. Camp der Verlorenen, PL Lalka
+  `imdb:tt0064570` ×3) — check that no venue-scoped reader needs them, then let `identity_judgements.py` flag and drop
+  them. `INNA MAMUSIA - MARATON` (undecided) vs `Inna Mamusia - maraton` (right), one film, keys a case apart.
+  title-words.tsv holds `en tour`/`es gira` in both festival-edition and side-event (and `tour` twice in festival-edition).
+
 ### CI and gates
 - [ ] **Decision pending:** pre-push enforces one identity landing at a time (refuse an identity-path push while an
   earlier identity commit's convergence run is pending).
