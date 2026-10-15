@@ -51,8 +51,9 @@ class SbtCachePathsSpec extends AnyFlatSpec with Matchers {
    *  caches its build through the one composite action. */
   it should "name their paths in one place, the shared action every Scala job uses" in {
     sbtCachePaths.map(_._1).distinct shouldBe Seq(SharedCache)
-    Seq(".github/workflows/ci.yml", ".github/actions/run-page-test/action.yml", ".github/actions/convergence-setup/action.yml")
+    Seq(".github/actions/setup-sbt-build/action.yml", ".github/actions/run-page-test/action.yml", ".github/actions/convergence-setup/action.yml")
       .foreach(file => RepoFile.read(file) should include("uses: ./.github/actions/sbt-target-cache"))
+    RepoFile.read(".github/workflows/ci.yml") should include("uses: ./.github/actions/setup-sbt-build")
   }
 
   it should "carry the module classes and zinc state, which is the only part worth caching" in {

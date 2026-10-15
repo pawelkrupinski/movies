@@ -3,19 +3,23 @@ package deploy
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-/** The identity workflows' sbt jobs set up their build through ONE composite action
- *  (`.github/actions/setup-sbt-build`): the JDK, the sbt runner and the build cache were a trio
- *  copy-pasted into each job, the same 12 lines and the same `sbt-target-` key every time, and
- *  copies of a key drift apart. */
+/** The sbt jobs set up their build through ONE composite action (`.github/actions/setup-sbt-build`):
+ *  the JDK, the sbt runner and the build cache were a trio copy-pasted into each job, the same 12
+ *  lines and the same `sbt-target-` key every time, and copies of a key drift apart. The convergence
+ *  legs' `convergence-setup` is the deliberate exception: it keys off git's index and skips the sbt-2
+ *  disk cache, because every workspace glob walks a restored enrichment tree of up to 127k files. */
 class SharedSbtBuildSetupSpec extends AnyFlatSpec with Matchers {
   private val Action = ".github/actions/setup-sbt-build/action.yml"
   private val Adopters = Seq(
     ".github/workflows/identity-capture.yml",
     ".github/workflows/identity-refit.yml",
-    ".github/workflows/identity-decorations.yml"
+    ".github/workflows/identity-decorations.yml",
+    ".github/workflows/ci.yml",
+    ".github/workflows/nightly-stress.yml",
+    ".github/workflows/discover-cinemas.yml"
   )
 
-  "the identity workflows" should "set up their sbt build through the shared action, not the trio" in {
+  "the sbt workflows" should "set up their sbt build through the shared action, not the trio" in {
     Adopters.foreach { file =>
       val text = RepoFile.withoutComments(RepoFile.read(file))
       withClue(s"$file: ") {
@@ -45,6 +49,26 @@ class SharedSbtBuildSetupSpec extends AnyFlatSpec with Matchers {
     RepoFile.withoutComments(RepoFile.read(Action)) should not include "Xmx"
     // The refit's job is one script now; its JVM sets its own heap.
     RepoFile.read("scripts/identity-refit") should include("-Xmx${IDENTITY_REFIT_HEAP:-12g}")
+  }
+
+  /** Moving onto the action kept each job's cache entry: the shared family where the job compiled the it scope
+   *  (the action's default key), and its own key where it had one. */
+  "Main's sbt jobs" should "keep the build cache keys they had before the trio was shared" in {
+    val ci = RepoFile.read(".github/workflows/ci.yml")
+    val unit = RepoFile.jobs(ci)("test")
+    unit should include("target-cache-key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', 'web/src/main/resources/**') }}")
+    unit should include("sbt-target-${{ runner.os }}-")
+    val android = RepoFile.jobs(ci)("mobile-local-server")
+    android should include("java-version: 21")
+    android should include("target-cache-key: sbt-target-android-ls-${{ runner.os }}-")
+    RepoFile.jobs(ci)("integration-test") should not include "target-cache-key"
+    val e2e = RepoFile.jobs(ci)("e2e")
+    e2e should include("target-cache-key: sbt-target-e2e-${{ runner.os }}-${{ steps.sbt-key.outputs.e2e }}")
+    e2e.indexOf("id: sbt-key") should be < e2e.indexOf("uses: ./.github/actions/setup-sbt-build")
+    val stress = RepoFile.read(".github/workflows/nightly-stress.yml")
+    stress should include("target-cache-restore-only: 'true'")
+    stress should not include "target-cache-key"
+    RepoFile.read(".github/workflows/discover-cinemas.yml") should not include "target-cache-key"
   }
 
   "the decorations relearn" should "restore no build cache, as before the trio was shared" in {

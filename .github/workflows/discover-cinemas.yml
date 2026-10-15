@@ -122,22 +122,9 @@ jobs:
                       echo "wired=true" >> "$GITHUB_OUTPUT"
                   fi
 
-            - uses: ./.github/actions/setup-jdk
+            # The JDK, sbt and the shared `sbt-target-` build cache (the action's default key).
+            - uses: ./.github/actions/setup-sbt-build
               if: steps.changed.outputs.wired == 'true'
-              with:
-                  distribution: temurin
-                  java-version: 27
-                  cache: sbt
-
-            - uses: sbt/setup-sbt@v1
-              if: steps.changed.outputs.wired == 'true'
-
-            - uses: ./.github/actions/sbt-target-cache
-              if: steps.changed.outputs.wired == 'true'
-              with:
-                  key: sbt-target-${{ runner.os }}-${{ hashFiles('build.sbt', 'project/build.properties', 'project/plugins.sbt', '**/src/main/**/*.scala', '**/src/test/**/*.scala', '**/src/it/**/*.scala', 'web/src/main/resources/**') }}
-                  restore-keys: |
-                      sbt-target-${{ runner.os }}-
 
             # Gate: the generated Scala must compile (common + worker) or the job
             # fails and no PR is opened.
