@@ -109,23 +109,30 @@ identity_judgements() {
 # identity_tree <ref> <file>... -> a compiled-once copy of the ref's sources under the cache, each named file (a path
 # relative to the repository) dropped in from this checkout — the tool's own code, so a ref from before the tool works
 identity_tree() {
-  local sha dir t ref=$1; shift
+  local sha dir ref=$1; shift
   sha=$(git -C "$IDENTITY_REPO" rev-parse --verify "$ref^{commit}") || { echo "no ref $ref" >&2; return 2; }
   dir=$IDENTITY_CACHE/refs/$sha
   [ -f "$dir/build.sbt" ] || identity_locked "tree-$sha" identity_tree_layout "$ref" "$sha" "$dir" || return 1
+  # one agent a tree drops the files in: a second, comparing while the first copies, would copy over it again and move
+  # the time the first's compile reads — or read (and remove) the seed marker the first still needs
+  identity_locked "tools-$sha" identity_tree_tools "$dir" "$@" || return 1
+  echo "$dir"
+}
+
+# identity_tree_tools <dir> <file>... -> each named file dropped into the laid-out tree from this checkout, whole or not at all
+identity_tree_tools() {
+  local dir=$1 t seed=$1/target/identity-tools/seed; shift
   # copied only when it changed: an unchanged copy keeps its time, and the ref is not compiled again
   for t in "$@"; do
     mkdir -p "$(dirname "$dir/$t")"
-    cmp -s "$IDENTITY_REPO/$t" "$dir/$t" 2>/dev/null || cp "$IDENTITY_REPO/$t" "$dir/$t"
+    cmp -s "$IDENTITY_REPO/$t" "$dir/$t" 2>/dev/null || { cp "$IDENTITY_REPO/$t" "$dir/$t.part" && mv -f "$dir/$t.part" "$dir/$t"; }
   done
   # a classpath kept from a seed (identity_tree_layout) holds the classes of the SEED's tool files: one differing from
   # those now dropped in is made newer than it, and compiles
-  local seed=$dir/target/identity-tools/seed
   if [ -f "$seed" ]; then
     for t in "$@"; do [ ! -f "$dir/$t" ] || cmp -s "$(cat "$seed")/$t" "$dir/$t" 2>/dev/null || touch "$dir/$t"; done
     rm -f "$seed"
   fi
-  echo "$dir"
 }
 
 # identity_tree_layout <ref> <sha> <dir> -> the ref's sources in <dir>, laid out beside it and moved in whole

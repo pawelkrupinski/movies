@@ -206,6 +206,12 @@ echo "// this checkout's own tool" >> "$repo/worker/src/test/scala/services/iden
 rm -f "$work/calls"; slice de --recording 777 --key 'Kino|Lalka' --ref "$third" > /dev/null
 check "...but a tool file dropped in that differs from the seed's compiles it" "1" "$(grep -c "^sbt $cache/refs/$third" "$work/calls")"
 scratch_git "$repo" checkout -q -- worker/src/test/scala/services/identity/IdentitySlicing.scala
+# TWO AGENTS AT ONE REF: dropping the tool files into a tree is done by one at a time, like its layout and compile
+headsha=$(scratch_git "$repo" rev-parse HEAD)
+mkdir -p "$cache/locks/tools-$headsha"; sleep 30 & holder=$!; echo "$holder" > "$cache/locks/tools-$headsha/pid"
+check "a call finding another dropping tool files into the ref's tree waits, and gives up naming it" "1 1" \
+  "$(KINOWO_IDENTITY_LOCK_WAIT=2 slice de --recording 777 --key 'Kino|Lalka' --ref HEAD > /dev/null; echo $?) $(grep -c "gave up after .*tools-$headsha" "$work/err")"
+kill "$holder"; rm -rf "$cache/locks/tools-$headsha"
 rm -f "$work/calls"; slice de --recording 777 --key 'Kino|Lalka' --ref HEAD --fresh > /dev/null
 check "--fresh decides every slice again" "0" "$(grep -c -- '--results' "$work/calls")"
 
