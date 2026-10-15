@@ -89,9 +89,14 @@ object IdentityMlScorerBench {
     (split.map(a => columns.map(i => a(i).toDouble).toArray), split.map(a => a(0) + "\t" + a(1)))
   }
 
+  val commandLine: tools.CommandLine = tools.CommandLine("IdentityMlScorerBench", "Times the in-JVM boosted-tree scorer over the pinned contender rows.")
+    .withPositionals(tools.CommandLine.Positional("model", "the dumped LightGBM model (required)"),
+      tools.CommandLine.Positional("expected", "LightGBM's own scores, one per row, the drift is measured against"))
+
   def main(args: Array[String]): Unit = {
-    val model    = load(Paths.get(args(0)))
-    val expected = args.lift(1).map(p => Files.readAllLines(Paths.get(p)).toArray(Array.empty[String]).map(_.toDouble))
+    val arguments = commandLine.parseOrExit(args)
+    val model    = load(Paths.get(arguments.requiredPositional("model")))
+    val expected = arguments.positional("expected").map(p => Files.readAllLines(Paths.get(p)).toArray(Array.empty[String]).map(_.toDouble))
     val (x, cluster) = rows(model.features)
     val clusters = cluster.distinct.length
     val scores = new Array[Double](x.length)

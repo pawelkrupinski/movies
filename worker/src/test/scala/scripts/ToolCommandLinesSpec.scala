@@ -121,6 +121,31 @@ class ToolCommandLinesSpec extends AnyFlatSpec with Matchers {
     an[CommandLine.InvalidArguments] should be thrownBy FilmIdCounterSeed.runOf(parsed(FilmIdCounterSeed.commandLine, "es", "gb"))
   }
 
+  "IdentityConjunctionProbe" should "write the contenders where named, measure allocation over --alloc runs, and refuse a count that is none" in {
+    IdentityConjunctionProbe.outOf(parsed(IdentityConjunctionProbe.commandLine)) shouldBe Paths.get("target/probe/contenders.tsv")
+    IdentityConjunctionProbe.outOf(parsed(IdentityConjunctionProbe.commandLine, "p.tsv")) shouldBe Paths.get("p.tsv")
+    parsed(IdentityConjunctionProbe.commandLine, "--alloc", "5").int("alloc") shouldBe Some(5)
+    // `--alloc five` died on NumberFormatException; `p.tsv extra` wrote p.tsv and ignored the rest
+    an[CommandLine.InvalidArguments] should be thrownBy parsed(IdentityConjunctionProbe.commandLine, "--alloc", "five").int("alloc")
+    refused(IdentityConjunctionProbe.commandLine, "p.tsv", "extra") shouldBe true
+  }
+
+  "IdentityMlScorerBench" should "require its model, take the expected scores beside it, and nothing more" in {
+    val arguments = parsed(IdentityMlScorerBench.commandLine, "target/identity-ml/gbm-d2.json", "target/identity-ml/scores-d2.txt")
+    (arguments.requiredPositional("model"), arguments.positional("expected")) shouldBe ("target/identity-ml/gbm-d2.json", Some("target/identity-ml/scores-d2.txt"))
+    // args(0) threw ArrayIndexOutOfBounds with no model named
+    an[CommandLine.InvalidArguments] should be thrownBy parsed(IdentityMlScorerBench.commandLine).requiredPositional("model")
+    refused(IdentityMlScorerBench.commandLine, "m.json", "s.txt", "extra") shouldBe true
+  }
+
+  "RecordUsChains" should "pin the day named, and refuse one that is no date or a second argument" in {
+    import clients.tools.RecordUsChains
+    RecordUsChains.dayOf(parsed(RecordUsChains.commandLine, "2026-10-12")) shouldBe Some(java.time.LocalDate.of(2026, 10, 12))
+    RecordUsChains.dayOf(parsed(RecordUsChains.commandLine)) shouldBe None
+    an[CommandLine.InvalidArguments] should be thrownBy RecordUsChains.dayOf(parsed(RecordUsChains.commandLine, "12.10.2026"))
+    refused(RecordUsChains.commandLine, "2026-10-12", "extra") shouldBe true
+  }
+
   "every program under worker's test tree" should "have a main the JVM can start" in {
     // `def main(args)(using LatestTitleYear)` compiles to main(String[], LatestTitleYear): `runMain` finds no entry point
     val Package = """(?m)^package ([\w.]+)""".r

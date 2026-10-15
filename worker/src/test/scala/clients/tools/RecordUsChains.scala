@@ -22,8 +22,16 @@ import java.time.{LocalDate, ZoneId}
  * recorder cannot out-run the origins even though it is a burst of one-off calls.
  */
 object RecordUsChains {
+
+  val commandLine: _root_.tools.CommandLine = _root_.tools.CommandLine("RecordUsChains", "Records the live US chain responses as fixtures.")
+    .withPositionals(_root_.tools.CommandLine.Positional("today", "the day recorded for, yyyy-mm-dd (default: today in Chicago)"))
+
+  /** The day named — one that is no date stops the tool. */
+  def dayOf(arguments: _root_.tools.CommandLine.Arguments): Option[LocalDate] = arguments.positional("today").map(day =>
+    scala.util.Try(LocalDate.parse(day)).getOrElse(arguments.fail(s"<today> wants a yyyy-mm-dd date, got $day")))
+
   def main(args: Array[String]): Unit = {
-    val today = args.headOption.map(LocalDate.parse).getOrElse(models.VenueClock.system.today(ZoneId.of("America/Chicago")))
+    val today = dayOf(commandLine.parseOrExit(args)).getOrElse(models.VenueClock.system.today(ZoneId.of("America/Chicago")))
     println(s"recording for today=$today")
 
     def cinema(name: String) =

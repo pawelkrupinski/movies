@@ -3,7 +3,7 @@ package scripts
 import services.identity._
 import services.identity.agreement.{Agreement, VenueListings}
 import services.movies.{ListingKey, TitleNormalizer}
-import tools.UnmatchedClusters
+import tools.{CommandLine, UnmatchedClusters}
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}
@@ -14,6 +14,7 @@ import java.nio.file.{Files, Path}
  * a conjunction of weak signals is screened on offline before it is built.
  *
  *   sbt "worker/Test/runMain scripts.IdentityConjunctionProbe target/probe/contenders.tsv"
+ *   sbt "worker/Test/runMain scripts.IdentityConjunctionProbe --alloc 5"    # the replay's allocation, over 5 runs
  */
 object IdentityConjunctionProbe {
   /** The replay's allocation and time over every capture: `--alloc <runs>`. */
@@ -33,9 +34,22 @@ object IdentityConjunctionProbe {
     println(f"replay allocation MB: median ${mb(mb.size / 2)}%.1f min ${mb.head}%.1f max ${mb.last}%.1f; ms median ${ms(ms.size / 2)}%.0f; heap after GC ${heap / 1e6}%.1f MB")
   }
 
+  val commandLine: CommandLine = CommandLine("IdentityConjunctionProbe", "Writes every untaken contender with its weak signals, judged.",
+    CommandLine.Value("alloc", "runs", "measure the replay's allocation and time over this many runs instead"))
+    .withPositionals(CommandLine.Positional("out", "where the contenders go (default: target/probe/contenders.tsv)"))
+
   def main(args: Array[String]): Unit = {
-    if (args.headOption.contains("--alloc")) { allocation(args.lift(1).fold(10)(_.toInt)); return }
-    val out    = Path.of(args.headOption.getOrElse("target/probe/contenders.tsv"))
+    val arguments = commandLine.parseOrExit(args)
+    arguments.int("alloc") match {
+      case Some(runs) => allocation(runs)
+      case None       => contenders(outOf(arguments))
+    }
+  }
+
+  /** Where the contenders go: the path named, else `target/probe/contenders.tsv`. */
+  def outOf(arguments: CommandLine.Arguments): Path = Path.of(arguments.positional("out").getOrElse("target/probe/contenders.tsv"))
+
+  private def contenders(out: Path): Unit = {
     val labels = tools.IdentityJudgements.labels()
     val today  = java.time.LocalDate.ofInstant(tools.SpecClock.Pinned.instant(), java.time.ZoneOffset.UTC)
     val header = Seq("country", "cluster", "venues", "listings", "rawTitle", "film", "title", "right", "wrong", "taken", "contenders",
