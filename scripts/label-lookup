@@ -215,16 +215,13 @@ def lookup(root, cc, title=None, venue=None, film=None, prod=True, history=True)
                 query["venue"] = venue
             fresh, takes = prod_takes(cc, query)
             out.append(f"prod takes now (local mirror {mirror_db(cc)}, identity_traces; {fresh}):")
-            right_films = defaultdict(set)  # title -> the tmdb films the judgements name for it, judged per venue below
-            for (lv, lt, lf) in labels:
-                if lf.startswith("tmdb:"):
-                    right_films[lt].add(lf)
-
             def judged(v, t, f):
-                j = label_of(labels, v, t, f) if f != "none" else None
+                # label_of's verdict, its implied WRONG (another film judged right for the listing) said as the miss
+                j = store.stated(labels, v, t, f) if f != "none" else None
                 if j:
                     return j
-                missed = sorted(r for r in right_films.get(t, ()) if r != f and label_of(labels, v, t, r) == "right")
+                missed = sorted(r for r in store.right_films(labels, v, t) if r != f and r.startswith("tmdb:")
+                                and label_of(labels, v, t, r) == "right")
                 return f"misses RIGHT {', '.join(missed)}" if missed else "unjudged"
 
             def shown(j):

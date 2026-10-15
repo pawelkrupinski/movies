@@ -114,9 +114,21 @@ def write(path, rows, preamble=""):
 
 # ── the views every gate reads ───────────────────────────────────────────────────────────────
 
+class Labels(dict):
+    """One country's {(venue, rawTitle, film): verdict}, indexed by listing for right_films."""
+
+    def right_by_listing(self):
+        if "_right" not in self.__dict__:
+            self._right = defaultdict(set)
+            for (venue, title, film), verdict in self.items():
+                if verdict == "right":
+                    self._right[(venue, title)].add(film)
+        return self._right
+
+
 def labels_by_country(rows):
-    """{cc: {(venue, rawTitle, film): verdict}} of the rows judging right or wrong -- what label_of reads."""
-    out = defaultdict(dict)
+    """{cc: Labels} of the rows judging right or wrong -- what label_of reads."""
+    out = defaultdict(Labels)
     for r in rows:
         if r.verdict in ("right", "wrong"):
             out[r.country][(r.venue, normalise(r.rawTitle), r.film)] = r.verdict
@@ -142,10 +154,30 @@ def own_or_every(table, venue, title, film):
     return own if own is not None else table.get(("*", title, film))
 
 
+def stated(labels, venue, title, film):
+    """The verdict a row states for `film` at the listing: the venue's own row overrides "*"'s."""
+    return own_or_every(labels, venue, title, film)
+
+
+def right_films(labels, venue, title):
+    """The films the judgements call right for the listing, at its venue or at every venue ("*")."""
+    title = normalise(title)
+    if isinstance(labels, Labels):
+        index = labels.right_by_listing()
+        return index.get((venue, title), set()) | index.get(("*", title), set())
+    return {f for (v, t, f), verdict in labels.items() if verdict == "right" and t == title and v in ("*", venue)}
+
+
 def label_of(labels, venue, title, film):
     """The verdict the judgements give `film` for the listing (one country's labels_by_country), as
-    UnmatchedClusters.verdict reads it: a "*" row covers every venue, and the venue's own row overrides it."""
-    return own_or_every(labels, venue, title, film)
+    UnmatchedClusters.verdict reads it: the one a row states (`stated`: the venue's own row overrides "*"'s), else WRONG
+    when they call another film of its database (tmdb:, imdb:, ...) right for the listing -- the listing is that film,
+    so it is not this one -- else None, unjudged."""
+    said = stated(labels, venue, title, film)
+    if said is not None:
+        return said
+    database = film.split(":", 1)[0] + ":"
+    return "wrong" if any(f != film and f.startswith(database) for f in right_films(labels, venue, title)) else None
 
 
 def tolerated(rows, scope):

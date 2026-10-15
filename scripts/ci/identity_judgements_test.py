@@ -50,6 +50,24 @@ class JudgementsTest(unittest.TestCase):
         self.assertEqual({"de": {("Caligari", "ES (ULRICH SCHAMONI)", "tmdb:1"): "wrong"}, "pl": {("Kino Powiśle", "OPERA-OTELLO", "tmdb:3"): "right"}},
                          dict(j.labels_by_country(rows)))
 
+    def test_a_film_other_than_the_one_judged_right_for_the_listing_is_wrong_as_the_scala_verdict_reads_it(self):
+        # tools.UnmatchedClustersFindingsSpec's Lalka: UnmatchedClusters.verdict calls a take WRONG when the judgements
+        # name the listing's right film in its database and this is not it -- the suspect gate fails such a take, so the
+        # lint's served check and the takes check must read it alike.
+        path = os.path.join(tempfile.mkdtemp(), "j.tsv")
+        with open(path, "w", encoding="utf-8") as f:
+            f.write(HEAD + row("pl", "*", "Lalka", "tmdb:81315", "wrong") + row("pl", "*", "Lalka", "tmdb:1321666", "right")
+                    + row("pl", "Kino Iluzjon", "Lalka", "tmdb:81315", "right") + row("pl", "*", "Diuna", "imdb:tt1160419", "right"))
+        labels = j.labels_by_country(j.read(path))["pl"]
+        self.assertEqual("right", j.label_of(labels, "Kino Iluzjon", "Lalka", "tmdb:81315"))
+        self.assertEqual("wrong", j.label_of(labels, "Kino Kadr", "Lalka", "tmdb:81315"))
+        self.assertEqual("right", j.label_of(labels, "Kino Kadr", "Lalka", "tmdb:1321666"))
+        self.assertEqual("wrong", j.label_of(labels, "Kino Kadr", "Lalka", "tmdb:999"), "another TMDB film: not the right one")
+        self.assertEqual("right", j.label_of(labels, "Kino Iluzjon", "Lalka", "tmdb:1321666"), "every venue's right film")
+        self.assertIsNone(j.label_of(labels, "Kino Kadr", "Diuna", "tmdb:438631"), "a right IMDb film says nothing of a TMDB one")
+        self.assertIsNone(j.label_of(labels, "Kino Kadr", "Tosca", "tmdb:1"))
+        self.assertEqual({"tmdb:81315", "tmdb:1321666"}, j.right_films(labels, "Kino Iluzjon", "Lalka"))
+
     def test_judgements_of_no_file_is_no_judgement(self):
         self.assertEqual(({}, [], set()), j.judgements_of(None, "pl"))
 
