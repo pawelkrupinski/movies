@@ -20,6 +20,7 @@
 #   --no-wait      dispatch, print the run, keep the branch, and exit: collect later with --run <id> (which deletes it)
 #   --full         run the whole convergence suite, not only the takes rows (never reused, never stored)
 #   --fresh        dispatch even when an earlier measurement of the same change answers it (below)
+#   --take-paths   print the paths a reuse treats as able to move a take (matches.sh dialect) and exit
 #   --json         machine output (scripts/identity_measure.py --json)
 #   --run          collect an existing run instead (its identity-takes-<cc> artifacts); deletes its measure/ branch.
 #                  A run still in progress is waited for (at most --timeout); with --no-wait it exits 2 instead
@@ -33,13 +34,18 @@
 # REUSE. A measurement is the takes rows' base and head resolves over the pinned recording, classified HERE with the
 # judgements. An earlier run of (B0, H0) answers (B1, H1) -- collected again, no push, no dispatch -- when
 #   - the change is the same: `git patch-id --stable` of B..H over the files that can move a take -- the paths under
-#     .github/convergence-paths.txt less the CI plumbing (.github/, scripts/ but the takes check's own) -- is equal, AND
+#     .github/convergence-paths.txt less the CI plumbing (.github/, scripts/ but the takes check's own), plus what the
+#     takes check reads beyond them (its resolve dump under worker/src/it, the ratchet spec, the checked-in captures)
+#     -- is equal (the key it is stored under), AND
 #   - main moved only outside them: `git diff B0 B1` touches none (matched by .github/actions/changed-paths/matches.sh,
-#     as kick-convergence.sh matches them), so the base resolves alike and, the same patch over it, the head too.
-# identity-judgements.tsv is left out of both: it moves no take, and collecting classifies with the head's own. A run is
-# reused for at most IDENTITY_MEASURE_REUSE_HOURS (default 24): the pinned recording is renewed nightly, and a fresh
-# dispatch measures over the newest. Stored per change under <cache>/measure/reuse/<patch-id>/<base>, written whole
-# (temp file + mv), only for a run whose takes artifacts are downloaded in the cache -- by a measurement or a --run.
+#     as kick-convergence.sh matches them), so the base resolves alike, AND `git diff H0 H1` touches none either: the
+#     patch-id ignores whitespace and line numbers, so it finds a candidate but never proves the head the same.
+# identity-judgements.tsv is left out of all three: it moves no take, and collecting classifies with the head's own. A
+# run is reused for at most IDENTITY_MEASURE_REUSE_HOURS (default 24) after it was DISPATCHED (a --run's from its
+# createdAt, not from when it was collected): the pinned recording is renewed nightly, and a fresh dispatch measures
+# over the newest. Stored per change under <cache>/measure/reuse/<patch-id>/<base>, written whole (temp file + mv),
+# only for a run whose takes artifacts are downloaded in the cache -- by a measurement or a --run.
+# `--take-paths` prints the take-moving patterns (at HEAD) and exits.
 #
 # THE LANE. A run from any branch but main has a convergence lane of its own (identity-model-convergence.yml's
 # concurrency): it replaces no one's waiting run and waits behind no other measurement, only for runners. A run cancelled anyway
@@ -52,7 +58,7 @@ here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 # shellcheck source=scripts/identity-tools.sh
 . "$here/identity-tools.sh" # identity_locked, identity_put; tool-conventions.sh's bounded, usage_from_header, countries
 workflow=identity-model-convergence.yml
-ref="" base="" keep="" nowait="" full="" fresh="" json="" run="" timeout_min=120
+ref="" base="" keep="" nowait="" full="" fresh="" json="" run="" timeout_min=120 take_paths=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --base) base=$2; shift ;;
@@ -62,6 +68,7 @@ while [ "$#" -gt 0 ]; do
     --no-wait) nowait=1 ;;
     --full) full=1 ;;
     --fresh) fresh=1 ;;
+    --take-paths) take_paths=1 ;;
     --json) json=1 ;;
     --run) run=$2; shift ;;
     --timeout) timeout_min=$2; shift ;;
@@ -107,7 +114,7 @@ cleanup() {
 trap cleanup EXIT
 trap 'exit 130' INT TERM
 
-bounded 120 git fetch -q origin main || die "could not fetch origin main"
+[ -n "$take_paths" ] || bounded 120 git fetch -q origin main || die "could not fetch origin main" # --take-paths reads HEAD alone
 
 # ── collect: one finished run's takes rows → the table ───────────────────────────────────────────
 code_of() { case "$1" in poland) echo pl ;; germany) echo de ;; united-kingdom) echo uk ;; spain) echo es ;; united-states) echo us ;; *) echo "$1" ;; esac; }
@@ -189,15 +196,26 @@ reuse_root=$KINOWO_IDENTITY_CACHE/measure/reuse
 # less the judgements (matches.sh's `!`) and less the CI plumbing a leg runs (.github/, scripts/): a change there makes a
 # run fail or report differently, never resolve differently -- 2026-10-15 a landing re-measured a083 for 13 minutes
 # because main had moved only convergence-setup.sh and its siblings. The takes check's own scripts stay: they write
-# the takes the measurement reads.
+# the takes the measurement reads. And what the takes check reads that no convergence path names -- the leg's verdict
+# never depended on them, the takes do (scripts/identity-measure-test.sh holds this list to identity-takes-check.sh's):
+# the resolve dump and its shadow (worker/src/it), the ratchet spec the final takes run, and the captures they replay
+# (identity-unmatched/; expected-matches.tsv is the ratchet's output, regenerated from the judgements).
 convergence_patterns() { # <ref> -> file
   local f; f=$(mktemp)
   if git show "$1:.github/convergence-paths.txt" 2> /dev/null \
       | grep -v -E '^[[:space:]]*(\.github/|scripts/)' > "$f"; then
     git show "$1:.github/convergence-paths.txt" | grep -E '^scripts/ci/(identity-takes-check\.sh|identity_takes[a-z_]*\.py|corpus_shape_diff\.py)$' >> "$f"
-    echo '!test/resources/fixtures/identity-judgements.tsv' >> "$f"; echo "$f"
+    printf '%s\n' 'worker/src/it/**' 'worker/src/test/scala/services/identity/UnmatchedClustersRatchetSpec.scala' \
+      'test/resources/fixtures/identity-unmatched/**' '!test/resources/fixtures/identity-unmatched/expected-matches.tsv' \
+      '!test/resources/fixtures/identity-judgements.tsv' >> "$f"
+    echo "$f"
   else rm -f "$f"; fi
 }
+if [ -n "$take_paths" ]; then
+  patterns=$(convergence_patterns HEAD) || true
+  [ -n "$patterns" ] || die "HEAD has no .github/convergence-paths.txt"
+  cat "$patterns"; rm -f "$patterns"; exit 0
+fi
 in_convergence_paths() { "$here/../.github/actions/changed-paths/matches.sh" "$1"; } # <patterns> < paths -> true|false
 # The change B..H as one patch-id over its convergence-path files; "empty" when it touches none of them.
 change_id() { # <base> <head> <patterns>
@@ -209,7 +227,8 @@ change_id() { # <base> <head> <patterns>
   id=$(git diff --no-renames "$1" "$2" -- "${files[@]}" | git patch-id --stable | cut -d' ' -f1)
   [ -n "$id" ] && echo "$id"
 }
-# store_measurement <base> <head> <run id>: the run answers this change from this base, written whole.
+# store_measurement <base> <head> <run id> <dispatched, epoch seconds>: the run answers this change from this base,
+# written whole.
 store_measurement() {
   local patterns id dir part
   [ -f "$KINOWO_IDENTITY_CACHE/measure/$3/downloaded" ] || return 0
@@ -217,7 +236,7 @@ store_measurement() {
   id=$(change_id "$1" "$2" "$patterns"); rm -f "$patterns"
   [ -n "$id" ] || return 0
   dir=$reuse_root/$id; mkdir -p "$dir"
-  part=$(mktemp "$dir/.$1.XXXXXX") && printf '%s\t%s\t%s\n' "$3" "$2" "$(date +%s)" > "$part" && mv -f "$part" "$dir/$1"
+  part=$(mktemp "$dir/.$1.XXXXXX") && printf '%s\t%s\t%s\n' "$3" "$2" "$4" > "$part" && mv -f "$part" "$dir/$1"
 }
 # find_measurement <base> <head> -> "<run> <stored base>" of a stored measurement answering it; 1 when none does.
 find_measurement() {
@@ -231,8 +250,10 @@ find_measurement() {
     IFS=$'\t' read -r run h0 at < "$reuse_root/$id/$entry" || continue
     [ $((now - at)) -le "$max" ] || continue
     [ -f "$KINOWO_IDENTITY_CACHE/measure/$run/downloaded" ] || continue
-    git cat-file -e "$b0^{commit}" 2> /dev/null || continue
+    git cat-file -e "$b0^{commit}" 2> /dev/null && git cat-file -e "$h0^{commit}" 2> /dev/null || continue
     moved=$(git diff --name-only --no-renames "$b0" "$1" | in_convergence_paths "$patterns") || continue
+    [ "$moved" = false ] || continue
+    moved=$(git diff --name-only --no-renames "$h0" "$2" | in_convergence_paths "$patterns") || continue
     [ "$moved" = false ] || continue
     rm -f "$patterns"; echo "$run $b0"; return 0
   done
@@ -257,7 +278,9 @@ if [ -n "$run" ]; then
   run_base=$(cat "$KINOWO_IDENTITY_CACHE/measure/$run"/artifacts/identity-takes-*/base.txt 2> /dev/null | head -1)
   if [ "$verdict" -le 1 ] && [ -n "$branch" ] && [ -n "$run_base" ] && git cat-file -e "$run_sha^{commit}" 2> /dev/null; then
     [[ "$(git log -1 --format=%s "$run_sha")" == "measure: origin/main's CI over "* ]] && run_sha=$(git rev-parse "$run_sha^")
-    store_measurement "$run_base" "$run_sha" "$run"
+    created=$(identity_gh "$DISPATCH_GH_TIMEOUT" run view "$run" --json createdAt --jq .createdAt) \
+      && created=$(python3 -I -c 'import sys, datetime; print(int(datetime.datetime.fromisoformat(sys.argv[1].replace("Z", "+00:00")).timestamp()))' "$created") \
+      && store_measurement "$run_base" "$run_sha" "$run" "$created"
   fi
   exit $verdict
 fi
@@ -312,7 +335,7 @@ dispatch() { # → measured_run
   local since only=(-f takes-only=true)
   [ -n "$full" ] && only=()
   say "dispatching (attempt $attempts)"
-  since=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  since=$(date -u +%Y-%m-%dT%H:%M:%SZ) dispatched_at=$(date +%s)
   dispatch_workflow "$workflow" "$branch" -f takes-base="$base" ${only[@]+"${only[@]}"} \
     || die "could not dispatch $workflow on $branch"
   find_dispatched_run "$workflow" "$since" ".headSha == \"$push\"" --branch "$branch" \
@@ -345,5 +368,5 @@ finished=1
 say "run $measured_run: $conclusion"
 collect "$measured_run" "$commit"
 verdict=$?
-[ "$verdict" -gt 1 ] || [ -n "$full" ] || [ "$conclusion" = cancelled ] || store_measurement "$base" "$commit" "$measured_run"
+[ "$verdict" -gt 1 ] || [ -n "$full" ] || [ "$conclusion" = cancelled ] || store_measurement "$base" "$commit" "$measured_run" "$dispatched_at"
 exit $verdict

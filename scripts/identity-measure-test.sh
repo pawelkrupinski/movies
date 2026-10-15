@@ -93,6 +93,7 @@ JSON
                                  [ "$pending" -le "${RUN_PENDING:-0}" ] && { printf 'in_progress\tmeasure/abc-1\t%s\n' "$HEAD_SHA"; exit 0; }
                                  printf 'completed\tmeasure/abc-1\t%s\n' "$HEAD_SHA" ;;
       jobs) printf 'poland / takes\tfailure\n' ;;
+      createdAt) echo "${RUN_CREATED:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}" ;;
     esac ;;
   "run download") [ -n "${DOWNLOAD_FAILS:-}" ] && { echo "HTTP 502: Bad Gateway" >&2; exit 1; }
                   [ -n "${DOWNLOAD_BLIPS:-}" ] && [ ! -f "$STUB/download-blipped" ] && { touch "$STUB/download-blipped"; echo "HTTP 500" >&2; exit 1; }
@@ -257,6 +258,20 @@ on_main engine/match.txt "a resolver change on main"; branch_onto_main "rule v2"
 check "main moved inside the convergence paths: dispatched" "true" "$(KEEP_CACHE=1 measure landable --countries pl > /dev/null; dispatched)"
 branch_onto_main "rule v3"
 check "the change itself changed: dispatched" "true" "$(KEEP_CACHE=1 measure landable --countries pl > /dev/null; dispatched)"
+# The patch-id ignores whitespace: a change differing only in it has the same id, but not the same head.
+branch_onto_main "rule  v3"
+check "a change differing only in whitespace (the same patch-id): dispatched" "true" \
+  "$(KEEP_CACHE=1 measure landable --countries pl > /dev/null; dispatched)"
+# What the takes check reads that no convergence path names still moves a take.
+on_main test/resources/fixtures/identity-unmatched/pl.inputs "a re-captured family"; branch_onto_main "rule  v3"
+check "main moved the captures the final takes replay: dispatched" "true" \
+  "$(KEEP_CACHE=1 measure landable --countries pl > /dev/null; dispatched)"
+on_main worker/src/it/scala/IdentityResolveDump.scala "the resolve dump"; branch_onto_main "rule  v3"
+check "main moved the takes check's resolve dump: dispatched" "true" \
+  "$(KEEP_CACHE=1 measure landable --countries pl > /dev/null; dispatched)"
+on_main test/resources/fixtures/identity-unmatched/expected-matches.tsv "the ratchet's output"; branch_onto_main "rule  v3"
+check "main moved only the ratchet's expected-matches.tsv: reused" "false" \
+  "$(KEEP_CACHE=1 measure landable --countries pl > /dev/null; dispatched)"
 scratch_git "$repo" checkout -q main
 # A run collected with --run (after --no-wait) is stored too: its base from the artifact, its head the run's commit.
 rm -rf "$work/cache"
@@ -265,6 +280,31 @@ KEEP_CACHE=1 HEAD_SHA=$tip measure lost --run 777 --countries pl > /dev/null
 check "a run collected with --run answers its change later" "1" "$(KEEP_CACHE=1 measure landable "$tip" --base "$parent" --countries pl)"
 check "...without a dispatch" "false" "$(dispatched)"
 check "...the same base" "true" "$(grep -q 'REUSED measurement of run 777 (base [0-9a-f]*, same change, the same base)' "$work/out" && echo true || echo false)"
+# ...for 24 hours from when the run was made, not from when it was collected.
+rm -rf "$work/cache"
+scratch_git "$repo" push -q origin "$tip:refs/heads/measure/abc-1"
+KEEP_CACHE=1 HEAD_SHA=$tip RUN_CREATED=2026-01-01T00:00:00Z measure lost --run 777 --countries pl > /dev/null
+check "a run made days before it was collected with --run is not reused" "true" \
+  "$(KEEP_CACHE=1 measure landable "$tip" --base "$parent" --countries pl > /dev/null; dispatched)"
+
+# The take-moving paths cover everything the real takes check reads: its identity paths, the specs it runs, the captures.
+take_patterns="$work/take-paths"
+# (reads the checkout's own HEAD: a hook's GIT_DIR is not inherited)
+( cd "$REPO_ROOT" && env -u GIT_DIR -u GIT_WORK_TREE -u GIT_INDEX_FILE "$REPO_ROOT/scripts/identity-measure" --take-paths ) > "$take_patterns"
+takes_check="$REPO_ROOT/scripts/ci/identity-takes-check.sh"
+read_paths=$(
+  sed -n '/^identity_paths=(/,/)/p' "$takes_check" | sed -e 's/^identity_paths=(//' -e 's/)$//' | tr ' ' '\n' | grep -v '^$'
+  grep -oE 'testOnly [a-z.]*[A-Z][A-Za-z]*' "$takes_check" | sed 's/.* //; s/.*\.//' | while read -r class; do
+    ( cd "$REPO_ROOT" && find ./*/src -name "$class.scala" | sed 's|^\./||' ); done
+  echo test/resources/fixtures/identity-unmatched/pl.json.gz)
+uncovered=""
+for p in $read_paths; do
+  [ -d "$REPO_ROOT/$p" ] && p="$p/x.scala"
+  [ "$(printf '%s\n' "$p" | "$REPO_ROOT/.github/actions/changed-paths/matches.sh" "$take_patterns")" = true ] || uncovered="$uncovered $p"
+done
+check "every path the takes check reads is one a reuse treats as moving a take" "" "$uncovered"
+check "...read from the takes check (identity_paths and the specs it runs)" "true" \
+  "$(echo "$read_paths" | grep -q UnmatchedClustersRatchetSpec && echo "$read_paths" | grep -q '^identity/src/main$' && echo true || echo false)"
 
 # SIGTERM (Ctrl-C alike) while waiting on the run: the run is cancelled and the branch deleted.
 rm -rf "$work/stub" "$work/cache"; mkdir -p "$work/stub"
