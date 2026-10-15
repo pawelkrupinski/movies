@@ -27,7 +27,9 @@
 #        STATUS_CONTEXT (default "identity takes (<cc>)"), GITHUB_STEP_SUMMARY (optional),
 #        TAKES_STORE (the release its resolves are stored on and reused from; empty stores nothing), GITHUB_REF,
 #        the pinned pair's KINOWO_CONVERGENCE_PIN_CORPUS_RUN / _TREE_ASSET / _FILL_ASSETS, RUNNER_TEMP/laid-fill,
-#        SHAPE_COMMAND (the country's `corpusShape*` sbt alias; empty checks no corpus shape)
+#        SHAPE_COMMAND (the country's `corpusShape*` sbt alias; empty checks no corpus shape),
+#        TAKES_SIDE (both, head or base: THE BASE ROW below), TAKES_BASE_JOB (the base row's job name), GITHUB_RUN_ID,
+#        TAKES_BASE_WAIT / TAKES_BASE_POLL (seconds: how long, and how often, the head waits for the base row)
 #
 # THE BASE IS USUALLY ALREADY RESOLVED. It is the newest commit whose check passed -- most often the previous run's
 # head, which that run resolved over the same pinned recording minutes before. A resolve is a pure function of its
@@ -39,6 +41,13 @@
 # Each head's corpus-shape findings are stored the same way, keyed by the checks' code and allowlists and the recording.
 # Writes <out>/{base,head}/decisions-<cc>.jsonl and ratchet-takes.tsv (the model's takes and the final ones, below),
 # <out>/{base,head}/shape/ (the corpus-shape findings), <out>/base.txt (the base commit) and <out>/verdict.txt.
+# THE BASE ROW. Neither side's results stored -- a base main has not run yet (a measurement dispatched while main's
+# own run for its base is still queued), or a recording pinned since -- the base was resolved AFTER the head's session,
+# on the same runner: 5.5 of run 38735006233's 13.8-minute US row. A takes-only dispatch (scripts/identity-measure)
+# runs it on a runner of its own instead: its `takes-base` row (TAKES_SIDE=base) stores the base's side -- downloaded
+# when stored, else resolved -- while the `takes` row (TAKES_SIDE=head, TAKES_BASE_JOB naming that row's job) runs the
+# head's and then waits for each base result to be stored, resolving one itself only when that row ended, or never
+# started, without storing it. TAKES_SIDE unset (both) is the one-row check every hermetic leg runs.
 # Exit: 0 passed, 1 an unaccepted move or a new suspect or corpus-shape finding, 2 the check could not run -- no verdict, which the leg posts as an `error` status
 # and fails on: a check that cannot compute its diff never passes.
 set -uo pipefail
@@ -48,6 +57,9 @@ out=${2:?out dir}
 head=${GITHUB_SHA:-$(git rev-parse HEAD)}
 context=${STATUS_CONTEXT:-identity takes ($cc)}
 heap=${HEAP:-6g}
+side=${TAKES_SIDE:-both}
+case $side in both|head|base) ;; *) echo "::error::identity takes ($cc): TAKES_SIDE is both, head or base, not $side"; exit 2 ;; esac
+[ "$side" = head ] && [ -z "${TAKES_BASE_JOB:-}" ] && side=both # no base row to wait for
 here=$(pwd)
 mkdir -p "$out"
 out=$(cd "$out" && pwd) # absolute: every sbt run below runs in a checkout of its own
@@ -166,17 +178,48 @@ capture_key() { # <sha>: the final takes' inputs -- the code and the country's c
   { printf '%s\n' "$(code_of "$1")" "$cc"; cat "$here/test/resources/fixtures/identity-unmatched/$cc.json.gz" \
       "$here/test/resources/fixtures/identity-unmatched/$cc.inputs" 2>/dev/null; } | sha256sum | cut -c1-24
 }
+fetch_stored() { # <asset> <file>: whether the stored result was fetched into <file>, quietly
+  [ -n "$store" ] && [ -n "$1" ] || return 1
+  mkdir -p "$(dirname "$2")"
+  bounded "$gh_download" gh release download "$store" -p "$1" -O "$2.gz" --clobber > /dev/null 2>&1 && gunzip -f "$2.gz" && [ -s "$2" ]
+}
 reused() { # <asset> <file> <what>: whether a stored result was fetched into <file>; says why not when it was not
   local why=""
+  how=reused
+  fetch_stored "$1" "$2" && return 0
   if [ -z "$store" ]; then why="no store (TAKES_STORE empty, or a fill laid unpublished)"
   elif [ -z "$1" ]; then why="no key (no recording pinned)"
-  else
-    mkdir -p "$(dirname "$2")"
-    bounded "$gh_download" gh release download "$store" -p "$1" -O "$2.gz" --clobber > /dev/null 2>&1 && gunzip -f "$2.gz" && [ -s "$2" ] && return 0
-    why="$1 not on release $store"
+  else why="$1 not on release $store"
   fi
   echo "identity takes ($cc): $3 not stored -- $why: resolving it"
   return 1
+}
+# THE BASE ROW (TAKES_SIDE=head, the header): this run's `takes-base` row resolves and stores the base's side while this
+# row runs the head's, and this row waits for each result to be stored -- for as long as that row is RUNNING. One done
+# (or failed) without storing it, or still queued for a runner when this row needs it, leaves it to this row.
+base_row_state() { # -> the takes-base row's job status (queued, in_progress, completed, ...), empty when there is none
+  bounded "$gh_read" gh api "repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID/jobs?per_page=100" \
+    --jq ".jobs[] | select(.name == \"$TAKES_BASE_JOB\") | .status"
+}
+awaited() { # <asset> <file> <what>: reused, or -- beside a base row -- stored by it meanwhile; sets $how
+  [ "$side" = head ] && [ -n "$store" ] && [ -n "$1" ] || { reused "$@"; return; }
+  local started state deadline
+  started=$(date +%s); deadline=$((started + ${TAKES_BASE_WAIT:-1800}))
+  how=reused
+  while :; do
+    fetch_stored "$1" "$2" && { echo "identity takes ($cc): $3 $how ($1, after $(( $(date +%s) - started ))s)"; return 0; }
+    how=awaited
+    state=$(base_row_state) || state=unread # a failed read is no answer: wait on, until the deadline
+    case $state in
+      in_progress|unread) ;;
+      # done meanwhile: what it stored just before is there now, or never will be
+      completed) fetch_stored "$1" "$2" && { echo "identity takes ($cc): $3 awaited ($1)"; return 0; }
+                 echo "identity takes ($cc): $3 not stored by the takes-base row (completed) -- resolving it"; return 1 ;;
+      *) echo "identity takes ($cc): $3 not stored, and the takes-base row is ${state:-absent} -- resolving it"; return 1 ;;
+    esac
+    [ "$(date +%s)" -lt "$deadline" ] || { echo "identity takes ($cc): $3 not stored after $((deadline - started))s -- resolving it"; return 1; }
+    sleep "${TAKES_BASE_POLL:-15}"
+  done
 }
 keep() { # <file> <asset> [base]: store a result, never failing the check
   # A head's only on main: the only commits a later base is. A BASE's on any ref -- a measure/ branch's base is main's
@@ -286,22 +329,86 @@ shape_key() { # <sha>: the findings' inputs -- the checks' code and allowlists, 
     "${KINOWO_CONVERGENCE_PIN_CORPUS_RUN:-}" | sha256sum | cut -c1-24
 }
 
-# THE BASE'S FINAL TAKES, stored or replayed in the base's checkout BESIDE the head's session below: they read nothing
-# the head writes, and the session leaves the runner's other cores idle most of its time.
+# THE BASE'S SIDE, each result stored or made in the base's checkout. Its final takes replay BESIDE the head's session
+# below (they read nothing the head writes, and the session leaves the runner's other cores idle most of its time); its
+# resolve and its corpus shape follow the session, whose heap they could not share.
+base_final_start() { # the base's final takes, replayed in the background (base_final_finish waits for them)
+  base_tree || exit 2
+  cp "$here"/test/resources/fixtures/identity-unmatched/*.json.gz "$here"/test/resources/fixtures/identity-unmatched/*.inputs \
+     "$tree/test/resources/fixtures/identity-unmatched/" 2>/dev/null
+  base_started=$(date +%s)
+  ratchet "$tree" "$out/base/ratchet-takes.tsv" > "$out/base-final.out" 2>&1 &
+  base_final_pid=$!
+  trap 'kill "$base_final_pid" 2> /dev/null' EXIT # an exit before its wait below leaves no replay behind (best effort)
+}
+base_final_finish() {
+  [ -n "${base_final_pid:-}" ] || return 0
+  wait "$base_final_pid" || final=2
+  base_final_pid=""
+  cat "$out/base-final.out"
+  SECONDS=$(( $(date +%s) - base_started )); timing base-final replayed
+  [ "$final" = 0 ] && keep "$out/base/ratchet-takes.tsv" "$(asset final "$(capture_key "$base")")" base
+}
+base_resolve() {
+  base_tree || exit 2
+  dump "$tree" "$out/base" || { echo "::warning::identity takes ($cc): the base resolved nothing"; exit 2; }
+  echo "identity takes ($cc): base compiled and resolved in ${SECONDS}s"
+  timing base-resolve resolved
+  keep "$out/base/decisions-$cc.jsonl" "$(asset decisions "$(decisions_key "$base")")" base
+}
+base_shape() { # the base's corpus-shape findings into $out/base/shape (copies of the head's when the base wrote none)
+  base_tree || exit 2
+  if grep -q 'corpus-shape-' "$tree/e2e/src/test/scala/services/movies/CorpusShapeSpec.scala" 2>/dev/null; then
+    shape_run "$tree" "$out/base/shape" || shape=2
+    timing base-shape ran
+    [ "$shape" = 0 ] && tar -cf "$out/base/shape.tar" -C "$out/base/shape" . \
+      && keep "$out/base/shape.tar" "$(asset shape "$(shape_key "$base")")" base
+  else
+    # A base from before the specs wrote their findings has none to diff: the head's are reported, none failed.
+    echo "identity takes ($cc): the base predates the corpus-shape findings files -- the head's are reported, not judged" \
+      | tee -a "$out/verdict.txt"
+    mkdir -p "$out/base/shape" && cp "$out/head/shape"/*.txt "$out/base/shape/" 2>/dev/null
+  fi
+}
+base_shape_stored() { # <how to get it: reused|awaited>
+  "$1" "$(asset shape "$(shape_key "$base")")" "$out/base/shape.tar" "the base corpus-shape findings" || return 1
+  mkdir -p "$out/base/shape" && tar -xf "$out/base/shape.tar" -C "$out/base/shape"
+}
+
+# THE BASE ROW (TAKES_SIDE=base): the base's side alone, each result stored for this run's takes row, which waits for
+# them (`awaited`) -- no head, no verdict. Nowhere to store them is nothing to do: the takes row resolves them itself.
+if [ "$side" = base ]; then
+  [ -n "$store" ] || { echo "identity takes ($cc): no store (TAKES_STORE empty, or a fill laid unpublished) -- the takes row resolves the base itself"; exit 0; }
+  mkdir -p "$out/base"
+  if [ -n "$takes_moves" ]; then
+    SECONDS=0
+    if reused "$(asset final "$(capture_key "$base")")" "$out/base/ratchet-takes.tsv" "the base final takes"; then
+      echo "identity takes ($cc): base final takes reused"; timing base-final reused
+    else base_final_start; fi
+    SECONDS=0
+    if reused "$(asset decisions "$(decisions_key "$base")")" "$out/base/decisions-$cc.jsonl" "the base resolve"; then
+      timing base-resolve reused
+    else base_resolve; fi
+    base_final_finish
+  fi
+  if [ -n "$shape_moves" ]; then
+    SECONDS=0
+    if base_shape_stored reused; then timing base-shape reused; else base_shape; fi
+  fi
+  [ -d "$tree" ] && { git worktree remove --force "$tree" || true; }
+  echo "identity takes ($cc): the base's side of ${base:0:9} is stored for the takes row" | tee -a "$out/verdict.txt"
+  [ "$final" = 0 ] && [ "$shape" = 0 ] || exit 2
+  exit 0
+fi
+
 if [ -n "$takes_moves" ]; then
   mkdir -p "$out/head" "$out/base"
-  SECONDS=0
-  if reused "$(asset final "$(capture_key "$base")")" "$out/base/ratchet-takes.tsv" "the base final takes"; then
-    echo "identity takes ($cc): base final takes reused"
-    timing base-final reused
-  else
-    base_tree || exit 2
-    cp "$here"/test/resources/fixtures/identity-unmatched/*.json.gz "$here"/test/resources/fixtures/identity-unmatched/*.inputs \
-       "$tree/test/resources/fixtures/identity-unmatched/" 2>/dev/null
-    base_started=$(date +%s)
-    ratchet "$tree" "$out/base/ratchet-takes.tsv" > "$out/base-final.out" 2>&1 &
-    base_final_pid=$!
-    trap 'kill "$base_final_pid" 2> /dev/null' EXIT # an exit before its wait below leaves no replay behind (best effort)
+  # Beside a base row, its final takes are that row's (awaited after the session).
+  if [ "$side" != head ]; then
+    SECONDS=0
+    if reused "$(asset final "$(capture_key "$base")")" "$out/base/ratchet-takes.tsv" "the base final takes"; then
+      echo "identity takes ($cc): base final takes reused"; timing base-final reused
+    else base_final_start; fi
   fi
 fi
 
@@ -342,25 +449,24 @@ if [ -n "$takes_moves" ]; then
   else
     echo "::warning::identity takes ($cc): the resolve exited $session (its log: $out/head.log)"; exit 2
   fi
-  if [ -n "${base_final_pid:-}" ]; then
-    wait "$base_final_pid" || final=2
-    cat "$out/base-final.out"
-    SECONDS=$(( $(date +%s) - base_started )); timing base-final replayed
-    [ "$final" = 0 ] && keep "$out/base/ratchet-takes.tsv" "$(asset final "$(capture_key "$base")")" base
+  if [ "$side" = head ]; then
+    SECONDS=0
+    if awaited "$(asset final "$(capture_key "$base")")" "$out/base/ratchet-takes.tsv" "the base final takes"; then
+      timing base-final "$how"
+    else base_final_start; fi # beside the base's resolve below
+  else
+    base_final_finish
   fi
-  gaps_of head; gaps_of base
 
   SECONDS=0
-  if reused "$(asset decisions "$(decisions_key "$base")")" "$out/base/decisions-$cc.jsonl" "the base resolve"; then
-    echo "identity takes ($cc): base resolve reused from $(asset decisions "$(decisions_key "$base")") in ${SECONDS}s"
-    timing base-resolve reused
+  if awaited "$(asset decisions "$(decisions_key "$base")")" "$out/base/decisions-$cc.jsonl" "the base resolve"; then
+    echo "identity takes ($cc): base resolve $how from $(asset decisions "$(decisions_key "$base")") in ${SECONDS}s"
+    timing base-resolve "$how"
   else
-    base_tree || exit 2
-    dump "$tree" "$out/base" || { echo "::warning::identity takes ($cc): the base resolved nothing"; exit 2; }
-    echo "identity takes ($cc): base compiled and resolved in ${SECONDS}s"
-    timing base-resolve resolved
-    keep "$out/base/decisions-$cc.jsonl" "$(asset decisions "$(decisions_key "$base")")" base
+    base_resolve
   fi
+  base_final_finish
+  gaps_of head; gaps_of base
 else
   echo "identity takes ($cc): no identity code changed since $base -- no take can have moved" | tee -a "$out/verdict.txt"
 fi
@@ -370,23 +476,11 @@ if [ -n "$shape_moves" ]; then
   if [ -n "$(ls "$out/head/shape" 2>/dev/null)" ]; then
     SECONDS=${took[${#took[@]}-1]:-0}; timing head-shape ran; shaped=$SECONDS; SECONDS=0
     tar -cf "$out/head/shape.tar" -C "$out/head/shape" . && keep "$out/head/shape.tar" "$(asset shape "$(shape_key "$head")")"
-    if reused "$(asset shape "$(shape_key "$base")")" "$out/base/shape.tar" "the base corpus-shape findings"; then
-      mkdir -p "$out/base/shape" && tar -xf "$out/base/shape.tar" -C "$out/base/shape"
-      echo "identity takes ($cc): base corpus-shape findings reused"
-      timing base-shape reused
+    if base_shape_stored awaited; then
+      echo "identity takes ($cc): base corpus-shape findings $how"
+      timing base-shape "$how"
     else
-      base_tree || exit 2
-      if grep -q 'corpus-shape-' "$tree/e2e/src/test/scala/services/movies/CorpusShapeSpec.scala" 2>/dev/null; then
-        shape_run "$tree" "$out/base/shape" || shape=2
-        timing base-shape ran
-        [ "$shape" = 0 ] && tar -cf "$out/base/shape.tar" -C "$out/base/shape" . \
-          && keep "$out/base/shape.tar" "$(asset shape "$(shape_key "$base")")" base
-      else
-        # A base from before the specs wrote their findings has none to diff: the head's are reported, none failed.
-        echo "identity takes ($cc): the base predates the corpus-shape findings files -- the head's are reported, not judged" \
-          | tee -a "$out/verdict.txt"
-        mkdir -p "$out/base/shape" && cp "$out/head/shape"/*.txt "$out/base/shape/"
-      fi
+      base_shape
     fi
   else
     shape=2

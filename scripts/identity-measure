@@ -169,7 +169,7 @@ collect() { # <run id> <commit whose judgements classify> [checkout: classify wi
 }
 
 # Where a measurement's time went, on stderr (the table, or --json, stays alone on stdout): the run's wait for runners
-# and its length, each takes row's job, and each row's phases from identity-takes-check.sh's timings.tsv -- which
+# and its length, each takes row's job (and its base row's: identity-takes-check.sh's THE BASE ROW), and each row's phases from identity-takes-check.sh's timings.tsv -- which
 # phases a stored result spared ("reused") and which were resolved. A row from before the file was written has none.
 timings() { # <run id> <artifacts dir>
   local id=$1 dl=$2 times cc file
@@ -178,7 +178,7 @@ timings() { # <run id> <artifacts dir>
       # The run "starts" when created; it is the first job that waited for a runner (and, on the main lane, for the lane).
       ([.jobs[].startedAt | s | select(. != null)] | min) as $first |
       "run: created \(.createdAt), waited for runners \(($first - (.createdAt|s)) // "?")s, then ran \(((.updatedAt|s) - $first) // "?")s",
-      (.jobs[] | select(.name | endswith(" / takes")) |
+      (.jobs[] | select(.name | test(" / takes(-base)?$")) |
         "  \(.name): \(((.completedAt|s) - (.startedAt|s)) // "?")s \(.conclusion // "unfinished")")') \
     || { say "run $id: could not read its timings"; return 0; }
   say "timings of run $id"

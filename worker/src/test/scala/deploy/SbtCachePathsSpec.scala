@@ -100,7 +100,7 @@ class SbtCachePathsSpec extends AnyFlatSpec with Matchers {
    *  takes row saves a family of its own once they exist, and a takes row restores that family first. */
   "a leg's takes row" should "restore main's newest takes build first, and only a takes row" in {
     restoreKeys.headOption shouldBe Some("${{ inputs.takes == 'true' && format('sbt-target-takes-{0}-', runner.os) || '' }}")
-    leg should include("takes:         ${{ matrix.phase == 'takes' }}")
+    leg should include("takes:         ${{ startsWith(matrix.phase, 'takes') }}")
   }
 
   it should "save its worker test and it classes as that family, on main, once they were compiled" in {

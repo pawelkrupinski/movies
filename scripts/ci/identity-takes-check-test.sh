@@ -160,6 +160,9 @@ case "\$1 \$2" in
   "release upload")   [ -n "\${UPLOAD_RACES:-}" ] && { mkdir -p "$work/release" && cp "\$4" "$work/release/"; exit 1; }
                       mkdir -p "$work/release" && cp "\$4" "$work/release/" ;;
   "release view")     for f in "$work"/release/*; do [ -f "\$f" ] && basename "\$f"; done ;;
+  "api repos/o/r/actions/runs/7/jobs"*)
+    [ -d "$work/pending" ] && mkdir -p "$work/release" && mv "$work"/pending/* "$work/release/" 2> /dev/null && rmdir "$work/pending"
+    cat "$work/base-row" 2> /dev/null || true ;;
   *) exec "$work/bin/gh-history" "\$@" ;;
 esac
 GH
@@ -206,6 +209,38 @@ rm -rf "$work/release"
 UPLOAD_RACES=1 REF=refs/heads/measure/c5-3 TAKES_BASE=$c4 store_run "$c5" || true
 check "an upload refused because another run stored the asset meanwhile is no warning" \
   "0 1" "$(grep -c 'could not store' "$work/log") $(grep -c 'takes-decisions-pl-.* was stored by another run meanwhile' "$work/log")"
+
+# THE BASE ROW. A measurement's `takes-base` row (TAKES_SIDE=base) stores the base's side on a runner of its own; its
+# `takes` row (TAKES_SIDE=head) runs the head's and waits for them while that row runs (the stub jobs API answers its
+# state from $work/base-row, and hands over what $work/pending holds -- the base row storing it meanwhile).
+side_run() { # <side> <head>
+  REF=refs/heads/measure/c5-side TAKES_SIDE=$1 TAKES_BASE_JOB="poland / takes-base" GITHUB_RUN_ID=7 TAKES_BASE_POLL=0 \
+    TAKES_BASE=$c4 store_run "$2"
+}
+head_calls() { grep -vc identity-takes-base "$work/sbt-calls" || true; }
+rm -rf "$work/release" "$work/pending"
+code=0; side_run base "$c5" || code=$?
+check "the base row resolves the base's side" "0 2" "$code $(base_calls)"
+check "...and nothing of the head's" 0 "$(head_calls)"
+check "...storing the base's decisions and final takes" 2 "$(ls "$work/release" | wc -l | tr -d ' ')"
+side_run base "$c5" || true
+check "...or, stored already, nothing at all" 0 "$(base_calls)"
+mkdir -p "$work/pending" && mv "$work/release"/* "$work/pending/"
+echo in_progress > "$work/base-row"
+code=0; side_run head "$c5" || code=$?
+check "the takes row beside it resolves the head alone" "0 2" "$(base_calls) $(head_calls)"
+check "...waiting for what the base row stores meanwhile" "base-final:awaited base-resolve:reused " \
+  "$(grep base- "$work/out/timings.tsv" | cut -f1,3 | tr '\t\n' ': ')"
+check "...and the check passes on the same takes" 0 "$code"
+rm -rf "$work/release"
+echo completed > "$work/base-row"
+side_run head "$c5" || true
+check "a base row done without storing them leaves the base to the takes row" 2 "$(base_calls)"
+rm -rf "$work/release"
+echo queued > "$work/base-row"
+side_run head "$c5" || true
+check "...as does one still waiting for a runner" 2 "$(base_calls)"
+rm -f "$work/base-row"
 
 # A capture lacking a lookup the code asks: the final takes are still replayed, the gap read as unknown and named --
 # only this row's country's (run 38694072183 lost every country's final takes to one UK Rotten Tomatoes record).

@@ -202,22 +202,22 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
     val convergence = RepoFile.block(leg, "convergence")
     convergence should include("inputs.mode == 'hermetic' && ',\"takes\"' || ''")
     convergence should include("if: ${{ !cancelled() && inputs.mode == 'hermetic' && matrix.phase == 'takes' }}")
-    convergence should include("if: matrix.phase != 'takes'\n              shell: bash")
-    convergence should include("- name: Publish convergence test report\n              if: always() && matrix.phase != 'takes'")
+    convergence should include("if: \"!startsWith(matrix.phase, 'takes')\"\n              shell: bash")
+    convergence should include("- name: Publish convergence test report\n              if: always() && !startsWith(matrix.phase, 'takes')")
   }
 
   "the auto-bisect" should "be requested only by a red hermetic pipeline leg on main, naming its sample to replay" in {
     val convergence = RepoFile.block(leg, "convergence")
     "uses: ./.github/actions/convergence-bisect-request".r.findAllIn(leg).size shouldBe 1
     convergence should include("uses: ./.github/actions/convergence-bisect-request\n" +
-      "              if: failure() && inputs.mode == 'hermetic' && github.ref == 'refs/heads/main' && matrix.phase != 'takes'")
+      "              if: failure() && inputs.mode == 'hermetic' && github.ref == 'refs/heads/main' && !startsWith(matrix.phase, 'takes')")
     convergence should include("sample-command: ${{ inputs.sample-command }}")
   }
 
   // The ratchet reads the red suite's findings, from every row but the takes check's.
   it should "ratchet a red suite's findings" in {
     RepoFile.block(leg, "convergence") should include("uses: ./.github/actions/hard-clusters-ratchet\n" +
-      "              if: failure() && matrix.phase != 'takes'")
+      "              if: failure() && !startsWith(matrix.phase, 'takes')")
   }
 
   // Outside the leg: inside, it would hold the suite's one-run lane for its whole budget.

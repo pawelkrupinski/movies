@@ -189,7 +189,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     convergence should not include "sample ahead of the suite"
     RepoFile.withoutComments(convergence) should not include "steps.sample"
     RepoFile.step(convergence, SuiteStep).linesIterator.map(_.trim).filter(_.startsWith("if:")).toSeq shouldBe
-      Seq("if: matrix.phase != 'takes'")
+      Seq("if: \"!startsWith(matrix.phase, 'takes')\"")
   }
 
   /** What every leg keeps of the sample it no longer runs: the corpus-shape specs over the recorded corpus
@@ -424,14 +424,15 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     }
     legDirectives should not include "if: inputs.order-command"
     RepoFile.block(leg, "convergence") should include(
-      """phase: ${{ fromJson(inputs.takes-only && '["takes"]' || format('["convergence"{0}{1}{2}]', inputs.order-command != '' && (inputs.order-split && """ +
+      """phase: ${{ fromJson(inputs.takes-only && '["takes","takes-base"]' || format('["convergence"{0}{1}{2}]', inputs.order-command != '' && (inputs.order-split && """ +
         """',"order-independence-p01","order-independence-p12"' || ',"order-independence"') || '', """ +
         """inputs.next-day-command != '' && ',"next-day"' || '', inputs.mode == 'hermetic' && ',"takes"' || '')) }}""")
   }
 
-  /** scripts/identity-measure's whole-corpus measurement: a takes-only dispatch expands every leg to its `takes` row alone,
-   *  and that row uploads the check's own output -- both sides' takes and the verdict -- for the tool to classify. */
-  "a takes-only dispatch" should "run only the takes row, which uploads the check's output" in {
+  /** scripts/identity-measure's whole-corpus measurement: a takes-only dispatch expands every leg to its `takes` row and
+   *  its `takes-base` row, and the takes row uploads the check's own output -- both sides' takes and the verdict -- for the
+   *  tool to classify. */
+  "a takes-only dispatch" should "run only the takes rows, the takes row uploading the check's output" in {
     RepoFile.read(".github/workflows/identity-model-convergence.yml") should include(
       "takes-only:                    ${{ inputs.takes-only == true }}")
     RepoFile.block(leg, "takes-only") should include("default: false")
@@ -439,6 +440,19 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     suite should include("name: identity-takes-${{ inputs.code }}")
     suite should include("path: ${{ runner.temp }}/identity-takes/")
     RepoFile.read("scripts/identity-measure") should include("takes-only=true")
+  }
+
+  /** The base's side on a runner of its own (identity-takes-check.sh's THE BASE ROW): the takes row ran it after its
+   *  head's session, 5.5 of run 38735006233's 13.8-minute US row. The base row stores it; the takes row waits for it. */
+  it should "resolve the base in a takes-base row of its own, the takes row waiting for it" in {
+    val suite = RepoFile.block(leg, "convergence")
+    val base  = RepoFile.step(suite, "Store the base's side for the takes row")
+    base should include("if: ${{ !cancelled() && inputs.mode == 'hermetic' && matrix.phase == 'takes-base' }}")
+    base should include("TAKES_SIDE: base")
+    base should not include "statuses/"
+    val takes = RepoFile.step(suite, "Check which listings the code moved to another film")
+    takes should include("TAKES_SIDE: ${{ inputs.takes-only && 'head' || 'both' }}")
+    takes should include("TAKES_BASE_JOB: ${{ inputs.country }} / takes-base")
   }
 
   /** A country whose single order row ran past the 10-minute target splits it into two rows of two
@@ -725,7 +739,7 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     caller should include ("profile:                       ${{ inputs.profile == true }}")
     leg should include ("if [ \"${{ inputs.profile }}\" = true ]; then")
     leg should include ("-J-XX:StartFlightRecording=filename=convergence.jfr")
-    leg should include ("if: always() && inputs.profile && matrix.phase != 'takes'")
+    leg should include ("if: always() && inputs.profile && !startsWith(matrix.phase, 'takes')")
     // A hand-dispatched JVM setting reaches every sbt run through the environment, never interpolated into the script.
     caller should include ("jvm-options:                   ${{ inputs.jvm-options || '' }}")
     // Every sbt run of the leg: the suite, the pre-suite fill, a recording's corpus capture and its corpus-shape report.
