@@ -165,16 +165,20 @@ def inspect(all_worktrees, main_path, origin):
 
 def inspect_one(tree, main_path, origin):
     tree.exists = os.path.isdir(tree.path)
-    tree.dirty = len([l for l in git(tree.path, "status", "--porcelain").splitlines() if l]) if tree.exists else 0
-    cherry = git(tree.path, "cherry", origin, "HEAD").splitlines() if tree.exists else []
-    tree.unmerged = len([l for l in cherry if l.startswith("+")])
+    # A git that FAILS here is no evidence of a clean, merged tree: read as "0 dirty, 0 unmerged" it made a
+    # worktree git could not read `removable`, and prune deleted it with whatever it held.
+    status = run(["git", "-C", tree.path, "status", "--porcelain"]) if tree.exists else None
+    cherry = run(["git", "-C", tree.path, "cherry", origin, "HEAD"]) if tree.exists else None
+    tree.unreadable = tree.exists and (status.returncode != 0 or cherry.returncode != 0)
+    tree.dirty = len([l for l in status.stdout.splitlines() if l]) if status else 0
+    tree.unmerged = len([l for l in cherry.stdout.splitlines() if l.startswith("+")]) if cherry else 0
     stamp = git(tree.path, "log", "-1", "--format=%ct").strip() if tree.exists else ""
     tree.commit_age = time.time() - int(stamp) if stamp.isdigit() else None
     match = re.search(r"pid (\d+)", tree.lock or "")
     tree.lock_pid = int(match.group(1)) if match else None
     tree.live_owner = tree.lock_pid is not None and alive(tree.lock_pid)
     tree.is_main = tree.path == main_path
-    if tree.is_main or tree.dirty or tree.unmerged or tree.live_owner:
+    if tree.is_main or tree.unreadable or tree.dirty or tree.unmerged or tree.live_owner:
         tree.suggestion = "keep"
     elif any(not p.idle for p in tree.processes):
         tree.suggestion = "orphan-procs"
@@ -194,7 +198,7 @@ def list_command(root, all_worktrees, found, args):
         age = humanize(tree.commit_age) if tree.commit_age is not None else "?"
         state = "" if tree.exists else "  [directory missing]"
         print(f"{tree.suggestion.upper():<13} {tree.path}{state}")
-        print(f"    branch {tree.branch}  dirty {tree.dirty}  unmerged {tree.unmerged}  last commit {age} ago  {lock}")
+        print(f"    branch {tree.branch}  dirty {tree.dirty}  unmerged {tree.unmerged}  last commit {age} ago  {lock}" + ("  [git could not read it: dirty/unmerged unknown]" if tree.unreadable else ""))
         shown = [p for p in tree.processes if notable(p)]
         for process in sorted(shown, key=lambda p: -p.rss_kb):
             print(f"      {process.describe()}")

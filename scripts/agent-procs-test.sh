@@ -50,6 +50,10 @@ true & dead_pid=$!; wait "$dead_pid"
 add_worktree wt-deadlock
 scratch_git "$root" worktree lock --reason "claude agent dead (pid $dead_pid start Mon Oct 12 07:13:13 2026)" "$work/wt-deadlock"
 add_worktree wt-orphan
+# A worktree git cannot read (its .git link broken): its dirty and unmerged counts are unknown, never "0".
+add_worktree wt-unreadable
+echo wip > "$work/wt-unreadable/wip.txt"
+echo "gitdir: $work/nowhere" > "$work/wt-unreadable/.git"
 add_worktree wt-other
 # A branch whose change reached origin/main by cherry-pick: a different commit, the same patch.
 add_worktree wt-rebased change
@@ -91,6 +95,8 @@ check "a clean merged worktree locked by a dead pid is removable" "REMOVABLE" "$
 check "a worktree whose change landed rebased (patch-equal) is removable" "REMOVABLE" "$(suggestion wt-rebased)"
 check "work processes with no live owner make it orphan-procs" "ORPHAN-PROCS" "$(suggestion wt-orphan)"
 check "the root checkout is always kept" "KEEP" "$(suggestion root)"
+check "a worktree git cannot read is kept, not judged clean and merged" "KEEP" "$(suggestion wt-unreadable)"
+check "...and says why" "1" "$(block wt-unreadable | grep -c 'git could not read it')"
 check "the unmerged count is reported" "1" "$(block wt-unmerged | sed -n 's/.*unmerged \([0-9]*\).*/\1/p' | head -1)"
 check "the dirty count is reported" "1" "$(block wt-dirty | sed -n 's/.*dirty \([0-9]*\).*/\1/p' | head -1)"
 check "the rebased worktree counts 0 unmerged" "0" "$(block wt-rebased | sed -n 's/.*unmerged \([0-9]*\).*/\1/p' | head -1)"
@@ -137,6 +143,8 @@ check "prune removes a rebased-equal worktree and its branch" "gone no" "$(gone 
 check "prune removes the now process-free orphan worktree" "gone" "$(gone wt-orphan)"
 check "prune keeps the unmerged worktree and branch" "kept yes" "$(gone wt-unmerged) $(has_branch wt-unmerged)"
 check "prune keeps the dirty worktree" "kept" "$(gone wt-dirty)"
+check "prune keeps the worktree git cannot read, and its uncommitted file" "kept yes" \
+  "$(gone wt-unreadable) $([ -f "$work/wt-unreadable/wip.txt" ] && echo yes || echo no)"
 check "prune keeps the live-locked worktree" "kept" "$(gone wt-live)"
 check "prune keeps the root checkout and main" "kept yes" "$(gone root) $(has_branch main)"
 
