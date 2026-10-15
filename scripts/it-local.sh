@@ -53,16 +53,26 @@ trap cleanup EXIT INT TERM
 MONGOD_PID=$!
 
 URI="mongodb://127.0.0.1:$PORT/?directConnection=true"
-for _ in $(seq 1 60); do
-    "$MONGOSH" --quiet "$URI" --eval 'db.runCommand({ping: 1}).ok' >/dev/null 2>&1 && break
+# How long the server gets to answer, and then to become PRIMARY (seconds each).
+START_SECONDS="${IT_LOCAL_START_SECONDS:-60}"
+# The free port is only free when it was picked: another agent's server can take it before ours binds, and a bare ping
+# would then pass against THAT server — this run's suites writing into another run's databases. It is ours only when
+# it serves our data directory.
+ours=""
+for _ in $(seq 1 "$START_SECONDS"); do
     kill -0 "$MONGOD_PID" 2>/dev/null || { echo "mongod exited on start — see $DATA/mongod.log:" >&2; tail -20 "$DATA/mongod.log" >&2; exit 1; }
+    [ "$("$MONGOSH" --quiet "$URI" --eval 'db.serverCmdLineOpts().parsed.storage.dbPath' 2>/dev/null)" = "$DATA" ] && { ours=1; break; }
     sleep 1
 done
+[ -n "$ours" ] || { echo "no mongod of this run's own answered on :$PORT within ${START_SECONDS}s (another server holds the port?)" >&2; exit 1; }
 "$MONGOSH" --quiet "$URI" --eval "rs.initiate({_id: 'rs0', members: [{_id: 0, host: '127.0.0.1:$PORT'}]})" >/dev/null
-for _ in $(seq 1 60); do
-    [ "$("$MONGOSH" --quiet "$URI" --eval 'rs.status().myState' 2>/dev/null)" = "1" ] && break
+primary=""
+for _ in $(seq 1 "$START_SECONDS"); do
+    [ "$("$MONGOSH" --quiet "$URI" --eval 'rs.status().myState' 2>/dev/null)" = "1" ] && { primary=1; break; }
     sleep 1
 done
+# Change streams and the staging fold's transactions need a primary: without one every suite fails, far from here.
+[ -n "$primary" ] || { echo "mongod on :$PORT did not become PRIMARY within ${START_SECONDS}s — see $DATA/mongod.log" >&2; tail -20 "$DATA/mongod.log" >&2; exit 1; }
 echo "==> mongod $("$MONGOD" --version | head -1 | awk '{print $NF}') of this run's own on :$PORT ($DATA)"
 
 status=0

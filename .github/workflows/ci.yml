@@ -216,6 +216,7 @@ jobs:
                       bash scripts/dev-server-test.sh
                       bash scripts/identity-capture-test.sh
                       bash scripts/reset-corpus-test.sh
+                      bash scripts/it-local-test.sh
                       bash scripts/local-mirror/mongosh-at-test.sh
                       bash scripts/local-mirror/mirror-resilience-test.sh
                       bash scripts/local-mirror/start-local-mongo-test.sh
