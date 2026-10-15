@@ -150,11 +150,11 @@ def rowSettings(variable: String, config: Configuration, rows: Seq[(String, Stri
     config / testOptions += Tests.Filter(selected)
   }
 
-// `itAll` on one runner was CPU-bound (828 s of suites on 4 cores, 2026-10-15): `IT_ROW=identity` runs the two
-// whole-corpus identity specs, which each fill a runner's cores; `IT_ROW=rest` every other integration spec.
+// `itAll` on one runner was CPU-bound (828 s of suites on 4 cores, 2026-10-15): `IT_ROW=identity` runs the hard-cluster
+// convergence, whose parallel boots fill a runner's cores; `IT_ROW=rest` every other integration spec. IdentityShadow
+// rode with it until run 38810289586 put that row at 5.0 min against the rest row's 3.5, a row mostly waiting on Mongo.
 lazy val IdentityIntegrationSuites = Set(
-  "integration.HardClusterConvergenceIntegrationSpec",
-  "integration.IdentityShadowIntegrationSpec")
+  "integration.HardClusterConvergenceIntegrationSpec")
 lazy val itRowSettings = rowSettings("IT_ROW", IntegrationTest, Seq("identity" -> IdentityIntegrationSuites))
 
 // The worker's ~6,300 unit tests on one runner were CPU-bound too (409 s of suites at 4 cores, 2026-10-15), split by

@@ -426,9 +426,9 @@ jobs:
                   path: /tmp/fixture-server/log
                   if-no-files-found: ignore
 
-    # The integration specs, SPLIT across two runners by build.sbt's `IT_ROW` filter: `identity` runs the two
-    # whole-corpus identity specs (HardClusterConvergence, IdentityShadow), each of which fills a runner's cores;
-    # `rest` runs every other spec, by exclusion. One runner running all of `itAll` was CPU-bound — 828 s of
+    # The integration specs, SPLIT across two runners by build.sbt's `IT_ROW` filter: `identity` runs the
+    # hard-cluster convergence, whose parallel boots fill a runner's cores; `rest` runs every other spec, by
+    # exclusion. One runner running all of `itAll` was CPU-bound — 828 s of
     # suites on 4 cores, the build's long pole beside the unit tests (2026-10-15). The slot came from the WebKit
     # phone shards (4 → 2). Both rows run `itAll`, so `all` still keeps going past a failing module.
     integration-test:
