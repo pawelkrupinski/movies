@@ -513,6 +513,7 @@ object IdentityResolver {
       def answered(query: CandidateQuery): Seq[Hit] = answers.get(query).flatMap(_.toOption).getOrElse(Nil)
       // a piece the corpus bills beside two whole titles or more, whatever families they fell in
       def recurs(shape: String) = generation.context.repeatedSegment(generation.normalizer.sanitize(shape))
+      val backed  = Corroboration.support(clusters, _.iterator.flatMap(node => filmOf(node.id)).nextOption(), scope.of)
       val decided = clusters.flatMap { cluster =>
         val (bills, unbilled) = cluster.partition(node => billing(node.id))
         // a member billing its cluster's film as one piece beside another thing is none of it either — unless a pin took it
@@ -523,8 +524,11 @@ object IdentityResolver {
           val corroborated = scored.flatMap(_._2.number("venues.corroborating")).maxOption.getOrElse(0.0)
           scored.flatMap { case (node, own) => IdentityResolver.billedAsPiece(node, own, corroborated, recurs, answered).map(node -> _) }
         }.toMap
-        val rest   = unbilled.filterNot(piecesOf.contains)
-        if ((bills.isEmpty && piecesOf.isEmpty) || film.isEmpty)
+        val placed = unbilled.filterNot(piecesOf.contains)
+        // a member nothing of its own corroborates the film by, whose take a fact or an evidenced namesake speaks against
+        val weak   = film.filterNot(_ => pinned).toSeq.flatMap(Corroboration.refused(placed, _, scope.of, familyEdges, backed)).toMap
+        val rest   = placed.filterNot(weak.contains)
+        if ((bills.isEmpty && piecesOf.isEmpty && weak.isEmpty) || film.isEmpty)
           Seq(decisions.of(cluster, scope, filmOf, accepted, votes, familyEdges, clusterIndex))
         else {
           // a cluster of bills or pieces alone takes no film its vote reaches either
@@ -534,7 +538,8 @@ object IdentityResolver {
           }
           Option.when(rest.nonEmpty)(decisions.of(rest, scope, filmOf, accepted, votes, familyEdges, clusterIndex)).toSeq ++
             Option.when(bills.nonEmpty)(none(bills, Seq("bills several works: none of them"), "bills both works")) ++
-            Option.when(piecesOf.nonEmpty)(none(unbilled.filter(piecesOf.contains), unbilled.flatMap(piecesOf.get).distinct, "billed as one piece"))
+            Option.when(piecesOf.nonEmpty)(none(unbilled.filter(piecesOf.contains), unbilled.flatMap(piecesOf.get).distinct, "billed as one piece")) ++
+            Option.when(weak.nonEmpty)(none(placed.filter(weak.contains), placed.flatMap(weak.get).distinct, "uncorroborated namesake"))
         }
       }
       (familyEdges, decided, violations)
