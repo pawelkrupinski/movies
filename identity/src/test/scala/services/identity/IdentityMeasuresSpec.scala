@@ -367,11 +367,12 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     val group = (1 to 5).map(i => s"Venue $i" -> Listing("Candyman (1992)", directors = Seq("Bernard Rose")))
     val candyman = Film("Candyman", year = Some(1992), directors = Some(Seq("Bernard Rose")))
     val other    = Film("Paperhouse", year = Some(1988), directors = Some(Seq("Bernard Rose")))
-    (VenueBacking.backingVenues(candyman, group) - "Venue 1").size shouldBe 4
-    (VenueBacking.backingVenues(other, group) - "Venue 1").size shouldBe 0
+    val backing  = new VenueBacking(Map("candyman" -> group))
+    backing.corroborating(Seq("candyman"), candyman, "Venue 1") shouldBe 4
+    backing.corroborating(Seq("candyman"), other, "Venue 1") shouldBe 0
   }
 
-  "a group's venue backing" should "count, for every member and film, exactly what corroboratingVenues counts" in {
+  "a group's venue backing" should "count, for every member and film, what a backing that never asked before counts" in {
     val films = Seq(Film("Candyman", year = Some(2021), directors = Some(Seq("Nia DaCosta"))),
       Film("Candyman", year = Some(1992), directors = Some(Seq("Bernard Rose"))), Film("Candy", year = Some(2006)))
     val group = (1 to 12).map { i =>
@@ -380,7 +381,8 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     }
     val backing = new VenueBacking(Map("candyman" -> group))
     for (f <- films; (venue, _) <- group :+ ("Elsewhere" -> Listing("Candyman")))
-      withClue(s"$venue ${f.year}")(backing.corroborating(Seq("candyman"), f, venue) shouldBe (VenueBacking.backingVenues(f, group) - venue).size)
+      withClue(s"$venue ${f.year}")(backing.corroborating(Seq("candyman"), f, venue) shouldBe
+        new VenueBacking(Map("candyman" -> group)).corroborating(Seq("candyman"), f, venue))
   }
 
   it should "count nothing for a title group no venue lists" in {
@@ -1028,7 +1030,7 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.namesFilm(Listing("Cineworld 30: The Matrix"), Film("The Matrix")) shouldBe true
     // So no venue's own facts back the original on a sequel's title.
     val group = Seq("a", "b").map(_ -> listing.copy(directors = Seq("Tobe Hooper")))
-    VenueBacking.backingVenues(original.copy(directors = Some(Seq("Tobe Hooper"))), group) shouldBe empty
+    new VenueBacking(Map("sequel" -> group)).corroborating(Seq("sequel"), original.copy(directors = Some(Seq("Tobe Hooper"))), "") shouldBe 0
   }
 
   "a listing that publishes nothing but its title" should "be told from one that publishes a fact" in {

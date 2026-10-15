@@ -75,38 +75,41 @@ object Catalogue {
            catalogueAsked: mutable.Set[CatalogueQuestion], familyAsked: mutable.Set[(VoterFamily, String)], finding: mutable.Set[String]): Answer[Option[Taken]] =
     // a feed's ids alone, and nothing that could corroborate the film they name: no question worth asking
     if (uncorroborable(listings, stated, titlePicks)) Answer.Known(None)
-    else named(listings, catalogue, catalogueAsked) match {
-      case Answer.Unknown => Answer.Unknown
-      case Answer.Known(None) => Answer.Known(None)
-      case Answer.Known(Some(_)) if listings.exists(ListingShape.billsSeveral) => Answer.Known(None)
-      case Answer.Known(Some(film)) =>
+    else named(listings, catalogue, catalogueAsked).flatMap {
+      case None => Answer.Known(None)
+      case Some(_) if listings.exists(ListingShape.billsSeveral) => Answer.Known(None)
+      case Some(film) =>
         // the record whose facts the listings must not contradict: Wikidata's item, else IMDb's title
         val record: Option[Answer[Option[SourceRecord]]] = film.item.flatMap(q => families.get(VoterFamily.Wiki).map(f => noted(f, q, familyAsked)))
           .orElse(film.imdb.flatMap(tt => families.get(VoterFamily.Imdb).map(f => noted(f, tt, familyAsked))))
-        record.fold[Answer[Option[Taken]]](Answer.Known(None)) {
-          case Answer.Unknown => Answer.Unknown
-          case Answer.Known(None) => Answer.Known(None)   // no film item, no IMDb title: nothing a card can stand on
-          case Answer.Known(Some(facts)) if Agreement.contradictedByTheListing(stated, facts) => Answer.Known(None)
-          case Answer.Known(Some(facts)) =>
-            val imdb = film.imdb.orElse(facts.crossIds.get("imdb"))
-            // TMDB's own find of the IMDb id first: Wikidata's TMDB id can name a record TMDB since deleted or merged (DE
-            // "Dann passiert das Leben": P4947 1517080, gone; TMDB finds its IMDb id as 1445025)
-            val tmdb: Answer[Option[Int]] = imdb match {
-              case Some(tt) => found(tmdbOf, tt, finding)
-              case None     => Answer.Known(film.tmdb.orElse(facts.crossIds.get("tmdb").flatMap(_.toIntOption)))
-            }
-            tmdb match {
-              case Answer.Unknown => Answer.Unknown
-              case Answer.Known(tmdbFilm) if fedOnly(film, listings) && !corroborated(stated, facts, tmdbFilm, titlePicks) => Answer.Known(None)
-              case Answer.Known(tmdbFilm) =>
-                val stands = tmdbFilm.fold(imdb.map(VoterFamily.Imdb.database -> _).orElse(film.item.map(VoterFamily.Wiki.database -> _)))(_ => None)
-                val as     = tmdbFilm.fold(stands.fold("no film")((source, at) => s"$source $at"))(tmdbId => s"TMDB $tmdbId")
-                val line   = s"catalogue id ${film.id.source}:${film.id.id}${if (film.linked) " (linked from the venue's page)" else ""} → $as via ${film.hit.via}" +
-                  film.hit.item.fold("")(q => s" ($q)") + s" ${facts.film.titled}"
-                Answer.Known(Option.when(tmdbFilm.isDefined || stands.isDefined)(Taken(tmdbFilm, stands, Some(facts.film.title), facts.film.year, line)))
-            }
-        }
+        record.fold[Answer[Option[Taken]]](Answer.Known(None))(_.flatMap {
+          case None => Answer.Known(None)   // no film item, no IMDb title: nothing a card can stand on
+          case Some(facts) if Agreement.contradictedByTheListing(stated, facts) => Answer.Known(None)
+          case Some(facts) => takenOn(film, facts, listings, stated, tmdbOf, titlePicks, finding)
+        })
     }
+
+  /** What the catalogue's `film` takes on the record whose `facts` the listings do not contradict: its TMDB film, else the
+   *  record it stands on. */
+  private def takenOn(film: Named, facts: SourceRecord, listings: Seq[Listing], stated: Seq[Listing], tmdbOf: String => Answer[Option[Int]],
+                      titlePicks: () => Set[Int], finding: mutable.Set[String]): Answer[Option[Taken]] = {
+    val imdb = film.imdb.orElse(facts.crossIds.get("imdb"))
+    // TMDB's own find of the IMDb id first: Wikidata's TMDB id can name a record TMDB since deleted or merged (DE
+    // "Dann passiert das Leben": P4947 1517080, gone; TMDB finds its IMDb id as 1445025)
+    val tmdb: Answer[Option[Int]] = imdb match {
+      case Some(tt) => Agreement.tmdbFound(tmdbOf, tt, finding)
+      case None     => Answer.Known(film.tmdb.orElse(facts.crossIds.get("tmdb").flatMap(_.toIntOption)))
+    }
+    tmdb.map {
+      case tmdbFilm if fedOnly(film, listings) && !corroborated(stated, facts, tmdbFilm, titlePicks) => None
+      case tmdbFilm =>
+        val stands = tmdbFilm.fold(imdb.map(VoterFamily.Imdb.database -> _).orElse(film.item.map(VoterFamily.Wiki.database -> _)))(_ => None)
+        val as     = tmdbFilm.fold(stands.fold("no film")((source, at) => s"$source $at"))(tmdbId => s"TMDB $tmdbId")
+        val line   = s"catalogue id ${film.id.source}:${film.id.id}${if (film.linked) " (linked from the venue's page)" else ""} → $as via ${film.hit.via}" +
+          film.hit.item.fold("")(q => s" ($q)") + s" ${facts.film.titled}"
+        Option.when(tmdbFilm.isDefined || stands.isDefined)(Taken(tmdbFilm, stands, Some(facts.film.title), facts.film.year, line))
+    }
+  }
 
   /** Is the film named only by catalogue ids that may not decide ([[SourceReliability.linkDecides]]: a feed's) — none the venue's
    *  page links, no other id of the cluster's? The feed's facts are that entry's own, so they cannot confirm it:
@@ -136,13 +139,6 @@ object Catalogue {
   /** Do the hits name one film: at most one Wikidata item, one TMDB id and one IMDb id among them? */
   private def oneFilm(hits: Seq[CatalogueHit]): Boolean =
     hits.flatMap(_.item).distinct.sizeIs <= 1 && hits.flatMap(_.tmdb).distinct.sizeIs <= 1 && hits.flatMap(_.imdb).distinct.sizeIs <= 1
-
-  /** The TMDB film TMDB finds by the IMDb id `tt`, the find noted in `finding` while it is not answered yet. */
-  private def found(tmdbOf: String => Answer[Option[Int]], tt: String, finding: mutable.Set[String]): Answer[Option[Int]] = {
-    val answer = tmdbOf(tt)
-    if (answer == Answer.Unknown) finding += tt
-    answer
-  }
 
   /** `family`'s record of `id`, a question noted when it is not answered yet. */
   private def noted(family: FamilyAnswers, id: String, asked: mutable.Set[(VoterFamily, String)]): Answer[Option[SourceRecord]] = {

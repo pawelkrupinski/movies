@@ -24,7 +24,7 @@ object TitleWords {
     case Anniversary     extends Concept("anniversary")
     /** `DecorationWords.EditionWords`. */
     case Edition         extends Concept("edition")
-    /** `DecorationWords.EventWords` (and `IdentityMeasures.EventTailWords`). */
+    /** `DecorationWords.EventWords` (and `MultiFilmBill.EventTailWords`). */
     case Premiere        extends Concept("premiere")
     case Talk            extends Concept("talk")
     case Screening       extends Concept("screening")
@@ -37,7 +37,7 @@ object TitleWords {
     case FestivalEdition extends Concept("festival-edition")
     /** `DecorationWords.EventWords` and `ListingShape.HouseWords`. */
     case Relay           extends Concept("relay")
-    /** `IdentityMeasures.EventTailWords`, beside the event words. */
+    /** `MultiFilmBill.EventTailWords`, beside the event words. */
     case SideEvent       extends Concept("side-event")
     /** `SuspectTakes.OldFilmWords`. */
     case OldFilm         extends Concept("old-film")
@@ -49,7 +49,7 @@ object TitleWords {
     case DoubleBill      extends Concept("double-bill")
     /** `ExtraTitleRules`' screening-note strip (`BareAudience`). */
     case Audience        extends Concept("audience")
-    /** `IdentityMeasures.StageHouseWords` and `ListingShape.HouseWords`. */
+    /** `StageRelays.StageHouseWords` and `ListingShape.HouseWords`. */
     case StageHouse      extends Concept("stage-house")
     /** `ListingShape.HouseWords`. */
     case Stage           extends Concept("stage")

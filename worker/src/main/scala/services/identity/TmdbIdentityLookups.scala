@@ -45,18 +45,13 @@ final class TmdbIdentityLookups(tmdb: TmdbClient, imdb: ImdbClient, enrichers: S
       answered(tmdb.findPersonCandidates(CandidateQuery.personName(name))
         .flatMap(tmdb.personFilmography).map(TmdbIdentityLookups.hitOf).distinctBy(_.tmdbId))
     case CandidateQuery.Imdb(title)       =>
-      suggestedMovies(title) match {
-        case Answer.Known(movies) => answered(ImdbClient.suggested(movies).flatMap(tmdb.findByImdbId).map(TmdbIdentityLookups.hitOf).distinctBy(_.tmdbId))
-        case Answer.Unknown       => Answer.Unknown
-      }
+      suggestedMovies(title).flatMap(movies =>
+        answered(ImdbClient.suggested(movies).flatMap(tmdb.findByImdbId).map(TmdbIdentityLookups.hitOf).distinctBy(_.tmdbId)))
     case CandidateQuery.ImdbTitled(title) =>
-      suggestedMovies(title) match {
-        case Answer.Known(movies) => answered {
-          val found = ImdbClient.titled(title, movies, id => Some(imdb.titlesOf(id))).getOrElse(Nil).map(tt => tt -> tmdb.findByImdbId(tt).take(1).toSeq.map(TmdbIdentityLookups.hitOf))
-          TmdbIdentityLookups.titledHits(found.map(_._2), TmdbIdentityLookups.fallbackHits(found.collect { case (tt, Nil) => tt }, movies))
-        }
-        case Answer.Unknown       => Answer.Unknown
-      }
+      suggestedMovies(title).flatMap(movies => answered {
+        val found = ImdbClient.titled(title, movies, id => Some(imdb.titlesOf(id))).getOrElse(Nil).map(tt => tt -> tmdb.findByImdbId(tt).take(1).toSeq.map(TmdbIdentityLookups.hitOf))
+        TmdbIdentityLookups.titledHits(found.map(_._2), TmdbIdentityLookups.fallbackHits(found.collect { case (tt, Nil) => tt }, movies))
+      })
   }
 
   // A title's IMDb suggestions answer two questions — the films IMDb suggests (`Imdb`) and those it lists under the

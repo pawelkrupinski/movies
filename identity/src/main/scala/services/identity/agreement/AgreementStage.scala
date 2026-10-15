@@ -471,10 +471,8 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
           val showing = digested.listings.filter(listing => PosterEvidence.shows(listing) && listing.poster.exists(far)).distinctBy(_.poster)
           val films   = titledFilms(showing)
           films.foreach(film => reads(PosterAnswers.idOf(AgreementStage.PosterQuestion.Film(film))) = 0L)
-          posterDistances(digested.id, digested.digest, showing, Some(model), asked, (_, _, _) => films, reading.posters) match {
-            case Answer.Known(found) => Answer.Known(PosterEvidence.veto(Some(model), found))
-            case Answer.Unknown      => Answer.Unknown
-          }
+          posterDistances(digested.id, digested.digest, showing, Some(model), asked, (_, _, _) => films, reading.posters)
+            .map(found => PosterEvidence.veto(Some(model), found))
         }
       }
     }
@@ -687,11 +685,8 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
 
   /** The TMDB film a record names: its TMDB id, else the film TMDB finds by its IMDb id — `Unknown` while that find is
    *  not answered yet, the IMDb id then noted in `finding`. */
-  private def tmdbFilmOf(tmdb: Option[Int], imdb: Option[String], finding: mutable.Set[String]): Answer[Option[Int]] = {
-    val film = tmdb.fold(imdb.fold[Answer[Option[Int]]](Answer.Known(None))(tmdbOf))(film => Answer.Known(Some(film)))
-    if (film == Answer.Unknown) imdb.foreach(finding += _)
-    film
-  }
+  private def tmdbFilmOf(tmdb: Option[Int], imdb: Option[String], finding: mutable.Set[String]): Answer[Option[Int]] =
+    tmdb.fold(imdb.fold[Answer[Option[Int]]](Answer.Known(None))(Agreement.tmdbFound(tmdbOf, _, finding)))(film => Answer.Known(Some(film)))
 
   /** The listing as the model measures it, its venue's detail page read: what the broadcast join reads. */
   private def measured(listing: Listing): IdentityMeasures.Listing = Evidence.of(listing, venues.detail(listing).toOption.flatten).measured

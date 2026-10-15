@@ -37,7 +37,7 @@ object FetchReplayWiring {
       override lazy val uptimeMonitor = new services.UptimeMonitor(None, clock = clock)
       // `venue_pages` through `venuePages`: a pass may run its own, one whose writes misbehave.
       override lazy val venuePageStore: services.venuepages.VenuePageStore = venuePages(newVenuePageStore)
-      // A replay never waits in real time: the shadow fill paces like a retry does.
+      // A replay never waits in real time: the identity lookup fill paces like a retry does.
       override protected def lookupFillSleep: Long => Unit = retrySleep
       // A stub key: the answers are replayed, and a keyless client short-circuits
       // before it reaches the fetch at all.

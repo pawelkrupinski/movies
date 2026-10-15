@@ -13,7 +13,7 @@ object Backer {
   def source(key: String): String = { val at = key.indexOf(Join); if (at < 0) key else key.substring(at + 1) }
 }
 
-/** [[corroboratingVenues]] for every asker of the same title groups, each group's backing venues
+/** The venues backing a film for every asker of the same title groups, each group's backing venues
  *  of a film found once: a wide release lists one title at thousands of venues over one candidate
  *  pool, and asking per member re-reads the whole group per member. A group no venue lists (an
  *  undecorated title nobody lists bare) backs nothing. One per resolve or calibration pass; not
@@ -37,12 +37,8 @@ final class VenueBacking(groups: Map[String, Seq[(String, Listing)]]) {
 }
 
 object VenueBacking {
-  /** Every venue of `group` (the listings sharing the listing's title key, each with its [[Backer]]) whose OWN facts
-   *  back `f` — a title naming it, and its exact year or a credit of its director: what [[VenueBacking]] counts, the
-   *  asking venue taken out, as `venues.corroborating`. */
-  private[identity] def backingVenues(f: Film, group: Seq[(String, Listing)]): Set[String] = backers(f, group).map(Backer.venue)
-
-  /** Every [[Backer]] of `group` whose own facts back `f`. */
+  /** Every [[Backer]] of `group` (the listings sharing the listing's title key) whose OWN facts back `f` — a title
+   *  naming it, and its exact year or a credit of its director. */
   private def backers(f: Film, group: Seq[(String, Listing)]): Set[String] = {
     // A node's venues share one listing: its answer is found once, not once per venue.
     val backs = new java.util.IdentityHashMap[Listing, java.lang.Boolean]()

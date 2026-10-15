@@ -268,7 +268,7 @@ class WorkerWiring(
   /** The fill's rounds, every `KINOWO_IDENTITY_SHADOW_INTERVAL_SECONDS` (30 minutes). */
   lazy val identityLookupRefreshSchedule: services.tasks.ClaimedPeriodicTask = managedResources.stopping(
     new services.tasks.ClaimedPeriodicTask("identity-lookup-refresh", () => lookupFill.start(), identityLookupFillInterval.value,
-      configuration.identityLookupFillInitialDelay(WorkerWiring.DefaultIdentityShadowInitialDelay).value, scheduledRunStore, clock))
+      configuration.identityLookupFillInitialDelay(WorkerWiring.DefaultIdentityLookupFillInitialDelay).value, scheduledRunStore, clock))
 
   /** How the fill waits its pace between asks: real time, except in a replay harness. */
   protected def lookupFillSleep: Long => Unit = Thread.sleep
@@ -557,7 +557,7 @@ object WorkerWiring {
   val DefaultLookupFillInterval: settings.IdentityLookupFillInterval =
     settings.IdentityLookupFillInterval(scala.concurrent.duration.Duration(30, "minutes"))
   /** Clear of the boot's scrape burst and the model's take-up. */
-  val DefaultIdentityShadowInitialDelay: settings.IdentityLookupFillInitialDelay =
+  val DefaultIdentityLookupFillInitialDelay: settings.IdentityLookupFillInitialDelay =
     settings.IdentityLookupFillInitialDelay(scala.concurrent.duration.Duration(5, "minutes"))
 
   /** The closure sweep's cadence: its evidence moves in days (a gone venue is re-probed

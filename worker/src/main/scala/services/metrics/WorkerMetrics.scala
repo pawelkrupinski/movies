@@ -88,7 +88,7 @@ class WorkerMetrics(countryCodes: Seq[String], poolSize: settings.WorkerPoolSize
   val shareCardAudit: services.tasks.RecheckedAudit.Series =
     new services.tasks.RecheckedAudit.Series(services.tasks.RecheckedAudit.Names.ShareCards, "share-card pointer", countryCodes, registry)
 
-  // The identity resolver's shadow run, per country — see IdentityLookupFillMetrics.
+  // The identity model's paced live lookup fill, per country — see IdentityLookupFillMetrics.
   val identityLookupFill: IdentityLookupFillMetrics = new IdentityLookupFillMetrics(registry)
   val identityModel: IdentityModelGauges = new IdentityModelGauges(registry)
   // A cut-over country's identity projection — see IdentityCutoverMetrics.

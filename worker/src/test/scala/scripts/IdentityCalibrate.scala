@@ -648,11 +648,6 @@ object IdentityCalibrate {
   def venueDeniesFilm(m: Map[String, Measure]): Boolean =
     num(m, "year.distance").exists(_ > 5) && cat(m, "director").contains("different")
 
-  /** `MixedFilmDetector.listingDeniesFilm` (the DecorationVeto / ListingDeniesFilm veto). */
-  def listingDeniesFilm(m: Map[String, Measure]): Boolean =
-    cat(m, "director").exists(Set("different", "shared_name", "incomparable")) &&
-      (IdentityMeasures.runtimeGap(m).exists(_ > 2) || num(m, "year.distance").exists(_ > 5))
-
   /** `MixedFilmDetector.wouldAddASecondFilm` (OriginalTitleNamesAnotherFilm). */
   def originalTitleNamesAnotherFilm(m: Map[String, Measure]): Boolean =
     cat(m, "originalTitle").contains("disjoint") && !cat(m, "director").contains("same_person") &&
@@ -679,7 +674,6 @@ object IdentityCalibrate {
 
   val ExistingLf: Seq[(String, Map[String, Measure] => Boolean, Set[String])] = Seq(
     ("VenueDeniesFilm (DeniedCandidate)", venueDeniesFilm, Set("year", "director")),
-    ("ListingDeniesFilm (DecorationVeto)", listingDeniesFilm, Set("year", "director", "runtime")),
     ("OriginalTitleNamesAnotherFilm", originalTitleNamesAnotherFilm, Set("year", "director", "originalTitle", "runtime")),
     ("Faust fold refusal (containment + venue denial)", faustFoldRefusal, Set("year", "director")))
   val ExistingLl: Seq[(String, Map[String, Measure] => Boolean, Set[String])] = Seq(

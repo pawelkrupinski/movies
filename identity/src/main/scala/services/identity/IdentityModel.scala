@@ -377,6 +377,10 @@ enum Answer[+A] {
     case Known(v) => Known(f(v))
     case Unknown  => Unknown
   }
+  def flatMap[B](f: A => Answer[B]): Answer[B] = this match {
+    case Known(v) => f(v)
+    case Unknown  => Unknown
+  }
   /** This answer, or — the source not knowing — `other`'s. */
   def orElse[B >: A](other: => Answer[B]): Answer[B] = if (isKnown) this else other
 }
@@ -469,10 +473,7 @@ trait IdentityLookups {
   /** The day a film was released, as its record states it: `Unknown` while the record is unknown — or, in a store, while
    *  it was filed before records kept the whole day and holds only the year TMDB dated it in
    *  ([[agreement.Broadcast]] reads the day; nothing else does). */
-  def releaseDay(tmdbId: Int): Answer[Option[java.time.LocalDate]] = film(tmdbId) match {
-    case Answer.Known(record) => Answer.Known(record.flatMap(_.released))
-    case Answer.Unknown       => Answer.Unknown
-  }
+  def releaseDay(tmdbId: Int): Answer[Option[java.time.LocalDate]] = film(tmdbId).map(_.flatMap(_.released))
   /** A film's top-billed cast as TMDB credits it ([[TmdbFilmRecord.cast]]): what the cast evidence reads
    *  ([[CastEvidence]]), never the model. Read apart from its record ([[film]]), as the release day is: every candidate
    *  of every family holds a record, and only an unmatched cluster's fill reads a cast. `Known(None)` where the source

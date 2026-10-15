@@ -39,20 +39,18 @@ object VenueListings {
 
   /** The one film the listing's venue programme names on its days, by a title equal to the listing's. */
   private def named(listing: Listing, answers: FamilyAnswers): Answer[Option[SourceRecord]] =
-    answers.showing(listing.venue) match {
-      case Answer.Unknown => Answer.Unknown
-      case Answer.Known(showings) =>
-        val onItsDays = showings.filter(showing => showing.days.days.exists(listing.screenings.contains))
-        val records   = onItsDays.map(showing => showing.film -> answers.record(showing.film))
-        if (records.exists(_._2 == Answer.Unknown)) Answer.Unknown
-        else {
-          val own = titleKeys(listing)
-          records.collect { case (id, Answer.Known(Some(record))) if recordKeys(record.film).exists(own) =>
-            record.copy(crossIds = record.crossIds + (answers.family.database -> id)) }.distinctBy(_.crossIds) match {
-            case Seq(one) => Answer.Known(Some(one))
-            case _        => Answer.Known(None)
-          }
+    answers.showing(listing.venue).flatMap { showings =>
+      val onItsDays = showings.filter(showing => showing.days.days.exists(listing.screenings.contains))
+      val records   = onItsDays.map(showing => showing.film -> answers.record(showing.film))
+      if (records.exists(_._2 == Answer.Unknown)) Answer.Unknown
+      else {
+        val own = titleKeys(listing)
+        records.collect { case (id, Answer.Known(Some(record))) if recordKeys(record.film).exists(own) =>
+          record.copy(crossIds = record.crossIds + (answers.family.database -> id)) }.distinctBy(_.crossIds) match {
+          case Seq(one) => Answer.Known(Some(one))
+          case _        => Answer.Known(None)
         }
+      }
     }
 
   private def titleKeys(listing: Listing): Set[String] =

@@ -286,6 +286,13 @@ object Agreement {
       turnedDown)
   }
 
+  /** The TMDB film TMDB finds by the IMDb id `tt`, the find noted in `finding` while it is not answered yet. */
+  private[identity] def tmdbFound(tmdbOf: String => Answer[Option[Int]], tt: String, finding: mutable.Set[String]): Answer[Option[Int]] = {
+    val answer = tmdbOf(tt)
+    if (answer == Answer.Unknown) finding += tt
+    answer
+  }
+
   /** Did `verdict` weigh the film (`isIt`, its takers' `records`) and turn it down — take none, its evidence leaning to
    *  another film? One family's dissent, as a family taking another film is ([[agreed]]): weighed among films it favours
    *  none of is no evidence against this one (US "Spider Baby": Metacritic's best a Spider-Man film at 5.3%, its next

@@ -67,9 +67,9 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
 
   def candidates(query: CandidateQuery): Answer[Seq[Hit]] = query match {
     case CandidateQuery.Title(text) =>
-      document(TmdbKind.Query, TmdbStore.titleSearchId(language, text)).fold[Answer[Seq[Hit]]](Answer.Unknown)(d => hitsOf(intsOf(d)))
+      document(TmdbKind.Query, TmdbStore.titleSearchId(language, text)).toAnswer.flatMap(d => hitsOf(intsOf(d)))
     case CandidateQuery.Director(name) =>
-      document(TmdbKind.Query, personSearchOf(name)).fold[Answer[Seq[Hit]]](Answer.Unknown) { search =>
+      document(TmdbKind.Query, personSearchOf(name)).toAnswer.flatMap { search =>
         val people = intsOf(search).take(MaxPersonCandidates).map(id => document(TmdbKind.Person, id.toString))
         if (people.exists(_.isEmpty)) Answer.Unknown
         else Answer.sequence(people.flatten.map { p =>
@@ -78,14 +78,14 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
         }).map(_.flatten.distinctBy(_.tmdbId))
       }
     case CandidateQuery.Imdb(title) =>
-      document(TmdbKind.Query, TmdbStore.imdbSuggestionsId(title)).fold[Answer[Seq[Hit]]](Answer.Unknown) { d =>
+      document(TmdbKind.Query, TmdbStore.imdbSuggestionsId(title)).toAnswer.flatMap { d =>
         firstFilms(suggestionIds(d, title).map(tt => document(TmdbKind.Query, TmdbStore.findId(tt)))).map(_.flatten.distinctBy(_.tmdbId))
       }
     case CandidateQuery.ImdbTitled(title) =>
-      document(TmdbKind.Query, TmdbStore.imdbSuggestionsId(title)).fold[Answer[Seq[Hit]]](Answer.Unknown) { d =>
+      document(TmdbKind.Query, TmdbStore.imdbSuggestionsId(title)).toAnswer.flatMap { d =>
         val movies = suggestionsOf(d)
         ImdbClient.titled(title, movies, tt => document(TmdbKind.Query, TmdbStore.imdbTitlesId(tt)).map(BsonFields.stringsOf(_, "titles")))
-          .fold[Answer[Seq[Hit]]](Answer.Unknown) { ids =>
+          .toAnswer.flatMap { ids =>
             val finds = ids.map(tt => tt -> document(TmdbKind.Query, TmdbStore.findId(tt)))
             firstFilms(finds.map(_._2)).map(found =>
               TmdbIdentityLookups.titledHits(found, TmdbIdentityLookups.fallbackHits(finds.collect { case (tt, Some(f)) if intsOf(f).isEmpty => tt }, movies)))

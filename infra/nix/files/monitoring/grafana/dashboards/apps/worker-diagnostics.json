@@ -2811,8 +2811,8 @@
     },
     {
       "id": 50,
-      "title": "Identity shadow run — live lookup fill, last round",
-      "description": "`kinowo_worker_identity_shadow_lookups`: the identity model's PACED LIVE LOOKUP FILL (ShadowLookupFill, docs/design/identity-resolver.md §19), after each round: the TMDB questions the model's store cannot answer, asked live through the pipeline's own lookup chain and filed only in that store. outcome=asked (live requests), answered, failed, deferred (gaps it had no budget left for this round), rate (asks per minute it ran at — below KINOWO_IDENTITY_SHADOW_LOOKUP_RATE while backed off after a 429/5xx). Deferred falling to zero is the fill caught up. Panel only; no alert.",
+      "title": "Identity live lookup fill, last round",
+      "description": "`kinowo_worker_identity_shadow_lookups`: the identity model's PACED LIVE LOOKUP FILL (LookupFill, docs/design/identity-resolver.md §19), after each round: the TMDB questions the model's store cannot answer, asked live through the pipeline's own lookup chain and filed only in that store. outcome=asked (live requests), answered, failed, deferred (gaps it had no budget left for this round), rate (asks per minute it ran at — below KINOWO_IDENTITY_SHADOW_LOOKUP_RATE while backed off after a 429/5xx). Deferred falling to zero is the fill caught up. Panel only; no alert.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",

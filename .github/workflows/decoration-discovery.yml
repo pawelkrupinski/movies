@@ -95,7 +95,7 @@ jobs:
               if: steps.changed.outputs.kept == 'true'
               run: |
                   sbt "common/testOnly services.titlerules.*" \
-                      "worker/testOnly services.movies.ExtraTitleRulesSpec services.identity.UnmatchedClustersRatchetSpec services.identity.MixedClustersSpec"
+                      "worker/testOnly services.movies.ExtraTitleRulesSpec services.identity.UnmatchedClustersRatchetSpec"
 
             # A search strip can move the whole corpus's films: regenerate the whole-corpus
             # assertion and the read model (delete, write, re-run to prove it stable — the
