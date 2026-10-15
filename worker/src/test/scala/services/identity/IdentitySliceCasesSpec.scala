@@ -27,7 +27,8 @@ class IdentitySliceCasesSpec extends AnyFlatSpec with Matchers {
       IdentitySlice.readExpected(dir).foreach { expected =>
         withClue(s"${expected.venue} | ${expected.rawTitle} (label: ${expected.note}): ") {
           val take = takes.get((expected.venue, expected.rawTitle))
-          withClue(s"takes $take, expected ${expected.film}")(expected.holds(take) shouldBe true)
+          def check() = withClue(s"takes $take, expected ${expected.film}")(expected.holds(take) shouldBe true)
+          if (expected.pending) pendingUntilFixed(check()) else check()
         }
       }
     }

@@ -768,12 +768,17 @@ object IdentitySlice {
 
   /** What a pinned slice's listing must take, as labels.tsv judged it: `film` right for it, with the label's own note.
    *  Set by hand in a case's expected.tsv, `film` may instead be `none` (it takes no film) or `not:<film>` (it takes any
-   *  but that one): a listing whose right film its own evidence cannot reach yet must at least not take the wrong one. */
+   *  but that one): a listing whose right film its own evidence cannot reach yet must at least not take the wrong one;
+   *  either prefixed `pending:` while the fix it waits for has not landed. */
   final case class Expected(venue: String, rawTitle: String, film: String, note: String) {
-    def holds(take: Option[String]): Boolean =
-      if (film.startsWith(Expected.Not)) !take.contains(film.stripPrefix(Expected.Not)) else take.contains(film)
+    /** A `pending:` expectation names a fix not landed yet: the case is pending until it holds. */
+    def pending: Boolean = film.startsWith(Expected.Pending)
+    def holds(take: Option[String]): Boolean = {
+      val wanted = film.stripPrefix(Expected.Pending)
+      if (wanted.startsWith(Expected.Not)) !take.contains(wanted.stripPrefix(Expected.Not)) else take.contains(wanted)
+    }
   }
-  object Expected { val Not = "not:" }
+  object Expected { val Not = "not:"; val Pending = "pending:" }
 
   val ExpectedHeader = "venue\trawTitle\tfilm\tlabel"
 

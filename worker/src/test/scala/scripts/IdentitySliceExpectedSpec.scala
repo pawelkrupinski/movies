@@ -25,4 +25,11 @@ class IdentitySliceExpectedSpec extends AnyFlatSpec with Matchers {
     expected("not:tmdb:56085").holds(Some("tmdb:1735950")) shouldBe true
     expected("not:tmdb:56085").holds(Some("tmdb:56085")) shouldBe false
   }
+
+  it should "be pending, its expectation the same, while prefixed pending:" in {
+    expected("pending:not:tmdb:56085").pending shouldBe true
+    expected("pending:not:tmdb:56085").holds(Some("tmdb:56085")) shouldBe false
+    expected("pending:not:tmdb:56085").holds(Some("none")) shouldBe true
+    expected("not:tmdb:56085").pending shouldBe false
+  }
 }
