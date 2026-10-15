@@ -436,6 +436,12 @@ check "on a Mac (a /bin/bash 3) they run under it too, the floor the tools promi
 check "...and a failure only there blocks the push" "1 1" "$(script_push STUB_FLOOR_EXIT=1) $(grep -c 'scripttests FAILED' "$gate/err")"
 floor=$(floor_bash 5)
 check "a /bin/bash 4 or newer (Linux) runs them once" "0 --changed $runner_base" "$(script_push) $(cat "$gate/args")"
+# A pushed commit from before the runner took --bash: the hook is the working tree's, the runner the commit's.
+printf '#!/usr/bin/env bash\necho "$*" >> "$STUB_RUNNER_ARGS"\nexit 0\n' > "$grepo/scripts/run-script-tests"
+scratch_git "$grepo" add scripts/run-script-tests && scratch_git "$grepo" commit -qm "an older runner"
+runner_head="$(scratch_git "$grepo" rev-parse HEAD)"
+floor=$(floor_bash 3)
+check "a runner that predates --bash runs them once, even on a Mac" "0 --changed $runner_base" "$(script_push) $(cat "$gate/args")"
 floor=""
 rm -rf "$gate"
 

@@ -450,6 +450,8 @@ check_scripttests() {
     # shellcheck disable=SC2016 # expanded by that bash
     major=$("$floor" -c 'echo "${BASH_VERSINFO[0]}"' 2>/dev/null) || return 0
     case "$major" in [0-3]) ;; *) return 0 ;; esac
+    # The hook is the working tree's, the runner the pushed commit's: one from before --bash existed runs once.
+    grep -q -e '--bash' scripts/run-script-tests 2>/dev/null || return 0
     scripts/run-script-tests --changed "$base_sha" --bash "$floor" > "$tmp/scripttests-floor.log" 2>&1 \
         || { echo "under $floor (bash $major):" >&2; grep -v '^PASS\|✓' "$tmp/scripttests-floor.log" | head -80 >&2; return 1; }
     echo "under $floor: $(tail -1 "$tmp/scripttests-floor.log")"
