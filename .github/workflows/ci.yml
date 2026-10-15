@@ -207,6 +207,7 @@ jobs:
                       bash scripts/ci/prune-actions-caches-test.sh
                       bash scripts/ci/sbt-sources-key-test.sh
                       bash scripts/ci/wait-for-run-artifact-test.sh
+                      bash scripts/ci/dispatch-test.sh
                       bash scripts/identity-measure-ci-test.sh
                       bash scripts/identity-measure-test.sh
                       python3 scripts/identity_measure_test.py

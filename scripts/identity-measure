@@ -55,11 +55,13 @@ done
 
 say() { echo "identity-measure: $*" >&2; }
 die() { say "$*"; exit 2; }
-# Every gh call is bounded: a hung API read must not hold the measurement (and its branch) forever.
-ghb() { timeout "${IDENTITY_MEASURE_GH_TIMEOUT:-90}" gh "$@"; }
-poll=${IDENTITY_MEASURE_POLL:-30}
+# Dispatching, finding the run and waiting on it: scripts/ci/dispatch.sh. Every gh call is bounded: a hung API read
+# must not hold the measurement (and its branch) forever.
+. "$here/ci/dispatch.sh"
+export DISPATCH_GH_TIMEOUT=${IDENTITY_MEASURE_GH_TIMEOUT:-90} DISPATCH_POLL_SECONDS=${IDENTITY_MEASURE_POLL:-30}
+ghb() { timeout "$DISPATCH_GH_TIMEOUT" gh "$@"; }
 
-branch="" dispatched_run="" finished=""
+branch="" measured_run="" finished=""
 delete_branch() {
   timeout 120 git push -q --no-verify origin --delete "refs/heads/$branch" 2> /dev/null && { say "deleted branch $branch"; return; }
   # A push that failed may never have made the branch (ls-remote's 2: no such ref): nothing to delete.
@@ -70,9 +72,9 @@ cleanup() {
   # Run to the end: a second Ctrl-C (or the TERM after a first) mid-clean-up would leave the branch behind.
   trap '' INT TERM
   # Ctrl-C mid-run: the run would replay a branch about to vanish -- cancel it first.
-  if [ -n "$dispatched_run" ] && [ -z "$finished" ]; then
-    say "cancelling run $dispatched_run"
-    ghb run cancel "$dispatched_run" > /dev/null || say "could not cancel run $dispatched_run -- cancel it by hand"
+  if [ -n "$measured_run" ] && [ -z "$finished" ]; then
+    say "cancelling run $measured_run"
+    ghb run cancel "$measured_run" > /dev/null || say "could not cancel run $measured_run -- cancel it by hand"
   fi
   if [ -n "$branch" ] && [ -z "$keep" ]; then
     delete_branch
@@ -163,68 +165,43 @@ say "base   $(git log --oneline -1 "$base")"
 timeout 300 git push -q --no-verify origin "$push:refs/heads/$branch" || die "could not push the measure branch"
 say "pushed $branch"
 
-lane_clear() { # wait until no run of the lane is waiting: a dispatch now would replace it
-  local waiting start=$SECONDS
-  while :; do
-    waiting=$(ghb run list --workflow "$workflow" --limit 20 --json status \
-      --jq '[.[] | select(.status == "queued" or .status == "pending" or .status == "waiting" or .status == "requested")] | length') \
-      || die "could not read the lane's runs"
-    [ "$waiting" = 0 ] && return 0
-    [ $((SECONDS - start)) -lt $((timeout_min * 60)) ] || die "the lane held a waiting run for $timeout_min minutes"
-    say "a convergence run is waiting in the lane: dispatching after it starts"
-    sleep "$poll"
-  done
-}
-
-dispatch() { # → dispatched_run
-  local since found="" _
-  lane_clear
-  since=$(date -u +%Y-%m-%dT%H:%M:%SZ)
-  local only=(-f takes-only=true)
+# One deadline for the whole measurement: the lane, every (re-)dispatch and the run.
+deadline=$((SECONDS + timeout_min * 60))
+waiting='.status == "queued" or .status == "pending" or .status == "waiting" or .status == "requested"'
+dispatch() { # → measured_run
+  local since only=(-f takes-only=true)
   [ -n "$full" ] && only=()
-  ghb workflow run "$workflow" --ref "$branch" -f takes-base="$base" ${only[@]+"${only[@]}"} > /dev/null \
+  # A dispatch while a run of the lane waits would replace it: wait until that one starts.
+  wait_until_no_runs "$workflow" "$waiting" $((deadline - SECONDS)) "a convergence run is waiting in the lane" \
+    || die "the lane still held a waiting run, or could not be read, within --timeout $timeout_min minutes"
+  since=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  dispatch_workflow "$workflow" "$branch" -f takes-base="$base" ${only[@]+"${only[@]}"} \
     || die "could not dispatch $workflow on $branch"
-  for _ in $(seq 1 24); do
-    found=$(ghb run list --workflow "$workflow" --branch "$branch" --event workflow_dispatch --limit 10 \
-      --json databaseId,headSha,createdAt \
-      --jq "[.[] | select(.headSha == \"$push\" and .createdAt >= \"$since\")] | sort_by(.createdAt) | last | .databaseId // empty") \
-      || die "could not list $branch's runs"
-    [ -n "$found" ] && break
-    sleep 5
-  done
-  [ -n "$found" ] || die "dispatched, but no run of $push on $branch appeared"
-  dispatched_run=$found
-  say "run $(ghb run view "$found" --json url --jq .url || echo "$found")"
+  find_dispatched_run "$workflow" "$since" ".headSha == \"$push\"" --branch "$branch" \
+    || die "dispatched, but no run of $push on $branch was found"
+  measured_run=$DISPATCHED_RUN
+  say "run $(ghb run view "$measured_run" --json url --jq .url || echo "$measured_run")"
 }
 
 dispatch
 if [ -n "$nowait" ]; then
   keep=1 finished=1
-  say "not waiting: collect with  scripts/identity-measure --run $dispatched_run   (it deletes $branch)"
+  say "not waiting: collect with  scripts/identity-measure --run $measured_run   (it deletes $branch)"
   exit 0
 fi
 
-attempts=1 start=$SECONDS misses=0
+attempts=1
 while :; do
-  # A blip (a refused connection once ended a 20-minute measurement) is retried; ten failed reads in a row are not one.
-  if ! state=$(ghb run view "$dispatched_run" --json status,conclusion --jq '[.status, .conclusion] | @tsv'); then
-    misses=$((misses + 1))
-    [ "$misses" -lt 10 ] || die "could not read run $dispatched_run ($misses reads in a row)"
-    say "could not read run $dispatched_run (read $misses of 10): retrying"
-    sleep "$poll"; continue
+  # A read blip (a refused connection once ended a 20-minute measurement) is retried by wait_for_run.
+  wait_for_run "$measured_run" $((deadline - SECONDS)) \
+    || die "run $measured_run gave no conclusion within --timeout $timeout_min minutes"
+  conclusion=$RUN_CONCLUSION
+  if [ "$conclusion" = cancelled ] && [ "$attempts" -lt 3 ]; then
+    say "run $measured_run was cancelled (a newer dispatch replaced it in the lane): dispatching again"
+    attempts=$((attempts + 1)); dispatch; continue
   fi
-  misses=0
-  IFS=$'\t' read -r status conclusion <<< "$state"
-  if [ "$status" = completed ]; then
-    if [ "$conclusion" = cancelled ] && [ "$attempts" -lt 3 ]; then
-      say "run $dispatched_run was cancelled (a newer dispatch replaced it in the lane): dispatching again"
-      attempts=$((attempts + 1)); dispatch; continue
-    fi
-    break
-  fi
-  [ $((SECONDS - start)) -lt $((timeout_min * 60)) ] || die "run $dispatched_run still $status after $timeout_min minutes (--timeout)"
-  sleep "$poll"
+  break
 done
 finished=1
-say "run $dispatched_run: $conclusion"
-collect "$dispatched_run" "$commit"
+say "run $measured_run: $conclusion"
+collect "$measured_run" "$commit"

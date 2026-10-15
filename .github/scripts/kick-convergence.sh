@@ -29,27 +29,17 @@ head_sha="$1"; ref="$2"; shift 2
 # A refused dispatch fails the job (after the other suites are tried): a green job that
 # dispatched nothing reads as "nothing to verify" when a pipeline change went unverified.
 failed=0
-# A 5xx is GitHub's own blip (2026-10-12: one HTTP 500 left a pipeline push unverified), so it
-# is retried, twice, after a pause; any other refusal (403, 404, 422) fails at once.
-retry_seconds="${CONVERGENCE_DISPATCH_RETRY_SECONDS:-15}"
+# A 5xx is GitHub's own blip (2026-10-12: one HTTP 500 left a pipeline push unverified), so
+# dispatch_workflow (scripts/ci/dispatch.sh) retries it, twice, after a pause
+# (DISPATCH_RETRY_SECONDS); any other refusal (403, 404, 422) fails at once.
+. "$here/../../scripts/ci/dispatch.sh"
 dispatch() {
-    local attempt err
-    err=$(mktemp)
-    for attempt in 1 2 3; do
-        if gh workflow run "$1" --ref "$ref" 2> "$err"; then rm -f "$err"; return; fi
-        cat "$err" >&2
-        grep -Eq 'HTTP 5[0-9][0-9]' "$err" && [ "$attempt" -lt 3 ] || break
-        echo "$1: GitHub answered 5xx, retrying in ${retry_seconds}s (attempt $attempt of 3)"
-        sleep "$retry_seconds"
-    done
-    rm -f "$err"
-    echo "::error::could not dispatch $1"
-    failed=1
+    dispatch_workflow "$1" "$ref" || { echo "::error::could not dispatch $1"; failed=1; }
 }
 
 for workflow in "$@"; do
     # allow-silenced: an unreadable last run leaves no base, which DISPATCHES — the safe direction.
-    base=$(gh run list --workflow "$workflow" --limit 1 --json headSha --jq '.[0].headSha // ""' 2>/dev/null || true)
+    base=$(timeout 60 gh run list --workflow "$workflow" --limit 1 --json headSha --jq '.[0].headSha // ""' 2>/dev/null || true)
     if [ -z "$base" ] || ! git cat-file -e "$base^{commit}" 2>/dev/null; then
         echo "$workflow: no earlier run to diff against (base '${base:-none}') — dispatching"
         dispatch "$workflow"

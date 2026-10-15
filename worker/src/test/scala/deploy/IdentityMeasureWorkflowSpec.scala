@@ -54,7 +54,7 @@ class IdentityMeasureWorkflowSpec extends AnyFlatSpec with Matchers {
 
   // Only main reaches origin: a variant travels as a patch on a base commit.
   "the helper" should "dispatch the workflow with the worktree's diff as a patch, pushing nothing" in {
-    helper should include("gh workflow run \"$workflow\" --ref main")
+    helper should include("dispatch_workflow \"$workflow\" main")
     helper should include("-f patch=\"$patch\"")
     helper should not include "git push"
   }
@@ -66,7 +66,7 @@ class IdentityMeasureWorkflowSpec extends AnyFlatSpec with Matchers {
 
   // It takes one runner per country from the 20 Main's run needs.
   it should "wait for Main to be idle before dispatching" in {
-    helper should include("--workflow main.yml")
+    helper should include("wait_until_no_runs main.yml")
     measure should include("git apply --binary --index")
   }
 

@@ -167,7 +167,10 @@ rm -rf "$work/stub" "$work/cache"; mkdir -p "$work/stub"
     exec "$REPO_ROOT/scripts/identity-measure" --countries pl > "$work/out" 2>&1 ) &
 pid=$!
 for _ in $(seq 1 100); do [ -f "$work/stub/watched" ] && break; sleep 0.1; done
+# A watchdog: a script that defers the signal (a wait inside a $(...) subshell does) must fail this, not hang it.
+( sleep 20; kill -KILL "$pid" 2> /dev/null ) & watchdog=$!
 kill -TERM "$pid"; wait "$pid"; status=$?
+kill "$watchdog" 2> /dev/null
 check "SIGTERM while waiting on the run exits 130" "130" "$status"
 check "...cancelling the run" "cancelled" "$(cat "$work/stub/cancelled" 2>/dev/null)"
 check "...and deleting the branch" "0" "$(measure_branches)"
