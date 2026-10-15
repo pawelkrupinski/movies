@@ -14,18 +14,20 @@
 #   identity_classpath <tree>       -> prints the tree's worker test classpath, sbt run only when a source is newer
 #
 # Each fails (non-zero, said on stderr) when what it needs cannot be read — gh unreachable, a download cut short — and
-# never hands back a stale or partial copy instead. Every gh call is bounded by `timeout`; a wait for another agent's
+# never hands back a stale or partial copy instead. Every gh call is bounded (tool-conventions.sh's `bounded`); a wait for another agent's
 # download, layout or compile of the same thing (identity_locked) has a deadline, and a lock whose holder is gone is
 # taken over.
 
 IDENTITY_REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-IDENTITY_CACHE=${KINOWO_IDENTITY_CACHE:-$HOME/.cache/kinowo-identity}
+# shellcheck source=scripts/tool-conventions.sh
+. "$(dirname "${BASH_SOURCE[0]}")/tool-conventions.sh"
+IDENTITY_CACHE=$KINOWO_IDENTITY_CACHE
 IDENTITY_FIXTURES=test/resources/fixtures/identity-unmatched
 IDENTITY_JUDGEMENTS=test/resources/fixtures/identity-judgements.tsv
 identity_log() { echo "[${IDENTITY_TOOL:-identity}] $*" >&2; }
 
 # identity_gh <seconds> <gh args...> -> gh, killed when it outlasts <seconds> (a hung gh fails, it never waits forever)
-identity_gh() { local seconds=$1; shift; timeout "$seconds" gh "$@"; }
+identity_gh() { local seconds=$1; shift; bounded "$seconds" gh "$@"; }
 IDENTITY_GH_READ=${KINOWO_IDENTITY_GH_TIMEOUT:-60}
 IDENTITY_GH_DOWNLOAD=${KINOWO_IDENTITY_DOWNLOAD_TIMEOUT:-1800}
 
@@ -272,6 +274,10 @@ identity_classpath_compile() {
   [ -s "$cp" ] || { rm -f "$cp"; tail -40 "$log" >&2; identity_log "no classpath in sbt's output ($log)"; return 1; }
 }
 
-# The JVM every identity tool runs in: English number formats, no Unsafe warnings.
+# The JVM every identity tool runs in: English number formats ("0.97", never "0,97"), no Unsafe warnings. IDENTITY_SBT
+# is sbt in the same locale (a heap and the commands appended: "${IDENTITY_SBT[@]}" -J-Xmx6g -batch ...).
+IDENTITY_LOCALE=(-Duser.language=en -Duser.country=US)
 # shellcheck disable=SC2034 # read by the scripts sourcing this
-IDENTITY_JAVA=(java -Xmx6g -Duser.language=en -Duser.country=US --sun-misc-unsafe-memory-access=allow)
+IDENTITY_JAVA=(java -Xmx6g "${IDENTITY_LOCALE[@]}" --sun-misc-unsafe-memory-access=allow)
+# shellcheck disable=SC2034 # read by the scripts sourcing this
+IDENTITY_SBT=(sbt "${IDENTITY_LOCALE[@]/#/-J}")

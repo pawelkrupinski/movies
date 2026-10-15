@@ -16,7 +16,7 @@ mkdir -p "$work/bin"
 repo="$work/repo"
 mkdir -p "$repo/scripts" "$repo/test/resources/fixtures/identity-unmatched" "$repo/worker/src" "$repo/common/src" \
   "$repo/identity/src" "$repo/testkit/src"
-cp "$REPO_ROOT/scripts/identity-judge-cards" "$REPO_ROOT/scripts/identity-tools.sh" "$REPO_ROOT/scripts/vault-env.sh" "$repo/scripts/"
+cp "$REPO_ROOT/scripts/identity-judge-cards" "$REPO_ROOT/scripts/identity-tools.sh" "$REPO_ROOT/scripts/tool-conventions.sh" "$REPO_ROOT/scripts/vault-env.sh" "$repo/scripts/"
 echo pl > "$repo/test/resources/fixtures/identity-unmatched/pl.json.gz"
 echo labels-here > "$repo/test/resources/fixtures/identity-judgements.tsv"
 echo build > "$repo/build.sbt"

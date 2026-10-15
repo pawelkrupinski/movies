@@ -164,4 +164,32 @@ STUB
 check "a run's artifact holding no capture of the country fails" "1" "$(tools identity_capture 987655 uk > /dev/null; echo $?)"
 check "a run's capture that cannot be downloaded fails" "1" "$(tools identity_capture 987656 pl > /dev/null; echo $?)"
 
+# scripts/tool-conventions.sh, which identity-tools.sh sources: what every Bash tool shares (tested here, beside its
+# first user, rather than in a self-test of its own).
+printf '\033[36m▸\033[0m tool-conventions.sh\n'
+conventions="$REPO_ROOT/scripts/tool-conventions.sh"
+started=$SECONDS
+check "bounded ends a command that outlasts it, 124" "124" "$(bash -c '. "$1"; bounded 1 sleep 20' _ "$conventions"; echo $?)"
+check "...within its bound" "yes" "$([ $(( SECONDS - started )) -lt 8 ] && echo yes || echo "no: $(( SECONDS - started ))s")"
+# stock macOS: neither timeout nor gtimeout on the PATH, only perl
+mkdir -p "$work/bare"
+for c in perl sleep bash; do ln -sf "$(command -v "$c")" "$work/bare/$c"; done
+bare() { PATH="$work/bare" "$work/bare/bash" -c '. "$1"; shift; "$@"' _ "$conventions" "$@"; }
+check "without timeout or gtimeout (stock macOS) bounded still ends it, 124" "124" "$(bare bounded 1 sleep 20; echo $?)"
+check "...and hands back a command's own status" "3" "$(bare bounded 5 bash -c 'exit 3'; echo $?)"
+bare bounded 1 bash -c 'sleep 30 & echo $! > "$1"; wait' _ "$work/grandchild" > /dev/null
+check "...ending its whole process group: what it started too" "gone" \
+  "$(if kill -0 "$(cat "$work/grandchild")" 2>/dev/null; then echo alive; kill "$(cat "$work/grandchild")"; else echo gone; fi)"
+printf '#!/usr/bin/env bash\n#\n# Do one thing.\n#   -x  extra\nset -euo pipefail\necho body\n' > "$work/tool"
+check "usage_from_header prints the header comment, unprefixed" "Do one thing.|  -x  extra" \
+  "$(bash -c '. "$1"; usage_from_header "$2"' _ "$conventions" "$work/tool" | paste -sd'|' -)"
+printf '#!/usr/bin/env bash\n# Starts on line two.\nset -uo pipefail\n' > "$work/tool2"
+check "...from line two when the header starts there" "Starts on line two." \
+  "$(bash -c '. "$1"; usage_from_header "$2"' _ "$conventions" "$work/tool2")"
+check "the countries, in one order" "pl,de,uk,us,es" "$(bash -c '. "$1"; kinowo_countries_csv' _ "$conventions")"
+check "the identity cache defaults under the home, exported to what a tool starts" "/h/.cache/kinowo-identity" \
+  "$(env -u KINOWO_IDENTITY_CACHE HOME=/h bash -c '. "$1"; bash -c "echo \$KINOWO_IDENTITY_CACHE"' _ "$conventions")"
+check "identity-tools.sh's cache is that one" "/h/.cache/kinowo-identity" \
+  "$(env -u KINOWO_IDENTITY_CACHE HOME=/h bash -c '. "$1"; echo "$IDENTITY_CACHE"' _ "$REPO_ROOT/scripts/identity-tools.sh")"
+
 spec_summary
