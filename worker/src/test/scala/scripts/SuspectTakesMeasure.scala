@@ -30,6 +30,43 @@ object SuspectTakesMeasure {
     CommandLine.Value("out", "file", "where the queue, its reasons and the wrong takes go"),
     CommandLine.Value("missed", "file", "where the wrong labels no signal suspects go"))
 
+  /** A labelled pair read as a take: its country and label, the signals that suspect it and why, and whether today
+   *  takes that film. */
+  final case class Graded(country: String, label: UnmatchedClusters.Label, signals: Set[Signal], reasons: Seq[String], today: Boolean)
+
+  /** The film record a label's film (`tmdb:<id>`, or `imdb:tt…` by the IMDb number a record carries) names, under its
+   *  TMDB key: none when the dump holds no such record. */
+  def recordOf(film: String, films: Map[Int, IdentityMeasures.Film]): Option[(String, Option[Int], IdentityMeasures.Film)] = film.split(":", 2) match {
+    case Array("tmdb", id) => id.toIntOption.flatMap(i => films.get(i).map(f => (s"tmdb:$i", Some(i), f)))
+    case Array("imdb", id) => films.find { case (_, f) => f.imdbNumber > 0 && f"tt${f.imdbNumber}%07d" == id }.map { case (i, f) => (s"tmdb:$i", Some(i), f) }
+    case _                 => None
+  }
+
+  private def pct(n: Int, d: Int) = if (d == 0) "-" else f"${100.0 * n / d}%.1f%%"
+
+  /** Each signal's (and ANY signal's) recall on the labelled-wrong pairs and flag rate on the labelled-right ones, as a
+   *  markdown table. */
+  def signalTable(graded: Seq[Graded]): Seq[String] = {
+    val (right, wrong) = graded.partition(_.label.right)
+    "| signal | wrong flagged | recall | right flagged | flag rate on right |" +: "|---|---|---|---|---|" +:
+      (Signal.values.toSeq.map(s => s.label -> ((g: Graded) => g.signals(s))) :+ ("ANY" -> ((g: Graded) => g.signals.nonEmpty))).map { case (name, on) =>
+        s"| $name | ${wrong.count(on)}/${wrong.size} | ${pct(wrong.count(on), wrong.size)} | ${right.count(on)}/${right.size} | ${pct(right.count(on), right.size)} |"
+      }
+  }
+
+  /** Where a wrong label came from: a take judged off a capture's or a review's page, or a pair ruled out ahead of any
+   *  take — else the note's first two words. */
+  def provenance(note: String): String = note.takeWhile(c => c != ':' && c != ';').split(' ').take(2).mkString(" ") match {
+    case n if n.startsWith("judged") => "judged take"
+    case n if n.startsWith("must not") || n.contains("must not") => "must-not pair"
+    case n => n
+  }
+
+  /** `--missed`'s lines: the wrong labels no signal suspects; and its `.right` file's: the right ones a signal does. */
+  def missedLines(graded: Seq[Graded]): (Seq[String], Seq[String]) = (
+    graded.filter(g => !g.label.right && g.signals.isEmpty).map(g => s"${g.country}\t${g.label.venue}\t${g.label.rawTitle}\t${g.label.film}\t${g.label.note}"),
+    graded.filter(g => g.label.right && g.signals.nonEmpty).map(g => s"${g.country}\t${g.label.rawTitle}\t${g.label.film}\t${g.reasons.mkString("; ")}"))
+
   def main(args: Array[String]): Unit = {
     val arguments = commandLine.parseOrExit(args)
     val dumps  = arguments.requiredPath("dumps")
@@ -39,7 +76,6 @@ object SuspectTakesMeasure {
     val tolerated = IdentityJudgements.tolerated(judged, IdentityJudgements.Scope.Served).keySet
     val countries = models.Country.all.map(c => c.code -> dumps.resolve(s"${c.code}.json.gz")).filter(p => Files.exists(p._2))
 
-    final case class Graded(country: String, label: UnmatchedClusters.Label, signals: Set[Signal], reasons: Seq[String], today: Boolean)
     val graded = Seq.newBuilder[Graded]
     val queue  = Seq.newBuilder[String]
     val counts = Seq.newBuilder[String]
@@ -47,7 +83,6 @@ object SuspectTakesMeasure {
     countries.foreach { case (cc, path) =>
       val dump  = UnmatchedClusters.read(path)
       val films  = dump.films.collect { case (id, Some(f)) => id -> f }
-      val byImdb = films.toSeq.filter(_._2.imdbNumber > 0).map { case (id, f) => f"tt${f.imdbNumber}%07d" -> (id, f) }.toMap
       val venues = new UnmatchedClusters.Replay(dump)
       val corpus = SuspectTakes.corpus(UnmatchedClusters.resolutionOf(dump.decisions), dump.listings, venues, films.get)
       val todayOf = corpus.takes.map(t => t.listing.key -> t).toMap
@@ -57,12 +92,7 @@ object SuspectTakesMeasure {
       val byTitle = dump.listings.groupBy(l => UnmatchedClusters.singleSpaced(l.rawTitle))
       labels.filter(_.country == cc).foreach { label =>
         val listings = byTitle.getOrElse(UnmatchedClusters.singleSpaced(label.rawTitle), Nil).filter(l => label.venue == "*" || label.venue == l.venue)
-        val record: Option[(String, Option[Int], IdentityMeasures.Film)] = label.film.split(":", 2) match {
-          case Array("tmdb", id) => id.toIntOption.flatMap(i => films.get(i).map(f => (s"tmdb:$i", Some(i), f)))
-          case Array("imdb", id) => byImdb.get(id).map { case (i, f) => (s"tmdb:$i", Some(i), f) }
-          case _ => None
-        }
-        record.foreach { case (film, tmdb, f) =>
+        recordOf(label.film, films).foreach { case (film, tmdb, f) =>
           val asTakes = listings.map(stated).map { l =>
             todayOf.get(l.key).filter(t => t.tmdb == tmdb).getOrElse(
               Take(l, film, tmdb, f, ResolverDecision(Seq(l.key), tmdb, 0.0, ResolverDecision.Basis.OwnMatch, Nil)()))
@@ -99,29 +129,18 @@ object SuspectTakesMeasure {
     val all = graded.result()
     val wrong = all.filter(!_.label.right)
     val right = all.filter(_.label.right)
-    def pct(n: Int, d: Int) = if (d == 0) "-" else f"${100.0 * n / d}%.1f%%"
     println(s"labelled pairs graded: ${wrong.size} wrong (${wrong.count(_.today)} taken today), ${right.size} right (${right.count(_.today)} taken today)")
-    println("| signal | wrong flagged | recall | right flagged | flag rate on right |\n|---|---|---|---|---|")
-    (Signal.values.toSeq.map(s => s.label -> ((g: Graded) => g.signals(s))) :+ ("ANY" -> ((g: Graded) => g.signals.nonEmpty))).foreach { case (name, on) =>
-      println(s"| $name | ${wrong.count(on)}/${wrong.size} | ${pct(wrong.count(on), wrong.size)} | ${right.count(on)}/${right.size} | ${pct(right.count(on), right.size)} |")
-    }
-    // where a wrong label came from: a take judged off a capture's or a review's page, or a pair ruled out ahead of any take
-    def provenance(g: Graded): String = g.label.note.takeWhile(c => c != ':' && c != ';').split(' ').take(2).mkString(" ") match {
-      case n if n.startsWith("judged") => "judged take"
-      case n if n.startsWith("must not") || n.contains("must not") => "must-not pair"
-      case n => n
-    }
+    signalTable(all).foreach(println)
     println("\nrecall on the wrong labels, by where the label came from:")
-    wrong.groupBy(provenance).toSeq.sortBy(-_._2.size).foreach { case (from, gs) =>
+    wrong.groupBy(g => provenance(g.label.note)).toSeq.sortBy(-_._2.size).foreach { case (from, gs) =>
       println(f"  $from%-20s ${gs.count(_.signals.nonEmpty)}%3d/${gs.size}%-3d ${pct(gs.count(_.signals.nonEmpty), gs.size)}")
     }
     println("\nqueue (today's suspect takes no label judges, beyond the baseline):")
     counts.result().foreach(println)
     arguments.get("missed").foreach { file =>
-      Files.write(Paths.get(file), wrong.filter(_.signals.isEmpty).map(g => s"${g.country}\t${g.label.venue}\t${g.label.rawTitle}\t${g.label.film}\t${g.label.note}")
-        .mkString("", "\n", "\n").getBytes(StandardCharsets.UTF_8))
-      Files.write(Paths.get(file + ".right"), right.filter(_.signals.nonEmpty).map(g => s"${g.country}\t${g.label.rawTitle}\t${g.label.film}\t${g.reasons.mkString("; ")}")
-        .mkString("", "\n", "\n").getBytes(StandardCharsets.UTF_8))
+      val (missed, flaggedRight) = missedLines(all)
+      Files.write(Paths.get(file), missed.mkString("", "\n", "\n").getBytes(StandardCharsets.UTF_8))
+      Files.write(Paths.get(file + ".right"), flaggedRight.mkString("", "\n", "\n").getBytes(StandardCharsets.UTF_8))
     }
     arguments.get("out").foreach { file =>
       val out: Path = Paths.get(file)

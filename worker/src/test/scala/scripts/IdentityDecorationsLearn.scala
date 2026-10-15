@@ -30,11 +30,18 @@ object IdentityDecorationsLearn {
 
   def main(args: Array[String]): Unit = {
     val arguments = commandLine.parseOrExit(args)
-    val out      = arguments.requiredPath("out")
-    // Relearned on top of what `out` holds: a recording sees only that week's programmes (`TitleDecorationsLearner.accumulate`).
-    val earlier = Option.when(Files.exists(out))(Json.parse(Files.readString(out)).as[TitleDecorations.Artefact])
-    write(learn(RecordedCorpora.of(arguments), arguments.required("version"), earlier.fold(Seq.empty[TitleDecorations.Learned])(_.decorations)), out)
+    val out       = arguments.requiredPath("out")
+    val _ = relearn(RecordedCorpora.of(arguments), arguments.required("version"), out)
     println(s"wrote $out")
+  }
+
+  /** The decorations learned from `inputs` on top of those `out` holds — a recording sees only that week's programmes
+   *  (`TitleDecorationsLearner.accumulate`) — written to `out` under `version`. */
+  def relearn(inputs: RecordedCorpora, version: String, out: Path): TitleDecorations.Artefact = {
+    val earlier  = Option.when(Files.exists(out))(Json.parse(Files.readString(out)).as[TitleDecorations.Artefact])
+    val artefact = learn(inputs, version, earlier.fold(Seq.empty[TitleDecorations.Learned])(_.decorations))
+    write(artefact, out)
+    artefact
   }
 
   /** Every corpus listing's venue and titles, and every recorded film record's titles, of every
