@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
 # run-script-tests over a throwaway tree of fake self-tests: what it discovers (and what a
 # `# script-test: <tag>` header keeps out of the default run), its exit status and table, a path
-# filter, --changed against a base commit, the per-test timeout (through both the timeout command
-# and the perl fallback), and the bound on how many tests run at once.
+# filter, --changed against a base commit, the per-test timeout, and the bound on how many tests run at once.
 # Run: bash scripts/run-script-tests-test.sh
 set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -72,14 +71,12 @@ check "...saying so" "1" "$(grep -c 'no script tests selected' "$work/out")"
 rm "$tree/docs/readme.md"
 check "--changed: a base that is not a commit fails" "2" "$(run --changed no-such-ref)"
 
-# The timeout: a hung test is killed at its bound and FAILS as a timeout, through `timeout` and the perl fallback.
+# The timeout: a hung test is killed at its bound and FAILS as a timeout.
 put scripts/slow-test.sh 'sleep 30'
-for tool in auto perl; do
-  start=$SECONDS
-  code="$(SCRIPT_TESTS_TIMEOUT_TOOL=$tool run --timeout 1 slow-test)"
-  check "a hung test is cut off at its timeout and fails ($tool)" "1 yes" "$code $([ $((SECONDS - start)) -lt 10 ] && echo yes || echo no)"
-  check "...reported as a timeout ($tool)" "1" "$(grep -c '^TIMEOUT .*slow-test' "$work/out")"
-done
+start=$SECONDS
+code="$(run --timeout 1 slow-test)"
+check "a hung test is cut off at its timeout and fails" "1 yes" "$code $([ $((SECONDS - start)) -lt 10 ] && echo yes || echo no)"
+check "...reported as a timeout" "1" "$(grep -c '^TIMEOUT .*slow-test' "$work/out")"
 rm "$tree/scripts/slow-test.sh"
 
 # The pool: never more than --jobs tests at once. Each records how many were running while it ran.

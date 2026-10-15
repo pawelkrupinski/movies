@@ -21,11 +21,14 @@
 # is (ScriptSelfTestsRunInCiSpec holds those to it). `--tag <tag>` runs them; `--all` lists everything.
 #
 # Each test runs from the checkout's root, `bash` for .sh and `python3` for .py, stdin closed, under
-# its own timeout (`timeout`/`gtimeout`, else a perl fallback that kills the test's whole process
-# group). The table names each PASS / FAIL / TIMEOUT with its seconds; a failure's last lines follow.
+# its own timeout (tool-conventions.sh's `bounded`: the test's whole process group ended, and a
+# Ctrl-C reaching it, which GNU timeout's own process group would not). The table names each
+# PASS / FAIL / TIMEOUT with its seconds; a failure's last lines follow.
 # Exit: 0 all passed (or none selected by --changed), 1 any failed or a filter matched nothing,
 # 2 a --changed base that is no commit, 64 usage. Bash 3.2 (macOS /bin/bash): no wait -n, no maps.
 set -uo pipefail
+# shellcheck source=scripts/tool-conventions.sh
+. "$(dirname "${BASH_SOURCE[0]}")/tool-conventions.sh" # bounded: each test under its timeout, Ctrl-C reaching it
 
 Roots="scripts .github/scripts .github/actions android/scripts ios/scripts infra/bin"
 
@@ -128,27 +131,6 @@ if [ ! -s "$work/selected" ]; then
 fi
 
 # ── Running ────────────────────────────────────────────────────────────────────────────────────
-# bounded <seconds> <command...>: the command, killed with its children after <seconds>; 124 when it was.
-timeout_tool="${SCRIPT_TESTS_TIMEOUT_TOOL:-auto}"
-if [ "$timeout_tool" = auto ]; then
-  if command -v timeout >/dev/null 2>&1; then timeout_tool=timeout
-  elif command -v gtimeout >/dev/null 2>&1; then timeout_tool=gtimeout
-  else timeout_tool=perl
-  fi
-fi
-bounded() {
-  local s="$1"; shift
-  case "$timeout_tool" in
-    timeout|gtimeout) "$timeout_tool" -k 5 "$s" "$@" ;;
-    *) perl -e '
-         my $s = shift; setpgrp(0, 0); my $pid = fork() // die "fork: $!";
-         if ($pid == 0) { exec(@ARGV) or die "exec $ARGV[0]: $!" }
-         $SIG{TERM} = "IGNORE";
-         $SIG{ALRM} = sub { kill("TERM", -$$); sleep 2; kill("KILL", -$$); exit 124 };
-         alarm $s; waitpid($pid, 0); exit($? & 127 ? 128 + ($? & 127) : $? >> 8);' "$s" "$@" ;;
-  esac
-}
-
 run_one() { # <index> <path>: its log, exit status and seconds land in $work/<index>.*
   local i="$1" path="$2" start=$SECONDS code interpreter=bash
   case "$path" in *.py) interpreter=python3 ;; esac
