@@ -1201,6 +1201,9 @@ object IdentityCalibrate {
 
     // ── the artefact ──
     val version = cfg.version
+    // the copied facts' shares are the refit's ([[IdentityCalibration.ScopeModel.copied]]): kept from the artefact replaced
+    val copiedShares = Option.when(Files.exists(cfg.weightsOut))(Json.parse(Files.readString(cfg.weightsOut)).as[IdentityCalibration])
+      .flatMap(_.scopes.get(IdentityMeasures.ListingFilm)).fold(Map.empty[String, Double])(_.copied)
     val artefact = IdentityCalibration(
       version = version,
       scopes = Map(
@@ -1209,7 +1212,7 @@ object IdentityCalibrate {
             "heldOutWrongRate" -> (if (tn == 0) 0.0 else tw.toDouble / tn),
             "heldOutRecall" -> testShown.count(x => x._2 && x._1 >= showT).toDouble / math.max(1, testSame)),
             "lowest cut whose wrong share (labelled pairs + production's contradicted filings, per unit) on the calibration split has a one-sided 95% upper bound within today's measured wrong rate"),
-          "cannotLink" -> Threshold(lfCl, lfClM, clBasis))),
+          "cannotLink" -> Threshold(lfCl, lfClM, clBasis)), copied = copiedShares),
         IdentityMeasures.ListingListing -> llFit.model.copy(thresholds = Map(
           "cannotLink" -> Threshold(llCl, llClM, clBasis)))),
       cannotLinks = lfRules ++ llRules,

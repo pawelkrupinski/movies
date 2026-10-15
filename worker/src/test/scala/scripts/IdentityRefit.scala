@@ -23,6 +23,7 @@ import scala.util.hashing.MurmurHash3
  * What it may move, one bounded step per parameter per run:
  *  - a probability CUT: the listing-film acceptance cut (`showRatings`) and each scope's cannot-link cut;
  *  - a learned cannot-link's numeric BOUND ("runtime.delta >= 7 AND year.distance >= 4" → "… >= 5");
+ *  - the share of its own weight a fact a feed COPIED keeps (`ScopeModel.copied`), a tenth each way;
  *  - a listing-film signal's WEIGHTS, refitted by the calibration's own fit ([[IdentityCalibrate.inOrder]],
  *    [[IdentityCalibrate.monotone]], [[IdentityCalibrate.llr]]) from the counts the artefact holds plus the labelled
  *    units the captures measure under TODAY's code — so a change to a measure's inputs (a film's releases, its runtimes
@@ -49,6 +50,8 @@ object IdentityRefit {
   val MaxWeightStep = 0.5
   /** A cannot-link bound moves a tenth of itself per run, at least 1. */
   val BoundStepShare = 0.1
+  /** How far a copied fact's share of its own weight moves in one run. */
+  val CopiedShareStep = 0.1
   /** Labels are grouped by film into this many folds; fold 0 is held out. */
   val Folds = 5
 
@@ -108,6 +111,16 @@ object IdentityRefit {
     }
   }
 
+  /** The share of its own weight a COPIED fact keeps ([[IdentityCalibration.ScopeModel.copied]]) moved. */
+  final case class CopiedShareChange(scope: String, signal: String, was: Double, now: Double) extends Change {
+    def parameter = s"$scope copied share of '$signal'"
+    def from = num(was); def to = num(now)
+    def applyTo(c: IdentityCalibration): IdentityCalibration = {
+      val model = c.scopes(scope)
+      c.copy(scopes = c.scopes.updated(scope, model.copy(copied = model.copied.updated(signal, now))))
+    }
+  }
+
   /** A signal's weights in a line: `match +1.63 overlap -3.11` or `*..0.5 -4.70 0.5..2.5 -0.57`. */
   def render(w: SignalWeights): String = {
     def end(b: Option[Double]) = b.fold("*")(num)
@@ -130,6 +143,14 @@ object IdentityRefit {
         val step = math.max(1.0, math.rint(math.abs(bound) * BoundStepShare))
         Seq(bound - step, bound + step).filter(b => b != 0 && math.signum(b) == math.signum(bound)).map(BoundChange(r.scope, r.name, cond.signal, bound, _))
       }
+    }
+  }
+
+  /** Each copied fact's share moved [[CopiedShareStep]] each way, inside [0, 1]. */
+  def copiedShareChanges(c: IdentityCalibration): Seq[CopiedShareChange] = c.scopes.toSeq.sortBy(_._1).flatMap { case (scope, model) =>
+    model.copied.toSeq.sortBy(_._1).flatMap { case (signal, share) =>
+      Seq(share - CopiedShareStep, share + CopiedShareStep).map(x => math.rint(x * 1000) / 1000).filter(x => x >= 0 && x <= 1)
+        .map(CopiedShareChange(scope, signal, share, _))
     }
   }
 
@@ -359,7 +380,7 @@ object IdentityRefit {
       while (!done && kept.size < maxChanges) {
         val made     = kept.map(_.change.parameter).toSet
         val from     = base
-        val proposed = (cutChanges(from.calibration) ++ boundChanges(from.calibration) ++ weightChanges(from.calibration, units, relearn))
+        val proposed = (cutChanges(from.calibration) ++ boundChanges(from.calibration) ++ copiedShareChanges(from.calibration) ++ weightChanges(from.calibration, units, relearn))
           .filterNot(c => made(c.parameter))
         log(s"round ${rounds.size + 1}: ${proposed.size} proposals")
         val measured = proposed.zip(measureAll(replays, from, proposed)).map { (change, after) =>

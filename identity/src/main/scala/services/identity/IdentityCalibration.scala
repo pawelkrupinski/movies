@@ -99,7 +99,7 @@ final case class IdentityCalibration(version: String,
    *  value: a trace keeps these lines and is rewritten when they move, and a count drifting inside one bin
    *  (571 → 570 venues) moved every such trace each tick for a weight that had not changed. */
   def evidence(scope: String, measures: Map[String, Measure]): Seq[String] = {
-    val signals = model(scope).signals
+    val signals = model(scope).weighed
     contributions(scope, measures).filter(_._2 != 0).sortBy(c => (-math.abs(c._2), c._1))
       .map { case (s, w) => f"$s=${binned(signals.get(s), measures.get(s))}%s ${if (w >= 0) "+" else ""}$w%.2f" }
   }
@@ -223,11 +223,27 @@ object IdentityCalibration {
   /** A probability cut and what it measured on held-out data. */
   final case class Threshold(probability: Double, measured: Map[String, Double] = Map.empty, basis: String = "")
 
+  /** A scope's evidence model. `copied`: how much of its own weight a fact signal keeps where the listing's fact is a
+   *  feed's COPY of its catalogue entry, not its venue's own statement (`SourceReliability`'s Support facts) — per signal,
+   *  a share in [0, 1]. The copy agrees with the entry by construction, so it says less about which film the venue shows
+   *  than the venue's own fact does: DE Augustinum's "Island", a feature slot, took a 3-minute short on kinoheld's copied
+   *  director, runtime and year, each weighed in full. Read as a signal of its own per fact × source
+   *  ([[IdentityMeasures.copiedFacts]] marks the copied facts' measures `<signal>@copied`), weighing the own signal's table
+   *  times (share − 1): the two together weigh a copied fact `share` of its own. */
   final case class ScopeModel(prior: Double, signals: Map[String, SignalWeights], calibration: Calibration,
-                              thresholds: Map[String, Threshold] = Map.empty) {
+                              thresholds: Map[String, Threshold] = Map.empty, copied: Map[String, Double] = Map.empty) {
+    /** The signals a copied fact is weighed by beside its own ([[copied]]), derived from the own signal's table. */
+    lazy val copiedSignals: Map[String, SignalWeights] = copied.collect { case (signal, share) if signals.contains(signal) =>
+      val own = signals(signal)
+      IdentityMeasures.copiedSignal(signal) -> SignalWeights(own.kind,
+        categories = own.categories.map((k, w) => k -> w * (share - 1)),
+        bins       = own.bins.map(b => b.copy(weight = b.weight * (share - 1), positives = 0, negatives = 0)))
+    }
+    /** Every signal weighed: the artefact's own, and the copied facts' ([[copiedSignals]]). */
+    lazy val weighed: Map[String, SignalWeights] = signals ++ copiedSignals
     /** The signals in name order, sorted once: every scoring sums its contributions in this order
      *  (`logOdds`), and sorting them per call was ~2–5% of a re-resolve (JFR, 2026-09-29). */
-    lazy val bySignalName: Seq[(String, SignalWeights)] = signals.toSeq.sortBy(_._1)
+    lazy val bySignalName: Seq[(String, SignalWeights)] = weighed.toSeq.sortBy(_._1)
     /** [[bySignalName]] as two arrays, read by index where a score is summed. */
     lazy val signalNames: Array[String]          = bySignalName.map(_._1).toArray
     lazy val signalWeights: Array[SignalWeights] = bySignalName.map(_._2).toArray

@@ -405,6 +405,23 @@ object IdentityMeasures {
    *  anything this listing published. */
   val PooledMeasures: Set[String] = Set("venues.corroborating")
 
+  /** The listing-film signal a fact `signal` is weighed by beside its own where the listing's fact is a feed's copy
+   *  (`IdentityCalibration.ScopeModel.copied`). */
+  def copiedSignal(signal: String): String = s"$signal$CopiedMark"
+  val CopiedMark = "@copied"
+  def isCopiedSignal(name: String): Boolean = name.endsWith(CopiedMark)
+  /** The listing-film signals each fact a source states is measured by. */
+  val SignalsOfFact: Map[SourceReliability.Fact, Seq[String]] = Map(
+    SourceReliability.Fact.Year -> Seq("year.delta"), SourceReliability.Fact.Directors -> Seq("director"),
+    SourceReliability.Fact.Runtime -> Seq("runtime.delta"))
+  /** `m` with the measures of the facts in `copied` — the facts the listing holds only as a feed's copy of its catalogue
+   *  entry — marked [[copiedSignal]] beside their own, where they compare anything: the copied fact's own measure stays
+   *  what every rule reads, the mark is what the score weighs it less by. */
+  def copiedFacts(m: Map[String, Measure], copied: Set[SourceReliability.Fact]): Map[String, Measure] =
+    if (copied.isEmpty) m
+    else m ++ copied.iterator.flatMap(SignalsOfFact.getOrElse(_, Nil)).flatMap(signal =>
+      m.get(signal).filterNot(_.isInstanceOf[Missing]).map(copiedSignal(signal) -> _))
+
   /** The listing-film measures that read the TITLE itself — how it names the film, and the
    *  instalment numbers it carries: a title alone never vetoes, so none of them is a fact. */
   val TitleMeasures: Set[String] = Set("title", "numeral")

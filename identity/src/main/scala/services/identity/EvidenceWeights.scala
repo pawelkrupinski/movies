@@ -24,7 +24,8 @@ private[identity] final class EvidenceWeights(calibration: IdentityCalibration) 
    *  What the release veto never overrules ([[ReleaseVeto]]). */
   def factsSupport(scored: Scored): Boolean =
     calibration.contributions(ListingFilm, scored.measures).exists { case (name, weight) =>
-      weight > 0 && !Priors(name) && name != "title" && !scored.measures.get(name).exists(_.isInstanceOf[IdentityMeasures.Missing]) }
+      weight > 0 && !Priors(name) && name != "title" && !IdentityMeasures.isCopiedSignal(name) &&
+        !scored.measures.get(name).exists(_.isInstanceOf[IdentityMeasures.Missing]) }
 
   /** The calibrated probability on the listing's own facts alone — what a cannot-link reads. A
    *  film the listing's facts do not contradict is never vetoed merely for ranking second in
@@ -49,7 +50,8 @@ private[identity] final class EvidenceWeights(calibration: IdentityCalibration) 
   /** The published facts weighing against `scored` — what [[speaksAgainst]] finds — rendered as the trace's evidence is. */
   def against(scored: Scored): Seq[String] = {
     val names = calibration.contributions(ListingFilm, scored.measures).collect { case (name, weight)
-      if !Priors(name) && weight < 0 && !scored.measures.get(name).exists(_.isInstanceOf[IdentityMeasures.Missing]) => name }.toSet
+      if !Priors(name) && weight < 0 && !IdentityMeasures.isCopiedSignal(name) &&
+        !scored.measures.get(name).exists(_.isInstanceOf[IdentityMeasures.Missing]) => name }.toSet
     if (names.isEmpty) Nil else calibration.evidence(ListingFilm, scored.measures).filter(line => names(line.takeWhile(_ != '=')))
   }
 
