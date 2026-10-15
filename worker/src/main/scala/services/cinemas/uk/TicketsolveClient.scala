@@ -6,6 +6,7 @@ import org.jsoup.nodes.Element
 import org.jsoup.parser.Parser
 import services.cinemas.common.{AgeRating, CinemaScraper, ScraperParse, SlotsToMovies}
 import services.cinemas.pl.OnlyMovieEventsFilter
+import services.movies.BbfcCertificate
 import tools.{HttpFetch, HttpRead}
 
 import java.time.{LocalDate, OffsetDateTime}
@@ -108,7 +109,7 @@ object TicketsolveClient {
    *  certificate the box office appends to the title — not a venue's age limit, "(18+)". Watershed
    *  tails it with a short upper-case box-office code ("Fatherland (12A) S", "(18) CTBA"), which
    *  goes with it. */
-  private val TitleCertificate = """\s*\(\s*(U|PG|12A?|15|18)\b(?!\+)[^)]*\)(?:\s+[A-Z]{1,4})?\s*$""".r
+  private val TitleCertificate = s"""\\s*\\(\\s*(${BbfcCertificate.alternation(BbfcCertificate.Public)})\\b(?!\\+)[^)]*\\)(?:\\s+[A-Z]{1,4})?\\s*$$""".r
 
   /** Event statuses that mean the screening is not happening. */
   private val Cancelled = Set("cancelled", "canceled", "postponed")

@@ -124,7 +124,8 @@ Order by the live tally: 4 (relays, 33 of 70 live wrong listings), then 2, 3, 1,
   the new queries leave `UnmatchedClustersRatchetSpec` asking answers the recording lacks (uk "Double Bill: The
   Snowman (1982) / The Snowman and the Snowdog (2012)"), so it needs `integration.UnmatchedClustersCapture`
   re-captured and `scripts/identity-measure` LANDABLE first. `IdentityMeasures.searchQueries` (identity module) calls it too.
-- [ ] **Five UK BBFC value lists besides the `CERT` placeholder**: `TicketsolveClient.TitleCertificate`,
+- [x] **Five UK BBFC value lists besides the `CERT` placeholder** (done: `services.movies.BbfcCertificate` owns them; the
+  placeholder, Ticketsolve, Spektrix, BFI Southbank and the Gatsby parser read it; `SearchTitles` follows with the fix above): `TicketsolveClient.TitleCertificate`,
   `SpektrixClient.Bbfc`, `BfiSouthbankClient.BbfcBadge` (adds R18) and `SearchTitles`. One `BbfcCertificate` object
   should own the values and the placeholder derive from it.
 - [ ] **The same ingest note shapes are spelled twice**: `FormatTags` `AsteriskNote`, `BracketedRunningTime`,
@@ -155,6 +156,12 @@ Each a production change: measure with `scripts/identity-measure`, land one at a
 - [ ] **screenedSeason's earlier-year bypass is unbounded** (8545f8cb7: `IdentityModel.screenedSeason`'s
   `year.forall(_ < season)`, `StageRelays.screenedSeasonRecord`): an encore of a 2019 capture screening in 2027 clears
   its year against the 2026/27 record. Bound it (a year or two), or ask for a screening on the record's air day.
+  Tried 2026-10-16, a one-season bound (`year > season - 1` falls back to the stated year): NOT LANDABLE (measure
+  38812504435) — DE "MET Opera: Macbeth (Verdi)" ×3 states 2014, its production's premiere twelve years before the
+  2026/27 relay it rightly takes (right lost ×3, one new wrong), UK Aldeburgh's "The Royal Ballet: Alice's Adventures in
+  Wonderland" [2024] turned to the 2024/25 record. A bound in years cannot tell an old capture's encore from a revival
+  relayed live; the air-day test can: carry the listing's screening days into `IdentityMeasures.Listing` and keep the
+  bypass only when a screening falls on the season record's release day.
 - [x] **FeedLink.deniesShort vs FamilyScope.namedOnlyByCopiedTitle** (done: folded into `namedOnlyByCopiedTitle` as its
   first case, unchanged: the same-year guard must not cover it — Kino Gelnhausen's "FILMKUNST: Ein einfacher Unfall",
   Panahi's 2025 film beside a 2025 short, IdentitySliceCasesSpec): the second covers most of the first's cases and

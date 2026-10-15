@@ -86,7 +86,7 @@ object GatsbyBoxOfficeParser {
   /** The certificates a UK brand's `certificate` field can legitimately hold (BBFC). Whitelisted,
    *  not passed through, so a vendor value we don't recognise (a rating-pending placeholder, a
    *  foreign certificate on an import) drops instead of reaching a card. */
-  val BbfcCertificates: Set[String] = Set("U", "PG", "12A", "12", "15", "18")
+  val BbfcCertificates: Set[String] = services.movies.BbfcCertificate.Public.toSet
   /** The same for the US brands on the platform (MPA ratings). */
   val MpaCertificates: Set[String] = Set("G", "PG", "PG-13", "R", "NC-17")
 

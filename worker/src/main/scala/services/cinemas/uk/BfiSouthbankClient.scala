@@ -5,6 +5,7 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.{CinemaScraper, ListingPages, ScraperParse, SlotsToMovies}
 import services.cinemas.pl.OnlyMovieEventsFilter
+import services.movies.BbfcCertificate
 import tools.{HttpFetch, HttpRead}
 
 import java.net.URLDecoder
@@ -107,7 +108,7 @@ object BfiSouthbankClient {
 
   /** The BBFC badge the card draws as an inline SVG, its `<title>BBFC 15_RGB</title>`
    *  URL-encoded in the `data:` source. */
-  private val BbfcBadge = """(?i)BBFC(?:%20|\s)(U|PG|12A|12|15|18|R18)_""".r
+  private val BbfcBadge = s"""(?i)BBFC(?:%20|\\s)(${BbfcCertificate.alternation(BbfcCertificate.Public :+ BbfcCertificate.Restricted)})_""".r
 
   final case class Card(slug: String, title: String, synopsis: Option[String], runtime: Option[Int],
                         year: Option[Int], image: Option[String], certificate: Option[String] = None)

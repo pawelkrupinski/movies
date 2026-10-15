@@ -4,6 +4,7 @@ import models._
 import play.api.libs.json._
 import services.cinemas.common.{CinemaScraper, ScraperParse, SlotsToMovies}
 import services.cinemas.pl.OnlyMovieEventsFilter
+import services.movies.BbfcCertificate
 import tools.{HttpFetch, HttpRead, ReadOutcome}
 
 import java.time.{LocalDate, LocalDateTime}
@@ -109,7 +110,7 @@ object SpektrixClient {
   private val CastAttribute     = """(?i)attribute_(film)?cast(details)?""".r
   private val YearAttribute     = """(?i)attribute_(film)?year(ofproduction|ofrelease)?""".r
   private val RatingAttribute   = """(?i)attribute_(film)?(certificate|certification|rating|agerating|certificateageguidance)""".r
-  private val Bbfc              = """(?i)(?<!\w)(12A|U|PG|12|15|18)(?!\w)""".r
+  private val Bbfc              = s"""(?i)(?<!\\w)${BbfcCertificate.alternation(BbfcCertificate.Public)}(?!\\w)""".r
 
   /** What a box office files under its films that is not a screening: a bundle of
    *  tickets, a voucher, a membership, a season pass, a seat dedication, the hire of
