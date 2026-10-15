@@ -2918,7 +2918,7 @@ the stage, cannot be graded until the fixture is re-captured (below).
      TMDB by the original title of a film-database family's pick when TMDB knows the film under no title the venue bills.
      The model would then score the record, and the pinned `family.filmweb.took&!model.unscored` fill could take it: at
      most +1 listing. Not built, because it asks TMDB searches the capture does not hold. Measure it after a re-capture
-     (item 5), with `UnmatchedClustersFillIntegrationSpec` asking the new searches live.
+     (item 5), with the fill (`integration.UnmatchedClustersFill`) asking the new searches live.
 2. **"NT Live: Hamlet" (US ×4) → 396227 (2015).** The guard is `stage.work` (`ListingShape.stagesAWork`;
    `UnifiedEvidence.scala:199`): `identity-stage-works.tsv:342` lists Q631016, Ambroise Thomas's opera *Hamlet*. Narrowing
    the guard to keep plays out frees nothing, because 396227 has no signal to take it on. Its only signal is IMDb's
@@ -2949,16 +2949,17 @@ the stage, cannot be graded until the fixture is re-captured (below).
       `target/identity-capture` (`KINOWO_IDENTITY_CAPTURE_WORK`), skipping a country already holding that run's;
    2. exports prod's `identity_family_answers` (`kinowo`, `kinowo_<cc>`) read-only over the prod tunnel
       (`scripts/local-mirror/prod-tunnel.sh`) for `KINOWO_IDENTITY_FAMILY_SEED`;
-   3. runs each country's `UnmatchedClustersCaptureIntegrationSpec` in a JVM of its own (`--heap`, default 12g) against
-      the it/ Mongo (`127.0.0.1:28017`) in a database of its own, every variable defaulted (one you set is kept) and the
-      TMDB key read from the secrets vault, never `.env.local`. `--parallel N` (default 2) runs that many countries side
+   3. runs each country's capture tool (`integration.UnmatchedClustersCapture`) in a JVM of its own (`--heap`, default
+      12g) against the it/ Mongo (`127.0.0.1:28017`) in a database of its own (a fill is handed no Mongo), every
+      directory argument defaulted (a variable you set is kept) and the TMDB key read from the secrets vault, never
+      `.env.local`. `--parallel N` (default 2) runs that many countries side
       by side, largest first, as many as memory holds beside 4 GB; one JVM each, never countries sharing one (a
       whole-corpus resolve holds its country resident, and an OOM then takes one country down, not two). They split one
       budget of 4 live reads per host (`KINOWO_IDENTITY_LIVE_PER_HOST`, `tools.HostPacing`), each halving its own on a
       429 or 503;
    4. prints each phase's time and throughput.
 
-   Capture or fill is decided per country, and said: it FILLS (`UnmatchedClustersFillIntegrationSpec`, which only answers
+   Capture or fill is decided per country, and said: it FILLS (`integration.UnmatchedClustersFill`, which only answers
    the questions a change newly asks of the fixture's clusters: minutes, no download, no prod read) when `<cc>.json.gz`
    exists and its decisions are unchanged under the current code — `<cc>.inputs`, stamped by every capture, names the
    same recording and the same hash of the code that decides them (`IdentityCapture.DecisionInputs`: the resolver, its
