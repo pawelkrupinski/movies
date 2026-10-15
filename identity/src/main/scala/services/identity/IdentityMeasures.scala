@@ -46,14 +46,21 @@ object IdentityMeasures {
      *  kinoheld's "Tino Bomelino" (a comedian) as "Tino", "Punkabend #93" as "'93", "Ganes" (a band) as "Ganges". A
      *  shared word counts when it is a number or longer than an article. */
     private[identity] lazy val originalStandsApart: Boolean = originalTitle.forall { original =>
-      def words(t: String) = TitleContainment.tokens(t).filterNot(IdentityMeasures.YearWord.matches).toSet
-      val own = words(original)
       IdentityMeasures.shapes(titles).exists(shape => IdentityMeasures.key(shape) == IdentityMeasures.key(original)) ||
-        titles.forall { billed =>
-          !own.exists(w => words(billed)(w) && (w.length > 3 || w.forall(_.isDigit))) &&
-            !tools.EditDistance.within(IdentityMeasures.key(original), IdentityMeasures.key(billed), 1)
-        }
+        originalSharesNothingBilled
     }
+    /** Does the original title share NONE of the billing's words (a number, or one longer than an article) and is it no
+     *  near-spelling of it: another title altogether, not a spelling of the billed one? Either the work's title in another
+     *  language ([[originalStandsApart]]) or, where a feed copied it, what a search for the billing hit: DE kinoheld's
+     *  "Abdul Kader Chahin" (a concert) carried the original title of "5 Centimeters per Second", "Dirty Deeds - A
+     *  Tribute To AC/DC" that of "Salaam-E-Ishq" (`FamilyScope.namedOnlyByCopiedTitle`). */
+    private[identity] lazy val originalSharesNothingBilled: Boolean = originalTitle.forall { original =>
+      titles.forall { billed =>
+        !IdentityMeasures.shareAWord(original, billed) && !tools.EditDistance.within(IdentityMeasures.key(original), IdentityMeasures.key(billed), 1)
+      }
+    }
+    /** How many words the billing shares with `title` at most, over its titles ([[IdentityMeasures.sharedWords]]). */
+    private[identity] def wordsBilledOf(title: String): Int = titles.map(IdentityMeasures.sharedWords(title, _)).max
     /** The directors credited beside the published `year` — one listing's own, unless a pooled
      *  read took its year and its credits from different listings (`yearCredits`). */
     def creditedBesideYear: Seq[String] = yearCredits.getOrElse(directors)
@@ -139,6 +146,13 @@ object IdentityMeasures {
     private[identity] lazy val originalForm: Option[IdentityMeasures.OriginalForm] =
       originalTitle.map(_.trim).filter(_.nonEmpty).map(IdentityMeasures.OriginalForm(_))
   }
+
+  /** The words two titles share that are a number, or longer than an article — no year, which dates rather than names. */
+  private[identity] def sharedWords(a: String, b: String): Int = {
+    def words(t: String) = TitleContainment.tokens(t).filterNot(YearWord.matches).filter(w => w.length > 3 || w.forall(_.isDigit)).toSet
+    (words(a) intersect words(b)).size
+  }
+  private[identity] def shareAWord(a: String, b: String): Boolean = sharedWords(a, b) > 0
 
   /** A title word that is a year ("1986" of "Legend (1986)"). */
   private[identity] val YearWord = """(?:18|19|20)\d\d""".r

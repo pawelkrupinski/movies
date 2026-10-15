@@ -31,6 +31,23 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     (System.nanoTime() - started) / 1000000 should be < 100L
   }
 
+  "an original title" should "share nothing with the billing only when it is another title altogether, not a spelling of it" in {
+    // DE kinoheld's event pages: what a search for the billing hit, copied as the original
+    Listing("Abdul Kader Chahin", originalTitle = Some("秒速5センチメートル")).originalSharesNothingBilled shouldBe true
+    Listing("Dirty Deeds - A Tribute To AC/DC", originalTitle = Some("Salaam-E-Ishq")).originalSharesNothingBilled shouldBe true
+    // the billed work in its own language, or the billing restated
+    Listing("SEVENTEEN WORLD TOUR 'NEW_'", originalTitle = Some("SEVENTEEN WORLD TOUR [NEW_] ENCORE")).originalSharesNothingBilled shouldBe false
+    Listing("Kardes Türküler ile 30 yil", originalTitle = Some("Kardeş Türküler ile 30 Yıl")).originalSharesNothingBilled shouldBe false
+    Listing("Puella Magi Madoka Magica Der Film - Walpurgisnacht: Rising",
+      originalTitle = Some("Puella Magi Madoka Magica the Movie -Walpurgisnacht: Rising-")).originalSharesNothingBilled shouldBe false
+    Listing("Bremer Stadtmusikanten").originalSharesNothingBilled shouldBe true
+    // what a billing carries of a record's title: words, not articles or years — two make the record the billing's
+    Listing("Madoka Magica - The Movie: Rebellion").wordsBilledOf(
+      "Mahou Shoujo Madoka Magica the Movie (Part 3): The Story of the Rebellion") shouldBe 4
+    Listing("Über Unterbiberger - Vom Woid in die Welt").wordsBilledOf("Oktober 1917 – Zehn Tage, die die Welt erschütterten") shouldBe 1
+    Listing("Zum Dorfkrug").wordsBilledOf("Zum See") shouldBe 0
+  }
+
   "a bracketed year in a title" should "be its own measure, never the listing's published year" in {
     // A re-release bracket: the 2015 film shown in 2026.
     val m = measures(Listing("The Hunger Games: Mockingjay - Part 2 (2026)"), Film("The Hunger Games: Mockingjay - Part 2", year = Some(2015)))

@@ -205,20 +205,39 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
     place.minByOption(_.place).fold(scored)(best => scored.copy(imdb = Some(best.copy(of = lists.map(_.size).max))))
   }
 
-  /** Why a TMDB-keyed feed's link of `node` to ANOTHER film denies it `candidate`: only the original title the feed copied
-   *  from the film it linked names it, never the billed title. The copied title is that film's, restated ([[FeedLink]]),
-   *  so a namesake it alone names is the link's pull, not the venue's film. DE Mathäser's "Rodychi (UKRAJINA CINEMA)":
-   *  Cineamo links Chereshnya's "Родичі" (1658840m) and copies its English title "Kin", which took Baker's 2018 "Kin";
-   *  "Karavan" took the 1946 "Caravan", "Akten des Missbrauchs" Zobel's "The Hunt". Measured on convergence run
-   *  38529260149's DE model takes: 7 listings took a film only the copied title of another linked film named, all 7 wrong.
-   *  A feed that is not TMDB-keyed names no film its copy is of, and its copied title stays evidence. */
+  /** Why `node`'s original title, a FEED's copy ([[SourceReliability.copiesOriginalTitle]]), denies it `candidate`: only that
+   *  copied title names it, never the billed title. The copied title is the feed entry's, restated — the entry's claim of
+   *  which film it is ([[FeedLink]]) — so a namesake it alone names is the copy's pull, not the venue's film; and the year,
+   *  director and running time the feed copied beside it agree with that entry by construction, so they confirm nothing
+   *  (one origin, counted once). A TMDB-keyed feed's link names the entry's film, which stays the node's to take. DE
+   *  Mathäser's "Rodychi (UKRAJINA CINEMA)": Cineamo links Chereshnya's "Родичі" (1658840m) and copies its English title
+   *  "Kin", which took Baker's 2018 "Kin"; "Karavan" took the 1946 "Caravan", "Akten des Missbrauchs" Zobel's "The Hunt".
+   *  Measured on convergence run 38529260149's DE model takes: 7 listings took a film only the copied title of another
+   *  linked film named, all 7 wrong. A page feed names no film, its copy no less one when it shares nothing with the
+   *  billing ([[IdentityMeasures.Listing.originalSharesNothingBilled]]): DE Cinecitta's "Über Unterbiberger - Vom Woid in
+   *  die Welt" links kinoheld's page of another event, which copied Eisenstein's "Октябрь", his credit and its 142
+   *  minutes, and took "Oktober 1917" at 61.9% while thirteen venues billed Ditscherlein's 2025 documentary. */
   private def namedOnlyByCopiedTitle(node: EvidenceNode, candidate: Candidate): Option[String] =
-    copyingLink(node).filter(_._2 != candidate.tmdbId).flatMap { case (id, linkedFilm) =>
+    copyingLink(node).map { case (id, linked) => (s"${id.source} ${id.id}", Some(linked)) }
+      // a page feed's copy, which names no film: on a node no TMDB-keyed feed links — whose link, where this resolve's
+      // films are a family's own numbers, is read as nothing, its copied title the linked film's own (DE "Der Film 444
+      // und ein Treffen …") — and only a copy sharing nothing with the billing: one spelling the billed title, or
+      // translating it word for word, is the venue's work restated (DE "Mein Opa der Bankräuber" copied as "Mijn Opa de
+      // Bankrover", "Kardes Türküler ile 30 yil" as "Kardeş Türküler ile 30 Yıl")
+      .orElse(Option.when(FeedLink.linked(node).isEmpty && node.listings.forall(SourceReliability.copiesOriginalTitle) &&
+        evidenceOf(node).measured.originalSharesNothingBilled)(sourceOf(node) -> None))
+      .filter(_._2.forall(_ != candidate.tmdbId)).flatMap { case (feed, linked) =>
       val listing = evidenceOf(node).measured
+      // a page feed's copy names no film, so the record must not carry the billing's words either: one sharing two of
+      // them, which a mere spelling keeps from naming it, is the billing's ("Madoka Magica - The Movie: Rebellion" is
+      // "Mahou Shoujo Madoka Magica the Movie (Part 3): The Story of the Rebellion"); one word is a namesake's chance
+      // ("Über Unterbiberger - Vom Woid in die Welt" and "Oktober 1917 – Zehn Tage, die die Welt erschütterten")
+      def billsItsWords = linked.isEmpty &&
+        (Seq(candidate.film.title) ++ candidate.film.originalTitle).exists(title => listing.wordsBilledOf(title) >= 2)
       // a year the listing states that the film shares — the linked film's, copied — makes the two one film under two
       // records: DE "Tabaluga und Leo - Die Weihnachtsgeschichte" [2003] links 1486412m and is the 2003 film 68030
       def sameYear = listing.year.exists(year => candidate.film.year.exists(film => math.abs(film - year) <= 1))
-      Option.when(listing.originalTitle.nonEmpty && !sameYear &&
+      Option.when(listing.originalTitle.nonEmpty && !sameYear && !billsItsWords &&
         IdentityMeasures.names(titleRelation(listing, candidate).value, listing, candidate.film) && {
           // the billed titles — without the copied original, nor a search title that is only it again — against the
           // record as its database holds it: the venue titles the corpus learned for it by that very original
@@ -227,7 +246,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
           val billed = listing.copy(originalTitle = None, searchTitles = listing.searchTitles.filterNot(title => copied.contains(IdentityMeasures.key(title))))
           val record = scoring.generation.recorded.get(candidate.tmdbId).fold(candidate.film)(_.film)
           !IdentityMeasures.names(IdentityMeasures.titleRelation(billed, record, houses, qualifiers).value, billed, record)
-        })(s"named only by the title its feed (${id.source} ${id.id}) copied from $linkedFilm")
+        })(s"named only by the title its feed ($feed) copied" + linked.fold("")(film => s" from $film"))
     }
 
   /** Why `node` rules `id` out before its evidence is scored: a pin, an overruled feed link, a short its feed links

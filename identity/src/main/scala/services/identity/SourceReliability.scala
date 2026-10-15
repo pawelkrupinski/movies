@@ -70,6 +70,10 @@ object SourceReliability {
     "the entry by construction — one vote however many venues the feed lists it at, one dissent rather than a veto " +
     "(DE \"To The Bone\": Filmstarts' feed credits Erin Li's 2014 short to a venue billing Noxon's 2017 feature)"
   private def copied(facts: Fact*): Seq[(Fact, Trust, String)] = facts.map(f => (f, Trust.Support, CopiedFromTheEntry))
+  /** The original title a feed copies: as its other facts, and a namesake only it names — never the billed title — the copy's pull. */
+  private val CopiedOriginalTitle = (Fact.OriginalTitle, Trust.Support, CopiedFromTheEntry + "; a namesake only it names, never " +
+    "the billed title, is the copy's pull and denied the listing (FamilyScope.namedOnlyByCopiedTitle: DE Cinecitta's \"Über " +
+    "Unterbiberger\" took Eisenstein's \"Oktober\" by kinoheld's copy of «Октябрь» from another event's page)")
   private val EntrysPoster = (Fact.Poster, Trust.Ignore, "the entry's poster, which votes for the entry whether or not it is the venue's film")
   private val EntrysText   = (Fact.Names, Trust.Ignore, "the synopsis and cast describe the entry, maybe another film than the venue's")
 
@@ -81,7 +85,7 @@ object SourceReliability {
     (Fact.Link, Trust.Support, "an aggregator's link of the screening to its entry, which can be the wrong entry (Filmstarts' " +
       "placeholder 51988 \"Film Program\" at two venues' different films): taken only when a venue's own facts or the title's " +
       "search corroborate it, and joining only listings whose titles already agree")) ++
-    rules(copied(Fact.Year, Fact.Directors, Fact.Runtime, Fact.OriginalTitle)*) ++ rules(EntrysPoster, EntrysText))
+    rules(copied(Fact.Year, Fact.Directors, Fact.Runtime)*) ++ rules(CopiedOriginalTitle, EntrysPoster, EntrysText))
 
   private val CineamoFilm = """(\d+)m""".r
   /** Cineamo's film record id ("9695m"), attached to every German showing its feed lists — TMDB's own id and "m". */
@@ -100,12 +104,12 @@ object SourceReliability {
   /** kinoprogramm.com, by the catalogue page it serves as every venue's listing (`/kinofilm/<slug>-<id>`). */
   val Kinoprogramm: Source = Source("kinoprogramm", Recognition.Pages(Seq("https://www.kinoprogramm.com/", "https://kinoprogramm.com/")), rules(
     (Fact.Link, Trust.Support, "a page, not a catalogue id: names no film another database maps")) ++
-    rules(copied(Fact.Year, Fact.Directors, Fact.Runtime, Fact.OriginalTitle)*) ++ rules(EntrysPoster, EntrysText))
+    rules(copied(Fact.Year, Fact.Directors, Fact.Runtime)*) ++ rules(CopiedOriginalTitle, EntrysPoster, EntrysText))
 
   /** kinoheld.de, by the film page of the film it linked a show to (`/film/<slug>`, `KinoheldClient`). */
   val Kinoheld: Source = Source("kinoheld", Recognition.Pages(Seq("https://www.kinoheld.de/film/")), rules(
     (Fact.Link, Trust.Support, "a page, not a catalogue id: names no film another database maps")) ++
-    rules(copied(Fact.Year, Fact.Directors, Fact.Runtime, Fact.OriginalTitle)*) ++ rules(EntrysPoster, EntrysText))
+    rules(copied(Fact.Year, Fact.Directors, Fact.Runtime)*) ++ rules(CopiedOriginalTitle, EntrysPoster, EntrysText))
 
   /** Flicks' film page, linked by every UK and US venue's listing of the film: the facts read off it (`FlicksFilmPage`:
    *  year, directors, countries) are Flicks' claim of which film the entry is — one mislinked entry would otherwise veto
@@ -115,8 +119,7 @@ object SourceReliability {
     (Fact.Year, Trust.Support, "read off the listings site's catalogue entry, not the venue's card"),
     (Fact.Directors, Trust.Support, "read off the listings site's catalogue entry, not the venue's card"),
     (Fact.Runtime, Trust.Support, "read off the listings site's catalogue entry, not the venue's card"),
-    (Fact.OriginalTitle, Trust.Support, "read off the listings site's catalogue entry, not the venue's card"),
-    EntrysPoster, EntrysText))
+    CopiedOriginalTitle, EntrysPoster, EntrysText))
 
   /** The aggregators' showtimes feeds. */
   val Feeds: Seq[Source] = Seq(Webedia, Cineamo, Kinoprogramm, Kinoheld)
@@ -146,6 +149,11 @@ object SourceReliability {
   def factsOf(listing: Listing): Source = factsOf(listing.catalogueIds, listing.page, listing.pageFacts)
 
   def trust(listing: Listing, fact: Fact): Trust = factsOf(listing).trust(fact)
+
+  /** Is the original title a listing's evidence carries a feed's copy — its own field's source, else its page's (an
+   *  original title its evidence takes from the page it links, as [[Evidence.of]] merges it in) — only Support? */
+  def copiesOriginalTitle(listing: Listing): Boolean =
+    !decides(if (listing.originalTitle.isDefined) listing else listing.copy(pageFacts = true), Fact.OriginalTitle)
   def decides(listing: Listing, fact: Fact): Boolean = trust(listing, fact) == Trust.Decide
 
   /** Are the facts a feed's claim — its id or its page on the listing — whether or not they were read ([[factsOf]] with no
