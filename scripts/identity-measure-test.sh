@@ -88,7 +88,10 @@ case "$1 $2" in
          {"name":"poland / takes","startedAt":"2026-10-15T07:02:49Z","completedAt":"2026-10-15T07:12:31Z","conclusion":"failure"}]}
 JSON
         ;;
-      status,headBranch,headSha) printf 'completed\tmeasure/abc-1\t%s\n' "$HEAD_SHA" ;;
+      # RUN_PENDING=n: the run is still in progress for --run's first n reads of it
+      status,headBranch,headSha) pending=$(( $(cat "$STUB/pending" 2>/dev/null || echo 0) + 1 )); echo "$pending" > "$STUB/pending"
+                                 [ "$pending" -le "${RUN_PENDING:-0}" ] && { printf 'in_progress\tmeasure/abc-1\t%s\n' "$HEAD_SHA"; exit 0; }
+                                 printf 'completed\tmeasure/abc-1\t%s\n' "$HEAD_SHA" ;;
       jobs) printf 'poland / takes\tfailure\n' ;;
     esac ;;
   "run download") while [ "$#" -gt 0 ]; do [ "$1" = --dir ] && dir=$2; shift; done; cp -R "$ARTIFACT/." "$dir/" ;;
@@ -170,6 +173,13 @@ scratch_git "$repo" push -q origin "$tip:refs/heads/measure/abc-1"
 check "--run collects a finished run" "1" "$(HEAD_SHA=$tip measure lost --run 777 --countries pl)"
 check "...and deletes its measure/ branch" "0" "$(measure_branches)"
 check "...dispatching nothing" "false" "$([ -f "$work/stub/dispatch" ] && echo true || echo false)"
+# --run of a run still in progress waits for it (bounded by --timeout), then collects: no poll loop of the caller's
+rm -f "$work/stub/pending"; scratch_git "$repo" push -q origin "$tip:refs/heads/measure/abc-1"
+check "--run waits for a run still in progress, then collects it" "1" "$(RUN_PENDING=1 HEAD_SHA=$tip measure lost --run 777 --countries pl)"
+check "...saying it waits" "true" "$(grep -q 'waiting for run 777' "$work/out" && echo true || echo false)"
+rm -f "$work/stub/pending"; scratch_git "$repo" push -q origin "$tip:refs/heads/measure/abc-1"
+check "--run --no-wait leaves a run in progress for later" "2" "$(RUN_PENDING=1 HEAD_SHA=$tip measure lost --run 777 --no-wait --countries pl)"
+scratch_git "$repo" push -q origin --delete refs/heads/measure/abc-1
 # --run re-classifies with the checkout's judgements, made since the run and not yet committed: Lalka judged wrong
 # since, its loss is a cure.
 cp "$repo/test/resources/fixtures/identity-judgements.tsv" "$work/judgements.orig"

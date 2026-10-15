@@ -11,7 +11,7 @@
 #
 # usage: scripts/identity-measure [<commit-or-branch>] [--base <sha>] [--countries pl,de,uk,us,es] [--keep-branch]
 #                                 [--no-wait] [--full] [--fresh] [--json] [--timeout <minutes>]
-#        scripts/identity-measure --run <run id> [--countries ...] [--keep-branch] [--json]
+#        scripts/identity-measure --run <run id> [--countries ...] [--keep-branch] [--json] [--no-wait] [--timeout <minutes>]
 #   <commit>       default HEAD (uncommitted changes are NOT measured: commit them first)
 #   --base         default the commit's merge-base with origin/main; the commit's parent when it is on main already
 #   --countries    the countries reported and judged (every leg runs: the workflow's matrix is fixed)
@@ -20,7 +20,8 @@
 #   --full         run the whole convergence suite, not only the takes rows (never reused, never stored)
 #   --fresh        dispatch even when an earlier measurement of the same change answers it (below)
 #   --json         machine output (scripts/identity_measure.py --json)
-#   --run          collect an existing run instead (its identity-takes-<cc> artifacts); deletes its measure/ branch
+#   --run          collect an existing run instead (its identity-takes-<cc> artifacts); deletes its measure/ branch.
+#                  A run still in progress is waited for (at most --timeout); with --no-wait it exits 2 instead
 #
 # THE BRANCH. The workflow runs a commit only from a ref, so the commit is pushed as `measure/<short sha>-<random>` --
 # the one kind of branch push this repository allows besides main, ONLY to run a build -- and deleted at the end:
@@ -235,7 +236,12 @@ if [ -n "$run" ]; then
   view=$(identity_gh "$DISPATCH_GH_TIMEOUT" run view "$run" --json status,headBranch,headSha --jq '[.status, .headBranch, .headSha] | @tsv') \
     || die "could not read run $run"
   IFS=$'\t' read -r status run_branch run_sha <<< "$view"
-  [ "$status" = completed ] || { say "run $run is $status: collect it once it completes"; exit 2; }
+  if [ "$status" != completed ]; then
+    [ -z "$nowait" ] || { say "run $run is $status: collect it once it completes"; exit 2; }
+    # wait here, bounded, rather than leave every caller its own poll loop (agents spent ~10 min a measurement on one)
+    say "waiting for run $run ($status), at most --timeout $timeout_min minutes"
+    wait_for_run "$run" $((timeout_min * 60)) || die "run $run gave no conclusion within --timeout $timeout_min minutes"
+  fi
   case "$run_branch" in measure/*) branch=$run_branch ;; esac
   collect "$run" "$run_sha" checkout
   verdict=$?
