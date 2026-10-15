@@ -222,6 +222,9 @@ rm -rf "$work/release" "$work/pending"
 code=0; side_run base "$c5" || code=$?
 check "the base row resolves the base's side" "0 2" "$code $(base_calls)"
 check "...and nothing of the head's" 0 "$(head_calls)"
+check "...its final takes replayed in a checkout of their own, beside the resolve (one target, two sbt runs)" \
+  "identity-takes-base identity-takes-base-final" \
+  "$(for c in dump ratchet; do grep " $c-" "$work/sbt-calls" | cut -d' ' -f1 | xargs basename; done | xargs)"
 check "...storing the base's decisions and final takes" 2 "$(ls "$work/release" | wc -l | tr -d ' ')"
 side_run base "$c5" || true
 check "...or, stored already, nothing at all" 0 "$(base_calls)"

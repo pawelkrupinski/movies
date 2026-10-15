@@ -249,13 +249,18 @@ keep() { # <file> <asset> [base]: store a result, never failing the check
 asset() { [ "$1" = final ] || [ -n "${KINOWO_CONVERGENCE_PIN_CORPUS_RUN:-}" ] || return 0; echo "takes-$1-$cc-$2.gz"; }
 
 tree="$RUNNER_TEMP/identity-takes-base"
-base_tree() { # the base checked out beside the head, once, for whichever of its results is not stored
-  [ -d "$tree" ] && return 0
-  git worktree add -q --detach "$tree" "$base" || return 1
+# The base's final takes replay beside its resolve when no head session runs (the base row, or a takes row resolving the
+# base itself), and two sbt runs in one checkout compile into one target: that replay gets a checkout of its own.
+final_tree=$tree
+[ "$side" = both ] || final_tree="$tree-final"
+base_tree() { # [dir]: the base checked out beside the head, once, for whichever of its results is not stored
+  local dir=${1:-$tree}
+  [ -d "$dir" ] && return 0
+  git worktree add -q --detach "$dir" "$base" || return 1
   # The head's compiled classes and zinc state, so the base compiles only what differs between them.
   # The sbt-target-cache's paths (.github/actions/sbt-target-cache): classes and analysis, no jars.
   for d in project/target project/project/target */target/scala-*; do
-    [ -d "$here/$d" ] && mkdir -p "$tree/$d" && cp -a "$here/$d/." "$tree/$d/"
+    [ -d "$here/$d" ] && mkdir -p "$dir/$d" && cp -a "$here/$d/." "$dir/$d/"
   done
   return 0
 }
@@ -266,7 +271,7 @@ ratchet_heap=${TAKES_RATCHET_HEAP:-3g}
 # output) -- scripts/identity-measure prints them per country, so a slow measurement says which phase was slow and
 # whether a stored result spared it.
 timing() { printf '%s\t%s\t%s\n' "$1" "$SECONDS" "$2" >> "$out/timings.tsv"; }
-rm -rf "$tree"
+rm -rf "$tree" "$final_tree"
 : > "$out/verdict.txt"
 printf 'phase\tseconds\thow\n' > "$out/timings.tsv"
 model=0 final=0 shape=0
@@ -333,11 +338,11 @@ shape_key() { # <sha>: the findings' inputs -- the checks' code and allowlists, 
 # below (they read nothing the head writes, and the session leaves the runner's other cores idle most of its time); its
 # resolve and its corpus shape follow the session, whose heap they could not share.
 base_final_start() { # the base's final takes, replayed in the background (base_final_finish waits for them)
-  base_tree || exit 2
+  base_tree "$final_tree" || exit 2
   cp "$here"/test/resources/fixtures/identity-unmatched/*.json.gz "$here"/test/resources/fixtures/identity-unmatched/*.inputs \
-     "$tree/test/resources/fixtures/identity-unmatched/" 2>/dev/null
+     "$final_tree/test/resources/fixtures/identity-unmatched/" 2>/dev/null
   base_started=$(date +%s)
-  ratchet "$tree" "$out/base/ratchet-takes.tsv" > "$out/base-final.out" 2>&1 &
+  ratchet "$final_tree" "$out/base/ratchet-takes.tsv" > "$out/base-final.out" 2>&1 &
   base_final_pid=$!
   trap 'kill "$base_final_pid" 2> /dev/null' EXIT # an exit before its wait below leaves no replay behind (best effort)
 }
@@ -395,7 +400,7 @@ if [ "$side" = base ]; then
     SECONDS=0
     if base_shape_stored reused; then timing base-shape reused; else base_shape; fi
   fi
-  [ -d "$tree" ] && { git worktree remove --force "$tree" || true; }
+  for dir in "$tree" "$final_tree"; do [ -d "$dir" ] && { git worktree remove --force "$dir" || true; }; done
   echo "identity takes ($cc): the base's side of ${base:0:9} is stored for the takes row" | tee -a "$out/verdict.txt"
   [ "$final" = 0 ] && [ "$shape" = 0 ] || exit 2
   exit 0
@@ -492,7 +497,7 @@ elif [ -n "$shape_command" ]; then
 else
   echo "identity takes ($cc): corpus shape not checked (no SHAPE_COMMAND)" | tee -a "$out/verdict.txt"
 fi
-[ -d "$tree" ] && { git worktree remove --force "$tree" || true; }
+for dir in "$tree" "$final_tree"; do [ -d "$dir" ] && { git worktree remove --force "$dir" || true; }; done
 
 diff_takes() { # <base> <head> [--final]
   python3 "$here/scripts/ci/identity_takes_diff.py" "$cc" "$1" "$2" "${@:3}" \
