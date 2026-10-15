@@ -28,6 +28,20 @@ class TitleDecorationsSpec extends AnyFlatSpec with Matchers {
     d.strip("Shrek 2D PL Special") shouldBe Nil
   }
 
+  it should "never cut a run that joins the title's own words to a delimited piece: that is the title running on" in {
+    // DE Gloria Palast's and Kinopolis Bad Homburg's "Renoir und die Liebe (Exhibition On Screen)": learned around "Renoir"
+    // alone (recording 38713274617), the suffix took "und die Liebe" with the series' bracket, and the bare "Renoir" was
+    // agreed to Hayakawa's 2025 feature. PL "Sztuka na ekranie: Egon Schiele. Poza tabu" left "tabu" so. A decoration is
+    // one piece of billing — a bracket, a banner, a tag — never words of the title and a piece beside them.
+    val d = TitleDecorations(Set(Seq("sztuka", "na", "ekranie", "egon", "schiele", "poza")),
+      Set(Seq("und", "die", "liebe", "exhibition", "on", "screen"), Seq("pokaz", "w", "dkf")))
+    d.strip("Renoir und die Liebe (Exhibition On Screen)") shouldBe Nil
+    d.strip("Sztuka na ekranie: Egon Schiele. Poza tabu") shouldBe Nil
+    // One piece, delimited or not, is still cut, whatever separates it from the title.
+    d.strip("Crash (pokaz w DKF)") shouldBe Seq("Crash")
+    d.strip("Crash: pokaz w DKF") shouldBe Seq("Crash")
+  }
+
   it should "become a title shape, searched and read by the title relation" in {
     val d = TitleDecorations(Set(Seq("4dx", "rewind")), Set(Seq("2d", "pl")))
     val l = IdentityMeasures.Listing("(4DX Rewind) Shrek 2D PL", decorations = d)

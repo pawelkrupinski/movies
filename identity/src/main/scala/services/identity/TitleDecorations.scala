@@ -43,8 +43,10 @@ final case class TitleDecorations(prefixes: Set[Seq[String]], suffixes: Set[Seq[
     else (TitleDecorations.words(title).toSeq.flatMap { ws =>
       val tokens = ws.map(_._1)
       val n = tokens.size
-      val fromFront = (1 until n).filter(k => prefixes(tokens.take(k))).map(k => title.substring(ws(k)._2))
-      val fromBack  = (1 until n).filter(k => suffixes(tokens.takeRight(k))).map(k => title.substring(0, ws(n - k)._2))
+      val fromFront = (1 until n).filter(k => prefixes(tokens.take(k)) && TitleDecorations.onePiece(title.substring(0, ws(k)._2)))
+        .map(k => title.substring(ws(k)._2))
+      val fromBack  = (1 until n).filter(k => suffixes(tokens.takeRight(k)) && TitleDecorations.onePiece(title.substring(ws(n - k)._2)))
+        .map(k => title.substring(0, ws(n - k)._2))
       (fromFront ++ fromBack).map(TitleDecorations.trimmed).filter(_.nonEmpty)
     } ++ Option(withoutTail(title)).filter(_ != title)).distinct
 
@@ -109,6 +111,15 @@ object TitleDecorations {
     Option.when(ws.size == spans.size && ws.map(_._1) == TitleContainment.tokens(title))(ws)
   }
   private val WordRun = """[\p{L}\p{N}\p{M}]+""".r
+
+  /** Is the text a cut takes off ONE piece of billing — a bracket, a banner, a tag — and not the title's own words run
+   *  on into a delimited piece beside them? A decoration learned around one title can swallow the title's end with the
+   *  bracket after it: DE "Renoir und die Liebe (Exhibition On Screen)" learned "und die Liebe (Exhibition On Screen)",
+   *  and the bare "Renoir" left was agreed to Hayakawa's 2025 feature. Its separators — a bracket, a pipe, a colon, a
+   *  sentence's stop, a spaced dash or slash — inside the cut, past its own edges, split it into two worded pieces then. */
+  private[identity] def onePiece(cut: String): Boolean =
+    PieceSeparator.split(trimmed(cut)).count(_.exists(Character.isLetterOrDigit)) <= 1
+  private val PieceSeparator = java.util.regex.Pattern.compile("""[()\[\]{}|]|:\s|\.\s|\s[-–—/]\s""")
   private val LeadingSeparators  = java.util.regex.Pattern.compile("""^[\s\-–—:|/)\]},;.]+""")
   private val TrailingSeparators = java.util.regex.Pattern.compile("""[\s\-–—:|/(\[{,;]+$""")
 
