@@ -8,7 +8,9 @@
 #   scripts/sbt-warm --seed              only seed this checkout's compiled output (when it has none)
 #   scripts/sbt-warm --status            this checkout's server, and every kept one
 #   scripts/sbt-warm --stop              stop this checkout's server (by pid, its own only: never `sbt --client shutdown`,
-#                                        which reaches whatever server active.json names)
+#                                        which reaches whatever server active.json names). Refused in the ROOT checkout
+#                                        (a tool call starts there: four agents' clean-ups on 2026-10-15 stopped its
+#                                        server instead of their own); --stop --root stops it on purpose
 #   scripts/sbt-warm --reap              stop every kept server whose checkout is gone, or idle past the timeout
 #
 # ONE SERVER: a call finding several servers in the checkout stops them all and starts one; a seed never touches
@@ -174,7 +176,12 @@ watch() { # <pid>
 case "${1:-}" in
   --reap) reap idle; exit 0 ;;
   --seed) seed; exit 0 ;;
-  --stop) stop_servers_of "$root" || log "no server of $root to stop"; rm -f "$State/$key".*; exit 0 ;;
+  --stop)
+    if [ "${2:-}" != --root ] && [ "$(git rev-parse --path-format=absolute --git-dir 2>/dev/null)" = "$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null)" ]; then
+      log "refusing --stop in the root checkout ($root): cd into your own worktree first, or --stop --root to stop the root's server"
+      exit 2
+    fi
+    stop_servers_of "$root" || log "no server of $root to stop"; rm -f "$State/$key".*; exit 0 ;;
   --status)
     pid=$(server_pid "$root") && echo "this checkout ($root): server pid $pid" || echo "this checkout ($root): no server"
     for f in "$State"/*.root; do [ -f "$f" ] && echo "kept: $(cat "$f") (pid $(cat "${f%.root}.pid" 2>/dev/null || echo ?), last used $(date -r "${f%.root}.used" '+%Y-%m-%d %H:%M' 2>/dev/null))"; done

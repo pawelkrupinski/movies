@@ -89,7 +89,7 @@ check "...no measure run" "0" "$(calls | grep -c '^java')"
 check "kept, locally: the checks run" "0" "$(CI='' KEEP=1 TMDB_API_KEY=k refit "$tree" --relearn year.delta --report target/r.md)"
 check "...relearn passed through" "1" "$(calls | grep -c -- '--report target/r.md --threads [0-9]* --relearn year.delta$')"
 check "...in order: identity specs, hard clusters on a mongod of its own (the warm server stopped first), the snapshots twice each" \
-    "sbt-warm identity/testOnly services.identity.* worker/testOnly services.identity.* scripts.IdentityCalibrateSpec scripts.IdentityRefitSpec|sbt-warm --stop|it-local.sh worker/IntegrationTest/testOnly integration.HardClusterConvergenceIntegrationSpec|sbt-warm e2e/Test/testOnly services.movies.FilmScheduleEndToEndSpec|sbt-warm e2e/Test/testOnly services.movies.FilmScheduleEndToEndSpec|sbt-warm web/PageTest/testOnly views.PageSnapshotSpec|sbt-warm web/PageTest/testOnly views.PageSnapshotSpec" \
+    "sbt-warm identity/testOnly services.identity.* worker/testOnly services.identity.* scripts.IdentityCalibrateSpec scripts.IdentityRefitSpec|sbt-warm --stop --root|it-local.sh worker/IntegrationTest/testOnly integration.HardClusterConvergenceIntegrationSpec|sbt-warm e2e/Test/testOnly services.movies.FilmScheduleEndToEndSpec|sbt-warm e2e/Test/testOnly services.movies.FilmScheduleEndToEndSpec|sbt-warm web/PageTest/testOnly views.PageSnapshotSpec|sbt-warm web/PageTest/testOnly views.PageSnapshotSpec" \
     "$(calls | tail -n +3 | paste -sd '|' -)"
 check "...the moved films appended to the report" "1" "$(grep -c '^+film B' "$tree/target/r.md")"
 check "...the weights left changed in the worktree" "1" "$(scratch_git "$tree" diff --name-only | grep -c identity-weights.json)"

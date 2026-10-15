@@ -105,7 +105,7 @@ if [ -n "${MONGODB_URI:-}" ]; then
     sbt_run "worker/IntegrationTest/testOnly integration.HardClusterConvergenceIntegrationSpec"
 else
     # a mongod of the run's own; it-local.sh runs plain sbt, which must not share target/ with a live warm server
-    [ -n "${CI:-}" ] || scripts/sbt-warm --stop
+    [ -n "${CI:-}" ] || scripts/sbt-warm --stop --root  # this run's own checkout, whichever it is
     scripts/it-local.sh "worker/IntegrationTest/testOnly integration.HardClusterConvergenceIntegrationSpec"
 fi
 

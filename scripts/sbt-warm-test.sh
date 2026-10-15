@@ -155,5 +155,14 @@ sleep 0.3
 check "--stop stops this checkout's own server, and only it" "stopped running" \
   "$(kill -0 "$mine" 2>/dev/null && echo running || echo stopped) $(kill -0 "$theirs" 2>/dev/null && echo running || echo stopped)"
 kill "$mine" "$theirs" 2>/dev/null
+# The root checkout (not a linked worktree) is where every tool call starts: a bare --stop there is refused, so an
+# agent's clean-up run before its `cd` leaves the root's server alone; --stop --root stops it on purpose.
+fake_server "$repo"; roots=$!; await_server "$roots"
+check "--stop in the root checkout is refused, leaving its server running" "2 running" \
+  "$(cd "$repo" && "$REPO_ROOT/scripts/sbt-warm" --stop >/dev/null 2>&1; echo $?) $(kill -0 "$roots" 2>/dev/null && echo running || echo stopped)"
+(cd "$repo" && "$REPO_ROOT/scripts/sbt-warm" --stop --root >/dev/null 2>&1)
+sleep 0.3
+check "...and --stop --root stops it" "stopped" "$(kill -0 "$roots" 2>/dev/null && echo running || echo stopped)"
+kill "$roots" 2>/dev/null
 
 spec_summary
