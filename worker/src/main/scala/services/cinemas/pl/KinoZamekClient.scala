@@ -7,6 +7,7 @@ import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
 import services.cinemas.common.{CinemaScraper, ListingPages}
+import tools.Whitespace.collapsedSpaces
 
 import java.time.{LocalDate, LocalDateTime, LocalTime}
 import scala.jdk.CollectionConverters._
@@ -280,5 +281,5 @@ object KinoZamekClient {
 
   /** Collapse the runs of whitespace and non-breaking spaces the CMS leaves in
     * titles ("AMADEUSZ  (Amadeus)"). */
-  private def collapse(text: String): String = text.replace(' ', ' ').replaceAll("\\s+", " ").trim
+  private def collapse(text: String): String = text.replace(' ', ' ').collapsedSpaces
 }

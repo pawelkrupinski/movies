@@ -1,5 +1,6 @@
 package services.movies
 
+import tools.Whitespace.collapsedSpaces
 import java.util.Locale
 
 /**
@@ -175,7 +176,7 @@ object FormatTags {
     val spelled = BracketedHyphenatedScreen.replaceAllIn(
       BracketedOriginalVersion.replaceAllIn(OriginalVersionPreposition.replaceAllIn(raw, " "), "OV"), "($1D)")
     var t    = GluedFormatDash.replaceAllIn(GluedFormatSlash.replaceAllIn(
-                 GluedFormatUnderscore.replaceAllIn(GluedVersionHyphen.replaceAllIn(spelled.replaceAll("\\s+", " ").trim, " - "), " "), " "), " - ")
+                 GluedFormatUnderscore.replaceAllIn(GluedVersionHyphen.replaceAllIn(spelled.collapsedSpaces, " - "), " "), " "), " - ")
     var previous = ""
     val dropped = scala.collection.mutable.Set.empty[String]
     def uaGuarded(tag: String): Boolean = UaGuardedTag.findFirstIn(tag).isDefined

@@ -5,6 +5,7 @@ import org.jsoup.nodes.Document
 import org.jsoup.Jsoup
 import tools.{HttpFetch, HttpRead}
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ListingPages, ScraperParse}
+import tools.Whitespace.collapsedSpaces
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
@@ -170,7 +171,7 @@ object EkobiletClient {
 
   /** A listing title as the venue typed it, whitespace collapsed. The tags stay
    *  on until [[parseTitle]], which needs them for the format and the rating. */
-  private def listingTitle(text: String): String = text.replaceAll("\\s+", " ").trim
+  private def listingTitle(text: String): String = text.collapsedSpaces
 
   /** A film's title with its tags peeled off, the versions they named as
    *  `Showtime.format` tokens, and the age they named as its rating. */

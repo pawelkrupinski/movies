@@ -1,5 +1,8 @@
 package tools
 
+import tools.Whitespace.collapsedSpaces
+
+
 /**
  * Hand-rolled JS + CSS minifier for the inline `<script>` / `<style>`
  * blocks the Twirl templates emit on every page. Conservative on purpose
@@ -153,7 +156,7 @@ object Minify extends Minifier {
 
   def minifyCss(src: String): String = {
     val noComments = CssBlockComment.replaceAllIn(src, "")
-    val collapsed  = noComments.replaceAll("\\s+", " ").trim
+    val collapsed  = noComments.collapsedSpaces
     val tightened  = collapsed
       .replace(" {", "{").replace("{ ", "{")
       .replace(" }", "}").replace("} ", "}")

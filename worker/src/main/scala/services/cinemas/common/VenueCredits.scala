@@ -1,6 +1,7 @@
 package services.cinemas.common
 
 import services.cinemas.CountryNames
+import tools.Whitespace.collapsedSpaces
 
 import java.util.Locale
 import scala.util.matching.Regex
@@ -104,7 +105,7 @@ object VenueCredits {
   }
 
   private def clean(line: String): String =
-    TrailingStars.replaceFirstIn(line.replace(' ', ' ').replaceAll("\\s+", " ").trim, "")
+    TrailingStars.replaceFirstIn(line.replace(' ', ' ').collapsedSpaces, "")
 
   private def factsOf(line: String): Seq[Fact] = {
     val segments = Separator.split(line).iterator.map(_.trim).filter(_.nonEmpty).toSeq

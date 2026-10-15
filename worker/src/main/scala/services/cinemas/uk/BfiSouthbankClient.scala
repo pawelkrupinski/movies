@@ -6,6 +6,7 @@ import org.jsoup.nodes.Element
 import services.cinemas.common.{CinemaScraper, ListingPages, ScraperParse, SlotsToMovies}
 import services.cinemas.pl.OnlyMovieEventsFilter
 import services.movies.BbfcCertificate
+import tools.Whitespace.collapsedSpaces
 import tools.{HttpFetch, HttpRead}
 
 import java.net.URLDecoder
@@ -121,7 +122,7 @@ object BfiSouthbankClient {
       for {
         link  <- Option(card.selectFirst("a.card-link[href]"))
         slug  <- Slug.findFirstMatchIn(link.attr("href")).map(_.group(1))
-        title <- Some(link.text.replaceAll("\\s+", " ").trim).filter(_.nonEmpty)
+        title <- Some(link.text.collapsedSpaces).filter(_.nonEmpty)
       } yield Card(
         slug     = slug,
         title    = title,

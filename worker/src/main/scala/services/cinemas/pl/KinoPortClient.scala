@@ -10,6 +10,7 @@ import models._
 import play.api.libs.json.{JsValue, Json}
 import tools.{HttpFetch, HttpRead}
 import services.cinemas.common.{CinemaScraper, SlotsToMovies}
+import tools.Whitespace.collapsedSpaces
 
 import java.time.{LocalDate, LocalDateTime}
 import scala.jdk.CollectionConverters._
@@ -269,7 +270,7 @@ object KinoPortClient {
       // "17:00 – Tony" sometimes arrives as ONE <strong>, sometimes split
       // across three siblings ("17:00" / "– " / "Tony"); joining and
       // collapsing whitespace handles both.
-      strongText       = strongs.asScala.map(_.text.trim).mkString(" ").replaceAll("\\s+", " ").trim
+      strongText       = strongs.asScala.map(_.text.trim).mkString(" ").collapsedSpaces
       (time, title)   <- strongText match {
                            case TimeTitlePat(h, m, t) =>
                              ScraperParse.clock(h, m).map(_ -> t.trim).filter(_._2.nonEmpty)

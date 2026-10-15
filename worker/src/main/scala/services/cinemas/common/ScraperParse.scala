@@ -4,6 +4,7 @@ import java.util.Locale
 
 import org.jsoup.nodes.{Document, Element, TextNode}
 import services.movies.FormatTags
+import tools.Whitespace.collapsedSpaces
 
 import java.time.{LocalDate, LocalDateTime, LocalTime, MonthDay, Period}
 import java.time.temporal.TemporalAmount
@@ -356,7 +357,7 @@ private[cinemas] object ScraperParse {
     container.select("strong").asScala.foreach { strong =>
       val label = strong.text.trim.toLowerCase(Locale.ROOT).replaceAll("\\s+", " ").stripSuffix(":").trim
       val value = strong.nextSibling() match {
-        case text: TextNode => text.text.replaceAll("\\s+", " ").trim
+        case text: TextNode => text.text.collapsedSpaces
         case _              => ""
       }
       if (label.nonEmpty && value.nonEmpty && !out.contains(label)) out(label) = value

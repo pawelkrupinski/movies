@@ -7,6 +7,7 @@ import org.jsoup.parser.Parser
 import services.cinemas.common.{AgeRating, CinemaScraper, ScraperParse, SlotsToMovies}
 import services.cinemas.pl.OnlyMovieEventsFilter
 import services.movies.BbfcCertificate
+import tools.Whitespace.collapsedSpaces
 import tools.{HttpFetch, HttpRead}
 
 import java.time.{LocalDate, OffsetDateTime}
@@ -130,7 +131,7 @@ object TicketsolveClient {
       if !child(event, "status").map(_.toLowerCase(Locale.ROOT)).exists(Cancelled)
       start <- child(event, "date_time_iso").flatMap(s => Try(OffsetDateTime.parse(s).toLocalDateTime).toOption).toSeq
       if !start.toLocalDate.isBefore(today)
-      title  = TitleCertificate.replaceFirstIn(name, "").replaceAll("\\s+", " ").trim if title.nonEmpty
+      title  = TitleCertificate.replaceFirstIn(name, "").collapsedSpaces if title.nonEmpty
     } yield Slot(show, title, TitleCertificate.findFirstMatchIn(name).map(_.group(1)), Showtime(
       dateTime   = start,
       bookingUrl = child(event, "url"),

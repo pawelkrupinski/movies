@@ -132,7 +132,8 @@ Order by the live tally: 4 (relays, 33 of 70 live wrong listings), then 2, 3, 1,
   `ReReleaseMark` against `ExtraTitleRules` `xtra-asterisk-note-suffix`, `xtra-runtime-suffix`,
   `xtra-rerelease-bracket` (different widths: the rule takes `*[^*]+*` and a bare running time). Share them as
   `TitleRulePlaceholders` like `CERT`, then re-measure.
-- [ ] **`replaceAll("\\s+", " ").trim` is written 18 times across clients**, two of them after an NBSP replace
+- [x] **`replaceAll("\\s+", " ").trim` is written 18 times across clients** (done: `tools.Whitespace.collapsedSpaces`,
+  16 copies; NBSP still folded by its two callers alone — folding it for every client moves titles, a change of its own), two of them after an NBSP replace
   (`KinoZamekClient.collapse`, `VenueCredits`). One `TitleText.collapseSpaces` would also decide NBSP for the rest
   (Jsoup `.text` leaves U+00A0, which Java `\s` skips); that moves titles, so snapshot + measure.
 - [ ] **Hand-written bodies in client specs** (record when the case appears in a feed): `TicketsolveClientSpec`

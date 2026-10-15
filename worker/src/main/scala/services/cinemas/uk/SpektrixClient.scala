@@ -5,6 +5,7 @@ import play.api.libs.json._
 import services.cinemas.common.{CinemaScraper, ScraperParse, SlotsToMovies}
 import services.cinemas.pl.OnlyMovieEventsFilter
 import services.movies.BbfcCertificate
+import tools.Whitespace.collapsedSpaces
 import tools.{HttpFetch, HttpRead, ReadOutcome}
 
 import java.time.{LocalDate, LocalDateTime}
@@ -187,7 +188,7 @@ object SpektrixClient {
   private def titleOf(name: String, event: JsObject): String =
     venuesNamed(event).foldLeft(name) { (title, site) =>
       title.replaceAll(s"(?i)\\s*\\(${Pattern.quote(site)}\\)", "")
-    }.replaceAll("\\s+", " ").trim
+    }.collapsedSpaces
 
   /** A box office's facts sheet heading a description, one "Label: value" line each — DCA's festival films open
    *  "Director: … / Country: … / Year: … / Duration: … / Certificate: … / Distributor: … / Pricing: … / Ads &

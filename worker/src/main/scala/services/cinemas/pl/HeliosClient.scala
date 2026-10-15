@@ -13,6 +13,7 @@ import java.time.{LocalDate, LocalDateTime, ZonedDateTime}
 import scala.concurrent.duration._
 import scala.util.Try
 import services.movies.TitleNormalizer
+import tools.Whitespace.collapsedSpaces
 
 // `today` is injected so tests can pin it: the REST `/screening` + `/event`
 // URLs bake the date window, and the recorded fixtures were captured for a
@@ -409,7 +410,7 @@ class HeliosClient(
 
   private def removeLessSpecificOverlaps(movies: Seq[CinemaMovie]): Seq[CinemaMovie] = {
     val timesByTitle = movies.map(m => m.movie.title -> m.showtimes.map(_.dateTime).toSet).toMap
-    val norm         = (s: String) => s.toLowerCase(Locale.ROOT).replaceAll("\\s+", " ").trim
+    val norm         = (s: String) => s.toLowerCase(Locale.ROOT).collapsedSpaces
     movies.filterNot { m =>
       val times = timesByTitle(m.movie.title)
       movies.exists(other =>

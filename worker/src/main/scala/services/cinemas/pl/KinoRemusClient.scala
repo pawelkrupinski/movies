@@ -7,6 +7,7 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import play.api.libs.json.{JsArray, Json}
 import services.cinemas.common.{AgeRating, CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ListingPages, ScraperParse, SlotsToMovies}
+import tools.Whitespace.collapsedSpaces
 import tools.{HttpFetch, HttpRead}
 
 import java.time.{LocalDate, LocalDateTime}
@@ -127,7 +128,7 @@ object KinoRemusClient {
       .toMap
 
   private def unquoted(title: String): String =
-    Quotes.replaceAllIn(title, "").replaceAll("\\s+", " ").trim
+    Quotes.replaceAllIn(title, "").collapsedSpaces
 
   private def titleKey(title: String): String = unquoted(title).toLowerCase(Locale.ROOT)
 

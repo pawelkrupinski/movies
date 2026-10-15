@@ -1,5 +1,6 @@
 package tools
 
+import tools.Whitespace.collapsedSpaces
 import scala.util.control.NonFatal
 
 /**
@@ -175,5 +176,5 @@ class UnexpectedBodyException(val url: String, val why: String, excerpt: String)
 object UnexpectedBodyException {
   private val ExcerptLength = 120
   private[tools] def excerptOf(body: String): String =
-    body.take(ExcerptLength).replaceAll("\\s+", " ").trim
+    body.take(ExcerptLength).collapsedSpaces
 }

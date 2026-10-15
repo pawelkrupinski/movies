@@ -8,6 +8,7 @@ import play.api.libs.json._
 import services.cinemas.CountryNames
 import services.cinemas.common.{AgeRating, CinemaScraper, ScraperParse, SlotsToMovies}
 import services.cinemas.pl.OnlyMovieEventsFilter
+import tools.Whitespace.collapsedSpaces
 import tools.{HttpFetch, HttpRead}
 
 import java.time.{LocalDate, LocalDateTime}
@@ -276,7 +277,7 @@ object SavoyClient {
     val isLink  = mark.tagName == "a"
     val heading = if (isLink) Option(mark.parent) else Some(mark)
     val text    = if (isLink) mark.text else TitleSuffix.replaceFirstIn(mark.ownText, "")
-    Some(text.replaceAll("\\s+", " ").trim).filter(_.nonEmpty).map { title =>
+    Some(text.collapsedSpaces).filter(_.nonEmpty).map { title =>
       val block = Option(mark.closest(".programme")).orElse(heading.flatMap(h => Option(h.parent)))
       Programme(
         title       = title,
@@ -321,7 +322,7 @@ object SavoyClient {
   }
 
   private def titleOf(event: JsObject): Option[String] =
-    (event \ "Title").asOpt[String].map(unescape).map(_.replaceAll("\\s+", " ").trim).filter(_.nonEmpty)
+    (event \ "Title").asOpt[String].map(unescape).map(_.collapsedSpaces).filter(_.nonEmpty)
 
   /** "2026-10-15" + "1830" → 2026-10-15T18:30. */
   private def startOf(perf: JsObject): Option[LocalDateTime] =

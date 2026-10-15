@@ -5,6 +5,7 @@ import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
 import services.cinemas.common.{AgeRating, CinemaScraper, ScraperParse, SlotsToMovies}
 import services.cinemas.pl.OnlyMovieEventsFilter
+import tools.Whitespace.collapsedSpaces
 import tools.{HttpFetch, HttpRead}
 
 import java.time.LocalDate
@@ -78,7 +79,7 @@ object NovaCinemaClient {
     val slots = for {
       show  <- page.select("section.movie").asScala.toSeq
       link  <- Option(show.selectFirst("h4 a")).toSeq
-      raw    = link.text.replaceAll("\\s+", " ").trim
+      raw    = link.text.collapsedSpaces
       title  = Strand.replaceFirstIn(raw, "").trim if title.nonEmpty
       card  <- show.select(".screening-card[data-date]").asScala.toSeq
       day   <- Try(LocalDate.parse(card.attr("data-date"))).toOption.toSeq if !day.isBefore(today)
