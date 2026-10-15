@@ -109,6 +109,10 @@ object IdentityMeasures {
       if (billsAStageHouse) StageRelays.Relay.of(titles) else StageRelays.Relay.Unbilled
     /** The title's words, once per listing: a banner word before the title naming a director is read against every candidate. */
     private[identity] lazy val titleWords: Seq[String] = ownForms.head.words
+    /** The title cut after each of its first words, as the key of what follows and the words before it, once per
+     *  listing: what [[IdentityMeasures.bannerNamesItsDirector]] reads against every candidate. */
+    private[identity] lazy val bannerCuts: Seq[(String, Seq[String])] =
+      (1 until titleWords.size).map(k => (titleWords.drop(k).mkString, titleWords.take(k)))
     private[identity] lazy val shapeKeys: Seq[String] = shapes.map(IdentityMeasures.key)
     private[identity] lazy val shapeWords: Seq[Seq[String]] = shapes.map(IdentityMeasures.words)
     /** The shapes only the learned decorations leave, once per listing (usually none): a relation's scoring reads them
@@ -369,6 +373,10 @@ object IdentityMeasures {
     private[identity] lazy val season: Option[Int] = TitleSeason.of(titles)
     /** The credited directors, parsed once per record (`directorRelation`); `None` when not fetched. */
     private[identity] lazy val directorCredits: Option[CreditRelation.Credits] = directors.map(new CreditRelation.Credits(_))
+    /** The last word of each credited director's name, five letters at least, once per record: the surname a banner
+     *  names ([[IdentityMeasures.bannerNamesItsDirector]]). */
+    private[identity] lazy val directorSurnames: Set[String] =
+      directors.getOrElse(Nil).flatMap(name => IdentityMeasures.words(name).lastOption).filter(_.length >= 5).toSet
     /** The titles, trimmed and non-empty, as comparison forms once per record: the other side of
      *  every node's `originalTitleRelation` to this film. */
     private[identity] lazy val trimmedForms: Seq[IdentityMeasures.TitleForm] =
@@ -531,13 +539,8 @@ object IdentityMeasures {
    *  retrospective of Tadeusz Konwicki), and a series' banner naming two: DE Babylon (Mitte)'s "Hitchcock & Chabrol:
    *  Spellbound" is Hitchcock's 1945 film. A banner the resolver learned and peels off ([[TitleDecorations]]) still says
    *  so: the peeled title is searched, the banner stays evidence. Only for a listing crediting nobody. */
-  private[identity] def bannerNamesItsDirector(l: Listing, f: Film): Boolean = l.directors.isEmpty && {
-    val words = l.titleWords
-    words.sizeIs >= 2 && f.directors.exists { names =>
-      val surnames = names.flatMap(name => IdentityMeasures.words(name).lastOption).filter(_.length >= 5).toSet
-      surnames.nonEmpty && (1 until words.size).exists(k => f.titleKeys.contains(words.drop(k).mkString) && words.take(k).exists(surnames))
-    }
-  }
+  private[identity] def bannerNamesItsDirector(l: Listing, f: Film): Boolean =
+    l.directors.isEmpty && l.bannerCuts.exists { case (titled, banner) => f.titleKeys.contains(titled) && banner.exists(f.directorSurnames) }
 
   /** Is a listing's credited "director" the film's HOUSE — a name two words or more long that runs inside the film's
    *  own title, and none of the people the film credits? UK venues credit "The Metropolitan Opera" for its 2026/27

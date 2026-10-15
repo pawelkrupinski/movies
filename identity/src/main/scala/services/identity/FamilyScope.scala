@@ -87,8 +87,11 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
     // A billing naming the director of a film its title names ([[IdentityMeasures.bannerNamesItsDirector]]: a series'
     // banner, "Hitchcock & Chabrol: Spellbound") says whose film of the title it shows: a namesake none of the directors
     // it names made is not it, however popular — the 2024 animated "Spellbound" is no Hitchcock.
+    // (read once per candidate: the denial below asks it again)
+    val bannerDirected = candidates.collect {
+      case scored if IdentityMeasures.bannerNamesItsDirector(listing, scored.candidate.film) => scored.candidate.tmdbId }.toSet
     val directorBilled = candidates.exists(scored => !scored.denied && IdentityMeasures.TitlesItsOwn(relation(scored.candidate.tmdbId)) &&
-      IdentityMeasures.bannerNamesItsDirector(listing, scored.candidate.film))
+      bannerDirected(scored.candidate.tmdbId))
     // The listing's title numbers its instalment as an eligible record of its series does
     // (`numeral` `same`): another instalment of that series — one the listing numbers and it
     // does not, or numbers otherwise — is another film, however its crew or runtime fits (Kinoteka's
@@ -147,7 +150,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
       else if (titled && !IdentityMeasures.NamingRelations(relation(scored.candidate.tmdbId)) && IdentityMeasures.sameDirector(scored.measures))
         scored.copy(denial = Some("its director's other film, which the title does not name"))
       else if (directorBilled && IdentityMeasures.NamingRelations(relation(scored.candidate.tmdbId)) &&
-               !IdentityMeasures.bannerNamesItsDirector(listing, scored.candidate.film))
+               !bannerDirected(scored.candidate.tmdbId))
         scored.copy(denial = Some("a namesake of the film whose director its billing names"))
       else if (instalment && scored.category("numeral").exists(IdentityMeasures.OtherInstalment))
         scored.copy(denial = Some("another instalment than the one the title numbers"))
