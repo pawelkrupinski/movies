@@ -4,12 +4,13 @@ import models.Country
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.TitleNormalizer
+import services.movies.{ParallelReplays, TitleNormalizer}
 import services.scrapes.ArchivedScrape
 import tools._
 
 import java.nio.file.Files
 import scala.collection.mutable
+import scala.concurrent.duration._
 import scala.util.Try
 
 /**
@@ -76,19 +77,30 @@ class IdentityQueryCoverageIntegrationSpec extends AnyFlatSpec with Matchers wit
     }
   }
 
-  private def measure(corpus: Corpus, suffix: String = ""): IdentityQueryCoverage.Coverage = {
+  /** A corpus's coverage and its summary line, unreported: safe to run on any thread. */
+  private def coverageOf(corpus: Corpus, suffix: String = ""): (IdentityQueryCoverage.Coverage, IdentityLookupSweep.Summary) = {
     val storage = ConvergenceStorage.mongo(mongoTarget, s"idq-${corpus.label}$suffix", TitleNormalizer.forCountry(corpus.country),
       services.movies.MovieChangeStream.Debounce.forCountry(corpus.country))
     storages.synchronized(storages += storage)
     val (fetch, missed)     = corpus.recording()
     val (coverage, summary) = IdentityQueryCoverage.measure(corpus.label, corpus.country, storage, corpus.rows, fetch, missed)
-    info(s"[gate] ${coverage.line}  ($summary)")
     println(s"[identity-gate] ${coverage.line}")
-    coverage
+    (coverage, summary)
   }
 
+  /** Reported on the test's own thread: ScalaTest's `info` belongs to the running test, not to a pool thread. */
+  private def reported(measured: (IdentityQueryCoverage.Coverage, IdentityLookupSweep.Summary)): IdentityQueryCoverage.Coverage = {
+    info(s"[gate] ${measured._1.line}  (${measured._2})")
+    measured._1
+  }
+
+  private def measure(corpus: Corpus, suffix: String = ""): IdentityQueryCoverage.Coverage = reported(coverageOf(corpus, suffix))
+
+  /** Measured side by side: each corpus has its own storage, recording and title rules, and measured one after
+   *  another they were this layer's long pole (202 s of a 231 s run at 4 cores, 2026-10-15). The bound is a
+   *  runaway guard, well past the slowest full corpus. */
   "the resolver's query set" should "be answerable from the recorded answers of every corpus (phase-1 gate)" in {
-    val results = (hardClusters ++ full).map(measure(_))
+    val results = ParallelReplays(hardClusters ++ full, within = 60.minutes, parallelism = ParallelReplays.ManyReplays)(coverageOf(_)).map(reported)
     // Never vacuous: every corpus asked something.
     results.filter(_.requests == 0).map(_.label) shouldBe empty
     if (strict) withClue(results.filterNot(_.met).map(_.line).mkString("\n", "\n", "\n")) {
