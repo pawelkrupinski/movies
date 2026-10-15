@@ -115,10 +115,9 @@ private[identity] object Corroboration {
    *  Measured 2026-10-15 without the `current release` fact: 46 wrong takes cured, ~2,000 lost (402 judged right) — most
    *  of them a current release billed by its bare title, which that fact now corroborates.
    *
-   *  `corroborated` false — a review family's verdict (`agreement.Agreement.verdict`), whose take is that database's VOTE,
-   *  not the listing's film — refuses only the node an evidenced namesake disputes: a bare title its databases agree on
-   *  is the agreement's corroboration to weigh, and refused there it took the right fill from DE "Newborn", which its
-   *  Cineamo id links. */
+   *  `corroborated` false — a review family's verdict (`agreement.Agreement.verdict`), whose records are numbered apart
+   *  from TMDB's — counts a node a TMDB-keyed feed links as vouched: the link names no record of the family's, and the
+   *  agreement weighs it beside the family's vote (DE "Newborn", Cineamo 787844m, lost its fill without it). */
   def refused(cluster: Seq[EvidenceNode], film: Int, scored: EvidenceNode => Seq[Scored], edges: Seq[ResolverEdge],
               support: Map[Int, Int], corroborated: Boolean = true): Seq[(EvidenceNode, String)] = {
     val own = cluster.map(node => node -> scored(node).find(_.candidate.tmdbId == film).fold(Seq.empty[String])(facts(node, _, scored(node)))).toMap
@@ -151,7 +150,10 @@ private[identity] object Corroboration {
         case (id, reason) if reason == ConstraintEdges.SameCatalogueId || !disputed.contains(id) => id
       }.filter(vouched.add)
     }
-    cluster.filterNot(node => vouched(node.id) || !corroborated && !disputed.contains(node.id)).map(node => node ->
+    // a family's records are its own, numbered apart from TMDB's: a feed's TMDB link names none of them, and is the
+    // agreement's to weigh beside the family's vote
+    def feedLinked(node: EvidenceNode) = !corroborated && node.listings.exists(SourceReliability.tmdbLinked(_).isDefined)
+    cluster.filterNot(node => vouched(node.id) || feedLinked(node)).map(node => node ->
       (s"uncorroborated: no year, director, original title, discriminating runtime, feed id, season, house or current release of its own names tmdb $film" +
         disputed.get(node.id).fold("")(why => s", and $why")))
   }

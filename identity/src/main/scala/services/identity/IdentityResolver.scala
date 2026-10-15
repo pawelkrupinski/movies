@@ -394,7 +394,7 @@ object IdentityResolver {
   def resolveScored(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer,
                     calibration: IdentityCalibration = IdentityCalibration.resolver): Scored = {
     val stages = new Stages(listings, lookups, normalizer, calibration, Mutation.None, PinConstraints(Nil), TitleDecorations.resolver)
-    new Scored(run(stages, Mutation.None, pieces = false), stages)
+    new Scored(run(stages, Mutation.None, pieces = false, corroborated = false), stages)
   }
 
   /** The corpus-wide facts a resolve of `listings` reads ([[CorpusContext]]): what one family,
@@ -460,8 +460,8 @@ object IdentityResolver {
 
   /** `pieces`: whether a member billing its cluster's film as one piece beside another thing is decided apart, as no film
    *  ([[billedAsPiece]]) — the model's own takes; not a family's verdict ([[resolveScored]]). `corroborated`: whether a
-   *  member no fact of its own corroborates is decided apart too ([[Corroboration.refused]]) — the model's own takes; a
-   *  family's verdict refuses only an evidenced namesake's. */
+   *  member no fact of its own corroborates is decided apart too ([[Corroboration.refused]]); false in a family's verdict,
+   *  whose records a TMDB feed link names none of, so a linked member is vouched there. */
   private def run(stages: Stages, mutation: Mutation, pieces: Boolean = true, corroborated: Boolean = true): Resolution = {
     import stages.{acceptance, families, generation, links, ordered, scoring}
     import generation.{answers, candidateOf, details, issued, nodeById, nodes, records}
