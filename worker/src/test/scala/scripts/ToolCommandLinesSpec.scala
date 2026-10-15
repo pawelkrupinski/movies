@@ -17,7 +17,8 @@ class ToolCommandLinesSpec extends AnyFlatSpec with Matchers {
     calls.map(_.tool) should contain allOf ("scripts.IdentityRefit", "scripts.DecorationDiscovery", "scripts.IdentityUnifiedFit")
     val checked = calls.flatMap(call => ToolCallers.commandLineOf(call.tool).map(call -> _))
     checked.map(_._1.tool).toSet should contain allOf ("scripts.IdentityRefit", "scripts.DecorationDiscovery", "scripts.IdentityUnifiedFit",
-      "scripts.ReapOrphanedFilmRows", "scripts.IdentityCalibrate", "scripts.IdentityDecorationsLearn")
+      "scripts.ReapOrphanedFilmRows", "scripts.IdentityCalibrate", "scripts.IdentityDecorationsLearn",
+      "scripts.RecordCorpusFixture")
     checked.foreach { case (call, line) =>
       withClue(s"${call.file}: ${call.tool} ${call.args.mkString(" ")}") { line.parse(call.args).isRight shouldBe true }
     }
@@ -86,6 +87,15 @@ class ToolCommandLinesSpec extends AnyFlatSpec with Matchers {
     val arguments = parsed(IdentityGateImpact.commandLine, "rows-pl.jsonl", "--trees", "t", "rows-uk.jsonl")
     arguments.positionals shouldBe Seq("rows-pl.jsonl", "rows-uk.jsonl")
     arguments.path("trees") shouldBe Some(Paths.get("t"))
+  }
+
+  "RecordCorpusFixture" should "record the country named, the configured one when none is, and stop on a code no country has" in {
+    def country(args: String*) = RecordCorpusFixture.countryOf(parsed(RecordCorpusFixture.commandLine, args*), models.Country.Spain)
+    country("uk").code shouldBe "uk"
+    country() shouldBe models.Country.Spain
+    // args.headOption read a mistyped code as no code, and recorded the configured country under it
+    an[CommandLine.InvalidArguments] should be thrownBy country("gb")
+    refused(RecordCorpusFixture.commandLine, "pl", "uk") shouldBe true
   }
 
   "ReapOrphanedFilmRows" should "read its cap" in {
