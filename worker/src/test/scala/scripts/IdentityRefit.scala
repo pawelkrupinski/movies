@@ -441,33 +441,51 @@ object IdentityRefit {
     CommandLine.Value("weights", "file", "the artefact refitted", default = Some(Artefact.toString)),
     CommandLine.Value("threads", "n", "measuring threads (default: half the processors)"))
 
-  def main(args: Array[String]): Unit = {
-    val arguments = commandLine.parseOrExit(args)
-    val apply   = arguments.flag("apply")
-    val labels  = tools.IdentityJudgements.labels()
-    val expected = UnmatchedClusters.readTakeLines(UnmatchedClusters.Directory.resolve("expected-matches.tsv"))
-    val relearn = arguments.get("relearn").toSeq.flatMap(_.split(",")).map(_.trim).filter(_.nonEmpty).toSet
+  /** One refit run as its command line asks it. */
+  final case class Run(apply: Boolean, artefact: Path, report: Option[Path], maxChanges: Int, relearn: Set[String], threads: Int)
+
+  object Run {
     // `--weights <file>`: refit (and with --apply, write) another artefact than the shipped one — a positive control
     // starts from a deliberately mistuned copy and must find its way back
-    val artefact = arguments.requiredPath("weights")
-    val start   = Json.parse(Files.readString(artefact)).as[IdentityCalibration]
-    start.scopes.get(IdentityMeasures.ListingFilm).foreach(_.signals.toSeq.sortBy(_._1).filterNot((name, w) => reproduces(name, w)).map(_._1) match {
-      case Seq() => ()
-      case odd   => println(s"not refitted (their counts do not give their weights back): ${odd.mkString(", ")}")
-    })
-    val replays = CaptureReplay.all()
-    println(s"TMDB gaps: ${if (CaptureReplay.asksLive) "asked live" else "NOT asked (no TMDB_API_KEY) — a proposal asking one is unmeasured"}")
-    val threads = arguments.int("threads").getOrElse(math.max(1, Runtime.getRuntime.availableProcessors / 2))
-    val (refitted, kept, rounds) = search(replays, labels, expected, start, relearn, arguments.requiredInt("max-changes"), threads, println)
-    println(s"kept ${kept.size}: ${kept.map(k => s"${k.change.parameter} ${k.change.from} → ${k.change.to}").mkString("; ")}")
-    val units = s"${labels.size} labels, ${expected.size} expected takes${if (relearn.isEmpty) "" else s"; relearned from fresh units: ${relearn.toSeq.sorted.mkString(", ")}"}"
-    arguments.path("report").foreach { p =>
+    def of(arguments: CommandLine.Arguments): Run = Run(arguments.flag("apply"), arguments.requiredPath("weights"), arguments.path("report"),
+      arguments.requiredInt("max-changes"), arguments.get("relearn").toSeq.flatMap(_.split(",")).map(_.trim).filter(_.nonEmpty).toSet,
+      arguments.int("threads").getOrElse(math.max(1, Runtime.getRuntime.availableProcessors / 2)))
+  }
+
+  /** The changes a search from `start` kept, and every round it measured. */
+  type Search = IdentityCalibration => (IdentityCalibration, Seq[Measured], Seq[Seq[Measured]])
+
+  /** The listing-film signals a refit leaves alone: their counts do not give their weights back. */
+  def notRefitted(start: IdentityCalibration): Seq[String] =
+    start.scopes.get(IdentityMeasures.ListingFilm).toSeq.flatMap(_.signals.toSeq.sortBy(_._1).filterNot((name, w) => reproduces(name, w)).map(_._1))
+
+  /** `search` from `start` (read from `run.artefact`), its evidence report written to `run.report`, and — with
+   *  `run.apply` and a change kept — the versioned refit written over the artefact. `units` names what was measured. */
+  def refit(run: Run, start: IdentityCalibration, units: String, search: Search, log: String => Unit): Unit = {
+    val (refitted, kept, rounds) = search(start)
+    log(s"kept ${kept.size}: ${kept.map(k => s"${k.change.parameter} ${k.change.from} → ${k.change.to}").mkString("; ")}")
+    run.report.foreach { p =>
       Files.createDirectories(p.toAbsolutePath.getParent)
       Files.writeString(p, report(kept, rounds, units), StandardCharsets.UTF_8)
     }
-    if (apply && kept.nonEmpty) {
-      Files.writeString(artefact, Json.prettyPrint(Json.toJson(versioned(refitted, start, kept))) + "\n", StandardCharsets.UTF_8)
-      println(s"wrote $artefact")
+    if (run.apply && kept.nonEmpty) {
+      Files.writeString(run.artefact, Json.prettyPrint(Json.toJson(versioned(refitted, start, kept))) + "\n", StandardCharsets.UTF_8)
+      log(s"wrote ${run.artefact}")
     }
+  }
+
+  def main(args: Array[String]): Unit = {
+    val run      = Run.of(commandLine.parseOrExit(args))
+    val labels   = tools.IdentityJudgements.labels()
+    val expected = UnmatchedClusters.readTakeLines(UnmatchedClusters.Directory.resolve("expected-matches.tsv"))
+    val start    = Json.parse(Files.readString(run.artefact)).as[IdentityCalibration]
+    notRefitted(start) match {
+      case Seq() => ()
+      case odd   => println(s"not refitted (their counts do not give their weights back): ${odd.mkString(", ")}")
+    }
+    val replays = CaptureReplay.all()
+    println(s"TMDB gaps: ${if (CaptureReplay.asksLive) "asked live" else "NOT asked (no TMDB_API_KEY) — a proposal asking one is unmeasured"}")
+    val units = s"${labels.size} labels, ${expected.size} expected takes${if (run.relearn.isEmpty) "" else s"; relearned from fresh units: ${run.relearn.toSeq.sorted.mkString(", ")}"}"
+    refit(run, start, units, search(replays, labels, expected, _, run.relearn, run.maxChanges, run.threads, println), println)
   }
 }

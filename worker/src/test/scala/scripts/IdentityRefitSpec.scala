@@ -155,6 +155,35 @@ class IdentityRefitSpec extends AnyFlatSpec with Matchers {
     versioned(m.change.applyTo(shipped), shipped, Seq(m)).version should startWith (shipped.version.replaceAll("-refit-[0-9a-f]+$", "") + "-refit-")
   }
 
+  "A refit run" should "write its report, and the versioned refit over the artefact only with --apply and a change kept" in {
+    val dir = java.nio.file.Files.createTempDirectory("refit")
+    try {
+      val fitting  = films(held = false, MinSupport)
+      val m = Measured(BoundChange("listing-film", "year.distance >= 27", "year.distance", 27, 30),
+        judged(Nil, fitting.map(id => take(s"t$id", id)), fitting.map(id => label(s"t$id", id)), Set.empty, none)._1, 0, Nil)
+      val artefact = dir.resolve("identity-weights.json")
+      val shippedText = play.api.libs.json.Json.prettyPrint(play.api.libs.json.Json.toJson(shipped)) + "\n"
+      java.nio.file.Files.writeString(artefact, shippedText)
+      val run      = Run(apply = false, artefact, Some(dir.resolve("out/report.md")), maxChanges = 5, relearn = Set.empty, threads = 1)
+      val logged   = Seq.newBuilder[String]
+      val keeping: Search = start => (m.change.applyTo(start), Seq(m), Seq(Seq(m)))
+      refit(run, shipped, "3 labels", keeping, logged += _)
+      java.nio.file.Files.readString(dir.resolve("out/report.md")) should (include("3 labels") and include("| 1 | listing-film cannot-link"))
+      java.nio.file.Files.readString(artefact) shouldBe shippedText
+      refit(run.copy(apply = true), shipped, "3 labels", _ => (shipped, Nil, Nil), logged += _)
+      java.nio.file.Files.readString(artefact) shouldBe shippedText
+      refit(run.copy(apply = true, report = None), shipped, "3 labels", keeping, logged += _)
+      play.api.libs.json.Json.parse(java.nio.file.Files.readString(artefact)).as[IdentityCalibration] shouldBe versioned(m.change.applyTo(shipped), shipped, Seq(m))
+      logged.result() should contain (s"wrote $artefact")
+    } finally java.nio.file.Files.walk(dir).sorted(java.util.Comparator.reverseOrder()).forEach(java.nio.file.Files.delete(_))
+  }
+
+  it should "read the weekly command line into its run" in {
+    val run = Run.of(commandLine.parse(Seq("--apply", "--report", "r.md", "--threads", "3", "--relearn", "year.delta, runtime.delta,")).toOption.get)
+    run shouldBe Run(apply = true, Artefact, Some(java.nio.file.Paths.get("r.md")), 5, Set("year.delta", "runtime.delta"), 3)
+    notRefitted(shipped) should not contain ("title")
+  }
+
   // ── the captures ──
 
   "A splice" should "keep every captured cluster a change decides alike, and replace one it decides otherwise whole" in {
