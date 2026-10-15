@@ -33,13 +33,15 @@ echo '```'
 # The spec's own structure — suite, `should` clauses, the `+` info lines — PLUS the `[pl] phase done in …`
 # timings the harness prints as it goes. Everything else on stdout is application logging, not a report.
 #
-# The scope is TWO LETTERS PLUS AN OPTIONAL PASS NUMBER: the order-independence replays run `Passes` of them
-# concurrently and each names itself `[usp0]`, `[usp1]`, … A `[a-z]{2}`-only filter dropped every one.
+# The scope is a COUNTRY CODE, OPTIONALLY `p<pass>`: PhaseTimer tags TestWiring's phases `[us]`, and the
+# order-independence replays run `Passes` of them concurrently, each naming itself `[usp0]`, `[usp1]`, …
+# (CountryConvergenceBehaviour's `scope`). A `[a-z]{2}`-only filter dropped every pass, and so did the
+# `[a-z]{2}[0-9]*` that was meant to admit them: the `p` is not a digit.
 #
 # `sed -n …; 1,150p` keeps the first 150 lines but READS TO THE END. A `| head -150` closed the pipe early,
 # sed died writing into it ("couldn't flush stdout: Broken pipe", exit 4), and under `pipefail` that failed a
 # green leg the moment its report passed 150 lines (Spain, run 37096642753).
 printf '%s\n' "$clean" \
-  | { grep -E '^(\[info\] )?([A-Za-z0-9]+Spec:|- should |  \+ |the |\[[a-z]{2}[0-9]*\] )' || true; } \
+  | { grep -E '^(\[info\] )?([A-Za-z0-9]+Spec:|- should |  \+ |the |\[[a-z]{2}(p[0-9]+)?\] )' || true; } \
   | sed -n 's/^\[info\] //; 1,150p'
 echo '```'
