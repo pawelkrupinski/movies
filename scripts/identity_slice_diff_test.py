@@ -74,16 +74,25 @@ class SliceDiffTest(unittest.TestCase):
     def test_every_move_is_listed_under_its_verdicts_and_tallied(self):
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
-            code = diff.main([self.write("base.tsv", BASE), self.write("head.tsv", HEAD), "base1", "head1", "labels.tsv"])
+            code = diff.main([self.write("base.tsv", BASE), self.write("head.tsv", HEAD), "base1", "head1"])
         self.assertEqual(0, code)
         self.assertEqual(GOLDEN, out.getvalue())
 
     def test_two_identical_slices_move_nothing(self):
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
-            diff.main([self.write("a.tsv", BASE), self.write("b.tsv", BASE), "a", "b", "labels.tsv"])
+            diff.main([self.write("a.tsv", BASE), self.write("b.tsv", BASE), "a", "b"])
         self.assertEqual("\n6 listing(s) decided; 0 moved between a and b\n\n"
                          "TALLY cured 0, lost 0, new-wrong 0, won 0, moved (unjudged) 0\n", out.getvalue())
+
+    def test_any_other_argument_count_is_a_usage_error(self):
+        # A fifth argument (the LABELS.tsv it once took and never read) is refused, not silently ignored: the verdicts
+        # come from the slices' own `verdict` column.
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            code = diff.main([self.write("a.tsv", BASE), self.write("b.tsv", BASE), "a", "b", "labels.tsv"])
+        self.assertEqual(64, code)
+        self.assertIn("usage:", err.getvalue())
 
 
 if __name__ == "__main__":

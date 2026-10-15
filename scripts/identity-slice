@@ -433,7 +433,7 @@ if [ -n "$bisect" ]; then
   first=${commits[$lo]}
   echo "first commit moving the take: $(git -C "$repo" log -1 --format='%h %s' "$first")"
   run_at "$(tree_of "$first")" "$first" "$work/first.tsv" "${pass[@]}" > /dev/null
-  python3 -I "$repo/scripts/identity_slice_diff.py" "$work/base.tsv" "$work/first.tsv" "$(git -C "$repo" rev-parse --short "$first")~1" "$(git -C "$repo" rev-parse --short "$first")" "$labels"
+  python3 -I "$repo/scripts/identity_slice_diff.py" "$work/base.tsv" "$work/first.tsv" "$(git -C "$repo" rev-parse --short "$first")~1" "$(git -C "$repo" rev-parse --short "$first")"
   exit
 fi
 
@@ -453,7 +453,7 @@ if [ "${#refs[@]}" -eq 1 ]; then
   [ -n "$batch" ] || cat "$work/0.txt"
 else
   [ -n "$batch" ] || { echo "### ${refs[0]}"; cat "$work/0.txt"; echo; echo "### ${refs[1]}"; cat "$work/1.txt"; echo; }
-  python3 -I "$repo/scripts/identity_slice_diff.py" "$work/0.tsv" "$work/1.tsv" "${refs[0]}" "${refs[1]}" "$labels"
+  python3 -I "$repo/scripts/identity_slice_diff.py" "$work/0.tsv" "$work/1.tsv" "${refs[0]}" "${refs[1]}"
 fi
 exit
 }

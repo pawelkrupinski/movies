@@ -3,10 +3,10 @@ its identity-judgements.tsv verdict at each ref, and the moves tallied — CURED
 NEW-WRONG (a take now WRONG), and the unjudged moves. The buckets are scripts/ci/identity_takes.py's `outcome`, shared with the identity
 takes check's reading of a move.
 
-    python3 identity_slice_diff.py BASE.tsv HEAD.tsv BASE_NAME HEAD_NAME LABELS.tsv
+    python3 identity_slice_diff.py BASE.tsv HEAD.tsv BASE_NAME HEAD_NAME
 
 Each TSV is scripts.IdentitySlice's `--out` (header: selector key venue rawTitle film title basis confidence model rules
-blocker runnerUp verdict explanation)."""
+blocker runnerUp verdict explanation); the verdicts are its `verdict` column, judged by the slice itself."""
 import os
 import sys
 
@@ -32,6 +32,9 @@ def take(r):
 
 
 def main(argv):
+    if len(argv) != 4:
+        print("usage: identity_slice_diff.py BASE.tsv HEAD.tsv BASE_NAME HEAD_NAME", file=sys.stderr)
+        return 64
     base, head, base_name, head_name = read(argv[0]), read(argv[1]), argv[2], argv[3]
     keys = sorted(set(base) | set(head))
     moves = [(k, base.get(k), head.get(k)) for k in keys
