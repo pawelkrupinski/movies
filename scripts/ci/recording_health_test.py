@@ -140,5 +140,18 @@ class RecordingHealthTest(unittest.TestCase):
         self.assertEqual(health.main([str(self.tree.root), "--since", str(SINCE), "--previous", str(missing)]), 0)
 
 
+    def test_a_tree_it_cannot_read_is_no_verdict_never_a_healthy_one_nor_a_flag(self):
+        # exit 2, which the publish step fails the leg on as unjudged: never 0 (an empty manifest published as the
+        # next recording's baseline) nor 1 (an origin named as refusing that refused nothing)
+        missing = pathlib.Path(self.dir.name) / "no-such-tree"
+        self.assertEqual(health.main([str(missing), "--since", str(SINCE)]), 2)
+        empty = pathlib.Path(self.dir.name) / "empty-tree"
+        empty.mkdir()
+        self.assertEqual(health.main([str(empty), "--since", str(SINCE)]), 2)
+        self.tree.response("api.themoviedb.org", DURING, 30)
+        torn = pathlib.Path(self.dir.name) / "torn.json"
+        torn.write_text('{"origins": ')
+        self.assertEqual(health.main([str(self.tree.root), "--since", str(SINCE), "--previous", str(torn)]), 2)
+
 if __name__ == "__main__":
     unittest.main()

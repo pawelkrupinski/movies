@@ -26,7 +26,8 @@ An origin is flagged
     recording_health.py <tree> --since <ISO-8601|epoch-seconds> [--previous previous.json]
                         [--write this.json] [--summary $GITHUB_STEP_SUMMARY] [--title <country>]
 
-Exits 1 when any origin is flagged, after writing the manifest and the table. A missing `--previous`
+Exits 1 when any origin is flagged, after writing the manifest and the table; 2 when the tree (or the
+`--previous` manifest) cannot be read, or holds no origin at all: no verdict. A missing `--previous`
 file is the absolute floor alone (a country's first recording, or the manifest not yet published).
 Tests: recording_health_test.py beside it.
 """
@@ -163,11 +164,20 @@ def main(argv):
     parser.add_argument("--title", default="", help="the country, for the table's heading")
     args = parser.parse_args(argv)
 
-    this = manifest(args.tree, _since(args.since))
-    previous = None
-    if args.previous and os.path.isfile(args.previous):
-        with open(args.previous) as handle:
-            previous = json.load(handle)
+    try:
+        this = manifest(args.tree, _since(args.since))
+        previous = None
+        if args.previous and os.path.isfile(args.previous):
+            with open(args.previous) as handle:
+                previous = json.load(handle)
+    except (OSError, ValueError) as e:
+        print(f"::error::recording health{f' ({args.title})' if args.title else ''}: could not judge -- {type(e).__name__}: {e}",
+              file=sys.stderr)
+        return 2
+    if not this["origins"]:
+        print(f"::error::recording health{f' ({args.title})' if args.title else ''}: {args.tree} holds no origin's responses "
+              "-- no recording to judge", file=sys.stderr)
+        return 2
     flags = judge(this, previous)
     if args.write:
         with open(args.write, "w") as handle:

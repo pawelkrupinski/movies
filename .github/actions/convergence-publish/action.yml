@@ -86,7 +86,8 @@ outputs:
   recording-healthy:
     description: >-
       A RECORDING's per-origin health (scripts/ci/recording_health.py): 'false' when an origin refused most of
-      what it was asked or vanished from the tree, 'true' when none did; empty when not judged (a hermetic leg).
+      what it was asked or vanished from the tree, or the tree could not be judged at all; 'true' when none did;
+      empty when not judged (a hermetic leg, or this run's start or the last manifest unreadable).
     value: ${{ steps.health.outputs.healthy }}
 
 runs:
@@ -212,7 +213,8 @@ runs:
           verdict=0
           python3 scripts/ci/recording_health.py "test/resources/fixtures/enrichment-$CODE" --since "$since" \
               --previous "$previous" --write "$manifest" --summary "$GITHUB_STEP_SUMMARY" --title "$CODE" || verdict=$?
-          [ "$verdict" -gt 1 ] && { echo "::warning::recording_health.py crashed ($verdict) — not judged"; exit 0; }
+          # 2: it could not judge the tree (unreadable, or holding nothing) — no verdict, never a healthy one: failed as unjudged.
+          [ "$verdict" -gt 1 ] && echo "::error::recording_health.py could not judge $CODE's recording ($verdict) — failing it unjudged"
           echo "healthy=$([ "$verdict" = 0 ] && echo true || echo false)" >> "$GITHUB_OUTPUT"
 
     - name: Publish this healthy recording's manifest as the next one's baseline
