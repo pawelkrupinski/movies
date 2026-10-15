@@ -420,14 +420,12 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
     }
   }
   /** Does the film's `title` (its words `ordered`) read the billing's `piece`: its words in the piece's order ([[inOrder]]),
-   *  or all within one part of the title ([[PiecePartBreak]]), where a translation may order them otherwise — DE Cinema
+   *  or all within one part of the title ([[TitlePartBreak]]), where a translation may order them otherwise — DE Cinema
    *  Wolfhagen's "National Opera Paris: Schwanensee" is "Opéra national de Paris 2024: Schwanensee" (10-15). A piece whose
    *  words two of the title's parts hold the other way round is another's phrase: "About Time" in "Once Upon a Time… All
    *  About My Mother". */
   private def readIn(piece: Seq[String], title: String, ordered: Seq[String]): Boolean =
-    inOrder(piece, ordered) || PiecePartBreak.split(title).iterator.map(IdentityMeasures.yearlessTokens).exists(part => piece.forall(part.contains))
-  /** [[TitlePartBreak]], and an ellipsis before a space ("Once Upon a Time… All About My Mother"). */
-  private val PiecePartBreak = java.util.regex.Pattern.compile("""\s+[-–—·]\s+|[:.…]\s""")
+    inOrder(piece, ordered) || TitlePartBreak.split(title).iterator.map(IdentityMeasures.yearlessTokens).exists(part => piece.forall(part.contains))
   /** Are `piece`'s words `title`'s in its order, others between them at most? */
   private def inOrder(piece: Seq[String], title: Seq[String]): Boolean =
     piece.foldLeft(Option(title)) { (rest, word) => rest.map(_.dropWhile(_ != word)).filter(_.nonEmpty).map(_.tail) }.isDefined
