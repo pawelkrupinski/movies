@@ -26,7 +26,9 @@ echo "phase: convergence" > "$repo/.github/workflows/country-convergence-leg.yml
 echo "old" > "$repo/scripts/ci/identity-takes-check.sh"
 scratch_git "$repo" add -A && scratch_git "$repo" commit -qm "old main, before takes-only"
 old=$(scratch_git "$repo" rev-parse HEAD)
-echo "takes-only: {}" > "$repo/.github/workflows/country-convergence-leg.yml"
+# Large, as the real one is: a reader that stops at the first match must not read it as lacking takes-only.
+{ echo "takes-only: {}"; for _ in $(seq 1 4000); do echo "# a line of the leg workflow, padding it past a pipe buffer"; done; } \
+  > "$repo/.github/workflows/country-convergence-leg.yml"
 echo "new" > "$repo/scripts/ci/identity-takes-check.sh"
 scratch_git "$repo" commit -qam "main learns takes-only"
 parent=$(scratch_git "$repo" rev-parse HEAD)
@@ -111,7 +113,7 @@ check "a commit from before the takes-only dispatch is measured" "0" "$(measure 
 pushed=$(cat "$work/stub/pushed")
 check "...under a commit laying main's CI over it, whose parent is the commit" \
   "$old" "$(scratch_git "$repo" rev-parse "$pushed^")"
-check "...with main's workflows" "takes-only: {}" "$(scratch_git "$repo" show "$pushed:.github/workflows/country-convergence-leg.yml")"
+check "...with main's workflows" "takes-only: {}" "$(scratch_git "$repo" show "$pushed:.github/workflows/country-convergence-leg.yml" | sed -n 1p)"
 check "...and main's scripts/ci" "new" "$(scratch_git "$repo" show "$pushed:scripts/ci/identity-takes-check.sh")"
 check "...and nothing else of main's" "false" \
   "$(scratch_git "$repo" cat-file -e "$pushed:rule.txt" 2>/dev/null && echo true || echo false)"

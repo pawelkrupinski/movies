@@ -134,7 +134,9 @@ base=$(git rev-parse --verify -q "$base^{commit}") || die "no base commit $base"
 # The commit's own workflows must know the takes-only dispatch and upload the check's output; an older commit gets
 # main's laid over it.
 push=$commit
-if ! git show "$commit:.github/workflows/country-convergence-leg.yml" | grep -q 'takes-only'; then
+# (Read whole, not piped into `grep -q`: under pipefail its early exit SIGPIPEs git show and reads as "no takes-only".)
+leg=$(git show "$commit:.github/workflows/country-convergence-leg.yml") || leg=""
+if [[ "$leg" != *takes-only* ]]; then
   index=$(mktemp)
   GIT_INDEX_FILE=$index git read-tree "$commit" \
     && GIT_INDEX_FILE=$index git rm -rqf --cached --ignore-unmatch .github scripts/ci \
