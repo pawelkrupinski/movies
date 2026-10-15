@@ -20,7 +20,7 @@ class ToolCommandLinesSpec extends AnyFlatSpec with Matchers {
       "scripts.ReapOrphanedFilmRows", "scripts.IdentityCalibrate", "scripts.IdentityDecorationsLearn",
       "scripts.RecordCorpusFixture")
     checked.foreach { case (call, line) =>
-      withClue(s"${call.file}: ${call.tool} ${call.args.mkString(" ")}") { line.parse(call.args).isRight shouldBe true }
+      withClue(s"${call.file}: ${call.tool} ${call.args.mkString(" ")}") { line.accepts(call.args).isRight shouldBe true }
     }
   }
 
@@ -90,9 +90,9 @@ class ToolCommandLinesSpec extends AnyFlatSpec with Matchers {
   }
 
   "RecordCorpusFixture" should "record the country named, the configured one when none is, and stop on a code no country has" in {
-    def country(args: String*) = RecordCorpusFixture.countryOf(parsed(RecordCorpusFixture.commandLine, args*), models.Country.Spain)
-    country("uk").code shouldBe "uk"
-    country() shouldBe models.Country.Spain
+    def country(args: String*) = parsed(RecordCorpusFixture.commandLine, args*).country("country")
+    country("uk").map(_.code) shouldBe Some("uk")
+    country() shouldBe None
     // args.headOption read a mistyped code as no code, and recorded the configured country under it
     an[CommandLine.InvalidArguments] should be thrownBy country("gb")
     refused(RecordCorpusFixture.commandLine, "pl", "uk") shouldBe true

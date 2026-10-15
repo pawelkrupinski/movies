@@ -10,7 +10,7 @@ class IntegrationToolCommandLinesSpec extends AnyFlatSpec with Matchers {
     val checked = ToolCallers.calls("integration").flatMap(call => ToolCallers.commandLineOf(call.tool).map(call -> _))
     checked.map(_._1.tool) should contain("integration.IdentityUnifiedDataset")
     checked.foreach { case (call, line) =>
-      withClue(s"${call.file}: ${call.tool} ${call.args.mkString(" ")}") { line.parse(call.args).isRight shouldBe true }
+      withClue(s"${call.file}: ${call.tool} ${call.args.mkString(" ")}") { line.accepts(call.args).isRight shouldBe true }
     }
   }
 

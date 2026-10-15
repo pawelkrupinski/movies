@@ -37,9 +37,9 @@ object ToolCallers {
     }
   }.distinct
 
-  /** The tool's declared command line, if it reads its arguments through one. */
-  def commandLineOf(tool: String): Option[CommandLine] = for {
+  /** The tool's declared command line (or commands), if it reads its arguments through one. */
+  def commandLineOf(tool: String): Option[CommandLine.Grammar] = for {
     module <- Try(Class.forName(s"$tool$$")).toOption
     method <- Try(module.getMethod("commandLine")).toOption
-  } yield method.invoke(module.getField("MODULE$").get(null)).asInstanceOf[CommandLine]
+  } yield method.invoke(module.getField("MODULE$").get(null)).asInstanceOf[CommandLine.Grammar]
 }

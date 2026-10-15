@@ -95,6 +95,45 @@ class CommandLineSpec extends AnyFlatSpec with Matchers with SuiteConfiguration 
     }
   }
 
+  it should "read a positional as a number or a country, and stop on one that is neither" in {
+    val countries = CommandLine("Census", "counts").withPositionals(Positional("country", "measured"), Positional("ticks", "how many"))
+    def read(args: String*) = countries.parse(args).toOption.get
+    read("UK", "3").country("country") shouldBe Some(models.Country.UnitedKingdom)
+    read("uk", "3").positionalInt("ticks") shouldBe Some(3)
+    read().country("country") shouldBe None
+    // args.headOption.flatMap(Country.byCode) read a mistyped code as none given, and measured the default country
+    an[InvalidArguments] should be thrownBy read("gb").country("country")
+    an[InvalidArguments] should be thrownBy read("uk", "many").positionalInt("ticks")
+    an[InvalidArguments] should be thrownBy read().requiredPositional("ticks")
+    val several = CommandLine("Seed", "seeds").withPositionals(Positional("countries", "seeded", repeatable = true))
+    several.parse(Seq("es", "pl")).toOption.get.countries("countries") shouldBe Seq(models.Country.Spain, models.Country.Poland)
+    several.parse(Nil).toOption.get.countries("countries") shouldBe empty
+    an[InvalidArguments] should be thrownBy several.parse(Seq("es", "xx")).toOption.get.countries("countries")
+  }
+
+  "Commands" should "read each command's arguments by that command's own line, and refuse no command or an unknown one" in {
+    val tool = Commands("Clusters", "builds clusters",
+      CommandLine("select", "picks clusters").withPositionals(Positional("dir", "the corpora"), Positional("budget", "listings")),
+      CommandLine("extend", "grows clusters", Flag("dry", "write nothing")).withPositionals(Positional("dir", "the corpora")))
+    val (command, arguments) = tool.parse(Seq("select", "d", "40")).toOption.get
+    command shouldBe "select"
+    arguments.positionalInt("budget") shouldBe Some(40)
+    tool.parse(Seq("extend", "--dry", "d")).toOption.get._2.flag("dry") shouldBe true
+    tool.parse(Seq("select", "--dry", "d")) shouldBe Left(Invalid("unknown option --dry"))
+    tool.parse(Seq("extend", "d", "e")).isLeft shouldBe true
+    tool.parse(Nil) match { case Left(Invalid(why)) => why should include("select, extend"); case other => fail(s"$other") }
+    tool.parse(Seq("prune")) match { case Left(Invalid(why)) => why should include("prune"); case other => fail(s"$other") }
+    tool.accepts(Seq("extend", "d")) shouldBe Right(())
+    tool.parse(Seq("--help")) match {
+      case Left(Help(text)) => text should (include("usage: Clusters <command>") and include("select  picks clusters") and include("grows clusters"))
+      case other            => fail(s"no help: $other")
+    }
+    tool.parse(Seq("extend", "--help")) match {
+      case Left(Help(text)) => text should include("usage: Clusters extend [options] [dir]")
+      case other            => fail(s"no help: $other")
+    }
+  }
+
   "parseOrExit" should "exit 2 with the usage on stderr for a bad command line, and 0 on --help" in {
     val jvm = ChildJvm(configuration)
     val (refused, refusal) = jvm.run("tools.CommandLineProbe", Seq("--bogus"))
@@ -105,6 +144,11 @@ class CommandLineSpec extends AnyFlatSpec with Matchers with SuiteConfiguration 
     helped shouldBe 0
     help should include("--name <text>")
     jvm.run("tools.CommandLineProbe", Seq("--name", "x")) shouldBe (0, "hello x\n")
+    val (unknown, why) = jvm.run("tools.CommandsProbe", Seq("wave"))
+    unknown shouldBe 2
+    why should include("unknown command wave")
+    jvm.run("tools.CommandsProbe", Seq("greet", "--bogus"))._1 shouldBe 2
+    jvm.run("tools.CommandsProbe", Seq("greet", "--name", "y")) shouldBe (0, "greet y\n")
   }
 }
 
@@ -113,5 +157,14 @@ object CommandLineProbe {
   def main(args: Array[String]): Unit = {
     val arguments = CommandLine("CommandLineProbe", "greets", CommandLine.Value("name", "text", "who")).parseOrExit(args)
     println(s"hello ${arguments.required("name")}")
+  }
+}
+
+/** A tool with one command, run in a child JVM by [[CommandLineSpec]] for its exit codes. */
+object CommandsProbe {
+  def main(args: Array[String]): Unit = {
+    val (command, arguments) = CommandLine.Commands("CommandsProbe", "greets",
+      CommandLine("greet", "greets", CommandLine.Value("name", "text", "who"))).parseOrExit(args)
+    println(s"$command ${arguments.required("name")}")
   }
 }

@@ -2,7 +2,6 @@ package scripts
 
 import services.movies.LatestTitleYear
 
-import models.Country
 import org.mongodb.scala.MongoClient
 import services.scrapes.MongoScrapeArchiveRepository
 import tools.{Alongside, CommandLine, CorpusFixture, CorpusSample, CountryScrapeCorpus, ProdCoverage, ProdCoverageBaseline, ProdFilms, TunnelTunedUri}
@@ -35,14 +34,10 @@ object RecordCorpusFixture {
   val commandLine: CommandLine = CommandLine("RecordCorpusFixture", "Records a country's scrape corpus fixture from the scrape archive.")
     .withPositionals(CommandLine.Positional("country", "the country recorded (default: the configured KINOWO_COUNTRY)"))
 
-  /** The country named, or `configured` when none is — a code no country has stops the tool, never records another. */
-  def countryOf(arguments: CommandLine.Arguments, configured: => Country): Country = arguments.positional("country").fold(configured)(code =>
-    Country.all.find(_.code == code).getOrElse(arguments.fail(s"no country '$code' (one of ${Country.all.map(_.code).mkString(", ")})")))
-
   def main(args: Array[String]): Unit = {
     val arguments     = commandLine.parseOrExit(args)
     val configuration = _root_.settings.ProcessConfiguration.resolve()
-    val country       = countryOf(arguments, configuration.country)
+    val country       = arguments.country("country").getOrElse(configuration.country)
     val uri = configuration.convergenceScrapesUri.map(_.value).orElse(configuration.mongoAddress.uri.map(_.value)).getOrElse {
       System.err.println("[corpus] set KINOWO_CONVERGENCE_SCRAPES_URI (or MONGODB_URI) to the archive source")
       sys.exit(1)

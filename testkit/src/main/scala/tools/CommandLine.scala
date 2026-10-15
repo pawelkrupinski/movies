@@ -1,5 +1,7 @@
 package tools
 
+import models.Country
+
 import java.nio.file.{Path, Paths}
 
 /**
@@ -16,9 +18,11 @@ import java.nio.file.{Path, Paths}
  *   arguments.flag("apply"); arguments.path("report")
  * }}}
  *
- * `--name value` and `--name=value` both read; everything after `--` is positional.
+ * `--name value` and `--name=value` both read; everything after `--` is positional. A tool whose first argument names
+ * what it does (`BuildHardClusters select …` / `extend …`) declares one CommandLine per command in [[CommandLine.Commands]].
  */
-final case class CommandLine(tool: String, summary: String, options: Seq[CommandLine.Declared], positionals: Seq[CommandLine.Positional]) {
+final case class CommandLine(tool: String, summary: String, options: Seq[CommandLine.Declared], positionals: Seq[CommandLine.Positional])
+    extends CommandLine.Grammar {
   import CommandLine.*
 
   require(options.map(_.name).distinct.size == options.size, s"$tool declares an option twice")
@@ -43,19 +47,11 @@ final case class CommandLine(tool: String, summary: String, options: Seq[Command
    *  converted throws [[InvalidArguments]]. */
   def parse(args: Seq[String]): Either[Stop, Arguments] = read(args, message => throw InvalidArguments(message))
 
+  def accepts(args: Seq[String]): Either[Stop, Unit] = parse(args).map(_ => ())
+
   /** The arguments, or the tool exits: 0 after printing the help, 2 after printing why and the help to stderr — also
    *  when a value read later cannot be converted, or [[Arguments.fail]] is called. */
-  def parseOrExit(args: Array[String]): Arguments = {
-    def refuse(message: String): Nothing = {
-      System.err.println(s"$tool: $message\n\n$help")
-      sys.exit(2)
-    }
-    read(args.toSeq, refuse) match {
-      case Right(arguments)     => arguments
-      case Left(Help(text))     => print(text); sys.exit(0)
-      case Left(Invalid(why))   => refuse(why)
-    }
-  }
+  def parseOrExit(args: Array[String]): Arguments = exiting(tool, help)(refuse => read(args.toSeq, refuse))
 
   private def read(args: Seq[String], fail: String => Nothing): Either[Stop, Arguments] = {
     if (args.exists(a => a == "--help" || a == "-h")) return Left(Help(help))
@@ -103,6 +99,62 @@ object CommandLine {
 
   def apply(tool: String, summary: String, options: Declared*): CommandLine = CommandLine(tool, summary, options, Nil)
 
+  /** What a tool's arguments are read against — one [[CommandLine]], or [[Commands]] — as a spec checks a caller's. */
+  sealed trait Grammar {
+    def tool: String
+    def help: String
+    /** Whether `args` read: why not, or the help asked for. */
+    def accepts(args: Seq[String]): Either[Stop, Unit]
+  }
+
+  /**
+   * A tool whose first argument names its command, and each command's arguments read strictly by that command's own
+   * [[CommandLine]] (declared under the command's name: `CommandLine("extend", …)`): no command, or one it does not
+   * declare, stops the tool as an unknown option does; `--help` first prints every command, after a command that
+   * command's help.
+   */
+  final case class Commands(tool: String, summary: String, commands: CommandLine*) extends Grammar {
+    require(commands.map(_.tool).distinct.size == commands.size, s"$tool declares a command twice")
+
+    private val byName = commands.map(c => c.tool -> c.copy(tool = s"$tool ${c.tool}")).toMap
+
+    def help: String = {
+      val width = commands.map(_.tool.length).max
+      (Seq(s"usage: $tool <command> [options]", "", summary, "") ++
+        commands.map(c => s"  ${c.tool.padTo(width, ' ')}  ${c.summary}") ++ Seq("", s"$tool <command> --help: that command's options"))
+        .mkString("", "\n", "\n")
+    }
+
+    /** The command named and its arguments, or why the tool stops. */
+    def parse(args: Seq[String]): Either[Stop, (String, Arguments)] = args match {
+      case Seq()                                        => Left(Invalid(s"no command (one of ${commands.map(_.tool).mkString(", ")})"))
+      case first +: _ if first == "--help" || first == "-h" => Left(Help(help))
+      case name +: rest => byName.get(name).toRight(Invalid(s"unknown command $name (one of ${commands.map(_.tool).mkString(", ")})"))
+        .flatMap(_.parse(rest).map(name -> _))
+    }
+
+    def accepts(args: Seq[String]): Either[Stop, Unit] = parse(args).map(_ => ())
+
+    /** The command named and its arguments, or the tool exits as [[CommandLine.parseOrExit]] does. */
+    def parseOrExit(args: Array[String]): (String, Arguments) = args.headOption.flatMap(byName.get) match {
+      case Some(line) => args.head -> line.parseOrExit(args.drop(1))
+      case None       => exiting(tool, help)(_ => parse(args.toSeq))
+    }
+  }
+
+  /** `read`'s arguments, or the tool exits: 0 after printing the help, 2 after printing why and `help` to stderr. */
+  private def exiting[A](tool: String, help: String)(read: (String => Nothing) => Either[Stop, A]): A = {
+    def refuse(message: String): Nothing = {
+      System.err.println(s"$tool: $message\n\n$help")
+      sys.exit(2)
+    }
+    read(refuse) match {
+      case Right(arguments)   => arguments
+      case Left(Help(text))   => print(text); sys.exit(0)
+      case Left(Invalid(why)) => refuse(why)
+    }
+  }
+
   sealed trait Declared { def name: String; def help: String }
   /** A boolean `--name`: present or not. */
   final case class Flag(name: String, help: String) extends Declared
@@ -142,10 +194,25 @@ object CommandLine {
     def int(name: String): Option[Int] = converted(name, "a whole number")(_.toIntOption)
     def double(name: String): Option[Double] = converted(name, "a number")(_.toDoubleOption)
 
-    def positional(name: String): Option[String] = line.positionals.indexWhere(_.name == name) match {
+    def positional(name: String): Option[String] = positionalsFrom(name).headOption
+    /** The positional given — or the tool stops: a required one left out. */
+    def requiredPositional(name: String): String = positional(name).getOrElse(fail(s"<$name> is required"))
+    /** The positional `name` and every one after it: a repeatable last positional's every value, in order. */
+    def positionalsFrom(name: String): Seq[String] = line.positionals.indexWhere(_.name == name) match {
       case -1    => throw new IllegalArgumentException(s"${line.tool} declares no positional $name")
-      case index => positionals.lift(index)
+      case index => positionals.drop(index)
     }
+    def positionalInt(name: String): Option[Int] =
+      positional(name).map(v => v.toIntOption.getOrElse(fail(s"<$name> wants a whole number, got $v")))
+
+    /** The country the positional names — a code no country has stops the tool, never reads as no country (and so
+     *  the tool's default one), the way `args.headOption.flatMap(Country.byCode)` read a mistyped `gb`. */
+    def country(name: String): Option[Country] = positional(name).map(countryOf)
+    /** Every country the positional `name` and those after it name, each refused as [[country]] refuses one. */
+    def countries(name: String): Seq[Country] = positionalsFrom(name).map(countryOf)
+
+    private def countryOf(code: String): Country =
+      Country.byCode(code).getOrElse(fail(s"no country '$code' (one of ${Country.all.map(_.code).mkString(", ")})"))
 
     private def converted[A](name: String, what: String)(read: String => Option[A]): Option[A] =
       get(name).map(v => read(v).getOrElse(fail(s"--$name wants $what, got $v")))
