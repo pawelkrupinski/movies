@@ -331,7 +331,17 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
       IdentityMeasures.soleImdbTitled(ranked.filter(_.imdbTitled.nonEmpty).map(s => s.candidate.tmdbId -> s.imdbTitled).toMap)
         .exists(_._1 == scored.candidate.tmdbId) &&
         !ranked.exists(other => (other ne scored) && other.category("title").exists(IdentityMeasures.TitlesItsOwn)) &&
-        IdentityMeasures.takesImdbTitle(scored.listing, scored.candidate.film)
+        IdentityMeasures.takesImdbTitle(scored.listing, scored.candidate.film) && titledByMoreThanAWord(scored)
+    // the billing's whole title, a piece of two words at least, the word the billing opens with, or a DATED record: a
+    // one-word piece after another names an undated record only as many films' title does — DE "Friday the 13th:
+    // Legacy", a fan film, is not David Slade's undated "Legacy" IMDb lists under its last word, while "Spooked: Ringu"
+    // is the 1998 "Ring" and "Gina (Kurzfilm)" is "Gina"
+    def titledByMoreThanAWord(scored: Scored): Boolean = scored.candidate.film.year.isDefined || scored.imdbTitled.exists { title =>
+      import services.movies.TitleContainment.tokens
+      val words = tokens(title)
+      scored.listing.ownKeys(IdentityMeasures.key(title)) || words.sizeIs >= 2 ||
+        scored.listing.ownTitles.exists(billed => tokens(billed).startsWith(words))
+    }
     def rung(scored: Scored): Boolean = titledRung(scored) || scored.imdb.exists { place =>
       (place.place == 1 && scored.number("year.delta").contains(0.0)) ||
         (sameDirector(scored) && suggested.count(sameDirector) == 1) ||
