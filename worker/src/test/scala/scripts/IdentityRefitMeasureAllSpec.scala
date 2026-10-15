@@ -14,7 +14,9 @@ class IdentityRefitMeasureAllSpec extends AnyFlatSpec with Matchers {
   private val shipped = IdentityCalibration.resolver
 
   "Measuring the changes" should "give each change the measure it has alone, its captures in order, whatever task finished first" in {
-    val replays = Seq(models.Country.Germany, models.Country.Spain).map(c => new CaptureReplay(tools.UnmatchedClusters.read(tools.UnmatchedClusters.fixturePath(c)), None))
+    // Poland's and Spain's captures (2.5 MB and 0.2, against Germany's 5.7): the claim is about order and pairing across
+    // two captures, and Poland's takes move with the rating cut, so the strict change still takes fewer films.
+    val replays = Seq(models.Country.Poland, models.Country.Spain).map(c => new CaptureReplay(tools.UnmatchedClusters.read(tools.UnmatchedClusters.fixturePath(c)), None))
     val pool    = java.util.concurrent.Executors.newFixedThreadPool(4)
     given scala.concurrent.ExecutionContext = scala.concurrent.ExecutionContext.fromExecutor(pool)
     try {

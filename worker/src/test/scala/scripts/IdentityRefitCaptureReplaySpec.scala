@@ -15,7 +15,10 @@ class IdentityRefitCaptureReplaySpec extends AnyFlatSpec with Matchers {
   private val shipped = IdentityCalibration.resolver
 
   "A calibration" should "reach the captures' re-resolve: one accepting nothing takes fewer films than the shipped one" in {
-    val replay  = new CaptureReplay(tools.UnmatchedClusters.read(tools.UnmatchedClusters.fixturePath(models.Country.Germany)), None)
+    // Poland's capture (2.5 MB against Germany's 5.7, whose re-resolve was most of the worker unit run's longest suite):
+    // its takes move with the rating cut, as Germany's do. Spain's and the United States' do not — on them the claims
+    // below would hold vacuously (0 takes, or the same 396 either way).
+    val replay  = new CaptureReplay(tools.UnmatchedClusters.read(tools.UnmatchedClusters.fixturePath(models.Country.Poland)), None)
     val nothing = CutChange("listing-film", "showRatings", shipped.ratingCut, 0.999999).applyTo(
       shipped.copy(evidenceClasses = Nil))
     val control = baseline(Seq(replay), shipped)
@@ -27,6 +30,6 @@ class IdentityRefitCaptureReplaySpec extends AnyFlatSpec with Matchers {
     // a take labelled right is a unit the refit measures — one whose film the model's own evidence reaches (a film
     // only a family or the fill takes is no candidate of a node)
     control.takes.filter(_.tmdb.isDefined).exists(taken =>
-      labelledUnits(replay.capture, Seq(Label("de", "*", taken.rawTitle, taken.film, right = true, "")), shipped).nonEmpty) shouldBe true
+      labelledUnits(replay.capture, Seq(Label("pl", "*", taken.rawTitle, taken.film, right = true, "")), shipped).nonEmpty) shouldBe true
   }
 }
