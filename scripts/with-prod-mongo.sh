@@ -3,7 +3,7 @@
 # connection through the ssh tunnel.
 #
 #   scripts/with-prod-mongo.sh [--root] <command...>
-#   e.g. scripts/with-prod-mongo.sh sbt 'worker/Test/runMain tools.UptimeBucketsMigration'
+#   e.g. scripts/with-prod-mongo.sh sbt 'worker/Test/runMain scripts.ReapOrphanedFilmRows'
 #
 # What the command gets, in its environment:
 #   MONGODB_URI  the vault's MONGODB_URI (with --root: MONGO_ROOT_URI) rewritten to the tunnel —

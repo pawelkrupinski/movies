@@ -15,7 +15,7 @@ equivalence harness's commit, on `c1cc08eb9`).
     part of the corpus only (unanswered queries PL 4,135, UK 1,979, DE 3,345, US 2,612, ES 469), so the counts are the
     rules' reach on what it answers, not prod's;
   - the five checked-in UNMATCHED-cluster captures (`test/resources/fixtures/identity-unmatched/<cc>.json.gz`, the
-    ratchet's) through `scripts.IdentityEquivalence` — the agreement stage over the model's no-matches (`agreed`), and
+    ratchet's) through `scripts.IdentityEquivalence` (removed 2026-10-15; in git history) — the agreement stage over the model's no-matches (`agreed`), and
     the resolver over the captures' listings with the agreement over that (`resolved`, `resolved-agreed`). Agreement
     rules are counted **per cluster** (527 clusters).
 - A rule that fires on neither is **dead on the corpora**; it is dead in fact only if no caller can reach it.

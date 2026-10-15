@@ -979,7 +979,7 @@ published are untouched.
   shown; an exact title with no other fact scores ≈0.18 and is withheld unless its own search
   returned it first with no same-titled rival (then ≈0.5, shown), as a namesake would otherwise
   have the same evidence (`StoredIdentityConfidenceSpec`).
-- **Why the search standing, measured** (`scripts.IdentitySearchEvidence`, labelled units replayed
+- **Why the search standing, measured** (`scripts.IdentitySearchEvidence`, removed 2026-10-15; labelled units replayed
   through run 36224654409's recorded searches, the listing stripped to its title): rank 1 with no
   rival under an exact title is 2,697 corroborated units against 1 contradicted; the same under a
   banner segment 387 against 18. Shown on a bare title: 61.7% of corroborated units and 2.1% of
@@ -3292,7 +3292,7 @@ other loop is a single pass, a union-find, or capped (§4 of the inventory).
 
 ### 21.4 The equivalence proof
 
-`scripts.IdentityEquivalence <dir>` writes every cluster's decision over the five captures — the agreement over the
+`scripts.IdentityEquivalence <dir>` (removed 2026-10-15; in git history) wrote every cluster's decision over the five captures — the agreement over the
 captured no-matches, and the resolver over the captures' listings with the agreement over that — with its members,
 film, basis, fallback, agreeing families, lean, confidence, full explanation and every trace rule and candidate denial,
 and each replay's thread allocation; `IdentityResolveDumpIntegrationSpec` writes every listing's decision over the

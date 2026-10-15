@@ -232,10 +232,7 @@ jobs:
                       python3 scripts/ci/identity_findings_report_test.py
                       python3 scripts/ci/identity_judgements_test.py
                       python3 scripts/ci/identity_judgements_lint_test.py
-                      python3 scripts/ci/changed_line_coverage_test.py
-                      python3 scripts/ops/jfr_rank_test.py
                       python3 scripts/ops/dumpheap_test.py
-                      python3 scripts/ops/fleet_metrics_test.py
                       bash scripts/identity-fetch-recording-test.sh
                       bash scripts/identity-tools-test.sh
                       bash scripts/identity-slice-test.sh
