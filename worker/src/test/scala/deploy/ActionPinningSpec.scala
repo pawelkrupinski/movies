@@ -43,4 +43,22 @@ class ActionPinningSpec extends AnyFlatSpec with Matchers {
       floating shouldBe empty
     }
   }
+
+  /** `swift-actions/setup-swift@v2` refuses any Ubuntu outside its own list (20.04 / 22.04 /
+   *  24.04: `Version "26.04" of Ubuntu is not supported`), and swift.org publishes no 5.10 build
+   *  for 26.04 — so a job that installs Swift on `ubuntu-latest` turns red the day the label
+   *  moves (actions/runner-images#14748, rolling out 2026-10-19 → 11-19). It names the image. */
+  "every job installing Swift via setup-swift" should "pin its Ubuntu runner, not ubuntu-latest" in {
+    val unpinned = for {
+      file        <- RepoFile.workflows()
+      (name, job) <- RepoFile.jobs(RepoFile.read(file.getPath))
+      code        = RepoFile.withoutComments(job)
+      if code.contains("swift-actions/setup-swift@")
+      if !"""runs-on:\s*ubuntu-\d\d\.\d\d\s""".r.findFirstIn(code).isDefined
+    } yield s"${file.getName}: $name"
+
+    withClue("setup-swift supports only the Ubuntu versions it lists; `ubuntu-latest` moves under it: ") {
+      unpinned shouldBe empty
+    }
+  }
 }

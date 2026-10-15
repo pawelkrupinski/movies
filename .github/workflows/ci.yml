@@ -252,8 +252,12 @@ jobs:
     # everything: the Scala build emits Java 21 (`--release 21`) and runs on 21,
     # Gradle 8.9 / AGP 8.6 run on 21, and Swift needs no JDK. Both junit publishes
     # keep their original `iOS LocalServer` / `Android LocalServer` check-names.
+    #
+    # Pinned to 24.04, not `ubuntu-latest`: setup-swift@v2 refuses Ubuntu 26.04 and swift.org has no
+    # 5.10 build for it (actions/runner-images#14748). Moving off means a Swift 6 toolchain here AND in
+    # ios.yml's `swift:5.10` container together. Locked by ActionPinningSpec.
     mobile-local-server:
-        runs-on: ubuntu-latest
+        runs-on: ubuntu-24.04
         permissions:
             contents: read
             checks: write
