@@ -214,13 +214,20 @@ def list_command(root, all_worktrees, found, args):
         print("      none")
 
 
-def ancestors():
-    """This process and every parent up the real process tree — the caller's shell and agent session."""
+def ancestors(found):
+    """This process and every parent up the real process tree — the caller's shell and agent session — read from
+    the process table already listed (`found`), so a shell where `ps -p <pid>` cannot see a parent (a sandboxed
+    agent's) is still spared; ps per hop only for a pid the table lacks."""
     chain, pid = set(), os.getpid()
     while pid > 1 and pid not in chain:
         chain.add(pid)
-        parent = run(["ps", "-o", "ppid=", "-p", str(pid)]).stdout.strip()
-        pid = int(parent) if parent.isdigit() else 0
+        if pid == os.getpid():
+            pid = os.getppid()
+        elif pid in found:
+            pid = found[pid].ppid
+        else:
+            parent = run(["ps", "-o", "ppid=", "-p", str(pid)]).stdout.strip()
+            pid = int(parent) if parent.isdigit() else 0
     return chain
 
 
@@ -233,7 +240,7 @@ def kill_command(all_worktrees, found, args, here):
             sys.exit(f"agent-procs: {args.worktree} is not a worktree of this repository")
     if target is None:
         sys.exit("agent-procs: the current directory is in no worktree of this repository")
-    protected = ancestors()
+    protected = ancestors(found)
     victims = [p for p in target.processes if p.pid not in protected]
     print(f"{len(victims)} process(es) under {target.path}")
     for process in victims:

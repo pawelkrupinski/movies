@@ -123,6 +123,17 @@ check "kill --dry-run never offers the caller's shell" "0" "$(printf '%s\n' "$dr
 sleep 0.3
 check "kill --mine ends the current worktree's process" "no" "$(kill -0 "$victim" 2>/dev/null && echo yes || echo no)"
 check "...and leaves another worktree's process alone" "yes" "$(kill -0 "$bystander" 2>/dev/null && echo yes || echo no)"
+# The caller's shell is spared even where `ps -p <pid>` cannot read a parent (a sandboxed agent shell): the
+# ancestry comes from the real process table already read, not one ps call per hop. Real ps and lsof here.
+mkdir -p "$work/bin"
+printf '#!/bin/sh\nfor a in "$@"; do [ "$a" = -p ] && exit 1; done\nexec /bin/ps "$@"\n' > "$work/bin/ps"
+chmod +x "$work/bin/ps"
+(cd "$work/wt-orphan" && exec sleep 300) & victim=$!
+survived="$(cd "$work/wt-orphan" && env -u AGENT_PROCS_PS_COMMAND -u AGENT_PROCS_CWD_COMMAND PATH="$work/bin:$PATH" \
+  sh -c '"$1" kill --mine > /dev/null; echo survived' sh "$TOOL")"
+sleep 0.3
+check "kill --mine spares its calling shell when ps -p fails" "survived" "$survived"
+check "...and still ends the worktree's own process" "no" "$(kill -0 "$victim" 2>/dev/null && echo yes || echo no)"
 check "kill --worktree refuses a path that is no worktree" "1" \
   "$(cd "$root" && "$TOOL" kill --worktree "$work" > /dev/null 2>&1; echo $?)"
 (cd "$root" && "$TOOL" kill --worktree "$work/wt-other" > /dev/null)
