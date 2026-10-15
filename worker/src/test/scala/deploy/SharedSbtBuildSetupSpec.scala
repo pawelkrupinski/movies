@@ -43,7 +43,8 @@ class SharedSbtBuildSetupSpec extends AnyFlatSpec with Matchers {
   /** Heap is each sbt call's own `-J-Xmx`: one job's calls differ, so a job-wide input would change some. */
   it should "leave the JVM heap to each sbt invocation" in {
     RepoFile.withoutComments(RepoFile.read(Action)) should not include "Xmx"
-    RepoFile.read(".github/workflows/identity-refit.yml") should include("sbt -J-Xmx12g \"worker/Test/runMain scripts.IdentityRefit")
+    // The refit's job is one script now; its JVM sets its own heap.
+    RepoFile.read("scripts/identity-refit") should include("-Xmx${IDENTITY_REFIT_HEAP:-12g}")
   }
 
   "the decorations relearn" should "restore no build cache, as before the trio was shared" in {
