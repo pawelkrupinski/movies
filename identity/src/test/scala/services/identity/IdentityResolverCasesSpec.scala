@@ -1500,6 +1500,13 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     val ring = Seq(F(1702769, "Royal Ballet & Opera 2026/27: Götterdämmerung", 2027, "", 0, 0.5))
     val banner = listing(PictureHouseUckfield, "GÖTTERDÄMMERUNG Royal Opera")
     shipped(Seq(banner), ring).decisionOf(banner.key).film shouldBe Some(1702769)
+    // nor a piece whose words one part of the title holds in a translation's order: DE Cinema Wolfhagen's "National Opera
+    // Paris: Schwanensee" is TMDB's "Opéra national de Paris 2024: Schwanensee", its search's only film (convergence
+    // 38670105172, labelled right)
+    val swan = Seq(F(1319440, "Opéra national de Paris 2024: Schwanensee", 2024, "", 139, 1, countries = Seq("FR", "CA")))
+    val paris = listing(KinoMuza, "National Opera Paris: Schwanensee")
+    val p = shipped(Seq(paris), swan).decisionOf(paris.key)
+    withClue(p.render)(p.film shouldBe Some(1319440))
   }
 
   "Nowe Horyzonty's 83-minute Your Name re-release" should "take Shinkai's film, whose record carries the English title it publishes" in {

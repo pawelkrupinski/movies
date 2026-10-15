@@ -117,16 +117,22 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
       if (scored.denied || (IdentityMeasures.sameDirector(scored.measures) && !creditedFeature)) None
       else ShortFilms.untaken(listing, scored.candidate.tmdbId, scored.candidate.film, linked, features.nonEmpty)
     // A film of the venue's own language is billed by its title: one the listing's titles share no word with is another
-    // film, however its director's credit or running time fits — a director's filmography and a running time are paths to
-    // candidates, never a title. UK Picture House Uckfield's "Gremlins Special Event" {Joe Dante} [120′] took Innerspace,
+    // film, however its director's credit or running time fits — a director's filmography is a path to candidates, never a
+    // title. UK Picture House Uckfield's "Gremlins Special Event" {Joe Dante} [120′] took Innerspace,
     // "Social Reckoning" {Aaron Sorkin} [130′] The Trial of the Chicago 7, US "Sabotage (1937)" Hitchcock's Young and
     // Innocent (prod 2026-10-14: every such take in the UK, DE and US wrong). A film of another language may be billed by a
     // translation TMDB does not carry (PL "Kupiłem motocykl, który jest wampirem", the 1990 British film): left to the facts.
-    def ownLanguageUntitled(scored: Scored) = relation(scored.candidate.tmdbId) == "none" &&
+    // Only one that would outrank every other candidate: a lower one is taken by nothing, and denying it anyway moved the
+    // family's vote — UK "Fallen Angels by Noël Coward" ×315, a stage capture, lost its film or took Lukas Dhont's "Coward"
+    // once its listings denied Scott Ellis's other Roundabout captures ("Harvey", "She Loves Me") ranked far below it
+    // (convergence 38670105172).
+    def untitled(scored: Scored) = !scored.denied && relation(scored.candidate.tmdbId) == "none" &&
       country.exists(venue => scored.candidate.film.countries.exists(_.exists(IdentityMeasures.sharesLanguage(venue, _)))) &&
       IdentityMeasures.sharesNoWord(listing, scored.candidate.film)
+    lazy val named = candidates.filterNot(scored => scored.denied || untitled(scored)).map(_.probability).maxOption
+    def ownLanguageUntitled(scored: Scored) = untitled(scored) && named.forall(scored.probability >= _)
     candidates.map(scored =>
-      if (!scored.denied && ownLanguageUntitled(scored))
+      if (ownLanguageUntitled(scored))
         scored.copy(denial = Some("a film of the venue's own language its title shares no word with"))
       else if (anotherRecordOfItsBroadcast(scored))
         scored.copy(denial = Some("another record of a broadcast its film database holds twice"))

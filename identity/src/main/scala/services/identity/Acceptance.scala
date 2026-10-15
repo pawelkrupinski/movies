@@ -403,7 +403,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
     }
   }
   /** Do the listing's words `own`, all of them the film's `title`'s, cover that title: more than half its words — each of
-   *  the billing's own `pieces`, when it bills two or more, read in the title's order ([[inOrder]]) — or every part of it
+   *  the billing's own `pieces`, when it bills two or more, read by the title ([[readIn]]) — or every part of it
    *  ([[TitlePartBreak]]) they touch whole — "BALLET LIVE. MANON. ROYAL ÓPERA HOUSE" for "Manon (BALLET LIVE)". Fewer are
    *  words scattered over a longer title (the wrong-match hunt, 10-14, 9 wrong to 1 right): DE "Simply Christmas", a
    *  band's Advent concert, is no "Steve's Simply Happy Christmas Cook-A-Long", "DAS GEHEIME FILMARCHIV", a secret-classic
@@ -414,11 +414,20 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
     val words = own.toSet
     val ordered = IdentityMeasures.yearlessTokens(title)
     val theirs = ordered.toSet
-    (words.size * 2 > theirs.size && (pieces.sizeIs < 2 || pieces.forall(inOrder(_, ordered)))) || {
+    (words.size * 2 > theirs.size && (pieces.sizeIs < 2 || pieces.forall(readIn(_, title, ordered)))) || {
       val parts = TitlePartBreak.split(title).toSeq.map(IdentityMeasures.yearlessTokens).filter(_.nonEmpty)
       parts.filter(_.exists(words)).forall(_.forall(words))
     }
   }
+  /** Does the film's `title` (its words `ordered`) read the billing's `piece`: its words in the piece's order ([[inOrder]]),
+   *  or all within one part of the title ([[PiecePartBreak]]), where a translation may order them otherwise — DE Cinema
+   *  Wolfhagen's "National Opera Paris: Schwanensee" is "Opéra national de Paris 2024: Schwanensee" (10-15). A piece whose
+   *  words two of the title's parts hold the other way round is another's phrase: "About Time" in "Once Upon a Time… All
+   *  About My Mother". */
+  private def readIn(piece: Seq[String], title: String, ordered: Seq[String]): Boolean =
+    inOrder(piece, ordered) || PiecePartBreak.split(title).iterator.map(IdentityMeasures.yearlessTokens).exists(part => piece.forall(part.contains))
+  /** [[TitlePartBreak]], and an ellipsis before a space ("Once Upon a Time… All About My Mother"). */
+  private val PiecePartBreak = java.util.regex.Pattern.compile("""\s+[-–—·]\s+|[:.…]\s""")
   /** Are `piece`'s words `title`'s in its order, others between them at most? */
   private def inOrder(piece: Seq[String], title: Seq[String]): Boolean =
     piece.foldLeft(Option(title)) { (rest, word) => rest.map(_.dropWhile(_ != word)).filter(_.nonEmpty).map(_.tail) }.isDefined

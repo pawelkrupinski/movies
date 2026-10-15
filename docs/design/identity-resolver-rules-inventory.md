@@ -55,7 +55,7 @@ Alone rules are tried in list order (`Acceptance.scala:71`), first accept wins; 
 | favoured-calibrated | 344 | probability vs `showsRatings`, `favours`, `closerThan` | 145,584 | ITS |
 | exact-top-hit | 174 | exact title + rank 1, `speaksAgainst`, `fitsBetter`, class | 383 | ITS, IRC |
 | segment-top-hit | 198 | segment relation, rank 1, `standsForTheWhole`, titleYear | 59 | IRC, ITS, AS |
-| sole-result | 302 | only hit of a title search, `cutOnly`; `wordsOfIts` more-than-half clause needs the billing's words in the film's order (`inOrder`, 2026-10-14) | 278 | AS, IRC |
+| sole-result | 302 | only hit of a title search, `cutOnly`; `wordsOfIts` more-than-half clause needs each of the billing's pieces read in the film's order or within one part of its title (`readIn`, 2026-10-14; one part, 10-15: "National Opera Paris" in "Opéra national de Paris 2024") | 278 | AS, IRC |
 | imdb-suggested | 232 | IMDb place, AKA, director, year | 294 | AS, IRC |
 | directors-work | 484 | same director, shared work, `BilledRuntime`=15 | 360 | AS, ITS, IRC |
 | directors-title | 508 | exact title, same director, `withoutHollow` | 8 | AS, UnifiedEvidenceSpec |
@@ -77,7 +77,7 @@ Refusals: every listing no alone rule took carries one `refused:<rule>:<why>` pe
 | rule | file:line | evidence | fires (candidate × listing) | pinned by |
 |---|---|---|---|---|
 | director's other film | FamilyScope:92 | same director, title not naming it | 102,502 | IRC |
-| a film of the venue's own language its title shares no word with (`sharesNoWord`, `sharesLanguage`) — added 2026-10-14 | FamilyScope.score | title relation `none`, no glued word, film countries vs venue country | prod: 5 takes, all wrong | IRC |
+| a film of the venue's own language its title shares no word with (`sharesNoWord`, `sharesLanguage`) — added 2026-10-14 | FamilyScope.score | title relation `none`, no glued word, film countries vs venue country, and only a film outranking every other candidate (10-15: denying Scott Ellis's other captures far below "Fallen Angels by Noël Coward"'s film split its family) | prod: 5 takes, all wrong | IRC |
 | learned listing-film cannot-links (28, data) | CandidateScoring:31 via identity-weights.json | measures | 11,350 + 9,655 + … (14 kinds seen) | IRC learned cases |
 | seasonsApart | CandidateScoring:31 (ListingConstraints) | season years | 4,925 | IRC |
 | another house's season production | CandidateScoring:33 | `Houses` | 2,123 | IRC |
