@@ -820,6 +820,12 @@ object IdentitySlice {
     else {
       Files.createDirectories(target)
       Seq("slice.json.gz", "rows.json.gz", "http.jsonl.gz").foreach(name => Files.copy(from.resolve(name), target.resolve(name), java.nio.file.StandardCopyOption.REPLACE_EXISTING))
+      // the filed answers the slice's decision read beside the recording's: without them the replay's agreement asks its
+      // families afresh, questions the slice never recorded — named from the checkout, not this machine's path to it
+      if (!slice.filed.isEmpty) {
+        val checkout = java.nio.file.Paths.get("").toAbsolutePath.toString + java.io.File.separator
+        tools.FiledAnswers.write(target, slice.filed.copy(source = slice.filed.source.replace(checkout, "")))
+      }
       val expected = known.flatMap(_._2)
       val lines = expected.map(e => Seq(e.venue, e.rawTitle, e.film, e.note).mkString("\t"))
       Files.writeString(target.resolve("expected.tsv"), (ExpectedHeader +: lines).mkString("", "\n", "\n"), StandardCharsets.UTF_8)
