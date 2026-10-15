@@ -1,0 +1,206 @@
+#!/usr/bin/env bash
+# Every script self-test, found by its name and run in parallel: the one way CI, the pre-push hook and
+# a person at a terminal run them.
+#
+#   scripts/run-script-tests                       # every self-test (the untagged ones)
+#   scripts/run-script-tests scripts/ci identity   # only those whose path is under / contains / matches one of these
+#   scripts/run-script-tests --changed origin/main # only those whose test, tool or a file they name changed
+#   scripts/run-script-tests --list [--all]        # what would run: path, tag, reason (tab-separated)
+#   scripts/run-script-tests --tag manual          # only the tests tagged so (see TAGS)
+#
+# Options: --jobs N (8 at once), --timeout S (600 s a test), --root DIR (the checkout; this script's own).
+#
+# WHY. The self-tests were listed by hand: ~60 lines of one background step in ci.yml plus single
+# lines in six other workflows, and a test nobody listed ran nowhere (ScriptSelfTestsRunInCiSpec
+# caught several). Found by name, a new test runs the moment it exists: NAME IT `<tool>-test.sh` or
+# `<tool>_test.py`, beside its tool, under one of the roots below, and nothing needs wiring.
+#
+# TAGS. A `# script-test: <tag> <why>` line in a test's first 40 lines keeps it out of the default
+# run: `manual` for one that needs what no CI job has (a live replica set, a device farm) or is not a
+# self-test at all; any other tag (`own-job`, ...) for one a workflow runs by name where its toolchain
+# is (ScriptSelfTestsRunInCiSpec holds those to it). `--tag <tag>` runs them; `--all` lists everything.
+#
+# Each test runs from the checkout's root, `bash` for .sh and `python3` for .py, stdin closed, under
+# its own timeout (`timeout`/`gtimeout`, else a perl fallback that kills the test's whole process
+# group). The table names each PASS / FAIL / TIMEOUT with its seconds; a failure's last lines follow.
+# Exit: 0 all passed (or none selected by --changed), 1 any failed or a filter matched nothing,
+# 2 a --changed base that is no commit, 64 usage. Bash 3.2 (macOS /bin/bash): no wait -n, no maps.
+set -uo pipefail
+
+Roots="scripts .github/scripts .github/actions android/scripts ios/scripts infra/bin"
+
+root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+jobs=8 timeout_s=600 list=0 all=0 tag="" changed_base="" filters=()
+usage() { sed -n '2,13p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' >&2; exit 64; }
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --jobs) jobs="${2:?--jobs N}"; shift ;;
+    --timeout) timeout_s="${2:?--timeout S}"; shift ;;
+    --root) root="$(cd "${2:?--root DIR}" && pwd)" || exit 64; shift ;;
+    --list) list=1 ;;
+    --all) all=1 ;;
+    --tag) tag="${2:?--tag T}"; shift ;;
+    --changed) changed_base="${2:?--changed BASE}"; shift ;;
+    -h|--help) usage ;;
+    -*) echo "run-script-tests: unknown option $1" >&2; usage ;;
+    *) filters+=("$1") ;;
+  esac
+  shift
+done
+cd "$root" || exit 64
+
+# ── Discovery ──────────────────────────────────────────────────────────────────────────────────
+discover() { # every self-test under the roots: path<TAB>tag<TAB>reason
+  local r present=()
+  for r in $Roots; do [ -d "$r" ] && present+=("$r"); done
+  [ ${#present[@]} -eq 0 ] && return 0
+  find "${present[@]}" \( -name node_modules -o -name build -o -name .build -o -name target \) -prune -o \
+        -type f \( -name '*-test.sh' -o -name '*_test.py' \) -print \
+    | LC_ALL=C sort -u \
+    | while IFS= read -r path; do
+        local marker
+        marker="$(head -40 "$path" | sed -n 's/^#[[:space:]]*script-test:[[:space:]]*//p' | head -1)"
+        if [ -n "$marker" ]; then
+          printf '%s\t%s\t%s\n' "$path" "${marker%%[[:space:]]*}" "$(printf '%s' "${marker#"${marker%%[[:space:]]*}"}" | sed 's/^[[:space:]]*//')"
+        else
+          printf '%s\t-\t\n' "$path"
+        fi
+      done
+}
+
+matches_filter() { # <path>: no filters, or one names a directory above it, a substring of it, or a glob matching it
+  [ ${#filters[@]} -eq 0 ] && return 0
+  local f
+  for f in "${filters[@]}"; do
+    f="${f%/}"
+    # shellcheck disable=SC2254 # the filter is a glob on purpose
+    case "$1" in "$f"|"$f"/*|*"$f"*|$f) return 0 ;; esac
+  done
+  return 1
+}
+
+# The paths a --changed run is about: committed since leaving the base, plus uncommitted and untracked.
+changed_paths() {
+  git rev-parse -q --verify "$changed_base^{commit}" >/dev/null 2>&1 \
+    || { echo "run-script-tests: --changed $changed_base is no commit" >&2; return 2; }
+  { git diff --name-only "$changed_base...HEAD" && git diff --name-only HEAD && git ls-files --others --exclude-standard; } \
+    | LC_ALL=C sort -u
+}
+
+stem() { # <file name> -> the tool name a test or tool shares, - and _ alike, extension dropped
+  local n="${1%.*}"; n="${n%-test}"; n="${n%_test}"; printf '%s' "$n" | tr _ -; }
+
+touched_by() { # <test path> <changed paths file>: the test, its tool, or a file whose name it mentions, changed
+  local test="$1" c dir name
+  dir="$(dirname "$test")"
+  while IFS= read -r c; do
+    [ -z "$c" ] && continue
+    [ "$c" = "$test" ] && return 0
+    name="$(basename "$c")"
+    [ "$(dirname "$c")" = "$dir" ] && [ "$(stem "$name")" = "$(stem "$(basename "$test")")" ] && return 0
+    case "$name" in *.*) grep -qE "(^|[^A-Za-z0-9_.-])$(printf '%s' "$name" | sed 's/[.[\*^$]/\\&/g')([^A-Za-z0-9_-]|$)" "$test" 2>/dev/null && return 0 ;; esac
+  done < "$2"
+  return 1
+}
+
+work="$(mktemp -d)"
+trap 'rm -rf "$work"' EXIT
+if [ -n "$changed_base" ]; then
+  changed_paths > "$work/changed" || exit 2
+fi
+
+: > "$work/selected"
+discover | while IFS="$(printf '\t')" read -r path t reason; do
+  if [ -n "$tag" ]; then [ "$t" = "$tag" ] || continue
+  elif [ "$all" = 0 ]; then [ "$t" = - ] || continue
+  fi
+  matches_filter "$path" || continue
+  if [ -n "$changed_base" ]; then touched_by "$path" "$work/changed" || continue; fi
+  printf '%s\t%s\t%s\n' "$path" "$t" "$reason"
+done > "$work/selected"
+
+if [ "$list" = 1 ]; then cat "$work/selected"; exit 0; fi
+
+if [ ! -s "$work/selected" ]; then
+  if [ -n "$changed_base" ]; then echo "run-script-tests: no script tests selected by the changes since ${changed_base}"; exit 0; fi
+  echo "run-script-tests: no script test matches ${filters[*]:-the roots}${tag:+ tagged $tag}" >&2
+  exit 1
+fi
+
+# ── Running ────────────────────────────────────────────────────────────────────────────────────
+# bounded <seconds> <command...>: the command, killed with its children after <seconds>; 124 when it was.
+timeout_tool="${SCRIPT_TESTS_TIMEOUT_TOOL:-auto}"
+if [ "$timeout_tool" = auto ]; then
+  if command -v timeout >/dev/null 2>&1; then timeout_tool=timeout
+  elif command -v gtimeout >/dev/null 2>&1; then timeout_tool=gtimeout
+  else timeout_tool=perl
+  fi
+fi
+bounded() {
+  local s="$1"; shift
+  case "$timeout_tool" in
+    timeout|gtimeout) "$timeout_tool" -k 5 "$s" "$@" ;;
+    *) perl -e '
+         my $s = shift; setpgrp(0, 0); my $pid = fork() // die "fork: $!";
+         if ($pid == 0) { exec(@ARGV) or die "exec $ARGV[0]: $!" }
+         $SIG{TERM} = "IGNORE";
+         $SIG{ALRM} = sub { kill("TERM", -$$); sleep 2; kill("KILL", -$$); exit 124 };
+         alarm $s; waitpid($pid, 0); exit($? & 127 ? 128 + ($? & 127) : $? >> 8);' "$s" "$@" ;;
+  esac
+}
+
+run_one() { # <index> <path>: its log, exit status and seconds land in $work/<index>.*
+  local i="$1" path="$2" start=$SECONDS code interpreter=bash
+  case "$path" in *.py) interpreter=python3 ;; esac
+  bounded "$timeout_s" "$interpreter" "$path" < /dev/null > "$work/$i.log" 2>&1
+  code=$?
+  echo "$((SECONDS - start))" > "$work/$i.seconds"
+  echo "$code" > "$work/$i.rc"
+}
+
+paths=()
+while IFS="$(printf '\t')" read -r path _; do paths+=("$path"); done < "$work/selected"
+total=${#paths[@]}
+started=$SECONDS
+printf '\033[36m▸\033[0m %s script test(s), %s at a time\n' "$total" "$jobs"
+
+pids=() idx=() next=0 done_count=0 failed=0
+report() { # <index>
+  local i="$1" code secs status
+  code="$(cat "$work/$i.rc")"; secs="$(cat "$work/$i.seconds")"
+  if [ "$code" = 0 ]; then status=PASS
+  elif [ "$code" = 124 ] || [ "$code" = 137 ] || [ "$secs" -ge "$timeout_s" ]; then status=TIMEOUT
+  else status=FAIL
+  fi
+  printf '%-7s %4ss  %s\n' "$status" "$secs" "${paths[$i]}" >> "$work/table"
+  if [ "$status" != PASS ]; then
+    failed=$((failed + 1))
+    { printf '\n── %s %s (exit %s) ──\n' "$status" "${paths[$i]}" "$code"
+      tail -60 "$work/$i.log" | sed 's/^/    /'; } >> "$work/failures"
+  fi
+}
+: > "$work/table"; : > "$work/failures"
+while [ "$done_count" -lt "$total" ]; do
+  while [ "${#pids[@]}" -lt "$jobs" ] && [ "$next" -lt "$total" ]; do
+    run_one "$next" "${paths[$next]}" &
+    pids+=($!); idx+=("$next"); next=$((next + 1))
+  done
+  still=() still_idx=() k=0
+  while [ "$k" -lt "${#pids[@]}" ]; do
+    if kill -0 "${pids[$k]}" 2>/dev/null; then still+=("${pids[$k]}"); still_idx+=("${idx[$k]}")
+    else wait "${pids[$k]}" 2>/dev/null; report "${idx[$k]}"; done_count=$((done_count + 1))
+    fi
+    k=$((k + 1))
+  done
+  pids=(${still[@]+"${still[@]}"}); idx=(${still_idx[@]+"${still_idx[@]}"})
+  [ "$done_count" -lt "$total" ] && sleep 0.2
+done
+
+LC_ALL=C sort -k3 "$work/table"
+cat "$work/failures"
+echo
+if [ "$failed" -gt 0 ]; then
+  printf '%s of %s failed (%ss)\n' "$failed" "$total" "$((SECONDS - started))"
+  exit 1
+fi
+printf 'all %s passed (%ss)\n' "$total" "$((SECONDS - started))"
