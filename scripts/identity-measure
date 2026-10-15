@@ -60,15 +60,22 @@ ghb() { timeout "${IDENTITY_MEASURE_GH_TIMEOUT:-90}" gh "$@"; }
 poll=${IDENTITY_MEASURE_POLL:-30}
 
 branch="" dispatched_run="" finished=""
+delete_branch() {
+  timeout 120 git push -q --no-verify origin --delete "refs/heads/$branch" 2> /dev/null && { say "deleted branch $branch"; return; }
+  # A push that failed may never have made the branch (ls-remote's 2: no such ref): nothing to delete.
+  timeout 60 git ls-remote --exit-code origin "refs/heads/$branch" > /dev/null 2>&1
+  [ $? -eq 2 ] || say "could not delete branch $branch -- git push origin --delete $branch"
+}
 cleanup() {
+  # Run to the end: a second Ctrl-C (or the TERM after a first) mid-clean-up would leave the branch behind.
+  trap '' INT TERM
   # Ctrl-C mid-run: the run would replay a branch about to vanish -- cancel it first.
   if [ -n "$dispatched_run" ] && [ -z "$finished" ]; then
     say "cancelling run $dispatched_run"
     ghb run cancel "$dispatched_run" > /dev/null || say "could not cancel run $dispatched_run -- cancel it by hand"
   fi
   if [ -n "$branch" ] && [ -z "$keep" ]; then
-    git push -q --no-verify origin --delete "refs/heads/$branch" \
-      && say "deleted branch $branch" || say "could not delete branch $branch -- git push origin --delete $branch"
+    delete_branch
   elif [ -n "$branch" ]; then
     say "kept branch $branch"
   fi
@@ -152,7 +159,8 @@ fi
 branch="measure/${commit:0:9}-$(od -An -N3 -tx1 /dev/urandom | tr -d ' \n')"
 say "commit $(git log --oneline -1 "$commit")"
 say "base   $(git log --oneline -1 "$base")"
-git push -q --no-verify origin "$push:refs/heads/$branch" || { branch=""; die "could not push the measure branch"; }
+# A push that fails -- or times out -- may still have made the branch: the clean-up deletes it either way.
+timeout 300 git push -q --no-verify origin "$push:refs/heads/$branch" || die "could not push the measure branch"
 say "pushed $branch"
 
 lane_clear() { # wait until no run of the lane is waiting: a dispatch now would replace it

@@ -59,7 +59,7 @@ echo "$*" >> "$STUB/calls"
 json=""; prev=""
 for a in "$@"; do [ "$prev" = --json ] && json=$a; prev=$a; done
 case "$1 $2" in
-  "workflow run") echo "$*" > "$STUB/dispatch" ;;
+  "workflow run") echo "$*" > "$STUB/dispatch"; [ -z "${DISPATCH_FAILS:-}" ] || exit 1 ;;
   "run list")
     if [[ " $* " == *" --branch "* ]]; then
       # the run exists only once the commit is on origin's measure/ branch: record what was pushed
@@ -71,16 +71,29 @@ case "$1 $2" in
       url) echo "https://example.test/runs/777" ;;
       status,conclusion) [ -n "${VIEW_FAILS:-}" ] && exit 1
                          [ -n "${VIEW_BLIPS:-}" ] && [ ! -f "$STUB/blipped" ] && { touch "$STUB/blipped"; exit 1; }
+                         [ -n "${IN_PROGRESS:-}" ] && { touch "$STUB/watched"; printf 'in_progress\t\n'; exit 0; }
                          printf 'completed\tsuccess\n' ;;
       status,headBranch,headSha) printf 'completed\tmeasure/abc-1\t%s\n' "$HEAD_SHA" ;;
       jobs) printf 'poland / takes\tfailure\n' ;;
     esac ;;
   "run download") while [ "$#" -gt 0 ]; do [ "$1" = --dir ] && dir=$2; shift; done; cp -R "$ARTIFACT/." "$dir/" ;;
-  "run cancel") echo cancelled > "$STUB/cancelled" ;;
+  "run cancel") echo cancelled > "$STUB/cancelled"
+                # A second signal while the script cleans up (a second Ctrl-C): gh's parent is `timeout`, its parent the script.
+                [ -z "${SIGNAL_ON_CANCEL:-}" ] || kill -TERM "$(ps -o ppid= -p "$PPID" | tr -d ' ')" ;;
   *) exit 1 ;;
 esac
 STUB
 chmod +x "$work/bin/gh"
+# The real git, but a measure/ push that reports failure AFTER origin took it (a push timed out on its answer).
+real_git=$(command -v git)
+cat > "$work/bin/git" <<STUB
+#!/usr/bin/env bash
+if [ "\$1" = push ] && [ -n "\${PUSH_FAILS_AFTER:-}" ] && [[ " \$* " == *refs/heads/measure/* ]] && [[ " \$* " != *--delete* ]]; then
+  "$real_git" "\$@"; exit 1
+fi
+exec "$real_git" "\$@"
+STUB
+chmod +x "$work/bin/git"
 
 measure() { # <artifact> <args...>: exit code; output in $work/out
   local art=$1; shift
@@ -131,5 +144,32 @@ scratch_git "$repo" push -q origin "$tip:refs/heads/measure/abc-1"
 check "--run collects a finished run" "1" "$(HEAD_SHA=$tip measure lost --run 777 --countries pl)"
 check "...and deletes its measure/ branch" "0" "$(measure_branches)"
 check "...dispatching nothing" "false" "$([ -f "$work/stub/dispatch" ] && echo true || echo false)"
+
+# THE BRANCH ON EVERY EXIT PATH: whatever ends a measurement after the push, origin keeps no measure/ branch.
+check "a dispatch refused after the push is no measurement" "2" "$(DISPATCH_FAILS=1 measure landable --countries pl)"
+check "...and its branch is deleted" "0" "$(measure_branches)"
+check "a run past --timeout is no measurement" "2" "$(IN_PROGRESS=1 measure landable --timeout 0 --countries pl)"
+check "...its run is cancelled" "cancelled" "$(cat "$work/stub/cancelled" 2>/dev/null)"
+check "...and its branch deleted" "0" "$(measure_branches)"
+check "a second signal while cleaning up does not stop the clean-up" "0" \
+  "$(IN_PROGRESS=1 SIGNAL_ON_CANCEL=1 measure landable --timeout 0 --countries pl > /dev/null; measure_branches)"
+check "a push that failed after origin took the branch still deletes it" "2" \
+  "$(PUSH_FAILS_AFTER=1 measure landable --countries pl)"
+check "...leaving no branch" "0" "$(measure_branches)"
+for f in "$origin"/refs/heads/measure/*; do
+  [ -f "$f" ] && scratch_git "$repo" push -q origin --delete "refs/heads/measure/$(basename "$f")"
+done
+
+# SIGTERM (Ctrl-C alike) while waiting on the run: the run is cancelled and the branch deleted.
+rm -rf "$work/stub" "$work/cache"; mkdir -p "$work/stub"
+( cd "$repo" && STUB="$work/stub" ORIGIN="$origin" ARTIFACT="$work/landable" IN_PROGRESS=1 \
+    KINOWO_IDENTITY_CACHE="$work/cache" IDENTITY_MEASURE_POLL=1 PATH="$work/bin:$PATH" \
+    exec "$REPO_ROOT/scripts/identity-measure" --countries pl > "$work/out" 2>&1 ) &
+pid=$!
+for _ in $(seq 1 100); do [ -f "$work/stub/watched" ] && break; sleep 0.1; done
+kill -TERM "$pid"; wait "$pid"; status=$?
+check "SIGTERM while waiting on the run exits 130" "130" "$status"
+check "...cancelling the run" "cancelled" "$(cat "$work/stub/cancelled" 2>/dev/null)"
+check "...and deleting the branch" "0" "$(measure_branches)"
 
 spec_summary
