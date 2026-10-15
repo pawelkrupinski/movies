@@ -3,14 +3,15 @@
 
     python3 scripts/convergence_findings_test.py
 """
-import importlib.util
 import pathlib
+import sys
 import unittest
 
-spec = importlib.util.spec_from_file_location(
-    "findings", pathlib.Path(__file__).with_name("convergence-findings.py"))
-findings = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(findings)
+HERE = pathlib.Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE / "ci"))
+import script_module  # noqa: E402
+
+findings = script_module.load(HERE / "convergence-findings.py", "findings")
 
 
 def names(line):

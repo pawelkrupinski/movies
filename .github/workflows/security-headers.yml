@@ -29,6 +29,7 @@ on:
             - '.github/workflows/security-headers.yml'
             - 'scripts/ci/check-security-headers.py'
             - 'scripts/ci/check_security_headers_test.py'
+            - 'scripts/ci/script_module.py'
             - 'scripts/ci/scheduled-failure-issue*.sh'
             - 'scripts/ci/open-issue.sh'
             - '.github/actions/report-scheduled-run/**'

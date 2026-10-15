@@ -6,14 +6,15 @@ being able to fail is caught on the run that would otherwise have passed on it.
 
 Run: python3 scripts/ci/check_security_headers_test.py
 """
-import importlib.util
 import os
+import sys
 import unittest
 
-_spec = importlib.util.spec_from_file_location(
-    "check_security_headers", os.path.join(os.path.dirname(os.path.abspath(__file__)), "check-security-headers.py"))
-check = importlib.util.module_from_spec(_spec)
-_spec.loader.exec_module(check)
+HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+import script_module  # noqa: E402
+
+check = script_module.load(os.path.join(HERE, "check-security-headers.py"))
 
 # kinowo.net GET /api/me with a foreign Origin, as served on 2026-09-23 after the CORS fix.
 API_ME_TODAY = [
