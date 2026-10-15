@@ -853,17 +853,13 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  it should "not choose a film only a director's filmography reached (known issue)" in {
+  it should "not choose a film only a director's filmography reached" in {
     // TMDB's search has no "Candyman"; walking Bernard Rose's filmography turns up two other films,
-    // whose director agrees with the credited listing and whose titles name nothing. The listing's
-    // facts fit both equally (a title's bracket year only agrees, never denies), so the calibration's
-    // preference decides — the same shape that rightly picks a documentary among its director's
-    // films of one year. Telling them apart needs the bracket year to deny, which it does not yet.
+    // whose director agrees with the credited listing and whose titles name nothing: a title naming none
+    // of the director's films picks none (the documentary above is named by its title, inflected).
     import Candyman.*
     val r = resolve(credited +: bare, walked)
-    pendingUntilFixed {
-      (credited +: bare).foreach(l => withClue(r.decisionOf(l.key).render)(r.decisionOf(l.key).film shouldBe None))
-    }
+    (credited +: bare).foreach(l => withClue(r.decisionOf(l.key).render)(r.decisionOf(l.key).film shouldBe None))
   }
 
   it should "find the film the title names once the database has it, whatever the walk reached" in {

@@ -20,10 +20,14 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
   private def eligibleOf(ranked: Seq[Scored]): Seq[Scored] = ranked.filter(isEligible)
 
   /** An acceptance rule, by the name an explanation gives it. Whichever condition took the film, no rule takes one whose
-   *  title numbers its series OTHERWISE than the listing's ([[ownInstalment]]). */
+   *  title numbers its series OTHERWISE than the listing's ([[ownInstalment]]), nor one its title names nothing of beside
+   *  another film of its director ([[anotherOfItsDirector]]). */
   private final case class Rule(name: String, why: Seq[Scored] => Verdict) {
-    def accepts(ranked: Seq[Scored]): Verdict = ownInstalment(why(ranked)).flatMap(takeable)
+    def accepts(ranked: Seq[Scored]): Verdict = ownInstalment(why(ranked)).flatMap(pickedByItsTitle(ranked)).flatMap(takeable)
   }
+  private def pickedByItsTitle(ranked: Seq[Scored])(accepted: Accepted): Verdict =
+    noneOf(anotherOfItsDirector(accepted._1, eligibleOf(ranked)), "its title names nothing of it, and another film of its director stands beside it",
+      accepted._1).map(_ => accepted)
   /** Refuses an UNTAKEN film ([[Scored.untaken]]) whichever rule took it: it stays a rival, never a take. */
   private def takeable(accepted: Accepted): Verdict =
     accepted._1.untaken.fold[Verdict](Right(accepted))(why => Left(Acceptance.Refused("untaken", Some(accepted._1.candidate.tmdbId), why)))
@@ -471,6 +475,22 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
       _     <- noneOf(closerThan(taken._1, eligible), "its title sits inside a closer record", taken._1)
     } yield taken
   }
+
+  /** Another eligible film of `best`'s credited director, when the listing's title names nothing of `best` (`title=none`):
+   *  walking a director's credit reaches his films, and a title naming none of them picks none — DE "München Mord: Leben
+   *  und Sterben in Schwabing" [2019] {Sascha Bigler}, a TV episode, is neither of his 2019 films; UK "Gremlins Special
+   *  Event" {Joe Dante} is not his "Innerspace", however its 120 minutes fit. */
+  private def anotherOfItsDirector(best: Scored, eligible: Seq[Scored]): Option[Scored] =
+    if (!best.category("title").contains("none") || !IdentityMeasures.sameDirector(best.measures) || inflects(best)) None
+    else eligible.find(other => (other ne best) && IdentityMeasures.sameDirector(other.measures))
+  /** Does a word of the billing inflect a word of the record's title ("Osobliwy świat Hieronymusa Boscha" of "The
+   *  Curious World of Hieronymus Bosch"): a title in another language naming the film, though it shares no word whole. */
+  private def inflects(scored: Scored): Boolean = {
+    import services.movies.TitleContainment.tokens
+    val billed = scored.listing.ownTitles.flatMap(tokens)
+    scored.candidate.film.titles.flatMap(tokens).filter(_.length >= InflectedStem).exists(word => billed.exists(_.startsWith(word)))
+  }
+  private val InflectedStem = 4
 
   /** The film a node's evidence LEANS to though no rule took it: the best eligible candidate on a listing billing one
    *  work, at [[LeanMargin]] times the runner-up's probability — every fact the listing publishes weighed in it, the
