@@ -153,8 +153,6 @@ final case class ConvergenceScrapesUri(value: String) extends AnyVal
 final case class ConvergenceScrapesDatabaseName(value: String) extends AnyVal
 /** `GITHUB_STEP_SUMMARY` — the file a CI step's markdown summary is appended to. */
 final case class StepSummaryFile(value: Path) extends AnyVal
-/** `KINOWO_HARD_CLUSTERS_RECORD` — the hard-cluster spec re-records its responses. */
-final case class HardClusterRecording(value: Boolean) extends AnyVal
 /** `KINOWO_HARD_CLUSTERS_COUNTRIES` — the countries a hard-cluster run is narrowed to. */
 final case class HardClusterCountries(value: Set[models.Country]) extends AnyVal
 /** `KINOWO_HARD_CLUSTERS_DUMP` (`1` or `true`) — print every hard-cluster pass's films. */

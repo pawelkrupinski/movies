@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 #
 # Grow and re-record the hard-cluster fixture that
-# worker/src/it/scala/HardClusterConvergenceIntegrationSpec.scala replays on every push.
+# worker/src/it/scala/HardClusterConvergenceIntegrationSpec.scala replays on every push
+# (the recording: integration.HardClusterRecord).
 #
 #   scripts/hard-clusters.sh ratchet <code> <convergence.log>...
 #       Add the clusters of every film the log names as divergent, churning or split
@@ -11,7 +12,8 @@
 #
 #   scripts/hard-clusters.sh record [<code>...]
 #       Re-record the responses file(s) only — after a change that makes the pipeline
-#       ask new questions (the spec reports them as "unrecorded request(s)"). Answers the
+#       ask new questions (the spec reports them as "unrecorded request(s)"). What the
+#       passes find (a divergence, churn) is printed, never stops the recording. Answers the
 #       file already holds are kept (the tree has moved on since they were recorded) and
 #       only new requests reach the tree; delete the file to re-record all of it. To make
 #       a fix's regression visible, record once WITH the bug and once with the fix.
@@ -81,16 +83,16 @@ sbt_step() {
         echo "[hard-clusters] sbt $* failed (log above)" >&2
         exit 1
     fi
-    grep -E '\[hard-clusters\]|recorded [0-9]+ responses|Tests:|FAILED|error' "$log" || true
+    grep -E '\[hard-clusters\]|recorded [0-9]+ responses|FAILED|error' "$log" || true
 }
 
 record() {
     local codes=("$@")
     [ ${#codes[@]} -gt 0 ] || codes=(pl uk de us es)
     for code in "${codes[@]}"; do ensure_tree "$code"; done
-    KINOWO_HARD_CLUSTERS_RECORD=1 KINOWO_FIXTURE_ROOT="$(cd "$fixture_root" && pwd)" \
-    KINOWO_HARD_CLUSTERS_COUNTRIES=$(IFS=,; echo "${codes[*]}") \
-        sbt_step "$scratch/record.log" "worker/IntegrationTest/testOnly integration.HardClusterConvergenceIntegrationSpec"
+    local root
+    root=$(cd "$fixture_root" && pwd)
+    sbt_step "$scratch/record.log" "worker/IntegrationTest/runMain integration.HardClusterRecord ${codes[*]} --fixtures $root"
 }
 
 case "$mode" in

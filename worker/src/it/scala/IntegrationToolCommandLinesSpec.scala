@@ -8,7 +8,8 @@ class IntegrationToolCommandLinesSpec extends AnyFlatSpec with Matchers {
 
   "every runMain of an integration tool in the scripts, workflows and skills" should "parse against the tool's command line" in {
     val checked = ToolCallers.calls("integration").flatMap(call => ToolCallers.commandLineOf(call.tool).map(call -> _))
-    checked.map(_._1.tool) should contain allOf ("integration.IdentityUnifiedDataset", "integration.IdentityResolveDump")
+    checked.map(_._1.tool) should contain allOf ("integration.IdentityUnifiedDataset", "integration.IdentityResolveDump",
+      "integration.HardClusterRecord")
     checked.foreach { case (call, line) =>
       withClue(s"${call.file}: ${call.tool} ${call.args.mkString(" ")}") { line.accepts(call.args).isRight shouldBe true }
     }
@@ -56,5 +57,13 @@ class IntegrationToolCommandLinesSpec extends AnyFlatSpec with Matchers {
     an[tools.CommandLine.InvalidArguments] should be thrownBy
       UnmatchedClustersCapture.countryOf(UnmatchedClustersCapture.commandLine.parse(Seq("gb", "--out", "o")).toOption.get)
     UnmatchedClustersFill.commandLine.parse(Seq("de", "pl")).isLeft shouldBe true
+  }
+
+  "HardClusterRecord" should "read the countries it re-records as positionals, its tree's root an option" in {
+    val arguments = HardClusterRecord.commandLine.parse(Seq("pl", "uk", "--fixtures", "f")).toOption.get
+    arguments.positionals shouldBe Seq("pl", "uk")
+    arguments.path("fixtures") shouldBe Some(java.nio.file.Paths.get("f"))
+    // KINOWO_HARD_CLUSTERS_RECORD=1 made the spec record; the tool is the only way to now
+    HardClusterRecord.commandLine.parse(Seq("--record")).isLeft shouldBe true
   }
 }

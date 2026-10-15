@@ -287,8 +287,6 @@ final class ProcessConfiguration(val env: Env) {
   /** `GITHUB_STEP_SUMMARY` — the file a CI step appends its markdown summary to. */
   def stepSummaryFile: Option[StepSummaryFile] = fact("GITHUB_STEP_SUMMARY").map(file => StepSummaryFile(Path.of(file)))
 
-  /** `KINOWO_HARD_CLUSTERS_RECORD` (`1` or `true`) — the hard-cluster spec re-records its responses. */
-  def hardClusterRecording: HardClusterRecording = HardClusterRecording(env.flag("KINOWO_HARD_CLUSTERS_RECORD"))
   /** `KINOWO_HARD_CLUSTERS_COUNTRIES` — comma-separated codes narrowing a hard-cluster run; codes
    *  naming no country are dropped. */
   def hardClusterCountries: Option[HardClusterCountries] =

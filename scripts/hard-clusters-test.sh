@@ -27,7 +27,7 @@ STUB
 # sbt records each call and the tree it was handed; SBT_FAILS makes it fail
 cat > "$work/bin/sbt" <<'STUB'
 #!/usr/bin/env bash
-echo "sbt $* root=${KINOWO_FIXTURE_ROOT:-} countries=${KINOWO_HARD_CLUSTERS_COUNTRIES:-} uri=${MONGODB_URI:-}" >> "$STUB/calls"
+echo "sbt $* uri=${MONGODB_URI:-}" >> "$STUB/calls"
 [ -z "${SBT_FAILS:-}" ] || { echo "[error] compilation failed"; exit 1; }
 echo "[hard-clusters] recorded 3 responses"
 STUB
@@ -37,14 +37,15 @@ hc() { STUB="$work" PATH="$work/bin:$PATH" KINOWO_IDENTITY_CACHE="$cache" KINOWO
   KINOWO_HARD_CLUSTERS_CORPUS_DIR="$work/empty" "$REPO_ROOT/scripts/hard-clusters.sh" "$@" > "$work/out" 2>&1; echo $?; }
 
 check "record: a tree the leg did not restore comes from the newest recording holding the country" "0" "$(hc record de)"
-check "...handed to the spec as that recording's fixtures" "1" "$(grep -c "root=$fixtures countries=de" "$work/calls")"
+check "...handed to the recording tool as that recording's fixtures" "1" \
+  "$(grep -c "IntegrationTest/runMain integration.HardClusterRecord de --fixtures $fixtures uri=" "$work/calls")"
 check "...and said" "1" "$(grep -c 'the de enrichment tree: recording run 300' "$work/out")"
 
 printf "record 'Lalka' (Some(2026)):\n" > "$work/convergence.log"
 rm -f "$work/calls"
 check "ratchet: the corpus and the tree come from the same recording" "0" "$(hc ratchet de "$work/convergence.log")"
 check "...the corpus extended is that recording's" "1" "$(grep -c "BuildHardClusters extend $fixtures/corpus " "$work/calls")"
-check "...and the tree recorded against is its tree" "1" "$(grep -c "root=$fixtures countries=de" "$work/calls")"
+check "...and the tree recorded against is its tree" "1" "$(grep -c "HardClusterRecord de --fixtures $fixtures " "$work/calls")"
 
 rm -f "$work/calls"
 check "gh unreachable: no recording, stopped before sbt" "1 0" "$(GH_DOWN=1 hc record de) $(grep -c . "$work/calls" 2>/dev/null || echo 0)"
