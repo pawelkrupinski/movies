@@ -44,9 +44,17 @@ class IdentitySliceOldRefGateSpec extends AnyFlatSpec with Matchers {
       withClue(f) { patterns.exists(covers(_, f)) shouldBe true }
   }
 
-  it should "be what the compile step is conditioned on" in {
-    RepoFile.step(RepoFile.read(".github/workflows/ci.yml"),
-      "identity-slice's tool files still compile into a ref from before them") should include(
-      "if: matrix.row == 'identity' && steps.slice-tools.outputs.changed == 'true'")
+  it should "be what the compile's start and its verdict are conditioned on, on the row that computes it" in {
+    val ci = RepoFile.read(".github/workflows/ci.yml")
+    val condition = "if: matrix.row == 'rest' && steps.slice-tools.outputs.changed == 'true'"
+    gate should include("if: matrix.row == 'rest'")
+    val start   = RepoFile.step(ci, "Start identity-slice's old-ref compile, in the background")
+    val verdict = RepoFile.step(ci, "identity-slice's tool files still compile into a ref from before them")
+    start should include(condition)
+    start should include("in-background.sh start old-ref-compile bash scripts/identity-slice-old-ref-test.sh")
+    verdict should include(condition)
+    verdict should include("in-background.sh wait old-ref-compile")
+    // Started before itAll, so the tree it lays out copies the restored target/ before sbt writes to it.
+    ci.indexOf("Start identity-slice's old-ref compile") should be < ci.indexOf("run: sbt itAll")
   }
 }
