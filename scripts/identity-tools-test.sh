@@ -65,4 +65,21 @@ touch -t 209901010000 "$tree/worker/src/A.scala"
 tools identity_classpath "$tree" > /dev/null
 check "...and compiled again once a source changes" "1" "$(grep -c '^sbt' "$work/calls" 2>/dev/null || echo 0)"
 
+# The default recording is the newest run holding the country's corpus: the newest run has no UK artifact, an older does.
+cat > "$work/bin/gh" <<'STUB'
+#!/usr/bin/env bash
+case "$1" in
+  run) printf '300\n200\n100\n' ;;
+  # the jq filter names the artifact wanted; the stub prints it only for a run that holds it
+  api) want=$(grep -o 'scrape-fixtures-[a-z]*' <<<"$*")
+       case "$2" in */runs/200/*) held="scrape-fixtures-de" ;; */runs/100/*) held="scrape-fixtures-de scrape-fixtures-uk" ;; *) held="" ;; esac
+       case " $held " in *" $want "*) echo "$want" ;; esac ;;
+esac
+STUB
+check "no country: the newest successful recording" "300" "$(tools identity_newest_recording)"
+check "a country: the newest holding its corpus" "100" "$(tools identity_newest_recording uk)"
+check "...saying which newer ones it skipped" "2" "$(grep -c 'skipped: it holds no uk corpus' "$work/err")"
+check "a country the newest holds is the newest" "200" "$(tools identity_newest_recording de | head -1)"
+check "a country no recent run holds fails" "1" "$(tools identity_newest_recording es > /dev/null; echo $?)"
+
 spec_summary

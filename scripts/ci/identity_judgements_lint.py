@@ -24,7 +24,7 @@ landed and turned a gate red after the push, where nothing ran them before it:
              leg's, whose other wrong takes the code since may have cured. With --replay-head too, those newly-wrong
              takes are replayed at the PUSHED code (scripts/identity-slice --batch, a handful of listings) and only the
              ones it still serves fail: a push that labels a take wrong and cures it lands (Der Diplomat, Blutgericht in
-             Texas, 2026-10-14). Where the slice cannot run, the last leg's takes judge, said so.
+             Texas, 2026-10-14). Where the slice cannot run, the finding stands (refused) on the last leg's takes, said as "could not replay".
 
 The labels are read as identity_takes_diff.label_of reads them (a venue's own label overrules every venue's).
 
@@ -221,7 +221,8 @@ def at_head(found, replay):
         try:
             takes = replay(cc, listings)
         except Exception as e:  # noqa: BLE001 -- any failure to replay falls back, said
-            out += [(k, f"{m} [judged by the last convergence leg's takes (the pushed code could not be replayed: {e})]")
+            out += [(k, f"{m} [COULD NOT REPLAY the pushed code ({e}); this stands on the last convergence leg's takes, which the code "
+                       f"may since have cured: fix the replay (scripts/identity-slice {cc} ... --recording RUN) and push again]")
                     for k, m, _ in fs]
             continue
         for k, m, venues in fs:

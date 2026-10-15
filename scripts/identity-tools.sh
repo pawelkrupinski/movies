@@ -81,9 +81,23 @@ identity_recording() {
   echo "$dir/pair/test/resources/fixtures"
 }
 
-# identity_newest_recording -> the newest successful "Record scrape fixtures" run's id
+# identity_newest_recording [cc] -> the id of the newest successful "Record scrape fixtures" run; with a country, the
+# newest that actually holds that country's corpus (already cached, or a live scrape-fixtures-<cc> artifact), each newer
+# run skipped said on stderr. 1 when none of the newest 20 holds it.
 identity_newest_recording() {
-  gh run list -R "${KINOWO_REPO:-pawelkrupinski/movies}" --workflow "Record scrape fixtures" --status success -L 1 --json databaseId -q '.[0].databaseId'
+  local cc=${1:-} repo=${KINOWO_REPO:-pawelkrupinski/movies} id ids
+  ids=$(gh run list -R "$repo" --workflow "Record scrape fixtures" --status success -L "$([ -n "$cc" ] && echo 20 || echo 1)" --json databaseId -q '.[].databaseId') || return 1
+  [ -n "$cc" ] || { echo "${ids%%$'\n'*}"; return; }
+  for id in $ids; do
+    if [ -f "$IDENTITY_CACHE/recordings/$id/pair/test/resources/fixtures/corpus/cinema-scrapes-$cc.json.gz" ] ||
+       [ -n "$(gh api "repos/$repo/actions/runs/$id/artifacts?per_page=100" --paginate -q ".artifacts[] | select(.name == \"scrape-fixtures-$cc\" and (.expired | not)) | .name" 2>/dev/null)" ]; then
+      identity_log "recording $id: the newest holding a $cc corpus"
+      echo "$id"; return
+    fi
+    identity_log "recording $id skipped: it holds no $cc corpus (no live scrape-fixtures-$cc artifact)"
+  done
+  identity_log "none of the newest 20 successful recordings holds a $cc corpus: name one with --recording"
+  return 1
 }
 
 identity_classpath() {

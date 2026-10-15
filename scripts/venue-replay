@@ -67,7 +67,7 @@ done
 
 work=$(mktemp -d "${TMPDIR:-/tmp}/venue-replay.XXXXXX"); trap 'rm -rf "$work"' EXIT
 
-[ -n "$run" ] || run=$(identity_newest_recording)
+[ -n "$run" ] || run=$(identity_newest_recording "$cc") || exit 1
 recording=$(identity_recording "$run" "$cc")
 identity_log "recording $run: $recording"
 

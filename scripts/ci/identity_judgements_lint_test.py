@@ -173,12 +173,12 @@ class JudgementsLintTest(unittest.TestCase):
         self.assertIn("Blutgericht in Texas", found[0])
         self.assertIn("the pushed code still serves it", found[0])
 
-    def test_without_a_replay_the_last_legs_takes_judge_saying_so(self):
+    def test_a_replay_that_cannot_run_refuses_saying_it_could_not_replay(self):
         def replay(cc, listings):
             raise RuntimeError("no recording")
         found = self.newly_wrong(replay)
         self.assertEqual(2, len(found))
-        self.assertTrue(all("the last convergence leg's takes (the pushed code could not be replayed: no recording)" in m
+        self.assertTrue(all("COULD NOT REPLAY the pushed code (no recording)" in m
                             for m in found))
 
     def test_the_slice_replay_reads_identity_slices_takes_at_the_checked_out_code(self):

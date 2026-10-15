@@ -16,7 +16,8 @@
 #   SELECTOR      --venue S --title S (substrings, case and accents aside; either alone), or --key 'venue|raw title' (exact)
 #   --ref         decide under that ref's code (each laid out and compiled once into the cache); two refs print their takes
 #                 side by side, then every listing that moved. Without --ref: this checkout's code.
-#   --recording   the recording run (default: the newest successful "Record scrape fixtures" run). Every ref replays the
+#   --recording   the recording run (default: the newest successful "Record scrape fixtures" run holding the
+#                 country's corpus; older ones are tried in turn, each skip said). Every ref replays the
 #                 SAME recording: the comparison is the code's, never the input's.
 #   --widen N     N more rings of context: the context listings' own families joined to the slice
 #   --orders N    also feed the slice to the INCREMENTAL model in N shuffled arrival orders (the worker's path) and name
@@ -341,7 +342,7 @@ if [ -n "$faith" ]; then
   exit
 fi
 
-[ -n "$run" ] || run=$(identity_newest_recording)
+[ -n "$run" ] || run=$(identity_newest_recording "$cc") || exit 1
 recording=$(identity_recording "$run" "$cc")
 use_mirror
 [ -z "$batch" ] || pass+=(--batch "$batch")
