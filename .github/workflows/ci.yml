@@ -173,6 +173,23 @@ jobs:
             - name: The read-model snapshot is stamped for this fixture corpus
               run: scripts/read-model-snapshot-inputs.sh check HEAD
 
+            # actionlint over every workflow (shellcheck over their `run:` blocks), and the composite
+            # actions' `run:` blocks, which actionlint does not lint, through shellcheck-action-runs.sh.
+            # The pre-push hook runs both over what a push changes, but skips a tool that is not
+            # installed — this is the check that cannot be skipped. Pinned by version and checksum.
+            - name: Workflows pass actionlint, and composite actions' run blocks pass shellcheck
+              env:
+                  ACTIONLINT_VERSION: 1.7.12
+                  ACTIONLINT_SHA256: 8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8
+              run: |
+                  archive="actionlint_${ACTIONLINT_VERSION}_linux_amd64.tar.gz"
+                  curl -fsSL --retry 3 --max-time 60 -o "$RUNNER_TEMP/$archive" \
+                      "https://github.com/rhysd/actionlint/releases/download/v$ACTIONLINT_VERSION/$archive"
+                  echo "$ACTIONLINT_SHA256  $RUNNER_TEMP/$archive" | sha256sum -c -
+                  tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP" actionlint
+                  SHELLCHECK_OPTS='-S warning' "$RUNNER_TEMP/actionlint"
+                  scripts/ci/shellcheck-action-runs.sh
+
             # The CI-structure scripts' own specs, seconds each: which checks the pre-push hook
             # selects for which paths, what the workflows' preflight jobs accept and refuse, and
             # how a failed test is judged DETERMINISTIC or FLAKY and ledgered, and how the test
@@ -197,6 +214,7 @@ jobs:
                       bash scripts/ci/mongo-top-test.sh
                       bash scripts/ci/install-apt-package-test.sh
                       bash scripts/ci/in-background-test.sh
+                      bash scripts/ci/shellcheck-action-runs-test.sh
                       bash scripts/ci/cpu-sampler-test.sh
                       bash .github/scripts/restore-enrichment-tree-test.sh
                       bash .github/scripts/convergence-setup-test.sh

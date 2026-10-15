@@ -68,6 +68,8 @@ check "any Scala source runs the sbt lints" "sbt" "$(plan worker/src/test/scala/
 check "a Grafana dashboard runs the dashboard tests and the metric-coverage lint" "dashboards sbt" \
   "$(plan infra/nix/files/monitoring/grafana/dashboards/apps/kinowo-http.json)"
 check "a workflow runs actionlint, and the silenced-read lint" "actionlint sbt" "$(plan .github/workflows/ci.yml)"
+check "a composite action runs actionlint (its run blocks' shellcheck), and the lint specs" "actionlint sbt" \
+  "$(plan .github/actions/convergence-setup/action.yml)"
 check "a shell script runs shellcheck, and the lint specs" "shellcheck sbt" "$(plan scripts/ci/order-seed.sh)"
 check "the hook itself runs shellcheck and its own test" "hooktest shellcheck sbt" "$(plan scripts/hooks/pre-push)"
 check "the hooks-path helper and install-hooks.sh, both exercised here, run this test" "hooktest shellcheck sbt hooktest shellcheck sbt" \

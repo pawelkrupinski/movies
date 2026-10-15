@@ -23,7 +23,8 @@
 #                 the CI check `Stage NixOS closures` runs (well under a second)
 #   `hooktest`    scripts/hooks/pre-push-test.sh, when the hook, its test, install-hooks.sh or hooks-path.sh changes — a new
 #                 check changes what the hook plans, which that test pins
-#   `actionlint`  changed workflow files (with shellcheck over their `run:` blocks)
+#   `actionlint`  changed workflow files (with shellcheck over their `run:` blocks), and changed
+#                 composite actions' `run:` blocks (scripts/ci/shellcheck-action-runs.sh)
 #   `shellcheck`  changed *.sh and hook scripts — fails only on warnings the push ADDS, so a
 #                 file that was already noisy can still be edited
 #   `ios`         scripts/ios-compile-check.sh (app target + Linux SwiftPM) on ios/** — this one
@@ -168,7 +169,7 @@ plan() {
             scripts/hooks/pre-push|scripts/hooks/pre-push-test.sh|scripts/hooks-path.sh|scripts/install-hooks.sh) hooktest=1 ;;
         esac
         case "$path" in
-            .github/workflows/*.yml|.github/workflows/*.yaml) actionlint=1 ;;
+            .github/workflows/*.yml|.github/workflows/*.yaml|.github/actions/*/action.yml|.github/actions/*/action.yaml) actionlint=1 ;;
         esac
         case "$path" in
             *.sh|scripts/hooks/*) shellcheck=1 ;;
@@ -438,12 +439,30 @@ check_hooktest() {
         || { grep -v '✓' "$tmp/hooktest.log" | head -40 >&2; return 1; }
 }
 
+# actionlint over changed workflows; a composite action's `run:` blocks, which actionlint does not
+# lint, through scripts/ci/shellcheck-action-runs.sh. CI's `Workflow lint` step runs both over the
+# whole tree, so a missing tool here only defers the finding to CI.
 check_actionlint() {
-    command -v actionlint >/dev/null || { warn "actionlint not installed (brew install actionlint) — SKIPPED"; return 0; }
-    local files
-    files="$(changed_matching '^\.github/workflows/.*\.ya?ml$')"
-    # shellcheck disable=SC2086 # workflow file names carry no spaces
-    SHELLCHECK_OPTS='-S warning' actionlint $files
+    local workflows actions rc=0
+    workflows="$(changed_matching '^\.github/workflows/.*\.ya?ml$')"
+    actions="$(changed_matching '^\.github/actions/[^/]*/action\.ya?ml$')"
+    if [ -n "$workflows" ]; then
+        if command -v actionlint >/dev/null; then
+            # shellcheck disable=SC2086 # workflow file names carry no spaces
+            SHELLCHECK_OPTS='-S warning' actionlint $workflows || rc=1
+        else
+            warn "actionlint not installed (brew install actionlint) — SKIPPED"
+        fi
+    fi
+    if [ -n "$actions" ]; then
+        if command -v shellcheck >/dev/null; then
+            # shellcheck disable=SC2086 # action paths carry no spaces
+            scripts/ci/shellcheck-action-runs.sh $actions || rc=1
+        else
+            warn "shellcheck not installed (brew install shellcheck) — composite actions' run blocks SKIPPED"
+        fi
+    fi
+    return "$rc"
 }
 
 # Fail on a warning the push ADDS: count each changed script's warnings at the base and at HEAD.
