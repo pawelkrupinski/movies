@@ -150,9 +150,9 @@ gh_download() {
   shift
   for arg in "$@"; do [ "$prev" = --dir ] && dir=$arg; prev=$arg; done
   while :; do
-    # gh's stderr read into a variable, its stdout left where it was: no temporary file for a signal to strand
-    err=$( { bounded "$seconds" gh "$@" 2>&1 1>&3 3>&-; } 3>&1 )
-    status=$?
+    # gh's stderr read into a variable, its stdout left where it was (fd 3, opened outside the substitution, is this
+    # function's stdout): no temporary file for a signal to strand
+    { err=$(bounded "$seconds" gh "$@" 2>&1 1>&3 3>&-); status=$?; } 3>&1
     [ -z "$err" ] || printf '%s\n' "$err" >&2
     [ "$status" -eq 0 ] && return 0
     if printf '%s' "$err" | grep -Eq 'no assets match|release not found|no artifact matches|no valid artifacts found|HTTP 404'; then

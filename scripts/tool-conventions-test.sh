@@ -95,6 +95,8 @@ case "$(sed -n "${n}p" "$STUB/answers")" in
   gone) echo "no valid artifacts found to download" >&2; exit 1 ;;
   partial) [ -z "$dir" ] || { mkdir -p "$dir"; echo half > "$dir/got"; }; echo "HTTP 502: Bad Gateway" >&2; exit 1 ;;
   hang) sleep 30 ;;
+  stdout) echo "the asset, on stdout"; echo "a warning" >&2; exit 0 ;;
+  stdout-absent) echo "no assets match, said on stdout"; echo "HTTP 500: Internal Server Error" >&2; exit 1 ;;
   *) echo "HTTP 500: Internal Server Error" >&2; exit 1 ;;
 esac
 STUB
@@ -112,6 +114,12 @@ check "...and fails (1) once every attempt failed" "1 3" "$(download "fail fail 
 check "nothing there (gh's 'no assets match') is absent (3), not asked again" "3 1" "$(download "absent ok" release download t --pattern a --dir "$work/d4")"
 check "...an expired artifact likewise" "3 1" "$(download "gone ok" run download 1 --name a --dir "$work/d5")"
 check "a hung gh is ended by the bound (2 s here) and asked again" "0 2" "$(download "hang ok" release download t --pattern a --dir "$work/d6")"
+rm -f "$work/n" "$work/calls"; printf 'stdout\n' > "$work/answers"
+lib 'gh_download 2 release download t --pattern a --output - 2> "$STUB/stderr"' > "$work/stdout"
+check "gh's stdout passes through (--output -), never read as its messages" "the asset, on stdout|exit=0" "$(paste -sd'|' - < "$work/stdout")"
+check "...its stderr said on stderr" "a warning" "$(cat "$work/stderr")"
+check "only gh's stderr says absent: an 'absent' phrase on stdout is a failed read, asked again" "1 3" \
+  "$(download "stdout-absent stdout-absent stdout-absent" release download t --pattern a --output -)"
 mkdir -p "$work/d7"; echo stale > "$work/d7/got"
 download "partial ok" run download 1 --name a --dir "$work/d7" > /dev/null
 check "a run download cut short is retried into an emptied --dir (gh will not overwrite what it left)" "payload" "$(cat "$work/d7/got")"
