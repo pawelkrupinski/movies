@@ -23,10 +23,44 @@ object IdentityDraftBench {
   private val start      = LocalDateTime.of(2026, 10, 4, 12, 0)
   private val at         = Instant.parse("2026-10-04T10:00:00Z")
 
+  /** The bench's arguments: `[ticks] [rereads] [<dir>|-]`, the words `adopt` `decoded` `whole`, and `shifts=N` `churn=N`
+   *  anywhere. (The identity module sits below testkit, so this reads them itself, as strictly as `tools.CommandLine`.) */
+  final case class Options(ticks: Int = 6, rereads: Int = 300, histograms: Option[java.nio.file.Path] = None, adopt: Boolean = false,
+                           decoded: Boolean = false, whole: Boolean = false, shifts: Int = 200, churn: Option[Int] = None)
+
+  private val Words = Set("adopt", "decoded", "whole")
+
+  /** The options, or why not: a number that is none, a `name=N` or a fourth bare argument it does not know, or a
+   *  histogram directory that does not exist — each of which the old `args.lift`/`contains` reading ran past (a
+   *  mistyped `adpot` became the histogram directory, a non-numeric re-read count the default). */
+  def parse(args: Seq[String]): Either[String, Options] = {
+    def number(name: String, value: String) = value.toIntOption.filter(_ >= 0).toRight(s"$name wants a whole number, got $value")
+    val (named, rest)  = args.partition(_.contains("="))
+    val (words, bare)  = rest.partition(Words)
+    val start = Right(Options(adopt = words.contains("adopt"), decoded = words.contains("decoded"), whole = words.contains("whole"))): Either[String, Options]
+    val withNamed = named.foldLeft(start) {
+      case (o, s"shifts=$n") => o.flatMap(opts => number("shifts", n).map(v => opts.copy(shifts = v)))
+      case (o, s"churn=$n")  => o.flatMap(opts => number("churn", n).map(v => opts.copy(churn = Some(v))))
+      case (_, other)        => Left(s"unknown option $other (shifts=N, churn=N)")
+    }
+    withNamed.flatMap { o =>
+      bare match {
+        case Seq(_, _, _, extra, _*) => Left(s"unexpected argument $extra (words: ${Words.toSeq.sorted.mkString(", ")})")
+        case _ => for {
+          ticks   <- bare.lift(0).fold(Right(o.ticks): Either[String, Int])(number("ticks", _))
+          rereads <- bare.lift(1).fold(Right(o.rereads): Either[String, Int])(number("rereads", _))
+          dir     <- bare.lift(2).filterNot(_ == "-").map(java.nio.file.Paths.get(_)).fold(Right(None): Either[String, Option[java.nio.file.Path]])(d =>
+                       if (java.nio.file.Files.isDirectory(d)) Right(Some(d)) else Left(s"no directory $d for the histograms"))
+        } yield o.copy(ticks = ticks, rereads = rereads, histograms = dir)
+      }
+    }
+  }
+
   def main(args: Array[String]): Unit = {
+    val options    = parse(args.toSeq).fold(why => { System.err.println(s"IdentityDraftBench: $why"); sys.exit(2) }, identity)
     val venueCount = 2500
     val filmCount  = 2150
-    val ticks      = args.headOption.map(_.toInt).getOrElse(6)
+    val ticks      = options.ticks
     val venues     = (0 until venueCount).map(v => new UsCinema(s"Venue $v Theatre", s"Venue $v"): Cinema)
     val rng        = new scala.util.Random(7)
     def cm(cinema: Cinema, film: Int, shift: Int): CinemaMovie =
@@ -41,7 +75,7 @@ object IdentityDraftBench {
     // read again — with the model's object for a listing it holds the same when `adopt` is given.
     val shift = scala.collection.mutable.HashMap.empty[(Int, Cinema), Int]
     var rows: Map[(Int, Cinema), CinemaMovie] = placement.map { case (f, c) => shift((f, c)) = 0; (f, c) -> cm(c, f, 0) }.toMap
-    val adopt   = args.contains("adopt")
+    val adopt   = options.adopt
     var modelled = rows.map { case ((f, c), _) => val l = Listing.of(c, cm(c, f, shift((f, c))), normalizer); l.key -> l }
     def scraped(c: Cinema): Seq[ProjectedListing] = rows.toSeq.collect { case ((f, cc), _) if cc eq c =>
       val row = cm(c, f, shift((f, c)))
@@ -62,7 +96,7 @@ object IdentityDraftBench {
         CorpusContext.Reads(Set(title), Set.empty, Set.empty, Set.empty, Set(i + 1), Set.empty), keys.map(k => k -> new String(title)).toMap)
       val stored   = MongoIdentityModelStore.decode(new org.bson.RawBsonDocument(  // as read off the wire: every string anew
         MongoIdentityModelStore.encode(StoredFamily(StoredFamily.idOf(keys), family, 0L)), new org.bson.codecs.BsonDocumentCodec)).family
-      if (args.contains("decoded")) stored
+      if (options.decoded) stored
       else stored.sharing(k => modelled.get(k).fold(k)(_.key), (k, text) => corpusText.get(k).filter(_ == text).getOrElse(text))
     }
     var resolution = { val decisions = families.flatMap(_.decisions).sortBy(_.members.head)(using ListingKey.ordering)
@@ -76,14 +110,14 @@ object IdentityDraftBench {
     var live     = new LiveProjectionIndex(normalizer)
     var shapes   = FilmShapes()
     var lastOk   = false
-    val scoped   = !args.contains("whole")
+    val scoped   = !options.whole
     def timed[A](body: => A): (A, Double, Double) = {
       val (stopwatch, allocated) = tools.ThreadAllocation.of(tools.Stopwatch.timed(body))
       (stopwatch.value, stopwatch.seconds, allocated / 1e6)
     }
     // As the intake: a venue's listing is the same object until the venue is read again — and, as production scrapes
     // every venue on a cadence, `rereads` venues a tick are read again into new objects whether or not they moved.
-    val rereads   = args.lift(1).flatMap(_.toIntOption).getOrElse(300)
+    val rereads   = options.rereads
     var venueSeqs = Map.empty[String, Seq[ProjectedListing]]
     var moved     = venues.toSet
     def byVenue(): Seq[(String, Seq[ProjectedListing])] = {
@@ -92,8 +126,8 @@ object IdentityDraftBench {
       moved = Set.empty
       venueSeqs.toSeq
     }
-    val shifts   = args.collectFirst { case s"shifts=$n" => n.toInt }.getOrElse(200)
-    val churnGcs = args.collectFirst { case s"churn=$n" => n.toInt }
+    val shifts   = options.shifts
+    val churnGcs = options.churn
     import scala.jdk.CollectionConverters.*
     val beans   = java.lang.management.ManagementFactory.getGarbageCollectorMXBeans.asScala.filter(_.getName == "Copy")
     def youngCollections(): Long = beans.map(_.getCollectionCount).sum
@@ -102,7 +136,7 @@ object IdentityDraftBench {
     var sink: Array[Byte] = null
     // The heap, unreachable objects included, before any collection: what the ticks since the last full collection
     // promoted and left to die in the old generation is the difference of two of these, by class.
-    def heapNow(name: String): Unit = args.lift(2).filterNot(a => a == "whole" || a == "adopt" || a == "decoded" || a == "-" || a.contains("=")).foreach { dir =>
+    def heapNow(name: String): Unit = options.histograms.foreach { dir =>
       new ProcessBuilder("jcmd", ProcessHandle.current.pid.toString, "GC.class_histogram", "-all")
         .redirectOutput(new java.io.File(s"$dir/$name.txt")).start().waitFor(); ()
     }
@@ -163,7 +197,7 @@ object IdentityDraftBench {
     // worker keeps anyway (those stay reachable below).
     def used(): Long = { (1 to 4).foreach { _ => System.gc(); Thread.sleep(200) }; val r = Runtime.getRuntime; r.totalMemory - r.freeMemory }
     val all = used()
-    def histogram(name: String): Unit = args.lift(2).filterNot(a => a == "whole" || a == "adopt" || a == "decoded" || a == "-" || a.contains("=")).foreach { dir =>
+    def histogram(name: String): Unit = options.histograms.foreach { dir =>
       val out = new ProcessBuilder("jcmd", ProcessHandle.current.pid.toString, "GC.class_histogram").redirectOutput(new java.io.File(s"$dir/$name.txt")).start()
       out.waitFor(); ()
     }
