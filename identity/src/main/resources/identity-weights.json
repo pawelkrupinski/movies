@@ -4,9 +4,9 @@
     "listing-film" : {
       "prior" : -2.264109870948828,
       "copied" : {
-        "director" : 0.5,
-        "runtime.delta" : 0.5,
-        "year.delta" : 0.5
+        "director" : 0.25,
+        "runtime.delta" : 0.25,
+        "year.delta" : 0.25
       },
       "signals" : {
         "originalTitle" : {
