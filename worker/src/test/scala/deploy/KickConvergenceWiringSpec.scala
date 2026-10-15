@@ -38,4 +38,10 @@ class KickConvergenceWiringSpec extends AnyFlatSpec with Matchers {
   it should "start the convergence suite at the push, behind only the tier gates" in {
     job("kick-convergence") should include("needs: gates\n")
   }
+
+  /** A failed tier gate (a deployed-marker read) says nothing about the commit: without `!cancelled()` a red `gates`
+   *  would skip the dispatch, the very loss moving off `ci` was for. */
+  it should "dispatch even when a tier gate failed" in {
+    job("kick-convergence") should include("if: ${{ !cancelled() }}\n")
+  }
 }

@@ -30,11 +30,11 @@ concurrency:
 
 # Pipeline shape:
 #
-#   ci (reusable workflow — lint, test, integration, ──┬─► kick-convergence
-#       ios/android local-server, page-tests)           ├─► flake-ledger (only when ci failed)
-#                                                       ├─► publish-web
+#   ci (reusable workflow — lint, test, integration, ──┬─► flake-ledger (only when ci failed)
+#       ios/android local-server, page-tests)           ├─► publish-web
 #   gates (t=0: which tiers changed since their   ──────┴─► publish-worker
 #          last deploy; both publishes read it) ──► image-worker ──┘
+#     └──► kick-convergence (seconds after the push, whether gates passed or not)
 #
 # ONE WORKFLOW, because there used to be three: this file plus
 # `build-web-image.yaml` and `build-worker-image.yaml`, which built the GHCR
