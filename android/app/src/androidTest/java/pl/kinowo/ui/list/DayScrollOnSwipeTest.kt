@@ -1,13 +1,12 @@
 package pl.kinowo.ui.list
 
+import pl.kinowo.RecreationProofComposeRule
 import android.content.Context
-import androidx.activity.ComponentActivity
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.semantics.SemanticsNode
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.hasTestTag
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performTouchInput
 import androidx.test.core.app.ApplicationProvider
@@ -47,7 +46,7 @@ import pl.kinowo.ui.theme.KinowoTheme
 class DayScrollOnSwipeTest {
 
     @get:Rule
-    val compose = createAndroidComposeRule<ComponentActivity>()
+    val compose = RecreationProofComposeRule()
 
     private fun seedViewModel(): KinowoViewModel {
         val context = ApplicationProvider.getApplicationContext<Context>()

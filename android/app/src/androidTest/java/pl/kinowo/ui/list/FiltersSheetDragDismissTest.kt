@@ -1,13 +1,12 @@
 package pl.kinowo.ui.list
 
+import pl.kinowo.RecreationProofComposeRule
 import android.content.Context
-import androidx.activity.ComponentActivity
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
@@ -43,7 +42,7 @@ import pl.kinowo.ui.theme.KinowoTheme
 class FiltersSheetDragDismissTest {
 
     @get:Rule
-    val compose = createAndroidComposeRule<ComponentActivity>()
+    val compose = RecreationProofComposeRule()
 
     /** One film carrying 30 cinemas, so expanding "Kina" makes the sheet list
      *  far longer than the screen — a reliably scrollable Filtry list. */

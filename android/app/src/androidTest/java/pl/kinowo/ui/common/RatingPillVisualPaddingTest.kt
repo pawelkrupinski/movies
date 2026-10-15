@@ -1,11 +1,11 @@
 package pl.kinowo.ui.common
 
+import pl.kinowo.RecreationProofComposeRule
 import androidx.compose.foundation.layout.Column
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.test.captureToImage
-import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertTrue
@@ -44,7 +44,7 @@ import pl.kinowo.model.Ratings
 class RatingPillVisualPaddingTest {
 
     @get:Rule
-    val compose = createComposeRule()
+    val compose = RecreationProofComposeRule()
 
     @Test
     fun pillHugsTheScoreWithLittleVerticalWhitespace() {

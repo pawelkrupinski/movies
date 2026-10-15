@@ -1,5 +1,6 @@
 package pl.kinowo.ui.detail
 
+import pl.kinowo.RecreationProofComposeRule
 import android.graphics.Color
 import android.os.SystemClock
 import android.util.Log
@@ -8,11 +9,9 @@ import android.view.ViewGroup
 import android.view.WindowManager
 import android.webkit.WebChromeClient
 import android.webkit.WebView
-import androidx.activity.ComponentActivity
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -56,7 +55,7 @@ import java.util.concurrent.TimeUnit
 class TrailerPlaybackTest {
 
     @get:Rule
-    val compose = createAndroidComposeRule<ComponentActivity>()
+    val compose = RecreationProofComposeRule()
 
     @Test
     fun productionEmbedStrategyPlays() {

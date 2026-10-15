@@ -1,5 +1,6 @@
 package pl.kinowo.ui.list
 
+import pl.kinowo.RecreationProofComposeRule
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.aspectRatio
@@ -17,7 +18,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
-import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.performTouchInput
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -45,7 +45,7 @@ import pl.kinowo.filter.DateFilter
 class DayCarouselGestureAxisTest {
 
     @get:Rule
-    val compose = createComposeRule()
+    val compose = RecreationProofComposeRule()
 
     private class Probe(val day: () -> DateFilter, val columnIndex: () -> Int)
 

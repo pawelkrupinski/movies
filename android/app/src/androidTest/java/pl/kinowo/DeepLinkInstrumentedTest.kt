@@ -1,10 +1,8 @@
 package pl.kinowo
 
 import android.content.Context
-import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasTestTag
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
@@ -54,7 +52,7 @@ class DeepLinkInstrumentedTest {
     val fresh = FreshUserPreferences()
 
     @get:Rule(order = 1)
-    val compose = createAndroidComposeRule<ComponentActivity>()
+    val compose = RecreationProofComposeRule()
 
     private val target = "2046" // warszawa-only film, absent from the poznań list
 
@@ -87,6 +85,12 @@ class DeepLinkInstrumentedTest {
 
         // Wait until poznań's repertoire is the loaded one (warm state established).
         compose.waitUntil(timeoutMillis = 10_000) { vm.films.value.any { it.title == "Inny film" } }
+
+        // The system may recreate the host activity on its own (CI run 38781236755:
+        // a burst of input-device configuration changes on a freshly-booted
+        // emulator relaunched it mid-test, and the new instance came back empty).
+        // Force that here, so the screen must survive it.
+        compose.scenario.recreate()
 
         // Fire the cross-city film deep link (warszawa film absent from poznań).
         compose.runOnUiThread { vm.handleDeepLink("kinowo://warszawa/movie?title=$target") }
