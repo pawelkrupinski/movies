@@ -21,7 +21,7 @@
 #                 broke worker/It/compile and only CI saw it). `--compile-plan` prints that list.
 #   `dashboards`  infra/test/test_dashboards.py — the Grafana dashboards' structure and queries,
 #                 the CI check `Stage NixOS closures` runs (well under a second)
-#   `hooktest`    scripts/hooks/pre-push-test.sh, when the hook or its test changes — a new
+#   `hooktest`    scripts/hooks/pre-push-test.sh, when the hook, its test, install-hooks.sh or hooks-path.sh changes — a new
 #                 check changes what the hook plans, which that test pins
 #   `actionlint`  changed workflow files (with shellcheck over their `run:` blocks)
 #   `shellcheck`  changed *.sh and hook scripts — fails only on warnings the push ADDS, so a
@@ -106,17 +106,11 @@ cd "$root" || exit 1
 # the hook starts with is then compared at EXIT: a hook that finds it moved while the checks ran says so, names the
 # processes that could have done it, and restores it — a writer inside the checks is caught, not guessed at.
 hooks_path_now() { git config --local --get core.hooksPath 2>/dev/null || true; }
-hooks_path_names_own_worktree() { # <absolute path> — true when it is scripts/hooks of any worktree of this clone
-    local dir wt
-    dir="$(cd "$1" 2>/dev/null && pwd -P)" || return 1
-    while IFS= read -r wt; do
-        [ "$dir" = "$(cd "$wt" 2>/dev/null && pwd -P)/scripts/hooks" ] && return 0
-    done < <(git worktree list --porcelain | sed -n 's/^worktree //p')
-    return 1
-}
+# shellcheck source=scripts/hooks-path.sh
+. "$(dirname "${BASH_SOURCE[0]}")/../hooks-path.sh"
 case "$(hooks_path_now)" in
     /*)
-        if hooks_path_names_own_worktree "$(hooks_path_now)"; then
+        if hooks_path_is_own "$(hooks_path_now)"; then
             printf '\033[33m! pre-push\033[0m core.hooksPath was %s: set back to the relative scripts/hooks\n' "$(hooks_path_now)" >&2
             git config --local core.hooksPath scripts/hooks
         fi ;;
@@ -171,7 +165,7 @@ plan() {
             infra/nix/files/monitoring/*|infra/test/test_dashboards.py) dashboards=1 ;;
         esac
         case "$path" in
-            scripts/hooks/pre-push|scripts/hooks/pre-push-test.sh) hooktest=1 ;;
+            scripts/hooks/pre-push|scripts/hooks/pre-push-test.sh|scripts/hooks-path.sh|scripts/install-hooks.sh) hooktest=1 ;;
         esac
         case "$path" in
             .github/workflows/*.yml|.github/workflows/*.yaml) actionlint=1 ;;

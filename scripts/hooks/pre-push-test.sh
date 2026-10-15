@@ -68,6 +68,8 @@ check "a Grafana dashboard runs the dashboard tests and the metric-coverage lint
 check "a workflow runs actionlint, and the silenced-read lint" "actionlint sbt" "$(plan .github/workflows/ci.yml)"
 check "a shell script runs shellcheck, and the lint specs" "shellcheck sbt" "$(plan scripts/ci/order-seed.sh)"
 check "the hook itself runs shellcheck and its own test" "hooktest shellcheck sbt" "$(plan scripts/hooks/pre-push)"
+check "the hooks-path helper and install-hooks.sh, both exercised here, run this test" "hooktest shellcheck sbt hooktest shellcheck sbt" \
+  "$(plan scripts/hooks-path.sh) $(plan scripts/install-hooks.sh)"
 check "an iOS view runs the iOS compile check" "ios" "$(plan ios/Kinowo/Views/FilmCard.swift)"
 check "an Android-only change runs nothing" "" "$(plan android/app/src/main/java/pl/kinowo/ui/X.kt)"
 check "docs run nothing" "" "$(plan docs/readme.md README.md)"
@@ -139,7 +141,7 @@ if command -v shellcheck >/dev/null; then
   repo="$scratch/repo"
   mkdir -p "$repo/scripts/hooks"
   scratch_repo "$repo"
-  cp "$REPO_ROOT/scripts/hooks/pre-push" "$repo/scripts/hooks/pre-push"
+  cp "$REPO_ROOT/scripts/hooks/pre-push" "$repo/scripts/hooks/pre-push"; cp "$REPO_ROOT/scripts/hooks-path.sh" "$repo/scripts/hooks-path.sh"
   printf '#!/usr/bin/env bash\necho "$1"\n' > "$repo/a.sh"
   scratch_git "$repo" add -A; scratch_git "$repo" commit -qm base
   base="$(scratch_git "$repo" rev-parse HEAD)"
@@ -280,7 +282,7 @@ scratch_repo "$hp/clone"
 mkdir -p "$hp/clone/scripts/hooks"
 # stamp <copy> <word>: the hook with a line, right after its hand-over, recording which copy went on to run
 stamp() { awk -v w="$2" -v m="$hp/ran" '{ print } /^# ── end of the hand-over ──/ { print "echo " w " >> " m }' \
-  "$REPO_ROOT/scripts/hooks/pre-push" > "$1"; chmod +x "$1"; }
+  "$REPO_ROOT/scripts/hooks/pre-push" > "$1"; chmod +x "$1"; cp "$REPO_ROOT/scripts/hooks-path.sh" "$(dirname "$1")/../hooks-path.sh"; }
 stamp "$hp/clone/scripts/hooks/pre-push" old
 echo base > "$hp/clone/README"; scratch_git "$hp/clone" add -A; scratch_git "$hp/clone" commit -qm base
 scratch_git "$hp/clone" remote add origin "$hp/origin.git"; scratch_git "$hp/clone" push -q origin HEAD:main 2>/dev/null
@@ -307,7 +309,7 @@ out="$(PREPUSH_DELEGATED_FROM=/elsewhere scratch_git "$hp/wt" push origin HEAD:r
 check "a hook already handed over to runs itself (no recursion)" "old" "$(cat "$hp/ran" 2>/dev/null | tr '\n' ' ' | sed 's/ $//')"
 # install-hooks.sh puts the relative path back: an absolute path to THIS checkout's scripts/hooks is the same directory,
 # never "hooks that would stop running"; another directory holding hooks still is
-mkdir -p "$hp/wt/scripts"; cp "$REPO_ROOT/scripts/install-hooks.sh" "$hp/wt/scripts/install-hooks.sh"
+mkdir -p "$hp/wt/scripts"; cp "$REPO_ROOT/scripts/install-hooks.sh" "$hp/wt/scripts/install-hooks.sh"; cp "$REPO_ROOT/scripts/hooks-path.sh" "$hp/wt/scripts/hooks-path.sh"
 scratch_git "$hp/clone" config core.hooksPath "$hp/wt/scripts/hooks"
 out="$(cd "$hp/wt" && bash scripts/install-hooks.sh 2>&1)"; code=$?
 check "install-hooks rewrites an absolute path to this checkout's own scripts/hooks to the relative one" "0 scripts/hooks" \

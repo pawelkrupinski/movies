@@ -14,15 +14,9 @@ cd "$(git rev-parse --show-toplevel)"
 current="$(git config --get core.hooksPath || true)"
 # An ABSOLUTE path to scripts/hooks of this checkout or any worktree of this clone (an IDE's git integration rewrote it
 # so three times on 2026-10-14) holds this repository's own hooks: nothing stops running, it is set back to relative.
-own_hooks() { # <path>
-  local dir wt
-  dir="$(cd "$1" 2>/dev/null && pwd -P)" || return 1
-  while IFS= read -r wt; do
-    [ "$dir" = "$(cd "$wt" 2>/dev/null && pwd -P)/scripts/hooks" ] && return 0
-  done < <(git worktree list --porcelain | sed -n 's/^worktree //p')
-  return 1
-}
-if [ -n "$current" ] && [ "$current" != scripts/hooks ] && ! own_hooks "$current"; then
+# shellcheck source=scripts/hooks-path.sh
+. scripts/hooks-path.sh
+if [ -n "$current" ] && [ "$current" != scripts/hooks ] && ! hooks_path_is_own "$current"; then
     # A hook already installed at the old path would silently stop running; say which.
     own=$(find "$current" -maxdepth 1 -type f -perm -u+x ! -name '*.sample' 2>/dev/null || true)
     if [ -n "$own" ]; then
