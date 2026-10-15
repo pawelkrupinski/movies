@@ -114,6 +114,27 @@ Order by the live tally: 4 (relays, 33 of 70 live wrong listings), then 2, 3, 1,
 - [ ] **5. Runtime as strong negative evidence**: a short can't take a feature-length slot unless the feed links it
   or the billing says shorts/Kurzfilm.
 
+### Scraper and title-parsing review (2026-10-15)
+- [ ] **`SearchTitles.uncertified` keeps its own `(15)`-only regex.** A raw spelling a listing keeps ("Digger - Cert
+  15", "EOS - Monet (Cert. TBC)", "Hay Fever (12A) 160 mins") is searched with "Cert 15" as a candidate;
+  `FormatTags.CertificateNote` already holds the shape. Fix: `uncertified` = `CertificateNote.replaceFirstIn(t, "$1").trim`
+  (test: `SearchTitles.candidates("Digger - Cert 15", None) shouldBe Seq("Digger")`, fails before). Tried 2026-10-15:
+  the new queries leave `UnmatchedClustersRatchetSpec` asking answers the recording lacks (uk "Double Bill: The
+  Snowman (1982) / The Snowman and the Snowdog (2012)"), so it needs `UnmatchedClustersCaptureIntegrationSpec`
+  re-captured and `scripts/identity-measure` LANDABLE first. `IdentityMeasures.searchQueries` (identity module) calls it too.
+- [ ] **Five UK BBFC value lists besides the `CERT` placeholder**: `TicketsolveClient.TitleCertificate`,
+  `SpektrixClient.Bbfc`, `BfiSouthbankClient.BbfcBadge` (adds R18) and `SearchTitles`. One `BbfcCertificate` object
+  should own the values and the placeholder derive from it.
+- [ ] **The same ingest note shapes are spelled twice**: `FormatTags` `AsteriskNote`, `BracketedRunningTime`,
+  `ReReleaseMark` against `ExtraTitleRules` `xtra-asterisk-note-suffix`, `xtra-runtime-suffix`,
+  `xtra-rerelease-bracket` (different widths: the rule takes `*[^*]+*` and a bare running time). Share them as
+  `TitleRulePlaceholders` like `CERT`, then re-measure.
+- [ ] **`replaceAll("\\s+", " ").trim` is written 18 times across clients**, two of them after an NBSP replace
+  (`KinoZamekClient.collapse`, `VenueCredits`). One `TitleText.collapseSpaces` would also decide NBSP for the rest
+  (Jsoup `.text` leaves U+00A0, which Java `\s` skips); that moves titles, so snapshot + measure.
+- [ ] **Hand-written bodies in client specs** (record when the case appears in a feed): `TicketsolveClientSpec`
+  "(18+)" club night; `SpektrixClientSpec` Gala `attribute_Website`; `BfiSouthbankClientSpec` sold-out fragments.
+
 ### Parked resolver work
 - [ ] **Withdrawn-vote rule** — branch `wip-withdrawn-vote` 8c666e431; landed as 26e48897d and reverted
   (22361d8bb): it lost PL "Lalka (ale to horror)" ×9 and UK "Sense and Sensibility" ×3 / "Home Alone (Pyjama
