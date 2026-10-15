@@ -17,7 +17,9 @@
 # is cheap next to a pipeline change that never gets one.
 #
 # Usage: kick-convergence.sh <head-sha> <ref> <workflow name>...
-# Tested by ConvergenceDispatchGateSpec against a scratch repository and a stub `gh`.
+# KICK_CONVERGENCE_GH_TIMEOUT (60 s) bounds the read of each suite's last run.
+# Tested by ConvergenceDispatchGateSpec and .github/scripts/kick-convergence-test.sh against a scratch repository and a
+# stub `gh`.
 set -uo pipefail
 
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -33,13 +35,15 @@ failed=0
 # dispatch_workflow (scripts/ci/dispatch.sh) retries it, twice, after a pause
 # (DISPATCH_RETRY_SECONDS); any other refusal (403, 404, 422) fails at once.
 . "$here/../../scripts/ci/dispatch.sh"
+# bounded (tool-conventions.sh, which dispatch.sh sources), not timeout(1): stock macOS has none, and there every read
+# of a suite's last run failed, so a local run dispatched every suite whatever the push touched.
 dispatch() {
     dispatch_workflow "$1" "$ref" || { echo "::error::could not dispatch $1"; failed=1; }
 }
 
 for workflow in "$@"; do
     # allow-silenced: an unreadable last run leaves no base, which DISPATCHES — the safe direction.
-    base=$(timeout 60 gh run list --workflow "$workflow" --limit 1 --json headSha --jq '.[0].headSha // ""' 2>/dev/null || true)
+    base=$(bounded "${KICK_CONVERGENCE_GH_TIMEOUT:-60}" gh run list --workflow "$workflow" --limit 1 --json headSha --jq '.[0].headSha // ""' 2>/dev/null || true)
     if [ -z "$base" ] || ! git cat-file -e "$base^{commit}" 2>/dev/null; then
         echo "$workflow: no earlier run to diff against (base '${base:-none}') — dispatching"
         dispatch "$workflow"
