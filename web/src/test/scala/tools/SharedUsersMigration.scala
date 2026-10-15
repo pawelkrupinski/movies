@@ -106,8 +106,12 @@ object SharedUsersMigration {
   private def readStates(db: MongoDatabase): Seq[UserState] =
     Await.result(db.withCodecRegistry(UserCodecs.registry).getCollection[UserState]("userStates").find().toFuture(), ReadTimeout).toSeq
 
+  val commandLine: CommandLine = CommandLine("SharedUsersMigration",
+    "Folds every country's users and userStates into the MONGODB_USERS_DB database; a dry run unless --write.",
+    CommandLine.Flag("write", "write the merged rows (default: print what would be written)"))
+
   def main(args: Array[String]): Unit = {
-    val write  = args.contains("--write")
+    val write  = commandLine.parseOrExit(args).flag("write")
     val process = _root_.settings.ProcessConfiguration.resolve()
     val target  = process.usersDatabase.map(_.value).getOrElse {
       println("MONGODB_USERS_DB is not set — nothing to migrate INTO. Refusing to guess.")
