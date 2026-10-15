@@ -329,6 +329,25 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     withClue(d.render)(d.film shouldBe Some(4174))
   }
 
+  it should "walk to the films of a director it names whole after the title, and read him as its credit" in {
+    // DE Caligari FilmBühne Wiesbaden's "ES (ULRICH SCHAMONI)", nothing else published (recording 38713274617): pooled
+    // with the corpus's bare and credited "Es" billings, it took Muschietti's 2017 "It", TMDB's German "Es" (judged
+    // wrong 10-13). Its closing credit names Ulrich Schamoni, who directed the 1966 "Es" — the film it shows, which
+    // TMDB's search of "Es" does not reach: only his films do ([[CandidateQuery.TitleCredit]]).
+    val films    = Seq(F(346364, "Es", 2017, "Andy Muschietti", 135, 21, original = Some("It")),
+      F(133035, "Es", 1966, "Ulrich Schamoni", 86, 0.8, searched = false))
+    val credited = listing(KinoApollo, "ES (ULRICH SCHAMONI)")
+    val bare     = Seq(Multikino, Helios).map(listing(_, "Es"))
+    val dated    = listing(KinoMuza, "ES", Some(2017), Some("Andy Muschietti"))
+    val r = resolve(credited +: bare :+ dated, films)
+    withClue((credited +: bare :+ dated).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
+      r.decisionOf(credited.key).film shouldBe Some(133035)
+      r.decisionOf(dated.key).film shouldBe Some(346364)
+    }
+    // a name heading the title is its subject as often as its maker: a closing credit only when it names the director WHOLE
+    resolve(Seq(listing(KinoApollo, "ES (SCHAMONI)")), films).decisionOf(listing(KinoApollo, "ES (SCHAMONI)").key).film should not be Some(133035)
+  }
+
   "A listing that publishes only a title" should
     "not be denied its credited siblings' film by the title relation alone" in {
     // PL, the Polish title of a foreign film: TMDB's record carries only the original title, so a

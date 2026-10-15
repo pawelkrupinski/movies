@@ -423,12 +423,18 @@ enum CandidateQuery {
    *  no record of are answered too, under their FALLBACK ids ([[FallbackIds]]): never a candidate TMDB's rules weigh,
    *  only what a cluster no TMDB film was taken for may fall back to ([[ResolverDecision.fallback]]). */
   case ImdbTitled(title: String)
+  /** Every film the director a title CLOSES on directed ([[TitleCredit]]): the name its closing bracket holds, when a
+   *  search for the very title suggests a director of that name — DE "ES (ULRICH SCHAMONI)" reaches Schamoni's 1966
+   *  "Es", which no search of "Es" ranks. Asked only of a title closing on such a bracket, crediting nobody. A path,
+   *  never a rank: its films are scored on the listing's facts, the credit among them ([[IdentityMeasures.bannerNamesItsDirector]]). */
+  case TitleCredit(title: String)
 
   def sortKey: String = this match {
-    case Title(q)      => s"t\u0000$q"
-    case Director(n)   => s"d\u0000$n"
-    case Imdb(t)       => s"i\u0000$t"
-    case ImdbTitled(t) => s"a\u0000$t"
+    case Title(q)       => s"t\u0000$q"
+    case Director(n)    => s"d\u0000$n"
+    case Imdb(t)        => s"i\u0000$t"
+    case ImdbTitled(t)  => s"a\u0000$t"
+    case TitleCredit(t) => s"c\u0000$t"
   }
 
 }
@@ -442,6 +448,7 @@ object CandidateQuery {
     case Array("d", name) => Some(Director(name))
     case Array("i", text) => Some(Imdb(text))
     case Array("a", text) => Some(ImdbTitled(text))
+    case Array("c", text) => Some(TitleCredit(text))
     case _                => None
   }
 

@@ -11,7 +11,8 @@ package services.identity
  *  - every credited director's filmography;
  *  - the films IMDb lists under the listing's own title, by their IMDb ids — records TMDB's search
  *    misses (an edition, a re-cut) that its IMDb cross-reference still reaches. The title as the
- *    venue published it, whole: a path to the film it names, not to each piece's.
+ *    venue published it, whole: a path to the film it names, not to each piece's;
+ *  - a title closing on a bracketed name, crediting nobody: the films of the director it names ([[TitleCredit]]).
  *
  * The recording sweep (`tools.IdentityLookupSweep`) runs the resolver itself, so it asks exactly
  * these, and every candidate's film record, and nothing else.
@@ -24,6 +25,8 @@ object CandidateQueries {
     val imdb      = Seq(e.title.trim).filter(_.nonEmpty).map(CandidateQuery.Imdb(_))
     // every title the listing is searched by, asked of IMDb in every language ([[CandidateQuery.ImdbTitled]])
     val titled    = IdentityMeasures.searchQueries(e.measured).map(CandidateQuery.ImdbTitled(_))
-    (titles ++ directors ++ imdb ++ titled).distinct.sorted
+    // the director a title closes on, where nobody is credited ([[TitleCredit]])
+    val credit    = Option.when(e.directors.isEmpty)(e.title.trim).filter(TitleCredit.bracketedName(_).isDefined).map(CandidateQuery.TitleCredit(_))
+    (titles ++ directors ++ imdb ++ titled ++ credit).distinct.sorted
   }
 }

@@ -324,10 +324,13 @@ object UnmatchedClusters {
   // ── the file ─────────────────────────────────────────────────────────────────────────────
 
   def write(path: Path, capture: Capture): Unit = {
+    val (credits, older) = capture.queries.partition { case (q, _) => q.isInstanceOf[CandidateQuery.TitleCredit] }
     val d = new BsonDocument("country", new BsonString(capture.country.code))
       .append("listings", array(capture.listings.sortBy(_.sortKey).map(listingDoc)))
       .append("decisions", array(capture.decisions.sortBy(_.members.headOption.map(ListingKey.serialised).getOrElse("")).map(ResolverDecisionBson.encode)))
-      .append("queries", array(capture.queries.toSeq.sortBy(_._1.sortKey).map { case (q, hits) => queryDoc(q).append("hits", array(hits.map(hitDoc))) }))
+      .append("queries", array(older.toSeq.sortBy(_._1.sortKey).map { case (q, hits) => queryDoc(q).append("hits", array(hits.map(hitDoc))) }))
+      // apart from "queries", which a ref predating the title-credit question reads whole and fails on a kind it lacks
+      .append("titleCredits", array(credits.toSeq.sortBy(_._1.sortKey).map { case (q, hits) => queryDoc(q).append("hits", array(hits.map(hitDoc))) }))
       .append("films", array(capture.films.toSeq.sortBy(_._1).map { case (id, f) => new BsonDocument("id", new BsonInt32(id)).append("film", IdentityAnswerBson.film(f)) }))
       .append("details", array(capture.details.toSeq.sortBy(_._1).map { case (k, f) => new BsonDocument("key", new BsonString(k)).append("detail", f.fold[BsonValue](new BsonNull)(detailDoc)) }))
       .append("withDetail", array(capture.withDetail.toSeq.sorted.map(new BsonString(_))))
@@ -350,7 +353,8 @@ object UnmatchedClusters {
     Capture(country,
       docs("listings").map(listingOf),
       docs("decisions").map(ResolverDecisionBson.decode),
-      docs("queries").map(q => queryOf(q) -> q.getArray("hits").getValues.asScala.toSeq.map(h => hitOf(h.asDocument))).toMap,
+      (docs("queries") ++ (if (d.containsKey("titleCredits")) docs("titleCredits") else Nil))
+        .map(q => queryOf(q) -> q.getArray("hits").getValues.asScala.toSeq.map(h => hitOf(h.asDocument))).toMap,
       docs("films").map(f => f.getInt32("id").getValue -> IdentityAnswerBson.filmOf(f.get("film"))).toMap,
       docs("details").map(x => x.getString("key").getValue -> Option(x.get("detail")).filterNot(_.isNull).map(v => detailOf(v.asDocument))).toMap,
       d.getArray("withDetail").getValues.asScala.map(_.asString.getValue).toSet,
@@ -398,10 +402,12 @@ object UnmatchedClusters {
     case CandidateQuery.Director(name)    => new BsonDocument("director", new BsonString(name))
     case CandidateQuery.Imdb(title)       => new BsonDocument("imdb", new BsonString(title))
     case CandidateQuery.ImdbTitled(title) => new BsonDocument("imdbTitled", new BsonString(title))
+    case CandidateQuery.TitleCredit(title) => new BsonDocument("titleCredit", new BsonString(title))
   }
   private def queryOf(d: BsonDocument): CandidateQuery =
     opt(d, "title").map(CandidateQuery.Title(_)).orElse(opt(d, "director").map(CandidateQuery.Director(_)))
       .orElse(opt(d, "imdb").map(CandidateQuery.Imdb(_))).orElse(opt(d, "imdbTitled").map(CandidateQuery.ImdbTitled(_)))
+      .orElse(opt(d, "titleCredit").map(CandidateQuery.TitleCredit(_)))
       .getOrElse(sys.error(s"no query in ${d.toJson}"))
   private def hitDoc(h: Hit): BsonDocument = {
     val d = new BsonDocument("id", new BsonInt32(h.tmdbId)).append("title", new BsonString(h.title)).append("popularity", new BsonDouble(h.popularity))

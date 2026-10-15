@@ -39,11 +39,10 @@ final class TmdbIdentityLookups(tmdb: TmdbClient, imdb: ImdbClient, enrichers: S
     case CandidateQuery.Title(text)    =>
       // TMDB's OWN order: a film's rank in it is the `search.rank` measure, fitted on that order.
       answered(tmdb.searchAsRanked(text).getOrElse(throw new IllegalStateException("no TMDB key")).map(TmdbIdentityLookups.hitOf))
-    case CandidateQuery.Director(name)    =>
-      // Every person the name could mean, each with what they directed — or, with no directing
-      // credit, wrote (a venue may print the writer): the walk the pipeline makes, without its pick.
-      answered(tmdb.findPersonCandidates(CandidateQuery.personName(name))
-        .flatMap(tmdb.personFilmography).map(TmdbIdentityLookups.hitOf).distinctBy(_.tmdbId))
+    case CandidateQuery.Director(name)    => directed(name)
+    case CandidateQuery.TitleCredit(title) =>
+      // the director IMDb suggests for the very title, named whole by its closing bracket — his films, as a credit's walk
+      suggested(title).flatMap(s => TitleCredit.named(title, s.directors).fold[Answer[Seq[Hit]]](Answer.Known(Nil))(directed))
     case CandidateQuery.Imdb(title)       =>
       suggestedMovies(title).flatMap(movies =>
         answered(ImdbClient.suggested(movies).flatMap(tmdb.findByImdbId).map(TmdbIdentityLookups.hitOf).distinctBy(_.tmdbId)))
@@ -58,11 +57,18 @@ final class TmdbIdentityLookups(tmdb: TmdbClient, imdb: ImdbClient, enrichers: S
   // title (`ImdbTitled`) — read once for a few minutes, AS ANSWERED: a read that met a gap (a replay's unrecorded
   // request, a failure) is Unknown to both, never an empty list the second question would take for IMDb's answer.
   private val recentSuggestions = tools.BoundedCache.ofSize(512).expireAfterWrite(java.time.Duration.ofMinutes(10))
-    .build[String, Answer[Seq[ImdbClient.Suggestion]]]()
-  private def suggestedMovies(title: String): Answer[Seq[ImdbClient.Suggestion]] =
+    .build[String, Answer[ImdbClient.Suggested]]()
+  private def suggested(title: String): Answer[ImdbClient.Suggested] =
     Option(recentSuggestions.getIfPresent(title)).getOrElse {
-      val read = answered(imdb.suggestedMovies(title)); recentSuggestions.put(title, read); read
+      val read = answered(imdb.suggestionsFor(title)); recentSuggestions.put(title, read); read
     }
+  private def suggestedMovies(title: String): Answer[Seq[ImdbClient.Suggestion]] = suggested(title).map(_.movies)
+
+  /** Every person the name could mean, each with what they directed — or, with no directing credit, wrote (a venue may
+   *  print the writer): the walk the pipeline makes, without its pick. */
+  private def directed(name: String): Answer[Seq[Hit]] =
+    answered(tmdb.findPersonCandidates(CandidateQuery.personName(name))
+      .flatMap(tmdb.personFilmography).map(TmdbIdentityLookups.hitOf).distinctBy(_.tmdbId))
 
   override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] =
     if (FallbackIds.isFallback(tmdbId)) FallbackIds.imdbId(tmdbId).fold[Answer[Option[IdentityMeasures.Film]]](Answer.Known(None))(tt => answered(imdb.identityRecord(tt)))

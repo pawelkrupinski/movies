@@ -29,4 +29,13 @@ class ImdbTitledSpec extends AnyFlatSpec with Matchers {
     ImdbClient.titled("Camino dla opornych", movies, _ => None) shouldBe None
     ImdbClient.titled("Camino", movies, id => Some(if (id == "tt39814688") akas else Nil)) shouldBe Some(Nil)
   }
+
+  /** DE Caligari FilmBühne's "ES (ULRICH SCHAMONI)" (recording 38713274617, the same URL): IMDb suggests the director
+   *  the title closes on ahead of any film — what `services.identity.TitleCredit` reads its credit by. People known first
+   *  for anything else (Ulricha Mouyema, "Actress, …"; a choir, "Self, …") are no director; films are no person. */
+  "The people IMDb suggests for a title" should "be read as directors only when it knows them first for directing" in {
+    val js = Json.parse(loadFixture("/fixtures/imdb/suggestion_es_ulrich_schamoni.json"))
+    ImdbClient.directorSuggestions(js) shouldBe Seq("Ulrich Schamoni", "Ulrike Schamoni")
+    ImdbClient.suggestedIn(js).movies.map(_.id) shouldBe empty
+  }
 }

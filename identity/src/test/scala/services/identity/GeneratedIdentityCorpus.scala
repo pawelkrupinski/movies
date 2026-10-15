@@ -94,6 +94,8 @@ object GeneratedIdentityCorpus {
           Answer.Known(known.filter(f => words(f.title) == words(title)).sortBy(_.tmdbId.get).map(hit))
         case CandidateQuery.ImdbTitled(title) =>
           Answer.Known(known.filter(f => IdentityMeasures.key(f.title) == IdentityMeasures.key(title)).sortBy(_.tmdbId.get).map(hit))
+        case CandidateQuery.TitleCredit(title) =>
+          Answer.Known(TitleCredit.named(title, known.map(_.director)).toSeq.flatMap(name => known.filter(_.director == name)).sortBy(_.tmdbId.get).map(hit))
       }
     override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] =
       if (tmdbId % 7 == 0) Answer.Unknown

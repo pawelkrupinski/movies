@@ -1,0 +1,2 @@
+venue	rawTitle	film	label
+Caligari FilmBühne Wiesbaden	ES (ULRICH SCHAMONI)	pending:tmdb:133035	by hand: right is Schamoni's 1966 "Es" (133035), which only the walk of the director the title closes on reaches (CandidateQuery.TitleCredit); recording 38713274617 predates that walk (its TMDB person search is a GAP), so pending a recording that holds it — re-pin with scripts/identity-slice-refresh --recording <it>

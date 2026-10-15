@@ -68,15 +68,11 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
   def candidates(query: CandidateQuery): Answer[Seq[Hit]] = query match {
     case CandidateQuery.Title(text) =>
       document(TmdbKind.Query, TmdbStore.titleSearchId(language, text)).toAnswer.flatMap(d => hitsOf(intsOf(d)))
-    case CandidateQuery.Director(name) =>
-      document(TmdbKind.Query, personSearchOf(name)).toAnswer.flatMap { search =>
-        val people = intsOf(search).take(MaxPersonCandidates).map(id => document(TmdbKind.Person, id.toString))
-        if (people.exists(_.isEmpty)) Answer.Unknown
-        else Answer.sequence(people.flatten.map { p =>
-          val directed = intsOf(p, "directed")
-          hitsOf(if (directed.nonEmpty) directed else intsOf(p, "wrote"))
-        }).map(_.flatten.distinctBy(_.tmdbId))
-      }
+    case CandidateQuery.Director(name) => directed(name)
+    case CandidateQuery.TitleCredit(title) =>
+      // a suggestions document filed before it kept the directors is no answer: the live ask files them
+      document(TmdbKind.Query, TmdbStore.imdbSuggestionsId(title)).filter(_.containsKey("directors")).toAnswer.flatMap(d =>
+        TitleCredit.named(title, BsonFields.stringsOf(d, "directors")).fold[Answer[Seq[Hit]]](Answer.Known(Nil))(directed))
     case CandidateQuery.Imdb(title) =>
       document(TmdbKind.Query, TmdbStore.imdbSuggestionsId(title)).toAnswer.flatMap { d =>
         firstFilms(suggestionIds(d, title).map(tt => document(TmdbKind.Query, TmdbStore.findId(tt)))).map(_.flatten.distinctBy(_.tmdbId))
@@ -92,6 +88,18 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
           }
       }
   }
+
+  /** The films a person search for `name` finds directed — or, with no directing credit, written — as its people's
+   *  documents hold them: `Unknown` while the search or any of its people is not held. */
+  private def directed(name: String): Answer[Seq[Hit]] =
+    document(TmdbKind.Query, personSearchOf(name)).toAnswer.flatMap { search =>
+      val people = intsOf(search).take(MaxPersonCandidates).map(id => document(TmdbKind.Person, id.toString))
+      if (people.exists(_.isEmpty)) Answer.Unknown
+      else Answer.sequence(people.flatten.map { p =>
+        val directed = intsOf(p, "directed")
+        hitsOf(if (directed.nonEmpty) directed else intsOf(p, "wrote"))
+      }).map(_.flatten.distinctBy(_.tmdbId))
+    }
 
   def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] =
     if (FallbackIds.isFallback(tmdbId)) fallbackFilm(tmdbId)

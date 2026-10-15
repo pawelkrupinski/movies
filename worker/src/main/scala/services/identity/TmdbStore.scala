@@ -201,14 +201,15 @@ final class TmdbStore(docs: TmdbDocuments, clock: java.time.Clock) {
   private[identity] def people(id: String, persons: Seq[Int]): Unit =
     update(TmdbKind.Query, id)(_ => new BsonDocument("ids", ints(persons)))
 
-  /** IMDb's movie suggestions for a title, as `ImdbClient` reads them. */
-  private[identity] def suggestions(id: String, entries: Seq[services.enrichment.ImdbClient.Suggestion]): Unit =
-    update(TmdbKind.Query, id)(_ => new BsonDocument("suggestions", BsonArray.fromIterable(entries.map { s =>
+  /** IMDb's suggestions for a title, as `ImdbClient` reads them: its movies, and the directors among the people it
+   *  suggests (`directors`, absent from a document filed before they were kept). */
+  private[identity] def suggestions(id: String, suggested: services.enrichment.ImdbClient.Suggested): Unit =
+    update(TmdbKind.Query, id)(_ => new BsonDocument("suggestions", BsonArray.fromIterable(suggested.movies.map { s =>
       val d = new BsonDocument("id", BsonString(s.id)).append("rank", BsonInt32(s.rank))
       s.title.foreach(t => d.append("title", BsonString(t)))
       s.year.foreach(y => d.append("year", BsonInt32(y)))
       d
-    })))
+    })).append("directors", BsonArray.fromIterable(suggested.directors.map(BsonString(_)))))
 
   /** IMDb's record of a title (`ImdbClient.identityRecord`) — `None`, filed as null, when IMDb has no such title: what a
    *  fallback candidate is scored on ([[FallbackIds]]). */
@@ -313,6 +314,7 @@ object TmdbStore {
     case CandidateQuery.Director(name) => personSearchId(CandidateQuery.personName(name))
     case CandidateQuery.Imdb(title)    => imdbSuggestionsId(title)
     case CandidateQuery.ImdbTitled(t)  => imdbSuggestionsId(t)
+    case CandidateQuery.TitleCredit(t) => imdbSuggestionsId(t)
   }
 
   // Question ids, by the parameters that decide their answer.

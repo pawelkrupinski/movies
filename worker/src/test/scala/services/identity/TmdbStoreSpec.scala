@@ -211,6 +211,26 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = { fetched(); w.lookups.film(tmdbId) }
   }
 
+  /** DE Caligari's "ES (ULRICH SCHAMONI)": IMDb's suggestions for the title (recording 38713274617, the same URL) name
+   *  Schamoni as a director, so the title's credit walks his films — the 1966 "Es" no search of "Es" reaches. Filed as
+   *  the fetches are, read back as `TmdbIdentityLookups` reads them live. */
+  "a title closing on its director" should "walk the films of the director IMDb suggests by that name, once each answer is filed" in {
+    val w     = new World
+    val query = CandidateQuery.TitleCredit("ES (ULRICH SCHAMONI)")
+    w.lookups.candidates(query) shouldBe Answer.Unknown                                  // no suggestions filed: a gap
+    val suggestions = scala.io.Source.fromResource("fixtures/imdb/suggestion_es_ulrich_schamoni.json")(using scala.io.Codec.UTF8).mkString
+    w.normalizer.filed("GET", services.enrichment.ImdbClient.suggestionUrl("ES (ULRICH SCHAMONI)"), Success(suggestions))
+    w.lookups.candidates(query) shouldBe Answer.Unknown                                  // his person search not filed yet
+    w.normalizer.filed("GET", "https://api.themoviedb.org/3/search/person?query=Ulrich%20Schamoni",
+      Success("""{"results":[{"id":77,"name":"Ulrich Schamoni","known_for_department":"Directing"}]}"""))
+    w.normalizer.filed("GET", "https://api.themoviedb.org/3/person/77/movie_credits",
+      Success("""{"crew":[{"id":133035,"title":"Es","original_title":"Es","release_date":"1966-03-17","popularity":0.76,"department":"Directing","job":"Director"}]}"""))
+    w.lookups.candidates(query).toOption.map(_.map(_.tmdbId)) shouldBe Some(Seq(133035))
+    // a bracket naming nobody IMDb suggests as a director walks nothing
+    w.normalizer.filed("GET", services.enrichment.ImdbClient.suggestionUrl("ES (ULRIKA MOUYEMA)"), Success(suggestions))
+    w.lookups.candidates(CandidateQuery.TitleCredit("ES (ULRIKA MOUYEMA)")) shouldBe Answer.Known(Nil)
+  }
+
   /** A prefetch that found a document absent holds nothing of it: the live ask files it moments later, and an ask
    *  served the absence again would decide on a gap the store has already filled. */
   "the store's lookups" should "read a document a prefetch found absent again, once it is filed" in {

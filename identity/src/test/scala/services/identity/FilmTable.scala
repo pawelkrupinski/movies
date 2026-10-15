@@ -21,6 +21,9 @@ final class FilmTable(films: Seq[FilmTable.F], normalizer: TitleNormalizer) exte
         .sortBy(-_.popularity).map(hit)
     case CandidateQuery.Director(name) => inTmdb.filter(f => f.director == name || f.directorAliases.contains(name)).map(hit)
     case CandidateQuery.Imdb(title)    => inTmdb.filter(f => f.suggested && (words(f.title) == words(title) || f.imdbTitles.exists(words(_) == words(title)))).map(hit)
+    // every director the table holds is one IMDb would suggest by name
+    case CandidateQuery.TitleCredit(t) => TitleCredit.named(t, inTmdb.map(_.director).filter(_.nonEmpty)).toSeq
+      .flatMap(name => inTmdb.filter(f => f.director == name)).map(hit)
     // and the films only IMDb holds, under their fallback ids
     case CandidateQuery.ImdbTitled(t)  => inTmdb.filter(titledIn(_, t)).map(hit) ++
       films.filter(f => f.imdbOnly && titledIn(f, t)).flatMap(f => FallbackIds.of(FallbackIds.Source.Imdb, f.id).map(id => hit(f).copy(tmdbId = id, popularity = 0.0)))

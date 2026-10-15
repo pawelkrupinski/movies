@@ -203,8 +203,12 @@ class ImdbClient(http: HttpFetch) {
     if (title.trim.isEmpty) Nil else ImdbClient.titled(title, suggestedMovies(title), id => Some(titlesOf(id))).getOrElse(Nil)
 
   /** IMDb's movie suggestions for `title`, as read: empty for a blank title; a failed read throws. */
-  private[services] def suggestedMovies(title: String): Seq[Suggestion] =
-    if (title.trim.isEmpty) Nil else suggestions(title).toSeq.flatMap(movieSuggestions)
+  private[services] def suggestedMovies(title: String): Seq[Suggestion] = suggestionsFor(title).movies
+
+  /** IMDb's suggestions for `title` as read — its movies, and the directors among the people it suggests — from one
+   *  request: empty for a blank title; a failed read throws. */
+  private[services] def suggestionsFor(title: String): Suggested =
+    if (title.trim.isEmpty) Suggested(Nil, Nil) else suggestions(title).fold(Suggested(Nil, Nil))(suggestedIn)
 
   /** Every title IMDb lists `imdbId` under: its title, its original and its AKAs, in IMDb's order. Empty for a
    *  title IMDb does not have; a failed read throws. */
@@ -501,6 +505,23 @@ object ImdbClient {
    *  matcher ranks on (lowercased display title, release year, popularity
    *  rank). */
   private[services] final case class Suggestion(id: String, title: Option[String], year: Option[Int], rank: Int)
+  /** What one suggestion request answers: its movies, and the names of the people it suggests known for directing. */
+  private[services] final case class Suggested(movies: Seq[Suggestion], directors: Seq[String])
+  /** A suggestion answer's movies and directors. */
+  private[services] def suggestedIn(js: JsValue): Suggested = Suggested(movieSuggestions(js), directorSuggestions(js))
+
+  /** The names of the people IMDb suggests whose description opens with directing ("Director, Next Year, Same Time
+   *  (1967)": the profession IMDb knows them for first, then their best-known title), in IMDb's order. A query naming a
+   *  director suggests them: DE Caligari's "ES (ULRICH SCHAMONI)" suggests Ulrich Schamoni ahead of any film. */
+  private[services] def directorSuggestions(js: JsValue): Seq[String] =
+    (js \ "d").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty).flatMap { entry =>
+      for {
+        id   <- (entry \ "id").asOpt[String] if id.startsWith("nm")
+        role <- (entry \ "s").asOpt[String] if DirectingRole.matches(role)
+        name <- (entry \ "l").asOpt[String].map(_.trim) if name.nonEmpty
+      } yield name
+    }.distinct
+  private val DirectingRole = """(?s)Director\b.*""".r
 
   /** How many of IMDb's movie suggestions the identity resolver follows — the old pipeline's director rung read as many. */
   val SuggestedMovies = 5
