@@ -3,10 +3,10 @@ package integration
 import services.identity._
 import services.identity.agreement.{Agreement, AgreementStage, FamilyAnswers, VoterFamily}
 import services.movies.ListingKey
-import tools.{ConvergenceStorage, UnmatchedClusters}
+import tools.{CommandLine, ConvergenceStorage, UnmatchedClusters}
 
 import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Path, Paths}
+import java.nio.file.{Files, Path}
 import java.util.zip.GZIPOutputStream
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
@@ -53,10 +53,14 @@ object IdentityUnifiedDataset {
   private def clean(text: String) = text.replace('\t', ' ').replace('\n', ' ')
   private def number(x: Double) = if (x == math.rint(x)) x.toLong.toString else String.format(java.util.Locale.ROOT, "%.2f", Double.box(x))
 
+  val commandLine: CommandLine = CommandLine("IdentityUnifiedDataset", "Emits the unified evidence model's training rows over the recorded corpora.",
+    CommandLine.Value("out", "dir", "where training.tsv.gz is written (required)"),
+    CommandLine.Value("threads", "n", "resolving threads", default = Some("6")))
+
   def main(args: Array[String]): Unit = {
-    val opts    = args.grouped(2).collect { case Array(k, v) => k.stripPrefix("--") -> v }.toMap
-    val out     = Paths.get(opts.getOrElse("out", sys.error("--out <dir>")))
-    val threads = opts.get("threads").map(_.toInt).getOrElse(6)
+    val arguments = commandLine.parseOrExit(args)
+    val out     = arguments.requiredPath("out")
+    val threads = arguments.requiredInt("threads")
     val configuration = settings.ProcessConfiguration.resolve()
     val labels   = tools.IdentityJudgements.labels()
     val storages = mutable.ListBuffer.empty[ConvergenceStorage]

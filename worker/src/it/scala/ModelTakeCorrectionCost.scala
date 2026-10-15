@@ -2,9 +2,9 @@ package integration
 
 import services.identity._
 import services.identity.agreement.{AgreementStage, AgreementVerdicts, InMemoryAgreementVerdicts}
-import tools.{ConvergenceStorage, SpecClock, UnmatchedClusters}
+import tools.{CommandLine, ConvergenceStorage, SpecClock, UnmatchedClusters}
 
-import java.nio.file.{Files, Paths}
+import java.nio.file.Files
 import scala.collection.mutable
 import scala.jdk.CollectionConverters._
 
@@ -23,9 +23,11 @@ import scala.jdk.CollectionConverters._
  */
 object ModelTakeCorrectionCost {
 
+  val commandLine: CommandLine = CommandLine("ModelTakeCorrectionCost", "Measures what reading the model's takes against their corrections costs.",
+    CommandLine.Value("answers", "dir", "the whole-corpus dump's answers-<cc>.jsonl (required)"))
+
   def main(args: Array[String]): Unit = {
-    val opts     = args.grouped(2).collect { case Array(k, v) => k.stripPrefix("--") -> v }.toMap
-    val answers  = Paths.get(opts.getOrElse("answers", sys.error("--answers <dump dir>")))
+    val answers  = commandLine.parseOrExit(args).requiredPath("answers")
     val configuration = settings.ProcessConfiguration.resolve()
     val storages = mutable.ListBuffer.empty[ConvergenceStorage]
     try {

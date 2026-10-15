@@ -1,8 +1,9 @@
 package scripts
 
+import tools.CommandLine
 import services.identity.{LogisticFit, UnifiedEvidence}
 
-import java.nio.file.{Files, Paths}
+import java.nio.file.Files
 
 /**
  * Which learned DECISION over the unified evidence ([[IdentityUnifiedFit]]'s rows) matches today's stack — the model
@@ -127,9 +128,13 @@ object IdentityUnifiedExperiments {
       corpus.gained, metrics(held.filter(_._1.hand))._1)
   }
 
+  val commandLine: CommandLine = CommandLine("IdentityUnifiedExperiments", "Measures the unified model's learner variants on the training rows.",
+    CommandLine.Value("training", "tsv.gz", "the training rows", default = Some(IdentityUnifiedFit.Training.toString)),
+    CommandLine.Value("report", "md", "where the table is written, beside stdout"))
+
   def main(args: Array[String]): Unit = {
-    val opts   = args.grouped(2).collect { case Array(k, v) => k.stripPrefix("--") -> v }.toMap
-    val rows   = read(opts.get("training").map(Paths.get(_)).getOrElse(IdentityUnifiedFit.Training))
+    val arguments = commandLine.parseOrExit(args)
+    val rows   = read(arguments.requiredPath("training"))
     val guards = UnifiedEvidence.Guards
     val plain  = keptOf(Nil) -- counted
     val counts = keptOf(Nil)
@@ -148,7 +153,7 @@ object IdentityUnifiedExperiments {
     // the boosted model's rules, as a decision would cite them
     val rules = Boosted(hybrid, 30, 2, label = "+counts").model(passing(rows, guards)).rules.take(60)
     val text  = (table ++ Seq("", "## Boosted depth 2 (+counts, guarded, hand×30), its first trees as rules", "```") ++ rules :+ "```").mkString("\n")
-    opts.get("report").foreach(path => Files.writeString(Paths.get(path), text + "\n"))
+    arguments.path("report").foreach(Files.writeString(_, text + "\n"))
     println(text)
   }
 }

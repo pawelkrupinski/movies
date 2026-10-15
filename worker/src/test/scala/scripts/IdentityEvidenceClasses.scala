@@ -1,5 +1,6 @@
 package scripts
 
+import tools.CommandLine
 import models.Country
 import play.api.libs.json.{JsValue, Json}
 import scripts.IdentityCalibrationData.TmdbAnswers
@@ -7,7 +8,7 @@ import services.identity.IdentityCalibration.{Condition, EvidenceClass}
 import services.identity.IdentityMeasures.{Film, Listing, ListingFilm}
 import services.identity.{IdentityCalibration, IdentityMeasures}
 
-import java.nio.file.{Files, Path, Paths}
+import java.nio.file.{Files, Path}
 import java.util.zip.GZIPInputStream
 
 /**
@@ -42,13 +43,19 @@ object IdentityEvidenceClasses {
   /** One labelled unit whose bare title has an exact top hit. */
   final case class Outcome(country: String, split: String, title: String, film: Int, top: Int, rivals: Int, right: Boolean)
 
+  val commandLine: CommandLine = CommandLine("IdentityEvidenceClasses", "Measures the evidence classes and writes them into the weights artefact.",
+    CommandLine.Value("fixtures", "dir", "the enrichment-<cc>/ trees (required)"),
+    CommandLine.Value("labels", "json.gz", "the labelled set", default = Some("test/resources/fixtures/identity/identity-labels.json.gz")),
+    CommandLine.Value("weights", "json", "the artefact written", default = Some(IdentityCalibrate.ResolverArtefact.toString)),
+    CommandLine.Value("source", "text", "what the artefact names as the trees' source", default = Some("the trees under --fixtures")))
+
   def main(args: Array[String]): Unit = {
-    val opts = args.grouped(2).collect { case Array(k, v) => k.stripPrefix("--") -> v }.toMap
+    val arguments = commandLine.parseOrExit(args)
     derive(
-      fixtures = Paths.get(opts.getOrElse("fixtures", sys.error("--fixtures <dir of enrichment-<cc>/ trees>"))),
-      labels   = Paths.get(opts.getOrElse("labels", "test/resources/fixtures/identity/identity-labels.json.gz")),
-      weights  = opts.get("weights").map(Paths.get(_)).getOrElse(IdentityCalibrate.ResolverArtefact),
-      source   = opts.getOrElse("source", "the trees under --fixtures"))
+      fixtures = arguments.requiredPath("fixtures"),
+      labels   = arguments.requiredPath("labels"),
+      weights  = arguments.requiredPath("weights"),
+      source   = arguments.required("source"))
   }
 
   /** Measures the classes from `labels` and the recorded searches under `fixtures`, and writes them

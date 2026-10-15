@@ -4,10 +4,10 @@ import play.api.libs.json.Json
 import services.identity._
 import services.identity.IdentityCalibration.{Bin, SignalWeights, Threshold}
 import services.identity.IdentityMeasures.{Category, Measure, Missing, Number}
-import tools.UnmatchedClusters
+import tools.{CommandLine, UnmatchedClusters}
 
 import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Path, Paths}
+import java.nio.file.{Files, Path}
 import java.util.concurrent.{Executors, TimeUnit}
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, ExecutionContext, Future}
@@ -433,15 +433,23 @@ object IdentityRefit {
     sb.toString
   }
 
+  val commandLine: CommandLine = CommandLine("IdentityRefit", "Re-tunes the identity weights on the unmatched-cluster ratchet, gated.",
+    CommandLine.Flag("apply", "write the refitted artefact"),
+    CommandLine.Value("report", "file.md", "where the evidence report goes"),
+    CommandLine.Value("max-changes", "n", "the most changes kept", default = Some("5")),
+    CommandLine.Value("relearn", "signal,…", "signals refitted from fresh units alone, their stored counts dropped"),
+    CommandLine.Value("weights", "file", "the artefact refitted", default = Some(Artefact.toString)),
+    CommandLine.Value("threads", "n", "measuring threads (default: half the processors)"))
+
   def main(args: Array[String]): Unit = {
-    val apply   = args.contains("--apply")
-    val opts    = args.sliding(2).collect { case Array(k, v) if k.startsWith("--") && !v.startsWith("--") => k.stripPrefix("--") -> v }.toMap
+    val arguments = commandLine.parseOrExit(args)
+    val apply   = arguments.flag("apply")
     val labels  = tools.IdentityJudgements.labels()
     val expected = UnmatchedClusters.readTakeLines(UnmatchedClusters.Directory.resolve("expected-matches.tsv"))
-    val relearn = opts.get("relearn").toSeq.flatMap(_.split(",")).map(_.trim).filter(_.nonEmpty).toSet
+    val relearn = arguments.get("relearn").toSeq.flatMap(_.split(",")).map(_.trim).filter(_.nonEmpty).toSet
     // `--weights <file>`: refit (and with --apply, write) another artefact than the shipped one — a positive control
     // starts from a deliberately mistuned copy and must find its way back
-    val artefact = opts.get("weights").map(Paths.get(_)).getOrElse(Artefact)
+    val artefact = arguments.requiredPath("weights")
     val start   = Json.parse(Files.readString(artefact)).as[IdentityCalibration]
     start.scopes.get(IdentityMeasures.ListingFilm).foreach(_.signals.toSeq.sortBy(_._1).filterNot((name, w) => reproduces(name, w)).map(_._1) match {
       case Seq() => ()
@@ -449,11 +457,11 @@ object IdentityRefit {
     })
     val replays = CaptureReplay.all()
     println(s"TMDB gaps: ${if (CaptureReplay.asksLive) "asked live" else "NOT asked (no TMDB_API_KEY) — a proposal asking one is unmeasured"}")
-    val threads = opts.get("threads").map(_.toInt).getOrElse(math.max(1, Runtime.getRuntime.availableProcessors / 2))
-    val (refitted, kept, rounds) = search(replays, labels, expected, start, relearn, opts.get("max-changes").map(_.toInt).getOrElse(5), threads, println)
+    val threads = arguments.int("threads").getOrElse(math.max(1, Runtime.getRuntime.availableProcessors / 2))
+    val (refitted, kept, rounds) = search(replays, labels, expected, start, relearn, arguments.requiredInt("max-changes"), threads, println)
     println(s"kept ${kept.size}: ${kept.map(k => s"${k.change.parameter} ${k.change.from} → ${k.change.to}").mkString("; ")}")
     val units = s"${labels.size} labels, ${expected.size} expected takes${if (relearn.isEmpty) "" else s"; relearned from fresh units: ${relearn.toSeq.sorted.mkString(", ")}"}"
-    opts.get("report").map(Paths.get(_)).foreach { p =>
+    arguments.path("report").foreach { p =>
       Files.createDirectories(p.toAbsolutePath.getParent)
       Files.writeString(p, report(kept, rounds, units), StandardCharsets.UTF_8)
     }

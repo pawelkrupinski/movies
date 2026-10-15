@@ -1,5 +1,6 @@
 package scripts
 
+import tools.CommandLine
 import models.SourceData
 import play.api.libs.json.{JsObject, JsValue, Json}
 import models.TitleSearch
@@ -61,19 +62,24 @@ object IdentityGateImpact {
   private def searches(js: JsValue): Seq[TitleSearch] = (js \ "titleSearches").asOpt[Seq[JsValue]].getOrElse(Nil).map(t =>
     TitleSearch((t \ "titleKey").as[String], (t \ "rank").asOpt[Int], (t \ "rivals").as[Int]))
 
-  def main(argv: Array[String]): Unit = {
-    def option(name: String) = argv.sliding(2).collectFirst { case Array(`name`, v) => Paths.get(v) }
-    val trees = option("--trees"); val plan = option("--plan")
-    val args  = argv.zipWithIndex.filterNot { case (a, i) => a.startsWith("--") || (i > 0 && argv(i - 1).startsWith("--")) }.map(_._1)
+  val commandLine: CommandLine = CommandLine("IdentityGateImpact", "What switching the rating gate on would hide, per country, judged by the labels.",
+    CommandLine.Value("weights", "json", "a candidate artefact measured instead of the pinned rating gate"),
+    CommandLine.Value("trees", "dir", "the enrichment-<cc>/ trees a row with no stored title search is measured from"),
+    CommandLine.Value("plan", "dir", "where the title-searches-<cc>.jsonl backfill plan is written"))
+    .withPositionals(CommandLine.Positional("rows", "the rows-<cc>.jsonl exports", repeatable = true))
+
+  def main(args: Array[String]): Unit = {
+    val arguments = commandLine.parseOrExit(args)
+    val trees = arguments.path("trees"); val plan = arguments.path("plan")
     // The gate's pinned artefact, or a candidate one (`--weights <json>`) measured before any copy.
-    val calibration = option("--weights").fold(IdentityCalibration.ratingGate)(p =>
+    val calibration = arguments.path("weights").fold(IdentityCalibration.ratingGate)(p =>
       Json.parse(Files.readAllBytes(p)).as[IdentityCalibration])
     val labelled    = labels(Paths.get("test/resources/fixtures/identity/identity-labels.json.gz"))
     println(s"calibration ${calibration.version}; showRatings threshold " +
       calibration.scopes(IdentityMeasures.ListingFilm).thresholds("showRatings").probability)
     println("| country | listed films | rated | with a title search | hidden | hidden % of rated | labelled corroborated (false hides) | labelled contradicted (true hides) | unlabelled | unscored (tmdbId, no TMDB slot) |")
     val examples = Seq.newBuilder[String]
-    args.foreach { file =>
+    arguments.positionals.foreach { file =>
       val rows = Files.readAllLines(Paths.get(file), StandardCharsets.UTF_8).asScala.filter(_.trim.nonEmpty).map(Json.parse).toSeq
       val country = rows.headOption.fold("?")(r => (r \ "country").as[String])
       val answers = trees.map(t => new IdentityCalibrationData.TmdbAnswers(Seq(t.resolve(s"enrichment-$country")).filter(Files.isDirectory(_)),

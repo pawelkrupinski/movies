@@ -133,7 +133,10 @@ object CommandLine {
 
     def all(name: String): Seq[String] = { val v = declared(name); values.getOrElse(name, v.default.toVector) }
     def get(name: String): Option[String] = all(name).lastOption
+    /** The value given, or else declared as the default — or the tool stops: a required option left out. */
     def required(name: String): String = get(name).getOrElse(fail(s"--$name <${declared(name).meta}> is required"))
+    def requiredPath(name: String): Path = Paths.get(required(name))
+    def requiredInt(name: String): Int = { required(name); int(name).get }
 
     def path(name: String): Option[Path] = get(name).map(Paths.get(_))
     def int(name: String): Option[Int] = converted(name, "a whole number")(_.toIntOption)

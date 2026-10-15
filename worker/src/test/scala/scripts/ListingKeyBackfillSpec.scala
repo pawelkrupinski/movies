@@ -59,8 +59,9 @@ class ListingKeyBackfillSpec extends AnyFlatSpec with Matchers {
   }
 
   "arguments" should "take the export directory as typed, trailing slash and all, never as a country code" in {
-    arguments(Seq("--export", "/tmp/lk/", "es", "--apply")) shouldBe
+    def read(args: String*) = arguments(commandLine.parse(args).toOption.get)
+    read("--export", "/tmp/lk/", "es", "--apply") shouldBe
       Arguments(apply = true, Some(java.nio.file.Paths.get("/tmp/lk")), Seq("es"))
-    arguments(Nil) shouldBe Arguments(apply = false, None, Nil)
+    read() shouldBe Arguments(apply = false, None, Nil)
   }
 }

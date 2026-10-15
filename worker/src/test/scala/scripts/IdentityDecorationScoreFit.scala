@@ -1,5 +1,6 @@
 package scripts
 
+import tools.CommandLine
 import play.api.libs.json.Json
 import services.identity.DecorationScore
 
@@ -21,11 +22,16 @@ object IdentityDecorationScoreFit {
   val Artefact: Path = Paths.get("worker/src/test/resources", DecorationScore.ResourcePath)
   val Header: String = "key\taligned\trecurring\tvenues\tprefix\ttokens\tformatShare\tinnerResolved\tmatchedShare\tgood\tbad"
 
+  val commandLine: CommandLine = CommandLine("IdentityDecorationScoreFit", "Re-fits the candidate-decoration score from the detector's outcomes.",
+    CommandLine.Value("training", "tsv", "the detector's outcomes", default = Some(Training.toString)),
+    CommandLine.Value("out", "json", "where the score is written", default = Some(Artefact.toString)),
+    CommandLine.Value("version", "v", "the version the fit is filed under (default: the rows' digest)"))
+
   def main(args: Array[String]): Unit = {
-    val opts = args.grouped(2).collect { case Array(k, v) => k.stripPrefix("--") -> v }.toMap
-    val training = opts.get("training").map(Paths.get(_)).getOrElse(Training)
-    val out      = opts.get("out").map(Paths.get(_)).getOrElse(Artefact)
-    val score    = DecorationScore.fit(read(training), opts.getOrElse("version", versionOf(training)))
+    val arguments = commandLine.parseOrExit(args)
+    val training = arguments.requiredPath("training")
+    val out      = arguments.requiredPath("out")
+    val score    = DecorationScore.fit(read(training), arguments.get("version").getOrElse(versionOf(training)))
     Files.writeString(out, Json.prettyPrint(Json.toJson(score)) + "\n")
     println(s"wrote $out: ${score.trainingRows} rows, cut ${score.cut}, held out ${score.heldOut}")
     score.features.zip(score.weights).foreach { case (name, weight) => println(s"  $name: $weight") }

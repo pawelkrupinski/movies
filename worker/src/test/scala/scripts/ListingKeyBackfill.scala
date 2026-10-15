@@ -1,5 +1,6 @@
 package scripts
 
+import tools.CommandLine
 import models.{Country, SourceData}
 import org.bson.codecs.DecoderContext
 import org.bson.{BsonDocument, BsonDocumentReader}
@@ -9,7 +10,7 @@ import play.api.libs.json.{JsArray, JsObject, JsString, Json}
 import services.movies.{ListingKey, MovieCodecs, ScreeningsRepository, SlotsRepository}
 
 import java.nio.charset.StandardCharsets
-import java.nio.file.{Files, Path, Paths}
+import java.nio.file.{Files, Path}
 import scala.concurrent.Await
 import scala.concurrent.duration._
 
@@ -96,21 +97,18 @@ object ListingKeyBackfill {
   /** Rows per scan page. */
   private val ScanPage = 2000
 
-  /** The command line: `--apply`, `--export <dir>`, and the country codes — every other argument. */
+  val commandLine: CommandLine = CommandLine("ListingKeyBackfill", "Stamps the listingKey on rows missing or holding a stale one; a dry run unless --apply.",
+    CommandLine.Flag("apply", "write, rather than report"),
+    CommandLine.Value("export", "dir", "where each country's planned writes are exported"))
+    .withPositionals(CommandLine.Positional("country", "the country codes backfilled (default: every country)", repeatable = true))
+
+  /** The command line: `--apply`, `--export <dir>`, and the country codes — every positional. */
   final case class Arguments(apply: Boolean, exportDir: Option[Path], countryCodes: Seq[String])
 
-  def arguments(args: Seq[String]): Arguments = {
-    val exportArg = args.sliding(2).collectFirst { case Seq("--export", dir) => dir }
-    // By the argument as typed: `Paths.get` drops a trailing slash, so comparing against the parsed
-    // path read `--export /tmp/lk/`'s directory as a country code.
-    val codes = args.zipWithIndex.collect {
-      case (a, i) if !a.startsWith("--") && !(i > 0 && args(i - 1) == "--export") => a
-    }
-    Arguments(args.contains("--apply"), exportArg.map(Paths.get(_)), codes)
-  }
+  def arguments(line: CommandLine.Arguments): Arguments = Arguments(line.flag("apply"), line.path("export"), line.positionals)
 
   def main(args: Array[String]): Unit = {
-    val Arguments(apply, exportDir, requested) = arguments(args.toSeq)
+    val Arguments(apply, exportDir, requested) = arguments(commandLine.parseOrExit(args))
     val countries =
       if (requested.isEmpty) Country.all
       else requested.map(code => Country.byCode(code).getOrElse {

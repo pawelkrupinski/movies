@@ -5,7 +5,7 @@ import services.identity._
 import services.identity.ListingShape
 import services.movies.{ListingKey, TitleContainment, TitleNormalizer}
 import services.titlerules.{ExtraTitleRules, RuleScope, TitleRule, TitleRuleSet, TitleRules}
-import tools.UnmatchedClusters
+import tools.{CommandLine, UnmatchedClusters}
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}
@@ -252,11 +252,19 @@ object DecorationDiscovery {
     sb.toString
   }
 
+  val commandLine: CommandLine = CommandLine("DecorationDiscovery", "Mines title decorations from the unmatched captures and measures each as a rule.",
+    CommandLine.Flag("apply", "write the kept proposals into ExtraTitleRules.scala"),
+    CommandLine.Value("report", "file.md", "where the evidence table goes"),
+    CommandLine.Value("limit", "n", "the most mined candidates measured", default = Some("60")),
+    CommandLine.Value("min-remainders", "n", "the fewest distinct remainders a candidate needs",
+      default = Some(TitleDecorations.MinCandidateRemainders.toString)),
+    CommandLine.Value("only", "side:run,…", "measure these runs instead of mining (words joined by anything but a letter)"))
+
   def main(args: Array[String]): Unit = {
-    val apply  = args.contains("--apply")
-    val opts   = args.sliding(2).collect { case Array(k, v) if k.startsWith("--") && !v.startsWith("--") => k.stripPrefix("--") -> v }.toMap
-    val limit  = opts.get("limit").map(_.toInt).getOrElse(60)
-    val min    = opts.get("min-remainders").map(_.toInt).getOrElse(TitleDecorations.MinCandidateRemainders)
+    val arguments = commandLine.parseOrExit(args)
+    val apply  = arguments.flag("apply")
+    val limit  = arguments.requiredInt("limit")
+    val min    = arguments.requiredInt("min-remainders")
     val labels = tools.IdentityJudgements.labels()
     val benches = CaptureReplay.all().map(new Bench(_, labels))
     println(s"TMDB gaps: ${if (CaptureReplay.asksLive) "asked live" else "NOT asked (no TMDB_API_KEY) — a proposal asking one is unmeasured"}")
@@ -265,7 +273,7 @@ object DecorationDiscovery {
     val every    = TitleRules.all ++ ExtraTitleRules.all
     // `--only prefix:kino-konesera,suffix:edukacja-mlode-horyzonty` (words joined by anything but a letter: runMain splits on spaces): measure these runs instead of mining (a positive
     // control, or a human's own proposal) — still refused when a known title starts or ends with one
-    val named = opts.get("only").map(_.split(",").toSeq.map(_.split(":", 2)).collect { case Array(side, run) =>
+    val named = arguments.get("only").map(_.split(",").toSeq.map(_.split(":", 2)).collect { case Array(side, run) =>
       Candidate(side.trim, TitleContainment.tokens(run), 0, 0, Nil) }.filterNot(c => Edges(lexicon).stripsRealTitle(c.side, c.run)))
     val candidates = named.getOrElse(mine(titles.map(t => t._1 -> t._3), lexicon, TitleDecorations.resolver, min).take(limit))
     val proposals = candidates.flatMap { c =>
@@ -282,7 +290,7 @@ object DecorationDiscovery {
       f"right ${e.right} wrong ${e.wrong} switched ${e.switched} lost ${e.lost} unjudged ${e.unjudged}"))
     val kept = evaluations.filter(_.kept).map(_.proposal)
     println(s"kept ${kept.size}: ${kept.map(_.rule.id).mkString(", ")}")
-    opts.get("report").foreach(p => Files.writeString(Path.of(p), report(evaluations, "test/resources/fixtures/identity-unmatched"), StandardCharsets.UTF_8))
+    arguments.path("report").foreach(p => Files.writeString(p, report(evaluations, "test/resources/fixtures/identity-unmatched"), StandardCharsets.UTF_8))
     if (apply && kept.nonEmpty) {
       Files.writeString(RulesSource, splice(Files.readString(RulesSource, StandardCharsets.UTF_8), kept), StandardCharsets.UTF_8)
       println(s"wrote ${kept.size} rule(s) into $RulesSource")

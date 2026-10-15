@@ -1,5 +1,6 @@
 package scripts
 
+import tools.CommandLine
 import play.api.libs.json.Json
 import services.identity.{LogisticFit, UnifiedEvidence, UnifiedWeights}
 
@@ -42,11 +43,16 @@ object IdentityUnifiedFit {
     def hand: Boolean = source == "hand"
   }
 
+  val commandLine: CommandLine = CommandLine("IdentityUnifiedFit", "Fits the unified evidence model and its hybrid from the training rows.",
+    CommandLine.Value("training", "tsv.gz", "the training rows", default = Some(Training.toString)),
+    CommandLine.Value("report", "md", "where the report is written, beside stdout"),
+    CommandLine.Value("version", "v", "the version the fit is filed under (default: the rows' digest)"))
+
   def main(args: Array[String]): Unit = {
-    val opts     = args.grouped(2).collect { case Array(k, v) => k.stripPrefix("--") -> v }.toMap
-    val training = opts.get("training").map(Paths.get(_)).getOrElse(Training)
+    val arguments = commandLine.parseOrExit(args)
+    val training = arguments.requiredPath("training")
     val rows     = read(training)
-    val version  = opts.getOrElse("version", versionOf(training))
+    val version  = arguments.get("version").getOrElse(versionOf(training))
     // the unified model (every signal compensatory) and the HYBRID (the guards hard, the score among what passes them)
     val models = Seq(Artefact -> Nil, HybridArtefact -> UnifiedEvidence.Guards).map { case (path, guards) =>
       val fitted  = fit(rows, version, guards)
@@ -55,7 +61,7 @@ object IdentityUnifiedFit {
       weights
     }
     val report = models.map(Report.of(rows, _)).mkString("\n") + Report.guarding(rows, models.head, models.last)
-    opts.get("report").foreach(path => Files.writeString(Paths.get(path), report))
+    arguments.path("report").foreach(Files.writeString(_, report))
     println(report)
   }
 

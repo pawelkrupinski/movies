@@ -1,5 +1,6 @@
 package scripts
 
+import tools.CommandLine
 import services.MongoConnection
 import org.mongodb.scala.model.{Filters, Sorts}
 import org.mongodb.scala.{Document, MongoCollection, ObservableFuture, SingleObservableFuture}
@@ -42,9 +43,14 @@ object ReapOrphanedFilmRows {
   def orphanFilmIds(liveFilmIds: Set[String], sideFilmIds: Seq[String]): Seq[String] =
     sideFilmIds.filterNot(liveFilmIds.contains).sorted
 
+  val commandLine: CommandLine = CommandLine("ReapOrphanedFilmRows", "Deletes side-collection rows whose film is gone; a dry run unless --apply.",
+    CommandLine.Flag("apply", "delete, rather than report"),
+    CommandLine.Value("max", "n", "the most rows deleted", default = Some("5000")))
+
   def main(args: Array[String]): Unit = {
-    val apply  = args.contains("--apply")
-    val max    = argInt(args, "--max", 5000)
+    val arguments = commandLine.parseOrExit(args)
+    val apply  = arguments.flag("apply")
+    val max    = arguments.requiredInt("max")
     val conn   = MongoConnection.forProcess(_root_.settings.ProcessConfiguration.resolve(), required = services.MongoRequirement.Required)
     val db     = conn.database.getOrElse { println("Could not open the database — is MONGODB_URI set?"); sys.exit(1) }
     val dbName = db.name
@@ -107,7 +113,4 @@ object ReapOrphanedFilmRows {
       }
     } finally conn.close()
   }
-
-  private def argInt(args: Array[String], flag: String, default: Int): Int =
-    args.sliding(2).collectFirst { case Array(`flag`, v) => v.toIntOption }.flatten.getOrElse(default)
 }

@@ -2,7 +2,7 @@ package scripts
 
 import services.identity.{IdentityMeasures, ResolverDecision, SuspectTakes}
 import services.identity.SuspectTakes.{Signal, Take}
-import tools.{IdentityJudgements, SuspectTakesAudit, UnmatchedClusters}
+import tools.{CommandLine, IdentityJudgements, SuspectTakesAudit, UnmatchedClusters}
 
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path, Paths}
@@ -23,10 +23,17 @@ import java.nio.file.{Files, Path, Paths}
  */
 object SuspectTakesMeasure {
 
+  val commandLine: CommandLine = CommandLine("SuspectTakesMeasure", "Measures the suspect-take signals against the judged takes of a takes dump.",
+    CommandLine.Value("dumps", "dir", "the <cc>.json.gz takes dumps", default = Some("target/suspect-takes")),
+    CommandLine.Value("year", "yyyy", "the year a take's record is read against", default = Some("2026")),
+    CommandLine.Value("why", "word~word", "print each labelled take of a billing holding one of the words"),
+    CommandLine.Value("out", "file", "where the queue, its reasons and the wrong takes go"),
+    CommandLine.Value("missed", "file", "where the wrong labels no signal suspects go"))
+
   def main(args: Array[String]): Unit = {
-    val opts   = args.grouped(2).collect { case Array(k, v) => k.stripPrefix("--") -> v }.toMap
-    val dumps  = Paths.get(opts.getOrElse("dumps", "target/suspect-takes"))
-    val year   = opts.get("year").map(_.toInt).getOrElse(2026)
+    val arguments = commandLine.parseOrExit(args)
+    val dumps  = arguments.requiredPath("dumps")
+    val year   = arguments.requiredInt("year")
     val judged = IdentityJudgements.read()
     val labels = IdentityJudgements.labels(judged)
     val tolerated = IdentityJudgements.tolerated(judged, IdentityJudgements.Scope.Served).keySet
@@ -62,7 +69,7 @@ object SuspectTakesMeasure {
           }
           if (asTakes.nonEmpty) {
             val found = asTakes.flatMap(SuspectTakes.of(_, year, corpus.billings))
-            opts.get("why").filter(_.split("~").exists(label.rawTitle.contains(_))).foreach { _ =>
+            arguments.get("why").filter(_.split("~").exists(label.rawTitle.contains(_))).foreach { _ =>
               asTakes.foreach(t => println(s"WHY ${t.listing.venue} | ${t.listing.rawTitle} | clean '${t.listing.cleanTitle}' year ${t.listing.year} " +
                 s"runtime ${t.listing.runtime} venues ${corpus.billings.venuesBilling(t.listing)} → ${t.film} ${t.record.title} " +
                 s"${(t.record.title +: (t.record.originalTitle.toSeq ++ t.record.alternativeTitles)).mkString("[", "; ", "]")} ${t.record.year} ${t.record.runtimes} ${t.decision.basis}: " +
@@ -110,13 +117,13 @@ object SuspectTakesMeasure {
     }
     println("\nqueue (today's suspect takes no label judges, beyond the baseline):")
     counts.result().foreach(println)
-    opts.get("missed").foreach { file =>
+    arguments.get("missed").foreach { file =>
       Files.write(Paths.get(file), wrong.filter(_.signals.isEmpty).map(g => s"${g.country}\t${g.label.venue}\t${g.label.rawTitle}\t${g.label.film}\t${g.label.note}")
         .mkString("", "\n", "\n").getBytes(StandardCharsets.UTF_8))
       Files.write(Paths.get(file + ".right"), right.filter(_.signals.nonEmpty).map(g => s"${g.country}\t${g.label.rawTitle}\t${g.label.film}\t${g.reasons.mkString("; ")}")
         .mkString("", "\n", "\n").getBytes(StandardCharsets.UTF_8))
     }
-    opts.get("out").foreach { file =>
+    arguments.get("out").foreach { file =>
       val out: Path = Paths.get(file)
       Option(out.getParent).foreach(Files.createDirectories(_))
       Files.write(out, (SuspectTakesAudit.QueueHeader +: queue.result().distinct.sorted).mkString("", "\n", "\n").getBytes(StandardCharsets.UTF_8))

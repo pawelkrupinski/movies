@@ -72,6 +72,8 @@ class CommandLineSpec extends AnyFlatSpec with Matchers with SuiteConfiguration 
     an[InvalidArguments] should be thrownBy parsed("--threads", "many").int("threads")
     an[InvalidArguments] should be thrownBy parsed().required("report")
     parsed("--report", "r.md").path("report") shouldBe Some(Paths.get("r.md"))
+    parsed("--report", "r.md").requiredPath("report") shouldBe Paths.get("r.md")
+    parsed().requiredInt("threads") shouldBe 6
   }
 
   it should "treat a read of an option it never declared as the tool's own bug" in {

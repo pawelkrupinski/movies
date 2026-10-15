@@ -1,5 +1,6 @@
 package scripts
 
+import tools.CommandLine
 import services.identity.UnifiedEvidence
 
 import java.nio.charset.StandardCharsets
@@ -262,9 +263,20 @@ object IdentityUnifiedStrategies {
     }.toMap
   }
 
+  val RulesArtefact: Path = Paths.get("identity/src/main/resources", services.identity.UnifiedRules.ResourcePath)
+
+  val ReviewFile: Path = Paths.get("test/resources/fixtures/identity-unmatched/review-candidates.tsv")
+
+  val commandLine: CommandLine = CommandLine("IdentityUnifiedStrategies", "Compares the agreement-stage strategies and pins the stable greedy rules.",
+    CommandLine.Value("training", "tsv.gz", "the training rows", default = Some(IdentityUnifiedFit.Training.toString)),
+    CommandLine.Value("rules", "json", "where the pinned rules are written", default = Some(RulesArtefact.toString)),
+    CommandLine.Value("report", "md", "where the report is written, beside stdout"),
+    CommandLine.Value("review", "tsv", "where the unlabelled changes for review go", default = Some(ReviewFile.toString)))
+
   def main(args: Array[String]): Unit = {
-    val opts     = args.grouped(2).collect { case Array(k, v) => k.stripPrefix("--") -> v }.toMap
-    val rows     = read(opts.get("training").map(Paths.get(_)).getOrElse(IdentityUnifiedFit.Training))
+    val arguments = commandLine.parseOrExit(args)
+    val training = arguments.requiredPath("training")
+    val rows     = read(training)
     val clusters = rows.groupBy(_.cluster).toSeq.sortBy(_._1).map { case (id, rs) => Cluster(id, rs.sortBy(_.film)) }
     val (greedyTakes, accepted, rejected, _) = greedy(clusters)
     val stable = stableSteps(clusters)
@@ -303,9 +315,9 @@ object IdentityUnifiedStrategies {
     val report = b.toString
     // the stable rules, pinned for the agreement stage to apply
     val shipped = rulesOf(stable, results.find(_.name.startsWith("2b. stable greedy (in sample)")), results.find(_.name.startsWith("2b. stable greedy (held out)")),
-      IdentityUnifiedFit.versionOf(opts.get("training").map(Paths.get(_)).getOrElse(IdentityUnifiedFit.Training)))
-    Files.writeString(opts.get("rules").map(Paths.get(_)).getOrElse(RulesArtefact), play.api.libs.json.Json.prettyPrint(play.api.libs.json.Json.toJson(shipped)) + "\n")
-    opts.get("report").foreach(path => Files.writeString(Paths.get(path), report))
+      IdentityUnifiedFit.versionOf(training))
+    Files.writeString(arguments.requiredPath("rules"), play.api.libs.json.Json.prettyPrint(play.api.libs.json.Json.toJson(shipped)) + "\n")
+    arguments.path("report").foreach(Files.writeString(_, report))
     println(report)
 
     // greedy's held-out wrong listings, named
@@ -313,10 +325,8 @@ object IdentityUnifiedStrategies {
     println(heldOutWrong.map(c => s"held-out wrong: ${c.cluster.head.country} ${c.cluster.head.rawTitle} → ${c.to.map(r => s"${r.film} ${r.filmTitle}")}")
       .mkString("\n"))
     // the changes the adopted strategy (greedy) makes that no hand label judges, for review
-    writeReview(opts.get("review").map(Paths.get(_)).getOrElse(ReviewFile), greedyReview)
+    writeReview(arguments.requiredPath("review"), greedyReview)
   }
-
-  val RulesArtefact: Path = Paths.get("identity/src/main/resources", services.identity.UnifiedRules.ResourcePath)
 
   /** The stable steps as the pinned artefact, with what they measured — the hand-pinned rules ([[services.identity.UnifiedRules.pinned]])
    *  and their measures carried over from the shipped artefact, which no selection makes. */
@@ -328,8 +338,6 @@ object IdentityUnifiedStrategies {
         shipped.toSeq.flatMap(_.measured.filter(_._1.startsWith("pinned."))),
       shipped.toSeq.flatMap(_.pinned))
   }
-
-  val ReviewFile: Path = Paths.get("test/resources/fixtures/identity-unmatched/review-candidates.tsv")
 
   def writeReview(path: Path, review: Seq[Change]): Unit = {
     def film(row: Option[Row]) = row.fold("none")(r => s"${r.film} ${r.filmTitle}")
