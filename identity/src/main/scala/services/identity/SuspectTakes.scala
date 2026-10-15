@@ -123,7 +123,7 @@ object SuspectTakes {
 
   /** What a corpus bills, by WORK — the film a listing was taken as, else its own cleaned title: the pieces billed beside
    *  at least [[Billings.MinWorks]] films taken — a programme's banner ("Akademia Kina Polskiego", "KLASYCZNE ŚRODY", "Kino bez
-   *  barier"), not a work's title — the words at least [[Billings.CommonWorks]] works' billings carry ("klub", "filmowy",
+   *  barier"), not a work's title — the words at least [[Billings.MinCommonWorks]] works' billings carry ("klub", "filmowy",
    *  "edukacja"), of which no work's own title is made, and how many venues bill each title. By work, not by billing: a
    *  touring show billed at six venues ("Jan Logemann LIVE: Herr Logemann hebt ab!") or one film billed in its variants
    *  ("Herr der Ringe - Rückkehr des Königs (ext.) (OV)") is one work, whose words and pieces are its own. Built for one

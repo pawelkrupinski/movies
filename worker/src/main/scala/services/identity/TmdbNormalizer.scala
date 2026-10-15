@@ -111,7 +111,7 @@ object TmdbNormalizer {
     val crew    = (body \ "crew").asOpt[Seq[JsValue]].map(c => "crew" -> directors(c))
     // which countries date a release, never the dates: the release veto's one question (`Film.releasedIn`)
     val released = (body \ "release_dates").toOption.map(block => TmdbFilmRecord.ReleaseCountries -> Json.toJson(TmdbFilmRecord.releaseCountries(block)))
-    // and the cinema releases' countries, years and editions: the years a listing's year is read against (`Film.releaseYears`)
+    // and the cinema releases' countries, years and editions: the years a listing's year is read against (`Film.releasesIn`)
     val releases = (body \ "release_dates").toOption.map(block => TmdbFilmRecord.Releases -> Json.toJson(TmdbFilmRecord.releases(block)))
     JsObject(keep ++ date ++ popularity ++ countries ++ alternatives ++ credits ++ crew ++ released ++ releases)
   }

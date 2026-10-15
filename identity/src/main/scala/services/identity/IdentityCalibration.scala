@@ -234,7 +234,7 @@ object IdentityCalibration {
   }
 
   /** One condition of a learned cannot-link: the signal's category is one of `in`, or its number
-   *  lies in [`atLeast`, `atMost`]. Same shape as `ListingConstraints.LearnedCondition`. */
+   *  lies in [`atLeast`, `atMost`]. [[LearnedCannotLinks]] reads it. */
   final case class Condition(signal: String, in: Seq[String] = Nil, atLeast: Option[Double] = None,
                              atMost: Option[Double] = None) {
     def holds(measures: Map[String, Measure]): Boolean = IdentityMeasures.ruleMeasure(measures, signal) match {
