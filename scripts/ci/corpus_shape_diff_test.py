@@ -68,6 +68,15 @@ class CorpusShapeDiffTest(unittest.TestCase):
         self.assertEqual(2, self.run_diff("uk", base, self.side("head", {}))[0])
         self.assertEqual(2, self.run_diff("uk", self.side("empty", {}), base)[0])
 
+    def test_a_spec_the_base_ran_and_the_head_did_not_is_no_verdict_never_its_findings_cured(self):
+        # every spec writes its file, findings or none: one missing at the head is a spec that did not run there
+        base = self.side("base", {"corpus-shape-recorded-uk-SearchQueryMarkers.txt": [],
+                                  "corpus-shape-recorded-uk-CinemaSlotInvariants.txt": [ARRIETTY]})
+        head = self.side("head", {"corpus-shape-recorded-uk-SearchQueryMarkers.txt": []})
+        self.assertEqual(2, self.run_diff("uk", base, head)[0])
+        # a spec the head brings, the base predating it, judges its findings as the head's
+        self.assertEqual(1, self.run_diff("uk", head, base)[0])
+
 
 if __name__ == "__main__":
     unittest.main()

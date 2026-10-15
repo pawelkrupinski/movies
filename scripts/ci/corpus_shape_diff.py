@@ -17,7 +17,8 @@ A finding is matched by spec, kind, venue and listing; its text (the query a lis
 and head without making it new.
 
 usage: corpus_shape_diff.py <cc> <base dir> <head dir> [--summary F] [--base-name S] [--head-name S]
-Exit 1 on a new finding, 2 when a side wrote no findings file for <cc> (its specs did not run): no verdict.
+Exit 1 on a new finding, 2 when a side wrote no findings file for <cc>, or the head none for a spec the base ran (the
+specs did not run): no verdict. A spec only the head has (one the change brings) judges its findings as new.
 """
 
 import argparse
@@ -26,15 +27,21 @@ import os
 import sys
 
 
+def specs_of(directory, cc):
+    """{spec: path} of every corpus-shape file `directory` holds for `cc`'s recorded corpus -- each spec writes its own,
+    findings or none, so a spec absent from it did not run there."""
+    prefix = f"corpus-shape-recorded-{cc}-"
+    return {os.path.basename(p)[len(prefix):-len(".txt")]: p for p in glob.glob(os.path.join(directory, prefix + "*.txt"))}
+
+
 def findings_of(directory, cc):
     """{(spec, kind, venue, listing): what} of every corpus-shape file `directory` holds for `cc`'s recorded corpus;
     None when it holds none."""
-    paths = sorted(glob.glob(os.path.join(directory, f"corpus-shape-recorded-{cc}-*.txt")))
-    if not paths:
+    specs = specs_of(directory, cc)
+    if not specs:
         return None
     out = {}
-    for path in paths:
-        spec = os.path.basename(path)[len(f"corpus-shape-recorded-{cc}-"):-len(".txt")]
+    for spec, path in sorted(specs.items()):
         with open(path, encoding="utf-8") as f:
             for line in f:
                 cols = line.rstrip("\n").split("\t")
@@ -90,6 +97,12 @@ def main(argv=None):
         return 2
     if base is None or head is None:
         print(f"corpus shape ({a.cc}): no findings file at the {'base' if base is None else 'head'} -- its specs did not run",
+              file=sys.stderr)
+        return 2
+    unrun = sorted(set(specs_of(a.base, a.cc)) - set(specs_of(a.head, a.cc)))
+    if unrun:
+        # its findings would read as cured: a spec the head did not run is no verdict, never a pass
+        print(f"corpus shape ({a.cc}): {', '.join(unrun)} wrote findings at the base and none at the head -- it did not run there",
               file=sys.stderr)
         return 2
     found = classify(base, head)
