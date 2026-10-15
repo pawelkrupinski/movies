@@ -145,7 +145,10 @@ Order by the live tally: 4 (relays, 33 of 70 live wrong listings), then 2, 3, 1,
 
 ### Review of the 10-12..15 identity changes (2026-10-15)
 Each a production change: measure with `scripts/identity-measure`, land one at a time.
-- [ ] **billedBeside keeps differ by stage.** The model's `IdentityResolver.billedAsPiece` keeps a take on six signals
+- [x] **billedBeside keeps differ by stage.** (done: `BilledPiece.of`, read by both; the agreement stage reads its
+  `Keeps.Facts` only — the billing's stated facts, other venues stating them: the record keeps (current, untranslated) and
+  the venue-word keeps took the families' namesake of the piece in the capture: CBeebies Panto's 2027 Treasure Island,
+  Femme, Dave, Giorgia Fumo, 40 Jahre Lumière) The model's `IdentityResolver.billedAsPiece` keeps a take on six signals
   (≥5 venues, a stated fact, a feed link, a current release, an untranslated title, a recurring banner/tag); the
   agreement's `AgreementStage.pieceOf` calls `ListingShape.billedBeside` with none, so it denies agreed films the model
   keeps. One keep predicate, read by both.

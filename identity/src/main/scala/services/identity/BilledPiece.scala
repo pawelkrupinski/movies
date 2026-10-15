@@ -32,9 +32,17 @@ private[identity] object BilledPiece {
   /** Why the film is one piece of the billing; `staging`: the piece beside it names a staging of its work. */
   final case class Piece(why: String, staging: Boolean)
 
+  /** Which keeps a stage reads. [[Keeps.All]]: the model's own candidate, its facts weighed against the billing's. The
+   *  record the families agree on is their best namesake of the PIECE, which every keep but the billing's facts would take
+   *  (DE "Femme - Frauen heilen die Welt": the 2023 British "Femme", untranslated; UK "CBeebies Panto 2026: Treasure
+   *  Island": a 2027 "Treasure Island", current; DE "40 Jahre Lumière - Die Geburtstagsfeier" at the Lumière: the 1961
+   *  film beside the venue's own anniversary), so the agreement stage reads [[Keeps.Facts]]: a fact the billing states,
+   *  or other venues stating the film's. */
+  enum Keeps { case All, Facts }
+
   def of(evidence: Evidence, listings: Seq[Listing], country: Option[String], film: IdentityMeasures.Film, tmdbId: Option[Int],
          measures: Map[String, Measure], corroborated: Double, recurs: String => Boolean,
-         answered: CandidateQuery => Seq[Hit]): Option[Piece] = {
+         answered: CandidateQuery => Seq[Hit], keeps: Keeps = Keeps.All): Option[Piece] = {
     def screened = corroborated >= IdentityResolver.PieceCorroboration
     def stated   = IdentityMeasures.ownAgreement(measures)._1.nonEmpty ||
       IdentityMeasures.runtimeGap(measures).exists(_ <= IdentityResolver.PieceRuntimeAgreement) ||
@@ -70,7 +78,8 @@ private[identity] object BilledPiece {
     if (stated) None
     // a billing listing several works by name is a programme, whatever its first piece's film (DE "Retro - An Undiscovered
     // World, Running High, Carrying Dreams: The Weight Between", four shorts): no keep reads it as one film's
-    else if (screened || (!ListingShape.listsWorks(evidence.rawTitle) && (current || untranslated))) staged
+    else if (screened || (keeps == Keeps.All && !ListingShape.listsWorks(evidence.rawTitle) && (current || untranslated))) staged
+    else if (keeps == Keeps.Facts) staged.orElse(ListingShape.billedBeside(listing, Seq(film)).map(Piece(_, staging = false)))
     else {
       lazy val banners = evidence.published.shapes.filter(recurs).map(tokens)
       lazy val tags    = IdentityMeasures.capitalisedTags(evidence.published).map(tokens).filter(_.sizeIs == 1)

@@ -220,8 +220,8 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
   it should "take no film the families agree on that the billing names as one piece beside another thing, nor fill one" in {
     // DE "Femme - Frauen heilen die Welt" (fixture identity-unmatched): four families agree on the 2023 "Femme" its first
     // piece names — the billing is a documentary its subtitle names
-    def decided(title: String) = {
-      val billed = listing(KinoMuza, title)
+    def decided(title: String, year: Option[Int] = None) = {
+      val billed = listing(KinoMuza, title, year)
       val model  = Resolution(Seq(ResolverDecision(Seq(billed.key), None, 0.7, ResolverDecision.Basis.BelowThreshold, Nil)()), 1,
         Map(billed.key -> 0), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
       new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver,
@@ -233,6 +233,8 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     piece.explanation.last should include ("one piece of the billing — 'frauen heilen die welt' is billed beside 'Klondike'")
     // the venue's own programme beside it is no other thing
     decided("Klondike - Film Club").film shouldBe Some(913760)
+    // nor where the billing states the film's own year: the model's keep (BilledPiece), which this stage read none of
+    decided("Klondike - Frauen heilen die Welt", Some(2022)).film shouldBe Some(913760)
   }
 
   it should "count the model's own best TMDB candidate as a voter beside two families, by its record's facts" in {
