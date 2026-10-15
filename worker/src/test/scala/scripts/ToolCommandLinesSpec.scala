@@ -32,6 +32,16 @@ class ToolCommandLinesSpec extends AnyFlatSpec with Matchers {
       "integration") shouldBe Seq(ToolCallers.Call(script, "integration.UnmatchedClustersFill", Seq("de", "--capture", "x", "--bogus")))
   }
 
+  it should "stand in the file's own value for a variable it assigns once, literally" in {
+    val script = Paths.get("scripts/example.sh")
+    val text = "ratchet_args=\"--measure --out target/identity-unmatched\"\n" +
+      "go() {\n  local tool=t scope=\"\"\n  grep -q x \"$tool\" && scope=\" --countries $cc\"\n" +
+      "  sbt \"worker/Test/runMain scripts.UnmatchedClustersRatchet $ratchet_args$scope\"\n}\n"
+    // ratchet_args is one literal; scope is assigned twice, so it stays a placeholder (here glued to the value before it).
+    ToolCallers.callsIn(script, text, "scripts") shouldBe
+      Seq(ToolCallers.Call(script, "scripts.UnmatchedClustersRatchet", Seq("--measure", "--out", "target/identity-unmatchedx")))
+  }
+
   "IdentityCalibrate and IdentityDecorationsLearn" should "read the recorded corpora alike, the hard clusters defaulted" in {
     Seq(IdentityCalibrate.commandLine, IdentityDecorationsLearn.commandLine).foreach { line =>
       RecordedCorpora.of(parsed(line, "--corpora", "c", "--fixtures", "f")) shouldBe

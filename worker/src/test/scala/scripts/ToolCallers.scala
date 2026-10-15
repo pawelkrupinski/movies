@@ -11,7 +11,8 @@ import scala.util.matching.Regex
 /**
  * Every `sbt "…/runMain <package>.<Tool> <args>"` (or `java … -cp <classpath> <package>.<Tool> <args>`, up to the
  * line's pipe or redirect, its backslash continuations joined) the repository's scripts, workflows and skills type,
- * with its shell expansions stood in by a placeholder value, so a spec can parse each against the tool's own
+ * with its shell expansions stood in — by the file's own value for a variable it assigns exactly once to a literal
+ * (`args="--measure --out dir"`), by a placeholder value otherwise — so a spec can parse each against the tool's own
  * [[CommandLine]]: a flag a caller passes that the tool no longer declares fails the spec, not the next weekly run.
  */
 object ToolCallers {
@@ -24,6 +25,15 @@ object ToolCallers {
   /** `${VAR:+--flag $VAR}`: the flag and a value, as a caller that sets VAR passes them. */
   private val IfSet    = """\$\{\w+:\+([^}]*)\}""".r
   private val Expanded = """\$\{\{[^}]*\}\}|\$\{[^}]*\}|\$\([^)]*\)|\$\w+""".r
+  private val Assignment = """(?<![\w$-])(\w+)=("[^"]*"|'[^']*'|[^\s;&|)]*)""".r
+
+  /** The variables `text` assigns exactly once, to a value with no expansion of its own: the one value a caller's
+   *  `$name` can hold. A variable assigned twice (`scope=""`, then `scope=" --countries $cc"`) is left to the placeholder. */
+  private def literals(text: String): Map[String, String] =
+    Assignment.findAllMatchIn(text).toSeq.groupBy(_.group(1)).collect {
+      case (name, Seq(only)) if !only.group(2).exists(c => c == '$' || c == '`') =>
+        name -> only.group(2).stripPrefix("\"").stripSuffix("\"").stripPrefix("'").stripSuffix("'")
+    }
 
   def calls(packageName: String): Seq[Call] = Callers.filter(Files.isDirectory(_)).flatMap { root =>
     val walk = Files.walk(root)
@@ -36,9 +46,13 @@ object ToolCallers {
    *  one line the shell reads, so a flag on a continuation line is checked too. */
   def callsIn(file: Path, text: String, packageName: String): Seq[Call] = {
     val joined = text.replace("\\\n", " ")
+    val known  = literals(joined)
+    val Named  = """\$\{(\w+)\}|\$(\w+)""".r
     (RunMain.findAllMatchIn(joined) ++ JavaMain.findAllMatchIn(joined)).collect {
       case m if m.group(1).startsWith(s"$packageName.") =>
-        val stood = Expanded.replaceAllIn(IfSet.replaceAllIn(m.group(2), set => Regex.quoteReplacement(set.group(1))), "x").replace("\"", "")
+        val ifSet = IfSet.replaceAllIn(m.group(2), set => Regex.quoteReplacement(set.group(1)))
+        val named = Named.replaceAllIn(ifSet, v => Regex.quoteReplacement(known.getOrElse(Option(v.group(1)).getOrElse(v.group(2)), v.matched)))
+        val stood = Expanded.replaceAllIn(named, "x").replace("\"", "")
         Call(file, m.group(1), stood.trim.split("\\s+").toSeq.filter(_.nonEmpty))
     }.toSeq
   }
