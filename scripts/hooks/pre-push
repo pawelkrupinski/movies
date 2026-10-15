@@ -24,7 +24,8 @@
 #   `scripttests` scripts/run-script-tests --changed <base>, on any change under the script-test roots (scripts/,
 #                 .github/scripts|actions, android/scripts, ios/scripts, infra/bin, data): only the self-tests whose test,
 #                 tool, or a file they name the push changed -- this hook's own test among them (it names
-#                 install-hooks.sh and hooks-path.sh), since a new check changes what the hook plans
+#                 install-hooks.sh and hooks-path.sh), since a new check changes what the hook plans; on a Mac, run
+#                 again under its /bin/bash 3.2 (`--bash /bin/bash`), the bash the tools promise to run on
 #   `actionlint`  changed workflow files (with shellcheck over their `run:` blocks), and changed
 #                 composite actions' `run:` blocks (scripts/ci/shellcheck-action-runs.sh)
 #   `shellcheck`  changed *.sh and hook scripts — fails only on warnings the push ADDS, so a
@@ -442,6 +443,16 @@ check_scripttests() {
     scripts/run-script-tests --changed "$base_sha" > "$tmp/scripttests.log" 2>&1 \
         || { grep -v '^PASS\|✓' "$tmp/scripttests.log" | head -80 >&2; return 1; }
     tail -1 "$tmp/scripttests.log"
+    # On a Mac, again under its /bin/bash 3.2, the floor the tools promise: a bash-4-only construct is caught at the push,
+    # not by the nightly macOS job (PREPUSH_FLOOR_BASH stands in for /bin/bash in the hook's test)
+    local floor=${PREPUSH_FLOOR_BASH:-/bin/bash} major
+    [ -x "$floor" ] || return 0
+    # shellcheck disable=SC2016 # expanded by that bash
+    major=$("$floor" -c 'echo "${BASH_VERSINFO[0]}"' 2>/dev/null) || return 0
+    case "$major" in [0-3]) ;; *) return 0 ;; esac
+    scripts/run-script-tests --changed "$base_sha" --bash "$floor" > "$tmp/scripttests-floor.log" 2>&1 \
+        || { echo "under $floor (bash $major):" >&2; grep -v '^PASS\|✓' "$tmp/scripttests-floor.log" | head -80 >&2; return 1; }
+    echo "under $floor: $(tail -1 "$tmp/scripttests-floor.log")"
 }
 
 # actionlint over changed workflows; a composite action's `run:` blocks, which actionlint does not

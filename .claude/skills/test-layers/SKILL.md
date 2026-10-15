@@ -57,8 +57,9 @@ is that the local toolchain is missing (e.g. no full Xcode for
   file they name, or a library they source/import (transitively) changed
   (the pre-push hook's `scripttests`), `--list --all` shows the
   `# script-test: <tag>` ones kept out of the default run. `--bash /bin/bash`
-  runs them under macOS's bash 3.2, the floor the tools promise (the nightly
-  Order independence `swift` job does); run it after a shell change.
+  runs them under macOS's bash 3.2, the floor the tools promise: the pre-push
+  hook does so on a Mac for the tests a push selects, and the nightly Order
+  independence `swift` job for all of them.
 
 ## Per-country convergence suites (e2e, `@CountryScoped`)
 

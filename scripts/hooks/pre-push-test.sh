@@ -417,16 +417,26 @@ scratch_git "$grepo" config core.hooksPath "$gate/foreign-hooks"
 all_green push "$gbase..$plain" >/dev/null
 check "an absolute core.hooksPath to some other directory is left alone" "$gate/foreign-hooks" "$(hooks_path)"
 # ── scripttests: the runner over what the push changed, from its base, blocking on a failure ──
-printf '#!/usr/bin/env bash\necho "$*" > "$STUB_RUNNER_ARGS"; exit "${STUB_RUNNER_EXIT:-0}"\n' > "$grepo/scripts/run-script-tests"
+printf '#!/usr/bin/env bash\necho "$*" >> "$STUB_RUNNER_ARGS"\ncase "$*" in *--bash*) exit "${STUB_FLOOR_EXIT:-0}" ;; esac; exit "${STUB_RUNNER_EXIT:-0}"\n' > "$grepo/scripts/run-script-tests"
 chmod +x "$grepo/scripts/run-script-tests"
 runner_base="$(scratch_git "$grepo" rev-parse HEAD)"
 scratch_git "$grepo" add scripts/run-script-tests && scratch_git "$grepo" commit -qm "a runner stub"
 runner_head="$(scratch_git "$grepo" rev-parse HEAD)"
-script_push() { (cd "$grepo" && all_green env PREPUSH_SKIP="${pathchecks/scripttests/}" STUB_RUNNER_ARGS="$gate/args" "$@" \
+# the Mac's /bin/bash, faked: a bash reporting the major version given
+floor_bash() { printf '#!/bin/sh\necho %s\n' "$1" > "$gate/bash$1"; chmod +x "$gate/bash$1"; echo "$gate/bash$1"; }
+script_push() { rm -f "$gate/args"; (cd "$grepo" && all_green env PREPUSH_SKIP="${pathchecks/scripttests/}" STUB_RUNNER_ARGS="$gate/args" \
+  PREPUSH_FLOOR_BASH="${floor:-$gate/no-such-bash}" "$@" \
   bash "$REPO_ROOT/scripts/hooks/pre-push" --range "$runner_base..$runner_head" >/dev/null 2>"$gate/err"); echo $?; }
 check "a script push runs the self-tests its changes select, from the push's base" "0 --changed $runner_base" \
   "$(script_push) $(cat "$gate/args")"
 check "...and a failing one blocks the push" "1 1" "$(script_push STUB_RUNNER_EXIT=1) $(grep -c 'scripttests FAILED' "$gate/err")"
+floor=$(floor_bash 3)
+check "on a Mac (a /bin/bash 3) they run under it too, the floor the tools promise" "0 --changed $runner_base|--changed $runner_base --bash $floor" \
+  "$(script_push) $(paste -sd'|' - < "$gate/args")"
+check "...and a failure only there blocks the push" "1 1" "$(script_push STUB_FLOOR_EXIT=1) $(grep -c 'scripttests FAILED' "$gate/err")"
+floor=$(floor_bash 5)
+check "a /bin/bash 4 or newer (Linux) runs them once" "0 --changed $runner_base" "$(script_push) $(cat "$gate/args")"
+floor=""
 rm -rf "$gate"
 
 spec_summary
