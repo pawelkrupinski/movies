@@ -4,15 +4,14 @@
 set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 . "$REPO_ROOT/scripts/shell-spec.sh"
-# A hook-run test inherits the pushing repository's git environment; this one owns its own repository.
-unset GIT_DIR GIT_WORK_TREE GIT_INDEX_FILE
+. "$REPO_ROOT/scripts/scratch-git.sh"
 
 printf '\033[36m▸\033[0m convergence-bisect-step.sh\n'
 
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 step="$REPO_ROOT/.github/scripts/convergence-bisect-step.sh"
-mkdir -p "$work/bin" "$work/repo" "$work/tmp"
+mkdir -p "$work/bin" "$work/tmp"
 
 # The stub sbt answers as STUB_SBT says, and names what it was asked.
 cat > "$work/bin/sbt" <<'STUB'
@@ -32,15 +31,15 @@ shift
 STUB
 chmod +x "$work/bin/sbt" "$work/bin/timeout"
 
+scratch_repo "$work/repo"
 cd "$work/repo" || exit 1
-git init -q . && git config user.email t@t && git config user.name t
 mkdir -p test/resources worker/src/fixtures/scala/tools
 echo committed > test/resources/corpus.txt
 echo 'object ArchiveReplayWiring' > worker/src/fixtures/scala/tools/ArchiveReplayWiring.scala
-git add -A && git commit -qm "before hermetic replay"
-old=$(git rev-parse HEAD)
+scratch_git . add -A && scratch_git . commit -qm "before hermetic replay"
+old=$(scratch_git . rev-parse HEAD)
 echo 'val HermeticVar = "KINOWO_CONVERGENCE_HERMETIC"' >> worker/src/fixtures/scala/tools/ArchiveReplayWiring.scala
-git commit -qam "hermetic replay"
+scratch_git . commit -qam "hermetic replay"
 # The pinned corpus, which overwrites the committed one for the step.
 mkdir -p "$work/corpus/test/resources" scrape-archive
 echo pinned > "$work/corpus/test/resources/corpus.txt"
@@ -51,12 +50,12 @@ run() { PATH="$work/bin:$PATH" RUNNER_TEMP="$work/tmp" CODE=pl STEP_MINUTES=2 HE
 check "a green sample is good" "0" "$(run env STUB_SBT=green)"
 check "it runs the sample with the heap asked for" "sbt -J-Xmx6g worker/It/testOnly Sample" "$(cat "$work/tmp/bisect-step.log")"
 check "within the step's minutes" "120" "$(cat "$work/timeout-seconds")"
-check "it names the commit and the sample's exit" "$(git rev-parse --short HEAD): sample exit 0" "$(cat "$work/out")"
+check "it names the commit and the sample's exit" "$(scratch_git . rev-parse --short HEAD): sample exit 0" "$(cat "$work/out")"
 check "and puts the committed fixtures back" "committed" "$(cat test/resources/corpus.txt)"
 check "a red sample is bad" "1" "$(run env STUB_SBT=red)"
 check "a request the recording never saw is untestable" "125" "$(run env STUB_SBT=unrecorded)"
 check "a timed-out sample is untestable" "125" "$(run env STUB_TIMEOUT=expire)"
-git checkout -q "$old"
+scratch_git . checkout -q "$old"
 check "a commit older than hermetic replay is untestable" "125" "$(run env STUB_SBT=green)"
 
 spec_summary
