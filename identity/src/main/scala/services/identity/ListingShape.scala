@@ -35,6 +35,10 @@ object ListingShape {
   /** The last year a film billed as silent was made in: Chaplin's "Modern Times" (1936), the sound era's last. */
   val SilentEraEnd = 1936
 
+  /** Does a billing as a silent film ([[billsASilentFilm]]: `billedSilent`) rule out a film of `year`, one of the sound
+   *  era? The model reads it for a node, any listing of it billing silent; the agreement stage per listing. */
+  def silentBillingDenies(year: Option[Int], billedSilent: Boolean): Boolean = billedSilent && year.exists(_ > SilentEraEnd)
+
   private val SilentFilm =
     ("""\bstummfilm\w*|\bsilent\s+(?:films?|movies?|cinema|classics?)\b|\bfilm\w*\s+niem\w*|\bniem\w*\s+film\w*|\bkin[oa]\s+niem\w*|""" +
       """\bcine\s+mudo\b|\bpeliculas?\s+mudas?\b|\bfilms?\s+muets?\b""").r

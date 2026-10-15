@@ -409,7 +409,7 @@ object Agreement {
    *  silent film dates it to the silent era (DE "STUMMFILM MIT TOBIAS RANK:NOSFERATU", not Eggers' 2024 film). */
   private def yearAgainst(listing: Listing, record: SourceRecord): Boolean =
     FactRelations.yearsApart(record.film.year, listing.year) ||
-      (record.film.year.exists(_ > ListingShape.SilentEraEnd) && ListingShape.billsASilentFilm(listing))
+      ListingShape.silentBillingDenies(record.film.year, ListingShape.billsASilentFilm(listing))
   /** Does the listing credit another director than the film's own ([[FactRelations.otherPeople]])? */
   private def directorAgainst(listing: Listing, record: SourceRecord): Boolean =
     FactRelations.otherPeople(listing.directors, record.film.directors.getOrElse(Nil))

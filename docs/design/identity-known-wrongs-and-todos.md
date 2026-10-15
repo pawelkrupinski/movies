@@ -187,7 +187,8 @@ Each a production change: measure with `scripts/identity-measure`, land one at a
 - [ ] **Two copies of one list**: `FormatTags.FormatVersionWords` repeats `FormatToken`'s keys (and "lek" has no LEK
   badge: "Lalka 2D LEK" shows none); `TitleText.FiledArticles` (ein/eine, no gli) vs `IdentityMeasures.LeadingArticles`
   (gli, no ein/eine); `TitleText.stripPunct`'s own NFD strip drops "ł" where `TextNormalization.deburr` folds it.
-- [ ] **The silent-era denial reads two ways**: `FamilyScope.denialByNode` if any listing of the node bills silent,
+- [x] **The silent-era denial reads two ways** (done: `ListingShape.silentBillingDenies`; the node and the listing it is
+  asked of stay each stage's): `FamilyScope.denialByNode` if any listing of the node bills silent,
   `Agreement` per listing. One predicate.
 - [ ] `SourceReliability.tmdbLinked` is read without a37454e82's `numbersFilmsByTmdbId` gate in
   `IdentityResolver.billedAsPiece` and `SuspectTakes`; "the feed links one film" is defined twice (`UnifiedEvidence`
