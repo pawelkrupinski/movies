@@ -269,6 +269,11 @@ Rules:
 - **Run `scripts/agent-procs` to audit** every worktree (dirty, unmerged
   vs `origin/main`, lock owner, the processes in it) and
   `scripts/agent-procs prune` to clean up the removable ones.
+- **Run `scripts/agent-time`** to see where a session's subagents spent
+  their hours — polling and background waits by what they waited on (CI,
+  a measure, a slice, an sbt suite, a local convergence leg), idle gaps,
+  sbt runs by shape, the pre-push hook; `--agent <id>` lists one agent's
+  slowest steps.
 
 ## Commit at every stable state
 
