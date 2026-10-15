@@ -59,7 +59,13 @@ object ScalaSourceScan {
 
   /** A runnable program under a test tree — `def main` outside a `*Spec.scala`: a backfill, recorder,
    *  probe or bench run by an operator, not a spec. The spec lints skip it; the program rules hold it. */
-  def isProgram(p: Path): Boolean = !p.toString.endsWith("Spec.scala") && read(p).contains("def main(")
+  def isProgram(p: Path): Boolean = !p.toString.endsWith("Spec.scala") && definesMain(read(p))
+
+  private val MainDefinition = """(?m)^\s*(?:override\s+)?def main\(""".r
+
+  /** Whether `source` defines a `main` — a definition opening its line, outside any comment — not merely names one
+   *  in a string or a comment, as this scan does. */
+  def definesMain(source: String): Boolean = MainDefinition.findFirstIn(source.linesIterator.map(code).mkString("\n")).isDefined
 
   def read(p: Path): String = new String(Files.readAllBytes(p), StandardCharsets.UTF_8)
 

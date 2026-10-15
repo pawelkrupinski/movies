@@ -163,7 +163,6 @@ class ToolCommandLinesSpec extends AnyFlatSpec with Matchers {
     val Package = """(?m)^package ([\w.]+)""".r
     val Object  = """(?m)^object (\w+)""".r
     val programs = tools.ScalaSourceScan.scalaFiles(Seq("worker/src/test")).filter(tools.ScalaSourceScan.isProgram)
-      .filter(path => """"(?:[^"\\\n]|\\.)*"""".r.replaceAllIn(tools.ScalaSourceScan.codeOf(path), "").contains("def main("))
     programs.size should be > 20
     val unstartable = programs.filterNot { path =>
       val source = tools.ScalaSourceScan.read(path)
