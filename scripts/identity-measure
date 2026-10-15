@@ -9,7 +9,7 @@
 # This dispatches that check, and only that check (`takes-only`), for one commit, then classifies its moves
 # (scripts/identity_measure.py) and prints LANDABLE or NOT LANDABLE.
 #
-# usage: scripts/identity-measure [<commit-or-branch>] [--base <sha>] [--countries pl,uk,de,us,es] [--keep-branch]
+# usage: scripts/identity-measure [<commit-or-branch>] [--base <sha>] [--countries pl,de,uk,us,es] [--keep-branch]
 #                                 [--no-wait] [--full] [--fresh] [--json] [--timeout <minutes>]
 #        scripts/identity-measure --run <run id> [--countries ...] [--keep-branch] [--json]
 #   <commit>       default HEAD (uncommitted changes are NOT measured: commit them first)
@@ -47,8 +47,10 @@
 set -uo pipefail
 
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+# shellcheck source=scripts/identity-tools.sh
+. "$here/identity-tools.sh" # identity_locked, identity_put; tool-conventions.sh's bounded, usage_from_header, countries
 workflow=identity-model-convergence.yml
-ref="" base="" countries="pl,uk,de,us,es" keep="" nowait="" full="" fresh="" json="" run="" timeout_min=120
+ref="" base="" countries=$(kinowo_countries_csv) keep="" nowait="" full="" fresh="" json="" run="" timeout_min=120
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --base) base=$2; shift ;;
@@ -60,7 +62,7 @@ while [ "$#" -gt 0 ]; do
     --json) json=1 ;;
     --run) run=$2; shift ;;
     --timeout) timeout_min=$2; shift ;;
-    -h|--help) sed -n '2,/^set -uo/p' "$0" | sed '$d; s/^# \{0,1\}//'; exit 0 ;;
+    -h|--help) usage_from_header; exit 0 ;;
     -*) echo "identity-measure: unknown option $1" >&2; exit 2 ;;
     *) ref=$1 ;;
   esac
@@ -73,22 +75,22 @@ die() { say "$*"; exit 2; }
 # must not hold the measurement (and its branch) forever.
 . "$here/ci/dispatch.sh"
 export DISPATCH_GH_TIMEOUT=${IDENTITY_MEASURE_GH_TIMEOUT:-90} DISPATCH_POLL_SECONDS=${IDENTITY_MEASURE_POLL:-30}
-ghb() { timeout "$DISPATCH_GH_TIMEOUT" gh "$@"; }
 
-branch="" measured_run="" finished=""
+branch="" measured_run="" finished="" scratch=""
 delete_branch() {
-  timeout 120 git push -q --no-verify origin --delete "refs/heads/$branch" 2> /dev/null && { say "deleted branch $branch"; return; }
+  bounded 120 git push -q --no-verify origin --delete "refs/heads/$branch" 2> /dev/null && { say "deleted branch $branch"; return; }
   # A push that failed may never have made the branch (ls-remote's 2: no such ref): nothing to delete.
-  timeout 60 git ls-remote --exit-code origin "refs/heads/$branch" > /dev/null 2>&1
+  bounded 60 git ls-remote --exit-code origin "refs/heads/$branch" > /dev/null 2>&1
   [ $? -eq 2 ] || say "could not delete branch $branch -- git push origin --delete $branch"
 }
 cleanup() {
   # Run to the end: a second Ctrl-C (or the TERM after a first) mid-clean-up would leave the branch behind.
   trap '' INT TERM
+  [ -z "$scratch" ] || rm -rf "$scratch"
   # Ctrl-C mid-run: the run would replay a branch about to vanish -- cancel it first.
   if [ -n "$measured_run" ] && [ -z "$finished" ]; then
     say "cancelling run $measured_run"
-    ghb run cancel "$measured_run" > /dev/null || say "could not cancel run $measured_run -- cancel it by hand"
+    identity_gh "$DISPATCH_GH_TIMEOUT" run cancel "$measured_run" > /dev/null || say "could not cancel run $measured_run -- cancel it by hand"
   fi
   if [ -n "$branch" ] && [ -z "$keep" ]; then
     delete_branch
@@ -99,18 +101,34 @@ cleanup() {
 trap cleanup EXIT
 trap 'exit 130' INT TERM
 
-timeout 120 git fetch -q origin main || die "could not fetch origin main"
+bounded 120 git fetch -q origin main || die "could not fetch origin main"
 
 # ── collect: one finished run's takes rows → the table ───────────────────────────────────────────
 code_of() { case "$1" in poland) echo pl ;; germany) echo de ;; united-kingdom) echo uk ;; spain) echo es ;; united-states) echo us ;; *) echo "$1" ;; esac; }
 
+# measure_download <run id> <cache dir> -> the run's identity-takes artifacts in <cache>/artifacts, downloaded once: run
+# under identity_locked, so two agents collecting one run never download into (or read) the same directory at once
+measure_download() {
+  local id=$1 cache=$2 dl=$2/artifacts
+  [ -f "$cache/downloaded" ] && return 0
+  rm -rf "$dl"; mkdir -p "$dl"
+  if identity_gh "$DISPATCH_GH_TIMEOUT" run download "$id" --pattern 'identity-takes-*' --dir "$dl"; then
+    touch "$cache/downloaded"
+  else
+    say "run $id: no identity-takes artifact could be downloaded (a run from before the takes rows uploaded theirs?)"
+  fi
+}
+
 collect() { # <run id> <commit whose judgements classify> [checkout: classify with its working tree's judgements]
   local id=$1 commit=$2 cache dl url rows judgements jobs checkout_judgements
-  cache=${KINOWO_IDENTITY_CACHE:-$HOME/.cache/kinowo-identity}/measure/$id
-  dl=$cache/artifacts rows=$cache/rows.json judgements=$cache/identity-judgements.tsv
+  cache=$KINOWO_IDENTITY_CACHE/measure/$id dl=$KINOWO_IDENTITY_CACHE/measure/$id/artifacts
+  # What THIS collect classifies with is its own, never the shared cache's: another agent's --run of the same run may
+  # classify with other judgements at the same moment.
+  scratch=$(mktemp -d) || die "could not make a scratch directory"
+  rows=$scratch/rows.json judgements=$scratch/identity-judgements.tsv
   mkdir -p "$cache"
-  url=$(ghb run view "$id" --json url --jq .url) || die "could not read run $id"
-  jobs=$(ghb run view "$id" --json jobs --jq '.jobs[] | select(.name | endswith(" / takes")) | [.name, .conclusion] | @tsv') \
+  url=$(identity_gh "$DISPATCH_GH_TIMEOUT" run view "$id" --json url --jq .url) || die "could not read run $id"
+  jobs=$(identity_gh "$DISPATCH_GH_TIMEOUT" run view "$id" --json jobs --jq '.jobs[] | select(.name | endswith(" / takes")) | [.name, .conclusion] | @tsv') \
     || die "could not read run $id's jobs"
   { echo "{"; first=1
     while IFS=$'\t' read -r name conclusion; do
@@ -119,14 +137,7 @@ collect() { # <run id> <commit whose judgements classify> [checkout: classify wi
       printf '"%s": "%s"' "$(code_of "${name% / takes}")" "${conclusion:-unfinished}"
     done <<< "$jobs"
     echo "}"; } > "$rows"
-  if [ ! -f "$cache/downloaded" ]; then
-    rm -rf "$dl"; mkdir -p "$dl"
-    if ghb run download "$id" --pattern 'identity-takes-*' --dir "$dl"; then
-      touch "$cache/downloaded"
-    else
-      say "run $id: no identity-takes artifact could be downloaded (a run from before the takes rows uploaded theirs?)"
-    fi
-  fi
+  identity_locked "measure-$id" measure_download "$id" "$cache" || die "could not take the lock on run $id's download"
   # --run re-classifies an older run with the judgements made since -- the checkout's, committed or not.
   checkout_judgements=${3:+$(git rev-parse --show-toplevel)/test/resources/fixtures/identity-judgements.tsv}
   if [ -n "$checkout_judgements" ] && [ -f "$checkout_judgements" ]; then
@@ -147,7 +158,7 @@ collect() { # <run id> <commit whose judgements classify> [checkout: classify wi
 # phases a stored result spared ("reused") and which were resolved. A row from before the file was written has none.
 timings() { # <run id> <artifacts dir>
   local id=$1 dl=$2 times cc file
-  times=$(ghb run view "$id" --json createdAt,startedAt,updatedAt,jobs --jq '
+  times=$(identity_gh "$DISPATCH_GH_TIMEOUT" run view "$id" --json createdAt,startedAt,updatedAt,jobs --jq '
       def s: if . == null or . == "" then null else fromdateiso8601 end;
       # The run "starts" when created; it is the first job that waited for a runner (and, on the main lane, for the lane).
       ([.jobs[].startedAt | s | select(. != null)] | min) as $first |
@@ -165,7 +176,7 @@ timings() { # <run id> <artifacts dir>
 }
 
 # ── reuse: an earlier measurement of the same change, main moved only outside the convergence paths ─────────────────
-reuse_root=${KINOWO_IDENTITY_CACHE:-$HOME/.cache/kinowo-identity}/measure/reuse
+reuse_root=$KINOWO_IDENTITY_CACHE/measure/reuse
 # The convergence paths at <ref>, judgements excluded (matches.sh's `!`), as a patterns file; empty when <ref> has none.
 convergence_patterns() { # <ref> -> file
   local f; f=$(mktemp)
@@ -187,7 +198,7 @@ change_id() { # <base> <head> <patterns>
 # store_measurement <base> <head> <run id>: the run answers this change from this base, written whole.
 store_measurement() {
   local patterns id dir part
-  [ -f "${KINOWO_IDENTITY_CACHE:-$HOME/.cache/kinowo-identity}/measure/$3/downloaded" ] || return 0
+  [ -f "$KINOWO_IDENTITY_CACHE/measure/$3/downloaded" ] || return 0
   patterns=$(convergence_patterns "$1"); [ -n "$patterns" ] || return 0
   id=$(change_id "$1" "$2" "$patterns"); rm -f "$patterns"
   [ -n "$id" ] || return 0
@@ -205,7 +216,7 @@ find_measurement() {
     b0=$entry
     IFS=$'\t' read -r run h0 at < "$reuse_root/$id/$entry" || continue
     [ $((now - at)) -le "$max" ] || continue
-    [ -f "${KINOWO_IDENTITY_CACHE:-$HOME/.cache/kinowo-identity}/measure/$run/downloaded" ] || continue
+    [ -f "$KINOWO_IDENTITY_CACHE/measure/$run/downloaded" ] || continue
     git cat-file -e "$b0^{commit}" 2> /dev/null || continue
     moved=$(git diff --name-only --no-renames "$b0" "$1" | in_convergence_paths "$patterns") || continue
     [ "$moved" = false ] || continue
@@ -215,7 +226,7 @@ find_measurement() {
 }
 
 if [ -n "$run" ]; then
-  view=$(ghb run view "$run" --json status,headBranch,headSha --jq '[.status, .headBranch, .headSha] | @tsv') \
+  view=$(identity_gh "$DISPATCH_GH_TIMEOUT" run view "$run" --json status,headBranch,headSha --jq '[.status, .headBranch, .headSha] | @tsv') \
     || die "could not read run $run"
   IFS=$'\t' read -r status run_branch run_sha <<< "$view"
   [ "$status" = completed ] || { say "run $run is $status: collect it once it completes"; exit 2; }
@@ -224,7 +235,7 @@ if [ -n "$run" ]; then
   verdict=$?
   # A takes-only measure run is stored for reuse: its base from the artifact, its head the commit (not main's CI laid
   # over it). A run whose head this clone lacks is not.
-  run_base=$(cat "${KINOWO_IDENTITY_CACHE:-$HOME/.cache/kinowo-identity}/measure/$run"/artifacts/identity-takes-*/base.txt 2> /dev/null | head -1)
+  run_base=$(cat "$KINOWO_IDENTITY_CACHE/measure/$run"/artifacts/identity-takes-*/base.txt 2> /dev/null | head -1)
   if [ "$verdict" -le 1 ] && [ -n "$branch" ] && [ -n "$run_base" ] && git cat-file -e "$run_sha^{commit}" 2> /dev/null; then
     [[ "$(git log -1 --format=%s "$run_sha")" == "measure: origin/main's CI over "* ]] && run_sha=$(git rev-parse "$run_sha^")
     store_measurement "$run_base" "$run_sha" "$run"
@@ -273,7 +284,7 @@ branch="measure/${commit:0:9}-$(od -An -N3 -tx1 /dev/urandom | tr -d ' \n')"
 say "commit $(git log --oneline -1 "$commit")"
 say "base   $(git log --oneline -1 "$base")"
 # A push that fails -- or times out -- may still have made the branch: the clean-up deletes it either way.
-timeout 300 git push -q --no-verify origin "$push:refs/heads/$branch" || die "could not push the measure branch"
+bounded 300 git push -q --no-verify origin "$push:refs/heads/$branch" || die "could not push the measure branch"
 say "pushed $branch"
 
 # One deadline for the whole measurement: every (re-)dispatch and the run.
@@ -288,7 +299,7 @@ dispatch() { # → measured_run
   find_dispatched_run "$workflow" "$since" ".headSha == \"$push\"" --branch "$branch" \
     || die "dispatched, but no run of $push on $branch was found"
   measured_run=$DISPATCHED_RUN
-  say "run $(ghb run view "$measured_run" --json url --jq .url || echo "$measured_run")"
+  say "run $(identity_gh "$DISPATCH_GH_TIMEOUT" run view "$measured_run" --json url --jq .url || echo "$measured_run")"
 }
 
 attempts=1

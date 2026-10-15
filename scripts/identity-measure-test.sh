@@ -177,6 +177,15 @@ sed -i.bak 's/\tright\topen\t/\twrong\topen\t/' "$repo/test/resources/fixtures/i
 scratch_git "$repo" push -q origin "$tip:refs/heads/measure/abc-1"
 check "--run classifies with the checkout's newer judgements" "0" "$(HEAD_SHA=$tip measure lost --run 777 --countries pl)"
 cp "$work/judgements.orig" "$repo/test/resources/fixtures/identity-judgements.tsv"; rm -f "$repo/test/resources/fixtures/identity-judgements.tsv.bak"
+check "...classifying in a scratch directory of its own: another agent's --run of the run classifies with its own" "0" \
+  "$(find "$work/cache/measure/777" -maxdepth 1 \( -name rows.json -o -name identity-judgements.tsv \) | wc -l | tr -d ' ')"
+# The shared cache's download of a run is made under a lock: another agent's live download of it is waited for.
+sleep 30 & holder=$!
+mkdir -p "$work/cache/locks/measure-777"; echo "$holder" > "$work/cache/locks/measure-777/pid"; rm -f "$work/cache/measure/777/downloaded"
+scratch_git "$repo" push -q origin "$tip:refs/heads/measure/abc-1"
+check "a run another agent is downloading into the cache is waited for, not downloaded beside it" "2 0" \
+  "$(HEAD_SHA=$tip KEEP_CACHE=1 KINOWO_IDENTITY_LOCK_WAIT=2 measure lost --run 777 --countries pl) $(grep -c '^run download' "$work/stub/calls")"
+kill "$holder" 2> /dev/null; wait "$holder" 2> /dev/null
 
 # THE BRANCH ON EVERY EXIT PATH: whatever ends a measurement after the push, origin keeps no measure/ branch.
 check "a dispatch refused after the push is no measurement" "2" "$(DISPATCH_FAILS=1 measure landable --countries pl)"
