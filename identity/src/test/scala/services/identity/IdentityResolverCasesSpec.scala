@@ -2679,6 +2679,21 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     withClue(rendered(r, ls))(films(r, ls) shouldBe Seq(Some(1791571)))
   }
 
+  it should "take no house's record from long before the season it screens in, billing no house in particular" in {
+    // UK Film Theatre Leiston's "Ballet - Notre-Dame de Paris", recording 38666576506, screens on 14 March 2027 (the Paris
+    // Opera's Dec 2025 recording): it took La Scala's 2013 record (790330, judged wrong) as its search's only result
+    val uk      = ukVenues
+    val leiston = Seq(scraped(uk(2), "Ballet - Notre-Dame de Paris", days = Seq(java.time.LocalDate.of(2027, 3, 14))))
+    val scala   = Seq(F(790330, "La Scala Ballet: Notre-Dame de Paris", 2013, "Roland Petit", 0, 0.6,
+      original = Some("Roland Petit: Notre-Dame de Paris (Teatro alla Scala)")))
+    val l = shipped(leiston, scala)
+    withClue(rendered(l, leiston))(films(l, leiston) shouldBe Seq(None))
+    // a year of its own dates it by that record: an encore of it
+    val dated = Seq(scraped(uk(3), "Ballet - Notre-Dame de Paris", year = Some(2013), days = Seq(java.time.LocalDate.of(2027, 3, 14))))
+    val d = shipped(dated, scala)
+    withClue(rendered(d, dated))(films(d, dated) shouldBe Seq(Some(790330)))
+  }
+
   // TMDB's UK records of Puccini's "Tosca" as recording 38363428661 holds them (en-GB): Royal Ballet & Opera's 2025/26 and
   // 2026/27 relays of Oliver Mears's production (only the first credits him), the house's 2011 record under its former
   // name, and a namesake

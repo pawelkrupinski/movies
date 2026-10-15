@@ -134,13 +134,22 @@ object StageRelays {
    *  that the listing can tell. */
   def screenNamesake(listing: Listing, film: Film): Boolean =
     listing.billsAStageHouse && !film.ownTitleTokens.exists(_.exists(StageHouseWords))
-  /** Does one of `titles` name an opera or ballet house ([[StageHouseWords]])? A house's initials only standing alone: DE
+  /** Does one of `titles` name an opera or ballet house ([[StageHouseWords]])? A house's initials only standing alone, or
+   *  split by punctuation ([[splitHouseInitials]]: UK Penrith's "RB&O 26/27: Carmen", DE "Carmen (RB+O 2026/27)"): DE
    *  "Jin-Roh - Die Wolfsbrigade" is Okiura's anime, no Royal Opera House relay, whatever its hyphen splits off. */
   private[identity] def billsAStageHouse(titles: Seq[String]): Boolean = titles.exists(title =>
     TitleContainment.tokens(title).exists(word => StageHouseWords(word) && !HouseInitials(word)) ||
-      StandaloneHouseInitials.findFirstIn(title).isDefined)
+      StandaloneHouseInitials.findFirstIn(title).isDefined || splitHouseInitials(TitleContainment.tokens(title)))
   private val HouseInitials: Set[String] = Set("rbo", "roh")
   private val StandaloneHouseInitials = """(?i)(?<![\p{L}\d]-?)(?:rbo|roh)(?!-?[\p{L}\d])""".r
+  /** Do `words` hold a house's initials that punctuation split into words ("RB&O" read as "rb", "o")? */
+  private def splitHouseInitials(words: Seq[String]): Boolean =
+    initialsJoined(words).exists(word => HouseInitials(word) && !words.contains(word))
+  /** Does a title fragment name a house: a house word, or a house's split initials? */
+  private def namesAHouse(fragment: String): Boolean = {
+    val words = TitleContainment.tokens(fragment)
+    words.exists(StageHouseWords) || splitHouseInitials(words)
+  }
 
   /** What a stage house's relay title bills, read off its FRAGMENTS — its delimited pieces ([[pieces]]), each bracket
    *  apart from what it follows, digits out: a fragment naming a house ([[StageHouseWords]]) is a HOUSE, every other one
@@ -156,7 +165,7 @@ object StageRelays {
     val Unbilled: Relay = Relay(Set.empty, Set.empty, Set.empty, Nil)
     def of(titles: Seq[String]): Relay = {
       val all             = titles.flatMap(fragments).distinct
-      val (houses, works) = all.partition(fragment => TitleContainment.tokens(fragment).exists(StageHouseWords))
+      val (houses, works) = all.partition(namesAHouse)
       Relay(works.flatMap(wordsOf).filter(word => word.length >= 4 && !HouseCommonWords(word)).toSet,
         works.flatMap(billedIn(_, seasonNamed = true)).toSet, all.filterNot(namesOnlyTheArt).map(wholeKey).filter(_.nonEmpty).toSet,
         houses.map(houseWords).filter(_.nonEmpty).distinct)
@@ -210,15 +219,37 @@ object StageRelays {
   /** Do the film's titles name a house, and none the listing's relay bills: UK's "English National Ballet: The Sleeping
    *  Beauty" and TMDB's 2017 "The Sleeping Beauty", also "The Sleeping Beauty (The Royal Ballet)"? */
   def billsAnotherHouse(listing: Listing, film: Film): Boolean = film.houseNames.nonEmpty && !billsItsHouse(listing, film)
-  /** Is `f` ANOTHER house's record of the work, from a season other than the one the listing's screenings fall in
-   *  ([[Listing.screenedSeason]]), a house fragment of the listing's banner naming one in particular ([[Relay.houses]])? Nothing but
-   *  the work's name then ties it to the listing: UK Savoy's "Opéra De Paris Ballet - Notre-Dame de Paris" ×6, screening
-   *  in March 2027, is no 2013 "La Scala Ballet: Notre-Dame de Paris". Another house's record of the screenings' own
-   *  season stays a candidate: UK's "RBO Cinema Season" relays the Met's productions of that season. A house fragment of
-   *  common words alone ("Ballett") names no house the record could be another's of. */
-  def anotherHousesOtherSeason(listing: Listing, film: Film): Boolean =
-    listing.relay.houses.exists(house => particularWords(initialsJoined(house)).nonEmpty) && billsAnotherHouse(listing, film) &&
-      services.movies.ListingConstraints.seasonsApart(listing.screenedSeason, film.season, film.year).isDefined
+  /** Is `f` ANOTHER PRODUCTION than the stage house's relay the listing screens — another house's record of its work, from
+   *  another season than the one its screenings fall in ([[Listing.screenedSeason]])? Nothing but the work's name then
+   *  ties the record to the listing.
+   *  - A banner naming a house in particular ([[Relay.houses]]) is not the record's: UK Savoy's "Opéra De Paris Ballet -
+   *    Notre-Dame de Paris" ×6, screening in March 2027, is no 2013 "La Scala Ballet: Notre-Dame de Paris". Another
+   *    house's record of the screenings' own season stays a candidate: UK's "RBO Cinema Season" relays the Met's
+   *    productions of that season.
+   *  - A banner naming no house in particular ("Ballet - Notre-Dame de Paris") may be the record's house, so only a record
+   *    from long before or after ([[datedAway]]), on a listing dating it by no year of its own and billing the stage work
+   *    apart from its banner ([[Relay.workIds]]), is another production: UK Film Theatre Leiston's, screening in March
+   *    2027, is not La Scala's 2013 record; DE Kleines Theater's "RB&O - Ballett "La Fille mal gardée"" in 2026 is the
+   *    house's 2025/26 encore; and UK Chichester's "Phantom of the Opera" bills no banner at all, "opera" being the work's
+   *    own word.
+   *  Never the listing's own house's record of another season: a house's relays are encored years after it staged them
+   *  (UK "NT Live: A Streetcar Named Desire" is the 2014 broadcast, "Royal Ballet: La Bayadère" the 2018 recording), and a
+   *  title's banner shared by a film series reads as a house (DE "Der Herr der Ringe - Die Gefährten (Extended Version)").
+   *  KNOWN GAP: so US "NT Live: Hamlet", screening November 2026 — the National Theatre's 2026 Hamlet, which no search of
+   *  it reaches — keeps the 2015 broadcast the shared Flicks page dates it by. */
+  def anotherProduction(listing: Listing, film: Film): Boolean =
+    listing.billsAStageHouse && billsAnotherHouse(listing, film) && listing.screenedSeason.exists(season =>
+      if (listing.relay.houses.exists(house => particularWords(initialsJoined(house)).nonEmpty))
+        services.movies.ListingConstraints.seasonsApart(Some(season), film.season, film.year).isDefined
+      else listing.year.isEmpty && listing.relay.workIds.nonEmpty && datedAway(film, season))
+  /** Is the record dated — by its season, else its year — more than [[RecordingLag]] years from `season`? */
+  private def datedAway(film: Film, season: Int): Boolean =
+    film.season.orElse(film.year).exists(dated => math.abs(dated - season) > RecordingLag)
+  /** How many years a house's record may stand from the season a venue screens it in and still be the relay it airs: an
+   *  encore of last season's, or a recording a house releases to cinemas seasons after it staged it — DE Cinema
+   *  Wolfhagen's "National Opera Paris: Schwanensee", screening December 2026, is the Paris Opera's "Opéra national de
+   *  Paris 2024: Schwanensee", which its venues bill so. */
+  private val RecordingLag = 2
 
   /** A relay's own words, which a house's name is billed WITH but never abbreviated by ("NT Live" of "National Theatre
    *  Live" is "NT"). */
