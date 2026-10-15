@@ -120,8 +120,8 @@ object IdentityResolver {
     import services.movies.TitleContainment.tokens
     val evidence = node.evidence
     // a word of every listing's venue's name or city, inflected as it may be ("Kino w Kadrze": "Kadr Non-Fiction")
-    def venues(word: String) = word.length >= VenueStem && node.listings.forall(listing => EvidenceNode.placesOf(listing.cinema).flatten
-      .exists(place => place.length >= VenueStem && (word.startsWith(place) || place.startsWith(word))))
+    def venues(word: String) = word.length >= IdentityMeasures.StemLetters && node.listings.forall(listing => EvidenceNode.placesOf(listing.cinema).flatten
+      .exists(place => place.length >= IdentityMeasures.StemLetters && (word.startsWith(place) || place.startsWith(word))))
     val listing = node.listings.head.copy(rawTitle = evidence.rawTitle, title = evidence.title, originalTitle = evidence.originalTitle)
     // a piece naming a stage show — a theatre, a musical ([[ListingShape.StageWords]]), not the venue's own name — beside the
     // film: the billing is a staging of the work, however widely the film is screened or whichever town the piece names
@@ -173,8 +173,6 @@ object IdentityResolver {
   }
   /** How many years before its screenings' a film's may be and still be a current release ([[billedAsPiece]]). */
   val CurrentRelease = 1
-  /** The fewest letters a word shares with its venue's name or city to name it: "Kadr" in "Kino w Kadrze". */
-  val VenueStem = 4
   /** How many minutes a listing's running time may stand from its film's and still state the film's own. */
   val PieceRuntimeAgreement = 3
   /** How many other venues stating the film's facts under the listing's title make it a film screened widely: below the

@@ -507,9 +507,8 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
   private def inflects(scored: Scored): Boolean = {
     import services.movies.TitleContainment.tokens
     val billed = scored.listing.ownTitles.flatMap(tokens)
-    scored.candidate.film.titles.flatMap(tokens).filter(_.length >= InflectedStem).exists(word => billed.exists(_.startsWith(word)))
+    scored.candidate.film.titles.flatMap(tokens).filter(_.length >= IdentityMeasures.StemLetters).exists(word => billed.exists(_.startsWith(word)))
   }
-  private val InflectedStem = 4
 
   /** The film a node's evidence LEANS to though no rule took it: the best eligible candidate on a listing billing one
    *  work, at [[LeanMargin]] times the runner-up's probability — every fact the listing publishes weighed in it, the

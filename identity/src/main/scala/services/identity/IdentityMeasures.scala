@@ -255,6 +255,10 @@ object IdentityMeasures {
       relations.exists(Set("segment", "decorated")) && !relations.exists(Rivalling)
   }
 
+  /** The fewest letters a word needs to name something by itself, whole or as an inflected stem: "Kadr" of "Kino w
+   *  Kadrze" (the venue's name), a director's surname billed as a banner, a word of a title billed in another language. */
+  val StemLetters = 4
+
   /** Where a title's own delimiters cut it into pieces: a colon or pipe, or a dash or slash spaced on both sides. */
   private[identity] val PieceBreak = java.util.regex.Pattern.compile("""\s*[:|]\s*|\s+[-–—/]\s+""")
   /** A title's delimited pieces, its seasons and bracketed years out. */

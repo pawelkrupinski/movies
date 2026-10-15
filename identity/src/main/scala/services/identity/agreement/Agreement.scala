@@ -414,7 +414,7 @@ object Agreement {
   private[identity] def billsAnothersDirector(listings: Seq[Listing], records: Seq[SourceRecord], verdicts: Seq[FamilyVerdict]): Boolean = {
     def surnames(film: IdentityMeasures.Film): Set[String] = {
       val titleWords = film.titles.flatMap(TitleContainment.tokens).toSet
-      film.directors.getOrElse(Nil).flatMap(name => TitleContainment.tokens(name).lastOption).filter(word => word.length >= 4 && !titleWords(word)).toSet
+      film.directors.getOrElse(Nil).flatMap(name => TitleContainment.tokens(name).lastOption).filter(word => word.length >= IdentityMeasures.StemLetters && !titleWords(word)).toSet
     }
     val namesakes = verdicts.flatMap(_.weighed).filterNot(weighed => records.exists(sameFilm(_, weighed)))
     listings.exists { listing =>
