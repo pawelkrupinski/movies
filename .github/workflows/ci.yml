@@ -221,6 +221,7 @@ jobs:
                       bash scripts/restore-country-corpus-test.sh
                       bash infra/bin/push-k8s-secrets-test.sh
                       bash .github/scripts/convergence-fill-test.sh
+                      bash .github/scripts/convergence-bisect-step-test.sh
                       bash scripts/ci/close-mongo-tunnel-test.sh
                       bash scripts/ci/install-playwright-test.sh
                       bash scripts/ci/prune-actions-caches-test.sh
