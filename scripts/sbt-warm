@@ -30,7 +30,9 @@ set -uo pipefail
 
 State=${KINOWO_SBT_WARM_STATE:-$HOME/.cache/kinowo-sbt-warm}
 IdleMinutes=${KINOWO_SBT_WARM_IDLE_MINUTES:-30}
-IdentityRefs=${KINOWO_IDENTITY_CACHE:-$HOME/.cache/kinowo-identity}/refs
+# shellcheck source=scripts/tool-conventions.sh
+. "$(dirname "$0")/tool-conventions.sh"
+IdentityRefs=$KINOWO_IDENTITY_CACHE/refs
 log() { echo "[sbt-warm] $*" >&2; }
 
 root=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
@@ -175,9 +177,9 @@ case "${1:-}" in
   --stop) stop_servers_of "$root" || log "no server of $root to stop"; rm -f "$State/$key".*; exit 0 ;;
   --status)
     pid=$(server_pid "$root") && echo "this checkout ($root): server pid $pid" || echo "this checkout ($root): no server"
-    for f in "$State"/*.root; do [ -f "$f" ] && echo "kept: $(cat "$f") (pid $(cat "${f%.root}.pid" 2>/dev/null || echo ?), last used $(stat -f %Sm "${f%.root}.used" 2>/dev/null))"; done
+    for f in "$State"/*.root; do [ -f "$f" ] && echo "kept: $(cat "$f") (pid $(cat "${f%.root}.pid" 2>/dev/null || echo ?), last used $(date -r "${f%.root}.used" '+%Y-%m-%d %H:%M' 2>/dev/null))"; done
     exit 0 ;;
-  ""|-h|--help) sed -n '3,/^set /p' "$0" | sed '$d; s/^# \{0,1\}//'; exit 0 ;;
+  ""|-h|--help) usage_from_header; exit 0 ;;
 esac
 
 reap

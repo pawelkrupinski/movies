@@ -454,6 +454,25 @@ agent_reads_the_vault_once() {
 }
 check "the launchd agent asks the vault once, then supervises mirror.sh itself" agent_reads_the_vault_once
 
+# ── The log is trimmed on Linux too ──────────────────────────────────────────
+# Its size was read with BSD `stat -f%z`; GNU stat reads `-f` as "the file system", fails, and the log read as 0
+# bytes was never trimmed. A `stat` that refuses -f, as GNU's does here, stands in for Linux.
+trims_its_log_without_bsd_stat() {
+  local work; work="$(mktemp -d "${TMPDIR:-/tmp}/kinowo-mirror-log.XXXXXX")"
+  printf '#!/bin/sh\ncase "$1" in -f*) echo "stat: cannot read file system information" >&2; exit 1 ;; esac\nexec /usr/bin/stat "$@"\n' > "$work/stat"
+  chmod +x "$work/stat"
+  (
+    # shellcheck source=/dev/null
+    . "$HERE/mirror.sh"
+    MIRROR_LOG="$work/mirror.log" MAX_LOG_BYTES=1000 LOG_KEEP_LINES=5
+    seq 1 1000 > "$MIRROR_LOG"
+    PATH="$work:$PATH" rotate_log > /dev/null
+    [ "$(wc -l < "$MIRROR_LOG" | tr -d ' ')" = 5 ]
+  ); local code=$?
+  rm -rf "$work"; return "$code"
+}
+check "a log past its cap is trimmed in place, BSD stat or not" trims_its_log_without_bsd_stat
+
 rm -rf "$FAKE_BIN"
 
 if [ "$failures" -gt 0 ]; then echo "[spec] $failures failure(s)"; exit 1; fi

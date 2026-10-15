@@ -141,6 +141,11 @@ echo "{\"uri\":\"local://$scratch/old/sock\"}" > "$scratch/idle/project/target/a
 (cd "$scratch/idle" && "$REPO_ROOT/scripts/sbt-warm" --stop >/dev/null 2>&1)
 idle_key=$(printf '%s' "$scratch/idle" | shasum | cut -c1-12)
 echo "$scratch/idle" > "$KINOWO_SBT_WARM_STATE/$idle_key.root"; touch -t 202001010000 "$KINOWO_SBT_WARM_STATE/$idle_key.used"
+# --status says when each kept server was last used -- on Linux too, where `stat -f` (BSD's format flag) is GNU's
+# "file system" and fails: a `stat` refusing -f stands in for GNU's.
+mkdir -p "$scratch/gnu" && printf '#!/bin/sh\ncase "$1" in -f*) exit 1 ;; esac\nexec /usr/bin/stat "$@"\n' > "$scratch/gnu/stat" && chmod +x "$scratch/gnu/stat"
+check "--status says when a kept server was last used, whichever stat the machine has" "1" \
+  "$(cd "$scratch/idle" && PATH="$scratch/gnu:$PATH" "$REPO_ROOT/scripts/sbt-warm" --status 2>/dev/null | grep -c "kept: $scratch/idle (.*, last used 2020-01-01 00:00)")"
 (cd "$scratch/idle" && "$REPO_ROOT/scripts/sbt-warm" --reap >/dev/null 2>&1)
 check "--stop and --reap with no server of this checkout ask sbt nothing, and leave another's server running" "0 running" \
   "$(grep -c shutdown "$scratch/sbt-calls") $(kill -0 "$theirs" 2>/dev/null && echo running || echo stopped)"

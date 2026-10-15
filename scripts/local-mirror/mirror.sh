@@ -82,7 +82,8 @@ MAX_LOG_BYTES=$((8 * 1024 * 1024))
 LOG_KEEP_LINES=2000
 rotate_log() {
   [ -f "$MIRROR_LOG" ] || return 0
-  local size; size="$(stat -f%z "$MIRROR_LOG" 2>/dev/null || echo 0)"
+  local size; size="$(wc -c < "$MIRROR_LOG" 2>/dev/null | tr -d ' ')"   # wc, not BSD-only `stat -f%z`
+  size="${size:-0}"
   [ "$size" -gt "$MAX_LOG_BYTES" ] || return 0
   local trimmed="$MIRROR_LOG.trimmed"
   tail -n "$LOG_KEEP_LINES" "$MIRROR_LOG" > "$trimmed" 2>/dev/null || return 0
