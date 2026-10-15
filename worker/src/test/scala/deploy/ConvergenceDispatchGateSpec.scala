@@ -169,6 +169,21 @@ class ConvergenceDispatchGateSpec extends AnyFlatSpec with Matchers with tools.S
     (run -- afterTheVerdict).toSeq.sorted.filterNot(covered) shouldBe empty
   }
 
+  // A leg's takes check and hard-cluster ratchet run Scala tools that live outside src/main; their flags, outputs and
+  // exit codes are part of the verdict, so a push changing only one must still dispatch (and be bisectable).
+  it should "list every Scala tool the takes check and the hard-cluster ratchet run" in {
+    val RunMain = """runMain [a-z]+\.([A-Z][A-Za-z]+)""".r
+    val tools = Seq("scripts/ci/identity-takes-check.sh", "scripts/hard-clusters.sh")
+      .flatMap(f => RunMain.findAllMatchIn(RepoFile.read(f)).map(_.group(1))).distinct
+    tools should contain allOf ("IdentityResolveDump", "UnmatchedClustersRatchet", "HardClusterRecord")
+    val files = tools.flatMap { tool =>
+      val walk = Files.walk(Paths.get("worker/src"))
+      try walk.iterator.asScala.map(_.toString).filter(_.endsWith(s"/$tool.scala")).toList finally walk.close()
+    }
+    files should have size tools.size.toLong
+    files.filterNot(covered) shouldBe empty
+  }
+
   private lazy val listed: Seq[String] =
     Files.readAllLines(Paths.get(".github/convergence-paths.txt")).asScala.map(_.trim)
       .filterNot(l => l.isEmpty || l.startsWith("#")).toSeq

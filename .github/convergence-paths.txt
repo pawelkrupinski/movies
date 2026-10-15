@@ -12,6 +12,13 @@ identity/src/main/**
 worker/src/main/**
 worker/src/fixtures/**
 testkit/src/main/**
+# The tools a leg's takes check and hard-cluster ratchet run (scripts/ci/identity-takes-check.sh, scripts/hard-clusters.sh):
+# their flags, outputs and exit codes are part of the verdict, though they live outside src/main.
+worker/src/it/scala/IdentityResolveDump.scala
+worker/src/test/scala/scripts/UnmatchedClustersRatchet.scala
+worker/src/it/scala/HardClusterRecord.scala
+worker/src/it/scala/HardClusterPasses.scala
+worker/src/test/scala/scripts/BuildHardClusters.scala
 # e2e dependsOn(web): the legs read their schedules through MovieControllerService, and
 # nothing else of the web. Its file and every web source it reaches, which
 # ConvergenceDispatchGateSpec recomputes, so a new dependency cannot go unlisted.
