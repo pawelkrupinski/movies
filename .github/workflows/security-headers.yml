@@ -28,7 +28,7 @@ on:
         paths:
             - '.github/workflows/security-headers.yml'
             - 'scripts/ci/check-security-headers.py'
-            - 'scripts/ci/test_check_security_headers.py'
+            - 'scripts/ci/check_security_headers_test.py'
             - 'scripts/ci/scheduled-failure-issue*.sh'
             - 'scripts/ci/open-issue.sh'
             - '.github/actions/report-scheduled-run/**'
@@ -46,7 +46,7 @@ jobs:
             # The checker's own verdicts first, offline: a checker that can no longer fail would
             # otherwise report green here for as long as nobody looked at it.
             - name: Self-test the checker
-              run: python3 scripts/ci/test_check_security_headers.py
+              run: python3 scripts/ci/check_security_headers_test.py
 
             # And the reporter the `report` job below (and the OG-card workflow) relies on to reach
             # a person, against a stub `gh`: a reporter that silently stopped opening issues is the

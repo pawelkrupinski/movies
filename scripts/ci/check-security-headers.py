@@ -25,7 +25,7 @@ fails with the status and `cf-mitigated` named. Requests go through the Decodo r
 when DECODO_PROXY_USER / DECODO_PROXY_PASS are set, as the OG-card workflow's do.
 
 Usage: check-security-headers.py [host ...]     (default: kinowo.net showtimes.cc)
-The pure `evaluate_*` functions are unit-tested offline by test_check_security_headers.py.
+The pure `evaluate_*` functions are unit-tested offline by check_security_headers_test.py.
 """
 import os
 import re

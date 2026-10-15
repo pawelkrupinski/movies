@@ -52,5 +52,5 @@ python3 scripts/discover-cinemas/discover.py
 python3 scripts/discover-cinemas/discover.py --apply --report-path discovery-report.md
 
 # unit tests (stdlib only, no network)
-python3 scripts/discover-cinemas/test_discover.py
+python3 scripts/discover-cinemas/discover_test.py
 ```

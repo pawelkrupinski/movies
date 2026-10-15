@@ -72,7 +72,7 @@ jobs:
             # Guard the tool itself before trusting its edits.
             - name: Unit-test the discovery tool
               working-directory: scripts/discover-cinemas
-              run: python3 test_discover.py
+              run: python3 discover_test.py
 
             # Guard the town parser before trusting the towns it derives. Scores
             # itself against the 87 UK venues whose recorded Cineworld fixture

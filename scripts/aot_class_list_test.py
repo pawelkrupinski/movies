@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """aot-class-list.py against heap dumps cut short, as a dump interrupted mid-write is.
 
-    python3 scripts/test_aot_class_list.py
+    python3 scripts/aot_class_list_test.py
 """
 import pathlib
 import subprocess

@@ -248,8 +248,8 @@ jobs:
                       bash scripts/local-mirror/rules-test.sh
                       python3 scripts/ci/flake_verdict_test.py
                       python3 scripts/ci/ci_timings_test.py
-                      python3 scripts/test_aot_class_list.py
-                      python3 scripts/test_convergence_findings.py
+                      python3 scripts/aot_class_list_test.py
+                      python3 scripts/convergence_findings_test.py
                       python3 scripts/ci/recording_health_test.py
                       python3 scripts/ci/identity_takes_diff_test.py
                       python3 scripts/ci/identity_takes_test.py

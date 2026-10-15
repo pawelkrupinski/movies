@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Unit tests for convergence-findings.py, over lines copied from real failed legs.
 
-    python3 scripts/test_convergence_findings.py
+    python3 scripts/convergence_findings_test.py
 """
 import importlib.util
 import pathlib

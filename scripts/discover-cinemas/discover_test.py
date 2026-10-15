@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Unit tests for the cinema-discovery tool (stdlib unittest — no deps, no network).
 
-Run: python3 scripts/discover-cinemas/test_discover.py
+Run: python3 scripts/discover-cinemas/discover_test.py
 """
 import unittest
 

@@ -4,7 +4,7 @@
 Offline on purpose: the workflow runs this BEFORE the live check, so a checker that has stopped
 being able to fail is caught on the run that would otherwise have passed on it.
 
-Run: python3 scripts/ci/test_check_security_headers.py
+Run: python3 scripts/ci/check_security_headers_test.py
 """
 import importlib.util
 import os
