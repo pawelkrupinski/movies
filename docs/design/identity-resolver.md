@@ -1072,7 +1072,7 @@ reproducible script. Nothing in it is hand-tuned; §14.7 lists the constants tha
 | `identity/src/main/resources/identity-film-cuts.tsv` | hand-kept cuts of a film billed at their own runtime (`FilmCuts`): `tmdbId`, `imdbId`, cut label, minutes, source URL. TMDB keeps one record per film at its theatrical runtime (RotK 201, none for the 263-minute extended edition; Apocalypse Now 147, none for the Final Cut 183 or Redux 202), and no source states every cut's runtime machine-readably (IMDb GraphQL `runtimes` labels some by disc edition but misses Blade Runner's cuts and forbids commercial use; Wikidata P2047/P518 is uneven), so `runtime.delta` and the agreement's listing-runtime vote read the film runtime NEAREST the listing's, theatrical or a listed cut's. Add a row per cut a source states (IMDb's /technical runtimes, Wikidata P2047, Wikipedia), keyed by the IMDb id the record carries; a row moves the rules version |
 | `services.identity.IdentityCalibration` | loads the artefact and evaluates it: `logOdds`, `probability`, `explain`, `showsRatings`, `forbidsLink`, `cannotLink` (a generic evaluator of the rules as data) |
 | `scripts/identity-calibrate.sh` → `worker/Test/runMain scripts.IdentityCalibrate` | regenerates all of the above, the report below, and the healing lists |
-| `scripts/identity-calibrate.sh --refit` → `worker/Test/runMain scripts.IdentityRefit` | the weekly rule refit (§14.10, `identity-refit.yml`): re-tunes the cuts, the learned cannot-links' bounds and the listing-film weights of `identity-weights.json` on the unmatched-cluster ratchet, gated, one PR per run |
+| `scripts/identity-refit` (or `scripts/identity-calibrate.sh --refit`, measure only) → `scripts.IdentityRefit` | the weekly rule refit (§14.10, `identity-refit.yml`): re-tunes the cuts, the learned cannot-links' bounds and the listing-film weights of `identity-weights.json` on the unmatched-cluster ratchet, gated, one PR per run |
 | `IdentityCalibrationSpec` | the artefact loads, is internally sound, and puts the historical cases on the right side |
 
 Regenerate (≈ 7–20 min, 12 GB heap):
@@ -1670,7 +1670,7 @@ Contradicted production filings: 1471 listings on 59 tmdbIds (`contradicted-prod
 
 Status: 2026-10-06. Learning from the reviews means RE-TUNING the numbers the existing rules read — never a new rule,
 never a new feature, never a model in the resolver's place. `scripts.IdentityRefit`, run every Thursday by
-`.github/workflows/identity-refit.yml` (and by hand: `scripts/identity-calibrate.sh --refit`, `RELEARN=<signal,…>`),
+`.github/workflows/identity-refit.yml` through `scripts/identity-refit` (and by hand: the same script, `--relearn <signal,…>`; `scripts/identity-calibrate.sh --refit` measures only),
 proposes bounded steps of every parameter `identity-weights.json` holds for the resolver and keeps those the ratchet
 proves:
 

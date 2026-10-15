@@ -7,6 +7,9 @@ name: Identity rule refit
 # review answers once `ReviewLabelsCli export` has written them there and they are committed,
 # and expected-matches.tsv). No new rule, no new feature: approach B, proposed for review in ONE PR.
 #
+# The whole job is ONE script, `scripts/identity-refit`, which a local run uses the same way
+# (`secrets run movies TMDB_API_KEY -- scripts/identity-refit` in a worktree of your own).
+#
 # `scripts.IdentityRefit` (worker/src/test/scala/scripts) measures every bounded step of every
 # parameter as the ratchet measures: the five captures (test/resources/fixtures/identity-unmatched/
 # <cc>.json.gz) re-resolved under it and under the control, the agreement replayed, TMDB gaps
@@ -79,19 +82,34 @@ jobs:
                   restore-keys: |
                       sbt-target-${{ runner.os }}-
 
-            # Guard the tool itself before trusting its proposals.
-            - name: Unit-test the refit
-              run: sbt "worker/testOnly scripts.IdentityRefitSpec"
+            # The hard clusters' Mongo and the page snapshots' Chrome, ready for scripts/identity-refit's checks (run only
+            # when a step is kept).
+            - name: Start MongoDB (single-node replica set, for the hard clusters)
+              run: scripts/ci/start-mongo-replset.sh
+              env:
+                  MONGO_MAJORITY_JOURNAL: 'false'
+                  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
+                  DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
 
-            - name: Measure every step and write the kept ones
-              timeout-minutes: 75
+            - uses: browser-actions/setup-chrome@v1
+              id: setup-chrome
+              with:
+                  chrome-version: stable
+
+            # The whole refit, as a local run makes it (scripts/identity-refit --help): the refit's spec, the measure
+            # (kept steps written into identity-weights.json, the report to identity-refit-report.md, its log to
+            # refit.log), and when a step is kept the checks a calibration change answers to — the identity specs and
+            # the ratchet, the hard clusters, the whole-corpus and page snapshots regenerated, the films that moved
+            # appended to the report. A red check fails the job: no PR.
+            - name: Refit (scripts/identity-refit)
+              timeout-minutes: 140
               env:
                   TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
                   RELEARN: ${{ github.event.inputs.relearn }}
-              run: |
-                  set -o pipefail
-                  sbt -J-Xmx12g "worker/Test/runMain scripts.IdentityRefit --apply --report identity-refit-report.md ${RELEARN:+--relearn $RELEARN}" 2>&1 | tee refit.log
-                  cat identity-refit-report.md >> "$GITHUB_STEP_SUMMARY"
+                  MONGODB_URI: mongodb://127.0.0.1:27017/kinowo?directConnection=true
+                  MONGODB_DB: kinowo
+                  CDP_BROWSER_BIN: ${{ steps.setup-chrome.outputs.chrome-path }}
+              run: scripts/identity-refit --report identity-refit-report.md ${RELEARN:+--relearn "$RELEARN"}
 
             - name: Check for kept changes
               id: changed
@@ -101,72 +119,6 @@ jobs:
                   else
                       echo "kept=true" >> "$GITHUB_OUTPUT"
                   fi
-
-            # The checks a calibration change answers to. A red one fails the job: no PR.
-            - name: Identity specs and the unmatched-cluster ratchet
-              if: steps.changed.outputs.kept == 'true'
-              run: |
-                  sbt "identity/testOnly services.identity.*" \
-                      "worker/testOnly services.identity.* scripts.IdentityCalibrateSpec scripts.IdentityRefitSpec"
-
-            - name: Start MongoDB (single-node replica set, for the hard clusters)
-              if: steps.changed.outputs.kept == 'true'
-              run: scripts/ci/start-mongo-replset.sh
-              env:
-                  MONGO_MAJORITY_JOURNAL: 'false'
-                  DOCKERHUB_USERNAME: ${{ secrets.DOCKERHUB_USERNAME }}
-                  DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
-
-            # The real pipeline over the hard clusters: their checked-in films must not move.
-            - name: Hard clusters
-              if: steps.changed.outputs.kept == 'true'
-              timeout-minutes: 30
-              env:
-                  MONGODB_URI: mongodb://127.0.0.1:27017/kinowo?directConnection=true
-                  MONGODB_DB: kinowo
-              run: sbt "worker/IntegrationTest/testOnly integration.HardClusterConvergenceIntegrationSpec"
-
-            # A calibration change can move the whole corpus's films: regenerate the whole-corpus
-            # assertion and the read model (delete, write, re-run to prove it stable — the
-            # regenerate-snapshots skill), and list every film block that moved in the PR body.
-            - name: Regenerate the whole-corpus snapshots
-              if: steps.changed.outputs.kept == 'true'
-              timeout-minutes: 40
-              env:
-                  TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
-              run: |
-                  rm -f test/resources/fixtures/08-06-2026/expected-schedules.txt test/resources/fixtures/08-06-2026/read-model-snapshot.json
-                  sbt "e2e/Test/testOnly services.movies.FilmScheduleEndToEndSpec" || true
-                  sbt "e2e/Test/testOnly services.movies.FilmScheduleEndToEndSpec"
-                  {
-                      echo
-                      echo "### Films the whole-corpus read model moved (expected-schedules.txt)"
-                      echo
-                      if git diff --quiet -- test/resources/fixtures/08-06-2026/expected-schedules.txt; then
-                          echo "None."
-                      else
-                          echo '```diff'
-                          git diff -U0 -- test/resources/fixtures/08-06-2026/expected-schedules.txt | grep -E '^[-+][^-+]' | head -400
-                          echo '```'
-                      fi
-                  } >> identity-refit-report.md
-
-            - uses: browser-actions/setup-chrome@v1
-              if: steps.changed.outputs.kept == 'true'
-              id: setup-chrome
-              with:
-                  chrome-version: stable
-
-            - name: Regenerate the page snapshots
-              if: steps.changed.outputs.kept == 'true'
-              timeout-minutes: 30
-              env:
-                  CDP_BROWSER_BIN: ${{ steps.setup-chrome.outputs.chrome-path }}
-              run: |
-                  rm -f test/resources/fixtures/08-06-2026/expected-index.html test/resources/fixtures/08-06-2026/expected-wroclaw-index.html \
-                      test/resources/fixtures/08-06-2026/expected-warszawa-index.html
-                  sbt "web/PageTest/testOnly views.PageSnapshotSpec" || true
-                  sbt "web/PageTest/testOnly views.PageSnapshotSpec"
 
             - uses: actions/upload-artifact@v6
               if: always()

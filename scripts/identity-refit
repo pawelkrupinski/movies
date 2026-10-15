@@ -1,0 +1,132 @@
+#!/usr/bin/env bash
+#
+# The weekly identity rule refit, whole — the one script `.github/workflows/identity-refit.yml` runs and a local run
+# runs the same way (scripts.IdentityRefit; docs/design/identity-resolver.md §14.10):
+#
+#   1. unit-test the refit (scripts.IdentityRefitSpec);
+#   2. measure every bounded step of the existing rules' numbers on the unmatched-cluster ratchet and write the kept
+#      ones into identity/src/main/resources/identity-weights.json (scripts.IdentityRefit --apply), the report to
+#      --report;
+#   3. only when the weights changed, the checks a calibration change answers to: the identity specs and the ratchet,
+#      the hard clusters (the real pipeline over a throwaway Mongo), then the whole-corpus snapshots and the page
+#      snapshots regenerated (delete, write, re-run to prove them stable) — the films that moved appended to the
+#      report. A red check fails the script (in CI: no PR).
+#
+# Usage: scripts/identity-refit [--skip-checks] [--relearn <signal,…>] [--threads <n>] [--report <file.md>] [--help]
+#
+#   --skip-checks   measure (and write the kept steps) only; no step 3
+#   --relearn       listing-film signals whose inputs changed, refitted from the fresh units alone (year.delta,…)
+#   --threads       proposals measured at once (default: every core; each holds a re-resolve of the five captures)
+#   --report        where the report goes (default target/identity-refit/report.md); the measure's log beside it
+#
+# TMDB: the captures' unanswered TMDB questions are asked live only with TMDB_API_KEY in the ENVIRONMENT — never read
+# from .env.local. Locally: `secrets run movies TMDB_API_KEY -- scripts/identity-refit`. Without it a proposal that
+# asks TMDB something is unmeasured (never kept).
+#
+# Locally sbt runs through scripts/sbt-warm, the measure in its own JVM (IDENTITY_REFIT_HEAP, default 12g) on the
+# classpath sbt exports, and the hard clusters on a mongod of the run's own (scripts/it-local.sh). In CI (CI set)
+# plain sbt, and the hard clusters on the Mongo the workflow started (MONGODB_URI). It refuses a dirty tree and the
+# root checkout: its results are changed files in THIS worktree — the weights, the snapshots — and the report.
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+usage() { sed -n '3,28p' "$0" | sed 's/^# \{0,1\}//'; }
+
+skip_checks=""; relearn=""; threads=""; report="target/identity-refit/report.md"
+while [ $# -gt 0 ]; do
+    case "$1" in
+        --help|-h) usage; exit 0 ;;
+        --skip-checks) skip_checks=1; shift ;;
+        --relearn) relearn=${2:?--relearn needs a signal list}; shift 2 ;;
+        --threads) threads=${2:?--threads needs a number}; shift 2 ;;
+        --report) report=${2:?--report needs a file}; shift 2 ;;
+        *) echo "identity-refit: unknown argument '$1'" >&2; usage >&2; exit 2 ;;
+    esac
+done
+
+log() { echo "[identity-refit $(date -u +%H:%M:%S)] $*" >&2; }
+die() { echo "[identity-refit] $*" >&2; exit 1; }
+
+Weights=identity/src/main/resources/identity-weights.json
+Fixtures=test/resources/fixtures/08-06-2026
+
+if [ -z "${CI:-}" ]; then
+    [ -z "$(git status --porcelain)" ] || die "the tree is dirty: commit or stash first — the refit's results are the changes it leaves"
+    common=$(cd "$(git rev-parse --git-common-dir)" && pwd -P)
+    [ "$(pwd -P)" != "$(dirname "$common")" ] || die "this is the root checkout: run it in a worktree of your own (git worktree add -b <branch> <path> origin/main)"
+    sbt_run() { scripts/sbt-warm "$@"; }
+else
+    sbt_run() { sbt -batch "$@"; }
+fi
+[ -n "$threads" ] || threads=$(getconf _NPROCESSORS_ONLN)
+
+mkdir -p "$(dirname "$report")"
+measure_log="$(dirname "$report")/refit.log"
+
+if [ -n "${TMDB_API_KEY:-}" ]; then log "TMDB: asked live (TMDB_API_KEY from the environment)"
+else log "TMDB: no TMDB_API_KEY — a proposal asking TMDB anything is unmeasured (locally: secrets run movies TMDB_API_KEY -- $0)"; fi
+
+# 1. the refit's own spec, and the classpath the measure runs on — one sbt call
+log "unit-testing the refit"
+sbt_out=$(mktemp "${TMPDIR:-/tmp}/identity-refit-sbt.XXXXXX")
+trap 'rm -f "$sbt_out"' EXIT
+if ! sbt_run "worker/testOnly scripts.IdentityRefitSpec" "export worker/Test/fullClasspath" > "$sbt_out" 2>&1; then
+    tail -60 "$sbt_out" >&2
+    die "the refit's spec failed (above): its proposals are not trusted"
+fi
+grep -E 'Tests:|All tests passed' "$sbt_out" >&2 || true
+classpath=$(sed $'s/\x1b\\[[0-9;]*[A-Za-z]//g' "$sbt_out" | grep -E '^/[^ ]*(\.jar|classes|resources)(:|$)' | tail -1)
+[ -n "$classpath" ] || { tail -20 "$sbt_out" >&2; die "sbt exported no worker/Test classpath (above)"; }
+
+# 2. the measure, in its own JVM
+log "measuring every step on $threads thread(s) — the log in $measure_log"
+java "-Xmx${IDENTITY_REFIT_HEAP:-12g}" -XX:AutoBoxCacheMax=16384 -Djava.awt.headless=true -Duser.language=en -Duser.country=US \
+    -cp "$classpath" scripts.IdentityRefit --apply --report "$report" --threads "$threads" ${relearn:+--relearn "$relearn"} 2>&1 | tee "$measure_log"
+[ -z "${GITHUB_STEP_SUMMARY:-}" ] || cat "$report" >> "$GITHUB_STEP_SUMMARY"
+
+if git diff --quiet -- "$Weights"; then
+    log "nothing kept: identity-weights.json unchanged, no checks to run. Report: $report"
+    exit 0
+fi
+if [ -n "$skip_checks" ]; then
+    log "kept changes written to $Weights; checks skipped (--skip-checks). Report: $report"
+    exit 0
+fi
+
+# 3. the checks a calibration change answers to
+log "identity specs and the unmatched-cluster ratchet"
+sbt_run "identity/testOnly services.identity.*" \
+    "worker/testOnly services.identity.* scripts.IdentityCalibrateSpec scripts.IdentityRefitSpec"
+
+log "hard clusters"
+if [ -n "${MONGODB_URI:-}" ]; then
+    sbt_run "worker/IntegrationTest/testOnly integration.HardClusterConvergenceIntegrationSpec"
+else
+    # a mongod of the run's own; it-local.sh runs plain sbt, which must not share target/ with a live warm server
+    [ -n "${CI:-}" ] || scripts/sbt-warm --stop
+    scripts/it-local.sh "worker/IntegrationTest/testOnly integration.HardClusterConvergenceIntegrationSpec"
+fi
+
+log "regenerating the whole-corpus snapshots"
+rm -f "$Fixtures/expected-schedules.txt" "$Fixtures/read-model-snapshot.json"
+sbt_run "e2e/Test/testOnly services.movies.FilmScheduleEndToEndSpec" || true
+sbt_run "e2e/Test/testOnly services.movies.FilmScheduleEndToEndSpec"
+{
+    echo
+    echo "### Films the whole-corpus read model moved (expected-schedules.txt)"
+    echo
+    if git diff --quiet -- "$Fixtures/expected-schedules.txt"; then
+        echo "None."
+    else
+        echo '```diff'
+        git diff -U0 -- "$Fixtures/expected-schedules.txt" | grep -E '^[-+][^-+]' | head -400
+        echo '```'
+    fi
+} >> "$report"
+
+log "regenerating the page snapshots"
+rm -f "$Fixtures/expected-index.html" "$Fixtures/expected-wroclaw-index.html" "$Fixtures/expected-warszawa-index.html"
+sbt_run "web/PageTest/testOnly views.PageSnapshotSpec" || true
+sbt_run "web/PageTest/testOnly views.PageSnapshotSpec"
+
+log "done: kept changes in $Weights and the regenerated snapshots, report $report"
