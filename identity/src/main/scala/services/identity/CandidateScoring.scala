@@ -31,18 +31,19 @@ private[identity] final class CandidateScoring(val generation: CandidateGenerati
     evidenceDenial(listing, film, measures).isDefined
 
   /** [[evidenceDenies]], saying which of its reasons rules the film out. */
-  def evidenceDenial(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film, measures: Map[String, Measure]): Option[String] =
-    ListingConstraints.seasonsApart(listing.seasonYear, film.season, film.year).map(_.toString)
-      .orElse(Option.when(StageRelays.namesSeasonProduction(listing, film) && !namesItsSeasonProduction(listing, film))(CandidateScoring.AnotherHousesSeason))
+  def evidenceDenial(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film, measures: Map[String, Measure]): Option[Denial] =
+    ListingConstraints.seasonsApart(listing.seasonYear, film.season, film.year).map(link => Denial(link.toString))
+      .orElse(Option.when(StageRelays.namesSeasonProduction(listing, film) && !namesItsSeasonProduction(listing, film))(
+        Denial(CandidateScoring.AnotherHousesSeason, Denial.Kind.AnotherHousesSeason)))
       // a credit the venue publishes names its staging's record whatever TMDB titles it
       .orElse(Option.when(StageRelays.screenNamesake(listing, film) && !IdentityMeasures.sameDirector(measures))(
-        "a screen namesake of the work its stage house's billing names"))
+        Denial("a screen namesake of the work its stage house's billing names")))
       // a credit or a running time never holds a record of another work: a screen director films many
       .orElse(Option.when(StageRelays.namesAnotherWork(listing, film))(
-        "a record of another work than its stage house's billing names"))
+        Denial("a record of another work than its stage house's billing names")))
       .orElse(Option.when(StageRelays.anotherProduction(listing, film))(
-        "another production of its work than the season its screenings fall in"))
-      .orElse(LearnedCannotLinks.learnedListingFilm(calibration, measures, weights.factsProbability(measures)).map(_.toString))
+        Denial("another production of its work than the season its screenings fall in")))
+      .orElse(LearnedCannotLinks.listingFilmDenial(calibration, measures, weights.factsProbability(measures)))
 
   /** Does `n`'s title name the film only by a PIECE that is its venue's own name or place — every
    *  listing's, the venue's name or its city's? Kino Twierdza's "TWIERDZA - VINCENT. LEGENDA

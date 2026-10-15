@@ -180,7 +180,7 @@ object DecisionTrace {
   private[identity] def blockerOf(own: Seq[Scored], unanswered: Boolean, refusals: Seq[Refusal]): String =
     if (own.isEmpty) if (unanswered) "search:unanswered" else "search:found-nothing"
     else if (own.forall(scored => scored.denied || scored.suggestedOnly))
-      s"veto:${id(own.flatMap(_.denial).headOption.getOrElse("imdb-suggested only"))}"
+      s"veto:${id(own.flatMap(_.denial).headOption.fold("imdb-suggested only")(_.why))}"
     else refusals.find(_.rule == "favoured-calibrated").orElse(refusals.headOption).fold("rule:none")(refusal => s"rule:${id(refusal.why)}")
   /** A reason as a rule id: "Learned(runtime.delta >= 11 AND title in {none,overlap})" → "learned-runtime-delta-11-and-title-in-none-overlap".
    *  An upper bound keeps its sense ("runtime.delta <= -7" → "runtime-delta-at-most-minus-7"): the signed runtime learns a

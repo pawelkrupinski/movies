@@ -179,7 +179,8 @@ Each a production change: measure with `scripts/identity-measure`, land one at a
 - [ ] `SourceReliability.tmdbLinked` is read without a37454e82's `numbersFilmsByTmdbId` gate in
   `IdentityResolver.billedAsPiece` and `SuspectTakes`; "the feed links one film" is defined twice (`UnifiedEvidence`
   counts the linked listings only, `FeedLink.linked` asks every listing). Check, then one definition.
-- [ ] Denials are told apart by their text (`ReleaseVeto.vetoes`' `startsWith`): a typed denial.
+- [x] Denials are told apart by their text (`ReleaseVeto.vetoes`' `startsWith`): a typed denial (done: `Denial` with a
+  `Kind` — the release veto carries the namesake's id, the cut and another house's season their own kinds).
 - [ ] `SuspectTakes.billsAnOldFilm` reads the film's own title words ("Silent Night" bills old); `billsAnEdition`
   excludes them.
 - [ ] Test-only members still in main: `CachedTmdbDocuments.holdsAnswer`, `IdentityProjection.keptIndex`/`atRest`,

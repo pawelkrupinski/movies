@@ -608,6 +608,18 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
       IdentityMeasures.Number(1)
   }
 
+  "a denial" should "be told apart by its kind, never by its text" in {
+    // denials were compared by text (`startsWith`, `contains`): a reason worded like the veto or the cut was read as one
+    val listing = Listing("Diabły")
+    def scored(denial: Denial) = Scored(Candidate(1, Film("Diabły", year = Some(1971))), 0.5, Map.empty, Some(denial), listing, Some(1))
+    val veto = ReleaseVeto.why("PL", 12)
+    ReleaseVeto.releasedBeside(veto) shouldBe Some(12)
+    ReleaseVeto.vetoes(Denial(veto.why)) shouldBe false
+    ReleaseVeto.releasedBeside(Denial("vetoed: not released in PL, as namesake 123 is")) shouldBe None
+    scored(Denial("listing-film probability below the cannot-link cut")).deniedByCutOnly shouldBe false
+    scored(Denial("Learned(listing-film probability below the cannot-link cut)", Denial.Kind.ProbabilityCut)).deniedByCutOnly shouldBe true
+  }
+
   "a calibrated take" should "not stand beside a film only IMDb reached that the evidence weighs higher" in {
     // PL Kino Kryterium's "DKF: Ktoś całkiem obcy", recording 38363428661: TMDB's Polish title of Foley's 2007 "Perfect
     // Stranger" (7183) took it at 46.3% while Andersen's "I Was a Stranger" (1193128), which TMDB holds under its Arabic

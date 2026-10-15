@@ -2591,7 +2591,7 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     // its 2026 no backing beside Limkilde's credit and 85 minutes; and the copied original title's search ranks nothing
     val bare = IdentityResolver.candidatesOf(linked ++ stated, new FilmTable(films, normalizer), normalizer)(linked.contains).flatMap(_.candidates)
     withClue(bare.map(_.render).mkString("\n")) {
-      bare.filter(_.tmdbId == 1630377).map(candidate => candidate.denial.exists(ReleaseVeto.vetoes) || candidate.untaken.isDefined).distinct shouldBe Seq(true)
+      bare.filter(_.tmdbId == 1630377).map(candidate => candidate.releasedBeside.isDefined || candidate.untaken.isDefined).distinct shouldBe Seq(true)
       bare.filter(_.tmdbId == 864101).map(_.searchRank).distinct shouldBe Seq(None)
     }
   }

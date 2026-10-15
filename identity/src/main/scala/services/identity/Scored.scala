@@ -7,7 +7,7 @@ import services.identity.IdentityMeasures.Measure
  *  (`StageRelays.namesSeasonProduction`). `houseProduction`: the film's record bills the
  *  listing's work under the listing's own house (`StageRelays.billsUnderItsHouse`).
  *  `deniedByPin`: a pin, not the listing's evidence, is (part of) why it is `denied`. */
-private[identity] final case class Scored(candidate: Candidate, probability: Double, measures: Map[String, Measure], denial: Option[String],
+private[identity] final case class Scored(candidate: Candidate, probability: Double, measures: Map[String, Measure], denial: Option[Denial],
                                           listing: IdentityMeasures.Listing, rank: Option[Int],
                                           seasonProduction: Boolean = false, deniedByPin: Boolean = false,
                                           houseProduction: Boolean = false, imdb: Option[Scored.ImdbPlace] = None,
@@ -21,7 +21,7 @@ private[identity] final case class Scored(candidate: Candidate, probability: Dou
   def takeable: Boolean = !denied && untaken.isEmpty
   /** Denied by the probability cut alone — no learned rule, no pin: the weakest denial, the listing's title and few facts
    *  reading low, which another listing's own match outweighs (`Families.deniedBySibling`, `Acceptance.soleResult`). */
-  def deniedByCutOnly: Boolean = !deniedByPin && denial.exists(_.contains(Scored.ProbabilityCut))
+  def deniedByCutOnly: Boolean = !deniedByPin && denial.exists(_.kind == Denial.Kind.ProbabilityCut)
   def category(measure: String): Option[String] = measures.get(measure).collect { case IdentityMeasures.Category(value) => value }
   def number(measure: String): Option[Double]   = measures.get(measure).collect { case IdentityMeasures.Number(value) => value }
   /** Does the listing's title NAME the film ([[IdentityMeasures.NamingRelations]])? */
@@ -35,8 +35,6 @@ private[identity] final case class Scored(candidate: Candidate, probability: Dou
 }
 
 private[identity] object Scored {
-  /** How `ListingConstraints` names a denial by the cannot-link probability cut. */
-  val ProbabilityCut = "probability below the cannot-link cut"
   /** Where IMDb's suggestions for the listing's own title put the film: its 1-based place, among `of` films. */
   final case class ImdbPlace(place: Int, of: Int)
   /** A scored candidate the resolver takes, with the confidence it is taken at. */

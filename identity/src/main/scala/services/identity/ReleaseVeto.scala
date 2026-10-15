@@ -21,25 +21,24 @@ private[identity] object ReleaseVeto {
   /** The namesakes among `scored` vetoed at a venue in `country` (ISO-3166-1), each with why; `namesake` says which
    *  candidates are namesakes, `backed` which of them something the listing or another venue published backs. Most
    *  pools have no namesake TMDB dates no release of there: they are told so without building anything. */
-  def of(country: String, scored: Seq[Scored], namesake: Scored => Boolean, backed: Scored => Boolean): Map[Int, String] = {
+  def of(country: String, scored: Seq[Scored], namesake: Scored => Boolean, backed: Scored => Boolean): Map[Int, Denial] = {
     def released(s: Scored, in: Boolean) = s.candidate.film.knownReleasedIn(country, in)
     if (!scored.exists(s => released(s, in = false) && namesake(s))) Map.empty
-    else scored.find(s => released(s, in = true) && namesake(s)).fold(Map.empty[Int, String]) { shown =>
+    else scored.find(s => released(s, in = true) && namesake(s)).fold(Map.empty[Int, Denial]) { shown =>
       scored.iterator.filter(s => released(s, in = false) && namesake(s) && !backed(s))
         .map(s => s.candidate.tmdbId -> why(country, shown.candidate.tmdbId)).toMap
     }
   }
 
   /** The denial a vetoed namesake carries — the decision's explanation names the veto and the namesake it stands beside. */
-  def why(country: String, released: Int): String = s"$Vetoed $country, as namesake $released is"
-  private val Vetoed = "vetoed: not released in"
-  private val Beside = """^vetoed: not released in \S+, as namesake (\d+) is$""".r
+  def why(country: String, released: Int): Denial =
+    Denial(s"vetoed: not released in $country, as namesake $released is", Denial.Kind.Vetoed(released))
   /** Is `denial` this veto's? */
-  def vetoes(denial: String): Boolean = denial.startsWith(Vetoed)
+  def vetoes(denial: Denial): Boolean = releasedBeside(denial).isDefined
   /** The namesake released in the venue's country that this veto's `denial` stood the vetoed film beside ([[why]]). */
-  def releasedBeside(denial: String): Option[Int] = denial match {
-    case Beside(id) => id.toIntOption
-    case _          => None
+  def releasedBeside(denial: Denial): Option[Int] = denial.kind match {
+    case Denial.Kind.Vetoed(released) => Some(released)
+    case _                            => None
   }
 
   /** `measures` with the namesakes the veto took away from `scored`'s rivals taken out of its `rivals` count — never

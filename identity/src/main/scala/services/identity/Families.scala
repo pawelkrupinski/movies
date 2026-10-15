@@ -57,12 +57,12 @@ private[identity] final class Families(scoring: CandidateScoring, acceptance: Ac
     lazy val ownFacts = IdentityMeasures.comparedFacts(ListingFilm, best.measures).keySet
     val ownProduction = best.seasonProduction && StageRelays.billsItsHouse(best.listing, best.candidate.film)
     def withdraws(denial: Scored) =
-      !(best.houseProduction && denial.denial.contains(CandidateScoring.AnotherHousesSeason)) &&
+      !(best.houseProduction && denial.denial.exists(_.kind == Denial.Kind.AnotherHousesSeason)) &&
         (!denial.deniedByCutOnly || (IdentityMeasures.comparedFacts(ListingFilm, denial.measures).keySet -- ownFacts).nonEmpty)
     if (ownProduction) None
     else members.iterator.filter(sibling => sibling.id != node.id && !takenAlone(sibling.id) && links.titleLinked(node, sibling))
       .flatMap(sibling => scope.of(sibling).find(other => other.candidate.tmdbId == best.candidate.tmdbId && other.denied && withdraws(other))
-        .map(other => sibling -> other.denial.getOrElse("denied")))
+        .map(other => sibling -> other.denial.fold("denied")(_.why)))
       .nextOption()
   }
 

@@ -275,7 +275,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
                 case ids       => Left(Refused("two exact top hits", None, ids.mkString("; ")))
               }
       best <- eligible.find(_.candidate.tmdbId == id).toRight(Refused("its exact top hit is denied", Some(id),
-                ranked.find(_.candidate.tmdbId == id).flatMap(_.denial).getOrElse("")))
+                ranked.find(_.candidate.tmdbId == id).flatMap(_.denial).fold("")(_.why)))
       taken <- unopposed(best, best, eligible)
     } yield taken
   }
@@ -293,7 +293,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
       // a one-word piece names no film here, rival or taken: "Inna Mamusia - maraton" is no "Maraton"
       scored <- one(ranked.filter(scored => scored.titleNamesIt && (scored.category("title").exists(IdentityMeasures.Rivalling) ||
                   IdentityMeasures.standsForTheWhole(any.listing, scored.candidate.film))), "the title names no film", "the title names two films")
-      _      <- needOf(!scored.denied, "the film it names is denied", scored, scored.denial.getOrElse(""))
+      _      <- needOf(!scored.denied, "the film it names is denied", scored, scored.denial.fold("")(_.why))
       _      <- needOf(scored.rank.contains(1), "not its search's first hit", scored, scored.rank.fold("not ranked")(rank => s"ranked $rank"))
       _      <- needOf(scored.category("title").contains("segment"), "not named by a piece of the title", scored,
                   s"title=${scored.category("title").getOrElse("absent")}")

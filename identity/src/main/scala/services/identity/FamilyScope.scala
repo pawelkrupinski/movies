@@ -26,7 +26,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
    *  its node (`deniedByNode`: a pin, a venue's own name, an overruled feed link) or its own evidence rules out
    *  (`CandidateScoring.evidenceDenial`), which are never eligible. */
   def score(listing: IdentityMeasures.Listing, venue: String, ranks: Map[Int, Int], walked: Set[Int], shared: Set[Int],
-            deniedByNode: Int => Option[String], suggested: Set[Int] = Set.empty, directedBy: Set[Int] = Set.empty,
+            deniedByNode: Int => Option[Denial], suggested: Set[Int] = Set.empty, directedBy: Set[Int] = Set.empty,
             imdbTitles: Map[Int, Set[String]] = Map.empty, country: Option[String] = None, linked: Set[Int] = Set.empty): Seq[Scored] = {
     counted()
     val related    = pool.map(candidate => candidate.tmdbId -> titleRelation(listing, candidate)).toMap
@@ -70,7 +70,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
     // A namesake the venue's country never saw released, beside one it did, that nothing backs is denied, and no
     // rival in the evidence class of the namesakes left ([[ReleaseVeto]]). A namesake here is a film the title names
     // EXACTLY: an original or alternative title is the venue's spelling of another language's film, not its own.
-    val vetoed = country.fold(Map.empty[Int, String])(ReleaseVeto.of(_, measured, scored =>
+    val vetoed = country.fold(Map.empty[Int, Denial])(ReleaseVeto.of(_, measured, scored =>
       relation(scored.candidate.tmdbId) == "exact" && !onlySuggested(scored.candidate.tmdbId),
       scored => scored.number("venues.corroborating").exists(_ > 0) || acceptance.weights.factsSupport(scored)))
     val candidates = if (vetoed.isEmpty) measured else measured.map { scored =>
@@ -144,18 +144,18 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
     def ownLanguageUntitled(scored: Scored) = untitled(scored) && named.forall(scored.probability >= _)
     candidates.map(scored =>
       if (ownLanguageUntitled(scored))
-        scored.copy(denial = Some("a film of the venue's own language its title shares no word with"))
+        scored.copy(denial = Some(Denial("a film of the venue's own language its title shares no word with")))
       else if (anotherRecordOfItsBroadcast(scored))
-        scored.copy(denial = Some("another record of a broadcast its film database holds twice"))
+        scored.copy(denial = Some(Denial("another record of a broadcast its film database holds twice")))
       else if (titled && !IdentityMeasures.NamingRelations(relation(scored.candidate.tmdbId)) && IdentityMeasures.sameDirector(scored.measures))
-        scored.copy(denial = Some("its director's other film, which the title does not name"))
+        scored.copy(denial = Some(Denial("its director's other film, which the title does not name")))
       else if (directorBilled && IdentityMeasures.NamingRelations(relation(scored.candidate.tmdbId)) &&
                !bannerDirected(scored.candidate.tmdbId))
-        scored.copy(denial = Some("a namesake of the film whose director its billing names"))
+        scored.copy(denial = Some(Denial("a namesake of the film whose director its billing names")))
       else if (instalment && scored.category("numeral").exists(IdentityMeasures.OtherInstalment))
-        scored.copy(denial = Some("another instalment than the one the title numbers"))
+        scored.copy(denial = Some(Denial("another instalment than the one the title numbers")))
       else if (housed.nonEmpty && besideItsOwnHouse(scored))
-        scored.copy(denial = Some("another house's staging of its work, beside its own house's record"))
+        scored.copy(denial = Some(Denial("another house's staging of its work, beside its own house's record")))
       else scored.copy(untaken = shortUntaken(scored)))
       .sortBy(scored => (-scored.probability, scored.candidate.tmdbId))
   }
@@ -299,8 +299,8 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
   /** Why `node` rules `id` out before its evidence is scored: a pin, an overruled feed link, a short its feed links
    *  another film beside, a feed link's copied title, a title naming it only by the venue's own name, a programme tag or
    *  slot, a title billing a film festival alone, or a billing as a silent film of a sound-era film. */
-  private def denialByNode(node: EvidenceNode, id: Int): Option[String] =
-    Option.when(pins.deniedFilms(node.listings.head.key)(id))("pinned never this film")
+  private def denialByNode(node: EvidenceNode, id: Int): Option[Denial] =
+    (Option.when(pins.deniedFilms(node.listings.head.key)(id))("pinned never this film")
       .orElse(overruled(node).filter(_.film == id).map(_.denial))
       .orElse(copyingLink(node).filter(_ => FeedLink.copiesAnotherTitle(evidenceOf(node).measured)).flatMap(FeedLink.deniesShort(_, id, candidateById(id).film)))
       .orElse(namedOnlyByCopiedTitle(node, candidateById(id)))
@@ -311,7 +311,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
       // a billing as a silent film dates it to the silent era, as the agreement reads it (DE "STUMMFILM MIT TOBIAS
       // RANK:CHARLIE CHAPLIN" is no 1999 "Charlie Chaplin")
       .orElse(Option.when(candidateById(id).film.year.exists(_ > ListingShape.SilentEraEnd) && billingOf(node).silent)(
-        "it bills a silent film, and this one is of the sound era"))
+        "it bills a silent film, and this one is of the sound era"))).map(Denial(_))
 
   /** What `node`'s billing says it is beside a film, once per node — asked of every candidate of its pool: a film
    *  festival billed by its name alone ([[ListingShape.billsAFilmFestival]]), a silent film ([[ListingShape.billsASilentFilm]]). */
@@ -351,7 +351,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
       id => cluster.iterator.flatMap(denialByNode(_, id)).nextOption(), reached.flatMap(_.imdbOnly).toSet -- ranks.keySet,
       reached.flatMap(_.directed).toSet,
       reached.flatMap(_.imdbTitled).groupMapReduce(_._1)(_._2)(_ ++ _), lead.country, linked)
-      .map(scored => if (scored.denied || cluster.forall(node => !of(node).exists(other => other.candidate.tmdbId == scored.candidate.tmdbId && other.denied))) scored else scored.copy(denial = Some("a member's own evidence rules it out")))
+      .map(scored => if (scored.denied || cluster.forall(node => !of(node).exists(other => other.candidate.tmdbId == scored.candidate.tmdbId && other.denied))) scored else scored.copy(denial = Some(Denial("a member's own evidence rules it out"))))
       .map(placedByImdb(cluster))
       .map(scored => reached.flatMap(_.imdbTitled.getOrElse(scored.candidate.tmdbId, Set.empty)).toSet match {
         case titles if titles.nonEmpty => scored.copy(imdbTitled = titles)

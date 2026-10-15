@@ -225,7 +225,9 @@ object IdentityResolver {
   /** One candidate as a node's family scored it, for a report reading why a listing took what it took. */
   final case class CandidateScore(tmdbId: Int, title: String, year: Option[Int], probability: Double, searchRank: Option[Int],
                                   denial: Option[String], seasonProduction: Boolean, houseProduction: Boolean, explanation: String,
-                                  untaken: Option[String] = None) {
+                                  untaken: Option[String] = None,
+                                  /** The namesake the release veto denied it beside ([[ReleaseVeto]]). */
+                                  releasedBeside: Option[Int] = None) {
     def denied: Boolean = denial.isDefined
     def render: String =
       f"$tmdbId%8d ${ResolverDecision.percent(probability)}%6s rank ${searchRank.fold("-")(_.toString)}%2s" +
@@ -235,8 +237,8 @@ object IdentityResolver {
   object CandidateScore {
     private[identity] def of(scored: services.identity.Scored, calibration: IdentityCalibration): CandidateScore =
       CandidateScore(scored.candidate.tmdbId, scored.candidate.film.title, scored.candidate.film.year, scored.probability, scored.rank,
-        scored.denial, scored.seasonProduction, scored.houseProduction, calibration.explain(IdentityMeasures.ListingFilm, scored.measures),
-        scored.untaken)
+        scored.denial.map(_.why), scored.seasonProduction, scored.houseProduction, calibration.explain(IdentityMeasures.ListingFilm, scored.measures),
+        scored.untaken, scored.denial.flatMap(ReleaseVeto.releasedBeside))
   }
 
   /** A focused node, its candidates as its family scores them (best first), and each banner its

@@ -32,13 +32,26 @@ object LearnedCannotLinks {
    *  a runtime vetoes through. A learned rule still vetoes. */
   def learnedListingFilm(calibration: IdentityCalibration,
                          measures: Map[String, IdentityMeasures.Measure],
-                         probability: Double): Option[CannotLink] = {
+                         probability: Double): Option[CannotLink] =
+    listingFilm(calibration, measures, probability).map(_._1)
+
+  /** [[learnedListingFilm]] as the denial a candidate carries: a learned rule's, or the probability cut's alone
+   *  ([[Denial.Kind.ProbabilityCut]]). */
+  def listingFilmDenial(calibration: IdentityCalibration,
+                        measures: Map[String, IdentityMeasures.Measure],
+                        probability: Double): Option[Denial] =
+    listingFilm(calibration, measures, probability).map((link, kind) => Denial(link.toString, kind))
+
+  private def listingFilm(calibration: IdentityCalibration,
+                          measures: Map[String, IdentityMeasures.Measure],
+                          probability: Double): Option[(CannotLink, Denial.Kind)] = {
     import IdentityMeasures.{ListingFilm, comparedFacts, comparesAFact}
     // The cut on a probability the film's own facts do not pull down is the title's, or the screening's length's, alone.
     lazy val factsAgree = calibration.contributionSum(ListingFilm, comparedFacts(ListingFilm, measures) - "runtime.delta") >= 0
     if (!comparesAFact(ListingFilm, measures)) None
-    else calibration.cannotLink(ListingFilm, measures).map(r => CannotLink.Learned(r.name))
-      .orElse(Option.when(!factsAgree && calibration.forbidsLink(ListingFilm, probability))(CannotLink.Learned(s"$ListingFilm probability below the cannot-link cut")))
+    else calibration.cannotLink(ListingFilm, measures).map(r => CannotLink.Learned(r.name) -> Denial.Kind.Evidence)
+      .orElse(Option.when(!factsAgree && calibration.forbidsLink(ListingFilm, probability))(
+        CannotLink.Learned(s"$ListingFilm probability below the cannot-link cut") -> Denial.Kind.ProbabilityCut))
   }
 
   /** [[learned]] for two LISTINGS (the "listing-listing" scope): the pair is kept apart only by
