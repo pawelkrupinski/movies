@@ -15,7 +15,7 @@ Prints, for the listings at venues whose name holds --venue and whose title hold
     (scripts/local-mirror/freshness): the per-listing trace (identity_traces), the family's agreement verdicts
     (identity_model_families) and the venue's scraped listing (identity_listings);
   * with --replay: scripts/identity-slice at each deploy's commit that logged a change, all on ONE pinned recording
-    (--recording, default the newest green one) — whether CI's view of the input reproduces each change. A change the
+    (--recording, default the newest green one holding the country's corpus) — whether CI's view of the input reproduces each change. A change the
     replay does not reproduce at its commit is prod's state (filed answers, restored model, arrival order), not code.
     The mirror readable, a third view replays with prod's state NOW (identity-slice --prod-mirror), and each change is
     shown beside prod's reason for the listing now (its identity_traces).
@@ -44,6 +44,7 @@ MIRROR_NEEDS = "identity_traces,identity_model_families,identity_listings"   # a
 LOG_LIMIT = 2000
 # the identity-slice every replay runs: another checkout's when this one's tool files no longer compile at old refs
 SLICE = os.environ.get("LISTING_HISTORY_SLICE", os.path.join(REPO, "scripts", "identity-slice"))
+TOOLS = os.path.join(REPO, "scripts", "identity-tools.sh")
 DEPLOY_SLACK = 600   # a pod of the previous image logs on for a few minutes while the rollout passes
 
 
@@ -453,11 +454,12 @@ def replay(args, known, run, state=None):
     views = VIEWS + ((MIRROR_VIEW,) if state is not None else ())
     recording = args.recording
     if not recording:
-        code, text = run(["gh", "run", "list", "-R", os.environ.get("KINOWO_REPO", "pawelkrupinski/movies"), "--workflow",
-                          "Record scrape fixtures", "--status", "success", "-L", "1", "--json", "databaseId", "-q", ".[0].databaseId"])
+        # the one every identity tool defaults to: the newest green run that holds this country's corpus
+        code, text = run(["bash", "-c", '. "$0" && identity_newest_recording "$1"', TOOLS, args.cc], timeout=300)
         recording = text.strip() if code == 0 else ""
         if not recording:
-            return ["REPLAY: no recording named, and the newest green one could not be read"]
+            reason = (text.strip().splitlines() or ["no answer"])[-1]
+            return [f"REPLAY: no recording named, and the newest green one holding a {args.cc} corpus could not be read: {reason}"]
     lines = [f"REPLAY on recording {recording} (identity-slice, one ref at a time):"]
     taken = {}
 

@@ -12,7 +12,8 @@
 #   --replay          identity-slice at every deploy that logged a change (one ref compiled at a time, ~2 min a new ref):
 #                     in CI's view, with the capture's filed answers, and — the mirror readable — with prod's state now
 #                     (identity-slice --prod-mirror), each change beside prod's reason now (the mirror's identity_traces)
-#   --recording       the recording every replay reads (default the newest green "Record scrape fixtures" run)
+#   --recording       the recording every replay reads (default the newest green "Record scrape fixtures" run holding
+#                     the country's corpus, as identity-slice's own default)
 #
 # Reads VictoriaLogs and Prometheus over `ssh monitoring-1`, the mirror on 127.0.0.1:28017 (read-only, never prod).
 # LISTING_HISTORY_SLICE names another identity-slice for --replay (one whose tool files still compile at old refs).

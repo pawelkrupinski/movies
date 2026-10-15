@@ -46,8 +46,9 @@ class Runner:
     """Answers each outside call by what it runs; records them."""
 
     def __init__(self, logs=(), images=(A2E, CB), mirror=None, freshness=(0, "de  kinowo_de_prod_mirror: synced (8s ago) — fresh\n"),
-                 slice_takes=None):
+                 slice_takes=None, newest=(0, "38498856157\n")):
         self.calls = []
+        self.newest = newest
         self.logs, self.images, self.mirror, self.freshness, self.slice_takes = logs, images, mirror, freshness, slice_takes or {}
 
     def __call__(self, argv, **_):
@@ -64,6 +65,8 @@ class Runner:
         if argv[0] == "git":
             sha = argv[-1]
             return 0, f"{sha}{'0' * (40 - len(sha))}\tsubject of {sha}\n"
+        if argv[0] == "bash" and "identity_newest_recording" in argv[2]:
+            return self.newest
         if argv[0].endswith("label-lookup"):
             return 0, f"label of {argv[argv.index('--title') + 1]}\n"
         if argv[0].endswith("identity-slice"):
@@ -177,6 +180,21 @@ class ReportTest(unittest.TestCase):
         self.assertIn("  CI (no filed answers): TAKE Casablanca-Programmkino: tmdb:581", out)
         self.assertIn("no earlier deploy in the window to replay against", out)
         self.assertIn("REPRODUCED: a2e9df9 takes none, 56cd8fc tmdb 581", out)
+
+    def test_replay_defaults_to_the_newest_recording_holding_the_country_s_corpus(self):
+        runner = Runner(logs=[GAINED])
+        run(runner, "--replay")
+        newest = [a for a in runner.calls if a[0] == "bash"]
+        self.assertEqual([(a[-2].endswith("scripts/identity-tools.sh"), a[-1]) for a in newest], [(True, "de")])
+        slices = [a for a in runner.calls if a[0].endswith("identity-slice")]
+        self.assertTrue(slices and all(a[a.index("--recording") + 1] == "38498856157" for a in slices))
+
+    def test_no_recording_found_replays_nothing_and_says_why(self):
+        runner = Runner(logs=[GAINED], newest=(1, "[identity] could not list the runs (gh failed or timed out)\n"))
+        out = run(runner, "--replay")
+        self.assertFalse(any(a[0].endswith("identity-slice") for a in runner.calls))
+        self.assertIn("REPLAY: no recording named, and the newest green one holding a de corpus could not be read: "
+                      "[identity] could not list the runs (gh failed or timed out)", out)
 
     def test_a_change_only_prod_s_filed_answers_reproduce_is_the_ci_gap(self):
         a2e, cb = "a2e9df9" + "0" * 33, "56cd8fc" + "0" * 33
