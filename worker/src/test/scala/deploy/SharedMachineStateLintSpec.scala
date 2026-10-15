@@ -148,18 +148,23 @@ class SharedMachineStateLintSpec extends AnyFlatSpec with Matchers {
   private val Writes =
     """(?<![=-])>|\b(?:tee|mkdir|touch|cp|mv|ln|rsync)\s|Files\.(?:write|writeString|createDirector|createFile|newOutputStream|newBufferedWriter|copy|move)|FileOutputStream|FileWriter|PrintWriter|writeFileSync|appendFileSync|mkdirSync|createWriteStream|write_text|write_bytes|\.mkdir\(|\bopen\([^)]*["'][wax]|createDirectory|createFile|\.write\(to""".r
 
-  /** A fixed temp path on a line that also writes. */
-  private val FixedTempWrite = s"(?=.*(?:${Writes.regex})).*${FixedTemp.regex}".r
+  /** A fixed temp path on a line that also writes — two searches, each linear in the line. One regex
+   *  (`(?=.*writes).*path`) unanchored is retried at every column and rescans the rest each time:
+   *  quadratic on the long lines some tests hold, and 38 s of this spec (2026-10-15). */
+  private def fixedTempWrite(line: String): Boolean =
+    Writes.findFirstIn(line).isDefined && FixedTemp.findFirstIn(line).isDefined
 
-  private def offending(rule: Language => Regex)(file: String, language: Language): Seq[String] =
+  private def offending(matches: Language => String => Boolean)(file: String, language: Language): Seq[String] =
     Files.readString(Paths.get(file)).linesIterator.zipWithIndex.collect {
-      case (line, index) if rule(language).findFirstIn(code(line, language)).isDefined => s"$file:${index + 1}: ${line.trim}"
+      case (line, index) if matches(language)(code(line, language)) => s"$file:${index + 1}: ${line.trim}"
     }.toSeq
 
-  private val directGit: (String, Language) => Seq[String] = offending(DirectGit)
-  private val fixedTemp: (String, Language) => Seq[String] = offending(_ => FixedTempWrite)
-  private val userDirectory: (String, Language) => Seq[String] = offending(_ => UserDirectory)
-  private val releasedPort: (String, Language) => Seq[String] = offending(_ => ReleasedPort)
+  private def found(rule: Language => Regex): Language => String => Boolean = language => rule(language).findFirstIn(_).isDefined
+
+  private val directGit: (String, Language) => Seq[String] = offending(found(DirectGit))
+  private val fixedTemp: (String, Language) => Seq[String] = offending(_ => fixedTempWrite)
+  private val userDirectory: (String, Language) => Seq[String] = offending(found(_ => UserDirectory))
+  private val releasedPort: (String, Language) => Seq[String] = offending(found(_ => ReleasedPort))
 
   private def offenders(rule: (String, Language) => Seq[String], allowed: Map[String, String]): Seq[String] =
     testFiles.filterNot { case (file, _) => allowed.contains(file) }.flatMap(rule.tupled)
@@ -220,8 +225,8 @@ class SharedMachineStateLintSpec extends AnyFlatSpec with Matchers {
     val passed = Seq("POOL_APK=\"/tmp/app-debug.apk\"", "arguments(Seq(\"--export\", \"/tmp/lk/\"))",
       "echo x > \"$work/tmp/y\"", "Map(\"dir\" -> \"/tmp/x\")", "xs.map(x => \"/tmp/x\")", "echo y > \"$(mktemp)\"",
       "d=$(mktemp -d /tmp/kinowo-spec.XXXXXX) && echo y > \"$d/f\"")
-    caught.filter(FixedTempWrite.findFirstIn(_).isEmpty) shouldBe empty
-    passed.filter(FixedTempWrite.findFirstIn(_).isDefined) shouldBe empty
+    caught.filterNot(fixedTempWrite) shouldBe empty
+    passed.filter(fixedTempWrite) shouldBe empty
   }
 
   "the shell rule" should "catch git however a script runs it, and not its mentions" in {
