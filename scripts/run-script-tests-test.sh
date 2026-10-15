@@ -100,5 +100,17 @@ check "...saying which python3 and which floor" "1" "$(grep -c 'Python 3.8.10.*3
 check "...and runs no test" "0" "$(grep -c '^PASS' "$work/out")"
 check "a run with no Python test does not ask" "0" "$(PATH="$work/oldpy:$PATH" run scripts/a-test.sh)"
 
+# --bash <path>: each .sh test run by that bash, and the tools it starts through `#!/usr/bin/env bash` too.
+real_bash="$(command -v bash)"
+printf '#!/bin/sh\necho "$*" >> "%s/via-fake"\nexec %s "$@"\n' "$work" "$real_bash" > "$work/fake-bash"
+chmod +x "$work/fake-bash"
+put scripts/env/tool-test.sh 'scripts/env/tool'
+printf '#!/usr/bin/env bash\necho tool ran\n' > "$tree/scripts/env/tool"; chmod +x "$tree/scripts/env/tool"
+check "--bash: the run passes under it" "0" "$(run --bash "$work/fake-bash" scripts/env)"
+check "...the test run by it, and the tool the test starts through env bash" "scripts/env/tool-test.sh|scripts/env/tool" \
+  "$(paste -sd'|' - < "$work/via-fake")"
+check "...a --bash that is no executable is a usage error" "64" "$(run --bash "$work/no-such-bash" scripts/env)"
+rm -rf "$tree/scripts/env"
+
 check "an unknown option is a usage error" "64" "$(run --bogus)"
 spec_summary

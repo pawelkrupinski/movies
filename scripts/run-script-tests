@@ -7,8 +7,11 @@
 #   scripts/run-script-tests --changed origin/main # only those whose test, tool or a file they name changed
 #   scripts/run-script-tests --list [--all]        # what would run: path, tag, reason (tab-separated)
 #   scripts/run-script-tests --tag manual          # only the tests tagged so (see TAGS)
+#   scripts/run-script-tests --bash /bin/bash      # every self-test under that bash (macOS's 3.2: the floor)
 #
-# Options: --jobs N (8 at once), --timeout S (600 s a test), --root DIR (the checkout; this script's own).
+# Options: --jobs N (8 at once), --timeout S (600 s a test), --root DIR (the checkout; this script's own),
+# --bash PATH (each .sh test run by it, and first on the PATH as `bash`, so the tools it starts through their
+# `#!/usr/bin/env bash` and every `bash -c` run by it too).
 #
 # WHY. The self-tests were listed by hand: ~60 lines of one background step in ci.yml plus single
 # lines in six other workflows, and a test nobody listed ran nowhere (ScriptSelfTestsRunInCiSpec
@@ -36,8 +39,8 @@ Roots="scripts .github/scripts .github/actions android/scripts ios/scripts infra
 PythonFloor="3.9"
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-jobs=8 timeout_s=600 list=0 all=0 tag="" changed_base="" filters=()
-usage() { sed -n '2,13p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' >&2; exit 64; }
+jobs=8 timeout_s=600 list=0 all=0 tag="" changed_base="" test_bash="" filters=()
+usage() { sed -n '2,16p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' >&2; exit 64; }
 while [ $# -gt 0 ]; do
   case "$1" in
     --jobs) jobs="${2:?--jobs N}"; shift ;;
@@ -47,6 +50,7 @@ while [ $# -gt 0 ]; do
     --all) all=1 ;;
     --tag) tag="${2:?--tag T}"; shift ;;
     --changed) changed_base="${2:?--changed BASE}"; shift ;;
+    --bash) test_bash="${2:?--bash PATH}"; shift ;;
     -h|--help) usage ;;
     -*) echo "run-script-tests: unknown option $1" >&2; usage ;;
     *) filters+=("$1") ;;
@@ -111,6 +115,11 @@ touched_by() { # <test path> <changed paths file>: the test, its tool, or a file
 
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
+if [ -n "$test_bash" ]; then
+  [ -x "$test_bash" ] || { echo "run-script-tests: --bash $test_bash is no executable" >&2; exit 64; }
+  mkdir "$work/bash-bin" && ln -s "$test_bash" "$work/bash-bin/bash" || exit 64
+  PATH="$work/bash-bin:$PATH"; export PATH
+fi
 if [ -n "$changed_base" ]; then
   changed_paths > "$work/changed" || exit 2
 fi
