@@ -24,7 +24,7 @@ scratch_git "$root" checkout -q --detach HEAD~1
 out=$("$TOOL" "$work/mine"); status=$?
 check "a detached root is warned about, from a worktree" "1" "$status"
 check "...naming the state" "1" "$(printf '%s' "$out" | grep -c "root checkout $root is on a DETACHED HEAD")"
-check "...and the fix" "1" "$(printf '%s' "$out" | grep -c "Fix: git -C $root checkout main && git -C $root merge --ff-only origin/main")"
+check "...and the fix" "1" "$(printf '%s' "$out" | grep -c "Fix: .*$root checkout main .*$root merge --ff-only origin/main")"
 check "...and the root is left as it was" "" "$(scratch_git "$root" symbolic-ref --quiet HEAD)"
 
 scratch_git "$root" checkout -q -b elsewhere

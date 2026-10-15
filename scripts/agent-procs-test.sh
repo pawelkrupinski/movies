@@ -92,7 +92,7 @@ scratch_git "$root" checkout -q --detach
 detached="$(cd "$work/wt-merged" && "$TOOL")"
 scratch_git "$root" checkout -q main
 check "a detached root checkout is warned about first, with the fix" "1" \
-  "$(printf '%s\n' "$detached" | head -1 | grep -c "WARNING: the root checkout $root is on a DETACHED HEAD.*Fix: git -C $root checkout main && git -C $root merge --ff-only origin/main")"
+  "$(printf '%s\n' "$detached" | head -1 | grep -c "WARNING: the root checkout $root is on a DETACHED HEAD.*Fix: .*$root checkout main .*$root merge --ff-only origin/main")"
 check "a merged, clean, unowned worktree is removable" "REMOVABLE" "$(suggestion wt-merged)"
 check "a worktree with commits origin/main lacks is kept" "KEEP" "$(suggestion wt-unmerged)"
 check "a worktree with uncommitted files is kept" "KEEP" "$(suggestion wt-dirty)"

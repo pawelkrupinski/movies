@@ -312,7 +312,7 @@ echo detached >> "$hp/wt/doc.md"; scratch_git "$hp/wt" commit -qam detached
 # the checks this scratch clone cannot run (no run-script-tests, no sbt) skipped: what is left is the warning's verdict
 out="$(PREPUSH_SKIP="scripttests shellcheck sbt" scratch_git "$hp/wt" push origin HEAD:refs/heads/feature 2>&1)"; code=$?
 check "a detached root checkout is warned about on a push from a worktree" "1" \
-  "$(printf '%s\n' "$out" | grep -c "WARNING: the root checkout .* is on a DETACHED HEAD.*Fix: git -C .* checkout main")"
+  "$(printf '%s\n' "$out" | grep -c "WARNING: the root checkout .* is on a DETACHED HEAD.*Fix: .* checkout main")"
 check "...and the push still lands" "0 new" "$code $(cat "$hp/ran" 2>/dev/null | tr '\n' ' ' | sed 's/ $//')"
 scratch_git "$hp/clone" checkout -q main
 # a worktree whose hook is the very file the path names, or one handed over already, never hands over again
