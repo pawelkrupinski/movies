@@ -79,7 +79,8 @@ no known-wrong/accepted row covers.
 - [x] **Arsenal Berlin client** — landed a2e50ec85..f58b71add (measure 38708378594: 0 moves, as the recording held only
   Cineamo's Arsenal rows; recording 38713274617 green). Kazahana is known-wrong (served) until a recording reads Arsenal's
   own calendar. Its cures (Kaidan, Ototo, Ningen no joken II/III, Kazahana) show only in a recording taken after prod
-  deploys the client — check then and strike the Kazahana row. Still unmatched with it: Mozu, West Indies.
+  deploys the client — check then and strike the Kazahana row. Prod (mirror, 10-15 15:00) reads the calendar: Kazahana
+  now takes none (Kinoshita's 1959 169401 at 55%, below the cut), Mozu 593128 and West Indies 271858 are taken, unjudged.
 - [x] **a083-fix** — landed 9f9b41682..6abe17876 (measure 38737196525, LANDABLE: PL 1 cure, UK 2 cures + 1 gained right,
   DE 4 cures + 6 gained right, 0 right lost, 0 new wrong; convergence 38749834547 green). Its factless-short rule was
   dropped in the rebase (main's ShortFilms.untaken already cures GINA and THE COMMUNITY). It does NOT move DE Fallen
@@ -185,6 +186,16 @@ Each a production change: measure with `scripts/identity-measure`, land one at a
   `imdb:tt0064570` ×3) — check that no venue-scoped reader needs them, then let `identity_judgements.py` flag and drop
   them. `INNA MAMUSIA - MARATON` (undecided) vs `Inna Mamusia - maraton` (right), one film, keys a case apart.
   title-words.tsv holds `en tour`/`es gira` in both festival-edition and side-event (and `tour` twice in festival-edition).
+
+### Review of a083 and the Arsenal client (2026-10-15)
+- [ ] **The staging piece outweighs every keep but a stated fact** (138b55d52, `IdentityResolver.billedAsPiece`'s
+  `staged`): a strand named with a Stage word ("Musical Monday: Grease", "Stage & Screen: …", PL "Scena …") would deny
+  the film it bills unless the billing states its year, director or runtime. The 62 prod listings holding such a word
+  today move nowhere (slice batches 9f9b41682 vs 6abe17876: UK 1 cure, DE 2 cures, PL/US 0), so it is no regression
+  yet; pin a strand case in IdentityResolverCasesSpec before a strand with a Stage word appears.
+- [ ] **Arsenal's shared bills are untested**: `ArsenalBerlinClient.parseScreening` drops year, director, country and
+  runtime when `movieTitles` holds two or more films, but the 10-14 recording holds no shared bill. Record one
+  (`clients.tools.WriteArsenalBerlin`) when the calendar carries it and assert the facts are dropped.
 
 ### CI and gates
 - [ ] **Decision pending:** pre-push enforces one identity landing at a time (refuse an identity-path push while an
