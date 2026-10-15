@@ -63,6 +63,7 @@ fi
 
 mkdir -p "$(dirname "$report")"
 measure_log="$(dirname "$report")/refit.log"
+gc_log="$(dirname "$report")/refit-gc.log" # every collection with its pause and CPU, to tell a thread count's GC cost
 
 if [ -n "${TMDB_API_KEY:-}" ]; then log "TMDB: asked live (TMDB_API_KEY from the environment)"
 else log "TMDB: no TMDB_API_KEY — a proposal asking TMDB anything is unmeasured (locally: secrets run movies TMDB_API_KEY -- $0)"; fi
@@ -82,7 +83,7 @@ classpath=$(sed $'s/\x1b\\[[0-9;]*[A-Za-z]//g' "$sbt_out" | grep -E '^/[^ ]*(\.j
 # 2. the measure, in its own JVM
 log "measuring every step on $threads thread(s) — the log in $measure_log"
 java "-Xmx${IDENTITY_REFIT_HEAP:-12g}" -XX:AutoBoxCacheMax=16384 -Djava.awt.headless=true -Duser.language=en -Duser.country=US \
-    -cp "$classpath" scripts.IdentityRefit --apply --report "$report" --threads "$threads" ${relearn:+--relearn "$relearn"} 2>&1 | tee "$measure_log"
+    "-Xlog:gc,gc+cpu:file=$gc_log:uptime" -cp "$classpath" scripts.IdentityRefit --apply --report "$report" --threads "$threads" ${relearn:+--relearn "$relearn"} 2>&1 | tee "$measure_log"
 [ -z "${GITHUB_STEP_SUMMARY:-}" ] || cat "$report" >> "$GITHUB_STEP_SUMMARY"
 
 if git diff --quiet -- "$Weights"; then

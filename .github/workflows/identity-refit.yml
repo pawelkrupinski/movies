@@ -38,6 +38,10 @@ on:
                 description: 'Listing-film signals to relearn from fresh units alone (comma-separated), e.g. year.delta,runtime.delta'
                 required: false
                 default: ''
+            threads:
+                description: 'Proposals measured at once (scripts/identity-refit --threads); empty = the script default'
+                required: false
+                default: ''
 
     # Thursday 05:00 UTC — its own slot, clear of Tuesday's decoration discovery.
     schedule:
@@ -94,10 +98,11 @@ jobs:
               env:
                   TMDB_API_KEY: ${{ secrets.TMDB_API_KEY }}
                   RELEARN: ${{ github.event.inputs.relearn }}
+                  THREADS: ${{ github.event.inputs.threads }}
                   MONGODB_URI: mongodb://127.0.0.1:27017/kinowo?directConnection=true
                   MONGODB_DB: kinowo
                   CDP_BROWSER_BIN: ${{ steps.setup-chrome.outputs.chrome-path }}
-              run: scripts/identity-refit --report identity-refit-report.md ${RELEARN:+--relearn "$RELEARN"}
+              run: scripts/identity-refit --report identity-refit-report.md ${RELEARN:+--relearn "$RELEARN"} ${THREADS:+--threads "$THREADS"}
 
             - name: Check for kept changes
               id: changed
@@ -115,6 +120,7 @@ jobs:
                   path: |
                       identity-refit-report.md
                       refit.log
+                      refit-gc.log
                   retention-days: 14
 
             # A fresh branch off main every run, never a force-push over a stale one --
