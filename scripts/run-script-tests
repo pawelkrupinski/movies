@@ -9,6 +9,8 @@
 #   scripts/run-script-tests --list [--all]        # what would run: path, tag, reason (tab-separated)
 #   scripts/run-script-tests --tag manual          # only the tests tagged so (see TAGS)
 #   scripts/run-script-tests --bash /bin/bash      # every self-test under that bash (macOS's 3.2: the floor)
+#   scripts/run-script-tests --linux [<names>]     # the selected tests in an ubuntu-26.04 container, as CI runs
+#                                                  # them (default: those --changed origin/main selects); Docker
 #
 # Options: --jobs N (8 at once), --timeout S (600 s a test), --root DIR (the checkout; this script's own),
 # --bash PATH (each .sh test run by it, and first on the PATH as `bash`, so the tools it starts through their
@@ -40,8 +42,8 @@ Roots="scripts .github/scripts .github/actions android/scripts ios/scripts infra
 PythonFloor="3.9"
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-jobs=8 timeout_s=600 list=0 all=0 tag="" changed_base="" test_bash="" filters=()
-usage() { sed -n '2,17p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' >&2; exit 64; }
+jobs=8 timeout_s=600 list=0 all=0 tag="" changed_base="" test_bash="" linux=0 filters=()
+usage() { sed -n '2,19p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' >&2; exit 64; }
 while [ $# -gt 0 ]; do
   case "$1" in
     --jobs) jobs="${2:?--jobs N}"; shift ;;
@@ -52,6 +54,7 @@ while [ $# -gt 0 ]; do
     --tag) tag="${2:?--tag T}"; shift ;;
     --changed) changed_base="${2:?--changed BASE}"; shift ;;
     --bash) test_bash="${2:?--bash PATH}"; shift ;;
+    --linux) linux=1 ;;
     -h|--help) usage ;;
     -*) echo "run-script-tests: unknown option $1" >&2; usage ;;
     *) filters+=("$1") ;;
@@ -59,6 +62,8 @@ while [ $# -gt 0 ]; do
   shift
 done
 cd "$root" || exit 64
+# --linux with nothing named: the tests the pre-push hook would run, those the changes since origin/main touch
+[ "$linux" = 1 ] && [ ${#filters[@]} -eq 0 ] && [ -z "$changed_base" ] && [ -z "$tag" ] && changed_base=origin/main
 
 # ── Discovery ──────────────────────────────────────────────────────────────────────────────────
 discover() { # every self-test under the roots: path<TAB>tag<TAB>reason
@@ -166,6 +171,43 @@ touched_by() { # <test path> <changed paths file>: the test, its tool, or a file
   [ -s "$work/changed.names" ] && grep -qEf "$work/changed.names" "$1" 2>/dev/null
 }
 
+# ── --linux: the selected tests in a container like CI's runner ───────────────────────────────────
+# CI runs these on ubuntu-26.04 (ci.yml's `test` job): GNU coreutils/sed/find/grep, a newer bash and python3. A Mac's
+# BSD tools and /bin/bash 3.2 pass what Linux fails -- 03b3a6825's refit logged `sysctl machdep.cpu.brand_string`,
+# macOS-only, and CI run 38772214523 failed on it. The image is ubuntu:26.04 from mirror.gcr.io (CiImageMirrorSpec:
+# never Docker Hub first) plus the packages below, built once and kept, tagged by this recipe's hash. The checkout is
+# mounted READ-ONLY at its own path (a worktree's .git file names the clone's git dir by absolute path, so that is
+# mounted too); the tests write only to their mktemp scratch, the container's own /tmp. They run as this user, not
+# root, as CI's `runner` does: root passes a chmod-000 check that fails everywhere else.
+LinuxImageRecipe='FROM mirror.gcr.io/library/ubuntu:26.04
+RUN apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
+      bash coreutils findutils sed gawk grep diffutils git jq python3 perl curl ca-certificates unzip zip xz-utils \
+      file procps lsof bc tzdata shellcheck > /dev/null && rm -rf /var/lib/apt/lists/* \
+ && git config --system safe.directory "*"'
+run_on_linux() {
+  local docker image git_common mounts=() selected=()
+  docker=$(command -v docker || true)
+  [ -z "$docker" ] && [ -x "$HOME/.rd/bin/docker" ] && docker="$HOME/.rd/bin/docker" # Rancher Desktop's
+  if [ -z "$docker" ] || ! bounded 20 "$docker" info > /dev/null 2>&1; then
+    echo "run-script-tests: --linux needs a running Docker (docker info failed) -- start Docker / Rancher Desktop" >&2
+    return 2
+  fi
+  image="kinowo-script-tests:$(printf '%s' "$LinuxImageRecipe" | git hash-object --stdin | cut -c1-12)"
+  if ! "$docker" image inspect "$image" > /dev/null 2>&1; then
+    echo "run-script-tests: building $image (once)" >&2
+    printf '%s\n' "$LinuxImageRecipe" | bounded 900 "$docker" build -q -t "$image" - > /dev/null || {
+      echo "run-script-tests: could not build $image" >&2; return 2; }
+  fi
+  mounts=(-v "$root:$root:ro")
+  git_common="$(cd "$root" && git rev-parse --path-format=absolute --git-common-dir 2>/dev/null)"
+  case "$git_common" in "$(cd "$root" && pwd -P)"/*|"$root"/*|"") ;; *) mounts+=(-v "$git_common:$git_common:ro") ;; esac
+  while IFS="$(printf '\t')" read -r path _; do selected+=("$path"); done < "$work/selected"
+  echo "run-script-tests: ${#selected[@]} test(s) on Linux ($image)" >&2
+  # each path names exactly its own test; a tag, when one selected them, keeps the tagged ones in
+  "$docker" run --rm -i --user "$(id -u):$(id -g)" -e HOME=/tmp -e TERM=dumb "${mounts[@]}" -w "$root" "$image" \
+    bash scripts/run-script-tests --jobs "$jobs" --timeout "$timeout_s" ${tag:+--tag "$tag"} "${selected[@]}" < /dev/null
+}
+
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 if [ -n "$test_bash" ]; then
@@ -190,6 +232,12 @@ discover | while IFS="$(printf '\t')" read -r path t reason; do
 done > "$work/selected"
 
 if [ "$list" = 1 ]; then cat "$work/selected"; exit 0; fi
+
+if [ "$linux" = 1 ]; then
+  [ -s "$work/selected" ] || { echo "run-script-tests: no script tests selected${changed_base:+ by the changes since $changed_base}"; exit 0; }
+  run_on_linux
+  exit $?
+fi
 
 if [ ! -s "$work/selected" ]; then
   if [ -n "$changed_base" ]; then echo "run-script-tests: no script tests selected by the changes since ${changed_base}"; exit 0; fi

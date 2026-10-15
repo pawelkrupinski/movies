@@ -137,4 +137,34 @@ check "...a --bash that is no executable is a usage error" "64" "$(run --bash "$
 rm -rf "$tree/scripts/env"
 
 check "an unknown option is a usage error" "64" "$(run --bogus)"
+# --linux: the selection made here, the tests run in a container (a stub `docker` records what it was asked)
+printf '\033[36m▸\033[0m run-script-tests --linux\n'
+mkdir -p "$work/docker-bin" "$work/home"
+cat > "$work/docker-bin/docker" <<'STUB'
+#!/usr/bin/env bash
+echo "$*" >> "$DOCKER_CALLS"
+case "$1" in
+  info) [ -z "${DOCKER_DOWN:-}" ] || { echo "Cannot connect to the Docker daemon" >&2; exit 1; } ;;
+  image) [ -z "${NO_IMAGE:-}" ] || exit 1 ;;
+  build) cat > /dev/null ;;
+  run) echo "PASS       0s  in the container" ;;
+esac
+STUB
+chmod +x "$work/docker-bin/docker"
+linux() { : > "$work/docker-calls"
+  (cd "$work" && HOME="$work/home" PATH="$work/docker-bin:$PATH" DOCKER_CALLS="$work/docker-calls" bash "$runner" --root "$tree" --linux "$@") > "$work/out" 2>&1; echo $?; }
+check "--linux runs the selected tests in a container" "0" "$(linux scripts/ci/b_test.py)"
+check "...the checkout mounted read-only at its own path, as this user, not root" "1 1" \
+  "$(grep -c -- "^run .*-v $tree:$tree:ro" "$work/docker-calls") $(grep -c -- "--user $(id -u):$(id -g)" "$work/docker-calls")"
+check "...naming exactly the tests selected here" "1" "$(grep -c 'run-script-tests --jobs 8 --timeout 600 scripts/ci/b_test.py$' "$work/docker-calls")"
+check "...from an ubuntu image pulled from mirror.gcr.io" "1" "$(grep -c 'kinowo-script-tests:' "$work/docker-calls" | grep -c .)"
+NO_IMAGE=1 linux scripts/ci > /dev/null
+check "...built once when it is missing" "1" "$(grep -c '^build ' "$work/docker-calls")"
+scratch_git "$tree" update-ref refs/remotes/origin/main "$base"
+want="$(run --list --changed origin/main > /dev/null; grep -c . "$work/out")"
+check "with no names, the tests --changed origin/main selects" "0 $want" \
+  "$(linux) $(sed -n 's/^run-script-tests: \([0-9]*\) test(s) on Linux.*/\1/p' "$work/out")"
+check "Docker not running: a clear failure, exit 2" "2" "$(DOCKER_DOWN=1 linux scripts/ci)"
+check "...naming what to start" "1" "$(grep -c -- '--linux needs a running Docker' "$work/out")"
+
 spec_summary
