@@ -1035,6 +1035,12 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // number run into the word before it.
     val worlds25 = Film("League of Legends Worlds25 - Finals in Cinema")
     numeral("League of Legends Worlds 26 | Finals in Cinema", worlds25) shouldBe Category("different")
+    numeral("League of Legends Worlds 26 - Finals in Cinema", worlds25) shouldBe Category("different")
+    // DE UFA Palast, recorded 2026-10-15: the feed copied the 2025 record's title as the original, number and all — it
+    // never numbers the billing the record's way; an original title of its own still does.
+    IdentityMeasures.numeralRelation(Listing("League of Legends Worlds 26 - Finals in Cinema",
+      originalTitle = Some("League of Legends Worlds25 - Finals in Cinema")), worlds25) shouldBe Category("different")
+    IdentityMeasures.numeralRelation(Listing("Szybcy i wściekli 7", originalTitle = Some("Furious 7")), Film("Furious 7")) shouldBe Category("same")
     numeral("League of Legends Worlds 25 - Finals in Cinema", worlds25) shouldBe Category("same")
     numeral("Rambo3", Film("Rambo III")) shouldBe Category("same")
   }
@@ -1121,6 +1127,11 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
       Seq(1 -> Film("Pressure"), 2 -> Film("Pressure"))) shouldBe Map.empty
     IdentityMeasures.venueTitles(Seq(Listing("Diabły", originalTitle = Some("The Devils"))),
       Seq(31767 -> Film("Diabły", Some("The Devils")), 1491681 -> Film("The Devils"))) shouldBe Map.empty
+    // DE UFA Palast, recorded 2026-10-15: an original title copied from last year's record numbers another instalment
+    // than the billing — no translation of it.
+    IdentityMeasures.venueTitles(Seq(Listing("League of Legends Worlds 26 - Finals in Cinema",
+      originalTitle = Some("League of Legends Worlds25 - Finals in Cinema"))),
+      Seq(1552059 -> Film("League of Legends Worlds25 - Finals in Cinema"))) shouldBe Map.empty
   }
   they should "also be a title whose listings' own director and year single out one record" in {
     // PL "Vincent. Legenda oceanu" [2025] {Reza Memari}: TMDB titles it "The Last Whale Singer" only, so its
