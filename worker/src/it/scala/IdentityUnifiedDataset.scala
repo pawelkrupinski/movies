@@ -59,21 +59,47 @@ object IdentityUnifiedDataset {
 
   def main(args: Array[String]): Unit = {
     val arguments = commandLine.parseOrExit(args)
-    val out     = arguments.requiredPath("out")
-    val threads = arguments.requiredInt("threads")
+    val out       = arguments.requiredPath("out")
+    val threads   = arguments.requiredInt("threads")
     val configuration = settings.ProcessConfiguration.resolve()
-    val labels   = tools.IdentityJudgements.labels()
-    val storages = mutable.ListBuffer.empty[ConvergenceStorage]
-    Files.createDirectories(out)
+    val labels    = tools.IdentityJudgements.labels()
+    val storages  = mutable.ListBuffer.empty[ConvergenceStorage]
     try {
-      val corpora = new DecorationCorpora(configuration, storages)
-      val rows = corpora.loaded.flatMap(l => country(l, configuration, labels, threads))
-      val written = out.resolve("training.tsv.gz")
-      val gz = new GZIPOutputStream(Files.newOutputStream(written))
-      try gz.write((Header.mkString("\t") +: rows.sortBy(r => (r.country, r.cluster, r.film)).map(_.line)).mkString("", "\n", "\n").getBytes(StandardCharsets.UTF_8))
-      finally gz.close()
+      val rows    = new DecorationCorpora(configuration, storages).loaded.flatMap(l => country(l, configuration, labels, threads))
+      val written = write(out, rows)
       println(s"wrote $written: ${rows.size} rows")
     } finally storages.foreach(s => scala.util.Try(s.close()))
+  }
+
+  /** `<out>/training.tsv.gz`: the header, then the rows by country, cluster and film. */
+  def write(out: Path, rows: Seq[Row]): Path = {
+    Files.createDirectories(out)
+    val written = out.resolve("training.tsv.gz")
+    val gz = new GZIPOutputStream(Files.newOutputStream(written))
+    try gz.write((Header.mkString("\t") +: rows.sortBy(r => (r.country, r.cluster, r.film)).map(_.line)).mkString("", "\n", "\n").getBytes(StandardCharsets.UTF_8))
+    finally gz.close()
+    written
+  }
+
+  /** A contender as the hand labels judge it: how many of its cluster's listings a label calls it right and wrong for. */
+  final case class Judged(film: String, signals: Map[String, Double], right: Int, wrong: Int)
+
+  /** Each contender's label (`1`, `0`, `""` unlabelled) and where it came from, and whether the cluster's weak label was
+   *  withheld. HAND: right, wrong, a conflict left unlabelled, and every other contender of a cluster whose right film a
+   *  label names is wrong. WEAK, for a model-taken (`taken`) corpus cluster no label denies: the taken film right, its
+   *  other contenders wrong — unless a venue poster names another film against it, or a family dissents. */
+  def labelsOf(judged: Seq[Judged], taken: String, fromFixture: Boolean): (Seq[(String, String)], Boolean) = {
+    val handRight = judged.exists(k => k.right > 0 && k.wrong == 0)
+    val weakOk = !fromFixture && taken.nonEmpty && judged.find(_.film == taken).exists(k =>
+      k.wrong == 0 && !k.signals.contains("poster.otherMatches") && !k.signals.contains("family.dissent"))
+    (judged.map { k =>
+      if (k.right > 0 && k.wrong == 0) ("1", "hand")
+      else if (k.wrong > 0 && k.right == 0) ("0", "hand")
+      else if (k.right > 0) ("", "conflict")
+      else if (handRight) ("0", "hand")
+      else if (weakOk) (if (k.film == taken) "1" else "0", "weak")
+      else ("", "")
+    }, !fromFixture && taken.nonEmpty && !weakOk)
   }
 
   private def country(l: DecorationCorpora.Loaded, configuration: settings.ProcessConfiguration, labels: Seq[UnmatchedClusters.Label],
@@ -143,29 +169,18 @@ object IdentityUnifiedDataset {
         val taken = today.film.map(id => s"tmdb:$id").orElse(today.fallback.filter(_.source == "imdb").map(f => s"imdb:${f.id}")).getOrElse("")
         val judged = contenders.map { k =>
           val verdict = listings.map(x => UnmatchedClusters.verdict(UnmatchedClusters.Take(code, x.venue, x.rawTitle, k.tmdb, k.imdb, "", k.title, k.familyIds), labels))
-          k -> (verdict.count(_.contains(true)), verdict.count(_.contains(false)))
+          Judged(k.film, k.signals, verdict.count(_.contains(true)), verdict.count(_.contains(false)))
         }
-        val handRight = judged.exists { case (_, (right, wrong)) => right > 0 && wrong == 0 }
-        val todays    = judged.find(_._1.film == taken)
-        // a model take a venue poster or a family names another film against is no weak label, nor one a hand label denies
-        val weakOk = !fromFixture && taken.nonEmpty && todays.exists { case (k, (_, wrong)) =>
-          wrong == 0 && !k.signals.contains("poster.otherMatches") && !k.signals.contains("family.dissent") }
-        if (!fromFixture && taken.nonEmpty && !weakOk) count("weak-excluded")
+        val (labelling, weakExcluded) = labelsOf(judged, taken, fromFixture)
+        if (weakExcluded) count("weak-excluded")
         val rawTitle = listings.map(_.rawTitle).groupBy(identity).toSeq.sortBy(t => (-t._2.size, t._1)).head._1
         val cluster  = model.members.map(ListingKey.serialised).min
         val venue    = listings.map(_.venue).min
         val origin   = if (fromFixture) "fixture" else "corpus"
-        judged.map { case (k, (right, wrong)) =>
-          val (label, source) =
-            if (right > 0 && wrong == 0) ("1", "hand")
-            else if (wrong > 0 && right == 0) ("0", "hand")
-            else if (right > 0) ("", "conflict")
-            else if (handRight) ("0", "hand")
-            else if (weakOk) (if (k.film == taken) "1" else "0", "weak")
-            else ("", "")
+        contenders.lazyZip(judged).lazyZip(labelling).map { case (k, j, (label, source)) =>
           Row(code, cluster, origin, venue, listings.size, rawTitle, k.film, k.title, if (k.film == taken && taken.nonEmpty) "1" else "0", label, source,
-            right, wrong, k.signals)
-        } ++ Option.when(taken.nonEmpty && !contenders.exists(_.film == taken)) {
+            j.right, j.wrong, k.signals)
+        }.toSeq ++ Option.when(taken.nonEmpty && !contenders.exists(_.film == taken)) {
           count("today-not-a-contender")
           Row(code, cluster, origin, venue, listings.size, rawTitle, taken, "", "1", "", "", 0, 0, Map.empty)
         }
