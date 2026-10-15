@@ -228,16 +228,21 @@ object IdentityCalibration {
    *  a share in [0, 1]. The copy agrees with the entry by construction, so it says less about which film the venue shows
    *  than the venue's own fact does: DE Augustinum's "Island", a feature slot, took a 3-minute short on kinoheld's copied
    *  director, runtime and year, each weighed in full. Read as a signal of its own per fact × source
-   *  ([[IdentityMeasures.copiedFacts]] marks the copied facts' measures `<signal>@copied`), weighing the own signal's table
-   *  times (share − 1): the two together weigh a copied fact `share` of its own. */
+   *  ([[IdentityMeasures.copiedFacts]] marks the copied facts' measures `<signal>@copied`), weighing the own signal's
+   *  SUPPORTING cells times (share − 1): the two together weigh a copied fact's support `share` of its own, its dissent in
+   *  full (SourceReliability's Support: corroborates, never alone; one dissent rather than a veto stays the rules'). */
   final case class ScopeModel(prior: Double, signals: Map[String, SignalWeights], calibration: Calibration,
                               thresholds: Map[String, Threshold] = Map.empty, copied: Map[String, Double] = Map.empty) {
     /** The signals a copied fact is weighed by beside its own ([[copied]]), derived from the own signal's table. */
     lazy val copiedSignals: Map[String, SignalWeights] = copied.collect { case (signal, share) if signals.contains(signal) =>
       val own = signals(signal)
+      // only what the copy SUPPORTS is weighed less: it agrees with its entry by construction, so its agreement cannot
+      // prove the entry the venue's film; its dissent from another film stands in full — DE Cineplex's "Fallen Angels by
+      // Noël Coward", Cineamo dating it 2026, is no 1995 Wong Kar-wai film however little its 2026 proves the relay
+      def supportOnly(weight: Double) = if (weight > 0) weight * (share - 1) else 0.0
       IdentityMeasures.copiedSignal(signal) -> SignalWeights(own.kind,
-        categories = own.categories.map((k, w) => k -> w * (share - 1)),
-        bins       = own.bins.map(b => b.copy(weight = b.weight * (share - 1), positives = 0, negatives = 0)))
+        categories = own.categories.map((k, w) => k -> supportOnly(w)),
+        bins       = own.bins.map(b => b.copy(weight = supportOnly(b.weight), positives = 0, negatives = 0)))
     }
     /** Every signal weighed: the artefact's own, and the copied facts' ([[copiedSignals]]). */
     lazy val weighed: Map[String, SignalWeights] = signals ++ copiedSignals

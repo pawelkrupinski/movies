@@ -33,6 +33,33 @@ class IdentityCalibrationSpec extends AnyFlatSpec with Matchers {
     model.provenance.keySet should contain allOf ("script", "labels", "splits", "epsilon")
   }
 
+  "a fact a feed copied" should "weigh its share of the venue's own fact, by a signal of its own (fact x source)" in {
+    val own = Map[String, IdentityMeasures.Measure]("year.delta" -> IdentityMeasures.Number(0), "director" -> IdentityMeasures.Category("same_person"),
+      "runtime.delta" -> IdentityMeasures.Number(0))
+    val copied = IdentityMeasures.copiedFacts(own, SourceReliability.Fact.values.toSet)
+    copied.keySet shouldBe own.keySet ++ Set("year.delta@copied", "director@copied", "runtime.delta@copied")
+    val listingFilm = model.scopes(ListingFilm)
+    listingFilm.copied.keySet shouldBe Set("year.delta", "director", "runtime.delta")
+    own.keys.foreach { signal =>
+      val share = listingFilm.copied(signal)
+      val ownWeight = listingFilm.signals(signal).weight(own.get(signal))
+      ownWeight should be > 0.0
+      withClue(signal)(ownWeight + listingFilm.weighed(s"$signal@copied").weight(own.get(signal)) shouldBe (share * ownWeight +- 1e-9))
+    }
+    model.logOdds(ListingFilm, copied) should be < model.logOdds(ListingFilm, own)
+  }
+
+  it should "dissent from another film in full: only its support is weighed less" in {
+    val against = Map[String, IdentityMeasures.Measure]("year.delta" -> IdentityMeasures.Number(-31), "director" -> IdentityMeasures.Category("different"))
+    model.logOdds(ListingFilm, IdentityMeasures.copiedFacts(against, SourceReliability.Fact.values.toSet)) shouldBe model.logOdds(ListingFilm, against)
+  }
+
+  it should "leave a missing fact unmarked, and a venue's own fact as it was" in {
+    val m = Map[String, IdentityMeasures.Measure]("year.delta" -> IdentityMeasures.Missing("listing"), "director" -> IdentityMeasures.Category("different"))
+    IdentityMeasures.copiedFacts(m, Set(SourceReliability.Fact.Year)) shouldBe m
+    IdentityMeasures.copiedFacts(m, Set.empty) shouldBe m
+  }
+
   it should "only carry cannot-link rules whose measured false-veto bound is under the stated epsilon" in {
     val epsilon = model.provenance("epsilon").toDouble
     model.cannotLinks should not be empty
