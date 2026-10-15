@@ -202,7 +202,7 @@ class IdentityCaptureSpec extends AnyFlatSpec with Matchers {
   }
 
   "A country's environment" should "give the country its own Mongo database, the TMDB key off its command line" in {
-    environment("uk", Map("KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY" -> "k"), perHost = 2) shouldBe Map(
+    environment("uk", Mode.Capture, Map("KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY" -> "k"), perHost = 2) shouldBe Map(
       "KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY" -> "k",
       "MONGODB_URI"                       -> "mongodb://127.0.0.1:28017/?directConnection=true",
       "MONGODB_DB"                        -> "kinowo_capture_uk",
@@ -210,10 +210,15 @@ class IdentityCaptureSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "keep the caller's Mongo, and never hand the family export's prod URI to the capture" in {
-    val env = environment("pl", Map("MONGODB_URI" -> "mongodb://127.0.0.1:27017/", FamilyUri -> "mongodb://prod",
+    val env = environment("pl", Mode.Capture, Map("MONGODB_URI" -> "mongodb://127.0.0.1:27017/", FamilyUri -> "mongodb://prod",
       "KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY" -> "k"), perHost = 4)
     env("MONGODB_URI") shouldBe "mongodb://127.0.0.1:27017/"
     env.values.toSeq should not contain "mongodb://prod"
+  }
+
+  it should "hand a fill no Mongo: it seeds none, so the run never dials one to drop its databases" in {
+    environment("uk", Mode.Fill, Map("MONGODB_URI" -> "mongodb://127.0.0.1:27017/", "KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY" -> "k"),
+      perHost = 2) shouldBe Map("KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY" -> "k", "KINOWO_IDENTITY_LIVE_PER_HOST" -> "2")
   }
 
   "The recording's inputs" should "be fetched only where the caller named no directory of their own" in {

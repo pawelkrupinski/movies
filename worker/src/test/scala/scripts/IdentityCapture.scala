@@ -197,14 +197,19 @@ object IdentityCapture {
       "--agreement-cache", env.getOrElse("KINOWO_IDENTITY_AGREEMENT_CACHE", layout.agreementCache.toString),
       "--poster-cache", env.getOrElse("KINOWO_IDENTITY_POSTER_CACHE", layout.posters.toString))
 
-  /** What a country's JVM is handed beside its arguments: the throwaway Mongo the capture seeds (the caller's, else the
-   *  local one) in a database of the country's own, so two captures never seed one; the TMDB key its gaps are asked live
-   *  with, never on a command line; and its share of the live reads per host ([[budget]]). The family export's prod URI
-   *  is never passed on: the capture reads the export, not prod. */
-  def environment(cc: String, env: Map[String, String], perHost: Int): Map[String, String] =
-    Map("MONGODB_URI" -> env.getOrElse("MONGODB_URI", LocalMongo), "MONGODB_DB" -> s"kinowo_capture_$cc",
-      "KINOWO_IDENTITY_LIVE_PER_HOST" -> perHost.toString) ++
+  /** What a country's JVM is handed beside its arguments: the TMDB key its gaps are asked live with, never on a command
+   *  line; its share of the live reads per host ([[budget]]); and, for a capture only, the throwaway Mongo it seeds (the
+   *  caller's, else the local one) in a database of the country's own, so two captures never seed one. A fill seeds
+   *  none, so it is handed none — and the run, which drops the databases of a JVM handed a Mongo, never dials one for
+   *  it. The family export's prod URI is never passed on: the capture reads the export, not prod. */
+  def environment(cc: String, mode: Mode, env: Map[String, String], perHost: Int): Map[String, String] = {
+    val seeded = mode match {
+      case Mode.Capture => Map("MONGODB_URI" -> env.getOrElse("MONGODB_URI", LocalMongo), "MONGODB_DB" -> s"kinowo_capture_$cc")
+      case Mode.Fill    => Map.empty
+    }
+    seeded ++ Map("KINOWO_IDENTITY_LIVE_PER_HOST" -> perHost.toString) ++
       env.get("KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY").map("KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY" -> _)
+  }
 
   /** Whether the corpora are this script's to fetch: not when the caller named a directory of their own. */
   def managedCorpus(env: Map[String, String]): Boolean = !env.contains("KINOWO_IDENTITY_CORPUS_DIR")
@@ -394,7 +399,8 @@ object IdentityCapture {
     }
 
     /** The it/ Mongo databases a country's JVM opened (each named for its pid, `RunScopedDatabaseName`), dropped once it
-     *  ended — the suite drops its own, so this is for a JVM that died before it could. */
+     *  ended — the tool drops its own, so this is for a JVM that died before it could. Only a JVM handed a Mongo (a
+     *  capture, [[environment]]) has any. */
     private def dropDatabasesOf(pid: Long, uri: Option[String]): Unit = uri.foreach { u =>
       val _ = Try {
         val client = org.mongodb.scala.MongoClient(u)
@@ -475,9 +481,9 @@ object IdentityCapture {
       val Choice(cc, mode, _) = choice
       val verb = mode.toString.toLowerCase(java.util.Locale.ROOT)
       def job(again: Boolean, n: Int) = mode match {
-        case Mode.Capture => Job(cc, (jvm :+ CaptureTool) ++ captureArguments(cc, env, layout), environment(cc, env, plan.perHost),
+        case Mode.Capture => Job(cc, (jvm :+ CaptureTool) ++ captureArguments(cc, env, layout), environment(cc, mode, env, plan.perHost),
           layout.logs.resolve(if (!again) s"$cc-capture.log" else if (n == 1) s"$cc-capture-again.log" else s"$cc-capture-again-$n.log"))
-        case Mode.Fill    => Job(cc, (jvm :+ FillTool) ++ fillArguments(cc, env, layout), environment(cc, env, plan.perHost),
+        case Mode.Fill    => Job(cc, (jvm :+ FillTool) ++ fillArguments(cc, env, layout), environment(cc, mode, env, plan.perHost),
           layout.logs.resolve(s"$cc-fill.log"))
       }
       def attempt(again: Boolean, n: Int): (Job, Ran) = {
