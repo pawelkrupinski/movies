@@ -96,6 +96,8 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     val staging2014 = (295526, Film("The Metropolitan Opera - Verdi: Macbeth", year = Some(2014), runtime = Some(169)), Some(1))
     val season2026  = (1703622, Film("The Metropolitan Opera 2026/27: Macbeth", year = Some(2026)), Some(2))
     taken(ranked(macbeth, staging2014, season2026)) shouldBe Some(1703622)
+    // and pooled, as alone: a cluster of its spellings is the same broadcast
+    acceptance.pooled(ranked(macbeth, staging2014, season2026)).map(_._1.candidate.tmdbId) shouldBe Some(1703622)
     // a record of another season than its screenings' is no staging it screens, however its house bills the work
     acceptance.byRule("season-record")(ranked(macbeth.copy(broadcastSeason = Some(2027), screenedSeason = Some(2027)), staging2014, season2026)) shouldBe None
     // nor is another house's: "MET" names no Royal Ballet & Opera
