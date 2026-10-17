@@ -87,10 +87,11 @@ object UnifiedEvidence {
    *  venue's year or director against it, its running time short of the film ([[Agreement.runsShort]]), a venue poster
    *  naming another candidate, a family turning it down; and, as the agreement requires of what it takes, a title naming
    *  the film, and no other edition than the title numbers). A film the model's own rules accepted ([[ModelRules]]) passed
-   *  the model's guards instead ([[Acceptance]]), as today. `listing.runsShort` is a guard only, no fitted signal of
-   *  [[Signals]]: the training rows predate it. */
+   *  the model's guards instead ([[Acceptance]]), as today. `listing.runsShort` and `bill.piece` (the billing naming the film
+   *  as one piece beside another thing, [[BilledPiece.ofFamilies]]) are guards only, no fitted signals of [[Signals]]: the
+   *  training rows predate them. */
   val Guards: Seq[String] = Seq("bill.several", "stage.work", "title.anothersOwn", "listing.contradicts", "poster.otherMatches",
-    "family.turnedDown", "title.namesNone", "edition.apart", "listing.runsShort")
+    "family.turnedDown", "title.namesNone", "edition.apart", "listing.runsShort", "bill.piece")
   /** The guards the fit's training rows carry, each a signal of [[Signals]]: what the offline fit and strategies read. */
   val FittedGuards: Seq[String] = Guards.filter(Names.contains)
   val ModelRules: Seq[String] = Names.filter(_.startsWith("rule."))
@@ -255,6 +256,8 @@ object UnifiedEvidence {
           Agreement.namedWithinAnother(Agreement.billedSpans(c.listings, records.map(_.film)), candidateSpans) ||
           listingSpans.exists { case (listing, spans) => Agreement.namesMoreThanIt(Agreement.billedSpans(Seq(listing), records.map(_.film)), spans) }),
         "bill.several"        -> c.listings.exists(ListingShape.billsSeveralBeside(_, contender.record.film)),
+        // the billing names it as one piece beside another thing, as the agreement refuses its own film ([[BilledPiece.ofFamilies]])
+        "bill.piece"          -> BilledPiece.ofFamilies(c.listings, contender.record.film, contender.tmdb).isDefined,
         "stage.work"          -> stageWork,
         "poster.match"        -> nearest.exists(_ <= PosterEvidence.VoteBits),
         "poster.near"         -> nearest.exists(bits => bits > PosterEvidence.VoteBits && bits <= PosterEvidence.VetoMatchBits),

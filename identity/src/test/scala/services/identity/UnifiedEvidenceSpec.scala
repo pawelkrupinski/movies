@@ -274,8 +274,11 @@ class UnifiedEvidenceSpec extends AnyFlatSpec with Matchers {
     UnifiedRules.resolver.filled(found(candidate(1434460, short, 0.03), candidate(122, king, 0.02, denied = true))) shouldBe None
     found(candidate(1434460, short, 0.03), candidate(122, king, 0.02)).find(_.film == "tmdb:1434460").map(_.signals.contains("title.anothersOwn")) shouldBe
       Some(true)
-    // the short alone, no other candidate naming more of the billing: the fill stands as before
-    UnifiedRules.resolver.filled(found(candidate(1434460, short, 0.03))).map(_._1.film) shouldBe Some("tmdb:1434460")
+    // the short alone, no other candidate naming more of the billing: no title.anothersOwn, but the billing names it as one
+    // piece beside "Rückkehr des Königs", which no venue states a fact of the short's around ([[BilledPiece.ofFamilies]])
+    val alone = found(candidate(1434460, short, 0.03))
+    alone.find(_.film == "tmdb:1434460").map(c => (c.signals.contains("title.anothersOwn"), c.signals.contains("bill.piece"))) shouldBe Some((false, true))
+    UnifiedRules.resolver.filled(alone) shouldBe None
   }
 
   "a pinned rule" should "fire on a conjunction of signals and absences" in {

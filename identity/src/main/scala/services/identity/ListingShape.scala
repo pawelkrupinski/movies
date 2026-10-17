@@ -277,7 +277,9 @@ object ListingShape {
     works.sizeIs >= ListedWorks && works.forall(work => work.headOption.exists(_.isUpper) && TitleContainment.tokens(work).sizeIs >= 2)
   }
   private val ListedWorks = 3
-  private val PieceBreak = """\s*[:|•+]\s*|\s+[-–—]\s+|\s*[„”"“«»]\s*""".r
+  /** A colon, pipe, bullet or plus; a dash spaced after it, as the title's searches split one ("Song Sung Blue- The Music
+   *  of Neil Diamond"), never a hyphen within a word; a quotation mark. */
+  private val PieceBreak = """\s*[:|•+]\s*|\s*[-–—]\s+|\s*[„”"“«»]\s*""".r
   private val Bracketed  = """\([^)]*\)|\[[^\]]*]""".r
   /** Any quotation mark a title may carry. */
   private[identity] val Quote = """[„”"“«»]""".r

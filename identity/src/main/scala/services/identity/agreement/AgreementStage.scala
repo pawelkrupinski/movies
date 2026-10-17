@@ -1,7 +1,7 @@
 package services.identity.agreement
 
 import services.identity.{Answer, BilledPiece, CandidateQuery, CatalogueAnswers, CatalogueQuestion, DetailFacts, Evidence, FallbackIds, Hit, IdentityCalibration, IdentityLookups,
-  EvidenceNode, IdentityMeasures, IdentityResolver, Listing, ListingShape, PosterAnswers, PosterEvidence, PosterHash, Resolution, ResolverDecision, StoredFamily}
+  IdentityMeasures, IdentityResolver, Listing, ListingShape, PosterAnswers, PosterEvidence, PosterHash, Resolution, ResolverDecision, StoredFamily}
 import services.movies.{ListingKey, TitleNormalizer}
 
 import scala.collection.concurrent.TrieMap
@@ -695,26 +695,14 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
   /** The listing as the model measures it, its venue's detail page read: what the broadcast join reads. */
   private def measured(listing: Listing): IdentityMeasures.Listing = Evidence.of(listing, venues.detail(listing).toOption.flatten).measured
 
-  /** Why the film the families agree on is none of the cluster's: its billing names it as ONE PIECE beside another thing —
-   *  a subtitle, a performer, a show — that the venue's own words around a film do not explain: the model's rule
-   *  ([[BilledPiece]]), its keeps read off what this stage knows — the billing's stated facts against the agreed record,
-   *  the other venues stating them ([[BilledPiece.Keeps.Facts]]): the record is the families' best namesake of the piece. Then the families' best
-   *  match is that piece's namesake (DE "Femme - Frauen heilen die Welt" is a documentary, not the 2023 "Femme"), and no
-   *  fill or poster is asked for a film either: what the billing names is no film the families found. */
+  /** Why the film the families agree on is none of the cluster's: its billing names it as ONE PIECE beside another thing
+   *  ([[BilledPiece.ofFamilies]]) — DE "Femme - Frauen heilen die Welt" is a documentary, not the 2023 "Femme". Then the
+   *  families' best match is that piece's namesake, and no fill or poster is asked for a film either: what the billing
+   *  names is no film the families found. */
   private def pieceOf(verdict: StoredVerdict, listings: Seq[Listing]): Option[String] =
     verdict.agreed.flatMap { agreed =>
-      val film   = agreed.record.film
-      val tmdbId = agreed.crossId("tmdb").flatMap(_.toIntOption)
-      val read = listings.map { listing =>
-        val evidence = Evidence.of(listing, None)
-        val country  = EvidenceNode.countryOf(listing.cinema)
-        (listing, evidence, country, BilledPiece.measuresOf(evidence, film, country))
-      }
-      val stating = read.collect { case (listing, _, _, measures) if IdentityMeasures.ownAgreement(measures)._1.nonEmpty => listing.cinema }.toSet
-      read.iterator.flatMap { case (listing, evidence, country, measures) =>
-        BilledPiece.of(evidence, Seq(listing), country, film, tmdbId, measures, (stating - listing.cinema).size, _ => false, _ => Nil,
-          BilledPiece.Keeps.Facts)
-      }.nextOption()
+      val film = agreed.record.film
+      BilledPiece.ofFamilies(listings, film, agreed.crossId("tmdb").flatMap(_.toIntOption))
         .map(piece => s"no film: the families agree on '${film.title}', one piece of the billing${if (piece.staging) " beside a staging" else ""} — ${piece.why}")
     }
 
