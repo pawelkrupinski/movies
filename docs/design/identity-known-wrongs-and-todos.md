@@ -117,7 +117,8 @@ Order by the live tally: 4 (relays, 33 of 70 live wrong listings), then 2, 3, 1,
   or the billing says shorts/Kurzfilm.
 
 ### Scraper and title-parsing review (2026-10-15)
-- [ ] **`SearchTitles.uncertified` keeps its own `(15)`-only regex.** A raw spelling a listing keeps ("Digger - Cert
+- [x] **`SearchTitles.uncertified` keeps its own `(15)`-only regex.** (done 2026-10-17: delegates to
+  `FormatTags.uncertified`, the UK capture filled offline for the Snowman double bill's new queries) A raw spelling a listing keeps ("Digger - Cert
   15", "EOS - Monet (Cert. TBC)", "Hay Fever (12A) 160 mins") is searched with "Cert 15" as a candidate;
   `FormatTags.CertificateNote` already holds the shape. Fix: `uncertified` = `CertificateNote.replaceFirstIn(t, "$1").trim`
   (test: `SearchTitles.candidates("Digger - Cert 15", None) shouldBe Seq("Digger")`, fails before). Tried 2026-10-15:

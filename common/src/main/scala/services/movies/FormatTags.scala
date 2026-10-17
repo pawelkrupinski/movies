@@ -89,6 +89,9 @@ object FormatTags {
   // …and the running time it brackets, confirmed or not: Bridport's "Screening: NTL - Hay Fever (12A TBC) (160 mins TBC)"
   // hid its certificate behind it. A number of minutes, so "Apollo 13" and "Sweet Sixteen (16)" stay.
   private val BracketedRunningTime = """(?i)(?<=\S)\s*\(\s*\d{2,3}\s*mins?\.?(?:\s+TBC)?\s*\)\s*$""".r
+  /** `t` without the BBFC certificate note a box office bills behind it ([[CertificateNote]]), the running time or
+   *  short year it runs on into with it, a release year between them kept: "Digger - Cert 15" → "Digger". */
+  def uncertified(t: String): String = CertificateNote.replaceFirstIn(t, "$1").trim
   private val ReReleaseMark = """(?i)(?<=\S)\s*\(\s*(?:WA(?:\s*:?\s*\d{2,4}|\s*:)?|Wiederauff(?:ü|ue)hrung)\s*\)?\s*$""".r
   // The same tags written IN FRONT of the title — "OV: Digger", "(OmU) Verity", "ATMOS/OV: Verity", "Dolby
   // Cinema: Die Odyssee", "3D: Forgotten Island", "engl. OV: Der Herr der Ringe", "OMU - Searching for Sugar Man":
