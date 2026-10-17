@@ -162,10 +162,10 @@ object IdentityMeasures {
   }
 
   /** The words two titles share that are a number, or longer than an article — no year, which dates rather than names. */
-  private[identity] def sharedWords(a: String, b: String): Int = {
-    def words(t: String) = TitleContainment.tokens(t).filterNot(YearWord.matches).filter(w => w.length > 3 || w.forall(_.isDigit)).toSet
-    (words(a) intersect words(b)).size
-  }
+  private[identity] def sharedWords(a: String, b: String): Int = (countedWords(a).toSet intersect countedWords(b).toSet).size
+  /** A title's words that count as naming something: a number, or a word longer than an article — no year. */
+  private[identity] def countedWords(title: String): Seq[String] =
+    TitleContainment.tokens(title).filterNot(YearWord.matches).filter(w => w.length > 3 || w.forall(_.isDigit))
   private[identity] def shareAWord(a: String, b: String): Boolean = sharedWords(a, b) > 0
 
   /** A title word that is a year ("1986" of "Legend (1986)"). */

@@ -23,7 +23,48 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  title numbers its series OTHERWISE than the listing's ([[ownInstalment]]), nor one its title names nothing of beside
    *  another film of its director the title names, or the listing's year dates as closely ([[anotherOfItsDirector]]). */
   private final case class Rule(name: String, why: Seq[Scored] => Verdict) {
-    def accepts(ranked: Seq[Scored]): Verdict = ownInstalment(why(ranked)).flatMap(pickedByItsTitle(ranked)).flatMap(takeable)
+    def accepts(ranked: Seq[Scored]): Verdict =
+      ownInstalment(why(ranked)).flatMap(pickedByItsTitle(ranked)).flatMap(takeable).flatMap(onNoReusedPage(ranked))
+  }
+  /** Refuses any film while the listing's page reads as REUSED: a record its ORIGINAL title and the director it credits
+   *  name stands in its pool ([[copiedBeyondItsBilling]]) though the billing says more than that record's titles. The
+   *  copied title is what a search for the billing hit, copied onto a ticket page with the record's director, running
+   *  time and year: they agree with the record by construction and confirm nothing, and the billing's other words name
+   *  something else — a party, a band, a show the page was reused for. DE kinoheld: Kaminwerk's "Teenie Fasching" on
+   *  Schweikart's "Fasching" (1939), "Dark New Wave Night" on Ai's "New Wave", Lagerhalle's "Three for Silver" (a folk
+   *  band) on Kamal's "Tea For Three", KAP-Torgau's "VOODOO LOUNGE" (a Rolling Stones tribute) on Costabile's "VooDoo".
+   *  Nor does such a page lend another film its take: only one the billing names whole (an exact, original or
+   *  alternative title) may still be taken — Landsberg's "Helmut Schleich" (a Kabarett evening, on Kuzmic's "Helmut")
+   *  is no more the 2018 recording of his "Kauf, du Sau" the bare name leads. */
+  private def onNoReusedPage(ranked: Seq[Scored])(accepted: Accepted): Verdict = {
+    val scored = accepted._1
+    def namedWhole = scored.category("title").exists(Set("exact", "original", "alternative"))
+    eligibleOf(ranked).find(copiedBeyondItsBilling).filter(copied => (copied eq scored) || !namedWhole).fold[Verdict](Right(accepted)) { copied =>
+      Left(Acceptance.Refused("its page reads as reused: only a copied original title names a film of it, and the billing says more",
+        Some(scored.candidate.tmdbId), s"${Acceptance.named(copied)} billed beyond: ${billedBeyond(copied).mkString(", ")}"))
+    }
+  }
+  /** Is `scored` named only by the listing's ORIGINAL title and the director it credits, that title a mere part of the
+   *  billing ([[IdentityMeasures.Listing.originalStandsApart]] false), with the billing saying more than any of the
+   *  record's titles ([[billedBeyond]]) and stating no year of it? A billing the record's titles hold word for word
+   *  ("Matrix" of "The Matrix", or a translation TMDB holds as an alternative title) is its own, and a year the listing
+   *  states that the record shares makes the billing another record's spelling of it, as the copied facts' other reader
+   *  holds (`FamilyScope.namedOnlyByCopiedTitle`: DE "Tabaluga und Leo - Die Weihnachtsgeschichte" [2003]). The title
+   *  relation cannot tell: it reads the original title as one of the listing's own shapes, a `segment` of every record
+   *  so titled. */
+  private def copiedBeyondItsBilling(scored: Scored): Boolean = {
+    val listing = scored.listing
+    scored.category("originalTitle").contains("match") && IdentityMeasures.sameDirector(scored.measures) && !listing.originalStandsApart &&
+      !listing.year.exists(year => scored.candidate.film.year.exists(film => math.abs(film - year) <= 1)) && billedBeyond(scored).nonEmpty
+  }
+  /** The billing's words none of the record's titles carries — none when a whole piece of the billing, or the search its
+   *  title rules leave of it, is the record's word for word ("Twisters" of "(4DX Rewind) Twisters", "Endgame" of
+   *  "Vengadores: Endgame (Reestreno)", "Moje własne Idaho" of "… + DEBATA [POKAZ BEZPŁATNY]"): the rest decorates it. */
+  private def billedBeyond(scored: Scored): Seq[String] = {
+    val listing   = scored.listing
+    val filmWords = scored.candidate.film.titles.flatMap(IdentityMeasures.countedWords).toSet
+    val pieces    = IdentityMeasures.shapes(listing.ownTitles ++ listing.searchTitles, listing.decorations).map(IdentityMeasures.countedWords).filter(_.nonEmpty)
+    if (pieces.exists(_.forall(filmWords))) Nil else IdentityMeasures.countedWords(listing.title).filterNot(filmWords)
   }
   private def pickedByItsTitle(ranked: Seq[Scored])(accepted: Accepted): Verdict =
     noneOf(anotherOfItsDirector(accepted._1, eligibleOf(ranked)), "its title names nothing of it, and another film of its director it names or dates as closely stands beside it",
