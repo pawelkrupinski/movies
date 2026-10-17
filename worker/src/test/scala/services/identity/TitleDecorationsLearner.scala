@@ -77,17 +77,18 @@ object TitleDecorationsLearner {
      *  the run where the rest ends — the title goes on with another film's ("Basia. Humor w paski
      *  mam + Kocia Szajka", "Toddler Club: Tabby McTat + Room on the Broom"): a programme. */
     def aroundOneFilm(side: String, run: Seq[String], byRest: Map[Seq[String], Set[String]], rest: Seq[String]): Boolean = {
-      val decorated = if (side == "prefix") run ++ rest else rest ++ run
-      val runsOn = (rest.size + 1 to decorated.size).exists(n => recordKeys(if (side == "prefix") decorated.takeRight(n) else decorated.take(n)))
+      val title  = decorated(side, run, rest)
+      val runsOn = (rest.size + 1 to title.size).exists(n => recordKeys(if (side == "prefix") title.takeRight(n) else title.take(n)))
       val nextFilm = (1 to run.size).exists(n => recordKeys(if (side == "prefix") run.takeRight(n) else run.take(n)))
-      recordKeys(rest) && searchedEmpty(decorated) && byRest.values.flatten.toSet.size >= MinVenues && !runsOn && !nextFilm
+      recordKeys(rest) && searchedEmpty(title) && byRest.values.flatten.toSet.size >= MinVenues && !runsOn && !nextFilm
     }
+    def spelled(side: String, run: Seq[String], rest: Seq[String]) = spellings.getOrElse(decorated(side, run, rest), Set.empty)
     /** Some title billing `run` around one of `rests` is one the resolver would cut it off. */
     def cutSomewhere(side: String, run: Seq[String], rests: Iterable[Seq[String]]): Boolean =
-      rests.exists(rest => spellings.getOrElse(if (side == "prefix") run ++ rest else rest ++ run, Set.empty).exists(cuts(side, run)))
+      rests.exists(rest => spelled(side, run, rest).exists(cuts(side, run)))
     val recurring = seen.toSeq.map { case (key, byRest) => key -> (byRest, distinctFilms(byRest.keySet)) }
       .filter { case ((side, run), (byRest, films)) =>
-        (films.size >= MinFilms || (films.size == 1 && aroundOneFilm(side, run, byRest, films.head) && !weakAroundOne(run, films.head))) &&
+        (films.size >= MinFilms || (films.size == 1 && aroundOneFilm(side, run, byRest, films.head) && !weakAroundOne(run, films.head, spelled(side, run, films.head)))) &&
           cutSomewhere(side, run, byRest.keySet) }
     val recurringTails = tailsOf(listings, byTokens.keySet)
     val inRecords = carried(recordTitles, (recurring.map(_._1._2) ++ recurringTails.map(_._1)).toSet)
@@ -162,18 +163,23 @@ object TitleDecorationsLearner {
    *  `recordTitles` now carries it. A recording sees only the programmes billed that week: a banner learned around two
    *  films stays a banner after its season ends ("WAJDA: re-wizje"), and comes back with the next one. What both learned
    *  is this recording's; the list is ordered as [[learn]] orders it. An earlier one [[learn]] would refuse now goes too:
-   *  one weak around its one remainder ([[weakAroundOne]]), or one `listings` bill only in spellings the resolver never
-   *  cuts ([[cuts]]). */
+   *  one weak around its one remainder ([[weakAroundOne]], read on how `listings` spell it), or one `listings` bill only
+   *  in spellings the resolver never cuts ([[cuts]]). */
   def accumulate(earlier: Seq[Learned], learned: Seq[Learned], recordTitles: Iterable[String],
                  listings: Iterable[(String, String)] = Nil): Seq[Learned] = {
     val relearned = learned.map(d => (d.side, d.decoration)).toSet
-    val kept      = earlier.filterNot(d => relearned((d.side, d.decoration)) || weak(d))
+    val spellings = listings.iterator.map(_._2).toSeq.groupBy(TitleContainment.tokens).view.mapValues(_.toSet).toMap
+    val kept      = earlier.filterNot(d => relearned((d.side, d.decoration)) ||
+      weak(d, d.examples.headOption.fold(Set.empty[String])(rest => spellings.getOrElse(decorated(d.side, runOf(d), rest.split(" ").toSeq), Set.empty))))
     val inRecords = carried(recordTitles, kept.map(runOf).toSet)
     val refused   = refusedWherever(listings, kept.filter(_.side != Tail))
     strongestFirst(learned ++ kept.filterNot(d => inRecords(runOf(d)) || refused((d.side, runOf(d)))))
   }
 
   private def runOf(d: Learned): Seq[String] = d.decoration.split(" ").toSeq
+
+  /** The words of a title billing `run` on `side` of `rest`. */
+  private def decorated(side: String, run: Seq[String], rest: Seq[String]): Seq[String] = if (side == "prefix") run ++ rest else rest ++ run
 
   /** Does the resolver cut `run` off `title` on `side` ([[TitleDecorations.strip]] holding it alone)? It never cuts one
    *  that takes off more than one piece of billing ([[TitleDecorations.onePiece]]): DE "Renoir und die Liebe (Exhibition
@@ -183,16 +189,33 @@ object TitleDecorationsLearner {
     (if (side == "prefix") TitleDecorations(Set(run), Set.empty) else TitleDecorations(Set.empty, Set(run))).strip(title).nonEmpty
 
   /** A run learned around ONE remainder that says too little to be a banner: the remainder is a single short word
-   *  ("rise fly fishing film" around "tour"), or the run ends in a number range ("teil 1 5" after "Twilight": a
-   *  five-film marathon, not the 2008 film). */
-  private def weakAroundOne(run: Seq[String], rest: Seq[String]): Boolean =
-    (rest.sizeIs < 2 && rest.mkString.count(_.isLetter) < MinRemainderLetters) ||
-      (run.sizeIs >= 2 && run.takeRight(2).forall(w => w.nonEmpty && w.forall(_.isDigit)))
+   *  ("rise fly fishing film" around "tour"), or the run ends in a range of instalments ([[endsInRange]]: "teil 1 5"
+   *  after "Twilight", a five-film marathon, not the 2008 film). `spellings` are the titles billing the run around it. */
+  private def weakAroundOne(run: Seq[String], rest: Seq[String], spellings: Set[String]): Boolean =
+    (rest.sizeIs < 2 && rest.mkString.count(_.isLetter) < MinRemainderLetters) || endsInRange(run, spellings)
+
+  /** Do the run's last words range over instalments: two numbers joined by "bis" or "to", or, as some spelling of the
+   *  title writes them, by a hyphen or a dash ("Teil 1-5", "1–5")? Words lose the dash, so they alone cannot tell "1-5"
+   *  from a season ("RBO Live 2026/27") or a date ("Premiere 15.10."), neither a range; and a span of years
+   *  ("2026-2027", "2026-27") is a season, so the range starts below 1000. */
+  private def endsInRange(run: Seq[String], spellings: Set[String]): Boolean = {
+    def number(word: String) = word.nonEmpty && word.forall(_.isDigit)
+    def first(word: String)  = number(word) && word.length < 4
+    run.takeRight(3) match {
+      case Seq(from, "bis" | "to", to) if first(from) && number(to) => true
+      case _ => run.takeRight(2) match {
+        case Seq(from, to) if first(from) && number(to) =>
+          val dashed = s"(?<!\\d)$from\\s*[-‐–—]\\s*$to(?!\\d)".r
+          spellings.exists(dashed.findFirstIn(_).isDefined)
+        case _ => false
+      }
+    }
+  }
 
   /** An earlier decoration [[learn]] would not take now for what it was learned around: [[weakAroundOne]] of its one
-   *  remainder (kept as its only example). */
-  private[identity] def weak(d: Learned): Boolean =
-    d.side != Tail && d.films == 1 && d.examples.headOption.exists(rest => weakAroundOne(runOf(d), rest.split(" ").toSeq))
+   *  remainder (kept as its only example), read on `spellings`, the titles billing it around that remainder now. */
+  private[identity] def weak(d: Learned, spellings: Set[String] = Set.empty): Boolean =
+    d.side != Tail && d.films == 1 && d.examples.headOption.exists(rest => weakAroundOne(runOf(d), rest.split(" ").toSeq, spellings))
 
   /** The edge runs of `decorations` that `listings` bill around something, every such title one the resolver refuses
    *  to cut ([[cuts]]). A run no listing bills now is not judged. */

@@ -94,6 +94,12 @@ class TitleDecorationsLearnerSpec extends AnyFlatSpec with Matchers {
     // Two words, or five letters, say enough; a run ending in one number is a year or an anniversary, not a range.
     oneFilm("Rise Fly Fishing Film Tour 2026", "Tour 2026").map(_.decoration) shouldBe Seq("rise fly fishing film")
     oneFilm("Twilight Teil 1", "Twilight").map(_.decoration) shouldBe Seq("teil 1")
+    // A range is two numbers joined by a dash or "bis"/"to"; a season ("2026/27", or a span of years) or a date is none.
+    oneFilm("Twilight Teil 1–5", "Twilight") shouldBe Nil
+    oneFilm("Twilight Teil 1 bis 5", "Twilight") shouldBe Nil
+    oneFilm("RBO Live 2026/27 Carmen", "Carmen").map(_.decoration) shouldBe Seq("rbo live 2026 27")
+    oneFilm("Royal Ballet 2026-27 Giselle", "Giselle").map(_.decoration) shouldBe Seq("royal ballet 2026 27")
+    oneFilm("Verity Premiere 15.10.", "Verity").map(_.decoration) shouldBe Seq("premiere 15 10")
     oneFilm("Pre-Release Screening Verity", "Verity").map(_.decoration) shouldBe Seq("pre release screening")
   }
 
@@ -159,10 +165,13 @@ class TitleDecorationsLearnerSpec extends AnyFlatSpec with Matchers {
       TitleDecorations.Learned("suffix", "und die liebe exhibition on screen", 1, 2, 1, Seq("renoir")),
       TitleDecorations.Learned("suffix", "unlimited screening", 1, 87, 1, Seq("girls like girls")))
     val billed = Seq("Kino A" -> "Renoir und die Liebe (Exhibition On Screen)", "Kino B" -> "Girls Like Girls Unlimited Screening")
-    TitleDecorationsLearner.accumulate(earlier, Nil, Nil, billed).map(_.decoration) shouldBe Seq("unlimited screening")
-    // A run no listing bills now is not judged by its spellings.
+    TitleDecorationsLearner.accumulate(earlier, Nil, Nil, billed :+ ("Kino C" -> "Twilight Teil 1-5")).map(_.decoration) shouldBe Seq("unlimited screening")
+    // A run no listing bills now is not judged by its spellings: nor is a range only a spelling shows.
     TitleDecorationsLearner.accumulate(earlier, Nil, Nil).map(_.decoration) should contain theSameElementsAs
-      Seq("und die liebe exhibition on screen", "unlimited screening")
+      Seq("teil 1 5", "und die liebe exhibition on screen", "unlimited screening")
+    // Spelled as a season, the same words are a banner.
+    val season = Seq(TitleDecorations.Learned("prefix", "rbo live 2026 27", 1, 2, 1, Seq("carmen")))
+    TitleDecorationsLearner.accumulate(season, Nil, Nil, Seq("Kino A" -> "RBO Live 2026/27 Carmen")).map(_.decoration) shouldBe Seq("rbo live 2026 27")
   }
 
   "Proposing candidates" should "offer a banner around films no other listing bills, which learning cannot see" in {
