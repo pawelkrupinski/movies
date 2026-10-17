@@ -17,9 +17,18 @@ timeout=${3:?timeout seconds}
 poll=${POLL_SECONDS:-10}
 run="repos/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
 
+# Capture the listing, then match it: `gh api … | grep -qx` would let grep exit at its first match
+# while gh still writes a listing past the pipe buffer (over 100 artifacts, paginated), and the
+# SIGPIPE that kills gh turns a match into a failure under pipefail. A failed listing is "not yet".
+listed() {
+    local names
+    names=$(gh api "$run/artifacts?per_page=100" --paginate --jq '.artifacts[].name') || return 1
+    grep -qx -- "$name" <<<"$names"
+}
+
 deadline=$((SECONDS + timeout))
 while :; do
-    if gh api "$run/artifacts?per_page=100" --paginate --jq '.artifacts[].name' | grep -qx "$name"; then
+    if listed; then
         echo "artifact $name is ready after ${SECONDS}s"
         exit 0
     fi
@@ -30,7 +39,7 @@ while :; do
         { echo "::warning::could not list this run's jobs; polling again"; ended=""; }
     # A finished producer may have uploaded in the moment since the listing above: look once more.
     if [ -n "$ended" ]; then
-        if gh api "$run/artifacts?per_page=100" --paginate --jq '.artifacts[].name' | grep -qx "$name"; then
+        if listed; then
             echo "artifact $name is ready after ${SECONDS}s"
             exit 0
         fi

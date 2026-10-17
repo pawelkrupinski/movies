@@ -51,4 +51,10 @@ check "times out while the producer is still running" 1 "$(run 0)"
 scenario; : > "$work/artifacts-0"; printf 'stage-worker\n' > "$work/artifacts-1"; : > "$work/jobs-fail"
 check "rides out a failed jobs listing and keeps polling" 0 "$(run 60)"
 
+# A listing far past the pipe buffer, the artifact first: a `gh | grep -q` pipe kills gh with
+# SIGPIPE at the match and pipefail reads the match as a failure.
+scenario; { printf 'stage-worker\n'; for i in $(seq 1 20000); do printf 'other-artifact-%05d\n' "$i"; done; } > "$work/artifacts-0"
+printf 'success\n' > "$work/jobs"
+check "finds the artifact first in a listing larger than the pipe buffer" 0 "$(run 60)"
+
 spec_summary
