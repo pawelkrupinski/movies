@@ -365,7 +365,10 @@ object StageRelays {
     /** Do the listing and the film bill the work under one house — the same spelling, or the house
      *  the listing's banner was learned to be? */
     def same(b: Billing): Boolean =
-      b.listingHouse == b.filmHouse || of.get(b.listingHouse).contains(b.filmHouse) || abbreviates(b.listingWords, b.filmWords)
+      b.listingHouse == b.filmHouse || of.get(b.listingHouse).contains(b.filmHouse) ||
+        // an abbreviation, unless the banner was learned to be another house: "NT Live" learned as National Theatre Live
+        // is no "New Theatre", however the initials meet
+        (abbreviates(b.listingWords, b.filmWords) && of.get(b.listingHouse).forall(_ == b.listingHouse))
     /** Is the listing's banner known to be ANOTHER house than the film's — and the two names not one house's
      *  ([[namesOneHouse]])? DE's "RBO Live" banner was learned as the house records spelling it so bill, and then denied
      *  "RBO Live 2026/27: Schwanensee (Royal Ballet)" ×80 the season's record billing it "RBO 26/27": one house, two

@@ -469,6 +469,9 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
       IdentityMeasures.titleRelation(Listing("NT Live: Samira"), Film("National Theatre at Home: Samira"), Houses.Unknown)
     IdentityMeasures.titleRelation(Listing("Royal Shakespeare Company: Macbeth"), Film("Royal Ballet & Opera 2026/27: Macbeth"), Houses.Unknown) shouldBe
       Category("overlap")
+    // ...nor overrules the house a banner was learned to be: "New Theatre" shares only NT's initials
+    IdentityMeasures.titleRelation(Listing("NT Live: Hay Fever"), Film("New Theatre: Hay Fever"), Houses(Map("ntlive" -> "nationaltheatrelive"))) shouldBe
+      Category("overlap")
   }
 
   "a venue dropping a film's leading article" should "still list the film's exact title — a plain title of three words or more" in {
