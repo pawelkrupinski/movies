@@ -294,7 +294,10 @@ object Agreement {
                         thisYear: Option[Int]): Supported = {
     val lead    = group.head
     val records = group.map(_.record)
-    val voted   = modelVote.filter(vote => records.exists(sameFilm(_, vote)))
+    // the model's film is theirs only when none of their own records holds it apart: an undated record sharing its title
+    // is no link where a dated one is years off (DE "Archiv Negativ: Turksib": RT's undated page of Turin's 1929 film matched
+    // TMDB's 1986 "На перевале", alternatively "Turksib", whose ids then named the 1929 film IMDb and Filmweb took)
+    val voted   = modelVote.filter(vote => records.exists(sameFilm(_, vote)) && !records.exists(apart(_, vote)))
     // the takers' ids first, then those of the TMDB film the model votes for, which is the film they took
     val merged  = lead.record.copy(crossIds = (voted.toSeq ++ records).flatMap(_.crossIds).toMap ++ lead.record.crossIds)
     // the film through any record of it — the model's vote's too, which links a lean the takers' records name only in

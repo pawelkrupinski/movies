@@ -239,6 +239,23 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     Agreement.agreed(bare, verdicts) shouldBe None   // no record links IMDb's to Filmweb's
   }
 
+  it should "not name the agreed film when a taker's own record holds the model's film apart, though an undated one shares its title" in {
+    // DE "Archiv Negativ: Turksib" (recording 38713274617): IMDb and Filmweb take Turin's 1929 "Turksib", RT its undated
+    // page of it; the model leans to TMDB's 1986 "На перевале" (alternatively "Turksib"), which RT's undated record alone
+    // matches by title. Its ids named the agreed film: the 1986 film was served for the 1929 documentary
+    val turin   = film("Turksib", 1929, "Victor A. Turin", 57)
+    val imdb    = SourceRecord(turin, Map("imdb" -> "tt0020523"))
+    val filmweb = SourceRecord(turin.copy(runtime = Some(75)), Map("filmweb" -> "398154"))
+    val rt      = SourceRecord(turin.copy(year = None), Map("rt" -> "turksib"))
+    val pass    = SourceRecord(IdentityMeasures.Film("На перевале", Some("На перевале"), Seq("Турксиб", "Na perevale", "Turksib"), Some(1986), Some(73),
+      Some(Seq("Тұңғышбай Жаманқұлов")), None, None), Map("tmdb" -> "1400057", "imdb" -> "tt0275745"))
+    val bare    = Seq(listing(KinoMuza, "Archiv Negativ: Turksib"))
+    val verdicts = Seq(FamilyTook(FamilyPick(VoterFamily.Imdb, "tt0020523", imdb)), FamilyTook(FamilyPick(VoterFamily.RottenTomatoes, "turksib", rt)),
+      FamilyTook(FamilyPick(VoterFamily.Filmweb, "398154", filmweb)))
+    val agreed = Agreement.agreed(bare, verdicts, modelVote = Some(pass))
+    agreed.map(a => (a.crossId("tmdb"), a.crossId("imdb"), a.corroborated)) shouldBe Some((None, Some("tt0020523"), Set.empty))
+  }
+
   "A venue's catalogue naming the film a family took by its id" should "complete two takers' agreement" in {
     // PL "Imago" (fixture identity-unmatched): the venue lists Filmweb's 872645, which Filmweb takes — Chajdas's 2023
     // film, which Metacritic takes undated
