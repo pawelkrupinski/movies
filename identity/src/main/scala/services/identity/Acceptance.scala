@@ -769,8 +769,9 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
       year   <- any.listing.statedYear.orElse(StageRelays.bannerYear(any.listing)).toRight(Refused("the listing publishes no year"))
       works   = StageRelays.stageWorks(any.listing)
       _      <- need(works.nonEmpty, "the title names no stage work")
+      itsHouse = StageRelays.bannerNamesItsHouse(any.listing)
       record <- one(eligibleOf(ranked).filter(scored => scored.candidate.film.season.isDefined &&
-                  StageRelays.stageWorks(scored.candidate.film).exists(works) && StageRelays.bannerNamesItsHouse(any.listing, scored.candidate.film) &&
+                  StageRelays.stageWorks(scored.candidate.film).exists(works) && itsHouse(scored.candidate.film) &&
                   scored.candidate.film.year.contains(year) && !contradicted(scored)),
                   "no season record of its work from its year", "two season records of its work from its year", s"works ${works.toSeq.sorted.mkString(",")}, $year")
     } yield atOwn(record)

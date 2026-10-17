@@ -508,11 +508,12 @@ object StageRelays {
    *  "PARIS OPERA: ROMEO UND JULIA" is no Royal Ballet relay, nor UK "La Fanciulla Del West - Royal Opera" the Met's,
    *  however "opera" meets. A relay's banner naming no house ("OPERA-PARSIFAL") names the record by its one stage work
    *  alone — never by a name two works share: ES "Manon de Jules Massenet - Ópera" is no Royal Ballet "Manon". */
-  def bannerNamesItsHouse(l: Listing, f: Film): Boolean = {
-    val titles     = l.ownTitles
-    val particular = titles.map(billable).flatMap(fragments).map(houseWords).map(particularWords).filter(_.nonEmpty)
-    if (particular.nonEmpty) particular.exists(banner => f.houseNames.exists(namesOneHouse(banner, _)))
-    else l.billsAStageHouse && l.billedStageWorks.sizeIs == 1
+  def bannerNamesItsHouse(l: Listing, f: Film): Boolean = bannerNamesItsHouse(l)(f)
+  /** [[bannerNamesItsHouse]] with the listing's side read once, for a rule weighing every candidate against it. */
+  def bannerNamesItsHouse(l: Listing): Film => Boolean = {
+    val particular = l.ownTitles.map(billable).flatMap(fragments).map(houseWords).map(particularWords).filter(_.nonEmpty)
+    if (particular.nonEmpty) f => particular.exists(banner => f.houseNames.exists(namesOneHouse(banner, _)))
+    else { val namesByItsWork = l.billsAStageHouse && l.billedStageWorks.sizeIs == 1; _ => namesByItsWork }
   }
 
   /** A season production searched as its WORK AND ITS SEASON ("Manon 2026"): a house's record of
