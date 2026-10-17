@@ -28,6 +28,9 @@
 # answers; else a throwaway mongo:8.3.11 container on :27117 (CONVERGENCE_LOCAL_MONGO_PORT), waited for at most
 # CONVERGENCE_LOCAL_MONGO_WAIT seconds (120) a step. Each run's databases are created
 # under a MONGODB_DB prefix unique to it and dropped by the suite (`ConvergenceStorage.close`).
+# CONVERGENCE_LOCAL_PAIR=<recording run | laid fixtures dir> lays a pair already on this machine instead (offline:
+# GitHub unreachable), said as not necessarily the pin CI holds.
+# CONVERGENCE_LOCAL_OWN_MONGOD=1 runs the leg on a mongod of its own (scripts/it-local.sh), removed however it ends.
 # Tested by scripts/convergence-local-test.sh against stub sbt, docker, secrets and restore.
 set -euo pipefail
 
@@ -67,7 +70,25 @@ cd "$(dirname "$0")/.."
 FALLBACK_PORT="${CONVERGENCE_LOCAL_MONGO_PORT:-27117}"
 MONGO_WAIT="${CONVERGENCE_LOCAL_MONGO_WAIT:-120}"
 
-scripts/restore-country-corpus.sh "$CODE"
+if [ -n "${CONVERGENCE_LOCAL_PAIR:-}" ]; then
+    # OFFLINE: a pair already laid on this machine -- a recording run in the identity cache
+    # ($KINOWO_IDENTITY_CACHE/recordings/<run>/pair, as identity-slice lays it) or a laid fixtures directory -- for
+    # when GitHub, which pins and serves the pair, cannot be reached. It is the pair of THAT recording, not necessarily
+    # the one CI pins now.
+    pair="$CONVERGENCE_LOCAL_PAIR"
+    [ -d "$pair" ] || pair="${KINOWO_IDENTITY_CACHE:-$HOME/.cache/kinowo-identity}/recordings/$CONVERGENCE_LOCAL_PAIR/pair/test/resources/fixtures"
+    { [ -f "$pair/corpus/cinema-scrapes-$CODE.json.gz" ] && [ -d "$pair/enrichment-$CODE" ]; } ||
+        { echo "convergence-local: no laid pair for $CODE at $pair" >&2; exit 1; }
+    echo "==> laying the cached pair $pair for $CODE (offline: not the pin CI holds now, unless that recording is it)"
+    mkdir -p test/resources/fixtures/corpus
+    for file in "$pair"/corpus/*-"$CODE".json* "$pair"/corpus/*-"$CODE"-sample.json*; do
+        [ -f "$file" ] && cp "$file" test/resources/fixtures/corpus/
+    done
+    rm -rf "test/resources/fixtures/enrichment-$CODE"
+    cp -R "$pair/enrichment-$CODE" "test/resources/fixtures/enrichment-$CODE"
+else
+    scripts/restore-country-corpus.sh "$CODE"
+fi
 echo "    (overwrites any committed corpus for $CODE — 'git checkout -- test/resources/fixtures/corpus' restores it)"
 
 if [ -z "${TMDB_API_KEY:-}" ]; then
@@ -77,7 +98,15 @@ fi
 OMDB_API_KEY="${OMDB_API_KEY:-$(secrets get movies OMDB_API_KEY 2>/dev/null || true)}"
 [ -n "$OMDB_API_KEY" ] || echo "    no OMDB_API_KEY — the OMDb rung runs absent, as it does not in CI" >&2
 
-if [ -n "${MONGODB_URI:-}" ]; then
+if [ -n "${CONVERGENCE_LOCAL_OWN_MONGOD:-}" ]; then
+    # A mongod of this leg's own (scripts/it-local.sh): its data in a temp directory, killed and removed by a trap
+    # however the leg ends, where a shared server keeps a crashed leg's databases (the suite's close drops them).
+    echo "==> sbt $SPEC on a mongod of its own (scripts/it-local.sh: removed when the leg ends, however it ends)"
+    exec env TMDB_API_KEY="$TMDB_API_KEY" OMDB_API_KEY="$OMDB_API_KEY" \
+        KINOWO_COUNTRY="$CODE" KINOWO_COUNTRIES="$CODE" \
+        KINOWO_CONVERGENCE_ENRICHMENT_FIXTURES="enrichment-$CODE" KINOWO_CONVERGENCE_HERMETIC=true \
+        scripts/it-local.sh "$SPEC"
+elif [ -n "${MONGODB_URI:-}" ]; then
     echo "==> MongoDB from MONGODB_URI"
 elif (echo >"/dev/tcp/127.0.0.1/$(local_mongo_port)") 2>/dev/null; then
     MONGODB_URI="$(local_mongo_uri)"

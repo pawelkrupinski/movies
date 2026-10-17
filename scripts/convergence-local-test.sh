@@ -104,6 +104,28 @@ check "a container that never answers is given up on, not waited for forever" "1
 check "...said, and sbt never run" "yes " "$(grep -q 'never answered' "$work/out" && echo yes || echo no) $(grep '^sbt' "$work/calls")"
 rm -f "$work/mongo-never-up"
 
+# Offline: a pair already laid on this machine, laid in place of the download.
+laid="$work/laid"; mkdir -p "$laid/corpus" "$laid/enrichment-de/api.themoviedb.org"
+echo corpus > "$laid/corpus/cinema-scrapes-de.json.gz"; echo sample > "$laid/corpus/cinema-scrapes-de-sample.json.gz"
+echo other > "$laid/corpus/cinema-scrapes-pl.json.gz"; echo tree > "$laid/enrichment-de/api.themoviedb.org/movie"
+MONGODB_URI=mongodb://given:1/ TMDB_API_KEY=tmdb CONVERGENCE_LOCAL_PAIR="$laid" local_leg de
+check "CONVERGENCE_LOCAL_PAIR: the laid pair copied in, nothing restored, then the suite" "0 sbt convergenceGermany" \
+  "$(cat "$work/status") $(paste -sd'|' "$work/calls")"
+check "...the country's corpus and its tree, no other country's" "corpus sample tree no" \
+  "$(cat "$work/tree/test/resources/fixtures/corpus/cinema-scrapes-de.json.gz") $(cat "$work/tree/test/resources/fixtures/corpus/cinema-scrapes-de-sample.json.gz") $(cat "$work/tree/test/resources/fixtures/enrichment-de/api.themoviedb.org/movie") $([ -e "$work/tree/test/resources/fixtures/corpus/cinema-scrapes-pl.json.gz" ] && echo yes || echo no)"
+MONGODB_URI=mongodb://given:1/ TMDB_API_KEY=tmdb CONVERGENCE_LOCAL_PAIR="$laid" local_leg uk
+check "...a pair holding no corpus for the country stops the leg" "1 " "$(cat "$work/status") $(grep '^sbt' "$work/calls" 2>/dev/null)"
+
+# A mongod of the leg's own: the suite run through scripts/it-local.sh (a stub here), no server chosen.
+cat > "$work/tree/scripts/it-local.sh" <<'STUB'
+#!/usr/bin/env bash
+echo "it-local $*" >> "$STUB/calls"
+STUB
+chmod +x "$work/tree/scripts/it-local.sh"
+TMDB_API_KEY=tmdb CONVERGENCE_LOCAL_OWN_MONGOD=1 local_leg de
+check "CONVERGENCE_LOCAL_OWN_MONGOD: the suite on a mongod of its own, no container, no shared server" "0 restore de|it-local convergenceGermany" \
+  "$(cat "$work/status") $(paste -sd'|' "$work/calls")"
+
 # An itAll mongod: a listener on a port the system picks, kept bound while the leg runs (its port printed once bound).
 cat > "$work/listen.py" <<'PY'
 import socket, time

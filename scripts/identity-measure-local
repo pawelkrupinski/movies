@@ -1,0 +1,100 @@
+#!/usr/bin/env bash
+#
+# THE IDENTITY MEASURE, LOCALLY: scripts/identity-measure's whole-corpus base-vs-head verdict with no GitHub -- the
+# same resolve (integration.IdentityResolveDump, the model's takes), the same final takes (the unmatched-cluster
+# ratchet's --measure) and the same diff (scripts/ci/identity_takes_diff.py) the convergence suite's `takes` rows run,
+# over a recording already in the identity cache.
+#
+#   scripts/identity-measure-local --base REF [--head REF] [--countries pl,de,uk,us,es] [--recording RUN] [--out DIR]
+#
+#   --base       the commit to measure against (required: no commit status is read to find one)
+#   --head       the commit measured (default HEAD)
+#   --countries  default every country the recording holds
+#   --recording  a "Record scrape fixtures" run whose laid pair is cached
+#                ($KINOWO_IDENTITY_CACHE/recordings/<run>/pair, as identity-slice lays it); default the newest cached one
+#   --out        default target/identity-measure-local/<base>..<head>
+#
+# Each ref resolves in a detached worktree of its own (<out>/trees/<sha>), in ONE sbt session over a mongod of its own
+# (scripts/it-local.sh): every country's dump, then the ratchet's final takes. Prints each country's model and final
+# verdicts as identity_takes_diff.py words them, and exits 1 when any fails (a right take lost or turned wrong, a new
+# wrong take, an unjudged move), 0 when none does, 2 on a usage or setup error.
+#
+# What it does not do that CI does: read the base from the commit statuses, reuse a stored base, run the corpus-shape
+# specs. Use it while GitHub is unreachable; scripts/identity-measure is the verdict of record.
+set -uo pipefail
+
+here=$(cd "$(dirname "$0")/.." && pwd)
+cache=${KINOWO_IDENTITY_CACHE:-$HOME/.cache/kinowo-identity}
+base="" head=HEAD countries="" recording="" out=""
+die() { echo "identity-measure-local: $*" >&2; exit 2; }
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --base) base=${2:-}; shift 2 ;;
+    --head) head=${2:-}; shift 2 ;;
+    --countries) countries=${2:-}; shift 2 ;;
+    --recording) recording=${2:-}; shift 2 ;;
+    --out) out=${2:-}; shift 2 ;;
+    -h|--help) sed -n '2,/^set -uo/p' "$0" | sed '$d' | sed 's/^# \{0,1\}//'; exit 0 ;;
+    *) die "unknown argument: $1" ;;
+  esac
+done
+[ -n "$base" ] || die "--base REF is required"
+base_sha=$(git -C "$here" rev-parse --short=12 "$base^{commit}" 2>/dev/null) || die "no commit $base"
+head_sha=$(git -C "$here" rev-parse --short=12 "$head^{commit}" 2>/dev/null) || die "no commit $head"
+
+if [ -z "$recording" ]; then
+  recording=$(for laid in "$cache"/recordings/*/pair/test/resources/fixtures/corpus; do
+    run=${laid#"$cache"/recordings/}; run=${run%%/*}; [[ $run =~ ^[0-9]+$ ]] && echo "$run"; done | sort -n | tail -1)
+  [ -n "$recording" ] || die "no laid recording in $cache/recordings (lay one with scripts/identity-slice first)"
+fi
+pair="$cache/recordings/$recording/pair/test/resources/fixtures"
+[ -d "$pair/corpus" ] || die "recording $recording has no laid pair at $pair"
+if [ -z "$countries" ]; then
+  countries=$(for dir in "$pair"/enrichment-*; do [ -d "$dir" ] && basename "$dir" | sed 's/^enrichment-//'; done | paste -sd, -)
+fi
+IFS=, read -r -a ccs <<< "$countries"
+out=${out:-$here/target/identity-measure-local/$base_sha..$head_sha}
+mkdir -p "$out/trees"
+echo "identity-measure-local: base $base_sha, head $head_sha, recording $recording, countries ${ccs[*]}, out $out"
+
+resolve() { # <sha>: every country's model takes and the final ones, in the ref's own worktree
+  local sha=$1 tree="$out/trees/$1" dir="$out/$1" commands=()
+  [ -d "$tree" ] || git -C "$here" worktree add --detach --quiet "$tree" "$sha" || return 1
+  mkdir -p "$dir"
+  local missing=""
+  for cc in "${ccs[@]}"; do [ -s "$dir/decisions-$cc.jsonl" ] || missing=1; done
+  [ -s "$dir/ratchet/ratchet-takes.tsv" ] || missing=1
+  # a ref already resolved here for these countries is the same pure function of the same inputs: kept
+  [ -n "$missing" ] || { echo "identity-measure-local: $sha already resolved in $dir"; return 0; }
+  for cc in "${ccs[@]}"; do
+    commands+=("worker/IntegrationTest/runMain integration.IdentityResolveDump --out $dir --full $cc --corpus-dir $pair/corpus --fixtures $pair")
+  done
+  commands+=("worker/IntegrationTest/runMain scripts.UnmatchedClustersRatchet --measure --out $dir/ratchet --countries $countries")
+  SECONDS=0
+  ( cd "$tree" && scripts/it-local.sh "${commands[@]}" ) > "$dir.log" 2>&1
+  local status=$?
+  echo "identity-measure-local: $sha resolved in ${SECONDS}s (exit $status, log $dir.log)"
+  for cc in "${ccs[@]}"; do [ -s "$dir/decisions-$cc.jsonl" ] || { echo "identity-measure-local: $sha wrote no decisions-$cc.jsonl" >&2; return 1; }; done
+  [ -s "$dir/ratchet/ratchet-takes.tsv" ] || echo "identity-measure-local: $sha wrote no final takes ($dir/ratchet)" >&2
+  return 0
+}
+
+resolve "$base_sha" || die "the base did not resolve (log $out/$base_sha.log)"
+resolve "$head_sha" || die "the head did not resolve (log $out/$head_sha.log)"
+
+failed=0
+judgements="$out/trees/$head_sha/test/resources/fixtures/identity-judgements.tsv"
+for cc in "${ccs[@]}"; do
+  echo "== $cc model"
+  python3 "$here/scripts/ci/identity_takes_diff.py" "$cc" "$out/$base_sha/decisions-$cc.jsonl" "$out/$head_sha/decisions-$cc.jsonl" \
+    --judgements "$judgements" --base-name "$base_sha" --head-name "$head_sha" || failed=1
+  if [ -s "$out/$base_sha/ratchet/ratchet-takes.tsv" ] && [ -s "$out/$head_sha/ratchet/ratchet-takes.tsv" ]; then
+    echo "== $cc final"
+    python3 "$here/scripts/ci/identity_takes_diff.py" "$cc" "$out/$base_sha/ratchet/ratchet-takes.tsv" "$out/$head_sha/ratchet/ratchet-takes.tsv" \
+      --final --judgements "$judgements" --base-name "$base_sha" --head-name "$head_sha" || failed=1
+  else
+    echo "== $cc final: not measured (a ratchet wrote no takes)"; failed=1
+  fi
+done
+[ "$failed" = 0 ] && echo "LANDABLE (local): no take moved that the judgements do not accept" || echo "NOT LANDABLE (local): see the verdicts above"
+exit "$failed"
