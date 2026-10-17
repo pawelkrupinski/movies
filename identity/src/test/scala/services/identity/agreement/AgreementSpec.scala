@@ -31,6 +31,19 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     agreed.flatMap(_.crossId("imdb")) shouldBe Some("tt16315948")
   }
 
+  it should "not join two records naming another id in one database, however their titles fit" in {
+    // UK Empire Theatre Halstead "Romeo and Juliet" (capture identity-unmatched): Wikidata takes Shakespeare's play
+    // (Q83186: undated, uncredited, IMDb tt2428892), IMDb Zeffirelli's 1968 film (tt0063518) — joined by the title
+    // alone, the two agreed on the 1968 film for the Royal Ballet's 170-minute relay of the ballet
+    val play   = SourceRecord(IdentityMeasures.Film("Romeo and Juliet", None, Nil, None, None, None, None, None), Map("imdb" -> "tt2428892", "wikidata" -> "Q83186"))
+    val zeff   = SourceRecord(film("Romeo and Juliet", 1968, "Franco Zeffirelli", 138), Map("imdb" -> "tt0063518"))
+    Agreement.sameFilm(play, zeff) shouldBe true
+    Agreement.apart(play, zeff) shouldBe true
+    Agreement.joins(Seq(play), zeff) shouldBe false
+    Agreement.joins(Seq(play), zeff.copy(crossIds = Map("imdb" -> "tt2428892"))) shouldBe true
+    Agreement.joins(Seq(play), zeff.copy(crossIds = Map("filmweb" -> "1"))) shouldBe true
+  }
+
   it should "agree on nothing when another family names another film, or only two agree" in {
     val bare = Seq(listing(KinoMuza, "Klondike"))
     val three = Seq(

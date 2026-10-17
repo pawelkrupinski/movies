@@ -297,7 +297,7 @@ object Agreement {
     // the model's film is theirs only when none of their own records holds it apart: an undated record sharing its title
     // is no link where a dated one is years off (DE "Archiv Negativ: Turksib": RT's undated page of Turin's 1929 film matched
     // TMDB's 1986 "На перевале", alternatively "Turksib", whose ids then named the 1929 film IMDb and Filmweb took)
-    val voted   = modelVote.filter(vote => records.exists(sameFilm(_, vote)) && !records.exists(apart(_, vote)))
+    val voted   = modelVote.filter(joins(records, _))
     // the takers' ids first, then those of the TMDB film the model votes for, which is the film they took
     val merged  = lead.record.copy(crossIds = (voted.toSeq ++ records).flatMap(_.crossIds).toMap ++ lead.record.crossIds)
     // the film through any record of it — the model's vote's too, which links a lean the takers' records name only in
@@ -498,11 +498,16 @@ object Agreement {
   /** The same film by a shared cross-id, else by [[equivalent]] facts. */
   def sameFilm(a: SourceRecord, b: SourceRecord): Boolean = sharesAnId(a, b) || equivalent(a.film, b.film)
 
-  /** Two films by their facts, no cross-id linking them ([[factsApart]]). */
-  def apart(a: SourceRecord, b: SourceRecord): Boolean = !sharesAnId(a, b) && factsApart(a.film, b.film)
+  /** Two films, no cross-id linking them: by their facts ([[factsApart]]), or by naming another id in one database — an
+   *  undated, uncredited record is the same film as every namesake by its facts, but not as one whose IMDb id is another
+   *  (UK "Romeo and Juliet": Wikidata's record of Shakespeare's play, IMDb tt2428892, and Zeffirelli's 1968 film). */
+  def apart(a: SourceRecord, b: SourceRecord): Boolean = !sharesAnId(a, b) && (factsApart(a.film, b.film) || namesAnotherId(a, b))
 
   private def sharesAnId(a: SourceRecord, b: SourceRecord): Boolean =
     a.crossIds.exists { case (database, id) => b.crossIds.get(database).contains(id) }
+
+  private def namesAnotherId(a: SourceRecord, b: SourceRecord): Boolean =
+    a.crossIds.exists { case (database, id) => b.crossIds.get(database).exists(_ != id) }
 
   /** The same film by its facts, no cross-id linking them: years within one, no clash of Latin-script directors (one
    *  respelled in the same year and running time is none), and a
