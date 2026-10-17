@@ -71,9 +71,11 @@ private[identity] object Corroboration {
    *  heads before its subtitle — not another instalment of it? Then the listing names the rival by its short title as
    *  closely as the film it took by its whole one: DE CineStar's bare "Lieblingsmenschen" (three venues) took a 65-minute
    *  2021 indie while 23 venues link Hufnagel's 2026 "Lieblingsmenschen - Die außergewöhnliche Freundschaft von Agnes
-   *  & Amir" by their feed's id. "Dune" heads "Dune: Part Two" too, but numbers no instalment of it. */
-  private def headedBy(rival: Scored, taken: Int): Boolean =
-    taken == Whole && IdentityMeasures.titleIsWorkOf(rival.listing, rival.candidate.film).isDefined &&
+   *  & Amir" by their feed's id. "Dune" heads "Dune: Part Two" too, but numbers no instalment of it. A head names the
+   *  rival only by its work, so it stands only against a take no node evidences (`backing`): beside a node dating the
+   *  2009 "Avatar", a bare "Avatar" keeps the re-release though two nodes take "Avatar: Fire and Ash" on their own facts. */
+  private def headedBy(rival: Scored, taken: Int, backing: Int): Boolean =
+    backing == 0 && taken == Whole && IdentityMeasures.titleIsWorkOf(rival.listing, rival.candidate.film).isDefined &&
       !rival.category("numeral").exists(IdentityMeasures.OtherInstalment)
 
   /** [[naming]]'s tier of a title naming the film whole: its own title or its original. */
@@ -108,7 +110,7 @@ private[identity] object Corroboration {
         val rivalBacking = support.getOrElse(rival.candidate.tmdbId, 0)
         rivalBacking >= EvidencedNamesake && rivalBacking > backing
       } && (naming(rival) > 0 && naming(rival) >= taken &&
-        pieces.subsetOf(IdentityMeasures.namingPieces(rival.listing, rival.candidate.film)) || headedBy(rival, taken))).map(rival => s"namesake ${rival.candidate.tmdbId} is taken on their own facts by ${support(rival.candidate.tmdbId)} node(s), $film by $backing")
+        pieces.subsetOf(IdentityMeasures.namingPieces(rival.listing, rival.candidate.film)) || headedBy(rival, taken, backing))).map(rival => s"namesake ${rival.candidate.tmdbId} is taken on their own facts by ${support(rival.candidate.tmdbId)} node(s), $film by $backing")
     // A title vouches only for a node no evidenced namesake shares it with: where the family takes another film its title
     // names as closely (or heads, [[headedBy]]) on more nodes' facts, under any spelling, the title is that film's at least
     // as much (DE "The Killer" ×5,

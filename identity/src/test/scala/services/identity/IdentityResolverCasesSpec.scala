@@ -1038,29 +1038,24 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     withClue(Seq(bare, dated).map(l => r.decisionOf(l.key).render).distinct.mkString("\n"))(r.decisionOf(bare.key).film shouldBe Some(1573952))
   }
 
-  it should "keep a re-release's own film beside a subtitled sequel its title heads, which more venues evidence" in {
-    // A bare "Avatar" re-release beside "Avatar: Fire and Ash", which two venues date and credit: the bare title heads the
-    // sequel's ([[Corroboration.headedBy]], DE CineStar's "Lieblingsmenschen") and the sequel is taken on more nodes' own
-    // facts than the 2009 film. The headed-namesake rule is not reached: a subtitled billing carries no key of its head
-    // ("Avatar"), so the sequel's nodes join no family of the bare title's, and the bare title keeps its film.
-    val films  = Seq(F(19995, "Avatar", 2009, "James Cameron", 162, 60), F(83533, "Avatar: Fire and Ash", 2025, "James Cameron", 197, 90))
-    val bare   = listing(Multikino, "Avatar")
-    val sequel = Seq(Helios, KinoApollo).map(listing(_, "Avatar: Fire and Ash", Some(2025), Some("James Cameron")))
-    val r = shipped(bare +: sequel, films)
-    withClue((bare +: sequel).map(l => r.decisionOf(l.key).render).distinct.mkString("\n")) {
-      sequel.map(l => r.decisionOf(l.key).film) shouldBe Seq(Some(83533), Some(83533))
-      r.decisionOf(bare.key).film shouldBe Some(19995)
+  "A bare title heading a subtitled film its family's nodes take on their own facts" should "be that film's namesake, unless a node evidences the film the bare title names whole" in {
+    // [[Corroboration.headedBy]]: "Avatar" heads "Avatar: Fire and Ash". Two venues bill the sequel by its head alone,
+    // dated and timed (two nodes, so two nodes of the family take it on their own facts, as DE's 23 venues linking
+    // Hufnagel's "Lieblingsmenschen - Die außergewöhnliche Freundschaft von Agnes & Amir" under its head). A bare
+    // "Avatar" nothing of its own places is then as much the sequel as the 2009 film, and stays unmatched.
+    val films   = Seq(F(19995, "Avatar", 2009, "James Cameron", 162, 60), F(83533, "Avatar: Fire and Ash", 2025, "James Cameron", 197, 90))
+    val bare    = listing(Multikino, "Avatar")
+    val sequel  = Seq(listing(Helios, "Avatar", Some(2025), Some("James Cameron"), Some(197)), listing(KinoApollo, "Avatar", Some(2025), None, Some(197)))
+    def takes(listings: Seq[Listing], expected: Option[Int]*) = {
+      val r = shipped(listings, films)
+      withClue(listings.map(l => r.decisionOf(l.key).render).distinct.mkString("\n"))(listings.map(l => r.decisionOf(l.key).film) shouldBe expected)
     }
-    // Nor beside the re-release dated at another venue and the sequel billed bare and dated: the bare title names the 2009
-    // film whole, by the same director, so the sequel is never taken on the bare title's own facts there.
-    val dated  = listing(KinoMikro, "Avatar", Some(2009), Some("James Cameron"))
-    val short  = Seq(Helios, KinoApollo).map(listing(_, "Avatar", Some(2025), Some("James Cameron")))
-    val titled = listing(Rialto, "Avatar: Fire and Ash", Some(2025))
-    val all    = Seq(bare, dated, titled) ++ short
-    val r2 = shipped(all, films)
-    withClue(all.map(l => r2.decisionOf(l.key).render).distinct.mkString("\n")) {
-      Seq(bare, dated, titled).map(l => r2.decisionOf(l.key).film) shouldBe Seq(Some(19995), Some(19995), Some(83533))
-    }
+    takes(bare +: sequel, None, Some(83533), Some(83533))
+    // A node dating the 2009 film under the bare title evidences the re-release in the family: the bare title names it
+    // whole, the sequel only by its head, so the re-release keeps its take — the head stands only against a take no
+    // node evidences.
+    val reissue = listing(KinoMikro, "Avatar", Some(2009), Some("James Cameron"))
+    takes(Seq(bare, reissue) ++ sequel, Some(19995), Some(19995), Some(83533), Some(83533))
   }
 
   "A director credited in another script" should "be the listing's when its person search, by the listing's own spelling, reaches the film" in {
