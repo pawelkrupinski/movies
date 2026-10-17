@@ -61,6 +61,8 @@ fi
 IFS=, read -r -a ccs <<< "$countries"
 out=${out:-$here/target/identity-measure-local/$base_sha..$head_sha}
 mkdir -p "$out/trees"
+# absolute: each ref's commands run from its own worktree, where a relative path would land the takes
+out=$(cd "$out" && pwd)
 echo "identity-measure-local: base $base_sha, head $head_sha, recording $recording, countries ${ccs[*]}, out $out"
 
 resolve() { # <sha>: every country's model takes and the final ones, in the ref's own worktree

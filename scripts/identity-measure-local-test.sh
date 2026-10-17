@@ -88,6 +88,10 @@ check "a move nobody judged, the classification clean: landable once judged, exi
 check "...both refs already resolved here: kept, not resolved again" "" "$(cat "$work/calls" 2>/dev/null)"
 rm -f "$work/moved"
 
+( cd "$work" && measure --base "$base" --head "$head" --out rel --countries pl )
+check "a relative --out is the caller's, not each ref's worktree's: both refs' takes land under it" "0 yes" \
+  "$(cat "$work/status") $([ -s "$work/rel/$base/decisions-pl.jsonl" ] && [ -s "$work/rel/$head/decisions-pl.jsonl" ] && echo yes || echo no)"
+
 measure --base "$base" --head "$head" --recording 99
 check "a recording with no laid pair is a setup error" "2" "$(cat "$work/status")"
 
