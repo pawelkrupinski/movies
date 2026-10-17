@@ -231,6 +231,33 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     w.lookups.candidates(CandidateQuery.TitleCredit("ES (ULRIKA MOUYEMA)")) shouldBe Answer.Known(Nil)
   }
 
+  /** Schamoni's suggestions, his person search and his credits, filed as the live ask files them. */
+  private def schamoni(w: World, suggestions: String = scala.io.Source.fromResource("fixtures/imdb/suggestion_es_ulrich_schamoni.json")(using scala.io.Codec.UTF8).mkString): Unit = {
+    w.normalizer.filed("GET", services.enrichment.ImdbClient.suggestionUrl("ES (ULRICH SCHAMONI)"), Success(suggestions))
+    w.normalizer.filed("GET", "https://api.themoviedb.org/3/search/person?query=Ulrich%20Schamoni",
+      Success("""{"results":[{"id":77,"name":"Ulrich Schamoni","known_for_department":"Directing"}]}"""))
+    w.normalizer.filed("GET", "https://api.themoviedb.org/3/person/77/movie_credits",
+      Success("""{"crew":[{"id":133035,"title":"Es","original_title":"Es","release_date":"1966-03-17","popularity":0.76,"department":"Directing","job":"Director"}]}"""))
+  }
+
+  /** A title credit's walk — its suggestions, the director's person search, his people, their films — is read in the
+   *  prefetch's batches, as a director question's is: each document read on its own was a round-trip per walk. */
+  it should "be read in the prefetch's batches, nothing left to read one document at a time" in {
+    val w    = new World
+    schamoni(w)
+    val gets = new java.util.concurrent.atomic.AtomicInteger()
+    val docs = new TmdbDocuments {
+      def get(kind: TmdbKind, ids: Seq[String]) = { gets.incrementAndGet(); w.docs.get(kind, ids) }
+      def put(kind: TmdbKind, d: Seq[(String, org.bson.BsonDocument)]) = w.docs.put(kind, d)
+    }
+    val lookups = new StoredTmdbLookups(new TmdbStore(docs, w.clock), language, UnansweredTmdbLookups, new ObservationReads)
+    val query   = CandidateQuery.TitleCredit("ES (ULRICH SCHAMONI)")
+    lookups.prefetch(Seq(query), Nil, Nil)
+    val prefetched = gets.get
+    lookups.candidates(query).toOption.map(_.map(_.tmdbId)) shouldBe Some(Seq(133035))
+    gets.get shouldBe prefetched
+  }
+
   /** A prefetch that found a document absent holds nothing of it: the live ask files it moments later, and an ask
    *  served the absence again would decide on a gap the store has already filled. */
   "the store's lookups" should "read a document a prefetch found absent again, once it is filed" in {

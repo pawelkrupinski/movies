@@ -28,8 +28,14 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
     release()
     val asked = queries.toSeq
     load(TmdbKind.Query, asked.map(TmdbStore.questionId(language, _)))
+    // Each title credit's director, as its suggestions name him ([[TitleCredit.named]]): his person search, walked as a
+    // director question's is.
+    val credited = asked.collect { case CandidateQuery.TitleCredit(title) => title }.flatMap(title =>
+      heldDocument(TmdbKind.Query, TmdbStore.imdbSuggestionsId(title)).filter(_.containsKey("directors"))
+        .flatMap(d => TitleCredit.named(title, BsonFields.stringsOf(d, "directors"))))
+    load(TmdbKind.Query, credited.map(personSearchOf))
     // What the questions name: each person search's people, each IMDb title's finds.
-    load(TmdbKind.Person, asked.collect { case CandidateQuery.Director(name) => personSearchOf(name) }
+    load(TmdbKind.Person, (asked.collect { case CandidateQuery.Director(name) => name } ++ credited).map(personSearchOf)
       .flatMap(heldDocument(TmdbKind.Query, _)).flatMap(d => intsOf(d).take(MaxPersonCandidates)).map(_.toString))
     load(TmdbKind.Query, asked.collect { case CandidateQuery.Imdb(title) => title }.flatMap { title =>
       heldDocument(TmdbKind.Query, TmdbStore.imdbSuggestionsId(title)).toSeq
