@@ -303,7 +303,7 @@ object IdentitySlice {
   def writeSlice(dir: Path, slice: Slice): Unit = {
     val part = dir.resolveSibling(s"${dir.getFileName}.part-${ProcessHandle.current.pid}")
     writeSliceFiles(part, slice)
-    if (Files.exists(dir)) Files.walk(dir).sorted(java.util.Comparator.reverseOrder()).forEach(p => Files.deleteIfExists(p))
+    deleteTree(dir)
     Files.move(part, dir, java.nio.file.StandardCopyOption.ATOMIC_MOVE)
   }
 
@@ -524,12 +524,12 @@ object IdentitySlice {
           val report = new java.io.ByteArrayOutputStream()
           val takes  = new java.io.StringWriter()
           val lacked = Console.withOut(new java.io.PrintStream(report, true, StandardCharsets.UTF_8)) {
-            val dir   = o.slices.getOrElse(session.cache.resolve("slices")).resolve(selector.directoryName)
-            val slice = extract(session.recording, session.opened, session.index, seeds, selector.label, o.widen, dir, o.ref, session.filed, prod)
-            val lacked = replaySlice(slice, None, labels, Some(new java.io.PrintWriter(takes)), o.orders, o.modes, prod)
-            o.emitCase.foreach(target => emitCase(slice, dir, labels, target.resolve(s"${country.code}-${selector.directoryName}"),
-              o.families.flatMap(checkoutOf).toSeq :+ Paths.get("")))
-            lacked
+            inWorkDir(o, session.cache, selector) { dir =>
+              val slice = extract(session.recording, session.opened, session.index, seeds, selector.label, o.widen, dir, o.ref, session.filed, prod)
+              val lacked = replaySlice(slice, None, labels, Some(new java.io.PrintWriter(takes)), o.orders, o.modes, prod)
+              emitInto(slice, dir, labels, o, country, selector)
+              lacked
+            }
           }
           SliceResult(report.toString(StandardCharsets.UTF_8), takes.toString.linesIterator.filter(_.nonEmpty).toSeq, lacked)
         }
@@ -640,7 +640,7 @@ object IdentitySlice {
     Files.write(part.resolve("takes.tsv"), result.takes.asJava)
     Files.write(part.resolve("lacked.txt"), result.lacked.asJava)
     Try(Files.move(part, dir, java.nio.file.StandardCopyOption.ATOMIC_MOVE))
-      .recover { case _ => Files.walk(part).sorted(java.util.Comparator.reverseOrder()).forEach(p => Files.deleteIfExists(p)) }
+      .recover { case _ => deleteTree(part) }
   }
 
   /** The recording, a gap it meets answered first by `filed`'s live HTTP answers — what the capture's whole resolve read
@@ -809,6 +809,27 @@ object IdentitySlice {
   def expectationsOf(key: ListingKey, country: Country, labels: Seq[UnmatchedClusters.Label]): Seq[Expected] =
     rightLabel(key, country, labels).map(label => Seq(Expected(key.venue, key.rawTitle, label.film, s"${label.venue}: ${label.note}")))
       .getOrElse(wrongLabels(key, country, labels).map(label => Expected(key.venue, key.rawTitle, Expected.Not + label.film, s"${label.venue}: ${label.note}")))
+
+  /** Where `selector`'s slice is cut, handed to `f`. The shared work dir (`--slices`, else the cache's: one per recording,
+   *  shared by every checkout) keeps a slice between runs, each run merging its listings and answers into the last
+   *  ([[extract]]). A case must hold only what THIS run read — this checkout's code and its own filed answers, never
+   *  what another checkout (its uncommitted capture, its absolute path) left there — so an emitting run cuts its slice
+   *  in a directory of its own, removed once `f` has copied the case out of it. */
+  def inWorkDir[A](o: Options, cache: Path, selector: Selector)(f: Path => A): A =
+    if (o.emitCase.isEmpty) f(o.slices.getOrElse(cache.resolve("slices")).resolve(selector.directoryName))
+    else {
+      val own = Files.createTempDirectory("identity-slice-emit")
+      try f(own.resolve(selector.directoryName)) finally deleteTree(own)
+    }
+
+  /** Under `--emit-case ROOT`, pins `slice` (cut in `dir`) as `ROOT/<cc>-<selector>`, its filed answers named from the
+   *  checkout `--families` is in and from the working directory ([[checkoutRelative]]). */
+  def emitInto(slice: Slice, dir: Path, labels: Seq[UnmatchedClusters.Label], o: Options, country: Country, selector: Selector): Unit =
+    o.emitCase.foreach(root => emitCase(slice, dir, labels, root.resolve(s"${country.code}-${selector.directoryName}"),
+      o.families.flatMap(checkoutOf).toSeq :+ Paths.get("")))
+
+  private def deleteTree(dir: Path): Unit =
+    if (Files.exists(dir)) Files.walk(dir).sorted(java.util.Comparator.reverseOrder()).forEach(p => Files.deleteIfExists(p))
 
   /** `source` with every one of `checkouts` taken off the paths it names: a case names its filed answers from a checkout,
    *  not from this machine's path to one — under `--ref` the slice runs in the ref's checkout, and the families file it
