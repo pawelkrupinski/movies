@@ -11,8 +11,9 @@
 # directory and keeps its expected.tsv as it was: a hand expectation ("not:<film>", "pending:…") survives, the case keeps
 # its name, and no other case is touched.
 #
-# The country is the directory name's prefix (de-…, uk-…). A case is left as it was when its re-emit fails or pins its
-# listings as more than one slice (they fall in several clusters: re-emit them by hand, or with --widen). Exit 1 when
+# The country is the directory name's prefix (de-…, uk-…). A case is left as it was when its re-emit fails, is refused
+# (the judgements judge none of its listings) or pins its listings as more than one slice (they fall in several
+# clusters: re-emit them by hand, or with --widen). Exit 1 when
 # any case was not re-pinned, 2 on a usage error.
 set -euo pipefail
 here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -56,6 +57,14 @@ for dir in "${cases[@]}"; do
   # identity-slice names each directory it pinned: "--emit-case: N listing(s) pinned in <path> (…"
   pinned=$(printf '%s\n' "$out" | sed -n 's/^--emit-case: .* pinned in \(.*\) (IdentitySliceCasesSpec.*$/\1/p')
   count=$(printf '%s' "$pinned" | grep -c . || true)
+  # emitCase refuses a slice none of whose listings the judgements judge, and pins nothing
+  if [ "$count" = 0 ] && grep -q -- '--emit-case REFUSED' <<< "$out"; then
+    printf '%s\n' "$out" | grep -- '--emit-case' | tail -5 >&2
+    say "$dir: identity-slice refused to pin it (the judgements judge none of its listings), left as it was"; failed=1; continue
+  fi
+  if [ "$count" = 0 ]; then
+    say "$dir: identity-slice pinned nothing, left as it was"; failed=1; continue
+  fi
   if [ "$count" != 1 ]; then
     say "$dir: its listings were pinned as $count slices (they fall in several clusters), left as it was"; failed=1; continue
   fi

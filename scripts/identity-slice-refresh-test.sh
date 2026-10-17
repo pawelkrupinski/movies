@@ -17,7 +17,8 @@ mkdir -p "$cases"
 
 # The stub records its arguments and pins under the emit root it is handed (KINOWO_IDENTITY_SLICE_EMIT_ROOT, as
 # scripts/identity-slice reads it), saying where. PIN_AS names the directory (default "uk-new-name-0000"; it may name an
-# existing case: the stub must not reach it); TWO_SLICES pins a second one; FAIL_AFTER_WRITE writes, then fails.
+# existing case: the stub must not reach it); TWO_SLICES pins a second one; FAIL_AFTER_WRITE writes, then fails;
+# REFUSE pins nothing.
 cat > "$work/identity-slice" <<'STUB'
 #!/usr/bin/env bash
 printf '%s\n' "$*" > "$CALLS"
@@ -28,6 +29,8 @@ pin() {
   printf 'venue\trawTitle\tfilm\tlabel\nX\tY\ttmdb:1\tfrom the judgements\n' > "$dir/expected.tsv"
   echo "--emit-case: 1 listing(s) pinned in $dir (IdentitySliceCasesSpec replays it):"
 }
+# REFUSE answers as emitCase does when the judgements judge none of the listings: it pins nothing, and exits 0
+[ -z "${REFUSE:-}" ] || { echo "--emit-case REFUSED for key X | Y: the judgements judge none of its 1 listing(s); judge them first"; exit 0; }
 pin "${PIN_AS:-uk-new-name-0000}"
 [ -z "${TWO_SLICES:-}" ] || pin uk-second-cluster-9999
 [ -z "${FAIL_AFTER_WRITE:-}" ] || { echo "SLICE INCOMPLETE" >&2; exit 3; }
@@ -64,6 +67,13 @@ make_case uk-two-clusters-4444
 check "listings pinned as two slices are a failure" "1" "$(TWO_SLICES=1 refresh "$cases/uk-two-clusters-4444")"
 check "...leaving the case as it was" "stale not:tmdb:7" "$(untouched uk-two-clusters-4444)"
 check "...and adding no case" "false" "$([ -e "$cases/uk-second-cluster-9999" ] && echo true || echo false)"
+
+make_case uk-unjudged-6666
+check "a re-emit identity-slice refuses is a failure" "1" "$(REFUSE=1 refresh "$cases/uk-unjudged-6666")"
+check "...leaving the case as it was" "stale not:tmdb:7" "$(untouched uk-unjudged-6666)"
+said=$(REFUSE=1 CALLS="$work/calls" IDENTITY_SLICE="$work/identity-slice" "$REPO_ROOT/scripts/identity-slice-refresh" "$cases/uk-unjudged-6666" 2>&1 | grep 'uk-unjudged-6666:')
+check "...reported as the refusal it is, not as slices in several clusters" \
+  "identity-slice-refresh: $cases/uk-unjudged-6666: identity-slice refused to pin it (the judgements judge none of its listings), left as it was" "$said"
 
 mkdir -p "$cases/uk-empty-5555"; printf 'venue\trawTitle\tfilm\tlabel\n' > "$cases/uk-empty-5555/expected.tsv"
 check "an expected.tsv naming no listing is a failure" "1" "$(refresh "$cases/uk-empty-5555")"
