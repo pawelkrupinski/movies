@@ -461,17 +461,15 @@ object Agreement {
   /** Does a listing's billing name — beside the film's title — the director of a namesake a family weighed (a film the
    *  title names, not the film itself), and none of the film's own directors? A series' banner then says whose film it
    *  shows: DE Babylon (Mitte)'s "Hitchcock & Chabrol: Blood Relatives" is Chabrol's 1978 film, which Wikidata takes and
-   *  IMDb weighed, not Noah Segan's 2022 one the four other families take. A director is named by the last word of their
-   *  name (four letters at least), a word of no title of the namesake's. */
+   *  IMDb weighed, not Noah Segan's 2022 one the four other families take. A director is named by their surname
+   *  ([[IdentityMeasures.Film.directorSurnames]]) where it is no word of that film's titles, which a billing of the title
+   *  carries whoever it names. */
   private[identity] def billsAnothersDirector(listings: Seq[Listing], records: Seq[SourceRecord], verdicts: Seq[FamilyVerdict]): Boolean = {
-    def surnames(film: IdentityMeasures.Film): Set[String] = {
-      val titleWords = film.titles.flatMap(TitleContainment.tokens).toSet
-      film.directors.getOrElse(Nil).flatMap(name => TitleContainment.tokens(name).lastOption).filter(word => word.length >= IdentityMeasures.StemLetters && !titleWords(word)).toSet
-    }
     val namesakes = verdicts.flatMap(_.weighed).filterNot(weighed => records.exists(sameFilm(_, weighed)))
     listings.exists { listing =>
       val billed = TitleContainment.tokens(listing.rawTitle).toSet
-      def credited(film: IdentityMeasures.Film) = surnames(film).exists(billed)
+      def credited(film: IdentityMeasures.Film) = film.directorSurnames.exists(surname =>
+        billed(surname) && !film.titles.exists(title => TitleContainment.tokens(title).contains(surname)))
       !records.exists(record => credited(record.film)) && namesakes.exists(namesake => credited(namesake.film) && namesIt(listing, Seq(namesake.film)))
     }
   }

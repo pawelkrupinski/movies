@@ -115,6 +115,16 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     def director(title: String, f: Film) = IdentityMeasures.creditedByTitle(Listing(title), f, measures(Listing(title), f))("director")
     director("Konwicki Salto", salto) shouldBe Category("same_person")
     director("Konwicki: Salto", salto) shouldBe Category("same_person")
+    // a surname of four letters names its director as one of five does, as a namesake's banner reads it
+    // (Agreement.billsAnothersDirector): DE "Fritz Lang: M" is Lang's 1931 film, not Losey's 1951 remake
+    val m = Film("M", directors = Some(Seq("Fritz Lang")))
+    director("Fritz Lang: M", m) shouldBe Category("same_person")
+    director("Fritz Lang: M", m.copy(directors = Some(Seq("Joseph Losey")))) shouldBe Missing("listing")
+    // a record titling the film by its director's name too still names him by the banner: DE Babylon (Mitte)'s
+    // "Hitchcock & Chabrol: Spellbound" is the 1945 film, which TMDB also titles "Alfred Hitchcock's Spellbound"
+    val spellbound = Film("Ich kämpfe um Dich", originalTitle = Some("Spellbound"), alternativeTitles = Seq("Alfred Hitchcock's Spellbound"),
+      directors = Some(Seq("Alfred Hitchcock")))
+    director("Hitchcock & Chabrol: Spellbound", spellbound) shouldBe Category("same_person")
     // another director, a rest naming another film, a credit the listing states, a title that is the film's own: untouched
     director("Konwicki Salto", salto.copy(directors = Some(Seq("Jan Kowalski")))) shouldBe Missing("listing")
     director("Konwicki Salto Mortale", salto) shouldBe Missing("listing")

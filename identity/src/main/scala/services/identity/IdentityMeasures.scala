@@ -266,7 +266,8 @@ object IdentityMeasures {
   }
 
   /** The fewest letters a word needs to name something by itself, whole or as an inflected stem: "Kadr" of "Kino w
-   *  Kadrze" (the venue's name), a director's surname billed as a banner, a word of a title billed in another language. */
+   *  Kadrze" (the venue's name), a director's surname a billing names ([[Film.directorSurnames]]: "Lang" of "Fritz Lang:
+   *  M"), a word of a title billed in another language. */
   val StemLetters = 4
 
   /** Where a title's own delimiters cut it into pieces: a colon or pipe, or a dash or slash spaced on both sides. */
@@ -379,10 +380,13 @@ object IdentityMeasures {
     private[identity] lazy val season: Option[Int] = TitleSeason.of(titles)
     /** The credited directors, parsed once per record (`directorRelation`); `None` when not fetched. */
     private[identity] lazy val directorCredits: Option[CreditRelation.Credits] = directors.map(new CreditRelation.Credits(_))
-    /** The last word of each credited director's name, five letters at least, once per record: the surname a banner
-     *  names ([[IdentityMeasures.bannerNamesItsDirector]]). */
+    /** The last word of each credited director's name, [[IdentityMeasures.StemLetters]] letters at least ("Fritz Lang:
+     *  M"), once per record: the surname a billing names a director by. ONE rule for a banner over the film's own title
+     *  ([[IdentityMeasures.bannerNamesItsDirector]]) and over a namesake's ([[agreement.Agreement.billsAnothersDirector]]).
+     *  A surname that is also a word of the film's titles still names him in a banner ("Hitchcock & Chabrol: Spellbound",
+     *  which TMDB also titles "Alfred Hitchcock's Spellbound"). */
     private[identity] lazy val directorSurnames: Set[String] =
-      directors.getOrElse(Nil).flatMap(name => IdentityMeasures.words(name).lastOption).filter(_.length >= 5).toSet
+      directors.getOrElse(Nil).flatMap(name => IdentityMeasures.words(name).lastOption).filter(_.length >= IdentityMeasures.StemLetters).toSet
     /** Each credited director's whole name of two words or more, as a key, once per record: the credit a title closing
      *  on it names ([[IdentityMeasures.bannerNamesItsDirector]]). */
     private[identity] lazy val directorNameKeys: Set[String] =
@@ -545,7 +549,7 @@ object IdentityMeasures {
     else measures + ("director" -> SamePersonMeasure)
 
   /** Does the listing's title bill one of the film's titles whole under a BANNER naming one of its directors — the
-   *  surname, five letters at least, among the words before it? "Konwicki Salto", "Konwicki: Salto" (PL Kino Fenix's
+   *  surname ([[Film.directorSurnames]]) among the words before it? "Konwicki Salto", "Konwicki: Salto" (PL Kino Fenix's
    *  retrospective of Tadeusz Konwicki), and a series' banner naming two: DE Babylon (Mitte)'s "Hitchcock & Chabrol:
    *  Spellbound" is Hitchcock's 1945 film. A banner the resolver learned and peels off ([[TitleDecorations]]) still says
    *  so: the peeled title is searched, the banner stays evidence. So does a credit CLOSING the title — one of its
