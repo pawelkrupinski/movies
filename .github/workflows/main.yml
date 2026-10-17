@@ -208,6 +208,9 @@ jobs:
         # A failed tier gate (a deployed-marker read) says nothing about the commit: dispatch anyway.
         if: ${{ !cancelled() }}
         runs-on: ubuntu-26.04
+        # Room for dispatch_workflow's worst case: two rate-limit waits of up to 900 s each
+        # (DISPATCH_RATE_LIMIT_MAX_WAIT) before its third attempt, plus the reads and checkout.
+        timeout-minutes: 40
         permissions:
             actions: write
             contents: read

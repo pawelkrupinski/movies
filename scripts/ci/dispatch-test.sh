@@ -22,7 +22,7 @@ answer=${DEFAULT:-}
 case "$answer" in fail*) echo "${answer#fail }" >&2; exit 1 ;; *) [ -z "$answer" ] || echo "$answer" ;; esac
 STUB
 chmod +x "$work/bin/gh"
-export PATH="$work/bin:$PATH" WORK="$work" DISPATCH_RETRY_SECONDS=0 DISPATCH_POLL_SECONDS=0 DISPATCH_RATE_LIMIT_PAD=0
+export PATH="$work/bin:$PATH" WORK="$work" DISPATCH_RETRY_SECONDS=0 DISPATCH_POLL_SECONDS=0 DISPATCH_RATE_LIMIT_PAD=0 DISPATCH_RATE_LIMIT_SECONDARY_SECONDS=0
 reset() { rm -rf "$work/calls" "$work/answers"; mkdir -p "$work/answers"; : > "$work/calls"; export DEFAULT=""; }
 answer() { echo "$2" > "$work/answers/$1"; }
 calls() { wc -l < "$work/calls" | tr -d ' '; }
@@ -43,9 +43,17 @@ reset; answer 1 "$spent"; answer 2 "0 $(($(date +%s) + 3600))"
 dispatch_workflow w.yml main 2> /dev/null; check "...but not a reset further off than the cap" "1 2" "$? $(calls)"
 reset; answer 1 "$spent"; answer 2 "fail HTTP 502"
 dispatch_workflow w.yml main 2> /dev/null; check "...nor an unreadable one" "1 2" "$? $(calls)"
-reset; answer 1 "fail HTTP 403: You have exceeded a secondary rate limit"; answer 2 "17 $(date +%s)"
-DISPATCH_RATE_LIMIT_MAX_WAIT=59 dispatch_workflow w.yml main 2> /dev/null
-check "a secondary limit (core not spent) pauses a minute" "1 2" "$? $(calls)"
+reset; answer 1 "$spent"; answer 2 "0 $(($(date +%s) - 120))"
+dispatch_workflow w.yml main 2> "$work/err"; check "...a reset already past waits 0s, then retries" "0 3" "$? $(calls)"
+check "...saying so" "true" "$(grep -q 'retrying in 0s' "$work/err" && echo true || echo false)"
+secondary="fail HTTP 403: You have exceeded a secondary rate limit"
+reset; answer 1 "$secondary"; answer 2 "17 $(date +%s)"
+dispatch_workflow w.yml main 2> "$work/err"
+check "a secondary limit (core not spent) pauses, then retries" "0 3" "$? $(calls)"
+check "...for DISPATCH_RATE_LIMIT_SECONDARY_SECONDS" "true" "$(grep -q 'retrying in 0s' "$work/err" && echo true || echo false)"
+reset; answer 1 "$secondary"; answer 2 "17 $(date +%s)"
+(unset DISPATCH_RATE_LIMIT_SECONDARY_SECONDS; DISPATCH_RATE_LIMIT_MAX_WAIT=59 dispatch_workflow w.yml main 2> /dev/null)
+check "...a minute by default: past a 59 s cap" "1 2" "$? $(calls)"
 
 reset; answer 2 "4242"
 find_dispatched_run w.yml 2026-10-15T00:00:00Z '.headSha == "x"' --branch b 2> /dev/null
