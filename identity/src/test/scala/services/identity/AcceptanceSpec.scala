@@ -98,6 +98,11 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
     taken(ranked(macbeth, staging2014, season2026)) shouldBe Some(1703622)
     // and pooled, as alone: a cluster of its spellings is the same broadcast
     acceptance.pooled(ranked(macbeth, staging2014, season2026)).map(_._1.candidate.tmdbId) shouldBe Some(1703622)
+    // ...but a year before the season its screenings fall in dates the staging: UK Aldeburgh's "Royal Ballet: The
+    // Nutcracker" [2025], screening in the 2026/27 season, took the 2025/26 record by stage-production once pooled
+    val nutcracker = Listing("Royal Ballet: The Nutcracker", year = Some(2025), runtime = Some(140), screenedSeason = Some(2026))
+    val season2025 = (1483678, Film("Royal Ballet & Opera 2025/26: The Nutcracker", year = Some(2025)), Some(1))
+    acceptance.byRule("stage-production")(ranked(nutcracker, season2025)) shouldBe None
     // a record of another season than its screenings' is no staging it screens, however its house bills the work
     acceptance.byRule("season-record")(ranked(macbeth.copy(broadcastSeason = Some(2027), screenedSeason = Some(2027)), staging2014, season2026)) shouldBe None
     // nor is another house's: "MET" names no Royal Ballet & Opera

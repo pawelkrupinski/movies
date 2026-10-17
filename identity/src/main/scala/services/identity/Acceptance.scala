@@ -820,6 +820,10 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
       any    <- firstCandidate(ranked)
       _      <- need(any.listing.seasonYear.isEmpty, "the title names its season")
       year   <- any.listing.statedYear.orElse(StageRelays.bannerYear(any.listing)).toRight(Refused("the listing publishes no year"))
+      // a year before the season its screenings fall in dates the staging's premiere, not the broadcast
+      // ([[Listing.screenedSeason]]): UK Aldeburgh's "Royal Ballet: The Nutcracker" [2025], screening in the 2026/27
+      // season, is no 2025/26 record's, which the season rules then tell apart
+      _      <- need(any.listing.screenedSeason.forall(season => year >= season), "its year predates the season it screens in")
       works   = StageRelays.stageWorks(any.listing)
       _      <- need(works.nonEmpty, "the title names no stage work")
       itsHouse = StageRelays.bannerNamesItsHouse(any.listing)
