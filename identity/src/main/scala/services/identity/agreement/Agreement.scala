@@ -235,11 +235,18 @@ object Agreement {
    *  listing bills one work ([[ListingShape.billsSeveral]]) and no stage work ([[ListingShape.stagesAWork]]); and no year its
    *  title bills dates it away from a taker's record ([[PosterEvidence.datedApart]]: DE "Weihnachten mit den Drei Herren
    *  2026", a band's Christmas show, is no 1927 "The Three-Sided Mirror" its feed's original title searched), nor does
-   *  the venue's own running time run well short of it ([[runsLongerThanTheListing]]). The
+   *  the venue's own running time run well short of it ([[runsShort]]). The
    *  experiment's one wrong without the title guard: "Akademia Polskiego Filmu: Kino żydowskie w Polsce" → "Znachor"
    *  (1937), whose year and director fit a series' episode. */
   def agreed(listings: Seq[Listing], verdicts: Seq[FamilyVerdict], modelVote: Option[SourceRecord] = None,
-             thisYear: Option[Int] = None, stated: Seq[Listing] = Nil): Option[AgreedFilm] = {
+             thisYear: Option[Int] = None, stated: Seq[Listing] = Nil): Option[AgreedFilm] =
+    weighed(listings, verdicts, modelVote, thisYear, stated).agreed
+
+  /** [[agreed]], with why the film it would otherwise take is refused where a guard naming its reason refuses it: the
+   *  venue's running time short of it ([[runsShort]]), or a year the title bills dating it away
+   *  ([[PosterEvidence.datingApart]]). */
+  def weighed(listings: Seq[Listing], verdicts: Seq[FamilyVerdict], modelVote: Option[SourceRecord] = None,
+              thisYear: Option[Int] = None, stated: Seq[Listing] = Nil): Weighed = {
     // what the venues' own pages add to the listings votes and names films; it never rules one out — a page's year is
     // often its re-release's (PL Kinoteka "Ghost in the shell": 2026 on the page of the 1995 film)
     val asStated = if (stated.nonEmpty) stated else listings
@@ -254,14 +261,25 @@ object Agreement {
       // a feed catalogue's facts ruling the film out are its claim, one vote against it, not a veto (DE "To The Bone":
       // Filmstarts' feed credits Erin Li's 2014 short to a venue billing Noxon's 2017 feature)
       val catalogueDissent = if (taken.exists(contradictedByTheCatalogue(listings, _))) 1 else 0
-      Option.when(film.support >= Quorum + dissent + film.turnedDown + catalogueDissent && !(film.completed && anothersOwnTitle(listings, film.records, verdicts)) &&
+      val stands = film.support >= Quorum + dissent + film.turnedDown + catalogueDissent && !(film.completed && anothersOwnTitle(listings, film.records, verdicts)) &&
         !billsAnothersDirector(listings, film.records, verdicts) &&
-        !taken.exists(contradictedByTheListing(listings, _)) && !taken.exists(runsLongerThanTheListing(listings, _, thisYear)) &&
+        !taken.exists(contradictedByTheListing(listings, _)) &&
         listings.forall(listing => !ListingShape.billsSeveralBeside(listing, film.agreed.record.film) &&
-          !taken.exists(record => PosterEvidence.datedApart(listing, record.film)) &&
-          (!ListingShape.stagesAWork(listing) || screenAdaptation(listings, film.agreed))))(film.agreed)
-    }
+          (!ListingShape.stagesAWork(listing) || screenAdaptation(listings, film.agreed)))
+      Option.when(stands) {
+        def titled(record: SourceRecord) = s"'${record.film.title}'${record.film.year.fold("")(y => s" ($y)")}"
+        taken.iterator.flatMap(record => runsShort(listings, record, thisYear).map { case (stated, runs) =>
+          s"no agreement on ${titled(record)}: the venue runs it ${stated}′, more than ${RuntimeShort}′ short of its ${runs}′" }).nextOption()
+          .orElse(listings.iterator.flatMap(listing => taken.iterator.flatMap(record => PosterEvidence.datingApart(listing, record.film).map(year =>
+            s"no agreement on ${titled(record)}: '${listing.rawTitle}' bills $year"))).nextOption())
+          .fold(Weighed(Some(film.agreed), None))(why => Weighed(None, Some(why)))
+      }
+    }.getOrElse(Weighed(None, None))
   }
+
+  /** What the families' evidence agrees on ([[weighed]]): the film, or none — and then why, where a guard naming its
+   *  reason refused the film it would take. */
+  final case class Weighed(agreed: Option[AgreedFilm], refused: Option[String])
 
   /** A film one family or more took, as the evidence stands for it: the takers, the families leaning to it, what
    *  corroborates it, and how many families weighed it and turned it down ([[turnsDown]]). */
@@ -393,18 +411,31 @@ object Agreement {
   }
 
   /** Does a venue state its own running time for the film more than [[RuntimeShort]] minutes SHORTER than every one the
-   *  record states ([[recordRuntimes]])? A slot runs the film and more (adverts, trailers, an intro), never less: DE Neue
-   *  Post's "WHEN PIGS FLY" at 80 minutes is Riedmayr's 2026 documentary, no 94-minute 1993 film. Longer says nothing (a
-   *  relay's intervals, a double bill, a talk); nor does a record of this year or later, whose running time TMDB often
-   *  holds before the cut is final (UK "Street Fighter", "Dune: Part Three - See It First Preview"), nor a silent film's,
-   *  which runs at the speed it is projected (PL "Dni Kina Niemego - 100 lat temu: SYMFONIA ZMYSŁÓW"). The agreement's
-   *  guard, and the fill's `listing.contradicts` ([[services.identity.UnifiedEvidence]]); no lean's dissent reads it. */
-  private[identity] def runsLongerThanTheListing(listings: Seq[Listing], record: SourceRecord, thisYear: Option[Int]): Boolean =
-    record.film.year.exists(released => released > ListingShape.SilentEraEnd && thisYear.forall(released < _)) &&
-      listings.exists { listing =>
-        SourceReliability.factsOf(listing).trust(Fact.Runtime) == Trust.Decide && listing.runtime.exists { stated =>
-          val runs = recordRuntimes(record); runs.nonEmpty && runs.forall(stated < _ - RuntimeShort) }
-      }
+   *  record states ([[recordRuntimes]]) — the time it states and the record's longest, if so? A slot runs the film and
+   *  more (adverts, trailers, an intro), never less: DE Neue Post's "WHEN PIGS FLY" at 80 minutes is Riedmayr's 2026
+   *  documentary, no 94-minute 1993 film. Longer says nothing (a relay's intervals, a double bill, a talk); nor does a
+   *  record of this year or later, whose running time TMDB often holds before the cut is final (UK "Street Fighter",
+   *  "Dune: Part Three - See It First Preview"), nor a silent film's, which runs at the speed it is projected (PL "Dni Kina
+   *  Niemego - 100 lat temu: SYMFONIA ZMYSŁÓW"). Only a feature's running time a film can have counts
+   *  ([[services.movies.FilmRuntime.plausible]], [[SuspectTakes.FeatureMinutes]]), and only the whole film's: a part the
+   *  title bills and the record's titles do not ("Shoah – Teil 1", 273 of 566 minutes), or a slot of half the film or less
+   *  (a half before an intermission), screens a part of it. The agreement's guard, and the fill's `listing.runsShort`
+   *  ([[services.identity.UnifiedEvidence]]); no lean's dissent reads it. */
+  private[identity] def runsShort(listings: Seq[Listing], record: SourceRecord, thisYear: Option[Int]): Option[(Int, Int)] =
+    if (!record.film.year.exists(released => released > ListingShape.SilentEraEnd && thisYear.forall(released < _))) None
+    else {
+      val runs = recordRuntimes(record)
+      listings.iterator.filter(listing => SourceReliability.factsOf(listing).trust(Fact.Runtime) == Trust.Decide && !billsAPart(listing, record))
+        .flatMap(_.runtime.filter(stated => services.movies.FilmRuntime.plausible(stated) && stated >= services.identity.SuspectTakes.FeatureMinutes))
+        .find(stated => runs.nonEmpty && runs.forall(stated < _ - RuntimeShort) && stated * 2 > runs.max)
+        .map(_ -> runs.max)
+    }
+
+  /** Does the listing's title bill a part of a work ("Teil 1", "Part II", "część 2", "Vol. 1") that none of the record's
+   *  titles bills — a screening of one part of the film the record holds whole? */
+  private def billsAPart(listing: Listing, record: SourceRecord): Boolean =
+    Seq(listing.rawTitle, listing.title).exists(PartBilled.findFirstIn(_).isDefined) && !record.film.titles.exists(PartBilled.findFirstIn(_).isDefined)
+  private val PartBilled = """(?iU)\b(?:teil|part|parte|partie|część|czesc|cz\.|vol\.?|volume|chapter|kapitel)\s*(?:\d+|[ivx]+)\b|\b\d+\.\s*teil\b""".r
   /** Does the listing's year — more than one apart, or its billing as a silent film — rule the film out? A billing as a
    *  silent film dates it to the silent era (DE "STUMMFILM MIT TOBIAS RANK:NOSFERATU", not Eggers' 2024 film). */
   private def yearAgainst(listing: Listing, record: SourceRecord): Boolean =

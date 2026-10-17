@@ -175,7 +175,7 @@ hold no model take); pinned by AgreementCorrectionSpec (12), VenueListingsSpec, 
 ### 2.4 The unified fill's signals and guards (`UnifiedEvidence`, `identity-unified-rules.json`)
 
 Guards: `bill.several`, `stage.work`, `title.anothersOwn`, `listing.contradicts`, `poster.otherMatches`,
-`family.turnedDown`, `title.namesNone`, `edition.apart`. Signals recompute the agreement's concepts
+`family.turnedDown`, `title.namesNone`, `edition.apart`, `listing.runsShort` (a guard only, no fitted signal). Signals recompute the agreement's concepts
 (`agreement.quorum` runs `Agreement.agreed`; `venues.current`; dissent; turnedDown; namesIt; poster vote/match/veto;
 catalogue match; `broadcast.take` via `Broadcast.take`). Rules: the fill `venues.current` and seven pinned rules (§2.1).
 

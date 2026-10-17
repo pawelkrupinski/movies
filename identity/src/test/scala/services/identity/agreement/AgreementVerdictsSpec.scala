@@ -18,6 +18,8 @@ class AgreementVerdictsSpec extends AnyFlatSpec with Matchers {
     AgreementVerdicts.decode(AgreementVerdicts.encode(none)) shouldBe none
     val filled = none.copy(filled = Some(StoredFill("venues.current", None, Some("tt46658626"), "filled by venues.current: …")))
     AgreementVerdicts.decode(AgreementVerdicts.encode(filled)) shouldBe filled
+    val refused = none.copy(refused = Some("no agreement on 'When Pigs Fly' (1993): the venue runs it 80′, more than 10′ short of its 94′"))
+    AgreementVerdicts.decode(AgreementVerdicts.encode(refused)) shouldBe refused
   }
 
   "a stored correction of a model take" should "read back with its film, its line, its reads' digests and whether it waits" in {

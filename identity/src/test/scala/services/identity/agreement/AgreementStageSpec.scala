@@ -237,6 +237,20 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     decided("Klondike - Frauen heilen die Welt", Some(2022)).film shouldBe Some(913760)
   }
 
+  it should "say why it takes no film the families agree on that a guard refuses, and keep that reason with its verdict" in {
+    // a year the title bills four years from the agreed film's ([[services.identity.PosterEvidence.datingApart]])
+    val billed   = listing(KinoMuza, "Klondike 2026")
+    val model    = Resolution(Seq(ResolverDecision(Seq(billed.key), None, 0.7, ResolverDecision.Basis.BelowThreshold, Nil)()), 1,
+      Map(billed.key -> 0), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
+    val verdicts = new InMemoryAgreementVerdicts
+    val decided  = new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver,
+      tmdbOf = imdb => Answer.Known(Option.when(imdb == "tt16315948")(913760)), verdicts, clock = _root_.tools.SpecClock.Pinned)
+      .apply(model, Map(billed.key -> billed).get, version = 1).decisions.head
+    val why = "no agreement on 'Klondike' (2022): 'Klondike 2026' bills 2026"
+    (decided.film, decided.basis, decided.explanation.last) shouldBe ((None, ResolverDecision.Basis.BelowThreshold, why))
+    verdicts.all().flatMap(_.refused) shouldBe Seq(why)
+  }
+
   it should "count the model's own best TMDB candidate as a voter beside two families, by its record's facts" in {
     // IMDb and Wikidata take "Klondike"; the model weighed TMDB's 913760 best, below every rule's cut (no lean, no IMDb id)
     val two = agreeing().view.filterKeys(Set(VoterFamily.Imdb, VoterFamily.Wiki)).toMap ++ Map(

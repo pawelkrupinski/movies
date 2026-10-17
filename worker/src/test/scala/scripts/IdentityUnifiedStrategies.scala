@@ -36,7 +36,7 @@ object IdentityUnifiedStrategies {
   private val names   = UnifiedEvidence.Names
   private val column  = names.zipWithIndex.toMap
   private val rules   = UnifiedEvidence.ModelRules.map(column)
-  private val guards  = UnifiedEvidence.Guards
+  private val guards  = UnifiedEvidence.FittedGuards
   private val HandWeight = 30.0
   private def fires(row: Row, signal: String) = row.x(column(signal)) > 0
   private def vetoed(row: Row) = guards.exists(fires(row, _))
@@ -332,7 +332,7 @@ object IdentityUnifiedStrategies {
    *  and their measures carried over from the shipped artefact, which no selection makes. */
   def rulesOf(stable: Seq[Step], inSample: Option[Result], heldOut: Option[Result], version: String): services.identity.UnifiedRules = {
     val shipped = services.identity.UnifiedRules.fromResource()
-    services.identity.UnifiedRules(version, guards, stable.filter(_.role == "fill").map(_.signal), stable.filter(_.role == "correct").map(_.signal),
+    services.identity.UnifiedRules(version, UnifiedEvidence.Guards, stable.filter(_.role == "fill").map(_.signal), stable.filter(_.role == "correct").map(_.signal),
       (inSample.toSeq.flatMap(r => Seq("right" -> r.right, "wrong" -> r.wrong, "gained" -> r.gained, "lost" -> r.lost, "switched" -> r.switched)) ++
         heldOut.toSeq.flatMap(r => Seq("heldOutRight" -> r.right, "heldOutWrong" -> r.wrong))).map { case (k, v) => k -> v.toDouble }.toMap ++
         shipped.toSeq.flatMap(_.measured.filter(_._1.startsWith("pinned."))),

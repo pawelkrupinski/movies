@@ -15,7 +15,10 @@ import scala.jdk.CollectionConverters._
  *  ([[services.identity.UnifiedRules]]) — all the stage needs, after a restart or a new answer elsewhere, to tell
  *  whether the verdict still stands without asking the resolver again. */
 final case class StoredVerdict(id: String, listings: Long, reads: Map[String, Long], agreed: Option[AgreedFilm], rules: String = "",
-                               filled: Option[StoredFill] = None, correction: Option[StoredCorrection] = None)
+                               filled: Option[StoredFill] = None, correction: Option[StoredCorrection] = None,
+                               /** Why no film was agreed on where a guard naming its reason refused the one the families
+                                *  would take ([[Agreement.weighed]]): the line the decision explains it by. */
+                               refused: Option[String] = None)
 
 /** A model take's correction as stored ([[Correction]], under the id `correction|<cluster>`): the film it switched to
  *  and the line explaining it — `line` none where the evidence corrects nothing — the 64-bit digests of the question ids
@@ -95,6 +98,7 @@ object AgreementVerdicts {
       fill.imdb.foreach(id => d.append("imdb", BsonString(id)))
       d
     })
+    .append("refused", verdict.refused.fold[BsonValue](BsonNull())(BsonString(_)))
 
   def decode(d: BsonDocument): StoredVerdict = {
     val byLabel = VoterFamily.values.map(f => f.label -> f).toMap
@@ -113,6 +117,7 @@ object AgreementVerdicts {
       Option(d.get("correction")).filter(_.isDocument).map(_.asDocument).map(c => StoredCorrection(Option(c.get("film")).map(_.asInt32.getValue),
         Option(c.get("line")).map(_.asString.getValue),
         scala.collection.immutable.ArraySeq.unsafeWrapArray(c.getArray("reads").getValues.asScala.map(_.asInt64.getValue).toArray),
-        c.getBoolean("waiting").getValue)))
+        c.getBoolean("waiting").getValue)),
+      Option(d.get("refused")).filter(_.isString).map(_.asString.getValue))
   }
 }

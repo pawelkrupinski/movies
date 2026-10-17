@@ -135,7 +135,7 @@ object IdentityUnifiedExperiments {
   def main(args: Array[String]): Unit = {
     val arguments = commandLine.parseOrExit(args)
     val rows   = read(arguments.requiredPath("training"))
-    val guards = UnifiedEvidence.Guards
+    val guards = UnifiedEvidence.FittedGuards
     val plain  = keptOf(Nil) -- counted
     val counts = keptOf(Nil)
     val hybrid = keptOf(guards)

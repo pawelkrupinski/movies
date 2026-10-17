@@ -84,11 +84,15 @@ object UnifiedEvidence {
 
   /** The NON-COMPENSATORY guards: a contender one of these fires on is no film to take, whatever else speaks for it — the
    *  agreement stage's vetoes (several works billed, a stage work, another film's own title, the
-   *  venue's year or director against it, a venue poster naming another candidate, a family turning it down; and, as
-   *  the agreement requires of what it takes, a title naming the film, and no other edition than the title numbers). A film
-   *  the model's own rules accepted ([[ModelRules]]) passed the model's guards instead ([[Acceptance]]), as today. */
+   *  venue's year or director against it, its running time short of the film ([[Agreement.runsShort]]), a venue poster
+   *  naming another candidate, a family turning it down; and, as the agreement requires of what it takes, a title naming
+   *  the film, and no other edition than the title numbers). A film the model's own rules accepted ([[ModelRules]]) passed
+   *  the model's guards instead ([[Acceptance]]), as today. `listing.runsShort` is a guard only, no fitted signal of
+   *  [[Signals]]: the training rows predate it. */
   val Guards: Seq[String] = Seq("bill.several", "stage.work", "title.anothersOwn", "listing.contradicts", "poster.otherMatches",
-    "family.turnedDown", "title.namesNone", "edition.apart")
+    "family.turnedDown", "title.namesNone", "edition.apart", "listing.runsShort")
+  /** The guards the fit's training rows carry, each a signal of [[Signals]]: what the offline fit and strategies read. */
+  val FittedGuards: Seq[String] = Guards.filter(Names.contains)
   val ModelRules: Seq[String] = Names.filter(_.startsWith("rule."))
 
   /** The guards `features` trips: none for a film the model's rules took. */
@@ -236,9 +240,10 @@ object UnifiedEvidence {
         "production.house"    -> open.exists(_.houseProduction),
         "listing.facts"       -> votes(Agreement.ListingFacts),
         "listing.runtime"     -> votes(Agreement.ListingRuntime),
-        // its year or director, whoever states them, or the venue's own running time well short of an older film's
-        "listing.contradicts" -> (Agreement.contradictedByAnyListing(c.listings, contender.record) ||
-          Agreement.runsLongerThanTheListing(c.listings, contender.record, Some(c.thisYear))),
+        // its year or director, whoever states them
+        "listing.contradicts" -> Agreement.contradictedByAnyListing(c.listings, contender.record),
+        // the venue's own running time well short of an older film's whole one
+        "listing.runsShort"   -> Agreement.runsShort(c.listings, contender.record, Some(c.thisYear)).isDefined,
         "venues.current"      -> (venues >= Agreement.WidelyBilled && current),
         "title.namesIt"       -> namesIt,
         "title.namesNone"     -> !namesIt,

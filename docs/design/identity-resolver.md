@@ -2479,6 +2479,8 @@ Calibrated = fitted from data today (`identity-weights.json`, §14). Feature = a
 | listing facts | every dated, credited listing credits the record (same director, year ±1) | `Agreement.listingVotes` | +1 vote | no | `listing.facts` |
 | listing runtime | every timed listing within `RuntimeSlack` 5 min | `Agreement.listingVotes` | +1 vote beside the facts | no | `listing.runtime` |
 | contradicted by the listing | year >1 apart, or another Latin-script director | `Agreement.contradictedByTheListing` | veto | no | `listing.contradicts` |
+| runs short | the venue's plausible feature runtime >`RuntimeShort` 10 min under every record runtime and over half the longest, no part billed, the film neither silent nor this year's; the refusal's reason kept on the verdict (`StoredVerdict.refused`) and explained | `Agreement.runsShort` | veto | no | `listing.runsShort` |
+| dated apart | a year the title (its pieces naming the film, bracketed years out) bills >1 from the record, not an anniversary's; reason kept as above | `PosterEvidence.datingApart` | veto | no | `edition.apart` (the fill's broader `editionsApart`) |
 | venues (wide billing) | ≥`WidelyBilled` 3 venues, the film this year or last | `Agreement.supported` | +1 vote | no | `venues.current` |
 | title names it | the title is, or carries whole (≥4 letters), a record title | `Agreement.namesIt` | required | no | `title.namesIt` |
 | another's own title | the title is another weighed film's original title, a translation of the agreed one | `Agreement.anothersOwnTitle` | veto when completed | no | `title.anothersOwn` |

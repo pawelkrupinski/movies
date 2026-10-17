@@ -16,7 +16,7 @@ import java.util.zip.GZIPInputStream
  *   worker/Test/runMain scripts.IdentityUnifiedFit [--training <tsv.gz>] [--report <md>] [--version <v>]
  *
  * It writes two artefacts: the UNIFIED model ([[Artefact]], every signal compensatory) and the HYBRID
- * ([[HybridArtefact]]): the non-compensatory guards ([[UnifiedEvidence.Guards]]) hard — a contender tripping one is
+ * ([[HybridArtefact]]): the non-compensatory guards ([[UnifiedEvidence.FittedGuards]]) hard — a contender tripping one is
  * never scored — and the fitted score in place of the hand-set thresholds among the contenders passing them.
  *
  * The fit: a logistic regression over every signal of [[UnifiedEvidence.Signals]], each weight held to its signal's
@@ -54,7 +54,7 @@ object IdentityUnifiedFit {
     val rows     = read(training)
     val version  = arguments.get("version").getOrElse(versionOf(training))
     // the unified model (every signal compensatory) and the HYBRID (the guards hard, the score among what passes them)
-    val models = Seq(Artefact -> Nil, HybridArtefact -> UnifiedEvidence.Guards).map { case (path, guards) =>
+    val models = Seq(Artefact -> Nil, HybridArtefact -> UnifiedEvidence.FittedGuards).map { case (path, guards) =>
       val fitted  = fit(rows, version, guards)
       val weights = fitted.copy(ablation = ablate(rows, fitted))
       Files.writeString(path, Json.prettyPrint(Json.toJson(weights)) + "\n")
@@ -87,7 +87,7 @@ object IdentityUnifiedFit {
   private val column: Map[String, Int] = UnifiedEvidence.Names.zipWithIndex.toMap
 
   /** The guards of `guards` a row trips ([[UnifiedEvidence.vetoes]]). */
-  def vetoes(row: Row, guards: Seq[String]): Seq[String] = UnifiedEvidence.vetoes(name => row.x(column(name))).filter(guards.contains)
+  def vetoes(row: Row, guards: Seq[String]): Seq[String] = UnifiedEvidence.vetoes(name => column.get(name).fold(0.0)(row.x)).filter(guards.contains)
   /** The rows a model with `guards` scores at all: those tripping none. */
   def passing(rows: Seq[Row], guards: Seq[String]): Seq[Row] = rows.filter(vetoes(_, guards).isEmpty)
   def keptOf(guards: Seq[String]): Set[String] = UnifiedEvidence.Names.toSet -- guards
@@ -275,7 +275,7 @@ object IdentityUnifiedFit {
       val wrong = best(heldOut(rows, keptOf(unified.guards))).filter { case (r, p) =>
         p >= 0.9 && r.hand && r.label.contains(false) && !r.today && !todays.get(r.cluster).exists(_.film != r.film) }
       ("\n## The unified model's held-out wrong takes >= 0.90, under the hybrid\n" +: wrong.sortBy(-_._2).map { case (r, p) =>
-        val tripped = vetoes(r, UnifiedEvidence.Guards)
+        val tripped = vetoes(r, UnifiedEvidence.FittedGuards)
         val now = if (tripped.nonEmpty) s"vetoed by ${tripped.mkString(", ")}"
           else hybridP.get((r.cluster, r.film)).fold("not scored")(q => f"scored $q%.4f, ${if (hybridTakes((r.cluster, r.film))) "TAKEN" else "not taken"}")
         f"- ${r.country} ${r.rawTitle}: ${r.film} ${r.filmTitle} unified $p%.4f -> hybrid $now"

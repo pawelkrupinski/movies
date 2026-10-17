@@ -313,6 +313,27 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     // a silent film runs at the speed it is projected (PL "Dni Kina Niemego - 100 lat temu: SYMFONIA ZMYSŁÓW")
     Agreement.agreed(billed("Flesh and the Devil", 90), took(film("Flesh and the Devil", 1926, "Clarence Brown", 112)), thisYear = Some(2026))
       .map(_.record.film.title) shouldBe Some("Flesh and the Devil")
+    // the refusal says why
+    Agreement.weighed(billed("WHEN PIGS FLY", 80), took(pigs), thisYear = Some(2026)).refused shouldBe
+      Some("no agreement on 'When Pigs Fly' (1993): the venue runs it 80′, more than 10′ short of its 94′")
+  }
+
+  it should "say nothing of the film when the slot screens a part of it, nor when it is no running time a feature has" in {
+    def took(record: IdentityMeasures.Film) = Seq(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Filmweb)
+      .map(family => FamilyTook(FamilyPick(family, "1", SourceRecord(record, Map("imdb" -> "tt0090015")))))
+    def billed(title: String, runtime: Int) = Seq(listing(KinoMuza, title, runtime = Some(runtime)))
+    val shoah = film("Shoah", 1985, "Claude Lanzmann", 566)
+    // a part the title bills: the first of Shoah's two evenings
+    Agreement.agreed(billed("Shoah – Teil 1", 300), took(shoah), thisYear = Some(2026)).map(_.record.film.title) shouldBe Some("Shoah")
+    // a half before an intermission, the title billing no part
+    Agreement.agreed(billed("Shoah", 273), took(shoah), thisYear = Some(2026)).map(_.record.film.title) shouldBe Some("Shoah")
+    // a running time no screened film has, or a short's
+    Agreement.agreed(billed("Shoah", 6000), took(shoah), thisYear = Some(2026)).map(_.record.film.title) shouldBe Some("Shoah")
+    val pigs = film("When Pigs Fly", 1993, "Sara Driver", 94)
+    Agreement.agreed(billed("WHEN PIGS FLY", 50), took(pigs), thisYear = Some(2026)).map(_.record.film.title) shouldBe Some("When Pigs Fly")
+    // a part the film's own title numbers is the film's, and its running time still counts
+    val dune = film("Dune: Part Two", 2024, "Denis Villeneuve", 166)
+    Agreement.agreed(billed("Dune: Part Two", 120), took(dune), thisYear = Some(2026)) shouldBe None
   }
 
   "A year the title bills" should "rule out a film it dates away, but not a festival's year beside the work" in {
@@ -322,6 +343,8 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
       .map(family => FamilyTook(FamilyPick(family, "1", SourceRecord(record, Map("imdb" -> "tt0017938")))))
     val mirror = film("Weihnachten mit den Drei Herren", 1927, "Jean Epstein", 40)
     Agreement.agreed(Seq(listing(KinoMuza, "Weihnachten mit den Drei Herren 2026")), took(mirror)) shouldBe None
+    Agreement.weighed(Seq(listing(KinoMuza, "Weihnachten mit den Drei Herren 2026")), took(mirror)).refused shouldBe
+      Some("no agreement on 'Weihnachten mit den Drei Herren' (1927): 'Weihnachten mit den Drei Herren 2026' bills 2026")
     Agreement.agreed(Seq(listing(KinoMuza, "Weihnachten mit den Drei Herren")), took(mirror)).map(_.record.film.year) shouldBe Some(Some(1927))
     val nadprirozenych = film("O vecech nadprirozených", 1958, "Jirí Krejcík", 90)
     Agreement.agreed(Seq(listing(KinoMuza, "O vecech nadprirozených - Von übernatürlichen Dingen | Tschechischer Filmmittwoch | TDKT 2026")),

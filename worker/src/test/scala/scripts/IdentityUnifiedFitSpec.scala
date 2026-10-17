@@ -19,9 +19,9 @@ class IdentityUnifiedFitSpec extends AnyFlatSpec with Matchers {
 
   "the shipped hybrid weights" should "be what the checked-in rows passing the hard guards fit" in {
     val hybrid = UnifiedWeights.fromResource(UnifiedWeights.HybridResourcePath).getOrElse(fail("no hybrid weights"))
-    hybrid.guards shouldBe UnifiedEvidence.Guards
-    sameFit(fit(read(Training), versionOf(Training), UnifiedEvidence.Guards), hybrid.copy(ablation = Nil))
-    UnifiedEvidence.Guards.foreach(guard => hybrid.weights(UnifiedEvidence.Names.indexOf(guard) + 1) shouldBe 0.0)
+    hybrid.guards shouldBe UnifiedEvidence.FittedGuards
+    sameFit(fit(read(Training), versionOf(Training), UnifiedEvidence.FittedGuards), hybrid.copy(ablation = Nil))
+    UnifiedEvidence.FittedGuards.foreach(guard => hybrid.weights(UnifiedEvidence.Names.indexOf(guard) + 1) shouldBe 0.0)
   }
 
   "the shipped unified weights" should "weigh every signal the unified evidence reads, each in its direction" in {

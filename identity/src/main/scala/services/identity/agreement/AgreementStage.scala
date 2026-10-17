@@ -214,7 +214,10 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
               case AgreementStage.Take.Taken(agreed) => agreed
               case AgreementStage.Take.Pending       => decision
               case AgreementStage.Take.Vetoed        => pass.posterVetoed += 1; fellThrough(unagreed, pass)
-              case AgreementStage.Take.Untaken       => fellThrough(unagreed, pass)
+              // the guard that refused the film the families would agree on says why, where nothing else takes one
+              case AgreementStage.Take.Untaken       =>
+                val fell = fellThrough(unagreed, pass)
+                v.refused.filter(_ => fell eq decision).fold(fell)(why => taking(decision)(decision.basis, why))
             })(line => taking(decision)(decision.basis, line))
           }
       }
@@ -578,10 +581,11 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
         val thisYear = java.time.LocalDate.ofInstant(clock.instant(), java.time.ZoneOffset.UTC).getYear
         val known    = verdicts.flatMap(_.toOption)
         val stated   = listings.map(asStated)
-        val agreed   = Agreement.agreed(listings, known, lean, Some(thisYear), stated)
+        val weighed  = Agreement.weighed(listings, known, lean, Some(thisYear), stated)
+        val agreed   = weighed.agreed
         // an agreement only review sites make is taken as nothing ([[taken]]): the fill reads the cluster as one none agreed on
         val fill     = if (agreed.exists(_.families.exists(_.namesFilms))) Answer.Known(None) else filledOf(decision, listings, known, stated, thisYear, version, pass.asked)
-        val verdict  = StoredVerdict(id, digest, reads.toMap, agreed, decidedUnder, fill.toOption.flatten)
+        val verdict  = StoredVerdict(id, digest, reads.toMap, agreed, decidedUnder, fill.toOption.flatten, refused = weighed.refused)
         if (fill == Answer.Unknown) {
           // the fill met a TMDB question not answered yet: this pass reads the verdict, none keeps it — kept, it stood once
           // TMDB had answered (its reads are the families' only), and the fill was never read again (PL "Lalka (Dolly)" ×5)
