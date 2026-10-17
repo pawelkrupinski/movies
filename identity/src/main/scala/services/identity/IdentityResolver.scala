@@ -321,7 +321,7 @@ object IdentityResolver {
   def resolveScored(listings: Iterable[Listing], lookups: IdentityLookups, normalizer: TitleNormalizer,
                     calibration: IdentityCalibration = IdentityCalibration.resolver): Scored = {
     val stages = new Stages(listings, lookups, normalizer, calibration, Mutation.None, PinConstraints(Nil), TitleDecorations.resolver)
-    new Scored(run(stages, Mutation.None, pieces = false), stages)
+    new Scored(run(stages, Mutation.None, pieces = false, corroborated = false), stages)
   }
 
   /** The corpus-wide facts a resolve of `listings` reads ([[CorpusContext]]): what one family,
@@ -386,8 +386,10 @@ object IdentityResolver {
   }
 
   /** `pieces`: whether a member billing its cluster's film as one piece beside another thing is decided apart, as no film
-   *  ([[billedAsPiece]]) — the model's own takes; not a family's verdict ([[resolveScored]]). */
-  private def run(stages: Stages, mutation: Mutation, pieces: Boolean = true): Resolution = {
+   *  ([[billedAsPiece]]) — the model's own takes; not a family's verdict ([[resolveScored]]). `corroborated`: whether a
+   *  member no fact of its own corroborates is decided apart too ([[Corroboration.refused]]); false in a family's verdict,
+   *  whose records a TMDB feed link names none of, so a linked member is vouched there. */
+  private def run(stages: Stages, mutation: Mutation, pieces: Boolean = true, corroborated: Boolean = true): Resolution = {
     import stages.{acceptance, families, generation, links, ordered, scoring}
     import generation.{answers, candidateOf, details, issued, nodeById, nodes, records}
     import families.{familyOf, scopes}
@@ -479,8 +481,8 @@ object IdentityResolver {
           scored.flatMap { case (node, own) => IdentityResolver.billedAsPiece(node, own, corroborated, recurs, answered).map(node -> _) }
         }.toMap ++ film.filterNot(_ => pinned || !pieces).toSeq.flatMap(_ => IdentityResolver.besideItsScreening(unbilled)).toMap
         val placed = unbilled.filterNot(piecesOf.contains)
-        // a member nothing of its own corroborates the film by, whose take a fact or an evidenced namesake speaks against
-        val weak   = film.filterNot(_ => pinned).toSeq.flatMap(Corroboration.refused(placed, _, scope.of, familyEdges, backed)).toMap
+        // a member nothing of its own corroborates the film by, nor a member billed alike or title-linked to one
+        val weak   = film.filterNot(_ => pinned).toSeq.flatMap(Corroboration.refused(placed, _, scope.of, familyEdges, backed, corroborated)).toMap
         val rest   = placed.filterNot(weak.contains)
         if ((bills.isEmpty && piecesOf.isEmpty && weak.isEmpty) || film.isEmpty)
           Seq(decisions.of(cluster, scope, filmOf, accepted, votes, familyEdges, clusterIndex))
@@ -493,7 +495,7 @@ object IdentityResolver {
           Option.when(rest.nonEmpty)(decisions.of(rest, scope, filmOf, accepted, votes, familyEdges, clusterIndex)).toSeq ++
             Option.when(bills.nonEmpty)(none(bills, Seq("bills several works: none of them"), "bills both works")) ++
             Option.when(piecesOf.nonEmpty)(none(unbilled.filter(piecesOf.contains), unbilled.flatMap(piecesOf.get).distinct, "billed as one piece")) ++
-            Option.when(weak.nonEmpty)(none(placed.filter(weak.contains), placed.flatMap(weak.get).distinct, "uncorroborated namesake"))
+            Option.when(weak.nonEmpty)(none(placed.filter(weak.contains), placed.flatMap(weak.get).distinct, "uncorroborated"))
         }
       }
       (familyEdges, decided, violations)

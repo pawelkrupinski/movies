@@ -57,9 +57,13 @@ object FilmTable {
                      releases: Option[String] = None, original: Option[String] = None, unindexed: Seq[String] = Nil,
                      suggested: Boolean = true)
 
-  /** A listing publishing only its title and what it is given, keyed as a page-less venue keys it. */
+  /** A listing publishing only its title and what it is given, keyed as a page-less venue keys it, screening on
+   *  [[Screened]] — as every published listing screens on some day: what dates a current release. */
   def listing(venue: Cinema, title: String, year: Option[Int] = None, director: Option[String] = None,
               runtime: Option[Int] = None): Listing =
     Listing(venue, ListingKey.Published(venue.displayName, title, year, director.toSeq), title, title, title, year,
-      director.toSeq, runtime, None, None)
+      director.toSeq, runtime, None, None, screenings = ScreeningDays.of(Seq(Screened)))
+
+  /** The day a [[listing]] screens on: within the recordings' season, so a 2025-2027 film is a current release. */
+  val Screened: java.time.LocalDate = java.time.LocalDate.parse("2026-10-15")
 }
