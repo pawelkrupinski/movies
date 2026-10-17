@@ -101,8 +101,7 @@ object IdentityMeasures {
     private[identity] lazy val printless: Seq[String] =
       titles.filter(IdentityMeasures.billsAPrint).map(services.movies.FormatTags.stripFormatTags).filter(_.nonEmpty)
     /** How many years an anniversary the title or original title bills celebrates ("30th Anniversary"), once per listing. */
-    private[identity] lazy val anniversary: Option[Int] = (ownTitles ++ originalTitle).iterator
-      .flatMap(t => IdentityMeasures.AnniversaryYears.findFirstMatchIn(t)).map(_.group(1).toInt).nextOption()
+    private[identity] lazy val anniversary: Option[Int] = IdentityMeasures.anniversaryOf(ownTitles ++ originalTitle)
     /** The stage works its titles bill ([[StageRelays.stageWorksBilled]]), no season named. */
     private[identity] def billedStageWorks: Set[String] = StageRelays.stageWorksBilled(titles, seasonNamed = false)
     /** Does the title name an opera or ballet house ([[StageRelays.screenNamesake]]), once per listing: every candidate asks. */
@@ -1469,6 +1468,9 @@ object IdentityMeasures {
    *  2026 at one venue and 1991 at another). */
   private def anniversaryDated(a: Listing, b: Listing): Boolean =
     a.anniversary.isDefined && a.year.isDefined && b.year.exists(FactRelations.yearsNear(a.year.get - a.anniversary.get, _))
+  /** How many years an anniversary one of `titles` bills celebrates ("30th Anniversary": 30), the first that bills one. */
+  private[identity] def anniversaryOf(titles: Seq[String]): Option[Int] =
+    titles.iterator.flatMap(t => AnniversaryYears.findFirstMatchIn(t)).map(_.group(1).toInt).nextOption()
   /** "30th Anniversary", "30 Aniversario", "35-jähriges Jubiläum", "35. rocznica", "35e anniversaire": how many years a
    *  re-release celebrates — the number, its ordinal ending, and an anniversary word of a language venues bill in. */
   private[identity] val AnniversaryYears =

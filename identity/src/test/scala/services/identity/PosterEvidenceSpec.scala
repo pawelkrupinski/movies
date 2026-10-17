@@ -122,6 +122,19 @@ class PosterEvidenceSpec extends AnyFlatSpec with Matchers {
     PosterEvidence.datedApart(FilmTable.listing(Multikino, "Weihnachten"), IdentityMeasures.Film("Weihnachten", year = Some(1927))) shouldBe false
   }
 
+  it should "read a whole title as its pieces are read, a bracketed year out, and keep an anniversary's year with its film" in {
+    val casablanca = IdentityMeasures.Film("Casablanca", year = Some(1942))
+    // the year a screening is billed in, bracketed, alone as within a title in pieces
+    PosterEvidence.datedApart(FilmTable.listing(Multikino, "Casablanca (2026)"), casablanca) shouldBe false
+    PosterEvidence.datedApart(FilmTable.listing(Multikino, "Casablanca (2026) | Klassiker"), casablanca) shouldBe false
+    // the year the film's fiftieth anniversary falls in
+    PosterEvidence.datedApart(FilmTable.listing(Multikino, "Jaws 50th Anniversary 2025"), IdentityMeasures.Film("Jaws", year = Some(1975))) shouldBe false
+    // …but no other year an anniversary bills
+    PosterEvidence.datedApart(FilmTable.listing(Multikino, "Jaws 50th Anniversary 2025"), IdentityMeasures.Film("Jaws", year = Some(1995))) shouldBe true
+    PosterEvidence.datingApart(FilmTable.listing(Multikino, "Weihnachten mit den Drei Herren 2026"),
+      IdentityMeasures.Film("The Three-Sided Mirror", year = Some(1927))) shouldBe Some(2026)
+  }
+
   it should "number another instalment where the listing numbers the very title the film's own titles number none of" in {
     // DE recapture 2026-10-13: "Begegnungen der Seele 2" ×5 was filled with the 2025 "Begegnungen der Seele", its first part
     val sequel = IdentityMeasures.Film("Begegnungen der Seele", year = Some(2025))

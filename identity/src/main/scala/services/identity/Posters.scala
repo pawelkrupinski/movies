@@ -202,15 +202,23 @@ object PosterEvidence {
    *  Christmas show, is no 1927 film. Years alone, not every number [[editionsApart]] reads: an anniversary ("Manhunter -
    *  40th Anniversary") numbers no edition against a record titled with its own year. Of a title in pieces, only the
    *  pieces naming the film date it: a festival's year beside the work ("O vecech nadprirozených - Von übernatürlichen
-   *  Dingen | Tschechischer Filmmittwoch | TDKT 2026") dates the festival, not the 1958 film. The agreement's guard
+   *  Dingen | Tschechischer Filmmittwoch | TDKT 2026") dates the festival, not the 1958 film. A whole title is read as its
+   *  pieces are ([[IdentityMeasures.pieces]]), its seasons and bracketed years out: "Casablanca (2026)" brackets the
+   *  year it is screened, as "Casablanca (2026) | Klassiker" does. Nor does the year an anniversary the title bills
+   *  falls in ("Jaws 50th Anniversary 2025", the 1975 film's fiftieth) date it away. The agreement's guard
    *  ([[services.identity.agreement.Agreement.agreed]]); [[editionsApart]] is the fill's. */
-  def datedApart(listing: Listing, film: IdentityMeasures.Film): Boolean = film.year.exists { released =>
+  def datedApart(listing: Listing, film: IdentityMeasures.Film): Boolean = datingApart(listing, film).isDefined
+
+  /** The year the listing's title bills that dates it away from the film ([[datedApart]]), if one does. */
+  def datingApart(listing: Listing, film: IdentityMeasures.Film): Option[Int] = film.year.flatMap { released =>
+    val named = film.titles.map(TitleContainment.tokens).filter(_.nonEmpty)
+    lazy val anniversary = IdentityMeasures.anniversaryOf(Seq(listing.rawTitle, listing.title) ++ listing.originalTitle)
     val billed = Seq(listing.rawTitle, listing.title).distinct.flatMap { title =>
       val pieces = IdentityMeasures.pieces(title)
-      if (pieces.sizeIs <= 1) yearsOf(title)
-      else pieces.filter(piece => film.titles.map(TitleContainment.tokens).exists(named => named.nonEmpty && TitleContainment.tokens(piece).containsSlice(named))).flatMap(yearsOf)
-    }.toSet
-    billed.nonEmpty && billed.forall(year => !FactRelations.yearsNear(year, released)) && !film.titles.exists(yearsOf(_).exists(billed))
+      (if (pieces.sizeIs <= 1) pieces else pieces.filter(piece => named.exists(TitleContainment.tokens(piece).containsSlice(_)))).flatMap(yearsOf)
+    }.toSet.filterNot(year => anniversary.exists(years => FactRelations.yearsNear(year - years, released)))
+    Option.when(billed.nonEmpty && billed.forall(year => !FactRelations.yearsNear(year, released)) &&
+      !film.titles.exists(yearsOf(_).exists(billed)))(billed.min)
   }
 
   /** Does a title piece of the listing number the very title the film's own titles number none of — "Begegnungen der
