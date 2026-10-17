@@ -344,6 +344,35 @@ object ListingShape {
     }
   }
 
+  /** Does a bare billing under a FILM FESTIVAL's banner name `film` as an old catalogue film it cannot be told from? The
+   *  banner a colon or a pipe closes names a film festival ([[services.movies.TitleWords.Concept.FilmFestival]]), the
+   *  listing states no year, director or running time, and the film was released [[FestivalCatalogueYears]] years or
+   *  more before the season its screenings fall in, and the billing names none of its directors. A festival bills its retrospectives' films with their facts or by a
+   *  title no newer film shares; a bare title under its banner names its programme's entry, and a catalogue namesake fits
+   *  it by the title alone: DE Pornfilmfestival Berlin's "The more the merrier" (a shorts programme) is not Stevens' 1943
+   *  comedy, its "No Mercy" (Willinger's 2026 documentary) not Pearce's 1986 thriller — beside "Cyberfuck", the 2026 film
+   *  at the same 39.1% on the same bare title. */
+  def festivalsCatalogueNamesake(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film): Boolean = {
+    val raw = listing.rawTitle.getOrElse(listing.title)
+    // a programme naming the film's director is the festival's homage to them: "Hommage Rosa von Praunheim 2: Stadt der
+    // verlorenen Seelen" is his 1983 film
+    def creditsIt = {
+      val billed = TitleContainment.tokens(raw).toSet
+      film.directors.getOrElse(Nil).flatMap(TitleContainment.tokens).exists(name => name.length >= DirectorStem && billed(name))
+    }
+    listing.year.isEmpty && listing.directors.isEmpty && listing.runtime.isEmpty &&
+      film.year.exists(year => listing.screeningsSeason.exists(_ - year >= FestivalCatalogueYears)) && underAFilmFestival(raw) && !creditsIt
+  }
+
+  /** How many years before its screenings a film released is a catalogue film, no festival's entry of its year. */
+  val FestivalCatalogueYears = 10
+
+  /** Is the leading piece of the billing, closed by a colon or a pipe, a film festival's banner ("Pornfilmfestival: …")? */
+  private def underAFilmFestival(rawTitle: String): Boolean =
+    BannerSlot.findFirstMatchIn(rawTitle).exists(banner =>
+      FilmFestival.pattern.matcher(services.movies.TitleContainment.tokens(banner.group(1)).mkString(" ")).find())
+  private val BannerSlot = """^([^:|]+?)\s*[:|]\s*\S""".r
+
   // ── whose facts ────────────────────────────────────────────────────────────────────────────
 
   /** Are the listing's facts all its VENUE's own — no feed catalogue's ([[SourceReliability.feedStated]]), and no

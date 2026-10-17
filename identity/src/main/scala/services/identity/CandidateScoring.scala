@@ -25,8 +25,9 @@ private[identity] final class CandidateScoring(val generation: CandidateGenerati
    *  probability below the certified cut, a season its title names that the film is not of,
    *  its season's production of its work by ANOTHER house than its banner's (`houses`), a screen
    *  namesake of the work its stage house's banner bills ([[StageRelays.screenNamesake]]), a record of
-   *  another work than that banner's relay names ([[StageRelays.namesAnotherWork]]), or a house's record of another
-   *  production of its work than the season its screenings fall in ([[StageRelays.anotherProduction]]). */
+   *  another work than that banner's relay names ([[StageRelays.namesAnotherWork]]), a house's record of another
+   *  production of its work than the season its screenings fall in ([[StageRelays.anotherProduction]]), or an old
+   *  catalogue namesake of a bare billing under a film festival's banner ([[ListingShape.festivalsCatalogueNamesake]]). */
   def evidenceDenies(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film, measures: Map[String, Measure]): Boolean =
     evidenceDenial(listing, film, measures).isDefined
 
@@ -43,6 +44,8 @@ private[identity] final class CandidateScoring(val generation: CandidateGenerati
         Denial("a record of another work than its stage house's billing names")))
       .orElse(Option.when(StageRelays.anotherProduction(listing, film))(
         Denial("another production of its work than the season its screenings fall in")))
+      .orElse(Option.when(ListingShape.festivalsCatalogueNamesake(listing, film))(
+        Denial("a catalogue namesake of a bare billing under a film festival's banner")))
       .orElse(LearnedCannotLinks.listingFilmDenial(calibration, measures, weights.factsProbability(measures)))
 
   /** Does `n`'s title name the film only by a PIECE that is its venue's own name or place — every
