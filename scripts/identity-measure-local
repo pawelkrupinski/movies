@@ -19,6 +19,12 @@
 # verdicts as identity_takes_diff.py words them, and exits 1 when any fails (a right take lost or turned wrong, a new
 # wrong take, an unjudged move), 0 when none does, 2 on a usage or setup error.
 #
+# The verdict is scripts/identity_measure.py's, as CI's measure classifies it (cure, right lost, right->wrong, new
+# wrong, gained...), after each country's identity_takes_diff.py report. BLIND SPOT, as in CI: the final stage replays
+# only the checked-in capture's clusters (the ones the model left unmatched when it was captured), so a listing the head
+# newly leaves unmatched at the model stage never reaches it -- a final 0 there is "not seen", not "the agreement refilled
+# it"; the model rows bound what is served.
+#
 # What it does not do that CI does: read the base from the commit statuses, reuse a stored base, run the corpus-shape
 # specs. Use it while GitHub is unreachable; scripts/identity-measure is the verdict of record.
 set -uo pipefail
@@ -96,5 +102,22 @@ for cc in "${ccs[@]}"; do
     echo "== $cc final: not measured (a ratchet wrote no takes)"; failed=1
   fi
 done
-[ "$failed" = 0 ] && echo "LANDABLE (local): no take moved that the judgements do not accept" || echo "NOT LANDABLE (local): see the verdicts above"
+# The verdict CI's measure prints: the moves split by the judgements (cure, right lost, new wrong, ...), from the two
+# refs' takes laid out as each takes row's artifact is.
+classified="$out/classified"
+rm -rf "$classified"
+for cc in "${ccs[@]}"; do
+  for side in "base:$base_sha" "head:$head_sha"; do
+    dir="$classified/identity-takes-$cc/${side%%:*}"
+    mkdir -p "$dir"
+    ln -s "$out/${side#*:}/decisions-$cc.jsonl" "$dir/"
+    [ -s "$out/${side#*:}/ratchet/ratchet-takes.tsv" ] && ln -s "$out/${side#*:}/ratchet/ratchet-takes.tsv" "$dir/"
+  done
+done
+echo
+python3 -I "$here/scripts/identity_measure.py" "$classified" --judgements "$judgements" --countries "$countries" || failed=1
+echo "identity-measure-local: the final stage replays the checked-in capture's clusters only -- a listing the head newly"
+echo "  leaves unmatched at the model stage never reaches it, so its final 0 means not seen, not refilled: the model rows"
+echo "  bound what is served."
+[ "$failed" = 0 ] && echo "LANDABLE (local)" || echo "NOT LANDABLE (local): see the verdicts above"
 exit "$failed"

@@ -34,6 +34,14 @@ import os, sys
 open(os.path.join(os.environ["STUB"], "diffs"), "a").write(" ".join(a for a in sys.argv[1:] if not a.startswith("/")) + "\n")
 sys.exit(1 if os.path.exists(os.path.join(os.environ["STUB"], "moved")) else 0)
 STUB
+# the classification: its directory's layout logged, its verdict the stub's
+cat > "$repo/scripts/identity_measure.py" <<'STUB'
+import os, sys
+root = sys.argv[1]
+open(os.path.join(os.environ["STUB"], "classified"), "a").write(
+    " ".join(sorted(os.path.relpath(os.path.join(d, f), root) for d, _, fs in os.walk(root) for f in fs)) + "\n")
+sys.exit(1 if os.path.exists(os.path.join(os.environ["STUB"], "wrong")) else 0)
+STUB
 chmod +x "$repo/scripts/it-local.sh"
 echo "c" > "$repo/test/resources/fixtures/identity-judgements.tsv"
 scratch_git "$repo" init -q && scratch_git "$repo" add -A && scratch_git "$repo" -c user.email=t@t -c user.name=t commit -qm base
@@ -61,6 +69,16 @@ check "...the dump reading the laid pair" "yes" "$(grep -q -- "--corpus-dir $lai
 check "...each country's model and final takes diffed" \
   "pl --base-name $base --head-name $head|pl --final --base-name $base --head-name $head|uk --base-name $base --head-name $head|uk --final --base-name $base --head-name $head" \
   "$(sed 's/--judgements //' "$work/diffs" | paste -sd'|' -)"
+
+check "...classified as CI's measure is: each country's base and head takes laid out as a takes row's artifact" \
+  "identity-takes-pl/base/decisions-pl.jsonl identity-takes-pl/base/ratchet-takes.tsv identity-takes-pl/head/decisions-pl.jsonl identity-takes-pl/head/ratchet-takes.tsv identity-takes-uk/base/decisions-uk.jsonl identity-takes-uk/base/ratchet-takes.tsv identity-takes-uk/head/decisions-uk.jsonl identity-takes-uk/head/ratchet-takes.tsv" \
+  "$(cat "$work/classified")"
+check "...and the final stage's blind spot said" "yes" "$(grep -q 'not seen, not refilled' "$work/out" && echo yes || echo no)"
+
+rm -f "$work/calls" "$work/diffs"; touch "$work/wrong"
+measure --base "$base" --head "$head" --out "$work/m" --countries pl
+check "the classification finding a right take lost or a new wrong one: NOT LANDABLE, exit 1" "1" "$(cat "$work/status")"
+rm -f "$work/wrong"
 
 rm -f "$work/calls" "$work/diffs"; touch "$work/moved"
 measure --base "$base" --head "$head" --out "$work/m" --countries pl

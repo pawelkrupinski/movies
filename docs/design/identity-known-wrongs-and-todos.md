@@ -163,7 +163,9 @@ Each a production change: measure with `scripts/identity-measure`, land one at a
   2026/27 relay it rightly takes (right lost ×3, one new wrong), UK Aldeburgh's "The Royal Ballet: Alice's Adventures in
   Wonderland" [2024] turned to the 2024/25 record. A bound in years cannot tell an old capture's encore from a revival
   relayed live; the air-day test can: carry the listing's screening days into `IdentityMeasures.Listing` and keep the
-  bypass only when a screening falls on the season record's release day.
+  bypass only when a screening falls on the season record's release day. The same test would place UK Empire Theatre
+  Halstead's bare "Romeo and Juliet" [170′] (screening on the RBO 2026/27 broadcast day) in the relay 1702789, not the
+  families' Zeffirelli 6003 (movies-76, recording 38713274617).
 - [x] **FeedLink.deniesShort vs FamilyScope.namedOnlyByCopiedTitle** (done: folded into `namedOnlyByCopiedTitle` as its
   first case, unchanged: the same-year guard must not cover it — Kino Gelnhausen's "FILMKUNST: Ein einfacher Unfall",
   Panahi's 2025 film beside a 2025 short, IdentitySliceCasesSpec): the second covers most of the first's cases and
