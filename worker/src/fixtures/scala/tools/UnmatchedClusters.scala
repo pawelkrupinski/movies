@@ -387,7 +387,7 @@ object UnmatchedClusters {
     putInt(d, "year", l.year); putInt(d, "runtime", l.runtime); put(d, "page", l.page); put(d, "originalTitle", l.originalTitle)
     if (!l.screenings.isEmpty) d.append("screenings", strings(l.screenings.days.map(_.toString)))
     if (!l.names.isEmpty) d.append("names", array(l.names.hashes.map(new BsonInt32(_))))
-    put(d, "searchTitle", l.searchTitle); put(d, "poster", l.poster)
+    put(d, "searchTitle", l.searchTitle); put(d, "properTitle", l.properTitle); put(d, "poster", l.poster)
   }
   private def listingOf(d: BsonDocument): Listing = {
     val name   = d.getString("cinema").getValue
@@ -397,7 +397,7 @@ object UnmatchedClusters {
       opt(d, "page"), opt(d, "originalTitle"), stringsOf(d, "countries"),
       d.getArray("catalogueIds").getValues.asScala.toSeq.map(_.asDocument).map(c => CatalogueId(c.getString("source").getValue, c.getString("id").getValue)),
       opt(d, "searchTitle"), opt(d, "poster"), ScreeningDays.of(stringsOf(d, "screenings").map(java.time.LocalDate.parse)),
-      VenueNames.ofHashes(Option(d.get("names")).toSeq.flatMap(_.asArray.getValues.asScala.map(_.asNumber.intValue))))
+      VenueNames.ofHashes(Option(d.get("names")).toSeq.flatMap(_.asArray.getValues.asScala.map(_.asNumber.intValue))), properTitle = opt(d, "properTitle"))
   }
   private def queryDoc(q: CandidateQuery): BsonDocument = q match {
     case CandidateQuery.Title(text)       => new BsonDocument("title", new BsonString(text))

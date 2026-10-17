@@ -56,6 +56,15 @@ class ListingSearchTitleSpec extends AnyFlatSpec with Matchers {
     listing("NT Live - Hayfever").searchTitle shouldBe Some("National Theatre Live: Hayfever")
     // a strip the search asks still wins: the venue's programme off is the search title it always was
     listing("Kino bez barier: Lalka (AD + CC + PJM) + spotkanie z twórcami").searchTitle shouldBe Some("Lalka (AD + CC + PJM)")
+    listing("Kino bez barier: Lalka (AD + CC + PJM) + spotkanie z twórcami").properTitle shouldBe None
+    listing("NT Live: Hamlet").properTitle shouldBe None
+  }
+
+  it should "search the proper name of the query its rules ask too, the event bolted on after it off" in {
+    // "+ Q&A" off, the cleaned query still bills the banner by its short name: both are searched
+    val l = listing("NT Live: Hamlet + Q&A")
+    (l.searchTitle, l.properTitle) shouldBe ((Some("NT Live: Hamlet"), Some("National Theatre Live: Hamlet")))
+    IdentityMeasures.searchQueries(Evidence.of(l, None).measured) should contain allOf ("National Theatre Live: Hamlet", "NT Live: Hamlet")
   }
 
   "A plain title" should "have no search title of its own" in {

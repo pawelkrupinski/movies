@@ -50,7 +50,11 @@ final case class Listing(
   /** Do its facts include what its page states — the listing as the agreement reads it, its page's facts merged in where
    *  it states none (`AgreementStage.asStated`)? OUTSIDE equality and hash: only the agreement builds such a listing, and
    *  only to tell whose claim the merged facts are ([[factsFromCatalogue]]). */
-  pageFacts:     Boolean = false
+  pageFacts:     Boolean = false,
+  /** The title its broadcaster's banner spelled by its proper name, searched beside [[searchTitle]] where the venue's
+   *  rules ask that ([[Listing.searchTitlesOf]]): US "NT Live: Hamlet + Q&A" searches "NT Live: Hamlet" and "National
+   *  Theatre Live: Hamlet". */
+  properTitle:   Option[String] = None
 ) {
   def venue: String = key.venue
 
@@ -97,7 +101,7 @@ final case class Listing(
   override def equals(other: Any): Boolean = other match {
     case that: Listing => (this eq that) || (key == that.key && rawTitle == that.rawTitle && title == that.title && cleanTitle == that.cleanTitle &&
       year == that.year && directors == that.directors && runtime == that.runtime && page == that.page && originalTitle == that.originalTitle &&
-      countries == that.countries && catalogueIds == that.catalogueIds && searchTitle == that.searchTitle && cinema == that.cinema &&
+      countries == that.countries && catalogueIds == that.catalogueIds && searchTitle == that.searchTitle && properTitle == that.properTitle && cinema == that.cinema &&
       screenedSeason == that.screenedSeason)
     case _ => false
   }
@@ -109,7 +113,8 @@ final case class Listing(
     var i = 0
     while (i < fields.length) { h = mix(h, fields(i)); i += 1 }
     h = mix(h, searchTitle.##)
-    finalizeHash(mixLast(h, screenedSeason.##), fields.length + 2)
+    h = mix(h, properTitle.##)
+    finalizeHash(mixLast(h, screenedSeason.##), fields.length + 3)
   }
 
   /** A TOTAL order over listings, as text: the key first, then every published field, so two
@@ -201,6 +206,7 @@ object Listing {
    *  only its pieces found films, and it leaned to "Catching Fire". The raw title stays as published. */
   def of(cinema: Cinema, cm: CinemaMovie, normalizer: TitleNormalizer): Listing = {
     val title = TitleText.tidy(cm.movie.title)
+    val (searchTitle, properTitle) = searchTitlesOf(title, normalizer)
     Listing(
       cinema        = cinema,
       key           = ListingKey.of(cinema, cm),
@@ -214,22 +220,28 @@ object Listing {
       originalTitle = cm.movie.originalTitle.map(_.trim).filter(_.nonEmpty),
       countries     = cm.movie.countries.map(_.trim).filter(_.nonEmpty).distinct.sorted,
       catalogueIds  = CatalogueId.of(cinema, cm),
-      searchTitle   = searchTitleOf(title, normalizer),
+      searchTitle   = searchTitle,
       // as the card serves it ([[services.movies.CinemaSlotBuilder]]): absolute against its page, escaped — a site-relative
       // `img src` (PL Kino Roma's "/app/assets/movie/…") is a link no poster fetch takes
       poster        = SlotFields.url(cm.posterUrl, SlotFields.url(cm.filmUrl, None)),
       screenings    = ScreeningDays.of(cm.showtimes.map(_.dateTime.toLocalDate)),
-      names         = venueNames(cinema, cm))
+      names         = venueNames(cinema, cm),
+      properTitle   = properTitle)
   }
 
-  /** The title external lookups are asked for besides the venue's own, if any: the one its rules ask
+  /** The titles external lookups are asked for besides the venue's own, if any: the one its rules ask
    *  (`TitleNormalizer.apiQuery`: programme prefixes, accessibility tags, "+ event" suffixes off), else a broadcaster's
    *  banner spelled by its proper name (`TitleNormalizer.properNamed`) — US "NT Live: Hamlet" is TMDB's "National Theatre
-   *  Live: Hamlet" (2026), which neither the venue's spelling nor the bare work reaches. */
-  private[identity] def searchTitleOf(title: String, normalizer: TitleNormalizer): Option[String] = {
+   *  Live: Hamlet" (2026), which neither the venue's spelling nor the bare work reaches; and, beside a query the rules
+   *  ask, that query's proper name ("NT Live: Hamlet + Q&A" asks "NT Live: Hamlet" and "National Theatre Live: Hamlet"). */
+  private[identity] def searchTitlesOf(title: String, normalizer: TitleNormalizer): (Option[String], Option[String]) = {
     def own(query: String) = Some(query.trim).filter(q => q.nonEmpty && q != title.trim)
     // the venue's own dash after the banner the name replaced is no part of the work: "NT Live - Hay Fever"
-    own(normalizer.apiQuery(title)).orElse(own(BannerDash.replaceFirstIn(normalizer.properNamed(title), ": ")))
+    def proper(query: String) = own(BannerDash.replaceFirstIn(normalizer.properNamed(query), ": "))
+    own(normalizer.apiQuery(title)) match {
+      case Some(query) => (Some(query), proper(query).filter(_ != query))
+      case None        => (proper(title), None)
+    }
   }
   private val BannerDash = """:\s*[-–—]\s*""".r
 
@@ -300,6 +312,8 @@ final case class DetailFacts(year: Option[Int], directors: Seq[String], runtime:
 final case class Evidence(title: String, cleanTitle: String, rawTitle: String, year: Option[Int], directors: Seq[String],
                           runtime: Option[Int], originalTitle: Option[String], countries: Seq[String] = Nil,
                           decorations: TitleDecorations = TitleDecorations.None, searchTitle: Option[String] = None,
+                          /** [[Listing.properTitle]], searched beside `searchTitle`. */
+                          properTitle: Option[String] = None,
                           /** The season a stage relay billing neither its season nor a year screens in ([[Listing.broadcastSeason]]):
                            *  what its title is searched with, never a fact it states. */
                           broadcastSeason: Option[Int] = None,
@@ -321,7 +335,7 @@ final case class Evidence(title: String, cleanTitle: String, rawTitle: String, y
    *  resolve's learned `decorations` (the same for every listing of a resolve, so not in [[key]]). */
   lazy val measured: IdentityMeasures.Listing =
     IdentityMeasures.Listing(title, Some(rawTitle).filter(_ != title), originalTitle, year, runtime, directors, countries,
-      decorations = decorations, searchTitles = searchTitle.toSeq, broadcastSeason = broadcastSeason, screenedSeason = screenedSeason,
+      decorations = decorations, searchTitles = searchTitle.toSeq ++ properTitle, broadcastSeason = broadcastSeason, screenedSeason = screenedSeason,
       screeningsSeason = screeningsSeason)
 
   /** [[measured]] with the title shapes the venue's own delimiters leave, no learned decoration nor search title
@@ -352,6 +366,7 @@ object Evidence {
     countries     = (if (listing.countries.nonEmpty) listing.countries else detail.map(_.countries).getOrElse(Nil)).distinct.sorted,
     decorations   = decorations,
     searchTitle   = listing.searchTitle,
+    properTitle   = listing.properTitle,
     // a year the detail page states dates the relay as a year the venue's own field does
     broadcastSeason = listing.broadcastSeason.filter(_ => detail.flatMap(_.year).isEmpty),
     screenedSeason  = listing.screenedSeason.filter(_ => detail.flatMap(_.year).isEmpty),
