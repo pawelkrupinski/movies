@@ -255,6 +255,7 @@ object Agreement {
       // Filmstarts' feed credits Erin Li's 2014 short to a venue billing Noxon's 2017 feature)
       val catalogueDissent = if (taken.exists(contradictedByTheCatalogue(listings, _))) 1 else 0
       Option.when(film.support >= Quorum + dissent + film.turnedDown + catalogueDissent && !(film.completed && anothersOwnTitle(listings, film.records, verdicts)) &&
+        !(film.completed && film.byTheSearchAlone && !ownFact(asStated, film.records)) &&
         !billsAnothersDirector(listings, film.records, verdicts) &&
         !taken.exists(contradictedByTheListing(listings, _)) && !taken.exists(runsLongerThanTheListing(listings, _, thisYear)) &&
         listings.forall(listing => !ListingShape.billsSeveralBeside(listing, film.agreed.record.film) &&
@@ -270,6 +271,8 @@ object Agreement {
     val support: Int = agreed.families.size + agreed.leaning.size + agreed.corroborated.size
     /** Short of [[Quorum]] takers, completed by leans or corroboration. */
     def completed: Boolean = agreed.families.size < Quorum
+    /** Corroborated by nothing but the model's own vote — TMDB's search for the title the families searched too. */
+    def byTheSearchAlone: Boolean = (agreed.corroborated - ModelVote).isEmpty
   }
 
   private def supported(listings: Seq[Listing], stated: Seq[Listing], group: Seq[FamilyPick], verdicts: Seq[FamilyVerdict], modelVote: Option[SourceRecord],
@@ -291,6 +294,19 @@ object Agreement {
     val leant = verdicts.filter(verdict => verdict.pick.isEmpty).flatMap(_.leaning).filter(isIt)
     Supported(AgreedFilm(group.map(_.family).toSet, merged, group.map(pick => pick.family -> pick.id).toMap, leaning, corroborated), records ++ leant,
       turnedDown)
+  }
+
+  /** Does a listing state a fact of its own the takers' `records` agree with — a year within a year of one's, a director
+   *  one credits, a running time within [[services.identity.Corroboration.RuntimeBand]] minutes of one's — as the model
+   *  reads a node's own corroboration ([[services.identity.Corroboration.facts]])? What an agreement short of the quorum
+   *  needs beside the leans and the model's vote, which read the same bare title the takers did ([[agreed]]). */
+  private[identity] def ownFact(listings: Seq[Listing], records: Seq[SourceRecord]): Boolean = listings.exists { listing =>
+    records.exists { record =>
+      val film = record.film
+      listing.year.exists(year => film.year.exists(own => math.abs(own - year) <= services.resolution.YearWindow.PublishedAdjacency)) ||
+        (listing.directors.nonEmpty && film.directors.exists(credits => FactRelations.samePerson(listing.directors, credits))) ||
+        listing.runtime.exists(minutes => film.runtimes.exists(own => math.abs(own - minutes) <= services.identity.Corroboration.RuntimeBand))
+    }
   }
 
   /** The TMDB film TMDB finds by the IMDb id `tt`, the find noted in `finding` while it is not answered yet. */
