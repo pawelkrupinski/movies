@@ -252,7 +252,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     (piece.film, piece.basis) shouldBe ((None, ResolverDecision.Basis.BelowThreshold))
     piece.explanation.last should include ("one piece of the billing — 'frauen heilen die welt' is billed beside 'Klondike'")
     // the venue's own programme beside it is no other thing
-    decided("Klondike - Film Club").film shouldBe Some(913760)
+    decided("Klondike - Film Club", Some(2022)).film shouldBe Some(913760)
     // nor where the billing states the film's own year: the model's keep (BilledPiece), which this stage read none of
     decided("Klondike - Frauen heilen die Welt", Some(2022)).film shouldBe Some(913760)
   }

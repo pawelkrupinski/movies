@@ -128,7 +128,8 @@ class AgreementPosterSpec extends AnyFlatSpec with Matchers {
   }
 
   "a film the families agree on" should "not be taken when the venue's poster matches another candidate and not it" in {
-    val listing = lalka()
+    // billed at 159 minutes, Has's running time: a fact of its own the families' film agrees with, which a poster still vetoes
+    val listing = lalka().copy(runtime = Some(159))
     // the families take Has's 1968 film; the venue's poster is the 2026 film's
     val has = SourceRecord(IdentityMeasures.Film("Lalka", None, Nil, Some(1968), Some(159), Some(Seq("Wojciech Has")), None, None), Map("tmdb" -> "1002"))
     val agreeing = Seq(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Filmweb).map(family => family -> new HeldFamilyAnswers(family, Map("x" -> has))).toMap

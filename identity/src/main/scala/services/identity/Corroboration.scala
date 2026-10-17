@@ -31,8 +31,8 @@ package services.identity
  *  ([[IdentityResolver]], [[refused]]): an unmatched listing is far better than a wrong one. */
 private[identity] object Corroboration {
 
-  /** The veto a cluster [[refused]] here carries ([[DecisionTrace.Veto]]): the agreement stage takes a film for it only on
-   *  evidence beside the families' votes, which name a bare title's namesake as readily as the search did. */
+  /** The veto a cluster [[refused]] here carries ([[DecisionTrace.Veto]]); the agreement stage asks the same of the films
+   *  the families agree on (`agreement.AgreementStage.corroborated`). */
   val Refusal = "uncorroborated"
 
   /** Minutes a venue's running time may stand off the film's and still corroborate it: trailers and rounding. */
@@ -143,7 +143,7 @@ private[identity] object Corroboration {
    *
    *  `corroborated` false — a review family's verdict (`agreement.Agreement.verdict`), whose take is that database's VOTE,
    *  not the listing's film — refuses only the node an evidenced namesake disputes: the agreement stage weighs the votes,
-   *  and asks a cluster refused here ([[Refusal]]) for evidence beside them ([[agreement.AgreementStage]]). Refusing the
+   *  and takes a film they agree on only on evidence beside them (`agreement.AgreementStage.corroborated`). Refusing the
    *  votes too took the families' leg from every correction a venue poster makes (PL Kino za Rogiem's bare "Lalka", Has's
    *  1968 film by its poster and IMDb's and Wikidata's takes). */
   def refused(cluster: Seq[EvidenceNode], film: Int, scored: EvidenceNode => Seq[Scored], edges: Seq[ResolverEdge],

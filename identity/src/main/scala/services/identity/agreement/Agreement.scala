@@ -84,7 +84,11 @@ final case class FamilyVerdict(family: VoterFamily, pick: Option[FamilyPick], we
 /** The film a cluster's families agree on, with the families that named it, those whose evidence leaned to it, and what
  *  else corroborated it ([[Agreement.ListingFacts]], [[Agreement.ModelVote]]). */
 final case class AgreedFilm(families: Set[VoterFamily], record: SourceRecord, ids: Map[VoterFamily, String], leaning: Set[VoterFamily] = Set.empty,
-                            corroborated: Set[String] = Set.empty) {
+                            corroborated: Set[String] = Set.empty,
+                            /** Does a listing's own year, director or running time agree with the takers' records
+                             *  ([[Agreement.ownFact]])? Not a vote — the agreement's quorum never counts it — but the fact
+                             *  independent of the title a take needs (`AgreementStage.corroborated`). */
+                            ownFact: Boolean = false) {
   /** The film's id in `database` ("imdb", "tmdb"), as any agreeing family's record links it. */
   def crossId(database: String): Option[String] = record.crossIds.get(database)
 }
@@ -289,8 +293,20 @@ object Agreement {
         thisYear.exists(year => records.flatMap(_.film.year).maxOption.exists(_ >= year - 1)))
     val turnedDown = verdicts.count(turnsDown(_, listings, records, isIt))
     val leant = verdicts.filter(verdict => verdict.pick.isEmpty).flatMap(_.leaning).filter(isIt)
-    Supported(AgreedFilm(group.map(_.family).toSet, merged, group.map(pick => pick.family -> pick.id).toMap, leaning, corroborated), records ++ leant,
-      turnedDown)
+    Supported(AgreedFilm(group.map(_.family).toSet, merged, group.map(pick => pick.family -> pick.id).toMap, leaning, corroborated,
+      ownFact(stated, records)), records ++ leant, turnedDown)
+  }
+
+  /** Does a listing state a fact of its own the takers' `records` agree with — a year within a year of one's, a director
+   *  one credits, a running time within [[services.identity.Corroboration.RuntimeBand]] minutes of one's — as the model
+   *  reads a node's own corroboration ([[services.identity.Corroboration.facts]])? */
+  private[identity] def ownFact(listings: Seq[Listing], records: Seq[SourceRecord]): Boolean = listings.exists { listing =>
+    records.exists { record =>
+      val film = record.film
+      listing.year.exists(year => film.year.exists(own => math.abs(own - year) <= services.resolution.YearWindow.PublishedAdjacency)) ||
+        (listing.directors.nonEmpty && film.directors.exists(credits => FactRelations.samePerson(listing.directors, credits))) ||
+        listing.runtime.exists(minutes => film.runtimes.exists(own => math.abs(own - minutes) <= services.identity.Corroboration.RuntimeBand))
+    }
   }
 
   /** The TMDB film TMDB finds by the IMDb id `tt`, the find noted in `finding` while it is not answered yet. */
