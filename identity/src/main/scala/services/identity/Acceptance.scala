@@ -267,7 +267,12 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
   def pooled(ranked: Seq[Scored]): Option[Accepted] = pooledNamed(ranked).map(_._1)
 
   /** [[pooled]], with the rule that accepted — for the decision's trace. */
-  def pooledNamed(ranked: Seq[Scored]): Option[(Accepted, String)] = takenBy(ranked)(firstOf(ranked, pooledRules))
+  def pooledNamed(ranked: Seq[Scored]): Option[(Accepted, String)] =
+    // a relay's broadcast-season record pre-empts the pooled rules as it does the alone ones: a cluster of "MET: Macbeth"
+    // spellings took the Met's 2014 staging by a pooled rule after the alone path ruled it another broadcast. Never
+    // stage-production pooled: one member's stated year is not the cluster's broadcast — it took UK Aldeburgh's
+    // "Royal Ballet: The Nutcracker" [2025] as the 2025/26 record, and split Savoy Worksop's "MET:Manon" off the Met's
+    takenBy(ranked)(broadcastSeasonRecord(ranked).map(_ -> "season-record").orElse(firstOf(ranked, pooledRules)))
 
   /** What both ways of taking a film share: nothing for a bill of several works; the season's production when there is
    *  one (it pre-empts every rule, and a season production refused takes nothing), else what `rules` take — either only
