@@ -27,6 +27,26 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     2, Map(bare.key -> 0, matched.key -> 1), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
   private def listingOf = Map(bare.key -> bare, matched.key -> matched).get
 
+  "a cluster the model refused for want of a fact of its own" should "take no film the families' votes alone agree on, and one they and its own facts do" in {
+    // UK Southsea's bare "Unrest": IMDb and Wikidata agreed on the namesake TMDB ranks first, which the model refused bare
+    def refused(l: services.identity.Listing) = Resolution(Seq(ResolverDecision(Seq(l.key), None, 0.5, ResolverDecision.Basis.Vetoed, Nil)(
+      services.identity.DecisionTrace(None, Some(services.identity.DecisionTrace.Veto(services.identity.Corroboration.Refusal, None)), Map.empty))),
+      1, Map(l.key -> 0), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
+    def decided(l: services.identity.Listing) =
+      new AgreementStage(agreeing(), NoVenueDetails, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(Some(1001)),
+        new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned).apply(refused(l), Map(l.key -> l).get, version = 1).decisions.head
+    decided(listing(KinoMuza, "Klondike")).basis shouldBe ResolverDecision.Basis.Vetoed
+    // the venue's own year and director credit the film the families take: a corroboration beside their votes
+    val dated = decided(listing(KinoMuza, "Klondike", year = Some(2022), director = Some("Maryna Er Gorbach")))
+    (dated.basis, dated.film) shouldBe ((ResolverDecision.Basis.Agreed, Some(1001)))
+  }
+
+  "the fill rules a refused cluster may be taken by" should "read a signal beside the families' votes" in {
+    AgreementStage.independentFill("model.lean&count.leaning&title.namesIt&film.current") shouldBe true
+    AgreementStage.independentFill("families.current") shouldBe true
+    AgreementStage.independentFill("model.lean&count.leaning&title.namesIt") shouldBe false
+  }
+
   "an unmatched cluster no families agree on" should "take, by the selected fill rule, the one guard-passing film billed widely as a current release" in {
     // US "SEVENTEEN World Tour 'NEW_'" ×391: IMDb alone holds the 2026 tour film, at venue after venue
     val tour    = IdentityMeasures.Film("Seventeen World Tour (New_)", None, Nil, Some(2026), None, None, None, None)

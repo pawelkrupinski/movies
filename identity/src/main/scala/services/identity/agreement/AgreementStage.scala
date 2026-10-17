@@ -637,7 +637,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
    *  posters are not all hashed, and not taken when a venue poster names another candidate ([[PosterEvidence.veto]]). */
   private def filledTake(decision: ResolverDecision, verdict: StoredVerdict, finding: mutable.Set[String],
                          distances: Option[Int] => Answer[Seq[Map[Int, Option[Int]]]]): Option[ResolverDecision] =
-    verdict.filled.flatMap { fill =>
+    verdict.filled.filter(fill => !AgreementStage.refusedBare(decision) || AgreementStage.independentFill(fill.rule)).flatMap { fill =>
       tmdbFilmOf(fill.tmdb, fill.imdb, finding) match {
         case Answer.Unknown => None
         case Answer.Known(tmdbFilm) => distances(tmdbFilm).toOption.filter(found => PosterEvidence.veto(tmdbFilm, found).isEmpty).flatMap { _ =>
@@ -732,6 +732,8 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
     // a film only review sites take — their pages name no film a card stands on, and match an event's namesake (DE "André
     // Rieus Weihnachtskonzert 2026: Let it Snow": Metacritic's and RT's 2019 "Let It Snow", the model's best candidate)
     if (!agreed.families.exists(_.namesFilms)) AgreementStage.Take.Untaken
+    // a cluster the model refused for want of a fact of its own takes no film the families' votes alone agree on
+    else if (AgreementStage.refusedBare(decision) && (agreed.corroborated - Agreement.ModelVote).isEmpty) AgreementStage.Take.Untaken
     else tmdb match {
       case Answer.Unknown           => AgreementStage.Take.Pending
       case Answer.Known(Some(film)) => unlessVetoed(Some(film))(taking(decision)(ResolverDecision.Basis.Agreed, line, film = Some(film), agreed = ids))
@@ -934,6 +936,23 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
 }
 
 object AgreementStage {
+
+  /** Did the model refuse the cluster for want of a fact of its own ([[services.identity.Corroboration.Refusal]])? Then the
+   *  families' votes, which read the same bare title, are no evidence the agreement takes a film on by themselves: an
+   *  agreed film needs a corroboration beside the model's own vote ([[AgreedFilm.corroborated]]), and a fill a rule
+   *  reading a signal they do not ([[independentFill]]). UK Southsea's bare "Unrest", Halstead's "Romeo and Juliet":
+   *  IMDb and Wikidata agreed on the namesake TMDB ranks first. */
+  def refusedBare(decision: ResolverDecision): Boolean =
+    decision.trace.vetoed.exists(_.reason == services.identity.Corroboration.Refusal)
+
+  /** The fill signals evidence beside the families' votes and the title they read: the release, the venues' facts, cast,
+   *  catalogue and poster, a feed's link, a relay's production — what may take a film for a cluster the model refused
+   *  bare ([[refusedBare]]): DE "Newborn", Cineamo's 787844m beside its families' lean, `film.current` the 2026 film. */
+  val IndependentSignals: Set[String] = Set("film.current", "families.current", "venues.current", "family.feedLink", "family.facts",
+    "family.director", "family.releaseKept", "cast.venue", "listing.facts", "listing.runtime", "listing.catalogue", "poster.match",
+    "poster.near", "poster.vote", "production.season", "production.house", "broadcast.take")
+  /** Does a fill `rule` (its signals joined by `&`, or a pinned rule's name) read an [[IndependentSignals]] one? */
+  def independentFill(rule: String): Boolean = rule.split('&').exists(IndependentSignals)
   /** A fallback film standing on `source`'s `id`: one standing on another database's id than IMDb's carries its `title`
    *  and `year`, that a link to its page is built of. */
   private def fallbackOn(source: String, id: String, title: Option[String], year: Option[Int]): ResolverDecision.Fallback = {

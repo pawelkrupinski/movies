@@ -23,12 +23,17 @@ package services.identity
  *    three years after Bozzelli's "Patagonia" opened is a guess at it.
  *
  *  A node with none still takes the film when another node of its cluster billed under the SAME title corroborates it on
- *  its own — its title, clean title or search title alike — or joined to such a node by a [[Vouching]] must-link (US
+ *  its own — its title, clean title, search title, any of them without a bracketed year, or what a learned decoration leaves of
+ *  it alike — or joined to such a node by a [[Vouching]] must-link (US
  *  Showcase's chain id joins "El laberinto del fauno" to its credited "Pan's Labyrinth"): a bare "Frankenstein" beside
  *  the venues crediting del Toro is the cluster's film, not a guess — unless the family takes an evidenced namesake under
  *  that very title on more nodes' facts, when only a catalogue id vouches. A node with neither is decided apart, as no film
  *  ([[IdentityResolver]], [[refused]]): an unmatched listing is far better than a wrong one. */
 private[identity] object Corroboration {
+
+  /** The veto a cluster [[refused]] here carries ([[DecisionTrace.Veto]]): the agreement stage takes a film for it only on
+   *  evidence beside the families' votes, which name a bare title's namesake as readily as the search did. */
+  val Refusal = "uncorroborated"
 
   /** Minutes a venue's running time may stand off the film's and still corroborate it: trailers and rounding. */
   val RuntimeBand = 10
@@ -75,8 +80,29 @@ private[identity] object Corroboration {
   /** How many nodes of `clusters` take each film on a fact of their own ([[facts]]) — a film's standing in its title
    *  family, against which a bare node's namesake take is weighed ([[refused]]). `filmOf` is a cluster's film. */
   def support(clusters: Seq[Seq[EvidenceNode]], filmOf: Seq[EvidenceNode] => Option[Int], scored: EvidenceNode => Seq[Scored]): Map[Int, Int] =
+    corroborating(clusters, filmOf, scored).groupMapReduce(_._1)(_ => 1)(_ + _)
+
+  /** The titles ([[titlesOf]]) of the nodes of `clusters` that take each film on a fact of their own: the family's
+   *  evidenced billings of it, which vouch for a bare node billed alike — or by one piece of its title alike — in another
+   *  cluster of the family ([[refused]]): PL Kino Kosmos' "Nakarmić kruki | Złote gody" beside Helios's "Nakarmić kruki"
+   *  [1976], which credits Saura's film. */
+  def titled(clusters: Seq[Seq[EvidenceNode]], filmOf: Seq[EvidenceNode] => Option[Int], scored: EvidenceNode => Seq[Scored]): Map[Int, Set[String]] =
+    corroborating(clusters, filmOf, scored).groupMapReduce(_._1)(entry => titlesOf(entry._2))(_ ++ _)
+
+  private def corroborating(clusters: Seq[Seq[EvidenceNode]], filmOf: Seq[EvidenceNode] => Option[Int], scored: EvidenceNode => Seq[Scored]): Seq[(Int, EvidenceNode)] =
     clusters.flatMap(cluster => filmOf(cluster).toSeq.flatMap(film => cluster.filter(node =>
-      scored(node).find(_.candidate.tmdbId == film).exists(facts(node, _, scored(node)).nonEmpty)).map(_ => film))).groupMapReduce(identity)(_ => 1)(_ + _)
+      scored(node).find(_.candidate.tmdbId == film).exists(facts(node, _, scored(node)).nonEmpty)).map(film -> _)))
+
+  /** A node's titles as billings of one film are compared: its title, clean and search titles, each without a bracketed
+   *  year, and what a learned venue decoration leaves of them — "Candyman (1992)" and "(Retro Rewind) Shrek" are billed
+   *  under "Candyman" and "Shrek". */
+  private[identity] def titlesOf(node: EvidenceNode): Set[String] = {
+    val own = node.listings.flatMap(listing => Seq(listing.title, listing.cleanTitle) ++ listing.searchTitle)
+    (own ++ own.map(IdentityMeasures.withoutYears) ++ node.evidence.measured.undecoratedWords.map(_.mkString(" "))).map(IdentityMeasures.key).filter(_.nonEmpty).toSet
+  }
+  /** [[titlesOf]], and each delimited piece of its titles ([[IdentityMeasures.pieces]]). */
+  private def piecesOf(node: EvidenceNode): Set[String] =
+    titlesOf(node) ++ node.listings.flatMap(listing => IdentityMeasures.pieces(listing.title)).map(IdentityMeasures.key).filter(_.nonEmpty)
 
   /** How closely a candidate's title names the listing's: whole (or its original), an alternative title, a delimited
    *  piece of it — a rival is a NAMESAKE only when it names the listing at least as closely as the film taken (PL
@@ -115,13 +141,15 @@ private[identity] object Corroboration {
    *  Measured 2026-10-15 without the `current release` fact: 46 wrong takes cured, ~2,000 lost (402 judged right) — most
    *  of them a current release billed by its bare title, which that fact now corroborates.
    *
-   *  `corroborated` false — a review family's verdict (`agreement.Agreement.verdict`), whose records are numbered apart
-   *  from TMDB's — counts a node a TMDB-keyed feed links as vouched: the link names no record of the family's, and the
-   *  agreement weighs it beside the family's vote (DE "Newborn", Cineamo 787844m, lost its fill without it). */
+   *  `corroborated` false — a review family's verdict (`agreement.Agreement.verdict`), whose take is that database's VOTE,
+   *  not the listing's film — refuses only the node an evidenced namesake disputes: the agreement stage weighs the votes,
+   *  and asks a cluster refused here ([[Refusal]]) for evidence beside them ([[agreement.AgreementStage]]). Refusing the
+   *  votes too took the families' leg from every correction a venue poster makes (PL Kino za Rogiem's bare "Lalka", Has's
+   *  1968 film by its poster and IMDb's and Wikidata's takes). */
   def refused(cluster: Seq[EvidenceNode], film: Int, scored: EvidenceNode => Seq[Scored], edges: Seq[ResolverEdge],
-              support: Map[Int, Int], corroborated: Boolean = true): Seq[(EvidenceNode, String)] = {
+              support: Map[Int, Int], corroborated: Boolean = true, familyTitled: Map[Int, Set[String]] = Map.empty): Seq[(EvidenceNode, String)] = {
     val own = cluster.map(node => node -> scored(node).find(_.candidate.tmdbId == film).fold(Seq.empty[String])(facts(node, _, scored(node)))).toMap
-    def titles(node: EvidenceNode) = node.listings.flatMap(listing => Seq(listing.title, listing.cleanTitle) ++ listing.searchTitle).map(IdentityMeasures.key).toSet
+    def titles(node: EvidenceNode) = titlesOf(node)
     val ids    = cluster.map(_.id).toSet
     val backing = support.getOrElse(film, 0)
     def namesake(node: EvidenceNode): Option[String] =
@@ -143,17 +171,15 @@ private[identity] object Corroboration {
       .flatMap(edge => Seq(edge.a -> (edge.b, edge.reason), edge.b -> (edge.a, edge.reason))).groupMap(_._1)(_._2)
     val vouched = scala.collection.mutable.Set.from(cluster.filter(own(_).nonEmpty).map(_.id))
     val titled  = cluster.filter(own(_).nonEmpty).flatMap(titles).toSet
-    cluster.filter(node => !disputed.contains(node.id) && titles(node).exists(titled)).foreach(vouched += _.id)
+    val evidenced = familyTitled.getOrElse(film, Set.empty)
+    cluster.filter(node => !disputed.contains(node.id) && (titles(node).exists(titled) || piecesOf(node).exists(evidenced))).foreach(vouched += _.id)
     var frontier = vouched.toSeq
     while (frontier.nonEmpty) {
       frontier = frontier.flatMap(linked.getOrElse(_, Nil)).collect {
         case (id, reason) if reason == ConstraintEdges.SameCatalogueId || !disputed.contains(id) => id
       }.filter(vouched.add)
     }
-    // a family's records are its own, numbered apart from TMDB's: a feed's TMDB link names none of them, and is the
-    // agreement's to weigh beside the family's vote
-    def feedLinked(node: EvidenceNode) = !corroborated && node.listings.exists(SourceReliability.tmdbLinked(_).isDefined)
-    cluster.filterNot(node => vouched(node.id) || feedLinked(node)).map(node => node ->
+    cluster.filterNot(node => vouched(node.id) || !corroborated && !disputed.contains(node.id)).map(node => node ->
       (s"uncorroborated: no year, director, original title, discriminating runtime, feed id, season, house or current release of its own names tmdb $film" +
         disputed.get(node.id).fold("")(why => s", and $why")))
   }
