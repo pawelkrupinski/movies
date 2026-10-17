@@ -490,7 +490,19 @@ object IdentityResolver {
             val neither = decisions.of(nodes, scope, _ => None, Map.empty, Map.empty, familyEdges, clusterIndex)
             neither.copy(explanation = why ++ neither.explanation)(neither.trace.copy(vetoed = Some(DecisionTrace.Veto(veto, None))))
           }
-          Option.when(rest.nonEmpty)(decisions.of(rest, scope, filmOf, accepted, votes, familyEdges, clusterIndex)).toSeq ++
+          // A member decided apart as none of the film lends the rest nothing: when the film was the cluster's pooled
+          // vote (no member of the rest took it alone, no pin, no family majority), the rest vote again on their own
+          // evidence and keep the film only if it still wins. DE: KAP-Torgau's "TACHELES – Kurzfilmprogramm" (a bill,
+          // kinoheld page endlich-tacheles) carried Endlich Tacheles onto the bare "Kurzfilmprogramm" billings.
+          val pooledOnly = rest.exists(node => votes.contains(node.id)) && rest.forall(node => !accepted.contains(node.id) &&
+            !families.pinnedFilm.contains(node.id) && votes.get(node.id).forall(_.majority.isEmpty))
+          val restVotes =
+            if (!pooledOnly) votes
+            else votes -- rest.map(_.id) ++ voting.vote(rest, scope).collect {
+              case (id, (taken, probability)) if film.contains(taken) => id -> ResolverDecisions.Vote(taken, probability, None)
+            }
+          val restFilm: String => Option[Int] = id => accepted.get(id).orElse(restVotes.get(id).map(_.film))
+          Option.when(rest.nonEmpty)(decisions.of(rest, scope, restFilm, accepted, restVotes, familyEdges, clusterIndex)).toSeq ++
             Option.when(bills.nonEmpty)(none(bills, Seq("bills several works: none of them"), "bills both works")) ++
             Option.when(piecesOf.nonEmpty)(none(unbilled.filter(piecesOf.contains), unbilled.flatMap(piecesOf.get).distinct, "billed as one piece")) ++
             Option.when(weak.nonEmpty)(none(placed.filter(weak.contains), placed.flatMap(weak.get).distinct, "uncorroborated namesake"))
