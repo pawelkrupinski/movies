@@ -77,13 +77,14 @@ check "...and the final stage's blind spot said" "yes" "$(grep -q 'not seen, not
 
 rm -f "$work/calls" "$work/diffs"; touch "$work/wrong"
 measure --base "$base" --head "$head" --out "$work/m" --countries pl
-check "the classification finding a right take lost or a new wrong one: NOT LANDABLE, exit 1" "1" "$(cat "$work/status")"
+check "the classification finding a right take lost or a new wrong one: NOT LANDABLE, exit 1" "1 yes" \
+  "$(cat "$work/status") $(grep -q '^NOT LANDABLE (local)' "$work/out" && echo yes || echo no)"
 rm -f "$work/wrong"
 
 rm -f "$work/calls" "$work/diffs"; touch "$work/moved"
 measure --base "$base" --head "$head" --out "$work/m" --countries pl
-check "a move the judgements do not accept: NOT LANDABLE, exit 1" "1 yes" \
-  "$(cat "$work/status") $(grep -q '^NOT LANDABLE (local)' "$work/out" && echo yes || echo no)"
+check "a move nobody judged, the classification clean: landable once judged, exit 1" "1 yes" \
+  "$(cat "$work/status") $(grep -q '^LANDABLE ONCE JUDGED (local)' "$work/out" && echo yes || echo no)"
 check "...both refs already resolved here: kept, not resolved again" "" "$(cat "$work/calls" 2>/dev/null)"
 rm -f "$work/moved"
 

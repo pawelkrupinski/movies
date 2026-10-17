@@ -115,9 +115,13 @@ for cc in "${ccs[@]}"; do
   done
 done
 echo
-python3 -I "$here/scripts/identity_measure.py" "$classified" --judgements "$judgements" --countries "$countries" || failed=1
+classification=0
+python3 -I "$here/scripts/identity_measure.py" "$classified" --judgements "$judgements" --countries "$countries" || classification=1
 echo "identity-measure-local: the final stage replays the checked-in capture's clusters only -- a listing the head newly"
 echo "  leaves unmatched at the model stage never reaches it, so its final 0 means not seen, not refilled: the model rows"
 echo "  bound what is served."
-[ "$failed" = 0 ] && echo "LANDABLE (local)" || echo "NOT LANDABLE (local): see the verdicts above"
-exit "$failed"
+# the classification decides (a right take lost or turned wrong, a new wrong one); a move nobody judged fails the takes
+# diff alone, and must be judged before landing, as CI's measure says
+if [ "$classification" != 0 ]; then echo "NOT LANDABLE (local): see the classification above"; exit 1
+elif [ "$failed" != 0 ]; then echo "LANDABLE ONCE JUDGED (local): judge every unjudged move listed above first"; exit 1
+else echo "LANDABLE (local)"; exit 0; fi
