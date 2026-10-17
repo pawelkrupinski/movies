@@ -17,8 +17,9 @@ object TitleSeason {
     Option.when(end.toInt == (first + 1) % math.pow(10, end.length).toInt)(first)
   }
 
-  /** A season needs an ASCII digit (`\d` is ASCII-only in Java): a title without one skips the regex. */
-  private def hasAsciiDigit(t: String): Boolean = t.exists(c => c >= '0' && c <= '9')
+  /** A season — or any year read off a title — needs an ASCII digit (`\d` is ASCII-only in Java): a title without one
+   *  skips the regex. */
+  private[services] def hasAsciiDigit(t: String): Boolean = t.exists(c => c >= '0' && c <= '9')
 
   /** The one season `titles` name, by its first year; none when they name none, or two. A record's titles: any season
    *  it was billed in. */

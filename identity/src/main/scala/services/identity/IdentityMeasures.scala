@@ -185,9 +185,6 @@ object IdentityMeasures {
       case _        => None
     }
 
-  /** A bracketed year needs an ASCII digit (`\d` is ASCII-only in Java): a title without
-   *  one skips its regex. */
-  private def hasAsciiDigit(t: String): Boolean = t.exists(c => c >= '0' && c <= '9')
 
   /** Which pieces of a title are its QUALIFIER rather than its work, LEARNED from how the film
    *  records of one family's pool bill each piece, and on which SIDE of the work: TMDB bills
@@ -278,7 +275,7 @@ object IdentityMeasures {
   /** A year in brackets ("(2026)"): a screening's or a production's date, as a season is. */
   private val BracketedYear = """[(\[]\s*(?:18|19|20)\d{2}\s*[)\]]""".r
   /** `t` without its seasons and bracketed years: how a house bills a work, whatever it dates it by. */
-  def withoutYears(t: String): String = if (!hasAsciiDigit(t)) t else BracketedYear.replaceAllIn(withoutSeasons(t), " ")
+  def withoutYears(t: String): String = if (!TitleSeason.hasAsciiDigit(t)) t else BracketedYear.replaceAllIn(withoutSeasons(t), " ")
   private[identity] def yearlessTokens(t: String): Seq[String] = TitleContainment.tokens(withoutYears(t))
 
   /** `t` with every season removed, so a season's end year is never read as a bracketed year. */
@@ -1221,7 +1218,7 @@ object IdentityMeasures {
    *  or a word an edition, an event or a print is billed by — a compound of an event's word too — dates the screening, not
    *  the film: DE "Der Physiopath (März 2027)", "Krimizeit (Krimifestival 2026)", "(Re-release 2025)". */
   private def labelledYears(title: String): Iterator[String] =
-    if (!hasAsciiDigit(title)) Iterator.empty
+    if (!TitleSeason.hasAsciiDigit(title)) Iterator.empty
     else LabelledYear.findAllMatchIn(title).filterNot(m => TitleContainment.tokens(m.group(1)).exists(datesAScreening))
       .map(m => s"(${m.group(2)})")
   private[identity] def datesAScreening(word: String): Boolean =
