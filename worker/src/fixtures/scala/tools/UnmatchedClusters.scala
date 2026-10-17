@@ -325,12 +325,14 @@ object UnmatchedClusters {
 
   def write(path: Path, capture: Capture): Unit = {
     val (credits, older) = capture.queries.partition { case (q, _) => q.isInstanceOf[CandidateQuery.TitleCredit] }
+    def answered(queries: Map[CandidateQuery, Seq[Hit]]) =
+      array(queries.toSeq.sortBy(_._1.sortKey).map { case (q, hits) => queryDoc(q).append("hits", array(hits.map(hitDoc))) })
     val d = new BsonDocument("country", new BsonString(capture.country.code))
       .append("listings", array(capture.listings.sortBy(_.sortKey).map(listingDoc)))
       .append("decisions", array(capture.decisions.sortBy(_.members.headOption.map(ListingKey.serialised).getOrElse("")).map(ResolverDecisionBson.encode)))
-      .append("queries", array(older.toSeq.sortBy(_._1.sortKey).map { case (q, hits) => queryDoc(q).append("hits", array(hits.map(hitDoc))) }))
+      .append("queries", answered(older))
       // apart from "queries", which a ref predating the title-credit question reads whole and fails on a kind it lacks
-      .append("titleCredits", array(credits.toSeq.sortBy(_._1.sortKey).map { case (q, hits) => queryDoc(q).append("hits", array(hits.map(hitDoc))) }))
+      .append("titleCredits", answered(credits))
       .append("films", array(capture.films.toSeq.sortBy(_._1).map { case (id, f) => new BsonDocument("id", new BsonInt32(id)).append("film", IdentityAnswerBson.film(f)) }))
       .append("details", array(capture.details.toSeq.sortBy(_._1).map { case (k, f) => new BsonDocument("key", new BsonString(k)).append("detail", f.fold[BsonValue](new BsonNull)(detailDoc)) }))
       .append("withDetail", array(capture.withDetail.toSeq.sorted.map(new BsonString(_))))
