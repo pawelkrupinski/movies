@@ -72,6 +72,27 @@ class ListingShapeSpec extends AnyFlatSpec with Matchers {
     ListingShape.billsAFilmFestival("How I Started A Film Festival") shouldBe false
   }
 
+  "a bare billing under a film festival's banner" should "name no catalogue film released ten years or more before its screenings" in {
+    // DE Pornfilmfestival Berlin (recording 38713274617): "The more the merrier", a shorts programme, took Stevens' 1943
+    // comedy at 39.1% on its bare title — as "Cyberfuck" took the 2026 film
+    def billed(raw: String, year: Option[Int] = None, runtime: Option[Int] = None) =
+      IdentityMeasures.Listing(raw.split(": ").last, Some(raw), year = year, runtime = runtime, screeningsSeason = Some(2026))
+    val merrier = IdentityMeasures.Film("The More the Merrier", year = Some(1943))
+    val cyber   = IdentityMeasures.Film("Cyberfuck", year = Some(2026))
+    ListingShape.festivalsCatalogueNamesake(billed("Pornfilmfestival: The more the merrier"), merrier) shouldBe true
+    ListingShape.festivalsCatalogueNamesake(billed("Pornfilmfestival: Cyberfuck"), cyber) shouldBe false
+    // a fact the venue states, a banner naming no film festival, or a festival named after the film: the film stands
+    ListingShape.festivalsCatalogueNamesake(billed("Pornfilmfestival: The more the merrier", year = Some(1943)), merrier) shouldBe false
+    ListingShape.festivalsCatalogueNamesake(billed("Pornfilmfestival: The more the merrier", runtime = Some(104)), merrier) shouldBe false
+    ListingShape.festivalsCatalogueNamesake(billed("Kino Seniora: The more the merrier"), merrier) shouldBe false
+    ListingShape.festivalsCatalogueNamesake(billed("The more the merrier - Purbeck Film Festival"), merrier) shouldBe false
+    ListingShape.festivalsCatalogueNamesake(billed("Hackney Children's Film Fest: The more the merrier"), merrier) shouldBe true
+    // a homage naming the film's director bills that film
+    val praunheim = IdentityMeasures.Film("Stadt der verlorenen Seelen", year = Some(1983), directors = Some(Seq("Rosa von Praunheim")))
+    ListingShape.festivalsCatalogueNamesake(billed("Pornfilmfestival: Hommage Rosa von Praunheim 2: Stadt der verlorenen Seelen"), praunheim) shouldBe false
+    ListingShape.festivalsCatalogueNamesake(billed("Pornfilmfestival: Stadt der verlorenen Seelen"), praunheim) shouldBe true
+  }
+
   "a piece billed beside the film" should "be a subtitle, performer or show of its own words, never the venue's wording around a film" in {
     def film(title: String, original: Option[String] = None, directors: Seq[String] = Nil) =
       IdentityMeasures.Film(title, original, directors = Some(directors))
