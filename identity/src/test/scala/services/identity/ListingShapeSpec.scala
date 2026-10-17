@@ -83,6 +83,10 @@ class ListingShapeSpec extends AnyFlatSpec with Matchers {
     // "Q&A"'s letters are no words of the venue's: a piece holding the article "a" is a subtitle like any other
     beside("Femme - A Journey Through Healing", film("Femme")) shouldBe defined
     beside("Athanor - Startblock", film("Athanor")) shouldBe defined
+    // a dash spaced after its piece only breaks it too, as the title's searches split it: UK Regal Stowmarket's tribute
+    // concert, filled as the 2025 film (recording 38713274617); a hyphen within a word breaks nothing
+    beside("Song Sung Blue- The Music of Neil Diamond", film("Song Sung Blue")) shouldBe defined
+    beside("Spider-Man", film("Spider")) shouldBe None
     beside("SKRZYŻOWANIE - 50 na 51 - spotkanie z Janem Englertem", film("Skrzyżowanie")) shouldBe None
     beside("Giorgia Fumo - OUT OF OFFICE", film("Out of Office")) shouldBe defined
     beside("FBF: Freud and Gale: Making It Up", film("Making It Up")) shouldBe defined

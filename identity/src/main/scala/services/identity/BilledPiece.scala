@@ -96,6 +96,23 @@ private[identity] object BilledPiece {
     }
   }
 
+  /** [[of]] for a film the FAMILIES found — the one they agree on, or one a fill rule takes from their leans and the
+   *  model's — read with the keeps the agreement stage knows ([[Keeps.Facts]]): the billing's stated facts against the
+   *  record, and the other venues stating them. The families' best match for a billing is their best namesake of the
+   *  piece it names, whichever stage takes it (UK "Song Sung Blue- The Music of Neil Diamond", a tribute concert, filled as
+   *  the 2025 film from the families' leans). */
+  def ofFamilies(listings: Seq[Listing], film: IdentityMeasures.Film, tmdbId: Option[Int]): Option[Piece] = {
+    val read = listings.map { listing =>
+      val evidence = Evidence.of(listing, None)
+      val country  = EvidenceNode.countryOf(listing.cinema)
+      (listing, evidence, country, measuresOf(evidence, film, country))
+    }
+    val stating = read.collect { case (listing, _, _, measures) if IdentityMeasures.ownAgreement(measures)._1.nonEmpty => listing.cinema }.toSet
+    read.iterator.flatMap { case (listing, evidence, country, measures) =>
+      of(evidence, Seq(listing), country, film, tmdbId, measures, (stating - listing.cinema).size, _ => false, _ => Nil, Keeps.Facts)
+    }.nextOption()
+  }
+
   /** A billing's measures against `film` for a stage that scored no candidate (the agreement stage): its stated facts. */
   def measuresOf(evidence: Evidence, film: IdentityMeasures.Film, country: Option[String]): Map[String, Measure] =
     IdentityMeasures.listingFilm(evidence.measured, film, None, 0, 0, country = country)
