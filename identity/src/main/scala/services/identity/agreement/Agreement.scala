@@ -506,8 +506,11 @@ object Agreement {
   private def sharesAnId(a: SourceRecord, b: SourceRecord): Boolean =
     a.crossIds.exists { case (database, id) => b.crossIds.get(database).contains(id) }
 
+  /** Another IMDb or TMDB id: the ids every family spells alike. Wikidata files some sites' ids in a space of its own (UK
+   *  "Imamura: Black Rain": its record's RT id "22294", RT's own page "1035681-black_rain", one film). */
   private def namesAnotherId(a: SourceRecord, b: SourceRecord): Boolean =
-    a.crossIds.exists { case (database, id) => b.crossIds.get(database).exists(_ != id) }
+    CanonicalIds.exists(database => a.crossIds.get(database).exists(id => b.crossIds.get(database).exists(_ != id)))
+  private val CanonicalIds = Seq("imdb", "tmdb")
 
   /** The same film by its facts, no cross-id linking them: years within one, no clash of Latin-script directors (one
    *  respelled in the same year and running time is none), and a

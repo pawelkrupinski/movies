@@ -42,6 +42,11 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     Agreement.joins(Seq(play), zeff) shouldBe false
     Agreement.joins(Seq(play), zeff.copy(crossIds = Map("imdb" -> "tt2428892"))) shouldBe true
     Agreement.joins(Seq(play), zeff.copy(crossIds = Map("filmweb" -> "1"))) shouldBe true
+    // a site's id Wikidata spells in a space of its own is no other entry (UK "Imamura: Black Rain": RT "22294" in
+    // Wikidata, "1035681-black_rain" on RT, one film)
+    val imamura = film("Black Rain", 1989, "Shohei Imamura", 123)
+    Agreement.joins(Seq(SourceRecord(imamura, Map("imdb" -> "tt0097694", "rt" -> "22294"))),
+      SourceRecord(imamura.copy(year = Some(1988)), Map("rt" -> "1035681-black_rain"))) shouldBe true
   }
 
   it should "agree on nothing when another family names another film, or only two agree" in {
