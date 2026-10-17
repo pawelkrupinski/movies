@@ -258,6 +258,30 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     gets.get shouldBe prefetched
   }
 
+  /** A suggestions document filed before the store kept the suggested directors holds no `directors`: no answer to the
+   *  credit's question, so it is asked live once — which files them — and answered from the store from then on. */
+  it should "ask once more, live, for suggestions filed before the directors were kept" in {
+    val w = new World
+    schamoni(w)
+    val id  = TmdbStore.imdbSuggestionsId("ES (ULRICH SCHAMONI)")
+    val old = w.docs.get(TmdbKind.Query, Seq(id))(id).clone()
+    old.remove("directors")
+    w.docs.put(TmdbKind.Query, Seq(id -> old))
+    val query = CandidateQuery.TitleCredit("ES (ULRICH SCHAMONI)")
+    w.lookups.candidates(query) shouldBe Answer.Unknown
+    val asked = new java.util.concurrent.atomic.AtomicInteger()
+    val live = new IdentityLookups {
+      def hasDetail(listing: Listing): Boolean = false
+      def detail(listing: Listing): Answer[Option[DetailFacts]] = Answer.Known(None)
+      def candidates(q: CandidateQuery): Answer[Seq[Hit]] = { asked.incrementAndGet(); schamoni(w); w.lookups.candidates(q) }
+      def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = Answer.Known(None)
+    }
+    val lookups = new StoredFirstLookups(w.lookups, live)
+    lookups.candidates(query).toOption.map(_.map(_.tmdbId)) shouldBe Some(Seq(133035))
+    lookups.candidates(query).toOption.map(_.map(_.tmdbId)) shouldBe Some(Seq(133035))
+    asked.get shouldBe 1
+  }
+
   /** A prefetch that found a document absent holds nothing of it: the live ask files it moments later, and an ask
    *  served the absence again would decide on a gap the store has already filled. */
   "the store's lookups" should "read a document a prefetch found absent again, once it is filed" in {
