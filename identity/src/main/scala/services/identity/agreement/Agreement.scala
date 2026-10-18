@@ -113,7 +113,7 @@ final class FamilyLookups(answers: FamilyAnswers, venues: IdentityLookups, listi
   override def hasDetail(listing: Listing): Boolean                  = venues.hasDetail(listing)
   override def detail(listing: Listing): Answer[Option[DetailFacts]] = venues.detail(listing)
   override def candidates(query: CandidateQuery): Answer[Seq[Hit]] = query match {
-    case CandidateQuery.Title(text) if answers.family.latinTitlesOnly && !FamilyLookups.hasLatinWord(text) => Answer.Known(Nil)
+    case CandidateQuery.Title(text) if answers.family.latinTitlesOnly && !IdentityMeasures.hasLatinLetter(text) => Answer.Known(Nil)
     case CandidateQuery.Title(text)    => answers.titled(text).map(ranked)
     case CandidateQuery.Director(_) if !answers.family.searchesDirectors => Answer.Known(Nil)
     case CandidateQuery.Director(name) => answers.directedBy(name).map(ranked)
@@ -148,9 +148,6 @@ final class FamilyLookups(answers: FamilyAnswers, venues: IdentityLookups, listi
 object FamilyLookups {
   /** How many of a search's films are read at most. */
   val Records = 6
-  /** Does `text` carry a word in Latin script? */
-  def hasLatinWord(text: String): Boolean =
-    text.exists(c => Character.isLetter(c) && Character.UnicodeScript.of(c.toInt) == Character.UnicodeScript.LATIN)
 }
 
 object Agreement {
@@ -288,7 +285,7 @@ object Agreement {
   /** A film one family or more took, as the evidence stands for it: the takers, the families leaning to it, what
    *  corroborates it, and how many families weighed it and turned it down ([[turnsDown]]). */
   private final case class Supported(agreed: AgreedFilm, records: Seq[SourceRecord], turnedDown: Int) {
-    /** The records of it the takers took and the leaning families favour. */
+    /** How many families take it, lean to it or corroborate it. */
     val support: Int = agreed.families.size + agreed.leaning.size + agreed.corroborated.size
     /** Short of [[Quorum]] takers, completed by leans or corroboration. */
     def completed: Boolean = agreed.families.size < Quorum

@@ -270,21 +270,23 @@ object Listing {
   }
   private val BannerDash = """:\s*[-–—]\s*""".r
 
-  /** What `cm`'s own synopsis and cast field name — its matching-only excerpt where the venue cut the synopsis (MSI) — none
-   *  where a feed copied them from its catalogue entry. */
+  /** What `cm`'s own synopsis and cast field name — none where a feed copied them from its catalogue entry. */
   private def venueNames(cinema: Cinema, cm: CinemaMovie): VenueNames = {
-    val text = cm.synopsis.orElse(cm.synopsisExcerpt)
-    if ((text.isEmpty && cm.cast.isEmpty) ||
-        !SourceReliability.factsOf(CatalogueId.of(cinema, cm), cm.filmUrl.map(_.trim), pageFacts = false).decides(SourceReliability.Fact.Names)) VenueNames.None
+    val text = synopsisOf(cm)
+    if ((text.isEmpty && cm.cast.isEmpty) || !namesAreVenues(cinema, cm)) VenueNames.None
     else VenueNames.of(text, cm.cast)
   }
 
-  /** The words `cm`'s own synopsis capitalises — its matching-only excerpt where the venue cut the synopsis (MSI) — none
-   *  where a feed copied it from its catalogue entry, as for [[venueNames]]. */
+  /** The words `cm`'s own synopsis capitalises — none where a feed copied it from its catalogue entry, as for [[venueNames]]. */
   private def venueWords(cinema: Cinema, cm: CinemaMovie): ProseWords =
-    cm.synopsis.orElse(cm.synopsisExcerpt).filter(_ =>
-      SourceReliability.factsOf(CatalogueId.of(cinema, cm), cm.filmUrl.map(_.trim), pageFacts = false).decides(SourceReliability.Fact.Names))
-      .fold(ProseWords.None)(text => ProseWords.ofProse(Seq(text)))
+    synopsisOf(cm).filter(_ => namesAreVenues(cinema, cm)).fold(ProseWords.None)(text => ProseWords.ofProse(Seq(text)))
+
+  /** `cm`'s synopsis — its matching-only excerpt where the venue cut the synopsis (MSI). */
+  private def synopsisOf(cm: CinemaMovie): Option[String] = cm.synopsis.orElse(cm.synopsisExcerpt)
+
+  /** Are the names `cm`'s text gives the venue's own, not a feed's copy of its catalogue entry ([[SourceReliability]])? */
+  private def namesAreVenues(cinema: Cinema, cm: CinemaMovie): Boolean =
+    SourceReliability.factsOf(CatalogueId.of(cinema, cm), cm.filmUrl.map(_.trim), pageFacts = false).decides(SourceReliability.Fact.Names)
 
   /** The people one director credit names — the listing's own, or its detail page's: PL venues join two in one ("Arash T. Riahi & Verena Soltiz", "Joel Crawford
    *  i Januel Mercado", "Natasha Merkulova, Aleksey Chupov"), which searched as one person found no film. Split only
@@ -415,6 +417,11 @@ object Evidence {
  *  carries — the film's own record is an `IdentityMeasures.Film`. */
 final case class Hit(tmdbId: Int, title: String, originalTitle: Option[String], year: Option[Int], popularity: Double)
 
+object Hit {
+  /** The hit standing for its film among `hits` naming it: the most popular, ties by title, original title and year. */
+  def best(hits: Seq[Hit]): Option[Hit] = hits.minByOption(h => (-h.popularity, h.title, h.originalTitle.getOrElse(""), h.year.getOrElse(0)))
+}
+
 /** A film some listing of a family may be: its TMDB id and what TMDB says about it — its own
  *  record when the lookup source holds one (`TmdbFilmRecord`), else what the hits naming it carry. */
 final case class Candidate(tmdbId: Int, film: IdentityMeasures.Film)
@@ -423,7 +430,7 @@ object Candidate {
 
   def of(tmdbId: Int, hits: Seq[Hit], record: Option[IdentityMeasures.Film]): Candidate = {
     val popularity = hits.map(_.popularity).maxOption
-    val best = hits.sortBy(h => (-h.popularity, h.title, h.originalTitle.getOrElse(""), h.year.getOrElse(0))).headOption
+    val best = Hit.best(hits)
     // A record that carries its popularity is the candidate's film itself: a copy restating it was a second Film per
     // recorded film beside the corpus's `records` (30k on worker-uk, 2026-10-07).
     Candidate(tmdbId, record.map(f => if (f.popularity.isDefined) f else f.copy(popularity = popularity)).getOrElse(

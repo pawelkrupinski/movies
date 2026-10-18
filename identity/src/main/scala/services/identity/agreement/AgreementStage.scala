@@ -313,10 +313,14 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
       events.put(decision, event); event
     }
 
+  /** The decision's listings, sorted by key. */
+  private def sortedListings(decision: ResolverDecision, listingOf: ListingKey => Option[Listing]): Seq[Listing] =
+    decision.members.flatMap(listingOf).sortBy(_.key)(using ListingKey.ordering)
+
   /** The decision's cluster id, its listings sorted and their digest, kept while the model hands the same decision over. */
   private def digestedOf(decision: ResolverDecision, listingOf: ListingKey => Option[Listing]): AgreementStage.Digested =
     Option(digested.get(decision)).getOrElse {
-      val listings = decision.members.flatMap(listingOf).sortBy(_.key)(using ListingKey.ordering)
+      val listings = sortedListings(decision, listingOf)
       val fresh    = AgreementStage.Digested(StoredFamily.idOf(decision.members), listings,
         AgreementStage.digest(Seq(digestOf(listings).toString, decision.leaning.toString, decision.candidate.toString,
           PosterEvidence.urls(listings).mkString("\u0001"))), voteOf(decision))
@@ -367,7 +371,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
     })
     val now = kept.orElse(Option.when(pass.fresh()) {
       // the take's listings sorted and digested only to be read afresh: a stored correction is checked by `digest` alone
-      val listings = decision.members.flatMap(listingOf).sortBy(_.key)(using ListingKey.ordering)
+      val listings = sortedListings(decision, listingOf)
       val (correction, waits) = correctionOf(decision, AgreementStage.Digested(key, listings, digest, None), pass.reading, version)
       val verdict = StoredVerdict(key, digest, Map.empty, None, decidedUnder, correction = Some(correction))
       if (!held.get(key).contains(verdict)) { pass.moved += verdict; held(key) = verdict }
@@ -648,9 +652,15 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
    *  cast evidence reads ([[services.identity.CastEvidence]]): none of a listing whose facts a feed catalogue states, whose
    *  text describes the catalogue's own entry, maybe another film than the venue's. */
   private def venueNames(listings: Seq[Listing]): services.identity.VenueNames =
-    listings.filter(services.identity.SourceReliability.decides(_, services.identity.SourceReliability.Fact.Names)).foldLeft(services.identity.VenueNames.None) { (named, listing) =>
-      named ++ listing.names ++ venues.detail(listing).toOption.flatten.fold(services.identity.VenueNames.None)(_.names)
+    venueStated(listings).foldLeft(services.identity.VenueNames.None) { case (named, (listing, page)) =>
+      named ++ listing.names ++ page.fold(services.identity.VenueNames.None)(_.names)
     }
+
+  /** The listings whose text is their VENUE's own — none whose facts a feed catalogue states, its text describing the
+   *  catalogue's entry ([[services.identity.SourceReliability]]) — each with its detail page's facts, where read. */
+  private def venueStated(listings: Seq[Listing]): Seq[(Listing, Option[DetailFacts])] =
+    listings.filter(services.identity.SourceReliability.decides(_, services.identity.SourceReliability.Fact.Names))
+      .map(listing => listing -> venues.detail(listing).toOption.flatten)
 
   /** The decision with the film a fill rule took — pending while TMDB was not asked about its IMDb id yet or the venue
    *  posters are not all hashed, and not taken when a venue poster names another candidate ([[PosterEvidence.veto]]) or
@@ -765,8 +775,9 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
    *  pages, none of a listing whose facts a feed catalogue states, as [[venueNames]] reads them. */
   private def synopsisAgainst(id: String, digest: Long, listings: Seq[Listing], film: Int): Option[String] =
     tmdb.flatMap { lookups =>
-      val venue = listings.filter(services.identity.SourceReliability.decides(_, services.identity.SourceReliability.Fact.Names))
-        .foldLeft(ProseWords.None)((words, listing) => words ++ listing.words ++ venues.detail(listing).toOption.flatten.fold(ProseWords.None)(_.words))
+      val venue = venueStated(listings).foldLeft(ProseWords.None) { case (words, (listing, page)) =>
+        words ++ listing.words ++ page.fold(ProseWords.None)(_.words)
+      }
       def description(other: Int) = lookups.overview(other).toOption.flatten.filter(_.nonEmpty)
       def record(other: Int) = lookups.film(other).toOption.flatten
       Option.when(venue.nonEmpty)(()).flatMap(_ => description(film)).flatMap { own =>
@@ -850,7 +861,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
       answer.toOption
     }
     val found = familiesInOrder.flatMap { case (family, answers) =>
-      queries.filterNot(text => family.latinTitlesOnly && !FamilyLookups.hasLatinWord(text)).flatMap { text =>
+      queries.filterNot(text => family.latinTitlesOnly && !services.identity.IdentityMeasures.hasLatinLetter(text)).flatMap { text =>
         noted(family, s"title|$text", answers.titled(text)).toSeq.flatMap(_.take(FamilyLookups.Records))
           .filter(hit => Broadcast.billsAProduction(hit.title)).map(family -> _.id)
       }.distinct.flatMap { case (_, hit) => noted(family, s"record|$hit", answers.record(hit)).flatten.map(_.film) }

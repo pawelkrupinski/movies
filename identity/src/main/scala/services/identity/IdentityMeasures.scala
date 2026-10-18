@@ -483,6 +483,11 @@ object IdentityMeasures {
 
   // ── keys ─────────────────────────────────────────────────────────────────────────────
 
+  /** Does `text` hold a letter in Latin script? */
+  def hasLatinLetter(text: String): Boolean =
+    text.exists(c => Character.isLetter(c) && Character.UnicodeScript.of(c.toInt) == Character.UnicodeScript.LATIN)
+
+
   /** A title or name as a comparison key: accents folded, lowercased, every non-letter and
    *  non-digit dropped. Script-preserving, rule-free: no title-specific canonicalisation. */
   def key(s: String): String =

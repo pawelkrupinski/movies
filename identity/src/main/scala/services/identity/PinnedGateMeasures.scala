@@ -37,9 +37,6 @@ object PinnedGateMeasures {
   private def people(names: Iterable[String]): Set[String] =
     names.iterator.flatMap(_.split(",")).map(services.movies.PersonKey.of).filter(_.nonEmpty).toSet
 
-  private def latin(names: Iterable[String]): Boolean =
-    names.exists(_.exists(c => Character.isLetter(c) && Character.UnicodeScript.of(c.toInt) == Character.UnicodeScript.LATIN))
-
   /** How two credit lists relate: one person in common, a shared name word only (a surname, a
    *  transliteration), nobody in common, or incomparable (one side not in Latin script). */
   def directorRelation(a: Seq[String], b: Seq[String]): Measure = {
@@ -47,7 +44,7 @@ object PinnedGateMeasures {
     if (pa.isEmpty) MissingListing
     else if (pb.isEmpty) MissingFilm
     else if ((pa intersect pb).nonEmpty) Category("same_person")
-    else if (latin(a) != latin(b)) Category("incomparable")
+    else if (a.exists(IdentityMeasures.hasLatinLetter) != b.exists(IdentityMeasures.hasLatinLetter)) Category("incomparable")
     else {
       val wa = pa.flatMap(_.split(" ")).filter(_.length >= 3)
       val wb = pb.flatMap(_.split(" ")).filter(_.length >= 3)

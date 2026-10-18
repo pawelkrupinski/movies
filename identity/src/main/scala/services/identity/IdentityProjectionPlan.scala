@@ -107,7 +107,7 @@ final case class ProjectionPlan(films: Seq[ProjectedFilm], retired: Seq[FilmId],
  * decisions over them, the films stored before, and the persisted FilmId map:
  *
  *  1. every stored film is the set of today's listings its slots hold (the slot's own listing key,
- *     else the shadow diff's mapping by slot, `StoredFilmSlots`), numbered through the FilmId map ([[FilmIdCounters]], largest film first
+ *     else the film whose slot its venue and title fold to, `StoredFilmSlots`), numbered through the FilmId map ([[FilmIdCounters]], largest film first
  *     for a film not yet mapped) — so a legacy `title|year` id keeps its counter and its URL;
  *  2. the resolver's clusters, with the clusters of one TMDB film joined (`movies` holds one
  *     document per film — its unique `tmdbId` index), get ids by OVERLAP ([[IdAssigner]]): a merge
@@ -235,8 +235,7 @@ object IdentityProjectionPlan {
     // listing to — a US film showing at hundreds of venues was scanned whole for each of them.
     val slotsByFilm = scala.collection.mutable.HashMap.empty[String, Map[Cinema, Seq[(Source, SourceData)]]]
     def slotsByVenueOf(id: String): Map[Cinema, Seq[(Source, SourceData)]] = slotsByFilm.getOrElseUpdate(id,
-      storedById.get(id).fold(Map.empty[Cinema, Seq[(Source, SourceData)]])(_.record.data.toSeq.collect {
-        case (showing: CinemaShowing, slot) => showing.cinema -> ((showing: Source) -> slot) }.groupMap(_._1)(_._2)))
+      storedById.get(id).fold(Map.empty[Cinema, Seq[(Source, SourceData)]])(stored => VenueSlots.byVenue(stored.record)))
     def priorsOf(id: String): Map[Cinema, Int] = storedById.get(id).fold(Map.empty[Cinema, Int])(r => shapes.priorsOf(id, r.record))
     // One venue's listings on a film, and what its slots are built from.
     def previousAt(keys: Seq[ListingKey]): Seq[Option[String]] = keys.map(k => index.previousOf.get(k).map(_.id))
@@ -515,8 +514,7 @@ final class FilmShapes private (keeping: Boolean) {
   private[identity] def priorsOf(id: String, record: MovieRecord): Map[Cinema, Int] = {
     val was = priorsUsed.get(id).orElse(priorsHeld.get(id))
     val known = was.filter(_._1 eq record).map(_._2).getOrElse {
-      val read = record.data.toSeq.collect { case (cs: CinemaShowing, slot) => cs.cinema -> ((cs: Source) -> slot) }
-        .groupMap(_._1)(_._2).map { case (cinema, slots) => cinema -> VenueSlotMemo.priorsAt(slots) }
+      val read = VenueSlots.byVenue(record).map { case (cinema, slots) => cinema -> VenueSlotMemo.priorsAt(slots) }
       was.fold(read) { case (_, held) => FilmShapes.sharing(held, read, _ == _) }
     }
     priorsUsed(id) = record -> known

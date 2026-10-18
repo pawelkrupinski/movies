@@ -12,7 +12,8 @@ import services.identity.agreement.{Agreement, AgreementStage, Broadcast, Family
  * over `integration.IdentityUnifiedDataset`'s rows), never hand-set; each signal's DIRECTION is known (a family's take
  * only ever speaks for a film), and the fit holds every weight to it.
  *
- * Phase 1 measures it beside today's stack; nothing decides by it yet.
+ * Its FILL rules ([[UnifiedRules]]) decide: the agreement stage takes the one contender a rule fires on for a cluster
+ * nothing else took (`AgreementStage`'s fill).
  */
 object UnifiedEvidence {
 

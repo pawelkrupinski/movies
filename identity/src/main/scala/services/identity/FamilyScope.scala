@@ -70,11 +70,10 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
     // A namesake the venue's country never saw released, beside one it did, that nothing backs is denied, and no
     // rival in the evidence class of the namesakes left ([[ReleaseVeto]]). A namesake here is a film the title names
     // EXACTLY: an original or alternative title is the venue's spelling of another language's film, not its own.
-    val vetoed = country.fold(Map.empty[Int, Denial])(ReleaseVeto.of(_, measured, scored =>
-      relation(scored.candidate.tmdbId) == "exact" && !onlySuggested(scored.candidate.tmdbId),
+    def namesake(scored: Scored) = relation(scored.candidate.tmdbId) == "exact" && !onlySuggested(scored.candidate.tmdbId)
+    val vetoed = country.fold(Map.empty[Int, Denial])(ReleaseVeto.of(_, measured, namesake,
       scored => scored.number("venues.corroborating").exists(_ > 0) || acceptance.weights.factsSupport(scored))) ++
-      country.fold(Map.empty[Int, Denial])(ReleaseVeto.ofCurrent(_, listing.screeningsSeason, measured, scored =>
-        relation(scored.candidate.tmdbId) == "exact" && !onlySuggested(scored.candidate.tmdbId), ownFacts = source == venue,
+      country.fold(Map.empty[Int, Denial])(ReleaseVeto.ofCurrent(_, listing.screeningsSeason, measured, namesake, ownFacts = source == venue,
         acceptance.weights.factsSupport))
     val candidates = if (vetoed.isEmpty) measured else measured.map { scored =>
       val id = scored.candidate.tmdbId

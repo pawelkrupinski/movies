@@ -1,7 +1,7 @@
 package services.identity
 
 import services.identity.agreement.Agreement
-import services.movies.{FormatTags, ListingKey, TitleContainment, TitleWords}
+import services.movies.{ListingKey, TitleContainment, TitleWords}
 
 /**
  * SUSPECT TAKES: a film a listing's cluster took that the listing's own evidence argues against — not a verdict, a
@@ -34,10 +34,6 @@ object SuspectTakes {
     case FeedId    extends Signal("feed")
     /** The take rests on a fill rule alone ([[ResolverDecision.Basis.Filled]]). */
     case WeakRoute extends Signal("route")
-  }
-
-  object Signal {
-    def byLabel(label: String): Option[Signal] = values.find(_.label == label)
   }
 
   /** One reason a take is suspect. */
@@ -90,7 +86,7 @@ object SuspectTakes {
     val screens  = listing.screenings.first.fold(screeningYear)(_.getYear)
     val measured = Evidence.of(listing, None, TitleDecorations.resolver).measured
     fragment(listing, pieces, film, screens, billings).toSeq ++ era(listing, measured, film, screens, billings) ++
-      runtime(measured, film, billings, listing) ++ sequel(listing, pieces, measured, film) ++ feed(listing, take.tmdb, take.decision) ++
+      runtime(measured, film, billings, listing) ++ sequel(pieces, measured, film) ++ feed(listing, take.tmdb, take.decision) ++
       route(take.decision)
   }
 
@@ -179,13 +175,9 @@ object SuspectTakes {
 
   // ── (a) fragment ─────────────────────────────────────────────────────────────────────────
 
-  /** An event, edition or format word: what a venue bills around a film, never a work's own title. */
-  private def billed(word: String): Boolean =
-    FormatTags.FormatToken.contains(word) || DecorationWords.EventWords(word) || DecorationWords.EditionWords(word)
-
-  /** Words a venue bills around a film that are no part of another work's title: what it [[billed]] the film with,
+  /** Words a venue bills around a film that are no part of another work's title: what it bills the film with ([[DecorationWords.billedAround]]),
    *  numbers, single letters. */
-  private def decoration(word: String): Boolean = billed(word) || word.exists(_.isDigit) || word.length == 1
+  private def decoration(word: String): Boolean = DecorationWords.billedAround(word) || word.exists(_.isDigit) || word.length == 1
 
   /** Where the film's longest title runs in `words` — articles aside — as (start, length). */
   private def run(words: IndexedSeq[String], film: IdentityMeasures.Film): Option[(Int, Int)] =
@@ -198,14 +190,13 @@ object SuspectTakes {
    *  words ("OPERA-MANON" is "The Metropolitan Opera 2026/27: Manon")? "Koncert: Leszek Możdżer - solo" is no "Solo: A
    *  Star Wars Story", "Johnny" no "Johnny English". */
   private def namesNone(listing: Listing, pieces: Seq[Piece], film: IdentityMeasures.Film, billings: Billings): Boolean = {
-    def latin(text: String) = text.exists(c => Character.isLetter(c) && Character.UnicodeScript.of(c.toInt) == Character.UnicodeScript.LATIN)
     // a word of a title, not one the corpus bills widely: "Hayfever" shares none with "Hay Fever", "Johnny" one with
     // "Johnny English" — a respelling or a part is the title relation's to weigh, no word in common is none to weigh
     def rare(words: Iterable[String]) = words.iterator.filter(w => w.length >= 3 && !billings.widely(w)).toSet
     val billed = rare(pieces.flatMap(_.words))
     // cheapest first: most takes share a word with their film's title
-    billed.nonEmpty && rare(film.titles.flatMap(TitleContainment.tokens)).intersect(billed).isEmpty && film.titles.exists(latin) &&
-      latin(listing.rawTitle) && film.season.isEmpty && !ListingShape.stagesAWork(listing) && !Agreement.namesIt(listing, Seq(film))
+    billed.nonEmpty && rare(film.titles.flatMap(TitleContainment.tokens)).intersect(billed).isEmpty && film.titles.exists(IdentityMeasures.hasLatinLetter) &&
+      IdentityMeasures.hasLatinLetter(listing.rawTitle) && film.season.isEmpty && !ListingShape.stagesAWork(listing) && !Agreement.namesIt(listing, Seq(film))
   }
 
   private[identity] def fragment(listing: Listing, pieces: Seq[Piece], film: IdentityMeasures.Film, screens: Int,
@@ -230,7 +221,7 @@ object SuspectTakes {
         // a piece beside the film's: a work's title unless it is a banner the corpus bills beside other titles, or holds a
         // decoration word; the film's own piece: the words its title leaves
         val (beside, within) = placed.partition { case (_, (from, to)) => to <= start || from >= start + length }
-        val rest    = beside.map(_._1).filterNot(p => billings.banner(p) || p.words.exists(billed) || DecorationWords.namesAnEvent(p.words)).flatMap(_.words).filter(own)
+        val rest    = beside.map(_._1).filterNot(p => billings.banner(p) || p.words.exists(DecorationWords.billedAround) || DecorationWords.namesAnEvent(p.words)).flatMap(_.words).filter(own)
         val inPiece = within.flatMap { case (p, (from, _)) =>
           p.words.indices.filter(i => from + i < start || from + i >= start + length).map(p.words) }.filter(own)
         Option.when(rest.sizeIs >= FragmentRest || (inPiece.sizeIs >= FragmentRest && inPiece.size > length))(
@@ -299,7 +290,7 @@ object SuspectTakes {
 
   // ── (d) sequel ───────────────────────────────────────────────────────────────────────────
 
-  private[identity] def sequel(listing: Listing, pieces: Seq[Piece], measured: IdentityMeasures.Listing, film: IdentityMeasures.Film): Option[Suspicion] =
+  private[identity] def sequel(pieces: Seq[Piece], measured: IdentityMeasures.Listing, film: IdentityMeasures.Film): Option[Suspicion] =
     // a billing numbering nothing — no digit, no closing Roman numeral — numbers no other instalment, read without its
     // title shapes (a season's relay, "RBO: Cosi fan Tutte 27", numbers its season: `numeralRelation` compares nothing)
     Option.when(pieces.exists(p => p.words.exists(_.exists(_.isDigit)) || p.words.lastOption.exists(Roman.matches)) &&

@@ -3,7 +3,7 @@ package services.identity
 import services.movies.{ListingConstraints, ListingKey}
 
 /** The constraint edges between nodes sharing a block key ([[of]]): must-links by tier (0 pinned,
- *  1 same accepted film, 2 same sanitised title, 3 same search form — unless either title carries
+ *  1 same accepted film, 2 same catalogue id or same sanitised title, 3 same search form — unless either title carries
  *  another listing's title beside it — or original title, 4 one's title a delimited segment of the
  *  other's, unless the rest of the other's names a film of its own) and cannot-links (different
  *  accepted films; a node denying the other's film; the two listings' own evidence apart). */

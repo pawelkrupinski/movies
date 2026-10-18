@@ -23,6 +23,11 @@ object DecorationWords {
   /** Words naming an EDITION of a film — a cut, a restoration, a re-release, an anniversary ([[TitleWords]]). */
   private[identity] val EditionWords: Set[String] = TitleWords.tokens(TitleWords.Concept.Edition, TitleWords.Concept.Anniversary)
 
+  /** Is the folded `word` an event, edition or format word ([[services.movies.FormatTags.FormatToken]]): what a venue bills
+   *  around a film, never a work's own title? */
+  def billedAround(word: String): Boolean =
+    EventWords(word) || EditionWords(word) || services.movies.FormatTags.FormatToken.contains(word)
+
   /** Does a listing billed under `titles` name an EDITION of the film titled `filmTitles` — a word of [[EditionWords]]
    *  ("Extended Edition", "Director's Cut", "Redux") its titles carry and the film's do not? TMDB keeps one record for a
    *  film and its cuts, so an edition can run longer than every runtime the record states (`IdentityMeasures`' runtime
