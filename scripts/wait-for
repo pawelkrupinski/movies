@@ -18,17 +18,21 @@ set -uo pipefail
 # shellcheck source=scripts/tool-conventions.sh
 . "$(dirname "$0")/tool-conventions.sh"
 case "${1:-}" in -h|--help) usage_from_header; exit 0 ;; esac
-[ $# -ge 2 ] || { usage_from_header >&2; exit 2; }
+[ $# -ge 2 ] || usage_error "a file and a pattern are required"
 file=$1 pattern=$2 timeout=7200 poll=5 pid=""
 shift 2
 while [ $# -gt 0 ]; do
   case "$1" in
-    --timeout) timeout=${2:?--timeout SECONDS}; shift 2 ;;
-    --poll) poll=${2:?--poll SECONDS}; shift 2 ;;
-    --pid) pid=${2:?--pid PID}; shift 2 ;;
-    *) echo "wait-for: unknown argument: $1" >&2; exit 2 ;;
+    --timeout) flag_value "$@"; timeout=$2; shift 2 ;;
+    --poll) flag_value "$@"; poll=$2; shift 2 ;;
+    --pid) flag_value "$@"; pid=$2; shift 2 ;;
+    *) usage_error "unknown argument: $1" ;;
   esac
 done
+# a usage error is 2, never the 1 that says the writer ended
+[[ $timeout =~ ^[0-9]+$ ]] || usage_error "--timeout needs whole seconds, not '$timeout'"
+[[ $poll =~ ^[0-9]+(\.[0-9]+)?$ ]] || usage_error "--poll needs seconds, not '$poll'"
+[[ -z $pid || $pid =~ ^[0-9]+$ ]] || usage_error "--pid needs a process id, not '$pid'"
 
 SECONDS=0
 while :; do
