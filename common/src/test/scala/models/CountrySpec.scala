@@ -359,8 +359,8 @@ class CountrySpec extends AnyFlatSpec with Matchers {
   }
 
   "Spanish pages" should "carry their own time zone, so the Canaries are not on peninsular time" in {
-    // Spain has TWO zones, which is why `SpanishPage` takes one per place like
-    // `UsPage` rather than hardcoding one like `GermanPage`. An hour is enough to
+    // Spain has TWO zones, which is why a Spanish `RosterPlace` carries one per place like
+    // a US one rather than one per country like Germany's. An hour is enough to
     // move a day boundary, so a Canary venue's late showing would otherwise fall on
     // the wrong day.
     def zoneOf(slug: String) = Country.Spain.bySlug(slug).zoneId.getId

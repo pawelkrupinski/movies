@@ -1858,15 +1858,6 @@ object Cinema {
   private[models] def displayNamesClaimedBy(earlier: Seq[(String, Seq[Cinema])]*): Set[String] =
     ((polishAndUk +: earlier).flatMap(_.flatMap(_._2)) ++ CinemaNetworks.all).map(_.displayName).toSet
 
-  /** A generated roster's venues under the group each page is filed in (a Bundesland, a
-   *  province), the groups in the order their first page comes in the roster — the
-   *  [[byCity]] level one above the pages. */
-  private[models] def venuesByGroupInOrder[P](pages: Seq[P])(groupOf: P => String)(venues: P => Seq[Cinema])
-      : Seq[(String, Seq[Cinema])] = {
-    val byGroup = pages.groupBy(groupOf)
-    pages.map(groupOf).distinct.map(group => group -> byGroup(group).flatMap(venues))
-  }
-
   /** The chains' network pseudo-cinemas — [[CinemaNetworks.all]], under the name `services.identity` reads. */
   val Networks: Seq[Cinema] = CinemaNetworks.all
 

@@ -668,101 +668,31 @@ case object London extends City("london", CityLabels.undeclined("London"),
   override val areas: Seq[CinemaAreaGroup] = LondonAreas.groups
 }
 
-// ── Germany (also non-declining for our purposes). ───────────────────────────
+// ── The generated rosters: Germany, the United States, Spain (non-declining). ──────────
 
-/** A German page — a major city (a municipality of 100,000+) with only its own
- *  venues, a town with three or more, or a cluster of small towns a short drive
- *  apart named after the biggest: "Bayreuth und Umgebung", "in Bayreuth und
- *  Umgebung". Poland's shape ([[PolishPage]]), built by the same rule
- *  (`data/germany/scripts/build_pages.py`); until 2026-10 a German page was a
- *  REGION of every venue within ~35 km of a hub, and `/koeln/` listed Bonn.
+/** A page of a generated roster — Germany's, the United States' or Spain's ([[RosterPlace]]):
+ *  a major city with only its own venues, a town with three or more, or a cluster of small towns
+ *  named after the biggest. Poland's shape ([[PolishPage]]), built by the same rule; until 2026-10
+ *  such a page was a REGION of every venue within a radius of a hub, and `/koeln/` listed Bonn.
  *
- *  The roster (1,515 cinemas over 436 pages) is generated into `GermanRosterData`
- *  and materialised by [[GermanRoster]]; instances are built ONCE (in
- *  `City.germanPages`), so identity equality holds just like the hand-authored
- *  `case object` cities. One zone for the country, `Europe/Berlin`. */
-final class GermanPage private[models] (slug: String, place: GermanPlace)
-  extends City(slug, GermanPage.labels(place), place.lat, place.lon, TimeZones.Germany) {
+ *  Instances are built ONCE (in `City.germanPages`, `usCities`, `spanishPages`), so identity
+ *  equality holds just like the hand-authored `case object` cities. None of the three languages
+ *  declines a place name, so all three label slots carry the page's name — "<town> <suffix>" for
+ *  a cluster ([[RosterStyle]]). The zone is the place's: the US spans six and Spain two. */
+final class RosterPage private[models] (slug: String, place: RosterPlace, style: RosterStyle)
+  extends City(slug, RosterPage.labels(place, style), place.lat, place.lon, place.zoneId) {
   val cinemas: Seq[Cinema] = place.cinemas
   /** The town the page is named after first, then the rest of its towns. */
   override protected val extraPlaces: Seq[String] = (place.name +: place.towns).distinct
-  /** The Bundesland the picker groups this page under. */
-  def bundesland: String = place.bundesland
+  override def locativePhrase: String =
+    style.clusterPreposition.filter(_ => place.multiTown).fold(super.locativePhrase)(p => s"$p ${labels.nominative}")
+  /** What the picker groups this page under: its anchor town's Bundesland, state or province. */
+  def region: String = place.region
 }
 
-private[models] object GermanPage {
-  /** German does not decline a place name after "in", so all three slots carry
-   *  the page's name — "<town> und Umgebung" for a cluster, which reads right both
-   *  alone and after the grammar's "in" ("in Bayreuth und Umgebung"). */
-  def labels(place: GermanPlace): CityLabels =
-    CityLabels.undeclined(if (place.multiTown) s"${place.name} und Umgebung" else place.name)
-}
-
-/** A US page — a major city (a place of 100,000+) with only its own venues, a
- *  town with three or more, or a cluster of small towns a short drive apart named
- *  after the biggest: "Bend area", "in the Bend area". Poland's shape
- *  ([[PolishPage]]), built by the same rule (`data/us/scripts/build_pages.py`);
- *  until 2026-10 a US page was a METRO of every venue within 75 km of a hub, cut
- *  at state lines, and `/los-angeles/` listed Lancaster. A cluster may cross a
- *  state line; the picker files it under its anchor's state.
- *
- *  The roster (4,999 cinemas over 1,995 pages) is generated into `UsRosterData`
- *  and materialised by [[UsRoster]]; instances are built ONCE (in
- *  `City.usCities`), so identity equality holds just like the hand-authored
- *  `case object` cities.
- *
- *  Unlike [[GermanPage]] the zone is the PLACE's rather than a constant: the US
- *  spans six of them, and a page keeps the clock most of its venues keep. */
-final class UsPage private[models] (slug: String, place: UsPlace)
-  extends City(slug, UsPage.labels(place), place.lat, place.lon, place.zoneId) {
-  val cinemas: Seq[Cinema] = place.cinemas
-  /** The town the page is named after first, then the rest of its towns and the
-   *  towns its venues name (Brooklyn, Hollywood). */
-  override protected val extraPlaces: Seq[String] = place.towns
-  /** "in the Bend area" — an area takes the article a town does not. */
-  override def locativePhrase: String = if (place.multiTown) s"in the ${labels.nominative}" else super.locativePhrase
-  /** The state the picker groups this page under: its anchor town's. */
-  def stateName: String = place.stateName
-}
-
-private[models] object UsPage {
-  /** English does not decline a place name, so all three slots carry the page's
-   *  name — "<town> area" for a cluster, which reads right alone ("Bend area")
-   *  and in a list of cinemas ("All Bend area cinema listings"). */
-  def labels(place: UsPlace): CityLabels =
-    CityLabels.undeclined(if (place.multiTown) s"${place.name} area" else place.name)
-}
-
-/** A Spanish page — a major city (one of the 43 municipalities of 150,000+) with
- *  only its own venues, a town with three or more, or a cluster of small towns a
- *  short drive apart named after the biggest: "Sitges y alrededores", "en Sitges y
- *  alrededores". Poland's shape ([[PolishPage]]), built by the same rule
- *  (`data/spain/scripts/build_pages.py`); until 2026-10 a Spanish page was a
- *  whole province, and `/barcelona/` listed Berga, 100 km away.
- *
- *  The roster (599 cinemas over 240 pages) is generated into `SpanishRosterData`
- *  and materialised by [[SpanishRoster]]; instances are built ONCE (in
- *  `City.spanishCities`), so identity equality holds just like the hand-authored
- *  `case object` cities.
- *
- *  Like [[UsPage]] and unlike [[GermanPage]] the zone is a CONSTRUCTOR
- *  parameter: the Canary Islands run an hour behind the peninsula, and a single
- *  national zone would move their day boundary. */
-final class SpanishPage private[models] (slug: String, place: SpanishPlace)
-  extends City(slug, SpanishPage.labels(place), place.lat, place.lon, place.zoneId) {
-  val cinemas: Seq[Cinema] = place.cinemas
-  /** The town the page is named after first, then the rest of its towns. */
-  override protected val extraPlaces: Seq[String] = (place.name +: place.towns).distinct
-  /** The province the picker groups this page under. */
-  def province: String = place.province
-}
-
-private[models] object SpanishPage {
-  /** Spanish does not decline a place name, so all three slots carry the page's
-   *  name — "<town> y alrededores" for a cluster, which reads right both alone and
-   *  after the grammar's "en". */
-  def labels(place: SpanishPlace): CityLabels =
-    CityLabels.undeclined(if (place.multiTown) s"${place.name} y alrededores" else place.name)
+private[models] object RosterPage {
+  def labels(place: RosterPlace, style: RosterStyle): CityLabels =
+    CityLabels.undeclined(if (place.multiTown) s"${place.name} ${style.clusterSuffix}" else place.name)
 }
 
 /** A named group of [[City]]s in a picker — a US STATE over its towns
@@ -921,11 +851,11 @@ object City {
   }
 
   /** Germany's cities — the authoritative list for [[Country.Germany]]. One per
-   *  town or cluster page (see [[GermanPage]] / [[GermanRoster]]), materialised
+   *  town or cluster page (see [[RosterPage]] / [[GermanRoster]]), materialised
    *  data-driven from `GermanRosterData` rather than hand-authored case objects.
    *  Each country owns its own slugs, so a page's is simply its own name (or, for
    *  two German towns of one name, the qualified one `build_pages.py` gave it). */
-  private[models] val germanPages: Seq[GermanPage] = GermanRoster.places.map(p => new GermanPage(p.preferredSlug, p))
+  private[models] val germanPages: Seq[RosterPage] = GermanRoster.places.map(p => new RosterPage(p.preferredSlug, p, GermanRoster.style))
   private[models] val germanCities: Seq[City] = germanPages
 
   /** A retired page's URLs → the page it redirects to: under its own name AND
@@ -951,16 +881,16 @@ object City {
    *  ways, as Poland's voivodeships and Spain's provinces. The Land is the
    *  anchor town's, read off its coordinates by `build_pages.py`. */
   private[models] lazy val germanStates: Seq[CityGroup] =
-    CityListing.groupedAlphabetically(germanPages, Locale.forLanguageTag("de-DE"))(_.bundesland)
+    CityListing.groupedAlphabetically(germanPages, Locale.forLanguageTag("de-DE"))(_.region)
 
 
   /** The United States' cities — the authoritative list for
-   *  [[Country.UnitedStates]]. One per town or cluster page (see [[UsPage]] /
+   *  [[Country.UnitedStates]]. One per town or cluster page (see [[RosterPage]] /
    *  [[UsRoster]]), materialised data-driven from `UsRosterData`. The state is a
    *  [[CityGroup]], not a city: nobody wants a screen of every cinema in Texas.
    *  A page's slug is its own name, qualified with its state only where another
    *  US page has the name (the Springfields). */
-  private[models] lazy val usCities: Seq[UsPage] = UsRoster.places.map(p => new UsPage(p.preferredSlug, p))
+  private[models] lazy val usCities: Seq[RosterPage] = UsRoster.places.map(p => new RosterPage(p.preferredSlug, p, UsRoster.style))
 
   /** US pages that no longer exist → the page holding the town each was named
    *  after, or — where no such town has a venue — the page now holding most of its
@@ -1009,16 +939,16 @@ object City {
    *  the two. */
   private[models] lazy val usStates: Seq[CityGroup] = {
     val en = Locale.forLanguageTag("en-US")
-    usCities.groupBy(_.stateName).toSeq
+    usCities.groupBy(_.region).toSeq
       .map { case (state, pages) => CityGroup(state, Slugify.stable(state), CityListing.sorted(pages, en)) }
       .sortBy(_.slug)
   }
 
   /** Spain's cities — the authoritative list for [[Country.Spain]]. One per town
-   *  or cluster page (see [[SpanishPage]] / [[SpanishRoster]]), materialised
+   *  or cluster page (see [[RosterPage]] / [[SpanishRoster]]), materialised
    *  data-driven from `SpanishRosterData` rather than hand-authored case objects.
    *  A page's slug is its own name: `/es/toledo/` is Toledo, whatever the US has. */
-  private[models] val spanishPages: Seq[SpanishPage] = SpanishRoster.places.map(p => new SpanishPage(p.preferredSlug, p))
+  private[models] val spanishPages: Seq[RosterPage] = SpanishRoster.places.map(p => new RosterPage(p.preferredSlug, p, SpanishRoster.style))
   private[models] val spanishCities: Seq[City] = spanishPages
 
   /** Spanish pages that no longer exist → the page now holding most of their
@@ -1033,7 +963,7 @@ object City {
   /** Spain's picker: one group per province, its major cities, towns and
    *  clusters side by side, alphabetically — as Poland's voivodeships. */
   private[models] lazy val spanishProvinces: Seq[CityGroup] =
-    CityListing.groupedAlphabetically(spanishPages, Locale.forLanguageTag("es-ES"))(_.province)
+    CityListing.groupedAlphabetically(spanishPages, Locale.forLanguageTag("es-ES"))(_.region)
 
   /** Every modelled city, across all countries — the global view used by the
    *  worker (which scrapes every country) and by country-agnostic reverse

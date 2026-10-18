@@ -100,7 +100,7 @@ class UsRosterSpec extends AnyFlatSpec with Matchers with OptionValues {
   "A state" should "be a grouping over its pages, not a city" in {
     Country.UnitedStates.bySlug.get("texas") shouldBe None
     // A state's name is a page only where a TOWN has it — California, Maryland.
-    Country.UnitedStates.bySlug.get("california").value.asInstanceOf[UsPage].stateName shouldBe "Maryland"
+    Country.UnitedStates.bySlug.get("california").value.asInstanceOf[RosterPage].region shouldBe "Maryland"
     val california = state("California")
     california.cities should contain allOf (page("los-angeles"), page("san-francisco"), page("bishop"))
     // Alphabetical — a heading you OPEN is a list you scan for a name you already know.
@@ -142,7 +142,7 @@ class UsRosterSpec extends AnyFlatSpec with Matchers with OptionValues {
     // /springfield/ was Springfield, Illinois; Springfield, Missouri is bigger, and
     // is the one qualified, because the URL is published.
     pageOf("Moxie Cinema Springfield 2").slug shouldBe "springfield-missouri"
-    page("springfield").asInstanceOf[UsPage].stateName shouldBe "Illinois"
+    page("springfield").asInstanceOf[RosterPage].region shouldBe "Illinois"
   }
 
   it should "be the US's own, whatever another country calls a town" in {
