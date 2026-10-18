@@ -319,7 +319,7 @@ object MixedFilmDetector {
   /** Does one of `names` spell in Latin script? Only then can it be compared with another name:
    *  TMDB credits "王家衛" where a Polish cinema prints "Wong Kar Wai". */
   private def latin(names: Seq[String]): Boolean =
-    names.exists(_.exists(c => Character.UnicodeScript.of(c.toInt) == Character.UnicodeScript.LATIN))
+    names.exists(tools.LatinScript.hasLetter)
 
   /** [[sameDirector]] over raw published names — the veto, for a caller weighing its
    *  own runtime or year evidence (the since-deleted `FilmCanonicalizer` fold's rule 4). */

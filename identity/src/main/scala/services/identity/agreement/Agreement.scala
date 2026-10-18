@@ -113,7 +113,7 @@ final class FamilyLookups(answers: FamilyAnswers, venues: IdentityLookups, listi
   override def hasDetail(listing: Listing): Boolean                  = venues.hasDetail(listing)
   override def detail(listing: Listing): Answer[Option[DetailFacts]] = venues.detail(listing)
   override def candidates(query: CandidateQuery): Answer[Seq[Hit]] = query match {
-    case CandidateQuery.Title(text) if answers.family.latinTitlesOnly && !IdentityMeasures.hasLatinLetter(text) => Answer.Known(Nil)
+    case CandidateQuery.Title(text) if answers.family.latinTitlesOnly && !tools.LatinScript.hasLetter(text) => Answer.Known(Nil)
     case CandidateQuery.Title(text)    => answers.titled(text).map(ranked)
     case CandidateQuery.Director(_) if !answers.family.searchesDirectors => Answer.Known(Nil)
     case CandidateQuery.Director(name) => answers.directedBy(name).map(ranked)
@@ -545,14 +545,11 @@ object Agreement {
     // share their year and running time
     val respelled = a.year.isDefined && a.year == b.year && a.runtime.zip(b.runtime).exists { case (x, y) => math.abs(x - y) <= 2 } &&
       FactRelations.namePrefixes(da).intersect(FactRelations.namePrefixes(db)).nonEmpty
-    FactRelations.yearsApart(a.year, b.year) || (da.nonEmpty && db.nonEmpty && latin(da ++ db) && !sameDirector(a, b) && !respelled)
+    FactRelations.yearsApart(a.year, b.year) || (da.nonEmpty && db.nonEmpty && (da ++ db).forall(tools.LatinScript.lettersOnly) && !sameDirector(a, b) && !respelled)
   }
 
   private def sameDirector(a: IdentityMeasures.Film, b: IdentityMeasures.Film): Boolean =
     FactRelations.samePerson(a.directors.getOrElse(Nil), b.directors.getOrElse(Nil))
-
-  private def latin(names: Seq[String]): Boolean =
-    names.forall(_.forall(c => !Character.isLetter(c) || Character.UnicodeScript.of(c.toInt) == Character.UnicodeScript.LATIN))
 
   /** Is the listing's original title a feed's copy ([[SourceReliability.copiesOriginalTitle]]) one edit from its billing's —
    *  the record the feed's search for the billing hit, not the venue's own spelling of another title? */

@@ -861,7 +861,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
       answer.toOption
     }
     val found = familiesInOrder.flatMap { case (family, answers) =>
-      queries.filterNot(text => family.latinTitlesOnly && !services.identity.IdentityMeasures.hasLatinLetter(text)).flatMap { text =>
+      queries.filterNot(text => family.latinTitlesOnly && !tools.LatinScript.hasLetter(text)).flatMap { text =>
         noted(family, s"title|$text", answers.titled(text)).toSeq.flatMap(_.take(FamilyLookups.Records))
           .filter(hit => Broadcast.billsAProduction(hit.title)).map(family -> _.id)
       }.distinct.flatMap { case (_, hit) => noted(family, s"record|$hit", answers.record(hit)).flatten.map(_.film) }

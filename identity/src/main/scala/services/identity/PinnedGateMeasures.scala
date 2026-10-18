@@ -44,7 +44,7 @@ object PinnedGateMeasures {
     if (pa.isEmpty) MissingListing
     else if (pb.isEmpty) MissingFilm
     else if ((pa intersect pb).nonEmpty) Category("same_person")
-    else if (a.exists(IdentityMeasures.hasLatinLetter) != b.exists(IdentityMeasures.hasLatinLetter)) Category("incomparable")
+    else if (a.exists(tools.LatinScript.hasLetter) != b.exists(tools.LatinScript.hasLetter)) Category("incomparable")
     else {
       val wa = pa.flatMap(_.split(" ")).filter(_.length >= 3)
       val wb = pb.flatMap(_.split(" ")).filter(_.length >= 3)
