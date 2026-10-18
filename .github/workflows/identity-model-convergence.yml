@@ -1,6 +1,6 @@
 #
 # THE COUNTRY CONVERGENCE SUITE — every country's films as the identity model decides them, from the
-# pinned recording (docs/design/identity-cutover-runbook.md): per country the corpus-shape specs and the
+# pinned recording (docs/design/identity-resolver.md §18): per country the corpus-shape specs and the
 # full run, the order-independence replay (in the run, or a row of its own), and — for the United States —
 # the sample as a row of its own. Every claim — a fixpoint under identical re-scrapes, the same
 # films whatever order the corpus arrives in, every archived cinema, showtime and film emitted, coverage

@@ -11,38 +11,14 @@ Read this before re-running the sweep, so you don't re-diagnose rows already
 settled, and — the load-bearing reason — so you check every outcome
 **film by film**. The sweep is not self-checking; see below.
 
-## The chain, and why each piece exists
+## What is left of the chain
 
-> **Historical.** Steps 2 and 3 (`CrewConfirmation`, `UnresolvedTmdbReaper`) were deleted with the
-> old film pipeline on 2026-10-04 (43e8ed84c). Detect survives only as a gauge
+> **Historical.** The sweep's confirm and act steps (`CrewConfirmation`, `UnresolvedTmdbReaper`) were deleted with the
+> old film pipeline on 2026-10-04 (43e8ed84c). The detect step survives only as a gauge
 > (`CinemaCorroboration.contradicts` → `WorkerCorpusMetrics`' misresolved count); the identity
 > resolver's `Acceptance` refuses a candidate a published fact contradicts, and a
-> wrong film is fixed by a pin (`docs/design/identity-resolver.md` §13). The log below is the record
-> of the sweeps run on the old chain.
-
-As it ran until 2026-10-04:
-
-1. **Detect** — `CinemaCorroboration.contradiction`
-   (`common/.../services/movies/CinemaCorroboration.scala`) flags a row whose
-   venues disagree with its resolved film, and
-   `resolvedOnWeakerEvidenceThanAvailable` flags one concluded from thinner
-   evidence than the row now carries.
-2. **Confirm** — `CrewConfirmation`
-   (`worker/.../services/tasks/CrewConfirmation.scala`) asks TMDB who actually
-   made the film before anything acts. A venue crediting the film's *other*
-   director, or a pseudonym, is not a wrong film.
-3. **Act** — `UnresolvedTmdbReaper`
-   (`worker/.../services/tasks/UnresolvedTmdbReaper.scala`) spends the
-   re-resolution, phase-spread over its 24h window. Wired in `WorkerWiring`.
-   Its `confirmContradiction` **default is deliberately runtime-only**: a
-   construction site that forgets the wiring degrades to doing *less*, never to
-   force-re-resolving every unconfirmed name disagreement.
-
-The **structural causes** were fixed, not just the rows that showed them:
-`TmdbBasis` records what a conclusion was reached from; an uncorroborated key
-year no longer counts as evidence; a year a venue wrote into its own title
-outranks it; cinema years outrank the all-slot fallback (which includes the
-Tmdb slot's own year, i.e. the row arguing for itself).
+> wrong film is fixed by a pin (`docs/design/identity-resolver.md` §13). What follows is what still
+> applies: the gauges, the method and the traps.
 
 `ReadModelFilmPruneBurst` alerts on the mass version of the failure below —
 more than 30% of a country's corpus pruned in an hour. The measured
@@ -68,17 +44,13 @@ Note the pairing: `subset="misresolved"` counts the sweep's **input** (rows whos
 venues contradict them), and `unresolved_with_showtimes` counts the **outcome**
 where it rejected a wrong film and found no right one. Every other census gauge
 gates on `readyToProject`, so before this series existed these rows dropped out
-of all of them without being counted anywhere — the reaper logs a re-try, not an
-outcome, one film is far below any prune-burst threshold, and only the
+of all of them without being counted anywhere — one film is far below any prune-burst threshold, and only the
 `kinowo.removal-audit` log named it (`reason=reconcile-prune`).
 
 **Alerted by `ReadModelFilmsInvisibleWithScreenings`** (`> 0` for 2h, warning) in
 `infra/nix/files/monitoring/rules/read-model-projection.rules`. A plain `> 0` is
-right because the measured baseline IS zero — see the audit below — and newcomers
-do not trip it either: an unresolved new film incubates in `pending_movies` and
-reaches `movies` already concluded. The `for: 2h` rides out a re-key or
-title-rule wave without letting a stuck row hide, since the reaper's own retry
-period is 24h.
+right because the measured baseline (audit of 2026-09-06, all five countries) IS zero. The `for: 2h` rides out a re-key or
+title-rule wave without letting a stuck row hide.
 
 **Method, per flagged row:**
 
@@ -86,81 +58,8 @@ period is 24h.
    film's. The venues are the evidence; the resolved slot is the claim.
 2. Search TMDB for **the title the venues publish**, not the title the row is
    keyed on.
-3. Write the correct `tmdbId` and TMDB slot directly. **Never clear `tmdbId`
-   to force a re-resolution** — see the traps below.
-
-**Audit completed 2026-09-06 — the answer is ZERO.** Across all five prod
-databases there is currently no row that fails `readyToProject` while carrying an
-upcoming showtime. The corpus holds 504 unresolved rows (PL 245, UK 103, US 100,
-DE 52, ES 4), and every one of them has a recorded no-match `tmdbAttempt` with its cinema
-detail done — so they all satisfy `readyToProject` and are visible, carrying
-venue-supplied title, runtime and director instead of TMDB's.
-
-That is the correction worth carrying forward: **unresolved does NOT mean
-invisible.** `readyToProject` is `tmdbConcluded && (tmdbId.isDefined ||
-detailDone)`, so a definitive no-match with detail done publishes fine. Only a row
-that is unresolved AND un-concluded (or still detail-pending) disappears. Querying
-`tmdbId: null` alone over-counts the invisible population by ~500 rows; the whole
-of the "event cinema" catalogue — Met Opera, Royal Ballet & Opera, NT Live — lives
-there legitimately and is on the site.
-
-Earlier the same day, prod contradictions fell 56 → 29 over ~14h on the 24h phase
-spread, and four rows the sweep had left unresolved were repaired by hand:
-`birdman` (194662), Mission: Impossible — Dead Reckoning (575264), Goosebumps 2
-(442062), G.B.H. (136775).
-
-**How to re-run the audit.** Reach prod Mongo as `docs/white-cinema-investigations.md`
-describes, then per country database intersect two sets: rows in `movies` matching
-`tmdbId` absent AND (`tmdbAttempt` absent OR `detailPending` true), against
-`filmId`s in `screenings` having a `showtimes.dateTime` in the future. Slots live
-in `movie_slots` (keyed by `filmId`) since the storage split — `movies` documents
-carry no `data`/`sourceData` map any more, which is the trap that makes a naive
-slot query return nothing.
-
-## A resolved row with no `Tmdb` slot is refilled by id, never re-searched
-
-Found 2026-09-06 while auditing the corpus: 483 rows across PL (122), UK (134) and
-DE (227) carried a `tmdbId` and no `TMDB` row in `movie_slots` — no TMDB poster,
-synopsis, genres or runtime, while their IMDb and Filmweb slots (which the rating
-refreshers rewrite on cadence) were intact. Dated by the freshness store, every one
-had been resolved inside the slot migration's window (2026-07-27 → 08-06); nothing
-resolved since is affected, so it was a bounded artefact — but nothing was going to
-heal it, because every sweep asks "is the id wrong?" and none asked "is the slot
-there?". `UnresolvedTmdbReaper` now has that fourth eligibility and hands the row to
-`MovieService.refillTmdbSlot`, which fetches the details BY THE ROW'S OWN ID and
-writes the slot through the same builder a resolution uses, ratings and cinemas
-carried forward. Not a forced re-resolve: that re-searches, and for a row with
-screenings a re-search can land on a stranger and prune the card (see the traps).
-Audit query: `movies` rows with `tmdbId` set whose `_id` has no `movie_slots` row
-with `slotKey: "TMDB"`; the count should reach zero within one 24h period.
-
-## Rows deliberately left, and why each needs a different tool
-
-- **`kungfupanda4|2008`** (`kinowo_us`, 112 upcoming screenings) is a genuine
-  **mixed** row, and it is VISIBLE — showing the wrong film to most of its
-  venues. It resolves to `tmdbId=9502`, Kung Fu Panda (2008, 90 min, Osborne &
-  Stevenson). One venue (Bear Tooth Theatrepub) really is screening that film;
-  **sixteen** Galaxy/Hangar venues are screening "Kung Fu Panda 4" (94 min, Joel
-  Crawford). So 16 of 17 venues get the wrong poster, cast and ratings. Do not
-  hand-pick — either single answer is wrong for one side.
-
-  **Why `MixedFilmSplitter` never fires on it**, confirmed against the live row:
-  `MixedFilmDetector.identityGroups` filters `cinemaSlots` down to those with a
-  non-empty `originalTitle`, and **no US cinema slot carries one at all** (the
-  Flicks-sourced slots have `title` only), so the row yields zero identity groups
-  and `split` returns empty. Falling back to `title` is not enough on its own
-  either: `titlesDiffer` demands DISJOINT word sets, and "Kung Fu Panda" is a
-  subset of "Kung Fu Panda 4" — a base film and its numbered sequel never differ
-  under that test. Two independent blockers, and loosening either one risks
-  over-splitting a corpus where `splitsSoFar` is asserted to stay zero. Not
-  attempted here for that reason.
-- **`it|1990`** (`kinowo_uk`, 33 upcoming screenings) — **the earlier claim that
-  this is invisible was WRONG.** The row carries a no-match `tmdbAttempt` with detail
-  done, so `readyToProject` holds and it IS in `web_movies` and on the site,
-  listed from what the venues published (one of them supplies "It (1990)", 168
-  min, Tommy Lee Wallace). TMDB carrying the 1990 miniseries as television costs
-  it TMDB's poster/synopsis/ratings, not its visibility. There is no invisibility
-  decision to make; giving TV a path is a quality improvement, not a fix.
+3. Fix the film with a pin (`docs/design/identity-resolver.md` §13), not by
+   clearing `tmdbId`: a cleared row fails `readyToProject` and its card is pruned.
 
 ## What provably cannot be closed at this layer
 
@@ -172,18 +71,8 @@ with `slotKey: "TMDB"`; the count should reach zero within one 24h period.
   Read the comment above the modifier fallback in
   `worker/.../services/enrichment/RottenTomatoesClient.scala` before touching it;
   anyone tightening the rule will see immediately which case they broke.
-- **The end-of-tick prune still removes a slot whose write was skipped**
-  (`touchedSlots` holds a record that was never written — `MovieCache`, the
-  scrape-prune block). Pre-existing and older than the slot move; deliberately
-  not fixed, because the opposite failure — stale slots never pruned — is worse.
-
 ## Traps this sweep has already paid for
 
-- **Never clear `tmdbId` to force a re-resolution on a row with screenings.**
-  The card is pruned within minutes and `UnresolvedTmdbReaper` will not revisit
-  that row for up to **24h** (once per row per period, at a phase hashed from
-  its resolve dedup key — there is no state to clear and no way to bring a key
-  forward; a restart does not help). Write the correct resolution instead.
 - **Verify a review finding before acting on it.** Acting on one unverified
   suggestion ("shorten Robert Downey Jr.") actively *regressed* behaviour: minus
   the suffix it is his father, whom TMDB ranks first because he is a director.

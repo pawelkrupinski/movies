@@ -9,8 +9,7 @@ import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository}
 
 
 /**
- * How a country's films are made (docs/design/identity-resolver.md §8; the cut-over itself is told in
- * docs/design/identity-cutover-runbook.md):
+ * How a country's films are made (docs/design/identity-resolver.md §8; the cut-over itself in §18):
  *  - a scrape goes to [[IdentityListingIntake]] (the venue's accepted listing);
  *  - [[IdentityProjection]] writes the identity model's films: once the model is taken up, then as its batches move
  *    (`onModelBatch`), and hourly over the whole corpus (the settle reaper's reconcile).

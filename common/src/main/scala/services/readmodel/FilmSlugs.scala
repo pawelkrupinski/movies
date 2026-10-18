@@ -65,7 +65,7 @@ object FilmSlugs {
    *  just the obvious three fields. Two films that share a title AND a year are
    *  separated only by the last field, and since 2026-09-07 `_id` is an opaque
    *  `FilmId` minted from whichever key the row was FIRST created under — a
-   *  function of arrival order, not of the film (see `docs/stable-film-id.md`).
+   *  function of arrival order, not of the film (see `docs/design/identity-resolver.md` §6).
    *  That made the bare address flip between two same-titled films whenever a
    *  worker rebuilt its corpus in a different order: a shared link would open a
    *  different film, and every replay of one corpus disagreed with the last

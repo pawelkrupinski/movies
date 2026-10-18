@@ -11,8 +11,7 @@ Original status: design, 2026-09-25. Prerequisites (a) to (d) below were on bran
 The shadow prototype is on `identity-resolver-proof` (test code only). The proof report is the
 source for every number marked *(proof)*.
 
-Related: `docs/stable-film-id.md` (FilmId, phases 1–4), `docs/read-model-convergence.md`,
-`docs/loop-a-settle-oscillation.md`, `docs/promotion.md`.
+Related: `docs/read-model-convergence.md`, `docs/promotion.md`.
 
 ---
 
@@ -61,7 +60,7 @@ commits, of which about 50 are identity fixes. A selection:
 | A fold's retired rows collided with the survivor (E11000); duplicates deleted before the survivor landed | data loss | bc640f6ea, 4eb3ec7dd, 8983eced0 |
 | A forced re-resolve re-keyed off the stored title key | churn | 5e1667746 |
 | A doubted TMDB match stripped and rebuilt by every sweep | churn | 0719191cd |
-| Vue showtimes deleted on re-key (UK); read model 4.5 h short after an id-scheme change; BackfillRM wiped screenings | data loss | earlier, see `docs/stable-film-id.md` |
+| Vue showtimes deleted on re-key (UK); read model 4.5 h short after an id-scheme change; BackfillRM wiped screenings | data loss | earlier, the FilmId phases (removed with the old pipeline in 43e8ed84c) |
 | 9 days of logs, 1,211 key moves, 122 ping-pong pairs (`99seasonthematrix` ↔ `cineworld30thematrix`, 12× each way) | churn | FilmId phase 1 (743dd9f37) |
 
 Each fix is local: it adds one more veto, window or tie-break to one stage. The hard-cluster
@@ -272,7 +271,7 @@ ListingKey asc)` and matches greedily. The result:
 
 FilmIds stay opaque. New ones come from a counter (smaller is older). Existing `FilmId`s,
 including legacy `title|year` strings, are carried over by the migration (§8, phase 2). This is
-the property `docs/stable-film-id.md` wanted and the incremental fold could not give: two replays
+the property the stable-FilmId work wanted and the incremental fold could not give: two replays
 in different orders assign the same ids.
 
 ---
@@ -600,7 +599,7 @@ for the resolver's query set (§9).
   writes films and slots keyed `(FilmId, ListingKey)`.
 - The order is ES → DE → UK → US → PL, smallest and cleanest shadow diff first. PL goes last
   because it has the most decorated spellings and is where under-merge costs most.
-- *Built, off everywhere — see §18 and `docs/design/identity-cutover-runbook.md`.*
+- *Built and cut over everywhere — see §18.*
 
 ### Phase 4: delete the old stages
 
@@ -2228,9 +2227,8 @@ resolver on the pipeline's evidence, not its own.
 > (`KINOWO_IDENTITY_CUTOVER`, `IdentityCutoverCountries`): the projection is the only path.
 > `IdentityCutoverWiring` and the `kinowo_worker_identity_cutover_*` gauges keep their names.
 
-Built and tested, then switched on country by country. The runbook (preconditions, the gitops line, reading
-it, rollback, per-country blockers, the phase-6 deletion list) is
-`docs/design/identity-cutover-runbook.md`.
+Built and tested, then switched on country by country. Its runbook was deleted with the switch; it is
+in git history before the 2026-10-18 docs prune.
 
 ### 18.1 What landed
 
