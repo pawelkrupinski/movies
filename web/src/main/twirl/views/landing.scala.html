@@ -325,12 +325,11 @@
 
     // …and the German one, which a stripped fold gets WRONG. Nobody types
     // "koln": the umlaut expands, and the slug agrees — `/koeln/`, `/muenchen/`,
-    // `/nuernberg/`. Stripping alone answers "koeln" with nothing.
+    // `/nuernberg/`. Stripping alone answers "koeln" with nothing. So expand
+    // the umlauts first, then fold what is left the general way.
     function foldExpanded(s) {
-      return (s || '').toLowerCase()
-        .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/ß/g, 'ss')
-        .normalize('NFD').replace(/[̀-ͯ]/g, '')
-        .replace(/ł/g, 'l');
+      return fold((s || '').toLowerCase()
+        .replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue'));
     }
 
     // A row answers to BOTH spellings, so one folded query reaches either:

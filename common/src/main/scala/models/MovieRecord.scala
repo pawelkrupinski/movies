@@ -403,12 +403,13 @@ case class MovieRecord(
    *  `city` only when one of the chain's venues there is actually screening the
    *  film — see [[synopsisAppliesToCity]].
    *
-   *  That SAME chain slot is also the one whose language gets checked (see
-   *  [[bestSynopsis]]): confirmed prod bug, `cinema-city.pl`'s own detail page
+   *  Those SAME chain slots are also the only ones whose language gets checked
+   *  (see [[bestSynopsis]]): confirmed prod bug, `cinema-city.pl`'s own detail page
    *  served an English blurb on its Polish-domain pages for "Marsupilami",
    *  which — being longer than TMDB's correct Polish one — won every city
-   *  Cinema City serves. The check is scoped to that one impersonal,
-   *  API-sourced slot, never to an individual cinema's own editorial text —
+   *  Cinema City serves. Cineworld's slot is the same impersonal, API-sourced
+   *  detail page, so the check covers every chain slot of
+   *  `Cinema.chainDetailVenues` — never an individual cinema's own editorial text —
    *  a boutique cinema (e.g. Amondo Grindhouse) legitimately writes an
    *  English blurb for an English-subtitled special screening, and that
    *  curated choice must never be second-guessed by a heuristic. */
@@ -480,8 +481,9 @@ case class MovieRecord(
    *  sees well-formed markdown regardless of which source produced it.
    *
    *  `expectedLanguage` (an ISO 639-1 tag, from [[synopsisForCity]]'s city) is
-   *  the FIRST sort key when given, and ONLY for a candidate from the Cinema
-   *  City chain-detail slot ([[CinemaCityChain]]) — see [[synopsisForCity]]
+   *  the FIRST sort key when given, and ONLY for a candidate from a chain-detail
+   *  slot (`Cinema.chainDetailVenues`: [[CinemaCityChain]], [[CineworldChain]],
+   *  [[RegalChain]]) — see [[synopsisForCity]]
    *  for why the check is scoped that narrowly. Such a candidate that
    *  `tools.TextLanguage.detect`s as a different language loses to any
    *  candidate that doesn't, before the paragraph/length comparison ever
@@ -495,7 +497,7 @@ case class MovieRecord(
       .flatMap { case (source, raw) => processedSynopsisCandidate(raw).map(source -> _) }
       .sortBy { case (source, (_, plainText)) =>
         val wrongLanguage = expectedLanguage.exists { expected =>
-          Source.cinemaOf(source).contains(CinemaCityChain) &&
+          Source.cinemaOf(source).exists(Cinema.chainDetailVenues.contains) &&
             tools.TextLanguage.detect(plainText).exists(_ != expected)
         }
         (if (wrongLanguage) 1 else 0, if (plainText.contains('\n')) 0 else 1, -plainText.length)

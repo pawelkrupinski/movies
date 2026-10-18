@@ -24,10 +24,6 @@ object ChainFlicksFallback {
    *  `flicks.co.uk` would simply 404. */
   case class FlicksFallback(market: FlicksMarket, slug: String)
 
-  /** Every UK venue whose own-site client is primary, with its flicks.co.uk slug:
-   *  the chains and the independents alike. */
-  def ukSlugs: Map[Cinema, String] = ukChainSlugs ++ ukOwnSiteSlugs
-
   /** The UK chain venues (Cineworld / Vue / Showcase / Everyman / Odeon) and
    *  their flicks.co.uk slugs. */
   val ukChainSlugs: Map[Cinema, String] = Map(
@@ -497,6 +493,10 @@ object ChainFlicksFallback {
     WetherbyFilmTheatre -> "wetherby-film-theatre-wetherby",
     WindmillLittlehampton -> "windmill-littlehampton",
   )
+
+  /** Every UK venue whose own-site client is primary, with its flicks.co.uk slug:
+   *  the chains and the independents alike. */
+  val ukSlugs: Map[Cinema, String] = ukChainSlugs ++ ukOwnSiteSlugs
 
   /** Every chain venue that keeps a Flicks aggregator fallback, with the market
    *  its slug lives on. */

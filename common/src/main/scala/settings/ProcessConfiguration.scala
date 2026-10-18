@@ -206,6 +206,12 @@ final class ProcessConfiguration(val env: Env) {
     ReadModelColdRetryInterval(seconds("KINOWO_READMODEL_COLD_RETRY_SECONDS", default.value))
   /** `KINOWO_IDENTITY_RATING_GATE` (`1` or `true`) — confidence-gated ratings; off unless set. */
   def identityRatingGate: IdentityRatingGateEnabled = IdentityRatingGateEnabled(env.flag("KINOWO_IDENTITY_RATING_GATE"))
+  // The lookup fill's three settings keep their `KINOWO_IDENTITY_SHADOW_*` env names from when
+  // the fill rode the retired shadow run: the deploy manifests (movies-gitops'
+  // `worker/overlays/<cc>/patch.yaml` sets `KINOWO_IDENTITY_SHADOW_LOOKUP_RATE` for every
+  // country), the Grafana panel and docs/design/identity-resolver.md §19 all name them so.
+  // Renaming one means renaming it there in the same rollout, or the worker silently falls
+  // back to the compiled-in default.
   def identityLookupFillInterval(default: IdentityLookupFillInterval): IdentityLookupFillInterval =
     IdentityLookupFillInterval(seconds("KINOWO_IDENTITY_SHADOW_INTERVAL_SECONDS", default.value))
   def identityLookupFillInitialDelay(default: IdentityLookupFillInitialDelay): IdentityLookupFillInitialDelay =
