@@ -348,6 +348,18 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     resolve(Seq(listing(KinoApollo, "ES (SCHAMONI)")), films).decisionOf(listing(KinoApollo, "ES (SCHAMONI)").key).film should not be Some(133035)
   }
 
+  it should "deny a film none of whose directors its title bills as the director, whatever credit a feed copied onto it" in {
+    // DE ScharfrichterKino's "Alpha (dir. Ducournau)" (recording 38713274617) carried a feed's year and credit of Shiv
+    // Rawail's 2026 "Alpha", and took it (judged wrong: Julia Ducournau's Alpha). The venue's own words name the director;
+    // a feed's copied facts never outweigh them.
+    val films = Seq(F(1122030, "Alpha", 2026, "Shiv Rawail", 160, 8), F(1284460, "Alpha", 2025, "Julia Ducournau", 128, 6))
+    val marked = listing(KinoApollo, "Alpha (dir. Ducournau)", Some(2026), Some("Shiv Rawail"))
+    resolve(Seq(marked), films).decisionOf(marked.key).film should not be Some(1122030)
+    // the PL way of billing it ("reż."), naming the film's own director: still its film
+    val billed = listing(KinoMuza, "Obcy (reż. Ozon)")
+    resolve(Seq(billed), Seq(F(1429348, "Obcy", 2025, "François Ozon", 122, 9))).decisionOf(billed.key).film shouldBe Some(1429348)
+  }
+
   "A listing that publishes only a title" should
     "not be denied its credited siblings' film by the title relation alone" in {
     // PL, the Polish title of a foreign film: TMDB's record carries only the original title, so a

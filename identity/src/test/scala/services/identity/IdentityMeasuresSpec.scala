@@ -1244,4 +1244,24 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     first shouldBe IdentityMeasures.shapes(Seq(billed))
     listing.shapesOfOwn("another title") shouldBe IdentityMeasures.shapes(Seq("another title"))
   }
+
+  "a director a title bills" should "be read after its mark, each name alone, and deny only a film crediting none of them" in {
+    IdentityMeasures.billedDirectors(Seq("Lalka, reż. Maciej Kawalski (2026)")) shouldBe Seq("Maciej Kawalski")
+    IdentityMeasures.billedDirectors(Seq("Fonomo 26 - Nova '78 reż. Rodrigo Areias, Aaron Brookner")) shouldBe Seq("Rodrigo Areias", "Aaron Brookner")
+    IdentityMeasures.billedDirectors(Seq("Alpha (dir. Ducournau)")) shouldBe Seq("Ducournau")
+    IdentityMeasures.billedDirectors(Seq("Wykład dr Olgi Wesołowskiej")) shouldBe Nil
+    IdentityMeasures.billedDirectors(Seq("Spirited Away: w krainie bogów reż. Hayao Miyazaki (2001)")) shouldBe Seq("Hayao Miyazaki")
+    IdentityMeasures.billedDirectors(Seq("LEICA - EIN JAHRHUNDERT IN BILDERN - am 15.11. mit Regie-Besuch!")) shouldBe Nil
+    val alpha = Listing("Alpha (dir. Ducournau)")
+    IdentityMeasures.billsAnotherDirector(alpha, Film("Alpha", year = Some(2026), directors = Some(Seq("Shiv Rawail")))) shouldBe true
+    IdentityMeasures.billsAnotherDirector(alpha, Film("Alpha", year = Some(2025), directors = Some(Seq("Julia Ducournau")))) shouldBe false
+    // no credits fetched: nothing to deny by
+    IdentityMeasures.billsAnotherDirector(alpha, Film("Alpha", year = Some(2026))) shouldBe false
+    // a transliteration that misses denies nothing: TMDB credits Miyazaki as 宮崎駿
+    IdentityMeasures.billsAnotherDirector(Listing("Spirited Away: w krainie bogów reż. Hayao Miyazaki (2001)"),
+      Film("Spirited Away", directors = Some(Seq("宮崎駿")))) shouldBe false
+    // a name split otherwise is the same person
+    IdentityMeasures.billsAnotherDirector(Listing("Nikt nie wie reż. Hirokazu Koreeda (2004)"),
+      Film("Nikt nie wie", directors = Some(Seq("Hirokazu Kore-eda")))) shouldBe false
+  }
 }

@@ -150,6 +150,10 @@ object IdentityMeasures {
       if (originalStandsApart) numberedShapes else copy(originalTitle = None).numberedShapes
     /** The directors, and those credited beside the year, parsed once per listing (`directorRelation`). */
     private[identity] lazy val directorCredits: CreditRelation.Credits   = new CreditRelation.Credits(directors)
+    /** The directors its own titles bill by a director's mark ([[IdentityMeasures.billedDirectors]]), once per listing;
+     *  `None` when they bill none. */
+    private[identity] lazy val billedDirectorCredits: Option[CreditRelation.Credits] =
+      Some(IdentityMeasures.billedDirectors(ownTitles)).filter(_.nonEmpty).map(new CreditRelation.Credits(_))
     /** Its search titles' [[IdentityMeasures.key]]s, in order: worked out once, not per film it is weighed against. */
     private[identity] lazy val searchKeys: Seq[String] = searchTitles.map(IdentityMeasures.key)
     /** Each credited director's name as title tokens, in order. */
@@ -555,6 +559,26 @@ object IdentityMeasures {
   private[identity] def bannerNamesItsDirector(l: Listing, f: Film): Boolean =
     l.directors.isEmpty && (l.bannerCuts.exists { case (titled, banner) => f.titleKeys.contains(titled) && banner.exists(f.directorSurnames) } ||
       l.closingCuts.exists { case (titled, credit) => f.directorNameKeys.contains(credit) && f.titleKeys.contains(titled) })
+
+  /** A director's mark in a title — PL "reż.", "dir.", "directed by", DE "Regie:" or "Regie" before a capitalised name,
+   *  never "Regie-Besuch" — and the names after it, from a letter up to a bracket, a pipe, a bullet, a quote or a digit: PL "Lalka, reż. Maciej Kawalski (2026)", "Nova '78 reż. Rodrigo
+   *  Areias, Aaron Brookner", DE "Alpha (dir. Ducournau)". */
+  private val DirectorMark = """(?U)(?:(?i:\breż\.|\bdir\.|\bdirected by\b|\bregie\s*:)\s*|(?i:\bregie)\s+(?=\p{Lu}))(\p{L}[^()\[\]|•„”"\d]*)""".r
+  private val CreditJoin   = """(?iU)\s*(?:,|&|\band\b|\bi\b|\bund\b|\by\b)\s*""".r
+  /** The directors a title BILLS — named after a director's mark ([[DirectorMark]]) — each name alone. */
+  private[identity] def billedDirectors(titles: Seq[String]): Seq[String] =
+    titles.flatMap(t => DirectorMark.findAllMatchIn(t).map(_.group(1))).flatMap(CreditJoin.split)
+      .map(_.trim.stripSuffix(".").trim).filter(_.exists(_.isLetter)).distinct
+
+  /** Does the listing's title bill as its director ([[Listing.billedDirectorCredits]]) nobody the film credits — not
+   *  one name in common, the film's directors fetched? The venue's own words name the director, and a feed's facts
+   *  copied onto the listing never outweigh them: DE ScharfrichterKino's "Alpha (dir. Ducournau)" carried Shiv
+   *  Rawail's credit and year, and took his 2026 "Alpha". A surname billed alone names its director
+   *  ("Obcy (reż. Ozon)": `shared_name`), and a record crediting in another script is never denied by a transliteration
+   *  that misses (PL "Spirited Away … reż. Hayao Miyazaki": TMDB's 宮崎駿 reads "Gong Qi Jun"). */
+  def billsAnotherDirector(l: Listing, f: Film): Boolean =
+    l.billedDirectorCredits.exists(billed => f.directorCredits.exists(credits =>
+      CreditRelation.of(billed, credits) == Category("different")))
 
   /** Is a listing's credited "director" the film's HOUSE — a name two words or more long that runs inside the film's
    *  own title, and none of the people the film credits? UK venues credit "The Metropolitan Opera" for its 2026/27
