@@ -26,7 +26,9 @@ import services.identity.IdentityMeasures.Measure
  *    translation beside it — the namesakes a reading or a show is taken for are older catalogue films.
  *  A piece naming a STAGING beside the film — a theatre, a musical ([[ListingShape.StageWords]]) — outweighs all but a
  *  stated fact: the widely screened film, the current release and the venue's town are no answer to a staging of its work.
- *  `measures`: the billing's against the film; `tmdbId`: the film's, when it has one. Measured on the five convergence legs'
+ *  `measures`: the billing's against the film; `tmdbId`: the film's TMDB id, when it has one —
+ *  never a family's own number, so the feed's link ([[FeedLink.linked]]) is read as TMDB's: a family's resolve decides no
+ *  piece (`IdentityResolver.resolveScored`), and [[ofFamilies]] is given the agreed record's TMDB id. Measured on the five convergence legs'
  *  whole-corpus takes (2026-10-14). */
 private[identity] object BilledPiece {
   /** Why the film is one piece of the billing; `staging`: the piece beside it names a staging of its work. */
@@ -48,7 +50,7 @@ private[identity] object BilledPiece {
     def screened = corroborated >= IdentityResolver.PieceCorroboration
     def stated   = IdentityMeasures.ownAgreement(measures)._1.nonEmpty ||
       IdentityMeasures.runtimeGap(measures).exists(_ <= IdentityResolver.PieceRuntimeAgreement) ||
-      listings.exists(listing => SourceReliability.tmdbLinked(listing).exists(link => tmdbId.contains(link._2)))
+      FeedLink.linked(listings).exists(link => tmdbId.contains(link._2))
     // a current release — of its screenings' year or the one before, or one TMDB dates no release of yet — whose subtitle
     // or translation its venue bills beside it ("Über Unterbiberger – Vom Woid in die Welt", 2026, ten venues): the
     // namesakes a reading or a show is taken for are the catalogue's older films ("Immer Ärger mit Harry", 1955)

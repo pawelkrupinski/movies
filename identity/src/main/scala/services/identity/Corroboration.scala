@@ -13,7 +13,8 @@ package services.identity
  *  - `original title`: an original title of its own (not its title restated) that is the film's;
  *  - `runtime`: a running time within [[RuntimeBand]] minutes of the film's that no namesake's fits as well — 90 minutes
  *    fit both "Escape Room 2"s, so they tell neither apart;
- *  - `feed id`: a TMDB-keyed feed's id linking it to `f` ([[SourceReliability.tmdbLinked]]);
+ *  - `feed id`: a TMDB-keyed feed's id linking it to `f` (`linked`: [[FamilyScope.feedLinked]], none where the resolve's
+ *    films are a family's own numbers);
  *  - `season`: a stage relay's screening days placing it in the season its record names ([[Scored.seasonProduction]]).
  *
  *  A node with none still takes the film when another node of its cluster billed under the SAME title corroborates it on
@@ -30,15 +31,15 @@ private[identity] object Corroboration {
 
   /** The facts by which `own` — the node's scoring of the film — corroborates it, `rivals` being the node's other
    *  scored candidates, by name; empty when none does. */
-  def facts(node: EvidenceNode, own: Scored, rivals: Seq[Scored]): Seq[String] = {
+  def facts(node: EvidenceNode, own: Scored, rivals: Seq[Scored], linked: EvidenceNode => Option[Int]): Seq[String] = {
     val (agree, _) = IdentityMeasures.ownAgreement(own.measures)
     val original   = agree("originalTitle") && node.listings.exists(listing => listing.originalTitle.exists(original =>
       IdentityMeasures.key(original) != IdentityMeasures.key(listing.title) && IdentityMeasures.key(original) != IdentityMeasures.key(listing.rawTitle)))
     def inBand(scored: Scored) = IdentityMeasures.runtimeGap(scored.measures).exists(_ <= RuntimeBand)
     val runtime    = inBand(own) && !rivals.exists(rival => (rival ne own) && rival.candidate.tmdbId != own.candidate.tmdbId && rival.titleNamesIt && inBand(rival))
-    val linked     = node.listings.exists(listing => SourceReliability.tmdbLinked(listing).exists(_._2 == own.candidate.tmdbId))
+    val feedId     = linked(node).contains(own.candidate.tmdbId)
     val season     = own.seasonProduction || own.number("season.delta").contains(0.0)
-    Seq("year" -> agree("year"), "director" -> agree("director"), "original title" -> original, "runtime" -> runtime, "feed id" -> linked,
+    Seq("year" -> agree("year"), "director" -> agree("director"), "original title" -> original, "runtime" -> runtime, "feed id" -> feedId,
       "season" -> season)
       .collect { case (name, true) => name }
   }
@@ -51,9 +52,10 @@ private[identity] object Corroboration {
 
   /** How many nodes of `clusters` take each film on a fact of their own ([[facts]]) — a film's standing in its title
    *  family, against which a bare node's namesake take is weighed ([[refused]]). `filmOf` is a cluster's film. */
-  def support(clusters: Seq[Seq[EvidenceNode]], filmOf: Seq[EvidenceNode] => Option[Int], scored: EvidenceNode => Seq[Scored]): Map[Int, Int] =
+  def support(clusters: Seq[Seq[EvidenceNode]], filmOf: Seq[EvidenceNode] => Option[Int], scored: EvidenceNode => Seq[Scored],
+              linked: EvidenceNode => Option[Int]): Map[Int, Int] =
     clusters.flatMap(cluster => filmOf(cluster).toSeq.flatMap(film => cluster.filter(node =>
-      scored(node).find(_.candidate.tmdbId == film).exists(facts(node, _, scored(node)).nonEmpty)).map(_ => film))).groupMapReduce(identity)(_ => 1)(_ + _)
+      scored(node).find(_.candidate.tmdbId == film).exists(facts(node, _, scored(node), linked).nonEmpty)).map(_ => film))).groupMapReduce(identity)(_ => 1)(_ + _)
 
   /** How closely a candidate's title names the listing's: whole (or its original), an alternative title, a delimited
    *  piece of it — a rival is a NAMESAKE only when it names the listing at least as closely as the film taken (PL
@@ -95,9 +97,9 @@ private[identity] object Corroboration {
    *  judged right). Neither is a fact of its own against the film enough: a feed's link of another film is often the
    *  operator's wrong pick (DE Cineamo's "Das Piano", "Persona", "Rent"), and TMDB's credits often name another director
    *  than the venue (PL "Tedi i magiczna lampa"). */
-  def refused(cluster: Seq[EvidenceNode], film: Int, scored: EvidenceNode => Seq[Scored], edges: Seq[ResolverEdge],
-              support: Map[Int, Int]): Seq[(EvidenceNode, String)] = {
-    val own = cluster.map(node => node -> scored(node).find(_.candidate.tmdbId == film).fold(Seq.empty[String])(facts(node, _, scored(node)))).toMap
+  def refused(cluster: Seq[EvidenceNode], film: Int, scored: EvidenceNode => Seq[Scored], linked: EvidenceNode => Option[Int],
+              edges: Seq[ResolverEdge], support: Map[Int, Int]): Seq[(EvidenceNode, String)] = {
+    val own = cluster.map(node => node -> scored(node).find(_.candidate.tmdbId == film).fold(Seq.empty[String])(facts(node, _, scored(node), linked))).toMap
     def titles(node: EvidenceNode) = node.listings.flatMap(listing => Seq(listing.title, listing.cleanTitle) ++ listing.searchTitle).map(IdentityMeasures.key).toSet
     val ids    = cluster.map(_.id).toSet
     val backing = support.getOrElse(film, 0)
@@ -116,14 +118,14 @@ private[identity] object Corroboration {
     // as much (DE "The Killer" ×5,
     // bare, joined to the two venues dating Woo's 2024 remake while seven bill his 1989 film). A catalogue id still does.
     val disputed = cluster.filter(own(_).isEmpty).flatMap(node => namesake(node).map(node.id -> _)).toMap
-    val linked = edges.filter(edge => edge.must && Vouching(edge.reason) && ids(edge.a) && ids(edge.b))
+    val joined = edges.filter(edge => edge.must && Vouching(edge.reason) && ids(edge.a) && ids(edge.b))
       .flatMap(edge => Seq(edge.a -> (edge.b, edge.reason), edge.b -> (edge.a, edge.reason))).groupMap(_._1)(_._2)
     val vouched = scala.collection.mutable.Set.from(cluster.filter(own(_).nonEmpty).map(_.id))
     val titled  = cluster.filter(own(_).nonEmpty).flatMap(titles).toSet
     cluster.filter(node => !disputed.contains(node.id) && titles(node).exists(titled)).foreach(vouched += _.id)
     var frontier = vouched.toSeq
     while (frontier.nonEmpty) {
-      frontier = frontier.flatMap(linked.getOrElse(_, Nil)).collect {
+      frontier = frontier.flatMap(joined.getOrElse(_, Nil)).collect {
         case (id, reason) if reason == ConstraintEdges.SameCatalogueId || !disputed.contains(id) => id
       }.filter(vouched.add)
     }

@@ -103,7 +103,7 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
    *  APART", Andreasstadel's "Departures"), is the copy's film, and that wider form lost 5 right takes to cure CITY 46's
    *  "THE BLACK HOLE" (recording 38713274617, docs/identity-experiments.md). */
   private def copiedOriginalJoinsAnotherFilm(linked: EvidenceNode, other: EvidenceNode, linkedFilm: Option[Int], otherFilm: Option[Int]): Boolean =
-    scoring.generation.numbersFilmsByTmdbId && FeedLink.linked(linked).exists { case (_, film) =>
+    scoring.generation.numbersFilmsByTmdbId && FeedLink.linked(linked.listings).exists { case (_, film) =>
       val bothTitles = Seq(linked, other)
       bothTitles.exists(_.evidence.originalTitle.isDefined) &&
         bothTitles.forall(node => node.evidence.originalTitle.isEmpty || node.listings.forall(SourceReliability.copiesOriginalTitle)) &&

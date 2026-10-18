@@ -6,11 +6,13 @@ import services.movies.{ListingKey, TitleNormalizer}
 /** A film database of `films`: search by all-words containment of a title or an alternative title,
  *  the directors' filmographies, the films IMDb lists under a title (its own, exactly), and each
  *  film's record. */
-final class FilmTable(films: Seq[FilmTable.F], normalizer: TitleNormalizer) extends IdentityLookups {
+final class FilmTable(films: Seq[FilmTable.F], normalizer: TitleNormalizer, tmdbNumbered: Boolean = true) extends IdentityLookups {
   import FilmTable.F
   private def words(s: String) = services.movies.TitleContainment.tokens(normalizer.searchQuery(s)).toSet
   private def hit(f: F) = Hit(f.id, f.title, None, Some(f.year), f.popularity)
   override def hasDetail(l: Listing): Boolean = false
+  /** `tmdbNumbered` false: the table's ids are a family's own numbers, as `agreement.FamilyLookups`' are. */
+  override def numbersFilmsByTmdbId: Boolean = tmdbNumbered
   override def detail(l: Listing): Answer[Option[DetailFacts]] = Answer.Known(None)
   private val inTmdb = films.filterNot(_.imdbOnly)
   private def titledIn(f: F, t: String) = (f.title +: f.imdbTitles).exists(IdentityMeasures.key(_) == IdentityMeasures.key(t))

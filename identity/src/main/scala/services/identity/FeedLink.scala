@@ -41,10 +41,13 @@ private[identity] object FeedLink {
   def copiesAnotherTitle(listing: IdentityMeasures.Listing): Boolean =
     listing.originalTitle.exists(copied => !(listing.rawTitle.toSeq :+ listing.title).map(IdentityMeasures.key).contains(IdentityMeasures.key(copied)))
 
-  /** The one TMDB film a TMDB-keyed feed links every listing of `node` to, with the id that links it. */
-  def linked(node: EvidenceNode): Option[(CatalogueId, Int)] =
-    node.listings.map(SourceReliability.tmdbLinked).distinct match {
-      case Seq(Some(link)) => Some(link)
-      case _               => None
+  /** The one TMDB film the TMDB-keyed feeds link `listings` to, with the id that links it — the one definition every
+   *  reader of a node's or a cluster's link reads. A listing no such feed lists is silent, not a dissent (a cluster spans
+   *  venues no feed lists); listings linked to two films link none. The number is TMDB's: a resolve whose films are a
+   *  family's own numbers reads it as nothing ([[IdentityLookups.numbersFilmsByTmdbId]], `FamilyScope.feedLinked`). */
+  def linked(listings: Seq[Listing]): Option[(CatalogueId, Int)] =
+    listings.flatMap(SourceReliability.tmdbLinked).distinctBy(_._2) match {
+      case Seq(link) => Some(link)
+      case _         => None
     }
 }

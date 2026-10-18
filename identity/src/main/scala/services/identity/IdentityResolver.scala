@@ -467,7 +467,8 @@ object IdentityResolver {
       def answered(query: CandidateQuery): Seq[Hit] = answers.get(query).flatMap(_.toOption).getOrElse(Nil)
       // a piece the corpus bills beside two whole titles or more, whatever families they fell in
       def recurs(shape: String) = generation.context.repeatedSegment(generation.normalizer.sanitize(shape))
-      val backed  = Corroboration.support(clusters, _.iterator.flatMap(node => filmOf(node.id)).nextOption(), scope.of)
+      def linked(node: EvidenceNode) = scope.feedLinked(node).map(_._2)
+      val backed  = Corroboration.support(clusters, _.iterator.flatMap(node => filmOf(node.id)).nextOption(), scope.of, linked)
       val decided = clusters.flatMap { cluster =>
         val (bills, unbilled) = cluster.partition(node => billing(node.id))
         // a member billing its cluster's film as one piece beside another thing is none of it either — unless a pin took it
@@ -480,7 +481,7 @@ object IdentityResolver {
         }.toMap ++ film.filterNot(_ => pinned || !pieces).toSeq.flatMap(_ => IdentityResolver.besideItsScreening(unbilled)).toMap
         val placed = unbilled.filterNot(piecesOf.contains)
         // a member nothing of its own corroborates the film by, whose take a fact or an evidenced namesake speaks against
-        val weak   = film.filterNot(_ => pinned).toSeq.flatMap(Corroboration.refused(placed, _, scope.of, familyEdges, backed)).toMap
+        val weak   = film.filterNot(_ => pinned).toSeq.flatMap(Corroboration.refused(placed, _, scope.of, linked, familyEdges, backed)).toMap
         val rest   = placed.filterNot(weak.contains)
         if ((bills.isEmpty && piecesOf.isEmpty && weak.isEmpty) || film.isEmpty)
           Seq(decisions.of(cluster, scope, filmOf, accepted, votes, familyEdges, clusterIndex))

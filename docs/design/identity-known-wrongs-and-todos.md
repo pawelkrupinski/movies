@@ -215,9 +215,13 @@ Each a production change: measure with `scripts/identity-measure`, land one at a
 - [x] **The silent-era denial reads two ways** (done: `ListingShape.silentBillingDenies`; the node and the listing it is
   asked of stay each stage's): `FamilyScope.denialByNode` if any listing of the node bills silent,
   `Agreement` per listing. One predicate.
-- [ ] `SourceReliability.tmdbLinked` is read without a37454e82's `numbersFilmsByTmdbId` gate in
+- [x] `SourceReliability.tmdbLinked` is read without a37454e82's `numbersFilmsByTmdbId` gate in
   `IdentityResolver.billedAsPiece` and `SuspectTakes`; "the feed links one film" is defined twice (`UnifiedEvidence`
-  counts the linked listings only, `FeedLink.linked` asks every listing). Check, then one definition.
+  counts the linked listings only, `FeedLink.linked` asks every listing). Check, then one definition. (done: both
+  read TMDB's numbers only — a family's resolve decides no piece, `SuspectTakes` reads shipped takes — but
+  `Corroboration.facts`' "feed id" ran ungated in a family's resolve, vouching for its film of the link's number; it now
+  reads `FamilyScope.feedLinked`. One `FeedLink.linked(listings)`: the linked listings' one film, an unlinked listing
+  silent, IdentityResolverCasesSpec.)
 - [x] Denials are told apart by their text (`ReleaseVeto.vetoes`' `startsWith`): a typed denial (done: `Denial` with a
   `Kind` — the release veto carries the namesake's id, the cut and another house's season their own kinds).
 - [x] `SuspectTakes.billsAnOldFilm` reads the film's own title words ("Silent Night" bills old); `billsAnEdition`

@@ -170,8 +170,8 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
 
   /** The TMDB film a TMDB-keyed feed links `node` to ([[FeedLink.linked]]) — none where this resolve's films are a
    *  family's own numbers, which no TMDB id names ([[IdentityLookups.numbersFilmsByTmdbId]]). */
-  private def feedLinked(node: EvidenceNode): Option[(CatalogueId, Int)] =
-    if (scoring.generation.numbersFilmsByTmdbId) FeedLink.linked(node) else None
+  private[identity] def feedLinked(node: EvidenceNode): Option[(CatalogueId, Int)] =
+    if (scoring.generation.numbersFilmsByTmdbId) FeedLink.linked(node.listings) else None
 
   /** [[feedLinked]], where the original title on `node` is the feed's copy, only Support ([[SourceReliability.Fact.OriginalTitle]]):
    *  the link the copied-title and short denials read — a venue's own original title is its claim, never a copy's pull. */
@@ -265,7 +265,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
       // und ein Treffen …") — and only a copy sharing nothing with the billing: one spelling the billed title, or
       // translating it word for word, is the venue's work restated (DE "Mein Opa der Bankräuber" copied as "Mijn Opa de
       // Bankrover", "Kardes Türküler ile 30 yil" as "Kardeş Türküler ile 30 Yıl")
-      .orElse(Option.when(FeedLink.linked(node).isEmpty && node.listings.forall(SourceReliability.copiesOriginalTitle) &&
+      .orElse(Option.when(FeedLink.linked(node.listings).isEmpty && node.listings.forall(SourceReliability.copiesOriginalTitle) &&
         evidenceOf(node).measured.originalSharesNothingBilled)(sourceOf(node) -> None))
       .filter(_._2.forall(_ != candidate.tmdbId)).flatMap { case (feed, linked) =>
       val listing = evidenceOf(node).measured

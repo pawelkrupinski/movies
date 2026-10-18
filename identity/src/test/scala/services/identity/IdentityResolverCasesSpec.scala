@@ -1087,6 +1087,21 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     takes(Seq(bare, reissue) ++ sequel, Some(19995), Some(19995), Some(83533), Some(83533))
   }
 
+  "A feed's TMDB link in a resolve whose films are a family's own numbers" should "corroborate none of them" in {
+    // [[Corroboration.facts]]' "feed id": a family numbers its films as its resolve meets them
+    // (`agreement.FamilyLookups`), so a Cineamo link's TMDB id 1 names no film of it — read as one, it vouched for the
+    // family's film number 1 and kept a bare "Avatar" the sequel's two dated nodes refuse it (the Avatar case above).
+    val films  = Seq(F(1, "Avatar", 2009, "James Cameron", 162, 60), F(2, "Avatar: Fire and Ash", 2025, "James Cameron", 197, 90))
+    val bare   = listing(Multikino, "Avatar").copy(catalogueIds = Seq(CatalogueId(CatalogueSources.Cineamo, "1m")))
+    val sequel = Seq(listing(Helios, "Avatar", Some(2025), Some("James Cameron"), Some(197)), listing(KinoApollo, "Avatar", Some(2025), None, Some(197)))
+    def take(tmdbNumbered: Boolean) = {
+      val r = IdentityResolver.resolve(bare +: sequel, new FilmTable(films, normalizer, tmdbNumbered), normalizer, IdentityCalibration.resolver)
+      withClue(r.decisionOf(bare.key).render)(r.decisionOf(bare.key).film)
+    }
+    take(tmdbNumbered = true) shouldBe Some(1) // TMDB's numbers: the feed's link is the bare title's own fact
+    take(tmdbNumbered = false) shouldBe None
+  }
+
   "A director credited in another script" should "be the listing's when its person search, by the listing's own spelling, reaches the film" in {
     // PL "Spragnieni miłości" [2000] {Wong Kar Wai}: TMDB's Polish credits write him 王家衛 (film 843, recording
     // 36807940234); transliterated, that reads "Wang Jiawei", a different person, and vetoed the film. TMDB's person
