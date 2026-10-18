@@ -225,7 +225,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
   def pooledNamed(ranked: Seq[Scored]): Option[(Accepted, String)] =
     // a relay's dated or broadcast-season record pre-empts the pooled rules as it does the alone ones: a cluster of "MET:
     // Macbeth" spellings took the Met's 2014 staging by a pooled rule after the alone path ruled it another broadcast
-    takenBy(ranked)(datedOrBroadcastSeasonRecord(ranked).orElse(firstOf(ranked, pooledRules)))
+    takenBy(ranked)(stageProduction(ranked).map(_ -> "stage-production").orElse(firstOf(ranked, pooledRules)))
 
   /** What both ways of taking a film share: nothing for a bill of several works; the season's production when there is
    *  one (it pre-empts every rule, and a season production refused takes nothing), else what `rules` take — either only
