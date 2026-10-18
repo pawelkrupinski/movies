@@ -145,13 +145,13 @@ Order by the live tally: 4 (relays, 33 of 70 live wrong listings), then 2, 3, 1,
   Ticketsolve Mwldan's recorded "Sonic Sounds (18+)" show, its category blanked: no feed bills an uncategorised one yet)
 
 ### Parked resolver work
-- [ ] **review-fixes leftovers** (branch `review-fixes`, 4 days old; six commits ported 2026-10-18, local measure 0 moves):
+- [x] **review-fixes leftovers** (branch `review-fixes`, 4 days old; six commits ported 2026-10-18, local measure 0 moves):
   - [x] `f4796e608`, landed 2026-10-18 as the broadcast-season record alone pre-empting the pooled rules (local measure
     on recording 38713274617: UK 2 cures, 148 gained right, 0 lost — the Romeo and Juliet relays on their air day).
     Pooled stage-production was the harm: one member's stated year read as the cluster's broadcast split Savoy Worksop's
     "MET:Manon" off the Met's record and took Aldeburgh's Nutcracker as the 2025/26 one.
-  - `c5aa11025`, searching a relay's work with its banner's year ("Tosca 2027"): asks TMDB queries the recording lacks;
-    needs a recording taken with it (GitHub).
+  - [x] `c5aa11025`, searching a relay's work with its banner's year ("Tosca 2027"): landed 2026-10-18 as `0256ddd92`,
+    the captures filled offline with the new queries answered live (`5b96b2673`); local measure with `--live-gaps`: 0 moves.
   - [x] `d929894c0`, landed 2026-10-18: the house table, its derived initials and what bills a house moved to
     `services.movies.StageHouse` (common), read by the slot fold (local measure: 0 moves, snapshots unchanged).
 - [x] **Item 8's certificate search** (done 2026-10-18, see the `SearchTitles.uncertified` entry) (branch `item8-search-fill`, dbf421550): the UK capture is filled, but the local
