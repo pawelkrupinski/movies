@@ -36,6 +36,7 @@ final class StoredFirstLookups(stored: IdentityLookups, live: IdentityLookups) e
   def candidates(query: CandidateQuery): Answer[Seq[Hit]] = storedFirst(stored.candidates(query), live.candidates(query))
   def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = storedFirst(stored.film(tmdbId), live.film(tmdbId))
   override def cast(tmdbId: Int): Answer[Option[Seq[String]]] = storedFirst(stored.cast(tmdbId), live.cast(tmdbId))
+  override def overview(tmdbId: Int): Answer[Option[ProseWords]] = storedFirst(stored.overview(tmdbId), live.overview(tmdbId))
 
   /** The store's answer; on a gap, the live one -- read back from the store it was just filed into, so the question
    *  answers as the store holds it (popularity to its bucket), as every later ask of it will: answered as TMDB stated

@@ -1,6 +1,6 @@
 package services.identity.agreement
 
-import services.identity.{Answer, BilledPiece, CandidateQuery, CatalogueAnswers, CatalogueQuestion, DetailFacts, Evidence, FallbackIds, Hit, IdentityCalibration, IdentityLookups,
+import services.identity.{Answer, BilledPiece, CandidateQuery, CatalogueAnswers, CatalogueQuestion, DetailFacts, Evidence, FallbackIds, Hit, IdentityCalibration, IdentityLookups, ProseWords,
   IdentityMeasures, IdentityResolver, Listing, ListingShape, PosterAnswers, PosterEvidence, PosterHash, Resolution, ResolverDecision, StoredFamily}
 import services.movies.{ListingKey, TitleNormalizer}
 
@@ -33,6 +33,9 @@ import scala.collection.mutable
  * matches another candidate and not it (the VETO), and a cluster nothing took takes the one candidate a venue poster
  * matches (the VOTE, [[ResolverDecision.Basis.Poster]]). A poster not hashed yet is a gap like a family's question:
  * the cluster waits as the model left it, and the poster is handed to `ask`. `version` must count the posters filed too.
+ * So are the venues' own SYNOPSES ([[SynopsisEvidence]]), against the TMDB descriptions of those films and of what the
+ * cluster's answered title searches find: a film taken — agreed or filled — whose namesake's description the synopsis
+ * names over its own is REFUSED, the line saying why. A description not known is nothing to compare, never waited on.
  *
  * A cluster neither took is read last by the days its venues screen it on ([[Broadcast]]): a stage relay screening on
  * the day one record of its work was broadcast is that production ([[ResolverDecision.Basis.Broadcast]]).
@@ -206,7 +209,8 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
           verdict.fold(decision) { v =>
             lazy val unagreed = AgreementStage.Unagreed(decision, id, digest, listings, v, distances)
             pieceOf(v, listings).fold(
-            v.agreed.fold[AgreementStage.Take](AgreementStage.Take.Untaken)(taken(decision, _, pass.finding, distances)) match {
+            v.agreed.fold[AgreementStage.Take](AgreementStage.Take.Untaken)(taken(decision, _, pass.finding, distances,
+              film => synopsisAgainst(id, digest, listings, film))) match {
               // a screen adaptation agreed for a listing naming a stage work ([[Agreement.agreed]]) yields to the relay its
               // screening days name: PL Kino Amok's bare "Manon" on the Met's broadcast day is the Met's, not Clouzot's
               case AgreementStage.Take.Taken(agreed) if listings.exists(ListingShape.stagesAWork) =>
@@ -214,6 +218,10 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
               case AgreementStage.Take.Taken(agreed) => agreed
               case AgreementStage.Take.Pending       => decision
               case AgreementStage.Take.Vetoed        => pass.posterVetoed += 1; fellThrough(unagreed, pass)
+              // the venue's synopsis naming a namesake's description says why, where nothing else takes one
+              case AgreementStage.Take.Refused(why)  =>
+                val fell = fellThrough(unagreed, pass)
+                if (fell eq decision) taking(decision)(decision.basis, why) else fell
               // the guard that refused the film the families would agree on says why, where nothing else takes one
               case AgreementStage.Take.Untaken       =>
                 val fell = fellThrough(unagreed, pass)
@@ -289,7 +297,8 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
   private val takes: Map[String, (AgreementStage.Unagreed, AgreementStage.Pass) => Option[ResolverDecision]] = Map(
     AgreementStage.PosterVoteTake -> ((u, _) => voted(u.decision, u.distances(None))),
     AgreementStage.BroadcastTake  -> ((u, asks) => broadcast(u.decision, u.id, u.digest, u.listings, asks.dating, asks.version, asks.asked)),
-    AgreementStage.FillTake       -> ((u, asks) => filledTake(u.decision, u.verdict, asks.finding, u.distances)),
+    AgreementStage.FillTake       -> ((u, asks) => filledTake(u.decision, u.verdict, asks.finding, u.distances,
+      film => synopsisAgainst(u.id, u.digest, u.listings, film))),
     AgreementStage.CatalogueTake  -> ((u, asks) => catalogued(u.decision, u.listings, asks.asked, asks.finding, asks.catalogue)))
   private def takeOf(rule: String, untaken: AgreementStage.Unagreed, asks: AgreementStage.Pass): Option[ResolverDecision] = takes(rule)(untaken, asks)
   private val fallThrough = AgreementStage.FallThrough.map(takes)
@@ -644,13 +653,15 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
     }
 
   /** The decision with the film a fill rule took — pending while TMDB was not asked about its IMDb id yet or the venue
-   *  posters are not all hashed, and not taken when a venue poster names another candidate ([[PosterEvidence.veto]]). */
+   *  posters are not all hashed, and not taken when a venue poster names another candidate ([[PosterEvidence.veto]]) or
+   *  the venue's synopsis another's description (`synopsis`, [[synopsisAgainst]]). */
   private def filledTake(decision: ResolverDecision, verdict: StoredVerdict, finding: mutable.Set[String],
-                         distances: Option[Int] => Answer[Seq[Map[Int, Option[Int]]]]): Option[ResolverDecision] =
+                         distances: Option[Int] => Answer[Seq[Map[Int, Option[Int]]]], synopsis: Int => Option[String]): Option[ResolverDecision] =
     verdict.filled.flatMap { fill =>
       tmdbFilmOf(fill.tmdb, fill.imdb, finding) match {
         case Answer.Unknown => None
-        case Answer.Known(tmdbFilm) => distances(tmdbFilm).toOption.filter(found => PosterEvidence.veto(tmdbFilm, found).isEmpty).flatMap { _ =>
+        case Answer.Known(tmdbFilm) => distances(tmdbFilm).toOption.filter(found => PosterEvidence.veto(tmdbFilm, found).isEmpty &&
+            tmdbFilm.forall(synopsis(_).isEmpty)).flatMap { _ =>
           tmdbFilm.map(id => taking(decision)(ResolverDecision.Basis.Filled, fill.line, film = Some(id)))
             .orElse(fill.imdb.map(id => taking(decision)(ResolverDecision.Basis.Filled, fill.line,
               fallback = Some(ResolverDecision.Fallback(VoterFamily.Imdb.database, id, 1.0)))))
@@ -713,9 +724,10 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
     }
 
   /** The decision with the agreed film taken — pending while TMDB was not asked about its IMDb id yet or the venue posters
-   *  are not all hashed, and not taken when they VETO it ([[PosterEvidence.veto]]): a venue poster names another candidate. */
+   *  are not all hashed, and not taken when they VETO it ([[PosterEvidence.veto]]): a venue poster names another candidate;
+   *  nor when the venue's synopsis names another's description (`synopsis`, [[synopsisAgainst]]): REFUSED, saying why. */
   private def taken(decision: ResolverDecision, agreed: AgreedFilm, finding: mutable.Set[String],
-                    distances: Option[Int] => Answer[Seq[Map[Int, Option[Int]]]]): AgreementStage.Take = {
+                    distances: Option[Int] => Answer[Seq[Map[Int, Option[Int]]]], synopsis: Int => Option[String]): AgreementStage.Take = {
     val imdb = agreed.crossId("imdb")
     // read only for a film the families' take may stand on: a find only review sites' agreement waits on is none to ask
     lazy val tmdb = tmdbFilmOf(agreed.crossId("tmdb").flatMap(_.toIntOption), imdb, finding)
@@ -724,7 +736,9 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
     val line = s"${agreed.families.toSeq.map(_.label).sorted.mkString(", ")}$leaning agree on ${agreed.record.film.titled}${imdb.fold("")(id => s" $id")}"
     val ids  = agreed.ids.map { case (family, id) => family.label -> id }
     def unlessVetoed(film: Option[Int])(take: => ResolverDecision): AgreementStage.Take = distances(film) match {
-      case Answer.Known(found) => if (PosterEvidence.veto(film, found).isEmpty) AgreementStage.Take.Taken(take) else AgreementStage.Take.Vetoed
+      case Answer.Known(found) =>
+        if (PosterEvidence.veto(film, found).nonEmpty) AgreementStage.Take.Vetoed
+        else film.flatMap(synopsis).fold[AgreementStage.Take](AgreementStage.Take.Taken(take))(AgreementStage.Take.Refused(_))
       case Answer.Unknown      => AgreementStage.Take.Pending
     }
     // a film only review sites take — their pages name no film a card stands on, and match an event's namesake (DE "André
@@ -744,6 +758,32 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
   private def identityOf(agreed: AgreedFilm): Option[(String, String)] =
     (VoterFamily.Imdb +: identities).distinct.iterator.flatMap(family =>
       agreed.ids.get(family).orElse(agreed.crossId(family.database)).map(family.database -> _)).nextOption()
+
+  /** Why the venues' own synopses refuse `film` ([[SynopsisEvidence.veto]]): they name, among the TMDB descriptions of the
+   *  cluster's candidates, another's over its own. None where no venue text or no description of `film` is known: the
+   *  descriptions are read as the cast is, never waited on. The venue's words are those of its listings and their detail
+   *  pages, none of a listing whose facts a feed catalogue states, as [[venueNames]] reads them. */
+  private def synopsisAgainst(id: String, digest: Long, listings: Seq[Listing], film: Int): Option[String] =
+    tmdb.flatMap { lookups =>
+      val venue = listings.filter(services.identity.SourceReliability.decides(_, services.identity.SourceReliability.Fact.Names))
+        .foldLeft(ProseWords.None)((words, listing) => words ++ listing.words ++ venues.detail(listing).toOption.flatten.fold(ProseWords.None)(_.words))
+      def description(other: Int) = lookups.overview(other).toOption.flatten.filter(_.nonEmpty)
+      def record(other: Int) = lookups.film(other).toOption.flatten
+      Option.when(venue.nonEmpty)(()).flatMap(_ => description(film)).flatMap { own =>
+        // the cluster's candidates, else what its titles' searches answered: a search not answered yet (a gap the model's
+        // resolve met) leaves the candidates unread, and a namesake its other searches found is a namesake still
+        val namesakes = Some(candidatesOf(id, digest, listings)).filter(_.nonEmpty).getOrElse(titledFilms(listings, answeredOnly = true))
+          .distinct.filter(_ != film)
+          .flatMap(other => description(other).map(other -> _))
+        val people = ProseWords.ofWords(lookups.cast(film).toOption.flatten.getOrElse(Nil) ++ record(film).flatMap(_.directors).getOrElse(Nil))
+        val titles = ProseWords.ofWords(listings.flatMap(listing => Seq(listing.rawTitle, listing.title, listing.cleanTitle)) ++
+          (film +: namesakes.map(_._1)).flatMap(record(_).toSeq.flatMap(_.titles)))
+        SynopsisEvidence.veto(venue, own, people, namesakes, titles).map { case (other, shared) =>
+          def titled(of: Int) = record(of).fold(s"tmdb $of")(_.titled)
+          s"no agreement on ${titled(film)}: the venue's synopsis names $shared words of ${titled(other)}'s TMDB description and none of its own"
+        }
+      }
+    }
 
   /** The decision with the film its listings' catalogue ids name taken ([[Catalogue.take]]) — none while a question it
    *  needs is open, each noted to ask. */
@@ -890,13 +930,14 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
   /** The TMDB films the listings' own title searches find ([[services.identity.IdentityMeasures.searchQueries]], of TMDB
    *  and IMDb's titled lists) — the candidates a poster may name against a model take, read off the answers the model
    *  already holds without scoring them again: a resolver pass per take cost a cold projection 10 GB of allocation over
-   *  the five corpora (2026-10-06). Read, never kept; none while one of the searches has no answer. */
-  private def titledFilms(listings: Seq[Listing]): Seq[Int] =
+   *  the five corpora (2026-10-06). Read, never kept; none while one of the searches has no answer — or, `answeredOnly`,
+   *  the films the answered ones find (the synopsis evidence's namesakes, [[synopsisAgainst]]). */
+  private def titledFilms(listings: Seq[Listing], answeredOnly: Boolean = false): Seq[Int] =
     tmdb.fold(Seq.empty[Int]) { lookups =>
       val queries = listings.flatMap(listing => services.identity.IdentityMeasures.searchQueries(Evidence.of(listing, None).measured)).distinct
         .flatMap(text => Seq(CandidateQuery.Title(text), CandidateQuery.ImdbTitled(text)))
       val found = queries.map(lookups.candidates)
-      if (found.contains(Answer.Unknown)) Nil
+      if (found.contains(Answer.Unknown) && !answeredOnly) Nil
       else found.flatMap(_.toOption.getOrElse(Nil)).map(_.tmdbId).filterNot(FallbackIds.isFallback).distinct.sorted
     }
 
@@ -1018,11 +1059,13 @@ object AgreementStage {
     }
   }
 
-  /** What became of the film a cluster's families agree on: taken, pending an answer, vetoed by a venue poster, or none to take. */
+  /** What became of the film a cluster's families agree on: taken, pending an answer, vetoed by a venue poster, refused by
+   *  the venue's synopsis (and why), or none to take. */
   private enum Take {
     case Taken(decision: ResolverDecision)
     case Pending
     case Vetoed
+    case Refused(why: String)
     case Untaken
   }
 
@@ -1040,6 +1083,7 @@ object AgreementStage {
     def candidates(query: CandidateQuery): Answer[Seq[Hit]]      = inner.candidates(query)
     def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = inner.film(tmdbId)
     override def cast(tmdbId: Int): Answer[Option[Seq[String]]]  = inner.cast(tmdbId)
+    override def overview(tmdbId: Int): Answer[Option[ProseWords]] = inner.overview(tmdbId)
     override def numbersFilmsByTmdbId: Boolean                   = inner.numbersFilmsByTmdbId
   }
 
@@ -1056,6 +1100,7 @@ object AgreementStage {
     override def numbersFilmsByTmdbId: Boolean                   = inner.numbersFilmsByTmdbId
     // a cast not known leaves the cast evidence unread, never the fill waiting
     override def cast(tmdbId: Int): Answer[Option[Seq[String]]]  = inner.cast(tmdbId)
+    override def overview(tmdbId: Int): Answer[Option[ProseWords]] = inner.overview(tmdbId)
   }
 
   /* A model take's correction (Correction) is stored as its listings' digest and the `version` it was read (or last

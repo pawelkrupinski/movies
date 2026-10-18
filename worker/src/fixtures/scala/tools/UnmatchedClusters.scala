@@ -51,7 +51,10 @@ object UnmatchedClusters {
                             *  replay asks it (the stub TMDB key): the answers a captured MODEL decision read that neither the
                             *  recording nor the agreement's own reads above keep — an IMDb suggestion, most often. A slice
                             *  replays them before its recording's gap ([[FiledAnswers.LiveLeaf]]). None in older captures. */
-                           live: Map[String, String] = Map.empty)
+                           live: Map[String, String] = Map.empty,
+                           /** The words each candidate's TMDB overviews capitalise, as the synopsis evidence read them
+                            *  ([[IdentityLookups.overview]]): none in a capture recorded before it, whose replay knows none. */
+                           overviews: Map[Int, Option[ProseWords]] = Map.empty)
 
   /** The family questions `wanted` that `capture` holds no reason to leave open: those it gave up on as unreachable aside,
    *  every question the stage asks of a complete capture is answered. */
@@ -285,12 +288,16 @@ object UnmatchedClusters {
   // ── recording and replaying the lookups ──────────────────────────────────────────────────
 
   /** `inner`, every answer it gave noted — what a capture writes. */
-  final class Recording(inner: IdentityLookups) extends IdentityLookups {
+  final class Recording(inner: IdentityLookups,
+                        /** What answers the films' overviews ([[IdentityLookups.overview]]): `inner` unless it is a
+                         *  [[MemoLookups]], which, dropped into refs older than the overview, passes none through. */
+                        described: Option[IdentityLookups] = None) extends IdentityLookups {
     val queries    = new ConcurrentHashMap[CandidateQuery, Seq[Hit]]()
     val films      = new ConcurrentHashMap[Int, Option[IdentityMeasures.Film]]()
     val details    = new ConcurrentHashMap[String, Option[DetailFacts]]()
     val withDetail = ConcurrentHashMap.newKeySet[String]()
     val casts      = new ConcurrentHashMap[Int, Option[Seq[String]]]()
+    val overviews  = new ConcurrentHashMap[Int, Option[ProseWords]]()
     override def hasDetail(listing: Listing): Boolean = {
       val has = inner.hasDetail(listing)
       if (has) withDetail.add(ListingKey.serialised(listing.key))
@@ -302,6 +309,7 @@ object UnmatchedClusters {
     override def candidates(query: CandidateQuery): Answer[Seq[Hit]] = noted(inner.candidates(query))(queries.put(query, _))
     override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = noted(inner.film(tmdbId))(films.put(tmdbId, _))
     override def cast(tmdbId: Int): Answer[Option[Seq[String]]] = noted(inner.cast(tmdbId))(casts.put(tmdbId, _))
+    override def overview(tmdbId: Int): Answer[Option[ProseWords]] = noted(described.getOrElse(inner).overview(tmdbId))(overviews.put(tmdbId, _))
     private def noted[A](answer: Answer[A])(keep: A => Any): Answer[A] = { answer.toOption.foreach(keep); answer }
   }
 
@@ -311,6 +319,8 @@ object UnmatchedClusters {
   final class Replay(capture: Capture) extends IdentityLookups {
     val queries = ConcurrentHashMap.newKeySet[CandidateQuery]()
     val films   = ConcurrentHashMap.newKeySet[Int]()
+    /** The films whose overview the synopsis evidence asked and the capture holds none of: a fill answers them. */
+    val overviews = ConcurrentHashMap.newKeySet[Int]()
     def unanswered: Set[String] = queries.asScala.map(DecisionTrace.renderQuery).toSet ++ films.asScala.map(id => s"tmdb $id")
     override def hasDetail(listing: Listing): Boolean = capture.withDetail(ListingKey.serialised(listing.key))
     override def detail(listing: Listing): Answer[Option[DetailFacts]] = known(capture.details.get(ListingKey.serialised(listing.key)))(())
@@ -318,6 +328,9 @@ object UnmatchedClusters {
     override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = known(capture.films.get(tmdbId))(films.add(tmdbId))
     // a cast the capture did not record is not known — what the cast evidence reads as nothing to go on, never a gap
     override def cast(tmdbId: Int): Answer[Option[Seq[String]]] = Answer.Known(capture.casts.get(tmdbId).flatten)
+    // nor is an overview: not known, the evidence reads nothing — noted for a fill to answer
+    override def overview(tmdbId: Int): Answer[Option[ProseWords]] =
+      Answer.Known(capture.overviews.get(tmdbId).fold { overviews.add(tmdbId); Option.empty[ProseWords] }(identity))
     private def known[A](held: Option[A])(missing: => Any): Answer[A] = held.fold[Answer[A]] { missing; Answer.Unknown }(Answer.Known(_))
   }
 
@@ -341,6 +354,8 @@ object UnmatchedClusters {
       .append("unreachable", array(capture.unreachable.toSeq.sortBy { case (family, question) => (family.ordinal, question) }.map { case (family, question) =>
         new BsonDocument("family", new BsonString(family.label)).append("question", new BsonString(question)) }))
       .append("casts", array(capture.casts.toSeq.sortBy(_._1).map { case (id, cast) => new BsonDocument("id", new BsonInt32(id)).append("cast", cast.fold[BsonValue](new BsonNull)(strings)) }))
+      .append("overviews", array(capture.overviews.toSeq.sortBy(_._1).map { case (id, words) =>
+        new BsonDocument("id", new BsonInt32(id)).append("words", words.fold[BsonValue](new BsonNull)(w => array(w.hashes.map(new BsonInt32(_))))) }))
       .append("live", array(capture.live.toSeq.sortBy(_._1).map { case (request, body) => new BsonDocument("request", new BsonString(request)).append("body", new BsonString(body)) }))
     Files.createDirectories(path.getParent)
     val out = new GZIPOutputStream(Files.newOutputStream(path))
@@ -367,7 +382,9 @@ object UnmatchedClusters {
         val label = u.getString("family").getValue
         VoterFamily.values.find(_.label == label).getOrElse(sys.error(s"no family $label in $path")) -> u.getString("question").getValue
       }.toSet,
-      (if (d.containsKey("live")) docs("live") else Nil).map(l => l.getString("request").getValue -> l.getString("body").getValue).toMap)
+      (if (d.containsKey("live")) docs("live") else Nil).map(l => l.getString("request").getValue -> l.getString("body").getValue).toMap,
+      (if (d.containsKey("overviews")) docs("overviews") else Nil).map(f => f.getInt32("id").getValue ->
+        Option(f.get("words")).filterNot(_.isNull).map(w => ProseWords.ofHashes(w.asArray.getValues.asScala.toSeq.map(_.asNumber.intValue)))).toMap)
   }
 
   private def array(values: Seq[BsonValue]): BsonArray = new BsonArray(values.asJava)
@@ -387,6 +404,7 @@ object UnmatchedClusters {
     putInt(d, "year", l.year); putInt(d, "runtime", l.runtime); put(d, "page", l.page); put(d, "originalTitle", l.originalTitle)
     if (!l.screenings.isEmpty) d.append("screenings", strings(l.screenings.days.map(_.toString)))
     if (!l.names.isEmpty) d.append("names", array(l.names.hashes.map(new BsonInt32(_))))
+    if (!l.words.isEmpty) d.append("words", array(l.words.hashes.map(new BsonInt32(_))))
     put(d, "searchTitle", l.searchTitle); put(d, "properTitle", l.properTitle); put(d, "poster", l.poster); put(d, "certificate", l.certificate)
   }
   private def listingOf(d: BsonDocument): Listing = {
@@ -398,7 +416,8 @@ object UnmatchedClusters {
       d.getArray("catalogueIds").getValues.asScala.toSeq.map(_.asDocument).map(c => CatalogueId(c.getString("source").getValue, c.getString("id").getValue)),
       opt(d, "searchTitle"), opt(d, "poster"), ScreeningDays.of(stringsOf(d, "screenings").map(java.time.LocalDate.parse)),
       VenueNames.ofHashes(Option(d.get("names")).toSeq.flatMap(_.asArray.getValues.asScala.map(_.asNumber.intValue))), properTitle = opt(d, "properTitle"),
-      certificate = opt(d, "certificate"))
+      certificate = opt(d, "certificate"),
+      words = ProseWords.ofHashes(Option(d.get("words")).toSeq.flatMap(_.asArray.getValues.asScala.map(_.asNumber.intValue))))
   }
   private def queryDoc(q: CandidateQuery): BsonDocument = q match {
     case CandidateQuery.Title(text)       => new BsonDocument("title", new BsonString(text))

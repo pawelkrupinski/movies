@@ -76,6 +76,9 @@ final class TmdbIdentityLookups(tmdb: TmdbClient, imdb: ImdbClient, enrichers: S
 
   override def cast(tmdbId: Int): Answer[Option[Seq[String]]] =
     if (FallbackIds.isFallback(tmdbId)) Answer.Known(None) else answered(tmdb.identityCast(tmdbId))
+
+  override def overview(tmdbId: Int): Answer[Option[ProseWords]] =
+    if (FallbackIds.isFallback(tmdbId)) Answer.Known(None) else answered(tmdb.identityOverview(tmdbId))
 }
 
 object TmdbIdentityLookups {

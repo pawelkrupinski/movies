@@ -58,7 +58,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     // What a film document holds: the two cut-down partials and the record — never the body's cast or synopsis.
     val stored = w.docs.get(TmdbKind.Film, Seq(film.toString))(film.toString)
     stored.keySet should contain allOf ("local", "english", "record")
-    stored.toJson should not include "overview"
+    stored.toJson should not include "\"overview\""
   }
 
   // The normalizer parses each response to file it, then the client parses the very same body: shared,
@@ -546,6 +546,23 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     w.store.filmPartial(film, TmdbStore.Partial.Local, castless)
     w.lookups.cast(film) shouldBe Answer.Known(None)
     w.lookups.cast(film + 1) shouldBe Answer.Unknown
+  }
+
+  // The synopsis evidence (`agreement.SynopsisEvidence`) reads the words a candidate's overviews capitalise: the store keeps
+  // their hashes off both responses it already files, never the text — and responses filed before it did know none.
+  "a film's record filed from its two responses" should "keep the words its overviews capitalise, never their text" in {
+    val w    = new World
+    val film = 577285   // "Binti" (2019): no Polish overview, an English one naming Belgium and Elias
+    w.store.filmPartial(film, TmdbStore.Partial.Local, minimalOf(s"""{"id":$film,"title":"Binti","overview":"","credits":{"crew":[]}}"""))
+    w.store.filmPartial(film, TmdbStore.Partial.English, minimalOf(s"""{"id":$film,"title":"Binti","alternative_titles":{"titles":[]},
+      |"overview":"Binti meets Elias and befriends her, so they can stay in Belgium."}""".stripMargin))
+    w.lookups.overview(film) shouldBe Answer.Known(Some(ProseWords.ofDescription(Seq("Binti meets Elias and befriends her, so they can stay in Belgium."))))
+    w.docs.get(TmdbKind.Film, Seq(film.toString))(film.toString).toJson should not include "befriends"
+    // filed as the store cut them before it kept the words: not known
+    w.store.filmPartial(film, TmdbStore.Partial.Local, play.api.libs.json.Json.obj("title" -> "Binti", "credits" -> play.api.libs.json.Json.obj("crew" -> play.api.libs.json.Json.arr())))
+    w.store.filmPartial(film, TmdbStore.Partial.English, play.api.libs.json.Json.obj("title" -> "Binti"))
+    w.lookups.overview(film) shouldBe Answer.Known(None)
+    w.lookups.overview(film + 1) shouldBe Answer.Unknown
   }
 
   /** `docs`, with `onGet` run before each whole-document read — the read every write's compare makes. */

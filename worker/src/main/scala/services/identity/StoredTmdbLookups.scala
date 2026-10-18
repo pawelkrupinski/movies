@@ -148,6 +148,18 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
       case None    => Answer.Unknown
     }
 
+  /** The words the film's overviews capitalise, off both its responses as the store filed them
+   *  ([[TmdbFilmRecord.overview]]) — read from the whole document, never kept on the record, as the cast is: `Known(None)`
+   *  for responses filed before the store kept them, `Unknown` while the store holds no document of the film. Read only by
+   *  the agreement stage's synopsis evidence, for an unmatched cluster's candidates. */
+  override def overview(tmdbId: Int): Answer[Option[ProseWords]] =
+    if (FallbackIds.isFallback(tmdbId)) Answer.Known(None)
+    else wholeFilm(tmdbId) match {
+      case Some(d) => Answer.Known(TmdbFilmRecord.overview(TmdbStore.Partial.values.toSeq.flatMap(partial =>
+        Option(d.get(partial.field)).filter(_.isDocument).map(TmdbStore.jsonOf))))
+      case None    => Answer.Unknown
+    }
+
   /** `film` with the IMDb number its responses name: a record filed before the record carried one holds none, while
    *  the responses it was parsed from ([[TmdbStore.Partial]]) still hold TMDB's `imdb_id`. */
   private def withImdbNumber(film: IdentityMeasures.Film, d: BsonDocument): IdentityMeasures.Film =

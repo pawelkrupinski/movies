@@ -47,6 +47,10 @@ final case class Listing(
    *  describes the catalogue's entry. OUTSIDE the listing's equality and hash, as the poster is: the model never reads
    *  it, only the agreement stage's fill after it. */
   names:         VenueNames = VenueNames.None,
+  /** The words the venue's own synopsis capitalises ([[ProseWords.ofProse]]): what the synopsis evidence reads against the
+   *  TMDB descriptions of the films the agreement takes ([[agreement.SynopsisEvidence]]) — none for a listing whose facts a
+   *  feed catalogue states, as for [[names]]. OUTSIDE the listing's equality and hash, as the poster is. */
+  words:         ProseWords = ProseWords.None,
   /** Do its facts include what its page states — the listing as the agreement reads it, its page's facts merged in where
    *  it states none (`AgreementStage.asStated`)? OUTSIDE equality and hash: only the agreement builds such a listing, and
    *  only to tell whose claim the merged facts are ([[factsFromCatalogue]]). */
@@ -205,13 +209,13 @@ object Listing {
   val StagingPredatesSeason = 1
 
   /** Does `now` publish what the stages after the model read differently from `was` — its poster, its screening days, the
-   *  names its venue's text gives, its certificate — though the two are equal ([[Listing.equals]] leaves those out)? The model then holds
+   *  names and words its venue's text gives, its certificate — though the two are equal ([[Listing.equals]] leaves those out)? The model then holds
    *  `now` without resolving it again, and the agreement reads it afresh ([[agreement.AgreementStage]]). Days count only
    *  where both sides know them: a lean read leaves out the days of a film billing no stage work
    *  (`services.scrapes.LeanListing.leanFilm`), which beside the model's object holding the scrape's days moved nothing —
    *  read as moved, every venue read again looked re-published, on every tick. */
   def movedOutsideEquality(was: Listing, now: Listing): Boolean =
-    was.poster != now.poster || was.names != now.names || was.certificate != now.certificate ||
+    was.poster != now.poster || was.names != now.names || was.words != now.words || was.certificate != now.certificate ||
       (knowsDays(was.screenings) && knowsDays(now.screenings) && was.screenings != now.screenings)
   private def knowsDays(days: ScreeningDays): Boolean = !days.isEmpty && !days.isUnknown
 
@@ -245,6 +249,7 @@ object Listing {
       poster        = SlotFields.url(cm.posterUrl, SlotFields.url(cm.filmUrl, None)),
       screenings    = ScreeningDays.of(cm.showtimes.map(_.dateTime.toLocalDate)),
       names         = venueNames(cinema, cm),
+      words         = venueWords(cinema, cm),
       properTitle   = properTitle,
       certificate   = cm.ageRating.map(_.trim).filter(_.nonEmpty))
   }
@@ -273,6 +278,13 @@ object Listing {
         !SourceReliability.factsOf(CatalogueId.of(cinema, cm), cm.filmUrl.map(_.trim), pageFacts = false).decides(SourceReliability.Fact.Names)) VenueNames.None
     else VenueNames.of(text, cm.cast)
   }
+
+  /** The words `cm`'s own synopsis capitalises — its matching-only excerpt where the venue cut the synopsis (MSI) — none
+   *  where a feed copied it from its catalogue entry, as for [[venueNames]]. */
+  private def venueWords(cinema: Cinema, cm: CinemaMovie): ProseWords =
+    cm.synopsis.orElse(cm.synopsisExcerpt).filter(_ =>
+      SourceReliability.factsOf(CatalogueId.of(cinema, cm), cm.filmUrl.map(_.trim), pageFacts = false).decides(SourceReliability.Fact.Names))
+      .fold(ProseWords.None)(text => ProseWords.ofProse(Seq(text)))
 
   /** The people one director credit names — the listing's own, or its detail page's: PL venues join two in one ("Arash T. Riahi & Verena Soltiz", "Joel Crawford
    *  i Januel Mercado", "Natasha Merkulova, Aleksey Chupov"), which searched as one person found no film. Split only
@@ -324,6 +336,8 @@ final case class DetailFacts(year: Option[Int], directors: Seq[String], runtime:
                              countries: Seq[String] = Nil, synopsis: Option[String] = None, cast: Seq[String] = Nil) {
   /** The people the page's synopsis and cast name: worked out when the cast evidence asks, never held. */
   def names: VenueNames = if (synopsis.isEmpty && cast.isEmpty) VenueNames.None else VenueNames.of(synopsis, cast)
+  /** The words the page's synopsis capitalises ([[ProseWords.ofProse]]): worked out when the synopsis evidence asks, never held. */
+  def words: ProseWords = synopsis.fold(ProseWords.None)(text => ProseWords.ofProse(Seq(text)))
 }
 
 /** A listing's evidence once its own detail page is merged in — listing values win, the page
@@ -544,4 +558,8 @@ trait IdentityLookups {
    *  of every family holds a record, and only an unmatched cluster's fill reads a cast. `Known(None)` where the source
    *  does not know it — a record filed before records kept the cast — which the evidence reads as nothing to go on. */
   def cast(tmdbId: Int): Answer[Option[Seq[String]]] = Answer.Known(None)
+  /** The words a film's TMDB descriptions capitalise — its localized and English overviews ([[TmdbFilmRecord.overview]]):
+   *  what the synopsis evidence reads ([[agreement.SynopsisEvidence]]), never the model. Read apart from its record, as
+   *  the cast is. `Known(None)` where the source does not know it — a record filed before records kept the overview. */
+  def overview(tmdbId: Int): Answer[Option[ProseWords]] = Answer.Known(None)
 }

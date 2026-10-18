@@ -59,7 +59,7 @@ object VenueNames {
 
   /** A letter folded as `TextNormalization.deburr` and lower case fold it — accents off, `ł` as `l` — looked up for the
    *  Latin letters, which is every name a venue in these countries prints; any other only lower-cased. */
-  private def fold(c: Char): Char = if (c < Folded.length) Folded(c) else Character.toLowerCase(c)
+  private[identity] def fold(c: Char): Char = if (c < Folded.length) Folded(c) else Character.toLowerCase(c)
   private val Folded: Array[Char] = Array.tabulate(0x0250) { code =>
     val folded = tools.TextNormalization.deburr(code.toChar.toString).toLowerCase(java.util.Locale.ROOT)
     if (folded.length == 1) folded.charAt(0) else Character.toLowerCase(code.toChar)

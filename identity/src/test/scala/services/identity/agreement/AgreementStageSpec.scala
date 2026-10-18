@@ -217,6 +217,47 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     decided.decisions(1) shouldBe resolution.decisions(1)
   }
 
+  it should "take no film the families agree on whose namesake's TMDB description the venue's synopsis names over its own, saying why" in {
+    // PL Janosik "edukacja MH: Binti" (identity-unmatched capture): IMDb, Wikidata and Filmweb agree on Shamte's 2021 film;
+    // the venue's page describes Migom's 2019 one — a girl in Belgium who meets Elias
+    import services.identity.{CandidateQuery, DetailFacts, Hit, IdentityLookups, Listing, ProseWords}
+    val shamte = IdentityMeasures.Film("Binti", Some("Binti"), Nil, Some(2021), Some(98), Some(Seq("Seko Shamte")), None, None)
+    val migom  = IdentityMeasures.Film("Binti", Some("Binti"), Nil, Some(2019), Some(90), Some(Seq("Frederike Migom")), None, None)
+    val families = Map(
+      VoterFamily.Imdb    -> new HeldFamilyAnswers(VoterFamily.Imdb, Map("tt11867140" -> SourceRecord(shamte, Map("imdb" -> "tt11867140")))),
+      VoterFamily.Wiki    -> new HeldFamilyAnswers(VoterFamily.Wiki, Map("Q108940090" -> SourceRecord(shamte, Map("imdb" -> "tt11867140", "tmdb" -> "855156")))),
+      VoterFamily.Filmweb -> new HeldFamilyAnswers(VoterFamily.Filmweb, Map("10016218" -> SourceRecord(shamte))))
+    val page = "Binti, nastoletnia imigrantka nielegalnie mieszkająca w Belgii, nie pamięta Konga. Gdy poznaje Eliasa, młodego obrońcę praw zwierząt."
+    val overviews = Map(
+      855156 -> "Four Tanzanian women are unknowingly connected through their ability to persevere extreme hardships in the city of Dar-es-Salaam.",
+      577285 -> "Binti is a 12-year-old girl of Congolese origin. Binti meets Elias and befriends her, so they can stay in Belgium.")
+    def tmdb(described: Set[Int]) = new IdentityLookups {
+      def hasDetail(listing: Listing): Boolean = true
+      def detail(listing: Listing) = Answer.Known(Some(DetailFacts(None, Nil, None, None, synopsis = Some(page))))
+      def candidates(query: CandidateQuery) = query match {
+        case CandidateQuery.Title(title) if title.equalsIgnoreCase("Binti") =>
+          Answer.Known(Seq(Hit(855156, "Binti", Some("Binti"), Some(2021), 1.5), Hit(577285, "Binti", Some("Binti"), Some(2019), 1.1)))
+        case _ => Answer.Known(Nil)
+      }
+      def film(tmdbId: Int) = Answer.Known(Map(855156 -> shamte, 577285 -> migom).get(tmdbId))
+      override def overview(tmdbId: Int) = Answer.Known(overviews.get(tmdbId).filter(_ => described(tmdbId)).map(text => ProseWords.ofDescription(Seq(text))))
+    }
+    def decided(lookups: IdentityLookups) = {
+      val billed = listing(KinoMuza, "Binti")
+      val model  = Resolution(Seq(ResolverDecision(Seq(billed.key), None, 0.5, ResolverDecision.Basis.BelowThreshold, Nil)()), 1,
+        Map(billed.key -> 0), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
+      new AgreementStage(families, lookups, normalizer, IdentityCalibration.resolver,
+        tmdbOf = imdb => Answer.Known(Option.when(imdb == "tt11867140")(855156)), new InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned,
+        tmdb = Some(lookups)).apply(model, Map(billed.key -> billed).get, version = 1).decisions.head
+    }
+    val refused = decided(tmdb(Set(855156, 577285)))
+    (refused.film, refused.basis) shouldBe ((None, ResolverDecision.Basis.BelowThreshold))
+    refused.explanation.last shouldBe "no agreement on 'Binti' (2021): the venue's synopsis names 2 words of 'Binti' (2019)'s TMDB description and none of its own"
+    // no description of the namesake, or of the film agreed on: nothing to compare, the agreement stands
+    decided(tmdb(Set(855156))).film shouldBe Some(855156)
+    decided(tmdb(Set(577285))).film shouldBe Some(855156)
+  }
+
   it should "take no film the families agree on that the billing names as one piece beside another thing, nor fill one" in {
     // DE "Femme - Frauen heilen die Welt" (fixture identity-unmatched): four families agree on the 2023 "Femme" its first
     // piece names — the billing is a documentary its subtitle names

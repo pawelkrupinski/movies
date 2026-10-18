@@ -133,6 +133,8 @@ final class TrackedLookups(inner: IdentityLookups, reads: ObservationReads,
   def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = Option(films.remove(tmdbId)).map(served).getOrElse(single(askFilm(tmdbId)))
   /** The agreement stage's fill reads it, never the model: no read of the model's is tracked by it. */
   override def cast(tmdbId: Int): Answer[Option[Seq[String]]] = inner.cast(tmdbId)
+  /** The agreement stage's synopsis evidence reads it, never the model: untracked, as the cast is. */
+  override def overview(tmdbId: Int): Answer[Option[ProseWords]] = inner.overview(tmdbId)
 
   override def released(asked: Iterable[CandidateQuery], records: Iterable[Int], pages: Iterable[services.movies.ListingKey]): Unit = {
     asked.foreach(query => reads.forget(Question.Query(query)))

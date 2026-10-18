@@ -17,7 +17,7 @@ object TmdbFilmRecord {
   /** The film and its IMDb id, or `None` when no answer carries a title. A body a recorder
    *  wrapped as `{"text": …}` is unwrapped. */
   def parse(answers: Seq[JsValue]): Option[(IdentityMeasures.Film, Option[String])] = {
-    val docs = answers.map(js => (js \ "text").asOpt[String].flatMap(t => Try(Json.parse(t)).toOption).getOrElse(js))
+    val docs = unwrapped(answers)
     val main = docs.filter(d => (d \ "title").isDefined)
     if (main.isEmpty) None
     else {
@@ -62,11 +62,30 @@ object TmdbFilmRecord {
    *  `credits` block — `None` when no answer holds a cast: not fetched, or cut away by a store filing records before they
    *  kept it (`TmdbNormalizer.minimal`). An empty one is TMDB crediting nobody. */
   def cast(answers: Seq[JsValue]): Option[Seq[String]] = {
-    val docs = answers.map(js => (js \ "text").asOpt[String].flatMap(t => Try(Json.parse(t)).toOption).getOrElse(js))
+    val docs = unwrapped(answers)
     docs.flatMap(d => (d \ "credits" \ "cast").asOpt[Seq[JsValue]]).headOption.map(cast =>
       cast.sortBy(c => (c \ "order").asOpt[Int].getOrElse(Int.MaxValue)).flatMap(c => (c \ "name").asOpt[String]).map(_.trim).filter(_.nonEmpty)
         .take(TopBilled))
   }
+
+  /** The words the film's overviews capitalise ([[ProseWords.ofDescription]]) — every answer's, the localized and the
+   *  English: a Polish film's English overview may be the only one TMDB has. Read off an answer's `overview`, or the
+   *  words a cut-down record keeps of it ([[OverviewWords]], `TmdbNormalizer.minimal`). `None` when no answer holds either:
+   *  not fetched, or filed before records kept them. */
+  def overview(answers: Seq[JsValue]): Option[ProseWords] = {
+    val docs = unwrapped(answers)
+    val read = docs.flatMap(d => (d \ OverviewWords).asOpt[Seq[Int]].map(ProseWords.ofHashes)
+      .orElse((d \ "overview").asOpt[String].map(text => ProseWords.ofDescription(Seq(text)))))
+    Option.when(read.nonEmpty)(read.foldLeft(ProseWords.None)(_ ++ _))
+  }
+
+  /** The field a cut-down record (`TmdbNormalizer.minimal`) keeps of TMDB's `overview`: its words' hashes
+   *  ([[ProseWords.hashes]]), never the text. */
+  val OverviewWords = "overview_words"
+
+  /** The answers, a body a recorder wrapped as `{"text": …}` unwrapped. */
+  private def unwrapped(answers: Seq[JsValue]): Seq[JsValue] =
+    answers.map(js => (js \ "text").asOpt[String].flatMap(t => Try(Json.parse(t)).toOption).getOrElse(js))
 
   /** How many of a film's cast count as its top-billed: as many as the offline measure read (2026-10-06). */
   val TopBilled = 10

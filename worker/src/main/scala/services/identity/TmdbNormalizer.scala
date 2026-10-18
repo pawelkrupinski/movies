@@ -92,7 +92,8 @@ object TmdbNormalizer {
   /** A `/movie/{id}` body cut to what `TmdbFilmRecord.parse` reads — title, original title, release day,
    *  runtime, IMDb id, popularity (as its bucket), countries, alternative titles, the directors
    *  among the crew, the top-billed cast's names and which countries date a release of it, its cinema releases (country, year, edition) and
-   *  the certificates rating it where a scale is read ([[Certificates]]) — keeping the shape it reads them in (a `credits` block stays a `credits` block:
+   *  the certificates rating it where a scale is read ([[Certificates]]) and the words its overview capitalises
+   *  ([[TmdbFilmRecord.OverviewWords]]) — keeping the shape it reads them in (a `credits` block stays a `credits` block:
    *  its presence is what marks the localized response, and "directors known"). */
   def minimal(body: JsValue): JsValue = {
     val keep = Seq("title", "original_title", "runtime", "imdb_id", "origin_country", "tagline")
@@ -116,7 +117,10 @@ object TmdbNormalizer {
     val releases = (body \ "release_dates").toOption.map(block => TmdbFilmRecord.Releases -> Json.toJson(TmdbFilmRecord.releases(block)))
     // and the certificates it records where a rating scale is read (`Certificates.below`): the least restrictive per country
     val certificates = (body \ "release_dates").toOption.flatMap(Certificates.ofReleaseDates).map(TmdbFilmRecord.CertificatesField -> Json.toJson(_))
-    JsObject(keep ++ date ++ popularity ++ countries ++ alternatives ++ credits ++ crew ++ released ++ releases ++ certificates)
+    // the words its overview capitalises, never the text: all the synopsis evidence reads of it (`TmdbFilmRecord.overview`)
+    val overview = (body \ "overview").asOpt[String].map(text =>
+      TmdbFilmRecord.OverviewWords -> Json.toJson(ProseWords.ofDescription(Seq(text)).hashes))
+    JsObject(keep ++ date ++ popularity ++ countries ++ alternatives ++ credits ++ crew ++ released ++ releases ++ certificates ++ overview)
   }
 }
 

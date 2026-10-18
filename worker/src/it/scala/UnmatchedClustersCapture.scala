@@ -77,14 +77,15 @@ object UnmatchedClustersCapture {
                       storages: mutable.ListBuffer[ConvergenceStorage]): Unit = {
     val w        = wiring(target, c, storages, root, configuration.env)
     val listings = listingsOf(w, c.normalizer)
-    val lookups  = new Memo(new TmdbIdentityLookups(new clients.TmdbClient(c.fetch, apiKey = Some(settings.TmdbApiKey(StubTmdbKey)),
-      language = c.country.language, retrySleep = (_: Long) => ()), new services.enrichment.ImdbClient(c.fetch), w.detailEnrichers, c.gaps))
+    val source   = new TmdbIdentityLookups(new clients.TmdbClient(c.fetch, apiKey = Some(settings.TmdbApiKey(StubTmdbKey)),
+      language = c.country.language, retrySleep = (_: Long) => ()), new services.enrichment.ImdbClient(c.fetch), w.detailEnrichers, c.gaps)
+    val lookups  = new Memo(source)
     val whole     = IdentityResolver.resolve(listings, lookups, c.normalizer, IdentityCalibration.resolver)
     val decisions = whole.decisions.filter(d => d.film.isEmpty && d.fallback.isEmpty && d.unanswered == 0)
     val unmatched = decisions.flatMap(_.members).toSet
     val subset    = listings.filter(l => unmatched(l.key))
 
-    val recording = new UnmatchedClusters.Recording(lookups)
+    val recording = new UnmatchedClusters.Recording(lookups, described = Some(source))
     val cache     = new ExperimentCacheFetch(agreementCache)
     val docs      = new InMemoryTmdbDocuments
     // prod's own family answers first (`--family-seed`: `<db>.jsonl` exports of identity_family_answers), the rest filled
@@ -122,7 +123,7 @@ object UnmatchedClustersCapture {
       recording.details.asScala.toMap, recording.withDetail.asScala.toSet, filed, finds.asScala.toMap, recording.casts.asScala.toMap, asked.unreachable,
       // what the whole resolve read LIVE (an IMDb suggestion its recording lacked): the captured model decisions stand on
       // it, and a slice re-deciding them without it decides otherwise (identity-slice --faithfulness capture)
-      c.liveAnswers())
+      c.liveAnswers(), recording.overviews.asScala.toMap)
     val written = out.resolve(s"${c.country.code}.json.gz")
     // never a capture its recording's detail reads were refused for: unwritten, the run's PR keeps the checked-in one
     val refused = UnmatchedClusters.hostsMissingDetail(capture)

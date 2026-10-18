@@ -233,6 +233,13 @@ class TmdbClient(
     services.identity.TmdbFilmRecord.cast(Seq(bodies.parse(orEmptyWhenUnknown(httpGet(fullDetailsUrl(tmdbId), auth)))))
   }
 
+  /** The words the film's overviews capitalise, off both answers [[identityRecord]] reads (`services.identity.TmdbFilmRecord.overview`):
+   *  what the identity store files of them, and the synopsis evidence reads (`services.identity.agreement.SynopsisEvidence`). */
+  def identityOverview(tmdbId: Int): Option[services.identity.ProseWords] = authHeader.flatMap { auth =>
+    services.identity.TmdbFilmRecord.overview(Seq(fullDetailsUrl(tmdbId), detailsUrl(tmdbId))
+      .map(url => bodies.parse(orEmptyWhenUnknown(httpGet(url, auth)))))
+  }
+
   /** Asks TMDB for the film's localized record again ([[fullDetails]]' request, no poster call): what the identity
    *  store files as the record's localized response — a record filed with only its release year gains its day
    *  (`services.identity.agreement.AgreementStage.wantedRecords`). A 404 is TMDB's answer; any other failure THROWS. */
