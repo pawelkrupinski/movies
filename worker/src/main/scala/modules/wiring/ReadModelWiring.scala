@@ -26,8 +26,21 @@ trait ReadModelWiring { self: WorkerWiring =>
   lazy val readModelBootStudy: BootCorpusStudy = new BootCorpusStudy(titleNormalizer)
 
   // ── Identity phase 3: confidence-gated ratings (docs/design/identity-resolver.md §15) ──────
-  // A staged-migration switch, off by default: on, a card whose stored evidence the calibration
-  // artefact scores below its display threshold is served without ratings.
+  // A staged migration, country by country ([[ReadModelWiring.RatingGateCountries]]): on, a card whose
+  // stored evidence the calibration artefact scores below its display threshold is served without ratings.
   lazy val ratingGate: RatingGate =
-    if (configuration.identityRatingGate.value) EvidenceRatingGate(IdentityCalibration.ratingGate) else RatingGate.off
+    if (ReadModelWiring.ratingGateOn(country, configuration.identityRatingGate)) EvidenceRatingGate(IdentityCalibration.ratingGate)
+    else RatingGate.off
+}
+
+object ReadModelWiring {
+
+  /** The countries whose cards are served through the rating gate: the two the deploy overlays switched on with
+   *  `KINOWO_IDENTITY_RATING_GATE=true` before the choice moved here. */
+  val RatingGateCountries: Set[models.Country] = Set(models.Country.Germany, models.Country.Spain)
+
+  /** Whether `country`'s cards go through the rating gate: its own choice, or `KINOWO_IDENTITY_RATING_GATE`
+   *  set — still read, so an overlay that sets it keeps the gate on wherever it does. */
+  def ratingGateOn(country: models.Country, switched: settings.IdentityRatingGateEnabled): Boolean =
+    RatingGateCountries(country) || switched.value
 }

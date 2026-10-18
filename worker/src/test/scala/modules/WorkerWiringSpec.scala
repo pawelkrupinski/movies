@@ -469,6 +469,20 @@ class WorkerWiringSpec extends AnyFlatSpec with Matchers {
       theSameInstanceAs(services.readmodel.RatingGate.off)
   }
 
+  it should "be on for the countries that chose it, with no KINOWO_IDENTITY_RATING_GATE set" in {
+    val budget = new SharedExecutionBudget(4)
+    Seq(Country.Germany, Country.Spain).foreach { c =>
+      withClue(s"${c.code}: ") {
+        new Probe(c, budget).ratingGate should not be theSameInstanceAs(services.readmodel.RatingGate.off)
+      }
+    }
+    Seq(Country.UnitedKingdom, Country.UnitedStates).foreach { c =>
+      withClue(s"${c.code}: ") {
+        new Probe(c, budget).ratingGate shouldBe theSameInstanceAs(services.readmodel.RatingGate.off)
+      }
+    }
+  }
+
   // The model reads TMDB from its normalized store first (`StoredFirstLookups`): a question the
   // store has no answer to is asked live once, filed into the store as it arrives, and read from there
   // after — never asked again per take-up.
