@@ -289,17 +289,21 @@ check "search Newcastle upon Tyne → newcastle" "newcastle" "$(search_term "New
 check "search Bishop's Stortford → stortford"  "stortford" "$(search_term "Bishop's Stortford")"
 check "search plain ASCII" "manchester" "$(search_term "Manchester")"
 
+# 1 when the --help text matches the grep arguments, else 0. Reads the whole text:
+# `grep -q` exits at the first match and SIGPIPEs `usage` under pipefail.
+usage_mentions() { usage | grep "$@" >/dev/null && echo 1 || echo 0; }
+
 # --help must survive the header block growing: the new option near the top AND
 # the env vars on the last line both have to survive, which a fixed line range
 # stopped doing the moment the docs got longer.
-check "usage documents --all-top" "1" "$(usage | grep -- '--all-top' >/dev/null && echo 1 || echo 0)"
-check "usage documents the start rank" "1" "$(usage | grep -- '--all-top 2 4' >/dev/null && echo 1 || echo 0)"
-check "usage documents --country-top" "1" "$(usage | grep -- '--country-top' >/dev/null && echo 1 || echo 0)"
-check "usage documents the one-run-at-a-time rule" "1" "$(usage | grep -i 'ONE capture run at a time' >/dev/null && echo 1 || echo 0)"
-check "usage documents the emulator revive" "1" "$(usage | grep -i 're-boots it on the same port' >/dev/null && echo 1 || echo 0)"
-check "usage documents skipping a bad city" "1" "$(usage | grep -i 'SKIPPED, not fatal' >/dev/null && echo 1 || echo 0)"
-check "usage documents EMULATORS"  "1" "$(usage | grep 'EMULATORS' >/dev/null && echo 1 || echo 0)"
-check "usage reaches the last header line" "1" "$(usage | grep 'NO_OPEN' >/dev/null && echo 1 || echo 0)"
+check "usage documents --all-top" "1" "$(usage_mentions -- '--all-top')"
+check "usage documents the start rank" "1" "$(usage_mentions -- '--all-top 2 4')"
+check "usage documents --country-top" "1" "$(usage_mentions -- '--country-top')"
+check "usage documents the one-run-at-a-time rule" "1" "$(usage_mentions -i 'ONE capture run at a time')"
+check "usage documents the emulator revive" "1" "$(usage_mentions -i 're-boots it on the same port')"
+check "usage documents skipping a bad city" "1" "$(usage_mentions -i 'SKIPPED, not fatal')"
+check "usage documents EMULATORS"  "1" "$(usage_mentions 'EMULATORS')"
+check "usage reaches the last header line" "1" "$(usage_mentions 'NO_OPEN')"
 check "usage stops at the code" "" "$(usage | grep 'set -euo' || true)"
 
 # type_ must send spaces as %s — `adb shell input text` otherwise types only the

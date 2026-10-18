@@ -232,18 +232,22 @@ _allbad="$(run_worker 0 1 3 1 </dev/null 2>&1 || true)"
 check "all cities failing is said out loud" "1" "$(printf '%s' "$_allbad" | grep -c 'NOTHING captured')"
 check "it still tried every city"           "3" "$(wc -l < "$_capcap" | tr -d ' ')"
 
+# 1 when the --help text matches the grep arguments, else 0. Reads the whole text:
+# `grep -q` exits at the first match and SIGPIPEs `usage` under pipefail.
+usage_mentions() { usage | grep "$@" >/dev/null && echo 1 || echo 0; }
+
 # ── the docs stay honest ──────────────────────────────────────────────────────
-check "usage documents --country-top" "1" "$(usage | grep -- '--country-top' >/dev/null && echo 1 || echo 0)"
-check "usage documents the start rank" "1" "$(usage | grep -- '--all-top 2 4' >/dev/null && echo 1 || echo 0)"
-check "usage documents the candidates pile" "1" "$(usage | grep 'candidates/' >/dev/null && echo 1 || echo 0)"
-check "usage documents SHOT_CLASSES" "1" "$(usage | grep 'SHOT_CLASSES' >/dev/null && echo 1 || echo 0)"
+check "usage documents --country-top" "1" "$(usage_mentions -- '--country-top')"
+check "usage documents the start rank" "1" "$(usage_mentions -- '--all-top 2 4')"
+check "usage documents the candidates pile" "1" "$(usage_mentions 'candidates/')"
+check "usage documents SHOT_CLASSES" "1" "$(usage_mentions 'SHOT_CLASSES')"
 check "usage documents every device flag" "3" \
   "$(usage | grep -oE '\-\-(iphone|ipad-13|ipad-11)' | sort -u | wc -l | tr -d ' ')"
 # The flag has to be consumed BEFORE the command case, or --iphone --all-top
 # falls through to the positional branch and is read as a locale.
 check "the dispatch narrows before it dispatches" "1" \
   "$(grep -c 'class_for_flag "\${1:-}"' "$HERE/store-screenshots.sh")"
-check "usage says the iPad is shot too" "1" "$(usage | grep -i 'IPAD' >/dev/null && echo 1 || echo 0)"
+check "usage says the iPad is shot too" "1" "$(usage_mentions -i 'IPAD')"
 # The dispatch wiring itself: every CAPTURE path must go through for_each_class or
 # the iPad pass silently stops happening. Dispatch only runs when the script is
 # EXECUTED, so it can't be called from here — this reads the source instead, which
@@ -252,7 +256,7 @@ check "all three capture paths run per class" "3" \
   "$(grep -c 'for_each_class cmd_' "$HERE/store-screenshots.sh")"
 check "--top stays exempt (it only prints)" "1" \
   "$(grep -c 'shift; cmd_top' "$HERE/store-screenshots.sh")"
-check "usage reaches the last header line" "1" "$(usage | grep 'NO_OPEN' >/dev/null && echo 1 || echo 0)"
+check "usage reaches the last header line" "1" "$(usage_mentions 'NO_OPEN')"
 check "usage stops at the code" "" "$(usage | grep 'set -euo' || true)"
 
 spec_summary
