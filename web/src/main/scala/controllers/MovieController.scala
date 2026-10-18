@@ -1,7 +1,6 @@
 package controllers
 
 import models._
-import play.api.Logging
 import play.api.mvc._
 import play.api.Mode
 import services.movies.TitleNormalizer
@@ -54,7 +53,7 @@ class MovieController( cc: ControllerComponents,
                        // The build serving the pages — in every validator, so two builds side by
                        // side in a rolling deploy never answer one another's revalidation with a 304.
                        build: settings.CommitSha = settings.CommitSha("unknown"),
-                     ) extends AbstractController(cc) with Logging {
+                     ) extends AbstractController(cc) {
 
   private implicit val fragments: FilmCardFragments = filmCards
 
@@ -184,53 +183,53 @@ class MovieController( cc: ControllerComponents,
     if (cacheablePlainPage(request)) servePlainListing(city, request)
     else serveFilteredListing(city, request)
 
-    // 304 short-circuits before any work; on a 200 cache hit `renderIndexHtml`
-    // (and its data-prep) never runs either.
-    // NO `Set-Cookie` HERE, AND THAT IS THE WHOLE POINT OF THE BRANCH.
-    // Cloudflare bypasses any response carrying one: measured, this page went
-    // `DYNAMIC` -> `BYPASS` the moment a Cache Rule made it eligible, with the
-    // `city=` cookie the only thing left on it. The cookie exists so the bare
-    // `/` landing can bounce a returning visitor to their city; it is
-    // `httpOnly = false` precisely so the client owns it, and `shared.js`
-    // writes it on load with the same name, path and lifetime. The filtered
-    // branch below is `private, no-cache`, so it keeps setting it server-side
-    // and a visitor with no JS is still remembered.
+  // 304 short-circuits before any work; on a 200 cache hit `renderIndexHtml`
+  // (and its data-prep) never runs either.
+  // NO `Set-Cookie` HERE, AND THAT IS THE WHOLE POINT OF THE BRANCH.
+  // Cloudflare bypasses any response carrying one: measured, this page went
+  // `DYNAMIC` -> `BYPASS` the moment a Cache Rule made it eligible, with the
+  // `city=` cookie the only thing left on it. The cookie exists so the bare
+  // `/` landing can bounce a returning visitor to their city; it is
+  // `httpOnly = false` precisely so the client owns it, and `shared.js`
+  // writes it on load with the same name, path and lifetime. The filtered
+  // branch below is `private, no-cache`, so it keeps setting it server-side
+  // and a visitor with no JS is still remembered.
   private def servePlainListing(city: City, request: RequestHeader): Result =
     conditionalResponse.serve(request, HtmlContentType, CachePolicy.RevalidatedAnywhere,
                               city = Some(city))(listingBody(city, request))
 
-    // A FILTER VARIANT STILL GETS VALIDATORS, JUST NOT A BLOB.
-    //
-    // `private, no-cache` tells the browser to store the page and re-validate
-    // before every re-use -- but a re-validation with nothing to validate
-    // AGAINST cannot come back 304, so every refresh of a shared
-    // `?date=tomorrow` link re-downloaded the whole listing (265 KB gzipped,
-    // 3.8 MB of HTML for Manchester). An ETag makes that refresh free when the
-    // city has not moved, without promising any cache it may serve the copy
-    // unasked.
-    //
-    // `cacheBody = false` is the other half of the decision above: these
-    // variants stay out of the shared gzip cache, which is an LRU over BYTES,
-    // so one-off filter combinations cannot evict the bare city pages that
-    // earn their place there. The GzipFilter still compresses on the way out.
-    //
-    // The whole query string is the key, not a normalised subset of it: the
-    // page puts the request's own URL in `og:url`, so two spellings that mean
-    // the same thing really do render different bytes and must not share a
-    // validator. Nothing is stored per key, so an appended `?foo=1` costs a
-    // hash and nothing else.
-    //
-    // WHAT THE ETAG PROMISES, PRECISELY: the read-model version this page was
-    // cut from, not a hash of the bytes. With no blob pinning them, a body
-    // re-rendered a few minutes later differs in the showtimes that have since
-    // started -- under the same validator, so a client holding the earlier
-    // copy keeps it until the city's stamp moves or its midnight arrives. That
-    // is the same age the branch above serves from its blob between two stamps,
-    // and the page is built for it: each slot's expiry prunes the lapsed showtimes
-    // client-side and `data-next-day` retires the document at midnight. What
-    // it costs that the blob branch does not is byte-identity between two
-    // clients holding one validator, which only a SHARED cache could observe
-    // -- and `private, no-cache` is exactly the instruction that none may.
+  // A FILTER VARIANT STILL GETS VALIDATORS, JUST NOT A BLOB.
+  //
+  // `private, no-cache` tells the browser to store the page and re-validate
+  // before every re-use -- but a re-validation with nothing to validate
+  // AGAINST cannot come back 304, so every refresh of a shared
+  // `?date=tomorrow` link re-downloaded the whole listing (265 KB gzipped,
+  // 3.8 MB of HTML for Manchester). An ETag makes that refresh free when the
+  // city has not moved, without promising any cache it may serve the copy
+  // unasked.
+  //
+  // `cacheBody = false` is the other half of the decision above: these
+  // variants stay out of the shared gzip cache, which is an LRU over BYTES,
+  // so one-off filter combinations cannot evict the bare city pages that
+  // earn their place there. The GzipFilter still compresses on the way out.
+  //
+  // The whole query string is the key, not a normalised subset of it: the
+  // page puts the request's own URL in `og:url`, so two spellings that mean
+  // the same thing really do render different bytes and must not share a
+  // validator. Nothing is stored per key, so an appended `?foo=1` costs a
+  // hash and nothing else.
+  //
+  // WHAT THE ETAG PROMISES, PRECISELY: the read-model version this page was
+  // cut from, not a hash of the bytes. With no blob pinning them, a body
+  // re-rendered a few minutes later differs in the showtimes that have since
+  // started -- under the same validator, so a client holding the earlier
+  // copy keeps it until the city's stamp moves or its midnight arrives. That
+  // is the same age the branch above serves from its blob between two stamps,
+  // and the page is built for it: each slot's expiry prunes the lapsed showtimes
+  // client-side and `data-next-day` retires the document at midnight. What
+  // it costs that the blob branch does not is byte-identity between two
+  // clients holding one validator, which only a SHARED cache could observe
+  // -- and `private, no-cache` is exactly the instruction that none may.
   private def serveFilteredListing(city: City, request: RequestHeader): Result =
     conditionalResponse.serve(request, HtmlContentType, CachePolicy.BrowserOnly,
                               cacheKey = "|q=" + request.rawQueryString, city = Some(city),
@@ -545,7 +544,6 @@ class MovieController( cc: ControllerComponents,
     Found(ShareCardUrl.home(models.Country.byCode(country).getOrElse(servingCountry)))
   }
 
-  private def devOnly(result: => play.api.mvc.Result): play.api.mvc.Result = DevMode.gate(environment)(result)
   private def devMode: Boolean = DevMode.enabled(environment)
 }
 
