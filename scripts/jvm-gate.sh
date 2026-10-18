@@ -24,13 +24,18 @@
 #   jvm_slot_release       gives this process's slot back
 #   jvm_cpu_options        the JVM options sizing a tool's JVM for KINOWO_JVM_CPUS cores (default 4) on macOS, where
 #                          agents share the cores; none on Linux (CI's runner is the JVM's alone) or with KINOWO_JVM_CPUS=0
-#   jvm_lock <dir>         mkdir-held by this process; one held by a process that is gone is taken over. 0 when taken
+#   jvm_lock <dir>         mkdir-held by this process; one held by a process that is gone (or holding no pid a minute
+#                          after it was taken) is taken over. 0 when taken
 #   jvm_unlock <dir>       removes it when this process holds it
 
 jvm_lock() {
   if mkdir "$1" 2>/dev/null; then echo $$ > "$1/pid"; return 0; fi
   local holder; holder=$(cat "$1/pid" 2>/dev/null)
-  if [ -n "$holder" ] && ! kill -0 "$holder" 2>/dev/null; then rm -rf "$1"; mkdir "$1" 2>/dev/null && { echo $$ > "$1/pid"; return 0; }; fi
+  # gone: a holder that is dead, or no pid a minute after the lock was taken (killed between mkdir and writing it)
+  if { [ -n "$holder" ] && ! kill -0 "$holder" 2>/dev/null; } ||
+     { [ -z "$holder" ] && [ -n "$(find "$1" -maxdepth 0 -mmin +1 2>/dev/null)" ]; }; then
+    rm -rf "$1"; mkdir "$1" 2>/dev/null && { echo $$ > "$1/pid"; return 0; }
+  fi
   return 1
 }
 jvm_unlock() { [ -n "${1:-}" ] && [ "$(cat "$1/pid" 2>/dev/null)" = $$ ] && rm -rf "$1"; return 0; }

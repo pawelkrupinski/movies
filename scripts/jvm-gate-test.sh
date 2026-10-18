@@ -64,6 +64,11 @@ check "every slot busy: waits, saying so with the holders" "yes no" \
   "$(grep -q "all 2 JVM slots busy (KINOWO_JVM_SLOTS; holders: $a,$b)" "$work/err" && echo yes || echo no) $([ -s "$work/got" ] && echo yes || echo no)"
 kill "$b"; wait "$b" 2>/dev/null; wait "$waiter"
 check "...and a slot whose holder is gone is taken over" "2" "$(cat "$work/got")"
+mkdir "$work/pidless" && touch -t 202001010000 "$work/pidless"
+check "a lock left with no pid (its holder killed between taking it and writing one), a minute old: taken over" "0 $$" \
+  "$(jvm_lock "$work/pidless"; echo "$? $(cat "$work/pidless/pid" 2>/dev/null)")"
+mkdir "$work/fresh-pidless"
+check "...one just taken, its pid not written yet: still held" "1" "$(jvm_lock "$work/fresh-pidless"; echo $?)"
 ( KINOWO_JVM_SLOT_MAX_WAIT=0 jvm_slot_take t; echo "${JVM_SLOT:-none}" > "$work/got" ) 2> "$work/err"
 check "past the slot deadline: goes ahead without one, warned" "none 1" "$(cat "$work/got") $(grep -c 'starting anyway' "$work/err")"
 kill "$a"; wait "$a" 2>/dev/null
