@@ -43,16 +43,23 @@ object InstalledBuildSlugs {
   private lazy val qualified: Map[(Country, String), String] =
     qualifiedSlugs(Country.switchable, keeper, CitySlugIndexData.sharedPageQualifiedSlugs)
 
-  /** [[qualified]] over `countries`, `keeper` and the generated per-country `table`. */
+  /** [[qualified]] over `countries`, `keeper` and the generated per-country `table`.
+   *  Total: a page another country keeps bare but `table` has no qualified slug for
+   *  keeps its own. That is an old owner whose slug is now only an ALIAS of one of its
+   *  pages — `generate_slug_index.py` qualifies a page only where another country has
+   *  the slug as a page or a retired page — and with no qualified slug to answer at,
+   *  the page's own is the only one that opens it; throwing would fail [[Catalog]]
+   *  at load instead. */
   private[models] def qualifiedSlugs(
     countries: Seq[Country],
     keeper: Map[String, Country],
     table: Map[String, Map[String, String]],
   ): Map[(Country, String), String] =
     (for {
-      country <- countries
-      city    <- country.cities if !keeper.get(city.slug).contains(country)
-    } yield (country, city.slug) -> table(country.code)(city.slug)).toMap
+      country   <- countries
+      city      <- country.cities if !keeper.get(city.slug).contains(country)
+      qualified <- table.get(country.code).flatMap(_.get(city.slug))
+    } yield (country, city.slug) -> qualified).toMap
 
   /** The slug installed builds know `city` of `country` by — its own, unless
    *  another country keeps that one bare. */
