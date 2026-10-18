@@ -28,20 +28,29 @@ import java.util.concurrent.ConcurrentHashMap
  * well-formedness check) live on [[TitleText]] — they are pure string functions
  * that no country can disagree about.
  */
-class TitleNormalizer(val rules: TitleRuleSet, memoEntries: Long = TitleRuleSet.MemoEntries) {
+class TitleNormalizer(val rules: TitleRuleSet, memoEntries: Long = TitleRuleSet.MemoEntries,
+                      val facts: TitleFacts.Rules = TitleFacts.Rules.none) {
 
   // The memos behind [[cinemaClean]] and [[listingTitle]], one entry per distinct title: BOUNDED,
   // because a worker runs for days and the titles it lists turn over weekly — unbounded, every title
   // ever listed stayed. See [[TitleRuleSet.MemoEntries]] for the size. The rule keys are one per
   // venue name, bounded by the roster.
   private val tidied       = tools.BoundedCache.ofSize(memoEntries).build[String, String]()
-  private val formatPeeled = tools.BoundedCache.ofSize(memoEntries).build[String, (String, List[String])]()
+  private val factsPeeled  = tools.BoundedCache.ofSize(memoEntries).build[String, TitleFacts.Peeled]()
+  private val formatPeeled = tools.BoundedCache.ofSize(memoEntries).build[String, FormatTags.Peeled]()
   private val ruleKeys     = new ConcurrentHashMap[String, String]()
 
   /** Apply a cinema's per-cinema cleanup rules to a raw scraped title, after the
-   *  shared tidy-up every scraped title needs (see [[TitleText.tidy]]). */
+   *  shared tidy-up every scraped title needs (see [[TitleText.tidy]]) and the facts the country's venues bill in a
+   *  title taken off it ([[TitleFacts]], [[titleFacts]]). */
   def cinemaClean(cinemaId: String, raw: String): String =
-    rules.perCinema(cinemaId, tidied.get(raw, TitleText.tidy(_)))
+    rules.perCinema(cinemaId, peeledFacts(raw).title)
+
+  /** `raw` tidied ([[TitleText.tidy]]) and its billed facts taken off ([[TitleFacts]]): the title before the venue's rules —
+   *  what the identity model reads a listing's title as. */
+  def factFree(raw: String): String = peeledFacts(raw).title
+
+  private def peeledFacts(raw: String): TitleFacts.Peeled = factsPeeled.get(raw, r => facts.peel(tidied.get(r, TitleText.tidy(_))))
 
   /** A venue's listed title as its slot carries it — [[cinemaClean]]ed by the venue's rules, its
    *  format tags peeled off (`FormatTags.extractFormatTags`) — with those tags.
@@ -52,9 +61,14 @@ class TitleNormalizer(val rules: TitleRuleSet, memoEntries: Long = TitleRuleSet.
    *  it depends on — the tidy-up and the format strip on the TITLE (a venue without rules of its
    *  own folds nothing, `TitleRuleSet.perCinema`), the rule key on the venue's name — never on the
    *  (venue, title) pair, which would hold an entry per listing. */
-  def listingTitle(cinema: Cinema, raw: String): (String, List[String]) =
-    formatPeeled.get(cinemaClean(ruleKeys.computeIfAbsent(cinema.displayName, TitleRuleKey.of(_)), raw),
-      FormatTags.extractFormatTags(_))
+  def listingTitle(cinema: Cinema, raw: String): (String, List[String]) = { val p = formatPeel(cinema, raw); (p.title, p.tokens) }
+
+  /** The facts a venue's `raw` title bills, as this country reads them ([[TitleFacts.of]]): what its own words credit
+   *  before the venue's rules, and the certificate and running time the format peel takes off after them. */
+  def titleFacts(cinema: Cinema, raw: String): TitleFacts.Facts = TitleFacts.of(facts, peeledFacts(raw).facts, formatPeel(cinema, raw))
+
+  private def formatPeel(cinema: Cinema, raw: String): FormatTags.Peeled =
+    formatPeeled.get(cinemaClean(ruleKeys.computeIfAbsent(cinema.displayName, TitleRuleKey.of(_)), raw), FormatTags.peel(_))
 
   /** What the title rules did to a venue's `raw` title, as rule ids: the venue's own cleanup and the format
    *  tags it peeled (`format:<tag>`), then the canonical and search tiers over what that leaves (`title:<id>`).
@@ -68,7 +82,7 @@ class TitleNormalizer(val rules: TitleRuleSet, memoEntries: Long = TitleRuleSet.
     val key             = TitleRuleKey.of(cinema.displayName)
     val (clean, formats) = listingTitle(cinema, raw)
     val tiers           = byClean.getOrElseUpdate(clean, rules.firedCanonical(clean) ++ rules.firedSearch(recase(clean)))
-    (rules.firedPerCinema(key, TitleText.tidy(raw)) ++ tiers).map("title:" + _).distinct ++ formats.map("format:" + _)
+    (rules.firedPerCinema(key, peeledFacts(raw).title) ++ tiers).map("title:" + _).distinct ++ formats.map("format:" + _)
   }
 
   /** How many titles [[listingTitle]] holds cleaned: one per distinct title, however many venues list it. */
@@ -385,5 +399,5 @@ object TitleNormalizer {
    *  here: a process-wide memo would be one set of caches every wiring and every
    *  spec in the JVM shares. */
   def forCountry(country: Country): TitleNormalizer =
-    new TitleNormalizer(TitleRuleSet.forCountry(country))
+    new TitleNormalizer(TitleRuleSet.forCountry(country), facts = country.titleFacts)
 }

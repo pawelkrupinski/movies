@@ -131,6 +131,12 @@ sealed abstract class Country(
    *  one of the two choices those radios offer. */
   def voiceoverToken: Option[String]
 
+  /** How this country's venues bill facts inside a title, read off it at intake into the listing's own fields
+   *  ([[services.movies.TitleFacts]]): the languages of the credit and label words they write — their own and English —
+   *  and the age-rating system they bill, if they bill one there. ABSTRACT, as [[voiceoverToken]] is: a bare "(15)" is a
+   *  certificate in the UK and nothing anywhere else. */
+  def titleFacts: services.movies.TitleFacts.Rules
+
   /** The one zone this country is published under: its BIGGEST city's, ties by slug — what a
    *  country-wide clock (the catalogue's fallback `timezone`, /uptime's timestamps) reads.
    *
@@ -258,6 +264,7 @@ object Country {
     override lazy val cityGroups: Seq[CityGroup] = City.polishVoivodeships
     override val versionTokens: Option[VersionTokens] = Some(VersionTokens("NAP", "DUB"))
     val voiceoverToken: Option[String] = Some("LEK")
+    val titleFacts: services.movies.TitleFacts.Rules = services.movies.TitleFacts.Rules(Set("pl", "en"), None)
   }
 
   /** The United Kingdom — an English-language country on its own `kinowo_uk`
@@ -284,6 +291,7 @@ object Country {
     // print. Both are what the chains' own labels normalise to.
     override val versionTokens: Option[VersionTokens] = Some(VersionTokens("SUB", "DUB"))
     val voiceoverToken: Option[String] = Some("LEC")
+    val titleFacts: services.movies.TitleFacts.Rules = services.movies.TitleFacts.Rules(Set("en"), Some(services.movies.TitleFacts.RatingSystem.Bbfc))
   }
 
   /** Germany — a German-language country on its own `kinowo_de` database,
@@ -312,6 +320,7 @@ object Country {
     override val versionTokens: Option[VersionTokens] = Some(VersionTokens("OmU", "DF"))
     // Filmstarts names four versions — OV, OmU, OmeU, DF — and none is a voice-over.
     val voiceoverToken: Option[String] = None
+    val titleFacts: services.movies.TitleFacts.Rules = services.movies.TitleFacts.Rules(Set("de", "en"), Some(services.movies.TitleFacts.RatingSystem.Fsk))
   }
 
   /** The United States — an English-language country on its own `kinowo_us`
@@ -346,6 +355,7 @@ object Country {
     // marked case, a dubbed one rare.
     override val versionTokens: Option[VersionTokens] = Some(VersionTokens("SUB", "DUB"))
     val voiceoverToken: Option[String] = Some("LEC")
+    val titleFacts: services.movies.TitleFacts.Rules = services.movies.TitleFacts.Rules(Set("en"), None)
     // US listings, chains and box offices alike, print "7:30 PM"; a 24-hour "19:30" reads as foreign.
     override val clockStyle: ClockStyle = ClockStyle.TwelveHour
   }
@@ -383,6 +393,7 @@ object Country {
     override val versionTokens: Option[VersionTokens] = Some(VersionTokens("VOSE", "DOB"))
     // SensaCine names VO, VOSE, VOSI, DOB and CAT — and no voice-over.
     val voiceoverToken: Option[String] = None
+    val titleFacts: services.movies.TitleFacts.Rules = services.movies.TitleFacts.Rules(Set("es", "en"), None)
   }
 
   /** Every country the codebase knows about. A worker iterates this; a web

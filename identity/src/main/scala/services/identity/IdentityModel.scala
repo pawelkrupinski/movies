@@ -1,7 +1,7 @@
 package services.identity
 
 import models.{Cinema, CinemaMovie}
-import services.movies.{ListingKey, ScrapeListing, SlotFields, TitleNormalizer, TitleSeason, TitleText}
+import services.movies.{ListingKey, ScrapeListing, SlotFields, TitleNormalizer, TitleSeason}
 
 /*
  * The identity resolver's vocabulary (docs/design/identity-resolver.md, phase 2). Everything here
@@ -200,12 +200,15 @@ object Listing {
   private def knowsDays(days: ScreeningDays): Boolean = !days.isEmpty && !days.isUnknown
 
 
-  /** `cm` as `cinema` lists it. Blank director names and non-positive runtimes are absent. Its title as every title is
-   *  read ([[TitleText.tidy]]): a box office filing a film library-style ("Tribute von Panem - Mockingjay Teil 2 (WA: 2026),
+  /** `scraped` as `cinema` lists it, the facts its title bills read into its fields ([[services.movies.TitleFacts]]). Blank
+   *  director names and non-positive runtimes are absent. Its title as every title is read
+   *  ([[services.movies.TitleText.tidy]]), those facts off it: a box office filing a film library-style ("Tribute von Panem - Mockingjay Teil 2 (WA: 2026),
    *  Die") is searched and measured as "Die Tribute von Panem - …", as its family key already reads it — searched as filed,
    *  only its pieces found films, and it leaned to "Catching Fire". The raw title stays as published. */
-  def of(cinema: Cinema, cm: CinemaMovie, normalizer: TitleNormalizer): Listing = {
-    val title = TitleText.tidy(cm.movie.title)
+  def of(cinema: Cinema, scraped: CinemaMovie, normalizer: TitleNormalizer): Listing = {
+    // the facts its title bills, in its own fields and off its title, as intake gives the slot (`ScrapeListing.prepare`)
+    val cm    = ScrapeListing.withTitleFacts(scraped, normalizer.titleFacts(cinema, scraped.movie.title))
+    val title = normalizer.factFree(cm.movie.title)
     val (searchTitle, properTitle) = searchTitlesOf(title, normalizer)
     Listing(
       cinema        = cinema,

@@ -7094,7 +7094,7 @@ showings:
 
 === Plenerowe Pałacowe: Droga do Vermiglio ===
 displayTitle:      Plenerowe Pałacowe: Droga do Vermiglio
-cinemaTitles:      Droga do Vermiglio reż. Maura Delpero  | Plenerowe Pałacowe: Droga do Vermiglio
+cinemaTitles:      Droga do Vermiglio   | Plenerowe Pałacowe: Droga do Vermiglio
 runtimeMinutes:    119
 releaseYear:       2024
 countries:         Włochy, Francja, Belgia
@@ -7116,7 +7116,7 @@ cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14606-plenerowe-paacowe-droga-do-vermiglio/
 cinemaScrapes:
   Kino Pałacowe / Plenerowe Pałacowe: Droga do Vermiglio / 2024
-  Służewski Dom Kultury / Droga do Vermiglio reż. Maura Delpero  / —
+  Służewski Dom Kultury / Droga do Vermiglio   / —
 showings:
   2026-07-07  Kino Pałacowe                 21:30 Dziedziniec Zamkowy
 
@@ -7293,7 +7293,7 @@ showings:
 
 === Plenerowe Pałacowe: Perfect Days ===
 displayTitle:      Plenerowe Pałacowe: Perfect Days
-cinemaTitles:      PERFECT DAYS | Perfect Days | Perfect Days reż. Wim Wenders | Plenerowe Pałacowe: Perfect Days
+cinemaTitles:      PERFECT DAYS | Perfect Days | Plenerowe Pałacowe: Perfect Days
 runtimeMinutes:    123
 releaseYear:       2023
 countries:         Niemcy, Japonia
@@ -7317,7 +7317,7 @@ cinemaScrapes:
   Kino Muranów / Perfect Days / 2023
   Kino Pałacowe / Plenerowe Pałacowe: Perfect Days / 2023
   Kino Pionier 1907 / PERFECT DAYS / 2023
-  Służewski Dom Kultury / Perfect Days reż. Wim Wenders / —
+  Służewski Dom Kultury / Perfect Days / —
 showings:
   2026-07-30  Kino Pałacowe                 21:30 Dziedziniec Zamkowy
 

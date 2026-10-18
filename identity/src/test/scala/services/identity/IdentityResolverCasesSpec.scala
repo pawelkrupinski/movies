@@ -356,16 +356,14 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     resolve(Seq(part), films).decisionOf(part.key).film should not be Some(70555)
   }
 
-  it should "deny a film none of whose directors its title bills as the director, whatever credit a feed copied onto it" in {
-    // DE ScharfrichterKino's "Alpha (dir. Ducournau)" (recording 38713274617) carried a feed's year and credit of Shiv
-    // Rawail's 2026 "Alpha", and took it (judged wrong: Julia Ducournau's Alpha). The venue's own words name the director;
-    // a feed's copied facts never outweigh them.
-    val films = Seq(F(1122030, "Alpha", 2026, "Shiv Rawail", 160, 8), F(1284460, "Alpha", 2025, "Julia Ducournau", 128, 6))
-    val marked = listing(KinoApollo, "Alpha (dir. Ducournau)", Some(2026), Some("Shiv Rawail"))
+  it should "not take a film by another director than the one its title credits, whatever year a feed copied onto it" in {
+    // DE ScharfrichterKino's "Alpha (dir. Ducournau)" (recording 38713274617) carried kinoheld's copied year and credit of
+    // Shiv Rawail's 2026 "Alpha", and took it (judged wrong: Julia Ducournau's Alpha). Intake now reads the venue's own
+    // credit into the listing's director (services.movies.TitleFacts), over the copied one: an ordinary credit, which a
+    // film by another director does not answer.
+    val films  = Seq(F(1122030, "Alpha", 2026, "Shiv Rawail", 160, 8), F(1284460, "Alpha", 2025, "Julia Ducournau", 128, 6))
+    val marked = listing(KinoApollo, "Alpha", Some(2026), Some("Ducournau"))
     resolve(Seq(marked), films).decisionOf(marked.key).film should not be Some(1122030)
-    // the PL way of billing it ("reż."), naming the film's own director: still its film
-    val billed = listing(KinoMuza, "Obcy (reż. Ozon)")
-    resolve(Seq(billed), Seq(F(1429348, "Obcy", 2025, "François Ozon", 122, 9))).decisionOf(billed.key).film shouldBe Some(1429348)
   }
 
   "A listing that publishes only a title" should

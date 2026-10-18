@@ -38,11 +38,12 @@ object ScrapeListing {
     // through `ScreeningTokens`, the one gate a source's own words pass to become a
     // badge: it maps each spelling onto the shared vocabulary and drops what is not
     // a screening attribute at all.
+    // …and give the listing the facts its title bills ([[withTitleFacts]]), before the fold below tells rows apart by them.
     val formatted: Seq[CinemaMovie] = movies.map { cm =>
       val tokens = cleanAndFormat(cm)._2
-      cm.copy(showtimes = cm.showtimes.map { st =>
+      withTitleFacts(cm.copy(showtimes = cm.showtimes.map { st =>
         st.copy(format = screeningTokens.normalize(if (st.format.isEmpty) tokens else st.format))
-      })
+      }), normalizer.titleFacts(cinema, cm.movie.title))
     }
     // A single cinema can report one film as several rows — one per screening page,
     // or under two spellings that share the slot but differ by year or by a canonical
@@ -66,6 +67,18 @@ object ScrapeListing {
         .map(folded)
     Prepared(deduped, cleaned)
   }
+
+  /** `cm` with the facts its title bills ([[TitleFacts]]) in its own fields. A director the title credits is the venue's
+   *  own word and replaces what the client carried — a feed's linked film's credit, as kinoheld copied Shiv Rawail's onto
+   *  DE ScharfrichterKino's "Alpha (dir. Ducournau)"; a running time, an age rating or an original title only fills a
+   *  field the client left empty, a structured field being the venue's word too. */
+  def withTitleFacts(cm: CinemaMovie, facts: TitleFacts.Facts): CinemaMovie =
+    if (facts == TitleFacts.Facts.empty) cm
+    else cm.copy(
+      director  = if (facts.directors.nonEmpty) facts.directors else cm.director,
+      ageRating = cm.ageRating.orElse(facts.ageRating),
+      movie     = cm.movie.copy(runtimeMinutes = cm.movie.runtimeMinutes.orElse(facts.runtimeMinutes),
+                                originalTitle  = cm.movie.originalTitle.orElse(facts.originalTitle)))
 
   /** One venue's rows of one film on one slot, as one: the representative's fields
    *  ([[MovieRecordMerge.slotRepresentative]]) over every row's showtimes — and, where the

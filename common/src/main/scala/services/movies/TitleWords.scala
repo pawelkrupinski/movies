@@ -56,6 +56,10 @@ object TitleWords {
     case HouseBanner     extends Concept("house-banner")
     /** `services.identity.ShortFilms.billsAShort`: a listing billing a short may take one. */
     case ShortFilm       extends Concept("short-film")
+    /** `TitleFacts`: a director credited inside a title, read into the listing's director at intake. */
+    case DirectorCredit  extends Concept("director-credit")
+    /** `TitleFacts`: an original title labelled inside a title, read into the listing's original title at intake. */
+    case OriginalTitle   extends Concept("original-title")
   }
   object Concept {
     val byId: Map[String, Concept] = values.map(c => c.id -> c).toMap
@@ -81,6 +85,9 @@ object TitleWords {
   }
 
   def phrases(concepts: Concept*): Seq[String] = entries.collect { case e if concepts.contains(e.concept) => e.phrase }.distinct
+  /** The concepts' phrases in `languages` only: what one country's venues write. */
+  def phrasesIn(languages: Set[String], concepts: Concept*): Seq[String] =
+    entries.collect { case e if concepts.contains(e.concept) && languages(e.language) => e.phrase }.distinct
 
   /** The languages a concept holds a word in. */
   def languages(concept: Concept): Set[String] = entries.collect { case e if e.concept == concept => e.language }.toSet
@@ -110,8 +117,11 @@ object TitleWords {
   /** The concepts' phrases as one alternation over the title AS BILLED, for a case-insensitive (`(?iu)`) pattern: an
    *  accented letter also matches its bare letter ("sesión" = "sesion"), words are spaces or hyphens apart
    *  ("dementia-friendly"), a stem is open-ended. Longest phrase first; no boundary of its own — the reader's. */
-  def rawPattern(concepts: Concept*): String =
-    s"(?:${alternation(concepts) { phrase =>
+  def rawPattern(concepts: Concept*): String = rawAlternation(phrases(concepts*))
+  /** [[rawPattern]] over the phrases of `languages` only ([[phrasesIn]]). */
+  def rawPatternIn(languages: Set[String], concepts: Concept*): String = rawAlternation(phrasesIn(languages, concepts*))
+  private def rawAlternation(phrases: Seq[String]): String =
+    s"(?:${alternationOf(phrases) { phrase =>
       phrase.split("\\s+").toSeq.map { word =>
         val body = word.stripPrefix("*").stripSuffix("*").map { ch =>
           val bare = tools.TextNormalization.deburr(ch.toString)
@@ -124,6 +134,7 @@ object TitleWords {
       }.mkString("[\\s-]*")
     }})"
 
-  private def alternation(concepts: Seq[Concept])(compile: String => String): String =
-    phrases(concepts*).sortBy(p => (-p.length, p)).map(compile).mkString("|")
+  private def alternation(concepts: Seq[Concept])(compile: String => String): String = alternationOf(phrases(concepts*))(compile)
+  private def alternationOf(phrases: Seq[String])(compile: String => String): String =
+    phrases.sortBy(p => (-p.length, p)).map(compile).mkString("|")
 }

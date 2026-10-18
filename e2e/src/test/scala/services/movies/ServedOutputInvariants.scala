@@ -240,19 +240,12 @@ object ServedOutputAllowlist {
   private val FormatBeforeSuffix =
     "TODO(rule): a format tag followed by a strand or event suffix, so FormatTags' end-anchored strip misses it — the " +
       "same listings SearchQueryMarkersSpec parks (P9); a FormatTags peel before ' | <strand>' / ' – <event>' would fix all"
-  private val CreditKeptInDisplay =
-    "TODO(rule): 'reż. <director>' is stripped from the search (xtra-rez-credit-suffix, a GlobalStructural rule) but kept " +
-      "in the display and the key; a Canonical-tier credit strip folds these rows, so it needs the five corpora's moves reviewed — parked"
 
   val entries: Map[Country, Map[AllowedCard, String]] = Map(
     Country.Poland -> Map(
       AllowedCard.anywhere("Tajemniczy świat Arrietty (napisy PL) | Poniedziałki ze studiem Ghibli") -> FormatBeforeSuffix,
       AllowedCard.anywhere("Chłopiec i czapla (napisy PL) | Poniedziałki ze Studiem Ghibli") -> FormatBeforeSuffix,
       AllowedCard.anywhere("Miloš Forman - Amadeusz 4K – pokaz specjalny") -> FormatBeforeSuffix,
-      AllowedCard.anywhere("Fonomo 26 - Joybubbles reż. Rachel J. Morrison") -> CreditKeptInDisplay,
-      AllowedCard.anywhere("Fonomo 26 - Trzy Pieśni reż. Krzysztof Nowicki") -> CreditKeptInDisplay,
-      AllowedCard.anywhere("Fonomo 26 - Cała reszta to szum reż. Nicolas Pereda") -> CreditKeptInDisplay,
-      AllowedCard.anywhere("Fonomo 26 - Nova '78 reż. Rodrigo Areias, Aaron Brookner") -> CreditKeptInDisplay,
       AllowedCard.anywhere("Weekend Seniora z Kulturą: Vivaldi i ja [2D Lektor] (seans z audiodeskrypcją)") -> FormatBeforeSuffix,
       AllowedCard.anywhere("Kusama. Nieskończoność (napisy Pl) | Tylko Sztuka Cię Nie Oszuka") -> FormatBeforeSuffix,
       AllowedCard("slawno", "Bez końca 2d pl lolo") ->

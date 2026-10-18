@@ -318,3 +318,27 @@ short-film	fr	court métrage*
 short-film	fr	courts métrages
 short-film	pt	curta metragem
 short-film	pt	curtas metragens
+
+# ── director-credit: the word a venue bills its film's director after, inside the title ("Lalka, reż. Maciej Kawalski
+# (2026)", "Alpha (dir. Ducournau)") — read into the listing's director at intake (TitleFacts), each country in its own
+# languages and English. A name must follow, capitalised: "mit Regie-Besuch!" credits nobody ──
+director-credit	pl	reż.
+director-credit	pl	reżyseria
+director-credit	pl	w reżyserii
+director-credit	en	dir.
+director-credit	en	directed by
+director-credit	en	a film by
+director-credit	de	Regie
+director-credit	de	ein Film von
+director-credit	de	Film von
+director-credit	es	dir.
+director-credit	es	dirigida por
+director-credit	es	una película de
+
+# ── original-title: the label a venue bills a film's original title after, inside the title ("(Originaltitel: La petite
+# cuisine de Mehdi)") — read into the listing's original title at intake (TitleFacts) ──
+original-title	pl	tytuł oryginalny
+original-title	en	original title
+original-title	de	Originaltitel
+original-title	es	título original
+

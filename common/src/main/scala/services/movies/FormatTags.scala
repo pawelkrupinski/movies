@@ -80,15 +80,15 @@ object FormatTags {
   // "Digger (15)", CineStar's "Catching Fire (OV) (WA)") if it stays.
   private val Certificate = services.titlerules.TitleRulePlaceholders.all("CERT")
   private val CertificateNote =
-    (s"""(?i)(?<=\\S)\\s*(?:[-–—]\\s*Cert(?:ificate)?\\.?\\s+$Certificate|\\(\\s*(?:Cert(?:ificate)?\\.?\\s*)?$Certificate(?:\\s+TBC)?\\s*\\))""" +
-      """(\s*\(\s*(?:19|20)\d{2}\s*\))?(?:\s+\d{2,3}\s*mins?|\s+\d{2})?\s*$""").r
+    (s"""(?i)(?<=\\S)\\s*(?:[-–—]\\s*Cert(?:ificate)?\\.?\\s+(?<cert>$Certificate)|\\(\\s*(?:Cert(?:ificate)?\\.?\\s*)?(?<bracketed>$Certificate)(?:\\s+TBC)?\\s*\\))""" +
+      """(?<year>\s*\(\s*(?:19|20)\d{2}\s*\))?(?:\s+(?<mins>\d{2,3})\s*mins?|\s+\d{2})?\s*$""").r
   // A showing's note a box office closes between asterisks after the rest — Electric Palace Bridport's "Wicker (15) 105
   // mins *MATINEE*", "… *SUBTITLED MATINEE*": words only, spaced off the title, so a title's own asterisks ("M*A*S*H",
   // "Monet*", "B****") stay. Its version words still badge the showing.
   private val AsteriskNote = """(?<=\S)\s+\*\s*\p{L}[\p{L}\s'&-]*\*\s*$""".r
   // …and the running time it brackets, confirmed or not: Bridport's "Screening: NTL - Hay Fever (12A TBC) (160 mins TBC)"
   // hid its certificate behind it. A number of minutes, so "Apollo 13" and "Sweet Sixteen (16)" stay.
-  private val BracketedRunningTime = """(?i)(?<=\S)\s*\(\s*\d{2,3}\s*mins?\.?(?:\s+TBC)?\s*\)\s*$""".r
+  private val BracketedRunningTime = """(?i)(?<=\S)\s*\(\s*(\d{2,3})\s*mins?\.?(?:\s+TBC)?\s*\)\s*$""".r
   private val ReReleaseMark = """(?i)(?<=\S)\s*\(\s*(?:WA(?:\s*:?\s*\d{2,4}|\s*:)?|Wiederauff(?:ü|ue)hrung)\s*\)?\s*$""".r
   /** A closed re-release mark inside the title, before a strand or a pipe ("Tribute von Panem (WA) - Kinderkino"). */
   private val ReReleaseBracket = """(?i)\s*\(\s*(?:WA(?:\s*:?\s*\d{2,4})?|Wiederauff(?:ü|ue)hrung)\s*\)(?=\s*\S)""".r
@@ -172,12 +172,22 @@ object FormatTags {
    *  `Showtime.format` badge. Tokens de-duplicated, ordered by first appearance
    *  left-to-right. Words with no version meaning (dolby, premiera, …) yield no
    *  token. A Ukrainian dub/lektor tag is kept whole (guard) and yields no token. */
-  def extractFormatTags(raw: String): (String, List[String]) = {
+  def extractFormatTags(raw: String): (String, List[String]) = { val p = peel(raw); (p.title, p.tokens) }
+
+  /** What [[peel]] takes off a title: the clean title, its [[FormatToken]]s, and the box office's notes it peeled that are
+   *  facts of the showing — a BBFC certificate ("Digger (15)", never "TBC") and a running time ("105 mins") — for the
+   *  listing's own fields ([[TitleFacts]]: a country reads the certificate only where it is its rating system). */
+  final case class Peeled(title: String, tokens: List[String], certificate: Option[String], runtimeMinutes: Option[Int])
+
+  /** [[extractFormatTags]], with the certificate and running time it peels ([[Peeled]]). */
+  def peel(raw: String): Peeled = {
     val spelled = BracketedHyphenatedScreen.replaceAllIn(
       BracketedOriginalVersion.replaceAllIn(OriginalVersionPreposition.replaceAllIn(raw, " "), "OV"), "($1D)")
     var t    = GluedFormatDash.replaceAllIn(GluedFormatSlash.replaceAllIn(
                  GluedFormatUnderscore.replaceAllIn(GluedVersionHyphen.replaceAllIn(spelled.collapsedSpaces, " - "), " "), " "), " - ")
     var previous = ""
+    var certificate = Option.empty[String]
+    var runtime     = Option.empty[Int]
     val dropped = scala.collection.mutable.Set.empty[String]
     def uaGuarded(tag: String): Boolean = UaGuardedTag.findFirstIn(tag).isDefined
     while (t != previous) {
@@ -190,8 +200,16 @@ object FormatTags {
         captureTagWords(note, dropped)
         t = AsteriskNote.replaceFirstIn(t, "").trim
       }
-      t = BracketedRunningTime.replaceFirstIn(t, "").trim
-      t = ReReleaseBracket.replaceAllIn(ReReleaseMark.replaceFirstIn(CertificateNote.replaceFirstIn(t, "$1"), ""), "").trim
+      BracketedRunningTime.findFirstMatchIn(t).foreach { m =>
+        runtime = runtime.orElse(m.group(1).toIntOption)
+        t = (t.substring(0, m.start) + t.substring(m.end)).trim
+      }
+      CertificateNote.findFirstMatchIn(t).foreach { m =>
+        certificate = certificate.orElse(Option(m.group("cert")).orElse(Option(m.group("bracketed"))).map(_.toUpperCase(Locale.ROOT)))
+        runtime = runtime.orElse(Option(m.group("mins")).flatMap(_.toIntOption))
+        t = t.substring(0, m.start) + Option(m.group("year")).getOrElse("")
+      }
+      t = ReReleaseBracket.replaceAllIn(ReReleaseMark.replaceFirstIn(t, ""), "").trim
       // Tokens peeled inside a [..]/(..) tag also carry version meaning, so
       // capture them before deleting the tag — UNLESS the tag names the Ukrainian
       // dub/lektor version, which is kept whole so it stays its own card.
@@ -226,7 +244,7 @@ object FormatTags {
       .toList
     // A peel can leave a library-style filing at the end it bared — "Rocky Horror Picture Show, The (WA)" — which the
     // tidy-up's fronting, run before the peel, saw with the mark still behind it.
-    (TitleText.frontArticle(t), tokens)
+    Peeled(TitleText.frontArticle(t), tokens, certificate.filterNot(_ == BbfcCertificate.Pending), runtime)
   }
 
   /** Record every [[FormatToken]]-bearing word in `chunk` (a single token or a

@@ -93,6 +93,11 @@ object TitleTrace {
   private def q(s: String): String = s"'$s'"
   private def moved(before: String, after: String): String = if (before == after) s"${q(before)} (unchanged)" else s"${q(before)} → ${q(after)}"
   private def yesNo(b: Boolean): String = if (b) "YES" else "no"
+  /** What a title's facts fill ([[services.movies.TitleFacts.Facts]]), each named — empty when it bills none. */
+  private def factsOf(f: services.movies.TitleFacts.Facts): String =
+    (Option.when(f.directors.nonEmpty)(s"director ${f.directors.mkString(", ")}") ++ f.originalTitle.map(t => s"original title ${q(t)}") ++
+      f.runtimeMinutes.map(m => s"runtime $m min") ++ f.ageRating.map(r => s"age rating $r")).map(", " + _).mkString
+  extension (s: String) private def ifEmpty(other: String): String = if (s.isEmpty) other else s
   private val baselineIds: Set[String] = TitleRules.all.map(_.id).toSet
 
   /** `fired` (ids, in fold order) applied one by one from `from`: each rule's name, where it is defined, before and after. */
@@ -123,10 +128,12 @@ object TitleTrace {
     out += "1. ingest — the slot's title (ScrapeListing.cleanTitle)"
     val tidied = TitleText.tidy(raw)
     out += s"  tidy (entities, sentence marks, filed article): ${moved(raw, tidied)}"
-    val venueFired = normalizer.rules.firedPerCinema(ruleKey, tidied)
+    val peeled = normalizer.facts.peel(tidied)
+    out += s"  title facts (TitleFacts, ${country.code}'s rules): ${moved(tidied, peeled.title)}${factsOf(peeled.facts)}"
+    val venueFired = normalizer.rules.firedPerCinema(ruleKey, peeled.title)
     out += (if (cinema.displayName == AnyVenue) "  venue rules: none (no venue)"
             else s"  venue rules ($ruleKey): ${if (venueFired.isEmpty) "none fired" else ""}")
-    val (venueLines, afterVenue) = steps(normalizer, venueFired, tidied)
+    val (venueLines, afterVenue) = steps(normalizer, venueFired, peeled.title)
     out ++= venueLines
     val (clean, tags) = ScrapeListing.cleanTitle(cinema, raw, normalizer)
     require(normalizer.cinemaClean(ruleKey, raw) == afterVenue, s"the venue rules' trace ${q(afterVenue)} is not the fold's ${q(normalizer.cinemaClean(ruleKey, raw))}")
@@ -134,6 +141,7 @@ object TitleTrace {
       (if (tags.nonEmpty) s" tags ${tags.mkString("[", ", ", "]")}" else " no tags") +
       (if (filedArticleFronted(afterVenue, clean)) ", filed article fronted" else "")
     out += s"  = slot title ${q(clean)}"
+    out += s"  = listing facts${factsOf(normalizer.titleFacts(cinema, raw)).stripPrefix(",").ifEmpty(" none")}"
 
     // 2. identity key
     out += "2. canonical tier — the slot key (TitleNormalizer.sanitize)"

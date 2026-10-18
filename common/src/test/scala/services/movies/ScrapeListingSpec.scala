@@ -31,6 +31,20 @@ class ScrapeListingSpec extends AnyFlatSpec with Matchers {
     p.movies.head.showtimes.map(_.dateTime.getHour) shouldBe Seq(18, 20)
   }
 
+  it should "give the listing the facts its title bills, the title's director over the one the client carried" in {
+    // DE ScharfrichterKino's "Alpha (dir. Ducournau)" (recording 38713274617) carried kinoheld's copied credit of Shiv
+    // Rawail's 2026 "Alpha"; the venue's own words name Ducournau. The slot's title loses the credit.
+    val germany = TitleNormalizer.forCountry(models.Country.Germany)
+    val copied  = listing("Alpha (dir. Ducournau)", Seq(at(18))).copy(director = Seq("Shiv Rawail"))
+    val p = ScrapeListing.prepare(Helios, Seq(copied), germany, ScreeningTokens.forDefaultCountry())
+    p.movies.map(p.cleaned) shouldBe Seq("Alpha")
+    p.movies.head.director shouldBe Seq("Ducournau")
+    // the age rating the country's system bills, where the client set none
+    val rated = ScrapeListing.prepare(Helios, Seq(listing("Jüdische Filmwoche: Das siebte Kreuz D, ab 12", Seq(at(18)))), germany,
+      ScreeningTokens.forDefaultCountry())
+    rated.movies.head.ageRating shouldBe Some("FSK 12")
+  }
+
   it should "keep apart a house's two seasons' productions of one work at one venue" in {
     // UK recording 38351832400: The Ashford Cinema lists "RBO Cinema Season 2026-27: Swan Lake" beside "Royal Ballet &
     // Opera 2024-25: Swan Lake"; folded onto one slot, the 2026/27 relay took the 2024/25 record.
