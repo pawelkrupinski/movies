@@ -24,18 +24,10 @@ final class VenueDetailLookups(enrichers: Seq[DetailEnricher], index: VenuePageI
  * there. So a take-up reads the store in batches instead of asking every question again; venue details
  * are never fetched here, only waited for.
  */
-final class StoredFirstLookups(stored: IdentityLookups, live: IdentityLookups) extends IdentityLookups {
-  def hasDetail(listing: Listing): Boolean                  = stored.hasDetail(listing)
-  def detail(listing: Listing): Answer[Option[DetailFacts]] = stored.detail(listing)
-
-  override def prefetch(queries: Iterable[CandidateQuery], films: Iterable[Int], details: Iterable[Listing]): Unit =
-    stored.prefetch(queries, films, details)
-  override def prefetchAnswered(): Unit = stored.prefetchAnswered()
-  override def released(queries: Iterable[CandidateQuery], films: Iterable[Int], details: Iterable[services.movies.ListingKey]): Unit =
-    stored.released(queries, films, details)
-
-  def candidates(query: CandidateQuery): Answer[Seq[Hit]] = storedFirst(stored.candidates(query), live.candidates(query))
-  def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = storedFirst(stored.film(tmdbId), live.film(tmdbId))
+final class StoredFirstLookups(stored: IdentityLookups, live: IdentityLookups) extends ForwardingIdentityLookups(stored) {
+  override def candidates(query: CandidateQuery): Answer[Seq[Hit]] = storedFirst(stored.candidates(query), live.candidates(query))
+  override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = storedFirst(stored.film(tmdbId), live.film(tmdbId))
+  override def releaseDay(tmdbId: Int): Answer[Option[java.time.LocalDate]] = film(tmdbId).map(_.flatMap(_.released))
   override def cast(tmdbId: Int): Answer[Option[Seq[String]]] = storedFirst(stored.cast(tmdbId), live.cast(tmdbId))
   override def overview(tmdbId: Int): Answer[Option[ProseWords]] = storedFirst(stored.overview(tmdbId), live.overview(tmdbId))
 

@@ -1087,31 +1087,20 @@ object AgreementStage {
   }
 
   /** `inner`, a listings site's catalogue entry linked as a listing's page read as no page at all ([[uncatalogued]]). */
-  private[agreement] final class CatalogueBlind(inner: IdentityLookups) extends IdentityLookups {
+  private[agreement] final class CatalogueBlind(inner: IdentityLookups) extends services.identity.ForwardingIdentityLookups(inner) {
     private def entry(listing: Listing) = listing.page.exists(services.identity.SourceReliability.listingsSiteEntry)
-    def hasDetail(listing: Listing): Boolean                     = !entry(listing) && inner.hasDetail(listing)
-    def detail(listing: Listing): Answer[Option[DetailFacts]]    = if (entry(listing)) Answer.Known(None) else inner.detail(listing)
-    def candidates(query: CandidateQuery): Answer[Seq[Hit]]      = inner.candidates(query)
-    def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = inner.film(tmdbId)
-    override def cast(tmdbId: Int): Answer[Option[Seq[String]]]  = inner.cast(tmdbId)
-    override def overview(tmdbId: Int): Answer[Option[ProseWords]] = inner.overview(tmdbId)
-    override def numbersFilmsByTmdbId: Boolean                   = inner.numbersFilmsByTmdbId
+    override def hasDetail(listing: Listing): Boolean                  = !entry(listing) && inner.hasDetail(listing)
+    override def detail(listing: Listing): Answer[Option[DetailFacts]] = if (entry(listing)) Answer.Known(None) else inner.detail(listing)
   }
 
-  /** `inner`, noting whether any answer it gave was `Unknown`. */
-  private[agreement] final class UnknownNoting(inner: IdentityLookups) extends IdentityLookups {
+  /** `inner`, noting whether any answer it gave was `Unknown` — a cast, overview or release day not known left unnoted:
+   *  it leaves the evidence that reads it unread, never the fill waiting. */
+  private[agreement] final class UnknownNoting(inner: IdentityLookups) extends services.identity.ForwardingIdentityLookups(inner) {
     @volatile var unknown = false
     private def noted[A](answer: Answer[A]): Answer[A] = { if (answer == Answer.Unknown) unknown = true; answer }
-    def hasDetail(listing: Listing): Boolean                     = inner.hasDetail(listing)
-    def detail(listing: Listing): Answer[Option[DetailFacts]]    = noted(inner.detail(listing))
-    override def prefetch(queries: Iterable[CandidateQuery], films: Iterable[Int], details: Iterable[Listing]): Unit = inner.prefetch(queries, films, details)
-    override def prefetchAnswered(): Unit                        = inner.prefetchAnswered()
-    def candidates(query: CandidateQuery): Answer[Seq[Hit]]      = noted(inner.candidates(query))
-    def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = noted(inner.film(tmdbId))
-    override def numbersFilmsByTmdbId: Boolean                   = inner.numbersFilmsByTmdbId
-    // a cast not known leaves the cast evidence unread, never the fill waiting
-    override def cast(tmdbId: Int): Answer[Option[Seq[String]]]  = inner.cast(tmdbId)
-    override def overview(tmdbId: Int): Answer[Option[ProseWords]] = inner.overview(tmdbId)
+    override def detail(listing: Listing): Answer[Option[DetailFacts]]    = noted(inner.detail(listing))
+    override def candidates(query: CandidateQuery): Answer[Seq[Hit]]      = noted(inner.candidates(query))
+    override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = noted(inner.film(tmdbId))
   }
 
   /* A model take's correction (Correction) is stored as its listings' digest and the `version` it was read (or last
