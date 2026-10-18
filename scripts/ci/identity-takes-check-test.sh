@@ -347,8 +347,11 @@ check "...and pass" 0 "$code"
 at "$c9"; code=0; SHAPE_COMMAND=corpusShapePoland SHAPE_HEAD="$arrietty$preview" SHAPE_BASE=$arrietty TAKES_BASE=$c8 store_run "$c9" || code=$?
 check "a base whose findings its own run stored is reused, not run" 0 "$(grep -c identity-takes-base "$work/sbt-calls")"
 check "...and the head's new finding still fails" 1 "$code"
+rm -rf "$work/out"  # the cases above left their findings there: this one's head must write none of its own
 code=0; (cd "$work/job" && PATH="$work/bin:$PATH" GITHUB_REPOSITORY=o/r GITHUB_SHA=$c9 RUNNER_TEMP=$work SBT_CALLS="$work/sbt-calls" \
   SHAPE_COMMAND=corpusShapeNowhere TAKES_BASE=$c8 "$script" pl "$work/out" > "$work/log" 2>&1) || code=$?
 check "specs that wrote no findings are no verdict, never a pass" 2 "$code"
+check "...said as such, the run reaching its verdict" "1 0" \
+  "$(grep -c 'the corpus-shape specs wrote no findings' "$work/log") $(grep -c 'unbound variable' "$work/log")"
 
 spec_summary

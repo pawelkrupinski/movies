@@ -476,6 +476,7 @@ else
 fi
 
 if [ -n "$shape_moves" ]; then
+  shaped=0  # the head's seconds, set only when it wrote findings
   shape_found "$here" "$out/head/shape"
   if [ -n "$(ls "$out/head/shape" 2>/dev/null)" ]; then
     SECONDS=${took[${#took[@]}-1]:-0}; timing head-shape ran; shaped=$SECONDS; SECONDS=0
