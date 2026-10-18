@@ -206,29 +206,32 @@ class ReadModelProjector(
       case Left(reason) => services.movies.VenueVerdict.Declined(reason)
       case Right(byCard) =>
         appliedSinceSweep.foreach(_ += rowId)
-        byCard.foreach { case (card, changed) =>
-          // Only the changed venues' rows: every other row of the card is carried as written — the
-          // whole-film projection would plan it unbuilt from the same inputs (and a row whose stored
-          // content drifted is the content check's, as it is under any venue apply).
-          var upserted = 0
-          val updated  = changed.map { venue =>
-            val input = venue.inputHash
-            val prior = lastScreenings.get(card, venue._id).get // present: `planVenues` declines a venue appearing
-            if (prior.input.contains(input)) venue._id -> prior
-            else {
-              val screening = venue.screening
-              val output    = screening.##
-              if (output != prior.output) { writer.upsertScreening(screening); upserted += 1 }
-              venue._id -> WrittenScreening(output, Some(input))
-            }
-          }
-          if (upserted > 0) metrics.recordWrite(Target.Screening, Op.Upsert, upserted)
-          metrics.recordVenueProjection(rebuilt = changed.size, reused = lastScreenings.size(card) - changed.size)
-          lastScreenings.updateRows(card, updated)
-        }
+        byCard.foreach(applyVenues)
         if (held.nonEmpty) releaseExpired()
         services.movies.VenueVerdict.Applied
     }
+  }
+
+  /** Caller holds `lock`. Rebuild only the changed venues' rows of `card`: every other row of the
+   *  card is carried as written — the whole-film projection would plan it unbuilt from the same
+   *  inputs (and a row whose stored content drifted is the content check's, as it is under any
+   *  venue apply). */
+  private def applyVenues(card: String, changed: Seq[ReadModelProjection.VenueScreening]): Unit = {
+    var upserted = 0
+    val updated  = changed.map { venue =>
+      val input = venue.inputHash
+      val prior = lastScreenings.get(card, venue._id).get // present: `planVenues` declines a venue appearing
+      if (prior.input.contains(input)) venue._id -> prior
+      else {
+        val screening = venue.screening
+        val output    = screening.##
+        if (output != prior.output) { writer.upsertScreening(screening); upserted += 1 }
+        venue._id -> WrittenScreening(output, Some(input))
+      }
+    }
+    if (upserted > 0) metrics.recordWrite(Target.Screening, Op.Upsert, upserted)
+    metrics.recordVenueProjection(rebuilt = changed.size, reused = lastScreenings.size(card) - changed.size)
+    lastScreenings.updateRows(card, updated)
   }
 
   /** Caller holds `lock`. The venues [[onVenueSlots]] rebuilds, by card — or the first reason it
@@ -295,88 +298,101 @@ class ReadModelProjector(
    *  anything the change stream missed. */
   private def project(partition: ReadModelProjection.Partition, trigger: ProjectTrigger): Int = {
     val rowId = partition.stored.id.value
-    if (!partition.stored.record.readyToProject) {
-      lastGroups.remove(rowId)
-      healedClean.remove(rowId)
-      // A row that lost its readiness takes its cards with it (the prune would, later).
-      lastCardsByRow.remove(rowId).foreach(_.foreach(retireCard(_, RetireReason.RowUnready)))
-      dropHoldsNotProducedBy(rowId, Set.empty)
-      return 0
-    }
+    if (!partition.stored.record.readyToProject) { retireUnready(rowId); return 0 }
     // A row fans out into one card per display-title variant (Cyrillic / English
     // / banner-prefixed listings of one film); the common single-title row yields
-    // exactly one. Each variant card is diffed and written independently. Measure the
-    // pure projection BOTH ways: wall-clock answers "how long did it take" (the latency
-    // histogram), thread CPU answers "how much CPU did it burn" (the credit-floor
-    // attribution). They diverge under concurrency and under steal, so the one that may
-    // be compared against process CPU is the CPU one — see `recordProject`.
-    val wall      = tools.Stopwatch.start()
-    val cpuStart  = cpuClock.nanos()
-    val projected = projectReusingMetadata(partition, trigger)
-    val variants  = projected.map { (movie, venues) => (movie, planScreenings(movie._id, venues)) }
-    lastGroups.update(rowId, RowGroups(partition.anchorKey, partition.cardByGroup,
-      projected.iterator.flatMap(_._2).filter(_.slotCount > 1).map(_._id).toSet))
-    dropHoldsNotProducedBy(rowId, variants.map(_._1._id).toSet)
-    metrics.recordProject(
-      trigger,
-      wallSeconds = wall.seconds,
-      cpuSeconds  = (cpuClock.nanos() - cpuStart) / 1e9
-    )
+    // exactly one. Each variant card is diffed and written independently.
+    val variants = timedProjection(trigger)(planRow(partition, trigger))
     // The WRITE half, timed separately from the computation above (`recordProject`) — see
     // `recordWriteBurst`. A wide release writes one document per (card, city, cinema)
     // through `writer.upsertMovie`/`diffScreenings`, sequentially; this is the phase that
     // scales with city count, not with resolve/synopsisByCity/ratings cost.
     val writing = tools.Stopwatch.start()
-    var written = 0
     // A content check's writes are DRIFT CANDIDATES — the stored projection disagreed with the
     // source — held by what moved for the sweep's verdict, which counts and names only the rows
     // no event then repaired, the film ids being what a drift investigation has to start from.
-    val drifting = trigger == ProjectTrigger.Content
-    val causes   = Seq.newBuilder[(String, Int)]
-    val drifted  = Seq.newBuilder[String]
+    val drift   = Option.when(trigger == ProjectTrigger.Content)(new RowDriftLog)
     val now     = clock.millis()
     val publish = variants.flatMap { case (projected, screenings) =>
       gate(rowId, projected, screened = screenings.nonEmpty, now).map(_ -> screenings)
     }
-    publish.foreach { case (movie, screenings) =>
-      val hash    = CardHash.of(movie)
-      val before  = lastMovie.get(movie._id)
-      val changed = !before.contains(hash)
-      if (changed) {
-        writer.upsertMovie(movie)
-        metrics.recordWrite(Target.Movie, Op.Upsert, 1)
-        val parts = before.fold(Set.empty[String])(_.partsDifferingFrom(hash))
-        metrics.recordCardWrite(parts)
-        written += 1
-        if (drifting) {
-          val cause = ReadModelProjectionMetrics.cardWriteCause(parts)
-          causes += cause -> 1
-          drifted += s"card ${movie._id} (${if (parts.isEmpty) cause else parts.toSeq.sorted.mkString("+")})"
-        }
-      }
-      val screeningDiff = diffScreenings(movie._id, screenings)
-      written += screeningDiff.documents
-      if (drifting) {
-        def note(cause: String, ids: Seq[String]): Unit = if (ids.nonEmpty) {
-          causes += cause -> ids.size
-          drifted += s"$cause ${ids.size} (${ReadModelProjector.idsForLog(ids)})"
-        }
-        note(ReadModelProjectionMetrics.DriftCause.ScreeningUpsert, screeningDiff.upserted)
-        note(ReadModelProjectionMetrics.DriftCause.ScreeningDelete, screeningDiff.deleted)
-      }
-      // Remembered only once the screenings are written too: a throw in the screenings
-      // write used to leave the card's hash "current", so the screenings were never
-      // retried until the row changed again.
-      if (changed) {
-        lastMovie.update(movie._id, hash)
-        shareCards.onProjected(movie, screened = screenings.nonEmpty)
-      }
+    val written = publish.map { case (movie, screenings) => writeVariant(movie, screenings, drift) }.sum
+    retireVariantsGone(rowId, publish.map(_._1._id).toSet)
+    metrics.recordWriteBurst(trigger, writing.seconds)
+    drift.flatMap(_.of(rowId)).foreach(sweepDrift += _)
+    written
+  }
+
+  /** Caller holds `lock`. A row that lost its readiness takes its cards with it (the prune would, later). */
+  private def retireUnready(rowId: String): Unit = {
+    lastGroups.remove(rowId)
+    healedClean.remove(rowId)
+    lastCardsByRow.remove(rowId).foreach(_.foreach(retireCard(_, RetireReason.RowUnready)))
+    dropHoldsNotProducedBy(rowId, Set.empty)
+  }
+
+  /** Run a pure projection and measure it BOTH ways: wall-clock answers "how long did it take" (the
+   *  latency histogram), thread CPU answers "how much CPU did it burn" (the credit-floor attribution).
+   *  They diverge under concurrency and under steal, so the one that may be compared against process
+   *  CPU is the CPU one — see `recordProject`. */
+  private def timedProjection[A](trigger: ProjectTrigger)(projection: => A): A = {
+    val wall     = tools.Stopwatch.start()
+    val cpuStart = cpuClock.nanos()
+    val result   = projection
+    metrics.recordProject(trigger, wallSeconds = wall.seconds, cpuSeconds = (cpuClock.nanos() - cpuStart) / 1e9)
+    result
+  }
+
+  /** Caller holds `lock`. Project a ready row's cards and plan their screenings rows, remembering its
+   *  title groups and dropping the holds on cards it no longer produces. */
+  private def planRow(partition: ReadModelProjection.Partition, trigger: ProjectTrigger): Seq[(ResolvedMovie, Seq[PlannedScreening])] = {
+    val rowId     = partition.stored.id.value
+    val projected = projectReusingMetadata(partition, trigger)
+    val variants  = projected.map { (movie, venues) => (movie, planScreenings(movie._id, venues)) }
+    lastGroups.update(rowId, RowGroups(partition.anchorKey, partition.cardByGroup,
+      projected.iterator.flatMap(_._2).filter(_.slotCount > 1).map(_._id).toSet))
+    dropHoldsNotProducedBy(rowId, variants.map(_._1._id).toSet)
+    variants
+  }
+
+  /** Caller holds `lock`. Write one published card and its screenings rows where they changed: the
+   *  documents written. */
+  private def writeVariant(movie: ResolvedMovie, screenings: Seq[PlannedScreening], drift: Option[RowDriftLog]): Int = {
+    val hash    = CardHash.of(movie)
+    val changed = !lastMovie.get(movie._id).contains(hash)
+    if (changed) {
+      val parts = upsertCard(movie, hash)
+      drift.foreach(_.card(movie._id, parts))
     }
-    // A variant card this row produced last time and no longer does — its decorated
-    // listing vanished — is retired here, by the path that knows, not by the prune. A card
-    // still held by the first-publish gate was never produced.
-    // A card held back while its unserved document stands (see `gate`) is not gone either.
-    val produced = publish.map(_._1._id).toSet
+    val screeningDiff = diffScreenings(movie._id, screenings)
+    drift.foreach(_.screenings(screeningDiff))
+    // Remembered only once the screenings are written too: a throw in the screenings
+    // write used to leave the card's hash "current", so the screenings were never
+    // retried until the row changed again.
+    if (changed) rememberCard(movie, hash, screened = screenings.nonEmpty)
+    (if (changed) 1 else 0) + screeningDiff.documents
+  }
+
+  /** Caller holds `lock`. Write a card whose hash moved to `hash`: the parts that moved. */
+  private def upsertCard(movie: ResolvedMovie, hash: CardHash): Set[String] = {
+    writer.upsertMovie(movie)
+    metrics.recordWrite(Target.Movie, Op.Upsert, 1)
+    val parts = lastMovie.get(movie._id).fold(Set.empty[String])(_.partsDifferingFrom(hash))
+    metrics.recordCardWrite(parts)
+    parts
+  }
+
+  /** Caller holds `lock`. Remember a card as written at `hash`, and tell the share-card ledger. */
+  private def rememberCard(movie: ResolvedMovie, hash: CardHash, screened: Boolean): Unit = {
+    lastMovie.update(movie._id, hash)
+    shareCards.onProjected(movie, screened = screened)
+  }
+
+  /** Caller holds `lock`. A variant card this row produced last time and no longer does — its
+   *  decorated listing vanished — is retired here, by the path that knows, not by the prune. A card
+   *  still held by the first-publish gate was never produced. A card held back while its unserved
+   *  document stands (see `gate`) is not gone either. */
+  private def retireVariantsGone(rowId: String, produced: Set[String]): Unit = {
     val before   = lastCardsByRow.getOrElse(rowId, Set.empty)
     val kept     = produced ++ before.filter(held.contains)
     (before -- kept).foreach(retireCard(_, RetireReason.VariantGone))
@@ -385,10 +401,6 @@ class ReadModelProjector(
     // is a real loss the heal must repair.
     val served = kept.flatMap(card => lastScreenings.ids(card).toSet)
     healedClean.updateWith(rowId)(_.map { case (hash, phantoms) => (hash, phantoms -- served) }.filter(_._2.nonEmpty))
-    metrics.recordWriteBurst(trigger, writing.seconds)
-    val drift = drifted.result()
-    if (drift.nonEmpty) sweepDrift += RowDrift(rowId, causes.result(), drift.mkString("; "))
-    written
   }
 
   /** Caller holds `lock`. The document to write for `projected` — its share card filled in — or
@@ -644,52 +656,9 @@ class ReadModelProjector(
     // Log-only label. The reconcile-sweep metric now tracks ONLY the prune (the live,
     // scheduled backstop); the reproject path survives as a test/backfill seed and is
     // no longer metered — the reproject retirement gate it fed has been removed.
-    val kind = if (reproject) "reproject" else ReconcileKind.Prune
-    val liveIds = scala.collection.mutable.Set.empty[String]
-    // The source-row keys behind those cards — what `lastMetadata` is keyed by.
-    val liveRowKeys = scala.collection.mutable.Set.empty[String]
-    // The ids of the ready rows this scan saw — what the content check walks its slice of.
-    val liveRowIds  = scala.collection.mutable.ArrayBuffer.empty[services.movies.FilmId]
-    var reprojected = 0
-    // A row whose re-projection THREW (a read-model write timed out client-side, often after the
-    // server applied it) leaves that card part-written — its document without its screenings — on
-    // a scan that was itself complete. `reconcile` reports it, so a caller asserting on the read
-    // model reconciles again rather than reading a served film with nothing under it.
-    var projectionFailed = false
-    // A prune that THREW leaves an orphan card or venue served — a film the corpus no longer has —
-    // on a scan that was complete. Reported the same way.
-    var pruneFailed = false
-    // The cards as they are BEFORE this sweep. A ready row ANY of whose ids has no card
-    // is healed here, in the same pass, before anything is pruned: on 2026-09-07 the
-    // card id scheme changed under a live read model, the prune removed 509 Polish
-    // cards as orphans, and the scrapes took an hour to write the new ones — the
-    // ReadModelFilmPruneBurst alert. A prune must never leave a live film without a
-    // card, whatever id its old card carried. "Any", not "none": most of those 509 were
-    // VARIANT cards (a "35 lat po premierze …" banner, a "przedpremiera" listing) whose
-    // plain sibling survived, and a heal that asked only for rows with no card at all
-    // left Warszawa 45 films short four hours later.
-    // …and only when that read was COMPLETE: an incomplete keyset scan answers "no cards",
-    // and healing on that answer would re-project every row (the boot burst this design
-    // avoids). A prune that cannot see the cards heals nothing this tick.
-    val cardsBeforeRead = if (reproject) tools.ReadOutcome.Answered(Seq.empty[String]) else reader.findAllMovieIdsChecked()
-    val cardsRead       = cardsBeforeRead.answered.isDefined
-    val cardsBefore     = cardsBeforeRead.answered.fold(Set.empty[String])(_.toSet)
-    if (!reproject && !cardsRead) logger.warn(s"read-model $kind: the card ids could not be read — no row is healed this tick.")
-    // The screenings rows as they are before this sweep, read once for the venue heal and
-    // the prune alike. A venue the source lists (a cinema slot) with no row here is healed
-    // like a missing card: a slot written after the row's last projection stayed invisible
-    // while nothing else touched the row. A read that fails — or stops short, which the keyset
-    // scan reports as EMPTY — heals no venue this tick: "no rows" is not "could not read them".
-    val screeningRefsBefore: Option[Seq[ScreeningRef]] =
-      if (reproject) None else reader.findAllScreeningRefsChecked().answered
-    val screeningsBefore = screeningRefsBefore.map(_.map(_._id).toSet)
-    // The same rows by card, for the venues a live card holds that its row no longer lists at all
-    // (`unlisted`): a removal the stream never applied, which no id check of the CARD can see — the
-    // card stays, its row does too, and only the content check ever rewrote it, up to a day later
-    // (us/chicago served Dracula: A Love Tale at a venue it had left for 22 hours, 2026-09-30).
-    val screeningsByCard = screeningRefsBefore.map(_.groupBy(_.filmId))
-    val unlisted = scala.collection.mutable.ArrayBuffer.empty[ScreeningRef]
-    val healed = scala.collection.mutable.ArrayBuffer.empty[String]
+    val kind     = if (reproject) "reproject" else ReconcileKind.Prune
+    val baseline = readSweepBaseline(reproject, kind)
+    val tally    = new SweepTally
     // The REPROJECT needs showtimes — it writes them. The PRUNE never looks at one: it
     // computes ids, and `filmIds` derives those from the cinema SLOTS, which the slots-only
     // scan still stitches. So the frequent, scheduled sweep no longer pulls the whole
@@ -697,41 +666,7 @@ class ReadModelProjector(
     // rows and 129 MB across the five countries (2026-09-05) against a 1.07 GB cache.
     val scan: (StoredMovieRecord => Unit) => tools.ScanOutcome =
       if (reproject) movieRepository.foreachRecord else movieRepository.foreachRecordWithSlots
-    val scanComplete = scan { row =>
-      if (row.record.readyToProject) {
-        // Card ids, venue ids and the projection all come off ONE partition of the row.
-        val partition = ReadModelProjection.partition(row, normalizer)
-        val ids = partition.filmIds
-        liveIds ++= ids
-        liveRowKeys += row.id.value
-        liveRowIds  += row.id
-        if (!lastCardsByRow.contains(row.id.value)) lastCardsByRow.update(row.id.value, ids.toSet)
-        // The slots-only view lists every venue the row has a slot at, spent or not, so a venue
-        // outside it is one the row has left — never a phantom.
-        screeningsByCard.foreach { byCard =>
-          lazy val listed = partition.screeningIds.toSet
-          ids.foreach(card => byCard.getOrElse(card, Nil).foreach(ref => if (!listed(ref._id)) unlisted += ref))
-        }
-        if (reproject)
-          continuing(s"read-model $kind: a row failed to project")(reprojected += project(partition, ProjectTrigger.Reproject))
-            .getOrElse { projectionFailed = true }
-        else if (cardsRead) {
-          val metadataHash = ReadModelProjection.metadataHash(row)
-          val absentCards  = ids.filterNot(cardsBefore)
-          val absentVenues =
-            screeningsBefore.fold(Seq.empty[String])(has => partition.screeningIds.filterNot(has))
-              .filterNot(phantomsOf(row.id.value, metadataHash))   // looked already; nothing to write
-          if (absentCards.nonEmpty || absentVenues.nonEmpty)
-            continuing(s"read-model $kind: a row missing a projection failed to project") {
-              heal(row.id, metadataHash, absentCards, absentVenues).foreach { repaired =>
-                if (repaired) healed += row.id.value
-              }
-            }
-        }
-      }
-    }.isComplete
-    var prunedFilms      = 0
-    var prunedScreenings = 0
+    val scanComplete = scan(row => sweepRow(row, reproject, kind, baseline, tally)).isComplete
     if (!scanComplete) {
       // The source scan failed mid-way (a Mongo batch read threw after its retries —
       // typically a server-selection / socket timeout while the worker is CPU-throttled,
@@ -741,76 +676,166 @@ class ReadModelProjector(
       // destructive prune; the next tick reconciles cleanly once reads recover.
       logger.warn(s"read-model $kind: source scan was incomplete (Mongo read failed mid-scan) — " +
         "skipping the prune this tick to avoid deleting live read-model rows; will retry next tick.")
-    } else {
-      // Prune off id-only projections — the prune reads ids/filmIds, never payloads.
-      // Each delete guarded: a read-model write THROWS on failure, and one refused delete must
-      // not skip every other orphan, the content slice, the catch-up and the sweep's metrics.
-      // The cards as they were BEFORE the scan, when that read was complete: a card written since
-      // (another process, during a rolling deploy) belongs to a row the scan may not have seen, and
-      // diffing a fresh read against `liveIds` pruned it as an orphan. Those cards are the next
-      // sweep's to judge; this one's heals are in `liveIds` either way.
-      // A card read that failed judges none: an unread card is not an orphan.
-      val cardsToJudge = (if (!reproject) cardsBeforeRead else reader.findAllMovieIdsChecked()).answered.getOrElse {
-        logger.warn(s"read-model $kind: the card ids could not be read — no card is pruned this tick."); Seq.empty }
-      cardsToJudge.iterator.filterNot(liveIds).foreach { id =>
-        val rowOfCard = id.takeWhile(_ != '~')
-        continuing(s"read-model $kind: pruning card $id failed") {
-          deleteFilm(id, if (liveRowKeys(rowOfCard)) PruneReason.VariantGone else PruneReason.RowGone)
-          prunedFilms += 1
-        }.getOrElse { pruneFailed = true }
-      }
-      // Drop metadata cached for source rows that no longer exist. Only reachable on a
-      // COMPLETE scan — on a truncated one `liveRowKeys` is partial and this would evict
-      // live rows' metadata, costing a needless recompute each.
-      lastMetadata.filterInPlace((rowKey, _) => liveRowKeys(rowKey))
-      lastCardsByRow.filterInPlace((rowKey, _) => liveRowKeys(rowKey))
-      healedClean.filterInPlace((rowKey, _) => liveRowKeys(rowKey))
-      def pruneScreening(ref: ScreeningRef): Unit =
-        continuing(s"read-model $kind: pruning screening ${ref._id} failed") {
-          writer.deleteScreening(ref._id)
-          metrics.recordWrite(Target.Screening, Op.Delete, 1)
-          lastScreenings.forget(ref.filmId, ref._id)
-          prunedScreenings += 1
-        }.getOrElse { pruneFailed = true }
-      // A screenings read that failed prunes none: an unread row is not an orphan.
-      screeningRefsBefore.orElse(if (reproject) reader.findAllScreeningRefsChecked().answered else None).getOrElse {
-        logger.warn(s"read-model $kind: the screening ids could not be read — no screening is pruned this tick."); Seq.empty
-      }.iterator.filterNot(ref => liveIds(ref.filmId)).foreach(pruneScreening)
-      // A stream misses a removal now and then; one sweep finding a great many is far likelier a
-      // comparison gone wrong — the slots-only view disagreeing with the projection about some shape
-      // of row — and pruning on it would blank the served venues of a country. So past the cap the
-      // sweep prunes none of them and says so loudly; the content check still rewrites each row.
-      val cap = ReadModelProjector.unlistedPruneCap(screeningRefsBefore.fold(0)(_.size))
-      if (unlisted.sizeIs > cap) {
-        metrics.recordUnlistedVenues(unlisted.size, withheld = true)
-        logger.error(s"read-model $kind sweep: ${unlisted.size} venue row(s) whose film no longer lists the venue, over the " +
-          s"cap of $cap — pruning NONE; a disagreement between the slots-only view and the projection is likelier than " +
-          s"that many missed removals: ${ReadModelProjector.idsForLog(unlisted.map(_._id))}.")
-      } else if (unlisted.nonEmpty) {
-        unlisted.foreach(pruneScreening)
-        metrics.recordUnlistedVenues(unlisted.size, withheld = false)
-        logger.warn(s"read-model $kind sweep: pruned ${unlisted.size} venue row(s) whose film no longer lists the venue — " +
-          s"a removal the change stream did not apply: ${ReadModelProjector.idsForLog(unlisted.map(_._id))}.")
-      }
-    }
-    // THE ROLLING CONTENT CHECK: one slice of the corpus per sweep, read whole and
-    // re-projected, so a row whose stored projection has drifted is corrected within a day
-    // even though nothing about it changes again. Deterministic by row id, so the slices
-    // partition the corpus rather than sampling it, and every row is reached.
-    if (!reproject && scanComplete) {
-      val slice   = math.floorMod(sweepCount, ContentSlices.toLong).toInt
-      reprojectSlice(liveRowIds, slice, s"$kind sweep", movieRepository.findByIdChecked, projectRow(_, ProjectTrigger.Content))
-      if (derivationPass == DerivationPass.Unchecked) armDerivationPass(liveRowIds.toVector)
-    }
+    } else prune(reproject, kind, baseline, tally)
+    if (!reproject && scanComplete) checkContentSlice(kind, tally.liveRowIds)
     sweepCount += 1
     if (!reproject) catchUpUndelivered(kind)
-    // Measurement (prune only): a `prune` sweep with didWork=true is the deletes/re-keys
-    // the change stream can't deliver. Surfaced as kinowo_worker_readmodel_reconcile_sweeps.
-    val didWork = reprojected > 0 || prunedFilms > 0 || prunedScreenings > 0
+    reportSweep(reproject, kind, tally, scanComplete)
+    (tally.healed.toSeq, scanComplete && !tally.projectionFailed && !tally.pruneFailed)
+  }
+
+  /** Caller holds `lock`. The read model's cards and screenings rows as they are BEFORE a sweep.
+   *
+   *  A ready row ANY of whose ids has no card is healed in the same pass, before anything is
+   *  pruned: on 2026-09-07 the card id scheme changed under a live read model, the prune removed
+   *  509 Polish cards as orphans, and the scrapes took an hour to write the new ones — the
+   *  ReadModelFilmPruneBurst alert. A prune must never leave a live film without a card, whatever
+   *  id its old card carried. "Any", not "none": most of those 509 were VARIANT cards (a "35 lat
+   *  po premierze …" banner, a "przedpremiera" listing) whose plain sibling survived, and a heal
+   *  that asked only for rows with no card at all left Warszawa 45 films short four hours later.
+   *  …and only when that read was COMPLETE: an incomplete keyset scan answers "no cards", and
+   *  healing on that answer would re-project every row (the boot burst this design avoids). A
+   *  prune that cannot see the cards heals nothing this tick.
+   *
+   *  The screenings rows are read once for the venue heal and the prune alike. A venue the source
+   *  lists (a cinema slot) with no row here is healed like a missing card: a slot written after the
+   *  row's last projection stayed invisible while nothing else touched the row. A read that fails —
+   *  or stops short, which the keyset scan reports as EMPTY — heals no venue this tick: "no rows" is
+   *  not "could not read them". */
+  private def readSweepBaseline(reproject: Boolean, kind: String): SweepBaseline = {
+    val cards = if (reproject) tools.ReadOutcome.Answered(Seq.empty[String]) else reader.findAllMovieIdsChecked()
+    if (!reproject && cards.answered.isEmpty) logger.warn(s"read-model $kind: the card ids could not be read — no row is healed this tick.")
+    SweepBaseline(cards, if (reproject) None else reader.findAllScreeningRefsChecked().answered)
+  }
+
+  /** Caller holds `lock`. One row of a sweep's scan: note its live ids and the venues it no longer
+   *  lists, then re-project it (a reproject sweep) or heal what it is missing (a prune sweep). */
+  private def sweepRow(row: StoredMovieRecord, reproject: Boolean, kind: String, baseline: SweepBaseline, tally: SweepTally): Unit =
+    if (row.record.readyToProject) {
+      // Card ids, venue ids and the projection all come off ONE partition of the row.
+      val partition = ReadModelProjection.partition(row, normalizer)
+      val ids = partition.filmIds
+      tally.liveIds ++= ids
+      tally.liveRowKeys += row.id.value
+      tally.liveRowIds  += row.id
+      if (!lastCardsByRow.contains(row.id.value)) lastCardsByRow.update(row.id.value, ids.toSet)
+      // The slots-only view lists every venue the row has a slot at, spent or not, so a venue
+      // outside it is one the row has left — never a phantom.
+      baseline.screeningsByCard.foreach { byCard =>
+        lazy val listed = partition.screeningIds.toSet
+        ids.foreach(card => byCard.getOrElse(card, Nil).foreach(ref => if (!listed(ref._id)) tally.unlisted += ref))
+      }
+      if (reproject)
+        continuing(s"read-model $kind: a row failed to project")(tally.reprojected += project(partition, ProjectTrigger.Reproject))
+          .getOrElse { tally.projectionFailed = true }
+      else if (baseline.cardsRead) healIfMissing(row, partition, ids, kind, baseline, tally)
+    }
+
+  /** Caller holds `lock`. Heal a row one of whose cards or venues the baseline lacks. */
+  private def healIfMissing(row: StoredMovieRecord, partition: ReadModelProjection.Partition, ids: Seq[String], kind: String,
+                            baseline: SweepBaseline, tally: SweepTally): Unit = {
+    val metadataHash = ReadModelProjection.metadataHash(row)
+    val absentCards  = ids.filterNot(baseline.cardIds)
+    val absentVenues =
+      baseline.screeningIds.fold(Seq.empty[String])(has => partition.screeningIds.filterNot(has))
+        .filterNot(phantomsOf(row.id.value, metadataHash))   // looked already; nothing to write
+    if (absentCards.nonEmpty || absentVenues.nonEmpty)
+      continuing(s"read-model $kind: a row missing a projection failed to project") {
+        heal(row.id, metadataHash, absentCards, absentVenues).foreach { repaired =>
+          if (repaired) tally.healed += row.id.value
+        }
+      }
+  }
+
+  /** Caller holds `lock`. The destructive half of a sweep whose scan was COMPLETE: prune off id-only
+   *  projections — the prune reads ids/filmIds, never payloads. Each delete guarded: a read-model
+   *  write THROWS on failure, and one refused delete must not skip every other orphan, the content
+   *  slice, the catch-up and the sweep's metrics. */
+  private def prune(reproject: Boolean, kind: String, baseline: SweepBaseline, tally: SweepTally): Unit = {
+    pruneOrphanCards(reproject, kind, baseline, tally)
+    // Drop metadata cached for source rows that no longer exist. Only reachable on a
+    // COMPLETE scan — on a truncated one `liveRowKeys` is partial and this would evict
+    // live rows' metadata, costing a needless recompute each.
+    lastMetadata.filterInPlace((rowKey, _) => tally.liveRowKeys(rowKey))
+    lastCardsByRow.filterInPlace((rowKey, _) => tally.liveRowKeys(rowKey))
+    healedClean.filterInPlace((rowKey, _) => tally.liveRowKeys(rowKey))
+    // A screenings read that failed prunes none: an unread row is not an orphan.
+    baseline.screeningRefs.orElse(if (reproject) reader.findAllScreeningRefsChecked().answered else None).getOrElse {
+      logger.warn(s"read-model $kind: the screening ids could not be read — no screening is pruned this tick."); Seq.empty
+    }.iterator.filterNot(ref => tally.liveIds(ref.filmId)).foreach(pruneScreening(_, kind, tally))
+    pruneUnlistedVenues(kind, baseline, tally)
+  }
+
+  /** Caller holds `lock`. Prune every card no live row projects to.
+   *
+   *  The cards as they were BEFORE the scan, when that read was complete: a card written since
+   *  (another process, during a rolling deploy) belongs to a row the scan may not have seen, and
+   *  diffing a fresh read against `liveIds` pruned it as an orphan. Those cards are the next
+   *  sweep's to judge; this one's heals are in `liveIds` either way. A card read that failed judges
+   *  none: an unread card is not an orphan. */
+  private def pruneOrphanCards(reproject: Boolean, kind: String, baseline: SweepBaseline, tally: SweepTally): Unit = {
+    val cardsToJudge = (if (!reproject) baseline.cards else reader.findAllMovieIdsChecked()).answered.getOrElse {
+      logger.warn(s"read-model $kind: the card ids could not be read — no card is pruned this tick."); Seq.empty }
+    cardsToJudge.iterator.filterNot(tally.liveIds).foreach { id =>
+      val rowOfCard = id.takeWhile(_ != '~')
+      continuing(s"read-model $kind: pruning card $id failed") {
+        deleteFilm(id, if (tally.liveRowKeys(rowOfCard)) PruneReason.VariantGone else PruneReason.RowGone)
+        tally.prunedFilms += 1
+      }.getOrElse { tally.pruneFailed = true }
+    }
+  }
+
+  /** Caller holds `lock`. Delete one orphan screenings row, guarded like every prune write. */
+  private def pruneScreening(ref: ScreeningRef, kind: String, tally: SweepTally): Unit =
+    continuing(s"read-model $kind: pruning screening ${ref._id} failed") {
+      writer.deleteScreening(ref._id)
+      metrics.recordWrite(Target.Screening, Op.Delete, 1)
+      lastScreenings.forget(ref.filmId, ref._id)
+      tally.prunedScreenings += 1
+    }.getOrElse { tally.pruneFailed = true }
+
+  /** Caller holds `lock`. Prune the venues a live card holds that its row no longer lists at all
+   *  (`unlisted`): a removal the stream never applied, which no id check of the CARD can see — the
+   *  card stays, its row does too, and only the content check ever rewrote it, up to a day later
+   *  (us/chicago served Dracula: A Love Tale at a venue it had left for 22 hours, 2026-09-30).
+   *
+   *  A stream misses a removal now and then; one sweep finding a great many is far likelier a
+   *  comparison gone wrong — the slots-only view disagreeing with the projection about some shape
+   *  of row — and pruning on it would blank the served venues of a country. So past the cap the
+   *  sweep prunes none of them and says so loudly; the content check still rewrites each row. */
+  private def pruneUnlistedVenues(kind: String, baseline: SweepBaseline, tally: SweepTally): Unit = {
+    val unlisted = tally.unlisted
+    val cap      = ReadModelProjector.unlistedPruneCap(baseline.screeningRefs.fold(0)(_.size))
+    if (unlisted.sizeIs > cap) {
+      metrics.recordUnlistedVenues(unlisted.size, withheld = true)
+      logger.error(s"read-model $kind sweep: ${unlisted.size} venue row(s) whose film no longer lists the venue, over the " +
+        s"cap of $cap — pruning NONE; a disagreement between the slots-only view and the projection is likelier than " +
+        s"that many missed removals: ${ReadModelProjector.idsForLog(unlisted.map(_._id))}.")
+    } else if (unlisted.nonEmpty) {
+      unlisted.foreach(pruneScreening(_, kind, tally))
+      metrics.recordUnlistedVenues(unlisted.size, withheld = false)
+      logger.warn(s"read-model $kind sweep: pruned ${unlisted.size} venue row(s) whose film no longer lists the venue — " +
+        s"a removal the change stream did not apply: ${ReadModelProjector.idsForLog(unlisted.map(_._id))}.")
+    }
+  }
+
+  /** Caller holds `lock`. THE ROLLING CONTENT CHECK: one slice of the corpus per sweep, read whole
+   *  and re-projected, so a row whose stored projection has drifted is corrected within a day even
+   *  though nothing about it changes again. Deterministic by row id, so the slices partition the
+   *  corpus rather than sampling it, and every row is reached. */
+  private def checkContentSlice(kind: String, liveRowIds: collection.Seq[services.movies.FilmId]): Unit = {
+    val slice = math.floorMod(sweepCount, ContentSlices.toLong).toInt
+    reprojectSlice(liveRowIds, slice, s"$kind sweep", movieRepository.findByIdChecked, projectRow(_, ProjectTrigger.Content))
+    if (derivationPass == DerivationPass.Unchecked) armDerivationPass(liveRowIds.toVector)
+  }
+
+  /** A sweep's metric and summary line. A `prune` sweep with didWork=true is the deletes/re-keys
+   *  the change stream can't deliver, surfaced as kinowo_worker_readmodel_reconcile_sweeps. */
+  private def reportSweep(reproject: Boolean, kind: String, tally: SweepTally, scanComplete: Boolean): Unit = {
+    val didWork = tally.reprojected > 0 || tally.prunedFilms > 0 || tally.prunedScreenings > 0
     if (!reproject) metrics.recordReconcileSweep(ReconcileKind.Prune, didWork)
-    logger.info(s"read-model $kind sweep: reprojected $reprojected doc(s), pruned $prunedFilms film(s) + " +
-      s"$prunedScreenings orphan screening(s)${if (scanComplete) "" else " [scan INCOMPLETE — prune skipped]"}.")
-    (healed.toSeq, scanComplete && !projectionFailed && !pruneFailed)
+    logger.info(s"read-model $kind sweep: reprojected ${tally.reprojected} doc(s), pruned ${tally.prunedFilms} film(s) + " +
+      s"${tally.prunedScreenings} orphan screening(s)${if (scanComplete) "" else " [scan INCOMPLETE — prune skipped]"}.")
   }
 
   /** Caller holds `lock`. THE SELF-HEAL FOR A SILENT CHANGE STREAM (prune sweeps only). A terminal
@@ -962,27 +987,17 @@ class ReadModelProjector(
    *  cards-only), and a row that lost its readiness. */
   private def projectCards(partition: ReadModelProjection.Partition): Int = {
     if (!partition.stored.record.readyToProject) return 0
-    val wall      = tools.Stopwatch.start()
-    val cpuStart  = cpuClock.nanos()
-    val cards     = projectReusingMetadata(partition, ProjectTrigger.Derivation).map(_._1)
-    metrics.recordProject(ProjectTrigger.Derivation,
-      wallSeconds = wall.seconds, cpuSeconds = (cpuClock.nanos() - cpuStart) / 1e9)
-    var written = 0
-    cards.filter(card => lastMovie.contains(card._id) && !held.contains(card._id)).foreach { projected =>
-      val id     = projected._id
-      val movie  = withShareCard(projected)
-      val hash   = CardHash.of(movie)
-      val before = lastMovie.get(id)
-      if (!before.contains(hash)) {
-        writer.upsertMovie(movie)
-        metrics.recordWrite(Target.Movie, Op.Upsert, 1)
-        metrics.recordCardWrite(before.fold(Set.empty[String])(_.partsDifferingFrom(hash)))
-        lastMovie.update(id, hash)
-        shareCards.onProjected(movie, screened = lastScreenings.holdsAny(id))
-        written += 1
+    val cards = timedProjection(ProjectTrigger.Derivation)(projectReusingMetadata(partition, ProjectTrigger.Derivation).map(_._1))
+    cards.filter(card => lastMovie.contains(card._id) && !held.contains(card._id)).count { projected =>
+      val movie   = withShareCard(projected)
+      val hash    = CardHash.of(movie)
+      val changed = !lastMovie.get(movie._id).contains(hash)
+      if (changed) {
+        upsertCard(movie, hash)
+        rememberCard(movie, hash, screened = lastScreenings.holdsAny(movie._id))
       }
+      changed
     }
-    written
   }
 
   /** Caller holds `lock`. Read which derivation the stored read model was last re-projected whole
@@ -999,26 +1014,36 @@ class ReadModelProjector(
         ReadModelDerivation.owedSince(recorded, derivationHistory) match {
           case None =>
             derivationPass = DerivationPass.Current
-            // Progress towards some other version is void once this store is current under this
-            // code: a pass for version B stopped at slice k, then a rollback to A (current), and
-            // A's change-stream projections rewrite cards in slices before k under A. Resumed at k
-            // on the roll forward, B's pass would never reach them — so the progress starts over.
-            val reset = DerivationProgress(derivationHistory.last.version, 0)
-            if (progress.exists(_ != reset))
-              continuing("read-model derivation pass: resetting a stale pass's progress failed; a later pass may resume past rows it owes") {
-                derivationMarker.recordProgress(reset)
-              }
-          case Some(scope) =>
-            val current = derivationHistory.last.version
-            val from    = progress.collect { case DerivationProgress(`current`, next) => next }.getOrElse(0)
-            derivationPass = DerivationPass.Running(rowIds, scope, nextSlice = from, written = 0, complete = true)
-            logger.warn(s"read-model derivation pass: the stored read model was derived under " +
-              s"${recorded.getOrElse("no recorded version")}, this worker derives $current — re-projecting " +
-              s"${if (scope == DerivationScope.Cards) "the cards of" else "all"} ${rowIds.size} row(s), one content slice of " +
-              s"$ContentSlices every ${DerivationPassTickSeconds}s" +
-              (if (from > 0) s", resuming at slice $from where an earlier pass stopped." else "."))
+            resetStaleProgress(progress)
+          case Some(scope) => startDerivationPass(rowIds, recorded, progress, scope)
         }
     }
+
+  /** Progress towards some other version is void once this store is current under this code: a pass
+   *  for version B stopped at slice k, then a rollback to A (current), and A's change-stream
+   *  projections rewrite cards in slices before k under A. Resumed at k on the roll forward, B's pass
+   *  would never reach them — so the progress starts over. */
+  private def resetStaleProgress(progress: Option[DerivationProgress]): Unit = {
+    val reset = DerivationProgress(derivationHistory.last.version, 0)
+    if (progress.exists(_ != reset))
+      continuing("read-model derivation pass: resetting a stale pass's progress failed; a later pass may resume past rows it owes") {
+        derivationMarker.recordProgress(reset)
+      }
+  }
+
+  /** Caller holds `lock`. Start the pass `scope` owes over `rowIds`, from the slice a previous
+   *  process's pass towards the same version had reached. */
+  private def startDerivationPass(rowIds: Vector[services.movies.FilmId], recorded: Option[DerivationVersion],
+                                  progress: Option[DerivationProgress], scope: DerivationScope): Unit = {
+    val current = derivationHistory.last.version
+    val from    = progress.collect { case DerivationProgress(`current`, next) => next }.getOrElse(0)
+    derivationPass = DerivationPass.Running(rowIds, scope, nextSlice = from, written = 0, complete = true)
+    logger.warn(s"read-model derivation pass: the stored read model was derived under " +
+      s"${recorded.getOrElse("no recorded version")}, this worker derives $current — re-projecting " +
+      s"${if (scope == DerivationScope.Cards) "the cards of" else "all"} ${rowIds.size} row(s), one content slice of " +
+      s"$ContentSlices every ${DerivationPassTickSeconds}s" +
+      (if (from > 0) s", resuming at slice $from where an earlier pass stopped." else "."))
+  }
 
   /** THE DERIVATION PASS: one content slice of the whole-corpus re-projection a derivation change
    *  owes, per tick.
@@ -1041,15 +1066,7 @@ class ReadModelProjector(
   def advanceDerivationPass(): Unit = lock.synchronized {
     derivationPass match {
       case running: DerivationPass.Running =>
-        // A cards-only derivation reads each row slots-only — no `screenings` read — and
-        // re-projects its cards alone (`projectCards`).
-        val (written, complete) =
-          if (running.scope == DerivationScope.Cards)
-            reprojectSlice(running.rows, running.nextSlice, "derivation pass (cards)",
-                           movieRepository.findByIdWithSlotsChecked, row => projectCards(ReadModelProjection.partition(row, normalizer)))
-          else
-            reprojectSlice(running.rows, running.nextSlice, "derivation pass",
-                           movieRepository.findByIdChecked, projectRow(_, ProjectTrigger.Derivation))
+        val (written, complete) = reprojectDerivationSlice(running)
         val next = running.copy(nextSlice = running.nextSlice + 1, written = running.written + written,
                                 complete = running.complete && complete)
         // Only while every slice so far was complete: a restart then resumes after the last one,
@@ -1058,23 +1075,36 @@ class ReadModelProjector(
           continuing("read-model derivation pass: recording its progress failed; a restart repeats this slice") {
             derivationMarker.recordProgress(DerivationProgress(derivationHistory.last.version, next.nextSlice))
           }
-        derivationPass =
-          if (next.nextSlice < ContentSlices) next
-          else if (!next.complete) {
-            logger.warn(s"read-model derivation pass: re-projected ${next.rows.size} row(s), rewrote ${next.written} " +
-              "document(s), but some rows could not be read or projected — the derivation stays unrecorded and the " +
-              "next sweep runs the pass again.")
-            DerivationPass.Unchecked
-          } else
-            continuing("read-model derivation pass: recording the derivation failed; the next sweep runs the pass again") {
-              derivationMarker.record(derivationHistory.last.version)
-              logger.info(s"read-model derivation pass: re-projected ${if (next.scope == DerivationScope.Cards) "the cards of " else ""}" +
-                s"all ${next.rows.size} row(s) under ${derivationHistory.last.version}, rewriting ${next.written} document(s); recorded.")
-              DerivationPass.Current
-            }.getOrElse(DerivationPass.Unchecked)
+        derivationPass = if (next.nextSlice < ContentSlices) next else finishDerivationPass(next)
       case _ => ()
     }
   }
+
+  /** Caller holds `lock`. One slice of a running pass. A cards-only derivation reads each row
+   *  slots-only — no `screenings` read — and re-projects its cards alone (`projectCards`). */
+  private def reprojectDerivationSlice(running: DerivationPass.Running): (Int, Boolean) =
+    if (running.scope == DerivationScope.Cards)
+      reprojectSlice(running.rows, running.nextSlice, "derivation pass (cards)",
+                     movieRepository.findByIdWithSlotsChecked, row => projectCards(ReadModelProjection.partition(row, normalizer)))
+    else
+      reprojectSlice(running.rows, running.nextSlice, "derivation pass",
+                     movieRepository.findByIdChecked, projectRow(_, ProjectTrigger.Derivation))
+
+  /** Caller holds `lock`. A pass past its last slice: recorded when it read and projected every
+   *  row, otherwise left unrecorded for the next sweep to run again. */
+  private def finishDerivationPass(done: DerivationPass.Running): DerivationPass =
+    if (!done.complete) {
+      logger.warn(s"read-model derivation pass: re-projected ${done.rows.size} row(s), rewrote ${done.written} " +
+        "document(s), but some rows could not be read or projected — the derivation stays unrecorded and the " +
+        "next sweep runs the pass again.")
+      DerivationPass.Unchecked
+    } else
+      continuing("read-model derivation pass: recording the derivation failed; the next sweep runs the pass again") {
+        derivationMarker.record(derivationHistory.last.version)
+        logger.info(s"read-model derivation pass: re-projected ${if (done.scope == DerivationScope.Cards) "the cards of " else ""}" +
+          s"all ${done.rows.size} row(s) under ${derivationHistory.last.version}, rewriting ${done.written} document(s); recorded.")
+        DerivationPass.Current
+      }.getOrElse(DerivationPass.Unchecked)
 
   /** Seed the last-projection state from the derived collections, so a restart doesn't
    *  rewrite documents that are already correct — and so a document this process did not
@@ -1147,29 +1177,18 @@ class ReadModelProjector(
   }
 
   // The rows the stream changed while the boot reads ran — read again and projected once they are
-  // done, never applied mid-seed or mid-heal. `booting` and `heldAtBoot` are guarded by `bootHold`.
-  private val bootHold   = new AnyRef
-  private var booting    = true
-  private val heldAtBoot = scala.collection.mutable.LinkedHashSet.empty[String]
+  // done, never applied mid-seed or mid-heal.
+  private val bootHold = new BootHold
 
   /** Whether a change to `rowId` is held for the end of the boot reads (and, if so, recorded). */
-  private def heldForBoot(rowId: String): Boolean = bootHold.synchronized {
-    if (booting) heldAtBoot += rowId
-    booting
-  }
+  private def heldForBoot(rowId: String): Boolean = bootHold.holds(rowId)
 
   /** End the boot hold: project every row the stream changed meanwhile, as it stands now, until
    *  none is left — only then does the stream apply its changes directly, so none lands between the
    *  last read and the switch. A row gone is retired; one that cannot be read is left to the next
    *  prune sweep's heal. Idempotent. */
   private def releaseBootHold(): Unit = {
-    def take(): Seq[String] = bootHold.synchronized {
-      val rows = heldAtBoot.toList
-      heldAtBoot.clear()
-      if (rows.isEmpty) booting = false
-      rows
-    }
-    var rows = take()
+    var rows = bootHold.take()
     while (rows.nonEmpty) {
       rows.foreach { rowId =>
         val id = services.movies.FilmId(rowId)
@@ -1181,7 +1200,7 @@ class ReadModelProjector(
           }
         }
       }
-      rows = take()
+      rows = bootHold.take()
     }
   }
 
@@ -1267,19 +1286,31 @@ class ReadModelProjector(
    *  scrape change. */
   private def healMissingCards(study: Option[Seq[BootRow]]): Unit = Try {
     val cardIds = reader.findAllMovieIdsChecked().answered
-    val cardsRead  = cardIds.isDefined
-    val cards      = cardIds.fold(Set.empty[String])(_.toSet)
-    val refs       = reader.findAllScreeningRefsChecked().answered
-    val venues     = refs.map(_.map(_._id).toSet)
+    val refs    = reader.findAllScreeningRefsChecked().answered
+    val (missing, complete) = findMissingAtBoot(study, cardIds, refs)
+    if (cardIds.isEmpty) logger.warn("read model: the card ids could not be read at boot — nothing healed; the prune sweep retries.")
+    // Each row guarded, as in the sweep: one failed write must not leave every later row unhealed.
+    val projected = missing.flatMap { row =>
+      continuing(s"read model: healing ${row.id} at boot failed")(lock.synchronized(heal(row.id, row.metadataHash, row.absentCards, row.absentVenues)))
+        .flatten.map(written => (row.id.value, written, row.refile)) }
+    val (refiledRows, lostRows) = projected.collect { case (id, true, refile) => (id, refile) }.partition(_._2)
+    reportBootHeals(lostRows.map(_._1), refiledRows.map(_._1), complete)
+  }.recover { case exception => logger.warn(s"read-model missing-card check failed, skipped: ${exception.getMessage}") }
+
+  /** The ready rows one of whose cards or venues the read model lacks, and whether the source read
+   *  was complete. The check reads slots only (ids derive from the slot titles, never from a
+   *  showtime); the few rows it names are then read whole, showtimes included. An incomplete card
+   *  read heals nothing: "no cards" and "could not read" differ. The boot hydrate's rows when it
+   *  handed them over (see [[BootCorpusStudy]]); otherwise a read of its own. */
+  private def findMissingAtBoot(study: Option[Seq[BootRow]], cardIds: Option[Seq[String]],
+                                refs: Option[Seq[ScreeningRef]]): (Seq[MissingAtBoot], Boolean) = {
+    val cards   = cardIds.fold(Set.empty[String])(_.toSet)
+    val venues  = refs.map(_.map(_._id).toSet)
     // Each (card, venue) the read model serves, whichever city it is filed under: a missing venue row
     // whose card and venue are here under ANOTHER city is a re-file -- a deploy moved the venue's
     // city (2026-10-11: Germany's and the US's town pages, 1,029 and 1,508 rows) -- not a lost write.
-    val filed      = refs.fold(Set.empty[(String, String)])(_.iterator.flatMap(_.venueKey).toSet)
-    // The check reads slots only (ids derive from the slot titles, never from a
-    // showtime); the few rows it names are then read whole, showtimes included. An
-    // incomplete card read heals nothing: "no cards" and "could not read" differ.
-    // The boot hydrate's rows when it handed them over (see [[BootCorpusStudy]]); otherwise a read of its own.
-    val missing = scala.collection.mutable.ListBuffer.empty[(services.movies.FilmId, Int, Seq[String], Seq[String], Boolean)]
+    val filed   = refs.fold(Set.empty[(String, String)])(_.iterator.flatMap(_.venueKey).toSet)
+    val missing = scala.collection.mutable.ListBuffer.empty[MissingAtBoot]
     def refiled(filmIds: Seq[String], venue: String): Boolean =
       filmIds.filter(card => venue.startsWith(card + "|")).maxByOption(_.length)
         .flatMap(card => ScreeningRef(venue, card).venueKey).exists(filed)
@@ -1288,33 +1319,31 @@ class ReadModelProjector(
       val absentCards  = filmIds.filterNot(cards)
       val absentVenues = venues.fold(Seq.empty[String])(has => screeningIds.filterNot(has))
       if (absentCards.nonEmpty || absentVenues.nonEmpty)
-        missing += ((id, metadataHash, absentCards, absentVenues, absentCards.isEmpty && absentVenues.forall(refiled(filmIds, _))))
+        missing += MissingAtBoot(id, metadataHash, absentCards, absentVenues, absentCards.isEmpty && absentVenues.forall(refiled(filmIds, _)))
     }
-    val complete = cardsRead && study.fold(movieRepository.foreachRecordWithSlots { row =>
+    val complete = cardIds.isDefined && study.fold(movieRepository.foreachRecordWithSlots { row =>
       if (row.record.readyToProject) {
         val partition = ReadModelProjection.partition(row, normalizer)
         check(row.id, partition.filmIds, partition.screeningIds, ReadModelProjection.metadataHash(row))
       }
     }.isComplete) { rows => rows.foreach(row => check(row.id, row.filmIds, row.screeningIds, row.metadataHash)); true }
-    if (!cardsRead) logger.warn("read model: the card ids could not be read at boot — nothing healed; the prune sweep retries.")
-    // Each row guarded, as in the sweep: one failed write must not leave every later row unhealed.
-    val projected = missing.flatMap { case (id, metadataHash, absentCards, absentVenues, refile) =>
-      continuing(s"read model: healing $id at boot failed")(lock.synchronized(heal(id, metadataHash, absentCards, absentVenues)))
-        .flatten.map(written => (id.value, written, refile)) }
-    val (refiledRows, lostRows) = projected.collect { case (id, true, refile) => (id, refile) }.partition(_._2)
-    val healed = lostRows.map(_._1)
+    (missing.toSeq, complete)
+  }
+
+  /** The boot heal's metrics and lines: rows healed of a lost write, and rows whose venues moved city. */
+  private def reportBootHeals(healed: Seq[String], refiled: Seq[String], complete: Boolean): Unit = {
     if (healed.nonEmpty) {
       metrics.recordHeal(HealTrigger.Boot, healed.size)
       logger.warn(s"read model: projected ${healed.size} ready row(s) missing a card or a venue at boot" +
         (if (complete) "" else " (source scan incomplete — the rest heal on their next change)") +
         s": ${ReadModelProjector.idsForLog(healed)}.")
     }
-    if (refiledRows.nonEmpty) {
-      metrics.recordHeal(HealTrigger.Refile, refiledRows.size)
-      logger.info(s"read model: projected ${refiledRows.size} ready row(s) at boot whose venues the read model serves under " +
-        s"another city — this code files them elsewhere: ${ReadModelProjector.idsForLog(refiledRows.map(_._1))}.")
+    if (refiled.nonEmpty) {
+      metrics.recordHeal(HealTrigger.Refile, refiled.size)
+      logger.info(s"read model: projected ${refiled.size} ready row(s) at boot whose venues the read model serves under " +
+        s"another city — this code files them elsewhere: ${ReadModelProjector.idsForLog(refiled)}.")
     }
-  }.recover { case exception => logger.warn(s"read-model missing-card check failed, skipped: ${exception.getMessage}") }
+  }
 
   /** Caller holds `lock`. Re-project a row whose cards under `absentCards` and whose
    *  screenings rows under `absentVenues` are known to be missing from the read model —
@@ -1469,84 +1498,4 @@ object ReadModelProjector {
   private[readmodel] def idsForLog(ids: collection.Seq[String]): String =
     ids.take(LoggedIdsPerLine).mkString(", ") +
       (if (ids.sizeIs > LoggedIdsPerLine) s" (+${ids.size - LoggedIdsPerLine} more)" else "")
-}
-
-/** What the projector remembers about a written screenings row: the hash of the row
- *  itself (`output`, the minimal-write diff) and of the inputs it was built from
- *  (`input`, [[ReadModelProjection.VenueScreening.inputHash]]) — `None` when this process
- *  did not build it, so nothing vouches that the current inputs would build it again. */
-private[readmodel] final case class WrittenScreening private (output: Int, private val inputHash: Int, private val built: Boolean) {
-  def input: Option[Int] = Option.when(built)(inputHash)
-}
-
-private[readmodel] object WrittenScreening {
-  // The input hash unboxed and flagged rather than an Option: each of the US's ~100k rows held a Some and a boxed
-  // Integer, 32 bytes beside the row's own 24 (dump 2026-10-04).
-  def apply(output: Int, input: Option[Int]): WrittenScreening = new WrittenScreening(output, input.getOrElse(0), input.isDefined)
-}
-
-/** One venue's screenings row as a projection plans it: rebuilt (`built`), or carried
- *  unbuilt because the row written from the same `input` is still current. */
-private[readmodel] final case class PlannedScreening(_id: String, input: Int, built: Option[CityScreening])
-
-/** One row the content check rewrote: the documents by cause, and what moved, for its WARN line. */
-private[readmodel] final case class RowDrift(rowId: String, causes: Seq[(String, Int)], detail: String)
-
-/** The screenings rows one card's diff wrote and removed, by id. */
-private[readmodel] final case class ScreeningDiff(upserted: Seq[String], deleted: Seq[String]) {
-  def documents: Int = upserted.size + deleted.size
-}
-
-/** A projected row's display-title groups — the group a slot with no title of its own falls into
- *  (`anchor`), the card each group's venues are filed under, and the venues whose row unioned two
- *  or more of the film's slots (a slot the venue read cannot see — one the `movies` document still
- *  embeds — would be among them). */
-private[readmodel] final case class RowGroups(anchor: String, cardByGroup: Map[String, String], multiSlot: Set[String])
-
-/** What [[ReadModelProjector.learn]] takes from a row, without the row: its title groups, and each
- *  card's venue rows as their ids, the content each projects to and the slot inputs it came from.
- *  Kept in place of the row so the boot hydrate's rows can be released before the seed is read. */
-private[readmodel] final case class Lesson(anchorKey: String, cardByGroup: Map[String, String],
-                                           cards: Seq[(String, Seq[Lesson.Venue])], multiSlot: Set[String])
-
-private[readmodel] object Lesson {
-  final case class Venue(id: String, output: Int, input: Int)
-
-  def of(partition: ReadModelProjection.Partition)(using LatestTitleYear): Lesson = {
-    val cards = partition.filmIds.zip(partition.venuesAll)
-    Lesson(partition.anchorKey, partition.cardByGroup,
-      cards.map { case (card, venues) => card -> venues.map(venue => Venue(venue._id, venue.screening.##, venue.inputHash)) },
-      cards.iterator.flatMap(_._2).filter(_.slotCount > 1).map(_._id).toSet)
-  }
-}
-
-/** One ready row of the boot hydrate's read, as the boot reads use it: what the missing-card check
- *  asks of it, and what [[ReadModelProjector.learn]] would take from it. */
-private[readmodel] final case class BootRow(id: services.movies.FilmId, filmIds: Seq[String], screeningIds: Seq[String],
-                                            metadataHash: Int, lesson: Lesson)
-
-/** A card held back by the first-publish gate: the source row that projects it, and when its
- *  hold ends (epoch millis). */
-private[readmodel] final case class HeldCard(row: String, until: Long)
-
-/** What the projector remembers about a written card: one hash per part, so the next
- *  write can name the parts that moved ([[ReadModelProjectionMetrics.CardPart]]). Equal
- *  when every part is equal, which is exactly "the card did not change". */
-private[readmodel] final case class CardHash(parts: Map[String, Int]) {
-  def partsDifferingFrom(other: CardHash): Set[String] =
-    parts.collect { case (part, h) if !other.parts.get(part).contains(h) => part }.toSet
-}
-
-private[readmodel] object CardHash {
-  import ReadModelProjectionMetrics.CardPart
-  def of(m: ResolvedMovie)(using LatestTitleYear): CardHash = CardHash(Map(
-    CardPart.Title          -> (m.title, m.originalTitle).##,
-    CardPart.Poster         -> (m.posterUrl, m.fallbackPosterUrls).##,
-    CardPart.Facts          -> (m.runtimeMinutes, m.releaseYear, m.genres, m.countries, m.directors, m.cast).##,
-    CardPart.Synopsis       -> m.synopsis.##,
-    CardPart.SynopsisByCity -> m.synopsisByCity.##,
-    CardPart.Ratings        -> (m.ratings, m.weightedRating).##,
-    CardPart.Trailers       -> m.trailerUrls.##,
-    CardPart.AgeRating      -> m.ageRating.##,
-    CardPart.ShareCard      -> (m.shareCard, m.shareCardPending).##))
 }
