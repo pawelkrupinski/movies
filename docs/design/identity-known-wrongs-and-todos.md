@@ -208,6 +208,11 @@ Each a production change: measure with `scripts/identity-measure`, land one at a
   `CandidateScoring.namesOnlyItsVenue` and the edition year the Alamo series.
 - [ ] **More venue-named global strips** in `ExtraTitleRules`: `xtra-kobiece-strands` (`TOMI dla Kobiet`, `Kobiece
   Wieczory w Kino Cafe`) and others naming one venue's strand. Each a learned decoration or a per-cinema rule; measure.
+  Done 2026-10-18 for the four a venue name only decorates (Klasyka w kinie Atlantic, Wielka Sztuka w Kinoteatrze
+  Rialto, LATO w LUNIE, Kobiece Wieczory w Kino Cafe: any venue's name now; local measure 0 moves). Left, the strand
+  only existing under the name: xtra-pp-dzien-dziecka-apollo, xtra-filmoterapia-w-lunie, xtra-klasyka-cycles' w
+  Kulturze / w NCKF, xtra-kinoteka-dla-rodzica, xtra-pipe-cycle-banner's Kinoteka, the three Kino Kadr rules,
+  xtra-canonical-helios-na-scenie, xtra-wymiary-kina-plac-wilsona-prefix: each wants a per-cinema rule.
 - [x] **Two copies of one list**: ~~`FormatTags.FormatVersionWords` repeats `FormatToken`'s keys (and "lek" has no LEK
   badge: "Lalka 2D LEK" shows none)~~ (done: derived from `FormatToken`, "lek" badged LEK); ~~`TitleText.FiledArticles` (ein/eine, no gli) vs `IdentityMeasures.LeadingArticles`
   (gli, no ein/eine); `TitleText.stripPunct`'s own NFD strip drops "ł" where `TextNormalization.deburr` folds it~~ (done:

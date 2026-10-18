@@ -67,6 +67,8 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Klasyka na TOPie: Podziemny krąg"                 -> ("Klasyka na TOPie: ",              "Podziemny krąg"),
     "Klasyka na TOPie na Dzień Ojca: Rambo: Pierwsza krew." -> ("Klasyka na TOPie na Dzień Ojca: ", "Rambo: Pierwsza krew."),
     "Klasyka w kinie Atlantic: Zawieście czerwone latarnie" -> ("Klasyka w kinie Atlantic: ", "Zawieście czerwone latarnie"),
+    // the strand under another venue's name: no rule names one venue
+    "Klasyka w kinie Muza: Casablanca"                 -> ("Klasyka w kinie Muza: ",           "Casablanca"),
     "17. PRZEGLĄD NOWEGO KINA FRANCUSKIEGO: Fałszerz stulecia" -> ("17. PRZEGLĄD NOWEGO KINA FRANCUSKIEGO: ", "Fałszerz stulecia"),
     // Third-wave (2026-06-19) audience / club programme prefixes.
     "Bezpieczne wakacje: Fleak. Futrzak i ja"         -> ("Bezpieczne wakacje: ",             "Fleak. Futrzak i ja"),
@@ -387,9 +389,12 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "LATO 2026. Wakacje z Klasyką Kina - Mulholland Drive"    -> "Mulholland Drive",
     "Wakacje dla dzieci: Pucio"                               -> "Pucio",
     "LATO w LUNIE | Drzewo magii"                             -> "Drzewo magii",
+    "LATO w MUZIE | Drzewo magii"                             -> "Drzewo magii",
+    "Wielka Sztuka w Kinoteatrze Bałtyk - Klimt i Schiele"    -> "Klimt i Schiele",
     "Kino dla Kobiet: Drugie życie"                           -> "Drugie życie",
     "Babski czwartek: Czytając Lolitę w Teheranie"           -> "Czytając Lolitę w Teheranie",
     "Kobiece Wieczory w Kino Cafe: Zupa nic"                  -> "Zupa nic",
+    "Kobiece Wieczory w Kino Oskard: Zupa nic"                -> "Zupa nic",
     "Wieczory filmowe na boku | Zaproszenie"                  -> "Zaproszenie",
     "Klasyka na fali: Lot nad kukułczym gniazdem"            -> "Lot nad kukułczym gniazdem",
     "Klasyka w Kulturze: La Strada"                          -> "La Strada",

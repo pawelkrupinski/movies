@@ -190,7 +190,7 @@ object ExtraTitleRules {
     // the film (own display row, query stripped to the bare film so it enriches).
     prog("xtra-pp-wajda-rewizje",     """(?i)^(?:Cykl\s+[„"]?\s*)?WAJDA:\s*re-?\s*wizje[^:]*:\s*""", "WAJDA: re-wizje retrospective prefix"),
     prog("xtra-pp-klasyka-na-topie",  """(?i)^Klasyka\s+na\s+TOPie(?:\s+na\s+[^:]+)?:\s*""", "'Klasyka na TOPie [na …]:' classics strand"),
-    prog("xtra-pp-klasyka-atlantic",  """(?i)^Klasyka\s+w\s+kinie\s+Atlantic:\s*""",      "'Klasyka w kinie Atlantic:' classics strand"),
+    prog("xtra-pp-klasyka-w-kinie",   """(?iu)^Klasyka\s+w\s+kinie(?:\s+\p{Lu}\p{L}*)?:\s*""", "'Klasyka w kinie [<venue>]:' classics strand (Kino Atlantic's 'Klasyka w kinie Atlantic:')"),
     prog("xtra-pp-pnkf-prefix",       """(?i)^\d+\.\s*PRZEGLĄD\s+NOWEGO\s+KINA\s+FRANCUSKIEGO:\s*""", "'17. Przegląd Nowego Kina Francuskiego:' festival prefix"),
     // Twenty-first wave (2026-08-23), from the convergence leg's TMDB-no-match list:
     // the same numbered-festival shape as the two named rules above, but generic in the
@@ -446,7 +446,7 @@ object ExtraTitleRules {
     // Retrospective / art-on-screen series whose film follows the banner
     // ('<cycle>: ' or '<cycle> - '); query-only strip keeps the decorated row.
     searchStrip("xtra-pedro-almodovar-kolory",     """(?i)^Pedro\s+Almodóvar:\s+Kolory\s+emocji\s*[-–—]\s*""", "'Pedro Almodóvar: Kolory emocji - <film>' retrospective (Matador, Matki równoległe, …)"),
-    searchStrip("xtra-wielka-sztuka-rialto",       """(?i)^Wielka\s+Sztuka\s+w\s+Kinoteatrze\s+Rialto\s*[-–—]\s*""", "'Wielka Sztuka w Kinoteatrze Rialto - <film>' art-doc series (~10 titles)"),
+    searchStrip("xtra-wielka-sztuka-w-kinoteatrze", """(?iu)^Wielka\s+Sztuka\s+w\s+Kinoteatrze(?:\s+\p{Lu}\p{L}*)?\s*[-–—]\s*""", "'Wielka Sztuka w Kinoteatrze <venue> - <film>' art-doc series (Kinoteatr Rialto, ~10 titles)"),
     searchStrip("xtra-sztuka-w-centrum",           """(?iu)^SZTUKA\s+W\s+CENTRUM\.\s*NOWOŚCI\s+\d{4}\s*\|\s*""", "'SZTUKA W CENTRUM. NOWOŚCI 2026 | <film>' art-doc series"),
     searchStrip("xtra-lekcje-filmowe",             """(?i)^Lekcje\s+Filmowe\s*[-–—]\s*""",            "'Lekcje Filmowe - <film>' strand (Nić widmo, Śniadanie u Tiffany'ego)"),
     searchStrip("xtra-art-beats",                  """(?i)^Art\s+Beats:\s+""",                        "'Art Beats: <film>' art-doc series (Rafael, Święty Piotr, …)"),
@@ -685,8 +685,8 @@ object ExtraTitleRules {
     // is correct and the year-scoped pipeline lookup disambiguates.
     searchStrip("xtra-lato-wakacje-klasyka",       """(?iu)^LATO\s*['’‘`]?\s*\d{2,4}\.?\s*Wakacje\s+z\s+Klasyką\s+Kina{{SEP}}""", "'LATO'26. Wakacje z Klasyką Kina - <film>' summer-classics strand (Casablanca, Amadeusz, Mulholland Drive, 2001: Odyseja kosmiczna, Amelia, Łowca androidów, Wielki błękit, Wielkie piękno, Piknik pod Wiszącą Skałą)"),
     searchStrip("xtra-wakacje-dla-dzieci",         """(?iu)^Wakacje\s+dla\s+dzieci{{SEP}}""",        "'Wakacje dla dzieci: <film>' kids-summer strand (Arco, Pucio, Basia mam swój świat, Kicia Kocia w podróży, Fleak. Futrzak i ja, Fantastyczny Angelo)"),
-    searchStrip("xtra-lato-w-lunie",               """(?iu)^LATO\s+w\s+LUNIE{{SEP}}""",              "'LATO w LUNIE | <film>' Kino Luna summer strand (Drzewo magii, Chłopiec na krańcach świata, Willow i tajemniczy las, Ekipa zwierzaków, Superfutrzak i złośliwa wiewiórka)"),
-    searchStrip("xtra-kobiece-strands",            """(?iu)^(?:(?:Kino|TOMI)\s+dla\s+Kobiet|Babski\s+(?:wieczór|czwartek)|Kobiecy\s+świat|Kobiece\s+Wieczory\s+w\s+Kino\s+Cafe|Wieczory\s+filmowe\s+na\s+boku){{SEP}}""", "ladies'-night strands (Kino dla Kobiet / TOMI dla Kobiet / Babski wieczór / Babski czwartek / Kobiecy świat / Kobiece Wieczory w Kino Cafe / Wieczory filmowe na boku) — film after the banner separator (Drugie życie, Zaproszenie, Czytając Lolitę w Teheranie, Zupa nic)"),
+    searchStrip("xtra-lato-w-kinie",               """(?iu)^LATO\s+w\s+\p{L}{3,}{{SEP}}""",              "'LATO w LUNIE | <film>' Kino Luna summer strand (Drzewo magii, Chłopiec na krańcach świata, Willow i tajemniczy las, Ekipa zwierzaków, Superfutrzak i złośliwa wiewiórka)"),
+    searchStrip("xtra-kobiece-strands",            """(?iu)^(?:(?:Kino|TOMI)\s+dla\s+Kobiet|Babski\s+(?:wieczór|czwartek)|Kobiecy\s+świat|Kobiece\s+Wieczory(?:\s+w\s+Kino\s+\p{Lu}\p{L}*)?|Wieczory\s+filmowe\s+na\s+boku){{SEP}}""", "ladies'-night strands (Kino dla Kobiet / TOMI dla Kobiet / Babski wieczór / Babski czwartek / Kobiecy świat / Kobiece Wieczory w Kino Cafe / Wieczory filmowe na boku) — film after the banner separator (Drugie życie, Zaproszenie, Czytając Lolitę w Teheranie, Zupa nic)"),
     searchStrip("xtra-klasyka-cycles",             """(?iu)^Klasyk[ai]\s+(?:Kina|na\s+fali|w\s+Kulturze|w\s+NCKF){{SEP}}""", "'Klasyka Kina / Klasyka na fali / Klasyka w Kulturze / Klasyka w NCKF: <film>' classics strands (Milczenie owiec, Lot nad kukułczym gniazdem, La Strada, Przekleństwa niewinności) — siblings of the existing 'Klasyk w kinie:' rule"),
     searchStrip("xtra-filmy-z-lektorem",           """(?iu)^FILMY\s+Z\s+LEKTOREM{{SEP}}""",          "'FILMY Z LEKTOREM - <film>' dubbed-screening strand (Poprzednie życie, Emilia Pérez)"),
     searchStrip("xtra-smiech-przez-lzy",           """(?iu)^ŚMIECH\s+PRZEZ\s+ŁZY{{SEP}}""",          "'ŚMIECH PRZEZ ŁZY: <film>' comedy strand (Chłopaki nie płaczą, Wesele)"),
