@@ -15,8 +15,9 @@ import services.identity.IdentityMeasures.Measure
  *    PG", PL Kino Kosmos' "Nakarmić kruki | Złote gody" beside "Wszyscy ludzie prezydenta | Złote gody"); or is a one-word
  *    tag in capitals beside a title that is not ([[IdentityMeasures.capitalisedTags]]: "Camino dla opornych | CHKF") or
  *    one word of consonants alone, a programme's initials ("Kopnięci w czasie|Fks"); or
- *    dates an edition after the film ("Dismember the Alamo 2026 - Chicago"); or names its venue or city (PL Kino
- *    Amondo's "Punku | Peruwiańskie pożegnanie lata w Amondo");
+ *    dates an edition after the film ("Dismember the Alamo 2026 - Chicago"); or names its venue (PL Kino
+ *    Amondo's "Punku | Peruwiańskie pożegnanie lata w Amondo") — not only its town, a subject the film is not (DE
+ *    Trifthof Kinocenter's "Gegen das Vergessen - Weilheim in der Zeit des Nationalsozialismus", a Weilheim documentary);
  *  - the piece is another title of the film: its title search's first film, or one IMDb lists under it in some language
  *    ([[CandidateQuery.ImdbTitled]]: DE "Épines du Sahel - Die Dornen der Sahelzone");
  *  - the listing states a fact of the film's own: a year, a director or an original title ([[IdentityMeasures.ownAgreement]]),
@@ -70,9 +71,12 @@ private[identity] object BilledPiece {
       (services.movies.TitleContainment.tokens(evidence.rawTitle).startsWith(services.movies.TitleContainment.tokens(film.title)) ||
         ListingShape.titledAfterPiece(evidence.rawTitle, film))
     import services.movies.TitleContainment.tokens
-    // a word of every listing's venue's name or city, inflected as it may be ("Kino w Kadrze": "Kadr Non-Fiction")
-    def venues(word: String) = word.length >= IdentityMeasures.StemLetters && listings.forall(listing => EvidenceNode.placesOf(listing.cinema).flatten
-      .exists(place => place.length >= IdentityMeasures.StemLetters && (word.startsWith(place) || place.startsWith(word))))
+    // a word of every listing's venue's name or city (`places`), inflected as it may be ("Kino w Kadrze": "Kadr Non-Fiction")
+    def placed(word: String, places: models.Cinema => Seq[Seq[String]]) = word.length >= IdentityMeasures.StemLetters &&
+      listings.forall(listing => places(listing.cinema).flatten
+        .exists(place => place.length >= IdentityMeasures.StemLetters && (word.startsWith(place) || place.startsWith(word))))
+    def venues(word: String) = placed(word, EvidenceNode.placesOf)
+    def venueNamed(word: String) = placed(word, cinema => Seq(tokens(cinema.displayName)))
     val listing = listings.head.copy(rawTitle = evidence.rawTitle, title = evidence.title, originalTitle = evidence.originalTitle)
     // a piece naming a stage show — a theatre, a musical ([[ListingShape.StageWords]]), not the venue's own name — beside the
     // film: the billing is a staging of the work, however widely the film is screened or whichever town the piece names
@@ -99,7 +103,7 @@ private[identity] object BilledPiece {
       def titles(piece: Seq[String]) = evidence.published.shapes.exists(shape => tokens(shape) == piece &&
         tmdbId.exists(id => answered(CandidateQuery.Title(shape)).headOption.exists(_.tmdbId == id) || answered(CandidateQuery.ImdbTitled(shape)).exists(_.tmdbId == id)))
       staged.orElse(ListingShape.billedBeside(listing, Seq(film), piece =>
-        piece.exists(word => dated(word) || venues(word)) || acronym(piece) || tags.contains(piece) || banners.contains(piece) || titles(piece))
+        piece.exists(word => dated(word) || venueNamed(word)) || acronym(piece) || tags.contains(piece) || banners.contains(piece) || titles(piece))
         .map(Piece(_, staging = false)))
     }
   }

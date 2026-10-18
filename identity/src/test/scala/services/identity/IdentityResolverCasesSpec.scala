@@ -1814,9 +1814,10 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     }
     inUk("The Wizard Of Oz - Hot Rock").film shouldBe None
     // nor is a title in the venue's OWN language a foreign one left untranslated, whichever country TMDB files the film
-    // under: DE Trifthof Kinocenter's "Gegen das Vergessen - Weilheim in der Zeit des Nationalsozialismus", a local
-    // documentary, is not Toscano's 2015 "Gegen das Vergessen", a US record of that German original title (10-18)
-    val germany = models.Cinema.all.find(c => models.City.forCinema(c).exists(_.country == models.Country.Germany)).get
+    // under, nor a piece naming the venue's town its venue's offer: DE Trifthof Kinocenter's (Weilheim in Oberbayern)
+    // "Gegen das Vergessen - Weilheim in der Zeit des Nationalsozialismus", a local documentary, is not Toscano's 2015
+    // "Gegen das Vergessen", a US record of that German original title (10-18)
+    val germany = models.Cinema.all.find(_.displayName == "Trifthof Kinocenter").get
     val forgetting = F(599503, "Gegen das Vergessen", 2015, "Luigi Toscano", 85, countries = Seq("US"), original = Some("Gegen das Vergessen"),
       alternatives = Seq("Lest We Forget"))
     def inGermany(raw: String, film: F) = {
