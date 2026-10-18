@@ -106,7 +106,7 @@ object TitleWords {
    *  its words one optional space apart ("seanswciemno" is "seans w ciemno"), a stem open-ended, any other word ending
    *  on a boundary. Longest phrase first. */
   def foldedPattern(concepts: Concept*): String =
-    s"(?:${alternation(concepts) { phrase =>
+    s"(?:${alternationOf(phrases(concepts*)) { phrase =>
       val words = phrase.split("\\s+").toSeq.map { word =>
         val body = TitleContainment.tokens(word.stripPrefix("*").stripSuffix("*")).map(java.util.regex.Pattern.quote).mkString("\\s?")
         if (word.endsWith("*")) s"$body\\w*" else body
@@ -134,7 +134,6 @@ object TitleWords {
       }.mkString("[\\s-]*")
     }})"
 
-  private def alternation(concepts: Seq[Concept])(compile: String => String): String = alternationOf(phrases(concepts*))(compile)
   private def alternationOf(phrases: Seq[String])(compile: String => String): String =
     phrases.sortBy(p => (-p.length, p)).map(compile).mkString("|")
 }

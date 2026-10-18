@@ -31,6 +31,9 @@ object TitleFacts {
     def certificate(value: String): Option[String]
   }
   object RatingSystem {
+    /** `title` before the rating note `note` closes it on, never the whole title, and the rating `stated` reads off it. */
+    private def closingNote(note: scala.util.matching.Regex, title: String)(stated: scala.util.matching.Regex.Match => Option[String]) =
+      note.findFirstMatchIn(title).filter(_.start > 0).map(m => (title.substring(0, m.start).trim, stated(m)))
     /** UK: the BBFC certificate the format peel takes off ("Digger (15)", "EOS - Monet (Cert. TBC)"), stored as billed. */
     case object Bbfc extends RatingSystem {
       def peel(title: String): Option[(String, Option[String])] = None
@@ -41,8 +44,7 @@ object TitleFacts {
      *  bracket, and no rating. */
     case object PolishAge extends RatingSystem {
       private val Note = """\s*\(\s*(0|3|6|7|10|12|13|15|16|18)\s*\+\s*\)\s*$""".r
-      def peel(title: String): Option[(String, Option[String])] =
-        Note.findFirstMatchIn(title).filter(_.start > 0).map(m => (title.substring(0, m.start).trim, Some(s"${m.group(1)}+")))
+      def peel(title: String): Option[(String, Option[String])] = closingNote(Note, title)(m => Some(s"${m.group(1)}+"))
       def certificate(value: String): Option[String] = None
     }
     /** DE: kinoheld's version-and-FSK note closing a title — "Das siebte Kreuz D, ab 12", "Dune: Part Three D, FSK folgt"
@@ -51,9 +53,7 @@ object TitleFacts {
     case object Fsk extends RatingSystem {
       private val Note = """(?iu)\s+D,\s*(?:ab\s+(0|6|12|16|18)\b|FSK\s+(0|6|12|16|18)\b|FSK\s+folgt\b)[^,]*$""".r
       def peel(title: String): Option[(String, Option[String])] =
-        Note.findFirstMatchIn(title).filter(_.start > 0).map { m =>
-          (title.substring(0, m.start).trim, Option(m.group(1)).orElse(Option(m.group(2))).map("FSK " + _))
-        }
+        closingNote(Note, title)(m => Option(m.group(1)).orElse(Option(m.group(2))).map("FSK " + _))
       def certificate(value: String): Option[String] = None
     }
   }
@@ -71,7 +71,7 @@ object TitleFacts {
     private val Person   = s"""$Part(?:\\s+(?:$Particle\\s+)?$Part)*"""
     private val Whole    = s"""$Part\\s+(?:$Particle\\s+)?$Part"""
     private val AndWord  = """(?:&|and|i|und|y|et)"""
-    private val Ends     = """(?=\s*(?:[,;|•/()\[\]:–—]|-\s|\.?$|\.\s)|\s+\p{Ll}|\s+(?:&|and|i|und|y|et)\s)"""
+    private val Ends     = """(?=\s*(?:[,;|•/()\[\]:–—]|-\s|\.?$|\.\s)|\s+\p{Ll}|\s+""" + AndWord + """\s)"""
     private lazy val Credit = Option.when(languages.nonEmpty)(TitleWords.rawPatternIn(languages, Concept.DirectorCredit)).filter(_ != "(?:)")
       .map(words => (s"""(?U)(?:^|(?<=[\\s(\\[,]))(?<word>(?i:$words)(?:(?:\\s*:\\s*|\\s+)(?i:$words))*)(?<gap>\\s*:\\s*|\\s+)""" +
         s"""(?<names>$Person$Ends(?:(?:\\s*,\\s*$Whole|\\s+$AndWord\\s+$Person)$Ends)*)""").r)
