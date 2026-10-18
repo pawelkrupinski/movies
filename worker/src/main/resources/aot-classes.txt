@@ -9602,6 +9602,8 @@ services.cinemas.common.ScraperParse
 services.cinemas.common.ScraperParse$
 services.cinemas.common.SlotsToMovies
 services.cinemas.common.SlotsToMovies$
+services.cinemas.common.SlotsToMovies$MovieOrder
+services.cinemas.common.SlotsToMovies$MovieOrder$
 services.cinemas.common.SourceFallbackScraper
 services.cinemas.common.SourceFallbackScraper$
 services.cinemas.common.SourceFallbackScraper$FallbackAnswer
