@@ -120,6 +120,11 @@ class JudgementsLintTest(unittest.TestCase):
         self.assertEqual([], self.messages([every, row("pl", "Kino Iluzjon", "Lalka", "imdb:tt0064570", "wrong")]))
         self.assertEqual([], self.messages([row("pl", "*", "Lalka", "tmdb:2", "wrong", "known-wrong", "capture", reason="x"),
                                             row("pl", "Muza", "Lalka", "tmdb:2", "wrong", "known-wrong", "served", reason="x")]))
+        # a scope is a set of gates: the same gates in another order are the same scope
+        found = self.messages([row("pl", "*", "Lalka", "tmdb:2", "wrong", "known-wrong", "capture,served", reason="x"),
+                               row("pl", "Muza", "Lalka", "tmdb:2", "wrong", "known-wrong", "served,capture", reason="x")])
+        self.assertEqual(1, len(found))
+        self.assertIn("says what its '*' row says", found[0])
 
     def test_a_known_wrong_take_the_judgements_call_right_everywhere_fails(self):
         found = self.messages([row("uk", "*", "Romeo and Juliet", "tmdb:6003", "right"),
