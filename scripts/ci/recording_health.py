@@ -38,6 +38,7 @@ import json
 import os
 import sys
 import urllib.parse
+import zlib
 from dataclasses import dataclass
 
 MIN_REQUESTS = 20       # below this an origin's share is noise: a handful of 503s from a site asked five things
@@ -86,7 +87,7 @@ def manifest(tree, since):
                     fields = entry.read().decode("utf-8", "replace").split("\n", 5)
                 key, kind, fetched_at, status, _method, message = fields
                 fetched_at = int(fetched_at) / 1000
-            except (OSError, ValueError, EOFError):
+            except (OSError, ValueError, EOFError, zlib.error):
                 continue   # undecodable: FileEnrichmentCacheStore skips it too
             if kind != "failed" or fetched_at < since:
                 continue
