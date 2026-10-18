@@ -41,7 +41,7 @@ while [ "$#" -gt 0 ]; do
   case "$1" in
     # one parser for both spellings (tool-conventions.sh): a repeatable --country cc[,cc] and --countries a,b
     --country|--countries|--country=*|--countries=*) country_flag "$@"; shift "$COUNTRY_FLAG_ARGS" ;;
-    --venue|--title|--limit) pass+=("$1" "$2"); shift 2 ;;
+    --venue|--title|--limit) flag_value "$@"; pass+=("$1" "$2"); shift 2 ;;
     --corpus-only) corpus_only=1; shift ;;
     *) echo "unknown argument: $1" >&2; usage >&2; exit 2 ;;
   esac

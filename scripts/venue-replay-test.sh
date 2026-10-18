@@ -97,5 +97,6 @@ check "a fixture tree is handed over by its absolute path" "1" \
   "$(mkdir -p "$work/tree" && cd "$work" && replay pl kino --recording 777 --fixtures tree > /dev/null; grep -c -- "--fixtures $work/tree" "$work/calls")"
 check "a fixture tree that is not there is refused" "2" "$(replay pl kino --recording 777 --fixtures "$work/nope" > /dev/null; echo $?)"
 check "an unknown argument is refused" "2" "$(replay pl kino --wat > /dev/null; echo $?)"
+check "a flag given last, with no value, is refused as a usage error" "2" "$(replay pl kino --recording > /dev/null 2>&1; echo $?)"
 
 spec_summary

@@ -21,9 +21,9 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ccs=() max_lag_hours=6 not_before="" need="" quiet=false
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    --max-lag-hours) max_lag_hours=$2; shift 2 ;;
-    --not-before) not_before=$2; shift 2 ;;
-    --need) need=$2; shift 2 ;;
+    --max-lag-hours) flag_value "$@"; max_lag_hours=$2; shift 2 ;;
+    --not-before) flag_value "$@"; not_before=$2; shift 2 ;;
+    --need) flag_value "$@"; need=$2; shift 2 ;;
     --quiet) quiet=true; shift ;;
     -h|--help) usage_from_header; exit 0 ;;
     -*) echo "unknown argument $1" >&2; exit 2 ;;

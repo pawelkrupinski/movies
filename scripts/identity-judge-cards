@@ -38,10 +38,10 @@ if $live && [ -z "${TMDB_API_KEY:-}" ]; then
 fi
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    --fixtures) fixtures=$2; shift 2 ;;
+    --fixtures) flag_value "$@"; fixtures=$2; shift 2 ;;
     # one parser for both spellings (tool-conventions.sh): --country cc[,cc] (repeatable) and --countries a,b
     --country|--countries|--country=*|--countries=*) country_flag "$@"; shift "$COUNTRY_FLAG_ARGS" ;;
-    --out) pass+=("$1" "$(mkdir -p "$2" && cd "$2" && pwd)"); shift 2 ;;
+    --out) flag_value "$@"; pass+=("$1" "$(mkdir -p "$2" && cd "$2" && pwd)"); shift 2 ;;
     --all) pass+=("$1"); shift ;;
     --offline) offline=true; pass+=("$1"); shift ;;
     --live) shift ;;
