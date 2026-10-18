@@ -37,8 +37,10 @@ private[identity] object BilledPiece {
    *  (DE "Femme - Frauen heilen die Welt": the 2023 British "Femme", untranslated; UK "CBeebies Panto 2026: Treasure
    *  Island": a 2027 "Treasure Island", current; DE "40 Jahre Lumière - Die Geburtstagsfeier" at the Lumière: the 1961
    *  film beside the venue's own anniversary), so the agreement stage reads [[Keeps.Facts]]: a fact the billing states,
-   *  or other venues stating the film's. */
-  enum Keeps { case All, Facts }
+   *  or other venues stating the film's. A FILL's film is no agreed record but the model's lean the families lean to too,
+   *  and reads [[Keeps.FactsOrCurrent]]: those, or a current release the venue bills a note beside (DE "ROYA - Eintritt
+   *  frei mit Seebrücke Würzburg e.V.", the 2026 film with free entry from a charity). */
+  enum Keeps { case All, Facts, FactsOrCurrent }
 
   def of(evidence: Evidence, listings: Seq[Listing], country: Option[String], film: IdentityMeasures.Film, tmdbId: Option[Int],
          measures: Map[String, Measure], corroborated: Double, recurs: String => Boolean,
@@ -79,7 +81,8 @@ private[identity] object BilledPiece {
     // a billing listing several works by name is a programme, whatever its first piece's film (DE "Retro - An Undiscovered
     // World, Running High, Carrying Dreams: The Weight Between", four shorts): no keep reads it as one film's
     else if (screened || (keeps == Keeps.All && !ListingShape.listsWorks(evidence.rawTitle) && (current || untranslated))) staged
-    else if (keeps == Keeps.Facts) staged.orElse(ListingShape.billedBeside(listing, Seq(film)).map(Piece(_, staging = false)))
+    else if (keeps == Keeps.FactsOrCurrent && !ListingShape.listsWorks(evidence.rawTitle) && current) staged
+    else if (keeps != Keeps.All) staged.orElse(ListingShape.billedBeside(listing, Seq(film)).map(Piece(_, staging = false)))
     else {
       lazy val banners = evidence.published.shapes.filter(recurs).map(tokens)
       lazy val tags    = IdentityMeasures.capitalisedTags(evidence.published).map(tokens).filter(_.sizeIs == 1)
@@ -96,12 +99,12 @@ private[identity] object BilledPiece {
     }
   }
 
-  /** [[of]] for a film the FAMILIES found — the one they agree on, or one a fill rule takes from their leans and the
-   *  model's — read with the keeps the agreement stage knows ([[Keeps.Facts]]): the billing's stated facts against the
-   *  record, and the other venues stating them. The families' best match for a billing is their best namesake of the
+  /** [[of]] for a film the FAMILIES found — the one they agree on ([[Keeps.Facts]]: the billing's stated facts against
+   *  the record, and the other venues stating them), or one a fill rule takes from their leans and the model's
+   *  ([[Keeps.FactsOrCurrent]]). The families' best match for a billing is their best namesake of the
    *  piece it names, whichever stage takes it (UK "Song Sung Blue- The Music of Neil Diamond", a tribute concert, filled as
    *  the 2025 film from the families' leans). */
-  def ofFamilies(listings: Seq[Listing], film: IdentityMeasures.Film, tmdbId: Option[Int]): Option[Piece] = {
+  def ofFamilies(listings: Seq[Listing], film: IdentityMeasures.Film, tmdbId: Option[Int], keeps: Keeps = Keeps.Facts): Option[Piece] = {
     val read = listings.map { listing =>
       val evidence = Evidence.of(listing, None)
       val country  = EvidenceNode.countryOf(listing.cinema)
@@ -109,7 +112,7 @@ private[identity] object BilledPiece {
     }
     val stating = read.collect { case (listing, _, _, measures) if IdentityMeasures.ownAgreement(measures)._1.nonEmpty => listing.cinema }.toSet
     read.iterator.flatMap { case (listing, evidence, country, measures) =>
-      of(evidence, Seq(listing), country, film, tmdbId, measures, (stating - listing.cinema).size, _ => false, _ => Nil, Keeps.Facts)
+      of(evidence, Seq(listing), country, film, tmdbId, measures, (stating - listing.cinema).size, _ => false, _ => Nil, keeps)
     }.nextOption()
   }
 

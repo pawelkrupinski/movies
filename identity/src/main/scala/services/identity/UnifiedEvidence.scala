@@ -257,7 +257,7 @@ object UnifiedEvidence {
           listingSpans.exists { case (listing, spans) => Agreement.namesMoreThanIt(Agreement.billedSpans(Seq(listing), records.map(_.film)), spans) }),
         "bill.several"        -> c.listings.exists(ListingShape.billsSeveralBeside(_, contender.record.film)),
         // the billing names it as one piece beside another thing, as the agreement refuses its own film ([[BilledPiece.ofFamilies]])
-        "bill.piece"          -> BilledPiece.ofFamilies(c.listings, contender.record.film, contender.tmdb).isDefined,
+        "bill.piece"          -> BilledPiece.ofFamilies(c.listings, contender.record.film, contender.tmdb, BilledPiece.Keeps.FactsOrCurrent).isDefined,
         "stage.work"          -> stageWork,
         "poster.match"        -> nearest.exists(_ <= PosterEvidence.VoteBits),
         "poster.near"         -> nearest.exists(bits => bits > PosterEvidence.VoteBits && bits <= PosterEvidence.VetoMatchBits),
