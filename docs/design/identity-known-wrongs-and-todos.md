@@ -57,7 +57,7 @@ no known-wrong/accepted row covers.
 | DE | 3 | 1 | Über Unterbiberger - Vom Woid in die Welt | Oktober 1917 – Zehn Tage, die die Welt erschütterten (1928) `tmdb:697` | tmdb:1559083 | known-wrong / served | Ditscherlein's 2025 doc on the Unterbiberger Hofmusik, not Eisenstein's October (1928), whose facts the feed copied |
 | DE | 3 | 1 | Ecrire la vie - Writing Life | Giv os en chance (2025) `tmdb:1579323` | tmdb:1518673 | known-wrong / served | Écrire la vie (as its other billings, labelled wrong), not the Danish Giv os en chance |
 | DE | 4 | 23 | League of Legends Worlds 26 - Finals in Cinema | League of Legends Worlds25 - Finals in Cinema (2025) `tmdb:1552059` | — | cured on main and in prod (8b75b70 takes none, 10-18; `numeralRelation` reads the billing's own "26" over a feed's copied "Worlds25", 88a82446a) | the 2026 League of Legends Worlds final, not the 2025 one's record (as PL's and UK's labels say) |
-| DE | 4 | 5 | Fallen Angels by Noël Coward | Gefallene Engel (1995) `tmdb:11220` | tmdb:1702350 | **UNLISTED** | a stage capture of the Roundabout Broadway revival of Coward's play (Trafalgar, in cinemas 22 Oct 2026), not Wong Kar-wai's 1995 film — one line for every venue billin… |
+| DE | 4 | 5 | Fallen Angels by Noël Coward | Gefallene Engel (1995) `tmdb:11220` | tmdb:1702350 | cured on main, prod still serves it until the next deploy (prod runs 8b75b70) | a stage capture of the Roundabout Broadway revival of Coward's play (Trafalgar, in cinemas 22 Oct 2026), not Wong Kar-wai's 1995 film — one line for every venue billin… |
 | DE | 4 | 2 | Carmen (RB+O 2026/27) | Carmen: Salzburger Festspiele 2026 (2026) `tmdb:1740965` | — | known-wrong / served | "RB+O 2026/27" bills the Royal Ballet & Opera Carmen (tmdb 1702759, which Cineamo links), not the Salzburg Festival 2026 recording |
 | DE | 5 | 1 | Leica | Leica (2026) `tmdb:1737142` | — | known-wrong / served | Holzemer's feature doc Leica (tmdb 1689091, which prod takes), not a 15-minute Israeli short |
 | DE | 5 | 1 | THE COMMUNITY | The Community (2022) `tmdb:1029804` | — | known-wrong / served | Cineamo links tmdb 1450062, The Community (2025, 64m doc); the take is a 4-minute short |
@@ -92,8 +92,11 @@ no known-wrong/accepted row covers.
   event must match its own year's record, or none. Cured by 88a82446a (a feed's copied original "Worlds25" never numbers
   the billing's "26" its way; `numeralRelation`), pinned by the identity-slices case
   `de-adria-filmtheater-steglitz-league-of-legends-worlds-26-final-*`; prod (8b75b70) takes none at all 63 venues (10-18).
-- [ ] **DE "Fallen Angels by Noël Coward" ×5** → Wong Kar-wai 1995. Unlisted. The current recording already takes the
-  right 2026 record (1702350); check prod's ×5 after the next deploy (`scripts/listing-history de --title 'Fallen Angels'`).
+- [x] **DE "Fallen Angels by Noël Coward" ×5** → Wong Kar-wai 1995. Cured on main (10-18): recording 38713274617 takes
+  1702350 at all 7 venues, and so does main with prod's newer kinoheld listing (Adria, "Der Zorn der Engel", Annette
+  Jolles) added — pinned as the identity-slices case `de-fallen-angels-by-noel-coward-adria-zorn`. Prod still serves
+  11220 ×5 only because it runs 8b75b70 (10-15, its stored cluster of the five held apart from Metropolis Bochum);
+  check after the next deploy (`scripts/listing-history de --title 'Fallen Angels by'`).
 - [ ] **NT Live: Hamlet ×2 (US)** — the 2026 record never enters the candidates; Flicks' 2015 year is counted once per
   venue reading the same Flicks page.
 - [x] **ESCAPE ROOM 2 (ES)** — bare title, 2021 film at 57% vs the 2026 one backed by 63 venues. Cured by the evidenced-namesake refusal (`Corroboration.refused`); struck 10-18.
