@@ -271,7 +271,10 @@ ratchet_heap=${TAKES_RATCHET_HEAP:-3g}
 # output) -- scripts/identity-measure prints them per country, so a slow measurement says which phase was slow and
 # whether a stored result spared it.
 timing() { printf '%s\t%s\t%s\n' "$1" "$SECONDS" "$2" >> "$out/timings.tsv"; }
+# An earlier run that ended before removing its base checkouts left them registered: their directories go, and so
+# does their registration (a missing but registered worktree refuses the next `git worktree add`).
 rm -rf "$tree" "$final_tree"
+git worktree prune
 : > "$out/verdict.txt"
 printf 'phase\tseconds\thow\n' > "$out/timings.tsv"
 model=0 final=0 shape=0

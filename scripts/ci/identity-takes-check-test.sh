@@ -173,6 +173,12 @@ store_run() { # <head>: the check of <head>, on main, storing on the release
     SBT_CALLS="$work/sbt-calls" TAKES_STORE=fixtures KINOWO_CONVERGENCE_PIN_CORPUS_RUN=${PIN-42} "$script" pl "$work/out" > "$work/log" 2>&1)
 }
 base_calls() { grep -c "identity-takes-base" "$work/sbt-calls" || true; }
+# an earlier run that ended before removing its base checkout left it registered, its directory since removed
+scratch_git "$work/job" worktree add -q --detach "$work/identity-takes-base" HEAD
+code=0; TAKES_BASE=$c4 store_run "$c5" || code=$?
+check "a base checkout an earlier run left registered is checked out afresh" "0 0" \
+  "$code $(grep -c 'already registered' "$work/log")"
+rm -rf "$work/release"
 code=0; TAKES_BASE=$c4 store_run "$c5" || code=$?
 check "with nothing stored, the base is checked out and resolved" 2 "$(base_calls)"
 check "...and the check passes on the same takes" 0 "$code"
