@@ -19,7 +19,8 @@ put scripts/a.sh 'echo tool a'
 put scripts/a-test.sh 'echo a passes'
 put scripts/ci/b_test.py 'print("b passes")'
 put scripts/ci/lib.sh 'echo a library'
-put scripts/c-test.sh "$(printf '%s\n' '. scripts/ci/lib.sh' 'echo boom; exit 1')"
+put scripts/c-test.sh "$(printf '%s\n' '. scripts/ci/lib.sh' 'for n in $(seq 1 100); do echo "line $n"; done' 'echo boom; exit 1')"
+export RUN_SCRIPT_TESTS_LOG_DIR="$work/logs"
 put scripts/d-test.sh "$(printf '%s\n' '#!/usr/bin/env bash' '# script-test: manual needs a live server' 'exit 1')"
 put .github/actions/x/e-test.sh 'exit 0'
 put android/scripts/f-test.sh 'exit 0'
@@ -44,6 +45,11 @@ check "...each test has a row in the table" "4 1" "$(grep -c '^PASS' "$work/out"
 check "...the failing one named" "1" "$(grep -c '^FAIL .*scripts/c-test.sh' "$work/out")"
 check "...with its output" "1" "$(grep -c '^ *boom' "$work/out")"
 check "...and the total" "1" "$(grep -c '^1 of 5 failed' "$work/out")"
+# the report shows a failing log's last 60 lines; the whole log is kept, its path said (a Linux flake's failures were
+# lost past those 60 lines, 2026-10-18)
+kept=$(sed -n 's/^ *(whole log: \(.*\))$/\1/p' "$work/out")
+check "...its whole log kept where the report says" "line 1|boom" \
+  "$( [ -f "$kept" ] && { grep -x 'line 1' "$kept"; tail -1 "$kept"; } | paste -sd'|' -)"
 check "the tagged test never runs by default" "0" "$(grep -c d-test "$work/out")"
 
 check "a directory filter runs only what is under it" "0" "$(run scripts/ci)"

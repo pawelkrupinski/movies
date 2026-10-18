@@ -340,6 +340,8 @@ Each a production change: measure with `scripts/identity-measure`, land one at a
 - [ ] `scripts/run-script-tests --linux`: after 970fbd0f8 (scratch-git's `safe.directory`, the "dubious ownership" root
   cause of pre-push-test.sh's 5-55 Linux failures), 1 run in 13 still failed 42 checks, unreproduced; the Rancher bind
   mount sometimes showed an empty directory to a direct `docker run`. run-script-tests keeps only a failing log's last
-  60 lines, so the next one was not captured: keep the whole failing log (and its path) first, then diagnose.
+  60 lines, so the next one was not captured: keep the whole failing log (and its path) first, then diagnose. (The
+  whole log is kept now, `RUN_SCRIPT_TESTS_LOG_DIR`, default ~/.cache/kinowo-script-tests/failed, the host's in --linux:
+  read it the next time the run is red.)
 - [ ] `agent-procs kill --mine` ended two agents' own tool shells (exit 143) on 10-15; the ancestry is now read from
   the process table (the probable cause, a `ps -p` hop failing, reproduced only with a fake ps). Re-check if it recurs.

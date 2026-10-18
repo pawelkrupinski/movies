@@ -207,12 +207,16 @@ run_on_linux() {
   while IFS="$(printf '\t')" read -r path _; do selected+=("$path"); done < "$work/selected"
   echo "run-script-tests: ${#selected[@]} test(s) on Linux ($image)" >&2
   # each path names exactly its own test; a tag, when one selected them, keeps the tagged ones in
-  "$docker" run --rm -i --user "$(id -u):$(id -g)" -e HOME=/tmp -e TERM=dumb "${mounts[@]}" -w "$root" "$image" \
+  # the failing logs land on the host, in the run's own log directory
+  mkdir -p "$log_dir" && mounts+=(-v "$log_dir:$log_dir")
+  "$docker" run --rm -i --user "$(id -u):$(id -g)" -e HOME=/tmp -e TERM=dumb -e RUN_SCRIPT_TESTS_LOG_DIR="$log_dir" "${mounts[@]}" -w "$root" "$image" \
     bash scripts/run-script-tests --jobs "$jobs" --timeout "$timeout_s" ${tag:+--tag "$tag"} "${selected[@]}" < /dev/null
 }
 
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
+# where a failing test's whole log is kept (the report shows its last 60 lines)
+log_dir=${RUN_SCRIPT_TESTS_LOG_DIR:-$HOME/.cache/kinowo-script-tests/failed}
 if [ -n "$test_bash" ]; then
   [ -x "$test_bash" ] || { echo "run-script-tests: --bash $test_bash is no executable" >&2; exit 64; }
   mkdir "$work/bash-bin" && ln -s "$test_bash" "$work/bash-bin/bash" || exit 64
@@ -283,7 +287,11 @@ report() { # <index>
   if [ "$status" != PASS ]; then
     failed=$((failed + 1))
     { printf '\n── %s %s (exit %s) ──\n' "$status" "${paths[$i]}" "$code"
-      tail -60 "$work/$i.log" | sed 's/^/    /'; } >> "$work/failures"
+      tail -60 "$work/$i.log" | sed 's/^/    /'
+      # the whole log kept: a flake's 42 failures past the last 60 lines were lost once (2026-10-18, pre-push-test.sh on Linux)
+      local kept; kept="$log_dir/$(date +%Y%m%d-%H%M%S)-$$-$(basename "${paths[$i]}").log"
+      if mkdir -p "$log_dir" 2>/dev/null && cp "$work/$i.log" "$kept" 2>/dev/null; then printf '    (whole log: %s)\n' "$kept"; fi
+    } >> "$work/failures"
   fi
 }
 : > "$work/table"; : > "$work/failures"
