@@ -14,9 +14,9 @@ package tools
  * retry), and it uses a STICKY egress (Multikino's session cookie is IP-bound, so
  * a rotating proxy would warm on one IP and retry on another → still 401).
  */
-class SessionWarmingHttpFetch(delegate: HttpFetch, warmUrl: String) extends GetOnlyHttpFetch {
+class SessionWarmingHttpFetch(delegate: HttpFetch, warmUrl: String) extends ForwardingHttpFetch with GetOnlyHttpFetch {
 
-  override def get(url: String): String = warmAndRetry(delegate.get(url))
+  protected def around[T](url: String)(call: HttpFetch => T): T = warmAndRetry(call(delegate))
 
   // Same reason as FallbackHttpFetch's override: the base default would drop the
   // caller's headers. Multikino (this wrapper's only production user) authenticates

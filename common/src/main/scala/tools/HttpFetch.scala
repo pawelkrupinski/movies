@@ -24,12 +24,12 @@ trait HttpFetch {
    *  bytes is lossy (~580 `U+FFFD` on Charlie's page), so the String `get`
    *  returns can't be round-tripped back. `RealHttpFetch` overrides this to
    *  return the wire bytes and `FakeHttpFetch` returns the fixture file's
-   *  bytes. IMPORTANT: any DELEGATING wrapper (MonitoringHttpFetch,
-   *  CachingDetailFetch, MongoCachingDetailFetch, FallbackHttpFetch) MUST
-   *  override this to forward to its underlying's `getBytes` — inheriting this
-   *  default round-trips the wire bytes through a UTF-8 decode and mojibakes a
-   *  legacy single-byte page ("ż" → "ďż˝"). The default is only safe for a
-   *  leaf String-only fetch (e.g. a GET-only test fake). */
+   *  bytes. IMPORTANT: a DELEGATING wrapper must forward this to its
+   *  underlying's `getBytes` — inheriting this default round-trips the wire
+   *  bytes through a UTF-8 decode and mojibakes a legacy single-byte page
+   *  ("ż" → "ďż˝"). Extending [[ForwardingHttpFetch]] does that for every
+   *  member; the default is only safe for a leaf String-only fetch (e.g. a
+   *  GET-only test fake). */
   def getBytes(url: String): Array[Byte] =
     get(url).getBytes(java.nio.charset.StandardCharsets.UTF_8)
 

@@ -25,18 +25,14 @@ import java.util.concurrent.CompletableFuture
 class StickyShardHttpFetch(
   shards: IndexedSeq[HttpFetch],
   keyOf:  String => String = StickyShardHttpFetch.hostAndPath
-) extends HttpFetch {
+) extends ForwardingHttpFetch {
   require(shards.nonEmpty, "StickyShardHttpFetch needs at least one shard")
 
   private def shardFor(url: String): HttpFetch =
     shards(Math.floorMod(keyOf(url).hashCode, shards.size))
 
-  override def get(url: String): String = shardFor(url).get(url)
-  override def get(url: String, headers: Map[String, String]): String = shardFor(url).get(url, headers)
-  override def getBytes(url: String): Array[Byte] = shardFor(url).getBytes(url)
+  protected def around[T](url: String)(call: HttpFetch => T): T = call(shardFor(url))
   override def getAsync(url: String): CompletableFuture[String] = shardFor(url).getAsync(url)
-  override def post(url: String, body: String, contentType: String): String =
-    shardFor(url).post(url, body, contentType)
 }
 
 object StickyShardHttpFetch {

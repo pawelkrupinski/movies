@@ -73,7 +73,7 @@ class HostCircuitBreakerHttpFetch(
   report:           Option[String => Unit] = None,
   // Where the open count and each opening go (`kinowo_worker_http_breaker_*`); unmetered by default.
   meter:            CircuitBreakerMeter = CircuitBreakerMeter.noop
-) extends HttpFetch with Logging {
+) extends ForwardingHttpFetch with Logging {
   import HostCircuitBreakerHttpFetch.Breaker
 
   private val breakers = new ConcurrentHashMap[String, Breaker]()
@@ -175,12 +175,12 @@ class HostCircuitBreakerHttpFetch(
     (remaining.get(), cause.get())
   }
 
-  private def guarded[T](url: String)(block: => T): T = hostOf(url) match {
-    case None => block // unparseable host — nothing to key a breaker on
+  protected def around[T](url: String)(call: HttpFetch => T): T = hostOf(url) match {
+    case None => call(delegate)// unparseable host — nothing to key a breaker on
     case Some(host) =>
       val (remaining, why) = admit(host)
       if (remaining > 0L) throw new CircuitOpenException(host, remaining, why)
-      try { val result = block; onSuccess(host); result }
+      try { val result = call(delegate); onSuccess(host); result }
       // A NON-trip-worthy throw — a 404, a parse error — means the host ANSWERED, so it is
       // alive and the breaker closes exactly as a 200 would close it. Letting it fall
       // through unrecorded used to be harmless when the open check was a pure read, but
@@ -194,12 +194,6 @@ class HostCircuitBreakerHttpFetch(
       }
   }
 
-  override def get(url: String): String = guarded(url)(delegate.get(url))
-  override def get(url: String, headers: Map[String, String]): String = guarded(url)(delegate.get(url, headers))
-  override def getBytes(url: String): Array[Byte] = guarded(url)(delegate.getBytes(url))
-  override def post(url: String, body: String, contentType: String): String =
-    guarded(url)(delegate.post(url, body, contentType))
-
   override def getAsync(url: String): CompletableFuture[String] = hostOf(url) match {
     case None => delegate.getAsync(url)
     case Some(host) =>
@@ -207,7 +201,7 @@ class HostCircuitBreakerHttpFetch(
       if (remaining > 0L) CompletableFuture.failedFuture(new CircuitOpenException(host, remaining, why))
       else delegate.getAsync(url).handle[String]((result, throwable) => {
         if (throwable == null) { onSuccess(host); result }
-        // Same rule as `guarded`: a non-trip-worthy failure is the host answering, which
+        // Same rule as `around`: a non-trip-worthy failure is the host answering, which
         // closes the breaker rather than leaving a re-armed window in place.
         else {
           unwrap(throwable) match {

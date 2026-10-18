@@ -16,15 +16,13 @@ import java.util.concurrent.CompletableFuture
  * here once. A circuit-breaker fast-fail never reaches the leaf, so it is
  * correctly NOT counted as a wire attempt.
  *
- * `getBytes` forwards to the delegate's `getBytes` (not the String `get`), per
- * the HttpFetch contract note — inheriting the default would round-trip a legacy
- * single-byte page through a UTF-8 decode and mojibake it.
+ * Every synchronous member is counted through the one [[ForwardingHttpFetch]] hook.
  */
-class CountingHttpFetch(delegate: HttpFetch, recorder: HttpOutcomeRecorder) extends HttpFetch {
+class CountingHttpFetch(delegate: HttpFetch, recorder: HttpOutcomeRecorder) extends ForwardingHttpFetch {
 
-  private def counted[T](block: => T): T =
+  protected def around[T](url: String)(call: HttpFetch => T): T =
     try {
-      val result = block
+      val result = call(delegate)
       recorder.record(HttpOutcome.Success)
       result
     } catch {
@@ -32,12 +30,6 @@ class CountingHttpFetch(delegate: HttpFetch, recorder: HttpOutcomeRecorder) exte
         recorder.record(HttpOutcome.classify(t))
         throw t
     }
-
-  override def get(url: String): String                          = counted(delegate.get(url))
-  override def get(url: String, headers: Map[String, String]): String = counted(delegate.get(url, headers))
-  override def getBytes(url: String): Array[Byte]                = counted(delegate.getBytes(url))
-  override def post(url: String, body: String, contentType: String): String =
-    counted(delegate.post(url, body, contentType))
 
   /** The async fan-out records on completion. A `CompletableFuture` reports its
    *  failure wrapped in a `CompletionException`, so unwrap the cause before

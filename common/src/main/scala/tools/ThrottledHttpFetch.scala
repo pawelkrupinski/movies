@@ -68,7 +68,7 @@ class ThrottledHttpFetch(
   // The pace `PacedHttpFetch` holds each host to, quoted in the pace-report
   // (the wiring passes `PacedHttpFetch.configuredInterval(env)`).
   paceFor:      String => Option[FiniteDuration] = _ => None
-) extends HttpFetch with Logging {
+) extends ForwardingHttpFetch with Logging {
 
   private val pausedUntil = new ConcurrentHashMap[String, Instant]()
 
@@ -143,13 +143,13 @@ class ThrottledHttpFetch(
     pausedUntil.put(host, clock.instant().plusMillis(pause.toMillis))
   }
 
-  private def throttled[T](url: String)(block: => T): T = hostOf(url) match {
-    case None       => block                              // unparseable host — nothing to gate on
+  protected def around[T](url: String)(call: HttpFetch => T): T = hostOf(url) match {
+    case None       => call(delegate) // unparseable host — nothing to gate on
     case Some(host) =>
       def attempt(n: Int): T = {
         awaitGate(host)
         try {
-          val result = block
+          val result = call(delegate)
           record(host, throttled = false)
           result
         }
@@ -180,12 +180,6 @@ class ThrottledHttpFetch(
       }
       attempt(1)
   }
-
-  override def get(url: String): String = throttled(url)(delegate.get(url))
-  override def get(url: String, headers: Map[String, String]): String = throttled(url)(delegate.get(url, headers))
-  override def getBytes(url: String): Array[Byte] = throttled(url)(delegate.getBytes(url))
-  override def post(url: String, body: String, contentType: String): String =
-    throttled(url)(delegate.post(url, body, contentType))
 
   // Async = cinema-scrape fan-out, not a rate-limited TMDB path — bypass the gate.
   override def getAsync(url: String): java.util.concurrent.CompletableFuture[String] = delegate.getAsync(url)

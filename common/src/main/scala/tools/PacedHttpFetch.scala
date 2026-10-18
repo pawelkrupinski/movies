@@ -35,13 +35,13 @@ import scala.concurrent.duration._
 final class PacedHttpFetch(delegate: HttpFetch, pace: FleetHostPace, intervalFor: String => Option[FiniteDuration],
                            horizon: Duration, clock: java.time.Clock, sleep: Long => Unit = Thread.sleep,
                            paceName: String = "the pace")
-    extends HttpFetch with Logging {
+    extends ForwardingHttpFetch with Logging {
 
   private def hostOf(url: String): Option[String] =
     scala.util.Try(Option(URI.create(url).getHost)).toOption.flatten.map(_.toLowerCase(Locale.ROOT))
 
   /** Take this host's next slot and park until it comes round — or, past the horizon, turn the request back. */
-  private def paced[T](url: String)(block: => T): T = {
+  protected def around[T](url: String)(call: HttpFetch => T): T = {
     for { interval <- intervalFor(url); host <- hostOf(url) } {
       val at = clock.instant()
       pace.take(host, interval, horizon, at) match {
@@ -52,13 +52,8 @@ final class PacedHttpFetch(delegate: HttpFetch, pace: FleetHostPace, intervalFor
           throw new CircuitOpenException(host, java.time.Duration.between(at, next).toMillis.max(1L), Some(s"$paceName for this host"))
       }
     }
-    block
+    call(delegate)
   }
-
-  override def get(url: String): String = paced(url)(delegate.get(url))
-  override def get(url: String, headers: Map[String, String]): String = paced(url)(delegate.get(url, headers))
-  override def getBytes(url: String): Array[Byte] = paced(url)(delegate.getBytes(url))
-  override def post(url: String, body: String, contentType: String): String = paced(url)(delegate.post(url, body, contentType))
 
   /** Delegated UNPACED, matching [[ThrottledHttpFetch]]'s treatment of the same method. Pacing here would mean blocking
    *  a pool thread on `sleep` before handing off, or degrading `RealHttpFetch`'s genuine async path into

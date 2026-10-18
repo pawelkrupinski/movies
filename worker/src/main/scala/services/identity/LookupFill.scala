@@ -3,7 +3,7 @@ package services.identity
 import clients.TmdbClient
 import play.api.Logging
 import settings.IdentityLookupFillRate
-import tools.{CircuitOpenException, HttpFetch, HttpStatusException}
+import tools.{CircuitOpenException, ForwardingHttpFetch, HttpFetch, HttpStatusException}
 
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.atomic.{AtomicBoolean, AtomicInteger}
@@ -54,14 +54,9 @@ final class LookupFillBudget(allowance: Int, pace: FiniteDuration, sleep: Long =
  *  429 gate, breaker and meters — normalized into the model's TMDB store, the only place its answer
  *  goes), each taking one slot of the round's `budget`. Without a slot it is deferred: a
  *  [[LookupGap]], as unanswered as before. An overload ends the round's asks. */
-final class LookupFillLiveFetch(fetch: HttpFetch, budget: LookupFillBudget) extends HttpFetch with Logging {
+final class LookupFillLiveFetch(fetch: HttpFetch, budget: LookupFillBudget) extends ForwardingHttpFetch with Logging {
 
-  override def get(url: String): String = ask(url)(_.get(url))
-  override def get(url: String, headers: Map[String, String]): String = ask(url)(_.get(url, headers))
-  override def post(url: String, body: String, contentType: String): String = ask(url)(_.post(url, body, contentType))
-  override def getBytes(url: String): Array[Byte] = ask(url)(_.getBytes(url))
-
-  private def ask[A](url: String)(call: HttpFetch => A): A = {
+  protected def around[A](url: String)(call: HttpFetch => A): A = {
     val host = LookupFillLiveFetch.hostOf(url)
     if (!budget.acquire(host, url)) throw new LookupGap(s"deferred: $url")
     else try { val a = call(fetch); budget.answered.incrementAndGet(); a }

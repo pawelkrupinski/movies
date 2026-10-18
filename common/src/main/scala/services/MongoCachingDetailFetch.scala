@@ -3,7 +3,7 @@ package services
 import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, documentToUntypedDocument}
 import org.mongodb.scala.model.{Filters, Updates}
 import play.api.Logging
-import tools.{HttpFetch, HttpStatusException}
+import tools.{ForwardingHttpFetch, HttpFetch, HttpStatusException}
 
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -37,7 +37,7 @@ class MongoCachingDetailFetch(
   ttlMismatches:  TtlIndexMismatches,
   // What `fetchedAt`/`expireAt` are stamped from, and what a cached document's expiry is judged against.
   clock:          java.time.Clock
-) extends HttpFetch with Logging {
+) extends ForwardingHttpFetch with Logging {
 
   private val coll: Option[MongoCollection[Document]] = db.map(_.getCollection(MongoCachingDetailFetch.Collection))
 
@@ -85,13 +85,10 @@ class MongoCachingDetailFetch(
   // Detail fetches don't vary by request header; key on the URL alone.
   override def get(url: String, headers: Map[String, String]): String = get(url)
 
-  // Raw bytes pass straight through to the underlying fetch (uncached): the
+  // Raw bytes and posts pass straight through to the underlying fetch (uncached): the
   // Mongo cache holds UTF-8 bodies, and re-encoding one would mojibake a legacy
-  // single-byte page. Don't inherit the lossy base default.
-  override def getBytes(url: String): Array[Byte] = underlying.getBytes(url)
-
-  override def post(url: String, body: String, contentType: String): String =
-    underlying.post(url, body, contentType)
+  // single-byte page.
+  protected def around[T](url: String)(call: HttpFetch => T): T = call(underlying)
 
   /** `Right(body)` for a cached success, `Left(status)` for a remembered permanent
    *  failure, `None` for a URL this cache has nothing to say about. A document with
