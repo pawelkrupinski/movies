@@ -39,6 +39,9 @@ class ScrapeListingSpec extends AnyFlatSpec with Matchers {
       listing("RBO Cinema Season 2024-25: Swan Lake", Seq(at(20))),
       listing("RBO Cinema Season 2026/27: Swan Lake", Seq(at(21))))
     p.movies.map(_.showtimes.size).sorted shouldBe Seq(1, 2)
+    // a programme's season names no production: a film club's one film across a season's turn is one slot
+    prepare(listing("Kino Seniora 2025/2026: Lalka", Seq(at(18))), listing("Kino Seniora 2026/2027: Lalka", Seq(at(20))))
+      .movies.map(_.showtimes.size) shouldBe Seq(2)
   }
 
   it should "strip a format tag off the title into the showings' badges, through the shared vocabulary" in {
