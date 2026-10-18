@@ -91,7 +91,8 @@ final class TmdbNormalizer(store: TmdbStore, bodies: tools.JsonBodies = new tool
 object TmdbNormalizer {
   /** A `/movie/{id}` body cut to what `TmdbFilmRecord.parse` reads — title, original title, release day,
    *  runtime, IMDb id, popularity (as its bucket), countries, alternative titles, the directors
-   *  among the crew, the top-billed cast's names and which countries date a release of it, and its cinema releases (country, year, edition) — keeping the shape it reads them in (a `credits` block stays a `credits` block:
+   *  among the crew, the top-billed cast's names and which countries date a release of it, its cinema releases (country, year, edition) and
+   *  the certificates rating it where a scale is read ([[Certificates]]) — keeping the shape it reads them in (a `credits` block stays a `credits` block:
    *  its presence is what marks the localized response, and "directors known"). */
   def minimal(body: JsValue): JsValue = {
     val keep = Seq("title", "original_title", "runtime", "imdb_id", "origin_country", "tagline")
@@ -113,7 +114,9 @@ object TmdbNormalizer {
     val released = (body \ "release_dates").toOption.map(block => TmdbFilmRecord.ReleaseCountries -> Json.toJson(TmdbFilmRecord.releaseCountries(block)))
     // and the cinema releases' countries, years and editions: the years a listing's year is read against (`Film.releasesIn`)
     val releases = (body \ "release_dates").toOption.map(block => TmdbFilmRecord.Releases -> Json.toJson(TmdbFilmRecord.releases(block)))
-    JsObject(keep ++ date ++ popularity ++ countries ++ alternatives ++ credits ++ crew ++ released ++ releases)
+    // and the certificates it records where a rating scale is read (`Certificates.below`): the least restrictive per country
+    val certificates = (body \ "release_dates").toOption.flatMap(Certificates.ofReleaseDates).map(TmdbFilmRecord.CertificatesField -> Json.toJson(_))
+    JsObject(keep ++ date ++ popularity ++ countries ++ alternatives ++ credits ++ crew ++ released ++ releases ++ certificates)
   }
 }
 

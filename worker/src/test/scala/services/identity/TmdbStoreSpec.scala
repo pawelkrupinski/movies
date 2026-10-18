@@ -509,6 +509,19 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     TmdbFilmRecord.parse(Seq(play.api.libs.json.Json.parse(s"""{"id":$film,"title":"Obcy w domu","credits":{"crew":[]}}"""))).get._1.releasedIn("PL") shouldBe None
   }
 
+  // The certificate guard (`Certificates.below`) reads the certificate TMDB records for a film in the venue's country: the
+  // store keeps the least restrictive one per country a rating scale is read for, off the localized response it files.
+  "a film's record filed from its localized response" should "keep the certificates TMDB records where a rating scale is read" in {
+    val w    = new World
+    val film = 1339713   // Curry Barker's "Obsession" (2026), en-GB `…?append_to_response=credits,release_dates`, recording 38713274617
+    val recorded = scala.io.Source.fromResource("fixtures/tmdb/movie_1339713_obsession_gb.json")(using scala.io.Codec.UTF8).mkString
+    val filed = minimalOf(recorded)
+    (filed \ TmdbFilmRecord.CertificatesField).asOpt[String] shouldBe Some("DE=16,ES=18,GB=18,US=R")
+    w.store.filmPartial(film, TmdbStore.Partial.Local, filed)
+    w.store.filmPartial(film, TmdbStore.Partial.English, minimalOf(s"""{"id":$film,"title":"Obsession","release_date":"2026-05-13","alternative_titles":{"titles":[]}}"""))
+    w.lookups.film(film).toOption.flatten.flatMap(_.certificates) shouldBe Some("DE=16,ES=18,GB=18,US=R")
+  }
+
   // The cast evidence (`CastEvidence`) reads a candidate's top-billed cast: the store keeps its names, in billing order,
   // off the localized response it already files — and a response filed before it did knows none, rather than "no cast".
   "a film's record filed from its localized response" should "keep its top-billed cast, and know none where it was filed without" in {

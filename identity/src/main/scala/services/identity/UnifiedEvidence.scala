@@ -87,11 +87,12 @@ object UnifiedEvidence {
    *  venue's year or director against it, its running time short of the film ([[Agreement.runsShort]]), a venue poster
    *  naming another candidate, a family turning it down; and, as the agreement requires of what it takes, a title naming
    *  the film, and no other edition than the title numbers). A film the model's own rules accepted ([[ModelRules]]) passed
-   *  the model's guards instead ([[Acceptance]]), as today. `listing.runsShort` and `bill.piece` (the billing naming the film
-   *  as one piece beside another thing, [[BilledPiece.ofFamilies]]) are guards only, no fitted signals of [[Signals]]: the
+   *  the model's guards instead ([[Acceptance]]), as today. `listing.runsShort`, `bill.piece` (the billing naming the film
+   *  as one piece beside another thing, [[BilledPiece.ofFamilies]]) and `listing.certifiedBelow` (the venue's certificate
+   *  well below TMDB's for the film in its country, [[Certificates.below]]) are guards only, no fitted signals of [[Signals]]: the
    *  training rows predate them. */
   val Guards: Seq[String] = Seq("bill.several", "stage.work", "title.anothersOwn", "listing.contradicts", "poster.otherMatches",
-    "family.turnedDown", "title.namesNone", "edition.apart", "listing.runsShort", "bill.piece")
+    "family.turnedDown", "title.namesNone", "edition.apart", "listing.runsShort", "bill.piece", "listing.certifiedBelow")
   /** The guards the fit's training rows carry, each a signal of [[Signals]]: what the offline fit and strategies read. */
   val FittedGuards: Seq[String] = Guards.filter(Names.contains)
   val ModelRules: Seq[String] = Names.filter(_.startsWith("rule."))
@@ -245,6 +246,8 @@ object UnifiedEvidence {
         "listing.contradicts" -> Agreement.contradictedByAnyListing(c.listings, contender.record),
         // the venue's own running time well short of an older film's whole one
         "listing.runsShort"   -> Agreement.runsShort(c.listings, contender.record, Some(c.thisYear)).isDefined,
+        // the venue's certificate well below the one TMDB records for the film in its country: another cut, another film
+        "listing.certifiedBelow" -> own.headOption.exists(tmdbFilm => c.listings.exists(Certificates.below(_, tmdbFilm.film).isDefined)),
         "venues.current"      -> (venues >= Agreement.WidelyBilled && current),
         "title.namesIt"       -> namesIt,
         "title.namesNone"     -> !namesIt,

@@ -48,7 +48,9 @@ object TmdbFilmRecord {
           .orElse((d \ ReleaseCountries).asOpt[String])).headOption,
         alternativeRuntimes = runtimes.drop(1),
         releases          = main.flatMap(d => (d \ "release_dates").toOption.map(releases).orElse((d \ Releases).asOpt[String])).headOption,
-        taglineKey        = (localized \ "tagline").asOpt[String].fold(0)(IdentityMeasures.Film.taglineKeyOf)) -> imdbId)
+        taglineKey        = (localized \ "tagline").asOpt[String].fold(0)(IdentityMeasures.Film.taglineKeyOf),
+        certificates      = main.flatMap(d => (d \ "release_dates").toOption.map(Certificates.ofReleaseDates)
+          .getOrElse((d \ CertificatesField).asOpt[String])).headOption) -> imdbId)
     }
   }
 
@@ -78,6 +80,10 @@ object TmdbFilmRecord {
     (block \ "results").asOpt[Seq[JsValue]].getOrElse(Nil)
       .filter(result => (result \ "release_dates").asOpt[Seq[JsValue]].exists(_.nonEmpty))
       .flatMap(result => (result \ "iso_3166_1").asOpt[String]).filter(_.length == 2).distinct.sorted.mkString
+
+  /** The field a cut-down record (`TmdbNormalizer.minimal`) keeps of TMDB's `release_dates` block's certificates
+   *  ([[Certificates.ofReleaseDates]]). */
+  val CertificatesField = "certificates"
 
   /** The field a cut-down record (`TmdbNormalizer.minimal`) keeps of TMDB's `release_dates` block's dates: [[releases]]. */
   val Releases = "releases"

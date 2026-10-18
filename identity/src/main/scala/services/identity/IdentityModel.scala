@@ -54,7 +54,11 @@ final case class Listing(
   /** The title its broadcaster's banner spelled by its proper name, searched beside [[searchTitle]] where the venue's
    *  rules ask that ([[Listing.searchTitlesOf]]): US "NT Live: Hamlet + Q&A" searches "NT Live: Hamlet" and "National
    *  Theatre Live: Hamlet". */
-  properTitle:   Option[String] = None
+  properTitle:   Option[String] = None,
+  /** The age certificate the venue bills it with (its `ageRating`, from its feed or peeled off its title at intake,
+   *  `services.movies.TitleFacts`): which cut of which film it screens, as the fill's guard reads it ([[Certificates.below]]).
+   *  OUTSIDE the listing's equality and hash, as the poster is: the model never reads it, only the stages after it. */
+  certificate:   Option[String] = None
 ) {
   def venue: String = key.venue
 
@@ -200,13 +204,13 @@ object Listing {
   val StagingPredatesSeason = 1
 
   /** Does `now` publish what the stages after the model read differently from `was` — its poster, its screening days, the
-   *  names its venue's text gives — though the two are equal ([[Listing.equals]] leaves those out)? The model then holds
+   *  names its venue's text gives, its certificate — though the two are equal ([[Listing.equals]] leaves those out)? The model then holds
    *  `now` without resolving it again, and the agreement reads it afresh ([[agreement.AgreementStage]]). Days count only
    *  where both sides know them: a lean read leaves out the days of a film billing no stage work
    *  (`services.scrapes.LeanListing.leanFilm`), which beside the model's object holding the scrape's days moved nothing —
    *  read as moved, every venue read again looked re-published, on every tick. */
   def movedOutsideEquality(was: Listing, now: Listing): Boolean =
-    was.poster != now.poster || was.names != now.names ||
+    was.poster != now.poster || was.names != now.names || was.certificate != now.certificate ||
       (knowsDays(was.screenings) && knowsDays(now.screenings) && was.screenings != now.screenings)
   private def knowsDays(days: ScreeningDays): Boolean = !days.isEmpty && !days.isUnknown
 
@@ -240,7 +244,8 @@ object Listing {
       poster        = SlotFields.url(cm.posterUrl, SlotFields.url(cm.filmUrl, None)),
       screenings    = ScreeningDays.of(cm.showtimes.map(_.dateTime.toLocalDate)),
       names         = venueNames(cinema, cm),
-      properTitle   = properTitle)
+      properTitle   = properTitle,
+      certificate   = cm.ageRating.map(_.trim).filter(_.nonEmpty))
   }
 
   /** The titles external lookups are asked for besides the venue's own, if any: the one its rules ask

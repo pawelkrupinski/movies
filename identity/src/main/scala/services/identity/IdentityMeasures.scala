@@ -319,7 +319,11 @@ object IdentityMeasures {
                          *  subtitle a venue may bill beside its title ("Frauen bildet Banden - Eine Spurensuche zur Geschichte
                          *  der Roten Zora"). A key, not the text: every candidate of every family holds it, and one question is
                          *  asked of it ([[ListingShape.billedBeside]]). */
-                        taglineKey: Int = 0) {
+                        taglineKey: Int = 0,
+                        /** The certificates TMDB records for it in the countries a rating scale is read for, the least
+                         *  restrictive one each ("GB=18,US=R", [[Certificates.ofReleaseDates]]); `None` when none is known.
+                         *  One string, as [[releases]] is. */
+                        certificates: Option[String] = None) {
     /** The film as a line names it: `'Lalka' (1968)`, its year left out where none is known. */
     def titled: String = s"'$title'${year.fold("")(y => s" ($y)")}"
     /** Every running time TMDB states for the film, [[runtime]] first: what a listing's runtime is compared with. */
