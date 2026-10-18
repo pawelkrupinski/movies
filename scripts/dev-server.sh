@@ -35,7 +35,13 @@
 # since 2026-10-12), so without these it refused to boot. Anything already exported wins; for
 # prod itself, `scripts/with-prod-mongo.sh scripts/dev-server.sh` (the vault + the ssh tunnel).
 # The Mongo is started when nothing answers on :28017 (DEV_SERVER_MONGO_UP=1 skips the check).
+#
+# TMDB. The /debug/review cards ask TMDB live for a poster no stored read has; without TMDB_API_KEY
+# every one is "no TMDB poster". So it comes from the vault (one Touch ID per launch) unless already
+# exported; with no `secrets` CLI the server still boots, without those posters.
 set -euo pipefail
+. "$(dirname "$0")/vault-env.sh"
+ensure_vault_env TMDB_API_KEY -- "$BASH" "$0" "$@" || echo "[dev-server] booting without TMDB_API_KEY: no live TMDB posters on /debug/review" >&2
 cd "$(dirname "$0")/.."
 local_mongo='mongodb://127.0.0.1:28017'
 export MONGODB_URI="${MONGODB_URI:-$local_mongo/?directConnection=true}"
