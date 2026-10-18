@@ -5,7 +5,7 @@ name: Discover UK cinemas
 #
 # The UK roster is one hand-wired `FlicksClient` per venue (a `case object … extends
 # Cinema` in common/.../models/Cinema.scala + a `flicks("<slug>", Obj)` line in
-# worker/.../CinemaScraperCatalog.scala). Flicks lists every cinema in
+# worker/.../UkScraperCatalog.scala). Flicks lists every cinema in
 # sitemap-cinemas.xml; scripts/discover-cinemas/discover.py diffs that against the
 # slugs we already wire (minus scripts/discover-cinemas/exclude.txt, the known-
 # defunct venues) and splices compilable Scala for each genuinely new venue,
@@ -116,7 +116,7 @@ jobs:
             - name: Check for wiring changes
               id: changed
               run: |
-                  if git diff --quiet -- common/src/main/scala/models/Cinema.scala worker/src/main/scala/services/cinemas/CinemaScraperCatalog.scala common/src/main/scala/models/VenueTowns.scala data/uk; then
+                  if git diff --quiet -- common/src/main/scala/models/Cinema.scala worker/src/main/scala/services/cinemas/UkScraperCatalog.scala common/src/main/scala/models/VenueTowns.scala data/uk; then
                       echo "wired=false" >> "$GITHUB_OUTPUT"
                   else
                       echo "wired=true" >> "$GITHUB_OUTPUT"
@@ -159,7 +159,7 @@ jobs:
                   delete-branch: true
                   add-paths: |
                       common/src/main/scala/models/Cinema.scala
-                      worker/src/main/scala/services/cinemas/CinemaScraperCatalog.scala
+                      worker/src/main/scala/services/cinemas/UkScraperCatalog.scala
                       common/src/main/scala/models/VenueTowns.scala
                       common/src/main/scala/models/UkPages.scala
                       data/uk/venues.json

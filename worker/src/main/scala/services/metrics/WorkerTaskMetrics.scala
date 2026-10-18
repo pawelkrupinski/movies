@@ -1,6 +1,5 @@
 package services.metrics
 
-import io.prometheus.metrics.core.metrics.{Counter, Gauge, Histogram}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import services.freshness.FreshnessKind
 import services.movies.{CacheSyncMetrics, RepositoryWriteMetrics, ChangeStreamLiveness, ChangeStreamMetrics, ListingIntakeMetrics, ScreeningsMetrics, SideCollectionChangeMetrics}
@@ -70,42 +69,42 @@ class WorkerTaskMetrics(countryCode: String, series: WorkerTaskMetrics.Series)
   extends TaskObserver with ReadModelProjectionMetrics with RatingLatencyMetrics with ScreeningsMetrics with CacheSyncMetrics with ListingIntakeMetrics with RepositoryWriteMetrics with services.readmodel.DecodeFailureMetrics with services.tasks.ChunkPageMemoMetrics {
 
   // ── RatingLatencyMetrics ────────────────────────────────────────────────────
-  def recordFirstRatingDelay(site: String, seconds: Double): Unit = series.recordFirstRatingDelay(countryCode, site, seconds)
+  def recordFirstRatingDelay(site: String, seconds: Double): Unit = series.tasks.recordFirstRatingDelay(countryCode, site, seconds)
 
   // ── ReadModelProjectionMetrics ──────────────────────────────────────────────
-  def recordWrite(target: String, op: String, count: Int): Unit = series.recordWrite(countryCode, target, op, count)
-  def recordFilmPruned(reason: String, count: Int): Unit        = series.recordFilmPruned(countryCode, reason, count)
-  def recordCardRetired(reason: String): Unit                   = series.recordCardRetired(countryCode, reason)
-  def recordDrift(cause: String, documents: Int): Unit          = series.recordDrift(countryCode, cause, documents)
-  def recordUnlistedVenues(rows: Int, withheld: Boolean): Unit  = series.recordUnlistedVenues(countryCode, rows, withheld)
-  def recordCatchUp(rows: Int): Unit                            = series.recordCatchUp(countryCode, rows)
-  def recordCardWrite(changed: Set[String]): Unit               = series.recordCardWrite(countryCode, changed)
+  def recordWrite(target: String, op: String, count: Int): Unit = series.readModel.recordWrite(countryCode, target, op, count)
+  def recordFilmPruned(reason: String, count: Int): Unit        = series.readModel.recordFilmPruned(countryCode, reason, count)
+  def recordCardRetired(reason: String): Unit                   = series.readModel.recordCardRetired(countryCode, reason)
+  def recordDrift(cause: String, documents: Int): Unit          = series.readModel.recordDrift(countryCode, cause, documents)
+  def recordUnlistedVenues(rows: Int, withheld: Boolean): Unit  = series.readModel.recordUnlistedVenues(countryCode, rows, withheld)
+  def recordCatchUp(rows: Int): Unit                            = series.readModel.recordCatchUp(countryCode, rows)
+  def recordCardWrite(changed: Set[String]): Unit               = series.readModel.recordCardWrite(countryCode, changed)
   def recordProject(trigger: ReadModelProjectionMetrics.ProjectTrigger, wallSeconds: Double, cpuSeconds: Double): Unit =
-    series.recordProject(countryCode, trigger, wallSeconds, cpuSeconds)
+    series.readModel.recordProject(countryCode, trigger, wallSeconds, cpuSeconds)
   def recordWriteBurst(trigger: ReadModelProjectionMetrics.ProjectTrigger, seconds: Double): Unit =
-    series.recordWriteBurst(countryCode, trigger, seconds)
+    series.readModel.recordWriteBurst(countryCode, trigger, seconds)
   def recordMetadataProjection(trigger: ReadModelProjectionMetrics.ProjectTrigger, reused: Boolean): Unit =
-    series.recordMetadataProjection(countryCode, trigger, reused)
-  def recordVenueProjection(rebuilt: Int, reused: Int): Unit     = series.recordVenueProjection(countryCode, rebuilt, reused)
-  def recordReconcileSweep(kind: String, didWork: Boolean): Unit = series.recordReconcileSweep(countryCode, kind, didWork)
-  def recordHeal(trigger: String, rows: Int): Unit              = series.recordHeal(countryCode, trigger, rows)
+    series.readModel.recordMetadataProjection(countryCode, trigger, reused)
+  def recordVenueProjection(rebuilt: Int, reused: Int): Unit     = series.readModel.recordVenueProjection(countryCode, rebuilt, reused)
+  def recordReconcileSweep(kind: String, didWork: Boolean): Unit = series.readModel.recordReconcileSweep(countryCode, kind, didWork)
+  def recordHeal(trigger: String, rows: Int): Unit              = series.readModel.recordHeal(countryCode, trigger, rows)
 
   // ── CacheSyncMetrics ────────────────────────────────────────────────────────
-  def recordRehydrate(changedUpserts: Int, deletes: Int): Unit = series.recordRehydrate(countryCode, changedUpserts, deletes)
+  def recordRehydrate(changedUpserts: Int, deletes: Int): Unit = series.corpusWrites.recordRehydrate(countryCode, changedUpserts, deletes)
 
   // ── ListingIntakeMetrics ────────────────────────────────────────────────────
-  def recordGuardVerdict(guard: String, verdict: String): Unit = series.recordScrapeGuardVerdict(countryCode, guard, verdict)
-  def recordWriteSkipped(reason: String): Unit                 = series.recordScrapeWriteSkipped(countryCode, reason)
+  def recordGuardVerdict(guard: String, verdict: String): Unit = series.corpusWrites.recordScrapeGuardVerdict(countryCode, guard, verdict)
+  def recordWriteSkipped(reason: String): Unit                 = series.corpusWrites.recordScrapeWriteSkipped(countryCode, reason)
 
   // ── RepositoryWriteMetrics ──────────────────────────────────────────────────
   def recordWriteFailed(collection: String, op: String, exception: String): Unit =
-    series.recordRepositoryWriteFailed(countryCode, collection, op, exception)
+    series.corpusWrites.recordRepositoryWriteFailed(countryCode, collection, op, exception)
 
   // ── ChunkPageMemoMetrics ────────────────────────────────────────────────────
-  def recordPage(outcome: String): Unit = series.recordChunkPage(countryCode, outcome)
+  def recordPage(outcome: String): Unit = series.tasks.recordChunkPage(countryCode, outcome)
 
   // ── DecodeFailureMetrics ────────────────────────────────────────────────────
-  def recordDecodeFailure(collection: String): Unit = series.recordDecodeFailure(countryCode, collection)
+  def recordDecodeFailure(collection: String): Unit = series.corpusWrites.recordDecodeFailure(countryCode, collection)
 
   // ── ChangeStreamMetrics for `movies` ────────────────────────────────────────
   // A separate object rather than a direct mixin: `ChangeStreamMetrics.recordCoalescedChange`
@@ -113,31 +112,31 @@ class WorkerTaskMetrics(countryCode: String, series: WorkerTaskMetrics.Series)
   // cannot implement both directly — the same reason `slotsChangeMetrics` below is its own
   // object rather than a third mixin.
   val movieChangeMetrics: ChangeStreamMetrics = new ChangeStreamMetrics {
-    def recordEvent(op: String): Unit        = series.recordEvent(countryCode, op)
-    def recordUpdateKind(kind: String): Unit = series.recordUpdateKind(countryCode, kind)
-    def recordCoalescedChange(): Unit        = series.recordMovieCoalesced(countryCode)
-    override def recordApply(path: String, reason: String): Unit = series.recordChangeApply(countryCode, path, reason)
-    override def recordVenueDecline(reason: String): Unit       = series.recordVenueDecline(countryCode, reason)
+    def recordEvent(op: String): Unit        = series.changeStreams.recordEvent(countryCode, op)
+    def recordUpdateKind(kind: String): Unit = series.changeStreams.recordUpdateKind(countryCode, kind)
+    def recordCoalescedChange(): Unit        = series.changeStreams.recordMovieCoalesced(countryCode)
+    override def recordApply(path: String, reason: String): Unit = series.changeStreams.recordChangeApply(countryCode, path, reason)
+    override def recordVenueDecline(reason: String): Unit       = series.changeStreams.recordVenueDecline(countryCode, reason)
   }
 
   // ── ScreeningsMetrics ───────────────────────────────────────────────────────
-  def recordChangeEvent(op: String): Unit = series.recordScreeningsChangeEvent(countryCode, op)
-  def recordWrite(outcome: String, count: Int): Unit = series.recordScreeningsWrite(countryCode, outcome, count)
-  def recordCoalescedChange(): Unit = series.recordScreeningsCoalesced(countryCode)
+  def recordChangeEvent(op: String): Unit = series.changeStreams.recordScreeningsChangeEvent(countryCode, op)
+  def recordWrite(outcome: String, count: Int): Unit = series.changeStreams.recordScreeningsWrite(countryCode, outcome, count)
+  def recordCoalescedChange(): Unit = series.changeStreams.recordScreeningsCoalesced(countryCode)
 
   // ── SideCollectionChangeMetrics for `movie_slots` ───────────────────────────
   // A separate object rather than a third mixin: the slots cursor answers the same two
   // questions as the screenings one, so its trait has the same two methods, and one class
   // cannot route the same signature to two counters.
   val slotsChangeMetrics: SideCollectionChangeMetrics = new SideCollectionChangeMetrics {
-    def recordChangeEvent(op: String): Unit = series.recordSlotsChangeEvent(countryCode, op)
-    def recordCoalescedChange(): Unit       = series.recordSlotsCoalesced(countryCode)
+    def recordChangeEvent(op: String): Unit = series.changeStreams.recordSlotsChangeEvent(countryCode, op)
+    def recordCoalescedChange(): Unit       = series.changeStreams.recordSlotsCoalesced(countryCode)
   }
 
   // ── Task lifecycle ──────────────────────────────────────────────────────────
-  def recordEnqueue(taskType: TaskType, result: String): Unit = series.recordEnqueue(countryCode, taskType, result)
-  def onStarted(task: Task): Unit                             = series.onStarted(countryCode, task)
-  def onFinished(task: Task, outcome: String, handleMillis: Long): Unit = series.onFinished(countryCode, task, outcome, handleMillis)
+  def recordEnqueue(taskType: TaskType, result: String): Unit = series.tasks.recordEnqueue(countryCode, taskType, result)
+  def onStarted(task: Task): Unit                             = series.tasks.onStarted(countryCode, task)
+  def onFinished(task: Task, outcome: String, handleMillis: Long): Unit = series.tasks.onFinished(countryCode, task, outcome, handleMillis)
 }
 
 object WorkerTaskMetrics {
@@ -170,489 +169,17 @@ object WorkerTaskMetrics {
 
   /**
    * The registered-once metric objects, SHARED across every country's
-   * [[WorkerTaskMetrics]] facade. Registered on the single worker registry so
-   * ONE `/metrics` scrape exposes every country's task pipeline; each series
-   * carries a leading `country` label so the countries never collide. Seeded to 0
-   * for the full cartesian of (country × every other label value) so no Grafana
-   * gap opens before a given (country, type, outcome) first fires.
+   * [[WorkerTaskMetrics]] facade, one family of series per part of the worker. Registered on the
+   * single worker registry so ONE `/metrics` scrape exposes every country's task pipeline; each
+   * series carries a leading `country` label so the countries never collide. Seeded to 0 for the
+   * full cartesian of (country × every other label value) so no Grafana gap opens before a given
+   * (country, type, outcome) first fires.
    */
   class Series(poolSize: Int, countryCodes: Seq[String], registry: PrometheusRegistry = new PrometheusRegistry()) {
-
-    // The client auto-appends `_total` to counter names, so they're declared without it.
-    private val enqueued = Counter.builder()
-      .name("kinowo_worker_tasks_enqueued")
-      .help("Tasks added to the queue (result=added) or collapsed onto an active duplicate (result=deduped) since boot, by country and type.")
-      .labelNames("country", "task_type", "result")
-      .register(registry)
-
-    private val started = Counter.builder()
-      .name("kinowo_worker_tasks_started")
-      .help("Tasks claimed and kicked off since boot, by country and type.")
-      .labelNames("country", "task_type")
-      .register(registry)
-
-    private val finished = Counter.builder()
-      .name("kinowo_worker_tasks_finished")
-      .help("Tasks that finished a handler run since boot, by country, type and outcome (done=fully worked, skipped=data already fresh, rescheduled=transient retry, deferred=refused untried by an open circuit, failed=handler threw, no_handler=no wired handler).")
-      .labelNames("country", "task_type", "outcome")
-      .register(registry)
-
-    private val duration = Histogram.builder()
-      .name("kinowo_worker_task_duration_seconds")
-      .help("Handler wall-clock of fully-worked (done) tasks, by country and type.")
-      .labelNames("country", "task_type")
-      .classicUpperBounds(DurationBucketsSeconds*)
-      .classicOnly()
-      .register(registry)
-
-    private val ratingFirstAttemptDelay = Histogram.builder()
-      .name("kinowo_worker_rating_first_attempt_delay_seconds")
-      .help("Delay between a film's TMDB resolution and the FIRST attempt to fetch its rating, by country and site (imdb/fw/rt/mc). Measures the EnrichmentReaper's first-pass latency now that ratings aren't enqueued the instant a film resolves.")
-      .labelNames("country", "site")
-      .classicUpperBounds(RatingDelayBucketsSeconds*)
-      .classicOnly()
-      .register(registry)
-
-    private val queueDepth = Gauge.builder()
-      .name("kinowo_worker_queue_depth")
-      .help("Tasks currently in the queue, by country and state.")
-      .labelNames("country", "state")
-      .register(registry)
-
-    private val waitingByType = Gauge.builder()
-      .name("kinowo_worker_queue_waiting_by_type")
-      .help("Waiting tasks currently in the queue, by country and type — claimable AND held back (see kinowo_worker_queue_held_by_type; claimable = waiting - held). Sampled from the bounded active snapshot.")
-      .labelNames("country", "task_type")
-      .register(registry)
-
-    // Most of the waiting set is often work the queue is holding back on purpose — a chunked
-    // venue's whole staggered fan-out counts as waiting the instant it is planned. Without
-    // this split a planned burst reads as a backlog: 2026-09-21..28 held chunks were 75-95%
-    // of every waiting spike, with the pool mostly idle through them.
-    private val heldByType = Gauge.builder()
-      .name("kinowo_worker_queue_held_by_type")
-      .help("Waiting tasks the queue is holding back (retry backoff, a Deferred's instant, a staggered chunk not yet due), by country and type — the not-yet-claimable part of kinowo_worker_queue_waiting_by_type. Sampled from the bounded active snapshot.")
-      .labelNames("country", "task_type")
-      .register(registry)
-
-    private val oldestWaitingAge = Gauge.builder()
-      .name("kinowo_worker_queue_oldest_waiting_age_seconds")
-      .help("Seconds the oldest CLAIMABLE waiting task per country and type has been claimable (tasks held in retry backoff or not yet due are excluded) — head-of-line latency / starvation signal.")
-      .labelNames("country", "task_type")
-      .register(registry)
-
-    // The mirror of the head-of-line age: that one counts only CLAIMABLE rows, so a task the
-    // queue holds back is invisible to it by design. This is the longest remaining hold among
-    // the held-back rows — never more than TaskWorker.MaxBackoff unless something parked a
-    // task past the cap (alerted as WorkerTaskParkedTooLong).
-    private val parkedMax = Gauge.builder()
-      .name("kinowo_worker_queue_parked_max_seconds")
-      .help("Longest remaining hold, in seconds, among waiting tasks per country and type that the queue is holding back (retry backoff, a Deferred's instant, a staggered chunk not yet due); 0 when none is held. Bounded by TaskWorker.MaxBackoff (1800s) for every hold the queue sets, so a value above it means a task parked past the cap. Sampled from the bounded active snapshot.")
-      .labelNames("country", "task_type")
-      .register(registry)
-
-    // The worker pool is a single SharedExecutionBudget across all countries, so
-    // this is a process-level gauge with no country label (pairing it per-country
-    // would misleadingly imply a per-country pool).
-    private val poolSizeGauge = Gauge.builder()
-      .name("kinowo_worker_pool_size")
-      .help("Configured worker pool size (shared across countries) — pair with queue_depth{state=\"worked_on\"} for utilization.")
-      .register(registry)
-
-    // A GAUGE COMPUTED AT SCRAPE TIME, never a stored age: the value is `now - lastDelivered`
-    // on every scrape, so a cursor that stalls draws a straight diagonal instead of freezing
-    // at whatever it last said. The event COUNTERS beside it cannot tell a stalled cursor
-    // from a quiet night — both are a flat rate — and a dead stream after a Mongo migration
-    // once sat behind them for hours. See [[services.movies.ChangeStreamLiveness]].
-    private val changeStreamLastEventAge = Gauge.builder()
-      .name("kinowo_worker_change_stream_last_event_age_seconds")
-      .help("Seconds since each change-stream cursor (collection=movies|screenings|movie_slots) last DELIVERED an event to the worker, by country; since boot when it never has. Recomputed on every scrape, so an open-but-silent cursor climbs in a straight line. Read against the country's scrape cadence: the movies cursor is quiet for at most one sweep while ratings and scrapes are being written; longer than that with kinowo_worker_corpus_movies moving means the stream is not delivering the writes.")
-      .labelNames("country", "collection")
-      .register(registry)
-
-    // The APPLY side of the same three cursors, also computed at scrape time: an event delivered
-    // on time can still wait behind the single apply thread, and until 2026-09-23 the resume token
-    // was saved at delivery, so a restart skipped whatever was waiting — with nothing to show how
-    // much that was. See [[services.movies.ChangeStreamLiveness.queued]].
-    private val changeStreamApplyPending = Gauge.builder()
-      .name("kinowo_worker_change_stream_apply_pending")
-      .help("Change events each cursor (collection=movies|screenings|movie_slots) handed to the worker's apply thread that have not been applied yet, by country. Bounded by the cursor's demand window (256); near zero in steady state because an apply is one stitch read. Pinned near the window means the apply thread cannot keep up, and every one of these is a change the read model has not seen. Coalesced events ride an apply already queued and are not counted twice.")
-      .labelNames("country", "collection")
-      .register(registry)
-
-    private val changeStreamApplyLag = Gauge.builder()
-      .name("kinowo_worker_change_stream_apply_lag_seconds")
-      .help("Seconds the OLDEST not-yet-applied change event of each cursor (collection=movies|screenings|movie_slots) has waited since delivery, by country; 0 when nothing is waiting. Recomputed on every scrape, so an apply thread that is stuck climbs in a straight line. The delivered-vs-applied lag: the read model is at least this stale for that change. Alerted by ChangeStreamApplyLagging (over 10 minutes for 10 minutes).")
-      .labelNames("country", "collection")
-      .register(registry)
-
-    private val readModelWrites = Counter.builder()
-      .name("kinowo_worker_readmodel_writes")
-      .help("Denormalised read-model documents (re)written since boot, by country, target (movie|screening) and op (upsert|delete). rate() is the reprojection churn the worker pushes through the web's web_movies/web_screenings change streams.")
-      .labelNames("country", "target", "op")
-      .register(registry)
-
-    private val readModelFilmsPruned = Counter.builder()
-      .name("kinowo_worker_readmodel_films_pruned")
-      .help("Cards the read-model PRUNE sweep removed since boot, by country and reason: row-gone = no movies document projects to that id any more; variant-gone = the row lives but no longer projects to that variant id (a decorated listing that vanished). The rule (2026-09-07) is that this stays at ZERO — the change-stream path retires every card it no longer produces (see readmodel_cards_retired) — so a sustained rate is a projection defect to chase by its reason, never accepted churn. Pair with kinowo_worker_merges_total for a row-gone cause.")
-      .labelNames("country", "reason")
-      .register(registry)
-
-    private val readModelCardsRetired = Counter.builder()
-      .name("kinowo_worker_readmodel_cards_retired")
-      .help("Cards the read-model CHANGE-STREAM path retired on its own since boot, by country and reason: variant-gone = a re-projected row no longer produces that variant card (its decorated listing vanished); row-deleted = the row was deleted or merged away (a delete event); row-unready = a re-projected row lost its readiness. These are the removals the prune used to do 30 minutes late; the prune counter is what is LEFT after them.")
-      .labelNames("country", "reason")
-      .register(registry)
-
-    private val readModelCatchUpRows = Counter.builder()
-      .name("kinowo_worker_readmodel_catchup_rows")
-      .help("Source rows the read-model prune sweep re-projected because they were written AFTER the movies change-stream cursor's last delivered event, by country, since boot. The catch-up for a cursor that is open and silent: a live cursor delivers a write within seconds, so this stays at zero; a sustained rate is the read-model side of ChangeStreamMoviesCursorSilent and means the site was up to 30 minutes stale between sweeps.")
-      .labelNames("country")
-      .register(registry)
-
-    private val readModelHeals = Counter.builder()
-      .name("kinowo_worker_readmodel_heals")
-      .help("Ready source rows re-projected because the read model lacked one of their cards or venues, by country and trigger (sweep=the 30-min prune sweep, boot=the check start() runs, refile=a boot row whose every missing venue the read model serves under ANOTHER city: a deploy moved the venue, no write was lost — not counted as boot). Each is a row the change-stream path should already have written — a card it retired and never restored, a slot event it missed — so ZERO is the healthy reading and a recurring rate is a stream-path defect: on 2026-09-22 a TMDB re-try made rows briefly unready (readmodel_cards_retired{reason=row-unready} ~500/day) and only these heals, ~26 a day and 30 minutes late each, put the cards back. Alerted by ReadModelHealsRecurring.")
-      .labelNames("country", "trigger")
-      .register(registry)
-
-    private val readModelCardWrites = Counter.builder()
-      .name("kinowo_worker_readmodel_card_writes")
-      .help("web_movies card documents written since boot, by country and cause. new=no card existed; one of title|poster|facts|synopsis|synopsis-by-city|ratings|trailers|age-rating=exactly that part of the card moved (facts = runtime, year, genres, countries, directors, cast); multiple=more than one part moved (see readmodel_card_rewrite_parts for which). The synopsis-by-city line answers whether moving that map (44% of card bytes in the fixture read model) to its own collection would spare the read model any card rewrites: near zero means the split saves bytes per document but not writes.")
-      .labelNames("country", "cause")
-      .register(registry)
-
-    private val readModelCardRewriteParts = Counter.builder()
-      .name("kinowo_worker_readmodel_card_rewrite_parts")
-      .help("Card parts that differed from the card written before, one increment per part per rewrite, by country and part — the decomposition of readmodel_card_writes{cause=multiple}. A rewrite that moved ratings and the poster counts once under each.")
-      .labelNames("country", "part")
-      .register(registry)
-
-    private val readModelDriftWrites = Counter.builder()
-      .name("kinowo_worker_readmodel_drift_writes")
-      .help("Read-model documents the rolling CONTENT check rewrote since boot, by country. Every other sweep compares IDS — the prune removes a card whose row is gone, the heal writes one that is missing — and none of them can see a row that exists and is WRONG: three UK films held showtimes from August until 2026-09-08, served to users and unreachable by the change stream because their source had stopped changing. One slice of the corpus is re-projected per prune sweep (one of 48 slices, so the whole corpus once a day, plus a whole-corpus pass when the projection's derivation version changes) and the projection's own diff writes only what drifted. Zero is the healthy reading; a sustained rate means the incremental path is losing writes. A rewrite of a row the change stream then applies itself — its event in flight behind the sweep's lock or the stream's debounce — is not drift and is not counted (logged at INFO as 'not drift'); until 2026-10-07 it was, and most of the US's 10-50 a day were that race. cause says what drifted: a card's readmodel_card_writes cause (new, the one part that moved, or multiple) or screening-upsert / screening-delete for a venue's row; the worker logs each drifted row's card and screening ids on a 'read-model content check: row … had drifted' line.")
-      .labelNames("country", "cause")
-      .register(registry)
-
-    private val readModelUnlistedVenues = Counter.builder()
-      .name("kinowo_worker_readmodel_unlisted_venues")
-      .help("Venue rows a prune sweep found under a live card whose film no longer lists the venue, by country and outcome: `pruned`, or `withheld` when one sweep found more than its cap (20, or 1% of the venue rows) and pruned none -- a disagreement between the slots-only view and the projection being likelier than that many missed removals. Each is a removal the change stream did not apply; before this sweep only the daily content check found them (Dracula: A Love Tale served at the Music Box Chicago for 22 hours after leaving it, 2026-09-30). Zero is the healthy reading; any `withheld` is a bug to look at.")
-      .labelNames("country", "outcome")
-      .register(registry)
-
-    private val readModelProjectDuration = Histogram.builder()
-      .name("kinowo_worker_readmodel_project_duration_seconds")
-      .help("Wall-clock of one pure ReadModelProjection.projectAll per source row since boot, by country — the LATENCY signal (percentiles, the duration heatmap). NOT a CPU share: concurrent projections make rate(_sum) exceed one core-second per second, and steal on a throttled box inflates it further. Use kinowo_worker_readmodel_project_cpu_seconds_total for CPU attribution.")
-      .labelNames("country")
-      .classicUpperBounds(ProjectBucketsSeconds*)
-      .classicOnly()
-      .register(registry)
-
-    private val readModelProjectCpu = Counter.builder()
-      .name("kinowo_worker_readmodel_project_cpu_seconds")
-      .help("Thread CPU seconds burned inside pure ReadModelProjection.projectAll since boot, by country. rate()*100 is projection's true share of worker CPU in centi-cores — the credit-floor driver the CPU-drivers dashboard stacks against JIT, GC and everything else. Unlike the wall-clock histogram this is immune to concurrency and to steal, so it can be compared against process_cpu_seconds_total.")
-      .labelNames("country")
-      .register(registry)
-
-    private val readModelWriteBurst = Histogram.builder()
-      .name("kinowo_worker_readmodel_write_burst_seconds")
-      .help("Wall-clock of the WRITE half of one project() call since boot, by country — writer.upsertMovie/diffScreenings for a single source row, once its variants are computed. Separate from readmodel_project_duration_seconds, which times only the computation before any write. On 2026-09-08 a wide UK release took up to ~40 minutes to reach all 73 of its cities after its source row turned ready, with nothing distinguishing computation, writing, or change-stream delivery as the slow part — this histogram is the write-phase half of that answer; a long write burst against a short project_duration for the same call points at the write loop (city count, Mongo round-trips), not at resolve/synopsisByCity/ratings. trigger is readmodel_project_calls' trigger: a heal, a derivation pass or the backfill writes a film's venues whole, so read the incremental path's cost on trigger=stream (ReadModelProjectionWritePerCallHigh does).")
-      .labelNames("country", "trigger")
-      .classicUpperBounds(DurationBucketsSeconds*)
-      .classicOnly()
-      .register(registry)
-
-    private val readModelProjectCalls = Counter.builder()
-      .name("kinowo_worker_readmodel_project_calls")
-      .help("Source rows projected (projectAll invoked) since boot, by country and trigger — the throughput denominator for readmodel_project_duration_seconds. trigger=stream is a change-stream event (any of the three cursors) and the only share ReadModelProjectionTriggerUnaccounted compares against the cursors' events; heal|catch-up|content|derivation|share-card|hold-release|reproject re-project rows no event asked for, by design. derivation is the whole corpus once per worker after a new derivation (ReadModelDerivation.History — a change to what the projection derives, cards-only or full); until 2026-09-26 every read-model snapshot regeneration counted, and five such deploys inside an hour held DE/UK/PL at 1-2/s over their events for an hour.")
-      .labelNames("country", "trigger")
-      .register(registry)
-
-    private val readModelMetadataProjections = Counter.builder()
-      .name("kinowo_worker_readmodel_metadata_projections")
-      .help("Projections by country and whether the metadata half (resolve/synopsisByCity/ratingsFor) was REUSED from the per-film cache (outcome=reused — a showtime-only change at an already-present cinema, only the cheap screenings half re-ran) or RECOMPUTED (outcome=recomputed — a rating/synopsis/new-cinema change, or a first projection). rate(reused) / rate(reused+recomputed) is opt-1's hit ratio — high reuse under reproject/enrich showtime churn is the CPU win. trigger is readmodel_project_calls' trigger: read the ratio on trigger=stream, because the sweeps (content above all — 1/48 of the corpus every 30-minute sweep) re-project rows a worker restarted by the last deploy has never cached, so they recompute by construction and, unsplit, drew half-hourly spikes that read as reuse collapsing.")
-      .labelNames("country", "trigger", "outcome")
-      .register(registry)
-
-    private val readModelVenueProjections = Counter.builder()
-      .name("kinowo_worker_readmodel_venue_projections")
-      .help("Venues' screenings rows a projection considered, by country and whether the row was REBUILT (outcome=rebuilt — the venue's slots moved since the row was written, or this process never wrote it) or kept unbuilt (outcome=reused). A showtime change at one venue of a wide release is one rebuilt against thousands reused.")
-      .labelNames("country", "outcome")
-      .register(registry)
-
-    private val cacheRehydrateChanges = Counter.builder()
-      .name("kinowo_worker_cache_rehydrate_changes")
-      .help("Rows the MovieCache's periodic backstop rehydrate (full findAll reload) caught that the INCREMENTAL change stream missed, by country and kind (changed=a put whose cached value differed = a missed upsert; deleted=a key gone from Mongo the delete-apply didn't drop). After resume-token persistence + cache delete-apply this should be ~0 in steady state; a rate flat at 0 proves the 30-min rehydrate is redundant and can be retired. NOTE: the one-time BOOT hydrate counts EVERY row as changed — read the rate over steady state, not the raw counter.")
-      .labelNames("country", "kind")
-      .register(registry)
-
-
-    private val readModelReconcileSweeps = Counter.builder()
-      .name("kinowo_worker_readmodel_reconcile_sweeps")
-      .help("Read-model orphan-prune sweeps since boot (kind=prune, the cheap id-only prune that removes deleted/re-keyed rows), by country and did_work (true=pruned >=1 doc, false=no-op). A prune with did_work=true is the deletes/re-keys the change stream can't deliver. (The full re-projection sweep was retired, so kind is always prune now.)")
-      .labelNames("country", "kind", "did_work")
-      .register(registry)
-
-    private val changeEvents = Counter.builder()
-      .name("kinowo_worker_movie_change_events")
-      .help("Movie change-stream events the shared cursor consumed since boot, by country and op (insert|update|replace|delete). rate() is the change-stream volume the cache + read-model projector reproject from.")
-      .labelNames("country", "op")
-      .register(registry)
-
-    private val changeUpdateKinds = Counter.builder()
-      .name("kinowo_worker_movie_change_update_kinds")
-      .help("For UPDATE events, which field kind changed since boot, by country: source_data=a cinema slot (scrape write), rating=a rating value/url, identity=tmdb/imdb id + resolution lifecycle, updated_at_only=a no-op that touched only updatedAt (a redundant-write canary — should stay ~0). A multi-field update counts under each kind it touched.")
-      .labelNames("country", "kind")
-      .register(registry)
-
-    private val movieCoalesced = Counter.builder()
-      .name("kinowo_worker_movie_coalesced_changes")
-      .help("Movies-doc change events that rode an apply already queued for their film instead of buying their own, by country — the movies cursor's twin of screenings/movie_slots_coalesced_changes, sharing the SAME pending set as those two. `dropCinemaSlots` writes `retainedSynopses` to `movies` in the same tick it deletes the dropped venue's screenings/movie_slots rows, so one logical slot-drop used to buy this cursor its own re-projection on top of the side cursors' (coalesced) one. coalesced/(coalesced+readmodel_project_calls) is the share now folded away. All GENUINE changes; no write guard can remove them.")
-      .labelNames("country")
-      .register(registry)
-
-    private val chunkPages = Counter.builder()
-      .name("kinowo_worker_chunk_page_memo")
-      .help("Page-at-a-time scrape chunks (Flicks day pages) since boot, by country and outcome: hit = the page was byte-identical to the one this chunk last parsed, so that parse was reused and the page not parsed; changed = the page differed and was parsed; new = no earlier parse was remembered; parser = the page was the same but the parser has changed since. hit/(all) is the share of page parsing spared.")
-      .labelNames("country", "outcome")
-      .register(registry)
-
-    private val changeApplies = Counter.builder()
-      .name("kinowo_worker_change_apply")
-      .help("Film applies the change stream made since boot, by country, path and reason. path=venues: a burst of showtime changes at a few venues applied from those venues' rows alone (reason=applied) — the other venues of the film neither read nor re-projected. path=film: the whole film re-read, because a movies or movie_slots change rode the burst (not_showtimes), it touched too many venues (too_many_venues), the film is failing a re-read (failing), the venues could not be read alone (venue_read_failed), a listener could not take them alone — a venue appearing or vanishing, a card unpublished or held (declined) — or the store cannot read venues alone (unsupported). A rising declined share is the projector or cache refusing what it should take: each is a whole re-read of a film that changed at one venue.")
-      .labelNames("country", "path", "reason")
-      .register(registry)
-
-    private val venueDeclines = Counter.builder()
-      .name("kinowo_worker_venue_apply_declines")
-      .help("Why a listener declined a film's changed venues alone, sending that film down the whole re-read (kinowo_worker_change_apply{path=film,reason=declined}), by country and reason. projector_*: the read-model projector could not vouch its venue rows equal a whole-film projection — the row not projected by this process, a slot under an unknown title group, two slots at a venue, a venue appearing or vanishing, a venue whose row unioned slots, a held or unpublished card, rows remembered without their inputs (seeded at boot). cache_*: the movie cache does not hold the film, or holds other slots at the venue. One apply can count under several listeners.")
-      .labelNames("country", "reason")
-      .register(registry)
-
-    private val screeningsChangeEvents = Counter.builder()
-      .name("kinowo_worker_screenings_change_events")
-      .help("Screenings change-stream events the SECOND cursor consumed since boot, by country and op (insert|update|replace|delete). The read-model projection's larger trigger: this cursor rings once per changed screenings DOCUMENT — one per (film, cinema slot) — and each ring costs a stitch read plus a full projection. Read readmodel_project_calls_total against the SUM of this and movie_change_events; against movie_change_events alone it reads as an unexplained 55:1, which is what a 2026-09-04 projection climb looked like while this half of the input had no counter.")
-      .labelNames("country", "op")
-      .register(registry)
-
-    private val screeningsWrites = Counter.builder()
-      .name("kinowo_worker_screenings_writes")
-      .help("Slot writes the screenings store was asked to make since boot, by country and outcome. written=the row's showtimes moved and it was written; unchanged=the row already held exactly what the caller asked for, so the write was DROPPED — it never reached the oplog, never rang the screenings change stream and never bought a read-model projection. A high unchanged SHARE is the guard working, not a fault: `replaceFilm` is film-wide while its callers' change is one venue, so a wide release rewrote every row it had (297 of 298 redundantly on prod DE, 2026-09-04). Watch the WRITTEN rate against the scrape rate instead — written climbing under a flat scrape rate is a caller that has started rewriting rows it did not change.")
-      .labelNames("country", "outcome")
-      .register(registry)
-
-    private val screeningsCoalesced = Counter.builder()
-      .name("kinowo_worker_screenings_coalesced_changes")
-      .help("Screenings change events that rode an apply already queued for their film instead of buying their own, by country. The screenings cursor rings once per (film, cinema slot), so a film that changes at every venue rings once per venue — and one re-read after the burst sees all of it, because the apply reads the film's CURRENT state. This is the saving made visible: coalesced/(coalesced+readmodel_project_calls) is the share of the fan-out collapsed, ~0 where films move one venue at a time and approaching 1 on a wide release (the widest US film carries 3,327 slots). Unlike screenings_writes{outcome=unchanged} these are all GENUINE changes; no write guard can remove them.")
-      .labelNames("country")
-      .register(registry)
-
-    private val slotsChangeEvents = Counter.builder()
-      .name("kinowo_worker_movie_slots_change_events")
-      .help("movie_slots change-stream events the THIRD cursor consumed since boot, by country and op (insert|update|replace|delete). One event per changed slot DOCUMENT — one per (film, cinema slot) — and each ring costs a stitch read plus a full projection, like the screenings cursor it mirrors. A venue's slot lands WITHOUT a movies write whenever the film document is unchanged (the usual case under the split), and the projection cannot emit that venue's row until the slot exists; before this cursor 63 UK and 33 PL (film, venue) pairs whose slot landed after the film's last projection were never projected again (prod, 2026-09-07). Read readmodel_project_calls_total against the SUM of this, screenings_change_events and movie_change_events.")
-      .labelNames("country", "op")
-      .register(registry)
-
-    private val slotsCoalesced = Counter.builder()
-      .name("kinowo_worker_movie_slots_coalesced_changes")
-      .help("movie_slots change events that rode an apply already queued for their film instead of buying their own, by country — the slots twin of screenings_coalesced_changes, and the two cursors share ONE pending set, so a film's screenings row and slot row arriving together are one re-read. All GENUINE changes; no write guard can remove them.")
-      .labelNames("country")
-      .register(registry)
-
-    private val scrapeGuardVerdicts = Counter.builder()
-      .name("kinowo_worker_scrape_guard_verdicts")
-      .help("The listing intake's depth and breadth guards (services.movies.ScrapeHealth) rejecting or accepting a tick, by country, guard (depth|breadth) and verdict (reject|accept). `healthy` is not counted — the overwhelming default on every tick of every cinema, and answered better by a scrape-completed counter elsewhere. Added 2026-09-13: before this, a guard stuck rejecting (or repeatedly giving up) for hours was visible only by grepping [scrape-depth]/[scrape-prune] log lines by cinema name — which is how long Kino Aurum's breadth-guard deadlock (57 accumulated slot-keys against an 11-film board, permanently below the prune-floor ratio) went unnoticed. A `reject` RATE that never falls is the signal to alert on; a sustained run of `accept`s on one axis means a scraper that has been degraded in the SAME shape for hours, not a one-off.")
-      .labelNames("country", "guard", "verdict")
-      .register(registry)
-
-    private val scrapeWriteSkipped = Counter.builder()
-      .name("kinowo_worker_scrape_write_skipped")
-      .help("A MovieCache.putIfPresent write that did not land, by country and reason (services.movies.ListingIntakeMetrics.SkipReason): cache-miss-race is a concurrent rekey of some OTHER title invalidating this key between the read and the compute; repository-write-failed is MovieRepository.updateIfPresent answering false for a row the cache holds. Neither had a counter before 2026-09-13 — a skip this shaped throws nothing and logs nothing on its own, so a real, sustained skip and a once-off race were otherwise indistinguishable without reading screenings/movie_slots directly.")
-      .labelNames("country", "reason")
-      .register(registry)
-
-    private val repositoryWriteFailed = Counter.builder()
-      .name("kinowo_worker_repository_write_failed")
-      .help("A MovieRepository / SlotsRepository / ScreeningsRepository write that THREW, by country, collection (movies|movie_slots|screenings), op (upsert, replaceFilm, upsertSlot, updateIfPresent, delete, ...) and exception (the class's simple name). ZERO IS THE HEALTHY READING. Added 2026-09-24: a codec bug failed 34 upserts over ~6h and every one was logged at WARN and returned Unit, while the cache kept the unwritten row, so two new films never reached the site until a restart and nothing counted it. Every failure is also a WARN line naming the film; the cache rolls the row back so the next identical scrape retries. Alerted by RepositoryWritesFailing (worker-pipeline.rules). Every known (collection, op) is seeded at 0 for the expected exception classes (RepositoryWriteMetrics.SeededExceptions) so increase() sees the first failure; any other class appears on its first failure and counts from its second.")
-      .labelNames("country", "collection", "op", "exception")
-      .register(registry)
-
-    private val decodeFailures = Counter.builder()
-      .name("kinowo_worker_decode_failures")
-      .help("Documents that could not be decoded, by country and collection. web_movies|web_screenings: SKIPPED by a whole-collection scan, a film or screening the reader goes without while the rest of its page is kept. movies: a read that FAILED on it — a point read answering unreadable, or the whole corpus scan left incomplete. movies|screenings|movie_slots from a change stream: a post-image it SKIPPED (not applied) rather than end its cursor on, which before 2026-09-24 killed the stream for good. ZERO IS THE HEALTHY READING; each was a WARN line and nothing else before 2026-09-24. Alerted by DocumentsUndecodable (worker-pipeline.rules). Seeded at 0 per collection so increase() sees the first skip.")
-      .labelNames("country", "collection")
-      .register(registry)
-
-    seed()
-
-    /** Materialize every series at 0 for every country so it exists from boot (no
-     *  Grafana gaps). */
-    private def seed(): Unit = {
-      countryCodes.foreach { c =>
-        TaskType.all.foreach { t =>
-          EnqueueResults.foreach(r => enqueued.labelValues(c, t.name, r))
-          started.labelValues(c, t.name)
-          Outcomes.foreach(o => finished.labelValues(c, t.name, o))
-          duration.labelValues(c, t.name)
-          waitingByType.labelValues(c, t.name).set(0.0)
-          heldByType.labelValues(c, t.name).set(0.0)
-          oldestWaitingAge.labelValues(c, t.name).set(0.0)
-          parkedMax.labelValues(c, t.name).set(0.0)
-        }
-        RatingSites.foreach(s => ratingFirstAttemptDelay.labelValues(c, s))
-        QueueStates.foreach(s => queueDepth.labelValues(c, s).set(0.0))
-        ListingIntakeMetrics.Guards.foreach(g =>
-          ListingIntakeMetrics.Verdicts.foreach(v => scrapeGuardVerdicts.labelValues(c, g, v).inc(0.0)))
-        ListingIntakeMetrics.SkipReasons.foreach(r => scrapeWriteSkipped.labelValues(c, r).inc(0.0))
-        RepositoryWriteMetrics.Writes.foreach { case (collection, op) =>
-          RepositoryWriteMetrics.SeededExceptions.foreach(e => repositoryWriteFailed.labelValues(c, collection, op, e).inc(0.0))
-        }
-        services.readmodel.DecodeFailureMetrics.Collections.foreach(coll => decodeFailures.labelValues(c, coll).inc(0.0))
-        ReadModelProjectionMetrics.Targets.foreach(t =>
-          ReadModelProjectionMetrics.Ops.foreach(o => readModelWrites.labelValues(c, t, o)))
-        // Materialize at 0 so Grafana draws a continuous line — and for the prune, so the
-        // line that MUST stay at zero is visibly at zero rather than absent (the rule).
-        ReadModelProjectionMetrics.PruneReasons.foreach(r => readModelFilmsPruned.labelValues(c, r).inc(0.0))
-        ReadModelProjectionMetrics.RetireReasons.foreach(r => readModelCardsRetired.labelValues(c, r).inc(0.0))
-        ReadModelProjectionMetrics.DriftCauses.foreach(cause => readModelDriftWrites.labelValues(c, cause).inc(0.0)) // zero is the healthy reading, so it must be drawn
-        Seq("pruned", "withheld").foreach(o => readModelUnlistedVenues.labelValues(c, o).inc(0.0)) // ditto
-        readModelCatchUpRows.labelValues(c).inc(0.0) // ditto — zero is the healthy reading, so it must be drawn
-        ReadModelProjectionMetrics.HealTriggers.foreach(t => readModelHeals.labelValues(c, t).inc(0.0)) // ditto
-        // Every trigger at 0 from boot: ReadModelProjectionTriggerUnaccounted reads `stream` alone,
-        // and a series that does not exist yet makes it silent rather than compare against zero.
-        ReadModelProjectionMetrics.ProjectTrigger.values.foreach(t => readModelProjectCalls.labelValues(c, t.label).inc(0.0))
-        readModelProjectCpu.labelValues(c).inc(0.0)       // ditto — the CPU-attribution counter the drivers panel stacks
-        readModelProjectDuration.labelValues(c).observe(0.0) // materialize the histogram (_sum/_count/_bucket) from boot — no Grafana gap
-        ReadModelProjectionMetrics.ProjectTrigger.values.foreach(t => readModelWriteBurst.labelValues(c, t.label).observe(0.0)) // ditto — the write-phase half of that same answer
-        ReadModelProjectionMetrics.ProjectTrigger.values.foreach(t =>
-          ReadModelProjectionMetrics.MetadataOutcomes.foreach(o => readModelMetadataProjections.labelValues(c, t.label, o)))
-        ReadModelProjectionMetrics.VenueOutcomes.foreach(o => readModelVenueProjections.labelValues(c, o))
-        ReadModelProjectionMetrics.ReconcileKinds.foreach(k =>
-          Seq("true", "false").foreach(w => readModelReconcileSweeps.labelValues(c, k, w)))
-        Seq("changed", "deleted").foreach(k => cacheRehydrateChanges.labelValues(c, k))
-        ChangeStreamMetrics.Ops.foreach(o => changeEvents.labelValues(c, o))
-        movieCoalesced.labelValues(c)
-        ChangeStreamMetrics.Apply.Series.foreach { case (path, reason) => changeApplies.labelValues(c, path, reason) }
-        services.tasks.ChunkPageMemoMetrics.Outcomes.foreach(o => chunkPages.labelValues(c, o))
-        ChangeStreamMetrics.VenueDecline.All.foreach(reason => venueDeclines.labelValues(c, reason))
-        ChangeStreamMetrics.Ops.foreach(o => screeningsChangeEvents.labelValues(c, o))
-        ScreeningsMetrics.Outcomes.foreach(o => screeningsWrites.labelValues(c, o))
-        screeningsCoalesced.labelValues(c)
-        ChangeStreamMetrics.Ops.foreach(o => slotsChangeEvents.labelValues(c, o))
-        slotsCoalesced.labelValues(c)
-        ChangeStreamMetrics.Kinds.foreach(k => changeUpdateKinds.labelValues(c, k))
-        ChangeStreamLiveness.Collections.foreach { coll =>
-          changeStreamLastEventAge.labelValues(c, coll).set(0.0)
-          changeStreamApplyPending.labelValues(c, coll).set(0.0)
-          changeStreamApplyLag.labelValues(c, coll).set(0.0)
-        }
-      }
-      poolSizeGauge.set(poolSize.toDouble)
-    }
-
-    // ── RatingLatencyMetrics ──────────────────────────────────────────────────
-    def recordFirstRatingDelay(country: String, site: String, seconds: Double): Unit =
-      ratingFirstAttemptDelay.labelValues(country, site).observe(math.max(0.0, seconds))
-
-    // ── ReadModelProjectionMetrics ────────────────────────────────────────────
-    def recordWrite(country: String, target: String, op: String, count: Int): Unit =
-      if (count > 0) readModelWrites.labelValues(country, target, op).inc(count.toDouble)
-
-    def recordFilmPruned(country: String, reason: String, count: Int): Unit =
-      if (count > 0) readModelFilmsPruned.labelValues(country, reason).inc(count.toDouble)
-
-    def recordCardRetired(country: String, reason: String): Unit =
-      readModelCardsRetired.labelValues(country, reason).inc()
-
-    def recordUnlistedVenues(country: String, rows: Int, withheld: Boolean): Unit =
-      if (rows > 0) readModelUnlistedVenues.labelValues(country, if (withheld) "withheld" else "pruned").inc(rows.toDouble)
-
-    def recordDrift(country: String, cause: String, documents: Int): Unit =
-      if (documents > 0) readModelDriftWrites.labelValues(country, cause).inc(documents.toDouble)
-
-    def recordCatchUp(country: String, rows: Int): Unit =
-      if (rows > 0) readModelCatchUpRows.labelValues(country).inc(rows.toDouble)
-
-    def recordHeal(country: String, trigger: String, rows: Int): Unit =
-      if (rows > 0) readModelHeals.labelValues(country, trigger).inc(rows.toDouble)
-
-    def recordCardWrite(country: String, changed: Set[String]): Unit = {
-      readModelCardWrites.labelValues(country, ReadModelProjectionMetrics.cardWriteCause(changed)).inc()
-      changed.foreach(part => readModelCardRewriteParts.labelValues(country, part).inc())
-    }
-
-    def recordProject(country: String, trigger: ReadModelProjectionMetrics.ProjectTrigger, wallSeconds: Double, cpuSeconds: Double): Unit = {
-      readModelProjectDuration.labelValues(country).observe(math.max(0.0, wallSeconds))
-      readModelProjectCpu.labelValues(country).inc(math.max(0.0, cpuSeconds))
-      readModelProjectCalls.labelValues(country, trigger.label).inc()
-    }
-
-    def recordWriteBurst(country: String, trigger: ReadModelProjectionMetrics.ProjectTrigger, seconds: Double): Unit =
-      readModelWriteBurst.labelValues(country, trigger.label).observe(math.max(0.0, seconds))
-
-    def recordMetadataProjection(country: String, trigger: ReadModelProjectionMetrics.ProjectTrigger, reused: Boolean): Unit =
-      readModelMetadataProjections.labelValues(country, trigger.label,
-        if (reused) ReadModelProjectionMetrics.MetadataOutcome.Reused
-        else ReadModelProjectionMetrics.MetadataOutcome.Recomputed).inc()
-
-    def recordVenueProjection(country: String, rebuilt: Int, reused: Int): Unit = {
-      if (rebuilt > 0) readModelVenueProjections.labelValues(country, ReadModelProjectionMetrics.VenueOutcome.Rebuilt).inc(rebuilt.toDouble)
-      if (reused > 0)  readModelVenueProjections.labelValues(country, ReadModelProjectionMetrics.VenueOutcome.Reused).inc(reused.toDouble)
-    }
-
-    def recordReconcileSweep(country: String, kind: String, didWork: Boolean): Unit =
-      readModelReconcileSweeps.labelValues(country, kind, didWork.toString).inc()
-
-    // ── CacheSyncMetrics ──────────────────────────────────────────────────────
-    def recordRehydrate(country: String, changedUpserts: Int, deletes: Int): Unit = {
-      if (changedUpserts > 0) cacheRehydrateChanges.labelValues(country, "changed").inc(changedUpserts.toDouble)
-      if (deletes > 0)        cacheRehydrateChanges.labelValues(country, "deleted").inc(deletes.toDouble)
-    }
-
-    // ── ListingIntakeMetrics ──────────────────────────────────────────────────
-    def recordScrapeGuardVerdict(country: String, guard: String, verdict: String): Unit =
-      scrapeGuardVerdicts.labelValues(country, guard, verdict).inc()
-    def recordScrapeWriteSkipped(country: String, reason: String): Unit =
-      scrapeWriteSkipped.labelValues(country, reason).inc()
-
-    // ── RepositoryWriteMetrics ─────────────────────────────────────────────────
-    def recordRepositoryWriteFailed(country: String, collection: String, op: String, exception: String): Unit =
-      repositoryWriteFailed.labelValues(country, collection, op, exception).inc()
-
-    // ── DecodeFailureMetrics ───────────────────────────────────────────────────
-    def recordDecodeFailure(country: String, collection: String): Unit =
-      decodeFailures.labelValues(country, collection).inc()
-
-    // ── ChangeStreamMetrics ────────────────────────────────────────────────────
-    def recordEvent(country: String, op: String): Unit       = changeEvents.labelValues(country, op).inc()
-    def recordUpdateKind(country: String, kind: String): Unit = changeUpdateKinds.labelValues(country, kind).inc()
-    def recordMovieCoalesced(country: String): Unit          = movieCoalesced.labelValues(country).inc()
-    def recordChangeApply(country: String, path: String, reason: String): Unit = changeApplies.labelValues(country, path, reason).inc()
-    def recordChunkPage(country: String, outcome: String): Unit               = chunkPages.labelValues(country, outcome).inc()
-    def recordVenueDecline(country: String, reason: String): Unit            = venueDeclines.labelValues(country, reason).inc()
-
-    // ── ScreeningsMetrics ──────────────────────────────────────────────────────
-    def recordScreeningsChangeEvent(country: String, op: String): Unit = screeningsChangeEvents.labelValues(country, op).inc()
-    def recordScreeningsWrite(country: String, outcome: String, count: Int): Unit =
-      if (count > 0) screeningsWrites.labelValues(country, outcome).inc(count.toDouble)
-    def recordScreeningsCoalesced(country: String): Unit = screeningsCoalesced.labelValues(country).inc()
-
-    // ── SideCollectionChangeMetrics for `movie_slots` ──────────────────────────
-    def recordSlotsChangeEvent(country: String, op: String): Unit = slotsChangeEvents.labelValues(country, op).inc()
-    def recordSlotsCoalesced(country: String): Unit               = slotsCoalesced.labelValues(country).inc()
-
-    def recordEnqueue(country: String, taskType: TaskType, result: String): Unit =
-      enqueued.labelValues(country, taskType.name, result).inc()
-
-    def onStarted(country: String, task: Task): Unit =
-      started.labelValues(country, task.taskType.name).inc()
-
-    def onFinished(country: String, task: Task, outcome: String, handleMillis: Long): Unit = {
-      finished.labelValues(country, task.taskType.name, outcome).inc()
-      // Only fully-worked tasks contribute to the duration histogram — a Skipped
-      // task only paid a freshness check, and a Reschedule/failure didn't finish.
-      if (outcome == Outcome.Done) duration.labelValues(country, task.taskType.name).observe(handleMillis / 1000.0)
-    }
+    val tasks: TaskPipelineSeries         = new TaskPipelineSeries(poolSize, countryCodes, registry)
+    val changeStreams: ChangeStreamSeries = new ChangeStreamSeries(countryCodes, registry)
+    val readModel: ReadModelSeries        = new ReadModelSeries(countryCodes, registry)
+    val corpusWrites: CorpusWriteSeries   = new CorpusWriteSeries(countryCodes, registry)
 
     /** Refresh each country's queue gauges from its live sample and
      *  render the full exposition (task pipeline + census + JVM, all on the shared
@@ -660,37 +187,10 @@ object WorkerTaskMetrics {
      *  with one [[CountryQueueSample]] per running country. */
     def scrape(samples: Seq[CountryQueueSample], now: Instant): String = {
       samples.foreach { s =>
-        s.snapshot.foreach(refreshQueueGauges(s.countryCode, _, now))
-        ChangeStreamLiveness.Collections.foreach { coll =>
-          changeStreamLastEventAge.labelValues(s.countryCode, coll).set(s.changeStreamLiveness.ageSeconds(coll, now))
-          changeStreamApplyPending.labelValues(s.countryCode, coll).set(s.changeStreamLiveness.pendingApplies(coll).toDouble)
-          changeStreamApplyLag.labelValues(s.countryCode, coll).set(s.changeStreamLiveness.applyLagSeconds(coll, now))
-        }
+        s.snapshot.foreach(tasks.refreshQueueGauges(s.countryCode, _, now))
+        changeStreams.refreshLiveness(s.countryCode, s.changeStreamLiveness, now)
       }
       PrometheusExposition.render(registry)
-    }
-
-    private def refreshQueueGauges(country: String, snapshot: QueueSnapshot, now: Instant): Unit = {
-      queueDepth.labelValues(country, TaskState.Waiting).set(snapshot.counts.getOrElse(TaskState.Waiting, 0L).toDouble)
-      queueDepth.labelValues(country, TaskState.WorkedOn).set(snapshot.counts.getOrElse(TaskState.WorkedOn, 0L).toDouble)
-
-      val waiting = snapshot.active.filter(_.state == TaskState.Waiting).groupBy(_.taskType)
-      TaskType.all.foreach { t =>
-        val rows = waiting.getOrElse(t.name, Nil)
-        waitingByType.labelValues(country, t.name).set(rows.size.toDouble)
-        // Head-of-line age counts only CLAIMABLE rows, from when each became claimable:
-        // a row parked in retry backoff (or a staggered chunk not yet due) is being held
-        // back on purpose, and aging it from `submittedAt` made one retrying task read as
-        // a pool that could not keep up (UK/ES 2026-09-18..22, pool idle throughout).
-        val age = rows.filter(_.claimableAt(now)).map(_.claimableSince).minOption
-          .map(oldest => math.max(0L, now.getEpochSecond - oldest.getEpochSecond).toDouble)
-          .getOrElse(0.0)
-        oldestWaitingAge.labelValues(country, t.name).set(age)
-        val holds  = rows.flatMap(_.nextEligibleAt).filter(_.isAfter(now))
-        heldByType.labelValues(country, t.name).set(holds.size.toDouble)
-        val parked = holds.map(until => until.getEpochSecond - now.getEpochSecond).maxOption.getOrElse(0L)
-        parkedMax.labelValues(country, t.name).set(parked.toDouble)
-      }
     }
   }
 
@@ -721,7 +221,7 @@ object WorkerTaskMetrics {
   object EnqueueResult { val Added = "added"; val Deduped = "deduped"; val Failed = "failed" }
   val EnqueueResults: Seq[String] = Seq(EnqueueResult.Added, EnqueueResult.Deduped, EnqueueResult.Failed)
 
-  private val QueueStates: Seq[String] = Seq(TaskState.Waiting, TaskState.WorkedOn)
+  private[metrics] val QueueStates: Seq[String] = Seq(TaskState.Waiting, TaskState.WorkedOn)
 
   /** Fixed histogram upper bounds (seconds), spanning a sub-second freshness
    *  skip up to a slow multi-minute scrape/detail fetch. */

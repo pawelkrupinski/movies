@@ -170,6 +170,20 @@ final class IdentityProjection(
   /** That the last projection wrote everything it planned, and the FilmId map's size once it had. */
   private final case class Last(counters: Int)
   private var last: Option[Last] = None
+
+  /** What one projection read before resolving — the venues' listings and the stored films — and how it reports;
+   *  `previous` is what the last projection left. */
+  private final class Run(val mode: IdentityProjection.Mode, val previous: Option[Last], val started: tools.Stopwatch.Started,
+                          val phases: ProjectionPhases, venues: Seq[(Cinema, Seq[ProjectedListing])],
+                          val stored: Seq[StoredMovieRecord]) {
+    val listed: Int = venues.iterator.map(_._2.size).sum
+    // the listings read, and by venue name: each worked out once, when first asked for
+    lazy val read: Seq[Listing] = venues.flatMap(_._2).map(_.listing)
+    lazy val byVenue: Seq[(String, Seq[ProjectedListing])] = venues.map { case (c, ls) => c.displayName -> ls }
+    // built only when the agreement meets a decision it has not seen: a quiet tick builds none
+    lazy val decided: Map[ListingKey, Listing] =
+      venues.iterator.flatMap(_._2).map(projected => projected.listing.key -> projected.listing).toMap
+  }
   private var scopedSinceWhole = 0
   /** The index, kept from one projection to the next and moved where its inputs moved — afresh after any projection that
    *  did not write all it planned. */
@@ -221,93 +235,120 @@ final class IdentityProjection(
     val started  = tools.Stopwatch.start()
     val phases   = new ProjectionPhases
     val venues   = phases("listings")(if (mode.readsChanged) changedListings() else listings())
-    val listed   = venues.iterator.map(_._2.size).sum
-    // the listings read, and by venue name: each worked out once, when first asked for
-    lazy val read    = venues.flatMap(_._2).map(_.listing)
-    lazy val byVenue = venues.map { case (c, ls) => c.displayName -> ls }
-    val stored   = phases("snapshot")(cache.snapshot())
-    def refuse(reason: IdentityProjectionMetrics.Refusal, why: String, resolution: Option[Resolution] = None, keep: Boolean = false) = {
-      metrics.refused(reason)
-      // A refusal writes nothing, so what the last projection left is still what the stored films are of.
-      if (keep) last = previous
-      logger.warn(s"identity projection refused (${reason.label}): $why; the stored films keep serving (${phases.render})")
-      ProjectionTick(resolution, None, listed, 0, 0, 0, Some(why), phases.all)
-    }
+    val run      = new Run(mode, previous, started, phases, venues, phases("snapshot")(cache.snapshot()))
     mapping.load() match {
-      case Left(why) => refuse(IdentityProjectionMetrics.Refusal.UnreadableMap, why)
-      case Right(counters) =>
-        Try(phases("resolve")(resolve(() => read))) match {
-          case Failure(crossing: IdentityResolver.FamilyCrossing) =>
-            refuse(IdentityProjectionMetrics.Refusal.Crossing, crossing.getMessage, keep = true)
-          case Failure(other) => throw other
-          case Success(None) =>
-            refuse(IdentityProjectionMetrics.Refusal.NotReady, "the identity model is not ready", keep = true)
-          case Success(Some(IdentityProjection.Resolved(modelResolution, held, modelled))) =>
-            adopt(modelled)
-            // built only when the agreement meets a decision it has not seen: a quiet tick builds none
-            lazy val decided = venues.iterator.flatMap(_._2).map(projected => projected.listing.key -> projected.listing).toMap
-            // what a venue re-published with a poster, days or names the model's decisions do not move with — unknown
-            // to a projection with nothing to build on, whose index is read afresh
-            val republished = previous.map(_ => live.republished(byVenue))
-            val resolution = phases("agreement")(agreement(modelResolution, key => decided.get(key), republished))
-            val at    = clock.instant()
-            phases("seed")(seedSlotMemo())
-            if (previous.isEmpty) { live = new LiveProjectionIndex(normalizer); shapes = FilmShapes(); carried = ProjectionScope.Changes.none }
-            // Exactly the listings the resolution decided: one that reached the intake after the
-            // model's snapshot is projected by the next tick, never left out of its film by this one.
-            val updated = phases("index")(live.update(byVenue, held, resolution.decisions, stored))
-            val index   = live.index(counters)
-            // What moved since the last projection, closed over every film a moved one's draft can move: what a projection
-            // of the scope drafts. None when the last one did not write all it planned, the FilmId map is not the one it
-            // left, or a stored film is not numbered yet — each re-decided only by projecting the whole corpus.
-            val changes = previous.filter(p => p.counters == counters.size && index.additions.isEmpty).map { _ =>
-              carried ++ updated ++ ProjectionScope.standing(index)
-            }
-            val moved = changes.map(c => phases("scope")(ProjectionScope.close(index, c)))
-            val reconciling = mode.reconciles(scopedSinceWhole, scopedBetweenWhole)
-            val reconcile   = moved.isDefined && reconciling
-            val freed = changes.fold(Set.empty[String])(_.keys)
-            val (scope, draft, detailed, plan) = drafted(moved.filterNot(_ => reconcile).getOrElse(ProjectionScope.Whole), freed,
-              changes.fold(Set.empty[ListingKey])(_.listings), index, at, phases)
-            val slotCounts = slotMemo.endTick(retainUnseen = !scope.whole)
-            if (mode.periodic) phases("fingerprints")(recordSlotFingerprints())
-            val misses = slotMemo.lastMisses()
-            phases.note(s"venue slots reused ${slotCounts._1}, built ${slotCounts._2} " +
-              s"(rows moved ${misses._1}, priors moved ${misses._2}, new ${misses._3})")
-            if (!scope.whole) phases.note(s"scope ${scope.films.size} stored films, ${scope.clusters.size} clusters, ${scope.listings.size} listings")
-            val scopeStored = if (scope.whole) stored else stored.filter(s => scope.films(s.id.value))
-            phases("guard")(ProjectionGuard.refusal(draft, scopeStored, LocalDateTime.ofInstant(at, ZoneOffset.UTC), corpus = stored)) match {
-              case Some(why) if consecutiveShrinks < ProjectionGuard.Grace =>
-                consecutiveShrinks += 1
-                carried = carried ++ updated
-                shapes.discard()
-                refuse(IdentityProjectionMetrics.Refusal.Shrink, s"$why (refusal $consecutiveShrinks of ${ProjectionGuard.Grace})",
-                  Some(resolution), keep = true)
-              case shrink =>
-                if (shrink.isDefined) logger.warn(s"identity projection: ${shrink.get} — held ${ProjectionGuard.Grace} projections, now written")
-                consecutiveShrinks = 0
-                val films     = stored.size - scopeStored.size + plan.films.size
-                val tick      = write(resolution, detailed, plan, stored, listed, films, started, phases, patch = !scope.whole,
-                  movedElsewhere = changes.fold(Set.empty[String])(_.films))
-                // the corpus's suspect takes, of a projection of the whole of it once written — what is served, never what the
-                // guard held back — handed to a count of its own, off this projection's path: never a reason to stop one
-                if (scope.whole && mode.periodic) Try(suspects(resolution, read)).failed.foreach(e =>
-                  logger.warn("identity projection: handing the suspect takes to their count failed", e))
-                if (reconciling) metrics.reconciled(measured = reconcile)
-                if (reconcile) moved.foreach(drift(_, freed, index, tick))
-                if (tick.declined == 0) {
-                  // The index holds what was written: a film written counts as moved next time only if another writer moves it.
-                  live.written(tick.changed, plan.retired)
-                  shapes.commit(whole = scope.whole)
-                  carried = ProjectionScope.Changes.none
-                  last = Some(Last(counters.size + plan.counterAdditions.size))
-                  // The hour between two reconciles is counted in periodic projections; one run on scrapes counts none.
-                  scopedSinceWhole = if (scope.whole) 0 else if (mode.periodic) scopedSinceWhole + 1 else scopedSinceWhole
-                }
-                tick.copy(slotsReused = slotCounts._1, slotsBuilt = slotCounts._2, slotMisses = misses, scoped = !scope.whole)
-            }
-        }
+      case Left(why)       => refuse(run, IdentityProjectionMetrics.Refusal.UnreadableMap, why)
+      case Right(counters) => resolveAndProject(run, counters)
     }
+  }
+
+  /** A refusal: counted, logged, and nothing written. */
+  private def refuse(run: Run, reason: IdentityProjectionMetrics.Refusal, why: String,
+                     resolution: Option[Resolution] = None, keep: Boolean = false): ProjectionTick = {
+    metrics.refused(reason)
+    // A refusal writes nothing, so what the last projection left is still what the stored films are of.
+    if (keep) last = run.previous
+    logger.warn(s"identity projection refused (${reason.label}): $why; the stored films keep serving (${run.phases.render})")
+    ProjectionTick(resolution, None, run.listed, 0, 0, 0, Some(why), run.phases.all)
+  }
+
+  private def resolveAndProject(run: Run, counters: FilmIdCounters): ProjectionTick =
+    Try(run.phases("resolve")(resolve(() => run.read))) match {
+      case Failure(crossing: IdentityResolver.FamilyCrossing) =>
+        refuse(run, IdentityProjectionMetrics.Refusal.Crossing, crossing.getMessage, keep = true)
+      case Failure(other) => throw other
+      case Success(None) =>
+        refuse(run, IdentityProjectionMetrics.Refusal.NotReady, "the identity model is not ready", keep = true)
+      case Success(Some(IdentityProjection.Resolved(modelResolution, held, modelled))) =>
+        adopt(modelled)
+        projectResolution(run, counters, planned(run, counters, modelResolution, held))
+    }
+
+  /** The resolution as projected, the index moved under it, and the drafts of the scope it moved. */
+  private def planned(run: Run, counters: FilmIdCounters, modelResolution: Resolution,
+                      held: Iterable[ListingKey]): IdentityProjection.Planned = {
+    val phases = run.phases
+    // what a venue re-published with a poster, days or names the model's decisions do not move with — unknown
+    // to a projection with nothing to build on, whose index is read afresh
+    val republished = run.previous.map(_ => live.republished(run.byVenue))
+    val resolution  = phases("agreement")(agreement(modelResolution, key => run.decided.get(key), republished))
+    val at          = clock.instant()
+    phases("seed")(seedSlotMemo())
+    if (run.previous.isEmpty) { live = new LiveProjectionIndex(normalizer); shapes = FilmShapes(); carried = ProjectionScope.Changes.none }
+    // Exactly the listings the resolution decided: one that reached the intake after the
+    // model's snapshot is projected by the next tick, never left out of its film by this one.
+    val updated = phases("index")(live.update(run.byVenue, held, resolution.decisions, run.stored))
+    val index   = live.index(counters)
+    // What moved since the last projection, closed over every film a moved one's draft can move: what a projection
+    // of the scope drafts. None when the last one did not write all it planned, the FilmId map is not the one it
+    // left, or a stored film is not numbered yet — each re-decided only by projecting the whole corpus.
+    val changes = run.previous.filter(p => p.counters == counters.size && index.additions.isEmpty).map { _ =>
+      carried ++ updated ++ ProjectionScope.standing(index)
+    }
+    val moved       = changes.map(c => phases("scope")(ProjectionScope.close(index, c)))
+    val reconciling = run.mode.reconciles(scopedSinceWhole, scopedBetweenWhole)
+    val reconcile   = moved.isDefined && reconciling
+    val freed       = changes.fold(Set.empty[String])(_.keys)
+    val (scope, draft, detailed, plan) = drafted(moved.filterNot(_ => reconcile).getOrElse(ProjectionScope.Whole), freed,
+      changes.fold(Set.empty[ListingKey])(_.listings), index, at, phases)
+    IdentityProjection.Planned(resolution, at, updated, index, changes, moved, freed, reconciling, reconcile, scope, draft, detailed, plan)
+  }
+
+  /** The planned projection, held back by the shrink guard or written. */
+  private def projectResolution(run: Run, counters: FilmIdCounters,
+                                p: IdentityProjection.Planned): ProjectionTick = {
+    val (slotCounts, misses) = slotReport(run, p.scope)
+    val scopeStored = if (p.scope.whole) run.stored else run.stored.filter(s => p.scope.films(s.id.value))
+    run.phases("guard")(ProjectionGuard.refusal(p.draft, scopeStored, LocalDateTime.ofInstant(p.at, ZoneOffset.UTC), corpus = run.stored)) match {
+      case Some(why) if consecutiveShrinks < ProjectionGuard.Grace =>
+        consecutiveShrinks += 1
+        carried = carried ++ p.updated
+        shapes.discard()
+        refuse(run, IdentityProjectionMetrics.Refusal.Shrink, s"$why (refusal $consecutiveShrinks of ${ProjectionGuard.Grace})",
+          Some(p.resolution), keep = true)
+      case shrink =>
+        shrink.foreach(why => logger.warn(s"identity projection: $why — held ${ProjectionGuard.Grace} projections, now written"))
+        consecutiveShrinks = 0
+        writePlanned(run, counters, p, scopeStored)
+          .copy(slotsReused = slotCounts._1, slotsBuilt = slotCounts._2, slotMisses = misses, scoped = !p.scope.whole)
+    }
+  }
+
+  /** Close the slot memo's tick (recording its fingerprints on a periodic projection) and note what it reused and
+   *  built: the reused and built counts, and the misses by cause. */
+  private def slotReport(run: Run, scope: ProjectionScope): ((Int, Int), (Int, Int, Int)) = {
+    val slotCounts = slotMemo.endTick(retainUnseen = !scope.whole)
+    if (run.mode.periodic) run.phases("fingerprints")(recordSlotFingerprints())
+    val misses = slotMemo.lastMisses()
+    run.phases.note(s"venue slots reused ${slotCounts._1}, built ${slotCounts._2} " +
+      s"(rows moved ${misses._1}, priors moved ${misses._2}, new ${misses._3})")
+    if (!scope.whole) run.phases.note(s"scope ${scope.films.size} stored films, ${scope.clusters.size} clusters, ${scope.listings.size} listings")
+    (slotCounts, misses)
+  }
+
+  /** Write the planned projection, then hand on its suspect takes, check its drift, and — once every write was taken —
+   *  move what the next projection builds on. */
+  private def writePlanned(run: Run, counters: FilmIdCounters, p: IdentityProjection.Planned,
+                           scopeStored: Seq[StoredMovieRecord]): ProjectionTick = {
+    val films = run.stored.size - scopeStored.size + p.plan.films.size
+    val tick  = write(p.resolution, p.detailed, p.plan, run.stored, run.listed, films, run.started, run.phases, patch = !p.scope.whole,
+      movedElsewhere = p.changes.fold(Set.empty[String])(_.films))
+    // the corpus's suspect takes, of a projection of the whole of it once written — what is served, never what the
+    // guard held back — handed to a count of its own, off this projection's path: never a reason to stop one
+    if (p.scope.whole && run.mode.periodic) Try(suspects(p.resolution, run.read)).failed.foreach(e =>
+      logger.warn("identity projection: handing the suspect takes to their count failed", e))
+    if (p.reconciling) metrics.reconciled(measured = p.reconcile)
+    if (p.reconcile) p.moved.foreach(drift(_, p.freed, p.index, tick))
+    if (tick.declined == 0) {
+      // The index holds what was written: a film written counts as moved next time only if another writer moves it.
+      live.written(tick.changed, p.plan.retired)
+      shapes.commit(whole = p.scope.whole)
+      carried = ProjectionScope.Changes.none
+      last = Some(Last(counters.size + p.plan.counterAdditions.size))
+      // The hour between two reconciles is counted in periodic projections; one run on scrapes counts none.
+      scopedSinceWhole = if (p.scope.whole) 0 else if (run.mode.periodic) scopedSinceWhole + 1 else scopedSinceWhole
+    }
+    tick
   }
 
   /** The drafts of `scope`, detailed and titled. A scope is closed again over every stored film outside it under one of
@@ -485,6 +526,14 @@ final class IdentityProjection(
 }
 
 object IdentityProjection {
+
+  /** A projection's plan before the guard: the resolution as projected (at `at`), what the index moved (`updated`), the
+   *  changes and scope they close over (none when the projection is of the whole corpus), and the scope's drafts. */
+  private[identity] final case class Planned(resolution: Resolution, at: java.time.Instant, updated: ProjectionScope.Changes,
+                                             index: ProjectionIndex, changes: Option[ProjectionScope.Changes],
+                                             moved: Option[ProjectionScope], freed: Set[String], reconciling: Boolean,
+                                             reconcile: Boolean, scope: ProjectionScope, draft: ProjectionDraft,
+                                             detailed: ProjectionDraft, plan: ProjectionPlan)
   /** Whether `record` names a TMDB film whose details — its cross-reference ids among them — TMDB has not given yet. */
   private[identity] def awaitsDetails(record: MovieRecord): Boolean = record.tmdbId.isDefined && !record.data.contains(models.Tmdb)
 

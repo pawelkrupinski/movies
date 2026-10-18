@@ -1,6 +1,6 @@
 package clients.enrichment
 
-import clients.TmdbClient
+import clients.{TmdbClient, TmdbResponses}
 import clients.tools.FixtureFile
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -10,7 +10,7 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
 
   private val client = new TmdbClient(new RealHttpFetch, apiKey = settings.ProcessConfiguration.resolve().tmdbApiKey)
 
-  "parseSearchResults" should "extract id, title, year, popularity from a TMDB search response" in {
+  "TmdbResponses.popularFirst" should "extract id, title, year, popularity from a TMDB search response" in {
     val json =
       """{
         |  "page": 1,
@@ -23,7 +23,7 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
         |  "total_pages": 1
         |}""".stripMargin
 
-    val results = client.parseSearchResults(json)
+    val results = TmdbResponses.popularFirst(json)
     results.size shouldBe 2
     results.head.id            shouldBe 12345
     results.head.title         shouldBe "Diabeł ubiera się u Prady 2"
@@ -39,24 +39,24 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
         |  {"id":2, "title":"b", "release_date":"2024-01-01", "popularity":50.0},
         |  {"id":3, "title":"c", "release_date":"2024-01-01", "popularity":12.0}
         |]}""".stripMargin
-    client.parseSearchResults(json).map(_.id) shouldBe Seq(2, 3, 1)
+    TmdbResponses.popularFirst(json).map(_.id) shouldBe Seq(2, 3, 1)
   }
 
   it should "handle a response with no results" in {
-    client.parseSearchResults("""{"page":1,"results":[],"total_pages":0}""") shouldBe empty
+    TmdbResponses.popularFirst("""{"page":1,"results":[],"total_pages":0}""") shouldBe empty
   }
 
   it should "skip entries missing an id" in {
     val json = """{"results":[{"title":"orphan","release_date":"2024-01-01","popularity":1.0}]}"""
-    client.parseSearchResults(json) shouldBe empty
+    TmdbResponses.popularFirst(json) shouldBe empty
   }
 
   it should "return empty when results field is null" in {
-    client.parseSearchResults("""{"page":1,"results":null,"total_pages":0}""") shouldBe empty
+    TmdbResponses.popularFirst("""{"page":1,"results":null,"total_pages":0}""") shouldBe empty
   }
 
   it should "return empty when results field is missing entirely" in {
-    client.parseSearchResults("""{"page":1,"total_pages":0}""") shouldBe empty
+    TmdbResponses.popularFirst("""{"page":1,"total_pages":0}""") shouldBe empty
   }
 
   it should "leave releaseYear empty when release_date is missing or short" in {
@@ -65,7 +65,7 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
         |  {"id":1, "title":"a", "release_date":"", "popularity":1.0},
         |  {"id":2, "title":"b", "popularity":1.0}
         |]}""".stripMargin
-    client.parseSearchResults(json).flatMap(_.releaseYear) shouldBe empty
+    TmdbResponses.popularFirst(json).flatMap(_.releaseYear) shouldBe empty
   }
 
   // ── search() year-fallback behaviour ──────────────────────────────────────
@@ -323,7 +323,7 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
   }
 
   "bestPortraitPosterUrl" should "prefer a Polish poster over a higher-voted language-neutral one" in {
-    TmdbClient.bestPortraitPosterUrl(Seq(
+    TmdbResponses.bestPortraitPosterUrl(Seq(
       TmdbClient.PosterImage("/neutral.jpg", None,       0.667, 9.0, 2000),
       TmdbClient.PosterImage("/polish.jpg",  Some("pl"), 0.667, 5.0, 2000)
     ), "pl") shouldBe Some("https://image.tmdb.org/t/p/w500/polish.jpg")
@@ -333,28 +333,28 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
   // hardcoded a Polish preference, so any poster set that carried Polish artwork
   // handed it to a non-Polish deployment regardless of that deployment's language.
   it should "prefer the DEPLOYMENT's language, not Polish, on a non-Polish deployment" in {
-    TmdbClient.bestPortraitPosterUrl(Seq(
+    TmdbResponses.bestPortraitPosterUrl(Seq(
       TmdbClient.PosterImage("/polish.jpg", Some("pl"), 0.667, 9.0, 3000),
       TmdbClient.PosterImage("/german.jpg", Some("de"), 0.667, 5.0, 1000)
     ), "de") shouldBe Some("https://image.tmdb.org/t/p/w500/german.jpg")
   }
 
   it should "break ties among same-language posters by community vote, then resolution" in {
-    TmdbClient.bestPortraitPosterUrl(Seq(
+    TmdbResponses.bestPortraitPosterUrl(Seq(
       TmdbClient.PosterImage("/low.jpg",  Some("pl"), 0.667, 5.0, 3000),
       TmdbClient.PosterImage("/high.jpg", Some("pl"), 0.667, 8.0, 1000)
     ), "pl") shouldBe Some("https://image.tmdb.org/t/p/w500/high.jpg")
   }
 
   it should "exclude landscape/square variants and return None when nothing portrait survives" in {
-    TmdbClient.bestPortraitPosterUrl(Seq(
+    TmdbResponses.bestPortraitPosterUrl(Seq(
       TmdbClient.PosterImage("/wide.jpg",   Some("pl"), 1.78, 9.0, 3000),
       TmdbClient.PosterImage("/square.jpg", Some("pl"), 1.0,  9.0, 2000)
     ), "pl") shouldBe None
   }
 
   it should "return None for an empty poster set" in {
-    TmdbClient.bestPortraitPosterUrl(Seq.empty, "pl") shouldBe None
+    TmdbResponses.bestPortraitPosterUrl(Seq.empty, "pl") shouldBe None
   }
 
   "parsePosters" should "decode file_path, language, aspect, vote and width (null language → None)" in {
@@ -363,7 +363,7 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
         |  {"file_path":"/a.jpg","iso_639_1":"pl","aspect_ratio":0.667,"vote_average":7.5,"width":2000},
         |  {"file_path":"/b.jpg","iso_639_1":null,"aspect_ratio":0.69,"vote_average":3.1,"width":1500}
         |]}""".stripMargin
-    val ps = TmdbClient.parsePosters(body)
+    val ps = TmdbResponses.posters(body)
     ps.map(_.filePath) shouldBe Seq("/a.jpg", "/b.jpg")
     ps.head.language   shouldBe Some("pl")
     ps(1).language     shouldBe None
@@ -392,13 +392,13 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
     "Dokument o matczynej niedźwiedzicy, która w Tatrach prowadzi swoje młode " +
       "przez pierwszy rok życia, ucząc je przetrwania w dzikich górach."
 
-  "parseSearchResults" should "carry the Polish overview onto each SearchResult" in {
+  "TmdbResponses.popularFirst" should "carry the Polish overview onto each SearchResult" in {
     val json =
       """{"results":[
         |  {"id":1,"title":"a","release_date":"2024-01-01","popularity":1.0,"overview":"Polski opis filmu."},
         |  {"id":2,"title":"b","release_date":"2024-01-01","popularity":1.0,"overview":""}
         |]}""".stripMargin
-    val results = client.parseSearchResults(json)
+    val results = TmdbResponses.popularFirst(json)
     results.find(_.id == 1).flatMap(_.overview) shouldBe Some("Polski opis filmu.")
     results.find(_.id == 2).flatMap(_.overview) shouldBe None   // empty → None
   }
@@ -506,6 +506,6 @@ class TmdbClientSpec extends AnyFlatSpec with Matchers {
   "parseFindMovieResults" should "leave a malformed release_date's year unknown rather than throw" in {
     val body = """{"movie_results":[{"id":7,"title":"Draft","release_date":"20xx-01-01","popularity":1.0},
                  |{"id":8,"title":"Dated","release_date":"2019-05-01","popularity":0.5}]}""".stripMargin
-    TmdbClient.parseFindMovieResults(body).map(r => r.id -> r.releaseYear) shouldBe Seq(7 -> None, 8 -> Some(2019))
+    TmdbResponses.findMovieResults(body).map(r => r.id -> r.releaseYear) shouldBe Seq(7 -> None, 8 -> Some(2019))
   }
 }

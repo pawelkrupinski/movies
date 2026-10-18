@@ -25,7 +25,7 @@ class DiscoveryPullRequestArtefactsSpec extends AnyFlatSpec with Matchers {
   "the discovery PR" should "commit every artefact a new UK page moves" in {
     addPaths should contain allOf (
       "common/src/main/scala/models/Cinema.scala",
-      "worker/src/main/scala/services/cinemas/CinemaScraperCatalog.scala",
+      "worker/src/main/scala/services/cinemas/UkScraperCatalog.scala",
       "data/uk/venues.json", "data/uk/towns.json", "data/uk/pages.json",
       "common/src/main/scala/models/UkPages.scala", "common/src/main/scala/models/VenueTowns.scala",
       "android/app/src/main/java/pl/kinowo/model/City.kt", "ios/Kinowo/Models/City.swift",

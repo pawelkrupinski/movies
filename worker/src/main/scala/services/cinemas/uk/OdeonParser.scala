@@ -35,7 +35,7 @@ object OdeonParser {
   case class OdeonSite(id: String, name: String)
 
   def parseSites(json: String): Seq[OdeonSite] =
-    (Json.parse(json) \ "sites").asOpt[JsArray].map(_.value).getOrElse(Seq.empty).flatMap { s =>
+    arrayAt(Json.parse(json) \ "sites").flatMap { s =>
       for {
         id   <- (s \ "id").asOpt[String]
         name <- (s \ "name" \ "text").asOpt[String]
@@ -45,7 +45,7 @@ object OdeonParser {
   /** The business dates a venue has a programme on — the client's horizon. Each
    *  `filmScreeningDates[]` entry is one date; deduped + sorted. */
   def parseScreeningDates(json: String): Seq[LocalDate] =
-    (Json.parse(json) \ "filmScreeningDates").asOpt[JsArray].map(_.value).getOrElse(Seq.empty)
+    arrayAt(Json.parse(json) \ "filmScreeningDates")
       .flatMap(d => (d \ "businessDate").asOpt[String])
       .flatMap(s => Try(LocalDate.parse(s)).toOption)
       .distinct.sorted.toSeq
@@ -54,19 +54,102 @@ object OdeonParser {
    *  (time, booking, room, format) and time-ordered. Films/screens/attributes
    *  are resolved out of `relatedData`. */
   def parseShowtimes(json: String, cinema: Cinema): Seq[CinemaMovie] = {
-    val root        = Json.parse(json)
-    val relatedData = root \ "relatedData"
+    val root    = Json.parse(json)
+    val related = new RelatedData(root \ "relatedData")
+    arrayAt(root \ "showtimes").flatMap(showtimeRow(_, related)).toSeq
+      .groupBy(_.filmId).toSeq.sortBy(_._1)
+      .map { case (_, group) => cinemaMovie(group, related, cinema) }
+  }
 
-    def relatedById(block: String): Map[String, JsValue] =
-      (relatedData \ block).asOpt[JsArray].map(_.value).getOrElse(Seq.empty)
-        .flatMap(v => (v \ "id").asOpt[String].map(_ -> v)).toMap
+  /** One `showtimes[]` entry, kept when it names a known film with a title and a
+   *  parseable start. */
+  private def showtimeRow(st: JsValue, related: RelatedData): Option[RawOdeonShowtime] =
+    for {
+      filmId   <- (st \ "filmId").asOpt[String]
+      film     <- related.films.get(filmId)
+      title    <- (film \ "title" \ "text").asOpt[String].map(_.trim).filter(_.nonEmpty)
+      startsAt <- (st \ "schedule" \ "startsAt").asOpt[String]
+      when     <- Try(OffsetDateTime.parse(startsAt).toLocalDateTime).toOption
+    } yield {
+      val siteId = (st \ "siteId").asOpt[String].getOrElse("")
+      // Release year deliberately NOT taken from `film.releaseDate`: Odeon
+      // dates a re-release to its ORIGINAL year, so trusting it would misfile
+      // classics. Left to EmbeddedYear / TMDB enrichment downstream.
+      RawOdeonShowtime(
+        filmId   = filmId,
+        film     = film,
+        title    = title,
+        filmUrl  = Some(s"$Domain/films/${slugify(title)}/$filmId/?siteId=$siteId"),
+        showtime = Showtime(
+          dateTime   = when,
+          bookingUrl = (st \ "id").asOpt[String].map(i => s"$Domain/ticketing/seat-picker/?showtimeId=$i"),
+          room       = (st \ "screenId").asOpt[String].flatMap(related.screenName),
+          format     = showtimeFormat(st, related)
+        )
+      )
+    }
 
-    val films         = relatedById("films")
-    val screens       = relatedById("screens")
-    val attributes    = relatedById("attributes")
-    val castAndCrew   = relatedById("castAndCrew")
-    val genres        = relatedById("genres")
-    val censorRatings = relatedById("censorRatings")
+  /** Format/accessibility tags: `requires3dGlasses` plus the recognised
+   *  showtime attributes. Pricing/promo attributes (Saver, £5 web) are
+   *  intentionally dropped by `formatToken` so they don't leak into the
+   *  user-facing pills. */
+  private def showtimeFormat(st: JsValue, related: RelatedData): List[String] = {
+    val threeD = if ((st \ "requires3dGlasses").asOpt[Boolean].getOrElse(false)) List("3D") else Nil
+    val attrs  = (st \ "attributeIds").asOpt[Seq[String]].getOrElse(Seq.empty)
+      .flatMap(related.attributeName).flatMap(formatToken)
+    (threeD ++ attrs).distinct
+  }
+
+  /** One film's rows (never empty — `groupBy` makes no empty group) → its
+   *  [[CinemaMovie]]. */
+  private def cinemaMovie(group: Seq[RawOdeonShowtime], related: RelatedData, cinema: Cinema): CinemaMovie = {
+    val head = group.head
+    val film = head.film
+    CinemaMovie(
+      movie       = Movie(
+        title          = head.title,
+        runtimeMinutes = (film \ "runtimeInMinutes").asOpt[Int].filter(_ > 0),
+        genres         = related.filmGenres(film)
+      ),
+      cinema      = cinema,
+      posterUrl   = None,
+      filmUrl     = head.filmUrl,
+      synopsis    = filmSynopsis(film),
+      cast        = related.peopleWithRole(film, "Actor"),
+      director    = related.peopleWithRole(film, "Director"),
+      showtimes   = group.map(_.showtime)
+        .distinctBy(s => (s.dateTime, s.bookingUrl, s.room, s.format))
+        .sortBy(_.dateTime),
+      externalIds = Map("odeon" -> head.filmId),
+      trailerUrl  = (film \ "trailerUrl").asOpt[String].filter(_.nonEmpty),
+      ageRating   = related.filmAgeRating(film)
+    )
+  }
+
+  // Prefer the full synopsis; fall back to the short one.
+  private def filmSynopsis(film: JsValue): Option[String] =
+    (film \ "synopsis" \ "text").asOpt[String]
+      .orElse((film \ "shortSynopsis" \ "text").asOpt[String])
+      .map(_.trim).filter(_.nonEmpty)
+
+  private def arrayAt(at: JsLookupResult): Seq[JsValue] =
+    at.asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
+
+  /** The showtimes payload's `relatedData` blocks, indexed by id, and the
+   *  lookups that resolve a showtime's or film's references against them. */
+  private final class RelatedData(relatedData: JsLookupResult) {
+    private def byId(block: String): Map[String, JsValue] =
+      arrayAt(relatedData \ block).flatMap(v => (v \ "id").asOpt[String].map(_ -> v)).toMap
+
+    val films: Map[String, JsValue]   = byId("films")
+    private val screens               = byId("screens")
+    private val attributes            = byId("attributes")
+    private val castAndCrew           = byId("castAndCrew")
+    private val genres                = byId("genres")
+    private val censorRatings         = byId("censorRatings")
+
+    def screenName(id: String): Option[String] =
+      screens.get(id).flatMap(s => (s \ "name" \ "text").asOpt[String]).filter(_.nonEmpty)
 
     def attributeName(id: String): Option[String] =
       attributes.get(id).flatMap(a => (a \ "name" \ "text").asOpt[String])
@@ -74,7 +157,7 @@ object OdeonParser {
     // `relatedData.castAndCrew[].name` splits the person across
     // given/middle/family (some parts blank or space-padded); join the
     // non-blank, trimmed parts into one display name.
-    def personName(memberId: String): Option[String] =
+    private def personName(memberId: String): Option[String] =
       castAndCrew.get(memberId).map { p =>
         Seq("givenName", "middleName", "familyName")
           .flatMap(k => (p \ "name" \ k).asOpt[String]).map(_.trim).filter(_.nonEmpty)
@@ -85,10 +168,10 @@ object OdeonParser {
     // resolve each id against `relatedData.castAndCrew` and keep those whose
     // roles include `role`, preserving the source order.
     def peopleWithRole(film: JsValue, role: String): Seq[String] =
-      (film \ "castAndCrew").asOpt[JsArray].map(_.value).getOrElse(Seq.empty)
+      arrayAt(film \ "castAndCrew")
         .filter(c => (c \ "roles").asOpt[Seq[String]].getOrElse(Seq.empty).contains(role))
         .flatMap(c => (c \ "castAndCrewMemberId").asOpt[String])
-        .flatMap(personName).toSeq
+        .flatMap(personName)
 
     // A film's `genreIds[]` resolved against `relatedData.genres[].name.text`.
     def filmGenres(film: JsValue): Seq[String] =
@@ -103,89 +186,12 @@ object OdeonParser {
       (film \ "censorRatingId").asOpt[String].flatMap(censorRatings.get)
         .flatMap(c => (c \ "classification" \ "text").asOpt[String])
         .flatMap(AgeRating.normalize)
-
-    // Prefer the full synopsis; fall back to the short one.
-    def filmSynopsis(film: JsValue): Option[String] =
-      (film \ "synopsis" \ "text").asOpt[String]
-        .orElse((film \ "shortSynopsis" \ "text").asOpt[String])
-        .map(_.trim).filter(_.nonEmpty)
-
-    val showtimes = (root \ "showtimes").asOpt[JsArray].map(_.value).getOrElse(Seq.empty)
-
-    showtimes.flatMap { st =>
-      for {
-        filmId  <- (st \ "filmId").asOpt[String]
-        film    <- films.get(filmId)
-        title   <- (film \ "title" \ "text").asOpt[String].map(_.trim).filter(_.nonEmpty)
-        startsAt <- (st \ "schedule" \ "startsAt").asOpt[String]
-        when    <- Try(OffsetDateTime.parse(startsAt).toLocalDateTime).toOption
-      } yield {
-        val id     = (st \ "id").asOpt[String]
-        val siteId = (st \ "siteId").asOpt[String].getOrElse("")
-        val room   = (st \ "screenId").asOpt[String].flatMap(screens.get)
-          .flatMap(s => (s \ "name" \ "text").asOpt[String]).filter(_.nonEmpty)
-
-        // Format/accessibility tags: `requires3dGlasses` plus the recognised
-        // showtime attributes. Pricing/promo attributes (Saver, £5 web) are
-        // intentionally dropped by `formatToken` so they don't leak into the
-        // user-facing pills.
-        val threeD  = if ((st \ "requires3dGlasses").asOpt[Boolean].getOrElse(false)) List("3D") else Nil
-        val attrs   = (st \ "attributeIds").asOpt[Seq[String]].getOrElse(Seq.empty)
-          .flatMap(attributeName).flatMap(formatToken)
-        val format  = (threeD ++ attrs).distinct
-
-        val slug     = slugify(title)
-        // Release year deliberately NOT taken from `film.releaseDate`: Odeon
-        // dates a re-release to its ORIGINAL year, so trusting it would misfile
-        // classics. Left to EmbeddedYear / TMDB enrichment downstream.
-        RawOdeonShowtime(
-          filmId    = filmId,
-          title     = title,
-          runtime   = (film \ "runtimeInMinutes").asOpt[Int].filter(_ > 0),
-          trailer   = (film \ "trailerUrl").asOpt[String].filter(_.nonEmpty),
-          filmUrl   = Some(s"$Domain/films/$slug/$filmId/?siteId=$siteId"),
-          showtime  = Showtime(
-            dateTime   = when,
-            bookingUrl = id.map(i => s"$Domain/ticketing/seat-picker/?showtimeId=$i"),
-            room       = room,
-            format     = format
-          )
-        )
-      }
-    }.toSeq.groupBy(_.filmId).toSeq.sortBy(_._1).flatMap { case (_, group) =>
-      val head = group.head
-      val shows = group.map(_.showtime)
-        .distinctBy(s => (s.dateTime, s.bookingUrl, s.room, s.format))
-        .sortBy(_.dateTime)
-      if (shows.isEmpty) None
-      else {
-        val film = films.get(head.filmId)
-        Some(CinemaMovie(
-          movie       = Movie(
-            title          = head.title,
-            runtimeMinutes = head.runtime,
-            genres         = film.map(filmGenres).getOrElse(Seq.empty)
-          ),
-          cinema      = cinema,
-          posterUrl   = None,
-          filmUrl     = head.filmUrl,
-          synopsis    = film.flatMap(filmSynopsis),
-          cast        = film.map(peopleWithRole(_, "Actor")).getOrElse(Seq.empty),
-          director    = film.map(peopleWithRole(_, "Director")).getOrElse(Seq.empty),
-          showtimes   = shows,
-          externalIds = Map("odeon" -> head.filmId),
-          trailerUrl  = head.trailer,
-          ageRating   = film.flatMap(filmAgeRating)
-        ))
-      }
-    }
   }
 
   private case class RawOdeonShowtime(
     filmId:   String,
+    film:     JsValue,
     title:    String,
-    runtime:  Option[Int],
-    trailer:  Option[String],
     filmUrl:  Option[String],
     showtime: Showtime
   )

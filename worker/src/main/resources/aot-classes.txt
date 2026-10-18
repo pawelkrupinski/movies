@@ -9457,6 +9457,8 @@ services.cinemas.ChainFlicksFallback
 services.cinemas.ChainFlicksFallback$
 services.cinemas.ChainFlicksFallback$FlicksFallback
 services.cinemas.ChainFlicksFallback$FlicksFallback$
+services.cinemas.CinemaEgress
+services.cinemas.CinemaEgress$
 services.cinemas.CinemaScraperCatalog
 services.cinemas.CinemaScraperCatalog$
 services.cinemas.CinemaScraperCatalog$Filed
@@ -9464,6 +9466,10 @@ services.cinemas.CinemaScraperCatalog$Filed$
 services.cinemas.CinemaScraperCatalog$MsiVenue
 services.cinemas.CinemaScraperCatalog$MsiVenue$
 services.cinemas.CountryNames$
+services.cinemas.PolishScraperCatalog
+services.cinemas.PolishScraperCatalog$MsiVenue
+services.cinemas.PolishScraperCatalog$MsiVenue$
+services.cinemas.UkScraperCatalog
 services.cinemas.common.AdaptiveTimeoutScraper
 services.cinemas.common.AdaptiveTimeoutScraper$$anon$1
 services.cinemas.common.AgeRating
@@ -10151,8 +10157,14 @@ services.cinemas.pl.KinoSpojniaClient$RawSlot$
 services.cinemas.pl.KinoStudioClient
 services.cinemas.pl.KinoStudioClient$
 services.cinemas.pl.KinoStudioClient$$anon$1
+services.cinemas.pl.KinoStudioClient$FilmBlock
+services.cinemas.pl.KinoStudioClient$FilmBlock$
+services.cinemas.pl.KinoStudioClient$FilmMeta
+services.cinemas.pl.KinoStudioClient$FilmMeta$
 services.cinemas.pl.KinoStudioClient$RawFilm
 services.cinemas.pl.KinoStudioClient$RawFilm$
+services.cinemas.pl.KinoStudioClient$Scan
+services.cinemas.pl.KinoStudioClient$Scan$
 services.cinemas.pl.KinoStylowyClient
 services.cinemas.pl.KinoStylowyClient$
 services.cinemas.pl.KinoStylowyClient$RawSlot
@@ -10425,6 +10437,7 @@ services.cinemas.uk.OdeonParser$OdeonSite
 services.cinemas.uk.OdeonParser$OdeonSite$
 services.cinemas.uk.OdeonParser$RawOdeonShowtime
 services.cinemas.uk.OdeonParser$RawOdeonShowtime$
+services.cinemas.uk.OdeonParser$RelatedData
 services.cinemas.uk.QuadDerbyClient
 services.cinemas.uk.QuadDerbyClient$
 services.cinemas.uk.QuadDerbyClient$$anon$1

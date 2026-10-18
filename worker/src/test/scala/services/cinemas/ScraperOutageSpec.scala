@@ -42,12 +42,10 @@ class ScraperOutageSpec extends AnyFlatSpec with Matchers {
 
   private def catalog(down: tools.HttpFetch): CinemaScraperCatalog =
     new CinemaScraperCatalog(
-      down, mkFetch = down, bnFetch = down, venueClock = models.VenueClock.fixedOn(today),
-      chainDetailCache = (_, h, ttl) => new CachingDetailFetch(h, ttl),
-      zyteFetch = down, flicksFetch = down, vueFetch = down, odeonFetch = down,
       // A token, so Odeon reaches its (dead) upstream rather than throwing on the
       // missing token before any fetch — that throw would pass for the wrong reason.
-      odeonAuthToken = () => Some("token"), titles = titleNormalizer)
+      CinemaEgress.direct(down).copy(odeonAuthToken = () => Some("token")), venueClock = models.VenueClock.fixedOn(today),
+      chainDetailCache = (_, h, ttl) => new CachingDetailFetch(h, ttl), titles = titleNormalizer)
 
   private sealed trait Verdict
   private case object Failed extends Verdict

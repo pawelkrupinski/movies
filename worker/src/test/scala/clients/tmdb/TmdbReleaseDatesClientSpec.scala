@@ -2,7 +2,7 @@ package clients.tmdb
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import clients.TmdbClient
+import clients.{TmdbClient, TmdbResponses}
 import play.api.libs.json.{JsArray, Json}
 import tools.GetOnlyHttpFetch
 
@@ -52,15 +52,15 @@ class TmdbReleaseDatesClientSpec extends AnyFlatSpec with Matchers {
     val gb = new RecordingFetch(Map(((_: String).contains("/release_dates")) -> releaseDates))
     client(gb, Locale.UK).fullDetails(27205)   // the detail call throws (no fixture) → None overall
     // …but the certification selection ran against the real body, which is what this pins.
-    TmdbClient.certificationFor(Json.parse(releaseDates), "GB") shouldBe Some("12A")
-    TmdbClient.certificationFor(Json.parse(releaseDates), "DE") shouldBe Some("12")
-    TmdbClient.certificationFor(Json.parse(releaseDates), "PL") shouldBe Some("16")
+    TmdbResponses.certificationFor(Json.parse(releaseDates), "GB") shouldBe Some("12A")
+    TmdbResponses.certificationFor(Json.parse(releaseDates), "DE") shouldBe Some("12")
+    TmdbResponses.certificationFor(Json.parse(releaseDates), "PL") shouldBe Some("16")
   }
 
   it should "return None for a country the payload does not list" in {
     // 75 countries and still not all of them — an unlisted country must read as "no rating",
     // never as someone else's.
-    TmdbClient.certificationFor(Json.parse(releaseDates), "ZZ") shouldBe None
+    TmdbResponses.certificationFor(Json.parse(releaseDates), "ZZ") shouldBe None
   }
 
   it should "skip a blank certification rather than serving an empty badge" in {
@@ -70,7 +70,7 @@ class TmdbReleaseDatesClientSpec extends AnyFlatSpec with Matchers {
       .value.find(r => (r \ "iso_3166_1").as[String] == "GB").get
     (gbBlock \ "release_dates").as[JsArray].value
       .map(r => (r \ "certification").as[String]) should contain ("")
-    TmdbClient.certificationFor(Json.parse(releaseDates), "GB") shouldBe Some("12A")
+    TmdbResponses.certificationFor(Json.parse(releaseDates), "GB") shouldBe Some("12A")
   }
 
   /** The whole detail response as TMDB returns it under

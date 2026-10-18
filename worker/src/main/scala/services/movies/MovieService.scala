@@ -118,9 +118,7 @@ class MovieService(
     // happens for very recent releases and occasional TMDB data hiccups. A
     // DIFFERENT tmdbId accepts the new film's ids (even None) so a stale id
     // can't leak across.
-    val sameFilm         = existing.tmdbId.contains(tmdbId)
-    val resolvedImdbId   = externalIds.imdbId.orElse(if (sameFilm) existing.imdbId else None)
-    val resolvedWikidata = externalIds.wikidataId.orElse(if (sameFilm) existing.wikidataId else None)
+    val sameFilm = existing.tmdbId.contains(tmdbId)
     // Every rating url and score describes a FILM, so they follow the film.
     // Carrying them forward unconditionally meant a corrected row kept the WRONG
     // film's numbers until each source's own refresh cadence came round: prod
@@ -134,80 +132,8 @@ class MovieService(
     // re-resolve from the new identity.
     val differentFilm = existing.tmdbId.exists(_ != tmdbId)
     def ifSameFilm[A](value: Option[A]): Option[A] = if (differentFilm) None else value
-    // Carry the cinema-side fields forward — the TMDB stage doesn't own cinema
-    // data; without this a fresh resolve would wipe every cinema's slot.
-    val carriedData      = existing.data
-    // Fetch the full TMDB record in a single round-trip so the SourceData (Tmdb)
-    // slot carries the Polish synopsis, director, cast, runtime, year, countries
-    // and poster — not just the search-hit-shape fields. On a fetch failure fall
-    // back to the search-hit shape so the row at least keeps title + year.
-    val existingTmdbSlot = carriedData.getOrElse(Tmdb, SourceData())
-    // The search hit's title/originalTitle/year are the fallback when the full
-    // details fetch fails. `hit` is present on a fresh resolution and None on a
-    // cache hit (the cache stores only the id) — in that rare double case the
-    // slot keeps whatever it already had, and the next resolution fills it.
-    val hitTitle = hit.map(_.title).filter(_.nonEmpty)
-    // TMDB's English release title (en-US `title`, via the same `details` call
-    // MC/RT use). For a non-Latin-original film whose Polish `title` and
-    // `originalTitle` both differ from the English title a cinema lists it under
-    // ("Left-Handed Girl"), this is the alias that folds the English-keyed
-    // duplicate onto the Polish-titled row — see `MovieRecord.tmdbTitleAliases`.
-    val englishTitle = tmdb.englishTitle(tmdbId).orElse(existingTmdbSlot.englishTitle)
-    // Whether the slot we're merging onto was fetched in the language we're
-    // fetching in NOW. When it wasn't — the stale-language re-resolve
-    // the since-deleted `UnresolvedTmdbReaper` existed to drive — its LOCALIZED text (title,
-    // synopsis, genres, poster) is exactly the wrong-language content we came
-    // to replace, so it must not survive as an `.orElse` fallback. Letting it
-    // through while stamping the slot with the new language would seal the row
-    // in: it reads as correctly-localised, and the reaper never looks again.
-    // Language-neutral fields (runtime, year, cast, director) carry over as before.
-    val existingMatchesLanguage = existingTmdbSlot.fetchedLanguageTag == tmdb.language.toLanguageTag
-    def carriedLocalized[A](existing: Option[A]): Option[A] =
-      if (existingMatchesLanguage) existing else None
-    // Where the film stands in each of the row's listing titles' own yearless TMDB searches —
-    // the identity evidence the rating gate scores (`StoredIdentityConfidence`). Kept while the
-    // film stays the same; a different film is measured afresh.
-    val titleSearches = measureTitleSearches(tmdbId, existing,
-      carried = if (differentFilm) Nil else existingTmdbSlot.titleSearches)
-    val tmdbSlot = detailsOpt match {
-      case Some(d) => SourceData(
-        title          = d.title.orElse(hitTitle).orElse(carriedLocalized(existingTmdbSlot.title)),
-        originalTitle  = d.originalTitle.orElse(hit.flatMap(_.originalTitle)).orElse(existingTmdbSlot.originalTitle),
-        englishTitle   = englishTitle,
-        synopsis       = d.synopsis.orElse(carriedLocalized(existingTmdbSlot.synopsis)),
-        cast           = if (d.cast.nonEmpty) d.cast else existingTmdbSlot.cast,
-        director       = if (d.director.nonEmpty) d.director else existingTmdbSlot.director,
-        runtimeMinutes = d.runtimeMinutes.orElse(existingTmdbSlot.runtimeMinutes),
-        releaseYear    = d.releaseYear.orElse(hit.flatMap(_.releaseYear)).orElse(existingTmdbSlot.releaseYear),
-        // Canonicalise TMDB's country names in the SAME language TMDB returned
-        // them (the client's deployment language): Poland folds "United States
-        // of America" → "USA" to match the strings cinemas write; a non-Polish
-        // deployment keeps TMDB's already-localised name ("United Kingdom") so
-        // it isn't mislabelled with a Polish one.
-        countries      = if (d.countries.nonEmpty) SlotFields.countries(d.countries, tmdb.language)
-                         else if (existingMatchesLanguage) existingTmdbSlot.countries else Seq.empty,
-        genres         = if (d.genres.nonEmpty) d.genres
-                         else if (existingMatchesLanguage) existingTmdbSlot.genres else Seq.empty,
-        posterUrl      = d.posterUrl.orElse(carriedLocalized(existingTmdbSlot.posterUrl)),
-        // Per-country age rating (TMDB's certification for the deployment country) —
-        // the fallback beneath any cinema-scraped rating (MovieRecord.ageRating is
-        // cinema-first). Carried forward if a re-resolve returns none.
-        ageRating      = d.ageRating.orElse(existingTmdbSlot.ageRating),
-        // Stamp the language these fields were fetched in, so a slot frozen by a
-        // pre-locale-fix resolve is detectable rather than silently Polish forever.
-        language       = Some(tmdb.language.toLanguageTag),
-        titleSearches  = titleSearches
-      )
-      case None => existingTmdbSlot.copy(
-        title         = hitTitle.orElse(existingTmdbSlot.title),
-        originalTitle = hit.flatMap(_.originalTitle).orElse(existingTmdbSlot.originalTitle),
-        englishTitle  = englishTitle,
-        releaseYear   = hit.flatMap(_.releaseYear).orElse(existingTmdbSlot.releaseYear),
-        titleSearches = titleSearches
-      )
-    }
     MovieRecord(
-      imdbId            = resolvedImdbId,
+      imdbId            = externalIds.imdbId.orElse(if (sameFilm) existing.imdbId else None),
       imdbRating        = ifSameFilm(existing.imdbRating),
       metascore         = ifSameFilm(existing.metascore),
       filmwebUrl        = ifSameFilm(existing.filmwebUrl),
@@ -219,10 +145,91 @@ class MovieService(
       // filmography confirmed — which is how five wrong resolutions survived weeks
       // in prod on rows that had since acquired the hints to correct them.
       tmdbBasis         = basis.map(_.toString).orElse(existing.tmdbBasis),
-      wikidataId        = resolvedWikidata,
+      wikidataId        = externalIds.wikidataId.orElse(if (sameFilm) existing.wikidataId else None),
       metacriticUrl     = ifSameFilm(existing.metacriticUrl),
       rottenTomatoesUrl = ifSameFilm(existing.rottenTomatoesUrl),
-      data              = carriedData + ((Tmdb: Source) -> tmdbSlot)
+      // Carry the cinema-side fields forward — the TMDB stage doesn't own cinema
+      // data; without this a fresh resolve would wipe every cinema's slot.
+      data              = existing.data + ((Tmdb: Source) -> resolvedTmdbSlot(tmdbId, hit, detailsOpt, existing, differentFilm))
+    )
+  }
+
+  /** The row's `Tmdb` slot after a resolution to `tmdbId`. The full TMDB record is fetched in a
+   *  single round-trip so the slot carries the localized synopsis, director, cast, runtime, year,
+   *  countries and poster — not just the search-hit-shape fields. On a fetch failure it falls back
+   *  to the search-hit shape so the row at least keeps title + year. */
+  private def resolvedTmdbSlot(tmdbId: Int, hit: Option[TmdbClient.SearchResult],
+                               detailsOpt: Option[TmdbClient.FullDetails],
+                               existing: MovieRecord, differentFilm: Boolean): SourceData = {
+    val existingTmdbSlot = existing.data.getOrElse(Tmdb, SourceData())
+    // TMDB's English release title (en-US `title`, via the same `details` call
+    // MC/RT use). For a non-Latin-original film whose Polish `title` and
+    // `originalTitle` both differ from the English title a cinema lists it under
+    // ("Left-Handed Girl"), this is the alias that folds the English-keyed
+    // duplicate onto the Polish-titled row — see `MovieRecord.tmdbTitleAliases`.
+    val englishTitle = tmdb.englishTitle(tmdbId).orElse(existingTmdbSlot.englishTitle)
+    // Where the film stands in each of the row's listing titles' own yearless TMDB searches —
+    // the identity evidence the rating gate scores (`StoredIdentityConfidence`). Kept while the
+    // film stays the same; a different film is measured afresh.
+    val titleSearches = measureTitleSearches(tmdbId, existing,
+      carried = if (differentFilm) Nil else existingTmdbSlot.titleSearches)
+    detailsOpt match {
+      case Some(d) => detailsSlot(d, hit, existingTmdbSlot)
+        .copy(englishTitle = englishTitle, titleSearches = titleSearches)
+      // The search hit's title/originalTitle/year are the fallback when the full
+      // details fetch fails. `hit` is present on a fresh resolution and None on a
+      // cache hit (the cache stores only the id) — in that rare double case the
+      // slot keeps whatever it already had, and the next resolution fills it.
+      case None => existingTmdbSlot.copy(
+        title         = hit.map(_.title).filter(_.nonEmpty).orElse(existingTmdbSlot.title),
+        originalTitle = hit.flatMap(_.originalTitle).orElse(existingTmdbSlot.originalTitle),
+        englishTitle  = englishTitle,
+        releaseYear   = hit.flatMap(_.releaseYear).orElse(existingTmdbSlot.releaseYear),
+        titleSearches = titleSearches
+      )
+    }
+  }
+
+  /** The `Tmdb` slot from fetched details `d`, each field falling back to the search hit and then
+   *  to what the slot already held. */
+  private def detailsSlot(d: TmdbClient.FullDetails, hit: Option[TmdbClient.SearchResult],
+                          existingTmdbSlot: SourceData): SourceData = {
+    // Whether the slot we're merging onto was fetched in the language we're
+    // fetching in NOW. When it wasn't — the stale-language re-resolve
+    // the since-deleted `UnresolvedTmdbReaper` existed to drive — its LOCALIZED text (title,
+    // synopsis, genres, poster) is exactly the wrong-language content we came
+    // to replace, so it must not survive as an `.orElse` fallback. Letting it
+    // through while stamping the slot with the new language would seal the row
+    // in: it reads as correctly-localised, and the reaper never looks again.
+    // Language-neutral fields (runtime, year, cast, director) carry over as before.
+    val existingMatchesLanguage = existingTmdbSlot.fetchedLanguageTag == tmdb.language.toLanguageTag
+    def carriedLocalized[A](existing: Option[A]): Option[A] =
+      if (existingMatchesLanguage) existing else None
+    SourceData(
+      title          = d.title.orElse(hit.map(_.title).filter(_.nonEmpty)).orElse(carriedLocalized(existingTmdbSlot.title)),
+      originalTitle  = d.originalTitle.orElse(hit.flatMap(_.originalTitle)).orElse(existingTmdbSlot.originalTitle),
+      synopsis       = d.synopsis.orElse(carriedLocalized(existingTmdbSlot.synopsis)),
+      cast           = if (d.cast.nonEmpty) d.cast else existingTmdbSlot.cast,
+      director       = if (d.director.nonEmpty) d.director else existingTmdbSlot.director,
+      runtimeMinutes = d.runtimeMinutes.orElse(existingTmdbSlot.runtimeMinutes),
+      releaseYear    = d.releaseYear.orElse(hit.flatMap(_.releaseYear)).orElse(existingTmdbSlot.releaseYear),
+      // Canonicalise TMDB's country names in the SAME language TMDB returned
+      // them (the client's deployment language): Poland folds "United States
+      // of America" → "USA" to match the strings cinemas write; a non-Polish
+      // deployment keeps TMDB's already-localised name ("United Kingdom") so
+      // it isn't mislabelled with a Polish one.
+      countries      = if (d.countries.nonEmpty) SlotFields.countries(d.countries, tmdb.language)
+                       else if (existingMatchesLanguage) existingTmdbSlot.countries else Seq.empty,
+      genres         = if (d.genres.nonEmpty) d.genres
+                       else if (existingMatchesLanguage) existingTmdbSlot.genres else Seq.empty,
+      posterUrl      = d.posterUrl.orElse(carriedLocalized(existingTmdbSlot.posterUrl)),
+      // Per-country age rating (TMDB's certification for the deployment country) —
+      // the fallback beneath any cinema-scraped rating (MovieRecord.ageRating is
+      // cinema-first). Carried forward if a re-resolve returns none.
+      ageRating      = d.ageRating.orElse(existingTmdbSlot.ageRating),
+      // Stamp the language these fields were fetched in, so a slot frozen by a
+      // pre-locale-fix resolve is detectable rather than silently Polish forever.
+      language       = Some(tmdb.language.toLanguageTag)
     )
   }
 

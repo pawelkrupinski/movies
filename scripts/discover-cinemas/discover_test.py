@@ -10,9 +10,9 @@ import discover as d
 
 # Minimal but structurally faithful fixtures ----------------------------------
 #
-# Where a venue is wired is read off the CATALOG (which `<region>Scrapers` val holds
-# each venue) and data/uk/venues.json (where each venue is): a new venue joins the
-# val of the wired venue nearest it. Which PAGE lists it is generated later, from
+# Where a venue is wired is read off the CATALOG (which `// ── <group>` of its
+# `scrapers` list holds each venue) and data/uk/venues.json (where each venue is): a
+# new venue joins the group of the wired venue nearest it. Which PAGE lists it is generated later, from
 # its town (data/uk/scripts/build_pages.py), so nothing here touches a page.
 VENUES = [
     {"cinemaObject": "BfiLondonSouthbank", "lat": 51.5069, "lon": -0.1150},
@@ -28,19 +28,14 @@ case object CineworldCardiff extends Cinema("Cineworld Cardiff", "Cineworld Card
 case object HomeManchester extends Cinema("HOME Manchester", "HOME")
 '''
 
-CATALOG_SCALA = '''  private val londonScrapers: Seq[CinemaScraper] = Seq(
+CATALOG_SCALA = '''  val scrapers: Seq[CinemaScraper] = Seq(
+    // ── london
     flicks("bfi-london-southbank", BfiLondonSouthbank),
-  )
-  private val cardiffScrapers: Seq[CinemaScraper] = Seq(
+    // ── cardiff
     flicks("chapter-cardiff", ChapterCardiff),
     cineworldUk("cardiff", CineworldCardiff),
-  )
-  private val manchesterScrapers: Seq[CinemaScraper] = Seq(
+    // ── manchester
     flicks("home-manchester", HomeManchester),
-  )
-  private val baseByCity: Map[String, Seq[CinemaScraper]] = Map(
-    "cardiff" -> cardiffScrapers,
-    "manchester" -> manchesterScrapers,
   )
 '''
 
@@ -92,17 +87,17 @@ class EnumerationTests(unittest.TestCase):
 
 
 class GroupTests(unittest.TestCase):
-    def test_reads_the_val_each_wired_venue_is_in(self):
+    def test_reads_the_group_each_wired_venue_is_in(self):
         vals = d.scraper_vals(CATALOG_SCALA)
-        self.assertEqual(vals["ChapterCardiff"], "cardiffScrapers")
-        self.assertEqual(vals["CineworldCardiff"], "cardiffScrapers")   # own-site clients count too
-        self.assertEqual(vals["HomeManchester"], "manchesterScrapers")
+        self.assertEqual(vals["ChapterCardiff"], "cardiff")
+        self.assertEqual(vals["CineworldCardiff"], "cardiff")   # own-site clients count too
+        self.assertEqual(vals["HomeManchester"], "manchester")
 
-    def test_nearest_wired_venue_decides_the_val(self):
+    def test_nearest_wired_venue_decides_the_group(self):
         vals = d.scraper_vals(CATALOG_SCALA)
         # a point in central Cardiff resolves to a Cardiff venue, not Manchester/London
         group = d.nearest_group(51.48, -3.18, VENUES, vals, LONDON)
-        self.assertEqual(group.val, "cardiffScrapers")
+        self.assertEqual(group.section, "cardiff")
         self.assertEqual(group.near, "CineworldCardiff")
         self.assertLess(group.km, 5)
         self.assertFalse(group.london)
@@ -133,7 +128,7 @@ class PlanTests(unittest.TestCase):
         self.assertEqual(len(plan.wire), 1)
         w = plan.wire[0]
         self.assertEqual(w.obj, "PremiereCinemaCardiff")
-        self.assertEqual(w.group.val, "cardiffScrapers")
+        self.assertEqual(w.group.section, "cardiff")
 
     def test_park_london(self):
         metas = [self._meta(slug="x", display="New Picturehouse Soho", lat=51.51, lon=-0.13, has_sessions=True)]
@@ -165,15 +160,22 @@ class SpliceTests(unittest.TestCase):
         new_cin, new_cat = d.apply_plan(CINEMA_SCALA, CATALOG_SCALA, plan)
         # case object added
         self.assertIn('case object PremiereCinemaCardiff extends Cinema("Premiere Cinema Cardiff"', new_cin)
-        # catalog flicks line added inside cardiffScrapers, on ITS OWN line
+        # catalog flicks line added inside the cardiff group, on ITS OWN line
         self.assertIn(
             '\n    flicks("premiere-cinema-cardiff", PremiereCinemaCardiff),\n', new_cat
         )
         # exactly one flicks(...) per line — the new entry didn't graft onto another
         for line in new_cat.splitlines():
             self.assertLessEqual(line.count("flicks("), 1, f"two flicks on one line: {line!r}")
-        # it lands before the cardiffScrapers closing paren, above manchesterScrapers
-        self.assertLess(new_cat.index("premiere-cinema-cardiff"), new_cat.index("manchesterScrapers"))
+        # it lands at the end of the cardiff group, above the manchester one
+        self.assertLess(new_cat.index("cineworldUk"), new_cat.index("premiere-cinema-cardiff"))
+        self.assertLess(new_cat.index("premiere-cinema-cardiff"), new_cat.index("// ── manchester"))
+
+    def test_apply_plan_appends_to_the_last_group_before_the_list_closes(self):
+        metas = [d.VenueMeta("new-manchester", "New Manchester", 53.47, -2.24, True)]
+        plan = d.build_plan(CINEMA_SCALA, CATALOG_SCALA, VENUES, LONDON, metas, gone_dead=[], gone_live=[])
+        _, new_cat = d.apply_plan(CINEMA_SCALA, CATALOG_SCALA, plan)
+        self.assertIn('flicks("home-manchester", HomeManchester),\n    flicks("new-manchester", NewManchester),\n  )', new_cat)
 
     def test_no_candidates_is_noop(self):
         plan = d.build_plan(CINEMA_SCALA, CATALOG_SCALA, VENUES, LONDON, metas=[],
