@@ -180,7 +180,9 @@ Each a production change: measure with `scripts/identity-measure`, land one at a
   relayed live; the air-day test can: carry the listing's screening days into `IdentityMeasures.Listing` and keep the
   bypass only when a screening falls on the season record's release day. The same test would place UK Empire Theatre
   Halstead's bare "Romeo and Juliet" [170′] (screening on the RBO 2026/27 broadcast day) in the relay 1702789, not the
-  families' Zeffirelli 6003 (movies-76, recording 38713274617).
+  families' Zeffirelli 6003 (movies-76, recording 38713274617). (The families' 6003 is cured since 10-18 by
+  `Agreement.votesAnotherEntry`: the model's vote no longer joins Wikidata's bare record of the play; the listing now
+  stays unmatched, the relay take still wants the air-day test.)
 - [x] **FeedLink.deniesShort vs FamilyScope.namedOnlyByCopiedTitle** (done: folded into `namedOnlyByCopiedTitle` as its
   first case, unchanged: the same-year guard must not cover it — Kino Gelnhausen's "FILMKUNST: Ein einfacher Unfall",
   Panahi's 2025 film beside a 2025 short, IdentitySliceCasesSpec): the second covers most of the first's cases and

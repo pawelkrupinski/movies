@@ -154,7 +154,7 @@ slice outputs: `~/.cache/kinowo-identity/handoff/2026-10-15-wrong-match-round2/i
 - **Next angle:** Black Hole needs a signal that its link is right, such as a festival banner or the 2024 record being
   in the recording, not a rule against the copy.
 
-### Hold two family records apart when they name another id in one database ("Romeo and Juliet")
+### Hold two family records apart when they name another id in one database ("Romeo and Juliet") — narrowed form LANDED 10-18
 - **Tried:** UK Empire Theatre Halstead "Romeo and Juliet" (Royal Ballet relay): Wikidata's undated record of the play
   (IMDb tt2428892) joins IMDb's 1968 Zeffirelli film by title alone. A record naming another id in the same database
   is another entry; the vote join reads the same `Agreement.joins`. A follow-up reads only IMDb and TMDB ids so, as
@@ -163,8 +163,17 @@ slice outputs: `~/.cache/kinowo-identity/handoff/2026-10-15-wrong-match-round2/i
   (accepted) and UK "Thanks for coming FFFL", and asked a UK capture fill.
 - **Why stopped:** the UK right loss with no evidenced trade; the take stays known-wrong.
 - **Code:** `experiment/identity-id-clash` (`4e406da84`; the unlanded commits are `a11b0633d` and `4e406da84`).
-- **Next angle:** apply the clash only where the record's own type (a play, a stage production) is not a film, or
-  only to an undated record; then run the whole-corpus measure.
+- **Retried 10-18 (branch kw-id-clash):** the clash in `apart` only where one record is bare (undated, uncredited):
+  identity-measure-local on 38713274617 (base `807e7f287`) still lost UK FFFL and newly UK "NFTS Collective Visions of
+  Pleasure: I.K.U". Traced: FFFL stood on the PICK join (Wikidata's bare tt36481185 beside IMDb's and RT's dated 2026
+  Cavalier), I.K.U on the VOTE join (the model's bare vote for TMDB's Brazilian "IKÚ" beside Wikidata's dated 2001
+  film), Romeo on the vote join the other way round (the bare TAKER, Wikidata's play, beside a dated vote). The record's
+  Wikidata type is not in the capture (families are filed parsed records), so the type angle needs a WikiFamily change
+  and a recapture. LANDED instead: `Agreement.votesAnotherEntry` — the model's vote does not join takers that ALL date
+  and credit nothing when it names another IMDb or TMDB id. Measure (base `4d43b4341`, every country): 1 cure, 0 lost,
+  0 new wrong, nothing else moved.
+- **Next angle (if the pick-join form is wanted):** carry Wikidata's non-film classes (play, literary work) into its
+  record so a pick can be held apart by type, not by ids every right-by-luck agreement like FFFL's also clashes on.
 
 ## 2026-10-13/18 — shorts, relays, certificate search (other sessions' branches, traced 10-18 from their transcripts)
 
