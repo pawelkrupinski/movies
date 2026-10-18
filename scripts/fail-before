@@ -92,7 +92,8 @@ while IFS= read -r path; do
   git -C "$top" show "$sha:$path" > "$before/$path" || die "cannot copy $path"
   if [ -x "$after/$path" ]; then chmod +x "$before/$path"; fi
   copied=$((copied + 1))
-done < <(git -C "$top" diff-tree --no-commit-id --name-only -r --diff-filter=AMCR "$sha")
+# unquoted: git quotes a path that is not ASCII ("k\303\266ln"), which no pattern matches
+done < <(git -C "$top" -c core.quotePath=false diff-tree --no-commit-id --name-only -r --diff-filter=AMCR "$sha")
 [ "$copied" -gt 0 ] || die "$sha changes no test-side file (see --files): nothing to prove"
 
 # Each run bounded (tool-conventions.sh's `bounded`): in a process group of its own, ended whole at the deadline (exit

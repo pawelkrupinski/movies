@@ -59,6 +59,16 @@ scratch_git "$repo" commit -qm "a test taking an argument with a space"
 out="$(cd "$repo" && "$tool" -- bash args-test.sh "two words" 2>&1)"; rc=$?
 check "a command's argument holding a space arrives whole: yes/yes" "0" "$rc"
 
+# A test-side file whose path is not ASCII is still one: git quotes such a path ("k\303\266ln") unless told not to,
+# and a quoted path matches no pattern (an identity slice pinned for DE "Filmhaus Kino Köln" was "nothing to prove").
+mkdir -p "$repo/test/resources/köln"
+printf 'echo hallo\n' > "$repo/greet.sh"
+printf 'test "$(bash greet.sh)" = hallo\n' > "$repo/test/resources/köln/case-test.sh"
+scratch_git "$repo" add -A
+scratch_git "$repo" commit -qm "a test under a non-ASCII path"
+out="$(cd "$repo" && "$tool" -- bash test/resources/köln/case-test.sh 2>&1)"; rc=$?
+check "a test-side file under a non-ASCII path is carried over: yes/yes" "0" "$rc"
+
 # A run cut off by the deadline proves nothing: a hang is no "failed before". And the deadline ends the WHOLE run —
 # the JVM an sbt test command forks, not just its shell — or it outlives fail-before, holding the worktree it removes.
 printf 'sleep 30 & echo $! > "$GRANDCHILD"; wait\n' > "$repo/hang-test.sh"
