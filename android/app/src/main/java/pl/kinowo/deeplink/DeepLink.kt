@@ -43,10 +43,10 @@ data class DeepLink(
     val filmSlug: String? = null,
     val filters: DeepLinkFilters,
     /** The country the link's city belongs to: the one its URL names
-     *  (`showtimes.cc/us/…`, `kinowo.net/…` → `pl`), or — given the catalog's
-     *  cities — the one resolved for it. Every country owns its own slugs, so
-     *  `/uk/york/` and `/us/york/` are two cities. Null when neither says. */
-    val countryCode: String? = null,
+     *  (`showtimes.cc/us/…`, `kinowo.net/…` → `pl`), else the one resolved for
+     *  its slug. Every country owns its own slugs, so `/uk/york/` and
+     *  `/us/york/` are two cities. */
+    val countryCode: String,
 ) {
     companion object {
         // Every public HOST the site answers on — a link on any of them opens the
@@ -75,35 +75,28 @@ data class DeepLink(
          * unknown city). Returning `null` lets the caller no-op rather than
          * navigate somewhere wrong.
          *
-         * [versionTokens] answers, for the linked city, the pair its country's
+         * The link resolves WITHIN a country of [cities] (the app passes the live
+         * catalog's; the default is the compile-time [Cities.all]): the one its
+         * URL names, else — a bare `showtimes.cc` slug, a `kinowo://` link — the
+         * country [bareSlugOwners] (the catalog's copy of the server's old-owner
+         * table) names, else the first in [cities]' order that answers to it, as
+         * the server's `Country.bareSlugTarget` ([resolve]). A slug the web now
+         * redirects (a retired page, a renamed metro —
+         * [pl.kinowo.model.slugsLeadingHere]) opens the city answering at it, as
+         * the server's 301 would have sent a browser.
+         *
+         * [versionTokensOfCountry] answers, for the resolved country, the pair its
          * version filter can match — `OmU`/`DF` in Germany, `NAP`/`DUB` in
          * Poland — and `?lang=` is accepted only from it. The app passes the live
-         * catalog's lookup ([pl.kinowo.model.Catalog.versionTokensOf]); the
+         * catalog's lookup ([pl.kinowo.model.Catalog.versionTokensOfCountry]); the
          * default is Poland's pair, the one every link was checked against before
          * the catalog carried the field.
-         *
-         * [currentSlugByFormer] maps a slug the web now redirects (a retired
-         * page, a renamed metro — [pl.kinowo.model.slugsLeadingHere]) onto the
-         * city answering at it: the link opens there, as the server's 301 would
-         * have sent a browser.
-         *
-         * Given [cities] (the app passes the live catalog's), the link resolves
-         * WITHIN a country: the one its URL names, else — a bare `showtimes.cc`
-         * slug, a `kinowo://` link — the country [bareSlugOwners] (the catalog's
-         * copy of the server's old-owner table) names, else the first in [cities]'
-         * order that answers to it, as the server's `Country.bareSlugTarget` ([resolve]);
-         * [knownCitySlugs] and [currentSlugByFormer] are then unused, and
-         * [versionTokensOfCountry], when given, answers the version pair by the
-         * resolved country.
          */
         fun parse(
             url: String,
-            knownCitySlugs: Set<String> = Cities.all.map { it.slug }.toSet(),
-            versionTokens: (citySlug: String) -> VersionTokens = { VersionTokens.POLAND },
-            currentSlugByFormer: Map<String, String> = emptyMap(),
-            cities: List<City>? = null,
+            cities: List<City> = Cities.all,
             bareSlugOwners: Map<String, String> = emptyMap(),
-            versionTokensOfCountry: ((countryCode: String) -> VersionTokens)? = null,
+            versionTokensOfCountry: (countryCode: String) -> VersionTokens = { VersionTokens.POLAND },
         ): DeepLink? {
             // Split the query (and any fragment) off the raw string BEFORE
             // handing the base to java.net.URI. The single-arg URI(String)
@@ -133,7 +126,7 @@ data class DeepLink(
             val trailing: List<String>
             // The country the URL itself names, where it names one.
             var named: String? = null
-            val slugs = cities?.map { it.slug }?.toSet() ?: knownCitySlugs
+            val slugs = cities.map { it.slug }.toSet()
             when (scheme) {
                 "https", "http" -> {
                     if (host !in WEB_HOSTS) return null
@@ -156,19 +149,7 @@ data class DeepLink(
                 else -> return null
             }
 
-            val country: String?
-            val city: String
-            if (cities != null) {
-                val (resolvedCountry, resolvedCity) = resolve(linked, named, cities, bareSlugOwners) ?: return null
-                country = resolvedCountry
-                city = resolvedCity
-            } else {
-                country = named
-                city = when {
-                    linked in knownCitySlugs -> linked
-                    else -> currentSlugByFormer[linked]?.takeIf { it in knownCitySlugs } ?: return null
-                }
-            }
+            val (country, city) = resolve(linked, named, cities, bareSlugOwners) ?: return null
 
             val query = parseQuery(rawQuery)
             // `movie` is the current spelling; `film` was its address before
@@ -184,8 +165,7 @@ data class DeepLink(
                 query.firstOrNull { it.first == "title" }?.second?.takeIf { it.isNotEmpty() }
             } else null
 
-            val tokens = country?.let { c -> versionTokensOfCountry?.invoke(c) } ?: versionTokens(city)
-            return DeepLink(city, filmTitle, filmSlug, DeepLinkFilters.from(query, tokens), country)
+            return DeepLink(city, filmTitle, filmSlug, DeepLinkFilters.from(query, versionTokensOfCountry(country)), country)
         }
 
         /** `(country, city slug)` for a link's [slug]: within the country the URL

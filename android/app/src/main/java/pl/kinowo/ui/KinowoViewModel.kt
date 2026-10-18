@@ -493,7 +493,7 @@ class KinowoViewModel(
         // still read null until DataStore's first emission lands.
         val (storedCountry, storedCity) = prefs.countryAndCity.first()
         val current = Country.byCode(storedCountry).code
-        val target = link.countryCode ?: current
+        val target = link.countryCode
         citySwitchSuggestion = null
         if (target != current) {
             // Another country's deployment: switch country and city in ONE

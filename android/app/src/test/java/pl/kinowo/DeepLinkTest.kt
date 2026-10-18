@@ -10,7 +10,7 @@ import pl.kinowo.filter.DateFilter
 import pl.kinowo.filter.FormatFilter
 import pl.kinowo.filter.SortOption
 import pl.kinowo.model.VersionTokens
-import pl.kinowo.model.currentSlugByFormer
+import pl.kinowo.model.City
 
 /**
  * [DeepLink.parse] is the inverse of the web's `buildShareURL()`: every
@@ -19,6 +19,11 @@ import pl.kinowo.model.currentSlugByFormer
  * unknown hosts, foreign paths) must be rejected so the activity no-ops.
  */
 class DeepLinkTest {
+
+    /** One city per slug in [country], standing in for the live catalog's rows
+     *  of a country the compile-time `Cities.all` doesn't ship. */
+    private fun catalog(country: String, vararg slugs: String): List<City> =
+        slugs.map { City(it, it, 0.0, 0.0, country) }
 
     // MARK: city + film identity
 
@@ -120,24 +125,22 @@ class DeepLinkTest {
         val catalog = pl.kinowo.model.Catalog.parseBody(
             """{"countries":[],"cities":[{"slug":"biala-podlaska","name":"Biała Podlaska i okolice","lat":52.0,"lon":23.1,"country":"pl","formerSlugs":["miedzyrzec-podlaski"]}]}""",
         )!!
-        val slugs = catalog.cities.map { it.slug }.toSet()
-        val former = catalog.cities.currentSlugByFormer("pl")
-        val dl = DeepLink.parse("https://kinowo.net/miedzyrzec-podlaski/movie/oppenheimer?date=tomorrow", slugs, currentSlugByFormer = former)!!
+        val dl = DeepLink.parse("https://kinowo.net/miedzyrzec-podlaski/movie/oppenheimer?date=tomorrow", catalog.cities)!!
         assertEquals("biala-podlaska", dl.citySlug)
         assertEquals("oppenheimer", dl.filmSlug)
         assertEquals(DateFilter.Tomorrow, dl.filters.date)
         // A slug nobody ever answered at is still no city.
-        assertNull(DeepLink.parse("https://kinowo.net/nowhere/", slugs, currentSlugByFormer = former))
+        assertNull(DeepLink.parse("https://kinowo.net/nowhere/", catalog.cities))
     }
 
     /** Every country owns its slugs: the link's path segment picks the country,
      *  and a slug two countries share opens the one the URL names. */
     @Test fun aSharedSlugOpensTheCountryTheLinkNames() {
         val cities = listOf(
-            pl.kinowo.model.City("york", "York", 53.96, -1.08, "uk"),
-            pl.kinowo.model.City("kent", "Kent", 47.38, -122.23, "us"),
-            pl.kinowo.model.City("chatham", "Chatham area", 51.37, 0.53, "uk", formerSlugs = listOf("kent")),
-            pl.kinowo.model.City("york", "York", 39.96, -76.73, "us"),
+            City("york", "York", 53.96, -1.08, "uk"),
+            City("kent", "Kent", 47.38, -122.23, "us"),
+            City("chatham", "Chatham area", 51.37, 0.53, "uk", formerSlugs = listOf("kent")),
+            City("york", "York", 39.96, -76.73, "us"),
         )
         val us = DeepLink.parse("https://showtimes.cc/us/york/movie/dune", cities = cities)!!
         assertEquals("us", us.countryCode)
@@ -175,24 +178,25 @@ class DeepLinkTest {
 
     @Test fun deCountrySegmentOpensInApp() {
         // No German city ships in the compile-time `Cities.all` fallback (they
-        // arrive via the live catalog), so pass the slug set the ViewModel hands
-        // in at runtime (`countryCatalog.value.cities`) — as `handleDeepLink` does.
-        val dl = DeepLink.parse("https://showtimes.cc/de/berlin/", setOf("berlin"))!!
+        // arrive via the live catalog), so pass catalog rows the way
+        // `handleDeepLink` passes `countryCatalog.value.cities`.
+        val dl = DeepLink.parse("https://showtimes.cc/de/berlin/", catalog("de", "berlin"))!!
         assertEquals("berlin", dl.citySlug)
+        assertEquals("de", dl.countryCode)
     }
 
     @Test fun usCountrySegmentOpensInApp() {
         // Like Germany's, the US regions arrive via the live catalog rather than
-        // the compile-time `Cities.all`, so pass the runtime slug set.
-        val dl = DeepLink.parse("https://showtimes.cc/us/california/movie/wicked", setOf("california"))!!
+        // the compile-time `Cities.all`, so pass catalog rows.
+        val dl = DeepLink.parse("https://showtimes.cc/us/california/movie/wicked", catalog("us", "california"))!!
         assertEquals("california", dl.citySlug)
         assertEquals("wicked", dl.filmSlug)
     }
 
     @Test fun esCountrySegmentOpensInApp() {
-        // Spain's provinces arrive via the live catalog too, so pass the runtime
-        // slug set the way the German and US cases do.
-        val dl = DeepLink.parse("https://showtimes.cc/es/madrid/movie/la-odisea", setOf("madrid"))!!
+        // Spain's cities arrive via the live catalog too, so pass catalog rows
+        // the way the German and US cases do.
+        val dl = DeepLink.parse("https://showtimes.cc/es/madrid/movie/la-odisea", catalog("es", "madrid"))!!
         assertEquals("madrid", dl.citySlug)
         assertEquals("la-odisea", dl.filmSlug)
     }
@@ -202,7 +206,7 @@ class DeepLinkTest {
      *  be claimed by the app either. */
     @Test fun retiredCountrySubdomainIsRejected() {
         assertNull(DeepLink.parse("https://uk.showtimes.cc/london/"))
-        assertNull(DeepLink.parse("https://de.showtimes.cc/berlin/", setOf("berlin")))
+        assertNull(DeepLink.parse("https://de.showtimes.cc/berlin/", catalog("de", "berlin")))
     }
 
     /** The country segment is dropped only when it ISN'T also a known city, so
@@ -211,7 +215,7 @@ class DeepLinkTest {
         val dl = DeepLink.parse("https://kinowo.net/poznan/movie/oppenheimer")!!
         assertEquals("poznan", dl.citySlug)
         assertEquals("oppenheimer", dl.filmSlug)
-        assertEquals("us", DeepLink.parse("https://showtimes.cc/us/", setOf("us"))!!.citySlug)
+        assertEquals("us", DeepLink.parse("https://showtimes.cc/us/", catalog("pl", "us"))!!.citySlug)
     }
 
     /** `showtimes.cc/` is the country picker: no city, nothing to open. */
@@ -257,11 +261,11 @@ class DeepLinkTest {
         // Poland's, so `lang=OmU` was dropped as garbage and the link opened
         // unfiltered.
         val german = VersionTokens(subtitled = "OmU", dubbed = "DF")
-        val slugs = setOf("berlin", "poznan")
-        val tokens: (String) -> VersionTokens = { slug -> if (slug == "berlin") german else VersionTokens.POLAND }
-        assertEquals("OmU", DeepLink.parse("https://showtimes.cc/de/berlin/?lang=OmU", slugs, tokens)!!.filters.language)
+        val cities = catalog("de", "berlin") + catalog("pl", "poznan")
+        val tokens: (String) -> VersionTokens = { country -> if (country == "de") german else VersionTokens.POLAND }
+        assertEquals("OmU", DeepLink.parse("https://showtimes.cc/de/berlin/?lang=OmU", cities, versionTokensOfCountry = tokens)!!.filters.language)
         // …and a Polish token on a German city is not the German filter's.
-        assertNull(DeepLink.parse("https://showtimes.cc/de/berlin/?lang=NAP", slugs, tokens)!!.filters.language)
+        assertNull(DeepLink.parse("https://showtimes.cc/de/berlin/?lang=NAP", cities, versionTokensOfCountry = tokens)!!.filters.language)
         // The default whitelist is still Poland's pair.
         assertNull(DeepLink.parse("https://kinowo.net/poznan/?lang=OmU")!!.filters.language)
     }
