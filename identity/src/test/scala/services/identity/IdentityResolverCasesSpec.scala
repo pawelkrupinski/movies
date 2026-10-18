@@ -1164,6 +1164,12 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     MultiFilmBill.billsTwoWholeWorks(IdentityMeasures.Listing("11. UFF - Gala otwarcia + Demony")) shouldBe false
     MultiFilmBill.billsTwoWholeWorks(IdentityMeasures.Listing("Pasażerka - premiera książki, pokaz filmu + dyskusja")) shouldBe false
     MultiFilmBill.billsTwoWholeWorks(IdentityMeasures.Listing("Punku + spotkanie z reżyserem - Kino Kultura")) shouldBe false
+    // a Q&A named with its guest, an introduction, a party, a drink or a choir beside one film is no second work (review
+    // page 10-14..18, each judged right as the one film: Electric Palace Hastings, MAC Birmingham, Riverside, BEAM)
+    Seq("Dead Souls + Alex Cox Q&A", "Charlie Shaw's Revenge + Director's Q&A", "The Weight + Recorded Ethan Hawke Introduction",
+      "Classroom Cinema: The Staffroom (2021) + Introduction", "Christmas 2026: The Polar Express + Pyjama Party",
+      "13 Going on 30 + FREE Mocktail", "50 Years of Punk + Director's Q&A + Hastings Punk Choir")
+      .foreach(title => withClue(title)(MultiFilmBill.billsTwoWholeWorks(IdentityMeasures.Listing(title)) shouldBe false))
     // an unspaced "+" between two works of two words or more joins them too: UK Odeon's "We're Going on a Bear
     // Hunt+Tiger Who Came to..." ×81 took Bear Hunt (convergence 2026-10-14); a "+" inside one title stays its own
     // ("Love+War", "Orwell: 2+2=5"), and so does one joining a word to a talk or a format ("Q+A", "RB+O 2026/27")

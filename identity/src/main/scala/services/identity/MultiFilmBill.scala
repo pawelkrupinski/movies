@@ -124,11 +124,13 @@ object MultiFilmBill {
     // of numbers is one ("2 x 2 = 4", billed after "Zakazane piosenki")
     val all   = TitleContainment.tokens(piece)
     val words = all.filter(_.length > 1)
+    // an event's whole phrase counts as its words do: "Alex Cox Q&A" is a talk, whose single letters no word set holds
     (words.exists(_.exists(_.isLetter)) || all.sizeIs >= 3) &&
-      !words.exists(w => EventTailWords(w) || services.movies.FormatTags.FormatToken.contains(w))
+      !words.exists(w => EventTailWords(w) || services.movies.FormatTags.FormatToken.contains(w)) && !DecorationWords.namesAnEvent(all)
   }
   /** What a piece a bill joins after a film names when it names an event, not a work: a talk, a lecture, a workshop, a
-   *  quiz, a gala, an exhibition or its opening, a concert, a (poster) tour, a signing — PL, EN, DE, ES — beside the
+   *  quiz, a gala, an exhibition or its opening, a concert, a (poster) tour, a signing, an introduction, a party, a drink,
+   *  a choir — PL, EN, DE, ES — beside the
    *  segment model's event words. "OPĘTANIE + TRASA PLAKATOWA" (Światowid) is one film and a poster tour. */
   private val EventTailWords: Set[String] = DecorationWords.EventWords ++ TitleWords.tokens(TitleWords.Concept.SideEvent)
   /** The works a DOUBLE BILL joins with a spaced "+" ("Basia. Humor w paski mam + Kocia Szajka"),
