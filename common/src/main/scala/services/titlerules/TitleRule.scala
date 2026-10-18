@@ -114,11 +114,30 @@ case class TitleRule(
    *  `IllegalArgumentException` (or `IndexOutOfBoundsException` for a `$N` past the
    *  group count). A malformed editor-entered replacement must degrade to a no-op,
    *  same as a malformed pattern — never throw inside the hot normalisation path
-   *  or the admin "affected" preview (Sentry KINOWO-Y). */
+   *  or the admin "affected" preview (Sentry KINOWO-Y).
+   *
+   *  A rule never leaves a title that was more than a function word as nothing but one ([[TitleRule.leavesAFunctionWord]]):
+   *  "The Preview" is a film, and a preview-suffix strip searched it as "The". */
   def apply(in: String): String = compiled match {
     case Some(re) if enabled && countryScopeValid =>
-      try if (applyAll) re.replaceAllIn(in, replacement) else re.replaceFirstIn(in, replacement)
-      catch { case _: IllegalArgumentException | _: IndexOutOfBoundsException => in }
+      try {
+        val out = if (applyAll) re.replaceAllIn(in, replacement) else re.replaceFirstIn(in, replacement)
+        if (TitleRule.leavesAFunctionWord(in, out)) in else out
+      } catch { case _: IllegalArgumentException | _: IndexOutOfBoundsException => in }
     case _ => in
+  }
+}
+
+object TitleRule {
+
+  /** The words no title is made of alone — the articles a title leads with ([[services.movies.TitleText.Articles]])
+   *  and the short conjunctions and prepositions of the languages venues bill in. */
+  private val FunctionWords: Set[String] = services.movies.TitleText.Articles ++
+    Set("and", "of", "in", "on", "to", "und", "von", "im", "y", "de", "en", "i", "w", "z", "na")
+
+  /** Did a rule turn `in` into nothing but a function word it was more than? */
+  def leavesAFunctionWord(in: String, out: String): Boolean = {
+    val left = out.trim.toLowerCase(java.util.Locale.ROOT)
+    FunctionWords(left) && in.trim.toLowerCase(java.util.Locale.ROOT) != left
   }
 }

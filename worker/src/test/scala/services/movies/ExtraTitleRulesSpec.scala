@@ -1372,7 +1372,7 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "leave a title that merely contains the words alone" in {
-    Seq("The Preview Man", "Previews of Coming Attractions", "Sneak Preview", "Jaws 3-D", "OVO", "Love Actually").foreach { t =>
+    Seq("The Preview", "The Preview Man", "Previews of Coming Attractions", "Sneak Preview", "Jaws 3-D", "OVO", "Love Actually").foreach { t =>
       withClue(s"search('$t') unchanged: ")(withExtras.search(t) shouldBe t)
     }
   }
