@@ -5,13 +5,17 @@ import io.prometheus.metrics.model.registry.PrometheusRegistry
 import services.identity.{IdentityProjectionMetrics, Regroupings, SuspectTakes}
 
 /**
- * The identity projection of a cut-over country (`IdentityProjection`, docs/design/identity-resolver.md
- * §8 phase 5), each series labelled by `country` and written by that country's projection:
+ * Each country's identity projection (`IdentityProjection`, docs/design/identity-resolver.md §8 phase 5), each series
+ * labelled by `country` and written by that country's projection.
+ *
+ * KEEP THE SERIES NAMES. Every country is cut over and the class no longer says "cutover", but the worker-diagnostics
+ * dashboard and the identity-matching alert rules (infra/nix/files/monitoring/) read `kinowo_worker_identity_cutover_*`
+ * by name: renaming a series blanks them.
  *
  *  - `kinowo_worker_identity_cutover_films{path}` / `kinowo_worker_identity_cutover_listings{path}` —
- *    the films the last projection stored and the listings it resolved. `path` is `projection`: a
- *    country on the old landing / staging / settle path exports none (its films are
- *    `kinowo_worker_corpus_movies`), so the pair says which countries are cut over and how big each is;
+ *    the films the last projection stored and the listings it resolved. `path` is always `projection`: it once told a
+ *    cut-over country from one on the old landing / staging / settle path, which no longer exists, so the label says
+ *    nothing now; it stays because the dashboard and the alerts select and group by it;
  *  - `kinowo_worker_identity_regroupings_total{kind}` — merges, splits, moved listings, fresh ids and
  *    retired ids, per projection. §10's churn acceptance: after the first projection of a cutover,
  *    merges / splits / moves stay at 0 on an unchanged listing set (P2); fresh and retired follow the
@@ -37,13 +41,13 @@ import services.identity.{IdentityProjectionMetrics, Regroupings, SuspectTakes}
  *  - `kinowo_worker_identity_projection_reconciles_total{measured}` — hourly projections of the whole corpus, `measured`
  *    when an earlier projection gave one a scope to check drift against: an hour of `false` alone is drift not measured.
  *
- * Nothing is seeded: a country not cut over exports no series.
+ * Nothing is seeded: a country whose projection has not run exports no films / listings series.
  */
-final class IdentityCutoverMetrics(registry: PrometheusRegistry) {
+final class IdentityProjectionGauges(registry: PrometheusRegistry) {
 
   private val films: Gauge = Gauge.builder()
     .name("kinowo_worker_identity_cutover_films")
-    .help("Films the last identity projection stored, per country and path (projection only; old-path countries export none).")
+    .help("Films the last identity projection stored, per country and path (always projection).")
     .labelNames("country", "path")
     .register(registry)
 

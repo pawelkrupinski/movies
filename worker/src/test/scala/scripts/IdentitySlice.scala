@@ -251,8 +251,8 @@ object IdentitySlice {
     }
     val periodic = new AgreementStage(reads.families.map(f => f -> store.answers(f)).toMap, reads.lookups, reads.normalizer, IdentityCalibration.resolver,
       tmdbOf = tmdbOf, stored = storedOf(reads.prod), clock = reads.clock,
-      posters = posters, tmdb = Some(reads.lookups), identities = modules.wiring.IdentityCutoverWiring.identities(reads.country.code),
-      catalogue = catalogue.answers, listedOn = modules.wiring.IdentityCutoverWiring.listedOn(reads.country.code),
+      posters = posters, tmdb = Some(reads.lookups), identities = OlderRefs.call(OlderRefs.projectionWiring, "identities", reads.country.code).get.asInstanceOf[Seq[VoterFamily]],
+      catalogue = catalogue.answers, listedOn = OlderRefs.call(OlderRefs.projectionWiring, "listedOn", reads.country.code).get.asInstanceOf[Option[VoterFamily]],
       correctionPostersAtOnce = Int.MaxValue, correctionsPerApply = Int.MaxValue)
     val byKey      = core.map(l => l.key -> l).toMap
     val resolution = UnmatchedClusters.resolutionOf(model)
@@ -263,7 +263,7 @@ object IdentitySlice {
         tools.ConcurrentAsks.each(periodic.wantedPosters.toSeq, atOnce = 8)(q => posters.file(q, Try(hashing.of(q)).getOrElse(Nil)))
         catalogue.file(periodic.wantedCatalogue)
       }))
-    // a changed projection: the worker's ONE stage (IdentityCutoverWiring's agreementStage, which the periodic projection
+    // a changed projection: the worker's ONE stage (IdentityProjectionWiring's agreementStage, which the periodic projection
     // applied before it) handed every listing, the re-scraped venues' read again
     val changed = (venues: Set[String]) => {
       val read = services.identity.IdentitySlicing.changedRead(core, venues)

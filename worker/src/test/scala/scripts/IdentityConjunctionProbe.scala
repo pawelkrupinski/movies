@@ -64,7 +64,7 @@ object IdentityConjunctionProbe {
       docs.put(TmdbKind.Family, capture.families.toSeq)
       val store   = new FamilyAnswerStore(docs, tools.SpecClock.Pinned)
       val answers = UnmatchedClusters.familiesOf(country).map(f => f -> store.answers(f))
-      val programmes = modules.wiring.IdentityCutoverWiring.listedOn(country.code).map(store.answers)
+      val programmes = modules.wiring.IdentityProjectionWiring.listedOn(country.code).map(store.answers)
       val posterStore = new PosterAnswerStore(store, tools.SpecClock.Pinned)
       val byKey   = capture.listings.map(l => l.key -> l).toMap
       val code    = country.code

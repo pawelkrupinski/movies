@@ -88,10 +88,10 @@ object UnmatchedClusters {
   final case class Outcome(model: Resolution, agreed: Resolution, stage: AgreementStage, unanswered: Set[String] = Set.empty,
                            missingQueries: Set[CandidateQuery] = Set.empty, missingFilms: Set[Int] = Set.empty)
 
-  /** The families each country asks, as the worker wires them (`IdentityCutoverWiring.agreementFamilies`). */
+  /** The families each country asks, as the worker wires them (`IdentityProjectionWiring.agreementFamilies`). */
   def familiesOf(country: Country): Seq[VoterFamily] =
     Seq(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Metacritic, VoterFamily.RottenTomatoes) ++
-      Option.when(modules.wiring.IdentityCutoverWiring.FilmwebVoting(country.code))(VoterFamily.Filmweb)
+      Option.when(modules.wiring.IdentityProjectionWiring.FilmwebVoting(country.code))(VoterFamily.Filmweb)
 
   /** The model's decisions as a resolution the agreement stage is handed. */
   def resolutionOf(decisions: Seq[ResolverDecision]): Resolution =
@@ -125,8 +125,8 @@ object UnmatchedClusters {
     agree(if (decisions.isEmpty) capture.decisions else decisions, capture.listings, lookups,
       familiesOf(capture.country).map(f => f -> families(store.answers(f))).toMap, version = 1,
       imdb => capture.finds.get(imdb).fold[Answer[Option[Int]]](Answer.Unknown)(Answer.Known(_)), normalizer.getOrElse(TitleNormalizer.forCountry(capture.country)),
-      posters(new PosterAnswerStore(store, SpecClock.Pinned)), modules.wiring.IdentityCutoverWiring.identities(capture.country.code),
-      new CatalogueAnswerStore(store, SpecClock.Pinned, CataloguePages), modules.wiring.IdentityCutoverWiring.listedOn(capture.country.code), calibration)
+      posters(new PosterAnswerStore(store, SpecClock.Pinned)), modules.wiring.IdentityProjectionWiring.identities(capture.country.code),
+      new CatalogueAnswerStore(store, SpecClock.Pinned, CataloguePages), modules.wiring.IdentityProjectionWiring.listedOn(capture.country.code), calibration)
       .copy(unanswered = lookups.unanswered, missingQueries = lookups.queries.asScala.toSet, missingFilms = lookups.films.asScala.toSet.map(_.toInt))
   }
 

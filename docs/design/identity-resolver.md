@@ -2222,7 +2222,8 @@ resolver on the pipeline's evidence, not its own.
 
 > **Historical.** Every country took the switch, and ea3d56300 then removed it
 > (`KINOWO_IDENTITY_CUTOVER`, `IdentityCutoverCountries`): the projection is the only path.
-> `IdentityCutoverWiring` and the `kinowo_worker_identity_cutover_*` gauges keep their names.
+> The wiring is `IdentityProjectionWiring` and the metrics `IdentityProjectionGauges` since 2026-10-18 (named
+> `IdentityCutoverWiring` / `IdentityCutoverMetrics` below); the `kinowo_worker_identity_cutover_*` series keep their names.
 
 Built and tested, then switched on country by country. Its runbook was deleted with the switch; it is
 in git history before the 2026-10-18 docs prune.
