@@ -40,7 +40,6 @@ class SearchOnlyAffixesSpec extends AnyFlatSpec with Matchers {
     // a venue code glued after the closing quote (Kino w Ratuszu, recording 38498856157)
     n.apiQuery("Spotkanie z Sandrą Drzymalską i przedpremierowy pokaz filmu \"Violetta Villas\".FMZ") shouldBe "Violetta Villas"
     n.apiQuery("DKF ZAPRASZA 19 CZERWCA NA PREMIEROWY POKAZ FILMU „OJCZYZNA” (REŻYSERA „IDY” ORAZ „ZIMNEJ WOJNY”)") shouldBe "OJCZYZNA"
-    n.apiQuery("Fonomo 26 - Tajemnica śpiewających ptaków reż. Antoine Lanciaux") shouldBe "Fonomo 26 - Tajemnica śpiewających ptaków"
     n.apiQuery("Kandydaci śmierci: Kadr Non-Fiction (16+)") shouldBe "Kandydaci śmierci"
     // the screening keeps its own row
     n.sanitize("Sytuacje Relacje. Pokaz filmu Hamnet") should not be n.sanitize("Hamnet")

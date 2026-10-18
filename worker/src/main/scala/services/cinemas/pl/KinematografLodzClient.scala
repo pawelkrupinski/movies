@@ -82,31 +82,17 @@ object KinematografLodzClient {
   private val LeadingCountPat     = """^\s*(\d+)""".r
 
   // The raw title carries `(YYYY)` and, for most films, a `, reż. Director`
-  // suffix that `cleanTitle` strips for display. Both are TMDB-identity hints,
-  // so extract them before the strip.
+  // credit: the year is a TMDB-identity hint, so it is read before the strip;
+  // the credit is the normalizer's to read ([[TitleNormalizer.titleFacts]]).
   private val ParenYearPat = """\((?:19|20)\d{2}\)""".r
-  // Director list after the `reż.` marker, bounded by the first `(` (a trailing
-  // `(YYYY)`), `•` (an event/discussion suffix), or the string end. The bare
-  // `, Director` form some rows use (no `reż.`) is deliberately not matched —
-  // it's indistinguishable from a subtitle and risks false positives.
-  private val DirectorPat  = """(?i)reż\.\s*([^(•]+)""".r
 
   /** The `(YYYY)` production year in the raw title, if present. */
   def parseYear(raw: String): Option[Int] =
     ParenYearPat.findFirstMatchIn(raw).map(_.matched.filter(_.isDigit).toInt)
 
-  /** Director(s) from the `reż. …` suffix, comma-split, with any trailing
-   *  sentence punctuation (`Maciej Drygas.`) and empty fragments dropped. Empty
-   *  when the title carries no `reż.` marker. */
-  def parseDirectors(raw: String): Seq[String] =
-    DirectorPat.findFirstMatchIn(raw).map(_.group(1)).toSeq
-      .flatMap(_.split(","))
-      .map(_.trim.stripSuffix(".").trim)
-      .filter(_.nonEmpty)
-
-  /** Strips the `", reż. Director Name"` / `", Director Name"` director suffix
-    * and the trailing `" (YYYY)"` release-year suffix the museum appends to the
-    * raw title — now via the editable "kino-kinematograf" rules. Delegates so it
+  /** Strips the `", reż. Director Name"` credit (at intake, [[TitleNormalizer.titleFacts]]), the `", Director Name"`
+    * director suffix and the trailing `" (YYYY)"` release-year suffix the museum appends to the
+    * raw title — the latter two via the "kino-kinematograf" rules. Delegates so it
     * stays unit-testable here. Examples:
     *   "Znaki Pana Śliwki (2025), reż. Urszula Morga, …" → "Znaki Pana Śliwki"
     *   "Zawieście czerwone latarnie (1991), Zhang Yimou" → "Zawieście czerwone latarnie"
@@ -197,7 +183,7 @@ object KinematografLodzClient {
       filmUrl   = filmUrl,
       synopsis  = None,
       cast      = Seq.empty,
-      director  = rawTitle.toSeq.flatMap(parseDirectors),
+      director  = rawTitle.toSeq.flatMap(titles.titleFacts(cinema, _).directors),
       showtimes = Seq(Showtime(dt, bookingUrl = None))
     )
   }

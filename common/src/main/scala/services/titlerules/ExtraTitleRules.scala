@@ -354,7 +354,7 @@ object ExtraTitleRules {
   val beforeSlashBanners: Seq[TitleRule] = Seq(
     prog("xtra-pp-wajda-rewizje-slash",
       """(?iu)^[„"“]\s*WAJDA:\s*re-?\s*wizje\s*[”"“]\s*(?:(?:19|20)\d{2}\s*)?/\s*""",
-      "'„WAJDA: re-wizje” 2026 / <film> (<year>) reż. Andrzej Wajda' quoted retrospective banner before a slash (Kino Sokolnia Kępno: Krajobraz po bitwie); the director tail goes by xtra-rezyseria-suffix")
+      "'„WAJDA: re-wizje” 2026 / <film> (<year>) reż. Andrzej Wajda' quoted retrospective banner before a slash (Kino Sokolnia Kępno: Krajobraz po bitwie); the director tail comes off at intake (TitleFacts)")
   )
 
   /** Rules that must fold BEFORE the seed's `search-plus-event-suffix` (order 14), which drops everything after a
@@ -401,9 +401,8 @@ object ExtraTitleRules {
     // A premiere is an event of the screening, bracketed "(PREMIERA)" (separated ones: the announcement strip
     // below). Never the whole title, and never after a bare space: "Ostatnia Premiera" is a title.
     // A screening billed as a film's showing ("Sytuacje Relacje. Pokaz filmu Hamnet", "Spotkanie z aktorką
-    // Kamilą Urzędowską. Pokaz filmu "Lalka"") is looked up as that film; a director credit after the title
-    // ("… reż. Antoine Lanciaux") and Kino w Kadrze's ": Kadr Non-Fiction (16+)" are no part of it.
-    searchStrip("xtra-rez-credit-suffix",          """(?iu)\s*,?\s+reż\.\s+\p{Lu}[^|:]*$""",            "'<film> reż. <director>' credit suffix"),
+    // Kamilą Urzędowską. Pokaz filmu "Lalka"") is looked up as that film; Kino w Kadrze's ": Kadr Non-Fiction (16+)"
+    // is no part of it. (A director credit after the title, "… reż. Antoine Lanciaux", comes off at intake: TitleFacts.)
     searchStrip("xtra-kadr-non-fiction-suffix",    """(?iu)\s*:\s*Kadr\s+Non-?Fiction\b.*$""",     "'<film>: Kadr Non-Fiction (16+)' programme suffix"),
     searchStrip("xtra-premiera-bracketed",         """(?i)(?<=\S)\s*[(\[](?:uroczysta\s+|polska\s+)?premiera(?:\s+(?:filmowa|krajowa))?\s*!*[)\]]\s*$""", "'(PREMIERA)' bracketed premiere tag"),
     searchStrip("xtra-kino-sensoryczne-suffix",    """(?i)\s*[-–—|]\s*(?:kino\s+sensoryczne|kino\s+przyjazne\s+sensorycznie|seans\s+sensoryczny)\s*$""", "'- Kino sensoryczne' sensory-friendly screening suffix"),
@@ -593,11 +592,6 @@ object ExtraTitleRules {
     // major films × the Cinema City network (Toy Story 5, Spider-Man, Odyseja,
     // Minionki i straszydła, Dzień objawienia, Straszny film).
     searchStrip("xtra-ukrainski-lang-suffix",      """(?iu)\s*[.(\s]\s*(?:ukrai[ńn]ski|ukrainian)\s+(?:dubbing|napisy|lektor)\s*\)?\s*$""", "'<film> [.( ]ukraiński/ukrainian dubbing/napisy/lektor' UA-version marker — query-only strip so the row stays its own (matching the canonical UA exclusion) but resolves the base film"),
-    // '<film> reż. <director>' / '<film> reżyseria: <director>' authorship tag
-    // appended by a few art-house venues; query-only strip resolves the bare film
-    // (Perfect Days, Droga do Vermiglio, Za duży na bajki 3). Anchored on a
-    // separator + a following name so a real title can't be amputated.
-    searchStrip("xtra-rezyseria-suffix",           """(?iu)\s*,?\s+re[zż](?:yseria)?\s*[.:]\s+\S.*$""", "'<film>[,] reż. / reżyseria: <director>' authorship suffix — optional leading comma (Perfect Days, Droga do Vermiglio, Za duży na bajki 3, 'Przekleństwa niewinności, reż. Sofia Coppola (2021)')"),
     // Bare 'DKF - ' / 'DKF: ' film-club prefix (no club name) — the existing
     // 'xtra-pp-dkf-named' only matches 'DKF <name>: ', so a clubless 'DKF: <film>'
     // / 'DKF - <film>' never stripped. Query-only (Drugie życie, Czytając Lolitę

@@ -130,10 +130,7 @@ object TitleRules {
     TitleRule("palacowe-wajda", PerCinema, Some("kino-palacowe"),
       """^WAJDA: re-wizje\. """, "", applyAll = false, order = 30,
       note = Some("Kino Pałacowe Wajda retrospective prefix")),
-    // Kinematograf Łódź — director + release-year suffixes the museum appends.
-    TitleRule("kinematograf-rez", PerCinema, Some("kino-kinematograf"),
-      """(?:,\s*|\s+)reż\.\s*.+$""", "", applyAll = false, order = 10,
-      note = Some("Kinematograf ', reż. …' / ' reż. …' director suffix")),
+    // Kinematograf Łódź — director + release-year suffixes the museum appends (a "reż. …" credit comes off at intake: TitleFacts).
     TitleRule("kinematograf-director", PerCinema, Some("kino-kinematograf"),
       """,\s+\p{Lu}\S+\s+\p{Lu}\S+$""", "", applyAll = false, order = 20,
       note = Some("Kinematograf bare ', Firstname Lastname' director suffix")),

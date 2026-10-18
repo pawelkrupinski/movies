@@ -143,23 +143,6 @@ class KinematografLodzClientSpec extends AnyFlatSpec with Matchers with OptionVa
     rozmowa.director          shouldBe empty
   }
 
-  it should "bound the director list at a trailing year or event suffix" in {
-    // Real-fixture shapes: director then ", (2026)"; director then ". • <event>".
-    KinematografLodzClient.parseDirectors(
-      "Mały Kinematograf: Baczne oczka reż. Katarzyna Agopsowicz, (2026)"
-    ) shouldBe Seq("Katarzyna Agopsowicz")
-    KinematografLodzClient.parseDirectors(
-      "DKF Człowiek w Zagrożeniu: Pociągi (2024), reż. Maciej Drygas. • Spotkanie z autorem"
-    ) shouldBe Seq("Maciej Drygas")
-  }
-
-  it should "not mistake the prose 'reżyserką' mention for a director marker" in {
-    // No `reż.` token → no director (the word "reżyserką" must not match).
-    KinematografLodzClient.parseDirectors(
-      "Mały Kinematograf: premiera animacji i spotkanie z reżyserką Aleksandrą Chrapowicką"
-    ) shouldBe empty
-  }
-
   // ── The URL the museum publishes today ─────────────────────────────────────
   //
   // The site restructured in mid-2026: `/repertuar/` now 301s to

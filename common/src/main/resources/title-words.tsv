@@ -323,7 +323,10 @@ short-film	pt	curtas metragens
 # (2026)", "Alpha (dir. Ducournau)") — read into the listing's director at intake (TitleFacts), each country in its own
 # languages and English. A name must follow, capitalised: "mit Regie-Besuch!" credits nobody ──
 director-credit	pl	reż.
+director-credit	pl	reż
+director-credit	pl	rez.
 director-credit	pl	reżyseria
+director-credit	pl	rezyseria
 director-credit	pl	w reżyserii
 director-credit	en	dir.
 director-credit	en	directed by

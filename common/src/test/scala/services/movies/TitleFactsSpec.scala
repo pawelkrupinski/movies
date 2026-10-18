@@ -22,11 +22,34 @@ class TitleFactsSpec extends AnyFlatSpec with Matchers {
       TitleFacts.Peeled("Alte Liebe", TitleFacts.Facts(directors = Seq("Andreas Dresen")))
   }
 
+  it should "read every spelling the search strips it replaces took off, and end a name at its sentence's full stop" in {
+    // Kino Kinematograf's billings (its client read them by its own pattern before), and the unaccented and colon forms
+    peel(Country.Poland, "Znaki Pana Śliwki (2025), reż. Urszula Morga, Bartosz Mikołajczyk").facts.directors shouldBe
+      Seq("Urszula Morga", "Bartosz Mikołajczyk")
+    peel(Country.Poland, "Mały Kinematograf: Baczne oczka reż. Katarzyna Agopsowicz, (2026)") shouldBe
+      TitleFacts.Peeled("Mały Kinematograf: Baczne oczka (2026)", TitleFacts.Facts(directors = Seq("Katarzyna Agopsowicz")))
+    peel(Country.Poland, "DKF Człowiek w Zagrożeniu: Pociągi (2024), reż. Maciej Drygas. • Spotkanie z autorem") shouldBe
+      TitleFacts.Peeled("DKF Człowiek w Zagrożeniu: Pociągi (2024) • Spotkanie z autorem", TitleFacts.Facts(directors = Seq("Maciej Drygas")))
+    peel(Country.Poland, "Perfect Days, rez. Wim Wenders") shouldBe TitleFacts.Peeled("Perfect Days", TitleFacts.Facts(directors = Seq("Wim Wenders")))
+    peel(Country.Poland, "Za duży na bajki 3 reż: Kristoffer Rus").facts.directors shouldBe Seq("Kristoffer Rus")
+    peel(Country.Poland, "Droga do Vermiglio, rezyseria: Maura Delpero").facts.directors shouldBe Seq("Maura Delpero")
+    peel(Country.Poland, "Film, reż. J. Kowalski").facts.directors shouldBe Seq("J. Kowalski")
+    // the word typed twice (Kino Kinematograf)
+    peel(Country.Poland, "Ale kosmos! reż. reż. Elżbieta Wąsik, Jarosław Szyszko (2026)") shouldBe
+      TitleFacts.Peeled("Ale kosmos! (2026)", TitleFacts.Facts(directors = Seq("Elżbieta Wąsik", "Jarosław Szyszko")))
+    peel(Country.Poland, "Przekleństwa niewinności, reż. Sofia Coppola (2021)") shouldBe
+      TitleFacts.Peeled("Przekleństwa niewinności (2021)", TitleFacts.Facts(directors = Seq("Sofia Coppola")))
+    peel(Country.Poland, "„WAJDA: re-wizje” 2026 / KRAJOBRAZ PO BITWIE (1970) reż. Andrzej Wajda") shouldBe
+      TitleFacts.Peeled("„WAJDA: re-wizje” 2026 / KRAJOBRAZ PO BITWIE (1970)", TitleFacts.Facts(directors = Seq("Andrzej Wajda")))
+  }
+
   it should "credit nobody without a capitalised name after the word, or in a language the country does not read" in {
     peel(Country.Germany, "LEICA - EIN JAHRHUNDERT IN BILDERN - am 15.11. mit Regie-Besuch!").facts shouldBe TitleFacts.Facts.empty
     peel(Country.Poland, "Wykład dr Olgi Wesołowskiej").facts shouldBe TitleFacts.Facts.empty
+    peel(Country.Poland, "Mały Kinematograf: premiera animacji i spotkanie z reżyserką Aleksandrą Chrapowicką").facts shouldBe TitleFacts.Facts.empty
     // a name after a comma is a second director only when it is a whole name
-    peel(Country.Poland, "Lalka, reż. Maciej Kawalski, Polska").facts.directors shouldBe Seq("Maciej Kawalski")
+    peel(Country.Poland, "Lalka, reż. Maciej Kawalski, Polska") shouldBe
+      TitleFacts.Peeled("Lalka, Polska", TitleFacts.Facts(directors = Seq("Maciej Kawalski")))
     // German "Regie" is no Polish credit word
     peel(Country.Poland, "Kino Regie Jan Kowalski").facts shouldBe TitleFacts.Facts.empty
   }

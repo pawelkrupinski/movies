@@ -61,7 +61,7 @@ object TitleFacts {
     private val Persons  = s"""$Name(?:\\s+(?:$Particle\\s+)*$Name)+"""
     private val And      = """(?:\s*(?:&|,)\s*|\s+(?:and|i|und|y|et)\s+)"""
     private lazy val Credit   = Option.when(languages.nonEmpty)(TitleWords.rawPatternIn(languages, Concept.DirectorCredit)).filter(_ != "(?:)")
-      .map(words => s"""(?U)(?:^|(?<=[\\s(\\[,]))(?i:$words)(?:\\s*:\\s*|\\s+)(?<names>$Person(?:$And$Persons)*)""".r)
+      .map(words => s"""(?U)(?:^|(?<=[\\s(\\[,]))(?i:$words)(?:(?:\\s*:\\s*|\\s+)(?i:$words))*(?:\\s*:\\s*|\\s+)(?<names>$Person(?:$And$Persons)*)""".r)
     private lazy val Label    = Option.when(languages.nonEmpty)(TitleWords.rawPatternIn(languages, Concept.OriginalTitle)).filter(_ != "(?:)")
       .map(words => s"""(?U)\\(\\s*(?i:$words)\\s*:\\s*(?<original>[^()]+?)\\s*\\)""".r)
     private lazy val Joined   = s"""(?U)$And""".r
@@ -71,7 +71,8 @@ object TitleFacts {
     def peel(title: String): Peeled = {
       val (rated, stated) = rating.flatMap(_.peel(title)).getOrElse((title, None))
       val (credited, directors) = Credit.flatMap(_.findFirstMatchIn(rated)).fold((rated, Seq.empty[String])) { m =>
-        val names = Joined.split(m.group("names")).toSeq.map(_.trim).filter(_.nonEmpty)
+        // a name's own full stop ends the credit's sentence, an initial's stays ("Maciej Drygas. • Spotkanie", "J. Doe")
+        val names = Joined.split(m.group("names")).toSeq.map(_.trim.replaceAll("""(?<=\p{L}{2})\.$""", "")).filter(_.nonEmpty)
         (cut(rated, m.start, m.end), names)
       }
       val (labelled, original) = Label.flatMap(_.findFirstMatchIn(credited)).fold((credited, Option.empty[String])) { m =>
@@ -86,8 +87,9 @@ object TitleFacts {
       val close = if (open >= 0 && title.lastIndexWhere(c => c == ')' || c == ']', start - 1) < open) title.indexWhere(c => c == ')' || c == ']', end) else -1
       val (from, to) = if (close >= 0) (open, close + 1) else (start, end)
       val before = title.substring(0, from).replaceAll("""[\s,]+$""", "")
-      val after  = title.substring(to).trim
-      (if (after.isEmpty) before else s"$before $after").trim
+      // the comma that closed the credit goes too where only a bracket follows it ("…, reż. K. Agopsowicz, (2026)")
+      val after  = title.substring(to).trim.replaceFirst("""^,\s*(?=[(\[]|$)""", "")
+      (if (after.isEmpty) before else if (after.startsWith(",")) s"$before$after" else s"$before $after").trim
     }
   }
   object Rules {

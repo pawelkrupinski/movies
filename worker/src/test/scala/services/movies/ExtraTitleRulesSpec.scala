@@ -161,8 +161,9 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
 
   // Kino Sokolnia (Kępno) types the Wajda retrospective IN FRONT of a slash. The
   // seed's slash strip keeps the part before " / " — the banner — and drops the
-  // film, so this banner must fold before it, and the director tail after.
-  private val sokolniaWajda = "„WAJDA: re-wizje” 2026 / KRAJOBRAZ PO BITWIE (1970) reż. Andrzej Wajda"
+  // film, so this banner must fold before it. The director tail ("… reż. Andrzej Wajda") is off by then: intake
+  // reads it into the listing's director (TitleFacts).
+  private val sokolniaWajda = models.Country.Poland.titleFacts.peel("„WAJDA: re-wizje” 2026 / KRAJOBRAZ PO BITWIE (1970) reż. Andrzej Wajda").title
 
   // An id names one rule: a second rule under it reads as the first wherever a rule is named (an override, a report,
   // the rule store), and two strands added a day apart each brought their own copy.
@@ -331,10 +332,6 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Odyseja ukraiński dubbing"                                -> "Odyseja",
     "Straszny film. Ukrainian dubbing"                         -> "Straszny film",
     "Minionki i straszydła (ukraiński dubbing)"                -> "Minionki i straszydła",
-    // 'reż. / reżyseria: <director>' authorship suffix.
-    "Perfect Days reż. Wim Wenders"                            -> "Perfect Days",
-    "Droga do Vermiglio reż. Maura Delpero"                    -> "Droga do Vermiglio",
-    "Za duży na bajki 3 reżyseria: Kristoffer Rus"             -> "Za duży na bajki 3",
     // Clubless 'DKF - / DKF:' prefix + the 'Filmowy Klub Seniora -' dash variant.
     "DKF - Drugie życie"                                       -> "Drugie życie",
     "DKF: Czytając Lolitę w Teheranie"                         -> "Czytając Lolitę w Teheranie",
@@ -508,9 +505,7 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Stalker | KLASYCZNE ŚRODY"                            -> "Stalker",
     "Volver | FKS"                                         -> "Volver",
     "Amelia | EKO-KINO"                                    -> "Amelia",
-    // Sixteenth-wave (2026-07-06) TMDB-no-match audit: authorship suffix with a
-    // leading comma and the '(YYYY) 4K' restoration tag.
-    "Przekleństwa niewinności, reż. Sofia Coppola (2021)"  -> "Przekleństwa niewinności",
+    // Sixteenth-wave (2026-07-06) TMDB-no-match audit: the '(YYYY) 4K' restoration tag.
     "Generał (1926) 4K"                                    -> "Generał (1926)",
     "Ghost in the shell (1995) 4K"                         -> "Ghost in the shell (1995)",
     // Eighteenth-wave (2026-07-09) TMDB-no-match audit: English-subtitled-screening
