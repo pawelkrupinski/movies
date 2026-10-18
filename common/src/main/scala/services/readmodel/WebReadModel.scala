@@ -60,78 +60,16 @@ class WebReadModel(
   // than scanned on every request.
   private val byCity = new ConcurrentHashMap[String, ConcurrentHashMap[String, CityScreening]]()
 
-  // ATOMIC, NOT @volatile. Advancing a stamp is a read-modify-write, and the two
-  // change streams deliver on different threads (the backstop scheduler and
-  // /rehydrate touch the model too). @volatile would publish the write but not
-  // make the update atomic, so an interleaving could LOSE one and move the stamp
-  // backwards — after which a later advance can re-issue a value a client
-  // already holds, which is a 304 for changed bytes. `advance` is a pure
-  // function of its argument, so it is safe to re-apply on a CAS retry.
-  private val _lastModified = new java.util.concurrent.atomic.AtomicReference[java.time.Instant](clock.instant())
-  /** Model-wide change stamp — moves when ANYTHING in the corpus changes. The
-   *  sitemap's `<lastmod>`, the `filmSlugs` memo and `/debug/readmodel` all want
-   *  exactly this. A conditional GET does not: see [[lastModifiedFor]]. */
-  def lastModified: java.time.Instant = _lastModified.get()
+  // The change stamps: model-wide, and each city's conditional-GET validator.
+  private val stamps = new ReadModelStamps(clock, formerSlugs)
 
-  // ── Per-city cache validators ───────────────────────────────────────────────
-  //
-  // A conditional GET for one city asks a narrower question than `lastModified`
-  // answers: did the bytes THAT CITY renders change? Answering it with the
-  // model-wide stamp meant a Warsaw showtime invalidated London's ETag, so every
-  // city's payload looked like it changed every couple of minutes and no 304 --
-  // browser, mobile app or Cloudflare -- survived long enough to be worth much.
-  //
-  // Stamps are only ever allowed to run FAST, never slow: an over-eager bump
-  // costs one revalidation, a missed one serves stale showtimes behind a 304.
-  private val cityStamps = new ConcurrentHashMap[String, java.time.Instant]()
+  /** Model-wide change stamp — see [[ReadModelStamps.lastModified]]. */
+  def lastModified: java.time.Instant = stamps.lastModified
+
+  /** The conditional-GET validator for one city — see [[ReadModelStamps.lastModifiedFor]]. */
+  def lastModifiedFor(citySlug: String): java.time.Instant = stamps.lastModifiedFor(citySlug)
 
   private val filmCities = new FilmCities
-
-  // The floor under every city's stamp: changes no per-city bump can scope.
-  //
-  // ⚠️ THE SLUG CORPUS IS WHY THIS EXISTS. `FilmSlugs` assigns `/{city}/movie/{slug}`
-  // addresses over the WHOLE corpus -- a film appearing anywhere can take the bare
-  // slug off a film playing in a different city and silently change that city's
-  // rendered links. So any change to the `(id, title, releaseYear)` projection
-  // `FilmSlugs` is a pure function of moves EVERY city, and nothing else does.
-  private val _globalFloor = new java.util.concurrent.atomic.AtomicReference[java.time.Instant](_lastModified.get())
-
-  /** The conditional-GET validator for one city: the latest of the model-wide
-   *  floor, the city's own stamp, and the stamps of any slug it formerly used
-   *  (`screeningsForCity` still serves rows filed under those, so they are part
-   *  of what the city renders).
-   *
-   *  The city stamps are read BEFORE the floor: a reload advances the floor past them first and
-   *  only then drops them, so a stamp found gone means the floor already covers it. Read floor
-   *  first, a request racing the reload took the floor from before it and the stamp from after,
-   *  and answered a validator older than one already handed out. */
-  def lastModifiedFor(citySlug: String): java.time.Instant = {
-    val stamps = (citySlug +: formerSlugs(citySlug)).map(cityStamps.get)
-    stamps.foldLeft(_globalFloor.get())(laterOf)
-  }
-
-  private def laterOf(current: java.time.Instant, candidate: java.time.Instant): java.time.Instant =
-    if (candidate != null && candidate.isAfter(current)) candidate else current
-
-  private def advance(previous: java.time.Instant): java.time.Instant = tools.MonotonicStamp.after(previous, clock)
-
-  private def touch(): Unit = { _lastModified.updateAndGet(previous => advance(previous)); () }
-
-  /** Bump one city's validator (and the model-wide stamp with it): past its own stamp AND
-   *  the floor, so `lastModifiedFor` moves even when the clock reads no later than the floor
-   *  a reload just advanced (a stamp under the floor is no move at all). */
-  private def touchCity(citySlug: String): Unit = {
-    touch()
-    cityStamps.compute(citySlug, (_, previous) => advance(laterOf(_globalFloor.get(), previous)))
-    ()
-  }
-
-  /** Bump the floor, and with it every city. */
-  private def touchEveryCity(): Unit = {
-    touch()
-    _globalFloor.updateAndGet(previous => advance(previous))
-    ()
-  }
 
   /** The projection `FilmSlugs` is a pure function of. Two movie documents with
    *  equal keys assign identical addresses, so a change between them is
@@ -162,7 +100,7 @@ class WebReadModel(
    *  rebuilt only when that corpus changes: it walks every movie, and a request
    *  would otherwise redo that work every time.
    *
-   *  VERSIONED BY THE FILM CORPUS, NOT BY EVERY CHANGE. `_globalFloor` moves
+   *  VERSIONED BY THE FILM CORPUS, NOT BY EVERY CHANGE. The stamps' floor moves
    *  only when a film enters, leaves, or changes title/year — the only things
    *  that can re-address anything. Keyed on the model-wide stamp instead, a
    *  showtime edit anywhere discarded the map and the next render rebuilt every
@@ -171,7 +109,7 @@ class WebReadModel(
   private final class CorpusIndex[A](build: Seq[ResolvedMovie] => A) {
     @volatile private var cached: (java.time.Instant, A) = null
     def get: A = {
-      val stamp = _globalFloor.get()
+      val stamp = stamps.floor
       val hit   = cached
       if (hit != null && hit._1 == stamp) hit._2
       else {
@@ -242,8 +180,8 @@ class WebReadModel(
     // any client see different bytes?".
     if (!previous.contains(m)) {
       // A film ENTERING the corpus, or changing title/year, reshuffles addresses
-      // corpus-wide (see `_globalFloor`).
-      if (!previous.exists(slugKey(_) == slugKey(m))) touchEveryCity()
+      // corpus-wide (see [[ReadModelStamps]]'s floor).
+      if (!previous.exists(slugKey(_) == slugKey(m))) stamps.touchEveryCity()
       // A blurb that landed for ONE city is one city's change. `synopsisFor`
       // reads that city's `synopsisByCity` entry and falls back to the
       // city-independent `synopsis` only when it has none, so when the document
@@ -252,8 +190,8 @@ class WebReadModel(
       // falls back. Everything else (a rating, a poster, the fallback synopsis)
       // reaches every city screening the film.
       else previous match {
-        case Some(p) if differsOnlyInSynopsisByCity(p, m) => citiesWithChangedSynopsis(p, m).foreach(touchCity)
-        case _                                            => citiesScreening(m._id).foreach(touchCity)
+        case Some(p) if differsOnlyInSynopsisByCity(p, m) => citiesWithChangedSynopsis(p, m).foreach(stamps.touchCity)
+        case _                                            => citiesScreening(m._id).foreach(stamps.touchCity)
       }
     }
   }
@@ -263,7 +201,7 @@ class WebReadModel(
     // Deletes on this collection are mostly RE-KEYS, so one naming an id this
     // model never saw is ordinary traffic — and it re-addresses nothing.
     streamed(id)
-    if (movies.remove(id) != null) touchEveryCity()
+    if (movies.remove(id) != null) stamps.touchEveryCity()
   }
 
   /** The row filed under the page its cinema is listed on NOW, rather than the
@@ -295,7 +233,7 @@ class WebReadModel(
     // Only a row that actually differs changes what the city renders — see the
     // note on `applyMovieUpsert`. `previous` is null for a genuinely new row,
     // which is never equal to `s`, so a first insert still bumps.
-    if (previous != s) touchCity(s.city)
+    if (previous != s) stamps.touchCity(s.city)
   }
   private def applyScreeningDelete(id: String): Unit = {
     // The delete event carries only the id; it's globally unique, so drop it
@@ -304,11 +242,11 @@ class WebReadModel(
     streamed(id)
     var found = false
     byCity.forEach { (city, bucket) =>
-      if (bucket.remove(id) != null) { found = true; touchCity(city) }
+      if (bucket.remove(id) != null) { found = true; stamps.touchCity(city) }
     }
     // A delete for a row we never held still moves the model-wide stamp, as it
     // always did; no city's bytes changed, so no city stamp does.
-    if (!found) touch()
+    if (!found) stamps.touch()
   }
 
   /** Full reload from the derived collections — boot hydrate, periodic backstop,
@@ -338,26 +276,46 @@ class WebReadModel(
   private def streamed(id: String): Unit = streamedDuringReload.get.foreach(_.ids.add(id))
 
   private def reloadAround(during: WebReadModel.Streamed): Int = {
-    val applied = during.ids
-    val moviesRead     = reader.findAllMoviesChecked().answered
-    val moviesComplete = moviesRead.isDefined
-    val ms             = moviesRead.getOrElse(Seq.empty)
+    val (moviesRead, moviesComplete) = reloadMovies(during)
+    val screeningsComplete           = reloadScreenings(during)
+    lastReloadComplete = moviesComplete && screeningsComplete
+    if (lastReloadComplete) _hydrated = true
+    else
+      logger.warn(s"WebReadModel reload: incomplete read (movies complete=$moviesComplete, " +
+        s"screenings complete=$screeningsComplete) — added what was read, evicted nothing it could not see.")
+    stamps.coverEveryCity()
+    moviesRead
+  }
+
+  /** Write every movie document read over the live ones — but none the streams applied meanwhile —
+   *  and, on a complete read, evict the ones it no longer holds: how many it read, and whether
+   *  that read was complete. */
+  private def reloadMovies(during: WebReadModel.Streamed): (Int, Boolean) = {
+    val applied    = during.ids
+    val moviesRead = reader.findAllMoviesChecked().answered
+    val ms         = moviesRead.getOrElse(Seq.empty)
     ms.foreach(m => movies.compute(m._id, (id, held) => if (applied.contains(id)) held else m))
-    if (moviesComplete) {
+    moviesRead.foreach { _ =>
       val liveMovieIds = ms.iterator.map(_._id).toSet
       movies.keySet().removeIf(id => !liveMovieIds(id) && !applied.contains(id))
     }
+    (ms.size, moviesRead.isDefined)
+  }
 
-    val seenByCity      = new java.util.HashMap[String, java.util.HashSet[String]]()
-    val nextFilmCities  = new java.util.HashMap[String, java.util.Set[String]]()
-    val screeningsComplete = reader.foreachServedScreening { projected =>
+  /** Stream every served screening over the live rows — but none the streams applied meanwhile —
+   *  and, on a complete read, evict the ones it did not see: whether that read was complete. */
+  private def reloadScreenings(during: WebReadModel.Streamed): Boolean = {
+    val applied        = during.ids
+    val seenByCity     = new java.util.HashMap[String, java.util.HashSet[String]]()
+    val nextFilmCities = new java.util.HashMap[String, java.util.Set[String]]()
+    val complete = reader.foreachServedScreening { projected =>
       val s = onCurrentPage(projected)
       byCity.computeIfAbsent(s.city, _ => new ConcurrentHashMap[String, CityScreening]())
         .compute(s._id, (id, held) => if (applied.contains(id)) held else s)
       seenByCity.computeIfAbsent(s.city, _ => new java.util.HashSet[String]()).add(s._id)
       nextFilmCities.computeIfAbsent(s.filmId, _ => new java.util.HashSet[String]()).add(s.city)
     }.isComplete
-    if (screeningsComplete) {
+    if (complete) {
       // A bucket left empty stays: removing it would race a stream apply already holding it.
       byCity.forEach { (city, bucket) =>
         val seen = Option(seenByCity.get(city)).getOrElse(java.util.Collections.emptySet[String]())
@@ -367,21 +325,7 @@ class WebReadModel(
       // meanwhile, which the scan may not have read.
       filmCities.rebuild(nextFilmCities, (filmId, city) => during.placements.contains((filmId, city)))
     } else filmCities.addAll(nextFilmCities)
-    lastReloadComplete = moviesComplete && screeningsComplete
-    if (lastReloadComplete) _hydrated = true
-    else
-      logger.warn(s"WebReadModel reload: incomplete read (movies complete=$moviesComplete, " +
-        s"screenings complete=$screeningsComplete) — added what was read, evicted nothing it could not see.")
-    // Every city is re-derived, so no per-city stamp survives as evidence of
-    // anything; the floor alone answers for all of them — advanced past the latest of
-    // them FIRST, so no city's validator moves backwards when its stamp goes (a cached
-    // copy at the old stamp would otherwise look newer than the reload's data).
-    // Only stamps the floor now covers go: one a stream stamped meanwhile is past it, and stays.
-    val latestCity = cityStamps.values.asScala.foldLeft(_globalFloor.get())(laterOf)
-    val floor      = _globalFloor.updateAndGet(previous => advance(laterOf(previous, latestCity)))
-    touch()
-    cityStamps.values.removeIf(stamp => !stamp.isAfter(floor))
-    ms.size
+    complete
   }
 
   // Whether the latest reload read both collections whole. Read by the tick thread right after its
@@ -489,17 +433,20 @@ class WebReadModel(
           // Caught up only by a whole read AND a replay from before it; short of either, the next tick
           // that finds the streams live reads again (`catchUpOwed`).
           catchUpOwed = !(lastReloadComplete && checkpoint.isDefined)
-          if (!movieWatch.exists(_.live)) {
-            streamMetrics.reopened(MongoReadModelRepository.MoviesCollection)
-            movieWatch.foreach(watch => Try(watch.close()))
-            movieWatch = reader.watchMovies(applyMovieUpsert, applyMovieDelete, checkpoint)
-          }
-          if (!screeningWatch.exists(_.live)) {
-            streamMetrics.reopened(MongoReadModelRepository.ScreeningsCollection)
-            screeningWatch.foreach(watch => Try(watch.close()))
-            screeningWatch = reader.watchScreenings(applyScreeningUpsert, applyScreeningDelete, checkpoint)
-          }
+          if (!movieWatch.exists(_.live))
+            movieWatch = reopened(movieWatch, MongoReadModelRepository.MoviesCollection)(
+              reader.watchMovies(applyMovieUpsert, applyMovieDelete, checkpoint))
+          if (!screeningWatch.exists(_.live))
+            screeningWatch = reopened(screeningWatch, MongoReadModelRepository.ScreeningsCollection)(
+              reader.watchScreenings(applyScreeningUpsert, applyScreeningDelete, checkpoint))
       }
+
+  /** A dead `watch` on `collection` closed and opened again, counted as a reopen. */
+  private def reopened(watch: Option[StreamSubscription], collection: String)(open: => Option[StreamSubscription]): Option[StreamSubscription] = {
+    streamMetrics.reopened(collection)
+    watch.foreach(dead => Try(dead.close()))
+    open
+  }
 
   private[readmodel] def streamsLive: Boolean = movieWatch.exists(_.live) && screeningWatch.exists(_.live)
 
