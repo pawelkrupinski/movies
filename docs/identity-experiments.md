@@ -235,6 +235,13 @@ slice outputs: `~/.cache/kinowo-identity/handoff/2026-10-15-wrong-match-round2/i
 - **Next angle:** the year form of the same idea (search a relay's work with the year its title or banner dates it,
   branch `relay-search-year`, `2b1b1bab3`) measured LANDABLE with 0 moves on 10-18 and is being landed by its session;
   the season form is worth measuring once that is in and a recording holds the season queries.
+- **Extended 10-18, LANDED** (`kw-romeo-followups`): a title that is the stage work ALONE, stating no year and no credit
+  (a running time at most), is searched with its screenings' season too, and the broadcast join takes it on the record's
+  air day. UK Empire Theatre Halstead's "Romeo and Juliet" [170′] (25 May 2027) now takes the RBO 2026/27 relay, and its
+  "Tosca", "Swan Lake" and Riverside Woodbridge's two, all on their broadcast days. A first, wider form (any title
+  billing a work) asked "Lord of the Rings 2026" of a Fellowship of the Ring screening; whole-title only, it does not.
+  identity-measure-local `--live-gaps`, base `0a6079eb3`, all countries: UK final 5 gained right, PL model 2 gained right,
+  0 lost, 0 new wrong; captures filled for the new queries.
 
 ## 2026-10-18 — facts in a venue page's prose (recording 38713274617, base `807e7f287`)
 
