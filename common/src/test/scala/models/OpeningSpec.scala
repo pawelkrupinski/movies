@@ -28,7 +28,6 @@ class OpeningSpec extends AnyFlatSpec with Matchers {
     SeasonWindow.Spain shouldBe SeasonWindow(Month.JUNE, Month.SEPTEMBER)
     SeasonWindow.UnitedStates shouldBe SeasonWindow(Month.APRIL, Month.OCTOBER)
     SeasonWindow.UnitedKingdom shouldBe SeasonWindow(Month.MAY, Month.SEPTEMBER)
-    SeasonWindow.Poland shouldBe SeasonWindow(Month.MAY, Month.SEPTEMBER)
   }
 
   "A seasonal venue" should "be off season only outside its window; a year-round one never" in {

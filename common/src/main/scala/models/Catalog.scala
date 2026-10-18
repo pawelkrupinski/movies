@@ -69,26 +69,21 @@ object Catalog {
         // against local wall-clock (a London show disappears on Europe/London,
         // not Warsaw).
         //
-        // The zone of the country's BIGGEST city, not of whichever happens to
-        // sort first. Four of the five countries keep one zone throughout, so
-        // for them any city answers; the US spans six, and reading the first
-        // made this value a function of roster ORDER — a generator change that
-        // reshuffled the states once moved it from Chicago to Pago Pago, and
-        // nothing failed. Biggest is at least the answer most of the country's
-        // users are on, and it does not move when the roster is re-sorted.
+        // The zone of the country's BIGGEST city (most venues), not of whichever
+        // happens to sort first. Four of the five countries keep one zone
+        // throughout, so for them any city answers; the US spans six, and
+        // reading the first made this value a function of roster ORDER — a
+        // generator change that reshuffled the states once moved it from Chicago
+        // to Pago Pago, and nothing failed. Biggest is at least the answer most
+        // of the country's users are on, and it does not move when the roster is
+        // re-sorted. For the US that is New York, so America/New_York.
         //
-        // Biggest is also the safer of the two errors it can make. It is still
-        // ONE zone for a country that has six, and the US's biggest metro is Los
-        // Angeles: pruning on Pacific means every zone east of it prunes LATE, so
-        // a show LINGERS a couple of hours past its start. Reading the first city
-        // gave Central, on which a Los Angeles user drops a 19:00 show two hours
-        // EARLY — hiding a screening someone could still get to, which is the
-        // error that costs them something.
-        //
-        // Neither is right on its own, which is why each city carries its OWN
-        // zone below and both apps prefer it (`ios/Kinowo/Models/City.swift`,
+        // It is still ONE zone for a country that has six: pruning a Los Angeles
+        // show on Eastern drops a 19:00 show three hours EARLY. That is why each
+        // city whose zone differs from this one carries its OWN zone below and
+        // both apps prefer it (`ios/Kinowo/Models/City.swift`,
         // `android/.../model/City.kt`); this field is what they fall back to for
-        // a city that omits one.
+        // a city that omits one, which only a city in this very zone does.
         val timezone = countryTimezone(c)
         // The pair the country's own scrapers mark a subtitled/dubbed screening
         // with — the same one the web's version radios are rendered from. The

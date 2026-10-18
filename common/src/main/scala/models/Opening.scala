@@ -26,7 +26,6 @@ final case class SeasonWindow(opens: Month, closes: Month) {
 
 /** Each country's typical season for its open-air, summer and drive-in screens — the ONE place it is written. */
 object SeasonWindow {
-  val Poland:        SeasonWindow = SeasonWindow(Month.MAY, Month.SEPTEMBER)
   val UnitedKingdom: SeasonWindow = SeasonWindow(Month.MAY, Month.SEPTEMBER)
   val Germany:       SeasonWindow = SeasonWindow(Month.MAY, Month.SEPTEMBER)
   val Spain:         SeasonWindow = SeasonWindow(Month.JUNE, Month.SEPTEMBER)
