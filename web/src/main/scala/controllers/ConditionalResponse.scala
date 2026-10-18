@@ -1,6 +1,7 @@
 package controllers
 
 import models.City
+import org.apache.pekko.util.ByteString
 import play.api.mvc.Results.{NotModified, Ok}
 import play.api.mvc.{RequestHeader, Result}
 
@@ -25,7 +26,7 @@ import java.time.Instant
  *  refuses gzip gets it uncompressed.
  *
  *  `modelStamp` is when the read model a payload draws on last moved — per
- *  city, or model-wide for a payload that really is (see [[serve]] for why the
+ *  city, or model-wide for a payload that really is (see `validatorFor` for why the
  *  distinction matters). `now` is the clock the city's calendar day is read
  *  from — the wired clock, never a default, so a spec can walk a validator
  *  across midnight.
@@ -84,74 +85,129 @@ class ConditionalResponse(responseCache: EncodedResponseCache,
   def serve(request: RequestHeader, contentType: String, policy: CachePolicy,
             cacheKey: String = "", city: Option[City] = None,
             cacheBody: Boolean = true)(body: => ResponseBody): Result = {
-    // THE VALIDATOR IS PER CITY, not model-wide. `readModel.lastModified` moves
-    // when anything anywhere changes, so validating London's payload with it
-    // meant a Warsaw showtime expired London's ETag: every city looked like it
-    // changed every couple of minutes, and the client 304s and the edge cache
-    // both lost most of their value. `lastModifiedFor` moves only when the bytes
-    // THIS city renders can have changed -- including the corpus-wide film-address
-    // reshuffles that genuinely do reach every city. `None` means a payload that
-    // really is model-wide.
-    //
-    // AND THE CITY'S CALENDAR DAY FLOORS IT. Every city-scoped payload here is
-    // anchored on the city's own day (`VenueClock.todayIn`): the listing renders that day's
-    // `data-next-day` (the midnight the document retires itself at) and the
-    // expiry stamps the client prunes forward from, and `/api/repertoire` cuts
-    // its window from the same date. The read-model stamp knows nothing about
-    // that -- so a quiet night would answer a request made AFTER midnight with a
-    // 304 for a body rendered before it, handing back a document that has
-    // already told itself to reload and reloads into the same 304. Flooring at
-    // the day's start retires every held copy at the boundary the payload
-    // itself names, and stays monotonic because both inputs only ever advance.
-    val instant  = now()
-    // FULL PRECISION, not truncated to the HTTP-date's second: a film's projection lands as a
-    // burst well inside one second, and a page rendered mid-burst would otherwise share its
-    // version with the finished one — kept by the cache and 304'd to every client holding it
-    // until the city next changed in another second. Only `Last-Modified` is second-grained,
-    // which is why `If-None-Match`, when sent, decides alone (`ifModifiedSinceCurrent`).
-    val lastMod  = ConditionalResponse.dayFlooredValidator(modelStamp(city), city.map(_.zoneId), instant)
-    // `no-transform` IS WHAT LETS THE ETAG BELOW REACH ANYONE. Cloudflare deletes
-    // the ETag from every `text/html` response these two zones serve -- measured
-    // 2026-09-06 on an UNCACHED (`cf-cache-status: BYPASS`) page, so it is not a
-    // stale stored copy, and on BOTH domains; a weak tag was stripped exactly as a
-    // strong one was, while the JSON built by this same method came through
-    // untouched. The transform it is reserving the right to make is visible in the
-    // response: the origin sends `content-encoding: gzip` and the edge hands the
-    // client `content-encoding: br`, having recompressed the body. Bytes it rewrites
-    // are bytes no validator of ours can describe, so it drops ours rather than
-    // forward a lie. `no-transform` withdraws the permission (it also covers Email
-    // Obfuscation, Rocket Loader and Mirage -- none of which have anything to do
-    // here: the listing carries no email address and the edge body contains no
-    // `cdn-cgi` marker).
-    //
-    // WHAT IT COST. Giving up the edge's brotli was worth it on its own: Cloudflare
-    // answers a conditional ONLY from an ETag, so with none to send, a refreshing
-    // browser was handed the entire body under a 200, and a revalidation went from
-    // 287,531 bytes to a bodiless 304. But the full fetch did grow, 228,940 ->
-    // 287,531, +26% -- and building the brotli here instead could not get it back;
-    // see `acceptsGzip`.
-    val cacheControl: Seq[(String, String)] = policy match {
-      case CachePolicy.BrowserOnly         => Seq("Cache-Control" -> "private, no-cache, no-transform")
-      case CachePolicy.RevalidatedAnywhere => Seq("Cache-Control" -> "public, max-age=0, must-revalidate, no-transform")
-    }
-    // ⚠️ THE KEY MUST CARRY EVERY INPUT THAT CHANGES THE BODY, and `request.path`
-    // does not.
-    //
-    // It drops the query string: `?days=7` and the full payload are the same
-    // path, so keying on it alone would serve one client's window to another --
-    // silently, with a 200 and a plausible body. `cacheKey` is the normalised,
-    // parsed parameter rather than the raw query wherever a blob is kept, so a
-    // crawler appending `?foo=1` cannot mint unbounded entries.
-    //
-    // It also drops the HOST, and one deployment serves two of them -- a
-    // country's own domain and the shared brand apex (`Country.servesApex`).
-    // `og:url`, `<link rel=canonical>` and the JSON-LD are all built from
-    // `PageMeta.origin`, so a blob rendered for the first host was handed to
-    // the second advertising the wrong canonical URL for the page. A SHARED
-    // cache keys on host itself and never saw this; it was ours getting it
-    // wrong.
-    val bodyKey = PageMeta.host(request) + request.path + cacheKey
+    val instant    = now()
+    val lastMod    = validatorFor(city, instant)
+    val validators = ResponseValidators(bodyKeyFor(request, cacheKey), cacheControlFor(policy))
+    if (validators.clientHolds(request, lastMod))
+      // ⚠️ `Vary` ON THE 304 TOO, not just on the 200s below. RFC 9110 §15.4.5 makes
+      // it a MUST, not a nicety -- a 304 "MUST generate any of the following header
+      // fields that would have been sent in a 200 to the same request:
+      // Content-Location, Date, ETag, and Vary". And this response needs it more
+      // than most: ONE weak validator covers BOTH representations of the page --
+      // gzip and identity -- which is legitimate precisely because it is weak, but
+      // it means a cache that stores this 304's headers without being told the
+      // response varies by `Accept-Encoding` can hand a gzip body to a client
+      // that refused it.
+      //
+      // Measured on the live origin before this line existed: a 304 came back
+      // `vary: Origin`, while the 200 beside it said `vary: Accept-Encoding,Origin`.
+      // Cloudflare adds the missing token on the way out, so the edge looked
+      // correct and the origin was not -- and nothing else in front of us would.
+      validators.notModified(lastMod)
+    else if (cacheBody && acceptsGzip(request)) serveCachedGzip(request, contentType, city, instant, lastMod, validators)(body)
+    else if (acceptsGzip(request))
+      // An uncached response (a filter variant mints no blob) to a client that takes
+      // gzip: gzipped straight from the walk that writes it. Sent plain, the GzipFilter
+      // compressed it in a second full pass over the page — ~40 MB a render on New
+      // York; an encoded response is one the filter leaves alone.
+      gzipped(body.gzipped, contentType, validators.at(lastMod))
+    else
+      Ok(body.plain).as(contentType).withHeaders((("Vary" -> Vary) +: validators.at(lastMod))*)
+  }
 
+  // THE VALIDATOR IS PER CITY, not model-wide. `readModel.lastModified` moves
+  // when anything anywhere changes, so validating London's payload with it
+  // meant a Warsaw showtime expired London's ETag: every city looked like it
+  // changed every couple of minutes, and the client 304s and the edge cache
+  // both lost most of their value. `lastModifiedFor` moves only when the bytes
+  // THIS city renders can have changed -- including the corpus-wide film-address
+  // reshuffles that genuinely do reach every city. `None` means a payload that
+  // really is model-wide.
+  //
+  // AND THE CITY'S CALENDAR DAY FLOORS IT. Every city-scoped payload here is
+  // anchored on the city's own day (`VenueClock.todayIn`): the listing renders that day's
+  // `data-next-day` (the midnight the document retires itself at) and the
+  // expiry stamps the client prunes forward from, and `/api/repertoire` cuts
+  // its window from the same date. The read-model stamp knows nothing about
+  // that -- so a quiet night would answer a request made AFTER midnight with a
+  // 304 for a body rendered before it, handing back a document that has
+  // already told itself to reload and reloads into the same 304. Flooring at
+  // the day's start retires every held copy at the boundary the payload
+  // itself names, and stays monotonic because both inputs only ever advance.
+  //
+  // FULL PRECISION, not truncated to the HTTP-date's second: a film's projection lands as a
+  // burst well inside one second, and a page rendered mid-burst would otherwise share its
+  // version with the finished one — kept by the cache and 304'd to every client holding it
+  // until the city next changed in another second. Only `Last-Modified` is second-grained,
+  // which is why `If-None-Match`, when sent, decides alone (`ifModifiedSinceCurrent`).
+  private def validatorFor(city: Option[City], instant: Instant): Instant =
+    ConditionalResponse.dayFlooredValidator(modelStamp(city), city.map(_.zoneId), instant)
+
+  // `no-transform` IS WHAT LETS THE ETAG BELOW REACH ANYONE. Cloudflare deletes
+  // the ETag from every `text/html` response these two zones serve -- measured
+  // 2026-09-06 on an UNCACHED (`cf-cache-status: BYPASS`) page, so it is not a
+  // stale stored copy, and on BOTH domains; a weak tag was stripped exactly as a
+  // strong one was, while the JSON built by this same method came through
+  // untouched. The transform it is reserving the right to make is visible in the
+  // response: the origin sends `content-encoding: gzip` and the edge hands the
+  // client `content-encoding: br`, having recompressed the body. Bytes it rewrites
+  // are bytes no validator of ours can describe, so it drops ours rather than
+  // forward a lie. `no-transform` withdraws the permission (it also covers Email
+  // Obfuscation, Rocket Loader and Mirage -- none of which have anything to do
+  // here: the listing carries no email address and the edge body contains no
+  // `cdn-cgi` marker).
+  //
+  // WHAT IT COST. Giving up the edge's brotli was worth it on its own: Cloudflare
+  // answers a conditional ONLY from an ETag, so with none to send, a refreshing
+  // browser was handed the entire body under a 200, and a revalidation went from
+  // 287,531 bytes to a bodiless 304. But the full fetch did grow, 228,940 ->
+  // 287,531, +26% -- and building the brotli here instead could not get it back;
+  // see `acceptsGzip`.
+  private def cacheControlFor(policy: CachePolicy): Seq[(String, String)] = policy match {
+    case CachePolicy.BrowserOnly         => Seq("Cache-Control" -> "private, no-cache, no-transform")
+    case CachePolicy.RevalidatedAnywhere => Seq("Cache-Control" -> "public, max-age=0, must-revalidate, no-transform")
+  }
+
+  // ⚠️ THE KEY MUST CARRY EVERY INPUT THAT CHANGES THE BODY, and `request.path`
+  // does not.
+  //
+  // It drops the query string: `?days=7` and the full payload are the same
+  // path, so keying on it alone would serve one client's window to another --
+  // silently, with a 200 and a plausible body. `cacheKey` is the normalised,
+  // parsed parameter rather than the raw query wherever a blob is kept, so a
+  // crawler appending `?foo=1` cannot mint unbounded entries.
+  //
+  // It also drops the HOST, and one deployment serves two of them -- a
+  // country's own domain and the shared brand apex (`Country.servesApex`).
+  // `og:url`, `<link rel=canonical>` and the JSON-LD are all built from
+  // `PageMeta.origin`, so a blob rendered for the first host was handed to
+  // the second advertising the wrong canonical URL for the page. A SHARED
+  // cache keys on host itself and never saw this; it was ours getting it
+  // wrong.
+  private def bodyKeyFor(request: RequestHeader, cacheKey: String): String =
+    PageMeta.host(request) + request.path + cacheKey
+
+    // Gzipped HERE, and stamped `Content-Encoding` HERE, which is also what
+    // keeps Play's GzipFilter off it: the filter skips any response that already
+    // names an encoding — as the uncached branch below does too.
+    //
+    // Served stale across a content change until the re-render lands, but never
+    // across the city's midnight: a copy rendered before it names the old
+    // midnight as its reload time, and would reload straight back into itself.
+  private def serveCachedGzip(request: RequestHeader, contentType: String, city: Option[City], instant: Instant,
+                              lastMod: Instant, validators: ResponseValidators)(body: => ResponseBody): Result = {
+    val staleFloor = city.fold(Instant.MIN)(c => ConditionalResponse.dayStart(c.zoneId, instant))
+    val served     = responseCache.gzippedBody(validators.bodyKey, lastMod, staleFloor)(body)
+    // A client revalidating the very copy being served stale holds it already.
+    if (served.version != lastMod && validators.clientHolds(request, served.version)) validators.notModified(served.version)
+    else gzipped(served.bytes, contentType, validators.at(served.version))
+  }
+
+  private def gzipped(bytes: ByteString, contentType: String, validators: Seq[(String, String)]): Result =
+    Ok(bytes).as(contentType).withHeaders((Seq("Content-Encoding" -> "gzip", "Vary" -> Vary) ++ validators)*)
+
+  /** The validators one response key carries at a version, and the conditional checks against them. */
+  private case class ResponseValidators(bodyKey: String, cacheControl: Seq[(String, String)]) {
     // AN ETAG AS WELL AS Last-Modified, BECAUSE A SHARED CACHE NEEDS ONE.
     //
     // Measured against the live edge on 2026-09-05: once Cloudflare holds a copy,
@@ -205,60 +261,23 @@ class ConditionalResponse(responseCache: EncodedResponseCache,
     // naming only the data let the new pod 304 the old build's page — keeping markup and asset URLs
     // the new build no longer serves. (`If-Modified-Since` cannot carry a build; a browser sends the
     // ETag alongside it, and with `If-None-Match` present the date is not consulted.)
-    def etagAt(version: Instant): String =
+    def etag(version: Instant): String =
       "W/\"" + Integer.toHexString(bodyKey.hashCode) + "-" + buildTag + "-" + version.getEpochSecond.toHexString +
         (if (version.getNano == 0) "" else "." + version.getNano.toHexString) + "\""
+
     // `Last-Modified` is second-grained by its format; the ETag carries the full version.
-    def validatorsAt(version: Instant): Seq[(String, String)] = {
+    def at(version: Instant): Seq[(String, String)] = {
       val httpDate = java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME
         .format(version.atOffset(java.time.ZoneOffset.UTC))
-      ("Last-Modified" -> httpDate) +: ("ETag" -> etagAt(version)) +: cacheControl
+      ("Last-Modified" -> httpDate) +: ("ETag" -> etag(version)) +: cacheControl
     }
-    def clientHolds(version: Instant): Boolean =
-      ConditionalResponse.offersValidator(request.headers.get("If-None-Match"), etagAt(version)) ||
-        ifModifiedSinceCurrent(request, version)
-    def notModified(version: Instant): Result =
-      NotModified.withHeaders((("Vary" -> Vary) +: validatorsAt(version))*)
 
-    if (clientHolds(lastMod))
-      // ⚠️ `Vary` ON THE 304 TOO, not just on the 200s below. RFC 9110 §15.4.5 makes
-      // it a MUST, not a nicety -- a 304 "MUST generate any of the following header
-      // fields that would have been sent in a 200 to the same request:
-      // Content-Location, Date, ETag, and Vary". And this response needs it more
-      // than most: ONE weak validator covers BOTH representations of the page --
-      // gzip and identity -- which is legitimate precisely because it is weak, but
-      // it means a cache that stores this 304's headers without being told the
-      // response varies by `Accept-Encoding` can hand a gzip body to a client
-      // that refused it.
-      //
-      // Measured on the live origin before this line existed: a 304 came back
-      // `vary: Origin`, while the 200 beside it said `vary: Accept-Encoding,Origin`.
-      // Cloudflare adds the missing token on the way out, so the edge looked
-      // correct and the origin was not -- and nothing else in front of us would.
-      notModified(lastMod)
-    else if (cacheBody && acceptsGzip(request)) {
-      // Gzipped HERE, and stamped `Content-Encoding` HERE, which is also what
-      // keeps Play's GzipFilter off it: the filter skips any response that already
-      // names an encoding — as the uncached branch below does too.
-      //
-      // Served stale across a content change until the re-render lands, but never
-      // across the city's midnight: a copy rendered before it names the old
-      // midnight as its reload time, and would reload straight back into itself.
-      val staleFloor = city.fold(Instant.MIN)(c => ConditionalResponse.dayStart(c.zoneId, instant))
-      val served     = responseCache.gzippedBody(bodyKey, lastMod, staleFloor)(body)
-      // A client revalidating the very copy being served stale holds it already.
-      if (served.version != lastMod && clientHolds(served.version)) notModified(served.version)
-      else Ok(served.bytes).as(contentType)
-        .withHeaders((Seq("Content-Encoding" -> "gzip", "Vary" -> Vary) ++ validatorsAt(served.version))*)
-    } else if (acceptsGzip(request))
-      // An uncached response (a filter variant mints no blob) to a client that takes
-      // gzip: gzipped straight from the walk that writes it. Sent plain, the GzipFilter
-      // compressed it in a second full pass over the page — ~40 MB a render on New
-      // York; an encoded response is one the filter leaves alone.
-      Ok(body.gzipped).as(contentType)
-        .withHeaders((Seq("Content-Encoding" -> "gzip", "Vary" -> Vary) ++ validatorsAt(lastMod))*)
-    else
-      Ok(body.plain).as(contentType).withHeaders((("Vary" -> Vary) +: validatorsAt(lastMod))*)
+    def clientHolds(request: RequestHeader, version: Instant): Boolean =
+      ConditionalResponse.offersValidator(request.headers.get("If-None-Match"), etag(version)) ||
+        ifModifiedSinceCurrent(request, version)
+
+    def notModified(version: Instant): Result =
+      NotModified.withHeaders((("Vary" -> Vary) +: at(version))*)
   }
 }
 

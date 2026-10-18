@@ -1,155 +1,12 @@
 package controllers
 
 import models._
-import play.api.Logging
-import play.api.libs.json.{Json, Writes}
 import play.api.mvc._
 import play.api.Mode
 import services.movies.TitleNormalizer
 import services.readmodel.WebReadModel
 
 import java.time.LocalDate
-
-
-// ── JSON API types ──────────────────────────────────────────────────────
-case class ApiShowtime(time: String, format: String, room: Option[String], bookingURL: Option[WebHref])
-case class ApiCinemaShowings(cinema: String, cinemaURL: Option[WebHref], showtimes: Seq[ApiShowtime])
-case class ApiDayShowings(date: String, label: String, cinemas: Seq[ApiCinemaShowings])
-case class ApiRatings(
-  imdb: Option[Double], imdbURL: Option[WebHref],
-  metascore: Option[Int], metacriticURL: Option[WebHref],
-  rottenTomatoes: Option[Int], rottenTomatoesURL: Option[WebHref],
-  filmweb: Option[Double], filmwebURL: Option[WebHref]
-)
-case class ApiFilm(
-  title: String, slug: String, posterURL: Option[WebHref], fallbackPosterURLs: Seq[WebHref],
-  runtimeMinutes: Option[Int], releaseYear: Option[Int], genres: Seq[String],
-  // Age rating / certificate (UK BBFC "15"/"PG"/…); omitted when the film has none.
-  ageRating: Option[String],
-  ratings: ApiRatings,
-  countries: Seq[String], directors: Seq[String], cast: Seq[String],
-  showings: Seq[ApiDayShowings]
-)
-
-/** Detail-only payload for `GET /api/details`: the heavy text (synopsis) and
- *  trailers that the grid / filters never need. Split off the listing so the
- *  latency-sensitive `/api/repertoire` stays lean; clients fetch both in
- *  parallel and merge by `title`. Only films carrying a synopsis or at least
- *  one trailer are emitted. */
-case class ApiFilmDetails(
-  title: String, originalTitle: Option[String], synopsis: Option[String], trailerURLs: Seq[WebHref]
-)
-
-object ApiFilmDetails {
-  implicit val writes: Writes[ApiFilmDetails] = Json.writes[ApiFilmDetails]
-
-  def from(fs: FilmSchedule): ApiFilmDetails = ApiFilmDetails(
-    title         = fs.movie.title,
-    // The genuinely-distinct original title and the embed-ready trailer URLs are
-    // pre-resolved on the read-model document (the redundancy check + URL transform
-    // ran at projection time), so clients render them unconditionally.
-    originalTitle = fs.resolved.originalTitle,
-    synopsis      = fs.synopsis,
-    trailerURLs   = fs.resolved.trailerUrls.flatMap(WebHref.of).map(_.asciiEncoded),
-  )
-
-  def hasContent(d: ApiFilmDetails): Boolean =
-    d.synopsis.nonEmpty || d.trailerURLs.nonEmpty || d.originalTitle.nonEmpty
-}
-
-// ── Cinema universe + area grouping (static per city) ──────────────────────
-/** One collapsible cinema group in a split city: its [[CinemaArea]] label +
- *  stable slug, and the display names of the venues it holds. */
-case class ApiCinemaArea(name: String, slug: String, cinemas: Seq[String])
-/** `GET /:city/api/cinemas` — the city's full cinema universe (every venue, in
- *  city order, including ones with no showings today) plus its area grouping.
- *  A flat city returns an empty `areas`; a split city (e.g. London) returns one
- *  entry per compass area. Lets the mobile filter render the same collapsible,
- *  per-area (de)selectable list the web filter builds server-side.
- *
- *  `seasons` names the venues that screen only in a season (open-air, summer, drive-in;
- *  [[models.Opening.Seasonal]]): see [[CinemaSeasons]]. ABSENT when the city has none, so
- *  every payload without one is byte-for-byte what it was and a decoder that does not know
- *  the key is never handed it empty. */
-case class ApiCityCinemas(cinemas: Seq[String], areas: Seq[ApiCinemaArea], seasons: Option[Seq[ApiCinemaSeason]] = None)
-
-object ApiCityCinemas {
-  implicit val apiCinemaAreaWrites: Writes[ApiCinemaArea] = Json.writes[ApiCinemaArea]
-  implicit val writes: Writes[ApiCityCinemas] = Json.writes[ApiCityCinemas]
-
-  /** `today` is the city's own day, off the injected clock: it decides `offSeason`. */
-  def from(city: City, today: java.time.LocalDate): ApiCityCinemas = ApiCityCinemas(
-    cinemas = city.cinemaDisplayNames,
-    areas   = city.areas.map(g => ApiCinemaArea(g.area.label, g.area.slug, g.cinemaDisplayNames)),
-    seasons = Option(CinemaSeasons.of(city.cinemas, today)).filter(_.nonEmpty),
-  )
-}
-
-object ApiFilm {
-  implicit val apiShowtimeWrites: Writes[ApiShowtime] = Json.writes[ApiShowtime]
-  implicit val apiCinemaShowingsWrites: Writes[ApiCinemaShowings] = Json.writes[ApiCinemaShowings]
-  implicit val apiDayShowingsWrites: Writes[ApiDayShowings] = Json.writes[ApiDayShowings]
-  implicit val apiRatingsWrites: Writes[ApiRatings] = Json.writes[ApiRatings]
-  implicit val apiFilmWrites: Writes[ApiFilm] = Json.writes[ApiFilm]
-
-  /** `language` is the city's: the day labels are spelled in it. */
-  def from(fs: FilmSchedule, language: java.util.Locale): ApiFilm = {
-    val resolved = fs.resolved
-    val cinemaUrlMap = fs.linkableCinemaFilmUrls.map { case (c, href) => c.displayName -> href }.toMap
-    ApiFilm(
-      title            = fs.movie.title,
-      // The film's canonical path segment on the web (`/{city}/movie/{slug}`).
-      // Served rather than derived client-side: the fold handles Polish and
-      // German diacritics, ß, and Cyrillic, and a Swift copy plus a Kotlin copy
-      // would be two more places for it to drift from `tools.Slugify`.
-      slug             = fs.slug.getOrElse(""),
-      // Every URL below is a [[WebHref]], http(s) only — both apps hand the links
-      // to the system, where a scraped custom-scheme or `intent:` URL would open
-      // another app — and goes through AsciiUrl: the mobile models decode these
-      // fields as `URL`, and a strict parser fails the whole listing on one
-      // scraped poster link with a Polish letter in it.
-      posterURL        = fs.posterHref.map(_.asciiEncoded),
-      fallbackPosterURLs = fs.fallbackPosterHrefs.map(_.asciiEncoded),
-      runtimeMinutes   = fs.movie.runtimeMinutes,
-      releaseYear      = fs.movie.releaseYear,
-      genres           = fs.movie.genres,
-      ageRating        = resolved.ageRating,
-      ratings          = ApiRatings(
-        imdb              = resolved.ratings.imdb,
-        imdbURL           = resolved.ratings.imdbUrl.flatMap(WebHref.of).map(_.asciiEncoded),
-        metascore         = resolved.ratings.metascore,
-        metacriticURL     = WebHref.of(resolved.ratings.metacriticUrl).map(_.asciiEncoded),
-        rottenTomatoes    = resolved.ratings.rottenTomatoes,
-        rottenTomatoesURL = WebHref.of(resolved.ratings.rottenTomatoesUrl).map(_.asciiEncoded),
-        filmweb           = resolved.ratings.filmweb,
-        filmwebURL        = WebHref.of(resolved.ratings.filmwebUrl).map(_.asciiEncoded)
-      ),
-      countries        = fs.movie.countries,
-      directors        = fs.director,
-      cast             = fs.cast,
-      showings         = fs.showings.map { case (date, cinemas) =>
-        ApiDayShowings(
-          date    = date.toString,
-          label   = CardFormat.date(date, fs.asOf, language),
-          cinemas = cinemas.map { cs =>
-            ApiCinemaShowings(
-              cinema    = cs.cinema.displayName,
-              cinemaURL = cinemaUrlMap.get(cs.cinema.displayName).map(_.asciiEncoded),
-              showtimes = cs.showtimes.map { st =>
-                ApiShowtime(
-                  time       = CardFormat.time(st.dateTime),
-                  format     = st.format.mkString(" "),
-                  room       = st.room,
-                  bookingURL = st.bookingUrl.flatMap(WebHref.of).map(_.asciiEncoded)
-                )
-              }
-            )
-          }
-        )
-      }
-    )
-  }
-}
 
 class MovieController( cc: ControllerComponents,
                        movieControllerService: MovieControllerService,
@@ -196,7 +53,7 @@ class MovieController( cc: ControllerComponents,
                        // The build serving the pages — in every validator, so two builds side by
                        // side in a rolling deploy never answer one another's revalidation with a 304.
                        build: settings.CommitSha = settings.CommitSha("unknown"),
-                     ) extends AbstractController(cc) with Logging {
+                     ) extends AbstractController(cc) {
 
   private implicit val fragments: FilmCardFragments = filmCards
 
@@ -206,24 +63,11 @@ class MovieController( cc: ControllerComponents,
   private val cityStructuredData: com.github.benmanes.caffeine.cache.Cache[StructuredData.CityPageKey, String] =
     tools.BoundedCache.ofSize(512).build[StructuredData.CityPageKey, String]()
 
-  // Each film's object in a city's JSON payloads (`/api/repertoire`, `/api/details`),
-  // kept under the schedule it is serialized from. A payload is re-rendered whenever its
-  // city's stamp moves, and building every film's play-json tree again was ~26 MB and
-  // ~20 ms a Warsaw `/api/repertoire`, for the handful of films that had moved. The key
-  // holds everything an object is a function of — the payload and its day window, the
-  // city (its language), the day, the schedule — so a changed film asks for another key
-  // and a superseded entry only ages out of the byte bound — every entry weighing at least
-  // `FilmJsonEntryBytes`, a film left out (`None`) too: Caffeine never evicts a zero-weight
-  // entry, and each pins its key's whole schedule.
-  private val filmJson: com.github.benmanes.caffeine.cache.Cache[MovieController.FilmJsonKey, Option[String]] =
-    tools.BoundedCache.ofWeight[MovieController.FilmJsonKey, Option[String]](MovieController.FilmJsonMaxBytes, MovieController.FilmJsonEntryBytes)(
-      (_, json) => json.fold(0)(CaffeineFilmCardFragments.bytesHeld))
-      .build[MovieController.FilmJsonKey, Option[String]]()
+  // A city's JSON payloads, each film's object serialized once and kept.
+  private[controllers] val jsonPayloads = new CityJsonPayloads
 
-  /** How many films' API JSON this controller is holding — for the spec. */
-  private[controllers] def filmJsonHeld: Long = { filmJson.cleanUp(); filmJson.estimatedSize() }
-  /** What the held films' API JSON weighs against [[MovieController.FilmJsonMaxBytes]] — for the spec. */
-  private[controllers] def filmJsonWeighed: Long = filmJson.policy().eviction().get().weightedSize().getAsLong
+  // robots.txt and the sitemaps, cut from the live schedules and each city's own stamp.
+  private val crawlerFiles = new CrawlerFiles(servingCountry, movieControllerService.toSchedules(_), city => readModel.lastModifiedFor(city.slug))
 
   /** How many listings' JSON-LD this controller is holding — for the spec. */
   private[controllers] def structuredDataHeld: Long = { cityStructuredData.cleanUp(); cityStructuredData.estimatedSize() }
@@ -335,61 +179,68 @@ class MovieController( cc: ControllerComponents,
    *  combinatorially many and not worth an edge entry each. They do carry the
    *  same validators, so revalidating one comes back 304 rather than re-sending
    *  the listing — what they skip is the shared blob, not the conditional GET. */
-  private def renderIndex(city: City, request: RequestHeader): Result = {
+  private def renderIndex(city: City, request: RequestHeader): Result =
+    if (cacheablePlainPage(request)) servePlainListing(city, request)
+    else serveFilteredListing(city, request)
+
+  // 304 short-circuits before any work; on a 200 cache hit `renderIndexHtml`
+  // (and its data-prep) never runs either.
+  // NO `Set-Cookie` HERE, AND THAT IS THE WHOLE POINT OF THE BRANCH.
+  // Cloudflare bypasses any response carrying one: measured, this page went
+  // `DYNAMIC` -> `BYPASS` the moment a Cache Rule made it eligible, with the
+  // `city=` cookie the only thing left on it. The cookie exists so the bare
+  // `/` landing can bounce a returning visitor to their city; it is
+  // `httpOnly = false` precisely so the client owns it, and `shared.js`
+  // writes it on load with the same name, path and lifetime. The filtered
+  // branch below is `private, no-cache`, so it keeps setting it server-side
+  // and a visitor with no JS is still remembered.
+  private def servePlainListing(city: City, request: RequestHeader): Result =
+    conditionalResponse.serve(request, HtmlContentType, CachePolicy.RevalidatedAnywhere,
+                              city = Some(city))(listingBody(city, request))
+
+  // A FILTER VARIANT STILL GETS VALIDATORS, JUST NOT A BLOB.
+  //
+  // `private, no-cache` tells the browser to store the page and re-validate
+  // before every re-use -- but a re-validation with nothing to validate
+  // AGAINST cannot come back 304, so every refresh of a shared
+  // `?date=tomorrow` link re-downloaded the whole listing (265 KB gzipped,
+  // 3.8 MB of HTML for Manchester). An ETag makes that refresh free when the
+  // city has not moved, without promising any cache it may serve the copy
+  // unasked.
+  //
+  // `cacheBody = false` is the other half of the decision above: these
+  // variants stay out of the shared gzip cache, which is an LRU over BYTES,
+  // so one-off filter combinations cannot evict the bare city pages that
+  // earn their place there. The GzipFilter still compresses on the way out.
+  //
+  // The whole query string is the key, not a normalised subset of it: the
+  // page puts the request's own URL in `og:url`, so two spellings that mean
+  // the same thing really do render different bytes and must not share a
+  // validator. Nothing is stored per key, so an appended `?foo=1` costs a
+  // hash and nothing else.
+  //
+  // WHAT THE ETAG PROMISES, PRECISELY: the read-model version this page was
+  // cut from, not a hash of the bytes. With no blob pinning them, a body
+  // re-rendered a few minutes later differs in the showtimes that have since
+  // started -- under the same validator, so a client holding the earlier
+  // copy keeps it until the city's stamp moves or its midnight arrives. That
+  // is the same age the branch above serves from its blob between two stamps,
+  // and the page is built for it: each slot's expiry prunes the lapsed showtimes
+  // client-side and `data-next-day` retires the document at midnight. What
+  // it costs that the blob branch does not is byte-identity between two
+  // clients holding one validator, which only a SHARED cache could observe
+  // -- and `private, no-cache` is exactly the instruction that none may.
+  private def serveFilteredListing(city: City, request: RequestHeader): Result =
+    conditionalResponse.serve(request, HtmlContentType, CachePolicy.BrowserOnly,
+                              cacheKey = "|q=" + request.rawQueryString, city = Some(city),
+                              cacheBody = false)(listingBody(city, request))
+      .withCookies(cityCookie(city))
+
+  /** The listing's body, its allocation reported as `listing`. */
+  private def listingBody(city: City, request: RequestHeader): ResponseBody = {
     implicit val c: City = city
     implicit val messages: play.api.i18n.Messages = deploymentMessages
-    if (cacheablePlainPage(request)) {
-      // 304 short-circuits before any work; on a 200 cache hit `renderIndexHtml`
-      // (and its data-prep) never runs either.
-      // NO `Set-Cookie` HERE, AND THAT IS THE WHOLE POINT OF THE BRANCH.
-      // Cloudflare bypasses any response carrying one: measured, this page went
-      // `DYNAMIC` -> `BYPASS` the moment a Cache Rule made it eligible, with the
-      // `city=` cookie the only thing left on it. The cookie exists so the bare
-      // `/` landing can bounce a returning visitor to their city; it is
-      // `httpOnly = false` precisely so the client owns it, and `shared.js`
-      // writes it on load with the same name, path and lifetime. The filtered
-      // branch below is `private, no-cache`, so it keeps setting it server-side
-      // and a visitor with no JS is still remembered.
-      conditionalResponse.serve(request, HtmlContentType, CachePolicy.RevalidatedAnywhere,
-                                city = Some(city))(ResponseBody.measured(ResponseBody.html(renderIndexHtml(city, request)), recordRender("listing", _)))
-    } else {
-      // A FILTER VARIANT STILL GETS VALIDATORS, JUST NOT A BLOB.
-      //
-      // `private, no-cache` tells the browser to store the page and re-validate
-      // before every re-use -- but a re-validation with nothing to validate
-      // AGAINST cannot come back 304, so every refresh of a shared
-      // `?date=tomorrow` link re-downloaded the whole listing (265 KB gzipped,
-      // 3.8 MB of HTML for Manchester). An ETag makes that refresh free when the
-      // city has not moved, without promising any cache it may serve the copy
-      // unasked.
-      //
-      // `cacheBody = false` is the other half of the decision above: these
-      // variants stay out of the shared gzip cache, which is an LRU over BYTES,
-      // so one-off filter combinations cannot evict the bare city pages that
-      // earn their place there. The GzipFilter still compresses on the way out.
-      //
-      // The whole query string is the key, not a normalised subset of it: the
-      // page puts the request's own URL in `og:url`, so two spellings that mean
-      // the same thing really do render different bytes and must not share a
-      // validator. Nothing is stored per key, so an appended `?foo=1` costs a
-      // hash and nothing else.
-      //
-      // WHAT THE ETAG PROMISES, PRECISELY: the read-model version this page was
-      // cut from, not a hash of the bytes. With no blob pinning them, a body
-      // re-rendered a few minutes later differs in the showtimes that have since
-      // started -- under the same validator, so a client holding the earlier
-      // copy keeps it until the city's stamp moves or its midnight arrives. That
-      // is the same age the branch above serves from its blob between two stamps,
-      // and the page is built for it: each slot's expiry prunes the lapsed showtimes
-      // client-side and `data-next-day` retires the document at midnight. What
-      // it costs that the blob branch does not is byte-identity between two
-      // clients holding one validator, which only a SHARED cache could observe
-      // -- and `private, no-cache` is exactly the instruction that none may.
-      conditionalResponse.serve(request, HtmlContentType, CachePolicy.BrowserOnly,
-                                cacheKey = "|q=" + request.rawQueryString, city = Some(city),
-                                cacheBody = false)(ResponseBody.measured(ResponseBody.html(renderIndexHtml(city, request)), recordRender("listing", _)))
-        .withCookies(cityCookie(city))
-    }
+    ResponseBody.measured(ResponseBody.html(renderIndexHtml(city, request)), recordRender("listing", _))
   }
 
   private def renderIndexHtml(city: City, request: RequestHeader)(implicit c: City, messages: play.api.i18n.Messages): play.twirl.api.Html = {
@@ -473,95 +324,34 @@ class MovieController( cc: ControllerComponents,
     }
   }
 
-  // robots.txt — see `RobotsTxt` for what goes in it and why. The one decision
-  // that lives here is WHICH of its two shapes this request wants: the brand
-  // front door speaks for every country mounted under the apex, a country's own
-  // site only for itself. The share-card images (`/share-cards/…`, and the old
-  // `/*/og-image` + `/*/movie/og-image` addresses that redirect to them) are
-  // deliberately NOT disallowed — Facebook honours robots.txt when fetching
-  // `og:image`, so blocking them would break every share preview.
+  // robots.txt — see `CrawlerFiles.robots` for which shape a request wants. The share-card
+  // images (`/share-cards/…`, and the old `/*/og-image` + `/*/movie/og-image` addresses that
+  // redirect to them) are deliberately NOT disallowed — Facebook honours robots.txt when
+  // fetching `og:image`, so blocking them would break every share preview.
   def robotsTxt: Action[AnyContent] = Action { request =>
-    val body =
-      if (servingCountry.servesApex(PageMeta.host(request))) RobotsTxt.frontDoor(mountedUnderApex)
-      else RobotsTxt.forCountry(PageMeta.origin(request) + servingCountry.pathPrefix, servingCountry)
-    Ok(body).as("text/plain; charset=utf-8")
+    Ok(crawlerFiles.robots(PageMeta.host(request), PageMeta.origin(request))).as("text/plain; charset=utf-8")
   }
 
-  /** The countries that share the brand domain, and so the ones the front door's
-   *  `robots.txt` and `sitemap.xml` have to speak for: a crawler reads both only
-   *  at a host's ROOT, which none of them owns. Poland is excluded by having no
-   *  path prefix — it is a different host with a root of its own. */
-  private def mountedUnderApex: Seq[models.Country] =
-    models.Country.switchable.filter(_.pathPrefix.nonEmpty)
-
-  /** The `<lastmod>` W3C date for `city`'s URLs — its own per-city read-model
-   *  stamp (`WebReadModel.lastModifiedFor`), not the model-wide
-   *  `readModel.lastModified`. The model-wide stamp moves on every city's
-   *  change, so it claimed a Warsaw showtime edit as a change to every other
-   *  city's URLs too — the same over-invalidation `lastModifiedFor` already
-   *  exists to avoid for conditional GETs (see `ConditionalResponse`). */
-  private def cityLastmod(city: City): Option[String] =
-    Some(java.time.format.DateTimeFormatter.ISO_LOCAL_DATE
-      .format(readModel.lastModifiedFor(city.slug).atOffset(java.time.ZoneOffset.UTC)))
-
-  /** `sitemap.xml` — the full crawl map: landing, every city listing + plan, and
-   *  every film each city is currently showing. Built from the warm read model
-   *  (`toSchedules` per city is a cheap in-memory join), so it always reflects
-   *  what's actually live. Cached for an hour at the edge/browser; the corpus
-   *  changes on the order of scrape cadence, not per request.
-   *
-   *  A country whose corpus crosses `SitemapBuilder.CityPartitionThreshold`
-   *  URLs gets a sitemap INDEX here instead of the flat file — one sub-sitemap
-   *  per city (`citySitemap`) plus one for the landing (`sitemapRoot`). Today
-   *  that's only the US corpus, but the check is against the actual count, not
-   *  a hardcoded country, so it holds as any corpus grows past the threshold. */
+  /** `sitemap.xml` — the full crawl map, or an index of per-city ones for a large
+   *  corpus; see [[CrawlerFiles.sitemap]]. Cached for an hour at the edge/browser;
+   *  the corpus changes on the order of scrape cadence, not per request. */
   def sitemap: Action[AnyContent] = Action { request =>
-    // Scope to THIS deployment's country — a `KINOWO_COUNTRY=pl` (Poland) host must
-    // not advertise the UK/Germany cities that also live in the global `City.all`
-    // (those pages render empty on this host, so crawling them is pure waste). Each
-    // country's own deployment sitemaps its own cities. Same scope the landing +
-    // navbar use (the wiring's `country`).
-    val body =
-      if (servingCountry.servesApex(PageMeta.host(request))) SitemapBuilder.index(mountedUnderApex)
-      else {
-        val entries = servingCountry.cities.map(c => c -> movieControllerService.toSchedules(c))
-        // The bare ORIGIN plus the country: every `<loc>` picks the mount point
-        // up from the city (or, for the landing, from the country) via the same
-        // builders the pages themselves use, so a country sharing the brand
-        // domain neither drops the prefix nor doubles it.
-        if (SitemapBuilder.urlCount(entries) > SitemapBuilder.CityPartitionThreshold)
-          SitemapBuilder.cityIndex(PageMeta.origin(request), servingCountry)
-        else
-          SitemapBuilder.build(PageMeta.origin(request), servingCountry, entries, lastmod = cityLastmod)
-      }
-    Ok(body).as("application/xml; charset=utf-8")
-      .withHeaders("Cache-Control" -> "public, max-age=3600")
+    okSitemap(crawlerFiles.sitemap(PageMeta.host(request), PageMeta.origin(request)))
   }
 
-  /** `/sitemap-root.xml` — the landing-only sitemap a partitioned country's
-   *  index ([[SitemapBuilder.cityIndex]]) points at, since the landing URL
-   *  belongs to no one city and would look like that city's own page if it
-   *  rode along in one city's sub-sitemap instead. */
+  /** `/sitemap-root.xml` — the landing-only sitemap a partitioned country's index points at. */
   def sitemapRoot: Action[AnyContent] = Action { request =>
-    val body = SitemapBuilder.build(PageMeta.origin(request), servingCountry, Nil)
-    Ok(body).as("application/xml; charset=utf-8")
-      .withHeaders("Cache-Control" -> "public, max-age=3600")
+    okSitemap(crawlerFiles.sitemapRoot(PageMeta.origin(request)))
   }
 
   /** `/{city}/sitemap.xml` — one city's slice of the full crawl map, served
-   *  only once a country's flat `sitemap.xml` has been partitioned (see
-   *  `sitemap`). Reuses the exact same per-city lastmod `sitemap` stamps the
-   *  flat file with; the only difference is the landing URL, which this
-   *  omits — `sitemapRoot` already speaks for it. */
+   *  only once a country's flat `sitemap.xml` has been partitioned. */
   def citySitemap(city: String): Action[AnyContent] = Action { request =>
-    withCity(city, request) { c =>
-      val films = movieControllerService.toSchedules(c)
-      val body = SitemapBuilder.build(PageMeta.origin(request), servingCountry, Seq(c -> films),
-                                       lastmod = cityLastmod, includeLanding = false)
-      Ok(body).as("application/xml; charset=utf-8")
-        .withHeaders("Cache-Control" -> "public, max-age=3600")
-    }
+    withCity(city, request)(c => okSitemap(crawlerFiles.citySitemap(PageMeta.origin(request), c)))
   }
+
+  private def okSitemap(body: String): Result =
+    Ok(body).as("application/xml; charset=utf-8").withHeaders("Cache-Control" -> "public, max-age=3600")
 
   /** Conditional-GET wrapper for the JSON API endpoints — the same mechanism as
    *  the HTML pages (see [[ConditionalResponse.serve]]): a current `If-Modified-Since`
@@ -573,26 +363,13 @@ class MovieController( cc: ControllerComponents,
     conditionalResponse.serve(request, "application/json", CachePolicy.RevalidatedAnywhere,
                               cacheKey = cacheKey, city = Some(city))(body)
 
-  /** A city's JSON payload as an array of one object per film, each film's object
-   *  serialized once and kept (see `filmJson`); a film for which `json` answers `None`
-   *  is left out. `payload` names what the objects are, so two payloads never share one. */
-  private def filmJsonArray(payload: String, city: City, today: LocalDate, films: Seq[FilmSchedule])
-                           (json: FilmSchedule => Option[play.api.libs.json.JsValue]): ResponseBody =
-    ResponseBody.jsonArray(films.iterator.flatMap { film =>
-      filmJson.get(MovieController.FilmJsonKey(payload, city.slug, today, film), _ => json(film).map(Json.stringify))
-    })
-
   /** Lean listing — everything the grid + filters need, no heavy detail text.
    *  Latency-sensitive; clients hit this on the critical path. */
   def apiRepertoire(city: String, days: Option[Int] = None): Action[AnyContent] = Action { request =>
     withCity(city, request) { c =>
-      val window   = MovieController.dayWindow(days)
-      val cacheKey = MovieController.windowCacheKey(window)
-      conditionalJson(request, c, cacheKey) {
-        val today = movieControllerService.nowIn(c).toLocalDate
-        filmJsonArray("repertoire" + cacheKey, c, today, movieControllerService.toSchedules(c)) { film =>
-          MovieController.withinWindow(film, today, window).map(windowed => Json.toJson(ApiFilm.from(windowed, c.country.language)))
-        }
+      val window = CityJsonPayloads.dayWindow(days)
+      conditionalJson(request, c, CityJsonPayloads.windowCacheKey(window)) {
+        jsonPayloads.repertoire(c, today(c), movieControllerService.toSchedules(c), window)
       }
     }
   }
@@ -602,11 +379,7 @@ class MovieController( cc: ControllerComponents,
    *  `/{city}/api/repertoire` halves the listing's gzip size. */
   def apiDetails(city: String): Action[AnyContent] = Action { request =>
     withCity(city, request) { c =>
-      conditionalJson(request, c) {
-        filmJsonArray("details", c, movieControllerService.nowIn(c).toLocalDate, movieControllerService.toSchedules(c)) { film =>
-          Some(ApiFilmDetails.from(film)).filter(ApiFilmDetails.hasContent).map(Json.toJson(_))
-        }
-      }
+      conditionalJson(request, c)(jsonPayloads.details(c, today(c), movieControllerService.toSchedules(c)))
     }
   }
 
@@ -614,8 +387,11 @@ class MovieController( cc: ControllerComponents,
    *  once per city to render the collapsible, per-area cinema filter — the
    *  counterpart of the server-side `CINEMA_AREAS` the web page is handed. */
   def apiCinemas(city: String): Action[AnyContent] = Action { request =>
-    withCity(city, request)(c => conditionalJson(request, c)(ResponseBody.text(Json.stringify(Json.toJson(ApiCityCinemas.from(c, movieControllerService.nowIn(c).toLocalDate))))))
+    withCity(city, request)(c => conditionalJson(request, c)(CityJsonPayloads.cinemas(c, today(c))))
   }
+
+  /** The city's own calendar day, off the injected clock. */
+  private def today(city: City): LocalDate = movieControllerService.nowIn(city).toLocalDate
 
   /** `/{city}/film…` and `/{city}/filmy` — the pre-rename Polish spellings of
    *  the detail page and the browse facets, 301'd onto `/{city}/movie…` and
@@ -768,60 +544,10 @@ class MovieController( cc: ControllerComponents,
     Found(ShareCardUrl.home(models.Country.byCode(country).getOrElse(servingCountry)))
   }
 
-  private def devOnly(result: => play.api.mvc.Result): play.api.mvc.Result = DevMode.gate(environment)(result)
   private def devMode: Boolean = DevMode.enabled(environment)
 }
 
 object MovieController {
-
-  /** How many days from today a listing request wants, or `None` for everything.
-   *
-   *  Clamped rather than trusted: the parameter reaches us from a URL, and an
-   *  unbounded one is a way to ask for arbitrary work. `<= 0` is meaningless, so
-   *  it reads as "no window" only when the parameter is absent -- an explicit
-   *  `days=0` is clamped to one day rather than silently returning everything,
-   *  because an empty answer is easier to notice than a 700 KB one. */
-  def dayWindow(days: Option[Int]): Option[Int] = days.map(n => math.max(1, math.min(n, MaxDayWindow)))
-
-  /** The ceiling on `?days=`. The corpus reaches ~10 months ahead (London's last
-   *  date was 2027-07-03 when this was written), so anything past a year is the
-   *  whole payload by another name. */
-  val MaxDayWindow: Int = 400
-
-  /** Part of the gzip cache key, so two windows cannot share one entry. Spelled
-   *  out rather than derived from the raw query so `?days=07` and `?days=7` land
-   *  on the same entry instead of two identical ones. */
-  def windowCacheKey(window: Option[Int]): String = window.fold("")(n => s"|days=$n")
-
-  /** The film, if it has at least one showing inside the window, carrying only the
-   *  showings inside it.
-   *
-   *  CALENDAR DAYS FROM TODAY, not "the first N dates that have showings": a film
-   *  whose only screening is in December must not appear in `days=7` just because
-   *  it happens to be the next date on its own list. A film left with nothing in
-   *  the window is dropped entirely rather than emitted with an empty
-   *  `showings` -- an empty film is a card the client would have to render and
-   *  then hide. */
-  def withinWindow(film: FilmSchedule, today: java.time.LocalDate, window: Option[Int]): Option[FilmSchedule] = window match {
-    case None => Some(film)
-    case Some(n) =>
-      val limit = today.plusDays(n.toLong)
-      val kept  = film.showings.filter { case (date, _) => !date.isBefore(today) && date.isBefore(limit) }
-      if (kept.isEmpty) None else Some(film.copy(showings = kept))
-  }
-
-  /** What a controller's `filmJson` keys a film's serialized object by: which
-   *  payload (and day window) it belongs to, the city, the day and the schedule. */
-  private[controllers] final case class FilmJsonKey(payload: String, city: String, today: java.time.LocalDate, film: FilmSchedule)
-
-  /** The per-film API JSON a controller keeps: a few cities' payloads several times over
-   *  (a Warsaw `/api/repertoire` is ~1.5 MB of JSON before gzip). */
-  val FilmJsonMaxBytes: Long = 16L * 1024 * 1024
-
-  /** The least a kept film's API JSON weighs: its entry and the schedule its key pins, which
-   *  outlive the schedule's own rebuild until evicted. A film left out of a payload holds no
-   *  JSON but still pins its schedule — weighed as nothing, Caffeine would never evict it. */
-  val FilmJsonEntryBytes: Int = 1024
 
   /** What the faceted browse pages tell a crawler about themselves.
    *
@@ -830,6 +556,4 @@ object MovieController {
    *  the page is worth crawling at all, and each one lands on a film page that
    *  IS indexable. */
   val FacetRobots = "noindex,follow"
-
-
 }

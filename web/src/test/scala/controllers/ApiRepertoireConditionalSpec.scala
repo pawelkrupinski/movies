@@ -324,10 +324,10 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
 
   it should "clamp a hostile or nonsensical window rather than trusting the URL" in {
     val (ctrl, _) = windowController()
-    MovieController.dayWindow(Some(0))        shouldBe Some(1)
-    MovieController.dayWindow(Some(-5))       shouldBe Some(1)
-    MovieController.dayWindow(Some(99999))    shouldBe Some(MovieController.MaxDayWindow)
-    MovieController.dayWindow(None)           shouldBe None
+    CityJsonPayloads.dayWindow(Some(0))        shouldBe Some(1)
+    CityJsonPayloads.dayWindow(Some(-5))       shouldBe Some(1)
+    CityJsonPayloads.dayWindow(Some(99999))    shouldBe Some(CityJsonPayloads.MaxDayWindow)
+    CityJsonPayloads.dayWindow(None)           shouldBe None
   }
 
   it should "NOT serve one window's body to a client asking for another" in {
@@ -501,22 +501,22 @@ class ApiRepertoireConditionalSpec extends AnyFlatSpec with Matchers {
 
     contentAsString(ctrl.apiRepertoire("poznan")(FakeRequest())) shouldBe whole(schedules)
     contentAsString(ctrl.apiRepertoire("poznan", Some(1))(FakeRequest())) shouldBe
-      whole(schedules.flatMap(MovieController.withinWindow(_, today, Some(1))))
+      whole(schedules.flatMap(CityJsonPayloads.withinWindow(_, today, Some(1))))
     contentAsString(ctrl.apiDetails("poznan")(FakeRequest())) shouldBe
       play.api.libs.json.Json.stringify(play.api.libs.json.Json.toJson(schedules.map(ApiFilmDetails.from).filter(ApiFilmDetails.hasContent)))
-    ctrl.filmJsonHeld shouldBe 6                                  // two films × three payloads
+    ctrl.jsonPayloads.filmJsonHeld shouldBe 6                                  // two films × three payloads
 
     readModel.reload()                                            // the stamp moves; no film does
     gunzip(contentAsBytes(ctrl.apiRepertoire("poznan")(gzipRequest("/poznan/api/repertoire")))) shouldBe whole(schedules)
-    ctrl.filmJsonHeld shouldBe 6
+    ctrl.jsonPayloads.filmJsonHeld shouldBe 6
   }
 
   it should "weigh a film a payload leaves out, so the byte bound can evict it" in {
     val (ctrl, readModel) = twoFilmController()
     contentAsString(ctrl.apiDetails("poznan")(FakeRequest())) should not include "Drugi"   // no detail content: left out
-    ctrl.filmJsonHeld shouldBe 2                                                            // kept all the same
+    ctrl.jsonPayloads.filmJsonHeld shouldBe 2                                                            // kept all the same
     // Caffeine never evicts a zero-weight entry: each held film must weigh something.
-    ctrl.filmJsonWeighed should be >= ctrl.filmJsonHeld * MovieController.FilmJsonEntryBytes
+    ctrl.jsonPayloads.filmJsonWeighed should be >= ctrl.jsonPayloads.filmJsonHeld * CityJsonPayloads.FilmJsonEntryBytes
     readModel.stop()
   }
 }

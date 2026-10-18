@@ -11,7 +11,7 @@ import play.api.test.Helpers._
 /**
  * `/debug/tune` is the dev-only visual-tuning page. It must render (200) in
  * Dev/Test mode and 404 in Prod — the same `devOnly` gate as `/debug`. The
- * sample films are built in-process (`DebugController.tuneSampleFilms`), so the
+ * sample films are built in-process (`TuneSamples.films`), so the
  * page renders without any cache contents; the controller below is wired with
  * an empty repository on purpose to prove that.
  */
@@ -46,8 +46,8 @@ class DebugControllerTuneSpec extends AnyFlatSpec with Matchers {
     html should include("Kino Seniora")
   }
 
-  "tuneSampleFilms" should "cover the pill/rating edge cases" in {
-    val films = DebugController.tuneSampleFilms
+  "TuneSamples.films" should "cover the pill/rating edge cases" in {
+    val films = TuneSamples.films
 
     // A card with no ratings at all (no ratings row content).
     films.exists { f =>
@@ -114,8 +114,8 @@ class DebugControllerTuneSpec extends AnyFlatSpec with Matchers {
     status(result) shouldBe NOT_FOUND
   }
 
-  "tuneSampleFilm" should "populate synopsis + cast + director for the meta blocks" in {
-    val f = DebugController.tuneSampleFilm
+  "TuneSamples.film" should "populate synopsis + cast + director for the meta blocks" in {
+    val f = TuneSamples.film
     f.synopsis should not be empty
     f.cast should not be empty
     f.director should not be empty
