@@ -88,7 +88,7 @@ object PrahaClient {
 
     SlotsToMovies.fold(
       slots,
-      titleOf    = _.title,
+      keyOf      = _.title,
       showtimeOf = s => Showtime(s.dateTime, bookingUrl = None),
       distinctBy = _.dateTime
     ) { (title, group, showtimes) =>

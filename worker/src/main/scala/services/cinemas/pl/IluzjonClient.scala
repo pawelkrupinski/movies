@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SlotsToMovies
+
 import services.cinemas.common.ScraperParse
 import models._
 import org.jsoup.Jsoup
@@ -53,13 +55,9 @@ class IluzjonClient(http: HttpFetch, today: => LocalDate
       else currentDate.toSeq.flatMap(d => rowSlot(element, d))
     }
 
-    val byFilm = slots.groupBy(_.filmId)
-    byFilm.toSeq.flatMap { case (_, group) =>
-      val primary   = group.head
-      val showtimes = group.distinctBy(s => (s.dateTime, s.booking)).sortBy(_.dateTime)
-                       .map(s => Showtime(s.dateTime, s.booking, s.room, Nil))
-      if (showtimes.isEmpty) None
-      else Some(CinemaMovie(
+    SlotsToMovies.fold(slots, _.filmId, s => Showtime(s.dateTime, s.booking, s.room, Nil), order = SlotsToMovies.MovieOrder.asGrouped) { (_, group, showtimes) =>
+      val primary = group.head
+      CinemaMovie(
         movie     = Movie(title = primary.title),
         cinema    = cinema,
         posterUrl = primary.poster,
@@ -68,7 +66,7 @@ class IluzjonClient(http: HttpFetch, today: => LocalDate
         cast      = Seq.empty,
         director  = Seq.empty,
         showtimes = showtimes
-      ))
+      )
     }
   }
 

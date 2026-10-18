@@ -52,7 +52,7 @@ class KinoAmokClient(
 
     SlotsToMovies.fold(
       slots,
-      titleOf    = _.title,
+      keyOf      = _.title,
       showtimeOf = s => Showtime(s.dateTime, s.booking, s.room),
       distinctBy = s => (s.dateTime, s.room)
     ) { (title, _, showtimes) =>

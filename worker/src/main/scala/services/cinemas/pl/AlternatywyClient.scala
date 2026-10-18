@@ -73,7 +73,7 @@ class AlternatywyClient(
   protected def fetchUnfiltered(): Seq[CinemaMovie] =
     SlotsToMovies.fold(
       parseRepertoire(HttpRead.page(http, RepertoireUrl)).filter(_.title.nonEmpty),
-      titleOf    = _.title,
+      keyOf      = _.title,
       showtimeOf = _.showtime,
       distinctBy = s => (s.dateTime, s.room)
     ) { (title, group, showtimes) =>

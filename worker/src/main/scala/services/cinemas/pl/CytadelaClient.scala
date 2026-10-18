@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SlotsToMovies
+
 import services.cinemas.common.ScraperParse
 import models._
 import org.jsoup.Jsoup
@@ -47,13 +49,9 @@ class CytadelaClient(http: HttpFetch
       else date.toSeq.flatMap(d => rowSlot(element, d))
     }
 
-    val bySlug = slots.groupBy(_.slug)
-    bySlug.toSeq.flatMap { case (slug, group) =>
-      val primary   = group.head
-      val showtimes = group.map(s => Showtime(s.dateTime, s.booking, None, Nil))
-                       .distinctBy(s => (s.dateTime, s.bookingUrl)).sortBy(_.dateTime)
-      if (showtimes.isEmpty) None
-      else Some(CinemaMovie(
+    SlotsToMovies.fold(slots, _.slug, s => Showtime(s.dateTime, s.booking, None, Nil), order = SlotsToMovies.MovieOrder.asGrouped) { (slug, group, showtimes) =>
+      val primary = group.head
+      CinemaMovie(
         movie     = Movie(title = primary.title, runtimeMinutes = primary.runtime, releaseYear = primary.year, genres = primary.genres),
         cinema    = cinema,
         posterUrl = primary.poster,
@@ -62,7 +60,7 @@ class CytadelaClient(http: HttpFetch
         cast      = Seq.empty,
         director  = primary.director,
         showtimes = showtimes
-      ))
+      )
     }
   }
 

@@ -84,7 +84,7 @@ object NckfClient {
 
     SlotsToMovies.fold(
       slots,
-      titleOf    = _.title,
+      keyOf      = _.title,
       showtimeOf = s => Showtime(s.dateTime, s.bookingUrl, s.room),
       distinctBy = s => (s.dateTime, s.room)
     ) { (title, group, showtimes) =>

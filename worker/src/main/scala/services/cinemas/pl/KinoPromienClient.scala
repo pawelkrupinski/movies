@@ -59,7 +59,7 @@ class KinoPromienClient(
 
     SlotsToMovies.fold(
       slots.filter(_._1.nonEmpty),
-      titleOf    = _._1,
+      keyOf      = _._1,
       showtimeOf = { case (_, dt, _) => Showtime(dt, None) },
       distinctBy = _.dateTime
     ) { (title, group, showtimes) =>

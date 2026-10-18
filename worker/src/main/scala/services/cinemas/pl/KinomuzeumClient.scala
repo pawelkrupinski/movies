@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SlotsToMovies
+
 import java.util.Locale
 
 import services.cinemas.common.ScraperParse
@@ -48,14 +50,10 @@ class KinomuzeumClient(http: HttpFetch, today: => LocalDate
 
     // A film can recur under several slugs (a plain screening + a "+ spotkanie"
     // event), all with the same title — group by title so each is one row.
-    val byTitle = slots.groupBy(_.title)
-    byTitle.toSeq.flatMap { case (_, group) =>
-      val primary   = group.head
-      val slug      = primary.slug
-      val showtimes = group.distinctBy(s => (s.dateTime, s.booking)).sortBy(_.dateTime)
-                        .map(s => Showtime(s.dateTime, s.booking, None, Nil))
-      if (showtimes.isEmpty) None
-      else Some(CinemaMovie(
+    SlotsToMovies.fold(slots, _.title, s => Showtime(s.dateTime, s.booking, None, Nil), order = SlotsToMovies.MovieOrder.asGrouped) { (_, group, showtimes) =>
+      val primary = group.head
+      val slug    = primary.slug
+      CinemaMovie(
         movie     = Movie(
           title          = primary.title,
           runtimeMinutes = primary.runtime
@@ -67,7 +65,7 @@ class KinomuzeumClient(http: HttpFetch, today: => LocalDate
         cast      = Seq.empty,
         director  = Seq.empty,
         showtimes = showtimes
-      ))
+      )
     }
   }
 

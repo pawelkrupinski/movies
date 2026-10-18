@@ -56,7 +56,7 @@ object KinoAurumClient {
 
     SlotsToMovies.fold(
       slots,
-      titleOf    = _._1,
+      keyOf      = _._1,
       showtimeOf = s => Showtime(s._2, None),
       distinctBy = _.dateTime
     ) { (title, _, showtimes) =>

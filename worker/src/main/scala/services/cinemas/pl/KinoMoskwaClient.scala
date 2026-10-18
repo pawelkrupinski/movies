@@ -67,7 +67,7 @@ class KinoMoskwaClient(
   private def moviesFrom(slots: Seq[RawSlot]): Seq[CinemaMovie] =
     SlotsToMovies.fold(
       slots,
-      titleOf    = _.title,
+      keyOf      = _.title,
       showtimeOf = s => Showtime(s.dateTime, None, room = Some(s.room)),
       distinctBy = s => (s.dateTime, s.room)
     ) { (title, _, showtimes) =>

@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SlotsToMovies
+
 import java.util.Locale
 
 import services.cinemas.common.ScraperParse
@@ -60,21 +62,16 @@ class KinotekaClient(http: HttpFetch, titles: TitleNormalizer
    *  cross-day fold the old whole-scrape did (deterministic by film URL; poster is
    *  the first non-empty across days). */
   override def reduceChunks(chunks: Map[String, Seq[CinemaMovie]]): Seq[CinemaMovie] =
-    chunks.toSeq.sortBy(_._1).flatMap(_._2)
-      .groupBy(_.filmUrl).toSeq.sortBy(_._1.map(_.toString).getOrElse(""))
-      .map { case (_, group) =>
-        val showtimes = group.flatMap(_.showtimes).distinctBy(s => (s.dateTime, s.bookingUrl)).sortBy(_.dateTime)
-        group.head.copy(showtimes = showtimes, posterUrl = group.flatMap(_.posterUrl).headOption)
-      }
+    SlotsToMovies.foldBlocks(chunks.toSeq.sortBy(_._1).flatMap(_._2), _.filmUrl, _.showtimes,
+      order = SlotsToMovies.MovieOrder.byKey(using Ordering.by(_.getOrElse("")))) { (_, group, showtimes) =>
+      Some(group.head.copy(showtimes = showtimes, posterUrl = group.flatMap(_.posterUrl).headOption))
+    }
 
   /** This day's slots → one film per slug, with that day's showtimes. */
   private def moviesFrom(slots: Seq[RawSlot]): Seq[CinemaMovie] =
-    slots.groupBy(_.slug).toSeq.flatMap { case (slug, group) =>
-      val primary   = group.head
-      val showtimes = group.map(s => Showtime(s.dateTime, s.booking))
-                       .distinctBy(s => (s.dateTime, s.bookingUrl)).sortBy(_.dateTime)
-      if (showtimes.isEmpty) None
-      else Some(CinemaMovie(
+    SlotsToMovies.fold(slots, _.slug, s => Showtime(s.dateTime, s.booking), order = SlotsToMovies.MovieOrder.asGrouped) { (slug, group, showtimes) =>
+      val primary = group.head
+      CinemaMovie(
         movie     = Movie(title = primary.title, genres = primary.genres),
         cinema    = cinema,
         posterUrl = group.flatMap(_.poster).headOption,
@@ -84,7 +81,7 @@ class KinotekaClient(http: HttpFetch, titles: TitleNormalizer
         director  = Seq.empty,
         showtimes = showtimes,
         trailerUrl = None
-      ))
+      )
     }
 
   override val detailGroup: String = "kinoteka"
