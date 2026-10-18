@@ -310,12 +310,13 @@ Each a production change: measure with `scripts/identity-measure`, land one at a
 - [ ] `core.hooksPath` is rewritten to the absolute root path by Claude Code whenever it creates an
   `isolation: worktree` agent (confirmed 2026-10-15 06:54:35). A product bug; the pre-push hook resets it on each push,
   and `scripts/install-hooks.sh` restores it.
-- [ ] The JVM reaper (`~/.local/bin/reap-stale-jvms.sh`, with the new duplicate-sbt-server rule C) lives outside the
-  repo, unversioned.
+- [x] The JVM reaper now lives in the repo (`scripts/reap-stale-jvms.sh`, spec `scripts/reap-stale-jvms-test.sh`); the
+  user switches `~/.local/bin` over with the symlink `scripts/install-hooks.sh` prints.
 - [x] Worktrees reviewed 2026-10-15: a8e8055c, ad334852, afc695e6 (their commits were on main under the same subjects),
   the RB+O, Arsenal and a083 worktrees and `movies-wt-convergence-timings` removed. Left: `movies-red2` and the
   kinowo-mobile-release temp worktree (other sessions').
-- [ ] `~/.local/bin/reap-stale-jvms.sh` rule C groups sbt processes by cwd without requiring `--detach-stdio`, so it can
+- [x] (fixed in `scripts/reap-stale-jvms.sh`: only `--detach-stdio` servers, `.part` rename is not gone)
+  `~/.local/bin/reap-stale-jvms.sh` rule C groups sbt processes by cwd without requiring `--detach-stdio`, so it can
   kill an older LIVE run sharing a cwd (another agent's identity run in one `~/.cache/kinowo-identity/refs/<sha>`, or
   the server a client is attached to); its gone-dir rule also kills JVMs whose ref dir was renamed from `.part`. Only
   `--detach-stdio` servers not named by an `active.json` should be reaped.
