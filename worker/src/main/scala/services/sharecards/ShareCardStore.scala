@@ -121,6 +121,10 @@ class ShareCardStore(val root: Path, val room: ShareCardRoom = ShareCardRoom.Unl
   /** The lock file a card write to `target` holds (see [[writeAtomically]]). */
   def lockFor(target: Path): Path = root.resolve(LockDir).resolve(s"${Math.floorMod(target.getFileName.toString.hashCode, LockStripes)}.lock")
 
+  /** THROWS [[NoRoomForShareCard]] when writing `target` would ADD a file the directory has no room
+   *  for — the cap [[writeAtomically]] applies, asked before the work of drawing one. */
+  def admitNew(target: Path): Unit = if (!Files.exists(target)) room.admit(kindOf(target))
+
   /** Write the JPEG `bytes` over `target` atomically (see the class doc), stamped with `version`
    *  and, when given, `published` and `asked`. THROWS [[NewerAskOnDisk]], writing nothing, when
    *  `target` holds a card asked for after `asked`. */
@@ -129,7 +133,7 @@ class ShareCardStore(val root: Path, val room: ShareCardRoom = ShareCardRoom.Unl
     // THE CAP: a write that would ADD a file is refused while the directory is over its budget or
     // the volume is short of its free-space floor (see [[ShareCardRoom]]); overwriting a file in
     // place adds nothing and always goes ahead.
-    if (!Files.exists(target)) room.admit(kindOf(target))
+    admitNew(target)
     val temp = target.resolveSibling(s"${target.getFileName}.$writerId-${UUID.randomUUID().toString.take(8)}$TempSuffix")
     try {
       Using.resource(FileChannel.open(temp, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) { channel =>

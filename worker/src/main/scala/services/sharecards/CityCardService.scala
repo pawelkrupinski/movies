@@ -8,6 +8,7 @@ import tools.{CityCardRenderer, Digest, OgCardRenderer, PosterDecode}
 
 import java.nio.file.{Files, Path}
 import java.time.{Clock, Instant}
+import java.util.concurrent.ConcurrentHashMap
 import scala.concurrent.duration.*
 import scala.util.Try
 
@@ -30,6 +31,11 @@ import scala.util.Try
  * the schedule needs no storage and survives restarts. A re-render that would draw the same picture
  * only moves the mtime (`unchanged`).
  *
+ * A render that FAILS or is REFUSED moves no mtime, so the schedule alone would ask for that city
+ * again at every tick, decoding its posters each time. [[CityCardBackoff]] holds such a city out of
+ * the reaper's ticks for a wait that doubles while it keeps failing; a drawn card clears it. And a
+ * city with no card is refused before anything is read or decoded when the directory has no room.
+ *
  * Cards of cities gone from the catalog are pruned by [[ShareCardJanitor]].
  */
 class CityCardService(
@@ -49,6 +55,8 @@ class CityCardService(
 
   private val brand = CityCardRenderer.Brand(country.brandName, country.shareHost, country.filmwebEnabled)
 
+  private val backoff = new CityCardBackoff(clock)
+
   /** The reaper's tick: enqueue the cities with no card, then those due, up to the cap; publish
    *  the coverage gauge. Returns how many renders it added. */
   def enqueueDue(): Int = {
@@ -56,8 +64,9 @@ class CityCardService(
     val written = country.cities.map(city => city -> store.written(store.cityCardPath(city)))
     if (written.nonEmpty)
       metrics.cityCoverage(written.count { case (_, at) => at.exists(_.isAfter(now.minusMillis(StaleAfter.toMillis))) }.toDouble / written.size)
-    val missing = written.iterator.collect { case (city, None) => city }
-    val due     = written.iterator.collect { case (city, at @ Some(_)) if schedule.isDue(dedupKey(city), at, now) => city }
+    val ready   = written.iterator.filterNot { case (city, _) => backoff.holds(city.slug, now) }.toVector
+    val missing = ready.iterator.collect { case (city, None) => city }
+    val due     = ready.iterator.collect { case (city, at @ Some(_)) if schedule.isDue(dedupKey(city), at, now) => city }
     (missing ++ due).take(maxEnqueuePerTick).count { city =>
       queue.enqueue(TaskType.RenderCityCard, dedupKey(city), Map(CityKey -> city.slug), submittedAt = now) == EnqueueResult.Added
     }
@@ -72,25 +81,33 @@ class CityCardService(
     }
 
   /** Draw the city's card from its current films and write it — or, when it would be the picture
-   *  already on disk, only mark it rendered now. */
+   *  already on disk, only mark it rendered now. A city with no card the directory has no room for
+   *  is refused first, before its films are read or a poster decoded. */
   def render(city: City): String = {
     val path    = store.cityCardPath(city)
-    val posters = filmsOf(city).iterator.map(store.posterPath).filter(Files.isRegularFile(_)).take(CityCardRenderer.PosterCount).toVector
-    val version = versionOf(city, posters)
-    val outcome =
+    var posters = Vector.empty[Path]
+    val outcome = Try {
+      store.admitNew(path)
+      posters = filmsOf(city).iterator.map(store.posterPath).filter(Files.isRegularFile(_)).take(CityCardRenderer.PosterCount).toVector
+      val version = versionOf(city, posters)
       if (store.version(path).contains(version)) { store.touch(path, clock.instant()); CityOutcome.Unchanged }
-      else Try {
+      else {
         val images = posters.flatMap(poster => Try(PosterDecode.fromFile(poster.toFile, CityCardRenderer.TileWidth, CityCardRenderer.TileHeight)).toOption.flatten)
         store.writeAtomically(path, OgCardRenderer.encodeCard(CityCardRenderer.render(city.heading, brand, images)), version)
         // The schedule reads the injected clock, so the file is stamped by it, not the filesystem's.
         store.touch(path, clock.instant())
         CityOutcome.Rendered
-      }.recover {
-        case _: NoRoomForShareCard => CityOutcome.Refused
-        case e: Exception =>
-          logger.warn(s"city card: ${city.slug} could not be drawn: ${e.getClass.getSimpleName}: ${e.getMessage}")
-          CityOutcome.Failed
-      }.get
+      }
+    }.recover {
+      case _: NoRoomForShareCard => CityOutcome.Refused
+      case e: Exception =>
+        logger.warn(s"city card: ${city.slug} could not be drawn: ${e.getClass.getSimpleName}: ${e.getMessage}")
+        CityOutcome.Failed
+    }.get
+    outcome match {
+      case CityOutcome.Rendered | CityOutcome.Unchanged => backoff.drawn(city.slug)
+      case _                                            => backoff.missed(city.slug)
+    }
     logger.info(s"city card: ${city.slug} $outcome — ${posters.size} posters")
     metrics.cityRender(outcome)
     outcome
@@ -149,6 +166,12 @@ object CityCardService {
    *  duplicate, so the queue never holds more than about this many. */
   val MaxEnqueuePerTick: Int = 20
 
+  /** The first wait before the reaper asks again for a city whose render failed or was refused,
+   *  doubled per further miss up to [[MaxFailureRetry]] — the renders are weekly, so a city held a
+   *  few hours loses nothing a minute's retry would win. */
+  val FirstFailureRetry: FiniteDuration = 10.minutes
+  val MaxFailureRetry: FiniteDuration   = 6.hours
+
   /** The films' ranking is re-read at most this often. */
   val FilmsMaxAge: FiniteDuration = 1.hour
 
@@ -162,6 +185,32 @@ object CityCardService {
   val CityKey = "city"
 
   def dedupKey(city: City): String = s"city-card|${city.slug}"
+}
+
+/**
+ * The cities whose last render failed or was refused, each held out of the reaper's ticks until its
+ * wait is over: [[CityCardService.FirstFailureRetry]] after the first miss, doubling per further
+ * miss up to [[CityCardService.MaxFailureRetry]]. A drawn card forgets the city. In memory, per
+ * service: a restart asks every held city once more, which costs one render each.
+ */
+final class CityCardBackoff(clock: Clock) {
+  import CityCardService.{FirstFailureRetry, MaxFailureRetry}
+  private final case class Miss(at: Instant, waitMillis: Long)
+  private val misses = new ConcurrentHashMap[String, Miss]()
+
+  /** True while the city's latest miss is inside its wait. */
+  def holds(slug: String, now: Instant): Boolean =
+    Option(misses.get(slug)).exists(miss => now.isBefore(miss.at.plusMillis(miss.waitMillis)))
+
+  def missed(slug: String): Unit = {
+    misses.compute(slug, (_, previous) => {
+      val waitMillis = Option(previous).fold(FirstFailureRetry.toMillis)(p => (p.waitMillis * 2).min(MaxFailureRetry.toMillis))
+      Miss(clock.instant(), waitMillis)
+    })
+    ()
+  }
+
+  def drawn(slug: String): Unit = { misses.remove(slug); () }
 }
 
 /** `RenderCityCard`: render the city's card when it is due. A failure is retried, then given up —
