@@ -106,16 +106,7 @@ object ApiFilm {
       releaseYear      = fs.movie.releaseYear,
       genres           = fs.movie.genres,
       ageRating        = resolved.ageRating,
-      ratings          = ApiRatings(
-        imdb              = resolved.ratings.imdb,
-        imdbURL           = resolved.ratings.imdbUrl.flatMap(WebHref.of).map(_.asciiEncoded),
-        metascore         = resolved.ratings.metascore,
-        metacriticURL     = WebHref.of(resolved.ratings.metacriticUrl).map(_.asciiEncoded),
-        rottenTomatoes    = resolved.ratings.rottenTomatoes,
-        rottenTomatoesURL = WebHref.of(resolved.ratings.rottenTomatoesUrl).map(_.asciiEncoded),
-        filmweb           = resolved.ratings.filmweb,
-        filmwebURL        = WebHref.of(resolved.ratings.filmwebUrl).map(_.asciiEncoded)
-      ),
+      ratings          = ratingsOf(resolved.ratings),
       countries        = fs.movie.countries,
       directors        = fs.director,
       cast             = fs.cast,
@@ -123,22 +114,34 @@ object ApiFilm {
         ApiDayShowings(
           date    = date.toString,
           label   = CardFormat.date(date, fs.asOf, language),
-          cinemas = cinemas.map { cs =>
-            ApiCinemaShowings(
-              cinema    = cs.cinema.displayName,
-              cinemaURL = cinemaUrlMap.get(cs.cinema.displayName).map(_.asciiEncoded),
-              showtimes = cs.showtimes.map { st =>
-                ApiShowtime(
-                  time       = CardFormat.time(st.dateTime),
-                  format     = st.format.mkString(" "),
-                  room       = st.room,
-                  bookingURL = st.bookingUrl.flatMap(WebHref.of).map(_.asciiEncoded)
-                )
-              }
-            )
-          }
+          cinemas = cinemas.map(cinemaShowingsOf(_, cinemaUrlMap))
         )
       }
     )
   }
+
+  private def ratingsOf(ratings: ResolvedRatings): ApiRatings = ApiRatings(
+    imdb              = ratings.imdb,
+    imdbURL           = ratings.imdbUrl.flatMap(WebHref.of).map(_.asciiEncoded),
+    metascore         = ratings.metascore,
+    metacriticURL     = WebHref.of(ratings.metacriticUrl).map(_.asciiEncoded),
+    rottenTomatoes    = ratings.rottenTomatoes,
+    rottenTomatoesURL = WebHref.of(ratings.rottenTomatoesUrl).map(_.asciiEncoded),
+    filmweb           = ratings.filmweb,
+    filmwebURL        = WebHref.of(ratings.filmwebUrl).map(_.asciiEncoded)
+  )
+
+  private def cinemaShowingsOf(cs: CinemaShowtimes, cinemaUrlMap: Map[String, WebHref]): ApiCinemaShowings =
+    ApiCinemaShowings(
+      cinema    = cs.cinema.displayName,
+      cinemaURL = cinemaUrlMap.get(cs.cinema.displayName).map(_.asciiEncoded),
+      showtimes = cs.showtimes.map { st =>
+        ApiShowtime(
+          time       = CardFormat.time(st.dateTime),
+          format     = st.format.mkString(" "),
+          room       = st.room,
+          bookingURL = st.bookingUrl.flatMap(WebHref.of).map(_.asciiEncoded)
+        )
+      }
+    )
 }
