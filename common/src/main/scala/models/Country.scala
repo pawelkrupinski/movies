@@ -264,7 +264,7 @@ object Country {
     override lazy val cityGroups: Seq[CityGroup] = City.polishVoivodeships
     override val versionTokens: Option[VersionTokens] = Some(VersionTokens("NAP", "DUB"))
     val voiceoverToken: Option[String] = Some("LEK")
-    val titleFacts: services.movies.TitleFacts.Rules = services.movies.TitleFacts.Rules(Set("pl", "en"), None)
+    val titleFacts: services.movies.TitleFacts.Rules = services.movies.TitleFacts.Rules(Set("pl", "en"), Some(services.movies.TitleFacts.RatingSystem.PolishAge))
   }
 
   /** The United Kingdom — an English-language country on its own `kinowo_uk`

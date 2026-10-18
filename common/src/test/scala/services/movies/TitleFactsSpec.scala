@@ -94,6 +94,11 @@ class TitleFactsSpec extends AnyFlatSpec with Matchers {
     peel(Country.Germany, "HIN UND WEG D, ab 12 / ab 6 mit Begleitung").title shouldBe "HIN UND WEG"
     // kinoheld's note means nothing in the UK
     peel(Country.UnitedKingdom, "Das siebte Kreuz D, ab 12").title shouldBe "Das siebte Kreuz D, ab 12"
+    // PL: Kino w Kadrze's closing age bracket (recording 38713274617); an audience's "60+" is none
+    peel(Country.Poland, "Kandydaci śmierci: Kadr Non-Fiction (16+)") shouldBe
+      TitleFacts.Peeled("Kandydaci śmierci: Kadr Non-Fiction", TitleFacts.Facts(ageRating = Some("16+")))
+    peel(Country.Poland, "MISTYCZKA - \"SENIOR W KINIE\" Cykl filmowy dla widzów 60+").facts shouldBe TitleFacts.Facts.empty
+    peel(Country.UnitedKingdom, "Kandydaci śmierci (16+)").facts shouldBe TitleFacts.Facts.empty
   }
 
   it should "read the certificate the format peel takes off only where it is the country's rating system" in {

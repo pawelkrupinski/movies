@@ -36,6 +36,15 @@ object TitleFacts {
       def peel(title: String): Option[(String, Option[String])] = None
       def certificate(value: String): Option[String] = Some(value)
     }
+    /** PL: an age bracket closing a title — Kino w Kadrze's "Kandydaci śmierci: Kadr Non-Fiction (16+)", "… KADR JUNIOR
+     *  (6+)" — stored as the Polish clients badge a rating ("16+"). A "60+" of an audience ("dla widzów 60+") is no
+     *  bracket, and no rating. */
+    case object PolishAge extends RatingSystem {
+      private val Note = """\s*\(\s*(0|3|6|7|10|12|13|15|16|18)\s*\+\s*\)\s*$""".r
+      def peel(title: String): Option[(String, Option[String])] =
+        Note.findFirstMatchIn(title).filter(_.start > 0).map(m => (title.substring(0, m.start).trim, Some(s"${m.group(1)}+")))
+      def certificate(value: String): Option[String] = None
+    }
     /** DE: kinoheld's version-and-FSK note closing a title — "Das siebte Kreuz D, ab 12", "Dune: Part Three D, FSK folgt"
      *  (the German version, the release pending), "Hin und weg D, ab 12 / ab 6 mit Begleitung" — stored as the German
      *  clients store an FSK rating ("FSK 12"). */
