@@ -94,9 +94,10 @@ no known-wrong/accepted row covers.
   right 2026 record (1702350); check prod's ×5 after the next deploy (`scripts/listing-history de --title 'Fallen Angels'`).
 - [ ] **NT Live: Hamlet ×2 (US)** — the 2026 record never enters the candidates; Flicks' 2015 year is counted once per
   venue reading the same Flicks page.
-- [ ] **ESCAPE ROOM 2 (ES)** — bare title, 2021 film at 57% vs the 2026 one backed by 63 venues.
-- [ ] **Lieblingsmenschen ×3, Black Hole, Stranger, Island, Unterbiberger, Gegen das Vergessen,
-  Friday the 13th: Legacy, Ecrire la vie, Alpha (dir. Ducournau), ES (ULRICH SCHAMONI)** — namesakes or copied
+- [x] **ESCAPE ROOM 2 (ES)** — bare title, 2021 film at 57% vs the 2026 one backed by 63 venues. Cured by the evidenced-namesake refusal (`Corroboration.refused`); struck 10-18.
+- [ ] **Lieblingsmenschen ×3, Black Hole, Stranger, Island, Unterbiberger, Alpha (dir. Ducournau), ES (ULRICH SCHAMONI)**
+  (cured 10-18: Gegen das Vergessen — `BilledPiece` keeps no piece for a title in the venue's own language or one naming only
+  its town; Ecrire la vie — `IdentityMeasures.billsWorksOfTwoTitles`; Friday the 13th: Legacy, earlier) — namesakes or copied
   facts; no safe rule yet.
 - [ ] **Pornfilmfestival "The more the merrier"** — the billing states no facts; the festival + old-film signal
   would also drop right takes (La Boum 4K, the Rosa von Praunheim hommage).
