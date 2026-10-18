@@ -1,12 +1,11 @@
 package services.auth
 
 import play.api.Logging
-import services.facebook.{AppUsage, FacebookUsageBrake}
+import services.facebook.{AppUsage, FacebookGraphHttp, FacebookUsageBrake}
 import tools.{GetOnlyHttpFetch, HttpStatusException}
 
 import java.net.URI
-import java.net.http.{HttpClient, HttpRequest, HttpResponse}
-import java.time.Duration
+import java.net.http.HttpRequest
 import scala.util.{Failure, Success, Try}
 
 /**
@@ -20,14 +19,13 @@ import scala.util.{Failure, Success, Try}
  * `RealHttpFetch`'s does, after its usage is reported: Facebook reports it on refusals too.
  */
 class FacebookGraphFetch(brake: FacebookUsageBrake, tls: javax.net.ssl.SSLContext) extends GetOnlyHttpFetch with Logging {
-  private val client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).sslContext(tls).build()
+  private val graph = new FacebookGraphHttp(tls)
 
   def get(url: String): String = {
-    val response = client.send(HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(20)).GET().build(),
-      HttpResponse.BodyHandlers.ofString())
-    AppUsage.of(response.headers()).foreach(report)
-    if (response.statusCode() / 100 == 2) response.body()
-    else throw new HttpStatusException(response.statusCode(), "GET", url, None)
+    val response = graph.send(HttpRequest.newBuilder(URI.create(url)).GET())
+    response.usage.foreach(report)
+    if (response.status / 100 == 2) response.body
+    else throw new HttpStatusException(response.status, "GET", url, None)
   }
 
   // The hold is the fleet's re-scrapes' business, never the sign-in's: a fleet database that cannot

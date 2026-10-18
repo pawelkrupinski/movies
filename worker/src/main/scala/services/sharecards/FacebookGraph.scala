@@ -2,14 +2,14 @@ package services.sharecards
 
 import models.{CityPath, Country}
 import play.api.libs.json.Json
-import services.facebook.AppUsage
+import services.facebook.{AppUsage, FacebookGraphHttp}
 import services.readmodel.{FilmSlugs, ReadModelReader}
 
 import java.net.URI
 import java.net.URLEncoder
-import java.net.http.{HttpClient, HttpRequest, HttpResponse}
+import java.net.http.HttpRequest
 import java.nio.charset.StandardCharsets
-import java.time.{Clock, Duration}
+import java.time.Clock
 import scala.util.Try
 
 /** Asks Facebook to fetch a page again, so a preview it cached (image included) is replaced. */
@@ -58,17 +58,15 @@ object FacebookScrape {
  *  travels in the form body, not the query string, so no URL that reaches a log carries it. */
 class HttpFacebookGraph(appId: settings.FacebookAppId, appSecret: settings.FacebookAppSecret, tls: javax.net.ssl.SSLContext,
                         endpoint: URI = HttpFacebookGraph.Endpoint) extends FacebookGraph {
-  private val client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).sslContext(tls).build()
+  private val graph = new FacebookGraphHttp(tls)
 
   def scrape(url: String): FacebookReply = {
     def enc(s: String) = URLEncoder.encode(s, StandardCharsets.UTF_8)
     val body = s"id=${enc(url)}&scrape=true&access_token=${enc(s"${appId.value}|${appSecret.value}")}"
     try {
-      val request = HttpRequest.newBuilder(endpoint).timeout(Duration.ofSeconds(20))
-        .header("Content-Type", "application/x-www-form-urlencoded").POST(HttpRequest.BodyPublishers.ofString(body)).build()
-      val response = client.send(request, HttpResponse.BodyHandlers.ofString())
-      FacebookReply(FacebookScrape.of(response.statusCode(), response.body()),
-        AppUsage.of(response.headers()))
+      val response = graph.send(HttpRequest.newBuilder(endpoint)
+        .header("Content-Type", "application/x-www-form-urlencoded").POST(HttpRequest.BodyPublishers.ofString(body)))
+      FacebookReply(FacebookScrape.of(response.status, response.body), response.usage)
     } catch {
       case e: java.io.IOException => FacebookReply(FacebookScrape.Unavailable(e.getClass.getSimpleName))   // refused, reset, timed out
       case e: Exception           => FacebookReply(FacebookScrape.Refused(e.getClass.getSimpleName))
