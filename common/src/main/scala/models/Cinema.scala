@@ -2376,19 +2376,25 @@ object Cinema {
    *  fails the build on a duplicate. */
   lazy val byDisplayName: Map[String, Cinema] = all.map(c => c.displayName -> c).toMap
 
-  /** Synthetic chain-detail sources → the venue cinemas whose per-film detail
-   *  they hold. A chain (only Cinema City today) fetches a film's
-   *  synopsis/cast/… ONCE network-wide into its [[CinemaCityChain]] slot rather
-   *  than each venue's own slot, so that slot belongs to no single city. A
-   *  city-scoped synopsis merge ([[MovieRecord.synopsisForCity]]) consults this
-   *  map to decide which cities a chain blurb applies to — namely those where a
-   *  member venue screens the film. Derived from the per-city venue lists by the
-   *  stable "Cinema City <branch>" naming every Cinema City venue follows
-   *  (`CinemaCityChain` itself is "Cinema City", no trailing branch, and isn't in
-   *  `all`), so a newly-added branch is picked up automatically. */
-  lazy val chainDetailVenues: Map[Source, Set[Cinema]] = Map(
-    CinemaCityChain -> all.filter(_.displayName.startsWith("Cinema City ")).toSet
-  )
+  /** Synthetic chain-detail sources ([[Networks]]) → the venue cinemas whose per-film
+   *  detail they hold. A chain fetches a film's synopsis/cast/… ONCE network-wide into
+   *  its network slot — Cinema City into [[CinemaCityChain]], Cineworld UK into
+   *  [[CineworldChain]], Regal (unwired today) into [[RegalChain]] — rather than each
+   *  venue's own slot, so that slot belongs to no single city. A city-scoped synopsis
+   *  merge ([[MovieRecord.synopsisForCity]]) consults this map to decide which cities a
+   *  chain blurb applies to — namely those where a member venue screens the film; a
+   *  network missing here applies NOWHERE (Cineworld's did, until 2026-10-18).
+   *
+   *  Derived from the chain's own country's venues by the stable "<chain> <branch>"
+   *  naming every one of its venues follows (the network itself is the bare chain name,
+   *  and isn't in `all`), so a newly-added branch is picked up automatically. Its own
+   *  country only: another country's roster may hold an unrelated venue of the name,
+   *  qualified with its town (Germany's "Cineworld Recklinghausen"). */
+  lazy val chainDetailVenues: Map[Source, Set[Cinema]] =
+    Seq(CinemaCityChain -> Country.Poland, CineworldChain -> Country.UnitedKingdom, RegalChain -> Country.UnitedStates)
+      .map { case (network, country) =>
+        (network: Source) -> country.cities.flatMap(_.cinemas).filter(_.displayName.startsWith(s"${network.displayName} ")).toSet
+      }.toMap
 
   /** City display label for each cinema — derived from `byCity`, the single
    *  source of truth. Used by the debug source-data view to disambiguate
