@@ -89,6 +89,11 @@ check "a hard-cluster expectation runs it" "judgements" "$(plan test/resources/f
 check "the lint itself runs it, the judgements' reader and the take files'" "judgements scripttests sbt judgements scripttests sbt judgements scripttests sbt" \
   "$(plan scripts/ci/identity_judgements_lint.py) $(plan scripts/ci/identity_judgements.py) $(plan scripts/ci/identity_takes.py)"
 check "an unmatched-cluster capture does not" "" "$(plan test/resources/fixtures/identity-unmatched/pl.json.gz)"
+# A file identity-slice or title-trace drops into old refs (their TOOL_FILES) compiles into each tool's floor ref.
+check "a file identity-slice drops into old refs compiles the tools into their floors" "sbt oldrefs" \
+  "$(plan worker/src/fixtures/scala/tools/MemoLookups.scala)"
+check "...and one title-trace drops in" "sbt oldrefs" "$(plan worker/src/test/scala/services/identity/TitleTrace.scala)"
+check "a fixtures-config file neither tool drops in does not" "sbt" "$(plan worker/src/fixtures/scala/tools/EnrichmentCache.scala)"
 
 # `sbt compile` skips the Test and It configs: f20a6b5dd's new `protected def wire` made a worker
 # it/ spec's local val ambiguous and reached CI unseen. The sbt check compiles the test configs of
@@ -499,6 +504,27 @@ check "...and a failure only there blocks the push" "1 1" "$(script_push STUB_LI
 check "...Docker not running: never blocking" "0 1" "$(script_push STUB_NO_DOCKER=1) $(grep -c -- '--linux' "$gate/args")"
 check "...and PREPUSH_SKIP=linux skips just that" "0 --changed $runner_base" \
   "$(script_push PREPUSH_SKIP="${pathchecks/scripttests/} linux") $(cat "$gate/args")"
+# ── oldrefs: a push changing a tool's TOOL_FILES runs the old-ref compile test, read from the tools of the pushed tree ──
+printf '#!/usr/bin/env bash\nTOOL_FILES=(tools/A.scala\n  tools/B.scala)\n' > "$grepo/scripts/identity-slice"
+printf '#!/usr/bin/env bash\nTOOL_FILES=(tools/T.scala)\n' > "$grepo/scripts/title-trace"
+printf '#!/usr/bin/env bash\necho ran >> "$STUB_OLDREFS_RAN"\necho "FAIL: tools compile into c0ffee" \nexit "${STUB_OLDREFS_EXIT:-0}"\n' \
+  > "$grepo/scripts/identity-slice-old-ref-test.sh"
+scratch_git "$grepo" add scripts && scratch_git "$grepo" commit -qm "the tools, stubbed"
+# the check wants an sbt to compile with (none, as in CI's script-test container: skipped, warned); the stubbed test needs none
+mkdir -p "$gate/sbt"; printf '#!/bin/sh\nexit 1\n' > "$gate/sbt/sbt"; chmod +x "$gate/sbt/sbt"
+oldrefs_base="$(scratch_git "$grepo" rev-parse HEAD)"
+oldrefs_push() { # <path> [<env>...] -> exit code, then how often the old-ref test ran; stderr in $gate/err
+  local path=$1 head; shift
+  scratch_git "$grepo" reset -q --hard "$oldrefs_base"; head="$(commit_paths "change $path" -- "$path")"; rm -f "$gate/ran"
+  (cd "$grepo" && all_green env PATH="$gate/sbt:$PATH" PREPUSH_SKIP="$pathchecks" STUB_OLDREFS_RAN="$gate/ran" "$@" \
+    bash "$REPO_ROOT/scripts/hooks/pre-push" --range "$oldrefs_base..$head" >/dev/null 2>"$gate/err"); echo "$? $(cat "$gate/ran" 2>/dev/null | wc -l | tr -d ' ')"; }
+check "a push changing identity-slice's tool file runs the old-ref compile" "0 1" "$(oldrefs_push tools/B.scala)"
+check "...and title-trace's" "0 1" "$(oldrefs_push tools/T.scala)"
+check "...a failing compile blocks the push, its output shown" "1 1 1 1" \
+  "$(oldrefs_push tools/A.scala STUB_OLDREFS_EXIT=1) $(grep -c 'oldrefs FAILED' "$gate/err") $(grep -c 'FAIL: tools compile into c0ffee' "$gate/err")"
+check "a file neither tool drops in does not run it" "0 0" "$(oldrefs_push tools/C.scala)"
+check "PREPUSH_SKIP=oldrefs skips it, said out loud" "0 0 1" \
+  "$(oldrefs_push tools/A.scala PREPUSH_SKIP="$pathchecks oldrefs") $(grep -c 'oldrefs SKIPPED' "$gate/err")"
 rm -rf "$gate"
 
 spec_summary

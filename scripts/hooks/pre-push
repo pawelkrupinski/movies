@@ -32,6 +32,11 @@
 #                 composite actions' `run:` blocks (scripts/ci/shellcheck-action-runs.sh)
 #   `shellcheck`  changed *.sh and hook scripts — fails only on warnings the push ADDS, so a
 #                 file that was already noisy can still be edited
+#   `oldrefs`     scripts/identity-slice-old-ref-test.sh, on a change to a file identity-slice or title-trace drops into
+#                 the refs they decide under (each tool's TOOL_FILES, read from the tool): each tool compiles into its
+#                 oldest supported ref (the floor that test names), in the tree kept under ~/.cache/kinowo-identity/refs --
+#                 an incremental compile once laid out. Only CI's integration job ran it, and 0ab79600b broke
+#                 `identity-slice --compiles c2974e3aa` unseen while GitHub was down (fixed in 4eded3e81)
 #   `ios`         scripts/ios-compile-check.sh (app target + Linux SwiftPM) on ios/** — this one
 #                 is minutes, not seconds, and only runs for iOS pushes
 #   `judgements`  scripts/ci/identity_judgements_lint.py on identity-judgements.tsv, the expected
@@ -151,10 +156,21 @@ Zero=0000000000000000000000000000000000000000
 
 skipped() { case " ${PREPUSH_SKIP:-} " in *" $1 "*) return 0 ;; *) return 1 ;; esac; }
 
+# The files identity-slice and title-trace drop into every ref they decide under: each tool's TOOL_FILES=( … ), read
+# from the tool itself, one per line.
+tool_files() {
+    local tool
+    for tool in scripts/identity-slice scripts/title-trace; do
+        [ -f "$tool" ] && sed -n '/^TOOL_FILES=(/,/)/{s/^TOOL_FILES=(//;s/).*$//;p;}' "$tool" | tr ' ' '\n'
+    done | grep -v '^$' || true
+}
+
 # ── Which checks a set of changed paths selects ─────────────────────────────────────────────────
 # One line per path on stdin; prints the selected check names, one per line, in run order.
 plan() {
-    local eslint=0 drift=0 snapshot=0 sbt=0 dashboards=0 scripttests=0 actionlint=0 shellcheck=0 ios=0 judgements=0 path
+    local eslint=0 drift=0 snapshot=0 sbt=0 dashboards=0 scripttests=0 actionlint=0 shellcheck=0 ios=0 judgements=0 oldrefs=0 path
+    local tools
+    tools=" $(tool_files | tr '\n' ' ') "
     while IFS= read -r path; do
         case "$path" in
             web/src/main/assets/js/*.js|web/src/page/resources/*.js|eslint.config.js|eslint-rules/*.js|package.json|package-lock.json) eslint=1 ;;
@@ -198,6 +214,7 @@ plan() {
             test/resources/fixtures/corpus/expected-hard-clusters-*|\
             scripts/ci/identity_judgements*.py|scripts/ci/identity_takes*.py) judgements=1 ;;
         esac
+        case "$tools" in *" $path "*) oldrefs=1 ;; esac
     done
     [ $judgements = 1 ] && echo judgements
     [ $eslint = 1 ] && echo eslint
@@ -208,6 +225,7 @@ plan() {
     [ $actionlint = 1 ] && echo actionlint
     [ $shellcheck = 1 ] && echo shellcheck
     [ $sbt = 1 ] && echo sbt
+    [ $oldrefs = 1 ] && echo oldrefs
     [ $ios = 1 ] && echo ios
     return 0
 }
@@ -569,6 +587,14 @@ check_sbt() {
     fi
     "${run[@]}" > "$tmp/sbt.log" 2>&1 \
         || { grep -E '\*\*\* FAILED|\[error\]|should|Error' "$tmp/sbt.log" | head -60 >&2; warn "full log: $tmp/sbt.log"; return 1; }
+}
+
+# The tools' files compile into each tool's floor ref (scripts/identity-slice-old-ref-test.sh names them): an
+# incremental compile in the floor's cached tree, minutes only the first time a machine lays it out.
+check_oldrefs() {
+    command -v sbt >/dev/null || { warn "sbt not installed — oldrefs SKIPPED"; return 0; }
+    env -u OLD_REFS bash scripts/identity-slice-old-ref-test.sh > "$tmp/oldrefs.log" 2>&1 \
+        || { grep -v '^PASS\|✓' "$tmp/oldrefs.log" | tail -60 >&2; warn "full log: $tmp/oldrefs.log"; return 1; }
 }
 
 check_ios() {

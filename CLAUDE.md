@@ -55,7 +55,9 @@ lint spec — all `deploy/` specs and the `No*`/`*Lint*` source lints — in
 that run; `PREPUSH_SKIP=lintspecs` skips just those), actionlint on
 workflows and shellcheck on composite actions' `run:` blocks, the script
 self-tests the push touches (`scripttests`: `scripts/run-script-tests
---changed <push base>`), shellcheck on scripts (only warnings the push adds), and
+--changed <push base>`), shellcheck on scripts (only warnings the push adds),
+the slice/trace tools' files compiled into their oldest supported refs (`oldrefs`,
+on a change to a file in either tool's `TOOL_FILES`), and
 `scripts/ios-compile-check.sh` on `ios/**` — the SwiftUI app target via
 `xcodebuild` and the SwiftPM package on Linux via Docker, the two
 compiles a Mac's `swift test` misses. It complements the layers above;
