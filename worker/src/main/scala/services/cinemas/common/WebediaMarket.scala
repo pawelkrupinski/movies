@@ -15,7 +15,7 @@ import models.TimeZones
  * duplicated per country — the same split [[FlicksMarket]] makes for Flicks.
  *
  * Each market is its own hostname, which is what makes the markets independent
- * downstream: the per-host pace gate ([[tools.RateLimitedHttpFetch]]) and the
+ * downstream: the per-host pace gate ([[tools.PacedHttpFetch]]) and the
  * 429 back-off ([[tools.ThrottledHttpFetch]]) both bucket by full lowercased
  * hostname, so a `Retry-After` earned on `www.filmstarts.de` never stalls
  * `www.sensacine.com` and neither market spends the other's request budget. The

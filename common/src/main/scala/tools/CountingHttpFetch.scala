@@ -9,7 +9,7 @@ import java.util.concurrent.CompletableFuture
  * swallows, or alters an outcome.
  *
  * Placement is load-bearing. Wire it INNERMOST — directly around the leaf
- * [[RealHttpFetch]], inside [[RateLimitedHttpFetch]] and the 429 gate — because
+ * [[RealHttpFetch]], inside [[PacedHttpFetch]] and the 429 gate — because
  * "every retry is one entry" only holds where each retry is a distinct call:
  * the 429 retry in [[ThrottledHttpFetch]] and the scraper-level
  * `RetryWithBackoff` both re-invoke the chain, so each attempt passes through

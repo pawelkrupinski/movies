@@ -2,7 +2,7 @@ package clients.tools
 
 import models.GermanRoster
 import services.cinemas.common.KinoprogrammClient
-import tools.{RateLimitedHttpFetch, RealHttpFetch}
+import tools.{PacedHttpFetch, RealHttpFetch}
 
 import java.time.{Clock, LocalDate}
 import scala.concurrent.duration._
@@ -24,7 +24,7 @@ object WriteKinoprogramm {
 
   def main(args: Array[String]): Unit = {
     val today = LocalDate.parse(args.headOption.getOrElse(sys.error("usage: WriteKinoprogramm <yyyy-MM-dd>")))
-    val live  = new RateLimitedHttpFetch(new RealHttpFetch(), _ => Some(1.second), Clock.systemUTC())
+    val live  = PacedHttpFetch.perProcess(new RealHttpFetch(), _ => Some(1.second), Clock.systemUTC())
     val fetch = new RecordMissingFetch("kinoprogramm", Set("kinoprogramm.com"), live)
     Venues.foreach { case (theaterId, path) =>
       val cinema = GermanRoster.theaterIdByCinema.collectFirst { case (c, id) if id == theaterId => c }.get

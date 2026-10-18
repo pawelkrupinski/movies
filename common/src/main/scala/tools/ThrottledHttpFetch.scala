@@ -65,8 +65,8 @@ class ThrottledHttpFetch(
   // tests so the summary can be asserted on as data instead of scraped out of
   // captured log output.
   report:       Option[String => Unit] = None,
-  // The pace `RateLimitedHttpFetch` holds each host to, quoted in the pace-report
-  // (the wiring passes `RateLimitedHttpFetch.configuredInterval(env)`).
+  // The pace `PacedHttpFetch` holds each host to, quoted in the pace-report
+  // (the wiring passes `PacedHttpFetch.configuredInterval(env)`).
   paceFor:      String => Option[FiniteDuration] = _ => None
 ) extends HttpFetch with Logging {
 

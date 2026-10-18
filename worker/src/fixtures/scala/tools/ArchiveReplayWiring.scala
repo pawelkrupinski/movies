@@ -273,7 +273,7 @@ object ArchiveReplayWiring {
 
   /** Every slot free at once: the fleet pace of a wiring that sends nothing. */
   private[tools] object UnpacedFleet extends FleetHostPace {
-    def take(host: String, interval: scala.concurrent.duration.FiniteDuration, horizon: scala.concurrent.duration.FiniteDuration,
+    def take(host: String, interval: scala.concurrent.duration.FiniteDuration, horizon: scala.concurrent.duration.Duration,
              now: java.time.Instant): Either[java.time.Instant, java.time.Instant] = Right(now)
   }
 

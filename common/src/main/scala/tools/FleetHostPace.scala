@@ -12,14 +12,14 @@ import scala.concurrent.duration._
 
 /**
  * One outbound pace per host for the WHOLE FLEET — every country's worker against the same origin from the same egress —
- * where [[RateLimitedHttpFetch]] paces one process: each host's next free slot, taken one at a time. A slot within
- * `horizon` is the caller's (reserved, to wait for); one further off is not taken, and its time is handed back, so the
- * caller can come back then rather than hold a thread waiting ([[FleetPacedHttpFetch]]).
+ * or, in memory, one process: each host's next free slot, taken one at a time. A slot within `horizon` is the caller's
+ * (reserved, to wait for); one further off is not taken, and its time is handed back, so the caller can come back then
+ * rather than hold a thread waiting ([[PacedHttpFetch]]). An infinite `horizon` takes every slot, however far off.
  */
 trait FleetHostPace {
   /** `Right(slot)`: this request's reserved slot, at most `horizon` from `now`; `Left(next)`: the host's next slot is
    *  further off — nothing reserved. */
-  def take(host: String, interval: FiniteDuration, horizon: FiniteDuration, now: Instant): Either[Instant, Instant]
+  def take(host: String, interval: FiniteDuration, horizon: Duration, now: Instant): Either[Instant, Instant]
 }
 
 object FleetHostPace {
@@ -30,9 +30,9 @@ object FleetHostPace {
 /** The slots in this process — a test's, or a worker with no fleet database (it paces itself alone). */
 final class InMemoryFleetHostPace extends FleetHostPace {
   private val next = new ConcurrentHashMap[String, Instant]()
-  def take(host: String, interval: FiniteDuration, horizon: FiniteDuration, now: Instant): Either[Instant, Instant] = synchronized {
+  def take(host: String, interval: FiniteDuration, horizon: Duration, now: Instant): Either[Instant, Instant] = synchronized {
     val slot = FleetHostPace.slotOf(Option(next.get(host)), now)
-    if (slot.isAfter(now.plusMillis(horizon.toMillis))) Left(slot)
+    if (horizon.isFinite && slot.isAfter(now.plusMillis(horizon.toMillis))) Left(slot)
     else { next.put(host, slot.plusMillis(interval.toMillis)); Right(slot) }
   }
 }
@@ -43,12 +43,14 @@ final class MongoFleetHostPace(db: MongoDatabase) extends FleetHostPace {
   private val Timeout = 10.seconds
   private lazy val collection: MongoCollection[Document] = db.getCollection[Document](MongoFleetHostPace.Collection)
 
-  def take(host: String, interval: FiniteDuration, horizon: FiniteDuration, now: Instant): Either[Instant, Instant] = {
-    val latest = new BsonDateTime(now.plusMillis(horizon.toMillis).toEpochMilli)
+  def take(host: String, interval: FiniteDuration, horizon: Duration, now: Instant): Either[Instant, Instant] = {
     // Taken only while the next slot is within the horizon: `next` moves on from max(next, now) by `interval`.
     val update = Seq(org.bson.BsonDocument.parse(
       s"""{"$$set": {"next": {"$$add": [{"$$max": ["$$next", {"$$toDate": ${now.toEpochMilli}}]}, ${interval.toMillis}]}}}"""))
-    val within = Filters.and(Filters.eq("_id", host), Filters.or(Filters.exists("next", false), Filters.lte("next", latest)))
+    val within =
+      if (!horizon.isFinite) Filters.eq("_id", host)
+      else Filters.and(Filters.eq("_id", host), Filters.or(Filters.exists("next", false),
+        Filters.lte("next", new BsonDateTime(now.plusMillis(horizon.toMillis).toEpochMilli))))
     try {
       val before = Await.result(collection.findOneAndUpdate(within, update,
         FindOneAndUpdateOptions().upsert(true).returnDocument(ReturnDocument.BEFORE)).toFutureOption(), Timeout)
