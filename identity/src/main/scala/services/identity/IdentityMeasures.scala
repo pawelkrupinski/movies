@@ -1257,9 +1257,19 @@ object IdentityMeasures {
    *  ochronne / Camouflage" joins the film's English title, "Warsztat Świętego Mikołaja / dubbing - Nasze Kino" its
    *  format and its venue. */
   def joinsAnotherWork(l: Listing, f: Film): Boolean = l.ownTitles.exists { title =>
-    val parts = SlashJoin.split(title).toSeq.map(_.trim).filter(_.nonEmpty)
+    val parts = withoutPeeledBanner(l, SlashJoin.split(title).toSeq.map(_.trim).filter(_.nonEmpty))
     lazy val filmTitles = f.titles.map(TitleContainment.tokens).filter(_.nonEmpty)
     parts.sizeIs >= 2 && parts.exists(part => MultiFilmBill.namesAWork(part) && !filmTitles.exists(TitleContainment.tokens(part).containsSlice(_)))
+  }
+
+  /** `parts` without the banner the title rules peel off their head: a piece no search title holds, before one a search
+   *  title does — Kino Sokolnia Kępno's "„WAJDA: re-wizje” 2026 / "BEZ ZNIECZULENIA" (1985)", searched as the film after
+   *  the slash. "SHINJUKUY BOYS // THE FISH WITH ONE SLEEVE" is searched by its first piece, and bills two works. */
+  private def withoutPeeledBanner(l: Listing, parts: Seq[String]): Seq[String] = {
+    val searched = l.searchTitles.map(TitleContainment.tokens).filter(_.nonEmpty)
+    def held(part: String) = { val p = TitleContainment.tokens(part); p.nonEmpty && searched.exists(s => s.containsSlice(p) || p.containsSlice(s)) }
+    val first = parts.indexWhere(held)
+    if (first > 0) parts.drop(first) else parts
   }
 
   /** May the piece of `l`'s title that names `f` stand for the whole, the rest a banner? Two words at least —

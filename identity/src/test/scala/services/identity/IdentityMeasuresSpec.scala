@@ -1270,6 +1270,16 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     listing.shapesOfOwn("another title") shouldBe IdentityMeasures.shapes(Seq("another title"))
   }
 
+  "a work a slash joins to another" should "deny the film it is not, but not for a banner the title rules peel off its head" in {
+    val fish = Film("The Fish with One Sleeve", year = Some(2025))
+    IdentityMeasures.joinsAnotherWork(Listing("SHINJUKUY BOYS // THE FISH WITH ONE SLEEVE", searchTitles = Seq("SHINJUKUY BOYS")), fish) shouldBe true
+    // Kino Sokolnia Kępno: the retrospective banner before the slash is searched off (xtra-pp-wajda-rewizje-slash)
+    val wajda = Film("Bez znieczulenia", year = Some(1978), directors = Some(Seq("Andrzej Wajda")))
+    val banner = Listing("„WAJDA: re-wizje” 2026 / \"BEZ ZNIECZULENIA\" (1985)", searchTitles = Seq("\"BEZ ZNIECZULENIA\" (1985)"))
+    IdentityMeasures.joinsAnotherWork(banner, wajda) shouldBe false
+    IdentityMeasures.joinsAnotherWork(banner.copy(searchTitles = Nil), wajda) shouldBe true
+  }
+
   "a part a title numbers and subtitles" should "be another film's part only when the subtitle holds no word of the film's titles" in {
     val lang = Film("Das indische Grabmal", year = Some(1959), directors = Some(Seq("Fritz Lang")))
     IdentityMeasures.titlesAnotherPart(Listing("DAS INDISCHE GRABMAL (TEIL 1, DIE SENDUNG DES YOGHI)"), lang) shouldBe true
