@@ -49,6 +49,7 @@ class MemoLookupsSpec extends AnyFlatSpec with Matchers {
     val memo = new MemoLookups(inner)
     memo.cast(133035) shouldBe Answer.Known(Some(Seq("Ulrich Schamoni")))
     memo.releaseDay(133035) shouldBe Answer.Known(Some(day))
-    memo.numbersFilmsByTmdbId shouldBe false
+    // a lookup newer than the oldest ref a slice runs under, passed through by name where the slice wires the memo
+    OlderRefs.passing(classOf[IdentityLookups], memo, inner, OlderRefs.NewerLookups).numbersFilmsByTmdbId shouldBe false
   }
 }

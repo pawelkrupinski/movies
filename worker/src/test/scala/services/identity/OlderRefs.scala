@@ -33,5 +33,5 @@ object OlderRefs {
     }).asInstanceOf[T]
 
   /** The lookups added after the oldest ref a tool runs under, which its wrappers pass to their source ([[passing]]). */
-  val NewerLookups: Set[String] = Set("overview")
+  val NewerLookups: Set[String] = Set("overview", "numbersFilmsByTmdbId")
 }

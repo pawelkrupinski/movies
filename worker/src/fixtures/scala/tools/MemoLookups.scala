@@ -16,10 +16,10 @@ final class MemoLookups(inner: IdentityLookups) extends IdentityLookups {
   override def candidates(q: CandidateQuery): Answer[Seq[Hit]] = queries.computeIfAbsent(q, _ => inner.candidates(q))
   override def film(id: Int): Answer[Option[IdentityMeasures.Film]]      = films.computeIfAbsent(id, _ => inner.film(id))
   // every other lookup the source answers: left to the trait's defaults, a cast read as unknown and a release day off
-  // the record alone, whatever the source knew
+  // the record alone, whatever the source knew. Only members the oldest ref a slice runs under has (this file compiles
+  // into it); a newer one is passed through by name in the slice's wiring (`OlderRefs.NewerLookups`)
   override def cast(id: Int): Answer[Option[Seq[String]]]               = casts.computeIfAbsent(id, _ => inner.cast(id))
   override def releaseDay(id: Int): Answer[Option[java.time.LocalDate]] = inner.releaseDay(id)
-  override def numbersFilmsByTmdbId: Boolean                            = inner.numbersFilmsByTmdbId
   override def prefetchAnswered(): Unit                                 = inner.prefetchAnswered()
   override def released(qs: Iterable[CandidateQuery], ids: Iterable[Int], pages: Iterable[services.movies.ListingKey]): Unit =
     inner.released(qs, ids, pages)
