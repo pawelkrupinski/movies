@@ -18,7 +18,8 @@
 #
 # SEEDING: a checkout with no worker/target/scala-* gets the compiled classes and Zinc state of the newest local build of
 # a main commit — another worktree's, the root checkout's, or an identity tool's ref tree (~/.cache/kinowo-identity/refs)
-# — whose commit origin/main contains: project/target, project/project/target and */target/scala-*, the paths the CI's
+# — whose commit this checkout's HEAD contains (the nearest such: while origin/main cannot move, a GitHub outage, local
+# main runs ahead of it and an origin/main ancestor is days of commits off): project/target, project/project/target and */target/scala-*, the paths the CI's
 # sbt-target-cache restores (APFS clones: no bytes copied), less project/target/active.json, the source's server socket. Zinc's analysis is relative to the checkout, so the first
 # compile recompiles only what differs from that commit. KINOWO_SBT_WARM_SEED=<dir> names the source instead.
 #
@@ -108,9 +109,10 @@ reap() { # [idle]
   done
 }
 
-# The newest local build of a commit origin/main contains: "<commits behind it> <dir>", or nothing.
+# The newest local build of a commit this checkout's HEAD contains: "<commits behind it> <dir>", or nothing.
 seed_source() {
-  local dir sha t
+  local dir sha t head
+  head=$(git -C "$root" rev-parse -q --verify HEAD 2>/dev/null) || head=origin/main
   {
     git worktree list --porcelain 2>/dev/null | sed -n 's/^worktree //p'
     [ -d "$IdentityRefs" ] && find "$IdentityRefs" -mindepth 1 -maxdepth 1 -type d ! -name '*.part'
@@ -119,8 +121,8 @@ seed_source() {
     compgen -G "$dir/worker/target/scala-*/test-classes" > /dev/null || continue
     compgen -G "$dir/worker/target/scala-*/zinc" > /dev/null || continue
     case "$dir" in "$IdentityRefs"/*) sha=$(basename "$dir") ;; *) sha=$(git -C "$dir" rev-parse -q --verify HEAD 2>/dev/null) || continue ;; esac
-    git merge-base --is-ancestor "$sha" origin/main 2>/dev/null || continue
-    t=$(git rev-list --count "$sha" 2>/dev/null) || continue   # main is linear: the newer, the more commits behind it
+    git merge-base --is-ancestor "$sha" "$head" 2>/dev/null || continue
+    t=$(git rev-list --count "$sha" 2>/dev/null) || continue   # HEAD's ancestors are linear: the nearer, the more behind it
     echo "$t $dir"
   done | sort -rn | head -1
 }

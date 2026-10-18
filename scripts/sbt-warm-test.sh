@@ -66,6 +66,13 @@ check "a checkout with compiled output is never seeded over" "stale" "$(cat "$sc
 
 scratch_git "$repo" worktree add -q -b other "$scratch/other" origin/main
 (cd "$scratch/other" && KINOWO_SBT_WARM_SEED="$scratch/old" "$REPO_ROOT/scripts/sbt-warm" --seed >/dev/null 2>&1)
+# 2026-10-18, GitHub suspended: local main ran two days ahead of origin/main, and every fresh checkout was seeded from an
+# origin/main ancestor's build, recompiling those days of commits — the branch's own build is the nearest it contains
+scratch_git "$repo" worktree add -q -b past "$scratch/past" ahead
+echo d >> "$scratch/past/a"; scratch_git "$scratch/past" commit -qam four
+(cd "$scratch/past" && "$REPO_ROOT/scripts/sbt-warm" --seed >/dev/null 2>&1)
+check "a checkout ahead of origin/main is seeded from the nearest build its HEAD contains" "branch" \
+  "$(cat "$scratch/past/worker/target/scala-3.9.0/zinc/from" 2>/dev/null)"
 check "KINOWO_SBT_WARM_SEED names the source instead" "old" "$(cat "$scratch/other/worker/target/scala-3.9.0/zinc/from" 2>/dev/null)"
 
 # a module new since the checkout was seeded (identity/, 2026-10-14) is seeded on its own; the modules built stay
