@@ -361,10 +361,14 @@ touches_production() { # <commit>
 # production path names one of the red runs in a `Fixes-Red: <run id>` trailer. <range>... the pushed commits.
 check_redgate() {
     command -v gh >/dev/null || { warn "gh not installed: the gating workflows' verdicts are unread — red-build gate SKIPPED"; return 0; }
-    local workflow verdict conclusion id url reds="" commit fixes ok bad=0 r
+    local workflow verdict conclusion id url reds="" commit fixes ok bad=0 r errors
+    # gh's stderr kept apart from its answer: a warning beside a green verdict would otherwise be read as the verdict.
+    errors="$(mktemp)"
     for workflow in "${GatingWorkflows[@]}"; do
-        verdict="$(newest_verdict "$workflow" 2>&1)" \
-            || { warn "could not read $workflow's verdict in ${GhSeconds}s (${verdict%%$'\n'*}) — red-build gate SKIPPED for it"; continue; }
+        verdict="$(newest_verdict "$workflow" 2>"$errors")" || {
+            warn "could not read $workflow's verdict in ${GhSeconds}s ($(head -n 1 "$errors")) — red-build gate SKIPPED for it"
+            continue
+        }
         [ -n "$verdict" ] || continue
         read -r conclusion id url <<< "$verdict"
         if [ "$conclusion" != success ]; then
@@ -372,6 +376,7 @@ check_redgate() {
             warn "$workflow is RED on main: run $id ($conclusion) $url"
         fi
     done
+    rm -f "$errors"
     [ -z "$reds" ] && return 0
     for r in "$@"; do
         while IFS=$'\t' read -r commit fixes; do
