@@ -29,25 +29,27 @@
 #
 # Raise it back by passing your own, e.g. `scripts/dev-server.sh -J-Xmx4g`.
 #
-# MONGO. The local, password-free :28017 Mongo, hardcoded — the same one `sbt localStack` uses:
+# MONGO. The local, password-free Mongo (tool-conventions.sh's local_mongo_port: :28017, or $LOCAL_MIRROR_PORT) —
+# the same one `sbt localStack` and scripts/local-mirror/start-local-mongo.sh use:
 # the app reads its playground `kinowo_local`, /debug reads the prod-synced `kinowo_prod_mirror`
 # (scripts/local-mirror/README.md). The app reads config from the process only (no .env.local
 # since 2026-10-12), so without these it refused to boot. Anything already exported wins; for
 # prod itself, `scripts/with-prod-mongo.sh scripts/dev-server.sh` (the vault + the ssh tunnel).
-# The Mongo is started when nothing answers on :28017 (DEV_SERVER_MONGO_UP=1 skips the check).
+# The Mongo is started when nothing answers on that port (DEV_SERVER_MONGO_UP=1 skips the check).
 #
 # TMDB. The /debug/review cards ask TMDB live for a poster no stored read has; without TMDB_API_KEY
 # every one is "no TMDB poster". So it comes from the vault (one Touch ID per launch) unless already
 # exported; with no `secrets` CLI the server still boots, without those posters.
 set -euo pipefail
 . "$(dirname "$0")/vault-env.sh"
+# shellcheck source=scripts/tool-conventions.sh
+. "$(dirname "$0")/tool-conventions.sh" # local_mongo_port / local_mongo_uri
 ensure_vault_env TMDB_API_KEY -- "$BASH" "$0" "$@" || echo "[dev-server] booting without TMDB_API_KEY: no live TMDB posters on /debug/review" >&2
 cd "$(dirname "$0")/.."
-local_mongo='mongodb://127.0.0.1:28017'
-export MONGODB_URI="${MONGODB_URI:-$local_mongo/?directConnection=true}"
+export MONGODB_URI="${MONGODB_URI:-$(local_mongo_uri)}"
 export MONGODB_DB="${MONGODB_DB:-kinowo_local}"
-export MONGODB_MOVIES_MIRROR_URI="${MONGODB_MOVIES_MIRROR_URI:-$local_mongo/kinowo_prod_mirror?directConnection=true}"
-if [ -z "${DEV_SERVER_MONGO_UP:-}" ] && ! (echo >/dev/tcp/127.0.0.1/28017) 2>/dev/null; then
+export MONGODB_MOVIES_MIRROR_URI="${MONGODB_MOVIES_MIRROR_URI:-$(local_mongo_uri kinowo_prod_mirror)}"
+if [ -z "${DEV_SERVER_MONGO_UP:-}" ] && ! (echo >"/dev/tcp/127.0.0.1/$(local_mongo_port)") 2>/dev/null; then
   scripts/local-mirror/start-local-mongo.sh >&2
 fi
 exec sbt -J-Xmx2500m "$@" web/run
