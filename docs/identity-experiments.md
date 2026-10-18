@@ -7,6 +7,9 @@ different approach could avoid, and each entry says what that cost was and which
 Each entry: what it tried, how it was measured, the result, why it stopped, and where the code is. Code that left a
 branch is kept as a local annotated tag `experiment/<name>` (`git show experiment/<name>`, `git log main..experiment/<name>`).
 Add an entry whenever an experiment is dropped or parked; edit an entry in place when one is retried.
+Whenever a fix touches the same listings, class, rule or stage as an entry here, go back through that entry first and
+consider a new angle: a narrower scope, another signal, another stage, or what has changed on main since that could
+avoid the cost that sank it. Try it, or say why not.
 
 The trade rule they were judged by: zero new wrong takes; a right take may be lost only as a deliberate trade, up to
 ~100 per wrong one cured, each listed with evidence in `test/resources/fixtures/identity-judgements.tsv`.

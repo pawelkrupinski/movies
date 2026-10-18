@@ -6,7 +6,8 @@ description: Tools for identity-resolver investigations — why a listing took (
 # Investigating an identity take
 
 **Before building a resolver change, read `docs/identity-experiments.md`**: what was already tried, measured and not
-landed, why, and where its code is kept (`experiment/<name>` tags). Add an entry whenever you drop or park one.
+landed, why, and where its code is kept (`experiment/<name>` tags). When one touches what you are fixing, revisit it
+and consider a new angle on the cost that sank it. Add an entry whenever you drop or park one.
 
 The tools below replace the mechanics that used to eat an investigation's hours. `identity-slice` (and
 `venue-replay`, `recording-diff`, `listing-history --replay`) read a **recording**; `identity-slice --explain`,
