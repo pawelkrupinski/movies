@@ -6,6 +6,7 @@
 #   identity_newest_recording [cc]  -> the newest successful "Record scrape fixtures" run (with cc: holding its corpus)
 #   identity_recording <run> <cc> [corpus] -> the fixtures directory holding that run's corpus/ and enrichment-<cc>/
 #        (with `corpus`: the scrape corpus alone)
+#   identity_recording_cached <run> <cc> -> that directory when the cache already holds it, else fails: never downloads
 #   identity_capture <src> <cc>...  -> prints the directory holding <cc>.json.gz for each cc, and (a run's or a ref's)
 #        the judgements that judge it, identity-judgements.tsv (a ref from before they were one file: its labels.tsv)
 #        src: "" (this checkout's), a directory, an "Identity capture" run id, or a git ref
@@ -227,8 +228,20 @@ identity_nearest_compiled() {
 # enrichment-<cc>/ (with `corpus`: its scrape corpus alone), downloaded once into the shared cache
 # (scripts/identity-fetch-recording.sh), one download of a run's country at a time across agents
 identity_recording() {
-  local run=$1 cc=$2 what=${3:-} fixtures=$IDENTITY_CACHE/recordings/$1/pair/test/resources/fixtures
+  local run=$1 cc=$2 what=${3:-} fixtures
+  fixtures=$(identity_recording_dir "$run")
   identity_recorded "$fixtures" "$cc" "$what" || identity_locked "recording-$run-$cc" identity_recording_download "$run" "$cc" "$what" || return 1
+  echo "$fixtures"
+}
+
+identity_recording_dir() { echo "$IDENTITY_CACHE/recordings/$1/pair/test/resources/fixtures"; }
+
+# identity_recording_cached <run> <cc> -> the directory holding the run's corpus/ and enrichment-<cc>/ when the cache
+# holds both, else fails saying so: for a caller that must not reach GitHub (identity-capture.sh --offline)
+identity_recording_cached() {
+  local fixtures
+  fixtures=$(identity_recording_dir "$1")
+  identity_recorded "$fixtures" "$2" || { identity_log "recording $1 holds no $2 corpus and tree in $fixtures (fetch it: scripts/identity-fetch-recording.sh)"; return 1; }
   echo "$fixtures"
 }
 
