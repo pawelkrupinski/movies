@@ -142,16 +142,14 @@ Order by the live tally: 4 (relays, 33 of 70 live wrong listings), then 2, 3, 1,
 
 ### Parked resolver work
 - [ ] **review-fixes leftovers** (branch `review-fixes`, 4 days old; six commits ported 2026-10-18, local measure 0 moves):
-  - `f4796e608`, a relay's dated or broadcast-season record pre-empting the POOLED rules, with the Nutcracker fix on top
-    (branch `port-review-parked`, 218484bc0): local measure on recording 38713274617 UK +134 right takes ("Royal Ballet
-    and Opera: Romeo and Juliet" at Cineworld/Everyman/Showcase → the 2026/27 relay, screening on its air day 25 May
-    2027; Shrewsbury and Haverhill off the 2025 record), but Savoy Worksop's "MET:Manon" (6 Apr 2027) loses the Met's
-    2026/27 Manon: it pooled into a 165-listing cluster at the base and stands alone at the head. Find why the
-    pre-emption regroups it, then land, or record the one loss as an evidenced trade.
+  - [x] `f4796e608`, landed 2026-10-18 as the broadcast-season record alone pre-empting the pooled rules (local measure
+    on recording 38713274617: UK 2 cures, 148 gained right, 0 lost — the Romeo and Juliet relays on their air day).
+    Pooled stage-production was the harm: one member's stated year read as the cluster's broadcast split Savoy Worksop's
+    "MET:Manon" off the Met's record and took Aldeburgh's Nutcracker as the 2025/26 one.
   - `c5aa11025`, searching a relay's work with its banner's year ("Tosca 2027"): asks TMDB queries the recording lacks;
     needs a recording taken with it (GitHub).
-  - `d929894c0`, splitting a venue's rows by season only where a stage house bills them: needs the stage-house table
-    (with its derived initials) readable from `common`, and the snapshots regenerated.
+  - [x] `d929894c0`, landed 2026-10-18: the house table, its derived initials and what bills a house moved to
+    `services.movies.StageHouse` (common), read by the slot fold (local measure: 0 moves, snapshots unchanged).
 - [ ] **Item 8's certificate search** (branch `item8-search-fill`, dbf421550): the UK capture is filled, but the local
   measure loses Lighthouse Poole's eight "Family Cinema: <film> - Cert <X>" right takes (Paddington, WALL·E…): their new
   spellings ask family questions no recording or filed answer holds, so the same-film join to their siblings goes. Needs a
