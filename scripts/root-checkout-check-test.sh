@@ -17,6 +17,17 @@ echo base > "$root/f"; scratch_git "$root" add f; scratch_git "$root" commit -qm
 echo two > "$root/f"; scratch_git "$root" commit -qam two
 scratch_git "$root" worktree add -q -b mine "$work/mine" main
 
+out=$("$TOOL" --help); status=$?
+check "--help prints the header, to its last line" "0 1" "$status $(printf '%s' "$out" | grep -c 'pre-push hook run it')"
+check "...and stops there" "0" "$(printf '%s' "$out" | grep -c 'pipefail')"
+# a copy whose header grew a line: the help follows the header, not a line range fixed to today's
+mkdir -p "$work/tool"
+cp "$REPO_ROOT/scripts/tool-conventions.sh" "$work/tool/"
+sed '2a\
+# (a line the header grew)
+' "$TOOL" > "$work/tool/root-checkout-check"
+check "...however long the header grows" "1" "$(bash "$work/tool/root-checkout-check" --help | grep -c 'pre-push hook run it')"
+
 out=$("$TOOL" "$work/mine"); status=$?
 check "a root on main and clean: silent" "0 ''" "$status '$out'"
 
