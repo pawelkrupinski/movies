@@ -246,7 +246,8 @@ class TmdbClient(
   def readRecordAgain(tmdbId: Int): Unit = authHeader.foreach(auth => orEmptyWhenUnknown(httpGet(fullDetailsUrl(tmdbId), auth)))
 
   def details(tmdbId: Int): Option[TmdbClient.Details] = authHeader.flatMap { auth =>
-    Try(httpGet(detailsUrl(tmdbId), auth)).toOption.map(body => TmdbResponses.details(bodies.parse(body)))
+    Try(httpGet(detailsUrl(tmdbId), auth))
+      .toOption.map(body => TmdbResponses.details(bodies.parse(body)))
   }
 
   /** Every person id credited anywhere on a movie's crew — not only the Director
@@ -308,18 +309,19 @@ class TmdbClient(
    *  it in costs one fixture migration and removes both problems: same request count as
    *  before the feature, and the rating now arrives in the body every test already replays. */
   def fullDetails(tmdbId: Int): Option[TmdbClient.FullDetails] = authHeader.flatMap { auth =>
-    Try(httpGet(fullDetailsUrl(tmdbId), auth)).toOption.map { body =>
-      // Prefer the best deployment-language portrait poster from `/images` over the
-      // default `poster_path` (which is whatever TMDB flags primary,
-      // regardless of language or shape). This poster only ever surfaces
-      // as a backup — the Tmdb slot ranks below every cinema in
-      // `MovieRecord.posterUrl` — so a better localised portrait improves
-      // the `data-fallbacks` chain (and the no-cinema-poster case).
-      // A failed `/images` read falls back to `poster_path` — the poster TMDB flags
-      // primary is a real answer, so a poster hiccup never breaks the resolve.
-      TmdbResponses.fullDetails(bodies.parse(body), language,
-        Try(posters(tmdbId)).toOption.flatMap(TmdbResponses.bestPortraitPosterUrl(_, language.getLanguage)))
-    }
+    Try(httpGet(fullDetailsUrl(tmdbId), auth))
+      .toOption.map { body =>
+        // Prefer the best deployment-language portrait poster from `/images` over the
+        // default `poster_path` (which is whatever TMDB flags primary,
+        // regardless of language or shape). This poster only ever surfaces
+        // as a backup — the Tmdb slot ranks below every cinema in
+        // `MovieRecord.posterUrl` — so a better localised portrait improves
+        // the `data-fallbacks` chain (and the no-cinema-poster case).
+        // A failed `/images` read falls back to `poster_path` — the poster TMDB flags
+        // primary is a real answer, so a poster hiccup never breaks the resolve.
+        TmdbResponses.fullDetails(bodies.parse(body), language,
+          Try(posters(tmdbId)).toOption.flatMap(TmdbResponses.bestPortraitPosterUrl(_, language.getLanguage)))
+      }
   }
 
   /** Deployment-language + language-neutral poster variants for a movie, from
