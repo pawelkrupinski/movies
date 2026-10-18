@@ -210,7 +210,7 @@ trait MovieCache extends MovieCacheReader {
  * What this class OWNS is the resident corpus and the way into it: the Caffeine
  * map and its [[CorpusIndex]], the write funnels (`put`'s tmdbId / imdbId identity
  * gate, `putIfPresent`), the per-title locks, the cache-or-store reads, and
- * hydration and the change-stream mirror. See `docs/stable-film-id.md`.
+ * hydration and the change-stream mirror.
  */
 class CaffeineMovieCache(
   repository: MovieRepository,

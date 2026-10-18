@@ -3,7 +3,7 @@
 **Rule (Paweł, 2026-09-07):** staging, enrichment and every other update path must leave
 the read model in exactly the state a settle would produce, so the scheduled prune finds
 nothing. A card the prune removes is a defect in the path that wrote it, not accepted
-churn. The read-model twin of "the settle is self-heal only" (`docs/stable-film-id.md`).
+churn. The read-model twin of "the settle is self-heal only".
 
 ## Why it was not true
 
