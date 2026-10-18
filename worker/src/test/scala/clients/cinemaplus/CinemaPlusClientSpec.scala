@@ -5,8 +5,11 @@ import models.UsRoster
 import org.scalatest.{LoneElement, OptionValues}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import services.cinemas.common.ListingReads
 import services.cinemas.us.CinemaPlusClient
+import tools.GetOnlyHttpFetch
 
+import java.io.IOException
 import java.time.{LocalDate, LocalDateTime, LocalTime}
 
 /** Replays a 2026-10-12 capture of Barry Cinemas' CinemaPlus site (`WriteCinemaPlus`):
@@ -64,6 +67,23 @@ class CinemaPlusClientSpec extends AnyFlatSpec with Matchers with OptionValues w
     val later = scrape("/gem-theater-riverton", Gem, on = LocalDate.of(2026, 10, 14))
     later.flatMap(_.showtimes).map(_.dateTime.toLocalDate).min shouldBe LocalDate.of(2026, 10, 14)
     later.flatMap(_.showtimes).size shouldBe 8
+  }
+
+  it should "keep the other days when one day's page fails, and mark the listing incomplete" in {
+    val replay = new FakeHttpFetch("cinemaplus")
+    val fetch = new GetOnlyHttpFetch {
+      def get(url: String): String =
+        if (url.endsWith("?date=2026-10-13")) throw new IOException("day refused") else replay.get(url)
+    }
+    val (gem, reads) = ListingReads.during(new CinemaPlusClient(fetch, Site, "/gem-theater-riverton", Gem, today).fetch())
+    gem.flatMap(_.showtimes).map(_.dateTime.toLocalDate).distinct.sorted shouldBe
+      Seq(12, 14, 15).map(LocalDate.of(2026, 10, _))
+    reads.complete shouldBe false
+  }
+
+  it should "fail the scrape when the venue page itself cannot be read" in {
+    val fetch = new GetOnlyHttpFetch { def get(url: String): String = throw new IOException("venue refused") }
+    an[IOException] should be thrownBy new CinemaPlusClient(fetch, Site, "/gem-theater-riverton", Gem, today).fetch()
   }
 
   "CinemaPlusClient.timeOf" should "read the platform's 12-hour clock" in {
