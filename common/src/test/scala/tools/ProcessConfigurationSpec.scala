@@ -53,9 +53,9 @@ class ProcessConfigurationSpec extends AnyFlatSpec with Matchers {
   // spelling of its own: they took "true" alone, one of them any value at all.
   it should "read every boolean harness switch as one flag, `1` and `true` alike" in {
     val on = resolvedFrom("KINOWO_CONVERGENCE_HERMETIC" -> "1", "KINOWO_CONVERGENCE_FILL_ONLY" -> "1", "KINOWO_IDENTITY_LOOKUPS" -> "1",
-      "KINOWO_IDENTITY_BOOT_ONLY" -> "1", "KINOWO_HARD_CLUSTERS_DUMP" -> "true")
-    (on.hermeticReplay, on.gapFill, on.identityLookupSweep, on.identityPipelineBootOnly, on.hardClusterDump) shouldBe
-      (HermeticReplay(true), GapFill(true), IdentityLookupSweepEnabled(true), IdentityPipelineBootOnly(true), HardClusterDump(true))
+      "KINOWO_HARD_CLUSTERS_DUMP" -> "true")
+    (on.hermeticReplay, on.gapFill, on.identityLookupSweep, on.hardClusterDump) shouldBe
+      (HermeticReplay(true), GapFill(true), IdentityLookupSweepEnabled(true), HardClusterDump(true))
     resolvedFrom("KINOWO_HARD_CLUSTERS_DUMP" -> "no").hardClusterDump shouldBe HardClusterDump(false)
   }
 
@@ -101,11 +101,6 @@ class ProcessConfigurationSpec extends AnyFlatSpec with Matchers {
       .telegramRoute(AlertRoute.FilmwebFallback) shouldBe Right(TelegramRoute(TelegramBotToken("bot"), TelegramChatId(-100L), Some(TelegramTopicId(7L))))
     resolvedFrom("KINOWO_FILMWEB_DROP_TG_CHAT_ID" -> "chat").telegramRoute(AlertRoute.FilmwebDrop) shouldBe
       Left(Seq(MissingSetting("TELEGRAM_BOT_TOKEN"), MissingSetting("KINOWO_FILMWEB_DROP_TG_CHAT_ID (not a number)")))
-  }
-
-  it should "boot the identity measure's pipeline only when asked to" in {
-    resolvedFrom("KINOWO_IDENTITY_BOOT_ONLY" -> "true").identityPipelineBootOnly shouldBe IdentityPipelineBootOnly(true)
-    resolvedFrom().identityPipelineBootOnly shouldBe IdentityPipelineBootOnly(false)
   }
 
   it should "give a capture's live reads four at a time per host, unless the parallel runs split it" in {

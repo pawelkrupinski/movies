@@ -64,7 +64,7 @@ class HermeticConvergenceWiringSpec extends AnyFlatSpec with Matchers {
   }
 
   // ...nor when the pinned pair has EXPIRED. The rolling release keeps the two newest trees, so an
-  // older pin (`identity-measure-ci.sh`'s RECORDING) finds nothing; the step said `::error::` and
+  // older pin (the retired identity-measure-ci.sh's RECORDING) finds nothing; the step said `::error::` and
   // exited 0, and a 2026-09-29 PL measurement "succeeded" with 0 of 9,981 listings matched.
   it should "fail, not replay nothing, when the pinned pair's corpus or tree is gone" in {
     def exitsAfterErrors(name: String, text: String, exits: String*): Unit = {

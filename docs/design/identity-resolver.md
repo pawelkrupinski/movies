@@ -1739,16 +1739,13 @@ Production code that serves nothing (no wiring reads it):
 - `worker/.../services/identity/TmdbIdentityLookups` implements the trait over raw TMDB primitives (`TmdbClient.search` is new) and the venues' detail pages. A replay gap becomes `Unknown`, not "no film".
 - Tests:
   - `common/src/test/.../identity/`: the properties on generated corpora, each beside its mutation (A1 lazy lookups, P1 first-wins, A3 narrowed families, A4 input-order tie-break, NoVoting), plus the hand-built incident cases. 37 tests, about 45 s.
-  - `worker/src/it/scala/IdentityShadowIntegrationSpec` compares the resolver with the pipeline, head to head. The hard clusters always run (about 90 s on itAll). The full corpora are opt-in.
+  - `worker/src/it/scala/IdentityShadowIntegrationSpec` compared the resolver with the pipeline, head to head. It was retired on 2026-10-18: once the pipeline was deleted (2026-10-04) its "pipeline" side booted the identity projection itself. Base-vs-head takes are measured by `scripts/identity-measure` (CI) and `scripts/identity-measure-local`.
 
 Reproduce:
 
 ```
-# the five hard clusters (itAll):
-MONGODB_URI=mongodb://localhost:28017 sbt "worker/IntegrationTest/testOnly integration.IdentityShadowIntegrationSpec"
-# + the five full corpora (recorder run 36153174348):
-KINOWO_IDENTITY_FULL=es,de,pl,uk,us KINOWO_IDENTITY_CORPUS_DIR=<cinema-scrapes-<cc>.json.gz dir> \
-KINOWO_FIXTURE_ROOT=<real enrichment-<cc> dirs> KINOWO_IDENTITY_OUT=<out> …same… (sbt -J-Xmx16g)
+# today (the shadow spec is retired): a whole-corpus base-vs-head measure
+scripts/identity-measure-local --base <ref> [--countries pl,de,uk,us,es]
 ```
 
 The pipeline side is booted the way the convergence legs boot it (`bootCorpus`, then the settle pair, staging, conclusion and projection), so the US diff now exists. The US boot took 342–583 s, against more than 65 min for the proof's per-venue replay. Listings are mapped to pipeline films by slot, with the year and director discriminator the slot fold uses.
@@ -1933,7 +1930,7 @@ The learned `title in {none,overlap} AND venue in {same}` rule fired on several 
 **Next:** re-run this section once the `identity-lookups=true` recording of the resolver's query set is pinned:
 
 ```
-KINOWO_IDENTITY_FULL=es,de,pl,uk,us KINOWO_IDENTITY_CORPUS_DIR=… KINOWO_FIXTURE_ROOT=… sbt "worker/IntegrationTest/testOnly integration.IdentityShadowIntegrationSpec"
+scripts/identity-measure-local --base <ref>   # the shadow spec this named is retired
 ```
 
 ---

@@ -183,14 +183,6 @@ final case class IdentityLiveGaps(tmdbKey: String) extends AnyVal
 /** `KINOWO_IDENTITY_LIVE_PER_HOST` — how many live reads a capture runs at once per host (default 4); `scripts/identity-capture.sh`
  *  splits one budget between the countries it runs side by side, and each run halves its own on a 429 or 503. */
 final case class IdentityLivePerHost(value: Int) extends AnyVal
-final case class IdentityShadowPermutations(value: Int) extends AnyVal
-/** `KINOWO_IDENTITY_PIPELINE_CACHE` — where the identity shadow run keeps each corpus's booted
- *  pipeline answers, so resolver variants measure against one boot. */
-final case class IdentityPipelineCache(value: Path) extends AnyVal
-final case class IdentityPipelineBootOnly(value: Boolean) extends AnyVal
-/** `KINOWO_IDENTITY_ROBUSTNESS=off` — the identity shadow run skips its re-resolving robustness
- *  measures (arrival orders, outage, perturbation). */
-final case class IdentityShadowRobustness(value: Boolean) extends AnyVal
 /** `KINOWO_IDENTITY_FOCUS` — title phrases a measurement run shows old against new, and stops. A
  *  title is in focus when it holds EVERY word of one phrase, so "dark city" is Dark City, not every
  *  dark or city title. The whole corpus is resolved and only the focus shown, so a focused answer is

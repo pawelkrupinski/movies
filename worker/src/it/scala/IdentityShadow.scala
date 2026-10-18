@@ -1,8 +1,6 @@
 package integration
 
-import tools.SpecClock.given
-
-import models.{Country, SourceData, Tmdb}
+import models.Country
 import services.identity._
 import services.movies.{ListingKey, TitleNormalizer}
 import services.scrapes.ArchivedScrape
@@ -13,10 +11,9 @@ import scala.collection.mutable
 import scala.jdk.CollectionConverters._
 
 /**
- * The shadow harness around [[IdentityResolver]]: the recorded corpora, today's pipeline booted
- * over them the way the convergence legs boot it, the resolver over the same recorded answers,
- * and everything the phase-2 report compares between the two (docs/design/identity-resolver.md
- * §phase 2). Test code; `IdentityShadowIntegrationSpec` drives it.
+ * The recorded corpora the whole-corpus [[IdentityResolver]] tools read (`IdentityResolveDump`, the
+ * unmatched-cluster capture, the seeding and query-coverage specs): each corpus's replayed answers, the
+ * wiring that scrapes it, its raw listings and the memoised lookups over it. Test code.
  */
 object IdentityShadow {
 
@@ -24,7 +21,7 @@ object IdentityShadow {
 
   // ── corpora ───────────────────────────────────────────────────────────────────────────
 
-  /** Every request the pipeline or the resolver made, counted — the cost column. */
+  /** Every request the resolver made, counted — the cost column. */
   final class CountingFetch(inner: HttpFetch) extends HttpFetch {
     val requests = new java.util.concurrent.atomic.AtomicLong()
     override def get(url: String): String = { requests.incrementAndGet(); inner.get(url) }
@@ -162,15 +159,9 @@ object IdentityShadow {
     }
   }
 
-  // ── today's pipeline ──────────────────────────────────────────────────────────────────
+  // ── the replay wiring ─────────────────────────────────────────────────────────────────
 
-  /** One film the pipeline made: its key, its TMDB id and record, and its cinema slots. `basis`: how
-   *  the pipeline concluded `tmdbId` (`TmdbBasis`: TitleOnly, YearScoped, DirectorWalk, ExternalId) —
-   *  which of its steps an old match rests on. */
-  final case class PipelineFilm(key: String, tmdbId: Option[Int], film: Option[IdentityMeasures.Film],
-                                slots: Seq[(String, String, SourceData)], basis: Option[String] = None)
-
-  /** The wiring both sides use (`FetchReplayWiring`): a throwaway database seeded with the corpus,
+  /** The corpus's wiring (`FetchReplayWiring`): a throwaway database seeded with the corpus,
    *  every answer from the corpus's fetch, retries that never sleep on a replayed refusal. */
   def wiring(target: IntegrationMongoTarget, c: Corpus, storages: mutable.ListBuffer[ConvergenceStorage],
              root: settings.FixtureRoot, environment: Env): ArchiveReplayWiring = {
@@ -178,61 +169,6 @@ object IdentityShadow {
     storages.synchronized(storages += storage)
     FetchReplayWiring(c.country, storage, c.rows, c.fetch, root, retrySleep = (_: Long) => (), environment = environment)
   }
-
-  /** Boot production — the identity projection — the way the convergence legs do: every venue
-   *  scraped into the intake, one projection and the enrichment it announces, then the read model. */
-  def bootPipeline(w: ArchiveReplayWiring): Seq[PipelineFilm] = {
-    w.bootCutover()
-    tools.WholeReconcile(w.readModelProjector)
-    w.movieRepository.findAll().map { f =>
-      val tmdb = f.record.data.get(Tmdb)
-      PipelineFilm(f.id.value, f.record.tmdbId,
-        f.record.tmdbId.map(_ => IdentityMeasures.Film(tmdb.flatMap(_.title).getOrElse(f.title), tmdb.flatMap(_.originalTitle), Nil,
-          tmdb.flatMap(_.releaseYear), tmdb.flatMap(_.runtimeMinutes), tmdb.map(_.director).filter(_.nonEmpty), None)),
-        StoredFilmSlots.slotsOf(f), f.record.tmdbBasis)
-    }.sortBy(_.key)
-  }
-
-  /** One corpus's booted pipeline, as the resolver side reads it: its films (without their slots),
-   *  each listing's film, and what the boot cost. Kept on disk (`KINOWO_IDENTITY_PIPELINE_CACHE`)
-   *  so several resolver builds measure against ONE boot of today's pipeline. */
-  final case class BootedPipeline(films: Seq[PipelineFilm], filmOf: Map[ListingKey, Int], seconds: Double, requests: Long,
-                                  unanswerable: Long)
-
-  object BootedPipeline {
-    import play.api.libs.json._
-    private def filmJson(f: IdentityMeasures.Film): JsObject = Json.obj("title" -> f.title, "originalTitle" -> f.originalTitle,
-      "year" -> f.year, "runtime" -> f.runtime, "directors" -> f.directors)
-    private def filmFrom(js: JsValue): IdentityMeasures.Film = IdentityMeasures.Film((js \ "title").as[String],
-      (js \ "originalTitle").asOpt[String], Nil, (js \ "year").asOpt[Int], (js \ "runtime").asOpt[Int], (js \ "directors").asOpt[Seq[String]], None)
-
-    /** Keys by their rendered form: the listing keys a corpus produces render uniquely. */
-    def write(path: Path, b: BootedPipeline): Unit = {
-      val js = Json.obj(
-        "films" -> b.films.map(f => Json.obj("key" -> f.key, "tmdbId" -> f.tmdbId, "film" -> f.film.map(filmJson), "basis" -> f.basis)),
-        "filmOf" -> JsObject(b.filmOf.toSeq.map { case (k, i) => k.toString -> JsNumber(i) }),
-        "seconds" -> b.seconds, "requests" -> b.requests, "unanswerable" -> b.unanswerable)
-      Files.createDirectories(path.getParent)
-      val out = new java.util.zip.GZIPOutputStream(Files.newOutputStream(path))
-      try out.write(Json.stringify(js).getBytes(java.nio.charset.StandardCharsets.UTF_8)) finally out.close()
-    }
-
-    def read(path: Path, listings: Seq[Listing]): BootedPipeline = {
-      val in = new java.util.zip.GZIPInputStream(Files.newInputStream(path))
-      val js = try Json.parse(in) finally in.close()
-      val byName = listings.map(l => l.key.toString -> l.key).toMap
-      val filmOf = (js \ "filmOf").as[JsObject].value.toMap.map { case (k, i) =>
-        byName.getOrElse(k, throw new IllegalStateException(s"$path names a listing the corpus does not list: $k")) -> i.as[Int] }
-      BootedPipeline((js \ "films").as[Seq[JsValue]].map(f =>
-          PipelineFilm((f \ "key").as[String], (f \ "tmdbId").asOpt[Int], (f \ "film").asOpt[JsValue].filter(_ != JsNull).map(filmFrom), Nil,
-            (f \ "basis").asOpt[String])),
-        filmOf, (js \ "seconds").as[Double], (js \ "requests").as[Long], (js \ "unanswerable").as[Long])
-    }
-  }
-
-  /** Each listing's pipeline film (`StoredFilmSlots`, the rule the production shadow diff uses). */
-  def pipelineFilmOf(listings: Seq[Listing], films: Seq[PipelineFilm], normalizer: TitleNormalizer): Map[ListingKey, Int] =
-    StoredFilmSlots.assign(listings, films.zipWithIndex.map { case (f, i) => i -> f.slots }, normalizer)
 
   // ── the resolver ──────────────────────────────────────────────────────────────────────
 
@@ -245,105 +181,7 @@ object IdentityShadow {
   type Memo = tools.MemoLookups
   val Memo: tools.MemoLookups.type = tools.MemoLookups
 
-  /** A simulated TMDB OUTAGE: a deterministic share of candidate queries and film records
-   *  withheld as `Unknown`. */
-  final class Outage(inner: IdentityLookups, share: Double) extends IdentityLookups {
-    private def withheld(key: String) = (key.hashCode.toLong & 0x7fffffffL) % 1000 < (share * 1000).toLong
-    override def hasDetail(l: Listing): Boolean = inner.hasDetail(l)
-    override def detail(l: Listing): Answer[Option[DetailFacts]] = inner.detail(l)
-    override def candidates(q: CandidateQuery): Answer[Seq[Hit]] = if (withheld(q.sortKey)) Answer.Unknown else inner.candidates(q)
-    override def film(id: Int): Answer[Option[IdentityMeasures.Film]] = if (withheld(s"film $id")) Answer.Unknown else inner.film(id)
-  }
-
-  /** `f` over `items` on every core, answers in `items`' order — for the robustness measures'
-   *  many independent resolves of one corpus (21 presentations, up to 160 perturbed copies), which
-   *  ran one after another and made this suite the integration job's critical path (~3 min of
-   *  its ~4 on a CI runner). Safe because a resolve is a pure function of its listings and its
-   *  lookups, and the lookups beneath it are a [[Memo]] (concurrent maps) over
-   *  `CountedGaps`, which answers a fresh question under its own lock so a
-   *  recording miss is still attributed to the question that met it.
-   *
-   *  `threads` bounds how many run at once: a WHOLE-corpus resolve holds a country resident, and
-   *  one per core of a full US corpus would not fit the heap a hard-cluster resolve fits many times. */
-  def sideBySide[A, B](items: Seq[A], threads: Int = Runtime.getRuntime.availableProcessors)(f: A => B): Seq[B] = {
-    val pool = java.util.concurrent.Executors.newFixedThreadPool(math.max(1, threads))
-    try {
-      given scala.concurrent.ExecutionContext = scala.concurrent.ExecutionContext.fromExecutor(pool)
-      scala.concurrent.Await.result(scala.concurrent.Future.traverse(items)(item => scala.concurrent.Future(f(item))),
-        scala.concurrent.duration.Duration.Inf)
-    } finally pool.shutdownNow()
-  }
-
-  // ── evidence: labels and contradiction ────────────────────────────────────────────────
-
-  /** Whether a listing's own measurements CONTRADICT a film: two or more of its corroborators
-   *  deny it (`IdentityMeasures.ownAgreement`, the calibration's `contradicted` rule). The
-   *  benchmark's label-free referee — never an input to the resolver. */
-  def contradicts(e: Evidence, f: IdentityMeasures.Film): Boolean =
-    IdentityMeasures.ownAgreement(IdentityMeasures.listingFilm(e.measured, f, None, 0, 0))._2.size >= 2
-
-  /** How many of a listing's own corroborators back a film, and how many deny it. */
-  def agreement(e: Evidence, f: IdentityMeasures.Film): (Int, Int) = {
-    val (agree, deny) = IdentityMeasures.ownAgreement(IdentityMeasures.listingFilm(e.measured, f, None, 0, 0))
-    (agree.size, deny.size)
-  }
-
-  /** A system's answer for a listing: the film's TMDB id and what TMDB says about it. */
-  final case class FilmAnswer(tmdbId: Int, film: IdentityMeasures.Film)
-
-  /** One held-out label of the calibration (`identity-labels.json.gz`, `split == test` only):
-   *  `corroborated` names the listing's film; `contradicted` says production's filing of it,
-   *  `tmdbId`, is likely WRONG. */
-  final case class Label(tmdbId: Int, corroborated: Boolean)
-
-  val LabelsPath: Path = java.nio.file.Paths.get("test", "resources", "fixtures", "identity", "identity-labels.json.gz")
-
-  /** Every test-split label of `country`, by `ListingKey.toString`. */
-  def labels(country: Country): Map[String, Label] =
-    if (!Files.exists(LabelsPath)) Map.empty
-    else {
-      val in = new java.util.zip.GZIPInputStream(Files.newInputStream(LabelsPath))
-      val js = try play.api.libs.json.Json.parse(in) finally in.close()
-      (js \ "listings").as[Seq[play.api.libs.json.JsObject]].iterator
-        .filter(l => (l \ "country").as[String] == country.code && (l \ "split").as[String] == "test")
-        .flatMap(l => (l \ "tmdbId").asOpt[Int].map(id => (l \ "listingKey").as[String] ->
-          Label(id, (l \ "status").as[String] == "corroborated")))
-        .toMap
-    }
-
-  // ── partitions ────────────────────────────────────────────────────────────────────────
-
-  /** Pairwise agreement of two partitions over the same items, from their contingency table
-   *  (never by enumerating pairs: the US corpus holds 100k listings). */
-  final case class Pairwise(sameA: Long, sameB: Long, sameBoth: Long) {
-    def precision: Double = if (sameB == 0) 1.0 else sameBoth.toDouble / sameB
-    def recall: Double    = if (sameA == 0) 1.0 else sameBoth.toDouble / sameA
-    def f1: Double        = if (precision + recall == 0) 0.0 else 2 * precision * recall / (precision + recall)
-    def wrongMerges: Long = sameB - sameBoth
-    def wrongSplits: Long = sameA - sameBoth
-  }
-
-  private def pairs(n: Long): Long = n * (n - 1) / 2
-
-  /** `truth` (partition A) against `system` (partition B), over the items both name. */
-  def pairwise[K, A, B](truth: Map[K, A], system: Map[K, B]): Pairwise = {
-    val items = truth.keySet intersect system.keySet
-    val a  = items.toSeq.groupBy(truth).values.map(v => pairs(v.size.toLong)).sum
-    val b  = items.toSeq.groupBy(system).values.map(v => pairs(v.size.toLong)).sum
-    val ab = items.toSeq.groupBy(k => (truth(k), system(k))).values.map(v => pairs(v.size.toLong)).sum
-    Pairwise(a, b, ab)
-  }
-
   // ── reporting ─────────────────────────────────────────────────────────────────────────
-
-  final class Report(path: Path) {
-    Files.createDirectories(path.toAbsolutePath.getParent)
-    Files.writeString(path, "")
-    def line(s: String): Unit = synchronized {
-      Files.writeString(path, s + "\n", java.nio.file.StandardOpenOption.APPEND)
-      println(s.take(4000))
-    }
-  }
 
   def pct(a: Long, b: Long): String = if (b == 0) "—" else f"${100.0 * a / b}%.1f%%"
 
