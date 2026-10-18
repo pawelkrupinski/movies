@@ -592,6 +592,21 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Wajda Re wizje Kronika wypadków miłosnych 1985"       -> "Kronika wypadków miłosnych (1985)"
   )
 
+  // The strands billed under any venue's name read the venue as a capitalised word. Under the rules' (?i) a bare
+  // \p{Lu} matched lower case too, so any word passed for the venue and "Film: kino moralne" was searched as "Film".
+  "A strand billed under any venue's name" should "take only a capitalised word for the venue" in {
+    Seq(
+      "Film: kino moralne", "Film: premiera w czwartek", "Lalka: kino dostępne w czwartek", "Obcy: kadr non-fiction",
+      "naprawdę Junior: Toy Story 5", "Filmoterapia w domu | Drugie życie", "Klasyka w domu: Casablanca",
+      "Wymiary Kina na ekranie: Casablanca", "Erupcja | kino dla rodziców", "LATO w domu | Drzewo magii",
+      "DZIEŃ DZIECKA w domu - Drzewo magii", "Kobiece Wieczory w Kino domowe: Zupa nic"
+    ).foreach(t => withClue(s"search('$t'): ")(withExtras.search(t) shouldBe t))
+    // …and still the venue's name, in any case it is billed in.
+    withExtras.search("Lalka: Kino Kadr") shouldBe "Lalka"
+    withExtras.search("KADR JUNIOR: Toy Story 5") shouldBe "Toy Story 5"
+    withExtras.search("LATO w LUNIE | Drzewo magii") shouldBe "Drzewo magii"
+  }
+
   "ExtraTitleRules search strips" should "strip the marker for the external-API query" in {
     searchStripCases.foreach { case (in, query) =>
       withClue(s"search('$in'): ")(withExtras.search(in) shouldBe query)
