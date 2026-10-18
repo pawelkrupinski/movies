@@ -28,7 +28,8 @@ private[identity] final class CandidateScoring(val generation: CandidateGenerati
    *  another work than that banner's relay names ([[StageRelays.namesAnotherWork]]), a house's record of another
    *  production of its work than the season its screenings fall in ([[StageRelays.anotherProduction]]), an old
    *  catalogue namesake of a bare billing under a film festival's banner ([[ListingShape.festivalsCatalogueNamesake]]),
-   *  or a film none of whose directors its title bills as the director ([[IdentityMeasures.billsAnotherDirector]]). */
+   *  a film none of whose directors its title bills as the director ([[IdentityMeasures.billsAnotherDirector]]), or a
+   *  film of another part than the one its title numbers and subtitles ([[IdentityMeasures.titlesAnotherPart]]). */
   def evidenceDenies(listing: IdentityMeasures.Listing, film: IdentityMeasures.Film, measures: Map[String, Measure]): Boolean =
     evidenceDenial(listing, film, measures).isDefined
 
@@ -49,6 +50,8 @@ private[identity] final class CandidateScoring(val generation: CandidateGenerati
         Denial("a catalogue namesake of a bare billing under a film festival's banner")))
       .orElse(Option.when(IdentityMeasures.billsAnotherDirector(listing, film))(
         Denial("a director its title bills, none of the film's")))
+      .orElse(Option.when(IdentityMeasures.titlesAnotherPart(listing, film))(
+        Denial("a part its title gives a subtitle none of the film's titles holds")))
       .orElse(LearnedCannotLinks.listingFilmDenial(calibration, measures, weights.factsProbability(measures)))
 
   /** Does `n`'s title name the film only by a PIECE that is its venue's own name or place — every

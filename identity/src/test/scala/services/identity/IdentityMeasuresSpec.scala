@@ -1264,4 +1264,19 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.billsAnotherDirector(Listing("Nikt nie wie reż. Hirokazu Koreeda (2004)"),
       Film("Nikt nie wie", directors = Some(Seq("Hirokazu Kore-eda")))) shouldBe false
   }
+
+  "a part a title numbers and subtitles" should "be another film's part only when the subtitle holds no word of the film's titles" in {
+    val lang = Film("Das indische Grabmal", year = Some(1959), directors = Some(Seq("Fritz Lang")))
+    IdentityMeasures.titlesAnotherPart(Listing("DAS INDISCHE GRABMAL (TEIL 1, DIE SENDUNG DES YOGHI)"), lang) shouldBe true
+    IdentityMeasures.titlesAnotherPart(Listing("SHOAH (TEIL I)"), Film("Shoah", year = Some(1985))) shouldBe false
+    IdentityMeasures.titlesAnotherPart(Listing("De Gaulle Part Two: Liberté"), Film("De Gaulle: Liberté", year = Some(2026))) shouldBe false
+    IdentityMeasures.titlesAnotherPart(Listing("Ramayana: Rise Of A Legend - Part 1 Hindi"), Film("Ramayana: Rise of a Legend", year = Some(2026))) shouldBe false
+    // a film numbered as the part is that part, whatever note follows it
+    IdentityMeasures.titlesAnotherPart(Listing("Dune: Part Three - ERLY FAN PREVIEW"), Film("Dune: Part Three", year = Some(2026))) shouldBe false
+    // an episode, named whether or not it is numbered
+    IdentityMeasures.titlesAnotherPart(Listing("LOVE ISLAND - EPISODE NATURE"), Film("Love Island", year = Some(1952))) shouldBe true
+    IdentityMeasures.titlesAnotherPart(Listing("Star Wars: Episode VII - The Force Awakens"),
+      Film("Star Wars: The Force Awakens", year = Some(2015))) shouldBe false
+  }
 }
+

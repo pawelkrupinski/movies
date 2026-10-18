@@ -580,6 +580,32 @@ object IdentityMeasures {
     l.billedDirectorCredits.exists(billed => f.directorCredits.exists(credits =>
       CreditRelation.of(billed, credits) == Category("different")))
 
+  /** A part a title numbers and the subtitle it gives that part, after a comma, a colon or a dash — or an episode and
+   *  the name it gives it, numbered or not: DE "DAS INDISCHE GRABMAL (TEIL 1, DIE SENDUNG DES YOGHI)", UK "De Gaulle Part
+   *  Two: Liberté", DE "LOVE ISLAND - EPISODE NATURE", US "Star Wars: Episode VII - The Force Awakens". */
+  private val TitledPart =
+    ("""(?iU)\b(?:(?:teil|part|część|parte|partie|kapitel|chapter)\s*(\d+|[ivx]+|one|two|three|eins|zwei|drei)\b\s*[,:–—-]""" +
+      """|(?:episode|épisode|episodio|folge|odcinek)\b\s*(?:(\d+|[ivx]+)\b)?\s*[,:–—-]?)\s*([^()\[\]|]+)""").r
+  /** The parts the listing's own titles number and subtitle ([[TitledPart]]): each one's number, if it has one, and its
+   *  subtitle's words of four letters or more. */
+  private[identity] def titledParts(titles: Seq[String]): Seq[(Option[String], Seq[String])] =
+    titles.flatMap(t => TitledPart.findAllMatchIn(t).map { m =>
+      (Option(m.group(1)).orElse(Option(m.group(2))).flatMap(TitleContainment.tokens(_).headOption),
+        TitleContainment.tokens(m.group(3)).filter(_.length >= StemLetters))
+    }).filter(_._2.nonEmpty).distinct
+
+  /** Does the listing's title give the part it numbers a subtitle ([[titledParts]]) not one word of which is a word
+   *  of the film's titles? Then it is another film's part: DE Union Filmtheater Friedrichshagen's "DAS INDISCHE GRABMAL
+   *  (TEIL 1, DIE SENDUNG DES YOGHI)" is Joe May's 1921 first part, not Lang's 1959 "Das indische Grabmal", and DE Acud
+   *  Kino's "LOVE ISLAND - EPISODE NATURE" an episode of a series, not the 1952 "Love Island". A part
+   *  numbered with no subtitle ("SHOAH (TEIL I)"), titled as the film is ("De Gaulle Part Two: Liberté") or numbered
+   *  as the film is ("Dune: Part Three - ERLY FAN PREVIEW") is not. */
+  def titlesAnotherPart(l: Listing, f: Film): Boolean = {
+    val parts = titledParts(l.ownTitles)
+    // a film its titles number as that part is that part, whatever note follows it: "Dune: Part Three - ERLY FAN PREVIEW"
+    parts.nonEmpty && parts.forall { case (number, words) => !number.exists(f.titleWords) && !words.exists(f.titleWords) }
+  }
+
   /** Is a listing's credited "director" the film's HOUSE — a name two words or more long that runs inside the film's
    *  own title, and none of the people the film credits? UK venues credit "The Metropolitan Opera" for its 2026/27
    *  "The Metropolitan Opera: Così fan tutte" ×97, which read as a different director than Phelim McDermott and

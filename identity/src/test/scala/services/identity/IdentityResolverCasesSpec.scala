@@ -348,6 +348,14 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     resolve(Seq(listing(KinoApollo, "ES (SCHAMONI)")), films).decisionOf(listing(KinoApollo, "ES (SCHAMONI)").key).film should not be Some(133035)
   }
 
+  it should "deny a film of another part than the one its title numbers and subtitles" in {
+    // DE Union Filmtheater Friedrichshagen's "DAS INDISCHE GRABMAL (TEIL 1, DIE SENDUNG DES YOGHI)" (recording 38713274617)
+    // took Lang's 1959 "Das indische Grabmal" by its bare top hit (judged wrong: Joe May's 1921 first part).
+    val films = Seq(F(70555, "Das indische Grabmal", 1959, "Fritz Lang", 101, 3))
+    val part  = listing(KinoApollo, "DAS INDISCHE GRABMAL (TEIL 1, DIE SENDUNG DES YOGHI)")
+    resolve(Seq(part), films).decisionOf(part.key).film should not be Some(70555)
+  }
+
   it should "deny a film none of whose directors its title bills as the director, whatever credit a feed copied onto it" in {
     // DE ScharfrichterKino's "Alpha (dir. Ducournau)" (recording 38713274617) carried a feed's year and credit of Shiv
     // Rawail's 2026 "Alpha", and took it (judged wrong: Julia Ducournau's Alpha). The venue's own words name the director;
