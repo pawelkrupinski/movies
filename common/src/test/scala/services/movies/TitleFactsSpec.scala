@@ -112,6 +112,9 @@ class TitleFactsSpec extends AnyFlatSpec with Matchers {
     FormatTags.peel("Bad Apples (15) (2026) 100 mins") shouldBe FormatTags.Peeled("Bad Apples (2026)", Nil, Some("15"), Some(100))
     // an unconfirmed time behind a certificate is no fact: the title keeps it for the search strip
     FormatTags.peel("NTL: The Motive and the Cue (Encore) (15) 180 mins TBC").runtimeMinutes shouldBe None
+    // Watershed Bristol's "certificate to be announced", inside the bracket or after it: the expected certificate read
+    FormatTags.peel("The Store (18 CTBA)") shouldBe FormatTags.Peeled("The Store", Nil, Some("18"), None)
+    FormatTags.peel("Golden Boy (18) CTBA") shouldBe FormatTags.Peeled("Golden Boy", Nil, Some("18"), None)
     // awaited: no certificate
     FormatTags.peel("EOS - Monet (Cert. TBC)").certificate shouldBe None
   }
