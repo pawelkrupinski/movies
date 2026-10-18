@@ -231,7 +231,7 @@ a re-harvest if missed:
   venue far from its postal town into the council area it actually sits in, and
   refuses a name it cannot place rather than guessing.
 - **A country wider than one time zone needs the zone per PLACE.** `GermanPage`
-  hardcodes `Europe/Berlin` because Germany has one; `UsCity` takes it as a
+  hardcodes `Europe/Berlin` because Germany has one; `UsPage` takes it as a
   constructor parameter because the US has six, and a national default would move
   a whole coast's "today" boundary. Check this before copying `GermanPage`.
 - **Check the gazetteer's town matches against the venue's own address.** A town

@@ -2076,7 +2076,7 @@ final case class SpanishPlace(
   /** The page's own zone. A CONSTRUCTOR value rather than the constant
    *  `GermanPage` can afford, because Spain has TWO: the Canary Islands run an
    *  hour behind the peninsula on `Atlantic/Canary`, and a national default would
-   *  move their "today" boundary — the same trap `UsCity` documents for six US
+   *  move their "today" boundary — the same trap `UsPage` documents for six US
    *  zones. */
   zoneId:        ZoneId,
   /** Several towns rather than one — the page is then "<name> y alrededores". */

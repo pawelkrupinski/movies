@@ -713,8 +713,8 @@ private[models] object GermanPage {
  *
  *  Unlike [[GermanPage]] the zone is the PLACE's rather than a constant: the US
  *  spans six of them, and a page keeps the clock most of its venues keep. */
-final class UsCity private[models] (slug: String, place: UsPlace)
-  extends City(slug, UsCity.labels(place), place.lat, place.lon, place.zoneId) {
+final class UsPage private[models] (slug: String, place: UsPlace)
+  extends City(slug, UsPage.labels(place), place.lat, place.lon, place.zoneId) {
   val cinemas: Seq[Cinema] = place.cinemas
   /** The town the page is named after first, then the rest of its towns and the
    *  towns its venues name (Brooklyn, Hollywood). */
@@ -725,7 +725,7 @@ final class UsCity private[models] (slug: String, place: UsPlace)
   def stateName: String = place.stateName
 }
 
-private[models] object UsCity {
+private[models] object UsPage {
   /** English does not decline a place name, so all three slots carry the page's
    *  name — "<town> area" for a cluster, which reads right alone ("Bend area")
    *  and in a list of cinemas ("All Bend area cinema listings"). */
@@ -745,7 +745,7 @@ private[models] object UsCity {
  *  `City.spanishCities`), so identity equality holds just like the hand-authored
  *  `case object` cities.
  *
- *  Like [[UsCity]] and unlike [[GermanPage]] the zone is a CONSTRUCTOR
+ *  Like [[UsPage]] and unlike [[GermanPage]] the zone is a CONSTRUCTOR
  *  parameter: the Canary Islands run an hour behind the peninsula, and a single
  *  national zone would move their day boundary. */
 final class SpanishPage private[models] (slug: String, place: SpanishPlace)
@@ -955,12 +955,12 @@ object City {
 
 
   /** The United States' cities — the authoritative list for
-   *  [[Country.UnitedStates]]. One per town or cluster page (see [[UsCity]] /
+   *  [[Country.UnitedStates]]. One per town or cluster page (see [[UsPage]] /
    *  [[UsRoster]]), materialised data-driven from `UsRosterData`. The state is a
    *  [[CityGroup]], not a city: nobody wants a screen of every cinema in Texas.
    *  A page's slug is its own name, qualified with its state only where another
    *  US page has the name (the Springfields). */
-  private[models] lazy val usCities: Seq[UsCity] = UsRoster.places.map(p => new UsCity(p.preferredSlug, p))
+  private[models] lazy val usCities: Seq[UsPage] = UsRoster.places.map(p => new UsPage(p.preferredSlug, p))
 
   /** US pages that no longer exist → the page holding the town each was named
    *  after, or — where no such town has a venue — the page now holding most of its

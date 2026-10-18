@@ -7154,7 +7154,7 @@ models.UkPages$Row
 models.UkPages$Row$
 models.UltimatePicturePalaceOxford$
 models.UsCinema
-models.UsCity
+models.UsPage
 models.UsPlace
 models.UsPlace$
 models.UsRoster$
