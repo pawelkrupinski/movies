@@ -11,6 +11,7 @@
 #
 # usage: scripts/identity-measure [<commit-or-branch>] [--base <sha>] [--countries pl,de,uk,us,es] [--keep-branch]
 #                                 [--no-wait] [--full] [--fresh] [--json] [--timeout <minutes>]
+#        scripts/identity-measure --sweep
 #        scripts/identity-measure --run <run id> [--countries ...] [--keep-branch] [--json] [--no-wait] [--timeout <minutes>]
 #   <commit>       default HEAD (uncommitted changes are NOT measured: commit them first)
 #   --base         default the commit's merge-base with origin/main; the commit's parent when it is on main already
@@ -20,6 +21,7 @@
 #   --no-wait      dispatch, print the run, keep the branch, and exit: collect later with --run <id> (which deletes it)
 #   --full         run the whole convergence suite, not only the takes rows (never reused, never stored)
 #   --fresh        dispatch even when an earlier measurement of the same change answers it (below)
+#   --sweep        delete the orphaned measure/ branches on origin (below) and exit; opt-in only, never run by a measurement
 #   --take-paths   print the paths a reuse treats as able to move a take (matches.sh dialect) and exit
 #   --json         machine output (scripts/identity_measure.py --json)
 #   --run          collect an existing run instead (its identity-takes-<cc> artifacts); deletes its measure/ branch.
@@ -47,6 +49,14 @@
 # only for a run whose takes artifacts are downloaded in the cache -- by a measurement or a --run.
 # `--take-paths` prints the take-moving patterns (at HEAD) and exits.
 #
+# THE SWEEP. A SIGKILLed run (no trap runs) leaves its branch on origin. `--sweep` alone (opt-in: no measurement runs
+# it, as it deletes remote branches and has not met the real origin yet) deletes every
+# origin `measure/*` branch whose newest run of the workflow is COMPLETED more than IDENTITY_MEASURE_SWEEP_HOURS
+# (default 24, as long as a measurement is reused) ago. A branch with a run still queued or in progress, or finished
+# more recently (a `--no-wait` measurement awaiting its `--run`), stays; so does one with no run at all, whose age
+# origin does not tell. Best effort: an unreachable origin or gh is said and skipped, never a failed measurement.
+# Unexercised against the real origin so far (GitHub was suspended when it was written): the self-test stubs gh and git.
+#
 # THE LANE. A run from any branch but main has a convergence lane of its own (identity-model-convergence.yml's
 # concurrency): it replaces no one's waiting run and waits behind no other measurement, only for runners. A run cancelled anyway
 # (by hand) is dispatched again until the deadline.
@@ -58,7 +68,7 @@ here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 # shellcheck source=scripts/identity-tools.sh
 . "$here/identity-tools.sh" # identity_locked, identity_put; tool-conventions.sh's bounded, usage_from_header, countries
 workflow=identity-model-convergence.yml
-ref="" base="" keep="" nowait="" full="" fresh="" json="" run="" timeout_min=120 take_paths=""
+ref="" base="" keep="" nowait="" full="" fresh="" json="" run="" timeout_min=120 take_paths="" sweep=""
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --base) base=$2; shift ;;
@@ -69,6 +79,7 @@ while [ "$#" -gt 0 ]; do
     --full) full=1 ;;
     --fresh) fresh=1 ;;
     --take-paths) take_paths=1 ;;
+    --sweep) sweep=1 ;;
     --json) json=1 ;;
     --run) run=$2; shift ;;
     --timeout) timeout_min=$2; shift ;;
@@ -114,7 +125,26 @@ cleanup() {
 trap cleanup EXIT
 trap 'exit 130' INT TERM
 
-[ -n "$take_paths" ] || bounded 120 git fetch -q origin main || die "could not fetch origin main" # --take-paths reads HEAD alone
+[ -n "$take_paths$sweep" ] || bounded 120 git fetch -q origin main || die "could not fetch origin main" # --take-paths reads HEAD alone
+
+# sweep_orphans: delete the origin measure/ branches whose newest run finished over IDENTITY_MEASURE_SWEEP_HOURS ago (THE SWEEP above)
+sweep_orphans() {
+  local heads ref name latest status created cutoff cutoff_epoch
+  cutoff_epoch=$(( $(date +%s) - ${IDENTITY_MEASURE_SWEEP_HOURS:-24} * 3600 ))
+  cutoff=$(date -u -d "@$cutoff_epoch" +%Y-%m-%dT%H:%M:%SZ 2> /dev/null || date -u -r "$cutoff_epoch" +%Y-%m-%dT%H:%M:%SZ)
+  heads=$(bounded 60 git ls-remote --heads origin 'refs/heads/measure/*') || { say "sweep: could not list origin's measure/ branches"; return 0; }
+  while read -r _ ref; do
+    [ -n "$ref" ] || continue
+    name=${ref#refs/heads/}
+    latest=$(identity_gh "$DISPATCH_GH_TIMEOUT" run list --workflow "$workflow" --branch "$name" --limit 1 --json status,createdAt \
+      --jq '.[0] | select(. != null) | "\(.status) \(.createdAt)"') || { say "sweep: could not read the runs of $name"; continue; }
+    read -r status created <<< "$latest"
+    [ "${status:-}" = completed ] && [[ "$created" < "$cutoff" ]] || continue
+    if bounded 120 git push -q --no-verify origin --delete "$ref" 2> /dev/null; then say "sweep: deleted orphaned $name (run finished $created)"
+    else say "sweep: could not delete $name"; fi
+  done <<< "$heads"
+}
+if [ -n "$sweep" ]; then sweep_orphans; exit 0; fi
 
 # ── collect: one finished run's takes rows → the table ───────────────────────────────────────────
 code_of() { case "$1" in poland) echo pl ;; germany) echo de ;; united-kingdom) echo uk ;; spain) echo es ;; united-states) echo us ;; *) echo "$1" ;; esac; }

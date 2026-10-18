@@ -65,7 +65,11 @@ for a in "$@"; do [ "$prev" = --json ] && json=$a; [ "$prev" = --jq ] && jq_filt
 case "$1 $2" in
   "workflow run") echo "$*" > "$STUB/dispatch"; [ -z "${DISPATCH_FAILS:-}" ] || exit 1 ;;
   "run list")
-    if [[ " $* " == *" --branch "* ]]; then
+    if [[ " $* " == *" status,createdAt "* ]]; then
+      # the sweep's read of a branch's newest run: "<status> <createdAt>" from $SWEEP_DIR/<branch>, none for a run-less branch
+      b=""; prev=""; for a in "$@"; do [ "$prev" = --branch ] && b=$a; prev=$a; done
+      [ -f "$SWEEP_DIR/${b//\//_}" ] && cat "$SWEEP_DIR/${b//\//_}"; exit 0
+    elif [[ " $* " == *" --branch "* ]]; then
       # the run exists only once the commit is on origin's measure/ branch: record what was pushed
       for f in "$ORIGIN"/refs/heads/measure/*; do [ -f "$f" ] && { basename "$f" > "$STUB/branch"; cat "$f" > "$STUB/pushed"; }; done
       [ -f "$STUB/pushed" ] && echo 777
@@ -312,6 +316,30 @@ done
 check "every path the takes check reads is one a reuse treats as moving a take" "" "$uncovered"
 check "...read from the takes check (identity_paths and the specs it runs)" "true" \
   "$(grep -q UnmatchedClustersRatchetSpec <<<"$read_paths" && grep -q '^identity/src/main$' <<<"$read_paths" && echo true || echo false)"
+
+# THE SWEEP: orphaned measure/ branches (a SIGKILLed measurement leaves one) are deleted by --sweep alone; a measurement never sweeps.
+rm -rf "$work/stub"; mkdir -p "$work/stub" "$work/sweep"; export SWEEP_DIR="$work/sweep"
+old_run="2020-01-01T00:00:00Z" new_run=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+for b in dead-finished live-running fresh-finished runless; do
+  scratch_git "$repo" push -q origin "$tip:refs/heads/measure/$b"
+done
+echo "completed $old_run" > "$work/sweep/measure_dead-finished"
+echo "in_progress $old_run" > "$work/sweep/measure_live-running"
+echo "completed $new_run" > "$work/sweep/measure_fresh-finished"
+sweep_remaining() { scratch_git "$origin" for-each-ref --format='%(refname:short)' refs/heads/measure | sort | tr '\n' ' '; }
+( cd "$repo" && STUB="$work/stub" ORIGIN="$origin" KINOWO_IDENTITY_CACHE="$work/cache" PATH="$work/bin:$PATH" \
+    "$REPO_ROOT/scripts/identity-measure" --sweep > "$work/out" 2>&1 ); status=$?
+check "--sweep exits 0" "0" "$status"
+check "...deleting only the branch whose run finished long ago" \
+  "measure/fresh-finished measure/live-running measure/runless " "$(sweep_remaining)"
+check "...and saying so" "true" "$(grep -q 'sweep: deleted orphaned measure/dead-finished' "$work/out" && echo true || echo false)"
+echo "completed $old_run" > "$work/sweep/measure_fresh-finished"
+echo "completed $old_run" > "$work/sweep/measure_live-running"
+rm -f "$work/stub/dispatch" "$work/stub/pushed"
+check "a measurement never sweeps: it deletes remote branches, so only --sweep does" "0" "$(measure landable --countries pl)"
+check "...leaving every branch" "measure/fresh-finished measure/live-running measure/runless " "$(sweep_remaining)"
+for b in runless fresh-finished live-running; do scratch_git "$origin" update-ref -d "refs/heads/measure/$b"; done
+rm -rf "$work/sweep"
 
 # SIGTERM (Ctrl-C alike) while waiting on the run: the run is cancelled and the branch deleted.
 rm -rf "$work/stub" "$work/cache"; mkdir -p "$work/stub"
