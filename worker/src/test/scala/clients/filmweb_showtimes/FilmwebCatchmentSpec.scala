@@ -11,7 +11,7 @@ import java.time.LocalDate
 
 /**
  * Replays a recorded seances + title/info capture for every Filmweb-catchment
- * venue wired in `CinemaScraperCatalog.filmwebExtra`. Each is just a new
+ * venue wired in `PolishScraperCatalog`'s Filmweb sweep catchments. Each is just a new
  * `FilmwebShowtimesClient` instance pointed at a Filmweb internal cinema id (the
  * client itself is parsing-tested in [[FilmwebShowtimesClientSpec]]); what's
  * fallible per venue is the id — a transcription slip wires the wrong cinema, or
@@ -24,7 +24,7 @@ class FilmwebCatchmentSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   private val http = new FakeHttpFetch("filmweb-catchment")
 
-  // (Filmweb cinema id, modelled cinema, capture date) — mirrors filmwebExtra.
+  // (Filmweb cinema id, modelled cinema, capture date) — mirrors the Filmweb sweep catchments.
   private val venues: Seq[(Int, Cinema, LocalDate)] = Seq(
     (117, KinoKawiarnia, LocalDate.of(2026, 6, 7)),
     (135, KinoSwitCzechowiceDziedzice, LocalDate.of(2026, 6, 15)),

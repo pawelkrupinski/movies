@@ -5,7 +5,7 @@ import models._
 import org.scalatest.OptionValues
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.cinemas.{ChainFlicksFallback, CinemaScraperCatalog}
+import services.cinemas.{ChainFlicksFallback, CinemaEgress, CinemaScraperCatalog}
 import services.cinemas.de.{GermanFeed, GermanSources}
 import services.movies.SingleCountryNormalizer.titleNormalizer
 import services.cinemas.common.{CinemaScraper, FlicksClient, FlicksMarket, GatsbyBoxOfficeClient, MultiListingScraper}
@@ -55,10 +55,10 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
                       odeon:      HttpFetch = http,
                       odeonToken: Option[String] = None): CinemaScraperCatalog =
     new CinemaScraperCatalog(
-      direct, mkFetch = direct, bnFetch = new FakeHttpFetch(biletyna), venueClock = models.VenueClock.fixedOn(today),
-      chainDetailCache = (_, h, ttl) => new CachingDetailFetch(h, ttl),
-      zyteFetch = new FakeHttpFetch(zyte), flicksFetch = flicks, vueFetch = vue,
-      odeonFetch = odeon, odeonAuthToken = () => odeonToken, titles = titleNormalizer
+      CinemaEgress(direct, multikino = direct, biletyna = new FakeHttpFetch(biletyna), zyte = new FakeHttpFetch(zyte),
+        flicks = flicks, vue = vue, odeon = odeon, odeonAuthToken = () => odeonToken),
+      venueClock = models.VenueClock.fixedOn(today),
+      chainDetailCache = (_, h, ttl) => new CachingDetailFetch(h, ttl), titles = titleNormalizer
     )
 
   /** The slug of the page a cinema is listed on. */
@@ -1030,8 +1030,8 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
   // refresh did any work depended on which timer won.
   it should "cache both chains' detail for 2h" in {
     val built = catalog(biletyna = "kino-kameralne")
-    built.heliosDetailTtl shouldBe 2.hours
-    built.cinemaCityDetailTtl shouldBe 2.hours
+    built.poland.heliosDetailTtl shouldBe 2.hours
+    built.poland.cinemaCityDetailTtl shouldBe 2.hours
   }
 
   it should "read a film's Flicks page once for every venue of its market, through the Flicks egress and the shared detail cache" in {
@@ -1039,9 +1039,8 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     val egress      = new clients.tools.ScriptedByUrlHttpFetch(url => { egressReads += url; "<html></html>" })
     val caches      = scala.collection.mutable.Map.empty[String, HttpFetch]
     val built = new CinemaScraperCatalog(
-      http, mkFetch = http, bnFetch = http, venueClock = models.VenueClock.fixedOn(LocalDate.of(2026, 6, 6)),
-      chainDetailCache = (chain, h, ttl) => { caches(chain) = h; new CachingDetailFetch(h, ttl) },
-      zyteFetch = http, flicksFetch = egress, vueFetch = http, odeonFetch = http, odeonAuthToken = () => None, titles = titleNormalizer)
+      CinemaEgress.direct(http).copy(flicks = egress), venueClock = models.VenueClock.fixedOn(LocalDate.of(2026, 6, 6)),
+      chainDetailCache = (chain, h, ttl) => { caches(chain) = h; new CachingDetailFetch(h, ttl) }, titles = titleNormalizer)
     val ukVenues = built.all.collect { case f: FlicksClient if f.detailGroup == FlicksClient.detailGroupOf(FlicksMarket.UnitedKingdom) => f }
     ukVenues.size should be > 1
     caches.get("flicks") shouldBe Some(egress)
@@ -1077,10 +1076,8 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
       .getOrElse(fail("DetailEnrich lost its TTL; the chain detail TTLs are defined against it"))
     val requested = scala.collection.mutable.ListBuffer.empty[(String, FiniteDuration)]
     new CinemaScraperCatalog(
-      http, mkFetch = http, bnFetch = http, venueClock = models.VenueClock.fixedOn(LocalDate.of(2026, 6, 6)),
-      chainDetailCache = (chain, h, ttl) => { requested += (chain -> ttl); new CachingDetailFetch(h, ttl) },
-      zyteFetch = http, flicksFetch = http, vueFetch = http, odeonFetch = http,
-      odeonAuthToken = () => None, titles = titleNormalizer)
+      CinemaEgress.direct(http), venueClock = models.VenueClock.fixedOn(LocalDate.of(2026, 6, 6)),
+      chainDetailCache = (chain, h, ttl) => { requested += (chain -> ttl); new CachingDetailFetch(h, ttl) }, titles = titleNormalizer)
 
     requested should not be empty
     val tooLong = requested.filter { case (_, ttl) => ttl >= window }
@@ -1093,9 +1090,8 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
   it should "never let two chains with different detail TTLs share one cache" in {
     val requested = scala.collection.mutable.ListBuffer.empty[(String, FiniteDuration)]
     new CinemaScraperCatalog(
-      http, mkFetch = http, bnFetch = http, venueClock = models.VenueClock.fixedOn(LocalDate.of(2026, 6, 6)),
-      chainDetailCache = (chain, h, ttl) => { requested += (chain -> ttl); new CachingDetailFetch(h, ttl) },
-      zyteFetch = http, flicksFetch = http, vueFetch = http, odeonFetch = http, odeonAuthToken = () => None, titles = titleNormalizer)
+      CinemaEgress.direct(http), venueClock = models.VenueClock.fixedOn(LocalDate.of(2026, 6, 6)),
+      chainDetailCache = (chain, h, ttl) => { requested += (chain -> ttl); new CachingDetailFetch(h, ttl) }, titles = titleNormalizer)
 
     requested.size should be > 1
     withClue(s"chains built: ${requested.mkString(", ")} — ") {

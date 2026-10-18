@@ -6,8 +6,8 @@ files:
 
   * common/src/main/scala/models/Cinema.scala        — the `case object … extends
     Cinema(display, pill)`.
-  * worker/.../services/cinemas/CinemaScraperCatalog.scala — a `flicks("<slug>",
-    Obj)` line inside a `<region>Scrapers` Seq.
+  * worker/.../services/cinemas/UkScraperCatalog.scala — a `flicks("<slug>",
+    Obj)` line inside a `// ── <group>` of its `scrapers` Seq.
 
 Which PAGE lists a venue is not wired by hand: it is generated from the venue's
 town (data/uk/scripts/build_pages.py → UkPages.scala), after the workflow has
@@ -21,8 +21,8 @@ so both files are read when deciding what is already covered.
 Flicks publishes every cinema in sitemap-cinemas.xml. This tool diffs that list
 against the slugs we already wire (minus an exclude list of known-defunct venues)
 and, for each genuinely new venue, resolves its display name + coordinates +
-whether it currently lists sessions, wires it into the `<region>Scrapers` val of
-the nearest already-wired venue (great-circle distance over data/uk/venues.json),
+whether it currently lists sessions, wires it into the `// ── <group>` of the
+nearest already-wired venue (great-circle distance over data/uk/venues.json),
 and splices compilable Scala into both files.
 
 Anything it can't wire safely — a London venue (needs a manual area-group
@@ -59,7 +59,7 @@ CINEMA_SCALA = os.path.join(REPO, "common/src/main/scala/models/Cinema.scala")
 UK_VENUES = os.path.join(REPO, "data/uk/venues.json")
 UK_PAGES = os.path.join(REPO, "data/uk/pages.json")
 CATALOG_SCALA = os.path.join(
-    REPO, "worker/src/main/scala/services/cinemas/CinemaScraperCatalog.scala"
+    REPO, "worker/src/main/scala/services/cinemas/UkScraperCatalog.scala"
 )
 CHAIN_FALLBACK_SCALA = os.path.join(
     REPO, "worker/src/main/scala/services/cinemas/ChainFlicksFallback.scala"
@@ -119,24 +119,44 @@ def load_exclude(text: str) -> set[str]:
 # ── Where a new venue is wired (read off the catalog and data/uk) ────────────
 @dataclass
 class Group:
-    """The catalog `<region>Scrapers` val a new venue is wired into: the one its
-    nearest already-wired venue is in. Which PAGE lists the venue is not decided
-    here — `data/uk/scripts/build_pages.py` places it by its town, and the
-    catalog files every UK scraper under that page whatever val it sits in."""
-    val: str          # e.g. "cardiffScrapers"
+    """The `// ── <group>` of the catalog's `scrapers` list a new venue is wired into:
+    the one its nearest already-wired venue is in. Which PAGE lists the venue is not
+    decided here — `data/uk/scripts/build_pages.py` places it by its town, and the
+    catalog files every UK scraper under that page whatever group it sits in."""
+    section: str      # e.g. "cardiff"
     near: str         # the nearest wired venue's case object
     km: float
     london: bool      # that venue is on the London page
 
 
+SCRAPERS = re.compile(r"val scrapers: Seq\[CinemaScraper\] = Seq\((.*?)\n  \)", re.S)
+SECTION = re.compile(r"\n    // ── (\S+)[^\n]*")
+
+
 def scraper_vals(catalog_text: str) -> dict[str, str]:
-    """Every venue object the catalog wires → the `<region>Scrapers` val it is in."""
+    """Every venue object the catalog wires → the `// ── <group>` it is in."""
     out = {}
-    for val, body in re.findall(
-            r"private val (\w+Scrapers): Seq\[CinemaScraper\] = Seq\((.*?)\n  \)", catalog_text, re.S):
+    m = SCRAPERS.search(catalog_text)
+    if not m:
+        return out
+    parts = SECTION.split("\n" + m.group(1))
+    for section, body in zip(parts[1::2], parts[2::2]):
         for obj in re.findall(r"\b([A-Z]\w*)\)", body):
-            out.setdefault(obj, val)
+            out.setdefault(obj, section)
     return out
+
+
+def append_to_section(catalog_text: str, section: str, line: str) -> str:
+    """`line` on its own line at the end of `// ── <section>`: before the next group's
+    header, or the list's closing `\n  )`."""
+    m = SCRAPERS.search(catalog_text)
+    start = re.search(rf"\n    // ── {re.escape(section)}\b[^\n]*", catalog_text[m.start(1):m.end(1)])
+    if not start:
+        raise SystemExit(f"no `// ── {section}` group in the catalog")
+    body_from = m.start(1) + start.end()
+    nxt = SECTION.search(catalog_text, body_from, m.end(1))
+    at = nxt.start() if nxt else m.end(1)
+    return catalog_text[:at] + "\n    " + line + catalog_text[at:]
 
 
 def nearest_group(lat, lon, venues: list[dict], vals: dict[str, str], london: set[str]) -> Group | None:
@@ -325,12 +345,8 @@ def apply_plan(cinema_text: str, catalog_text: str, plan: Plan) -> tuple[str, st
             r"case object \w+ extends Cinema\([^\n]*\)\n",
             f'case object {w.obj} extends Cinema("{w.display}", "{w.display}")\n',
         )
-        # 2) flicks(...) line in the nearest venue's <region>Scrapers Seq, on its
-        #    own line just before the val's closing `\n  )`.
-        sre = re.compile(rf"(private val {w.group.val}: Seq\[CinemaScraper\] = Seq\((?:.*?))(\n  \))", re.S)
-        catalog_text = sre.sub(
-            lambda m: f'{m.group(1)}\n    flicks("{w.slug}", {w.obj}),{m.group(2)}', catalog_text, count=1
-        )
+        # 2) flicks(...) line at the end of the nearest venue's group, on its own line.
+        catalog_text = append_to_section(catalog_text, w.group.section, f'flicks("{w.slug}", {w.obj}),')
     return cinema_text, catalog_text
 
 
@@ -340,7 +356,7 @@ def render_report(plan: Plan, applied: bool) -> str:
     verb = "Wired" if applied else "Would wire"
     lines.append(f"### {verb} {len(plan.wire)} new cinema(s)")
     for w in plan.wire:
-        lines.append(f"- **{w.display}** (`{w.slug}`) → `{w.group.val}`, beside `{w.group.near}` "
+        lines.append(f"- **{w.display}** (`{w.slug}`) → `// ── {w.group.section}`, beside `{w.group.near}` "
                      f"({w.group.km:.0f} km) — `{w.obj}`")
     if not plan.wire:
         lines.append("- _none_")

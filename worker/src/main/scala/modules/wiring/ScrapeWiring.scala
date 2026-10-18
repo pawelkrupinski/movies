@@ -32,21 +32,18 @@ trait ScrapeWiring { self: WorkerWiring =>
   // wraps each raw scraper in RetryingCinemaScraper (retry) + UptimeRecordingScraper
   // (record the outcome) for production ticks.
   lazy val cinemaScraperCatalog = new CinemaScraperCatalog(
-    httpFetch, multikinoFetch, biletynaFetch, venueClock,
+    // Kino Kryterium (bilety.ck105.koszalin.pl) times out our Fly egress IP AND
+    // every Decodo proxy IP at the TCP layer, so a direct scrape came back empty
+    // → a permanent white /uptime bar. Only Zyte's true-residential network
+    // reaches it, so route it straight through Zyte (the Decodo proxy can't help).
+    services.cinemas.CinemaEgress(httpFetch, multikino = multikinoFetch, biletyna = biletynaFetch, zyte = zyteFetch,
+      flicks = flicksFetch, vue = vueFetch, odeon = odeonFetch, odeonAuthToken = odeonAuthHarvester.token),
+    venueClock,
     // Mongo-backed chain detail cache so Helios / Cinema City detail is deduped
     // across worker servers, not just within one process: one `detail_cache` collection for
     // every chain, each document expiring on its own chain's TTL (see the class doc).
     (chain, h, ttl) => new MongoCachingDetailFetch(h, mongoConnection.database, ttl, services.DetailCacheChain(chain),
       workerMetrics.ttlIndexMismatches, clock),
-    // Kino Kryterium (bilety.ck105.koszalin.pl) times out our Fly egress IP AND
-    // every Decodo proxy IP at the TCP layer, so a direct scrape came back empty
-    // → a permanent white /uptime bar. Only Zyte's true-residential network
-    // reaches it, so route it straight through Zyte (the Decodo proxy can't help).
-    zyteFetch = zyteFetch,
-    flicksFetch = flicksFetch,
-    vueFetch = vueFetch,
-    odeonFetch = odeonFetch,
-    odeonAuthToken = odeonAuthHarvester.token,
     titles = titleNormalizer)
 
   /** THIS country's slice of the global catalog, every city included — what every
