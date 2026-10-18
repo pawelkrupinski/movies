@@ -61,8 +61,10 @@ def python_files(root):
                 yield path
 
 
-def annotations(tree):
-    for node in ast.walk(tree):
+def annotations(tree, in_function=False):
+    """(line, annotation) of every annotation Python evaluates at runtime: a def's (when it runs), and a variable's in a
+    module or class body -- a function's local variable annotation is never evaluated (PEP 526)."""
+    for node in ast.iter_child_nodes(tree):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             a = node.args
             for arg in a.posonlyargs + a.args + a.kwonlyargs + [a.vararg, a.kwarg]:
@@ -70,8 +72,13 @@ def annotations(tree):
                     yield node.lineno, arg.annotation
             if node.returns is not None:
                 yield node.lineno, node.returns
-        elif isinstance(node, ast.AnnAssign):
-            yield node.lineno, node.annotation
+            yield from annotations(node, True)
+        elif isinstance(node, ast.ClassDef):
+            yield from annotations(node, False)
+        else:
+            if isinstance(node, ast.AnnAssign) and not in_function:
+                yield node.lineno, node.annotation
+            yield from annotations(node, in_function)
 
 
 def is_floor(interpreter, floor):

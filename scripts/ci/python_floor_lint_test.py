@@ -21,6 +21,12 @@ class PythonFloorLintTest(unittest.TestCase):
         self.assertEqual([1], [line for line, _ in lint.findings_in("def f() -> list[str] | None:\n    pass\n", FLOOR)])
         self.assertEqual([1], [line for line, _ in lint.findings_in("x: int | None = None\n", FLOOR)])
 
+    def test_a_local_variable_annotation_is_never_evaluated_so_passes(self):
+        self.assertEqual([], lint.findings_in("def f():\n    x: int | None = None\n    return x\n", FLOOR))
+        # a class body's is evaluated, a method's local one is not
+        self.assertEqual([2], [line for line, _ in lint.findings_in(
+            "class C:\n    x: int | None = None\n    def m(self):\n        y: int | None = None\n", FLOOR)])
+
     def test_deferred_annotations_are_never_evaluated_so_pass(self):
         self.assertEqual([], lint.findings_in("from __future__ import annotations\ndef f(x: str | None) -> int:\n    return 0\n", FLOOR))
 
