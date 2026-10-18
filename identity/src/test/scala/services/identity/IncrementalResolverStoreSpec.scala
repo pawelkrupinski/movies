@@ -18,9 +18,9 @@ class IncrementalResolverStoreSpec extends AnyFlatSpec with Matchers {
 
 
   private def apply(model: IncrementalResolver, event: IdentityEvent): Unit = event match {
-    case IdentityEvent.Seen(listings) => model.listingsSeen(listings)
-    case IdentityEvent.Gone(keys)     => model.listingsGone(keys)
-    case IdentityEvent.Answered(c)    => model.answersChanged(c)
+    case IdentityEvent.Seen(listings) => model.batch(seen = listings)
+    case IdentityEvent.Gone(keys)     => model.batch(gone = keys)
+    case IdentityEvent.Answered(c)    => model.batch(answered = c)
   }
 
   /** A model runs the first half of a sequence into `store`; the second half happens while it is
@@ -48,7 +48,7 @@ class IncrementalResolverStoreSpec extends AnyFlatSpec with Matchers {
     val corpus  = GeneratedIdentityCorpus.generate(seed, normalizer, films = 12, listings = 48)
     val lookups = new FillingLookups(corpus.lookups, new Random(seed * 31))
     val store   = new InMemoryIdentityModelStore
-    new IncrementalResolver(lookups, normalizer, calibration, decorations = TitleDecorations.None, store = store).listingsSeen(corpus.listings)
+    new IncrementalResolver(lookups, normalizer, calibration, decorations = TitleDecorations.None, store = store).batch(seen = corpus.listings)
     lookups.answer(); lookups.answer()
     val restored = new IncrementalResolver(lookups, normalizer, calibration, decorations = TitleDecorations.None, store = store, mutation = mutation)
     restored.restore(corpus.listings)
@@ -77,7 +77,7 @@ class IncrementalResolverStoreSpec extends AnyFlatSpec with Matchers {
     val corpus  = GeneratedIdentityCorpus.generate(5L, normalizer, films = 12, listings = 48)
     val store   = new InMemoryIdentityModelStore
     val first   = new IncrementalResolver(corpus.lookups, normalizer, calibration, decorations = TitleDecorations.None, store = store)
-    first.listingsSeen(corpus.listings)
+    first.batch(seen = corpus.listings)
     val again   = new IncrementalResolver(corpus.lookups, normalizer, calibration, decorations = TitleDecorations.None, store = store)
     again.restore(corpus.listings)
     again.familiesResolved shouldBe 0
@@ -91,7 +91,7 @@ class IncrementalResolverStoreSpec extends AnyFlatSpec with Matchers {
   it should "re-resolve a listing two stored families both claim" in {
     val corpus = GeneratedIdentityCorpus.generate(9L, normalizer, films = 12, listings = 48)
     val store  = new InMemoryIdentityModelStore
-    new IncrementalResolver(corpus.lookups, normalizer, calibration, decorations = TitleDecorations.None, store = store).listingsSeen(corpus.listings)
+    new IncrementalResolver(corpus.lookups, normalizer, calibration, decorations = TitleDecorations.None, store = store).batch(seen = corpus.listings)
     val some   = store.families().head
     store.replace(Set.empty, Seq(some.copy(id = some.id + "-copy")))       // a crash between two writes
     val again  = new IncrementalResolver(corpus.lookups, normalizer, calibration, decorations = TitleDecorations.None, store = store)
@@ -105,7 +105,7 @@ class IncrementalResolverStoreSpec extends AnyFlatSpec with Matchers {
     val corpus = GeneratedIdentityCorpus.generate(13L, normalizer, films = 12, listings = 48)
     val store  = new InMemoryIdentityModelStore
     new IncrementalResolver(corpus.lookups, normalizer, calibration, decorations = TitleDecorations.None, store = store, rules = "v1")
-      .listingsSeen(corpus.listings)
+      .batch(seen = corpus.listings)
     new IncrementalResolver(corpus.lookups, normalizer, calibration, decorations = TitleDecorations.None, store = store, rules = "v1")
       .restore(corpus.listings)
     store.rulesVersion shouldBe Some("v1")
@@ -142,7 +142,7 @@ class IncrementalResolverStoreSpec extends AnyFlatSpec with Matchers {
     val corpus = GeneratedIdentityCorpus.generate(13L, normalizer, films = 12, listings = 48)
     val stores = new RecordingStores
     new IncrementalResolver(corpus.lookups, normalizer, calibration, decorations = TitleDecorations.None, store = stores.families,
-      rules = "v1", traces = stores.traces).listingsSeen(corpus.listings)
+      rules = "v1", traces = stores.traces).batch(seen = corpus.listings)
     stores.clear()
     val next = new IncrementalResolver(corpus.lookups, normalizer, calibration, decorations = TitleDecorations.None, store = stores.families,
       rules = "v2", traces = stores.traces)
@@ -160,7 +160,7 @@ class IncrementalResolverStoreSpec extends AnyFlatSpec with Matchers {
     val lookups = new FillingLookups(corpus.lookups, new Random(7L * 31))
     val stores  = new RecordingStores
     new IncrementalResolver(lookups, normalizer, calibration, decorations = TitleDecorations.None, store = stores.families,
-      traces = stores.traces).listingsSeen(corpus.listings)
+      traces = stores.traces).batch(seen = corpus.listings)
     lookups.answer(); lookups.answer()
     stores.clear()
     new IncrementalResolver(lookups, normalizer, calibration, decorations = TitleDecorations.None, store = stores.families,
@@ -177,7 +177,7 @@ class IncrementalResolverStoreSpec extends AnyFlatSpec with Matchers {
   "a stored family" should "read back from its BSON as it was written" in {
     val corpus = GeneratedIdentityCorpus.generate(11L, normalizer, films = 12, listings = 48)
     val store  = new InMemoryIdentityModelStore
-    new IncrementalResolver(corpus.lookups, normalizer, calibration, decorations = TitleDecorations.None, store = store).listingsSeen(corpus.listings)
+    new IncrementalResolver(corpus.lookups, normalizer, calibration, decorations = TitleDecorations.None, store = store).batch(seen = corpus.listings)
     store.families() should not be empty
     store.families().foreach(family => MongoIdentityModelStore.decode(MongoIdentityModelStore.encode(family)) shouldBe family)
   }
@@ -193,7 +193,7 @@ class IncrementalResolverStoreSpec extends AnyFlatSpec with Matchers {
   it should "read straight off its wire bytes as it was written" in {
     val corpus = GeneratedIdentityCorpus.generate(11L, normalizer, films = 12, listings = 48)
     val store  = new InMemoryIdentityModelStore
-    new IncrementalResolver(corpus.lookups, normalizer, calibration, decorations = TitleDecorations.None, store = store).listingsSeen(corpus.listings)
+    new IncrementalResolver(corpus.lookups, normalizer, calibration, decorations = TitleDecorations.None, store = store).batch(seen = corpus.listings)
     store.families().foreach(family => readOff(wire(family)) shouldBe family)
   }
 
@@ -202,7 +202,7 @@ class IncrementalResolverStoreSpec extends AnyFlatSpec with Matchers {
   it should "read off the wire without building the BSON tree of its bytes" in {
     val corpus   = GeneratedIdentityCorpus.generate(11L, normalizer, films = 12, listings = 48)
     val store    = new InMemoryIdentityModelStore
-    new IncrementalResolver(corpus.lookups, normalizer, calibration, decorations = TitleDecorations.None, store = store).listingsSeen(corpus.listings)
+    new IncrementalResolver(corpus.lookups, normalizer, calibration, decorations = TitleDecorations.None, store = store).batch(seen = corpus.listings)
     val bytes    = store.families().map(wire)
     val codec    = new org.bson.codecs.BsonDocumentCodec
     val context  = org.bson.codecs.DecoderContext.builder().build()
@@ -226,7 +226,7 @@ class IncrementalResolverStoreSpec extends AnyFlatSpec with Matchers {
   it should "read back sharing one instance of each listing key and each node text" in {
     val corpus = GeneratedIdentityCorpus.generate(11L, normalizer, films = 12, listings = 48)
     val store  = new InMemoryIdentityModelStore
-    new IncrementalResolver(corpus.lookups, normalizer, calibration, decorations = TitleDecorations.None, store = store).listingsSeen(corpus.listings)
+    new IncrementalResolver(corpus.lookups, normalizer, calibration, decorations = TitleDecorations.None, store = store).batch(seen = corpus.listings)
     val decoded = store.families().map(family => MongoIdentityModelStore.decode(MongoIdentityModelStore.encode(family)).family)
     decoded.exists(_.nodeKeys.size > 1) shouldBe true
     decoded.foreach { family =>
@@ -250,7 +250,7 @@ class IncrementalResolverStoreSpec extends AnyFlatSpec with Matchers {
   "a restored model" should "name every listing by the held listing's own key object, and every node by the corpus's text" in {
     val corpus  = GeneratedIdentityCorpus.generate(11L, normalizer, films = 12, listings = 48)
     val written = new InMemoryIdentityModelStore
-    new IncrementalResolver(corpus.lookups, normalizer, calibration, decorations = TitleDecorations.None, store = written).listingsSeen(corpus.listings)
+    new IncrementalResolver(corpus.lookups, normalizer, calibration, decorations = TitleDecorations.None, store = written).batch(seen = corpus.listings)
     val decoded = new InMemoryIdentityModelStore
     written.rulesVersion.foreach(decoded.recordRulesVersion)
     decoded.replace(Set.empty, written.families().map(family => MongoIdentityModelStore.decode(MongoIdentityModelStore.encode(family))))
@@ -267,9 +267,9 @@ class IncrementalResolverStoreSpec extends AnyFlatSpec with Matchers {
   "a model" should "name a listing re-published with other fields by its new key object, everywhere" in {
     val corpus = GeneratedIdentityCorpus.generate(11L, normalizer, films = 12, listings = 48)
     val model  = new IncrementalResolver(corpus.lookups, normalizer, calibration, decorations = TitleDecorations.None)
-    model.listingsSeen(corpus.listings)
+    model.batch(seen = corpus.listings)
     val moved  = ownKey(corpus.listings.head).copy(runtime = Some(321))
-    model.listingsSeen(Seq(moved))
+    model.batch(seen = Seq(moved))
     model.familyKeys.filter(_ == moved.key).filterNot(_ eq moved.key).toSeq shouldBe empty
     model.familyOf.keys.filter(_ == moved.key).filterNot(_ eq moved.key).toSeq shouldBe empty
     model.heldAt(moved.venue).filter(_ == moved.key).filterNot(_ eq moved.key) shouldBe empty

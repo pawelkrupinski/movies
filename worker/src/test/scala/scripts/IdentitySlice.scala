@@ -230,7 +230,7 @@ object IdentitySlice {
   def incrementally(core: Seq[Listing], context: Seq[Listing], reads: Reads, seed: Long): Seq[ResolverDecision] = {
     val model = new IncrementalResolver(reads.lookups, reads.normalizer, IdentityCalibration.resolver)
     val all   = new scala.util.Random(seed).shuffle(core ++ context)
-    all.grouped(math.max(1, all.size / 3 + 1)).foreach(model.listingsSeen)
+    all.grouped(math.max(1, all.size / 3 + 1)).foreach(model.batch(_, Nil, services.identity.AnswersChanged.Empty))
     val coreKeys = core.map(_.key).toSet
     model.decisions.filter(_.members.exists(coreKeys))
   }

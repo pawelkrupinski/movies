@@ -34,9 +34,9 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers with LoneElement
     val random  = new RandomIdentityEvents(corpus.listings, lookups, seed)
     random.events.zipWithIndex.flatMap { case (event, step) =>
       event match {
-        case IdentityEvent.Seen(listings) => model.listingsSeen(listings)
-        case IdentityEvent.Gone(keys)     => model.listingsGone(keys)
-        case IdentityEvent.Answered(c)    => model.answersChanged(c)
+        case IdentityEvent.Seen(listings) => model.batch(seen = listings)
+        case IdentityEvent.Gone(keys)     => model.batch(gone = keys)
+        case IdentityEvent.Answered(c)    => model.batch(answered = c)
       }
       val expected = IdentityResolver.resolveWith(random.held.values, lookups, normalizer, calibration, IdentityResolver.Mutation.None)
       Option.when(ResolutionSignature.of(model) != ResolutionSignature.of(expected))(s"seed $seed, step $step (${event.label})")
@@ -85,8 +85,8 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers with LoneElement
         val expected = IdentityResolver.resolveWith(held.values, lookups, normalizer, calibration, IdentityResolver.Mutation.None)
         Option.when(ResolutionSignature.of(model) != ResolutionSignature.of(expected))(s"order ${order.mkString}: $label")
       }
-      order.iterator.flatMap { i => groups(i).foreach(l => held(l.key) = l); model.listingsSeen(groups(i)); check(s"+$i") } ++
-        order.reverse.iterator.flatMap { i => held --= groups(i).map(_.key); model.listingsGone(groups(i).map(_.key)); check(s"-$i") }
+      order.iterator.flatMap { i => groups(i).foreach(l => held(l.key) = l); model.batch(seen = groups(i)); check(s"+$i") } ++
+        order.reverse.iterator.flatMap { i => held --= groups(i).map(_.key); model.batch(gone = groups(i).map(_.key)); check(s"-$i") }
     }.nextOption()
   }
 
@@ -141,11 +141,11 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers with LoneElement
       def differs(expected: Iterable[Listing]) =
         ResolutionSignature.of(model) != ResolutionSignature.of(IdentityResolver.resolveWith(expected, lookups, normalizer, calibration, IdentityResolver.Mutation.None))
       val (half, rest) = listings.splitAt(listings.size / 2)
-      model.listingsSeen(listings)
+      model.batch(seen = listings)
       val seeded = Option.when(differs(listings))(s"$label: seeded")
-      model.listingsGone(half.map(_.key))
+      model.batch(gone = half.map(_.key))
       val left   = Option.when(differs(rest))(s"$label: after half left")
-      model.listingsSeen(half)
+      model.batch(seen = half)
       val back   = Option.when(differs(listings))(s"$label: after half came back")
       Seq(seeded, left, back).flatten
     } shouldBe empty
@@ -157,7 +157,7 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers with LoneElement
     IndependentCases.flatMap(cases) { case (label, listings, lookups) =>
       Seq(1, 3, 7).flatMap { batch =>
         val model = new IncrementalResolver(lookups, normalizer, calibration, decorations = TitleDecorations.None, regionBatch = batch)
-        model.listingsSeen(listings)
+        model.batch(seen = listings)
         Option.when(ResolutionSignature.of(model) != ResolutionSignature.of(
           IdentityResolver.resolveWith(listings, lookups, normalizer, calibration, IdentityResolver.Mutation.None)))(s"$label, batch $batch")
       }
@@ -178,7 +178,7 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers with LoneElement
   it should "take a corpus whole resolving each of its families about once" in {
     val corpus = GeneratedIdentityCorpus.generate(7L, normalizer, films = 12, listings = 48)
     val model  = new IncrementalResolver(corpus.lookups, normalizer, calibration, decorations = TitleDecorations.None)
-    model.listingsSeen(corpus.listings)
+    model.batch(seen = corpus.listings)
     val whole  = IdentityResolver.resolveWith(corpus.listings, corpus.lookups, normalizer, calibration, IdentityResolver.Mutation.None)
     ResolutionSignature.of(model) shouldBe ResolutionSignature.of(whole)
     model.familiesResolved should be <= (whole.families * 2)
@@ -187,7 +187,7 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers with LoneElement
   "the incremental resolver's resolution" should "carry the whole resolve's decisions and decided films, and leave its families to the model" in {
     val corpus = GeneratedIdentityCorpus.generate(3L, normalizer, films = 12, listings = 48)
     val model  = new IncrementalResolver(corpus.lookups, normalizer, calibration, decorations = TitleDecorations.None)
-    model.listingsSeen(corpus.listings)
+    model.batch(seen = corpus.listings)
     val whole  = IdentityResolver.resolveWith(corpus.listings, corpus.lookups, normalizer, calibration, IdentityResolver.Mutation.None)
     ResolutionSignature.of(model.resolution.decisions, model.familyOf) shouldBe ResolutionSignature.of(whole)
     model.resolution.films shouldBe whole.films
@@ -199,9 +199,9 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers with LoneElement
     val corpus  = GeneratedIdentityCorpus.generate(4L, normalizer, films = 12, listings = 48)
     val lookups = new FillingLookups(corpus.lookups, new Random(4L))
     val model   = new IncrementalResolver(lookups, normalizer, calibration, decorations = TitleDecorations.None)
-    model.listingsSeen(corpus.listings)
+    model.batch(seen = corpus.listings)
     model.gaps.isEmpty shouldBe false
-    Iterator.continually(lookups.answer()).takeWhile(!_.isEmpty).foreach(model.answersChanged)
+    Iterator.continually(lookups.answer()).takeWhile(!_.isEmpty).foreach(changed => model.batch(answered = changed))
     // The generated source leaves some questions unanswered for good (its GAPS): only those remain.
     model.gaps.queries.filter(query => corpus.lookups.candidates(query).isKnown) shouldBe empty
     model.gaps.films.filter(id => corpus.lookups.film(id).isKnown) shouldBe empty
@@ -224,11 +224,11 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers with LoneElement
     val bare  = listing(Helios, "Lalka")
     val dated = listing(Multikino, "Lalka", Some(1968), Some("Wojciech Has"))
     val model = new IncrementalResolver(lookups, normalizer, calibration, decorations = TitleDecorations.None)
-    model.listingsSeen(Seq(bare, dated))
+    model.batch(seen = Seq(bare, dated))
     def whole = IdentityResolver.resolveWith(Seq(bare, dated), lookups, normalizer, calibration, IdentityResolver.Mutation.None)
     ResolutionSignature.of(model) shouldBe ResolutionSignature.of(whole)
     credits = Map(bare.key -> Seq("Maciej Kawalski"))
-    model.answersChanged(AnswersChanged(Set.empty, Set.empty, Set(bare.key)))
+    model.batch(answered = AnswersChanged(Set.empty, Set.empty, Set(bare.key)))
     ResolutionSignature.of(model) shouldBe ResolutionSignature.of(whole)
     model.decisions.find(_.listings(bare.key)).flatMap(_.film) shouldBe Some(2)
   }
@@ -252,7 +252,7 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers with LoneElement
     val bare  = listing(Helios, "Lalka")
     val dated = listing(Multikino, "Lalka", Some(1968), Some("Wojciech Has"))
     val model = new IncrementalResolver(lookups, normalizer, calibration, decorations = TitleDecorations.None)
-    model.listingsSeen(Seq(bare, dated))
+    model.batch(seen = Seq(bare, dated))
     credits = Map(bare.key -> Seq("Maciej Kawalski"))
     model.batch(Seq(bare), Nil, AnswersChanged(Set.empty, Set.empty, Set(bare.key)))
     model.decisions.find(_.listings(bare.key)).flatMap(_.film) shouldBe Some(2)
@@ -264,9 +264,9 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers with LoneElement
     import MetSeasonHouseCase.*
     val seasonLookups = lookups(normalizer)
     val model = new IncrementalResolver(seasonLookups, normalizer, calibration, decorations = TitleDecorations.None)
-    model.listingsSeen(Seq(cosi, carmen))
+    model.batch(seen = Seq(cosi, carmen))
     model.decisions.find(_.listings(carmen.key)).flatMap(_.film) shouldBe Some(RboCarmen)
-    model.listingsSeen(Seq(other))
+    model.batch(seen = Seq(other))
     ResolutionSignature.of(model) shouldBe ResolutionSignature.of(
       IdentityResolver.resolveWith(Seq(cosi, carmen, other), seasonLookups, normalizer, calibration, IdentityResolver.Mutation.None))
     model.decisions.find(_.listings(carmen.key)).flatMap(_.film) should not be Some(RboCarmen)
@@ -299,10 +299,10 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers with LoneElement
     val dated = listing(Multikino, "Lalka", Some(1968), Some("Wojciech Has"))
     val bare  = listing(Helios, "Lalka")
     val model = new IncrementalResolver(lookups, normalizer, calibration, decorations = TitleDecorations.None)
-    model.listingsSeen(Seq(dated))
+    model.batch(seen = Seq(dated))
     walked = true                                                          // filed; its event not yet drained
-    noException should be thrownBy model.listingsSeen(Seq(bare))
-    model.answersChanged(AnswersChanged(model.gaps.queries, Set.empty))
+    noException should be thrownBy model.batch(seen = Seq(bare))
+    model.batch(answered = AnswersChanged(model.gaps.queries, Set.empty))
     ResolutionSignature.of(model) shouldBe ResolutionSignature.of(
       IdentityResolver.resolveWith(Seq(dated, bare), lookups, normalizer, calibration, IdentityResolver.Mutation.None))
   }
@@ -313,14 +313,14 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers with LoneElement
     val films = Seq(F(1, "Lalka", 1968, "Wojciech Has", 159), F(2, "Matilda", 1996, "Danny DeVito", 98),
       F(3, "Faust", 1926, "F.W. Murnau", 116))
     val model = new IncrementalResolver(new FilmTable(films, normalizer), normalizer, calibration, decorations = TitleDecorations.None)
-    model.listingsSeen(Seq(listing(Multikino, "Lalka", Some(1968)), listing(Helios, "Lalka"), listing(Multikino, "Matilda", Some(1996))))
+    model.batch(seen = Seq(listing(Multikino, "Lalka", Some(1968)), listing(Helios, "Lalka"), listing(Multikino, "Matilda", Some(1996))))
     val afterTwo = model.familiesResolved
     afterTwo shouldBe 2
-    model.answersChanged(AnswersChanged(Set(CandidateQuery.Title("Nothing anyone asked")), Set(999)))
+    model.batch(answered = AnswersChanged(Set(CandidateQuery.Title("Nothing anyone asked")), Set(999)))
     model.familiesResolved shouldBe afterTwo                    // nothing held asked it: nothing moves
-    model.listingsSeen(Seq(listing(Helios, "Faust", Some(1926))))
+    model.batch(seen = Seq(listing(Helios, "Faust", Some(1926))))
     model.familiesResolved shouldBe afterTwo + 1                // a film of its own: its family alone
-    model.listingsGone(Seq(listing(Helios, "Lalka").key))
+    model.batch(gone = Seq(listing(Helios, "Lalka").key))
     model.familiesResolved shouldBe afterTwo + 2                // Lalka's family, and only it
   }
 
@@ -330,11 +330,11 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers with LoneElement
     val model = new IncrementalResolver(new FilmTable(Seq(F(1, "Lalka", 1968, "Wojciech Has", 159)), normalizer), normalizer, calibration,
       decorations = TitleDecorations.None)
     val first = listing(Multikino, "Lalka", Some(1968)).copy(poster = Some("https://kino.example/lalka-a.jpg"))
-    model.listingsSeen(Seq(first))
+    model.batch(seen = Seq(first))
     val (resolved, decided) = (model.familiesResolved, model.decisions)
     val recut = listing(Multikino, "Lalka", Some(1968)).copy(poster = Some("https://kino.example/lalka-b.jpg"),
       names = VenueNames.ofHashes(Seq(42)))
-    model.listingsSeen(Seq(recut))
+    model.batch(seen = Seq(recut))
     model.familiesResolved shouldBe resolved                    // equal to what it holds: no family resolved again
     model.decisions.zip(decided).forall { case (a, b) => a eq b } shouldBe true
     val held = model.listings.loneElement

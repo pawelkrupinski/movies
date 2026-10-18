@@ -179,7 +179,7 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
         val before  = LiveHeap.megabytes()
         val kept    = new InMemoryIdentityModelStore
         val model   = new IncrementalResolver(lookups, c.normalizer, calibration, store = kept)
-        val (_, seedSeconds) = timed(model.listingsSeen(listings))
+        val (_, seedSeconds) = timed(model.batch(seen = listings))
         val held    = LiveHeap.megabytes() - before
         val keeps   = LiveHeap.grown(classesBefore, LiveHeap.classes())
         val seeded  = model.familiesResolved
@@ -187,8 +187,8 @@ class IdentityShadowIntegrationSpec extends AnyFlatSpec with Matchers with Befor
         def cost(body: => Unit): (Int, Double) = { val start = model.familiesResolved; val (_, seconds) = timed(body); (model.familiesResolved - start, seconds) }
         val venue   = byVenue.maxBy(_.size)
         val ten     = byVenue.sortBy(-_.size).slice(1, 11).flatten
-        val (unchanged, unchangedSeconds) = cost(model.listingsSeen(venue))
-        val (cycle, cycleSeconds)         = cost { model.listingsGone(venue.map(_.key)); model.listingsSeen(venue) }
+        val (unchanged, unchangedSeconds) = cost(model.batch(seen = venue))
+        val (cycle, cycleSeconds)         = cost { model.batch(gone = venue.map(_.key)); model.batch(seen = venue) }
         val (tenCycle, tenSeconds)        = cost { model.batch(Nil, ten.map(_.key), AnswersChanged.Empty); model.batch(ten, Nil, AnswersChanged.Empty) }
         val sameAfter = signature(model.decisions) == signature(resolution.decisions)
         report.line(f"[${c.label}] incremental: seeded whole in $seedSeconds%.1fs ($seeded family resolves, ${resolution.families} families), " +

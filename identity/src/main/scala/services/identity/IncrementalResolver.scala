@@ -69,20 +69,15 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
   private var reResolved    = 0
   private val clock         = new IncrementalResolver.Timings
 
-  /** Listings scraped — a venue's, or a whole corpus at boot, resolved a bounded batch at a time either way. */
-  def listingsSeen(listings: Seq[Listing]): Unit       = batch(listings, Nil, AnswersChanged.Empty)
-  def listingsGone(keys: Seq[ListingKey]): Unit        = batch(Nil, keys, AnswersChanged.Empty)
-
   /** The listings the model holds at `venue`: what a venue's next scrape is diffed against. */
   def heldAt(venue: String): Set[ListingKey] = atVenue.getOrElse(venue, Set.empty)
   /** Every listing the model holds. */
   // An array, not a list: every projection reads it (~100k on worker-us), and a cell per listing was ~2.4 MB a projection.
   def listings: Seq[Listing] = byKey.valuesIterator.flatMap(k => Option(k.listing)).to(scala.collection.immutable.ArraySeq)
-  def answersChanged(changed: AnswersChanged): Unit    = batch(Nil, Nil, changed)
 
-  /** Several events at once — scrapes and answers that landed together — resolving a family they
-   *  all touch once, not once per event. */
-  def batch(seen: Seq[Listing], gone: Seq[ListingKey], answered: AnswersChanged): Unit = {
+  /** Several events at once — listings scraped (a venue's, or a whole corpus at boot), listings gone and answers that
+   *  landed together — resolving a family they all touch once, not once per event, a bounded batch at a time. */
+  def batch(seen: Seq[Listing] = Nil, gone: Seq[ListingKey] = Nil, answered: AnswersChanged = AnswersChanged.Empty): Unit = {
     val left    = gone.filter(isHeld)
     left.foreach(release)
     // A listing whose detail page was answered anew is seen again: its evidence may have moved —

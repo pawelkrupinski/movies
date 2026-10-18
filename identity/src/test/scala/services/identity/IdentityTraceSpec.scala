@@ -164,7 +164,7 @@ class IdentityTraceSpec extends AnyFlatSpec with Matchers {
       }
     }
     val model = new IncrementalResolver(new FilmTable(lynch, normalizer), normalizer, IdentityCalibration.resolver, traces = sink)
-    model.listingsSeen(Seq(credited, bare))
+    model.batch(seen = Seq(credited, bare))
     filed.keySet shouldBe Set(credited.key, bare.key)
     filed(credited.key).film shouldBe Some(1018)
     filed(credited.key).rules.exists(_.startsWith("accept:")) shouldBe true
@@ -173,7 +173,7 @@ class IdentityTraceSpec extends AnyFlatSpec with Matchers {
     filed(credited.key).evidence.exists(_.startsWith("director=same_person +")) shouldBe true
     filed(credited.key).evidence.exists(_.startsWith("year.delta=")) shouldBe true
     model.decisions.map(_.trace) shouldBe Seq(DecisionTrace.Empty)
-    model.listingsGone(Seq(bare.key))
+    model.batch(gone = Seq(bare.key))
     dropped should not be empty
     filed.keySet shouldBe Set(credited.key)
   }
