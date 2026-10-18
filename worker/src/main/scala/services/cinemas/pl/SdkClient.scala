@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SlotsToMovies
+
 import java.util.Locale
 
 import services.cinemas.common.ScraperParse
@@ -40,15 +42,14 @@ class SdkClient(http: HttpFetch) extends CinemaScraper {
       Option(HttpRead.page(http, url)).map(Jsoup.parse)
     }.toMap
 
-    items.groupBy(_.title).toSeq.flatMap { case (title, group) =>
+    def showtimeOf(item: Item) = {
+      val page = details.getOrElse(item.detailUrl, None)
+      Showtime(item.dateTime, page.flatMap(booking), page.flatMap(room), Nil)
+    }
+    SlotsToMovies.fold(items, _.title, showtimeOf, order = SlotsToMovies.MovieOrder.asGrouped) { (title, group, showtimes) =>
       val primary = group.head
       val d       = details.getOrElse(primary.detailUrl, None)
-      val showtimes = group.map { it =>
-        val pd = details.getOrElse(it.detailUrl, None)
-        Showtime(it.dateTime, pd.flatMap(booking), pd.flatMap(room), Nil)
-      }.distinctBy(s => (s.dateTime, s.bookingUrl)).sortBy(_.dateTime)
-      if (showtimes.isEmpty) None
-      else Some(CinemaMovie(
+      CinemaMovie(
         movie     = Movie(title = title, runtimeMinutes = d.flatMap(metaLi(_, "czas trwania").flatMap(intIn)),
                           releaseYear = d.flatMap(metaLi(_, "rok produkcji").flatMap(yearIn)),
                           countries = d.toSeq.flatMap(metaLi(_, "kraj produkcji").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty)))),
@@ -60,7 +61,7 @@ class SdkClient(http: HttpFetch) extends CinemaScraper {
         cast      = Seq.empty,
         director  = d.toSeq.flatMap(metaLi(_, "reżyseria").toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))),
         showtimes = showtimes
-      ))
+      )
     }
   }
 

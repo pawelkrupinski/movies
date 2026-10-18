@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SlotsToMovies
+
 import services.cinemas.common.{ScraperParse, ListingPages}
 import tools.{HttpFetch, HttpRead}
 import models._
@@ -41,13 +43,8 @@ class KinoJednoscClient(http: HttpFetch, override val cinema: Cinema = KinoJedno
       Option(HttpRead.page(http, url)).map(parseShowtimes)
     }.toMap
 
-    films.groupBy(_._1).toSeq.flatMap { case (title, group) =>
-      val showtimes = group
-        .flatMap { case (_, url) => byUrl.get(url).flatten.getOrElse(Seq.empty) }
-        .distinctBy(s => (s.dateTime, s.bookingUrl))
-        .sortBy(_.dateTime)
-      if (showtimes.isEmpty) None
-      else Some(CinemaMovie(
+    SlotsToMovies.foldBlocks(films, _._1, (film: (String, String)) => byUrl.get(film._2).flatten.getOrElse(Seq.empty)) { (title, group, showtimes) =>
+      Some(CinemaMovie(
         movie     = Movie(title),
         cinema    = cinema,
         posterUrl = None,
@@ -57,7 +54,7 @@ class KinoJednoscClient(http: HttpFetch, override val cinema: Cinema = KinoJedno
         director  = Seq.empty,
         showtimes = showtimes
       ))
-    }.sortBy(_.movie.title)
+    }
   }
 }
 

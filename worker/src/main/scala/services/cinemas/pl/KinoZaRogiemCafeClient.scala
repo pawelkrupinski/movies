@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SlotsToMovies
+
 import services.cinemas.common.ScraperParse
 import tools.{HttpFetch, HttpRead}
 import models._
@@ -46,27 +48,19 @@ class KinoZaRogiemCafeClient(
     val document  = Jsoup.parse(html)
     val slots = parseDocument(document, today)
 
-    val bySlug = slots.groupBy(_.filmSlug)
-    bySlug.toSeq.flatMap { case (_, group) =>
-      val showtimes = group
-        .map(s => Showtime(s.dateTime, bookingUrl = None))
-        .distinctBy(_.dateTime)
-        .sortBy(_.dateTime)
-      if (showtimes.isEmpty) None
-      else {
-        val head = group.head
-        Some(CinemaMovie(
-          movie     = Movie(head.title),
-          cinema    = cinema,
-          posterUrl = None,
-          filmUrl   = Some(BaseUrl + "/film/" + head.filmSlug + "/"),
-          synopsis  = None,
-          cast      = Seq.empty,
-          director  = Seq.empty,
-          showtimes = showtimes
-        ))
-      }
-    }.sortBy(_.movie.title)
+    SlotsToMovies.fold(slots, _.filmSlug, s => Showtime(s.dateTime, bookingUrl = None), distinctBy = _.dateTime) { (_, group, showtimes) =>
+      val head = group.head
+      CinemaMovie(
+        movie     = Movie(head.title),
+        cinema    = cinema,
+        posterUrl = None,
+        filmUrl   = Some(BaseUrl + "/film/" + head.filmSlug + "/"),
+        synopsis  = None,
+        cast      = Seq.empty,
+        director  = Seq.empty,
+        showtimes = showtimes
+      )
+    }
   }
 }
 
