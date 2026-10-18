@@ -56,7 +56,7 @@ no known-wrong/accepted row covers.
 | DE | 3 | 1 | Imagine Peace (GLOBALE) | Imagine Peace (2010) `tmdb:1094789` | — | known-wrong / served | a GLOBALE documentary series slot: Chiquet's 2026 doc Imagine Peace (tmdb 1604464, which Cineamo links), not the 2010 40-minute short |
 | DE | 3 | 1 | Über Unterbiberger - Vom Woid in die Welt | Oktober 1917 – Zehn Tage, die die Welt erschütterten (1928) `tmdb:697` | tmdb:1559083 | known-wrong / served | Ditscherlein's 2025 doc on the Unterbiberger Hofmusik, not Eisenstein's October (1928), whose facts the feed copied |
 | DE | 3 | 1 | Ecrire la vie - Writing Life | Giv os en chance (2025) `tmdb:1579323` | tmdb:1518673 | known-wrong / served | Écrire la vie (as its other billings, labelled wrong), not the Danish Giv os en chance |
-| DE | 4 | 23 | League of Legends Worlds 26 - Finals in Cinema | League of Legends Worlds25 - Finals in Cinema (2025) `tmdb:1552059` | — | **UNLISTED** | the 2026 League of Legends Worlds final, not the 2025 one's record (as PL's and UK's labels say) |
+| DE | 4 | 23 | League of Legends Worlds 26 - Finals in Cinema | League of Legends Worlds25 - Finals in Cinema (2025) `tmdb:1552059` | — | cured on main and in prod (8b75b70 takes none, 10-18; `numeralRelation` reads the billing's own "26" over a feed's copied "Worlds25", 88a82446a) | the 2026 League of Legends Worlds final, not the 2025 one's record (as PL's and UK's labels say) |
 | DE | 4 | 5 | Fallen Angels by Noël Coward | Gefallene Engel (1995) `tmdb:11220` | tmdb:1702350 | **UNLISTED** | a stage capture of the Roundabout Broadway revival of Coward's play (Trafalgar, in cinemas 22 Oct 2026), not Wong Kar-wai's 1995 film — one line for every venue billin… |
 | DE | 4 | 2 | Carmen (RB+O 2026/27) | Carmen: Salzburger Festspiele 2026 (2026) `tmdb:1740965` | — | known-wrong / served | "RB+O 2026/27" bills the Royal Ballet & Opera Carmen (tmdb 1702759, which Cineamo links), not the Salzburg Festival 2026 recording |
 | DE | 5 | 1 | Leica | Leica (2026) `tmdb:1737142` | — | known-wrong / served | Holzemer's feature doc Leica (tmdb 1689091, which prod takes), not a 15-minute Israeli short |
@@ -88,8 +88,10 @@ no known-wrong/accepted row covers.
 - [ ] Then re-run the state tally (§1) on the mirror once prod has deployed.
 
 ### Live wrong matches with no fix yet
-- [ ] **DE "League of Legends Worlds 26 - Finals in Cinema" ×23** → the 2025 final record. Unlisted. Class 4/event:
-  a yearly event must match its own year's record, or none.
+- [x] **DE "League of Legends Worlds 26 - Finals in Cinema" ×23** → the 2025 final record. Class 4/event: a yearly
+  event must match its own year's record, or none. Cured by 88a82446a (a feed's copied original "Worlds25" never numbers
+  the billing's "26" its way; `numeralRelation`), pinned by the identity-slices case
+  `de-adria-filmtheater-steglitz-league-of-legends-worlds-26-final-*`; prod (8b75b70) takes none at all 63 venues (10-18).
 - [ ] **DE "Fallen Angels by Noël Coward" ×5** → Wong Kar-wai 1995. Unlisted. The current recording already takes the
   right 2026 record (1702350); check prod's ×5 after the next deploy (`scripts/listing-history de --title 'Fallen Angels'`).
 - [ ] **NT Live: Hamlet ×2 (US)** — the 2026 record never enters the candidates; Flicks' 2015 year is counted once per
