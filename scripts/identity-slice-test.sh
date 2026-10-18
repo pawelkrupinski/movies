@@ -276,6 +276,21 @@ chmod +x "$work/bin/gh"; rm -f "$work/gh-downloads"
 GH_DOWNLOAD_BACKOFF=0 slice de --faithfulness 223456789 > /dev/null
 check "--faithfulness RUN: a throttled artifact read is asked again, and its takes kept in the cache" "2 yes" \
   "$(wc -l < "$work/gh-downloads" | tr -d ' ') $([ -s "$cache/diagnostics/223456789/de-takes/de.json.gz" ] && echo yes || echo no)"
+# a download cut short by a Ctrl-C (TERM to the group) leaves no download directory beside the cache's copy
+cat > "$work/bin/gh" <<'STUB'
+#!/usr/bin/env bash
+while [ $# -gt 0 ]; do [ "$1" = --dir ] && dir=$2; shift; done
+mkdir -p "$dir/de-takes" && echo partial > "$dir/de-takes/de.json.gz"
+touch "$STUB/gh-started"; sleep 20
+STUB
+chmod +x "$work/bin/gh"; rm -f "$work/gh-started"
+STUB="$work" PATH="$work/bin:$PATH" KINOWO_IDENTITY_CACHE="$cache" perl -e 'setpgrp(0, 0); exec @ARGV' \
+  "$repo/scripts/identity-slice" de --faithfulness 323456789 > /dev/null 2> "$work/err" &
+cut_short=$!
+for _ in $(seq 1 100); do [ -e "$work/gh-started" ] && break; sleep 0.1; done
+kill -TERM -- "-$cut_short" 2>/dev/null; wait "$cut_short" 2>/dev/null
+check "--faithfulness RUN: a download cut short leaves no download directory, nor a lock" "yes 0 0" \
+  "$([ -e "$work/gh-started" ] && echo yes || echo no) $(find "$cache/diagnostics" -maxdepth 1 -name '323456789.dl.*' | wc -l | tr -d ' ') $(find "$cache/locks" -maxdepth 1 -name 'diagnostics-323456789-*' | wc -l | tr -d ' ')"
 rm -f "$work/bin/gh"
 
 # --prod-mirror: prod's state from the LOCAL mirror, its freshness checked against the recording first

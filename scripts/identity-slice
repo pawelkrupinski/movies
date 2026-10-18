@@ -400,18 +400,20 @@ fi
 if [ -n "$faith" ]; then
   # the leg's own takes, its commit and its pinned recording
   diag=$IDENTITY_CACHE/diagnostics/$faith
-  # the leg's diagnostics artifact, downloaded beside the cache's copy and moved in whole
-  faith_download() {
-    local dl
-    [ -f "$diag/$cc-takes/$cc.json.gz" ] && return 0
-    mkdir -p "$diag"; dl=$(mktemp -d "$diag.dl.XXXXXX")
+  # the leg's diagnostics artifact, downloaded beside the cache's copy and moved in whole. A subshell of its own, so its
+  # trap removes the download directory however it ends (a Ctrl-C mid-download too) without replacing the trap of
+  # identity_locked's subshell, which gives the lock back.
+  faith_download() (
+    [ -f "$diag/$cc-takes/$cc.json.gz" ] && exit 0
+    mkdir -p "$diag"; dl=$(mktemp -d "$diag.dl.XXXXXX") || exit 1
+    trap 'rm -rf "$dl"' EXIT
     if gh_download "$IDENTITY_GH_DOWNLOAD" run download "$faith" -R "$KINOWO_GH_REPO" \
          --name "convergence-diagnostics-$cc-convergence" --dir "$dl" >&2 && [ -f "$dl/$cc-takes/$cc.json.gz" ]; then
-      rm -rf "$diag/$cc-takes"; mv "$dl/$cc-takes" "$diag/$cc-takes"; rm -rf "$dl"
+      rm -rf "$diag/$cc-takes"; mv "$dl/$cc-takes" "$diag/$cc-takes"
     else
-      rm -rf "$dl"; identity_log "could not download run $faith's convergence-diagnostics-$cc-convergence (gh failed or timed out, or it holds no $cc-takes)"; return 1
+      identity_log "could not download run $faith's convergence-diagnostics-$cc-convergence (gh failed or timed out, or it holds no $cc-takes)"; exit 1
     fi
-  }
+  )
   [ -f "$diag/$cc-takes/$cc.json.gz" ] || identity_locked "diagnostics-$faith-$cc" faith_download || exit 1
   if [ -z "$run" ]; then
     log_text=$(identity_gh "$IDENTITY_GH_DOWNLOAD" run view "$faith" -R "$KINOWO_GH_REPO" --log) ||
