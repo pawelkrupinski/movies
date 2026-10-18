@@ -23,7 +23,7 @@ import scala.concurrent.duration._
  * [[FirstFailureRetry]], the wait doubling while it keeps failing, up to [[MaxFailureRetry]]: one
  * day for every failure held a whole round's questions back for 24 hours after a ten-minute outage.
  */
-final class TmdbGapMemory(docs: TmdbDocuments, language: String, clock: Clock, retryAfter: FiniteDuration = TmdbGapMemory.RetryAfter) {
+final class TmdbGapMemory(docs: TmdbDocuments, language: String, clock: Clock) {
   import TmdbGapMemory._
 
   /** `gaps` without those still inside their wait: a day after a durable non-answer, the failure
@@ -86,7 +86,7 @@ final class TmdbGapMemory(docs: TmdbDocuments, language: String, clock: Clock, r
   }
 
   private def failureWaitOf(doc: BsonDocument): Option[Long] = BsonFields.int64(doc.get(FailureWait))
-  private def waitOf(doc: BsonDocument): Long = failureWaitOf(doc).getOrElse(retryAfter.toMillis)
+  private def waitOf(doc: BsonDocument): Long = failureWaitOf(doc).getOrElse(RetryAfter.toMillis)
 
   private def queryMarker(q: CandidateQuery) = s"$Prefix${TmdbStore.questionId(language, q)}"
   private def filmMarker(id: Int)            = s"${Prefix}film|$id"
