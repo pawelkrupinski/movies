@@ -18,17 +18,29 @@
 # eliminating everywhere else.
 set -euo pipefail
 
-repo="https://github.com/pawelkrupinski/movies-gitops.git"
+#
+# When GitHub cannot be reached (the account was suspended 2026-10-18), it falls back to a local clone of the config
+# repo, $KINOWO_GITOPS_LOCAL (default ~/projects/movies-gitops), and says so.
+repo="${KINOWO_GITOPS_REPO:-https://github.com/pawelkrupinski/movies-gitops.git}"
+local_repo="${KINOWO_GITOPS_LOCAL:-$HOME/projects/movies-gitops}"
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-dest="$root/infra/kubernetes"
+dest="${KINOWO_GITOPS_DEST:-$root/infra/kubernetes}"
 
-if [ -d "$dest/.git" ]; then
-    echo "updating $dest"
-    git -C "$dest" fetch --quiet origin main
-    git -C "$dest" reset --quiet --hard origin/main
-else
-    echo "cloning $repo -> $dest"
-    rm -rf "$dest"
-    git clone --quiet --depth 1 --single-branch --branch main "$repo" "$dest"
+fetch() { # <repo>
+    if [ -d "$dest/.git" ]; then
+        echo "updating $dest from $1"
+        git -C "$dest" remote set-url origin "$1"
+        git -C "$dest" fetch --quiet origin main && git -C "$dest" reset --quiet --hard origin/main
+    else
+        echo "cloning $1 -> $dest"
+        rm -rf "$dest"
+        git clone --quiet --depth 1 --single-branch --branch main "${1/#\//file:///}" "$dest"
+    fi
+}
+
+if ! fetch "$repo"; then
+    [ -d "$local_repo/.git" ] || { echo "fetch-gitops: $repo unreachable, and no local clone at $local_repo" >&2; exit 1; }
+    echo "fetch-gitops: $repo unreachable -- using the local clone $local_repo ($(git -C "$local_repo" log -1 --format='%h %s'))" >&2
+    fetch "$local_repo"
 fi
 echo "now at $(git -C "$dest" rev-parse --short HEAD) ($(git -C "$dest" log -1 --format=%s))"
