@@ -143,10 +143,27 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
       country.exists(venue => scored.candidate.film.countries.exists(_.exists(IdentityMeasures.sharesLanguage(venue, _)))) &&
       IdentityMeasures.sharesNoWord(listing, scored.candidate.film)
     lazy val named = candidates.filterNot(scored => scored.denied || untitled(scored)).map(_.probability).maxOption
+    // A billing opening on a film's whole title and going on with a subtitle of its own — words naming no event and no
+    // edition, which the film carries in none of its titles nor as its tagline — while stating no fact beside it: the
+    // subtitle is the venue's own claim of what it shows, and it is not the film titled without it. DE Ostpassagen
+    // Theater's "Auf Augenhöhe - Jugend, Macht und Kinderschutz", a circus show, took Goldbrunner and Dollhopf's 2016 "Auf
+    // Augenhöhe" through the venues billing that film by its title.
+    lazy val billedWords = services.movies.TitleContainment.tokens(listing.title)
+    def subtitledApart(scored: Scored) = !scored.denied && relation(scored.candidate.tmdbId) == "segment" && !listing.publishesAFact && {
+      val film = scored.candidate.film
+      film.titles.iterator.map(services.movies.TitleContainment.tokens).filter(words => words.nonEmpty && billedWords.startsWith(words))
+        .map(words => billedWords.drop(words.size)).exists { rest =>
+          rest.size >= FamilyScope.SubtitleWords && !DecorationWords.namesAnEvent(rest) && !rest.exists(DecorationWords.EditionWords) &&
+            !film.titles.exists(title => services.movies.TitleContainment.tokens(title).containsSlice(rest)) &&
+            film.taglineKey != IdentityMeasures.Film.taglineKeyOf(rest.mkString(" "))
+        }
+    }
     def ownLanguageUntitled(scored: Scored) = untitled(scored) && named.forall(scored.probability >= _)
     candidates.map(scored =>
       if (ownLanguageUntitled(scored))
         scored.copy(denial = Some(Denial("a film of the venue's own language its title shares no word with")))
+      else if (subtitledApart(scored))
+        scored.copy(denial = Some(Denial("a namesake titled without the subtitle its billing, stating no fact, goes on with")))
       else if (anotherRecordOfItsBroadcast(scored))
         scored.copy(denial = Some(Denial("another record of a broadcast its film database holds twice")))
       else if (titled && !IdentityMeasures.NamingRelations(relation(scored.candidate.tmdbId)) && IdentityMeasures.sameDirector(scored.measures))
@@ -371,6 +388,10 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
 }
 
 private[identity] object FamilyScope {
+  /** How many words a billing's subtitle of its own runs to at least to hold it apart from a film titled without it
+   *  ("Jugend, Macht und Kinderschutz"): a one- or two-word tail is a format, a language or a cut as often as a subtitle. */
+  val SubtitleWords = 3
+
   /** What a title relation reads of a listing ([[FamilyScope]]'s relations). The decorations by identity:
    *  one resolve's listings share its instance, and its structural hash was itself a cost. */
   final class TitleInputs(listing: IdentityMeasures.Listing) {

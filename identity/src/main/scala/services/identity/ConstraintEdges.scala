@@ -79,24 +79,6 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
     }
   }
 
-  /** Does `decorated` bill `whole`'s title followed by a subtitle of its own — words beyond it naming no event and no edition,
-   *  which the film `whole` holds carries in none of its titles nor as its tagline — while stating no fact beside it? The
-   *  subtitle is then the venue's own claim of what it shows, and it contradicts the film titled without it: DE Ostpassagen
-   *  Theater's "Auf Augenhöhe - Jugend, Macht und Kinderschutz", a circus show, joined to Goldbrunner and Dollhopf's 2016
-   *  "Auf Augenhöhe" by its first piece. */
-  private def ownSubtitle(whole: EvidenceNode, decorated: EvidenceNode, wholeFilm: Option[Int]): Boolean =
-    !decorated.evidence.published.publishesAFact && wholeFilm.exists { film =>
-      val (wholeWords, billed) = (services.movies.TitleContainment.tokens(whole.evidence.cleanTitle), services.movies.TitleContainment.tokens(decorated.evidence.cleanTitle))
-      val rest = billed.drop(wholeWords.size)
-      billed.startsWith(wholeWords) && rest.size >= ConstraintEdges.SubtitleWords && !DecorationWords.namesAnEvent(rest) &&
-        rest.forall(word => !DecorationWords.EditionWords(word)) &&
-        scoring.generation.candidateOf(film).exists { candidate =>
-          val restText = rest.mkString(" ")
-          !candidate.film.titles.exists(title => services.movies.TitleContainment.tokens(title).containsSlice(rest)) &&
-            candidate.film.taglineKey != IdentityMeasures.Film.taglineKeyOf(restText)
-        }
-    }
-
   /** What one catalogue id binds `node` by: the id itself — a chain's own catalogue lists one film under one id — but a
    *  feed's ([[SourceReliability.linkDecides]]) only beside the node's title: an aggregator links screenings to its entries
    *  and can link two venues' different films to one (Filmstarts' placeholder 51988 "Film Program"), so its id joins
@@ -162,8 +144,7 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
         // voting and the venue signal reach it. Whole segments only — "Zärtlich kreist die Faust"
         // has no delimiter before "Faust" — and the ambiguity rule leaves a spelling whose segment
         // names two films apart, as it does one whose rest names a film of its own (`namesBeside`).
-        Option.when((segmentOf(first, second) && !namesBeside(second, firstEvidence.cleanTitle) && !ownSubtitle(first, second, firstFilm)) ||
-          (segmentOf(second, first) && !namesBeside(first, secondEvidence.cleanTitle) && !ownSubtitle(second, first, secondFilm)))((4, ConstraintEdges.TitleSegment))
+        Option.when((segmentOf(first, second) && !namesBeside(second, firstEvidence.cleanTitle)) || (segmentOf(second, first) && !namesBeside(first, secondEvidence.cleanTitle)))((4, ConstraintEdges.TitleSegment))
       ).flatten
       cannots.map(edge(must = false, 0, _)) ++ musts.sortBy(_._1).take(1).map { case (tier, reason) => edge(must = true, tier, reason) }
     }.filter(admitted)
@@ -177,10 +158,6 @@ private[identity] object ConstraintEdges {
   val TitleSegment     = "title-segment"
   /** The cannot-link of two nodes a feed's copied original title alone joins, one's feed linking a film the other's is not. */
   val CopiedOriginalApart = "copied-original-apart"
-
-  /** How many words a subtitle of the venue's own runs to at least (`ownSubtitle`): "Jugend, Macht und
-   *  Kinderschutz"; a one- or two-word tail is a format, a language or a cut as often as a subtitle. */
-  val SubtitleWords = 3
 
   /** The must-link tiers a title draws: same title, same search form or original title, one
    *  title a segment of the other. */
