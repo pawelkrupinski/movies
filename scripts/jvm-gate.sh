@@ -6,11 +6,16 @@
 # queueing, every slice and measure 3-8x slower than alone. So a tool waits for memory, waits for one of a few machine
 # slots, and starts a JVM that sizes itself for a share of the cores. Sourcing it defines functions only. bash 3.2.
 #
-#   memory_gate <label>    waits while memory_paged_gb > KINOWO_MEMORY_GATE_GB (default 20), saying so once, polling
-#                          every KINOWO_MEMORY_GATE_POLL seconds (15); after KINOWO_MEMORY_GATE_MAX_WAIT seconds (600) it
-#                          goes ahead, warned. KINOWO_MEMORY_GATE=0 turns it off; a no-op where paging cannot be read.
+#   memory_gate <label>    waits while memory_paged_gb > KINOWO_MEMORY_GATE_GB (default 20) AND memory_free_gb <
+#                          KINOWO_MEMORY_GATE_FREE_GB (default 6, about one tool heap): swap holds idle apps' stale pages
+#                          long after RAM frees up (20 GB "paged" beside 9.6 GB free on 2026-10-18), so paging alone kept
+#                          tools waiting on nothing. Says so once, polls every KINOWO_MEMORY_GATE_POLL seconds (15); after
+#                          KINOWO_MEMORY_GATE_MAX_WAIT seconds (600) goes ahead, warned. KINOWO_MEMORY_GATE=0 turns it
+#                          off; a no-op where paging cannot be read.
 #   memory_paged_gb        the GB already pushed out of RAM: swap used plus the compressor's pages (macOS);
 #                          KINOWO_MEMORY_GATE_PROBE's output instead when set (the self-test's seam)
+#   memory_free_gb         the GB of RAM a new heap can have now: free, inactive and speculative pages (macOS);
+#                          KINOWO_MEMORY_GATE_FREE_PROBE's output instead when set; none readable counts as short
 #   jvm_slot_take <label>  the memory gate, then one of the machine's KINOWO_JVM_SLOTS (default 4) slots, held until
 #                          jvm_slot_release or this process ends; waits for one (saying so once, polling every
 #                          KINOWO_JVM_SLOT_POLL seconds, 5) and after KINOWO_JVM_SLOT_MAX_WAIT seconds (1800) goes ahead,
@@ -41,19 +46,35 @@ memory_paged_gb() {
   awk -v s="$swap_mb" -v p="$page" -v c="$compressed" 'BEGIN { printf "%d\n", s / 1024 + p * c / 2^30 }'
 }
 
+memory_free_gb() {
+  if [ -n "${KINOWO_MEMORY_GATE_FREE_PROBE:-}" ]; then eval "$KINOWO_MEMORY_GATE_FREE_PROBE"; return; fi
+  [ "$(uname -s)" = Darwin ] || return 1
+  vm_stat 2>/dev/null | awk -v p="$(sysctl -n hw.pagesize 2>/dev/null)" '
+    /Pages (free|inactive|speculative):/ { gsub(/\./, "", $NF); n += $NF } END { if (p) printf "%d\n", n * p / 2^30 }'
+}
+
+# memory_short -> 0 while memory is both paged out past the budget and short of free RAM; prints the paged-out GB
+memory_short() {
+  local paged free
+  paged=$(memory_paged_gb) && [ -n "$paged" ] && [ "$paged" -gt "${KINOWO_MEMORY_GATE_GB:-20}" ] || return 1
+  free=$(memory_free_gb) || free=0
+  [ "${free:-0}" -lt "${KINOWO_MEMORY_GATE_FREE_GB:-6}" ] || return 1
+  echo "$paged GB paged out, ${free:-0} GB free"
+}
+
 # _jvm_waited <seconds waited> <poll> -> the seconds waited after one more poll (a fractional poll counted whole)
 _jvm_waited() { awk -v w="$1" -v p="$2" 'BEGIN { printf "%d\n", w + p + 0.999 }'; }
 
 memory_gate() { # <label>
   [ "${KINOWO_MEMORY_GATE:-1}" = 0 ] && return 0
   local label=${1:-tool} budget=${KINOWO_MEMORY_GATE_GB:-20} max=${KINOWO_MEMORY_GATE_MAX_WAIT:-600}
-  local poll=${KINOWO_MEMORY_GATE_POLL:-15} paged waited=0 said=""
-  while paged=$(memory_paged_gb) && [ -n "$paged" ] && [ "$paged" -gt "$budget" ]; do
+  local poll=${KINOWO_MEMORY_GATE_POLL:-15} state waited=0 said=""
+  while state=$(memory_short); do
     if [ "$waited" -ge "$max" ]; then
-      echo "[$label] memory gate: still ${paged} GB paged out after ${waited}s: starting anyway" >&2
+      echo "[$label] memory gate: still ${state} after ${waited}s: starting anyway" >&2
       return 0
     fi
-    [ -n "$said" ] || { echo "[$label] memory gate: ${paged} GB paged out (over KINOWO_MEMORY_GATE_GB=$budget): waiting for other JVMs to finish before starting one (up to ${max}s)" >&2; said=1; }
+    [ -n "$said" ] || { echo "[$label] memory gate: ${state} (over KINOWO_MEMORY_GATE_GB=$budget, under KINOWO_MEMORY_GATE_FREE_GB=${KINOWO_MEMORY_GATE_FREE_GB:-6}): waiting for other JVMs to finish before starting one (up to ${max}s)" >&2; said=1; }
     sleep "$poll"
     waited=$(_jvm_waited "$waited" "$poll")
   done

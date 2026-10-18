@@ -11,7 +11,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 printf '\033[36m▸\033[0m jvm-gate\n'
 work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
-export KINOWO_MEMORY_GATE=1 KINOWO_MEMORY_GATE_POLL=0.05 KINOWO_MEMORY_GATE_GB=20
+export KINOWO_MEMORY_GATE=1 KINOWO_MEMORY_GATE_POLL=0.05 KINOWO_MEMORY_GATE_GB=20 KINOWO_MEMORY_GATE_FREE_GB=6 KINOWO_MEMORY_GATE_FREE_PROBE='echo 1'
 
 # the probe reads the next value from a file per call: the paged-out GB as each poll would see it
 probe() { printf '%s\n' "$@" > "$work/readings"; : > "$work/calls"; }
@@ -20,6 +20,11 @@ export KINOWO_MEMORY_GATE_PROBE='echo x >> "'"$work"'/calls"; n=$(wc -l < "'"$wo
 probe 5
 memory_gate t 2> "$work/err"
 check "under the budget: starts at once, silently" "1|" "$(wc -l < "$work/calls" | tr -d ' ')|$(cat "$work/err")"
+
+probe 48
+KINOWO_MEMORY_GATE_FREE_PROBE='echo 9' memory_gate t 2> "$work/err"
+check "paged out past the budget but RAM free for a heap (stale swap): starts at once, silently" "1|" \
+  "$(wc -l < "$work/calls" | tr -d ' ')|$(cat "$work/err")"
 
 probe 48 48 30 12
 memory_gate t 2> "$work/err"

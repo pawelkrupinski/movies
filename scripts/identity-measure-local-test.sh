@@ -143,7 +143,7 @@ check "...a slot held by a process that is gone is taken over, and freed after" 
   "$(cat "$work/slots.status") $(grep -q "^$fourth" "$work/calls" && echo yes || echo no) $([ -d "$cache/jvm-slots/1" ] && echo yes || echo no)"
 
 fifth=$(echo z > "$repo/fifth"; scratch_git "$repo" add -A; scratch_git "$repo" -c user.email=t@t -c user.name=t commit -qm fifth; scratch_git "$repo" rev-parse --short=12 HEAD)
-KINOWO_MEMORY_GATE=1 KINOWO_MEMORY_GATE_PROBE='echo 99' KINOWO_MEMORY_GATE_MAX_WAIT=0 measure --base "$base" --head "$fifth" --countries pl --out "$work/gated"
+KINOWO_MEMORY_GATE=1 KINOWO_MEMORY_GATE_PROBE='echo 99' KINOWO_MEMORY_GATE_FREE_PROBE='echo 0' KINOWO_MEMORY_GATE_MAX_WAIT=0 measure --base "$base" --head "$fifth" --countries pl --out "$work/gated"
 check "a resolve waits on the memory gate while the Mac is paging (deadline 0: warned, then resolved)" "0 yes" \
   "$(cat "$work/status") $(grep -q '\[identity-measure-local\] memory gate: still 99 GB' "$work/out" && echo yes || echo no)"
 
