@@ -14,7 +14,7 @@ work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 repo="$work/repo"
 mkdir -p "$repo/scripts/ci" "$repo/test/resources/fixtures"
-cp "$REPO_ROOT/scripts/identity-measure-local" "$REPO_ROOT/scripts/memory-gate.sh" "$repo/scripts/"
+cp "$REPO_ROOT/scripts/identity-measure-local" "$REPO_ROOT/scripts/jvm-gate.sh" "$repo/scripts/"
 # it-local.sh: logs each sbt command, and writes what each would ("--out DIR --full CC", "--measure --out DIR")
 cat > "$repo/scripts/it-local.sh" <<'STUB'
 #!/usr/bin/env bash
@@ -131,16 +131,16 @@ check "...and, its holder gone, resolved by the waiting run" "0 2" "$(cat "$work
 
 fourth=$(echo y > "$repo/fourth"; scratch_git "$repo" add -A; scratch_git "$repo" -c user.email=t@t -c user.name=t commit -qm fourth; scratch_git "$repo" rev-parse --short=12 HEAD)
 sleep 60 & holder=$!
-mkdir -p "$cache/measure-local/slots/1" && echo "$holder" > "$cache/measure-local/slots/1/pid"
-( KINOWO_MEASURE_LOCAL_SLOTS=1 KINOWO_MEASURE_LOCAL_POLL=0.2 STUB="$work" KINOWO_IDENTITY_CACHE="$cache" bash "$repo/scripts/identity-measure-local" \
+mkdir -p "$cache/jvm-slots/1" && echo "$holder" > "$cache/jvm-slots/1/pid"
+( KINOWO_JVM_SLOTS=1 KINOWO_JVM_SLOT_POLL=0.2 STUB="$work" KINOWO_IDENTITY_CACHE="$cache" bash "$repo/scripts/identity-measure-local" \
     --base "$base" --head "$fourth" --countries pl --out "$work/slots" > "$work/slots.out" 2>&1; echo $? > "$work/slots.status" ) &
 runner=$!
-for _ in $(seq 1 50); do grep -q 'slot is busy' "$work/slots.out" 2>/dev/null && break; sleep 0.1; done
-check "every resolve slot on the machine busy: the resolve waits for one" "yes no" \
-  "$(grep -q 'every resolve slot is busy' "$work/slots.out" && echo yes || echo no) $(grep -q "^$fourth" "$work/calls" && echo yes || echo no)"
+for _ in $(seq 1 50); do grep -q 'JVM slots busy' "$work/slots.out" 2>/dev/null && break; sleep 0.1; done
+check "every JVM slot on the machine busy: the resolve waits for one (scripts/jvm-gate.sh)" "yes no" \
+  "$(grep -q '\[identity-measure-local\] all 1 JVM slots busy' "$work/slots.out" && echo yes || echo no) $(grep -q "^$fourth" "$work/calls" && echo yes || echo no)"
 kill "$holder"; wait "$holder" 2>/dev/null; wait "$runner"
 check "...a slot held by a process that is gone is taken over, and freed after" "0 yes no" \
-  "$(cat "$work/slots.status") $(grep -q "^$fourth" "$work/calls" && echo yes || echo no) $([ -d "$cache/measure-local/slots/1" ] && echo yes || echo no)"
+  "$(cat "$work/slots.status") $(grep -q "^$fourth" "$work/calls" && echo yes || echo no) $([ -d "$cache/jvm-slots/1" ] && echo yes || echo no)"
 
 fifth=$(echo z > "$repo/fifth"; scratch_git "$repo" add -A; scratch_git "$repo" -c user.email=t@t -c user.name=t commit -qm fifth; scratch_git "$repo" rev-parse --short=12 HEAD)
 KINOWO_MEMORY_GATE=1 KINOWO_MEMORY_GATE_PROBE='echo 99' KINOWO_MEMORY_GATE_MAX_WAIT=0 measure --base "$base" --head "$fifth" --countries pl --out "$work/gated"

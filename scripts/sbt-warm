@@ -35,8 +35,8 @@ State=${KINOWO_SBT_WARM_STATE:-$HOME/.cache/kinowo-sbt-warm}
 IdleMinutes=${KINOWO_SBT_WARM_IDLE_MINUTES:-10}
 # shellcheck source=scripts/tool-conventions.sh
 . "$(dirname "$0")/tool-conventions.sh"
-# shellcheck source=scripts/memory-gate.sh
-. "$(dirname "$0")/memory-gate.sh"
+# shellcheck source=scripts/jvm-gate.sh
+. "$(dirname "$0")/jvm-gate.sh"
 IdentityRefs=$KINOWO_IDENTITY_CACHE/refs
 log() { echo "[sbt-warm] $*" >&2; }
 
@@ -208,20 +208,17 @@ else
   # a server lives (as a seed's cleanup once did, every call, 2026-10-15), it starts a new server per call.
   rm -f "$root/project/target/active.json"
   log "checkout $root, server none: starting one"
-  # a new server is a new ~5 GB heap: not while the Mac is already paging
-  memory_gate sbt-warm
 fi
 # The KINOWO_* settings this call passes. A kept server reads the environment it STARTED with, never a later call's:
 # KINOWO_IDENTITY_CORPUS_DIR given to a call reached nothing, and the corpus specs cancelled (2026-10-18). A call whose
-# settings differ from its server's restarts the server with them. The tool-side knobs (KINOWO_SBT_WARM_*, the memory
-# gate's) are no server setting.
-settings=$(env | grep '^KINOWO_' | grep -v -e '^KINOWO_SBT_WARM_' -e '^KINOWO_MEMORY_GATE' | sort | shasum | cut -c1-16)
+# settings differ from its server's restarts the server with them. The tool-side knobs (KINOWO_SBT_WARM_*, the JVM
+# gate's KINOWO_MEMORY_GATE*/KINOWO_JVM_*) are no server setting.
+settings=$(env | grep '^KINOWO_' | grep -v -e '^KINOWO_SBT_WARM_' -e '^KINOWO_MEMORY_GATE' -e '^KINOWO_JVM_' | sort | shasum | cut -c1-16)
 if [ "$fresh" = 0 ] && [ -f "$State/$key.env" ] && [ "$(cat "$State/$key.env")" != "$settings" ]; then
   log "this call's KINOWO_* settings differ from the ones server pid $pid started with: restarting it with them"
   stop_servers_of "$root" >/dev/null
   for _ in 1 2 3 4 5 6 7 8 9 10; do [ -z "$(server_pids "$root")" ] && break; sleep 1; done
   rm -f "$root/project/target/active.json"
-  memory_gate sbt-warm
   fresh=1
 fi
 [ "$fresh" = 1 ] && echo "$settings" > "$State/$key.env"
@@ -233,8 +230,12 @@ if [ "$fresh" = 0 ] && [ -f "$State/$key.build" ] && [ "$(cat "$State/$key.build
   command="reload; $command"
 fi
 echo "$digest" > "$State/$key.build"
-# sbt --client starts the server (in the background, outliving this call) when the checkout has none
-(cd "$root" && sbt --client "$command"); rc=$?
+# sbt --client starts the server (in the background, outliving this call) when the checkout has none -- sized for
+# KINOWO_JVM_CPUS cores on a Mac agents share (scripts/jvm-gate.sh). The command holds one of the machine's JVM slots: the
+# server's heap stays when idle, its CPU does not.
+jvm_slot_take sbt-warm
+(cd "$root" && SBT_OPTS="${SBT_OPTS:-} $(jvm_cpu_options)" sbt --client "$command"); rc=$?
+jvm_slot_release
 touch "$State/$key.used"
 if [ "$fresh" = 1 ] && pid=$(server_pid "$root"); then
   echo "$pid" > "$State/$key.pid"

@@ -19,6 +19,7 @@ mkdir -p "$scratch/bin"
 cat > "$scratch/bin/sbt" <<STUB
 #!/usr/bin/env bash
 printf "%s|%s\\n" "\$(pwd -P)" "\$*" >> "$scratch/sbt-calls"
+printf "%s|%s\\n" "\${SBT_OPTS:-}" "\${KINOWO_JVM_SLOT_HELD:-}" >> "$scratch/sbt-env"
 active=project/target/active.json
 [ -f "\$active" ] || { mkdir -p project/target; echo "{\\"uri\\":\\"local://\$(pwd -P)/sock\\"}" > "\$active"; }
 server=\$(sed -n 's|.*"local://\\(.*\\)/sock".*|\\1|p' "\$active")
@@ -190,5 +191,12 @@ out=$(cd "$scratch/gated" && KINOWO_MEMORY_GATE=1 KINOWO_MEMORY_GATE_PROBE='echo
   "$REPO_ROOT/scripts/sbt-warm" compile 2>&1 >/dev/null)
 check "a new server waits on the memory gate while the Mac is paging (deadline 0: warned, then started)" "yes" \
   "$(grep -q '\[sbt-warm\] memory gate: still 99 GB paged out' <<< "$out" && echo yes || echo no)"
+
+scratch_git "$repo" worktree add -q -b slotted "$scratch/slotted" origin/main
+: > "$scratch/sbt-env"
+(cd "$scratch/slotted" && KINOWO_JVM_SLOTS=4 KINOWO_JVM_CPUS=4 KINOWO_JVM_GATE_OS=Darwin "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
+check "a command holds one of the machine's JVM slots, its server sized for KINOWO_JVM_CPUS cores (macOS)" \
+  " -XX:ActiveProcessorCount=4|$KINOWO_IDENTITY_CACHE/jvm-slots/1" "$(tail -1 "$scratch/sbt-env")"
+check "...and gives the slot back when it ends" "no" "$([ -d "$KINOWO_IDENTITY_CACHE/jvm-slots/1" ] && echo yes || echo no)"
 
 spec_summary

@@ -21,8 +21,8 @@
 IDENTITY_REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=scripts/tool-conventions.sh
 . "$(dirname "${BASH_SOURCE[0]}")/tool-conventions.sh"
-# shellcheck source=scripts/memory-gate.sh
-. "$(dirname "${BASH_SOURCE[0]}")/memory-gate.sh"
+# shellcheck source=scripts/jvm-gate.sh
+. "$(dirname "${BASH_SOURCE[0]}")/jvm-gate.sh"
 IDENTITY_CACHE=$KINOWO_IDENTITY_CACHE
 IDENTITY_FIXTURES=test/resources/fixtures/identity-unmatched
 IDENTITY_JUDGEMENTS=test/resources/fixtures/identity-judgements.tsv
@@ -271,10 +271,13 @@ identity_classpath_compile() {
   identity_classpath_fresh "$tree" && return 0
   mkdir -p "$(dirname "$cp")"
   identity_log "compiling $tree (sbt; then cached until a source changes)"
-  memory_gate "${IDENTITY_TOOL:-identity}"
-  if ! (cd "$tree" && sbt -batch "worker/Test/compile" "export worker/Test/fullClasspath") > "$log" 2>&1; then
+  jvm_slot_take "${IDENTITY_TOOL:-identity}"
+  # shellcheck disable=SC2046 # jvm_cpu_options: none, or one option
+  if ! (cd "$tree" && sbt $(jvm_cpu_options | sed 's/^/-J/') -batch "worker/Test/compile" "export worker/Test/fullClasspath") > "$log" 2>&1; then
+    jvm_slot_release
     tail -40 "$log" >&2; identity_log "compile failed in $tree (log: $log)"; return 1
   fi
+  jvm_slot_release
   identity_put "$cp" identity_classpath_line "$log" || true
   [ -s "$cp" ] || { rm -f "$cp"; tail -40 "$log" >&2; identity_log "no classpath in sbt's output ($log)"; return 1; }
 }
@@ -284,5 +287,7 @@ identity_classpath_compile() {
 IDENTITY_LOCALE=(-Duser.language=en -Duser.country=US)
 # shellcheck disable=SC2034 # read by the scripts sourcing this
 IDENTITY_JAVA=(java -Xmx6g "${IDENTITY_LOCALE[@]}" --sun-misc-unsafe-memory-access=allow)
+# sized for a share of the cores on a Mac agents share (scripts/jvm-gate.sh): none, or one option
+identity_cpus=$(jvm_cpu_options); [ -z "$identity_cpus" ] || IDENTITY_JAVA+=("$identity_cpus")
 # shellcheck disable=SC2034 # read by the scripts sourcing this
 IDENTITY_SBT=(sbt "${IDENTITY_LOCALE[@]/#/-J}")

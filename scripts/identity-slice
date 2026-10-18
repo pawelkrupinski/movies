@@ -235,9 +235,12 @@ run_at() {
   [ -z "$threads" ] || more+=(--threads "$threads")
   if [ "$serve" = 1 ] && [ -z "$mirror" ] && [ -z "$faith" ]; then serve_at "$tree" "$ref" "$out" "${more[@]}" "$@"; return; fi
   cp=$(identity_classpath "$tree") || return 1
-  memory_gate identity-slice
+  local rc=0
+  jvm_slot_take identity-slice
   (cd "$tree" && "${IDENTITY_JAVA[@]}" -cp "$cp" scripts.IdentitySlice "$cc" --recording "$recording" --cache "$IDENTITY_CACHE/slice/$run" \
-    --ref "$ref" --labels "$labels" --families "$families" --out "$out" ${mirror_args[@]+"${mirror_args[@]}"} ${more[@]+"${more[@]}"} "$@")
+    --ref "$ref" --labels "$labels" --families "$families" --out "$out" ${mirror_args[@]+"${mirror_args[@]}"} ${more[@]+"${more[@]}"} "$@") || rc=$?
+  jvm_slot_release
+  return "$rc"
 }
 # The batch sent to the ref's kept JVM (IdentitySlice --serve), started when none is: the recording opened and the index
 # loaded once per (tree, ref, country, recording, filed answers), not once per call. A JVM that died is started again.
@@ -251,7 +254,8 @@ serve_at() { # <tree> <ref key> <out.tsv> <args...>
       mkdir -p "$IDENTITY_CACHE/serve"; rm -f "$sock"
       retire_served "$tree" "$key"
       identity_log "starting a kept JVM for ${ref:0:24} (log $IDENTITY_CACHE/serve/$key.log; stops after ${KINOWO_IDENTITY_SLICE_IDLE_MINUTES:-30} idle minutes)"
-      # its own process group (set -m): it outlives this call, and the shell or tool that ran it
+      # its own process group (set -m): it outlives this call, and the shell or tool that ran it. Memory gated, but no
+      # JVM slot: one held for its idle life would block every other tool's work
       memory_gate identity-slice
       (cd "$tree" && set -m && { nohup "${IDENTITY_JAVA[@]}" -cp "$cp" scripts.IdentitySlice "$cc" --recording "$recording" \
           --cache "$IDENTITY_CACHE/slice/$run" --ref "$ref" --index-key "$(code_key "$(ref_of "$ref")")" --families "$families" --serve "$sock" \
@@ -337,9 +341,12 @@ if [ "$explain" = 1 ]; then
   explain_at() { # <tree> -> the trace under that tree's code
     local cp
     cp=$(identity_classpath "$1") || return 1
-    memory_gate identity-slice
+    local rc=0
+    jvm_slot_take identity-slice
     (cd "$1" && "${IDENTITY_JAVA[@]}" -cp "$cp" scripts.IdentityExplain "$cc" --fixture "$captured/$cc.json.gz" \
-      --labels "$(identity_judgements "$captured")" ${pass[@]+"${pass[@]}"})
+      --labels "$(identity_judgements "$captured")" ${pass[@]+"${pass[@]}"}) || rc=$?
+    jvm_slot_release
+    return "$rc"
   }
   [ "${#refs[@]}" -gt 0 ] || { explain_at "$repo"; exit; }
   for i in "${!refs[@]}"; do

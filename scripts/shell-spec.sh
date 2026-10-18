@@ -23,9 +23,10 @@
 #   check "what it does" "$expected" "$actual"
 #   spec_summary            # prints the tally and exits non-zero on any failure
 
-# The memory gate (scripts/memory-gate.sh) reads the real Mac's paging, which a spec's stubbed JVM starts have no
-# business waiting on: off in every spec unless it asks for it (memory-gate-test.sh does).
-export KINOWO_MEMORY_GATE=${KINOWO_MEMORY_GATE:-0}
+# The JVM gate (scripts/jvm-gate.sh) reads the real Mac's paging and takes machine-wide slots, which a spec's stubbed
+# JVM starts have no business waiting on, and sizes JVMs for a share of the cores, which a spec's command lines would
+# then vary by: all off in every spec unless it asks for it (jvm-gate-test.sh does).
+export KINOWO_MEMORY_GATE=${KINOWO_MEMORY_GATE:-0} KINOWO_JVM_SLOTS=${KINOWO_JVM_SLOTS:-0} KINOWO_JVM_CPUS=${KINOWO_JVM_CPUS:-0}
 
 # Failure tally. Set here rather than in each caller, which is the third line all
 # four repeated.

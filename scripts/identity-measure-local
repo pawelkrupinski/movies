@@ -23,9 +23,8 @@
 # takes. A ref's takes are a pure function of the commit and the recording, so they are SHARED across checkouts: kept in
 # $KINOWO_IDENTITY_CACHE/measure-local/<recording>/<sha>/ (each country's dump on its own, the final takes per country
 # set) with the ref's worktree beside them, and <out>/<sha> links to them. A ref another run is resolving is waited for,
-# not resolved twice (agents measuring against one base resolved it five times over on 2026-10-18), and at most
-# KINOWO_MEASURE_LOCAL_SLOTS resolves (default 2) run at once on the machine, each after the memory gate
-# (scripts/memory-gate.sh) opens. --live-gaps answers change with time, so
+# not resolved twice (agents measuring against one base resolved it five times over on 2026-10-18), and each resolve
+# holds one of the machine's JVM slots with its sbt sized for KINOWO_JVM_CPUS cores (scripts/jvm-gate.sh). --live-gaps answers change with time, so
 # those resolves stay in <out>. Prints each country's model and final
 # verdicts as identity_takes_diff.py words them, and exits 1 when any fails (a right take lost or turned wrong, a new
 # wrong take, an unjudged move), 0 when none does, 2 on a usage or setup error.
@@ -41,8 +40,8 @@
 set -uo pipefail
 
 here=$(cd "$(dirname "$0")/.." && pwd)
-# shellcheck source=scripts/memory-gate.sh
-. "$here/scripts/memory-gate.sh"
+# shellcheck source=scripts/jvm-gate.sh
+. "$here/scripts/jvm-gate.sh"
 cache=${KINOWO_IDENTITY_CACHE:-$HOME/.cache/kinowo-identity}
 base="" head=HEAD countries="" recording="" out="" live=""
 die() { echo "identity-measure-local: $*" >&2; exit 2; }
@@ -87,31 +86,13 @@ mkdir -p "$store/trees"
 ratchet_key=$(printf '%s\n' "${ccs[@]}" | sort | paste -sd- -)
 echo "identity-measure-local: base $base_sha, head $head_sha, recording $recording, countries ${ccs[*]}${live:+, live gaps}, out $out"
 
-lock() { # <dir>: mkdir-held by this process; one held by a process that is gone is taken over. 0 when taken
-  if mkdir "$1" 2>/dev/null; then echo $$ > "$1/pid"; return 0; fi
-  local holder; holder=$(cat "$1/pid" 2>/dev/null)
-  if [ -n "$holder" ] && ! kill -0 "$holder" 2>/dev/null; then rm -rf "$1"; mkdir "$1" 2>/dev/null && { echo $$ > "$1/pid"; return 0; }; fi
-  return 1
-}
-slot=""
-take_slot() { # waits for one of the machine's KINOWO_MEASURE_LOCAL_SLOTS resolve slots
-  local n said=""
-  memory_gate identity-measure-local
-  mkdir -p "$cache/measure-local/slots"
-  while :; do
-    for n in $(seq 1 "${KINOWO_MEASURE_LOCAL_SLOTS:-2}"); do lock "$cache/measure-local/slots/$n" && { slot="$cache/measure-local/slots/$n"; return; }; done
-    [ -n "$said" ] || { echo "identity-measure-local: every resolve slot is busy (KINOWO_MEASURE_LOCAL_SLOTS=${KINOWO_MEASURE_LOCAL_SLOTS:-2}): waiting"; said=1; }
-    sleep "${KINOWO_MEASURE_LOCAL_POLL:-5}"
-  done
-}
-release() { [ -n "${1:-}" ] && [ "$(cat "$1/pid" 2>/dev/null)" = $$ ] && rm -rf "$1"; return 0; }
 held_lock=""
-trap 'release "$slot"; release "$held_lock"' EXIT
+trap 'jvm_slot_release; jvm_unlock "$held_lock"' EXIT
 
 resolve() { # <sha>: every country's model takes and the final ones, in the ref's own worktree, shared across checkouts
   local sha=$1 tree="$store/trees/$1" dir="$store/$1" commands=() said=""
   mkdir -p "$dir"
-  until lock "$dir.lock"; do
+  until jvm_lock "$dir.lock"; do
     [ -n "$said" ] || { echo "identity-measure-local: $sha is being resolved by pid $(cat "$dir.lock/pid" 2>/dev/null): waiting for it"; said=1; }
     sleep "${KINOWO_MEASURE_LOCAL_POLL:-5}"
   done
@@ -127,17 +108,17 @@ resolve() { # <sha>: every country's model takes and the final ones, in the ref'
   if [ ${#commands[@]} = 0 ]; then
     echo "identity-measure-local: $sha already resolved in $dir"
   else
-    [ -d "$tree" ] || git -C "$here" worktree add --detach --quiet "$tree" "$sha" || { release "$held_lock"; return 1; }
-    take_slot
+    [ -d "$tree" ] || git -C "$here" worktree add --detach --quiet "$tree" "$sha" || { jvm_unlock "$held_lock"; return 1; }
+    jvm_slot_take identity-measure-local
     SECONDS=0
     # a fresh worktree compiles cold (~10 min under load); the newest local build's classes cut that to the diff
     [ -x "$tree/scripts/sbt-warm" ] && ( cd "$tree" && scripts/sbt-warm --seed ) > "$dir.log" 2>&1
-    ( cd "$tree" && scripts/it-local.sh "${commands[@]}" ) >> "$dir.log" 2>&1
+    ( cd "$tree" && SBT_OPTS="${SBT_OPTS:-} $(jvm_cpu_options)" scripts/it-local.sh "${commands[@]}" ) >> "$dir.log" 2>&1
     local status=$?
-    release "$slot"; slot=""
+    jvm_slot_release
     echo "identity-measure-local: $sha resolved in ${SECONDS}s (exit $status, log $dir.log)"
   fi
-  release "$held_lock"; held_lock=""
+  jvm_unlock "$held_lock"; held_lock=""
   # <out>/<sha>: this run's view of the shared takes, laid as before (decisions-<cc>.jsonl, ratchet/ratchet-takes.tsv)
   if [ "$store" != "$out" ]; then
     mkdir -p "$out/$sha"
