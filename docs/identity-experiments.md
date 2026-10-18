@@ -77,6 +77,75 @@ reaches that replay: a final-stage 0 there means not seen, not refilled. Variant
 - **Tried:** an alternative-title rung change aimed at "Ecrire la vie".
 - **Result:** moved nothing on the whole corpus; dropped uncommitted.
 
+## 2026-10-15/18 — copied facts, origin once, short refusal, id clashes (recording 38713274617, base `f2f27813d` unless noted)
+
+Measures by `identity-measure` (DE unless noted; the other countries moved nothing or only unjudged takes). Reports and
+slice outputs: `~/.cache/kinowo-identity/handoff/2026-10-15-wrong-match-round2/item-{d-origin-once,e-copied-facts}/`.
+
+### Refuse a short whose every fact is a feed's copy ("Island")
+- **Tried:** DE "Island" (Augustinum, kinoheld) takes a 3-min short on kinoheld's copied director, runtime and year,
+  and no feature titled "Island" is in the pool for the short rule to prefer. Refuse a short when every fact backing it
+  is a feed's copy; a second commit also refused shorts named by a piece of a longer billing.
+- **Result (run 38730798889):** Island cured; 57 unjudged takes lost, several clearly right (IMAX Speyer's 40-min
+  documentaries, "Donald und der Vogel Strauß", "Dr. Dolittle und seine Tiere").
+- **Why stopped:** a refusal rule is too blunt; led to weighing a copied fact less (next entry).
+- **Code:** `experiment/identity-short-copied-facts` (`c04b18ac7`, its last two commits).
+- **Next angle:** the losses are all shorts with no rival at all; refuse only where the billing's runtime (or the
+  screening's slot length) is a feature's, so a short has to explain a 90-min slot.
+
+### A copied fact weighs a share of its own (`ScopeModel.copied`, signal `<signal>@copied`)
+- **Tried:** each copied year, director and runtime scores at a share of its weight; the refit gained a step for the
+  share. Variants: both directions at 0.5 (A) and 0.25 (B); support only at 0.5 (C5) and 0.25 (C25).
+- **Result:**
+
+  | Variant | Run | Cured | Right lost | Right→wrong | Unjudged moves |
+  |---|---|---|---|---|---|
+  | A, 0.5 | 38807878048 | 0 | 2 | 5 | 18 |
+  | B, 0.25 | 38807898963 | 2 | 3 | 5 | 36 |
+  | C5, support 0.5 | 38812134524 | 1 | 6 | 5 | 21 |
+  | C25, support 0.25 | 38812145695 | 4 (Alpha, local heroes ×2, ATMOS: Michael) | 9 | 5 | 36 |
+
+  The refit kept nothing; its copied-share step moved 1 unjudged take (it measures only the unmatched-cluster captures,
+  which hold no own-match take, so it never sees these cures or losses).
+- **Why stopped:** every variant flips "Fallen Angels by Noël Coward" ×5 (Cineplex) to Wong Kar-wai's 1995 film:
+  Cineamo's copied facts were the only thing picking the 2026 stage capture over the famous namesake. And no target
+  was cured: Island rides an exact title at search rank 1 with no rival; The Killer has 6 corroborating venues and
+  rank 1 on both sides; Black Hole did not move.
+- **Code:** `experiment/identity-copied-share-a` (`17929b7aa`), `-b` (`b1070e660`), `-c5` (`437819a1e`), `-c25`
+  (`a2e03d3c5`); combined with origin once: `-ad` (`6ada52193`), `-c25d` (`ed289fe5b`).
+- **Next angle:** discount a copied fact only when a namesake competes and nothing the venue states itself agrees; or
+  keep its weight but count copies from one feed once (next entry). Fallen Angels needs its "by Noël Coward" credit
+  read as a stage-play fact at intake (`TitleFacts` now does such peels) before any discount is safe. Leads it
+  surfaced, still unjudged: "Teenie Fasching"→Fasching (1939), "Dark New Wave Night"→New Wave, "Three for Silver"→Tea
+  For Three, "VOODOO LOUNGE"→VooDoo (2017), "Kurzfilmprogramm"→Endlich Tacheles ×2.
+
+### Count each origin of a listing's facts once
+- **Tried:** a feed entry backs a film once however many venues it is copied onto (corroborating venues counted by
+  origin, not by venue).
+- **Result:** on base `1d6fba3ea`: 0 cured, DE 2 + US 2 right lost, 28 unjudged moves. Re-measured on main as run
+  38807915210 with the 28 judged: ~22 right lost (Der kleine Prinz ×15, Do You Love Me ×3, Mittagsstunde — the venues'
+  own Cineamo ids name those films) for 7 cures (local heroes „Preisverleihung" ×2; Royal Ballet: La Bayadère ×5, the
+  2027 relay, not the 2018 recording; both since known-wrong `served`). Its final stage showed 0 moves only because of
+  the caveat above; slices show those takes going to none. With copied shares: A+D (run 38808011724) loses 4 right,
+  C25+D (run 38812172262) 41, both keeping the 5 right→wrong. Two refits (`item-d-origin-once/refit{1,2}`) kept nothing.
+- **Why stopped:** ~3 right lost per cure, and its targets (The Killer, Black Hole) not cured.
+- **Code:** `experiment/identity-origin-once` (`d9249b8dd`, ported onto main; first built as `52af5ce06`).
+- **Next angle:** the losses are venues whose own feed id names the film; let an own id stand outside the origin
+  count, and count origins once only among venues with no id of their own. A full re-calibration on a prod snapshot
+  was never run.
+
+### Hold two family records apart when they name another id in one database ("Romeo and Juliet")
+- **Tried:** UK Empire Theatre Halstead "Romeo and Juliet" (Royal Ballet relay): Wikidata's undated record of the play
+  (IMDb tt2428892) joins IMDb's 1968 Zeffirelli film by title alone. A record naming another id in the same database
+  is another entry; the vote join reads the same `Agreement.joins`. A follow-up reads only IMDb and TMDB ids so, as
+  Wikidata spells some sites' ids its own way.
+- **Result (slices and the ratchet; no whole-corpus measure):** Romeo and Juliet cured; lost DE "Der Film 444 …"
+  (accepted) and UK "Thanks for coming FFFL", and asked a UK capture fill.
+- **Why stopped:** the UK right loss with no evidenced trade; the take stays known-wrong.
+- **Code:** `experiment/identity-id-clash` (`4e406da84`; the unlanded commits are `a11b0633d` and `4e406da84`).
+- **Next angle:** apply the clash only where the record's own type (a play, a stage production) is not a film, or
+  only to an undated record; then run the whole-corpus measure.
+
 ## Remaining wrong takes when round 2 stopped (37 on `d0d3ffb1c`)
 
 Copied feed facts 10 · title piece or banner taken as the title 7 · bare exact title, top hit 6 · pooled family vote 5 ·
