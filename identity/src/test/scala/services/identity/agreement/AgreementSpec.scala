@@ -31,6 +31,29 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     agreed.flatMap(_.crossId("imdb")) shouldBe Some("tt16315948")
   }
 
+  it should "not take the model's vote for takers that date and credit nothing when it names another id" in {
+    // UK Empire Theatre Halstead "Romeo and Juliet" (capture identity-unmatched): Wikidata takes Shakespeare's play
+    // (Q83186: undated, uncredited, IMDb tt2428892), the model votes Zeffirelli's 1968 film (tt0063518) — joined by the
+    // title alone, the two agreed on the 1968 film for the Royal Ballet's 170-minute relay of the ballet
+    val play = SourceRecord(IdentityMeasures.Film("Romeo and Juliet", None, Nil, None, None, None, None, None), Map("imdb" -> "tt2428892", "wikidata" -> "Q83186"))
+    val zeff = SourceRecord(film("Romeo and Juliet", 1968, "Franco Zeffirelli", 138), Map("imdb" -> "tt0063518", "tmdb" -> "6003"))
+    Agreement.joins(Seq(play), zeff) shouldBe true
+    Agreement.votesAnotherEntry(Seq(play), zeff) shouldBe true
+    Agreement.votesAnotherEntry(Seq(play), zeff.copy(crossIds = Map("imdb" -> "tt2428892"))) shouldBe false
+    Agreement.votesAnotherEntry(Seq(play), zeff.copy(crossIds = Map("filmweb" -> "1"))) shouldBe false
+    // a dated taker holds the film by its facts: UK "NFTS Collective Visions of Pleasure: I.K.U" (Wikidata's 2001 film)
+    val iku = SourceRecord(film("I.K.U.", 2001, "Shu Lea Cheang", 74), Map("imdb" -> "tt0255233", "tmdb" -> "37982"))
+    Agreement.votesAnotherEntry(Seq(iku), SourceRecord(IdentityMeasures.Film("IKÚ", None, Nil, None, None, None, None, None), Map("tmdb" -> "1192255"))) shouldBe false
+    // and so does one beside a bare pick: UK "Thanks for coming FFFL" (Wikidata's bare tt36481185, IMDb's 2026 Cavalier)
+    val cavalier = SourceRecord(film("Thanks for Coming", 2026, "Alain Cavalier", 86), Map("imdb" -> "tt41829928"))
+    val bareWiki = SourceRecord(IdentityMeasures.Film("Thanks for Coming", None, Nil, None, None, None, None, None), Map("imdb" -> "tt36481185"))
+    Agreement.votesAnotherEntry(Seq(cavalier, bareWiki), cavalier.copy(crossIds = Map("imdb" -> "tt41829928", "tmdb" -> "1670563"))) shouldBe false
+    // a site's id Wikidata spells in a space of its own is no other entry (UK "Imamura: Black Rain": RT "22294" in
+    // Wikidata, "1035681-black_rain" on RT, one film)
+    val bareImamura = SourceRecord(IdentityMeasures.Film("Black Rain", None, Nil, None, None, None, None, None), Map("rt" -> "22294"))
+    Agreement.votesAnotherEntry(Seq(bareImamura), SourceRecord(film("Black Rain", 1989, "Shohei Imamura", 123), Map("rt" -> "1035681-black_rain"))) shouldBe false
+  }
+
   it should "agree on nothing when another family names another film, or only two agree" in {
     val bare = Seq(listing(KinoMuza, "Klondike"))
     val three = Seq(

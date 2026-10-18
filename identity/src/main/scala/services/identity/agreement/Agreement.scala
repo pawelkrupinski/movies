@@ -297,7 +297,9 @@ object Agreement {
     // the model's film is theirs only when none of their own records holds it apart: an undated record sharing its title
     // is no link where a dated one is years off (DE "Archiv Negativ: Turksib": RT's undated page of Turin's 1929 film matched
     // TMDB's 1986 "На перевале", alternatively "Turksib", whose ids then named the 1929 film IMDb and Filmweb took)
-    val voted   = modelVote.filter(joins(records, _))
+    // takers whose records all date and credit nothing join any namesake by its title; their own ids are all that say
+    // which entry they took, so the vote naming another IMDb or TMDB id is another film ([[votesAnotherEntry]])
+    val voted   = modelVote.filter(vote => joins(records, vote) && !votesAnotherEntry(records, vote))
     // the takers' ids first, then those of the TMDB film the model votes for, which is the film they took
     val merged  = lead.record.copy(crossIds = (voted.toSeq ++ records).flatMap(_.crossIds).toMap ++ lead.record.crossIds)
     // the film through any record of it — the model's vote's too, which links a lean the takers' records name only in
@@ -507,6 +509,22 @@ object Agreement {
 
   private def sharesAnId(a: SourceRecord, b: SourceRecord): Boolean =
     a.crossIds.exists { case (database, id) => b.crossIds.get(database).contains(id) }
+
+  /** Does the model's `vote` name another IMDb or TMDB id than takers whose `records` all date and credit nothing? Such a
+   *  record is the same film as every namesake by its facts, so only its ids tell which entry it is (UK "Romeo and
+   *  Juliet": Wikidata's undated, uncredited record of Shakespeare's play, IMDb tt2428892, joined the model's vote for
+   *  Zeffirelli's 1968 film, tt0063518, by the title alone). Only the takers': a dated taker holds the film by its facts,
+   *  and a bare pick joining a dated one is left to their facts (UK "Thanks for coming FFFL": Wikidata's bare
+   *  tt36481185 beside IMDb's and RT's 2026 Cavalier). IMDb and TMDB ids only, which every family spells alike —
+   *  Wikidata files some sites' ids in a space of its own (UK "Imamura: Black Rain": RT "22294" there, RT's own page
+   *  "1035681-black_rain"). */
+  private[agreement] def votesAnotherEntry(records: Seq[SourceRecord], vote: SourceRecord): Boolean =
+    records.nonEmpty && records.forall(record => bare(record.film)) && records.exists(record =>
+      CanonicalIds.exists(database => record.crossIds.get(database).exists(id => vote.crossIds.get(database).exists(_ != id))))
+  private val CanonicalIds = Seq("imdb", "tmdb")
+
+  /** A record that dates and credits nothing. */
+  private def bare(film: IdentityMeasures.Film): Boolean = film.year.isEmpty && film.directors.forall(_.isEmpty)
 
   /** The same film by its facts, no cross-id linking them: years within one, no clash of Latin-script directors (one
    *  respelled in the same year and running time is none), and a
