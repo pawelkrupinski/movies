@@ -35,7 +35,7 @@ no known-wrong/accepted row covers.
 
 | cc | class | listings | billing | served (wrong) | right film | status | why it is wrong |
 |---|---|---|---|---|---|---|---|
-| DE | 1 | 2 | Pornfilmfestival: The more the merrier | Immer mehr, immer fröhlicher (1943) `tmdb:80616` | — | known-wrong / capture,served | the festival's shorts programme presented by Paulita Pappel, not Stevens' 1943 comedy |
+| DE | 1 | 2 | Pornfilmfestival: The more the merrier | Immer mehr, immer fröhlicher (1943) `tmdb:80616` | — | cured 10-18 (`ListingShape.festivalsCatalogueNamesake`, 45dce4d74; rows open, take none) | the festival's shorts programme presented by Paulita Pappel, not Stevens' 1943 comedy |
 | DE | 1 | 1 | Mystery-Vorfilm als Warm-up zu „Miles Davis – Birth of The Cool“ | Miles Davis: Birth of the Cool (2019) `tmdb:566232` | — | known-wrong / served | a mystery warm-up short screened before "Miles Davis – Birth of the Cool", not the documentary itself |
 | DE | 1 | 1 | DONNERSTAGS-KNEIPE | X (2022) `tmdb:760104` | — | known-wrong / served | a Thursday pub night ("Donnerstags-Kneipe") billing no film, not Ti West's "X" |
 | DE | 1 | 1 | Tim Brownlow - Nosferatu: The Journal of a Broken Man | Nosferatu, eine Symphonie des Grauens (1922) `tmdb:653` | — | re-judged RIGHT 10-15 | a live score played in sync with Murnau's 1922 film (the venue's page: "Neuvertonung von F.W. Murnaus Stummfilmklassiker"), so the take is right |
@@ -99,8 +99,11 @@ no known-wrong/accepted row covers.
   (cured 10-18: Gegen das Vergessen — `BilledPiece` keeps no piece for a title in the venue's own language or one naming only
   its town; Ecrire la vie — `IdentityMeasures.billsWorksOfTwoTitles`; Friday the 13th: Legacy, earlier) — namesakes or copied
   facts; no safe rule yet.
-- [ ] **Pornfilmfestival "The more the merrier"** — the billing states no facts; the festival + old-film signal
-  would also drop right takes (La Boum 4K, the Rosa von Praunheim hommage).
+- [x] **Pornfilmfestival "The more the merrier"** — the billing states no facts. Cured 10-18 by 45dce4d74
+  (`ListingShape.festivalsCatalogueNamesake`: under a film festival's banner a billing stating no year, director or
+  runtime names no film ten years or more older than its screenings, unless it names its director). Slice on
+  38713274617: takes none (vetoed 80616); La Boum (Apollo's birthday banner, no festival) keeps tmdb:166 and
+  "Hommage Rosa von Praunheim 2" keeps his 1983 film.
 - [ ] **Notre-Dame de Paris (Opéra de Paris)** — TMDB has no record of the 2027 relay; the served takes are
   known-wrong.
 
