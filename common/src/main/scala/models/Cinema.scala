@@ -1861,13 +1861,6 @@ object Cinema {
   /** The chains' network pseudo-cinemas — [[CinemaNetworks.all]], under the name `services.identity` reads. */
   val Networks: Seq[Cinema] = CinemaNetworks.all
 
-  // Germany's cinemas come from `GermanRoster.byCity` (appended to `byCity` below),
-  // not per-city vals — the full 436-page roster is data-driven.
-
-  /** The hand-declared venues — Poland and the UK. Split out from [[byCity]] so
-   *  `GermanRoster` can see which display names are already claimed before it materialises
-   *  the generated roster; see `GermanRoster.claimedElsewhere`. Declared BEFORE `byCity`
-   *  so it is assigned by the time that field forces the roster. */
   /** The 41 major Polish cities, by label, each the slug its venues are filed under in
    *  [[PolishPages.majorCinemas]] — in page order, which doubles as the per-source merge priority
    *  (`Source.all`): Poznań's venues, the original ten, keep their resolved precedence. A label here
@@ -1916,6 +1909,10 @@ object Cinema {
     "Konin"               -> "konin",
   )
 
+  /** The hand-declared venues — Poland and the UK. Split out from [[byCity]] so
+   *  `GermanRoster` can see which display names are already claimed before it materialises
+   *  the generated roster; see `GermanRoster.claimedElsewhere`. Declared BEFORE `byCity`
+   *  so it is assigned by the time that field forces the roster. */
   val polishAndUk: Seq[(String, Seq[Cinema])] =
     majorPolishCities.map { case (label, slug) => label -> PolishPages.majorCinemas(slug) } ++
     PolishPages.rows.map(r => r.nominative -> r.cinemas) ++
