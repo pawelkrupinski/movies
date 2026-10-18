@@ -360,7 +360,7 @@ class CountrySpec extends AnyFlatSpec with Matchers {
 
   "Spanish pages" should "carry their own time zone, so the Canaries are not on peninsular time" in {
     // Spain has TWO zones, which is why `SpanishPage` takes one per place like
-    // `UsCity` rather than hardcoding one like `GermanPage`. An hour is enough to
+    // `UsPage` rather than hardcoding one like `GermanPage`. An hour is enough to
     // move a day boundary, so a Canary venue's late showing would otherwise fall on
     // the wrong day.
     def zoneOf(slug: String) = Country.Spain.bySlug(slug).zoneId.getId
@@ -372,7 +372,7 @@ class CountrySpec extends AnyFlatSpec with Matchers {
 
   "US places" should "carry their own time zone rather than one national default" in {
     // Unlike Germany (one Europe/Berlin for every page), the US spans six zones,
-    // so `UsCity` takes the zone per place. A single national default would put
+    // so `UsPage` takes the zone per place. A single national default would put
     // California's day boundary three hours early. A page carries its OWN zone,
     // resolved from its venues' coordinates — not its state's predominant one,
     // which is a different answer for a page on the far side of a boundary.

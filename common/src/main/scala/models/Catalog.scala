@@ -24,6 +24,11 @@ object Catalog {
   /** The zone a country is published under — see [[Country.zone]]. */
   private def countryTimezone(c: Country): String = c.zone.getId
 
+  /** `,"<name>":["a","b"]` — an optional string-array field of a city row, or nothing
+   *  at all where `values` is empty: every such field is absent rather than `[]`. */
+  private def stringArrayField(name: String, values: Seq[String]): String =
+    if (values.isEmpty) "" else values.map(v => s""""$v"""").mkString(s""","$name":[""", ",", "]")
+
 
   /**
    * Canonical, deterministic JSON body: `{"countries":[…],"cities":[…]}`. Order
@@ -100,11 +105,11 @@ object Catalog {
       .flatMap { c =>
         val aliasesByPage = c.slugAliases.toSeq.groupMap(_._2)(_._1)
         // A country whose picker GROUPS its cities (the US by state, Germany by
-        // Bundesland, the UK by nation) names each city's group, so the apps can
-        // offer the same two-step pick the web does: 468 US places in one A-to-Z
-        // is not a list anybody reads, "California" then "Los Angeles" is. Absent
-        // in the flat countries — Poland and Spain — where a name is all a visitor
-        // needs, so the field costs bytes only where it earns them.
+        // Bundesland, Poland by voivodeship, Spain by province, the UK by nation)
+        // names each city's group, so the apps can offer the same two-step pick the
+        // web does: 1,995 US pages in one A-to-Z is not a list anybody reads,
+        // "California" then "Los Angeles" is. Absent in a flat country, where a name
+        // is all a visitor needs, so the field costs bytes only where it earns them.
         //
         // The TOP level, through `allCities`, wherever the web nests deeper than
         // one (the UK puts a county between its nation and its places). `region`
@@ -125,7 +130,7 @@ object Catalog {
         // holding several pages (Glamorgan: Cardiff, Swansea…). A county that collapsed onto
         // its one place already reads correctly through `region` alone — Shetland
         // needs no extra tap to reach Lerwick — so this stays absent there, and
-        // absent entirely for Germany and the US, whose groups don't nest a level
+        // absent entirely for every other country, whose groups don't nest a level
         // this deep. The apps' third picker step reads this field and skip it when
         // it's absent, same shape as `region`/`timezone` below.
         val subregionOf = c.cityGroups.flatMap { g =>
@@ -143,7 +148,6 @@ object Catalog {
           groups.flatMap(g => g +: everyGroup(g.groups))
         val aliasesOf = everyGroup(c.cityGroups)
           .flatMap(g => g.cities.map(city => city.slug -> g.aliasesOf(city)))
-          .filter { case (_, names) => names.nonEmpty }
           .toMap
         // The city's own zone, but ONLY where it differs from the country's — the
         // field a client falls back from, so writing it out where it would say the
@@ -163,7 +167,7 @@ object Catalog {
         orderedCities.map { city =>
           val region = regionOf.get(city.slug).fold("")(label => s""","region":"$label"""")
           val subregion = subregionOf.get(city.slug).fold("")(label => s""","subregion":"$label"""")
-          val aliases = aliasesOf.get(city.slug).fold("")(names => names.map(n => s""""$n"""").mkString(""","aliases":[""", ",", "]"))
+          val aliases = stringArrayField("aliases", aliasesOf.getOrElse(city.slug, Nil))
           val zone   = city.zoneId.getId
           val tz     = if (zone == countryZone) "" else s""","timezone":"$zone""""
           // The slugs the web now 301s onto this city (`Country.renamedSlugs`), its own
@@ -181,16 +185,15 @@ object Catalog {
           // for those builds and as current builds' fallback from an older server
           // without `otherSlugs`; it goes when that fallback does. Such a link still
           // 301s on the web.
-          val formerSlugs = c.formerSlugs(city.slug).filterNot(catalogSlugs)
-          val former = if (formerSlugs.isEmpty) "" else formerSlugs.map(s => s""""$s"""").mkString(""","formerSlugs":[""", ",", "]")
+          val former = stringArrayField("formerSlugs", c.formerSlugs(city.slug).filterNot(catalogSlugs))
           // EVERY other slug of its own country that leads here, unfiltered — what
           // current app builds read in place of `formerSlugs`, resolving a link within
           // the country its URL names: a renamed or retired page's slug (the UK's
           // `/kent/` → Chatham, though the US has a Kent), a town the page covers
           // (`/uk/ilkley/`) and the page's qualified slug (`/uk/york-north-yorkshire/`)
           // — every URL the App Links and Universal Links claim that the web 301s here.
-          val others = (c.formerSlugs(city.slug) ++ aliasesByPage.getOrElse(city.slug, Nil)).distinct.sorted
-          val otherSlugs = if (others.isEmpty) "" else others.map(s => s""""$s"""").mkString(""","otherSlugs":[""", ",", "]")
+          val otherSlugs = stringArrayField("otherSlugs",
+            (c.formerSlugs(city.slug) ++ aliasesByPage.getOrElse(city.slug, Nil)).distinct.sorted)
           // `slug` is what installed builds from before slugs were per country know
           // the city by — unique across the whole catalog, as they need it to be
           // ([[InstalledBuildSlugs]]); `pageSlug` is the city's own slug on its own

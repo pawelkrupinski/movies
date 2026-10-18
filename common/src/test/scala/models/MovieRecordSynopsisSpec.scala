@@ -207,6 +207,30 @@ class MovieRecordSynopsisSpec extends AnyFlatSpec with Matchers {
     record.synopsisForCity(Wroclaw) shouldBe Some("Krótki TMDB.")              // no CC venue here → chain excluded
   }
 
+  // Cineworld UK files its detail the same way, into `CineworldChain` (`CineworldClient.detailTarget`),
+  // and 187 of the UK's films carried a blurb there on 2026-10-18 that no city ever showed: the
+  // chain had no member venues, so its slot applied nowhere.
+  it should "admit the Cineworld chain blurb in the UK cities its venues screen in, and only there" in {
+    val leeds  = Country.UnitedKingdom.bySlug("leeds")
+    val record = MovieRecord(
+      data = Map[Source, SourceData](
+        CineworldChain -> SourceData(synopsis = Some("The Cineworld chain's own, longer synopsis of the film.")),
+        CineworldLeeds -> SourceData(), // the Leeds venue screening this film
+        Tmdb           -> SourceData(synopsis = Some("TMDB's short one."))
+      )
+    )
+    record.synopsisForCity(leeds)  shouldBe Some("The Cineworld chain's own, longer synopsis of the film.")
+    record.synopsisForCity(London) shouldBe Some("TMDB's short one.") // no Cineworld here screens it
+    record.synopsesForCities(Seq(leeds, London)) shouldBe
+      Seq(leeds -> record.synopsisForCity(leeds), London -> record.synopsisForCity(London))
+  }
+
+  it should "count as a chain's venue only one of the chain's own country" in {
+    Cinema.chainDetailVenues(CinemaCityChain).map(City.forCinema(_).map(_.country)) shouldBe Set(Some(Country.Poland))
+    Cinema.chainDetailVenues(CineworldChain).map(City.forCinema(_).map(_.country)) shouldBe Set(Some(Country.UnitedKingdom))
+    Cinema.chainDetailVenues(CineworldChain) should contain (CineworldLeeds)
+  }
+
   // The read model asks for every city a film plays in at once (a US wide release: hundreds), so
   // the batch builds one candidate pool and shares a pick between cities with the same candidates.
   // It must pick, city by city, exactly what `synopsisForCity` picks.

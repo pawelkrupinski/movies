@@ -11,6 +11,12 @@ import tools.Slugify
  *  a city name. */
 final case class CityLabels(nominative: String, genitivePlural: String, locative: String)
 
+object CityLabels {
+  /** The labels of a place in a language that does not decline its name (English,
+   *  German, Spanish): every slot carries the name as it is. */
+  def undeclined(name: String): CityLabels = CityLabels(name, name, name)
+}
+
 /** Per-language rendering of a city's [[CityLabels]] into the grammatical
  *  phrases the UI needs. Polish declines the name (locative "w Poznaniu" /
  *  "we Wrocławiu", genitive-plural adjective "poznańskich"); languages that
@@ -649,14 +655,14 @@ final class UkPage private[models] (row: UkPages.Row)
 private[models] object UkPage {
   /** English does not decline a place name, so all three slots carry the page's
    *  name — "<town> area" for a cluster, as a US cluster reads. */
-  def labels(row: UkPages.Row): CityLabels = CityLabels(row.nominative, row.nominative, row.nominative)
+  def labels(row: UkPages.Row): CityLabels = CityLabels.undeclined(row.nominative)
 }
 
 /** Greater London — one page, as New York's five boroughs are one: every place in
  *  it (Croydon, Romford, Kingston) is London (`data/uk/scripts/geocode_towns.py`).
  *  Hand-declared rather than a [[UkPage]] for the one thing no other UK page has,
  *  its compass areas. */
-case object London extends City("london", CityLabels("London", "London", "London"),
+case object London extends City("london", CityLabels.undeclined("London"),
                                 UkPages.london.lat, UkPages.london.lon, TimeZones.UnitedKingdom) {
   val cinemas: Seq[Cinema] = UkPages.london.cinemas
   override val areas: Seq[CinemaAreaGroup] = Cinema.londonAreas
@@ -688,10 +694,8 @@ private[models] object GermanPage {
   /** German does not decline a place name after "in", so all three slots carry
    *  the page's name — "<town> und Umgebung" for a cluster, which reads right both
    *  alone and after the grammar's "in" ("in Bayreuth und Umgebung"). */
-  def labels(place: GermanPlace): CityLabels = {
-    val name = if (place.multiTown) s"${place.name} und Umgebung" else place.name
-    CityLabels(name, name, name)
-  }
+  def labels(place: GermanPlace): CityLabels =
+    CityLabels.undeclined(if (place.multiTown) s"${place.name} und Umgebung" else place.name)
 }
 
 /** A US page — a major city (a place of 100,000+) with only its own venues, a
@@ -709,8 +713,8 @@ private[models] object GermanPage {
  *
  *  Unlike [[GermanPage]] the zone is the PLACE's rather than a constant: the US
  *  spans six of them, and a page keeps the clock most of its venues keep. */
-final class UsCity private[models] (slug: String, place: UsPlace)
-  extends City(slug, UsCity.labels(place), place.lat, place.lon, place.zoneId) {
+final class UsPage private[models] (slug: String, place: UsPlace)
+  extends City(slug, UsPage.labels(place), place.lat, place.lon, place.zoneId) {
   val cinemas: Seq[Cinema] = place.cinemas
   /** The town the page is named after first, then the rest of its towns and the
    *  towns its venues name (Brooklyn, Hollywood). */
@@ -721,14 +725,12 @@ final class UsCity private[models] (slug: String, place: UsPlace)
   def stateName: String = place.stateName
 }
 
-private[models] object UsCity {
+private[models] object UsPage {
   /** English does not decline a place name, so all three slots carry the page's
    *  name — "<town> area" for a cluster, which reads right alone ("Bend area")
    *  and in a list of cinemas ("All Bend area cinema listings"). */
-  def labels(place: UsPlace): CityLabels = {
-    val name = if (place.multiTown) s"${place.name} area" else place.name
-    CityLabels(name, name, name)
-  }
+  def labels(place: UsPlace): CityLabels =
+    CityLabels.undeclined(if (place.multiTown) s"${place.name} area" else place.name)
 }
 
 /** A Spanish page — a major city (one of the 43 municipalities of 150,000+) with
@@ -743,7 +745,7 @@ private[models] object UsCity {
  *  `City.spanishCities`), so identity equality holds just like the hand-authored
  *  `case object` cities.
  *
- *  Like [[UsCity]] and unlike [[GermanPage]] the zone is a CONSTRUCTOR
+ *  Like [[UsPage]] and unlike [[GermanPage]] the zone is a CONSTRUCTOR
  *  parameter: the Canary Islands run an hour behind the peninsula, and a single
  *  national zone would move their day boundary. */
 final class SpanishPage private[models] (slug: String, place: SpanishPlace)
@@ -759,10 +761,8 @@ private[models] object SpanishPage {
   /** Spanish does not decline a place name, so all three slots carry the page's
    *  name — "<town> y alrededores" for a cluster, which reads right both alone and
    *  after the grammar's "en". */
-  def labels(place: SpanishPlace): CityLabels = {
-    val name = if (place.multiTown) s"${place.name} y alrededores" else place.name
-    CityLabels(name, name, name)
-  }
+  def labels(place: SpanishPlace): CityLabels =
+    CityLabels.undeclined(if (place.multiTown) s"${place.name} y alrededores" else place.name)
 }
 
 /** A named group of [[City]]s in a picker — a US STATE over its towns
@@ -864,17 +864,11 @@ object City {
   /** Poland's picker: one group per voivodeship, holding its major cities and its
    *  town and cluster pages side by side, alphabetically — a flat list of 180
    *  pages is not one anybody reads. */
-  private[models] lazy val polishVoivodeships: Seq[CityGroup] = {
-    val pl = Locale.forLanguageTag("pl-PL")
-    val voivodeshipOf: City => String = {
+  private[models] lazy val polishVoivodeships: Seq[CityGroup] =
+    CityListing.groupedAlphabetically(polishCities, Locale.forLanguageTag("pl-PL")) {
       case page: PolishPage => page.voivodeship
       case major            => PolishPages.majorVoivodeship(major.slug)
     }
-    val built = polishCities.groupBy(voivodeshipOf).toSeq.map { case (name, cities) =>
-      CityGroup(name, Slugify.stable(name), CityListing.sorted(cities, pl))
-    }
-    CityListing.sortedLabels(built, pl)(_.displayLabel)
-  }
 
   /** The United Kingdom's cities — the authoritative list for
    *  [[Country.UnitedKingdom]]: [[London]], then one [[UkPage]] per town or
@@ -956,24 +950,17 @@ object City {
    *  it — major cities, towns and clusters side by side — alphabetically both
    *  ways, as Poland's voivodeships and Spain's provinces. The Land is the
    *  anchor town's, read off its coordinates by `build_pages.py`. */
-  private[models] lazy val germanStates: Seq[CityGroup] = {
-    val de = Locale.forLanguageTag("de-DE")
-    val built = germanPages.groupBy(_.bundesland).toSeq.map { case (land, pages) =>
-      CityGroup(land, Slugify.stable(land), CityListing.sorted(pages, de))
-    }
-    // By the displayed name — a Land holding one page shows that page, and
-    // sorting on the Land would misplace it.
-    CityListing.sortedLabels(built, de)(_.displayLabel)
-  }
+  private[models] lazy val germanStates: Seq[CityGroup] =
+    CityListing.groupedAlphabetically(germanPages, Locale.forLanguageTag("de-DE"))(_.bundesland)
 
 
   /** The United States' cities — the authoritative list for
-   *  [[Country.UnitedStates]]. One per town or cluster page (see [[UsCity]] /
+   *  [[Country.UnitedStates]]. One per town or cluster page (see [[UsPage]] /
    *  [[UsRoster]]), materialised data-driven from `UsRosterData`. The state is a
    *  [[CityGroup]], not a city: nobody wants a screen of every cinema in Texas.
    *  A page's slug is its own name, qualified with its state only where another
    *  US page has the name (the Springfields). */
-  private[models] lazy val usCities: Seq[UsCity] = UsRoster.places.map(p => new UsCity(p.preferredSlug, p))
+  private[models] lazy val usCities: Seq[UsPage] = UsRoster.places.map(p => new UsPage(p.preferredSlug, p))
 
   /** US pages that no longer exist → the page holding the town each was named
    *  after, or — where no such town has a venue — the page now holding most of its
@@ -1045,11 +1032,8 @@ object City {
 
   /** Spain's picker: one group per province, its major cities, towns and
    *  clusters side by side, alphabetically — as Poland's voivodeships. */
-  private[models] lazy val spanishProvinces: Seq[CityGroup] = {
-    val es = Locale.forLanguageTag("es-ES")
-    val built = spanishPages.groupBy(_.province).toSeq.map { case (name, cities) => CityGroup(name, Slugify.stable(name), CityListing.sorted(cities, es)) }
-    CityListing.sortedLabels(built, es)(_.displayLabel)
-  }
+  private[models] lazy val spanishProvinces: Seq[CityGroup] =
+    CityListing.groupedAlphabetically(spanishPages, Locale.forLanguageTag("es-ES"))(_.province)
 
   /** Every modelled city, across all countries — the global view used by the
    *  worker (which scrapes every country) and by country-agnostic reverse

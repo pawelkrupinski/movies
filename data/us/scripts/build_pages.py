@@ -21,7 +21,7 @@ at these radii 95% of cinemas are within ~28 km of the town their page is named
 after. A cluster may cross a state line — Kansas City's suburbs on both sides are
 one page now — and is filed in the picker under its ANCHOR's state. It is named
 after its anchor, the town with the most venues, then the most people
-("Bend area"; the phrase is the Scala side's, `UsCity`).
+("Bend area"; the phrase is the Scala side's, `UsPage`).
 
 Inputs, all committed:
 

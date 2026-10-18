@@ -397,10 +397,11 @@ case class MovieRecord(
    *  never one a Warszawa cinema wrote. Identical paragraphed-then-longest
    *  selection as [[synopsis]]; only the candidate pool narrows.
    *
-   *  Cinema City is the one wrinkle: every venue shares ONE chain-wide detail
-   *  slot ([[CinemaCityChain]], see `Cinema.chainDetailVenues`) that belongs to
-   *  no city, so it's admitted for `city` only when a Cinema City venue there is
-   *  actually screening the film — see [[synopsisAppliesToCity]].
+   *  The chains are the one wrinkle: every Cinema City (or Cineworld) venue shares
+   *  ONE chain-wide detail slot ([[CinemaCityChain]], [[CineworldChain]], see
+   *  `Cinema.chainDetailVenues`) that belongs to no city, so it's admitted for
+   *  `city` only when one of the chain's venues there is actually screening the
+   *  film — see [[synopsisAppliesToCity]].
    *
    *  That SAME chain slot is also the one whose language gets checked (see
    *  [[bestSynopsis]]): confirmed prod bug, `cinema-city.pl`'s own detail page
@@ -436,7 +437,7 @@ case class MovieRecord(
     bestSynopsis(synopsisCandidatesFor(Source.cinemaOf(_).isDefined))
 
   /** Does `source`'s synopsis count for `city`? A venue does iff it's one of
-   *  the city's cinemas; a chain-detail source (Cinema City) iff one of its
+   *  the city's cinemas; a chain-detail source (Cinema City, Cineworld) iff one of its
    *  member venues in this city is screening the film; every non-cinema source
    *  (TMDB / IMDb / Filmweb) always does — its blurb is city-independent.
    *
