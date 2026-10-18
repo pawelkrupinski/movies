@@ -62,6 +62,14 @@ object IdentityMeasures {
         !IdentityMeasures.shareAWord(original, billed) && !tools.EditDistance.within(IdentityMeasures.key(original), IdentityMeasures.key(billed), 1)
       }
     }
+    /** The pieces of the event its billing bills ([[agreement.NonFilmEvents.eventBilled]]), each with its counted words
+     *  (a piece with none left out) and whether it bills a performance ([[services.cinemas.pl.NonMovieEventClassifier.isPerformance]]) — none unless the
+     *  whole event bills one, as most billings bill none. Read once per listing, whichever films it is weighed against
+     *  (`Acceptance.notPerformedBeside`). */
+    private[identity] lazy val performancePieces: Seq[(String, Seq[String], Boolean)] =
+      agreement.NonFilmEvents.eventBilled(rawTitle.getOrElse(title)).filter(services.cinemas.pl.NonMovieEventClassifier.isPerformance(_)).toSeq
+        .flatMap(IdentityMeasures.pieces).map(piece => (piece, IdentityMeasures.countedWords(piece), services.cinemas.pl.NonMovieEventClassifier.isPerformance(piece)))
+        .filter(_._2.nonEmpty)
     /** How many words the billing shares with `title` at most, over its titles ([[IdentityMeasures.sharedWords]]). */
     private[identity] def wordsBilledOf(title: String): Int = titles.map(IdentityMeasures.sharedWords(title, _)).max
     /** The directors credited beside the published `year` — one listing's own, unless a pooled

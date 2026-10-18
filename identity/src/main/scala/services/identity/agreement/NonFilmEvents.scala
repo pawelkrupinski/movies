@@ -55,6 +55,12 @@ object NonFilmEvents {
    *  before it is still one ("Koncert jazzowy połączony z degustacją wina"). */
   private val JoinedWith = """(?iu)\s*\bpołączon\p{L}*\s+ze?\b""".r
 
+  /** What `raw` bills as the event itself — what precedes "joined with" ([[JoinedWith]]), its companion following — or
+   *  `None` when the billing attaches a screening to it ([[FilmAttached]]): the film is the evening then, the event its
+   *  companion. */
+  private[identity] def eventBilled(raw: String): Option[String] =
+    Option.when(FilmAttached.findFirstIn(raw.toLowerCase(Locale.ROOT)).isEmpty)(JoinedWith.split(raw).head)
+
   /** A performer billed LIVE: a piece of the title ending in the word ("Jan Logemann LIVE: Herr Logemann hebt ab!",
    *  "Jan Preuß LIVE") — never one opening a title, as a film's own name does ("Live and Let Die"), nor followed by what
    *  a screening or a relay bills ("LIVE VIEWING", "Live Score", "Live In Budapest"); a house's relay ("NT Live: …",
@@ -98,7 +104,7 @@ object NonFilmEvents {
       else Option.when(SecretScreening.findFirstIn(TitleContainment.tokens(raw).mkString(" ")).isDefined)("mystery screening")
         .orElse(Markers.collectFirst { case (reason, marker) if marker.findFirstIn(title).isDefined => reason })
         .filter(reason => reason == "no screening" || reason == "pass" || FilmAttached.findFirstIn(title).isEmpty)
-        .orElse(Option.when(NonMovieEventClassifier.isPerformance(JoinedWith.split(raw).head) && FilmAttached.findFirstIn(title).isEmpty)("live event"))
+        .orElse(eventBilled(raw).filter(NonMovieEventClassifier.isPerformance(_)).map(_ => "live event"))
         // what the feeds' own filter reads in any language: a reading, a slam, a cabaret, a stand-up night billed as one
         // (DE "Schöne Aussicht - Die Slam Poetry & Songwriting Show - …": no 2007 "Schöne Aussicht")
         .orElse(Option.when(NonMovieEventClassifier.isNonScreening(raw) && FilmAttached.findFirstIn(title).isEmpty)("non-screening"))

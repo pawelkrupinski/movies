@@ -1,5 +1,6 @@
 package services.identity
 
+import services.cinemas.pl.NonMovieEventClassifier
 import services.identity.IdentityMeasures.ListingFilm
 import services.identity.Scored.Accepted
 import services.resolution.YearWindow
@@ -24,7 +25,28 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
    *  another film of its director the title names, or the listing's year dates as closely ([[anotherOfItsDirector]]). */
   private final case class Rule(name: String, why: Seq[Scored] => Verdict) {
     def accepts(ranked: Seq[Scored]): Verdict =
-      ownInstalment(why(ranked)).flatMap(pickedByItsTitle(ranked)).flatMap(takeable).flatMap(onNoReusedPage(ranked))
+      ownInstalment(why(ranked)).flatMap(pickedByItsTitle(ranked)).flatMap(takeable).flatMap(onNoReusedPage(ranked)).flatMap(notPerformedBeside)
+  }
+  /** Refuses a film the billing names by one piece while ANOTHER piece, sharing no word with the record's titles, bills a
+   *  performance ([[NonMovieEventClassifier.isPerformance]]: a tribute, a concert, a stage show): the evening is the show,
+   *  named after the film's title, and whatever record the venue's system attached to it is the namesake its search
+   *  found. UK Electric Palace Hastings' "Straight Talk: A Tribute to Dolly Parton" [1992] {Barnet Kellman} is a tribute
+   *  show named after her song, not the 1992 film she starred in. Only the event the billing bills is read
+   *  ([[agreement.NonFilmEvents.eventBilled]]): a billing attaching a screening ("+ film", "pokaz", a festival's "Closing
+   *  Film + Awards") keeps its film, and a performance "joined with" the film is its companion ("DYRYGENT - POŁĄCZONY Z
+   *  KONCERTEM MUZYKI NA ŻYWO", Wajda's film). A record titled by the performance itself ("Kabaret", "Die Tribute von
+   *  Panem") is the film its event words name. */
+  private def notPerformedBeside(accepted: Accepted): Verdict = {
+    val scored    = accepted._1
+    val film      = scored.candidate.film
+    val pieces    = scored.listing.performancePieces
+    lazy val filmWords = film.titles.flatMap(IdentityMeasures.countedWords).toSet
+    val performed =
+      if (pieces.isEmpty || !pieces.exists(_._2.forall(filmWords))) Nil
+      else pieces.collect { case (piece, words, true) if !words.exists(filmWords) => piece }
+    if (performed.isEmpty || film.titles.exists(NonMovieEventClassifier.isPerformance(_))) Right(accepted)
+    else Left(Acceptance.Refused("another piece of its billing is a performance the film is not", Some(scored.candidate.tmdbId),
+      s"${Acceptance.named(scored)} beside: ${performed.mkString(", ")}"))
   }
   /** Refuses any film while the listing's page reads as REUSED: a record its ORIGINAL title and the director it credits
    *  name stands in its pool ([[copiedBeyondItsBilling]]) though the billing says more than that record's titles. The
