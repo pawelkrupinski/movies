@@ -34,16 +34,20 @@ class IdentityUnifiedDatasetSpec extends AnyFlatSpec with Matchers {
     labelsOf(Seq(judged("tmdb:1"), judged("tmdb:2")), taken = "", fromFixture = false) shouldBe (unlabelled, false)
   }
 
-  "The training file" should "hold the header and the rows in country, cluster, film order" in {
+  "The training file" should "hold the header and the rows in country, cluster, film order, and the takes file today's takes alone" in {
     val dir = Files.createTempDirectory("unified")
     try {
-      def row(country: String, film: String) = Row(country, "c1", "corpus", "Kino", 1, "Lalka\tx", film, "Lalka", "1", "1", "weak", 0, 0, Map.empty)
-      val written = IdentityUnifiedDataset.write(dir.resolve("out"), Seq(row("pl", "tmdb:2"), row("de", "tmdb:9"), row("pl", "tmdb:1")))
-      val lines = new String(new GZIPInputStream(Files.newInputStream(written)).readAllBytes(), StandardCharsets.UTF_8).linesIterator.toSeq
-      lines.head shouldBe IdentityUnifiedDataset.Header.mkString("\t")
-      lines.tail.map(_.split("\t").take(7).toSeq) shouldBe Seq(
+      def row(country: String, film: String, today: String = "1") = Row(country, "c1", "corpus", "Kino", 1, "Lalka\tx", film, "Lalka", today, "1", "weak", 0, 0, Map.empty)
+      val written = IdentityUnifiedDataset.write(dir.resolve("out"), Seq(row("pl", "tmdb:2", today = "0"), row("de", "tmdb:9"), row("pl", "tmdb:1")))
+      def lines(file: java.nio.file.Path) = new String(new GZIPInputStream(Files.newInputStream(file)).readAllBytes(), StandardCharsets.UTF_8).linesIterator.toSeq
+      lines(written).head shouldBe IdentityUnifiedDataset.Header.mkString("\t")
+      lines(written).tail.map(_.split("\t").take(7).toSeq) shouldBe Seq(
         Seq("de", "c1", "corpus", "Kino", "1", "Lalka x", "tmdb:9"), Seq("pl", "c1", "corpus", "Kino", "1", "Lalka x", "tmdb:1"),
         Seq("pl", "c1", "corpus", "Kino", "1", "Lalka x", "tmdb:2"))
+      // the takes beside them: the header, then only the rows today's stack takes
+      val takes = lines(dir.resolve("out/takes.tsv.gz"))
+      takes.head shouldBe IdentityUnifiedDataset.Header.mkString("\t")
+      takes.tail.map(_.split("\t")(6)) shouldBe Seq("tmdb:9", "tmdb:1")
     } finally Files.walk(dir).sorted(java.util.Comparator.reverseOrder()).forEach(Files.delete(_))
   }
 }

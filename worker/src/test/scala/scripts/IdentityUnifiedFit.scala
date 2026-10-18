@@ -29,6 +29,9 @@ import java.util.zip.GZIPInputStream
 object IdentityUnifiedFit {
 
   val Training: Path = Paths.get("test/resources/fixtures/identity-unified/training.tsv.gz")
+  /** The rows of [[Training]]'s emit today's stack takes, re-emitted as the code moves (`scripts/identity-calibrate.sh
+   *  --takes`) without moving the rows the weights and rules are fitted from: what `MatchedTakesLabelSpec` grades. */
+  val Takes: Path = Paths.get("test/resources/fixtures/identity-unified/takes.tsv.gz")
   val Artefact: Path = Paths.get("worker/src/test/resources", UnifiedWeights.ResourcePath)
   val HybridArtefact: Path = Paths.get("worker/src/test/resources", UnifiedWeights.HybridResourcePath)
   val L2    = 1.0

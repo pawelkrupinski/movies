@@ -34,7 +34,7 @@ import scala.jdk.CollectionConverters._
  *    poster names another candidate against it, or a family took another film its title names: those are left out.
  *
  * Writes `<out>/training.tsv.gz` (one row per contender, the signals in [[UnifiedEvidence.Names]]'s order), the rows
- * `scripts.IdentityUnifiedFit` fits and measures.
+ * `scripts.IdentityUnifiedFit` fits and measures, and `<out>/takes.tsv.gz`, those of them today's stack takes.
  */
 object IdentityUnifiedDataset {
 
@@ -71,12 +71,19 @@ object IdentityUnifiedDataset {
     } finally storages.foreach(s => scala.util.Try(s.close()))
   }
 
-  /** `<out>/training.tsv.gz`: the header, then the rows by country, cluster and film. */
+  /** `<out>/training.tsv.gz`: the header, then the rows by country, cluster and film; and beside it `<out>/takes.tsv.gz`,
+   *  the same of the rows today's stack takes alone — what `MatchedTakesLabelSpec` grades, re-emitted as the code moves
+   *  while the training rows stay what the shipped unified weights and rules were fitted from. */
   def write(out: Path, rows: Seq[Row]): Path = {
     Files.createDirectories(out)
-    val written = out.resolve("training.tsv.gz")
+    val sorted = rows.sortBy(r => (r.country, r.cluster, r.film))
+    writeRows(out.resolve("takes.tsv.gz"), sorted.filter(_.today == "1"))
+    writeRows(out.resolve("training.tsv.gz"), sorted)
+  }
+
+  private def writeRows(written: Path, rows: Seq[Row]): Path = {
     val gz = new GZIPOutputStream(Files.newOutputStream(written))
-    try gz.write((Header.mkString("\t") +: rows.sortBy(r => (r.country, r.cluster, r.film)).map(_.line)).mkString("", "\n", "\n").getBytes(StandardCharsets.UTF_8))
+    try gz.write((Header.mkString("\t") +: rows.map(_.line)).mkString("", "\n", "\n").getBytes(StandardCharsets.UTF_8))
     finally gz.close()
     written
   }

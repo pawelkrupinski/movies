@@ -2517,7 +2517,8 @@ poster or a family names another film). The rows are checked in at
 (`LogisticFit.fitSigned`, an active set, deterministic); five folds by VENUE; the cut is the lowest held-out best
 contender above every held-out new-wrong take (by hand label) and every take moving today's film. Pinned in
 `worker/src/test/resources/identity-unified-weights.json` (offline: nothing in production reads it); `IdentityUnifiedFitSpec` refits it from the checked-in rows.
-Relearn: `CORPORA=… FIXTURES=… [FAMILY_SEED=…] [POSTER_CACHE=…] MONGODB_URI=<throwaway> scripts/identity-calibrate.sh --unified`.
+Relearn: `CORPORA=… FIXTURES=… [FAMILY_SEED=…] [POSTER_CACHE=…] MONGODB_URI=<throwaway> scripts/identity-calibrate.sh --unified`. `--takes` re-emits the same
+way and checks in only `takes.tsv.gz`, what `MatchedTakesLabelSpec` grades, leaving the fitted rows as they are.
 
 ### 20.4 Measured (2026-10-05, weights `unified-0773e56c`)
 
@@ -3070,7 +3071,10 @@ showed, each checked on prod (read-only) and fixed at the root with a failing te
 The model's own matched takes were graded by `MatchedTakesLabelSpec`'s check over unified rows re-emitted from the
 re-capture (`integration.IdentityUnifiedDataset`): the five labelled-wrong takes above (Fallen Angels' row aside, already
 moved). The checked-in rows are NOT replaced: `IdentityUnifiedFitSpec` holds the shipped fill rules and weights to them, so
-new rows ask a unified refit, its own measured change (follow-up).
+new rows ask a unified refit, its own measured change (follow-up). Since 2026-10-18 the spec grades its own file instead,
+`identity-unified/takes.tsv.gz` (the emit's rows today's stack takes), re-emitted alone by `scripts/identity-calibrate.sh
+--takes` as the code moves: the 10-18 re-emit over recording 38713274617 struck 16 cured `rows` known-wrongs, and would
+have moved the fitted fill rules (`venues.current` selected) had it replaced the training rows.
 
 Losses the re-capture exposed in code, fixed the same way: the broadcast join read Flicks' catalogue page (an old
 season's page: UK "MetOpera: La Fanciulla del West" ×9, "Samson et Dalila" ×2, "Royal Opera House: Carmen" ×13) as the

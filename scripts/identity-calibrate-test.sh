@@ -32,7 +32,7 @@ cat > "$work/bin/sbt" <<'STUB'
 #!/usr/bin/env bash
 echo "sbt $*" >> "$STUB/calls"
 all="$*"
-case "$all" in *IdentityUnifiedDataset*) out=${all##*--out }; mkdir -p "$out"; echo rows > "$out/training.tsv.gz" ;; esac
+case "$all" in *IdentityUnifiedDataset*) out=${all##*--out }; mkdir -p "$out"; echo rows > "$out/training.tsv.gz"; echo takes > "$out/takes.tsv.gz" ;; esac
 STUB
 chmod +x "$tree/scripts/identity-refit" "$work/bin/sbt"
 
@@ -80,6 +80,14 @@ check "--unified: the rows re-emitted, then the unified weights refitted" "2" "$
 check "...both in the en-US locale" "2" "$(calls sbt | grep -c -- "^sbt $locale ")"
 check "...the rows checked in" "rows" "$(cat "$tree/test/resources/fixtures/identity-unified/training.tsv.gz" 2>/dev/null)"
 check "...the fit's report under REPORT" "yes" "$(grep -q 'IdentityUnifiedFit --report W/r/unified-report.md' <<<"$(calls sbt | tail -1)" && echo yes || echo no)"
+check "...the takes checked in beside them" "takes" "$(cat "$tree/test/resources/fixtures/identity-unified/takes.tsv.gz" 2>/dev/null)"
+
+echo fitted > "$tree/test/resources/fixtures/identity-unified/training.tsv.gz"
+rm -f "$tree/test/resources/fixtures/identity-unified/takes.tsv.gz"
+CORPORA=c FIXTURES=f REPORT="$work/r" calibrate --takes
+check "--takes: the rows re-emitted, nothing refitted" "1 0" "$(calls sbt | wc -l | tr -d ' ') $(cat "$work/status")"
+check "...the takes checked in" "takes" "$(cat "$tree/test/resources/fixtures/identity-unified/takes.tsv.gz" 2>/dev/null)"
+check "...the training rows the fit reads left as they were" "fitted" "$(cat "$tree/test/resources/fixtures/identity-unified/training.tsv.gz")"
 
 CORPORA=c FIXTURES=f PROD="$work/prod" MONGODB_URI=mongodb://prod/ calibrate --extract-prod
 check "--extract-prod reads every country database through the tunnel, then calibrates" \

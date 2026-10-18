@@ -11,11 +11,12 @@ import tools.UnmatchedClusters.Take
  * its fixture captures only the clusters the model leaves unmatched, so a wrong film the model takes outright is
  * invisible to it (2026-10-06: four such takes found only by an offline ML audit of the unified rows).
  *
- * Every cluster of the unified evidence rows ([[IdentityUnifiedFit.Training]]: every cluster of the five recorded
- * corpora, matched ones included) whose take the model makes is judged by the identity judgements as the ratchet judges
- * a take, by the cluster's venue and most common raw title. The rows hold the MODEL's take, before the agreement stage
- * reads it again (`agreement.Correction`), and as the code stood when they were emitted
- * (`integration.IdentityUnifiedDataset`). So a wrong take fails unless the judgements hold it known-wrong in scope `rows`
+ * Every cluster of the unified evidence rows' takes ([[IdentityUnifiedFit.Takes]]: every cluster of the five recorded
+ * corpora, matched ones included, at the film today's stack takes) is judged by the identity judgements as the ratchet
+ * judges a take, by the cluster's venue and most common raw title. The rows hold the MODEL's take, before the agreement
+ * stage reads it again (`agreement.Correction`), and as the code stood when they were emitted
+ * (`integration.IdentityUnifiedDataset`; re-emitted with `scripts/identity-calibrate.sh --takes`, which leaves the
+ * training rows the unified weights are fitted from as they are). So a wrong take fails unless the judgements hold it known-wrong in scope `rows`
  * — one a later stage or a later change no longer serves ("no longer served: …", with the spec that proves it), or one
  * no safe fix removes yet — each with why. They only shrink: a row the rows no longer hold is struck.
  */
@@ -23,7 +24,7 @@ class MatchedTakesLabelSpec extends AnyFlatSpec with Matchers {
 
   private val judged = IdentityJudgements.read()
   private val labels = IdentityJudgements.labels(judged)
-  private val rows   = IdentityUnifiedFit.read(IdentityUnifiedFit.Training)
+  private val rows   = IdentityUnifiedFit.read(IdentityUnifiedFit.Takes)
 
   private def take(row: IdentityUnifiedFit.Row): Take = Take(row.country, row.venue, row.rawTitle,
     row.film.stripPrefix("tmdb:").toIntOption.filter(_ => row.film.startsWith("tmdb:")),

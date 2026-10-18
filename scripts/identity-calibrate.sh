@@ -54,14 +54,18 @@ fi
 : "${FIXTURES:?set FIXTURES to the dir of enrichment-<cc>/ trees}"
 # --unified re-emits the unified evidence model's rows (§20: integration.IdentityUnifiedDataset over the recorded corpora,
 # the unmatched-cluster fixture and its labels, offline — FAMILY_SEED and POSTER_CACHE optional, MONGODB_URI a throwaway)
-# into test/resources/fixtures/identity-unified/training.tsv.gz, then refits identity-unified-weights.json from them
+# into test/resources/fixtures/identity-unified/training.tsv.gz (and takes.tsv.gz), then refits identity-unified-weights.json from them
 # (scripts.IdentityUnifiedFit), its report in $REPORT/unified-report.md.
-if [[ "${1:-}" == "--unified" ]]; then
+# --takes re-emits the same way but checks in only the takes (takes.tsv.gz, the rows today's stack takes, which
+# MatchedTakesLabelSpec grades): the training rows, and the weights and rules fitted from them, stay as they are.
+if [[ "${1:-}" == "--unified" || "${1:-}" == "--takes" ]]; then
   REPORT="${REPORT:-target/identity-calibration}"
   mkdir -p "$REPORT/unified"
   env KINOWO_IDENTITY_FULL="${COUNTRIES:-pl,uk,de,es,us}" KINOWO_IDENTITY_CORPUS_DIR="$CORPORA" KINOWO_FIXTURE_ROOT="$FIXTURES" \
     ${FAMILY_SEED:+KINOWO_IDENTITY_FAMILY_SEED=$FAMILY_SEED} ${POSTER_CACHE:+KINOWO_IDENTITY_POSTER_CACHE=$POSTER_CACHE} \
     "${IDENTITY_SBT[@]}" -J-Xmx12g -batch "worker/IntegrationTest/runMain integration.IdentityUnifiedDataset --out $REPORT/unified"
+  cp "$REPORT/unified/takes.tsv.gz" test/resources/fixtures/identity-unified/takes.tsv.gz
+  [[ "$1" == "--takes" ]] && exit 0
   cp "$REPORT/unified/training.tsv.gz" test/resources/fixtures/identity-unified/training.tsv.gz
   exec "${IDENTITY_SBT[@]}" -J-Xmx8g -batch "worker/Test/runMain scripts.IdentityUnifiedFit --report $REPORT/unified-report.md"
 fi
