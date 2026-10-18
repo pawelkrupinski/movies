@@ -813,7 +813,7 @@ fun List<City>.topLevelRows(query: String, countryCode: String): List<CityPicker
     mergedPickerRows(inCountry(countryCode), groupField = { it.region }, query = query)
 
 /** The SECOND picker step, within one [region]: each subregion's heading
- *  (reached only for the UK's West Midlands / Glamorgan / Antrim today)
+ *  (reached only for the UK's counties today: Glamorgan, West Midlands…)
  *  interleaved with that region's own directly-listed cities — narrowed to
  *  [query]. */
 fun List<City>.secondLevelRows(query: String, countryCode: String, region: String): List<CityPickerRow> =

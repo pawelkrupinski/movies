@@ -96,7 +96,7 @@ fun CityChoiceScreen(
     var region by remember { mutableStateOf<String?>(null) }
     // The subregion being browsed, within [region] — the third step, reached
     // only where [region] itself splits into sub-groups holding more than one
-    // city (the UK's West Midlands / Glamorgan / Antrim). Null everywhere else.
+    // city (a UK county: Glamorgan, West Midlands…). Null everywhere else.
     var subregion by remember { mutableStateOf<String?>(null) }
     // Switching country changes what every step means, so neither a half-typed
     // query nor a state from the country just left may survive it.
@@ -261,8 +261,8 @@ fun CityChoiceScreen(
             }
         } else if (subregion == null) {
             val currentRegion = region
-            // The second step's rows — subregion headings (the UK's West
-            // Midlands / Glamorgan / Antrim) interleaved with `region`'s own
+            // The second step's rows — subregion headings (the UK's
+            // counties: Glamorgan, West Midlands…) interleaved with `region`'s own
             // directly-listed cities, same merge as the first step. Falls back
             // to the whole flat list (as plain city rows) for a country with
             // no grouping, where `region` is always null.

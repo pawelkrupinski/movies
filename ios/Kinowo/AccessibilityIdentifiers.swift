@@ -120,7 +120,7 @@ enum A11y {
         /// country's pick (the US). Only present once a state has been chosen.
         static let backToRegionsButton = "citygate.backToRegions.button"
         /// The third step's own back control — a UITest taps it to return from
-        /// a subregion's city list (Glamorgan, Antrim) to its
+        /// a subregion's city list (a UK county: Glamorgan) to its
         /// region without leaving the picker entirely.
         static let backToRegionButton = "citygate.backToRegion.button"
         /// The manual picker's own `List` (`CityChoiceView`'s body), so a test

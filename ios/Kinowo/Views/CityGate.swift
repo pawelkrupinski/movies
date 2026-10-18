@@ -226,7 +226,7 @@ struct CityChoiceView: View {
     @State private var region: String?
     /// The subregion being browsed, within `region` — the third step, reached
     /// only where `region` itself splits into sub-groups holding more than one
-    /// city (the UK's West Midlands / Glamorgan / Antrim). `nil` everywhere else.
+    /// city (a UK county: Glamorgan, West Midlands…). `nil` everywhere else.
     @State private var subregion: String?
 
     private var countryCode: String { prefs.selectedCountry.code }
@@ -247,7 +247,7 @@ struct CityChoiceView: View {
     }
 
     /// The second step's rows — one per subregion (reached only for the UK's
-    /// West Midlands / Glamorgan / Antrim today) interleaved with `region`'s
+    /// counties today: Glamorgan, West Midlands…) interleaved with `region`'s
     /// own directly-listed cities, in the catalog's own order. Falls back to
     /// the whole flat list (as plain city rows) for a country with no
     /// grouping, where `region` is always `nil`.
