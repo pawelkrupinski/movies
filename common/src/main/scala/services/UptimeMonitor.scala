@@ -492,7 +492,6 @@ object UptimeMonitor {
   val EnrichmentSuffix: String = "|enrichment"
   def enrichmentService(cinemaDisplayName: String): String = cinemaDisplayName + EnrichmentSuffix
   def isEnrichmentService(service: String): Boolean = service.endsWith(EnrichmentSuffix)
-  def baseCinemaOf(service: String): String = service.stripSuffix(EnrichmentSuffix)
 
   /** One recurring background job: what it is, how often it runs, and the work.
    *  Exists so the cadences are inspectable data rather than arguments buried in
