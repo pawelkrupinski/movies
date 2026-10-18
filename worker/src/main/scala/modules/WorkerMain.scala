@@ -34,10 +34,9 @@ object WorkerMain extends Logging {
     // The process's config and the typed values resolved from it, HERE, once — the only
     // place in the worker that asks the process anything; every wiring below is handed them.
     val process = ProcessConfiguration.resolve()
-    val commit  = process.commit.value
     // Before the first line: every line from here on names the image it came from (`build`), what ties it to a deploy.
     tools.LogFields.stampBuild(process.commit)
-    logger.info(s"Worker starting — commit $commit")
+    logger.info(s"Worker starting — commit ${process.commit.value}")
 
     // Bring up /health BEFORE the scrape+enrich boot. The first full scrape +
     // cache hydrate can take ~a minute; liveness ("the process is up") must not
@@ -46,89 +45,25 @@ object WorkerMain extends Logging {
     // If wiring init throws (e.g. Mongo unreachable) we stop /health and exit
     // non-zero so the failure still surfaces as a crash-loop rather than a
     // healthy-but-idle worker.
-    val port   = process.healthPort(HealthPort(9000)).value
+    val port      = process.healthPort(HealthPort(9000)).value
     val liveness  = new BootLiveness
     val readiness = new BootReadiness(WorkerMain.ReadinessCap)
     val health    = startHealthServer(port, liveness, readiness)
     logger.info(s"Worker health up on :$port/health — booting scrape/enrich…")
 
-    // The countries this worker runs (KINOWO_COUNTRIES, default just the default
-    // country). One shared background concurrency budget + one shared MongoClient
-    // are built ONCE here and injected into every country's wiring, so all
-    // countries draw run permits from one cap and reuse one connection pool /
-    // monitor-thread set — each country still keeps its OWN event bus and its OWN
-    // per-country database view on that shared client.
-    // The process's config — env vars, -D properties, and (once each wiring's
-    // EnvConfigService starts) the admin overrides. Built ONCE here and handed to
-    // every country's wiring, so a flip reaches all of them.
-    val env          = process.env
-    val countries    = process.workerCountries.value
-    process.unknownCountryCodes.foreach(code => logger.warn(s"Unknown country code '${code.value}' in KINOWO_COUNTRIES — skipping."))
-    // Refuse a configuration this process cannot normalise correctly, before any
-    // wiring touches the corpus.
-    unsupportedCountries(countries).foreach { why =>
-      logger.error(why)
-      health.stop(0)
-      sys.exit(1)
-    }
-    // The process's own boot steps, timed like each country's (`BootSteps`): the first seconds
-    // after JVM start went unaccounted — "Worker running countries" came ~6 s after start.
-    val processBoot = new BootSteps("process")
-    val sharedBudget: ExecutionBudget = processBoot.step("background budget")(WorkerWiring.backgroundBudgetFrom(process))
-    val sharedClient: Option[MongoClient] = processBoot.step("mongo client")(
-      MongoConnection.sharedClientAt(process.mongoAddress, MongoTuning.from(process)))
-    // ONE metrics bundle for the whole JVM: a single Prometheus registry + one set
-    // of metric objects (each tagged with a `country` label), shared by every
-    // country's wiring. This is what fixes the earlier "primary country's registry
-    // only, others headless" gap — every country writes its own `country="…"` slice
-    // and ALL of them surface on the single /metrics endpoint below.
-    val workerMetrics = processBoot.step("metrics bundle")(new services.metrics.WorkerMetrics(
-      countries.map(_.code), process.workerPoolSize(modules.wiring.TaskQueueWiring.DefaultWorkerPoolSize)))
-    // ONE poster-shrink gate for the JVM: the vips child it bounds shares the pod's
-    // memory cgroup with every country's renders.
-    val posterShrinkGate = processBoot.step("poster shrink gate")(services.sharecards.VipsPosterShrinker.newGate())
-    logger.info(s"Worker running countries: ${countries.map(_.code).mkString(", ")}")
-
-    val wirings =
-      try {
-        val ws = processBoot.step("build wirings")(
-          countries.map(c => new WorkerWiring(c, sharedBudget, sharedClient, Some(workerMetrics), posterShrinkGate, env)))
-        // Open (and so claim — `MongoConnection.forCountry`) every country's database
-        // before any wiring starts, so a mismatch refuses the whole boot up front.
-        processBoot.step("claim databases")(ws.foreach(_.mongoConnection))
-        processBoot.step("start countries")(ws.foreach(_.start()))
-        processBoot.step("jvm samplers")(workerMetrics.start()) // process-level JVM/native samplers, once
-        logger.info(processBoot.summary)
-        // Process-wide secrets, so reported once rather than per country: gauge + WARN for
-        // any integration a missing one has quietly switched off.
-        val integrations = modules.wiring.WorkerIntegrations.features(process)
-        workerMetrics.envGatedFeatures.recordIntegrations(integrations)
-        services.metrics.EnvGatedFeature.disabledWarning("integration", integrations).foreach(w => logger.warn(w))
-        ws
-      } catch {
-        case e: Throwable =>
-          logger.error(s"Worker failed to start — shutting down: ${e.getMessage}", e)
-          sharedClient.foreach(_.close())
-          health.stop(0)
-          sys.exit(1)
-      }
+    val countries = bootableCountries(process, health)
+    val shared    = SharedResources.build(process, countries)
+    val wirings   = startWirings(process, countries, shared, health)
     // /health is a property of the MACHINE, not of any one country, so it folds
     // across every wiring — see [[WorkerFleet]]. Metrics likewise cover all countries
     // (shared registry, `country` label).
     val fleet = new WorkerFleet(wirings.map(_.livenessWatchdog), wirings.map(_.mongoConnection))
+    logger.info("Worker up — scraping/enriching")
+    readiness.becomes(() => wirings.forall(_.bootSettled))
     // Process-wide config (KINOWO_HEAP_DUMP_DIR), so it reads the same on every
     // wiring — one dump dir per machine, not per country.
     val heapDumpDir = wirings.head.heapDumpDirectory
-    logger.info("Worker up — scraping/enriching")
-    readiness.becomes(() => wirings.forall(_.bootSettled))
-
-    // Register /metrics now that every country's queue + metrics are live: one
-    // scrape renders the shared registry with all countries' series.
-    addMetricsEndpoint(health, workerMetrics, wirings)
-    logger.info(s"Worker metrics up on :$port/metrics")
-
-    addHeapDumpEndpoint(health, heapDumpDir)
-    addProfileEndpoint(health, new JfrFlightRecorder(heapDumpDir, clock = wirings.head.clock))
+    addOperatorEndpoints(health, port, shared.metrics, wirings, heapDumpDir)
 
     // Now that the heartbeat + watchdog are running, let /health report real
     // liveness: it goes 503 (and the watchdog restarts the process) only once a
@@ -141,24 +76,113 @@ object WorkerMain extends Logging {
     catch { case e: Throwable => logger.warn(s"Could not create heap-dump dir ${heapDumpDir.value}: ${e.getMessage}") }
 
     val done = new CountDownLatch(1)
-    Runtime.getRuntime.addShutdownHook(new Thread(() => {
-      logger.info("Worker received shutdown signal — draining the enrichment cascade…")
-      try workerMetrics.stop() // process-level samplers, once
-      catch { case e: Throwable => logger.warn(s"Metrics stop error on shutdown: ${e.getMessage}") }
-      wirings.foreach { w =>
-        try w.stop()
-        catch { case e: Throwable => logger.warn(s"Drain error on shutdown: ${e.getMessage}") }
-      }
-      // Close the shared client last — each wiring's `stop()` closed only its own
-      // (per-country) resources; the borrowed client is owned here.
-      try sharedClient.foreach(_.close())
-      catch { case e: Throwable => logger.warn(s"Mongo client close error on shutdown: ${e.getMessage}") }
-      finally {
-        health.stop(0)
-        done.countDown()
-      }
-    }))
+    Runtime.getRuntime.addShutdownHook(new Thread(() => shutDown(shared, wirings, health, done)))
     done.await()
+  }
+
+  /** The countries this worker runs (KINOWO_COUNTRIES, default just the default country), unknown codes
+   *  warned and skipped. A configuration this process cannot normalise correctly is refused, before any
+   *  wiring touches the corpus: /health stopped and the process exited. */
+  private def bootableCountries(process: ProcessConfiguration, health: HttpServer): Seq[Country] = {
+    val countries = process.workerCountries.value
+    process.unknownCountryCodes.foreach(code => logger.warn(s"Unknown country code '${code.value}' in KINOWO_COUNTRIES — skipping."))
+    unsupportedCountries(countries).foreach { why =>
+      logger.error(why)
+      health.stop(0)
+      sys.exit(1)
+    }
+    countries
+  }
+
+  /** What every country's wiring shares, built ONCE per process: one background concurrency budget and
+   *  one MongoClient — so all countries draw run permits from one cap and reuse one connection pool /
+   *  monitor-thread set, each still keeping its OWN event bus and per-country database view — one
+   *  metrics bundle, one poster-shrink gate, and the process's config (env vars, -D properties, and,
+   *  once each wiring's EnvConfigService starts, the admin overrides), so a flip reaches all of them. */
+  private final case class SharedResources(
+    boot:             BootSteps,
+    budget:           ExecutionBudget,
+    client:           Option[MongoClient],
+    metrics:          services.metrics.WorkerMetrics,
+    posterShrinkGate: tools.PosterDecodeGate
+  )
+
+  private object SharedResources {
+    def build(process: ProcessConfiguration, countries: Seq[Country]): SharedResources = {
+      // The process's own boot steps, timed like each country's (`BootSteps`): the first seconds
+      // after JVM start went unaccounted — "Worker running countries" came ~6 s after start.
+      val boot   = new BootSteps("process")
+      val budget = boot.step("background budget")(WorkerWiring.backgroundBudgetFrom(process))
+      val client = boot.step("mongo client")(MongoConnection.sharedClientAt(process.mongoAddress, MongoTuning.from(process)))
+      // ONE metrics bundle for the whole JVM: a single Prometheus registry + one set
+      // of metric objects (each tagged with a `country` label), shared by every
+      // country's wiring. This is what fixes the earlier "primary country's registry
+      // only, others headless" gap — every country writes its own `country="…"` slice
+      // and ALL of them surface on the single /metrics endpoint.
+      val metrics = boot.step("metrics bundle")(new services.metrics.WorkerMetrics(
+        countries.map(_.code), process.workerPoolSize(modules.wiring.TaskQueueWiring.DefaultWorkerPoolSize)))
+      // ONE poster-shrink gate for the JVM: the vips child it bounds shares the pod's
+      // memory cgroup with every country's renders.
+      val gate = boot.step("poster shrink gate")(services.sharecards.VipsPosterShrinker.newGate())
+      logger.info(s"Worker running countries: ${countries.map(_.code).mkString(", ")}")
+      SharedResources(boot, budget, client, metrics, gate)
+    }
+  }
+
+  /** Build and start every country's wiring. A failure closes the shared client, stops /health and exits
+   *  non-zero. */
+  private def startWirings(process: ProcessConfiguration, countries: Seq[Country], shared: SharedResources,
+                           health: HttpServer): Seq[WorkerWiring] =
+    try {
+      val boot = shared.boot
+      val ws = boot.step("build wirings")(countries.map(c =>
+        new WorkerWiring(c, shared.budget, shared.client, Some(shared.metrics), shared.posterShrinkGate, process.env)))
+      // Open (and so claim — `MongoConnection.forCountry`) every country's database
+      // before any wiring starts, so a mismatch refuses the whole boot up front.
+      boot.step("claim databases")(ws.foreach(_.mongoConnection))
+      boot.step("start countries")(ws.foreach(_.start()))
+      boot.step("jvm samplers")(shared.metrics.start()) // process-level JVM/native samplers, once
+      logger.info(boot.summary)
+      // Process-wide secrets, so reported once rather than per country: gauge + WARN for
+      // any integration a missing one has quietly switched off.
+      val integrations = modules.wiring.WorkerIntegrations.features(process)
+      shared.metrics.envGatedFeatures.recordIntegrations(integrations)
+      services.metrics.EnvGatedFeature.disabledWarning("integration", integrations).foreach(w => logger.warn(w))
+      ws
+    } catch {
+      case e: Throwable =>
+        logger.error(s"Worker failed to start — shutting down: ${e.getMessage}", e)
+        shared.client.foreach(_.close())
+        health.stop(0)
+        sys.exit(1)
+    }
+
+  /** /metrics — registered now that every country's queue + metrics are live: one scrape renders the
+   *  shared registry with all countries' series — and the on-demand /heapdump and /profile. */
+  private def addOperatorEndpoints(health: HttpServer, port: Int, metrics: services.metrics.WorkerMetrics,
+                                   wirings: Seq[WorkerWiring], heapDumpDir: HeapDumpDirectory): Unit = {
+    addMetricsEndpoint(health, metrics, wirings)
+    logger.info(s"Worker metrics up on :$port/metrics")
+    addHeapDumpEndpoint(health, heapDumpDir)
+    addProfileEndpoint(health, new JfrFlightRecorder(heapDumpDir, clock = wirings.head.clock))
+  }
+
+  /** The SIGTERM drain: the process samplers, then each wiring, then the shared client — last, since each
+   *  wiring's `stop()` closed only its own (per-country) resources; the borrowed client is owned here. */
+  private def shutDown(shared: SharedResources, wirings: Seq[WorkerWiring], health: HttpServer, done: CountDownLatch): Unit = {
+    logger.info("Worker received shutdown signal — draining the enrichment cascade…")
+    try shared.metrics.stop() // process-level samplers, once
+    catch { case e: Throwable => logger.warn(s"Metrics stop error on shutdown: ${e.getMessage}") }
+    wirings.foreach { w =>
+      try w.stop()
+      catch { case e: Throwable => logger.warn(s"Drain error on shutdown: ${e.getMessage}") }
+    }
+    try shared.client.foreach(_.close())
+    catch { case e: Throwable => logger.warn(s"Mongo client close error on shutdown: ${e.getMessage}") }
+    finally {
+      health.stop(0)
+      done.countDown()
+    }
   }
 
   /** Why this worker must NOT boot with the countries it was given, or None when
@@ -190,14 +214,21 @@ object WorkerMain extends Logging {
     server
   }
 
+  private def respond(exchange: com.sun.net.httpserver.HttpExchange, status: Int, text: String): Unit =
+    respond(exchange, status, text.getBytes("UTF-8"))
+
+  /** Answer `exchange` with `status` and `body`, closing the response. */
+  private def respond(exchange: com.sun.net.httpserver.HttpExchange, status: Int, body: Array[Byte]): Unit = {
+    exchange.sendResponseHeaders(status, body.length.toLong)
+    val os = exchange.getResponseBody
+    try os.write(body) finally os.close()
+  }
+
   /** `/health`: 200 while `liveness` holds, 503 once it doesn't. */
   private[modules] def addHealthEndpoint(server: HttpServer, liveness: BootLiveness): Unit = {
     server.createContext("/health", exchange => {
       val alive = liveness.isAlive
-      val body  = (if (alive) "ok" else "wedged").getBytes("UTF-8")
-      exchange.sendResponseHeaders(if (alive) 200 else 503, body.length.toLong)
-      val os = exchange.getResponseBody
-      try os.write(body) finally os.close()
+      respond(exchange, if (alive) 200 else 503, if (alive) "ok" else "wedged")
     })
     ()
   }
@@ -206,10 +237,7 @@ object WorkerMain extends Logging {
   private[modules] def addReadyEndpoint(server: HttpServer, readiness: BootReadiness): Unit = {
     server.createContext("/ready", exchange => {
       val ready = readiness.isReady
-      val body  = (if (ready) "ready" else "booting").getBytes("UTF-8")
-      exchange.sendResponseHeaders(if (ready) 200 else 503, body.length.toLong)
-      val os = exchange.getResponseBody
-      try os.write(body) finally os.close()
+      respond(exchange, if (ready) 200 else 503, if (ready) "ready" else "booting")
     })
     ()
   }
@@ -239,10 +267,7 @@ object WorkerMain extends Logging {
       val (status, text) =
         if (exchange.getRequestMethod != "POST") (405, "POST to take a heap dump (it stops the world)")
         else dump(dir, tools.HeapDumper.Requested).fold((500, "heap dump failed — see the worker log"))(p => (200, s"wrote $p"))
-      val body = text.getBytes("UTF-8")
-      exchange.sendResponseHeaders(status, body.length.toLong)
-      val os = exchange.getResponseBody
-      try os.write(body) finally os.close()
+      respond(exchange, status, text)
     })
     ()
   }
@@ -265,10 +290,7 @@ object WorkerMain extends Logging {
           case s => recorder.record(scala.concurrent.duration.Duration(s.toLong, "seconds")).fold(
             refused => (409, refused), file => (202, s"recording $s s to $file"))
         }
-      val body = text.getBytes("UTF-8")
-      exchange.sendResponseHeaders(status, body.length.toLong)
-      val os = exchange.getResponseBody
-      try os.write(body) finally os.close()
+      respond(exchange, status, text)
     })
     ()
   }
@@ -316,9 +338,7 @@ object WorkerMain extends Logging {
         exchange.close()
       } else {
         exchange.getResponseHeaders.set("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
-        exchange.sendResponseHeaders(200, body.length.toLong)
-        val os = exchange.getResponseBody
-        try os.write(body) finally os.close()
+        respond(exchange, 200, body)
       }
     })
     ()
