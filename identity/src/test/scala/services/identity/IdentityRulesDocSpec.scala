@@ -17,7 +17,9 @@ class IdentityRulesDocSpec extends AnyFlatSpec with Matchers {
   private val acceptance = new Acceptance(IdentityCalibration.resolver)
 
   "the rules table" should "list the alone rules in the order Acceptance tries them" in {
-    listed("alone") shouldBe acceptance.aloneOrder
+    // Every alone rule refuses a node no search answered, each named in the order it was tried — after
+    // season-production, which pre-empts them all.
+    listed("alone") shouldBe "season-production" +: acceptance.refusals(Nil).map(_.rule)
   }
 
   it should "list the pooled rules in the order Acceptance tries them" in {

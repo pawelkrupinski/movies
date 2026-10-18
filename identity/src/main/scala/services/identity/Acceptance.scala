@@ -184,10 +184,9 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
   private val pooledRules = Seq(Rule("unrivalled-calibrated", unrivalledCalibratedWhy), Rule("exact-top-hit", topHitWhy),
     Rule("imdb-suggested", imdbSuggestedWhy))
 
-  /** The rules a node is taken by alone, and a cluster by its pooled evidence, by name in the order they are tried — each
-   *  after `season-production`, which pre-empts them: what `identity-resolver.md` §21 lists, a spec holding the two
-   *  together. */
-  private[identity] def aloneOrder: Seq[String]  = "season-production" +: aloneRules.map(_.name)
+  /** The rules a cluster is taken by on its pooled evidence, by name in the order they are tried — after
+   *  `season-production`, which pre-empts them: what `identity-resolver.md` §21 lists, a spec holding the two together
+   *  (the alone rules' order it reads off [[refusals]]). */
   private[identity] def pooledOrder: Seq[String] = "season-production" +: pooledRules.map(_.name)
 
   /** What the rule called `name` alone takes of `ranked` — for a spec holding one rule to its cases. */

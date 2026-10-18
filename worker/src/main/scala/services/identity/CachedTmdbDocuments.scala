@@ -109,9 +109,6 @@ final class CachedTmdbDocuments(inner: TmdbDocuments & TmdbDocumentRetention, ma
     }
   }
 
-  /** Whether the cache holds `kind`'s answer document of `id`. */
-  private[identity] def holdsAnswer(kind: TmdbKind, id: String): Boolean = held.getIfPresent(Key(kind, id)) != null
-
   /** The bytes the cache holds, as its bounds weigh them. */
   private[identity] def heldBytes: Long =
     Seq(held, hits).map(_.policy().eviction().get().weightedSize().getAsLong).sum

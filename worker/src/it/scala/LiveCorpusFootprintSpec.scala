@@ -36,7 +36,7 @@ class LiveCorpusFootprintSpec extends AnyFlatSpec with Matchers {
       Some(s"https://helios.pl/film/$n"), None, Nil, Nil, Seq(show)), normalizer))
     val live   = new LiveCorpus(Lookups, normalizer, PinConstraints(Nil), TitleDecorations.None)
     live.seen(listings)
-    live.candidateCount shouldBe Films
+    (0 until Films).filterNot(n => live.candidate(FirstId + n).isDefined) shouldBe empty
     // Counted from the corpus itself, not as a heap-wide delta: `itAll` runs suites in parallel in
     // one JVM, and their Integers landed in a heap-wide count (21,242 for this 12,000 once).
     val kept  = Reachable.count(live, outside = Seq(Lookups, normalizer))

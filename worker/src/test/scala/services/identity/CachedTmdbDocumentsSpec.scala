@@ -48,6 +48,12 @@ class CachedTmdbDocumentsSpec extends AnyFlatSpec with Matchers {
       lookups.prefetchAnswered()
       answered
     }
+    /** That the cache holds no answer of `id`: a read through it, keeping nothing, asks the backend for it. */
+    def heldNoAnswer(kind: TmdbKind, id: String): Unit = {
+      backend.drain()
+      cached.answersReadThrough(kind, Seq(id))
+      withClue(s"the backend asked for $id: ")(backend.drain() shouldBe Seq(id))
+    }
   }
 
   "a projection tick" should "read no document the last tick read and nothing has rewritten since" in {
@@ -88,7 +94,7 @@ class CachedTmdbDocumentsSpec extends AnyFlatSpec with Matchers {
     w.lookups.prefetch(Seq(q), Nil, Nil)
     w.lookups.candidates(q) shouldBe Answer.Known(TmdbStore.filmHit(1018, recordDoc(lalka)).toSeq)
     w.lookups.prefetchAnswered()
-    w.cached.holdsAnswer(TmdbKind.Film, "1018") shouldBe false
+    w.heldNoAnswer(TmdbKind.Film, "1018")
     w.backend.drain()
     w.tick(Seq(q)) shouldBe Seq(Some(Seq(1018)))
     w.backend.drain() shouldBe empty                                  // the hit is held, so nothing is read again
@@ -113,7 +119,7 @@ class CachedTmdbDocumentsSpec extends AnyFlatSpec with Matchers {
     w.lookups.prefetch(Nil, Seq(1018), Nil)
     w.lookups.film(1018).toOption.flatten.map(_.title) shouldBe Some("Lalka")
     w.lookups.prefetchAnswered()
-    w.cached.holdsAnswer(TmdbKind.Film, "1018") shouldBe false
+    w.heldNoAnswer(TmdbKind.Film, "1018")
   }
 
   "a record asked alone" should "still be answered from the cache when asked again" in {

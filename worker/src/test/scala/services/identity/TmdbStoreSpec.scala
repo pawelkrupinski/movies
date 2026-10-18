@@ -28,6 +28,15 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     store.onChanged(key => changed += key)
     val normalizer = new TmdbNormalizer(store)
     def lookups = new StoredTmdbLookups(store, language, UnansweredTmdbLookups, new ObservationReads)
+    /** A store over these documents counting each read it makes of them: the counter and the store. */
+    def countingStore(): (java.util.concurrent.atomic.AtomicInteger, TmdbStore) = {
+      val gets = new java.util.concurrent.atomic.AtomicInteger()
+      val counted = new TmdbDocuments {
+        def get(kind: TmdbKind, ids: Seq[String]) = { gets.incrementAndGet(); docs.get(kind, ids) }
+        def put(kind: TmdbKind, d: Seq[(String, org.bson.BsonDocument)]) = docs.put(kind, d)
+      }
+      (gets, new TmdbStore(counted, clock))
+    }
   }
 
   private def local(popularity: Double = 8.8983) =
@@ -245,12 +254,8 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
   it should "be read in the prefetch's batches, nothing left to read one document at a time" in {
     val w    = new World
     schamoni(w)
-    val gets = new java.util.concurrent.atomic.AtomicInteger()
-    val docs = new TmdbDocuments {
-      def get(kind: TmdbKind, ids: Seq[String]) = { gets.incrementAndGet(); w.docs.get(kind, ids) }
-      def put(kind: TmdbKind, d: Seq[(String, org.bson.BsonDocument)]) = w.docs.put(kind, d)
-    }
-    val lookups = new StoredTmdbLookups(new TmdbStore(docs, w.clock), language, UnansweredTmdbLookups, new ObservationReads)
+    val (gets, store) = w.countingStore()
+    val lookups = new StoredTmdbLookups(store, language, UnansweredTmdbLookups, new ObservationReads)
     val query   = CandidateQuery.TitleCredit("ES (ULRICH SCHAMONI)")
     lookups.prefetch(Seq(query), Nil, Nil)
     val prefetched = gets.get
@@ -332,11 +337,7 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
    *  prefetch the model's lookups run must reach the store's own batched prefetch. */
   "a prefetch through the model's lookups" should "read the store in a few batches, not a round-trip per document" in {
     val w     = new World
-    val gets  = new java.util.concurrent.atomic.AtomicInteger()
-    val docs  = new TmdbDocuments {
-      def get(kind: TmdbKind, ids: Seq[String]) = { gets.incrementAndGet(); w.docs.get(kind, ids) }
-      def put(kind: TmdbKind, d: Seq[(String, org.bson.BsonDocument)]) = w.docs.put(kind, d)
-    }
+    val (gets, store) = w.countingStore()
     val titles = (1 to 30).map(i => s"Film $i")
     titles.zipWithIndex.foreach { case (text, i) =>
       w.normalizer.filed("GET", s"https://api.themoviedb.org/3/search/movie?language=$language&include_adult=false&query=${java.net.URLEncoder.encode(text, "UTF-8")}",
@@ -344,7 +345,6 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
                    |{"id":${200 + i},"title":"$text","original_title":"$text","release_date":"1990-01-01","popularity":1.0}]}""".stripMargin))
     }
     val reads   = new ObservationReads
-    val store   = new TmdbStore(docs, w.clock)
     val lookups = new TrackedLookups(new StoredTmdbLookups(store, language, UnansweredTmdbLookups, reads), reads,
       Some(java.util.concurrent.Executors.newFixedThreadPool(4)))
     val queries = titles.map(CandidateQuery.Title(_))
@@ -365,13 +365,19 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
       w.normalizer.filed("GET", s"https://api.themoviedb.org/3/search/movie?language=$language&include_adult=false&query=${java.net.URLEncoder.encode(text, "UTF-8")}",
         Success(s"""{"results":[{"id":${100 + i},"title":"$text","original_title":"$text","release_date":"2020-01-01","popularity":5.0}]}"""))
     }
+    val (gets, store) = w.countingStore()
     val reads   = new ObservationReads
-    val stored  = new StoredTmdbLookups(w.store, language, UnansweredTmdbLookups, reads)
+    val stored  = new StoredTmdbLookups(store, language, UnansweredTmdbLookups, reads)
     val lookups = new TrackedLookups(stored, reads, Some(java.util.concurrent.Executors.newFixedThreadPool(2)))
     val queries = titles.map(CandidateQuery.Title(_))
 
     lookups.prefetch(queries, Nil, Nil)
-    stored.heldDocuments shouldBe 0
+    // Each ask the store's lookups answer again reads the store again: nothing the prefetch fetched is held.
+    queries.foreach { query =>
+      gets.set(0)
+      stored.candidates(query)
+      withClue(s"the store reads that answer $query again: ")(gets.get should be > 0)
+    }
     queries.map(lookups.candidates).map(_.toOption.map(_.map(_.tmdbId))) shouldBe titles.indices.map(i => Some(Seq(100 + i)))
   }
 

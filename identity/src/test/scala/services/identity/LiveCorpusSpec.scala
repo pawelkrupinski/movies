@@ -16,7 +16,7 @@ class LiveCorpusSpec extends AnyFlatSpec with Matchers {
   private val Seeds      = 1L to 24L
 
   /** Every key the whole context holds, read through both. */
-  private def differences(live: LiveCorpus, held: Iterable[Listing], lookups: IdentityLookups): Seq[String] = {
+  private def differences(live: LiveCorpus, held: Iterable[Listing], lookups: FillingLookups): Seq[String] = {
     val whole = new CandidateGeneration(held.toSeq.sorted.distinctBy(_.key), lookups, normalizer, PinConstraints(Nil), TitleDecorations.None, lazyLookups = false)
     val reads = CorpusContext.Reads.of(whole.nodes, whole.recorded.values.map(_.film).toSeq, whole.recorded.keySet, whole.answers.keySet.toSet, normalizer.sanitize)
     val (a, b) = (live.slice(reads), whole.context.slice(reads))
@@ -29,7 +29,9 @@ class LiveCorpusSpec extends AnyFlatSpec with Matchers {
       Option.when(a.answers != b.answers)(s"answers ${(a.answers.toSet diff b.answers.toSet).take(2)} vs ${(b.answers.toSet diff a.answers.toSet).take(2)}"),
       Option.when(a.digest != b.digest)("digest"),
       Option.when(live.houseRanking != whole.context.houseRanking)("house ranking"),
-      Option.when(live.candidateCount != whole.recorded.size)(s"${live.candidateCount} candidates held, ${whole.recorded.size} recorded")
+      // Of every film an answer ever named, the live context holds a candidate of exactly the ones the whole one records.
+      Some(lookups.namedFilms.filter(live.candidate(_).isDefined)).filter(_ != whole.recorded.keySet)
+        .map(holding => s"candidates held of ${(holding diff whole.recorded.keySet).take(2)}, not of ${(whole.recorded.keySet diff holding).take(2)}")
     ).flatten
   }
 

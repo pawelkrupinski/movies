@@ -6,7 +6,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.Json
 import services.cinemas.common.{CineamoClient, ListingReads}
-import services.identity.SourceReliability
+import services.identity.{CatalogueId, SourceReliability}
 import tools.{GetOnlyHttpFetch, HttpFetch}
 
 import java.io.IOException
@@ -94,7 +94,7 @@ class CineamoClientSpec extends AnyFlatSpec with Matchers {
   // The film record is Cineamo's claim of which film the slot is, as a feed's.
   it should "file Cineamo's film record id as a feed's catalogue id" in {
     film(babylon, "Hitchcock & Chabrol: Rear Window").externalIds shouldBe Map("cineamo" -> "567m")
-    SourceReliability.FeedIdSources should contain (CineamoClient.CatalogueSource)
+    SourceReliability.feedStated(Seq(CatalogueId(CineamoClient.CatalogueSource, "567m")), None) shouldBe true
   }
 
   it should "give each showing its German wall-clock start and its booking link" in {

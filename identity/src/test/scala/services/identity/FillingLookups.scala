@@ -15,7 +15,11 @@ final class FillingLookups(inner: IdentityLookups, rnd: Random) extends Identity
   private def gapFilm(id: Int)            = { if (seenFilms.add(id) && rnd.nextDouble() < 0.3) openFilms += id; openFilms(id) }
   def hasDetail(l: Listing): Boolean = inner.hasDetail(l)
   def detail(l: Listing): Answer[Option[DetailFacts]] = inner.detail(l)
-  def candidates(q: CandidateQuery): Answer[Seq[Hit]] = if (gapQuery(q)) Answer.Unknown else inner.candidates(q)
+  def candidates(q: CandidateQuery): Answer[Seq[Hit]] =
+    if (gapQuery(q)) Answer.Unknown else { val answer = inner.candidates(q); answer.toOption.foreach(named ++= _.map(_.tmdbId)); answer }
+  private val named = mutable.HashSet.empty[Int]
+  /** Every film an answer has named: every film a context could hold a candidate of. */
+  def namedFilms: Set[Int] = named.toSet
   def film(id: Int): Answer[Option[IdentityMeasures.Film]] = if (gapFilm(id)) Answer.Unknown else inner.film(id)
   /** Answer about half of the open questions — at least one while any is open, so that an empty answer means the fill
    *  ran dry and not that the coin chose none of the last few (which left them stale for a caller looping until empty:

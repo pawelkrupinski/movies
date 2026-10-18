@@ -111,9 +111,6 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
   def gaps: AnswersChanged =
     AnswersChanged(named.collect { case (query, None) => query }.toSet, records.collect { case (id, answer) if !answer.isKnown => id.toInt }.toSet)
 
-  /** How many records the context holds: every film some node's answers name, and no other. */
-  private[identity] def candidateCount: Int = candidates.size
-
   // ── events ──────────────────────────────────────────────────────────────────────────────────
   def seen(arrived: Seq[Listing]): CorpusContext.Changed = {
     val touched = mutable.HashSet.empty[NodeKey]

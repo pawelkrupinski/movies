@@ -126,9 +126,6 @@ object SourceReliability {
   /** Every source but the venue's own. */
   val Others: Seq[Source] = Feeds :+ Flicks
 
-  /** The catalogue sources whose ids a feed attaches. */
-  val FeedIdSources: Set[String] = Feeds.flatMap(_.recognition match { case Recognition.Ids(sources) => sources; case _ => Set.empty }).toSet
-
   private def byId(id: CatalogueId): Option[Source] =
     Feeds.find(_.recognition match { case Recognition.Ids(sources) => sources(id.source); case _ => false })
   private def byPage(page: String): Option[Source] =

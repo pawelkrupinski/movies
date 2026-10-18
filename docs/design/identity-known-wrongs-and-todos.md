@@ -229,7 +229,13 @@ Each a production change: measure with `scripts/identity-measure`, land one at a
 - [ ] Test-only members still in main (the fakes `InMemoryIdentityTraceStore`, `InMemoryPinStore` moved to testkit 10-16; the
   members below read their class's private state, so moving them means a test seam of their own): `CachedTmdbDocuments.holdsAnswer`, `IdentityProjection.keptIndex`/`atRest`,
   `StoredTmdbLookups.heldDocuments`, `LiveCorpus.candidateCount`, `IncrementalResolver.familyKeys`/`familyNodeTexts`/
-  `nodeTextOf`, `Acceptance.aloneOrder`/`pooledOrder`, `SourceReliability.FeedIdSources`; the fakes
+  `nodeTextOf`, `Acceptance.aloneOrder`/`pooledOrder`, `SourceReliability.FeedIdSources` (done: `holdsAnswer`,
+  `heldDocuments`, `candidateCount`, `aloneOrder`, `FeedIdSources` deleted, their specs asserting through public reads —
+  a read through asking the backend, the store read again, `candidate(id)` of every film an answer named,
+  `refusals(Nil)`'s rule order, `feedStated`; kept: `keptIndex` (the kept index's equality with a fresh build, no public
+  read), `atRest` (a pure predicate of public fields, no private state, read by worker test/it and e2e), the
+  `IncrementalResolver` three (which key/text OBJECT the families hold, no public read), `pooledOrder` (no public read
+  names the pooled rules); also test-only: `CachedTmdbDocuments.heldBytes`); the fakes
   `InMemoryIdentityTraceStore`, `InMemoryPinStore`. The `Option(d.get(f)).filter(_.isArray)…` BSON read is written
   out 8 times beside `BsonFields` (done: `BsonFields.elementsOf` / `documentsOf`; the web review stores keep theirs, outside the package) (FamilyAnswerStore, AgreementCatalogue, AgreementPosters, Posters, AgreementVerdicts,
   IdentityTraceStore): a `BsonFields.documentsOf`. Removal needs identity-measure's 0 moves.

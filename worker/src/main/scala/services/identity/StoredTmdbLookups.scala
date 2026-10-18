@@ -65,9 +65,6 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
   /** Let go of every document, film and hit the last prefetch holds. */
   private def release(): Unit = { held.values.foreach(_.clear()); films.clear(); hits.clear() }
 
-  /** How many documents and hits the last prefetch still holds. */
-  private[identity] def heldDocuments: Int = held.values.map(_.size).sum + hits.size
-
   def hasDetail(listing: Listing): Boolean                  = details.hasDetail(listing)
   def detail(listing: Listing): Answer[Option[DetailFacts]] = details.detail(listing)
 
