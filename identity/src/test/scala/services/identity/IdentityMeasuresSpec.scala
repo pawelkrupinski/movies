@@ -411,6 +411,19 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     backing.corroborating(Seq("candyman"), other, "Venue 1") shouldBe 0
   }
 
+  it should "count the venues reading one listings site's entry page once, and never the listing's own page" in {
+    // US Burns Court Sarasota and Film Streams Omaha read ONE Flicks page for "NT Live: Hamlet", its 2015 year
+    // Cumberbatch's: Film Streams is no second venue dating it so
+    val page   = SourceReliability.pageClaim("https://www.flicks.us/movie/nt-live-hamlet/").get
+    val hamlet = Listing("NT Live: Hamlet", year = Some(2015))
+    val group  = Seq(Backer("Burns Court", page) -> hamlet, Backer("Film Streams", page) -> hamlet, Backer("Another", page) -> hamlet,
+      "The Loft" -> hamlet)
+    val backing = new VenueBacking(Map("ntlivehamlet" -> group))
+    backing.corroborating(Seq("ntlivehamlet"), Film("National Theatre Live: Hamlet", year = Some(2015)), "Burns Court", page) shouldBe 1
+    backing.corroborating(Seq("ntlivehamlet"), Film("National Theatre Live: Hamlet", year = Some(2015)), "The Loft", "The Loft") shouldBe 1
+    SourceReliability.pageClaim("https://www.flicks.us/movie/hamlet-2026/") should not be Some(page)
+  }
+
   "a group's venue backing" should "count, for every member and film, what a backing that never asked before counts" in {
     val films = Seq(Film("Candyman", year = Some(2021), directors = Some(Seq("Nia DaCosta"))),
       Film("Candyman", year = Some(1992), directors = Some(Seq("Bernard Rose"))), Film("Candy", year = Some(2006)))

@@ -11,6 +11,9 @@ object Backer {
   def apply(venue: String, source: String): String = if (source == venue) venue else s"$venue$Join$source"
   def venue(key: String): String  = { val at = key.indexOf(Join); if (at < 0) key else key.substring(0, at) }
   def source(key: String): String = { val at = key.indexOf(Join); if (at < 0) key else key.substring(at + 1) }
+  /** Whose statement a backer's facts are for counting venues: the page a listings site serves every venue it lists
+   *  ([[SourceReliability.claimOf]]'s "p:" claim), else its venue. */
+  def origin(key: String): String = { val claim = source(key); if (claim.startsWith(SourceReliability.PageClaim)) claim else venue(key) }
 }
 
 /** The venues backing a film for every asker of the same title groups, each group's backing venues
@@ -26,9 +29,12 @@ final class VenueBacking(groups: Map[String, Seq[(String, Listing)]]) {
   private def backing(titleGroups: Seq[String], f: Film): Iterator[String] =
     titleGroups.iterator.flatMap(group => memo.getOrElseUpdate(group, new java.util.IdentityHashMap[Film, Set[String]]())
       .computeIfAbsent(f, film => VenueBacking.backers(film, groups.getOrElse(group, Nil))))
-  /** The venues of `titleGroups` (a listing's [[titleGroups]]) other than `ownVenue` backing `f`. */
-  def corroborating(titleGroups: Seq[String], f: Film, ownVenue: String): Int =
-    (backing(titleGroups, f).map(Backer.venue).toSet - ownVenue).size
+  /** The venues of `titleGroups` (a listing's [[titleGroups]]) other than `ownVenue` backing `f` — the venues reading ONE
+   *  listings site's entry page counted once ([[Backer.origin]]), and never when it is the listing's own page,
+   *  `ownSource`: US Burns Court Sarasota's "NT Live: Hamlet" counted Film Streams Omaha's 2015 as a second venue's,
+   *  both read off the one Flicks page that dated it so. A feed's catalogue id stays each venue's own listing of it. */
+  def corroborating(titleGroups: Seq[String], f: Film, ownVenue: String, ownSource: String = ""): Int =
+    (backing(titleGroups, f).map(Backer.origin).toSet - ownVenue - ownSource).size
   /** The SOURCES of `titleGroups` other than `ownSource` backing `f` ([[Backer.source]]): a feed entry's facts, copied
    *  onto every venue it lists, are one claim, counted once — what a feed's own link is weighed against
    *  (`services.identity.FeedLink`). */

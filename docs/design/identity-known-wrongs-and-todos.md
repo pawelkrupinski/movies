@@ -111,6 +111,8 @@ Order by the live tally: 4 (relays, 33 of 70 live wrong listings), then 2, 3, 1,
 - [ ] **2. A take needs one independent corroborating fact** (year, director/cast, runtime band, feed id, or a strong
   same-title cluster); otherwise unmatched. Expect bare-title right losses; measure and present the trade.
 - [ ] **3. Count each fact/vote once per origin** (page/feed/upstream venue), in SourceReliability.
+  Partly done 2026-10-18 (`origin-pages`): a listings site's entry page counts once among corroborating venues; a
+  feed's catalogue id and upstream venues still count per venue (the whole form lost 25 right takes: docs/identity-experiments.md).
 - [ ] **1. Learned banners**: a segment one venue/feed bills beside many different works is a banner, peeled before
   search; existing ExtraTitleRules/title-words entries become fallbacks or go.
 - [ ] **5. Runtime as strong negative evidence**: a short can't take a feature-length slot unless the feed links it

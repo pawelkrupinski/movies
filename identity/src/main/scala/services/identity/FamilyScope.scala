@@ -25,7 +25,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
   /** Every candidate `l` has an evidence path to, scored; a `denial` marks, with its reason, the ones
    *  its node (`deniedByNode`: a pin, a venue's own name, an overruled feed link) or its own evidence rules out
    *  (`CandidateScoring.evidenceDenial`), which are never eligible. */
-  def score(listing: IdentityMeasures.Listing, venue: String, ranks: Map[Int, Int], walked: Set[Int], shared: Set[Int],
+  def score(listing: IdentityMeasures.Listing, venue: String, source: String, ranks: Map[Int, Int], walked: Set[Int], shared: Set[Int],
             deniedByNode: Int => Option[Denial], suggested: Set[Int] = Set.empty, directedBy: Set[Int] = Set.empty,
             imdbTitles: Map[Int, Set[String]] = Map.empty, country: Option[String] = None, linked: Set[Int] = Set.empty): Seq[Scored] = {
     counted()
@@ -59,7 +59,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
       val rivals   = close - (if (rivalling(candidate.tmdbId)) 1 else 0)
       val measures = IdentityMeasures.creditedByTitle(listing, candidate.film, IdentityMeasures.creditedBySearch(
         IdentityMeasures.listingFilmTitled(listing, candidate.film, ranks.get(candidate.tmdbId), rivals,
-          backing.corroborating((groups ++ IdentityMeasures.searchGroups(listing, candidate.film)).distinct, candidate.film, venue),
+          backing.corroborating((groups ++ IdentityMeasures.searchGroups(listing, candidate.film)).distinct, candidate.film, venue, source),
           relationOf(candidate.tmdbId), country), directedBy(candidate.tmdbId)))
       val probability = calibration.probability(ListingFilm, measures)
       val byNode = deniedByNode(candidate.tmdbId)
@@ -226,7 +226,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
   private val memo = mutable.HashMap.empty[String, Seq[Scored]]
   def of(node: EvidenceNode): Seq[Scored] = memo.getOrElseUpdate(node.id,
     { val reached = reach(node)
-      score(evidenceOf(node).measured, node.venue, reached.search, reached.walk, sharedOf(node),
+      score(evidenceOf(node).measured, node.venue, sourceOf(node), reached.search, reached.walk, sharedOf(node),
         id => denialByNode(node, id), reached.imdbOnly, reached.directed, reached.imdbTitled, node.country, feedLinked(node).map(_._2).toSet).map(placedByImdb(Seq(node)))
         .map(scored => if (reached.soleResults(scored.candidate.tmdbId)) scored.copy(soleResult = true) else scored)
         .map(scored => reached.imdbTitled.get(scored.candidate.tmdbId).fold(scored)(titles => scored.copy(imdbTitled = titles))) })
@@ -354,7 +354,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
     val reached = cluster.map(reach)
     val linked  = cluster.flatMap(node => feedLinked(node).map(_._2)).toSet
     val ranks = reached.flatMap(_.search).groupMapReduce(_._1)(_._2)(math.min)
-    score(listing, lead.venue, ranks, reached.flatMap(_.walk).toSet, cluster.flatMap(sharedOf).toSet,
+    score(listing, lead.venue, sourceOf(lead), ranks, reached.flatMap(_.walk).toSet, cluster.flatMap(sharedOf).toSet,
       id => cluster.iterator.flatMap(denialByNode(_, id)).nextOption(), reached.flatMap(_.imdbOnly).toSet -- ranks.keySet,
       reached.flatMap(_.directed).toSet,
       reached.flatMap(_.imdbTitled).groupMapReduce(_._1)(_._2)(_ ++ _), lead.country, linked)

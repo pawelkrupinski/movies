@@ -136,6 +136,11 @@ slice outputs: `~/.cache/kinowo-identity/handoff/2026-10-15-wrong-match-round2/i
 - **Next angle:** the losses are venues whose own feed id names the film; let an own id stand outside the origin
   count, and count origins once only among venues with no id of their own. A full re-calibration on a prod snapshot
   was never run.
+- **Retried 2026-10-18, LANDED** (`origin-pages`): only the venues reading one listings site's ENTRY PAGE (Flicks',
+  a `p:` claim) count once; a feed's catalogue id stays each venue's own. Local measure on recording 38713274617,
+  base `807e7f287`: UK 5 cured (Royal Ballet: La Bayadère → the 2018 recording, known-wrong `served`, struck), US 2
+  right lost (Volcanoes 3D at two IMAX venues reading one Flicks page, its copied director the only fact: recorded
+  `accepted-right-loss`), DE Der kleine Prinz untouched. The Killer and NT Live Hamlet were not among the moves.
 
 ### Hold apart a join made only by a copied original title whose link names another film ("The Black Hole")
 - **Tried (10-18, branch `kw-copied-facts`):** a cannot-link (`copied-original-apart`) between two nodes that meet

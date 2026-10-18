@@ -179,11 +179,17 @@ object SourceReliability {
    *  claim is keyed "c:…" or "p:…", no venue's name. */
   def claimOf(listing: Listing): String =
     listing.catalogueIds.find(id => byId(id).isDefined).map(_.key)
-      .orElse(listing.page.flatMap(page => Feeds.iterator.flatMap(_.recognition match {
-        case Recognition.Pages(prefixes) => prefixes.find(page.startsWith)
-        case _                           => None
-      }).nextOption().map(prefix => s"p:$prefix${page.reverse.takeWhile(_ != '/').reverse}")))
+      .orElse(listing.page.flatMap(pageClaim))
       .getOrElse(listing.venue)
+  /** The claim a feed's or a listings site's page is ([[claimOf]]): one entry, whichever venue's path serves it. */
+  def pageClaim(page: String): Option[String] = Others.iterator.flatMap(_.recognition match {
+    case Recognition.Pages(prefixes)      => prefixes.find(page.startsWith)
+    // a listings site's entry page (Flicks'): one page every venue it lists links, its facts read off it or not
+    case Recognition.EntryPages(prefixes) => prefixes.find(page.startsWith)
+    case _                                => None
+  }).nextOption().map(prefix => s"$PageClaim$prefix${page.stripSuffix("/").reverse.takeWhile(_ != '/').reverse}")
+  /** What a claim keyed by a page, not an id, opens with ([[claimOf]]). */
+  val PageClaim = "p:"
 
   /** `listing` with only the facts its source states with `trust` — the others empty: a reader weighing the venues' own
    *  facts reads `stated(listing, Decide)`, one weighing a feed's claim `stated(listing, Support)`. A listing whose every
