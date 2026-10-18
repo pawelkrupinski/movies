@@ -70,7 +70,7 @@ class GrafanaCorpusIntegritySpec extends AnyFlatSpec with Matchers {
 
   /** The events that REMOVE things — a film's derived docs pruned, a sweep that
    *  actually pruned, a row the change stream missed. Names spelled here as the
-   *  metric code registers them (they're inline in WorkerTaskMetrics.Series, so
+   *  metric code registers them (they live in the WorkerTaskMetrics.Series families, so
    *  `mustBeExposed` is what keeps this list honest). */
   private val lossSideEvents = Seq(
     "kinowo_worker_readmodel_films_pruned",
