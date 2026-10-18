@@ -27,6 +27,9 @@ import glob
 import os
 import sys
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from report_fields import cell  # noqa: E402
+
 
 def specs_of(directory, cc):
     """{spec: path} of every corpus-shape file `directory` holds for `cc`'s recorded corpus -- each spec writes its own,
@@ -73,10 +76,6 @@ def classify(base, head):
         out["new"] += [(k, w) for w in new]
         out["cured"] += [(k, w) for w in cured]
     return {kind: sorted(pairs) for kind, pairs in out.items()}
-
-
-def cell(text):
-    return str(text).replace("|", "\\|").replace("\n", " ")
 
 
 def render(cc, found, base_name, head_name):

@@ -52,6 +52,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from identity_judgements import judgements_of, label_of, normalise  # noqa: E402
 from identity_takes import moved, table  # noqa: E402
+from report_fields import cell  # noqa: E402
 
 
 def load(path):
@@ -215,10 +216,6 @@ def suspects_of(pairs, heads_alone, labels, baseline, accepted):
     for kind in out:
         out[kind].sort(key=lambda e: (e["rawTitle"], e["venue"]))
     return out
-
-
-def cell(text):
-    return str(text).replace("|", "\\|").replace("\n", " ")
 
 
 def mark(move, failed, judge, ok):

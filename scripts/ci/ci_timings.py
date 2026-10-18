@@ -39,7 +39,6 @@ Run:  python3 scripts/ci/ci_timings.py --repo OWNER/REPO --run-id ID [--push] [-
 Test: python3 scripts/ci/ci_timings_test.py
 """
 import argparse
-import datetime
 import functools
 import json
 import os
@@ -47,6 +46,9 @@ import re
 import subprocess
 import sys
 import urllib.request
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from report_fields import parse_instant  # noqa: E402
 
 # `[uk] bootCutover done in 486.8s`, `[ukp0] replayCutover done in 604.0s`; never the indented
 # `[uk]   identityTick done in …` sub-phases (see the header).
@@ -62,11 +64,7 @@ PHASE_LOG_MIN_SECONDS = 60
 def seconds_between(start, end):
     if not start or not end:
         return None
-    return (parse_time(end) - parse_time(start)).total_seconds()
-
-
-def parse_time(text):
-    return datetime.datetime.fromisoformat(text.replace("Z", "+00:00"))
+    return (parse_instant(end) - parse_instant(start)).total_seconds()
 
 
 def phase_times(log_text):
@@ -173,7 +171,7 @@ def otlp_payload(run, jobs):
     """The run as OTLP/JSON gauges, every sample at the run's start (see the header)."""
     if not jobs:
         return None
-    stamp = str(int(parse_time(run_start(run)).timestamp()) * 1000000000)
+    stamp = str(int(parse_instant(run_start(run)).timestamp()) * 1000000000)
     workflow, ref = run["name"], ref_of(run)
 
     def point(value, **labels):
