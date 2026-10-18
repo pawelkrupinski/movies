@@ -144,6 +144,20 @@ check "a Python self-test runs the self-tests, and the sbt check for the self-te
 check "worker's fixtures config selects the sbt check" "sbt" "$(plan worker/src/fixtures/resources/x.json)"
 
 # ── Running for real, over a scratch clone: what is judged, and what is not silently passed ──
+# The plan modes never read the root checkout's state: its full `git status` made each plan call cost a whole-tree rehash
+# in a Linux container's bind mount (pre-push-test.sh ran past its 600 s bound there, 2026-10-18).
+printf '\033[36m▸\033[0m pre-push plan modes\n'
+planrepo="$testroot/planrepo"; mkdir -p "$planrepo/scripts/hooks"
+scratch_repo "$planrepo"
+for f in hooks/pre-push hooks-path.sh tool-conventions.sh; do cp "$REPO_ROOT/scripts/$f" "$planrepo/scripts/$f"; done
+printf '#!/usr/bin/env bash\necho checked >> "%s/root-checked"\n' "$planrepo" > "$planrepo/scripts/root-checkout-check"
+chmod +x "$planrepo/scripts/root-checkout-check"
+scratch_git "$planrepo" add -A; scratch_git "$planrepo" commit -qm base
+for mode in --plan --compile-plan --lint-plan; do
+  (cd "$planrepo" && printf 'scripts/x.sh\n' | scripts/hooks/pre-push "$mode" > /dev/null 2>&1)
+done
+check "the plan modes never run the root-checkout check" "0" "$(cat "$planrepo/root-checked" 2>/dev/null | wc -l | tr -d ' ')"
+
 printf '\033[36m▸\033[0m pre-push over a scratch repository\n'
 if command -v shellcheck >/dev/null; then
   scratch="$testroot/scratch"; mkdir -p "$scratch"

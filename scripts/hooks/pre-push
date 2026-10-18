@@ -127,6 +127,10 @@ hooks_path_at_start="$(hooks_path_now)"
 # The shared root checkout off main or dirty strands every agent's next rebase: said on every push, never blocking it.
 root_check="$(dirname "${BASH_SOURCE[0]}")/../root-checkout-check"
 root_warning=""
+# A plan mode only prints what a push would run: the root checkout's state means nothing to it, and the check's
+# `git status` over the whole root is the cost of every plan call -- in a Linux container, where the bind mount's
+# stat data never matches the index, a full rehash: pre-push-test.sh's ~20 plan calls ran past its 600 s bound.
+case "${1:-}" in --plan|--compile-plan|--lint-plan) root_check="" ;; esac
 [ ! -x "$root_check" ] || root_warning="$("$root_check" "$root" 2>&1)"
 [ -z "$root_warning" ] || printf '\033[33m! pre-push\033[0m %s\n' "$root_warning" >&2
 tree=""

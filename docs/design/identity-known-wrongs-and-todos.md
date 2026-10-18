@@ -346,7 +346,9 @@ Each a production change: measure with `scripts/identity-measure`, land one at a
   `mongosh` call has no timeout; `identity-capture.sh` still finds its recording in Scala, not identity-tools.sh.
 - [x] (specs added: `freshness-test.sh`, `sync-enrichment-cache-test.sh`) No shell self-test for `scripts/local-mirror/freshness` and `sync-enrichment-cache.sh`;
   `mirror-sync-test.sh` needs the live :28017 replica set and stays run-by-hand (`# script-test: manual`).
-- [ ] `scripts/run-script-tests --linux`: after 970fbd0f8 (scratch-git's `safe.directory`, the "dubious ownership" root
+- [x] `scripts/run-script-tests --linux` (done 2026-10-18: not a hang — the test ran 450-550 s in the container against
+  its 600 s bound, each of its ~20 plan calls paying root-checkout-check's whole-tree `git status`, a full rehash on the
+  bind mount; the plan modes skip the check now and the test runs 18-26 s there): after 970fbd0f8 (scratch-git's `safe.directory`, the "dubious ownership" root
   cause of pre-push-test.sh's 5-55 Linux failures), 1 run in 13 still failed 42 checks, unreproduced; the Rancher bind
   mount sometimes showed an empty directory to a direct `docker run`. run-script-tests keeps only a failing log's last
   60 lines, so the next one was not captured: keep the whole failing log (and its path) first, then diagnose. (The
