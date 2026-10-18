@@ -41,6 +41,7 @@ kinowo_countries_csv() { local IFS=,; echo "${KINOWO_COUNTRIES[*]}"; }
 
 KINOWO_IDENTITY_CACHE=${KINOWO_IDENTITY_CACHE:-$HOME/.cache/kinowo-identity}
 export KINOWO_IDENTITY_CACHE
+# shellcheck disable=SC2034 # read by the tools that source this
 KINOWO_GH_REPO=${KINOWO_REPO:-pawelkrupinski/movies}
 
 local_mongo_port() { echo "${LOCAL_MIRROR_PORT:-28017}"; }
