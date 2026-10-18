@@ -72,7 +72,7 @@ class LocalServerTestCase: XCTestCase {
     /// CI containers.
     private func send(_ url: URL, ifModifiedSince: String? = nil) throws -> (data: Data?, response: HTTPURLResponse) {
         var request = URLRequest(url: url)
-        request.setValue("KinowoIOS/1.0", forHTTPHeaderField: "User-Agent")
+        request.setValue(KinowoUserAgent.value, forHTTPHeaderField: "User-Agent")
         // What `ConditionalListEndpoint` sends on a warm launch.
         if let ifModifiedSince { request.setValue(ifModifiedSince, forHTTPHeaderField: "If-Modified-Since") }
         request.cachePolicy = .reloadIgnoringLocalCacheData
