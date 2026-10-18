@@ -164,10 +164,10 @@ Order by the live tally: 4 (relays, 33 of 70 live wrong listings), then 2, 3, 1,
   measure loses Lighthouse Poole's eight "Family Cinema: <film> - Cert <X>" right takes (Paddington, WALL·E…): their new
   spellings ask family questions no recording or filed answer holds, so the same-film join to their siblings goes. Needs a
   recording (and prod's family answers) taken with the new queries.
-- [ ] **Withdrawn-vote rule** — branch `wip-withdrawn-vote` 8c666e431; landed as 26e48897d and reverted
-  (22361d8bb): it lost PL "Lalka (ale to horror)" ×9 and UK "Sense and Sensibility" ×3 / "Home Alone (Pyjama
-  Party)" ×6. The IL KINO Camouflage case is a `pending:` slice case (f772906e9). Re-measure with
-  `scripts/identity-measure` before trying again.
+- [x] **Withdrawn-vote rule** — not needed (10-18): e40e9a4af (`Corroboration.refused`, a bare take refused where
+  a namesake its family evidences stands against it) cured IL KINO's Camouflage, which now takes Gibalenko's 1735950
+  (right) via Filled; its slice case is a real `not:tmdb:56085` case. Re-applied on main the rule moves none of the
+  title's 12 listings. Code kept as `experiment/withdrawn-vote` (8c666e431); entry in docs/identity-experiments.md.
 
 ### Review of the 10-12..15 identity changes (2026-10-15)
 Each a production change: measure with `scripts/identity-measure`, land one at a time.
