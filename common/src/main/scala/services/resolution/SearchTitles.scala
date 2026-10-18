@@ -11,11 +11,11 @@ object SearchTitles {
   private val DashedTitle         = java.util.regex.Pattern.compile(""".*\s[-–—]\s.*""")
   private val DashSeparator       = java.util.regex.Pattern.compile("""\s+[-–—]\s+""")
   private val TrailingParenthesis = java.util.regex.Pattern.compile("""\s*\([^)]*\)\s*$""")
-  /** A UK box office's BBFC certificate ending the title ("Obsession (18)", "Romeo & Juliet (12 TBC)"): no part of any
-   *  title, and searched whole it finds what the number names — "80 Day Obsession: Day 18 AAA" for "Obsession (18)". */
-  private val TrailingCertificate = java.util.regex.Pattern.compile("""(?i)\s*\((?:U|PG|12A?|15|18)(?:\s+TBC)?\)\s*$""")
-  /** `title` without the certificate a box office ends it with ([[TrailingCertificate]]); itself when it has none. */
-  def uncertified(title: String): String = TrailingCertificate.matcher(title).replaceAll("").trim
+  /** `title` without the BBFC certificate a UK box office bills behind it ("Obsession (18)", "Romeo & Juliet (12 TBC)",
+   *  "Digger - Cert 15"), as the ingest peels it ([[services.movies.FormatTags.uncertified]]): no part of any title, and
+   *  searched whole it finds what the number names — "80 Day Obsession: Day 18 AAA" for "Obsession (18)"; itself when it
+   *  has none. */
+  def uncertified(title: String): String = services.movies.FormatTags.uncertified(title)
 
   /** Search candidates for a row, in priority order: the row's title, the
    *  cinema-provided original title, then every other reported title (the row's

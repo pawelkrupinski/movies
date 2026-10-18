@@ -117,7 +117,9 @@ Order by the live tally: 4 (relays, 33 of 70 live wrong listings), then 2, 3, 1,
   or the billing says shorts/Kurzfilm.
 
 ### Scraper and title-parsing review (2026-10-15)
-- [ ] **`SearchTitles.uncertified` keeps its own `(15)`-only regex.** A raw spelling a listing keeps ("Digger - Cert
+- [x] **`SearchTitles.uncertified` keeps its own `(15)`-only regex.** (done 2026-10-18: it reads
+  `FormatTags.uncertified`; the Poole losses were `ListingShape.billedBeside` reading "Cert PG" as a piece, which only a
+  recurring-banner exemption had hidden — it now peels the certificate first; local measure 0 moves) A raw spelling a listing keeps ("Digger - Cert
   15", "EOS - Monet (Cert. TBC)", "Hay Fever (12A) 160 mins") is searched with "Cert 15" as a candidate;
   `FormatTags.CertificateNote` already holds the shape. Fix: `uncertified` = `CertificateNote.replaceFirstIn(t, "$1").trim`
   (test: `SearchTitles.candidates("Digger - Cert 15", None) shouldBe Seq("Digger")`, fails before). Tried 2026-10-15:
@@ -150,7 +152,7 @@ Order by the live tally: 4 (relays, 33 of 70 live wrong listings), then 2, 3, 1,
     needs a recording taken with it (GitHub).
   - [x] `d929894c0`, landed 2026-10-18: the house table, its derived initials and what bills a house moved to
     `services.movies.StageHouse` (common), read by the slot fold (local measure: 0 moves, snapshots unchanged).
-- [ ] **Item 8's certificate search** (branch `item8-search-fill`, dbf421550): the UK capture is filled, but the local
+- [x] **Item 8's certificate search** (done 2026-10-18, see the `SearchTitles.uncertified` entry) (branch `item8-search-fill`, dbf421550): the UK capture is filled, but the local
   measure loses Lighthouse Poole's eight "Family Cinema: <film> - Cert <X>" right takes (Paddington, WALL·E…): their new
   spellings ask family questions no recording or filed answer holds, so the same-film join to their siblings goes. Needs a
   recording (and prod's family answers) taken with the new queries.

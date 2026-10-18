@@ -87,6 +87,10 @@ class SearchTitlesSpec extends AnyFlatSpec with Matchers {
     // a bracket that is no certificate stays a candidate's
     SearchTitles.candidates("(500) Days of Summer", None) should contain ("(500) Days of Summer")
     SearchTitles.candidates("Apollo 13 (U2)", None) should contain ("Apollo 13 (U2)")
+    // every spelling the ingest peels (FormatTags.uncertified): "Cert 15" searched as a film's title
+    SearchTitles.candidates("Digger - Cert 15", None) shouldBe Seq("Digger")
+    SearchTitles.candidates("EOS - Monet (Cert. TBC)", None) should not contain ("Cert. TBC")
+    SearchTitles.candidates("Hay Fever (12A) 160 mins", None) shouldBe Seq("Hay Fever")
   }
 
   // A banner is joined with a dash as often as a pipe. "500 mil" is the worked example: TMDB's Polish
