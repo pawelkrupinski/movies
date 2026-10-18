@@ -6,7 +6,9 @@ import org.scalatest.OptionValues
 import clients.tools.FakeHttpFetch
 import models.QuadDerby
 import services.cinemas.uk.QuadDerbyClient
+import tools.GetOnlyHttpFetch
 
+import java.io.IOException
 import java.time.LocalDate
 
 /** Replays 2026-10-18 captures of Derby QUAD: its Spektrix v3 events and instances
@@ -33,6 +35,17 @@ class QuadDerbyClientSpec extends AnyFlatSpec with Matchers with OptionValues {
     byTitle("Obsession (PG)").filmUrl shouldBe Some("https://www.derbyquad.co.uk/whats-on/obsession-pg")
     // The page's slug is not the title's: "night-of-the-demon", not "night-of-the-demon-pg".
     byTitle("Night of the Demon (PG)").filmUrl shouldBe Some("https://www.derbyquad.co.uk/whats-on/night-of-the-demon")
+  }
+
+  it should "still list the box office's films when the venue's own programme page fails, only without their pages" in {
+    val replay = new FakeHttpFetch("quad-derby")
+    val fetch = new GetOnlyHttpFetch {
+      def get(url: String): String =
+        if (url == QuadDerbyClient.WhatsOnUrl) throw new IOException("programme refused") else replay.get(url)
+    }
+    val listed = new QuadDerbyClient(fetch, LocalDate.of(2026, 10, 18)).fetch()
+    listed.map(_.movie.title) shouldBe results.map(_.movie.title)
+    listed.flatMap(_.filmUrl) shouldBe empty
   }
 
   it should "leave a film the programme bills under another name without a page, never a guessed one" in {

@@ -3,6 +3,7 @@ package services.cinemas.uk
 import models.{CinemaMovie, QuadDerby}
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
+import play.api.Logging
 import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ScraperParse}
 import tools.{HttpFetch, HttpRead}
 import tools.Whitespace.collapsedSpaces
@@ -10,6 +11,7 @@ import tools.Whitespace.collapsedSpaces
 import java.time.LocalDate
 import java.util.Locale
 import scala.jdk.CollectionConverters._
+import scala.util.Try
 
 /**
  * Derby QUAD. Its Spektrix box office (`derbyquad`) lists the programme, but files a film with
@@ -25,14 +27,18 @@ import scala.jdk.CollectionConverters._
  * for "Geek Bank Presents: The Blob (18)") keeps no page rather than a guessed one.
  */
 class QuadDerbyClient(http: HttpFetch, today: => LocalDate)
-  extends SpektrixClient(http, "derbyquad", QuadDerby, today) with DetailEnricher {
+  extends SpektrixClient(http, "derbyquad", QuadDerby, today) with DetailEnricher with Logging {
 
   import QuadDerbyClient._
 
   override def scrapeHosts: Set[String] = super.scrapeHosts ++ CinemaScraper.hostsOf(SiteUrl)
 
+  /** The box office's films, each pointed at its page on the venue's programme. That page only adds the link: when
+   *  it fails the films are still listed, without one, rather than the box office's answer failing with it. */
   override protected def fetchUnfiltered(): Seq[CinemaMovie] = {
-    val pages = pagesByName(HttpRead.page(http, WhatsOnUrl))
+    val pages = Try(pagesByName(HttpRead.page(http, WhatsOnUrl))).fold(
+      e => { logger.info(s"Derby QUAD's programme page failed, so its films carry no page: $e"); Map.empty[String, String] },
+      identity)
     super.fetchUnfiltered().map(cm => cm.copy(filmUrl = cm.filmUrl.orElse(pages.get(nameKey(cm.movie.title)))))
   }
 
