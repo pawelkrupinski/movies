@@ -193,6 +193,24 @@ case "${1:-}" in
   ""|-h|--help) usage_from_header; exit 0 ;;
 esac
 
+# ONE STARTER per checkout: two calls finding no server would each start one (sbt --client starts it in the background,
+# outliving the call). The first holds a lock directory until its command ends, the others wait for it and then find the
+# server it started. A lock whose holder is gone is taken over. Calls reaching a live server take no lock.
+LockDir="$State/$key.lock"
+lock_start() {
+  local waited=0
+  until mkdir "$LockDir" 2>/dev/null; do
+    holder=$(cat "$LockDir/pid" 2>/dev/null || true)
+    if [ -n "$holder" ] && ! kill -0 "$holder" 2>/dev/null; then rm -rf "$LockDir"; continue; fi
+    [ "$waited" -eq 0 ] && log "another call is starting the server of $root: waiting for it"
+    [ "$waited" -ge "${KINOWO_SBT_WARM_LOCK_SECONDS:-1800}" ] && { log "gave up waiting for the server start lock of $root"; exit 1; }
+    sleep 1; waited=$((waited + 1))
+  done
+  echo $$ > "$LockDir/pid"
+  trap 'rm -rf "$LockDir"' EXIT
+}
+server_pid "$root" >/dev/null || lock_start
+
 reap
 dedupe "$root"
 seed

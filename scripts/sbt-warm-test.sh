@@ -130,6 +130,30 @@ kill "$server" "$second" 2>/dev/null
 # fake_server's pid once it carries the server's command line (the background shell has exec'd)
 await_server() { for _ in $(seq 1 100); do grep -q -- --detach-stdio <<<"$(ps -o args= -p "$1" 2>/dev/null)" && return; sleep 0.1; done; }
 
+# two calls finding no server: one starts it, the other waits for it (the stub's call is slow and logs its span)
+scratch_git "$repo" worktree add -q -b locked "$scratch/locked" origin/main
+cp -R "$scratch/fresh/worker/target" "$scratch/locked/worker/target" 2>/dev/null
+cp "$scratch/bin/sbt" "$scratch/sbt.orig"
+cat > "$scratch/bin/sbt" <<STUB
+#!/usr/bin/env bash
+echo "start \$(pwd -P)" >> "$scratch/spans"; sleep 1; echo "end \$(pwd -P)" >> "$scratch/spans"
+STUB
+(cd "$scratch/locked" && "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1) &
+first=$!
+sleep 0.3
+(cd "$scratch/locked" && "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1) &
+second=$!
+wait "$first" "$second"
+check "a second call without a server waits for the first's start instead of overlapping it" "start end start end" \
+  "$(sed 's| .*||' "$scratch/spans" | tr '\n' ' ' | sed 's/ $//')"
+# a lock whose holder died does not block
+locked_key=$(grep -lx "$scratch/locked" "$KINOWO_SBT_WARM_STATE"/*.root); locked_key=${locked_key%.root}
+mkdir "$locked_key.lock"; echo 999999 > "$locked_key.lock/pid"
+check "a lock left by a dead call is taken over" "ok" \
+  "$(cd "$scratch/locked" && KINOWO_SBT_WARM_LOCK_SECONDS=5 "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1 && echo ok)"
+check "...and the lock is released after the call" "none" "$([ -e "$locked_key.lock" ] && echo held || echo none)"
+cp "$scratch/sbt.orig" "$scratch/bin/sbt"
+
 # a removed checkout's server is stopped by the next call from anywhere
 fresh_key=$(grep -lx "$scratch/fresh" "$KINOWO_SBT_WARM_STATE"/*.root); fresh_key=${fresh_key%.root}
 fake_server "$scratch/fresh"; server=$!; await_server "$server"
