@@ -69,9 +69,11 @@ struct CinemaSeason: Codable, Hashable {
 
     /// The filter row's muted second line, "back in season · May–Sept", in the
     /// app's UI `language` ("pl", "en", "de", "es"; anything else reads English).
+    /// A month outside 1...12 drops the window, leaving the bare "back in season".
     func backInSeasonLine(language: String) -> String {
         let words = SeasonWords.of(language)
-        return "\(words.back) · \(words.months[opens - 1])–\(words.months[closes - 1])"
+        guard let from = words.month(opens), let to = words.month(closes) else { return words.back }
+        return "\(words.back) · \(from)–\(to)"
     }
 }
 
@@ -80,6 +82,11 @@ struct CinemaSeason: Codable, Hashable {
 struct SeasonWords {
     let back: String
     let months: [String]
+
+    /// The short name of `month` (1...12), or nil for any other number.
+    func month(_ month: Int) -> String? {
+        months.indices.contains(month - 1) ? months[month - 1] : nil
+    }
 
     static func of(_ language: String) -> SeasonWords {
         switch language {

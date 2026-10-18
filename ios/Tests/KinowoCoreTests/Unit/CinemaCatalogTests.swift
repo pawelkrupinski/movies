@@ -78,6 +78,14 @@ final class CinemaCatalogTests: XCTestCase {
         XCTAssertEqual(season.backInSeasonLine(language: "es"), "vuelve en temporada · may–sept")
     }
 
+    /// A month outside 1...12 from the server reads as the bare "back in season", never a crash.
+    func testBackInSeasonLineWithAMonthOutOfRangeDropsTheWindow() {
+        for (opens, closes) in [(0, 9), (5, 13), (-1, 12), (13, 0)] {
+            let season = CinemaSeason(cinema: "Kino", opens: opens, closes: closes, offSeason: true)
+            XCTAssertEqual(season.backInSeasonLine(language: "en"), "back in season", "\(opens)–\(closes)")
+        }
+    }
+
     /// A catalog from a server that predates seasons decodes with none, and nothing sinks.
     func testCatalogWithoutSeasonsHasNoneOutOfSeason() throws {
         let catalog = try JSONDecoder().decode(CinemaCatalog.self, from: #"{"cinemas":["A","B"],"areas":[]}"#.data(using: .utf8)!)

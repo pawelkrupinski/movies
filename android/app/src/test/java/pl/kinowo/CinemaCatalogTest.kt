@@ -2,11 +2,11 @@ package pl.kinowo
 
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import pl.kinowo.model.CinemaCatalog
+import pl.kinowo.model.CinemaSeason
 
 /**
  * Decoding of `GET /:city/api/cinemas` into [CinemaCatalog] — the payload the
@@ -97,6 +97,15 @@ class CinemaCatalogTest {
         assertEquals("öffnet wieder · Mai–Sept.", season.backInSeasonLine("de"))
         assertEquals("wraca w sezonie · maj–wrz", season.backInSeasonLine("pl"))
         assertEquals("vuelve en temporada · may–sept", season.backInSeasonLine("es"))
+    }
+
+    /** A month outside 1..12 from the server reads as the bare "back in season", never a crash. */
+    @Test
+    fun backInSeasonLineWithAMonthOutOfRangeDropsTheWindow() {
+        for ((opens, closes) in listOf(0 to 9, 5 to 13, -1 to 12, 13 to 0)) {
+            val season = CinemaSeason("Kino", opens, closes, offSeason = true)
+            assertEquals("$opens–$closes", "back in season", season.backInSeasonLine("en"))
+        }
     }
 
     /** A catalog from a server that predates seasons decodes with none, and nothing sinks. */
