@@ -101,8 +101,8 @@ prod_tunnel_uri() {
 # opens and the tunnel opened later pick the same port. Fails (nothing printed) when 200 in a row are taken.
 prod_tunnel_free_port() {
   if [ -n "${PROD_TUNNEL_PORT:-}" ]; then printf '%s\n' "$PROD_TUNNEL_PORT"; return 0; fi
-  local port=$((27100 + $$ % 800)) tries
-  for tries in $(seq 1 200); do
+  local port=$((27100 + $$ % 800))
+  for _ in $(seq 1 200); do
     nc -z -w1 127.0.0.1 "$port" 2>/dev/null || { printf '%s\n' "$port"; return 0; }
     port=$((port + 1)); [ "$port" -lt 27900 ] || port=27100
   done

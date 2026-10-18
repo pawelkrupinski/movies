@@ -94,8 +94,8 @@ rotate_log() {
 
 # ── Resilience helpers ───────────────────────────────────────────────────────
 # Ensure the prod tunnel (sync source) is reachable, starting — and keeping
-# alive — our OWN ssh forward whenever nothing already serves :27017 (an
-# `sbt run` tunnel, or a manual one). We only touch a tunnel WE started, so we
+# alive — our OWN ssh forward on a free local port (never one another script
+# shares). We only touch a tunnel WE started, so we
 # never fight one someone else owns; `cleanup` kills ours on exit. This is what
 # makes the daemon survive a dropped/hung tunnel: the next cycle restarts it.
 # How that tunnel is opened — and why it is ssh to mongo-1 rather than the

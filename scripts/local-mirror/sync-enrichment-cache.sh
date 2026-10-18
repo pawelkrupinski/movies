@@ -65,8 +65,8 @@ done
 SRC="$(prod_tunnel_uri "${MONGO_ROOT_URI:-${MONGODB_URI:-}}")"
 DST="${LOCAL_MONGO_URI:-$(local_mongo_uri)}"
 
-# ── ensure the prod tunnel (source), starting our OWN ssh forward only when
-# nothing already serves :27017 — never fighting a tunnel someone else owns.
+# ── ensure the prod tunnel (source): our OWN ssh forward, on a free local port
+# of its own — never sharing, or fighting, another script's.
 # Shared with mirror.sh so prod moving hosts is one edit.
 init_prod_tunnel "enrich-cache" "$SRC"
 TMP=""
