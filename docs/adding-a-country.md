@@ -465,7 +465,7 @@ NodePort by number (the Caddy PATH UPSTREAM and the Prometheus target), and the
    consoles — a manual, provider-side step that nothing in a deploy could check
    and that failed silently until a real person tried to sign in on the new site.
    Every country now hands the provider the ONE registered URL per provider
-   (`models.Country.oauthCallbackOrigin` + `/auth/<provider>/callback`), and the
+   (`models.DeploymentOrigins.oauthCallbackOrigin` + `/auth/<provider>/callback`), and the
    deployment mounted at the apex either finishes the flow — when the new country
    shares its origin, so the browser is still sending the cookie holding the CSRF
    state — or relays it untouched to the deployment that can. A country added under

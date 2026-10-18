@@ -1,6 +1,6 @@
 package modules
 
-import models.{Country, InstalledBuildSlugs}
+import models.{Country, DeploymentOrigins, InstalledBuildSlugs}
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.stream.Materializer
 import org.scalatest.BeforeAndAfterAll
@@ -115,9 +115,9 @@ class KnownPlacesNeverNotFoundSpec extends AnyFlatSpec with Matchers with Before
   "The brand front door" should "send a bare slug of exactly one mounted country to that country's page" in {
     val front = new CityRoutesDeployment(Country.Poland)
     // Harrogate is a UK page and nothing else's.
-    front.get("/harrogate/", host = Country.apexHost).header.headers(LOCATION) shouldBe "/uk/harrogate/"
+    front.get("/harrogate/", host = DeploymentOrigins.apexHost).header.headers(LOCATION) shouldBe "/uk/harrogate/"
     // The front door's own root is not sent away.
-    front.get("/", host = Country.apexHost).header.headers.get(LOCATION) shouldBe None
+    front.get("/", host = DeploymentOrigins.apexHost).header.headers.get(LOCATION) shouldBe None
     // Off the apex — kinowo.net — nothing is redirected.
     front.get("/harrogate/", host = "kinowo.net").header.status shouldBe NOT_FOUND
   }
@@ -125,7 +125,7 @@ class KnownPlacesNeverNotFoundSpec extends AnyFlatSpec with Matchers with Before
   it should "not know a Polish place at all: every path under one is a 404, never a page or a redirect" in {
     val front = new CityRoutesDeployment(Country.Poland)
     def notFound(path: String): Unit = {
-      val result = front.get(path, host = Country.apexHost)
+      val result = front.get(path, host = DeploymentOrigins.apexHost)
       withClue(path) {
         result.header.status shouldBe NOT_FOUND
         result.header.headers.get(LOCATION) shouldBe None
@@ -144,14 +144,14 @@ class KnownPlacesNeverNotFoundSpec extends AnyFlatSpec with Matchers with Before
 
   it should "send a bare slug to its old owner, else the one country that has it, else the first in order" in {
     val front = new CityRoutesDeployment(Country.Poland)
-    front.get("/york/", host = Country.apexHost).header.headers(LOCATION) shouldBe "/us/york/"      // the old owner
-    front.get("/boston/", host = Country.apexHost).header.headers(LOCATION) shouldBe "/us/boston/"
+    front.get("/york/", host = DeploymentOrigins.apexHost).header.headers(LOCATION) shouldBe "/us/york/"      // the old owner
+    front.get("/boston/", host = DeploymentOrigins.apexHost).header.headers(LOCATION) shouldBe "/us/boston/"
     // A retired UK county page, in one hop to the page it retired into.
     val somerset = Country.UnitedKingdom.resolve("somerset").map(_.slug).getOrElse(fail("somerset"))
-    front.get("/somerset/", host = Country.apexHost).header.headers(LOCATION) shouldBe s"/uk/$somerset/"
+    front.get("/somerset/", host = DeploymentOrigins.apexHost).header.headers(LOCATION) shouldBe s"/uk/$somerset/"
     // A retired county page with no page of its own lands on the page its towns are on.
-    front.get("/kent/", host = Country.apexHost).header.headers(LOCATION) shouldBe "/uk/chatham/"
-    front.get("/leeds/", host = Country.apexHost).header.headers(LOCATION) shouldBe "/uk/leeds/"    // new, UK first
+    front.get("/kent/", host = DeploymentOrigins.apexHost).header.headers(LOCATION) shouldBe "/uk/chatham/"
+    front.get("/leeds/", host = DeploymentOrigins.apexHost).header.headers(LOCATION) shouldBe "/uk/leeds/"    // new, UK first
   }
 
   /** The documented rule, computed here rather than through the filter's own
@@ -167,7 +167,7 @@ class KnownPlacesNeverNotFoundSpec extends AnyFlatSpec with Matchers with Before
       country <- Country.switchable
       slug    <- everySlug(country)
       owner   <- expectedOwner(slug).toSeq
-      result   = front.get(s"/$slug/", host = Country.apexHost)
+      result   = front.get(s"/$slug/", host = DeploymentOrigins.apexHost)
       location = result.header.headers.get(LOCATION)
       problem <- (
         if (owner == Country.Poland)

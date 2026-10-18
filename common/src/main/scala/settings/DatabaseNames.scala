@@ -1,6 +1,6 @@
 package settings
 
-// The two database-name values of `ConfigurationValues`'s kind that `models.Country` names (`usersDbName`), kept in
+// The two database-name values of `ConfigurationValues`'s kind that `models.UsersDatabase` names (`name`), kept in
 // a file of their own: the identity model's rules version digests every source the resolver reaches, and it reaches
 // `Country`. Declared beside every other setting's type, they put all of those in the digest, and each new setting
 // anywhere re-resolved every worker's whole corpus (`IdentityRulesSources`).

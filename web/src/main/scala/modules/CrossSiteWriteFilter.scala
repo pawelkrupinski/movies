@@ -78,7 +78,7 @@ object CrossSiteWriteFilter {
   private[modules] def fromOurPage(request: RequestHeader): Boolean =
     request.headers.get("Sec-Fetch-Site").exists(SameSiteLabels) ||
       namedOrigin(request).exists(origin =>
-        origin == controllers.ForwardedUrl.base(request) || models.Country.deployedOrigins(origin))
+        origin == controllers.ForwardedUrl.base(request) || models.DeploymentOrigins.deployedOrigins(origin))
 
   private val SameSiteLabels = Set("same-origin", "same-site")
 

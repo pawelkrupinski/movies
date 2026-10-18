@@ -19,7 +19,7 @@ import scala.util.Try
  * `kinowo.net`'s pod and redeems it on `showtimes.cc`'s — two processes — so an
  * in-process cache cannot carry it, and a per-country database would leave the
  * code as unreachable as the session cookie it replaces. It lives beside `users`
- * and `userStates` in `Country.usersDbName` for exactly that reason.
+ * and `userStates` in `UsersDatabase.name` for exactly that reason.
  *
  * `db` is `None` when there is no Mongo (local dev): the store then holds nothing
  * and every redemption misses, which is why Wiring runs

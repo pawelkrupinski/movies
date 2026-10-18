@@ -8,7 +8,7 @@ import org.scalatest.matchers.should.Matchers
 /**
  * Locks the ONE database the four web deployments keep their accounts in.
  *
- * `models.Country.usersDbName` reads `MONGODB_USERS_DB` and falls back to the
+ * `models.UsersDatabase.name` reads `MONGODB_USERS_DB` and falls back to the
  * pod's own per-country database, which is the right default for a country
  * deployed alone and the wrong one here: the three Showtimes countries share an
  * origin, so a session cookie minted under `/uk` arrives at `/de`, and against a

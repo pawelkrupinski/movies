@@ -13,7 +13,7 @@ import scala.concurrent.duration._
  * `MONGODB_USERS_DB` names, so that a visitor who signed in on one country is
  * the same account — with the same hidden films and /plan picks — on the next.
  *
- * WHY IT IS NEEDED. `Country.usersDbName` decides where a web pod reads those
+ * WHY IT IS NEEDED. `UsersDatabase.name` decides where a web pod reads those
  * two collections, and `AppLoader` now leaves the session cookie at the host
  * root so the three Showtimes countries share a sign-in. Both are inert until
  * the rows themselves are in one place: flip the variable without running this

@@ -1,6 +1,6 @@
 package controllers
 
-import models.Country
+import models.{Country, DeploymentOrigins}
 import play.api.i18n.Lang
 import play.api.mvc._
 
@@ -99,7 +99,7 @@ object LandingController {
    *  front door 404s them (`modules.FrontDoorRedirectFilter`) — so the brand
    *  domain lists the country, not its cities. Its own landing lists them. */
   def handsOff(country: Country, deployment: Country, isApex: Boolean): Boolean =
-    country.webOrigin.exists(origin => !Country.isApexHost(Country.withoutScheme(origin))) &&
+    country.webOrigin.exists(origin => !DeploymentOrigins.isApexHost(DeploymentOrigins.withoutScheme(origin))) &&
       (isApex || country != deployment)
 
   /** A handed-off country's places as bare points, `lat,lon,slug;…` — what

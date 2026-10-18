@@ -66,18 +66,18 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   @if(isApex) {
-    <title>@messages("landing.apexTitle", models.Country.apexBrandName)</title>
+    <title>@messages("landing.apexTitle", models.DeploymentOrigins.apexBrandName)</title>
     @_ogTagsApp(deployment)(
-      pageTitle       = messages("landing.apexTitle", models.Country.apexBrandName),
+      pageTitle       = messages("landing.apexTitle", models.DeploymentOrigins.apexBrandName),
       pageDescription = messages("landing.ogDescription"),
-      pageUrl         = "https://" + models.Country.apexHost + "/",
+      pageUrl         = "https://" + models.DeploymentOrigins.apexHost + "/",
       // The apex is brand chrome (English copy pinned above), so its card
       // image is pinned too, rather than inherited: `Country.default`'s own
       // fallback is Poland's Polish-language `og-home.jpg`, which is right
       // everywhere else this default applies but not here — the US card is
       // the closest thing this brand-neutral page has to a representative
       // image for an English-language audience.
-      imageUrl        = "https://" + models.Country.apexHost + "/assets/img/" + models.Country.UnitedStates.homeOgImage,
+      imageUrl        = "https://" + models.DeploymentOrigins.apexHost + "/assets/img/" + models.Country.UnitedStates.homeOgImage,
     )
   } else {
     <meta name="google-site-verification" content="GHV7eYMZc7PnJlXt03b8TU5ZsLib0pSDYOgIr08ifTE" />
@@ -212,7 +212,7 @@
 <body>
   <main>
     @if(isApex) {
-      <h1>🎬 @models.Country.apexBrandName</h1>
+      <h1>🎬 @models.DeploymentOrigins.apexBrandName</h1>
       <p class="sub" data-i18n="landing.chooseCountry">@messages("landing.chooseCountry")</p>
     } else {
       <h1>🎬 @deployment.brandName</h1>
