@@ -129,7 +129,7 @@ while [ "$#" -gt 0 ]; do
     --ref) flag_value "$@"; refs+=("$2"); shift 2 ;;
     --recording) flag_value "$@"; run=$2; shift 2 ;;
     --venue|--title|--key|--widen|--orders|--modes) flag_value "$@"; pass+=("$1" "$2"); shift 2 ;;
-    --batch) flag_value "$@"; batch=$(cd "$(dirname "$2")" && pwd)/$(basename "$2"); shift 2 ;;
+    --batch) batch=$(path_flag "$@") || exit 2; shift 2 ;;
     --bisect) flag_value "$@"; bisect=$2; shift 2 ;;
     # through a kept JVM: pinning cases one after another, each call reads the recording and the index once, not again
     # KINOWO_IDENTITY_SLICE_EMIT_ROOT pins elsewhere than the checkout's cases (scripts/identity-slice-refresh: a scratch root)
@@ -138,19 +138,19 @@ while [ "$#" -gt 0 ]; do
     --log) flag_value "$@"; log=$2; shift 2 ;;
     --faithfulness) flag_value "$@"; faith=$2; shift 2 ;;
     --sample) flag_value "$@"; sample=$2; shift 2 ;;
-    --families) flag_value "$@"; if [ "$2" = none ]; then families=none; else families=$(cd "$(dirname "$2")" && pwd)/$(basename "$2"); fi; shift 2 ;;
+    --families) flag_value "$@"; if [ "$2" = none ]; then families=none; else families=$(path_flag "$@") || exit 2; fi; shift 2 ;;
     --seed) flag_value "$@"; seed=$2; shift 2 ;;
     --threads) flag_value "$@"; threads=$2; shift 2 ;;
     --fresh) fresh=1; shift ;;
     --serve) serve=1; shift ;;
     --explain) explain=1; shift ;;
-    --out) flag_value "$@"; keep=$(cd "$(dirname "$2")" && pwd)/$(basename "$2"); shift 2 ;;
+    --out) keep=$(path_flag "$@") || exit 2; shift 2 ;;
     --prod-mirror) mirror=on
       if [ -n "${2:-}" ] && [[ $2 =~ ^[A-Za-z]{2}$ ]]; then mirror=$(printf '%s' "$2" | tr '[:upper:]' '[:lower:]'); shift; fi; shift ;;
     --fixture) flag_value "$@"; fixture=$2; shift 2 ;;
     --limit) flag_value "$@"; pass+=("$1" "$2"); shift 2 ;;
     --no-resolve) pass+=("$1"); shift ;;
-    --labels) flag_value "$@"; labels=$(cd "$(dirname "$2")" && pwd)/$(basename "$2"); shift 2 ;;
+    --labels) labels=$(path_flag "$@") || exit 2; shift 2 ;;
     *) echo "unknown argument $1" >&2; usage >&2; exit 2 ;;
   esac
 done

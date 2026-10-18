@@ -60,6 +60,12 @@ check "...an empty value is still a value" "out=|exit=0" "$(lib "set -- --out ''
 check "...the last argument, with no value after it, is a usage error (never a shift 2 that fails and loops)" \
   "demo: --out needs a value|demo: see demo --help|exit=2" "$(lib "set -- --out; $valued" | paste -sd'|' -)"
 
+mkdir -p "$work/here/sub"
+check "path_flag: a relative path made absolute against the caller's directory" "$(cd "$work/here" && pwd)/sub/f|exit=0" \
+  "$(cd "$work/here" && lib 'path_flag --out sub/f' | paste -sd'|' -)"
+check "...a directory that is not there is a usage error, never /<name>" "demo: --out nope/f: no directory nope|demo: see demo --help|exit=2" \
+  "$(cd "$work/here" && lib 'path_flag --out nope/f' | paste -sd'|' -)"
+
 # ── bounded under a terminal ──────────────────────────────────────────────────────────────────────
 # A pseudo-terminal from script(1) (BSD's/macOS's and util-linux's take their arguments differently): the line runs in
 # its foreground with it on stdin, as a tool run by hand does. The feed holds the terminal's input open until the line

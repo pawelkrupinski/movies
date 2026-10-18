@@ -74,5 +74,7 @@ check "--compiles lays a ref out with the tracer dropped in and compiles it, tra
 check "a call naming no country is refused" "2" "$(trace "Obsession (18)" > /dev/null; echo $?)"
 check "two raw titles are refused" "2" "$(trace Obsession Lalka --country pl > /dev/null; echo $?)"
 check "a flag given last, with no value, is refused as a usage error" "2" "$(trace Obsession --country > /dev/null 2>&1; echo $?)"
+check "a --batch in a directory that is not there is a usage error, never read from / instead" "2 1" \
+  "$(trace --batch "$work/nope/batch.tsv" > /dev/null; echo $?) $(grep -c "no directory $work/nope" "$work/err")"
 
 spec_summary

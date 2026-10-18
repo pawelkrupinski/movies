@@ -32,6 +32,7 @@
 #   die / usage_error <message...>  -> exit 1 (DIE_STATUS) for a runtime failure, 2 for a caller's mistake (below)
 #   country_flag / selected_countries_csv -> `--country cc[,cc]` and `--countries a,b`, one parser (below)
 #   flag_value "$@"                 -> a usage_error when the flag in $1 has no value after it (below)
+#   path_flag "$@"                  -> the flag's value made absolute, a usage_error when its directory is not there (below)
 #   gh_download <seconds> <gh download args...> -> 0 got it, 3 absent, 1 failed: bounded and retried (below)
 #   local_mongo_port / local_mongo_uri [database] -> the local, password-free Mongo the prod mirror, the it/ suites
 #        and the identity tools share: 127.0.0.1:$LOCAL_MIRROR_PORT (default 28017), a direct connection
@@ -151,6 +152,16 @@ selected_countries_csv() {
 # A flag given last has no $2: without this `shift 2` fails without shifting, and a loop without set -e reads the same
 # flag again forever (identity-measure-local --base did); under set -u a bare $2 dies as "unbound variable" instead.
 flag_value() { [ $# -ge 2 ] || usage_error "$1 needs a value"; }
+# A path a tool hands to a JVM or a worktree that runs elsewhere, made absolute while the caller's directory is the
+# current one:   --out) keep=$(path_flag "$@"); shift 2 ;;
+# A directory that is not there is the caller's mistake: `$(cd "$(dirname x)" && pwd)/$(basename x)` turned it into
+# /<name> silently -- the assignment's status is the last substitution's -- and a takes file was then written at /.
+path_flag() {
+  local dir
+  flag_value "$@"
+  dir=$(cd "$(dirname "$2")" 2>/dev/null && pwd) || usage_error "$1 $2: no directory $(dirname "$2")"
+  echo "$dir/$(basename "$2")"
+}
 
 # ── Downloading from GitHub ─────────────────────────────────────────────────────────────────────────
 #   gh_download <seconds> <run|release> download <args...> -> 0 downloaded; 3 ABSENT (gh says there is nothing to

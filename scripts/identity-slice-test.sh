@@ -139,6 +139,8 @@ check "a batch whose slices met a request they lack still diffs the two refs, th
 
 check "--out keeps the takes of the (last) ref's batch, for another tool to read" "1" \
   "$(cd "$work" && slice de --recording 777 --batch b.tsv --out "$work/takes.tsv" > /dev/null; grep -c $'^k\tKino|Sinn\tKino\tSinn\ttmdb:9' "$work/takes.tsv")"
+check "an --out in a directory that is not there is a usage error, never a file written at / instead" "2 1" \
+  "$(cd "$work" && slice de --recording 777 --batch b.tsv --out "$work/nope/takes.tsv" > /dev/null; echo $?) $(grep -c "no directory $work/nope" "$work/err")"
 
 cp "$repo/scripts/identity-slice" "$work/identity-slice.orig"
 out=$(STUB_REWRITE="$repo/scripts/identity-slice" slice de --recording 777 --key 'Kino|Lalka' --ref HEAD~1 --ref HEAD); code=$?

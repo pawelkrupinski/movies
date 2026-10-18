@@ -49,7 +49,7 @@ while [ "$#" -gt 0 ]; do
     --country) flag_value "$@"; cc=$2; shift 2 ;;
     --venue) flag_value "$@"; pass+=(--venue "$2"); shift 2 ;;
     --ref) flag_value "$@"; refs+=("$2"); shift 2 ;;
-    --batch) flag_value "$@"; batch=$(cd "$(dirname "$2")" && pwd)/$(basename "$2"); shift 2 ;;
+    --batch) batch=$(path_flag "$@") || exit 2; shift 2 ;;
     --*) echo "unknown argument $1" >&2; usage >&2; exit 2 ;;
     *) [ -z "$raw" ] || { echo "one raw title only (quote it)" >&2; exit 2; }; raw=$1; shift ;;
   esac

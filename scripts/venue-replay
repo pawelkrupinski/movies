@@ -54,13 +54,12 @@ TOOL_FILES=(worker/src/test/scala/scripts/VenueReplay.scala worker/src/fixtures/
 
 cc=$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]') venue=$2; shift 2
 refs=() run="" pass=() prod=0
-abs() { (cd "$(dirname "$1")" && echo "$(pwd)/$(basename "$1")"); }
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --ref) flag_value "$@"; refs+=("$2"); shift 2 ;;
     --recording) flag_value "$@"; run=$2; shift 2 ;;
     --title|--date) flag_value "$@"; pass+=("$1" "$2"); shift 2 ;;
-    --fixtures) flag_value "$@"; [ -d "$2" ] || { echo "no directory $2" >&2; exit 2; }; pass+=(--fixtures "$(abs "$2")"); shift 2 ;;
+    --fixtures) flag_value "$@"; [ -d "$2" ] || usage_error "no directory $2"; pass+=(--fixtures "$(path_flag "$@")"); shift 2 ;;
     --fields|--scrape) pass+=("$1"); shift ;;
     --prod) prod=1; shift ;;
     *) echo "unknown argument $1" >&2; usage >&2; exit 2 ;;
