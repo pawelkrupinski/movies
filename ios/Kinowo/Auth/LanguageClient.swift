@@ -42,9 +42,7 @@ final class HttpLanguageClient: LanguageClient {
     }
 
     func fetch() async throws -> String? {
-        var request = URLRequest(url: kinowoBaseURL.appendingPathComponent("api/me/state"))
-        request.setValue(KinowoUserAgent.value, forHTTPHeaderField: "User-Agent")
-        let (data, response) = try await session.data(for: request)
+        let (data, response) = try await session.data(for: Self.stateRequest())
         guard let http = response as? HTTPURLResponse, http.statusCode == 200 else {
             throw URLError(.userAuthenticationRequired)
         }
@@ -61,7 +59,7 @@ final class HttpLanguageClient: LanguageClient {
     // stays correct either way.
     func push(_ language: String) async throws {
         let body = WireLanguage(language: language)
-        var request = URLRequest(url: kinowoBaseURL.appendingPathComponent("api/me/state"))
+        var request = Self.stateRequest()
         request.httpMethod = "PUT"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = try JSONEncoder().encode(body)
@@ -71,6 +69,13 @@ final class HttpLanguageClient: LanguageClient {
             if LanguagePushRefused.isPermanent(http.statusCode) { throw LanguagePushRefused(statusCode: http.statusCode) }
             throw URLError(.badServerResponse)
         }
+    }
+
+    /// `/api/me/state`, carrying the app's User-Agent like every other app request.
+    private static func stateRequest() -> URLRequest {
+        var request = URLRequest(url: kinowoBaseURL.appendingPathComponent("api/me/state"))
+        request.setValue(KinowoUserAgent.value, forHTTPHeaderField: "User-Agent")
+        return request
     }
 
     private struct WireLanguage: Codable {

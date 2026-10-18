@@ -40,4 +40,21 @@ final class HttpLanguageClientTests: XCTestCase {
     func testPushSucceedsOnA2xx() async throws {
         try await client(answering: 204).push("de")
     }
+
+    /// Both halves of the language sync carry the app's User-Agent, as every
+    /// other app request does — without it the server's route-usage stats file
+    /// the app's PUT under "other", and an endpoint only the app calls can look
+    /// retirable.
+    func testFetchAndPushCarryTheAppUserAgent() async throws {
+        let agents = LockedValue<[String?]>([])
+        URLProtocolStub.handler = { request in
+            agents.withLock { $0.append(request.value(forHTTPHeaderField: "User-Agent")) }
+            return .init(statusCode: 200, headers: [:], body: Data("{\"language\":\"de\"}".utf8))
+        }
+        let client = HttpLanguageClient(session: URLProtocolStub.session())
+        _ = try await client.fetch()
+        try await client.push("de")
+        XCTAssertEqual(agents.withLock { $0 }, ["KinowoIOS/1.0", "KinowoIOS/1.0"])
+    }
 }
+

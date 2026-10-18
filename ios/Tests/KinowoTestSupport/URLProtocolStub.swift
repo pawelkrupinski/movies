@@ -66,13 +66,14 @@ public final class URLProtocolStub: URLProtocol {
     override public func stopLoading() {}
 }
 
-/// A value behind a lock: the stub's request log is written on URLSession's
-/// loading threads and read from the test's.
-private final class LockedValue<Value>: @unchecked Sendable {
+/// A value behind a lock: the stub's request log (and anything a test's
+/// `handler` records) is written on URLSession's loading threads and read from
+/// the test's.
+public final class LockedValue<Value>: @unchecked Sendable {
     private let lock = NSLock()
     private var value: Value
-    init(_ value: Value) { self.value = value }
-    func withLock<Result>(_ body: (inout Value) -> Result) -> Result {
+    public init(_ value: Value) { self.value = value }
+    public func withLock<Result>(_ body: (inout Value) -> Result) -> Result {
         lock.lock(); defer { lock.unlock() }
         return body(&value)
     }
