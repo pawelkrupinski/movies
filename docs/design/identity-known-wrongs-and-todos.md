@@ -218,8 +218,8 @@ Each a production change: measure with `scripts/identity-measure`, land one at a
   counts the linked listings only, `FeedLink.linked` asks every listing). Check, then one definition.
 - [x] Denials are told apart by their text (`ReleaseVeto.vetoes`' `startsWith`): a typed denial (done: `Denial` with a
   `Kind` — the release veto carries the namesake's id, the cut and another house's season their own kinds).
-- [ ] `SuspectTakes.billsAnOldFilm` reads the film's own title words ("Silent Night" bills old); `billsAnEdition`
-  excludes them.
+- [x] `SuspectTakes.billsAnOldFilm` reads the film's own title words ("Silent Night" bills old); `billsAnEdition`
+  excludes them. (done 2026-10-18: an old-film word of the film's own titles bills nothing; local measure 0 moves, 0 new suspects)
 - [ ] Test-only members still in main (the fakes `InMemoryIdentityTraceStore`, `InMemoryPinStore` moved to testkit 10-16; the
   members below read their class's private state, so moving them means a test seam of their own): `CachedTmdbDocuments.holdsAnswer`, `IdentityProjection.keptIndex`/`atRest`,
   `StoredTmdbLookups.heldDocuments`, `LiveCorpus.candidateCount`, `IncrementalResolver.familyKeys`/`familyNodeTexts`/

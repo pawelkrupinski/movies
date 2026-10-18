@@ -248,7 +248,9 @@ object SuspectTakes {
   private def billsAnOldFilm(listing: Listing, measured: IdentityMeasures.Listing, film: IdentityMeasures.Film): Boolean = {
     val titles = Seq(listing.title, listing.rawTitle, listing.cleanTitle) ++ listing.originalTitle
     val words  = titles.flatMap(TitleContainment.tokens).toSet
-    words.exists(OldFilmWords) || DecorationWords.billsAnEdition(titles, film.titles) || ListingShape.billsASilentFilm(listing) ||
+    // the film's own title words bill nothing: "The Classic" (2003) is no classic billed, as an edition's words are read
+    val own    = film.titles.flatMap(TitleContainment.tokens).toSet
+    words.exists(word => OldFilmWords(word) && !own(word)) || DecorationWords.billsAnEdition(titles, film.titles) || ListingShape.billsASilentFilm(listing) ||
       measured.anniversary.isDefined ||
       film.directors.getOrElse(Nil).exists(name => TitleContainment.tokens(name).lastOption.exists(words)) ||
       (listing.directors.nonEmpty && FactRelations.samePerson(listing.directors, film.directors.getOrElse(Nil)))

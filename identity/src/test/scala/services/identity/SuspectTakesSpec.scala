@@ -77,6 +77,8 @@ class SuspectTakesSpec extends AnyFlatSpec with Matchers {
     signals(take(listing(KinoMuza, "Auta - 20th anniversary"), film("Auta", 1960)), newer) shouldNot contain(Signal.Era)
     signals(take(listing(KinoMuza, "Konwicki Salto"), film("Salto", 1965, directors = Seq("Tadeusz Konwicki"))), newer) shouldNot contain(Signal.Era)
     signals(take(listing(KinoMuza, "Harry Angel"), film("Harry Angel", 1987).copy(releases = Some("PL2026-"))), newer) shouldNot contain(Signal.Era)
+    // ...but a word of the film's own title bills it as nothing: "Rewind" taken for the 1971 namesake of a 2026 film
+    signals(take(listing(KinoMuza, "Rewind"), film("Rewind", 1971)), corpus(billed(Helios, "Rewind", 2, 2026))) should contain(Signal.Era)
   }
 
   "a runtime mismatch" should "be a film far from the listing's running time, or a short taken for a feature or a title widely billed" in {
