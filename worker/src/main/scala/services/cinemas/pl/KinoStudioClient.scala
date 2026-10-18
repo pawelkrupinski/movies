@@ -103,18 +103,42 @@ object KinoStudioClient {
   /** Runtime on the `czas trwania:` line ("108 min"). */
   private val RuntimePat = """(\d{1,3})\s*min""".r
 
-  private case class RawFilm(
-    title:     String,
-    showtimes: Seq[LocalDateTime],
-    posterUrl: Option[String],
-    synopsis:  Option[String],
-    genres:    Seq[String],
-    director:  Seq[String],
-    cast:      Seq[String],
-    countries: Seq[String],
-    year:      Option[Int],
-    runtime:   Option[Int]
+  /** The `produkcja / gatunek / reżyseria / obsada / czas trwania` fields of
+   *  one film block. Each is read once: the first line that carries it wins. */
+  private final case class FilmMeta(
+    genres:    Seq[String] = Seq.empty,
+    director:  Seq[String] = Seq.empty,
+    cast:      Seq[String] = Seq.empty,
+    countries: Seq[String] = Seq.empty,
+    year:      Option[Int] = None,
+    runtime:   Option[Int] = None
   )
+
+  /** One film's block as the scan has read it so far. */
+  private final case class FilmBlock(
+    dates:    Seq[LocalDate]  = Seq.empty,
+    times:    Seq[LocalTime]  = Seq.empty,
+    poster:   Option[String]  = None,
+    title:    Option[String]  = None,
+    meta:     FilmMeta        = FilmMeta(),
+    synopsis: Option[String]  = None
+  ) {
+    def showtimes: Seq[LocalDateTime] =
+      (for { d <- dates; t <- times } yield LocalDateTime.of(d, t)).distinct.sorted
+  }
+
+  /** The scan's state: the films committed so far and the block being read. */
+  private final case class Scan(films: Vector[(String, FilmBlock)] = Vector.empty, block: FilmBlock = FilmBlock()) {
+    /** Commit the block being read, if it has a title — the element at hand
+     *  belongs to the next one. A titled block with no showtimes is dropped; an
+     *  untitled one keeps accumulating. */
+    def flushed: Scan = block.title match {
+      case Some(title) =>
+        Scan(if (block.showtimes.nonEmpty) films :+ (title -> block) else films, FilmBlock())
+      case None => this
+    }
+    def edit(f: FilmBlock => FilmBlock): Scan = copy(block = f(block))
+  }
 
   def parse(html: String, cinema: Cinema, today: LocalDate): Seq[CinemaMovie] = {
     val doc = Jsoup.parse(html, BaseUrl)
@@ -123,17 +147,18 @@ object KinoStudioClient {
     // date/title state machine, which can only manufacture junk films — never
     // recover the real ones. `fetch` guarantees the div is present.
     val films = Option(doc.selectFirst(ContentSelector)).toSeq.flatMap(extractFilms(_, today))
-    films.map { f =>
+    films.map { case (title, block) =>
+      val meta = block.meta
       CinemaMovie(
-        movie     = Movie(ScraperParse.stripFormatTags(f.title), genres = f.genres,
-                          releaseYear = f.year, runtimeMinutes = f.runtime, countries = f.countries),
+        movie     = Movie(ScraperParse.stripFormatTags(title), genres = meta.genres,
+                          releaseYear = meta.year, runtimeMinutes = meta.runtime, countries = meta.countries),
         cinema    = cinema,
-        posterUrl = f.posterUrl,
+        posterUrl = block.poster,
         filmUrl   = Some(RepertoireUrl),
-        synopsis  = f.synopsis,
-        cast      = f.cast,
-        director  = f.director,
-        showtimes = f.showtimes.map(dt => Showtime(dt, None)).sortBy(_.dateTime)
+        synopsis  = block.synopsis,
+        cast      = meta.cast,
+        director  = meta.director,
+        showtimes = block.showtimes.map(dt => Showtime(dt, None)).sortBy(_.dateTime)
       )
     }
   }
@@ -161,135 +186,85 @@ object KinoStudioClient {
    * did while the page only ever held one film) pooled every date onto film #1
    * and left the rest with none, because the date header precedes the title.
    */
-  private def extractFilms(container: Element, today: LocalDate): Seq[RawFilm] = {
-    val children = container.children().asScala.toSeq
-    val films    = scala.collection.mutable.Buffer.empty[RawFilm]
+  private def extractFilms(container: Element, today: LocalDate): Seq[(String, FilmBlock)] =
+    container.children().asScala.foldLeft(Scan())((scan, el) => step(scan, el, today)).flushed.films
 
-    // Mutable state as we scan
-    var pendingDates  = Seq.empty[LocalDate]
-    var pendingTimes  = Seq.empty[LocalTime]
-    var pendingPoster = Option.empty[String]
-    var currentTitle  = Option.empty[String]
-    var currentGenres = Seq.empty[String]
-    var currentSynopsis  = Option.empty[String]
-    var currentDirector  = Seq.empty[String]
-    var currentCast      = Seq.empty[String]
-    var currentCountries = Seq.empty[String]
-    var currentYear      = Option.empty[Int]
-    var currentRuntime   = Option.empty[Int]
-
-    def flushFilm(): Unit =
-      currentTitle.filter(_.nonEmpty).foreach { title =>
-        val showtimes = for { d <- pendingDates; t <- pendingTimes } yield LocalDateTime.of(d, t)
-        if (showtimes.nonEmpty)
-          films += RawFilm(title, showtimes.distinct.sorted, pendingPoster, currentSynopsis,
-                           currentGenres, currentDirector, currentCast, currentCountries,
-                           currentYear, currentRuntime)
-        pendingDates     = Seq.empty
-        pendingTimes     = Seq.empty
-        pendingPoster    = None
-        currentTitle     = None
-        currentGenres    = Seq.empty
-        currentSynopsis  = None
-        currentDirector  = Seq.empty
-        currentCast      = Seq.empty
-        currentCountries = Seq.empty
-        currentYear      = None
-        currentRuntime   = None
-      }
-
-    /** Commit the film being read, if any — the element at hand belongs to the
-     *  next one. */
-    def startBlock(): Unit = if (currentTitle.nonEmpty) flushFilm()
-
-    children.foreach { el =>
-      posterOf(el) match {
-        case Some(src) =>
-          startBlock()
-          pendingPoster = Some(src)
-
-        case None => el.tagName match {
-          case "hr" =>
-            flushFilm()
-
-          case "h1" | "h2" =>
-            currentTitle = Some(el.text.trim).filter(_.nonEmpty)
-
-          case "h3" =>
-            // Date line — "25.06 (czwartek) - ..."; only count it if the
-            // date regex matches so non-date <h3>s (e.g. "REPERTUAR") are ignored.
-            DatePat.findFirstMatchIn(el.text).foreach { m =>
-              startBlock()
-              val day   = m.group(1).toInt
-              val month = m.group(2).toInt
-              ScraperParse.monthDay(day, month).flatMap(ScraperParse.upcomingMonthDate(_, today)).foreach { d =>
-                pendingDates = pendingDates :+ d
-              }
-            }
-            // Reset times when a new date header appears — each date block
-            // carries its own "godziny seansów" in the following <p>.
-            pendingTimes = Seq.empty
-
-          case "p" =>
-            val text  = el.text
-            val lower = text.toLowerCase(Locale.ROOT)
-            // "godziny seansów:" line — extract all HH:MM tokens from the <strong>
-            if (lower.contains("godziny") || lower.contains("seansów") || lower.contains("seansow")) {
-              val strong = Option(el.selectFirst("strong")).map(_.text).getOrElse(text)
-              pendingTimes = TimePat.findAllMatchIn(strong)
-                .flatMap(m => ScraperParse.clockAt(m, 1))
-                .toSeq
-            }
-            // Metadata block — gatunek, reżyseria, obsada, produkcja, czas
-            // trwania, each on a <br/>-separated line of ONE paragraph.
-            else if (MetaLabels.exists(lower.contains)) {
-              // wholeOwnText has no <br> → use the original HTML, split on <br>
-              // and parse each fragment independently using Jsoup to extract the
-              // value from the fragment's <strong>. Every line is
-              // `label:&nbsp;<strong>value</strong>`, so a comma-split of the bold
-              // text yields a list. `&nbsp;` decodes to a non-breaking space,
-              // normalised back to a plain space before trim.
-              val fragments = el.html.split("(?i)<br\\s*/?>").toSeq
-              def bold(frag: String): String =
-                Option(Jsoup.parseBodyFragment(frag).body.selectFirst("strong"))
-                  .map(_.text).getOrElse("").replaceAll("\\u00A0", " ").trim
-              def boldList(frag: String): Seq[String] =
-                bold(frag).split(",").map(_.trim).filter(_.nonEmpty).toSeq
-              fragments.foreach { frag =>
-                val fragLower = frag.toLowerCase(Locale.ROOT)
-                if (fragLower.contains("gatunek") && currentGenres.isEmpty)
-                  currentGenres = boldList(frag)
-                else if ((fragLower.contains("reżyseria") || fragLower.contains("rezyseria")) && currentDirector.isEmpty)
-                  currentDirector = boldList(frag)
-                else if (fragLower.contains("obsada") && currentCast.isEmpty)
-                  currentCast = boldList(frag)
-                // "produkcja: Izrael, Włochy 2024" — countries then the release
-                // year, the strongest TMDB-identity hint this page carries.
-                else if (fragLower.contains("produkcja") && currentCountries.isEmpty && currentYear.isEmpty) {
-                  val value = bold(frag)
-                  currentYear = YearPat.findFirstMatchIn(value).flatMap(m => Try(m.group(1).toInt).toOption)
-                  currentCountries = YearPat.replaceAllIn(value, "")
-                    .split(",").map(_.trim).filter(_.nonEmpty).toSeq
-                }
-                else if (fragLower.contains("czas trwania") && currentRuntime.isEmpty)
-                  currentRuntime = RuntimePat.findFirstMatchIn(bold(frag))
-                    .flatMap(m => Try(m.group(1).toInt).toOption)
-              }
-            }
-            // First synopsis paragraph (em-wrapped prose)
-            else if (currentSynopsis.isEmpty && el.select("em").size > 0) {
-              val em = el.selectFirst("em")
-              val prose = Option(em).map(_.text.trim).filter(_.length > 20)
-              currentSynopsis = prose
-            }
-
-          case _ =>
-        }
+  /** One content-div child read into the scan. */
+  private def step(scan: Scan, el: Element, today: LocalDate): Scan =
+    posterOf(el) match {
+      case Some(src) => scan.flushed.edit(_.copy(poster = Some(src)))
+      case None => el.tagName match {
+        case "hr"        => scan.flushed
+        case "h1" | "h2" => scan.edit(_.copy(title = Some(el.text.trim).filter(_.nonEmpty)))
+        case "h3"        => dateHeading(scan, el, today)
+        case "p"         => scan.edit(paragraph(_, el))
+        case _           => scan
       }
     }
-    flushFilm()
-    films.toSeq
+
+  /** Date line — "25.06 (czwartek) - ..."; only counted when the date regex
+   *  matches, so non-date `<h3>`s (e.g. "REPERTUAR") are ignored. Times reset on
+   *  every `<h3>` — each date block carries its own "godziny seansów" in the
+   *  following `<p>`. */
+  private def dateHeading(scan: Scan, el: Element, today: LocalDate): Scan = {
+    val dated = DatePat.findFirstMatchIn(el.text).fold(scan) { m =>
+      val date = ScraperParse.monthDay(m.group(1).toInt, m.group(2).toInt).flatMap(ScraperParse.upcomingMonthDate(_, today))
+      scan.flushed.edit(block => block.copy(dates = block.dates ++ date))
+    }
+    dated.edit(_.copy(times = Seq.empty))
   }
+
+  /** A `<p>`: the "godziny seansów:" times line, the metadata block, or the
+   *  first synopsis paragraph (em-wrapped prose) — whichever it is first. */
+  private def paragraph(block: FilmBlock, el: Element): FilmBlock = {
+    val text  = el.text
+    val lower = text.toLowerCase(Locale.ROOT)
+    if (lower.contains("godziny") || lower.contains("seansów") || lower.contains("seansow")) {
+      val strong = Option(el.selectFirst("strong")).map(_.text).getOrElse(text)
+      block.copy(times = TimePat.findAllMatchIn(strong).flatMap(m => ScraperParse.clockAt(m, 1)).toSeq)
+    }
+    else if (MetaLabels.exists(lower.contains)) block.copy(meta = metadata(block.meta, el))
+    else if (block.synopsis.isEmpty && el.select("em").size > 0)
+      block.copy(synopsis = Option(el.selectFirst("em")).map(_.text.trim).filter(_.length > 20))
+    else block
+  }
+
+  /** Metadata block — gatunek, reżyseria, obsada, produkcja, czas trwania, each
+   *  on a `<br/>`-separated line of ONE paragraph. `wholeOwnText` has no `<br>`,
+   *  so the paragraph's HTML is split on `<br>` and each line's value read from
+   *  its `<strong>`. */
+  private def metadata(meta: FilmMeta, el: Element): FilmMeta =
+    el.html.split("(?i)<br\\s*/?>").foldLeft(meta)(metaLine)
+
+  /** One `label:&nbsp;<strong>value</strong>` line; a comma-split of the bold
+   *  text yields a list. A field already read is kept. */
+  private def metaLine(meta: FilmMeta, line: String): FilmMeta = {
+    val label = line.toLowerCase(Locale.ROOT)
+    if (label.contains("gatunek") && meta.genres.isEmpty) meta.copy(genres = boldList(line))
+    else if ((label.contains("reżyseria") || label.contains("rezyseria")) && meta.director.isEmpty)
+      meta.copy(director = boldList(line))
+    else if (label.contains("obsada") && meta.cast.isEmpty) meta.copy(cast = boldList(line))
+    // "produkcja: Izrael, Włochy 2024" — countries then the release year, the
+    // strongest TMDB-identity hint this page carries.
+    else if (label.contains("produkcja") && meta.countries.isEmpty && meta.year.isEmpty) {
+      val value = bold(line)
+      meta.copy(
+        year      = YearPat.findFirstMatchIn(value).flatMap(m => Try(m.group(1).toInt).toOption),
+        countries = YearPat.replaceAllIn(value, "").split(",").map(_.trim).filter(_.nonEmpty).toSeq)
+    }
+    else if (label.contains("czas trwania") && meta.runtime.isEmpty)
+      meta.copy(runtime = RuntimePat.findFirstMatchIn(bold(line)).flatMap(m => Try(m.group(1).toInt).toOption))
+    else meta
+  }
+
+  /** A line's `<strong>` text; `&nbsp;` decodes to a non-breaking space,
+   *  normalised back to a plain space before the trim. */
+  private def bold(line: String): String =
+    Option(Jsoup.parseBodyFragment(line).body.selectFirst("strong"))
+      .map(_.text).getOrElse("").replaceAll("\\u00A0", " ").trim
+
+  private def boldList(line: String): Seq[String] =
+    bold(line).split(",").map(_.trim).filter(_.nonEmpty).toSeq
 
   /** Labels of the one metadata paragraph — any of them means the whole
    *  `<br>`-separated block is worth splitting apart. */
