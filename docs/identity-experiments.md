@@ -128,6 +128,8 @@ slice outputs: `~/.cache/kinowo-identity/handoff/2026-10-15-wrong-match-round2/i
   2027 relay, not the 2018 recording; both since known-wrong `served`). Its final stage showed 0 moves only because of
   the caveat above; slices show those takes going to none. With copied shares: A+D (run 38808011724) loses 4 right,
   C25+D (run 38812172262) 41, both keeping the 5 right→wrong. Two refits (`item-d-origin-once/refit{1,2}`) kept nothing.
+  Re-measured locally 10-17 on base `36b83b72d` (identity-measure-local, hermetic): DE 2 + UK 5 cured, DE 23 + US 2
+  right lost — Der kleine Prinz (1972) ×23, Volcanoes 3D ×2.
 - **Why stopped:** ~3 right lost per cure, and its targets (The Killer, Black Hole) not cured.
 - **Code:** `experiment/identity-origin-once` (`d9249b8dd`, ported onto main; first built as `52af5ce06`).
 - **Next angle:** the losses are venues whose own feed id names the film; let an own id stand outside the origin
@@ -177,8 +179,10 @@ slice outputs: `~/.cache/kinowo-identity/handoff/2026-10-15-wrong-match-round2/i
 - **Result:** identity-measure-local on recording 38713274617, base `b36500129`: loses 8 right takes, Lighthouse Poole's
   "Family Cinema: <film> - Cert X" (Paddington, WALL·E, …); a re-run with the new queries answered live lost the same
   8, so it is no recording gap. Cures not recorded.
-- **Why stopped:** the new search spellings ask family questions no recording holds, and the same-film join to the
-  sibling listings breaks. The BBFC-lists half landed (`c5a960c69`, `d7fa5e95b`). Open item in
+- **Why stopped:** the same-film join to the sibling listings breaks: at the base Poole's "Family Cinema: Paddington -
+  Cert PG" pooled with another listing (2 listings, 96.3%), at the head it stands alone at 31.3%. Not the recording:
+  the live-gaps run (`--live-gaps`, base `65a204e2b`, 10-18) lost the same 8 and gained 1 right (Bridport's André Rieu
+  "Let It Snow"). The BBFC-lists half landed (`c5a960c69`, `d7fa5e95b`). Open item in
   `docs/design/identity-known-wrongs-and-todos.md`.
 - **Code:** `experiment/identity-search-uncertified` (`dbf421550`; rebased as `item8-on-main`, `4a194b22d`).
 - **Next angle:** since 10-18 the intake peel (TitleFacts) takes the certificate into the listing's age rating before
