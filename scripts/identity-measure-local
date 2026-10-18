@@ -18,8 +18,14 @@
 #                TMDB_API_KEY (`secrets run movies TMDB_API_KEY -- scripts/identity-measure-local … --live-gaps`); CI's
 #                convergence fill records those answers once GitHub can run it
 #
-# Each ref resolves in a detached worktree of its own (<out>/trees/<sha>), in ONE sbt session over a mongod of its own
-# (scripts/it-local.sh): every country's dump, then the ratchet's final takes. Prints each country's model and final
+# Each ref resolves in a detached worktree of its own, its compile seeded from the newest local build (sbt-warm --seed),
+# in ONE sbt session over a mongod of its own (scripts/it-local.sh): every country's dump, then the ratchet's final
+# takes. A ref's takes are a pure function of the commit and the recording, so they are SHARED across checkouts: kept in
+# $KINOWO_IDENTITY_CACHE/measure-local/<recording>/<sha>/ (each country's dump on its own, the final takes per country
+# set) with the ref's worktree beside them, and <out>/<sha> links to them. A ref another run is resolving is waited for,
+# not resolved twice (agents measuring against one base resolved it five times over on 2026-10-18), and at most
+# KINOWO_MEASURE_LOCAL_SLOTS resolves (default 2) run at once on the machine. --live-gaps answers change with time, so
+# those resolves stay in <out>. Prints each country's model and final
 # verdicts as identity_takes_diff.py words them, and exits 1 when any fails (a right take lost or turned wrong, a new
 # wrong take, an unjudged move), 0 when none does, 2 on a usage or setup error.
 #
@@ -70,30 +76,75 @@ if [ -n "$live" ]; then
   export KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY=$key
 fi
 out=${out:-$here/target/identity-measure-local/$base_sha..$head_sha${live:+-live}}
-mkdir -p "$out/trees"
+mkdir -p "$out"
 # absolute: each ref's commands run from its own worktree, where a relative path would land the takes
 out=$(cd "$out" && pwd)
+if [ -n "$live" ]; then store="$out"; else store="$cache/measure-local/$recording"; fi
+mkdir -p "$store/trees"
+ratchet_key=$(printf '%s\n' "${ccs[@]}" | sort | paste -sd- -)
 echo "identity-measure-local: base $base_sha, head $head_sha, recording $recording, countries ${ccs[*]}${live:+, live gaps}, out $out"
 
-resolve() { # <sha>: every country's model takes and the final ones, in the ref's own worktree
-  local sha=$1 tree="$out/trees/$1" dir="$out/$1" commands=()
-  [ -d "$tree" ] || git -C "$here" worktree add --detach --quiet "$tree" "$sha" || return 1
-  mkdir -p "$dir"
-  local missing=""
-  for cc in "${ccs[@]}"; do [ -s "$dir/decisions-$cc.jsonl" ] || missing=1; done
-  [ -s "$dir/ratchet/ratchet-takes.tsv" ] || missing=1
-  # a ref already resolved here for these countries is the same pure function of the same inputs: kept
-  [ -n "$missing" ] || { echo "identity-measure-local: $sha already resolved in $dir"; return 0; }
-  for cc in "${ccs[@]}"; do
-    commands+=("worker/IntegrationTest/runMain integration.IdentityResolveDump --out $dir --full $cc --corpus-dir $pair/corpus --fixtures $pair")
+lock() { # <dir>: mkdir-held by this process; one held by a process that is gone is taken over. 0 when taken
+  if mkdir "$1" 2>/dev/null; then echo $$ > "$1/pid"; return 0; fi
+  local holder; holder=$(cat "$1/pid" 2>/dev/null)
+  if [ -n "$holder" ] && ! kill -0 "$holder" 2>/dev/null; then rm -rf "$1"; mkdir "$1" 2>/dev/null && { echo $$ > "$1/pid"; return 0; }; fi
+  return 1
+}
+slot=""
+take_slot() { # waits for one of the machine's KINOWO_MEASURE_LOCAL_SLOTS resolve slots
+  local n said=""
+  mkdir -p "$cache/measure-local/slots"
+  while :; do
+    for n in $(seq 1 "${KINOWO_MEASURE_LOCAL_SLOTS:-2}"); do lock "$cache/measure-local/slots/$n" && { slot="$cache/measure-local/slots/$n"; return; }; done
+    [ -n "$said" ] || { echo "identity-measure-local: every resolve slot is busy (KINOWO_MEASURE_LOCAL_SLOTS=${KINOWO_MEASURE_LOCAL_SLOTS:-2}): waiting"; said=1; }
+    sleep "${KINOWO_MEASURE_LOCAL_POLL:-5}"
   done
-  commands+=("worker/IntegrationTest/runMain scripts.UnmatchedClustersRatchet --measure --out $dir/ratchet --countries $countries")
-  SECONDS=0
-  ( cd "$tree" && scripts/it-local.sh "${commands[@]}" ) > "$dir.log" 2>&1
-  local status=$?
-  echo "identity-measure-local: $sha resolved in ${SECONDS}s (exit $status, log $dir.log)"
+}
+release() { [ -n "${1:-}" ] && [ "$(cat "$1/pid" 2>/dev/null)" = $$ ] && rm -rf "$1"; return 0; }
+held_lock=""
+trap 'release "$slot"; release "$held_lock"' EXIT
+
+resolve() { # <sha>: every country's model takes and the final ones, in the ref's own worktree, shared across checkouts
+  local sha=$1 tree="$store/trees/$1" dir="$store/$1" commands=() said=""
+  mkdir -p "$dir"
+  until lock "$dir.lock"; do
+    [ -n "$said" ] || { echo "identity-measure-local: $sha is being resolved by pid $(cat "$dir.lock/pid" 2>/dev/null): waiting for it"; said=1; }
+    sleep "${KINOWO_MEASURE_LOCAL_POLL:-5}"
+  done
+  held_lock="$dir.lock"
+  # each country's dump and the final takes for this country set are a pure function of the commit and the recording:
+  # what any run already resolved is kept, and only what is missing is resolved
+  for cc in "${ccs[@]}"; do
+    [ -s "$dir/decisions-$cc.jsonl" ] ||
+      commands+=("worker/IntegrationTest/runMain integration.IdentityResolveDump --out $dir --full $cc --corpus-dir $pair/corpus --fixtures $pair")
+  done
+  [ -s "$dir/ratchet-$ratchet_key/ratchet-takes.tsv" ] ||
+    commands+=("worker/IntegrationTest/runMain scripts.UnmatchedClustersRatchet --measure --out $dir/ratchet-$ratchet_key --countries $countries")
+  if [ ${#commands[@]} = 0 ]; then
+    echo "identity-measure-local: $sha already resolved in $dir"
+  else
+    [ -d "$tree" ] || git -C "$here" worktree add --detach --quiet "$tree" "$sha" || { release "$held_lock"; return 1; }
+    take_slot
+    SECONDS=0
+    # a fresh worktree compiles cold (~10 min under load); the newest local build's classes cut that to the diff
+    [ -x "$tree/scripts/sbt-warm" ] && ( cd "$tree" && scripts/sbt-warm --seed ) > "$dir.log" 2>&1
+    ( cd "$tree" && scripts/it-local.sh "${commands[@]}" ) >> "$dir.log" 2>&1
+    local status=$?
+    release "$slot"; slot=""
+    echo "identity-measure-local: $sha resolved in ${SECONDS}s (exit $status, log $dir.log)"
+  fi
+  release "$held_lock"; held_lock=""
+  # <out>/<sha>: this run's view of the shared takes, laid as before (decisions-<cc>.jsonl, ratchet/ratchet-takes.tsv)
+  if [ "$store" != "$out" ]; then
+    mkdir -p "$out/$sha"
+    for cc in "${ccs[@]}"; do ln -sfn "$dir/decisions-$cc.jsonl" "$out/$sha/decisions-$cc.jsonl"; done
+    ln -sfn "$dir/ratchet-$ratchet_key" "$out/$sha/ratchet"
+    [ -e "$dir.log" ] && ln -sfn "$dir.log" "$out/$sha.log"
+  else
+    [ -d "$dir/ratchet-$ratchet_key" ] && ln -sfn "ratchet-$ratchet_key" "$dir/ratchet"
+  fi
   for cc in "${ccs[@]}"; do [ -s "$dir/decisions-$cc.jsonl" ] || { echo "identity-measure-local: $sha wrote no decisions-$cc.jsonl" >&2; return 1; }; done
-  [ -s "$dir/ratchet/ratchet-takes.tsv" ] || echo "identity-measure-local: $sha wrote no final takes ($dir/ratchet)" >&2
+  [ -s "$dir/ratchet-$ratchet_key/ratchet-takes.tsv" ] || echo "identity-measure-local: $sha wrote no final takes ($dir/ratchet-$ratchet_key)" >&2
   return 0
 }
 
@@ -101,7 +152,9 @@ resolve "$base_sha" || die "the base did not resolve (log $out/$base_sha.log)"
 resolve "$head_sha" || die "the head did not resolve (log $out/$head_sha.log)"
 
 failed=0
-judgements="$out/trees/$head_sha/test/resources/fixtures/identity-judgements.tsv"
+# the head's own judgements, read from the commit: a head another run resolved has no worktree made by this one
+judgements="$out/judgements-$head_sha.tsv"
+git -C "$here" show "$head_sha:test/resources/fixtures/identity-judgements.tsv" > "$judgements" || die "no judgements at $head_sha"
 for cc in "${ccs[@]}"; do
   echo "== $cc model"
   python3 "$here/scripts/ci/identity_takes_diff.py" "$cc" "$out/$base_sha/decisions-$cc.jsonl" "$out/$head_sha/decisions-$cc.jsonl" \

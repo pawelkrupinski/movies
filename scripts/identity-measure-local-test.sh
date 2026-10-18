@@ -44,7 +44,7 @@ open(os.path.join(os.environ["STUB"], "classified"), "a").write(
 sys.exit(1 if os.path.exists(os.path.join(os.environ["STUB"], "wrong")) else 0)
 STUB
 chmod +x "$repo/scripts/it-local.sh"
-echo "c" > "$repo/test/resources/fixtures/identity-judgements.tsv"
+echo "c" > "$repo/test/resources/fixtures/identity-judgements.tsv"; echo target/ > "$repo/.gitignore"
 scratch_git "$repo" init -q && scratch_git "$repo" add -A && scratch_git "$repo" -c user.email=t@t -c user.name=t commit -qm base
 echo head > "$repo/change" && scratch_git "$repo" add -A && scratch_git "$repo" -c user.email=t@t -c user.name=t commit -qm head
 base=$(scratch_git "$repo" rev-parse --short=12 HEAD~1) head=$(scratch_git "$repo" rev-parse --short=12 HEAD)
@@ -100,6 +100,47 @@ rm -f "$work/calls"
 TMDB_API_KEY=k1 measure --base "$base" --head "$head" --live-gaps
 check "--live-gaps: every resolve asks live with the key, in an out dir of its own (none reused)" "0 6 yes" \
   "$(cat "$work/status") $(grep -c '^live k1$' "$work/live") $(grep -q -- "-live$" <<< "$(grep -o 'out .*' "$work/out" | head -1)" && echo yes || echo no)"
+
+rm -f "$work/calls"
+measure --base "$base" --head "$head" --out "$work/other-checkout"
+check "another checkout measuring the same refs on the same recording: their shared takes reused, nothing resolved" "0 " \
+  "$(cat "$work/status") $(cat "$work/calls" 2>/dev/null)"
+
+newer=$(scratch_git "$repo" rev-parse --short=12 HEAD); echo more > "$repo/more"; scratch_git "$repo" add -A
+scratch_git "$repo" -c user.email=t@t -c user.name=t commit -qm newer; newer=$(scratch_git "$repo" rev-parse --short=12 HEAD)
+measure --base "$base" --head "$newer" --countries pl --out "$work/sub"
+rm -f "$work/calls"
+measure --base "$base" --head "$newer" --countries pl,uk --out "$work/sub2"
+check "a ref resolved for some countries: only the missing country's dump and this country set's final takes resolved" \
+  "$newer worker/IntegrationTest/runMain integration.IdentityResolveDump --full uk|$newer worker/IntegrationTest/runMain scripts.UnmatchedClustersRatchet --measure" \
+  "$(sed -E 's/ --(out|corpus-dir|fixtures) [^ ]+//g; s/ --countries .*//' "$work/calls" | paste -sd'|' -)"
+
+third=$(echo x > "$repo/third"; scratch_git "$repo" add -A; scratch_git "$repo" -c user.email=t@t -c user.name=t commit -qm third; scratch_git "$repo" rev-parse --short=12 HEAD)
+store="$cache/measure-local/41"; mkdir -p "$store"
+sleep 60 & holder=$!
+mkdir "$store/$third.lock" && echo "$holder" > "$store/$third.lock/pid"
+rm -f "$work/calls"
+( KINOWO_MEASURE_LOCAL_POLL=0.2 STUB="$work" KINOWO_IDENTITY_CACHE="$cache" bash "$repo/scripts/identity-measure-local" \
+    --base "$base" --head "$third" --countries pl --out "$work/locked" > "$work/locked.out" 2>&1; echo $? > "$work/locked.status" ) &
+runner=$!
+for _ in $(seq 1 50); do grep -q 'waiting for it' "$work/locked.out" 2>/dev/null && break; sleep 0.1; done
+check "a ref another live run is resolving: waited for, not resolved twice" "yes " \
+  "$(grep -q "$third is being resolved by pid $holder" "$work/locked.out" && echo yes || echo no) $(grep "^$third" "$work/calls" 2>/dev/null)"
+kill "$holder"; wait "$holder" 2>/dev/null; wait "$runner"
+check "...and, its holder gone, resolved by the waiting run" "0 2" "$(cat "$work/locked.status") $(grep -c "^$third" "$work/calls")"
+
+fourth=$(echo y > "$repo/fourth"; scratch_git "$repo" add -A; scratch_git "$repo" -c user.email=t@t -c user.name=t commit -qm fourth; scratch_git "$repo" rev-parse --short=12 HEAD)
+sleep 60 & holder=$!
+mkdir -p "$cache/measure-local/slots/1" && echo "$holder" > "$cache/measure-local/slots/1/pid"
+( KINOWO_MEASURE_LOCAL_SLOTS=1 KINOWO_MEASURE_LOCAL_POLL=0.2 STUB="$work" KINOWO_IDENTITY_CACHE="$cache" bash "$repo/scripts/identity-measure-local" \
+    --base "$base" --head "$fourth" --countries pl --out "$work/slots" > "$work/slots.out" 2>&1; echo $? > "$work/slots.status" ) &
+runner=$!
+for _ in $(seq 1 50); do grep -q 'slot is busy' "$work/slots.out" 2>/dev/null && break; sleep 0.1; done
+check "every resolve slot on the machine busy: the resolve waits for one" "yes no" \
+  "$(grep -q 'every resolve slot is busy' "$work/slots.out" && echo yes || echo no) $(grep -q "^$fourth" "$work/calls" && echo yes || echo no)"
+kill "$holder"; wait "$holder" 2>/dev/null; wait "$runner"
+check "...a slot held by a process that is gone is taken over, and freed after" "0 yes no" \
+  "$(cat "$work/slots.status") $(grep -q "^$fourth" "$work/calls" && echo yes || echo no) $([ -d "$cache/measure-local/slots/1" ] && echo yes || echo no)"
 
 measure --base "$base" --head "$head" --recording 99
 check "a recording with no laid pair is a setup error" "2" "$(cat "$work/status")"
