@@ -197,7 +197,7 @@ class ResolverAllocationSpec extends AnyFlatSpec with Matchers {
   "the model's listings" should "be handed over as an array, the same listings" in {
     val corpus  = GeneratedIdentityCorpus.generate(3L, services.movies.SingleCountryNormalizer.titleNormalizer, films = 12, listings = 48)
     val model   = new IncrementalResolver(corpus.lookups, services.movies.SingleCountryNormalizer.titleNormalizer, IdentityCalibration.resolver)
-    model.listingsSeen(corpus.listings)
+    model.batch(seen = corpus.listings)
     val listings = model.listings
     listings shouldBe a[scala.collection.immutable.ArraySeq[?]]
     listings.map(_.key).toSet shouldBe corpus.listings.map(_.key).toSet

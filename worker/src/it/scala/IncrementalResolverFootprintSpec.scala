@@ -20,7 +20,7 @@ class IncrementalResolverFootprintSpec extends AnyFlatSpec with Matchers {
     val listings = (0 until Listings).map(n => Listing.of(Helios, CinemaMovie(Movie(s"Film $n"), Helios, None,
       Some(s"https://helios.pl/film/$n"), None, Nil, Nil, Seq(show)), normalizer))
     val model = new IncrementalResolver(NoFilmLookups, normalizer, IdentityCalibration.resolver)
-    model.listingsSeen(listings)
+    model.batch(seen = listings)
     model.familyOf.size shouldBe Listings
     val kept  = Reachable.count(model, outside = Seq(NoFilmLookups, normalizer))
     val nodes = kept.getOrElse("scala.collection.mutable.HashMap$Node", 0L)

@@ -67,6 +67,15 @@ class ListingSearchTitleSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.searchQueries(Evidence.of(l, None).measured) should contain allOf ("National Theatre Live: Hamlet", "NT Live: Hamlet")
   }
 
+  it should "search its proper name when the banner bills a season too, the season off as the canonical tier peels it" in {
+    // DE "RBO 26/27: Romeo und Julia (Royal Ballet)": the proper-name rule reads a banner with no season, which the
+    // canonical tier's season rule (`xtra-canonical-broadcast-season`) peels first -- searched alone, it never ran
+    listing("RBO 26/27: Romeo und Julia (Royal Ballet)").searchTitle shouldBe Some("Royal Ballet & Opera: Romeo und Julia")
+    listing("Met Opera 2026-27: Manon").searchTitle shouldBe Some("The Metropolitan Opera: Manon")
+    // a season no proper name follows from asks nothing more
+    listing("Berliner Philharmoniker 25/26: Silvesterkonzert").searchTitle shouldBe None
+  }
+
   "A plain title" should "have no search title of its own" in {
     listing("Lalka").searchTitle shouldBe None
   }

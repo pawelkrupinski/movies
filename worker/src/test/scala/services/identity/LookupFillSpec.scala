@@ -58,7 +58,7 @@ class LookupFillSpec extends AnyFlatSpec with Matchers {
   private def modelGaps(s: TmdbStore): AnswersChanged = {
     val model = new IncrementalResolver(new StoredTmdbLookups(s, "pl-PL", UnansweredTmdbLookups, new ObservationReads), normalizer,
       IdentityCalibration.resolver)
-    model.listingsSeen(listings)
+    model.batch(seen = listings)
     model.gaps
   }
 

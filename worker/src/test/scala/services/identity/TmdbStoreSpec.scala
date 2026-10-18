@@ -456,6 +456,21 @@ class TmdbStoreSpec extends AnyFlatSpec with Matchers {
     w.lookups.releaseDay(met) shouldBe Answer.Known(None)
   }
 
+  // The agreement stage reads the model's lookups (`WorkerWiring.cutoverLookups`), the store asked first: a release day
+  // off the record alone there read a year-only record as dated by no day, and the broadcast take never waited for it.
+  "a film's record filed with its release year alone, read store-first" should "have no day known either" in {
+    val w   = new World
+    val met = 1703624
+    val recorded = scala.io.Source.fromResource("fixtures/tmdb/movie_1703624_met_samson_pl.json")(using scala.io.Codec.UTF8).mkString
+    w.store.filmPartial(met, TmdbStore.Partial.Local, minimalOf(recorded).as[play.api.libs.json.JsObject] + ("release_date" -> play.api.libs.json.JsString("2026")))
+    w.store.filmPartial(met, TmdbStore.Partial.English, minimalOf(s"""{"id":$met,"title":"The Metropolitan Opera 2026/27: Samson et Dalila","release_date":"2026-12-05","alternative_titles":{"titles":[]}}"""))
+    val lookups = new StoredFirstLookups(w.lookups, new LiveTmdb(w, popularity = 12.4))
+    lookups.releaseDay(met) shouldBe Answer.Unknown
+    w.store.filmPartial(met, TmdbStore.Partial.Local, minimalOf(recorded))
+    lookups.releaseDay(met) shouldBe w.lookups.releaseDay(met)
+    lookups.releaseDay(met).toOption.flatten should not be empty
+  }
+
   // A record filed before records carried IMDb's number holds none; the answer still names it, off the partials'
   // `imdb_id` — the number a no-match's lean is compared with a card's carried IMDb id by.
   "a film's record filed without its IMDb number" should "still answer with the number its responses name" in {

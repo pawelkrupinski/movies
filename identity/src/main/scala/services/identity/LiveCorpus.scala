@@ -5,6 +5,8 @@ import services.movies.{ListingKey, TitleNormalizer}
 import scala.collection.immutable.ArraySeq
 import scala.collection.mutable
 
+import MultiMaps.*
+
 /**
  * The corpus context ([[CorpusContext]]) kept current event by event: every fact is held per key —
  * a node, a question, a film, a title key, a banner — and an event re-derives only the keys it
@@ -201,13 +203,13 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
     films.toSeq.sorted.grouped(slices.records).foreach { slice =>
     lookups.prefetch(Nil, slice.filter(id => bestHits.contains(id) && (rerecorded(id) || !records.contains(id))), Nil)
     slice.foreach { id =>
-      base.remove(id).foreach(old => filmKeysOf(id, old.film).foreach { key => filedUnder += key; filmsByKey.updateWith(key)(_.map(_ - id).filter(_.nonEmpty)) })
+      base.remove(id).foreach(old => filmKeysOf(id, old.film).foreach { key => filedUnder += key; filmsByKey.removeValue(key, id) })
       bestHits.get(id) match {
         case Some(byQuery) =>
           if (rerecorded(id) || !records.contains(id)) records(id) = lookups.film(id)
           val candidate = Candidate.of(id, byQuery.values.toSeq, records(id).toOption.flatten)
           base(id) = candidate
-          filmKeysOf(id, candidate.film).foreach { key => filedUnder += key; filmsByKey.updateWith(key)(ids => Some(ids.getOrElse(Set.empty) + id)) }
+          filmKeysOf(id, candidate.film).foreach { key => filedUnder += key; filmsByKey.addValue(key, id) }
         case None => records.remove(id); lookups.released(Nil, Seq(id), Nil)
       }
     }
@@ -227,8 +229,8 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
         val before = candidates.get(id).toSeq.flatMap(seasonWorksOf)
         next.fold(candidates.remove(id))(candidate => candidates.put(id, candidate))
         val after  = next.toSeq.flatMap(seasonWorksOf)
-        before.foreach(pair => seasonFilms.updateWith(pair)(_.map(_ - id).filter(_.nonEmpty)))
-        after.foreach(pair => seasonFilms.updateWith(pair)(held => Some(held.getOrElse(Set.empty) + id)))
+        before.foreach(pair => seasonFilms.removeValue(pair, id))
+        after.foreach(pair => seasonFilms.addValue(pair, id))
         billed ++= reachers.getOrElse(id, Set.empty) ++ (before ++ after).distinct.flatMap(seasonNodes.getOrElse(_, Set.empty))
         moved += id
       }
@@ -247,19 +249,19 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
       val film = fresh(candidates(id)).film
       keys.foreach { key =>
         val own = StageRelays.Houses.evidence(nodes(key).node.evidence.measured, Seq(film)).toSeq
-        if (own.nonEmpty) billedBy.updateWith(key)(held => Some(held.getOrElse(Map.empty) + (id -> own)))
+        if (own.nonEmpty) billedBy.addEntry(key, id -> own)
       }
     }
     billed.foreach { key =>
       billingsOf.remove(key).foreach(_.map(_.listingHouse).distinct.foreach { banner =>
-        banners += banner; byBanner.updateWith(banner)(_.map(_ - key).filter(_.nonEmpty)) })
+        banners += banner; byBanner.removeEntry(banner, key) })
       nodes.get(key).foreach { live =>
         val byFilm   = billedBy.getOrElse(key, Map.empty)
         val billings = billedOn.getOrElse(key, Nil).flatMap(byFilm.getOrElse(_, Nil))
         if (billings.nonEmpty) {
           billingsOf(key) = billings
           billings.groupBy(_.listingHouse).foreach { case (banner, own) =>
-            banners += banner; byBanner.updateWith(banner)(held => Some(held.getOrElse(Map.empty) + (key -> own))) }
+            banners += banner; byBanner.addEntry(banner, key -> own) }
         }
       }
     }
@@ -279,19 +281,19 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
 
   /** Unhook a node from every per-key fact; the films whose hits it took away. */
   private def unlink(key: NodeKey, old: Node): Set[Int] = {
-    old.queries.foreach(query => askers.updateWith(query)(_.map(_ - key).filter(_.nonEmpty)))
+    old.queries.foreach(query => askers.removeValue(query, key))
     val dropped = old.queries.filterNot(askers.contains).distinct
     lookups.released(dropped, Nil, Nil)
     val films   = dropped.flatMap(query => named.remove(query).flatten.getOrElse(Nil)).toSet
     films.foreach(id => bestHits.updateWith(id)(_.map(_ -- dropped).filter(_.nonEmpty)))
-    old.reached.foreach(id => reachers.updateWith(id)(_.map(_ - key).filter(_.nonEmpty)))
-    StageRelays.seasonWorks(old.node.evidence.measured).foreach(pair => seasonNodes.updateWith(pair)(_.map(_ - key).filter(_.nonEmpty)))
+    old.reached.foreach(id => reachers.removeValue(id, key))
+    StageRelays.seasonWorks(old.node.evidence.measured).foreach(pair => seasonNodes.removeValue(pair, key))
     groups.get(old.titleKey).foreach { byNode => byNode.remove(old.id); if (byNode.isEmpty) groups.remove(old.titleKey) }
-    if (old.whole.nonEmpty) wholes.updateWith(old.whole)(_.map(_ - 1).filter(_ > 0))
+    if (old.whole.nonEmpty) wholes.countDown(old.whole)
     old.pieces.foreach(piece => spreads.get(piece).foreach { byWhole =>
-      byWhole.updateWith(old.whole)(_.map(_ - 1).filter(_ > 0)); if (byWhole.isEmpty) spreads.remove(piece) })
+      byWhole.countDown(old.whole); if (byWhole.isEmpty) spreads.remove(piece) })
     reachedByKey.get(old.titleKey).foreach { byNode => byNode.remove(old.id); if (byNode.isEmpty) reachedByKey.remove(old.titleKey) }
-    if (old.translated) translatedBy.updateWith(old.titleKey)(_.map(_ - key).filter(_.nonEmpty))
+    if (old.translated) translatedBy.removeValue(old.titleKey, key)
     films
   }
 
@@ -303,16 +305,16 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
       val byFilm = known.getOrElse(Nil).groupBy(_.tmdbId)
       named(query) = known.map(hits => ArraySeq.from(CandidateGeneration.ranked(hits)))
       byFilm.map { case (id, hits) =>
-        Hit.best(hits).foreach(best => bestHits.updateWith(id)(held => Some(held.getOrElse(Map.empty) + (query -> best)))); id }
+        Hit.best(hits).foreach(best => bestHits.addEntry(id, query -> best)); id }
     }.toSet
-    live.queries.foreach(query => askers.updateWith(query)(held => Some(held.getOrElse(Set.empty) + key)))
-    live.reached.foreach(id => reachers.updateWith(id)(held => Some(held.getOrElse(Set.empty) + key)))
-    StageRelays.seasonWorks(live.node.evidence.measured).foreach(pair => seasonNodes.updateWith(pair)(held => Some(held.getOrElse(Set.empty) + key)))
+    live.queries.foreach(query => askers.addValue(query, key))
+    live.reached.foreach(id => reachers.addValue(id, key))
+    StageRelays.seasonWorks(live.node.evidence.measured).foreach(pair => seasonNodes.addValue(pair, key))
     groups.getOrElseUpdate(live.titleKey, mutable.TreeMap.empty)(live.id) = live.node.listings.map(listing => Backer(listing.venue, SourceReliability.claimOf(listing)) -> live.node.evidence.measured)
-    if (live.whole.nonEmpty) wholes.updateWith(live.whole)(count => Some(count.getOrElse(0) + 1))
-    live.pieces.foreach(piece => spreads.getOrElseUpdate(piece, mutable.HashMap.empty).updateWith(live.whole)(count => Some(count.getOrElse(0) + 1)))
+    if (live.whole.nonEmpty) wholes.countUp(live.whole)
+    live.pieces.foreach(piece => spreads.getOrElseUpdate(piece, mutable.HashMap.empty).countUp(live.whole))
     if (live.titleKey.nonEmpty) reachedByKey.getOrElseUpdate(live.titleKey, mutable.TreeMap.empty)(live.id) = live.reached.toSet
-    if (live.translated) translatedBy.updateWith(live.titleKey)(held => Some(held.getOrElse(Set.empty) + key))
+    if (live.translated) translatedBy.addValue(live.titleKey, key)
     films
   }
 
@@ -321,8 +323,8 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
   private def retitle(key: String): Set[Int] = {
     val translated = translatedBy.getOrElse(key, Set.empty).toSeq.flatMap(nodes.get).sortBy(_.id).map(_.node.evidence.measured)
     val origins    = translated.flatMap(_.originalTitle).map(IdentityMeasures.key).filter(_.nonEmpty).toSet
-    originsOfKey.getOrElse(key, Set.empty).diff(origins).foreach(origin => keysOfOrigin.updateWith(origin)(_.map(_ - key).filter(_.nonEmpty)))
-    origins.foreach(origin => keysOfOrigin.updateWith(origin)(held => Some(held.getOrElse(Set.empty) + key)))
+    originsOfKey.getOrElse(key, Set.empty).diff(origins).foreach(origin => keysOfOrigin.removeValue(origin, key))
+    origins.foreach(origin => keysOfOrigin.addValue(origin, key))
     if (origins.isEmpty) originsOfKey.remove(key) else originsOfKey(key) = origins
     val films  = origins.flatMap(filmsByKey.getOrElse(_, Set.empty)).toSeq.sorted.flatMap(id => base.get(id).map(candidate => id -> fresh(candidate).film))
     // The title key's own nodes (as `groups` holds them, by node id) and what their title searches found.

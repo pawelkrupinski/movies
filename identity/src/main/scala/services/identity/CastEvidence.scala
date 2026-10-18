@@ -10,29 +10,13 @@ import scala.util.hashing.MurmurHash3
  * does not ("Richard E. Grant", "Glynn-Carney"). Held as the sorted hashes, never the text: a corpus holds one per
  * listing, and a synopsis names a handful of people among hundreds of words.
  */
-final class VenueNames private (private val pairs: Array[Int]) {
-  def isEmpty: Boolean = pairs.length == 0
-  /** How many pairs it holds. */
-  def size: Int = pairs.length
-  /** Its hashes, as a recorded fixture keeps them ([[VenueNames.ofHashes]]). */
-  def hashes: Seq[Int] = pairs.toSeq
+final class VenueNames private (pairs: Array[Int]) extends SortedHashes[VenueNames](pairs) {
+  protected def holding(sorted: Array[Int]): VenueNames = if (sorted.isEmpty) VenueNames.None else new VenueNames(sorted)
+  protected def unit: String = "pairs"
 
   /** Does the text name `name` WHOLE: two words at least, every pair of its neighbouring words held — never a surname
    *  alone, nor a first name. */
-  def names(name: String): Boolean = {
-    val own = VenueNames.pairsOf(name)
-    own.length > 0 && own.forall(java.util.Arrays.binarySearch(pairs, _) >= 0)
-  }
-
-  def ++(other: VenueNames): VenueNames =
-    if (other.isEmpty) this else if (isEmpty) other else new VenueNames((pairs ++ other.pairs).distinct.sorted)
-
-  override def equals(other: Any): Boolean = other match {
-    case that: VenueNames => java.util.Arrays.equals(pairs, that.pairs)
-    case _                => false
-  }
-  override def hashCode: Int = java.util.Arrays.hashCode(pairs)
-  override def toString: String = if (isEmpty) "VenueNames()" else f"VenueNames(${pairs.length} pairs #$hashCode%08x)"
+  def names(name: String): Boolean = holdsAll(VenueNames.pairsOf(name))
 }
 
 object VenueNames {
@@ -44,11 +28,11 @@ object VenueNames {
     texts.foreach(text => collect(text, capitalisedOnly = true, found))
     cast.foreach(name => collect(name, capitalisedOnly = false, found))
     val all = found.result()
-    if (all.isEmpty) None else new VenueNames(all.distinct.sorted)
+    if (all.isEmpty) None else new VenueNames(SortedHashes.sortedDistinct(all, all.length))
   }
 
   /** Names as [[VenueNames.hashes]] gave them. */
-  def ofHashes(hashes: Seq[Int]): VenueNames = if (hashes.isEmpty) None else new VenueNames(hashes.toArray.distinct.sorted)
+  def ofHashes(hashes: Seq[Int]): VenueNames = if (hashes.isEmpty) None else new VenueNames(SortedHashes.of(hashes))
 
   /** The hashed pairs of `name`'s neighbouring words, case aside: a name of one word has none. */
   private[identity] def pairsOf(name: String): Array[Int] = {

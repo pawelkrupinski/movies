@@ -8,29 +8,9 @@ package services.identity
  * the sorted hashes, never the text: a corpus holds one per listing and per film read, and a description capitalises a
  * handful of its words.
  */
-final class ProseWords private (private val stems: Array[Int]) {
-  def isEmpty: Boolean  = stems.length == 0
-  def nonEmpty: Boolean = !isEmpty
-  /** How many words it holds. */
-  def size: Int = stems.length
-  /** Its hashes, as a recorded fixture or a stored record keeps them ([[ProseWords.ofHashes]]). */
-  def hashes: Seq[Int] = stems.toSeq
-
-  def ++(other: ProseWords): ProseWords =
-    if (other.isEmpty) this else if (isEmpty) other else new ProseWords((stems ++ other.stems).distinct.sorted)
-  /** The words it holds that `other` does not. */
-  def --(other: ProseWords): ProseWords =
-    if (isEmpty || other.isEmpty) this else ProseWords.held(stems.filter(stem => java.util.Arrays.binarySearch(other.stems, stem) < 0))
-  /** The words both hold. */
-  def &(other: ProseWords): ProseWords =
-    if (isEmpty || other.isEmpty) ProseWords.None else ProseWords.held(stems.filter(stem => java.util.Arrays.binarySearch(other.stems, stem) >= 0))
-
-  override def equals(other: Any): Boolean = other match {
-    case that: ProseWords => java.util.Arrays.equals(stems, that.stems)
-    case _                => false
-  }
-  override def hashCode: Int = java.util.Arrays.hashCode(stems)
-  override def toString: String = if (isEmpty) "ProseWords()" else f"ProseWords(${stems.length} words #$hashCode%08x)"
+final class ProseWords private (stems: Array[Int]) extends SortedHashes[ProseWords](stems) {
+  protected def holding(sorted: Array[Int]): ProseWords = ProseWords.held(sorted)
+  protected def unit: String = "words"
 }
 
 object ProseWords {
@@ -53,7 +33,7 @@ object ProseWords {
   def ofWords(texts: Iterable[String]): ProseWords = of(texts, capitalisedOnly = false, sentenceFirst = true)
 
   /** Words as [[ProseWords.hashes]] gave them. */
-  def ofHashes(hashes: Seq[Int]): ProseWords = if (hashes.isEmpty) None else new ProseWords(hashes.toArray.distinct.sorted)
+  def ofHashes(hashes: Seq[Int]): ProseWords = held(SortedHashes.of(hashes))
 
   private def held(stems: Array[Int]): ProseWords = if (stems.isEmpty) None else new ProseWords(stems)
 
@@ -88,15 +68,6 @@ object ProseWords {
         }
       }
     }
-    if (count == 0) None else new ProseWords(sortedDistinct(found, count))
-  }
-
-  /** The first `count` of `stems`, sorted, each once — in place, no boxing: read at intake off every listing's synopsis. */
-  private def sortedDistinct(stems: Array[Int], count: Int): Array[Int] = {
-    java.util.Arrays.sort(stems, 0, count)
-    var kept = 1
-    var i    = 1
-    while (i < count) { if (stems(i) != stems(kept - 1)) { stems(kept) = stems(i); kept += 1 }; i += 1 }
-    java.util.Arrays.copyOf(stems, kept)
+    held(SortedHashes.sortedDistinct(found, count))
   }
 }

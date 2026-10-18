@@ -120,8 +120,20 @@ class TitleNormalizer(val rules: TitleRuleSet, memoEntries: Long = TitleRuleSet.
   def apiQuery(display: String): String = rules.search(display)
 
   /** `title` with a broadcaster's banner spelled by its proper name ([[services.titlerules.TitleRuleSet.properNamed]]):
-   *  "NT Live: Hamlet" → "National Theatre Live: Hamlet". Itself when no such banner opens or closes it. */
-  def properNamed(title: String): String = rules.properNamed(title)
+   *  "NT Live: Hamlet" → "National Theatre Live: Hamlet". A banner billing a season is named with the season off, as
+   *  the canonical tier peels it first (`xtra-canonical-broadcast-season`): "RBO 26/27: Romeo & Juliet" → "Royal Ballet
+   *  & Opera: Romeo & Juliet", which the proper-name rules alone never reach. Itself when no such banner opens or
+   *  closes it. */
+  def properNamed(title: String): String = {
+    val named = rules.properNamed(title)
+    if (named != title.trim) named
+    else seasonPeel.map(_(title.trim)).filter(_ != title.trim)
+      .map(peeled => peeled -> rules.properNamed(peeled)).collect { case (peeled, proper) if proper != peeled => proper }
+      .getOrElse(named)
+  }
+  /** The canonical tier's season peel ("<house> 26/27: <work>" → "<house>: <work>"), where the rules hold it. */
+  private lazy val seasonPeel: Option[services.titlerules.TitleRule] =
+    rules.effectiveRules.find(_.id == TitleNormalizer.BroadcastSeasonRule)
 
   /** The external-search form of a title: `apiQuery` (decoration strip) over the
    *  banner-aware re-cased title, so the query a resolver sends is normalised
@@ -379,6 +391,8 @@ class TitleNormalizer(val rules: TitleRuleSet, memoEntries: Long = TitleRuleSet.
  * string functions no country's rule set can disagree about — is [[TitleText]].
  */
 object TitleNormalizer {
+  /** The canonical rule peeling a season off a house banner ([[TitleNormalizer.properNamed]] names the banner after it). */
+  val BroadcastSeasonRule = "xtra-canonical-broadcast-season"
 
   private val TrailingBracketYear = """\s*[(\[](\d{4})[)\]]\s*$""".r
 

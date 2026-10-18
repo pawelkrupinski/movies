@@ -5,7 +5,7 @@ import java.util.regex.Pattern
 
 /**
  * The rule-INDEPENDENT half of title normalisation: pure string functions
- * (entity decoding, Roman-numeral folding, script detection, casing mechanics,
+ * (entity decoding, Roman-numeral folding, casing mechanics,
  * the well-formedness check) that no country's rule set can disagree about.
  * They live here, static, rather than being duplicated per [[TitleNormalizer]]
  * instance — every one is a function of its input alone, so there is nothing

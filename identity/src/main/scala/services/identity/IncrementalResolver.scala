@@ -4,6 +4,8 @@ import services.movies.{ListingKey, TitleNormalizer}
 
 import scala.collection.mutable
 
+import MultiMaps.*
+
 /** Which lookups gained an answer since the model last read them — candidate queries, film
  *  records, and the listings whose detail page did. */
 final case class AnswersChanged(queries: Set[CandidateQuery], films: Set[Int], details: Set[ListingKey] = Set.empty) {
@@ -67,20 +69,15 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
   private var reResolved    = 0
   private val clock         = new IncrementalResolver.Timings
 
-  /** Listings scraped — a venue's, or a whole corpus at boot, resolved a bounded batch at a time either way. */
-  def listingsSeen(listings: Seq[Listing]): Unit       = batch(listings, Nil, AnswersChanged.Empty)
-  def listingsGone(keys: Seq[ListingKey]): Unit        = batch(Nil, keys, AnswersChanged.Empty)
-
   /** The listings the model holds at `venue`: what a venue's next scrape is diffed against. */
   def heldAt(venue: String): Set[ListingKey] = atVenue.getOrElse(venue, Set.empty)
   /** Every listing the model holds. */
   // An array, not a list: every projection reads it (~100k on worker-us), and a cell per listing was ~2.4 MB a projection.
   def listings: Seq[Listing] = byKey.valuesIterator.flatMap(k => Option(k.listing)).to(scala.collection.immutable.ArraySeq)
-  def answersChanged(changed: AnswersChanged): Unit    = batch(Nil, Nil, changed)
 
-  /** Several events at once — scrapes and answers that landed together — resolving a family they
-   *  all touch once, not once per event. */
-  def batch(seen: Seq[Listing], gone: Seq[ListingKey], answered: AnswersChanged): Unit = {
+  /** Several events at once — listings scraped (a venue's, or a whole corpus at boot), listings gone and answers that
+   *  landed together — resolving a family they all touch once, not once per event, a bounded batch at a time. */
+  def batch(seen: Seq[Listing] = Nil, gone: Seq[ListingKey] = Nil, answered: AnswersChanged = AnswersChanged.Empty): Unit = {
     val left    = gone.filter(isHeld)
     left.foreach(release)
     // A listing whose detail page was answered anew is seen again: its evidence may have moved —
@@ -183,7 +180,8 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
           perNode.toSeq.sortBy { case (node, count) => (-count, node) }.take(IncrementalResolver.Largest))
       },
       largestNodes = families.values.map(_.nodes).maxOption.getOrElse(0),
-      large        = families.values.count(_.resolved.listings.size > IncrementalResolver.RegionBatch))
+      large        = families.values.count(_.resolved.listings.size > regionBatch),
+      regionBatch  = regionBatch)
   }
   /** How many families the model has re-resolved since it was made: the work its events cost. */
   def familiesResolved: Int = reResolved
@@ -287,7 +285,7 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
     val keyed = byKey(key)
     keyed.listing = null; heldListings -= 1
     if (keyed.family < 0) byKey.remove(key)
-    atVenue.updateWith(listing.venue)(_.map(_ - key).filter(_.nonEmpty))
+    atVenue.removeValue(listing.venue, key)
   }
 
   private var heldListings = 0
@@ -301,10 +299,10 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
       keyed.family = -1
       if (keyed.listing == null) byKey.remove(key)
     })
-    family.resolved.blockKeys.foreach(unlink(familiesOfKey, _, id))
-    family.resolved.reads.keys.foreach(unlink(readersOf, _, id))
-    family.resolved.queries.foreach(unlink(askersOf, _, id))
-    family.resolved.films.foreach(unlink(filmReadersOf, _, id))
+    family.resolved.blockKeys.foreach(familiesOfKey.removeValue(_, id))
+    family.resolved.reads.keys.foreach(readersOf.removeValue(_, id))
+    family.resolved.queries.foreach(askersOf.removeValue(_, id))
+    family.resolved.films.foreach(filmReadersOf.removeValue(_, id))
   }
 
   /** The held listing's own key object for `key` (`key` itself for a listing no longer held). */
@@ -317,15 +315,11 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
     val id = freedIds.headOption.fold { val fresh = nextFamily; nextFamily += 1; fresh } { free => freedIds -= free; free }
     families(id) = Family(resolved, digest)
     resolved.listings.foreach(key => byKey.getOrElseUpdate(key, new IncrementalResolver.Keyed).family = id)
-    resolved.blockKeys.foreach(link(familiesOfKey, _, id))
-    resolved.reads.keys.foreach(link(readersOf, _, id))
-    resolved.queries.foreach(link(askersOf, _, id))
-    resolved.films.foreach(link(filmReadersOf, _, id))
+    resolved.blockKeys.foreach(familiesOfKey.addValue(_, id))
+    resolved.reads.keys.foreach(readersOf.addValue(_, id))
+    resolved.queries.foreach(askersOf.addValue(_, id))
+    resolved.films.foreach(filmReadersOf.addValue(_, id))
   }
-
-  /** `id` among the families an index files under `key` — and out of them, the entry gone with its last family. */
-  private def link[K](index: mutable.Map[K, Set[Int]], key: K, id: Int): Unit = index.updateWith(key)(ids => Some(ids.getOrElse(Set.empty) + id))
-  private def unlink[K](index: mutable.Map[K, Set[Int]], key: K, id: Int): Unit = index.updateWith(key)(_.map(_ - id).filter(_.nonEmpty))
 }
 
 object IncrementalResolver {
@@ -380,10 +374,10 @@ object IncrementalResolver {
   }
 
   /** The model's largest families, the most nodes any family holds, and how many families are
-   *  larger than one region. */
-  final case class FamilySizes(largest: Seq[FamilySize], largestNodes: Int, large: Int) {
+   *  larger than one region (the model's `regionBatch` listings). */
+  final case class FamilySizes(largest: Seq[FamilySize], largestNodes: Int, large: Int, regionBatch: Int) {
     def largestListings: Int = largest.headOption.fold(0)(_.listings)
-    def render: String = s"$large families over $RegionBatch listings; largest ${if (largest.isEmpty) "none" else largest.map(_.render).mkString("; ")}"
+    def render: String = s"$large families over $regionBatch listings; largest ${if (largest.isEmpty) "none" else largest.map(_.render).mkString("; ")}"
   }
 
   /** Seconds spent in each part of the model's work. */

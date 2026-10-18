@@ -195,8 +195,8 @@ object SuspectTakes {
     def rare(words: Iterable[String]) = words.iterator.filter(w => w.length >= 3 && !billings.widely(w)).toSet
     val billed = rare(pieces.flatMap(_.words))
     // cheapest first: most takes share a word with their film's title
-    billed.nonEmpty && rare(film.titles.flatMap(TitleContainment.tokens)).intersect(billed).isEmpty && film.titles.exists(IdentityMeasures.hasLatinLetter) &&
-      IdentityMeasures.hasLatinLetter(listing.rawTitle) && film.season.isEmpty && !ListingShape.stagesAWork(listing) && !Agreement.namesIt(listing, Seq(film))
+    billed.nonEmpty && rare(film.titles.flatMap(TitleContainment.tokens)).intersect(billed).isEmpty && film.titles.exists(tools.LatinScript.hasLetter) &&
+      tools.LatinScript.hasLetter(listing.rawTitle) && film.season.isEmpty && !ListingShape.stagesAWork(listing) && !Agreement.namesIt(listing, Seq(film))
   }
 
   private[identity] def fragment(listing: Listing, pieces: Seq[Piece], film: IdentityMeasures.Film, screens: Int,

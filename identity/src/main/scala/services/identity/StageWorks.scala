@@ -39,11 +39,11 @@ object StageWorks {
       rows.groupMapReduce(_._1)(_._3)(_ ++ _).view.mapValues(_.map(_.trim).filter(_.nonEmpty).distinct.sorted).toMap)
   }
 
-  /** Is every letter of `name` a Latin one: a name a Latin-script title search can find? */
   private def words(name: String): Set[String] = services.movies.TitleContainment.tokens(name).filter(_.length >= 4).toSet
 
+  /** Is every letter of `name` a Latin one: a name a Latin-script title search can find? */
   private def latin(name: String): Boolean =
-    name.exists(_.isLetter) && name.filter(_.isLetter).forall(c => Character.UnicodeScript.of(c.toInt) == Character.UnicodeScript.LATIN)
+    name.exists(_.isLetter) && tools.LatinScript.lettersOnly(name)
 
   /** The table on the classpath, the extra names beside the generated ones. */
   lazy val resolver: StageWorks = parse((ClasspathResource.lines(Resource) ++ ClasspathResource.lines(Extra)).iterator)

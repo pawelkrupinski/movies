@@ -28,10 +28,10 @@ class IncrementalResolverFamilyIdSpec extends AnyFlatSpec with Matchers {
     val model  = new IncrementalResolver(NoLookups, normalizer, IdentityCalibration.resolver)
     val helios = (0 until 50).map(listing(Helios, _))
     val muza   = (0 until 50).map(listing(KinoMuza, _))
-    model.listingsSeen(helios ++ muza)
+    model.batch(seen = helios ++ muza)
     (1 to 20).foreach { _ =>
-      model.listingsGone(muza.map(_.key))
-      model.listingsSeen(muza)
+      model.batch(gone = muza.map(_.key))
+      model.batch(seen = muza)
     }
     val ids = model.familyOf.values.toSet
     withClue(s"${ids.size} families, ids up to ${ids.max}: ")(ids.max should be < ids.size)
