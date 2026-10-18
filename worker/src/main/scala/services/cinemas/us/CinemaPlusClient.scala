@@ -153,5 +153,5 @@ object CinemaPlusClient {
   /** The names on the card's "Cast: a, b" / "Director: c" line. */
   private def credited(card: Element, prefix: String): Seq[String] =
     card.select("div").asScala.map(_.ownText.trim).find(_.startsWith(prefix)).toSeq
-      .flatMap(_.stripPrefix(prefix).split(",").map(_.trim).filter(_.nonEmpty))
+      .flatMap(line => ScraperParse.commaItems(line.stripPrefix(prefix)))
 }

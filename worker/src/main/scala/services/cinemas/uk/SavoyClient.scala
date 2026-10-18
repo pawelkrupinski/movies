@@ -129,7 +129,7 @@ object SavoyClient {
       def text(field: String): Option[String] =
         (event \ field).asOpt[String].map(unescape).filter(_.nonEmpty)
       def names(field: String): Seq[String] =
-        text(field).toSeq.flatMap(_.split(",")).map(_.trim).filter(_.nonEmpty)
+        text(field).toSeq.flatMap(ScraperParse.commaItems)
       val credits = Credits.read(names("Director"), names("Year"), names("Cast"), names("Country"))
       CinemaMovie(
         movie = Movie(
@@ -246,9 +246,9 @@ object SavoyClient {
     def read(synopsis: String): Option[CreditLine] = synopsis match {
       case Line(credit, minutes, rest) =>
         val segments = credit.split("/").map(_.trim).toSeq
-        val items    = segments.drop(1).flatMap(_.split(",")).map(_.trim).filter(_.nonEmpty)
+        val items    = segments.drop(1).flatMap(ScraperParse.commaItems)
         Some(CreditLine(
-          director  = segments.headOption.toSeq.flatMap(_.split(",")).map(_.trim).filter(_.nonEmpty),
+          director  = segments.headOption.toSeq.flatMap(ScraperParse.commaItems),
           countries = items.filter(CountryNames.isCountry),
           year      = items.find(_.matches(Year)).map(_.toInt),
           runtime   = Some(minutes.toInt),

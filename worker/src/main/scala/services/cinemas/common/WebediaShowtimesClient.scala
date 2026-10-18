@@ -120,10 +120,8 @@ class WebediaShowtimesClient(
    *  keeps last-known data.) */
   def fetchChunk(dateKey: String): Seq[CinemaMovie] = {
     val date  = LocalDate.parse(dateKey)
-    val first = parsePage(HttpRead.page(http, showtimesUrl(market.host, theaterId, date, 1)), market)
-    val extra = ListingPages.readMore("webedia-spillover", 2 to first.totalPages, (p: Int) => showtimesUrl(market.host, theaterId, date, p))(HttpRead.page(http, _))
-      .flatMap { case (_, page) => parsePage(page, market).films }
-    (first.films ++ extra)
+    ListingPages.readNumbered("webedia-spillover", showtimesUrl(market.host, theaterId, date, _), (_: Page).totalPages,
+        (_: Page).films)(url => parsePage(HttpRead.page(http, url), market))
       .filterNot(raw => NonMovieEventClassifier.isNonScreening(raw.title))
       .map(raw => toCinemaMovie(raw, raw.showtimes))
   }

@@ -5,6 +5,7 @@ import org.jsoup.Jsoup
 import org.jsoup.parser.Parser
 import play.api.libs.json._
 import services.cinemas.common.{CinemaScraper, SlotsToMovies}
+import services.cinemas.common.ScraperParse.jsonText
 import services.cinemas.pl.OnlyMovieEventsFilter
 import tools.{HttpFetch, HttpRead}
 
@@ -100,12 +101,12 @@ object SquarespaceEventsClient {
     }
     // A link more than one event carries is a shared one — the festival pass every block
     // links to — so an event's own booking is the link only it carries.
-    val linksByEvent = upcoming.map(e => OvationTixLink.findAllIn(text(e, "body").getOrElse("")).toSeq.distinct)
+    val linksByEvent = upcoming.map(e => OvationTixLink.findAllIn(jsonText(e \ "body").getOrElse("")).toSeq.distinct)
     val shared       = linksByEvent.flatten.groupBy(identity).collect { case (link, n) if n.size > 1 => link }.toSet
 
     val slots = for {
       (event, links) <- upcoming.zip(linksByEvent)
-      title          <- text(event, "title").map(clean).filter(_.nonEmpty).filterNot(isNonScreening).toSeq
+      title          <- jsonText(event \ "title").map(clean).filter(_.nonEmpty).filterNot(isNonScreening).toSeq
       when           <- startOf(event, zone).toSeq if !when.toLocalDate.isBefore(today)
     } yield Slot(event, title, Showtime(
       dateTime   = when,
@@ -117,9 +118,9 @@ object SquarespaceEventsClient {
       CinemaMovie(
         movie     = Movie(title = title),
         cinema    = cinema,
-        posterUrl = text(event, "assetUrl"),
+        posterUrl = jsonText(event \ "assetUrl"),
         filmUrl   = pageOf(event, siteUrl),
-        synopsis  = text(event, "excerpt").map(html => clean(Jsoup.parse(html).text())).filter(_.nonEmpty),
+        synopsis  = jsonText(event \ "excerpt").map(html => clean(Jsoup.parse(html).text())).filter(_.nonEmpty),
         cast      = Nil,
         director  = Nil,
         showtimes = showtimes
@@ -127,11 +128,9 @@ object SquarespaceEventsClient {
     }
   }
 
-  private def text(event: JsObject, field: String): Option[String] =
-    (event \ field).asOpt[String].map(_.trim).filter(_.nonEmpty)
 
   private def pageOf(event: JsObject, siteUrl: String): Option[String] =
-    text(event, "fullUrl").map(path => if (path.startsWith("http")) path else s"$siteUrl$path")
+    jsonText(event \ "fullUrl").map(path => if (path.startsWith("http")) path else s"$siteUrl$path")
 
   private def startOf(event: JsObject, zone: ZoneId): Option[LocalDateTime] =
     (event \ "startDate").asOpt[Long].map(ms =>

@@ -47,6 +47,15 @@ object ListingPages {
     attempts.flatMap { case (key, attempt) => attempt.toOption.map(key -> _) }
   }
 
+  /** A listing whose FIRST page says how many pages there are (a paging envelope's page count): page 1 read
+   *  — its failure fails the scrape, the source answered nothing — then pages 2 to that count under
+   *  [[readMore]]. Every page's items, in page order. */
+  def readNumbered[P, T](label: String, urlOf: Int => String, pageCount: P => Int, items: P => Seq[T])
+                        (read: String => P): Seq[T] = {
+    val first = read(urlOf(1))
+    items(first) ++ readMore(label, 2 to pageCount(first), urlOf)(read).flatMap { case (_, page) => items(page) }
+  }
+
   /** Pages that only ENRICH films the listing already holds — a release year, a poster, an
    *  original title — read side by side like [[readMore]], every key's attempt returned in
    *  `keys` order. A failed one is NOT reported: no film is dropped for want of it, so it says

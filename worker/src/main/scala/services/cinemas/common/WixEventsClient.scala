@@ -41,9 +41,7 @@ class WixEventsClient(
 
   def fetch(): Seq[CinemaMovie] = {
     val from = today
-    WixEventsClient.parse(HttpRead.page(http, page), postcode, zone, cinema)
-      .map(m => m.copy(showtimes = m.showtimes.filterNot(_.dateTime.toLocalDate.isBefore(from))))
-      .filter(_.showtimes.nonEmpty)
+    ScrapeHorizon.startingOn(from)(WixEventsClient.parse(HttpRead.page(http, page), postcode, zone, cinema))
   }
 }
 

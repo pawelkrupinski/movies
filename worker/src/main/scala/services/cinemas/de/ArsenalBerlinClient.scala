@@ -4,7 +4,8 @@ import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Document
 import play.api.libs.json._
-import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ListingPages, ScraperParse}
+import services.cinemas.common.{CinemaScraper, DetailEnricher, DetailFetchOutcome, FilmDetail, ListingPages, ScraperParse, SlotsToMovies}
+import services.cinemas.common.ScraperParse.jsonText
 import services.cinemas.pl.NonMovieEventClassifier
 import tools.{HttpFetch, HttpRead}
 
@@ -56,11 +57,10 @@ class ArsenalBerlinClient(
     DetailFetchOutcome.page(http, ref).map(html => parseDetail(Jsoup.parse(html, ref)))
 
   def fetch(): Seq[CinemaMovie] = {
-    val from  = today
-    val first = parsePage(HttpRead.page(http, pageUrl(1)), from)
-    val rest  = ListingPages.readMore("arsenal-berlin-pages", 2 to first.pageCount, pageUrl)(HttpRead.page(http, _))
-      .flatMap { case (_, body) => parsePage(body, from).screenings }
-    toMovies((first.screenings ++ rest).filterNot(_.dateTime.toLocalDate.isBefore(from)), cinema)
+    val from       = today
+    val screenings = ListingPages.readNumbered("arsenal-berlin-pages", pageUrl, (_: Page).pageCount, (_: Page).screenings)(
+      url => parsePage(HttpRead.page(http, url), from))
+    toMovies(screenings.filterNot(_.dateTime.toLocalDate.isBefore(from)), cinema)
   }
 }
 
@@ -101,24 +101,24 @@ object ArsenalBerlinClient {
 
   private def parseScreening(js: JsValue, today: LocalDate): Option[Screening] =
     for {
-      title    <- text(js \ "title")
+      title    <- jsonText(js \ "title")
       if !(js \ "location").asOpt[Seq[String]].getOrElse(Nil).exists(_.contains("Foyer"))
-      dateTime <- text(js \ "dateText").flatMap(dateTimeOf(_, today))
+      dateTime <- jsonText(js \ "dateText").flatMap(dateTimeOf(_, today))
     } yield {
       val shared = (js \ "movieTitles").asOpt[Seq[String]].exists(_.size > 1)
       def fact[T](value: => T, none: T): T = if (shared) none else value
       Screening(
         title          = title,
         shared         = shared,
-        director       = fact(list(text(js \ "director")), Nil),
-        countries      = fact(list(text(js \ "country")), Nil),
-        year           = fact(text(js \ "year").flatMap(singleYear), None),
-        runtimeMinutes = fact(text(js \ "playingTime").flatMap(minutes), None),
-        format         = text(js \ "languageVersion").toList.flatMap(languageVersion),
+        director       = fact(list(jsonText(js \ "director")), Nil),
+        countries      = fact(list(jsonText(js \ "country")), Nil),
+        year           = fact(jsonText(js \ "year").flatMap(singleYear), None),
+        runtimeMinutes = fact(jsonText(js \ "playingTime").flatMap(minutes), None),
+        format         = jsonText(js \ "languageVersion").toList.flatMap(languageVersion),
         dateTime       = dateTime,
-        bookingUrl     = text(js \ "salesUrl"),
-        pageUrl        = text(js \ "url").map(absolute),
-        posterUrl      = text(js \ "image" \ "src").map(absolute)
+        bookingUrl     = jsonText(js \ "salesUrl"),
+        pageUrl        = jsonText(js \ "url").map(absolute),
+        posterUrl      = jsonText(js \ "image" \ "src").map(absolute)
       )
     }
 
@@ -143,9 +143,9 @@ object ArsenalBerlinClient {
 
   /** One row per film the house titles alike; its page is its first screening's. */
   private[de] def toMovies(screenings: Seq[Screening], cinema: Cinema): Seq[CinemaMovie] =
-    screenings.filterNot(s => NonMovieEventClassifier.isNonScreening(s.title))
-      .groupBy(_.title).toSeq.map { case (title, same) =>
-        val byTime = same.sortBy(_.dateTime)
+    SlotsToMovies.fold(screenings.filterNot(s => NonMovieEventClassifier.isNonScreening(s.title)).sortBy(_.dateTime),
+      _.title, (s: Screening) => Showtime(s.dateTime, s.bookingUrl, None, s.format), SlotsToMovies.byTimeBookingAndFormat) {
+      (title, byTime, showtimes) =>
         CinemaMovie(
           movie     = Movie(title,
                         runtimeMinutes = byTime.flatMap(_.runtimeMinutes).headOption,
@@ -157,10 +157,9 @@ object ArsenalBerlinClient {
           synopsis  = None,
           cast      = Nil,
           director  = byTime.map(_.director).find(_.nonEmpty).getOrElse(Nil),
-          showtimes = byTime.map(s => Showtime(s.dateTime, s.bookingUrl, None, s.format))
-                        .distinctBy(s => (s.dateTime, s.bookingUrl, s.format))
+          showtimes = showtimes
         )
-      }.sortBy(_.movie.title)
+    }
 
   /** A screening's page: `Regie`, `mit` (the cast) and the unlabelled "Japan / 1962" over
    *  "102 Min. / DCP / OmeU" in its info list, and the house's synopsis beside it. */
@@ -198,7 +197,6 @@ object ArsenalBerlinClient {
     case Minutes(m) => m.toIntOption.filter(_ > 0)
     case _          => None
   }
-  private def list(s: Option[String]): Seq[String] = s.toSeq.flatMap(_.split(",")).map(_.trim).filter(_.nonEmpty)
+  private def list(s: Option[String]): Seq[String] = s.toSeq.flatMap(ScraperParse.commaItems)
   private def absolute(path: String): String = if (path.startsWith("http")) path else BaseUrl + path
-  private def text(js: JsLookupResult): Option[String] = js.asOpt[String].map(_.trim).filter(_.nonEmpty)
 }

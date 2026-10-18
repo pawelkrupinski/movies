@@ -3,6 +3,7 @@ package services.cinemas.uk
 import models._
 import play.api.libs.json._
 import services.cinemas.common.{CinemaScraper, ScraperParse, SlotsToMovies}
+import services.cinemas.common.ScraperParse.jsonText
 import services.cinemas.pl.OnlyMovieEventsFilter
 import services.movies.BbfcCertificate
 import tools.Whitespace.collapsedSpaces
@@ -136,7 +137,7 @@ object SpektrixClient {
       if !(instance \ "cancelled").asOpt[Boolean].contains(true)
       event    <- (instance \ "event" \ "id").asOpt[String].flatMap(byId.get).toSeq
       if venue.forall(isIn(_, instance, event))
-      title    <- text(event, "name").map(titleOf(_, event)).filter(_.nonEmpty).toSeq
+      title    <- jsonText(event \ "name").map(titleOf(_, event)).filter(_.nonEmpty).toSeq
       start    <- (instance \ "start").asOpt[String].flatMap(s => Try(LocalDateTime.parse(s)).toOption).toSeq
       if !start.toLocalDate.isBefore(today)
     } yield Slot(event, title, Showtime(dateTime = start, bookingUrl = webUrl(event), room = roomOf(instance, venue)))
@@ -146,15 +147,15 @@ object SpektrixClient {
       CinemaMovie(
         movie = Movie(
           title          = title,
-          rawTitle       = text(event, "name").filterNot(_ == title),
+          rawTitle       = jsonText(event \ "name").filterNot(_ == title),
           runtimeMinutes = (event \ "duration").asOpt[Int].filter(_ > 0),
           releaseYear    = attribute(event, YearAttribute).flatMap(ScraperParse.yearIn),
           countries      = attribute(event, CountryAttribute).toSeq.flatMap(ScraperParse.listItems)
         ),
         cinema      = cinema,
-        posterUrl   = text(event, "imageUrl"),
+        posterUrl   = jsonText(event \ "imageUrl"),
         filmUrl     = webUrl(event),
-        synopsis    = text(event, "description").flatMap(synopsisOf),
+        synopsis    = jsonText(event \ "description").flatMap(synopsisOf),
         cast        = names(attribute(event, CastAttribute)),
         director    = names(attribute(event, DirectorAttribute)),
         showtimes   = showtimes,
@@ -221,14 +222,11 @@ object SpektrixClient {
     value.toSeq.flatMap(_.split("[,;]")).map(_.trim).filter(_.nonEmpty)
 
   private def webUrl(event: JsObject): Option[String] =
-    text(event, "webUrl").filter(_.toLowerCase(Locale.ROOT).startsWith("http"))
+    jsonText(event \ "webUrl").filter(_.toLowerCase(Locale.ROOT).startsWith("http"))
 
   /** The screen, else the performance's venue attribute when that names a room inside
    *  the building ("Cinema 2" at the ICA) rather than the building itself. */
   private def roomOf(instance: JsObject, venue: Option[String]): Option[String] =
     attribute(instance, RoomAttribute).orElse(
       attribute(instance, PlainVenueAttribute).filterNot(v => venue.exists(_.equalsIgnoreCase(v))))
-
-  private def text(o: JsObject, field: String): Option[String] =
-    (o \ field).asOpt[String].map(_.trim).filter(_.nonEmpty)
 }

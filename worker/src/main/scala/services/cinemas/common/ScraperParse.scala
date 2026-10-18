@@ -3,6 +3,7 @@ package services.cinemas.common
 import java.util.Locale
 
 import org.jsoup.nodes.{Document, Element, TextNode}
+import play.api.libs.json.JsLookupResult
 import services.movies.FormatTags
 import tools.Whitespace.collapsedSpaces
 
@@ -351,6 +352,14 @@ private[cinemas] object ScraperParse {
   /** The items of a venue's one-field list — "USA/UK", "Poland; Germany; Italy", "UK & Namibia", "Joel Coen, Ethan
    *  Coen" — each trimmed, in order. */
   def listItems(s: String): Seq[String] = ListSeparator.split(s).iterator.map(_.trim).filter(_.nonEmpty).toSeq
+
+  /** The items of a comma-separated field — "Joel Coen, Ethan Coen", "Frankreich, Mauretanien" — each trimmed, in
+   *  order. Commas only, for a field whose names may carry the "&" or "/" [[listItems]] splits on ("Jean-Pierre &
+   *  Luc Dardenne"). */
+  def commaItems(s: String): Seq[String] = s.split(",").iterator.map(_.trim).filter(_.nonEmpty).toSeq
+
+  /** A JSON feed's string field, trimmed; a missing, non-string or blank one as none. */
+  def jsonText(js: JsLookupResult): Option[String] = js.asOpt[String].map(_.trim).filter(_.nonEmpty)
 
   /** The first four-digit year in `s` — a premiere date's ("24 marca 1980"), a credits line's ("…, USA, 2018"). */
   def yearIn(s: String): Option[Int] = FourDigitYear.findFirstIn(s).map(_.toInt)
