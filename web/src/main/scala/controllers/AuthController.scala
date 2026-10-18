@@ -1,12 +1,10 @@
 package controllers
 
-import java.util.Locale
-
 import models.User
 import play.api.Logging
 import play.api.libs.json.{JsValue, Json}
 import play.api.mvc._
-import services.auth.{AppleTokenValidator, AuthExchangeCodes, FacebookTokenValidator, GoogleTokenValidator, OauthProfile, OauthProvider}
+import services.auth.{AppleTokenValidator, AuthExchangeCodes, FacebookTokenValidator, GoogleTokenValidator, NativeTokenVerifier, OauthAccounts, OauthProvider}
 import services.users.UserRepository
 
 import java.net.URLEncoder
@@ -87,36 +85,41 @@ class AuthController(
   // is hygiene.
   private val OauthStateTtl = java.time.Duration.ofMinutes(10)
 
+  // Composed from the collaborators above: who a native token names, and the account a profile signs in as.
+  private val nativeTokens = new NativeTokenVerifier(providers, googleTokenValidator, facebookTokenValidator, appleTokenValidator)
+  private val accounts     = new OauthAccounts(userRepository, clock)
+
   def start(provider: String): Action[AnyContent] = Action { request =>
     providers.get(provider) match {
-      case None =>
-        NotFound(s"Provider not configured: $provider")
-      case Some(p) =>
-        val state       = AuthController.newState(country)
-        val redirectUri = callbackUrl(provider, request)
-        // Native iOS *and* Android clients pass `?platform=…`; both want the
-        // callback to bounce back into the app via the `kinowo://` deep link
-        // (carrying a one-shot exchange code) instead of redirecting to `/`.
-        val isMobile = request.getQueryString("platform").exists(Set("ios", "android"))
-        // The app's PKCE-style challenge (see `PendingExchangeCode.challenge`),
-        // carried to the code the callback mints. Absent from released app
-        // versions; malformed is refused rather than silently dropped, which
-        // would mint a code the app's own verifier could then never spend.
-        val challenge = request.getQueryString("challenge").filter(_ => isMobile)
-        if (challenge.exists(c => !AuthExchangeCodes.ChallengePattern.matches(c)))
-          BadRequest("challenge must be base64url(SHA-256(verifier)), unpadded")
-        else
-          // A start is a NEW flow: an earlier native one abandoned at the
-          // provider must not lend it `mobileClient` or its challenge — Android's
-          // Custom Tab shares the browser's cookie jar with ordinary web visits.
-          Redirect(p.authUrl(state, redirectUri))
-            .withSession(request.session - "mobileClient" - AuthController.MobileChallengeKey
-              + ("oauthState"     -> state)
-              + ("oauthProvider"  -> provider)
-              + ("oauthStateTimestamp"   -> clock.instant().toEpochMilli.toString)
-              ++ (if (isMobile) Seq("mobileClient" -> "1") else Seq.empty)
-              ++ challenge.map(AuthController.MobileChallengeKey -> _))
+      case None    => NotFound(s"Provider not configured: $provider")
+      case Some(p) => startFlow(p, provider, request)
     }
+  }
+
+  private def startFlow(p: OauthProvider, provider: String, request: RequestHeader): Result = {
+    val state = AuthController.newState(country)
+    // Native iOS *and* Android clients pass `?platform=…`; both want the
+    // callback to bounce back into the app via the `kinowo://` deep link
+    // (carrying a one-shot exchange code) instead of redirecting to `/`.
+    val isMobile = request.getQueryString("platform").exists(Set("ios", "android"))
+    // The app's PKCE-style challenge (see `PendingExchangeCode.challenge`),
+    // carried to the code the callback mints. Absent from released app
+    // versions; malformed is refused rather than silently dropped, which
+    // would mint a code the app's own verifier could then never spend.
+    val challenge = request.getQueryString("challenge").filter(_ => isMobile)
+    if (challenge.exists(c => !AuthExchangeCodes.ChallengePattern.matches(c)))
+      BadRequest("challenge must be base64url(SHA-256(verifier)), unpadded")
+    else
+      // A start is a NEW flow: an earlier native one abandoned at the
+      // provider must not lend it `mobileClient` or its challenge — Android's
+      // Custom Tab shares the browser's cookie jar with ordinary web visits.
+      Redirect(p.authUrl(state, callbackUrl(provider, request)))
+        .withSession(request.session - "mobileClient" - AuthController.MobileChallengeKey
+          + ("oauthState"     -> state)
+          + ("oauthProvider"  -> provider)
+          + ("oauthStateTimestamp"   -> clock.instant().toEpochMilli.toString)
+          ++ (if (isMobile) Seq("mobileClient" -> "1") else Seq.empty)
+          ++ challenge.map(AuthController.MobileChallengeKey -> _))
   }
 
   /** Where the provider comes back to — ONE registered URL per provider for the
@@ -168,8 +171,24 @@ class AuthController(
     } yield base + AuthController.callbackPath(provider) + AuthController.relayQuery(request)
   }
 
-  private def complete(provider: String, request: RequestHeader): Result = {
-    val parsed = for {
+  private def complete(provider: String, request: RequestHeader): Result =
+    verifiedCallback(provider, request) match {
+      case Left(reason) =>
+        logger.warn(s"OAuth callback for $provider rejected: $reason")
+        BadRequest(s"OAuth callback failed: $reason")
+      case Right((p, code)) =>
+        Try(accounts.signIn(provider, p.exchangeCode(code, callbackUrl(provider, request)))) match {
+          case Failure(exception) =>
+            logger.error(s"OAuth sign-in failed for $provider: ${exception.getMessage}", exception)
+            InternalServerError("Couldn't complete sign-in. Please try again.")
+          case Success(user) => signedInRedirect(user, request)
+        }
+    }
+
+  /** The provider and its `code`, once the callback is proven to finish the flow
+   *  THIS browser started — same state, same provider, not expired — or why not. */
+  private def verifiedCallback(provider: String, request: RequestHeader): Either[String, (OauthProvider, String)] =
+    for {
       p             <- providers.get(provider).toRight(s"Unknown provider: $provider")
       code          <- request.getQueryString("code").toRight("Missing code")
       state         <- request.getQueryString("state").toRight("Missing state")
@@ -185,32 +204,18 @@ class AuthController(
                        )
     } yield (p, code)
 
-    parsed match {
-      case Left(reason) =>
-        logger.warn(s"OAuth callback for $provider rejected: $reason")
-        BadRequest(s"OAuth callback failed: $reason")
-      case Right((p, code)) =>
-        val redirectUri = callbackUrl(provider, request)
-        Try {
-          val profile = p.exchangeCode(code, redirectUri)
-          upsertUser(provider, profile)
-        } match {
-          case Failure(exception) =>
-            logger.error(s"OAuth sign-in failed for $provider: ${exception.getMessage}", exception)
-            InternalServerError("Couldn't complete sign-in. Please try again.")
-          case Success(user) =>
-            val nextSession = SignedInUser.establish(
-              request.session - "oauthState" - "oauthProvider" - "oauthStateTimestamp" - "mobileClient" - AuthController.MobileChallengeKey,
-              user)
-            if (request.session.get("mobileClient").contains("1")) {
-              // The native apps keep their own cookie jar per host and finish
-              // through the deep link, so there is no sibling to pair.
-              uncacheable(Redirect(s"kinowo://auth-done?code=${exchangeCodes.mint(user.id,
-                challenge = request.session.get(AuthController.MobileChallengeKey))}").withSession(nextSession))
-            } else {
-              uncacheable(Redirect(pairSiblingThen(landingFor(request), request)).withSession(nextSession))
-            }
-        }
+  /** The finished web or native flow's redirect, `user` signed in and the flow's own session keys spent. */
+  private def signedInRedirect(user: User, request: RequestHeader): Result = {
+    val nextSession = SignedInUser.establish(
+      request.session - "oauthState" - "oauthProvider" - "oauthStateTimestamp" - "mobileClient" - AuthController.MobileChallengeKey,
+      user)
+    if (request.session.get("mobileClient").contains("1")) {
+      // The native apps keep their own cookie jar per host and finish
+      // through the deep link, so there is no sibling to pair.
+      uncacheable(Redirect(s"kinowo://auth-done?code=${exchangeCodes.mint(user.id,
+        challenge = request.session.get(AuthController.MobileChallengeKey))}").withSession(nextSession))
+    } else {
+      uncacheable(Redirect(pairSiblingThen(landingFor(request), request)).withSession(nextSession))
     }
   }
 
@@ -237,10 +242,14 @@ class AuthController(
    *  No pairing without a sibling, and none FROM the pairing leg itself —
    *  [[ssoFinish]] never calls this, so the chain is one hop by construction. */
   private def pairSiblingThen(landing: String, request: RequestHeader): String =
+    viaSibling(AuthController.SsoFinishPath, landing, request)
+
+  /** `landing` by way of the other domain's `path`, which sends the visitor on to
+   *  it — or `landing` itself when this origin has no sibling. */
+  private def viaSibling(path: String, landing: String, request: RequestHeader): String =
     models.Country.siblingOfOrigin(ForwardedUrl.base(request)) match {
-      case None => landing
-      case Some(sibling) =>
-        s"$sibling${AuthController.SsoFinishPath}${AuthController.query(Seq("next" -> absolute(landing, request)))}"
+      case None          => landing
+      case Some(sibling) => s"$sibling$path${AuthController.query(Seq("next" -> absolute(landing, request)))}"
     }
 
   /** An auth transition nothing may keep a copy of.
@@ -289,51 +298,28 @@ class AuthController(
    *  `PerUserResponse`, like every response here that names someone. */
   def token(): Action[JsValue] = Action(parse.json) { request => PerUserResponse(signInWithToken(request.body)) }
 
-  private def signInWithToken(body: JsValue): Result = {
+  private def signInWithToken(body: JsValue): Result =
     ((body \ "provider").asOpt[String], (body \ "token").asOpt[String]) match {
       case (None, _) => BadRequest(Json.obj("error" -> "missing provider"))
       case (_, None) => BadRequest(Json.obj("error" -> "missing token"))
-      case (Some(provider), Some(tokenStr)) =>
-        val fullName    = (body \ "fullName").asOpt[String]
-        val redirectUri = (body \ "redirectUri").asOpt[String]
-        Try(provider match {
-          case "apple" =>
-            appleTokenValidator.getOrElse(throw new RuntimeException("Apple not configured"))
-              .validate(tokenStr, fullName)
-          case "google" =>
-            redirectUri match {
-              case Some(uri) =>
-                providers.getOrElse("google", throw new RuntimeException("Google not configured"))
-                  .exchangeCode(tokenStr, uri)
-              case None =>
-                googleTokenValidator.getOrElse(throw new RuntimeException("Google not configured"))
-                  .validate(tokenStr)
-            }
-          case "facebook" =>
-            redirectUri match {
-              case Some(uri) =>
-                providers.getOrElse("facebook", throw new RuntimeException("Facebook not configured"))
-                  .exchangeCode(tokenStr, uri)
-              case None =>
-                facebookTokenValidator.getOrElse(throw new RuntimeException("Facebook not configured"))
-                  .validate(tokenStr)
-            }
-          case other => throw new RuntimeException(s"Unknown provider: $other")
-        }) match {
+      case (Some(provider), Some(token)) =>
+        Try(nativeTokens.profile(provider, token, (body \ "fullName").asOpt[String], (body \ "redirectUri").asOpt[String])) match {
           case Failure(exception) =>
             logger.warn(s"Token validation failed for $provider: ${exception.getMessage}", exception)
             Unauthorized(Json.obj("error" -> AuthController.TokenRejected))
           case Success(profile) =>
-            Try(upsertUser(provider, profile)) match {
+            Try(accounts.signIn(provider, profile)) match {
               case Failure(exception) =>
                 logger.error(s"Token sign-in failed for $provider: ${exception.getMessage}", exception)
                 InternalServerError(Json.obj("error" -> "Couldn't complete sign-in."))
-              case Success(user) =>
-                Ok(AuthController.userJson(user)).withSession(SignedInUser.establish(Session.emptyCookie, user))
+              case Success(user) => signedInJson(user)
             }
         }
     }
-  }
+
+  /** A native sign-in's answer: who, plus a fresh session cookie naming them. */
+  private def signedInJson(user: User): Result =
+    Ok(AuthController.userJson(user)).withSession(SignedInUser.establish(Session.emptyCookie, user))
 
   /** Who is looking — the ONLY place this application names a visitor now.
    *
@@ -369,12 +355,7 @@ class AuthController(
    *  is gone, not merely dead. Same one hop, in the other direction. */
   def logout(): Action[AnyContent] = Action { request =>
     revokeEverySession(request)
-    val landing = routes.LandingController.index().url
-    val target  = models.Country.siblingOfOrigin(ForwardedUrl.base(request)) match {
-      case None          => landing
-      case Some(sibling) =>
-        s"$sibling${AuthController.SsoLogoutPath}${AuthController.query(Seq("next" -> absolute(landing, request)))}"
-    }
+    val target = viaSibling(AuthController.SsoLogoutPath, routes.LandingController.index().url, request)
     // `withNewSession` DISCARDS the cookie rather than re-signing a smaller one.
     // Removing the keys would leave a valid session cookie behind holding
     // nothing, which is the same thing to this application and not the same
@@ -421,37 +402,6 @@ class AuthController(
   private val deploymentMessages: play.api.i18n.Messages =
     cc.messagesApi.preferred(Seq(play.api.i18n.Lang(country.language.getLanguage)))
 
-  private def upsertUser(provider: String, profile: OauthProfile): User = {
-    val now   = clock.instant()
-    val email = profile.email.getOrElse(
-      throw new RuntimeException(s"OAuth $provider profile has no email — cannot identify user")
-    ).toLowerCase(Locale.ROOT)
-    val user = userRepository.findById(email) match {
-      case Some(existing) =>
-        existing.copy(
-          provider    = provider,
-          providerSub = profile.sub,
-          displayName = profile.displayName.orElse(existing.displayName),
-          avatarUrl   = profile.avatarUrl.orElse(existing.avatarUrl),
-          lastSeenAt  = now
-        )
-      case None =>
-        User(
-          id          = email,
-          provider    = provider,
-          providerSub = profile.sub,
-          email       = Some(email),
-          displayName = profile.displayName,
-          avatarUrl   = profile.avatarUrl,
-          createdAt   = now,
-          lastSeenAt  = now
-        )
-    }
-    // The row as stored — its `sessionVersion` may be a revoke's that landed
-    // after the read above, and it is what the new cookie must carry.
-    userRepository.upsert(user)
-  }
-
   def exchange(): Action[JsValue] = Action(parse.json) { request => PerUserResponse(redeemExchangeCode(request.body)) }
 
   private def redeemExchangeCode(body: JsValue): Result = {
@@ -462,8 +412,7 @@ class AuthController(
         userRepository.findById(userId) match {
           case None =>
             Unauthorized(Json.obj("error" -> "user not found"))
-          case Some(user) =>
-            Ok(AuthController.userJson(user)).withSession(SignedInUser.establish(Session.emptyCookie, user))
+          case Some(user) => signedInJson(user)
         }
     }
   }
@@ -491,6 +440,17 @@ class AuthController(
    *  redirect, so no page ever renders (and no subresource sends a `Referer`)
    *  while it is still in the address bar. */
   def ssoStart(): Action[AnyContent] = Action { request =>
+    SignedInUser.answering(AuthController.handoffTarget(request.getQueryString("to")) match {
+      case None =>
+        logger.warn(s"SSO start refused: '${request.getQueryString("to").getOrElse("")}' is not a deployed country.")
+        BadRequest("Unknown country")
+      case Some(target) => handOffTo(target, request)
+    })
+  }
+
+  /** [[ssoStart]] toward an allowlisted `target`: its landing when there is no
+   *  session to hand over (or none needed), else the next leg of the handoff. */
+  private def handOffTo(target: String, request: RequestHeader): Result = {
     // Rides ALONGSIDE `to` rather than inside it: `to` is matched against the
     // deployed base URLs verbatim, so a query string on it is not a deployed
     // country. Carried across the hop so a signed-in visitor switching country
@@ -501,47 +461,45 @@ class AuthController(
     val namedCountry = LandingController.picksCity(request) ||
       request.getQueryString(LandingController.CityParam).exists(_.nonEmpty)
     val pick = if (namedCountry) LandingController.PickCityQuery else ""
-    SignedInUser.answering(AuthController.handoffTarget(request.getQueryString("to")) match {
-      case None =>
-        logger.warn(s"SSO start refused: '${request.getQueryString("to").getOrElse("")}' is not a deployed country.")
-        BadRequest("Unknown country")
-      case Some(target) =>
-        // A picker that already knows WHICH city was picked hands its slug
-        // through `city=` instead of the bare "ask again" `pick=city` marker,
-        // re-validated here against the TARGET country's own cities — never
-        // trusted verbatim, since it arrives on a query string a visitor
-        // controls — so the handoff below lands on the exact city rather than
-        // dropping the visitor at that country's picker.
-        val citySlug = AuthController.validatedCitySlug(target, request.getQueryString(LandingController.CityParam))
-        val onward = citySlug.map(LandingController.CityParam -> _).toSeq ++
-          (if (citySlug.isEmpty && pick.nonEmpty) Seq(LandingController.PickCityParam -> LandingController.PickCityValue) else Nil) ++
-          AuthController.switchTarget(request.getQueryString("next")).map("next" -> _)
-        val landing = Redirect(citySlug.map(s => s"$target/$s/").getOrElse(s"$target/$pick"))
-        SignedInUser(request, userRepository) match {
-          // NOTHING TO HAND OVER, and the marker matters. This endpoint is now
-          // also reached unprompted, by a signed-out arrival probing whether the
-          // visitor has a session on the other domain; sending it back to a bare
-          // landing would leave the page it lands on unable to tell a first visit
-          // from one that has just been answered, and it would probe again. The
-          // probe's own cookie guard is the durable half; this is what holds when
-          // a browser is refusing cookies, which is also a browser that can never
-          // hold a session and must not be put in a loop chasing one.
-          case None => landing
-          // Same origin: the cookie is already there, and the far side's sibling
-          // is not this origin, so a binding round trip would go astray.
-          case Some(_) if ForwardedUrl.originOf(target) == ForwardedUrl.base(request) => landing
-          case Some(user) =>
-            request.getQueryString(AuthController.BindParam).filter(_.nonEmpty) match {
-              case None =>
-                Redirect(s"$target${AuthController.SsoFinishPath}${AuthController.query(onward)}")
-              case Some(binding) =>
-                // The Location carries a live code: nothing may keep a copy of it.
-                val code = exchangeCodes.mint(user.id, Some(binding))
-                uncacheable(Redirect(s"$target${AuthController.SsoFinishPath}${AuthController.query(("code" -> code) +: onward)}"))
-            }
-        }
-    })
+    // A picker that already knows WHICH city was picked hands its slug
+    // through `city=` instead of the bare "ask again" `pick=city` marker,
+    // re-validated here against the TARGET country's own cities — never
+    // trusted verbatim, since it arrives on a query string a visitor
+    // controls — so the handoff below lands on the exact city rather than
+    // dropping the visitor at that country's picker.
+    val citySlug = AuthController.validatedCitySlug(target, request.getQueryString(LandingController.CityParam))
+    val onward = citySlug.map(LandingController.CityParam -> _).toSeq ++
+      (if (citySlug.isEmpty && pick.nonEmpty) Seq(LandingController.PickCityParam -> LandingController.PickCityValue) else Nil) ++
+      AuthController.switchTarget(request.getQueryString("next")).map("next" -> _)
+    val landing = Redirect(citySlug.map(s => s"$target/$s/").getOrElse(s"$target/$pick"))
+    SignedInUser(request, userRepository) match {
+      // NOTHING TO HAND OVER, and the marker matters. This endpoint is now
+      // also reached unprompted, by a signed-out arrival probing whether the
+      // visitor has a session on the other domain; sending it back to a bare
+      // landing would leave the page it lands on unable to tell a first visit
+      // from one that has just been answered, and it would probe again. The
+      // probe's own cookie guard is the durable half; this is what holds when
+      // a browser is refusing cookies, which is also a browser that can never
+      // hold a session and must not be put in a loop chasing one.
+      case None => landing
+      // Same origin: the cookie is already there, and the far side's sibling
+      // is not this origin, so a binding round trip would go astray.
+      case Some(_) if ForwardedUrl.originOf(target) == ForwardedUrl.base(request) => landing
+      case Some(user) => handOffSession(user, target, onward, request)
+    }
   }
+
+  /** The two legs of a signed-in handoff: without `bind`, send the browser to the
+   *  far side's finish to be given a binding; back with one, mint a code for it. */
+  private def handOffSession(user: User, target: String, onward: Seq[(String, String)], request: RequestHeader): Result =
+    request.getQueryString(AuthController.BindParam).filter(_.nonEmpty) match {
+      case None =>
+        Redirect(s"$target${AuthController.SsoFinishPath}${AuthController.query(onward)}")
+      case Some(binding) =>
+        // The Location carries a live code: nothing may keep a copy of it.
+        val code = exchangeCodes.mint(user.id, Some(binding))
+        uncacheable(Redirect(s"$target${AuthController.SsoFinishPath}${AuthController.query(("code" -> code) +: onward)}"))
+    }
 
   /** Receive a session handed over by [[ssoStart]] on another domain.
    *
@@ -559,48 +517,62 @@ class AuthController(
    *  a stale code is sign in again — which is exactly what the home page offers.
    *  The warning is for us, not them. */
   def ssoFinish(): Action[AnyContent] = Action { request =>
-    // `next` is where the visitor was actually going — set when this is the
-    // pairing leg of a sign-in that happened on the other domain, so they land
-    // back where they started rather than on this country's home page. Matched
-    // against the deployed countries and nothing else: it is a redirect target
-    // named in a URL, which is an open redirect the moment it is trusted.
-    // A country switch that came through the handover still owes its landing the
-    // marker: the visitor chose this country and should be asked which city,
-    // not bounced to a cookie'd one — UNLESS `ssoStart` already knew which city
-    // and handed its slug through `city=`, re-validated here against THIS
-    // deployment's own cities (this process serves exactly `country`), in
-    // which case the visitor lands directly on it instead of being asked again.
+    val here = ForwardedUrl.base(request)
+    (request.getQueryString("code"), models.Country.siblingOfOrigin(here)) match {
+      case (None, Some(sibling)) => askForBinding(sibling, here, request)
+      case (code, _)             => spendHandoffCode(code, request)
+    }
+  }
+
+  /** The codeless first leg of [[ssoFinish]]: a fresh binding in this browser's
+   *  session, and back to the sibling's `ssoStart` carrying it. */
+  private def askForBinding(sibling: String, here: String, request: RequestHeader): Result = {
+    val binding = UUID.randomUUID().toString
+    val self    = here + request.path.stripSuffix(AuthController.SsoFinishPath)
+    val onward  = Seq(LandingController.CityParam, LandingController.PickCityParam, "next")
+      .flatMap(key => request.getQueryString(key).map(key -> _))
+    uncacheable(Redirect(s"$sibling${AuthController.SsoStartPath}${AuthController.query(
+      Seq("to" -> self, AuthController.BindParam -> binding) ++ onward)}")
+      .withSession(request.session + (AuthController.SsoBindingKey -> binding)))
+  }
+
+  /** The second leg of [[ssoFinish]]: spend `code` against this browser's binding
+   *  and land signed in — or signed out, when it does not redeem. */
+  private def spendHandoffCode(code: Option[String], request: RequestHeader): Result = {
+    val home = ssoFinishLanding(request)
+    // Spent either way: a binding is good for one handoff, like its code.
+    // `exchangeCodes.redeemHandoff` refuses a browser holding no binding at all.
+    val binding = request.session.get(AuthController.SsoBindingKey)
+    val cleared = request.session - AuthController.SsoBindingKey
+    code.flatMap(exchangeCodes.redeemHandoff(_, binding)).flatMap(userRepository.findById) match {
+      case None =>
+        logger.warn("SSO handoff arrived without a code redeemable by this browser — landing signed out.")
+        uncacheable(home.withSession(cleared))
+      case Some(user) =>
+        // Deliberately does NOT pair onwards: this IS the pairing leg, and a
+        // second hop from here is the loop.
+        uncacheable(home.withSession(SignedInUser.establish(cleared, user)))
+    }
+  }
+
+  // `next` is where the visitor was actually going — set when this is the
+  // pairing leg of a sign-in that happened on the other domain, so they land
+  // back where they started rather than on this country's home page. Matched
+  // against the deployed countries and nothing else: it is a redirect target
+  // named in a URL, which is an open redirect the moment it is trusted.
+  // A country switch that came through the handover still owes its landing the
+  // marker: the visitor chose this country and should be asked which city,
+  // not bounced to a cookie'd one — UNLESS `ssoStart` already knew which city
+  // and handed its slug through `city=`, re-validated here against THIS
+  // deployment's own cities (this process serves exactly `country`), in
+  // which case the visitor lands directly on it instead of being asked again.
+  private def ssoFinishLanding(request: RequestHeader): Result = {
     val pick = if (LandingController.picksCity(request)) LandingController.PickCityQuery else ""
     val citySlug = request.getQueryString(LandingController.CityParam).filter(country.bySlug.contains)
-    val home = Redirect(
+    Redirect(
       citySlug.map(s => s"${country.pathPrefix}/$s/").getOrElse(
         AuthController.switchTarget(request.getQueryString("next")).map(_ + "/")
           .getOrElse(routes.LandingController.index().url) + pick))
-    val here = ForwardedUrl.base(request)
-    (request.getQueryString("code"), models.Country.siblingOfOrigin(here)) match {
-      case (None, Some(sibling)) =>
-        val binding = UUID.randomUUID().toString
-        val self    = here + request.path.stripSuffix(AuthController.SsoFinishPath)
-        val onward  = Seq(LandingController.CityParam, LandingController.PickCityParam, "next")
-          .flatMap(key => request.getQueryString(key).map(key -> _))
-        uncacheable(Redirect(s"$sibling${AuthController.SsoStartPath}${AuthController.query(
-          Seq("to" -> self, AuthController.BindParam -> binding) ++ onward)}")
-          .withSession(request.session + (AuthController.SsoBindingKey -> binding)))
-      case (code, _) =>
-        // Spent either way: a binding is good for one handoff, like its code.
-        // `redeemHandoff` refuses a browser holding no binding at all.
-        val binding = request.session.get(AuthController.SsoBindingKey)
-        val cleared = request.session - AuthController.SsoBindingKey
-        code.flatMap(exchangeCodes.redeemHandoff(_, binding)).flatMap(userRepository.findById) match {
-          case None =>
-            logger.warn("SSO handoff arrived without a code redeemable by this browser — landing signed out.")
-            uncacheable(home.withSession(cleared))
-          case Some(user) =>
-            // Deliberately does NOT pair onwards: this IS the pairing leg, and a
-            // second hop from here is the loop.
-            uncacheable(home.withSession(SignedInUser.establish(cleared, user)))
-        }
-    }
   }
 
   /** The `redirect_uri` handed to the provider, and handed back at exchange —
