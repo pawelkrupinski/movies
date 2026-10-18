@@ -412,6 +412,24 @@ class WorkerWiring(
   def start(): Unit = {
     bootStarted.set(Some(tools.Stopwatch.start()))
     val boot = new BootSteps(country.code)
+    startStores(boot)
+    // Publish this country's cache occupancy. Here rather than at construction
+    // because it forces the lazy catalog, and a wiring that is built but never
+    // started (tests, diagnostics) should not pay for a scraper graph.
+    boot.step("cache metrics")(registerCacheMetrics())
+    // Ratings refresh via the queue (RatingHandlers + the EnrichmentReaper
+    // backstop); refreshOneSync, which the handlers call, needs no start().
+    boot.step("unscreened cleanup")(unscreenedCleanup.start())
+    boot.step("stranded side rows")(strandedSideRowsCleanup.start())
+    boot.step("client markers")(tagClientMarkers())
+    startTaskPipeline(boot)
+    startCensuses(boot)
+    logger.info(boot.summary)
+  }
+
+  /** Mongo, the admin overrides, the identity model's take-up, and the cache hydrate beside the
+   *  read-model projector's boot reads. */
+  private def startStores(boot: BootSteps): Unit = {
     // Force Mongo at boot so connection errors surface in the boot timeline.
     boot.step("mongo")(mongoConnection.database)
     // Install the override source first so boot-time knob reads already see flips.
@@ -440,20 +458,15 @@ class WorkerWiring(
     // scrape pass (KINOWO_SCRAPE_INITIAL_DELAY_SECONDS) and the projector's orphan prune
     // (KINOWO_READMODEL_PRUNE_BOOT_DELAY_SECONDS).
     try boot.step("movie cache hydrate")(movieCache.start()) finally cacheStarted.countDown()
-    // Publish this country's cache occupancy. Here rather than at construction
-    // because it forces the lazy catalog, and a wiring that is built but never
-    // started (tests, diagnostics) should not pay for a scraper graph.
-    boot.step("cache metrics")(registerCacheMetrics())
-    // Ratings refresh via the queue (RatingHandlers + the EnrichmentReaper
-    // backstop); refreshOneSync, which the handlers call, needs no start().
-    boot.step("unscreened cleanup")(unscreenedCleanup.start())
-    boot.step("stranded side rows")(strandedSideRowsCleanup.start())
-    // Tag each cinema with its scraper-client marker (shared platform client vs a
-    // bespoke one) plus the FtFW chip if it's already in Filmweb fallback at boot
-    // (transitions only fire on change, so an in-flight fallback would otherwise go
-    // untagged until it next flips). Same rationale as above — the catalog is
-    // worker-only, so the tags ride the UptimeMonitor tag channel.
-    boot.step("client markers")(clientMarkers.foreach { case (cinema, marker) =>
+  }
+
+  // Tag each cinema with its scraper-client marker (shared platform client vs a
+  // bespoke one) plus the FtFW chip if it's already in Filmweb fallback at boot
+  // (transitions only fire on change, so an in-flight fallback would otherwise go
+  // untagged until it next flips). Same rationale as above — the catalog is
+  // worker-only, so the tags ride the UptimeMonitor tag channel.
+  private def tagClientMarkers(): Unit =
+    clientMarkers.foreach { case (cinema, marker) =>
       val inFallback =
         try filmwebFallbackStore.get(cinema).exists(_.active)
         catch { case scala.util.control.NonFatal(e) =>
@@ -461,7 +474,10 @@ class WorkerWiring(
           false
         }
       uptimeMonitor.tagService(cinema, CinemaClientMarkers.tagsFor(Some(marker), sourceUrls.get(cinema), inFallback))
-    })
+    }
+
+  /** The task worker and its watchdog, then every reaper and schedule that feeds its queue. */
+  private def startTaskPipeline(boot: BootSteps): Unit = {
     // The task worker drains all queue work: scraping, deferred detail, and
     // queue-driven rating enrichment.
     boot.step("task worker")({ taskWorker.start(); workerHeartbeat.start() })
@@ -486,6 +502,10 @@ class WorkerWiring(
     // Backstop the chunked-scrape fan-in: recover complete runs whose completion
     // event was lost, and partial-reduce abandoned runs.
     boot.step("chunk scrape reaper")(chunkScrapeReaper.start())
+  }
+
+  /** The alerters' report, and the off-band censuses behind the /metrics gauges. */
+  private def startCensuses(boot: BootSteps): Unit = {
     // Say so, loudly, for any alerter a missing env var has wired off (gauge + WARN).
     boot.step("alerters")(reportAlerters())
     // Census the corpus for the /metrics gauges, from the cache and its changes (no read):
@@ -502,7 +522,6 @@ class WorkerWiring(
     boot.step("scrape census")(cinemaScrapeCensus.start())
     boot.step("content census")(cinemaContentCensus.start())
     boot.step("retired venue census")(retiredVenueCensus.start())
-    logger.info(boot.summary)
   }
 
   /** Event-cascade drain order, producer→consumer, for the harnesses' `drainServices`
