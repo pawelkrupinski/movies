@@ -12,6 +12,12 @@ final class DeepLinkTests: XCTestCase {
         DeepLink.parse(URL(string: s)!)
     }
 
+    /// One city per slug in `country`, standing in for the live catalog's
+    /// rows of a country the compile-time `City.all` doesn't ship.
+    private func catalog(_ country: String, _ slugs: String...) -> [City] {
+        slugs.map { City(slug: $0, name: $0, lat: 0, lon: 0, country: country) }
+    }
+
     // MARK: city + film identity
 
     func testCityListingLink() {
@@ -101,15 +107,12 @@ final class DeepLinkTests: XCTestCase {
         // former slug on its successor, and the link opens there.
         let cities = try! JSONDecoder().decode([City].self, from: Data(#"[{"slug":"biala-podlaska","name":"Biała Podlaska i okolice","lat":52.0,"lon":23.1,"country":"pl","formerSlugs":["miedzyrzec-podlaski"]}]"#.utf8))
         let dl = DeepLink.parse(URL(string: "https://kinowo.net/miedzyrzec-podlaski/movie/oppenheimer?date=tomorrow")!,
-                                knownCitySlugs: Set(cities.map(\.slug)),
-                                currentSlugByFormer: cities.currentSlugByFormer(inCountry: "pl"))
+                                cities: cities)
         XCTAssertEqual(dl?.citySlug, "biala-podlaska")
         XCTAssertEqual(dl?.filmSlug, "oppenheimer")
         XCTAssertEqual(dl?.filters.date, .tomorrow)
         // A slug nobody ever answered at is still no city.
-        XCTAssertNil(DeepLink.parse(URL(string: "https://kinowo.net/nowhere/")!,
-                                    knownCitySlugs: Set(cities.map(\.slug)),
-                                    currentSlugByFormer: cities.currentSlugByFormer(inCountry: "pl")))
+        XCTAssertNil(DeepLink.parse(URL(string: "https://kinowo.net/nowhere/")!, cities: cities))
     }
 
     /// Every country owns its slugs: the link's path segment picks the country,
@@ -231,26 +234,27 @@ final class DeepLinkTests: XCTestCase {
 
     func testDECountrySegmentOpensInApp() {
         // No German city ships in the compile-time `City.all` fallback (they
-        // arrive via the live catalog), so pass the slug set the app hands in at
-        // runtime (`catalog.allSlugs`) — the same call `handleDeepLink` makes.
-        let dl = DeepLink.parse(URL(string: "https://showtimes.cc/de/berlin/")!, knownCitySlugs: ["berlin"])
+        // arrive via the live catalog), so pass catalog rows the way
+        // `handleDeepLink` passes the live catalog's.
+        let dl = DeepLink.parse(URL(string: "https://showtimes.cc/de/berlin/")!, cities: catalog("de", "berlin"))
         XCTAssertEqual(dl?.citySlug, "berlin")
+        XCTAssertEqual(dl?.countryCode, "de")
     }
 
     func testUSCountrySegmentOpensInApp() {
         // Like Germany's, the US regions arrive via the live catalog rather than
-        // the compile-time `City.all`, so pass the runtime slug set.
+        // the compile-time `City.all`, so pass catalog rows.
         let dl = DeepLink.parse(URL(string: "https://showtimes.cc/us/california/movie/wicked")!,
-                                knownCitySlugs: ["california"])
+                                cities: catalog("us", "california"))
         XCTAssertEqual(dl?.citySlug, "california")
         XCTAssertEqual(dl?.filmSlug, "wicked")
     }
 
     func testESCountrySegmentOpensInApp() {
-        // Spain's provinces arrive via the live catalog too, so pass the runtime
-        // slug set the way the German and US cases do.
+        // Spain's cities arrive via the live catalog too, so pass catalog rows
+        // the way the German and US cases do.
         let dl = DeepLink.parse(URL(string: "https://showtimes.cc/es/madrid/movie/la-odisea")!,
-                                knownCitySlugs: ["madrid"])
+                                cities: catalog("es", "madrid"))
         XCTAssertEqual(dl?.citySlug, "madrid")
         XCTAssertEqual(dl?.filmSlug, "la-odisea")
     }
@@ -261,7 +265,7 @@ final class DeepLinkTests: XCTestCase {
     func testRetiredCountrySubdomainIsRejected() {
         XCTAssertNil(parse("https://uk.showtimes.cc/london/"))
         XCTAssertNil(DeepLink.parse(URL(string: "https://de.showtimes.cc/berlin/")!,
-                                    knownCitySlugs: ["berlin"]))
+                                    cities: catalog("de", "berlin")))
     }
 
     /// The country segment is dropped only when it ISN'T also a city the build
@@ -273,7 +277,7 @@ final class DeepLinkTests: XCTestCase {
         XCTAssertEqual(dl?.citySlug, "poznan")
         XCTAssertEqual(dl?.filmSlug, "oppenheimer")
 
-        let asCity = DeepLink.parse(URL(string: "https://showtimes.cc/us/")!, knownCitySlugs: ["us"])
+        let asCity = DeepLink.parse(URL(string: "https://showtimes.cc/us/")!, cities: catalog("pl", "us"))
         XCTAssertEqual(asCity?.citySlug, "us")
     }
 
@@ -324,12 +328,13 @@ final class DeepLinkTests: XCTestCase {
         // A German share link carries the German pair; the whitelist used to be
         // Poland's, so `lang=OmU` was dropped as garbage and the link opened
         // unfiltered.
-        let german: (String) -> Set<String> = { slug in slug == "berlin" ? ["OmU", "DF"] : ["NAP", "DUB"] }
+        let german: (String) -> Set<String> = { country in country == "de" ? ["OmU", "DF"] : ["NAP", "DUB"] }
+        let cities = catalog("de", "berlin") + catalog("pl", "poznan")
         let url = URL(string: "https://showtimes.cc/de/berlin/?lang=OmU")!
-        XCTAssertEqual(DeepLink.parse(url, knownCitySlugs: ["berlin", "poznan"], languageTokens: german)?.filters.language, "OmU")
+        XCTAssertEqual(DeepLink.parse(url, cities: cities, languageTokensOfCountry: german)?.filters.language, "OmU")
         // …and a Polish token on a German city is not the German filter's.
         let mixed = URL(string: "https://showtimes.cc/de/berlin/?lang=NAP")!
-        XCTAssertNil(DeepLink.parse(mixed, knownCitySlugs: ["berlin", "poznan"], languageTokens: german)?.filters.language)
+        XCTAssertNil(DeepLink.parse(mixed, cities: cities, languageTokensOfCountry: german)?.filters.language)
         // The default whitelist is still Poland's pair.
         XCTAssertNil(parse("https://kinowo.net/poznan/?lang=OmU")?.filters.language)
     }

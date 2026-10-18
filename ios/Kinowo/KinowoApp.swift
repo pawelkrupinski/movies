@@ -151,8 +151,8 @@ struct KinowoApp: App {
         // fetches the new country's city from the old one. The UI language is
         // unaffected — it's a fully independent preference (see
         // `LanguageSelection`), so a cross-country link never changes it.
-        if let countryCode = link.countryCode, countryCode != prefs.selectedCountry.code {
-            switchCountry(to: catalog.country(code: countryCode), prefs: prefs, store: store, details: details)
+        if link.countryCode != prefs.selectedCountry.code {
+            switchCountry(to: catalog.country(code: link.countryCode), prefs: prefs, store: store, details: details)
         }
         if link.citySlug != prefs.selectedCity {
             prefs.setCity(link.citySlug)
