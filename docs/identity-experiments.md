@@ -62,7 +62,8 @@ reaches that replay: a final-stage 0 there means not seen, not refilled. Variant
 - **Result:** cured no served wrong take, lost one right take. Cannot reach "The Killer": the feed's copied year and
   director agree with the film the feed picked, and nothing the venue states independently contradicts it.
 - **Code:** `experiment/identity-wrong-classes` (`8c0c9d17e`; its first commits are the class-2 groundwork F builds on).
-- **Next angle:** a runtime gap outweighing a matching copied year/director ("The Stranger" bills 95 min vs 122) — only
+- **Next angle:** (The Stranger was cured 10-18 another way: see "Hold apart a join made only by a copied original title".)
+  A runtime gap outweighing a matching copied year/director ("The Stranger" bills 95 min vs 122) — only
   "The Stranger" in the corpus then; Alpha (51 min off) was cured another way. Meets `FamilyScope`'s release-veto check,
   as does the separate `wmo-d-origin-once` work.
 
@@ -135,6 +136,23 @@ slice outputs: `~/.cache/kinowo-identity/handoff/2026-10-15-wrong-match-round2/i
 - **Next angle:** the losses are venues whose own feed id names the film; let an own id stand outside the origin
   count, and count origins once only among venues with no id of their own. A full re-calibration on a prod snapshot
   was never run.
+
+### Hold apart a join made only by a copied original title whose link names another film ("The Black Hole")
+- **Tried (10-18, branch `kw-copied-facts`):** a cannot-link (`copied-original-apart`) between two nodes that meet
+  only through feed-copied original titles (no billed title or search form alike) when one node's TMDB-keyed link
+  names a film the other does not hold: either another film the other already holds, or one the other's own facts
+  deny.
+- **Result (identity-measure-local, base `807e7f287`, recording 38713274617):** DE model 2 cured (CITY 46 "THE BLACK
+  HOLE", Filmmuseum München "The Stranger"), 2 right lost (DFF "CONFIDENTE", Traum-Kino "TOGETHER APART") and 3
+  unjudged lost that look right (Andreasstadel "Departures" → Nokan, Filmhauskino "ENOUGH IS ENOUGH" → Trop c'est trop,
+  Kurbelkiste "Felix" → Felix - Ein Hase auf Weltreise). Every other country moved nothing.
+- **Why stopped:** each loss is the "holds another film" half: a venue bills a film's English title and its operator
+  linked a namesake record. Black Hole is the same pattern; only the recording's gap (508578m is absent) sets it apart.
+  The "denies" half landed alone (`ConstraintEdges.copiedOriginalJoinsAnotherFilm`): measured on base `f1571ea7e`,
+  all five countries, it cures The Stranger and moves nothing else (LANDABLE).
+- **Code:** `experiment/identity-copied-original-apart-wide`.
+- **Next angle:** Black Hole needs a signal that its link is right, such as a festival banner or the 2024 record being
+  in the recording, not a rule against the copy.
 
 ### Hold two family records apart when they name another id in one database ("Romeo and Juliet")
 - **Tried:** UK Empire Theatre Halstead "Romeo and Juliet" (Royal Ballet relay): Wikidata's undated record of the play
