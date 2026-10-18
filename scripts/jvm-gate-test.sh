@@ -76,4 +76,18 @@ check "on macOS a tool's JVM is sized for KINOWO_JVM_CPUS cores (default 4)" "-X
 check "...on Linux (CI's runner, the JVM's alone) and with KINOWO_JVM_CPUS=0: left to the JVM" "|" \
   "$(unset KINOWO_JVM_CPUS; KINOWO_JVM_GATE_OS=Linux jvm_cpu_options)|$(KINOWO_JVM_CPUS=0 KINOWO_JVM_GATE_OS=Darwin jvm_cpu_options)"
 
+# --- a worktree follows local main's gate
+. "$REPO_ROOT/scripts/scratch-git.sh"
+root="$work/root"; mkdir -p "$root/scripts"
+cp "$REPO_ROOT/scripts/jvm-gate.sh" "$root/scripts/"
+scratch_git "$root" init -q && scratch_git "$root" add -A && scratch_git "$root" -c user.email=t@t -c user.name=t commit -qm gate
+scratch_git "$root" worktree add -q -b old "$work/wt"
+printf '\njvm_cpu_options() { echo from-main; }\n' >> "$root/scripts/jvm-gate.sh"
+check "a worktree's gate re-reads the root checkout's (local main's): a fix there reaches running agents" "from-main" \
+  "$(KINOWO_JVM_GATE_FOLLOW_MAIN=1 bash -c '. "$1/scripts/jvm-gate.sh"; jvm_cpu_options' _ "$work/wt")"
+check "...KINOWO_JVM_GATE_FOLLOW_MAIN=0 keeps the worktree's own" "" \
+  "$(KINOWO_JVM_GATE_FOLLOW_MAIN=0 KINOWO_JVM_GATE_OS=Linux bash -c '. "$1/scripts/jvm-gate.sh"; jvm_cpu_options' _ "$work/wt")"
+check "...and the root checkout's own gate is read once, not again" "from-main" \
+  "$(KINOWO_JVM_GATE_FOLLOW_MAIN=1 bash -c '. "$1/scripts/jvm-gate.sh"; jvm_cpu_options' _ "$root")"
+
 spec_summary

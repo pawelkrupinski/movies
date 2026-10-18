@@ -27,6 +27,8 @@
 # JVM starts have no business waiting on, and sizes JVMs for a share of the cores, which a spec's command lines would
 # then vary by: all off in every spec unless it asks for it (jvm-gate-test.sh does).
 export KINOWO_MEMORY_GATE=${KINOWO_MEMORY_GATE:-0} KINOWO_JVM_SLOTS=${KINOWO_JVM_SLOTS:-0} KINOWO_JVM_CPUS=${KINOWO_JVM_CPUS:-0}
+# ...and a spec tests its own checkout's gate, never the root checkout's it would otherwise follow
+export KINOWO_JVM_GATE_FOLLOW_MAIN=${KINOWO_JVM_GATE_FOLLOW_MAIN:-0}
 
 # Failure tally. Set here rather than in each caller, which is the third line all
 # four repeated.

@@ -120,3 +120,19 @@ jvm_cpu_options() {
   [ "${KINOWO_JVM_GATE_OS:-$(uname -s)}" = Darwin ] || return 0
   echo "-XX:ActiveProcessorCount=$cpus"
 }
+
+# FOLLOW MAIN: a worktree keeps the gate it branched with, so a gate fix reached no agent already running (two of
+# 2026-10-18's agents sat ~45 min at a gate main had already fixed). Sourced from a linked worktree, this re-reads the
+# root checkout's copy -- local main, kept clean -- over its own definitions: what the root lacks, this copy still
+# defines. KINOWO_JVM_GATE_FOLLOW_MAIN=0 keeps the worktree's own.
+if [ "${KINOWO_JVM_GATE_FOLLOW_MAIN:-1}" != 0 ] && [ -z "${_JVM_GATE_FOLLOWING:-}" ]; then
+  _jvm_gate_here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
+  _jvm_gate_root=$(git -C "$_jvm_gate_here" rev-parse --path-format=absolute --git-common-dir 2>/dev/null) &&
+    _jvm_gate_root=$(cd "$(dirname "$_jvm_gate_root")" && pwd -P) &&
+    [ "$_jvm_gate_root/scripts" != "$_jvm_gate_here" ] && [ -r "$_jvm_gate_root/scripts/jvm-gate.sh" ] &&
+    { _JVM_GATE_FOLLOWING=1
+      # shellcheck source=/dev/null
+      . "$_jvm_gate_root/scripts/jvm-gate.sh"
+      unset _JVM_GATE_FOLLOWING; }
+  unset _jvm_gate_here _jvm_gate_root
+fi
