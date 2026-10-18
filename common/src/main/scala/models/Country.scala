@@ -194,7 +194,7 @@ sealed abstract class Country(
   def redirect(slug: String): Option[SlugRedirect] =
     if (bySlug.contains(slug)) None
     else renamedSlugs.get(slug).map { to =>
-      SlugRedirect(to, if (City.FormerlyQualified.of(this).contains(slug)) SlugRedirectKind.FormerlyQualified
+      SlugRedirect(to, if (CitySlugSuccession.FormerlyQualified.of(this).contains(slug)) SlugRedirectKind.FormerlyQualified
                        else SlugRedirectKind.Retired)
     }.orElse(slugAliases.get(slug).map(SlugRedirect(_, SlugRedirectKind.Alias)))
 
@@ -261,8 +261,8 @@ object Country {
     val cities: Seq[City] = City.polishCities
     lazy val renamedSlugs: Map[String, String] = PolishPages.retired
     lazy val slugAliases: Map[String, String] = CitySlugIndexData.plAliases
-    /** One group per voivodeship — see `City.polishVoivodeships`. */
-    override lazy val cityGroups: Seq[CityGroup] = City.polishVoivodeships
+    /** One group per voivodeship — see `CityPickerGroups.polishVoivodeships`. */
+    override lazy val cityGroups: Seq[CityGroup] = CityPickerGroups.polishVoivodeships
     override val versionTokens: Option[VersionTokens] = Some(VersionTokens("NAP", "DUB"))
     val voiceoverToken: Option[String] = Some("LEK")
     val titleFacts: services.movies.TitleFacts.Rules = services.movies.TitleFacts.Rules(Set("pl", "en"), Some(services.movies.TitleFacts.RatingSystem.PolishAge))
@@ -282,11 +282,11 @@ object Country {
     brandName      = "Showtimes",
   ) {
     val cities: Seq[City] = City.ukCities
-    lazy val renamedSlugs: Map[String, String] = City.ukSuccession
+    lazy val renamedSlugs: Map[String, String] = CitySlugSuccession.ukSuccession
     lazy val slugAliases: Map[String, String] = CitySlugIndexData.ukAliases
     /** The four nations plus the Crown Dependencies, each over the counties and
      *  pages inside it — 264 pages is not an A-to-Z anybody reads. */
-    override val cityGroups: Seq[CityGroup] = City.ukNations
+    override val cityGroups: Seq[CityGroup] = CityPickerGroups.ukNations
     // Britain subtitles rather than dubs: `SUB` (captions, 4,000 screenings on
     // 2026-09-02) is the one a visitor filters for, `DUB` the rare foreign-language
     // print. Both are what the chains' own labels normalise to.
@@ -314,10 +314,10 @@ object Country {
     brandName      = "Showtimes",
   ) {
     val cities: Seq[City] = City.germanCities
-    lazy val renamedSlugs: Map[String, String] = City.germanSuccession
+    lazy val renamedSlugs: Map[String, String] = CitySlugSuccession.germanSuccession
     lazy val slugAliases: Map[String, String] = CitySlugIndexData.deAliases
-    /** The 16 Bundesländer, each over the pages inside it — see `City.germanStates`. */
-    override lazy val cityGroups: Seq[CityGroup] = City.germanStates
+    /** The 16 Bundesländer, each over the pages inside it — see `CityPickerGroups.germanStates`. */
+    override lazy val cityGroups: Seq[CityGroup] = CityPickerGroups.germanStates
     override val versionTokens: Option[VersionTokens] = Some(VersionTokens("OmU", "DF"))
     // Filmstarts names four versions — OV, OmU, OmeU, DF — and none is a voice-over.
     val voiceoverToken: Option[String] = None
@@ -348,10 +348,10 @@ object Country {
     brandName      = "Showtimes",
   ) {
     val cities: Seq[City] = City.usCities
-    lazy val renamedSlugs: Map[String, String] = City.usSuccession
+    lazy val renamedSlugs: Map[String, String] = CitySlugSuccession.usSuccession
     lazy val slugAliases: Map[String, String] = CitySlugIndexData.usAliases
     /** The states and territories, each over the pages anchored in it. */
-    override val cityGroups: Seq[CityGroup] = City.usStates
+    override val cityGroups: Seq[CityGroup] = CityPickerGroups.usStates
     // Same pair as the UK, and for the same reason — a subtitled print is the
     // marked case, a dubbed one rare.
     override val versionTokens: Option[VersionTokens] = Some(VersionTokens("SUB", "DUB"))
@@ -387,10 +387,10 @@ object Country {
     brandName      = "Showtimes",
   ) {
     val cities: Seq[City] = City.spanishCities
-    lazy val renamedSlugs: Map[String, String] = City.spanishSuccession
+    lazy val renamedSlugs: Map[String, String] = CitySlugSuccession.spanishSuccession
     lazy val slugAliases: Map[String, String] = CitySlugIndexData.esAliases
-    /** One group per province — see `City.spanishProvinces`. */
-    override lazy val cityGroups: Seq[CityGroup] = City.spanishProvinces
+    /** One group per province — see `CityPickerGroups.spanishProvinces`. */
+    override lazy val cityGroups: Seq[CityGroup] = CityPickerGroups.spanishProvinces
     override val versionTokens: Option[VersionTokens] = Some(VersionTokens("VOSE", "DOB"))
     // SensaCine names VO, VOSE, VOSI, DOB and CAT — and no voice-over.
     val voiceoverToken: Option[String] = None

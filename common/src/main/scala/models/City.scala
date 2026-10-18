@@ -3,68 +3,6 @@ package models
 import java.time.ZoneId
 import java.util.Locale
 
-import tools.Slugify
-
-/** The Polish name of a city in the grammatical forms the templates need:
- *  nominative ("Poznań"), genitive plural for "…skich kin" ("poznańskich"),
- *  and locative for "w …" ("Poznaniu"). Kept as data so no template hardcodes
- *  a city name. */
-final case class CityLabels(nominative: String, genitivePlural: String, locative: String)
-
-object CityLabels {
-  /** The labels of a place in a language that does not decline its name (English,
-   *  German, Spanish): every slot carries the name as it is. */
-  def undeclined(name: String): CityLabels = CityLabels(name, name, name)
-}
-
-/** Per-language rendering of a city's [[CityLabels]] into the grammatical
- *  phrases the UI needs. Polish declines the name (locative "w Poznaniu" /
- *  "we Wrocławiu", genitive-plural adjective "poznańskich"); languages that
- *  don't decline (English, and the default fallback) read off the plain
- *  nominative ("in London", "London"). Selected by the city's country language
- *  so a per-country deployment renders naturally without any name hardcoded. */
-private[models] sealed trait CityGrammar {
-  def locativePhrase(labels: CityLabels): String
-  def genitivePluralLabel(labels: CityLabels): String
-}
-
-private[models] object CityGrammar {
-
-  /** Polish: the declined forms from [[CityLabels]], byte-identical to what the
-   *  templates/OG-card generator emitted before i18n. "we" replaces "w" before a
-   *  word starting with W/F + consonant (the awkward "w w-" / "w f-" cluster). */
-  private object Polish extends CityGrammar {
-    def locativePhrase(labels: CityLabels): String = {
-      val loc    = labels.locative
-      val vowels = "aeiouyąęó"
-      val we     = loc.length >= 2 && (loc(0) == 'W' || loc(0) == 'F') &&
-                   !vowels.contains(loc(1).toLower)
-      s"${if (we) "we" else "w"} $loc"
-    }
-    def genitivePluralLabel(labels: CityLabels): String = labels.genitivePlural
-  }
-
-  /** Non-declining languages: the nominative, with the language's own
-   *  preposition in front of it for the locative slot ("in London", "en Madrid").
-   *  The preposition is a parameter rather than a literal because it is the only
-   *  thing that differs — German's is "in" like English's, Spanish's is not, and
-   *  a hardcoded "in" would have put "in Madrid" in every Spanish share card and
-   *  every piece of Spanish structured data. */
-  private final class Nominative(preposition: String) extends CityGrammar {
-    def locativePhrase(labels: CityLabels): String      = s"$preposition ${labels.nominative}"
-    def genitivePluralLabel(labels: CityLabels): String = labels.nominative
-  }
-
-  private val In = new Nominative("in")   // English, German
-  private val En = new Nominative("en")   // Spanish
-
-  def of(locale: Locale): CityGrammar = locale.getLanguage match {
-    case "pl" => Polish
-    case "es" => En
-    case _    => In
-  }
-}
-
 /**
  * A city of cinema repertoire. A city is simply a **named subset of
  * globally-unique [[Cinema]] objects** plus its label inflections and
@@ -581,86 +519,6 @@ private[models] object RosterPage {
     CityLabels.undeclined(if (place.multiTown) s"${place.name} ${style.clusterSuffix}" else place.name)
 }
 
-/** A named group of [[City]]s in a picker — a US STATE over its towns
- *  ("California → Los Angeles", the way a visitor finds one), or a UK NATION
- *  over its counties ("Scotland → Fife"), a Polish voivodeship or a Spanish
- *  province over its towns. Ordinarily the group is not a place you can open:
- *  `/california/` is nothing, and its films live at `/los-angeles/`. It is how
- *  the list of them is arranged, and nothing else.
- *
- *  The exception is [[soleCity]] — see there.
- *
- *  A country whose picker is one flat list leaves `Country.cityGroups` empty
- *  rather than declaring one group per city.
- *
- *  @param absorbed for a city of this group, the names of former pages that now
- *                  redirect to it — the UK's retired regions ([[UkPages.formerNames]])
- *                  — kept findable by [[aliasesOf]]. */
-final case class CityGroup(label: String, slug: String, cities: Seq[City] = Nil,
-                          groups: Seq[CityGroup] = Nil, absorbed: Map[City, Seq[String]] = Map.empty) {
-
-  /** The one place this group holds, pulled up a level — and `None` for a group
-   *  that really arranges several.
-   *
-   *  A heading you open to find exactly one row underneath is a tap that buys
-   *  the reader nothing, whatever the two are called. A UK county holding one
-   *  page collapses onto it — Rutland shows as Oakham, Shetland as Lerwick — as
-   *  the District of Columbia shows as Washington and Saarland as Saarbrücken.
-   *
-   *  The group's own name is NOT lost when it differs — the picker keeps it on
-   *  the row as a search alias (`data-alias`), so "shetland" still finds
-   *  Lerwick. Dropping the heading is meant to save a tap, not to make the
-   *  county unfindable, and the search is where that name was doing its work.
-   *
-   *  Nil `groups` is part of the test: a node with one city AND a subgroup under
-   *  it is still arranging two things.
-   *
-   *  [[slug]] is deliberately NOT consulted. An earlier version required the
-   *  city's slug to equal the group's, which collapsed Cheshire and left
-   *  Merseyside, Greater Manchester, Norfolk and Saarland as headings over a
-   *  single row — the tap this exists to remove. */
-  def soleCity: Option[City] = (cities, groups) match {
-    case (Seq(only), Nil) => Some(only)
-    case _                => None
-  }
-
-  /** The name the picker actually SHOWS for this node: the place's, where the
-   *  group collapsed onto one, and the group's own otherwise.
-   *
-   *  What a list of these must be sorted by. Sorting on [[label]] would order
-   *  Merseyside and Greater Manchester under M and G while displaying Liverpool
-   *  and Manchester — an alphabetical list that visibly is not one, which is
-   *  precisely the failure the ordering exists to prevent. */
-  def displayLabel: String = soleCity.map(_.labels.nominative).getOrElse(label)
-
-  /** The group's own name, where it differs from the single place it collapsed
-   *  onto — what the picker keeps searchable after pulling that place up, and
-   *  `None` when there is nothing extra to remember (Cheshire under Cheshire) or
-   *  when the group did not collapse at all. */
-  def collapsedAlias: Option[String] =
-    soleCity.filter(_.labels.nominative != label).map(_ => label)
-
-  /** Every other name the picker should find one of this group's own cities by:
-   *  the group's name where the group collapsed onto it ([[collapsedAlias]]),
-   *  then the names of the former pages that redirect to it ([[absorbed]]) — so
-   *  "Sandwell" still finds West Bromwich and "Highlands and Islands" Inverness. */
-  def aliasesOf(city: City): Seq[String] =
-    soleCity.filter(_ == city).flatMap(_ => collapsedAlias).toSeq ++ absorbed.getOrElse(city, Nil)
-
-  /** [[aliasesOf]] the one place this group collapsed onto — empty for a group
-   *  that did not collapse: its heading is already on screen. */
-  def searchAliases: Seq[String] = soleCity.fold(Seq.empty[String])(aliasesOf)
-
-  /** Every city under this group at any depth — its own, plus its subgroups'.
-   *
-   *  A picker nests (a UK nation over its counties over their places), but the
-   *  things that read a grouping FLAT do not: `<optgroup>` may not contain
-   *  another, and the apps' `region` is one string per city. Both take the top
-   *  level's label over this, so a deeper tree arranges the page without
-   *  changing what they get. */
-  def allCities: Seq[City] = cities ++ groups.flatMap(_.allCities)
-}
-
 object City {
 
   /** Poland's cities — the authoritative list for [[Country.Poland]]. [[all]] is
@@ -677,64 +535,12 @@ object City {
   private[models] lazy val polishPages: Seq[PolishPage] = PolishPages.rows.map(new PolishPage(_))
   private[models] lazy val polishCities: Seq[City] = majorPolishCities ++ polishPages
 
-  /** Poland's picker: one group per voivodeship, holding its major cities and its
-   *  town and cluster pages side by side, alphabetically — a flat list of 180
-   *  pages is not one anybody reads. */
-  private[models] lazy val polishVoivodeships: Seq[CityGroup] =
-    CityListing.groupedAlphabetically(polishCities, Locale.forLanguageTag("pl-PL")) {
-      case page: PolishPage => page.voivodeship
-      case major            => PolishPages.majorVoivodeship(major.slug)
-    }
-
   /** The United Kingdom's cities — the authoritative list for
    *  [[Country.UnitedKingdom]]: [[London]], then one [[UkPage]] per town or
    *  cluster page, materialised from [[UkPages]]. Their slugs are final there:
    *  each country owns its own, so `/uk/york/` is York whatever the US has. */
   private[models] lazy val ukPages: Seq[UkPage] = UkPages.rows.map(new UkPage(_))
   private[models] lazy val ukCities: Seq[City] = London +: ukPages
-
-  /** UK pages that no longer exist → the page holding the town each was named
-   *  after, or — where no such town has a venue — the page now holding most of
-   *  its venues. The 76 Flicks regions the UK was filed under until 2026-10 and
-   *  the three folded into a neighbour before that among them: `/antrim/` → the
-   *  Lisburn area (Antrim's cluster), `/west-yorkshire/` → Leeds. A region whose
-   *  slug is a page now (`/manchester/`, `/dudley/`) simply IS that town's page. */
-  private[models] lazy val ukSuccession: Map[String, String] = UkPages.retired
-
-  /** The UK picker's grouping: NATION over COUNTY over the pages inside it — the
-   *  nation and county of each page's anchor town, read off GeoNames by
-   *  `data/uk/scripts/geocode_towns.py` (England's ceremonial counties, Wales'
-   *  preserved ones, Scotland's and Northern Ireland's councils, grouped).
-   *
-   *  264 pages is past what anyone reads as one A-to-Z, and a nation alone still
-   *  is (England holds 200); the county is the level a visitor already knows a
-   *  town by. A county holding one page collapses onto it ([[CityGroup.soleCity]]):
-   *  Shetland shows as Lerwick, its own name kept as a search alias. A retired
-   *  region's name is a search alias of the page its slug redirects to
-   *  ([[UkPages.formerNames]]): "Tyrone" finds Dungannon.
-   *
-   *  Nations are in [[UkPages.nations]]' fixed reading order (England, Scotland,
-   *  Northern Ireland, Wales, Crown Dependencies) — the same order every client's
-   *  picker shows, kept in one place rather than re-derived per platform — and
-   *  everything below is alphabetical, which is the only order a reader can
-   *  search by eye. Every page appears exactly once (`CountrySpec` holds that). */
-  private[models] lazy val ukNations: Seq[CityGroup] = {
-    val en = Locale.forLanguageTag("en-GB")
-    val placed: Seq[(String, String, City)] =
-      (UkPages.london.nation, UkPages.london.county, London) +: ukPages.map(p => (p.nation, p.county, p))
-    UkPages.nations.flatMap { nation =>
-      val counties = placed.filter(_._1 == nation).groupBy(_._2).toSeq.map { case (county, pages) =>
-        val cities = pages.map(_._3)
-        CityGroup(county, Slugify.stable(county), CityListing.sorted(cities, en),
-                  absorbed = cities.flatMap(c => UkPages.formerNames.get(c.slug).map(c -> _)).toMap)
-      }
-      // By what each row SHOWS, not by the county it came from: a county that
-      // collapsed onto its one place displays that place's name, and sorting on
-      // the county would file Shetland's Lerwick under S.
-      Option.when(counties.nonEmpty)(
-        CityGroup(nation, Slugify.stable(nation), Nil, CityListing.sortedLabels(counties, en)(_.displayLabel)))
-    }
-  }
 
   /** Germany's cities — the authoritative list for [[Country.Germany]]. One per
    *  town or cluster page (see [[RosterPage]] / [[GermanRoster]]), materialised
@@ -744,32 +550,6 @@ object City {
   private[models] val germanPages: Seq[RosterPage] = GermanRoster.places.map(p => new RosterPage(p.preferredSlug, p, GermanRoster.style))
   private[models] val germanCities: Seq[City] = germanPages
 
-  /** A retired page's URLs → the page it redirects to: under its own name AND
-   *  under its qualified name, which is the one it answered at while another
-   *  country held its name (until 2026-10, when every country came to own its
-   *  slugs) — both are published. Neither may be a live page's slug. */
-  private def succession(retired: Seq[(String, String, String)], live: Set[String]): Map[String, String] =
-    retired.flatMap { case (preferred, qualified, page) => Seq(preferred -> page, qualified -> page) }
-      .filter { case (from, to) => from != to && !live(from) }
-      .toMap
-
-  /** German pages that no longer exist → the page holding the town each was
-   *  named after, or — where that town has no venue left — the page now holding
-   *  most of its venues. The 19 regions that did not leave a page under their own
-   *  slug when Germany went from regions to towns (2026-10) among them: `/vechta/`
-   *  → Cloppenburg (Vechta's cluster), `/itzehoe/` → Elmshorn. A region whose slug is a page now
-   *  (`/koeln/`, `/freiburg/`) simply IS that town's page. */
-  private[models] lazy val germanSuccession: Map[String, String] =
-    succession(GermanRosterData.retired, germanPages.map(_.slug).toSet)
-
-  /** The German picker's grouping: one entry per BUNDESLAND over the pages inside
-   *  it — major cities, towns and clusters side by side — alphabetically both
-   *  ways, as Poland's voivodeships and Spain's provinces. The Land is the
-   *  anchor town's, read off its coordinates by `build_pages.py`. */
-  private[models] lazy val germanStates: Seq[CityGroup] =
-    CityListing.groupedAlphabetically(germanPages, Locale.forLanguageTag("de-DE"))(_.region)
-
-
   /** The United States' cities — the authoritative list for
    *  [[Country.UnitedStates]]. One per town or cluster page (see [[RosterPage]] /
    *  [[UsRoster]]), materialised data-driven from `UsRosterData`. The state is a
@@ -778,78 +558,12 @@ object City {
    *  US page has the name (the Springfields). */
   private[models] lazy val usCities: Seq[RosterPage] = UsRoster.places.map(p => new RosterPage(p.preferredSlug, p, UsRoster.style))
 
-  /** US pages that no longer exist → the page holding the town each was named
-   *  after, or — where no such town has a venue — the page now holding most of its
-   *  venues. The 149 metros that did not leave a page under their own slug when
-   *  the US went from metros to towns (2026-10) among them: `/philadelphia-new-jersey/`
-   *  → Philadelphia, `/inland-empire/` → Chino. A metro whose slug is a page now
-   *  (`/los-angeles/`, `/springfield/`) simply IS that town's page. Plus
-   *  [[FormerlyQualified]]'s US pages. */
-  private[models] lazy val usSuccession: Map[String, String] =
-    succession(UsRosterData.retired, usCities.map(_.slug).toSet) ++ FormerlyQualified.us
-
-  /** The pages that answered at a slug qualified with their state or community
-   *  while another country held their name — published URLs, live until every
-   *  country came to own its own slugs (2026-10) — and the bare slug each answers
-   *  at now. Ten US pages yielded to the UK, Germany and Spain; Spain's Toledo and
-   *  Laredo yielded to the US. (The UK's qualified slugs never shipped.) */
-  private[models] object FormerlyQualified {
-    val us: Map[String, String] = Map(
-      "birmingham-alabama" -> "birmingham", "bristol-tennessee" -> "bristol", "glasgow-kentucky" -> "glasgow",
-      "kent-washington" -> "kent", "london-kentucky" -> "london", "manchester-new-hampshire" -> "manchester",
-      "potsdam-new-york" -> "potsdam", "somerset-kentucky" -> "somerset", "stuttgart-arkansas" -> "stuttgart",
-      "suffolk-virginia" -> "suffolk",
-    )
-    val es: Map[String, String] = Map("toledo-castilla-la-mancha" -> "toledo", "laredo-cantabria" -> "laredo")
-
-    def of(country: Country): Map[String, String] = country match {
-      case Country.UnitedStates => us
-      case Country.Spain        => es
-      case _                    => Map.empty
-    }
-  }
-
-  /** The US picker's grouping: one entry per state or territory over the pages
-   *  filed under it — major cities, towns and clusters side by side — the state
-   *  being the anchor town's, so a cluster reaching across a state line is under
-   *  the state of the town it is named after.
-   *
-   *  The pages inside a state are ALPHABETICAL: a visitor opening "California" is
-   *  looking for a name they already know, and the only order that tells them
-   *  where to look for it is the one the alphabet gives.
-   *
-   *  The states are in their SLUG's plain string order rather than re-sorted
-   *  through [[CityListing.sortedLabels]] the way Germany's Bundesländer are: a
-   *  Locale [[Collator]] weighs "Virgin Islands"' space against "Virginia"'s
-   *  continuing letter differently than the slug does, which would silently swap
-   *  the two. */
-  private[models] lazy val usStates: Seq[CityGroup] = {
-    val en = Locale.forLanguageTag("en-US")
-    usCities.groupBy(_.region).toSeq
-      .map { case (state, pages) => CityGroup(state, Slugify.stable(state), CityListing.sorted(pages, en)) }
-      .sortBy(_.slug)
-  }
-
   /** Spain's cities — the authoritative list for [[Country.Spain]]. One per town
    *  or cluster page (see [[RosterPage]] / [[SpanishRoster]]), materialised
    *  data-driven from `SpanishRosterData` rather than hand-authored case objects.
    *  A page's slug is its own name: `/es/toledo/` is Toledo, whatever the US has. */
   private[models] val spanishPages: Seq[RosterPage] = SpanishRoster.places.map(p => new RosterPage(p.preferredSlug, p, SpanishRoster.style))
   private[models] val spanishCities: Seq[City] = spanishPages
-
-  /** Spanish pages that no longer exist → the page now holding most of their
-   *  venues. The 13 provinces that did not leave a town page under their own slug
-   *  when Spain went from provinces to towns (2026-10) among them: `/asturias/` →
-   *  Gijón, `/islas-baleares/` → Palma de Mallorca. A province whose slug is a
-   *  town page now (`/madrid/`, `/barcelona/`) simply IS that town's page. Plus
-   *  [[FormerlyQualified]]'s Spanish pages. */
-  private[models] lazy val spanishSuccession: Map[String, String] =
-    succession(SpanishRosterData.retired, spanishPages.map(_.slug).toSet) ++ FormerlyQualified.es
-
-  /** Spain's picker: one group per province, its major cities, towns and
-   *  clusters side by side, alphabetically — as Poland's voivodeships. */
-  private[models] lazy val spanishProvinces: Seq[CityGroup] =
-    CityListing.groupedAlphabetically(spanishPages, Locale.forLanguageTag("es-ES"))(_.region)
 
   /** Every modelled city, across all countries — the global view used by the
    *  worker (which scrapes every country) and by country-agnostic reverse
