@@ -483,7 +483,14 @@ object StageRelays {
    *  airs on its house's published dates, so a venue screening it then screens that season's broadcast. */
   def screenedSeasonRecord(l: Listing, f: Film): Boolean =
     l.screenedSeason.exists(f.season.contains) &&
-      stageWorks(f).exists(l.billedStageWorks) && bannerNamesItsHouse(l, f)
+      stageWorks(f).exists(l.billedStageWorks) && bannerNamesItsHouse(l, f) && airsOnItsDay(l, f)
+
+  /** Does a listing whose year is more than a season before its screened season ([[Listing.airDays]]) screen on the
+   *  record's air day — its release date, give or take [[AirDayWindow]] days? A nearer year passes with no test. */
+  private def airsOnItsDay(l: Listing, f: Film): Boolean =
+    l.airDays.isEmpty || f.released.exists(aired => l.airDays.exists(day => math.abs(java.time.temporal.ChronoUnit.DAYS.between(aired, day)) <= AirDayWindow))
+  /** How many days from a relay's release date a screening still airs it: a venue's own date, a time zone apart. */
+  val AirDayWindow = 3
 
   /** Does the listing's banner name the house the record bills? A banner naming a house in particular — words beside
    *  [[HouseCommonWords]], read off the title's fragments, its stage works out ([[houseWords]]) — must name the record's

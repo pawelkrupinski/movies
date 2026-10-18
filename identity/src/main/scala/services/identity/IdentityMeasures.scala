@@ -37,7 +37,10 @@ object IdentityMeasures {
                            screenedSeason: Option[Int] = None,
                            /** The season its first screening falls in, unconditionally ([[services.identity.ScreeningDays.season]]):
                             *  the seasons its title can name ([[TitleSeason.near]]). */
-                           screeningsSeason: Option[Int] = None) {
+                           screeningsSeason: Option[Int] = None,
+                           /** Its screening days, held only where its stated year is more than a season before the season
+                            *  it screens in ([[services.identity.Listing.airDays]]): what the air-day test reads. */
+                           airDays: Seq[java.time.LocalDate] = Nil) {
     private def titles: Seq[String] = rawTitle.toSeq :+ title
     /** Its title, then the raw title the venue published — title first, as the title relations read them. */
     def ownTitles: Seq[String] = Seq(title) ++ rawTitle

@@ -98,6 +98,13 @@ final case class Listing(
         .filter(season => year.forall(_ < season))
     }
 
+  /** Its screening days where its stated year is more than [[Listing.StagingPredatesSeason]] before the season it
+   *  screens in ([[screenedSeason]]): a year that old dates the staging only when a screening falls on the season
+   *  record's air day ([[StageRelays.screenedSeasonRecord]]) — the Met's 2014 "Macbeth" revival relayed on 17 October
+   *  2026 — and an encore of an old capture, on no air day, keeps its year. Empty for every other listing. */
+  lazy val airDays: Seq[java.time.LocalDate] =
+    screenedSeason.filter(season => year.exists(stated => season - stated > Listing.StagingPredatesSeason)).fold(Seq.empty[java.time.LocalDate])(_ => screenings.days)
+
   override def equals(other: Any): Boolean = other match {
     case that: Listing => (this eq that) || (key == that.key && rawTitle == that.rawTitle && title == that.title && cleanTitle == that.cleanTitle &&
       year == that.year && directors == that.directors && runtime == that.runtime && page == that.page && originalTitle == that.originalTitle &&
@@ -188,6 +195,10 @@ object CatalogueId {
 }
 
 object Listing {
+  /** How many seasons before the one it screens in a relay's stated year dates its staging with no further test
+   *  ([[Listing.airDays]]): UK Aldeburgh's "The Royal Ballet: Romeo & Juliet" [2025] screening in the 2026/27 season. */
+  val StagingPredatesSeason = 1
+
   /** Does `now` publish what the stages after the model read differently from `was` — its poster, its screening days, the
    *  names its venue's text gives — though the two are equal ([[Listing.equals]] leaves those out)? The model then holds
    *  `now` without resolving it again, and the agreement reads it afresh ([[agreement.AgreementStage]]). Days count only
@@ -324,7 +335,9 @@ final case class Evidence(title: String, cleanTitle: String, rawTitle: String, y
                           screenedSeason: Option[Int] = None,
                           /** The season its first screening falls in, unconditionally: the seasons its title can name
                            *  ([[services.movies.TitleSeason.near]]), never a fact it states. */
-                          screeningsSeason: Option[Int] = None) {
+                          screeningsSeason: Option[Int] = None,
+                          /** Its screening days, where the air-day test reads them ([[Listing.airDays]]); else empty. */
+                          airDays: Seq[java.time.LocalDate] = Nil) {
   lazy val key: String =
     Seq(title, cleanTitle, rawTitle, year.fold("")(_.toString), directors.sorted.mkString(","),
       runtime.fold("")(_.toString), originalTitle.getOrElse(""), countries.sorted.mkString(",")).mkString("\u0000") +
@@ -332,14 +345,15 @@ final case class Evidence(title: String, cleanTitle: String, rawTitle: String, y
       screenedSeason.filterNot(broadcastSeason.contains).fold("")(season => s"\u0000screened:$season") +
       // only where it bounds what the title names, so every other listing keeps its key
       screeningsSeason.filter(_ => TitleSeason.of(Seq(title, rawTitle)) != TitleSeason.of(Seq(title, rawTitle), screeningsSeason))
-        .fold("")(season => s"\u0000screenings:$season")
+        .fold("")(season => s"\u0000screenings:$season") +
+      (if (airDays.isEmpty) "" else airDays.mkString("\u0000aired:", ",", ""))
 
   /** The evidence as the calibrated measures read a listing, its title shapes undecorated by the
    *  resolve's learned `decorations` (the same for every listing of a resolve, so not in [[key]]). */
   lazy val measured: IdentityMeasures.Listing =
     IdentityMeasures.Listing(title, Some(rawTitle).filter(_ != title), originalTitle, year, runtime, directors, countries,
       decorations = decorations, searchTitles = searchTitle.toSeq ++ properTitle, broadcastSeason = broadcastSeason, screenedSeason = screenedSeason,
-      screeningsSeason = screeningsSeason)
+      screeningsSeason = screeningsSeason, airDays = airDays)
 
   /** [[measured]] with the title shapes the venue's own delimiters leave, no learned decoration nor search title
    *  stripped: what relates two LISTINGS (their families, title must-links and listing-listing
@@ -373,7 +387,8 @@ object Evidence {
     // a year the detail page states dates the relay as a year the venue's own field does
     broadcastSeason = listing.broadcastSeason.filter(_ => detail.flatMap(_.year).isEmpty),
     screenedSeason  = listing.screenedSeason.filter(_ => detail.flatMap(_.year).isEmpty),
-    screeningsSeason = listing.screenings.season)
+    screeningsSeason = listing.screenings.season,
+    airDays         = listing.airDays.filter(_ => detail.flatMap(_.year).isEmpty))
 }
 
 /** One film a lookup NAMED: a search result or a filmography credit. Only what the list itself

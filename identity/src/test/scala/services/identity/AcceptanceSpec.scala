@@ -114,6 +114,16 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
       (1702789, Film("Royal Ballet & Opera 2026/27: Romeo and Juliet", year = Some(2027)), Some(2)))) shouldBe Some(1702789)
   }
 
+  it should "take a season record across a year long before its season only on the record's air day" in {
+    // DE "MET Opera: Macbeth (Verdi)" [2014] dates the production's premiere, twelve years before the Met's 2026/27 relay
+    // it screens on 17 October 2026; an encore of an old capture screening in that season, on no air day, keeps its year
+    val day       = java.time.LocalDate.of(2026, 10, 17)
+    val season    = (1703622, Film("The Metropolitan Opera 2026/27: Macbeth", year = Some(2026), released = Some(day)), Some(1))
+    val revival   = Listing("MET Opera: Macbeth (Verdi)", year = Some(2014), screenedSeason = Some(2026), airDays = Seq(day.plusDays(1)))
+    acceptance.byRule("season-record")(ranked(revival, season)).map(_._1.candidate.tmdbId) shouldBe Some(1703622)
+    acceptance.byRule("season-record")(ranked(revival.copy(airDays = Seq(day.plusMonths(4))), season)) shouldBe None
+  }
+
   it should "take the season record of its work when its title dates it by a bare year" in {
     // Prod UK 2026-10-13: The Beehive Honiton's "RBO: Tosca 27" and "RBO: Swan Lake 27", and Chichester's "Macbeth (Met
     // Opera)", each left its season's record, TMDB's first hit, below the threshold.
