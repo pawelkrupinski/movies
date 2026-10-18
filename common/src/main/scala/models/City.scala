@@ -665,7 +665,7 @@ private[models] object UkPage {
 case object London extends City("london", CityLabels.undeclined("London"),
                                 UkPages.london.lat, UkPages.london.lon, TimeZones.UnitedKingdom) {
   val cinemas: Seq[Cinema] = UkPages.london.cinemas
-  override val areas: Seq[CinemaAreaGroup] = Cinema.londonAreas
+  override val areas: Seq[CinemaAreaGroup] = LondonAreas.groups
 }
 
 // ── Germany (also non-declining for our purposes). ───────────────────────────

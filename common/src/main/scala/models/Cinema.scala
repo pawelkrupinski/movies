@@ -1856,7 +1856,7 @@ object Cinema {
    *  ([[polishAndUk]]), every network pseudo-cinema's, and every venue of the rosters
    *  built before it (`earlier`) — see `GermanRoster.claimedElsewhere`. */
   private[models] def displayNamesClaimedBy(earlier: Seq[(String, Seq[Cinema])]*): Set[String] =
-    ((polishAndUk +: earlier).flatMap(_.flatMap(_._2)) ++ Networks).map(_.displayName).toSet
+    ((polishAndUk +: earlier).flatMap(_.flatMap(_._2)) ++ CinemaNetworks.all).map(_.displayName).toSet
 
   /** A generated roster's venues under the group each page is filed in (a Bundesland, a
    *  province), the groups in the order their first page comes in the roster — the
@@ -1867,10 +1867,8 @@ object Cinema {
     pages.map(groupOf).distinct.map(group => group -> byGroup(group).flatMap(venues))
   }
 
-  /** The chains' NETWORK pseudo-cinemas: a chain's venues publish their listings under their own
-   *  cinema, and its detail enricher lands every film page on this one shared slot (`detailTarget`).
-   *  No listing is ever published at one. */
-  val Networks: Seq[Cinema] = Seq(CinemaCityChain, CineworldChain, RegalChain)
+  /** The chains' network pseudo-cinemas — [[CinemaNetworks.all]], under the name `services.identity` reads. */
+  val Networks: Seq[Cinema] = CinemaNetworks.all
 
   /** Poznań venues — the original ten. Their display order doubles as the
    *  per-source merge priority (see `Source.all`), so Multikino stays in the
@@ -1969,29 +1967,6 @@ object Cinema {
   val przemysl: Seq[Cinema] = PolishPages.majorCinemas("przemysl")
   val konin: Seq[Cinema] = PolishPages.majorCinemas("konin")
 
-  // ── United Kingdom (Flicks) ──
-  /** London's venues — every one in Greater London (see `UkPages`). */
-  val london: Seq[Cinema] = UkPages.london.cinemas
-  private val londonAreaOf: Map[Cinema, CinemaArea] = {
-    import CinemaArea.*
-    Map(
-      // ── Central ──
-      BfiLondonImax -> Central, BfiLondonSouthbank -> Central, CineworldLeicesterSquare -> Central, CineLumiereLondon -> Central, CurzonCinemaBloomsbury -> Central, CurzonCinemaCamden -> Central, CurzonCinemaSeaContainersMondrian -> Central, CurzonCinemaVictoria -> Central, CurzonSoho -> Central, EverymanCinemaBakerStreet -> Central, EverymanCinemaBroadgate -> Central, EverymanCinemaChelsea -> Central, EverymanCinemaKingSCross -> Central, EverymanCinemaIslington -> Central, InstituteOfContemporaryArts -> Central, OdeonCinemaTottenhamCourtRoad -> Central, OdeonCinemaLuxeHaymarket -> Central, OdeonLuxeIslington -> Central, OdeonCinemaLuxeLeicesterSquare -> Central, OdeonLuxeWestEnd -> Central, PrinceCharlesLondon -> Central, RegentStreetCinemaLondon -> Central, ScienceMuseumLondonImax -> Central, TheCinemaAtSelfridges -> Central, TheGardenCinema -> Central, TheNickelLondon -> Central, VueCinemasIslington -> Central, VueCinemasPiccadillyCircus -> Central, VueCinemasWestEnd -> Central,
-      // ── North ──
-      ArthouseCrouchEnd -> North, CineworldEnfield -> North, CineworldIlford -> North, CineworldWoodGreen -> North, CrouchEndPicturehouse -> North, EverymanCinemaBarnet -> North, EverymanCinemaBelsizeParkHampstead -> North, EverymanCinemaHampstead -> North, EverymanCinemaMuswellHill -> North, FinsburyParkPicturehouse -> North, Jw3Hampstead -> North, KilnKilburn -> North, LexiKensalRise -> North, LumiereRomford -> North, OdeonCinemaHolloway -> North, OdeonLuxeLeeValley -> North, OdeonLuxeSwissCottage -> North, PhoenixCinemaEastFinchley -> North, VueCinemasDagenham -> North, VueCinemasFinchleyRoadSwissCottage -> North, VueCinemasFinchley -> North, VueCinemasRomford -> North, VueCinemasWoodGreen -> North,
-      // ── East ──
-      BarbicanLondonCinema1 -> East, CastleCinemaHackney -> East, CineworldWestIndiaQuay -> East, CloseUpFilmCentreShoreditch -> East, CurzonCinemaAldgate -> East, CurzonCinemaHoxton -> East, EverymanCinemaCanaryWharf -> East, EverymanCinemaStratfordInternational -> East, ForestCinemasWalthamstow -> East, GenesisTowerHamlets -> East, OdeonCinemaSouthWoodford -> East, PicturehouseHackney -> East, RichMixBethnalGreen -> East, RioDalston -> East, RooftopFilmClubStratfordRoofEast -> East, VueCinemasStratford -> East,
-      // ── South ──
-      SidcupStoryteller -> South, CineworldGreenwich -> South, CineworldBexleyheath -> South, CineworldFeltham -> South, CineworldLondonHounslow -> South, CineworldWandsworth -> South, CurzonCinemaKingston -> South, CurzonCinemaRichmond -> South, CurzonWimbledon -> South, DavidLeanCinemaCroydon -> South, EverymanCinemaBoroughYards -> South, EverymanCinemaCrystalPalace -> South, OdeonCinemaBeckenham -> South, OdeonCinemaGreenwich -> South, OdeonCinemaKingston -> South, OdeonCinemaOrpington -> South, OdeonCinemaRichmond -> South, OdeonCinemaStreatham -> South, OdeonCinemaWimbledon -> South, OdeonCinemaLuxePutney -> South, OlympicCinemaBarnes -> South, EmpireCinemaSutton -> South, Peckhamplex -> South, PicturehouseClapham -> South, PicturehouseEastDulwich -> South, PicturehouseGreenwich -> South, PicturehouseWestNorwood -> South, RooftopFilmClubPeckhamBusseyBuilding -> South, ArchlightCinemas -> South, TheArzner -> South, TheCinemaInThePowerStation -> South, TheRitzyPicturehouseBrixton -> South, VueCinemasBromley -> South, VueCinemasEltham -> South, VueCinemasFulham -> South, VueCinemasPurleyWayCroydon -> South,
-      // ── West ──
-      ActOneActon -> West, ChiswickCinema -> West, CineworldSouthRuislip -> West, CineworldWembley -> West, CurzonCinemaMayfair -> West, ElectricCinemaLondon -> West, ElectricCinemaWhiteCity -> West, EverymanAtTheWhiteleyLondon -> West, EverymanBrentford -> West, EverymanCinemaMaidaVale -> West, OdeonCinemaActon -> West, OdeonCinemaUxbridge -> West, PicturehouseCentralLondon -> West, PicturehouseEalingFilmworks -> West, RiversideStudiosHammersmith -> West, TheGatePicturehouseLondon -> West, VueCinemasHarrow -> West, VueCinemasWestfieldShepherdSBush -> West,
-    )
-  }
-  val londonAreas: Seq[CinemaAreaGroup] =
-    CinemaArea.compass
-      .map(area => CinemaAreaGroup(area, london.filter(londonAreaOf.get(_).contains(area))))
-      .filter(_.cinemas.nonEmpty)
-
   // Germany's cinemas come from `GermanRoster.byCity` (appended to `byCity` below),
   // not per-city vals — the full 436-page roster is data-driven.
 
@@ -2042,7 +2017,7 @@ object Cinema {
     "Przemyśl"            -> przemysl,
     "Konin"               -> konin,
   ) ++ PolishPages.rows.map(r => r.nominative -> r.cinemas) ++
-    (("London" -> london) +: UkPages.rows.map(r => ukLabel(r) -> r.cinemas))
+    (("London" -> UkPages.london.cinemas) +: UkPages.rows.map(r => ukLabel(r) -> r.cinemas))
 
   /** A UK page's label here, unique as [[byCity]]'s must be: the page's name,
    *  with its county where two pages share one — the two Bangors are both an area. */
@@ -2080,26 +2055,6 @@ object Cinema {
    *  whose name would collide with a hand-declared one, and `SourceWireKeySpec`
    *  fails the build on a duplicate. */
   lazy val byDisplayName: Map[String, Cinema] = all.map(c => c.displayName -> c).toMap
-
-  /** Synthetic chain-detail sources ([[Networks]]) → the venue cinemas whose per-film
-   *  detail they hold. A chain fetches a film's synopsis/cast/… ONCE network-wide into
-   *  its network slot — Cinema City into [[CinemaCityChain]], Cineworld UK into
-   *  [[CineworldChain]], Regal (unwired today) into [[RegalChain]] — rather than each
-   *  venue's own slot, so that slot belongs to no single city. A city-scoped synopsis
-   *  merge ([[MovieRecord.synopsisForCity]]) consults this map to decide which cities a
-   *  chain blurb applies to — namely those where a member venue screens the film; a
-   *  network missing here applies NOWHERE (Cineworld's did, until 2026-10-18).
-   *
-   *  Derived from the chain's own country's venues by the stable "<chain> <branch>"
-   *  naming every one of its venues follows (the network itself is the bare chain name,
-   *  and isn't in `all`), so a newly-added branch is picked up automatically. Its own
-   *  country only: another country's roster may hold an unrelated venue of the name,
-   *  qualified with its town (Germany's "Cineworld Recklinghausen"). */
-  lazy val chainDetailVenues: Map[Source, Set[Cinema]] =
-    Seq(CinemaCityChain -> Country.Poland, CineworldChain -> Country.UnitedKingdom, RegalChain -> Country.UnitedStates)
-      .map { case (network, country) =>
-        (network: Source) -> country.cities.flatMap(_.cinemas).filter(_.displayName.startsWith(s"${network.displayName} ")).toSet
-      }.toMap
 
   /** City display label for each cinema — derived from `byCity`, the single
    *  source of truth. Used by the debug source-data view to disambiguate

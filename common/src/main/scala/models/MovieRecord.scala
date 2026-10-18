@@ -399,7 +399,7 @@ case class MovieRecord(
    *
    *  The chains are the one wrinkle: every Cinema City (or Cineworld) venue shares
    *  ONE chain-wide detail slot ([[CinemaCityChain]], [[CineworldChain]], see
-   *  `Cinema.chainDetailVenues`) that belongs to no city, so it's admitted for
+   *  `CinemaNetworks.detailVenues`) that belongs to no city, so it's admitted for
    *  `city` only when one of the chain's venues there is actually screening the
    *  film — see [[synopsisAppliesToCity]].
    *
@@ -409,7 +409,7 @@ case class MovieRecord(
    *  which — being longer than TMDB's correct Polish one — won every city
    *  Cinema City serves. Cineworld's slot is the same impersonal, API-sourced
    *  detail page, so the check covers every chain slot of
-   *  `Cinema.chainDetailVenues` — never an individual cinema's own editorial text —
+   *  `CinemaNetworks.detailVenues` — never an individual cinema's own editorial text —
    *  a boutique cinema (e.g. Amondo Grindhouse) legitimately writes an
    *  English blurb for an English-subtitled special screening, and that
    *  curated choice must never be second-guessed by a heuristic. */
@@ -455,7 +455,7 @@ case class MovieRecord(
   private def synopsisAppliesToCity(city: City)(source: Source): Boolean =
     Source.cinemaOf(source).forall { cinema =>
       city.cinemaSet.contains(cinema) ||
-        Cinema.chainDetailVenues.get(cinema).exists { venues =>
+        CinemaNetworks.detailVenues.get(cinema).exists { venues =>
           slotCinemas.exists(v => venues.contains(v) && city.cinemaSet.contains(v))
         }
     }
@@ -482,7 +482,7 @@ case class MovieRecord(
    *
    *  `expectedLanguage` (an ISO 639-1 tag, from [[synopsisForCity]]'s city) is
    *  the FIRST sort key when given, and ONLY for a candidate from a chain-detail
-   *  slot (`Cinema.chainDetailVenues`: [[CinemaCityChain]], [[CineworldChain]],
+   *  slot (`CinemaNetworks.detailVenues`: [[CinemaCityChain]], [[CineworldChain]],
    *  [[RegalChain]]) — see [[synopsisForCity]]
    *  for why the check is scoped that narrowly. Such a candidate that
    *  `tools.TextLanguage.detect`s as a different language loses to any
@@ -497,7 +497,7 @@ case class MovieRecord(
       .flatMap { case (source, raw) => processedSynopsisCandidate(raw).map(source -> _) }
       .sortBy { case (source, (_, plainText)) =>
         val wrongLanguage = expectedLanguage.exists { expected =>
-          Source.cinemaOf(source).exists(Cinema.chainDetailVenues.contains) &&
+          Source.cinemaOf(source).exists(CinemaNetworks.detailVenues.contains) &&
             tools.TextLanguage.detect(plainText).exists(_ != expected)
         }
         (if (wrongLanguage) 1 else 0, if (plainText.contains('\n')) 0 else 1, -plainText.length)
