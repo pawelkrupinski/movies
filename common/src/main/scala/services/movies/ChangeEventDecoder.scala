@@ -65,6 +65,11 @@ final class ChangeEventDecoder[T](
 }
 
 object ChangeEventDecoder {
+  /** The `_id` an event's document key names — what a delete, which carries no post-image, says. */
+  def documentIdOf(change: ChangeStreamDocument[?]): Option[String] =
+    Option(change.getDocumentKey).flatMap(k => Option(k.get("_id")))
+      .map(v => if (v.isString) v.asString.getValue else v.toString)
+
   /** What an event's post-image turned out to be. */
   enum PostImage[+T] {
     case Present(value: T)

@@ -105,6 +105,10 @@ object ChangeStreamMetrics {
    *  (invalidate / drop / rename) doesn't spawn a new series. */
   def normalizeOp(raw: String): String = if (Ops.contains(raw)) raw else Op.Other
 
+  /** The normalised op of one change event. */
+  def opOf(change: com.mongodb.client.model.changestream.ChangeStreamDocument[?]): String =
+    normalizeOp(Option(change.getOperationType).map(_.getValue).getOrElse(""))
+
   /** Categorise an UPDATE from BOTH its `$set` (`updatedFields`) and `$unset`
    *  (`removedFields`) paths. A removed cinema slot (`$unset sourceData.X`, e.g. a
    *  cinema stopped showing the film) lands `updatedAt` in `updatedFields` and the
