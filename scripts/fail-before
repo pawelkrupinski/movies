@@ -19,7 +19,9 @@
 #
 # SBT: a command that goes through scripts/sbt-warm runs against each worktree's own kept server (the
 # worktree's own copy of the script); both servers are stopped afterwards. A cold worktree compiles from
-# the seed, so expect minutes.
+# the seed, so expect minutes: the caller's checkout when it is at <commit> and built (KINOWO_SBT_WARM_SEED, unless
+# set) — AFTER is its very sources and BEFORE differs from them by the commit's production files alone, where the
+# newest build of an older main commit cost a recompile of every commit since (6-9 min a run, 2026-10-18).
 #
 # SAFETY: the caller's worktree is never touched. The worktrees live in $KINOWO_FAIL_BEFORE_DIR (default
 # ~/.cache/kinowo-fail-before), are removed by a trap, and are the only change to the shared .git (its
@@ -98,8 +100,13 @@ done < <(git -C "$top" -c core.quotePath=false diff-tree --no-commit-id --name-o
 
 # Each run bounded (tool-conventions.sh's `bounded`): in a process group of its own, ended whole at the deadline (exit
 # 124) — the JVM an sbt test forks too, not just the shell — and on fail-before's own INT/TERM.
+# The nearest seed of both: the caller's own build of <commit>.
+seed=${KINOWO_SBT_WARM_SEED:-}
+if [ -z "$seed" ] && [ "$(git -C "$top" rev-parse HEAD)" = "$sha" ] && compgen -G "$top/*/target/scala-*/zinc" > /dev/null; then
+  seed=$top
+fi
 run_in() { # <worktree> <log>
-  (cd "$1" && bounded "${KINOWO_FAIL_BEFORE_TIMEOUT:-3000}" bash -c "$command_line") > "$2" 2>&1
+  (cd "$1" && { [ -z "$seed" ] || export KINOWO_SBT_WARM_SEED="$seed"; } && bounded "${KINOWO_FAIL_BEFORE_TIMEOUT:-3000}" bash -c "$command_line") > "$2" 2>&1
 }
 
 printf 'fail-before: %s (%d test-side file(s) copied onto %s)\n' "$sha" "$copied" "$(git -C "$top" rev-parse --short "$parent")"
