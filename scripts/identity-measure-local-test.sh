@@ -20,6 +20,7 @@ cat > "$repo/scripts/it-local.sh" <<'STUB'
 #!/usr/bin/env bash
 for command in "$@"; do
   echo "$(basename "$PWD") $command" >> "$STUB/calls"
+  [ -n "${KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY:-}" ] && echo "live $KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY" >> "$STUB/live"
   set -- $command
   case "$command" in
     *IdentityResolveDump*) while [ $# -gt 0 ]; do case "$1" in --out) out=$2 ;; --full) cc=$2 ;; esac; shift; done
@@ -91,6 +92,14 @@ rm -f "$work/moved"
 ( cd "$work" && measure --base "$base" --head "$head" --out rel --countries pl )
 check "a relative --out is the caller's, not each ref's worktree's: both refs' takes land under it" "0 yes" \
   "$(cat "$work/status") $([ -s "$work/rel/$base/decisions-pl.jsonl" ] && [ -s "$work/rel/$head/decisions-pl.jsonl" ] && echo yes || echo no)"
+
+rm -f "$work/live"
+TMDB_API_KEY='' measure --base "$base" --head "$head" --live-gaps
+check "--live-gaps with no TMDB key is a setup error" "2" "$(cat "$work/status")"
+rm -f "$work/calls"
+TMDB_API_KEY=k1 measure --base "$base" --head "$head" --live-gaps
+check "--live-gaps: every resolve asks live with the key, in an out dir of its own (none reused)" "0 6 yes" \
+  "$(cat "$work/status") $(grep -c '^live k1$' "$work/live") $(grep -q -- "-live$" <<< "$(grep -o 'out .*' "$work/out" | head -1)" && echo yes || echo no)"
 
 measure --base "$base" --head "$head" --recording 99
 check "a recording with no laid pair is a setup error" "2" "$(cat "$work/status")"

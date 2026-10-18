@@ -12,7 +12,11 @@
 #   --countries  default every country the recording holds
 #   --recording  a "Record scrape fixtures" run whose laid pair is cached
 #                ($KINOWO_IDENTITY_CACHE/recordings/<run>/pair, as identity-slice lays it); default the newest cached one
-#   --out        default target/identity-measure-local/<base>..<head>
+#   --out        default target/identity-measure-local/<base>..<head> (…-live with --live-gaps)
+#   --live-gaps  ask TMDB and IMDb live what the recording cannot answer, at both refs alike: the measure of a change that
+#                asks NEW questions (a search spelling, a query), which a hermetic replay answers with nothing. Needs
+#                TMDB_API_KEY (`secrets run movies TMDB_API_KEY -- scripts/identity-measure-local … --live-gaps`); CI's
+#                convergence fill records those answers once GitHub can run it
 #
 # Each ref resolves in a detached worktree of its own (<out>/trees/<sha>), in ONE sbt session over a mongod of its own
 # (scripts/it-local.sh): every country's dump, then the ratchet's final takes. Prints each country's model and final
@@ -31,7 +35,7 @@ set -uo pipefail
 
 here=$(cd "$(dirname "$0")/.." && pwd)
 cache=${KINOWO_IDENTITY_CACHE:-$HOME/.cache/kinowo-identity}
-base="" head=HEAD countries="" recording="" out=""
+base="" head=HEAD countries="" recording="" out="" live=""
 die() { echo "identity-measure-local: $*" >&2; exit 2; }
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -40,6 +44,7 @@ while [ $# -gt 0 ]; do
     --countries) countries=${2:-}; shift 2 ;;
     --recording) recording=${2:-}; shift 2 ;;
     --out) out=${2:-}; shift 2 ;;
+    --live-gaps) live=1; shift ;;
     -h|--help) sed -n '2,/^set -uo/p' "$0" | sed '$d' | sed 's/^# \{0,1\}//'; exit 0 ;;
     *) die "unknown argument: $1" ;;
   esac
@@ -59,11 +64,16 @@ if [ -z "$countries" ]; then
   countries=$(for dir in "$pair"/enrichment-*; do [ -d "$dir" ] && basename "$dir" | sed 's/^enrichment-//'; done | paste -sd, -)
 fi
 IFS=, read -r -a ccs <<< "$countries"
-out=${out:-$here/target/identity-measure-local/$base_sha..$head_sha}
+if [ -n "$live" ]; then
+  key=${KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY:-${TMDB_API_KEY:-}}
+  [ -n "$key" ] || die "--live-gaps needs TMDB_API_KEY (secrets run movies TMDB_API_KEY -- $0 …)"
+  export KINOWO_IDENTITY_LIVE_GAPS_TMDB_KEY=$key
+fi
+out=${out:-$here/target/identity-measure-local/$base_sha..$head_sha${live:+-live}}
 mkdir -p "$out/trees"
 # absolute: each ref's commands run from its own worktree, where a relative path would land the takes
 out=$(cd "$out" && pwd)
-echo "identity-measure-local: base $base_sha, head $head_sha, recording $recording, countries ${ccs[*]}, out $out"
+echo "identity-measure-local: base $base_sha, head $head_sha, recording $recording, countries ${ccs[*]}${live:+, live gaps}, out $out"
 
 resolve() { # <sha>: every country's model takes and the final ones, in the ref's own worktree
   local sha=$1 tree="$out/trees/$1" dir="$out/$1" commands=()
