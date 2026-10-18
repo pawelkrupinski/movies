@@ -55,6 +55,23 @@ class HostPacingSpec extends AnyFlatSpec with Matchers {
     once.get shouldBe 1
   }
 
+  it should "retry a read whose connection was never made after a growing back-off, the host's limit kept" in {
+    // a --live-gaps dump of 2026-10-18: ~800 reads of TMDB and IMDb failed `ConnectException` within two seconds, and
+    // each was the gap for the rest of the run -- Schamoni's title-credit question among them, its person search unasked
+    val slept  = new AtomicLong
+    val pacing = new HostPacing(budget = 4, retries = 6, backOffMillis = 100, sleep = ms => { slept.addAndGet(ms); () })
+    val calls  = new AtomicInteger
+    pacing("https://api.themoviedb.org/3/search/person") {
+      if (calls.incrementAndGet() <= 2) throw new java.net.ConnectException() else "ok"
+    } shouldBe "ok"
+    calls.get shouldBe 3
+    slept.get shouldBe 100 + 200
+    pacing.limitOf("api.themoviedb.org") shouldBe 4
+    val tries = new AtomicInteger
+    a[java.net.ConnectException] should be thrownBy pacing("https://api.themoviedb.org/3/x") { tries.incrementAndGet(); throw new java.net.ConnectException() }
+    tries.get shouldBe 7
+  }
+
   it should "fail a timed-out read at once, without the 429/503 retry, and free its slot" in {
     val slept  = new AtomicLong
     val pacing = new HostPacing(budget = 1, retries = 6, sleep = ms => { slept.addAndGet(ms); () })
