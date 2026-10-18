@@ -5,6 +5,9 @@ description: Tools for identity-resolver investigations — why a listing took (
 
 # Investigating an identity take
 
+**Before building a resolver change, read `docs/identity-experiments.md`**: what was already tried, measured and not
+landed, why, and where its code is kept (`experiment/<name>` tags). Add an entry whenever you drop or park one.
+
 The tools below replace the mechanics that used to eat an investigation's hours. `identity-slice` (and
 `venue-replay`, `recording-diff`, `listing-history --replay`) read a **recording**; `identity-slice --explain`,
 `identity-judge-cards` and the ratchet report read the **unmatched-cluster capture** (`test/resources/fixtures/identity-unmatched/<cc>.json.gz`, a few MB per
