@@ -20,11 +20,16 @@ private[identity] final class EvidenceWeights(calibration: IdentityCalibration) 
   def facts(scored: Scored): Double =
     own(scored) - calibration.contributionSumWhere(ListingFilm, scored.measures, (name, _) => name == "title")
 
-  /** Does anything the listing PUBLISHED — a fact, not its title nor the database's ranking — weigh FOR the film?
-   *  What the release veto never overrules ([[ReleaseVeto]]). */
-  def factsSupport(scored: Scored): Boolean =
-    calibration.contributions(ListingFilm, scored.measures).exists { case (name, weight) =>
-      weight > 0 && !Priors(name) && name != "title" && !scored.measures.get(name).exists(_.isInstanceOf[IdentityMeasures.Missing]) }
+  /** Do the facts the listing PUBLISHED — not its title nor the database's ranking, nor a fact it left missing — weigh FOR
+   *  the film on balance? What the release veto never overrules ([[ReleaseVeto]]). On balance, not one of them: a running
+   *  time five minutes off is no backing beside a year that dates another film — UK Tower Cinema Skegness's "Hocus Pocus"
+   *  [2026] [96′], its year the screening's, took the Slovak "Hocus-pocus" (2025, 101′, released in Czechia and Slovakia
+   *  alone) past the veto on that running time while the 1993 film stood released in Britain beside it. */
+  def factsSupport(scored: Scored): Boolean = {
+    val published = calibration.contributions(ListingFilm, scored.measures).filter { case (name, _) =>
+      !Priors(name) && name != "title" && !scored.measures.get(name).exists(_.isInstanceOf[IdentityMeasures.Missing]) }
+    published.exists(_._2 > 0) && published.map(_._2).sum > 0
+  }
 
   /** The calibrated probability on the listing's own facts alone — what a cannot-link reads. A
    *  film the listing's facts do not contradict is never vetoed merely for ranking second in

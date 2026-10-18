@@ -3,7 +3,7 @@ package services.identity
 import services.identity.IdentityMeasures.{Measure, Number}
 
 /** The RELEASE VETO: among the films a listing's bare title names exactly (its NAMESAKES), one TMDB dates no release of in the venue's country, while it dates one of a
- *  namesake beside it, is not the venue's film — unless something backs it: a fact the listing published
+ *  namesake beside it, is not the venue's film — unless something backs it: the facts the listing published, on balance
  *  (`EvidenceWeights.factsSupport`) or another venue's own facts (`venues.corroborating`). Helios's bare "Diabły" is Ken
  *  Russell's 1971 film, whose Polish release TMDB does not date, because 43 venues crediting him say so.
  *

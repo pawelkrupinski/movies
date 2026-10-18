@@ -1401,7 +1401,7 @@ uk	The Old Court Windsor	Halloween Spooktacular	imdb:tt29763489	wrong	open				20
 uk	*	Healthy Holidays: The Muppet Christmas Carol	tmdb:10437	right	open				2026-10-13	judged 10-13 (suspect audit): the venue states 1992 and Brian Henson, as the record does
 uk	*	Hen (15)	tmdb:1382513	right	open				2026-10-13	judged 10-13: title/era/runtime consistent with record
 uk	Savoy Doncaster	Hocus Pocus	tmdb:10439	right	open				2026-10-13	judged 10-13: title/season/year/runtime consistent with record
-uk	Tower Cinema Skegness	Hocus Pocus	tmdb:1549037	wrong	known-wrong	capture	Hocus-pocus (2025)	era: the venue's year 2026 (its screening year) denies the 1993 film (year.distance >= 27) and backs the 2025 Slovak namesake past the release veto; the fill takes that lean. Telling a screening year from a production year is fact-reliability work, no rule of its own (10-16)	2026-10-13	judged 10-13: tmdb 1549037 is Slovak film Cary-mary (2025), not the 1993 Hocus Pocus
+uk	Tower Cinema Skegness	Hocus Pocus	tmdb:1549037	wrong	open		Hocus-pocus (2025)		2026-10-13	judged 10-13: tmdb 1549037 is Slovak film Cary-mary (2025), not the 1993 Hocus Pocus
 uk	Mockingbird Cinema & Kitchen Birmingham	Home Alone with Wine	tmdb:771	right	open				2026-10-13	judged 10-13: title/era/runtime consistent with record
 uk	*	Hybe Cheering Party	imdb:tt46659669	right	open				2026-10-08	hand label: Hybe Cheering Party (2026) Jineui Kim; Sanggeun Park
 uk	*	Imamura: Black Rain	tmdb:185987	right	open				2026-10-13	judged 10-13: title/era/runtime consistent with record
