@@ -32,6 +32,7 @@
 # Commit what it changes under test/resources/fixtures/corpus/ (hard-clusters-*) with
 # the fix the finding led to.
 set -euo pipefail
+self="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"  # its own path, read for the usage after the cd
 cd "$(dirname "$0")/.."
 
 # shellcheck disable=SC2034 # read by identity-tools.sh's identity_log
@@ -112,6 +113,6 @@ case "$mode" in
         record "$@"
         ;;
     *)
-        sed -n '3,31p' "$0"; exit 2
+        sed -n '3,31p' "$self"; exit 2
         ;;
 esac

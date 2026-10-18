@@ -57,5 +57,10 @@ check "no MONGODB_URI: the local Mongo, on the port the local mirror names" "0 1
 
 check "a failed sbt fails the script" "1" "$(SBT_FAILS=1 hc record de)"
 check "...showing sbt's log" "1" "$(grep -c 'compilation failed' "$work/out")"
+rm -f "$work/calls"
+check "a ratchet whose extend fails fails, re-recording nothing after it" "1 1" \
+  "$(SBT_FAILS=1 hc ratchet de "$work/convergence.log") $(grep -c . "$work/calls")"
+check "no mode prints the usage, from whatever directory it was started" "2 1" \
+  "$(cd "$REPO_ROOT/scripts" && bash ./hard-clusters.sh > "$work/out" 2>&1; echo "$? $(grep -c 'hard-clusters.sh ratchet' "$work/out")")"
 
 spec_summary
