@@ -591,6 +591,11 @@ object ExtraTitleRules {
     // ('… (ukraiński dubbing)') shapes, and the English 'ukrainian' spelling. ~7
     // major films × the Cinema City network (Toy Story 5, Spider-Man, Odyseja,
     // Minionki i straszydła, Dzień objawienia, Straszny film).
+    // A version billed after the title as a screen and its audio language (UK Savoy Grantham's "Ramayana: Rise of a
+    // Legend 2D - Hindi"), or Spain's original-version mark ("… 18-19 VOSE", Cine Imf Ondara): query-only, so the
+    // language version keeps its own card.
+    searchStrip("xtra-screen-language-suffix",     """(?iu)\s+[23]D\s*[-–—]\s*\p{L}+\s*$""",                "'<film> 2D - Hindi' screen-and-language version suffix"),
+    searchStrip("xtra-version-original-suffix",    """(?iu)\s+(?:V\.?O\.?S\.?E\.?|VOSI|VOS|VO)\s*$""",        "'<film> VOSE' / 'VOS' / 'VO' Spanish original-version suffix"),
     searchStrip("xtra-ukrainski-lang-suffix",      """(?iu)\s*[.(\s]\s*(?:ukrai[ńn]ski|ukrainian)\s+(?:dubbing|napisy|lektor)\s*\)?\s*$""", "'<film> [.( ]ukraiński/ukrainian dubbing/napisy/lektor' UA-version marker — query-only strip so the row stays its own (matching the canonical UA exclusion) but resolves the base film"),
     // Bare 'DKF - ' / 'DKF: ' film-club prefix (no club name) — the existing
     // 'xtra-pp-dkf-named' only matches 'DKF <name>: ', so a clubless 'DKF: <film>'

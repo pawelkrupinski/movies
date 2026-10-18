@@ -507,6 +507,9 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Amelia | EKO-KINO"                                    -> "Amelia",
     // Sixteenth-wave (2026-07-06) TMDB-no-match audit: the '(YYYY) 4K' restoration tag.
     "Generał (1926) 4K"                                    -> "Generał (1926)",
+    // a screen-and-language version (UK Savoy Grantham) and Spain's original-version mark (Cine Imf Ondara), recording 38713274617
+    "Ramayana: Rise of a Legend 2D - Hindi"                -> "Ramayana: Rise of a Legend",
+    "El Elixir De Amor - ÓPERA PREG. MET CAN 18-19 VOSE"   -> "El Elixir De Amor - ÓPERA PREG. MET CAN 18-19",
     "Ghost in the shell (1995) 4K"                         -> "Ghost in the shell (1995)",
     // Eighteenth-wave (2026-07-09) TMDB-no-match audit: English-subtitled-screening
     // marker (dash + bracketed shapes, 'eng' abbreviation). Query-only strip — the
