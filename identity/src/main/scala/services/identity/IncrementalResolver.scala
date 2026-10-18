@@ -4,6 +4,8 @@ import services.movies.{ListingKey, TitleNormalizer}
 
 import scala.collection.mutable
 
+import MultiMaps.*
+
 /** Which lookups gained an answer since the model last read them — candidate queries, film
  *  records, and the listings whose detail page did. */
 final case class AnswersChanged(queries: Set[CandidateQuery], films: Set[Int], details: Set[ListingKey] = Set.empty) {
@@ -287,7 +289,7 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
     val keyed = byKey(key)
     keyed.listing = null; heldListings -= 1
     if (keyed.family < 0) byKey.remove(key)
-    atVenue.updateWith(listing.venue)(_.map(_ - key).filter(_.nonEmpty))
+    atVenue.removeValue(listing.venue, key)
   }
 
   private var heldListings = 0
@@ -301,10 +303,10 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
       keyed.family = -1
       if (keyed.listing == null) byKey.remove(key)
     })
-    family.resolved.blockKeys.foreach(unlink(familiesOfKey, _, id))
-    family.resolved.reads.keys.foreach(unlink(readersOf, _, id))
-    family.resolved.queries.foreach(unlink(askersOf, _, id))
-    family.resolved.films.foreach(unlink(filmReadersOf, _, id))
+    family.resolved.blockKeys.foreach(familiesOfKey.removeValue(_, id))
+    family.resolved.reads.keys.foreach(readersOf.removeValue(_, id))
+    family.resolved.queries.foreach(askersOf.removeValue(_, id))
+    family.resolved.films.foreach(filmReadersOf.removeValue(_, id))
   }
 
   /** The held listing's own key object for `key` (`key` itself for a listing no longer held). */
@@ -317,15 +319,11 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
     val id = freedIds.headOption.fold { val fresh = nextFamily; nextFamily += 1; fresh } { free => freedIds -= free; free }
     families(id) = Family(resolved, digest)
     resolved.listings.foreach(key => byKey.getOrElseUpdate(key, new IncrementalResolver.Keyed).family = id)
-    resolved.blockKeys.foreach(link(familiesOfKey, _, id))
-    resolved.reads.keys.foreach(link(readersOf, _, id))
-    resolved.queries.foreach(link(askersOf, _, id))
-    resolved.films.foreach(link(filmReadersOf, _, id))
+    resolved.blockKeys.foreach(familiesOfKey.addValue(_, id))
+    resolved.reads.keys.foreach(readersOf.addValue(_, id))
+    resolved.queries.foreach(askersOf.addValue(_, id))
+    resolved.films.foreach(filmReadersOf.addValue(_, id))
   }
-
-  /** `id` among the families an index files under `key` — and out of them, the entry gone with its last family. */
-  private def link[K](index: mutable.Map[K, Set[Int]], key: K, id: Int): Unit = index.updateWith(key)(ids => Some(ids.getOrElse(Set.empty) + id))
-  private def unlink[K](index: mutable.Map[K, Set[Int]], key: K, id: Int): Unit = index.updateWith(key)(_.map(_ - id).filter(_.nonEmpty))
 }
 
 object IncrementalResolver {
