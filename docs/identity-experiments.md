@@ -217,6 +217,12 @@ slice outputs: `~/.cache/kinowo-identity/handoff/2026-10-15-wrong-match-round2/i
   "Let It Snow"). The BBFC-lists half landed (`c5a960c69`, `d7fa5e95b`). Open item in
   `docs/design/identity-known-wrongs-and-todos.md`.
 - **Code:** `experiment/identity-search-uncertified` (`dbf421550`; rebased as `item8-on-main`, `4a194b22d`).
+- **Retried 2026-10-18, LANDED** (`14047976a`, beneath it `29abd98da`): the Poole losses were never the search.
+  `ListingShape.billedBeside` read "Cert PG" as a piece billed beside the film, and only a recurring-banner exemption
+  (the raw "… - Cert PG" spelling's "Cert PG" shape, which the uncertified search no longer made) had kept the take.
+  `billedBeside` now peels the certificate first; local measure on recording 38713274617: 0 moves, the UK capture
+  filled for the new queries (Snowman double bill). Lesson: a loss that survives `--live-gaps` is code, not data —
+  read the head's refusal line (`identity-slice`) before blaming a recording.
 - **Next angle:** since 10-18 the intake peel (TitleFacts) takes the certificate into the listing's age rating before
   search; re-check whether the family join still breaks once both sides of the join are peeled the same way.
 
