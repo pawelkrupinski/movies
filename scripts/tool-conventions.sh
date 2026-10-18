@@ -27,6 +27,8 @@
 #        first `set ` line, the `# ` stripped, a leading blank line dropped
 #   KINOWO_COUNTRIES                -> the country codes every tool loops over, in one order (kinowo_countries_csv: "pl,de,…")
 #   KINOWO_IDENTITY_CACHE           -> the cache every identity tool shares (default ~/.cache/kinowo-identity)
+#   KINOWO_GH_REPO                  -> the GitHub repository every gh call names with -R ($KINOWO_REPO, default
+#        pawelkrupinski/movies: a test points it elsewhere)
 #   die / usage_error <message...>  -> exit 1 (DIE_STATUS) for a runtime failure, 2 for a caller's mistake (below)
 #   country_flag / selected_countries_csv -> `--country cc[,cc]` and `--countries a,b`, one parser (below)
 #   flag_value "$@"                 -> a usage_error when the flag in $1 has no value after it (below)
@@ -39,6 +41,7 @@ kinowo_countries_csv() { local IFS=,; echo "${KINOWO_COUNTRIES[*]}"; }
 
 KINOWO_IDENTITY_CACHE=${KINOWO_IDENTITY_CACHE:-$HOME/.cache/kinowo-identity}
 export KINOWO_IDENTITY_CACHE
+KINOWO_GH_REPO=${KINOWO_REPO:-pawelkrupinski/movies}
 
 local_mongo_port() { echo "${LOCAL_MIRROR_PORT:-28017}"; }
 local_mongo_uri() { echo "mongodb://127.0.0.1:$(local_mongo_port)/${1:-}?directConnection=true"; }

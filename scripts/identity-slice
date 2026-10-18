@@ -405,7 +405,7 @@ if [ -n "$faith" ]; then
     local dl
     [ -f "$diag/$cc-takes/$cc.json.gz" ] && return 0
     mkdir -p "$diag"; dl=$(mktemp -d "$diag.dl.XXXXXX")
-    if identity_gh "$IDENTITY_GH_DOWNLOAD" run download "$faith" -R "${KINOWO_REPO:-pawelkrupinski/movies}" \
+    if gh_download "$IDENTITY_GH_DOWNLOAD" run download "$faith" -R "$KINOWO_GH_REPO" \
          --name "convergence-diagnostics-$cc-convergence" --dir "$dl" >&2 && [ -f "$dl/$cc-takes/$cc.json.gz" ]; then
       rm -rf "$diag/$cc-takes"; mv "$dl/$cc-takes" "$diag/$cc-takes"; rm -rf "$dl"
     else
@@ -414,12 +414,12 @@ if [ -n "$faith" ]; then
   }
   [ -f "$diag/$cc-takes/$cc.json.gz" ] || identity_locked "diagnostics-$faith-$cc" faith_download || exit 1
   if [ -z "$run" ]; then
-    log_text=$(identity_gh "$IDENTITY_GH_DOWNLOAD" run view "$faith" -R "${KINOWO_REPO:-pawelkrupinski/movies}" --log) ||
+    log_text=$(identity_gh "$IDENTITY_GH_DOWNLOAD" run view "$faith" -R "$KINOWO_GH_REPO" --log) ||
       { echo "could not read run $faith's log (gh failed or timed out): name its recording with --recording" >&2; exit 1; }
     run=$(grep -m1 -oE 'KINOWO_CONVERGENCE_PIN_CORPUS_RUN: [0-9]+' <<< "$log_text" | grep -oE '[0-9]+$' || true)
   fi
   [ -n "$run" ] || { echo "no pinned recording in run $faith's log: name it with --recording" >&2; exit 1; }
-  head=$(identity_gh "$IDENTITY_GH_READ" run view "$faith" -R "${KINOWO_REPO:-pawelkrupinski/movies}" --json headSha -q .headSha) && [ -n "$head" ] ||
+  head=$(identity_gh "$IDENTITY_GH_READ" run view "$faith" -R "$KINOWO_GH_REPO" --json headSha -q .headSha) && [ -n "$head" ] ||
     { echo "could not read run $faith's commit (gh failed or timed out)" >&2; exit 1; }
   recording=$(identity_recording "$run" "$cc")
   use_mirror

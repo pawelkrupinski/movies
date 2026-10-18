@@ -258,9 +258,22 @@ check "...within it" "yes" "$([ $(( SECONDS - started )) -lt 20 ] && echo yes ||
 # --faithfulness RUN: the leg's artifact and log are read through a bounded gh, and a gh that hangs fails the call
 printf '#!/usr/bin/env bash\nsleep 20\n' > "$work/bin/gh"; chmod +x "$work/bin/gh"
 started=$SECONDS
-code=$(KINOWO_IDENTITY_DOWNLOAD_TIMEOUT=1 slice de --faithfulness 123456789 > /dev/null; echo $?)
+code=$(GH_DOWNLOAD_ATTEMPTS=1 KINOWO_IDENTITY_DOWNLOAD_TIMEOUT=1 slice de --faithfulness 123456789 > /dev/null; echo $?)
 check "--faithfulness RUN with a gh that hangs fails, saying so" "1 1" "$code $(grep -c 'could not download run 123456789' "$work/err")"
 check "...within the timeout" "yes" "$([ $(( SECONDS - started )) -lt 10 ] && echo yes || echo "no: $(( SECONDS - started ))s")"
+# a throttled artifact read is asked again (gh_download), as every other download is: the first answers 502
+cat > "$work/bin/gh" <<'STUB'
+#!/usr/bin/env bash
+[ "$1 $2" = "run download" ] || exit 1
+echo download >> "$STUB/gh-downloads"
+[ "$(wc -l < "$STUB/gh-downloads")" -gt 1 ] || { echo "HTTP 502: Bad Gateway" >&2; exit 1; }
+while [ $# -gt 0 ]; do [ "$1" = --dir ] && dir=$2; shift; done
+mkdir -p "$dir/de-takes" && echo takes > "$dir/de-takes/de.json.gz"
+STUB
+chmod +x "$work/bin/gh"; rm -f "$work/gh-downloads"
+GH_DOWNLOAD_BACKOFF=0 slice de --faithfulness 223456789 > /dev/null
+check "--faithfulness RUN: a throttled artifact read is asked again, and its takes kept in the cache" "2 yes" \
+  "$(wc -l < "$work/gh-downloads" | tr -d ' ') $([ -s "$cache/diagnostics/223456789/de-takes/de.json.gz" ] && echo yes || echo no)"
 rm -f "$work/bin/gh"
 
 # --prod-mirror: prod's state from the LOCAL mirror, its freshness checked against the recording first
