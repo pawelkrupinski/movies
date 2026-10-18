@@ -163,7 +163,7 @@ class AuthController(
       home  <- AuthController.stateCountry(state)
       // ORIGIN decides — that is what the browser scopes a cookie to, and the
       // whole question is whether this request still carries the flow's state.
-      if models.Country.deployedOrigins.contains(origin) && !home.webOrigin.contains(origin)
+      if models.DeploymentOrigins.deployedOrigins.contains(origin) && !home.webOrigin.contains(origin)
       // BASE URL builds the address, because a country's callback lives under
       // its mount point. Identical today for the only country this relays to,
       // and not an assumption worth leaving buried.
@@ -247,7 +247,7 @@ class AuthController(
   /** `landing` by way of the other domain's `path`, which sends the visitor on to
    *  it — or `landing` itself when this origin has no sibling. */
   private def viaSibling(path: String, landing: String, request: RequestHeader): String =
-    models.Country.siblingOfOrigin(ForwardedUrl.base(request)) match {
+    models.DeploymentOrigins.siblingOfOrigin(ForwardedUrl.base(request)) match {
       case None          => landing
       case Some(sibling) => s"$sibling$path${AuthController.query(Seq("next" -> absolute(landing, request)))}"
     }
@@ -518,7 +518,7 @@ class AuthController(
    *  The warning is for us, not them. */
   def ssoFinish(): Action[AnyContent] = Action { request =>
     val here = ForwardedUrl.base(request)
-    (request.getQueryString("code"), models.Country.siblingOfOrigin(here)) match {
+    (request.getQueryString("code"), models.DeploymentOrigins.siblingOfOrigin(here)) match {
       case (None, Some(sibling)) => askForBinding(sibling, here, request)
       case (code, _)             => spendHandoffCode(code, request)
     }
@@ -637,7 +637,7 @@ object AuthController {
   /** The `redirect_uri` for a request that arrived on `requestOrigin` — the apex
    *  on any origin we deploy, the caller's own address anywhere else. */
   private[controllers] def callbackUrlFor(provider: String, requestOrigin: String): String =
-    (if (models.Country.deployedOrigins.contains(requestOrigin)) models.Country.oauthCallbackOrigin
+    (if (models.DeploymentOrigins.deployedOrigins.contains(requestOrigin)) models.DeploymentOrigins.oauthCallbackOrigin
      else requestOrigin) + callbackPath(provider)
 
   /** The provider's own query, forwarded verbatim to the deployment that can
@@ -680,7 +680,7 @@ object AuthController {
    *  Still an exact-match allowlist of addresses we deploy, never a shape test. */
   private[controllers] def handoffTarget(to: Option[String]): Option[String] =
     switchTarget(to).orElse(
-      to.map(_.trim.stripSuffix("/")).filter(models.Country.deployedOrigins.contains))
+      to.map(_.trim.stripSuffix("/")).filter(models.DeploymentOrigins.deployedOrigins.contains))
 
   /** A landing as an absolute URL on `origin`.
    *

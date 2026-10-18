@@ -1,7 +1,5 @@
 package models
 
-import java.time.ZoneId
-
 sealed abstract class Cinema(val displayName: String, val pillName: String) extends Source {
   /** Whether the venue screens all year or only in a season ([[Opening]]): generated from
    *  its name for the data-driven rosters (`data/scripts/seasonal_venues.py`), overridden
@@ -1835,88 +1833,6 @@ case object VueCinemasSheffield extends Cinema("Vue Cinemas Sheffield", "Vue She
 final class GermanCinema(displayName: String, pillName: String, override val opening: Opening = Opening.YearRound)
   extends Cinema(displayName, pillName)
 
-/** One addressable German page — Poland's and Spain's shape since 2026-10: a major
- *  city (a municipality of 100,000+) with only its own venues, a town with three or
- *  more, or a cluster of small towns a short drive apart named after the biggest
- *  ("Bayreuth und Umgebung"). Which page holds which venue is data, built by
- *  `data/germany/scripts/build_pages.py` with the shared rule
- *  (`data/scripts/town_pages.py`).
- *
- *  Plain data rather than a [[City]], for the reason [[SpanishPlace]] is: the slug a
- *  page ends up addressable under depends on what every OTHER country has claimed,
- *  and `City` is the only place that sees all of them. See `City.germanPages`. */
-final case class GermanPlace(
-  /** The slug this page wants — its own name, umlauts spelt out (`muenster`). */
-  preferredSlug: String,
-  /** The slug qualified with the Bundesland (`neustadt-hessen`) — what the page
-   *  answers at where another country already serves or wants [[preferredSlug]]. */
-  qualifiedSlug: String,
-  /** The town the page is named after. */
-  name:          String,
-  /** The Bundesland of [[name]]'s town — what the picker groups the page under. */
-  bundesland:    String,
-  lat:           Double,
-  lon:           Double,
-  /** Several towns rather than one — the page is then "<name> und Umgebung". */
-  multiTown:     Boolean,
-  /** The page's towns, most venues first, [[name]] leading — the place names a
-   *  visitor searches by; see [[City.coveredPlaces]]. */
-  towns:         Seq[String],
-  cinemas:       Seq[Cinema],
-)
-
-/** Materialises the generated German roster into [[GermanPlace]]s + `GermanCinema`
- *  venues, once. Exposes the places for `City.germanPages`, the by-BUNDESLAND
- *  grouping for `Cinema.byCity` (the uptime page's level, as Spain's is the
- *  province), each cinema's venue key (its Filmstarts `theaterId`, or the feed that
- *  found it) for the scrape catalog, and its kinoprogramm.com fallback. */
-object GermanRoster {
-  /** Display names already spoken for by a hand-declared source, which a generated German
-   *  venue may NOT reuse.
-   *
-   *  `displayName` is the wire key every per-cinema slot is stored under (`movie_slots`,
-   *  `screenings`, the embedded `sourceData` map), and `Source.byDisplayName` is a plain
-   *  `toMap` — so two venues sharing a name silently collapse to whichever is built LAST,
-   *  and the loser's stored slots read back as the WINNER. The roster is generated, so the
-   *  guard has to live here rather than in the data: regenerating `GermanRosterData` from
-   *  Filmstarts would otherwise reintroduce any collision that got hand-fixed there.
-   *
-   *  Two exist today — a German "Studio" against Opole's `KinoStudio`, and a German
-   *  "Cineworld" against the `CineworldChain` detail source — and both silently rebound a
-   *  Polish/UK venue's showtimes to a German one. `SourceWireKeySpec` fails on any third. */
-  // Lazy, once per roster: as a `def` it was rebuilt for every venue the roster builds — the
-  // set of every other country's names, thousands of times over — 8.7% of worker-uk's CPU in
-  // its first ten boot minutes (JFR 2026-10-02).
-  private lazy val claimedElsewhere: Set[String] = Cinema.displayNamesClaimedBy()
-
-  private val built: Seq[(GermanPlace, Seq[(GermanCinema, String, Option[String])])] =
-    GermanRosterData.pages.map { case (slug, qualified, name, bundesland, lat, lon, multiTown, towns, cinemas) =>
-      // Qualify only the venues that would collide, so the roster's names — and the wire
-      // keys of every already-stored German slot — stay exactly as they are otherwise.
-      // Qualified with the venue's own TOWN, so a re-cluster never changes a wire key.
-      val venues = cinemas.map { case (disp, pill, tid, kinoprogramm, town) =>
-        val unique = if (claimedElsewhere.contains(disp)) s"$disp $town" else disp
-        (new GermanCinema(unique, pill, Opening.generated(GermanRosterData.seasonal(disp), SeasonWindow.Germany)), tid, kinoprogramm)
-      }
-      (GermanPlace(slug, qualified, name, bundesland, lat, lon, multiTown, towns, venues.map(_._1)), venues)
-    }
-
-  val places: Seq[GermanPlace] = built.map(_._1)
-  /** Venues by Bundesland, in roster order — the grouping `Cinema.byCity` reports
-   *  Germany at (the uptime page), one level above the pages. */
-  val byCity: Seq[(String, Seq[Cinema])] = Cinema.venuesByGroupInOrder(places)(_.bundesland)(_.cinemas)
-  /** Each venue's key: its Filmstarts `theaterId`, or — for a venue Filmstarts does not
-   *  list — the feed that found it ("cineamo:997"), which its sources are filed under. */
-  val venueKeyByCinema: Map[Cinema, String] = built.flatMap(_._2).map { case (c, key, _) => c -> key }.toMap
-  /** Each Filmstarts-listed venue's `theaterId`. */
-  val theaterIdByCinema: Map[Cinema, String] = venueKeyByCinema.filterNot(_._2.contains(':'))
-  /** Each venue's kinoprogramm.com page path, its showtime fallback behind Filmstarts;
-   *  absent for a venue `harvest_kinoprogramm.py` could not match with confidence. */
-  val kinoprogrammPathByCinema: Map[Cinema, String] =
-    built.flatMap(_._2).collect { case (c, _, Some(path)) => c -> path }.toMap
-}
-
-
 // ── United States (Flicks) — data-driven from the full roster ────────────────
 // `UsRosterData` (generated from data/us/pages.json) carries 1,995 town and
 // cluster pages / 4,999 cinemas. Same shape as `GermanCinema`: each venue is
@@ -1925,118 +1841,6 @@ object GermanRoster {
 // equality holds like the hand-authored `case object` cinemas.
 final class UsCinema(displayName: String, pillName: String, override val opening: Opening = Opening.YearRound)
   extends Cinema(displayName, pillName)
-
-/** One US page, as the roster sees it: a major city (a place of 100,000+) with
- *  only its own venues, a town with three or more, or a cluster of small towns a
- *  short drive apart named after the biggest ("Bend area"). Which page holds which
- *  venue is data, built by `data/us/scripts/build_pages.py` with the shared rule
- *  (`data/scripts/town_pages.py`); a cluster may cross a state line.
- *
- *  Plain data rather than a [[City]], for the reason [[GermanPlace]] is: the slug
- *  a page ends up addressable under depends on what every OTHER country has
- *  claimed ("Birmingham" is a UK city), and `City` is the only place that sees
- *  all of them. See `City.usCities`. */
-final case class UsPlace(
-  /** The slug this page wants — its own name (`bend`), or already qualified with
-   *  its state where another US page has or had the name (`springfield-missouri`). */
-  preferredSlug: String,
-  /** The slug qualified with the state (`birmingham-alabama`) — what the page
-   *  answers at where another country already serves [[preferredSlug]]. */
-  qualifiedSlug: String,
-  /** The town the page is named after. */
-  name:          String,
-  /** The state of [[name]]'s town — what the picker groups the page under. */
-  stateName:     String,
-  lat:           Double,
-  lon:           Double,
-  /** The clock most of the page's venues keep; see `generate_roster.zone_for`. */
-  zoneId:        ZoneId,
-  /** Several towns rather than one — the page is then "<name> area". */
-  multiTown:     Boolean,
-  /** The places a visitor searches the page by, most venues first, [[name]]
-   *  leading: its towns, then the towns its venues give as their own — New
-   *  York's boroughs, Los Angeles' Hollywood. See [[City.coveredPlaces]]. */
-  towns:         Seq[String],
-  cinemas:       Seq[Cinema],
-)
-
-/** Materialises the generated US roster into [[UsPlace]]s + `UsCinema` venues,
- *  once. Exposes the places for `City.usCities`, the by-STATE grouping for
- *  `Cinema.byCity` (the uptime page's level, as Germany's is the Bundesland), each
- *  cinema's Flicks slug for the scrape catalog, and the venues on their own clock
- *  — the US counterpart of [[GermanRoster]]. */
-object UsRoster {
-  /** Display names already spoken for, which a generated US venue may NOT reuse.
-   *
-   *  Same hazard [[GermanRoster.claimedElsewhere]] guards, and it now has to look
-   *  wider: `displayName` is the wire key every per-cinema slot is stored under and
-   *  `Source.byDisplayName` is a plain `toMap`, so a US venue colliding with a
-   *  Polish, UK **or German** one silently rebinds the loser's stored showtimes to
-   *  the winner. The generator already de-duplicates WITHIN the US roster (it
-   *  qualifies a repeated title with its town, then its state, and refuses to emit
-   *  an unresolved collision); this catches the cross-country case, which the
-   *  generator cannot see. `SourceWireKeySpec` fails on any that slips through.
-   *
-   *  Reads `GermanRoster.byCity` rather than `GermanRosterData` so the comparison is
-   *  against the names actually built — German venues are themselves qualified on
-   *  collision, and it is the qualified name that ends up on the wire. */
-  // Lazy, once per roster, as `GermanRoster.claimedElsewhere` is.
-  private lazy val claimedElsewhere: Set[String] = Cinema.displayNamesClaimedBy(GermanRoster.byCity)
-
-  /** One venue of the generated roster, with everything the places and the
-   *  scrape catalog read off it. */
-  private final case class Venue(cinema: UsCinema, flicksSlug: String, state: String, town: String,
-                                zone: Option[ZoneId])
-
-  /** The venues whose own clock is not their page's, by roster name (see `generate_roster.py`). */
-  private val ownZones: Map[String, ZoneId] =
-    UsRosterData.venueZones.map { case (disp, zone) => disp -> TimeZones.named(zone) }.toMap
-
-  private val built: Seq[(UsPlace, Seq[Venue])] =
-    UsRosterData.pages.map { case (slug, qualified, name, state, lat, lon, zone, multiTown, towns, cinemas) =>
-      // Qualify only the venues that would collide, so the roster's names — and
-      // the wire keys of every already-stored US slot — stay exactly as they are.
-      // Qualified with the venue's own STATE, so a re-cluster never moves a wire key.
-      val venues = cinemas.map { case (disp, pill, flicksSlug, venueState, town) =>
-        val unique = if (claimedElsewhere.contains(disp)) s"$disp ($venueState)" else disp
-        Venue(new UsCinema(unique, pill, Opening.generated(UsRosterData.seasonal(disp), SeasonWindow.UnitedStates)), flicksSlug, venueState, town, ownZones.get(disp))
-      }
-      val places = (name +: (towns ++ TownRanking.ranked(venues.map(_.town)))).distinct
-      (UsPlace(slug, qualified, name, state, lat, lon, TimeZones.named(zone), multiTown, places,
-               venues.map(_.cinema)), venues)
-    }
-
-  private val venues: Seq[Venue] = built.flatMap(_._2)
-
-  /** Every US page, major cities first (biggest first), then the rest by slug. */
-  val places: Seq[UsPlace] = built.map(_._1)
-
-  /** Every US venue under its STATE's name — one section per state on the
-   *  uptime page, and the US half of `Cinema.byCity`. Not per page: 1,995
-   *  sections of two cinemas each is not a page anybody reads, and a page may
-   *  cross a state line where a venue never does. */
-  val byCity: Seq[(String, Seq[Cinema])] =
-    venues.groupBy(_.state).toSeq.sortBy(_._1).map { case (state, vs) => state -> vs.map(v => v.cinema: Cinema) }
-
-  /** Each US venue's Flicks `/cinema/<slug>/` id — what the scrape catalog binds
-   *  to a `FlicksClient` on the `FlicksMarket.UnitedStates` market, and what a
-   *  chain-primary venue keeps as its FALLBACK slug. */
-  val flicksSlugByCinema: Map[Cinema, String] = venues.map(v => (v.cinema: Cinema) -> v.flicksSlug).toMap
-
-  /** US venues by display name. The display name is the wire key every stored slot
-   *  uses and the only stable handle these venues have — they are built at runtime
-   *  from the generated `UsRosterData`, so unlike the Polish and UK rosters there is no
-   *  case object to refer to one by. `services.cinemas.us.UsChainVenues` keys its
-   *  chain maps this way for exactly that reason; this is the lookup back. */
-  val byDisplayName: Map[String, Cinema] = venues.map(v => v.cinema.displayName -> (v.cinema: Cinema)).toMap
-
-  /** The venues on a clock that is not their page's: a page's zone is its venues'
-   *  majority, and these sit across a zone line from the rest (Green River Cinema in
-   *  Eastern-time Campbellsville, on a page whose other towns keep Central).
-   *  [[VenueClock]] reads each one's day and wall-clock time in its own zone. */
-  val venueZones: Map[Cinema, ZoneId] =
-    venues.flatMap(v => v.zone.map((v.cinema: Cinema) -> _)).toMap
-}
 
 // ── Spain (SensaCine) — data-driven from the full roster ─────────────────────
 // `SpanishRosterData` (generated from data/spain/pages.json + provinces.json + ocine.json)
@@ -2047,297 +1851,72 @@ object UsRoster {
 final class SpanishCinema(displayName: String, pillName: String, override val opening: Opening = Opening.YearRound)
   extends Cinema(displayName, pillName)
 
-/** One addressable Spanish page — Poland's shape since 2026-10: a major city (the
- *  43 municipalities of 150,000+) with only its own venues, a town with three or
- *  more, or a cluster of small towns a short drive apart named after the biggest
- *  ("Sitges y alrededores"). Which page holds which venue is data, built by
- *  `data/spain/scripts/build_pages.py` with the rule Poland's pages share
- *  (`data/scripts/town_pages.py`).
- *
- *  Deliberately plain data rather than a [[City]], for the reason [[UsPlace]]
- *  is: the slug a page ends up addressable under depends on what every OTHER
- *  country has already claimed, and `City` is the only place that can see all
- *  those lists at once. It builds the `SpanishPage` objects from these; see
- *  `City.spanishCities`. */
-final case class SpanishPlace(
-  /** The slug this page wants — its own folded name. `City` uses
-   *  [[qualifiedSlug]] instead only on a collision. */
-  preferredSlug: String,
-  /** The slug qualified with the autonomous community (`toledo-castilla-la-mancha`)
-   *  — what the page answers at where another country already serves
-   *  [[preferredSlug]], the way a state qualifies a US page's. */
-  qualifiedSlug: String,
-  /** The town the page is named after. */
-  name:          String,
-  /** The province of [[name]]'s town — what the picker groups the page under. */
-  province:      String,
-  lat:           Double,
-  lon:           Double,
-  /** The page's own zone. A CONSTRUCTOR value rather than the constant
-   *  `GermanPage` can afford, because Spain has TWO: the Canary Islands run an
-   *  hour behind the peninsula on `Atlantic/Canary`, and a national default would
-   *  move their "today" boundary — the same trap `UsPage` documents for six US
-   *  zones. */
-  zoneId:        ZoneId,
-  /** Several towns rather than one — the page is then "<name> y alrededores". */
-  multiTown:     Boolean,
-  /** The page's towns (municipalities), most venues first, [[name]] leading — the
-   *  place names a Spanish visitor searches by; see [[City.coveredPlaces]]. */
-  towns:         Seq[String],
-  cinemas:       Seq[Cinema],
-)
-
-/** Materialises the generated Spanish roster into [[SpanishPlace]]s +
- *  `SpanishCinema` venues, once. Exposes the places for `City.spanishCities`,
- *  the by-PROVINCE grouping for `Cinema.byCity` (the uptime page's level, as the
- *  US's is the state), and each cinema's SensaCine `theaterId` for the scrape
- *  catalog — the Spanish counterpart of [[GermanRoster]] and [[UsRoster]]. */
-object SpanishRoster {
-  /** Display names already spoken for, which a generated Spanish venue may NOT
-   *  reuse.
-   *
-   *  The same hazard [[GermanRoster.claimedElsewhere]] guards, now looking at
-   *  five countries instead of three: `displayName` is the wire key every
-   *  per-cinema slot is stored under and `Source.byDisplayName` is a plain
-   *  `toMap`, so a Spanish venue colliding with a Polish, UK, German **or US**
-   *  one silently rebinds the loser's stored showtimes to the winner. The
-   *  generator already refuses to emit a collision WITHIN Spain
-   *  (`data/spain/scripts/generate_roster.py`); this catches the cross-country
-   *  case, which the generator cannot see. `SourceWireKeySpec` fails on any that
-   *  slips through.
-   *
-   *  Reads the rosters' `byCity` rather than their raw data, so the comparison is
-   *  against the names actually built — the German and US venues are themselves
-   *  qualified on collision, and it is the qualified name that ends up on the
-   *  wire. */
-  // Lazy, once per roster, as `GermanRoster.claimedElsewhere` is.
-  private lazy val claimedElsewhere: Set[String] =
-    Cinema.displayNamesClaimedBy(GermanRoster.byCity, UsRoster.byCity)
-
-  private val built: Seq[(SpanishPlace, Seq[(SpanishCinema, Option[String], Option[String])])] =
-    SpanishRosterData.pages.map { case (slug, qualified, name, province, lat, lon, zone, multiTown, towns, cinemas) =>
-      // Qualify only the venues that would collide, so the roster's names — and the
-      // wire keys of every already-stored Spanish slot — stay exactly as they are
-      // otherwise. Qualified with the PROVINCE, as they were when a page was one, so
-      // a re-cluster never changes a venue's wire key.
-      val venues = cinemas.map { case (disp, pill, theaterId, ocineServer) =>
-        val unique = if (claimedElsewhere.contains(disp)) s"$disp $province" else disp
-        (new SpanishCinema(unique, pill, Opening.generated(SpanishRosterData.seasonal(disp), SeasonWindow.Spain)), theaterId, ocineServer)
-      }
-      (SpanishPlace(slug, qualified, name, province, lat, lon, TimeZones.named(zone), multiTown, towns,
-                    venues.map(_._1)), venues)
-    }
-
-  val places: Seq[SpanishPlace] = built.map(_._1)
-  /** Venues by province, provinces in roster order — the grouping `Cinema.byCity`
-   *  reports Spain at (the uptime page), one level above the pages. */
-  val byCity: Seq[(String, Seq[Cinema])] = Cinema.venuesByGroupInOrder(places)(_.province)(_.cinemas)
-
-  /** Each SensaCine-listed venue's `theaterId`. The Ocine venues SensaCine does
-   *  not list (`data/spain/ocine.json`'s `unlisted`) have none, and are absent. */
-  val theaterIdByCinema: Map[Cinema, String] =
-    built.flatMap(_._2).collect { case (c, Some(theaterId), _) => (c: Cinema) -> theaterId }.toMap
-
-  /** Each Ocine venue's ticketing-server slug (`tickets.ocine<slug>.es`), the
-   *  scrape primary for every venue named here — SensaCine carries no programme
-   *  for most of them, and does not list some at all. From `data/spain/ocine.json`,
-   *  which says which venues are (not) on it and why. */
-  val ocineServerByCinema: Map[Cinema, String] =
-    built.flatMap(_._2).collect { case (c, _, Some(slug)) => (c: Cinema) -> slug }.toMap
-}
-
 object Cinema {
   /** The display names a generated roster may NOT reuse: every hand-declared venue's
    *  ([[polishAndUk]]), every network pseudo-cinema's, and every venue of the rosters
    *  built before it (`earlier`) — see `GermanRoster.claimedElsewhere`. */
   private[models] def displayNamesClaimedBy(earlier: Seq[(String, Seq[Cinema])]*): Set[String] =
-    ((polishAndUk +: earlier).flatMap(_.flatMap(_._2)) ++ Networks).map(_.displayName).toSet
+    ((polishAndUk +: earlier).flatMap(_.flatMap(_._2)) ++ CinemaNetworks.all).map(_.displayName).toSet
 
-  /** A generated roster's venues under the group each page is filed in (a Bundesland, a
-   *  province), the groups in the order their first page comes in the roster — the
-   *  [[byCity]] level one above the pages. */
-  private[models] def venuesByGroupInOrder[P](pages: Seq[P])(groupOf: P => String)(venues: P => Seq[Cinema])
-      : Seq[(String, Seq[Cinema])] = {
-    val byGroup = pages.groupBy(groupOf)
-    pages.map(groupOf).distinct.map(group => group -> byGroup(group).flatMap(venues))
-  }
+  /** The chains' network pseudo-cinemas — [[CinemaNetworks.all]], under the name `services.identity` reads. */
+  val Networks: Seq[Cinema] = CinemaNetworks.all
 
-  /** The chains' NETWORK pseudo-cinemas: a chain's venues publish their listings under their own
-   *  cinema, and its detail enricher lands every film page on this one shared slot (`detailTarget`).
-   *  No listing is ever published at one. */
-  val Networks: Seq[Cinema] = Seq(CinemaCityChain, CineworldChain, RegalChain)
-
-  /** Poznań venues — the original ten. Their display order doubles as the
-   *  per-source merge priority (see `Source.all`), so Multikino stays in the
-   *  list and existing rows keep their resolved precedence. */
-  val poznan: Seq[Cinema] = PolishPages.majorCinemas("poznan")
-
-  val wroclaw: Seq[Cinema] = PolishPages.majorCinemas("wroclaw")
-
-  val warszawa: Seq[Cinema] = PolishPages.majorCinemas("warszawa")
-
-  /** Kraków venues. Cinema City has three multiplexes here (Bonarka,
-   *  Kazimierz, Zakopianka — Zakopianka also houses the city's only IMAX);
-   *  Multikino has one. No Helios in Kraków. The independents (Pod Baranami,
-   *  Kijów, Mikro, …) are wired separately as bespoke scrapers. */
-  val krakow: Seq[Cinema] = PolishPages.majorCinemas("krakow")
-
-  /** Łódź venues. Three national chains — Cinema City (Manufaktura), Multikino,
-   *  and the city's single Helios (in Galeria Sukcesja) — plus Kino Charlie, the
-   *  arthouse cinema on Piotrkowska, wired as a bespoke ld+json scraper. */
-  val lodz: Seq[Cinema] = PolishPages.majorCinemas("lodz")
-
-  /** Katowice venues. Cinema City has two locations (Punkt 44 and Silesia),
-   *  Multikino one, Helios one. The three art-house venues run by Silesia Film —
-   *  Kosmos, Światowid, and Kinoteatr Rialto — are all Bilety24-hosted. */
-  val katowice: Seq[Cinema] = PolishPages.majorCinemas("katowice")
-
-  /** Szczecin venues. No Cinema City here; the two multiplexes are Helios (in
-   *  CH Kupiec) and Multikino. The lone independent is Kino Pionier 1907 — the
-   *  oldest continuously-operating cinema in the world — wired as a bespoke
-   *  scraper. */
-  val szczecin: Seq[Cinema] = PolishPages.majorCinemas("szczecin")
-
-  /** Białystok venues. No Cinema City or Multikino in the city; Helios (HQ'd in
-   *  Łódź, strong in eastern Poland) runs three multiplexes — Alfa, Biała and
-   *  Jurowiecka. The independent is Kino Forum, the film screen of the
-   *  Białostocki Ośrodek Kultury, wired as a bespoke scraper. */
-  val bialystok: Seq[Cinema] = PolishPages.majorCinemas("bialystok")
-
-  /** Trójmiasto venues — the Tri-City of Gdańsk, Gdynia and Sopot treated as one
-   *  repertoire. Two Helios in Gdańsk (Metropolia, Forum), one in Gdynia
-   *  (Riviera), plus Multikino Gdańsk. Cinema City Krewetka closed in 2018 and
-   *  Multikino Sopot in 2026, so neither is modelled. The independents (Cinema1,
-   *  GCF, …) are wired separately as bespoke scrapers. */
-  val trojmiasto: Seq[Cinema] = PolishPages.majorCinemas("trojmiasto")
-
-  /** Bydgoszcz venues. All three national chains have one multiplex each
-   *  (Cinema City in Focus Mall, Multikino on Focha, Helios on Fordońska);
-   *  the city's one art-house screen is MCK's Kino Orzeł, ticketed through the
-   *  national Bilety24 marketplace. */
-  val bydgoszcz: Seq[Cinema] = PolishPages.majorCinemas("bydgoszcz")
-
-  /** Lublin venues. Two Cinema City multiplexes (Felicity, Lublin Plaza) and
-   *  Multikino in Galeria Olimp; no Helios in Lublin. Kino Bajka — the Centrum
-   *  Kultury art-house on Radziszewskiego — is the local studyjne screen, wired
-   *  separately as a bespoke scraper. */
-  val lublin: Seq[Cinema] = PolishPages.majorCinemas("lublin")
-
-  val czestochowa: Seq[Cinema] = PolishPages.majorCinemas("czestochowa")
-
-  val radom: Seq[Cinema] = PolishPages.majorCinemas("radom")
-
-  val sosnowiec: Seq[Cinema] = PolishPages.majorCinemas("sosnowiec")
-
-  val torun: Seq[Cinema] = PolishPages.majorCinemas("torun")
-
-  val kielce: Seq[Cinema] = PolishPages.majorCinemas("kielce")
-
-  val rzeszow: Seq[Cinema] = PolishPages.majorCinemas("rzeszow")
-
-  val gliwice: Seq[Cinema] = PolishPages.majorCinemas("gliwice")
-
-  val zabrze: Seq[Cinema] = PolishPages.majorCinemas("zabrze")
-
-  // New chains-first cities. Each holds only its national-chain branches for now;
-  // a local independent screen, where one exists, joins later as a bespoke scraper.
-  val olsztyn: Seq[Cinema] = PolishPages.majorCinemas("olsztyn")
-  val bielskoBiala: Seq[Cinema] = PolishPages.majorCinemas("bielsko-biala")
-  val opole: Seq[Cinema] = PolishPages.majorCinemas("opole")
-  val rybnik: Seq[Cinema] = PolishPages.majorCinemas("rybnik")
-  val gorzow: Seq[Cinema] = PolishPages.majorCinemas("gorzow-wielkopolski")
-  val elblag: Seq[Cinema] = PolishPages.majorCinemas("elblag")
-  val koszalin: Seq[Cinema] = PolishPages.majorCinemas("koszalin")
-  val kalisz: Seq[Cinema] = PolishPages.majorCinemas("kalisz")
-  val zielonaGora: Seq[Cinema] = PolishPages.majorCinemas("zielona-gora")
-  val tychy: Seq[Cinema] = PolishPages.majorCinemas("tychy")
-  val walbrzych: Seq[Cinema] = PolishPages.majorCinemas("walbrzych")
-  val tarnow: Seq[Cinema] = PolishPages.majorCinemas("tarnow")
-  val wloclawek: Seq[Cinema] = PolishPages.majorCinemas("wloclawek")
-  val legnica: Seq[Cinema] = PolishPages.majorCinemas("legnica")
-  val plock: Seq[Cinema] = PolishPages.majorCinemas("plock")
-  val bytom: Seq[Cinema] = PolishPages.majorCinemas("bytom")
-  val dabrowaGornicza: Seq[Cinema] = PolishPages.majorCinemas("dabrowa-gornicza")
-  val nowySacz: Seq[Cinema] = PolishPages.majorCinemas("nowy-sacz")
-  val slupsk: Seq[Cinema] = PolishPages.majorCinemas("slupsk")
-  val jeleniaGora: Seq[Cinema] = PolishPages.majorCinemas("jelenia-gora")
-  val przemysl: Seq[Cinema] = PolishPages.majorCinemas("przemysl")
-  val konin: Seq[Cinema] = PolishPages.majorCinemas("konin")
-
-  // ── United Kingdom (Flicks) ──
-  /** London's venues — every one in Greater London (see `UkPages`). */
-  val london: Seq[Cinema] = UkPages.london.cinemas
-  private val londonAreaOf: Map[Cinema, CinemaArea] = {
-    import CinemaArea.*
-    Map(
-      // ── Central ──
-      BfiLondonImax -> Central, BfiLondonSouthbank -> Central, CineworldLeicesterSquare -> Central, CineLumiereLondon -> Central, CurzonCinemaBloomsbury -> Central, CurzonCinemaCamden -> Central, CurzonCinemaSeaContainersMondrian -> Central, CurzonCinemaVictoria -> Central, CurzonSoho -> Central, EverymanCinemaBakerStreet -> Central, EverymanCinemaBroadgate -> Central, EverymanCinemaChelsea -> Central, EverymanCinemaKingSCross -> Central, EverymanCinemaIslington -> Central, InstituteOfContemporaryArts -> Central, OdeonCinemaTottenhamCourtRoad -> Central, OdeonCinemaLuxeHaymarket -> Central, OdeonLuxeIslington -> Central, OdeonCinemaLuxeLeicesterSquare -> Central, OdeonLuxeWestEnd -> Central, PrinceCharlesLondon -> Central, RegentStreetCinemaLondon -> Central, ScienceMuseumLondonImax -> Central, TheCinemaAtSelfridges -> Central, TheGardenCinema -> Central, TheNickelLondon -> Central, VueCinemasIslington -> Central, VueCinemasPiccadillyCircus -> Central, VueCinemasWestEnd -> Central,
-      // ── North ──
-      ArthouseCrouchEnd -> North, CineworldEnfield -> North, CineworldIlford -> North, CineworldWoodGreen -> North, CrouchEndPicturehouse -> North, EverymanCinemaBarnet -> North, EverymanCinemaBelsizeParkHampstead -> North, EverymanCinemaHampstead -> North, EverymanCinemaMuswellHill -> North, FinsburyParkPicturehouse -> North, Jw3Hampstead -> North, KilnKilburn -> North, LexiKensalRise -> North, LumiereRomford -> North, OdeonCinemaHolloway -> North, OdeonLuxeLeeValley -> North, OdeonLuxeSwissCottage -> North, PhoenixCinemaEastFinchley -> North, VueCinemasDagenham -> North, VueCinemasFinchleyRoadSwissCottage -> North, VueCinemasFinchley -> North, VueCinemasRomford -> North, VueCinemasWoodGreen -> North,
-      // ── East ──
-      BarbicanLondonCinema1 -> East, CastleCinemaHackney -> East, CineworldWestIndiaQuay -> East, CloseUpFilmCentreShoreditch -> East, CurzonCinemaAldgate -> East, CurzonCinemaHoxton -> East, EverymanCinemaCanaryWharf -> East, EverymanCinemaStratfordInternational -> East, ForestCinemasWalthamstow -> East, GenesisTowerHamlets -> East, OdeonCinemaSouthWoodford -> East, PicturehouseHackney -> East, RichMixBethnalGreen -> East, RioDalston -> East, RooftopFilmClubStratfordRoofEast -> East, VueCinemasStratford -> East,
-      // ── South ──
-      SidcupStoryteller -> South, CineworldGreenwich -> South, CineworldBexleyheath -> South, CineworldFeltham -> South, CineworldLondonHounslow -> South, CineworldWandsworth -> South, CurzonCinemaKingston -> South, CurzonCinemaRichmond -> South, CurzonWimbledon -> South, DavidLeanCinemaCroydon -> South, EverymanCinemaBoroughYards -> South, EverymanCinemaCrystalPalace -> South, OdeonCinemaBeckenham -> South, OdeonCinemaGreenwich -> South, OdeonCinemaKingston -> South, OdeonCinemaOrpington -> South, OdeonCinemaRichmond -> South, OdeonCinemaStreatham -> South, OdeonCinemaWimbledon -> South, OdeonCinemaLuxePutney -> South, OlympicCinemaBarnes -> South, EmpireCinemaSutton -> South, Peckhamplex -> South, PicturehouseClapham -> South, PicturehouseEastDulwich -> South, PicturehouseGreenwich -> South, PicturehouseWestNorwood -> South, RooftopFilmClubPeckhamBusseyBuilding -> South, ArchlightCinemas -> South, TheArzner -> South, TheCinemaInThePowerStation -> South, TheRitzyPicturehouseBrixton -> South, VueCinemasBromley -> South, VueCinemasEltham -> South, VueCinemasFulham -> South, VueCinemasPurleyWayCroydon -> South,
-      // ── West ──
-      ActOneActon -> West, ChiswickCinema -> West, CineworldSouthRuislip -> West, CineworldWembley -> West, CurzonCinemaMayfair -> West, ElectricCinemaLondon -> West, ElectricCinemaWhiteCity -> West, EverymanAtTheWhiteleyLondon -> West, EverymanBrentford -> West, EverymanCinemaMaidaVale -> West, OdeonCinemaActon -> West, OdeonCinemaUxbridge -> West, PicturehouseCentralLondon -> West, PicturehouseEalingFilmworks -> West, RiversideStudiosHammersmith -> West, TheGatePicturehouseLondon -> West, VueCinemasHarrow -> West, VueCinemasWestfieldShepherdSBush -> West,
-    )
-  }
-  val londonAreas: Seq[CinemaAreaGroup] =
-    CinemaArea.compass
-      .map(area => CinemaAreaGroup(area, london.filter(londonAreaOf.get(_).contains(area))))
-      .filter(_.cinemas.nonEmpty)
-
-  // Germany's cinemas come from `GermanRoster.byCity` (appended to `byCity` below),
-  // not per-city vals — the full 436-page roster is data-driven.
+  /** The 41 major Polish cities, by label, each the slug its venues are filed under in
+   *  [[PolishPages.majorCinemas]] — in page order, which doubles as the per-source merge priority
+   *  (`Source.all`): Poznań's venues, the original ten, keep their resolved precedence. A label here
+   *  is the city's `City` object's nominative. */
+  private val majorPolishCities: Seq[(String, String)] = Seq(
+    "Poznań"              -> "poznan",
+    "Wrocław"             -> "wroclaw",
+    "Warszawa"            -> "warszawa",
+    "Kraków"              -> "krakow",
+    "Łódź"                -> "lodz",
+    "Katowice"            -> "katowice",
+    "Szczecin"            -> "szczecin",
+    "Białystok"           -> "bialystok",
+    "Trójmiasto"          -> "trojmiasto",
+    "Bydgoszcz"           -> "bydgoszcz",
+    "Lublin"              -> "lublin",
+    "Częstochowa"         -> "czestochowa",
+    "Radom"               -> "radom",
+    "Sosnowiec"           -> "sosnowiec",
+    "Toruń"               -> "torun",
+    "Kielce"              -> "kielce",
+    "Rzeszów"             -> "rzeszow",
+    "Gliwice"             -> "gliwice",
+    "Zabrze"              -> "zabrze",
+    "Olsztyn"             -> "olsztyn",
+    "Bielsko-Biała"       -> "bielsko-biala",
+    "Opole"               -> "opole",
+    "Rybnik"              -> "rybnik",
+    "Gorzów Wielkopolski" -> "gorzow-wielkopolski",
+    "Elbląg"              -> "elblag",
+    "Koszalin"            -> "koszalin",
+    "Kalisz"              -> "kalisz",
+    "Zielona Góra"        -> "zielona-gora",
+    "Tychy"               -> "tychy",
+    "Wałbrzych"           -> "walbrzych",
+    "Tarnów"              -> "tarnow",
+    "Włocławek"           -> "wloclawek",
+    "Legnica"             -> "legnica",
+    "Płock"               -> "plock",
+    "Bytom"               -> "bytom",
+    "Dąbrowa Górnicza"    -> "dabrowa-gornicza",
+    "Nowy Sącz"           -> "nowy-sacz",
+    "Słupsk"              -> "slupsk",
+    "Jelenia Góra"        -> "jelenia-gora",
+    "Przemyśl"            -> "przemysl",
+    "Konin"               -> "konin",
+  )
 
   /** The hand-declared venues — Poland and the UK. Split out from [[byCity]] so
    *  `GermanRoster` can see which display names are already claimed before it materialises
    *  the generated roster; see `GermanRoster.claimedElsewhere`. Declared BEFORE `byCity`
    *  so it is assigned by the time that field forces the roster. */
-  val polishAndUk: Seq[(String, Seq[Cinema])] = Seq(
-    "Poznań"              -> poznan,
-    "Wrocław"             -> wroclaw,
-    "Warszawa"            -> warszawa,
-    "Kraków"              -> krakow,
-    "Łódź"                -> lodz,
-    "Katowice"            -> katowice,
-    "Szczecin"            -> szczecin,
-    "Białystok"           -> bialystok,
-    "Trójmiasto"          -> trojmiasto,
-    "Bydgoszcz"           -> bydgoszcz,
-    "Lublin"              -> lublin,
-    "Częstochowa"         -> czestochowa,
-    "Radom"               -> radom,
-    "Sosnowiec"           -> sosnowiec,
-    "Toruń"               -> torun,
-    "Kielce"              -> kielce,
-    "Rzeszów"             -> rzeszow,
-    "Gliwice"             -> gliwice,
-    "Zabrze"              -> zabrze,
-    "Olsztyn"             -> olsztyn,
-    "Bielsko-Biała"       -> bielskoBiala,
-    "Opole"               -> opole,
-    "Rybnik"              -> rybnik,
-    "Gorzów Wielkopolski" -> gorzow,
-    "Elbląg"              -> elblag,
-    "Koszalin"            -> koszalin,
-    "Kalisz"              -> kalisz,
-    "Zielona Góra"        -> zielonaGora,
-    "Tychy"               -> tychy,
-    "Wałbrzych"           -> walbrzych,
-    "Tarnów"              -> tarnow,
-    "Włocławek"           -> wloclawek,
-    "Legnica"             -> legnica,
-    "Płock"               -> plock,
-    "Bytom"               -> bytom,
-    "Dąbrowa Górnicza"    -> dabrowaGornicza,
-    "Nowy Sącz"           -> nowySacz,
-    "Słupsk"              -> slupsk,
-    "Jelenia Góra"        -> jeleniaGora,
-    "Przemyśl"            -> przemysl,
-    "Konin"               -> konin,
-  ) ++ PolishPages.rows.map(r => r.nominative -> r.cinemas) ++
-    (("London" -> london) +: UkPages.rows.map(r => ukLabel(r) -> r.cinemas))
+  val polishAndUk: Seq[(String, Seq[Cinema])] =
+    majorPolishCities.map { case (label, slug) => label -> PolishPages.majorCinemas(slug) } ++
+    PolishPages.rows.map(r => r.nominative -> r.cinemas) ++
+    (("London" -> UkPages.london.cinemas) +: UkPages.rows.map(r => ukLabel(r) -> r.cinemas))
 
   /** A UK page's label here, unique as [[byCity]]'s must be: the page's name,
    *  with its county where two pages share one — the two Bangors are both an area. */
@@ -2375,26 +1954,6 @@ object Cinema {
    *  whose name would collide with a hand-declared one, and `SourceWireKeySpec`
    *  fails the build on a duplicate. */
   lazy val byDisplayName: Map[String, Cinema] = all.map(c => c.displayName -> c).toMap
-
-  /** Synthetic chain-detail sources ([[Networks]]) → the venue cinemas whose per-film
-   *  detail they hold. A chain fetches a film's synopsis/cast/… ONCE network-wide into
-   *  its network slot — Cinema City into [[CinemaCityChain]], Cineworld UK into
-   *  [[CineworldChain]], Regal (unwired today) into [[RegalChain]] — rather than each
-   *  venue's own slot, so that slot belongs to no single city. A city-scoped synopsis
-   *  merge ([[MovieRecord.synopsisForCity]]) consults this map to decide which cities a
-   *  chain blurb applies to — namely those where a member venue screens the film; a
-   *  network missing here applies NOWHERE (Cineworld's did, until 2026-10-18).
-   *
-   *  Derived from the chain's own country's venues by the stable "<chain> <branch>"
-   *  naming every one of its venues follows (the network itself is the bare chain name,
-   *  and isn't in `all`), so a newly-added branch is picked up automatically. Its own
-   *  country only: another country's roster may hold an unrelated venue of the name,
-   *  qualified with its town (Germany's "Cineworld Recklinghausen"). */
-  lazy val chainDetailVenues: Map[Source, Set[Cinema]] =
-    Seq(CinemaCityChain -> Country.Poland, CineworldChain -> Country.UnitedKingdom, RegalChain -> Country.UnitedStates)
-      .map { case (network, country) =>
-        (network: Source) -> country.cities.flatMap(_.cinemas).filter(_.displayName.startsWith(s"${network.displayName} ")).toSet
-      }.toMap
 
   /** City display label for each cinema — derived from `byCity`, the single
    *  source of truth. Used by the debug source-data view to disambiguate

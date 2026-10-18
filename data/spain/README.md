@@ -218,7 +218,7 @@ python3 data/spain/scripts/build_provinces_test.py
 ## What consumes this
 
 `scripts/generate_roster.py` → `common/src/main/scala/models/SpanishRosterData.scala`
-→ `models.SpanishRoster`, which materialises the `SpanishPage` cities and
+→ `models.SpanishRoster`, which materialises the `RosterPage` cities and
 `SpanishCinema` venues once and hands them to `City.spanishCities`,
 `Cinema.byCity` and `CinemaScraperCatalog.spanishBaseByCity` (one
 `WebediaShowtimesClient` on `WebediaMarket.Spain` per venue, keyed by its

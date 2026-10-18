@@ -19,11 +19,11 @@ class UsRosterSpec extends AnyFlatSpec with Matchers with OptionValues {
   private def page(slug: String): City = Country.UnitedStates.bySlug.get(slug).value
   private def venue(name: String): Cinema = UsRoster.byDisplayName.get(name).value
   private def pageOf(name: String): City = City.forCinema(venue(name)).value
-  private def state(label: String): CityGroup = City.usStates.find(_.label == label).value
+  private def state(label: String): CityGroup = CityPickerGroups.usStates.find(_.label == label).value
 
   "The US roster" should "be one city per town or cluster page, grouped by the 55 states and territories" in {
     City.usCities should have size 1995
-    City.usStates should have size 55
+    CityPickerGroups.usStates should have size 55
   }
 
   it should "hold every venue exactly once — a re-cut, not a re-harvest" in {
@@ -100,7 +100,7 @@ class UsRosterSpec extends AnyFlatSpec with Matchers with OptionValues {
   "A state" should "be a grouping over its pages, not a city" in {
     Country.UnitedStates.bySlug.get("texas") shouldBe None
     // A state's name is a page only where a TOWN has it — California, Maryland.
-    Country.UnitedStates.bySlug.get("california").value.asInstanceOf[UsPage].stateName shouldBe "Maryland"
+    Country.UnitedStates.bySlug.get("california").value.asInstanceOf[RosterPage].region shouldBe "Maryland"
     val california = state("California")
     california.cities should contain allOf (page("los-angeles"), page("san-francisco"), page("bishop"))
     // Alphabetical — a heading you OPEN is a list you scan for a name you already know.
@@ -110,14 +110,14 @@ class UsRosterSpec extends AnyFlatSpec with Matchers with OptionValues {
   }
 
   it should "come in state order — the apps' picker and catalog seed read it top to bottom" in {
-    val states = City.usStates.map(_.slug)
+    val states = CityPickerGroups.usStates.map(_.slug)
     states shouldBe states.sorted
-    City.usStates.head.label shouldBe "Alabama"
+    CityPickerGroups.usStates.head.label shouldBe "Alabama"
   }
 
   it should "partition the country's cities, with none dropped or shared" in {
-    City.usStates.flatMap(_.cities) should contain theSameElementsAs City.usCities
-    City.usStates.flatMap(_.cities).distinct should have size City.usCities.size
+    CityPickerGroups.usStates.flatMap(_.cities) should contain theSameElementsAs City.usCities
+    CityPickerGroups.usStates.flatMap(_.cities).distinct should have size City.usCities.size
   }
 
   "A page" should "keep its OWN clock, not its state's predominant one" in {
@@ -142,7 +142,7 @@ class UsRosterSpec extends AnyFlatSpec with Matchers with OptionValues {
     // /springfield/ was Springfield, Illinois; Springfield, Missouri is bigger, and
     // is the one qualified, because the URL is published.
     pageOf("Moxie Cinema Springfield 2").slug shouldBe "springfield-missouri"
-    page("springfield").asInstanceOf[UsPage].stateName shouldBe "Illinois"
+    page("springfield").asInstanceOf[RosterPage].region shouldBe "Illinois"
   }
 
   it should "be the US's own, whatever another country calls a town" in {

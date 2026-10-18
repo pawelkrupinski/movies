@@ -1,6 +1,5 @@
 package models
 
-import java.text.Collator
 import java.util.Locale
 
 
@@ -63,13 +62,13 @@ sealed abstract class Country(
   /** Does THIS deployment answer the brand FRONT DOOR for `host`?
    *
    *  Two conditions, and the second is the one the subdomain era did not need:
-   *  the host has to be the bare apex ([[Country.isApexHost]]), AND this
+   *  the host has to be the bare apex ([[DeploymentOrigins.isApexHost]]), AND this
    *  deployment has to be mounted at the root. Since the Showtimes countries
    *  moved under `showtimes.cc/{code}/`, the apex is ALSO the host every one of
    *  their own pages arrives on — a host check alone would replace the UK
    *  site's homepage with a country picker. The country mounted at `/` is the
    *  only one whose `/` is not already a country's landing. */
-  def servesApex(host: String): Boolean = pathPrefix.isEmpty && Country.isApexHost(host)
+  def servesApex(host: String): Boolean = pathPrefix.isEmpty && DeploymentOrigins.isApexHost(host)
 
   /** How the picker at `/` ARRANGES [[cities]]: empty for a flat list, and
    *  otherwise one group per US state, per German Bundesland, Polish voivodeship
@@ -194,7 +193,7 @@ sealed abstract class Country(
   def redirect(slug: String): Option[SlugRedirect] =
     if (bySlug.contains(slug)) None
     else renamedSlugs.get(slug).map { to =>
-      SlugRedirect(to, if (City.FormerlyQualified.of(this).contains(slug)) SlugRedirectKind.FormerlyQualified
+      SlugRedirect(to, if (CitySlugSuccession.FormerlyQualified.of(this).contains(slug)) SlugRedirectKind.FormerlyQualified
                        else SlugRedirectKind.Retired)
     }.orElse(slugAliases.get(slug).map(SlugRedirect(_, SlugRedirectKind.Alias)))
 
@@ -222,7 +221,7 @@ sealed abstract class Country(
    *  drawn into every Open Graph card. Derived from [[ogOrigin]] so a domain move
    *  updates the rendered cards with everything else, which the literal it
    *  replaced did not — every UK share card said `kinowo.fly.dev`. */
-  def shareHost: String = Country.withoutScheme(ogOrigin)
+  def shareHost: String = DeploymentOrigins.withoutScheme(ogOrigin)
 
   /** Filename (under `assets/img/`) of the `/` landing's share-preview montage
    *  for this country. The default country keeps the original, unsuffixed
@@ -237,12 +236,6 @@ sealed abstract class Country(
 case class VersionTokens(subtitled: String, dubbed: String)
 
 object Country {
-
-  /** `url` with its scheme stripped — `kinowo.net`, `showtimes.cc/uk`. For the
-   *  places that DISPLAY an address rather than link to it: the footer drawn
-   *  into every Open Graph card ([[Country.shareHost]]), the button on a retired
-   *  deployment's notice page. */
-  def withoutScheme(url: String): String = url.stripPrefix("https://").stripPrefix("http://")
 
   case object Poland extends Country(
     code           = "pl",
@@ -261,8 +254,8 @@ object Country {
     val cities: Seq[City] = City.polishCities
     lazy val renamedSlugs: Map[String, String] = PolishPages.retired
     lazy val slugAliases: Map[String, String] = CitySlugIndexData.plAliases
-    /** One group per voivodeship — see `City.polishVoivodeships`. */
-    override lazy val cityGroups: Seq[CityGroup] = City.polishVoivodeships
+    /** One group per voivodeship — see `CityPickerGroups.polishVoivodeships`. */
+    override lazy val cityGroups: Seq[CityGroup] = CityPickerGroups.polishVoivodeships
     override val versionTokens: Option[VersionTokens] = Some(VersionTokens("NAP", "DUB"))
     val voiceoverToken: Option[String] = Some("LEK")
     val titleFacts: services.movies.TitleFacts.Rules = services.movies.TitleFacts.Rules(Set("pl", "en"), Some(services.movies.TitleFacts.RatingSystem.PolishAge))
@@ -282,11 +275,11 @@ object Country {
     brandName      = "Showtimes",
   ) {
     val cities: Seq[City] = City.ukCities
-    lazy val renamedSlugs: Map[String, String] = City.ukSuccession
+    lazy val renamedSlugs: Map[String, String] = CitySlugSuccession.ukSuccession
     lazy val slugAliases: Map[String, String] = CitySlugIndexData.ukAliases
     /** The four nations plus the Crown Dependencies, each over the counties and
      *  pages inside it — 264 pages is not an A-to-Z anybody reads. */
-    override val cityGroups: Seq[CityGroup] = City.ukNations
+    override val cityGroups: Seq[CityGroup] = CityPickerGroups.ukNations
     // Britain subtitles rather than dubs: `SUB` (captions, 4,000 screenings on
     // 2026-09-02) is the one a visitor filters for, `DUB` the rare foreign-language
     // print. Both are what the chains' own labels normalise to.
@@ -301,7 +294,7 @@ object Country {
    *  No Filmweb (Polish-only).
    *
    *  Its cities are Poland's shape of page — a major city's own venues, a town of
-   *  three or more, a cluster of small towns ([[GermanPage]]) — 436 of them,
+   *  three or more, a cluster of small towns ([[RosterPage]]) — 436 of them,
    *  grouped in the picker by Bundesland. */
   case object Germany extends Country(
     code           = "de",
@@ -314,10 +307,10 @@ object Country {
     brandName      = "Showtimes",
   ) {
     val cities: Seq[City] = City.germanCities
-    lazy val renamedSlugs: Map[String, String] = City.germanSuccession
+    lazy val renamedSlugs: Map[String, String] = CitySlugSuccession.germanSuccession
     lazy val slugAliases: Map[String, String] = CitySlugIndexData.deAliases
-    /** The 16 Bundesländer, each over the pages inside it — see `City.germanStates`. */
-    override lazy val cityGroups: Seq[CityGroup] = City.germanStates
+    /** The 16 Bundesländer, each over the pages inside it — see `CityPickerGroups.germanStates`. */
+    override lazy val cityGroups: Seq[CityGroup] = CityPickerGroups.germanStates
     override val versionTokens: Option[VersionTokens] = Some(VersionTokens("OmU", "DF"))
     // Filmstarts names four versions — OV, OmU, OmeU, DF — and none is a voice-over.
     val voiceoverToken: Option[String] = None
@@ -348,10 +341,10 @@ object Country {
     brandName      = "Showtimes",
   ) {
     val cities: Seq[City] = City.usCities
-    lazy val renamedSlugs: Map[String, String] = City.usSuccession
+    lazy val renamedSlugs: Map[String, String] = CitySlugSuccession.usSuccession
     lazy val slugAliases: Map[String, String] = CitySlugIndexData.usAliases
     /** The states and territories, each over the pages anchored in it. */
-    override val cityGroups: Seq[CityGroup] = City.usStates
+    override val cityGroups: Seq[CityGroup] = CityPickerGroups.usStates
     // Same pair as the UK, and for the same reason — a subtitled print is the
     // marked case, a dubbed one rare.
     override val versionTokens: Option[VersionTokens] = Some(VersionTokens("SUB", "DUB"))
@@ -367,7 +360,7 @@ object Country {
    *  on the `Spain` market. No Filmweb (Polish-only).
    *
    *  Its cities are Poland's shape of page — a major city's own venues, a town of
-   *  three or more, a cluster of small towns ([[SpanishPage]]) — 240 of them,
+   *  three or more, a cluster of small towns ([[RosterPage]]) — 240 of them,
    *  grouped in the picker by province. 599 venues, a third of Germany's roster,
    *  so its worker is sized like the UK's rather than like Germany's.
    *
@@ -387,10 +380,10 @@ object Country {
     brandName      = "Showtimes",
   ) {
     val cities: Seq[City] = City.spanishCities
-    lazy val renamedSlugs: Map[String, String] = City.spanishSuccession
+    lazy val renamedSlugs: Map[String, String] = CitySlugSuccession.spanishSuccession
     lazy val slugAliases: Map[String, String] = CitySlugIndexData.esAliases
-    /** One group per province — see `City.spanishProvinces`. */
-    override lazy val cityGroups: Seq[CityGroup] = City.spanishProvinces
+    /** One group per province — see `CityPickerGroups.spanishProvinces`. */
+    override lazy val cityGroups: Seq[CityGroup] = CityPickerGroups.spanishProvinces
     override val versionTokens: Option[VersionTokens] = Some(VersionTokens("VOSE", "DOB"))
     // SensaCine names VO, VOSE, VOSI, DOB and CAT — and no voice-over.
     val voiceoverToken: Option[String] = None
@@ -410,84 +403,6 @@ object Country {
    *  UK, Germany, US, Spain). The country `<select>` renders only when this holds more than
    *  one entry. */
   val switchable: Seq[Country] = all.filter(_.webOrigin.isDefined)
-
-  /** THE BRAND FRONT DOOR: the bare domain that fronts several countries rather
-   *  than serving one. `showtimes.cc/uk` and `showtimes.cc/de` are countries;
-   *  `showtimes.cc/` itself is this — a picker listing every deployed country,
-   *  Poland included as one link to its own domain (its places are not
-   *  addressed under showtimes.cc at all: the front door 404s them).
-   *
-   *  It is a check on the REQUEST rather than a deployment of its own,
-   *  deliberately: there is no fourth thing to keep running, the proxy simply
-   *  points the apex root at a deployment that is mounted there. Since the
-   *  Showtimes countries share this host, that can only be the country on its
-   *  own domain — see [[Country.servesApex]]. */
-  val apexHost: String = "showtimes.cc"
-
-  /** The brand named on the front door — the non-Polish brand, since the apex is
-   *  the Showtimes domain. Poland keeps its own brand on its own domain. */
-  val apexBrandName: String = "Showtimes"
-
-  /** THE ONE ORIGIN EVERY OAUTH PROVIDER REDIRECTS BACK TO.
-   *
-   *  Google and Facebook each match `redirect_uri` byte-for-byte against a list
-   *  registered in their console, so the obvious shape — every deployment naming
-   *  its own address — costs one console entry per country per provider, and
-   *  makes "register two URLs by hand, in two consoles" a silent prerequisite for
-   *  launching a country. It is silent because nothing fails until a real person
-   *  tries to sign in on the new site.
-   *
-   *  So every country sends the provider HERE, and the deployment mounted at
-   *  the apex ([[servesApex]]) either finishes the flow — when the country that
-   *  started it is on this same origin, so the browser is still sending the
-   *  cookie holding its CSRF state — or relays it, unchanged, to the one that
-   *  can. A country on its own domain is reached the second way.
-   *
-   *  The cost is a real dependency: the apex deployment is now in the path of
-   *  every sign-in, including Poland's own. That is the trade the single entry
-   *  buys, and it is why this is a constant rather than something each country
-   *  could quietly point elsewhere. */
-  val oauthCallbackOrigin: String = s"https://$apexHost"
-
-  /** The origins this project actually answers on. Used to tell a REAL request
-   *  from a local one: on a deployed origin the provider was handed
-   *  [[oauthCallbackOrigin]] and the relay applies, while a developer on
-   *  `http://localhost:9000` was handed their own address and must be left to
-   *  finish where they started. Derived from the countries rather than listed,
-   *  so a new deployment cannot be forgotten here. */
-  lazy val deployedOrigins: Set[String] = switchable.flatMap(_.webOrigin).toSet
-
-  /** The OTHER domain this project is served from, seen from the origin a request
-   *  actually ARRIVED on — the one a session has to be established on separately,
-   *  because no cookie can reach it from here.
-   *
-   *  THE ORIGIN, NOT THE DEPLOYMENT'S COUNTRY, and the difference is the whole
-   *  point: the process mounted at the apex serves `showtimes.cc` while ITS
-   *  country is Poland, so asking what Poland's sibling is answers
-   *  `showtimes.cc` — the domain the request is already on. A sign-in finishing
-   *  there would pair that domain with itself and leave kinowo.net untouched.
-   *
-   *  `None` when there is not exactly one other: a request off a deployed origin
-   *  (a developer on localhost) has no sibling to speak of and must not be sent
-   *  to production to look for one, and a third domain would make "the other one"
-   *  meaningless rather than merely unknown. */
-  def siblingOfOrigin(origin: String): Option[String] = {
-    if (!deployedOrigins.contains(origin)) None
-    else {
-      val others = (deployedOrigins - origin).toSeq
-      if (others.sizeIs == 1) others.headOption else None
-    }
-  }
-
-  /** Is this request host the brand domain? Accepts the `www.` spelling and an
-   *  explicit port so a direct hit still works where the proxy's redirect is not
-   *  in front of it (local dev, a stale cache).
-   *
-   *  Being the brand domain is NOT on its own being the front door — every
-   *  Showtimes country now serves off it too. [[Country.servesApex]] is the
-   *  question callers want. */
-  def isApexHost(host: String): Boolean =
-    host.toLowerCase(Locale.ROOT).takeWhile(_ != ':').stripPrefix("www.") == apexHost
 
   /** The page a link that names no country means — a bare `showtimes.cc/{slug}/`,
    *  a `kinowo://{slug}` custom-scheme link — with its country, and whether the
@@ -522,75 +437,4 @@ object Country {
   private lazy val byCity: Map[City, Country] =
     all.flatMap(c => c.cities.map(_ -> c)).toMap
 
-  /** The database holding the SHARED `users` + `userStates` collections.
-   *
-   *  Everything else about a deployment is per country -- its films, its cities,
-   *  its own `kinowo_uk` / `kinowo_de` database -- but a PERSON is not. The
-   *  web pods are several addresses onto one product, and an account that exists on
-   *  `/uk` and not on `/de` is the same person being told they have no account;
-   *  worse, a session cookie that DOES reach the neighbouring country (they share
-   *  one origin, see [[mountPath]]) would resolve its `userId` against a database
-   *  that has never heard of it, and the visitor would be silently signed out
-   *  with their hidden films and /plan picks apparently gone. So the two user
-   *  collections live in ONE database every country's pod reads: `MONGODB_USERS_DB`.
-   *
-   *  Unset, this is the deployment's OWN database -- exactly where those two
-   *  collections have always been -- so the split is opt-in per environment and a
-   *  local dev, a spec, or a country deployed on its own cluster keeps the
-   *  single-database shape with nothing to configure.
-   *
-   *  Identity makes the move safe: [[models.User]]`.id` is the lowercased email,
-   *  so the same person already carries the same key in every database and
-   *  merging them is a union rather than a re-key. */
-  def usersDbName(usersDb: Option[settings.UsersDatabaseName], ownDb: settings.MongoDatabaseName): settings.MongoDatabaseName =
-    settings.MongoDatabaseName(usersDbNameFrom(usersDb.map(_.value), ownDb.value))
-
-  /** Pure core of [[usersDbName]] -- the precedence, testable without touching
-   *  the environment. A blank or whitespace-only variable counts as UNSET rather
-   *  than as a database called `""`: an empty value in a ConfigMap is how the
-   *  setting gets switched off, and Mongo would reject the empty name much later,
-   *  at the first query rather than at boot.
-   *
-   *  Public so a spec can resolve a GIVEN deployment's users
-   *  database without mutating process state — and so the migration that fills
-   *  that database picks its target through this rule rather than restating it. */
-  def usersDbNameFrom(usersDb: Option[String], ownDb: String): String =
-    usersDb.map(_.trim).filter(_.nonEmpty).getOrElse(ownDb)
-}
-
-/** Shared city-list rendering used by both the global [[City]] view and each
- *  per-country [[Country]] view, so collation + JSON shape live in one place. */
-private[models] object CityListing {
-  /** `cities` alphabetically by their names, under `locale`'s collation. */
-  def sorted(cities: Seq[City], locale: Locale): Seq[City] = sortedLabels(cities, locale)(_.labels.nominative)
-
-  /** `items` alphabetically by `label`, under `locale`'s collation — [[sorted]]'s
-   *  ordering, and the one for the HEADINGS of a grouped picker, which are place
-   *  names too but not [[City]]s.
-   *
-   *  A code-point sort is not the alphabet anywhere the names leave ASCII: it
-   *  files Köln after Krefeld (ö is code point 246, past every letter) and Łódź
-   *  past Z, which is exactly the ordering a reader scanning for a name cannot
-   *  use. */
-  def sortedLabels[A](items: Seq[A], locale: Locale)(label: A => String): Seq[A] = {
-    val collator = Collator.getInstance(locale)
-    items.sortWith((a, b) => collator.compare(label(a), label(b)) < 0)
-  }
-
-  /** One alphabetical [[CityGroup]] per `groupOf` value over `cities`, each holding
-   *  its cities alphabetically, the groups ordered by the name each SHOWS
-   *  ([[CityGroup.displayLabel]]) — a group holding one page shows that page, and
-   *  sorting on the group's own label would misplace it. The shape of Poland's
-   *  voivodeships, Germany's Bundesländer and Spain's provinces. */
-  def groupedAlphabetically[C <: City](cities: Seq[C], locale: Locale)(groupOf: C => String): Seq[CityGroup] = {
-    val built = cities.groupBy(groupOf).toSeq.map { case (name, members) =>
-      CityGroup(name, tools.Slugify.stable(name), sorted(members, locale))
-    }
-    sortedLabels(built, locale)(_.displayLabel)
-  }
-
-  def json(cities: Seq[City]): String =
-    cities
-      .map(c => s"""{"slug":"${c.slug}","name":"${c.labels.nominative}","lat":${c.lat},"lon":${c.lon}}""")
-      .mkString("[", ",", "]")
 }

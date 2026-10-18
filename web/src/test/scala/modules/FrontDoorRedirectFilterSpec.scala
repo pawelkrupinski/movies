@@ -1,7 +1,7 @@
 package modules
 
 import controllers.TestMovieController
-import models.Country
+import models.{Country, DeploymentOrigins}
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.stream.Materializer
 import org.scalatest.BeforeAndAfterAll
@@ -29,7 +29,7 @@ class FrontDoorRedirectFilterSpec extends AnyFlatSpec with Matchers with BeforeA
   private val filter = new FrontDoorRedirectFilter(Country.Poland, SpecLegacyAddressMetrics.fresh(), controllers.FrontDoorMessages(testsupport.TestMessages.messagesApi))
   private val routed: RequestHeader => Future[Result] = _ => Future.successful(Results.Ok("routed"))
 
-  private def get(path: String, host: String = Country.apexHost): Result =
+  private def get(path: String, host: String = DeploymentOrigins.apexHost): Result =
     Await.result(filter(routed)(FakeRequest(GET, path).withHeaders("Host" -> host)), SpecTimeouts.Io)
 
   /** The real chain for an apex request: the front door over a router that binds
@@ -46,7 +46,7 @@ class FrontDoorRedirectFilterSpec extends AnyFlatSpec with Matchers with BeforeA
   }
 
   private def throughChain(path: String): Result =
-    Await.result(filter(cityRoute)(FakeRequest(GET, path).withHeaders("Host" -> Country.apexHost)), SpecTimeouts.Io)
+    Await.result(filter(cityRoute)(FakeRequest(GET, path).withHeaders("Host" -> DeploymentOrigins.apexHost)), SpecTimeouts.Io)
 
   private def body(result: Result): String =
     Await.result(result.body.consumeData, SpecTimeouts.Io).utf8String

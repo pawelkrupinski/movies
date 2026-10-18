@@ -1,6 +1,6 @@
 package modules
 
-import models.{Cinema, City, Country, MovieRecord, Showtime, Source, SourceData, Tmdb}
+import models.{Cinema, City, Country, DeploymentOrigins, MovieRecord, Showtime, Source, SourceData, Tmdb}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import play.api.libs.json.{JsValue, Json}
@@ -134,7 +134,7 @@ class CountryIsolationMatrixSpec extends AnyFlatSpec with Matchers {
     val polish =
       if (lang == "pl") Nil
       else PolishLetters.findAllMatchIn(text).map(m => s"Polish letter: …${text.substring(math.max(0, m.start - 40), math.min(text.length, m.end + 20))}…").take(3).toSeq
-    val hosts = Country.all.filterNot(_ == country).flatMap(_.webUrl).map(Country.withoutScheme)
+    val hosts = Country.all.filterNot(_ == country).flatMap(_.webUrl).map(DeploymentOrigins.withoutScheme)
       .filter(host => s"""\\Q$host\\E(?![\\w-])""".r.findFirstIn(text).isDefined).map(h => s"host: $h")
     val venues = Country.all.filterNot(_ == country).map(cinemaOf).map(_.displayName).filter(text.contains).map(v => s"cinema: $v")
     words ++ polish ++ hosts ++ venues

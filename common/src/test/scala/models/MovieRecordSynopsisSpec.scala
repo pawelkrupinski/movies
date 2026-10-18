@@ -226,9 +226,9 @@ class MovieRecordSynopsisSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "count as a chain's venue only one of the chain's own country" in {
-    Cinema.chainDetailVenues(CinemaCityChain).map(City.forCinema(_).map(_.country)) shouldBe Set(Some(Country.Poland))
-    Cinema.chainDetailVenues(CineworldChain).map(City.forCinema(_).map(_.country)) shouldBe Set(Some(Country.UnitedKingdom))
-    Cinema.chainDetailVenues(CineworldChain) should contain (CineworldLeeds)
+    CinemaNetworks.detailVenues(CinemaCityChain).map(City.forCinema(_).map(_.country)) shouldBe Set(Some(Country.Poland))
+    CinemaNetworks.detailVenues(CineworldChain).map(City.forCinema(_).map(_.country)) shouldBe Set(Some(Country.UnitedKingdom))
+    CinemaNetworks.detailVenues(CineworldChain) should contain (CineworldLeeds)
   }
 
   // The read model asks for every city a film plays in at once (a US wide release: hundreds), so
@@ -257,7 +257,7 @@ class MovieRecordSynopsisSpec extends AnyFlatSpec with Matchers {
   it should "never hand a city another city's venue blurb, batch or not" in {
     val random = new scala.util.Random(11)
     val cities = City.all.filter(_.country == Country.Poland)
-    val venues = cities.flatMap(_.cinemas).distinct.filter(v => Cinema.chainDetailVenues.get(v).isEmpty)
+    val venues = cities.flatMap(_.cinemas).distinct.filter(v => CinemaNetworks.detailVenues.get(v).isEmpty)
     (1 to 40).foreach { round =>
       val blurbs = random.shuffle(venues).take(1 + random.nextInt(8)).zipWithIndex.map { case (v, i) =>
         v -> s"Opis kina #$i# w rundzie $round, ${"długi " * random.nextInt(40)}." }
@@ -367,7 +367,7 @@ class MovieRecordSynopsisSpec extends AnyFlatSpec with Matchers {
   }
 
   // The check is the chain-detail SLOT's, whichever chain: Cineworld's (and Regal's) slot is the
-  // same impersonal, API-sourced detail page Cinema City's is, and since `chainDetailVenues` maps
+  // same impersonal, API-sourced detail page Cinema City's is, and since `CinemaNetworks.detailVenues` maps
   // Cineworld its blurb competes for every UK city its venues screen in.
   it should "prefer a shorter correctly-localized TMDB blurb over a longer wrong-language Cineworld chain one" in {
     val leeds  = Country.UnitedKingdom.bySlug("leeds")

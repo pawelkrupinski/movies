@@ -33,7 +33,7 @@ Bochum in Germany: each is a town people name, its venues are its own, and a
 page of all of Greater Manchester is the county page this replaced. GREATER
 LONDON is the exception — one city, like New York's five boroughs, so every
 place in it (Croydon, Romford, Kingston) is London (`geocode_towns.py`), and its
-one page keeps its compass areas (`Cinema.londonAreas`).
+one page keeps its compass areas (`LondonAreas`).
 
 A SLUG names one town within the UK — every country owns its own slugs, so
 `/uk/york/` is York and `/us/york/` York, Pennsylvania. A page is slugged after

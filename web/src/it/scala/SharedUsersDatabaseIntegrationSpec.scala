@@ -2,7 +2,7 @@ package integration
 
 import tools.SpecTimeouts
 
-import models.{Country, User, UserState}
+import models.{Country, User, UserState, UsersDatabase}
 import org.mongodb.scala.{MongoClient, MongoDatabase, SingleObservableFuture}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.OptionValues._
@@ -21,7 +21,7 @@ import scala.concurrent.Await
  * people. The three Showtimes countries share one origin, so a session cookie
  * minted under `/uk` is sent to `/de`; if `users` is per country that `userId`
  * resolves to nobody and the visitor is silently signed out with their hidden
- * films and /plan picks apparently gone. `Country.usersDbName` is what sends
+ * films and /plan picks apparently gone. `UsersDatabase.name` is what sends
  * both user collections to one database instead, and this spec is that claim
  * against a real Mongo: the same rows, reached from two different pods'
  * bindings.
@@ -47,7 +47,7 @@ class SharedUsersDatabaseIntegrationSpec extends AnyFlatSpec with Matchers with 
    *  PRODUCTION rule rather than restated here: `MONGODB_USERS_DB` set → the
    *  shared database, unset → the pod's own. */
   private def usersDbFor(country: Country, sharedUsersDb: Option[String]): MongoDatabase =
-    client.getDatabase(Country.usersDbNameFrom(sharedUsersDb, corpusDb(country)))
+    client.getDatabase(UsersDatabase.nameFrom(sharedUsersDb, corpusDb(country)))
 
   private def usersOn(country: Country, sharedUsersDb: Option[String]) =
     new MongoUserRepository(Some(usersDbFor(country, sharedUsersDb)))

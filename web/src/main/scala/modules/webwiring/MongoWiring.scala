@@ -37,7 +37,7 @@ trait MongoWiring { self: Wiring =>
   protected lazy val mongoTuning: MongoTuning = MongoTuning.from(processConfiguration)
 
   // ── Users ─────────────────────────────────────────────────────────────────
-  // `users` + `userStates` come off `Country.usersDbName` rather than this
+  // `users` + `userStates` come off `UsersDatabase.name` rather than this
   // deployment's own database, so ONE account follows a visitor across every
   // country instead of one unrelated account per country wearing the same email. That
   // matters most where the session cookie now DOES travel: the four Showtimes
@@ -49,7 +49,7 @@ trait MongoWiring { self: Wiring =>
   // already talking to.
   lazy val usersConnection: MongoConnection = Wiring.connectionTo(
     ownDbName    = mongoAddress.databaseFor(country),
-    sharedDbName = models.Country.usersDbName(processConfiguration.usersDatabase, mongoAddress.databaseFor(country)),
+    sharedDbName = models.UsersDatabase.name(processConfiguration.usersDatabase, mongoAddress.databaseFor(country)),
     own          = mongoConnection,
     openShared   = MongoConnection.forDatabase(mongoAddress.uri, _, mongoRequired, mongoTuning, sharedClient = mongoSharedClient))
 

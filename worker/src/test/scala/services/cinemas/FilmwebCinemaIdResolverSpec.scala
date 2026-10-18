@@ -128,7 +128,7 @@ class FilmwebCinemaIdResolverSpec extends AnyFlatSpec with Matchers with OptionV
     byCinema(Multikino).filmwebId.value shouldBe 633
     byCinema(KinoApollo).resolved       shouldBe false // suppressed override
     // Every Poznań cinema appears exactly once.
-    byCinema.keySet shouldBe Cinema.poznan.toSet
+    byCinema.keySet shouldBe Poznan.cinemas.toSet
   }
 
   private val resolver = new FilmwebCinemaIdResolver(NoNetworkFetch)

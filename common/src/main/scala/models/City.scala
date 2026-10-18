@@ -3,68 +3,6 @@ package models
 import java.time.ZoneId
 import java.util.Locale
 
-import tools.Slugify
-
-/** The Polish name of a city in the grammatical forms the templates need:
- *  nominative ("Poznań"), genitive plural for "…skich kin" ("poznańskich"),
- *  and locative for "w …" ("Poznaniu"). Kept as data so no template hardcodes
- *  a city name. */
-final case class CityLabels(nominative: String, genitivePlural: String, locative: String)
-
-object CityLabels {
-  /** The labels of a place in a language that does not decline its name (English,
-   *  German, Spanish): every slot carries the name as it is. */
-  def undeclined(name: String): CityLabels = CityLabels(name, name, name)
-}
-
-/** Per-language rendering of a city's [[CityLabels]] into the grammatical
- *  phrases the UI needs. Polish declines the name (locative "w Poznaniu" /
- *  "we Wrocławiu", genitive-plural adjective "poznańskich"); languages that
- *  don't decline (English, and the default fallback) read off the plain
- *  nominative ("in London", "London"). Selected by the city's country language
- *  so a per-country deployment renders naturally without any name hardcoded. */
-private[models] sealed trait CityGrammar {
-  def locativePhrase(labels: CityLabels): String
-  def genitivePluralLabel(labels: CityLabels): String
-}
-
-private[models] object CityGrammar {
-
-  /** Polish: the declined forms from [[CityLabels]], byte-identical to what the
-   *  templates/OG-card generator emitted before i18n. "we" replaces "w" before a
-   *  word starting with W/F + consonant (the awkward "w w-" / "w f-" cluster). */
-  private object Polish extends CityGrammar {
-    def locativePhrase(labels: CityLabels): String = {
-      val loc    = labels.locative
-      val vowels = "aeiouyąęó"
-      val we     = loc.length >= 2 && (loc(0) == 'W' || loc(0) == 'F') &&
-                   !vowels.contains(loc(1).toLower)
-      s"${if (we) "we" else "w"} $loc"
-    }
-    def genitivePluralLabel(labels: CityLabels): String = labels.genitivePlural
-  }
-
-  /** Non-declining languages: the nominative, with the language's own
-   *  preposition in front of it for the locative slot ("in London", "en Madrid").
-   *  The preposition is a parameter rather than a literal because it is the only
-   *  thing that differs — German's is "in" like English's, Spanish's is not, and
-   *  a hardcoded "in" would have put "in Madrid" in every Spanish share card and
-   *  every piece of Spanish structured data. */
-  private final class Nominative(preposition: String) extends CityGrammar {
-    def locativePhrase(labels: CityLabels): String      = s"$preposition ${labels.nominative}"
-    def genitivePluralLabel(labels: CityLabels): String = labels.nominative
-  }
-
-  private val In = new Nominative("in")   // English, German
-  private val En = new Nominative("en")   // Spanish
-
-  def of(locale: Locale): CityGrammar = locale.getLanguage match {
-    case "pl" => Polish
-    case "es" => En
-    case _    => In
-  }
-}
-
 /**
  * A city of cinema repertoire. A city is simply a **named subset of
  * globally-unique [[Cinema]] objects** plus its label inflections and
@@ -177,97 +115,79 @@ sealed abstract class City(
   def cinemaPillMap: Map[String, String]       = cinemas.map(c => c.displayName -> c.pillName).toMap
 }
 
-case object Poznan extends City(
+/** One of the 41 major Polish cities: hand-declined labels, and only the venues inside it
+ *  ([[PolishPages.majorCinemas]], filed under its slug). Every other Polish page is a
+ *  generated [[PolishPage]]. `data/pl/scripts/build_pages.py` reads these declarations. */
+sealed abstract class MajorPolishCity(slug: String, labels: CityLabels, lat: Double, lon: Double)
+  extends City(slug, labels, lat, lon, TimeZones.Poland) {
+  val cinemas: Seq[Cinema] = PolishPages.majorCinemas(slug)
+}
+
+case object Poznan extends MajorPolishCity(
   slug   = "poznan",
   labels = CityLabels(nominative = "Poznań", genitivePlural = "poznańskich", locative = "Poznaniu"),
   lat    = 52.4064,
   lon    = 16.9252,
-  zoneId = TimeZones.Poland,
-) {
-  val cinemas: Seq[Cinema] = Cinema.poznan
-}
+)
 
-case object Wroclaw extends City(
+case object Wroclaw extends MajorPolishCity(
   slug   = "wroclaw",
   labels = CityLabels(nominative = "Wrocław", genitivePlural = "wrocławskich", locative = "Wrocławiu"),
   lat    = 51.1079,
   lon    = 17.0385,
-  zoneId = TimeZones.Poland,
-) {
-  val cinemas: Seq[Cinema] = Cinema.wroclaw
-}
+)
 
-case object Warszawa extends City(
+case object Warszawa extends MajorPolishCity(
   slug   = "warszawa",
   labels = CityLabels(nominative = "Warszawa", genitivePlural = "warszawskich", locative = "Warszawie"),
   lat    = 52.2297,
   lon    = 21.0122,
-  zoneId = TimeZones.Poland,
-) {
-  val cinemas: Seq[Cinema] = Cinema.warszawa
-}
+)
 
-case object Krakow extends City(
+case object Krakow extends MajorPolishCity(
   slug   = "krakow",
   labels = CityLabels(nominative = "Kraków", genitivePlural = "krakowskich", locative = "Krakowie"),
   lat    = 50.0647,
   lon    = 19.9450,
-  zoneId = TimeZones.Poland,
-) {
-  val cinemas: Seq[Cinema] = Cinema.krakow
-}
+)
 
-case object Lodz extends City(
+case object Lodz extends MajorPolishCity(
   slug   = "lodz",
   labels = CityLabels(nominative = "Łódź", genitivePlural = "łódzkich", locative = "Łodzi"),
   lat    = 51.7592,
   lon    = 19.4560,
-  zoneId = TimeZones.Poland,
-) {
-  val cinemas: Seq[Cinema] = Cinema.lodz
-}
+)
 
-case object Katowice extends City(
+case object Katowice extends MajorPolishCity(
   slug   = "katowice",
   labels = CityLabels(nominative = "Katowice", genitivePlural = "katowickich", locative = "Katowicach"),
   lat    = 50.2649,
   lon    = 19.0238,
-  zoneId = TimeZones.Poland,
-) {
-  val cinemas: Seq[Cinema] = Cinema.katowice
-}
+)
 
-case object Szczecin extends City(
+case object Szczecin extends MajorPolishCity(
   slug   = "szczecin",
   labels = CityLabels(nominative = "Szczecin", genitivePlural = "szczecińskich", locative = "Szczecinie"),
   lat    = 53.4285,
   lon    = 14.5528,
-  zoneId = TimeZones.Poland,
-) {
-  val cinemas: Seq[Cinema] = Cinema.szczecin
-}
+)
 
-case object Bialystok extends City(
+case object Bialystok extends MajorPolishCity(
   slug   = "bialystok",
   labels = CityLabels(nominative = "Białystok", genitivePlural = "białostockich", locative = "Białymstoku"),
   lat    = 53.1325,
   lon    = 23.1688,
-  zoneId = TimeZones.Poland,
-) {
-  val cinemas: Seq[Cinema] = Cinema.bialystok
-}
+)
 
 /** The Tri-City (Gdańsk · Gdynia · Sopot) as one repertoire scope. Centred on
  *  Sopot, the geographic middle of the three towns, so the nearest-city pick
  *  resolves anywhere in the conurbation. */
-case object Trojmiasto extends City(
+case object Trojmiasto extends MajorPolishCity(
   slug   = "trojmiasto",
   labels = CityLabels(nominative = "Trójmiasto", genitivePlural = "trójmiejskich", locative = "Trójmieście"),
   lat    = 54.4416,
   lon    = 18.5601,
-  zoneId = TimeZones.Poland,
 ) {
-  val cinemas: Seq[Cinema] = Cinema.trojmiasto
   /** The three towns the conurbation is, biggest first, then any other town the
    *  venue table files one of its venues under. Its satellite towns (Rumia,
    *  Wejherowo, Pruszcz Gdański) are pages of their own now. Needed at all
@@ -278,327 +198,231 @@ case object Trojmiasto extends City(
   override def homeTowns: Seq[String] = Seq("Gdańsk", "Gdynia", "Sopot")
 }
 
-case object Bydgoszcz extends City(
+case object Bydgoszcz extends MajorPolishCity(
   slug   = "bydgoszcz",
   labels = CityLabels(nominative = "Bydgoszcz", genitivePlural = "bydgoskich", locative = "Bydgoszczy"),
   lat    = 53.1235,
   lon    = 18.0084,
-  zoneId = TimeZones.Poland,
-) {
-  val cinemas: Seq[Cinema] = Cinema.bydgoszcz
-}
+)
 
-case object Lublin extends City(
+case object Lublin extends MajorPolishCity(
   slug   = "lublin",
   labels = CityLabels(nominative = "Lublin", genitivePlural = "lubelskich", locative = "Lublinie"),
   lat    = 51.2465,
   lon    = 22.5684,
-  zoneId = TimeZones.Poland,
-) {
-  val cinemas: Seq[Cinema] = Cinema.lublin
-}
+)
 
-case object Czestochowa extends City(
+case object Czestochowa extends MajorPolishCity(
   slug   = "czestochowa",
   labels = CityLabels(nominative = "Częstochowa", genitivePlural = "częstochowskich", locative = "Częstochowie"),
   lat    = 50.8118,
   lon    = 19.1203,
-  zoneId = TimeZones.Poland,
-) {
-  val cinemas: Seq[Cinema] = Cinema.czestochowa
-}
+)
 
-case object Radom extends City(
+case object Radom extends MajorPolishCity(
   slug   = "radom",
   labels = CityLabels(nominative = "Radom", genitivePlural = "radomskich", locative = "Radomiu"),
   lat    = 51.4027,
   lon    = 21.1471,
-  zoneId = TimeZones.Poland,
-) {
-  val cinemas: Seq[Cinema] = Cinema.radom
-}
+)
 
-case object Sosnowiec extends City(
+case object Sosnowiec extends MajorPolishCity(
   slug   = "sosnowiec",
   labels = CityLabels(nominative = "Sosnowiec", genitivePlural = "sosnowieckich", locative = "Sosnowcu"),
   lat    = 50.2863,
   lon    = 19.1041,
-  zoneId = TimeZones.Poland,
-) {
-  val cinemas: Seq[Cinema] = Cinema.sosnowiec
-}
+)
 
-case object Torun extends City(
+case object Torun extends MajorPolishCity(
   slug   = "torun",
   labels = CityLabels(nominative = "Toruń", genitivePlural = "toruńskich", locative = "Toruniu"),
   lat    = 53.0138,
   lon    = 18.5984,
-  zoneId = TimeZones.Poland,
-) {
-  val cinemas: Seq[Cinema] = Cinema.torun
-}
+)
 
-case object Kielce extends City(
+case object Kielce extends MajorPolishCity(
   slug   = "kielce",
   labels = CityLabels(nominative = "Kielce", genitivePlural = "kieleckich", locative = "Kielcach"),
   lat    = 50.8661,
   lon    = 20.6286,
-  zoneId = TimeZones.Poland,
-) {
-  val cinemas: Seq[Cinema] = Cinema.kielce
-}
+)
 
-case object Rzeszow extends City(
+case object Rzeszow extends MajorPolishCity(
   slug   = "rzeszow",
   labels = CityLabels(nominative = "Rzeszów", genitivePlural = "rzeszowskich", locative = "Rzeszowie"),
   lat    = 50.0413,
   lon    = 21.9990,
-  zoneId = TimeZones.Poland,
-) {
-  val cinemas: Seq[Cinema] = Cinema.rzeszow
-}
+)
 
-case object Gliwice extends City(
+case object Gliwice extends MajorPolishCity(
   slug   = "gliwice",
   labels = CityLabels(nominative = "Gliwice", genitivePlural = "gliwickich", locative = "Gliwicach"),
   lat    = 50.2945,
   lon    = 18.6714,
-  zoneId = TimeZones.Poland,
-) {
-  val cinemas: Seq[Cinema] = Cinema.gliwice
-}
+)
 
-case object Zabrze extends City(
+case object Zabrze extends MajorPolishCity(
   slug   = "zabrze",
   labels = CityLabels(nominative = "Zabrze", genitivePlural = "zabrzańskich", locative = "Zabrzu"),
   lat    = 50.3249,
   lon    = 18.7857,
-  zoneId = TimeZones.Poland,
-) {
-  val cinemas: Seq[Cinema] = Cinema.zabrze
-}
+)
 
 // ── New mid-size cities (national-chain coverage) ─────────────────────────────
 
-case object Olsztyn extends City(
+case object Olsztyn extends MajorPolishCity(
   slug   = "olsztyn",
   labels = CityLabels(nominative = "Olsztyn", genitivePlural = "olsztyńskich", locative = "Olsztynie"),
   lat    = 53.7784,
   lon    = 20.4801,
-  zoneId = TimeZones.Poland,
-) {
-  val cinemas: Seq[Cinema] = Cinema.olsztyn
-}
+)
 
-case object BielskoBiala extends City(
+case object BielskoBiala extends MajorPolishCity(
   slug   = "bielsko-biala",
   labels = CityLabels(nominative = "Bielsko-Biała", genitivePlural = "bielskich", locative = "Bielsku-Białej"),
   lat    = 49.8224,
   lon    = 19.0584,
-  zoneId = TimeZones.Poland,
-) {
-  val cinemas: Seq[Cinema] = Cinema.bielskoBiala
-}
+)
 
-case object Opole extends City(
+case object Opole extends MajorPolishCity(
   slug   = "opole",
   labels = CityLabels(nominative = "Opole", genitivePlural = "opolskich", locative = "Opolu"),
   lat    = 50.6751,
   lon    = 17.9213,
-  zoneId = TimeZones.Poland,
-) {
-  val cinemas: Seq[Cinema] = Cinema.opole
-}
+)
 
-case object Rybnik extends City(
+case object Rybnik extends MajorPolishCity(
   slug   = "rybnik",
   labels = CityLabels(nominative = "Rybnik", genitivePlural = "rybnickich", locative = "Rybniku"),
   lat    = 50.0971,
   lon    = 18.5416,
-  zoneId = TimeZones.Poland,
-) {
-  val cinemas: Seq[Cinema] = Cinema.rybnik
-}
+)
 
-case object GorzowWielkopolski extends City(
+case object GorzowWielkopolski extends MajorPolishCity(
   slug   = "gorzow-wielkopolski",
   labels = CityLabels(nominative = "Gorzów Wielkopolski", genitivePlural = "gorzowskich", locative = "Gorzowie Wielkopolskim"),
   lat    = 52.7368,
   lon    = 15.2288,
-  zoneId = TimeZones.Poland,
-) {
-  val cinemas: Seq[Cinema] = Cinema.gorzow
-}
+)
 
-case object Elblag extends City(
+case object Elblag extends MajorPolishCity(
   slug   = "elblag",
   labels = CityLabels(nominative = "Elbląg", genitivePlural = "elbląskich", locative = "Elblągu"),
   lat    = 54.1522,
   lon    = 19.4088,
-  zoneId = TimeZones.Poland,
-) {
-  val cinemas: Seq[Cinema] = Cinema.elblag
-}
+)
 
-case object Koszalin extends City(
+case object Koszalin extends MajorPolishCity(
   slug   = "koszalin",
   labels = CityLabels(nominative = "Koszalin", genitivePlural = "koszalińskich", locative = "Koszalinie"),
   lat    = 54.1943,
   lon    = 16.1722,
-  zoneId = TimeZones.Poland,
-) {
-  val cinemas: Seq[Cinema] = Cinema.koszalin
-}
+)
 
-case object Kalisz extends City(
+case object Kalisz extends MajorPolishCity(
   slug   = "kalisz",
   labels = CityLabels(nominative = "Kalisz", genitivePlural = "kaliskich", locative = "Kaliszu"),
   lat    = 51.7611,
   lon    = 18.0911,
-  zoneId = TimeZones.Poland,
-) {
-  val cinemas: Seq[Cinema] = Cinema.kalisz
-}
+)
 
-case object ZielonaGora extends City(
+case object ZielonaGora extends MajorPolishCity(
   slug   = "zielona-gora",
   labels = CityLabels(nominative = "Zielona Góra", genitivePlural = "zielonogórskich", locative = "Zielonej Górze"),
   lat    = 51.9356,
   lon    = 15.5062,
-  zoneId = TimeZones.Poland,
-) {
-  val cinemas: Seq[Cinema] = Cinema.zielonaGora
-}
+)
 
-case object Tychy extends City(
+case object Tychy extends MajorPolishCity(
   slug   = "tychy",
   labels = CityLabels(nominative = "Tychy", genitivePlural = "tyskich", locative = "Tychach"),
   lat    = 50.1357,
   lon    = 18.9985,
-  zoneId = TimeZones.Poland,
-) {
-  val cinemas: Seq[Cinema] = Cinema.tychy
-}
+)
 
-case object Walbrzych extends City(
+case object Walbrzych extends MajorPolishCity(
   slug   = "walbrzych",
   labels = CityLabels(nominative = "Wałbrzych", genitivePlural = "wałbrzyskich", locative = "Wałbrzychu"),
   lat    = 50.7714,
   lon    = 16.2845,
-  zoneId = TimeZones.Poland,
-) {
-  val cinemas: Seq[Cinema] = Cinema.walbrzych
-}
+)
 
-case object Tarnow extends City(
+case object Tarnow extends MajorPolishCity(
   slug   = "tarnow",
   labels = CityLabels(nominative = "Tarnów", genitivePlural = "tarnowskich", locative = "Tarnowie"),
   lat    = 50.0121,
   lon    = 20.9858,
-  zoneId = TimeZones.Poland,
-) {
-  val cinemas: Seq[Cinema] = Cinema.tarnow
-}
+)
 
-case object Wloclawek extends City(
+case object Wloclawek extends MajorPolishCity(
   slug   = "wloclawek",
   labels = CityLabels(nominative = "Włocławek", genitivePlural = "włocławskich", locative = "Włocławku"),
   lat    = 52.6483,
   lon    = 19.0677,
-  zoneId = TimeZones.Poland,
-) {
-  val cinemas: Seq[Cinema] = Cinema.wloclawek
-}
+)
 
-case object Legnica extends City(
+case object Legnica extends MajorPolishCity(
   slug   = "legnica",
   labels = CityLabels(nominative = "Legnica", genitivePlural = "legnickich", locative = "Legnicy"),
   lat    = 51.2070,
   lon    = 16.1619,
-  zoneId = TimeZones.Poland,
-) {
-  val cinemas: Seq[Cinema] = Cinema.legnica
-}
+)
 
-case object Plock extends City(
+case object Plock extends MajorPolishCity(
   slug   = "plock",
   labels = CityLabels(nominative = "Płock", genitivePlural = "płockich", locative = "Płocku"),
   lat    = 52.5468,
   lon    = 19.7064,
-  zoneId = TimeZones.Poland,
-) {
-  val cinemas: Seq[Cinema] = Cinema.plock
-}
+)
 
-case object Bytom extends City(
+case object Bytom extends MajorPolishCity(
   slug   = "bytom",
   labels = CityLabels(nominative = "Bytom", genitivePlural = "bytomskich", locative = "Bytomiu"),
   lat    = 50.3483,
   lon    = 18.9157,
-  zoneId = TimeZones.Poland,
-) {
-  val cinemas: Seq[Cinema] = Cinema.bytom
-}
+)
 
-case object DabrowaGornicza extends City(
+case object DabrowaGornicza extends MajorPolishCity(
   slug   = "dabrowa-gornicza",
   labels = CityLabels(nominative = "Dąbrowa Górnicza", genitivePlural = "dąbrowskich", locative = "Dąbrowie Górniczej"),
   lat    = 50.3219,
   lon    = 19.1876,
-  zoneId = TimeZones.Poland,
-) {
-  val cinemas: Seq[Cinema] = Cinema.dabrowaGornicza
-}
+)
 
-case object NowySacz extends City(
+case object NowySacz extends MajorPolishCity(
   slug   = "nowy-sacz",
   labels = CityLabels(nominative = "Nowy Sącz", genitivePlural = "nowosądeckich", locative = "Nowym Sączu"),
   lat    = 49.6175,
   lon    = 20.7154,
-  zoneId = TimeZones.Poland,
-) {
-  val cinemas: Seq[Cinema] = Cinema.nowySacz
-}
+)
 
-case object Slupsk extends City(
+case object Slupsk extends MajorPolishCity(
   slug   = "slupsk",
   labels = CityLabels(nominative = "Słupsk", genitivePlural = "słupskich", locative = "Słupsku"),
   lat    = 54.4641,
   lon    = 17.0287,
-  zoneId = TimeZones.Poland,
-) {
-  val cinemas: Seq[Cinema] = Cinema.slupsk
-}
+)
 
-case object JeleniaGora extends City(
+case object JeleniaGora extends MajorPolishCity(
   slug   = "jelenia-gora",
   labels = CityLabels(nominative = "Jelenia Góra", genitivePlural = "jeleniogórskich", locative = "Jeleniej Górze"),
   lat    = 50.9044,
   lon    = 15.7197,
-  zoneId = TimeZones.Poland,
-) {
-  val cinemas: Seq[Cinema] = Cinema.jeleniaGora
-}
+)
 
-case object Przemysl extends City(
+case object Przemysl extends MajorPolishCity(
   slug   = "przemysl",
   labels = CityLabels(nominative = "Przemyśl", genitivePlural = "przemyskich", locative = "Przemyślu"),
   lat    = 49.7838,
   lon    = 22.7677,
-  zoneId = TimeZones.Poland,
-) {
-  val cinemas: Seq[Cinema] = Cinema.przemysl
-}
+)
 
-case object Konin extends City(
+case object Konin extends MajorPolishCity(
   slug   = "konin",
   labels = CityLabels(nominative = "Konin", genitivePlural = "konińskich", locative = "Koninie"),
   lat    = 52.2230,
   lon    = 18.2511,
-  zoneId = TimeZones.Poland,
-) {
-  val cinemas: Seq[Cinema] = Cinema.konin
-}
+)
 
 /** A Polish page that is not one of the 41 major cities: a town with a few
  *  venues of its own, or a cluster of small towns a short drive apart, named
@@ -665,184 +489,34 @@ private[models] object UkPage {
 case object London extends City("london", CityLabels.undeclined("London"),
                                 UkPages.london.lat, UkPages.london.lon, TimeZones.UnitedKingdom) {
   val cinemas: Seq[Cinema] = UkPages.london.cinemas
-  override val areas: Seq[CinemaAreaGroup] = Cinema.londonAreas
+  override val areas: Seq[CinemaAreaGroup] = LondonAreas.groups
 }
 
-// ── Germany (also non-declining for our purposes). ───────────────────────────
+// ── The generated rosters: Germany, the United States, Spain (non-declining). ──────────
 
-/** A German page — a major city (a municipality of 100,000+) with only its own
- *  venues, a town with three or more, or a cluster of small towns a short drive
- *  apart named after the biggest: "Bayreuth und Umgebung", "in Bayreuth und
- *  Umgebung". Poland's shape ([[PolishPage]]), built by the same rule
- *  (`data/germany/scripts/build_pages.py`); until 2026-10 a German page was a
- *  REGION of every venue within ~35 km of a hub, and `/koeln/` listed Bonn.
+/** A page of a generated roster — Germany's, the United States' or Spain's ([[RosterPlace]]):
+ *  a major city with only its own venues, a town with three or more, or a cluster of small towns
+ *  named after the biggest. Poland's shape ([[PolishPage]]), built by the same rule; until 2026-10
+ *  such a page was a REGION of every venue within a radius of a hub, and `/koeln/` listed Bonn.
  *
- *  The roster (1,515 cinemas over 436 pages) is generated into `GermanRosterData`
- *  and materialised by [[GermanRoster]]; instances are built ONCE (in
- *  `City.germanPages`), so identity equality holds just like the hand-authored
- *  `case object` cities. One zone for the country, `Europe/Berlin`. */
-final class GermanPage private[models] (slug: String, place: GermanPlace)
-  extends City(slug, GermanPage.labels(place), place.lat, place.lon, TimeZones.Germany) {
+ *  Instances are built ONCE (in `City.germanPages`, `usCities`, `spanishPages`), so identity
+ *  equality holds just like the hand-authored `case object` cities. None of the three languages
+ *  declines a place name, so all three label slots carry the page's name — "<town> <suffix>" for
+ *  a cluster ([[RosterStyle]]). The zone is the place's: the US spans six and Spain two. */
+final class RosterPage private[models] (slug: String, place: RosterPlace, style: RosterStyle)
+  extends City(slug, RosterPage.labels(place, style), place.lat, place.lon, place.zoneId) {
   val cinemas: Seq[Cinema] = place.cinemas
   /** The town the page is named after first, then the rest of its towns. */
   override protected val extraPlaces: Seq[String] = (place.name +: place.towns).distinct
-  /** The Bundesland the picker groups this page under. */
-  def bundesland: String = place.bundesland
+  override def locativePhrase: String =
+    style.clusterPreposition.filter(_ => place.multiTown).fold(super.locativePhrase)(p => s"$p ${labels.nominative}")
+  /** What the picker groups this page under: its anchor town's Bundesland, state or province. */
+  def region: String = place.region
 }
 
-private[models] object GermanPage {
-  /** German does not decline a place name after "in", so all three slots carry
-   *  the page's name — "<town> und Umgebung" for a cluster, which reads right both
-   *  alone and after the grammar's "in" ("in Bayreuth und Umgebung"). */
-  def labels(place: GermanPlace): CityLabels =
-    CityLabels.undeclined(if (place.multiTown) s"${place.name} und Umgebung" else place.name)
-}
-
-/** A US page — a major city (a place of 100,000+) with only its own venues, a
- *  town with three or more, or a cluster of small towns a short drive apart named
- *  after the biggest: "Bend area", "in the Bend area". Poland's shape
- *  ([[PolishPage]]), built by the same rule (`data/us/scripts/build_pages.py`);
- *  until 2026-10 a US page was a METRO of every venue within 75 km of a hub, cut
- *  at state lines, and `/los-angeles/` listed Lancaster. A cluster may cross a
- *  state line; the picker files it under its anchor's state.
- *
- *  The roster (4,999 cinemas over 1,995 pages) is generated into `UsRosterData`
- *  and materialised by [[UsRoster]]; instances are built ONCE (in
- *  `City.usCities`), so identity equality holds just like the hand-authored
- *  `case object` cities.
- *
- *  Unlike [[GermanPage]] the zone is the PLACE's rather than a constant: the US
- *  spans six of them, and a page keeps the clock most of its venues keep. */
-final class UsPage private[models] (slug: String, place: UsPlace)
-  extends City(slug, UsPage.labels(place), place.lat, place.lon, place.zoneId) {
-  val cinemas: Seq[Cinema] = place.cinemas
-  /** The town the page is named after first, then the rest of its towns and the
-   *  towns its venues name (Brooklyn, Hollywood). */
-  override protected val extraPlaces: Seq[String] = place.towns
-  /** "in the Bend area" — an area takes the article a town does not. */
-  override def locativePhrase: String = if (place.multiTown) s"in the ${labels.nominative}" else super.locativePhrase
-  /** The state the picker groups this page under: its anchor town's. */
-  def stateName: String = place.stateName
-}
-
-private[models] object UsPage {
-  /** English does not decline a place name, so all three slots carry the page's
-   *  name — "<town> area" for a cluster, which reads right alone ("Bend area")
-   *  and in a list of cinemas ("All Bend area cinema listings"). */
-  def labels(place: UsPlace): CityLabels =
-    CityLabels.undeclined(if (place.multiTown) s"${place.name} area" else place.name)
-}
-
-/** A Spanish page — a major city (one of the 43 municipalities of 150,000+) with
- *  only its own venues, a town with three or more, or a cluster of small towns a
- *  short drive apart named after the biggest: "Sitges y alrededores", "en Sitges y
- *  alrededores". Poland's shape ([[PolishPage]]), built by the same rule
- *  (`data/spain/scripts/build_pages.py`); until 2026-10 a Spanish page was a
- *  whole province, and `/barcelona/` listed Berga, 100 km away.
- *
- *  The roster (599 cinemas over 240 pages) is generated into `SpanishRosterData`
- *  and materialised by [[SpanishRoster]]; instances are built ONCE (in
- *  `City.spanishCities`), so identity equality holds just like the hand-authored
- *  `case object` cities.
- *
- *  Like [[UsPage]] and unlike [[GermanPage]] the zone is a CONSTRUCTOR
- *  parameter: the Canary Islands run an hour behind the peninsula, and a single
- *  national zone would move their day boundary. */
-final class SpanishPage private[models] (slug: String, place: SpanishPlace)
-  extends City(slug, SpanishPage.labels(place), place.lat, place.lon, place.zoneId) {
-  val cinemas: Seq[Cinema] = place.cinemas
-  /** The town the page is named after first, then the rest of its towns. */
-  override protected val extraPlaces: Seq[String] = (place.name +: place.towns).distinct
-  /** The province the picker groups this page under. */
-  def province: String = place.province
-}
-
-private[models] object SpanishPage {
-  /** Spanish does not decline a place name, so all three slots carry the page's
-   *  name — "<town> y alrededores" for a cluster, which reads right both alone and
-   *  after the grammar's "en". */
-  def labels(place: SpanishPlace): CityLabels =
-    CityLabels.undeclined(if (place.multiTown) s"${place.name} y alrededores" else place.name)
-}
-
-/** A named group of [[City]]s in a picker — a US STATE over its towns
- *  ("California → Los Angeles", the way a visitor finds one), or a UK NATION
- *  over its counties ("Scotland → Fife"), a Polish voivodeship or a Spanish
- *  province over its towns. Ordinarily the group is not a place you can open:
- *  `/california/` is nothing, and its films live at `/los-angeles/`. It is how
- *  the list of them is arranged, and nothing else.
- *
- *  The exception is [[soleCity]] — see there.
- *
- *  A country whose picker is one flat list leaves `Country.cityGroups` empty
- *  rather than declaring one group per city.
- *
- *  @param absorbed for a city of this group, the names of former pages that now
- *                  redirect to it — the UK's retired regions ([[UkPages.formerNames]])
- *                  — kept findable by [[aliasesOf]]. */
-final case class CityGroup(label: String, slug: String, cities: Seq[City] = Nil,
-                          groups: Seq[CityGroup] = Nil, absorbed: Map[City, Seq[String]] = Map.empty) {
-
-  /** The one place this group holds, pulled up a level — and `None` for a group
-   *  that really arranges several.
-   *
-   *  A heading you open to find exactly one row underneath is a tap that buys
-   *  the reader nothing, whatever the two are called. A UK county holding one
-   *  page collapses onto it — Rutland shows as Oakham, Shetland as Lerwick — as
-   *  the District of Columbia shows as Washington and Saarland as Saarbrücken.
-   *
-   *  The group's own name is NOT lost when it differs — the picker keeps it on
-   *  the row as a search alias (`data-alias`), so "shetland" still finds
-   *  Lerwick. Dropping the heading is meant to save a tap, not to make the
-   *  county unfindable, and the search is where that name was doing its work.
-   *
-   *  Nil `groups` is part of the test: a node with one city AND a subgroup under
-   *  it is still arranging two things.
-   *
-   *  [[slug]] is deliberately NOT consulted. An earlier version required the
-   *  city's slug to equal the group's, which collapsed Cheshire and left
-   *  Merseyside, Greater Manchester, Norfolk and Saarland as headings over a
-   *  single row — the tap this exists to remove. */
-  def soleCity: Option[City] = (cities, groups) match {
-    case (Seq(only), Nil) => Some(only)
-    case _                => None
-  }
-
-  /** The name the picker actually SHOWS for this node: the place's, where the
-   *  group collapsed onto one, and the group's own otherwise.
-   *
-   *  What a list of these must be sorted by. Sorting on [[label]] would order
-   *  Merseyside and Greater Manchester under M and G while displaying Liverpool
-   *  and Manchester — an alphabetical list that visibly is not one, which is
-   *  precisely the failure the ordering exists to prevent. */
-  def displayLabel: String = soleCity.map(_.labels.nominative).getOrElse(label)
-
-  /** The group's own name, where it differs from the single place it collapsed
-   *  onto — what the picker keeps searchable after pulling that place up, and
-   *  `None` when there is nothing extra to remember (Cheshire under Cheshire) or
-   *  when the group did not collapse at all. */
-  def collapsedAlias: Option[String] =
-    soleCity.filter(_.labels.nominative != label).map(_ => label)
-
-  /** Every other name the picker should find one of this group's own cities by:
-   *  the group's name where the group collapsed onto it ([[collapsedAlias]]),
-   *  then the names of the former pages that redirect to it ([[absorbed]]) — so
-   *  "Sandwell" still finds West Bromwich and "Highlands and Islands" Inverness. */
-  def aliasesOf(city: City): Seq[String] =
-    soleCity.filter(_ == city).flatMap(_ => collapsedAlias).toSeq ++ absorbed.getOrElse(city, Nil)
-
-  /** [[aliasesOf]] the one place this group collapsed onto — empty for a group
-   *  that did not collapse: its heading is already on screen. */
-  def searchAliases: Seq[String] = soleCity.fold(Seq.empty[String])(aliasesOf)
-
-  /** Every city under this group at any depth — its own, plus its subgroups'.
-   *
-   *  A picker nests (a UK nation over its counties over their places), but the
-   *  things that read a grouping FLAT do not: `<optgroup>` may not contain
-   *  another, and the apps' `region` is one string per city. Both take the top
-   *  level's label over this, so a deeper tree arranges the page without
-   *  changing what they get. */
-  def allCities: Seq[City] = cities ++ groups.flatMap(_.allCities)
+private[models] object RosterPage {
+  def labels(place: RosterPlace, style: RosterStyle): CityLabels =
+    CityLabels.undeclined(if (place.multiTown) s"${place.name} ${style.clusterSuffix}" else place.name)
 }
 
 object City {
@@ -861,15 +535,6 @@ object City {
   private[models] lazy val polishPages: Seq[PolishPage] = PolishPages.rows.map(new PolishPage(_))
   private[models] lazy val polishCities: Seq[City] = majorPolishCities ++ polishPages
 
-  /** Poland's picker: one group per voivodeship, holding its major cities and its
-   *  town and cluster pages side by side, alphabetically — a flat list of 180
-   *  pages is not one anybody reads. */
-  private[models] lazy val polishVoivodeships: Seq[CityGroup] =
-    CityListing.groupedAlphabetically(polishCities, Locale.forLanguageTag("pl-PL")) {
-      case page: PolishPage => page.voivodeship
-      case major            => PolishPages.majorVoivodeship(major.slug)
-    }
-
   /** The United Kingdom's cities — the authoritative list for
    *  [[Country.UnitedKingdom]]: [[London]], then one [[UkPage]] per town or
    *  cluster page, materialised from [[UkPages]]. Their slugs are final there:
@@ -877,163 +542,28 @@ object City {
   private[models] lazy val ukPages: Seq[UkPage] = UkPages.rows.map(new UkPage(_))
   private[models] lazy val ukCities: Seq[City] = London +: ukPages
 
-  /** UK pages that no longer exist → the page holding the town each was named
-   *  after, or — where no such town has a venue — the page now holding most of
-   *  its venues. The 76 Flicks regions the UK was filed under until 2026-10 and
-   *  the three folded into a neighbour before that among them: `/antrim/` → the
-   *  Lisburn area (Antrim's cluster), `/west-yorkshire/` → Leeds. A region whose
-   *  slug is a page now (`/manchester/`, `/dudley/`) simply IS that town's page. */
-  private[models] lazy val ukSuccession: Map[String, String] = UkPages.retired
-
-  /** The UK picker's grouping: NATION over COUNTY over the pages inside it — the
-   *  nation and county of each page's anchor town, read off GeoNames by
-   *  `data/uk/scripts/geocode_towns.py` (England's ceremonial counties, Wales'
-   *  preserved ones, Scotland's and Northern Ireland's councils, grouped).
-   *
-   *  264 pages is past what anyone reads as one A-to-Z, and a nation alone still
-   *  is (England holds 200); the county is the level a visitor already knows a
-   *  town by. A county holding one page collapses onto it ([[CityGroup.soleCity]]):
-   *  Shetland shows as Lerwick, its own name kept as a search alias. A retired
-   *  region's name is a search alias of the page its slug redirects to
-   *  ([[UkPages.formerNames]]): "Tyrone" finds Dungannon.
-   *
-   *  Nations are in [[UkPages.nations]]' fixed reading order (England, Scotland,
-   *  Northern Ireland, Wales, Crown Dependencies) — the same order every client's
-   *  picker shows, kept in one place rather than re-derived per platform — and
-   *  everything below is alphabetical, which is the only order a reader can
-   *  search by eye. Every page appears exactly once (`CountrySpec` holds that). */
-  private[models] lazy val ukNations: Seq[CityGroup] = {
-    val en = Locale.forLanguageTag("en-GB")
-    val placed: Seq[(String, String, City)] =
-      (UkPages.london.nation, UkPages.london.county, London) +: ukPages.map(p => (p.nation, p.county, p))
-    UkPages.nations.flatMap { nation =>
-      val counties = placed.filter(_._1 == nation).groupBy(_._2).toSeq.map { case (county, pages) =>
-        val cities = pages.map(_._3)
-        CityGroup(county, Slugify.stable(county), CityListing.sorted(cities, en),
-                  absorbed = cities.flatMap(c => UkPages.formerNames.get(c.slug).map(c -> _)).toMap)
-      }
-      // By what each row SHOWS, not by the county it came from: a county that
-      // collapsed onto its one place displays that place's name, and sorting on
-      // the county would file Shetland's Lerwick under S.
-      Option.when(counties.nonEmpty)(
-        CityGroup(nation, Slugify.stable(nation), Nil, CityListing.sortedLabels(counties, en)(_.displayLabel)))
-    }
-  }
-
   /** Germany's cities — the authoritative list for [[Country.Germany]]. One per
-   *  town or cluster page (see [[GermanPage]] / [[GermanRoster]]), materialised
+   *  town or cluster page (see [[RosterPage]] / [[GermanRoster]]), materialised
    *  data-driven from `GermanRosterData` rather than hand-authored case objects.
    *  Each country owns its own slugs, so a page's is simply its own name (or, for
    *  two German towns of one name, the qualified one `build_pages.py` gave it). */
-  private[models] val germanPages: Seq[GermanPage] = GermanRoster.places.map(p => new GermanPage(p.preferredSlug, p))
+  private[models] val germanPages: Seq[RosterPage] = GermanRoster.places.map(p => new RosterPage(p.preferredSlug, p, GermanRoster.style))
   private[models] val germanCities: Seq[City] = germanPages
 
-  /** A retired page's URLs → the page it redirects to: under its own name AND
-   *  under its qualified name, which is the one it answered at while another
-   *  country held its name (until 2026-10, when every country came to own its
-   *  slugs) — both are published. Neither may be a live page's slug. */
-  private def succession(retired: Seq[(String, String, String)], live: Set[String]): Map[String, String] =
-    retired.flatMap { case (preferred, qualified, page) => Seq(preferred -> page, qualified -> page) }
-      .filter { case (from, to) => from != to && !live(from) }
-      .toMap
-
-  /** German pages that no longer exist → the page holding the town each was
-   *  named after, or — where that town has no venue left — the page now holding
-   *  most of its venues. The 19 regions that did not leave a page under their own
-   *  slug when Germany went from regions to towns (2026-10) among them: `/vechta/`
-   *  → Cloppenburg (Vechta's cluster), `/itzehoe/` → Elmshorn. A region whose slug is a page now
-   *  (`/koeln/`, `/freiburg/`) simply IS that town's page. */
-  private[models] lazy val germanSuccession: Map[String, String] =
-    succession(GermanRosterData.retired, germanPages.map(_.slug).toSet)
-
-  /** The German picker's grouping: one entry per BUNDESLAND over the pages inside
-   *  it — major cities, towns and clusters side by side — alphabetically both
-   *  ways, as Poland's voivodeships and Spain's provinces. The Land is the
-   *  anchor town's, read off its coordinates by `build_pages.py`. */
-  private[models] lazy val germanStates: Seq[CityGroup] =
-    CityListing.groupedAlphabetically(germanPages, Locale.forLanguageTag("de-DE"))(_.bundesland)
-
-
   /** The United States' cities — the authoritative list for
-   *  [[Country.UnitedStates]]. One per town or cluster page (see [[UsPage]] /
+   *  [[Country.UnitedStates]]. One per town or cluster page (see [[RosterPage]] /
    *  [[UsRoster]]), materialised data-driven from `UsRosterData`. The state is a
    *  [[CityGroup]], not a city: nobody wants a screen of every cinema in Texas.
    *  A page's slug is its own name, qualified with its state only where another
    *  US page has the name (the Springfields). */
-  private[models] lazy val usCities: Seq[UsPage] = UsRoster.places.map(p => new UsPage(p.preferredSlug, p))
-
-  /** US pages that no longer exist → the page holding the town each was named
-   *  after, or — where no such town has a venue — the page now holding most of its
-   *  venues. The 149 metros that did not leave a page under their own slug when
-   *  the US went from metros to towns (2026-10) among them: `/philadelphia-new-jersey/`
-   *  → Philadelphia, `/inland-empire/` → Chino. A metro whose slug is a page now
-   *  (`/los-angeles/`, `/springfield/`) simply IS that town's page. Plus
-   *  [[FormerlyQualified]]'s US pages. */
-  private[models] lazy val usSuccession: Map[String, String] =
-    succession(UsRosterData.retired, usCities.map(_.slug).toSet) ++ FormerlyQualified.us
-
-  /** The pages that answered at a slug qualified with their state or community
-   *  while another country held their name — published URLs, live until every
-   *  country came to own its own slugs (2026-10) — and the bare slug each answers
-   *  at now. Ten US pages yielded to the UK, Germany and Spain; Spain's Toledo and
-   *  Laredo yielded to the US. (The UK's qualified slugs never shipped.) */
-  private[models] object FormerlyQualified {
-    val us: Map[String, String] = Map(
-      "birmingham-alabama" -> "birmingham", "bristol-tennessee" -> "bristol", "glasgow-kentucky" -> "glasgow",
-      "kent-washington" -> "kent", "london-kentucky" -> "london", "manchester-new-hampshire" -> "manchester",
-      "potsdam-new-york" -> "potsdam", "somerset-kentucky" -> "somerset", "stuttgart-arkansas" -> "stuttgart",
-      "suffolk-virginia" -> "suffolk",
-    )
-    val es: Map[String, String] = Map("toledo-castilla-la-mancha" -> "toledo", "laredo-cantabria" -> "laredo")
-
-    def of(country: Country): Map[String, String] = country match {
-      case Country.UnitedStates => us
-      case Country.Spain        => es
-      case _                    => Map.empty
-    }
-  }
-
-  /** The US picker's grouping: one entry per state or territory over the pages
-   *  filed under it — major cities, towns and clusters side by side — the state
-   *  being the anchor town's, so a cluster reaching across a state line is under
-   *  the state of the town it is named after.
-   *
-   *  The pages inside a state are ALPHABETICAL: a visitor opening "California" is
-   *  looking for a name they already know, and the only order that tells them
-   *  where to look for it is the one the alphabet gives.
-   *
-   *  The states are in their SLUG's plain string order rather than re-sorted
-   *  through [[CityListing.sortedLabels]] the way Germany's Bundesländer are: a
-   *  Locale [[Collator]] weighs "Virgin Islands"' space against "Virginia"'s
-   *  continuing letter differently than the slug does, which would silently swap
-   *  the two. */
-  private[models] lazy val usStates: Seq[CityGroup] = {
-    val en = Locale.forLanguageTag("en-US")
-    usCities.groupBy(_.stateName).toSeq
-      .map { case (state, pages) => CityGroup(state, Slugify.stable(state), CityListing.sorted(pages, en)) }
-      .sortBy(_.slug)
-  }
+  private[models] lazy val usCities: Seq[RosterPage] = UsRoster.places.map(p => new RosterPage(p.preferredSlug, p, UsRoster.style))
 
   /** Spain's cities — the authoritative list for [[Country.Spain]]. One per town
-   *  or cluster page (see [[SpanishPage]] / [[SpanishRoster]]), materialised
+   *  or cluster page (see [[RosterPage]] / [[SpanishRoster]]), materialised
    *  data-driven from `SpanishRosterData` rather than hand-authored case objects.
    *  A page's slug is its own name: `/es/toledo/` is Toledo, whatever the US has. */
-  private[models] val spanishPages: Seq[SpanishPage] = SpanishRoster.places.map(p => new SpanishPage(p.preferredSlug, p))
+  private[models] val spanishPages: Seq[RosterPage] = SpanishRoster.places.map(p => new RosterPage(p.preferredSlug, p, SpanishRoster.style))
   private[models] val spanishCities: Seq[City] = spanishPages
-
-  /** Spanish pages that no longer exist → the page now holding most of their
-   *  venues. The 13 provinces that did not leave a town page under their own slug
-   *  when Spain went from provinces to towns (2026-10) among them: `/asturias/` →
-   *  Gijón, `/islas-baleares/` → Palma de Mallorca. A province whose slug is a
-   *  town page now (`/madrid/`, `/barcelona/`) simply IS that town's page. Plus
-   *  [[FormerlyQualified]]'s Spanish pages. */
-  private[models] lazy val spanishSuccession: Map[String, String] =
-    succession(SpanishRosterData.retired, spanishPages.map(_.slug).toSet) ++ FormerlyQualified.es
-
-  /** Spain's picker: one group per province, its major cities, towns and
-   *  clusters side by side, alphabetically — as Poland's voivodeships. */
-  private[models] lazy val spanishProvinces: Seq[CityGroup] =
-    CityListing.groupedAlphabetically(spanishPages, Locale.forLanguageTag("es-ES"))(_.province)
 
   /** Every modelled city, across all countries — the global view used by the
    *  worker (which scrapes every country) and by country-agnostic reverse

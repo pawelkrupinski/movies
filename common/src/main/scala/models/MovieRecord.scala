@@ -135,7 +135,7 @@ case class MovieRecord(
    *  ask this rather than `cinemaData.keySet`: [[cinemaData]]'s sort and map
    *  build exist only to pick a representative slot per venue, and asking it a
    *  membership question pays O(n log n) for an answer that needs one pass. */
-  private def slotCinemas: Iterator[Cinema] = data.keysIterator.flatMap(Source.cinemaOf)
+  private[models] def slotCinemas: Iterator[Cinema] = data.keysIterator.flatMap(Source.cinemaOf)
 
   /** One representative slot per cinema — the keyed view detail enrichment, the
    *  published [[evidence]] and the [[displayTitle]] vote read. A venue listing the film
@@ -386,9 +386,9 @@ case class MovieRecord(
    *  URL tokens stripped — the global "best blurb we have", surfaced by the
    *  `/debug` view. DISPLAY goes through the city-scoped [[synopsisForCity]]
    *  instead, so a city page never shows a synopsis a cinema in some OTHER city
-   *  wrote. See [[bestSynopsis]] for the paragraphed-then-longest selection and
-   *  [[synopsisCandidatesFor]] for the (non-shrinking, sticky) candidate pool. */
-  def synopsis: Option[String] = bestSynopsis(synopsisCandidatesFor(_ => true))
+   *  wrote. See [[MovieSynopses]] for the paragraphed-then-longest selection and
+   *  [[MovieSynopses]] for the (non-shrinking, sticky) candidate pool. */
+  def synopsis: Option[String] = synopses.synopsis
 
   /** City-scoped synopsis: the best blurb chosen among ONLY the synopses a
    *  cinema in `city` published for this film, plus the city-independent
@@ -399,30 +399,28 @@ case class MovieRecord(
    *
    *  The chains are the one wrinkle: every Cinema City (or Cineworld) venue shares
    *  ONE chain-wide detail slot ([[CinemaCityChain]], [[CineworldChain]], see
-   *  `Cinema.chainDetailVenues`) that belongs to no city, so it's admitted for
+   *  `CinemaNetworks.detailVenues`) that belongs to no city, so it's admitted for
    *  `city` only when one of the chain's venues there is actually screening the
-   *  film — see [[synopsisAppliesToCity]].
+   *  film — see [[MovieSynopses]].
    *
    *  Those SAME chain slots are also the only ones whose language gets checked
-   *  (see [[bestSynopsis]]): confirmed prod bug, `cinema-city.pl`'s own detail page
+   *  (see [[MovieSynopses]]): confirmed prod bug, `cinema-city.pl`'s own detail page
    *  served an English blurb on its Polish-domain pages for "Marsupilami",
    *  which — being longer than TMDB's correct Polish one — won every city
    *  Cinema City serves. Cineworld's slot is the same impersonal, API-sourced
    *  detail page, so the check covers every chain slot of
-   *  `Cinema.chainDetailVenues` — never an individual cinema's own editorial text —
+   *  `CinemaNetworks.detailVenues` — never an individual cinema's own editorial text —
    *  a boutique cinema (e.g. Amondo Grindhouse) legitimately writes an
    *  English blurb for an English-subtitled special screening, and that
    *  curated choice must never be second-guessed by a heuristic. */
-  def synopsisForCity(city: City): Option[String] =
-    bestSynopsis(synopsisCandidatesFor(synopsisAppliesToCity(city)), expectedLanguage = Some(city.country.language.getLanguage))
+  def synopsisForCity(city: City): Option[String] = synopses.forCity(city)
 
   /** Best synopsis from the city-independent metadata sources ONLY (TMDB / IMDb
    *  / Filmweb — no cinema). The read model's per-film fallback ([[ResolvedMovie]]
    *  stores this as `synopsis`): served wherever no [[synopsisForCity]] override
    *  applies, so a city with no cinema blurb of its own shows TMDB's rather than
    *  leaking another city's cinema text. */
-  def synopsisNonCinema: Option[String] =
-    bestSynopsis(synopsisCandidatesFor(Source.cinemaOf(_).isEmpty))
+  def synopsisNonCinema: Option[String] = synopses.nonCinema
 
   /** Best synopsis from CINEMA sources ONLY (no TMDB / IMDb / Filmweb) — the
    *  same-language Polish reference for a synopsis tie-break, with the row's own
@@ -434,135 +432,16 @@ case class MovieRecord(
    *  serves only `scripts.GateReport`'s resolution-gap gates. Keep it fed by the
    *  same candidate pool as the display accessors regardless — a gate that reads
    *  it must see what a resolver would. */
-  def synopsisCinema: Option[String] =
-    bestSynopsis(synopsisCandidatesFor(Source.cinemaOf(_).isDefined))
-
-  /** Does `source`'s synopsis count for `city`? A venue does iff it's one of
-   *  the city's cinemas; a chain-detail source (Cinema City, Cineworld) iff one of its
-   *  member venues in this city is screening the film; every non-cinema source
-   *  (TMDB / IMDb / Filmweb) always does — its blurb is city-independent.
-   *
-   *  The cinema behind a slot comes from [[Source.cinemaOf]], never a `case _:
-   *  Cinema` type test: prod keys every slot it writes as a per-title
-   *  `CinemaShowing(cinema, titleKey)`, which is a `Source` but NOT a `Cinema`.
-   *  A type test therefore admitted every cinema's blurb into every city (and,
-   *  in [[synopsisNonCinema]], into the city-independent fallback the read model
-   *  stores) — Kino Kosmos's Katowice event blurb for "Frances Ha" won the
-   *  Poznań page over Kino Pałacowe's own, and `synopsisByCity` projected empty
-   *  for every film. The bare-`Cinema` slot shape this scoping was written
-   *  against survives only on legacy rows (see `Source.dropSupersededCinemaSlots`),
-   *  which is why every spec covering it stayed green. */
-  private def synopsisAppliesToCity(city: City)(source: Source): Boolean =
-    Source.cinemaOf(source).forall { cinema =>
-      city.cinemaSet.contains(cinema) ||
-        Cinema.chainDetailVenues.get(cinema).exists { venues =>
-          slotCinemas.exists(v => venues.contains(v) && city.cinemaSet.contains(v))
-        }
-    }
-
-  /** Best synopsis over `candidates` — the paragraphed-then-longest selection
-   *  shared by [[synopsis]], [[synopsisForCity]] and [[synopsisNonCinema]].
-   *  "Best" = a paragraphed blurb (one carrying a `\n`/`\n\n` break, see
-   *  `ScraperParse.blockText`) beats an unbroken single block, and only among
-   *  candidates that tie on that does the longest win — a wall of text reads
-   *  worse than a properly broken-up one even when marginally longer.
-   *
-   *  A CMS-duplicated blurb (some cinemas paste the synopsis N× into one field —
-   *  see `SynopsisMarkdown.collapseRepeats`) is collapsed to one copy FIRST, on
-   *  the raw value before `stripUrls` (which trims, breaking the exact periodicity
-   *  collapse needs), so it can't win the length race on its inflated size. URL
-   *  tokens are then stripped (a cinema detail page that inlines a trailer link
-   *  folds the bare URL into the blurb) so a link-padded blurb can't win on
-   *  length either, and any source left empty (nothing but a link) is dropped.
-   *  The length compared is the VISIBLE length — markdown emphasis markers are
-   *  stripped for the comparison so a blurb can't win just by carrying more
-   *  `<b>`/`<i>` tags. The winner is run through `SynopsisMarkdown.sanitize` so
-   *  every consumer (web HTML, mobile `/api/details`, OG card, og:description)
-   *  sees well-formed markdown regardless of which source produced it.
-   *
-   *  `expectedLanguage` (an ISO 639-1 tag, from [[synopsisForCity]]'s city) is
-   *  the FIRST sort key when given, and ONLY for a candidate from a chain-detail
-   *  slot (`Cinema.chainDetailVenues`: [[CinemaCityChain]], [[CineworldChain]],
-   *  [[RegalChain]]) — see [[synopsisForCity]]
-   *  for why the check is scoped that narrowly. Such a candidate that
-   *  `tools.TextLanguage.detect`s as a different language loses to any
-   *  candidate that doesn't, before the paragraph/length comparison ever
-   *  runs. A candidate too short/ambiguous to classify (`detect` → `None`) is
-   *  never penalized — the check only fires on a confident wrong-language
-   *  read, never a false suspicion. Callers with no city in scope
-   *  ([[synopsis]], [[synopsisNonCinema]], [[synopsisCinema]]) pass `None`
-   *  and get the untouched paragraph-then-longest order. */
-  private def bestSynopsis(candidates: Seq[(Source, String)], expectedLanguage: Option[String] = None): Option[String] =
-    candidates
-      .flatMap { case (source, raw) => processedSynopsisCandidate(raw).map(source -> _) }
-      .sortBy { case (source, (_, plainText)) =>
-        val wrongLanguage = expectedLanguage.exists { expected =>
-          Source.cinemaOf(source).exists(Cinema.chainDetailVenues.contains) &&
-            tools.TextLanguage.detect(plainText).exists(_ != expected)
-        }
-        (if (wrongLanguage) 1 else 0, if (plainText.contains('\n')) 0 else 1, -plainText.length)
-      }
-      .headOption.map { case (_, (candidate, _)) => tools.SynopsisMarkdown.sanitize(candidate) }
-
-  // The per-candidate processing (collapseRepeats → stripUrls → strip) is a pure,
-  // deterministic function of the raw candidate string — but `bestSynopsis` runs it once
-  // per (city × display-title variant) during a read-model projection, so a blurb on a
-  // film screening in many cities gets re-collapsed/re-stripped dozens of times. Memoise
-  // it by raw candidate so each distinct string is processed once per record instance.
-  // Pure caching: the winner and the value it wins with are unchanged — the read-model
-  // output is byte-identical. Concurrent because a record is shared across reader threads.
-  private val synopsisProcessCache =
-    new java.util.concurrent.ConcurrentHashMap[String, Option[(String, String)]]()
-
-  /** One raw synopsis candidate processed into `(processedMarkdown, plainText)` for the
-   *  [[bestSynopsis]] paragraph-then-length pick — `None` when nothing survives
-   *  URL-stripping (a source that was nothing but a link). `plainText` is the emphasis-
-   *  stripped form the length/`\n` comparison uses; the winning `processedMarkdown` is
-   *  what gets `sanitize`d. Memoised on the raw string — the projection asks for the same
-   *  candidate across every city the film screens in. */
-  private def processedSynopsisCandidate(raw: String): Option[(String, String)] =
-    synopsisProcessCache.computeIfAbsent(raw, (rawValue: String) => {
-      val processed = tools.TextNormalization.stripUrls(tools.SynopsisMarkdown.collapseRepeats(rawValue))
-      if (processed.isEmpty) None
-      else Some(processed -> tools.SynopsisMarkdown.strip(processed))
-    })
-
-  /** Synopsis candidates whose source passes `keep`, in source-priority order —
-   *  each source's live slot synopsis followed by its retained (post-prune) one.
-   *  Candidates come from BOTH the live `data` slots AND `retainedSynopses`
-   *  (synopses kept after a cinema dropped the film), so the pool only grows over
-   *  the row's life and shrinks only when the whole row is deleted — the result
-   *  is sticky/monotonic, never downgrading when a cinema stops listing the film.
-   *  Built in priority order (not raw `data`/`Set` iteration, whose order is
-   *  JVM/platform-dependent) so that when two sources tie on length the STABLE
-   *  `sortBy` in [[bestSynopsis]] keeps the higher-priority source —
-   *  deterministic across machines (raw order drifted the whole-corpus snapshot
-   *  between a dev box and CI). */
-  private def synopsisCandidatesFor(keep: Source => Boolean): Seq[(Source, String)] =
-    synopsisPool.filter { case (source, _) => keep(source) }
-
-  /** Every source's synopsis, in priority order (a slot's own before its retained one) — what
-   *  each candidate list filters. Filtering the few sources that carry one, rather than every key
-   *  of a row with thousands of venue slots, is the same list in the same order: which sources
-   *  pass depends on the source alone. */
-  private def synopsisPool: Seq[(Source, String)] =
-    (data.keySet ++ retainedSynopses.keySet).toSeq
-      .sortBy(s => Source.priorityOf(s))
-      .flatMap(s => (data.get(s).flatMap(_.synopsis).iterator ++ retainedSynopses.get(s).iterator).map(s -> _))
+  def synopsisCinema: Option[String] = synopses.cinema
 
   /** [[synopsisForCity]] for each of `cities`, from ONE candidate pool — and one pick for every
    *  city left with the same candidates and language (most: only TMDB's). The read model asks it for
    *  every city a film plays in, and a US wide release plays in hundreds, each of which rebuilt the
    *  pool from thousands of venue slots: 5% of a busy US worker's CPU (JFR, 2026-09-30). */
-  def synopsesForCities(cities: Seq[City]): Seq[(City, Option[String])] = {
-    val pool   = synopsisPool
-    val picked = scala.collection.mutable.HashMap.empty[(Seq[(Source, String)], String), Option[String]]
-    cities.map { city =>
-      val language   = city.country.language.getLanguage
-      val candidates = pool.filter { case (source, _) => synopsisAppliesToCity(city)(source) }
-      city -> picked.getOrElseUpdate((candidates, language), bestSynopsis(candidates, expectedLanguage = Some(language)))
-    }
-  }
+  def synopsesForCities(cities: Seq[City]): Seq[(City, Option[String])] = synopses.forCities(cities)
+
+  /** The synopsis picks, memoised per record ([[MovieSynopses]]). */
+  private lazy val synopses: MovieSynopses = new MovieSynopses(this)
 
   /** Longest non-empty cast list across all sources (ties broken by source
    *  priority — see `synopsis`), spelled the way TMDB spells the names it
@@ -718,16 +597,6 @@ case class MovieRecord(
 
   def filmwebHref(fallbackTitle: String): String =
     filmwebUrl.getOrElse(RatingSearchUrls.filmweb(originalTitle.getOrElse(fallbackTitle)))
-}
-
-/** Each rating site's SEARCH page for a title: the click-through when no direct page is known,
- *  and what a card whose identity is in doubt links to instead of a page that may be another
- *  film's (`services.readmodel.RatingGate`). */
-object RatingSearchUrls {
-  private def q(title: String) = java.net.URLEncoder.encode(title, "UTF-8")
-  def metacritic(title: String): String     = s"https://www.metacritic.com/search/${q(title)}/?category=2"
-  def rottenTomatoes(title: String): String = s"https://www.rottentomatoes.com/search?search=${q(title)}"
-  def filmweb(title: String): String        = s"https://www.filmweb.pl/search?query=${q(title)}"
 }
 
 object MovieRecord {

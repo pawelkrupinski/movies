@@ -355,7 +355,7 @@ class RouteProtectionMatrixSpec extends AnyFlatSpec with Matchers with BeforeAnd
   // The positive control: the SSO logout's legitimate caller is our other domain.
   it should "let our own pages, on either domain, reach a `siteonly` GET" in {
     StateChangingGets.collect { case (route, GetGuard.SiteOnly) => route }.foreach { case (verb, path) =>
-      (models.Country.deployedOrigins.toSeq.map(origin => Seq("Sec-Fetch-Site" -> "cross-site", "Referer" -> s"$origin/")) :+
+      (models.DeploymentOrigins.deployedOrigins.toSeq.map(origin => Seq("Sec-Fetch-Site" -> "cross-site", "Referer" -> s"$origin/")) :+
         Seq("Sec-Fetch-Site" -> "same-origin")).foreach { headers =>
         withClue(s"$verb $path $headers: ") {
           dispatch(signedInAsAdmin(FakeRequest(verb, concrete(path)).withHeaders(headers*))).reachedController shouldBe true

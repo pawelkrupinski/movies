@@ -1,7 +1,7 @@
 package modules
 
 import io.prometheus.metrics.model.registry.PrometheusRegistry
-import models.Country
+import models.{Country, DeploymentOrigins}
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.stream.Materializer
 import org.scalatest.BeforeAndAfterAll
@@ -88,9 +88,9 @@ class LegacyAddressUsageSpec extends AnyFlatSpec with Matchers with BeforeAndAft
     us.hits shouldBe Map(("legacy:qualified_to_bare", "bot") -> 1.0)
 
     val front = new Deployment(Country.Poland)
-    front.get("/york/", Browser, host = Country.apexHost)      // the table changes it: the US, not the UK
-    front.get("/kent/", Browser, host = Country.apexHost)      // in the table, but the UK either way
-    front.get("/leeds/", Ios, host = Country.apexHost)         // not in the table: the first in order
+    front.get("/york/", Browser, host = DeploymentOrigins.apexHost)      // the table changes it: the US, not the UK
+    front.get("/kent/", Browser, host = DeploymentOrigins.apexHost)      // in the table, but the UK either way
+    front.get("/leeds/", Ios, host = DeploymentOrigins.apexHost)         // not in the table: the first in order
     front.get("/york/", Browser, host = "kinowo.net")          // off the apex: nothing
     front.get("/poznan/", Bot)                                 // Poland's own page on its own host: nothing
     front.hits shouldBe Map(
@@ -108,18 +108,18 @@ class LegacyAddressUsageSpec extends AnyFlatSpec with Matchers with BeforeAndAft
 
   it should "not count a Polish place's 404 on the apex, which is no legacy address" in {
     val front = new Deployment(Country.Poland)
-    front.get("/warszawa/", Browser, host = Country.apexHost).header.status shouldBe 404
-    front.get("/warszawa", Browser, host = Country.apexHost).header.status shouldBe 404
+    front.get("/warszawa/", Browser, host = DeploymentOrigins.apexHost).header.status shouldBe 404
+    front.get("/warszawa", Browser, host = DeploymentOrigins.apexHost).header.status shouldBe 404
     // A renamed Polish slug neither: the apex does not 301 it onto a page it then 404s.
     val renamed = Country.Poland.renamedSlugs.keys.find(s => Country.bareSlugTarget(s).exists(_.country == Country.Poland))
       .getOrElse(fail("no renamed Polish slug"))
-    front.get(s"/$renamed/", Ios, host = Country.apexHost).header.status shouldBe 404
+    front.get(s"/$renamed/", Ios, host = DeploymentOrigins.apexHost).header.status shouldBe 404
     front.hits shouldBe empty
   }
 
   it should "count a slash-less legacy address once, not again for the slash its redirect adds" in {
     val front = new Deployment(Country.Poland)
-    front.follow("/york", Browser, host = Country.apexHost).header.headers("Location") shouldBe "/us/york/"
+    front.follow("/york", Browser, host = DeploymentOrigins.apexHost).header.headers("Location") shouldBe "/us/york/"
     front.hits shouldBe Map(("legacy:front_door_old_owner", "browser") -> 1.0)
     val uk = new Deployment(Country.UnitedKingdom)
     uk.follow("/uk/kent", Ios).header.status shouldBe 200

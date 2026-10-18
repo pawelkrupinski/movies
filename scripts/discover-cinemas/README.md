@@ -28,7 +28,7 @@ reruns after harvesting and geocoding the new venues.
 
 A venue is **parked** (reported, not wired) when it can't be placed safely:
 
-- nearest venue is on the **London** page — London needs a manual `londonAreas` area-group assignment;
+- nearest venue is on the **London** page — London needs a manual area assignment in `models.LondonAreas`;
 - **object-name collision** with an existing cinema;
 - **no coordinates** on the page — city can't be resolved;
 - **no sessions** this week — verify it is actually live before wiring.

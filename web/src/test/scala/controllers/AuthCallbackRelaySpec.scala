@@ -1,6 +1,6 @@
 package controllers
 
-import models.Country
+import models.{Country, DeploymentOrigins}
 import org.scalatest.OptionValues._
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
@@ -65,7 +65,7 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
   private def sessionFor(state: String, provider: String = "google") =
     Seq("oauthState" -> state, "oauthProvider" -> provider, "oauthStateTimestamp" -> NowMs.toString)
 
-  private val Apex = Country.oauthCallbackOrigin   // https://showtimes.cc
+  private val Apex = DeploymentOrigins.oauthCallbackOrigin   // https://showtimes.cc
   private val PlOrigin = Country.Poland.webOrigin.value
 
   // ── The registered URL ───────────────────────────────────────────────────
@@ -239,7 +239,7 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
   // overwhelmingly anonymous site, and could only be afforded once per browser,
   // so it stopped working the second time anyone signed in.
 
-  private val SiblingOfPoland = Country.siblingOfOrigin(PlOrigin).value
+  private val SiblingOfPoland = DeploymentOrigins.siblingOfOrigin(PlOrigin).value
   private val UkBase          = Country.UnitedKingdom.webUrl.value
 
   /** Where a finished sign-in or sign-out actually drops the visitor.

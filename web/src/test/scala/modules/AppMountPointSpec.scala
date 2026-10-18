@@ -56,7 +56,7 @@ class AppMountPointSpec extends AnyFlatSpec with Matchers {
   // used to do — crossing a path segment silently signs the visitor out.
   //
   // It is safe to share because the `userId` inside resolves against the SHARED
-  // users database (`Country.usersDbName`), so it names the same account
+  // users database (`UsersDatabase.name`), so it names the same account
   // whichever mount decodes it.
   it should "leave the session cookie at the host root, so one sign-in covers every country on the domain" in {
     httpConfigFor(Country.UnitedKingdom).session.path shouldBe "/"
