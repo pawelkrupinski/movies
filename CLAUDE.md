@@ -282,6 +282,8 @@ Rules:
   a measure, a slice, an sbt suite, a local convergence leg), idle gaps,
   sbt runs by shape, the pre-push hook; `--agent <id>` lists one agent's
   slowest steps.
+- **Wait on your own long run (a slice batch, a local measure, an sbt suite) with `scripts/wait-for <log> <pattern> [--pid P]`**
+  run in the background, acting on its notification -- never a foreground `until grep; sleep` loop.
 - **Wait on CI with `scripts/ci-wait`**, never a hand-written `gh run view`/`sleep` loop (one took jq's
   "null null null" for a verdict): `--run <id>`; `--workflow <w> --sha <commit>` (waits for the run to appear,
   then to finish); several `--workflow`s at once for a set; `--or-later` for a green run at that commit or a

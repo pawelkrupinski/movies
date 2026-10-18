@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+#
+# Wait for a line in a file -- the one way an agent waits on its own long run (a slice batch, a local measure, an sbt
+# suite, a capture). Run it with run_in_background and act on its notification; never a hand-written
+# `until grep -q ...; do sleep; done` loop in the foreground, which held 2026-10-18's agents in 10-minute polls they
+# could not leave (the agent-time buckets "poll: slice" / "poll: measure").
+#
+#   scripts/wait-for <file> <pattern> [--timeout SECONDS] [--poll SECONDS] [--pid PID]
+#
+#   <pattern>   an extended regex (grep -E) a line of <file> must match; the file may not exist yet
+#   --timeout   give up after this many seconds (default 7200)
+#   --poll      seconds between looks (default 5)
+#   --pid       the process writing the file: once it is gone and nothing matched, stop waiting (it never will)
+#
+# Prints the first matching line and exits 0; exits 1 when --pid's process ended with no match (the file's last 20
+# lines printed), 2 on a timeout or a usage error.
+set -uo pipefail
+# shellcheck source=scripts/tool-conventions.sh
+. "$(dirname "$0")/tool-conventions.sh"
+case "${1:-}" in -h|--help) usage_from_header; exit 0 ;; esac
+[ $# -ge 2 ] || { usage_from_header >&2; exit 2; }
+file=$1 pattern=$2 timeout=7200 poll=5 pid=""
+shift 2
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --timeout) timeout=${2:?--timeout SECONDS}; shift 2 ;;
+    --poll) poll=${2:?--poll SECONDS}; shift 2 ;;
+    --pid) pid=${2:?--pid PID}; shift 2 ;;
+    *) echo "wait-for: unknown argument: $1" >&2; exit 2 ;;
+  esac
+done
+
+SECONDS=0
+while :; do
+  if [ -f "$file" ] && line=$(grep -m1 -E -- "$pattern" "$file"); then
+    echo "$line"; exit 0
+  fi
+  if [ -n "$pid" ] && ! kill -0 "$pid" 2>/dev/null; then
+    # one last look: the writer may have finished between the two checks
+    if [ -f "$file" ] && line=$(grep -m1 -E -- "$pattern" "$file"); then echo "$line"; exit 0; fi
+    echo "wait-for: process $pid ended without a line matching /$pattern/ in $file; its last lines:" >&2
+    [ -f "$file" ] && tail -20 "$file" >&2
+    exit 1
+  fi
+  [ "$SECONDS" -lt "$timeout" ] || { echo "wait-for: no line matching /$pattern/ in $file after ${timeout}s" >&2; exit 2; }
+  sleep "$poll"
+done
