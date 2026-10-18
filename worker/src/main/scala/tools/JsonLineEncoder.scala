@@ -8,7 +8,7 @@ import java.nio.charset.StandardCharsets
 /**
  * The worker's stdout format: ONE JSON object per log line — `level`, `logger`, `thread`, `message`, then the logger
  * context's properties (the `build` the boot stamps, `LogFields.stampBuild`), the MDC (a projection's
- * `projection_id`), the key-value pairs a log call adds (`StructuredLog`), and a thrown exception's `stack_trace` (which `message` also
+ * `projection_id`), the key-value pairs a log call adds (`LogFields.info` / `warn`), and a thrown exception's `stack_trace` (which `message` also
  * ends with, so a word search over `_msg` finds it).
  *
  * The fleet's Vector parses a JSON line and merges its fields into the VictoriaLogs row (`mergeJsonBodyVrl` in

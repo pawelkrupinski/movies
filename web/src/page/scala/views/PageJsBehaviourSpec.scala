@@ -1491,6 +1491,27 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
     }
   }
 
+  it should "ask for a failed pane again when the locate status's load error is tapped" in {
+    onLanding { page =>
+      holdingPanes(page, failing = Set("de"))
+      page.waitFor(s"__panes.requests.length === ${otherCountries.size}")
+      // Munich: no Polish place within reach, so only Germany's failed pane can answer.
+      page.eval("__panes.locateAt(48.137, 11.575)")
+      otherCountries.filterNot(_ == "de").foreach { code => releasePane(page, code); waitForPane(page, code) }
+      page.waitFor("document.querySelector('#picker-locate-status .locate-status-text').textContent.indexOf('spróbować ponownie') >= 0")
+      page.evalBool("__panes.picked === undefined") shouldBe true
+      val asked = paneRequests(page, "de")
+
+      // "tap to try again" means it: the tap asks for Germany's pane once more, and the pick lands.
+      page.eval("__panes.fail('de', false)")
+      page.eval("document.getElementById('picker-locate-status').click()")
+      page.waitFor(s"__panes.requestsFor('de') === ${asked + 1}")
+      releasePane(page, "de")
+      page.waitFor("__panes.picked !== undefined")
+      page.evalString("__panes.picked.country") shouldBe "de"
+    }
+  }
+
   it should "say so when a pane fails, keep its own country working, and ask again on the next pick" in {
     onLanding { page =>
       holdingPanes(page, failing = Set("de"))

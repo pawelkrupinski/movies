@@ -670,11 +670,15 @@
       renderPickerBody();
     }
 
-    function setLocateStatus(text, busy) {
+    // `onTap`, when given, is what tapping the status does — the load error's
+    // "tap to try again" asks for the panes once more.
+    function setLocateStatus(text, busy, onTap) {
       const status = document.getElementById('picker-locate-status');
       status.querySelector('.locate-status-text').textContent = text;
       status.querySelector('.picker-spinner').hidden = !busy;
       status.hidden = !text;
+      status.onclick = onTap || null;
+      status.style.cursor = onTap ? 'pointer' : '';
     }
 
     // The picker's own manual locate button — unlike the automatic check
@@ -694,7 +698,8 @@
           panes.then(function (allArrived) {
             const c = nearestCityWithinKm(citiesIn(document.getElementById('picker-panes')).concat(handoffPlaces()), pos.coords.latitude, pos.coords.longitude, 100);
             if (c) { setLocateStatus('', false); pickPickerCity(c); }
-            else setLocateStatus(t(allArrived ? 'landing.noNearby' : 'landing.loadError'), false);
+            else if (allArrived) setLocateStatus(t('landing.noNearby'), false);
+            else setLocateStatus(t('landing.loadError'), false, locatePickerAnywhere);
           });
         },
         function () { setLocateStatus(t('landing.noNearby'), false); },

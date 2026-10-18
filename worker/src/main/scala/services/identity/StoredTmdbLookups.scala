@@ -99,8 +99,8 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
       val people = intsOf(search).take(MaxPersonCandidates).map(id => document(TmdbKind.Person, id.toString))
       if (people.exists(_.isEmpty)) Answer.Unknown
       else Answer.sequence(people.flatten.map { p =>
-        val directed = intsOf(p, "directed")
-        hitsOf(if (directed.nonEmpty) directed else intsOf(p, "wrote"))
+        val directedIds = intsOf(p, "directed")
+        hitsOf(if (directedIds.nonEmpty) directedIds else intsOf(p, "wrote"))
       }).map(_.flatten.distinctBy(_.tmdbId))
     }
 

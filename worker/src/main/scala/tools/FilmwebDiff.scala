@@ -9,7 +9,7 @@ import services.cinemas.pl.{FilmwebCinemaIdResolver, FilmwebShowtimesClient}
 import play.api.libs.json.Json
 
 import java.io.PrintWriter
-import java.time.{Instant, LocalDate, LocalDateTime}
+import java.time.{LocalDate, LocalDateTime}
 import scala.concurrent.duration.Duration
 import scala.concurrent.{Await, Future}
 import scala.util.{Failure, Success, Try}
@@ -33,8 +33,9 @@ import scala.util.{Failure, Success, Try}
  *
  * Run by hand or daily in CI (`.github/workflows/filmweb-diff.yml`):
  *   sbt "worker/runMain tools.FilmwebDiff 3 out.txt out.csv [city-slug …]"
- * args: [daysAhead] [out.txt] [out.csv] [city-slug …] — order-independent for the
- * paths (a `*.txt` is the text report, a `*.csv` the summary); bare city slugs
+ * args: [daysAhead] [out.txt] [out.csv] [out.json] [city-slug …] — order-independent for the
+ * paths (a `*.txt` is the text report, a `*.csv` the summary, a `*.json` the deterministic
+ * report; each defaulted when omitted); bare city slugs
  * restrict to those cities; anything else stops it with exit 2 before any fetch
  * (`Options.parse`). Past that it always exits 0 (per-cinema network errors are
  * Try-wrapped and reported, never fatal) so a scheduled job's artifact uploads.
@@ -125,7 +126,8 @@ object FilmwebDiff {
     IssuerCertificateFetching.Enabled.applyToJvm()
     val process = settings.ProcessConfiguration.resolve()
     val daysAhead = options.daysAhead
-    val now       = models.VenueClock.system.now(models.TimeZones.Poland)
+    val clock     = java.time.Clock.systemUTC()   // the tool's composition root: its one clock, handed down
+    val now       = new models.VenueClock(clock).now(models.TimeZones.Poland)
     val today     = now.toLocalDate
     val windowEnd = today.plusDays(daysAhead.toLong)
 
@@ -142,7 +144,7 @@ object FilmwebDiff {
     // Multikino, biletyna and ck105 refuse a datacenter runner: through the residential
     // proxy, as the worker reaches Multikino and biletyna, when the Decodo credentials are set.
     val shards   = modules.wiring.EgressWiring.residentialShards(ResidentialProxy.fromConfiguration(process), TlsTrust.newContext())
-    val catalog  = new CinemaScraperCatalog(http, venueClock = models.VenueClock.fixedOn(today), clock = java.time.Clock.systemUTC(), titles = titles, proxyShards = shards)
+    val catalog  = new CinemaScraperCatalog(http, venueClock = models.VenueClock.fixedOn(today), clock = clock, titles = titles, proxyShards = shards)
     val resolver = new FilmwebCinemaIdResolver(http)
 
     val out = new StringBuilder
@@ -235,7 +237,7 @@ object FilmwebDiff {
     // JSON includes the unresolved cinemas too, so its `cinemas` set is stable.
     val meta = FilmwebDiffJson.Meta(
       date        = today.toString,
-      generatedAt = Instant.now().toString,
+      generatedAt = clock.instant().toString,
       windowDays  = daysAhead,
       commit      = process.githubCommit.value
     )

@@ -9,7 +9,6 @@ import settings.{HealthPort, HeapDumpDirectory, ProcessConfiguration}
 import tools.{ExecutionBudget, IssuerCertificateFetching, ProxyTunnelAuthentication}
 
 import java.net.InetSocketAddress
-import java.time.Instant
 import java.util.concurrent.CountDownLatch
 
 /**
@@ -302,12 +301,13 @@ object WorkerMain extends Logging {
     //
     // One render over the SHARED registry covers every country (each wiring supplies
     // its own country-tagged queue sample) plus the process-level JVM/native series.
+    val clock    = wirings.head.clock
     val snapshot = new services.metrics.MetricsSnapshotCache(render = () =>
       workerMetrics.taskSeries.scrape(
         wirings.map(w => services.metrics.WorkerTaskMetrics.CountryQueueSample.read(
           w.country.code, w.taskQueue.monitor(MetricsActiveLimit),
           w.movieRepository.changeStreamLiveness)),
-        Instant.now()), clock = wirings.head.clock)
+        clock.instant()), clock = clock)
     snapshot.start()
     server.createContext("/metrics", exchange => {
       val body = snapshot.serve()

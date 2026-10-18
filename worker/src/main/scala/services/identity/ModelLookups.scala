@@ -20,8 +20,9 @@ final class VenueDetailLookups(enrichers: Seq[DetailEnricher], index: VenuePageI
 /**
  * The model's lookups answered from what it keeps first (`stored`: its normalized TMDB store and the
  * venues' enriched details), and only a TMDB or IMDb question the store has no answer to asked `live`
- * — through the fetch that files its answer into the store (`NormalizingHttpFetch`), then read back from there. So a take-up reads the store in batches, as the shadow's does, instead of
- * asking every question again; venue details are never fetched here, only waited for.
+ * — through the fetch that files its answer into the store (`NormalizingHttpFetch`), then read back from
+ * there. So a take-up reads the store in batches instead of asking every question again; venue details
+ * are never fetched here, only waited for.
  */
 final class StoredFirstLookups(stored: IdentityLookups, live: IdentityLookups) extends IdentityLookups {
   def hasDetail(listing: Listing): Boolean                  = stored.hasDetail(listing)
