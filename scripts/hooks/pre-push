@@ -14,8 +14,9 @@
 #                 script or workflow under scripts/, .github/ or infra/ -- plus, on any change under scripts/,
 #                 .github/, .claude/, CLAUDE.md, build.sbt, project/ or */src/test|it/ (`--lint-plan`, ~30 s warm),
 #                 every other repo-reading lint spec: all deploy/ specs and the No*/*Lint* source lints, bar the
-#                 ones listed at lint_plan (GitOps manifests or a booted server needed); `lintspecs` skips just
-#                 those -- and,
+#                 ones listed at lint_plan that boot a server -- those reading the GitOps manifests too, once
+#                 infra/bin/fetch-gitops has put them in place (GitHub, else the local clone; neither reachable:
+#                 warned, and those specs skipped); `lintspecs` skips just those -- and,
 #                 ahead of them in that same run, the Test/It/Page configs of every module the push
 #                 touches and every module depending on one (`sbt compile` skips them all: f20a6b5dd
 #                 broke worker/It/compile and only CI saw it). `--compile-plan` prints that list.
@@ -250,7 +251,8 @@ compile_plan() {
 #   <module>/src/test/scala/deploy/*Spec.scala     every workflow / wiring / budget / gate spec
 #   <module>/src/test/scala/tools/{No*,*Lint*}Spec the source lints (common, worker, web)
 # except what stays out, and why:
-#   needs the GitOps manifests, which live in another repository (infra/kubernetes/ is absent here; CI checks them out):
+#   needs the GitOps manifests, which live in another repository (CI checks them out; the sbt check runs
+#   infra/bin/fetch-gitops first, and with PREPUSH_GITOPS=1 -- the manifests in place -- these run too):
 #       NodeCpuBudgetSpec NodeMemoryBudgetSpec ChangeStreamSilenceAlertSpec CinemaScrapeStalenessAlertSpec
 #       WorkerRolloutStaggerSpec FluxImageAutomationSpec JdkParityOptionsSpec AotCacheOptionsSpec K8sTierPathGatingSpec
 #       PrometheusNodePortAgreementSpec WorkerScrapeCadenceConfigSpec SharedUsersDatabaseConfigSpec WebRolloutAvailabilitySpec
@@ -258,23 +260,30 @@ compile_plan() {
 # Skip just these with PREPUSH_SKIP=lintspecs (the standing five still run under `sbt`).
 LintSpecsNeedingGitOps="NodeCpuBudgetSpec NodeMemoryBudgetSpec ChangeStreamSilenceAlertSpec CinemaScrapeStalenessAlertSpec WorkerRolloutStaggerSpec FluxImageAutomationSpec JdkParityOptionsSpec AotCacheOptionsSpec K8sTierPathGatingSpec PrometheusNodePortAgreementSpec WorkerScrapeCadenceConfigSpec SharedUsersDatabaseConfigSpec WebRolloutAvailabilitySpec"
 LintSpecsBootingServers="FixtureServerBootSpec FixtureServerBootOverlapSpec"
-lint_plan() {
-    local reads_repo=0 path module dir file spec
+# Whether one of the paths on stdin is one the repo-reading lint specs read.
+reads_repo() {
+    local path found=1
     while IFS= read -r path; do
         case "$path" in
-            scripts/*|.github/*|.claude/*|CLAUDE.md|build.sbt|project/*|*/src/test/*|*/src/it/*|*/src/page/*.scala|worker/src/fixtures/*|testkit/*) reads_repo=1 ;;
+            scripts/*|.github/*|.claude/*|CLAUDE.md|build.sbt|project/*|*/src/test/*|*/src/it/*|*/src/page/*.scala|worker/src/fixtures/*|testkit/*) found=0 ;;
         esac
     done
+    return $found
+}
+lint_plan() {
+    local repo_read=0 module dir file spec excluded="$LintSpecsBootingServers"
+    reads_repo && repo_read=1
+    [ "${PREPUSH_GITOPS:-}" = 1 ] || excluded="$excluded $LintSpecsNeedingGitOps"
     printf '%s\n' worker:tools.NoWallClockInTestsSpec worker:services.cinemas.NoWallClockInClientsSpec \
         worker:deploy.GrafanaMetricCoverageSpec worker:deploy.NoSilencedGhCurlSpec web:deploy.GrafanaWebMetricCoverageSpec
-    if [ $reads_repo = 1 ] && ! skipped lintspecs; then
+    if [ $repo_read = 1 ] && ! skipped lintspecs; then
         for module in common worker web; do
             for dir in deploy tools; do
                 for file in "$module"/src/test/scala/$dir/*Spec.scala; do
                     [ -f "$file" ] || continue
                     spec="$(basename "$file" .scala)"
                     case "$dir:$spec" in tools:No*|tools:*Lint*|deploy:*) ;; *) continue ;; esac
-                    case " $LintSpecsNeedingGitOps $LintSpecsBootingServers " in *" $spec "*) continue ;; esac
+                    case " $excluded " in *" $spec "*) continue ;; esac
                     case "$module:$dir.$spec" in
                         worker:tools.NoWallClockInTestsSpec|worker:deploy.GrafanaMetricCoverageSpec|worker:deploy.NoSilencedGhCurlSpec|web:deploy.GrafanaWebMetricCoverageSpec) continue ;;
                     esac
@@ -535,6 +544,15 @@ check_sbt() {
     # shellcheck disable=SC2207 # task names carry no spaces
     compiles=($(printf '%s\n' "$changed" | compile_plan))
     local lints module tests=()
+    # The specs reading the GitOps manifests join the lints once infra/bin/fetch-gitops has put them in this checkout
+    # (from GitHub, else the local clone it falls back to); neither reachable, they are skipped, and said so.
+    if printf '%s\n' "$changed" | reads_repo && ! skipped lintspecs; then
+        if [ -x infra/bin/fetch-gitops ] && KINOWO_GITOPS_DEST="$PWD/infra/kubernetes" bounded "${PREPUSH_GITOPS_SECONDS:-90}" infra/bin/fetch-gitops > "$tmp/fetch-gitops.log" 2>&1; then
+            export PREPUSH_GITOPS=1
+        else
+            warn "GitOps manifests unreachable (GitHub and the local clone; $tmp/fetch-gitops.log) -- the deploy specs reading them SKIPPED"
+        fi
+    fi
     lints="$(printf '%s\n' "$changed" | lint_plan)"
     for module in common worker web; do
         tests+=("$module/Test/testOnly $(printf '%s\n' "$lints" | sed -n "s/^$module://p" | tr '\n' ' ' | sed 's/ $//')")

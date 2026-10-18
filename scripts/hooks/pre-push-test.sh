@@ -134,6 +134,9 @@ out="$(lints scripts/x.sh)"
 check "...and the common source lints" "yes" "$(has "$out" common:tools.SourceControlCharactersLintSpec)"
 check "...but not a spec that needs the GitOps manifests, nor one that boots a server" "no no" \
   "$(has "$out" worker:deploy.NodeCpuBudgetSpec) $(has "$out" worker:deploy.FixtureServerBootSpec)"
+out="$(PREPUSH_GITOPS=1 lints scripts/x.sh)"
+check "...the GitOps manifests in place (PREPUSH_GITOPS=1), the specs reading them too, still none that boots a server" "yes no" \
+  "$(has "$out" worker:deploy.NodeCpuBudgetSpec) $(has "$out" worker:deploy.FixtureServerBootSpec)"
 check "PREPUSH_SKIP=lintspecs drops them, keeping the standing lints" "$Always" \
   "$(PREPUSH_SKIP=lintspecs lints scripts/x.sh)"
 check "an iOS-only push selects no sbt check" "ios" "$(plan ios/Kinowo/Views/A.swift)"
@@ -192,6 +195,25 @@ if command -v shellcheck >/dev/null; then
     "worker/Test/compile worker/It/compile e2e/Test/compile" \
     "$(grep -E '^[a-z0-9]+/[A-Za-z]+/compile$' "$scratch/sbt-args" 2>/dev/null | tr '\n' ' ' | sed 's/ $//')"
   check "...ahead of the lints, which still run" "1" "$(grep -c 'worker/Test/testOnly' "$scratch/sbt-args" 2>/dev/null)"
+  # The specs reading the GitOps manifests run once infra/bin/fetch-gitops has put them in place, and are skipped, with a
+  # warning, when it cannot (neither GitHub nor the local clone reachable).
+  mkdir -p "$repo/worker/src/test/scala/deploy" "$repo/infra/bin"
+  echo 'class NodeCpuBudgetSpec' > "$repo/worker/src/test/scala/deploy/NodeCpuBudgetSpec.scala"
+  printf '#!/usr/bin/env bash\necho "$KINOWO_GITOPS_DEST" > "%s/gitops-dest"\n' "$scratch" > "$repo/infra/bin/fetch-gitops"
+  chmod +x "$repo/infra/bin/fetch-gitops"
+  scratch_git "$repo" add worker infra; scratch_git "$repo" commit -qm "adds a GitOps-reading spec"
+  rm -f "$scratch/sbt-args"
+  out="$(cd "$repo" && PATH="$scratch/bin:$PATH" bash scripts/hooks/pre-push --range "HEAD~1..HEAD" 2>&1)"
+  check "fetches the GitOps manifests into the checkout the lints run in" "$(cd "$repo" && pwd -P)/infra/kubernetes" \
+    "$(cat "$scratch/gitops-dest" 2>/dev/null | sed "s|^$repo|$(cd "$repo" && pwd -P)|")"
+  check "...and runs the specs reading them" "1" "$(grep -c 'deploy.NodeCpuBudgetSpec' "$scratch/sbt-args" 2>/dev/null)"
+  printf '#!/usr/bin/env bash\nexit 1\n' > "$repo/infra/bin/fetch-gitops"
+  echo '// unreachable' >> "$repo/worker/src/test/scala/deploy/NodeCpuBudgetSpec.scala"
+  scratch_git "$repo" commit -qam "the manifests unreachable"
+  rm -f "$scratch/sbt-args"
+  out="$(cd "$repo" && PATH="$scratch/bin:$PATH" bash scripts/hooks/pre-push --range "HEAD~1..HEAD" 2>&1)"
+  check "unreachable, skips them with a warning, and runs the other lints" "0 1 1" \
+    "$(grep -c 'deploy.NodeCpuBudgetSpec' "$scratch/sbt-args" 2>/dev/null) $(printf '%s\n' "$out" | grep -c 'GitOps manifests unreachable') $(grep -c 'worker/Test/testOnly' "$scratch/sbt-args" 2>/dev/null)"
   printf '#!/usr/bin/env bash\npwd -P > "%s/sbt-ran-in"\n' "$scratch" > "$scratch/bin/sbt"
   mkdir -p "$repo/src"; echo 'object A' > "$repo/src/A.scala"
   scratch_git "$repo" add src/A.scala; scratch_git "$repo" commit -qm "adds a Scala source"

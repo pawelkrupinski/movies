@@ -296,8 +296,10 @@ Each a production change: measure with `scripts/identity-measure`, land one at a
   now; the "base predates the findings files" branch remains only for an old base (a measure of an old commit).
 - [x] `build.sbt` sample aliases still include the shape specs, so the auto-bisect runs them (production path).
   Dropped 2026-10-18: the sample aliases replay the sample suite alone (ConvergenceLegWiringSpec pins it).
-- [ ] 13 deploy specs need the GitOps manifests (moved out of the repo) and fail locally; they are left out of the
-  pre-push lint set.
+- [x] 13 deploy specs need the GitOps manifests (moved out of the repo) and fail locally; they are left out of the
+  pre-push lint set. Back in 2026-10-18: pre-push's sbt check runs `infra/bin/fetch-gitops` first (GitHub, else the
+  local clone ~/projects/movies-gitops) and then runs them (112 tests green locally); neither reachable, it warns and
+  skips just those.
 - [ ] identity-measure's run on an old commit (b7d2d7ec2) had every takes row fail under main's CI; not investigated.
 - [ ] A `ci / test` prometheus FileNotFoundError was reported once on main; not reproduced.
 - [ ] Judge a random sample of the ~95% unjudged served listings per country (`scripts/identity-judge-cards`) to
