@@ -1,12 +1,11 @@
 package services.metrics
 
-import io.prometheus.metrics.core.metrics.{Counter, GaugeWithCallback}
+import io.prometheus.metrics.core.metrics.Counter
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.SlugRedirectKind
 import play.api.mvc.RequestHeader
 
-import java.time.{Clock, Instant}
-import java.util.concurrent.ConcurrentHashMap
+import java.time.Clock
 
 /**
  * The retirement signal for the OLD ADDRESSES of cities — which kind of legacy
@@ -25,21 +24,12 @@ import java.util.concurrent.ConcurrentHashMap
  */
 class LegacyAddressMetrics(registry: PrometheusRegistry, country: String, clock: Clock) {
 
-  private val lastCalled = new ConcurrentHashMap[(LegacyAddressKind, String), Instant]()
-
-  GaugeWithCallback.builder()
-    .name("kinowo_web_legacy_address_last_called_seconds")
-    .help("Unix time a legacy city address of each kind was last served since this process booted, by " +
+  private val lastCalled = new LastCalledGauge(registry, "kinowo_web_legacy_address_last_called_seconds",
+    "Unix time a legacy city address of each kind was last served since this process booted, by " +
       "country and client kind (ios_app, android_app, browser, bot, other); read with max_over_time " +
       "across restarts. Temporary — drop when legacy:front_door_old_owner shows no human/app calls " +
-      "over 30 days; it counts web hits only, and the apps' own use of the table is never measured.")
-    .labelNames("country", "kind", "client")
-    .callback { callback =>
-      lastCalled.forEach { case ((kind, client), instant) =>
-        callback.call(instant.getEpochSecond.toDouble, country, kind.label, client)
-      }
-    }
-    .register(registry)
+      "over 30 days; it counts web hits only, and the apps' own use of the table is never measured.",
+    country, clock, "kind", "client")
 
   private val hits = Counter.builder()
     .name("kinowo_web_legacy_address_hits_total")
@@ -54,7 +44,7 @@ class LegacyAddressMetrics(registry: PrometheusRegistry, country: String, clock:
   def record(kind: LegacyAddressKind, request: RequestHeader): Unit =
     if (WebHttpMetrics.isMeasured(request)) {
       val client = WebRouteUsageMetrics.clientKind(request.headers.get(play.api.http.HeaderNames.USER_AGENT))
-      lastCalled.put((kind, client), clock.instant())
+      lastCalled.stamp(kind.label, client)
       hits.labelValues(country, kind.label, client).inc()
     }
 }

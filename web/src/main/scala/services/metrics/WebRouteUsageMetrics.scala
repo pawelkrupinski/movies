@@ -4,7 +4,7 @@ import io.prometheus.metrics.core.metrics.GaugeWithCallback
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import play.api.mvc.RequestHeader
 
-import java.time.{Clock, Instant}
+import java.time.Clock
 import java.util.concurrent.ConcurrentHashMap
 import scala.jdk.CollectionConverters._
 
@@ -39,22 +39,13 @@ import scala.jdk.CollectionConverters._
  */
 class WebRouteUsageMetrics(registry: PrometheusRegistry, country: String, clock: Clock) {
 
-  private val lastCalled = new ConcurrentHashMap[(String, String), Instant]()
-  private val defined    = ConcurrentHashMap.newKeySet[String]()
-
-  GaugeWithCallback.builder()
-    .name("kinowo_web_route_last_called_seconds")
-    .help("Unix time each matched route pattern was last called since this process booted, by " +
+  private val lastCalled = new LastCalledGauge(registry, "kinowo_web_route_last_called_seconds",
+    "Unix time each matched route pattern was last called since this process booted, by " +
       "country and client kind (ios_app, android_app, browser, bot, other). Absent until the first " +
       "call; read with max_over_time across restarts. Excludes the /metrics scrape and the " +
-      "synthetic probe.")
-    .labelNames("country", "route", "client")
-    .callback { callback =>
-      lastCalled.forEach { case ((route, client), instant) =>
-        callback.call(instant.getEpochSecond.toDouble, country, route, client)
-      }
-    }
-    .register(registry)
+      "synthetic probe.",
+    country, clock, "route", "client")
+  private val defined    = ConcurrentHashMap.newKeySet[String]()
 
   GaugeWithCallback.builder()
     .name("kinowo_web_route_defined")
@@ -66,10 +57,9 @@ class WebRouteUsageMetrics(registry: PrometheusRegistry, country: String, clock:
 
   /** Called once per measured request by [[modules.HttpMetricsFilter]]. */
   def record(request: RequestHeader): Unit =
-    lastCalled.put(
-      (WebHttpMetrics.routeLabel(request),
-       WebRouteUsageMetrics.clientKind(request.headers.get(play.api.http.HeaderNames.USER_AGENT))),
-      clock.instant())
+    lastCalled.stamp(
+      WebHttpMetrics.routeLabel(request),
+      WebRouteUsageMetrics.clientKind(request.headers.get(play.api.http.HeaderNames.USER_AGENT)))
 
   /** Publishes the router's inventory, in Play's generated spelling
    *  (`/$city<[^/]+>/api/repertoire`), as the same `/:city/…` labels requests get. */
