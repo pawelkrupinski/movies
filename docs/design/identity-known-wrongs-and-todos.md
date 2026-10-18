@@ -290,9 +290,12 @@ Each a production change: measure with `scripts/identity-measure`, land one at a
   earlier identity commit's convergence run is pending).
 - [ ] Code-gates vs data-findings, the remaining proposal: a pinned, triaged recording for the code gates; whether
   coverage-band drift stays blocking (see the memory note `project_split_code_gates_from_data_findings`).
-- [ ] Shape-lint base-vs-head diffing only starts with the next shape-path change (the base predates the findings
-  files).
-- [ ] `build.sbt` sample aliases still include the shape specs, so the auto-bisect runs them (production path).
+- [x] Shape-lint base-vs-head diffing only starts with the next shape-path change (the base predates the findings
+  files). Closed 2026-10-18 with no change: every base since 8c7e075b0 (10-14) writes the findings files, and the
+  shape paths have changed on main since (f345608b8 and others), so `identity-takes-check.sh` diffs base against head
+  now; the "base predates the findings files" branch remains only for an old base (a measure of an old commit).
+- [x] `build.sbt` sample aliases still include the shape specs, so the auto-bisect runs them (production path).
+  Dropped 2026-10-18: the sample aliases replay the sample suite alone (ConvergenceLegWiringSpec pins it).
 - [ ] 13 deploy specs need the GitOps manifests (moved out of the repo) and fail locally; they are left out of the
   pre-push lint set.
 - [ ] identity-measure's run on an old commit (b7d2d7ec2) had every takes row fail under main's CI; not investigated.

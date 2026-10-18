@@ -179,6 +179,20 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
     }
   }
 
+  /** The bisect replays the sample alias per commit to find the one that turned a leg red; the corpus-shape specs judge
+   *  the RECORDING's shape, which the takes row already judges base against head, so on the sample's sbt line they only
+   *  cost every bisect step their run and could stop it on a finding the recording brought. */
+  it should "replay only the sample's suite in the bisect, never the corpus-shape specs" in {
+    countries.values.map(_._2).foreach { sample =>
+      val definition = build.linesIterator.find(_.startsWith("addCommandAlias(\"" + sample + "\"")).getOrElse(fail(s"no $sample alias"))
+      withClue(s"$sample: ") {
+        definition should include("\"e2e/Test/testOnly services.movies.")
+        definition should not include "corpusShape"
+        definition should not include "CinemaSlotInvariantsSpec"
+      }
+    }
+  }
+
   /** The suite step, in every row but the takes check's. */
   private val SuiteStep  = "Run the ${{ inputs.country }} ${{ matrix.phase }} suite"
 

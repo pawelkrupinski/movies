@@ -593,31 +593,27 @@ addCommandAlias("e2eRest",     "e2e/Test/testOnly * -- -l services.movies.Corpus
 // into `TitleNormalizer`, which is process-global, so two countries in one JVM
 // would overwrite each other's normalisation. Hence no `convergenceAll` alias —
 // running them together is exactly the thing that would silently mis-test.
-// The FAST legs: the same claims over the ~100-film sample, run ahead of the full
-// matrix so a regression that costs every country its rating ladders is caught in
-// minutes rather than after the longest leg in the suite.
+// The SAMPLE: the same claims over the ~100-film sample. No leg runs it (`country-convergence-leg.yml`):
+// the sample corpus is a slice of the full one, so beside the full suite it only failed faster. A red
+// hermetic leg's auto-bisect replays it per commit (`convergence-bisect.yml`), its suite alone.
 //
-// Each sample leg also holds its country's RECORDED corpus — the one the leg has just restored or
-// recorded into test/resources/fixtures/corpus — to the corpus-shape specs (`CorpusShapeSpec`):
-// every cinema slot's field shapes and every listing's title search. `-z recorded:<cc>` selects that
-// country's tests alone, so the Polish fixture boot those specs also cover stays in `e2eRest`.
+// The corpus-shape specs (`CorpusShapeSpec`) hold a country's RECORDED corpus — the one the leg has
+// restored or recorded into test/resources/fixtures/corpus — to every cinema slot's field shapes and
+// every listing's title search; `-z recorded:<cc>` selects that country's tests alone, so the Polish
+// fixture boot those specs also cover stays in `e2eRest`. A hermetic leg's takes row runs them at the
+// base and the head and a recording's convergence row ahead of its suite, through these aliases.
 def corpusShape(code: String): String =
   s"e2e/Test/testOnly services.movies.CinemaSlotInvariantsSpec services.movies.SearchQueryMarkersSpec -- -z recorded:$code"
-def convergenceSample(spec: String, code: String): String = s"; e2e/Test/testOnly services.movies.$spec ; ${corpusShape(code)}"
-// A HERMETIC row with no sample row runs no sample (`country-convergence-leg.yml`): the sample corpus
-// is a slice of the full one, so beside the full suite it only failed faster, for ~2 minutes of every
-// row's wall time. Its corpus-shape specs are the part the suite does not cover, so the row runs them
-// ahead of its suite through these.
 addCommandAlias("corpusShapePoland",  corpusShape("pl"))
 addCommandAlias("corpusShapeGermany", corpusShape("de"))
 addCommandAlias("corpusShapeUk",      corpusShape("uk"))
 addCommandAlias("corpusShapeSpain",   corpusShape("es"))
 addCommandAlias("corpusShapeUs",      corpusShape("us"))
-addCommandAlias("convergencePolandSample",  convergenceSample("PolandSampleConvergenceSpec", "pl"))
-addCommandAlias("convergenceGermanySample", convergenceSample("GermanySampleConvergenceSpec", "de"))
-addCommandAlias("convergenceUkSample",      convergenceSample("UnitedKingdomSampleConvergenceSpec", "uk"))
-addCommandAlias("convergenceUsSample",      convergenceSample("UnitedStatesSampleConvergenceSpec", "us"))
-addCommandAlias("convergenceSpainSample",   convergenceSample("SpainSampleConvergenceSpec", "es"))
+addCommandAlias("convergencePolandSample",  "e2e/Test/testOnly services.movies.PolandSampleConvergenceSpec")
+addCommandAlias("convergenceGermanySample", "e2e/Test/testOnly services.movies.GermanySampleConvergenceSpec")
+addCommandAlias("convergenceUkSample",      "e2e/Test/testOnly services.movies.UnitedKingdomSampleConvergenceSpec")
+addCommandAlias("convergenceUsSample",      "e2e/Test/testOnly services.movies.UnitedStatesSampleConvergenceSpec")
+addCommandAlias("convergenceSpainSample",   "e2e/Test/testOnly services.movies.SpainSampleConvergenceSpec")
 addCommandAlias("convergencePoland",  "e2e/Test/testOnly services.movies.PolandConvergenceSpec")
 addCommandAlias("convergenceGermany", "e2e/Test/testOnly services.movies.GermanyConvergenceSpec")
 addCommandAlias("convergenceUk",      "e2e/Test/testOnly services.movies.UnitedKingdomConvergenceSpec")
