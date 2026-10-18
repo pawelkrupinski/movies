@@ -102,7 +102,7 @@ def current_pages():
     """slug → (object, nominative, lat, lon) for every Polish City declared today."""
     src = CITY_SCALA.read_text(encoding="utf-8").split("// ── United Kingdom")[0]
     pages = {}
-    for m in re.finditer(r'case object (\w+) extends City\(\s*slug\s*=\s*"([^"]+)",\s*labels\s*=\s*CityLabels\('
+    for m in re.finditer(r'case object (\w+) extends (?:MajorPolish)?City\(\s*slug\s*=\s*"([^"]+)",\s*labels\s*=\s*CityLabels\('
                          r'nominative = "([^"]+)".*?lat\s*=\s*([\d.]+),\s*lon\s*=\s*([\d.]+)', src, re.S):
         pages[m[2]] = (m[1], m[3], float(m[4]), float(m[5]))
     return pages

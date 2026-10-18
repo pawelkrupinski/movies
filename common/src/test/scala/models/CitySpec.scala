@@ -17,9 +17,9 @@ class CitySpec extends AnyFlatSpec with Matchers {
   }
 
   "Each city" should "scope to its own cinemas (disjoint partition of the universe)" in {
-    Poznan.cinemas shouldBe Cinema.poznan
-    Wroclaw.cinemas shouldBe Cinema.wroclaw
-    Warszawa.cinemas shouldBe Cinema.warszawa
+    Poznan.cinemas shouldBe PolishPages.majorCinemas("poznan")
+    Wroclaw.cinemas shouldBe PolishPages.majorCinemas("wroclaw")
+    Warszawa.cinemas shouldBe PolishPages.majorCinemas("warszawa")
     // Every city's venues partition the global cinema universe with no overlap:
     // every cinema is owned by exactly one city.
     City.all.flatMap(_.cinemas) should contain theSameElementsAs Cinema.all

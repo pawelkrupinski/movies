@@ -1861,103 +1861,6 @@ object Cinema {
   /** The chains' network pseudo-cinemas — [[CinemaNetworks.all]], under the name `services.identity` reads. */
   val Networks: Seq[Cinema] = CinemaNetworks.all
 
-  /** Poznań venues — the original ten. Their display order doubles as the
-   *  per-source merge priority (see `Source.all`), so Multikino stays in the
-   *  list and existing rows keep their resolved precedence. */
-  val poznan: Seq[Cinema] = PolishPages.majorCinemas("poznan")
-
-  val wroclaw: Seq[Cinema] = PolishPages.majorCinemas("wroclaw")
-
-  val warszawa: Seq[Cinema] = PolishPages.majorCinemas("warszawa")
-
-  /** Kraków venues. Cinema City has three multiplexes here (Bonarka,
-   *  Kazimierz, Zakopianka — Zakopianka also houses the city's only IMAX);
-   *  Multikino has one. No Helios in Kraków. The independents (Pod Baranami,
-   *  Kijów, Mikro, …) are wired separately as bespoke scrapers. */
-  val krakow: Seq[Cinema] = PolishPages.majorCinemas("krakow")
-
-  /** Łódź venues. Three national chains — Cinema City (Manufaktura), Multikino,
-   *  and the city's single Helios (in Galeria Sukcesja) — plus Kino Charlie, the
-   *  arthouse cinema on Piotrkowska, wired as a bespoke ld+json scraper. */
-  val lodz: Seq[Cinema] = PolishPages.majorCinemas("lodz")
-
-  /** Katowice venues. Cinema City has two locations (Punkt 44 and Silesia),
-   *  Multikino one, Helios one. The three art-house venues run by Silesia Film —
-   *  Kosmos, Światowid, and Kinoteatr Rialto — are all Bilety24-hosted. */
-  val katowice: Seq[Cinema] = PolishPages.majorCinemas("katowice")
-
-  /** Szczecin venues. No Cinema City here; the two multiplexes are Helios (in
-   *  CH Kupiec) and Multikino. The lone independent is Kino Pionier 1907 — the
-   *  oldest continuously-operating cinema in the world — wired as a bespoke
-   *  scraper. */
-  val szczecin: Seq[Cinema] = PolishPages.majorCinemas("szczecin")
-
-  /** Białystok venues. No Cinema City or Multikino in the city; Helios (HQ'd in
-   *  Łódź, strong in eastern Poland) runs three multiplexes — Alfa, Biała and
-   *  Jurowiecka. The independent is Kino Forum, the film screen of the
-   *  Białostocki Ośrodek Kultury, wired as a bespoke scraper. */
-  val bialystok: Seq[Cinema] = PolishPages.majorCinemas("bialystok")
-
-  /** Trójmiasto venues — the Tri-City of Gdańsk, Gdynia and Sopot treated as one
-   *  repertoire. Two Helios in Gdańsk (Metropolia, Forum), one in Gdynia
-   *  (Riviera), plus Multikino Gdańsk. Cinema City Krewetka closed in 2018 and
-   *  Multikino Sopot in 2026, so neither is modelled. The independents (Cinema1,
-   *  GCF, …) are wired separately as bespoke scrapers. */
-  val trojmiasto: Seq[Cinema] = PolishPages.majorCinemas("trojmiasto")
-
-  /** Bydgoszcz venues. All three national chains have one multiplex each
-   *  (Cinema City in Focus Mall, Multikino on Focha, Helios on Fordońska);
-   *  the city's one art-house screen is MCK's Kino Orzeł, ticketed through the
-   *  national Bilety24 marketplace. */
-  val bydgoszcz: Seq[Cinema] = PolishPages.majorCinemas("bydgoszcz")
-
-  /** Lublin venues. Two Cinema City multiplexes (Felicity, Lublin Plaza) and
-   *  Multikino in Galeria Olimp; no Helios in Lublin. Kino Bajka — the Centrum
-   *  Kultury art-house on Radziszewskiego — is the local studyjne screen, wired
-   *  separately as a bespoke scraper. */
-  val lublin: Seq[Cinema] = PolishPages.majorCinemas("lublin")
-
-  val czestochowa: Seq[Cinema] = PolishPages.majorCinemas("czestochowa")
-
-  val radom: Seq[Cinema] = PolishPages.majorCinemas("radom")
-
-  val sosnowiec: Seq[Cinema] = PolishPages.majorCinemas("sosnowiec")
-
-  val torun: Seq[Cinema] = PolishPages.majorCinemas("torun")
-
-  val kielce: Seq[Cinema] = PolishPages.majorCinemas("kielce")
-
-  val rzeszow: Seq[Cinema] = PolishPages.majorCinemas("rzeszow")
-
-  val gliwice: Seq[Cinema] = PolishPages.majorCinemas("gliwice")
-
-  val zabrze: Seq[Cinema] = PolishPages.majorCinemas("zabrze")
-
-  // New chains-first cities. Each holds only its national-chain branches for now;
-  // a local independent screen, where one exists, joins later as a bespoke scraper.
-  val olsztyn: Seq[Cinema] = PolishPages.majorCinemas("olsztyn")
-  val bielskoBiala: Seq[Cinema] = PolishPages.majorCinemas("bielsko-biala")
-  val opole: Seq[Cinema] = PolishPages.majorCinemas("opole")
-  val rybnik: Seq[Cinema] = PolishPages.majorCinemas("rybnik")
-  val gorzow: Seq[Cinema] = PolishPages.majorCinemas("gorzow-wielkopolski")
-  val elblag: Seq[Cinema] = PolishPages.majorCinemas("elblag")
-  val koszalin: Seq[Cinema] = PolishPages.majorCinemas("koszalin")
-  val kalisz: Seq[Cinema] = PolishPages.majorCinemas("kalisz")
-  val zielonaGora: Seq[Cinema] = PolishPages.majorCinemas("zielona-gora")
-  val tychy: Seq[Cinema] = PolishPages.majorCinemas("tychy")
-  val walbrzych: Seq[Cinema] = PolishPages.majorCinemas("walbrzych")
-  val tarnow: Seq[Cinema] = PolishPages.majorCinemas("tarnow")
-  val wloclawek: Seq[Cinema] = PolishPages.majorCinemas("wloclawek")
-  val legnica: Seq[Cinema] = PolishPages.majorCinemas("legnica")
-  val plock: Seq[Cinema] = PolishPages.majorCinemas("plock")
-  val bytom: Seq[Cinema] = PolishPages.majorCinemas("bytom")
-  val dabrowaGornicza: Seq[Cinema] = PolishPages.majorCinemas("dabrowa-gornicza")
-  val nowySacz: Seq[Cinema] = PolishPages.majorCinemas("nowy-sacz")
-  val slupsk: Seq[Cinema] = PolishPages.majorCinemas("slupsk")
-  val jeleniaGora: Seq[Cinema] = PolishPages.majorCinemas("jelenia-gora")
-  val przemysl: Seq[Cinema] = PolishPages.majorCinemas("przemysl")
-  val konin: Seq[Cinema] = PolishPages.majorCinemas("konin")
-
   // Germany's cinemas come from `GermanRoster.byCity` (appended to `byCity` below),
   // not per-city vals — the full 436-page roster is data-driven.
 
@@ -1965,49 +1868,57 @@ object Cinema {
    *  `GermanRoster` can see which display names are already claimed before it materialises
    *  the generated roster; see `GermanRoster.claimedElsewhere`. Declared BEFORE `byCity`
    *  so it is assigned by the time that field forces the roster. */
-  val polishAndUk: Seq[(String, Seq[Cinema])] = Seq(
-    "Poznań"              -> poznan,
-    "Wrocław"             -> wroclaw,
-    "Warszawa"            -> warszawa,
-    "Kraków"              -> krakow,
-    "Łódź"                -> lodz,
-    "Katowice"            -> katowice,
-    "Szczecin"            -> szczecin,
-    "Białystok"           -> bialystok,
-    "Trójmiasto"          -> trojmiasto,
-    "Bydgoszcz"           -> bydgoszcz,
-    "Lublin"              -> lublin,
-    "Częstochowa"         -> czestochowa,
-    "Radom"               -> radom,
-    "Sosnowiec"           -> sosnowiec,
-    "Toruń"               -> torun,
-    "Kielce"              -> kielce,
-    "Rzeszów"             -> rzeszow,
-    "Gliwice"             -> gliwice,
-    "Zabrze"              -> zabrze,
-    "Olsztyn"             -> olsztyn,
-    "Bielsko-Biała"       -> bielskoBiala,
-    "Opole"               -> opole,
-    "Rybnik"              -> rybnik,
-    "Gorzów Wielkopolski" -> gorzow,
-    "Elbląg"              -> elblag,
-    "Koszalin"            -> koszalin,
-    "Kalisz"              -> kalisz,
-    "Zielona Góra"        -> zielonaGora,
-    "Tychy"               -> tychy,
-    "Wałbrzych"           -> walbrzych,
-    "Tarnów"              -> tarnow,
-    "Włocławek"           -> wloclawek,
-    "Legnica"             -> legnica,
-    "Płock"               -> plock,
-    "Bytom"               -> bytom,
-    "Dąbrowa Górnicza"    -> dabrowaGornicza,
-    "Nowy Sącz"           -> nowySacz,
-    "Słupsk"              -> slupsk,
-    "Jelenia Góra"        -> jeleniaGora,
-    "Przemyśl"            -> przemysl,
-    "Konin"               -> konin,
-  ) ++ PolishPages.rows.map(r => r.nominative -> r.cinemas) ++
+  /** The 41 major Polish cities, by label, each the slug its venues are filed under in
+   *  [[PolishPages.majorCinemas]] — in page order, which doubles as the per-source merge priority
+   *  (`Source.all`): Poznań's venues, the original ten, keep their resolved precedence. A label here
+   *  is the city's `City` object's nominative. */
+  private val majorPolishCities: Seq[(String, String)] = Seq(
+    "Poznań"              -> "poznan",
+    "Wrocław"             -> "wroclaw",
+    "Warszawa"            -> "warszawa",
+    "Kraków"              -> "krakow",
+    "Łódź"                -> "lodz",
+    "Katowice"            -> "katowice",
+    "Szczecin"            -> "szczecin",
+    "Białystok"           -> "bialystok",
+    "Trójmiasto"          -> "trojmiasto",
+    "Bydgoszcz"           -> "bydgoszcz",
+    "Lublin"              -> "lublin",
+    "Częstochowa"         -> "czestochowa",
+    "Radom"               -> "radom",
+    "Sosnowiec"           -> "sosnowiec",
+    "Toruń"               -> "torun",
+    "Kielce"              -> "kielce",
+    "Rzeszów"             -> "rzeszow",
+    "Gliwice"             -> "gliwice",
+    "Zabrze"              -> "zabrze",
+    "Olsztyn"             -> "olsztyn",
+    "Bielsko-Biała"       -> "bielsko-biala",
+    "Opole"               -> "opole",
+    "Rybnik"              -> "rybnik",
+    "Gorzów Wielkopolski" -> "gorzow-wielkopolski",
+    "Elbląg"              -> "elblag",
+    "Koszalin"            -> "koszalin",
+    "Kalisz"              -> "kalisz",
+    "Zielona Góra"        -> "zielona-gora",
+    "Tychy"               -> "tychy",
+    "Wałbrzych"           -> "walbrzych",
+    "Tarnów"              -> "tarnow",
+    "Włocławek"           -> "wloclawek",
+    "Legnica"             -> "legnica",
+    "Płock"               -> "plock",
+    "Bytom"               -> "bytom",
+    "Dąbrowa Górnicza"    -> "dabrowa-gornicza",
+    "Nowy Sącz"           -> "nowy-sacz",
+    "Słupsk"              -> "slupsk",
+    "Jelenia Góra"        -> "jelenia-gora",
+    "Przemyśl"            -> "przemysl",
+    "Konin"               -> "konin",
+  )
+
+  val polishAndUk: Seq[(String, Seq[Cinema])] =
+    majorPolishCities.map { case (label, slug) => label -> PolishPages.majorCinemas(slug) } ++
+    PolishPages.rows.map(r => r.nominative -> r.cinemas) ++
     (("London" -> UkPages.london.cinemas) +: UkPages.rows.map(r => ukLabel(r) -> r.cinemas))
 
   /** A UK page's label here, unique as [[byCity]]'s must be: the page's name,
