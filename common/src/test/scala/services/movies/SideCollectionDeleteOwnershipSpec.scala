@@ -34,12 +34,12 @@ import testsupport.ModuleSources
 class SideCollectionDeleteOwnershipSpec extends AnyFlatSpec with Matchers {
 
   /** The files allowed to delete from `screenings` / `movie_slots`: the repositories that
-   *  own those collections, and `MovieRepository`, which decides a film is gone and
+   *  own those collections, and `MongoMovieRepository`, which decides a film is gone and
    *  delegates the cascade to them. */
   private val Owners = Set(
     "ScreeningsRepository.scala",
     "SlotsRepository.scala",
-    "MovieRepository.scala"
+    "MongoMovieRepository.scala"
   )
 
   private val DeleteCalls = Seq("deleteMany(", "deleteOne(", "deleteFilm(", "deleteSlot(")

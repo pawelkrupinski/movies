@@ -33,8 +33,8 @@ object RepositoryReadSwallows {
     ("common/src/main/scala/services/config/EnvRegistryStore.scala", "publish",
       "Try {") ->
       "the Try is the write's failure log: a failed read throws before anything is reconciled or written",
-    ("common/src/main/scala/services/movies/MovieRepository.scala", "upsert",
-      "val collidesWithAnother = identityChanging && Try(Await.result(c.find(Filters.and(") ->
+    ("common/src/main/scala/services/movies/MongoMovieRepository.scala", "collidesWithAnother",
+      "Try(Await.result(c.find(Filters.and(") ->
       "the collision pre-check only: a sibling holding the key or tmdbId is still refused by the unique index at the write (handled as IdentityHeld below)",
     ("common/src/main/scala/services/movies/ScreeningsRepository.scala", "storedRow",
       "Try(Await.result(c.find(Filters.eq(\"_id\", idOf(filmId, slotKey))).first().toFuture(), 10.seconds))") ->

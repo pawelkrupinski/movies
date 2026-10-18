@@ -31,7 +31,7 @@ class NoUnguardedReadModifyWriteSpec extends AnyFlatSpec with Matchers {
 
   /** (file, method) → why its read-then-write is right unguarded. */
   private val Allowlist: Map[(String, String), String] = Map(
-    ("common/src/main/scala/services/movies/MovieRepository.scala", "upsert") -> (
+    ("common/src/main/scala/services/movies/MongoMovieRepository.scala", "upsert") -> (
       "last-writer-wins by design: the whole-record path writes MovieCache's copy of the film, and the cache is the one " +
         "writer of `movies` and serialises a film's writes in-process; the read decides only whether the stored document " +
         "already equals the write (skip) and whether its identity collides (the unique index refuses a racing sibling)"),

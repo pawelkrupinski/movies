@@ -590,7 +590,7 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
       source.emit(event("update", "film|2024", StoredMovieDto.fromDomain("film|2024", MovieRecord(), Instant.EPOCH)))
       // The SAME tick's side-collection writes — the venue's row actually moving, not noise.
       // `updateIfPresent` writes `movies` BEFORE `screenings`/`movie_slots` (see
-      // `MovieRepository.scala`), so the movies event arriving first, as above, is the real order.
+      // `MongoMovieRepository.scala`), so the movies event arriving first, as above, is the real order.
       slots.upsertSlot("film|2024", "Venue0␟film", SourceData(title = Some("Film")))
       screenings.upsertSlot("film|2024", "Venue0␟film", ListedShowtimes(Seq(models.Showtime(LocalDateTime.of(2099, 1, 1, 20, 0), None)), None))
       gate.countDown()
