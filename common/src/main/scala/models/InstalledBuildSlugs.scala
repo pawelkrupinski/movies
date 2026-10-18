@@ -41,10 +41,18 @@ object InstalledBuildSlugs {
   /** (country, page slug) → the qualified slug installed builds know that page by,
    *  for every page whose slug another country keeps bare. */
   private lazy val qualified: Map[(Country, String), String] =
+    qualifiedSlugs(Country.switchable, keeper, CitySlugIndexData.sharedPageQualifiedSlugs)
+
+  /** [[qualified]] over `countries`, `keeper` and the generated per-country `table`. */
+  private[models] def qualifiedSlugs(
+    countries: Seq[Country],
+    keeper: Map[String, Country],
+    table: Map[String, Map[String, String]],
+  ): Map[(Country, String), String] =
     (for {
-      country <- Country.switchable
+      country <- countries
       city    <- country.cities if !keeper.get(city.slug).contains(country)
-    } yield (country, city.slug) -> CitySlugIndexData.sharedPageQualifiedSlugs(country.code)(city.slug)).toMap
+    } yield (country, city.slug) -> table(country.code)(city.slug)).toMap
 
   /** The slug installed builds know `city` of `country` by — its own, unless
    *  another country keeps that one bare. */
