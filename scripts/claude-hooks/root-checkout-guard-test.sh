@@ -56,6 +56,12 @@ check "a root file already dirty before the command is not blamed on it" 0 "$(ba
 check "a command adding an untracked root file is reported" 2 "$(bash_run b5 'echo n > "$root/new.txt"')"
 check "a command switching the root checkout's branch is reported" 2 "$(bash_run b6 'scratch_git "$root" checkout -q -b side 2>/dev/null')"
 check "...naming both branches" 1 "$(grep -c 'from main to side' "$testroot/post.err")"
+# two Bash calls of one session overlapping (parallel tool calls, a session's subagents): each post judges its own pre
+pre_post() { printf '{"session_id":"par","tool_use_id":"%s","tool_name":"Bash"}' "$2" | python3 "$guard" "bash-$1" --repo "$wt" 2>/dev/null; }
+scratch_git "$root" checkout -q -f main 2>/dev/null; rm -f "$root/new.txt" # the root clean, on main, again
+pre_post pre call-a; echo w >> "$root/a.txt"; pre_post pre call-b
+check "a call's dirt is reported though another call of its session began after it" 2 "$(pre_post post call-a; echo $?)"
+check "...and not blamed on that other call" 0 "$(pre_post post call-b; echo $?)"
 check "a post with no pre for its session never blocks" 0 "$(printf '{"session_id":"none"}' | python3 "$guard" bash-post --repo "$wt"; echo $?)"
 
 start() { # <cwd> -> how many times the session-start context names the root checkout

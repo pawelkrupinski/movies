@@ -95,7 +95,12 @@ def root_state(root):
 
 
 def state_file(event):
-    key = "%s-%s" % (event.get("session_id") or "nosession", hashlib.sha1(HERE.encode()).hexdigest()[:8])
+    """Where a Bash call's pre hook leaves the root's state for its post: one file a tool call (`tool_use_id`), so two
+    calls of one session overlapping -- parallel calls, its subagents -- never judge each other's; one a session when
+    the event names no call."""
+    call = event.get("tool_use_id") or ""
+    key = "%s-%s%s" % (event.get("session_id") or "nosession", hashlib.sha1(HERE.encode()).hexdigest()[:8],
+                       "-" + hashlib.sha1(call.encode()).hexdigest()[:12] if call else "")
     d = os.path.join(tempfile.gettempdir(), "root-checkout-guard")
     os.makedirs(d, exist_ok=True)
     return os.path.join(d, key + ".json")
@@ -129,6 +134,11 @@ def guard_bash_post(event, repo):
             before = json.load(f)
     except (OSError, ValueError):
         return 0
+    if event.get("tool_use_id"):
+        try:
+            os.remove(state_file(event))  # one call's state, read once: none left behind a call apiece
+        except OSError:
+            pass
     if not root:
         return 0
     branch, status = root_state(root)
