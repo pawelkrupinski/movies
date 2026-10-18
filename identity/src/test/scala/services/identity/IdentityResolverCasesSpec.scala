@@ -1842,6 +1842,24 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     withClue(golden.decisionOf(crows.key).render)(golden.decisionOf(crows.key).film shouldBe Some(51857))
   }
 
+  it should "read a billing naming a film by the works of two of its titles, one a piece, as that film's" in {
+    // DE Kamino's "Ecrire la vie - Writing Life" (recording 38713274617, 10-18): the French documentary's work and its
+    // English title's, each before its subtitle — not the Danish "Giv os en chance" TMDB also titles "Writing life"
+    val ernaux = F(1518673, "Écrire la vie - Annie Ernaux racontée par des lycéennes et des lycéens", 2026, "", 90, popularity = 1.0,
+      countries = Seq("FR"), alternatives = Seq("Writing Life – Annie Ernaux Through the Eyes of High School Students"))
+    val danish = F(1579323, "Giv os en chance", 2025, "", 0, popularity = 1.0, countries = Seq("DK"), alternatives = Seq("Writing life"))
+    val germany = models.Cinema.all.find(c => models.City.forCinema(c).exists(_.country == models.Country.Germany)).get
+    val l = listing(germany, "Ecrire la vie - Writing Life").copy(screenings = ScreeningDays.of(Seq(java.time.LocalDate.of(2026, 11, 2))))
+    val d = IdentityResolver.resolve(Seq(l), new FilmTable(Seq(ernaux, danish), normalizer), normalizer, IdentityCalibration.resolver).decisionOf(l.key)
+    withClue(d.render)(d.film should not be Some(1579323))
+    def bills(raw: String, film: F) = IdentityMeasures.billsWorksOfTwoTitles(Evidence.of(listing(germany, raw), None).measured,
+      IdentityMeasures.Film(film.title, alternativeTitles = film.alternatives))
+    bills("Ecrire la vie - Writing Life", ernaux) shouldBe true
+    // one piece the work of one title only names the film by it, as a fragment does
+    bills("Ecrire la vie - Ein Abend mit Annie Ernaux", ernaux) shouldBe false
+    bills("Ecrire la vie - Writing Life", danish) shouldBe false
+  }
+
   it should "take neither of two quoted works a conjunction joins, a double bill" in {
     // PL KINOMUZEUM (suspect audit 2026-10-13, served in prod): Chytilová's "Owoce rajskich drzew spożywamy" billed with
     // her "Mieszkanie" — taken as the 1970 film alone by the calibrated rule (labelled wrong)

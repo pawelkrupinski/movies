@@ -749,6 +749,24 @@ object IdentityMeasures {
     f.ownTitles.flatMap(leadingWork).find(w => own(key(w))).map(w => TitleContainment.tokens(w).size)
   }
 
+  /** Does the listing's title name the film by the WORKS of two of its titles, one piece each — its two pieces a dash
+   *  parts, each what one title of the film stands before its subtitle ([[workOf]])? DE Kamino's "Ecrire la vie - Writing
+   *  Life" bills the French "Écrire la vie - Annie Ernaux racontée par des lycéennes et des lycéens" by its own work and
+   *  its English title's ("Writing Life – Annie Ernaux Through the Eyes of High School Students"): two languages' names
+   *  of one film, each a whole piece, as a [[containment]] `segment` names it — not a `fragment` of either title, which
+   *  left the film denied and the Danish "Giv os en chance", TMDB's English "Writing life", taken by one piece. */
+  def billsWorksOfTwoTitles(l: Listing, f: Film): Boolean = {
+    val works = f.titles.map(title => workOf(title).map(key).getOrElse(""))
+    l.ownTitles.exists { own =>
+      SubtitleDash.split(own).toSeq.map(key) match {
+        case Seq(first, second) if first.nonEmpty && second.nonEmpty && first != second =>
+          val (a, b) = (works.indexOf(first), works.indexOf(second))
+          a >= 0 && b >= 0 && a != b
+        case _ => false
+      }
+    }
+  }
+
   /** Do the listing and the film bill the same WORK, each under its own subtitle — the title before a
    *  first comma, colon or dash ("BTS World Tour 'ARIRANG' In Buenos Aires: Live" and "…: Live
    *  Viewing")? The words of the work, or None. */
@@ -832,7 +850,8 @@ object IdentityMeasures {
     else if (alternativeForms.map(_.key).exists(own) || alternativeForms.exists(articleless)) Category("alternative")
     else (if (fs.isEmpty) None
           else containment(ls, l.shapeKeys, fs,
-            houses.isDefined && StageRelays.namesSeasonProduction(l, f) || StageRelays.billing(l, f).exists(houses.getOrElse(StageRelays.Houses.Unknown).same), l.shapeWords, l.undecoratedWords)).getOrElse(
+            houses.isDefined && StageRelays.namesSeasonProduction(l, f) || StageRelays.billing(l, f).exists(houses.getOrElse(StageRelays.Houses.Unknown).same) ||
+              billsWorksOfTwoTitles(l, f), l.shapeWords, l.undecoratedWords)).getOrElse(
       if (ls.exists(a => all.exists(b => a.wordSet.exists(b.wordSet)))) Category("overlap") else Category("none"))
   }
 
@@ -841,7 +860,7 @@ object IdentityMeasures {
    *  the other's title as a token run along one edge of one of them (`decorated`: "Ken Russell's
    *  The Devils"), or one of them as a run along one edge of the other's (`fragment`: "It" beside
    *  "It Ends with Us"). `alsoSegment` is another reason to read a segment (the title relation's
-   *  season production), asked only when no shape matches. ONE definition for the title and the
+   *  season production, or a billing naming the works of two of its titles), asked only when no shape matches. ONE definition for the title and the
    *  original-title relations. */
   private def containment(own: Seq[TitleForm], shapeKeys: Seq[String], others: Seq[TitleForm], alsoSegment: => Boolean = false,
                           shapeWords: Seq[Seq[String]] = Nil, undecorated: Seq[Seq[String]] = Nil): Option[Category] = {
