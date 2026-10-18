@@ -17,7 +17,10 @@
 #     GIT_CONFIG_NOSYSTEM), so a signing key, a hooks path or an alias of theirs cannot change what a
 #     spec sees, and no `git config --global` from a spec can write there;
 #   - a fixed identity and unsigned commits are supplied as command-line-scope config, so no spec
-#     needs `git config user.*` at all.
+#     needs `git config user.*` at all;
+#   - every directory is a safe.directory (the system config that grants it is not read): a checkout mounted
+#     read-only into a container (run-script-tests --linux) can show an owner other than the runner, and git
+#     then refuses it as "dubious ownership" -- a different number of failed checks each run.
 #
 # Usage:
 #   . "$REPO_ROOT/scripts/scratch-git.sh"
@@ -34,12 +37,13 @@ done < <(compgen -e | grep '^GIT_')
 unset _scratch_git_var
 
 export GIT_CONFIG_NOSYSTEM=1 GIT_CONFIG_GLOBAL=/dev/null
-export GIT_CONFIG_COUNT=5 \
+export GIT_CONFIG_COUNT=6 \
   GIT_CONFIG_KEY_0=user.name        GIT_CONFIG_VALUE_0=Spec \
   GIT_CONFIG_KEY_1=user.email       GIT_CONFIG_VALUE_1=spec@example.test \
   GIT_CONFIG_KEY_2=commit.gpgsign   GIT_CONFIG_VALUE_2=false \
   GIT_CONFIG_KEY_3=tag.gpgsign      GIT_CONFIG_VALUE_3=false \
-  GIT_CONFIG_KEY_4=init.defaultBranch GIT_CONFIG_VALUE_4=main
+  GIT_CONFIG_KEY_4=init.defaultBranch GIT_CONFIG_VALUE_4=main \
+  GIT_CONFIG_KEY_5=safe.directory   GIT_CONFIG_VALUE_5='*'
 
 # The checkout this file belongs to: the one repository a scratch command must never reach.
 _scratch_git_own_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
