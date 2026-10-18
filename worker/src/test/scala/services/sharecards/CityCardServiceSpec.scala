@@ -4,7 +4,7 @@ import io.prometheus.metrics.model.registry.PrometheusRegistry
 import models.{City, Country}
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.readmodel.InMemoryReadModelRepository
+import services.readmodel.{InMemoryReadModelRepository, UnreadableReadModelRepository}
 import services.tasks.{HandlerOutcome, InMemoryTaskQueue, Task, TaskType}
 import ShareCardTestKit.*
 import tools.{CityCardRenderer, MutableClock}
@@ -59,6 +59,11 @@ class CityCardServiceSpec extends AnyFlatSpec with Matchers {
     handler.handle(task(Poznan)) shouldBe HandlerOutcome.Done
   }
 
+  "The backoff waits" should "be the ones the spec assumes" in {
+    import scala.jdk.DurationConverters.*
+    (CityCardService.FirstFailureRetry.toJava, CityCardService.MaxFailureRetry.toJava) shouldBe (FirstWait, MaxWait)
+  }
+
   "The reaper" should "enqueue the cities with no card first, at most the cap a tick, and never twice" in new Setup(cap = 5) {
     val withCard = Country.Poland.cities.take(3)
     withCard.foreach(city => card(city, clock.instant()))
@@ -83,6 +88,37 @@ class CityCardServiceSpec extends AnyFlatSpec with Matchers {
     card(Poznan, clock.instant().minus(Duration.ofDays(15)))
     service.enqueueDue()
     series.cityCoverageFor("pl") shouldBe (Country.Poland.cities.size - 1).toDouble / Country.Poland.cities.size
+  }
+
+  it should "not ask again every tick for a city whose render was refused, backing off until it draws" in new Setup(cap = 1000, roomFull = true) {
+    val all = Country.Poland.cities.size
+    service.enqueueDue() shouldBe all
+    drain(queue).foreach(handler.handle) // every one refused: the directory is over its budget
+    service.enqueueDue() shouldBe 0       // a minute later: each still inside its wait
+    clock.advance(Duration.ofMinutes(1)); service.enqueueDue() shouldBe 0
+    clock.advance(FirstWait); service.enqueueDue() shouldBe all
+    drain(queue).foreach(handler.handle) // refused again: the wait doubles
+    clock.advance(FirstWait.plusMinutes(1)); service.enqueueDue() shouldBe 0
+    clock.advance(FirstWait); service.enqueueDue() shouldBe all
+    // Room again: the renders draw, and a city with its card is due only at its weekly phase.
+    store.room.measured(overBudget = false)
+    drain(queue).foreach(handler.handle)
+    Country.Poland.cities.filterNot(city => Files.exists(store.cityCardPath(city))) shouldBe empty
+    clock.advance(MaxWait); service.enqueueDue() should be < all
+  }
+
+  it should "back off a city whose render fails, and never wait longer than the cap" in new Setup(cap = 1000, reads = new UnreadableReadModelRepository) {
+    // No read of the screenings has succeeded: every render fails, and the wait doubles each time.
+    (1 to 12).foreach(_ => service.render(Poznan) shouldBe ShareCardMetrics.CityOutcome.Failed)
+    waitingAfterTick should not contain CityCardService.dedupKey(Poznan)
+    clock.advance(MaxWait.minusMinutes(1))
+    waitingAfterTick should not contain CityCardService.dedupKey(Poznan)
+    clock.advance(Duration.ofMinutes(1))
+    waitingAfterTick should contain(CityCardService.dedupKey(Poznan))
+  }
+
+  it should "refuse a city with no card before it reads or decodes anything" in new Setup(roomFull = true, reads = new UnreadableReadModelRepository) {
+    service.render(Poznan) shouldBe ShareCardMetrics.CityOutcome.Refused
   }
 
   "The handler" should "skip a city whose card is not due, and render one that is" in new Setup {
@@ -124,6 +160,10 @@ class CityCardServiceSpec extends AnyFlatSpec with Matchers {
 object CityCardServiceSpec {
   val Poznan: City = Country.Poland.bySlug("poznan")
 
+  /** A missed render's first wait and its cap ([[CityCardService.FirstFailureRetry]], `MaxFailureRetry`). */
+  val FirstWait: Duration = Duration.ofMinutes(10)
+  val MaxWait: Duration   = Duration.ofHours(6)
+
   def near(c: Color, target: Color, tol: Int = 40): Boolean =
     math.abs(c.getRed - target.getRed) <= tol && math.abs(c.getGreen - target.getGreen) <= tol && math.abs(c.getBlue - target.getBlue) <= tol
 
@@ -133,17 +173,20 @@ object CityCardServiceSpec {
     store.touch(store.cityCardPath(city), at)
   }
 
-  class Setup(cap: Int = CityCardService.MaxEnqueuePerTick, roomFull: Boolean = false) {
+  class Setup(cap: Int = CityCardService.MaxEnqueuePerTick, roomFull: Boolean = false,
+              reads: InMemoryReadModelRepository = new InMemoryReadModelRepository) {
     val series    = new ShareCardMetrics.Series(Seq("pl"), new PrometheusRegistry)
     val metrics   = series.forCountry("pl")
     val store     = {
       val dir = Files.createTempDirectory("share-cards-")
-      val s = new ShareCardStore(dir, if (roomFull) new ShareCardRoom(Long.MaxValue, () => 0L, metrics.refused) else ShareCardRoom.Unlimited)
+      val room = if (roomFull) new ShareCardRoom(0L, () => Long.MaxValue, metrics.refused) else ShareCardRoom.Unlimited
+      room.measured(overBudget = true)
+      val s = new ShareCardStore(dir, room)
       assert(s.usable); s
     }
     val clock     = new MutableClock(T0)
     val queue     = new InMemoryTaskQueue
-    val readModel = new InMemoryReadModelRepository
+    val readModel = reads
     val service   = new CityCardService(Country.Poland, store, readModel, queue, metrics, clock, maxEnqueuePerTick = cap)
     val handler   = new RenderCityCardHandler(service)
 
@@ -160,6 +203,9 @@ object CityCardServiceSpec {
       val out = new ByteArrayOutputStream(); ImageIO.write(image, "jpg", out)
       store.writeAtomically(store.posterPath(filmId), out.toByteArray, s"poster-$filmId")
     }
+
+    /** The keys a reaper tick leaves waiting, taken off the queue. */
+    def waitingAfterTick: Set[String] = { service.enqueueDue(); drain(queue).map(_.dedupKey).toSet }
 
     /** The keys of the waiting tasks, left waiting. */
     def waitingKeys: Set[String] = {
