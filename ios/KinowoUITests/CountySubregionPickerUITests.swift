@@ -1,15 +1,16 @@
 import XCTest
 
 /// The UK picker's THIRD step: a county that actually holds more than one
-/// city in the bundled seed (Glamorgan → Cardiff/Glamorgan) gets its own tap
+/// city in the bundled seed (Glamorgan → Cardiff, Swansea…) gets its own tap
 /// and its own back button, distinct from the second step's "back to
-/// regions". Every other Welsh county stays a flat row on the second step,
-/// unaffected. This runs against the bundled seed, so it must name a county
-/// that still splits there — West Midlands stopped doing so when Dudley and
-/// Sandwell were folded into Birmingham (`CitySubregionTests` keeps it as a
-/// synthetic fixture for the mechanism).
+/// regions". A place no county splits off (Builth Wells) stays a direct row
+/// on the same second-step list. This runs against the bundled seed, so the
+/// names it taps must still be what the seed says.
 final class CountySubregionPickerUITests: XCTestCase {
     var app: XCUIApplication!
+
+    /// The one Welsh place the seed files under no county.
+    private static let directCity = "Builth Wells area"
 
     override func setUpWithError() throws {
         continueAfterFailure = false
@@ -56,14 +57,13 @@ final class CountySubregionPickerUITests: XCTestCase {
     override func tearDownWithError() throws { app = nil }
 
     func testGlamorganOpensItsOwnCitiesAndTheOtherCountiesStayFlat() throws {
-        // "Gwent" (a county holding one place, reading as a direct row) sits on
-        // the same list — proof this step still mixes group headings and
-        // direct cities.
-        XCTAssertTrue(app.buttons["Gwent"].waitForExistence(timeout: 5),
-                      "Gwent should be a direct row on Wales' list")
+        // "Builth Wells area" (in no county group, reading as a direct row)
+        // sits on the same list — proof this step still mixes group headings
+        // and direct cities.
+        XCTAssertTrue(app.buttons[Self.directCity].waitForExistence(timeout: 5),
+                      "\(Self.directCity) should be a direct row on Wales' list")
 
-        // Glamorgan is the Welsh county holding more than one city — it shows
-        // as a group row, and its members are not listed individually yet.
+        // Glamorgan holds more than one city — it shows as a group row, and its members are not listed individually yet.
         let glamorgan = app.buttons["Glamorgan"]
         XCTAssertTrue(glamorgan.waitForExistence(timeout: 5), "No 'Glamorgan' group row under Wales")
         XCTAssertFalse(app.buttons["Cardiff"].exists, "Cardiff should be behind the Glamorgan group")
@@ -71,9 +71,10 @@ final class CountySubregionPickerUITests: XCTestCase {
         glamorgan.tap()
 
         XCTAssertTrue(app.buttons["Cardiff"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["Glamorgan"].exists, "Glamorgan's namesake place should be listed inside it")
+        XCTAssertTrue(app.buttons["Swansea"].exists, "Swansea should be listed inside Glamorgan")
         // Nothing from the rest of Wales leaks into the county's own list.
         XCTAssertFalse(app.buttons["Gwent"].exists, "Gwent should not appear inside Glamorgan")
+        XCTAssertFalse(app.buttons[Self.directCity].exists, "\(Self.directCity) should not appear inside Glamorgan")
     }
 
     func testBackFromASubregionReturnsToItsRegionNotTheTopRegionList() throws {
@@ -86,10 +87,10 @@ final class CountySubregionPickerUITests: XCTestCase {
         XCTAssertTrue(back.waitForExistence(timeout: 5), "No back button on the subregion step")
         back.tap()
 
-        // Back on Wales' own list — "Gwent" is back and Cardiff is behind its
-        // group again, proving the step reset rather than landing on the top
-        // nation list.
-        XCTAssertTrue(app.buttons["Gwent"].waitForExistence(timeout: 5),
+        // Back on Wales' own list — its direct city is back and Cardiff is
+        // behind its group again, proving the step reset rather than landing
+        // on the top nation list.
+        XCTAssertTrue(app.buttons[Self.directCity].waitForExistence(timeout: 5),
                       "Did not return to Wales' own list")
         XCTAssertFalse(app.buttons["Cardiff"].exists, "Still showing Glamorgan's cities after going back")
         XCTAssertTrue(app.buttons["Glamorgan"].exists, "Glamorgan should be a group row again after going back")
