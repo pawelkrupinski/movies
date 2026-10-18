@@ -391,6 +391,18 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
       took(nadprirozenych)).map(_.record.film.year) shouldBe Some(Some(1958))
   }
 
+  "A feed's copied original title one edit from the billing" should "name no film the families take by it" in {
+    // DE Filmforum Landsberg's "Ganes", the Ladin band: kinoheld's page copied "Ganges" and Osorio's credit from the 2019
+    // documentary its search hit, and the families searched that copy
+    val ganges = film("Ganges", 2019, "Talía Carolina Osorio", 75)
+    val took = Seq(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Filmweb)
+      .map(family => FamilyTook(FamilyPick(family, "1", SourceRecord(ganges, Map("imdb" -> "tt10475856")))))
+    val billed = listing(KinoMuza, "Ganes").copy(originalTitle = Some("Ganges"))
+    Agreement.agreed(Seq(billed.copy(page = Some("https://www.kinoheld.de/film/ganes"))), took) shouldBe None
+    // the venue's own original title is its claim: the families' film stands
+    Agreement.agreed(Seq(billed), took).flatMap(_.record.film.year) shouldBe Some(2019)
+  }
+
   "A listing billing a cut of the film" should "run as the record, at the cut's running time" in {
     // TMDB and IMDb date "Apocalypse Now" at its 147 theatrical minutes; venues bill the Final Cut (183) and Redux (202)
     val apocalypse = SourceRecord(IdentityMeasures.Film("Apocalypse Now", None, Nil, Some(1979), Some(147), Some(Seq("Francis Ford Coppola")),

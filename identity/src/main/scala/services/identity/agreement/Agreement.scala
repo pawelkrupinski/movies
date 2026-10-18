@@ -253,7 +253,11 @@ object Agreement {
     val picks = verdicts.flatMap(_.pick).sortBy(_.family.ordinal)
     // a family taking a film the listing's title does not name is no evidence on the listing's (US "A Night at the
     // Opera": Wikidata's "The Old Maid", by the director the venue credits)
-    val named = filmsOf(picks).filter(group => asStated.nonEmpty && asStated.forall(listing => namesIt(listing, group.map(_.record.film))))
+    // nor is one only the feed's copied original title names where that copy is a near-spelling of the billing: what the
+    // feed's search for the billing hit, restated, not a title of the venue's (DE Filmforum Landsberg's "Ganes", the Ladin
+    // band: kinoheld copied "Ganges" and its credit from the 2019 documentary its search hit)
+    val named = filmsOf(picks).filter(group => asStated.nonEmpty &&
+      asStated.forall(listing => namesIt(if (copiesItsSearchHit(listing)) listing.copy(originalTitle = None) else listing, group.map(_.record.film))))
     // each group is the picks of one film, so every film weighed has a taker: a lean or a corroboration alone makes none
     named.map(group => supported(listings, asStated, group, verdicts, modelVote, thisYear)).sortBy(film => -film.support).headOption.flatMap { film =>
       val dissent = named.filterNot(_.exists(pick => film.agreed.families(pick.family))).map(_.size).sum
@@ -552,6 +556,13 @@ object Agreement {
 
   private def latin(names: Seq[String]): Boolean =
     names.forall(_.forall(c => !Character.isLetter(c) || Character.UnicodeScript.of(c.toInt) == Character.UnicodeScript.LATIN))
+
+  /** Is the listing's original title a feed's copy ([[SourceReliability.copiesOriginalTitle]]) one edit from its billing's —
+   *  the record the feed's search for the billing hit, not the venue's own spelling of another title? */
+  private[identity] def copiesItsSearchHit(listing: Listing): Boolean = listing.originalTitle.exists { original =>
+    val (copy, billed) = (IdentityMeasures.key(original), IdentityMeasures.key(listing.cleanTitle))
+    copy != billed && tools.EditDistance.within(copy, billed, 1) && SourceReliability.copiesOriginalTitle(listing)
+  }
 
   /** Does the listing's title name one of the films' titles — be it, or carry it whole (four letters at least)? */
   def namesIt(listing: Listing, films: Seq[IdentityMeasures.Film]): Boolean = {
