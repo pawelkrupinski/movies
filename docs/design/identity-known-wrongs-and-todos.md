@@ -323,7 +323,9 @@ Each a production change: measure with `scripts/identity-measure`, land one at a
 - [x] `scripts/local-mirror/prod-tunnel.sh` bound fixed port 27017 (now a free port per caller, spec
   `prod-tunnel-test.sh`).
 - [x] sbt-warm took no per-checkout lock when starting a server (now `<state>/<key>.lock`, spec in `sbt-warm-test.sh`).
-- [ ] Every checkout copies its own tool files into the shared `refs/<sha>` tree, so two checkouts with different tool
+- [x] (fixed: a checkout whose tool files differ gets `refs/<sha>-t<hash>`; `--stop-served` checks the pid's command
+  line; venue-replay's mongosh is `bounded`; identity-capture.sh looks the recording up via identity-tools.sh and hands
+  it to the JVM) Every checkout copies its own tool files into the shared `refs/<sha>` tree, so two checkouts with different tool
   versions can compile a mix; `identity-slice --stop-served` kills whatever now holds the saved pid; venue-replay's
   `mongosh` call has no timeout; `identity-capture.sh` still finds its recording in Scala, not identity-tools.sh.
 - [ ] No shell self-test yet for `scripts/local-mirror/freshness` and `sync-enrichment-cache.sh`;

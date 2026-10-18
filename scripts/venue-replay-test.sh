@@ -83,6 +83,16 @@ rm -f "$work/calls"
 replay pl kino --recording 777 --prod > /dev/null
 check "--prod with no local mirror is skipped, by name" "1 0" "$(grep -c 'no local prod mirror for pl' "$work/err") $(grep -c -- '--prod' "$work/calls")"
 
+# a mirror that is there but whose mongosh hangs: the read is cut off at its bound, and the tool fails saying so
+printf '#!/usr/bin/env bash\nexit 0\n' > "$repo/scripts/local-mirror/freshness"
+printf '#!/usr/bin/env bash\nexec sleep 30\n' > "$work/bin/mongosh"; chmod +x "$work/bin/mongosh"
+started=$SECONDS
+code=$(KINOWO_VENUE_REPLAY_MONGOSH_SECONDS=1 replay pl kino --recording 777 --prod > /dev/null; echo $?)
+check "a mongosh that hangs is cut off at its bound, and the tool fails" "1 1" "$code $(grep -c 'mongosh read failed or took over 1s' "$work/err")"
+check "...within it" "yes" "$([ $(( SECONDS - started )) -lt 15 ] && echo yes || echo "no: $(( SECONDS - started ))s")"
+printf '#!/usr/bin/env bash\necho "no mirror" >&2\nexit 2\n' > "$repo/scripts/local-mirror/freshness"
+rm -f "$work/bin/mongosh"
+
 check "a fixture tree is handed over by its absolute path" "1" \
   "$(mkdir -p "$work/tree" && cd "$work" && replay pl kino --recording 777 --fixtures tree > /dev/null; grep -c -- "--fixtures $work/tree" "$work/calls")"
 check "a fixture tree that is not there is refused" "2" "$(replay pl kino --recording 777 --fixtures "$work/nope" > /dev/null; echo $?)"

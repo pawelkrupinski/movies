@@ -77,7 +77,7 @@ out="" ref="" serve=""
 while [ "\$#" -gt 0 ]; do case "\$1" in --out) out=\$2 ;; --ref) ref=\$2 ;; --serve) serve=\$2 ;; esac; shift; done
 # --serve: a kept JVM, answering each request on its socket (the batch's own arguments) until it is stopped
 [ -z "\$serve" ] || [ -z "\${STUB_SERVE_HANG:-}" ] || exec sleep 60   # alive, never listening
-[ -z "\$serve" ] || exec python3 -I "$work/serve.py" "\$serve" "$work/calls"
+[ -z "\$serve" ] || exec python3 -I "$work/serve.py" "\$serve" "$work/calls" scripts.IdentitySlice   # a kept JVM's command line names its main class
 [ -n "\$out" ] || { echo "explained"; exit 0; }
 h='selector\tkey\tvenue\trawTitle\tfilm\ttitle\tbasis\tconfidence\tmodel\trules\tblocker\trunnerUp\tverdict\texplanation'
 { printf "\$h\n"
@@ -230,6 +230,12 @@ check "--stop-served stops every kept JVM" "0" "$(find "$cache/serve" -name '*.p
 rm -f "$work/calls"; slice de --recording 777 --key 'Kino|Lalka' --ref HEAD --serve > /dev/null
 check "...and the next --serve starts another" "1" "$(grep -c -- "--serve $cache/serve/" "$work/calls")"
 STUB="$work" PATH="$work/bin:$PATH" KINOWO_IDENTITY_CACHE="$cache" "$repo/scripts/identity-slice" --stop-served 2> /dev/null
+# a pid file outlives its JVM, and the pid comes back as someone else's process: --stop-served leaves that one alone
+mkdir -p "$cache/serve"; sleep 30 & stranger=$!; echo "$stranger" > "$cache/serve/stale.pid"
+STUB="$work" PATH="$work/bin:$PATH" KINOWO_IDENTITY_CACHE="$cache" "$repo/scripts/identity-slice" --stop-served 2> /dev/null
+check "--stop-served kills only a pid that is still an IdentitySlice JVM, and forgets the file" "alive gone" \
+  "$(kill -0 "$stranger" 2>/dev/null && echo alive || echo dead) $([ -e "$cache/serve/stale.pid" ] && echo kept || echo gone)"
+kill "$stranger" 2>/dev/null
 # --emit-case goes through a kept JVM: pinning cases one after another reads the recording and the index once
 rm -f "$work/calls"; slice de --recording 777 --key 'Kino|Lalka' --ref "$head" --emit-case > /dev/null
 check "--emit-case starts a kept JVM and asks it for the case" "1 1" \

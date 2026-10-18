@@ -113,7 +113,10 @@ identity_judgements() {
 }
 
 # identity_tree <ref> <file>... -> a compiled-once copy of the ref's sources under the cache, each named file (a path
-# relative to the repository) dropped in from this checkout — the tool's own code, so a ref from before the tool works
+# relative to the repository) dropped in from this checkout — the tool's own code, so a ref from before the tool works.
+# The tree is shared by every checkout, so two checkouts whose tool files differ must not drop theirs into one tree (the
+# compile would be a mix, and each would run the other's code): the first set of tool files to reach refs/<sha> claims it
+# (target/identity-tools/tools-hash); a checkout with other tool files gets refs/<sha>-t<hash of its tool files>.
 identity_tree() {
   local sha dir ref=$1; shift
   sha=$(git -C "$IDENTITY_REPO" rev-parse --verify "$ref^{commit}") || { echo "no ref $ref" >&2; return 2; }
@@ -121,7 +124,28 @@ identity_tree() {
   [ -f "$dir/build.sbt" ] || identity_locked "tree-$sha" identity_tree_layout "$ref" "$sha" "$dir" || return 1
   # one agent a tree drops the files in: a second, comparing while the first copies, would copy over it again and move
   # the time the first's compile reads — or read (and remove) the seed marker the first still needs
-  identity_locked "tools-$sha" identity_tree_tools "$dir" "$@" || return 1
+  identity_locked "tools-$sha" identity_tree_claimed "$ref" "$sha" "$dir" "$@"
+}
+
+# The hash of this checkout's <file>... (names and contents).
+identity_tools_hash() {
+  local t
+  for t in "$@"; do printf '%s\n' "$t"; cat "$IDENTITY_REPO/$t" 2>/dev/null; done | shasum | cut -c1-12
+}
+
+# identity_tree_claimed <ref> <sha> <dir> <file>... -> prints the tree holding exactly this checkout's tool files:
+# <dir> when unclaimed or claimed by the same tool files, else the variant tree for their hash
+identity_tree_claimed() {
+  local ref=$1 sha=$2 dir=$3 mark hash held; shift 3
+  hash=$(identity_tools_hash "$@")
+  mark=target/identity-tools/tools-hash
+  held=$(cat "$dir/$mark" 2>/dev/null || true)
+  if [ -n "$held" ] && [ "$held" != "$hash" ]; then
+    dir=$dir-t$hash
+    [ -f "$dir/build.sbt" ] || identity_locked "tree-$sha-t$hash" identity_tree_layout "$ref" "$sha" "$dir" || return 1
+  fi
+  identity_tree_tools "$dir" "$@" || return 1
+  mkdir -p "$dir/target/identity-tools"; echo "$hash" > "$dir/$mark"
   echo "$dir"
 }
 
@@ -228,8 +252,11 @@ identity_recording_download() {
 # unreadable run is never skipped for an older one.
 identity_newest_recording() {
   local cc=${1:-} repo=${KINOWO_REPO:-pawelkrupinski/movies} id ids held
+  # newest by CREATION time, not listing order: GitHub's status-filtered listing is not in creation order
+  # (`--limit 1` named 2026-09-25's run on 2026-10-07, the newest being 2026-10-06's -- 2026-10-17)
   ids=$(identity_gh "$IDENTITY_GH_READ" run list -R "$repo" --workflow "Record scrape fixtures" --status success \
-    -L "$([ -n "$cc" ] && echo 20 || echo 1)" --json databaseId -q '.[].databaseId') ||
+    -L 100 --json databaseId,createdAt -q '.[] | "\(.databaseId)\t\(.createdAt)"') &&
+    ids=$(printf '%s\n' "$ids" | sort -t "$(printf '\t')" -k2 -r | cut -f1 | head -n "$([ -n "$cc" ] && echo 20 || echo 1)") ||
     { identity_log "could not list the \"Record scrape fixtures\" runs (gh failed or timed out): name one with --recording"; return 1; }
   [ -n "$ids" ] || { identity_log "no successful \"Record scrape fixtures\" run"; return 1; }
   [ -n "$cc" ] || { echo "${ids%%$'\n'*}"; return; }

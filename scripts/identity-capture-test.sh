@@ -37,7 +37,12 @@ printf '#!/bin/sh\necho "%s"\n' "$CLASSES" > "$FAKE/sbt"
 # java records what the capture would have inherited, then exits clean.
 cat > "$FAKE/java" <<'FAKE_EOF'
 #!/usr/bin/env bash
-echo "java MONGODB_URI=${MONGODB_URI:-<unset>} FAMILY=${KINOWO_IDENTITY_FAMILY_URI:-<unset>}" >> "$CALLS"
+echo "java MONGODB_URI=${MONGODB_URI:-<unset>} FAMILY=${KINOWO_IDENTITY_FAMILY_URI:-<unset>} NEWEST=${KINOWO_IDENTITY_NEWEST_RECORDING:-<unset>}" >> "$CALLS"
+FAKE_EOF
+# gh lists the runs out of creation order, as GitHub does
+cat > "$FAKE/gh" <<'FAKE_EOF'
+#!/usr/bin/env bash
+printf '41\t2026-10-01T00:00:00Z\n43\t2026-10-03T00:00:00Z\n42\t2026-10-02T00:00:00Z\n'
 FAKE_EOF
 chmod +x "$FAKE"/*
 
@@ -51,6 +56,8 @@ check "the capture JVMs inherit NO MONGODB_URI, so each seeds its local throwawa
   "<unset>" "$(sed -n 's/^java MONGODB_URI=\([^ ]*\) .*/\1/p' "$CALLS")"
 check "prod reaches the capture only as the family export's route, through the tunnel" \
   "mongodb://u:p@127.0.0.1:27017/kinowo?authSource=admin&directConnection=true" \
-  "$(sed -n 's/^java .* FAMILY=\(.*\)$/\1/p' "$CALLS")"
+  "$(sed -n 's/^java .* FAMILY=\([^ ]*\) .*$/\1/p' "$CALLS")"
+check "the capture JVM is handed the newest recording (by creation time), found by the shared helper" "43" \
+  "$(sed -n 's/^java .* NEWEST=\(.*\)$/\1/p' "$CALLS")"
 
 spec_summary

@@ -81,9 +81,11 @@ if [ "$prod" = 1 ]; then
   else
     [ "$fresh" = 0 ] || identity_log "the freshness check WARNed (above): read prod's rows below with it in mind"
     db=kinowo; [ "$cc" = pl ] || db=kinowo_$cc
-    mongosh --quiet "$(local_mongo_uri "${db}_prod_mirror")" \
+    # bounded: a mongod that stops answering must not hold the tool forever
+    bounded "${KINOWO_VENUE_REPLAY_MONGOSH_SECONDS:-120}" mongosh --quiet "$(local_mongo_uri "${db}_prod_mirror")" \
       --eval "var SELECTOR=$(python3 -I -c 'import json,sys; print(json.dumps(sys.argv[1]))' "$venue")" \
-      --file "$repo/scripts/venue-replay-prod.js" > "$work/prod.json"
+      --file "$repo/scripts/venue-replay-prod.js" > "$work/prod.json" ||
+      die "the prod mirror's mongosh read failed or took over ${KINOWO_VENUE_REPLAY_MONGOSH_SECONDS:-120}s (KINOWO_VENUE_REPLAY_MONGOSH_SECONDS)"
     pass+=(--prod "$work/prod.json")
   fi
 fi

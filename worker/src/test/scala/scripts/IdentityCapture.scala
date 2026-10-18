@@ -7,8 +7,8 @@ import org.mongodb.scala.ObservableFuture
 import scala.util.Try
 
 /**
- * The unmatched-cluster fixture's recapture in ONE command (`scripts/identity-capture.sh [cc...]`, which compiles the
- * integration classpath and runs this on it): the newest successful "Record scrape fixtures" run's corpora and the
+ * The unmatched-cluster fixture's recapture in ONE command (`scripts/identity-capture.sh [cc...]`, which finds the
+ * newest recording, compiles the integration classpath and runs this on it): the newest successful "Record scrape fixtures" run's corpora and the
  * enrichment trees recorded with them, fetched unless already here; prod's `identity_family_answers` exported read-only;
  * then each country's `integration.UnmatchedClustersCapture` (or `UnmatchedClustersFill`) in a JVM of its own, its
  * arguments defaulted to the layout's directories ([[captureArguments]], [[fillArguments]]) and its exit its verdict, and
@@ -226,12 +226,8 @@ object IdentityCapture {
   /** Nothing here, and nothing to fetch it from. */
   final case class Missing(why: String) extends Currency
 
-  /** The newest of `runs` (`<id>\t<createdAt>`, as [[Live.newestRecording]] lists them): the latest created — never the
-   *  first listed: GitHub's status-filtered listing of a few runs is not in creation order (`--limit 1` named 2026-09-25's
-   *  run on 2026-10-07, the newest being 2026-10-06's). */
-  def newestRun(runs: Seq[String]): Option[String] =
-    runs.map(_.split('\t')).collect { case Array(id, created) => id -> java.time.Instant.parse(created.trim) }
-      .maxByOption(_._2).map(_._1)
+  /** Where scripts/identity-capture.sh hands over the newest recording's run id. */
+  val NewestRecordingVariable = "KINOWO_IDENTITY_NEWEST_RECORDING"
 
   /** What to do about a country's corpus and tree: `present` is the run they were downloaded from, `newest` the newest
    *  successful recording (`None`: not looked up — a dry run never touches the network). */
@@ -295,7 +291,8 @@ object IdentityCapture {
 
   /** Everything that reaches outside the process. */
   trait Effects {
-    /** The newest successful "Record scrape fixtures" run, else `None`. */
+    /** The newest successful "Record scrape fixtures" run, else `None`: found by scripts/identity-capture.sh
+     *  (identity-tools.sh's identity_newest_recording) and passed in `KINOWO_IDENTITY_NEWEST_RECORDING`. */
     def newestRecording(): Option[String]
     /** Fetch recording `run`'s corpus for `cc` into the layout; the bytes fetched. */
     def fetchCorpus(run: String, cc: String, layout: Layout): Long
@@ -340,9 +337,7 @@ object IdentityCapture {
     private def sizeOf(dir: Path): Long =
       if (!Files.exists(dir)) 0L else Using(Files.walk(dir))(_.iterator.asScala.filter(Files.isRegularFile(_)).map(Files.size).sum)
 
-    def newestRecording(): Option[String] =
-      newestRun(gh("run", "list", "--workflow", "Record scrape fixtures", "--status", "success", "--limit", "100",
-        "--json", "databaseId,createdAt", "--jq", ".[] | \"\\(.databaseId)\\t\\(.createdAt)\"").linesIterator.toSeq)
+    def newestRecording(): Option[String] = env.get(NewestRecordingVariable).map(_.trim).filter(_.nonEmpty)
 
     def fetchCorpus(run: String, cc: String, layout: Layout): Long = {
       val stage = layout.work.resolve(s"download-$cc")

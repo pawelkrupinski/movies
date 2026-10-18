@@ -21,7 +21,8 @@
 # the code deciding them (scripts.IdentityCapture.DecisionInputs) — and captures otherwise.
 #
 # What a capture does (scripts.IdentityCapture, worker/src/test/scala/scripts, does the work):
-#   1. fetches the newest successful "Record scrape fixtures" run's corpora (artifact
+#   1. finds the newest successful "Record scrape fixtures" run (identity_newest_recording, passed on as
+#      $KINOWO_IDENTITY_NEWEST_RECORDING) and fetches its corpora (artifact
 #      scrape-fixtures-<cc>) and the enrichment trees recorded with them (release convergence-fixtures,
 #      enrichment-<cc>-<run>.tar.*) into $KINOWO_IDENTITY_CAPTURE_WORK (default target/identity-capture),
 #      skipping a country whose download is already that run's;
@@ -75,6 +76,14 @@ fi
 
 work=${KINOWO_IDENTITY_CAPTURE_WORK:-target/identity-capture}
 mkdir -p "$work"
+
+# The newest recording is found HERE, by the shared helper (identity-tools.sh: bounded, newest by creation time), and
+# handed to scripts.IdentityCapture. A lookup that fails leaves it unset: the JVM then keeps the downloads it has and
+# fails a country with none, saying the newest was not looked up.
+if ! $dry; then
+    if KINOWO_IDENTITY_NEWEST_RECORDING=$(identity_newest_recording); then export KINOWO_IDENTITY_NEWEST_RECORDING
+    else unset KINOWO_IDENTITY_NEWEST_RECORDING; echo "[identity-capture] the newest recording could not be looked up (above)" >&2; fi
+fi
 
 # The integration classpath, compiled once: every country's JVM runs on it.
 echo "[identity-capture] compiling the integration classpath"

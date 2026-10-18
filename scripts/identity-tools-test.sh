@@ -84,7 +84,8 @@ check "...and compiled again once a source changes" "1" "$(grep -c '^sbt' "$work
 cat > "$work/bin/gh" <<'STUB'
 #!/usr/bin/env bash
 case "$1" in
-  run) printf '300\n200\n100\n' ;;
+  # listed out of creation order, as GitHub does: the newest is the latest CREATED
+  run) printf '100\t2026-10-01T00:00:00Z\n300\t2026-10-03T00:00:00Z\n200\t2026-10-02T00:00:00Z\n' ;;
   # the jq filter names the artifact wanted; the stub prints it only for a run that holds it
   api) want=$(grep -o 'scrape-fixtures-[a-z]*' <<<"$*")
        case "$2" in */runs/200/*) held="scrape-fixtures-de" ;; */runs/100/*) held="scrape-fixtures-de scrape-fixtures-uk" ;; *) held="" ;; esac
@@ -166,6 +167,20 @@ rm -rf "$work/cache/refs"
 ( tools identity_tree HEAD > "$work/t1" ) & ( tools identity_tree HEAD > "$work/t2" ) & wait
 check "two agents laying out one ref at once get one whole tree" "build build 1" \
   "$(cat "$(cat "$work/t1")/build.sbt") $(cat "$(cat "$work/t2")/build.sbt") $(find "$work/cache/refs" -mindepth 1 -maxdepth 1 | wc -l | tr -d ' ')"
+
+# two checkouts whose tool files differ never share a tree: the first claims refs/<sha>, the other gets its own
+rm -rf "$work/cache/refs"
+echo v1 > "$repo/tool.txt"
+base=$(tools identity_tree HEAD tool.txt)
+echo v2 > "$repo/tool.txt"
+variant=$(tools identity_tree HEAD tool.txt)
+echo v1 > "$repo/tool.txt"
+check "a checkout with other tool files gets a tree of its own, the first one's untouched" "v1 v2 yes" \
+  "$(cat "$base/tool.txt") $(cat "$variant/tool.txt") $([ "$base" != "$variant" ] && echo yes || echo no)"
+check "...and the same tool files again reach the first tree" "$base" "$(tools identity_tree HEAD tool.txt)"
+check "...whose tool file stayed the first's" "v1" "$(cat "$base/tool.txt")"
+rm -f "$repo/tool.txt"
+rm -rf "$work/cache/refs"
 
 # identity_capture: an artifact lacking the country's capture is a failure, not an empty directory
 mkdir -p "$work/artifacts/identity-capture-uk"
