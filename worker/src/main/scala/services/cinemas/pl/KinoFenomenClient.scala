@@ -97,20 +97,15 @@ object KinoFenomenClient {
 
   // Format tag at the end of artist names: "(2D/napisy)", "(3D/dubbing)", etc.
   private val FormatPat = """\s*\((\d[Dd]/[^)]+)\)\s*$""".r
-  // The `| reżyseria: <names> |` segment of the artist-link text; names are a
-  // comma-separated list bounded by the next pipe (or the end).
-  private val DirectorPat = """(?i)reżyseria:\s*([^|]+)""".r
   // A `(YYYY)` paren year in the title itself (e.g. "Mikey i Nicky (1976)").
   private val ParenYearPat = """\((?:19|20)\d{2}\)""".r
   // Any in-range 4-digit year token (used inside the trailing metadata segment,
   // where it follows the production countries: "… Węgry 2025").
   private val YearTokenPat = """\b(?:19|20)\d{2}\b""".r
 
-  /** Director(s) from the `| reżyseria: … |` metadata segment, comma-split.
-   *  Empty when the listing carries no director metadata for the film. */
-  def parseDirectors(rawTitle: String): Seq[String] =
-    DirectorPat.findFirstMatchIn(rawTitle).map(_.group(1).trim).toSeq
-      .flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
+  /** Director(s) its `| reżyseria: … |` metadata credits, read as every Polish title's credit is
+   *  ([[services.movies.TitleFacts]]). Empty when the listing carries none. */
+  def parseDirectors(rawTitle: String): Seq[String] = models.Country.Poland.titleFacts.peel(rawTitle).facts.directors
 
   /** Production year — from the trailing `| … Country YYYY` metadata segment, or
    *  a `(YYYY)` paren in the title. Only these two structured positions count, so
