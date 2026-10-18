@@ -93,6 +93,23 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
     keys.nonEmpty && catalogueKeys(second).exists(keys.contains)
   }
 
+  /** Do two nodes meet only through a feed's copied original title — no billed title or search form of theirs alike, every
+   *  original title either carries a feed's copy ([[SourceReliability.copiesOriginalTitle]]) — while `linked`'s TMDB-keyed
+   *  feed links a film `other` does not hold: another film it already holds, or one its own facts deny? The copy is the
+   *  linked entry's English title restated, so it joins its namesakes to the link's film, not to the venue's. DE Filmmuseum
+   *  München's 95-minute "The Stranger" (Jonah Manibusan) met Cineamo's "Der Fremde" venues only by the "The Stranger"
+   *  Cineamo copied from Ozon's 122-minute "L'Étranger" (1429348m), and took that film; CITY 46's "THE BLACK HOLE",
+   *  which Cineamo links to Siimets' 2024 film (508578m), met City-Filmtheater's "Das schwarze Loch" (Disney's 1979 film)
+   *  only by the two feeds' copies of "The Black Hole". */
+  private def copiedOriginalJoinsAnotherFilm(linked: EvidenceNode, other: EvidenceNode, linkedFilm: Option[Int], otherFilm: Option[Int]): Boolean =
+    scoring.generation.numbersFilmsByTmdbId && FeedLink.linked(linked).exists { case (_, film) =>
+      val bothTitles = Seq(linked, other)
+      bothTitles.exists(_.evidence.originalTitle.isDefined) &&
+        bothTitles.forall(node => node.evidence.originalTitle.isEmpty || node.listings.forall(SourceReliability.copiesOriginalTitle)) &&
+        sanitized(linked.evidence.cleanTitle) != sanitized(other.evidence.cleanTitle) && sharedSearchForm(linked, other).isEmpty &&
+        !linkedFilm.exists(_ != film) && (otherFilm.exists(_ != film) || (otherFilm.isEmpty && families.denies(other, film)))
+    }
+
   /** The edges between `members`, each node's film (accepted or voted) given by `filmOf`. */
   def of(members: Seq[EvidenceNode], filmOf: String => Option[Int]): Seq[ResolverEdge] =
     pinEdges(members, filmOf) ++ pairsSharingAKey(members).flatMap { case (first, second) =>
@@ -106,7 +123,9 @@ private[identity] final class ConstraintEdges(scoring: CandidateScoring, familie
       val cannots = if (sameFilm || sharesCatalogueId(first, second)) Nil else Seq(
         Option.when(firstFilm.isDefined && secondFilm.isDefined)("different-films"),
         Option.when(firstFilm.exists(families.denies(second, _)) || secondFilm.exists(families.denies(first, _)))("denies-film"),
-        listingsApart(first, second)
+        listingsApart(first, second),
+        Option.when(copiedOriginalJoinsAnotherFilm(first, second, firstFilm, secondFilm) ||
+          copiedOriginalJoinsAnotherFilm(second, first, secondFilm, firstFilm))(ConstraintEdges.CopiedOriginalApart)
       ).flatten
       val titleX = sanitized(firstEvidence.cleanTitle)
       val originals = (firstEvidence.originalTitle.map(sanitized) ++ secondEvidence.originalTitle.map(sanitized)).filter(_.nonEmpty).toSet
@@ -136,6 +155,8 @@ private[identity] object ConstraintEdges {
   val SameCatalogueId  = "same-catalogue-id"
   val SameSearchForm   = "same-search-form"
   val TitleSegment     = "title-segment"
+  /** The cannot-link of two nodes a feed's copied original title alone joins, one's feed linking a film the other's is not. */
+  val CopiedOriginalApart = "copied-original-apart"
 
   /** The must-link tiers a title draws: same title, same search form or original title, one
    *  title a segment of the other. */
