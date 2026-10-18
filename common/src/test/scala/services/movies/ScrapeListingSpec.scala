@@ -43,6 +43,14 @@ class ScrapeListingSpec extends AnyFlatSpec with Matchers {
     val rated = ScrapeListing.prepare(Helios, Seq(listing("Jüdische Filmwoche: Das siebte Kreuz D, ab 12", Seq(at(18)))), germany,
       ScreeningTokens.forDefaultCountry())
     rated.movies.head.ageRating shouldBe Some("FSK 12")
+    // a client that cleans its titles itself (`cinemaClean`, Bilety24 and ~15 others) hands over a peeled title: the
+    // facts are read off the billing it keeps as `rawTitle`
+    val poland  = TitleNormalizer.forCountry(models.Country.Poland)
+    val raw     = "„Lalka”, reż. Maciej Kawalski"
+    val cleaned = listing(poland.cinemaClean("bilety24", raw), Seq(at(18)))
+    val pre = ScrapeListing.prepare(Helios, Seq(cleaned.copy(movie = cleaned.movie.copy(rawTitle = Some(raw)))), poland,
+      ScreeningTokens.forDefaultCountry())
+    pre.movies.head.director shouldBe Seq("Maciej Kawalski")
   }
 
   it should "keep apart a house's two seasons' productions of one work at one venue" in {

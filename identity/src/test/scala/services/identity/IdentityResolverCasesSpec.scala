@@ -366,6 +366,17 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     resolve(Seq(marked), films).decisionOf(marked.key).film should not be Some(1122030)
   }
 
+  it should "read the credit its billing carries into the listing, from the billing a client already cleaned" in {
+    // the identity model reads the row as scraped: a client that cleans its titles itself (`cinemaClean`) keeps the
+    // billing in `rawTitle`, and the model reads the venue's credit off it, over the feed's copied one
+    val germany = services.movies.TitleNormalizer.forCountry(models.Country.Germany)
+    val raw     = "Alpha (dir. Ducournau)"
+    val row = models.CinemaMovie(models.Movie(germany.cinemaClean("kinoheld", raw), rawTitle = Some(raw), releaseYear = Some(2026)),
+      KinoApollo, None, None, None, Nil, Seq("Shiv Rawail"), Nil)
+    val read = Listing.of(KinoApollo, row, germany)
+    (read.title, read.directors) shouldBe ("Alpha", Seq("Ducournau"))
+  }
+
   "A listing that publishes only a title" should
     "not be denied its credited siblings' film by the title relation alone" in {
     // PL, the Polish title of a foreign film: TMDB's record carries only the original title, so a

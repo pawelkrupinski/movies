@@ -33,7 +33,13 @@ class TitleFactsSpec extends AnyFlatSpec with Matchers {
     peel(Country.Poland, "Perfect Days, rez. Wim Wenders") shouldBe TitleFacts.Peeled("Perfect Days", TitleFacts.Facts(directors = Seq("Wim Wenders")))
     peel(Country.Poland, "Za duży na bajki 3 reż: Kristoffer Rus").facts.directors shouldBe Seq("Kristoffer Rus")
     peel(Country.Poland, "Droga do Vermiglio, rezyseria: Maura Delpero").facts.directors shouldBe Seq("Maura Delpero")
+    // a credit word's ż reads as z, typed or not
+    peel(Country.Poland, "Perfect Days, rez. Wim Wenders").facts.directors shouldBe Seq("Wim Wenders")
     peel(Country.Poland, "Film, reż. J. Kowalski").facts.directors shouldBe Seq("J. Kowalski")
+    // Kino Fenomen's (biletyna's) pipe metadata, which its client read by its own pattern before
+    peel(Country.Poland, "„Milcząca przyjaciółka” | reżyseria: Ildikó Enyedi | Francja, Niemcy, Węgry 2025 (2D/napisy)") shouldBe
+      TitleFacts.Peeled("„Milcząca przyjaciółka” | Francja, Niemcy, Węgry 2025 (2D/napisy)", TitleFacts.Facts(directors = Seq("Ildikó Enyedi")))
+    peel(Country.Poland, "Film | reżyseria: A. Kowalski, B. Nowak | Polska 2024").facts.directors shouldBe Seq("A. Kowalski", "B. Nowak")
     // the word typed twice (Kino Kinematograf)
     peel(Country.Poland, "Ale kosmos! reż. reż. Elżbieta Wąsik, Jarosław Szyszko (2026)") shouldBe
       TitleFacts.Peeled("Ale kosmos! (2026)", TitleFacts.Facts(directors = Seq("Elżbieta Wąsik", "Jarosław Szyszko")))
@@ -48,10 +54,31 @@ class TitleFactsSpec extends AnyFlatSpec with Matchers {
     peel(Country.Poland, "Wykład dr Olgi Wesołowskiej").facts shouldBe TitleFacts.Facts.empty
     peel(Country.Poland, "Mały Kinematograf: premiera animacji i spotkanie z reżyserką Aleksandrą Chrapowicką").facts shouldBe TitleFacts.Facts.empty
     // a name after a comma is a second director only when it is a whole name
+    // the credit takes what it runs on to before the billing goes on (the search strip it replaced did, for search)
     peel(Country.Poland, "Lalka, reż. Maciej Kawalski, Polska") shouldBe
-      TitleFacts.Peeled("Lalka, Polska", TitleFacts.Facts(directors = Seq("Maciej Kawalski")))
+      TitleFacts.Peeled("Lalka", TitleFacts.Facts(directors = Seq("Maciej Kawalski")))
     // German "Regie" is no Polish credit word
     peel(Country.Poland, "Kino Regie Jan Kowalski").facts shouldBe TitleFacts.Facts.empty
+  }
+
+  "a credit beside other notes" should "go alone, its sentence ending where the billing goes on" in {
+    // inside a bracket, only its comma-separated piece goes: the badge or year beside it stays
+    peel(Country.Germany, "Film (OmU, Regie: Jan Kowalski)") shouldBe TitleFacts.Peeled("Film (OmU)", TitleFacts.Facts(directors = Seq("Jan Kowalski")))
+    peel(Country.Poland, "Lalka (2026, reż. Maciej Kawalski)") shouldBe TitleFacts.Peeled("Lalka (2026)", TitleFacts.Facts(directors = Seq("Maciej Kawalski")))
+    // a full stop ends the name; the next sentence is no name of it
+    peel(Country.Poland, "Pociągi, reż. Maciej Drygas. Spotkanie z reżyserem").facts.directors shouldBe Seq("Maciej Drygas")
+    // a comma joins one more whole name only
+    peel(Country.Poland, "Perfect Days, reż. Wim Wenders, Dyskusyjny Klub Filmowy") shouldBe
+      TitleFacts.Peeled("Perfect Days", TitleFacts.Facts(directors = Seq("Wim Wenders")))
+    // an unbalanced bracket or a credit opening the title leaves nothing dangling
+    peel(Country.Germany, "Film (Regie: Jan Kowalski") shouldBe TitleFacts.Peeled("Film", TitleFacts.Facts(directors = Seq("Jan Kowalski")))
+    peel(Country.Poland, "Reż. Jan Kowalski: Film") shouldBe TitleFacts.Peeled("Film", TitleFacts.Facts(directors = Seq("Jan Kowalski")))
+  }
+
+  it should "credit no capitalised noun: a lone word only after a marked credit word" in {
+    peel(Country.Germany, "Heimat (Regie Gespräch im Anschluss)").facts shouldBe TitleFacts.Facts.empty
+    peel(Country.Germany, "Kurzfilmabend: Film von Studierenden der Filmhochschule").facts shouldBe TitleFacts.Facts.empty
+    peel(Country.Germany, "Phoenix (Regie: Petzold)").facts.directors shouldBe Seq("Petzold")
   }
 
   "an original title labelled in a title" should "be read into the listing's original title" in {

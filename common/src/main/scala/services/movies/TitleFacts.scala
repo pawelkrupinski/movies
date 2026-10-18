@@ -52,44 +52,66 @@ object TitleFacts {
   /** One country's reading: the languages whose credit and label words it reads, and its rating system, if its venues
    *  bill one in a title. */
   final case class Rules(languages: Set[String], rating: Option[RatingSystem]) {
-    // a name: a capitalised word, or a run of them, a family particle between ("Julia Ducournau", "Agnès Varda",
-    // "Lars von Trier", "Guillermo del Toro"); several joined by a comma, "&" or the language's "and" — a name after a
-    // comma only of two words or more, so "…, reż. Maciej Kawalski, Polska" credits him alone
-    private val Name     = """\p{Lu}[\p{L}'’.-]*"""
-    private val Particle = """(?:de|da|del|della|di|do|dos|du|la|le|van|von|der|den|ter|ten|bin|al)"""
-    private val Person   = s"""$Name(?:\\s+(?:$Particle\\s+)*$Name)*"""
-    private val Persons  = s"""$Name(?:\\s+(?:$Particle\\s+)*$Name)+"""
-    private val And      = """(?:\s*(?:&|,)\s*|\s+(?:and|i|und|y|et)\s+)"""
-    private lazy val Credit   = Option.when(languages.nonEmpty)(TitleWords.rawPatternIn(languages, Concept.DirectorCredit)).filter(_ != "(?:)")
-      .map(words => s"""(?U)(?:^|(?<=[\\s(\\[,]))(?i:$words)(?:(?:\\s*:\\s*|\\s+)(?i:$words))*(?:\\s*:\\s*|\\s+)(?<names>$Person(?:$And$Persons)*)""".r)
-    private lazy val Label    = Option.when(languages.nonEmpty)(TitleWords.rawPatternIn(languages, Concept.OriginalTitle)).filter(_ != "(?:)")
+    // a name: capitalised words or initials, a family particle between ("Julia Ducournau", "Rachel J. Morrison",
+    // "Lars von Trier", "Guillermo del Toro"), ending where its sentence or the billing goes on — a full stop
+    // ("Maciej Drygas. • Spotkanie"), a separator, a lowercase word. Several are joined by "&" or the language's "and",
+    // or by a comma when what follows is one more whole name of two words ("Rodrigo Areias, Aaron Brookner"), so
+    // "…, reż. Wim Wenders, Dyskusyjny Klub Filmowy" credits him alone
+    private val Part     = """(?:\p{Lu}\.|\p{Lu}[\p{L}'’-]*)"""
+    private val Particle = """(?:(?:van|von)(?:\s+(?:der|den))?|de(?:\s+la)?|da|del|della|di|do|dos|du|la|le|bin|al)"""
+    private val Person   = s"""$Part(?:\\s+(?:$Particle\\s+)?$Part)*"""
+    private val Whole    = s"""$Part\\s+(?:$Particle\\s+)?$Part"""
+    private val AndWord  = """(?:&|and|i|und|y|et)"""
+    private val Ends     = """(?=\s*(?:[,;|•/()\[\]:–—]|-\s|\.?$|\.\s)|\s+\p{Ll}|\s+(?:&|and|i|und|y|et)\s)"""
+    private lazy val Credit = Option.when(languages.nonEmpty)(TitleWords.rawPatternIn(languages, Concept.DirectorCredit)).filter(_ != "(?:)")
+      .map(words => (s"""(?U)(?:^|(?<=[\\s(\\[,]))(?<word>(?i:$words)(?:(?:\\s*:\\s*|\\s+)(?i:$words))*)(?<gap>\\s*:\\s*|\\s+)""" +
+        s"""(?<names>$Person$Ends(?:(?:\\s*,\\s*$Whole|\\s+$AndWord\\s+$Person)$Ends)*)""").r)
+    private lazy val Label  = Option.when(languages.nonEmpty)(TitleWords.rawPatternIn(languages, Concept.OriginalTitle)).filter(_ != "(?:)")
       .map(words => s"""(?U)\\(\\s*(?i:$words)\\s*:\\s*(?<original>[^()]+?)\\s*\\)""".r)
-    private lazy val Joined   = s"""(?U)$And""".r
+    private lazy val Joined = s"""(?U)\\s*,\\s*|\\s+$AndWord\\s+""".r
+    // where the billing goes on past a credit outside brackets: a separator and what follows it stay
+    private val GoesOn = """(?U)(?:^|\s)[|•/(\[]|:|\s[-–—]\s""".r
 
-    /** The facts `title` bills, taken off it: its rating note, its director's credit (a bracket holding it goes whole:
-     *  "Alte Liebe (Der neue Film von Andreas Dresen mit Dagmar Manzel)"), its labelled original title. */
+    /** The facts `title` bills, taken off it: its rating note, its director's credit, its labelled original title. */
     def peel(title: String): Peeled = {
       val (rated, stated) = rating.flatMap(_.peel(title)).getOrElse((title, None))
-      val (credited, directors) = Credit.flatMap(_.findFirstMatchIn(rated)).fold((rated, Seq.empty[String])) { m =>
-        // a name's own full stop ends the credit's sentence, an initial's stays ("Maciej Drygas. • Spotkanie", "J. Doe")
-        val names = Joined.split(m.group("names")).toSeq.map(_.trim.replaceAll("""(?<=\p{L}{2})\.$""", "")).filter(_.nonEmpty)
-        (cut(rated, m.start, m.end), names)
+      val credit = Credit.flatMap(_.findAllMatchIn(rated).find(credits))
+      val (credited, directors) = credit.fold((rated, Seq.empty[String])) { m =>
+        (cutCredit(rated, m.start, m.end), Joined.split(m.group("names")).toSeq.map(_.trim).filter(_.nonEmpty))
       }
       val (labelled, original) = Label.flatMap(_.findFirstMatchIn(credited)).fold((credited, Option.empty[String])) { m =>
-        (cut(credited, m.start, m.end), Some(m.group("original")))
+        (joined(credited.substring(0, m.start), credited.substring(m.end)), Some(m.group("original")))
       }
       Peeled(labelled, Facts(directors, original, None, stated))
     }
 
-    /** `title` without its `start`–`end` span: the whole bracket the span opens inside, and the comma it follows. */
-    private def cut(title: String, start: Int, end: Int): String = {
+    // a lone surname is a credit only after a marked word — "reż. Ozon", "dir. Ducournau", "Regie: Petzold" — so
+    // "Heimat (Regie Gespräch im Anschluss)" and "Film von Studierenden der Filmhochschule" credit nobody
+    private def credits(m: scala.util.matching.Regex.Match): Boolean =
+      Joined.split(m.group("names")).headOption.exists(_.trim.contains(' ')) || m.group("gap").contains(':') || m.group("word").endsWith(".")
+
+    /** `title` without the credit at `start`–`end`: inside brackets, the comma-separated piece holding it (the bracket
+     *  goes when nothing else is in it: "(reż. Ozon)", "(Der neue Film von Andreas Dresen mit …)"), else the credit and
+     *  what it runs on to before the billing goes on (", Polska"; a separator and what follows it stay). */
+    private def cutCredit(title: String, start: Int, end: Int): String = {
       val open  = title.lastIndexWhere(c => c == '(' || c == '[', start - 1)
       val close = if (open >= 0 && title.lastIndexWhere(c => c == ')' || c == ']', start - 1) < open) title.indexWhere(c => c == ')' || c == ']', end) else -1
-      val (from, to) = if (close >= 0) (open, close + 1) else (start, end)
-      val before = title.substring(0, from).replaceAll("""[\s,]+$""", "")
-      // the comma that closed the credit goes too where only a bracket follows it ("…, reż. K. Agopsowicz, (2026)")
-      val after  = title.substring(to).trim.replaceFirst("""^,\s*(?=[(\[]|$)""", "")
-      (if (after.isEmpty) before else if (after.startsWith(",")) s"$before$after" else s"$before $after").trim
+      if (close >= 0) {
+        val inside = title.substring(open + 1, close)
+        val from   = inside.lastIndexOf(',', start - open - 1) + 1
+        val comma  = inside.indexOf(',', end - open - 1)
+        val kept   = (inside.substring(0, from) + (if (comma >= 0) inside.substring(comma + 1) else "")).split(',').map(_.trim).filter(_.nonEmpty)
+        joined(title.substring(0, open), (if (kept.isEmpty) "" else kept.mkString(s"${title(open)}", ", ", s"${title(close)}")) + " " + title.substring(close + 1))
+      } else joined(title.substring(0, start), GoesOn.findFirstMatchIn(title.substring(end)).fold("")(m => title.substring(end + m.start)))
+    }
+
+    /** `before` and `after` as one title: no comma, colon or open bracket left dangling between or around them. */
+    private def joined(before: String, after: String): String = {
+      val a0 = after.trim
+      // a credit between two separators leaves one: "Film | reżyseria: A. Kowalski | Polska 2024"
+      val b  = before.replaceAll(if (a0.matches("""[|•/].*""")) """[\s,(\[|•/:]+$""" else """[\s,(\[]+$""", "")
+      val a  = a0.replaceFirst(if (b.isEmpty) """^[\s:,;|•/–—-]+""" else """^,\s*""", "")
+      (if (a.isEmpty) b else if (b.isEmpty) a else s"$b $a").trim
     }
   }
   object Rules {

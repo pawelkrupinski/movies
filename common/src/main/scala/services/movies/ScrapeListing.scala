@@ -43,7 +43,7 @@ object ScrapeListing {
       val tokens = cleanAndFormat(cm)._2
       withTitleFacts(cm.copy(showtimes = cm.showtimes.map { st =>
         st.copy(format = screeningTokens.normalize(if (st.format.isEmpty) tokens else st.format))
-      }), normalizer.titleFacts(cinema, cm.movie.title))
+      }), normalizer.titleFacts(cinema, billedTitle(cm)))
     }
     // A single cinema can report one film as several rows — one per screening page,
     // or under two spellings that share the slot but differ by year or by a canonical
@@ -72,6 +72,10 @@ object ScrapeListing {
    *  own word and replaces what the client carried — a feed's linked film's credit, as kinoheld copied Shiv Rawail's onto
    *  DE ScharfrichterKino's "Alpha (dir. Ducournau)"; a running time, an age rating or an original title only fills a
    *  field the client left empty, a structured field being the venue's word too. */
+  /** The title as the venue billed it, facts and all: a client that cleans its titles itself (`cinemaClean`) has
+   *  peeled them off `title` already, and keeps the billing in `rawTitle`. */
+  def billedTitle(cm: CinemaMovie): String = cm.movie.rawTitle.getOrElse(cm.movie.title)
+
   def withTitleFacts(cm: CinemaMovie, facts: TitleFacts.Facts): CinemaMovie =
     if (facts == TitleFacts.Facts.empty) cm
     else cm.copy(

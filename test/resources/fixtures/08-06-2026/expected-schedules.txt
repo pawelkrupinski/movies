@@ -7094,7 +7094,7 @@ showings:
 
 === Plenerowe Pałacowe: Droga do Vermiglio ===
 displayTitle:      Plenerowe Pałacowe: Droga do Vermiglio
-cinemaTitles:      Droga do Vermiglio   | Plenerowe Pałacowe: Droga do Vermiglio
+cinemaTitles:      Droga do Vermiglio | Plenerowe Pałacowe: Droga do Vermiglio
 runtimeMinutes:    119
 releaseYear:       2024
 countries:         Włochy, Francja, Belgia
@@ -7116,7 +7116,7 @@ cinemaFilmUrls:
   Kino Pałacowe = http://kinopalacowe.pl/filmy/14606-plenerowe-paacowe-droga-do-vermiglio/
 cinemaScrapes:
   Kino Pałacowe / Plenerowe Pałacowe: Droga do Vermiglio / 2024
-  Służewski Dom Kultury / Droga do Vermiglio   / —
+  Służewski Dom Kultury / Droga do Vermiglio / —
 showings:
   2026-07-07  Kino Pałacowe                 21:30 Dziedziniec Zamkowy
 

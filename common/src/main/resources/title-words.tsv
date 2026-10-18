@@ -324,10 +324,7 @@ short-film	pt	curtas metragens
 # languages and English. A name must follow, capitalised: "mit Regie-Besuch!" credits nobody ──
 director-credit	pl	reż.
 director-credit	pl	reż
-director-credit	pl	rez.
 director-credit	pl	reżyseria
-director-credit	pl	rezyseria
-director-credit	pl	w reżyserii
 director-credit	en	dir.
 director-credit	en	directed by
 director-credit	en	a film by

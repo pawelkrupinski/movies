@@ -218,7 +218,7 @@ object Listing {
    *  only its pieces found films, and it leaned to "Catching Fire". The raw title stays as published. */
   def of(cinema: Cinema, scraped: CinemaMovie, normalizer: TitleNormalizer): Listing = {
     // the facts its title bills, in its own fields and off its title, as intake gives the slot (`ScrapeListing.prepare`)
-    val cm    = ScrapeListing.withTitleFacts(scraped, normalizer.titleFacts(cinema, scraped.movie.title))
+    val cm    = ScrapeListing.withTitleFacts(scraped, normalizer.titleFacts(cinema, ScrapeListing.billedTitle(scraped)))
     val title = normalizer.factFree(cm.movie.title)
     val (searchTitle, properTitle) = searchTitlesOf(title, normalizer)
     Listing(
