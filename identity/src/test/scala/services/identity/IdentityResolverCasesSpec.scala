@@ -1556,6 +1556,23 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     withClue(f.render)(f.film shouldBe Some(592))
   }
 
+  "A strand named with a stage word" should "take the plain film it bills, stating no fact of it" in {
+    // The staging piece (138b55d52) outweighs every keep but a stated fact; a strand's banner — the leading piece a colon
+    // closes — naming a stage word is the venue's programme, not a staging of the work: "Musical Monday: Grease" is the
+    // 1978 film the other venues bill plainly, and "Stage & Screen: Wicked: For Good" the current release. The staging
+    // reading does reach the billing: the same words billed AFTER the film ("Grease - Musical Monday") are denied
+    val grease = Seq(F(621, "Grease", 1978, "Randal Kleiser", 110, 40, countries = Seq("US")),
+      F(9037, "Grease 2", 1982, "Patricia Birch", 115, 15, countries = Seq("US")))
+    val monday = listing(TheForumNorthallerton, "Musical Monday: Grease")
+    val plain = Seq(Multikino, Helios, KinoApollo, Rialto, KinoMikro).map(listing(_, "Grease", Some(1978), Some("Randal Kleiser"), Some(110)))
+    val g = shipped(monday +: plain, grease).decisionOf(monday.key)
+    withClue(g.render)(g.film shouldBe Some(621))
+    val wicked = Seq(F(967941, "Wicked: For Good", 2025, "Jon M. Chu", 137, 60, countries = Seq("US")), F(402431, "Wicked", 2024, "Jon M. Chu", 160, 70, countries = Seq("US")))
+    val screen = listing(TheForumNorthallerton, "Stage & Screen: Wicked: For Good")
+    val w = shipped(Seq(screen), wicked).decisionOf(screen.key)
+    withClue(w.render)(w.film shouldBe Some(967941))
+  }
+
   "A billing naming a film by a piece its title spells with stops" should "take no film when another piece is billed beside it" in {
     // PL Kino Alternatywy (prod 2026-10-14, labelled wrong): 'Okładka „AI – rewolucja czy zagrożenie”', a debate, took
     // Spielberg's "A.I." — the piece "AI" is its title's letters, which a word-for-word reading of the billing missed

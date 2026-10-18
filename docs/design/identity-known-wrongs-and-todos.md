@@ -274,11 +274,13 @@ Each a production change: measure with `scripts/identity-measure`, land one at a
   title-words.tsv holds `en tour`/`es gira` in both festival-edition and side-event (and `tour` twice in festival-edition).
 
 ### Review of a083 and the Arsenal client (2026-10-15)
-- [ ] **The staging piece outweighs every keep but a stated fact** (138b55d52, `IdentityResolver.billedAsPiece`'s
+- [x] **The staging piece outweighs every keep but a stated fact** (138b55d52, `IdentityResolver.billedAsPiece`'s
   `staged`): a strand named with a Stage word ("Musical Monday: Grease", "Stage & Screen: …", PL "Scena …") would deny
   the film it bills unless the billing states its year, director or runtime. The 62 prod listings holding such a word
   today move nowhere (slice batches 9f9b41682 vs 6abe17876: UK 1 cure, DE 2 cures, PL/US 0), so it is no regression
-  yet; pin a strand case in IdentityResolverCasesSpec before a strand with a Stage word appears.
+  yet; pin a strand case in IdentityResolverCasesSpec before a strand with a Stage word appears. Pinned 2026-10-18
+  ("A strand named with a stage word"): a banner a colon closes is no piece beside the film, so "Musical Monday: Grease"
+  and "Stage & Screen: Wicked: For Good" take their film today; only a stage word billed after the film denies it.
 - [ ] **Arsenal's shared bills are untested**: `ArsenalBerlinClient.parseScreening` drops year, director, country and
   runtime when `movieTitles` holds two or more films, but the 10-14 recording holds no shared bill. Record one
   (`clients.tools.WriteArsenalBerlin`) when the calendar carries it and assert the facts are dropped.
