@@ -66,7 +66,9 @@ object UnifiedEvidence {
    *  ([[FeedLink.linked]]) — the feed's link a hint no rule takes alone ([[FeedLink]]), a family's take of a
    *  bare title a namesake as often as the film (DE "Newborn", "Like Father, Like Son": Filmweb's namesakes, Cineamo
    *  linking other films); the two naming one film are two independent sources (DE 3001 Kino's "Amadeo", Cineamo's
-   *  648574m and Filmweb's take, the 2023 film).
+   *  648574m and Filmweb's take, the 2023 film) — unless the year the feed copied denied a current film TMDB ranked first
+   *  for the title, for an older one:
+   *  the family's take then agrees with the feed's copy, no second source (DE Astor's "ATMOS: Michael").
    *  `family.director`: a film database's family takes the film AND every listing whose venue credits a director credits
    *  one of the film's — `family.facts` for a venue stating no year (UK Picture House Uckfield's "The Misanthrope (NT
    *  Live)", crediting Indhu Rubasingham: the National Theatre's 2026 production IMDb takes).
@@ -187,6 +189,16 @@ object UnifiedEvidence {
     val traced      = c.decision.trace.nodes.values.toSeq
     // the one TMDB film the listings' TMDB-keyed feeds link, where they link one ([[PinnedSignals]]' family.feedLink)
     val feedLinked = FeedLink.linked(c.listings).map(_._2)
+    // the CURRENT film (released this year or last) TMDB's search ranked first for a title naming it, which a node denied
+    // on a year no venue states itself — the feed's copy, its entry's claim — with its year: where the feed links an older
+    // film, a family whose take agrees with the link agrees with the copied year, no second source ([[PinnedSignals]]'
+    // family.feedLink). DE Astor's "ATMOS: Michael": Cineamo links Dreyer's 1924 film and copies its year, which denied the
+    // 2026 biopic sixteen venues bill; Filmweb's family took the 1924 film by that year. Not a link to the current film
+    // over an older namesake (DE Gröben-Lichtspiele's "Camouflage OmU": Cineamo and Filmweb on the 2026 Ukrainian film).
+    val copiedYearDenied = if (c.listings.isEmpty || c.listings.exists(SourceReliability.decides(_, SourceReliability.Fact.Year))) Map.empty[Int, Int]
+      else c.nodes.flatMap(_.candidates).filter(first => first.rank.contains(1) && first.denied && first.titleNamesIt &&
+        first.film.year.exists(_ >= c.thisYear - 1) && first.measures.get("year.delta").exists(!_.isInstanceOf[IdentityMeasures.Missing]))
+        .map(first => first.tmdbId -> first.film.year.get).toMap
     // the listings whose venue credits a director ([[PinnedSignals]]' family.director): a feed's credit is its entry's
     val credited   = asStated.filter(listing => SourceReliability.decides(listing, SourceReliability.Fact.Directors) && listing.directors.nonEmpty)
     // the namesakes the release veto kept beside one it took out ([[PinnedSignals]]' family.releaseKept)
@@ -274,7 +286,8 @@ object UnifiedEvidence {
       val databaseTook    = VoterFamily.values.exists(f => f.namesFilms && took(f))
       val familiesCurrent = takers >= 2 && databaseTook && current
       val familyFacts     = databaseTook && votes(Agreement.ListingFacts)
-      val familyFeedLink  = databaseTook && contender.tmdb.exists(feedLinked.contains)
+      val familyFeedLink  = databaseTook && contender.tmdb.exists(feedLinked.contains) && !copiedYearDenied.exists { case (id, year) =>
+        !contender.tmdb.contains(id) && records.flatMap(_.film.year).forall(_ < year) }
       val familyDirector  = databaseTook && credited.nonEmpty &&
         credited.forall(listing => records.exists(record => FactRelations.samePerson(listing.directors, record.film.directors.getOrElse(Nil))))
       val familyReleased  = databaseTook && contender.tmdb.exists(releaseKept)

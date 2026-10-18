@@ -190,6 +190,34 @@ class UnifiedEvidenceSpec extends AnyFlatSpec with Matchers {
       Some("tmdb:1001315" -> "family.feedLink&film.current")
   }
 
+  it should "fill nothing where the year the feed copied denied the title's first hit" in {
+    // DE Astor's "ATMOS: Michael" (capture 2026-10-13): Cineamo links Dreyer's 1924 "Michael" (55587m) and copies its year,
+    // which denied TMDB's first hit, the 2026 biopic; Filmweb takes the 1924 film by that year — the feed's claim, restated
+    val dreyer = film("Michael", 1924, "Carl Theodor Dreyer", 93, imdb = 15136)
+    val biopic = film("Michael", 2026, "Antoine Fuqua", 127, imdb = 11378946)
+    val listings = Seq(listing(KinoMuza, "ATMOS: Michael", year = Some(1924)).copy(catalogueIds = Seq(CatalogueId(CatalogueSources.Cineamo, "55587m"))))
+    def fill(firstDeniedBy: Map[String, IdentityMeasures.Measure]) = {
+      val decision = ResolverDecision(listings.map(_.key), None, 0.1, ResolverDecision.Basis.Vetoed, Nil)()
+      val first    = candidate(936075, biopic, 0.06, denied = true).copy(measures = firstDeniedBy)
+      val linkedTo = candidate(55587, dreyer, 0.06).copy(rank = Some(10))
+      UnifiedRules.resolver.filled(contenders(ClusterEvidence(listings, decision,
+        Seq(IdentityResolver.NodeEvidence(listings.map(_.key), Seq(first, linkedTo))), Seq(took(VoterFamily.Filmweb, recordOf(dreyer))), Nil,
+        _ => None, thisYear = 2026))).map { case (contender, rule) => contender.film -> rule }
+    }
+    fill(Map("year.delta" -> IdentityMeasures.Number(-102))) shouldBe None
+    // the first hit denied by no year: the link and the family's take stand as two sources
+    fill(Map.empty) shouldBe Some("tmdb:55587" -> "family.feedLink&!family.dissent")
+    // the feed linking the CURRENT film over an older first hit its copied year denied (DE Gröben-Lichtspiele's "Camouflage
+    // OmU": Cineamo and Filmweb on the 2026 Ukrainian film, the 2016 namesake ranked first): the link and the take stand
+    val ukrainian = film("Camouflage", 2026, "Lyubov Durakova", 90, imdb = 30000001)
+    val older     = film("Camouflage", 2016, "Imge Özbilge", 80, imdb = 6000001)
+    val camouflage = Seq(listing(KinoMuza, "Camouflage OmU", year = Some(2026)).copy(catalogueIds = Seq(CatalogueId(CatalogueSources.Cineamo, "1735950m"))))
+    UnifiedRules.resolver.filled(contenders(ClusterEvidence(camouflage, ResolverDecision(camouflage.map(_.key), None, 0.1, ResolverDecision.Basis.BelowThreshold, Nil)(),
+      Seq(IdentityResolver.NodeEvidence(camouflage.map(_.key), Seq(candidate(1177883, older, 0.05, denied = true).copy(measures = Map("year.delta" -> IdentityMeasures.Number(10))),
+        candidate(1735950, ukrainian, 0.6).copy(rank = Some(2))))), Seq(took(VoterFamily.Filmweb, recordOf(ukrainian))), Nil, _ => None, thisYear = 2026)))
+      .map { case (contender, rule) => contender.film -> rule } shouldBe Some("tmdb:1735950" -> "family.feedLink&!family.dissent")
+  }
+
   "a film database's take of the namesake the release veto kept" should "fill it, unless the veto took out the search's first hit" in {
     // PL Kino Kultura Gołdap's "NADZIEJA" (capture 2026-10-13): Filmweb takes Mucha's 2007 documentary (277730), which TMDB
     // dates a Polish release of; the veto took out the 2019 namesake (616561, 15th in the search) for having none
