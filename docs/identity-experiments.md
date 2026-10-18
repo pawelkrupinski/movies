@@ -146,6 +146,54 @@ slice outputs: `~/.cache/kinowo-identity/handoff/2026-10-15-wrong-match-round2/i
 - **Next angle:** apply the clash only where the record's own type (a play, a stage production) is not a film, or
   only to an undated record; then run the whole-corpus measure.
 
+## 2026-10-13/18 — shorts, relays, certificate search (other sessions' branches, traced 10-18 from their transcripts)
+
+### Strict short denial (class 5, strict form)
+- **Tried:** a stricter refusal of shorts (`ShortFilms`, `FamilyScope`, `FeedLink`, `SuspectTakes`, title words).
+- **Measured:** CI convergence run 38690448859 (measure/3696d942d), red after 36 min, read then as "not landable";
+  recording, base and per-country numbers were not recorded.
+- **Why stopped:** superseded by the narrower class-5 shorts rule that landed 10-15 (`d2f919535`, `d2557b009`,
+  "take no short a billing opens on and goes on past with words of its own").
+- **Code:** `experiment/identity-class-5-strict` (`3696d942d`).
+- **Next angle:** measure it locally (identity-measure-local) on top of the landed rule to see what it adds beyond it;
+  the original red never said which takes it cost.
+
+### Relay pre-emption of the pooled rules: stage-production and the full form
+- **Tried:** let a relay's dated record (stage-production) or its broadcast-season record pre-empt the pooled rules,
+  as each already does for a listing alone (`e8844fd1c`, first as review-fixes `f4796e608`, 10-13); variants with
+  stage-production only (`e52c49045`) and broadcast-season only.
+- **Result:** the full form gained 134 right takes but lost Savoy Worksop's "MET:Manon": pooled stage-production read
+  one member's stated year as the whole cluster's, split the Manon cluster off the Met's record, and gave Aldeburgh's
+  Nutcracker the 2025/26 record. Broadcast-season only: UK 2 cured, 148 right gained, 0 lost on recording 38713274617 —
+  that one LANDED 10-18 (`d20d61970`, `2882dab86`, `a4f9ec5c8`). No separate numbers for stage-production only.
+- **Code:** `experiment/identity-relay-preempt-pooled-full` (`e8844fd1c`), `experiment/identity-relay-preempt-stage-only`
+  (`e52c49045`).
+- **Next angle:** pooled stage-production with the year read per member rather than per cluster (or only when every
+  member that states a year agrees) would keep the Manon split from happening.
+
+### Search a title without the certificate the format peel reads ("item 8")
+- **Tried:** `SearchTitles.uncertified` strips the certificate by `FormatTags.CertificateNote` instead of its own
+  "(15)"-only shape (first as review-fixes `a8c0bf422` / `1c9a52e07`, 10-13).
+- **Result:** identity-measure-local on recording 38713274617, base `b36500129`: loses 8 right takes, Lighthouse Poole's
+  "Family Cinema: <film> - Cert X" (Paddington, WALL·E, …); a re-run with the new queries answered live lost the same
+  8, so it is no recording gap. Cures not recorded.
+- **Why stopped:** the new search spellings ask family questions no recording holds, and the same-film join to the
+  sibling listings breaks. The BBFC-lists half landed (`c5a960c69`, `d7fa5e95b`). Open item in
+  `docs/design/identity-known-wrongs-and-todos.md`.
+- **Code:** `experiment/identity-search-uncertified` (`dbf421550`; rebased as `item8-on-main`, `4a194b22d`).
+- **Next angle:** since 10-18 the intake peel (TitleFacts) takes the certificate into the listing's age rating before
+  search; re-check whether the family join still breaks once both sides of the join are peeled the same way.
+
+### Search a house's relay with its screenings' season ("(ROH)" series)
+- **Tried:** search a stage house's relay with its screenings' season beside a credit or running time (UK Picture House
+  Uckfield's "(ROH)" series), 10-14.
+- **Result:** never measured: UnmatchedClustersRatchetSpec red, because the new "<work> <season>" lookups are absent
+  from the capture. Needs a recapture and re-record first.
+- **Code:** `experiment/identity-relay-season-search` (`d6b06b981`, on three other unmerged commits of that session).
+- **Next angle:** the year form of the same idea (search a relay's work with the year its title or banner dates it,
+  branch `relay-search-year`, `2b1b1bab3`) measured LANDABLE with 0 moves on 10-18 and is being landed by its session;
+  the season form is worth measuring once that is in and a recording holds the season queries.
+
 ## Remaining wrong takes when round 2 stopped (37 on `d0d3ffb1c`)
 
 Copied feed facts 10 · title piece or banner taken as the title 7 · bare exact title, top hit 6 · pooled family vote 5 ·
