@@ -303,8 +303,7 @@ private[identity] final class LiveCorpus(lookups: IdentityLookups, normalizer: T
       val byFilm = known.getOrElse(Nil).groupBy(_.tmdbId)
       named(query) = known.map(hits => ArraySeq.from(CandidateGeneration.ranked(hits)))
       byFilm.map { case (id, hits) =>
-        val best = hits.minBy(hit => (-hit.popularity, hit.title, hit.originalTitle.getOrElse(""), hit.year.getOrElse(0)))
-        bestHits.updateWith(id)(held => Some(held.getOrElse(Map.empty) + (query -> best))); id }
+        Hit.best(hits).foreach(best => bestHits.updateWith(id)(held => Some(held.getOrElse(Map.empty) + (query -> best)))); id }
     }.toSet
     live.queries.foreach(query => askers.updateWith(query)(held => Some(held.getOrElse(Set.empty) + key)))
     live.reached.foreach(id => reachers.updateWith(id)(held => Some(held.getOrElse(Set.empty) + key)))

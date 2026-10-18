@@ -71,9 +71,7 @@ object ProjectionIndex {
  * That this is enough is what `ScopedProjectionEquivalenceSpec` holds it to: thousands of random runs, each tick's store
  * identical to a whole projection's, and every coupling above dropped in turn caught by it.
  */
-final case class ProjectionScope(whole: Boolean, films: Set[String], clusters: Set[ClusterId], listings: Set[ListingKey]) {
-  def isEmpty: Boolean = !whole && films.isEmpty && clusters.isEmpty && listings.isEmpty
-}
+final case class ProjectionScope(whole: Boolean, films: Set[String], clusters: Set[ClusterId], listings: Set[ListingKey])
 
 object ProjectionScope {
   val Whole: ProjectionScope = ProjectionScope(whole = true, Set.empty, Set.empty, Set.empty)
@@ -82,7 +80,6 @@ object ProjectionScope {
    *  one another film may now take ([[widened]]). */
   final case class Changes(listings: Set[ListingKey], films: Set[String], keys: Set[String] = Set.empty) {
     def ++(other: Changes): Changes = Changes(listings ++ other.listings, films ++ other.films, keys ++ other.keys)
-    def isEmpty: Boolean = listings.isEmpty && films.isEmpty && keys.isEmpty
   }
   object Changes { val none: Changes = Changes(Set.empty, Set.empty) }
 

@@ -12,9 +12,6 @@ object CreditRelation {
   private def credits(names: Iterable[String]): Seq[String] =
     names.iterator.flatMap(_.split(",")).map(_.trim).filter(_.nonEmpty).toSeq
 
-  private def latin(names: Iterable[String]): Boolean =
-    names.exists(_.exists(c => Character.isLetter(c) && Character.UnicodeScript.of(c.toInt) == Character.UnicodeScript.LATIN))
-
   /** A name in Latin letters: ICU's general Any-Latin transliteration, then to ASCII. Pinyin for
    *  Han, ISO-style for Cyrillic, Greek, Georgian, …: no table of names. One instance per thread
    *  (an ICU transliterator is not documented as safe to share). */
@@ -27,7 +24,7 @@ object CreditRelation {
     val names: Seq[String] = credits(raw)
     lazy val keys: Set[String]              = names.map(services.movies.PersonKey.of).filter(_.nonEmpty).toSet
     lazy val words: Seq[Seq[String]]        = names.map(TitleContainment.tokens).filter(_.nonEmpty)
-    lazy val isLatin: Boolean               = latin(names)
+    lazy val isLatin: Boolean               = names.exists(IdentityMeasures.hasLatinLetter)
     // ASCII names are their own Latin form ("Any-Latin; Latin-ASCII" leaves them as they are): no transliteration —
     // ICU's, per name, was ~150 MB of a PL hard-cluster run's resolve allocation, most of it on the Latin side.
     lazy val inLatin: Credits               = if (names.forall(isAscii)) this else new Credits(names.map(latinized))

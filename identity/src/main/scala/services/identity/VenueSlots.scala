@@ -2,7 +2,7 @@ package services.identity
 
 import services.movies.LatestTitleYear
 
-import models.{Cinema, CinemaMovie, CinemaShowing, Source, SourceData}
+import models.{Cinema, CinemaMovie, CinemaShowing, MovieRecord, Source, SourceData}
 import services.movies.{CinemaSlotBuilder, ListingConstraints, ListingKey, MovieRecordMerge, ScrapeListing, ScreeningTokens, ShowtimesDigest, StoredMovieRecord,
   TitleNormalizer, VenuePageFacts}
 import services.resolution.YearWindow
@@ -192,6 +192,9 @@ private[identity] object VenueSlots {
    *  for each. */
   type VenueRows = Map[ListingKey, Seq[CinemaMovie]]
   def rowsByKey(cinema: Cinema, fetched: Seq[CinemaMovie]): VenueRows = fetched.groupBy(cm => ListingKey.of(cinema, cm))
+  /** `record`'s venue slots by the venue showing them. */
+  def byVenue(record: MovieRecord): Map[Cinema, Seq[(Source, SourceData)]] =
+    record.data.toSeq.collect { case (showing: CinemaShowing, slot) => showing.cinema -> ((showing: Source) -> slot) }.groupMap(_._1)(_._2)
 
   /** The rows `cinema` publishes under `key`, as one: the smallest by the listings' total order, carrying every row's
    *  showtimes — so a venue printing one listing twice loses none. */

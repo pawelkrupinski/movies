@@ -4,8 +4,8 @@ import services.movies.{ListingKey, TitleNormalizer}
 
 /**
  * `resolve(E)`: film identity as a pure, deterministic function of a SET of listings and the
- * answers of a lookup source (docs/design/identity-resolver.md, phase 2). Production code that
- * serves nothing: its only consumers are the shadow report, the recording sweep and curation.
+ * answers of a lookup source (docs/design/identity-resolver.md, phase 2). The worker's model resolves
+ * through it region by region ([[IncrementalResolver]] over [[resolveRegion]]); the recording sweep and curation read it whole.
  *
  * Two stages, every step a function of the set:
  *
@@ -98,7 +98,7 @@ object IdentityResolver {
         .map(other => node -> s"no film: it quotes the film its venue bills by itself as '${other.evidence.rawTitle}'")
     }
   }
-  /** How many years before its screenings' a film's may be and still be a current release ([[billedAsPiece]]). */
+  /** How many years before its screenings' a film's may be and still be a current release ([[BilledPiece]]). */
   val CurrentRelease = 1
   /** How many minutes a listing's running time may stand from its film's and still state the film's own. */
   val PieceRuntimeAgreement = 3

@@ -168,7 +168,7 @@ object ListingShape {
       // a piece crediting the film's director, as an inflected language bills the name ("Poniedziałki z Konwickim: pisarz –
       // scenarzysta – reżyser"): the whole billing is the venue's programme of the director's films
       val names  = films.flatMap(_.directors.getOrElse(Nil)).flatMap(TitleContainment.tokens).filter(_.length >= DirectorStem)
-      def own(word: String) = word.length >= 3 && !word.exists(_.isDigit) && !theirs.exists(spells(word, _)) && !billed(word)
+      def own(word: String) = word.length >= 3 && !word.exists(_.isDigit) && !theirs.exists(spells(word, _)) && !DecorationWords.billedAround(word)
       def credits(word: String) = names.exists(word.startsWith)
       // the film's run of whole pieces, the first one
       val run = (for { from <- words.indices.iterator; to <- (from + 1 to words.size).iterator
@@ -177,7 +177,7 @@ object ListingShape {
       // the banner segment each piece is in: a colon or a pipe closes one
       val segment = parts.indices.map(k => breaks.take(k).count(b => b == ":" || b == "|"))
       def programme(piece: Seq[String]) = piece.exists(word => ScreeningProgramme.findFirstIn(word).isDefined)
-      def programmeWords(piece: Seq[String]) = programme(piece) || piece.exists(billed) || DecorationWords.namesAnEvent(piece)
+      def programmeWords(piece: Seq[String]) = programme(piece) || piece.exists(DecorationWords.billedAround) || DecorationWords.namesAnEvent(piece)
       // a film of the silent era under a screening programme: the billing is the programme's, its accompanist's (DE
       // "Film+Musikfest: Greta Garbo: The Temptress", 1926), as one billing it silent is
       // the film's own tagline, its subtitle ("Frauen bildet Banden - Eine Spurensuche zur Geschichte der Roten Zora")
@@ -248,9 +248,6 @@ object ListingShape {
   private val NoteWords = TitleWords.tokens(TitleWords.Concept.Talk, TitleWords.Concept.Screening)
   /** One whole phrase of a screening's note, folded — "Q & A", whose letters [[NoteWords]] holds no word of. */
   private val NotePhrase = TitleWords.foldedPattern(TitleWords.Concept.Talk, TitleWords.Concept.Screening).r
-  /** An event, format or edition word: what a venue bills around a film. */
-  private def billed(word: String): Boolean =
-    DecorationWords.EventWords(word) || DecorationWords.EditionWords(word) || services.movies.FormatTags.FormatToken.contains(word)
   /** A word naming a screening programme or its audience, as a stem a compound carries ("Filmmittwoch", "Kinderkino"), or
    *  a festival's ("SPECIAL: Jazzfest Community Week: SOUNDTRACK TO A COUP D’ETAT"). */
   private val ScreeningProgramme = """film|kin[oaie]|cine|movie|klub|club|dkf|kinder|kids|children|dzieci|familie|family|senior|fest$""".r
