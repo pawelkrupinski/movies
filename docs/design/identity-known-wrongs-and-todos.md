@@ -351,6 +351,9 @@ Each a production change: measure with `scripts/identity-measure`, land one at a
   mount sometimes showed an empty directory to a direct `docker run`. run-script-tests keeps only a failing log's last
   60 lines, so the next one was not captured: keep the whole failing log (and its path) first, then diagnose. (The
   whole log is kept now, `RUN_SCRIPT_TESTS_LOG_DIR`, default ~/.cache/kinowo-script-tests/failed, the host's in --linux:
-  read it the next time the run is red.)
+  read it the next time the run is red.) Lead, 2026-10-18 15:14: the next red run was a HANG, not failures — 1 of 2
+  --linux runs stopped after the `pre-push --lint-plan` section's first check, killed at the 600 s test timeout with no
+  check failed (log kept as ~/.cache/kinowo-script-tests/failed/20261018-151443-1-pre-push-test.sh.log); look for a
+  command in the lint-plan cases that waits on input, a lock or the network inside the container.
 - [ ] `agent-procs kill --mine` ended two agents' own tool shells (exit 143) on 10-15; the ancestry is now read from
   the process table (the probable cause, a `ps -p` hop failing, reproduced only with a fake ps). Re-check if it recurs.
