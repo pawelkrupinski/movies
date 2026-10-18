@@ -75,6 +75,13 @@ class TitleFactsSpec extends AnyFlatSpec with Matchers {
     peel(Country.Poland, "Reż. Jan Kowalski: Film") shouldBe TitleFacts.Peeled("Film", TitleFacts.Facts(directors = Seq("Jan Kowalski")))
   }
 
+  it should "take nothing off a title that is nothing but its credit or its label: no title would be left" in {
+    peel(Country.Germany, "Ein Film von Wim Wenders") shouldBe TitleFacts.Peeled("Ein Film von Wim Wenders", TitleFacts.Facts.empty)
+    peel(Country.Poland, "(reż. Ozon)") shouldBe TitleFacts.Peeled("(reż. Ozon)", TitleFacts.Facts.empty)
+    peel(Country.Germany, "(Originaltitel: La petite cuisine de Mehdi)") shouldBe
+      TitleFacts.Peeled("(Originaltitel: La petite cuisine de Mehdi)", TitleFacts.Facts.empty)
+  }
+
   it should "credit no capitalised noun: a lone word only after a marked credit word" in {
     peel(Country.Germany, "Heimat (Regie Gespräch im Anschluss)").facts shouldBe TitleFacts.Facts.empty
     peel(Country.Germany, "Kurzfilmabend: Film von Studierenden der Filmhochschule").facts shouldBe TitleFacts.Facts.empty

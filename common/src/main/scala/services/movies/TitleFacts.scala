@@ -81,16 +81,16 @@ object TitleFacts {
     // where the billing goes on past a credit outside brackets: a separator and what follows it stay
     private val GoesOn = """(?U)(?:^|\s)[|•/(\[]|:|\s[-–—]\s""".r
 
-    /** The facts `title` bills, taken off it: its rating note, its director's credit, its labelled original title. */
+    /** The facts `title` bills, taken off it: its rating note, its director's credit, its labelled original title. A
+     *  credit or a label that IS the whole title stays: taken, it would leave no title ("Ein Film von Wim Wenders"). */
     def peel(title: String): Peeled = {
       val (rated, stated) = rating.flatMap(_.peel(title)).getOrElse((title, None))
-      val credit = Credit.flatMap(_.findAllMatchIn(rated).find(credits))
-      val (credited, directors) = credit.fold((rated, Seq.empty[String])) { m =>
-        (cutCredit(rated, m.start, m.end), Joined.split(m.group("names")).toSeq.map(_.trim).filter(_.nonEmpty))
-      }
-      val (labelled, original) = Label.flatMap(_.findFirstMatchIn(credited)).fold((credited, Option.empty[String])) { m =>
-        (joined(credited.substring(0, m.start), credited.substring(m.end)), Some(m.group("original")))
-      }
+      val (credited, directors) = Credit.iterator.flatMap(_.findAllMatchIn(rated)).filter(credits)
+        .map(m => (cutCredit(rated, m.start, m.end), Joined.split(m.group("names")).toSeq.map(_.trim).filter(_.nonEmpty)))
+        .find(_._1.nonEmpty).getOrElse((rated, Seq.empty[String]))
+      val (labelled, original) = Label.iterator.flatMap(_.findAllMatchIn(credited))
+        .map(m => (joined(credited.substring(0, m.start), credited.substring(m.end)), Option(m.group("original"))))
+        .find(_._1.nonEmpty).getOrElse((credited, None))
       Peeled(labelled, Facts(directors, original, None, stated))
     }
 
