@@ -2,6 +2,7 @@ package services.cinemas.es
 
 import models.{Cinema, CinemaMovie, Movie, Showtime}
 import play.api.libs.json._
+import services.cinemas.common.ScraperParse
 import services.cinemas.es.SpanishFeedText.{certificate, field}
 
 import java.time.{LocalDate, LocalDateTime, LocalTime}
@@ -86,7 +87,7 @@ object OcineParser {
         filmUrl     = Some(s"$baseUrl/#/DetallPelicula/$id"),
         synopsis    = field(root, "sinopsis"),
         cast        = Seq("actor1", "actor2", "actriu1", "actriu2").flatMap(field(root, _)),
-        director    = field(root, "director").toSeq.flatMap(_.split(',').map(_.trim).filter(_.nonEmpty)),
+        director    = field(root, "director").toSeq.flatMap(ScraperParse.commaItems),
         showtimes   = showtimes,
         externalIds = Map("ocine" -> id.toString),
         trailerUrl  = field(root, "videoExtern"),

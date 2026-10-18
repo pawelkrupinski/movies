@@ -4,6 +4,7 @@ import models.{Cinema, CinemaMovie, Movie, Showtime}
 import play.api.libs.json._
 
 import java.time.{LocalDate, LocalDateTime, LocalTime}
+import services.cinemas.common.ScraperParse
 import services.cinemas.es.SpanishFeedText.{certificate, field, fold}
 import scala.util.Try
 
@@ -142,5 +143,5 @@ object TaquillaParser {
   private val CinemaTag = """(?i)\s*\(cine\)\s*$""".r
 
   private def list(raw: Option[String]): Seq[String] =
-    raw.toSeq.flatMap(_.split(',').map(_.trim).filter(_.nonEmpty))
+    raw.toSeq.flatMap(ScraperParse.commaItems)
 }

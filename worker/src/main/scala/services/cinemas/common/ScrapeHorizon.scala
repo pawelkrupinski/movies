@@ -1,5 +1,7 @@
 package services.cinemas.common
 
+import models.CinemaMovie
+
 import java.time.{LocalDate, YearMonth}
 
 /**
@@ -32,6 +34,11 @@ import java.time.{LocalDate, YearMonth}
  */
 object ScrapeHorizon {
   val MaxDays: Int = 730
+
+  /** The listing from `day` on: each film's showtimes before it dropped, and a film left with none dropped too — for
+   *  a page that still prints the days already past (a programme week's table, an events list). */
+  def startingOn(day: LocalDate)(movies: Seq[CinemaMovie]): Seq[CinemaMovie] =
+    movies.map(m => m.copy(showtimes = m.showtimes.filterNot(_.dateTime.toLocalDate.isBefore(day)))).filter(_.showtimes.nonEmpty)
 
   /** How many consecutive blank days end a [[liveDays]] walk.
    *

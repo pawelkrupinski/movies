@@ -2,6 +2,7 @@ package services.cinemas.common
 
 import models._
 import play.api.libs.json._
+import services.cinemas.common.ScraperParse.jsonText
 import services.cinemas.pl.NonMovieEventClassifier
 import tools.{HttpFetch, HttpRead}
 
@@ -46,10 +47,9 @@ class CineamoClient(
 
   def fetch(): Seq[CinemaMovie] = {
     val referenceDay = today
-    val first = parsePage(HttpRead.page(http, pageUrl(cinemaId, 1)))
-    val rest  = ListingPages.readMore("cineamo-pages", 2 to first.pageCount, (p: Int) => pageUrl(cinemaId, p))(HttpRead.page(http, _))
-      .flatMap { case (_, body) => parsePage(body).showings }
-    toMovies((first.showings ++ rest).filterNot(_.dateTime.toLocalDate.isBefore(referenceDay)), cinema)
+    val showings = ListingPages.readNumbered("cineamo-pages", pageUrl(cinemaId, _), (_: Page).pageCount, (_: Page).showings)(
+      url => parsePage(HttpRead.page(http, url)))
+    toMovies(showings.filterNot(_.dateTime.toLocalDate.isBefore(referenceDay)), cinema)
   }
 }
 
@@ -87,7 +87,7 @@ object CineamoClient {
 
   private def parseShowing(js: JsValue): Option[Showing] =
     for {
-      billed   <- text(js \ "name")
+      billed   <- jsonText(js \ "name")
       if (js \ "state").asOpt[String].forall(_ == "scheduled")
       instant  <- (js \ "startDatetime").asOpt[String].flatMap(s => Try(Instant.parse(s)).toOption)
     } yield {
@@ -96,13 +96,13 @@ object CineamoClient {
       val (title, billedFormat) = ScraperParse.extractFormatTags(billed)
       Showing(
         title          = title,
-        originalTitle  = text(content \ "name").filter(_ != title),
-        catalogueId    = text(js \ "cineamoMovieId"),
+        originalTitle  = jsonText(content \ "name").filter(_ != title),
+        catalogueId    = jsonText(js \ "cineamoMovieId"),
         runtimeMinutes = (content \ "duration").asOpt[Int].filter(_ > 0),
-        year           = text(content \ "premiereDate").flatMap(d => Try(d.take(4).toInt).toOption),
-        trailerUrl     = text(content \ "trailerUrl"),
+        year           = jsonText(content \ "premiereDate").flatMap(d => Try(d.take(4).toInt).toOption),
+        trailerUrl     = jsonText(content \ "trailerUrl"),
         dateTime       = instant.atZone(Zone).toLocalDateTime,
-        bookingUrl     = text(js \ "onlineTicketUrl"),
+        bookingUrl     = jsonText(js \ "onlineTicketUrl"),
         format         = (formatTokens(js) ++ billedFormat).distinct
       )
     }
@@ -124,10 +124,10 @@ object CineamoClient {
   def formatTokens(js: JsValue): List[String] = {
     def flag(name: String) = (js \ name).asOpt[Boolean].contains(true)
     val screen    = FormatFlags.collect { case (name, token) if flag(name) => token }
-    val subtitles = text(js \ "subtitledLanguage")
+    val subtitles = jsonText(js \ "subtitledLanguage")
     val version =
       if (flag("isSubtitled") || subtitles.isDefined) List(if (subtitles.contains("eng")) "OmeU" else "OmU")
-      else if (flag("isOriginalLanguage") && !text(js \ "originalLanguage").contains("deu")) List("OV")
+      else if (flag("isOriginalLanguage") && !jsonText(js \ "originalLanguage").contains("deu")) List("OV")
       else Nil
     screen ++ version
   }
@@ -136,9 +136,9 @@ object CineamoClient {
    *  a mystery screening ("Sneak Preview") names no film and is left out, as is a reading, gig or day pass
    *  the venue sells beside its films (`NonMovieEventClassifier.isNonScreening`). */
   private[common] def toMovies(showings: Seq[Showing], cinema: Cinema): Seq[CinemaMovie] =
-    showings.filterNot(s => NonMovieEventClassifier.isNonScreening(s.title))
-      .groupBy(_.title).toSeq.map { case (title, same) =>
-        val film = same.head
+    SlotsToMovies.fold(showings.filterNot(s => NonMovieEventClassifier.isNonScreening(s.title)), _.title,
+      (s: Showing) => Showtime(s.dateTime, s.bookingUrl, None, s.format), SlotsToMovies.byTimeBookingAndFormat) {
+      (title, same, showtimes) =>
         CinemaMovie(
           movie       = Movie(title, runtimeMinutes = same.flatMap(_.runtimeMinutes).headOption,
                               releaseYear = same.flatMap(_.year).headOption,
@@ -149,15 +149,13 @@ object CineamoClient {
           synopsis    = None,
           cast        = Nil,
           director    = Nil,
-          showtimes   = same.map(s => Showtime(s.dateTime, s.bookingUrl, None, s.format))
-                          .distinctBy(s => (s.dateTime, s.bookingUrl, s.format)).sortBy(_.dateTime),
+          showtimes   = showtimes,
           externalIds = same.flatMap(_.catalogueId).headOption.map(CatalogueSource -> _).toMap,
-          trailerUrl  = film.trailerUrl
+          trailerUrl  = same.head.trailerUrl
         )
-      }.sortBy(_.movie.title)
+    }
 
   /** The catalogue-id source a Cineamo listing's film record is filed under. */
   val CatalogueSource: String = services.identity.CatalogueSources.Cineamo
 
-  private def text(js: JsLookupResult): Option[String] = js.asOpt[String].map(_.trim).filter(_.nonEmpty)
 }

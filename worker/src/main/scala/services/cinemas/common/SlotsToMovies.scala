@@ -20,6 +20,10 @@ private[cinemas] object SlotsToMovies {
     * has the same wall-clock time AND the same booking link. */
   def byTimeAndBooking(showtime: Showtime): Any = (showtime.dateTime, showtime.bookingUrl)
 
+  /** The dedup key of a feed that sells one slot in several versions under one link
+    * (an OmU and a dubbed print at the same time): time, booking link AND format. */
+  def byTimeBookingAndFormat(showtime: Showtime): Any = (showtime.dateTime, showtime.bookingUrl, showtime.format)
+
   /**
    * Fold `slots` into title-sorted [[CinemaMovie]]s.
    *

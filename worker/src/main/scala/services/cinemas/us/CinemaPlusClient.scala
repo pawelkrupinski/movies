@@ -3,7 +3,7 @@ package services.cinemas.us
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
-import services.cinemas.common.{CinemaScraper, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, ListingPages, ScraperParse, SlotsToMovies}
 import services.cinemas.pl.OnlyMovieEventsFilter
 import tools.{HttpFetch, HttpRead, ReadOutcome}
 
@@ -33,7 +33,8 @@ import scala.jdk.CollectionConverters._
  * }}}
  *
  * So a scrape is the venue page plus one `?date=` page per other day it advertises, from
- * `today` on — the whole published horizon, never capped here. A day's times are its own
+ * `today` on — the whole published horizon, never capped here; a day page that fails
+ * drops only its day. A day's times are its own
  * wall clock ("6:00p"); the label over a group of buttons is a seating class ("General
  * Admission", "Reserved Seating") or a presentation ("3D"), kept as the showtime's format
  * unless it is a seating class.
@@ -61,7 +62,10 @@ class CinemaPlusClient(
     val venue = read(pageUrl)
     val shown = selectedDay(venue)
     val days  = advertisedDays(venue).filterNot(_.isBefore(from))
-    val pages = days.map(day => day -> (if (shown.contains(day)) venue else read(dayUrl(pageUrl, day))))
+    // The venue page answered, so a later day's page that fails drops only that day and
+    // leaves the listing incomplete.
+    val others = ListingPages.readMore("cinemaplus-days", days.filterNot(shown.contains), dayUrl(pageUrl, _))(read).toMap
+    val pages  = days.flatMap(day => if (shown.contains(day)) Some(day -> venue) else others.get(day).map(day -> _))
     toMovies(pages.flatMap { case (day, page) => slots(page, day, cinema) }, cinema)
   }
 
@@ -153,5 +157,5 @@ object CinemaPlusClient {
   /** The names on the card's "Cast: a, b" / "Director: c" line. */
   private def credited(card: Element, prefix: String): Seq[String] =
     card.select("div").asScala.map(_.ownText.trim).find(_.startsWith(prefix)).toSeq
-      .flatMap(_.stripPrefix(prefix).split(",").map(_.trim).filter(_.nonEmpty))
+      .flatMap(line => ScraperParse.commaItems(line.stripPrefix(prefix)))
 }

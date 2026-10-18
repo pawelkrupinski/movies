@@ -3,7 +3,7 @@ package services.cinemas.de
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.Element
-import services.cinemas.common.{CinemaScraper, ScraperParse, SlotsToMovies}
+import services.cinemas.common.{CinemaScraper, ScrapeHorizon, ScraperParse, SlotsToMovies}
 import tools.{HttpFetch, HttpRead}
 
 import java.time.{LocalDate, LocalDateTime}
@@ -38,9 +38,7 @@ class RexSchifferstadtClient(
   /** The week's showtimes from today on: the table keeps the days already past. */
   def fetch(): Seq[CinemaMovie] = {
     val from = today
-    RexSchifferstadtClient.parse(HttpRead.page(http, page), cinema, from)
-      .map(m => m.copy(showtimes = m.showtimes.filterNot(_.dateTime.toLocalDate.isBefore(from))))
-      .filter(_.showtimes.nonEmpty)
+    ScrapeHorizon.startingOn(from)(RexSchifferstadtClient.parse(HttpRead.page(http, page), cinema, from))
   }
 }
 

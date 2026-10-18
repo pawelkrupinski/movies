@@ -2,10 +2,10 @@ package services.cinemas.common
 
 import models._
 import play.api.libs.json._
+import services.cinemas.common.ScraperParse.jsonText
 import services.cinemas.pl.NonMovieEventClassifier
 import tools.{HttpFetch, HttpRead, TextNormalization}
 
-import java.text.Normalizer
 import java.time.{LocalDate, LocalDateTime, OffsetDateTime, ZoneId}
 import java.util.Locale
 import scala.util.Try
@@ -176,43 +176,43 @@ object KinoheldClient {
     } yield Show(
       film       = film,
       dateTime   = dateTime,
-      bookingUrl = text(js \ "deeplink").orElse(showPage(js)),
-      room       = text(js \ "auditorium" \ "name"),
+      bookingUrl = jsonText(js \ "deeplink").orElse(showPage(js)),
+      room       = jsonText(js \ "auditorium" \ "name"),
       format     = formatTokens((js \ "flags").asOpt[Seq[JsValue]].getOrElse(Nil).flatMap { f =>
                      for (c <- (f \ "category").asOpt[String]; k <- (f \ "code").asOpt[String]) yield c -> k
-                   }, text(js \ "subtitleLanguage" \ "isocode"))
+                   }, jsonText(js \ "subtitleLanguage" \ "isocode"))
     )
 
   /** The show's own page on kinoheld, which books it: for a venue that sells through
    *  kinoheld itself, the API gives no `deeplink`. */
   private def showPage(js: JsValue): Option[String] =
     for {
-      city   <- text(js \ "cinema" \ "city" \ "urlSlug")
-      cinema <- text(js \ "cinema" \ "urlSlug")
-      show   <- text(js \ "urlSlug")
+      city   <- jsonText(js \ "cinema" \ "city" \ "urlSlug")
+      cinema <- jsonText(js \ "cinema" \ "urlSlug")
+      show   <- jsonText(js \ "urlSlug")
     } yield s"$SiteUrl/kino/$city/$cinema/vorstellung/$show"
 
   private def filmOf(showName: String, movie: JsLookupResult, latestYear: Int): Option[Film] = {
     val linked = for {
       id    <- (movie \ "id").asOpt[String]
-      title <- text(movie \ "title")
-    } yield (id, title, text(movie \ "titleOriginal"))
+      title <- jsonText(movie \ "title")
+    } yield (id, title, jsonText(movie \ "titleOriginal"))
     linked match {
       case Some((id, title, original)) if linkTrusted(showName, title, original) =>
         Some(Film(
           id             = Some(id),
           title          = title,
           originalTitle  = original.filter(_ != title),
-          slug           = text(movie \ "urlSlug"),
+          slug           = jsonText(movie \ "urlSlug"),
           runtimeMinutes = (movie \ "duration").asOpt[Int].filter(_ > 0),
-          year           = text(movie \ "productionYear").flatMap(y => Try(y.take(4).toInt).toOption).filter(_ <= latestYear),
+          year           = jsonText(movie \ "productionYear").flatMap(y => Try(y.take(4).toInt).toOption).filter(_ <= latestYear),
           countries      = names(movie \ "productionCountries"),
           genres         = names(movie \ "genres"),
           director       = names(movie \ "directors"),
           cast           = names(movie \ "actors"),
-          synopsis       = text(movie \ "description").map(TextNormalization.stripHtmlKeepingParagraphs).filter(_.nonEmpty),
-          posterUrl      = text(movie \ "thumbnailImage" \ "url"),
-          trailerUrl     = (movie \ "trailers").asOpt[Seq[JsValue]].getOrElse(Nil).flatMap(t => text(t \ "url")).headOption,
+          synopsis       = jsonText(movie \ "description").map(TextNormalization.stripHtmlKeepingParagraphs).filter(_.nonEmpty),
+          posterUrl      = jsonText(movie \ "thumbnailImage" \ "url"),
+          trailerUrl     = (movie \ "trailers").asOpt[Seq[JsValue]].getOrElse(Nil).flatMap(t => jsonText(t \ "url")).headOption,
           ageRating      = (movie \ "contentRating" \ "minimumAge").asOpt[Int].flatMap(age => AgeRating.normalize(s"FSK $age"))
         ))
       case _ => Option(showName).filter(_.nonEmpty).map(name => Film(id = None, title = name))
@@ -237,8 +237,7 @@ object KinoheldClient {
     }
 
   private def words(s: String): Set[String] =
-    Normalizer.normalize(s.toLowerCase(Locale.ROOT), Normalizer.Form.NFKD)
-      .replaceAll("\\p{M}", "")
+    TextNormalization.deburr(s.toLowerCase(Locale.ROOT))
       .split("[^\\p{L}\\p{N}]+").filter(w => w.length >= 3 && !CommonWords(w)).toSet
 
   /** kinoheld's TECHNOLOGY flags, as the tokens Filmstarts emits for the same formats. */
@@ -276,8 +275,10 @@ object KinoheldClient {
    *  reading, gig or day pass it sells beside its films — `NonMovieEventClassifier.isNonScreening`,
    *  as [[KinoprogrammClient]] leaves them out. */
   private[common] def toMovies(shows: Seq[Show], cinema: Cinema): Seq[CinemaMovie] =
-    shows.filterNot(show => NonMovieEventClassifier.isNonScreening(show.film.title))
-      .groupBy(show => show.film.id.getOrElse("name:" + show.film.title)).toSeq.map { case (_, same) =>
+    SlotsToMovies.fold(shows.filterNot(show => NonMovieEventClassifier.isNonScreening(show.film.title)),
+      (show: Show) => show.film.id.getOrElse("name:" + show.film.title),
+      (s: Show) => Showtime(s.dateTime, s.bookingUrl, s.room, s.format), SlotsToMovies.byTimeBookingAndFormat) {
+      (_, same, showtimes) =>
         val film = same.head.film
         CinemaMovie(
           movie       = Movie(film.title, runtimeMinutes = film.runtimeMinutes, releaseYear = film.year,
@@ -288,15 +289,13 @@ object KinoheldClient {
           synopsis    = film.synopsis,
           cast        = film.cast,
           director    = film.director,
-          showtimes   = same.map(s => Showtime(s.dateTime, s.bookingUrl, s.room, s.format))
-                          .distinctBy(s => (s.dateTime, s.bookingUrl, s.format)).sortBy(_.dateTime),
+          showtimes   = showtimes,
           trailerUrl  = film.trailerUrl,
           ageRating   = film.ageRating
         )
-      }.sortBy(_.movie.title)
+    }
 
-  private def text(js: JsLookupResult): Option[String] = js.asOpt[String].map(_.trim).filter(_.nonEmpty)
 
   private def names(js: JsLookupResult): Seq[String] =
-    js.asOpt[Seq[JsValue]].getOrElse(Nil).flatMap(n => text(n \ "name")).distinct
+    js.asOpt[Seq[JsValue]].getOrElse(Nil).flatMap(n => jsonText(n \ "name")).distinct
 }

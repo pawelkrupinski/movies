@@ -149,7 +149,7 @@ object TicketsolveClient {
         cast        = Seq.empty,
         director    = Seq.empty,
         showtimes   = showtimes,
-        externalIds = Option(show.attr("id")).filter(_.nonEmpty).map(id => Map("ticketsolve" -> id)).getOrElse(Map.empty),
+        externalIds = Option(show.attr("id")).filter(_.nonEmpty).map("ticketsolve" -> _).toMap,
         ageRating   = group.flatMap(_.certificate).headOption.flatMap(AgeRating.normalize)
       )
     }

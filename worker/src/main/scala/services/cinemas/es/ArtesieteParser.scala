@@ -7,6 +7,7 @@ import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
+import services.cinemas.common.ScraperParse
 import services.cinemas.es.SpanishFeedText.{certificate, field, fold}
 import scala.util.Try
 
@@ -62,7 +63,7 @@ object ArtesieteParser {
       posterUrl   = field(first, "Cartel").map(file => s"$baseUrl/Posters/$file"),
       filmUrl     = Some(s"$baseUrl/FilmPage/$id/${segment(title)}"),
       synopsis    = field(first, "Sinopsis"),
-      cast        = field(first, "Interpretes").toSeq.flatMap(_.split(',').map(_.trim).filter(_.nonEmpty)),
+      cast        = field(first, "Interpretes").toSeq.flatMap(ScraperParse.commaItems),
       director    = Nil,
       showtimes   = showtimes,
       externalIds = Map("artesiete" -> id),
