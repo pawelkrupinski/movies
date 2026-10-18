@@ -2,8 +2,8 @@
 # recorded corpus and its production baseline, the enrichment tree, and a warm sbt.
 #
 # Extracted because more than one job needs all of it — every row of a country's leg
-# (whose sample and full suite share this one setup) and the bisect replaying a red leg's
-# sample — and the setup is not incidental: it is ~180 lines of hard-won detail about
+# (whose suite and takes rows share this one setup) and the bisect replaying a red leg's
+# sample alias — and the setup is not incidental: it is ~180 lines of hard-won detail about
 # which storage survives (artifacts and a rolling release, never the actions cache, which
 # evicts silently at this repo's 9.46 GB), and duplicating it would guarantee the copies
 # drift. A drifted copy is worse than no gate: the bisect's sample would pass on inputs

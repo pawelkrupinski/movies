@@ -8,8 +8,7 @@
 #
 # DISPATCHED BY MAIN: its `kick-convergence` job starts it for a push that can change a verdict
 # (`.github/convergence-paths.txt`); it can still be run by hand. A red HERMETIC leg on main asks
-# `convergence-bisect.yml` which commit did it (`request-bisect`), and a failed scheduled run files an
-# issue (`report`).
+# `convergence-bisect.yml` which commit did it (`request-bisect`). It has no schedule, so no failure-report job.
 #
 # `mode: hermetic`: every leg replays the pair `Record scrape fixtures` pinned for its country
 # (`hermetic-<code>.txt`) and touches no network, so a red leg means the code changed — and is
@@ -189,19 +188,3 @@ jobs:
               with:
                   grafana-url: ${{ secrets.GRAFANA_URL }}
                   grafana-annotation-token: ${{ secrets.GRAFANA_ANNOTATION_TOKEN }}
-
-    # A failed scheduled run becomes an issue assigned to the owner, closed on the next pass --
-    # see .github/actions/report-scheduled-run (ScheduledRunReportSpec).
-    report:
-        needs: [preflight, leg, request-bisect, timings]
-        if: always() && !cancelled() && github.event_name == 'schedule'
-        runs-on: ubuntu-26.04
-        timeout-minutes: 5
-        permissions:
-            contents: read
-            issues: write
-        steps:
-            - uses: actions/checkout@v5
-            - uses: ./.github/actions/report-scheduled-run
-              with:
-                  failed: ${{ contains(needs.*.result, 'failure') }}

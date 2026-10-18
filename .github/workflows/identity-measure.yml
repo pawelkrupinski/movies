@@ -125,6 +125,7 @@ jobs:
                   [ -z "$RECORDING" ] || echo "pair=$RECORDING given enrichment-${{ matrix.code }}-$RECORDING.tar.*" >> "$GITHUB_OUTPUT"
 
             - uses: ./.github/actions/convergence-setup
+              id: setup
               with:
                   code:          ${{ matrix.code }}
                   token:         ${{ secrets.GITHUB_TOKEN }}
@@ -132,12 +133,21 @@ jobs:
                   dockerhub-token:    ${{ secrets.DOCKERHUB_TOKEN }}
                   hermetic-pair: ${{ steps.recording.outputs.pair }}
 
-            # The baseline is production AT THE BASE: keyed on the base's code (the resolver included),
-            # and booted before the variant's patch is applied, so a variant never measures against itself.
+            # The baseline is production AT THE BASE: keyed on the base's code (the resolver included) AND on
+            # the recorded pair it boots from -- the corpus run, the enrichment tree asset and every fill asset
+            # (the setup's `hermetic-pair`) -- and booted before the variant's patch is applied, so a variant never
+            # measures against itself. Without the pair a new tree or fill over the same corpus run and code would
+            # restore a baseline booted from the old one.
             - name: Key the base's booted production
               id: base
               shell: bash
-              run: echo "key=identity-pipeline-${{ matrix.code }}-${{ env.KINOWO_CONVERGENCE_CORPUS_RUN }}-${{ hashFiles('**/src/main/**/*.scala', '**/src/fixtures/**/*.scala', 'worker/src/it/scala/IdentityShadow.scala') }}" >> "$GITHUB_OUTPUT"
+              env:
+                  PAIR: ${{ steps.setup.outputs.hermetic-pair }}
+                  SOURCES: ${{ hashFiles('**/src/main/**/*.scala', '**/src/fixtures/**/*.scala', 'worker/src/it/scala/IdentityShadow.scala') }}
+              run: |
+                  set -euo pipefail
+                  pair_hash=$(printf '%s' "$PAIR" | sha256sum | cut -c1-16)
+                  echo "key=identity-pipeline-${{ matrix.code }}-${{ env.KINOWO_CONVERGENCE_CORPUS_RUN }}-$pair_hash-$SOURCES" >> "$GITHUB_OUTPUT"
 
             - name: Restore the base's booted production
               id: booted

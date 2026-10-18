@@ -297,13 +297,11 @@ Each a production change: measure with `scripts/identity-measure`, land one at a
 - [ ] A `ci / test` prometheus FileNotFoundError was reported once on main; not reproduced.
 - [ ] Judge a random sample of the ~95% unjudged served listings per country (`scripts/identity-judge-cards`) to
   estimate the unknown wrong rate.
-- [ ] Tooling review leftovers (CI): `convergence-fill.yml`'s one fixed concurrency group lets a newer dispatch for
-  other countries replace a pending one; `identity-measure.yml`'s cached base-boot key leaves out the tree and fill
-  assets; `identity-model-convergence.yml`'s `report` job can never run (no schedule); the recording-health step still
-  warns and stays green when it cannot read the run's start or the last manifest; `ci_timings.py`'s gh calls are
-  unbounded; stale "sample rows" comments in `country-convergence-leg.yml` and the convergence-publish/-setup actions;
-  `infra/nix/files/monitoring/prometheus.yaml` and `ci-builds.json` still name the deleted `CI timings backfill`
-  (production path).
+- [x] Tooling review leftovers (CI): fixed 2026-10-18 -- convergence-fill's lane is per country set, the measure
+  base-boot key carries the recorded pair (tree and fill assets), the dead `report` job is gone from
+  identity-model-convergence (dispatch-only), an unreadable recording-health input now fails the leg unjudged,
+  `ci_timings.py`'s gh calls are bounded, the stale "sample rows" comments are corrected, and the deleted `CI timings
+  backfill` is no longer named in prometheus.yaml or ci-builds.json.
 - [ ] Nothing sweeps orphaned `measure/*` branches a SIGKILLed `scripts/identity-measure` leaves (recover one with
   `--run <id>`).
 

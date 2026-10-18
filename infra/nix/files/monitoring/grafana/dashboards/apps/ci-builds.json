@@ -169,7 +169,7 @@
   {
    "id": 15,
    "title": "Every build: 7-day median wall clock",
-   "description": "Each workflow's median wall clock (first job start → last job end) over the 7 days before each point, successful runs on the chosen ref only -- a cancelled or failed run's length says nothing about the build's. A line that keeps rising is a build that grew; compare `First` and `Last` in the legend. GitHub's history before the in-run reporter was pushed once by `CI timings backfill` (no phases in it).",
+   "description": "Each workflow's median wall clock (first job start → last job end) over the 7 days before each point, successful runs on the chosen ref only -- a cancelled or failed run's length says nothing about the build's. A line that keeps rising is a build that grew; compare `First` and `Last` in the legend.  GitHub's history before the in-run reporter was pushed once, with no phases in it.",
    "type": "timeseries",
    "datasource": {
     "type": "prometheus",

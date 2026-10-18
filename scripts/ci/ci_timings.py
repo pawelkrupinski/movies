@@ -20,7 +20,7 @@ Sources:
 Every sample of a run is stamped at the RUN'S START (`run_started_at`), one point per run on a chart.
 Prometheus's out-of-order window (90d, prometheus.yaml) is what admits a sample stamped at the start
 of a run hours long. (The 90 days of history from before this reporter were pushed once, 2026-10-14,
-by a `CI timings backfill` workflow and a `--history-days` mode since deleted.)
+by a backfill workflow and a `--history-days` mode since deleted.)
 
 Pushed through grafana.kinowo.net's token-gated OTLP path (roles/public-proxy.nix
 `tokenGatedRequests`) with the deploy marker's Grafana token. Pushing never fails the job: a
@@ -235,13 +235,17 @@ def push(payload, url, token, opener=urllib.request.build_opener(NoRedirect).ope
     return "Pushed timings."
 
 
+# Every network call is bounded (scripts/tool-conventions.sh `bounded`): a hung API never holds the run's last job.
+GH_TIMEOUT_SECONDS = 120
+
+
 class GitHub:
     def __init__(self, repo):
         self.repo = repo
 
     def json(self, path):
         out = subprocess.run(["gh", "api", "--paginate", "repos/%s/%s" % (self.repo, path)],
-                             check=True, capture_output=True, text=True).stdout
+                             check=True, capture_output=True, text=True, timeout=GH_TIMEOUT_SECONDS).stdout
         # --paginate concatenates one JSON document per page.
         decoder, documents, index = json.JSONDecoder(), [], 0
         while index < len(out):
@@ -264,8 +268,11 @@ class GitHub:
 
     def log(self, job_id):
         # sbt colours its output, and `gh` refuses to print escape sequences unless told to.
-        done = subprocess.run(["gh", "api", "--allow-escape-sequences", "repos/%s/actions/jobs/%s/logs" % (self.repo, job_id)],
-                              capture_output=True, text=True)
+        try:
+            done = subprocess.run(["gh", "api", "--allow-escape-sequences", "repos/%s/actions/jobs/%s/logs" % (self.repo, job_id)],
+                                  capture_output=True, text=True, timeout=GH_TIMEOUT_SECONDS)
+        except subprocess.TimeoutExpired:
+            return ""
         return done.stdout if done.returncode == 0 else ""
 
 

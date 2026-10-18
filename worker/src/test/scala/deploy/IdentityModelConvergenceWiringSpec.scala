@@ -109,8 +109,8 @@ class IdentityModelConvergenceWiringSpec extends AnyFlatSpec with Matchers {
   }
 
   /** A red hermetic leg on main asks the bisect which commit did it — a replay that does not move. */
-  it should "request a bisect for a red hermetic leg, and file an issue for a failed scheduled run" in {
-    RepoFile.jobs(workflow).keySet shouldBe Set("preflight", "leg", "request-bisect", "report", "timings")
+  it should "request a bisect for a red hermetic leg, and carry no scheduled-failure report (it has no schedule)" in {
+    RepoFile.jobs(workflow).keySet shouldBe Set("preflight", "leg", "request-bisect", "timings")
     val requests = leg.linesIterator.sliding(2).collect { case Seq(uses, cond) if uses.contains("convergence-bisect-request") => cond }.toSeq
     requests should not be empty
     requests.foreach(_ should include("inputs.mode == 'hermetic'"))

@@ -144,7 +144,6 @@ class ConvergenceDispatchGateSpec extends AnyFlatSpec with Matchers with tools.S
   // after the verdict is in.
   it should "list every repository file the convergence workflows run" in {
     val afterTheVerdict = Set(
-      ".github/actions/report-scheduled-run/action.yml",     // opens an issue for a failed scheduled run
       ".github/actions/convergence-bisect-request/action.yml", // asks for a bisect of a red run
       ".github/actions/hard-clusters-ratchet/action.yml",     // turns a red leg's findings into seeds
       ".github/actions/report-timings/action.yml",            // reports the run's step timings

@@ -274,5 +274,37 @@ class RealPrometheusTest(unittest.TestCase):
             shutil.rmtree(data, ignore_errors=True)
 
 
+class HungGhTest(unittest.TestCase):
+    """A gh that never answers must not hold the run's last job: json() raises at the bound, log() gives no log."""
+
+    def setUp(self):
+        self.bin = tempfile.mkdtemp()
+        gh = Path(self.bin, "gh")
+        gh.write_text("#!/bin/sh\nexec sleep 30\n")
+        gh.chmod(0o755)
+        self.addCleanup(shutil.rmtree, self.bin, True)
+        self.path = mock_environ_path(self.bin)
+
+    def test_bounded(self):
+        started = time.monotonic()
+        with self.path, mock_timeout(1):
+            github = timings.GitHub("o/r")
+            self.assertEqual(github.log(1), "")
+            with self.assertRaises(subprocess.TimeoutExpired):
+                github.json("actions/runs/1")
+        self.assertLess(time.monotonic() - started, 15)
+
+
+def mock_timeout(seconds):
+    from unittest import mock
+    return mock.patch.object(timings, "GH_TIMEOUT_SECONDS", seconds)
+
+
+def mock_environ_path(directory):
+    from unittest import mock
+    import os
+    return mock.patch.dict(os.environ, {"PATH": directory + os.pathsep + os.environ["PATH"]})
+
+
 if __name__ == "__main__":
     unittest.main()

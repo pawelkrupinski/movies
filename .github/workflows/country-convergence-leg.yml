@@ -350,7 +350,7 @@ jobs:
                   mongo-tmpfs:   ${{ inputs.mongo-tmpfs }}
                   takes:         ${{ startsWith(matrix.phase, 'takes') }}
 
-            # A RECORDING leg records its own country's corpus FIRST, in this job — the sample
+            # A RECORDING leg records its own country's corpus FIRST, in this job — the shape specs
             # and the suite below then replay what it wrote to test/resources/fixtures/corpus.
             #
             # It used to be five `scrapes (<country>)` jobs of the recorder, every one of which
@@ -483,7 +483,7 @@ jobs:
             # suite reports, never a red row. TMDB's key is this step's alone among the fill's steps
             # (`FillCredentials` signs the TMDB gaps listed with it masked); nothing it records carries it.
             #
-            # THE CONVERGENCE ROW ALONE FILLS. Every other row (order-independence, sample) replays the pair's
+            # THE CONVERGENCE ROW ALONE FILLS. Every other row (order-independence, takes) replays the pair's
             # published fills that setup laid over its tree, and asks nothing: three rows asking one list was the
             # same paid egress three times a run. A gap the fill was refused (anything but a 404) is published as
             # a `refused-…tsv` list, and the next four fills skip it (convergence-fill.sh `gaps`) — so an origin
@@ -614,7 +614,7 @@ jobs:
               timeout-minutes: ${{ (matrix.phase == 'convergence' || matrix.phase == 'next-day') && inputs.suite-timeout-minutes || inputs.order-suite-timeout-minutes }}
               run: |
                   set -o pipefail
-                  # A recording's sample, above, wrote its JUnit XML here; the report below is this suite's.
+                  # A recording's shape specs, above, wrote their JUnit XML here; the report below is this suite's.
                   rm -rf target/test-reports/unit
                   # The runner's whole CPU beside the phase log's JVM-only number (cpu-sampler.sh), and which
                   # collections Mongo's share of it goes to (mongo-top.sh).
@@ -737,7 +737,7 @@ jobs:
                   # code already grades the tests that DID run, and failing here as well
                   # would only report the same failure twice.
                   #
-                  # A `sample` row runs no suite: its XML here is the sample's, reported under
+                  # A `takes` row runs no convergence suite: its XML here is the takes check's, reported under
                   # the row's name.
                   require_tests: true
 
@@ -912,7 +912,7 @@ jobs:
               if: always() && inputs.mode == 'record' && steps.publish.outputs.recording-healthy == 'false'
               shell: bash
               run: |
-                  echo "::error::an origin refused most of ${{ inputs.country }}'s recording, or vanished from its tree — see the Recording health table on the summary"
+                  echo "::error::an origin refused most of ${{ inputs.country }}'s recording, vanished from its tree, or the health could not be judged — see the Recording health table on the summary"
                   exit 1
 
             # Last, and whatever happened (scripts/ci/leg-verdict.sh, LegVerdictWiringSpec).
