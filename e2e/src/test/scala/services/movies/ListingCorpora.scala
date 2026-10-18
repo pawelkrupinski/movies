@@ -4,6 +4,7 @@ import models.{Cinema, Country, SourceData}
 import tools.{CorpusFixture, FixtureTestWiring}
 
 import java.nio.file.{Files, Path}
+import scala.jdk.CollectionConverters.*
 
 /** One venue's listing of a film, as the corpus-shape specs read it: the venue, the title it
  *  published, the slot the pipeline builds of it, and the title the listing's searches start from. */
@@ -46,10 +47,23 @@ object ListingCorpora {
   /** The test-name label of `country`'s recorded corpus — what `-z recorded:<cc>` selects. */
   def recordedLabel(country: Country): String = s"recorded:${country.code}"
 
-  /** Where `country`'s recorded corpus is, if anywhere. */
-  def recordedPath(country: Country, corpusDirectory: Option[Path]): Option[Path] =
-    (corpusDirectory.map(_.resolve(CorpusFixture.pathFor(country.code).getFileName)).toSeq :+ CorpusFixture.pathFor(country.code))
-      .find(Files.exists(_))
+  /** Where `country`'s recorded corpus is, if anywhere: `KINOWO_IDENTITY_CORPUS_DIR`, the checked-in corpus, else the
+   *  newest recording the identity tools fetched into their cache that holds it — so a local run sweeps every country
+   *  without a download (UK, US and ES are not checked in). */
+  def recordedPath(country: Country, corpusDirectory: Option[Path], identityCache: Option[Path]): Option[Path] = {
+    val file = CorpusFixture.pathFor(country.code).getFileName
+    (corpusDirectory.map(_.resolve(file)).toSeq ++ Seq(CorpusFixture.pathFor(country.code)) ++
+      identityCache.toSeq.flatMap(cachedCorpora).map(_.resolve(file))).find(Files.exists(_))
+  }
+
+  /** The corpus directories of the recordings in `cache`, newest run first (run ids grow with time). */
+  private def cachedCorpora(cache: Path): Seq[Path] = {
+    val recordings = cache.resolve("recordings")
+    if (!Files.isDirectory(recordings)) Nil
+    else scala.util.Using.resource(Files.list(recordings))(_.iterator.asScala.toSeq)
+      .filter(_.getFileName.toString.forall(_.isDigit)).sortBy(_.getFileName.toString.toLong)(using Ordering[Long].reverse)
+      .map(_.resolve("pair/test/resources/fixtures/corpus"))
+  }
 
   def recorded(country: Country, path: Path): ListingCorpus =
     new ListingCorpus(recordedLabel(country), country, { normalizer =>
@@ -62,7 +76,7 @@ object ListingCorpora {
 
   /** Why a recorded corpus a spec wanted is not here — the cancel message, never a silent pass. */
   def absent(country: Country): String =
-    s"corpus not present: no ${CorpusFixture.pathFor(country.code).getFileName} in KINOWO_IDENTITY_CORPUS_DIR or " +
-      s"test/resources/fixtures/corpus. Fetch it read-only: gh run download <a 'Record scrape fixtures' run> " +
+    s"corpus not present: no ${CorpusFixture.pathFor(country.code).getFileName} in KINOWO_IDENTITY_CORPUS_DIR, " +
+      s"test/resources/fixtures/corpus or a recording in the identity cache. Fetch one read-only (scripts/identity-fetch-recording.sh), or: gh run download <a 'Record scrape fixtures' run> " +
       s"--name scrape-fixtures-${country.code}, untar it, and point KINOWO_IDENTITY_CORPUS_DIR at the directory holding the file."
 }

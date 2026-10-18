@@ -211,6 +211,18 @@ else
   # a new server is a new ~5 GB heap: not while the Mac is already paging
   memory_gate sbt-warm
 fi
+# The KINOWO_* settings this call passes. A kept server reads the environment it STARTED with, never a later call's:
+# KINOWO_IDENTITY_CORPUS_DIR given to a call reached nothing, and the corpus specs cancelled (2026-10-18). A call whose
+# settings differ from its server's restarts the server with them.
+settings=$(env | grep '^KINOWO_' | grep -v '^KINOWO_SBT_WARM_' | sort | shasum | cut -c1-16)
+if [ "$fresh" = 0 ] && [ -f "$State/$key.env" ] && [ "$(cat "$State/$key.env")" != "$settings" ]; then
+  log "this call's KINOWO_* settings differ from the ones server pid $pid started with: restarting it with them"
+  stop_servers_of "$root" >/dev/null
+  for _ in 1 2 3 4 5 6 7 8 9 10; do [ -z "$(server_pids "$root")" ] && break; sleep 1; done
+  rm -f "$root/project/target/active.json"
+  fresh=1
+fi
+[ "$fresh" = 1 ] && echo "$settings" > "$State/$key.env"
 command=$(printf '%s; ' "$@"); command=${command%; }
 # the build changed under a kept server (a rebase onto a new module): sbt --client would run the old one
 digest=$(build_digest)

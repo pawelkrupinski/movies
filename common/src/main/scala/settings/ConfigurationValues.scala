@@ -159,6 +159,8 @@ final case class HardClusterCountries(value: Set[models.Country]) extends AnyVal
 final case class HardClusterDump(value: Boolean) extends AnyVal
 /** `KINOWO_IDENTITY_CORPUS_DIR` — recorded corpora the listing-key spec sweeps. */
 final case class IdentityCorpusDirectory(value: Path) extends AnyVal
+/** `KINOWO_IDENTITY_CACHE` (default `~/.cache/kinowo-identity`) — the identity tools' cache: the recordings they fetched. */
+final case class IdentityCache(value: Path) extends AnyVal
 /** `KINOWO_IDENTITY_GATE=strict` — the identity query-coverage gate fails on any gap. */
 final case class IdentityGateStrict(value: Boolean) extends AnyVal
 /** How many times longer than its default every test wait bound runs (`tools.SpecTimeouts`). */

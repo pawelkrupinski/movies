@@ -94,6 +94,19 @@ check "a changed build is reloaded first" "--client reload; compile" "$(tail -1 
 check "...once" "--client compile" "$(tail -1 "$scratch/sbt-calls" | cut -d'|' -f2)"
 kill "$server" 2>/dev/null; wait "$server" 2>/dev/null
 
+# a kept server reads the environment it started with: a call passing other KINOWO_* settings restarts it with them
+(cd "$scratch/other" && exec -a "java -jar /fake/sbt-launch.jar --detach-stdio" sleep 300) &
+server=$!; fakes+=("$server")
+for _ in $(seq 1 100); do pgrep -f 'fake/sbt-launch.jar --detach' >/dev/null && break; sleep 0.1; done
+(cd "$scratch/other" && "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
+check "a call with the server's own settings keeps it" "running" "$(kill -0 "$server" 2>/dev/null && echo running || echo stopped)"
+out=$(cd "$scratch/other" && KINOWO_IDENTITY_CORPUS_DIR=/corpora "$REPO_ROOT/scripts/sbt-warm" compile 2>&1 >/dev/null)
+sleep 0.3
+check "a call passing other KINOWO_* settings restarts the server with them" "stopped yes" \
+  "$(kill -0 "$server" 2>/dev/null && echo running || echo stopped) $(grep -q "settings differ" <<<"$out" && echo yes || echo "no: $out")"
+kill "$server" 2>/dev/null; wait "$server" 2>/dev/null
+(cd "$scratch/other" && "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)  # back to the default settings
+
 # 2026-10-15: a seed ran every call (a module that never gets Zinc state) and removed active.json under the LIVE server,
 # so each call started a new one — 69 leaked servers. A live server's active.json survives a seeding call...
 fake_server() { (cd "$1" && exec -a "java -jar /fake/sbt-launch.jar --detach-stdio" sleep 300) & fakes+=("$!"); }

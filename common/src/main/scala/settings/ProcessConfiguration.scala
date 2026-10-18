@@ -297,6 +297,10 @@ final class ProcessConfiguration(val env: Env) {
   /** `KINOWO_IDENTITY_CORPUS_DIR` — recorded corpora the listing-key spec widens its sweep to. */
   def identityCorpusDirectory: Option[IdentityCorpusDirectory] =
     text("KINOWO_IDENTITY_CORPUS_DIR").map(dir => IdentityCorpusDirectory(Path.of(dir)))
+  /** `KINOWO_IDENTITY_CACHE` — where the identity tools keep the recordings they fetched; `~/.cache/kinowo-identity` by
+   *  default, as the scripts read it. */
+  def identityCache: Option[IdentityCache] =
+    text("KINOWO_IDENTITY_CACHE").orElse(text("HOME").map(_ + "/.cache/kinowo-identity")).map(dir => IdentityCache(Path.of(dir)))
   /** `KINOWO_IDENTITY_GATE=strict` — the identity query-coverage gate fails on any gap, not just reports it. */
   def identityGateStrict: IdentityGateStrict = IdentityGateStrict(text("KINOWO_IDENTITY_GATE").contains("strict"))
   /** `KINOWO_IDENTITY_FULL` — comma-separated codes of the full recorded corpora the identity gate
