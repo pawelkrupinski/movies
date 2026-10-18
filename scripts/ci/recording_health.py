@@ -32,7 +32,6 @@ file is the absolute floor alone (a country's first recording, or the manifest n
 Tests: recording_health_test.py beside it.
 """
 import argparse
-import datetime
 import gzip
 import json
 import os
@@ -40,6 +39,9 @@ import sys
 import urllib.parse
 import zlib
 from dataclasses import dataclass
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from report_fields import parse_instant  # noqa: E402
 
 MIN_REQUESTS = 20       # below this an origin's share is noise: a handful of 503s from a site asked five things
 REFUSING_SHARE = 0.5    # "fails for most requests"
@@ -152,7 +154,7 @@ def _since(raw):
     try:
         return float(raw)
     except ValueError:
-        return datetime.datetime.fromisoformat(raw.replace("Z", "+00:00")).timestamp()
+        return parse_instant(raw).timestamp()
 
 
 def main(argv):

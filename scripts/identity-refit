@@ -37,19 +37,19 @@ cd "$(dirname "$0")/.."
 # shellcheck source=scripts/tool-conventions.sh
 . scripts/tool-conventions.sh # die: a runtime failure, exit 1
 
-usage() { sed -n '3,34p' "$0" | sed 's/^# \{0,1\}//'; }
+usage() { usage_from_header "$0"; }
 
 skip_checks=""; relearn=""; threads=""; report="target/identity-refit/report.md"; shard=""; shard_out=""; merge=""
 while [ $# -gt 0 ]; do
     case "$1" in
         --help|-h) usage; exit 0 ;;
         --skip-checks) skip_checks=1; shift ;;
-        --relearn) relearn=${2:?--relearn needs a signal list}; shift 2 ;;
-        --threads) threads=${2:?--threads needs a number}; shift 2 ;;
-        --report) report=${2:?--report needs a file}; shift 2 ;;
-        --shard) shard=${2:?--shard needs i/n}; shift 2 ;;
-        --shard-out) shard_out=${2:?--shard-out needs a file}; shift 2 ;;
-        --merge) merge=${2:?--merge needs a directory}; shift 2 ;;
+        --relearn) flag_value "$@"; relearn=$2; shift 2 ;;
+        --threads) flag_value "$@"; threads=$2; shift 2 ;;
+        --report) flag_value "$@"; report=$2; shift 2 ;;
+        --shard) flag_value "$@"; shard=$2; shift 2 ;;
+        --shard-out) flag_value "$@"; shard_out=$2; shift 2 ;;
+        --merge) flag_value "$@"; merge=$2; shift 2 ;;
         *) echo "identity-refit: unknown argument '$1'" >&2; usage >&2; exit 2 ;;
     esac
 done

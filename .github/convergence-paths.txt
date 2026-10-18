@@ -74,6 +74,7 @@ scripts/ci/identity-takes-check.sh
 scripts/ci/identity_takes_diff.py
 scripts/ci/identity_takes.py
 scripts/ci/corpus_shape_diff.py
+scripts/ci/report_fields.py
 test/resources/fixtures/identity-takes/**
 # The identity takes check's own tools: it replays listings with identity-slice (and its diff/lint helpers),
 # and identity-slice reads the local-mirror helpers it sources.

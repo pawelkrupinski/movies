@@ -6,6 +6,8 @@
 set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 . "$REPO_ROOT/scripts/shell-spec.sh"
+# this checkout's gate, not the root checkout's (local main's) a worktree's copy would otherwise follow
+export KINOWO_JVM_GATE_FOLLOW_MAIN=0
 . "$REPO_ROOT/scripts/jvm-gate.sh"
 
 printf '\033[36m▸\033[0m jvm-gate\n'
@@ -69,6 +71,25 @@ check "a lock left with no pid (its holder killed between taking it and writing 
   "$(jvm_lock "$work/pidless"; echo "$? $(cat "$work/pidless/pid" 2>/dev/null)")"
 mkdir "$work/fresh-pidless"
 check "...one just taken, its pid not written yet: still held" "1" "$(jvm_lock "$work/fresh-pidless"; echo $?)"
+# many processes that all see one gone holder at once: exactly one takes its lock over, every round
+sleep 0 & dead=$!; wait "$dead"
+overtaken=""
+for round in 1 2 3 4 5; do
+  mkdir "$work/race$round"; echo "$dead" > "$work/race$round/pid"
+  racers=()
+  for _ in $(seq 1 12); do
+    ( while [ ! -e "$work/go$round" ]; do :; done
+      if jvm_lock "$work/race$round"; then echo won >> "$work/won$round"; sleep 1; fi ) &
+    racers+=($!)
+  done
+  sleep 0.3; touch "$work/go$round"; wait "${racers[@]}"
+  overtaken="$overtaken $(wc -l < "$work/won$round" | tr -d ' ')"
+done
+check "...by exactly one of the processes that saw it gone at once (16 took it 2-5 times over)" " 1 1 1 1 1" "$overtaken"
+check "...the take-over lock given back" "0" "$(find "$work" -maxdepth 1 -name '*.takeover' | wc -l | tr -d ' ')"
+mkdir "$work/stuck" "$work/stuck.takeover"; echo "$dead" > "$work/stuck/pid"; touch -t 202001010000 "$work/stuck.takeover"
+check "...one left by a process killed inside it is cleared once a minute old, and the lock then taken" "1 0 $$" \
+  "$(jvm_lock "$work/stuck"; printf '%s ' $?; jvm_lock "$work/stuck"; echo "$? $(cat "$work/stuck/pid")")"
 ( KINOWO_JVM_SLOT_MAX_WAIT=0 jvm_slot_take t; echo "${JVM_SLOT:-none}" > "$work/got" ) 2> "$work/err"
 check "past the slot deadline: goes ahead without one, warned" "none 1" "$(cat "$work/got") $(grep -c 'starting anyway' "$work/err")"
 kill "$a"; wait "$a" 2>/dev/null

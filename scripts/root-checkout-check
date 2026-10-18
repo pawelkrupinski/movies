@@ -9,10 +9,12 @@
 # Prints nothing when the root is on main and clean; else one WARNING line naming the state and the fix. Exit 0 clean,
 # 1 warned, 2 not inside a git clone. scripts/agent-procs (list) and the pre-push hook run it.
 set -uo pipefail
+# shellcheck source=scripts/tool-conventions.sh
+. "$(dirname "${BASH_SOURCE[0]}")/tool-conventions.sh" # usage_from_header: --help is the header above, however long
 # a hook's GIT_DIR / GIT_WORK_TREE would point every git below at the pushing worktree instead of the root
 unset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE GIT_OBJECT_DIRECTORY GIT_ALTERNATE_OBJECT_DIRECTORIES GIT_COMMON_DIR GIT_PREFIX
 here=${1:-.}
-case "$here" in -h|--help) sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;; esac
+case "$here" in -h|--help) usage_from_header "${BASH_SOURCE[0]}"; exit 0 ;; esac
 # the first `worktree` of the porcelain listing is always the main worktree
 root=$(git -C "$here" worktree list --porcelain 2>/dev/null | sed -n '1s/^worktree //p') || true
 [ -n "$root" ] || { echo "root-checkout-check: $here is not inside a git clone" >&2; exit 2; }

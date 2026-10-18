@@ -108,7 +108,7 @@ c4=$(scratch_git "$work/src" rev-parse HEAD~1) c5=$(scratch_git "$work/src" rev-
 rm -rf "$work/job" && mkdir -p "$work/job" && scratch_git "$work/job" clone -q --depth=1 --branch main "file://$work/origin.git" .
 mkdir -p "$work/job/test/resources/fixtures" "$work/job/scripts/ci"
 printf 'country\tvenue\trawTitle\tfilm\tverdict\tstate\tscope\tfilmTitle\treason\tjudged\tevidence\n' > "$work/job/test/resources/fixtures/identity-judgements.tsv"
-cp "$(dirname "$script")"/identity_*.py "$(dirname "$script")/gh-release.sh" "$work/job/scripts/ci/"
+cp "$(dirname "$script")"/identity_*.py "$(dirname "$script")/report_fields.py" "$(dirname "$script")/gh-release.sh" "$work/job/scripts/ci/"
 cat > "$work/bin/sbt" <<'SBT'
 #!/usr/bin/env bash
 # Every argument not a flag is an sbt command, run in order as sbt runs them: "[success]" after each, and the first that
@@ -169,7 +169,8 @@ GH
 chmod +x "$work/bin/gh"
 store_run() { # <head>: the check of <head>, on main, storing on the release
   rm -rf "$work/out" "$work/identity-takes-base"; : > "$work/sbt-calls"; : > "$work/sbt-calls.runs"
-  (cd "$work/job" && PATH="$work/bin:$PATH" GITHUB_REPOSITORY=o/r GITHUB_SHA=$1 GITHUB_REF=${REF-refs/heads/main} RUNNER_TEMP=$work \
+  (cd "$work/job" && export RUNNER_TEMP="$work" && { [ -z "${NO_RUNNER_TEMP:-}" ] || unset RUNNER_TEMP; } &&
+   PATH="$work/bin:$PATH" GITHUB_REPOSITORY=o/r GITHUB_SHA=$1 GITHUB_REF=${REF-refs/heads/main} \
     SBT_CALLS="$work/sbt-calls" TAKES_STORE=fixtures KINOWO_CONVERGENCE_PIN_CORPUS_RUN=${PIN-42} "$script" pl "$work/out" > "$work/log" 2>&1)
 }
 base_calls() { grep -c "identity-takes-base" "$work/sbt-calls" || true; }
@@ -189,6 +190,11 @@ check "...and why the base was not stored" 1 "$(grep -c 'the base resolve not st
 check "...the head resolving and replaying with the tools" "dump-tool ratchet-tool" "$(grep -v identity-takes-base "$work/sbt-calls" | cut -d' ' -f2 | sort | xargs)"
 check "...both in one sbt" 1 "$(grep -vc identity-takes-base "$work/sbt-calls.runs")"
 check "...its base, from before them, with the specs they were" "dump-spec ratchet-spec" "$(grep identity-takes-base "$work/sbt-calls" | cut -d' ' -f2 | sort | xargs)"
+# outside Actions: no RUNNER_TEMP (the same run, nothing stored)
+rm -rf "$work/release"; mkdir -p "$work/tmp"
+code=0; NO_RUNNER_TEMP=1 TMPDIR="$work/tmp" TAKES_BASE=$c4 store_run "$c5" || code=$?
+check "outside Actions (no RUNNER_TEMP) the check runs, the base in a scratch directory of its own" "0 2" "$code $(base_calls)"
+check "...which is removed at exit" "0" "$(find "$work/tmp" -mindepth 1 -maxdepth 1 | wc -l | tr -d ' ')"
 code=0; STUB_DUMP_EXIT=1 TAKES_BASE=$c4 store_run "$c5" || code=$?
 check "a resolve that fails, whatever it wrote, is no verdict" "2 1" "$code $(grep -c 'the resolve exited 1' "$work/log")"
 code=0; STUB_RATCHET_EXIT=1 TAKES_BASE=$c4 store_run "$c5" || code=$?

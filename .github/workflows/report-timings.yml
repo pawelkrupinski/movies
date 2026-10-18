@@ -1,0 +1,33 @@
+name: Report run timings
+
+# EVERY JOB'S AND STEP'S TIME, as each workflow's last job: every workflow that runs on its own calls this as its
+# `timings` job, after every other job but the scheduled-failure report (RunTimingsWiringSpec). The caller's job gives
+# the `needs`, the `if: ${{ !cancelled() }}` and the permissions; this holds the rest once, where 27 workflows each held
+# a copy. The report itself is .github/actions/report-timings (scripts/ci/ci_timings.py). Never fails the run.
+on:
+    workflow_call:
+        secrets:
+            GRAFANA_URL:
+                required: false
+            GRAFANA_ANNOTATION_TOKEN:
+                required: false
+
+permissions:
+    actions: read
+    contents: read
+
+jobs:
+    report:
+        runs-on: ubuntu-26.04
+        timeout-minutes: 5
+        steps:
+            - uses: actions/checkout@v5
+              with:
+                  sparse-checkout: |
+                      scripts/ci
+                      .github/actions/report-timings
+                  sparse-checkout-cone-mode: false
+            - uses: ./.github/actions/report-timings
+              with:
+                  grafana-url: ${{ secrets.GRAFANA_URL }}
+                  grafana-annotation-token: ${{ secrets.GRAFANA_ANNOTATION_TOKEN }}
