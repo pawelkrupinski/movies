@@ -63,6 +63,19 @@ case $side in both|head|base) ;; *) echo "::error::identity takes ($cc): TAKES_S
 here=$(pwd)
 mkdir -p "$out"
 out=$(cd "$out" && pwd) # absolute: every sbt run below runs in a checkout of its own
+# The runner's scratch directory (the base's checkouts, the stored results' gzips); outside Actions one of this run's
+# own, removed at exit with what it holds.
+own_temp=""
+[ -n "${RUNNER_TEMP:-}" ] || { RUNNER_TEMP=$(mktemp -d) || exit 2; own_temp=$RUNNER_TEMP; }
+base_final_pid=""
+# shellcheck disable=SC2329 # run by the EXIT trap below
+on_exit() {
+  # an exit before base_final_finish's wait leaves no replay behind (best effort)
+  [ -z "$base_final_pid" ] || kill "$base_final_pid" 2> /dev/null
+  [ -z "$own_temp" ] || { rm -rf "$own_temp"; git worktree prune 2> /dev/null; }
+  return 0
+}
+trap on_exit EXIT
 # shellcheck source=scripts/identity-tools.sh
 . "$(dirname "${BASH_SOURCE[0]}")/../identity-tools.sh" # IDENTITY_SBT, and tool-conventions.sh's `bounded`
 # Every gh call is bounded: a hung API read is no verdict (exit 2), never a row that waits out the job's own timeout.
@@ -165,7 +178,7 @@ if unchanged "${identity_paths[@]}"; then takes_moves=""; else takes_moves=1; fi
 # THE STORE (see the header). A fill laid over the tree but never published names nothing a later run could match:
 # such a row neither reuses nor stores.
 store=${TAKES_STORE:-}
-laid=$(cat "${RUNNER_TEMP:-/nonexistent}/laid-fill" 2>/dev/null || true)
+laid=$(cat "$RUNNER_TEMP/laid-fill" 2>/dev/null || true)
 [ "$laid" = unpublished ] && store=""
 # A key names the commit by its identity code, not its sha: a commit touching none of it (whose own check stored nothing,
 # above) is then the base of the next run under the key its last identity change stored -- run 38599662543's base had.
@@ -345,11 +358,10 @@ base_final_start() { # the base's final takes, replayed in the background (base_
      "$final_tree/test/resources/fixtures/identity-unmatched/" 2>/dev/null
   base_started=$(date +%s)
   ratchet "$final_tree" "$out/base/ratchet-takes.tsv" > "$out/base-final.out" 2>&1 &
-  base_final_pid=$!
-  trap 'kill "$base_final_pid" 2> /dev/null' EXIT # an exit before its wait below leaves no replay behind (best effort)
+  base_final_pid=$! # on_exit stops it should the check end before base_final_finish waits for it
 }
 base_final_finish() {
-  [ -n "${base_final_pid:-}" ] || return 0
+  [ -n "$base_final_pid" ] || return 0
   wait "$base_final_pid" || final=2
   base_final_pid=""
   cat "$out/base-final.out"
