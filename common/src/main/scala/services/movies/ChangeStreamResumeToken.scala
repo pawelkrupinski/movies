@@ -123,6 +123,18 @@ class ChangeStreamResumeToken(streamId: String, database: Option[MongoDatabase],
     synchronized { generations.incrementAndGet(); lastToken.set(null) }
     coll.foreach(c => Try(Await.result(c.deleteOne(Filters.eq("_id", streamId)).toFuture(), 5.seconds)))
   }
+
+  /** What a cursor reading from this position does on its terminal error, logged under the cursor's
+   *  `label` to its own `log`: an invalid token is cleared, so the next open starts fresh; any other
+   *  error leaves it for the reopen to resume from. The backstop covers the gap either way. */
+  def onCursorError(label: String, e: Throwable, log: play.api.Logger): Unit =
+    if (ChangeStreamResumeToken.isInvalid(e)) {
+      log.warn(s"$label change stream: resume token invalid (${e.getMessage}) — clearing it; " +
+        "the next open starts fresh and the backstop resyncs the gap.")
+      clear()
+    } else
+      log.warn(s"$label change stream ended (${e.getMessage}) — a reopen resumes from the " +
+        "persisted token; the backstop covers the meantime.")
 }
 
 object ChangeStreamResumeToken {

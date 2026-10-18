@@ -35,7 +35,7 @@ class ProjectedPatchSpec extends AnyFlatSpec with Matchers {
     val pool  = new StringPool
     val fresh = models.SourceData(title = Some(new String("Lalka")), cast = Seq(new String("Anna")), director = Seq(new String("Has")))
     val once  = pool.slot(fresh)
-    CaffeineMovieCache.pooledAlike(once, fresh) shouldBe false
-    CaffeineMovieCache.pooledAlike(pool.slot(once), once) shouldBe true
+    ResidentRecords.pooledAlike(once, fresh) shouldBe false
+    ResidentRecords.pooledAlike(pool.slot(once), once) shouldBe true
   }
 }

@@ -512,95 +512,93 @@ final class MovieChangeStream(
       override def onSubscribe(s: Subscription): Unit = {
         changeSub.set(s); moviesDemand.opened(s); liveness.watching(ChangeStreamLiveness.Movies)
       }
-      override def onNext(change: ChangeStreamDocument[BsonDocument]): Unit = {
-        changeReopen.opened() // a delivered event is what proves the cursor healthy — reset the backoff
-        liveness.delivered(ChangeStreamLiveness.Movies)
-        recordChangeMetrics(change)
-        // The resume position moves only once this event is APPLIED — in its apply task,
-        // AFTER the fan-out (see `applyReread`). Advancing HERE, at delivery, persisted a
-        // position past every delivered-but-queued event (up to a demand window of them), so a
-        // restart resumed after events that were never applied. The generation guards against
-        // a `clear()` (invalid token) landing while this event is still queued.
-        val token      = change.getResumeToken
-        val generation = resumeToken.generation
-        val ack        = moviesPrefix.deliver(token, generation)
-        val deletedId    = Option(change.getDocumentKey).flatMap(k => Option(k.get("_id")))
-          .map(v => if (v.isString) v.asString.getValue else v.toString)
-        // Apply OFF the Netty I/O loop: the stitch read + projection must not run
-        // there (they made the loops contend + spin — see `changeApply`).
-        postImages.postImage(change) match {
-          // The movies doc has no showtimes — reread the film STITCHED (via `reread`, the
-          // same by-id read the side cursors use) before fanning out, so consumers get a
-          // full row. A failed read fans out NOTHING (an empty-cinema record here is what the
-          // projector turns into a screenings wipe) and holds the position — see `applyReread`.
-          //
-          // COALESCE with a same-film apply already queued — by an earlier movies event,
-          // or by the screenings/movie_slots cursors sharing `pending`. This is the
-          // common case, not an edge case: `dropCinemaSlots` writes `retainedSynopses` to
-          // `movies` in the SAME tick it deletes the dropped venue's screenings/movie_slots
-          // rows, so a slot drop used to buy the film TWO re-projections (one bought here,
-          // one by the coalesced side burst) instead of one. `reread(dto._id)` re-reads the
-          // WHOLE film — movies row included — FRESH at call time regardless of which event's
-          // apply actually runs, so whichever one fires sees every write of the burst,
-          // including a SECOND, independent `movies`-doc write racing the first one's still-
-          // queued apply. (An earlier version of this branch called `decode(dto)`, which
-          // re-stitched the side collections fresh but reused the TRIGGERING event's own
-          // captured document for the movies-level fields — so a second real movies-doc write
-          // landing before the first apply's `remove` ran could be coalesced away and its
-          // content silently lost, since nothing about that path re-read `movies` itself.
-          // `reread` closes that window the same way the side cursors' own re-read already
-          // does, at the cost of one extra point read per movies apply.)
-          case ChangeEventDecoder.PostImage.Present(dto) =>
-            ride(dto._id, ChangeStreamLiveness.Movies, moviesDemand, moviesHold, ack, debounced = false) match {
-              case Some(opened) => schedule(dto._id, opened)
-              case None         => changeStreamMetrics.recordCoalescedChange(); moviesDemand.applied()
-            }
-          // No post-image ⇒ a delete (the only op UPDATE_LOOKUP can't back-fill). Surface
-          // its _id so consumers can drop the row. Never coalesced: once a row is gone
-          // there is nothing to re-read, and every delete must still reach the fan-out.
-          //
-          // And a delete is a coalescing BARRIER: it takes the id's queued entry out of `pending`, so a
-          // later event for the same id queues its own apply AFTER the delete instead of riding
-          // one queued before it. Ids are derived from the creation key (`FilmId.fresh`), so a
-          // film deleted and re-created under the same key comes back with the same id — riding
-          // the earlier apply would dispatch the re-created film first and the delete last,
-          // leaving every listener on "deleted" for a film that exists.
-          case ChangeEventDecoder.PostImage.Absent =>
-            // Only a re-read already QUEUED is behind the barrier: one the debounce still holds is
-            // queued after this delete, so it runs after it and reads whatever the key holds then.
-            deletedId.foreach(id => pending.computeIfPresent(id, (_, entry) => if (entry.queued) null else entry))
-            applyOffLoop(ChangeStreamLiveness.Movies, moviesDemand) {
-              deletedId.foreach(movieChanges.dispatchDelete)
-              ack()
-            }
-          // A document the codec refuses (counted and logged by the decoder). Nothing to apply,
-          // and it must not END the cursor: decoded inside the driver, it did — and a cursor
-          // resuming from a persisted token met it again on every reopen, dead for good. Its
-          // demand is released, and it is acknowledged as applied — there is nothing to apply,
-          // and left unacknowledged it would hold the cursor's position before it for good
-          // ([[AppliedPrefix]] moves only past a contiguous run of acknowledged events).
-          case ChangeEventDecoder.PostImage.Undecodable =>
-            ack(); moviesDemand.applied()
-        }
-      }
-      override def onError(e: Throwable): Unit = {
-        if (ChangeStreamResumeToken.isInvalid(e)) {
-          logger.warn(s"MovieRepository change stream: resume token invalid (${e.getMessage}) — clearing it; " +
-            "the next open starts fresh and the backstop resyncs the gap.")
-          resumeToken.clear()
-        } else
-          logger.warn(s"MovieRepository change stream ended (${e.getMessage}) — a reopen resumes from the " +
-            "persisted token; the backstop covers the meantime.")
-        changeSub.set(null)
-        moviesDemand.closed()
-        changeReopen.failed()
-      }
-      override def onComplete(): Unit = { changeSub.set(null); moviesDemand.closed(); changeReopen.failed() }
+      override def onNext(change: ChangeStreamDocument[BsonDocument]): Unit = onMoviesChange(change)
+      override def onError(e: Throwable): Unit = { resumeToken.onCursorError("MovieRepository", e, logger); moviesCursorEnded() }
+      override def onComplete(): Unit = moviesCursorEnded()
     })
     logger.info(s"MongoMovieRepository: watching change stream (shared by all listeners)" +
       s"${if (resumeFrom.isDefined) ", resumed from persisted token" else ""}.")
     // Also watch the side collections: a showtime or slot change fires there, not on `movies`.
     sideCursors.foreach(_.ensureOpen())
+  }
+
+  /** The `movies` cursor is gone — an error or its end: reopened on the backoff. */
+  private def moviesCursorEnded(): Unit = {
+    changeSub.set(null)
+    moviesDemand.closed()
+    changeReopen.failed()
+  }
+
+  /** One event the `movies` cursor delivered, applied OFF the Netty I/O loop: the stitch read +
+   *  projection must not run there (they made the loops contend + spin — see `changeApply`). */
+  private def onMoviesChange(change: ChangeStreamDocument[BsonDocument]): Unit = {
+    changeReopen.opened() // a delivered event is what proves the cursor healthy — reset the backoff
+    liveness.delivered(ChangeStreamLiveness.Movies)
+    recordChangeMetrics(change)
+    // The resume position moves only once this event is APPLIED — in its apply task,
+    // AFTER the fan-out (see `applyReread`). Advancing HERE, at delivery, persisted a
+    // position past every delivered-but-queued event (up to a demand window of them), so a
+    // restart resumed after events that were never applied. The generation guards against
+    // a `clear()` (invalid token) landing while this event is still queued.
+    val ack = moviesPrefix.deliver(change.getResumeToken, resumeToken.generation)
+    postImages.postImage(change) match {
+      case ChangeEventDecoder.PostImage.Present(dto) => applyMoviesUpsert(dto._id, ack)
+      case ChangeEventDecoder.PostImage.Absent       => applyMoviesDelete(ChangeEventDecoder.documentIdOf(change), ack)
+      // A document the codec refuses (counted and logged by the decoder). Nothing to apply,
+      // and it must not END the cursor: decoded inside the driver, it did — and a cursor
+      // resuming from a persisted token met it again on every reopen, dead for good. Its
+      // demand is released, and it is acknowledged as applied — there is nothing to apply,
+      // and left unacknowledged it would hold the cursor's position before it for good
+      // ([[AppliedPrefix]] moves only past a contiguous run of acknowledged events).
+      case ChangeEventDecoder.PostImage.Undecodable  => ack(); moviesDemand.applied()
+    }
+  }
+
+  /** The movies doc has no showtimes — reread the film STITCHED (via `reread`, the
+   *  same by-id read the side cursors use) before fanning out, so consumers get a
+   *  full row. A failed read fans out NOTHING (an empty-cinema record here is what the
+   *  projector turns into a screenings wipe) and holds the position — see `applyReread`.
+   *
+   *  COALESCE with a same-film apply already queued — by an earlier movies event,
+   *  or by the screenings/movie_slots cursors sharing `pending`. This is the
+   *  common case, not an edge case: `dropCinemaSlots` writes `retainedSynopses` to
+   *  `movies` in the SAME tick it deletes the dropped venue's screenings/movie_slots
+   *  rows, so a slot drop used to buy the film TWO re-projections (one bought here,
+   *  one by the coalesced side burst) instead of one. `reread(dto._id)` re-reads the
+   *  WHOLE film — movies row included — FRESH at call time regardless of which event's
+   *  apply actually runs, so whichever one fires sees every write of the burst,
+   *  including a SECOND, independent `movies`-doc write racing the first one's still-
+   *  queued apply. (An earlier version of this branch called `decode(dto)`, which
+   *  re-stitched the side collections fresh but reused the TRIGGERING event's own
+   *  captured document for the movies-level fields — so a second real movies-doc write
+   *  landing before the first apply's `remove` ran could be coalesced away and its
+   *  content silently lost, since nothing about that path re-read `movies` itself.
+   *  `reread` closes that window the same way the side cursors' own re-read already
+   *  does, at the cost of one extra point read per movies apply.) */
+  private def applyMoviesUpsert(filmId: String, ack: () => Unit): Unit =
+    ride(filmId, ChangeStreamLiveness.Movies, moviesDemand, moviesHold, ack, debounced = false) match {
+      case Some(opened) => schedule(filmId, opened)
+      case None         => changeStreamMetrics.recordCoalescedChange(); moviesDemand.applied()
+    }
+
+  /** No post-image ⇒ a delete (the only op UPDATE_LOOKUP can't back-fill). Surface
+   *  its _id so consumers can drop the row. Never coalesced: once a row is gone
+   *  there is nothing to re-read, and every delete must still reach the fan-out.
+   *
+   *  And a delete is a coalescing BARRIER: it takes the id's queued entry out of `pending`, so a
+   *  later event for the same id queues its own apply AFTER the delete instead of riding
+   *  one queued before it. Ids are derived from the creation key (`FilmId.fresh`), so a
+   *  film deleted and re-created under the same key comes back with the same id — riding
+   *  the earlier apply would dispatch the re-created film first and the delete last,
+   *  leaving every listener on "deleted" for a film that exists. */
+  private def applyMoviesDelete(deletedId: Option[String], ack: () => Unit): Unit = {
+    // Only a re-read already QUEUED is behind the barrier: one the debounce still holds is
+    // queued after this delete, so it runs after it and reads whatever the key holds then.
+    deletedId.foreach(id => pending.computeIfPresent(id, (_, entry) => if (entry.queued) null else entry))
+    applyOffLoop(ChangeStreamLiveness.Movies, moviesDemand) {
+      deletedId.foreach(movieChanges.dispatchDelete)
+      ack()
+    }
   }
 
   /** Stop the shared cursor once no listener remains, so an idle repository
@@ -625,7 +623,7 @@ final class MovieChangeStream(
    *  effort — instrumentation must never break the stream. */
   private def recordChangeMetrics(change: ChangeStreamDocument[BsonDocument]): Unit = Try {
     import scala.jdk.CollectionConverters._
-    val op = ChangeStreamMetrics.normalizeOp(Option(change.getOperationType).map(_.getValue).getOrElse(""))
+    val op = ChangeStreamMetrics.opOf(change)
     changeStreamMetrics.recordEvent(op)
     if (op == ChangeStreamMetrics.Op.Update) {
       val desc    = Option(change.getUpdateDescription)

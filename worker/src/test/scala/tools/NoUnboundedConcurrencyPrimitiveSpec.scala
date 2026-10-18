@@ -38,7 +38,7 @@ class NoUnboundedConcurrencyPrimitiveSpec extends AnyFlatSpec with Matchers {
 
   /** (repository-relative file, the flagged line trimmed) → why unbounded is right there. */
   private val Allowlist: Map[(String, String), String] = Map(
-    ("common/src/main/scala/services/movies/MovieCache.scala",
+    ("common/src/main/scala/services/movies/CaffeineMovieCache.scala",
       "private val positive: Cache[CacheKey, MovieRecord] = Caffeine.newBuilder().recordStats().build()") ->
       ("the resident corpus, not a cache: every write funnels through it and CorpusIndex shadows it with no eviction " +
         "path, so an evicted row would desync the index and drop a film from the scrape fold; its size is the corpus's"))
