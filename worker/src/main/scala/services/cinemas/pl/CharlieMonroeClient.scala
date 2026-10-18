@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SlotsToMovies
+
 import java.util.Locale
 
 import tools.{HttpFetch, ParallelDetailFetch, HttpRead}
@@ -108,10 +110,13 @@ class CharlieMonroeClient(http: HttpFetch) extends CinemaScraper {
       }
     }.toMap
 
-    screenings
-      .groupBy(_.movie.title)
-      .toSeq
-      .map { case (title, events) =>
+    def showtimeOf(event: ScreeningEntry) = {
+      val dKey    = dateKey(event.dateTime.getYear, event.dateTime.getMonthValue, event.dateTime.getDayOfMonth)
+      val timeKey = "%02d:%02d".format(event.dateTime.getHour, event.dateTime.getMinute)
+      Showtime(event.dateTime, event.bookingUrl, roomMap.get((event.movie.title.toLowerCase(Locale.ROOT), dKey, timeKey)))
+    }
+    SlotsToMovies.fold(screenings, _.movie.title, showtimeOf, distinctBy = SlotsToMovies.keepEvery,
+      order = SlotsToMovies.MovieOrder.asGrouped) { (title, events, showtimes) =>
         val sorted  = events.sortBy(_.dateTime)
         val details = detailsByTitle.getOrElse(title, ArticleDetails(None, None, None, Seq.empty))
         CinemaMovie(
@@ -122,14 +127,9 @@ class CharlieMonroeClient(http: HttpFetch) extends CinemaScraper {
           synopsis  = details.synopsis,
           cast      = Seq.empty,
           director  = Seq.empty,
-          showtimes = sorted.map { event =>
-            val dKey    = dateKey(event.dateTime.getYear, event.dateTime.getMonthValue, event.dateTime.getDayOfMonth)
-            val timeKey = "%02d:%02d".format(event.dateTime.getHour, event.dateTime.getMinute)
-            val room    = roomMap.get((title.toLowerCase(Locale.ROOT), dKey, timeKey))
-            Showtime(event.dateTime, event.bookingUrl, room)
-          }
+          showtimes = showtimes
         )
-      }
+    }
   }
 
   /** The listing renders the showtime date in `span.price` without

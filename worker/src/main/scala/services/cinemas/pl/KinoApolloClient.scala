@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SlotsToMovies
+
 import services.cinemas.common.ScraperParse
 import models._
 import org.jsoup.Jsoup
@@ -278,10 +280,8 @@ class KinoApolloClient(http: HttpFetch, titles: TitleNormalizer
       }
     }
 
-    events
-      .groupBy(_.title)
-      .toSeq
-      .map { case (title, rows) =>
+    SlotsToMovies.fold(events, _.title, r => Showtime(r.dateTime, Some(r.bookingUrl)), distinctBy = SlotsToMovies.keepEvery) {
+      (title, rows, showtimes) =>
         val sorted = rows.sortBy(_.dateTime)
         CinemaMovie(
           movie     = Movie(title, rawTitle = sorted.map(_.rawTitle).headOption),
@@ -291,10 +291,9 @@ class KinoApolloClient(http: HttpFetch, titles: TitleNormalizer
           synopsis  = None,
           cast      = Seq.empty,
           director  = Seq.empty,
-          showtimes = sorted.map(r => Showtime(r.dateTime, Some(r.bookingUrl)))
+          showtimes = showtimes
         )
-      }
-      .sortBy(_.movie.title)
+    }
   }
 
   // Detail-URL slugs for the decorated variants (pre-premiere /

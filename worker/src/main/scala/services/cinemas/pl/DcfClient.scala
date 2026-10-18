@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SlotsToMovies
+
 import java.util.Locale
 
 import services.cinemas.common.ScraperParse
@@ -58,13 +60,10 @@ class DcfClient(http: HttpFetch
     // one programme strand (a regular run + a "| FKS" / "| DKF" / preview slot).
     // Group by the cleaned title so each film is one row; the primary block
     // (first seen) supplies the poster and the detail page to enrich from.
-    val byTitle = blocks.groupBy(b => DcfClient.normalizeTitle(b.title))
-
-    byTitle.toSeq.flatMap { case (title, group) =>
+    SlotsToMovies.foldBlocks(blocks, b => DcfClient.normalizeTitle(b.title),
+      _.slots.map(s => Showtime(s.dateTime, s.bookingUrl, s.room, Nil)), order = SlotsToMovies.MovieOrder.asGrouped) { (title, group, showtimes) =>
       val primary = group.head
-      val slots   = group.flatMap(_.slots).distinctBy(s => (s.dateTime, s.bookingUrl)).sortBy(_.dateTime)
-      if (slots.isEmpty) None
-      else Some(CinemaMovie(
+      Some(CinemaMovie(
         movie     = Movie(title),
         cinema    = cinema,
         posterUrl = primary.poster,
@@ -72,7 +71,7 @@ class DcfClient(http: HttpFetch
         synopsis  = None,
         cast      = Seq.empty,
         director  = Seq.empty,
-        showtimes = slots.map(s => Showtime(s.dateTime, s.bookingUrl, s.room, Nil))
+        showtimes = showtimes
       ))
     }
   }

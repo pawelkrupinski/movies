@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SlotsToMovies
+
 import services.cinemas.common.ScraperParse
 
 import java.util.Locale
@@ -77,16 +79,12 @@ class RialtoClient(http: HttpFetch
         Option(HttpRead.page(http, url)).map(html => EventData(parseEventPage(html), parseGenres(html)))
       }.toMap
 
-    filmEntries
-      .groupBy(_.title.toUpperCase(Locale.ROOT))
-      .values
-      .flatMap { group =>
-        val primary      = group.head
-        val eventData    = group.flatMap(e => eventDataByUrl.get(e.eventUrl).flatten)
-        val allShowtimes = eventData.flatMap(_.showtimes).sortBy(_.dateTime)
-        val genres       = eventData.flatMap(_.genres).distinct
-        if (allShowtimes.isEmpty) None
-        else Some(CinemaMovie(
+    def eventData(entry: FilmEntry) = eventDataByUrl.get(entry.eventUrl).flatten
+    SlotsToMovies.foldBlocks(filmEntries, _.title.toUpperCase(Locale.ROOT), eventData(_).toSeq.flatMap(_.showtimes),
+      distinctBy = SlotsToMovies.keepEvery, order = SlotsToMovies.MovieOrder.asGrouped) { (_, group, allShowtimes) =>
+        val primary = group.head
+        val genres  = group.flatMap(eventData).flatMap(_.genres).distinct
+        Some(CinemaMovie(
           movie     = Movie(primary.title, primary.runtimeMinutes, primary.releaseYear, countries = primary.countries, genres = genres),
           cinema    = Rialto,
           posterUrl = primary.posterUrl,
@@ -96,8 +94,7 @@ class RialtoClient(http: HttpFetch
           director  = primary.director,
           showtimes = allShowtimes
         ))
-      }
-      .toSeq
+    }
   }
 
   override val detailGroup: String = "rialto"
