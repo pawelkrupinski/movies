@@ -70,16 +70,22 @@ data class CinemaSeason(
     val offSeason: Boolean,
 ) {
     /** The filter row's muted second line, "back in season · May–Sept", in the UI
-     *  [language] ("pl", "en", "de", "es"; anything else reads English). */
+     *  [language] ("pl", "en", "de", "es"; anything else reads English). A month
+     *  outside 1..12 drops the window, leaving the bare "back in season". */
     fun backInSeasonLine(language: String): String {
         val words = SeasonWords.of(language)
-        return "${words.back} · ${words.months[opens - 1]}–${words.months[closes - 1]}"
+        val from = words.month(opens) ?: return words.back
+        val to = words.month(closes) ?: return words.back
+        return "${words.back} · $from–$to"
     }
 }
 
 /** The words a season is spelled in, per UI language — kept identical to the web's
  *  `season.back` / `season.month.N` messages and iOS's `SeasonWords`. */
 data class SeasonWords(val back: String, val months: List<String>) {
+    /** The short name of [month] (1..12), or null for any other number. */
+    fun month(month: Int): String? = months.getOrNull(month - 1)
+
     companion object {
         fun of(language: String): SeasonWords = when (language) {
             "pl" -> SeasonWords("wraca w sezonie",
