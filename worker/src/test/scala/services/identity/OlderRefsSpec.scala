@@ -30,4 +30,27 @@ class OlderRefsSpec extends AnyFlatSpec with Matchers {
     OlderRefs.call(new Rules, "titleFacts", "Lalka") shouldBe None
     OlderRefs.call(new Rules, "peel") shouldBe None
   }
+
+  // A tool's wrapper over the lookups, written in the oldest ref's terms, overrides no lookup a newer ref added: passed by
+  // name to its source, the agreement's synopsis evidence reads the recording's overviews through it.
+  "a wrapper's lookups" should "pass the members named to its source, and answer the rest itself" in {
+    val words  = ProseWords.ofDescription(Seq("Binti meets Elias in Belgium."))
+    val source = new IdentityLookups {
+      def hasDetail(listing: Listing) = false
+      def detail(listing: Listing) = Answer.Known(None)
+      def candidates(query: CandidateQuery) = Answer.Known(Nil)
+      def film(tmdbId: Int) = Answer.Unknown
+      override def overview(tmdbId: Int) = Answer.Known(Some(words))
+    }
+    val wrapper = new IdentityLookups {
+      def hasDetail(listing: Listing) = source.hasDetail(listing)
+      def detail(listing: Listing) = source.detail(listing)
+      def candidates(query: CandidateQuery) = source.candidates(query)
+      def film(tmdbId: Int) = Answer.Known(None)   // its own answer
+    }
+    wrapper.overview(577285) shouldBe Answer.Known(None)
+    val passing = OlderRefs.passing(classOf[IdentityLookups], wrapper, source, OlderRefs.NewerLookups)
+    passing.overview(577285) shouldBe Answer.Known(Some(words))
+    passing.film(577285) shouldBe Answer.Known(None)
+  }
 }

@@ -167,7 +167,9 @@ object IdentitySlice {
     val filedLookups: Option[tools.FiledAnswers.Lookups] = Option.when(!filed.isEmpty)(new tools.FiledAnswers.Lookups(recorded, filed))
     /** Every question the decisions over these reads asked and got no answer to: not the recording's, not filed. */
     val asking = new Asking(filedLookups.getOrElse(recorded))
-    val lookups: IdentityLookups = asking
+    // the lookups a newer ref added, which no wrapper here overrides (an overview's words): the recording's, as the
+    // capture's fill read them
+    val lookups: IdentityLookups = OlderRefs.passing(classOf[IdentityLookups], asking, recorded, OlderRefs.NewerLookups)
     val families: Seq[VoterFamily] = UnmatchedClusters.familiesOf(country)
     val sources: Map[VoterFamily, FamilySource] = Seq(new ImdbFamily(new services.enrichment.ImdbClient(fetch)),
       new WikiFamily(new services.enrichment.WikidataClient(fetch), country.language.getLanguage),
@@ -662,7 +664,7 @@ object IdentitySlice {
       val started = tools.Stopwatch.start()
       System.err.println(s"[identity-slice] resolving the recording's ${listings.size} listings whole, once (kept in $path)")
       val reads = readsOf(opened, opened.fetch, opened.gaps, Instant.EPOCH)
-      val index = IdentitySlicing.index(listings, new MemoLookups(reads.lookups), reads.normalizer)
+      val index = IdentitySlicing.index(listings, OlderRefs.passing(classOf[IdentityLookups], new MemoLookups(reads.lookups), reads.lookups, OlderRefs.NewerLookups), reads.normalizer)
       writeIndex(path, index)
       System.err.println(f"[identity-slice] indexed in ${started.seconds}%.1fs")
       index

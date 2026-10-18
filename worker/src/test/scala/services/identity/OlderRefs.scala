@@ -20,4 +20,18 @@ object OlderRefs {
   /** `on.member(args…)` (or a val's getter, with no args), where its class has such a public member. */
   def call(on: AnyRef, member: String, args: AnyRef*): Option[AnyRef] =
     on.getClass.getMethods.find(m => m.getName == member && m.getParameterCount == args.size).map(_.invoke(on, args*))
+
+  /** `own` as the interface `iface`, the `members` named passed to `inner` instead — where `iface` has them. A tool file's
+   *  wrapper overrides only what the oldest ref has, so it cannot override a lookup a newer ref added
+   *  (`IdentityLookups.overview`, 2026-10-18): named here, the wrapper passes it through to its source, and in a ref
+   *  without it the name matches nothing. */
+  def passing[T <: AnyRef](iface: Class[T], own: T, inner: T, members: Set[String]): T =
+    java.lang.reflect.Proxy.newProxyInstance(iface.getClassLoader, Array[Class[?]](iface), (_, method, args) => {
+      val target = if (members(method.getName)) inner else own
+      try method.invoke(target, Option(args).getOrElse(Array.empty[AnyRef])*)
+      catch { case e: java.lang.reflect.InvocationTargetException => throw e.getCause }
+    }).asInstanceOf[T]
+
+  /** The lookups added after the oldest ref a tool runs under, which its wrappers pass to their source ([[passing]]). */
+  val NewerLookups: Set[String] = Set("overview")
 }
