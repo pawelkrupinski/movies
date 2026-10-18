@@ -464,7 +464,9 @@ object StageRelays {
    *  short-season case): the follow-up is the corpus-level join. */
   private[identity] def stageWorkQueries(l: Listing): Seq[String] =
     if (l.seasonYear.isDefined) Nil
-    else (l.year.orElse(l.broadcastSeason).toSeq ++ l.screenedSeason.filter(_ => l.billsAStageHouse)).distinct.flatMap(year =>
+    // the year as stage-production reads it: its field, its title's bracket, its banner ("RBO live 2027: Tosca"), else its
+    // broadcast season -- or nothing searched "Tosca 2027", and the house's 2026/27 record could stay out of the pool
+    else (l.statedYear.orElse(bannerYear(l)).orElse(l.broadcastSeason).toSeq ++ l.screenedSeason.filter(_ => l.billsAStageHouse)).distinct.flatMap(year =>
       l.billedStageWorks.toSeq.sorted.flatMap(StageWorks.resolver.searchNames).map(name => s"$name $year"))
 
   private val BannerYear = """(?<![\p{N}])(20\d{2})(?![\p{N}/–—-])""".r

@@ -283,6 +283,13 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // ("Manon" names Massenet's opera and MacMillan's ballet, whose own name is asked beside it)
     IdentityMeasures.searchQueries(cleaned).filter(_.endsWith(" 2026")) shouldBe Seq("Manon 2026", "L'histoire de Manon 2026", "Manon Lescaut 2026")
   }
+  it should "be searched by its work and the year its title or banner dates it" in {
+    // DE "RBO live 2027: Tosca": stage-production reads the banner's year, so the search must ask it too, or the house's
+    // 2026/27 record never reaches the pool
+    IdentityMeasures.searchQueries(Listing("RBO live 2027: Tosca")) should contain ("Tosca 2027")
+    IdentityMeasures.searchQueries(Listing("Royal Opera: Tosca (2027)")) should contain ("Tosca 2027")
+  }
+
 
   it should "be searched by every name of its work, whatever language the venue names it in" in {
     // TMDB titles the Met's record "The Metropolitan Opera 2026/27: Samson et Dalila": neither "Samson i dalila 2026"
