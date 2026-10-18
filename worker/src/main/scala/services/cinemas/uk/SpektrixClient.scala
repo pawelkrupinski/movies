@@ -159,7 +159,7 @@ object SpektrixClient {
         cast        = names(attribute(event, CastAttribute)),
         director    = names(attribute(event, DirectorAttribute)),
         showtimes   = showtimes,
-        externalIds = (event \ "id").asOpt[String].map(id => Map("spektrix" -> id)).getOrElse(Map.empty),
+        externalIds = (event \ "id").asOpt[String].map("spektrix" -> _).toMap,
         ageRating   = attribute(event, RatingAttribute).flatMap(Bbfc.findFirstIn).map(_.toUpperCase(Locale.ROOT))
       )
     }

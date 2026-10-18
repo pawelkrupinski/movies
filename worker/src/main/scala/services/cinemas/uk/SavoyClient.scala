@@ -145,7 +145,7 @@ object SavoyClient {
         cast        = credits.cast,
         director    = credits.director,
         showtimes   = showtimes,
-        externalIds = (event \ "ID").asOpt[Long].map(id => Map("savoy" -> id.toString)).getOrElse(Map.empty),
+        externalIds = (event \ "ID").asOpt[Long].map(id => "savoy" -> id.toString).toMap,
         ageRating   = text("Rating").flatMap(BbfcAlt.findFirstMatchIn(_)).flatMap(m => AgeRating.normalize(m.group(1)))
       )
     }
@@ -226,7 +226,7 @@ object SavoyClient {
         cast        = Seq.empty,
         director    = credit.toSeq.flatMap(_.director),
         showtimes   = showtimes,
-        externalIds = programme.id.map(id => Map("savoy" -> id)).getOrElse(Map.empty),
+        externalIds = programme.id.map("savoy" -> _).toMap,
         ageRating   = programme.certificate.flatMap(AgeRating.normalize)
       )
     }
