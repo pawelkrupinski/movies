@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.ScraperParse.jsonText
+import services.enrichment.scraping.JsonLdBlocks
 import tools.{HttpFetch, HttpRead}
 import models._
 import play.api.libs.json._
@@ -9,7 +11,6 @@ import services.cinemas.common.{CinemaScraper, SlotsToMovies}
 import java.nio.charset.Charset
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
-import scala.jdk.CollectionConverters._
 import scala.util.Try
 
 /**
@@ -67,8 +68,7 @@ object CharlieClient {
 
   def parse(html: String, cinema: Cinema): Seq[CinemaMovie] = {
     val document = Jsoup.parse(html)
-    val slots = document.select("script[type=application/ld+json]").asScala.toSeq
-      .map(_.data())
+    val slots = JsonLdBlocks.scripts(document)
       .flatMap(block => parseEvent(block).map(slot => slot -> block))
       .map { case (slot, block) =>
         // The booking link precedes the block in the source; recover its
@@ -96,7 +96,7 @@ object CharlieClient {
       .filter(js => (js \ "@type").asOpt[String].contains("ScreeningEvent"))
       .flatMap { js =>
         for {
-          title <- (js \ "name").asOpt[String].map(_.trim).filter(_.nonEmpty)
+          title <- jsonText(js \ "name")
           start <- (js \ "startDate").asOpt[String]
           dt    <- Try(OffsetDateTime.parse(start, IsoOffset).toLocalDateTime).toOption
         } yield RawSlot(
@@ -105,7 +105,7 @@ object CharlieClient {
           filmUrl  = (js \ "url").asOpt[String].filter(_.nonEmpty),
           booking  = None,
           poster   = (js \ "workPresented" \ "image").asOpt[String].filter(_.nonEmpty),
-          director = (js \ "workPresented" \ "director").asOpt[String].map(_.trim).filter(_.nonEmpty)
+          director = jsonText(js \ "workPresented" \ "director")
         )
       }
 

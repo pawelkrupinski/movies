@@ -1,5 +1,6 @@
 package services.cinemas.common
 
+import services.enrichment.scraping.JsonLdBlocks
 import org.jsoup.nodes.Document
 import org.jsoup.parser.Parser
 import play.api.libs.json.{JsArray, JsLookupResult, JsObject, JsString, Json}
@@ -92,8 +93,8 @@ object FlicksFilmPage {
 
   /** The page's schema.org `Movie` block. A block that is not JSON throws: that is not a page we can read. */
   private def movieBlock(document: Document): Option[JsObject] =
-    document.select("script[type=application/ld+json]").asScala.iterator
-      .map(script => Json.parse(script.data))
+    JsonLdBlocks.scripts(document).iterator
+      .map(Json.parse)
       .collectFirst { case block: JsObject if (block \ "@type").asOpt[String].contains("Movie") => block }
 
   /** A schema.org list field, which may be one string or an array of them. */

@@ -1,8 +1,6 @@
 package services.enrichment.scraping
 
-import play.api.libs.json.{JsValue, Json}
-
-import scala.util.Try
+import play.api.libs.json.JsValue
 
 /**
  * Helper for parsing the `aggregateRating.ratingValue` field out of a page's
@@ -53,10 +51,10 @@ object JsonLdAggregateRating {
       }.map(_.trim).filter(_.nonEmpty).distinct
 
     /** The film's own name — the `Movie` block's `name`. */
-    def name: Option[String] = movie.flatMap(js => (js \ "name").asOpt[String]).map(_.trim).filter(_.nonEmpty)
+    def name: Option[String] = movie.flatMap(js => JsonScalars.text(js \ "name"))
 
     /** The `Movie` block's `duration` as written (an ISO 8601 duration, or a site's own reading of one). */
-    def duration: Option[String] = movie.flatMap(js => (js \ "duration").asOpt[String]).map(_.trim).filter(_.nonEmpty)
+    def duration: Option[String] = movie.flatMap(js => JsonScalars.text(js \ "duration"))
 
     /** The block describing the film itself (`"@type":"Movie"`): a page also carries trailers' `VideoObject`s, whose
      *  `name` and `duration` are the trailer's. */
@@ -71,16 +69,8 @@ object JsonLdAggregateRating {
       blocks.iterator.flatMap(js => (js \ "datePublished").asOpt[String]).flatMap(YearRegex.findFirstIn).map(_.toInt).nextOption()
   }
 
-  def of(html: String): JsonLd = JsonLd(scripts(html).flatMap(raw => Try(Json.parse(raw)).toOption))
-
-  // A script's text is raw up to the first `</script>` (HTML's script-data state), so its blocks
-  // can be read without building the page's DOM (`HtmlScripts`). `JsonLdScanSpec` holds it to
-  // Jsoup's answer on every recorded Metacritic and Rotten Tomatoes page.
-  private val LdJson = """(?i)\btype\s*=\s*(["']?)application/ld\+json\1(?=[\s/>]|$)""".r
-
-  /** The raw text of every `<script type="application/ld+json">`, in page order. */
-  private[scraping] def scripts(html: String): Seq[String] =
-    HtmlScripts.all(html).collect { case s if LdJson.findFirstIn(s.attributes).isDefined => s.body }.toSeq
+  /** The page's JSON-LD blocks, read without building its DOM ([[JsonLdBlocks]]). */
+  def of(html: String): JsonLd = JsonLd(JsonLdBlocks.parsed(html))
 
   def parseInt(html: String): Option[Int]      = of(html).rating
   def directorNames(html: String): Set[String] = of(html).directorNames

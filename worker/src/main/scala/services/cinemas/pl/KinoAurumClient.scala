@@ -1,5 +1,6 @@
 package services.cinemas.pl
 
+import services.cinemas.common.ScraperParse.jsonText
 import services.cinemas.common.ScraperParse
 import tools.{HttpFetch, HttpRead}
 import models._
@@ -47,7 +48,7 @@ object KinoAurumClient {
     val slots = documents.flatMap { document =>
       val fields = document \ "fields"
       for {
-        title <- (fields \ "film_tytul" \ "stringValue").asOpt[String].map(_.trim).filter(_.nonEmpty)
+        title <- jsonText(fields \ "film_tytul" \ "stringValue")
         date  <- (fields \ "data" \ "stringValue").asOpt[String]
         time  <- (fields \ "godzina" \ "stringValue").asOpt[String]
         dt    <- ScraperParse.parseDateTime(s"$date $time")

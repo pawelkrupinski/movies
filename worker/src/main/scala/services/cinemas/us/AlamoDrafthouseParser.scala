@@ -1,5 +1,6 @@
 package services.cinemas.us
 
+import services.cinemas.common.ScraperParse.jsonText
 import services.cinemas.common.SlotsToMovies
 
 import java.util.Locale
@@ -99,9 +100,9 @@ object AlamoDrafthouseParser {
       .filterNot(p => (p \ "isHidden").asOpt[Boolean].getOrElse(false))
       .flatMap { p =>
         for {
-          slug     <- (p \ "slug").asOpt[String].map(_.trim).filter(_.nonEmpty)
-          showSlug <- (p \ "show" \ "slug").asOpt[String].map(_.trim).filter(_.nonEmpty)
-          title    <- (p \ "show" \ "title").asOpt[String].map(_.trim).filter(_.nonEmpty)
+          slug     <- jsonText(p \ "slug")
+          showSlug <- jsonText(p \ "show" \ "slug")
+          title    <- jsonText(p \ "show" \ "title")
         } yield slug -> Show(
           slug          = showSlug,
           title         = title,
@@ -131,7 +132,7 @@ object AlamoDrafthouseParser {
    *  page loaded. A body that is not JSON throws. */
   def parseDetail(json: String, today: LocalDate): FilmDetail = {
     val show = Json.parse(json) \ "data" \ "presentation" \ "show"
-    def text(field: String): Option[String] = (show \ field).asOpt[String].map(_.trim).filter(_.nonEmpty)
+    def text(field: String): Option[String] = jsonText(show \ field)
     def names(field: String): Seq[String] =
       (show \ field).asOpt[Seq[String]].getOrElse(Nil).map(_.trim).filter(_.nonEmpty).distinct
     FilmDetail(
@@ -143,7 +144,7 @@ object AlamoDrafthouseParser {
       genres         = names("genres"),
       posterUrl      = (show \ "posterImages").asOpt[Seq[JsValue]].getOrElse(Nil)
         .headOption.flatMap(i => (i \ "uri").asOpt[String]).map(_.trim).filter(_.nonEmpty),
-      trailerUrl     = (show \ "trailer" \ "videoUri").asOpt[String].map(_.trim).filter(_.nonEmpty),
+      trailerUrl     = jsonText(show \ "trailer" \ "videoUri"),
       ageRating      = certificate(text("certification"))
     )
   }
@@ -188,8 +189,8 @@ object AlamoDrafthouseParser {
     (data \ "formats").asOpt[Seq[JsValue]].getOrElse(Nil)
       .flatMap { f =>
         for {
-          slug  <- (f \ "slug").asOpt[String].map(_.trim).filter(_.nonEmpty)
-          title <- (f \ "title").asOpt[String].map(_.trim).filter(_.nonEmpty)
+          slug  <- jsonText(f \ "slug")
+          title <- jsonText(f \ "title")
         } yield slug -> title
       }.toMap
 
@@ -225,7 +226,7 @@ object AlamoDrafthouseParser {
         Showtime(
           dateTime   = dateTime,
           bookingUrl = bookingUrl(session),
-          room       = (session \ "screenNumber").asOpt[String].map(_.trim).filter(_.nonEmpty),
+          room       = jsonText(session \ "screenNumber"),
           format     = formatTokens(
             (session \ "formatSlug").asOpt[String].toSeq ++ attributeSlugs(session),
             formats
@@ -239,8 +240,8 @@ object AlamoDrafthouseParser {
    *  carry. */
   private def bookingUrl(session: JsValue): Option[String] =
     for {
-      cinemaId  <- (session \ "cinemaId").asOpt[String].map(_.trim).filter(_.nonEmpty)
-      sessionId <- (session \ "sessionId").asOpt[String].map(_.trim).filter(_.nonEmpty)
+      cinemaId  <- jsonText(session \ "cinemaId")
+      sessionId <- jsonText(session \ "sessionId")
     } yield s"${AlamoDrafthouseClient.BaseUrl}/ticketing/$cinemaId/$sessionId"
 
   /** Screening tokens for one session's format slug + attribute slugs.

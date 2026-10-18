@@ -1,5 +1,6 @@
 package services.cinemas.common
 
+import services.cinemas.common.ScraperParse.jsonText
 import java.util.Locale
 
 import models.{Cinema, CinemaMovie, Movie, Showtime}
@@ -94,7 +95,7 @@ object GatsbyBoxOfficeParser {
    *  both credited as directors; `runtime` is in seconds. */
   def parseDetails(json: String): Map[String, FilmDetails] =
     Try(Json.parse(json)).toOption.flatMap(_.asOpt[Seq[JsValue]]).getOrElse(Nil).flatMap { n =>
-      (n \ "id").asOpt[String].map(_.trim).filter(_.nonEmpty).map(_ -> detailsOf(n))
+      jsonText(n \ "id").map(_ -> detailsOf(n))
     }.toMap
 
   /** One film node of a `movies?ids=` response: `direction` and `coDirection` are separate arrays
@@ -106,7 +107,7 @@ object GatsbyBoxOfficeParser {
       directors      = (names("direction") ++ names("coDirection")).distinct,
       runtimeMinutes = (n \ "runtime").asOpt[Int].filter(_ > 0).map(_ / 60),
       cast           = names("casting"),
-      synopsis       = (n \ "synopsis").asOpt[String].map(_.trim).filter(_.nonEmpty),
+      synopsis       = jsonText(n \ "synopsis"),
       certificate    = (n \ "certificate").asOpt[String].map(_.trim.toUpperCase(Locale.ROOT)).filter(_.nonEmpty))
   }
 
@@ -120,8 +121,8 @@ object GatsbyBoxOfficeParser {
       .getOrElse(throw new IllegalStateException(s"the catalogue answer has no data.allMovie.nodes: ${json.take(200)}"))
       .flatMap { n =>
         for {
-          id    <- (n \ "id").asOpt[String].map(_.trim).filter(_.nonEmpty)
-          title <- (n \ "title").asOpt[String].map(_.trim).filter(_.nonEmpty).map(closeDanglingParenthesis)
+          id    <- jsonText(n \ "id")
+          title <- jsonText(n \ "title").map(closeDanglingParenthesis)
         } yield id -> CatalogueFilm(
           title = title,
           // Both brands echo the same string here for English-language films;
@@ -129,8 +130,8 @@ object GatsbyBoxOfficeParser {
           // sibling's rule so a TMDB search doesn't get a duplicate hint.
           originalTitle = (n \ "originalTitle").asOpt[String].map(_.trim)
             .filter(_.nonEmpty).filter(_ != title),
-          posterUrl  = (n \ "poster").asOpt[String].map(_.trim).filter(_.nonEmpty),
-          path       = (n \ "path").asOpt[String].map(_.trim).filter(_.nonEmpty),
+          posterUrl  = jsonText(n \ "poster"),
+          path       = jsonText(n \ "path"),
           genres     = parseGenres((n \ "genres").asOpt[String]),
           // `trailer.youtube` is an ARRAY of watch URLs (populated on ~70% of
           // nodes); `HD`/`SD` sit alongside it and are always null here. Commit
@@ -188,7 +189,7 @@ object GatsbyBoxOfficeParser {
           Showtime(
             dateTime   = dateTime,
             bookingUrl = WebediaBoxOffice.bookingUrl(session),
-            room       = (session \ "screen" \ "name").asOpt[String].map(_.trim).filter(_.nonEmpty),
+            room       = jsonText(session \ "screen" \ "name"),
             format     = formatTokens(tags)
           )
         }

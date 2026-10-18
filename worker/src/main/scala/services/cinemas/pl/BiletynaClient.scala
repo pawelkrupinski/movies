@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.ScraperParse.jsonText
+import services.enrichment.scraping.JsonLdBlocks
 import play.api.Logging
 import tools.{HttpFetch, HttpRead}
 import models._
@@ -9,7 +11,6 @@ import services.cinemas.common.{CinemaScraper, SlotsToMovies}
 
 import java.time.OffsetDateTime
 import java.time.format.DateTimeFormatter
-import scala.jdk.CollectionConverters._
 import scala.util.Try
 
 /**
@@ -207,27 +208,21 @@ object BiletynaClient {
   private def stripQuotes(s: String): String =
     s.replaceAll("""^["„“]+|["”]+$""", "").trim
 
-  /** The bodies of every `<script type="application/ld+json">` block on the
-   *  page. biletyna renders exactly one (the `Place`), but we scan all to stay
+  /** Every `<script type="application/ld+json">` block on the page that is
+   *  JSON. biletyna renders exactly one (the `Place`), but we scan all to stay
    *  robust to layout changes. */
-  private def jsonLdBlocks(html: String): Seq[String] =
-    Jsoup.parse(html)
-      .select("script[type=application/ld+json]").asScala.toSeq
-      .map(_.data())
-      .filter(_.nonEmpty)
+  private def jsonLdBlocks(html: String): Seq[JsValue] = JsonLdBlocks.parsed(Jsoup.parse(html))
 
   /** Pull every event out of one JSON-LD block, keeping its schema.org `@type`
    *  so [[parse]] can drop the venue's live stage/music programming (see
    *  [[NonFilmEventTypes]]). A `Place` node carries the events under `events`;
    *  anything that doesn't parse or doesn't hold events yields nothing. */
-  private def parseEvents(block: String): Seq[RawSlot] =
-    Try(Json.parse(block)).toOption.toSeq.flatMap { json =>
-      (json \ "events").asOpt[Seq[JsValue]].getOrElse(Seq.empty).flatMap(parseEvent)
-    }
+  private def parseEvents(json: JsValue): Seq[RawSlot] =
+    (json \ "events").asOpt[Seq[JsValue]].getOrElse(Seq.empty).flatMap(parseEvent)
 
   private def parseEvent(ev: JsValue): Option[RawSlot] =
     for {
-      title <- (ev \ "name").asOpt[String].map(_.trim).filter(_.nonEmpty)
+      title <- jsonText(ev \ "name")
       start <- (ev \ "startDate").asOpt[String]
       dt    <- Try(OffsetDateTime.parse(start, IsoOffset).toLocalDateTime).toOption
       url   <- (ev \ "url").asOpt[String].filter(_.nonEmpty)
@@ -279,9 +274,7 @@ object BiletynaClient {
 
   // Every event the page lists, parseable or not — the cap counts them all.
   private def pageEventCount(html: String): Int =
-    jsonLdBlocks(html).map { block =>
-      Try(Json.parse(block)).toOption.flatMap(json => (json \ "events").asOpt[JsArray]).fold(0)(_.value.size)
-    }.sum
+    jsonLdBlocks(html).map(json => (json \ "events").asOpt[JsArray].fold(0)(_.value.size)).sum
 
   /** One feed page's records: an object keyed by event id, or an array. A reply
    *  with `status: false` or without `events` is a failed read, not an empty page. */
@@ -315,7 +308,7 @@ object BiletynaClient {
   private def parseFeedEvent(ev: JsValue): Option[RawSlot] =
     for {
       eventId <- (ev \ "event_id").asOpt[Long]
-      title   <- (ev \ "artist_name").asOpt[String].map(_.trim).filter(_.nonEmpty)
+      title   <- jsonText(ev \ "artist_name")
       start   <- (ev \ "event_date").asOpt[String]
       dt      <- Try(java.time.LocalDateTime.parse(start, FeedDateTime)).toOption
       film    <- (ev \ "v2_artist_seo_url").asOpt[String].filter(_.nonEmpty)

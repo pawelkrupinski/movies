@@ -1,5 +1,6 @@
 package services.cinemas.common
 
+import services.cinemas.common.ScraperParse.jsonText
 import java.util.Locale
 
 import models.{Cinema, CinemaMovie, Movie, Showtime}
@@ -31,7 +32,7 @@ object VueCinemasPlatformParser {
   /** One film, or `None` for an entry with no title: unshowable, and no reason to
    *  fail the venue's other films with it. */
   private def parseFilm(film: JsValue, cinema: Cinema, root: String): Option[CinemaMovie] =
-    (film \ "filmTitle").asOpt[String].map(_.trim).filter(_.nonEmpty).map(titled(film, _, cinema, root))
+    jsonText(film \ "filmTitle").map(titled(film, _, cinema, root))
 
   private def titled(film: JsValue, title: String, cinema: Cinema, root: String): CinemaMovie = {
     val sessions = (film \ "showingGroups").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)

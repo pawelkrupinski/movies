@@ -1,5 +1,6 @@
 package services.cinemas.common
 
+import services.cinemas.common.ScraperParse.jsonText
 import services.cinemas.common.SlotsToMovies
 
 import services.cinemas.pl.NonMovieEventClassifier
@@ -252,17 +253,17 @@ object WebediaShowtimesClient {
     val movie = js \ "movie"
     for {
       id    <- (movie \ "internalId").asOpt[Long]
-      title <- (movie \ "title").asOpt[String].map(_.trim).filter(_.nonEmpty)
+      title <- jsonText(movie \ "title")
     } yield RawWebediaFilm(
       internalId     = id,
       title          = title,
-      originalTitle  = (movie \ "originalTitle").asOpt[String].map(_.trim).filter(_.nonEmpty),
+      originalTitle  = jsonText(movie \ "originalTitle"),
       year           = (movie \ "data" \ "productionYear").asOpt[Int],
       runtimeMinutes = (movie \ "runtime").asOpt[String].flatMap(parseRuntime(_, market)),
       genres         = (movie \ "genres").asOpt[Seq[JsValue]].getOrElse(Nil)
         .flatMap(g => (g \ "translate").asOpt[String]).map(_.trim).filter(_.nonEmpty),
       director       = parseDirectors(movie \ "credits"),
-      posterUrl      = (movie \ "poster" \ "url").asOpt[String].map(_.trim).filter(_.nonEmpty),
+      posterUrl      = jsonText(movie \ "poster" \ "url"),
       // `synopsisFull` is HTML (`<p class="bo-p">…</p>` per paragraph), not prose —
       // flatten it, keeping the paragraph breaks, or the tags render as visible text.
       synopsis       = (movie \ "synopsisFull").asOpt[String]

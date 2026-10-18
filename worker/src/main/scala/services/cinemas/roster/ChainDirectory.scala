@@ -1,5 +1,6 @@
 package services.cinemas.roster
 
+import services.cinemas.common.ScraperParse.jsonText
 import models.GeoPoint
 import play.api.libs.json.{JsValue, Json}
 import services.cinemas.common.CinemaScraper
@@ -44,7 +45,7 @@ object ChainDirectory {
     } yield directory -> id
 
   private def text(js: JsValue, key: String): Option[String] =
-    (js \ key).asOpt[String].map(_.trim).filter(_.nonEmpty)
+    jsonText(js \ key)
 
   private def point(js: JsValue, lat: String, lon: String): Option[GeoPoint] =
     for { la <- (js \ lat).asOpt[Double]; lo <- (js \ lon).asOpt[Double] } yield GeoPoint(la, lo)

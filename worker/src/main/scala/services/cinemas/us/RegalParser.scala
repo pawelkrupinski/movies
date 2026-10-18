@@ -1,5 +1,6 @@
 package services.cinemas.us
 
+import services.cinemas.common.ScraperParse.jsonText
 import services.cinemas.common.SlotsToMovies
 
 import java.util.Locale
@@ -98,8 +99,8 @@ object RegalParser {
 
     val rows = films.flatMap { film =>
       for {
-        title <- (film \ "Title").asOpt[String].map(_.trim).filter(_.nonEmpty)
-        code  <- (film \ "MasterMovieCode").asOpt[String].map(_.trim).filter(_.nonEmpty)
+        title <- jsonText(film \ "Title")
+        code  <- jsonText(film \ "MasterMovieCode")
       } yield {
         val showtimes = arrayAt(film, "Performances").getOrElse(Nil).flatMap(performance)
         (code, title, showtimes)
@@ -186,7 +187,7 @@ object RegalParser {
       case other           => other
     }
     def text(field: String): Option[String] =
-      (root \ field).asOpt[String].map(_.trim).filter(_.nonEmpty)
+      jsonText(root \ field)
     def list(field: String): Seq[String] =
       (root \ field).asOpt[Seq[String]].getOrElse(Nil).map(_.trim).filter(_.nonEmpty)
 

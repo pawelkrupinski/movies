@@ -1,5 +1,6 @@
 package services.cinemas.pl
 
+import services.cinemas.common.ScraperParse.jsonText
 import models._
 import org.jsoup.Jsoup
 import play.api.libs.json.{JsValue, Json}
@@ -125,7 +126,7 @@ object IksorisCalendarClient {
   }
 
   private def showing(js: JsValue): Option[RawSlot] = {
-    def field(key: String) = (js \ key).asOpt[String].map(_.trim).filter(_.nonEmpty)
+    def field(key: String) = jsonText(js \ key)
     for {
       rawTitle        <- field("wydarzenie")
       (title, format) <- Some(ScraperParse.extractFormatTags(CycleSuffix.replaceFirstIn(rawTitle, ""))).filter(_._1.nonEmpty)

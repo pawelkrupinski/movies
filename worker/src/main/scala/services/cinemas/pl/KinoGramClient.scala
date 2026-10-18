@@ -1,5 +1,6 @@
 package services.cinemas.pl
 
+import services.cinemas.common.ScraperParse.jsonText
 import services.cinemas.common.ScraperParse
 import tools.{HttpFetch, HttpRead}
 import models._
@@ -59,7 +60,7 @@ class KinoGramClient(http: HttpFetch) extends CinemaScraper {
               runtimeMinutes = (movie \ "duration").asOpt[Int].filter(_ > 0),
               releaseYear    = (movie \ "yearOfProduction").asOpt[String].flatMap(s => Try(s.take(4).toInt).toOption),
               originalTitle  = (movie \ "originalTitle").asOpt[String].filter(_.nonEmpty),
-              countries      = (movie \ "country").asOpt[String].map(_.trim).filter(_.nonEmpty)
+              countries      = jsonText(movie \ "country")
                                  .toSeq.flatMap(_.split(",").map(_.trim).filter(_.nonEmpty))
                                  .map(KinoGramClient.toPolishCountry),
               genres         = (movie \ "genres").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)

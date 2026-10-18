@@ -29,8 +29,7 @@ class JsonLdScanSpec extends AnyFlatSpec with Matchers {
       .map(Paths.get(_))
       .filter(Files.isRegularFile(_))
 
-  private def byJsoup(html: String): Seq[String] =
-    Jsoup.parse(html).select("script[type=application/ld+json]").asScala.toSeq.map(_.data())
+  private def byJsoup(html: String): Seq[String] = JsonLdBlocks.scripts(Jsoup.parse(html))
 
   private def scorecardByJsoup(html: String): Seq[String] =
     Jsoup.parse(html).select("script#media-scorecard-json").asScala.toSeq.map(_.data())
@@ -44,7 +43,7 @@ class JsonLdScanSpec extends AnyFlatSpec with Matchers {
       val checks = pages.map { page =>
         Future {
           val html = new String(Files.readAllBytes(page), StandardCharsets.UTF_8)
-          Option.when(JsonLdAggregateRating.scripts(html) != byJsoup(html) ||
+          Option.when(JsonLdBlocks.scripts(html) != byJsoup(html) ||
             RottenTomatoesScorecard.blocks(html) != scorecardByJsoup(html))(page.toString)
         }(using pool)
       }
@@ -68,8 +67,19 @@ class JsonLdScanSpec extends AnyFlatSpec with Matchers {
         |<script type=application/ld+json>{"c":3}</script>
         |<script type="application/ld+jsonx">{"d":4}</script>
         |<script type="text/javascript">{"e":5}</script>""".stripMargin
-    JsonLdAggregateRating.scripts(html) shouldBe byJsoup(html)
-    JsonLdAggregateRating.scripts(html) shouldBe Seq("""{"a":1}""", """{"b":2}""", """{"c":3}""")
+    JsonLdBlocks.scripts(html) shouldBe byJsoup(html)
+    JsonLdBlocks.scripts(html) shouldBe Seq("""{"a":1}""", """{"b":2}""", """{"c":3}""")
+  }
+
+  "JsonLdBlocks.parsed" should "give the blocks that are JSON, in page order, from a raw page and a parsed one alike" in {
+    val html =
+      """<script type="application/ld+json">{"a":1}</script>
+        |<script type="application/ld+json">not json {</script>
+        |<script type="application/ld+json"></script>
+        |<script type="application/ld+json">[{"b":2}]</script>""".stripMargin
+    val expected = Seq(play.api.libs.json.Json.obj("a" -> 1), play.api.libs.json.Json.arr(play.api.libs.json.Json.obj("b" -> 2)))
+    JsonLdBlocks.parsed(html) shouldBe expected
+    JsonLdBlocks.parsed(Jsoup.parse(html)) shouldBe expected
   }
 
   "the scorecard scan" should "match the id however its name is cased or its value quoted, and nothing else" in {

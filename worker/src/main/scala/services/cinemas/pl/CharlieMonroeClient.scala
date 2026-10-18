@@ -1,5 +1,6 @@
 package services.cinemas.pl
 
+import services.enrichment.scraping.JsonLdBlocks
 import services.cinemas.common.SlotsToMovies
 
 import java.util.Locale
@@ -83,10 +84,7 @@ class CharlieMonroeClient(http: HttpFetch) extends CinemaScraper {
   private def parseHtml(html: String): Seq[CinemaMovie] = {
     val document = Jsoup.parse(html)
 
-    val screenings = document.select("script[type=application/ld+json]").asScala
-      .flatMap(element => Try(Json.parse(element.data())).toOption)
-      .flatMap(parseScreeningEvent)
-      .toSeq
+    val screenings = JsonLdBlocks.parsed(document).flatMap(parseScreeningEvent)
 
     val roomMap = collection.mutable.Map[(String, String, String), String]()
     val detailsByTitle = document.select("article.movie-card").asScala.flatMap { article =>

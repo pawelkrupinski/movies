@@ -1,5 +1,6 @@
 package services.cinemas.pl
 
+import services.cinemas.common.ScraperParse.jsonText
 import services.cinemas.common.SlotsToMovies
 
 import tools.{HttpFetch, HttpRead}
@@ -148,11 +149,11 @@ object Cinema1Client {
    *  usable title (a malformed/blank response). */
   private[cinemas] def parseMovie(raw: String): Option[MovieInfo] = Try {
     val j     = Json.parse(raw)
-    val title = (j \ "title").asOpt[String].map(_.trim).filter(_.nonEmpty)
+    val title = jsonText(j \ "title")
     title.map { t =>
       MovieInfo(
         title          = t,
-        synopsis       = (j \ "description").asOpt[String].map(_.trim).filter(_.nonEmpty),
+        synopsis       = jsonText(j \ "description"),
         cast           = splitNames((j \ "filmCast").asOpt[String]),
         director       = splitNames((j \ "director").asOpt[String]),
         runtimeMinutes = (j \ "duration").asOpt[Int].filter(_ > 0),

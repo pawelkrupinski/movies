@@ -1,5 +1,6 @@
 package services.cinemas.us
 
+import services.cinemas.common.ScraperParse.jsonText
 import models.{Cinema, CinemaMovie, Movie, Showtime}
 import org.jsoup.Jsoup
 import play.api.libs.json._
@@ -85,7 +86,7 @@ object AmcParser {
   private def movieFrom(item: JsValue, cinema: Cinema): Option[CinemaMovie] = {
     val movie = item \ "movie"
     for {
-      title <- (movie \ "name").asOpt[String].map(_.trim).filter(_.nonEmpty)
+      title <- jsonText(movie \ "name")
       slug  <- (movie \ "slug").asOpt[String].filter(_.nonEmpty)
       showtimes = showtimesOf(item)
       if showtimes.nonEmpty
@@ -106,7 +107,7 @@ object AmcParser {
       cinema      = cinema,
       posterUrl   = (movie \ "preferredPoster" \ "url").asOpt[String].filter(_.nonEmpty),
       filmUrl     = Some(s"${AmcClient.SiteUrl}/movies/$slug"),
-      synopsis    = (movie \ "synopsis").asOpt[String].map(_.trim).filter(_.nonEmpty),
+      synopsis    = jsonText(movie \ "synopsis"),
       cast        = (movie \ "starringActors").asOpt[String].toSeq.flatMap(splitList),
       director    = (movie \ "directors").asOpt[String].toSeq.flatMap(splitList),
       showtimes   = showtimes,
@@ -114,7 +115,7 @@ object AmcParser {
       // AMC's listing exposes no trailer on this query; TMDB fills it downstream.
       trailerUrl  = None,
       // MPAA certificate as AMC labels it ("PG", "PG13", "R", "NR"), verbatim.
-      ageRating   = (movie \ "mpaaRating").asOpt[String].map(_.trim).filter(_.nonEmpty))
+      ageRating   = jsonText(movie \ "mpaaRating"))
   }
 
   /** Every screening of one film at one theatre on this day, deduped by
