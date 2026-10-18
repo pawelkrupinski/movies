@@ -1887,12 +1887,7 @@ object GermanRoster {
   // Lazy, once per roster: as a `def` it was rebuilt for every venue the roster builds — the
   // set of every other country's names, thousands of times over — 8.7% of worker-uk's CPU in
   // its first ten boot minutes (JFR 2026-10-02).
-  private lazy val claimedElsewhere: Set[String] =
-    (Cinema.polishAndUk.flatMap(_._2) ++ Cinema.Networks).map(_.displayName).toSet
-
-  /** A generated venue's [[Opening]]: seasonal, in Germany's window, when the generator named it so. */
-  private def opening(generatedName: String): Opening =
-    if (GermanRosterData.seasonal(generatedName)) Opening.Seasonal(SeasonWindow.Germany) else Opening.YearRound
+  private lazy val claimedElsewhere: Set[String] = Cinema.displayNamesClaimedBy()
 
   private val built: Seq[(GermanPlace, Seq[(GermanCinema, String, Option[String])])] =
     GermanRosterData.pages.map { case (slug, qualified, name, bundesland, lat, lon, multiTown, towns, cinemas) =>
@@ -1901,7 +1896,7 @@ object GermanRoster {
       // Qualified with the venue's own TOWN, so a re-cluster never changes a wire key.
       val venues = cinemas.map { case (disp, pill, tid, kinoprogramm, town) =>
         val unique = if (claimedElsewhere.contains(disp)) s"$disp $town" else disp
-        (new GermanCinema(unique, pill, opening(disp)), tid, kinoprogramm)
+        (new GermanCinema(unique, pill, Opening.generated(GermanRosterData.seasonal(disp), SeasonWindow.Germany)), tid, kinoprogramm)
       }
       (GermanPlace(slug, qualified, name, bundesland, lat, lon, multiTown, towns, venues.map(_._1)), venues)
     }
@@ -1909,10 +1904,7 @@ object GermanRoster {
   val places: Seq[GermanPlace] = built.map(_._1)
   /** Venues by Bundesland, in roster order — the grouping `Cinema.byCity` reports
    *  Germany at (the uptime page), one level above the pages. */
-  val byCity: Seq[(String, Seq[Cinema])] = {
-    val byLand = places.groupBy(_.bundesland)
-    places.map(_.bundesland).distinct.map(land => land -> byLand(land).flatMap(_.cinemas))
-  }
+  val byCity: Seq[(String, Seq[Cinema])] = Cinema.venuesByGroupInOrder(places)(_.bundesland)(_.cinemas)
   /** Each venue's key: its Filmstarts `theaterId`, or — for a venue Filmstarts does not
    *  list — the feed that found it ("cineamo:997"), which its sources are filed under. */
   val venueKeyByCinema: Map[Cinema, String] = built.flatMap(_._2).map { case (c, key, _) => c -> key }.toMap
@@ -1988,12 +1980,8 @@ object UsRoster {
    *  Reads `GermanRoster.byCity` rather than `GermanRosterData` so the comparison is
    *  against the names actually built — German venues are themselves qualified on
    *  collision, and it is the qualified name that ends up on the wire. */
-  // Lazy, once per roster: as a `def` it was rebuilt for every venue the roster builds — the
-  // set of every other country's names, thousands of times over — 8.7% of worker-uk's CPU in
-  // its first ten boot minutes (JFR 2026-10-02).
-  private lazy val claimedElsewhere: Set[String] =
-    (Cinema.polishAndUk.flatMap(_._2) ++ GermanRoster.byCity.flatMap(_._2) ++
-      Cinema.Networks).map(_.displayName).toSet
+  // Lazy, once per roster, as `GermanRoster.claimedElsewhere` is.
+  private lazy val claimedElsewhere: Set[String] = Cinema.displayNamesClaimedBy(GermanRoster.byCity)
 
   /** One venue of the generated roster, with everything the places and the
    *  scrape catalog read off it. */
@@ -2004,10 +1992,6 @@ object UsRoster {
   private val ownZones: Map[String, ZoneId] =
     UsRosterData.venueZones.map { case (disp, zone) => disp -> TimeZones.named(zone) }.toMap
 
-  /** A generated venue's [[Opening]]: seasonal, in the US window, when the generator named it so. */
-  private def opening(generatedName: String): Opening =
-    if (UsRosterData.seasonal(generatedName)) Opening.Seasonal(SeasonWindow.UnitedStates) else Opening.YearRound
-
   private val built: Seq[(UsPlace, Seq[Venue])] =
     UsRosterData.pages.map { case (slug, qualified, name, state, lat, lon, zone, multiTown, towns, cinemas) =>
       // Qualify only the venues that would collide, so the roster's names — and
@@ -2015,7 +1999,7 @@ object UsRoster {
       // Qualified with the venue's own STATE, so a re-cluster never moves a wire key.
       val venues = cinemas.map { case (disp, pill, flicksSlug, venueState, town) =>
         val unique = if (claimedElsewhere.contains(disp)) s"$disp ($venueState)" else disp
-        Venue(new UsCinema(unique, pill, opening(disp)), flicksSlug, venueState, town, ownZones.get(disp))
+        Venue(new UsCinema(unique, pill, Opening.generated(UsRosterData.seasonal(disp), SeasonWindow.UnitedStates)), flicksSlug, venueState, town, ownZones.get(disp))
       }
       val places = (name +: (towns ++ TownRanking.ranked(venues.map(_.town)))).distinct
       (UsPlace(slug, qualified, name, state, lat, lon, TimeZones.named(zone), multiTown, places,
@@ -2041,7 +2025,7 @@ object UsRoster {
 
   /** US venues by display name. The display name is the wire key every stored slot
    *  uses and the only stable handle these venues have — they are built at runtime
-   *  from `data/us/venues.json`, so unlike the Polish and UK rosters there is no
+   *  from the generated `UsRosterData`, so unlike the Polish and UK rosters there is no
    *  case object to refer to one by. `services.cinemas.us.UsChainVenues` keys its
    *  chain maps this way for exactly that reason; this is the lookup back. */
   val byDisplayName: Map[String, Cinema] = venues.map(v => v.cinema.displayName -> (v.cinema: Cinema)).toMap
@@ -2081,7 +2065,7 @@ final case class SpanishPlace(
   preferredSlug: String,
   /** The slug qualified with the autonomous community (`toledo-castilla-la-mancha`)
    *  — what the page answers at where another country already serves
-   *  [[preferredSlug]], the way a state qualifies a US metro's. */
+   *  [[preferredSlug]], the way a state qualifies a US page's. */
   qualifiedSlug: String,
   /** The town the page is named after. */
   name:          String,
@@ -2126,17 +2110,9 @@ object SpanishRoster {
    *  against the names actually built — the German and US venues are themselves
    *  qualified on collision, and it is the qualified name that ends up on the
    *  wire. */
-  // Lazy, once per roster: as a `def` it was rebuilt for every venue the roster builds — the
-  // set of every other country's names, thousands of times over — 8.7% of worker-uk's CPU in
-  // its first ten boot minutes (JFR 2026-10-02).
+  // Lazy, once per roster, as `GermanRoster.claimedElsewhere` is.
   private lazy val claimedElsewhere: Set[String] =
-    (Cinema.polishAndUk.flatMap(_._2) ++ GermanRoster.byCity.flatMap(_._2) ++
-      UsRoster.byCity.flatMap(_._2) ++
-      Cinema.Networks).map(_.displayName).toSet
-
-  /** A generated venue's [[Opening]]: seasonal, in Spain's window, when the generator named it so. */
-  private def opening(generatedName: String): Opening =
-    if (SpanishRosterData.seasonal(generatedName)) Opening.Seasonal(SeasonWindow.Spain) else Opening.YearRound
+    Cinema.displayNamesClaimedBy(GermanRoster.byCity, UsRoster.byCity)
 
   private val built: Seq[(SpanishPlace, Seq[(SpanishCinema, Option[String], Option[String])])] =
     SpanishRosterData.pages.map { case (slug, qualified, name, province, lat, lon, zone, multiTown, towns, cinemas) =>
@@ -2146,7 +2122,7 @@ object SpanishRoster {
       // a re-cluster never changes a venue's wire key.
       val venues = cinemas.map { case (disp, pill, theaterId, ocineServer) =>
         val unique = if (claimedElsewhere.contains(disp)) s"$disp $province" else disp
-        (new SpanishCinema(unique, pill, opening(disp)), theaterId, ocineServer)
+        (new SpanishCinema(unique, pill, Opening.generated(SpanishRosterData.seasonal(disp), SeasonWindow.Spain)), theaterId, ocineServer)
       }
       (SpanishPlace(slug, qualified, name, province, lat, lon, TimeZones.named(zone), multiTown, towns,
                     venues.map(_._1)), venues)
@@ -2155,10 +2131,7 @@ object SpanishRoster {
   val places: Seq[SpanishPlace] = built.map(_._1)
   /** Venues by province, provinces in roster order — the grouping `Cinema.byCity`
    *  reports Spain at (the uptime page), one level above the pages. */
-  val byCity: Seq[(String, Seq[Cinema])] = {
-    val byProvince = places.groupBy(_.province)
-    places.map(_.province).distinct.map(province => province -> byProvince(province).flatMap(_.cinemas))
-  }
+  val byCity: Seq[(String, Seq[Cinema])] = Cinema.venuesByGroupInOrder(places)(_.province)(_.cinemas)
 
   /** Each SensaCine-listed venue's `theaterId`. The Ocine venues SensaCine does
    *  not list (`data/spain/ocine.json`'s `unlisted`) have none, and are absent. */
@@ -2174,6 +2147,21 @@ object SpanishRoster {
 }
 
 object Cinema {
+  /** The display names a generated roster may NOT reuse: every hand-declared venue's
+   *  ([[polishAndUk]]), every network pseudo-cinema's, and every venue of the rosters
+   *  built before it (`earlier`) — see `GermanRoster.claimedElsewhere`. */
+  private[models] def displayNamesClaimedBy(earlier: Seq[(String, Seq[Cinema])]*): Set[String] =
+    ((polishAndUk +: earlier).flatMap(_.flatMap(_._2)) ++ Networks).map(_.displayName).toSet
+
+  /** A generated roster's venues under the group each page is filed in (a Bundesland, a
+   *  province), the groups in the order their first page comes in the roster — the
+   *  [[byCity]] level one above the pages. */
+  private[models] def venuesByGroupInOrder[P](pages: Seq[P])(groupOf: P => String)(venues: P => Seq[Cinema])
+      : Seq[(String, Seq[Cinema])] = {
+    val byGroup = pages.groupBy(groupOf)
+    pages.map(groupOf).distinct.map(group => group -> byGroup(group).flatMap(venues))
+  }
+
   /** The chains' NETWORK pseudo-cinemas: a chain's venues publish their listings under their own
    *  cinema, and its detail enricher lands every film page on this one shared slot (`detailTarget`).
    *  No listing is ever published at one. */

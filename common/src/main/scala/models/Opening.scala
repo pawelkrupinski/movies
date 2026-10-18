@@ -99,5 +99,10 @@ enum Opening {
 }
 
 object Opening {
+  /** A generated roster's venue: seasonal, in its country's `window`, when the generator
+   *  named it so (`data/scripts/seasonal_venues.py`); year-round otherwise. */
+  def generated(seasonal: Boolean, window: SeasonWindow): Opening =
+    if (seasonal) Seasonal(window) else YearRound
+
   private def day(instant: Instant): LocalDate = LocalDate.ofInstant(instant, ZoneOffset.UTC)
 }
