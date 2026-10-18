@@ -3,7 +3,7 @@ package services.identity.agreement
 import models.KinoMuza
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.identity.{Answer, FilmTable, IdentityCalibration, IdentityMeasures, Listing, ListingShape}
+import services.identity.{Answer, FilmTable, IdentityCalibration, IdentityMeasures, Listing, ListingShape, VenueNames}
 import services.movies.SingleCountryNormalizer
 
 /** A cluster TMDB matched to nothing is identified by the film ≥3 film-database families each identify on their own —
@@ -629,5 +629,19 @@ class AgreementSpec extends AnyFlatSpec with Matchers {
     // the series' banner naming the director of the film the families take is the series' screening of it
     Agreement.agreed(Seq(listing(KinoMuza, "Noah Segan: Blood Relatives")), takers ++ Seq(imdb, wiki)) should not be empty
     Agreement.agreed(Seq(listing(KinoMuza, "Blood Relatives")), takers ++ Seq(imdb, wiki)) should not be empty
+  }
+
+  "A venue synopsis that names the director of a namesake a family weighed" should "not take the namesake by another director" in {
+    // UK Southsea's "Unrest": its synopsis follows Jennifer Brea, director of the 2017 documentary; Wikidata and IMDb take
+    // Ipson's 2006 horror, IMDb weighing Brea's film beside it
+    val ipson  = SourceRecord(film("Unrest", 2006, "Jason Todd Ipson", 88), Map("imdb" -> "tt0453533"))
+    val brea   = SourceRecord(film("Unrest", 2017, "Jennifer Brea", 97), Map("imdb" -> "tt3268850"))
+    val takers = Seq(VoterFamily.Wiki, VoterFamily.RottenTomatoes).map(f => FamilyTook(FamilyPick(f, "1", ipson)))
+    val imdb   = FamilyVerdict(VoterFamily.Imdb, Some(FamilyPick(VoterFamily.Imdb, "tt0453533", ipson)), Seq(ipson, brea))
+    def billed(synopsis: String) = listing(KinoMuza, "Unrest").copy(names = VenueNames.of(Seq(synopsis)))
+    Agreement.agreed(Seq(billed("When Harvard PhD student Jennifer Brea is struck down at 28 by a fever")), takers :+ imdb) shouldBe None
+    // a synopsis naming the taken film's own director, or only a namesake director's surname, says nothing against it
+    Agreement.agreed(Seq(billed("Jason Todd Ipson's horror; Jennifer Brea is not in it")), takers :+ imdb) should not be empty
+    Agreement.agreed(Seq(billed("A student named Brea works in the morgue")), takers :+ imdb) should not be empty
   }
 }
