@@ -114,4 +114,12 @@ check "any stale check exits 1" 1 "$(exit_code)"
 green_recording
 check "a gh that cannot list runs exits 1, never a quiet 0" 1 "$(exit_code fail)"
 
+echo "a run list jq cannot read"
+unreadable='{"headSha":"x","status":"completed","conclusion":"failure","createdAt":"2026-10-01T00:00:00Z","updatedAt":null,"url":"u"}'
+runs identity-model-convergence.yml "$unreadable"
+check "convergence runs that cannot be judged are stale, never ok" stale "$(check_out convergence-red)"
+runs identity-model-convergence.yml
+runs record-scrape-fixtures.yml "${unreadable/failure/success}"
+check "...and so are recording runs" stale "$(check_out recording-stale)"
+
 spec_summary
