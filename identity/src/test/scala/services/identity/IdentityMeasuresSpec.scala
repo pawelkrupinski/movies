@@ -98,6 +98,13 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     // a film named like a stage work, no house billed: its season is no search of it
     IdentityMeasures.searchQueries(Listing("Tosca", runtime = Some(105), directors = Seq("Benoît Jacquot"), screenedSeason = Some(2026))) should
       not contain "Tosca 2026"
+    // a bare stage work stating only a running time names no staging: UK Empire Theatre Halstead's "Romeo and Juliet"
+    // [170′], screening on 25 May 2027, is searched with its season, which reaches the RBO 2026/27 relay aired that day
+    IdentityMeasures.searchQueries(Listing("Romeo and Juliet", runtime = Some(170), screenedSeason = Some(2026))) should
+      contain ("Romeo and Juliet 2026")
+    // …but a film's title going on past the work names no relay: the musical's name is only its head
+    IdentityMeasures.searchQueries(Listing("Lord Of The Rings: The Fellowship Of The Ring", runtime = Some(178), screenedSeason = Some(2026))) should
+      not contain "Lord of the Rings 2026"
     // Flicks dates the relay by the page it links: the year it states is searched, and the season it screens in beside it
     val carmen = IdentityMeasures.searchQueries(Listing("Royal Opera House: Carmen", year = Some(2024), runtime = Some(220), screenedSeason = Some(2026)))
     carmen should contain allOf ("Carmen 2024", "Carmen 2026")

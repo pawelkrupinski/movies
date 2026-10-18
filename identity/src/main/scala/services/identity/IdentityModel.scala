@@ -87,7 +87,8 @@ final case class Listing(
    *  apart a house's records of the work's SEASONS ([[Acceptance.seasonRecord]]), where a credit or a running time names
    *  no season — UK "Royal Ballet and Opera: Tosca" {Oliver Mears} [195′] ×123, screening on 5 May 2027, is the house's
    *  2026/27 relay of his production, not its 2025/26 one, which alone credits him. Searched with its work only where the
-   *  billing names its house ([[StageRelays.stageWorkQueries]]); [[broadcastSeason]] is searched wherever it is set.
+   *  billing names its house, or the whole title is the work and states a running time at most
+   *  ([[StageRelays.stageWorkQueries]]); [[broadcastSeason]] is searched wherever it is set.
    *
    *  So is the season of one stating a year BEFORE that season opens: a relay screening in a later season than its year
    *  dates the staging's premiere by it, not the broadcast — UK Aldeburgh's "The Royal Ballet: Romeo & Juliet" [2025],
