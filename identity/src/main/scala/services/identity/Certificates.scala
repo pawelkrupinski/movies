@@ -1,6 +1,7 @@
 package services.identity
 
 import play.api.libs.json.JsValue
+import services.movies.BbfcCertificate
 
 /**
  * Age certificates on one scale per country: a venue's own certificate for a listing (its `ageRating`, from its feed or
@@ -24,7 +25,9 @@ object Certificates {
   /** The scales, by the ISO-3166-1 code of the country they rate in: the deployments' countries that have one (Poland
    *  rates no film). The ONLY per-country part of the rule. */
   val Ladders: Map[String, Ladder] = Map(
-    "GB" -> Ladder(Seq(Set("U"), Set("PG"), Set("12A", "12"), Set("15"), Set("18"), Set("R18"))),
+    // the BBFC's own list ([[services.movies.BbfcCertificate]]), 12A and 12 one step: the same age, with or without an adult
+    "GB" -> Ladder((BbfcCertificate.Public :+ BbfcCertificate.Restricted).foldLeft(Seq.empty[Set[String]]) { (steps, c) =>
+      if (c == "12" && steps.lastOption.contains(Set("12A"))) steps.init :+ Set("12A", "12") else steps :+ Set(c) }),
     "DE" -> Ladder(Seq(Set("0"), Set("6"), Set("12"), Set("16"), Set("18"))),
     "US" -> Ladder(Seq(Set("G"), Set("PG"), Set("PG-13"), Set("R"), Set("NC-17"))),
     "ES" -> Ladder(Seq(Set("A", "APTA", "TP", "APTA(I)"), Set("7", "+7", "7(I)"), Set("12", "+12"), Set("16", "+16"), Set("18", "+18"))))
