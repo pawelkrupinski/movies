@@ -87,6 +87,14 @@ class SpektrixClientSpec extends AnyFlatSpec with Matchers with OptionValues {
       LocalDateTime.of(2026, 10, 18, 14, 15) -> Some("4"))
   }
 
+  it should "read the production countries a box office files, one each" in {
+    // Broadway files `attribute_CountryOfOrigin: "Poland/Germany"`; Derby QUAD `attribute_FilmCountryOfOrigin`.
+    val films = new SpektrixClient(new FakeHttpFetch("spektrix"), "broadwaynottingham", BroadwayCinemaNottingham, today)
+      .fetch().map(cm => cm.movie.title -> cm).toMap
+    films("Fatherland").movie.countries shouldBe Seq("Poland", "Germany")
+    films("Arrietty (Dubbed)").movie.countries shouldBe Seq("Japan")
+  }
+
   "SpektrixClient on Old Market Hall" should "drop the ticket products and test events filed among the films" in {
     // 2026-10-12 capture of `theatresevern` (Theatre Severn + Old Market Hall).
     val titles = new SpektrixClient(new FakeHttpFetch("spektrix"), "theatresevern", OldMarketHallShrewsbury, today, Some("Old Market Hall"))

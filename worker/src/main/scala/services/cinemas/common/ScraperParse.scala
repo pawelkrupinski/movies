@@ -346,6 +346,12 @@ private[cinemas] object ScraperParse {
     (countries, year)
   }
 
+  private val ListSeparator = """\s*[,/;&]\s*""".r
+
+  /** The items of a venue's one-field list — "USA/UK", "Poland; Germany; Italy", "UK & Namibia", "Joel Coen, Ethan
+   *  Coen" — each trimmed, in order. */
+  def listItems(s: String): Seq[String] = ListSeparator.split(s).iterator.map(_.trim).filter(_.nonEmpty).toSeq
+
   /** The first four-digit year in `s` — a premiere date's ("24 marca 1980"), a credits line's ("…, USA, 2018"). */
   def yearIn(s: String): Option[Int] = FourDigitYear.findFirstIn(s).map(_.toInt)
 

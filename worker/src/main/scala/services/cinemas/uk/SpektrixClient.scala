@@ -48,9 +48,9 @@ import scala.util.matching.Regex
  * `venue` names the building as the client's own venue/site/location attribute spells
  * it, on the performance or on its event; `None` keeps every building.
  *
- * Credits, year and certificate are read when the client keeps them in attributes
+ * Credits, year, countries and certificate are read when the client keeps them in attributes
  * named so (`attribute_DirectedBy`, `attribute_FilmDirector`, `attribute_YearOfRelease`,
- * `attribute_Certificate`, …).
+ * `attribute_CountryOfOrigin`, `attribute_Certificate`, …).
  *
  * @param client the Spektrix client name, the first path segment of its API.
  */
@@ -109,6 +109,7 @@ object SpektrixClient {
 
   private val DirectorAttribute = """(?i)attribute_(film)?(director|directedby)""".r
   private val CastAttribute     = """(?i)attribute_(film)?cast(details)?""".r
+  private val CountryAttribute  = """(?i)attribute_(film)?countryoforigin""".r
   private val YearAttribute     = """(?i)attribute_(film)?year(ofproduction|ofrelease)?""".r
   private val RatingAttribute   = """(?i)attribute_(film)?(certificate|certification|rating|agerating|certificateageguidance)""".r
   private val Bbfc              = s"""(?i)(?<!\\w)${BbfcCertificate.alternation(BbfcCertificate.Public)}(?!\\w)""".r
@@ -147,7 +148,8 @@ object SpektrixClient {
           title          = title,
           rawTitle       = text(event, "name").filterNot(_ == title),
           runtimeMinutes = (event \ "duration").asOpt[Int].filter(_ > 0),
-          releaseYear    = attribute(event, YearAttribute).flatMap(ScraperParse.yearIn)
+          releaseYear    = attribute(event, YearAttribute).flatMap(ScraperParse.yearIn),
+          countries      = attribute(event, CountryAttribute).toSeq.flatMap(ScraperParse.listItems)
         ),
         cinema      = cinema,
         posterUrl   = text(event, "imageUrl"),
