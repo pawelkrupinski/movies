@@ -72,7 +72,10 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
     // EXACTLY: an original or alternative title is the venue's spelling of another language's film, not its own.
     val vetoed = country.fold(Map.empty[Int, Denial])(ReleaseVeto.of(_, measured, scored =>
       relation(scored.candidate.tmdbId) == "exact" && !onlySuggested(scored.candidate.tmdbId),
-      scored => scored.number("venues.corroborating").exists(_ > 0) || acceptance.weights.factsSupport(scored)))
+      scored => scored.number("venues.corroborating").exists(_ > 0) || acceptance.weights.factsSupport(scored))) ++
+      country.fold(Map.empty[Int, Denial])(ReleaseVeto.ofCurrent(_, listing.screeningsSeason, measured, scored =>
+        relation(scored.candidate.tmdbId) == "exact" && !onlySuggested(scored.candidate.tmdbId), ownFacts = source == venue,
+        acceptance.weights.factsSupport))
     val candidates = if (vetoed.isEmpty) measured else measured.map { scored =>
       val id = scored.candidate.tmdbId
       if (vetoed.contains(id)) scored.copy(denial = scored.denial.orElse(vetoed.get(id)))

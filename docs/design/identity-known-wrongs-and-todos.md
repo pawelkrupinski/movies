@@ -42,7 +42,7 @@ no known-wrong/accepted row covers.
 | DE | 1 | 1 | UNLESS WE DANCE - QUEERE FILME ZUR LÄNGSTEN NACHT | A Menos que bailemos (2023) `tmdb:1103660` | — | known-wrong / served | a programme of queer films named after the 14-minute short "Unless We Dance", not that short |
 | DE | 1 | 1 | SHINJUKUY BOYS // THE FISH WITH ONE SLEEVE | 片袖の魚 (2021) `tmdb:797140` | — | known-wrong / served | a double bill (Shinjuku Boys + The Fish with One Sleeve): matches neither film |
 | DE | 1 | 1 | GINA - mit der Domschule Würzburg | Gina (2022) `tmdb:1193753` | — | known-wrong / served | a school screening of "Gina", not the 7-minute Indonesian short of that name |
-| DE | 2 | 3 | The Killer | The Killer (2024) `tmdb:970347` | — | known-wrong / served,rows | the 4K restoration of John Woo's 1989 The Killer (tmdb 10835, which 8 venues take); the 2024 remake was streaming-only |
+| DE | 2 | 3 | The Killer | The Killer (2024) `tmdb:970347` | — | cured 10-18 (`ReleaseVeto.ofCurrent`: TMDB dates the 1989 film's German re-release 2026-10-29, the remake only a digital German release) | the 4K restoration of John Woo's 1989 The Killer (tmdb 10835, which 8 venues take); the 2024 remake was streaming-only |
 | DE | 2 | 3 | Lieblingsmenschen | Lieblingsmenschen (2021) `tmdb:788385` | — | known-wrong / served | at CineStar it is Hufnagel's Lieblingsmenschen – Agnes & Amir (tmdb 1185542, 23 venues), not the 65m 2021 indie |
 | DE | 2 | 1 | München Mord: Leben und Sterben in Schwabing | Der beste Papa der Welt (2019) `tmdb:655654` | — | known-wrong / served,rows | the "München Mord" TV episode "Leben und Sterben in Schwabing" (the venue's synopsis), not Sascha Bigler's "Der beste Papa der Welt" |
 | DE | 2 | 1 | Auf Augenhöhe - Jugend, Macht und Kinderschutz | Auf Augenhöhe (2016) `tmdb:375111` | — | known-wrong / served | the venue's own programme lists a circus show (ost-passage-theater.de/spielplan, 18.10.2026), not the 2016 film |
@@ -95,7 +95,7 @@ no known-wrong/accepted row covers.
 - [ ] **NT Live: Hamlet ×2 (US)** — the 2026 record never enters the candidates; Flicks' 2015 year is counted once per
   venue reading the same Flicks page.
 - [ ] **ESCAPE ROOM 2 (ES)** — bare title, 2021 film at 57% vs the 2026 one backed by 63 venues.
-- [ ] **Lieblingsmenschen ×3, The Killer ×3, Black Hole, Stranger, Island, Unterbiberger, Gegen das Vergessen,
+- [ ] **Lieblingsmenschen ×3, Black Hole, Stranger, Island, Unterbiberger, Gegen das Vergessen,
   Friday the 13th: Legacy, Ecrire la vie, Alpha (dir. Ducournau), ES (ULRICH SCHAMONI)** — namesakes or copied
   facts; no safe rule yet.
 - [ ] **Pornfilmfestival "The more the merrier"** — the billing states no facts; the festival + old-film signal

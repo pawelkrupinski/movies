@@ -62,6 +62,13 @@ reaches that replay: a final-stage 0 there means not seen, not refilled. Variant
 - **Result:** cured no served wrong take, lost one right take. Cannot reach "The Killer": the feed's copied year and
   director agree with the film the feed picked, and nothing the venue states independently contradicts it.
 - **Code:** `experiment/identity-wrong-classes` (`8c0c9d17e`; its first commits are the class-2 groundwork F builds on).
+- **Retried 2026-10-18, LANDED for "The Killer"** (`ReleaseVeto.ofCurrent`): not the copied facts but the release
+  TYPES TMDB records. Woo's 1989 film has a German cinema re-release dated 2026-10-29, the week the venues screen it; the
+  2024 remake only a digital German release (Peacock). A namesake with no cinema release in the venue's country, not
+  itself current, beside one released in its cinemas in the screening's season, is vetoed unless the venue's OWN facts
+  back it. Local measure (recording 38713274617, base `7ae897d65`, DE): 2 cured (City-Kinos, KommKino → the 1989 film),
+  4 bare Cineamo venues gained the 1989 film, and Filmladen Kassel's "Space Cadet" moved off Cineamo's 2024 Prime Video
+  film to none — the venue screens Kid Koala's film ("Mission Sternenhimmel"), so a second cure. 0 right lost.
 - **Next angle:** (The Stranger was cured 10-18 another way: see "Hold apart a join made only by a copied original title".)
   A runtime gap outweighing a matching copied year/director ("The Stranger" bills 95 min vs 122) — only
   "The Stranger" in the corpus then; Alpha (51 min off) was cured another way. Meets `FamilyScope`'s release-veto check,

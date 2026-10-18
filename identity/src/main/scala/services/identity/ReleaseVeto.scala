@@ -30,6 +30,27 @@ private[identity] object ReleaseVeto {
     }
   }
 
+  /** The CURRENT-RELEASE form: among the namesakes, one TMDB dates a CINEMA release of in the venue's `country` in the
+   *  season the listing screens in (or the year after: a release dated early in the next year screens in that season),
+   *  and another, not itself current (dated before last year), TMDB dates releases of but no cinema release in that country —
+   *  a streaming or video title there. The listing screens the one its country's cinemas are showing now. Backed only by
+   *  facts the venue states itself (`ownFacts`, weighing for it on balance in `backed`): a feed's copied facts are its
+   *  entry's claim of which film it is ([[SourceReliability]]), and other venues' credits back a remake by the same
+   *  director as much as its original. DE City-Kinos' and KommKino's "The Killer", Filmstarts and kinoheld copying the
+   *  2024 Peacock remake's year: TMDB dates Woo's 1989 film's German re-release on 2026-10-29, the week they screen it,
+   *  and only a digital German release of the remake. */
+  def ofCurrent(country: String, season: Option[Int], scored: Seq[Scored], namesake: Scored => Boolean, ownFacts: Boolean,
+                backed: Scored => Boolean): Map[Int, Denial] = season.fold(Map.empty[Int, Denial]) { season =>
+    def cinemaReleases(s: Scored) = s.candidate.film.releases.fold(Seq.empty[TmdbFilmRecord.Release])(TmdbFilmRecord.Release.all).filter(_.country == country)
+    def streamedOnly(s: Scored) = s.candidate.film.releases.isDefined && s.candidate.film.knownReleasedIn(country, dated = true) &&
+      cinemaReleases(s).isEmpty && s.candidate.film.year.exists(_ < season - 1)
+    if (!scored.exists(s => namesake(s) && streamedOnly(s))) Map.empty
+    else scored.find(s => namesake(s) && cinemaReleases(s).exists(r => r.year == season || r.year == season + 1)).fold(Map.empty[Int, Denial]) { shown =>
+      scored.iterator.filter(s => s.candidate.tmdbId != shown.candidate.tmdbId && namesake(s) && streamedOnly(s) && !(ownFacts && backed(s)))
+        .map(s => s.candidate.tmdbId -> why(country, shown.candidate.tmdbId)).toMap
+    }
+  }
+
   /** The denial a vetoed namesake carries — the decision's explanation names the veto and the namesake it stands beside. */
   def why(country: String, released: Int): Denial =
     Denial(s"vetoed: not released in $country, as namesake $released is", Denial.Kind.Vetoed(released))
