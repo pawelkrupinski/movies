@@ -69,6 +69,8 @@ calls() { cat "$work/calls" 2>/dev/null; }
 check "--help prints the usage" "0" "$(refit "$tree" --help)"
 check "...naming every flag" "1" "$(grep -c -- '--skip-checks.*--relearn.*--threads.*--report' "$work/out")"
 check "an unknown flag is refused" "2" "$(refit "$tree" --bogus)"
+check "a flag given last without its value is a usage error, exit 2" "2" "$(refit "$tree" --report)"
+check "...named, with the pointer to --help" "2" "$(grep -c -e '--report needs a value' -e 'see identity-refit --help' "$work/out")"
 
 check "the root checkout is refused" "1" "$(CI='' refit "$repo")"
 check "...before any sbt" "" "$(calls)"

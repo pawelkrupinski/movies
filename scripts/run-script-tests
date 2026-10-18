@@ -43,17 +43,19 @@ PythonFloor="3.9"
 
 root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 jobs=8 timeout_s=600 list=0 all=0 tag="" changed_base="" test_bash="" linux=0 filters=()
-usage() { sed -n '2,19p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' >&2; exit 64; }
+usage() { usage_from_header "${BASH_SOURCE[0]}" >&2; exit 64; }
+# A caller's mistake exits 64 here (above), not tool-conventions.sh's 2: flag_value's missing value too.
+usage_error() { echo "run-script-tests: $*" >&2; usage; }
 while [ $# -gt 0 ]; do
   case "$1" in
-    --jobs) jobs="${2:?--jobs N}"; shift ;;
-    --timeout) timeout_s="${2:?--timeout S}"; shift ;;
-    --root) root="$(cd "${2:?--root DIR}" && pwd)" || exit 64; shift ;;
+    --jobs) flag_value "$@"; jobs="$2"; shift ;;
+    --timeout) flag_value "$@"; timeout_s="$2"; shift ;;
+    --root) flag_value "$@"; root="$(cd "$2" && pwd)" || exit 64; shift ;;
     --list) list=1 ;;
     --all) all=1 ;;
-    --tag) tag="${2:?--tag T}"; shift ;;
-    --changed) changed_base="${2:?--changed BASE}"; shift ;;
-    --bash) test_bash="${2:?--bash PATH}"; shift ;;
+    --tag) flag_value "$@"; tag="$2"; shift ;;
+    --changed) flag_value "$@"; changed_base="$2"; shift ;;
+    --bash) flag_value "$@"; test_bash="$2"; shift ;;
     --linux) linux=1 ;;
     -h|--help) usage ;;
     -*) echo "run-script-tests: unknown option $1" >&2; usage ;;

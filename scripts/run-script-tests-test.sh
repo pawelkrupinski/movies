@@ -143,6 +143,9 @@ check "...a --bash that is no executable is a usage error" "64" "$(run --bash "$
 rm -rf "$tree/scripts/env"
 
 check "an unknown option is a usage error" "64" "$(run --bogus)"
+check "a flag given last without its value is a usage error, 64 (not 1)" "64" "$(run --jobs)"
+check "...named, before the usage" "1" "$(grep -c 'run-script-tests: --jobs needs a value' "$work/out")"
+check "...the usage read from the header" "1" "$(grep -c '^Options: --jobs N' "$work/out")"
 # --linux: the selection made here, the tests run in a container (a stub `docker` records what it was asked)
 printf '\033[36m▸\033[0m run-script-tests --linux\n'
 mkdir -p "$work/docker-bin" "$work/home"
