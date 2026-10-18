@@ -1268,6 +1268,10 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
     IdentityMeasures.titlesAnotherPart(Listing("Ramayana: Rise Of A Legend - Part 1 Hindi"), Film("Ramayana: Rise of a Legend", year = Some(2026))) shouldBe false
     // a film numbered as the part is that part, whatever note follows it
     IdentityMeasures.titlesAnotherPart(Listing("Dune: Part Three - ERLY FAN PREVIEW"), Film("Dune: Part Three", year = Some(2026))) shouldBe false
+    // however the number is spelled
+    IdentityMeasures.titlesAnotherPart(Listing("Dune: Part 3 - The IMAX Experience"), Film("Dune: Part Three", year = Some(2026))) shouldBe false
+    IdentityMeasures.titlesAnotherPart(Listing("Der Pate Teil 2 - Restaurierte Fassung"),
+      Film("The Godfather Part II", year = Some(1974), alternativeTitles = Seq("Der Pate – Teil II"))) shouldBe false
     // an episode, named whether or not it is numbered
     IdentityMeasures.titlesAnotherPart(Listing("LOVE ISLAND - EPISODE NATURE"), Film("Love Island", year = Some(1952))) shouldBe true
     IdentityMeasures.titlesAnotherPart(Listing("Star Wars: Episode VII - The Force Awakens"),

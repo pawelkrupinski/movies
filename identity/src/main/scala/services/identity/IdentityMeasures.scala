@@ -586,9 +586,15 @@ object IdentityMeasures {
    *  subtitle's words of four letters or more. */
   private[identity] def titledParts(titles: Seq[String]): Seq[(Option[String], Seq[String])] =
     titles.flatMap(t => TitledPart.findAllMatchIn(t).map { m =>
-      (Option(m.group(1)).orElse(Option(m.group(2))).flatMap(TitleContainment.tokens(_).headOption),
+      (Option(m.group(1)).orElse(Option(m.group(2))).flatMap(TitleContainment.tokens(_).headOption).map(partNumber),
         TitleContainment.tokens(m.group(3)).filter(_.length >= StemLetters))
     }).filter(_._2.nonEmpty).distinct
+
+  /** A part's number however it is spelled — "2", "II", "two", "zwei" — so "Dune: Part 2 - …" is "Dune: Part Two". */
+  private def partNumber(token: String): String = PartNumbers.getOrElse(token, token)
+  private val PartNumbers: Map[String, String] = Map(
+    "i" -> "1", "one" -> "1", "eins" -> "1", "ii" -> "2", "two" -> "2", "zwei" -> "2", "iii" -> "3", "three" -> "3",
+    "drei" -> "3", "iv" -> "4", "v" -> "5", "vi" -> "6", "vii" -> "7", "viii" -> "8", "ix" -> "9", "x" -> "10")
 
   /** Does the listing's title give the part it numbers a subtitle ([[titledParts]]) not one word of which is a word
    *  of the film's titles? Then it is another film's part: DE Union Filmtheater Friedrichshagen's "DAS INDISCHE GRABMAL
@@ -600,7 +606,7 @@ object IdentityMeasures {
   def titlesAnotherPart(l: Listing, f: Film): Boolean = {
     val parts = titledParts(l.ownTitles)
     // a film its titles name as that part is that part, whatever note follows it: "Dune: Part Three - ERLY FAN PREVIEW"
-    lazy val numbered = f.titles.flatMap(t => NamedPart.findAllMatchIn(t).flatMap(m => TitleContainment.tokens(m.group(1)).headOption)).toSet
+    lazy val numbered = f.titles.flatMap(t => NamedPart.findAllMatchIn(t).flatMap(m => TitleContainment.tokens(m.group(1)).headOption.map(partNumber))).toSet
     parts.nonEmpty && parts.forall { case (number, words) => !number.exists(numbered) && !words.exists(f.titleWords) }
   }
 
