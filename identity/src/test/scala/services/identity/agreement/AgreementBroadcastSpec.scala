@@ -246,6 +246,32 @@ class AgreementBroadcastSpec extends AnyFlatSpec with Matchers {
     stage.wantedRecords shouldBe empty
   }
 
+  // prod UK 2026-10-18: Theatr Gwaun Fishguard's bare "Romeo and Juliet" on 25 May 2027, the RBO 2026/27 relay's day (its
+  // synopsis: "The Royal Ballet … Approximate runtime: 2 hours and 50 minutes"), stayed the model's pooled take of
+  // Zeffirelli's 1968 film: the relay's stored record held its year alone, and a correction waited on no record's day
+  "a model take whose relay's stored record holds only its year" should "read the record again, and then switch to it" in {
+    val listing = screening("Samson i Dalila", "2026-12-05")
+    val stored  = new YearOnlyRecords(table, Set(metSamson.id))
+    val filed   = scala.collection.mutable.Set.empty[String]
+    val asked   = scala.collection.mutable.Buffer.empty[AgreementStage.Open]
+    val stage   = new AgreementStage(silentFamilies, stored, normalizer, IdentityCalibration.resolver, tmdbOf = _ => Answer.Known(None),
+      new InMemoryAgreementVerdicts, ask = asked += _, clock = _root_.tools.SpecClock.Pinned, tmdb = Some(stored),
+      changes = _ => Some(filed.toSet))
+    val resolution = Resolution(Seq(ResolverDecision(Seq(listing.key), Some(film1949.id), 0.99, ResolverDecision.Basis.PooledMatch,
+      Seq(s"pooled ${film1949.id}"))()), 1, Map(listing.key -> 0), Nil, Nil, 0, 0, 0, 0, 0, Map.empty)
+    def apply(version: Long) = stage.apply(resolution, Map(listing.key -> listing).get, version).decisions.head
+    // the Met's record states no day: the model's take stands for now, and the record is asked again
+    apply(1).film shouldBe Some(film1949.id)
+    stage.wantedRecords shouldBe Set(metSamson.id)
+    asked.flatMap(_.records) shouldBe Seq(metSamson.id)
+    // read again, it states its day, and the screening day switches the take to it
+    stored.reread(metSamson.id)
+    filed += AgreementStage.recordReadId(metSamson.id)
+    val taken = apply(2)
+    (taken.film, taken.basis) shouldBe ((Some(metSamson.id), ResolverDecision.Basis.Corrected))
+    stage.wantedRecords shouldBe empty
+  }
+
   "a stage relay whose days could not be read" should "wait, asking nothing, and be taken once a read gives its days" in {
     val unread  = FilmTable.listing(Multikino, "Samson i Dalila").copy(screenings = ScreeningDays.Unknown)
     val asked   = scala.collection.mutable.Buffer.empty[AgreementStage.Open]

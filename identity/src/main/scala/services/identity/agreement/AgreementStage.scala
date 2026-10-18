@@ -359,7 +359,7 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
     val now = kept.orElse(Option.when(pass.fresh()) {
       // the take's listings sorted and digested only to be read afresh: a stored correction is checked by `digest` alone
       val listings = decision.members.flatMap(listingOf).sortBy(_.key)(using ListingKey.ordering)
-      val (correction, waits) = correctionOf(decision, AgreementStage.Digested(key, listings, digest, None), pass.reading)
+      val (correction, waits) = correctionOf(decision, AgreementStage.Digested(key, listings, digest, None), pass.reading, version)
       val verdict = StoredVerdict(key, digest, Map.empty, None, decidedUnder, correction = Some(correction))
       if (!held.get(key).contains(verdict)) { pass.moved += verdict; held(key) = verdict }
       checked(key) = (digest, version)
@@ -371,7 +371,8 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
       // the model's take back and a later apply corrected it again, a flip per deploy (UK Chichester's "The Ties That Bind
       // Us", 18 of them). Left unchecked, it is read afresh once an apply's budget reaches it.
       held.get(key).filter(_.listings == digest).flatMap(_.correction))
-    correctionWaits.get(key).foreach { w => pass.asked ++= w.questions; pass.finding ++= w.finds; pass.correctionPosters ++= w.posters }
+    correctionWaits.get(key).foreach { w =>
+      pass.asked ++= w.questions; pass.finding ++= w.finds; pass.correctionPosters ++= w.posters; pass.dating ++= w.records }
     now.flatMap(_.outcome).fold(decision) { outcome =>
       val taken = outcome.film.fold(taking(decision)(ResolverDecision.Basis.Withdrawn, outcome.line, film = None))(film =>
         taking(decision)(ResolverDecision.Basis.Corrected, outcome.line, film = Some(film)))
@@ -388,13 +389,14 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
    *  venues' programmes and the families ([[Correction]]). A part still waiting on an answer decides nothing yet, but a
    *  part known may: a programme's contradiction withdraws the take while the families wait. */
   private def correctionOf(decision: ResolverDecision, digested: AgreementStage.Digested,
-                           reading: AgreementStage.Read): (StoredCorrection, Option[AgreementStage.CorrectionWaits]) = {
+                           reading: AgreementStage.Read, version: Long): (StoredCorrection, Option[AgreementStage.CorrectionWaits]) = {
     val listings = digested.listings
     val model    = decision.film.get
     val reads    = mutable.Map.empty[String, Long]
     val gaps     = mutable.Set.empty[(VoterFamily, String)]
     val posterQs = mutable.Set.empty[AgreementStage.PosterQuestion]
     val finding  = mutable.Set.empty[String]
+    val dating   = mutable.Set.empty[Int]
     def named(id: Int) = venues.film(id).toOption.flatten.orElse(tmdb.flatMap(_.film(id).toOption.flatten))
     def title(id: Int) = named(id).fold(s"tmdb $id")(_.titled)
     // a relay screening years after its record's broadcast, months after a newer record of its title: no production
@@ -407,8 +409,10 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
     // day) — a house's production taken is the model's reading of the relay, never corrected here
     def relayed(film: IdentityMeasures.Film) = Option.when(listings.exists(ListingShape.stagesAWork) && !Broadcast.billsAProduction(film.title)) {
       val known = (model +: candidatesOf(digested.id, digested.digest, listings)).distinct.flatMap(id => named(id).map(id -> _))
-      // a correction reads no film database's productions and waits on no record's day: a take that would wait is none
-      Broadcast.take(listings, measured, known)().toOption.flatten
+      // a correction reads no film database's productions; a record of the billed work stored with its year alone is read
+      // again before the day decides, as the stage's own take reads it (UK Theatr Gwaun Fishguard's bare "Romeo and
+      // Juliet" on the RBO relay's day stood as Zeffirelli's film while the relay's record held only 2027)
+      tmdb.flatMap(lookups => Broadcast.take(listings, measured, known)(undatedOf(lookups, version)).left.map(dating ++= _).toOption.flatten)
     }.flatten.filter(_.film != model).map(taken => Correction.Outcome(Some(taken.film), s"corrected from ${title(model)} — ${taken.line}"))
     val outcome = named(model).flatMap(film => superseded(film).orElse(relayed(film)).orElse {
       val modelRecord = SourceRecord.ofTmdb(model, film)
@@ -442,9 +446,11 @@ final class AgreementStage(families: Map[VoterFamily, FamilyAnswers], venues: Id
       val sharesDirector = (other: Int) => named(other).flatMap(o => Correction.shareDirector(o.directors.getOrElse(Nil), film.directors.getOrElse(Nil)))
       Correction.decide(title(model), evidence, sharesDirector)
     })
-    val waits = Option.when(gaps.nonEmpty || posterQs.nonEmpty || finding.nonEmpty)(AgreementStage.CorrectionWaits(gaps.toSet, finding.toSet, posterQs.toSet))
+    val waits = Option.when(gaps.nonEmpty || posterQs.nonEmpty || finding.nonEmpty || dating.nonEmpty)(
+      AgreementStage.CorrectionWaits(gaps.toSet, finding.toSet, posterQs.toSet, dating.toSet))
+    // a record waited on is read when its read is filed ([[AgreementStage.recordReadId]])
     val read  = (reads.keysIterator ++ gaps.iterator.map { case (family, question) => s"${family.label}|$question" } ++
-      posterQs.iterator.map(PosterAnswers.idOf)).map(id => AgreementStage.digest(Seq(id))).toArray.distinct.sorted
+      posterQs.iterator.map(PosterAnswers.idOf) ++ dating.iterator.map(AgreementStage.recordReadId)).map(id => AgreementStage.digest(Seq(id))).toArray.distinct.sorted
     (StoredCorrection(outcome.flatMap(_.film), outcome.map(_.line), scala.collection.immutable.ArraySeq.unsafeWrapArray(read), waits.isDefined), waits)
   }
 
@@ -1060,7 +1066,9 @@ object AgreementStage {
   /** How many model takes one apply reads the evidence of afresh: a take not read yet beyond them stands as the model
    *  took it until a later apply — the first deploy's backfill of every take spread over applies, never one boot's spike. */
   val CorrectionsPerApply = 200
-  private final case class CorrectionWaits(questions: Set[(VoterFamily, String)], finds: Set[String], posters: Set[PosterQuestion])
+  /** What a model take's correction waits on: the families' questions, the IMDb ids TMDB was not asked about, the posters,
+   *  and the TMDB records of a relay it would be switched to stored with their year alone ([[wantedRecords]]). */
+  private final case class CorrectionWaits(questions: Set[(VoterFamily, String)], finds: Set[String], posters: Set[PosterQuestion], records: Set[Int])
   /** How many of the posters the model takes' corrections wait on are handed to the queue at once: a one-off backfill of
    *  every take's posters (17.6k over the five corpora, 2026-10-06) drained a few at a time behind every other task. */
   val CorrectionPostersAtOnce = 64
