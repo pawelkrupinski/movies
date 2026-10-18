@@ -2,9 +2,8 @@ package controllers
 
 import org.apache.pekko.stream.{Materializer, OverflowStrategy}
 import org.apache.pekko.stream.scaladsl.Source
-import play.api.libs.json.{JsObject, JsString, JsValue, Json, Writes}
+import play.api.libs.json.{JsObject, JsValue, Json}
 import play.api.mvc._
-import models.Cinema
 import services.UptimeMonitor
 import services.UptimeMonitor._
 import services.fallback.{FallbackState, FallbackStore}
@@ -18,39 +17,11 @@ import scala.concurrent.duration._
 class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monitor: UptimeMonitor, filmwebFallback: FallbackStore,
                        closures: services.closure.ClosureLedgerReader, country: models.Country, clock: java.time.Clock)(using mat: Materializer) extends AbstractController(cc) {
 
-  /** Bounds the rows an anonymous `imgEvent` caller can create — see the
-   *  endpoint's own comment for why it is anonymous at all. */
-  private val imageOrigins = new ImageOriginRoster()
+  // Which section each service lands in, for this deployment's roster.
+  private val triage = new UptimeTriage(country)
 
-  // The city groups this deployment can render, scoped to the ONE country it
-  // serves. `Cinema.byCity` spans every country at once, and rows are matched to
-  // a city BY DISPLAY NAME — so an unscoped grouping put any cinema whose name is
-  // shared across rosters under a foreign city too. "Studio" names a cinema in
-  // both Opole and Germany, which is how the German page grew an "Opole" header
-  // (and rendered that one German cinema twice).
-  private val byCity: Seq[(String, Seq[Cinema])] =
-    country.cities.map(c => c.labels.nominative -> c.cinemas)
-
-  // Derived from the cinema model so every wired scraper groups under the
-  // "Cinemas" header automatically — no edit needed when a cinema is added.
-  // Scoped with `byCity` above: a service that ISN'T one of this country's
-  // cinemas must fall through to "Other" and stay visible, rather than being
-  // excluded here and dropped from the page entirely.
-  private val cinemaNames = byCity.flatMap(_._2).map(_.displayName)
-
-  // External enrichment sources plus network-level (chain-wide) detail health.
-  // Cinema City and Cineworld each fetch a film's detail once per network and
-  // record it here as one "<Chain> Enrichment" entry instead of one
-  // "<venue>|enrichment" sub-row per venue (see EnrichDetailsHandler /
-  // DetailEnricher.enrichmentServiceOverride). A name missing from this list
-  // isn't dropped — `otherVerdicts` still picks it up — but it falls into
-  // "Other" instead of classifying/rendering alongside the rest of the Global
-  // section, which is how Cineworld Enrichment ended up filed under "Other" on
-  // the UK page instead of here. Order here is the render order of the Global
-  // section, so the chain-wide rows lead the external sources.
-  private val enrichmentNames = Seq(
-    "Cinema City Enrichment", "Cineworld Enrichment", "TMDB", "IMDb", "Filmweb", "Metacritic", "Rotten Tomatoes"
-  )
+  // Where an `imgEvent` beacon's records go — see the endpoint's own comment for why it is anonymous at all.
+  private val imageLoads = new ImageLoadBeacon(monitor)
 
   // SSE batching: a poll cycle can flip one bucket per active service at once.
   // Buffer generously (drop oldest under a burst), then coalesce everything that
@@ -59,40 +30,6 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
   private val StreamBufferSize = 2048
   private val BatchMaxSize     = 1024
   private val BatchWindow      = 250.millis
-
-  // Triage classification: a row is judged by its most recent activity. A cinema
-  // scrapes roughly every ~5 min (legacy) / ≤15 min (queue), so the last ≤3
-  // buckets that recorded anything ≈ "the last few scrapes".
-  private val RecentScrapes = 3
-
-  // Above this many rows a section whose size scales with the roster — the
-  // healthy by-city section, and the thin one — is dropped and only its count is
-  // reported. One uptime service per venue means the section scales
-  // with the roster, and each rendered row carries all 96 of its 15-min slots:
-  // the US (5,031 venues) is ~484k bar objects plus the same again as HTML and
-  // once more as the page's SSE bootstrap JSON. That OOM-killed the US web pod on
-  // 2026-08-31 — and because `pekko.jvm-exit-on-fatal-error` exits the JVM rather
-  // than limping, an admin opening /uptime took the PUBLIC site down with it.
-  // Nothing is lost by hiding them: the triage sections above already carry every
-  // row that is failing or returning nothing, which is what the page is read for.
-  // 500 keeps Poland (~60) and the UK (343) rendering as before; Germany (1,515)
-  // and the US collapse. Thin rows (51 PL / 16 US on 2026-09-26) sit far below it,
-  // but a feed change that left most of a country thin would not.
-  private val MaxRenderedRows = 500
-  private sealed trait Health
-  private case object Failing extends Health
-  // Red, but for a reason no one can act on: the venue's page is a 404. Split out
-  // of Failing so the section that means "something broke today" stays readable.
-  // Named `Missing`, not `Gone`, for the same reason `Healthy` is not `Ok`: Play's
-  // `Results` already has both `Gone` and `NotFound` and a controller inherits
-  // them. The section it feeds is still called "gone upstream".
-  private case object Missing extends Health
-  private case object Zero    extends Health
-  // Green, but every recent scrape held no screening in the next 72h — a feed that
-  // stopped carrying the programme and kept a stray far-off slot (Kino Polonez,
-  // 2026-09-26). Least severe of the flagged verdicts.
-  private case object Thin    extends Health
-  private case object Healthy extends Health
 
   /** The page's clock is the deployment's country's: the UK page in London time, not Warsaw's. */
   private val formats = UptimeController.Formats(country.zone)
@@ -115,30 +52,32 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
   }
 
   def index: Action[AnyContent] = adminAction {
-    val now = clock.millis()
-    val currentBucket = bucketTimestamp(now)
-    // Labelled once per request, not once per bar: every row shares these slots.
+    val sections = triage.groupRows(monitor.services, monitor.recentStatuses(_, UptimeTriage.RecentScrapes),
+      monitor.recentErrors(_, UptimeTriage.RecentScrapes), rowBuilder())
+    Ok(views.html.uptime(sections.failing, sections.gone, sections.zero, activeFallbacks(), sections.cinemasByCity,
+      sections.services, sections.other, sections.hiddenHealthyCinemas, thin = sections.thin,
+      hiddenThin = sections.hiddenThin, dropped = droppedVenues(), current = country))
+  }
+
+  /** Builds one service's rendered row — its 96-slot bar series up to the current
+   *  bucket, its timings and tags — against slots labelled once per request, not
+   *  once per bar: every row shares them. */
+  private def rowBuilder(): String => ServiceRow = {
+    val currentBucket = bucketTimestamp(clock.millis())
     val slots = (0 until MaxBuckets).reverse.map { i =>
       val timestamp = currentBucket - i * BucketDurationMs
       timestamp -> slotLabels(timestamp)
     }
-    val active = monitor.services
-
-    def barsFor(serviceName: String): Seq[BarData] = {
-      val history = monitor.history(serviceName).map(b => b.timestamp -> b).toMap
-      slots.map { case (timestamp, labels) =>
-        barData(serviceName, history.getOrElse(timestamp, UptimeMonitor.BucketSnapshot(timestamp, 0, 0, 0, Seq.empty)), labels)
-      }
-    }
-
     val tags = monitor.serviceTagsSnapshot()
-    def row(n: String) =
-      ServiceRow(n, barsFor(n), monitor.averageMs1h(n), monitor.averageMsTotal(n), tags = tags.getOrElse(n, Set.empty))
-    val sections = groupRows(active, monitor.recentStatuses(_, RecentScrapes),
-      monitor.recentErrors(_, RecentScrapes), row)
-    Ok(views.html.uptime(sections.failing, sections.gone, sections.zero, activeFallbacks(), sections.cinemasByCity,
-      sections.services, sections.other, sections.hiddenHealthyCinemas, thin = sections.thin,
-      hiddenThin = sections.hiddenThin, dropped = droppedVenues(), current = country))
+    name => ServiceRow(name, barsFor(name, slots), monitor.averageMs1h(name), monitor.averageMsTotal(name),
+      tags = tags.getOrElse(name, Set.empty))
+  }
+
+  private def barsFor(serviceName: String, slots: Seq[(Long, SlotLabels)]): Seq[BarData] = {
+    val history = monitor.history(serviceName).map(b => b.timestamp -> b).toMap
+    slots.map { case (timestamp, labels) =>
+      barData(serviceName, history.getOrElse(timestamp, UptimeMonitor.BucketSnapshot(timestamp, 0, 0, 0, Seq.empty)), labels)
+    }
   }
 
   /** The venues every source dropped, from the closure sweep's ledger: a CLOSED one awaits
@@ -158,144 +97,6 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
    *  Mongo but no longer surfaced here. */
   private def activeFallbacks(): Seq[FallbackRow] =
     filmwebFallback.findAll().filter(_.active).sortBy(_.cinema).map(fallbackRow)
-
-  /** Split the active services into the page's sections. Two triage sections lead:
-   *  rows that have been FAILING (every one of their last ≤3 active 15-min buckets
-   *  is fully red) and rows returning NO SCREENINGS (last ≤3 active buckets all
-   *  white) are pulled to the top — cinemas and enrichment services together, in a
-   *  flat list tagged with each row's city — so a glance shows what's broken now.
-   *  Everything healthy keeps its normal home: cinemas grouped by city, the
-   *  enrichment-service rows, then "Other". A cinema's "<cinema>|enrichment"
-   *  sub-row travels with it (and a failing sub-row promotes its cinema, keeping
-   *  cinema + enrichment together). Package-private and parameterised on both
-   *  lookups so the grouping is unit-testable without rendering or a Materializer.
-   *
-   *  The two lookups are SEPARATE on purpose. `statusesOf` decides every row's
-   *  section and is asked for all of them; `row` builds the 96-slot bar series and
-   *  is asked ONLY for rows that survive into a rendered section. Collapsing them
-   *  back into one is what made the page cost one bar series per registered
-   *  service — see MaxRenderedRows. */
-  private[controllers] def groupRows(active: Set[String], statusesOf: String => Seq[String],
-                                     errorsOf: String => Seq[String],
-                                     row: String => ServiceRow): UptimeSections = {
-    def cinemaRow(displayName: String): ServiceRow = {
-      val enrichService = UptimeMonitor.enrichmentService(displayName)
-      row(displayName).copy(enrichment = Option.when(active.contains(enrichService))(row(enrichService)))
-    }
-
-    // Classification runs over NAMES and statuses only — never over built rows.
-    // A cinema unit is the WORST of its scrape row and its enrichment sub-row, so
-    // a failing enrichment surfaces the cinema too (keeping the pair together).
-    def cinemaHealthOf(displayName: String): Health = {
-      val enrichService = UptimeMonitor.enrichmentService(displayName)
-      val enrichHealth =
-        if (active.contains(enrichService)) verdict(enrichService) else Healthy
-      worse(verdict(displayName), enrichHealth)
-    }
-
-    // Errors are read ONLY for a row that already classified as Failing — the
-    // question "is this a 404" is meaningless otherwise, and asking it for all
-    // 5,031 US services would undo the point of classifying over names alone.
-    def verdict(service: String): Health = classify(statusesOf(service)) match {
-      case Failing if goneUpstream(errorsOf(service)) => Missing
-      case other                                      => other
-    }
-
-    // Names in city order, each with its verdict. Reused by both the triage split
-    // and the by-city section so a cinema's placement is decided exactly once.
-    val cinemaVerdicts: Seq[(String, String, Health)] = byCity.flatMap { case (city, venues) =>
-      venues.map(_.displayName).filter(active.contains).map(dn => (city, dn, cinemaHealthOf(dn)))
-    }
-    val serviceVerdicts = enrichmentNames.filter(active.contains).map(n => n -> verdict(n))
-    // Exclude the "<cinema>|enrichment" services — they render as cinema sub-rows.
-    val otherVerdicts = (active -- cinemaNames.toSet -- enrichmentNames.toSet)
-      .filterNot(UptimeMonitor.isEnrichmentService).toSeq.sorted.map(n => n -> verdict(n))
-
-    // Flat triage sections, in the order cinemas → enrichment services → other,
-    // each carrying the city it belongs to (None for non-cinema rows).
-    def flaggedAs(verdict: Health): Seq[FlaggedRow] =
-      cinemaVerdicts.collect { case (city, dn, h) if h == verdict => FlaggedRow(cinemaRow(dn), Some(city)) } ++
-        serviceVerdicts.collect { case (n, h) if h == verdict => FlaggedRow(row(n), None) } ++
-        otherVerdicts.collect { case (n, h) if h == verdict => FlaggedRow(row(n), None) }
-
-    // The remainder (healthy / mixed) keeps its normal home — up to a point. Past
-    // MaxRenderedRows the by-city section is DROPPED rather than rendered:
-    // see the constant for why a US-sized roster cannot be put on the page.
-    val healthyCinemas = cinemaVerdicts.collect { case (city, dn, Healthy) => city -> dn }
-    val collapsed = healthyCinemas.sizeIs > MaxRenderedRows
-    val cinemasByCity =
-      if (collapsed) Seq.empty
-      else byCity.flatMap { case (city, _) =>
-        val rows = healthyCinemas.collect { case (c, dn) if c == city => cinemaRow(dn) }
-        Option.when(rows.nonEmpty)(city -> rows)
-      }
-
-    // Counted over verdicts, before any row is built, for the same reason.
-    val thinCount = (cinemaVerdicts.map(_._3) ++ serviceVerdicts.map(_._2) ++ otherVerdicts.map(_._2)).count(_ == Thin)
-    val thinCollapsed = thinCount > MaxRenderedRows
-
-    UptimeSections(
-      failing = flaggedAs(Failing),
-      gone = flaggedAs(Missing),
-      zero = flaggedAs(Zero),
-      thin = if (thinCollapsed) Seq.empty else flaggedAs(Thin),
-      hiddenThin = if (thinCollapsed) thinCount else 0,
-      cinemasByCity = cinemasByCity,
-      services = serviceVerdicts.collect { case (n, Healthy) => row(n) },
-      other = otherVerdicts.collect { case (n, Healthy) => row(n) },
-      hiddenHealthyCinemas = if (collapsed) healthyCinemas.size else 0
-    )
-  }
-
-  /** Classify a bar series by its last `RecentScrapes` buckets that recorded any
-   *  activity (ignoring untouched "empty" slots): all red ⇒ Failing, all white
-   *  ⇒ Zero, all green-but-thin ⇒ Thin, anything else (any success, or no activity at all) ⇒ Healthy. A lone
-   *  red blip among greens stays Healthy; a brand-new service that has only ever
-   *  failed is Failing from its first bucket. Yellow (partial failure) is NOT
-   *  failing. */
-  private def classify(statuses: Seq[String]): Health = {
-    val recent = statuses.iterator.filter(_ != "empty").toSeq.takeRight(RecentScrapes)
-    if (recent.isEmpty) Healthy
-    else if (recent.forall(_ == "red")) Failing
-    else if (recent.forall(_ == "zero")) Zero
-    else if (recent.forall(_ == "thin")) Thin
-    else Healthy
-  }
-
-  /** Durable evidence in the window clearly dominates — nothing else broke, the
-   *  venue simply isn't there. A LONE non-404 (a 500, a timeout, a WAF hiccup) is
-   *  tolerated when durable errors outnumber it more than 2-to-1; anything short
-   *  of that makes it an ordinary failure again, a venue whose page EXISTS and is
-   *  misbehaving, which is worth acting on.
-   *
-   *  The tolerance exists because "every recorded error" used to mean literally
-   *  every one: Kino Center's filmstarts.de page 404s on 8 of its last 9 recorded
-   *  attempts, with one stray HTTP 503 (confirmed still 404 live) — and because
-   *  the window is a sliding 3-bucket recency check, not a durable "since" marker,
-   *  a single future 503 could always land inside it before the last one aged
-   *  out, keeping a genuinely dead page in Failing forever. Two or more non-404s
-   *  still describe a venue flickering between gone and merely broken, so those
-   *  stay failing.
-   *
-   *  Recency, not duration, is the test here — the buckets only reach back a day.
-   *  The worker asks the longer question against the scrape archive
-   *  ([[services.scrapes.GoneUpstream]], "404ing for over a day") before it backs
-   *  a venue's scrape cadence off; both sides share the one predicate that
-   *  matters, `isNotFound`. */
-  private def goneUpstream(errors: Seq[String]): Boolean = {
-    val (durable, other) = errors.partition(services.scrapes.GoneUpstream.saysPageIsGone)
-    other.sizeIs <= 1 && durable.size > other.size * 2
-  }
-
-  /** Worst-first, and `Missing` ranks BELOW Failing: a cinema whose page is gone
-   *  but whose enrichment is also failing has something live to fix, so it belongs
-   *  in Failing. */
-  private def worse(a: Health, b: Health): Health =
-    if (a == Failing || b == Failing) Failing
-    else if (a == Missing || b == Missing) Missing
-    else if (a == Zero || b == Zero) Zero
-    else if (a == Thin || b == Thin) Thin
-    else Healthy
 
   def stream: Action[AnyContent] = adminAction {
     Ok.chunked(eventSource()).as("text/event-stream")
@@ -377,24 +178,7 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
    *  writer can make a poster CDN look worse than it is, and that is the price
    *  of measuring from the only place the measurement exists. */
   def imgEvent: Action[JsValue] = Action(parse.json(maxLength = UptimeController.MaxBeaconBytes)) { request =>
-    val events = (request.body \ "events").asOpt[Seq[JsObject]].getOrElse(Seq.empty)
-      .take(UptimeController.MaxEventsPerBeacon)
-    events.foreach { e =>
-      val host     = imageOrigins.label((e \ "host").asOpt[String].getOrElse(""))
-      val success  = (e \ "success").asOpt[Boolean].getOrElse(false)
-      val fallback = (e \ "fallback").asOpt[Boolean].getOrElse(false)
-      val proxied  = (e \ "proxied").asOpt[Boolean].getOrElse(false)
-      val service  = if (fallback) s"img: $host${UptimeController.FallbackSuffix}" else s"img: $host"
-      if (success) {
-        monitor.recordSuccess(service)
-        // Every poster weserv served, primary or spare, so the proxy's row has
-        // green bars and a denominator its failures can be read against.
-        if (proxied) monitor.recordSuccess(UptimeController.ProxyService)
-      } else {
-        val error = (e \ "error").asOpt[String].getOrElse("image load failed")
-        monitor.recordFailure(service, error.take(200))
-      }
-    }
+    imageLoads.record((request.body \ "events").asOpt[Seq[JsObject]].getOrElse(Seq.empty))
     NoContent
   }
 
@@ -410,155 +194,6 @@ class UptimeController(cc: ControllerComponents, adminAction: AdminAction, monit
     nextProbe = s.nextPrimaryProbeAt.map(fmtInstant).getOrElse("—"),
     history   = s.history.take(8).map(e => s"${fmtInstant(e.at)} · ${e.event} · ${e.reason}")
   )
-}
-
-case class BarData(
-  service: String,
-  bucketTimestamp: Long,
-  timeFrom: String,
-  timeTo: String,
-  dateLabel: String,
-  status: String,
-  successes: Int,
-  failures: Int,
-  zeroes: Int,
-  errors: Seq[String],
-  fallback: Boolean = false,
-  // A green scrape with no screening in the near term (the worker's NearTermProgramme).
-  thin: Boolean = false
-)
-
-object BarData {
-  implicit val writes: Writes[BarData] = (b: BarData) => Json.obj(
-    "service"   -> b.service,
-    "bucketTs"  -> b.bucketTimestamp,
-    "timeFrom"  -> b.timeFrom,
-    "timeTo"    -> b.timeTo,
-    "dateLabel" -> b.dateLabel,
-    "status"    -> b.status,
-    "successes" -> b.successes,
-    "failures"  -> b.failures,
-    "zeroes"    -> b.zeroes,
-    "errors"    -> b.errors,
-    "fallback"  -> b.fallback,
-    "thin"      -> b.thin
-  )
-}
-
-/** The per-bucket detail behind the uptime grid, emitted ONCE for the whole page —
- *  and the ONLY place the grid is described: the page's script builds every row's
- *  bars from it, so the server emits no per-bar markup at all.
- *
- *  History. Each bar used to carry an HTML-escaped JSON blob in `data-info`; on
- *  Germany's ~1550 services × 96 slots that was ~57 MB of HTML, which OOM'd the
- *  384 MB heap and (Pekko exits on a fatal error) took the site down. Moving the
- *  detail into one payload fixed the OOM but still rendered ~70k bar `<div>`s with
- *  their timestamps, and a payload of full JSON objects repeating every key name
- *  and every error string per bucket: ~12–17 MB raw per load, built, serialised
- *  and gzipped on every request — 0.6–1.3 s server-side in prod (Caddy, 2026-10-03).
- *
- *  Compact shape, every repeated value written once and referenced by index:
- *  {{{
- *  { "slots":    [[ts, timeFrom, timeTo, dateLabel], …],   // the grid's columns, oldest first
- *    "statuses": ["green", …],
- *    "errors":   ["connect timeout", …],
- *    "data":     { service: [[slot, status, successes, failures, zeroes, flags, error…], …] } }
- *  }}}
- *  `flags` is a bitmask — 1 fallback, 2 thin. Only buckets that recorded something
- *  get an entry; an absent bucket IS the "no data" case. Safe to drop straight into
- *  a `<script type="application/json">` block: `<` is escaped so an error string
- *  containing `</script>` can't break out. */
-object UptimeBarPayload {
-
-  val FallbackFlag = 1
-  val ThinFlag     = 2
-
-  def apply(rows: Seq[ServiceRow]): String = {
-    val allRows = rows.flatMap(r => r +: r.enrichment.toSeq)
-
-    // Every row normally shares one grid; the union covers any that doesn't.
-    val slotBars = scala.collection.mutable.LongMap.empty[BarData]
-    allRows.foreach(_.bars.foreach(b => if (!slotBars.contains(b.bucketTimestamp)) slotBars(b.bucketTimestamp) = b))
-    val slots     = slotBars.values.toSeq.sortBy(_.bucketTimestamp)
-    val slotIndex = slots.iterator.map(_.bucketTimestamp).zipWithIndex.toMap
-
-    val statuses = new Interned
-    val errors   = new Interned
-    val out      = new StringBuilder(64 * 1024)
-
-    out ++= "{\"slots\":["
-    slots.iterator.zipWithIndex.foreach { case (b, i) =>
-      if (i > 0) out += ','
-      out += '[' ++= b.bucketTimestamp.toString += ','
-      quote(out, b.timeFrom) += ','; quote(out, b.timeTo) += ','; quote(out, b.dateLabel) += ']'
-    }
-    out ++= "],\"data\":{"
-    // A service rendered in two sections (triage AND its city) is written once.
-    val written = scala.collection.mutable.HashSet.empty[String]
-    allRows.foreach { row =>
-      val active = row.bars.filter(_.status != "empty")
-      if (active.nonEmpty && written.add(row.name)) {
-        if (written.size > 1) out += ','
-        quote(out, row.name) ++= ":["
-        active.iterator.zipWithIndex.foreach { case (b, i) =>
-          if (i > 0) out += ','
-          val flags = (if (b.fallback) FallbackFlag else 0) | (if (b.thin) ThinFlag else 0)
-          out += '[' ++= slotIndex(b.bucketTimestamp).toString += ',' ++= statuses.of(b.status).toString +=
-            ',' ++= b.successes.toString += ',' ++= b.failures.toString += ',' ++= b.zeroes.toString += ',' ++= flags.toString
-          b.errors.foreach(e => out += ',' ++= errors.of(e).toString)
-          out += ']'
-        }
-        out += ']'
-      }
-    }
-    out ++= "},\"statuses\":"
-    quoteAll(out, statuses.values)
-    out ++= ",\"errors\":"
-    quoteAll(out, errors.values)
-    out += '}'
-    ScriptJson.escape(out.toString)
-  }
-
-  /** Each distinct string once, in first-seen order, referenced by its index. */
-  private final class Interned {
-    private val index = scala.collection.mutable.LinkedHashMap.empty[String, Int]
-    def of(s: String): Int = index.getOrElseUpdate(s, index.size)
-    def values: Iterable[String] = index.keys
-  }
-
-  private def quote(out: StringBuilder, s: String): StringBuilder = out ++= Json.stringify(JsString(s))
-
-  private def quoteAll(out: StringBuilder, values: Iterable[String]): Unit = {
-    out += '['
-    values.iterator.zipWithIndex.foreach { case (v, i) => if (i > 0) out += ','; quote(out, v) }
-    out += ']'
-  }
-}
-
-/** A venue every source dropped, as the closure sweep found it (`verdict`), and the evidence line it was raised on. */
-case class DroppedRow(cinema: String, verdict: String, since: String, evidence: String)
-
-case class FallbackRow(
-  cinema: String, source: String, ref: String, since: String, reason: String,
-  fails: Int, nextProbe: String, history: Seq[String]
-)
-
-case class ServiceRow(
-  name:       String,
-  bars:       Seq[BarData],
-  avg1hMs:    Option[Long]       = None,
-  avgTotalMs: Option[Long]       = None,
-  // The cinema's deferred-detail enrichment health, rendered as an indented
-  // sub-row beneath the scrape bar. None for non-cinema rows / cinemas with no
-  // deferred detail.
-  enrichment: Option[ServiceRow] = None,
-  // Generic per-row labels (UptimeMonitor service tags) rendered as chips next to
-  // the name — e.g. the cinema's scraper-client marker "shared:FilmwebShowtimesClient".
-  tags:       Set[String]        = Set.empty
-) {
-  /** The venue's public source-page URL, parsed out of the `url:` tag — the
-   *  href the name links to. Same extractor /debug uses (one source of truth). */
-  def url: Option[WebHref] = UptimeMonitor.urlFromTags(tags).flatMap(WebHref.of)
 }
 
 object UptimeController {
@@ -593,29 +228,3 @@ object UptimeController {
    *  the only unauthenticated writer here, so it states its own. */
   val MaxBeaconBytes = 64 * 1024
 }
-
-/** A row promoted into the leading "Failing" / "No screenings" triage sections,
- *  carrying the city it was pulled out of (None for non-cinema rows). */
-case class FlaggedRow(row: ServiceRow, city: Option[String])
-
-/** The /uptime page's sections, as `groupRows` decides them. A named record
- *  rather than a tuple because the sections are not interchangeable and the
- *  hidden-cinema count only makes sense beside the section it explains. */
-case class UptimeSections(
-  failing: Seq[FlaggedRow],
-  // Red, but only ever with a 404: the venue's page no longer exists. Its own
-  // section so it stops crowding `failing`, which is the list that means
-  // "something broke and someone should look".
-  gone: Seq[FlaggedRow],
-  zero: Seq[FlaggedRow],
-  // Green on every recent scrape, each with nothing in the next 72h (see Thin).
-  thin: Seq[FlaggedRow],
-  cinemasByCity: Seq[(String, Seq[ServiceRow])],
-  services: Seq[ServiceRow],
-  other: Seq[ServiceRow],
-  // Healthy cinemas deliberately NOT rendered because the roster is too large.
-  // 0 whenever the by-city section is shown in full.
-  hiddenHealthyCinemas: Int = 0,
-  // Thin rows not rendered for the same reason; 0 whenever the section is shown.
-  hiddenThin: Int = 0
-)

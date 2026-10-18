@@ -33,6 +33,7 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
   private def controllerFor(country: models.Country) =
     new UptimeController(Helpers.stubControllerComponents(), TestAdminAction(), new UptimeMonitor(clock = _root_.tools.SpecClock.Pinned), fallbackStore, closures, country, clock = _root_.tools.SpecClock.Pinned)
   private val controller = controllerFor(models.Country.Poland)
+  private val triage     = new UptimeTriage(models.Country.Poland)
   private val adminSession = FakeRequest().withSession("userId" -> TestAdminAction.AdminUserId)
   private def fakeRow(n: String) = ServiceRow(n, Seq.empty)
 
@@ -74,7 +75,7 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
     country.cities.find(_.cinemas.exists(_.displayName == cinema)).get.labels.nominative
 
   "groupRows on a German deployment" should "group a German venue under its own region, once" in {
-    val sections = controllerFor(models.Country.Germany).groupRows(Set(germanCinema), noStatuses, noErrors, fakeRow)
+    val sections = new UptimeTriage(models.Country.Germany).groupRows(Set(germanCinema), noStatuses, noErrors, fakeRow)
     val cinemasByCity = sections.cinemasByCity
 
     cinemasByCity.map(_._1) should contain (regionOf(models.Country.Germany, germanCinema))
@@ -84,7 +85,7 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
 
   it should "never render another country's cities at all" in {
     val active = models.Country.Germany.cities.flatMap(_.cinemas).map(_.displayName).toSet
-    val sections = controllerFor(models.Country.Germany).groupRows(active, noStatuses, noErrors, fakeRow)
+    val sections = new UptimeTriage(models.Country.Germany).groupRows(active, noStatuses, noErrors, fakeRow)
     val cinemasByCity = sections.cinemasByCity
 
     val germanRegions = models.Country.Germany.cities.map(_.labels.nominative).toSet
@@ -93,7 +94,7 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
 
   "groupRows on the Polish deployment" should "not render German regions" in {
     val active = models.Country.Poland.cities.flatMap(_.cinemas).map(_.displayName).toSet
-    val sections = controller.groupRows(active, noStatuses, noErrors, fakeRow)
+    val sections = triage.groupRows(active, noStatuses, noErrors, fakeRow)
     val cinemasByCity = sections.cinemasByCity
 
     val polishCities = models.Country.Poland.cities.map(_.labels.nominative).toSet
@@ -104,7 +105,7 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
     val enrich = UptimeMonitor.enrichmentService(cinema)
     val active = Set(cinema, enrich, "Some Other Service")
 
-    val sections = controller.groupRows(active, noStatuses, noErrors, fakeRow)
+    val sections = triage.groupRows(active, noStatuses, noErrors, fakeRow)
     val cinemasByCity = sections.cinemasByCity
     val other = sections.other
 
@@ -115,7 +116,7 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
   }
 
   it should "leave a cinema without an active enrichment service un-subrowed" in {
-    val sections = controller.groupRows(Set(cinema), noStatuses, noErrors, fakeRow)
+    val sections = triage.groupRows(Set(cinema), noStatuses, noErrors, fakeRow)
     val cinemasByCity = sections.cinemasByCity
     cinemasByCity.flatMap(_._2).find(_.name == cinema).get.enrichment shouldBe None
   }
@@ -124,7 +125,7 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
   // health as a single "Cinema City Enrichment" entry — a standalone enrichment
   // service, not a per-venue sub-row and not adrift in "Other".
   it should "list the network-level Cinema City Enrichment as a standalone enrichment service" in {
-    val sections = controller.groupRows(Set("Cinema City Enrichment", "Some Other Service"), noStatuses, noErrors, fakeRow)
+    val sections = triage.groupRows(Set("Cinema City Enrichment", "Some Other Service"), noStatuses, noErrors, fakeRow)
     val services = sections.services
     val other = sections.other
     services.map(_.name) should contain("Cinema City Enrichment")
@@ -134,7 +135,7 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
   // The chain-wide enrichment row leads the Global section, ahead of the
   // external rating sources.
   it should "render Cinema City Enrichment first among enrichment services" in {
-    val sections = controller.groupRows(Set("Cinema City Enrichment", "TMDB", "IMDb"), noStatuses, noErrors, fakeRow)
+    val sections = triage.groupRows(Set("Cinema City Enrichment", "TMDB", "IMDb"), noStatuses, noErrors, fakeRow)
     val services = sections.services
     services.map(_.name).head shouldBe "Cinema City Enrichment"
   }
@@ -145,7 +146,7 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
   // rendered under "Other" instead of alongside the rest of the enrichment
   // services (seen live on the UK page).
   it should "list the network-level Cineworld Enrichment as a standalone enrichment service" in {
-    val sections = controller.groupRows(Set("Cineworld Enrichment", "Some Other Service"), noStatuses, noErrors, fakeRow)
+    val sections = triage.groupRows(Set("Cineworld Enrichment", "Some Other Service"), noStatuses, noErrors, fakeRow)
     val services = sections.services
     val other = sections.other
     services.map(_.name) should contain("Cineworld Enrichment")
@@ -157,7 +158,7 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
 
   "triage grouping" should "promote a cinema failing its last 3 scrapes into Failing, tagged with its city" in {
     val statuses = statusesFrom(Map(cinema -> Seq("green", "red", "red", "red")))
-    val sections = controller.groupRows(Set(cinema), statuses, noErrors, fakeRow)
+    val sections = triage.groupRows(Set(cinema), statuses, noErrors, fakeRow)
     val failing = sections.failing
     val zero = sections.zero
     val cinemasByCity = sections.cinemasByCity
@@ -170,7 +171,7 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
 
   it should "promote a cinema returning no screenings into the No-screenings section" in {
     val statuses = statusesFrom(Map(cinema -> Seq("zero", "zero", "zero")))
-    val sections = controller.groupRows(Set(cinema), statuses, noErrors, fakeRow)
+    val sections = triage.groupRows(Set(cinema), statuses, noErrors, fakeRow)
     val failing = sections.failing
     val zero = sections.zero
     val cinemasByCity = sections.cinemasByCity
@@ -184,7 +185,7 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
   // roster hides healthy rows.
   it should "promote a cinema whose last 3 scrapes were all thin into the thin section" in {
     val statuses = statusesFrom(Map(cinema -> Seq("thin", "thin", "thin")))
-    val sections = controller.groupRows(Set(cinema), statuses, noErrors, fakeRow)
+    val sections = triage.groupRows(Set(cinema), statuses, noErrors, fakeRow)
     sections.thin.map(_.row.name) should contain(cinema)
     sections.zero shouldBe empty
     sections.cinemasByCity.flatMap(_._2).map(_.name) should not contain cinema
@@ -192,14 +193,14 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
 
   it should "keep a cinema healthy when only some of its last 3 scrapes were thin" in {
     val statuses = statusesFrom(Map(cinema -> Seq("green", "thin", "thin")))
-    val sections = controller.groupRows(Set(cinema), statuses, noErrors, fakeRow)
+    val sections = triage.groupRows(Set(cinema), statuses, noErrors, fakeRow)
     sections.thin shouldBe empty
     sections.cinemasByCity.flatMap(_._2).map(_.name) should contain(cinema)
   }
 
   it should "keep a healthy cinema in its city group, out of triage" in {
     val statuses = statusesFrom(Map(cinema -> Seq("green", "green", "green")))
-    val sections = controller.groupRows(Set(cinema), statuses, noErrors, fakeRow)
+    val sections = triage.groupRows(Set(cinema), statuses, noErrors, fakeRow)
     val failing = sections.failing
     val zero = sections.zero
     val cinemasByCity = sections.cinemasByCity
@@ -210,7 +211,7 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
 
   it should "treat a lone red blip among greens as healthy (needs all of the last 3 red)" in {
     val statuses = statusesFrom(Map(cinema -> Seq("green", "green", "red")))
-    val sections = controller.groupRows(Set(cinema), statuses, noErrors, fakeRow)
+    val sections = triage.groupRows(Set(cinema), statuses, noErrors, fakeRow)
     val failing = sections.failing
     val cinemasByCity = sections.cinemasByCity
     failing.map(_.row.name) should not contain cinema
@@ -219,7 +220,7 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
 
   it should "promote a failing enrichment service (no city) into Failing, not the enrichment section" in {
     val statuses = statusesFrom(Map("TMDB" -> Seq("red", "red", "red")))
-    val sections = controller.groupRows(Set("TMDB"), statuses, noErrors, fakeRow)
+    val sections = triage.groupRows(Set("TMDB"), statuses, noErrors, fakeRow)
     val failing = sections.failing
     val services = sections.services
     failing.map(_.row.name) should contain("TMDB")
@@ -230,7 +231,7 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
   it should "promote a cinema whose enrichment sub-row is failing, keeping the pair together" in {
     val enrich = UptimeMonitor.enrichmentService(cinema)
     val statuses = statusesFrom(Map(cinema -> Seq("green", "green", "green"), enrich -> Seq("red", "red", "red")))
-    val sections = controller.groupRows(Set(cinema, enrich), statuses, noErrors, fakeRow)
+    val sections = triage.groupRows(Set(cinema, enrich), statuses, noErrors, fakeRow)
     val failing = sections.failing
     val cinemasByCity = sections.cinemasByCity
 
@@ -253,7 +254,7 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
     var materialised = 0
     val countingRow = (n: String) => { materialised += 1; ServiceRow(n, Seq.empty) }
 
-    val sections = controllerFor(us).groupRows(venues.toSet, _ => Seq.empty, noErrors, countingRow)
+    val sections = new UptimeTriage(us).groupRows(venues.toSet, _ => Seq.empty, noErrors, countingRow)
     val failing = sections.failing
     val zero = sections.zero
     val cinemasByCity = sections.cinemasByCity
@@ -268,7 +269,7 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
   it should "collapse the healthy-cinema section rather than render thousands of rows" in {
     val us = models.Country.UnitedStates
     val venues = us.cities.flatMap(_.cinemas).map(_.displayName)
-    val sections = controllerFor(us).groupRows(venues.toSet, _ => Seq.empty, noErrors, fakeRow)
+    val sections = new UptimeTriage(us).groupRows(venues.toSet, _ => Seq.empty, noErrors, fakeRow)
     val cinemasByCity = sections.cinemasByCity
     cinemasByCity shouldBe empty
   }
@@ -281,7 +282,7 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
     val venues = us.cities.flatMap(_.cinemas).map(_.displayName)
     var built = 0
     val counting: String => ServiceRow = n => { built += 1; fakeRow(n) }
-    val sections = controllerFor(us).groupRows(venues.toSet, _ => Seq("thin", "thin", "thin"), noErrors, counting)
+    val sections = new UptimeTriage(us).groupRows(venues.toSet, _ => Seq("thin", "thin", "thin"), noErrors, counting)
     sections.thin shouldBe empty
     sections.hiddenThin shouldBe venues.distinct.size
     built should be < 100
@@ -291,14 +292,14 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
     val us = models.Country.UnitedStates
     val venues = us.cities.flatMap(_.cinemas).map(_.displayName)
     val broken = venues.head
-    val sections = controllerFor(us).groupRows(
+    val sections = new UptimeTriage(us).groupRows(
       venues.toSet, n => if (n == broken) Seq("red", "red", "red") else Seq.empty, noErrors, fakeRow)
     val failing = sections.failing
     failing.map(_.row.name) should contain(broken)
   }
 
   it should "keep a small roster's healthy cinemas grouped by city" in {
-    val sections = controller.groupRows(Set(cinema), _ => Seq.empty, noErrors, fakeRow)
+    val sections = triage.groupRows(Set(cinema), _ => Seq.empty, noErrors, fakeRow)
     val cinemasByCity = sections.cinemasByCity
     cinemasByCity.flatMap(_._2).map(_.name) should contain(cinema)
   }
@@ -532,7 +533,7 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
   private val NotFound = "HttpStatusException: HTTP 404 for GET https://www.flicks.us/cinema/acme-theatre-riverton/"
 
   "a venue whose page 404s" should "be listed as gone, not as failing" in {
-    val sections = controller.groupRows(Set(cinema),
+    val sections = triage.groupRows(Set(cinema),
       statusesFrom(Map(cinema -> Seq("red", "red", "red"))),
       errorsFrom(Map(cinema -> Seq(NotFound, NotFound, NotFound))), fakeRow)
 
@@ -545,7 +546,7 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
   // is only tolerated once durable evidence clearly dominates it (see below) — with
   // one 404 and one 503, durable evidence does not, so this stays failing.
   it should "stay failing when a non-404 is not clearly outnumbered" in {
-    val sections = controller.groupRows(Set(cinema),
+    val sections = triage.groupRows(Set(cinema),
       statusesFrom(Map(cinema -> Seq("red", "red", "red"))),
       errorsFrom(Map(cinema -> Seq(NotFound, "HttpStatusException: HTTP 503 for GET https://x/"))), fakeRow)
 
@@ -561,7 +562,7 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
   // last one aged out. One outlier, clearly outnumbered by durable evidence,
   // should not block quarantine.
   it should "tolerate a single stray non-404 clearly outnumbered by 404s" in {
-    val sections = controller.groupRows(Set(cinema),
+    val sections = triage.groupRows(Set(cinema),
       statusesFrom(Map(cinema -> Seq("red", "red", "red"))),
       errorsFrom(Map(cinema -> Seq(
         NotFound, NotFound, "HttpStatusException: HTTP 503 for GET https://x/",
@@ -574,7 +575,7 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
   // Two non-404s among five is not "a single stray outlier" — that is a venue
   // flickering between gone and merely broken, which stays in Failing.
   it should "stay failing when non-404s are more than a single outlier" in {
-    val sections = controller.groupRows(Set(cinema),
+    val sections = triage.groupRows(Set(cinema),
       statusesFrom(Map(cinema -> Seq("red", "red", "red"))),
       errorsFrom(Map(cinema -> Seq(
         NotFound, NotFound, NotFound,
@@ -588,7 +589,7 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
   // A red row with no error text recorded says nothing about WHY, and a guess
   // that empties the Failing section is the expensive way to be wrong.
   it should "stay failing when nothing says why it failed" in {
-    val sections = controller.groupRows(Set(cinema),
+    val sections = triage.groupRows(Set(cinema),
       statusesFrom(Map(cinema -> Seq("red", "red", "red"))), noErrors, fakeRow)
 
     sections.failing.map(_.row.name) shouldBe Seq(cinema)
@@ -600,7 +601,7 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
   // venue's own page is gone.
   it should "go back to failing when its enrichment is failing too" in {
     val enrichment = UptimeMonitor.enrichmentService(cinema)
-    val sections = controller.groupRows(Set(cinema, enrichment),
+    val sections = triage.groupRows(Set(cinema, enrichment),
       statusesFrom(Map(cinema -> Seq("red", "red", "red"), enrichment -> Seq("red", "red", "red"))),
       errorsFrom(Map(cinema -> Seq(NotFound, NotFound))), fakeRow)
 
@@ -609,7 +610,7 @@ class UptimeControllerSpec extends AnyFlatSpec with Matchers with BeforeAndAfter
   }
 
   it should "come back the moment the page returns" in {
-    val sections = controller.groupRows(Set(cinema),
+    val sections = triage.groupRows(Set(cinema),
       statusesFrom(Map(cinema -> Seq("red", "red", "green"))),
       errorsFrom(Map(cinema -> Seq(NotFound, NotFound))), fakeRow)
 
