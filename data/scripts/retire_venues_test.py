@@ -69,7 +69,7 @@ def test_rewrites_the_count_only_in_prose_files():
     # The roster's size as CountrySpec pins it today, so a retirement does not break this test.
     size = int(re.search(rv.PINNED_SIZE["spain"], rv.COUNTRY_SPEC.read_text()).group(2))
     files = rv.files_quoting(size, "spain")
-    assert "common/src/main/scala/models/City.scala" in files, files
+    assert "common/src/main/scala/models/Cinema.scala" in files, files
     assert "data/spain/README.md" in files, files
     assert all(f.endswith(".scala") or f.endswith("README.md") for f in files), files
 
