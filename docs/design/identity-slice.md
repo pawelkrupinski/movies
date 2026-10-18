@@ -52,8 +52,11 @@ A directory, cut from ONE "Record scrape fixtures" recording (`--recording RUN`,
 Each ref runs in ONE JVM with this checkout's tool files dropped into its tree (`identity_tree`, shared with
 `--explain`), so a ref from before the tool works; both refs replay the same recording. Those files must therefore
 compile against OLD code too — they may read nothing a ref from before them lacks (83b869548's `Capture.live` broke
-every older ref until FiledAnswers read it off the file). `scripts/identity-slice --compiles REF` checks one;
-`scripts/identity-slice-old-ref-test.sh` checks c2974e3aa (2026-10-12) — run it after changing a tool file.
+every older ref until FiledAnswers read it off the file; 2026-10-17/18's `Listing.properTitle` and TitleFacts until the
+tools reached them by name through `services.identity.OlderRefs`). `scripts/identity-slice --compiles REF` (and
+`scripts/title-trace --compiles REF`) checks one; `scripts/identity-slice-old-ref-test.sh` checks identity-slice at
+c2974e3aa (2026-10-12) and title-trace at its first commit e90d2b498 (2026-10-14; `OLD_REFS` for others) — run it after
+changing a tool file.
 
 ## Modes
 

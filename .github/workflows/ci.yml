@@ -487,7 +487,7 @@ jobs:
             # The old ref is fetched first, so the tree it lays out copies this checkout's restored target/
             # before itAll's sbt — ~20 s from starting — writes to it.
             # The old ref is pinned, so only what this checkout brings to it can change the verdict: the tool files
-            # (identity-slice's TOOL_FILES, every one listed below — IdentitySliceOldRefGateSpec), the scripts that
+            # (identity-slice's and title-trace's TOOL_FILES, every one listed below — IdentitySliceOldRefGateSpec), the scripts that
             # lay the ref out, and the JDK/sbt setup. A push touching none of them skips its 2-3 min, which sat
             # on the end of this job and made it the build's long pole beside the unit tests (2026-10-15).
             - name: Did this change touch what identity-slice brings to an old ref?
@@ -499,8 +499,11 @@ jobs:
                       worker/src/test/scala/scripts/IdentitySlice.scala
                       worker/src/test/scala/scripts/IdentityExplain.scala
                       worker/src/test/scala/services/identity/IdentitySlicing.scala
+                      worker/src/test/scala/services/identity/OlderRefs.scala
+                      worker/src/test/scala/services/identity/TitleTrace.scala
                       worker/src/fixtures/scala/tools/**
                       scripts/identity-slice
+                      scripts/title-trace
                       scripts/identity-tools.sh
                       scripts/tool-conventions.sh
                       scripts/identity-slice-old-ref-test.sh
@@ -517,15 +520,15 @@ jobs:
               uses: actions/cache@v5
               with:
                   path: ${{ runner.temp }}/kinowo-identity/refs
-                  key: identity-old-ref-c2974e3aaea73fb841096a24316fb5e872154de9-${{ hashFiles('worker/src/test/scala/scripts/IdentitySlice.scala', 'worker/src/test/scala/scripts/IdentityExplain.scala', 'worker/src/test/scala/services/identity/IdentitySlicing.scala', 'worker/src/fixtures/scala/tools/**', 'scripts/identity-slice', 'scripts/identity-tools.sh') }}
+                  key: identity-old-ref-c2974e3aaea73fb841096a24316fb5e872154de9-${{ hashFiles('worker/src/test/scala/scripts/IdentitySlice.scala', 'worker/src/test/scala/scripts/IdentityExplain.scala', 'worker/src/test/scala/services/identity/IdentitySlicing.scala', 'worker/src/test/scala/services/identity/OlderRefs.scala', 'worker/src/test/scala/services/identity/TitleTrace.scala', 'worker/src/fixtures/scala/tools/**', 'scripts/identity-slice', 'scripts/title-trace', 'scripts/identity-tools.sh') }}
                   restore-keys: |
                       identity-old-ref-c2974e3aaea73fb841096a24316fb5e872154de9-
 
             - name: Start identity-slice's old-ref compile, in the background
               if: matrix.row == 'rest' && steps.slice-tools.outputs.changed == 'true'
               run: |
-                  git fetch --no-tags --depth=1 origin c2974e3aaea73fb841096a24316fb5e872154de9
-                  OLD_REF=c2974e3aaea73fb841096a24316fb5e872154de9 KINOWO_IDENTITY_CACHE="$RUNNER_TEMP/kinowo-identity" \
+                  git fetch --no-tags --depth=1 origin c2974e3aaea73fb841096a24316fb5e872154de9 e90d2b498a0f7a26faa55b7d7cdea51d48285df8
+                  KINOWO_IDENTITY_CACHE="$RUNNER_TEMP/kinowo-identity" \
                       scripts/ci/in-background.sh start old-ref-compile bash scripts/identity-slice-old-ref-test.sh
 
             # Both apps' integration suites in one run (web + worker each have an

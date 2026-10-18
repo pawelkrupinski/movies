@@ -68,6 +68,9 @@ check "a batch is handed to one JVM per ref" "2" "$(grep -c "TitleTrace> <--batc
 check "...and names only the billing that moved, with its step" "### pl	Kino Muza	Obsession (18)|-3. search: rule a|+3. search: rule b" \
   "$(grep -E '^(###|[-+]3)' <<< "$out" | paste -sd'|' -)"
 check "...and counts it" "1" "$(grep -c '1 of 2 billings moved' <<< "$out")"
+rm -rf "$work/cache"; : > "$work/calls"
+check "--compiles lays a ref out with the tracer dropped in and compiles it, tracing nothing" "0 1 0" \
+  "$(trace --compiles HEAD~1 > /dev/null; echo $?) $(find "$work/cache/refs" -name TitleTrace.scala | wc -l | tr -d ' ') $(grep -c . "$work/calls")"
 check "a call naming no country is refused" "2" "$(trace "Obsession (18)" > /dev/null; echo $?)"
 check "two raw titles are refused" "2" "$(trace Obsession Lalka --country pl > /dev/null; echo $?)"
 

@@ -1,7 +1,7 @@
 package scripts
 
 import models.Country
-import services.identity.{IdentityResolver, Listing, ResolverDecision}
+import services.identity.{IdentityResolver, Listing, OlderRefs, ResolverDecision}
 import services.movies.{ListingKey, TitleNormalizer}
 import tools.{IdentityJudgements, UnmatchedClusters}
 
@@ -129,7 +129,7 @@ object IdentityExplain {
   /** What a listing bills and its venue page says, as printed: the same lines for listings billed alike. */
   def facts(capture: UnmatchedClusters.Capture)(l: Listing): Seq[String] = {
     def names(people: Seq[String]) = if (people.isEmpty) "-" else people.mkString(", ")
-    Seq(s"  billed: title '${l.title}', clean '${l.cleanTitle}'${l.searchTitle.fold("")(s => s", search '$s'")}${l.properTitle.fold("")(s => s", proper '$s'")}" +
+    Seq(s"  billed: title '${l.title}', clean '${l.cleanTitle}'${l.searchTitle.fold("")(s => s", search '$s'")}${OlderRefs.optionalText(l, "properTitle").fold("")(s => s", proper '$s'")}" +
       s"${l.originalTitle.fold("")(o => s", original '$o'")}; year ${l.year.getOrElse("-")}, runtime ${l.runtime.getOrElse("-")}, " +
       s"directors ${names(l.directors)}${if (l.countries.nonEmpty) s", countries ${l.countries.mkString(",")}" else ""}" +
       s"${if (l.catalogueIds.nonEmpty) s", catalogue ${l.catalogueIds.map(c => s"${c.source}:${c.id}").mkString(",")}" else ""}") ++

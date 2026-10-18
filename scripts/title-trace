@@ -8,6 +8,7 @@
 #
 #   scripts/title-trace "<raw title>" --country <cc> [--venue NAME] [--ref A [--ref B]]
 #   scripts/title-trace --batch FILE [--ref A [--ref B]]
+#   scripts/title-trace --compiles REF
 #
 #   --venue   the venue whose rules apply: its display name, or a unique part of it (case and accents aside); a name the
 #             roster does not hold is traced with no venue rules
@@ -16,6 +17,9 @@
 #   --batch   every `country<TAB>venue<TAB>raw title` line of FILE traced in one JVM per ref, each trace headed `### line`;
 #             with two refs, only the billings whose steps moved (and their count) — a whole corpus checked for a
 #             title-rule or word-list change
+#   --compiles REF  lay REF out with this checkout's tool files dropped in and compile it, nothing else: the tool must
+#             compile into every ref it may be pointed at, back to its own first commit e90d2b498 (2026-10-14): a member
+#             newer than that is reached by name (services.identity.OlderRefs; scripts/identity-slice-old-ref-test.sh)
 #
 # One JVM per ref; the compile is cached in $KINOWO_IDENTITY_CACHE (default ~/.cache/kinowo-identity), shared with
 # scripts/identity-slice.
@@ -31,8 +35,13 @@ IDENTITY_TOOL=title-trace
 # shellcheck source=scripts/identity-tools.sh
 . "$(dirname "$0")/identity-tools.sh"
 
-TOOL_FILES=(worker/src/test/scala/services/identity/TitleTrace.scala worker/src/fixtures/scala/tools/SearchQueryMarkers.scala
+TOOL_FILES=(worker/src/test/scala/services/identity/OlderRefs.scala worker/src/test/scala/services/identity/TitleTrace.scala worker/src/fixtures/scala/tools/SearchQueryMarkers.scala
   worker/src/fixtures/scala/tools/CinemaSlotInvariants.scala)
+
+if [ "$1" = "--compiles" ]; then
+  t=$(identity_tree "${2:?--compiles REF}" "${TOOL_FILES[@]}") && identity_classpath "$t" > /dev/null && { identity_log "$2 compiles with this checkout's tool files"; exit 0; }
+  exit 1
+fi
 
 raw="" cc="" batch="" refs=() pass=()
 while [ "$#" -gt 0 ]; do

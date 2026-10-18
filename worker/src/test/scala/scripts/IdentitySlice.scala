@@ -436,7 +436,7 @@ object IdentitySlice {
   /** What a listing bills and its stated facts — per listing, never merged by raw title. */
   def facts(l: Listing): String = {
     def names(people: Seq[String]) = if (people.isEmpty) "-" else people.mkString(", ")
-    s"  billed: title '${l.title}'${l.originalTitle.fold("")(o => s", original '$o'")}${l.searchTitle.fold("")(s => s", search '$s'")}${l.properTitle.fold("")(s => s", proper '$s'")}; year ${l.year.getOrElse("-")}, " +
+    s"  billed: title '${l.title}'${l.originalTitle.fold("")(o => s", original '$o'")}${l.searchTitle.fold("")(s => s", search '$s'")}${OlderRefs.optionalText(l, "properTitle").fold("")(s => s", proper '$s'")}; year ${l.year.getOrElse("-")}, " +
       s"runtime ${l.runtime.getOrElse("-")}, directors ${names(l.directors)}${l.page.fold("")(p => s", page $p")}" +
       s"${if (l.catalogueIds.nonEmpty) s", ids ${l.catalogueIds.map(c => s"${c.source}:${c.id}").mkString(",")}" else ""}" +
       s"${if (!l.screenings.isEmpty) s", screens ${l.screenings.days.headOption.getOrElse("")}…${l.screenings.days.lastOption.getOrElse("")}" else ""}"

@@ -95,7 +95,7 @@ need_ref() {
   exit 2
 }
 
-TOOL_FILES=(worker/src/test/scala/scripts/IdentitySlice.scala worker/src/test/scala/scripts/IdentityExplain.scala
+TOOL_FILES=(worker/src/test/scala/services/identity/OlderRefs.scala worker/src/test/scala/scripts/IdentitySlice.scala worker/src/test/scala/scripts/IdentityExplain.scala
   worker/src/test/scala/services/identity/IdentitySlicing.scala worker/src/fixtures/scala/tools/RecordedCorpus.scala
   worker/src/fixtures/scala/tools/SliceHttp.scala worker/src/fixtures/scala/tools/MemoLookups.scala
   worker/src/fixtures/scala/tools/CatalogueFill.scala worker/src/fixtures/scala/tools/FiledAnswers.scala
