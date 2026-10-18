@@ -32,4 +32,10 @@ check "nothing by the deadline: exit 2, said" "2 yes" "$status $(grep -q 'after 
 "$wf" "$work/never.log" > /dev/null 2>&1; status=$?
 check "no pattern: a usage error, exit 2" "2" "$status"
 
+"$wf" "$work/never.log" x --timeout > /dev/null 2> "$work/err"; status=$?
+check "a flag with no value: a usage error, exit 2 -- never 1, which says the writer ended" "2 yes" \
+  "$status $(grep -q -- '--timeout needs a value' "$work/err" && echo yes || echo no)"
+"$wf" "$work/never.log" x --poll '' > /dev/null 2>&1; status=$?
+check "...an empty one too" "2" "$status"
+
 spec_summary

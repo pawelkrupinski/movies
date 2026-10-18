@@ -52,6 +52,20 @@ check "a glob is no country code, never the files it matches (here: pl)" "demo: 
 check "a flag without its value is a usage error" "demo: --country needs a country code (one of pl,de,uk,us,es)|demo: see demo --help|exit=2" \
   "$(countries --country)"
 
+# ── a flag's value ────────────────────────────────────────────────────────────────────────────────
+# shellcheck disable=SC2016
+valued='while [ $# -gt 0 ]; do case "$1" in --out) flag_value "$@"; out=$2; shift 2 ;; *) shift ;; esac; done; echo "out=$out"'
+check "flag_value: a flag with its value passes it on" "out=dir|exit=0" "$(lib "set -- --out dir; $valued" | paste -sd'|' -)"
+check "...an empty value is still a value" "out=|exit=0" "$(lib "set -- --out ''; $valued" | paste -sd'|' -)"
+check "...the last argument, with no value after it, is a usage error (never a shift 2 that fails and loops)" \
+  "demo: --out needs a value|demo: see demo --help|exit=2" "$(lib "set -- --out; $valued" | paste -sd'|' -)"
+
+mkdir -p "$work/here/sub"
+check "path_flag: a relative path made absolute against the caller's directory" "$(cd "$work/here" && pwd)/sub/f|exit=0" \
+  "$(cd "$work/here" && lib 'path_flag --out sub/f' | paste -sd'|' -)"
+check "...a directory that is not there is a usage error, never /<name>" "demo: --out nope/f: no directory nope|demo: see demo --help|exit=2" \
+  "$(cd "$work/here" && lib 'path_flag --out nope/f' | paste -sd'|' -)"
+
 # ── bounded under a terminal ──────────────────────────────────────────────────────────────────────
 # A pseudo-terminal from script(1) (BSD's/macOS's and util-linux's take their arguments differently): the line runs in
 # its foreground with it on stdin, as a tool run by hand does. The feed holds the terminal's input open until the line

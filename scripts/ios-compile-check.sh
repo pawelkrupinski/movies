@@ -25,26 +25,34 @@ status=0
 log() { printf '\033[36m▸\033[0m %s\n' "$*"; }
 warn() { printf '\033[33m!\033[0m %s\n' "$*" >&2; }
 
+# built <what> <ok message> <error pattern> <command...> -> the command, its output kept aside: removed once it
+# compiles, kept (its path said) and its matching lines shown when it does not
+built() {
+    local what=$1 ok=$2 errors=$3 out
+    shift 3
+    out="$(mktemp "${TMPDIR:-/tmp}/ios-compile-check-$what.XXXXXX")" || return 1
+    if "$@" >"$out" 2>&1; then
+        rm -f "$out"
+        log "$ok"
+    else
+        grep -E "$errors" "$out" | head -40 >&2
+        warn "full log: $out"
+        return 1
+    fi
+}
+
 app_build() {
     if ! xcodebuild -version >/dev/null 2>&1; then
         warn "xcodebuild unavailable (no full Xcode selected) — SKIPPED the app-target build."
         return 0
     fi
     log "xcodebuild build: the Kinowo app target, SwiftUI included"
-    local out
-    out="$(mktemp)"
-    if xcodebuild build \
+    built app "app target compiles" 'error:|BUILD FAILED' xcodebuild build \
         -project ios/Kinowo.xcodeproj \
         -scheme Kinowo \
         -destination 'generic/platform=iOS Simulator' \
         -derivedDataPath ios/.build/compile-check-derived-data \
-        CODE_SIGNING_ALLOWED=NO >"$out" 2>&1; then
-        log "app target compiles"
-    else
-        grep -E 'error:|BUILD FAILED' "$out" | head -40 >&2
-        warn "full log: $out"
-        return 1
-    fi
+        CODE_SIGNING_ALLOWED=NO
 }
 
 linux_build() {
@@ -55,19 +63,11 @@ linux_build() {
     log "swift build --build-tests on Linux (swift:5.10, as ios.yml)"
     # The sources read-only; the build products in a named volume, so a Linux .build never
     # lands in ios/.build next to the Mac one.
-    local out
-    out="$(mktemp)"
-    if docker run --rm \
+    built linux "the package compiles on Linux" 'error:' docker run --rm \
         -v "$PWD/ios:/src:ro" \
         -v kinowo-ios-linux-build:/scratch \
         swift:5.10 \
-        swift build --build-tests --package-path /src --scratch-path /scratch >"$out" 2>&1; then
-        log "the package compiles on Linux"
-    else
-        grep -E 'error:' "$out" | head -40 >&2
-        warn "full log: $out"
-        return 1
-    fi
+        swift build --build-tests --package-path /src --scratch-path /scratch
 }
 
 case "$mode" in

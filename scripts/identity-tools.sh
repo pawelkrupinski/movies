@@ -101,7 +101,7 @@ identity_capture_download() {
   identity_log "downloading identity-capture-$cc of run $run"
   mkdir -p "$dir"
   dl=$(mktemp -d "$dir/dl-$cc.XXXXXX")
-  if ! gh_download "$IDENTITY_GH_DOWNLOAD" run download "$run" -R "${KINOWO_REPO:-pawelkrupinski/movies}" --name "identity-capture-$cc" --dir "$dl" >&2; then
+  if ! gh_download "$IDENTITY_GH_DOWNLOAD" run download "$run" -R "$KINOWO_GH_REPO" --name "identity-capture-$cc" --dir "$dl" >&2; then
     rm -rf "$dl"; identity_log "could not download identity-capture-$cc of run $run (gh failed or timed out)"; return 1
   fi
   file=$(find "$dl" -name "$cc.json.gz" | head -1)
@@ -252,7 +252,7 @@ identity_recorded() {
 
 identity_recording_download() {
   local run=$1 cc=$2 what=$3 dir=$IDENTITY_CACHE/recordings/$1
-  identity_recorded "$dir/pair/test/resources/fixtures" "$cc" "$what" && return 0
+  identity_recorded "$(identity_recording_dir "$run")" "$cc" "$what" && return 0
   identity_log "downloading recording $run ($cc${what:+, its $what alone}) into $dir"
   "$IDENTITY_REPO/scripts/identity-fetch-recording.sh" ${what:+--corpus-only} "$run" "$dir" "$cc" >&2 && return 0
   identity_log "could not download recording $run ($cc)"
@@ -264,7 +264,7 @@ identity_recording_download() {
 # run skipped said on stderr. 1 when none of the newest 20 holds it — or when a run's artifacts could not be read: an
 # unreadable run is never skipped for an older one.
 identity_newest_recording() {
-  local cc=${1:-} repo=${KINOWO_REPO:-pawelkrupinski/movies} id ids held
+  local cc=${1:-} repo=$KINOWO_GH_REPO id ids held
   # newest by CREATION time, not listing order: GitHub's status-filtered listing is not in creation order
   # (`--limit 1` named 2026-09-25's run on 2026-10-07, the newest being 2026-10-06's -- 2026-10-17)
   ids=$(identity_gh "$IDENTITY_GH_READ" run list -R "$repo" --workflow "Record scrape fixtures" --status success \
@@ -274,7 +274,7 @@ identity_newest_recording() {
   [ -n "$ids" ] || { identity_log "no successful \"Record scrape fixtures\" run"; return 1; }
   [ -n "$cc" ] || { echo "${ids%%$'\n'*}"; return; }
   for id in $ids; do
-    if [ -f "$IDENTITY_CACHE/recordings/$id/pair/test/resources/fixtures/corpus/cinema-scrapes-$cc.json.gz" ]; then held=yes
+    if identity_recorded "$(identity_recording_dir "$id")" "$cc" corpus; then held=yes
     else
       held=$(identity_gh "$IDENTITY_GH_READ" api "repos/$repo/actions/runs/$id/artifacts?per_page=100" --paginate \
         -q ".artifacts[] | select(.name == \"scrape-fixtures-$cc\" and (.expired | not)) | .name") ||

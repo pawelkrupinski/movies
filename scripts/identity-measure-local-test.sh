@@ -14,7 +14,7 @@ work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 repo="$work/repo"
 mkdir -p "$repo/scripts/ci" "$repo/test/resources/fixtures"
-cp "$REPO_ROOT/scripts/identity-measure-local" "$REPO_ROOT/scripts/jvm-gate.sh" "$repo/scripts/"
+cp "$REPO_ROOT/scripts/identity-measure-local" "$REPO_ROOT/scripts/jvm-gate.sh" "$REPO_ROOT/scripts/tool-conventions.sh" "$repo/scripts/"
 # it-local.sh: logs each sbt command, and writes what each would ("--out DIR --full CC", "--measure --out DIR")
 cat > "$repo/scripts/it-local.sh" <<'STUB'
 #!/usr/bin/env bash
@@ -52,13 +52,21 @@ base=$(scratch_git "$repo" rev-parse --short=12 HEAD~1) head=$(scratch_git "$rep
 cache="$work/cache"; laid="$cache/recordings/41/pair/test/resources/fixtures"
 mkdir -p "$laid/corpus" "$laid/enrichment-pl" "$laid/enrichment-uk" "$cache/recordings/7/pair/test/resources/fixtures/corpus"
 
-measure() { # <args...> -> output in $work/out, exit status in $work/status
-  STUB="$work" KINOWO_IDENTITY_CACHE="$cache" bash "$repo/scripts/identity-measure-local" "$@" > "$work/out" 2>&1
+measure() { # <args...> -> output in $work/out, exit status in $work/status; bounded: a parse that loops fails, not hangs
+  STUB="$work" KINOWO_IDENTITY_CACHE="$cache" perl -e 'alarm 60; exec @ARGV' bash "$repo/scripts/identity-measure-local" "$@" > "$work/out" 2>&1
   echo $? > "$work/status"
 }
 
 measure --head "$head"
 check "no --base is a usage error" "2" "$(cat "$work/status")"
+measure --head "$head" --base
+check "a flag with no value after it is a usage error, not a parse that loops forever" "2 yes" \
+  "$(cat "$work/status") $(grep -q -- '--base needs a value' "$work/out" && echo yes || echo no)"
+measure --base "$base" --head "$head" --countries pl,xx
+check "a country no tool knows is a usage error, before anything resolves" "2 yes" \
+  "$(cat "$work/status") $(grep -q 'unknown country xx' "$work/out" && echo yes || echo no)"
+measure --help
+check "--help prints the header" "0 yes" "$(cat "$work/status") $(grep -q '^THE IDENTITY MEASURE, LOCALLY' "$work/out" && echo yes || echo no)"
 
 measure --base "$base" --head "$head" --out "$work/m"
 check "nothing moved: LANDABLE, exit 0" "0 yes" "$(cat "$work/status") $(grep -q '^LANDABLE (local)' "$work/out" && echo yes || echo no)"

@@ -27,8 +27,12 @@
 #        first `set ` line, the `# ` stripped, a leading blank line dropped
 #   KINOWO_COUNTRIES                -> the country codes every tool loops over, in one order (kinowo_countries_csv: "pl,de,…")
 #   KINOWO_IDENTITY_CACHE           -> the cache every identity tool shares (default ~/.cache/kinowo-identity)
+#   KINOWO_GH_REPO                  -> the GitHub repository every gh call names with -R ($KINOWO_REPO, default
+#        pawelkrupinski/movies: a test points it elsewhere)
 #   die / usage_error <message...>  -> exit 1 (DIE_STATUS) for a runtime failure, 2 for a caller's mistake (below)
 #   country_flag / selected_countries_csv -> `--country cc[,cc]` and `--countries a,b`, one parser (below)
+#   flag_value "$@"                 -> a usage_error when the flag in $1 has no value after it (below)
+#   path_flag "$@"                  -> the flag's value made absolute, a usage_error when its directory is not there (below)
 #   gh_download <seconds> <gh download args...> -> 0 got it, 3 absent, 1 failed: bounded and retried (below)
 #   local_mongo_port / local_mongo_uri [database] -> the local, password-free Mongo the prod mirror, the it/ suites
 #        and the identity tools share: 127.0.0.1:$LOCAL_MIRROR_PORT (default 28017), a direct connection
@@ -38,6 +42,8 @@ kinowo_countries_csv() { local IFS=,; echo "${KINOWO_COUNTRIES[*]}"; }
 
 KINOWO_IDENTITY_CACHE=${KINOWO_IDENTITY_CACHE:-$HOME/.cache/kinowo-identity}
 export KINOWO_IDENTITY_CACHE
+# shellcheck disable=SC2034 # read by the tools that source this
+KINOWO_GH_REPO=${KINOWO_REPO:-pawelkrupinski/movies}
 
 local_mongo_port() { echo "${LOCAL_MIRROR_PORT:-28017}"; }
 local_mongo_uri() { echo "mongodb://127.0.0.1:$(local_mongo_port)/${1:-}?directConnection=true"; }
@@ -139,6 +145,22 @@ country_flag() {
 }
 selected_countries_csv() {
   if [ ${#SELECTED_COUNTRIES[@]} -eq 0 ]; then kinowo_countries_csv; else local IFS=,; echo "${SELECTED_COUNTRIES[*]}"; fi
+}
+
+# ── A flag's value ──────────────────────────────────────────────────────────────────────────────────
+# In a tool's argument loop, first in an arm that reads a value:   --out) flag_value "$@"; out=$2; shift 2 ;;
+# A flag given last has no $2: without this `shift 2` fails without shifting, and a loop without set -e reads the same
+# flag again forever (identity-measure-local --base did); under set -u a bare $2 dies as "unbound variable" instead.
+flag_value() { [ $# -ge 2 ] || usage_error "$1 needs a value"; }
+# A path a tool hands to a JVM or a worktree that runs elsewhere, made absolute while the caller's directory is the
+# current one:   --out) keep=$(path_flag "$@"); shift 2 ;;
+# A directory that is not there is the caller's mistake: `$(cd "$(dirname x)" && pwd)/$(basename x)` turned it into
+# /<name> silently -- the assignment's status is the last substitution's -- and a takes file was then written at /.
+path_flag() {
+  local dir
+  flag_value "$@"
+  dir=$(cd "$(dirname "$2")" 2>/dev/null && pwd) || usage_error "$1 $2: no directory $(dirname "$2")"
+  echo "$dir/$(basename "$2")"
 }
 
 # ── Downloading from GitHub ─────────────────────────────────────────────────────────────────────────

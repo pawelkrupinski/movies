@@ -36,7 +36,7 @@ RUN=$1 DEST=$2
 shift 2
 CCS=("$@")
 [ "${#CCS[@]}" -gt 0 ] || CCS=("${KINOWO_COUNTRIES[@]}")
-REPO=${KINOWO_REPO:-pawelkrupinski/movies}
+REPO=$KINOWO_GH_REPO
 RELEASE=${FIXTURE_RELEASE_TAG:-convergence-fixtures}
 UNPACK="$(cd "$(dirname "$0")/.." && pwd)/.github/scripts/unpack-fixture-archive.sh"
 LIMIT=${KINOWO_IDENTITY_DOWNLOAD_TIMEOUT:-1800}

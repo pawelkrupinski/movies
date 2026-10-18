@@ -41,7 +41,7 @@ while [ "$#" -gt 0 ]; do
   case "$1" in
     # one parser for both spellings (tool-conventions.sh): a repeatable --country cc[,cc] and --countries a,b
     --country|--countries|--country=*|--countries=*) country_flag "$@"; shift "$COUNTRY_FLAG_ARGS" ;;
-    --venue|--title|--limit) pass+=("$1" "$2"); shift 2 ;;
+    --venue|--title|--limit) flag_value "$@"; pass+=("$1" "$2"); shift 2 ;;
     --corpus-only) corpus_only=1; shift ;;
     *) echo "unknown argument: $1" >&2; usage >&2; exit 2 ;;
   esac
@@ -51,7 +51,7 @@ IFS=, read -r -a countries <<< "$(selected_countries_csv)"
 # started <run> -> the run's start (ISO-8601), which tells a response the run recorded from one it restored; kept
 started() {
   local file=$IDENTITY_CACHE/recordings/$1/started_at
-  [ -s "$file" ] || identity_put "$file" identity_gh "$IDENTITY_GH_READ" api "repos/${KINOWO_REPO:-pawelkrupinski/movies}/actions/runs/$1" --jq .run_started_at ||
+  [ -s "$file" ] || identity_put "$file" identity_gh "$IDENTITY_GH_READ" api "repos/$KINOWO_GH_REPO/actions/runs/$1" --jq .run_started_at ||
     { identity_log "could not read run $1's start (gh failed or timed out): its origins cannot be judged"; return 1; }
   cat "$file"
 }
