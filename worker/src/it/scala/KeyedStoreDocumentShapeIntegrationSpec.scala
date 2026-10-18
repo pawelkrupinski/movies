@@ -57,7 +57,7 @@ class KeyedStoreDocumentShapeIntegrationSpec extends AnyFlatSpec with Matchers w
   }
 
   "omdb_attempts" should "hold {_id, at, level} documents under a 90-day TTL on at" in {
-    val store = new MongoOmdbAttemptStore(Some(db), tools.MongoTtlSpecClock.Pinned)
+    val store = new MongoOmdbAttemptStore(Some(db))
     store.record("anora|2024", 3, at)
     eventually(documents("omdb_attempts") shouldBe Seq(s"""{"_id": "anora|2024", "at": $date, "level": 3}"""))
     eventually(indexes("omdb_attempts") shouldBe Set("""at_1 {"at": 1} 7776000"""))

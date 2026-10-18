@@ -1,14 +1,10 @@
 package services.enrichment
 
-import com.mongodb.client.model.ReplaceOptions
-import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, documentToUntypedDocument}
-import org.mongodb.scala.model.{Filters, Indexes, Sorts}
-import com.mongodb.client.model.{IndexOptions => JIndexOptions}
+import org.mongodb.scala.{Document, MongoDatabase}
 import play.api.Logging
+import services.keyed.{DocCodec, InMemoryKeyedDocStore, KeyedDocStore, MongoKeyedDocStore}
 
-import java.time.{Clock, Instant}
-import java.util.concurrent.{ConcurrentHashMap, TimeUnit}
-import scala.concurrent.Await
+import java.time.Instant
 import scala.concurrent.duration._
 import scala.util.Try
 
@@ -45,88 +41,52 @@ object OmdbAttemptStore {
   }
 }
 
-/** In-memory store for tests / Mongo-less local dev. */
-class InMemoryOmdbAttemptStore extends OmdbAttemptStore {
-  private val entries = new ConcurrentHashMap[String, OmdbAttempt]()
-  def get(filmKey: String): Option[OmdbAttempt] = Option(entries.get(filmKey))
+/** The store over its rows: Mongo and in-memory differ only in the rows. A read that fails answers
+ *  as if nothing were recorded, and a write is fire-and-forget: a lost backoff stamp just costs one
+ *  extra OMDb probe. */
+class KeyedOmdbAttemptStore(rows: KeyedDocStore[OmdbAttempt]) extends OmdbAttemptStore with Logging {
+  def get(filmKey: String): Option[OmdbAttempt] = Try(rows.get(filmKey)).toOption.flatten
+
+  /** One read of the whole (TTL-bounded) collection, keyed by filmKey. Used by the sweep to avoid a
+   *  per-row `get`. A short read keeps what it read and fails OPEN for the rest (every unread film
+   *  eligible) rather than wedging — that costs OMDb calls, not correctness. */
   def all(): Map[String, OmdbAttempt] = {
-    import scala.jdk.CollectionConverters._
-    entries.asScala.toMap
-  }
-  def record(filmKey: String, level: Int, at: Instant): Unit = { entries.put(filmKey, OmdbAttempt(at, level)); () }
-}
-
-/**
- * Mongo-backed store: docs `{ _id: <filmKey>, at: ISODate, level: Int }` in the
- * `omdb_attempts` collection. Relaxed `{w:1,j:false}` write concern + fire-and-
- * forget writes (a lost backoff stamp just costs one extra OMDb probe). A 90-day
- * TTL on `at` — well beyond the 30-day backoff cap — reaps stamps for films that
- * left the corpus, so the collection can't grow unbounded. A `null` db disables
- * persistence (every film eligible, no backoff).
- */
-class MongoOmdbAttemptStore(db: Option[MongoDatabase], clock: Clock) extends OmdbAttemptStore with Logging {
-  private val CollectionName = "omdb_attempts"
-  private val TtlSeconds     = 90.days.toSeconds
-
-  private val coll: Option[MongoCollection[Document]] =
-    db.map(_.getCollection(CollectionName).withWriteConcern(services.tasks.MongoTaskQueue.QueueWriteConcern))
-
-  coll.foreach { c =>
-    val t = new Thread(() => ensureTtlIndex(c), s"$CollectionName-init"); t.setDaemon(true); t.start()
-  }
-
-  def get(filmKey: String): Option[OmdbAttempt] = coll.flatMap { c =>
-    Try(Await.result(c.find(Filters.eq("_id", filmKey)).headOption(), 5.seconds)).toOption.flatten.flatMap { d =>
-      Option(d.getDate("at")).map(date => OmdbAttempt(Instant.ofEpochMilli(date.getTime), d.getInteger("level", 0)))
-    }
-  }
-
-  /** One read of the whole (TTL-bounded) collection, keyed by filmKey. Used by the
-   *  sweep to avoid a per-row `get`; on a read failure returns empty so the sweep
-   *  fails OPEN (every film eligible) rather than wedging. */
-  def all(): Map[String, OmdbAttempt] = coll.map { c =>
-    // Keyset-paged: one row per film under a 90-day TTL makes this corpus-sized,
-    // and an unbounded `find()` at that scale recurses the async driver into
-    // `StackOverflowError` on an I/O thread, reaching the caller only as an
-    // unexplained timeout (see services.movies.KeysetScan). Fail-open is still the
-    // contract — a short read just makes more films eligible for a re-probe, which
-    // costs OMDb calls rather than correctness — but it should be short because
-    // Mongo was slow, not because one cursor died halfway.
     val entries = Map.newBuilder[String, OmdbAttempt]
-    val outcome = services.movies.KeysetScan.scan[Document](
-      label          = "OmdbAttemptStore.all",
-      batchSize      = 2000,
-      maxAttempts    = 3,
-      initialBackoff = 500.millis,
-      keyOf          = _.getString("_id"),
-      fetchPage      = (afterId, limit) => {
-        val find = afterId.fold(c.find())(a => c.find(Filters.gt("_id", a)))
-        Await.result(find.sort(Sorts.ascending("_id")).limit(limit).toFuture(), 30.seconds)
-      },
-    )(batch => entries ++= batch.flatMap { d =>
-      for {
-        key  <- Option(d.getString("_id"))
-        date <- Option(d.getDate("at"))
-      } yield key -> OmdbAttempt(Instant.ofEpochMilli(date.getTime), d.getInteger("level", 0))
-    })
+    val outcome = Try(rows.scan(entries ++= _)).fold(tools.ScanOutcome.Incomplete(_), identity)
     if (!outcome.isComplete)
       logger.warn(s"OmdbAttemptStore.all ${outcome.explain} — the sweep will treat unread films as eligible (fail-open)")
     entries.result()
-  }.getOrElse(Map.empty)
-
-  def record(filmKey: String, level: Int, at: Instant): Unit = coll.foreach { c =>
-    Try {
-      c.replaceOne(
-        Filters.eq("_id", filmKey),
-        Document("_id" -> filmKey, "at" -> new java.util.Date(at.toEpochMilli), "level" -> level),
-        new ReplaceOptions().upsert(true)
-      ).subscribe(
-        (_: org.mongodb.scala.result.UpdateResult) => (),
-        (exception: Throwable) => logger.debug(s"omdb_attempts write failed for $filmKey: ${exception.getMessage}"))
-    }.recover { case exception => logger.debug(s"omdb_attempts write failed for $filmKey: ${exception.getMessage}") }
   }
 
-  private def ensureTtlIndex(c: MongoCollection[Document]): Unit =
-    Try(Await.result(c.createIndex(Indexes.ascending("at"), new JIndexOptions().expireAfter(TtlSeconds, TimeUnit.SECONDS)).toFuture(), 10.seconds))
-      .recover { case exception => logger.debug(s"$CollectionName TTL index not created: ${exception.getMessage}") }
+  def record(filmKey: String, level: Int, at: Instant): Unit =
+    rows.putDetached(filmKey, OmdbAttempt(at, level))(exception => logger.debug(s"omdb_attempts write failed for $filmKey: ${exception.getMessage}"))
+}
+
+object KeyedOmdbAttemptStore {
+  /** `{ _id: <filmKey>, at: ISODate, level: Int }`. */
+  val Codec: DocCodec[OmdbAttempt] = new DocCodec[OmdbAttempt] {
+    def encode(attempt: OmdbAttempt): Document = Document("at" -> java.util.Date.from(attempt.at), "level" -> attempt.level)
+    def decode(document: Document): Option[OmdbAttempt] =
+      document.get("at").filter(_.isDateTime).map(date =>
+        OmdbAttempt(Instant.ofEpochMilli(date.asDateTime.getValue), document.get("level").filter(_.isNumber).fold(0)(_.asNumber.intValue)))
+    override def stampField: Option[String] = Some("at")
+  }
+}
+
+/** In-memory store for tests / Mongo-less local dev. */
+class InMemoryOmdbAttemptStore extends KeyedOmdbAttemptStore(new InMemoryKeyedDocStore(KeyedOmdbAttemptStore.Codec))
+
+/**
+ * Mongo-backed store: the `omdb_attempts` collection, written with the task queue's relaxed
+ * `{w:1,j:false}` write concern. A 90-day TTL on `at` — well beyond the 30-day backoff cap — reaps
+ * stamps for films that left the corpus, so the collection can't grow unbounded. No db disables
+ * persistence (every film eligible, no backoff).
+ */
+class MongoOmdbAttemptStore(db: Option[MongoDatabase]) extends KeyedOmdbAttemptStore(
+  db.fold(KeyedDocStore.absent[OmdbAttempt])(d => new MongoKeyedDocStore(
+    d.getCollection(MongoOmdbAttemptStore.Collection).withWriteConcern(services.tasks.MongoTaskQueue.QueueWriteConcern),
+    KeyedOmdbAttemptStore.Codec, expireAfter = Some(90.days))))
+
+object MongoOmdbAttemptStore {
+  val Collection = "omdb_attempts"
 }

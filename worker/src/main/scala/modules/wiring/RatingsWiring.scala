@@ -46,7 +46,7 @@ trait RatingsWiring { self: WorkerWiring =>
   // drives it, and its `orElse` write-back never overrides.
   // No cadence recorder: recording OMDb's id writes under another source's
   // key would corrupt that source's change history; the default no-op is correct.
-  lazy val omdbAttemptStore: OmdbAttemptStore = new MongoOmdbAttemptStore(mongoConnection.database, clock = clock)
+  lazy val omdbAttemptStore: OmdbAttemptStore = new MongoOmdbAttemptStore(mongoConnection.database)
   lazy val omdbBackfill: Option[OmdbBackfill] =
     configuration.omdbApiKey.map(_ => new OmdbBackfill(movieCache, omdbClient, omdbAttemptStore, clock = clock))
 

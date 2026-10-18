@@ -48,9 +48,6 @@ object RepositoryReadSwallows {
     ("common/src/main/scala/services/resolution/ResolutionStore.scala", "removeForFilm",
       "Try {") ->
       "a forget: 0 entries forgotten is what a failed read-then-delete did; logged, and the next re-resolve asks the source again",
-    ("common/src/main/scala/services/tasks/MongoBulkTaskResultStore.scala", "latest",
-      "Try(Await.result(c.find().batchSize(tools.MongoReplies.Default).toFuture(), 10.seconds).flatMap(toResult).map(r => r.taskType -> r).toMap)") ->
-      "each bulk job's last-outcome line beside the queue view: a failed read must not take the queue view down with it; logged at WARN",
     ("web/src/main/scala/services/auth/MongoAuthExchangeCodeStore.scala", "remove",
       "Try(Await.result(c.findOneAndDelete(Filters.eq(\"_id\", code)).headOption(), timeout))") ->
       "a single-use code whose findOneAndDelete outcome is unknown: answered as unredeemable, the visitor signs in again; a retry could not be honoured safely anyway; logged at WARN",
@@ -60,12 +57,6 @@ object RepositoryReadSwallows {
     ("web/src/main/scala/services/users/UserRepository.scala", "revokeSessions",
       "Try(Option(Await.result(c.findOneAndUpdate(Filters.eq(\"id\", id), Updates.inc(\"sessionVersion\", 1),") ->
       "None is answered 503 'retry' by AuthController.revokeSessions — never read as 'no such user'",
-    ("worker/src/main/scala/services/enrichment/OmdbAttemptStore.scala", "get",
-      "Try(Await.result(c.find(Filters.eq(\"_id\", filmKey)).headOption(), 5.seconds)).toOption.flatten.flatMap { d =>") ->
-      "the backoff stamp on the single-film path fails OPEN like `all()`: an unread stamp makes the film eligible, costing one OMDb call, never a missed film",
-    ("worker/src/main/scala/services/tasks/ChunkPageMemo.scala", "recall",
-      "Try(Await.result(c.find(Filters.eq(\"_id\", id(cinema, key))).first().headOption(), 10.seconds)).toOption.flatten.flatMap { d =>") ->
-      "a page MEMO: a miss re-parses the page, the safe direction",
     ("worker/src/main/scala/services/tasks/MongoChunkScrapeStore.scala", "startRun",
       "Try {") ->
       "None is 'did not claim the run': the scrape is not started twice, and the next tick tries again; logged"

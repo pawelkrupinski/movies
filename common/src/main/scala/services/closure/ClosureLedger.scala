@@ -1,14 +1,10 @@
 package services.closure
 
 import org.mongodb.scala.bson.collection.immutable.Document
-import org.mongodb.scala.model.{Filters, ReplaceOptions}
-import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture, documentToUntypedDocument}
+import org.mongodb.scala.{MongoDatabase, documentToUntypedDocument}
+import services.keyed.{DocCodec, InMemoryKeyedDocStore, KeyedDocStore, MongoKeyedDocStore}
 
 import java.time.Instant
-import java.util.concurrent.ConcurrentHashMap
-import scala.concurrent.Await
-import scala.concurrent.duration._
-import scala.jdk.CollectionConverters._
 
 /** What the closure sweep found a venue to be. */
 enum LedgerKind(val stored: String) {
@@ -42,39 +38,31 @@ trait ClosureLedger extends ClosureLedgerReader {
   def withdraw(cinema: String): Unit
 }
 
-final class InMemoryClosureLedger extends ClosureLedger {
-  private val byCinema = new ConcurrentHashMap[String, LedgerEntry]()
-  def entries(): Map[String, LedgerEntry]               = byCinema.asScala.toMap
-  def record(cinema: String, entry: LedgerEntry): Unit  = { byCinema.put(cinema, entry); () }
-  def withdraw(cinema: String): Unit                    = { byCinema.remove(cinema); () }
+/** The ledger over its rows: Mongo and in-memory differ only in the rows. A read or write that
+ *  fails throws — the sweep must not take an unread ledger for an empty one. */
+class KeyedClosureLedger(rows: KeyedDocStore[LedgerEntry]) extends ClosureLedger {
+  def entries(): Map[String, LedgerEntry]              = rows.all()
+  def record(cinema: String, entry: LedgerEntry): Unit = rows.put(cinema, entry)
+  def withdraw(cinema: String): Unit                   = rows.delete(cinema)
 }
 
-/** The `venue_closures` collection in the country's database: `{_id: displayName,
- *  confirmedAt, kind, evidence}`. A handful of rows, so every read is a whole-collection find. */
-final class MongoClosureLedger(db: MongoDatabase) extends ClosureLedger {
-  private val coll: MongoCollection[Document] = db.getCollection[Document](MongoClosureLedger.Collection)
-
-  def entries(): Map[String, LedgerEntry] =
-    Await.result(coll.find().batchSize(tools.MongoReplies.Default).toFuture(), 10.seconds).map(MongoClosureLedger.fromDocument).toMap
-
-  def record(cinema: String, entry: LedgerEntry): Unit = {
-    Await.result(coll.replaceOne(Filters.eq("_id", cinema), MongoClosureLedger.toDocument(cinema, entry), ReplaceOptions().upsert(true)).toFuture(), 10.seconds)
-    ()
-  }
-
-  def withdraw(cinema: String): Unit = {
-    Await.result(coll.deleteOne(Filters.eq("_id", cinema)).toFuture(), 10.seconds)
-    ()
+object KeyedClosureLedger {
+  /** `{_id: displayName, confirmedAt, kind, evidence}`. */
+  val Codec: DocCodec[LedgerEntry] = new DocCodec[LedgerEntry] {
+    def encode(entry: LedgerEntry): Document =
+      Document("confirmedAt" -> java.util.Date.from(entry.at), "kind" -> entry.kind.stored, "evidence" -> entry.evidence)
+    def decode(d: Document): Option[LedgerEntry] =
+      d.get("confirmedAt").filter(_.isDateTime).map(at => LedgerEntry(LedgerKind.parse(Option(d.getString("kind"))),
+        Instant.ofEpochMilli(at.asDateTime.getValue), Option(d.getString("evidence")).getOrElse("")))
   }
 }
+
+final class InMemoryClosureLedger extends KeyedClosureLedger(new InMemoryKeyedDocStore(KeyedClosureLedger.Codec))
+
+/** The `venue_closures` collection in the country's database. A handful of rows. */
+final class MongoClosureLedger(db: MongoDatabase)
+  extends KeyedClosureLedger(new MongoKeyedDocStore(db.getCollection(MongoClosureLedger.Collection), KeyedClosureLedger.Codec))
 
 object MongoClosureLedger {
   val Collection = "venue_closures"
-
-  private[closure] def toDocument(cinema: String, entry: LedgerEntry): Document =
-    Document("_id" -> cinema, "confirmedAt" -> new java.util.Date(entry.at.toEpochMilli), "kind" -> entry.kind.stored, "evidence" -> entry.evidence)
-
-  private[closure] def fromDocument(d: Document): (String, LedgerEntry) =
-    d.getString("_id") -> LedgerEntry(LedgerKind.parse(Option(d.getString("kind"))),
-      Instant.ofEpochMilli(d.getDate("confirmedAt").getTime), Option(d.getString("evidence")).getOrElse(""))
 }

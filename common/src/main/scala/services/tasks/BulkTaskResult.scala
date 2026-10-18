@@ -67,16 +67,7 @@ trait BulkTaskResultStore {
   def latest(): Map[TaskType, BulkTaskResult]
 }
 
-/** In-memory [[BulkTaskResultStore]] — one entry per taskType, last write wins.
- *  Used by tests and Mongo-less dev; no business logic of its own (the handler
- *  above the store decides what a result is), so the real/fake split is trivial. */
-class InMemoryBulkTaskResultStore extends BulkTaskResultStore {
-  private val results = new java.util.concurrent.ConcurrentHashMap[TaskType, BulkTaskResult]()
-
-  override def record(result: BulkTaskResult): Unit = { results.put(result.taskType, result); () }
-
-  override def latest(): Map[TaskType, BulkTaskResult] = {
-    import scala.jdk.CollectionConverters._
-    results.asScala.toMap
-  }
-}
+/** In-memory [[BulkTaskResultStore]] — one entry per taskType, last write wins. Used by tests and
+ *  Mongo-less dev; the same store as Mongo's over an in-memory map. */
+class InMemoryBulkTaskResultStore
+  extends KeyedBulkTaskResultStore(new services.keyed.InMemoryKeyedDocStore(KeyedBulkTaskResultStore.Codec))

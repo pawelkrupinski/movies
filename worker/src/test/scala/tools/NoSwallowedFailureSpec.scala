@@ -238,7 +238,7 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
     ("common/src/main/scala/services/scrapes/MongoScrapeGuardLedger.scala", "attempt",
       "case Failure(e)     =>") ->
       "None IS the ledger's typed \"could not read\" (distinct from Some(Fresh)); ScrapeLanding never writes back over it",
-    ("common/src/main/scala/services/tasks/MongoBulkTaskResultStore.scala", "latest",
+    ("common/src/main/scala/services/tasks/KeyedBulkTaskResultStore.scala", "latest",
       ".recover { case exception =>") ->
       "the /tasks page's last-results panel: an unreadable store shows no results, and nothing is decided from it",
     ("common/src/main/scala/tools/HeapDumper.scala", "dump",

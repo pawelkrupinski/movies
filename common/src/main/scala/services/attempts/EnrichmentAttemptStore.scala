@@ -1,13 +1,9 @@
 package services.attempts
 
-import com.mongodb.client.model.UpdateOptions
-import org.mongodb.scala.model.{Filters, Updates}
-import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture, documentToUntypedDocument}
+import org.mongodb.scala.{Document, MongoDatabase, documentToUntypedDocument}
 import play.api.Logging
+import services.keyed.{DocCodec, InMemoryKeyedDocStore, KeyedDocStore, MongoKeyedDocStore}
 
-import java.util.concurrent.ConcurrentHashMap
-import scala.concurrent.Await
-import scala.concurrent.duration._
 import scala.util.Try
 
 /**
@@ -38,52 +34,35 @@ object EnrichmentAttemptStore {
   val NoOp: EnrichmentAttemptStore = (_, _) => ()
 }
 
-/** In-memory store for tests and Mongo-less local dev. */
-class InMemoryEnrichmentAttemptStore extends EnrichmentAttemptStore with EnrichmentAttemptReader {
-  private val attempts = new ConcurrentHashMap[String, EnrichmentAttempt]()
-  override def record(key: String, attempt: EnrichmentAttempt): Unit = { attempts.put(key, attempt); () }
-  override def retention: services.retention.StampedRows = services.retention.StampedRows.inMap(attempts)(_.at)
-  def all(): Seq[(String, EnrichmentAttempt)] = {
-    import scala.jdk.CollectionConverters._
-    attempts.asScala.toSeq
-  }
+/**
+ * The store over its rows, one document per (source, film) overwritten each attempt — see
+ * [[EnrichmentAttempt]] on why only the last is kept. Mongo and in-memory differ only in the rows.
+ */
+class KeyedEnrichmentAttemptStore(rows: KeyedDocStore[EnrichmentAttempt])
+    extends EnrichmentAttemptStore with EnrichmentAttemptReader with Logging {
+  override def record(key: String, attempt: EnrichmentAttempt): Unit =
+    rows.putDetached(key, attempt)(exception => logger.debug(s"Enrichment-attempt write failed for $key: ${exception.getMessage}"))
+
+  override def retention: services.retention.StampedRows = rows.retention
+
+  /** A failed read THROWS: answered empty, the report said "never attempted" about a film whose
+   *  log it simply could not read. */
   override def forKeys(keys: Seq[String]): Map[String, EnrichmentAttempt] =
-    keys.flatMap(k => Option(attempts.get(k)).map(k -> _)).toMap
+    if (keys.isEmpty) Map.empty else rows.getAll(keys)
+
+  def all(): Seq[(String, EnrichmentAttempt)] = rows.all().toSeq
 }
+
+/** In-memory store for tests and Mongo-less local dev. */
+class InMemoryEnrichmentAttemptStore extends KeyedEnrichmentAttemptStore(new InMemoryKeyedDocStore(EnrichmentAttempts.Codec))
 
 /**
  * Mongo-backed store, collection `enrichment_attempts` with documents
  * `{ _id: <key>, at: ISODate, durationMs: Long, outcome: "changed"|"unchanged"|"failed",
- *    detail: String }`.
- *
- * One document per (source, film), overwritten each attempt — see
- * [[EnrichmentAttempt]] on why only the last is kept.
+ *    detail: String }`. The worker writes it; the web's debug page reads it, from the mirror.
  */
-class MongoEnrichmentAttemptStore(db: Option[MongoDatabase]) extends EnrichmentAttemptStore with Logging {
-  private val coll: Option[MongoCollection[Document]] = db.map(_.getCollection(EnrichmentAttempts.Collection))
-
-  override def retention: services.retention.StampedRows =
-    coll.fold(services.retention.StampedRows.Unswept)(services.retention.StampedRows.inMongo(_, "at"))
-
-  override def record(key: String, attempt: EnrichmentAttempt): Unit = coll.foreach { c =>
-    val (outcome, detail) = EnrichmentAttempts.encodeOutcome(attempt.outcome)
-    Try {
-      c.updateOne(
-        Filters.eq("_id", key),
-        Updates.combine(
-          Updates.set("at",         attempt.at),
-          Updates.set("durationMs", attempt.durationMs),
-          Updates.set("outcome",    outcome),
-          Updates.set("detail",     detail)
-        ),
-        new UpdateOptions().upsert(true)
-      ).subscribe(
-        (_: org.mongodb.scala.result.UpdateResult) => (),
-        (exception: Throwable) => logger.debug(s"Enrichment-attempt write failed for $key: ${exception.getMessage}")
-      )
-    }.recover { case exception => logger.debug(s"Enrichment-attempt write failed for $key: ${exception.getMessage}") }
-  }
-}
+class MongoEnrichmentAttemptStore(db: Option[MongoDatabase]) extends KeyedEnrichmentAttemptStore(
+  db.fold(KeyedDocStore.absent[EnrichmentAttempt])(d => new MongoKeyedDocStore(d.getCollection(EnrichmentAttempts.Collection), EnrichmentAttempts.Codec)))
 
 /** Read-only view of `enrichment_attempts` for the dev debug page (the web app): one film's
  *  attempts at a time, never the whole collection. */
@@ -99,19 +78,6 @@ object EnrichmentAttemptReader {
   val empty: EnrichmentAttemptReader = new EnrichmentAttemptReader {
     override def forKeys(keys: Seq[String]): Map[String, EnrichmentAttempt] = Map.empty
   }
-}
-
-class MongoEnrichmentAttemptReader(db: Option[MongoDatabase]) extends EnrichmentAttemptReader with Logging {
-  private val coll: Option[MongoCollection[Document]] = db.map(_.getCollection(EnrichmentAttempts.Collection))
-
-  override def forKeys(keys: Seq[String]): Map[String, EnrichmentAttempt] =
-    if (keys.isEmpty) Map.empty
-    else coll.fold(Map.empty[String, EnrichmentAttempt]) { c =>
-      // A failed read THROWS: answered empty, the report said "never attempted" about a film
-      // whose log it simply could not read.
-      Await.result(c.find(Filters.in("_id", keys*)).batchSize(tools.MongoReplies.Default).toFuture(), 10.seconds)
-        .flatMap(EnrichmentAttempts.decodeRecord).toMap
-    }
 }
 
 /** Shared encode/decode so the writer and reader can't drift on the wire format. */
@@ -136,16 +102,24 @@ object EnrichmentAttempts {
     case _       => AttemptOutcome.Unchanged
   }
 
-  /** None for a malformed/partial document, so one bad row can't fail the page. */
-  def decodeRecord(document: Document): Option[(String, EnrichmentAttempt)] =
-    Try {
-      val key        = document.getString("_id")
-      val at         = document.getDate("at").toInstant
-      val durationMs = document.get("durationMs").map(_.asNumber().longValue()).getOrElse(0L)
-      val outcome    = decodeOutcome(
-        Option(document.getString("outcome")).getOrElse(Unchanged),
-        Option(document.getString("detail")).getOrElse("")
-      )
-      key -> EnrichmentAttempt(at, durationMs, outcome)
-    }.toOption
+  /** The document beside `_id`; None from `decode` for a malformed/partial one, so one bad row
+   *  can't fail the page. */
+  val Codec: DocCodec[EnrichmentAttempt] = new DocCodec[EnrichmentAttempt] {
+    def encode(attempt: EnrichmentAttempt): Document = {
+      val (outcome, detail) = encodeOutcome(attempt.outcome)
+      // By name: the order the store's earlier `$set` upsert wrote them in, so every row reads alike.
+      Document("at" -> java.util.Date.from(attempt.at), "detail" -> detail, "durationMs" -> attempt.durationMs, "outcome" -> outcome)
+    }
+    def decode(document: Document): Option[EnrichmentAttempt] =
+      Try {
+        val at         = document.getDate("at").toInstant
+        val durationMs = document.get("durationMs").map(_.asNumber().longValue()).getOrElse(0L)
+        val outcome    = decodeOutcome(
+          Option(document.getString("outcome")).getOrElse(Unchanged),
+          Option(document.getString("detail")).getOrElse("")
+        )
+        EnrichmentAttempt(at, durationMs, outcome)
+      }.toOption
+    override def stampField: Option[String] = Some("at")
+  }
 }

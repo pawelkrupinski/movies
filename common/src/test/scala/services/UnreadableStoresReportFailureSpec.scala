@@ -5,7 +5,7 @@ import org.mongodb.scala.{Document, MongoClient}
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.attempts.MongoEnrichmentAttemptReader
+import services.attempts.MongoEnrichmentAttemptStore
 import services.cadence.MongoRatingCadenceReader
 import services.config.MongoEnvRegistryStore
 import services.scrapes.MongoScrapeGuardLedger
@@ -28,8 +28,8 @@ class UnreadableStoresReportFailureSpec extends AnyFlatSpec with Matchers with B
     new MongoScrapeGuardLedger(Some(db)).get(Multikino) shouldBe None
   }
 
-  "MongoEnrichmentAttemptReader.forKeys" should "throw, not report a film as never attempted" in {
-    an[Exception] should be thrownBy new MongoEnrichmentAttemptReader(Some(db)).forKeys(Seq("imdb|tmdb:1"))
+  "MongoEnrichmentAttemptStore.forKeys" should "throw, not report a film as never attempted" in {
+    an[Exception] should be thrownBy new MongoEnrichmentAttemptStore(Some(db)).forKeys(Seq("imdb|tmdb:1"))
   }
 
   "MongoRatingCadenceReader.forKeys" should "throw, not report a film as having no cadence history" in {
