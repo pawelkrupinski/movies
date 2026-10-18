@@ -648,10 +648,10 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "derive any house's initials from its names, never a list of them" in {
-    def names(line: String) = StageHouses.parse(Iterator(line))
-    StageHouses.initials shouldBe Set("rbo", "roh")
+    def names(line: String) = services.movies.StageHouse.parse(Iterator(line))
+    services.movies.StageHouse.initials shouldBe Set("rbo", "roh")
     // any house of the table: three initialled words or more, its articles and conjunctions skipped
-    StageHouses.initialsOfHouses(names("The English National Opera|ENO Live") ++ names("Metropolitan Opera|The Met")) shouldBe Set("eno")
+    services.movies.StageHouse.initialsOfHouses(names("The English National Opera|ENO Live") ++ names("Metropolitan Opera|The Met")) shouldBe Set("eno")
   }
 
   "a stage house's relay" should "know a record billing its house from one billing another's" in {

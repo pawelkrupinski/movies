@@ -1,7 +1,7 @@
 package services.identity
 
 import services.identity.IdentityMeasures.*
-import services.movies.{TitleContainment, TitleSeason, TitleWords}
+import services.movies.{TitleContainment, TitleSeason}
 import services.resolution.SearchTitles
 
 /**
@@ -124,7 +124,7 @@ object StageRelays {
   /** Words naming an opera or ballet HOUSE, or its relay, in the languages venues bill one in: a title carrying one bills a
    *  STAGING ("Paris Opera Ballett: …", "RB&O Live: Tosca (Oper)", "Balet z Opery Paryskiej …", "RBO …", "ROH …"). The
    *  word as its own token: "Dreigroschenoper" or "Operation" is no house. */
-  private val StageHouseWords: Set[String] = TitleWords.tokens(TitleWords.Concept.StageHouse) ++ StageHouses.initials
+  private def StageHouseWords: Set[String] = services.movies.StageHouse.Words
 
   /** Is `f` a SCREEN NAMESAKE of the work a stage house's relay bills: the listing's title names an opera or ballet house
    *  beside the work ([[StageHouseWords]]) and none of the film's own titles bills one? A house's banner names its
@@ -137,20 +137,11 @@ object StageRelays {
   /** Does one of `titles` name an opera or ballet house ([[StageHouseWords]])? A house's initials only standing alone, or
    *  split by punctuation ([[splitHouseInitials]]: UK Penrith's "RB&O 26/27: Carmen", DE "Carmen (RB+O 2026/27)"): DE
    *  "Jin-Roh - Die Wolfsbrigade" is Okiura's anime, no Royal Opera House relay, whatever its hyphen splits off. */
-  private[identity] def billsAStageHouse(titles: Seq[String]): Boolean = titles.exists(title =>
-    TitleContainment.tokens(title).exists(word => StageHouseWords(word) && !StageHouses.initials(word)) ||
-      StandaloneHouseInitials.exists(_.findFirstIn(title).isDefined) || splitHouseInitials(TitleContainment.tokens(title)))
-  /** A house's initials ([[StageHouses.initials]]) as a word of its own: no letter or digit beside them, nor a hyphened
-   *  word ("Tosca (ROH)", never "Jin-Roh"). */
-  private val StandaloneHouseInitials = Option.when(StageHouses.initials.nonEmpty)(
-    StageHouses.initials.toSeq.sorted.map(java.util.regex.Pattern.quote).mkString("""(?iu)(?<![\p{L}\d]-?)(?:""", "|", """)(?!-?[\p{L}\d])""").r)
-  /** Do `words` hold a house's initials that punctuation split into words ("RB&O" read as "rb", "o")? */
-  private def splitHouseInitials(words: Seq[String]): Boolean =
-    initialsJoined(words).exists(word => StageHouses.initials(word) && !words.contains(word))
+  private[identity] def billsAStageHouse(titles: Seq[String]): Boolean = services.movies.StageHouse.billed(titles)
   /** Does a title fragment name a house: a house word, or a house's split initials? */
   private def namesAHouse(fragment: String): Boolean = {
     val words = TitleContainment.tokens(fragment)
-    words.exists(StageHouseWords) || splitHouseInitials(words)
+    words.exists(StageHouseWords) || services.movies.StageHouse.splitInitials(words)
   }
 
   /** What a stage house's relay title bills, read off its FRAGMENTS — its delimited pieces ([[pieces]]), each bracket
@@ -243,7 +234,7 @@ object StageRelays {
   def anotherProduction(listing: Listing, film: Film): Boolean =
     listing.billsAStageHouse && listing.screenedSeason.exists(season =>
       anotherSeasonsRelay(film, season) || billsAnotherHouse(listing, film) && (
-        if (listing.relay.houses.exists(house => particularWords(initialsJoined(house)).nonEmpty))
+        if (listing.relay.houses.exists(house => particularWords(services.movies.StageHouse.initialsJoined(house)).nonEmpty))
           services.movies.ListingConstraints.seasonsApart(Some(season), film.season, film.year).isDefined
         else listing.year.isEmpty && listing.relay.workIds.nonEmpty && datedAway(film, season)))
   /** Is the record a SEASON's relay ([[Film.season]]: its title names the season, "Royal Ballet & Opera 2024/25: …") from
@@ -282,33 +273,20 @@ object StageRelays {
     name.filter(word => word.length >= 2 && !word.forall(_.isDigit) && !HouseCommonWords(word))
   /** Do two house names NAME one house: a word in common beyond [[HouseCommonWords]], one's word a prefix of the other's
    *  ("Met", "Metropolitan"), or one's word the other's initials ("RBO" of "Royal Ballet & Opera", "ROH" of "Royal Opera
-   *  House"), or two names of one house ([[StageHouses]]: "ROH" and "Royal Ballet & Opera", the house renamed)? Never a
+   *  House"), or two names of one house ([[services.movies.StageHouse]]: "ROH" and "Royal Ballet & Opera", the house renamed)? Never a
    *  name of common words alone ("Opera", "The Ballet"): it names no house in particular. Numbers are no part of a name
    *  ("RBO 26/27"). */
   private[identity] def namesOneHouse(a: Seq[String], b: Seq[String]): Boolean = {
-    def own(name: Seq[String]) = particularWords(initialsJoined(name))
-    def initials(name: Seq[String]) = StageHouses.initialsOf(name)
+    def own(name: Seq[String]) = particularWords(services.movies.StageHouse.initialsJoined(name))
+    def initials(name: Seq[String]) = services.movies.StageHouse.initialsOf(name)
     val (ownA, ownB) = (own(a), own(b))
     ownA.exists(x => ownB.exists(y => x == y || (x.length >= 3 && y.startsWith(x)) || (y.length >= 3 && x.startsWith(y)))) ||
       ownA.exists(x => x.length >= 2 && x == initials(b)) || ownB.exists(y => y.length >= 2 && y == initials(a)) ||
       oneHouseRenamed(ownA.toSet, ownB.toSet)
   }
-  /** `name` with each run of a house's INITIALS that punctuation split into words joined back into one: DE "RB+O" folds to
-   *  "rb" and "o", the initials "rbo" of Royal Ballet & Opera. A run is two words or more of two letters at most, one of
-   *  them a single letter — "de la" are words, never initials. */
-  private def initialsJoined(name: Seq[String]): Seq[String] = {
-    def short(word: String) = word.length <= 2 && word.forall(_.isLetter)
-    def isInitials(run: Seq[String]) = run.sizeIs >= 2 && run.exists(_.length == 1)
-    name.foldLeft(Vector.empty[Vector[String]]) { (runs, word) =>
-      runs.lastOption match {
-        case Some(run) if short(word) && run.forall(short) => runs.init :+ (run :+ word)
-        case _                                             => runs :+ Vector(word)
-      }
-    }.flatMap(run => if (run.forall(short) && isInitials(run)) Seq(run.mkString) else run)
-  }
-  /** Each multi-named house's names ([[StageHouses]]) as the words that say which house ([[particularWords]]). */
+  /** Each multi-named house's names ([[services.movies.StageHouse]]) as the words that say which house ([[particularWords]]). */
   private lazy val housesByName: Seq[Set[Set[String]]] =
-    StageHouses.namedWithInitials.map(_.map(name => particularWords(name).toSet).filter(_.nonEmpty).toSet)
+    services.movies.StageHouse.namedWithInitials.map(_.map(name => particularWords(name).toSet).filter(_.nonEmpty).toSet)
   /** Are `a` and `b` — particular words — exactly two names of one house: a banner spelling one of its names, nothing
    *  more ("Royal Shakespeare" spells none of the Royal Opera House's)? */
   private def oneHouseRenamed(a: Set[String], b: Set[String]): Boolean =
@@ -320,7 +298,7 @@ object StageRelays {
    *  Flicks' "NT Live: Hay Fever" ×131 read its own record as an overlap. Initials only, never a word two houses share:
    *  "Royal Shakespeare Company" is no "Royal Ballet & Opera", nor "National Theatre at Home" "NT Live". */
   private[identity] def abbreviates(a: Seq[String], b: Seq[String]): Boolean = {
-    def words(name: Seq[String]) = name.filterNot(word => word.forall(_.isDigit) || RelayWords(word) || StageHouses.UninitialledWords(word))
+    def words(name: Seq[String]) = name.filterNot(word => word.forall(_.isDigit) || RelayWords(word) || services.movies.StageHouse.UninitialledWords(word))
     def short(name: Seq[String]) = words(name) match {
       case Seq(one) if one.length >= 2 && one.length <= 4 => Some(one)
       case _                                             => None
