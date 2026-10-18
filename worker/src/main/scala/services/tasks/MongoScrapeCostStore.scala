@@ -1,10 +1,10 @@
 package services.tasks
 
 import org.mongodb.scala.bson.collection.immutable.Document
-import org.mongodb.scala.model.{Filters, PushOptions, Sorts, UpdateOptions, Updates}
-import org.mongodb.scala.{MongoCollection, MongoDatabase, ObservableFuture, SingleObservableFuture, documentToUntypedDocument}
+import org.mongodb.scala.model.{Filters, PushOptions, UpdateOptions, Updates}
+import org.mongodb.scala.{MongoCollection, MongoDatabase, SingleObservableFuture, documentToUntypedDocument}
 import play.api.Logging
-import services.movies.KeysetScan
+import services.keyed.MongoKeyedDocStore
 import tools.ScanOutcome
 
 import scala.concurrent.Await
@@ -29,21 +29,11 @@ final class MongoScrapeCostStore(db: MongoDatabase) extends ScrapeCostStore with
       .failed.foreach(e => logger.warn(s"scrape cost for $dedupKey not recorded: ${e.getMessage}"))
 
   // Keyset-paged, NOT one unbounded find(): one row per cinema is ~5,000 on the US
-  // worker, past the size where a single cursor can StackOverflow the async driver
-  // (see KeysetScan).
+  // worker, past the size where a single cursor can StackOverflow the async driver.
+  // Not a KeyedDocStore: a write is a server-side `$push` + `$slice`, never a replace.
   def recent(): Map[String, Seq[ScrapeCost]] = {
     val costs = Map.newBuilder[String, Seq[ScrapeCost]]
-    KeysetScan.scan[Document](
-      label          = "MongoScrapeCostStore.recent",
-      batchSize      = 2000,
-      maxAttempts    = 3,
-      initialBackoff = 500.millis,
-      keyOf          = _.getString("_id"),
-      fetchPage      = (afterId, limit) => {
-        val find = afterId.fold(coll.find())(a => coll.find(Filters.gt("_id", a)))
-        Await.result(find.sort(Sorts.ascending("_id")).limit(limit).toFuture(), 30.seconds)
-      },
-    )(batch => batch.foreach { document =>
+    MongoKeyedDocStore.scanDocuments(coll, "MongoScrapeCostStore.recent")(_.foreach { document =>
       val tasks = document.get("tasks").filter(_.isArray).toSeq
         .flatMap(_.asArray().getValues.asScala).filter(_.isNumber).map(v => ScrapeCost(v.asNumber().intValue()))
       costs += document.getString("_id") -> tasks

@@ -1,11 +1,10 @@
 package services.tasks
 
-import org.mongodb.scala.{Document, MongoCollection, MongoDatabase, ObservableFuture}
-import org.mongodb.scala.model.{Filters, IndexOptions, Indexes, ReplaceOptions}
+import org.mongodb.scala.{Document, MongoDatabase}
 import play.api.Logging
+import services.keyed.{DocCodec, InMemoryKeyedDocStore, KeyedDocStore, MongoKeyedDocStore}
 
-import java.util.concurrent.TimeUnit
-import scala.concurrent.Await
+import java.time.Clock
 import scala.concurrent.duration.*
 import scala.util.Try
 
@@ -34,33 +33,39 @@ object ChunkPageMemo {
   def digest(page: String): String = s"${page.length}:${page.hashCode}"
 }
 
-/** The memo in Mongo (`scrape_chunk_pages`), because a worker restarts on every deploy, many times
- *  between two scrapes of a venue: one small document per (cinema, chunk key), gone a week after it
- *  was last written — a day page outlives its date by that at most. */
-final class MongoChunkPageMemo(db: Option[MongoDatabase], clock: java.time.Clock)
-    extends ChunkPageMemo with Logging {
-  private val pages: Option[MongoCollection[Document]] = db.map(_.getCollection("scrape_chunk_pages"))
-
-  pages.foreach { c =>
-    val t = new Thread(() => Try(Await.result(c.createIndex(Indexes.ascending("at"),
-      IndexOptions().expireAfter(7L, TimeUnit.DAYS)).toFuture(), 10.seconds))
-      .failed.foreach(e => logger.warn(s"scrape_chunk_pages index creation failed: ${e.getMessage}")), "chunk-page-memo-init")
-    t.setDaemon(true); t.start()
-  }
-
+/** The memo over its rows, one small document per (cinema, chunk key): Mongo and in-memory differ only
+ *  in the rows. A read that fails answers None and a write that fails is logged — a saving, never an input. */
+class KeyedChunkPageMemo(rows: KeyedDocStore[ChunkPageMemo.Entry]) extends ChunkPageMemo with Logging {
   private def id(cinema: String, key: String) = s"$cinema|$key"
 
-  def recall(cinema: String, key: String): Option[ChunkPageMemo.Entry] = pages.flatMap { c =>
-    Try(Await.result(c.find(Filters.eq("_id", id(cinema, key))).first().headOption(), 10.seconds)).toOption.flatten.flatMap { d =>
+  def recall(cinema: String, key: String): Option[ChunkPageMemo.Entry] = Try(rows.get(id(cinema, key))).toOption.flatten
+
+  def remember(cinema: String, key: String, entry: ChunkPageMemo.Entry): Unit =
+    Try(rows.put(id(cinema, key), entry)).failed.foreach(e => logger.warn(s"scrape_chunk_pages write for $cinema/$key failed: ${e.getMessage}"))
+}
+
+object KeyedChunkPageMemo {
+  /** `{_id: cinema|key, page, parser, slice, at}`, `at` when it was written by `clock`. */
+  def codec(clock: Clock): DocCodec[ChunkPageMemo.Entry] = new DocCodec[ChunkPageMemo.Entry] {
+    def encode(entry: ChunkPageMemo.Entry): Document =
+      Document("page" -> entry.page, "parser" -> entry.parser, "slice" -> entry.slice, "at" -> new java.util.Date(clock.millis()))
+    def decode(d: Document): Option[ChunkPageMemo.Entry] =
       for { page <- d.get("page").map(_.asString.getValue); parser <- d.get("parser").filter(_.isString).map(_.asString.getValue)
             slice <- d.get("slice").map(_.asString.getValue) } yield ChunkPageMemo.Entry(page, parser, slice)
-    }
+    override def stampField: Option[String] = Some("at")
   }
+}
 
-  def remember(cinema: String, key: String, entry: ChunkPageMemo.Entry): Unit = pages.foreach { c =>
-    Try(Await.result(c.replaceOne(Filters.eq("_id", id(cinema, key)),
-      Document("_id" -> id(cinema, key), "page" -> entry.page, "parser" -> entry.parser, "slice" -> entry.slice,
-        "at" -> new java.util.Date(clock.millis())), ReplaceOptions().upsert(true)).toFuture(), 10.seconds))
-      .failed.foreach(e => logger.warn(s"scrape_chunk_pages write for $cinema/$key failed: ${e.getMessage}"))
-  }
+/** The memo in a map: tests, and a worker without Mongo. */
+final class InMemoryChunkPageMemo(clock: Clock) extends KeyedChunkPageMemo(new InMemoryKeyedDocStore(KeyedChunkPageMemo.codec(clock)))
+
+/** The memo in Mongo (`scrape_chunk_pages`), because a worker restarts on every deploy, many times
+ *  between two scrapes of a venue: each document gone a week after it was last written — a day page
+ *  outlives its date by that at most. */
+final class MongoChunkPageMemo(db: Option[MongoDatabase], clock: Clock) extends KeyedChunkPageMemo(
+  db.fold(KeyedDocStore.absent[ChunkPageMemo.Entry])(d =>
+    new MongoKeyedDocStore(d.getCollection(MongoChunkPageMemo.Collection), KeyedChunkPageMemo.codec(clock), expireAfter = Some(7.days))))
+
+object MongoChunkPageMemo {
+  val Collection = "scrape_chunk_pages"
 }

@@ -9,13 +9,6 @@ import java.time.Instant
 import scala.collection.mutable
 import scala.concurrent.duration.*
 
-/** In-memory twin of [[MongoChunkPageMemo]]. */
-final class InMemoryChunkPageMemo extends ChunkPageMemo {
-  private val entries = mutable.Map.empty[(String, String), ChunkPageMemo.Entry]
-  def recall(cinema: String, key: String): Option[ChunkPageMemo.Entry] = synchronized(entries.get(cinema -> key))
-  def remember(cinema: String, key: String, entry: ChunkPageMemo.Entry): Unit = synchronized(entries.update(cinema -> key, entry))
-}
-
 /** A day page identical to the one a chunk last parsed is not parsed again: its parse is reused. */
 class ChunkPageMemoSpec extends AnyFlatSpec with Matchers {
 
@@ -36,7 +29,7 @@ class ChunkPageMemoSpec extends AnyFlatSpec with Matchers {
   private final class World {
     val scraper = new PagedScraper(mutable.Map("2026-10-02" -> "<p>one</p>"))
     val store   = new InMemoryChunkScrapeStore()
-    val memo    = new InMemoryChunkPageMemo
+    val memo    = new InMemoryChunkPageMemo(java.time.Clock.fixed(Instant.parse("2026-10-01T10:00:00Z"), java.time.ZoneOffset.UTC))
     val seen    = mutable.Buffer.empty[String]
     val clock   = java.time.Clock.fixed(Instant.parse("2026-10-01T10:00:00Z"), java.time.ZoneOffset.UTC)
     val handler = new ScrapeChunkHandler(Map(Multikino.displayName -> scraper), store, clock = clock, pageMemo = memo,

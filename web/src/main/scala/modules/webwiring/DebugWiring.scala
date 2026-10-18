@@ -35,7 +35,7 @@ trait DebugWiring { self: Wiring =>
   // Read-only view of the worker-written `enrichment_attempts` collection — the
   // last fetch per (source, film) behind the /debug row's expand section.
   lazy val enrichmentAttemptReader: services.attempts.EnrichmentAttemptReader =
-    new services.attempts.MongoEnrichmentAttemptReader(movieMirrorConnection.database)
+    new services.attempts.MongoEnrichmentAttemptStore(movieMirrorConnection.database)
 
   // ── Dev-only per-country /debug data ─────────────────────────────────────────
   // The /debug pages read ONE country's Mongo db. In prod that's this
@@ -127,7 +127,7 @@ trait DebugWiring { self: Wiring =>
         val stack = new DebugStack(country, repository,
           new MongoTaskQueue(conn.database),
           new services.cadence.MongoRatingCadenceReader(conn.database),
-          new services.attempts.MongoEnrichmentAttemptReader(conn.database),
+          new services.attempts.MongoEnrichmentAttemptStore(conn.database),
           readModel              = () => readModel.get(),
           ratingCadenceSnapshot  = Some(() => cadence.get()),
           readModelScreeningsFor = id => reader.findCard(id).map(_.screenings),
