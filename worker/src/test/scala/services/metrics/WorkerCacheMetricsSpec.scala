@@ -3,7 +3,9 @@ package services.metrics
 import com.github.benmanes.caffeine.cache.{Cache, Caffeine}
 import io.prometheus.metrics.model.registry.PrometheusRegistry
 import org.scalatest.flatspec.AnyFlatSpec
+import org.bson.{BsonDocument, BsonInt32}
 import org.scalatest.matchers.should.Matchers
+import services.identity.{CachedTmdbDocuments, InMemoryTmdbDocuments, TmdbKind}
 
 /**
  * `kinowo_worker_cache_*` publishes what a cache holds against what it may hold —
@@ -18,34 +20,35 @@ import org.scalatest.matchers.should.Matchers
  */
 class WorkerCacheMetricsSpec extends AnyFlatSpec with Matchers {
 
-  private def registryWith(caches: (String, CacheOccupancy)*): String = {
+  private def registryWith(caches: (String, CacheOccupancy)*): String =
+    registryOf(caches.map { case (name, occupancy) => name -> (() => occupancy) }*)
+
+  private def registryOf(caches: (String, () => CacheOccupancy)*): String = {
     val registry = new PrometheusRegistry()
     WorkerCacheMetrics.register(registry,
-      () => caches.map { case (name, occupancy) => WorkerCacheMetrics.Registration("pl", name, () => occupancy) })
+      () => caches.map { case (name, read) => WorkerCacheMetrics.Registration("pl", name, read) })
     PrometheusExposition.render(registry)
   }
 
   import CacheMetricSamples.sample
 
-  /** [[CacheOccupancy]] still MODELS a byte-bounded cache even though no worker
-   *  cache is weighed in bytes today (the venue detail cache was, and was deleted
-   *  once nothing read it). Kept because it is the general shape of "held against
-   *  its bound", and because the web tier's byte-bounded `OgCardCache` is the
-   *  obvious next thing to measure. */
-  "A byte-bounded cache" should "report bytes held against its budget" in {
-    val weighted: Cache[String, String] =
-      Caffeine.newBuilder().maximumWeight(1024L).weigher((_: String, v: String) => v.length).build()
-    weighted.put("a", "x" * 100)
-    weighted.cleanUp()
+  /** The TMDB document cache (`CachedTmdbDocuments`) is the worker's byte-bounded cache: two of them, answers
+   *  and films' hits, each weighed in bytes against its own budget. Before it published anything, its 48 MiB
+   *  of possible heap was the same blind spot the venue detail cache was on 2026-09-05. */
+  "The TMDB document cache" should "publish each of its caches' bytes held against its byte budget" in {
+    val cached = new CachedTmdbDocuments(new InMemoryTmdbDocuments, maxBytes = 64L * 1024)
+    val ids    = (1 to 2000).map(_.toString)
+    cached.put(TmdbKind.Film, ids.map(i => i -> new BsonDocument("hit", new BsonDocument("n", new BsonInt32(i.toInt)))))
+    cached.answers(TmdbKind.Film, ids)
 
-    // Asserted on the MODEL, not through the exporter: `WorkerCacheMetrics`
-    // publishes no byte series while no worker cache is weighed in bytes.
-    val occupancy = CacheOccupancy.of(weighted, weighted = true)
-    occupancy.heldBytes  shouldBe Some(100L)
-    occupancy.maxBytes   shouldBe Some(1024L)
-    occupancy.entries    shouldBe 1L
-    // Its ceiling is bytes; an entry maximum would be a different unit in the same field.
-    occupancy.maxEntries shouldBe None
+    val exposition = registryOf(cached.occupancies*)
+    sample(exposition, "kinowo_worker_cache_held_bytes", "tmdb_answers").get should (be > 0.0 and be <= 64.0 * 1024)
+    sample(exposition, "kinowo_worker_cache_max_bytes", "tmdb_answers")   shouldBe Some(64.0 * 1024)
+    sample(exposition, "kinowo_worker_cache_evictions_total", "tmdb_answers").get should be > 0.0
+    sample(exposition, "kinowo_worker_cache_held_bytes", "tmdb_film_hits") shouldBe Some(0.0)
+    sample(exposition, "kinowo_worker_cache_max_bytes", "tmdb_film_hits")  shouldBe Some(CachedTmdbDocuments.MaxHitBytes.toDouble)
+    // Its ceiling is bytes; an entry maximum would be a different unit in the same family.
+    sample(exposition, "kinowo_worker_cache_max_entries", "tmdb_answers")  shouldBe None
   }
 
   "A count-bounded cache" should "publish its entry maximum and no byte weight" in {

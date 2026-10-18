@@ -4,6 +4,7 @@ import com.github.benmanes.caffeine.cache.Cache
 import org.bson.codecs.{BsonDocumentCodec, EncoderContext}
 import org.bson.io.BasicOutputBuffer
 import org.bson.{BsonBinaryWriter, BsonDocument, BsonDouble, BsonInt32, BsonString, RawBsonDocument}
+import services.metrics.CacheOccupancy
 
 import java.util.concurrent.atomic.AtomicLongArray
 import scala.jdk.CollectionConverters._
@@ -39,11 +40,13 @@ final class CachedTmdbDocuments(inner: TmdbDocuments & TmdbDocumentRetention, ma
   private val held: Cache[Key, Array[Byte]] =
     tools.BoundedCache.ofWeight[Key, Array[Byte]](maxBytes, EntryOverhead)((key, bytes) => 2 * key.id.length + bytes.length)
       .executor((task: Runnable) => task.run())   // eviction on the caller's thread: no pool task per write
+      .recordStats()                              // evictions and hit ratio for `occupancies`
       .build[Key, Array[Byte]]()
   // Films' hits by film id, encoded: `Absent` for a film holding none.
   private val hits: Cache[String, Array[Byte]] =
     tools.BoundedCache.ofWeight[String, Array[Byte]](maxHitBytes, EntryOverhead)((id, bytes) => 2 * id.length + bytes.length)
       .executor((task: Runnable) => task.run())
+      .recordStats()
       .build[String, Array[Byte]]()
 
   /** Writes begun and ended per stripe of ids: a read keeps what it got only when no write of its ids'
@@ -109,9 +112,12 @@ final class CachedTmdbDocuments(inner: TmdbDocuments & TmdbDocumentRetention, ma
     }
   }
 
-  /** The bytes the cache holds, as its bounds weigh them. */
-  private[identity] def heldBytes: Long =
-    Seq(held, hits).map(_.policy().eviction().get().weightedSize().getAsLong).sum
+  /** What each of the two caches holds against its own byte budget, by name, for `kinowo_worker_cache_*`. Two
+   *  rather than one summed: each has its own bound, so a sum against a summed budget would read as room to spare
+   *  while one of them sat at its ceiling evicting. Cheap enough to read on every scrape. */
+  val occupancies: Seq[(String, () => CacheOccupancy)] = Seq(
+    AnswersCache -> (() => CacheOccupancy.of(held, weighted = true)),
+    HitsCache    -> (() => CacheOccupancy.of(hits, weighted = true)))
 }
 
 object CachedTmdbDocuments {
@@ -120,6 +126,9 @@ object CachedTmdbDocuments {
   val MaxBytes: Long = 32L * 1024 * 1024
   /** The hits' bound: ~45 bytes of fields per film (worker-uk names 36.7k films), plus each entry's own heap. */
   val MaxHitBytes: Long = 16L * 1024 * 1024
+  /** The caches' names under `kinowo_worker_cache_*{cache}`: the answers, and the films' hits. */
+  val AnswersCache = "tmdb_answers"
+  val HitsCache    = "tmdb_film_hits"
   /** A cache entry's own heap beyond its key's characters and value's bytes: node, key, array headers. */
   private val EntryOverhead = 96
   private val Stripes       = 4096

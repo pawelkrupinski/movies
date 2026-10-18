@@ -103,6 +103,8 @@ class WorkerWiring(
   protected lazy val identityTmdbLayer: services.identity.IdentityTmdbLayer =
     new services.identity.IdentityTmdbLayer(mongoConnection.database, clock)
   lazy val identityTmdbDocuments: services.identity.TmdbDocuments = identityTmdbLayer.documents
+  /** The layer's document cache, by cache name, for `registerCacheMetrics`. */
+  lazy val identityTmdbCacheOccupancies: Seq[(String, () => services.metrics.CacheOccupancy)] = identityTmdbLayer.cacheOccupancies
   /** The store's retention (`TmdbStoreSweep`): answers the model no longer reads, and stale gap markers. */
   lazy val identityTmdbSweep: services.identity.TmdbStoreSweep =
     new services.identity.TmdbStoreSweep(identityTmdbLayer.backend,

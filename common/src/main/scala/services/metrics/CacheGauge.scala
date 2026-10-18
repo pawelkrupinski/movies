@@ -10,8 +10,8 @@ import io.prometheus.metrics.model.snapshots.Unit as PrometheusUnit
  *
  * Shared because both tiers publish the same SHAPE of cache series and differ
  * only in what they call them and which fields they have to publish: the worker's
- * caches are bounded by count, the web's by bytes, and one JVM runs a wiring per
- * country while the other runs one country. The names and help text stay with
+ * caches are unbounded, count- or byte-bounded, the web's bounded by bytes, and one
+ * JVM runs a wiring per country while the other runs one country. The names and help text stay with
  * each tier, since they are what a reader of that dashboard needs; the wiring of
  * "read this field off each registered cache, skip the ones that cannot answer"
  * is the same sentence twice and lives here.

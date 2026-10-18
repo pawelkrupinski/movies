@@ -250,7 +250,8 @@ Each a production change: measure with `scripts/identity-measure`, land one at a
   `refusals(Nil)`'s rule order, `feedStated`; kept: `keptIndex` (the kept index's equality with a fresh build, no public
   read), `atRest` (a pure predicate of public fields, no private state, read by worker test/it and e2e), the
   `IncrementalResolver` three (which key/text OBJECT the families hold, no public read), `pooledOrder` (no public read
-  names the pooled rules); also test-only: `CachedTmdbDocuments.heldBytes`); the fakes
+  names the pooled rules); also test-only: `CachedTmdbDocuments.heldBytes` (done 10-18: replaced by `occupancies`, published
+  as `kinowo_worker_cache_*{cache=tmdb_answers|tmdb_film_hits}` and charted, its spec asserting through it)); the fakes
   `InMemoryIdentityTraceStore`, `InMemoryPinStore`. The `Option(d.get(f)).filter(_.isArray)…` BSON read is written
   out 8 times beside `BsonFields` (done: `BsonFields.elementsOf` / `documentsOf`; the web review stores keep theirs, outside the package) (FamilyAnswerStore, AgreementCatalogue, AgreementPosters, Posters, AgreementVerdicts,
   IdentityTraceStore): a `BsonFields.documentsOf`. Removal needs identity-measure's 0 moves.

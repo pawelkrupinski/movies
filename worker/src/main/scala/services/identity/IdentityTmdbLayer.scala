@@ -1,6 +1,7 @@
 package services.identity
 
 import org.mongodb.scala.MongoDatabase
+import services.metrics.CacheOccupancy
 
 import java.time.Clock
 
@@ -19,8 +20,10 @@ import java.time.Clock
  */
 final class IdentityTmdbLayer(database: Option[MongoDatabase], clock: Clock) {
   /** Where the documents are kept, under the coalescing: what the retention sweep scans and deletes through. */
-  lazy val backend: TmdbDocuments & TmdbDocumentRetention =
-    database.fold[TmdbDocuments & TmdbDocumentRetention](new InMemoryTmdbDocuments)(db => new CachedTmdbDocuments(new MongoTmdbDocuments(db)))
+  lazy val backend: TmdbDocuments & TmdbDocumentRetention = cached.getOrElse(new InMemoryTmdbDocuments)
+  private lazy val cached: Option[CachedTmdbDocuments] = database.map(db => new CachedTmdbDocuments(new MongoTmdbDocuments(db)))
+  /** The document cache's occupancy by cache name, for `kinowo_worker_cache_*`; none in memory, where there is no cache. */
+  lazy val cacheOccupancies: Seq[(String, () => CacheOccupancy)] = cached.toSeq.flatMap(_.occupancies)
   lazy val documents: TmdbDocuments = database.fold[TmdbDocuments](backend)(_ => new CoalescedTmdbDocuments(backend))
   lazy val store: TmdbStore = new TmdbStore(documents, clock)
   lazy val familyAnswers: FamilyAnswerStore = new FamilyAnswerStore(documents, clock)

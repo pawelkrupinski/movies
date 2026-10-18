@@ -1,6 +1,7 @@
 package services.metrics
 
 import io.prometheus.metrics.model.registry.PrometheusRegistry
+import io.prometheus.metrics.model.snapshots.Unit as PrometheusUnit
 
 /**
  * `kinowo_worker_cache_*` — what each in-process cache holds, against what it is
@@ -21,18 +22,17 @@ import io.prometheus.metrics.model.registry.PrometheusRegistry
  *
  * A cache that cannot honestly answer a question publishes NO SERIES for it (see
  * [[CacheOccupancy]]): an unbounded cache has no maximum, a count-bounded one no
- * byte weight. That is deliberate — a zero maximum renders as "100% full" on the
- * ratio panel, which is the wrong alarm to invent for a cache that simply has no
- * ceiling.
+ * byte weight, a byte-bounded one no entry maximum. That is deliberate — a zero
+ * maximum renders as "100% full" on the ratio panel, which is the wrong alarm to
+ * invent for a cache that simply has no ceiling.
  *
- * NO BYTE SERIES HERE, for the same reason one level up. `held_bytes`/`max_bytes`
- * were published while the venue detail cache existed; deleting it (@8041c1fbf)
- * left no byte-bounded cache in this JVM, and a family that can never carry a
- * sample is a panel nobody can read. [[CacheOccupancy]] still MODELS both — it is
- * the general shape of "what a cache holds against its bound" — so restoring them
- * is this method plus a panel, the day something here is weighed in bytes again.
- * The web tier's byte-bounded caches are measured, on their own
- * `kinowo_web_cache_*` family — [[WebCacheMetrics]] over there, sharing
+ * BYTES are published for the byte-bounded caches: today the TMDB document
+ * caches (`tmdb_answers`, `tmdb_film_hits` — `CachedTmdbDocuments`, 32 + 16 MiB
+ * per country). The byte families were dropped once, when deleting the venue
+ * detail cache (@8041c1fbf) left nothing here weighed in bytes; the TMDB cache
+ * then grew a byte bound with no series — the 2026-09-05 blindness again, until
+ * they were restored. The web tier's byte-bounded caches are measured on their
+ * own `kinowo_web_cache_*` family — [[WebCacheMetrics]] over there, sharing
  * [[CacheGauge]] and [[CacheOccupancy]] with this.
  *
  * Read at scrape time through callback gauges: Caffeine keeps these counters
@@ -51,6 +51,16 @@ object WorkerCacheMetrics {
       "Entries a cache is holding, against `max_entries` where the cache is bounded by count. " +
         "For an unbounded one the SHAPE is the signal: a count that tracks its corpus is healthy, " +
         "one that climbs past it has stopped evicting.")(o => Some(o.entries.toDouble), registrations)
+
+    CacheGauge.register(registry, "kinowo_worker_cache_held_bytes",
+      "Bytes a byte-bounded cache is holding, as its own weigher charges them. Against `max_bytes` " +
+        "this says whether it is evicting at all: a corpus that fits sits flat under the budget, " +
+        "a larger one rides at it.", Some(PrometheusUnit.BYTES))(_.heldBytes.map(_.toDouble), registrations)
+
+    CacheGauge.register(registry, "kinowo_worker_cache_max_bytes",
+      "A byte-bounded cache's budget, published so a dashboard reads the fraction rather than " +
+        "hard-coding a number that goes stale when the budget is retuned. Absent for count-bounded " +
+        "and unbounded caches.", Some(PrometheusUnit.BYTES))(_.maxBytes.map(_.toDouble), registrations)
 
     CacheGauge.register(registry, "kinowo_worker_cache_max_entries",
       "A count-bounded cache's maximum entries. Absent for byte-bounded and unbounded caches, " +

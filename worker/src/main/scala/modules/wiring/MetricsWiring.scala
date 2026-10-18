@@ -10,10 +10,11 @@ trait MetricsWiring { self: WorkerWiring =>
 
   // Publish this wiring's cache occupancy under `kinowo_worker_cache_*`.
   def registerCacheMetrics(): Unit = {
-    // The resident corpus (unbounded — entries only) and the task dedup cache
-    // (count-bounded).
+    // The resident corpus (unbounded — entries only), the task dedup cache
+    // (count-bounded) and the TMDB document caches (byte-bounded; none in memory).
     workerMetrics.registerCache(country.code, "movie_corpus", () => movieCache.occupancy)
     workerMetrics.registerCache(country.code, "task_dedup", () => taskDedupCache.occupancy)
+    identityTmdbCacheOccupancies.foreach { case (cache, read) => workerMetrics.registerCache(country.code, cache, read) }
   }
 
   // Task-pipeline metrics, exposed at /metrics (WorkerMain) and scraped by Fly

@@ -173,8 +173,13 @@ class CachedTmdbDocumentsSpec extends AnyFlatSpec with Matchers {
     val cached  = new CachedTmdbDocuments(backend, maxBytes = 64 * 1024)
     backend.put(TmdbKind.Film, (1 to 2000).map(i => i.toString -> new BsonDocument("hit", new BsonDocument("n", BsonInt32(i)))))
     cached.answers(TmdbKind.Film, (1 to 2000).map(_.toString))
-    cached.heldBytes should (be > 0L and be <= 64L * 1024)
+    val answersHeld = cached.occupancies.toMap.apply(CachedTmdbDocuments.AnswersCache)().heldBytes
+    answersHeld.get should (be > 0L and be <= 64L * 1024)
     cached.answers(TmdbKind.Film, Seq("1"))("1").put("hit", BsonInt32(0))
     cached.answers(TmdbKind.Film, Seq("1"))("1").getDocument("hit").getInt32("n").getValue shouldBe 1
+  }
+
+  "a layer without a database" should "have no document cache to publish" in {
+    new IdentityTmdbLayer(None, Clock.fixed(Instant.parse("2026-10-18T00:00:00Z"), ZoneOffset.UTC)).cacheOccupancies shouldBe empty
   }
 }

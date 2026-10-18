@@ -996,7 +996,7 @@
     {
       "id": 22,
       "title": "Caches — entries, and the count bound where there is one",
-      "description": "Entry counts for every registered cache, and the maximum for the one actually bounded by count (`task_dedup`). `movie_corpus` has NO maximum and that is deliberate: it is the hydrated corpus rather than a working set, and publishing a zero maximum would render as '100% full' on any ratio and invent an alarm. For it the shape is the signal — a count that tracks the country's corpus is healthy, one that climbs past it has stopped evicting. There are no byte series here because no cache in this JVM is weighed in bytes: the venue detail cache was, and was deleted once nothing read it (the TTL now expires inside the DetailEnrich refresh window, so a scheduled refresh can never be served from cache).",
+      "description": "Entry counts for every registered cache, and the maximum for the one actually bounded by count (`task_dedup`). `movie_corpus` has NO maximum and that is deliberate: it is the hydrated corpus rather than a working set, and publishing a zero maximum would render as '100% full' on any ratio and invent an alarm. For it the shape is the signal — a count that tracks the country's corpus is healthy, one that climbs past it has stopped evicting. The TMDB document caches (`tmdb_answers`, `tmdb_film_hits`) are bounded by bytes, not count, so they draw an entries line and no budget here; their bound is the panel beside this one.",
       "type": "timeseries",
       "datasource": {
         "type": "prometheus",
@@ -1004,7 +1004,7 @@
       },
       "gridPos": {
         "h": 8,
-        "w": 24,
+        "w": 12,
         "x": 0,
         "y": 81
       },
@@ -1055,6 +1055,88 @@
         {
           "refId": "B",
           "expr": "kinowo_worker_cache_max_entries{country=~\"$country\"}",
+          "legendFormat": "{{country}} {{cache}} budget",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 69,
+      "title": "Caches — bytes held against the byte budget",
+      "description": "`kinowo_worker_cache_held_bytes` against `max_bytes` for every cache weighed in bytes — today the TMDB document caches: `tmdb_answers` (the answers the resolver reads, 32 MiB per country) and `tmdb_film_hits` (each named film's hit fields, 16 MiB). WHY: on 2026-09-05 worker-pl paged JvmOldGenNearCap with a cache's bytes invisible until a hand-taken heap dump; this is that number. A country whose store fits sits flat under its dashed budget; one riding at it is evicting (see the evictions line in the panel below) and re-reading TMDB documents from Mongo each projection tick. Count-bounded and unbounded caches publish no byte series, so they draw nothing here.",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "local-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 12,
+        "x": 12,
+        "y": 81
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 12,
+            "spanNulls": 300000
+          },
+          "min": 0
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byRegexp",
+              "options": ".*budget.*"
+            },
+            "properties": [
+              {
+                "id": "custom.fillOpacity",
+                "value": 0
+              },
+              {
+                "id": "custom.lineStyle",
+                "value": {
+                  "fill": "dash",
+                  "dash": [
+                    10,
+                    10
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byType",
+              "options": "number"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "bytes"
+              }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "kinowo_worker_cache_held_bytes{country=~\"$country\"}",
+          "legendFormat": "{{country}} {{cache}} held",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          }
+        },
+        {
+          "refId": "B",
+          "expr": "kinowo_worker_cache_max_bytes{country=~\"$country\"}",
           "legendFormat": "{{country}} {{cache}} budget",
           "datasource": {
             "type": "prometheus",
