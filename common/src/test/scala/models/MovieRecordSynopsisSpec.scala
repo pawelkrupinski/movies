@@ -366,11 +366,32 @@ class MovieRecordSynopsisSpec extends AnyFlatSpec with Matchers {
     record.synopsisForCity(Poznan) shouldBe Some(polish)
   }
 
+  // The check is the chain-detail SLOT's, whichever chain: Cineworld's (and Regal's) slot is the
+  // same impersonal, API-sourced detail page Cinema City's is, and since `chainDetailVenues` maps
+  // Cineworld its blurb competes for every UK city its venues screen in.
+  it should "prefer a shorter correctly-localized TMDB blurb over a longer wrong-language Cineworld chain one" in {
+    val leeds  = Country.UnitedKingdom.bySlug("leeds")
+    val polish = "Aby uratować pracę, David zgadza się na szalony plan i jedzie z rodziną do dżungli, " +
+      "gdzie na niego czeka żółte stworzenie, które nie jest takie, jak się wydaje, a po drodze jest też " +
+      "wiele przygód dla całej rodziny, która od tego dnia nie jest już taka sama."
+    val english = "To save his job, David agrees to a wild plan with a yellow creature."
+    polish.length should be > english.length
+    val record = MovieRecord(
+      data = Map[Source, SourceData](
+        CineworldChain -> SourceData(synopsis = Some(polish)),
+        CineworldLeeds -> SourceData(), // the Leeds venue screening this film
+        Tmdb           -> SourceData(synopsis = Some(english), language = Some("en-GB"))
+      )
+    )
+    record.synopsisForCity(leeds) shouldBe Some(english)
+    record.synopsesForCities(Seq(leeds)) shouldBe Seq(leeds -> Some(english))
+  }
+
   it should "never second-guess a non-chain cinema's own English blurb (e.g. an English-subtitled special screening)" in {
     // Confirmed real shape: Amondo Grindhouse posts English event write-ups for
     // English-subtitled screenings — a deliberate editorial choice, unlike Cinema
     // City's impersonal, API-sourced chain slot. The language check must be scoped
-    // to CinemaCityChain only, or a heuristic would override this curated text.
+    // to the chain-detail slots only, or a heuristic would override this curated text.
     val english = "SCREENING WITH ENGLISH SUBS. A grisly cult classic slasher film that has stood " +
       "the test of time, with a truly shocking and unforgettable climax after a terrible accident."
     val polish  = "Krótki opis z TMDB."
