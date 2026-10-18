@@ -165,6 +165,15 @@ tool_files() {
     done | grep -v '^$' || true
 }
 
+# Whether the repo-reading lint specs (`--lint-plan`) read <path>: scripts, workflows, skills, the docs, the build, the
+# test, it and page trees, the fixtures.
+read_by_lint_specs() { # <path>
+    case "$1" in
+        scripts/*|.github/*|.claude/*|CLAUDE.md|build.sbt|project/*|*/src/test/*|*/src/it/*|*/src/page/*.scala|worker/src/fixtures/*|testkit/*) return 0 ;;
+    esac
+    return 1
+}
+
 # ── Which checks a set of changed paths selects ─────────────────────────────────────────────────
 # One line per path on stdin; prints the selected check names, one per line, in run order.
 plan() {
@@ -191,9 +200,7 @@ plan() {
         esac
         # What the repo-reading lint specs `--lint-plan` adds read: scripts, workflows, tests, fixtures, skills, the docs and
         # the build -- each turned Main red from a push this check never selected (2026-10-13..15).
-        case "$path" in
-            scripts/*|.github/*|.claude/*|CLAUDE.md|*/src/test/*|*/src/it/*|*/src/page/*.scala|worker/src/fixtures/*|testkit/*) sbt=1 ;;
-        esac
+        read_by_lint_specs "$path" && sbt=1
         case "$path" in
             infra/nix/files/monitoring/*|infra/test/test_dashboards.py) dashboards=1 ;;
         esac
@@ -254,7 +261,6 @@ compile_plan() {
     [ $testkit = 1 ] && worker=1
     [ $worker = 1 ] && e2e=1
     [ $web = 1 ] && e2e=1
-    [ $common = 1 ] && web=1
     [ $testkit = 1 ] && web=1
     [ $common = 1 ] && echo common/Test/compile
     [ $identity = 1 ] && echo identity/Test/compile
@@ -282,13 +288,13 @@ compile_plan() {
 # Skip just these with PREPUSH_SKIP=lintspecs (the standing five still run under `sbt`).
 LintSpecsNeedingGitOps="NodeCpuBudgetSpec NodeMemoryBudgetSpec ChangeStreamSilenceAlertSpec CinemaScrapeStalenessAlertSpec WorkerRolloutStaggerSpec FluxImageAutomationSpec JdkParityOptionsSpec AotCacheOptionsSpec K8sTierPathGatingSpec PrometheusNodePortAgreementSpec WorkerScrapeCadenceConfigSpec SharedUsersDatabaseConfigSpec WebRolloutAvailabilitySpec"
 LintSpecsBootingServers="FixtureServerBootSpec FixtureServerBootOverlapSpec"
+# The lints every sbt check runs, whatever the push touches.
+StandingLintSpecs="worker:tools.NoWallClockInTestsSpec worker:services.cinemas.NoWallClockInClientsSpec worker:deploy.GrafanaMetricCoverageSpec worker:deploy.NoSilencedGhCurlSpec web:deploy.GrafanaWebMetricCoverageSpec"
 # Whether one of the paths on stdin is one the repo-reading lint specs read.
 reads_repo() {
     local path found=1
     while IFS= read -r path; do
-        case "$path" in
-            scripts/*|.github/*|.claude/*|CLAUDE.md|build.sbt|project/*|*/src/test/*|*/src/it/*|*/src/page/*.scala|worker/src/fixtures/*|testkit/*) found=0 ;;
-        esac
+        read_by_lint_specs "$path" && found=0
     done
     return $found
 }
@@ -296,8 +302,7 @@ lint_plan() {
     local repo_read=0 module dir file spec excluded="$LintSpecsBootingServers"
     reads_repo && repo_read=1
     [ "${PREPUSH_GITOPS:-}" = 1 ] || excluded="$excluded $LintSpecsNeedingGitOps"
-    printf '%s\n' worker:tools.NoWallClockInTestsSpec worker:services.cinemas.NoWallClockInClientsSpec \
-        worker:deploy.GrafanaMetricCoverageSpec worker:deploy.NoSilencedGhCurlSpec web:deploy.GrafanaWebMetricCoverageSpec
+    printf '%s\n' $StandingLintSpecs
     if [ $repo_read = 1 ] && ! skipped lintspecs; then
         for module in common worker web; do
             for dir in deploy tools; do
@@ -306,9 +311,7 @@ lint_plan() {
                     spec="$(basename "$file" .scala)"
                     case "$dir:$spec" in tools:No*|tools:*Lint*|deploy:*) ;; *) continue ;; esac
                     case " $excluded " in *" $spec "*) continue ;; esac
-                    case "$module:$dir.$spec" in
-                        worker:tools.NoWallClockInTestsSpec|worker:deploy.GrafanaMetricCoverageSpec|worker:deploy.NoSilencedGhCurlSpec|web:deploy.GrafanaWebMetricCoverageSpec) continue ;;
-                    esac
+                    case " $StandingLintSpecs " in *" $module:$dir.$spec "*) continue ;; esac
                     echo "$module:$dir.$spec"
                 done
             done
