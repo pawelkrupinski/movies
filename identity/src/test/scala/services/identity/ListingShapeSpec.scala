@@ -123,6 +123,10 @@ class ListingShapeSpec extends AnyFlatSpec with Matchers {
     beside("Q&A", film("Q & A")) shouldBe None
     // the venue's own wording: a banner in its slot, an event or edition, a programme, a note, the film's director or quotes
     beside("Somali Film Festival: Lifeline", film("Lifeline")) shouldBe None
+    // a box office's certificate note is no piece of the billing (UK Lighthouse Poole's "Family Cinema: Paddington -
+    // Cert PG", recording 38713274617), wherever else the venue bills it
+    beside("Family Cinema: Paddington - Cert PG", film("Paddington")) shouldBe None
+    beside("Digger (15) 129 mins", film("Digger")) shouldBe None
     // a strand's banner a colon closes, a screening programme among its pieces, all of it — DE Filmrauschpalast's numbered
     // Hong Kong strand before Fruit Chan's film (capture 2026-10-13)
     beside("SPECIAL: 2. Dangerous Encounters – Hong Kong im Filmrausch: MADE IN HONG KONG", film("Made in Hong Kong", Some("Xiang Gang Zhi Zao"))) shouldBe

@@ -89,6 +89,11 @@ object FormatTags {
   // …and the running time it brackets, confirmed or not: Bridport's "Screening: NTL - Hay Fever (12A TBC) (160 mins TBC)"
   // hid its certificate behind it. A number of minutes, so "Apollo 13" and "Sweet Sixteen (16)" stay.
   private val BracketedRunningTime = """(?i)(?<=\S)\s*\(\s*(\d{2,3})\s*mins?\.?(?:\s+TBC)?\s*\)\s*$""".r
+  /** `t` without the BBFC certificate note a box office bills behind it ([[CertificateNote]]), the running time or
+   *  short year it runs on into with it, a release year between them kept: "Digger - Cert 15" → "Digger". */
+  def uncertified(t: String): String = CertificateNote.findFirstMatchIn(t).fold(t)(withoutCertificate(t, _)).trim
+  private def withoutCertificate(t: String, note: scala.util.matching.Regex.Match): String =
+    t.substring(0, note.start) + Option(note.group("year")).getOrElse("")
   private val ReReleaseMark = """(?i)(?<=\S)\s*\(\s*(?:WA(?:\s*:?\s*\d{2,4}|\s*:)?|Wiederauff(?:ü|ue)hrung)\s*\)?\s*$""".r
   /** A closed re-release mark inside the title, before a strand or a pipe ("Tribute von Panem (WA) - Kinderkino"). */
   private val ReReleaseBracket = """(?i)\s*\(\s*(?:WA(?:\s*:?\s*\d{2,4})?|Wiederauff(?:ü|ue)hrung)\s*\)(?=\s*\S)""".r
@@ -207,7 +212,7 @@ object FormatTags {
       CertificateNote.findFirstMatchIn(t).foreach { m =>
         certificate = certificate.orElse(Option(m.group("cert")).orElse(Option(m.group("bracketed"))).map(_.toUpperCase(Locale.ROOT)))
         runtime = runtime.orElse(Option(m.group("mins")).flatMap(_.toIntOption))
-        t = t.substring(0, m.start) + Option(m.group("year")).getOrElse("")
+        t = withoutCertificate(t, m)
       }
       t = ReReleaseBracket.replaceAllIn(ReReleaseMark.replaceFirstIn(t, ""), "").trim
       // Tokens peeled inside a [..]/(..) tag also carry version meaning, so

@@ -152,7 +152,8 @@ object ListingShape {
    *  `venues`: what else the caller knows a piece's words to be the venue's (the resolver: a banner the corpus bills
    *  beside other titles). */
   def billedBeside(listing: Listing, films: Seq[IdentityMeasures.Film], venues: Seq[String] => Boolean = _ => false): Option[String] = {
-    val raw = listing.rawTitle
+    // a box office's certificate note is the showing's, never a piece of what it bills (UK "Family Cinema: Paddington - Cert PG")
+    val raw = services.movies.FormatTags.uncertified(listing.rawTitle)
     // a silent film's billing is its programme's: an accompanist, an anniversary ("Dni Kina Niemego - 100 lat temu: …")
     if (films.isEmpty || billsASilentFilm(listing) || Quote.findFirstIn(raw).exists(_ => quotesAFilm(raw, films))) None
     else {
