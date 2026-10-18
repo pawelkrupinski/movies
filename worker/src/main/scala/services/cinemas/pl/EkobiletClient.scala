@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SlotsToMovies
+
 import models._
 import org.jsoup.nodes.Document
 import org.jsoup.Jsoup
@@ -145,12 +147,8 @@ class EkobiletClient(
    *  `OnlyMovieEventsFilter` mixin applied, moved here so the queue (reduce) path
    *  filters too. */
   override def reduceChunks(chunks: Map[String, Seq[CinemaMovie]]): Seq[CinemaMovie] =
-    chunks.toSeq.sortBy(_._1).flatMap(_._2)
-      .groupBy(_.movie.title).toSeq.sortBy(_._1)
-      .flatMap { case (_, group) =>
-        val showtimes = group.flatMap(_.showtimes).distinctBy(s => (s.dateTime, s.bookingUrl)).sortBy(_.dateTime)
-        if (showtimes.isEmpty) None else Some(group.head.copy(showtimes = showtimes))
-      }
+    SlotsToMovies.foldBlocks(chunks.toSeq.sortBy(_._1).flatMap(_._2), _.movie.title, _.showtimes,
+      order = SlotsToMovies.MovieOrder.byKey) { (_, group, showtimes) => Some(group.head.copy(showtimes = showtimes)) }
       .filterNot(isStageTicket)
       .filterNot(NonMovieEventClassifier.isLiveEvent)
 }

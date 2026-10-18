@@ -1,5 +1,7 @@
 package services.cinemas.common
 
+import services.cinemas.common.SlotsToMovies
+
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}
@@ -209,10 +211,11 @@ object KinoprogrammClient {
    *  de-duplicated and in time order, and the film's catalogue facts read once. */
   private[common] def toMovies(films: Seq[Film], cinema: Cinema, venueUrl: Option[String],
                                detailOf: String => FilmDetail): Seq[CinemaMovie] =
-    films.groupBy(film => film.filmPath.getOrElse(film.title)).toSeq.map { case (_, same) =>
+    SlotsToMovies.foldBlocks(films, film => film.filmPath.getOrElse(film.title), _.showtimes,
+      distinctBy = s => (s.dateTime, s.format)) { (_, same, showtimes) =>
       val first  = same.head
       val detail = first.filmPath.fold(FilmDetail())(detailOf)
-      CinemaMovie(
+      Some(CinemaMovie(
         movie       = Movie(first.title, runtimeMinutes = same.flatMap(_.runtimeMinutes).headOption,
                             releaseYear = detail.releaseYear, countries = detail.countries,
                             genres = same.flatMap(_.genres).distinct),
@@ -222,9 +225,9 @@ object KinoprogrammClient {
         synopsis    = detail.synopsis,
         cast        = detail.cast,
         director    = detail.director,
-        showtimes   = same.flatMap(_.showtimes).distinctBy(s => (s.dateTime, s.format)).sortBy(_.dateTime),
+        showtimes   = showtimes,
         trailerUrl  = same.flatMap(_.trailerUrl).headOption,
         ageRating   = same.flatMap(_.ageRating).headOption
-      )
-    }.sortBy(_.movie.title)
+      ))
+    }
 }

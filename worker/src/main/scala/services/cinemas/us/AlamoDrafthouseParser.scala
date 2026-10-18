@@ -1,5 +1,7 @@
 package services.cinemas.us
 
+import services.cinemas.common.SlotsToMovies
+
 import java.util.Locale
 
 import models.{Cinema, CinemaMovie, Movie, Showtime}
@@ -71,28 +73,21 @@ object AlamoDrafthouseParser {
       .filter(s => venueId.forall(id => (s \ "cinemaId").asOpt[String].contains(id)))
       .filterNot(isHidden)
 
-    sessions
-      .flatMap(s => (s \ "presentationSlug").asOpt[String].flatMap(presentations.get).map(_ -> s))
-      .groupBy(_._1.slug)
-      .toSeq
-      .flatMap { case (_, group) =>
-        val showtimes = group.map(_._2)
-          .flatMap(s => parseSession(s, formats))
-          .filterNot(_.dateTime.toLocalDate.isAfter(notAfter))
-          .distinctBy(s => (s.dateTime, s.bookingUrl))
-          .sortBy(_.dateTime)
+    val shown = sessions.flatMap(s => (s \ "presentationSlug").asOpt[String].flatMap(presentations.get).map(_ -> s))
+    SlotsToMovies.foldBlocks(shown, _._1.slug,
+      (pair: (Show, JsValue)) => parseSession(pair._2, formats).toSeq.filterNot(_.dateTime.toLocalDate.isAfter(notAfter))) {
+      (_, group, showtimes) =>
         // The show is the same object behind every one of its presentations, so
         // any of them names it; take the first that carries each optional field.
         val shows = group.map(_._1)
-        Option.when(showtimes.nonEmpty)(
+        Some(
           toCinemaMovie(
             shows.head.copy(
               posterUrl     = shows.flatMap(_.posterUrl).headOption,
               certification = shows.flatMap(_.certification).headOption
             ),
             showtimes, cinema))
-      }
-      .sortBy(_.movie.title)
+    }
   }
 
   /** `data.presentations[]` keyed by the PRESENTATION slug the sessions carry,

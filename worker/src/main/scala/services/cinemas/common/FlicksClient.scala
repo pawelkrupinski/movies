@@ -1,5 +1,7 @@
 package services.cinemas.common
 
+import services.cinemas.common.SlotsToMovies
+
 import tools.{HttpFetch, PersonName, HttpRead}
 import models._
 import org.jsoup.parser.Parser
@@ -172,15 +174,9 @@ class FlicksClient(
   /** Build one film row per stable `/movie/<slug>` from a day's session slots,
    *  showtimes deduped by (time, booking) and time-ordered. */
   private def moviesFor(slots: Seq[RawFlicksSlot]): Seq[CinemaMovie] =
-    slots.groupBy(_.slug).toSeq.flatMap { case (_, group) =>
-      val showtimes = group
-        .map(s => Showtime(s.dateTime, s.booking, None, s.format))
-        .distinctBy(s => (s.dateTime, s.bookingUrl))
-        .sortBy(_.dateTime)
-      if (showtimes.isEmpty) None
-      else {
+    SlotsToMovies.fold(slots, _.slug, s => Showtime(s.dateTime, s.booking, None, s.format), order = SlotsToMovies.MovieOrder.asGrouped) { (_, group, showtimes) =>
         val head = group.head
-        Some(CinemaMovie(
+        CinemaMovie(
           movie       = Movie(title = head.title, runtimeMinutes = head.runtimeMinutes, genres = head.genres),
           cinema      = cinema,
           posterUrl   = head.posterUrl,
@@ -192,8 +188,7 @@ class FlicksClient(
           externalIds = head.contentId.map("flicks" -> _).toMap,
           trailerUrl  = head.trailerUrl,
           ageRating   = head.ageRating
-        ))
-      }
+        )
     }
 }
 

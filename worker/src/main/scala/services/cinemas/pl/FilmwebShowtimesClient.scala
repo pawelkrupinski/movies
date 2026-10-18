@@ -1,5 +1,7 @@
 package services.cinemas.pl
 
+import services.cinemas.common.SlotsToMovies
+
 import models._
 import tools.{DaemonExecutors, HttpFetch, HttpRead, ParallelDetailFetch}
 import play.api.libs.json._
@@ -111,18 +113,14 @@ class FilmwebShowtimesClient(
     ListingPages.reportFailed(infoReads.filterNot(read => titled(read._1)).map(_._2))
     val infos = infoReads.flatMap { case (id, attempt) => attempt.toOption.map(id -> _) }.toMap
 
-    seances.groupBy(_.filmId).toSeq.flatMap { case (filmId, group) =>
+    SlotsToMovies.foldBlocks(seances, _.filmId, _.showtimes, order = SlotsToMovies.MovieOrder.asGrouped) { (filmId, group, showtimes) =>
       val info = infos.get(filmId).flatten
       val title = info.flatMap(_.title).map(_.trim).filter(_.nonEmpty)
         .orElse(group.flatMap(_.fallbackTitle).headOption)
       title match {
         case None => None
         case Some(t) =>
-          val showtimes = group.flatMap(_.showtimes)
-            .distinctBy(s => (s.dateTime, s.bookingUrl))
-            .sortBy(_.dateTime)
-          if (showtimes.isEmpty) None
-          else Some(CinemaMovie(
+          Some(CinemaMovie(
             movie       = Movie(
               title         = t,
               releaseYear   = info.flatMap(_.year),

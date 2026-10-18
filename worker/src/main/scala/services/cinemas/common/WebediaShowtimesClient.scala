@@ -1,5 +1,7 @@
 package services.cinemas.common
 
+import services.cinemas.common.SlotsToMovies
+
 import services.cinemas.pl.NonMovieEventClassifier
 import tools.{HttpFetch, HttpRead}
 import models._
@@ -134,15 +136,8 @@ class WebediaShowtimesClient(
    *  title); the Webedia id (`externalIds("webedia")`) is the stable key. A film
    *  with no showtimes on any day drops out. */
   override def reduceChunks(chunks: Map[String, Seq[CinemaMovie]]): Seq[CinemaMovie] =
-    chunks.toSeq.sortBy(_._1).flatMap(_._2)
-      .groupBy(m => m.externalIds.getOrElse("webedia", m.movie.title))
-      .toSeq.sortBy(_._1)
-      .flatMap { case (_, group) =>
-        val showtimes = group.flatMap(_.showtimes)
-          .distinctBy(s => (s.dateTime, s.bookingUrl))
-          .sortBy(_.dateTime)
-        if (showtimes.isEmpty) None else Some(group.head.copy(showtimes = showtimes))
-      }
+    SlotsToMovies.foldBlocks(chunks.toSeq.sortBy(_._1).flatMap(_._2), m => m.externalIds.getOrElse("webedia", m.movie.title),
+      _.showtimes, order = SlotsToMovies.MovieOrder.byKey) { (_, group, showtimes) => Some(group.head.copy(showtimes = showtimes)) }
 
   /** Build the venue-agnostic film row from one parsed Webedia result. The
    *  showtimes to attach are supplied by the caller — one day's in `fetchChunk`,
