@@ -1260,6 +1260,9 @@ class IdentityMeasuresSpec extends AnyFlatSpec with Matchers {
   "a part a title numbers and subtitles" should "be another film's part only when the subtitle holds no word of the film's titles" in {
     val lang = Film("Das indische Grabmal", year = Some(1959), directors = Some(Seq("Fritz Lang")))
     IdentityMeasures.titlesAnotherPart(Listing("DAS INDISCHE GRABMAL (TEIL 1, DIE SENDUNG DES YOGHI)"), lang) shouldBe true
+    // a bare number among the film's titles names no part: TMDB's "2 - Das indische Grabmal", Danish "… gravmæle II"
+    val langTitled = lang.copy(alternativeTitles = Seq("2 - Das indische Grabmal", "Det indiske gravmæle II"))
+    IdentityMeasures.titlesAnotherPart(Listing("DAS INDISCHE GRABMAL (TEIL 2, DER TIGER VON ESCHNAPUR)"), langTitled) shouldBe true
     IdentityMeasures.titlesAnotherPart(Listing("SHOAH (TEIL I)"), Film("Shoah", year = Some(1985))) shouldBe false
     IdentityMeasures.titlesAnotherPart(Listing("De Gaulle Part Two: Liberté"), Film("De Gaulle: Liberté", year = Some(2026))) shouldBe false
     IdentityMeasures.titlesAnotherPart(Listing("Ramayana: Rise Of A Legend - Part 1 Hindi"), Film("Ramayana: Rise of a Legend", year = Some(2026))) shouldBe false

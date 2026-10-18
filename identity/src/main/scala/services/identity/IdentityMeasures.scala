@@ -574,9 +574,14 @@ object IdentityMeasures {
   /** A part a title numbers and the subtitle it gives that part, after a comma, a colon or a dash — or an episode and
    *  the name it gives it, numbered or not: DE "DAS INDISCHE GRABMAL (TEIL 1, DIE SENDUNG DES YOGHI)", UK "De Gaulle Part
    *  Two: Liberté", DE "LOVE ISLAND - EPISODE NATURE", US "Star Wars: Episode VII - The Force Awakens". */
+  private val PartWord    = """(?:teil|part|część|parte|partie|kapitel|chapter)"""
+  private val PartNumber  = """(\d+|[ivx]+|one|two|three|eins|zwei|drei)\b"""
+  private val EpisodeWord = """(?:episode|épisode|episodio|folge|odcinek)"""
   private val TitledPart =
-    ("""(?iU)\b(?:(?:teil|part|część|parte|partie|kapitel|chapter)\s*(\d+|[ivx]+|one|two|three|eins|zwei|drei)\b\s*[,:–—-]""" +
-      """|(?:episode|épisode|episodio|folge|odcinek)\b\s*(?:(\d+|[ivx]+)\b)?\s*[,:–—-]?)\s*([^()\[\]|]+)""").r
+    (s"""(?iU)\\b(?:$PartWord\\s*$PartNumber\\s*[,:–—-]""" +
+      s"""|$EpisodeWord\\b\\s*(?:(\\d+|[ivx]+)\\b)?\\s*[,:–—-]?)\\s*([^()\\[\\]|]+)""").r
+  /** A part a title numbers by name — "Dune: Part Three", "Teil 2", "Episode VII" — not a bare number beside it. */
+  private val NamedPart = s"""(?iU)\\b(?:$PartWord|$EpisodeWord)\\s*$PartNumber""".r
   /** The parts the listing's own titles number and subtitle ([[TitledPart]]): each one's number, if it has one, and its
    *  subtitle's words of four letters or more. */
   private[identity] def titledParts(titles: Seq[String]): Seq[(Option[String], Seq[String])] =
@@ -590,11 +595,13 @@ object IdentityMeasures {
    *  (TEIL 1, DIE SENDUNG DES YOGHI)" is Joe May's 1921 first part, not Lang's 1959 "Das indische Grabmal", and DE Acud
    *  Kino's "LOVE ISLAND - EPISODE NATURE" an episode of a series, not the 1952 "Love Island". A part
    *  numbered with no subtitle ("SHOAH (TEIL I)"), titled as the film is ("De Gaulle Part Two: Liberté") or numbered
-   *  as the film is ("Dune: Part Three - ERLY FAN PREVIEW") is not. */
+   *  as the film's titles name a part ("Dune: Part Three - ERLY FAN PREVIEW") is not — a bare number among them is no
+   *  part named: Lang's 1959 film also goes by "2 - Das indische Grabmal", and is no "TEIL 2, DER TIGER VON ESCHNAPUR". */
   def titlesAnotherPart(l: Listing, f: Film): Boolean = {
     val parts = titledParts(l.ownTitles)
-    // a film its titles number as that part is that part, whatever note follows it: "Dune: Part Three - ERLY FAN PREVIEW"
-    parts.nonEmpty && parts.forall { case (number, words) => !number.exists(f.titleWords) && !words.exists(f.titleWords) }
+    // a film its titles name as that part is that part, whatever note follows it: "Dune: Part Three - ERLY FAN PREVIEW"
+    lazy val numbered = f.titles.flatMap(t => NamedPart.findAllMatchIn(t).flatMap(m => TitleContainment.tokens(m.group(1)).headOption)).toSet
+    parts.nonEmpty && parts.forall { case (number, words) => !number.exists(numbered) && !words.exists(f.titleWords) }
   }
 
   /** Is a listing's credited "director" the film's HOUSE — a name two words or more long that runs inside the film's
