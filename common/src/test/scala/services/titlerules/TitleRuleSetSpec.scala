@@ -154,4 +154,14 @@ class TitleRuleSetSpec extends AnyFlatSpec with Matchers {
     rs.structural("Top Gun - Restored") shouldBe cold   // second call served from cache
     rs.structural("Top Gun - Restored") shouldBe cold
   }
+
+  // A preview-suffix strip searched the film "The Preview" as "The": a strip may take a decoration off a title, never
+  // leave nothing of it but a function word.
+  "A rule" should "never strip a title down to a function word" in {
+    val rs = TitleRuleSet(Seq(rule("preview", GlobalStructural, """(?i)\s+\p{L}*preview$""", "")))
+    rs.structural("The Preview") shouldBe "The Preview"
+    rs.structural("A Preview") shouldBe "A Preview"
+    rs.structural("Der Fall Preview") shouldBe "Der Fall"
+    rs.firedSearch("The Preview") shouldBe empty
+  }
 }

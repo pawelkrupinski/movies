@@ -48,6 +48,10 @@ object TitleRulePlaceholders {
       "^DKF\\s+{{NSEP}}+{{SEP}} (\"DKF <name>: <film>\"), so the guard stops at the first separator " +
       "instead of backtracking across one into the film title. Narrower than SEP: it excludes the " +
       "hard separators but keeps '_', so an underscore-glued cycle name is still consumed."),
+    Placeholder("VENUE", """(?-i:\p{Lu})\p{L}*""",
+      "A venue's or a place's name, one word — 'Kadr', 'Muzie', 'KINOTEKA' — for a strand billed under any venue's name. " +
+      "Its first letter is a capital even under the rule's (?i), where a bare \\p{Lu} matches lower case too and the " +
+      "rule took any word for the venue ('Film: kino moralne' searched as 'Film')."),
     Placeholder("CERT", Certificate,
       "A BBFC certificate as a UK box office bills it in a title — U, PG, 12, 12A, 15, 18, or TBC while it " +
       "awaits one. The bare value only: each rule writes the bracket or the 'Cert' around it. FormatTags " +

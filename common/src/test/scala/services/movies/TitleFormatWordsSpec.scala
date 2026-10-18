@@ -72,6 +72,16 @@ class TitleFormatWordsSpec extends AnyFlatSpec with Matchers {
     FormatTags.extractFormatTags("The Rocky Horror Picture Show (1975/Original English Version)") shouldBe ("The Rocky Horror Picture Show", List("OV"))
   }
 
+  // "DF" and "OV" are words of a title too: "Mexico DF" is Mexico City. Bare behind a one-word title, with no separator
+  // or other version word marking them, they are the title's last word.
+  it should "stay on a one-word title it ends bare, where it is the title's own word" in {
+    FormatTags.extractFormatTags("Mexico DF") shouldBe ("Mexico DF", Nil)
+    FormatTags.extractFormatTags("México DF") shouldBe ("México DF", Nil)
+    FormatTags.extractFormatTags("Mexico - DF") shouldBe ("Mexico", List("DF"))
+    FormatTags.extractFormatTags("Mexico (DF)") shouldBe ("Mexico", List("DF"))
+    FormatTags.extractFormatTags("Mexico 3D DF") shouldBe ("Mexico", List("3D", "DF"))
+  }
+
   // The DE recording of 2026-10-12: a version glued to the title by a bare hyphen (Kino Utopia), or spelled as one word
   // (Das Lumen Solingen, CineStar Cubix's "(Hebr. Originalversion mit engl. UT)").
   it should "come off glued to the title, or spelled as one word" in {

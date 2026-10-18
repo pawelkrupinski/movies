@@ -170,6 +170,19 @@ object FormatTags {
       toks.init.reverseIterator.map(bareWord).find(w => w.nonEmpty && !FormatSeparators.contains(w))
         .exists(FormatVersionWords.contains)
 
+  /** The version words that are also a title's own last word: "Mexico DF" is Mexico City (Distrito Federal), not
+   *  Mexico's German version. */
+  private val TitleWordVersions = Set("df", "ov")
+
+  /** True when the trailing token is a bare [[TitleWordVersions]] word ending a one-word title: no separator, bracket
+   *  or other format word marks it as a tag, and nothing but one word goes before it ("Mexico DF"). Behind a longer
+   *  title it is the version ("The Odyssey OV", "Shaun das Schaf - Spuk im Kürbisfeld df"). */
+  private def endsAOneWordTitle(toks: Vector[String]): Boolean =
+    TitleWordVersions(bareWord(toks.last)) && toks.last.forall(_.isLetter) && {
+      val words = toks.init.map(bareWord).filter(w => w.nonEmpty && !FormatSeparators(w))
+      words.length == 1 && !FormatVersionWords(words.head) && toks.init.last.forall(_.isLetterOrDigit)
+    }
+
   /** True when the trailing token is a dub/lektor word directly preceded by
    *  `ukraiński`/`ukrainian` — the Ukrainian version marker, kept (not stripped). */
   private def uaGuardedTail(toks: Vector[String]): Boolean =
@@ -239,7 +252,7 @@ object FormatTags {
       // After the bracket peels, which can expose a format behind its preposition ("… in 2D (OV)" → "… in 2D").
       t = FormatPreposition.replaceAllIn(t, " $1")
       var toks = t.split(" ").filter(_.nonEmpty).toVector
-      while (toks.length > 1 && (isDroppableTag(toks.last) || isLanguageQualifier(toks)) && !uaGuardedTail(toks)) {
+      while (toks.length > 1 && (isDroppableTag(toks.last) || isLanguageQualifier(toks)) && !uaGuardedTail(toks) && !endsAOneWordTitle(toks)) {
         captureTagWords(toks.last, dropped)
         toks = toks.dropRight(1)
       }

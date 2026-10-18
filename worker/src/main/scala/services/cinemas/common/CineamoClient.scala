@@ -49,7 +49,7 @@ class CineamoClient(
     val referenceDay = today
     val showings = ListingPages.readNumbered("cineamo-pages", pageUrl(cinemaId, _), (_: Page).pageCount, (_: Page).showings)(
       url => parsePage(HttpRead.page(http, url)))
-    toMovies(showings.filterNot(_.dateTime.toLocalDate.isBefore(referenceDay)), cinema)
+    toMovies(showings.filterNot(_.dateTime.toLocalDate.isBefore(referenceDay)), cinema, referenceDay)
   }
 }
 
@@ -69,7 +69,8 @@ object CineamoClient {
     originalTitle:  Option[String],
     catalogueId:    Option[String],
     runtimeMinutes: Option[Int],
-    year:           Option[Int],
+    /** The film's GERMAN premiere (`premiereDate`), not its year: Rope (1948) premiered in Germany in 1963. */
+    premiere:       Option[LocalDate],
     trailerUrl:     Option[String],
     dateTime:       LocalDateTime,
     bookingUrl:     Option[String],
@@ -99,7 +100,7 @@ object CineamoClient {
         originalTitle  = jsonText(content \ "name").filter(_ != title),
         catalogueId    = jsonText(js \ "cineamoMovieId"),
         runtimeMinutes = (content \ "duration").asOpt[Int].filter(_ > 0),
-        year           = jsonText(content \ "premiereDate").flatMap(d => Try(d.take(4).toInt).toOption),
+        premiere       = jsonText(content \ "premiereDate").flatMap(d => Try(LocalDate.parse(d.take(10))).toOption),
         trailerUrl     = jsonText(content \ "trailerUrl"),
         dateTime       = instant.atZone(Zone).toLocalDateTime,
         bookingUrl     = jsonText(js \ "onlineTicketUrl"),
@@ -135,13 +136,13 @@ object CineamoClient {
   /** One row per film the venue titles alike, showtimes de-duplicated and in time order;
    *  a mystery screening ("Sneak Preview") names no film and is left out, as is a reading, gig or day pass
    *  the venue sells beside its films (`NonMovieEventClassifier.isNonScreening`). */
-  private[common] def toMovies(showings: Seq[Showing], cinema: Cinema): Seq[CinemaMovie] =
+  private[common] def toMovies(showings: Seq[Showing], cinema: Cinema, today: LocalDate): Seq[CinemaMovie] =
     SlotsToMovies.fold(showings.filterNot(s => NonMovieEventClassifier.isNonScreening(s.title)), _.title,
       (s: Showing) => Showtime(s.dateTime, s.bookingUrl, None, s.format), SlotsToMovies.byTimeBookingAndFormat) {
       (title, same, showtimes) =>
         CinemaMovie(
           movie       = Movie(title, runtimeMinutes = same.flatMap(_.runtimeMinutes).headOption,
-                              releaseYear = same.flatMap(_.year).headOption,
+                              releaseYear = same.flatMap(_.premiere).headOption.flatMap(filmYear(_, title, today)),
                               originalTitle = same.flatMap(_.originalTitle).headOption),
           cinema      = cinema,
           posterUrl   = None,
@@ -154,6 +155,13 @@ object CineamoClient {
           trailerUrl  = same.head.trailerUrl
         )
     }
+
+  /** The year a German premiere states about the film: a film opening now opens in its own year, give or take one, so a
+   *  RECENT premiere ([[ReReleaseBilling.recent]]) billed as no re-release is its year; an older one dates the film's
+   *  German release, which trails a classic by any number of years (Rope 1963 for 1948, Vertigo 1959 for 1958), and
+   *  states none — as Multikino's Polish release date and Odeon's re-release date state none. */
+  private[common] def filmYear(premiere: LocalDate, title: String, today: LocalDate): Option[Int] =
+    Option.when(ReReleaseBilling.recent(premiere, today) && !ReReleaseBilling.bills(title))(premiere.getYear)
 
   /** The catalogue-id source a Cineamo listing's film record is filed under. */
   val CatalogueSource: String = services.identity.CatalogueSources.Cineamo
