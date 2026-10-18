@@ -27,7 +27,12 @@ final class VenueDetailLookups(enrichers: Seq[DetailEnricher], index: VenuePageI
 final class StoredFirstLookups(stored: IdentityLookups, live: IdentityLookups) extends ForwardingIdentityLookups(stored) {
   override def candidates(query: CandidateQuery): Answer[Seq[Hit]] = storedFirst(stored.candidates(query), live.candidates(query))
   override def film(tmdbId: Int): Answer[Option[IdentityMeasures.Film]] = storedFirst(stored.film(tmdbId), live.film(tmdbId))
-  override def releaseDay(tmdbId: Int): Answer[Option[java.time.LocalDate]] = film(tmdbId).map(_.flatMap(_.released))
+  /** The store's day of a record it holds — `Unknown` for one it holds dated by its year alone, which the agreement
+   *  stage asks TMDB to read again (`agreement.AgreementStage.wantedRecords`) — else the day of the record asked live. */
+  override def releaseDay(tmdbId: Int): Answer[Option[java.time.LocalDate]] = film(tmdbId) match {
+    case Answer.Known(_) if stored.film(tmdbId).isKnown => stored.releaseDay(tmdbId)
+    case answer                                         => answer.map(_.flatMap(_.released))
+  }
   override def cast(tmdbId: Int): Answer[Option[Seq[String]]] = storedFirst(stored.cast(tmdbId), live.cast(tmdbId))
   override def overview(tmdbId: Int): Answer[Option[ProseWords]] = storedFirst(stored.overview(tmdbId), live.overview(tmdbId))
 
