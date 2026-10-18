@@ -167,24 +167,14 @@ jobs:
                   RUN_ID: ${{ github.run_id }}
               run: gh workflow run convergence-bisect.yml --ref main -f suite="$SUITE" -f run-id="$RUN_ID"
 
-    # EVERY JOB'S AND STEP'S TIME, in this run's log and summary and on Grafana's CI dashboards
-    # (.github/actions/report-timings). After every other job but the failure report; never fails the run.
+    # EVERY JOB'S AND STEP'S TIME (.github/workflows/report-timings.yml). After every other job but the failure report.
     timings:
         needs: [preflight, leg, request-bisect]
         if: ${{ !cancelled() }}
-        runs-on: ubuntu-26.04
-        timeout-minutes: 5
         permissions:
             actions: read
             contents: read
-        steps:
-            - uses: actions/checkout@v5
-              with:
-                  sparse-checkout: |
-                      scripts/ci
-                      .github/actions/report-timings
-                  sparse-checkout-cone-mode: false
-            - uses: ./.github/actions/report-timings
-              with:
-                  grafana-url: ${{ secrets.GRAFANA_URL }}
-                  grafana-annotation-token: ${{ secrets.GRAFANA_ANNOTATION_TOKEN }}
+        uses: ./.github/workflows/report-timings.yml
+        secrets:
+            GRAFANA_URL: ${{ secrets.GRAFANA_URL }}
+            GRAFANA_ANNOTATION_TOKEN: ${{ secrets.GRAFANA_ANNOTATION_TOKEN }}

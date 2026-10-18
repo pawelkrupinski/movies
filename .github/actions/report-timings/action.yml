@@ -3,8 +3,9 @@ description: >-
   Prints every job's and step's duration (and a convergence suite's PhaseTimer phases) to the log
   and the run summary, and pushes them to Prometheus for the "CI — build timings" Grafana
   dashboard (scripts/ci/ci_timings.py). Runs as
-  each workflow's `timings` job, after every other job but the scheduled-failure report
-  (RunTimingsWiringSpec). Never fails the run: a chart is not a gate.
+  each workflow's `timings` job, a call of .github/workflows/report-timings.yml, after every
+  other job but the scheduled-failure report (RunTimingsWiringSpec). Never fails the run: a
+  chart is not a gate.
 
 inputs:
   grafana-url:

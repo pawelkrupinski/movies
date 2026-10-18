@@ -147,6 +147,7 @@ class ConvergenceDispatchGateSpec extends AnyFlatSpec with Matchers with tools.S
       ".github/actions/convergence-bisect-request/action.yml", // asks for a bisect of a red run
       ".github/actions/hard-clusters-ratchet/action.yml",     // turns a red leg's findings into seeds
       ".github/actions/report-timings/action.yml",            // reports the run's step timings
+      ".github/workflows/report-timings.yml",                 // ...as the run's last job, `timings`
     )
     val Reference = """(?:\./)?((?:\.github|scripts)/[\w./-]*\w)""".r
     def referencedBy(file: String): Set[String] =
