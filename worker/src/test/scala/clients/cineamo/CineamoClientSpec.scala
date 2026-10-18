@@ -87,8 +87,17 @@ class CineamoClientSpec extends AnyFlatSpec with Matchers {
     val rearWindow = film(babylon, "Hitchcock & Chabrol: Rear Window")
     rearWindow.movie.originalTitle shouldBe Some("Rear Window")
     rearWindow.movie.runtimeMinutes shouldBe Some(120)
-    rearWindow.movie.releaseYear shouldBe Some(1955)
     rearWindow.synopsis shouldBe None   // Cineamo's description is English
+  }
+
+  // `premiereDate` is the film's GERMAN premiere: Hitchcock's Rope (1948) premiered in Germany in 1963, Vertigo (1958)
+  // in 1959, Rear Window (1954) in 1955. A year read off it denied the film. Only a premiere of the last seasons, billed
+  // as no re-release, is the year of a film opening now.
+  it should "read no year off an old German premiere, only off a film opening now" in {
+    film(babylon, "Hitchcock & Chabrol: Rope").movie.releaseYear shouldBe None
+    film(babylon, "Hitchcock & Chabrol: Vertigo").movie.releaseYear shouldBe None
+    film(babylon, "Hitchcock & Chabrol: Rear Window").movie.releaseYear shouldBe None
+    film(dettelbach, "Shaun das Schaf - Spuk im Kürbisfeld").movie.releaseYear shouldBe Some(2026)
   }
 
   // The film record is Cineamo's claim of which film the slot is, as a feed's.
