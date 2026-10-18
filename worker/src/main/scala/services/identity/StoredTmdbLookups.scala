@@ -195,7 +195,9 @@ final class StoredTmdbLookups(store: TmdbStore, language: String, details: Ident
   private def document(kind: TmdbKind, id: String): Option[BsonDocument] = {
     reads.read(TmdbStore.keyOf(kind, id)) // tracked whatever it holds: its change re-asks the question
     // A document the prefetch found absent is read again: the gap's live ask files it moments later, and an absence
-    // held would answer the question that filed it from before its own filing.
+    // held would answer the question that filed it from before its own filing. So no negative memo, not even per
+    // instance: `StoredFirstLookups.storedFirst` asks here, on a gap asks live (filing into this store), then asks
+    // here AGAIN to answer as the store holds it — a remembered absence would hand it the unbucketed live answer.
     Option(held(kind).get(id)).flatMap(_.document).orElse(store.answers(kind, Seq(id)).get(id))
   }
 
