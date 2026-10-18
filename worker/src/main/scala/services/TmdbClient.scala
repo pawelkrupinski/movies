@@ -99,20 +99,20 @@ class TmdbClient(
     s"$ApiBase/search/movie?language=$languageTag&include_adult=false&query=${urlEncode(title)}$yp${apiKeyParameter("&")}"
   }
 
-  /** One TMDB title search, popularity-ordered by [[parseSearchResults]]. Scoped to a
+  /** One TMDB title search, popularity-ordered by [[TmdbResponses.popularFirst]]. Scoped to a
    *  year when one is given — the year a cinema reports can be the production year while
    *  TMDB stores the theatrical date, so the two forms return materially different result
    *  sets and the two callers choose deliberately between them. */
   private def searchOnce(title: String, yearParameter: Option[Int], auth: Map[String, String]): Seq[TmdbClient.SearchResult] = {
     val url = searchUrl(title, yearParameter)
-    parseSearchResults(httpGet(url, auth))
+    TmdbResponses.popularFirst(httpGet(url, auth))
   }
 
   /** One yearless title search in TMDB's OWN order, not re-sorted by popularity: where a film
    *  ranks in it is identity evidence (`PinnedGateMeasures.titleSearch`), measured exactly as the
    *  calibration measured it on recorded answers. `None` without a key; a failed request throws. */
   def searchAsRanked(title: String): Option[Seq[TmdbClient.SearchResult]] = authHeader.map { auth =>
-    TmdbClient.rankedResults(httpGet(searchUrl(title, None), auth))
+    TmdbResponses.rankedResults(httpGet(searchUrl(title, None), auth))
   }
 
   /** Resolve ONLY when the title search is unambiguous — exactly one result.
@@ -180,7 +180,7 @@ class TmdbClient(
    */
   def findByImdbId(imdbId: String): Option[TmdbClient.SearchResult] = authHeader.flatMap { auth =>
     val body = httpGet(s"$ApiBase/find/$imdbId?external_source=imdb_id&language=$languageTag${apiKeyParameter("&")}", auth)
-    TmdbClient.parseFindMovieResults(body).headOption
+    TmdbResponses.findMovieResults(body).headOption
   }
 
   /** TMDB's production-language original title for a known movie. Used as a
@@ -246,24 +246,7 @@ class TmdbClient(
   def readRecordAgain(tmdbId: Int): Unit = authHeader.foreach(auth => orEmptyWhenUnknown(httpGet(fullDetailsUrl(tmdbId), auth)))
 
   def details(tmdbId: Int): Option[TmdbClient.Details] = authHeader.flatMap { auth =>
-    Try(httpGet(detailsUrl(tmdbId), auth))
-      .toOption.map { body =>
-        val js = bodies.parse(body)
-        // Prefer the "untyped" US alt-title (an actual release title) over
-        // ones tagged as "alternative spelling" / "working title" / "informal".
-        val usAltTitles = (js \ "alternative_titles" \ "titles").asOpt[JsArray]
-          .map(_.value.toSeq).getOrElse(Seq.empty)
-          .filter(t => (t \ "iso_3166_1").asOpt[String].contains("US"))
-        val usTitle = usAltTitles
-          .find(t => (t \ "type").asOpt[String].forall(_.isEmpty))
-          .orElse(usAltTitles.headOption)
-          .flatMap(t => (t \ "title").asOpt[String].filter(_.nonEmpty))
-        TmdbClient.Details(
-          englishTitle = (js \ "title").asOpt[String].filter(_.nonEmpty),
-          releaseYear  = TmdbJson.releaseYear(js),
-          usTitle      = usTitle
-        )
-      }
+    Try(httpGet(detailsUrl(tmdbId), auth)).toOption.map(body => TmdbResponses.details(bodies.parse(body)))
   }
 
   /** Every person id credited anywhere on a movie's crew — not only the Director
@@ -274,7 +257,7 @@ class TmdbClient(
    *  TMDB has no credits; THROWS when the call fails — a failed read is not "nobody". */
   def crewIds(tmdbId: Int): Set[Int] = authHeader.map { auth =>
     val body = orEmptyWhenUnknown(httpGet(s"$ApiBase/movie/$tmdbId/credits${apiKeyParameter("?")}", auth))
-    (Json.parse(body) \ "crew").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
+    TmdbResponses.arrayAt(Json.parse(body) \ "crew")
       .flatMap(c => (c \ "id").asOpt[Int])
       .toSet
   }.getOrElse(Set.empty)
@@ -286,7 +269,7 @@ class TmdbClient(
    *  Grizzly Falls 1999 and the 2026 Helgestad document) the directors disagree. */
   def directorsFor(tmdbId: Int): Set[String] = authHeader.map { auth =>
     val body = orEmptyWhenUnknown(httpGet(s"$ApiBase/movie/$tmdbId/credits${apiKeyParameter("?")}", auth))
-    TmdbJson.crewWith((Json.parse(body) \ "crew").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty), TmdbJson.Director)
+    TmdbJson.crewWith(TmdbResponses.arrayAt(Json.parse(body) \ "crew"), TmdbJson.Director)
       .flatMap { c =>
         // Include both the localised `name` and the native-script `original_name`
         // so that cinemas reporting a director in their native script (e.g. "张钢"
@@ -325,63 +308,18 @@ class TmdbClient(
    *  it in costs one fixture migration and removes both problems: same request count as
    *  before the feature, and the rating now arrives in the body every test already replays. */
   def fullDetails(tmdbId: Int): Option[TmdbClient.FullDetails] = authHeader.flatMap { auth =>
-    Try(httpGet(fullDetailsUrl(tmdbId), auth))
-      .toOption.map { body =>
-        val js   = bodies.parse(body)
-        val crew = (js \ "credits" \ "crew").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
-        val cast = (js \ "credits" \ "cast").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
-        val directors = TmdbJson.crewWith(crew, TmdbJson.Director)
-          .flatMap(c => (c \ "name").asOpt[String]).filter(_.nonEmpty)
-        // Writers too: a venue prints the writer as often as the director ("Drzewo
-        // magii" is directed by Ben Gregor and written by Simon Farnaby), and the
-        // verdict on a candidate asks whether the credited name is on the CREW.
-        val writers = crew
-          .filter(c => (c \ "job").asOpt[String].exists(TmdbClient.WritingJobs.contains))
-          .flatMap(c => (c \ "name").asOpt[String]).filter(_.nonEmpty).distinct
-        val topCast = cast
-          .sortBy(c => (c \ "order").asOpt[Int].getOrElse(Int.MaxValue))
-          .flatMap(c => (c \ "name").asOpt[String]).filter(_.nonEmpty)
-          .take(TmdbClient.MaxCastNames)
-        val countries = (js \ "production_countries").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
-          .flatMap(c => (c \ "name").asOpt[String]).filter(_.nonEmpty)
-        // Deployment-language genre names. TMDB returns the `genres` field
-        // pre-localised in the requested language ("Dramat"/"Drama") —
-        // no separate id→name lookup needed.
-        val genres = (js \ "genres").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
-          .flatMap(g => (g \ "name").asOpt[String]).filter(_.nonEmpty)
-        // Per-country age rating (BBFC "12A", FSK "16", …) out of the APPENDED
-        // `release_dates` block, selecting the DEPLOYMENT country's certification. A
-        // cinema-scraped rating still wins (`MovieRecord.ageRating` is cinema-first);
-        // this is the fallback that gives every resolved film a per-country rating even
-        // where no cinema exposes one — in Poland that is every arthouse and independent
-        // venue, since only the three big chains label a certificate. Best-effort: a
-        // body without the block yields None. Verbatim — TMDB's own label for that country.
-        val ageRating = Option(language.getCountry).filter(_.nonEmpty).flatMap(country =>
-          (js \ "release_dates").toOption.flatMap(TmdbClient.certificationFor(_, country)))
-        TmdbClient.FullDetails(
-          title         = (js \ "title").asOpt[String].filter(_.nonEmpty),
-          originalTitle = (js \ "original_title").asOpt[String].filter(_.nonEmpty),
-          synopsis      = (js \ "overview").asOpt[String].filter(_.nonEmpty),
-          director      = directors,
-          writers       = writers,
-          cast          = topCast,
-          runtimeMinutes= (js \ "runtime").asOpt[Int].filter(_ > 0),
-          releaseYear   = TmdbJson.releaseYear(js),
-          countries     = countries,
-          genres        = genres,
-          // Prefer the best deployment-language portrait poster from `/images` over the
-          // default `poster_path` (which is whatever TMDB flags primary,
-          // regardless of language or shape). This poster only ever surfaces
-          // as a backup — the Tmdb slot ranks below every cinema in
-          // `MovieRecord.posterUrl` — so a better localised portrait improves
-          // the `data-fallbacks` chain (and the no-cinema-poster case).
-          // A failed `/images` read falls back to `poster_path` — the poster TMDB flags
-          // primary is a real answer, so a poster hiccup never breaks the resolve.
-          posterUrl     = Try(posters(tmdbId)).toOption.flatMap(TmdbClient.bestPortraitPosterUrl(_, language.getLanguage))
-                            .orElse((js \ "poster_path").asOpt[String].filter(_.nonEmpty).map(p => s"${TmdbClient.PosterBase}$p")),
-          ageRating     = ageRating
-        )
-      }
+    Try(httpGet(fullDetailsUrl(tmdbId), auth)).toOption.map { body =>
+      // Prefer the best deployment-language portrait poster from `/images` over the
+      // default `poster_path` (which is whatever TMDB flags primary,
+      // regardless of language or shape). This poster only ever surfaces
+      // as a backup — the Tmdb slot ranks below every cinema in
+      // `MovieRecord.posterUrl` — so a better localised portrait improves
+      // the `data-fallbacks` chain (and the no-cinema-poster case).
+      // A failed `/images` read falls back to `poster_path` — the poster TMDB flags
+      // primary is a real answer, so a poster hiccup never breaks the resolve.
+      TmdbResponses.fullDetails(bodies.parse(body), language,
+        Try(posters(tmdbId)).toOption.flatMap(TmdbResponses.bestPortraitPosterUrl(_, language.getLanguage)))
+    }
   }
 
   /** Deployment-language + language-neutral poster variants for a movie, from
@@ -398,17 +336,17 @@ class TmdbClient(
   def posters(tmdbId: Int, also: Seq[String] = Nil): Seq[TmdbClient.PosterImage] = authHeader.map { auth =>
     val languages = if (also.isEmpty) imageLanguages else (language.getLanguage +: also :+ "null").distinct.mkString(",")
     val body = httpGet(s"$ApiBase/movie/$tmdbId/images?include_image_language=$languages${apiKeyParameter("&")}", auth)
-    TmdbClient.parsePosters(body)
+    TmdbResponses.posters(body)
   }.getOrElse(Seq.empty)
 
   /** The films TMDB edited between `start` and `end` (at most 14 days apart), one page. */
   def changedMovies(start: java.time.LocalDate, end: java.time.LocalDate, page: Int): (Seq[Int], Int) = authHeader.map { auth =>
-    TmdbClient.changedIds(httpGet(s"$ApiBase/movie/changes?start_date=$start&end_date=$end&page=$page${apiKeyParameter("&")}", auth))
+    TmdbResponses.changedIds(httpGet(s"$ApiBase/movie/changes?start_date=$start&end_date=$end&page=$page${apiKeyParameter("&")}", auth))
   }.getOrElse((Nil, 1))
 
   /** What TMDB edited about one film between `start` and `end`: each key and its items' languages. */
   def movieChanges(tmdbId: Int, start: java.time.LocalDate, end: java.time.LocalDate): Seq[TmdbClient.MovieEdit] = authHeader.map { auth =>
-    TmdbClient.movieEdits(httpGet(s"$ApiBase/movie/$tmdbId/changes?start_date=$start&end_date=$end${apiKeyParameter("&")}", auth))
+    TmdbResponses.movieEdits(httpGet(s"$ApiBase/movie/$tmdbId/changes?start_date=$start&end_date=$end${apiKeyParameter("&")}", auth))
   }.getOrElse(Nil)
 
   /** Every plausible TMDB person for a name, Directing-known first and otherwise
@@ -428,7 +366,7 @@ class TmdbClient(
    *  at one round-trip — an actor sharing a director's name is still skipped, just
    *  no longer fatally when TMDB ranks a credit-less stub above the real one. */
   def findPersonCandidates(name: String): Seq[Int] = authHeader.map { auth =>
-    TmdbClient.personCandidates(httpGet(s"$ApiBase/search/person?query=${urlEncode(name)}${apiKeyParameter("&")}", auth))
+    TmdbResponses.personCandidates(httpGet(s"$ApiBase/search/person?query=${urlEncode(name)}${apiKeyParameter("&")}", auth))
       .take(TmdbClient.MaxPersonCandidates)
   }.getOrElse(Seq.empty)
 
@@ -456,125 +394,28 @@ class TmdbClient(
   }
 
   private def personCredits(personId: Int, department: String): Seq[TmdbClient.SearchResult] = authHeader.map { auth =>
-    TmdbClient.creditsIn(orEmptyWhenUnknown(httpGet(s"$ApiBase/person/$personId/movie_credits?language=$languageTag${apiKeyParameter("&")}", auth)), department)
+    TmdbResponses.creditsIn(orEmptyWhenUnknown(httpGet(s"$ApiBase/person/$personId/movie_credits?language=$languageTag${apiKeyParameter("&")}", auth)), department)
   }.getOrElse(Seq.empty)
-
-  private[clients] def parseSearchResults(body: String): Seq[TmdbClient.SearchResult] =
-    (Json.parse(body) \ "results").asOpt[JsArray].map(TmdbClient.decodeMovieArray).getOrElse(Seq.empty).sortBy(-_.popularity)
-
-  // /find/{external_id} returns matches under "movie_results" in the same row
-  // shape as /search/movie's "results". Both decoders share this body.
 
 }
 
 object TmdbClient {
 
-  // ── What each identity response is read as: ONE parser per response, shared by the client's
-  //    own calls and by the normalized identity store (`services.identity.TmdbStore`), so a
-  //    stored answer is by construction what the client would have made of the body. ──
-
-  /** A title search's results in TMDB's OWN order. */
-  def rankedResults(body: String): Seq[SearchResult] =
-    (Json.parse(body) \ "results").asOpt[JsArray].map(decodeMovieArray).getOrElse(Seq.empty)
-
-  /** A person search's people, those TMDB knows for directing first, in its order otherwise. */
-  def personCandidates(body: String): Seq[Int] = {
-    val rows = (Json.parse(body) \ "results").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
-    val (directing, others) = rows.partition(r => (r \ "known_for_department").asOpt[String].contains("Directing"))
-    (directing ++ others).flatMap(r => (r \ "id").asOpt[Int]).distinct
-  }
-
-  /** A change list's page: the films (or people) TMDB edited in the window, and how many pages it has. */
-  def changedIds(body: String): (Seq[Int], Int) = {
-    val js = Json.parse(body)
-    ((js \ "results").asOpt[JsArray].map(_.value.toSeq).getOrElse(Nil).flatMap(r => (r \ "id").asOpt[Int]),
-      (js \ "total_pages").asOpt[Int].getOrElse(1))
-  }
-
-  /** One key of a film's edits: the languages its items name and — for crew — each credited
-   *  person with their department, and the jobs (from an item's new or original value). */
-  final case class MovieEdit(key: String, languages: Set[String], jobs: Set[String], credits: Seq[(Int, String)] = Nil)
-
-  /** One film's edits in the window, a [[MovieEdit]] per changed key. */
-  def movieEdits(body: String): Seq[MovieEdit] =
-    (Json.parse(body) \ "changes").asOpt[JsArray].map(_.value.toSeq).getOrElse(Nil).flatMap { change =>
-      (change \ "key").asOpt[String].map { key =>
-        val items  = (change \ "items").asOpt[Seq[JsValue]].getOrElse(Nil)
-        val values = items.flatMap(i => Seq(i \ "value", i \ "original_value").flatMap(_.toOption))
-        MovieEdit(key, items.flatMap(i => (i \ "iso_639_1").asOpt[String]).filter(_.nonEmpty).toSet,
-          values.flatMap(v => (v \ "job").asOpt[String]).toSet,
-          values.flatMap(v => (v \ "person_id").asOpt[Int].zip((v \ "department").asOpt[String])).distinct)
-      }
-    }
-
-  /** A person's films credited in `department` (crew), once each, in TMDB's order. */
-  def creditsIn(body: String, department: String): Seq[SearchResult] =
-    (Json.parse(body) \ "crew").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
-      .filter(c => (c \ "department").asOpt[String].contains(department))
-      .flatMap { js =>
-        for {
-          id <- (js \ "id").asOpt[Int]
-        } yield SearchResult(
-          id            = id,
-          title         = (js \ "title").asOpt[String].getOrElse(""),
-          originalTitle = (js \ "original_title").asOpt[String],
-          releaseYear   = TmdbJson.releaseYear(js),
-          popularity    = (js \ "popularity").asOpt[Double].getOrElse(0.0)
-        )
-      }
-      .distinctBy(_.id)
-
-  /** A find-by-external-id's films, most popular first. */
-  def parseFindMovieResults(body: String): Seq[SearchResult] =
-    (Json.parse(body) \ "movie_results").asOpt[JsArray]
-      .map(decodeMovieArray).getOrElse(Seq.empty).sortBy(-_.popularity)
-
-  private[clients] def decodeMovieArray(array: JsArray): Seq[SearchResult] =
-    array.value.flatMap { js =>
-      for {
-        id <- (js \ "id").asOpt[Int]
-      } yield SearchResult(
-        id            = id,
-        title         = (js \ "title").asOpt[String].getOrElse(""),
-        originalTitle = (js \ "original_title").asOpt[String],
-        releaseYear   = TmdbJson.releaseYear(js),
-        popularity    = (js \ "popularity").asOpt[Double].getOrElse(0.0),
-        overview      = (js \ "overview").asOpt[String].filter(_.nonEmpty)
-      )
-    }.toSeq
   /** How many same-name people the director walk will try before giving up. Two
    *  covers the observed failures (a credit-less duplicate or an alias ranked
    *  above the real person); the rest is headroom that still bounds the extra
    *  credit fetches a common name like "John Smith" would otherwise cost. */
   private[clients] val MaxPersonCandidates = 4
 
-  /** The `certification` for `country` (ISO-3166-1, e.g. "GB"/"DE"/"PL") from a
-   *  release-dates block: the matching `results[].iso_3166_1` entry's first non-blank
-   *  `release_dates[].certification`, verbatim. None when the country isn't listed or
-   *  carries only blank certs. Pure (no I/O) so the country-selection is unit-tested
-   *  without a live call.
-   *
-   *  Takes the BLOCK, not the whole response, so it reads the same either way: TMDB's
-   *  `/movie/{id}/release_dates` body and the `release_dates` value appended to a detail
-   *  response are the same `{id, results[]}` shape. */
-  def certificationFor(js: play.api.libs.json.JsValue, country: String): Option[String] =
-    (js \ "results").asOpt[play.api.libs.json.JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
-      .find(r => (r \ "iso_3166_1").asOpt[String].contains(country))
-      .flatMap(r => (r \ "release_dates").asOpt[play.api.libs.json.JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
-        .flatMap(rd => (rd \ "certification").asOpt[String]).map(_.trim).find(_.nonEmpty))
-
   val ApiBase = "https://api.themoviedb.org/3"
   // TMDB's CDN-served poster path. w500 is the largest "good" size for our
   // cards (next step up is "original" which can be 2000+ px and isn't worth
   // the bytes). Matches the size Multikino's own posters ship at.
-  private val PosterBase = "https://image.tmdb.org/t/p/w500"
-  // Top-N cast cap for `fullDetails.cast`. TMDB's `cast` is the whole role
-  // list; keeping the top 5 matches the length cinemas typically ship.
-  private val MaxCastNames = 5
+  private[clients] val PosterBase = "https://image.tmdb.org/t/p/w500"
   // Widest aspect ratio (width/height, TMDB's convention) we still treat as a
   // portrait poster. A 2:3 poster is ~0.667; anything above this is squarer or
   // landscape and would crop badly in the 2:3 card, so we skip it.
-  private val MaxPortraitAspectRatio = 0.72
+  private[clients] val MaxPortraitAspectRatio = 0.72
 
 
   /** The request language when a construction doesn't specify one. Polish keeps
@@ -598,6 +439,10 @@ object TmdbClient {
     case _: java.io.IOException           => true
     case _                                => false
   }
+
+  /** One key of a film's edits: the languages its items name and — for crew — each credited
+   *  person with their department, and the jobs (from an item's new or original value). */
+  final case class MovieEdit(key: String, languages: Set[String], jobs: Set[String], credits: Seq[(Int, String)] = Nil)
 
   /** The cross-reference ids TMDB's `/external_ids` endpoint carries for a movie. */
   case class ExternalIds(imdbId: Option[String], wikidataId: Option[String])
@@ -640,23 +485,6 @@ object TmdbClient {
     val q = titleMatchKey(title)
     q.nonEmpty && r.titles.exists(titleMatchKey(_) == q)
   }
-
-  /** Fold every Unicode dash variant a cinema might emit — hyphen-minus through
-   *  em-dash/horizontal-bar, the math minus sign (U+2212), and the fullwidth /
-   *  small CJK-compat forms — to a plain ASCII hyphen. `titleMatchKey` already
-   *  strips dashes for exact-match comparison, so this matters at the QUERY level:
-   *  TMDB's search tokeniser treats "Wicked — Część 2" and "Wicked - Część 2" as
-   *  different strings, so a verbatim em-dash query can miss a film that a
-   *  hyphenated one finds. The normalised form is offered as a query variant. */
-  private val DashVariants =
-    java.util.regex.Pattern.compile("[\\u2010-\\u2015\\u2212\\u2043\\uFE58\\uFE63\\uFF0D]")
-  private[clients] def normalizeDashes(s: String): String =
-    DashVariants.matcher(s).replaceAll("-")
-
-  /** Trailing parenthetical at the end of a title — "Freak Show (AD)", "Wymazać
-   *  (2024)". Stripped to recover the bare film title. */
-  private val TrailingParenthetical =
-    java.util.regex.Pattern.compile("\\s*\\([^()]*\\)\\s*$")
 
   /** Slim shape returned by `details(tmdbId)` — just the fields the ratings
    *  classes need for MC/RT URL resolution.
@@ -710,40 +538,6 @@ object TmdbClient {
     width:       Int,
     voteCount:   Int = 0
   )
-
-  private[clients] def parsePosters(body: String): Seq[PosterImage] =
-    (Json.parse(body) \ "posters").asOpt[JsArray].map(_.value.toSeq).getOrElse(Seq.empty)
-      .flatMap { js =>
-        (js \ "file_path").asOpt[String].filter(_.nonEmpty).map { fp =>
-          PosterImage(
-            filePath    = fp,
-            language    = (js \ "iso_639_1").asOpt[String].filter(_.nonEmpty),
-            aspectRatio = (js \ "aspect_ratio").asOpt[Double].getOrElse(0.0),
-            voteAverage = (js \ "vote_average").asOpt[Double].getOrElse(0.0),
-            width       = (js \ "width").asOpt[Int].getOrElse(0),
-            voteCount   = (js \ "vote_count").asOpt[Int].getOrElse(0)
-          )
-        }
-      }
-
-  /** Pick the best *portrait* poster URL from a `/images` poster set,
-   *  preferring artwork tagged with the DEPLOYMENT's language. Drops
-   *  landscape/square variants (aspect ratio above `MaxPortraitAspectRatio`),
-   *  then orders by (own language first, highest community vote, then
-   *  resolution) and returns the winner as a w500 CDN URL. None when nothing
-   *  portrait survives — the caller falls back to `poster_path`.
-   *
-   *  `language` is the bare subtag ("pl", "de", "en") matching `/images`'
-   *  `iso_639_1`. It used to be hardcoded "pl", which was inert only as long as
-   *  `posters` was already scoped to `<lang>,null`: any set that also carried
-   *  Polish artwork (a widened `include_image_language`, a default-language
-   *  client in a spec) handed a German deployment the Polish poster. */
-  def bestPortraitPosterUrl(posters: Seq[PosterImage], language: String): Option[String] =
-    posters
-      .filter(p => p.aspectRatio > 0 && p.aspectRatio <= MaxPortraitAspectRatio)
-      .sortBy(p => (if (p.language.contains(language)) 0 else 1, -p.voteAverage, -p.width))
-      .headOption
-      .map(p => s"$PosterBase${p.filePath}")
 
   private[clients] def urlEncode(s: String): String = URLEncoder.encode(s, StandardCharsets.UTF_8)
 }

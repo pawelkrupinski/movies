@@ -1,6 +1,6 @@
 package services.identity
 
-import clients.{TmdbClient, TmdbJson}
+import clients.{TmdbJson, TmdbResponses}
 import play.api.Logging
 import play.api.libs.json.{JsArray, JsObject, JsValue, Json}
 import services.enrichment.ImdbClient
@@ -13,8 +13,8 @@ import scala.util.control.NonFatal
 
 /**
  * Each identity response, as it arrives, into [[TmdbStore]]'s normalized documents — read through
- * the very parsers the clients use (`TmdbClient.rankedResults`, `personCandidates`, `creditsIn`,
- * `parseFindMovieResults`, `ImdbClient.movieSuggestions`, `TmdbFilmRecord`), so a stored answer is
+ * the very parsers the clients use (`TmdbResponses.rankedResults`, `personCandidates`, `creditsIn`,
+ * `findMovieResults`, `ImdbClient.movieSuggestions`, `TmdbFilmRecord`), so a stored answer is
  * what the client made of the body. A response that answers no identity question is ignored.
  *
  * Failures follow the clients' own reading: a 404 on a film's record or a person's credits is an
@@ -64,13 +64,13 @@ final class TmdbNormalizer(store: TmdbStore, bodies: tools.JsonBodies = new tool
     (Option(uri.getHost).getOrElse(""), path, body) match {
       case ("api.themoviedb.org", Seq("3", "search", "movie"), Some(Right(b))) if !params.contains("year") =>
         params.get("query").zip(params.get("language")).foreach { case (query, language) =>
-          store.question(TmdbStore.titleSearchId(language, query), TmdbClient.rankedResults(b).map(TmdbIdentityLookups.hitOf))
+          store.question(TmdbStore.titleSearchId(language, query), TmdbResponses.rankedResults(b).map(TmdbIdentityLookups.hitOf))
         }
       case ("api.themoviedb.org", Seq("3", "search", "person"), Some(Right(b))) =>
-        params.get("query").foreach(query => store.people(TmdbStore.personSearchId(query), TmdbClient.personCandidates(b)))
+        params.get("query").foreach(query => store.people(TmdbStore.personSearchId(query), TmdbResponses.personCandidates(b)))
       case ("api.themoviedb.org", Seq("3", "person", id, "movie_credits"), Some(answer)) if id.forall(_.isDigit) =>
         val b = answer.getOrElse("""{"crew":[]}""")
-        store.person(id.toInt, TmdbClient.creditsIn(b, "Directing").map(TmdbIdentityLookups.hitOf), TmdbClient.creditsIn(b, "Writing").map(TmdbIdentityLookups.hitOf))
+        store.person(id.toInt, TmdbResponses.creditsIn(b, "Directing").map(TmdbIdentityLookups.hitOf), TmdbResponses.creditsIn(b, "Writing").map(TmdbIdentityLookups.hitOf))
       case ("api.themoviedb.org", Seq("3", "movie", id), Some(answer)) if id.forall(_.isDigit) =>
         val append = params.getOrElse("append_to_response", "")
         val partial =
@@ -79,7 +79,7 @@ final class TmdbNormalizer(store: TmdbStore, bodies: tools.JsonBodies = new tool
           else None
         partial.foreach(p => store.filmPartial(id.toInt, p, answer.fold(_ => Json.obj("crew" -> JsArray()), b => TmdbNormalizer.minimal(bodies.parse(b)))))
       case ("api.themoviedb.org", Seq("3", "find", imdbId), Some(Right(b))) if params.get("external_source").contains("imdb_id") =>
-        store.question(TmdbStore.findId(imdbId), TmdbClient.parseFindMovieResults(b).map(TmdbIdentityLookups.hitOf))
+        store.question(TmdbStore.findId(imdbId), TmdbResponses.findMovieResults(b).map(TmdbIdentityLookups.hitOf))
       case (host, _, Some(answer)) if url.startsWith(ImdbClient.SuggestionBase) =>
         store.suggestions(TmdbStore.suggestionsId(url), answer.fold(_ => ImdbClient.Suggested(Nil, Nil), b => ImdbClient.suggestedIn(Json.parse(b))))
       case _ => ()
