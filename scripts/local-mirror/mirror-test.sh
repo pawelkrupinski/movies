@@ -7,6 +7,8 @@
 #
 #   scripts/local-mirror/mirror-test.sh
 set -uo pipefail
+# the URIs these checks assert name the pinned port; the free-port pick has its own spec (prod-tunnel-test.sh)
+export PROD_TUNNEL_PORT=27017
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=scripts/shell-spec.sh
 . "$HERE/../shell-spec.sh"

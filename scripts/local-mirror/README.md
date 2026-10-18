@@ -153,7 +153,7 @@ asks again. The secret lives only in that process's environment — never in the
 plist or the log.
 
 `mirror.sh` is a self-healing daemon: it brings up its **own**
-ssh tunnel when nothing already serves `:27017` (and uses an existing
+ssh tunnel on a free local port of its own (`PROD_TUNNEL_PORT`, 27100-27899; and uses an existing
 one — e.g. `sbt run`'s — when there is, never fighting it), re-ensures the native
 Mongo via `brew services` if it's stopped, re-seeds when a mirror is empty **or
 has drifted** (below), and reconnects the tunnel / change stream on every drop.
@@ -469,7 +469,7 @@ Then stop exporting `MONGODB_MOVIES_MIRROR_URI` for the web app. To wipe the dat
 
 | Port  | What                                                              |
 |-------|-------------------------------------------------------------------|
-| 27017 | prod tunnel (`ssh -N -L 27017:127.0.0.1:27017`) — everything except `/debug` reads, and the sync **source** |
+| 27100-27899 | prod tunnel, one per caller (`ssh -N -L <port>:127.0.0.1:27017`) — everything except `/debug` reads, and the sync **source** |
 | 28017 | native local Mongo — `/debug` mirror reads + the sync **target**, and the web+worker `kinowo_local` |
 
 Override the Mongo port with `LOCAL_MIRROR_PORT` (and match it in

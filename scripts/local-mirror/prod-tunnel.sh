@@ -31,6 +31,12 @@
 #   root@178.105.221.61    mongo-1's public address, as pinned in
 #                          infra/nix/hosts/mongo-1/default.nix
 #
+# WHY A PORT OF OUR OWN. The forward used to bind a fixed :27017, so two scripts at once shared it, and the one
+# that finished first closed it under the other mid-command. Each caller now opens its OWN forward on a free local
+# port ($PROD_TUNNEL_PORT: set it to pin one, else prod_tunnel_free_port picks, starting from a pid-derived slot in
+# 27100-27899 so concurrent callers rarely probe the same one). prod_tunnel_uri puts that port into the URI a caller
+# hands its command, so the URI and the forward cannot disagree; ensure_prod_tunnel exports PROD_TUNNEL_PORT.
+#
 # Contract for callers:
 #   * set $TUNNEL_TAG   — the log prefix, e.g. "mirror"
 #   * set $TUNNEL_PROBE_URI — a Mongo URI (with credentials) to health-check
@@ -69,7 +75,7 @@ init_prod_tunnel() {
 # old .env.local carried a hand-edited copy pointed at the tunnel instead; rather
 # than keep a second vault key in step with the first, every laptop-side script
 # derives the tunnel form from the one real value, here:
-#   * the host list after the credentials becomes 127.0.0.1:27017 (this tunnel),
+#   * the host list after the credentials becomes 127.0.0.1:<tunnel port> (prod_tunnel_free_port),
 #   * the query carries directConnection=true — a replica-set member reached
 #     through a forward must not be "discovered" past it to addresses the laptop
 #     cannot reach — replacing any directConnection already there,
@@ -87,7 +93,30 @@ prod_tunnel_uri() {
           query="$(printf '%s' "$query" | tr '&' '\n' | { grep -v '^directConnection=' || true; } | paste -sd'&' -)" ;;
     *)    query="" ;;
   esac
-  printf 'mongodb://%s127.0.0.1:27017%s?%sdirectConnection=true\n' "$creds" "$tail" "${query:+$query&}"
+  printf 'mongodb://%s127.0.0.1:%s%s?%sdirectConnection=true\n' "$creds" "$(prod_tunnel_free_port || echo 27017)" "$tail" "${query:+$query&}"
+}
+
+# The local port this caller's tunnel binds: $PROD_TUNNEL_PORT when set, else the first port from a pid-derived start
+# (27100-27899) that nothing accepts on. $$ is the caller's pid even inside $(...), so the URI built before the tunnel
+# opens and the tunnel opened later pick the same port. Fails (nothing printed) when 200 in a row are taken.
+prod_tunnel_free_port() {
+  if [ -n "${PROD_TUNNEL_PORT:-}" ]; then printf '%s\n' "$PROD_TUNNEL_PORT"; return 0; fi
+  local port=$((27100 + $$ % 800)) tries
+  for tries in $(seq 1 200); do
+    nc -z -w1 127.0.0.1 "$port" 2>/dev/null || { printf '%s\n' "$port"; return 0; }
+    port=$((port + 1)); [ "$port" -lt 27900 ] || port=27100
+  done
+  return 1
+}
+
+# The port of THIS caller's tunnel: the pinned one, else the one its probe URI already names (so the forward is the
+# one the URI the caller hands its command points at), else a free one.
+prod_tunnel_port() {
+  local from_uri
+  if [ -n "${PROD_TUNNEL_PORT:-}" ]; then printf '%s\n' "$PROD_TUNNEL_PORT"; return 0; fi
+  from_uri="$(printf '%s' "${TUNNEL_PROBE_URI:-}" | sed -nE 's#^mongodb://([^@/]*@)?127\.0\.0\.1:([0-9]+).*#\2#p')"
+  if [ -n "$from_uri" ]; then printf '%s\n' "$from_uri"; return 0; fi
+  prod_tunnel_free_port
 }
 
 # The pid of a tunnel WE started. Empty means the port is served by someone
@@ -118,7 +147,7 @@ MONGOSH_AT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/mongosh-at.sh"
 mongosh_at() { "$MONGOSH_AT" "$@"; }
 
 prod_tunnel_answers() {
-  nc -z -w2 127.0.0.1 27017 2>/dev/null || return 1
+  nc -z -w2 127.0.0.1 "$(prod_tunnel_port || echo 27017)" 2>/dev/null || return 1
   [ -n "${TUNNEL_PROBE_URI:-}" ] || return 0        # nothing to authenticate with; TCP is all we have
   local probe; probe="$(printf '%s' "$TUNNEL_PROBE_URI" | sed -E 's/[?&]serverSelectionTimeoutMS=[0-9]+//g')"
   case "$probe" in *\?*) probe="$probe&serverSelectionTimeoutMS=3000" ;;
@@ -127,10 +156,12 @@ prod_tunnel_answers() {
 }
 
 # Bring the tunnel up if prod isn't answering, and keep it OURS. Returns 0 when
-# prod answers on 127.0.0.1:27017, non-zero when it doesn't — never exits, so a
+# prod answers on 127.0.0.1:$PROD_TUNNEL_PORT (exported), non-zero when it doesn't — never exits, so a
 # long-running caller (mirror.sh) can just retry on the next cycle.
 ensure_prod_tunnel() {
   local tag="${TUNNEL_TAG:-tunnel}"
+  PROD_TUNNEL_PORT="$(prod_tunnel_port)" || { echo "[$tag] no free local port in 27100-27899 for the prod tunnel" >&2; return 1; }
+  export PROD_TUNNEL_PORT
   prod_tunnel_answers && return 0
 
   if [ -n "$PROD_TUNNEL_PID" ]; then
@@ -138,21 +169,22 @@ ensure_prod_tunnel() {
     kill "$PROD_TUNNEL_PID" 2>/dev/null || true
     wait "$PROD_TUNNEL_PID" 2>/dev/null || true
     PROD_TUNNEL_PID=""
-  elif nc -z -w2 127.0.0.1 27017 2>/dev/null; then
+  elif nc -z -w2 127.0.0.1 "$PROD_TUNNEL_PORT" 2>/dev/null; then
     # Someone else's process holds the port and prod does not answer through it.
-    # We must not kill it — it may be an `sbt run` forward someone is using — but
-    # we also cannot bind over it, so say exactly what to look for instead of
-    # retrying into a wall. The overwhelmingly likely cause after the cutover is
-    # a `flyctl proxy ... --app kinowo-mongo` left running from before the move.
-    echo "[$tag] :27017 is held by another process but prod does NOT answer through it." >&2
-    echo "[$tag] A stale 'flyctl proxy --app kinowo-mongo' is the usual cause — that app is" >&2
-    echo "[$tag] stopped and its tunnel accepts connections that go nowhere. Kill it with:" >&2
-    echo "[$tag]   pkill -f 'flyctl proxy 27017'" >&2
+    # We must not kill it — it may be a forward someone is using — but we also
+    # cannot bind over it, so say exactly what to look for instead of retrying
+    # into a wall. (Our own free-port pick avoids this; it is a PINNED port, or
+    # a port taken between the pick and the bind. After the cutover a stale
+    # `flyctl proxy ... --app kinowo-mongo` on :27017 was the usual cause: that
+    # app is stopped and its tunnel accepts connections that go nowhere.)
+    echo "[$tag] :$PROD_TUNNEL_PORT is held by another process but prod does NOT answer through it." >&2
+    echo "[$tag] Find the holder with 'lsof -nP -iTCP:$PROD_TUNNEL_PORT -sTCP:LISTEN' and stop that one pid yourself," >&2
+    echo "[$tag] or unset PROD_TUNNEL_PORT to take a free port." >&2
     return 1
   fi
 
   local target; target="$(prod_tunnel_target)"
-  echo "[$tag] opening ssh tunnel to prod Mongo ($target) on :27017"
+  echo "[$tag] opening ssh tunnel to prod Mongo ($target) on :$PROD_TUNNEL_PORT"
   # ExitOnForwardFailure: without it ssh happily holds a session open with NO
   # forward when the local bind fails, which reads as a live tunnel and fails
   # later as a connection error. BatchMode: under launchd there is no one to
@@ -160,7 +192,7 @@ ensure_prod_tunnel() {
   # ServerAlive*: a laptop that sleeps or changes network leaves a half-open TCP
   # session that neither errors nor carries data — the ~45s probe window turns
   # that into a clean exit the supervisor can restart.
-  ssh -N -L 27017:127.0.0.1:27017 \
+  ssh -N -L "$PROD_TUNNEL_PORT:127.0.0.1:27017" \
       -o ExitOnForwardFailure=yes -o BatchMode=yes -o ConnectTimeout=10 \
       -o ServerAliveInterval=15 -o ServerAliveCountMax=3 \
       "$target" >/dev/null 2>&1 &

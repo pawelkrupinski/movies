@@ -5,6 +5,8 @@
 #
 #   scripts/identity-capture-test.sh
 set -uo pipefail
+# the URIs these checks assert name the pinned port; the free-port pick has its own spec (prod-tunnel-test.sh)
+export PROD_TUNNEL_PORT=27017
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 . "$REPO_ROOT/scripts/shell-spec.sh"
 

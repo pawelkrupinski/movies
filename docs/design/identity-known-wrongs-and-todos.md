@@ -320,8 +320,9 @@ Each a production change: measure with `scripts/identity-measure`, land one at a
   kill an older LIVE run sharing a cwd (another agent's identity run in one `~/.cache/kinowo-identity/refs/<sha>`, or
   the server a client is attached to); its gone-dir rule also kills JVMs whose ref dir was renamed from `.part`. Only
   `--detach-stdio` servers not named by an `active.json` should be reaped.
-- [ ] `scripts/local-mirror/prod-tunnel.sh` binds fixed port 27017: one script closing its tunnel cuts another's
-  mid-command. sbt-warm has no per-checkout lock when starting a server.
+- [x] `scripts/local-mirror/prod-tunnel.sh` bound fixed port 27017 (now a free port per caller, spec
+  `prod-tunnel-test.sh`).
+- [ ] sbt-warm has no per-checkout lock when starting a server.
 - [ ] Every checkout copies its own tool files into the shared `refs/<sha>` tree, so two checkouts with different tool
   versions can compile a mix; `identity-slice --stop-served` kills whatever now holds the saved pid; venue-replay's
   `mongosh` call has no timeout; `identity-capture.sh` still finds its recording in Scala, not identity-tools.sh.

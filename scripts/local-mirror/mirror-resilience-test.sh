@@ -425,7 +425,7 @@ exported_uri_skips_the_vault() {
     . "$HERE/mirror.sh"
     unset MONGODB_MOVIES_MIRROR_URI LOCAL_MIRROR_PORT
     # The vault's value names the in-cluster host; the mirror reads it via the tunnel.
-    PATH="$FAKE_BIN:$PATH" MONGODB_URI="mongodb://u:p@10.20.0.13:27017/kinowo?authSource=admin" load_endpoints
+    PATH="$FAKE_BIN:$PATH" PROD_TUNNEL_PORT=27017 MONGODB_URI="mongodb://u:p@10.20.0.13:27017/kinowo?authSource=admin" load_endpoints
     [ "$SRC" = "mongodb://u:p@127.0.0.1:27017/kinowo?authSource=admin&directConnection=true" ] || return 1
     [ "$TUNNEL_PROBE_URI" = "$SRC" ] || return 1
     [ "$DST" = "mongodb://127.0.0.1:28017/kinowo_prod_mirror?directConnection=true" ] || return 1
