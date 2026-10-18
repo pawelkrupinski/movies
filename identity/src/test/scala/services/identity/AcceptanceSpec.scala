@@ -352,6 +352,16 @@ class AcceptanceSpec extends AnyFlatSpec with Matchers {
       .map(_.copy(probability = 0.99)), 3) shouldBe Some("imdb-suggested")
   }
 
+  it should "not take a bare billing's film by an alternative title when TMDB's search of it finds other films, not this one" in {
+    // DE Kinopolis Freiberg's "Patagonien", a travel lecture: IMDb suggests Bozzelli's 2023 "Patagonia", which TMDB files
+    // under "Patagonien" too, while TMDB's search of "Patagonien" ranks "Abenteuer Patagonien" first and never this film
+    val patagonia = (1010170, Film("Patagonia", year = Some(2023), alternativeTitles = Seq("Patagonien")), None)
+    val abenteuer = (686892, Film("Abenteuer Patagonien", year = Some(2015)), Some(1))
+    byImdb(suggested(ranked(Listing("Patagonien"), patagonia, abenteuer), 1, 1010170 -> 1)) shouldBe None
+    // a search that finds nothing says nothing against it: an arthouse's German title of a foreign film is the film
+    byImdb(suggested(ranked(Listing("Patagonien"), patagonia), 1, 1010170 -> 1)) shouldBe Some(1010170)
+  }
+
   "the only film a listing's own title search returns" should "be taken unless a fact contradicts it, as the old pipeline took it" in {
     // PL Kino Bajka's "Loving Karma" [78′]: TMDB's search returns one film, its 85-minute record; seven minutes
     // weighed against it, so neither the exact top hit nor any other rule took it.

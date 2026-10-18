@@ -435,10 +435,26 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
       _      <- notADoubleBill(any.listing)
       scored <- one(suggested.filter(rung), "no IMDb suggestion is taken by its year, its director or as the only one", "two IMDb suggestions qualify")
       _      <- notJoinedToAnotherWork(any.listing, scored)
+      _      <- needOf(!alternativeAgainstTmdbsSearch(scored, ranked), "a bare billing names the film only by an alternative title, " +
+                  "and TMDB's search of it finds other films, not this one", scored, s"title=${scored.category("title").getOrElse("absent")}")
       _      <- noneOf(eligible.find(searchNamesAnother(scored, _)), "TMDB ranks another film the title names above it", scored)
       _      <- notAnotherInstalment(scored)
       taken  <- unopposed(scored, asItsTitlesTopHit(scored), eligible)
     } yield taken
+  }
+
+  /** Does a BARE billing — no year, director, running time or original title of its own — reach the IMDb-suggested film
+   *  only by a title TMDB files it under beside its own (`title=alternative`), while TMDB's search of the billing finds
+   *  other films and not this one? Then IMDb's suggestion is all that speaks for it, against TMDB's own answer: DE
+   *  Kinopolis Freiberg's "Patagonien", a travel lecture, is not Bozzelli's 2023 "Patagonia", one of whose alternative
+   *  titles it is, where TMDB's search of "Patagonien" ranks "Abenteuer Patagonien" and a dozen others. A search that
+   *  finds nothing says nothing against it: an arthouse's German title of a foreign film ("Eine Seite des Wahnsinns",
+   *  "Tempel zur goldenen Halle") is the film. The same refusal without that condition lost 16 such right takes
+   *  (docs/identity-experiments.md). */
+  private def alternativeAgainstTmdbsSearch(scored: Scored, ranked: Seq[Scored]): Boolean = {
+    val l = scored.listing
+    l.year.isEmpty && l.directors.isEmpty && l.runtime.isEmpty && l.originalTitle.isEmpty &&
+      scored.category("title").contains("alternative") && scored.rank.isEmpty && ranked.exists(_.rank.isDefined)
   }
 
   /** Is every word of the listing's whole title one of the film's title's — two words at least, or the film's title
