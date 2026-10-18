@@ -154,6 +154,9 @@ jobs:
               id: shards
               if: needs.measure.result == 'success'
               run: |
+                  # The checkout is main's tip at depth 1: the measured commit is fetched to diff against (a fetch that
+                  # fails leaves the diff failing, read as moved: measured whole, never merged on a guess).
+                  git fetch -q --no-tags --depth=1 origin ${{ github.sha }} || true
                   if git diff --quiet ${{ github.sha }} HEAD -- common identity worker test/resources build.sbt project; then
                       echo "merge=shards" >> "$GITHUB_OUTPUT"
                   else
