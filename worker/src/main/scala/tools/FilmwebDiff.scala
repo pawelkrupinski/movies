@@ -116,61 +116,82 @@ object FilmwebDiff {
     }
   }
 
+  /** The text report as it is printed: every line echoed to stdout and kept for the `*.txt` file. */
+  private final class Report {
+    private val out = new StringBuilder
+    def emit(line: String): Unit = { println(line); out.append(line).append('\n'); () }
+    def text: String = out.toString
+  }
+
+  /** One run's window — `[today, windowEnd]`, Poland's `now` — and what it reads both sides with. */
+  private final case class Run(options: Options, clock: java.time.Clock, now: LocalDateTime, http: HttpFetch,
+                               titles: services.movies.TitleNormalizer, catalog: CinemaScraperCatalog,
+                               commit: String, report: Report) {
+    def today: LocalDate     = now.toLocalDate
+    def daysAhead: Int       = options.daysAhead
+    def windowEnd: LocalDate = today.plusDays(daysAhead.toLong)
+    def emit(line: String): Unit = report.emit(line)
+  }
+
   def main(args: Array[String]): Unit = {
     val knownSlugs = models.Country.Poland.cities.map(_.slug).toSet   // Filmweb is Poland's
     val options    = parse(args.toSeq, knownSlugs).fold(why => { System.err.println(s"FilmwebDiff: $why"); sys.exit(2) }, identity)
+    val run        = setUp(options)
+    import run.emit
+
+    emit(s"FilmwebDiff — window [${run.today} .. ${run.windowEnd}] (${run.daysAhead} days ahead)")
+    if (options.cities.nonEmpty) emit(s"Cities: ${options.cities.toSeq.sorted.mkString(", ")}")
+    emit("")
+
+    // ── RESOLUTION ───────────────────────────────────────────────────────────
+    // Resolve every (in-scope) cinema's Filmweb id live, then report how each
+    // resolved. Unmatched cinemas are listed, not errors.
+    val resolutions = new FilmwebCinemaIdResolver(run.http).resolveAll(options.cities)
+    emit("══════════════════════════════ RESOLUTION ═══════════════════════════")
+    emit(resolutionReport(resolutions))
+    emit("")
+
+    val diffs = compared(run, resolutions)
+    // Cinemas with NO Filmweb id never reach the comparison loop, but they DO
+    // belong in the JSON (counts 0, verdict NO_FILMWEB_ID, empty discrepancies)
+    // so the set of cinemas is stable across days. Not added to the text/CSV —
+    // those already list them in the RESOLUTION section.
+    val unresolvedDiffs: Seq[CinemaDiff] =
+      resolutions.filterNot(_.resolved).map { r =>
+        CinemaDiff(r.cinema, None, r.source, 0, 0, 0, 0, 0, NO_FILMWEB_ID, "", Map.empty, Map.empty)
+      }
+    emitSummaryAndDetail(run, diffs)
+    writeReports(run, diffs, unresolvedDiffs)
+  }
+
+  /** The tool's composition root: the JVM's egress settings, its one clock, and the catalog over the
+   *  residential proxy. */
+  private def setUp(options: Options): Run = {
     // Before any handshake — see IssuerCertificateFetching.
     // Before any request: Multikino / biletyna / ck105 tunnel through the residential proxy,
     // and the JDK reads this once — see ProxyTunnelAuthentication.
     ProxyTunnelAuthentication.BasicAllowed.applyToJvm()
     IssuerCertificateFetching.Enabled.applyToJvm()
     val process = settings.ProcessConfiguration.resolve()
-    val daysAhead = options.daysAhead
-    val clock     = java.time.Clock.systemUTC()   // the tool's composition root: its one clock, handed down
-    val now       = new models.VenueClock(clock).now(models.TimeZones.Poland)
-    val today     = now.toLocalDate
-    val windowEnd = today.plusDays(daysAhead.toLong)
-
-    // A `*.txt` → text report, a `*.csv` → summary CSV, a `*.json` → the deterministic JSON report, each defaulted
-    // when omitted (older 2-3 arg invocations still read); bare slugs restrict the diff to those cities.
-    val cityFilter  = options.cities
-    val txtPath     = options.txt
-    val csvPath     = options.csv
-    val jsonPath    = options.json
-
-    val http     = new RealHttpFetch()
+    val clock   = java.time.Clock.systemUTC()   // the tool's composition root: its one clock, handed down
+    val now     = new models.VenueClock(clock).now(models.TimeZones.Poland)
+    val http    = new RealHttpFetch()
     // Filmweb is Polish-only, so a Filmweb title is a Polish title by definition.
-    val titles   = services.movies.TitleNormalizer.forCountry(models.Country.Poland)
+    val titles  = services.movies.TitleNormalizer.forCountry(models.Country.Poland)
     // Multikino, biletyna and ck105 refuse a datacenter runner: through the residential
     // proxy, as the worker reaches Multikino and biletyna, when the Decodo credentials are set.
-    val shards   = modules.wiring.EgressWiring.residentialShards(ResidentialProxy.fromConfiguration(process), TlsTrust.newContext())
-    val catalog  = new CinemaScraperCatalog(http, venueClock = models.VenueClock.fixedOn(today), clock = clock, titles = titles, proxyShards = shards)
-    val resolver = new FilmwebCinemaIdResolver(http)
+    val shards  = modules.wiring.EgressWiring.residentialShards(ResidentialProxy.fromConfiguration(process), TlsTrust.newContext())
+    val catalog = new CinemaScraperCatalog(http, venueClock = models.VenueClock.fixedOn(now.toLocalDate), clock = clock,
+      titles = titles, proxyShards = shards)
+    Run(options, clock, now, http, titles, catalog, process.githubCommit.value, new Report)
+  }
 
-    val out = new StringBuilder
-    def emit(line: String): Unit = { println(line); out.append(line).append('\n'); () }
-
-    emit(s"FilmwebDiff — window [$today .. $windowEnd] ($daysAhead days ahead)")
-    if (cityFilter.nonEmpty) emit(s"Cities: ${cityFilter.toSeq.sorted.mkString(", ")}")
-    emit("")
-
-    // ── RESOLUTION ───────────────────────────────────────────────────────────
-    // Resolve every (in-scope) cinema's Filmweb id live, then report how each
-    // resolved. Unmatched cinemas are listed, not errors.
-    val resolutions = resolver.resolveAll(cityFilter)
-    emit("══════════════════════════════ RESOLUTION ═══════════════════════════")
-    emit(resolutionReport(resolutions))
-    emit("")
-
-    val resolutionByCinema: Map[Cinema, Resolution] =
-      resolutions.map(r => r.cinema -> r).toMap
-    val fwIdByCinema: Map[Cinema, Int] =
-      resolutions.collect { case Resolution(c, Some(id), _) => c -> id }.toMap
-
-    // Our scrapers for the cinemas with a resolved Filmweb id, in city order.
-    val ourScrapers: Seq[CinemaScraper] =
-      catalog.all.filter(s => fwIdByCinema.contains(s.cinema))
-
+  /** Both sides of every cinema with a resolved Filmweb id, in city order, diffed. */
+  private def compared(run: Run, resolutions: Seq[Resolution]): Seq[CinemaDiff] = {
+    import run.emit
+    val resolutionByCinema: Map[Cinema, Resolution] = resolutions.map(r => r.cinema -> r).toMap
+    val fwIdByCinema: Map[Cinema, Int] = resolutions.collect { case Resolution(c, Some(id), _) => c -> id }.toMap
+    val ourScrapers: Seq[CinemaScraper] = run.catalog.all.filter(s => fwIdByCinema.contains(s.cinema))
     emit(s"Cinemas compared: ${ourScrapers.size}")
     emit("")
 
@@ -186,34 +207,19 @@ object FilmwebDiff {
     val ourResults: Map[Cinema, Try[Seq[CinemaMovie]]] = fetchOursInParallel(ourScrapers)
 
     var consecutiveFwFailures = 0
-    val comparedDiffs: Seq[CinemaDiff] = ourScrapers.zipWithIndex.map { case (scraper, i) =>
+    ourScrapers.zipWithIndex.map { case (scraper, i) =>
       if (i > 0) Thread.sleep(if (consecutiveFwFailures >= 3) 8000L else 1500L)
       val cinema = scraper.cinema
       emit(s"… ${cinema.displayName}")
-
-      val oursTry = ourResults(cinema)
-      val fwTry   = Try(new FilmwebShowtimesClient(http, fwIdByCinema(cinema), cinema, daysAhead, today).fetch())
-
-      fwTry match {
-        case Failure(_) => consecutiveFwFailures += 1
-        case Success(_) => consecutiveFwFailures = 0
-      }
-
+      val fwTry = Try(new FilmwebShowtimesClient(run.http, fwIdByCinema(cinema), cinema, run.daysAhead, run.today).fetch())
+      consecutiveFwFailures = if (fwTry.isFailure) consecutiveFwFailures + 1 else 0
       val r = resolutionByCinema(cinema)
-      diffFor(cinema, r.filmwebId, r.source, oursTry, fwTry, now, windowEnd, titles)
+      diffFor(cinema, r.filmwebId, r.source, ourResults(cinema), fwTry, run.now, run.windowEnd, run.titles)
     }
+  }
 
-    // Cinemas with NO Filmweb id never reach the comparison loop, but they DO
-    // belong in the JSON (counts 0, verdict NO_FILMWEB_ID, empty discrepancies)
-    // so the set of cinemas is stable across days. Not added to the text/CSV —
-    // those already list them in the RESOLUTION section.
-    val unresolvedDiffs: Seq[CinemaDiff] =
-      resolutions.filterNot(_.resolved).map { r =>
-        CinemaDiff(r.cinema, None, r.source, 0, 0, 0, 0, 0, NO_FILMWEB_ID, "", Map.empty, Map.empty)
-      }
-
-    val diffs = comparedDiffs
-
+  private def emitSummaryAndDetail(run: Run, diffs: Seq[CinemaDiff]): Unit = {
+    import run.emit
     emit("")
     emit("══════════════════════════════ SUMMARY ══════════════════════════════")
     emit(summaryTable(diffs))
@@ -224,29 +230,29 @@ object FilmwebDiff {
       emit(s"══ ${d.cinema.displayName}  [${verdictLabel(d.verdict)}] ══")
       emit(d.detail)
     }
+  }
 
-    writeFile(txtPath, out.toString) match {
-      case Success(_) => emit(s"\nText report written to $txtPath")
-      case Failure(e) => emit(s"\nCould not write $txtPath: ${e.getMessage}")
-    }
-    writeFile(csvPath, csvReport(today, diffs)) match {
-      case Success(_) => emit(s"CSV summary written to $csvPath")
-      case Failure(e) => emit(s"Could not write $csvPath: ${e.getMessage}")
-    }
-
-    // JSON includes the unresolved cinemas too, so its `cinemas` set is stable.
+  /** The `*.txt` text report, the `*.csv` summary and the deterministic `*.json` — which includes the
+   *  unresolved cinemas too, so its `cinemas` set is stable. */
+  private def writeReports(run: Run, diffs: Seq[CinemaDiff], unresolvedDiffs: Seq[CinemaDiff]): Unit = {
+    val options = run.options
+    writeReport(run, options.txt, run.report.text, s"\nText report written to ${options.txt}", "\n")
+    writeReport(run, options.csv, csvReport(run.today, diffs), s"CSV summary written to ${options.csv}")
     val meta = FilmwebDiffJson.Meta(
-      date        = today.toString,
-      generatedAt = clock.instant().toString,
-      windowDays  = daysAhead,
-      commit      = process.githubCommit.value
+      date        = run.today.toString,
+      generatedAt = run.clock.instant().toString,
+      windowDays  = run.daysAhead,
+      commit      = run.commit
     )
     val json = Json.prettyPrint(FilmwebDiffJson.render((diffs ++ unresolvedDiffs).map(cinemaResult), meta))
-    writeFile(jsonPath, json + "\n") match {
-      case Success(_) => emit(s"JSON report written to $jsonPath")
-      case Failure(e) => emit(s"Could not write $jsonPath: ${e.getMessage}")
-    }
+    writeReport(run, options.json, json + "\n", s"JSON report written to ${options.json}")
   }
+
+  private def writeReport(run: Run, path: String, content: String, written: String, lead: String = ""): Unit =
+    writeFile(path, content) match {
+      case Success(_) => run.emit(written)
+      case Failure(e) => run.emit(s"${lead}Could not write $path: ${e.getMessage}")
+    }
 
   /** Map a per-cinema [[CinemaDiff]] to the JSON renderer's input. */
   private def cinemaResult(d: CinemaDiff): FilmwebDiffJson.CinemaResult =
