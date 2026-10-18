@@ -41,10 +41,8 @@ class DefaultedMemberForwardingSpec extends AnyFlatSpec with Matchers {
     classOf[HttpFetch],
     anchors = Seq(classOf[HttpFetch], classOf[FallbackHttpFetch]),
     factories = Map(
-      classOf[RateLimitedHttpFetch]        -> ((d: HttpFetch) => new RateLimitedHttpFetch(d, intervalFor = _ => None, clock = SpecClock.Pinned)),
+      classOf[PacedHttpFetch]              -> ((d: HttpFetch) => PacedHttpFetch.perProcess(d, intervalFor = _ => None, clock = SpecClock.Pinned)),
       classOf[ThrottledHttpFetch]          -> ((d: HttpFetch) => new ThrottledHttpFetch(d, clock = SpecClock.Pinned)),
-      classOf[FleetPacedHttpFetch]         -> ((d: HttpFetch) => new FleetPacedHttpFetch(d, new InMemoryFleetHostPace, intervalFor = _ => None,
-        horizon = FleetPacedHttpFetch.Horizon, clock = SpecClock.Pinned)),
       classOf[HostCircuitBreakerHttpFetch] -> ((d: HttpFetch) => new HostCircuitBreakerHttpFetch(d, clock = SpecClock.Pinned)),
       classOf[MemoizedHttpFetch]           -> ((d: HttpFetch) => new MemoizedHttpFetch(d)),
       classOf[CachingDetailFetch]          -> ((d: HttpFetch) => new CachingDetailFetch(d)),
@@ -65,7 +63,7 @@ class DefaultedMemberForwardingSpec extends AnyFlatSpec with Matchers {
     mayInherit =
       // The default runs `this.get(url)` on a pool thread — through the decorator's own
       // `get`, so the decoration still applies.
-      Seq(classOf[RateLimitedHttpFetch], classOf[ThrottledHttpFetch], classOf[HostCircuitBreakerHttpFetch],
+      Seq(classOf[PacedHttpFetch], classOf[ThrottledHttpFetch], classOf[HostCircuitBreakerHttpFetch],
           classOf[MemoizedHttpFetch], classOf[CachingDetailFetch], classOf[MongoCachingDetailFetch],
           classOf[MonitoringHttpFetch], classOf[CountingHttpFetch], classOf[StickyShardHttpFetch],
           classOf[FallbackHttpFetch], classOf[SessionWarmingHttpFetch], classOf[services.identity.LookupFillLiveFetch],

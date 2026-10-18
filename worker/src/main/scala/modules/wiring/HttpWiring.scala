@@ -4,7 +4,7 @@ import clients.TmdbClient
 import modules.WorkerWiring
 import services.enrichment.{FilmwebClient, ImdbClient, LetterboxdClient, LetterboxdIdResolver, MetacriticClient, OMDbClient, RottenTomatoesClient, WikidataClient}
 import services.metrics.WorkerHttpMetrics
-import tools.{CircuitBreakerMeter, CountingHttpFetch, FleetHostPace, FleetPacedHttpFetch, HostCircuitBreakerHttpFetch, HostPolicies, HttpFetch, InMemoryFleetHostPace, MongoFleetHostPace, MonitoringHttpFetch, RateLimitedHttpFetch, RealHttpFetch, ThrottledHttpFetch, TlsTrust}
+import tools.{CircuitBreakerMeter, CountingHttpFetch, FleetHostPace, HostCircuitBreakerHttpFetch, HostPolicies, HttpFetch, InMemoryFleetHostPace, MongoFleetHostPace, MonitoringHttpFetch, PacedHttpFetch, RealHttpFetch, ThrottledHttpFetch, TlsTrust}
 
 import scala.concurrent.duration.{FiniteDuration, MILLISECONDS}
 
@@ -29,7 +29,7 @@ trait HttpWiring { self: WorkerWiring =>
   // call. Generalises RealHttpFetch's static per-host timeout policy (HostPolicies) to
   // any host, with no allowlist. Wrapped by ThrottledHttpFetch (429 gate) and
   // MonitoringHttpFetch (so a fast-fail still shows as the real unavailability).
-  // RateLimitedHttpFetch is innermost: the PROACTIVE half of rate-limit handling,
+  // The per-process PacedHttpFetch is innermost: the PROACTIVE half of rate-limit handling,
   // pacing the hosts whose HostPolicies row names a minRequestInterval (Filmstarts)
   // so we stay under the limit instead of rediscovering it via 429 every sweep.
   // Inside the breaker so a fast-failed call never waits for (or consumes) a slot,
@@ -146,14 +146,14 @@ object HttpWiring {
   def pacedWire(leaf: HttpFetch, configuration: settings.ProcessConfiguration, fleetHostPace: FleetHostPace,
                 clock: java.time.Clock, sleep: Long => Unit,
                 breakerMeter: CircuitBreakerMeter = CircuitBreakerMeter.noop): HttpFetch = {
-    val pace = RateLimitedHttpFetch.configuredInterval(configuration)
-    new FleetPacedHttpFetch(
+    val pace = PacedHttpFetch.configuredInterval(configuration)
+    new PacedHttpFetch(
       new ThrottledHttpFetch(
         new HostCircuitBreakerHttpFetch(
-          new RateLimitedHttpFetch(leaf, pace, clock = clock, sleep = sleep),
+          PacedHttpFetch.perProcess(leaf, pace, clock = clock, sleep = sleep),
           meter = breakerMeter, clock = clock),
         paceFor = pace, clock = clock, sleep = sleep),
       fleetHostPace, url => HostPolicies.fleetIntervalFor(url, configuration).map(d => FiniteDuration(d.toMillis, MILLISECONDS)),
-      FleetPacedHttpFetch.Horizon, clock, sleep = sleep)
+      PacedHttpFetch.FleetHorizon, clock, sleep = sleep, paceName = "the fleet's pace")
   }
 }

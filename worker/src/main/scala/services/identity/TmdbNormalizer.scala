@@ -4,7 +4,7 @@ import clients.{TmdbClient, TmdbJson}
 import play.api.Logging
 import play.api.libs.json.{JsArray, JsObject, JsValue, Json}
 import services.enrichment.ImdbClient
-import tools.{HttpFetch, HttpStatusException}
+import tools.{ForwardingHttpFetch, HttpFetch, HttpStatusException}
 
 import java.net.{URI, URLDecoder}
 import java.nio.charset.StandardCharsets
@@ -126,10 +126,11 @@ object TmdbNormalizer {
 
 /** `underlying`, every response it answers also normalized into the identity store — what the
  *  pipeline's and the fill's clients fetch is filed as the model reads it, and never kept raw. */
-final class NormalizingHttpFetch(underlying: HttpFetch, normalizer: TmdbNormalizer) extends HttpFetch {
+final class NormalizingHttpFetch(underlying: HttpFetch, normalizer: TmdbNormalizer) extends ForwardingHttpFetch {
+  /** What is not filed — bytes — passes straight through. */
+  protected def around[T](url: String)(call: HttpFetch => T): T = call(underlying)
   override def get(url: String): String                              = filed(url)(underlying.get(url))
   override def get(url: String, headers: Map[String, String]): String = filed(url)(underlying.get(url, headers))
-  override def getBytes(url: String): Array[Byte]                   = underlying.getBytes(url)
   override def post(url: String, body: String, contentType: String): String = {
     val outcome = Try(underlying.post(url, body, contentType))
     normalizer.filedPost(url, body, outcome)

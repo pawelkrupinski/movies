@@ -50,7 +50,7 @@ those is expensive to change once a `Country` is switchable.
    UK+US, Webedia for DE+FR/ES/TR/BR/MX, Cinema City for PL+CZ/HU/SK/BG/RO) is
    exactly when this bites. Check all three layers — the first two by reading,
    the third by measuring:
-   - **The pace gate.** `RateLimitedHttpFetch` buckets by FULL LOWERCASED
+   - **The pace gate.** `PacedHttpFetch` buckets by FULL LOWERCASED
      HOSTNAME, so two markets on different hostnames never share a slot queue.
      But `HostPolicies` rows match by host SUFFIX, so a new
      market's host does NOT inherit its sibling's row (`flicks.co.uk` does not

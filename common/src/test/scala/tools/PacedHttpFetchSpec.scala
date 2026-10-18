@@ -7,7 +7,7 @@ import java.time.Instant
 import scala.collection.mutable
 import scala.concurrent.duration._
 
-class RateLimitedHttpFetchSpec extends AnyFlatSpec with Matchers {
+class PacedHttpFetchSpec extends AnyFlatSpec with Matchers {
 
   private val Paced    = "https://www.filmstarts.de/_/showtimes/theater-A0416/d-2026-07-18/p-1/"
   private val Paced2   = "https://www.filmstarts.de/kinoprogramm/kino/A0006/"
@@ -19,7 +19,7 @@ class RateLimitedHttpFetchSpec extends AnyFlatSpec with Matchers {
     val delegate = new RecordingHttpFetch(_ => "body")
     val slept    = mutable.ListBuffer.empty[Long]
     val clock    = new MutableClock(Instant.EPOCH)   // advanced by hand: pacing is asserted on the recorded sleeps
-    val paced    = new RateLimitedHttpFetch(
+    val paced    = PacedHttpFetch.perProcess(
       delegate,
       intervalFor = url => if (url.contains("filmstarts.de")) interval else None,
       clock       = clock,
@@ -36,16 +36,16 @@ class RateLimitedHttpFetchSpec extends AnyFlatSpec with Matchers {
     val delegate = new RecordingHttpFetch(_ => "body")
     val slept    = mutable.ListBuffer.empty[Long]
     val clock    = new MutableClock(Instant.EPOCH)   // advanced by hand: pacing is asserted on the recorded sleeps
-    val paced    = new RateLimitedHttpFetch(
+    val paced    = PacedHttpFetch.perProcess(
       delegate,
-      intervalFor = RateLimitedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(Env.of())),
+      intervalFor = PacedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(Env.of())),
       clock       = clock,
       sleep       = ms => { slept += ms; clock.advanceMillis(ms) }
     )
     (delegate, paced, slept, clock)
   }
 
-  "RateLimitedHttpFetch" should "not delay the first call to a paced host" in {
+  "PacedHttpFetch, per process," should "not delay the first call to a paced host" in {
     val (_, paced, slept, _) = fixture()
     paced.get(Paced) shouldBe "body"
     slept shouldBe empty
@@ -57,6 +57,16 @@ class RateLimitedHttpFetchSpec extends AnyFlatSpec with Matchers {
     paced.get(Paced)
     paced.get(Paced)
     slept shouldBe List(250L, 250L)   // calls 2 and 3 each wait a full interval
+  }
+
+  it should "wait for a slot however far off it is, never turning the request back (no horizon)" in {
+    val delegate = new RecordingHttpFetch(_ => "body")
+    val slept    = mutable.ListBuffer.empty[Long]
+    // The clock never moves: every call queues behind the last, an hour of slots deep.
+    val paced    = PacedHttpFetch.perProcess(delegate, _ => Some(10.minutes), new MutableClock(Instant.EPOCH),
+      sleep = ms => { slept += ms; () })
+    (1 to 7).foreach(_ => paced.get(Paced) shouldBe "body")
+    slept.toList shouldBe (1 to 6).map(_ * 10.minutes.toMillis).toList
   }
 
   it should "pace across DIFFERENT paths on the same host" in {
@@ -121,22 +131,22 @@ class RateLimitedHttpFetchSpec extends AnyFlatSpec with Matchers {
     // tripped the breaker into a ~5min DE-wide blackout, on a ~20min cycle.
     // ~43 req/min sits under the ~45 req/min Filmstarts actually let through.
     // See the policy's comment.
-    RateLimitedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(Env.of()))(Paced) shouldBe Some(1400.millis)
-    RateLimitedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(Env.of()))(Unpaced) shouldBe None
+    PacedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(Env.of()))(Paced) shouldBe Some(1400.millis)
+    PacedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(Env.of()))(Unpaced) shouldBe None
   }
 
   it should "pace Flicks (UK) so its 843-venue fan-out stops drawing 429s" in {
     // 200ms (~5 req/s) serialises the UK sweep so the concurrent bursts that trip
     // Flicks' limiter (Retry-After: 300-600s) never form. Coupled to the UK
     // cadence; see the policy comment and WorkerScrapeCadenceConfigSpec.
-    RateLimitedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(Env.of()))("https://www.flicks.co.uk/cinema/sessions/x/2026-07-31/") shouldBe Some(200.millis)
+    PacedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(Env.of()))("https://www.flicks.co.uk/cinema/sessions/x/2026-07-31/") shouldBe Some(200.millis)
   }
 
   it should "let KINOWO_FLICKS_PACE_MS retune the Flicks pace without a restart" in {
     val flicks = "https://www.flicks.co.uk/cinema/sessions/x/2026-07-31/"
     val env = Env.of("KINOWO_FLICKS_PACE_MS" -> "350")
-    RateLimitedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(env))(flicks) shouldBe Some(350.millis)
-    RateLimitedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(Env.of()))(flicks) shouldBe Some(200.millis)
+    PacedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(env))(flicks) shouldBe Some(350.millis)
+    PacedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(Env.of()))(flicks) shouldBe Some(200.millis)
   }
 
   // Policy rows match by host SUFFIX, and `flicks.co.uk` does not match
@@ -145,7 +155,7 @@ class RateLimitedHttpFetchSpec extends AnyFlatSpec with Matchers {
   // (Retry-After 300-600s, whole venue-days lost), and the US corpus is ~6x the
   // UK's, so this is the one row the US sweep cannot ship without.
   it should "pace Flicks US on its own row rather than falling through unpaced" in {
-    RateLimitedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(Env.of()))(FlicksUs) shouldBe Some(200.millis)
+    PacedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(Env.of()))(FlicksUs) shouldBe Some(200.millis)
   }
 
   // The markets are INDEPENDENT, and this is what says so: retuning one leaves
@@ -153,10 +163,10 @@ class RateLimitedHttpFetchSpec extends AnyFlatSpec with Matchers {
   // with separate knobs. A US sweep can therefore be slowed (or sped up) without
   // touching the UK's tuned 200ms, and vice versa.
   it should "keep the US and UK Flicks paces independent of each other" in {
-    val usRetuned = RateLimitedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(Env.of("KINOWO_FLICKS_US_PACE_MS" -> "120")))
+    val usRetuned = PacedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(Env.of("KINOWO_FLICKS_US_PACE_MS" -> "120")))
     usRetuned(FlicksUs) shouldBe Some(120.millis)
     usRetuned(FlicksUk) shouldBe Some(200.millis)
-    val ukRetuned = RateLimitedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(Env.of("KINOWO_FLICKS_PACE_MS" -> "350")))
+    val ukRetuned = PacedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(Env.of("KINOWO_FLICKS_PACE_MS" -> "350")))
     ukRetuned(FlicksUk) shouldBe Some(350.millis)
     ukRetuned(FlicksUs) shouldBe Some(200.millis)
   }
@@ -183,11 +193,11 @@ class RateLimitedHttpFetchSpec extends AnyFlatSpec with Matchers {
   // what to do about it.
 
   it should "pace every US chain origin we scrape rather than letting one fall through unpaced" in {
-    RateLimitedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(Env.of()))(
+    PacedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(Env.of()))(
       "https://drafthouse.com/s/mother/v2/schedule/venue/lakeline") shouldBe Some(500.millis)
-    RateLimitedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(Env.of()))(
+    PacedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(Env.of()))(
       "https://www.showcasecinemas.com/page-data/sq/d/3836549025.json") shouldBe Some(500.millis)
-    RateLimitedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(Env.of()))(
+    PacedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(Env.of()))(
       "https://www.landmarktheatres.com/api/gatsby-source-boxofficeapi/schedule?theaters=x") shouldBe
       Some(500.millis)
   }
@@ -203,11 +213,11 @@ class RateLimitedHttpFetchSpec extends AnyFlatSpec with Matchers {
     val us = "https://www.showcasecinemas.com/page-data/sq/d/3836549025.json"
     // The UK brand has no row at all — it absorbs our natural concurrency, and
     // the US row must not silently start pacing it.
-    RateLimitedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(Env.of()))(uk) shouldBe None
-    RateLimitedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(Env.of()))(us) shouldBe Some(500.millis)
+    PacedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(Env.of()))(uk) shouldBe None
+    PacedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(Env.of()))(us) shouldBe Some(500.millis)
     withKnob("KINOWO_SHOWCASE_US_PACE_MS", "900") { env =>
-      RateLimitedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(env))(us) shouldBe Some(900.millis)
-      RateLimitedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(env))(uk) shouldBe None
+      PacedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(env))(us) shouldBe Some(900.millis)
+      PacedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(env))(uk) shouldBe None
     }
   }
 
@@ -215,15 +225,15 @@ class RateLimitedHttpFetchSpec extends AnyFlatSpec with Matchers {
     val alamo    = "https://drafthouse.com/s/mother/v2/schedule/venue/lakeline"
     val landmark = "https://www.landmarktheatres.com/api/gatsby-source-boxofficeapi/schedule?theaters=x"
     withKnob("KINOWO_ALAMO_PACE_MS", "250") { env =>
-      RateLimitedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(env))(alamo) shouldBe Some(250.millis)
+      PacedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(env))(alamo) shouldBe Some(250.millis)
       // …and only that one host: the knobs are per row, not global.
-      RateLimitedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(env))(landmark) shouldBe Some(500.millis)
+      PacedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(env))(landmark) shouldBe Some(500.millis)
     }
     withKnob("KINOWO_LANDMARK_PACE_MS", "750") { env =>
-      RateLimitedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(env))(landmark) shouldBe Some(750.millis)
-      RateLimitedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(env))(alamo) shouldBe Some(500.millis)
+      PacedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(env))(landmark) shouldBe Some(750.millis)
+      PacedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(env))(alamo) shouldBe Some(500.millis)
     }
-    RateLimitedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(Env.of()))(alamo) shouldBe Some(500.millis)
+    PacedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(Env.of()))(alamo) shouldBe Some(500.millis)
   }
 
   it should "let KINOWO_FILMSTARTS_PACE_MS retune the pace without a restart" in {
@@ -231,19 +241,19 @@ class RateLimitedHttpFetchSpec extends AnyFlatSpec with Matchers {
     // found empirically. Resolving per request means an /admin/config flip
     // applies to the very next request, with no worker restart or cold JVM.
     withKnob("KINOWO_FILMSTARTS_PACE_MS", "900") { env =>
-      RateLimitedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(env))(Paced) shouldBe Some(900.millis)
+      PacedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(env))(Paced) shouldBe Some(900.millis)
     }
-    RateLimitedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(Env.of()))(Paced) shouldBe Some(1400.millis)
+    PacedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(Env.of()))(Paced) shouldBe Some(1400.millis)
   }
 
   it should "ignore a non-positive knob rather than unpacing the host" in {
     // 0 would read as "no gap at all" — the burst behaviour that drew the 429s
     // in the first place. Env.positiveLong drops it back to the compiled default.
     withKnob("KINOWO_FILMSTARTS_PACE_MS", "0") { env =>
-      RateLimitedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(env))(Paced) shouldBe Some(1400.millis)
+      PacedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(env))(Paced) shouldBe Some(1400.millis)
     }
     withKnob("KINOWO_FILMSTARTS_PACE_MS", "not-a-number") { env =>
-      RateLimitedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(env))(Paced) shouldBe Some(1400.millis)
+      PacedHttpFetch.configuredInterval(new _root_.settings.ProcessConfiguration(env))(Paced) shouldBe Some(1400.millis)
     }
   }
 

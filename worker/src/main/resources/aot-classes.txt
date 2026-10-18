@@ -13409,6 +13409,8 @@ tools.OgCardRenderer$BadgeSlot
 tools.OgCardRenderer$BadgeSlot$
 tools.OgCardRenderer$Seg
 tools.OgCardRenderer$Seg$
+tools.PacedHttpFetch
+tools.PacedHttpFetch$
 tools.ParallelDetailFetch$
 tools.PersonName$
 tools.PosterDecode$
@@ -13417,8 +13419,6 @@ tools.ProxyTunnelAuthentication
 tools.ProxyTunnelAuthentication$
 tools.ProxyTunnelAuthentication$$anon$1
 tools.ProxyTunnelAuthentication$$anon$2
-tools.RateLimitedHttpFetch
-tools.RateLimitedHttpFetch$
 tools.RealHttpFetch
 tools.RealHttpFetch$
 tools.RealHttpFetch$ProxyConfig

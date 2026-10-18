@@ -15,7 +15,7 @@ import java.time.Duration
  *  `HostPolicies.hostMatches`), so `www.x` matches `x` but an unrelated `*.y`
  *  does not.
  *
- *  `minRequestInterval` is the OUTBOUND pace [[RateLimitedHttpFetch]] holds the
+ *  `minRequestInterval` is the OUTBOUND pace [[PacedHttpFetch]] holds the
  *  whole fleet to for this host — the minimum gap between two requests to it,
  *  across every thread. `None` (the default) means unpaced: the host absorbs
  *  our natural concurrency, so only a host we structurally out-run names one.
@@ -28,7 +28,7 @@ import java.time.Duration
  *  resolve in `HostPolicies` reads it per request, so the next request uses the
  *  new value. Still DATA, not an if-branch — any future host can name its own key.
  *
- *  `fleetMinInterval` is the pace [[FleetPacedHttpFetch]] holds the WHOLE FLEET to for a host every country's
+ *  `fleetMinInterval` is the pace [[PacedHttpFetch]] holds the WHOLE FLEET to for a host every country's
  *  worker asks from the same egress (a shared origin, where `minRequestInterval` paces one process); `fleetPaceKnob`
  *  retunes it at runtime as `paceKnob` does.
  *
@@ -255,7 +255,7 @@ object HostPolicies {
     // so pacing the origin is the fix. 200ms (~5 req/s) is just under the ~6.4
     // req/s the unpaced pool averaged, but — the point — it SERIALISES the fan-out
     // so the concurrent bursts that trip the limiter never form. The pace is GLOBAL
-    // per host (RateLimitedHttpFetch: one token bucket, not one per worker), so it
+    // per host (PacedHttpFetch: one token bucket, not one per worker), so it
     // sets the sweep length: ~18k requests x 200ms = ~60min, and the UK overlay's
     // cadence must exceed that (the same pace↔cadence coupling DE has;
     // WorkerScrapeCadenceConfigSpec locks both). KINOWO_FLICKS_PACE_MS retunes it
@@ -280,7 +280,7 @@ object HostPolicies {
     //
     // The two markets are INDEPENDENT — at all three layers, and the third was
     // MEASURED rather than assumed (2026-08-30, before the US rollout):
-    //   1. our pace gate (RateLimitedHttpFetch) buckets by full lowercased
+    //   1. our pace gate (PacedHttpFetch) buckets by full lowercased
     //      hostname, so the two hosts hold separate slot queues;
     //   2. our 429 back-off (ThrottledHttpFetch) keys the same way, so a
     //      `Retry-After: 300-600s` earned on one host cannot stall the other;
@@ -449,7 +449,7 @@ object HostPolicies {
 
   /** The minimum gap between two outbound requests to `url`'s host, if that host
    *  is paced. `None` — the default for every host without a row naming one —
-   *  means [[RateLimitedHttpFetch]] passes the call straight through.
+   *  means [[PacedHttpFetch]] passes the call straight through.
    *
    *  Resolved PER REQUEST rather than baked into the table at class-init, so a
    *  `paceKnob` flip on `/admin/config` takes effect without a worker restart.
@@ -470,7 +470,7 @@ object HostPolicies {
     }
 
   /** The fleet-wide minimum gap between two requests to `url`'s host, if the fleet shares a pace for it
-   *  ([[FleetPacedHttpFetch]]); its knob's live value when it names one. */
+   *  ([[PacedHttpFetch]]); its knob's live value when it names one. */
   def fleetIntervalFor(url: String, configuration: ProcessConfiguration): Option[Duration] =
     policyFor(url).flatMap(policy => policy.fleetPaceKnob match {
       case None       => policy.fleetMinInterval

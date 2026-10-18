@@ -25,7 +25,7 @@ class MonitoringHttpFetch(
   delegate: HttpFetch,
   monitor: UptimeMonitor,
   cinemaHosts: => Set[String] = Set.empty
-) extends HttpFetch {
+) extends ForwardingHttpFetch {
 
   private val enrichmentNames: Map[String, String] = Map(
     "api.themoviedb.org"        -> "TMDB",
@@ -82,14 +82,14 @@ class MonitoringHttpFetch(
     s"$name: $message".take(200)
   }
 
-  private def monitored[T](url: String)(block: => T): T = {
+  protected def around[T](url: String)(call: HttpFetch => T): T = {
     classify(url) match {
-      case None => block
+      case None => call(delegate)
       case Some(service) =>
         val started = Stopwatch.start()
         def ms = started.millis
         try {
-          val result = block
+          val result = call(delegate)
           monitor.recordSuccess(service, ms)
           result
         } catch {
@@ -100,18 +100,6 @@ class MonitoringHttpFetch(
         }
     }
   }
-
-  override def get(url: String): String =
-    monitored(url)(delegate.get(url))
-
-  override def get(url: String, headers: Map[String, String]): String =
-    monitored(url)(delegate.get(url, headers))
-
-  // Delegate to the underlying's RAW bytes — do NOT inherit the lossy base
-  // default (`get(url).getBytes(UTF_8)`), which UTF-8-decodes then re-encodes a
-  // legacy single-byte page and mojibakes it ("ż" → "ďż˝"). Monitored like get.
-  override def getBytes(url: String): Array[Byte] =
-    monitored(url)(delegate.getBytes(url))
 
   override def getAsync(url: String): CompletableFuture[String] = {
     classify(url) match {
@@ -129,9 +117,6 @@ class MonitoringHttpFetch(
         }
     }
   }
-
-  override def post(url: String, body: String, contentType: String): String =
-    monitored(url)(delegate.post(url, body, contentType))
 
   private def unwrap(exception: Throwable): Throwable = exception match {
     case ce: java.util.concurrent.CompletionException if ce.getCause != null => ce.getCause

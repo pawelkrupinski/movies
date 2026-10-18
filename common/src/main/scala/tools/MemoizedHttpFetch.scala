@@ -21,22 +21,13 @@ import scala.util.Try
  * attempt cannot produce a different answer. Retrying across attempts is
  * unaffected: the next attempt builds a new instance.
  */
-class MemoizedHttpFetch(underlying: HttpFetch) extends HttpFetch {
+class MemoizedHttpFetch(underlying: HttpFetch) extends ForwardingHttpFetch {
   private val outcomes = new ConcurrentHashMap[String, Try[String]]()
 
   override def get(url: String): String =
     outcomes.computeIfAbsent(url, _ => Try(underlying.get(url))).get
 
-  /** Not memoised — headers can change what comes back, and the URL alone is
-   *  the wrong key for that. No resolution ladder uses this overload. */
-  override def get(url: String, headers: Map[String, String]): String =
-    underlying.get(url, headers)
-
-  /** Forwarded undecoded, per the [[HttpFetch.getBytes]] contract for
-   *  delegating wrappers — inheriting the default would round-trip the wire
-   *  bytes through a UTF-8 decode. Not memoised: no ladder fetches bytes. */
-  override def getBytes(url: String): Array[Byte] = underlying.getBytes(url)
-
-  override def post(url: String, body: String, contentType: String): String =
-    underlying.post(url, body, contentType)
+  /** Every other member is forwarded, not memoised: headers can change what comes back (the URL alone is the wrong
+   *  key for that), and no resolution ladder fetches bytes or posts. */
+  protected def around[T](url: String)(call: HttpFetch => T): T = call(underlying)
 }

@@ -36,7 +36,7 @@ object IdentityLookupSweep {
    *  `threads` above one asks each of the resolver's read phases side by side (its `prefetch`), the
    *  way production's take-up does: a recording leg meets every lookup its tree lacks live, and one
    *  at a time those cost the US leg 274 s of a sweep that replays hermetically in 41 s. The wiring's
-   *  live chain still paces and gates each host (`RateLimitedHttpFetch`, `ThrottledHttpFetch`). One
+   *  live chain still paces and gates each host (`PacedHttpFetch`, `ThrottledHttpFetch`). One
    *  thread (the default) keeps every request on the thread of the lookup that made it, issued
    *  right before `onLookup` names it — which is how `IdentityQueryCoverage.RequestLog` attributes
    *  requests to lookups. */

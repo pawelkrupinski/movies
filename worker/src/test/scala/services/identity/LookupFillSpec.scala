@@ -5,7 +5,7 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.{ListingKey, SingleCountryNormalizer}
 import settings.{IdentityLookupFillInterval, IdentityLookupFillRate}
-import tools.{DaemonExecutors, HttpFetch, HttpStatusException, RateLimitedHttpFetch, TestWiring}
+import tools.{DaemonExecutors, HttpFetch, HttpStatusException, PacedHttpFetch, TestWiring}
 
 import java.time.{Clock, Instant, ZoneOffset}
 import scala.collection.mutable
@@ -208,7 +208,7 @@ class LookupFillSpec extends AnyFlatSpec with Matchers {
     val interval = 1000L
     val clock    = new tools.MutableClock(Instant.EPOCH)
     def at       = clock.millis()
-    val pacer    = new RateLimitedHttpFetch(new HttpFetch {
+    val pacer    = PacedHttpFetch.perProcess(new HttpFetch {
       override def get(url: String): String                                    = "{}"
       override def post(url: String, body: String, contentType: String): String = "{}"
     }, _ => Some(interval.millis), clock = clock, sleep = ms => clock.advanceMillis(ms))

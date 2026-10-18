@@ -19,7 +19,7 @@ class FleetPacedHttpFetchSpec extends AnyFlatSpec with Matchers {
       override def post(url: String, body: String, contentType: String): String = "ok"
     }
     /** One country's worker's fetch: its own decorator, the fleet's one pace. */
-    def worker(): FleetPacedHttpFetch = new FleetPacedHttpFetch(leaf, pace,
+    def worker(): PacedHttpFetch = new PacedHttpFetch(leaf, pace,
       url => Option.when(url.contains("wikidata"))(500.millis), horizon = 2.seconds, clock = clock, sleep = ms => { slept += ms; () })
   }
   private val wikidata = "https://www.wikidata.org/w/api.php?action=wbgetentities&ids=Q1"

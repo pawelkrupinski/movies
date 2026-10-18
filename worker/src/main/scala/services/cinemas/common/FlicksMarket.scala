@@ -14,7 +14,7 @@ import models.TimeZones
  *
  * Each market is a SEPARATE Cloudflare zone on its own hostname, which is what
  * makes them independent to everything downstream that keys by host: the
- * per-host pace gate ([[tools.RateLimitedHttpFetch]]) and the 429 back-off
+ * per-host pace gate ([[tools.PacedHttpFetch]]) and the 429 back-off
  * ([[tools.ThrottledHttpFetch]]) both bucket by full lowercased hostname, so a
  * `Retry-After` earned on `www.flicks.co.uk` never stalls `www.flicks.us` and
  * neither market spends the other's request budget. The corollary is that each
