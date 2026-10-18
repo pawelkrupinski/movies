@@ -108,6 +108,8 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Ladies Night - Narodziny gwiazdy"                -> ("Ladies Night - ",                   "Narodziny gwiazdy"),
     "Kolekcja Mamoru Hosody: O dziewczynie skaczącej przez czas" -> ("Kolekcja Mamoru Hosody: ", "O dziewczynie skaczącej przez czas"),
     "DZIEŃ DZIECKA W APOLLO - Drzewo Magii"           -> ("DZIEŃ DZIECKA W APOLLO - ",         "Drzewo Magii"),
+    // …and the same banner under any other venue's name: the rule names no venue.
+    "DZIEŃ DZIECKA W MUZIE - Drzewo Magii"            -> ("DZIEŃ DZIECKA W MUZIE - ",          "Drzewo Magii"),
     // Sixteenth-wave (2026-07-06) TMDB-no-match audit: the dot separator variant
     // of the existing 'Klasyk w kinie:' colon strand. (WSP: is a search-only strip
     // — see searchStripCases — so the all-caps acronym isn't re-cased on display.)
@@ -158,6 +160,7 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Z klasą do kina: Lalka"                          -> ("Z klasą do kina: ",                  "Lalka"),
     "Wtorek z klasyką: Asterix i Obelix: Misja Kleopatra" -> ("Wtorek z klasyką: ",             "Asterix i Obelix: Misja Kleopatra"),
     "KADR JUNIOR: Toy Story 5"                        -> ("KADR JUNIOR: ",                      "Toy Story 5"),
+    "MUZA JUNIOR: Toy Story 5"                        -> ("MUZA JUNIOR: ",                      "Toy Story 5"),
     "WAJDA: re-wizje: BEZ ZNIECZULENIA"               -> ("WAJDA: re-wizje: ",                  "BEZ ZNIECZULENIA")
   )
 
@@ -372,6 +375,7 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Stowarzyszenie umarłych poetów | Lato z Robinem Williamsem" -> "Stowarzyszenie umarłych poetów",
     "Erupcja | Kinoteka dla Rodziców"                          -> "Erupcja",
     "Projekt Hail Mary | Kinoteka dla rodzica"                 -> "Projekt Hail Mary",
+    "Erupcja | Muza dla rodziców"                              -> "Erupcja",
     "Matador | Fiesta Kina Hiszpańskiego"                      -> "Matador",
     "Matador – fiesta kina hiszpańskiego: almodóvar/ banderas" -> "Matador",
     "Prawo pożądania | Fiesta Kina Hiszpańskiego"              -> "Prawo pożądania",
@@ -398,6 +402,8 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Wieczory filmowe na boku | Zaproszenie"                  -> "Zaproszenie",
     "Klasyka na fali: Lot nad kukułczym gniazdem"            -> "Lot nad kukułczym gniazdem",
     "Klasyka w Kulturze: La Strada"                          -> "La Strada",
+    "Klasyka w NCKF: Przekleństwa niewinności"               -> "Przekleństwa niewinności",
+    "Klasyka w Muzie: La Strada"                             -> "La Strada",
     "FILMY Z LEKTOREM - Poprzednie życie"                    -> "Poprzednie życie",
     "ŚMIECH PRZEZ ŁZY: Wesele"                               -> "Wesele",
     "Andrzej Wajda. Dziedzictwo Mistrza: Popiół i diament"  -> "Popiół i diament",
@@ -547,6 +553,7 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "SMOK (Spotkania Młodych Odkrywców Kina): Przekleństwa niewinności (4K)" -> "Przekleństwa niewinności",
     "Klasyka na TOPie: Do utraty tchu (4K)"                -> "Do utraty tchu",
     "Wymiary Kina na Placu Wilsona: Miłość, śmierć i dojrzewanie w Camp Miasma" -> "Miłość, śmierć i dojrzewanie w Camp Miasma",
+    "Wymiary Kina na Starym Rynku: Miłość, śmierć i dojrzewanie w Camp Miasma" -> "Miłość, śmierć i dojrzewanie w Camp Miasma",
     // Twenty-third wave, continued: the banner comes FIRST and the film is QUOTED after
     // it with no colon between, so no colon-anchored prefix rule reaches it and no pure
     // strip can isolate a film that is wrapped rather than prefixed. The left curly “
@@ -574,6 +581,12 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     "Ojczyzna: 14 Festiwal Kultury bez Barier. Oscarowe Kino dostępne w Kadrze (16+)"   -> "Ojczyzna",
     "Obcy: Kino Kadr (15+)"                                -> "Obcy",
     "Lalka: Premiera w Kadrze"                             -> "Lalka",
+    // …and the same strands under any other venue's name: the rules name no venue.
+    "Chłopiec na krańcach świata: Kino dostępne w Muzie"   -> "Chłopiec na krańcach świata",
+    "Obcy: Kino Muza (15+)"                                -> "Obcy",
+    "Lalka: Premiera w Muzie"                              -> "Lalka",
+    "Obcy: Kadr Non-Fiction (16+)"                         -> "Obcy",
+    "Obcy: Muza Non-Fiction (16+)"                         -> "Obcy",
     "Oficjalna premiera: Lalka"                            -> "Lalka",
     // Kino Fenix: separator-less Wajda banner, the film's year bare at the end.
     "Wajda Re wizje Kronika wypadków miłosnych 1985"       -> "Kronika wypadków miłosnych (1985)"
@@ -691,6 +704,10 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
       withExtras.search("Filmoterapia W Lunie | O czym sobie nie mówmy | seans + rozmowa Martyny Harland") shouldBe "O czym sobie nie mówmy")
     withClue("Filmoterapia w Lunie no tail: ")(
       withExtras.search("Filmoterapia w Lunie | Drugie życie") shouldBe "Drugie życie")
+    withClue("Filmoterapia under another venue's name: ")(
+      withExtras.search("Filmoterapia w Muzie | Drugie życie | seans + rozmowa") shouldBe "Drugie życie")
+    withClue("seed alone leaves the other venue's Filmoterapia: ")(
+      seedOnly.search("Filmoterapia w Muzie | Drugie życie | seans + rozmowa") should startWith("Filmoterapia w Muzie |"))
   }
 
   // ── negative controls: real titles must survive untouched ──────────────────
@@ -1601,14 +1618,22 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
    *  collapsed one into the other on EVERY scrape — the source keeps reporting the
    *  banner, so the row is re-created and re-folded for ever. 31 slots rewritten per
    *  pass, which is what stopped the Polish convergence leg converging once per-film
-   *  detail was fetched. One key, no fold. */
-  "The Helios event-branding suffix" should "canonicalise onto the plain film's key" in {
-    val plain     = "GHOST: 2 Big To Rig"
-    val decorated = "GHOST: 2 Big To Rig w Helios na Scenie"
-    withClue("seed rules alone must NOT merge it (otherwise this test proves nothing): ") {
-      mergeKey(seedOnly, decorated) should not be mergeKey(seedOnly, plain)
+   *  detail was fetched. One key, no fold — taken at ingest by the chain's own rule,
+   *  not by a global fold of a name only Helios bills. */
+  "The Helios event-branding suffix" should "come off a Helios listing, in any case, onto the plain film's key" in {
+    val plain = "GHOST: 2 Big To Rig"
+    Seq("GHOST: 2 Big To Rig w Helios na Scenie", "GHOST: 2 Big To Rig W HELIOS NA SCENIE").foreach { decorated =>
+      withClue(s"perCinema('helios', '$decorated'): ")(withExtras.perCinema("helios", decorated) shouldBe plain)
     }
-    mergeKey(withExtras, decorated) shouldBe mergeKey(withExtras, plain)
+    withClue("the seed's exact-case tag alone must NOT take the all-caps billing (otherwise this test proves nothing): ") {
+      seedOnly.perCinema("helios", "GHOST: 2 Big To Rig W HELIOS NA SCENIE") should not be plain
+    }
+  }
+
+  it should "stay on another cinema's listing: the rule is Helios's, not every venue's" in {
+    val decorated = "GHOST: 2 Big To Rig w Helios na Scenie"
+    withExtras.perCinema("multikino", decorated) shouldBe decorated
+    mergeKey(withExtras, decorated) should not be mergeKey(withExtras, "GHOST: 2 Big To Rig")
   }
 
   it should "leave a film whose own title merely contains those words alone" in {

@@ -149,7 +149,7 @@ object TitleRules {
       """\s*\|\s*""", ": ", applyAll = true, order = 30,
       note = Some("BoK programme-banner '|' → ': '")),
     // Kino Apollo — pre-premiere suffix. The "DZIEŃ DZIECKA W APOLLO -" kids'-day
-    // banner is now global (ExtraTitleRules xtra-pp-dzien-dziecka-apollo):
+    // banner is now global (ExtraTitleRules xtra-pp-dzien-dziecka-w-kinie):
     // query-only, the screening keeps its own row.
     TitleRule("apollo-przedpremierowy", PerCinema, Some("kino-apollo"),
       """ - seans przedpremierowy\b.*$""", "", applyAll = false, order = 20,

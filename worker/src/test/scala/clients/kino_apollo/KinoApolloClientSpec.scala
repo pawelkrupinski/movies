@@ -120,7 +120,7 @@ class KinoApolloClientSpec extends AnyFlatSpec with Matchers {
   }
 
   // Children's-day banner — "DZIEŃ DZIECKA W APOLLO - Drzewo Magii" is now a GLOBAL,
-  // query-only strip (ExtraTitleRules xtra-pp-dzien-dziecka-apollo): enrichment still
+  // query-only strip (ExtraTitleRules xtra-pp-dzien-dziecka-w-kinie): enrichment still
   // resolves the base film's ratings, but the screening keeps its own decorated row
   // instead of folding into "Drzewo Magii".
   it should "keep the 'DZIEŃ DZIECKA W APOLLO - ' screening as its own row, not merged into the base" in {

@@ -216,13 +216,22 @@ Each a production change: measure with `scripts/identity-measure`, land one at a
 - [x] **Venue-named rules**: `NonFilmEvents`' `dismember the alamo` (one chain's series), `xtra-helios-replay-suffix`
   (`w Helios RePlay`) — deleted: Helios's per-cinema rule and the learned `w helios replay` decoration cover the strand,
   `CandidateScoring.namesOnlyItsVenue` and the edition year the Alamo series.
-- [ ] **More venue-named global strips** in `ExtraTitleRules`: `xtra-kobiece-strands` (`TOMI dla Kobiet`, `Kobiece
+- [x] **More venue-named global strips** in `ExtraTitleRules`: `xtra-kobiece-strands` (`TOMI dla Kobiet`, `Kobiece
   Wieczory w Kino Cafe`) and others naming one venue's strand. Each a learned decoration or a per-cinema rule; measure.
   Done 2026-10-18 for the four a venue name only decorates (Klasyka w kinie Atlantic, Wielka Sztuka w Kinoteatrze
   Rialto, LATO w LUNIE, Kobiece Wieczory w Kino Cafe: any venue's name now; local measure 0 moves). Left, the strand
   only existing under the name: xtra-pp-dzien-dziecka-apollo, xtra-filmoterapia-w-lunie, xtra-klasyka-cycles' w
   Kulturze / w NCKF, xtra-kinoteka-dla-rodzica, xtra-pipe-cycle-banner's Kinoteka, the three Kino Kadr rules,
-  xtra-canonical-helios-na-scenie, xtra-wymiary-kina-plac-wilsona-prefix: each wants a per-cinema rule.
+  xtra-canonical-helios-na-scenie, xtra-wymiary-kina-plac-wilsona-prefix: each wants a per-cinema rule. (done
+  2026-10-18: the search tier is venue-blind — keyed on a film's title, not a listing — and a PerCinema rule rewrites
+  the slot's display and key, folding a decorated edition into the base film, so the strands keep their tier with the
+  venue's name generalised to any venue's word: xtra-pp-dzien-dziecka-w-kinie, xtra-filmoterapia-w-kinie,
+  xtra-klasyka-cycles' `w <venue>`, xtra-pipe-dla-rodzica, xtra-pp-venue-junior, xtra-venue-non-fiction-suffix,
+  xtra-venue-colon-strand-suffix, xtra-wymiary-kina-na-prefix. Helios na Scenie went to the chain's per-cinema key
+  (`xtra-helios-na-scenie`, any case; the seed `helios-suffix-3` already took the exact spelling, so the global
+  Canonical fold never fired on a Helios listing). Left: xtra-pipe-cycle-banner's `Kinoteka` — a strand that only exists
+  under the venue's name, which a per-cinema rule would fold into the base film, and `KinotekaClient` distrusts a
+  decorated heading's year through `apiQuery` (the "Kolor purpury | Kinoteka jest Kobietą" 1985-vs-2026 case).)
 - [x] **Two copies of one list**: ~~`FormatTags.FormatVersionWords` repeats `FormatToken`'s keys (and "lek" has no LEK
   badge: "Lalka 2D LEK" shows none)~~ (done: derived from `FormatToken`, "lek" badged LEK); ~~`TitleText.FiledArticles` (ein/eine, no gli) vs `IdentityMeasures.LeadingArticles`
   (gli, no ein/eine); `TitleText.stripPunct`'s own NFD strip drops "ł" where `TextNormalization.deburr` folds it~~ (done:

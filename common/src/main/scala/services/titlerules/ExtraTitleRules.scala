@@ -252,7 +252,7 @@ object ExtraTitleRules {
     prog("xtra-pp-kino-na-obcasach",   """(?iu)^Kino\s+na\s+obcasach{{SEP}}""",              "'Kino na obcasach: <film>' Multikino ladies'-programme banner (Zaproszenie, Diabeł ubiera się u Prady 2, Drugie życie)"),
     prog("xtra-pp-ladies-night",       """(?i)^Ladies\s+Night{{SEP}}""",                     "'Ladies Night - <film>' Cinema City ladies'-programme banner"),
     prog("xtra-pp-mamoru-hosody",      """(?iu)^Kolekcja\s+Mamoru\s+Hosody{{SEP}}""",        "'Kolekcja Mamoru Hosody: <film>' anime-retrospective banner (Cinema City + Multikino) — sibling of the 'Hosoda. <film>' dot-prefix"),
-    prog("xtra-pp-dzien-dziecka-apollo", """(?iu)^DZIEŃ\s+DZIECKA\s+W\s+APOLLO{{SEP}}""",     "'DZIEŃ DZIECKA W APOLLO - <film>' Kino Apollo Children's-Day banner"),
+    prog("xtra-pp-dzien-dziecka-w-kinie", """(?iu)^DZIEŃ\s+DZIECKA\s+W\s+\p{Lu}\p{L}*{{SEP}}""", "'DZIEŃ DZIECKA W <venue> - <film>' Children's-Day banner, any venue's name (Kino Apollo's 'DZIEŃ DZIECKA W APOLLO - ')"),
     // Seventeenth-wave (2026-07-09) audit of the prod-mirror TMDB-no-match corpus
     // (200 / 806 rating-less rows). Mixed-case retrospective / festival-replay
     // banners that PREFIX a real, TMDB-resolvable film — safe as own-row programme
@@ -333,7 +333,7 @@ object ExtraTitleRules {
     // box offices type their school / classics strands into the title.
     prog("xtra-pp-z-klasa-do-kina",  """(?iu)^Z\s+klasą\s+do\s+kina:\s+""",  "'Z klasą do kina: <film>' school-screening strand (Wielicka Mediateka: Lalka)"),
     prog("xtra-pp-wtorek-z-klasyka", """(?iu)^Wtorek\s+z\s+klasyką:\s+""",   "'Wtorek z klasyką: <film>' classics strand (Kino Starówka: Asterix i Obelix: Misja Kleopatra, Generał)"),
-    prog("xtra-pp-kadr-junior",      """(?iu)^KADR\s+JUNIOR:\s+""",          "'KADR JUNIOR: <film>' Kino w Kadrze children's strand (Toy Story 5)"),
+    prog("xtra-pp-venue-junior",     """(?iu)^\p{Lu}\p{L}*\s+Junior:\s+""", "'<venue> JUNIOR: <film>' children's strand, any venue's name (Kino w Kadrze's 'KADR JUNIOR: Toy Story 5')"),
     // Found by SearchQueryMarkersSpec over the recorded UK corpus (2026-10-04): chain strands billed ahead of the film.
     prog("xtra-pp-4dx-rewind",        """(?i)^\(4DX\s+Rewind\)\s*""",              "'(4DX Rewind) <film>' Cineworld 4DX re-release strand (Shrek, Twisters, Toy Story — ~34 venues each)"),
     prog("xtra-pp-relaxed-screening", """(?i)^Relaxed\s+Screening\s*[:|–—-]\s*""", "'Relaxed Screening: <film>' Everyman sensory-friendly strand (Forgotten Island)"),
@@ -403,7 +403,7 @@ object ExtraTitleRules {
     // A screening billed as a film's showing ("Sytuacje Relacje. Pokaz filmu Hamnet", "Spotkanie z aktorką
     // Kamilą Urzędowską. Pokaz filmu "Lalka"") is looked up as that film; Kino w Kadrze's ": Kadr Non-Fiction (16+)"
     // is no part of it. (A director credit after the title, "… reż. Antoine Lanciaux", comes off at intake: TitleFacts.)
-    searchStrip("xtra-kadr-non-fiction-suffix",    """(?iu)\s*:\s*Kadr\s+Non-?Fiction\b.*$""",     "'<film>: Kadr Non-Fiction (16+)' programme suffix"),
+    searchStrip("xtra-venue-non-fiction-suffix",   """(?iu)\s*:\s*\p{Lu}\p{L}*\s+Non-?Fiction\b.*$""", "'<film>: <venue> Non-Fiction (16+)' documentary-strand suffix, any venue's name (Kino w Kadrze's 'Kadr Non-Fiction')"),
     searchStrip("xtra-premiera-bracketed",         """(?i)(?<=\S)\s*[(\[](?:uroczysta\s+|polska\s+)?premiera(?:\s+(?:filmowa|krajowa))?\s*!*[)\]]\s*$""", "'(PREMIERA)' bracketed premiere tag"),
     searchStrip("xtra-kino-sensoryczne-suffix",    """(?i)\s*[-–—|]\s*(?:kino\s+sensoryczne|kino\s+przyjazne\s+sensorycznie|seans\s+sensoryczny)\s*$""", "'- Kino sensoryczne' sensory-friendly screening suffix"),
     searchStrip("xtra-dyskusyjny-suffix",          """(?i)\s*[-–—]\s*dyskusyjny\s+klub\s+filmowy\s*$""", "'- dyskusyjny klub filmowy' suffix"),
@@ -573,7 +573,7 @@ object ExtraTitleRules {
     // '<film>: Kino Kadr (15+)', '<film>: Premiera w Kadrze'. The colon's LEFT side
     // is the film, the opposite of every programme prefix, so SearchTitles' own
     // post-colon candidate can't reach it.
-    searchStrip("xtra-kadr-colon-suffix",          """(?iu)\s*:\s*(?:\d+\.?\s*Festiwal\s+Kultury\s+bez\s+Barier|(?:Oscarowe\s+)?Kino\s+(?:dostępne\s+w\s+Kadrze|Kadr)|Premiera\s+w\s+Kadrze)\b.*$""", "'<film>: 14 Festiwal Kultury bez Barier. …' / '<film>: Kino Kadr (15+)' / '<film>: Premiera w Kadrze' Kino w Kadrze strand suffix (Chłopiec na krańcach świata, Ojczyzna, Obcy, Lalka)"),
+    searchStrip("xtra-venue-colon-strand-suffix",  """(?iu)\s*:\s*(?:(?:\d+\.?\s*Festiwal\s+Kultury\s+bez\s+Barier|(?:Oscarowe\s+)?Kino\s+dostępne\s+w\s+\p{Lu}\p{L}*|Premiera\s+w\s+\p{Lu}\p{L}*)\b.*|(?:Oscarowe\s+)?Kino\s+\p{Lu}\p{L}*\s*(?:\(\d+\+\))?\s*)$""", "'<film>: 14 Festiwal Kultury bez Barier. …' / '<film>: Kino <venue> (15+)' / '<film>: Premiera w <venue>' strand suffix behind a colon, any venue's name (Kino w Kadrze: Chłopiec na krańcach świata, Ojczyzna, Obcy, Lalka) — the bare 'Kino <venue>' only as the whole tail (its age rating, if any, is a title fact peeled before this tier)"),
     searchStrip("xtra-oficjalna-premiera-prefix",  """(?iu)^Oficjalna\s+premiera:\s+""",               "'Oficjalna premiera: <film>' release-night prefix (Wielicka Mediateka: Lalka)"),
     // Kino Fenix (systembiletowy) types the Wajda retrospective with no separator
     // at all and the film's year bare at the end: 'Wajda Re wizje Kronika wypadków
@@ -630,7 +630,7 @@ object ExtraTitleRules {
     searchStrip("xtra-kino-przy-herbatce",         """(?iu)\s*\|\s*Kino\s+przy\s+herbatce\s*$""",     "'<film> | Kino przy herbatce' cosy-screening suffix (Drugie życie, Dzień objawienia, Wolność po włosku)"),
     searchStrip("xtra-teleskop-suffix",            """(?iu)\s*\|\s*Teleskop\s*$""",                   "'<film> | Teleskop' cine-club suffix (Following (Śledząc), Frances Ha, Sny o pociągach)"),
     searchStrip("xtra-lato-robin-williams",        """(?iu)\s*\|\s*Lato\s+z\s+Robinem\s+Williamsem\b.*$""", "'<film> | Lato z Robinem Williamsem [+ …]' actor-cycle suffix (Fisher King, Klatka dla ptaków, Stowarzyszenie umarłych poetów)"),
-    searchStrip("xtra-kinoteka-dla-rodzica",       """(?iu)\s*\|\s*Kinoteka\s+dla\s+rodzic\S*\s*$""", "'<film> | Kinoteka dla rodziców/rodzica' parents'-screening suffix (Erupcja, Projekt Hail Mary, Zaproszenie)"),
+    searchStrip("xtra-pipe-dla-rodzica",           """(?iu)\s*\|\s*\p{Lu}\p{L}*\s+dla\s+rodzic\S*\s*$""", "'<film> | <venue> dla rodziców/rodzica' parents'-screening suffix, any venue's name (Kinoteka: Erupcja, Projekt Hail Mary, Zaproszenie)"),
     searchStrip("xtra-fiesta-hiszpanskiego-suffix", """(?iu)\s*[|–—-]\s*fiesta\s+kina\s+hiszpańskiego\b.*$""", "'<film> | / – Fiesta Kina Hiszpańskiego[: almodóvar/banderas]' Spanish-cinema suffix (Matador, Prawo pożądania, Kobiety na skraju załamania nerwowego); prefix form is xtra-pp-fiesta-hiszpanskiego"),
     searchStrip("xtra-amondo-grindhouse",          """(?iu)\s*\|\s*AMONDO\s+GRINDHOUSE\s*$""",        "'<film> | AMONDO GRINDHOUSE' cult-strand suffix (Santa Sangre, Sleepaway Camp)"),
     // Trailing PARENTHESISED '(pokaz …)' / '(seans …)' event note — the seed pokaz/
@@ -675,7 +675,7 @@ object ExtraTitleRules {
     // isolates it. Capture the first pipe-delimited segment and drop the banner +
     // tail; query-only, so the therapy screening keeps its own decorated row but
     // resolves the bare film. Sibling of the 'Filmoterapia z Inspirą:' prog prefix.
-    searchReplace("xtra-filmoterapia-w-lunie", """(?iu)^Filmoterapia\s+w\s+Lunie\s*\|\s*(.+?)\s*(?:\|.*)?$""", "$1", "'Filmoterapia W Lunie | <film> | seans + rozmowa Martyny Harland' Kino Luna therapy series — film pipe-wrapped in the middle (O czym sobie nie mówmy → TMDB 1473635)"),
+    searchReplace("xtra-filmoterapia-w-kinie", """(?iu)^Filmoterapia\s+w\s+\p{Lu}\p{L}*\s*\|\s*(.+?)\s*(?:\|.*)?$""", "$1", "'Filmoterapia w <venue> | <film> | seans + rozmowa …' film-therapy series, any venue's name — film pipe-wrapped in the middle (Kino Luna's 'Filmoterapia W Lunie | O czym sobie nie mówmy' → TMDB 1473635)"),
     // Tenth-wave (2026-06-23) audit of the rating-less prod corpus (402 / 1141 rows
     // carry no ratings, 334 of them also TMDB-no-match — their SEARCH title still
     // wears a cinema banner the normaliser doesn't strip). Programme/cycle banners
@@ -690,7 +690,7 @@ object ExtraTitleRules {
     searchStrip("xtra-wakacje-dla-dzieci",         """(?iu)^Wakacje\s+dla\s+dzieci{{SEP}}""",        "'Wakacje dla dzieci: <film>' kids-summer strand (Arco, Pucio, Basia mam swój świat, Kicia Kocia w podróży, Fleak. Futrzak i ja, Fantastyczny Angelo)"),
     searchStrip("xtra-lato-w-kinie",               """(?iu)^LATO\s+w\s+\p{L}{3,}{{SEP}}""",              "'LATO w LUNIE | <film>' Kino Luna summer strand (Drzewo magii, Chłopiec na krańcach świata, Willow i tajemniczy las, Ekipa zwierzaków, Superfutrzak i złośliwa wiewiórka)"),
     searchStrip("xtra-kobiece-strands",            """(?iu)^(?:(?:Kino|TOMI)\s+dla\s+Kobiet|Babski\s+(?:wieczór|czwartek)|Kobiecy\s+świat|Kobiece\s+Wieczory(?:\s+w\s+Kino\s+\p{Lu}\p{L}*)?|Wieczory\s+filmowe\s+na\s+boku){{SEP}}""", "ladies'-night strands (Kino dla Kobiet / TOMI dla Kobiet / Babski wieczór / Babski czwartek / Kobiecy świat / Kobiece Wieczory w Kino Cafe / Wieczory filmowe na boku) — film after the banner separator (Drugie życie, Zaproszenie, Czytając Lolitę w Teheranie, Zupa nic)"),
-    searchStrip("xtra-klasyka-cycles",             """(?iu)^Klasyk[ai]\s+(?:Kina|na\s+fali|w\s+Kulturze|w\s+NCKF){{SEP}}""", "'Klasyka Kina / Klasyka na fali / Klasyka w Kulturze / Klasyka w NCKF: <film>' classics strands (Milczenie owiec, Lot nad kukułczym gniazdem, La Strada, Przekleństwa niewinności) — siblings of the existing 'Klasyk w kinie:' rule"),
+    searchStrip("xtra-klasyka-cycles",             """(?iu)^Klasyk[ai]\s+(?:Kina|na\s+fali|w\s+\p{Lu}\p{L}*){{SEP}}""", "'Klasyka Kina / Klasyka na fali / Klasyka w <venue>: <film>' classics strands, any venue's name (Kino Kultura's 'Klasyka w Kulturze', NCKF's 'Klasyka w NCKF') (Milczenie owiec, Lot nad kukułczym gniazdem, La Strada, Przekleństwa niewinności) — siblings of the existing 'Klasyk w kinie:' rule"),
     searchStrip("xtra-filmy-z-lektorem",           """(?iu)^FILMY\s+Z\s+LEKTOREM{{SEP}}""",          "'FILMY Z LEKTOREM - <film>' dubbed-screening strand (Poprzednie życie, Emilia Pérez)"),
     searchStrip("xtra-smiech-przez-lzy",           """(?iu)^ŚMIECH\s+PRZEZ\s+ŁZY{{SEP}}""",          "'ŚMIECH PRZEZ ŁZY: <film>' comedy strand (Chłopaki nie płaczą, Wesele)"),
     searchStrip("xtra-wajda-dziedzictwo",          """(?iu)^Andrzej\s+Wajda\.\s+Dziedzictwo\s+Mistrza{{SEP}}""", "'Andrzej Wajda. Dziedzictwo Mistrza: <film>' Wajda retrospective (Popiół i diament)"),
@@ -875,7 +875,7 @@ object ExtraTitleRules {
     //    `caseSegment` once `leadingBannerBoundary` splits on it, misdisplaying
     //    'WSP' as 'Wsp'. The spelled-out form is ordinary Title Case, so the same
     //    split leaves it untouched — no recasing regression.
-    searchStrip("xtra-wymiary-kina-plac-wilsona-prefix", """(?iu)^Wymiary\s+Kina\s+na\s+Placu\s+Wilsona\s*:\s*""", "'Wymiary Kina na Placu Wilsona: <film>' Kino Wisła preview-series prefix, spelled-out form (Miłość, śmierć i dojrzewanie w Camp Miasma)"),
+    searchStrip("xtra-wymiary-kina-na-prefix",    """(?iu)^Wymiary\s+Kina\s+na\s+\p{Lu}\p{L}*(?:\s+\p{Lu}\p{L}*)?\s*:\s*""", "'Wymiary Kina na <place>: <film>' preview-series prefix, spelled-out form, any venue's place (Kino Wisła's 'Wymiary Kina na Placu Wilsona: Miłość, śmierć i dojrzewanie w Camp Miasma')"),
     // Twenty-third wave, continued (see the prog block above for why). Kino Sokół
     // Sokółka's holiday-mornings strand puts the banner FIRST and the film in quotes
     // after it, with no colon between them — so the colon-anchored
@@ -1044,19 +1044,6 @@ object ExtraTitleRules {
       "'2026 LHFF <film>' year-numbered festival-acronym prefix — CANONICAL rewrite to the film's title (display + merge key); runs before the trailing-year strips; see YearFestivalTag"),
     canon("xtra-canonical-festival-tag-suffix", s"""(?u)^(.*\\p{Ll}.*?)$FestivalTagAfterPipe""", "$1",
       "'<film> | UFF / DKF / FKS / CHKF' festival or club acronym after a pipe — CANONICAL rewrite to the film's title; runs before the trailing-year strips so a year it hid is exposed; see FestivalTagAfterPipe"),
-    // "<film> w Helios na Scenie" — Helios brands its own event screenings in the
-    // LISTING title, so the venue reports a spelling no other cinema uses. CANONICAL,
-    // not query-only, because the problem is the merge key: Cinema City's detail page
-    // gives the plain "GHOST: 2 Big To Rig", both spellings resolve to tmdbId 1693400,
-    // and with two keys the staging fold collapsed the decorated row into the clean one
-    // on EVERY scrape — the source keeps reporting the banner, so the row is re-created
-    // and re-folded for ever. That is 31 Helios/Multikino slots rewritten per pass,
-    // which is what stopped the Polish leg converging once per-film detail was fetched
-    // (before detail there was no second spelling, so nothing folded). Same shape as
-    // the Fellini fold above, and the same fix: one key, no fold.
-    canon("xtra-canonical-helios-na-scenie",
-      """(?iu)\s+w\s+Helios\s+na\s+Scenie\s*$""", "",
-      "'<film> w Helios na Scenie' Helios event-branding suffix — merge-key fold"),
     // A Polish distributor's ". Film" suffix ("Rolling Loud. Film" for "Rolling Loud: The Movie", Jaworzyna's
     // "Rolling Loud. Film 2026"): the film's own title, shown and merged without it. The full stop right
     // before it is required — "Straszny film" ends in the word and keeps it.
@@ -1201,7 +1188,17 @@ object ExtraTitleRules {
     // never sees a title to strip. The per-cinema tier runs at ingest, before the
     // structural fold, so it gets there first. Leaves 'Kino Kobiet: <film>' for
     // xtra-pp-kino-kobiet-prefix above, which keeps the programme its own row.
-    perCinema("xtra-bajka-kluczbork-klaps", "kino-bajka-kluczbork", """(?iu)^KLAPS\s*/\s*""", "Kino Bajka Kluczbork 'KLAPS / <cycle>: <film>' house-brand prefix (Jak żyć żeby nie zwariować, Przepis na święta)")
+    perCinema("xtra-bajka-kluczbork-klaps", "kino-bajka-kluczbork", """(?iu)^KLAPS\s*/\s*""", "Kino Bajka Kluczbork 'KLAPS / <cycle>: <film>' house-brand prefix (Jak żyć żeby nie zwariować, Przepis na święta)"),
+    // "<film> w Helios na Scenie" — Helios brands its own event screenings in the LISTING
+    // title, a spelling no other cinema uses. Its merge key is the problem: Cinema City's
+    // detail page gives the plain "GHOST: 2 Big To Rig", both spellings resolve to tmdbId
+    // 1693400, and with two keys the staging fold collapsed the decorated row into the
+    // clean one on EVERY scrape — 31 slots rewritten per pass, which stopped the Polish leg
+    // converging once per-film detail was fetched. So it comes off at ingest, where it
+    // changes the key; scoped to the chain's key (every Helios venue shares `helios`,
+    // `TitleRuleKey`), not a global Canonical fold of a name only Helios bills. The seed's
+    // `helios-suffix-3` takes the exact " w Helios na Scenie"; this takes any case and spacing.
+    perCinema("xtra-helios-na-scenie", "helios", """(?iu)\s+w\s+Helios\s+na\s+Scenie\s*$""", "'<film> w Helios na Scenie' Helios event-branding suffix, any case — merge-key fold")
   )
 
   /** Orders stamped by position so the extras fold AFTER the seed rules — all but
