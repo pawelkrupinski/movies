@@ -35,9 +35,16 @@ object ToolCallers {
         name -> only.group(2).stripPrefix("\"").stripSuffix("\"").stripPrefix("'").stripSuffix("'")
     }
 
+  /** A script's self-test (`<tool>-test.sh`, `<tool>_test.py`): what it holds are the command lines it EXPECTS its
+   *  tool to log through a fake, not calls of its own. */
+  private def isSelfTest(file: Path): Boolean = {
+    val name = file.getFileName.toString
+    name.endsWith("-test.sh") || name.endsWith("_test.py")
+  }
+
   def calls(packageName: String): Seq[Call] = Callers.filter(Files.isDirectory(_)).flatMap { root =>
     val walk = Files.walk(root)
-    try walk.iterator.asScala.filter(Files.isRegularFile(_)).toSeq finally walk.close()
+    try walk.iterator.asScala.filter(file => Files.isRegularFile(file) && !isSelfTest(file)).toSeq finally walk.close()
   }.sorted.flatMap { file =>
     Try(Files.readString(file, StandardCharsets.UTF_8)).toOption.toSeq.flatMap(callsIn(file, _, packageName))
   }.distinct
