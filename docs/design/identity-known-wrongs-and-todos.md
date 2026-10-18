@@ -132,7 +132,9 @@ Order by the live tally: 4 (relays, 33 of 70 live wrong listings), then 2, 3, 1,
   placeholder, Ticketsolve, Spektrix, BFI Southbank and the Gatsby parser read it; `SearchTitles` follows with the fix above): `TicketsolveClient.TitleCertificate`,
   `SpektrixClient.Bbfc`, `BfiSouthbankClient.BbfcBadge` (adds R18) and `SearchTitles`. One `BbfcCertificate` object
   should own the values and the placeholder derive from it.
-- [ ] **The same ingest note shapes are spelled twice**: `FormatTags` `AsteriskNote`, `BracketedRunningTime`,
+- [x] **The same ingest note shapes are spelled twice** (done 2026-10-18: `TitleRulePlaceholders`' `ASTERISK_NOTE`,
+  `RUNTIME_MINS`, `CERT_NOTE`, read by `FormatTags` and the rules alike; no `xtra-rerelease-bracket` exists, so
+  `ReReleaseMark` has no copy to share with): `FormatTags` `AsteriskNote`, `BracketedRunningTime`,
   `ReReleaseMark` against `ExtraTitleRules` `xtra-asterisk-note-suffix`, `xtra-runtime-suffix`,
   `xtra-rerelease-bracket` (different widths: the rule takes `*[^*]+*` and a bare running time). Share them as
   `TitleRulePlaceholders` like `CERT`, then re-measure.
@@ -195,7 +197,11 @@ Each a production change: measure with `scripts/identity-measure`, land one at a
   initialled words; `ListingShape.billsAHouse` reads them through `StageRelays.billsAStageHouse`): `StageRelays.HouseInitials = Set("rbo","roh")` plus a regex spelling them
   again; `ListingShape.HouseWords` takes the bare tokens (and royal/live/met/hd/season), so "Jin-Roh" bills a house.
   Tag initials in the StageHouse word table and read them in one place.
-- [ ] **Search-tier copies of the ingest peels**: `ExtraTitleRules`' `xtra-asterisk-note-suffix`, `xtra-runtime-suffix`,
+- [x] **Search-tier copies of the ingest peels** (done 2026-10-18: one spelling each, FormatTags' width — the asterisk
+  note letters-only, the running time taking "mins.", the certificate "(Certificate 15)" / "( 15 )"; the rule keeps a
+  bare running time, FormatTags peels one only behind a certificate. `xtra-subtitle-paren-tag` stays its own: a
+  bracket of nothing but napisy/dubbing/lektor and one word, where `FormatParenTag` takes any bracket holding a format
+  word — not the same shape. FilmScheduleEndToEndSpec's corpus moved nowhere): `ExtraTitleRules`' `xtra-asterisk-note-suffix`, `xtra-runtime-suffix`,
   `xtra-certificate-suffix`, `xtra-certificate-year-suffix` (a3d3ece23) and `xtra-subtitle-paren-tag` repeat
   `FormatTags`' `AsteriskNote`/`BracketedRunningTime`/`CertificateNote`/`FormatParenTag` (1573686c3, a9b51f710) and
   disagree with them (any-character asterisks, a bare "100 mins"). Keep one.

@@ -507,7 +507,7 @@ object ExtraTitleRules {
       "'<film> FFFL' / '<film> - FFFL' festival acronym after a mixed-case title (UK 2026-10-13: Ciné Lumière's French Film Festival)"),
     searchStrip("xtra-film-club-suffix",           """(?iu)(?<=\S)\s*[-–—|]\s*Film\s+Club\s*$""",
       "'<film> - Film Club' club screening after the film (UK 2026-10-13: Pontardawe Arts Centre: Fatherland, Kokuho, The Last Viking)"),
-    searchStrip("xtra-certificate-year-suffix",    """(?iu)\s*\({{CERT}}\)\s+\d{2}\s*$""",
+    searchStrip("xtra-certificate-year-suffix",    """(?iu)\s*{{CERT_NOTE}}\s+\d{2}\s*$""",
       "'<film> (15) 26' certificate and the year's last two digits (UK 2026-10-13: Hippodrome Bo'ness)"),
     // A print tag, then a strand or festival behind a spaced dash ("[35mm] - Dirt in the Gate Movies", "4K - FFFL"),
     // and a print billed in front of the film ("4K Film: Dracula: The Cut They Tried To Bury").
@@ -517,15 +517,18 @@ object ExtraTitleRules {
       "'4K Film: <film>' print billed ahead of the film (UK 2026-10-13: Ken Russell's The Devils, Dracula)"),
     // Found by SearchQueryMarkersSpec over the UK recording of 2026-10-12 (run 38251516862). A screening note billed
     // after the film — a special audience, a Q&A, a matinee — and a box office's own certificate and running time.
+    // Each reads FormatTags' own shape of its note (TitleRulePlaceholders' ASTERISK_NOTE, RUNTIME_MINS, CERT_NOTE) —
+    // the running time bare as well as bracketed: here it is what a box office leaves once another strip took the
+    // certificate it ran on from, where FormatTags peels a bare one only behind its certificate.
     // The note in asterisks first, then the running time, then the certificate, each exposing the next at the end;
     // all before the 4K rules, so a print tag a certificate sat behind ("Dracula (1958) 4K Restoration - Cert 12A")
     // is trailing for them.
-    searchStrip("xtra-asterisk-note-suffix",       """(?<=\S)\s+\*[^*]+\*\s*$""",
+    searchStrip("xtra-asterisk-note-suffix",       """(?<=\S)\s+{{ASTERISK_NOTE}}\s*$""",
       "'<film> … *SUBTITLED MATINEE*' screening note in asterisks (Electric Palace Bridport: Pressure, Sense and Sensibility)"),
-    searchStrip("xtra-runtime-suffix",             """(?iu)\s*\(?(?<![\p{L}\p{N}])\d{2,3}\s*mins?(?:\s+TBC)?\)?(?:\s+TBC)?\s*$""",
+    searchStrip("xtra-runtime-suffix",             """(?iu)\s*\(?\s*(?<![\p{L}\p{N}]){{RUNTIME_MINS}}\s*\)?(?:\s+TBC)?\s*$""",
       "'<film> (15) (2026) 100 mins' / '(160 mins TBC)' box-office running time (Electric Palace Bridport)"),
     searchStrip("xtra-certificate-suffix",
-      """(?iu)\s*(?:[-–—]\s*Cert(?:ificate)?\.?\s+{{CERT}}|\((?:Cert\.?\s+)?{{CERT}}(?:\s+TBC)?\))(?=\s*(?:\(\d{4}\)\s*)?$)""",
+      """(?iu)\s*{{CERT_NOTE}}(?=\s*(?:\(\d{4}\)\s*)?$)""",
       "'<film> - Cert 12A' / '<film> (15 TBC) (2026)' / '<film> (Cert TBC)' BBFC certificate the box office bills in the title (Lighthouse Poole, Electric Palace Bridport); a '(YYYY)' after it stays"),
     // A Q&A after a plus, glued or spaced ("+Q&A with Graham Fellows", "Records+ Q&A", "plus live Q&A") and whatever
     // follows it, where the seed's spaced "+ <event>" strip stops at a bracket ("+ Q&A (18)") — but only when the

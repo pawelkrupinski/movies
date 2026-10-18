@@ -21,6 +21,13 @@ object TitleRulePlaceholders {
    *  eat an underscore-glued name ("„GAG"_SENIOR") yet stop at a hard separator. */
   private val GuardSepChars = """:|/\\–—-"""
 
+  private val Certificate = services.movies.BbfcCertificate.alternation(
+    services.movies.BbfcCertificate.Public :+ services.movies.BbfcCertificate.Pending)
+  private val CertificateNote =
+    s"""(?:[-–—]\\s*Cert(?:ificate)?\\.?\\s+$Certificate|\\(\\s*(?:Cert(?:ificate)?\\.?\\s*)?$Certificate(?:\\s+TBC)?\\s*\\))"""
+  private val RuntimeMinutes = """\d{2,3}\s*mins?\.?(?:\s+TBC)?"""
+  private val AsteriskNote   = """\*\s*\p{L}[\p{L}\s'&-]*\*"""
+
   /** A placeholder: the `name` referenced as `{{name}}`, its regex `expansion`,
    *  and a human `doc` line shown in the admin editor's reference panel. */
   final case class Placeholder(name: String, expansion: String, doc: String)
@@ -41,10 +48,23 @@ object TitleRulePlaceholders {
       "^DKF\\s+{{NSEP}}+{{SEP}} (\"DKF <name>: <film>\"), so the guard stops at the first separator " +
       "instead of backtracking across one into the film title. Narrower than SEP: it excludes the " +
       "hard separators but keeps '_', so an underscore-glued cycle name is still consumed."),
-    Placeholder("CERT", services.movies.BbfcCertificate.alternation(services.movies.BbfcCertificate.Public :+ services.movies.BbfcCertificate.Pending),
+    Placeholder("CERT", Certificate,
       "A BBFC certificate as a UK box office bills it in a title — U, PG, 12, 12A, 15, 18, or TBC while it " +
       "awaits one. The bare value only: each rule writes the bracket or the 'Cert' around it. FormatTags " +
-      "peels a trailing one off every listing with the same value set.")
+      "peels a trailing one off every listing with the same value set."),
+    // The notes a box office bills behind the title. FormatTags peels each off every listing at ingest; the search
+    // strips in ExtraTitleRules take the same shape off a query where another strip EXPOSED it (the identity model's
+    // search title runs no re-peel). One spelling each, so the two never disagree on where a note ends.
+    Placeholder("CERT_NOTE", CertificateNote,
+      "A BBFC certificate note as a box office bills it — '- Cert 12A', '- Certificate 15', '(15)', '( 15 )', " +
+      "'(Cert. TBC)', '(12A TBC)'. No leading space and no anchor: a rule writes its own context around it. The " +
+      "shape FormatTags' certificate peel reads."),
+    Placeholder("RUNTIME_MINS", RuntimeMinutes,
+      "A box office's running time — '100 mins', '95 min.', '160 mins TBC' — without its brackets: FormatTags " +
+      "peels only a bracketed one (or one behind a certificate), the search strip a bare one too."),
+    Placeholder("ASTERISK_NOTE", AsteriskNote,
+      "A showing's note between asterisks — '*MATINEE*', '*SUBTITLED MATINEE*': letters only, so a title's own " +
+      "asterisks ('M*A*S*H', 'Monet*', 'B****') never read as one. The shape FormatTags' asterisk peel reads.")
   )
 
   /** name → expansion, consumed by [[PlaceholderExpander]] / [[TitleRuleSet]]. */

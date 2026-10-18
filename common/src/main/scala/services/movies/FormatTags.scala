@@ -78,17 +78,23 @@ object FormatTags {
   // Apples (2026)"), for the year reading and the canonical year strip. And a German re-release mark — "(WA)", "(WA:
   // 2026)", "(Wiederaufführung)", or a box office's "(WA:" cut short. Each is a card's worth of split (Lanternhouse's
   // "Digger (15)", CineStar's "Catching Fire (OV) (WA)") if it stays.
-  private val Certificate = services.titlerules.TitleRulePlaceholders.all("CERT")
+  // The note shapes are TitleRulePlaceholders', which the search strips in ExtraTitleRules read too.
+  private val NoteShape = services.titlerules.TitleRulePlaceholders.all
   private val CertificateNote =
-    (s"""(?i)(?<=\\S)\\s*(?:[-–—]\\s*Cert(?:ificate)?\\.?\\s+(?<cert>$Certificate)|\\(\\s*(?:Cert(?:ificate)?\\.?\\s*)?(?<bracketed>$Certificate)(?:\\s+TBC)?\\s*\\))""" +
-      """(?<year>\s*\(\s*(?:19|20)\d{2}\s*\))?(?:\s+(?<mins>\d{2,3})\s*mins?|\s+\d{2})?\s*$""").r
+    (s"""(?i)(?<=\\S)\\s*(?<note>${NoteShape("CERT_NOTE")})(?<year>\\s*\\(\\s*(?:19|20)\\d{2}\\s*\\))?""" +
+      // behind a certificate only a confirmed time ("Wicker (15) 105 mins"): "(15) 180 mins TBC" stays the search strip's,
+      // as the ingest never read it — read, its unconfirmed 180 minutes lost Bridport's NT Live "The Motive and the Cue"
+      s"""(?:\\s+(?<mins>\\d{2,3})\\s*mins?|\\s+\\d{2})?\\s*$$""").r
+  /** The certificate a [[CertificateNote]] names: its first certificate value ("12A" of "(12A TBC)"). */
+  private val CertificateValue = s"""(?i)(?<![\\p{L}\\p{N}])${NoteShape("CERT")}(?![\\p{L}\\p{N}])""".r
   // A showing's note a box office closes between asterisks after the rest — Electric Palace Bridport's "Wicker (15) 105
   // mins *MATINEE*", "… *SUBTITLED MATINEE*": words only, spaced off the title, so a title's own asterisks ("M*A*S*H",
   // "Monet*", "B****") stay. Its version words still badge the showing.
-  private val AsteriskNote = """(?<=\S)\s+\*\s*\p{L}[\p{L}\s'&-]*\*\s*$""".r
+  private val AsteriskNote = s"""(?<=\\S)\\s+${NoteShape("ASTERISK_NOTE")}\\s*$$""".r
   // …and the running time it brackets, confirmed or not: Bridport's "Screening: NTL - Hay Fever (12A TBC) (160 mins TBC)"
   // hid its certificate behind it. A number of minutes, so "Apollo 13" and "Sweet Sixteen (16)" stay.
-  private val BracketedRunningTime = """(?i)(?<=\S)\s*\(\s*(\d{2,3})\s*mins?\.?(?:\s+TBC)?\s*\)\s*$""".r
+  private val BracketedRunningTime = s"""(?i)(?<=\\S)\\s*\\(\\s*(?<mins>${NoteShape("RUNTIME_MINS")})\\s*\\)\\s*$$""".r
+  private def minutesOf(runningTime: String): Option[Int] = runningTime.takeWhile(_.isDigit).toIntOption
   /** `t` without the BBFC certificate note a box office bills behind it ([[CertificateNote]]), the running time or
    *  short year it runs on into with it, a release year between them kept: "Digger - Cert 15" → "Digger". */
   def uncertified(t: String): String = CertificateNote.findFirstMatchIn(t).fold(t)(withoutCertificate(t, _)).trim
@@ -206,12 +212,12 @@ object FormatTags {
         t = AsteriskNote.replaceFirstIn(t, "").trim
       }
       BracketedRunningTime.findFirstMatchIn(t).foreach { m =>
-        runtime = runtime.orElse(m.group(1).toIntOption)
+        runtime = runtime.orElse(minutesOf(m.group("mins")))
         t = (t.substring(0, m.start) + t.substring(m.end)).trim
       }
       CertificateNote.findFirstMatchIn(t).foreach { m =>
-        certificate = certificate.orElse(Option(m.group("cert")).orElse(Option(m.group("bracketed"))).map(_.toUpperCase(Locale.ROOT)))
-        runtime = runtime.orElse(Option(m.group("mins")).flatMap(_.toIntOption))
+        certificate = certificate.orElse(CertificateValue.findFirstIn(m.group("note")).map(_.toUpperCase(Locale.ROOT)))
+        runtime = runtime.orElse(Option(m.group("mins")).flatMap(minutesOf))
         t = withoutCertificate(t, m)
       }
       t = ReReleaseBracket.replaceAllIn(ReReleaseMark.replaceFirstIn(t, ""), "").trim

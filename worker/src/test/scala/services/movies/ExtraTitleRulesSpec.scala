@@ -1403,6 +1403,24 @@ class ExtraTitleRulesSpec extends AnyFlatSpec with Matchers {
     listingQuery(titles, models.KinoCentrum3D, "Lalka | 2D DUBBING") shouldBe "Lalka"
   }
 
+  // The search strips for a box office's asterisked note, bracketed running time and certificate read the ingest
+  // peel's own shapes (TitleRulePlaceholders' ASTERISK_NOTE, RUNTIME_MINS, CERT_NOTE), so the two never disagree on
+  // where a note ends: before, the rule took any character between asterisks ("*3D*") and no "(100 mins.)",
+  // "(Certificate 15)" or "( 15 )", which FormatTags did.
+  "A box office's note the ingest peels" should "come off the search query exactly as FormatTags takes it" in {
+    Seq(
+      "Pressure *3D*"           -> "Pressure *3D*",
+      "Pressure *MATINEE*"      -> "Pressure",
+      "Digger (100 mins.)"      -> "Digger",
+      "Digger (Certificate 15)" -> "Digger",
+      "Digger ( 15 )"           -> "Digger",
+      "Digger (12A TBC) (2026)" -> "Digger (2026)"
+    ).foreach { case (raw, stripped) =>
+      withClue(s"FormatTags.peel('$raw'): ")(FormatTags.peel(raw).title shouldBe stripped)
+      withClue(s"search('$raw'): ")(withExtras.search(raw) shouldBe stripped)
+    }
+  }
+
   /** Listings of the 2026-10-13 recording (run 38326582997) whose TMDB query kept a screening marker
    *  (SearchQueryMarkersSpec over the recorded UK and DE corpora). Each night's recording brings its venues' new
    *  spellings of the same few notes, so these are held by SHAPE rather than by spelling: a segment — bracketed, after
