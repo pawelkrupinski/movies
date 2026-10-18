@@ -24,7 +24,7 @@
 # compile recompiles only what differs from that commit. KINOWO_SBT_WARM_SEED=<dir> names the source instead.
 #
 # THE SERVER is sbt's own (`sbt --client`, one per checkout directory; each call logs the checkout and server it uses). A watchdog beside it stops it when the checkout
-# is removed, or after $KINOWO_SBT_WARM_IDLE_MINUTES (default 30) minutes without a call through this script; every call
+# is removed, or after $KINOWO_SBT_WARM_IDLE_MINUTES (default 10: an idle server holds its ~5 GB heap) minutes without a call through this script; every call
 # also reaps the servers of removed checkouts. Its state: $KINOWO_SBT_WARM_STATE (default ~/.cache/kinowo-sbt-warm).
 #
 # A plain `sbt -batch` in the same checkout while the server lives would compile into the same target/ — two Zincs over
@@ -32,9 +32,11 @@
 set -uo pipefail
 
 State=${KINOWO_SBT_WARM_STATE:-$HOME/.cache/kinowo-sbt-warm}
-IdleMinutes=${KINOWO_SBT_WARM_IDLE_MINUTES:-30}
+IdleMinutes=${KINOWO_SBT_WARM_IDLE_MINUTES:-10}
 # shellcheck source=scripts/tool-conventions.sh
 . "$(dirname "$0")/tool-conventions.sh"
+# shellcheck source=scripts/memory-gate.sh
+. "$(dirname "$0")/memory-gate.sh"
 IdentityRefs=$KINOWO_IDENTITY_CACHE/refs
 log() { echo "[sbt-warm] $*" >&2; }
 
@@ -206,6 +208,8 @@ else
   # a server lives (as a seed's cleanup once did, every call, 2026-10-15), it starts a new server per call.
   rm -f "$root/project/target/active.json"
   log "checkout $root, server none: starting one"
+  # a new server is a new ~5 GB heap: not while the Mac is already paging
+  memory_gate sbt-warm
 fi
 command=$(printf '%s; ' "$@"); command=${command%; }
 # the build changed under a kept server (a rebase onto a new module): sbt --client would run the old one

@@ -20,7 +20,7 @@ mkdir -p "$work/bin"
 # A repository holding the tool (its scripts and the files it drops into a ref's tree) at two commits.
 repo="$work/repo"
 mkdir -p "$repo/scripts/local-mirror" "$repo/worker/src/test/scala/scripts" "$repo/worker/src/fixtures/scala/tools" "$repo/common/src" "$repo/identity/src" "$repo/testkit/src"
-cp "$REPO_ROOT/scripts/venue-replay" "$REPO_ROOT/scripts/venue-replay-prod.js" "$REPO_ROOT/scripts/identity-tools.sh" "$REPO_ROOT/scripts/tool-conventions.sh" \
+cp "$REPO_ROOT/scripts/venue-replay" "$REPO_ROOT/scripts/venue-replay-prod.js" "$REPO_ROOT/scripts/identity-tools.sh" "$REPO_ROOT/scripts/tool-conventions.sh" "$REPO_ROOT/scripts/memory-gate.sh" \
   "$REPO_ROOT/scripts/venue_replay_diff.py" "$repo/scripts/"
 for f in worker/src/test/scala/scripts/VenueReplay.scala worker/src/fixtures/scala/tools/RecordedCorpus.scala \
   worker/src/fixtures/scala/tools/CinemaSlotInvariants.scala worker/src/fixtures/scala/tools/SearchQueryMarkers.scala; do

@@ -569,7 +569,7 @@ or made known-wrong (with why) in the same commit; a cured known-wrong scope fai
 is judged, never added undecided. `python3 scripts/ci/identity_judgements_lint.py` checks all of it in a second (the
 pre-push hook runs it; its test runs it in CI). Columns and rules: `scripts/ci/identity_judgements.py`.
 
-**Speed.** Run sbt through `scripts/sbt-warm "<command>"` (one kept server per worktree — extras are stopped on the next call, and it exits after 30 idle minutes; a fresh worktree seeded from
+**Speed.** Run sbt through `scripts/sbt-warm "<command>"` (one kept server per worktree — extras are stopped on the next call, and it exits after 10 idle minutes; sbt-warm, identity-slice and identity-measure-local wait while the Mac is paging — scripts/memory-gate.sh; a fresh worktree seeded from
 the newest local main build: a cold 232 s spec run becomes ~50 s, then the spec's own 41 s); one spec while
 iterating, the module's suite once before pushing. `identity-slice --batch` runs slices in parallel and shares each
 slice's result per (recording, ref) across checkouts — a 2,500-listing DE batch at two refs went from ≈78 min to

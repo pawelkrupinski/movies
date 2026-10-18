@@ -21,6 +21,8 @@
 IDENTITY_REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=scripts/tool-conventions.sh
 . "$(dirname "${BASH_SOURCE[0]}")/tool-conventions.sh"
+# shellcheck source=scripts/memory-gate.sh
+. "$(dirname "${BASH_SOURCE[0]}")/memory-gate.sh"
 IDENTITY_CACHE=$KINOWO_IDENTITY_CACHE
 IDENTITY_FIXTURES=test/resources/fixtures/identity-unmatched
 IDENTITY_JUDGEMENTS=test/resources/fixtures/identity-judgements.tsv
@@ -269,6 +271,7 @@ identity_classpath_compile() {
   identity_classpath_fresh "$tree" && return 0
   mkdir -p "$(dirname "$cp")"
   identity_log "compiling $tree (sbt; then cached until a source changes)"
+  memory_gate "${IDENTITY_TOOL:-identity}"
   if ! (cd "$tree" && sbt -batch "worker/Test/compile" "export worker/Test/fullClasspath") > "$log" 2>&1; then
     tail -40 "$log" >&2; identity_log "compile failed in $tree (log: $log)"; return 1
   fi

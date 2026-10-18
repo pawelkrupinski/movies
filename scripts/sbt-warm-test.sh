@@ -172,4 +172,10 @@ sleep 0.3
 check "...and --stop --root stops it" "stopped" "$(kill -0 "$roots" 2>/dev/null && echo running || echo stopped)"
 kill "$roots" 2>/dev/null
 
+scratch_git "$repo" worktree add -q -b gated "$scratch/gated" origin/main
+out=$(cd "$scratch/gated" && KINOWO_MEMORY_GATE=1 KINOWO_MEMORY_GATE_PROBE='echo 99' KINOWO_MEMORY_GATE_MAX_WAIT=0 \
+  "$REPO_ROOT/scripts/sbt-warm" compile 2>&1 >/dev/null)
+check "a new server waits on the memory gate while the Mac is paging (deadline 0: warned, then started)" "yes" \
+  "$(grep -q '\[sbt-warm\] memory gate: still 99 GB paged out' <<< "$out" && echo yes || echo no)"
+
 spec_summary

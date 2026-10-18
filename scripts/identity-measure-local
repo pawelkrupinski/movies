@@ -24,7 +24,8 @@
 # $KINOWO_IDENTITY_CACHE/measure-local/<recording>/<sha>/ (each country's dump on its own, the final takes per country
 # set) with the ref's worktree beside them, and <out>/<sha> links to them. A ref another run is resolving is waited for,
 # not resolved twice (agents measuring against one base resolved it five times over on 2026-10-18), and at most
-# KINOWO_MEASURE_LOCAL_SLOTS resolves (default 2) run at once on the machine. --live-gaps answers change with time, so
+# KINOWO_MEASURE_LOCAL_SLOTS resolves (default 2) run at once on the machine, each after the memory gate
+# (scripts/memory-gate.sh) opens. --live-gaps answers change with time, so
 # those resolves stay in <out>. Prints each country's model and final
 # verdicts as identity_takes_diff.py words them, and exits 1 when any fails (a right take lost or turned wrong, a new
 # wrong take, an unjudged move), 0 when none does, 2 on a usage or setup error.
@@ -40,6 +41,8 @@
 set -uo pipefail
 
 here=$(cd "$(dirname "$0")/.." && pwd)
+# shellcheck source=scripts/memory-gate.sh
+. "$here/scripts/memory-gate.sh"
 cache=${KINOWO_IDENTITY_CACHE:-$HOME/.cache/kinowo-identity}
 base="" head=HEAD countries="" recording="" out="" live=""
 die() { echo "identity-measure-local: $*" >&2; exit 2; }
@@ -93,6 +96,7 @@ lock() { # <dir>: mkdir-held by this process; one held by a process that is gone
 slot=""
 take_slot() { # waits for one of the machine's KINOWO_MEASURE_LOCAL_SLOTS resolve slots
   local n said=""
+  memory_gate identity-measure-local
   mkdir -p "$cache/measure-local/slots"
   while :; do
     for n in $(seq 1 "${KINOWO_MEASURE_LOCAL_SLOTS:-2}"); do lock "$cache/measure-local/slots/$n" && { slot="$cache/measure-local/slots/$n"; return; }; done
