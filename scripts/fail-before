@@ -43,7 +43,7 @@ patterns=()
 while [ $# -gt 0 ]; do
   case "$1" in
     --) shift; break ;;
-    --files) [ $# -ge 2 ] || usage_error "--files needs a glob"; patterns+=("$2"); shift 2 ;;
+    --files) flag_value "$@"; patterns+=("$2"); shift 2 ;;
     -h|--help) usage_from_header; exit 0 ;;
     -*) usage_error "unknown option $1" ;;
     *) commit=$1; shift ;;

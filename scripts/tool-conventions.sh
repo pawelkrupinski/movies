@@ -29,6 +29,7 @@
 #   KINOWO_IDENTITY_CACHE           -> the cache every identity tool shares (default ~/.cache/kinowo-identity)
 #   die / usage_error <message...>  -> exit 1 (DIE_STATUS) for a runtime failure, 2 for a caller's mistake (below)
 #   country_flag / selected_countries_csv -> `--country cc[,cc]` and `--countries a,b`, one parser (below)
+#   flag_value "$@"                 -> a usage_error when the flag in $1 has no value after it (below)
 #   gh_download <seconds> <gh download args...> -> 0 got it, 3 absent, 1 failed: bounded and retried (below)
 #   local_mongo_port / local_mongo_uri [database] -> the local, password-free Mongo the prod mirror, the it/ suites
 #        and the identity tools share: 127.0.0.1:$LOCAL_MIRROR_PORT (default 28017), a direct connection
@@ -140,6 +141,12 @@ country_flag() {
 selected_countries_csv() {
   if [ ${#SELECTED_COUNTRIES[@]} -eq 0 ]; then kinowo_countries_csv; else local IFS=,; echo "${SELECTED_COUNTRIES[*]}"; fi
 }
+
+# ── A flag's value ──────────────────────────────────────────────────────────────────────────────────
+# In a tool's argument loop, first in an arm that reads a value:   --out) flag_value "$@"; out=$2; shift 2 ;;
+# A flag given last has no $2: without this `shift 2` fails without shifting, and a loop without set -e reads the same
+# flag again forever (identity-measure-local --base did); under set -u a bare $2 dies as "unbound variable" instead.
+flag_value() { [ $# -ge 2 ] || usage_error "$1 needs a value"; }
 
 # ── Downloading from GitHub ─────────────────────────────────────────────────────────────────────────
 #   gh_download <seconds> <run|release> download <args...> -> 0 downloaded; 3 ABSENT (gh says there is nothing to

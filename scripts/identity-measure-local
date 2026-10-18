@@ -40,24 +40,26 @@
 set -uo pipefail
 
 here=$(cd "$(dirname "$0")/.." && pwd)
+# shellcheck source=scripts/tool-conventions.sh
+. "$here/scripts/tool-conventions.sh"
 # shellcheck source=scripts/jvm-gate.sh
 . "$here/scripts/jvm-gate.sh"
-cache=${KINOWO_IDENTITY_CACHE:-$HOME/.cache/kinowo-identity}
-base="" head=HEAD countries="" recording="" out="" live=""
-die() { echo "identity-measure-local: $*" >&2; exit 2; }
+DIE_STATUS=2 # a usage or setup error; 1 is the verdict "not landable"
+cache=$KINOWO_IDENTITY_CACHE
+base="" head=HEAD recording="" out="" live=""
 while [ $# -gt 0 ]; do
   case "$1" in
-    --base) base=${2:-}; shift 2 ;;
-    --head) head=${2:-}; shift 2 ;;
-    --countries) countries=${2:-}; shift 2 ;;
-    --recording) recording=${2:-}; shift 2 ;;
-    --out) out=${2:-}; shift 2 ;;
+    --base) flag_value "$@"; base=$2; shift 2 ;;
+    --head) flag_value "$@"; head=$2; shift 2 ;;
+    --country|--countries|--country=*|--countries=*) country_flag "$@"; shift "$COUNTRY_FLAG_ARGS" ;;
+    --recording) flag_value "$@"; recording=$2; shift 2 ;;
+    --out) flag_value "$@"; out=$2; shift 2 ;;
     --live-gaps) live=1; shift ;;
-    -h|--help) sed -n '2,/^set -uo/p' "$0" | sed '$d' | sed 's/^# \{0,1\}//'; exit 0 ;;
-    *) die "unknown argument: $1" ;;
+    -h|--help) usage_from_header; exit 0 ;;
+    *) usage_error "unknown argument: $1" ;;
   esac
 done
-[ -n "$base" ] || die "--base REF is required"
+[ -n "$base" ] || usage_error "--base REF is required"
 base_sha=$(git -C "$here" rev-parse --short=12 "$base^{commit}" 2>/dev/null) || die "no commit $base"
 head_sha=$(git -C "$here" rev-parse --short=12 "$head^{commit}" 2>/dev/null) || die "no commit $head"
 
@@ -68,8 +70,8 @@ if [ -z "$recording" ]; then
 fi
 pair="$cache/recordings/$recording/pair/test/resources/fixtures"
 [ -d "$pair/corpus" ] || die "recording $recording has no laid pair at $pair"
-if [ -z "$countries" ]; then
-  countries=$(for dir in "$pair"/enrichment-*; do [ -d "$dir" ] && basename "$dir" | sed 's/^enrichment-//'; done | paste -sd, -)
+if [ ${#SELECTED_COUNTRIES[@]} -gt 0 ]; then countries=$(selected_countries_csv)
+else countries=$(for dir in "$pair"/enrichment-*; do [ -d "$dir" ] && basename "$dir" | sed 's/^enrichment-//'; done | paste -sd, -)
 fi
 IFS=, read -r -a ccs <<< "$countries"
 if [ -n "$live" ]; then
