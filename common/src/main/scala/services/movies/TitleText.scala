@@ -201,27 +201,4 @@ object TitleText {
                         t.lastOption.exists(_.isLetterOrDigit)
     notAllCaps && noDoubleSpace && noEdgeJunk
   }
-
-  /** True when most of `s`'s letters are in the Latin Unicode script.
-   *  Polish diacritics (`ł`, `ś`, `ą`, …) count as Latin; Cyrillic and CJK
-   *  do not. Used to favour the Polish/Latin variant of a film over the
-   *  Ukrainian/Cyrillic one, and to filter cross-script entries out of
-   *  `cinemaTitles` so a single row never accumulates spellings in two
-   *  scripts. */
-  def isLatinDominant(s: String): Boolean = {
-    val letters = s.filter(_.isLetter)
-    if (letters.isEmpty) false
-    else letters.count(c =>
-      Character.UnicodeScript.of(c.toInt) == Character.UnicodeScript.LATIN
-    ) * 2 >= letters.length
-  }
-
-  /** Two titles share a "primary script" when both are Latin-dominant or
-   *  both are not. We treat scripts as a binary distinction (Latin /
-   *  non-Latin) because the only cross-script collisions we actually see
-   *  in cinema data are Polish-vs-Ukrainian — finer-grained script splits
-   *  would just create unnecessary rows. */
-  def sameScript(a: String, b: String): Boolean =
-    isLatinDominant(a) == isLatinDominant(b)
-
 }

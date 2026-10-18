@@ -174,10 +174,6 @@ case class TitleRuleSet(rules: Seq[TitleRule], placeholders: Map[String, String]
         .filter(_ > 0)
         .maxOption)
 
-  /** Cinema ids that have at least one per-cinema rule — used by the backfill to
-   *  scope which records to re-key after a per-cinema edit. */
-  def cinemasWithRules: Set[String] = perCinemaRules.keySet
-
   /** Patterns that failed to compile OR carry an unresolved `{{NAME}}` token —
    *  surfaced to the editor so a typo can't silently no-op. Validity is judged on
    *  the EXPANDED pattern (a raw `{{SEP}}…` doesn't compile until its placeholder

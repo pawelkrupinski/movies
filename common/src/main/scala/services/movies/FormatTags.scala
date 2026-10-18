@@ -54,6 +54,8 @@ object FormatTags {
   // Every word of a badge ([[FormatToken]]), and the two that carry none: "dolby", "Dolby Atmos"'s carrier, and "engl",
   // a version's language ("engl. OV").
   private val FormatVersionWords = FormatToken.keySet ++ Set("dolby", "engl")
+  /** One of [[FormatVersionWords]] as a whole word (longest first), for the glued-tag look-aheads below. */
+  private val FormatVersionWord = "(?:" + FormatVersionWords.toSeq.sortBy(-_.length).mkString("|") + """)\b"""
   private val FormatSeparators = Set("-", "–", "—", "|", "/", ":")
   // "… - ON 35MM", "… in 70mm", Kino Kolory's "REQUIEM DLA SNU w 4K", "Carmen in 3D", "… The Tour Live In 3D": a
   // print or a screen is billed with a preposition, which goes with it (left behind, the title ended "REQUIEM DLA
@@ -117,18 +119,18 @@ object FormatTags {
   // known format/version word so a legitimate underscore ("Seans w ciemno_7.26",
   // the "_DKF"/"_FKS" programme tags) is left intact and those titles aren't re-split.
   private val GluedFormatUnderscore =
-    ("(?i)_(?=(?:" + FormatVersionWords.toSeq.sortBy(-_.length).mkString("|") + """)\b)""").r
+    ("(?i)_(?=" + FormatVersionWord + ")").r
   // Slash-glued version tag with no surrounding spaces — some bilety24 venues
   // (Kino Oskard) join it straight on: "Supergirl/dubbing", "…dzień/napisy".
   // Un-glue ONLY before a known version word (via the look-ahead), so a real
   // slashed title ("AC/DC", "Face/Off", "either/or") is never split.
   private val GluedFormatSlash =
-    ("(?i)/(?=(?:" + FormatVersionWords.toSeq.sortBy(-_.length).mkString("|") + """)\b)""").r
+    ("(?i)/(?=" + FormatVersionWord + ")").r
 
   // A dash glued to the version word after a space — "DIGGER -OmU" (a Cineamo venue). Spaced out so the word
   // drops like "Digger - OmU"; the space before it keeps a hyphenated title ("Spider-Man") whole.
   private val GluedFormatDash =
-    ("(?i)\\s[-–](?=(?:" + FormatVersionWords.toSeq.sortBy(-_.length).mkString("|") + """)\b)""").r
+    ("(?i)\\s[-–](?=" + FormatVersionWord + ")").r
   // …or by a bare hyphen, with no space at all — "Glaube-OmU" (Kino Utopia, DE recording 2026-10-12). Only a German
   // version word in its own casing and at the very end, so "Spider-Man" and "X-Men" stay whole.
   private val GluedVersionHyphen = """(?<=\p{L})-(?=(?:OmeU|OmU|OV)$)""".r

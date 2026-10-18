@@ -68,14 +68,14 @@ object ScrapeListing {
     Prepared(deduped, cleaned)
   }
 
-  /** `cm` with the facts its title bills ([[TitleFacts]]) in its own fields. A director the title credits is the venue's
-   *  own word and replaces what the client carried — a feed's linked film's credit, as kinoheld copied Shiv Rawail's onto
-   *  DE ScharfrichterKino's "Alpha (dir. Ducournau)"; a running time, an age rating or an original title only fills a
-   *  field the client left empty, a structured field being the venue's word too. */
   /** The title as the venue billed it, facts and all: a client that cleans its titles itself (`cinemaClean`) has
    *  peeled them off `title` already, and keeps the billing in `rawTitle`. */
   def billedTitle(cm: CinemaMovie): String = cm.movie.rawTitle.getOrElse(cm.movie.title)
 
+  /** `cm` with the facts its title bills ([[TitleFacts]]) in its own fields. A director the title credits is the venue's
+   *  own word and replaces what the client carried — a feed's linked film's credit, as kinoheld copied Shiv Rawail's onto
+   *  DE ScharfrichterKino's "Alpha (dir. Ducournau)"; a running time, an age rating or an original title only fills a
+   *  field the client left empty, a structured field being the venue's word too. */
   def withTitleFacts(cm: CinemaMovie, facts: TitleFacts.Facts): CinemaMovie =
     if (facts == TitleFacts.Facts.empty) cm
     else cm.copy(
