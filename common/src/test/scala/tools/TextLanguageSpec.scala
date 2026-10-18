@@ -53,4 +53,13 @@ class TextLanguageSpec extends AnyFlatSpec with Matchers {
       "On się boi, że nie zdąży, więc biegnie ile sił, aby dotrzeć tam, gdzie go już czekają."
     ) shouldBe Some("pl")
   }
+
+  "readsAs" should "read a title's few words by one stopword more than any other language's" in {
+    TextLanguage.readsAs("Gegen das Vergessen", "de") shouldBe true
+    TextLanguage.readsAs("Gegen das Vergessen", "en") shouldBe false
+    // no stopword of any language: a foreign title reads as none
+    TextLanguage.readsAs("Ekmek parası", "de") shouldBe false
+    // as many of another language's: neither
+    TextLanguage.readsAs("Der Weg of the World", "de") shouldBe false
+  }
 }

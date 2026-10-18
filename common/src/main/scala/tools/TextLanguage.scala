@@ -4,10 +4,11 @@ import java.util.Locale
 
 /**
  * Stopword-ratio guesser over the four deployment languages (Polish, English,
- * German, Spanish) — NOT a general-purpose detector. Exists solely so
+ * German, Spanish) — NOT a general-purpose detector. Exists so
  * `MovieRecord.bestSynopsis` can tell a candidate synopsis is in the WRONG
  * language and rank it below a correctly-localized one instead of picking it
- * purely on paragraph/length.
+ * purely on paragraph/length, and so the identity resolver can tell a film
+ * title in the venue's own language from a foreign one ([[readsAs]]).
  *
  * Confirmed prod case: Cinema City's own `cinema-city.pl` detail page served
  * an English synopsis for "Marsupilami" on its Polish-domain pages — an
@@ -61,11 +62,25 @@ object TextLanguage {
    *  doesn't split a stopword from its ASCII spelling (`się` → `sie`,
    *  `für` → `fur`). Ties keep the first language in [[Stopwords]] order. */
   def detect(text: String): Option[String] = {
-    val tokens = Word.findAllIn(TextNormalization.deburr(text).toLowerCase(Locale.ROOT)).toVector
-    if (tokens.isEmpty) None
+    val counted = hits(text)
+    if (counted.isEmpty) None
     else {
-      val (bestLang, bestScore) = Stopwords.map { case (lang, words) => lang -> tokens.count(words.contains) }.maxBy(_._2)
+      val (bestLang, bestScore) = counted.maxBy(_._2)
       Option.when(bestScore >= MinHits)(bestLang)
     }
+  }
+
+  /** Does `text` read as `language` (a tag of [[Stopwords]]): one of its stopwords at least, and more of them than of
+   *  any other language's? For a title's few words, where [[detect]]'s [[MinHits]] is never cleared: "Gegen das
+   *  Vergessen" reads as German, "Ekmek parası" as none of the four. */
+  def readsAs(text: String, language: String): Boolean = {
+    val counted = hits(text)
+    counted.collectFirst { case (`language`, own) => own }.exists(own => own >= 1 && counted.forall { case (lang, n) => lang == language || n < own })
+  }
+
+  /** Each language's stopword count in `text`, in [[Stopwords]] order; empty when it holds no word. */
+  private def hits(text: String): Vector[(String, Int)] = {
+    val tokens = Word.findAllIn(TextNormalization.deburr(text).toLowerCase(Locale.ROOT)).toVector
+    if (tokens.isEmpty) Vector.empty else Stopwords.map { case (lang, words) => lang -> tokens.count(words.contains) }
   }
 }

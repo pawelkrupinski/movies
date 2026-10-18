@@ -61,9 +61,12 @@ private[identity] object BilledPiece {
     // subject (DE "Ekmek parası - Geld für's Brot", "Épines du Sahel - Die Dornen der Sahelzone", "LÍDA BAAROVÁ – DOOMED
     // BEAUTY"); a film of a country speaking the venue's language — its own, or another this deployment serves in that
     // language — carries its title, so its title being its original says nothing (UK "The Wizard Of Oz - Hot Rock", a
-    // touring pantomime, is not the 1939 US film untranslated)
+    // touring pantomime, is not the 1939 US film untranslated); nor does a title in the venue's own language, whichever
+    // country TMDB files the film under (DE "Gegen das Vergessen - Weilheim in der Zeit des Nationalsozialismus", a local
+    // documentary, is not Toscano's 2015 portraits, a US record of that German original title)
     def untranslated = film.originalTitle.exists(IdentityMeasures.key(_) == IdentityMeasures.key(film.title)) &&
       !film.countries.exists(_.exists(filmCountry => country.exists(venue => IdentityMeasures.sharesLanguage(venue, filmCountry)))) &&
+      !country.flatMap(IdentityMeasures.languageOf).exists(tools.TextLanguage.readsAs(film.title, _)) &&
       (services.movies.TitleContainment.tokens(evidence.rawTitle).startsWith(services.movies.TitleContainment.tokens(film.title)) ||
         ListingShape.titledAfterPiece(evidence.rawTitle, film))
     import services.movies.TitleContainment.tokens

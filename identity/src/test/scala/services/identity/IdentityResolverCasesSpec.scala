@@ -1813,6 +1813,20 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
       IdentityResolver.resolve(Seq(l), new FilmTable(Seq(oz), normalizer), normalizer, IdentityCalibration.resolver).decisionOf(l.key)
     }
     inUk("The Wizard Of Oz - Hot Rock").film shouldBe None
+    // nor is a title in the venue's OWN language a foreign one left untranslated, whichever country TMDB files the film
+    // under: DE Trifthof Kinocenter's "Gegen das Vergessen - Weilheim in der Zeit des Nationalsozialismus", a local
+    // documentary, is not Toscano's 2015 "Gegen das Vergessen", a US record of that German original title (10-18)
+    val germany = models.Cinema.all.find(c => models.City.forCinema(c).exists(_.country == models.Country.Germany)).get
+    val forgetting = F(599503, "Gegen das Vergessen", 2015, "Luigi Toscano", 85, countries = Seq("US"), original = Some("Gegen das Vergessen"),
+      alternatives = Seq("Lest We Forget"))
+    def inGermany(raw: String, film: F) = {
+      val l = listing(germany, raw).copy(screenings = ScreeningDays.of(Seq(java.time.LocalDate.of(2026, 11, 8))))
+      IdentityResolver.resolve(Seq(l), new FilmTable(Seq(film), normalizer), normalizer, IdentityCalibration.resolver).decisionOf(l.key)
+    }
+    val local = inGermany("Gegen das Vergessen - Weilheim in der Zeit des Nationalsozialismus", forgetting)
+    withClue(local.render)(local.film shouldBe None)
+    // a foreign title the venue translates beside it still keeps its film there
+    inGermany("Ekmek parası - Geld für's Brot", bread).film shouldBe Some(1140985)
     // a billing listing several works by name is a programme, whatever its first piece's current film: DE Apollo Aachen's
     // "Retro - An Undiscovered World, Running High, Carrying Dreams: The Weight Between", four shorts
     val retro = F(1265827, "Retro", 2025, "A. Director", 15) // a stand-in record: a 2025 short

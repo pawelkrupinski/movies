@@ -802,10 +802,9 @@ object IdentityMeasures {
 
   /** Do a venue of country `venue` and a film of country `film` (ISO-3166-1 codes) speak one language: the same country, or
    *  two this deployment serves in one language ([[models.Country.all]]: the United Kingdom and the United States)? */
-  def sharesLanguage(venue: String, film: String): Boolean = venue == film || {
-    def language(country: String) = models.Country.all.find(_.language.getCountry == country).map(_.language.getLanguage)
-    language(venue).exists(language(film).contains)
-  }
+  def sharesLanguage(venue: String, film: String): Boolean = venue == film || languageOf(venue).exists(languageOf(film).contains)
+  /** The language (ISO 639-1) this deployment serves a country (ISO-3166-1) in, if it serves it. */
+  def languageOf(country: String): Option[String] = models.Country.all.find(_.language.getCountry == country).map(_.language.getLanguage)
 
   /** `houses`: `None` for two listings, whose banners name no house on record.
    *
