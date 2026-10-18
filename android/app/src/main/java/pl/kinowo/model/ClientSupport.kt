@@ -72,8 +72,7 @@ object ClientVersion {
      * SUPPORTED: locking someone out of a working app is the worse failure.
      */
     fun isSupported(version: String, platform: ClientSupport.Platform?): Boolean {
-        val min = platform?.minimumVersion
-        if (platform == null || min == null || !platform.isGated) return true
+        val min = platform?.takeIf { it.isGated }?.minimumVersion ?: return true
         return isAtLeast(version, min) ?: true
     }
 }
