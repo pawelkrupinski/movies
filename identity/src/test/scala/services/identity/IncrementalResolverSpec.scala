@@ -164,6 +164,17 @@ class IncrementalResolverSpec extends AnyFlatSpec with Matchers with LoneElement
     } shouldBe empty
   }
 
+  // `sizes` counted the families over the default region (500 listings), whatever region the model resolves by.
+  it should "count as large the families over its own region, as the model bounds one" in {
+    val corpus = GeneratedIdentityCorpus.generate(7L, normalizer, films = 12, listings = 48)
+    val model  = new IncrementalResolver(corpus.lookups, normalizer, calibration, decorations = TitleDecorations.None, regionBatch = 1)
+    model.batch(corpus.listings, Nil, AnswersChanged.Empty)
+    val sizes  = model.sizes
+    sizes.largestListings should be > 1
+    sizes.large should be > 0
+    sizes.render should startWith (s"${sizes.large} families over 1 listings;")
+  }
+
   it should "take a corpus whole resolving each of its families about once" in {
     val corpus = GeneratedIdentityCorpus.generate(7L, normalizer, films = 12, listings = 48)
     val model  = new IncrementalResolver(corpus.lookups, normalizer, calibration, decorations = TitleDecorations.None)

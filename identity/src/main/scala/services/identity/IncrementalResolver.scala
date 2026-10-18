@@ -185,7 +185,8 @@ final class IncrementalResolver(lookups: IdentityLookups, normalizer: TitleNorma
           perNode.toSeq.sortBy { case (node, count) => (-count, node) }.take(IncrementalResolver.Largest))
       },
       largestNodes = families.values.map(_.nodes).maxOption.getOrElse(0),
-      large        = families.values.count(_.resolved.listings.size > IncrementalResolver.RegionBatch))
+      large        = families.values.count(_.resolved.listings.size > regionBatch),
+      regionBatch  = regionBatch)
   }
   /** How many families the model has re-resolved since it was made: the work its events cost. */
   def familiesResolved: Int = reResolved
@@ -378,10 +379,10 @@ object IncrementalResolver {
   }
 
   /** The model's largest families, the most nodes any family holds, and how many families are
-   *  larger than one region. */
-  final case class FamilySizes(largest: Seq[FamilySize], largestNodes: Int, large: Int) {
+   *  larger than one region (the model's `regionBatch` listings). */
+  final case class FamilySizes(largest: Seq[FamilySize], largestNodes: Int, large: Int, regionBatch: Int) {
     def largestListings: Int = largest.headOption.fold(0)(_.listings)
-    def render: String = s"$large families over $RegionBatch listings; largest ${if (largest.isEmpty) "none" else largest.map(_.render).mkString("; ")}"
+    def render: String = s"$large families over $regionBatch listings; largest ${if (largest.isEmpty) "none" else largest.map(_.render).mkString("; ")}"
   }
 
   /** Seconds spent in each part of the model's work. */
