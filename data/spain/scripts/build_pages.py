@@ -14,7 +14,7 @@ towns, Berga's and Sitges' among them. It is now Poland's rule, from the shared
      biggest of them; a town still alone joins the nearest cluster within 35 km.
 
 A cluster is named after its anchor ("Sitges y alrededores" — the phrase is the
-Scala side's, `SpanishPage`). A town is a MUNICIPALITY, and its position and
+Scala side's, `SpanishRoster.style`). A town is a MUNICIPALITY, and its position and
 population come from `town-coords.json` (`build_venue_towns.py`), which resolves
 every venue to one from its own postal address — not from SensaCine's section
 headers, which file Huércal-Overa's cinema under a Córdoba hamlet.

@@ -13,7 +13,7 @@ the rule Poland and Spain use, from the shared `data/scripts/town_pages.py`:
      biggest of them; a town still alone joins the nearest cluster within 30 km.
 
 A cluster is named after its anchor — the town with the most venues, then the most
-people ("Bayreuth und Umgebung"; the phrase is the Scala side's, `GermanPage`).
+people ("Bayreuth und Umgebung"; the phrase is the Scala side's, `GermanRoster.style`).
 
 Inputs, all committed:
 

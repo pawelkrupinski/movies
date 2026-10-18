@@ -230,10 +230,9 @@ a re-harvest if missed:
   `data/uk/scripts/geocode_towns.py` folds Greater London into London, moves a
   venue far from its postal town into the council area it actually sits in, and
   refuses a name it cannot place rather than guessing.
-- **A country wider than one time zone needs the zone per PLACE.** `GermanPage`
-  hardcodes `Europe/Berlin` because Germany has one; `UsPage` takes it as a
-  constructor parameter because the US has six, and a national default would move
-  a whole coast's "today" boundary. Check this before copying `GermanPage`.
+- **A country wider than one time zone needs the zone per PLACE.** A `RosterPlace`
+  carries its own zone: Germany's are all `Europe/Berlin`, the US's span six, and a national default would move
+  a whole coast's "today" boundary. Check this before giving a new roster one zone.
 - **Check the gazetteer's town matches against the venue's own address.** A town
   name matched to GeoNames' biggest namesake files a venue hundreds of km away:
   Germany's harvest put Lohne (Oldenburg) at Löhne, the Main-Taunus Kinopolis in

@@ -75,7 +75,7 @@ parameters in `scripts/build_pages.py`:
    and 95% are within 22 km.
 
 A cluster is named after its anchor — most venues, then most people — as
-"Bayreuth und Umgebung" ("in Bayreuth und Umgebung"; the phrase is `GermanPage`'s).
+"Bayreuth und Umgebung" ("in Bayreuth und Umgebung"; the phrase is `RosterPage`'s, with `GermanRoster.style`).
 Slugs spell umlauts out (`muenster`) and are Germany's own — `/de/potsdam/` is
 Potsdam whatever the US has; a page's Land-qualified slug 301s to it. The picker
 groups pages by the anchor's Bundesland, read off its coordinates.
@@ -132,7 +132,7 @@ the town is pinned in `TOWN_COORDS`.
    `OgCardAssetsSpec`, which lists any new page as awaiting its first share card.
 
 `generate_roster.py` emits `common/src/main/scala/models/GermanRosterData.scala` —
-the tuples `models.GermanRoster` materialises into `GermanPage` cities and
+the tuples `models.GermanRoster` materialises into `RosterPage` cities and
 `GermanCinema` venues. It refuses a duplicate `displayName` and a venue on no page
 or two. `scripts/ci/generated-artefacts-drift.sh` re-runs both scripts in CI, so a
 `pages.json` or roster that disagrees with its inputs fails the build.
@@ -225,7 +225,7 @@ Rerun it — `python3 data/germany/scripts/harvest_sources.py`, then
 
 ## What consumes this
 
-All of it: the roster model (`GermanPage` / `GermanCinema`), the scrape catalog's
+All of it: the roster model (`RosterPlace` / `RosterPage` / `GermanCinema`), the scrape catalog's
 filmstarts entries (keyed by page slug) and kinoprogramm.com fallbacks (keyed by
 venue), `Country.Germany` (`showtimes.cc/de`), the apps via `/api/catalog` — which
 carries each page's Bundesland as its `region`, so the two-step pick works there
