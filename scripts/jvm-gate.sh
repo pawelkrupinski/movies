@@ -24,20 +24,46 @@
 #   jvm_slot_release       gives this process's slot back
 #   jvm_cpu_options        the JVM options sizing a tool's JVM for KINOWO_JVM_CPUS cores (default 4) on macOS, where
 #                          agents share the cores; none on Linux (CI's runner is the JVM's alone) or with KINOWO_JVM_CPUS=0
-#   jvm_lock <dir>         mkdir-held by this process; one held by a process that is gone (or holding no pid a minute
-#                          after it was taken) is taken over. 0 when taken
+#   lock_dir_take <dir>    0 when this process made <dir>: it was free, or its holder is gone -- the pid in <dir>/pid
+#                          dead, or no pid a minute after it was taken -- and this process, of every one that saw it so,
+#                          took it over (LOCK_TAKEN_FROM then names the gone holder, "(none)" for no pid). The caller
+#                          writes its pid. jvm_lock's and identity_locked's (identity-tools.sh) one way to take a lock
+#   jvm_lock <dir>         lock_dir_take, held by this process ($$ in <dir>/pid). 0 when taken
 #   jvm_unlock <dir>       removes it when this process holds it
 
-jvm_lock() {
-  if mkdir "$1" 2>/dev/null; then echo $$ > "$1/pid"; return 0; fi
-  local holder; holder=$(cat "$1/pid" 2>/dev/null)
-  # gone: a holder that is dead, or no pid a minute after the lock was taken (killed between mkdir and writing it)
-  if { [ -n "$holder" ] && ! kill -0 "$holder" 2>/dev/null; } ||
-     { [ -z "$holder" ] && [ -n "$(find "$1" -maxdepth 0 -mmin +1 2>/dev/null)" ]; }; then
-    rm -rf "$1"; mkdir "$1" 2>/dev/null && { echo $$ > "$1/pid"; return 0; }
+# The take-over is serialised by a second mkdir, <dir>.takeover, under which the holder is read again: two processes
+# that both saw a gone holder each removed the lock and made it anew, the second removing the first's fresh one -- both
+# then held it (2026-10-18: 16 at once took a dead holder's lock 2-5 times over). A .takeover left by a process killed
+# inside it (a few microseconds' window) is cleared once it is a minute old.
+# shellcheck disable=SC2034 # read by lock_dir_take's callers (identity_locked)
+LOCK_TAKEN_FROM=""
+lock_dir_take() {
+  local dir=$1 holder took=1
+  LOCK_TAKEN_FROM=""
+  mkdir "$dir" 2>/dev/null && return 0
+  _lock_dir_gone "$dir" > /dev/null || return 1
+  if ! mkdir "$dir.takeover" 2>/dev/null; then
+    [ -n "$(find "$dir.takeover" -maxdepth 0 -mmin +1 2>/dev/null)" ] && rmdir "$dir.takeover" 2>/dev/null
+    return 1
   fi
-  return 1
+  # under the take-over lock: free since (taken by mkdir alone), held anew, or still gone -- then this one takes it
+  if mkdir "$dir" 2>/dev/null; then took=0
+  elif holder=$(_lock_dir_gone "$dir"); then
+    rm -rf "$dir" && mkdir "$dir" 2>/dev/null && { took=0; LOCK_TAKEN_FROM=${holder:-(none)}; }
+  fi
+  rmdir "$dir.takeover" 2>/dev/null
+  return "$took"
 }
+# _lock_dir_gone <dir> -> 0 when its holder is gone (printing the holder's pid, empty for none): a holder that is dead,
+# or no pid a minute after the lock was taken (killed between mkdir and writing it)
+_lock_dir_gone() {
+  local holder; holder=$(cat "$1/pid" 2>/dev/null)
+  if [ -n "$holder" ]; then kill -0 "$holder" 2>/dev/null && return 1
+  else [ -n "$(find "$1" -maxdepth 0 -mmin +1 2>/dev/null)" ] || return 1
+  fi
+  echo "$holder"
+}
+jvm_lock() { lock_dir_take "$1" && echo $$ > "$1/pid"; }
 jvm_unlock() { [ -n "${1:-}" ] && [ "$(cat "$1/pid" 2>/dev/null)" = $$ ] && rm -rf "$1"; return 0; }
 
 memory_paged_gb() {

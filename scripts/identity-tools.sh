@@ -40,14 +40,9 @@ IDENTITY_GH_DOWNLOAD=${KINOWO_IDENTITY_DOWNLOAD_TIMEOUT:-1800}
 identity_locked() {
   local name=$1 lock=$IDENTITY_CACHE/locks/$1 waited=0 holder deadline=${KINOWO_IDENTITY_LOCK_WAIT:-3600}; shift
   mkdir -p "$IDENTITY_CACHE/locks"
-  until mkdir "$lock" 2>/dev/null; do
+  # jvm-gate.sh's lock_dir_take: a gone holder's lock taken over by exactly one of the agents that saw it gone
+  until lock_dir_take "$lock"; do
     holder=$(cat "$lock/pid" 2>/dev/null || true)
-    # no pid yet: its holder is between taking the lock and writing it — or was killed there, a minute ago or more
-    if { [ -n "$holder" ] && ! kill -0 "$holder" 2>/dev/null; } ||
-       { [ -z "$holder" ] && [ -n "$(find "$lock" -maxdepth 0 -mmin +1 2>/dev/null)" ]; }; then
-      identity_log "taking over the lock on $name: its holder ${holder:-(none)} is gone"
-      rm -rf "$lock"; continue
-    fi
     if [ "$waited" -ge "$deadline" ]; then
       identity_log "gave up after ${waited}s waiting for $name (held by pid ${holder:-?}; $lock)"
       return 1
@@ -55,6 +50,7 @@ identity_locked() {
     [ $(( waited % 60 )) -ne 0 ] || identity_log "waiting for another agent's $name (pid ${holder:-?})"
     sleep 2; waited=$(( waited + 2 ))
   done
+  [ -z "$LOCK_TAKEN_FROM" ] || identity_log "took over the lock on $name: its holder $LOCK_TAKEN_FROM was gone"
   # the holder is this subshell: sh's parent (bash 3.2, macOS's /bin/bash, has no $BASHPID, and $$ is the caller's)
   # shellcheck disable=SC2016 # sh expands it
   ( sh -c 'echo "$PPID"' > "$lock/pid"; trap 'rm -rf "$lock"' EXIT; "$@" )

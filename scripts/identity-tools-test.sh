@@ -48,7 +48,7 @@ scratch_git "$repo" add -A && scratch_git "$repo" commit -qm "the judgements, on
 echo "labels-here" > "$repo/test/resources/fixtures/identity-judgements.tsv"
 
 tools() {
-  STUB="$work" PATH="$work/bin:$PATH" KINOWO_IDENTITY_CACHE="$work/cache" GH_DOWNLOAD_BACKOFF=0 bash -c \
+  KINOWO_JVM_GATE_FOLLOW_MAIN=0 STUB="$work" PATH="$work/bin:$PATH" KINOWO_IDENTITY_CACHE="$work/cache" GH_DOWNLOAD_BACKOFF=0 bash -c \
     '. "$1"; IDENTITY_REPO="$2"; shift 2; "$@"' _ "$REPO_ROOT/scripts/identity-tools.sh" "$repo" "$@" 2> "$work/err"
 }
 
@@ -140,7 +140,17 @@ check "...and leaves no lock behind" "0" "$(find "$work/cache/locks" -mindepth 1
 sleep 0 & dead=$!; wait "$dead"
 mkdir -p "$work/cache/locks/recording-503-pl"; echo "$dead" > "$work/cache/locks/recording-503-pl/pid"
 check "a lock whose holder is gone is taken over" "0 1" \
-  "$(KINOWO_IDENTITY_LOCK_WAIT=4 tools identity_recording 503 pl > /dev/null; echo $?) $(grep -c 'taking over the lock on recording-503-pl' "$work/err")"
+  "$(KINOWO_IDENTITY_LOCK_WAIT=4 tools identity_recording 503 pl > /dev/null; echo $?) $(grep -c 'took over the lock on recording-503-pl: its holder [0-9]* was gone' "$work/err")"
+# agents that all see one gone holder at once: one takes the lock over, the others wait for it -- never two inside
+mkdir -p "$work/cache/locks/race"; echo "$dead" > "$work/cache/locks/race/pid"
+# shellcheck disable=SC2016 # the command's own $1
+printf '%s\n' 'echo in >> "$1"; sleep 0.3; echo out >> "$1"' > "$work/inside"
+for _ in $(seq 1 8); do
+  ( while [ ! -e "$work/go" ]; do :; done; tools identity_locked race sh "$work/inside" "$work/inside.log" ) &
+done
+sleep 0.3; touch "$work/go"; wait
+check "agents that see one gone holder at once run under the lock one at a time" "8 in,out" \
+  "$(grep -c in "$work/inside.log") $(paste -sd, - < "$work/inside.log" | sed 's/\(in,out,\)*in,out$/in,out/')"
 # a live holder is waited for, but not forever
 sleep 30 & live=$!
 mkdir -p "$work/cache/locks/recording-504-pl"; echo "$live" > "$work/cache/locks/recording-504-pl/pid"
