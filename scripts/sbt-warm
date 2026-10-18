@@ -199,15 +199,13 @@ esac
 LockDir="$State/$key.lock"
 lock_start() {
   local waited=0
-  until mkdir "$LockDir" 2>/dev/null; do
-    holder=$(cat "$LockDir/pid" 2>/dev/null || true)
-    if [ -n "$holder" ] && ! kill -0 "$holder" 2>/dev/null; then rm -rf "$LockDir"; continue; fi
+  # jvm_lock: a lock whose holder is gone is taken over
+  until jvm_lock "$LockDir"; do
     [ "$waited" -eq 0 ] && log "another call is starting the server of $root: waiting for it"
     [ "$waited" -ge "${KINOWO_SBT_WARM_LOCK_SECONDS:-1800}" ] && { log "gave up waiting for the server start lock of $root"; exit 1; }
     sleep 1; waited=$((waited + 1))
   done
-  echo $$ > "$LockDir/pid"
-  trap 'rm -rf "$LockDir"' EXIT
+  trap 'jvm_unlock "$LockDir"' EXIT
 }
 server_pid "$root" >/dev/null || lock_start
 
