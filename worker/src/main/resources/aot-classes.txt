@@ -10425,6 +10425,9 @@ services.cinemas.uk.OdeonParser$OdeonSite
 services.cinemas.uk.OdeonParser$OdeonSite$
 services.cinemas.uk.OdeonParser$RawOdeonShowtime
 services.cinemas.uk.OdeonParser$RawOdeonShowtime$
+services.cinemas.uk.QuadDerbyClient
+services.cinemas.uk.QuadDerbyClient$
+services.cinemas.uk.QuadDerbyClient$$anon$1
 services.cinemas.uk.SavoyClient
 services.cinemas.uk.SavoyClient$
 services.cinemas.uk.SavoyClient$BoxOffice$

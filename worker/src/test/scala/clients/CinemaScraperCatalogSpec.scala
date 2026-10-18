@@ -11,7 +11,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 import services.cinemas.common.{CinemaScraper, FlicksClient, FlicksMarket, GatsbyBoxOfficeClient, MultiListingScraper}
 import services.cinemas.pl._
 import services.cinemas.us.{AlamoDrafthouseClient, CinemaPlusClient, SquarespaceEventsClient, UsChainVenues}
-import services.cinemas.uk.{BfiSouthbankClient, CineworldClient, NovaCinemaClient, SavoyClient, SpektrixClient, TicketsolveClient}
+import services.cinemas.uk.{BfiSouthbankClient, CineworldClient, NovaCinemaClient, QuadDerbyClient, SavoyClient, SpektrixClient, TicketsolveClient}
 import services.cinemas.us.{AmcClient, RegalClient}
 import _root_.tools.{CachingDetailFetch, GetOnlyHttpFetch, HttpFetch}
 import services.freshness.{Freshness, FreshnessKind}
@@ -396,6 +396,8 @@ class CinemaScraperCatalogSpec extends AnyFlatSpec with Matchers with OptionValu
     c.all.find(_.cinema == EmpireTheatreConsett).value.fetch().flatMap(_.showtimes) should have size 23
     // The Plough Torrington never had a Flicks time; its Spektrix files films as "Film".
     c.all.find(_.cinema == PloughArtsCentreTorrington).value.fetch().flatMap(_.showtimes) should have size 19
+    // Derby QUAD's box office files its films bare; its own pages carry the rest.
+    c.all.find(_.cinema == QuadDerby).value shouldBe a [QuadDerbyClient]
     val spektrixVenues = c.all.collect { case s: SpektrixClient => s.cinema }
     spektrixVenues should have size 37
     spektrixVenues.filterNot(c.flicksFallbackSlugs.contains) shouldBe empty
