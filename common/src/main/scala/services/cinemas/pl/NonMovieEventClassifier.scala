@@ -97,8 +97,8 @@ object NonMovieEventClassifier {
    *     the same rule as [[isStandaloneDiscussion]];
    *   - billed: a venue's own stage act named by its performer, read only where the billing says so (DE recording
    *     of 2026-10-12) — a comedian's "neues Programm", a "LIVE:" night, a "Tour 2027", a trio, duo or "feat.", a
-   *     magic show, a puppet theatre, a "Buchlesung" or "Multivisionsvortrag" (compounds end in the word). A name
-   *     with nothing beside it ("Andy Strauß") stays: the title cannot tell an act from a film. */
+   *     magic show, a puppet theatre, a "Buchlesung", "Lesebühne" or "Multivisionsvortrag" (compounds end in the
+   *     word). A name with nothing beside it ("Andy Strauß") stays: the title cannot tell an act from a film. */
   private val NeutralPerformanceMarkers = List(
     """(?:^|[:|]\s*)konzert(?:lesung)?\b(?!-)""".r,
     """(?:benefiz|jubiläums|advents|tango)konzert""".r,
@@ -133,6 +133,7 @@ object NonMovieEventClassifier {
   private val NeutralTalkMarkers = List(
     """lesung\b""".r,                       // "Buchlesung", "Märchenlesung", "Premierenlesung"
     """\bleseshow""".r,
+    """lese(?:bühne|buehne)""".r,           // a reading stage: "LILI - Lesebühne im Lichtspielhaus", "Sax Royal die Lesebühne"
     """\bliest\s+(?:aus|was|vor|die|der|das|den)\b""".r, // "Melanie Raabe liest aus: Daisy"
     """vortrag\b""".r,                      // "Fachvortrag", "Multivisionsvortrag"
     """\bmultivision|live-reportage""".r,   // a travel photographer's slide show, presented live

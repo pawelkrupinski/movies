@@ -360,7 +360,9 @@ class NonMovieEventClassifierSpec extends AnyFlatSpec with Matchers {
       "Pipi Langstrumpf - Figurentheater Ingolstadt", "SCHNEEWITTCHEN - THEATERVERANSTALTUNG", "Zaubershow für Kinder - Zauberkunst hoch²",
       "Mindtrix - Zauberei & Mentalmagie", "Täuschungsmanöver Travestie Show", "Musikalische Abendandacht",
       "Buchlesung: Der Kardiologe - Protokoll eines Verbrechens", "Melanie Raabe liest aus: Daisy - und all deine Geheimnisse werden mir gehören",
-      "ABENTEUER HIMALAYA - MULTIVISIONSVORTRAG", "Marokko (Live-Reportage)", "WORKSHOP: SOUND DESIGN", "QuizKino Live"
+      "ABENTEUER HIMALAYA - MULTIVISIONSVORTRAG", "Marokko (Live-Reportage)", "WORKSHOP: SOUND DESIGN", "QuizKino Live",
+      // a reading stage by its name, the evening's title before it (DE recording of 2026-10-13: not the 1953 "Lili")
+      "LILI - Lesebühne im Lichtspielhaus", "Sax Royal die Lesebühne"
     ).foreach(t => withClue(t)(NonMovieEventClassifier.isNonScreening(t) shouldBe true))
   }
 
