@@ -19,7 +19,7 @@ class MemoLookupsSpec extends AnyFlatSpec with Matchers {
   private def listing(n: Int) = Listing.of(Helios, CinemaMovie(Movie(s"Film $n"), Helios, None,
     Some(s"https://example.org/helios/$n"), None, Nil, Nil, Seq(show)), normalizer)
 
-  private final class CountingLookups extends IdentityLookups {
+  private class CountingLookups extends IdentityLookups {
     val read = new ConcurrentHashMap[String, Integer]()
     def hasDetail(l: Listing) = true
     def detail(l: Listing)    = { read.merge(l.page.get, 1, Integer.sum); Answer.Known(None) }
@@ -35,5 +35,20 @@ class MemoLookupsSpec extends AnyFlatSpec with Matchers {
     inner.read.size shouldBe 40
     listings.foreach(memo.detail)
     inner.read.values.toArray.map(_.asInstanceOf[Integer].intValue).toSet shouldBe Set(1)
+  }
+
+  "A memo" should "ask its source every lookup the resolver can ask, not answer one with the trait's default" in {
+    // a cast and a release day the source knows were read through the memo as unknown (`IdentityLookups`' defaults),
+    // so no replay through it -- hermetic or live -- ever reached them
+    val day   = java.time.LocalDate.of(1966, 3, 1)
+    val inner = new CountingLookups {
+      override def cast(id: Int)       = Answer.Known(Some(Seq("Ulrich Schamoni")))
+      override def releaseDay(id: Int) = Answer.Known(Some(day))
+      override def numbersFilmsByTmdbId = false
+    }
+    val memo = new MemoLookups(inner)
+    memo.cast(133035) shouldBe Answer.Known(Some(Seq("Ulrich Schamoni")))
+    memo.releaseDay(133035) shouldBe Answer.Known(Some(day))
+    memo.numbersFilmsByTmdbId shouldBe false
   }
 }

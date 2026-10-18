@@ -10,10 +10,19 @@ final class MemoLookups(inner: IdentityLookups) extends IdentityLookups {
   private val details = new java.util.concurrent.ConcurrentHashMap[(String, String), Answer[Option[DetailFacts]]]()
   private val queries = new java.util.concurrent.ConcurrentHashMap[CandidateQuery, Answer[Seq[Hit]]]()
   private val films   = new java.util.concurrent.ConcurrentHashMap[Int, Answer[Option[IdentityMeasures.Film]]]()
+  private val casts   = new java.util.concurrent.ConcurrentHashMap[Int, Answer[Option[Seq[String]]]]()
   override def hasDetail(l: Listing): Boolean = inner.hasDetail(l)
   override def detail(l: Listing): Answer[Option[DetailFacts]] = details.computeIfAbsent((l.venue, l.page.getOrElse("")), _ => inner.detail(l))
   override def candidates(q: CandidateQuery): Answer[Seq[Hit]] = queries.computeIfAbsent(q, _ => inner.candidates(q))
   override def film(id: Int): Answer[Option[IdentityMeasures.Film]]      = films.computeIfAbsent(id, _ => inner.film(id))
+  // every other lookup the source answers: left to the trait's defaults, a cast read as unknown and a release day off
+  // the record alone, whatever the source knew
+  override def cast(id: Int): Answer[Option[Seq[String]]]               = casts.computeIfAbsent(id, _ => inner.cast(id))
+  override def releaseDay(id: Int): Answer[Option[java.time.LocalDate]] = inner.releaseDay(id)
+  override def numbersFilmsByTmdbId: Boolean                            = inner.numbersFilmsByTmdbId
+  override def prefetchAnswered(): Unit                                 = inner.prefetchAnswered()
+  override def released(qs: Iterable[CandidateQuery], ids: Iterable[Int], pages: Iterable[services.movies.ListingKey]): Unit =
+    inner.released(qs, ids, pages)
   // What a resolve announces it will ask, answered ahead on a few threads: a live-gap replay
   // (`settings.IdentityLiveGaps`) otherwise asks its live questions one after another, and a recorded corpus's detail
   // pages -- decompressed and parsed, a third of the US resolve's 285 s (JFR, 2026-10-15) -- are read on the idle cores.
