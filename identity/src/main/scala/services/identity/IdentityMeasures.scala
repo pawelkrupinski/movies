@@ -1219,6 +1219,19 @@ object IdentityMeasures {
   private[identity] def creditedWork(title: String): Option[String] =
     AuthorCredit.findFirstMatchIn(title).map(m => title.take(m.start).trim).filter(_.exists(_.isLetter))
 
+  /** A spaced slash joining two titles of one standing ("Barwy ochronne / Camouflage"): neither piece is a banner. */
+  private val SlashJoin = """\s+/{1,2}\s+""".r
+  /** Does a slash ([[SlashJoin]]) join a piece naming a work ([[MultiFilmBill.namesAWork]]: no format, no event) that
+   *  holds none of `f`'s titles? Then the title bills two works, and the piece naming `f` is no banner's rest: DE
+   *  Filmhaus Kino Köln's "SHINJUKUY BOYS // THE FISH WITH ONE SLEEVE" bills two shorts, and took the second. "Barwy
+   *  ochronne / Camouflage" joins the film's English title, "Warsztat Świętego Mikołaja / dubbing - Nasze Kino" its
+   *  format and its venue. */
+  def joinsAnotherWork(l: Listing, f: Film): Boolean = l.ownTitles.exists { title =>
+    val parts = SlashJoin.split(title).toSeq.map(_.trim).filter(_.nonEmpty)
+    lazy val filmTitles = f.titles.map(TitleContainment.tokens).filter(_.nonEmpty)
+    parts.sizeIs >= 2 && parts.exists(part => MultiFilmBill.namesAWork(part) && !filmTitles.exists(TitleContainment.tokens(part).containsSlice(_)))
+  }
+
   /** May the piece of `l`'s title that names `f` stand for the whole, the rest a banner? Two words at least —
    *  a one-word piece is many films' title ("Bhutan – Trails of Happiness" is not the 1928 "Bhutan") — and no
    *  Roman numeral in the rest: a numbered set ("Bolek i Lolek – zestaw IV") is an instalment, not the film;

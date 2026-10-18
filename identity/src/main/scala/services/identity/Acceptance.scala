@@ -118,6 +118,10 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
   private def firstCandidate(ranked: Seq[Scored]): Either[Refused, Scored] = ranked.headOption.toRight(Refused("no candidate"))
   /** Refuses a listing billing two works ([[MultiFilmBill.billsTwoWorks]]): a double bill is neither film. */
   private def notADoubleBill(listing: IdentityMeasures.Listing): Either[Refused, Unit] = need(!MultiFilmBill.billsTwoWorks(listing), "a double bill")
+  /** Refuses a film the listing's title joins another work to by a slash ([[IdentityMeasures.joinsAnotherWork]]): a bill
+   *  of two works is neither, as a "+" one is. */
+  private def notJoinedToAnotherWork(listing: IdentityMeasures.Listing, scored: Scored): Either[Refused, Unit] =
+    needOf(!IdentityMeasures.joinsAnotherWork(listing, scored.candidate.film), "the title joins another work to it", scored)
   /** `scored` accepted at its own probability. */
   private def atOwn(scored: Scored): Accepted = scored -> scored.probability
   private def cut(probability: Double) = f"${probability * 100}%.1f%% < ${calibration.ratingCut * 100}%.1f%%"
@@ -340,6 +344,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
                   s"title=${scored.category("title").getOrElse("absent")}")
       _      <- notADoubleBill(any.listing)
       _      <- needOf(IdentityMeasures.standsForTheWhole(any.listing, scored.candidate.film), "its piece cannot stand for the whole title", scored)
+      _      <- notJoinedToAnotherWork(any.listing, scored)
       // a year the title states is the record's: "Disney Junior Cinema Club 2026" is not the 2024 edition
       _      <- needOf(scored.number("titleYear.delta").forall(FactRelations.nearDelta), "the title dates another year",
                   scored, scored.number("titleYear.delta").fold("")(delta => f"titleYear.delta=$delta%.0f"))
@@ -403,6 +408,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
       _      <- need(suggested.nonEmpty, "IMDb suggests none of its candidates")
       _      <- notADoubleBill(any.listing)
       scored <- one(suggested.filter(rung), "no IMDb suggestion is taken by its year, its director or as the only one", "two IMDb suggestions qualify")
+      _      <- notJoinedToAnotherWork(any.listing, scored)
       _      <- noneOf(eligible.find(searchNamesAnother(scored, _)), "TMDB ranks another film the title names above it", scored)
       _      <- notAnotherInstalment(scored)
       taken  <- unopposed(scored, asItsTitlesTopHit(scored), eligible)
@@ -500,6 +506,7 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
       _     <- needOf(!sole.category("director").contains("different") || sole.category("title").exists(IdentityMeasures.Rivalling),
                  "it credits another director", sole)
       _     <- notADoubleBill(any.listing)
+      _     <- notJoinedToAnotherWork(any.listing, sole)
       _     <- needOf(sole.category("title").exists(IdentityMeasures.Rivalling) || wordsOfIts(sole) ||
                    IdentityMeasures.standsForTheWhole(any.listing, sole.candidate.film),
                  "its piece cannot stand for the whole title", sole)
