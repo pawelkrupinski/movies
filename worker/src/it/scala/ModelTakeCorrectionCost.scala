@@ -58,9 +58,9 @@ object ModelTakeCorrectionCost {
         new AgreementStage(UnmatchedClusters.familiesOf(l.c.country).map(f => f -> store.answers(f)).toMap, l.lookups, l.c.normalizer,
           IdentityCalibration.resolver, tmdbOf, verdicts, clock = SpecClock.Pinned, changes = store, correctionsPerApply = perApply,
           posters = new PosterAnswerStore(store, SpecClock.Pinned), tmdb = Some(l.lookups),
-          identities = modules.wiring.IdentityCutoverWiring.identities(l.c.country.code),
+          identities = modules.wiring.IdentityProjectionWiring.identities(l.c.country.code),
           catalogue = new CatalogueAnswerStore(store, SpecClock.Pinned, UnmatchedClusters.CataloguePages),
-          listedOn = modules.wiring.IdentityCutoverWiring.listedOn(l.c.country.code))
+          listedOn = modules.wiring.IdentityProjectionWiring.listedOn(l.c.country.code))
       }
       def resolutionOf(i: Int, correcting: Boolean) = if (correcting) inputs(i)._3 else inputs(i)._4
       /** Each country's verdicts as a running worker keeps them, every take read once: what a restart loads. */

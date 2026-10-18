@@ -32,6 +32,13 @@ object OlderRefs {
       catch { case e: java.lang.reflect.InvocationTargetException => throw e.getCause }
     }).asInstanceOf[T]
 
+  /** The worker wiring's agreement policy object (`identities`, `listedOn`), under the name the ref gives it:
+   *  `IdentityProjectionWiring`, `IdentityCutoverWiring` before 2026-10-18. */
+  lazy val projectionWiring: AnyRef =
+    Seq("modules.wiring.IdentityProjectionWiring$", "modules.wiring.IdentityCutoverWiring$").iterator
+      .flatMap(name => scala.util.Try(Class.forName(name).getField("MODULE$").get(null)).toOption).nextOption()
+      .getOrElse(throw new IllegalStateException("this ref has neither IdentityProjectionWiring nor IdentityCutoverWiring"))
+
   /** The lookups added after the oldest ref a tool runs under, which its wrappers pass to their source ([[passing]]). */
   val NewerLookups: Set[String] = Set("overview", "numbersFilmsByTmdbId")
 }

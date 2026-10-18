@@ -337,21 +337,6 @@ final class ProcessConfiguration(val env: Env) {
    *  keys (`scripts.ListingKeyBackfill --export`), that the ID-seeding review assigns ids from. */
   def identitySeedFilms: Option[IdentitySeedFilms] =
     text("KINOWO_IDENTITY_SEED_FILMS").map(dir => IdentitySeedFilms(Path.of(dir)))
-  /** `KINOWO_IDENTITY_PERMUTATIONS` — arrival orders the identity shadow run replays a FULL corpus
-   *  in (the hard clusters always take 21). */
-  def identityShadowPermutations: IdentityShadowPermutations =
-    IdentityShadowPermutations(text("KINOWO_IDENTITY_PERMUTATIONS").flatMap(_.toIntOption).getOrElse(3))
-  /** `KINOWO_IDENTITY_PIPELINE_CACHE` — a directory of booted pipeline answers per corpus: read
-   *  when a corpus's file is there, written after a boot when it is not. */
-  def identityPipelineCache: Option[IdentityPipelineCache] =
-    text("KINOWO_IDENTITY_PIPELINE_CACHE").map(dir => IdentityPipelineCache(Path.of(dir)))
-  /** `KINOWO_IDENTITY_BOOT_ONLY` (`1` or `true`) — boot each corpus's pipeline into the cache and measure
-   *  nothing: the CI measure boots the BASE commit's projection this way before applying a variant. */
-  def identityPipelineBootOnly: IdentityPipelineBootOnly =
-    IdentityPipelineBootOnly(env.flag("KINOWO_IDENTITY_BOOT_ONLY"))
-  /** `KINOWO_IDENTITY_ROBUSTNESS=off` — skip the robustness measures that resolve a corpus again. */
-  def identityShadowRobustness: IdentityShadowRobustness =
-    IdentityShadowRobustness(!text("KINOWO_IDENTITY_ROBUSTNESS").contains("off"))
   /** `KINOWO_IDENTITY_FOCUS=pieśni lasu,vincent` — resolve only listings whose titles hold every word
    *  of one of these comma-separated phrases, print their decisions and stop: a fast check. */
   def identityFocus: Option[IdentityFocus] =

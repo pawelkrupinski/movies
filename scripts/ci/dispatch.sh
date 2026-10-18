@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Dispatching a workflow and finding, then waiting on, the run it made -- the one copy of what
-# .github/scripts/kick-convergence.sh, scripts/identity-measure and scripts/identity-measure-ci.sh each
+# .github/scripts/kick-convergence.sh and scripts/identity-measure each
 # re-implemented, with every gh call and every poll under a deadline.
 #
 # Sourced; side-effect free. Every function returns non-zero (saying why on stderr) rather than exiting,

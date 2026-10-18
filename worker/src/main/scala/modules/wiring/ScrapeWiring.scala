@@ -92,7 +92,7 @@ trait ScrapeWiring { self: WorkerWiring =>
   // no fallback available. Test wirings pin this empty so fixture replay never
   // resolves or fetches Filmweb live (see TestWiring). A country whose Filmweb path
   // is off gets no Filmweb wrapper at all (`recordingScraper`), not merely an empty map. The agreement stage reads the
-  // same ids for each venue's Filmweb programme (`IdentityCutoverWiring.filmwebProgrammes`).
+  // same ids for each venue's Filmweb programme (`IdentityProjectionWiring.filmwebProgrammes`).
   lazy val filmwebFallbackIds: Map[Cinema, Int] =
     if (!filmwebEnabled) Map.empty
     else scala.util.Try(new FilmwebCinemaIdResolver(httpFetch).resolveAll())

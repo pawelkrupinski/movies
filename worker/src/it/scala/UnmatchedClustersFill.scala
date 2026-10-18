@@ -100,8 +100,8 @@ object UnmatchedClustersFill {
     val catalogue   = new CatalogueFill(store, clock, cache)
     def agree() = UnmatchedClusters.agree(capture.decisions, capture.listings, { lookups = new UnmatchedClusters.Replay(capture); lookups }, families.map(f => f -> store.answers(f)).toMap,
       store.version, tmdbOf, services.movies.TitleNormalizer.forCountry(country), posterStore,
-      modules.wiring.IdentityCutoverWiring.identities(country.code), catalogue.answers,
-        modules.wiring.IdentityCutoverWiring.listedOn(country.code))
+      modules.wiring.IdentityProjectionWiring.identities(country.code), catalogue.answers,
+        modules.wiring.IdentityProjectionWiring.listedOn(country.code))
     // a question its host never answers is given up on, kept in the fixture as unreachable, and asked again next time
     val asked = new AgreementQuestionRounds(store, sources, s"${country.code} fill").run(() => agree())(_.stage.wanted,
       pending = o => o.stage.wantedPosters.nonEmpty || o.stage.wantedCatalogue.nonEmpty || o.stage.wantedFinds.nonEmpty ||

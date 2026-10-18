@@ -61,7 +61,7 @@ HOG_REQUIRE_NO_TTY=${HOG_REQUIRE_NO_TTY:-1}
 # one that really matters — IntelliJ is a java process running for days at
 # well over 5% of a core, and is exactly what a naive "old + busy java" rule
 # would shoot first.
-PROTECT_REGEX=${PROTECT_REGEX:-'kinowo\.longrun|IdentityShadowIntegrationSpec|scripts\.IdentityCalibrate|JetBrains|IntelliJ|IDEA|Android Studio|jetbrains|toolbox|/Applications/|GradleDaemon|KotlinCompileDaemon|jdk.jcmd|VisualVM|jconsole'}
+PROTECT_REGEX=${PROTECT_REGEX:-'kinowo\.longrun|scripts\.IdentityCalibrate|JetBrains|IntelliJ|IDEA|Android Studio|jetbrains|toolbox|/Applications/|GradleDaemon|KotlinCompileDaemon|jdk.jcmd|VisualVM|jconsole'}
 
 # Which processes are in scope at all. Deliberately narrow: this reaper has no
 # business looking at anything that is not a JVM or an sbt launcher.

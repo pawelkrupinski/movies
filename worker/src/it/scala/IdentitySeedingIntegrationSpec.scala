@@ -29,7 +29,7 @@ import scala.util.Try
  *
  * Opt-in: runs when `KINOWO_IDENTITY_SEED_FILMS` (the export directory), `KINOWO_IDENTITY_FULL`,
  * `KINOWO_IDENTITY_CORPUS_DIR` and `KINOWO_FIXTURE_ROOT` are set, as for
- * `IdentityShadowIntegrationSpec`'s full corpora. No pipeline boot — the resolver alone.
+ * `IdentityResolveDump`'s full corpora. The resolver alone.
  */
 class IdentitySeedingIntegrationSpec extends AnyFlatSpec with Matchers with BeforeAndAfterAll with IntegrationMongoSuite {
 

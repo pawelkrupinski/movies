@@ -70,8 +70,7 @@ object IdentityCapture {
   val PerHostTotal = 4
 
   /** As many JVMs as asked, as there are countries, and as fit in memory beside [[ReservedGb]] — at least one. One
-   *  JVM per country, never countries sharing one: a whole-corpus resolve holds its country resident (`IdentityShadow
-   *  .sideBySide`'s own warning), each capture's lookups count their recording's gaps on one counter per corpus, and a
+   *  JVM per country, never countries sharing one: a whole-corpus resolve holds its country resident, each capture's lookups count their recording's gaps on one counter per corpus, and a
    *  JVM's `ExitOnOutOfMemoryError` then takes down one country, not two. They share the machine's hosts instead, so
    *  each takes its [[tools.HostPacing.share]] of one budget. */
   def budget(requested: Int, countries: Int, heap: String, memoryGb: Long): Budget = {

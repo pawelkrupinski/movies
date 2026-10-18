@@ -613,7 +613,6 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
       withClue(s"$file: ")(text should include("unpack-fixture-archive.sh"))
       withClue(s"$file still names a gzip tree: ")(text should not include regex("""enrichment-\$[^ ]*\.tar\.gz"""))
     }
-    RepoFile.read(".github/workflows/identity-measure.yml") should include("-$RECORDING.tar.*")
   }
 
   it should "publish the tree as zstd, retire the gzip working asset, and prune pinned pairs of either kind" in {

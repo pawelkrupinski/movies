@@ -137,8 +137,8 @@ object IdentityResolveDump {
     val stage = new AgreementStage(families.map(family => family -> store.answers(family)).toMap, lookups, c.normalizer,
       IdentityCalibration.resolver, tmdbOf = imdb => Answer.Known(Try(tmdb.findByImdbId(imdb).map(_.id)).toOption.flatten),
       stored = new services.identity.agreement.InMemoryAgreementVerdicts, clock = _root_.tools.SpecClock.Pinned, posters = posterStore, tmdb = Some(lookups),
-      identities = modules.wiring.IdentityCutoverWiring.identities(c.country.code), catalogue = catalogue.answers,
-      listedOn = modules.wiring.IdentityCutoverWiring.listedOn(c.country.code), correctionPostersAtOnce = Int.MaxValue, correctionsPerApply = Int.MaxValue)
+      identities = modules.wiring.IdentityProjectionWiring.identities(c.country.code), catalogue = catalogue.answers,
+      listedOn = modules.wiring.IdentityProjectionWiring.listedOn(c.country.code), correctionPostersAtOnce = Int.MaxValue, correctionsPerApply = Int.MaxValue)
     val byKey = listings.map(l => l.key -> l).toMap
     // each family's questions four at a time, as the experiment read the sites unblocked; one its host never answers given up
     val asked = new AgreementQuestionRounds(store, sources, s"${c.label} agreement").run(() => stage.apply(resolution, byKey.get, store.version))(

@@ -103,7 +103,7 @@ usage_from_header() { sed -n '2,/^set /p' "${1:-$0}" | sed -e '$d' -e 's/^# \{0,
 # ── Failing: a runtime failure, or the caller's mistake ─────────────────────────────────────────────
 #   die <message...>          -> "<tool>: <message>" on stderr, then exit $DIE_STATUS (default 1): the tool could not do
 #        its work. A tool whose documented exit contract gives "no verdict" a status of its own (fail-before's,
-#        identity-measure's and identity-measure-ci's 2, beside their 1 for a verdict of "no") sets DIE_STATUS=2 once,
+#        identity-measure's 2, beside their 1 for a verdict of "no") sets DIE_STATUS=2 once,
 #        next to that contract.
 #   usage_error <message...>  -> the same and a pointer to --help, then exit 2 whatever DIE_STATUS says: asked wrongly.
 #   TOOL_NAME (default the running script's file name) names the tool in both.

@@ -2,7 +2,7 @@ package modules
 
 import org.mongodb.scala.MongoClient
 import models.Country
-import modules.wiring.{AlertingWiring, ChunkScrapeWiring, CorpusWiring, DetailWiring, EgressWiring, HttpWiring, IdentityCutoverWiring, InvariantAuditWiring, MetricsWiring, OperatorWiring, RatingsWiring, ReadModelWiring, ResolutionWiring, ScrapeWiring, ShareCardWiring, TaskQueueWiring}
+import modules.wiring.{AlertingWiring, ChunkScrapeWiring, CorpusWiring, DetailWiring, EgressWiring, HttpWiring, IdentityProjectionWiring, InvariantAuditWiring, MetricsWiring, OperatorWiring, RatingsWiring, ReadModelWiring, ResolutionWiring, ScrapeWiring, ShareCardWiring, TaskQueueWiring}
 import services.cinemas.common.CinemaClientMarkers
 import services.events.{EventBus, InProcessEventBus}
 import services.freshness.{Freshness, FreshnessKind}
@@ -73,7 +73,7 @@ class WorkerWiring(
     with HttpWiring with EgressWiring with ScrapeWiring with ChunkScrapeWiring with DetailWiring
     with CorpusWiring with ResolutionWiring with RatingsWiring with ReadModelWiring
     with MetricsWiring with TaskQueueWiring with AlertingWiring with OperatorWiring with ShareCardWiring
-    with InvariantAuditWiring with IdentityCutoverWiring {
+    with InvariantAuditWiring with IdentityProjectionWiring {
 
   /** Every setting this wiring reads, typed — resolved over its `env` (the process's in
    *  production, an empty one in a test wiring), so a flip installed into that Env reaches
@@ -93,7 +93,7 @@ class WorkerWiring(
   // whole-corpus resolve per tick: each venue's accepted listing as the intake publishes it, each TMDB
   // answer the store files and each venue page the enrichment reads, drained on one thread; its
   // families persist in `identity_model_families`, so a restart takes them up and re-resolves only what
-  // moved while it was down. The projection (`IdentityCutoverWiring`) writes its films.
+  // moved while it was down. The projection (`IdentityProjectionWiring`) writes its films.
   lazy val identityReads: services.identity.ObservationReads = new services.identity.ObservationReads
 
   // The identity model's TMDB and IMDb answers, normalized as they are fetched (`TmdbStore`): a film,
@@ -469,7 +469,7 @@ class WorkerWiring(
     // wedged-but-alive JVM the throttle watchdog can't see.
     boot.step("liveness watchdog")(livenessWatchdog.start())
     boot.step("enrichment reaper")(enrichmentReaper.start())
-    // Identity is the projection's (`IdentityCutoverWiring`), so no TMDB retry reaper starts. Venue
+    // Identity is the projection's (`IdentityProjectionWiring`), so no TMDB retry reaper starts. Venue
     // detail pages are still enriched: the model reads them.
     boot.step("detail reaper")(detailReaper.start())
     boot.step("settle reaper")(settleReaper.start())

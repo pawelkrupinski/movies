@@ -14,7 +14,7 @@ import services.scrapes.{MongoScrapeArchiveRepository, ScrapeArchiveRepository}
  *  - [[IdentityProjection]] writes the identity model's films: once the model is taken up, then as its batches move
  *    (`onModelBatch`), and hourly over the whole corpus (the settle reaper's reconcile).
  */
-trait IdentityCutoverWiring { self: WorkerWiring =>
+trait IdentityProjectionWiring { self: WorkerWiring =>
 
   /** Each venue's accepted listing (`identity_listings`). */
   lazy val acceptedListings: ScrapeArchiveRepository =
@@ -37,7 +37,7 @@ trait IdentityCutoverWiring { self: WorkerWiring =>
       listings    = () => identityListingIntake.projectedByVenue(liveCinemas),
       changedListings = () => identityListingIntake.projectedChanged(liveCinemas),
       rows        = identityListingIntake.rowsOf,
-      resolve     = IdentityProjection.modelled(identityModel, IdentityCutoverWiring.ModelTimeout),
+      resolve     = IdentityProjection.modelled(identityModel, IdentityProjectionWiring.ModelTimeout),
       cache       = movieCache,
       filmIds     = filmIdCounterStore,
       details     = movieService.withFilmDetails,
@@ -46,7 +46,7 @@ trait IdentityCutoverWiring { self: WorkerWiring =>
       slots       = new CinemaSlotBuilder(country.language, workerMetrics.stringPool,
         new services.identity.IndexedVenuePageFacts(detailEnrichers, venuePageIndex, country.language)),
       tokens      = screeningTokens,
-      metrics     = workerMetrics.identityCutover.forCountry(country.code),
+      metrics     = workerMetrics.identityProjection.forCountry(country.code),
       clock       = clock,
       fingerprints = venueSlotFingerprints,
       takeLines   = new services.identity.TakeChangeLines(country, configuration.commit),
@@ -59,7 +59,7 @@ trait IdentityCutoverWiring { self: WorkerWiring =>
    *  store, in one batch — counted on a thread of its own, put off while the heap is near its limit. */
   lazy val suspectTakeCount: services.identity.SuspectTakeCount =
     new services.identity.SuspectTakeCount(venueDetailLookups(),
-      services.identity.SuspectTakeCount.recordsOf(storedLookups()), clock, country.zone, workerMetrics.identityCutover.suspects(country.code),
+      services.identity.SuspectTakeCount.recordsOf(storedLookups()), clock, country.zone, workerMetrics.identityProjection.suspects(country.code),
       runner = managedResources.executor("identity suspect takes")(tools.DaemonExecutors.boundedPool(s"identity-suspect-takes-${country.code}",
         threads = 1, queueCapacity = 1, tools.WhenFull.WaitForRoom)),
       pressed = () => tools.HeapPressure.pressed())
@@ -72,7 +72,7 @@ trait IdentityCutoverWiring { self: WorkerWiring =>
   def agreementFamilies: Seq[services.identity.agreement.VoterFamily] = {
     import services.identity.agreement.VoterFamily
     Seq(VoterFamily.Imdb, VoterFamily.Wiki, VoterFamily.Metacritic, VoterFamily.RottenTomatoes) ++
-      Option.when(IdentityCutoverWiring.FilmwebVoting(country.code))(VoterFamily.Filmweb)
+      Option.when(IdentityProjectionWiring.FilmwebVoting(country.code))(VoterFamily.Filmweb)
   }
   lazy val agreementStage: services.identity.agreement.AgreementStage =
     new services.identity.agreement.AgreementStage(agreementFamilies.map(family => family -> familyAnswerStore.answers(family)).toMap,
@@ -86,9 +86,9 @@ trait IdentityCutoverWiring { self: WorkerWiring =>
       posters = posterAnswerStore,
       // the fill's resolve of a cluster alone asks what the model's whole-corpus resolve never did: read as the model
       // reads (the store, else live), never from the store alone, where those questions were gaps nothing asked
-      tmdb = Some(cutoverLookups()), identities = IdentityCutoverWiring.identities(country.code),
+      tmdb = Some(cutoverLookups()), identities = IdentityProjectionWiring.identities(country.code),
       catalogue = catalogueAnswerStore,
-      listedOn = filmwebProgrammes.flatMap(_ => IdentityCutoverWiring.listedOn(country.code)))
+      listedOn = filmwebProgrammes.flatMap(_ => IdentityProjectionWiring.listedOn(country.code)))
   /** The posters' hashes the agreement's poster evidence reads, filed among the families' answers. */
   lazy val posterAnswerStore: services.identity.PosterAnswerStore = new services.identity.PosterAnswerStore(familyAnswerStore, clock)
   /** The venue film pages whose catalogue links the catalogue take reads, each through the fetch its client scrapes with. */
@@ -123,7 +123,7 @@ trait IdentityCutoverWiring { self: WorkerWiring =>
   /** Each venue's programme on Filmweb — its own, else its town's — in Poland alone, where Filmweb lists programmes: what
    *  the agreement joins the venues' listings to ([[services.identity.agreement.VenueListings]]). */
   lazy val filmwebProgrammes: Option[services.cinemas.pl.FilmwebProgrammes] =
-    Option.when(IdentityCutoverWiring.listedOn(country.code).isDefined)(new services.cinemas.pl.FilmwebProgrammes(enrichmentFetch,
+    Option.when(IdentityProjectionWiring.listedOn(country.code).isDefined)(new services.cinemas.pl.FilmwebProgrammes(enrichmentFetch,
       venue => filmwebFallbackIds.collectFirst { case (cinema, id) if cinema.displayName == venue => id },
       services.cinemas.pl.FilmwebProgrammes.townsOf,
       () => new models.VenueClock(clock).todayInPoland))
@@ -160,7 +160,7 @@ trait IdentityCutoverWiring { self: WorkerWiring =>
     mongoConnection.database.fold[VenueSlotFingerprints](new InMemoryVenueSlotFingerprints)(new MongoVenueSlotFingerprints(_))
 }
 
-object IdentityCutoverWiring {
+object IdentityProjectionWiring {
   /** How long a projection waits for the model to catch up — a rebuild after a deploy included —
    *  before it refuses and the stored films keep serving. */
   val ModelTimeout: scala.concurrent.duration.FiniteDuration = scala.concurrent.duration.Duration(10, "minutes")

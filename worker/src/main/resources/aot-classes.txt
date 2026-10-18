@@ -7293,7 +7293,7 @@ modules.wiring.DetailWiring$$anon$1
 modules.wiring.EgressWiring
 modules.wiring.EgressWiring$
 modules.wiring.HttpWiring
-modules.wiring.IdentityCutoverWiring
+modules.wiring.IdentityProjectionWiring
 modules.wiring.InvariantAuditWiring
 modules.wiring.MetricsWiring
 modules.wiring.OperatorWiring
@@ -10897,10 +10897,10 @@ services.metrics.CorpusScanMetrics$$anon$3
 services.metrics.EnvGatedFeature
 services.metrics.EnvGatedFeature$
 services.metrics.EnvGatedFeatureMetrics
-services.metrics.IdentityCutoverMetrics
 services.metrics.IdentityLookupFillMetrics
 services.metrics.IdentityModelGauges
 services.metrics.IdentityModelGauges$$anon$1
+services.metrics.IdentityProjectionGauges
 services.metrics.JvmProcessMetrics$
 services.metrics.JvmVitalsSampler
 services.metrics.JvmVitalsSampler$
