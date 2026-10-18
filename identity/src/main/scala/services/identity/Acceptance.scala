@@ -435,10 +435,10 @@ private[identity] final class Acceptance(calibration: IdentityCalibration) {
       _      <- notADoubleBill(any.listing)
       scored <- one(suggested.filter(rung), "no IMDb suggestion is taken by its year, its director or as the only one", "two IMDb suggestions qualify")
       _      <- notJoinedToAnotherWork(any.listing, scored)
-      // EXPERIMENT: a bare billing (no year, director, runtime or original title of its own) that reaches a film only by
-      // IMDb's suggestion and only through a title the film is filed under beside its own: DE "Patagonien", a travel
+      // EXPERIMENT: a bare billing (no year, director, runtime or original title of its own) that reaches a film TMDB's own
+      // search does not rank, only through a title the film is filed under beside its own: DE "Patagonien", a travel
       // lecture, is not Bozzelli's 2023 "Patagonia" by its German alternative title
-      _      <- needOf(!(scored.suggestedOnly && !exact(scored) && statesNothing(scored.listing)),
+      _      <- needOf(!(scored.rank.isEmpty && scored.category("title").contains("alternative") && statesNothing(scored.listing)),
                   "a bare billing reaches the film only by IMDb's suggestion of a title it is filed under, not its own", scored,
                   s"title=${scored.category("title").getOrElse("absent")}")
       _      <- noneOf(eligible.find(searchNamesAnother(scored, _)), "TMDB ranks another film the title names above it", scored)
