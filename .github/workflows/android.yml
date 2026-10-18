@@ -28,6 +28,7 @@ on:
             # holds gh-release.sh to the retry-classification table.
             - 'scripts/ci/gh-release*.sh'
             - 'scripts/ci/publish-rolling-release.sh'
+            - 'scripts/ci/enable-kvm.sh'
             - 'test/resources/retry-classification.json'
     push:
         branches: [main]
@@ -56,6 +57,7 @@ on:
             # The rolling-release publish below runs through these.
             - 'scripts/ci/gh-release*.sh'
             - 'scripts/ci/publish-rolling-release.sh'
+            - 'scripts/ci/enable-kvm.sh'
     workflow_dispatch:
 
 # A newer push to the same ref cancels the older run mid-flight instead of
@@ -448,11 +450,7 @@ jobs:
             # Hardware acceleration: without KVM the x86_64 emulator falls back
             # to software emulation and does not boot inside the timeout.
             - name: Enable KVM
-              run: |
-                  echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' \
-                      | sudo tee /etc/udev/rules.d/99-kvm4all.rules
-                  sudo udevadm control --reload-rules
-                  sudo udevadm trigger --name-match=kvm
+              run: scripts/ci/enable-kvm.sh
 
             # A booted-once AVD snapshot, so later runs cold-start from it
             # instead of a first boot (minutes) — keyed on everything that

@@ -109,6 +109,17 @@ class FindingsReportTest(unittest.TestCase):
         self.assertEqual(["OPEN"] * 3, [self.gh.state(cc) for cc in ("pl", "uk", "de")])
         self.assertTrue(all("--assignee" in c for c in self.gh.calls if c[:2] == ["issue", "create"]))
 
+    def test_a_country_whose_issue_gh_cannot_write_is_no_verdict_and_the_others_still_report(self):
+        import subprocess
+        fake = self.gh
+        def refuses_uk(args, stdin=None):
+            if args[:2] == ["issue", "create"] and r.title_of("uk") in args:
+                raise subprocess.CalledProcessError(1, ["gh"] + args, stderr="HTTP 502")
+            return fake(args, stdin)
+        self.gh = refuses_uk
+        self.assertEqual(2, self.run_report(self.recording("a", self.RED), "2026-10-14"))
+        self.assertEqual(["OPEN", "OPEN"], [fake.state(cc) for cc in ("pl", "de")])
+
     def test_the_issue_is_updated_in_place_keeping_first_seen_and_a_finding_past_three_days_turns_the_report_red(self):
         red = self.recording("a", self.RED)
         self.run_report(red, "2026-10-14")

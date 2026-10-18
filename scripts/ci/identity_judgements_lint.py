@@ -107,7 +107,7 @@ def scattered_findings(judged):
 def repeated_findings(judged):
     every = {(r.country, normalise(r.rawTitle), r.film): r for r in judged if r.venue == "*"}
     def same(r, s):
-        return (r.verdict, r.state, r.scope) == (s.verdict, s.state, s.scope)
+        return (r.verdict, r.state, r.scopes) == (s.verdict, s.state, s.scopes)
     return [(("repeated", r.country, r.venue, normalise(r.rawTitle), r.film),
              f"{r.country} {r.venue} | {r.rawTitle}: {r.film} says what its '*' row says ({r.verdict}, {r.state}"
              f"{', ' + r.scope if r.scope else ''}) -- drop the venue's row")

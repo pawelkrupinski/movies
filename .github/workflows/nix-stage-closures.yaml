@@ -372,8 +372,9 @@ jobs:
           # counts as a failure, and what an operator is told to run next lives in
           # bin/stage-nixos-closures, so that the same behaviour is available from a laptop and so
           # that this workflow cannot quietly diverge from it.
-          python3 bin/stage-nixos-closures
-          status=$?
+          # `|| status=$?`: the step's `bash -e` would otherwise end it before the annotation below.
+          status=0
+          python3 bin/stage-nixos-closures || status=$?
           case "${status}" in
             0) ;;
             2) echo "::error title=Nothing was staged::bin/stage-nixos-closures exited 2 -- it could not read the flake or found no hosts, which is NOT the same as every host being up to date." ;;

@@ -14,7 +14,8 @@ identity takes check runs them at the base and at the head over the recording it
   cured     at the base only -- counted, never failed.
 
 A finding is matched by spec, kind, venue and listing; its text (the query a listing searches) may differ between base
-and head without making it new.
+and head without making it new. A spec may find one listing more than once: those are matched as many to many, the same
+texts first, so a second finding the head made for a listing already found is new.
 
 usage: corpus_shape_diff.py <cc> <base dir> <head dir> [--summary F] [--base-name S] [--head-name S]
 Exit 1 on a new finding, 2 when a side wrote no findings file for <cc>, or the head none for a spec the base ran (the
@@ -35,7 +36,7 @@ def specs_of(directory, cc):
 
 
 def findings_of(directory, cc):
-    """{(spec, kind, venue, listing): what} of every corpus-shape file `directory` holds for `cc`'s recorded corpus;
+    """{(spec, kind, venue, listing): [what, ...]} of every corpus-shape file `directory` holds for `cc`'s recorded corpus;
     None when it holds none."""
     specs = specs_of(directory, cc)
     if not specs:
@@ -46,15 +47,32 @@ def findings_of(directory, cc):
             for line in f:
                 cols = line.rstrip("\n").split("\t")
                 if len(cols) >= 3:
-                    out[(spec, cols[0], cols[1], cols[2])] = cols[3] if len(cols) > 3 else ""
+                    out.setdefault((spec, cols[0], cols[1], cols[2]), []).append(cols[3] if len(cols) > 3 else "")
     return out
+
+
+def _matched(base, head):
+    """(standing, new, cured) whats of one key's findings at base and head: the same texts paired first, then the rest in
+    order (a finding whose text moved still stands); what is left over at the head is new, at the base cured."""
+    left = list(base)
+    same, rest = [], []
+    for what in head:
+        (same if what in left else rest).append(what)
+        if what in left:
+            left.remove(what)
+    paired = min(len(rest), len(left))
+    return same + rest[:paired], rest[paired:], left[paired:]
 
 
 def classify(base, head):
     """{"new", "standing", "cured"}: (key, what) pairs, sorted."""
-    return {"new": sorted((k, head[k]) for k in head.keys() - base.keys()),
-            "standing": sorted((k, head[k]) for k in head.keys() & base.keys()),
-            "cured": sorted((k, base[k]) for k in base.keys() - head.keys())}
+    out = {"new": [], "standing": [], "cured": []}
+    for k in base.keys() | head.keys():
+        standing, new, cured = _matched(base.get(k, []), head.get(k, []))
+        out["standing"] += [(k, w) for w in standing]
+        out["new"] += [(k, w) for w in new]
+        out["cured"] += [(k, w) for w in cured]
+    return {kind: sorted(pairs) for kind, pairs in out.items()}
 
 
 def cell(text):

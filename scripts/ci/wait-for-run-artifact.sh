@@ -34,9 +34,14 @@ while :; do
     fi
     # A failed listing (a GitHub API 5xx) says nothing about the producer: poll again rather than
     # let `set -e` fail a job that is only waiting.
-    ended=$(gh api "$run/jobs?per_page=100" --paginate \
-        --jq ".jobs[] | select(.name | contains(\"$producer\")) | select(.status == \"completed\") | .conclusion") ||
+    # `<status> <conclusion>` of every job whose name holds the fragment (read from the environment, never spliced into
+    # the filter); the producer has ended only once each of them has -- a matrix, or a fragment two names share, is
+    # still producing while one of its jobs runs.
+    ended=$(PRODUCER=$producer gh api "$run/jobs?per_page=100" --paginate \
+        --jq '.jobs[] | select(.name | contains(env.PRODUCER)) | "\(.status) \(.conclusion)"') ||
         { echo "::warning::could not list this run's jobs; polling again"; ended=""; }
+    if grep -qv '^completed ' <<<"$ended"; then ended=""; fi
+    ended=$(sed 's/^completed //' <<<"$ended" | paste -sd, -)
     # A finished producer may have uploaded in the moment since the listing above: look once more.
     if [ -n "$ended" ]; then
         if listed; then

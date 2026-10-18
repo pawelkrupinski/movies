@@ -48,8 +48,11 @@ runs:
           run: |
               set -uo pipefail
               [ -s "${{ inputs.log }}" ] || { echo "no suite log — nothing to read"; exit 0; }
+              # `set +e` around it: the step's `bash -e` would otherwise end it before the warning below.
+              set +e
               timeout 20m scripts/hard-clusters.sh ratchet "${{ inputs.code }}" "${{ inputs.log }}" 2>&1 | tee hard-clusters-ratchet.log
               status=${PIPESTATUS[0]}
+              set -e
               # A ratchet that failed (its extend or re-record red, or past 20m) leaves a half-grown fixture:
               # the step goes red (the leg does not: continue-on-error) and offers nothing to commit.
               if [ "$status" -ne 0 ]; then

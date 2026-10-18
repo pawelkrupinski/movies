@@ -24,8 +24,8 @@ pushes behind it is the very coupling this report exists to undo. It reaches the
 usage: identity_findings_report.py [--run RUN] [--countries pl,de,uk,es,us] [--judgements F] [--today D]
          [--max-age-days N] [--assignee LOGIN] [--server URL] [--repo OWNER/NAME] [--work DIR] [--dry-run]
 --run defaults (also when empty) to the newest completed `Record scrape fixtures` run on main.
-Exit 0 when every finding is within its age, 1 when one is overdue, 2 when there is no recording to report or no
-country's findings could be read.
+Exit 0 when every finding is within its age, 1 when one is overdue, 2 when there is no recording to report, no
+country's findings could be read, or a country's issue could not be read or written.
 """
 
 import argparse
@@ -239,8 +239,8 @@ def publish(cc, body, has_findings, run_gh, assignee):
 
 
 def report(countries, run, directory_of, judgements_path, today, max_age, run_url, run_gh, assignee, dry_run):
-    """(overdue total, countries read)."""
-    overdue_total, read = 0, 0
+    """(overdue total, countries read, countries whose issue gh could not read or write)."""
+    overdue_total, read, unwritten = 0, 0, 0
     for cc in countries:
         found = read_findings(directory_of(cc), cc)
         if found is None:
@@ -250,16 +250,22 @@ def report(countries, run, directory_of, judgements_path, today, max_age, run_ur
         read += 1
         labels, _, baseline = judgements_of(judgements_path, cc)
         found = [f for f in found if still_unjudged(f, labels, baseline)]
-        issue = None if dry_run else find_issue(cc, run_gh)
-        seen = first_seen_of(issue[2] if issue else "")
-        seen = {f["id"]: seen.get(state_key(f["id"]), today.isoformat()) for f in found}
-        body, overdue = render(cc, found, seen, today, max_age, run, run_url)
+        try:
+            issue = None if dry_run else find_issue(cc, run_gh)
+            seen = first_seen_of(issue[2] if issue else "")
+            seen = {f["id"]: seen.get(state_key(f["id"]), today.isoformat()) for f in found}
+            body, overdue = render(cc, found, seen, today, max_age, run, run_url)
+            outcome = "dry run" if dry_run else publish(cc, body, bool(found), run_gh, assignee)
+        except subprocess.CalledProcessError as e:
+            # one country's issue gh cannot reach is that country's no verdict: the others still report
+            print(f"::error title={title_of(cc)}::gh could not read or write its issue: {(e.stderr or '').strip() or e}")
+            unwritten += 1
+            continue
         overdue_total += overdue
-        outcome = "dry run" if dry_run else publish(cc, body, bool(found), run_gh, assignee)
         print(f"{title_of(cc)}: {len(found)} finding(s), {overdue} overdue -- issue {outcome}")
         if overdue:
             print(f"::error title={title_of(cc)}::{overdue} finding(s) untriaged for more than {max_age} days")
-    return overdue_total, read
+    return overdue_total, read, unwritten
 
 
 def download(run, cc, work, run_gh):
@@ -308,12 +314,12 @@ def main(argv=None, run_gh=gh):
     run_url = f"{a.server}/{a.repo}/actions/runs/{a.run}"
     def directory_of(cc):
         return os.path.join(a.diagnostics, cc) if a.diagnostics else download(a.run, cc, a.work, run_gh)
-    overdue, read = report([c for c in a.countries.split(",") if c], a.run, directory_of, a.judgements, today,
+    overdue, read, unwritten = report([c for c in a.countries.split(",") if c], a.run, directory_of, a.judgements, today,
                            a.max_age_days, run_url, run_gh, a.assignee, a.dry_run)
     if read == 0:
         print(f"::error::run {a.run} left no country's findings -- nothing was reported")
         return 2
-    return 1 if overdue else 0
+    return 1 if overdue else 2 if unwritten else 0
 
 
 if __name__ == "__main__":

@@ -66,6 +66,13 @@ class RecordingHealthTest(unittest.TestCase):
         self.assertEqual(origins["api.themoviedb.org"], {"tree": 57, "answered": 7, "notFound": 0, "refused": 0, "refusals": {}})
         self.assertEqual(origins["www.metacritic.com"], {"tree": 0, "answered": 0, "notFound": 2, "refused": 0, "refusals": {}})
 
+    def test_an_entry_whose_compressed_body_is_damaged_is_skipped_as_undecodable(self):
+        self.tree.failure("https://www.cineworld.co.uk/api/movies", 403, DURING)
+        path = next((self.tree.root / ".enrichment-cache").rglob("*.entry"))
+        data = path.read_bytes()
+        path.write_bytes(data[:10] + b"\xff\xff\xff" + data[13:])  # a valid gzip header, an invalid deflate block
+        self.assertEqual({}, self.manifest()["origins"])
+
     def test_a_not_found_is_an_answer_and_a_403_a_timeout_or_an_open_circuit_a_refusal(self):
         url = "https://www.cineworld.co.uk/api/movies"
         self.tree.failure(url, 403, DURING, 3).failure(url, 404, DURING, 2).failure(url, 503, DURING)

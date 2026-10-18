@@ -12,7 +12,8 @@ trap 'rm -rf "$work"' EXIT
 export GITHUB_REPOSITORY=owner/repo GITHUB_RUN_ID=42 POLL_SECONDS=0 PATH="$work:$PATH"
 
 # The stub answers the artifacts listing with the names in $work/artifacts-<n> (n = how many
-# artifact listings came before, the last file repeating) and the jobs listing with $work/jobs.
+# artifact listings came before, the last file repeating) and the jobs listing with $work/jobs: the
+# `<status> <conclusion>` lines the script's filter makes of the jobs matching the producer.
 cat > "$work/gh" <<'STUB'
 #!/usr/bin/env bash
 dir="$(dirname "$0")"
@@ -39,11 +40,15 @@ scenario; : > "$work/artifacts-0"; : > "$work/artifacts-1"; printf 'stage-web\ns
 check "waits through listings without it until it appears" 0 "$(run 60)"
 check "…having asked three times" 3 "$(cat "$work/calls")"
 
-scenario; printf 'stage-web\n' > "$work/artifacts-0"; printf 'failure\n' > "$work/jobs"
+scenario; printf 'stage-web\n' > "$work/artifacts-0"; printf 'completed failure\n' > "$work/jobs"
 check "gives up the moment the producer finished without it" 1 "$(run 60)"
 
-scenario; : > "$work/artifacts-0"; printf 'stage-worker\n' > "$work/artifacts-1"; printf 'success\n' > "$work/jobs"
+scenario; : > "$work/artifacts-0"; printf 'stage-worker\n' > "$work/artifacts-1"; printf 'completed success\n' > "$work/jobs"
 check "takes an upload that landed as the producer finished" 0 "$(run 60)"
+
+scenario; : > "$work/artifacts-0"; : > "$work/artifacts-1"; printf 'stage-worker\n' > "$work/artifacts-2"
+printf 'completed failure\nin_progress \n' > "$work/jobs"
+check "keeps waiting while another job the fragment names still runs" 0 "$(run 60)"
 
 scenario; : > "$work/artifacts-0"
 check "times out while the producer is still running" 1 "$(run 0)"
@@ -54,7 +59,7 @@ check "rides out a failed jobs listing and keeps polling" 0 "$(run 60)"
 # A listing far past the pipe buffer, the artifact first: a `gh | grep -q` pipe kills gh with
 # SIGPIPE at the match and pipefail reads the match as a failure.
 scenario; { printf 'stage-worker\n'; for i in $(seq 1 20000); do printf 'other-artifact-%05d\n' "$i"; done; } > "$work/artifacts-0"
-printf 'success\n' > "$work/jobs"
+printf 'completed success\n' > "$work/jobs"
 check "finds the artifact first in a listing larger than the pipe buffer" 0 "$(run 60)"
 
 spec_summary

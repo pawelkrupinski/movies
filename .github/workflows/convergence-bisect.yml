@@ -202,7 +202,9 @@ jobs:
                   # One replay of the sample at whatever commit bisect checked out: 0 green, 1 red, 125 untestable.
                   export STEP_COMMAND="$tools/convergence-bisect-step.sh"
                   git checkout -q -- test/resources
-                  good=$("$tools/convergence-bisect.sh" last-green); found=$?
+                  # `|| found=$?`: the step's `bash -e` would end it on a failing `good=$(...)` line.
+                  found=0
+                  good=$("$tools/convergence-bisect.sh" last-green) || found=$?
                   if [ "$found" -eq 1 ]; then
                       echo "### Convergence bisect — $COUNTRY" >> "$GITHUB_STEP_SUMMARY"
                       echo "No green $COUNTRY leg in the last 60 runs — nothing to bisect from." >> "$GITHUB_STEP_SUMMARY"

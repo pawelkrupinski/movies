@@ -63,6 +63,17 @@ class CorpusShapeDiffTest(unittest.TestCase):
         self.assertIn("1 new (the code's: fail), 1 standing", md)
         self.assertIn("| ❌ | SearchQueryMarkers | stale | * | Sneak Preview |", md)
 
+    def test_a_second_finding_the_head_made_for_a_listing_already_found_fails(self):
+        # a spec may find a listing more than once: the head's extra finding is new, not hidden behind the first
+        second = ARRIETTY.replace("(4k → FormatTags)", "(imax → FormatTags)")
+        base = self.side("base", {"corpus-shape-recorded-uk-SearchQueryMarkers.txt": [ARRIETTY]})
+        head = self.side("head", {"corpus-shape-recorded-uk-SearchQueryMarkers.txt": [ARRIETTY, second]})
+        code, md = self.run_diff("uk", base, head)
+        self.assertEqual(1, code)
+        self.assertIn("1 new (the code's: fail), 1 standing (reported, never failed), 0 cured", md)
+        self.assertIn("imax → FormatTags", md.split("<details>")[0])
+        self.assertEqual(0, self.run_diff("uk", head, base)[0])  # and one fewer is a cure
+
     def test_a_side_whose_specs_wrote_nothing_is_no_verdict(self):
         base = self.side("base", {"corpus-shape-recorded-uk-SearchQueryMarkers.txt": [ARRIETTY]})
         self.assertEqual(2, self.run_diff("uk", base, self.side("head", {}))[0])

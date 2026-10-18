@@ -78,7 +78,7 @@ red="$(jq -r --argjson now "$now" --argjson hours "$red_hours" '
       | (($now - ($since | fromdateiso8601)) / 3600 | floor) as $age
       | (if $age >= $hours then "stale" else "fresh" end)
         + " red since \($since) (\($age)h, \($streak | length) failed run(s)); newest \($streak[0].url)"
-    end' <<<"$convergence_runs")"
+    end' <<<"$convergence_runs")" || red="stale could not judge the $convergence_workflow runs (jq failed on them)"
 verdict convergence-red "${red%% *}" "${red#* }"
 
 # ── convergence-unrun ────────────────────────────────────────────────────────────────────────────
@@ -117,7 +117,7 @@ recording="$(jq -r --argjson now "$now" --argjson hours "$recording_hours" '
   | if . == null then "stale no successful run among the last 100"
     else (($now - (.updatedAt | fromdateiso8601)) / 3600 | floor) as $age
       | (if $age >= $hours then "stale" else "fresh" end) + " last success \(.updatedAt) (\($age)h ago): \(.url)"
-    end' <<<"$recording_runs")"
+    end' <<<"$recording_runs")" || recording="stale could not judge the $recording_workflow runs (jq failed on them)"
 verdict recording-stale "${recording%% *}" "${recording#* }"
 
 exit "$stale"

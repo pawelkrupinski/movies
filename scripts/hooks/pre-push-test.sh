@@ -23,6 +23,8 @@ cat > "$ghstub/gh" <<'STUB'
 #!/usr/bin/env bash
 [ -n "${GH_FAILS:-}" ] && { echo "HTTP 502: Bad Gateway" >&2; exit 1; }
 [ -n "${GH_HANGS:-}" ] && exec sleep 30
+# a gh that answers but says something on stderr first (a deprecation, an update notice)
+[ -n "${GH_WARNS:-}" ] && echo "! warning: this gh is old" >&2
 # a check that rewrites core.hooksPath of the repository it runs in (what moved the shared config to an absolute path)
 [ -n "${GH_REWRITES_HOOKSPATH:-}" ] && { . "$REPO_ROOT/scripts/scratch-git.sh"; scratch_git "$PWD" config core.hooksPath "$GH_REWRITES_HOOKSPATH"; }
 # `gh run download RUN -p … -D DIR`: a convergence leg's served takes, as the judgements check fetches them
@@ -404,6 +406,8 @@ pathchecks="judgements eslint drift snapshot dashboards sbt scripttests actionli
 push() { # <range> -> exit code; stderr in $gate/err
   (cd "$grepo" && PREPUSH_SKIP="${PREPUSH_SKIP:-} $pathchecks" bash "$REPO_ROOT/scripts/hooks/pre-push" --range "$1" >/dev/null 2>"$gate/err"); echo $?; }
 check "every workflow green: the push lands" "0" "$(GH_MAIN="[$green]" GH_IMC="[$green]" GH_REC="[$green]" push "$gbase..$plain")"
+check "a gh warning on stderr beside a green answer is no red" "0" \
+  "$(GH_WARNS=1 GH_MAIN="[$green]" GH_IMC="[$green]" GH_REC="[$green]" push "$gbase..$plain")"
 check "a red Identity model convergence refuses an undeclared commit" "1" "$(GH_IMC="[$red,$green]" push "$gbase..$plain")"
 check "...naming the red run" "1" "$(grep -c 'Identity model convergence is RED on main: run 38520439037' "$gate/err")"
 check "...and the commit without the trailer" "1" "$(grep -c "${plain:0:9} carries no Fixes-Red" "$gate/err")"
