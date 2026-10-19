@@ -51,6 +51,31 @@ reaches that replay: a final-stage 0 there means not seen, not refilled. Variant
 - **Next angle:** the 4 cures each had their own signal — Halstead's bare "Romeo and Juliet" is a relay on the RBO
   broadcast day (class 4); "Archiv Negativ: Turksib" is agreed on a record not titled "Turksib" (a title-guard gap).
 
+### Count the venue's poster, cast and certificate in the agreement quorum (2026-10-19, recording 38713274617, base `b79c71a78`)
+- **Tried:** `Agreement.weighed` reads the venue's own evidence on each film the families took (`AgreementTakes.venueEvidence`,
+  not waited on, like the cast and synopsis): (1) a venue poster within `VoteBits` of the film's TMDB poster, no poster
+  vetoing it, is one quorum vote; (2) the venue's text naming two whole names of its cast, no other candidate's, is one;
+  (3) both; (4) a poster veto, another candidate's cast named, or the venue's certificate `StepsBelow` under TMDB's is one
+  dissenting vote. Independence by provenance as the stage already draws it: a feed's poster shows nothing
+  (`PosterEvidence.shows`), a feed catalogue's text names nobody (`venueNames`). Variant 5 prints every weighed film's
+  support, quorum and venue evidence and applies nothing.
+- **Result:** every variant moved NOTHING (`identity-measure-local`, 5 countries: model and final 0 lost / 0 changed / 0
+  gained). Variant 5 over the capture's 702 weighed films: 133 sit one vote short, only 2 of those carry a venue poster
+  (PL Goplana "Johnny", already taken as `Poster`; Garden Cinema "Last Train Home" 2009, still refused by a title guard)
+  and none a cast vote; the poster/cast votes otherwise land on 12 agreements already at quorum (Candyman ×9,
+  Caravaggio, Pianista, The Cremator: all judged RIGHT). Dissent fires on 9 films, 8 of them already short of the quorum
+  (PL "Lalka" 1968 at three venues, UK "Resident Evil" 2002, "Fatherland" 1994 ×2, "Golden Boy" 2025 — each the losing
+  namesake of a right take) and the ninth (PL Fenomen "Dyrygent" → The Conductor 1980) already poster-vetoed after the
+  quorum. The certificate never fired.
+- **Why stopped:** the stage after the quorum already spends this evidence: the poster vote and the fill take the
+  one-short clusters, and the poster veto refuses what a poster dissent would. The one capture WRONG agreement (UK
+  Beehive "Into The Shadows", an event) shows no poster or cast. The "pooled vote" wrongs (Notre-Dame de Paris ×2,
+  Pornfilmfestival "The Dating Game") are model takes the quorum never weighs.
+- **Confidence (B):** venue votes 12/12 right, dissent 9/9 on films not right — consistent, but every one where the
+  outcome is already decided; no separation gained on the judged set.
+- **Code:** `experiment/quorum-votes` (variants are `Agreement.QuorumVariant` commits 1–5 on the branch).
+- **Next angle:** none here. Venue evidence would matter only for a model take's correction, where the quorum is not read.
+
 ### Refuse an uncorroborated take below a confidence threshold
 - **Tried (offline, over H's classified moves):** wrong uncorroborated takes sat at 3–62%; refuse below a threshold.
 - **Result:** 6 cured, all near 39%, with dozens of right takes in the same band. No separating threshold.
