@@ -182,12 +182,12 @@ touched_by() { # <test path> <changed paths file>: the test, its tool, or a file
 # mounted too); the tests write only to their mktemp scratch, the container's own /tmp. They run as this user, not
 # root, as CI's `runner` does: root passes a chmod-000 check that fails everywhere else. The package list is what the
 # runner image ships that the tests reach for -- zstd (every recording/tree archive the convergence and restore tools
-# unpack) and rsync (ios-release.sh pins /usr/bin/rsync) among them: a tool the runner has and this image lacks fails
+# unpack), rsync (ios-release.sh pins /usr/bin/rsync) and node (local-mirror/rules-test.sh) among them: a tool the runner has and this image lacks fails
 # a test here that CI passes.
 LinuxImageRecipe='FROM mirror.gcr.io/library/ubuntu:26.04
 RUN apt-get update -qq && DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
       bash coreutils findutils sed gawk grep diffutils git jq python3 perl curl ca-certificates unzip zip xz-utils \
-      file procps lsof bc tzdata shellcheck zstd rsync > /dev/null && rm -rf /var/lib/apt/lists/* \
+      file procps lsof bc tzdata shellcheck zstd rsync nodejs > /dev/null && rm -rf /var/lib/apt/lists/* \
  && git config --system safe.directory "*"'
 run_on_linux() {
   local docker image git_common mounts=() selected=()
