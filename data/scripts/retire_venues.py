@@ -74,7 +74,7 @@ PINNED_SIZE = {
     "us":      r"(Country\.UnitedStates\.cities\.flatMap\(_\.cinemas\)\.size shouldBe )(\d+)",
 }
 COUNTRY_SPEC = ROOT / "common/src/test/scala/models/CountrySpec.scala"
-NOTICES = json.loads((ROOT / "common/src/main/resources/closure-notices.json").read_text())
+NOTICES = json.loads((ROOT / "worker/src/main/resources/closure-notices.json").read_text())
 NO_SUCH_HOST = "no such host"
 GONE = {404, 410}
 UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36"

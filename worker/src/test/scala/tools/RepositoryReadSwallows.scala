@@ -42,10 +42,10 @@ object RepositoryReadSwallows {
     ("common/src/main/scala/services/movies/SlotsRepository.scala", "storedSlot",
       "Try(Await.result(c.find(Filters.eq(\"_id\", idOf(filmId, slotKey))).first().toFuture(), 10.seconds))") ->
       "absent and unreadable are both 'cannot prove this write redundant': either way the row is written, the safe direction",
-    ("common/src/main/scala/services/resolution/ResolutionStore.scala", "get",
+    ("worker/src/main/scala/services/resolution/ResolutionStore.scala", "get",
       "Try(Await.result(c.find(Filters.and(Filters.eq(\"_id\", hintKey), Filters.gte(\"at\", cutoff))).headOption(), 5.seconds))") ->
       "a CACHE read: a miss re-resolves from the source, the safe direction",
-    ("common/src/main/scala/services/resolution/ResolutionStore.scala", "removeForFilm",
+    ("worker/src/main/scala/services/resolution/ResolutionStore.scala", "removeForFilm",
       "Try {") ->
       "a forget: 0 entries forgotten is what a failed read-then-delete did; logged, and the next re-resolve asks the source again",
     ("web/src/main/scala/services/auth/MongoAuthExchangeCodeStore.scala", "remove",

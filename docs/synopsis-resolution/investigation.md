@@ -174,7 +174,7 @@ from the data files with the Python script in this document (see below).
 
 ## What's already in production (committed to main)
 
-- `common/src/main/scala/tools/SynopsisSimilarity.scala` — char-trigram cosine
+- `worker/src/main/scala/tools/SynopsisSimilarity.scala` — char-trigram cosine
   + `confidentTieBreak`; tested in `SynopsisSimilaritySpec`.
 - `MovieRecord.synopsisCinema` — cinema-only synopsis accessor (excludes
   TMDB/IMDb/Filmweb to avoid circular comparison).

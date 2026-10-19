@@ -130,10 +130,10 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
     ("common/src/main/scala/services/fallback/FallbackStore.scala", "instant",
       "failedRuns          = Try(document.getInteger(\"failedRuns\", 0)).getOrElse(0),") ->
       "an optional field's default while decoding one document: absent on documents written before the field existed",
-    ("common/src/main/scala/services/freshness/FreshnessStore.scala", "hydrateInPhases",
+    ("worker/src/main/scala/services/freshness/FreshnessStore.scala", "hydrateInPhases",
       "var loaded  = Try(loadScrape()).getOrElse(false)") ->
       "a boot retry loop: false is \"not loaded yet\" and is retried up to maxScrapeAttempts; readiness is released either way",
-    ("common/src/main/scala/services/freshness/FreshnessStore.scala", "hydrateInPhases",
+    ("worker/src/main/scala/services/freshness/FreshnessStore.scala", "hydrateInPhases",
       "loaded = Try(loadScrape()).getOrElse(false)") ->
       "a boot retry loop: false is \"not loaded yet\" and is retried up to maxScrapeAttempts; readiness is released either way",
     ("common/src/main/scala/services/tasks/MongoTaskQueue.scala", "amendWaiting",
@@ -153,7 +153,7 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
     ("common/src/main/scala/tools/MonitoringHttpFetch.scala", "classify",
       "case _: Exception => None") ->
       "a URL whose host does not parse gets no uptime row; the call itself still goes out and fails on its own",
-    ("common/src/main/scala/tools/ThrottledHttpFetch.scala", "isOverload",
+    ("worker/src/main/scala/tools/ThrottledHttpFetch.scala", "isOverload",
       "case _: CircuitOpenException               => false") ->
       "a classifier over an exception already caught, not a handler: a CircuitOpenException is not an overload signal",
     ("web/src/main/scala/services/users/UserRepository.scala", "revokeSessions",
@@ -220,25 +220,25 @@ class NoSwallowedFailureSpec extends AnyFlatSpec with Matchers {
     ("common/src/main/scala/services/readmodel/MongoReadModelRepository.scala", "findCard",
       "case Failure(exception) =>") ->
       "read only by ReadModelContentAudit, which skips a card it could not read and audits it on the next pass",
-    ("common/src/main/scala/services/resolution/ResolutionStore.scala", "removeForFilm",
+    ("worker/src/main/scala/services/resolution/ResolutionStore.scala", "removeForFilm",
       "}.recover { case exception =>") ->
       "the count only feeds an INFO line; a forget that failed leaves the entry, which the next forget retries",
-    ("common/src/main/scala/services/scrapes/MongoScrapeArchiveRepository.scala", "guard",
+    ("worker/src/main/scala/services/scrapes/MongoScrapeArchiveRepository.scala", "guard",
       "case Failure(e)     =>") ->
       "the archive is a record of a scrape that already happened: None is \"not archived\", never read as an empty scrape",
-    ("common/src/main/scala/services/scrapes/MongoScrapeArchiveRepository.scala", "scanLean",
+    ("worker/src/main/scala/services/scrapes/MongoScrapeArchiveRepository.scala", "scanLean",
       "case Failure(e) =>") ->
       "a failed read of the stage relays' days is not empty days: each relay's are UNKNOWN (LeanListing.unread), which the broadcast take waits on and the next read asks again — counted and logged, the rest of the read standing",
-    ("common/src/main/scala/services/scrapes/MongoScrapeArchiveRepository.scala", "read",
+    ("worker/src/main/scala/services/scrapes/MongoScrapeArchiveRepository.scala", "read",
       "case Failure(exception) =>") ->
       "a row the codec refuses holds no listing to keep: read as absent (logged at WARN) the next scrape replaces it, where a failed read would leave the venue's every scrape undecided",
-    ("common/src/main/scala/services/scrapes/MongoScrapeGuardLedger.scala", "attempt",
+    ("worker/src/main/scala/services/scrapes/MongoScrapeGuardLedger.scala", "attempt",
       "case Failure(e)     =>") ->
       "None IS the ledger's typed \"could not read\" (distinct from Some(Fresh)); ScrapeLanding never writes back over it",
     ("common/src/main/scala/services/tasks/KeyedBulkTaskResultStore.scala", "latest",
       ".recover { case exception =>") ->
       "the /tasks page's last-results panel: an unreadable store shows no results, and nothing is decided from it",
-    ("common/src/main/scala/tools/HeapDumper.scala", "dump",
+    ("worker/src/main/scala/tools/HeapDumper.scala", "dump",
       "case Failure(e) =>") ->
       "None is \"no dump was written\", which is what happened; the restart proceeds either way",
     ("web/src/main/scala/services/auth/MongoAuthExchangeCodeStore.scala", "remove",

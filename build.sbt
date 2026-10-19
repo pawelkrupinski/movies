@@ -221,13 +221,14 @@ lazy val common = (project in file("common"))
   .settings(unitReportSettings, testOrderSettings)
   .settings(noApiDocs)
 
-// The hand-stepped time doubles, the polling helper and the one-country title normalizer live ONCE, in testkit, beside
-// every other shared fake. common's
+// The hand-stepped time doubles, the polling helper, the one-country title normalizer, the property specs' base and
+// the split booking-URL row shapes live ONCE, in testkit, beside every other shared fake. common's
 // and identity's own specs need them too, but neither can depend on testkit (testkit depends on both), so those sources
 // are compiled into their test configs as well. A test classpath is never on another module's, so the compilations
 // never meet.
 lazy val sharedTestDoubles = Def.setting(Seq("tools/MutableClock", "tools/ManualScheduler", "tools/Eventually", "tools/SpecClock",
-  "tools/SpecTimeouts", "tools/ChildJvm", "services/movies/SingleCountryNormalizer").map { name =>
+  "tools/SpecTimeouts", "tools/ChildJvm", "services/movies/SingleCountryNormalizer", "services/IdentityPropertySpec",
+  "services/movies/SplitBookingUrlShapes").map { name =>
   (LocalRootProject / baseDirectory).value / "testkit" / "src" / "main" / "scala" / s"$name.scala"
 })
 
@@ -302,7 +303,8 @@ lazy val testkit = (project in file("testkit"))
   .settings(
     name := "testkit",
     publish / skip := true,
-    libraryDependencies += scalatestPlay,
+    // ScalaCheck too: the property specs' base (`services.IdentityPropertySpec`) is one of the shared doubles.
+    libraryDependencies ++= Seq(scalatestPlay, scalatestScalaCheck),
   )
   .settings(noApiDocs)
 
