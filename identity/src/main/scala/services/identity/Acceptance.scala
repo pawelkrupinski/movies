@@ -303,7 +303,20 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
                      (rules: => Option[(Accepted, String)]): Option[(Accepted, String)] =
     if (billsSeveralWorks(ranked)) None
     else seasonProduction(ranked).map(_.map(_ -> "season-production")).getOrElse(rules).filter(keep).filter(_._1._1.untaken.isEmpty)
+      .filter(clearOfItsRunnerUp(ranked))
       .map { case (accepted, rule) => editionNamed(ranked)(accepted) -> rule }.filter(takesNoBill(ranked))
+
+  /** EXPERIMENT `experiment/margin-signal` (not landed — docs/identity-experiments.md): margin as a REFUSAL. A take
+   *  whose best other eligible candidate stands within [[Acceptance.MarginRefusalRatio]] times its probability is
+   *  refused — unless ([[Acceptance.MarginExemptWhenFavoured]]) the listing's own facts favour it over that rival
+   *  ([[EvidenceWeights.favours]]) — for the rules [[Acceptance.MarginRefusedRules]] names (every rule when empty). */
+  private[identity] def clearOfItsRunnerUp(ranked: Seq[Scored])(taken: (Accepted, String)): Boolean = {
+    val ((best, _), rule) = taken
+    !(Acceptance.MarginRefusedRules.isEmpty || Acceptance.MarginRefusedRules(rule)) ||
+      eligibleOf(ranked).filterNot(_ eq best).maxByOption(_.probability).forall(rival =>
+        best.probability >= Acceptance.MarginRefusalRatio * rival.probability ||
+          (Acceptance.MarginExemptWhenFavoured && weights.favours(best, rival)))
+  }
 
   /** The probability that `film` is the listing's film — the decision's confidence, on the scale
    *  the rating gate reads: the calibrated one (rivals are in it, the `rivals` measure), its
@@ -384,6 +397,10 @@ private[identity] object Acceptance {
   /** How many times its runner-up's probability the film a no-match leans to holds ([[Acceptance.leaning]]): a tie
    *  between namesakes is no lean. */
   val LeanMargin = 1.25
+  /** EXPERIMENT `experiment/margin-signal`: [[Acceptance.clearOfItsRunnerUp]]'s ratio, exemption and rules. */
+  val MarginRefusalRatio = 1.5
+  val MarginExemptWhenFavoured = false
+  val MarginRefusedRules: Set[String] = Set.empty
   /** A candidate as a refusal names it: "1365683 Primavera (2025)". */
   def named(scored: Scored): String =
     s"${scored.candidate.tmdbId} ${scored.candidate.film.title}${scored.candidate.film.year.fold("")(year => s" ($year)")}"
