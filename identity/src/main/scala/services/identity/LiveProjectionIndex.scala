@@ -134,8 +134,25 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer)(using LatestTitleYe
   def update(venues: Seq[(String, Seq[ProjectedListing])], held: Iterable[ListingKey], resolved: Seq[ResolverDecision],
              stored: Seq[StoredMovieRecord]): ProjectionScope.Changes = {
     val keys = mutable.HashSet.empty[ListingKey]   // whose published listing (or whether it is published) moved
-    // 0. Held: a listing the model took up that is not published, or let go that is — published, held and indexed must
-    // agree. Each entry marks the update it was last held at, so neither side is walked against the other as a set.
+    val heldUnindexed = markHeld(held, keys)
+    val byKeyAt = mutable.HashMap.empty[String, Map[ListingKey, ProjectedListing]]
+    readVenues(venues, keys, byKeyAt)
+    val republished = republish(keys, byKeyAt, heldUnindexed)
+    val (films, freed, reslot) = restoreStored(stored)
+
+    // 3. Previous films: of every listing whose publication, slot or film moved.
+    val moved = repoint(republished.iterator ++ reslot.iterator)
+
+    val regrouped = recluster(resolved, republished)
+    val changed = ProjectionScope.Changes((republished ++ moved ++ regrouped ++ afterWrites).toSet, films.toSet, freed.toSet)
+    afterWrites.clear()
+    changed
+  }
+
+  /** 0. Held: a listing the model took up that is not published, or let go that is — published, held and indexed must
+   *  agree. Each entry marks the update it was last held at, so neither side is walked against the other as a set. Adds
+   *  to `keys` each such listing; returns the held keys no entry holds. */
+  private def markHeld(held: Iterable[ListingKey], keys: mutable.HashSet[ListingKey]): mutable.HashSet[ListingKey] = {
     heldMark += 1
     val heldUnindexed = mutable.HashSet.empty[ListingKey]
     held.foreach { k =>
@@ -145,14 +162,23 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer)(using LatestTitleYe
       }
     }
     entries.valuesIterator.foreach(e => if (e.listing != null && e.heldAt != heldMark) keys += e.key)
-    def isHeld(k: ListingKey): Boolean = entries.get(k).exists(_.heldAt == heldMark) || heldUnindexed(k)
-    val byKeyAt = mutable.HashMap.empty[String, Map[ListingKey, ProjectedListing]]
-    def at(venue: String): Map[ListingKey, ProjectedListing] = byKeyAt.getOrElseUpdate(venue, oneByKey(venueListings.getOrElse(venue, Nil)))
-    // 1. Listings: a venue whose listing is another object, or gone.
+    heldUnindexed
+  }
+
+  private def isHeld(k: ListingKey, heldUnindexed: mutable.HashSet[ListingKey]): Boolean =
+    entries.get(k).exists(_.heldAt == heldMark) || heldUnindexed(k)
+
+  /** One listing per key at `venue`, as this update has read it so far. */
+  private def at(venue: String, byKeyAt: mutable.HashMap[String, Map[ListingKey, ProjectedListing]]): Map[ListingKey, ProjectedListing] =
+    byKeyAt.getOrElseUpdate(venue, oneByKey(venueListings.getOrElse(venue, Nil)))
+
+  /** 1. Listings: a venue whose listing is another object, or gone — the keys whose listing moved added to `keys`. */
+  private def readVenues(venues: Seq[(String, Seq[ProjectedListing])], keys: mutable.HashSet[ListingKey],
+                         byKeyAt: mutable.HashMap[String, Map[ListingKey, ProjectedListing]]): Unit = {
     val live = venues.iterator.map(_._1).toSet
     venues.foreach { case (venue, listings) =>
       if (!venueListings.get(venue).exists(_ eq listings)) {
-        val was = at(venue)
+        val was = at(venue, byKeyAt)
         val now = oneByKey(listings)
         was.foreach { case (k, l) => if (!now.get(k).exists(n => (n eq l) || n == l)) keys += k }
         now.keysIterator.foreach(k => if (!was.contains(k)) keys += k)   // new to its venue
@@ -163,13 +189,19 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer)(using LatestTitleYe
       }
     }
     venueListings.keys.filterNot(live).toSeq.foreach { venue =>
-      keys ++= at(venue).keys
+      keys ++= at(venue, byKeyAt).keys
       venueListings.remove(venue)
       byKeyAt.remove(venue)
     }
+  }
+
+  /** Each of `keys` published as its venue and the model now hold it, or unpublished: the keys whose published listing
+   *  moved, each moved between the slots it is at. */
+  private def republish(keys: mutable.HashSet[ListingKey], byKeyAt: mutable.HashMap[String, Map[ListingKey, ProjectedListing]],
+                        heldUnindexed: mutable.HashSet[ListingKey]): mutable.HashSet[ListingKey] = {
     val republished = mutable.HashSet.empty[ListingKey]   // whose published listing moved
     keys.foreach { k =>
-      val listing = (if (venueListings.contains(k.venue)) at(k.venue).get(k) else None).filter(_ => isHeld(k))
+      val listing = (if (venueListings.contains(k.venue)) at(k.venue, byKeyAt).get(k) else None).filter(_ => isHeld(k, heldUnindexed))
       val was = listingAt(k)
       if (listing != was) {
         republished += k
@@ -187,9 +219,14 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer)(using LatestTitleYe
         }
       }
     }
+    republished
+  }
 
-    // 2. Stored films: another object is another film unless its content is the same (the cache re-reads a film it
-    // wrote; a film this index was told was written is held as written). Its slots move the listings at them.
+  /** 2. Stored films: another object is another film unless its content is the same (the cache re-reads a film it
+   *  wrote; a film this index was told was written is held as written). Its slots move the listings at them. Returns the
+   *  films changed or gone (as the changes name them), their freed plain keys, and the listings whose previous film may
+   *  have moved. */
+  private def restoreStored(stored: Seq[StoredMovieRecord]): (mutable.HashSet[String], mutable.HashSet[String], mutable.HashSet[ListingKey]) = {
     val films   = mutable.HashSet.empty[String]          // changed or gone, as the changes name them
     val freed   = mutable.HashSet.empty[String]
     val reslot  = mutable.HashSet.empty[ListingKey]      // whose previous film may have moved
@@ -207,14 +244,27 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer)(using LatestTitleYe
       }
     }
     now.foreach { case (id, is) => if (!storedById.contains(id)) restore(is, reslot) }
+    (films, freed, reslot)
+  }
 
-    // 3. Previous films: of every listing whose publication, slot or film moved.
-    val moved = repoint(republished.iterator ++ reslot.iterator)
+  /** 4. Clusters: of every decision that is another object, and of every listing whose publication moved. Returns the
+   *  listings of every cluster that moved. */
+  private def recluster(resolved: Seq[ResolverDecision], republished: mutable.HashSet[ListingKey]): mutable.HashSet[ListingKey] = {
+    val touched = mutable.HashSet.empty[ClusterId]
+    val gone    = dropGone(resolved, touched)
+    fileResolved(resolved, touched)
+    replaced = if (gone.isEmpty) Map.empty else gone.iterator.flatMap { d =>
+      d.members.iterator.filter(k => entries.get(k).exists(e => e.decision != null && e.decision.film != d.film))
+        .map(_ -> TakeChange.Prior(d.basis, d.confidence, d.explanation.lastOption))
+    }.toMap
+    republished.foreach(k => entries.get(k).flatMap(e => Option(e.decision)).foreach(d => touched += decisions.get(d)))
+    regroup(touched)
+  }
 
-    // 4. Clusters: of every decision that is another object, and of every listing whose publication moved.
+  /** The decisions held that `resolved` no longer holds, let go, their clusters added to `touched`. */
+  private def dropGone(resolved: Seq[ResolverDecision], touched: mutable.HashSet[ClusterId]): mutable.ArrayBuffer[ResolverDecision] = {
     val current = new java.util.IdentityHashMap[ResolverDecision, java.lang.Boolean](resolved.size * 2)
     resolved.foreach(d => current.put(d, java.lang.Boolean.TRUE))
-    val touched = mutable.HashSet.empty[ClusterId]
     val gone    = mutable.ArrayBuffer.empty[ResolverDecision]
     decisions.forEach((d, id) => if (!current.containsKey(d)) gone += d)
     gone.foreach { d =>
@@ -223,6 +273,11 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer)(using LatestTitleYe
       decisionsOf(id) = decisionsOf.getOrElse(id, Nil).filterNot(_ eq d)
       d.members.foreach(k => entries.get(k).filter(_.decision eq d).foreach { e => e.decision = null; tidy(e) })
     }
+    gone
+  }
+
+  /** Every decision of `resolved` new to the index filed, its cluster added to `touched`. */
+  private def fileResolved(resolved: Seq[ResolverDecision], touched: mutable.HashSet[ClusterId]): Unit =
     resolved.foreach { d =>
       if (!decisions.containsKey(d)) {
         val id = IdentityProjectionPlan.clusterIdOf(d)
@@ -232,11 +287,9 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer)(using LatestTitleYe
         d.members.foreach(k => entry(canonical(k)).decision = d)
       }
     }
-    replaced = if (gone.isEmpty) Map.empty else gone.iterator.flatMap { d =>
-      d.members.iterator.filter(k => entries.get(k).exists(e => e.decision != null && e.decision.film != d.film))
-        .map(_ -> TakeChange.Prior(d.basis, d.confidence, d.explanation.lastOption))
-    }.toMap
-    republished.foreach(k => entries.get(k).flatMap(e => Option(e.decision)).foreach(d => touched += decisions.get(d)))
+
+  /** Each `touched` cluster worked out again from its decisions: the listings of those that moved. */
+  private def regroup(touched: mutable.HashSet[ClusterId]): mutable.HashSet[ListingKey] = {
     val regrouped = mutable.HashSet.empty[ListingKey]
     touched.foreach { id =>
       val was  = clusters.get(id)
@@ -251,10 +304,7 @@ final class LiveProjectionIndex(normalizer: TitleNormalizer)(using LatestTitleYe
       }
       if (decisionsOf.get(id).exists(_.isEmpty)) decisionsOf.remove(id)
     }
-
-    val changed = ProjectionScope.Changes((republished ++ moved ++ regrouped ++ afterWrites).toSet, films.toSet, freed.toSet)
-    afterWrites.clear()
-    changed
+    regrouped
   }
 
   /** A projection wrote `films` and retired `retired`: the stored films are those now — the next update counts a film it
