@@ -236,6 +236,15 @@ scratch_git "$repo" worktree add -q -b slotted "$scratch/slotted" origin/main
 (cd "$scratch/slotted" && KINOWO_SBT_WARM_HEARTBEAT_SECONDS=1 STUB_AGE_USED="$KINOWO_SBT_WARM_STATE/$busy_key.used" \
   "$REPO_ROOT/scripts/sbt-warm" testUnit >/dev/null 2>&1)
 check "a running command keeps its server marked as in use, however long it runs" "busy" "$(cat "$scratch/busy" 2>/dev/null)"
+# ...and so does a call waiting at the memory gate or for a JVM slot (up to 30 minutes) before its command starts: the
+# gate's first probe ages the mark, as ten minutes of waiting would, and its last one says whether it is fresh again
+used="$KINOWO_SBT_WARM_STATE/$busy_key.used" aged="$scratch/aged-once"
+(cd "$scratch/slotted" && KINOWO_SBT_WARM_HEARTBEAT_SECONDS=1 KINOWO_MEMORY_GATE=1 KINOWO_MEMORY_GATE_FREE_PROBE='echo 0' \
+  KINOWO_MEMORY_GATE_POLL=1 KINOWO_MEMORY_GATE_MAX_WAIT=3 KINOWO_MEMORY_GATE_PROBE="if [ -e '$aged' ]; then
+      [ -n \"\$(find '$used' -mmin +1)\" ] && echo idle > '$scratch/waited' || echo busy > '$scratch/waited'
+    else touch '$aged' && touch -t 202001010000 '$used'; fi; echo 99" \
+  "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
+check "...and a call waiting at the gate before its command starts" "busy" "$(cat "$scratch/waited" 2>/dev/null)"
 
 scratch_git "$repo" worktree add -q -b gated "$scratch/gated" origin/main
 out=$(cd "$scratch/gated" && KINOWO_MEMORY_GATE=1 KINOWO_MEMORY_GATE_PROBE='echo 99' KINOWO_MEMORY_GATE_FREE_PROBE='echo 0' KINOWO_MEMORY_GATE_MAX_WAIT=0 \

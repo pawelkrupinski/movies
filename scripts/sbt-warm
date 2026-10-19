@@ -226,7 +226,13 @@ reap
 dedupe "$root"
 seed
 echo "$root" > "$State/$key.root"
-touch "$State/$key.used"
+# A call keeps its server in use from here to its end -- waiting at the memory gate or for a JVM slot (up to 30 minutes)
+# included: touched only as a call started and ended, the last-used mark aged past the idle timeout mid-run and the
+# watchdog stopped the server under any command longer than it ("sbt server disconnected" ten minutes into `testUnit`,
+# 2026-10-19). The heartbeat ends with this call, killed or not.
+( while kill -0 $$ 2>/dev/null; do touch "$State/$key.used"; sleep "${KINOWO_SBT_WARM_HEARTBEAT_SECONDS:-60}"; done ) \
+  > /dev/null 2>&1 6>&- 7>&- 8>&- &
+heartbeat=$!
 fresh=0
 if pid=$(server_pid "$root"); then
   log "checkout $root, server pid $pid"
@@ -264,12 +270,6 @@ echo "$digest" > "$State/$key.build"
 # server's heap stays when idle, its CPU does not. The server it may start outlives the call, so sbt runs with the lock
 # descriptors closed (jvm-gate.sh): it never holds the slot or the start lock for its idle life.
 if [ "$Serve" = 1 ]; then memory_gate sbt-warm; else jvm_slot_take sbt-warm; fi
-# A running command keeps the server in use: touched only as a call started and ended, the last-used mark aged past the
-# idle timeout mid-run and the watchdog stopped the server under any command longer than it ("sbt server disconnected"
-# ten minutes into `testUnit`, 2026-10-19). The heartbeat ends with this call, killed or not.
-( while kill -0 $$ 2>/dev/null; do touch "$State/$key.used"; sleep "${KINOWO_SBT_WARM_HEARTBEAT_SECONDS:-60}"; done ) \
-  > /dev/null 2>&1 6>&- 7>&- 8>&- &
-heartbeat=$!
 (cd "$root" && SBT_OPTS="${SBT_OPTS:-} $(jvm_cpu_options)" sbt --client "$command" 6>&- 7>&- 8>&-); rc=$?
 kill "$heartbeat" 2>/dev/null
 jvm_slot_release
