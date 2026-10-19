@@ -579,10 +579,20 @@ class ConvergenceLegWiringSpec extends AnyFlatSpec with Matchers {
    *  half-declared row inherits the warm countries' 135/120 for a job that needs hours,
    *  which is the exact shape that cancelled the US leg before its heap was raised. */
   it should "declare a budget for every order row, and an order row for every budget" in {
+    // A row with no order row carries `order: ''` and the workflow's own fallback budgets (155 / 120)
+    // rather than omitting the keys: Forgejo refuses a `matrix.<key>` a row lacks. So "declares an
+    // order row" means a non-empty `order`, and a row without one may only carry the fallbacks.
+    def declared(fields: Map[String, String], key: String) =
+      fields.get(key).exists(v => v.nonEmpty && v != "''")
     rows.foreach { fields =>
       withClue(s"${fields("country")}: ") {
-        fields.contains("order") shouldBe fields.contains("orderJob")
-        fields.contains("order") shouldBe fields.contains("orderSuite")
+        if (declared(fields, "order")) {
+          fields.contains("orderJob") shouldBe true
+          fields.contains("orderSuite") shouldBe true
+        } else {
+          fields.get("orderJob").forall(_ == "155") shouldBe true
+          fields.get("orderSuite").forall(_ == "120") shouldBe true
+        }
       }
     }
   }

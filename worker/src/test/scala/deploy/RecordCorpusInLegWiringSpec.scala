@@ -43,7 +43,8 @@ class RecordCorpusInLegWiringSpec extends AnyFlatSpec with Matchers {
   // never touch — run 37105119296) replays the convergence row's own upload instead.
   it should "split only the UK's replays into a row of their own" in {
     RepoFile.block(recorder, "enrichment") should include("order-command:  ${{ matrix.order || '' }}")
-    val ordered = recorder.linesIterator.filter(_.contains("order: ")).toSeq
+    // `order: ''` is a row WITHOUT an order row, spelled out for Forgejo's strict matrix reads.
+    val ordered = recorder.linesIterator.filter(l => l.contains("order: ") && !l.contains("order: ''")).toSeq
     ordered.map(_.contains("code: uk,")) shouldBe Seq(true)
     ordered.head should include("cmd: convergenceUkWithoutOrder, order: convergenceUkOrder,")
   }

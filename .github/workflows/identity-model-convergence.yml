@@ -101,12 +101,15 @@ jobs:
         strategy:
             fail-fast: false
             matrix:
+                # EVERY ROW CARRIES EVERY KEY THE JOB READS, empty or at its fallback where the row has no
+                # value: Forgejo (CI since the GitHub suspension) evaluates a reusable call's `with:` strictly
+                # and refuses `matrix.<key>` a row lacks -- github.com reads it as null. Same values either way.
                 include:
-                    - { country: poland,         code: pl, cmd: convergencePoland,  sample: convergencePolandSample,  shape: corpusShapePoland,  job: 155, suite: 120, sampleSuite: 20, heap: 7g, mongoTmpfs: 3g }
-                    - { country: germany,        code: de, cmd: convergenceGermanyWithoutOrder, sample: convergenceGermanySample, shape: corpusShapeGermany, job: 155, suite: 120, sampleSuite: 20, heap: 4g, mongoTmpfs: 6g, order: convergenceGermanyOrder, orderJob: 155, orderSuite: 120, orderSplit: true }
-                    - { country: united-kingdom, code: uk, cmd: convergenceUkWithoutOrder, sample: convergenceUkSample, shape: corpusShapeUk, job: 155, suite: 120, sampleSuite: 20, heap: 7g, mongoTmpfs: 3g, order: convergenceUkOrder, orderJob: 155, orderSuite: 120, orderSplit: true }
-                    - { country: spain,          code: es, cmd: convergenceSpain,   sample: convergenceSpainSample,   shape: corpusShapeSpain, job: 155, suite: 120, sampleSuite: 20, heap: 7g, mongoTmpfs: 3g }
-                    - { country: united-states,  code: us, cmd: convergenceUsWithoutNextDay, nextDay: convergenceUsNextDay, sample: convergenceUsSample, shape: corpusShapeUs, job: 350, suite: 315, sampleSuite: 20, heap: 10g, order: convergenceUsOrder, orderJob: 350, orderSuite: 315, orderSplit: true }
+                    - { country: poland,         code: pl, cmd: convergencePoland,  sample: convergencePolandSample,  shape: corpusShapePoland,  job: 155, suite: 120, sampleSuite: 20, heap: 7g, mongoTmpfs: 3g, order: '', orderJob: 155, orderSuite: 120, orderSplit: false, nextDay: '' }
+                    - { country: germany,        code: de, cmd: convergenceGermanyWithoutOrder, sample: convergenceGermanySample, shape: corpusShapeGermany, job: 155, suite: 120, sampleSuite: 20, heap: 4g, mongoTmpfs: 6g, order: convergenceGermanyOrder, orderJob: 155, orderSuite: 120, orderSplit: true, nextDay: '' }
+                    - { country: united-kingdom, code: uk, cmd: convergenceUkWithoutOrder, sample: convergenceUkSample, shape: corpusShapeUk, job: 155, suite: 120, sampleSuite: 20, heap: 7g, mongoTmpfs: 3g, order: convergenceUkOrder, orderJob: 155, orderSuite: 120, orderSplit: true, nextDay: '' }
+                    - { country: spain,          code: es, cmd: convergenceSpain,   sample: convergenceSpainSample,   shape: corpusShapeSpain, job: 155, suite: 120, sampleSuite: 20, heap: 7g, mongoTmpfs: 3g, order: '', orderJob: 155, orderSuite: 120, orderSplit: false, nextDay: '' }
+                    - { country: united-states,  code: us, cmd: convergenceUsWithoutNextDay, nextDay: convergenceUsNextDay, sample: convergenceUsSample, shape: corpusShapeUs, job: 350, suite: 315, sampleSuite: 20, heap: 10g, order: convergenceUsOrder, orderJob: 350, orderSuite: 315, orderSplit: true, mongoTmpfs: '' }
         uses: ./.github/workflows/country-convergence-leg.yml
         permissions:
             contents: write
