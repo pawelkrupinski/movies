@@ -125,8 +125,7 @@ check "a ref resolved for some countries: only the missing country's dump and th
 
 third=$(echo x > "$repo/third"; scratch_git "$repo" add -A; scratch_git "$repo" -c user.email=t@t -c user.name=t commit -qm third; scratch_git "$repo" rev-parse --short=12 HEAD)
 store="$cache/measure-local/41"; mkdir -p "$store"
-sleep 60 & holder=$!
-mkdir "$store/$third.lock" && echo "$holder" > "$store/$third.lock/pid"
+spec_lock_holder "$store/$third.flock"; holder=$SPEC_LOCK_HOLDER
 rm -f "$work/calls"
 ( KINOWO_MEASURE_LOCAL_POLL=0.2 STUB="$work" KINOWO_IDENTITY_CACHE="$cache" bash "$repo/scripts/identity-measure-local" \
     --base "$base" --head "$third" --countries pl --out "$work/locked" > "$work/locked.out" 2>&1; echo $? > "$work/locked.status" ) &
@@ -134,21 +133,20 @@ runner=$!
 for _ in $(seq 1 50); do grep -q 'waiting for it' "$work/locked.out" 2>/dev/null && break; sleep 0.1; done
 check "a ref another live run is resolving: waited for, not resolved twice" "yes " \
   "$(grep -q "$third is being resolved by pid $holder" "$work/locked.out" && echo yes || echo no) $(grep "^$third" "$work/calls" 2>/dev/null)"
-kill "$holder"; wait "$holder" 2>/dev/null; wait "$runner"
-check "...and, its holder gone, resolved by the waiting run" "0 2" "$(cat "$work/locked.status") $(grep -c "^$third" "$work/calls")"
+kill -9 "$holder"; wait "$holder" 2>/dev/null; wait "$runner"
+check "...and, its holder killed, resolved by the waiting run" "0 2" "$(cat "$work/locked.status") $(grep -c "^$third" "$work/calls")"
 
 fourth=$(echo y > "$repo/fourth"; scratch_git "$repo" add -A; scratch_git "$repo" -c user.email=t@t -c user.name=t commit -qm fourth; scratch_git "$repo" rev-parse --short=12 HEAD)
-sleep 60 & holder=$!
-mkdir -p "$cache/jvm-slots/1" && echo "$holder" > "$cache/jvm-slots/1/pid"
+mkdir -p "$cache/jvm-slots"; spec_lock_holder "$cache/jvm-slots/1.flock"; holder=$SPEC_LOCK_HOLDER
 ( KINOWO_JVM_SLOTS=1 KINOWO_JVM_SLOT_POLL=0.2 STUB="$work" KINOWO_IDENTITY_CACHE="$cache" bash "$repo/scripts/identity-measure-local" \
     --base "$base" --head "$fourth" --countries pl --out "$work/slots" > "$work/slots.out" 2>&1; echo $? > "$work/slots.status" ) &
 runner=$!
 for _ in $(seq 1 50); do grep -q 'JVM slots busy' "$work/slots.out" 2>/dev/null && break; sleep 0.1; done
 check "every JVM slot on the machine busy: the resolve waits for one (scripts/jvm-gate.sh)" "yes no" \
   "$(grep -q '\[identity-measure-local\] all 1 JVM slots busy' "$work/slots.out" && echo yes || echo no) $(grep -q "^$fourth" "$work/calls" && echo yes || echo no)"
-kill "$holder"; wait "$holder" 2>/dev/null; wait "$runner"
-check "...a slot held by a process that is gone is taken over, and freed after" "0 yes no" \
-  "$(cat "$work/slots.status") $(grep -q "^$fourth" "$work/calls" && echo yes || echo no) $([ -d "$cache/jvm-slots/1" ] && echo yes || echo no)"
+kill -9 "$holder"; wait "$holder" 2>/dev/null; wait "$runner"
+check "...a slot whose holder is killed is free to it at once, and given back after" "0 yes free" \
+  "$(cat "$work/slots.status") $(grep -q "^$fourth" "$work/calls" && echo yes || echo no) $(spec_lock_state "$cache/jvm-slots/1.flock")"
 
 fifth=$(echo z > "$repo/fifth"; scratch_git "$repo" add -A; scratch_git "$repo" -c user.email=t@t -c user.name=t commit -qm fifth; scratch_git "$repo" rev-parse --short=12 HEAD)
 KINOWO_MEMORY_GATE=1 KINOWO_MEMORY_GATE_PROBE='echo 99' KINOWO_MEMORY_GATE_FREE_PROBE='echo 0' KINOWO_MEMORY_GATE_MAX_WAIT=0 measure --base "$base" --head "$fifth" --countries pl --out "$work/gated"

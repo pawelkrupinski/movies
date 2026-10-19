@@ -19,7 +19,8 @@ mkdir -p "$scratch/bin"
 cat > "$scratch/bin/sbt" <<STUB
 #!/usr/bin/env bash
 printf "%s|%s\\n" "\$(pwd -P)" "\$*" >> "$scratch/sbt-calls"
-printf "%s|%s\\n" "\${SBT_OPTS:-}" "\${KINOWO_JVM_SLOT_HELD:-}" >> "$scratch/sbt-env"
+# ...and which of the lock descriptors (scripts/jvm-gate.sh) it inherited: the server it starts must hold none
+printf "%s|%s|%s\\n" "\${SBT_OPTS:-}" "\${KINOWO_JVM_SLOT_HELD:-}" "\$(for fd in 6 7 8; do { : >&\$fd; } 2>/dev/null && printf 'fd%s ' \$fd; done)" >> "$scratch/sbt-env"
 active=project/target/active.json
 [ -f "\$active" ] || { mkdir -p project/target; echo "{\\"uri\\":\\"local://\$(pwd -P)/sock\\"}" > "\$active"; }
 server=\$(sed -n 's|.*"local://\\(.*\\)/sock".*|\\1|p' "\$active")
@@ -146,12 +147,12 @@ second=$!
 wait "$first" "$second"
 check "a second call without a server waits for the first's start instead of overlapping it" "start end start end" \
   "$(sed 's| .*||' "$scratch/spans" | tr '\n' ' ' | sed 's/ $//')"
-# a lock whose holder died does not block
+# a call killed while it held the start lock (kill -9: no trap ran) leaves it free at once
 locked_key=$(grep -lx "$scratch/locked" "$KINOWO_SBT_WARM_STATE"/*.root); locked_key=${locked_key%.root}
-mkdir "$locked_key.lock"; echo 999999 > "$locked_key.lock/pid"
-check "a lock left by a dead call is taken over" "ok" \
-  "$(cd "$scratch/locked" && KINOWO_SBT_WARM_LOCK_SECONDS=5 "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1 && echo ok)"
-check "...and the lock is released after the call" "none" "$([ -e "$locked_key.lock" ] && echo held || echo none)"
+spec_lock_holder "$locked_key.flock"; dead=$SPEC_LOCK_HOLDER; kill -9 "$dead"; wait "$dead" 2>/dev/null
+check "a lock left by a killed call does not block the next" "ok" \
+  "$(cd "$scratch/locked" && KINOWO_SBT_WARM_LOCK_SECONDS=0 "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1 && echo ok)"
+check "...and the lock is released after the call" "free" "$(spec_lock_state "$locked_key.flock")"
 cp "$scratch/sbt.orig" "$scratch/bin/sbt"
 
 # a removed checkout's server is stopped by the next call from anywhere
@@ -220,7 +221,9 @@ scratch_git "$repo" worktree add -q -b slotted "$scratch/slotted" origin/main
 : > "$scratch/sbt-env"
 (cd "$scratch/slotted" && KINOWO_JVM_SLOTS=4 KINOWO_JVM_CPUS=4 KINOWO_JVM_GATE_OS=Darwin "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
 check "a command holds one of the machine's JVM slots, its server sized for KINOWO_JVM_CPUS cores (macOS)" \
-  " -XX:ActiveProcessorCount=4|$KINOWO_IDENTITY_CACHE/jvm-slots/1" "$(tail -1 "$scratch/sbt-env")"
-check "...and gives the slot back when it ends" "no" "$([ -d "$KINOWO_IDENTITY_CACHE/jvm-slots/1" ] && echo yes || echo no)"
+  " -XX:ActiveProcessorCount=4|$KINOWO_IDENTITY_CACHE/jvm-slots/1.flock" "$(tail -1 "$scratch/sbt-env" | cut -d'|' -f1,2)"
+check "...sbt (and the server it starts, outliving the call) inheriting neither the slot's nor the start lock's descriptor" "" \
+  "$(tail -1 "$scratch/sbt-env" | cut -d'|' -f3)"
+check "...and gives the slot back when it ends" "free" "$(spec_lock_state "$KINOWO_IDENTITY_CACHE/jvm-slots/1.flock")"
 
 spec_summary

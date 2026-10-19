@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # identity-tools.sh (what the local identity tools share): a capture fetched once into the shared cache from a run's
 # artifacts or a git ref, a tree's classpath compiled only when a source is newer, the newest recording holding a
-# country, a recording or a ref's tree laid out once under a lock a dead holder cannot strand, and no gh unbounded or
+# country, a recording or a ref's tree laid out once under a kernel lock a killed holder cannot strand, and no gh unbounded or
 # failure read as an answer.
 # Run: bash scripts/identity-tools-test.sh
 set -uo pipefail
@@ -135,38 +135,38 @@ check "...then read from the cache" "0" "$(grep -c '^fetch' "$work/calls" 2>/dev
 check "--corpus-only fetches the scrape corpus alone" "fetch --corpus-only 501 $work/cache/recordings/501 pl" \
   "$(tools identity_recording 501 pl corpus > /dev/null; grep '^fetch' "$work/calls")"
 check "a fetch that fails fails, handing back no directory" "1 " "$(out=$(FETCH_FAILS=1 tools identity_recording 502 pl); echo "$? $out")"
-check "...and leaves no lock behind" "0" "$(find "$work/cache/locks" -mindepth 1 -maxdepth 1 | wc -l | tr -d ' ')"
-# a lock its holder left behind when it was killed: taken over, not waited on forever
-sleep 0 & dead=$!; wait "$dead"
-mkdir -p "$work/cache/locks/recording-503-pl"; echo "$dead" > "$work/cache/locks/recording-503-pl/pid"
-check "a lock whose holder is gone is taken over" "0 1" \
-  "$(KINOWO_IDENTITY_LOCK_WAIT=4 tools identity_recording 503 pl > /dev/null; echo $?) $(grep -c 'took over the lock on recording-503-pl: its holder [0-9]* was gone' "$work/err")"
-# agents that all see one gone holder at once: one takes the lock over, the others wait for it -- never two inside
-mkdir -p "$work/cache/locks/race"; echo "$dead" > "$work/cache/locks/race/pid"
+check "...and leaves its lock free" "free" \
+  "$(spec_lock_state "$work/cache/locks/recording-502-pl.flock")"
+# a lock whose holder was killed (kill -9: no trap ran) is free at once: nothing to take over, nothing waited on
+spec_lock_holder "$work/cache/locks/recording-503-pl.flock"; dead=$SPEC_LOCK_HOLDER
+kill -9 "$dead"; wait "$dead" 2>/dev/null
+check "a lock whose holder was killed is free at once" "0 0" \
+  "$(KINOWO_IDENTITY_LOCK_WAIT=0 tools identity_recording 503 pl > /dev/null; echo $?) $(grep -c 'waiting' "$work/err")"
+# agents racing for one lock: one runs under it at a time -- never two inside
 # shellcheck disable=SC2016 # the command's own $1
 printf '%s\n' 'echo in >> "$1"; sleep 0.3; echo out >> "$1"' > "$work/inside"
-for _ in $(seq 1 8); do
+for _ in $(seq 1 12); do
   ( while [ ! -e "$work/go" ]; do :; done; tools identity_locked race sh "$work/inside" "$work/inside.log" ) &
 done
 sleep 0.3; touch "$work/go"; wait
-check "agents that see one gone holder at once run under the lock one at a time" "8 in,out" \
+check "12 agents racing for one lock run under it one at a time" "12 in,out" \
   "$(grep -c in "$work/inside.log") $(paste -sd, - < "$work/inside.log" | sed 's/\(in,out,\)*in,out$/in,out/')"
 # a live holder is waited for, but not forever
-sleep 30 & live=$!
-mkdir -p "$work/cache/locks/recording-504-pl"; echo "$live" > "$work/cache/locks/recording-504-pl/pid"
-check "a live holder is waited for until the deadline, then this fails naming the lock" "1 1" \
-  "$(KINOWO_IDENTITY_LOCK_WAIT=2 tools identity_recording 504 pl > /dev/null; echo $?) $(grep -c 'gave up after .*recording-504-pl' "$work/err")"
+spec_lock_holder "$work/cache/locks/recording-504-pl.flock"; live=$SPEC_LOCK_HOLDER
+check "a live holder is waited for until the deadline, then this fails naming the lock and its holder" "1 1" \
+  "$(KINOWO_IDENTITY_LOCK_WAIT=2 tools identity_recording 504 pl > /dev/null; echo $?) $(grep -c "gave up after .*held by pid $live; .*recording-504-pl" "$work/err")"
 kill "$live" 2>/dev/null; wait "$live" 2>/dev/null
 
 # The lock names its holder: the subshell running the command, a live pid -- also under macOS's /bin/bash 3.2 and set -u
-# (no $BASHPID there: the lock was left behind, or held under an empty pid another agent took over after a minute).
+# (no $BASHPID there).
 cat > "$work/holder" <<'HOLDER'
-holder=$(cat "$KINOWO_IDENTITY_CACHE/locks/held/pid")
+holder=$(cat "$KINOWO_IDENTITY_CACHE/locks/held.flock")
 if [ "$holder" = "$PPID" ] && kill -0 "$holder"; then echo same; else echo "holder <$holder>, runner $PPID"; fi
 HOLDER
 check "a held lock names the holder running the command, under set -u" "same 0" \
   "$(out=$(KINOWO_IDENTITY_CACHE="$work/cache" bash -c 'set -u; . "$1"; identity_locked held sh "$2"' _ "$REPO_ROOT/scripts/identity-tools.sh" "$work/holder" 2>&1); echo "$out $?")"
-check "...and lets it go" "0" "$(find "$work/cache/locks" -mindepth 1 -maxdepth 1 -name held | wc -l | tr -d ' ')"
+check "...and lets it go, its pid cleared" "free " \
+  "$(spec_lock_state "$work/cache/locks/held.flock") $(cat "$work/cache/locks/held.flock")"
 
 # identity_tree: a layout cut short leaves no tree another call takes for whole
 head=$(scratch_git "$repo" rev-parse HEAD)

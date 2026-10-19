@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # jvm-gate.sh: a JVM start waits while too much memory is paged out (the reading stubbed), then for one of the
-# machine's slots; a child rides its parent's slot; a slot whose holder is gone is taken over; each gives up warned at
-# its deadline; a tool's JVM is sized for a share of the cores on macOS only.
+# machine's slots; a child rides its parent's slot; a slot (a kernel lock) is free the moment its holder is killed, and
+# held by one process at a time however many race for it; each gives up warned at its deadline; a tool's JVM is sized for a share of the cores on macOS only.
 # Run: bash scripts/jvm-gate-test.sh
 set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -49,50 +49,58 @@ check "nothing readable (Linux CI): starts at once" "0|" "$status|$(cat "$work/e
 # --- the machine's JVM slots
 unset KINOWO_MEMORY_GATE_PROBE; export KINOWO_MEMORY_GATE=0 KINOWO_IDENTITY_CACHE="$work/cache" KINOWO_JVM_SLOTS=2 KINOWO_JVM_SLOT_POLL=0.05
 slots="$work/cache/jvm-slots"
-( jvm_slot_take t; echo "$JVM_SLOT $KINOWO_JVM_SLOT_HELD" > "$work/held"; cat "$slots/1/pid" > "$work/pid1"; echo $$ > "$work/me"
+( jvm_slot_take t; echo "$JVM_SLOT $KINOWO_JVM_SLOT_HELD" > "$work/held"; cat "$slots/1.flock" > "$work/pid1"; echo $$ > "$work/me"
   bash -c '. "'"$REPO_ROOT"'/scripts/jvm-gate.sh"; jvm_slot_take child; echo "${JVM_SLOT:-rode}"' > "$work/child"
-  jvm_slot_release; [ -d "$slots/1" ] && echo held > "$work/after" || echo free > "$work/after" )
-check "a free slot is taken, held by this process, and named to its children" "$slots/1 $slots/1 yes" \
-  "$(cat "$work/held") $([ "$(cat "$work/pid1")" = "$(cat "$work/me")" ] && echo yes || echo no)"
+  lock_busy "$slots/1.flock" && echo held > "$work/during"
+  jvm_slot_release; lock_busy "$slots/1.flock" && echo held > "$work/after" || echo free > "$work/after" )
+check "a free slot is taken, held by this process, and named to its children" "$slots/1.flock $slots/1.flock yes held" \
+  "$(cat "$work/held") $([ "$(cat "$work/pid1")" = "$(cat "$work/me")" ] && echo yes || echo no) $(cat "$work/during")"
 check "...a child tool rides it rather than waiting on its own parent" "rode" "$(cat "$work/child")"
 check "...and it is given back on release" "free" "$(cat "$work/after")"
 
-sleep 60 & a=$!; sleep 60 & b=$!
-mkdir -p "$slots/1" "$slots/2"; echo "$a" > "$slots/1/pid"; echo "$b" > "$slots/2/pid"
+spec_lock_holder "$slots/1.flock"; a=$SPEC_LOCK_HOLDER; spec_lock_holder "$slots/2.flock"; b=$SPEC_LOCK_HOLDER
 ( jvm_slot_take t; echo "${JVM_SLOT##*/}" > "$work/got" ) 2> "$work/err" &
 waiter=$!
-for _ in $(seq 1 50); do grep -q 'JVM slots busy' "$work/err" 2>/dev/null && break; sleep 0.05; done
+for _ in $(seq 1 100); do grep -q 'JVM slots busy' "$work/err" 2>/dev/null && break; sleep 0.05; done
 check "every slot busy: waits, saying so with the holders" "yes no" \
   "$(grep -q "all 2 JVM slots busy (KINOWO_JVM_SLOTS; holders: $a,$b)" "$work/err" && echo yes || echo no) $([ -s "$work/got" ] && echo yes || echo no)"
-kill "$b"; wait "$b" 2>/dev/null; wait "$waiter"
-check "...and a slot whose holder is gone is taken over" "2" "$(cat "$work/got")"
-mkdir "$work/pidless" && touch -t 202001010000 "$work/pidless"
-check "a lock left with no pid (its holder killed between taking it and writing one), a minute old: taken over" "0 $$" \
-  "$(jvm_lock "$work/pidless"; echo "$? $(cat "$work/pidless/pid" 2>/dev/null)")"
-mkdir "$work/fresh-pidless"
-check "...one just taken, its pid not written yet: still held" "1" "$(jvm_lock "$work/fresh-pidless"; echo $?)"
-# many processes that all see one gone holder at once: exactly one takes its lock over, every round
-sleep 0 & dead=$!; wait "$dead"
-overtaken=""
+kill -9 "$b"; wait "$b" 2>/dev/null; wait "$waiter"
+check "...and a slot whose holder is killed (kill -9: no trap, no clean-up) is free to the waiter at once" "2.flock" "$(cat "$work/got")"
+spec_lock_holder "$slots/2.flock"; c=$SPEC_LOCK_HOLDER
+( KINOWO_JVM_SLOT_MAX_WAIT=0 jvm_slot_take t; echo "${JVM_SLOT:-none}" > "$work/got" ) 2> "$work/err"
+check "past the slot deadline: goes ahead without one, warned" "none 1" "$(cat "$work/got") $(grep -c 'starting anyway' "$work/err")"
+kill "$a" "$c"; wait "$a" "$c" 2>/dev/null
+spec_lock_holder "$work/killed"; held=$SPEC_LOCK_HOLDER
+kill -9 "$held"; wait "$held" 2>/dev/null
+check "a lock is free the moment its holder is killed: no take-over, nothing to wait out" "0 $$" \
+  "$(jvm_lock "$work/killed"; echo "$? $(cat "$work/killed")")"
+spec_lock_holder "$work/live"; live=$SPEC_LOCK_HOLDER
+check "...while a live holder's is not taken" "1 busy" "$(jvm_lock "$work/live"; echo "$? $(lock_busy "$work/live" && echo busy)")"
+kill "$live"; wait "$live" 2>/dev/null
+# many processes racing for one free lock, and for the machine's slots: never two inside at once, every round
 for round in 1 2 3 4 5; do
-  mkdir "$work/race$round"; echo "$dead" > "$work/race$round/pid"
   racers=()
-  for _ in $(seq 1 12); do
+  for _ in $(seq 1 16); do
     ( while [ ! -e "$work/go$round" ]; do :; done
-      if jvm_lock "$work/race$round"; then echo won >> "$work/won$round"; sleep 1; fi ) &
+      until jvm_lock "$work/race$round"; do sleep 0.01; done
+      echo in >> "$work/inside$round"; sleep 0.05; echo out >> "$work/inside$round"; jvm_unlock "$work/race$round" ) &
     racers+=($!)
   done
   sleep 0.3; touch "$work/go$round"; wait "${racers[@]}"
-  overtaken="$overtaken $(wc -l < "$work/won$round" | tr -d ' ')"
 done
-check "...by exactly one of the processes that saw it gone at once (16 took it 2-5 times over)" " 1 1 1 1 1" "$overtaken"
-check "...the take-over lock given back" "0" "$(find "$work" -maxdepth 1 -name '*.takeover' | wc -l | tr -d ' ')"
-mkdir "$work/stuck" "$work/stuck.takeover"; echo "$dead" > "$work/stuck/pid"; touch -t 202001010000 "$work/stuck.takeover"
-check "...one left by a process killed inside it is cleared once a minute old, and the lock then taken" "1 0 $$" \
-  "$(jvm_lock "$work/stuck"; printf '%s ' $?; jvm_lock "$work/stuck"; echo "$? $(cat "$work/stuck/pid")")"
-( KINOWO_JVM_SLOT_MAX_WAIT=0 jvm_slot_take t; echo "${JVM_SLOT:-none}" > "$work/got" ) 2> "$work/err"
-check "past the slot deadline: goes ahead without one, warned" "none 1" "$(cat "$work/got") $(grep -c 'starting anyway' "$work/err")"
-kill "$a"; wait "$a" 2>/dev/null
+check "16 racers for one lock, five rounds: each inside alone, one after another" "16 16 16 16 16|in,out" \
+  "$(for r in 1 2 3 4 5; do grep -c in "$work/inside$r"; done | paste -sd' ' -)|$(cat "$work"/inside? | paste -sd, - | sed 's/\(in,out,\)*in,out$/in,out/')"
+: > "$work/slot-log"
+racers=()
+for _ in $(seq 1 12); do
+  ( while [ ! -e "$work/go-slots" ]; do :; done
+    KINOWO_JVM_SLOT_POLL=0.02 jvm_slot_take t 2> /dev/null
+    echo "+ $JVM_SLOT" >> "$work/slot-log"; sleep 0.2; echo "- $JVM_SLOT" >> "$work/slot-log"; jvm_slot_release ) &
+  racers+=($!)
+done
+sleep 0.3; touch "$work/go-slots"; wait "${racers[@]}"
+check "12 racers for 2 slots: never more than 2 holding at once, never one slot twice" "24 2 ok" \
+  "$(wc -l < "$work/slot-log" | tr -d ' ') $(awk '/^\+/ { n++; if (n > m) m = n; if (held[$2]++) bad = 1 } /^-/ { n--; held[$2]-- } END { print m, (bad ? "twice" : "ok") }' "$work/slot-log")"
 ( KINOWO_JVM_SLOTS=0 jvm_slot_take t; echo "${JVM_SLOT:-none}" > "$work/got" )
 check "KINOWO_JVM_SLOTS=0: no slot taken" "none" "$(cat "$work/got")"
 

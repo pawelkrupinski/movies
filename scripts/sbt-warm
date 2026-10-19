@@ -174,7 +174,7 @@ watch() { # <pid>
         sleep 60
         if [ ! -d "$root" ]; then server && kill "$pid"; break; fi
         if [ -n "$(find "$used" -mmin +"$idle" 2>/dev/null)" ]; then server && kill "$pid"; break; fi
-      done' watchdog "$1" "$root" "$State/$key.used" "$IdleMinutes" > /dev/null 2>&1 < /dev/null & )
+      done' watchdog "$1" "$root" "$State/$key.used" "$IdleMinutes" > /dev/null 2>&1 < /dev/null 6>&- 7>&- 8>&- & )
 }
 
 case "${1:-}" in
@@ -194,18 +194,18 @@ case "${1:-}" in
 esac
 
 # ONE STARTER per checkout: two calls finding no server would each start one (sbt --client starts it in the background,
-# outliving the call). The first holds a lock directory until its command ends, the others wait for it and then find the
-# server it started. A lock whose holder is gone is taken over. Calls reaching a live server take no lock.
-LockDir="$State/$key.lock"
+# outliving the call). The first holds a lock until its command ends, the others wait for it and then find the
+# server it started. The lock is the kernel's (jvm-gate.sh's jvm_lock): free the moment its holder has gone, killed or
+# not. Calls reaching a live server take no lock.
+LockFile="$State/$key.flock"
 lock_start() {
   local waited=0
-  # jvm_lock: a lock whose holder is gone is taken over
-  until jvm_lock "$LockDir"; do
+  until jvm_lock "$LockFile"; do
     [ "$waited" -eq 0 ] && log "another call is starting the server of $root: waiting for it"
     [ "$waited" -ge "${KINOWO_SBT_WARM_LOCK_SECONDS:-1800}" ] && { log "gave up waiting for the server start lock of $root"; exit 1; }
     sleep 1; waited=$((waited + 1))
   done
-  trap 'jvm_unlock "$LockDir"' EXIT
+  trap 'jvm_unlock "$LockFile"' EXIT
 }
 server_pid "$root" >/dev/null || lock_start
 
@@ -248,9 +248,10 @@ fi
 echo "$digest" > "$State/$key.build"
 # sbt --client starts the server (in the background, outliving this call) when the checkout has none -- sized for
 # KINOWO_JVM_CPUS cores on a Mac agents share (scripts/jvm-gate.sh). The command holds one of the machine's JVM slots: the
-# server's heap stays when idle, its CPU does not.
+# server's heap stays when idle, its CPU does not. The server it may start outlives the call, so sbt runs with the lock
+# descriptors closed (jvm-gate.sh): it never holds the slot or the start lock for its idle life.
 jvm_slot_take sbt-warm
-(cd "$root" && SBT_OPTS="${SBT_OPTS:-} $(jvm_cpu_options)" sbt --client "$command"); rc=$?
+(cd "$root" && SBT_OPTS="${SBT_OPTS:-} $(jvm_cpu_options)" sbt --client "$command" 6>&- 7>&- 8>&-); rc=$?
 jvm_slot_release
 touch "$State/$key.used"
 if [ "$fresh" = 1 ] && pid=$(server_pid "$root"); then

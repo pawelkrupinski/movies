@@ -209,8 +209,8 @@ cp "$work/judgements.orig" "$repo/test/resources/fixtures/identity-judgements.ts
 check "...classifying in a scratch directory of its own: another agent's --run of the run classifies with its own" "0" \
   "$(find "$work/cache/measure/777" -maxdepth 1 \( -name rows.json -o -name identity-judgements.tsv \) | wc -l | tr -d ' ')"
 # The shared cache's download of a run is made under a lock: another agent's live download of it is waited for.
-sleep 30 & holder=$!
-mkdir -p "$work/cache/locks/measure-777"; echo "$holder" > "$work/cache/locks/measure-777/pid"; rm -f "$work/cache/measure/777/downloaded"
+mkdir -p "$work/cache/locks"; spec_lock_holder "$work/cache/locks/measure-777.flock"; holder=$SPEC_LOCK_HOLDER
+rm -f "$work/cache/measure/777/downloaded"
 scratch_git "$repo" push -q origin "$tip:refs/heads/measure/abc-1"
 check "a run another agent is downloading into the cache is waited for, not downloaded beside it" "2 0" \
   "$(HEAD_SHA=$tip KEEP_CACHE=1 KINOWO_IDENTITY_LOCK_WAIT=2 measure lost --run 777 --countries pl) $(grep -c '^run download' "$work/stub/calls")"

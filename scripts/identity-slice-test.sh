@@ -211,10 +211,10 @@ check "...but a tool file dropped in that differs from the seed's compiles it" "
 scratch_git "$repo" checkout -q -- worker/src/test/scala/services/identity/IdentitySlicing.scala
 # TWO AGENTS AT ONE REF: dropping the tool files into a tree is done by one at a time, like its layout and compile
 headsha=$(scratch_git "$repo" rev-parse HEAD)
-mkdir -p "$cache/locks/tools-$headsha"; sleep 30 & holder=$!; echo "$holder" > "$cache/locks/tools-$headsha/pid"
+mkdir -p "$cache/locks"; spec_lock_holder "$cache/locks/tools-$headsha.flock"; holder=$SPEC_LOCK_HOLDER
 check "a call finding another dropping tool files into the ref's tree waits, and gives up naming it" "1 1" \
   "$(KINOWO_IDENTITY_LOCK_WAIT=2 slice de --recording 777 --key 'Kino|Lalka' --ref HEAD > /dev/null; echo $?) $(grep -c "gave up after .*tools-$headsha" "$work/err")"
-kill "$holder"; rm -rf "$cache/locks/tools-$headsha"
+kill "$holder"; wait "$holder" 2>/dev/null
 rm -f "$work/calls"; slice de --recording 777 --key 'Kino|Lalka' --ref HEAD --fresh > /dev/null
 check "--fresh decides every slice again" "0" "$(grep -c -- '--results' "$work/calls")"
 
@@ -289,13 +289,15 @@ STUB="$work" PATH="$work/bin:$PATH" KINOWO_IDENTITY_CACHE="$cache" perl -e 'setp
 cut_short=$!
 for _ in $(seq 1 100); do [ -e "$work/gh-started" ] && break; sleep 0.1; done
 kill -TERM -- "-$cut_short" 2>/dev/null; wait "$cut_short" 2>/dev/null
+# faith_locks_held -> how many of the run's download locks a process still holds
+faith_locks_held() { local f; for f in "$cache"/locks/diagnostics-323456789-*.flock; do [ ! -e "$f" ] || spec_lock_state "$f"; done | grep -c held; }
 # the download's subshell cleans up once bounded has ended gh's group (up to 2s), after the tool itself has gone
 for _ in $(seq 1 50); do
-  [ -z "$(find "$cache/diagnostics" -maxdepth 1 -name '323456789.dl.*'; find "$cache/locks" -maxdepth 1 -name 'diagnostics-323456789-*')" ] && break
+  [ -z "$(find "$cache/diagnostics" -maxdepth 1 -name '323456789.dl.*')" ] && [ "$(faith_locks_held)" = 0 ] && break
   sleep 0.1
 done
-check "--faithfulness RUN: a download cut short leaves no download directory, nor a lock" "yes 0 0" \
-  "$([ -e "$work/gh-started" ] && echo yes || echo no) $(find "$cache/diagnostics" -maxdepth 1 -name '323456789.dl.*' | wc -l | tr -d ' ') $(find "$cache/locks" -maxdepth 1 -name 'diagnostics-323456789-*' | wc -l | tr -d ' ')"
+check "--faithfulness RUN: a download cut short leaves no download directory, and its lock free" "yes 0 1 0" \
+  "$([ -e "$work/gh-started" ] && echo yes || echo no) $(find "$cache/diagnostics" -maxdepth 1 -name '323456789.dl.*' | wc -l | tr -d ' ') $(find "$cache/locks" -maxdepth 1 -name 'diagnostics-323456789-*.flock' | wc -l | tr -d ' ') $(faith_locks_held)"
 rm -f "$work/bin/gh"
 
 # --prod-mirror: prod's state from the LOCAL mirror, its freshness checked against the recording first

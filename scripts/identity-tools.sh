@@ -16,8 +16,8 @@
 #
 # Each fails (non-zero, said on stderr) when what it needs cannot be read — gh unreachable, a download cut short — and
 # never hands back a stale or partial copy instead. Every gh call is bounded (tool-conventions.sh's `bounded`); a wait for another agent's
-# download, layout or compile of the same thing (identity_locked) has a deadline, and a lock whose holder is gone is
-# taken over.
+# download, layout or compile of the same thing (identity_locked) has a deadline, and a lock is free the moment its
+# holder has gone.
 
 IDENTITY_REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # shellcheck source=scripts/tool-conventions.sh
@@ -35,25 +35,28 @@ IDENTITY_GH_READ=${KINOWO_IDENTITY_GH_TIMEOUT:-60}
 IDENTITY_GH_DOWNLOAD=${KINOWO_IDENTITY_DOWNLOAD_TIMEOUT:-1800}
 
 # identity_locked <name> <command...> -> the command, run while no other agent runs one under the same name (a download
-# or layout into the shared cache). A lock whose holder is gone — killed, the machine restarted — is taken over; a live
-# holder is waited for at most $KINOWO_IDENTITY_LOCK_WAIT seconds (default 3600), then this fails naming the lock.
+# or layout into the shared cache): jvm-gate.sh's kernel lock, on descriptor 8, held by a subshell, so it is free the
+# moment that subshell and what it started have ended, killed or not. A live holder is waited for at most
+# $KINOWO_IDENTITY_LOCK_WAIT seconds (default 3600), then this fails naming the lock.
 identity_locked() {
-  local name=$1 lock=$IDENTITY_CACHE/locks/$1 waited=0 holder deadline=${KINOWO_IDENTITY_LOCK_WAIT:-3600}; shift
+  local name=$1 lock=$IDENTITY_CACHE/locks/$1.flock deadline=${KINOWO_IDENTITY_LOCK_WAIT:-3600}; shift
   mkdir -p "$IDENTITY_CACHE/locks"
-  # jvm-gate.sh's lock_dir_take: a gone holder's lock taken over by exactly one of the agents that saw it gone
-  until lock_dir_take "$lock"; do
-    holder=$(cat "$lock/pid" 2>/dev/null || true)
-    if [ "$waited" -ge "$deadline" ]; then
-      identity_log "gave up after ${waited}s waiting for $name (held by pid ${holder:-?}; $lock)"
-      return 1
-    fi
-    [ $(( waited % 60 )) -ne 0 ] || identity_log "waiting for another agent's $name (pid ${holder:-?})"
-    sleep 2; waited=$(( waited + 2 ))
-  done
-  [ -z "$LOCK_TAKEN_FROM" ] || identity_log "took over the lock on $name: its holder $LOCK_TAKEN_FROM was gone"
-  # the holder is this subshell: sh's parent (bash 3.2, macOS's /bin/bash, has no $BASHPID, and $$ is the caller's)
-  # shellcheck disable=SC2016 # sh expands it
-  ( sh -c 'echo "$PPID"' > "$lock/pid"; trap 'rm -rf "$lock"' EXIT; "$@" )
+  ( waited=0
+    until lock_take 8 "$lock"; do
+      holder=$(cat "$lock" 2>/dev/null || true)
+      if [ "$waited" -ge "$deadline" ]; then
+        identity_log "gave up after ${waited}s waiting for $name (held by pid ${holder:-?}; $lock)"
+        exit 1
+      fi
+      [ $(( waited % 60 )) -ne 0 ] || identity_log "waiting for another agent's $name (pid ${holder:-?})"
+      sleep 2; waited=$(( waited + 2 ))
+    done
+    # the holder named is this subshell: sh's parent (bash 3.2, macOS's /bin/bash, has no $BASHPID, and $$ is the caller's)
+    # shellcheck disable=SC2016 # sh expands it
+    sh -c 'echo "$PPID"' > "$lock"
+    "$@"; rc=$?
+    lock_give 8 "$lock"
+    exit "$rc" )
 }
 
 identity_capture() {
@@ -205,14 +208,16 @@ identity_seed_distance() {
 # cache's most recently compiled refs (a fresh worktree has nothing compiled: seeded from it, a new ref compiled all
 # 1,766 sources, 108 s idle and ~10 min with five agents compiling beside it -- 2026-10-15). Empty when none is compiled.
 identity_nearest_compiled() {
-  local sha=$1 best="" best_n="" t n candidates=()
+  local sha=$1 best="" best_n="" t n lock candidates=()
   [ -d "$IDENTITY_REPO/worker/target" ] && candidates+=("$IDENTITY_REPO")
   while IFS= read -r t; do candidates+=("$(dirname "$(dirname "$(dirname "$t")")")"); done < <(
     ls -t "$IDENTITY_CACHE"/refs/*/target/identity-tools/classpath 2>/dev/null | head -n "${KINOWO_IDENTITY_SEED_CANDIDATES:-40}")
   for t in ${candidates[@]+"${candidates[@]}"}; do
     [ "$(basename "$t")" != "$sha" ] || continue
     # a tree compiling now (identity_classpath_compile holds its lock) may hold half-written classes
-    [ ! -d "$IDENTITY_CACHE/locks/classpath-$(printf '%s' "$t" | shasum | cut -c1-12)" ] || continue
+    # (a lock given back holds no pid: only one with a pid in is asked)
+    lock=$IDENTITY_CACHE/locks/$(identity_classpath_lock "$t").flock
+    { [ -s "$lock" ] && lock_busy "$lock"; } && continue
     n=$(identity_seed_distance "$t" "$sha")
     [ -n "$n" ] || continue
     if [ -z "$best_n" ] || [ "$n" -lt "$best_n" ]; then best=$t best_n=$n; fi
@@ -288,9 +293,12 @@ identity_newest_recording() {
 
 identity_classpath() {
   local tree=$1
-  identity_classpath_fresh "$tree" || identity_locked "classpath-$(printf '%s' "$tree" | shasum | cut -c1-12)" identity_classpath_compile "$tree" || return 1
+  identity_classpath_fresh "$tree" || identity_locked "$(identity_classpath_lock "$tree")" identity_classpath_compile "$tree" || return 1
   cat "$tree/target/identity-tools/classpath"
 }
+
+# identity_classpath_lock <tree> -> the name of the lock its compile holds (identity_locked)
+identity_classpath_lock() { echo "classpath-$(printf '%s' "$1" | shasum | cut -c1-12)"; }
 
 # identity_classpath_fresh <tree> -> whether the kept classpath is newer than every source
 identity_classpath_fresh() {

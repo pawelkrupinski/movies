@@ -30,6 +30,23 @@ export KINOWO_MEMORY_GATE=${KINOWO_MEMORY_GATE:-0} KINOWO_JVM_SLOTS=${KINOWO_JVM
 # ...and a spec tests its own checkout's gate, never the root checkout's it would otherwise follow
 export KINOWO_JVM_GATE_FOLLOW_MAIN=${KINOWO_JVM_GATE_FOLLOW_MAIN:-0}
 
+# spec_lock_holder <file> -> SPEC_LOCK_HOLDER: the pid of a background process (this shell's child) holding <file>'s
+# kernel lock (scripts/jvm-gate.sh), set once it holds it -- another agent's tool mid-download, as a spec sees it
+spec_lock_holder() {
+  local _
+  # shellcheck disable=SC2016 # the child's own $1, $2
+  bash -c '. "$1"; jvm_lock "$2" || exit 1; exec sleep 600' _ "$(dirname "${BASH_SOURCE[0]}")/jvm-gate.sh" "$1" > /dev/null 2>&1 &
+  SPEC_LOCK_HOLDER=$!
+  for _ in $(seq 1 200); do [ "$(cat "$1" 2>/dev/null)" = "$SPEC_LOCK_HOLDER" ] && return 0; sleep 0.05; done
+  return 1
+}
+
+# spec_lock_state <file> -> "held" while some process holds <file>'s kernel lock, else "free"
+spec_lock_state() {
+  # shellcheck disable=SC2016 # the child's own $1, $2
+  bash -c '. "$1"; if lock_busy "$2"; then echo held; else echo free; fi' _ "$(dirname "${BASH_SOURCE[0]}")/jvm-gate.sh" "$1"
+}
+
 # Failure tally. Set here rather than in each caller, which is the third line all
 # four repeated.
 fails=0

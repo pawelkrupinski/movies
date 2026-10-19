@@ -263,11 +263,12 @@ serve_at() { # <tree> <ref key> <out.tsv> <args...>
       retire_served "$tree" "$key"
       identity_log "starting a kept JVM for ${ref:0:24} (log $IDENTITY_CACHE/serve/$key.log; stops after ${KINOWO_IDENTITY_SLICE_IDLE_MINUTES:-30} idle minutes)"
       # its own process group (set -m): it outlives this call, and the shell or tool that ran it. Memory gated, but no
-      # JVM slot: one held for its idle life would block every other tool's work
+      # JVM slot: one held for its idle life would block every other tool's work -- so it starts with the lock
+      # descriptors closed (jvm-gate.sh), never holding a slot or lock its caller held
       memory_gate identity-slice
       (cd "$tree" && set -m && { nohup "${IDENTITY_JAVA[@]}" -cp "$cp" scripts.IdentitySlice "$cc" --recording "$recording" \
           --cache "$IDENTITY_CACHE/slice/$run" --ref "$ref" --index-key "$(code_key "$(ref_of "$ref")")" --families "$families" --serve "$sock" \
-          --idle-minutes "${KINOWO_IDENTITY_SLICE_IDLE_MINUTES:-30}" > "$IDENTITY_CACHE/serve/$key.log" 2>&1 < /dev/null &
+          --idle-minutes "${KINOWO_IDENTITY_SLICE_IDLE_MINUTES:-30}" > "$IDENTITY_CACHE/serve/$key.log" 2>&1 < /dev/null 6>&- 7>&- 8>&- &
         echo $! > "$IDENTITY_CACHE/serve/$key.pid"; printf '%s\n' "$tree" > "$IDENTITY_CACHE/serve/$key.tree"; })
       # a JVM alive but never listening (stuck loading, a deadlock) is stopped at the deadline, not waited on forever
       local started=$SECONDS limit=${KINOWO_IDENTITY_SLICE_START_SECONDS:-900}

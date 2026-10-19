@@ -16,55 +16,58 @@
 #                          KINOWO_MEMORY_GATE_PROBE's output instead when set (the self-test's seam)
 #   memory_free_gb         the GB of RAM a new heap can have now: free, inactive and speculative pages (macOS);
 #                          KINOWO_MEMORY_GATE_FREE_PROBE's output instead when set; none readable counts as short
-#   jvm_slot_take <label>  the memory gate, then one of the machine's KINOWO_JVM_SLOTS (default 4) slots, held until
-#                          jvm_slot_release or this process ends; waits for one (saying so once, polling every
+#   jvm_slot_take <label>  the memory gate, then one of the machine's KINOWO_JVM_SLOTS (default 4) slots (a lock, below,
+#                          on descriptor 7), held until jvm_slot_release, or until this process and the children it
+#                          started meanwhile (the JVM) end; waits for one (saying so once, polling every
 #                          KINOWO_JVM_SLOT_POLL seconds, 5) and after KINOWO_JVM_SLOT_MAX_WAIT seconds (1800) goes ahead,
 #                          warned. A child of a holder rides its slot (KINOWO_JVM_SLOT_HELD, exported): a tool run by a
 #                          tool never waits on its own parent. KINOWO_JVM_SLOTS=0 turns the slots off.
 #   jvm_slot_release       gives this process's slot back
 #   jvm_cpu_options        the JVM options sizing a tool's JVM for KINOWO_JVM_CPUS cores (default 4) on macOS, where
 #                          agents share the cores; none on Linux (CI's runner is the JVM's alone) or with KINOWO_JVM_CPUS=0
-#   lock_dir_take <dir>    0 when this process made <dir>: it was free, or its holder is gone -- the pid in <dir>/pid
-#                          dead, or no pid a minute after it was taken -- and this process, of every one that saw it so,
-#                          took it over (LOCK_TAKEN_FROM then names the gone holder, "(none)" for no pid). The caller
-#                          writes its pid. jvm_lock's and identity_locked's (identity-tools.sh) one way to take a lock
-#   jvm_lock <dir>         lock_dir_take, held by this process ($$ in <dir>/pid). 0 when taken
-#   jvm_unlock <dir>       removes it when this process holds it
+#   jvm_lock <file>        this process holds <file>'s lock (below) on descriptor 6, its pid written in. 0 when taken,
+#                          1 at once when another process holds it
+#   jvm_unlock <file>      gives it back when this process holds it
+#
+# THE LOCKS are the kernel's flock(2) locks on a file, which the OS frees the moment the holder has ended, however it
+# ended -- exit, crash, kill -9, a restart -- so a lock is never held by a holder that is gone, and nothing detects a
+# stale holder or takes its lock over. (The directory-plus-pid locks they replace each needed such a take-over, and each
+# take-over left a race: two holders inside one lock and two winners of one slot under load, 2026-10-19.) macOS has no
+# flock(1): python3's fcntl.flock takes the lock on a descriptor bash opened and keeps open, so the lock is this
+# process's until that descriptor closes. Each kind has its own fixed descriptor (bash 3.2 has no {fd}), so one process
+# holds one of each at once: 6 jvm_lock, 7 a JVM slot, 8 identity_locked (identity-tools.sh). A child inherits the
+# descriptor and so holds the lock with its parent until it ends: the JVM a slot was taken for, or the download a lock
+# guards, keeps it while it still runs, even past its tool being killed -- as it should. A child started to OUTLIVE the
+# call (an sbt server, a kept JVM, a watchdog, a mongod) is started with them closed: `6>&- 7>&- 8>&-` on its command.
+# The pid in the file is for the messages that name a holder only; the lock itself is the truth.
+#   lock_take <fd> <file>  0 when this process now holds <file>'s lock on descriptor <fd> (opened here), its pid
+#                          written in; 1 at once, the descriptor closed again, when another process holds it
+#   lock_give <fd> <file>  gives it back: the pid cleared, the descriptor closed
+#   lock_busy <file>       0 while some process holds <file>'s lock
 
-# The take-over is serialised by a second mkdir, <dir>.takeover, under which the holder is read again: two processes
-# that both saw a gone holder each removed the lock and made it anew, the second removing the first's fresh one -- both
-# then held it (2026-10-18: 16 at once took a dead holder's lock 2-5 times over). A .takeover left by a process killed
-# inside it (a few microseconds' window) is cleared once it is a minute old.
-# shellcheck disable=SC2034 # read by lock_dir_take's callers (identity_locked)
-LOCK_TAKEN_FROM=""
-lock_dir_take() {
-  local dir=$1 holder took=1
-  LOCK_TAKEN_FROM=""
-  mkdir "$dir" 2>/dev/null && return 0
-  _lock_dir_gone "$dir" > /dev/null || return 1
-  if ! mkdir "$dir.takeover" 2>/dev/null; then
-    [ -n "$(find "$dir.takeover" -maxdepth 0 -mmin +1 2>/dev/null)" ] && rmdir "$dir.takeover" 2>/dev/null
-    return 1
-  fi
-  # under the take-over lock: free since (taken by mkdir alone), held anew, or still gone -- then this one takes it
-  if mkdir "$dir" 2>/dev/null; then took=0
-  elif holder=$(_lock_dir_gone "$dir"); then
-    rm -rf "$dir" && mkdir "$dir" 2>/dev/null && { took=0; LOCK_TAKEN_FROM=${holder:-(none)}; }
-  fi
-  rmdir "$dir.takeover" 2>/dev/null
-  return "$took"
+lock_take() {
+  local fd=$1 file=$2
+  eval "exec $fd>>\"\$file\"" 2> /dev/null || return 1
+  if _lock_flock "$fd"; then echo $$ > "$file"; return 0; fi
+  eval "exec $fd>&-"
+  return 1
 }
-# _lock_dir_gone <dir> -> 0 when its holder is gone (printing the holder's pid, empty for none): a holder that is dead,
-# or no pid a minute after the lock was taken (killed between mkdir and writing it)
-_lock_dir_gone() {
-  local holder; holder=$(cat "$1/pid" 2>/dev/null)
-  if [ -n "$holder" ]; then kill -0 "$holder" 2>/dev/null && return 1
-  else [ -n "$(find "$1" -maxdepth 0 -mmin +1 2>/dev/null)" ] || return 1
-  fi
-  echo "$holder"
+lock_give() { : > "$2"; eval "exec $1>&-"; }
+# _lock_flock <fd> -> 0 when the open file description on <fd> (shared with python3, which inherits it) now holds the
+# exclusive lock; 1 when another holds it. With <fd> "-" and a path, a probe on a description of its own, never kept
+_lock_flock() {
+  python3 -I -c 'import fcntl, sys
+f = int(sys.argv[1]) if sys.argv[1] != "-" else open(sys.argv[2], "a")
+try:
+    fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+except OSError:
+    sys.exit(1)' "$@"
 }
-jvm_lock() { lock_dir_take "$1" && echo $$ > "$1/pid"; }
-jvm_unlock() { [ -n "${1:-}" ] && [ "$(cat "$1/pid" 2>/dev/null)" = $$ ] && rm -rf "$1"; return 0; }
+lock_busy() { [ -e "$1" ] && ! _lock_flock - "$1"; }
+
+JVM_LOCK=""
+jvm_lock() { lock_take 6 "$1" && JVM_LOCK=$1; }
+jvm_unlock() { [ -n "${1:-}" ] && [ "$1" = "$JVM_LOCK" ] && { lock_give 6 "$1"; JVM_LOCK=""; }; return 0; }
 
 memory_paged_gb() {
   if [ -n "${KINOWO_MEMORY_GATE_PROBE:-}" ]; then eval "$KINOWO_MEMORY_GATE_PROBE"; return; fi
@@ -124,8 +127,8 @@ jvm_slot_take() { # <label>
   mkdir -p "$dir"
   while :; do
     for n in $(seq 1 "$slots"); do
-      if jvm_lock "$dir/$n"; then
-        JVM_SLOT="$dir/$n"; export KINOWO_JVM_SLOT_HELD="$JVM_SLOT"
+      if lock_take 7 "$dir/$n.flock"; then
+        JVM_SLOT="$dir/$n.flock"; export KINOWO_JVM_SLOT_HELD="$JVM_SLOT"
         [ -z "$said" ] || echo "[$label] JVM slot $n of $slots after ${waited}s" >&2
         return 0
       fi
@@ -134,14 +137,14 @@ jvm_slot_take() { # <label>
       echo "[$label] every JVM slot still busy after ${waited}s: starting anyway" >&2
       return 0
     fi
-    [ -n "$said" ] || { echo "[$label] all $slots JVM slots busy (KINOWO_JVM_SLOTS; holders: $(cat "$dir"/*/pid 2>/dev/null | paste -sd, -)): waiting (up to ${max}s)" >&2; said=1; }
+    [ -n "$said" ] || { echo "[$label] all $slots JVM slots busy (KINOWO_JVM_SLOTS; holders: $(for n in $(seq 1 "$slots"); do cat "$dir/$n.flock" 2>/dev/null; done | paste -sd, -)): waiting (up to ${max}s)" >&2; said=1; }
     sleep "$poll"
     waited=$(_jvm_waited "$waited" "$poll")
   done
 }
 jvm_slot_release() {
   [ -n "$JVM_SLOT" ] || return 0
-  jvm_unlock "$JVM_SLOT"; JVM_SLOT=""; unset KINOWO_JVM_SLOT_HELD
+  lock_give 7 "$JVM_SLOT"; JVM_SLOT=""; unset KINOWO_JVM_SLOT_HELD
   return 0
 }
 

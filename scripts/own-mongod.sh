@@ -36,8 +36,9 @@ own_mongod_start() {
 
     OWN_MONGOD_DATA="$(mktemp -d "${TMPDIR:-/tmp}/kinowo-$tag-mongo.XXXXXX")"
     OWN_MONGOD_PORT="$(python3 -I -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1])')"
+    # the lock descriptors closed (scripts/jvm-gate.sh): a mongod left behind by a killed run holds none of its locks
     "$mongod" --replSet rs0 --bind_ip 127.0.0.1 --port "$OWN_MONGOD_PORT" --dbpath "$OWN_MONGOD_DATA" \
-        --wiredTigerCacheSizeGB 1 --logpath "$OWN_MONGOD_DATA/mongod.log" >/dev/null 2>&1 &
+        --wiredTigerCacheSizeGB 1 --logpath "$OWN_MONGOD_DATA/mongod.log" >/dev/null 2>&1 6>&- 7>&- 8>&- &
     OWN_MONGOD_PID=$!
     OWN_MONGOD_URI="mongodb://127.0.0.1:$OWN_MONGOD_PORT/?directConnection=true"
 

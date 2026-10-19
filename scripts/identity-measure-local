@@ -94,11 +94,11 @@ trap 'jvm_slot_release; jvm_unlock "$held_lock"' EXIT
 resolve() { # <sha>: every country's model takes and the final ones, in the ref's own worktree, shared across checkouts
   local sha=$1 tree="$store/trees/$1" dir="$store/$1" commands=() said=""
   mkdir -p "$dir"
-  until jvm_lock "$dir.lock"; do
-    [ -n "$said" ] || { echo "identity-measure-local: $sha is being resolved by pid $(cat "$dir.lock/pid" 2>/dev/null): waiting for it"; said=1; }
+  until jvm_lock "$dir.flock"; do
+    [ -n "$said" ] || { echo "identity-measure-local: $sha is being resolved by pid $(cat "$dir.flock" 2>/dev/null): waiting for it"; said=1; }
     sleep "${KINOWO_MEASURE_LOCAL_POLL:-5}"
   done
-  held_lock="$dir.lock"
+  held_lock="$dir.flock"
   # each country's dump and the final takes for this country set are a pure function of the commit and the recording:
   # what any run already resolved is kept, and only what is missing is resolved
   for cc in "${ccs[@]}"; do
