@@ -1,688 +1,232 @@
 # Project conventions for Claude
 
-## Run the relevant test layer locally before claiming a feature is done
+Skills (`.claude/skills/`) hold the mechanics and load on demand: `test-layers`, `regenerate-snapshots`,
+`agent-ops` (worktrees, landing, waiting, sbt-warm, downtime), `identity-investigation`, `record-client-fixtures`,
+`writing-fakes`, `external-api-rate-limits`. Every other document is indexed in `docs/README.md`; the incidents
+behind the rules below are in `docs/agent-workflow-history.md`.
 
-When a change touches an area one of the CI test layers below
-exercises, run **at least one** of those layers locally as part of
-the same task — before reporting the work as done. The list of
-layers and which kinds of changes they catch:
+## Run the relevant test layers locally before claiming work done
 
-- **`sbt testUnit`** — unit specs for controllers, services,
-  enrichment, clients, models, the identity resolver. Any change under
-  `web/src/main/`, `worker/src/main/`, `common/src/main/` or
-  `identity/src/main/` that isn't pure view markup.
-- **`sbt itAll`** — `*/src/it/scala/` specs wiring fakes + the real
-  cache/repository. Required for any change to enrichment pipelines,
-  cache layering, the read-model projection, or anything that crosses
-  the `MovieService` ↔ `MovieRepository` ↔ `MovieCache` seam.
-- **`sbt web/PageTest/test`** — real Chrome over CDP against
-  Twirl-rendered fixtures. Required for any change to
-  `web/src/main/assets/js/`, the inline `<script>` blocks in the
-  repertoire templates, or the rendered HTML shape those blocks read.
-- **Playwright** (`page-tests-playwright`) — mobile + desktop ×
-  Chromium / WebKit / Firefox / Edge. Required for visible UX changes —
-  card-tap, pill rows, gestures, the empty / loading states.
-- **iOS LocalServer** — the iOS JSON decoders (`[Film]`, `[FilmDetails]`,
-  `CinemaCatalog`) against a live fixture-server `/{city}/api/*` render.
-  Required for any change to either side of that contract: the
-  `MovieController` JSON shape or the iOS `Codable` models.
-- **`swift test --package-path ios`** — iOS unit / integration suites
-  without the live server. Required for any change to iOS model /
-  parser logic regardless of whether you also need LocalServer.
-- **`scripts/run-script-tests`** — every script self-test (`<tool>-test.sh`,
-  `<tool>_test.py`), found by name and run in parallel. Required for any
-  change under `scripts/`, `.github/scripts/`, `.github/actions/` or the
-  mobile `*/scripts/`; `--changed origin/main` runs just the tests whose
-  tool, test or named files the change touched; `--linux` runs them in an
-  ubuntu-26.04 container as CI does (Docker / Rancher Desktop; the pre-push hook
-  does it beside the native run when Docker is up). A new self-test needs no
-  wiring — name it by the scheme and CI runs it.
+When a change touches what a layer exercises, run it in the same task, before reporting the work done. Run **all**
+matching layers, **in parallel** when independent (separate `Bash` calls in one message), in the main session — do
+**not** split test runs into subagents, so the output and follow-up edits stay in one context. The only acceptable
+reason to skip a layer is a missing local toolchain (e.g. no full Xcode for `xcodebuild test`); say so explicitly.
+CI is the safety net, not the test plan: land once the layers are green locally, never push to let CI find out.
 
-Exact commands, the module-scoping variants, and the `testOnly` / `-z`
-narrowing that cuts a run from minutes to seconds are in the
-`test-layers` skill.
+| Layer | Required for |
+|---|---|
+| `sbt testUnit` | any change under `web/`, `worker/`, `common/` or `identity/` `src/main/` that isn't pure view markup (controllers, services, enrichment, clients, models, the identity resolver) |
+| `sbt itAll` (`*/src/it/scala/`, fakes + real cache/repository) | enrichment pipelines, cache layering, the read-model projection, anything crossing the `MovieService` ↔ `MovieRepository` ↔ `MovieCache` seam |
+| `sbt web/PageTest/test` (real Chrome over CDP, Twirl fixtures) | `web/src/main/assets/js/`, the inline `<script>` blocks in the repertoire templates, the rendered HTML shape those blocks read |
+| Playwright (`page-tests-playwright`; mobile + desktop × Chromium / Chrome / WebKit in CI, Firefox local-only) | visible UX changes — card-tap, pill rows, gestures, the empty / loading states |
+| iOS LocalServer (iOS decoders `[Film]`, `[FilmDetails]`, `CinemaCatalog` against a live fixture-server `/{city}/api/*`) | either side of that contract: the `MovieController` JSON shape or the iOS `Codable` models |
+| `swift test --package-path ios` | any iOS model / parser logic, whether or not LocalServer is also needed |
+| `scripts/run-script-tests` (every `<tool>-test.sh` / `<tool>_test.py`, found by name — a new self-test needs no wiring) | any change under `scripts/`, `.github/scripts/`, `.github/actions/` or the mobile `*/scripts/`; `--changed <base>` narrows, `--linux` runs CI's ubuntu container |
 
-**The pre-push hook** (`scripts/hooks/pre-push`; install once per clone
-with `scripts/install-hooks.sh`, which sets the shared, relative
-`core.hooksPath=scripts/hooks` so every worktree runs its own checkout's
-copy) runs the checks that otherwise fail CI in seconds, selected by the
-paths the push changes: ESLint on web JS, the generated-roster drift
-check, the read-model snapshot's input stamp, the wall-clock,
-metric-coverage and silenced-`gh`/`curl`-read lints (one warm `sbt`
-run, ~55s; any change under `scripts/`, `.github/`, `.claude/`, `CLAUDE.md`,
-`build.sbt`, `project/` or `*/src/test|it/` also runs every other repo-reading
-lint spec — all `deploy/` specs and the `No*`/`*Lint*` source lints — in
-that run; `PREPUSH_SKIP=lintspecs` skips just those), actionlint on
-workflows and shellcheck on composite actions' `run:` blocks, the script
-self-tests the push touches (`scripttests`: `scripts/run-script-tests
---changed <push base>`), shellcheck on scripts (only warnings the push adds),
-the slice/trace tools' files compiled into their oldest supported refs (`oldrefs`,
-on a change to a file in either tool's `TOOL_FILES`), and
-`scripts/ios-compile-check.sh` on `ios/**` — the SwiftUI app target via
-`xcodebuild` and the SwiftPM package on Linux via Docker, the two
-compiles a Mac's `swift test` misses. It complements the layers above;
-it replaces none of them.
+Exact commands, module scoping and `testOnly` / `-z` narrowing: `test-layers` skill. Run sbt through
+`scripts/sbt-warm` (`agent-ops` skill).
 
-**Red builds gate every push to main.** Before its path checks the hook
-reads the newest COMPLETED run on main of Main, Identity model
-convergence and Record scrape fixtures (a cancelled run says nothing);
-while any is red, a push lands only as a fix for it: every pushed commit
-that touches a production path (`*/src/main/`, `conf/`, `build.sbt`,
-`project/`, `infra/nix/`, `infra/kubernetes/`, `Dockerfile`) carries a
-`Fixes-Red: <run id>` trailer naming one of the red runs. Tools-only
-commits — scripts, docs, `.claude/` skills, `*/src/test|it|fixtures/`,
-`test/resources/`, `.github/` — land while red without one (user,
-2026-10-14).
-2026-10-13/14 is why: 50 of 96 identity commits landed on a red
-convergence suite, 3f11e2cc3's wrong switches hid behind it for six
-hours, and three gates and label batches each turned it red again.
-Those gates now judge only what a commit's CODE changed: the identity
-takes check resolves one recording at the base and the head and fails on
-a take moved, a suspect take new at the head, or a corpus-shape finding
-only the head has. What a recording brings (a suspect it carries, a
-marker in a query) stands at both, so it never turns these red; it goes
-to the **Identity findings report** (one issue per country, red after 3
-days untriaged), which is NOT a gating workflow, because no push makes
-or mends a recording's data. One
-bounded `gh run list` a workflow; gh missing or unreachable is warned
-and does not block. Bypass: `PREPUSH_SKIP=redgate` — say so. Bypass: `PREPUSH_SKIP="ios sbt" git push`
-skips named checks, `git push --no-verify` skips all of them — say so
-when you do.
+**The pre-push hook** (`scripts/hooks/pre-push`; install once per clone with `scripts/install-hooks.sh`) runs, in
+seconds, the checks that otherwise fail CI, selected by the paths the push changes; its header lists every check.
+It complements the layers above and replaces none of them. Dry-run it with `scripts/hooks/pre-push --range A..B`.
+Bypasses — `PREPUSH_SKIP="<checks>"`, `git push --no-verify` — must be named in your report.
 
-You should run **all** the layers that match the change. Run them
-**in parallel** when there are no dependencies (separate `Bash`
-tool calls in the same message), but do **not** split the runs into
-new subagents — keep everything in the main session so the test
-output and any follow-up edits stay in one context. The only
-acceptable reason to skip a layer is that the local toolchain is
-missing (e.g. no full Xcode for `xcodebuild test`); say so
-explicitly when reporting the work.
-
-CI is the safety net, not the test plan. Pushing and waiting for
-CI to catch something is the wrong shape; pushing once the relevant
-layers are green locally is the right shape.
+**Red builds gate every push to main.** While the newest COMPLETED run on main of Main, Identity model convergence
+or Record scrape fixtures is red (a cancelled run says nothing), a push lands only as a fix for it: every pushed
+commit touching a production path (`*/src/main/`, `conf/`, `build.sbt`, `project/`, `infra/nix/`, `Dockerfile`)
+carries a `Fixes-Red: <run id>` trailer naming a red run. Tools-only commits (scripts, docs, `.claude/` skills,
+`*/src/test|it|fixtures/`, `test/resources/`, `.github/`) land while red without one. The hook enforces it;
+`PREPUSH_SKIP=redgate` bypasses — say so. The gates judge only what a commit's code changed; a recording's own data
+findings go to the non-gating Identity findings report (history: `docs/agent-workflow-history.md`).
 
 ## Regenerate the snapshots your change shifts
 
-THREE checked-in snapshot layers guard this repo, and a change that
-shifts any of them is not committable until that snapshot is
-regenerated and committed alongside it:
-
-- **`expected-*.html`** — the rendered HTML for `/` (per city: Poznań,
-  Wrocław, Warszawa), diffed by `PageSnapshotSpec`. Shifts
-  on any Twirl template, markup, `data-*`/CSS-class, `PosterProxy`, or
-  inline-JS change. (Comments inside inline `<style>`/`<script>` are
-  stripped by `tools.Minify`, so those don't shift it; HTML `<!-- -->`
-  comments do.)
-- **`expected-schedules.txt`** — the WHOLE-CORPUS assertion, also
-  guarded by `FilmScheduleEndToEndSpec`. The spec asserts one anchor
-  film field-by-field inline and gives every other film the same depth
-  through this file: one block per film with `displayTitle` beside
-  every raw `cinemaTitles` spelling, runtime, year, countries, poster,
-  synopsis length, cast, director, tmdbId, imdbId, all four ratings,
-  the MC/RT/Filmweb URLs, per-cinema slot provenance, and every
-  showtime with its room and format. It is the layer that names a
-  film the pipeline started or stopped emitting, so it is usually the
-  first to fail and the only one that says WHICH films moved.
-- **`read-model-snapshot.json`** — the pipeline's projected output,
-  guarded by the same spec. Not an assertion so much as a CACHE: the
-  page-test servers load it instead of recomputing the ~110s pipeline
-  per boot, and the guard exists to stop it going stale (consumers
-  fall back to a full boot when it is absent, so a forgotten regen is
-  slow, never wrong).
-
-The last two shift on any cinema scraper, enrichment,
-`TitleNormalizer`, identity-resolver, `ReadModelProjector`, model-field, or
-raw-fixture change — and a pipeline change usually shifts the rendered
-HTML too, so regenerate all three.
-
-The regenerate commands (delete → run the spec → re-run to confirm
-stability) are in the `regenerate-snapshots` skill.
-
-## Parallelize scripts, but don't get rate-limited
-
-Scripts that hit external services (TMDB, IMDb, Filmweb, Metacritic,
-RT, OMDb, Cinemeta, scraped cinema sites) run per-row work in
-parallel — serial loops of hundreds of HTTP round-trips are
-unacceptably slow when 90% of the time is network wait. Default to a
-fixed pool of 5–10 concurrent workers, halve concurrency on any
-429/503, and print throughput at the end. Per-service limits are in
-the `external-api-rate-limits` skill.
-
-## Always add tests for new or changed functionality
-
-**The commit gate — read this first.** Do not commit a change unless
-you can write a test that confirms the behaviour *was not there before
-and is there now*: a test that fails before your change and passes
-after. If no such test can be written, the change is not ready to
-commit. This is the exact bar `Commit at every stable state` means when
-it calls an untested production change "not stable" — it is a gate, not
-a suggestion. `scripts/fail-before -- <test command>` proves it: the commit's test-side
-files run against its parent (must fail), then at the commit (must pass).
-
-**"Test" means any layer that reaches the behaviour — not just a unit
-test.** The fail-before / pass-after gate is satisfied by whichever
-layer actually exercises the change: a `swift test` / `sbt testUnit` unit
-spec, an `IntegrationTest` spec, a `PageTest` (real Chrome) or
-Playwright browser test, or an iOS LocalServer / emulator test. "It's
-UI, I can't unit-test it" is NOT grounds to skip — it is grounds to
-drop down to PageTest / Playwright / the emulator and assert there
-(e.g. pixel-sample the rendered result, per the top-bar memory). A
-visible UX change shipped without a browser-or-emulator test has not
-met the gate.
-
-Every piece of new or modified behaviour MUST come with that test.
-Non-negotiable for bug fixes (must fail before the fix and pass after),
-new methods or branches, parsing/normalisation changes, and any logic
-that decides what to persist or display. "I ran it once and it looked
-right" is not a substitute.
-
-**Default to writing the failing test first.** Whenever feasible — bug
-fixes, new features, parser/normaliser changes, investigations into
-"why is this value wrong" — write the test before the production change
-and watch it fail for the right reason. This is the strongest evidence
-that:
-
-1. The test actually exercises the new code path (a green-from-the-start
-   test often turns out to assert nothing useful).
-2. The bug or missing feature is real and reproducible.
-3. The fix addresses the root cause, not a symptom that happened to
-   disappear.
-
-For investigations: if you suspect a parser/enrichment/data bug, the
-fastest way to confirm it is a test that feeds the suspect input
-through the real code. If it fails as predicted, you have both the
-diagnosis and the regression test in one step.
-
-The ONLY genuine exception is behaviour that even the browser/emulator
-harnesses cannot reach — e.g. sub-16px input-zoom, un-reproducible in
-Playwright WebKit and the Simulator alike (see the focus-zoom memory).
-In that case test the closest reachable mechanism instead (the
-maximum-scale toggle, not the zoom), AND state out loud in the commit
-message / report that the behaviour itself is unreachable by every test
-layer and why. "Observable only via a running server/browser" is NOT
-that exception — we have browser and server test layers, so use them.
-Exploratory spikes may skip the failing-test-first step, but still owe
-a test before the work is committed. If a neighbouring test is the
-closest match, extend it rather than inventing a new style.
-
-For pure logic (parsers, formatters, normalisers, decision functions),
-unit tests against in-memory inputs are enough. For composed services,
-prefer the existing spec patterns in `*/src/test/scala/services/...`
-that wire fakes/in-memory implementations.
-
-### Record fixtures for external-service clients
-
-Clients that hit a real external API (TMDB, IMDb, Cinemeta, OMDb,
-Filmweb, Metacritic, RT, scraped cinema sites) get a real captured
-response replayed from disk — never live HTTP in tests, never
-hand-written mock JSON, which drifts from reality and hides the parser
-bugs a real payload would catch. The `record-client-fixtures` skill
-covers when to record one and where fixtures live.
-
-## Never leave uncommitted changes stranded — and don't work in the root checkout
-
-This repository is worked by many agents in parallel. The root checkout
-(`/Users/pawel/projects/movies`, branch `main`) is shared and must end
-every session **clean** (`git status --porcelain` empty). Uncommitted
-WIP left in a working tree is the single most expensive mess this repository
-hits: it strands work on a stale base, blocks the next agent's
-`git rebase`/`pull`, and gets silently swept or lost. One session found
-**92 files of uncommitted WIP sitting directly on the `main` checkout**
-(a coherent "drop two cinemas" task that was never committed), plus a
-half-dozen abandoned worktrees each carrying dirty, never-committed
-feature work (mobile day-carousel, tuning screens) — all at risk of
-being pruned away.
-
-Rules:
-
-- **No PRs, and NEVER push the feature branch.** The only ref that
-  ever reaches origin is `main`. The flow is: rebase your worktree
-  branch onto `origin/main` → all relevant layers green → ff-merge into
-  `main` → push `main` → delete the worktree and its branch. Before
-  typing `git push` or `gh pr create`, run
-  `git rev-parse --abbrev-ref HEAD`; if it isn't `main`, you are about
-  to violate this rule. (Breached twice — 2026-07-02 and 2026-07-19 —
-  each costing a close-PR + delete-remote-branch cleanup.)
-- **Do your work in your own worktree, never in the root/`main`
-  checkout.** `git worktree add -b <branch> <path> origin/main`. The
-  root checkout is for orchestration/inspection only — never edit
-  production files there. (See the standing worktree-per-change rule.)
-  This is enforced: `.claude/settings.json` runs
-  `scripts/claude-hooks/root-checkout-guard`, which denies an Edit/Write to any
-  non-ignored root path and reports a Bash command that dirties the root or
-  switches its branch; `scripts/hooks/pre-commit` refuses a commit there
-  (`ALLOW_ROOT_COMMIT=1` for a person doing it on purpose).
-- **Never finish or yield a turn with a dirty tree you own.** Before you
-  consider a task done — and before you hand off, pause, or could be
-  terminated — either **commit** your changes (preferred; see the commit
-  gate below) or, if genuinely not ready to commit, **stash with a
-  descriptive label** (`git stash push -u -m "<what + why>"`) so the work
-  is named and recoverable rather than a nameless dirty diff. A bare,
-  unlabelled dirty tree is the failure mode.
-- **An interrupted/exploratory task still owes a checkpoint.** If you
-  must stop mid-task, commit a WIP commit on your *own branch*
-  (`wip: <state>`) or stash-with-label. Don't leave the next agent — or
-  your future self — to reverse-engineer what an orphaned 90-file diff
-  was trying to do.
-- **Don't strand work on a stale base.** If `git status` shows your
-  worktree is behind `origin/main`, rebase before you pile more on;
-  don't accumulate uncommitted edits against an old `main` that a
-  rebase will then have to untangle.
-- **Touch only what's yours.** If the tree holds dirty files you didn't
-  create, leave them — they're a co-agent's WIP. Surface them; don't
-  `git add -A`, commit, stash, or discard them.
-- **Never `pkill -f` / `killall` by pattern**: other agents' processes
-  match it too (one `pkill -f identity-slice` killed other agents'
-  batches). Use `scripts/agent-procs kill --mine`.
-- **Run `scripts/agent-procs` to audit** (it and every push warn when the root checkout is off `main` or dirty:
-  `scripts/root-checkout-check`) every worktree (dirty, unmerged
-  vs `origin/main`, lock owner, the processes in it) and
-  `scripts/agent-procs prune` to clean up the removable ones.
-- **Run `scripts/agent-time`** to see where a session's subagents spent
-  their hours — polling and background waits by what they waited on (CI,
-  a measure, a slice, an sbt suite, a local convergence leg), idle gaps,
-  sbt runs by shape, the pre-push hook; `--agent <id>` lists one agent's
-  slowest steps.
-- **Wait on your own long run (a slice batch, a local measure, an sbt suite) with `scripts/wait-for <log> <pattern> [--pid P]`**
-  run in the background, acting on its notification -- never a foreground `until grep; sleep` loop.
-- **Wait on CI with `scripts/ci-wait`**, never a hand-written `gh run view`/`sleep` loop (one took jq's
-  "null null null" for a verdict): `--run <id>`; `--workflow <w> --sha <commit>` (waits for the run to appear,
-  then to finish); several `--workflow`s at once for a set; `--or-later` for a green run at that commit or a
-  later one, `--until-green` to wait through reds; `--any-completed` for each workflow's newest verdict. A
-  cancelled run is followed to the run that superseded it (`--no-follow`: exit 3). Exit 0 green, 1 red,
-  2 timeout/unreadable, 3 cancelled. Run it in the background and act on its notification.
-- **Agent speed habits** (2026-10-15: a 2h22m agent was ~45 min of work behind four serial CI runs and a broken
-  push). Dispatch every variant of a CI experiment at once (refit and measure dispatches each get their own lane);
-  a CI speed-up counts only when a CI run proves it (a Mac is not the 2-core runner); run a changed script's
-  `*-test.sh` on Linux (an ubuntu container) before pushing it; start local checks beside a dispatch, not after
-  it, and wait in the background, not in foreground sleep loops; `cd` into your own worktree in every command —
-  tool calls start in the root checkout.
-
-## Commit at every stable state
-
-After each self-contained change reaches a stable state — production
-code done, tests written and passing, no leftover compile errors or
-skipped specs — make a git commit before moving on. Don't pile
-unrelated changes into one commit, and don't leave finished work
-uncommitted across the next phase. Each commit should be a checkpoint
-you'd be happy to revert to.
-
-Stable:
-
-- A bug fix with its regression test, both passing.
-- A new feature plus tests covering golden path and obvious edge cases.
-- A refactor that compiles clean and leaves the test suite green.
-- A mechanical sweep (rename, package move, import shuffle) with build
-  and tests still green.
-
-Not stable:
-
-- Production change without the matching test. The gate is concrete:
-  if you cannot write a test that fails before the change and passes
-  after (at any layer — unit, integration, browser, or emulator), the
-  change is NOT committable. See `Always add tests`.
-- Half-done work "going to need another pass anyway".
-- A green compile with skipped or commented-out tests.
-
-Commit messages describe the *why* in one or two sentences, not the
-*what* — the diff already shows the what. Target tone matches recent
-commits: a one-liner subject naming the change, optionally a short
-paragraph if the motivation isn't obvious. Use a HEREDOC so multi-line
-formatting survives. Never amend a published commit.
-
-A long phase that genuinely belongs together (e.g. a multi-file rename
-that only makes sense as one atomic change) is fine as one big commit.
-But if a phase has internal milestones — A compiles+tests, B
-compiles+tests, C compiles+tests — each milestone gets its own commit.
-
-### Auto-commit and push once a change is stable
-
-When a fix/feature/refactor reaches the stable bar above **and** it's
-the natural end of the change you were asked to make, commit it AND
-push to origin without waiting. Don't sit in a "want me to commit?"
-prompt — the default is yes.
-
-This applies double to diagnose-and-fix flows. The moment a real fix
-lands for a problem we were investigating (CI failure, prod regression,
-OOM, broken test), wrap up by committing and pushing — that's how the
-fix actually reaches CI/prod. Don't stop at "compiles locally" and wait
-for me to say `push`.
-
-Stop and ask only when something can't be undone cheaply:
-
-- Force pushes / rewriting published history (`push --force`,
-  `reset --hard` against an upstream branch, `commit --amend` on
-  anything already on origin). Always ask.
-- Destructive ops with no easy backout: dropping a Mongo collection,
-  truncating a table, deleting branches, `rm -rf` outside `target/`.
-  (Restarting or rescheduling a live *worker* pod is NOT in this bucket —
-  see "Worker downtime is fine" below.)
-- Committing files that might carry secrets (`.env.local`, credentials,
-  API keys). Stage by explicit path; flag and ask before staging
-  anything that smells like a secret.
-- A diff so large or cross-cutting that a reviewer would balk.
-
-Everything else — code with green tests, CSS tweaks, doc edits,
-refactors, multi-commit phases that each compile+test green, even
-pinning a k3s deployment back to a known-good image by hand during an
-incident — just do it. If a push triggers CI and CI fails, fix
-forward in the next commit; don't undo the push.
-
-### Worker downtime is fine — keep the web tier answering
-
-**Workers** (the `worker-pl`, `worker-uk`, `worker-de`, `worker-us` and
-`worker-es` Deployments on k3s) can go fully down without ceremony. They
-scrape, enrich, and project on a cadence; a gap just delays the next cycle
-and the read model keeps serving what's already projected. When swapping a
-process or redeploying after a config change — just scale to zero and back,
-or delete the pod. Watch Flux for the rollout, sanity-check, move on. Up to
-~15 minutes of worker downtime is in the "everything else, just do it"
-bucket above.
-
-**The web / read tier (`kinowo.net`) is different — don't bring it
-completely down if there's any way not to.** It's the only part users
-see, and a page that 404s is the failure they notice. Prefer a rolling
-deploy that keeps at least one pod serving; when moving or resizing a
-node, bring the replacement up *before* taking the old one down.
-
-This is not a licence to build elaborate zero-downtime orchestration
-for the web tier either. A brief 5xx window as a rolling deploy passes
-through is fine, and so is a genuinely unavoidable short full outage —
-a host move, a node the platform won't let you duplicate. When
-that happens keep it short, and say out loud afterwards that the tier
-was fully down rather than letting it pass unmentioned.
-
-This is about LIFECYCLE — replacing nodes, restarting processes, brief
-5xx windows during a redeploy. Destructive *data* ops (dropping a
-collection, truncating a table, deleting branches) still need explicit
-confirmation per the rule above; downtime is recoverable, data isn't.
-
-If you commit but defer the push for some reason, say so in the same
-message so I don't have to ask "did you push?"
-
-### Batch pushes to main
-
-A push to `main` starts ~20 jobs and a newer push CANCELS the run in
-flight (`main.yml`'s `cancel-in-progress: true`); 38% of Main runs in
-the four weeks to 2026-09-24 ended that way. That is kept on purpose:
-the superseding run tests a superset of the cancelled commit, Actions
-minutes cost nothing on this public repo, and letting runs finish would
-either make every push wait behind the previous one's ~12 minutes or,
-run side by side, break the 20-runner budget (`CiRunnerBudgetSpec`). What it costs is signal: a
-cancelled run says nothing about its commit. So batch instead:
-
-- Push when a coherent change is locally green, not after every
-  commit. Several commits in one push are one run.
-- If a run for your previous push is under ~10 minutes old, prefer to
-  keep committing and push once, rather than cancel it minutes from
-  its answer.
-- Judge `main` by the newest COMPLETED run, never by a cancelled one.
-
-## Extract repeated patterns into a shared abstraction
-
-If you find yourself writing the same shape of code in a second place —
-a `FakeRepository extends MovieRepository` defined inside every spec, the same
-regex+`replaceAll` chain across two parsers, a "load fixture and feed
-through this client" helper duplicated per spec — stop and extract it
-(a `private[services]` helper, a `*/src/test/scala/...` shared base, a method
-on the most relevant existing class). The threshold is *two* uses, not
-three.
-
-This rule is about **multi-line shapes** — a worker-pool + scheduler
-scaffolding, a `NFD → strip diacritics → ł→l → lowercase` chain, a
-"parse the script[type=application/ld+json] block" idiom, a parser plus
-its regex companion. It is **not** the same rule as "three similar
-lines is better than a premature abstraction" — that one targets
-trivial inline statements (`val x = a + b; val y = b + c`), where
-inlining buys nothing. A multi-line shape that repeats once already has
-enough surface area to be a concept.
-
-When extracting:
-
-- Put the shared piece where the most callers can already see it
-  (`services.movies` if every caller is in `services.*`; a `*/src/test/scala`
-  shared object if it's test-only). Don't pull in cross-package imports
-  just for visibility.
-- Delete the inline copies in the same commit. Leaving one creates
-  drift.
-- Name after the *concept* (`InMemoryMovieRepository`, not `FakeRepository`;
-  `ProductionLineRegex`, not `parseHelper`) — generic names re-attract
-  duplication.
-
-## Treat cleanup as a phase of every task
-
-Every feature/change/bugfix/refactor ends with a cleanup pass, and
-sometimes opens with one too. The work isn't done when the new code
-compiles + tests pass — it's done when the surrounding area is at least
-as clean as when you started.
-
-At the end of each task (and at the start when the area is crufty
-enough that touching it without tidying would produce worse code):
-
-- **Duplication you just introduced or noticed.** Extract it (see
-  "Extract repeated patterns").
-- **Dead code the change made obsolete.** A field you stopped writing
-  to, a method whose only caller you removed, a test asserting
-  behaviour that no longer exists, an unused import, a one-shot script
-  whose purpose is served. Delete in the same commit.
-- **Comments that lie now.** Doc comments referencing the old name,
-  flow, or caller. Rewrite or remove.
-- **Redundant intermediate variables / helper methods** the change
-  collapsed to one line at the call site. Inline them.
-- **Stale tests / fixtures.** A test exercising removed behaviour; a
-  fixture no longer loaded.
-- **Naming drift.** A class still called `EnrichmentCache` after the
-  concept became `MovieCache`.
-
-Open with cleanup when:
-
-- The function you're about to extend has three near-identical branches
-  you'd add a fourth to. Refactor the three first.
-- The class has a field/param/method that's already dead. Remove it
-  first.
-- The test you're about to add would copy-paste setup from two existing
-  tests. Extract the helper before writing the third.
-
-The output of the task is the diff. A diff that's half real change and
-half "and I also deleted these three dead methods" is the *right*
-shape. A diff that ignores the dust is the wrong shape.
-
-**Cleanup can — and should — reach beyond the file you'd otherwise
-touch.** If, while working on a feature in `MovieCache`, you read
-through `MovieService` and notice dead code, a stale comment, or a
-duplicated pattern, fix it in the same change. Every file you read is
-fair game. The discipline isn't "stay in your lane"; it's "leave
-anywhere you looked at least as tidy as you found it".
-
-Extract cleanup commits separately when substantial. A one-line dead
-import can ride along; a 200-line rename gets its own commit so the
-feature's diff stays reviewable.
-
-Skip cleanup only when it would balloon a single commit beyond what a
-reviewer can hold in their head AND there's no clean way to split it.
-Then mention what you saw and didn't do — don't silently shrug.
-
-## After every change, audit what it displaced
-
-Once a change is functionally done — tests pass, the diff would land
-cleanly — pause and ask: *what did this change just make obsolete?*
-The cleanup-as-a-phase rule above is reactive ("notice while looking");
-this one is proactive (analyse impact on the surrounding code path,
-class, or configuration).
-
-Walk the call graph:
-
-- **A code path the change replaced.** The fallback branch that handled
-  the case the new path now handles; the alternative resolver that was
-  the workaround for the bug just fixed; the `else` branch now
-  unreachable; the helper whose only caller now inlines its work.
-- **A class whose functionality is redundant.** Methods are
-  pass-throughs; it only existed for a caller you removed; the trait
-  it implemented was deleted.
-- **A parameter, event type, or config flag with no remaining purpose.**
-  A feature flag whose "off" branch is unreachable; an event nothing
-  subscribes to; a constructor arg whose consumer was refactored away;
-  a default the call site always overrides.
-- **A test for behaviour that no longer exists.** A regression for a
-  bug now structurally impossible; a fixture nobody loads; an
-  assertion specific to the old code path.
-
-When the redundancy is obvious — single-caller method now inlined, an
-unreachable branch, an unused import — delete in the same commit. When
-it's debatable — removal would ripple wider than this change's scope —
-surface it explicitly: "Heads-up, X is now redundant. Want me to remove
-it in a follow-up?"
-
-Each change's diff either deletes the displaced code alongside the new,
-or names the displacement out loud. Silently leaving the now-dead path
-is the failure mode.
+Three checked-in snapshot layers; a change that shifts one is not committable until it is regenerated and committed
+alongside (commands: `regenerate-snapshots` skill):
+
+- **`expected-*.html`** (`PageSnapshotSpec`, `/` per city) — shifts on any Twirl template, markup,
+  `data-*`/CSS-class, `PosterProxy` or inline-JS change (comments inside inline `<style>`/`<script>` are stripped by
+  `tools.Minify` and don't shift it; HTML `<!-- -->` comments do).
+- **`expected-schedules.txt`** (`FilmScheduleEndToEndSpec`) — the whole-corpus assertion, every film's fields; the
+  layer that names WHICH films moved, usually the first to fail.
+- **`read-model-snapshot.json`** (same spec) — a cache the page-test servers boot from; stale is slow, never wrong.
+
+The last two shift on any scraper, enrichment, `TitleNormalizer`, identity-resolver, `ReadModelProjector`,
+model-field or raw-fixture change — which usually shifts the HTML too, so regenerate all three.
+
+## Tests: the commit gate
+
+**Do not commit a change unless a test confirms the behaviour was not there before and is there now** — it fails
+before the change and passes after. No such test, not committable. `scripts/fail-before -- <test command>` proves it
+(the commit's test-side files against its parent must fail, then at the commit must pass).
+
+- **"Test" means any layer that reaches the behaviour:** unit, `IntegrationTest`, PageTest, Playwright, iOS
+  LocalServer / emulator. "It's UI, I can't unit-test it" means drop to PageTest / Playwright / the emulator and
+  assert there (e.g. pixel-sample the rendered result). A visible UX change without a browser-or-emulator test has
+  not met the gate.
+- Every new or modified behaviour gets its test — non-negotiable for bug fixes, new methods or branches,
+  parsing/normalisation, and any logic deciding what to persist or display. "I ran it once and it looked right" is
+  not a substitute.
+- **Write the failing test first** whenever feasible (fixes, features, parser changes, "why is this value wrong"
+  investigations) and watch it fail for the right reason: it proves the test exercises the path (a green-from-the-start
+  test often asserts nothing), the bug is real, and the fix hits the root cause. For a suspected parser/enrichment/data
+  bug, a test feeding the suspect input through the real code is both the diagnosis and the regression test.
+- **The only exception** is behaviour no harness can reach (e.g. sub-16px input focus-zoom, unreproducible in
+  Playwright WebKit and the Simulator): test the closest reachable mechanism (the maximum-scale toggle) and say in the
+  commit message / report that the behaviour itself is unreachable and why. "Observable only via a running
+  server/browser" is not that exception.
+- Exploratory spikes may skip test-first but owe the test before commit. Extend a neighbouring test rather than
+  inventing a new style. Pure logic: in-memory unit tests. Composed services: the existing
+  `*/src/test/scala/services/...` patterns wiring fakes / in-memory implementations.
+- **External-service clients** (TMDB, IMDb, Cinemeta, OMDb, Filmweb, Metacritic, RT, scraped sites) are tested
+  against a real captured response replayed from disk — never live HTTP in tests, never hand-written mock JSON
+  (`record-client-fixtures` skill).
+
+## Investigate every red; never rerun to green
+
+A red test or tool error is investigated to its root cause; a flaky test is fixed, never rerun until it passes — a
+test that passes on a second run is not healthy, it is flaky, and a rerun is never a fix.
+
+- First classify it. A real assertion failure names an expectation, value or location ("expected X, got Y at line
+  N"). An environment-shaped error says the runner could not start, the loader tripped on something fine a minute
+  ago, or the filesystem disagrees with what was just written (`No tests found`, `EBUSY`, `ENOENT` on a file you just
+  wrote, a module-resolution error in a known-working setup, Playwright's `did not expect test.describe() to be called
+  here`).
+- For an environment-shaped error, don't iterate on variations of the command ("maybe file paths", "maybe `--list`")
+  — each is a new shape of the same noise. Find the suspect state (`test-results/`, `node_modules/.cache/`, stale
+  `target/`, a stray process of yours — `scripts/agent-procs kill --mine`, never `pkill`), clear it, and run the
+  original command once to learn which it is. Reproduces: a real bug to chase. Doesn't: find and fix the race or
+  shared state that made it intermittent, then commit that fix.
+
+## Worktrees: don't work in the root checkout, never strand work, no PRs
+
+Many agents work this repository at once (mechanics and tools: `agent-ops` skill).
+
+- **Work in your own worktree, never the root checkout** (`/Users/pawel/projects/movies`, `main`), which is for
+  orchestration/inspection only and must end every session clean. Worktrees may be sibling dirs or
+  `.claude/worktrees/`. Enforced by `scripts/claude-hooks/root-checkout-guard` and `scripts/hooks/pre-commit`.
+- **No PRs, and never push a feature branch** — the only ref that reaches origin is `main`. The sole exceptions
+  are five bot workflows: decoration-discovery, identity-refit, identity-capture (a PR only when its ratchet is
+  clean), discover-cinemas and retire-venues.
+- **Landing:** rebase onto main → all relevant layers green → land → remove the worktree and delete your own
+  merged branch with `git branch -d` (refuses an unmerged branch; never `-D`). While GitHub is
+  suspended, land with `git merge --ff-only <branch>` in the clean root checkout on `main`; when it is back, fetch,
+  rebase, and push `<sha>:main` from your own worktree — never `HEAD` mid-rebase.
+- **Subagents** commit, rebase and hand back; they land only if every gate is already green, and never wait on CI.
+- **Never finish or yield with a dirty tree you own:** commit, or `git stash push -u -m "<what + why>"`. An
+  interrupted task still owes a checkpoint (`wip: <state>` commit on your own branch, or a labelled stash).
+- **Don't strand work on a stale base:** behind main → rebase before piling on.
+- **Touch only what's yours:** dirty files you didn't create are a co-agent's WIP — surface them; never
+  `git add -A`, commit, stash or discard them.
+- **Never `pkill -f` / `killall` by pattern** — use `scripts/agent-procs kill --mine`.
+- Wait on long runs with `scripts/wait-for` and on CI with `scripts/ci-wait`, in the background, acting on the
+  notification — never a foreground sleep/poll loop. `scripts/agent-procs` audits worktrees; `scripts/agent-time`
+  shows where agents' time went.
+
+## Commit and push policy
+
+- **Commit at every stable state**, before moving on; each commit a checkpoint you'd happily revert to. Stable: a fix
+  with its passing regression test; a feature with golden-path and edge-case tests; a refactor or mechanical sweep
+  with build and tests green. Not stable: a production change without its test (the commit gate), half-done work, a
+  green compile with skipped or commented-out tests.
+- Don't pile unrelated changes into one commit; a phase with internal milestones gets a commit per milestone; a
+  genuinely atomic phase (a multi-file rename) may be one big commit.
+- Messages give the *why* in one or two sentences — a one-line subject naming the change, an optional short
+  paragraph — via a HEREDOC. Never amend a published commit.
+- **Auto-land once stable** at the natural end of the asked change — don't ask "want me to commit?"; doubly so for
+  a diagnose-and-fix flow, which ends with the fix committed and landed. If you commit but defer landing, say so.
+- **Stop and ask only for what can't be undone cheaply:** force pushes / rewriting published history
+  (`push --force`, `reset --hard` against upstream, amending anything on origin); destructive ops (dropping a Mongo
+  collection, truncating a table, deleting a branch you didn't create or one not merged, `rm -rf` outside
+  `target/`); staging anything that might carry a
+  secret (credentials, API keys — stage by explicit path); a diff so large a reviewer would balk. Everything else —
+  green code, CSS, docs, refactors, pinning a k3s deployment to a known-good image during an incident — just do it.
+  If a push's CI fails, fix forward; don't undo the push.
+- **Batch pushes to main:** a newer push cancels Main's run in flight, and a cancelled run says nothing. Push when a
+  coherent change is locally green, not per commit; if your previous push's run is under ~10 minutes old, keep
+  committing and push once; judge `main` by the newest completed run.
+- **Downtime:** workers may go fully down (≲15 min, just do it); the web tier must not go fully down if there is any
+  way not to — and if it was, say so. Policy: `agent-ops` skill.
+
+## Design rules
+
+**Extract repeated patterns at two uses, not three.** A multi-line shape written a second time — a fake repository
+inside every spec, a regex + `replaceAll` chain in two parsers, a "load fixture and feed through this client" helper,
+a worker-pool scaffold, a `NFD → strip diacritics → ł→l → lowercase` chain, a JSON-LD-block idiom — gets extracted
+(a `private[services]` helper, a shared `*/src/test/scala/...` base, a method on the most relevant class). Trivial
+inline statements are exempt ("three similar lines beat a premature abstraction"). Put the shared piece where most
+callers already see it without new cross-package imports; delete the inline copies in the same commit; name it
+after the concept (`InMemoryMovieRepository`, `ProductionLineRegex` — not `FakeRepository`, `parseHelper`).
+
+**SOLID, with Dependency Inversion as the load-bearing one.**
+
+- Every non-trivial collaboration is wired in `AppLoader` (the composition root); everything else receives
+  abstractions through constructor parameters — `class FilmwebRatings(cache: MovieCache, client: FilmwebClient)`,
+  never constructing collaborators inside. Constructors and parameters take the abstraction, never a concrete class;
+  production code never references a test subclass.
+- Reaching for a feature flag to toggle behaviour usually means a missing abstraction: a trait with two
+  implementations, picked at the composition root.
+- Single responsibility: one reason to change per class (`ImdbIdResolver` vs `ImdbRatings`); treat
+  `Manager`/`Handler`/`Util`/`Helper`/`Processor` names as a smell.
+- Open/closed: a new cinema is a new `CinemaXClient` on the scrape contract (`ScrapeReaper` unchanged); a new rating
+  source is a `*Ratings` class plus one `RatingSource` entry in `RatingSources`.
+- Liskov: an `InMemoryMovieRepository` honours `MovieRepository`'s write-through contract; callers never need
+  `isInstanceOf`.
+- Interface segregation: `MovieRepository` stays the persistence contract (`findAll`, `upsert`, `updateIfPresent`,
+  `delete`, `enabled`, `close`); a read-only caller gets a `MovieRepositoryReader` sub-trait.
+- **Never suffix a class with `Impl`.** Name what makes the implementation distinct (`MongoMovieRepository`,
+  `InMemoryMovieRepository`, `HttpFilmwebClient`). With only one implementation and no good name, you don't need the
+  trait yet — collapse it until a second appears. Test: would a reader guess from the name what it does?
+
+**Share business logic between real and fake implementations.** They differ only at the infrastructure boundary
+(storage, HTTP backend, clock), never in the rules; a fake that re-implements logic lets tests pass while real code
+is broken. Read the `writing-fakes` skill before writing any `Fake*` / `Stub*` / `InMemory*`.
+
+## Cleanup and displaced-code audit: a phase of every task
+
+The work is done when the area is at least as clean as you found it and nothing the change made obsolete is left.
+
+- **At the end of every task**, remove: duplication you introduced or noticed (extract it); dead code the change
+  made obsolete (fields no longer written, methods whose only caller went, one-shot scripts whose purpose is
+  served, unused imports); comments and docs that now lie; intermediate variables / helpers collapsed to one line;
+  stale tests and fixtures; naming drift (`EnrichmentCache` after the concept became `MovieCache`).
+- **Audit what the change displaced** — walk the call graph: the code path it replaced (a fallback branch, a
+  workaround resolver, an `else` now unreachable, a helper whose only caller inlined it); a class now redundant
+  (pass-through methods, its only caller or trait gone); a parameter, event type, config flag or default with no
+  purpose left; a test for behaviour that no longer exists. Obvious → delete in the same commit. Debatable (would
+  ripple beyond scope) → name it out loud: "Heads-up, X is now redundant. Want me to remove it in a follow-up?"
+  Silently leaving the dead path is the failure mode.
+- **Open with cleanup** when the area demands it: three near-identical branches you'd add a fourth to (refactor
+  first), an already-dead field/param/method (remove first), a test that would copy setup from two others (extract
+  the helper first).
+- The output is the diff: half real change, half "also deleted these dead methods" is the right shape.
+- Cleanup reaches beyond the file you'd otherwise touch — every file you read is fair game. Give substantial cleanup
+  its own commit (a one-line dead import rides along; a 200-line rename does not). Skip only when it would balloon a
+  commit beyond review with no clean split — then say what you saw and didn't do.
+
+## Scripts that hit external services
+
+Run per-row work in parallel — a fixed pool of 5–10 workers, halve concurrency on any 429/503, print throughput at
+the end. Per-service limits: `external-api-rate-limits` skill.
 
 ## Investigating identity, scraper or CI failures
 
-Before writing an ad-hoc test or running a full convergence leg, use the local tools: each answers in seconds
-what a leg answers in 10–90 minutes. The skill `.claude/skills/identity-investigation/SKILL.md` ("Which tool")
-has every flag; name these tools in every subagent brief.
+Before an ad-hoc test or a full convergence leg (10–90 min), use the local tools that answer in seconds —
+`scripts/identity-slice` (`--explain`, `--ref A --ref B`, `--bisect`, `--batch`, `--prod-mirror`),
+`scripts/title-trace`, `scripts/venue-replay`, `scripts/recording-diff`, `scripts/listing-history`,
+`scripts/label-lookup`, `scripts/identity-ratchet-report`, `scripts/identity-judge-cards`,
+`scripts/identity-measure` (whole-corpus, before landing any resolver change), `scripts/identity-refit`. Which tool
+answers which question, flags, speed and data sources: `identity-investigation` skill. **Name these tools in every
+subagent brief.**
 
-- Why does this listing take (or not take) a film; did commit X move it; first bad commit → `scripts/identity-slice`
-  (`--ref A --ref B`, `--bisect`, `--batch`); the whole WHY trace from the capture → `scripts/identity-slice --explain`
-  (alias `scripts/identity-explain`); what prod takes for it now, beside the slice's take → `--prod-mirror`
-- Why does a raw title clean / search / shape so; which title rule fired → `scripts/title-trace`
-- Is a scraper reading a venue's field wrong; did commit X change what it reads; what prod holds for it now →
-  `scripts/venue-replay <cc> <venue>` (`--ref A --ref B`, `--prod`)
-- Code or new data; what changed between two recordings → `scripts/recording-diff`
-- When / why a listing's take changed in prod, per deploy → `scripts/listing-history`
-- What the judgements (and the expected matches) say about a listing or film, who added each, and whether prod
-  still takes it so → `scripts/label-lookup`
-- A capture run's ratchet findings as a table → `scripts/identity-ratchet-report`
-- Judging unjudged takes → `scripts/identity-judge-cards`
-- What was already tried and not landed, why, and where its code is kept → `docs/identity-experiments.md` (add an
-  entry for every experiment you drop or park; keep its code as an `experiment/<name>` tag, not a stray branch)
-- Whole-corpus measure before landing a resolver change → `scripts/identity-measure` (reuses an earlier run of the same change when main moved only outside the convergence paths; `--fresh` to dispatch)
-- Re-tune identity-weights.json on the ratchet (the weekly refit, its checks and snapshots) → `scripts/identity-refit`
-  (`secrets run movies TMDB_API_KEY -- scripts/identity-refit`, in your own worktree)
-
-**Every identity judgement lives in ONE file**, `test/resources/fixtures/identity-judgements.tsv`: one row per
-(country, venue or `*`, raw title, film) with its verdict (right / wrong / undecided), its state (`open`;
-`known-wrong` — served, no safe fix yet, with the gates it stands in as `scope`: `capture`, `served`, `rows`,
-`hard-clusters`; `accepted-loss`; `accepted-right-loss`, the policy's named exception), reason, date and evidence.
-Every gate reads it (the ratchet, the suspect gate, MatchedTakesLabelSpec, the takes check, the lint, label-lookup,
-judge-cards, `--emit-case`); `expected-matches.tsv` alone stays beside it, regenerated by the ratchet, never edited by
-hand. Edit a row in place, never add a second for one key; a venue's row overrides `*`. A new WRONG judgement is fixed
-or made known-wrong (with why) in the same commit; a cured known-wrong scope fails as stale until struck; a new suspect
-is judged, never added undecided. `python3 scripts/ci/identity_judgements_lint.py` checks all of it in a second (the
-pre-push hook runs it; its test runs it in CI). Columns and rules: `scripts/ci/identity_judgements.py`.
-
-**Speed.** Run sbt through `scripts/sbt-warm "<command>"` (one kept server per worktree — extras are stopped on the next call, and it exits after 10 idle minutes; sbt-warm, identity-slice and identity-measure-local wait while the Mac is paging, share 4 machine-wide JVM slots, and size their JVMs for 4 cores — scripts/jvm-gate.sh; a fresh worktree seeded from
-the newest local main build: a cold 232 s spec run becomes ~50 s, then the spec's own 41 s); one spec while
-iterating, the module's suite once before pushing. `identity-slice --batch` runs slices in parallel and shares each
-slice's result per (recording, ref) across checkouts — a 2,500-listing DE batch at two refs went from ≈78 min to
-11.5 min, 33 s when another checkout already ran it; `--serve` keeps the ref's JVM between small batches.
-
-**Data sources.** The local prod mirror (`mongodb://127.0.0.1:28017`, databases `kinowo*_prod_mirror`) holds prod's
-current state — `identity_traces`, `identity_model_families`, `movie_slots`, `screenings`, … — and may be read
-(READ-ONLY; never `:27017`, never prod itself). Check it with `scripts/local-mirror/freshness <cc>` first. Recordings
-and captures are cached in `~/.cache/kinowo-identity`; a tool's default recording is the newest green "Record scrape
-fixtures" run that holds the country's corpus, and a recording it cannot fetch fails the tool, never falls back.
-
-## Don't iterate on transient errors
-
-If a tool call fails with an error that smells like a build, cache,
-race, or transient infrastructure problem — `No tests found`, `EBUSY`,
-`ENOENT` on a file you just wrote, a module-resolution error in a
-known-working setup, a Playwright `did not expect test.describe() to
-be called here` from a project that ran the same files a minute ago —
-**retry once cleanly before iterating**. Each variation ("maybe with
-file paths instead of file names", "maybe `--list` to debug") produces
-a new shape of the same noise, not new signal, and you spend turns
-chasing a phantom.
-
-The cheap probe: nuke the suspect state (`rm -rf test-results/`,
-`rm -rf node_modules/.cache/`, `pkill -f playwright`, `sbt clean`,
-etc.) and rerun the **original** command. If it reproduces, you have a
-real bug to chase. If it doesn't, investigate and fix the test for
-intermittent failures — a test that passes on rerun is not healthy,
-it's flaky.
-
-Real assertion failures have a specific expectation, value, or
-location ("expected X, got Y at line N"). Transients have the shape
-"the runner itself couldn't start", "the loader tripped on something
-that was fine before", or "the filesystem disagrees with what I wrote
-a second ago". Pattern-match on which kind of error you're staring at
-before deciding to iterate.
-
-## Follow SOLID — especially depend on interfaces, not implementations
-
-The SOLID principles are the design baseline. What follows is how each
-one lands *in this codebase*; the general definitions are assumed.
-
-- **Single Responsibility.** `ImdbIdResolver` recovers a missing IMDb
-  id; `ImdbRatings` refreshes the rating. Two reasons to change
-  (suggestion endpoint vs GraphQL rating API) → two classes.
-  `MovieCache`, `MovieService`, `ScrapeReaper` each change for reasons
-  the others don't care about. Treat `Manager`/`Handler`/`Util`/
-  `Helper`/`Processor` names as a smell — they're almost always
-  catch-alls.
-- **Open / Closed.** Adding a cinema is a new `CinemaXClient` fitting
-  the existing scrape contract — `ScrapeReaper` doesn't change. Adding
-  a rating source is a new `*Ratings` class plus one `RatingSource` entry
-  in `RatingSources` — `RatingEnqueuer`, the `EnrichmentReaper`, cache,
-  and service don't change.
-- **Liskov Substitution.** `InMemoryMovieRepository` honours
-  `MovieRepository`'s write-through contract — `upsert` updates the
-  store, `delete` removes from it, `findAll` returns current contents.
-  A caller holding the `MovieRepository` reference can't tell the
-  difference, and never needs `isInstanceOf` to find out.
-- **Interface Segregation.** Keep `MovieRepository` to the persistence
-  contract (`findAll`, `upsert`, `updateIfPresent`, `delete`,
-  `enabled`, `close`). Don't bolt on enrichment, scheduling, or
-  display. A new caller that needs only reads gets a
-  `MovieRepositoryReader` sub-trait.
-- **Dependency Inversion — the load-bearing one here.** Every
-  non-trivial collaboration is wired in `AppLoader` (the composition
-  root); everything else sees only abstractions through constructor
-  parameters. `MovieService` doesn't know whether `MovieRepository` is
-  talking to Mongo, an in-memory map, or a flat file — it knows the
-  trait. Accept collaborators, don't construct them inside:
-  `class FilmwebRatings(cache: MovieCache, client: FilmwebClient)`, not
-  `class FilmwebRatings() { val cache = new MovieCache(); ... }`. If
-  you reach for a feature flag to toggle behaviour X, you're usually
-  missing an abstraction — introduce a trait with two implementations
-  and pick at the composition root.
-
-Constructors and method parameters take the **abstraction**, never a
-concrete class. Production code never references a test subclass
-directly — tests swap in via the constructor parameter.
-
-**Never suffix a class with `Impl`.** `MovieRepositoryImpl`,
-`FilmwebClientImpl`, `EventBusImpl` are an anti-pattern — they tell you
-the class is "the implementation" without saying of *what kind*, and
-only exist because the writer ran out of names. Name after what makes
-the implementation distinct:
-
-- `MovieRepository` (trait) + `MongoMovieRepository` + `InMemoryMovieRepository`. Each
-  name earns its keep.
-- `FilmwebClient` (trait) + `HttpFilmwebClient` if a second backend
-  appears. Not `FilmwebClientImpl`.
-- If there's truly only one production implementation and naming feels
-  awkward, that's a signal you don't need a separate trait yet —
-  collapse it into the class until a second implementation shows up.
-  The rule is "no `Impl` suffix", not "every concrete class needs a
-  trait".
-
-When in doubt: would a future reader of the class name guess what it
-*does*? `MongoMovieRepository` — yes. `MovieRepositoryImpl` — no.
-
-## Share business logic between real and fake implementations
-
-When a trait has both a real and a fake/test implementation, the
-business logic lives in **shared** code, not duplicated across
-implementations. The two differ only at the infrastructure boundary —
-where data is stored, which HTTP backend is called, what clock ticks —
-never in their understanding of the rules. A fake that re-implements
-logic the real class has is worse than no fake: it lets tests pass
-while real code is broken (or vice versa).
-
-Before writing any `Fake*` / `Stub*` / `InMemory*`, read the
-`writing-fakes` skill — how to push logic above the seam, and the
-signs you've drawn the seam in the wrong place.
+- Read `docs/identity-experiments.md` before a resolver change; add an entry for every experiment you drop or park,
+  its code kept as an `experiment/<name>` tag, not a stray branch.
+- **Every identity judgement lives in ONE file**, `test/resources/fixtures/identity-judgements.tsv` — one row per
+  (country, venue or `*`, raw title, film), edited in place, never a second row for one key; a venue's row overrides
+  `*`. Every gate reads it; `expected-matches.tsv` beside it is regenerated by the ratchet, never edited by hand. A new
+  WRONG judgement is fixed or made known-wrong (with why) in the same commit; a cured known-wrong scope fails as stale
+  until struck; a new suspect is judged, never added undecided. `python3 scripts/ci/identity_judgements_lint.py`
+  checks it in a second (columns and states: `scripts/ci/identity_judgements.py`, the skill).
+- The local prod mirror (`mongodb://127.0.0.1:28017`, `kinowo*_prod_mirror`) may be read, READ-ONLY, after
+  `scripts/local-mirror/freshness <cc>`; never `:27017`, never prod itself.
+- Secrets come from the Touch ID vault: `secrets run movies <KEY> -- <command>`.

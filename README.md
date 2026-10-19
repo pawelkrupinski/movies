@@ -1,21 +1,28 @@
 # Kinowo
 
-A Polish cinema repertoire aggregator. Scrapes showtimes from several
-Polish cinema chains and independent cinemas, enriches each film with
-metadata and ratings from TMDB / IMDb / Filmweb / Metacritic / Rotten
-Tomatoes, and serves the combined view as a website and a native iOS
-app.
+A multi-country cinema repertoire aggregator. Scrapes showtimes from
+cinema chains, aggregators and independent cinemas in Poland, the UK,
+Germany, the US and Spain, resolves each listing to one film, enriches it
+with metadata and ratings from TMDB / IMDb / Filmweb (Poland only) /
+Metacritic / Rotten Tomatoes, and serves the combined view as a website
+and native iOS and Android apps.
 
-Live at **<https://kinowo.net>**.
+Live at **<https://kinowo.net>** (Poland) and
+**<https://showtimes.cc>** (`/uk`, `/de`, `/us`, `/es`).
 
 ## What it does
 
-- **Scrapes showtimes** from Cinema City, Multikino, Helios, Kino
-  Apollo, Kino Bułgarska, Kino Muza, Kino Pałacowe, Rialto, and
-  Charlie Monroe. Each cinema has its own client under
+- **Scrapes showtimes** from chains (Cinema City, Multikino, Helios,
+  Odeon, Vue, AMC, …), aggregator platforms (kinoheld, Flicks, …) and
+  independent venues. Each source has its own client under
   `worker/src/main/scala/services/cinemas/`, in a per-country
-  subpackage (`pl/`, `uk/`, `us/`, `es/`); the country-agnostic scraping
-  machinery lives in `common/`.
+  subpackage (`pl/`, `uk/`, `de/`, `us/`, `es/`); the country-agnostic
+  scraping machinery (shared platform clients, fallbacks, retries) lives
+  in its `common/`, and the venue rosters in `roster/`.
+- **Resolves identity**: every scraped listing is matched to one film by
+  the identity resolver (the `identity/` sbt module, projected by
+  `worker/.../services/identity/`); see
+  [`docs/design/identity-resolver.md`](docs/design/identity-resolver.md).
 - **Enriches** every film with posters, synopses, trailers, and
   ratings from TMDB, IMDb, Filmweb, Metacritic, Rotten Tomatoes,
   OMDb and Cinemeta (`worker/src/main/scala/services/enrichment/`).
@@ -42,6 +49,7 @@ Live at **<https://kinowo.net>**.
 | DI          | Compile-time (Play `BuiltInComponents`, `modules.AppLoader`) |
 | Build       | sbt 1.12, JDK 27 → Java 21 bytecode         |
 | iOS         | SwiftUI                                     |
+| Android     | Jetpack Compose                             |
 | Hosting     | k3s on Hetzner (web + worker pods, `infra/`)  |
 
 ## Repository layout
@@ -50,8 +58,9 @@ Live at **<https://kinowo.net>**.
 common/                   # Shared domain used by both apps
 │   └── src/main/scala/
 │       ├── models/           # Movie, MovieRecord, Showtime, Cinema, User, ...
-│       └── services/         # movies/ (cache/repository), identity/ (the film resolver),
-│                             #   events/, cinemas/, readmodel/, titlerules/, freshness/, tasks/
+│       └── services/         # movies/ (cache/repository), events/, cinemas/, readmodel/,
+│                             #   titlerules/, freshness/, tasks/
+identity/                 # The identity resolver (listing → film), its own sbt module
 worker/                   # Scrape + enrich app (one pod per country)
 │   └── src/main/scala/services/
 │       ├── cinemas/          # One client per cinema chain / venue
@@ -67,11 +76,16 @@ web/                      # Play serving app (one pod per country)
 │   ├── src/main/assets/js/   # Vanilla JS assets
 │   └── src/main/resources/   # application.conf, logback.xml, routes
 testkit/                  # Shared test helpers
-e2e/                      # End-to-end specs
+e2e/                      # End-to-end specs (per-country convergence suites)
+page-tests-playwright/    # Playwright browser tests (mobile + desktop)
+scripts/                  # Agent/CI tooling: identity-slice, sbt-warm, hooks, ... (self-tested)
+data/                     # Per-country roster data pipelines
+tools/devpanel/           # macOS developer palette
 android/                  # Native Compose Android app
 ios/Kinowo/               # SwiftUI iOS app (uses /api/repertoire + /api/details)
 Dockerfile                # One image, BIN build-arg selects web or worker
-infra/                    # NixOS fleet, k3s manifests, Prometheus + Grafana
+infra/                    # NixOS fleet, Prometheus + Grafana (k8s manifests: movies-gitops)
+docs/                     # Runbooks, design notes, investigation logs (index: docs/README.md)
 ```
 
 ## Running locally
@@ -147,14 +161,19 @@ image automation rolls them out** — CI does not deploy to the cluster.
 Fly app, the `kinowo.fly.dev` redirect host (`docs/domain-cutover.md`), lost
 its config, its CI deploy and its retirement composition root on 2026-10-02.
 
-Brief downtime during a redeploy is acceptable per project conventions —
-this is a hobby-traffic app, not a 24/7 SLA.
+Worker downtime is acceptable; the web tier should stay answering (a
+brief 5xx window during a rolling deploy is fine) — see the downtime
+policy in [`.claude/skills/agent-ops/SKILL.md`](.claude/skills/agent-ops/SKILL.md).
+Dashboards: <https://grafana.kinowo.net> (sources under
+`infra/nix/files/monitoring/grafana/dashboards/apps/`).
 
 ## Conventions
 
-Project-specific conventions for working on this codebase (script
-discipline, backfill rules, license posture, etc.) live in
-[`CLAUDE.md`](./CLAUDE.md).
+Project conventions for working on this codebase (test layers, the
+commit gate, snapshots, worktree and landing flow, design rules) live in
+[`CLAUDE.md`](./CLAUDE.md), with task-specific detail in the skills
+under [`.claude/skills/`](.claude/skills). Every other document is
+indexed in [`docs/README.md`](docs/README.md).
 
 ## License
 
