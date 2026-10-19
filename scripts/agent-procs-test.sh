@@ -11,10 +11,11 @@ TOOL="$REPO_ROOT/scripts/agent-procs"
 printf '\033[36m▸\033[0m agent-procs\n'
 
 work="$(cd "$(mktemp -d)" && pwd -P)"
-victim="" bystander=""
+victim="" bystander="" session=""
 cleanup() {
   [ -n "$victim" ] && kill "$victim" 2>/dev/null
   [ -n "$bystander" ] && kill "$bystander" 2>/dev/null
+  [ -n "$session" ] && kill "$session" 2>/dev/null
   rm -rf "$work"
 }
 trap cleanup EXIT
@@ -64,11 +65,13 @@ scratch_git "$root" fetch -q origin
 
 sleep 300 & victim=$!
 sleep 300 & bystander=$!
+sleep 300 & session=$!   # listed below as an agent session (`claude`) sitting in wt-orphan
 
 {
   printf '%s 1 4096 0:01.00 05:00 /bin/zsh\n' "$$"
   printf '%s %s 800000 3:00.00 01:00:00 /jdk/bin/java -Xmx4g sbt-launch.jar\n' "$victim" "$$"
   printf '%s 1 90000 0:01.00 10:00 sleep 300\n' "$bystander"
+  printf '%s 1 400000 9:00.00 02:00:00 claude --resume\n' "$session"
   printf '9001 1 2500000 1:00.00 2-00:00:00 /jdk/bin/java -Xmx6g strayer\n'
   printf '9002 1 200000 0:10.00 2-00:00:00 /jdk/bin/java -Xmx1g small\n'
   printf '9003 1 100000 50:00.00 01:00:00 python3 busy.py\n'
@@ -78,6 +81,7 @@ sleep 300 & bystander=$!
   printf 'p%s\nfcwd\nn%s\n' "$$" "$work/wt-orphan"
   printf 'p%s\nfcwd\nn%s/subdir\n' "$victim" "$work/wt-orphan"
   printf 'p%s\nfcwd\nn%s\n' "$bystander" "$work/wt-other"
+  printf 'p%s\nfcwd\nn%s\n' "$session" "$work/wt-orphan"
   printf 'p9004\nfcwd\nn%s\n' "$work/wt-live"
   printf 'p9001\nfcwd\nn/\n'
 } > "$work/lsof.txt"
@@ -129,6 +133,13 @@ check "kill --dry-run never offers the caller's shell" "0" "$(printf '%s\n' "$dr
 sleep 0.3
 check "kill --mine ends the current worktree's process" "no" "$(kill -0 "$victim" 2>/dev/null && echo yes || echo no)"
 check "...and leaves another worktree's process alone" "yes" "$(kill -0 "$bystander" 2>/dev/null && echo yes || echo no)"
+# 2026-10-19: a subagent ran `kill --mine` after its worktree was removed, from the root checkout, where every
+# session's `claude` and its MCP servers sit: it SIGTERMed one. An agent session or shell is never a victim, and
+# --mine refuses the root checkout outright: no one owns what runs there.
+check "...and never an agent session sitting in it" "yes" "$(kill -0 "$session" 2>/dev/null && echo yes || echo no)"
+refused="$(cd "$root" && "$TOOL" kill --mine 2>&1; echo "exit=$?")"
+check "kill --mine refuses the shared root checkout" "1" "$(printf '%s\n' "$refused" | grep -c 'root checkout')"
+check "...exiting non-zero" "1" "$(printf '%s\n' "$refused" | grep -c '^exit=[1-9]')"
 # The caller's shell is spared even where `ps -p <pid>` cannot read a parent (a sandboxed agent shell): the
 # ancestry comes from the real process table already read, not one ps call per hop. Real ps and lsof here.
 mkdir -p "$work/bin"
