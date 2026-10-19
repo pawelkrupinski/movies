@@ -168,7 +168,7 @@ class AppComponents(context: Context, val env: Env, val country: Country, val mo
   lazy val renamedCityRedirectFilter: RenamedCityRedirectFilter =
     new RenamedCityRedirectFilter(country, legacyAddressMetrics)(using materializer)
   lazy val frontDoorRedirectFilter: FrontDoorRedirectFilter = new FrontDoorRedirectFilter(country, legacyAddressMetrics, _root_.controllers.FrontDoorMessages(messagesApi))(using materializer)
-  lazy val httpMetricsFilter: HttpMetricsFilter = new HttpMetricsFilter(webHttpMetrics, webRouteUsageMetrics)(using executionContext)
+  lazy val httpMetricsFilter: HttpMetricsFilter = new HttpMetricsFilter(webHttpMetrics, webRouteUsageMetrics, stopwatch)(using executionContext)
   lazy val crossSiteWriteFilter: CrossSiteWriteFilter = new CrossSiteWriteFilter()(using materializer)
   // Metrics FIRST (outermost) so the latency it records is the whole chain —
   // including gzip of a multi-MB body — and so a request rejected by Play's own

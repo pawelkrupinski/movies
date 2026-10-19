@@ -28,6 +28,9 @@ import java.nio.file.{Files, Paths}
  *     two UK chains were silently on the system clock instead of the wiring's. The live clock is
  *     read once, at a composition root (`WorkerWiring.clock`, `Wiring.clock`, a tool's `main`).
  *     The shared testkit is held to it as well: a fake defaults to `tools.SpecClock.Pinned`.
+ *     The monotonic clock is held alike: no `stopwatch: Stopwatch = Stopwatch.System` — the wiring's
+ *     `stopwatch` is passed beside its `clock` (ManagedResources, BootSteps and HttpMetricsFilter
+ *     defaulted it until 2026-10-20).
  */
 class NoDefaultZoneSpec extends AnyFlatSpec with Matchers {
 
@@ -47,7 +50,8 @@ class NoDefaultZoneSpec extends AnyFlatSpec with Matchers {
   /** `file: Owner.parameter` → why that main-code parameter may still default to the live clock. */
   private val ClockDefaultAllowlist: Map[String, String] = Map.empty
 
-  private val LiveClockDefault = """\bClock\.system(?:UTC|DefaultZone)\(|\bVenueClock\.system\b""".r
+  private val StopwatchDefault = """\bStopwatch\.System\b""".r
+  private val LiveClockDefault = ("""\bClock\.system(?:UTC|DefaultZone)\(|\bVenueClock\.system\b|""" + StopwatchDefault.regex).r
 
   // The testkit too: its fakes stand in for production classes, and one that defaults to the live clock
   // puts every spec that forgets to pass a clock back on the wall clock (`InMemoryMovieRepository` did).
@@ -106,10 +110,22 @@ class NoDefaultZoneSpec extends AnyFlatSpec with Matchers {
       found.mkString("\n") + "\n")(found shouldBe empty)
   }
 
-  it should "not default a parameter to the live clock — the composition root passes its own" in {
+  "the live-clock default matcher" should "see the wall clock, a venue clock and the monotonic stopwatch" in {
+    Seq("Clock.systemUTC()", "models.VenueClock.system", "tools.Stopwatch.System", "Stopwatch.System")
+      .foreach(default => withClue(default)(LiveClockDefault.findFirstIn(default) shouldBe defined))
+    LiveClockDefault.findFirstIn("SpecClock.Pinned") shouldBe None
+  }
+
+  "production code" should "not default a parameter to the live clock — the composition root passes its own" in {
     val found = clockDefaults.filterNot(ClockDefaultAllowlist.contains)
     withClue("These parameters default to the live clock, so a caller holding the wiring's clock can forget it. " +
       "Drop the default and pass the clock (or a VenueClock built from it) from the composition root:\n" +
+      found.mkString("\n") + "\n")(found shouldBe empty)
+  }
+
+  it should "hold the test trees' helpers to it for the stopwatch (their wall-clock defaults: NoWallClockInTestsSpec)" in {
+    val found = parameterDefaults(ScalaSourceScan.TestRoots).collect { case d if StopwatchDefault.findFirstIn(d.default).isDefined => d.label }
+    withClue("These test helpers default to the process's stopwatch — take it as a parameter, as production does:\n" +
       found.mkString("\n") + "\n")(found shouldBe empty)
   }
 

@@ -23,7 +23,7 @@ import scala.concurrent.duration.FiniteDuration
  * pool is not, which is why the drain order (publishers before subscribers) still
  * matters and is still the caller's to choose.
  */
-final class DrainablePool(executionContext: ExecutionContextExecutorService, stopwatch: Stopwatch = Stopwatch.System) {
+final class DrainablePool(executionContext: ExecutionContextExecutorService, stopwatch: Stopwatch) {
 
   private val inFlight = new AtomicInteger(0)
 

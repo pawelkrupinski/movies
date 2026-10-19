@@ -81,7 +81,7 @@ trait Wiring
   }
 
   /** Every pool and closeable this wiring created, shut by [[stop]] newest first — before Mongo closes. */
-  lazy val managedResources: tools.ManagedResources = new tools.ManagedResources
+  lazy val managedResources: tools.ManagedResources = new tools.ManagedResources(stopwatch)
 
   protected def stop(): Unit = {
     // Every service and pool the wiring built (the config ticker, the uptime monitor, the metrics sampler,

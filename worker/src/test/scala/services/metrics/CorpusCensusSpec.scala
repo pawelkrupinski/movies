@@ -138,7 +138,7 @@ class CorpusCensusSpec extends AnyFlatSpec with Matchers {
 
     def check(what: String): Unit = {
       census.publish()
-      WorkerCorpusScan.over(repository, collectors)
+      WorkerCorpusScan.over(repository, collectors, tools.Stopwatch.System)
       val (counted, scanned) = (series(registry), series(reference))
       withClue(s"seed $seed, after $what — census only: ${counted.diff(scanned)}; scan only: ${scanned.diff(counted)}: ")(counted shouldBe scanned)
     }

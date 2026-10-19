@@ -45,14 +45,16 @@ object WorkerMain extends Logging {
     // If wiring init throws (e.g. Mongo unreachable) we stop /health and exit
     // non-zero so the failure still surfaces as a crash-loop rather than a
     // healthy-but-idle worker.
+    // The process's one monotonic clock for what it times before (and beside) the wirings, which keep their own.
+    val stopwatch = tools.Stopwatch.System
     val port      = process.healthPort(HealthPort(9000)).value
     val liveness  = new BootLiveness
-    val readiness = new BootReadiness(WorkerMain.ReadinessCap)
+    val readiness = new BootReadiness(WorkerMain.ReadinessCap, stopwatch)
     val health    = startHealthServer(port, liveness, readiness)
     logger.info(s"Worker health up on :$port/health — booting scrape/enrich…")
 
     val countries = bootableCountries(process, health)
-    val shared    = SharedResources.build(process, countries)
+    val shared    = SharedResources.build(process, countries, stopwatch)
     val wirings   = startWirings(process, countries, shared, health)
     // /health is a property of the MACHINE, not of any one country, so it folds
     // across every wiring — see [[WorkerFleet]]. Metrics likewise cover all countries
@@ -108,10 +110,10 @@ object WorkerMain extends Logging {
   )
 
   private object SharedResources {
-    def build(process: ProcessConfiguration, countries: Seq[Country]): SharedResources = {
+    def build(process: ProcessConfiguration, countries: Seq[Country], stopwatch: tools.Stopwatch): SharedResources = {
       // The process's own boot steps, timed like each country's (`BootSteps`): the first seconds
       // after JVM start went unaccounted — "Worker running countries" came ~6 s after start.
-      val boot   = new BootSteps("process")
+      val boot   = new BootSteps("process", stopwatch)
       val budget = boot.step("background budget")(WorkerWiring.backgroundBudgetFrom(process))
       val client = boot.step("mongo client")(MongoConnection.sharedClientAt(process.mongoAddress, MongoTuning.from(process)))
       // ONE metrics bundle for the whole JVM: a single Prometheus registry + one set

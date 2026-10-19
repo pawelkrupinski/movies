@@ -9,7 +9,7 @@ import scala.concurrent.duration.DurationInt
 
 class DrainablePoolSpec extends AnyFlatSpec with Matchers {
 
-  private def singleThreadPool() = new DrainablePool(ExecutionContext.fromExecutorService(Executors.newSingleThreadExecutor()))
+  private def singleThreadPool() = new DrainablePool(ExecutionContext.fromExecutorService(Executors.newSingleThreadExecutor()), Stopwatch.System)
 
   // A shutdown drain used to wait for every SUBMITTED task, queued ones included, however long the
   // backlog: past the pod's 30 s grace to the SIGKILL, skipping every close after it. What is queued

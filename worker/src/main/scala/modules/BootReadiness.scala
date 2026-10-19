@@ -14,7 +14,7 @@ import scala.concurrent.duration.FiniteDuration
  * Ready anyway once `cap` has passed since the process started, so a boot step that never
  * settles delays the next rollout by the cap, not forever. Readiness never restarts a pod.
  */
-private[modules] final class BootReadiness(cap: FiniteDuration, stopwatch: Stopwatch = Stopwatch.System) {
+private[modules] final class BootReadiness(cap: FiniteDuration, stopwatch: Stopwatch) {
   private val started = stopwatch.start()
   @volatile private var settled: () => Boolean = () => false
 

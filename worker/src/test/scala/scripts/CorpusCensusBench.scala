@@ -38,6 +38,7 @@ object CorpusCensusBench {
       MongoDatabaseName(s"${country.mongoDb}_prod_mirror"), MongoRequirement.Required)
     val normalizer = TitleNormalizer.forCountry(country)
     val clock      = java.time.Clock.systemUTC()
+    val stopwatch  = tools.Stopwatch.System
     // Wired as CorpusWiring wires prod: showtimes and slots in their own collections, stitched per page.
     val repo     = AmbientMovieRepository.over(conn.database, normalizer, clock)
     val os       = ManagementFactory.getOperatingSystemMXBean.asInstanceOf[com.sun.management.OperatingSystemMXBean]
@@ -57,7 +58,7 @@ object CorpusCensusBench {
     measured("census, first count of every film")(census.seed())
     (1 to ticks).foreach(n => measured(s"census tick $n")(census.publish()))
     measured("reference scan, one pass")(WorkerCorpusScan.over(repo,
-      ReferenceCensus.collectors(new PrometheusRegistry(), country.code, country.cities, clock, normalizer)))
+      ReferenceCensus.collectors(new PrometheusRegistry(), country.code, country.cities, clock, normalizer), stopwatch))
     census.stop()
     conn.close()
     sys.exit(0)

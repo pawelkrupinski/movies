@@ -30,14 +30,13 @@ import scala.util.control.NonFatal
  * bodies live for minutes — timing those to completion would put a permanent
  * multi-minute tail in the histogram and make the p99 meaningless.
  *
- * @param stopwatch injected so the spec can drive a deterministic duration; the
- *                  default is the monotonic clock, which is the right one here —
+ * @param stopwatch the wiring's monotonic clock (a spec drives a deterministic duration) —
  *                  wall-clock would let an NTP step produce a negative latency.
  */
 class HttpMetricsFilter(
   metrics:    WebHttpMetrics,
   routeUsage: WebRouteUsageMetrics,
-  stopwatch:  tools.Stopwatch = tools.Stopwatch.System
+  stopwatch:  tools.Stopwatch
 )(using executionContext: ExecutionContext) extends EssentialFilter {
 
   override def apply(next: EssentialAction): EssentialAction = EssentialAction { request =>

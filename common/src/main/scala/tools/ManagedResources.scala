@@ -26,7 +26,7 @@ import scala.util.control.NonFatal
  * }}}
  * and call `closeAll()` from the root's `stop()`.
  */
-final class ManagedResources(grace: FiniteDuration = ManagedResources.Grace, stopwatch: Stopwatch = Stopwatch.System) extends Logging {
+final class ManagedResources(stopwatch: Stopwatch, grace: FiniteDuration = ManagedResources.Grace) extends Logging {
   // `close` is handed what is left of the stop's grace.
   private final case class Held(name: String, resource: AnyRef, close: FiniteDuration => Unit, terminated: () => Boolean)
 

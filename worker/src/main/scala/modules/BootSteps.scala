@@ -18,7 +18,7 @@ import scala.concurrent.duration.FiniteDuration
  * in the boot needs, whose own work can catch up (the projector resumes its change stream from a
  * persisted token, so a write made while it seeds is replayed, not lost).
  */
-final class BootSteps(scope: String, stopwatch: Stopwatch = Stopwatch.System) extends Logging {
+final class BootSteps(scope: String, stopwatch: Stopwatch) extends Logging {
   private val timings = mutable.ArrayBuffer.empty[(String, FiniteDuration)]
 
   def step[A](name: String)(body: => A): A = {

@@ -67,7 +67,9 @@ class ImdbIdResolver(
   // next attempt ([[ImdbIdResolver.retryDelay]]). Nothing else re-asks a missing id outside Poland
   // (Filmweb's refresh does there), so without it one blip cost the film its IMDb rating for good.
   retries: ScheduledExecutorService = DaemonExecutors.scheduler("imdb-id-retry"),
-  random: () => Double = () => scala.util.Random.nextDouble()
+  random: () => Double = () => scala.util.Random.nextDouble(),
+  // The wiring's monotonic clock: how long a `drain` has waited on the resolver's pool.
+  stopwatch: tools.Stopwatch
 )(using LatestTitleYear) extends Drainable with Logging {
   // Fold titles with the rules the corpus was keyed under, not a process default.
   private val normalizer: services.movies.TitleNormalizer = cache.normalizer
@@ -101,7 +103,7 @@ class ImdbIdResolver(
         imdb.findId(query, year)))
       .nextOption()
 
-  private val pool = new tools.DrainablePool(executionContext)
+  private val pool = new tools.DrainablePool(executionContext, stopwatch)
 
   /** Bus listener: when the TMDB stage resolved a film but TMDB has no IMDb
    *  cross-reference for it, recover the id via IMDb's suggestion endpoint

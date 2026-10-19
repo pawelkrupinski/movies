@@ -24,7 +24,7 @@ class BootStepsSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "run a background step without holding the boot up" in {
-    val boot     = new BootSteps("us")
+    val boot     = new BootSteps("us", Stopwatch.System)
     val release  = new CountDownLatch(1)
     val finished = new CountDownLatch(1)
     val thread   = boot.inBackground("read-model projector") { release.await(); finished.countDown() }
@@ -37,7 +37,7 @@ class BootStepsSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "keep a failing background step from taking the boot down" in {
-    val boot   = new BootSteps("us")
+    val boot   = new BootSteps("us", Stopwatch.System)
     val thread = boot.inBackground("read-model projector")(throw new IllegalStateException("seed failed"))
     thread.join(SpecTimeouts.Io.toMillis)
     thread.isAlive shouldBe false

@@ -23,7 +23,7 @@ import scala.concurrent.duration._
 object WorkerCorpusScan extends Logging {
   /** One census pass over the rows `scan` delivers: every row fanned out to all `collectors`, then each publishes. An
    *  incomplete scan publishes NOTHING. */
-  def pass(collectors: Seq[CorpusMetricsCollector], stopwatch: Stopwatch = Stopwatch.System)
+  def pass(collectors: Seq[CorpusMetricsCollector], stopwatch: Stopwatch)
           (scan: (StoredMovieRecord => Unit) => tools.ScanOutcome): Pass = {
     val samplers = collectors.map(c => (nameOf(c), c.startSample(), stopwatch.total()))
     val started  = stopwatch.start()
@@ -36,8 +36,8 @@ object WorkerCorpusScan extends Logging {
   }
 
   /** [[pass]] over a store's whole corpus, stitched. */
-  def over(repository: services.movies.MovieRepository, collectors: Seq[CorpusMetricsCollector]): Pass =
-    pass(collectors)(repository.foreachRecord)
+  def over(repository: services.movies.MovieRepository, collectors: Seq[CorpusMetricsCollector], stopwatch: Stopwatch): Pass =
+    pass(collectors, stopwatch)(repository.foreachRecord)
 
   /** One pass's time, and each collector's share of it. */
   final case class Pass(total: FiniteDuration, byCollector: Seq[(String, FiniteDuration)])

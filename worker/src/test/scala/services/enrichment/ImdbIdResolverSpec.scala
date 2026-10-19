@@ -63,7 +63,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val resolver = new ImdbIdResolver(cache, imdbStub(
       Map("suggestion" -> loadFixture("/fixtures/imdb/suggestion_mortal_kombat_ii.json"))
-    ))
+    ), stopwatch = tools.Stopwatch.System)
     bus.subscribe(resolver.onImdbIdMissing)
 
     bus.publish(ImdbIdMissing("Mortal Kombat 2", Some(2026), "Mortal Kombat II"))
@@ -82,7 +82,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository(
       Seq(("Mortal Kombat", Some(1995), holder), ("Mortal Kombat 2", Some(2026), seeking)), normalizer = titleNormalizer),
       normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
-    val resolver = new ImdbIdResolver(cache, imdbStub(Map("suggestion" -> loadFixture("/fixtures/imdb/suggestion_mortal_kombat_ii.json"))))
+    val resolver = new ImdbIdResolver(cache, imdbStub(Map("suggestion" -> loadFixture("/fixtures/imdb/suggestion_mortal_kombat_ii.json"))), stopwatch = tools.Stopwatch.System)
     bus.subscribe(resolver.onImdbIdMissing)
     bus.publish(ImdbIdMissing("Mortal Kombat 2", Some(2026), "Mortal Kombat II"))
     resolver.drain()
@@ -99,7 +99,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
         data = Map[Source, SourceData](Tmdb -> SourceData(originalTitle = Some("Mortal Kombat II"))))
       val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Mortal Kombat 2", Some(2026), row)), normalizer = titleNormalizer),
         normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
-      val resolver = new ImdbIdResolver(cache, imdbStub(Map("suggestion" -> loadFixture("/fixtures/imdb/suggestion_mortal_kombat_ii.json"))))
+      val resolver = new ImdbIdResolver(cache, imdbStub(Map("suggestion" -> loadFixture("/fixtures/imdb/suggestion_mortal_kombat_ii.json"))), stopwatch = tools.Stopwatch.System)
       bus.subscribe(resolver.onImdbIdMissing)
       bus.publish(ImdbIdMissing("Mortal Kombat 2", Some(2026), "Mortal Kombat II"))
       resolver.drain()
@@ -127,7 +127,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
       }
       override def post(url: String, body: String, contentType: String): String =
         throw new RuntimeException("ImdbIdResolver should not POST")
-    }))
+    }), stopwatch = tools.Stopwatch.System)
     bus.subscribe(resolver.onImdbIdMissing)
     bus.publish(ImdbIdMissing("Mortal Kombat 2", Some(2026), "Mortal Kombat II"))
     resolver.drain()
@@ -159,7 +159,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
         else loadFixture("/fixtures/imdb/suggestion_ghost_in_the_shell.json")
       override def post(url: String, body: String, contentType: String): String =
         throw new RuntimeException("ImdbIdResolver should not POST")
-    }))
+    }), stopwatch = tools.Stopwatch.System)
     bus.subscribe(resolver.onImdbIdMissing)
 
     bus.publish(ImdbIdMissing(
@@ -186,7 +186,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
       asked.incrementAndGet()
       if (down) throw new tools.HttpStatusException(503, "GET", url, retryAfter = None)
       loadFixture("/fixtures/imdb/suggestion_mortal_kombat_ii.json")
-    }, retries = scheduler, random = () => 0.0)
+    }, retries = scheduler, random = () => 0.0, stopwatch = tools.Stopwatch.System)
     val bus = new InProcessEventBus()
     bus.subscribe(resolver.onImdbIdMissing)
     bus.publish(ImdbIdMissing("Mortal Kombat 2", Some(2026), "Mortal Kombat II"))
@@ -216,7 +216,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository(Seq(("Nothing Known", Some(2026), row)), normalizer = titleNormalizer),
       normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val resolver = new ImdbIdResolver(cache, imdbAnswering { url => asked.incrementAndGet(); throw new IllegalArgumentException(s"malformed query $url") },
-      retries = scheduler, random = () => 0.0)
+      retries = scheduler, random = () => 0.0, stopwatch = tools.Stopwatch.System)
     resolver.onImdbIdMissing(ImdbIdMissing("Nothing Known", Some(2026), "Nothing Known"))
     resolver.drain()
     val first = asked.get
@@ -243,7 +243,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     val repository  = new InMemoryMovieRepository(Seq(("Imaginary Film", None, tmdbOnly)), normalizer = titleNormalizer)
     val cache = new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     repository.upserts.clear()
-    val resolver = new ImdbIdResolver(cache, imdbStub(Map("suggestion" -> """{"d":[]}""")))
+    val resolver = new ImdbIdResolver(cache, imdbStub(Map("suggestion" -> """{"d":[]}""")), stopwatch = tools.Stopwatch.System)
     bus.subscribe(resolver.onImdbIdMissing)
 
     noException should be thrownBy bus.publish(ImdbIdMissing("Imaginary Film", None, "Imaginary Film"))
@@ -268,7 +268,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
       def get(url: String): String = throw new RuntimeException("findId should not be called")
       override def post(url: String, body: String, contentType: String): String =
         throw new RuntimeException("lookup should not be called")
-    }))
+    }), stopwatch = tools.Stopwatch.System)
     bus.subscribe(resolver.onImdbIdMissing)
 
     noException should be thrownBy bus.publish(ImdbIdMissing("Foo", None, "Foo"))
@@ -288,7 +288,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
       RoutingHttpFetch.getOnly(Seq("/tmdb/5252/" ->
         """<html><body data-tmdb-id="5252" data-tmdb-type="movie"><a href="https://www.imdb.com/title/tt7002002/">imdb</a></body></html>"""))))
     val resolver = new ImdbIdResolver(cache, imdbStub(Map("suggestion" -> """{"d":[]}""")),
-      letterboxdIdResolver = Some(letterboxd))
+      letterboxdIdResolver = Some(letterboxd), stopwatch = tools.Stopwatch.System)
 
     resolver.resolveSync("Another Obscure Film", Some(2017), "Another Obscure Film")
     cache.get(cache.keyOf("Another Obscure Film", Some(2017))).flatMap(_.imdbId) shouldBe Some("tt7002002")
@@ -304,7 +304,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
       """{"Title":"Varavu","Year":"2026","imdbID":"tt37963237","Director":"Shaji Kailas","Response":"True"}""")),
       apiKey = Some(settings.OmdbApiKey("stub")))
     val resolver = new ImdbIdResolver(cache, imdbStub(Map("suggestion" -> """{"d":[]}""")),
-      omdb = Some(omdb))
+      omdb = Some(omdb), stopwatch = tools.Stopwatch.System)
 
     resolver.resolveSync("Varavu", Some(2026), "Varavu")
     cache.get(cache.keyOf("Varavu", Some(2026))).flatMap(_.imdbId) shouldBe Some("tt37963237")
@@ -316,7 +316,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     val cinemeta = new CinemetaClient(RoutingHttpFetch.getOnly(Seq("search=" ->
       """{"metas":[{"id":"tt31000001","type":"movie","name":"Cactus Pears","releaseInfo":"2026"}]}""")))
     val resolver = new ImdbIdResolver(cache, imdbStub(Map("suggestion" -> """{"d":[]}""")),
-      cinemeta = Some(cinemeta))
+      cinemeta = Some(cinemeta), stopwatch = tools.Stopwatch.System)
 
     resolver.resolveSync("Cactus Pears", Some(2026), "Cactus Pears")
     cache.get(cache.keyOf("Cactus Pears", Some(2026))).flatMap(_.imdbId) shouldBe Some("tt31000001")
@@ -331,7 +331,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     val cinemeta = new CinemetaClient(RoutingHttpFetch.getOnly(Seq("search=" ->
       """{"metas":[{"id":"tt31000001","type":"movie","name":"Cactus Pears","releaseInfo":"2026"}]}""")))
     val resolver = new ImdbIdResolver(cache, imdbStub(Map("suggestion" -> """{"d":[]}""")),
-      omdb = Some(omdb), cinemeta = Some(cinemeta))
+      omdb = Some(omdb), cinemeta = Some(cinemeta), stopwatch = tools.Stopwatch.System)
 
     resolver.resolveSync("Cactus Pears", Some(2026), "Cactus Pears")
     cache.get(cache.keyOf("Cactus Pears", Some(2026))).flatMap(_.imdbId) shouldBe Some("tt31000001")
@@ -347,7 +347,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     // IMDb's suggestion endpoint blocked used to come back as None and be logged (and
     // stamped done for good) as "no match".
     val cache    = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
-    val resolver = new ImdbIdResolver(cache, imdbDown)
+    val resolver = new ImdbIdResolver(cache, imdbDown, stopwatch = tools.Stopwatch.System)
     a[tools.HttpStatusException] should be thrownBy resolver.lookupId("Mortal Kombat II", Some(2026))
   }
 
@@ -355,7 +355,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     val cache    = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val cinemeta = new CinemetaClient(RoutingHttpFetch.getOnly(Seq("search=" ->
       """{"metas":[{"id":"tt31000001","type":"movie","name":"Cactus Pears","releaseInfo":"2026"}]}""")))
-    val resolver = new ImdbIdResolver(cache, imdbDown, cinemeta = Some(cinemeta))
+    val resolver = new ImdbIdResolver(cache, imdbDown, cinemeta = Some(cinemeta), stopwatch = tools.Stopwatch.System)
     resolver.lookupId("Cactus Pears", Some(2026)) shouldBe Some("tt31000001")
   }
 
@@ -378,7 +378,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     val resolver = new ImdbIdResolver(
       new CaffeineMovieCache(new InMemoryMovieRepository(Seq.empty, normalizer = titleNormalizer),
         normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned),
-      imdbStub(Map("suggestion" -> loadFixture("/fixtures/imdb/suggestion_it.json"))))
+      imdbStub(Map("suggestion" -> loadFixture("/fixtures/imdb/suggestion_it.json"))), stopwatch = tools.Stopwatch.System)
     resolver.lookupId("It (1990)", None) shouldBe None
     resolver.lookupId("It (2017)", None) shouldBe Some("tt1396484")
   }
@@ -387,7 +387,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     val calls = new java.util.concurrent.atomic.AtomicInteger(0)
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val resolver = new ImdbIdResolver(cache, countingImdb(calls),
-      imdbIdCache = new services.resolution.WriteThroughResolutionCache(new services.resolution.InMemoryResolutionStore(normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)))
+      imdbIdCache = new services.resolution.WriteThroughResolutionCache(new services.resolution.InMemoryResolutionStore(normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)), stopwatch = tools.Stopwatch.System)
 
     resolver.lookupId("Mortal Kombat II", Some(2026)) shouldBe Some("tt17490712")
     resolver.lookupId("Mortal Kombat II", Some(2026)) shouldBe Some("tt17490712")
@@ -398,7 +398,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     val calls = new java.util.concurrent.atomic.AtomicInteger(0)
     val cache = new CaffeineMovieCache(new InMemoryMovieRepository(normalizer = titleNormalizer), normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
     val resolver = new ImdbIdResolver(cache, countingImdb(calls),
-      imdbIdCache = services.resolution.ResolutionCache.passthrough)
+      imdbIdCache = services.resolution.ResolutionCache.passthrough, stopwatch = tools.Stopwatch.System)
 
     resolver.lookupId("Mortal Kombat II", Some(2026))
     resolver.lookupId("Mortal Kombat II", Some(2026))
@@ -422,7 +422,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
       "haswbstatement" -> """{"query":{"search":[{"title":"Q722281"}]}}""",
       "wbgetentities"  -> """{"entities":{"Q722281":{"claims":{"P345":[{"mainsnak":{"datavalue":{"value":"tt0052080"}}}]}}}}"""))
     val resolver = new ImdbIdResolver(cache, imdbStub(Map("suggestion" -> """{"d":[]}""")),
-      wikidata = Some(wikidataStub))
+      wikidata = Some(wikidataStub), stopwatch = tools.Stopwatch.System)
     bus.subscribe(resolver.onImdbIdMissing)
 
     bus.publish(ImdbIdMissing("Popiół i diament", Some(1958), "Ashes and Diamonds"))
@@ -460,7 +460,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
       override def post(url: String, body: String, contentType: String): String = ???
     })
     val resolver = new ImdbIdResolver(cache, imdbStub(Map("suggestion" -> """{"d":[]}""")),
-      wikidata = Some(wikidataStub))
+      wikidata = Some(wikidataStub), stopwatch = tools.Stopwatch.System)
     bus.subscribe(resolver.onImdbIdMissing)
 
     bus.publish(ImdbIdMissing("Matrix", Some(1999), "The Matrix"))
@@ -492,7 +492,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
       override def post(url: String, body: String, contentType: String): String = ???
     })
     val resolver = new ImdbIdResolver(cache, imdbStub(Map("suggestion" -> """{"d":[]}""")),
-      wikidata = Some(wikidataThrows))
+      wikidata = Some(wikidataThrows), stopwatch = tools.Stopwatch.System)
     bus.subscribe(resolver.onImdbIdMissing)
 
     noException should be thrownBy bus.publish(ImdbIdMissing("Unknown Film", Some(2024), "Unknown Film"))
@@ -532,7 +532,7 @@ class ImdbIdResolverSpec extends AnyFlatSpec with Matchers {
     val resolver = new ImdbIdResolver(cache, new ImdbClient(http = new HttpFetch {
       def get(url: String): String = suggestionBody
       override def post(url: String, body: String, contentType: String): String = detailsBody
-    }))
+    }), stopwatch = tools.Stopwatch.System)
     bus.subscribe(resolver.onImdbIdMissing)
     bus.publish(ImdbIdMissing("Nasz Film", Some(2026), "Nasz Film"))
     eventually {

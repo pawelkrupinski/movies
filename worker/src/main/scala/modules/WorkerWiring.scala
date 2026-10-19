@@ -413,7 +413,7 @@ class WorkerWiring(
 
   def start(): Unit = {
     bootStarted.set(Some(tools.Stopwatch.start()))
-    val boot = new BootSteps(country.code)
+    val boot = new BootSteps(country.code, stopwatch)
     startStores(boot)
     // Publish this country's cache occupancy. Here rather than at construction
     // because it forces the lazy catalog, and a wiring that is built but never
@@ -534,7 +534,7 @@ class WorkerWiring(
   def cascadeDrainOrder: Seq[Drainable] = Seq(imdbIdResolver)
 
   /** Every pool and closeable this wiring created, shut by [[stop]] newest first — before Mongo closes. */
-  lazy val managedResources: tools.ManagedResources = new tools.ManagedResources
+  lazy val managedResources: tools.ManagedResources = new tools.ManagedResources(stopwatch)
 
   def stop(): Unit = {
     // Every reaper, census, schedule, pool and service the wiring built, newest first: a service stops

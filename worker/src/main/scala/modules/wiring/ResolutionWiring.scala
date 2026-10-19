@@ -36,7 +36,7 @@ trait ResolutionWiring { self: WorkerWiring =>
     // Same OMDB_API_KEY gate as `omdbBackfill` — the OMDb rung is inert when unset.
     omdb = configuration.omdbApiKey.map(_ => omdbClient),
     // Cinemeta needs no key — always wired as the final free rung.
-    cinemeta = Some(new CinemetaClient(enrichmentFetch))))
+    cinemeta = Some(new CinemetaClient(enrichmentFetch)), stopwatch = stopwatch))
 
   // Hint-keyed resolution caches (Caffeine + per-source Mongo collection, 24h
   // TTL): the same hints resolve once instead of hitting the upstream each cycle.
