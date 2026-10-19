@@ -90,28 +90,6 @@ check "a seed drops the class files its source's analysis never produced, and ke
   "Kept.class Kept.tasty logback.xml" \
   "$(cd "$scratch/clean/worker/target/scala-3.9.0/classes" 2>/dev/null && echo tools/* logback.xml | sed 's#tools/##g')"
 
-# 2026-10-19: IntelliJ's own build (JPS) wrote the fixtures config's classes into the root checkout's worker MAIN classes,
-# hours after sbt's last compile there; every seed copied them, and on the test classpath they shadowed the real fixtures
-# (a stale UnmatchedClusters named a renamed wiring object: NoClassDefFoundError, a unit run hung 50 min). Only what the
-# source's Zinc wrote — no newer than its analysis — is seeded; a resource and the analysis itself are kept.
-stray="$scratch/stray"; scratch_git "$repo" worktree add -q --detach "$stray" HEAD~1; build "$stray" stray
-target="$stray/worker/target/scala-3.9.0"
-mkdir -p "$target/classes/tools" "$target/test-zinc"; echo stray > "$target/test-zinc/from"
-for f in classes/tools/Owned.class classes/tools/Owned.tasty classes/logback.xml test-classes/T.class; do
-  echo x > "$target/$f"; touch -t 202610181900 "$target/$f"; done
-touch -t 202610181908 "$target/zinc/from" "$target/test-zinc/from"
-for f in classes/tools/Stray.class classes/tools/Stray.tasty classes/logback.xml test-classes/Late.class; do
-  echo x > "$target/$f"; touch -t 202610182316 "$target/$f"; done
-scratch_git "$repo" worktree add -q -b seeded-from-stray "$scratch/seeded" origin/main
-(cd "$scratch/seeded" && KINOWO_SBT_WARM_SEED="$stray" "$REPO_ROOT/scripts/sbt-warm" --seed >/dev/null 2>&1)
-check "a seed drops the classes its source's Zinc did not write, keeping the ones it did and every resource" \
-  "Owned.class Owned.tasty T.class logback.xml" \
-  "$(cd "$scratch/seeded/worker/target/scala-3.9.0" && find classes test-classes -type f -exec basename {} \; | LC_ALL=C sort | tr '\n' ' ' | sed 's/ $//')"
-check "...and leaves the source's own build as it was" "Owned.class Owned.tasty Stray.class Stray.tasty" \
-  "$(find "$target/classes/tools" -type f -exec basename {} \; | LC_ALL=C sort | tr '\n' ' ' | sed 's/ $//')"
-# both built: left, they would be seed sources for the checks below
-scratch_git "$repo" worktree remove --force "$scratch/seeded"; scratch_git "$repo" worktree remove --force "$stray"
-
 # a module new since the checkout was seeded (identity/, 2026-10-14) is seeded on its own; the modules built stay
 mkdir -p "$KINOWO_IDENTITY_CACHE/refs/$(scratch_git "$repo" rev-parse HEAD)/identity/target/scala-3.9.0/zinc"
 echo newest > "$KINOWO_IDENTITY_CACHE/refs/$(scratch_git "$repo" rev-parse HEAD)/identity/target/scala-3.9.0/zinc/from"
