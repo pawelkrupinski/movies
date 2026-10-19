@@ -6,6 +6,7 @@ set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 . "$REPO_ROOT/scripts/shell-spec.sh"
 . "$REPO_ROOT/scripts/scratch-git.sh"
+. "$REPO_ROOT/scripts/scratch-zinc.sh"
 
 scratch="$(mktemp -d)"; scratch="$(cd "$scratch" && pwd -P)"
 # Every fake server this spec starts, stopped however it exits. (It once ran `kill "${sleeper:-0}"`: `kill 0`, the WHOLE
@@ -76,6 +77,18 @@ echo d >> "$scratch/past/a"; scratch_git "$scratch/past" commit -qam four
 check "a checkout ahead of origin/main is seeded from the nearest build its HEAD contains" "branch" \
   "$(cat "$scratch/past/worker/target/scala-3.9.0/zinc/from" 2>/dev/null)"
 check "KINOWO_SBT_WARM_SEED names the source instead" "old" "$(cat "$scratch/other/worker/target/scala-3.9.0/zinc/from" 2>/dev/null)"
+# 2026-10-19: IntelliJ's JPS build wrote ~400 fixtures classes into the root's worker classes/, no Zinc analysis listing
+# them; every checkout seeded from it carried them, and one shadowed fixtures-classes' current class (NoClassDefFoundError
+# on a class renamed away). A seed keeps only the products its source's analysis lists.
+mkdir -p "$scratch/polluted"; scratch_zinc_build "$scratch/polluted" worker tools/Kept.class
+echo orphan > "$scratch/polluted/worker/target/scala-3.9.0/classes/tools/Orphan.class"
+echo orphan > "$scratch/polluted/worker/target/scala-3.9.0/classes/tools/Orphan.tasty"
+echo resource > "$scratch/polluted/worker/target/scala-3.9.0/classes/logback.xml"
+scratch_git "$repo" worktree add -q -b clean "$scratch/clean" origin/main
+(cd "$scratch/clean" && KINOWO_SBT_WARM_SEED="$scratch/polluted" "$REPO_ROOT/scripts/sbt-warm" --seed >/dev/null 2>&1)
+check "a seed drops the class files its source's analysis never produced, and keeps its products and resources" \
+  "Kept.class Kept.tasty logback.xml" \
+  "$(cd "$scratch/clean/worker/target/scala-3.9.0/classes" 2>/dev/null && echo tools/* logback.xml | sed 's#tools/##g')"
 
 # a module new since the checkout was seeded (identity/, 2026-10-14) is seeded on its own; the modules built stay
 mkdir -p "$KINOWO_IDENTITY_CACHE/refs/$(scratch_git "$repo" rev-parse HEAD)/identity/target/scala-3.9.0/zinc"

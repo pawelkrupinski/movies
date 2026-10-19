@@ -25,7 +25,8 @@
 # — whose commit this checkout's HEAD contains (the nearest such: while origin/main cannot move, a GitHub outage, local
 # main runs ahead of it and an origin/main ancestor is days of commits off): project/target, project/project/target and */target/scala-*, the paths the CI's
 # sbt-target-cache restores (APFS clones: no bytes copied), less project/target/active.json, the source's server socket. Zinc's analysis is relative to the checkout, so the first
-# compile recompiles only what differs from that commit. KINOWO_SBT_WARM_SEED=<dir> names the source instead.
+# compile recompiles only what differs from that commit. KINOWO_SBT_WARM_SEED=<dir> names the source instead. A class
+# file the source's Zinc analysis does not list as a product (another build wrote it) is not seeded: scripts/zinc_orphans.py.
 #
 # THE SERVER is sbt's own (`sbt --client`, one per checkout directory; each call logs the checkout and server it uses). A watchdog beside it stops it when the checkout
 # is removed, or after $KINOWO_SBT_WARM_IDLE_MINUTES (default 10: an idle server holds its ~5 GB heap) minutes without a call through this script; every call
@@ -162,6 +163,9 @@ seed() {
   done
   # the source's server socket came with project/target: sbt --client here would run in THAT server
   case "$missing" in *project/target*) rm -f "$root/project/target/active.json" ;; esac
+  # ...and so did any class file a build other than sbt's wrote into the source's classes/ (IntelliJ's JPS, 2026-10-18:
+  # fixtures classes in worker's main classes/, shadowing the real ones): Zinc never deletes what it did not produce
+  python3 "$(dirname "$0")/zinc_orphans.py" "$root"
   log "seeded in $((SECONDS - started))s"
 }
 
