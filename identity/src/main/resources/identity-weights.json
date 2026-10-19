@@ -4,6 +4,17 @@
     "listing-film" : {
       "prior" : -2.264109870948828,
       "signals" : {
+        "title.piece" : {
+          "kind" : "categorical",
+          "categories" : {
+            "decoration" : -4.7,
+            "inner" : -6.0
+          },
+          "bins" : [ ],
+          "missing" : { },
+          "counts" : { },
+          "neutral" : { }
+        },
         "originalTitle" : {
           "kind" : "categorical",
           "categories" : {
