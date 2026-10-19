@@ -62,6 +62,12 @@ def test_rewrites_the_count_only_as_a_whole_number():
     assert rv.rewrite_count(text, 1517, 1516) == "Germany's 1,516 venues; 11,517 is not it, nor 1,5170, nor 21,517."
 
 
+def test_never_rewrites_the_count_inside_a_string_literal():
+    # Spain's 599 is also a Cineamo id in GermanSourcesData: `c("599")` is no size to rewrite.
+    text = 'full roster (240 pages / 599 cinemas): Seq(c("599"), k("599", "/kino"))'
+    assert rv.rewrite_count(text, 599, 598) == 'full roster (240 pages / 598 cinemas): Seq(c("599"), k("599", "/kino"))'
+
+
 def test_rewrites_the_count_only_in_prose_files():
     # Spain's 602 has no thousands comma, so a bare `git grep 602` also took fonts, OG images and a
     # roster-audit fixture: read_text() crashed on the binaries after retired.json was written, and
@@ -70,6 +76,8 @@ def test_rewrites_the_count_only_in_prose_files():
     size = int(re.search(rv.PINNED_SIZE["spain"], rv.COUNTRY_SPEC.read_text()).group(2))
     files = rv.files_quoting(size, "spain")
     assert "common/src/main/scala/models/Cinema.scala" in files, files
+    # the scrapers' catalogue quotes each roster's size too, and moved out of worker/ on 2026-10-19
+    assert "scrapers/src/main/scala/services/cinemas/CinemaScraperCatalog.scala" in files, files
     assert "data/spain/README.md" in files, files
     assert all(f.endswith(".scala") or f.endswith("README.md") for f in files), files
 

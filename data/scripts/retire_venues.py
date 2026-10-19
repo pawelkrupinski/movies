@@ -213,8 +213,9 @@ def decide(retired: dict, venues: list, page: str, status_of, today: str, read_p
 
 
 def whole_number(count: int) -> str:
-    """`count` as prose writes it ("1,517"), matched only as a whole number."""
-    return rf"(?<![\d,]){re.escape(f'{count:,}')}(?![\d,])"
+    """`count` as prose writes it ("1,517"), matched only as a whole number outside a string literal (Spain's 599 is
+    also a Cineamo id, `c("599")`)."""
+    return rf"(?<![\d,\"]){re.escape(f'{count:,}')}(?![\d,\"])"
 
 
 def rewrite_count(text: str, old: int, new: int) -> str:
@@ -228,7 +229,8 @@ def files_quoting(count: int, roster: str) -> list[str]:
     has no comma to tell it apart, and Spain's 602 also sits in fonts, images and test fixtures."""
     return subprocess.run(
         ["git", "grep", "-I", "-l", "-P", whole_number(count), "--",
-         "common/*.scala", "worker/*.scala", "web/*.scala", f"data/{roster}/README.md"],
+         "common/*.scala", "geodata/*.scala", "scrapers/*.scala", "worker/*.scala", "web/*.scala",
+         f"data/{roster}/README.md"],
         cwd=ROOT, capture_output=True, text=True).stdout.split()
 
 
