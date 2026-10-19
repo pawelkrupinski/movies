@@ -48,12 +48,11 @@ class CinemaCityClient(http: HttpFetch, detailHttp: Option[HttpFetch] = None, ti
 
   /** Merge per-day films by Cinema City film id (externalIds "cc"), concatenating
    *  + sorting their showtimes — the cross-day fold the old whole-venue scrape did
-   *  (deterministic by id; first day's film metadata wins, as before). */
+   *  (deterministic by id; the film metadata is the first row's in `movies`' order,
+   *  which `CinemaCityScraper.reduceChunks` takes from its chunk map, not by day). */
   def reduce(movies: Seq[CinemaMovie]): Seq[CinemaMovie] =
-    SlotsToMovies.foldBlocks(movies, m => m.externalIds.getOrElse("cc", m.movie.title), _.showtimes,
-      distinctBy = SlotsToMovies.keepEvery, order = SlotsToMovies.MovieOrder.byKey) { (_, group, showtimes) =>
-      Some(group.head.copy(showtimes = showtimes))
-    }
+    SlotsToMovies.mergeMovies(movies, m => m.externalIds.getOrElse("cc", m.movie.title),
+      distinctBy = SlotsToMovies.keepEvery, order = SlotsToMovies.MovieOrder.byKey)
 
   /** Deferred per-film detail fetch — the EnrichDetails task calls this with the
    *  movie's film-page URL (Cinema City's `link`). Goes through the shared

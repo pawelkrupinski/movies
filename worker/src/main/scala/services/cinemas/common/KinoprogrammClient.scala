@@ -1,7 +1,5 @@
 package services.cinemas.common
 
-import services.cinemas.common.SlotsToMovies
-
 import models._
 import org.jsoup.Jsoup
 import org.jsoup.nodes.{Document, Element}

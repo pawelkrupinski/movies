@@ -105,4 +105,15 @@ private[cinemas] object SlotsToMovies {
       if (showtimes.isEmpty) None
       else buildMovie(key, group, showtimes).map(key -> _)
     }).map(_._2)
+
+  /** Merge the same film's [[CinemaMovie]]s — one per day, chunk or listing section — into one per
+    * `keyOf`: the first one's film metadata, every one's showtimes deduped by `distinctBy` and
+    * time-sorted as [[fold]]'s are; a film left with no showtimes drops out. */
+  def mergeMovies[K](
+    movies:     Seq[CinemaMovie],
+    keyOf:      CinemaMovie => K,
+    distinctBy: Showtime => Any = byTimeAndBooking,
+    order:      MovieOrder[K] = MovieOrder.byTitle[K]
+  ): Seq[CinemaMovie] =
+    foldBlocks(movies, keyOf, _.showtimes, distinctBy, order)((_, group, showtimes) => Some(group.head.copy(showtimes = showtimes)))
 }

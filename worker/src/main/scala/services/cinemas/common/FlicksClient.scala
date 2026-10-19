@@ -1,7 +1,5 @@
 package services.cinemas.common
 
-import services.cinemas.common.SlotsToMovies
-
 import tools.{HttpFetch, PersonName, HttpRead}
 import models._
 import org.jsoup.parser.Parser
