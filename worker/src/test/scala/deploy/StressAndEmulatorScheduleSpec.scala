@@ -21,7 +21,7 @@ class StressAndEmulatorScheduleSpec extends AnyFlatSpec with Matchers {
   private lazy val nightlyOrder = RepoFile.read(".github/workflows/order-independence.yml")
   private lazy val script   = RepoFile.read("scripts/ci/stress-races.sh")
 
-  /** ("worker/Test", "tools.BoundedParallelSpec") for every harness line of the script. */
+  /** ("common/Test", "tools.BoundedParallelSpec") for every harness line of the script. */
   private lazy val harnesses: Seq[(String, String)] =
     """(?m)^\s+"(\w+/(?:Test|IntegrationTest)) ([\w.]+)"\s*$""".r.findAllMatchIn(script)
       .map(m => m.group(1) -> m.group(2)).toSeq

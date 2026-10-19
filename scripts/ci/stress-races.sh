@@ -25,7 +25,7 @@ here="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 Unit=(
     "worker/Test tools.ConcurrentCandidateProbeSpec"
     "worker/Test services.sharecards.ShareCardConcurrencySpec"
-    "worker/Test tools.BoundedParallelSpec"
+    "common/Test tools.BoundedParallelSpec"
     "worker/Test tools.AdaptiveParallelSpec"
     "scrapers/Test tools.ParallelDetailFetchSpec"
     "worker/Test tools.FilmwebDiffParallelFetchSpec"
