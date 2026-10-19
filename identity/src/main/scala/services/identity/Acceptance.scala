@@ -25,7 +25,7 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
    *  another film of its director the title names, or the listing's year dates as closely ([[anotherOfItsDirector]]). */
   private[identity] final case class Rule(name: String, why: Seq[Scored] => Verdict) {
     def accepts(ranked: Seq[Scored]): Verdict =
-      ownInstalment(why(ranked)).flatMap(pickedByItsTitle(ranked)).flatMap(takeable).flatMap(onNoReusedPage(ranked)).flatMap(notPerformedBeside)
+      ownInstalment(why(ranked)).flatMap(pickedByItsTitle(ranked)).flatMap(takeable).flatMap(onNoReusedPage(ranked)).flatMap(notPerformedBeside).flatMap(filmLike)
   }
   /** Refuses a film the billing names by one piece while ANOTHER piece, sharing no word with the record's titles, bills a
    *  performance ([[NonMovieEventClassifier.isPerformance]]: a tribute, a concert, a stage show): the evening is the show,
@@ -47,6 +47,17 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
     if (performed.isEmpty || film.titles.exists(NonMovieEventClassifier.isPerformance(_))) Right(accepted)
     else Left(Acceptance.Refused("another piece of its billing is a performance the film is not", Some(scored.candidate.tmdbId),
       s"${Acceptance.named(scored)} beside: ${performed.mkString(", ")}"))
+  }
+  /** Refuses a film for a billing that reads as no film at all ([[IdentityMeasures.Listing.eventBilled]]: a slam, a
+   *  concert, a performer billed live, a festival pass), unless the record is itself titled as that event is
+   *  ([[NonMovieEventClassifier.isPerformance]] of one of its titles: a concert film, a "Kabaret"): the namesake a search
+   *  for the show's name found is not what the venue screens. The agreement stage already asks no family about such a
+   *  billing ([[agreement.NonFilmEvents]]); this holds the model's own takes to the same reading. */
+  private[identity] def filmLike(accepted: Accepted): Verdict = {
+    val scored = accepted._1
+    scored.listing.eventBilled.filterNot(_ => scored.candidate.film.titles.exists(NonMovieEventClassifier.isPerformance(_))).fold[Verdict](Right(accepted)) { why =>
+      Left(Acceptance.Refused("the billing reads as no film", Some(scored.candidate.tmdbId), s"${Acceptance.named(scored)}: $why"))
+    }
   }
   /** Refuses any film while the listing's page reads as REUSED: a record its ORIGINAL title and the director it credits
    *  name stands in its pool ([[copiedBeyondItsBilling]]) though the billing says more than that record's titles. The

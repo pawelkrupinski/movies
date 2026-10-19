@@ -80,9 +80,14 @@ object NonFilmEvents {
 
   /** A performer billed live ([[PerformerLive]], [[liveAtTheVenue]]), no film named beside the show and no broadcast
    *  named but by its bare "live" ([[ListingShape.relaysNamed]]). `title`: the raw title in lower case. */
-  private def liveShow(listing: Listing, title: String): Option[String] =
-    Option.when(FilmAttached.findFirstIn(title).isEmpty && (PerformerLive.findFirstIn(title).isDefined || liveAtTheVenue(title, listing.venue)) &&
-      !ListingShape.relaysNamed(listing, title))("live show")
+  private def liveShow(billing: Billing, title: String): Option[String] =
+    Option.when(FilmAttached.findFirstIn(title).isEmpty && (PerformerLive.findFirstIn(title).isDefined || liveAtTheVenue(title, billing.venue)) &&
+      !ListingShape.relaysNamedSpelled(title, billing.spellings, billing.rawTitle, billing.screenedIn))("live show")
+
+  /** What [[of]] reads of a listing: its raw title, every spelling of its title, the season it screens in, its venue's
+   *  name ("" where none is in hand: the model's venue-free evidence) and whether it states a film's record (a director
+   *  and a year). */
+  final case class Billing(rawTitle: String, spellings: Seq[String], screenedIn: Option[Int], venue: String, statesRecord: Boolean)
 
   /** Why `listings` (a cluster's) are an event no film database holds — the first listing's reason — or `None` unless
    *  every one of them is. */
@@ -96,11 +101,16 @@ object NonFilmEvents {
 
   /** Why `listing` is an event no film database holds, or `None`. */
   def of(listing: Listing): Option[String] =
-    if (listing.directors.exists(_.trim.nonEmpty) && listing.year.isDefined) None
+    of(Billing(listing.rawTitle, Seq(listing.title, listing.cleanTitle, listing.rawTitle).distinct, listing.screenings.season, listing.venue,
+      listing.directors.exists(_.trim.nonEmpty) && listing.year.isDefined))
+
+  /** Why `billing` is an event no film database holds, or `None`. */
+  def of(billing: Billing): Option[String] =
+    if (billing.statesRecord) None
     else {
-      val raw   = listing.rawTitle.trim
+      val raw   = billing.rawTitle.trim
       val title = raw.toLowerCase(Locale.ROOT)
-      if (ListingShape.relays(listing, title)) liveShow(listing, title)
+      if (ListingShape.relaysSpelled(title, billing.spellings, billing.rawTitle, billing.screenedIn)) liveShow(billing, title)
       else Option.when(SecretScreening.findFirstIn(TitleContainment.tokens(raw).mkString(" ")).isDefined)("mystery screening")
         .orElse(Markers.collectFirst { case (reason, marker) if marker.findFirstIn(title).isDefined => reason })
         .filter(reason => reason == "no screening" || reason == "pass" || FilmAttached.findFirstIn(title).isEmpty)
@@ -108,7 +118,7 @@ object NonFilmEvents {
         // what the feeds' own filter reads in any language: a reading, a slam, a cabaret, a stand-up night billed as one
         // (DE "Schöne Aussicht - Die Slam Poetry & Songwriting Show - …": no 2007 "Schöne Aussicht")
         .orElse(Option.when(NonMovieEventClassifier.isNonScreening(raw) && FilmAttached.findFirstIn(title).isEmpty)("non-screening"))
-        .orElse(liveShow(listing, title))
+        .orElse(liveShow(billing, title))
         .orElse(Option.when(FilmAttached.findFirstIn(title).isEmpty && TheatreCompany.findFirstIn(title).isDefined &&
           CinemaTheatre.findFirstIn(title).isEmpty)("theatre company"))
         .orElse(ListingShape.programmeSlotOf(raw).map(_ => "programme slot"))

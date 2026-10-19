@@ -79,6 +79,12 @@ object IdentityMeasures {
       agreement.NonFilmEvents.eventBilled(rawTitle.getOrElse(title)).filter(services.cinemas.pl.NonMovieEventClassifier.isPerformance(_)).toSeq
         .flatMap(IdentityMeasures.pieces).map(piece => (piece, IdentityMeasures.countedWords(piece), services.cinemas.pl.NonMovieEventClassifier.isPerformance(piece)))
         .filter(_._2.nonEmpty)
+    /** Why the billing reads as an event no film database holds ([[agreement.NonFilmEvents]]: a concert, a slam, a
+     *  performer billed live, a class, a festival pass…), venue-free as the model's evidence is, or `None` — the
+     *  listing's FILM-NESS as its own shape states it, read once per listing (`Acceptance.filmLike`). */
+    private[identity] lazy val eventBilled: Option[String] =
+      agreement.NonFilmEvents.of(agreement.NonFilmEvents.Billing(rawTitle.getOrElse(title), titles.distinct, screeningsSeason, "",
+        directors.exists(_.trim.nonEmpty) && year.isDefined))
     /** How many words the billing shares with `title` at most, over its titles ([[IdentityMeasures.sharedWords]]). */
     private[identity] def wordsBilledOf(title: String): Int = titles.map(IdentityMeasures.sharedWords(title, _)).max
     /** The directors credited beside the published `year` — one listing's own, unless a pooled
