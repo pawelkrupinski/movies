@@ -243,7 +243,7 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
   private val memo = mutable.HashMap.empty[String, Seq[Scored]]
   def of(node: EvidenceNode): Seq[Scored] = memo.getOrElseUpdate(node.id,
     { val reached = reach(node)
-      score(evidenceOf(node).measured, node.venue, sourceOf(node), reached.search, reached.walk, sharedOf(node),
+      score(evidenceOf(node).measured.copy(names = node.names), node.venue, sourceOf(node), reached.search, reached.walk, sharedOf(node),
         id => denialByNode(node, id), reached.imdbOnly, reached.directed, reached.imdbTitled, node.country, feedLinked(node).map(_._2).toSet).map(placedByImdb(Seq(node)))
         .map(scored => if (reached.soleResults(scored.candidate.tmdbId)) scored.copy(soleResult = true) else scored)
         .map(scored => reached.imdbTitled.get(scored.candidate.tmdbId).fold(scored)(titles => scored.copy(imdbTitled = titles))) })
@@ -367,7 +367,8 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
       originalTitle = modal(evidence.flatMap { case (node, stated) => stated.originalTitle.map(_ -> node.weight) }),
       directors     = evidence.flatMap(_._2.directors).distinct.sorted,
       runtime       = runtimes.lift(runtimes.size / 2),
-      countries     = evidence.flatMap(_._2.countries).distinct.sorted)
+      countries     = evidence.flatMap(_._2.countries).distinct.sorted,
+      names         = cluster.iterator.map(_.names).foldLeft(VenueNames.None)(_ ++ _))
     val reached = cluster.map(reach)
     val linked  = cluster.flatMap(node => feedLinked(node).map(_._2)).toSet
     val ranks = reached.flatMap(_.search).groupMapReduce(_._1)(_._2)(math.min)

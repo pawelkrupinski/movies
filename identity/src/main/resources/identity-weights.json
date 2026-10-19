@@ -4,6 +4,28 @@
     "listing-film" : {
       "prior" : -2.264109870948828,
       "signals" : {
+        "cast" : {
+          "kind" : "categorical",
+          "categories" : {
+            "two_plus" : 2.07,
+            "one" : -1.78,
+            "none" : -3.29
+          },
+          "bins" : [ ],
+          "missing" : {
+            "film" : 0,
+            "listing" : 0,
+            "prose" : 0
+          },
+          "counts" : {
+            "two_plus" : [ 2438, 307 ],
+            "one" : [ 77, 461 ],
+            "none" : [ 62, 1679 ]
+          },
+          "neutral" : {
+            "film" : "EXPERIMENT cast-overlap: log-likelihood ratios of 2,699 prod takes corroborated by director and exact year against their 2,701 rival candidates, listings with a venue cast field (recording 38713274617, prod mirror traces 2026-10-19); a candidate whose cast was not fetched is neutral, as for director"
+          }
+        },
         "originalTitle" : {
           "kind" : "categorical",
           "categories" : {

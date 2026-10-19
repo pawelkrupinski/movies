@@ -17,16 +17,24 @@ final class VenueNames private (pairs: Array[Int]) extends SortedHashes[VenueNam
   /** Does the text name `name` WHOLE: two words at least, every pair of its neighbouring words held — never a surname
    *  alone, nor a first name. */
   def names(name: String): Boolean = holdsAll(VenueNames.pairsOf(name))
+  /** Does it name a name given as its pairs ([[FilmCast]]'s, hashed once per record)? */
+  def namesPairs(pairs: Array[Int]): Boolean = holdsAll(pairs)
+  /** Did the venue give a cast FIELD (not only prose)? A listed cast naming none of a film's top-billed cast is
+   *  evidence against it; a synopsis naming none is not (EXPERIMENT cast-overlap). */
+  def listsCast: Boolean = java.util.Arrays.binarySearch(held, VenueNames.CastFieldMark) >= 0
 }
 
 object VenueNames {
   val None: VenueNames = new VenueNames(Array.emptyIntArray)
+  /** The hash standing for "the venue gave a cast field" ([[VenueNames.listsCast]]). */
+  private[identity] val CastFieldMark: Int = 0x43617374
 
   /** The names `texts` (a synopsis, a description) and `cast` (a cast field's entries) hold. */
   def of(texts: Iterable[String], cast: Iterable[String] = Nil): VenueNames = {
     val found = scala.collection.mutable.ArrayBuilder.make[Int]
     texts.foreach(text => collect(text, capitalisedOnly = true, found))
     cast.foreach(name => collect(name, capitalisedOnly = false, found))
+    if (cast.exists(_.trim.nonEmpty)) found += CastFieldMark
     val all = found.result()
     if (all.isEmpty) None else new VenueNames(SortedHashes.sortedDistinct(all, all.length))
   }
@@ -106,4 +114,25 @@ object CastEvidence {
       case Seq((candidate, named)) if named.sizeIs >= Names => Some(candidate -> named)
       case _                                                => Option.empty
     }
+}
+
+/** A film's top-billed cast as each name's hashed word pairs ([[VenueNames.pairsOf]]), names of one word left out:
+ *  what the listing-film `cast` measure counts the venue's text naming (EXPERIMENT cast-overlap). */
+final class FilmCast private (private val names: Array[Array[Int]]) {
+  /** How many of its names `venue` names whole. */
+  def namedBy(venue: VenueNames): Int = names.count(venue.namesPairs)
+  override def equals(other: Any): Boolean = other match {
+    case that: FilmCast => java.util.Arrays.deepEquals(names.asInstanceOf[Array[AnyRef]], that.names.asInstanceOf[Array[AnyRef]])
+    case _              => false
+  }
+  override def hashCode: Int = java.util.Arrays.deepHashCode(names.asInstanceOf[Array[AnyRef]])
+  override def toString: String = s"FilmCast(${names.length})"
+}
+
+object FilmCast {
+  /** `None` for TMDB crediting nobody: a stage relay's or concert's record, its cast simply not filed. */
+  def of(names: Seq[String]): Option[FilmCast] = {
+    val pairs = names.distinct.map(VenueNames.pairsOf).filter(_.nonEmpty).map(_.distinct.sorted)
+    Option.when(pairs.nonEmpty)(new FilmCast(pairs.toArray))
+  }
 }

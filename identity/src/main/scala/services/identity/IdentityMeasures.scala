@@ -46,7 +46,10 @@ object IdentityMeasures {
                            screeningsSeason: Option[Int] = None,
                            /** Its screening days, held only where its stated year is more than a season before the season
                             *  it screens in ([[services.identity.Listing.airDays]]): what the air-day test reads. */
-                           airDays: Seq[java.time.LocalDate] = Nil) {
+                           airDays: Seq[java.time.LocalDate] = Nil,
+                           /** The people the venue's own synopsis and cast field name ([[VenueNames]]): what the `cast`
+                            *  measure reads. Outside the evidence's key, as the node's listings' union. */
+                           names: VenueNames = VenueNames.None) {
     private def titles: Seq[String] = rawTitle.toSeq :+ title
     /** Its title, then the raw title the venue published — title first, as the title relations read them. */
     def ownTitles: Seq[String] = Seq(title) ++ rawTitle
@@ -209,7 +212,9 @@ object IdentityMeasures {
                         /** The certificates TMDB records for it in the countries a rating scale is read for, the least
                          *  restrictive one each ("GB=18,US=R", [[Certificates.ofReleaseDates]]); `None` when none is known.
                          *  One string, as [[releases]] is. */
-                        certificates: Option[String] = None) {
+                        certificates: Option[String] = None,
+                        /** Its top-billed cast ([[FilmCast]]); `None` when not fetched or TMDB credits nobody. */
+                        cast: Option[FilmCast] = None) {
     /** The film as a line names it: `'Lalka' (1968)`, its year left out where none is known. */
     def titled: String = s"'$title'${year.fold("")(y => s" ($y)")}"
     /** Every running time TMDB states for the film, [[runtime]] first: what a listing's runtime is compared with. */
@@ -505,6 +510,7 @@ object IdentityMeasures {
     slots(11) = f.popularity.fold[Measure](MissingFilm)(p => Number(PopularityBucket.of(p).toDouble))
     slots(12) = Number(rivals.toDouble)
     slots(13) = Number(corroboratingVenues.toDouble)
+    slots(14) = castRelation(l, f)
     premiereYear(l, f, anniversaryYear(l, f, screeningYearAbsent(l, f, title, new ListingFilmMeasures(slots))))
   }
 
@@ -572,6 +578,19 @@ object IdentityMeasures {
     originalFormRelation(l.originalForm, f.trimmedForms, f.year) match {
       case m if NamingRelations(title.value) && repeatsItsTitle(l) && m != Category("match") => MissingListing
       case m                                                                                 => m
+    }
+
+  /** How many of the film's top-billed cast the venue's own text names whole (EXPERIMENT cast-overlap): `two_plus`
+   *  wherever they are named; beside a cast FIELD also `one` and `none` (a listed cast naming none of the film's is
+   *  evidence against it); a synopsis naming fewer than two is no evidence (`missing:prose`) — prose names places and
+   *  houses as often as people. */
+  private[identity] def castRelation(l: Listing, f: Film): Measure =
+    if (l.names.isEmpty) MissingListing
+    else f.cast.fold[Measure](MissingFilm) { cast =>
+      val named = cast.namedBy(l.names)
+      if (named >= 2) Category("two_plus")
+      else if (!l.names.listsCast) Missing("prose")
+      else Category(if (named == 1) "one" else "none")
     }
 
   /** Titles a listing names itself by, as the other side of a listing-listing comparison. */
@@ -644,7 +663,7 @@ final class ListingFilmMeasures private[identity] (private val slots: Array[Iden
 object ListingFilmMeasures {
   /** The keys, by slot. */
   val Keys: IndexedSeq[String] = IndexedSeq("title", "numeral", "originalTitle", "year.delta", "year.distance", "titleYear.delta",
-    "season.delta", "director", "runtime.delta", "country", "search.rank", "popularity.log2", "rivals", "venues.corroborating")
+    "season.delta", "director", "runtime.delta", "country", "search.rank", "popularity.log2", "rivals", "venues.corroborating", "cast")
   private val Slots = { val m = new java.util.HashMap[String, Integer](Keys.length * 2); Keys.zipWithIndex.foreach { case (k, i) => m.put(k, i) }; m }
   private def slotOf(key: String): Int = { val i = Slots.get(key); if (i == null) -1 else i.intValue }
 }

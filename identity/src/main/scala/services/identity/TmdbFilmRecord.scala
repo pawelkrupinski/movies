@@ -50,7 +50,8 @@ object TmdbFilmRecord {
         releases          = main.flatMap(d => (d \ "release_dates").toOption.map(releases).orElse((d \ Releases).asOpt[String])).headOption,
         taglineKey        = (localized \ "tagline").asOpt[String].fold(0)(IdentityMeasures.Film.taglineKeyOf),
         certificates      = main.flatMap(d => (d \ "release_dates").toOption.map(Certificates.ofReleaseDates)
-          .getOrElse((d \ CertificatesField).asOpt[String])).headOption) -> imdbId)
+          .getOrElse((d \ CertificatesField).asOpt[String])).headOption,
+        cast              = cast(answers).flatMap(FilmCast.of)) -> imdbId)
     }
   }
 

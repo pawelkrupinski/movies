@@ -10,6 +10,8 @@ private[identity] final class EvidenceNode(val evidence: Evidence, val listings:
   lazy val titleWords: Seq[String] = services.movies.TitleContainment.tokens(evidence.title)
   /** The country (ISO-3166-1) of its venue — what [[ReleaseVeto]] asks a namesake's releases of. */
   lazy val country: Option[String] = EvidenceNode.countryOf(listings.head.cinema)
+  /** The people its listings' own text names, all of them ([[VenueNames]]): the `cast` measure's listing side. */
+  lazy val names: VenueNames = listings.iterator.map(_.names).foldLeft(VenueNames.None)(_ ++ _)
   /** The evidence as text: title, stated year, directors. */
   def name: String        = s"'${evidence.title}'${evidence.statedYear.fold("")(year => s" [$year]")}" +
     (if (evidence.directors.nonEmpty) s" {${evidence.directors.mkString(", ")}}" else "")
