@@ -17,6 +17,11 @@ is that the local toolchain is missing (e.g. no full Xcode for
   `sbt web/Test/test` / `worker/Test/test` / `scrapers/Test/test` (the cinema scrapers) / `common/Test/test` / `identity/Test/test` (the resolver) /
   `testkit/Test/test` / `e2e/Test/test` to scope to one module.
   Unit specs for controllers, services, enrichment, clients, models.
+  Each unit module runs in its own forked, heap-capped test JVM (`project/ForkedTests.scala`; web's
+  fork is Play's), so nothing a run leaves behind stays in the kept sbt server; only `e2eShared`
+  runs inside the server (the write-failure tripwire needs it). `testUnit` used to die with "sbt
+  server disconnected" on a warm server's second or third run — the unforked specs' leftovers,
+  not a flake: investigate, don't rerun.
 - **`sbt itAll`** (or `sbt web/IntegrationTest/test` /
   `worker/IntegrationTest/test`) — `*/src/it/scala/` specs that wire
   fakes + the real cache/repository. Locally run it as

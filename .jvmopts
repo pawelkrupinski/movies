@@ -1,13 +1,11 @@
-# Heap for the sbt JVM. `testUnit` runs every module's specs UNFORKED in this
-# one JVM (CI never hits this — it splits the modules across runners), and the
-# default heap OOMs partway through: the launcher dies with a Java heap space
-# error, the remaining modules never run, and sbt still exits 0. A "green"
-# testUnit was silently covering only common + web.
+# Heap for the sbt JVM — the kept server sbt-warm runs every command in.
 #
-# ⚠️ DO NOT LOWER THIS. `testUnit` was MEASURED on 2026-09-04 at a 4092MB peak
-# against this 4096MB ceiling — four megabytes of headroom. It is not a round
-# number picked for comfort; it is the number the test layer actually needs, and
-# anything smaller resurrects the silent-partial-run failure described above.
+# `testUnit` used to run every module's specs UNFORKED in this one JVM, measured on 2026-09-04 at a 4092MB peak
+# against this ceiling, and whatever a run's specs failed to release stayed here for the next run (2026-10-19: ~260 MB
+# of heap and ~200 MB of metaspace per worker run) until a later run died with "sbt server disconnected". Each unit
+# module now runs in a forked, heap-capped test JVM (project/ForkedTests.scala). Still run HERE: compiles, and e2e's
+# specs (unforked for the write-failure tripwire), whose live set peaks at ~1.3 GB. Lower it only with a
+# measurement of a full `testUnit` under the smaller heap.
 # To run something under a SMALLER heap, pass `-J-Xmx...` on that invocation (it
 # is appended after this file and the JVM honours the last `-Xmx`) — that is what
 # `scripts/dev-server.sh` does to make the dev server's OOM canary trip early.

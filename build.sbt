@@ -217,6 +217,7 @@ lazy val common = (project in file("common"))
     Test / unmanagedSources ++= sharedTestDoubles.value
   )
   .settings(unitReportSettings, testOrderSettings)
+  .settings(ForkedTests.settings(Test, heap = "512m"))
   .settings(noApiDocs)
 
 // The hand-stepped time doubles, the polling helper, the one-country title normalizer, the property specs' base,
@@ -284,6 +285,7 @@ lazy val identity = (project in file("identity"))
     Test / unmanagedSources += (LocalRootProject / baseDirectory).value / "project" / "SourceDigest.scala"
   )
   .settings(unitReportSettings, testOrderSettings)
+  .settings(ForkedTests.settings(Test, heap = "1g"))
   .settings(noApiDocs)
 
 // ── Shared test support (not deployed) ───────────────────────────────────────
@@ -298,6 +300,7 @@ lazy val identity = (project in file("identity"))
 lazy val testkit = (project in file("testkit"))
   .dependsOn(common, identity)
   .settings(testOrderSettings)
+  .settings(ForkedTests.settings(Test, heap = "512m"))
   .settings(
     name := "testkit",
     publish / skip := true,
@@ -321,6 +324,7 @@ lazy val scrapers = (project in file("scrapers"))
     Test / unmanagedClasspath += Attributed.blank((LocalRootProject / baseDirectory).value / "test" / "resources"),
   )
   .settings(unitReportSettings, testOrderSettings)
+  .settings(ForkedTests.settings(Test, heap = "512m"))
   .settings(noApiDocs)
 
 // ── Worker app (scrape + enrich) ─────────────────────────────────────────────
@@ -394,6 +398,7 @@ lazy val worker = (project in file("worker"))
     ),
   )
   .settings(unitReportSettings, testOrderSettings, workerRowSettings)
+  .settings(ForkedTests.settings(Test, heap = "2g"))
   .settings(itReportSettings, itRowSettings)
   // Fails the it run when a repository write failed and was swallowed into a WARN.
   .settings(WriteFailureTripwire.settings(IntegrationTest))
@@ -421,10 +426,9 @@ lazy val web = (project in file("web"))
   .configs(IntegrationTest, PageTest)
   .settings(
     name := "web",
-    // Play forks web's Test JVM, which doesn't read .jvmopts — keep it headless
-    // too, or AWT rendering makes it a foreground macOS app that steals focus,
-    // and on production's en_US number format (see .jvmopts).
-    Test / javaOptions ++= Seq("-Djava.awt.headless=true", "-Duser.language=en", "-Duser.country=US"),
+    // Play forks web's Test JVM, which doesn't read .jvmopts: the same pins as every other test JVM (headless, so AWT
+    // rendering never steals focus; production's en_US number format) — project/ForkedTests.scala.
+    Test / javaOptions ++= ForkedTests.options(Test, heap = "1g").value,
     inConfig(IntegrationTest)(Defaults.testSettings),
     IntegrationTest / scalaSource       := baseDirectory.value / "src" / "it" / "scala",
     IntegrationTest / resourceDirectory := baseDirectory.value / "src" / "it" / "resources",
@@ -516,9 +520,12 @@ lazy val root = (project in file("."))
     publish / skip := true,
   )
 
+// Each unit module's specs run in a forked test JVM, one at a time under the server's JVM slot: project/ForkedTests.scala.
+ForkedTests.oneForkAtATime
+
 // One sbt invocation, every module's unit tests, no fail-fast: `all` runs each
-// listed task in parallel and reports all failures instead of stopping at the
-// first failing module. `testUnit` is the full local alias; keeping the
+// listed task (their forked test JVMs one at a time) and reports all failures
+// instead of stopping at the first failing module. `testUnit` is the full local alias; keeping the
 // aggregating aliases means new modules join the existing CI jobs rather than
 // spawning new ones.
 addCommandAlias("testUnit", "; all common/Test/test identity/Test/test scrapers/Test/test testkit/Test/test web/Test/test worker/Test/test ; e2eShared")
