@@ -5,7 +5,7 @@ import services.cinemas.common.ZyteFallback
 import services.cinemas.pl.MultikinoClient
 import services.cinemas.uk.OdeonAuthHarvester
 import services.metrics.PaidEgressMetrics
-import tools.{CountingHttpFetch, FallbackHttpFetch, HostCircuitBreakerHttpFetch, HttpFetch, HttpOutcomeRecorder, RealHttpFetch, ResidentialProxy, SessionWarmingHttpFetch, StickyShardHttpFetch}
+import tools.{HttpFetch, HttpOutcomeRecorder, ProxyChain, RealHttpFetch, ResidentialProxy, StickyShardHttpFetch}
 
 /** Cinema-site egress routes: the residential-proxy chains the Cloudflare-blocked
  *  venues scrape through (plus the one Zyte route for a venue the proxy cannot
@@ -58,7 +58,7 @@ trait EgressWiring { self: WorkerWiring =>
   // of a brand's traffic onto one IP+cookie jar; fine at Vue's ~88-venue/420-min
   // volume, well under Decodo's concurrent-auth cap.
   //
-  // The proxy leg is circuit-broken (EgressWiring.breakerGuarded), unlike every
+  // The proxy leg is circuit-broken (ProxyChain.breakerGuarded), unlike every
   // other leg of this chain: it is the only one built from raw RealHttpFetch
   // shards with none of HttpWiring's protective wrapping (no
   // HostCircuitBreakerHttpFetch, no per-host pacing). Without it, a Decodo
@@ -73,7 +73,7 @@ trait EgressWiring { self: WorkerWiring =>
   // behind a doomed proxy attempt on every single call.
   private def proxyPrimary(fallback: HttpFetch, warmUrl: Option[String] = None,
                            keyOf: String => String = StickyShardHttpFetch.hostAndPath): HttpFetch =
-    proxyShards.fold(fallback)(EgressWiring.proxyPrimary(_, fallback, clock, warmUrl, keyOf, decodoMeter, recordProxyOutcome, decodoBreakerMeter))
+    proxyShards.fold(fallback)(ProxyChain.proxyPrimary(_, fallback, clock, warmUrl, keyOf, decodoMeter, recordProxyOutcome, decodoBreakerMeter))
 
   // Meter the residential-proxy leg to /uptime: a green "Residential proxy" bar
   // means the proxy served, a red one means it failed and we fell back to direct
@@ -109,7 +109,7 @@ trait EgressWiring { self: WorkerWiring =>
   // refuses through the proxy is not the proxy failing. Its own breaker too, so poster failures
   // never open the scrapes'. The paid-egress counters still see it: it is paid for.
   lazy val multikinoPosterFetch: HttpFetch =
-    proxyShards.fold(httpFetch)(EgressWiring.proxyPrimary(_, httpFetch, clock, Some(MultikinoClient.HomeUrl), meter = decodoMeter,
+    proxyShards.fold(httpFetch)(ProxyChain.proxyPrimary(_, httpFetch, clock, Some(MultikinoClient.HomeUrl), meter = decodoMeter,
       breakerMeter = decodoBreakerMeter))
   // Zyte residential egress → direct fallback (Zyte only when ZYTE_API_KEY is set), for
   // the one venue whose origin blocks the Decodo proxy too (see CinemaScraperCatalog).
@@ -154,15 +154,6 @@ trait EgressWiring { self: WorkerWiring =>
 }
 
 object EgressWiring {
-  /** The residential proxy first, `direct` behind it — and with no proxy, `direct` alone. */
-  def paidEgressChain(proxyShards: Option[IndexedSeq[HttpFetch]], direct: HttpFetch,
-                      clock: java.time.Clock, warmUrl: Option[String] = None): HttpFetch =
-    proxyShards.fold(direct)(proxyPrimary(_, direct, clock, warmUrl))
-
-  /** Multikino's chain for a recording or diagnostic tool: proxy (warmed on the homepage) → `direct`. */
-  def multikinoChain(proxyShards: Option[IndexedSeq[HttpFetch]], direct: HttpFetch, clock: java.time.Clock): HttpFetch =
-    paidEgressChain(proxyShards, direct, clock, Some(MultikinoClient.HomeUrl))
-
   /** The /uptime row the residential-proxy leg is metered under. */
   private val ResidentialProxyService = "Residential proxy"
 
@@ -171,36 +162,4 @@ object EgressWiring {
   def residentialShards(config: Option[RealHttpFetch.ProxyConfig],
                         tls: javax.net.ssl.SSLContext): Option[IndexedSeq[RealHttpFetch]] =
     config.map(_.perPort.map(cfg => new RealHttpFetch(Some(cfg), tls)).toIndexedSeq)
-
-  /** The residential proxy (sticky across `shards`, each warmed on `warmUrl`
-   *  when given, metered and circuit-broken) with `fallback` behind it — the
-   *  chain the trait's `proxyPrimary` explains, shared with `tools.RosterAudit`. */
-  def proxyPrimary(shards: IndexedSeq[HttpFetch], fallback: HttpFetch, clock: java.time.Clock, warmUrl: Option[String] = None,
-                   keyOf: String => String = StickyShardHttpFetch.hostAndPath,
-                   meter: HttpOutcomeRecorder = HttpOutcomeRecorder.noop,
-                   onOutcome: (String, Option[String]) => Unit = FallbackHttpFetch.NoOutcome,
-                   breakerMeter: tools.CircuitBreakerMeter = tools.CircuitBreakerMeter.noop): HttpFetch = {
-    val legs = warmUrl.fold(shards)(u => shards.map(new SessionWarmingHttpFetch(_, u)))
-    val proxyLeg = meteredProxyLeg(new StickyShardHttpFetch(legs, keyOf), meter, clock, breakerMeter)
-    new FallbackHttpFetch(Seq("proxy" -> proxyLeg, "fallback" -> fallback), onOutcome = onOutcome,
-                          endsChain = FallbackHttpFetch.OriginAnswered)
-  }
-
-  /** Wrap the sticky-shard proxy leg in a per-host circuit breaker, so a host
-   *  whose Decodo tunnel starts failing (a pool-wide 503 spell, an account-level
-   *  outage) stops paying the full connect/request budget on every call once it
-   *  has opened. Extracted to a pure function — rather than inlined in
-   *  `proxyPrimary` — so this composition is unit-testable without the rest of
-   *  `WorkerWiring`. */
-  private[wiring] def breakerGuarded(proxyLeg: HttpFetch, clock: java.time.Clock,
-                                     breakerMeter: tools.CircuitBreakerMeter = tools.CircuitBreakerMeter.noop): HttpFetch =
-    new HostCircuitBreakerHttpFetch(proxyLeg, meter = breakerMeter, clock = clock)
-
-  /** [[breakerGuarded]] around the proxy leg with its paid-egress `meter` INSIDE
-   *  the breaker: every attempt that reached Decodo is counted with its outcome,
-   *  and a fast-fail from an open breaker — which sends nothing — is not, or an
-   *  open breaker would read as the proxy failing at 100%. */
-  private[wiring] def meteredProxyLeg(proxyLeg: HttpFetch, meter: HttpOutcomeRecorder, clock: java.time.Clock,
-                                      breakerMeter: tools.CircuitBreakerMeter = tools.CircuitBreakerMeter.noop): HttpFetch =
-    breakerGuarded(new CountingHttpFetch(proxyLeg, meter), clock, breakerMeter)
 }

@@ -38,7 +38,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  *    7. Total wall time end-to-end.
  *
  *  Run:
- *    scripts/with-prod-mongo.sh sbt 'worker/Test/runMain clients.tools.MeasureStartup'
+ *    scripts/with-prod-mongo.sh sbt 'scrapers/Test/runMain clients.tools.MeasureStartup'
  */
 // `def main` rather than `extends App` deliberately — `App` runs the whole
 // body inside the class's `<clinit>`, so a Mongo connect timeout surfaces

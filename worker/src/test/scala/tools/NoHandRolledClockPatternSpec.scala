@@ -29,7 +29,7 @@ class NoHandRolledClockPatternSpec extends AnyFlatSpec with Matchers {
 
   import ScalaSourceScan.{codeOf, read, scalaFiles}
 
-  private val ClientRoot = "worker/src/main/scala/services/cinemas"
+  private val ClientRoot = "scrapers/src/main/scala/services/cinemas"
   private val Source     = s"$ClientRoot/common/ScraperParse.scala"
 
   private val ClockLiteral =

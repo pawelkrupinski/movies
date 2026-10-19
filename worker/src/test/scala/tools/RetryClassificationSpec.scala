@@ -2,7 +2,6 @@ package tools
 
 import clients.tools.{ConstantHttpFetch, FailingHttpFetch, RequestLogHttpFetch}
 import com.mongodb.MongoWriteException
-import modules.wiring.EgressWiring
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.{MongoErrors, UptimeMonitor}
@@ -92,12 +91,12 @@ class RetryClassificationSpec extends AnyFlatSpec with Matchers {
     breaker.openRemainingMillis("www.odeon.co.uk") > 0
   }
 
-  /** The production proxy chain (`EgressWiring.proxyPrimary`) with its proxy leg failing
+  /** The production proxy chain (`ProxyChain.proxyPrimary`) with its proxy leg failing
    *  this way every time: a provider failure must never end the chain nor stop the next
    *  route answering, however often it repeats. */
   private def fallsThroughProxyLeg(failure: Throwable): Boolean = {
     val fallback = new RequestLogHttpFetch(new ConstantHttpFetch("ok"))
-    val chain   = EgressWiring.proxyPrimary(IndexedSeq(throwing(failure)), fallback, SpecClock.Pinned)
+    val chain   = ProxyChain.proxyPrimary(IndexedSeq(throwing(failure)), fallback, SpecClock.Pinned)
     val answers = (1 to 10).map(_ => Try(chain.get(Url)).toOption)
     answers.forall(_.contains("ok")) && fallback.calls.size == 10 &&
       !failure.isInstanceOf[HttpStatusException] && !ReadOutcome.isAbsent(failure)

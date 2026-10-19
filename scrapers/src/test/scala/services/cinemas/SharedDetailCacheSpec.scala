@@ -39,7 +39,7 @@ import scala.jdk.CollectionConverters._
  */
 class SharedDetailCacheSpec extends AnyFlatSpec with Matchers {
 
-  private val CinemasDirectory: Path = Paths.get("worker/src/main/scala/services/cinemas")
+  private val CinemasDirectory: Path = Paths.get("scrapers/src/main/scala/services/cinemas")
 
   /** The composition root: the only place allowed to name a detail cache at all,
    *  and there only as the `chainDetailCache` seam's diagnostic default. */

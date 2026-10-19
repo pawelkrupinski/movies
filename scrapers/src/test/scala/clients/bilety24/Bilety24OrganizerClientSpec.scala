@@ -127,7 +127,7 @@ class Bilety24OrganizerClientSpec
     // Both parsed as slots, and the (dateTime, bookingUrl) dedup kept both — prod
     // served every Braniewo/Środa screening twice until 2026-09-23.
     val html = new String(java.nio.file.Files.readAllBytes(java.nio.file.Paths.get(
-      "worker/src/test/resources/fixtures/roster-audit/bilety24-organiser-477-sroda-wielkopolska.html")),
+      "scrapers/src/test/resources/fixtures/roster-audit/bilety24-organiser-477-sroda-wielkopolska.html")),
       java.nio.charset.StandardCharsets.UTF_8)
     html should include("kup-bilet-na-") // the shape under test is really in the fixture
     val movies = Bilety24OrganizerClient.parse(html, KinoForumBoleslawiec, titleNormalizer)

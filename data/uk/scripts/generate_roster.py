@@ -29,7 +29,7 @@ PAGES = ROOT / "data/uk/pages.json"
 TOWNS = ROOT / "data/uk/towns.json"
 OUT = ROOT / "common/src/main/scala/models/UkPages.scala"
 VENUES_OUT = ROOT / "common/src/main/scala/models/UkRosterData.scala"
-SOURCES_OUT = ROOT / "worker/src/main/scala/services/cinemas/uk/UkSourcesData.scala"
+SOURCES_OUT = ROOT / "scrapers/src/main/scala/services/cinemas/uk/UkSourcesData.scala"
 # The order the pickers show the nations in — the old roster's, kept in one place.
 NATIONS = ["England", "Scotland", "Northern Ireland", "Wales", "Crown Dependencies"]
 

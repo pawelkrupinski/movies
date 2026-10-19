@@ -3,7 +3,7 @@
 
 Emits two files, both checked in:
   docs/venue-maps/AMC-VENUE-MAP.tsv                       (the table + provenance)
-  worker/src/main/scala/services/cinemas/us/AmcVenueMap.scala   (what the catalogue reads)
+  scrapers/src/main/scala/services/cinemas/us/AmcVenueMap.scala   (what the catalogue reads)
 
 WHY A JOIN AND NOT A RULE. Our US roster (data/us/venues.json, harvested from
 flicks.us) and AMC's own roster disagree on venue NAMES in ~30% of cases: flicks

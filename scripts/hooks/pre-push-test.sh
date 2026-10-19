@@ -111,15 +111,17 @@ check "a web source compiles web's Test, It and Page configs, and e2e's tests" \
 check "worker's fixtures config also compiles web's, whose Page config builds on it" \
   "worker/Test/compile worker/It/compile web/Test/compile web/It/compile web/Page/compile e2e/Test/compile" \
   "$(compiles worker/src/fixtures/scala/tools/EnrichmentCache.scala)"
+check "a scraper compiles the scrapers' tests and the worker's and e2e's over them" \
+  "scrapers/Test/compile worker/Test/compile worker/It/compile e2e/Test/compile" "$(compiles scrapers/src/main/scala/services/cinemas/A.scala)"
 check "an e2e spec compiles e2e alone" "e2e/Test/compile" "$(compiles e2e/src/test/scala/A.scala)"
 check "common compiles every module's test configs" \
-  "common/Test/compile identity/Test/compile testkit/Test/compile worker/Test/compile worker/It/compile web/Test/compile web/It/compile web/Page/compile e2e/Test/compile" \
+  "common/Test/compile identity/Test/compile testkit/Test/compile scrapers/Test/compile worker/Test/compile worker/It/compile web/Test/compile web/It/compile web/Page/compile e2e/Test/compile" \
   "$(compiles common/src/main/scala/A.scala)"
 check "the build compiles every module's test configs" \
-  "common/Test/compile identity/Test/compile testkit/Test/compile worker/Test/compile worker/It/compile web/Test/compile web/It/compile web/Page/compile e2e/Test/compile" \
+  "common/Test/compile identity/Test/compile testkit/Test/compile scrapers/Test/compile worker/Test/compile worker/It/compile web/Test/compile web/It/compile web/Page/compile e2e/Test/compile" \
   "$(compiles build.sbt)"
 check "an identity source compiles identity and every module built on it" \
-  "identity/Test/compile testkit/Test/compile worker/Test/compile worker/It/compile web/Test/compile web/It/compile web/Page/compile e2e/Test/compile" \
+  "identity/Test/compile testkit/Test/compile scrapers/Test/compile worker/Test/compile worker/It/compile web/Test/compile web/It/compile web/Page/compile e2e/Test/compile" \
   "$(compiles identity/src/main/scala/services/identity/A.scala)"
 check "a dashboard alone compiles nothing extra" "" \
   "$(compiles infra/nix/files/monitoring/grafana/dashboards/apps/kinowo-http.json)"
@@ -128,7 +130,7 @@ check "a dashboard alone compiles nothing extra" "" \
 # lints, minus the ones that need the GitOps manifests or boot a server).
 printf '\033[36m▸\033[0m pre-push --lint-plan\n'
 lints() { printf '%s\n' "$@" | "$REPO_ROOT/scripts/hooks/pre-push" --lint-plan | tr '\n' ' ' | sed 's/ $//'; }
-Always="worker:tools.NoWallClockInTestsSpec worker:services.cinemas.NoWallClockInClientsSpec worker:deploy.GrafanaMetricCoverageSpec worker:deploy.NoSilencedGhCurlSpec web:deploy.GrafanaWebMetricCoverageSpec"
+Always="worker:tools.NoWallClockInTestsSpec scrapers:services.cinemas.NoWallClockInClientsSpec worker:deploy.GrafanaMetricCoverageSpec worker:deploy.NoSilencedGhCurlSpec web:deploy.GrafanaWebMetricCoverageSpec"
 has() { case " $1 " in *" $2 "*) echo yes ;; *) echo no ;; esac; }
 check "a production Scala source runs the standing lints only" "$Always" "$(lints worker/src/main/scala/A.scala)"
 for changed in scripts/x.sh .github/workflows/x.yml .claude/skills/x/SKILL.md CLAUDE.md build.sbt web/src/test/scala/ASpec.scala \

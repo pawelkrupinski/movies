@@ -48,7 +48,7 @@ class DeepExpressionLintSpec extends AnyFlatSpec with Matchers {
     val roots = sourceRoots
     roots.map(ModuleSources.named) should contain allOf (
       "common/src/main/scala", "common/src/test/scala", "web/src/main/scala", "web/src/test/scala", "web/src/it/scala",
-      "web/src/page/scala", "identity/src/main/scala", "identity/src/test/scala", "worker/src/main/scala", "worker/src/test/scala", "worker/src/it/scala",
+      "web/src/page/scala", "identity/src/main/scala", "identity/src/test/scala", "scrapers/src/main/scala", "scrapers/src/test/scala", "worker/src/main/scala", "worker/src/test/scala", "worker/src/it/scala",
       "worker/src/fixtures/scala")
     val sources = roots.flatMap(root => Files.walk(root).iterator.asScala.filter(_.toString.endsWith(".scala")).toSeq)
     val deep = sources.map(p => p -> longestChain(Files.readAllLines(p).asScala.toSeq)).filter(_._2 > MaxChain)

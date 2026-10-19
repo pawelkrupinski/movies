@@ -44,9 +44,9 @@ class AotClassListSpec extends AnyFlatSpec with Matchers {
 
   /** The other direction: code the list has not caught up with. Scrapers are where one country's
    *  classes differ from another's — and where no heap dump may have seen them yet — so every class
-   *  the worker has under `services.cinemas` must be listed. One missing is a scraper added since
+   *  the worker ships under `services.cinemas` (the scrapers module's) must be listed. One missing is a scraper added since
    *  the list was made: refresh it with `--keep` (scripts/aot-class-list.py says how), no dump needed. */
-  it should "name every scraper class the worker has" in {
+  it should "name every scraper class the worker ships" in {
     val root = java.nio.file.Paths.get(classOf[services.cinemas.CinemaScraperCatalog].getProtectionDomain.getCodeSource.getLocation.toURI)
     val scrapers = root.resolve("services/cinemas")
     withClue(s"$root is not a class directory: ")(java.nio.file.Files.isDirectory(scrapers) shouldBe true)
@@ -57,7 +57,7 @@ class AotClassListSpec extends AnyFlatSpec with Matchers {
     val missing   = classes.filterNot(listedSet).sorted
     withClue(s"${missing.size} scraper class(es) the AOT class list lacks (${missing.take(5).mkString(", ")}) — refresh it: " +
       "scripts/aot-class-list.py --keep worker/src/main/resources/aot-classes.txt --package " +
-      "worker/target/scala-3.9.0/worker_3-1.0-SNAPSHOT.jar:services.cinemas. > /tmp/aot-classes.txt && mv /tmp/aot-classes.txt worker/src/main/resources/aot-classes.txt: ") {
+      "scrapers/target/scala-3.9.0/scrapers_3-1.0-SNAPSHOT.jar:services.cinemas. > /tmp/aot-classes.txt && mv /tmp/aot-classes.txt worker/src/main/resources/aot-classes.txt: ") {
       missing shouldBe empty
     }
   }

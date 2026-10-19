@@ -27,7 +27,7 @@ Unit=(
     "worker/Test services.sharecards.ShareCardConcurrencySpec"
     "worker/Test tools.BoundedParallelSpec"
     "worker/Test tools.AdaptiveParallelSpec"
-    "worker/Test tools.ParallelDetailFetchSpec"
+    "scrapers/Test tools.ParallelDetailFetchSpec"
     "worker/Test tools.FilmwebDiffParallelFetchSpec"
 )
 It=(

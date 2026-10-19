@@ -21,12 +21,12 @@ class SourceTokenTablesSpec extends AnyFlatSpec with Matchers {
 
   import ScalaSourceScan.{codeOf, scalaFiles}
 
-  private val Roots = Seq("worker/src/main/scala/services/cinemas", "common/src/main/scala", "identity/src/main/scala")
+  private val Roots = Seq("scrapers/src/main/scala/services/cinemas", "common/src/main/scala", "identity/src/main/scala")
   private val Vocabulary = "common/src/main/scala/services/movies/ScreeningTokens.scala"
 
   /** `file: TOKEN` → why that table may map onto a token the vocabulary drops. */
   private val Allowlist: Map[String, String] = Map(
-    "worker/src/main/scala/services/cinemas/es/OcineParser.scala: URBAN" -> (
+    "scrapers/src/main/scala/services/cinemas/es/OcineParser.scala: URBAN" -> (
       "TODO(decide): Ocine's 'Urban' room — a badge (add \"urban\" to ScreeningTokens.Canonical) or a baseline the " +
         "parser should drop? Parked in review-tools/PARKED.md; until then the vocabulary drops it, logged once"),
   )

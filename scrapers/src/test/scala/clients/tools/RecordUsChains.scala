@@ -11,7 +11,7 @@ import java.time.{LocalDate, ZoneId}
  * Record the live US chain responses as fixtures for `AlamoDrafthouseClientSpec`,
  * `ShowcaseUsClientSpec` and `LandmarkClientSpec` to replay.
  *
- * Run with `sbt "worker/Test/runMain clients.tools.RecordUsChains"`. Pass a date
+ * Run with `sbt "scrapers/Test/runMain clients.tools.RecordUsChains"`. Pass a date
  * as the single argument to pin `today` (the Webedia schedule URL carries
  * `from`/`to`, so its fixture filename is date-dependent and the spec pins the
  * same day); with no argument it records for today and the specs must be updated

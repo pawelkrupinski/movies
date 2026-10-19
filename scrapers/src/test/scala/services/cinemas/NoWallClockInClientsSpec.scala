@@ -21,7 +21,7 @@ import scala.jdk.CollectionConverters._
  *  `.now(` is a leak and fails this spec, naming the offending file:line. */
 class NoWallClockInClientsSpec extends AnyFlatSpec with Matchers {
 
-  private val ClientsDirectory: Path = Paths.get("worker/src/main/scala/services/cinemas")
+  private val ClientsDirectory: Path = Paths.get("scrapers/src/main/scala/services/cinemas")
 
   private val NowCall = """Local(?:Date|DateTime)\.now\(""".r
 
@@ -65,7 +65,7 @@ class NoWallClockInClientsSpec extends AnyFlatSpec with Matchers {
   // the real date passed them). Verify the override for EVERY date-sensitive
   // client, so a new venue can't silently reopen the leak.
   it should "pin the injected `today` on every date-sensitive client in CinemaScraperCatalog" in {
-    val catalog = Paths.get("worker/src/main/scala/services/cinemas/CinemaScraperCatalog.scala")
+    val catalog = Paths.get("scrapers/src/main/scala/services/cinemas/CinemaScraperCatalog.scala")
     Files.exists(catalog) shouldBe true
     val src = new String(Files.readAllBytes(catalog), java.nio.charset.StandardCharsets.UTF_8)
 

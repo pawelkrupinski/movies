@@ -23,7 +23,7 @@ final class ChainListEgress(direct: HttpFetch, proxyShards: Option[IndexedSeq[Ht
    *  worker's own Multikino scrapes do, never up front as well. */
   def fetchFor(directory: ChainDirectory): String => FetchedPage = {
     val directLeg = directory.warmUpUrl.fold(direct)(new SessionWarmingHttpFetch(direct, _))
-    val http      = proxyShards.fold(directLeg)(EgressWiring.proxyPrimary(_, directLeg, clock, directory.warmUpUrl))
+    val http      = proxyShards.fold(directLeg)(ProxyChain.proxyPrimary(_, directLeg, clock, directory.warmUpUrl))
     url => FetchedPage(url, http.get(url))
   }
 

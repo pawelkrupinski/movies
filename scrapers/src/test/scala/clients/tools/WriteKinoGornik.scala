@@ -8,7 +8,7 @@ import java.time.LocalDate
 
 /** Record Kino Górnik Łęczyca's MSI month pages under test/resources/fixtures/kino-gornik-leczyca/, the
  *  capture MsiClientSpec replays for the venue's distributor tails. Run:
- *    sbt 'worker/Test/runMain clients.tools.WriteKinoGornik <yyyy-mm-dd>'
+ *    sbt 'scrapers/Test/runMain clients.tools.WriteKinoGornik <yyyy-mm-dd>'
  *  with the capture date, which the spec then pins as `today`. */
 object WriteKinoGornik {
   def main(args: Array[String]): Unit = {

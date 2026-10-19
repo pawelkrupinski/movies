@@ -1,7 +1,6 @@
 package clients.tools
 
-import tools.{DaemonExecutors, HttpFetch, RealHttpFetch, ResidentialProxy, TestWiring}
-import modules.wiring.EgressWiring
+import tools.{DaemonExecutors, HttpFetch, ProxyChain, RealHttpFetch, ResidentialProxy, TestWiring}
 import services.movies.InMemoryMovieRepository
 
 import java.util.concurrent.atomic.AtomicInteger
@@ -81,7 +80,7 @@ final class RecordAllDataToFixture(configuration: _root_.settings.ProcessConfigu
   // so production fetches them residential-proxy first (Decodo), direct behind it. The
   // recorder builds the same chain over the PROCESS's credentials — the wiring's own
   // configuration is empty and `TestWiring` refuses paid egress (see
-  // [[EgressWiring.paidEgressChain]]).
+  // [[ProxyChain.paidEgressChain]]).
   //
   // The proxy leg fetches through its OWN clients, so a recorder wired as the chain's inner
   // `direct` would never see a proxy-served response and the corpus would silently
@@ -91,9 +90,9 @@ final class RecordAllDataToFixture(configuration: _root_.settings.ProcessConfigu
   private lazy val processProxyShards: Option[IndexedSeq[HttpFetch]] =
     modules.wiring.EgressWiring.residentialShards(ResidentialProxy.fromConfiguration(configuration), tlsContext)
   override lazy val multikinoFetch: HttpFetch =
-    new RecordingHttpFetch(captureDate, EgressWiring.multikinoChain(processProxyShards, new RealHttpFetch(), clock))
+    new RecordingHttpFetch(captureDate, services.cinemas.CinemaEgress.multikinoChain(processProxyShards, new RealHttpFetch(), clock))
   override lazy val biletynaFetch: HttpFetch =
-    new RecordingHttpFetch(captureDate, EgressWiring.paidEgressChain(processProxyShards, new RealHttpFetch(), clock))
+    new RecordingHttpFetch(captureDate, ProxyChain.paidEgressChain(processProxyShards, new RealHttpFetch(), clock))
 
   // TestWiring stubs the TMDB key to "test-api-key" (fine for replay, where the
   // fixture filename strips api_key). But RECORDING fires the real request, so

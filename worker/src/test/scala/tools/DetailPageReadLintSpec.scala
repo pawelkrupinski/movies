@@ -24,7 +24,7 @@ class DetailPageReadLintSpec extends AnyFlatSpec with Matchers {
   }
 
   "worker sources" should "read a detail page only through DetailFetchOutcome.page" in {
-    val sites = scalaFiles(Seq("worker/src/main/scala"))
+    val sites = scalaFiles(Seq("worker/src/main/scala", "scrapers/src/main/scala"))
       .filterNot(_.toString.endsWith("DetailFetchOutcome.scala"))
       .filter(path => HandRolled.findFirstIn(codeOf(path)).isDefined)
       .map(_.toString)

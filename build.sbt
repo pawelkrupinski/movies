@@ -3,6 +3,9 @@
 //   common  — shared domain + data layer (models, MovieRepository/MovieCache, Mongo,
 //             EventBus, UptimeMonitor, the HTTP-fetch family). Plain Scala lib.
 //   testkit — shared test fakes/helpers (not deployed). dependsOn(common).
+//   scrapers — the cinema scrapers (`services.cinemas`): every venue client, its catalogues and the
+//             scrape contract the worker drives them by. dependsOn(common, identity). A library, not
+//             an app: the worker depends on it and ships its classes.
 //   web     — content-serving Play app (controllers, Twirl views). The k3s web tier.
 //   worker  — scrape + enrich background app (plain `def main`). The per-country k3s worker pods.
 //             worker's `fixtures` sbt config (src/fixtures/scala) holds the fixture
@@ -288,6 +291,23 @@ lazy val testkit = (project in file("testkit"))
   )
   .settings(noApiDocs)
 
+// ── Cinema scrapers ──────────────────────────────────────────────────────────
+//
+// Every venue client (`services.cinemas.{pl,uk,us,de,es,roster}`), the catalogues that list them, and the scrape
+// contract the worker drives them through (`services.cinemas.common`). A module of its own so an edit to one scraper
+// recompiles the scrapers, not the rest of the worker. Built on common and identity; the worker depends on it.
+lazy val scrapers = (project in file("scrapers"))
+  .dependsOn(common, identity, testkit % Test)
+  .settings(
+    name := "scrapers",
+    libraryDependencies ++= Seq(scalatestPlay % Test, scalatestScalaCheck % Test),
+    // The scraper specs read their captured pages off the shared repo-root `test/resources` tree, by path and
+    // through `getResourceAsStream("/fixtures/…")` — referenced in place on the test classpath, as the worker does.
+    Test / unmanagedClasspath += Attributed.blank((LocalRootProject / baseDirectory).value / "test" / "resources"),
+  )
+  .settings(unitReportSettings, testOrderSettings)
+  .settings(noApiDocs)
+
 // ── Worker app (scrape + enrich) ─────────────────────────────────────────────
 //
 // Plain Scala app (no Play): its only inbound HTTP is a small ops server (/health, /ready, /metrics, /heapdump, /profile), so it
@@ -299,7 +319,9 @@ lazy val worker = (project in file("worker"))
   // `it` too: the integration specs need the same shared doubles the unit specs do —
   // notably the repositories that report an INCOMPLETE read, which is the only way to
   // test that a caller honours a completeness flag.
-  .dependsOn(common, identity, testkit % "test,it,fixtures->compile")
+  // `test->test` on scrapers: the worker's specs drive its scrape tasks through the scrapers' own test doubles
+  // (`StubCinemaScraper`, `ScriptedCinemaScraper`, `FakeDetailEnricher`) and recording tools.
+  .dependsOn(common, identity, scrapers % "compile->compile;test->test", testkit % "test,it,fixtures->compile")
   .enablePlugins(JavaAppPackaging)
   .configs(IntegrationTest, Fixtures)
   .settings(
@@ -470,7 +492,7 @@ lazy val e2e = (project in file("e2e"))
 // ── Root aggregator (no sources) ─────────────────────────────────────────────
 
 lazy val root = (project in file("."))
-  .aggregate(common, identity, testkit, web, worker, e2e)
+  .aggregate(common, identity, scrapers, testkit, web, worker, e2e)
   .settings(
     name := "movies",
     publish / skip := true,
@@ -550,7 +572,7 @@ def ensureLocalMongo(state: State, uri: String): Unit = {
 // first failing module. `testUnit` is the full local alias; keeping the
 // aggregating aliases means new modules join the existing CI jobs rather than
 // spawning new ones.
-addCommandAlias("testUnit", "; all common/Test/test identity/Test/test testkit/Test/test web/Test/test worker/Test/test ; e2eShared")
+addCommandAlias("testUnit", "; all common/Test/test identity/Test/test scrapers/Test/test testkit/Test/test web/Test/test worker/Test/test ; e2eShared")
 // The e2e module MINUS the country-scoped specs. Those install a country's
 // TitleRuleSet into the process-global TitleNormalizer, so sharing a JVM with the
 // Polish whole-corpus specs (or with each other) silently normalises the wrong
@@ -564,9 +586,9 @@ addCommandAlias("itAll", "all web/IntegrationTest/test worker/IntegrationTest/te
 // and the `e2e` module is itself FANNED OUT across four parallel shards (each
 // tagged heavy spec boots the full ~110s pipeline one or more times, so on one
 // runner the module was the long pole). See .github/workflows/ci.yml.
-addCommandAlias("testUnitNoE2e", "all common/Test/test identity/Test/test testkit/Test/test web/Test/test worker/Test/test")
+addCommandAlias("testUnitNoE2e", "all common/Test/test identity/Test/test scrapers/Test/test testkit/Test/test web/Test/test worker/Test/test")
 addCommandAlias("testUnitWorker", "worker/Test/test")
-addCommandAlias("testUnitWorkerAndWeb", "all worker/Test/test web/Test/test")
+addCommandAlias("testUnitWorkerAndWeb", "all worker/Test/test web/Test/test scrapers/Test/test")
 addCommandAlias("testUnitRest", "all common/Test/test identity/Test/test testkit/Test/test")
 
 // e2e CI shards. The two heavy whole-corpus determinism specs (tagged

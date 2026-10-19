@@ -23,7 +23,7 @@ import scala.util.matching.Regex
  */
 class ClientReadsThroughHttpReadSpec extends AnyFlatSpec with Matchers {
 
-  private val Roots = Seq("worker/src/main/scala/services/enrichment", "worker/src/main/scala/services/cinemas")
+  private val Roots = Seq("worker/src/main/scala/services/enrichment", "scrapers/src/main/scala/services/cinemas")
   private val Files = Seq("worker/src/main/scala/services/TmdbClient.scala")
 
   /** A call on a receiver named like a fetch (`http`, `httpFetch`, `bnFetch`, `detailFetch`…). */
@@ -31,7 +31,7 @@ class ClientReadsThroughHttpReadSpec extends AnyFlatSpec with Matchers {
 
   /** File → why its raw read is right. */
   private val Allowlist: Map[String, String] = Map(
-    "worker/src/main/scala/services/cinemas/common/VueCinemasPlatformClient.scala" ->
+    "scrapers/src/main/scala/services/cinemas/common/VueCinemasPlatformClient.scala" ->
       "the token POST only mints a session cookie; its answer is never read, and the films GET after it is read through HttpRead.page and fails the scrape on its own"
   )
 

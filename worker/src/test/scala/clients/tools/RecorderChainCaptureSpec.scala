@@ -90,20 +90,20 @@ class RecorderChainCaptureSpec extends AnyFlatSpec with Matchers with BeforeAndA
 
   "The recorder's paid-egress chain" should "be `direct` alone when there is no residential proxy" in {
     val direct = new Leg(Some("from-direct"))
-    modules.wiring.EgressWiring.paidEgressChain(None, direct, _root_.tools.SpecClock.Pinned) should be theSameInstanceAs direct
+    _root_.tools.ProxyChain.paidEgressChain(None, direct, _root_.tools.SpecClock.Pinned) should be theSameInstanceAs direct
   }
 
   it should "ask the proxy first and leave `direct` unasked when the proxy answers" in {
     val proxy  = new Leg(Some("from-proxy"))
     val direct = new Leg(Some("from-direct"))
-    modules.wiring.EgressWiring.paidEgressChain(Some(IndexedSeq(proxy)), direct, _root_.tools.SpecClock.Pinned)
+    _root_.tools.ProxyChain.paidEgressChain(Some(IndexedSeq(proxy)), direct, _root_.tools.SpecClock.Pinned)
       .get(MultikinoFilmsUrl) shouldBe "from-proxy"
     direct.calls.get shouldBe 0
   }
 
   it should "fall straight back to `direct` behind a proxy that failed" in {
     val direct = new Leg(Some("from-direct"))
-    modules.wiring.EgressWiring.paidEgressChain(Some(IndexedSeq(new Leg(None))), direct, _root_.tools.SpecClock.Pinned)
+    _root_.tools.ProxyChain.paidEgressChain(Some(IndexedSeq(new Leg(None))), direct, _root_.tools.SpecClock.Pinned)
       .get(MultikinoFilmsUrl) shouldBe "from-direct"
     direct.calls.get shouldBe 1
   }

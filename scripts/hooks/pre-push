@@ -240,15 +240,17 @@ plan() {
 # ── Which test configs a set of changed paths has to compile ────────────────────────────────────
 # One line per path on stdin; prints the sbt compile tasks, one per line, in dependency order. A
 # module's own test configs plus those of every module that depends on it (build.sbt's dependsOn):
-# common → identity → testkit → worker → web (page->fixtures) → e2e. The build itself touches them all.
+# common → identity → testkit → scrapers → worker (test->test on scrapers) → web (page->fixtures) → e2e. The build
+# itself touches them all.
 compile_plan() {
-    local common=0 identity=0 testkit=0 worker=0 web=0 e2e=0 path
+    local common=0 identity=0 testkit=0 scrapers=0 worker=0 web=0 e2e=0 path
     while IFS= read -r path; do
         case "$path" in
             build.sbt|project/*)  common=1 ;;
             common/*.scala|common/*.java)   common=1 ;;
             identity/*.scala|identity/*.java) identity=1 ;;
             testkit/*.scala|testkit/*.java) testkit=1 ;;
+            scrapers/*.scala|scrapers/*.java) scrapers=1 ;;
             # web's Page config compiles against worker's fixtures config (page->fixtures).
             worker/src/fixtures/*)          worker=1; web=1 ;;
             worker/*.scala|worker/*.java)   worker=1 ;;
@@ -258,13 +260,15 @@ compile_plan() {
     done
     [ $common = 1 ] && identity=1
     [ $identity = 1 ] && testkit=1
-    [ $testkit = 1 ] && worker=1
+    [ $testkit = 1 ] && scrapers=1
+    [ $scrapers = 1 ] && worker=1
     [ $worker = 1 ] && e2e=1
     [ $web = 1 ] && e2e=1
     [ $testkit = 1 ] && web=1
     [ $common = 1 ] && echo common/Test/compile
     [ $identity = 1 ] && echo identity/Test/compile
     [ $testkit = 1 ] && echo testkit/Test/compile
+    [ $scrapers = 1 ] && echo scrapers/Test/compile
     [ $worker = 1 ] && printf '%s\n' worker/Test/compile worker/It/compile
     [ $web = 1 ] && printf '%s\n' web/Test/compile web/It/compile web/Page/compile
     [ $e2e = 1 ] && echo e2e/Test/compile
@@ -277,7 +281,7 @@ compile_plan() {
 # reads: scripts/, .github/, .claude/, CLAUDE.md, build.sbt, project/, */src/test|it|page/, worker/src/fixtures, testkit/
 # (~30 s warm in all). The set is read off the directories, so a new lint spec joins it by existing:
 #   <module>/src/test/scala/deploy/*Spec.scala     every workflow / wiring / budget / gate spec
-#   <module>/src/test/scala/tools/{No*,*Lint*}Spec the source lints (common, worker, web)
+#   <module>/src/test/scala/tools/{No*,*Lint*}Spec the source lints (common, scrapers, worker, web)
 # except what stays out, and why:
 #   needs the GitOps manifests, which live in another repository (CI checks them out; the sbt check runs
 #   infra/bin/fetch-gitops first, and with PREPUSH_GITOPS=1 -- the manifests in place -- these run too):
@@ -289,7 +293,7 @@ compile_plan() {
 LintSpecsNeedingGitOps="NodeCpuBudgetSpec NodeMemoryBudgetSpec ChangeStreamSilenceAlertSpec CinemaScrapeStalenessAlertSpec WorkerRolloutStaggerSpec FluxImageAutomationSpec JdkParityOptionsSpec AotCacheOptionsSpec K8sTierPathGatingSpec PrometheusNodePortAgreementSpec WorkerScrapeCadenceConfigSpec SharedUsersDatabaseConfigSpec WebRolloutAvailabilitySpec"
 LintSpecsBootingServers="FixtureServerBootSpec FixtureServerBootOverlapSpec"
 # The lints every sbt check runs, whatever the push touches.
-StandingLintSpecs="worker:tools.NoWallClockInTestsSpec worker:services.cinemas.NoWallClockInClientsSpec worker:deploy.GrafanaMetricCoverageSpec worker:deploy.NoSilencedGhCurlSpec web:deploy.GrafanaWebMetricCoverageSpec"
+StandingLintSpecs="worker:tools.NoWallClockInTestsSpec scrapers:services.cinemas.NoWallClockInClientsSpec worker:deploy.GrafanaMetricCoverageSpec worker:deploy.NoSilencedGhCurlSpec web:deploy.GrafanaWebMetricCoverageSpec"
 # Whether one of the paths on stdin is one the repo-reading lint specs read.
 reads_repo() {
     local path found=1
@@ -304,7 +308,7 @@ lint_plan() {
     [ "${PREPUSH_GITOPS:-}" = 1 ] || excluded="$excluded $LintSpecsNeedingGitOps"
     printf '%s\n' $StandingLintSpecs
     if [ $repo_read = 1 ] && ! skipped lintspecs; then
-        for module in common worker web; do
+        for module in common scrapers worker web; do
             for dir in deploy tools; do
                 for file in "$module"/src/test/scala/$dir/*Spec.scala; do
                     [ -f "$file" ] || continue
@@ -584,7 +588,7 @@ check_sbt() {
         fi
     fi
     lints="$(printf '%s\n' "$changed" | lint_plan)"
-    for module in common worker web; do
+    for module in common scrapers worker web; do
         tests+=("$module/Test/testOnly $(printf '%s\n' "$lints" | sed -n "s/^$module://p" | tr '\n' ' ' | sed 's/ $//')")
     done
     local run=(sbt -batch -Dsbt.server.forcestart=false ${compiles[@]+"${compiles[@]}"} "${tests[@]}")

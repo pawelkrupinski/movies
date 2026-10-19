@@ -39,7 +39,8 @@ class DefaultedMemberForwardingSpec extends AnyFlatSpec with Matchers {
 
   private val httpFetch = Decorated[HttpFetch](
     classOf[HttpFetch],
-    anchors = Seq(classOf[HttpFetch], classOf[FallbackHttpFetch]),
+    // One class per classes directory a decorator may live in: common, the scrapers, the worker.
+    anchors = Seq(classOf[HttpFetch], classOf[services.cinemas.CinemaScraperCatalog], classOf[services.identity.adapters.LookupFillLiveFetch]),
     factories = Map(
       classOf[PacedHttpFetch]              -> ((d: HttpFetch) => PacedHttpFetch.perProcess(d, intervalFor = _ => None, clock = SpecClock.Pinned)),
       classOf[ThrottledHttpFetch]          -> ((d: HttpFetch) => new ThrottledHttpFetch(d, clock = SpecClock.Pinned)),

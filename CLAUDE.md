@@ -15,7 +15,7 @@ CI is the safety net, not the test plan: land once the layers are green locally,
 
 | Layer | Required for |
 |---|---|
-| `sbt testUnit` | any change under `web/`, `worker/`, `common/` or `identity/` `src/main/` that isn't pure view markup (controllers, services, enrichment, clients, models, the identity resolver) |
+| `sbt testUnit` | any change under `web/`, `worker/`, `scrapers/`, `common/` or `identity/` `src/main/` that isn't pure view markup (controllers, services, enrichment, the cinema scrapers, models, the identity resolver) |
 | `sbt itAll` (`*/src/it/scala/`, fakes + real cache/repository) | enrichment pipelines, cache layering, the read-model projection, anything crossing the `MovieService` ↔ `MovieRepository` ↔ `MovieCache` seam |
 | `sbt web/PageTest/test` (real Chrome over CDP, Twirl fixtures) | `web/src/main/assets/js/`, the inline `<script>` blocks in the repertoire templates, the rendered HTML shape those blocks read |
 | Playwright (`page-tests-playwright`; mobile + desktop × Chromium / Chrome / WebKit in CI, Firefox local-only) | visible UX changes — card-tap, pill rows, gestures, the empty / loading states |

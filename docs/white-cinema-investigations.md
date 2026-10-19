@@ -49,7 +49,7 @@ OAuth + `ADMIN_ALLOWLIST` (`web/.../controllers/AdminAction.scala`); an anonymou
    per service take the last `RecentScrapes = 3` non-`empty` buckets; the service
    is white when all 3 are `zero`. Skip `*|enrichment` and `img:` services.
    Service name = the cinema's `displayName` (`common/.../models/Cinema.scala`);
-   map it to its client in `worker/.../services/cinemas/CinemaScraperCatalog.scala`.
+   map it to its client in `scrapers/.../services/cinemas/CinemaScraperCatalog.scala`.
 4. **`uptimeBuckets` only retains ~24 h**, so "has this venue EVER been green?" is
    only answerable inside that window — and a venue white across ALL its retained
    buckets is long-dormant, not newly broken.

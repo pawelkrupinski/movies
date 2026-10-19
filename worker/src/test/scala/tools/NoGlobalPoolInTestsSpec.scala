@@ -35,7 +35,7 @@ class NoGlobalPoolInTestsSpec extends AnyFlatSpec with Matchers {
       "the executor Play's action runs a handler on; the controller specs read already-completed futures",
     "web/src/test/scala/controllers/UnreadableSignedInUserSpec.scala" ->
       "an implicit for already-completed futures read through Play's synchronous test helpers",
-    "worker/src/test/scala/clients/tools/MeasureStartup.scala" ->
+    "scrapers/src/test/scala/clients/tools/MeasureStartup.scala" ->
       "a runnable program against the live world, not a spec: no test bound to run out")
 
   private val GlobalPool = """\bExecutionContext\.(?:global|Implicits\.global)\b""".r

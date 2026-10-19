@@ -16,7 +16,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  * directory. Replayed by `clients.newcities.NewCitiesChainScrapeSpec` and
  * `clients.kino_zorza.KinoZorzaClientSpec`. Scrape-only (no enrichment). Run:
  *
- *   sbt 'worker/Test/runMain clients.tools.RecordNewCities'
+ *   sbt 'scrapers/Test/runMain clients.tools.RecordNewCities'
  *
  * Helios bakes the capture date into its REST URLs, so the chain spec pins
  * `today` to the date this recorder ran.

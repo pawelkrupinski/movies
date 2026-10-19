@@ -160,6 +160,8 @@ jobs:
                       !common/src/test/**
                       identity/**
                       !identity/src/test/**
+                      scrapers/**
+                      !scrapers/src/test/**
                       build.sbt
                       project/**
                       Dockerfile

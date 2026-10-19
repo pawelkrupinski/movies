@@ -220,7 +220,7 @@ results_of() { # <code key>
 # The shasum of each NUL-separated path on stdin, and nothing for none -- not `xargs -0 shasum`: GNU xargs (CI's) runs
 # shasum once on no input, hashing its empty stdin, so a checkout with no new file keyed otherwise than its commit.
 hash_each() { local path; while IFS= read -r -d '' path; do shasum "$path" 2>/dev/null; done; }
-CODE_PATHS=(common/src/main identity/src/main worker/src/main worker/src/fixtures testkit/src/main build.sbt project)
+CODE_PATHS=(common/src/main identity/src/main scrapers/src/main worker/src/main worker/src/fixtures testkit/src/main build.sbt project)
 code_key() { # <ref, or . for this checkout's code with its uncommitted edits>
   local listing
   if [ "$1" = "." ]; then

@@ -18,7 +18,7 @@ import scala.jdk.CollectionConverters._
  */
 class ListingConstraintsRoutingSpec extends AnyFlatSpec with Matchers {
 
-  private val Roots = Seq("common/src/main", "identity/src/main", "worker/src/main", "web/src/main", "worker/src/fixtures")
+  private val Roots = Seq("common/src/main", "identity/src/main", "scrapers/src/main", "worker/src/main", "web/src/main", "worker/src/fixtures")
 
   /** The files allowed to name the predicates: where they are defined, and the model itself. */
   private val Owners = Set(

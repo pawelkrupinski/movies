@@ -14,7 +14,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
  * `clients.*` specs). 17 bespoke scrapers + 3 reuses (Kino Wisła via NoveKino,
  * Helios Outlet Park via Helios, Kino CK Lublin via Bilety24). Run:
  *
- *   sbt 'worker/Test/runMain clients.tools.RecordGapCinemas'
+ *   sbt 'scrapers/Test/runMain clients.tools.RecordGapCinemas'
  */
 object RecordGapCinemas {
   private val venueClock = models.VenueClock.system

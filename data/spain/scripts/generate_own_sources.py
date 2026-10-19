@@ -19,7 +19,7 @@ import sys
 HERE = pathlib.Path(__file__).resolve().parent
 DATA = HERE.parent
 REPO = DATA.parent.parent
-OUT = REPO / "worker/src/main/scala/services/cinemas/es/SpanishOwnSourcesData.scala"
+OUT = REPO / "scrapers/src/main/scala/services/cinemas/es/SpanishOwnSourcesData.scala"
 
 
 def problems(roster_ids, ocine_ids, taquilla, artesiete):

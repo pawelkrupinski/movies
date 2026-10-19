@@ -42,7 +42,7 @@ class NoDefaultZoneSpec extends AnyFlatSpec with Matchers {
     ZoneSource                                                       -> "the zone source itself",
     "common/src/main/scala/models/UsRosterData.scala"               -> RosterData,
     "common/src/main/scala/models/SpanishRosterData.scala"          -> RosterData,
-    "worker/src/main/scala/services/cinemas/us/UsChainVenues.scala" -> RosterData)
+    "scrapers/src/main/scala/services/cinemas/us/UsChainVenues.scala" -> RosterData)
 
   /** `file: Owner.parameter` → why that main-code parameter may still default to the live clock. */
   private val ClockDefaultAllowlist: Map[String, String] = Map.empty

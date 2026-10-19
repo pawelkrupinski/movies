@@ -20,7 +20,7 @@ import scala.util.matching.Regex
  */
 class ListingCompletenessSpec extends AnyFlatSpec with Matchers {
 
-  private val Root = "worker/src/main/scala/services/cinemas"
+  private val Root = "scrapers/src/main/scala/services/cinemas"
 
   private val Declares: Regex =
     """\b(?:override\s+(?:def|val|lazy\s+val)\s+listingIsComplete|override\s+def\s+fetchWithSource|PreScrapedCinemaScraper\s*[.(]|CinemaScraper\s*\.\s*Scraped\s*\(|\bScraped\s*\()""".r

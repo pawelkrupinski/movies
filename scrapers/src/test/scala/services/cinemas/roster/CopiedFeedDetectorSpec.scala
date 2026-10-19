@@ -35,7 +35,8 @@ class CopiedFeedDetectorSpec extends AnyFlatSpec with Matchers {
     val registry = new PrometheusRegistry()
     val detector = new CopiedFeedDetector(CopiedFeedDetector.gauge(registry), Country.Poland, watched)
     def gauge: Option[Double] =
-      PrometheusExposition.sample(PrometheusExposition.render(registry), CopiedFeedDetector.Name, """country="pl"""")
+      PrometheusExposition.render(registry).linesIterator.find(_.startsWith(s"${CopiedFeedDetector.Name}{country=\"pl\"}"))
+        .map(_.trim.split("\\s+").last.toDouble)
   }
 
   "CopiedFeedDetector" should "flag a venue whose listings book through another venue's own sessions" in {

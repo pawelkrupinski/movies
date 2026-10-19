@@ -3,12 +3,12 @@
 
 Usage: scripts/aot-class-list.py [--keep LIST] [--package JAR:PREFIX ...] [DUMP.hprof[.gz] ...] > NEW_LIST
 
-The list this repo checks in is regenerated with (sbt worker/package first):
-  scripts/aot-class-list.py --package worker/target/scala-3.9.0/worker_3-1.0-SNAPSHOT.jar:services.cinemas. \
+The list this repo checks in is regenerated with (sbt scrapers/package first):
+  scripts/aot-class-list.py --package scrapers/target/scala-3.9.0/scrapers_3-1.0-SNAPSHOT.jar:services.cinemas. \
     <PL dumps> <UK dumps> ... > worker/src/main/resources/aot-classes.txt
 and, to add scraper classes without new dumps (what AotClassListSpec asks for when one is missing):
   scripts/aot-class-list.py --keep worker/src/main/resources/aot-classes.txt \
-    --package worker/target/scala-3.9.0/worker_3-1.0-SNAPSHOT.jar:services.cinemas. > /tmp/aot-classes.txt \
+    --package scrapers/target/scala-3.9.0/scrapers_3-1.0-SNAPSHOT.jar:services.cinemas. > /tmp/aot-classes.txt \
     && mv /tmp/aot-classes.txt worker/src/main/resources/aot-classes.txt
 
 Reads each dump's LOAD_CLASS records -- every class the JVM had loaded -- and prints the union, sorted,

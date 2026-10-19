@@ -26,7 +26,7 @@ class NoDefaultTitleNormalizerSpec extends AnyFlatSpec with Matchers {
 
   /** "file: Owner.param" → why it still defaults to a normalizer. */
   private val Allowlist: Map[String, String] = Map(
-    "worker/src/main/scala/services/cinemas/CinemaScraperCatalog.scala: this.titles" ->
+    "scrapers/src/main/scala/services/cinemas/CinemaScraperCatalog.scala: this.titles" ->
       "the auxiliary constructor exists for the Poland-only operator tools (FilmwebDiff, RosterAudit)"
   )
 

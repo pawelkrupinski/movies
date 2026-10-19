@@ -7,9 +7,6 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.cinemas.common.{DetailFetchOutcome, ScrapeHorizon}
 import services.cinemas.us.{AlamoDrafthouseClient, AlamoDrafthouseParser}
-import services.identity.{CatalogueId, Listing}
-import services.identity.adapters.{CatalogueLinkReader, TmdbIdentityLookups, VenueDetails}
-import services.movies.TitleNormalizer
 import tools.{HttpFetch, RoutingHttpFetch}
 
 import java.time.{LocalDate, LocalDateTime}
@@ -229,11 +226,6 @@ class AlamoDrafthouseClientSpec extends AnyFlatSpec with Matchers with OptionVal
     encore.releaseYear shouldBe None
     encore.runtimeMinutes.value shouldBe 183
     client.fetchFilmDetail(ShowPage + "ken-russells-the-devils").value.releaseYear shouldBe None
-
-    val listing = Listing.of(Lakeline,
-      CinemaMovie(models.Movie(title = "Avengers Endgame: Encore"), Lakeline, None, Some(ShowPage + "avengers-endgame-encore"), None, Nil, Nil, Nil),
-      TitleNormalizer.forCountry(models.Country.UnitedStates))
-    new VenueDetails(Seq(client), TmdbIdentityLookups.NoGaps).detail(listing).toOption.flatten.value.year shouldBe None
   }
 
   it should "still date a repertory show by the film's own release, and a new film by its opening" in {
@@ -261,21 +253,6 @@ class AlamoDrafthouseClientSpec extends AnyFlatSpec with Matchers with OptionVal
   it should "let a show the API does not know escape as gone, not retry it every tick" in {
     val nothing = new RoutingHttpFetch(Nil, unroutedIsNotFound = true)
     clientOn(nothing).fetchDetail(ShowPage + "no-such-show") shouldBe DetailFetchOutcome.Gone(404)
-  }
-
-  it should "be the VENUE's stated facts, read by identity through its own detail page" in {
-    val client  = clientOn(new FakeHttpFetch("alamo-drafthouse"))
-    val listing = Listing.of(Lakeline,
-      CinemaMovie(models.Movie(title = "Last Shot"), Lakeline, None, Some(ShowPage + "last-shot"), None, Nil, Nil, Nil),
-      TitleNormalizer.forCountry(models.Country.UnitedStates))
-    val facts = new VenueDetails(Seq(client), TmdbIdentityLookups.NoGaps).detail(listing)
-    facts.toOption.flatten.map(f => (f.year, f.runtime)) shouldBe Some((Some(2026), Some(105)))
-  }
-
-  "a show's IMDb id" should "be the venue's own catalogue link to the film" in {
-    val reader = new CatalogueLinkReader(Seq(AlamoDrafthouseClient.CatalogueLinkPages -> new FakeHttpFetch("alamo-drafthouse")))
-    reader.links(ShowPage + "spy-kids") shouldBe Seq(CatalogueId("imdb", "tt0227538"))
-    reader.links(ShowPage + "last-shot") shouldBe Nil
   }
 
   // ── the scraper's contract with the rest of the pipeline ──────────────────

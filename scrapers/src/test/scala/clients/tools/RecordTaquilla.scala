@@ -14,7 +14,7 @@ import scala.jdk.CollectionConverters._
  * `TaquillaClientSpec` replays: the calendar and every day it sells — the venue's
  * whole scrape.
  *
- * Run with `sbt "worker/Test/runMain clients.tools.RecordTaquilla"`. The spec pins
+ * Run with `sbt "scrapers/Test/runMain clients.tools.RecordTaquilla"`. The spec pins
  * `today` to the capture date, so re-recording means updating it there.
  *
  * El Ingenio because its calendar is the shape that matters: a full near week, then

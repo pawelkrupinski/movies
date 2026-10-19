@@ -15,7 +15,7 @@ Live at **<https://kinowo.net>** (Poland) and
 - **Scrapes showtimes** from chains (Cinema City, Multikino, Helios,
   Odeon, Vue, AMC, …), aggregator platforms (kinoheld, Flicks, …) and
   independent venues. Each source has its own client under
-  `worker/src/main/scala/services/cinemas/`, in a per-country
+  `scrapers/src/main/scala/services/cinemas/`, in a per-country
   subpackage (`pl/`, `uk/`, `de/`, `us/`, `es/`); the country-agnostic
   scraping machinery (shared platform clients, fallbacks, retries) lives
   in its `common/`, and the venue rosters in `roster/`.

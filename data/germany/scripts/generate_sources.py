@@ -16,7 +16,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.dirname(HERE)
 ROOT = os.path.dirname(os.path.dirname(DATA))
 SRC = os.path.join(DATA, "venue-sources.json")
-OUT = os.path.join(ROOT, "worker/src/main/scala/services/cinemas/de/GermanSourcesData.scala")
+OUT = os.path.join(ROOT, "scrapers/src/main/scala/services/cinemas/de/GermanSourcesData.scala")
 CHUNK = 250   # entries per method: one literal of them all would outgrow a JVM method
 
 

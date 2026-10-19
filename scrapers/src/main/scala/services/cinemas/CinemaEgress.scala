@@ -1,6 +1,7 @@
 package services.cinemas
 
-import tools.HttpFetch
+import services.cinemas.pl.MultikinoClient
+import tools.{HttpFetch, ProxyChain}
 
 import java.time.Clock
 
@@ -49,13 +50,17 @@ object CinemaEgress {
   /** A diagnostic's routes (`FilmwebDiff`, `RosterAudit`, specs): every paid route — Multikino's API,
    *  biletyna's venue pages, the venue behind `zyte` — is the residential proxy over `proxyShards`
    *  first, then `http`; with no shards it is `http` ALONE
-   *  ([[modules.wiring.EgressWiring.paidEgressChain]]). A diagnostic never builds a Zyte leg, nor wires
+   *  ([[ProxyChain.paidEgressChain]]). A diagnostic never builds a Zyte leg, nor wires
    *  a token harvester (so Odeon venues throw → flicks fallback). The UK routes stay on `http`: Decodo's
    *  IPs are Polish, and a diagnostic runs Poland. `clock` is what the proxy leg's circuit breaker is
    *  judged on — the run's own, which a venue clock pinned to a day for the plan's sake is not. */
   def diagnostic(http: HttpFetch, clock: Clock, proxyShards: Option[IndexedSeq[HttpFetch]]): CinemaEgress = {
-    val paidRoute = modules.wiring.EgressWiring.paidEgressChain(proxyShards, http, clock)
-    direct(http).copy(multikino = modules.wiring.EgressWiring.multikinoChain(proxyShards, http, clock),
+    val paidRoute = ProxyChain.paidEgressChain(proxyShards, http, clock)
+    direct(http).copy(multikino = multikinoChain(proxyShards, http, clock),
       biletyna = paidRoute, zyte = paidRoute)
   }
+
+  /** Multikino's chain for a recording or diagnostic tool: proxy (warmed on the homepage) → `direct`. */
+  def multikinoChain(proxyShards: Option[IndexedSeq[HttpFetch]], direct: HttpFetch, clock: Clock): HttpFetch =
+    ProxyChain.paidEgressChain(proxyShards, direct, clock, Some(MultikinoClient.HomeUrl))
 }

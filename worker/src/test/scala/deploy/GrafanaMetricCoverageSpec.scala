@@ -160,12 +160,12 @@ class GrafanaMetricCoverageSpec extends AnyFlatSpec with Matchers {
     walk(dir).sortBy(_.getPath)
   }
 
-  /** Every family the worker's main sources spell as a whole `"kinowo_…"` string literal —
+  /** Every family the worker's main sources (its scrapers' included) spell as a whole `"kinowo_…"` string literal —
    *  at a builder's `.name(…)` or passed to a helper that calls it. Complete because a metric
    *  name may not be interpolated (see the lint below), so a class `WorkerMetrics` stops
    *  wiring cannot drop out of [[workerFamilies]] unnoticed. */
   private lazy val workerFamiliesNamedInSource: Seq[String] =
-    filesUnder(new java.io.File("worker/src/main/scala"))(_.getName.endsWith(".scala"))
+    Seq("worker", "scrapers").flatMap(m => filesUnder(new java.io.File(s"$m/src/main/scala"))(_.getName.endsWith(".scala")))
       .flatMap(f => NameLiteral.findAllMatchIn(RepoFile.read(f.getPath)).map(_.group(1)))
       .distinct
       .sorted
@@ -386,7 +386,7 @@ class GrafanaMetricCoverageSpec extends AnyFlatSpec with Matchers {
    *  refused in any main source file that touches the Prometheus client. */
   "a metric name" should "never be interpolated, so the source scans can see every family" in {
     val prometheusSources =
-      Seq("worker", "web", "common", "identity").flatMap(m => filesUnder(new java.io.File(s"$m/src/main/scala"))(_.getName.endsWith(".scala")))
+      Seq("worker", "scrapers", "web", "common", "identity").flatMap(m => filesUnder(new java.io.File(s"$m/src/main/scala"))(_.getName.endsWith(".scala")))
         .filter(f => RepoFile.read(f.getPath).contains("io.prometheus"))
     prometheusSources.size should be > 10 // the walk reaches the metric classes
     val offenders = prometheusSources.filter(f => InterpolatedName.findFirstIn(RepoFile.read(f.getPath)).isDefined).map(_.getPath)

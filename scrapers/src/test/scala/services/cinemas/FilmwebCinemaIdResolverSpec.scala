@@ -18,7 +18,7 @@ import java.nio.file.{Files, Paths}
 class FilmwebCinemaIdResolverSpec extends AnyFlatSpec with Matchers with OptionValues {
 
   private def fixture(name: String): String =
-    new String(Files.readAllBytes(Paths.get(s"worker/src/test/resources/fixtures/filmweb-city-cinemas/$name")), "UTF-8")
+    new String(Files.readAllBytes(Paths.get(s"scrapers/src/test/resources/fixtures/filmweb-city-cinemas/$name")), "UTF-8")
 
   // Filmweb town ids, from the captured cities.json.
   private val KrakowId = 2

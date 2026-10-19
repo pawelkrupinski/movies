@@ -15,7 +15,7 @@ import java.nio.file.{Files, Paths}
  */
 object RosterAuditFixtures {
   def page(name: String): String =
-    new String(Files.readAllBytes(Paths.get(s"worker/src/test/resources/fixtures/roster-audit/$name")), StandardCharsets.UTF_8)
+    new String(Files.readAllBytes(Paths.get(s"scrapers/src/test/resources/fixtures/roster-audit/$name")), StandardCharsets.UTF_8)
 
   val Sroda477      = "bilety24-organiser-477-sroda-wielkopolska.html"
   val Ostrowiec1389 = "bilety24-organiser-1389-ostrowiec.html"

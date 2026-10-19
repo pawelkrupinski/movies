@@ -13,7 +13,7 @@ import scala.jdk.CollectionConverters._
  * `OcineClientSpec` replays: the cartelera listing (one POST) and every film's
  * detail (one GET each) — the venue's whole scrape.
  *
- * Run with `sbt "worker/Test/runMain clients.tools.RecordOcine"`. The spec pins
+ * Run with `sbt "scrapers/Test/runMain clients.tools.RecordOcine"`. The spec pins
  * `today` to the capture date, so re-recording means updating it there.
  *
  * Girona because it is the richest shape the chain serves: grouped films with

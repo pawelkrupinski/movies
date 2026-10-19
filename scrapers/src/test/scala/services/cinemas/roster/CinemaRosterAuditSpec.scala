@@ -121,7 +121,7 @@ class CinemaRosterAuditSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "address every bilety24 organiser by the slug bilety24 publishes, not one it only redirects" in {
-    val retired = Using.resource(Source.fromFile("worker/src/test/resources/roster/bilety24-retired-organiser-slugs.txt")(using Codec.UTF8)) {
+    val retired = Using.resource(Source.fromFile("scrapers/src/test/resources/roster/bilety24-retired-organiser-slugs.txt")(using Codec.UTF8)) {
       _.getLines().map(_.trim).filter(l => l.nonEmpty && !l.startsWith("#")).toSet
     }
     retired should not be empty

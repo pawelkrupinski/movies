@@ -9,6 +9,7 @@
 # `.github/actions/changed-paths/matches.sh` dialect.
 common/src/main/**
 identity/src/main/**
+scrapers/src/main/**
 worker/src/main/**
 worker/src/fixtures/**
 testkit/src/main/**

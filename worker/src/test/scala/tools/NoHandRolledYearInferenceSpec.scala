@@ -25,7 +25,7 @@ class NoHandRolledYearInferenceSpec extends AnyFlatSpec with Matchers {
 
   import ScalaSourceScan.{codeOf, read, scalaFiles}
 
-  private val ClientRoot = "worker/src/main/scala/services/cinemas"
+  private val ClientRoot = "scrapers/src/main/scala/services/cinemas"
 
   /** file → why it may still derive a year itself. */
   private val Allowlist: Map[String, String] = Map(

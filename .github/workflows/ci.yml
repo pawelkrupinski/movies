@@ -76,7 +76,7 @@ permissions:
 
 jobs:
     # The unit tests, SPLIT across four runners: the worker module (~6,300 tests, the heaviest) in
-    # three by package through build.sbt's WORKER_ROW filter — the third beside the web module — and
+    # three by package through build.sbt's WORKER_ROW filter — the third beside the web and scrapers modules — and
     # common, identity and testkit on the fourth. Every row is CPU-bound on its 4 vCPUs, so the rows
     # are cut to roughly equal suite time, re-cut from each run's job times (run 38818736115:
     # worker-identity 5.1 min and rest 4.9 against worker-scripts 3.1 and worker 2.7). One runner

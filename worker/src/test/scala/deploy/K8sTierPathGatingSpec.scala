@@ -116,6 +116,14 @@ class K8sTierPathGatingSpec extends AnyFlatSpec with Matchers {
     matches(workerFilter, shared) shouldBe true
   }
 
+  // The cinema scrapers are their own module, which only the worker is built with. Their specs ship in no image.
+  it should "redeploy the worker, not the web, when a scraper moves, and neither for a scraper's spec alone" in {
+    val scraper = Seq("scrapers/src/main/scala/services/cinemas/pl/HeliosClient.scala")
+    matches(workerFilter, scraper) shouldBe true
+    matches(webFilter, scraper) shouldBe false
+    matches(workerFilter, Seq("scrapers/src/test/scala/clients/helios/HeliosClientSpec.scala")) shouldBe false
+  }
+
   // The identity resolver is its own module, which both apps are built with: the worker runs it, the web app reads its
   // traces and pins. Its tests ship in neither image.
   it should "redeploy both tiers when the identity module's code moves, and neither for its tests alone" in {

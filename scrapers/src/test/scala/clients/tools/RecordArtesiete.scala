@@ -12,7 +12,7 @@ import scala.jdk.CollectionConverters._
  * Record Artesiete La Torre's (Zaragoza) venue page as the fixture
  * `ArtesieteClientSpec` replays — the venue's whole scrape, one page.
  *
- * Run with `sbt "worker/Test/runMain clients.tools.RecordArtesiete"`. The spec pins
+ * Run with `sbt "scrapers/Test/runMain clients.tools.RecordArtesiete"`. The spec pins
  * nothing to the capture date: the page carries no relative dates.
  *
  * La Torre because it shows the widest format vocabulary the chain sells: 4K Laser,
