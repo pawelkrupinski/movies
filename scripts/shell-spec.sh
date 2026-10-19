@@ -22,6 +22,7 @@
 #   . "$REPO_ROOT/scripts/shell-spec.sh"
 #   check "what it does" "$expected" "$actual"
 #   spec_summary            # prints the tally and exits non-zero on any failure
+#   spec_bounded / spec_still_running   # a case proving a bound cuts off a hung command (HUNG STUBS, below)
 
 # The JVM gate (scripts/jvm-gate.sh) reads the real Mac's paging and takes machine-wide slots, which a spec's stubbed
 # JVM starts have no business waiting on, and sizes JVMs for a share of the cores, which a spec's command lines would
@@ -45,6 +46,36 @@ spec_lock_holder() {
 spec_lock_state() {
   # shellcheck disable=SC2016 # the child's own $1, $2
   bash -c '. "$1"; if lock_busy "$2"; then echo held; else echo free; fi' _ "$(dirname "${BASH_SOURCE[0]}")/jvm-gate.sh" "$1"
+}
+
+# HUNG STUBS. A case proving that a tool's own bound cuts off a command that never answers (a hung gh, mongosh,
+# apt-get, a test or chore that never ends) asserts that MECHANISM, never elapsed wall time. Wall time counts every
+# process the run starts: "within N s" assertions failed whenever the machine ran the specs ~10x slower (a load of ~86;
+# pre-push-test.sh, da73cc2ed). So:
+#   - the stub never ends on its own, so the tool gets past it only by its own bound: it records its pid, then blocks
+#     until killed --  echo $$ >> "$HUNG"; exec sleep 86400
+#   - the case asserts the bound fired (bounded's 124 named, a "timed out" line, the tool's own exit status) and that
+#     `spec_still_running "$HUNG"` is 0: no stub left behind;
+#   - the run goes under `spec_bounded`, only so a tool that does hang fails the case instead of wedging the spec.
+# Never count the stubs that started: that slow, a 1 s bound can end one before it has run its first line.
+SPEC_HANG_BOUND=${SPEC_HANG_BOUND:-600} # what a failing case waits; lower it to watch a broken bound fail quickly
+_spec_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# spec_bounded <executable> [args...] -> its status, or 124 once it outlasts SPEC_HANG_BOUND (tool-conventions.sh's
+# bounded: its whole process group ended). An executable, not a shell function: bounded execs it.
+spec_bounded() { ( . "$_spec_dir/tool-conventions.sh" && bounded "$SPEC_HANG_BOUND" "$@" ); }
+
+# spec_still_running <pid file> -> how many of the pids it lists are alive after a grace of up to 10 s each (a TERM
+# being delivered); each one still alive is killed, so a failing case strands nothing
+spec_still_running() {
+  local pid left=0 _
+  [ -f "$1" ] || { echo 0; return 0; }
+  while read -r pid; do
+    [ -n "$pid" ] || continue
+    for _ in $(seq 1 100); do kill -0 "$pid" 2>/dev/null || break; command sleep 0.1; done
+    kill -0 "$pid" 2>/dev/null && { left=$((left + 1)); kill -KILL "$pid" 2>/dev/null; }
+  done < "$1"
+  echo "$left"
 }
 
 # Failure tally. Set here rather than in each caller, which is the third line all

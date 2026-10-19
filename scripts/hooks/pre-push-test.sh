@@ -8,7 +8,6 @@ unset PREPUSH_SKIP
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 export REPO_ROOT  # the quoted-heredoc stub gh below sources scratch-git.sh from it
 . "$REPO_ROOT/scripts/shell-spec.sh"
-. "$REPO_ROOT/scripts/tool-conventions.sh" # bounded: a case whose hook would hang fails instead of holding the spec
 # Run by pre-push's `scripttests` check (scripts/run-script-tests), this inherits the GIT_DIR the hook was handed; the scratch
 # repositories below would otherwise BE the repository being pushed (it once committed this spec's
 # "Spec base" history onto a pushed branch). See scratch-git.sh.
@@ -473,10 +472,9 @@ check "gh failing is said for each workflow, and does not block" "0 3" "$(GH_FAI
 # of a stuck spec.
 hung="$gate/gh-hung"; : > "$hung"
 code="$(cd "$grepo" && GH_HANGS="$hung" PREPUSH_GH_SECONDS=1 PREPUSH_SKIP="$pathchecks" \
-         bounded 600 bash "$REPO_ROOT/scripts/hooks/pre-push" --range "$gbase..$plain" >/dev/null 2>"$gate/err"; echo $?)"
-still_running=0; while read -r pid; do kill -0 "$pid" 2>/dev/null && { still_running=$((still_running + 1)); kill "$pid"; }; done < "$hung"
+         spec_bounded bash "$REPO_ROOT/scripts/hooks/pre-push" --range "$gbase..$plain" >/dev/null 2>"$gate/err"; echo $?)"
 check "gh hanging is cut off by its bound for each workflow, said out loud, and does not block" "0 3 0" \
-  "$code $(grep -c "gh did not answer .* within 1s: cut off" "$gate/err") $still_running"
+  "$code $(grep -c "gh did not answer .* within 1s: cut off" "$gate/err") $(spec_still_running "$hung")"
 out="$(cd "$grepo" && printf 'refs/heads/x %s refs/heads/x %s\n' "$plain" "$gbase" \
         | GH_IMC="[$red]" PREPUSH_SKIP="$pathchecks" bash "$REPO_ROOT/scripts/hooks/pre-push" origin url 2>&1)"; code=$?
 check "a push to another branch than main is not gated" "0 0" "$code $(printf '%s\n' "$out" | grep -c 'RED on main')"
