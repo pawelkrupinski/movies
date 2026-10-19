@@ -21,7 +21,7 @@ holds the clusters the model left unmatched when it was recorded. A take the hea
 reaches that replay: a final-stage 0 there means not seen, not refilled. Variants B–D below were first misread as
 "moving nothing served" for this reason. Count model-stage losses as candidate served losses.
 
-## 2026-10-19 — veto-only signals as logistic weights: release countries, certificate, poster, synopsis (branch `experiment-weighted-guards`, tag `experiment/weighted-guards`, recording 38713274617)
+## 2026-10-19 — veto-only signals as logistic weights: release countries, certificate, poster, synopsis — certificate LANDED (branch `experiment-weighted-guards`, tag `experiment/weighted-guards`, recording 38713274617)
 
 **Tried.** Promote four signals that today only veto or pin a take to weighted levels of the per-candidate model,
 with every guard left as it is:
@@ -124,10 +124,25 @@ Re-measured (base 75a28ea41):
 **Blocked.** An "and"/"&" bill read the way `Acceptance.slashesTwoWorks` reads a slash (each half exactly titles a
 distinct eligible candidate, and no candidate is titled as the whole) cannot catch that billing. Its first half
 misspells the film ("…Came **for** Tea" against "…Came **to** Tea"), so no candidate is named exactly. Catching it needs a
-near-spelling half, which is a fuzzier rule than the exact one asked for. Not landed. Poster
-and synopsis as WEIGHTS in the unified stage (`UnifiedEvidence`), where their answers already exist, rather than per
-candidate.
->>>>>>> d24b32d1b (docs: record the weighted-guards experiment (release, certificate, poster, synopsis as weights))
+near-spelling half, which is a fuzzier rule than the exact one asked for.
+
+**LANDED, narrowed.** The certificate counts only when the title names the film as a WHOLE title (exact, original or
+alternative relation: `IdentityMeasures.CertifiedRelations`). Beside a film named by a piece of the billing
+(segment, fragment, decorated, overlap) it reads `missing:piece`, because the certificate rates the programme there.
+No "and"-bill rule, and MultiFilmBill is untouched. Also landed:
+
+- The pooled reading carries no certificate.
+- `match` +1.79 and `below` −3.88; `near` and `above` stay neutral.
+- The listing's certificate is inside its equality and hash, so a moved certificate re-resolves.
+- Release, poster and synopsis stay on the tag.
+
+Measured against main 102dca355 (identity-measure-local): 2 right gained (DE "The Enforcer" → 1951, UK "Ghosts - The
+Possesion of Button House (PG)"), 0 lost, 0 new wrong, 0 unjudged, final stage 0. LANDABLE. Most of the 11 earlier
+gains named their film by a piece ("Moana (Live Action) - Films For A Fiver", "Spooked: E.T. …") and are given up with
+the Tiger bill.
+
+**Next angle:** poster and synopsis as WEIGHTS in the unified stage (`UnifiedEvidence`), where their answers already
+exist, rather than per candidate.
 
 ## 2026-10-19 — margin over the runner-up as a REFUSAL (branch `experiment-margin-signal`, tag `experiment/margin-signal`, recording 38713274617, base `82de60cf0`)
 
