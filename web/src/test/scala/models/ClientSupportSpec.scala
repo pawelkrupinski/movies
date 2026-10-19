@@ -75,6 +75,11 @@ class ClientSupportSpec extends AnyFlatSpec with Matchers {
     ClientSupport.json should include("storeUrl")
   }
 
+  it should "spell an ungated platform's rule as nulls, byte for byte" in {
+    ClientSupport.payload(ClientSupport.Platform(None, None), ClientSupport.Platform(Some("1.2"), Some("https://x.test/app"))) shouldBe
+      """{"android":{"minimumVersion":null,"storeUrl":null},"ios":{"minimumVersion":"1.2","storeUrl":"https://x.test/app"}}"""
+  }
+
   it should "keep the configured Android rule usable" in {
     // Not asserting the VALUE (it moves every time support is dropped) — asserting
     // that whatever is configured is well-formed enough to gate with.

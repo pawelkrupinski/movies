@@ -1,5 +1,7 @@
 package models
 
+import play.api.libs.json.{JsObject, Json}
+
 import java.util.Properties
 
 import scala.util.Using
@@ -69,17 +71,13 @@ object ClientSupport {
    * Canonical, deterministic JSON: `{"android":{…},"ios":{…}}`. An ungated
    * platform still appears, with nulls, so a client can tell "no rule" from "I
    * failed to parse the response" — the two must not look alike when the answer
-   * decides whether the app is usable. Hand-built, like [[Catalog.json]], so its
-   * bytes are exactly these; none of the values need escaping (the URLs are
-   * validated as https above).
+   * decides whether the app is usable.
    */
-  val json: String = {
-    def obj(p: Platform): String = {
-      val min = p.minimumVersion.map(v => s""""$v"""").getOrElse("null")
-      val url = p.storeUrl.map(u => s""""$u"""").getOrElse("null")
-      s"""{"minimumVersion":$min,"storeUrl":$url}"""
-    }
-    s"""{"android":${obj(android)},"ios":${obj(ios)}}"""
+  val json: String = payload(android, ios)
+
+  private[models] def payload(android: Platform, ios: Platform): String = {
+    def obj(p: Platform): JsObject = Json.obj("minimumVersion" -> p.minimumVersion, "storeUrl" -> p.storeUrl)
+    Json.stringify(Json.obj("android" -> obj(android), "ios" -> obj(ios)))
   }
 }
 

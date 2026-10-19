@@ -2,6 +2,7 @@ package models
 
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
+import play.api.libs.json.Json
 
 import java.nio.charset.StandardCharsets
 import java.security.MessageDigest
@@ -280,5 +281,15 @@ class CatalogSpec extends AnyFlatSpec with Matchers {
       .mkString + "\""
     Catalog.etag shouldBe expected
     Catalog.etag should fullyMatch regex "\"[0-9a-f]{16}\""
+  }
+
+  // Every value is escaped as JSON: a name with a quote or a backslash in it once would have served both apps a
+  // catalog they could not parse, the build none the wiser.
+  "A city row" should "carry a name with a quote or a backslash in it as that name" in {
+    val name = "The \"Odeon\" \\ Luxe"
+    val row  = Catalog.cityRow("a", "a", name, 51.5, -0.12, "uk", Some("Eng\"land"), None, Seq("x\"y"), None, Nil, Nil)
+    val read = Json.parse(Json.stringify(row))
+    ((read \ "name").as[String], (read \ "region").as[String], (read \ "aliases").as[Seq[String]]) shouldBe
+      ((name, "Eng\"land", Seq("x\"y")))
   }
 }

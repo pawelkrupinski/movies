@@ -1,5 +1,7 @@
 package models
 
+import play.api.libs.json.{JsArray, JsNumber, JsObject, JsString, JsValue, Json}
+
 /**
  * The mobile "catalog": the set of deployed countries and every city they serve,
  * plus a content [[etag]]. Static per build — it changes only when a country or
@@ -24,11 +26,22 @@ object Catalog {
   /** The zone a country is published under — see [[Country.zone]]. */
   private def countryTimezone(c: Country): String = c.zone.getId
 
-  /** `,"<name>":["a","b"]` — an optional string-array field of a city row, or nothing
-   *  at all where `values` is empty: every such field is absent rather than `[]`. */
-  private def stringArrayField(name: String, values: Seq[String]): String =
-    if (values.isEmpty) "" else values.map(v => s""""$v"""").mkString(s""","$name":[""", ",", "]")
+  /** A row's fields in order, each absent one (`None`) left out: an optional field is absent rather than `null` or
+   *  `[]`, so it costs bytes only where it says something. */
+  private def row(fields: (String, Option[JsValue])*): JsObject =
+    JsObject(fields.collect { case (name, Some(value)) => name -> value })
 
+  private def text(value: String): Option[JsValue] = Some(JsString(value))
+  private def texts(values: Seq[String]): Option[JsValue] = Option.when(values.nonEmpty)(JsArray(values.map(JsString(_))))
+
+  /** One city's row — see the fields' reasons in [[json]]. */
+  private[models] def cityRow(slug: String, pageSlug: String, name: String, lat: Double, lon: Double, country: String,
+      region: Option[String], subregion: Option[String], aliases: Seq[String], timezone: Option[String],
+      formerSlugs: Seq[String], otherSlugs: Seq[String]): JsObject =
+    row("slug" -> text(slug), "pageSlug" -> text(pageSlug), "name" -> text(name), "lat" -> Some(JsNumber(lat)),
+      "lon" -> Some(JsNumber(lon)), "country" -> text(country), "region" -> region.flatMap(text),
+      "subregion" -> subregion.flatMap(text), "aliases" -> texts(aliases), "timezone" -> timezone.flatMap(text),
+      "formerSlugs" -> texts(formerSlugs), "otherSlugs" -> texts(otherSlugs))
 
   /**
    * Canonical, deterministic JSON body: `{"countries":[…],"cities":[…]}`. Order
@@ -39,8 +52,8 @@ object Catalog {
    * every client that walks this array in encounter order (region/subregion
    * grouping on the apps and the web's dynamic picker) reproduces the exact
    * same order the picker tree already computed, rather than re-deriving its
-   * own. Hand-built, so its bytes (which the etag and the bundled seed hash)
-   * are exactly these; the field values carry no characters needing JSON escaping. Mirrors the `{slug,name,lat,lon}` city
+   * own. Every value is escaped as JSON (a name with a quote in it is still that
+   * name). Mirrors the `{slug,name,lat,lon}` city
    * shape the web `ALL_CITIES` clients already parse, plus the owning country
    * `code` — the single country-code space (`pl`/`uk`) the apps key on — and,
    * where the country's picker groups its cities, the group's label as `region`
@@ -92,10 +105,10 @@ object Catalog {
         // filter matched nothing in Germany (`OmU`/`DF`) or Spain (`VOSE`/`DOB`).
         // Absent for a country that marks neither, and the apps then hide the
         // row rather than offer a filter that can only match nothing.
-        val versionTokens = c.versionTokens.fold("")(t => s""","versionTokens":{"subtitled":"${t.subtitled}","dubbed":"${t.dubbed}"}""")
-        s"""{"code":"${c.code}","name":"${c.displayName}","baseUrl":"${c.webUrl.get}","language":"${c.language.getLanguage}","brand":"${c.brandName}","timezone":"$timezone"$versionTokens}"""
+        row("code" -> text(c.code), "name" -> text(c.displayName), "baseUrl" -> text(c.webUrl.get),
+          "language" -> text(c.language.getLanguage), "brand" -> text(c.brandName), "timezone" -> text(timezone),
+          "versionTokens" -> c.versionTokens.map(t => Json.obj("subtitled" -> t.subtitled, "dubbed" -> t.dubbed)))
       }
-      .mkString("[", ",", "]")
     val cities = Country.switchable
       .flatMap { c =>
         val aliasesByPage = c.slugAliases.toSeq.groupMap(_._2)(_._1)
@@ -160,11 +173,7 @@ object Catalog {
         // instead of re-deriving (and disagreeing on) its own.
         val orderedCities = if (c.cityGroups.nonEmpty) c.cityGroups.flatMap(_.allCities) else c.allSorted
         orderedCities.map { city =>
-          val region = regionOf.get(city.slug).fold("")(label => s""","region":"$label"""")
-          val subregion = subregionOf.get(city.slug).fold("")(label => s""","subregion":"$label"""")
-          val aliases = stringArrayField("aliases", aliasesOf.getOrElse(city.slug, Nil))
-          val zone   = city.zoneId.getId
-          val tz     = if (zone == countryZone) "" else s""","timezone":"$zone""""
+          val zone = city.zoneId.getId
           // The slugs the web now 301s onto this city (`Country.renamedSlugs`), its own
           // country's only — a retired page's, a formerly qualified one's. The apps claim
           // those URLs too (App Links, Universal Links), and a link opened in an app never
@@ -180,26 +189,26 @@ object Catalog {
           // for those builds and as current builds' fallback from an older server
           // without `otherSlugs`; it goes when that fallback does. Such a link still
           // 301s on the web.
-          val former = stringArrayField("formerSlugs", c.formerSlugs(city.slug).filterNot(catalogSlugs))
+          val formerSlugs = c.formerSlugs(city.slug).filterNot(catalogSlugs)
           // EVERY other slug of its own country that leads here, unfiltered — what
           // current app builds read in place of `formerSlugs`, resolving a link within
           // the country its URL names: a renamed or retired page's slug (the UK's
           // `/kent/` → Chatham, though the US has a Kent), a town the page covers
           // (`/uk/ilkley/`) and the page's qualified slug (`/uk/york-north-yorkshire/`)
           // — every URL the App Links and Universal Links claim that the web 301s here.
-          val otherSlugs = stringArrayField("otherSlugs",
-            (c.formerSlugs(city.slug) ++ aliasesByPage.getOrElse(city.slug, Nil)).distinct.sorted)
+          val otherSlugs = (c.formerSlugs(city.slug) ++ aliasesByPage.getOrElse(city.slug, Nil)).distinct.sorted
           // `slug` is what installed builds from before slugs were per country know
           // the city by — unique across the whole catalog, as they need it to be
           // ([[InstalledBuildSlugs]]); `pageSlug` is the city's own slug on its own
           // country, what current builds key on with `country`. TEMPORARY: once those
           // builds are gone, `slug` goes back to being `pageSlug`.
-          s"""{"slug":"${InstalledBuildSlugs.of(c, city)}","pageSlug":"${city.slug}","name":"${city.labels.nominative}","lat":${city.lat},"lon":${city.lon},"country":"${c.code}"$region$subregion$aliases$tz$former$otherSlugs}"""
+          cityRow(InstalledBuildSlugs.of(c, city), city.slug, city.labels.nominative, city.lat, city.lon, c.code,
+            regionOf.get(city.slug), subregionOf.get(city.slug), aliasesOf.getOrElse(city.slug, Nil),
+            Option.when(zone != countryZone)(zone), formerSlugs, otherSlugs)
         }
       }
-      .mkString("[", ",", "]")
-    val owners = LegacySlugOwners.owners.toSeq.sorted.map { case (slug, code) => s""""$slug":"$code"""" }.mkString("{", ",", "}")
-    s"""{"countries":$countries,"cities":$cities,"bareSlugOwners":$owners}"""
+    val owners = JsObject(LegacySlugOwners.owners.toSeq.sorted.map { case (slug, code) => slug -> JsString(code) })
+    Json.stringify(Json.obj("countries" -> countries, "cities" -> cities, "bareSlugOwners" -> owners))
   }
 
   /**
