@@ -367,7 +367,10 @@ def deploy_android(ctx: Context) -> int:
     wait_for_android_unlock(ctx, serial)
     adb = resolve_adb(ctx)
     serial = android_serial(ctx, adb) if adb else serial
-    cmd = ["./gradlew", "runOnDevice"] + ([f"-Pserial={serial}"] if serial else [])
+    # Signing comes only from the Touch ID vault: scripts/android-signed writes the
+    # upload keystore for the length of the Gradle run (build.gradle.kts has no file fallback).
+    cmd = [str(ctx.repo_root / "scripts/android-signed"), "./gradlew", "runOnDevice"] + \
+        ([f"-Pserial={serial}"] if serial else [])
     dispatch(ctx, ctx.repo_root / "android", "Deploy to Android (USB or WiFi)", cmd)
     return 0
 

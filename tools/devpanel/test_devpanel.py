@@ -325,12 +325,12 @@ class AndroidTest(unittest.TestCase):
     def test_deploy_passes_the_resolved_serial_to_gradle(self):
         host = ScriptedHost(adb("SER device"))
         run_action(devpanel.deploy_android, context(host, Path("/wt"), DEVPANEL_ADB=STAND_IN_ADB))
-        self.assertEqual(host.execed, (Path("/wt/android"), ["./gradlew", "runOnDevice", "-Pserial=SER"]))
+        self.assertEqual(host.execed, (Path("/wt/android"), ["/wt/scripts/android-signed", "./gradlew", "runOnDevice", "-Pserial=SER"]))
 
     def test_deploy_without_adb_leaves_the_pick_to_gradle(self):
         host = ScriptedHost()
         run_action(devpanel.deploy_android, context(host, DEVPANEL_ADB="/no/such/adb"))
-        self.assertEqual(host.execed, (Path("/repo/android"), ["./gradlew", "runOnDevice"]))
+        self.assertEqual(host.execed, (Path("/repo/android"), ["/repo/scripts/android-signed", "./gradlew", "runOnDevice"]))
 
 
 class WebActionsTest(unittest.TestCase):

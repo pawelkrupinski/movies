@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+#
+# Run a command with Android release signing out of the Touch ID vault -- the only place it comes
+# from (android/app/build.gradle.kts has no file fallback). From android/:
+#
+#   ../scripts/android-signed ./gradlew runOnDevice            # the signed releaseFast on a phone
+#   ../scripts/android-signed ./gradlew assembleRelease
+#
+# Exports KINOWO_RELEASE_STORE_FILE / _STORE_PASSWORD / _KEY_ALIAS / _KEY_PASSWORD and
+# KINOWO_PLAY_CREDENTIALS_FILE for the command, the keystore and Play key written owner-only to a
+# temp dir removed when it exits. The same code (androidSigningEnv) signs the release lane
+# (scripts/mobile-ship.sh): infra/version-dashboard/src/mobile-release/signing.ts.
+set -euo pipefail
+
+DASHBOARD="$(cd "$(dirname "${BASH_SOURCE[0]}")/../infra/version-dashboard" && pwd)"
+[ -d "$DASHBOARD/node_modules" ] || npm --prefix "$DASHBOARD" ci --silent
+exec "$DASHBOARD/node_modules/.bin/tsx" "$DASHBOARD/src/mobile-release/android-signed.ts" "$@"

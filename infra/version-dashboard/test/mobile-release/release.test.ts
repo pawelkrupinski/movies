@@ -1,4 +1,4 @@
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -6,7 +6,7 @@ import type { CommandOptions, CommandResult, Executor } from "../../src/exec.js"
 import { notesFrom } from "../../src/mobile-release/notes.js";
 import { release, type ReleaseDeps } from "../../src/mobile-release/release.js";
 import { fetchFailed } from "../mobile/errors.js";
-import { FakeAsc, FakePlay, fixture, fixtureJson, noSleep } from "./fakes.js";
+import { FakeAsc, FakePlay, fakeVault, fixture, fixtureJson, noSleep, signingFilesIn } from "./fakes.js";
 
 const APP = "6792566321";
 const MAIN_SHA = "1".repeat(40);
@@ -22,19 +22,6 @@ beforeEach(() => {
 });
 afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
-/** The release signing secrets as the Touch ID vault holds them. */
-const VAULT: Record<string, string> = {
-  KINOWO_RELEASE_KEYSTORE_BASE64: Buffer.from("JKS-BYTES").toString("base64"),
-  KINOWO_RELEASE_STORE_PASSWORD: "sp",
-  KINOWO_RELEASE_KEY_ALIAS: "ka",
-  KINOWO_RELEASE_KEY_PASSWORD: "kp",
-  PLAY_SERVICE_ACCOUNT_JSON: '{"client_email":"claude@kinowo"}',
-};
-const vault = async (name: string): Promise<string> => {
-  const value = VAULT[name];
-  if (value === undefined) throw new Error(`${name} is not in the vault`);
-  return value;
-};
 /** What the keystore and Play key files held while Gradle ran (they are gone once the release ends). */
 const signingFiles: Record<string, string> = {};
 
@@ -68,11 +55,7 @@ function executor(events: string[], ran: Ran[], gradleExit = 0): Executor {
       options.onLine?.("\u001b[32m✓\u001b[0m uploaded");
     }
     if (argv[0] === "./gradlew") {
-      const env = options.env ?? {};
-      for (const name of ["KINOWO_RELEASE_STORE_FILE", "KINOWO_PLAY_CREDENTIALS_FILE"]) {
-        const path = env[name];
-        if (path) signingFiles[name] = `${readFileSync(path, "utf8")} mode=${(statSync(path).mode & 0o777).toString(8)}`;
-      }
+      Object.assign(signingFiles, signingFilesIn(options.env ?? {}));
       for (const line of GRADLE_OUTPUT) options.onLine?.(line);
       return { ...ok(), code: gradleExit };
     }
@@ -119,7 +102,7 @@ function deps(events: string[], ran: Ran[], gradleExit = 0): ReleaseDeps & { asc
     log: (line) => lines.push(line),
     lines,
     nowSeconds: () => NOW,
-    secrets: vault,
+    secrets: fakeVault,
     repoDir: join(dir, "repo"),
     workDir: dir,
   };

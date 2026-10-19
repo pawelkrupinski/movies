@@ -10,33 +10,47 @@ plugins {
     id("com.github.triplet.play")
 }
 
-// Release signing is wired only when credentials are present — from CI env
-// vars (the workflow decodes the base64 keystore secret to a file and exports
-// the three passwords) or a local, gitignored `keystore.properties`. With
-// neither, `release` stays unsigned so `assembleRelease` still builds locally
-// for a smoke test; only signed builds are uploadable to Play (and only a
-// signed `release` is installable by `runOnDevice`). Hoisted to script scope so
-// both the `signingConfigs` block and the `runOnDevice` task can read it.
-val keystoreProps = Properties().apply {
-    val f = rootProject.file("keystore.properties")
-    if (f.exists()) f.inputStream().use { load(it) }
+// Release signing comes ONLY from the Touch ID vault, as env vars — never a
+// file beside this script. Locally, run Gradle through the vault route:
+// `../scripts/android-signed ./gradlew <task>` (from android/) writes the upload
+// keystore to an owner-only temp file and exports the KINOWO_RELEASE_* vars for
+// that one command; the release lane (scripts/mobile-ship.sh) does the same
+// (infra/version-dashboard/src/mobile-release/signing.ts, androidSigningEnv).
+// CI exports the same names from its GitHub secrets. With no
+// KINOWO_RELEASE_STORE_FILE at all, `release` stays unsigned so
+// `assembleRelease` still builds for a smoke test (only signed builds are
+// uploadable to Play, or installable by `runOnDevice`); a store file without
+// its passwords, or one that isn't there, fails the build. Hoisted to script
+// scope so both the `signingConfigs` block and the `runOnDevice` task can read it.
+val vaultRoute = "run Gradle through the vault route, `../scripts/android-signed ./gradlew <task>` " +
+    "from android/ (signing comes only from the Touch ID vault)"
+fun signingEnv(name: String): String? = System.getenv(name)?.takeIf { it.isNotBlank() }
+val releaseStorePath: File? = signingEnv("KINOWO_RELEASE_STORE_FILE")?.let { rootProject.file(it) }
+val releaseSecrets: Map<String, String?> =
+    listOf("KINOWO_RELEASE_STORE_PASSWORD", "KINOWO_RELEASE_KEY_ALIAS", "KINOWO_RELEASE_KEY_PASSWORD")
+        .associateWith { signingEnv(it) }
+if (releaseStorePath != null) {
+    if (!releaseStorePath.exists()) throw GradleException(
+        "KINOWO_RELEASE_STORE_FILE names $releaseStorePath, which doesn't exist — $vaultRoute."
+    )
+    val missing = releaseSecrets.filterValues { it == null }.keys
+    if (missing.isNotEmpty()) throw GradleException(
+        "KINOWO_RELEASE_STORE_FILE is set but ${missing.joinToString(", ")} isn't — $vaultRoute."
+    )
 }
-fun signingValue(envName: String, propName: String): String? =
-    (System.getenv(envName) ?: keystoreProps.getProperty(propName))?.takeIf { it.isNotBlank() }
-val releaseStorePath = signingValue("KINOWO_RELEASE_STORE_FILE", "storeFile")
-    ?.let { rootProject.file(it) }
-val hasReleaseSigning = releaseStorePath?.exists() == true
+val hasReleaseSigning = releaseStorePath != null
 
 // Google Play publishing (Gradle Play Publisher) reads a service-account JSON
-// key, from the file KINOWO_PLAY_CREDENTIALS_FILE names. The release lane
-// (infra/version-dashboard, mobile-release) writes it from the Touch ID vault's
-// PLAY_SERVICE_ACCOUNT_JSON for the length of the build. With
-// neither, the play tasks stay unconfigured and fail fast only if invoked — a
-// normal build never needs Play credentials.
-val playCredentialsFile: File? =
-    (System.getenv("KINOWO_PLAY_CREDENTIALS_FILE") ?: "play-credentials.json")
-        .let { rootProject.file(it) }
-        .takeIf { it.exists() }
+// key, from the file KINOWO_PLAY_CREDENTIALS_FILE names — written from the
+// vault's PLAY_SERVICE_ACCOUNT_JSON for the length of the build by the same vault
+// route (the release lane, or scripts/android-signed). Unset, the play tasks stay
+// unconfigured and fail fast only if invoked — a normal build never needs Play
+// credentials; set to a file that isn't there, the build fails.
+val playCredentialsFile: File? = signingEnv("KINOWO_PLAY_CREDENTIALS_FILE")?.let { path ->
+    rootProject.file(path).also {
+        if (!it.exists()) throw GradleException("KINOWO_PLAY_CREDENTIALS_FILE names $it, which doesn't exist — $vaultRoute.")
+    }
+}
 
 // ── the one shared mobile version ─────────────────────────────────────────────
 // /mobile-version.txt is the single source of truth for BOTH stores. Read here so
@@ -95,9 +109,9 @@ android {
         if (hasReleaseSigning) {
             create("release") {
                 storeFile = releaseStorePath
-                storePassword = signingValue("KINOWO_RELEASE_STORE_PASSWORD", "storePassword")
-                keyAlias = signingValue("KINOWO_RELEASE_KEY_ALIAS", "keyAlias")
-                keyPassword = signingValue("KINOWO_RELEASE_KEY_PASSWORD", "keyPassword")
+                storePassword = releaseSecrets["KINOWO_RELEASE_STORE_PASSWORD"]
+                keyAlias = releaseSecrets["KINOWO_RELEASE_KEY_ALIAS"]
+                keyPassword = releaseSecrets["KINOWO_RELEASE_KEY_PASSWORD"]
             }
         }
     }
@@ -133,7 +147,7 @@ android {
             if (hasReleaseSigning) {
                 signingConfig = signingConfigs.getByName("release")
             } else {
-                logger.warn("kinowo: no release signing credentials — `release` build will be UNSIGNED (not uploadable to Play).")
+                logger.warn("kinowo: no release signing credentials — `release` build will be UNSIGNED (not uploadable to Play). To sign, $vaultRoute.")
             }
         }
         // A signed, minified build identical to `release` (so ~the same small
@@ -742,10 +756,11 @@ tasks.register("debugOnEmulator") {
 // tuning-free `release` but with R8 minification OFF so it builds fast — NOT
 // the debug build the emulator tasks use), install it on an attached phone —
 // USB or WiFi, see below — and launch it. Prod `release` stays minified; this is just for a quick
-// on-device smoke test. Needs release signing (a gitignored `keystore.properties`
-// or the KINOWO_RELEASE_* env vars), the same creds Play uses — an unsigned
-// build can't be installed. Targets the one physical device by default; with
-// more than one attached, pick it with `-Pserial=<serial>` (emulators ignored).
+// on-device smoke test. Needs release signing, the same key Play uses — an
+// unsigned build can't be installed — so run it through the vault route:
+// `../scripts/android-signed ./gradlew runOnDevice` (the devpanel does).
+// Targets the one physical device by default; with more than one attached,
+// pick it with `-Pserial=<serial>` (emulators ignored).
 //
 // WiFi works with no extra flags: on the phone enable Settings → Developer
 // options → Wireless debugging, pair this machine once with
@@ -757,7 +772,7 @@ tasks.register("debugOnEmulator") {
 // INSTALL_FAILED_VERSION_DOWNGRADE, because the local default versionCode
 // (derived from mobile-version.txt) is below Play's (`-d` can't force it —
 // that only works for debuggable builds). Pass a versionCode above the installed one:
-// `KINOWO_VERSION_CODE=<play+1> ./gradlew runOnDevice`.
+// `KINOWO_VERSION_CODE=<play+1> ../scripts/android-signed ./gradlew runOnDevice`.
 //
 // We `adb install` the assembled APK ourselves rather than depend on AGP's
 // `installRelease`, so we can (a) install only to the chosen device and (b)
@@ -775,6 +790,7 @@ tasks.register("runOnDevice") {
     val appPkg = appId
     val component = mainComponent
     val signed = hasReleaseSigning
+    val route = vaultRoute
     val serialOverride = (findProperty("serial") as String?)
     val noSdk = noSdkMessage
     // Captured at configuration time (a plain File) so the action stays
@@ -789,9 +805,7 @@ tasks.register("runOnDevice") {
         }
         if (adb == null) throw GradleException(noSdk)
         if (!signed) throw GradleException(
-            "`release` is unsigned locally, so it can't be installed. Add a gitignored " +
-                "keystore.properties (storeFile/storePassword/keyAlias/keyPassword) or set the " +
-                "KINOWO_RELEASE_* env vars — see the signingConfigs block."
+            "`release` is unsigned (no KINOWO_RELEASE_STORE_FILE), so it can't be installed — $route."
         )
 
         // Connected, ready devices that aren't emulators — `runOnDevice` is the

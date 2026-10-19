@@ -18,8 +18,13 @@ sanctioned way to upload builds, move tracks, and edit the store listing.
    - **CI does not publish.** `android.yml` builds and signs, but never uploads to Play:
      a CI run number is far below the epoch-second versionCodes releases use, so Play
      would refuse it. Releases go through `scripts/mobile-ship.sh` below.
-   - **Locally** — drop the JSON at `android/play-credentials.json`
-     (git-ignored). Every `./gradlew publish*` command below picks it up.
+   - **Locally** — the key lives ONLY in the Touch ID vault, as
+     `PLAY_SERVICE_ACCOUNT_JSON` (beside the upload keystore and its passwords,
+     `KINOWO_RELEASE_*`); there is no key or keystore file in the checkout, and the
+     Gradle build reads none. Run every `./gradlew` command below from `android/`
+     through `../scripts/android-signed`, which writes both to an owner-only temp
+     dir for the length of that one command and exports `KINOWO_PLAY_CREDENTIALS_FILE`
+     and `KINOWO_RELEASE_*` (the same code signs `scripts/mobile-ship.sh`).
 
 ## Releasing both stores in one command
 
@@ -43,13 +48,13 @@ builds the signed AAB and uploads it to the **`internal`** track, fully rolled
 out. Locally the same thing is:
 
 ```bash
-KINOWO_VERSION_CODE=$(date +%s) ./gradlew :app:publishReleaseBundle
+KINOWO_VERSION_CODE=$(date +%s) ../scripts/android-signed ./gradlew :app:publishReleaseBundle
 ```
 
 Promote an already-uploaded build to a wider track without rebuilding:
 
 ```bash
-./gradlew :app:promoteReleaseArtifact \
+../scripts/android-signed ./gradlew :app:promoteReleaseArtifact \
     --from-track internal --promote-track production \
     --release-status completed --release-name 2.0.1
 ```
@@ -75,13 +80,13 @@ editing** — otherwise you'd publish over it with whatever is (or isn't) on dis
 
 ```bash
 # 1. Download the CURRENT live listing into app/src/main/play/
-./gradlew :app:bootstrapReleaseListing
+../scripts/android-signed ./gradlew :app:bootstrapReleaseListing
 
 # 2. Edit the text files, e.g. app/src/main/play/listings/pl-PL/full-description.txt
 #    (Kinowo is Polish-first — expect a pl-PL locale; en-US too if present.)
 
 # 3. Push ONLY the listing (does not touch the app binary or tracks):
-./gradlew :app:publishReleaseListing
+../scripts/android-signed ./gradlew :app:publishReleaseListing
 ```
 
 Listing file layout GPP expects (per locale directory):

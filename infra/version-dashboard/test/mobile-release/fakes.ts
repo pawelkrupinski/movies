@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import type { AscApi, HttpMethod, PlayApi } from "../../src/mobile/stores.js";
 
@@ -63,3 +63,29 @@ export const ascVersions = (...records: [id: string, versionString: string, stat
 });
 
 export const noSleep = async () => {};
+
+/** The release signing secrets as the Touch ID vault holds them. */
+export const VAULT: Readonly<Record<string, string>> = {
+  KINOWO_RELEASE_KEYSTORE_BASE64: Buffer.from("JKS-BYTES").toString("base64"),
+  KINOWO_RELEASE_STORE_PASSWORD: "sp",
+  KINOWO_RELEASE_KEY_ALIAS: "ka",
+  KINOWO_RELEASE_KEY_PASSWORD: "kp",
+  PLAY_SERVICE_ACCOUNT_JSON: '{"client_email":"claude@kinowo"}',
+};
+
+/** A `Secrets` answering from `VAULT`; a name it does not hold rejects, as the real vault does. */
+export const fakeVault = async (name: string): Promise<string> => {
+  const value = VAULT[name];
+  if (value === undefined) throw new Error(`${name} is not in the vault`);
+  return value;
+};
+
+/** What the keystore and Play key files a signing env names hold right now, with their modes. */
+export function signingFilesIn(env: Readonly<Record<string, string>>): Record<string, string> {
+  const files: Record<string, string> = {};
+  for (const name of ["KINOWO_RELEASE_STORE_FILE", "KINOWO_PLAY_CREDENTIALS_FILE"]) {
+    const path = env[name];
+    if (path) files[name] = `${readFileSync(path, "utf8")} mode=${(statSync(path).mode & 0o777).toString(8)}`;
+  }
+  return files;
+}

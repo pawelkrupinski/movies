@@ -8,7 +8,7 @@ from a terminal: `python3 tools/devpanel/scripts/devpanel.py deploy-ios`.
 
 | Button         | Runs                          | Console |
 |----------------|-------------------------------|---------|
-| Android → device | wait-for-unlock → `cd android && ./gradlew runOnDevice` | Device |
+| Android → device | wait-for-unlock → `cd android && ../scripts/android-signed ./gradlew runOnDevice` | Device |
 | iOS → device     | wait-for-unlock → `xcodebuild build` → `devicectl install` → `devicectl launch` | Device |
 | Web server       | frees :9000 + reaps a stale fixture worker → `scripts/dev-server.sh` (`sbt web/run` on a narrowed heap) | Web |
 | Web + worker     | frees :9000 + reaps a stale fixture worker → `sbt localStack` (web + fixture worker, local Mongo :27018) | Web |
@@ -87,8 +87,10 @@ if you move the repo.**
   `Kinowo` target in Xcode once; the script passes `-allowProvisioningUpdates`
   but can't invent a team. The bundle id is read from the freshly built `.app`,
   so a team-namespace change to it doesn't break the launch step.
-- **Android** needs release signing creds (`keystore.properties` or
-  `KINOWO_RELEASE_*`), same as `runOnDevice` from the shell.
+- **Android** signs with the release key from the Touch ID vault (the only
+  source; there is no local keystore file): the panel runs `runOnDevice` through
+  `scripts/android-signed`, which writes the keystore to a temp file for the
+  length of the build. Expect a Touch ID prompt when the vault is locked.
 - **Android over WiFi** works with no extra setup in the panel: on the phone
   enable Settings → Developer options → Wireless debugging, then pair this
   machine once (`adb pair <ip>:<pairing-port> <6-digit-code>`, ports from the

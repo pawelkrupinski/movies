@@ -12,7 +12,7 @@
  * CI dispatch builds whatever main's head is when it starts (not necessarily this commit), and its
  * run_number version codes are now far below Play's epoch-second ones.
  */
-import { copyFile, mkdir, open, readFile, rm, unlink, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, open, readFile, unlink } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { describeFailure, type Executor } from "../exec.js";
@@ -21,6 +21,7 @@ import { inspectAndroid, internalBuildFor, nextVersionCode, promoteAndroid, type
 import { deliveryUuid, describeIosPlan, existingBuild, inspectIos, planIosVersion, submitIos, type IosState } from "./ios.js";
 import type { Notes } from "./notes.js";
 import { APP_PATHS, planRelease, storeVersion, tagName, type Plan, type Platform } from "./plan.js";
+import { withAndroidSigning } from "./signing.js";
 
 export interface ReleaseDeps {
   readonly asc: AscApi;
@@ -119,26 +120,6 @@ export function describeInspection(inspection: Inspection): string[] {
   lines.push(`  iOS      archive + upload → ${iosPlan} → submit for review`);
   lines.push(`  Android  build + upload to internal → promote to production`);
   return lines;
-}
-
-/**
- * Signing for the release worktree's Gradle, out of the vault: the passwords as env, the upload
- * keystore and the Play service account as owner-only files in `keyDir`, which the caller removes
- * as soon as Gradle is done. The names match the GitHub secrets CI signs with.
- */
-async function androidSigningEnv(secrets: Secrets, keyDir: string): Promise<Record<string, string>> {
-  await mkdir(keyDir, { recursive: true, mode: 0o700 });
-  const storeFile = join(keyDir, "kinowo-release.jks");
-  const playFile = join(keyDir, "play-credentials.json");
-  await writeFile(storeFile, Buffer.from(await secrets("KINOWO_RELEASE_KEYSTORE_BASE64"), "base64"), { mode: 0o600 });
-  await writeFile(playFile, await secrets("PLAY_SERVICE_ACCOUNT_JSON"), { mode: 0o600 });
-  return {
-    KINOWO_RELEASE_STORE_FILE: storeFile,
-    KINOWO_RELEASE_STORE_PASSWORD: await secrets("KINOWO_RELEASE_STORE_PASSWORD"),
-    KINOWO_RELEASE_KEY_ALIAS: await secrets("KINOWO_RELEASE_KEY_ALIAS"),
-    KINOWO_RELEASE_KEY_PASSWORD: await secrets("KINOWO_RELEASE_KEY_PASSWORD"),
-    KINOWO_PLAY_CREDENTIALS_FILE: playFile,
-  };
 }
 
 export async function release(given: ReleaseDeps, options: ReleaseOptions): Promise<void> {
@@ -308,13 +289,9 @@ async function buildAndroid(deps: ReleaseDeps, worktree: string, logs: string, v
   const androidDir = join(worktree, "android");
   const localProperties = join(deps.repoDir, "android", "local.properties");
   if (existsSync(localProperties)) await copyFile(localProperties, join(androidDir, "local.properties"));
-  const keyDir = join(logs, "signing");
-  try {
-    const env = { ...(await androidSigningEnv(deps.secrets, keyDir)), KINOWO_VERSION_CODE: String(versionCode) };
-    await logged(deps, ["./gradlew", "--no-daemon", ":app:testDebugUnitTest", ":app:publishReleaseBundle"], androidDir, join(logs, "android.log"), "[android]", env);
-  } finally {
-    await rm(keyDir, { recursive: true, force: true });
-  }
+  await withAndroidSigning(deps.secrets, join(logs, "signing"), (signing) =>
+    logged(deps, ["./gradlew", "--no-daemon", ":app:testDebugUnitTest", ":app:publishReleaseBundle"], androidDir, join(logs, "android.log"), "[android]", { ...signing, KINOWO_VERSION_CODE: String(versionCode) }),
+  );
   const tag = await deps.run([join(worktree, "scripts", "tag-mobile-release.sh"), "android", version, sha], { cwd: worktree, timeoutMs: 2 * MINUTE });
   if (tag.code !== 0) deps.log(`[android] ${describeFailure(["tag-mobile-release.sh"], tag)}`);
   return versionCode;
