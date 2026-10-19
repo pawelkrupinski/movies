@@ -40,8 +40,8 @@ class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "release a tag those builds actually push" in {
-    publishWeb    should include("ghcr.io/${{ github.repository_owner }}/movies-web:${{ github.sha }}")
-    publishWorker should include("ghcr.io/${{ github.repository_owner }}/movies-worker:${{ github.sha }}")
+    publishWeb    should include("${{ env.IMAGE_REPO }}/movies-web:${{ github.sha }}")
+    publishWorker should include("${{ env.IMAGE_REPO }}/movies-worker:${{ github.sha }}")
   }
 
   /**
@@ -154,14 +154,14 @@ class DeployImageReuseSpec extends AnyFlatSpec with Matchers {
       withClue(s"$tier: ") {
         val image = imageJob(tier)
         val tags = image.linesIterator.map(_.trim).filter(_.startsWith("tags:")).toSeq
-        tags shouldBe Seq(s"tags: ghcr.io/$${{ github.repository_owner }}/movies-$tier:$${{ github.sha }}")
+        tags shouldBe Seq(s"tags: $${{ env.IMAGE_REPO }}/movies-$tier:$${{ github.sha }}")
         image should not include "steps.tag.outputs.value"
         // The web's build sits in ci, which a PR run calls too; the worker's in main.yml, push-only.
         if (tier == "web") RepoFile.step(ciYml, "Build and push the web image under this commit's SHA tag only") should include(
           "if: matrix.shard == 'corpus' && github.event_name != 'pull_request'")
         publish should include(if (tier == "web") "needs: [ci, gates]" else "needs: [ci, gates, image-worker]")
-        publish should include(s"-t ghcr.io/$${{ github.repository_owner }}/movies-$tier:$${{ steps.tag.outputs.value }}")
-        publish should include(s"-t ghcr.io/$${{ github.repository_owner }}/movies-$tier:latest")
+        publish should include(s"-t $${{ env.IMAGE_REPO }}/movies-$tier:$${{ steps.tag.outputs.value }}")
+        publish should include(s"-t $${{ env.IMAGE_REPO }}/movies-$tier:latest")
       }
     }
   }

@@ -28,6 +28,16 @@ concurrency:
     group: deploy-${{ github.ref }}
     cancel-in-progress: true
 
+# WHERE IMAGES GO, chosen by repository VARIABLES that exist only on the self-hosted Forgejo (set
+# 2026-10, after the GitHub suspension): IMAGE_REPO=registry.kinowo.net, REGISTRY_HOST=
+# registry.kinowo.net, REGISTRY_USER=ci, plus the REGISTRY_PASSWORD secret. On github.com none is set,
+# so every fallback below is exactly what this file did before -- which is what keeps going back to
+# GitHub a matter of pushing there, not of reverting anything.
+env:
+    IMAGE_REPO: ${{ vars.IMAGE_REPO || format('ghcr.io/{0}', github.repository_owner) }}
+    REGISTRY_HOST: ${{ vars.REGISTRY_HOST || 'ghcr.io' }}
+    REGISTRY_USER: ${{ vars.REGISTRY_USER || github.actor }}
+
 # Pipeline shape:
 #
 #   ci (reusable workflow — lint, test, integration, ──┬─► publish-web
@@ -318,14 +328,14 @@ jobs:
               # something (never deploy `latest`: a restart under it can come back on another build). A
               # manifest copy in the registry — seconds. The SHA tag stays the provenance tag.
               env:
-                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD || secrets.GITHUB_TOKEN }}
               run: |
                   set -euo pipefail
-                  echo "$GH_TOKEN" | docker login ghcr.io -u '${{ github.actor }}' --password-stdin
+                  echo "$REGISTRY_PASSWORD" | docker login "$REGISTRY_HOST" -u "$REGISTRY_USER" --password-stdin
                   docker buildx imagetools create \
-                      -t ghcr.io/${{ github.repository_owner }}/movies-web:${{ steps.tag.outputs.value }} \
-                      -t ghcr.io/${{ github.repository_owner }}/movies-web:latest \
-                      ghcr.io/${{ github.repository_owner }}/movies-web:${{ github.sha }}
+                      -t ${{ env.IMAGE_REPO }}/movies-web:${{ steps.tag.outputs.value }} \
+                      -t ${{ env.IMAGE_REPO }}/movies-web:latest \
+                      ${{ env.IMAGE_REPO }}/movies-web:${{ github.sha }}
 
             - name: Record that an image exists for this commit
               # PUSHES TO main ONLY. A workflow_dispatch on a branch may publish an image without
@@ -406,9 +416,9 @@ jobs:
 
             - uses: docker/login-action@v3
               with:
-                  registry: ghcr.io
-                  username: ${{ github.actor }}
-                  password: ${{ secrets.GITHUB_TOKEN }}
+                  registry: ${{ env.REGISTRY_HOST }}
+                  username: ${{ env.REGISTRY_USER }}
+                  password: ${{ secrets.REGISTRY_PASSWORD || secrets.GITHUB_TOKEN }}
 
             # BuildKit from Docker Hub's mirror, Docker Hub only when the mirror fails (CiImageMirrorSpec).
             - uses: ./.github/actions/setup-buildx
@@ -423,10 +433,10 @@ jobs:
                   build-args: |
                       BIN=worker
                       COMMIT_SHA=${{ github.sha }}
-                  tags: ghcr.io/${{ github.repository_owner }}/movies-worker:${{ github.sha }}
+                  tags: ${{ env.IMAGE_REPO }}/movies-worker:${{ github.sha }}
                   # INLINE cache, restored from the image last shipped: the layers worth reusing (base
                   # OS, JRE, libvips) are all in `latest`, and inline metadata rides the push itself.
-                  cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/movies-worker:latest
+                  cache-from: type=registry,ref=${{ env.IMAGE_REPO }}/movies-worker:latest
                   cache-to: type=inline
 
 
@@ -481,14 +491,14 @@ jobs:
               # something (never deploy `latest`: a restart under it can come back on another build). A
               # manifest copy in the registry — seconds. The SHA tag stays the provenance tag.
               env:
-                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  REGISTRY_PASSWORD: ${{ secrets.REGISTRY_PASSWORD || secrets.GITHUB_TOKEN }}
               run: |
                   set -euo pipefail
-                  echo "$GH_TOKEN" | docker login ghcr.io -u '${{ github.actor }}' --password-stdin
+                  echo "$REGISTRY_PASSWORD" | docker login "$REGISTRY_HOST" -u "$REGISTRY_USER" --password-stdin
                   docker buildx imagetools create \
-                      -t ghcr.io/${{ github.repository_owner }}/movies-worker:${{ steps.tag.outputs.value }} \
-                      -t ghcr.io/${{ github.repository_owner }}/movies-worker:latest \
-                      ghcr.io/${{ github.repository_owner }}/movies-worker:${{ github.sha }}
+                      -t ${{ env.IMAGE_REPO }}/movies-worker:${{ steps.tag.outputs.value }} \
+                      -t ${{ env.IMAGE_REPO }}/movies-worker:latest \
+                      ${{ env.IMAGE_REPO }}/movies-worker:${{ github.sha }}
 
             - name: Record that an image exists for this commit
               # PUSHES TO main ONLY. A workflow_dispatch on a branch may publish an image without
