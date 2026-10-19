@@ -3,7 +3,7 @@
 # machine's slots; a child rides its parent's slot; a slot (a kernel lock) is free the moment its holder is killed, and
 # held by one process at a time however many race for it; neither goes ahead on time alone while memory is short (the
 # memory deadline only when set, the slot deadline only when memory is fine), and a riding child waits on neither; a
-# tool's JVM is sized for a share of the cores on macOS only.
+# tool's JVM is sized for a share of the cores on macOS only; a long-lived JVM's keeper holds the slot handed to it.
 # Run: bash scripts/jvm-gate-test.sh
 set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -146,6 +146,29 @@ check "12 racers for 2 slots: never more than 2 holding at once, never one slot 
   "$(wc -l < "$work/slot-log" | tr -d ' ') $(awk '/^\+/ { n++; if (n > m) m = n; if (held[$2]++) bad = 1 } /^-/ { n--; held[$2]-- } END { print m, (bad ? "twice" : "ok") }' "$work/slot-log")"
 ( KINOWO_JVM_SLOTS=0 jvm_slot_take t; echo "${JVM_SLOT:-none}" > "$work/got" )
 check "KINOWO_JVM_SLOTS=0: no slot taken" "none" "$(cat "$work/got")"
+
+# --- a long-lived JVM's keeper (sbt-warm's kept server, identity-slice's --serve JVM): the slot handed to a process its
+# taker starts, held past the taker for the keeper's whole life, and free the moment the keeper ends
+export KINOWO_IDENTITY_CACHE="$work/keeper-cache"; slots="$work/keeper-cache/jvm-slots"
+( jvm_slot_take t
+  jvm_slot_keeper_start "$work" "$work/keeper.log" bash -c 'echo "in $PWD"; { : >&6; } 2>/dev/null && echo "holds 6"; exec sleep 60' 6>> "$work/six"
+  echo "$KEEPER_PID ${JVM_SLOT:-handed}" > "$work/keeper" )
+read -r keeper handed < "$work/keeper"
+for _ in $(seq 1 200); do [ -s "$work/keeper.log" ] && break; sleep 0.05; done
+check "a keeper holds the slot handed to it after its taker has gone, named in it, run in its directory, no other lock" \
+  "held $keeper alive handed|in $work" \
+  "$(spec_lock_state "$slots/1.flock") $(cat "$slots/1.flock") $(kill -0 "$keeper" 2>/dev/null && echo alive || echo gone) $handed|$(cat "$work/keeper.log")"
+kill "$keeper"; for _ in $(seq 1 200); do kill -0 "$keeper" 2>/dev/null || break; sleep 0.05; done
+check "...and the slot is free once the keeper has ended" "free" "$(spec_lock_state "$slots/1.flock")"
+( jvm_slot_take t; jvm_slot_take_if_free && echo second || echo riding ) > "$work/got"
+check "a keeper's poll takes no second slot while it holds one" "riding" "$(cat "$work/got")"
+spec_lock_holder "$slots/1.flock"; a=$SPEC_LOCK_HOLDER; spec_lock_holder "$slots/2.flock"; b=$SPEC_LOCK_HOLDER
+( jvm_slot_take_if_free && echo took || echo none; kill "$b"; wait "$b" 2>/dev/null
+  for _ in $(seq 1 200); do jvm_slot_take_if_free && { echo "took ${JVM_SLOT##*/}"; break; }; sleep 0.05; done ) > "$work/got"
+check "...and one started without a slot takes the first that frees" "none|took 2.flock" "$(paste -sd'|' "$work/got")"
+( KINOWO_JVM_SLOTS=0 jvm_slot_take_if_free && echo took || echo none ) > "$work/got"
+check "...none with KINOWO_JVM_SLOTS=0" "none" "$(cat "$work/got")"
+kill "$a" 2>/dev/null
 
 # --- a tool JVM's cores
 check "on macOS a tool's JVM is sized for KINOWO_JVM_CPUS cores (default 4)" "-XX:ActiveProcessorCount=4|-XX:ActiveProcessorCount=6" \

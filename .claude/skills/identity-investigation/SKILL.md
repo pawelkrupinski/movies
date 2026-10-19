@@ -79,8 +79,9 @@ Design and limits: docs/design/identity-slice.md.
   Any checkout replaying the same base (origin/main) reads it back. `--fresh` decides again; `--prod-mirror` and
   `--emit-case` never read or keep one.
 - **`--serve`** keeps a JVM per (ref, recording, country) with the recording opened and the ref's index loaded, and
-  sends each batch to it (no JVM start or corpus load per call); it stops after `KINOWO_IDENTITY_SLICE_IDLE_MINUTES`
-  (30) idle minutes, `scripts/identity-slice --stop-served` stops them all. Worth it for many small batches.
+  sends each batch to it (no JVM start or corpus load per call). Each kept JVM holds a JVM slot for its life (a keeper
+  beside it; a call reaching a live one takes none); it stops after `KINOWO_IDENTITY_SLICE_IDLE_MINUTES` (10) minutes
+  without a request, `scripts/identity-slice --stop-served` stops them all now. Worth it for many small batches.
 - Measured 2026-10-14, DE, recording 38547714686, refs c79eb901c → 4c0777340, load average ~150: the old serial
   tool, 500 listings at both refs 937 s (≈78 min for 2,500); 2,500 listings (916 slices) at both refs 691 s, the
   same takes; the same batch again (another checkout, results kept) 33 s. A 20-listing fresh batch: 25 s, 15 s

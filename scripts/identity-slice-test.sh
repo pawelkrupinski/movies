@@ -117,7 +117,7 @@ while True:
 PY
 chmod +x "$work/bin/sbt" "$work/bin/java"
 
-slice() { STUB="$work" PATH="$work/bin:$PATH" KINOWO_IDENTITY_CACHE="$cache" "$repo/scripts/identity-slice" "$@" 2> "$work/err"; }
+slice() { STUB="$work" PATH="$work/bin:$PATH" KINOWO_IDENTITY_CACHE="$cache" KINOWO_IDENTITY_SLICE_KEEPER_POLL=0.1 "$repo/scripts/identity-slice" "$@" 2> "$work/err"; }
 
 out=$(slice de --recording 777 --key 'Kino|Lalka' --ref HEAD~1 --ref HEAD)
 check "both refs are laid out once in the cache" "2" "$(find "$cache/refs" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')"
@@ -278,6 +278,48 @@ code=$(STUB_SERVE_HANG=1 KINOWO_IDENTITY_SLICE_START_SECONDS=2 slice de --record
 check "a kept JVM that never listens is stopped at the deadline, and the call fails" "1 1 0" \
   "$code $(grep -c 'did not listen within 2s' "$work/err") $(find "$cache/serve" -name '*.pid' | wc -l | tr -d ' ')"
 check "...within it" "yes" "$([ $(( SECONDS - started )) -lt 20 ] && echo yes || echo "no: $(( SECONDS - started ))s")"
+
+# ONE JVM, ONE SLOT: a kept JVM holds one of the machine's JVM slots (jvm-gate.sh) for its whole life, idle or not,
+# through a keeper beside it, as sbt-warm's kept server does -- uncounted, they were up to 6 GB each the slots never saw.
+one_slot="$cache/jvm-slots/1.flock"
+slotted() { KINOWO_JVM_SLOTS=1 slice "$@"; }
+keeper_of() { ps -axo pid=,args= | awk -v jvm="--keep-served $1" 'index($0, jvm) && !/awk/ { print $1 }'; }
+gone_within() { local _; for _ in $(seq 1 300); do kill -0 "$1" 2>/dev/null || return 0; sleep 0.1; done; return 1; }
+rm -f "$work/calls"; slotted de --recording 777 --key 'Kino|Lalka' --ref HEAD --serve > /dev/null
+served=$(cat "$cache"/serve/*.pid); keeper=$(keeper_of "$served")
+check "a kept JVM holds a JVM slot after its call has ended: its keeper's, watching that JVM" "held ${keeper:-none} alive" \
+  "$(spec_lock_state "$one_slot") $(cat "$one_slot") $(kill -0 "${keeper:-0}" 2>/dev/null && echo alive || echo gone)"
+check "...and stops after 10 idle minutes by default, as sbt-warm's kept server" "1" "$(grep -c -- '--idle-minutes 10$' "$work/calls")"
+out=$(KINOWO_JVM_SLOT_MAX_WAIT=0 slotted de --recording 777 --key 'Kino|Lalka' --ref HEAD --serve)
+check "...a call reaching the live kept JVM takes no second slot (with the only slot held, it never waits)" "decided by the kept JVM|0" \
+  "$out|$(grep -c 'JVM slot' "$work/err")"
+STUB="$work" PATH="$work/bin:$PATH" KINOWO_IDENTITY_CACHE="$cache" "$repo/scripts/identity-slice" --stop-served 2> /dev/null
+check "...and once the JVM is gone, its keeper ends and the slot is free" "gone free" \
+  "$(gone_within "${keeper:-0}" && echo gone || echo alive) $(spec_lock_state "$one_slot")"
+# a kept JVM started with every slot busy past the slot deadline holds none at first: its keeper takes the first freed
+spec_lock_holder "$one_slot"; holder=$SPEC_LOCK_HOLDER
+KINOWO_JVM_SLOT_MAX_WAIT=0 KINOWO_IDENTITY_SLICE_IDLE_MINUTES=3 slotted de --recording 777 --key 'Kino|Lalka' --ref HEAD --serve > /dev/null
+served=$(cat "$cache"/serve/*.pid); keeper=$(keeper_of "$served")
+kill "$holder"; wait "$holder" 2>/dev/null
+for _ in $(seq 1 300); do [ "$(cat "$one_slot" 2>/dev/null)" = "${keeper:-none}" ] && break; sleep 0.1; done
+check "a keeper started without a slot takes the first that frees" "held ${keeper:-none}" "$(spec_lock_state "$one_slot") $(cat "$one_slot")"
+check "...the idle exit set by KINOWO_IDENTITY_SLICE_IDLE_MINUTES" "1" "$(grep -c -- '--idle-minutes 3$' "$work/calls")"
+STUB="$work" PATH="$work/bin:$PATH" KINOWO_IDENTITY_CACHE="$cache" "$repo/scripts/identity-slice" --stop-served 2> /dev/null
+gone_within "${keeper:-0}"
+
+# the keeper starts the moment the JVM's process does, often before that process has exec'd java: a pid not YET an
+# IdentitySlice is the JVM still starting, not one gone (under load the keeper ended at once and the slot went free)
+starting() { CLASS=scripts.IdentitySlice bash -c 'until [ -e "$0" ]; do sleep 0.05; done; exec python3 -c "import time; time.sleep(60)" $CLASS' "$work/exec-now"; }
+rm -f "$work/exec-now"; starting & jvm=$!
+STUB="$work" PATH="$work/bin:$PATH" KINOWO_IDENTITY_CACHE="$cache" KINOWO_IDENTITY_SLICE_KEEPER_POLL=0.1 \
+  "$repo/scripts/identity-slice" --keep-served "$jvm" 2> /dev/null & keeper=$!
+sleep 0.5; touch "$work/exec-now"
+for _ in $(seq 1 300); do ps -o args= -p "$jvm" | grep -q 'scripts\.IdentitySlice' && break; sleep 0.1; done
+sleep 0.5
+check "a keeper waits out its JVM's start (its process not yet exec'd as one), then holds on" "alive" \
+  "$(kill -0 "$keeper" 2>/dev/null && echo alive || echo gone)"
+kill "$jvm"; wait "$jvm" 2>/dev/null
+check "...and ends once it is gone" "gone" "$(gone_within "$keeper" && echo gone || echo alive)"
 
 # --faithfulness RUN: the leg's artifact and log are read through a bounded gh, and a gh that hangs fails the call
 printf '#!/usr/bin/env bash\nsleep 20\n' > "$work/bin/gh"; chmod +x "$work/bin/gh"

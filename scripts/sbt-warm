@@ -33,7 +33,7 @@
 # not, and the commands run in it take none. Servers started with the slot's descriptor closed held none, yet each grew
 # to its -Xmx4g heap: ~10 worktrees' idle servers were up to 40 GB nobody counted, and on 2026-10-19 the Mac reached a
 # load of ~100 with 29 of 30 GB of swap used. The slot is held by THE KEEPER, a small process beside the server (this
-# script's --keep, started with descriptor 7 open, so the slot's kernel lock passes to it -- jvm_slot_hand_off -- and
+# script's --keep, started with descriptor 7 open, so the slot's kernel lock passes to it -- jvm_slot_keeper_start -- and
 # is freed the moment it ends, however it ends: the flock model needs no counting of pid files, which a server dying
 # between a count and a take would race). A call that finds the checkout's keeper alive (its lock, $key.keep.flock,
 # held) takes no slot; one that finds none takes a slot (waiting for one like any tool) and starts the keeper with it.
@@ -200,11 +200,14 @@ keep() {
       [ -n "$pid" ] && server_of_removed_checkout "$pid" && kill "$pid" 2>/dev/null && log "stopped the server of the removed checkout $root (pid $pid)"
       exit 0
     fi
-    if ! jvm_slot_riding && [ "${KINOWO_JVM_SLOTS:-4}" != 0 ] && jvm_slot_try; then log "took JVM slot ${JVM_SLOT##*/}"; fi
+    if jvm_slot_take_if_free; then log "took JVM slot ${JVM_SLOT##*/}"; fi
     if p=$(server_pid "$root"); then
       pid=$p; absent=0
       [ "$(cat "$State/$key.pid" 2>/dev/null)" = "$pid" ] || echo "$pid" > "$State/$key.pid"
-      if [ -n "$(find "$State/$key.used" -mmin +"$IdleMinutes" 2>/dev/null)" ] && lock_take 4 "$busy"; then
+      # aged, then aged STILL once no call holds $busy: a call ending between the two refreshed the mark and let go of
+      # the lock, and the server it just used was stopped under the next one (2026-10-19, under load)
+      if [ -n "$(find "$State/$key.used" -mmin +"$IdleMinutes" 2>/dev/null)" ] && lock_take 4 "$busy" &&
+        { [ -n "$(find "$State/$key.used" -mmin +"$IdleMinutes" 2>/dev/null)" ] || { lock_give 4 "$busy"; false; }; }; then
         log "server pid $pid idle for $IdleMinutes minutes: stopping it"
         kill "$pid" 2>/dev/null
         for _ in $(seq 1 30); do [ -z "$(server_pids "$root")" ] && break; sleep 1; done
@@ -316,11 +319,10 @@ if lock_busy "$KeepFile"; then
 else
   jvm_slot_take sbt-warm
   if lock_take 5 "$KeepFile"; then
-    ( cd "$root" || exit; set -m; nohup "$Self" --keep >> "$State/$key.log" 2>&1 < /dev/null 6>&- 8>&- 9>&- &
-      echo $! > "$KeepFile" ) 6>&- 8>&- 9>&-
+    jvm_slot_keeper_start "$root" "$State/$key.log" "$Self" --keep   # holding $KeepFile's lock too: descriptor 5
+    echo "$KEEPER_PID" > "$KeepFile"
     exec 5>&-
-    jvm_slot_hand_off "$(cat "$KeepFile")"
-    log "keeper pid $(cat "$KeepFile") holds the server's JVM slot; it stops the server after $IdleMinutes idle minutes, or with the checkout"
+    log "keeper pid $KEEPER_PID holds the server's JVM slot; it stops the server after $IdleMinutes idle minutes, or with the checkout"
   else
     jvm_slot_release   # another call's keeper started meanwhile: it holds this server's slot
   fi

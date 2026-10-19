@@ -6,6 +6,9 @@
 # queueing, every slice and measure 3-8x slower than alone. So a tool waits for memory, waits for one of a few machine
 # slots, and starts a JVM that sizes itself for a share of the cores. Sourcing it defines functions only. bash 3.2.
 #
+#   A long-lived JVM -- sbt-warm's kept server, identity-slice's --serve JVM -- holds its slot for its whole life, idle or
+#   not, through a keeper process beside it (jvm_slot_keeper_start); a call reaching a live one takes none.
+#
 #   memory_gate <label>    waits while memory_paged_gb > KINOWO_MEMORY_GATE_GB (default 20) AND memory_free_gb <
 #                          KINOWO_MEMORY_GATE_FREE_GB (default 6, about one tool heap): swap holds idle apps' stale pages
 #                          long after RAM frees up (20 GB "paged" beside 9.6 GB free on 2026-10-18), so paging alone kept
@@ -37,6 +40,14 @@
 #   jvm_slot_hand_off <pid>  the slot now belongs to <pid>, a process this one started with descriptor 7 open that
 #                          outlives it (sbt-warm's keeper of a kept server): <pid> written in, this process's descriptor
 #                          closed. The slot is held until <pid> and every process holding the descriptor have ended
+#   jvm_slot_keeper_start <dir> <log> <command...>  -> KEEPER_PID: the KEEPER of a long-lived JVM this process started
+#                          (sbt-warm's kept server, identity-slice's --serve JVM), so that JVM is counted for its whole
+#                          life, idle or not: <command> started in <dir>, detached (its own process group, nohup, stdin
+#                          closed, output appended to <log>), with descriptor 7 open and 6, 8, 9 closed, and this
+#                          process's slot handed off to it (jvm_slot_hand_off). The keeper's loop polls the JVM, calls
+#                          jvm_slot_take_if_free, and exits once the JVM is gone -- which frees the slot. Without a slot
+#                          (KINOWO_JVM_SLOTS=0, past the slot deadline, or riding a parent's) it starts all the same.
+#   jvm_slot_take_if_free  a keeper's poll: 0 when this process, holding no slot, has just taken a free one (slots on)
 #   jvm_slot_release       gives this process's slot back
 #   jvm_cpu_options        the JVM options sizing a tool's JVM for KINOWO_JVM_CPUS cores (default 4) on macOS, where
 #                          agents share the cores; none on Linux (CI's runner is the JVM's alone) or with KINOWO_JVM_CPUS=0
@@ -203,6 +214,13 @@ jvm_slot_hand_off() { # <pid>
   echo "$1" > "$JVM_SLOT"; exec 7>&-; JVM_SLOT=""; unset KINOWO_JVM_SLOT_HELD
   return 0
 }
+KEEPER_PID=""
+jvm_slot_keeper_start() { # <dir> <log> <command...>
+  local dir=$1 log=$2; shift 2
+  KEEPER_PID=$(cd "$dir" && { set -m; nohup "$@" >> "$log" 2>&1 < /dev/null 6>&- 8>&- 9>&- & echo $!; }) || return 1
+  jvm_slot_hand_off "$KEEPER_PID"
+}
+jvm_slot_take_if_free() { ! jvm_slot_riding && [ "${KINOWO_JVM_SLOTS:-4}" != 0 ] && jvm_slot_try; }
 
 jvm_cpu_options() {
   local cpus=${KINOWO_JVM_CPUS:-4}

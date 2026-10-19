@@ -98,9 +98,11 @@ header of `scripts/hooks/pre-push`. Run it without pushing: `scripts/hooks/pre-p
   `scripts/sbt-warm --serve '<command>'` — it keeps the checkout's server (and so its slot) in use until stopped, so
   stop it when done.
 - **One JVM, one slot:** sbt-warm, identity-slice and identity-measure-local share the machine-wide JVM slots
-  (`KINOWO_JVM_SLOTS`, default 4; `scripts/jvm-gate.sh`) and size their JVMs for 4 cores. A kept sbt server holds a
-  slot for its whole life, idle or not (held by its keeper process); commands run in it take none. So an idle server
-  of yours can queue another agent: `scripts/sbt-warm --stop` when you are done with a worktree. Never lower
+  (`KINOWO_JVM_SLOTS`, default 4; `scripts/jvm-gate.sh`) and size their JVMs for 4 cores. A kept sbt server and an
+  `identity-slice --serve` JVM each hold a slot for their whole life, idle or not (held by a keeper process beside
+  them, `jvm_slot_keeper_start`); commands run in them take none, and each stops after 10 idle minutes. So an idle one
+  of yours can queue another agent: `scripts/sbt-warm --stop` when you are done with a worktree
+  (`identity-slice --stop-served` stops every agent's kept slice JVMs, not only yours). Never lower
   `KINOWO_JVM_SLOTS` to get ahead — wait for a slot.
 - **The memory gate** (`KINOWO_MEMORY_GATE_GB` 20 paged AND `KINOWO_MEMORY_GATE_FREE_GB` 6 free) waits as long as
   memory is short, with a status line every `KINOWO_MEMORY_GATE_STATUS_SECONDS` (180); the slot wait goes ahead after

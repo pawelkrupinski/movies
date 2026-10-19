@@ -40,8 +40,11 @@
 #   --fresh       decide every slice again: by default a slice's result at a ref is kept (per recording, ref, tool files and
 #                 filed answers, and the labels about its listings) and read back by every checkout asking it again
 #   --serve       keep a JVM per (ref, recording, country) with the recording opened and the ref's index loaded, and send
-#                 the batch to it: no JVM start or corpus load per call (stops after $KINOWO_IDENTITY_SLICE_IDLE_MINUTES,
-#                 default 30, idle minutes; `scripts/identity-slice --stop-served` stops every kept one)
+#                 the batch to it: no JVM start or corpus load per call. Each kept JVM holds one of the machine's JVM
+#                 slots (scripts/jvm-gate.sh) for its whole life, through a keeper process beside it; a call reaching a
+#                 live one takes none. It stops after $KINOWO_IDENTITY_SLICE_IDLE_MINUTES (default 10) minutes without
+#                 a request -- never during one -- freeing the slot; `scripts/identity-slice --stop-served` stops
+#                 every kept one now
 #   --out TSV     keep the takes (of the last --ref) as a TSV: selector key venue rawTitle film title basis … verdict
 #   --labels TSV  judge the takes by this identity-judgements.tsv (default this checkout's) — the same at both refs
 #   --compiles REF  lay REF out with this checkout's tool files dropped in and compile it, nothing else: the tool must
@@ -102,26 +105,50 @@ TOOL_FILES=(worker/src/test/scala/services/identity/OlderRefs.scala worker/src/t
   worker/src/fixtures/scala/tools/ProdMirror.scala worker/src/fixtures/scala/tools/IdentityJudgements.scala
   worker/src/fixtures/scala/services/identity/adapters/OlderRefsPackage.scala)
 
+self="$(cd "$(dirname "$0")" && pwd -P)/$(basename "$0")"
+# A kept JVM's idle exit: as sbt-warm's kept server's (KINOWO_SBT_WARM_IDLE_MINUTES), 10 minutes, not 30 -- each holds a
+# JVM slot while idle, and every idle minute is a minute another agent's tool may queue for it
+idle_minutes=${KINOWO_IDENTITY_SLICE_IDLE_MINUTES:-10}
 threads="" fresh=0 serve=0 families="" labels="" cc="" refs=() run="" pass=() batch="" bisect="" log="" faith="" sample=50 seed=1 explain=0 fixture="" keep="" mirror="" mirror_args=()
 if [ "$1" = "--compiles" ]; then
   need_ref "${2:?--compiles REF}"
   t=$(identity_tree "$2" "${TOOL_FILES[@]}") && identity_classpath "$t" > /dev/null && { identity_log "$2 compiles with this checkout's tool files"; exit 0; }
   exit 1
 fi
-# Stops the kept JVM a pid file names -- only while that pid is still an IdentitySlice server: a file outlives its
-# process, and the pid comes back as someone else's JVM (an sbt server, another agent's run).
+# 0 while <pid> is still an IdentitySlice server: a pid file outlives its process, and the pid comes back as someone
+# else's JVM (an sbt server, another agent's run).
+is_kept() { # <pid>
+  case "$1" in ''|*[!0-9]*) return 1 ;; esac
+  ps -o args= -p "$1" 2>/dev/null | grep -q 'scripts\.IdentitySlice'
+}
+# Stops the kept JVM a pid file names -- only while that pid is still one (is_kept).
 stop_kept() { # <pid>
-  local pid=$1
-  case "$pid" in ''|*[!0-9]*) return 1 ;; esac
-  ps -o args= -p "$pid" 2>/dev/null | grep -q 'scripts\.IdentitySlice' || return 1
-  kill "$pid" 2>/dev/null
+  is_kept "$1" || return 1
+  kill "$1" 2>/dev/null
 }
 if [ "$1" = "--stop-served" ]; then
   for pidf in "$IDENTITY_CACHE"/serve/*.pid; do
     [ -f "$pidf" ] || continue
     stop_kept "$(cat "$pidf")" && identity_log "stopped the kept JVM $(cat "$pidf")"
-    rm -f "$pidf" "${pidf%.pid}.sock" "${pidf%.pid}.tree"
+    rm -f "$pidf" "${pidf%.pid}.sock" "${pidf%.pid}.tree" "${pidf%.pid}.keeper.log"
   done
+  exit 0
+fi
+# THE KEEPER of a kept JVM (--keep-served <pid>, started by serve_at with the JVM slot's descriptor open: jvm-gate.sh's
+# jvm_slot_keeper_start): holds that slot for the JVM's whole life, idle or not -- taking one as soon as one is free
+# when it started without -- and ends once the JVM has (its idle exit, --stop-served, a crash), which frees the slot.
+# Started the moment the JVM's process is, it may find it still the shell about to exec java (no IdentitySlice in its
+# command line yet: under load the keeper ended at once, 2026-10-19), so that pid counts as the JVM while it lives
+# until it has been seen as one; after that, only while it still is one (a pid that comes back as another process).
+if [ "$1" = "--keep-served" ]; then
+  identity_log "keeper of kept JVM $2: pid $$, $(jvm_slot_riding && echo "holding JVM slot ${KINOWO_JVM_SLOT_HELD##*/}" || echo "no JVM slot yet")"
+  seen=0
+  while kill -0 "$2" 2>/dev/null; do
+    if is_kept "$2"; then seen=1; elif [ "$seen" = 1 ]; then break; fi
+    if jvm_slot_take_if_free; then identity_log "took JVM slot ${JVM_SLOT##*/}"; fi
+    sleep "${KINOWO_IDENTITY_SLICE_KEEPER_POLL:-10}"
+  done
+  identity_log "kept JVM $2 gone: done"
   exit 0
 fi
 if [ "$1" != "--log" ]; then cc=$(printf '%s' "$1" | tr '[:upper:]' '[:lower:]'); shift; fi
@@ -262,15 +289,17 @@ serve_at() { # <tree> <ref key> <out.tsv> <args...>
       cp=$(identity_classpath "$tree") || return 1
       mkdir -p "$IDENTITY_CACHE/serve"; rm -f "$sock"
       retire_served "$tree" "$key"
-      identity_log "starting a kept JVM for ${ref:0:24} (log $IDENTITY_CACHE/serve/$key.log; stops after ${KINOWO_IDENTITY_SLICE_IDLE_MINUTES:-30} idle minutes)"
-      # its own process group (set -m): it outlives this call, and the shell or tool that ran it. Memory gated, but no
-      # JVM slot: one held for its idle life would block every other tool's work -- so it starts with the lock
-      # descriptors closed (jvm-gate.sh), never holding a slot or lock its caller held
-      memory_gate identity-slice
+      identity_log "starting a kept JVM for ${ref:0:24} (log $IDENTITY_CACHE/serve/$key.log; stops after $idle_minutes idle minutes)"
+      # ONE JVM, ONE SLOT: up to 6 GB for its idle life too, so it is counted like sbt-warm's kept server -- this call
+      # takes a slot (the memory gate first) and hands it to a keeper beside the JVM, which holds it until the JVM has
+      # gone. The JVM is its own process group (set -m): it outlives this call and the shell or tool that ran it, so it
+      # starts with the lock descriptors closed (jvm-gate.sh). A call reaching a live kept JVM takes no slot.
+      jvm_slot_take identity-slice
       (cd "$tree" && set -m && { nohup "${IDENTITY_JAVA[@]}" -cp "$cp" scripts.IdentitySlice "$cc" --recording "$recording" \
           --cache "$IDENTITY_CACHE/slice/$run" --ref "$ref" --index-key "$(code_key "$(ref_of "$ref")")" --families "$families" --serve "$sock" \
-          --idle-minutes "${KINOWO_IDENTITY_SLICE_IDLE_MINUTES:-30}" > "$IDENTITY_CACHE/serve/$key.log" 2>&1 < /dev/null 6>&- 7>&- 8>&- &
+          --idle-minutes "$idle_minutes" > "$IDENTITY_CACHE/serve/$key.log" 2>&1 < /dev/null 6>&- 7>&- 8>&- &
         echo $! > "$IDENTITY_CACHE/serve/$key.pid"; printf '%s\n' "$tree" > "$IDENTITY_CACHE/serve/$key.tree"; })
+      jvm_slot_keeper_start "$repo" "$IDENTITY_CACHE/serve/$key.keeper.log" "$self" --keep-served "$(cat "$IDENTITY_CACHE/serve/$key.pid")"
       # a JVM alive but never listening (stuck loading, a deadlock) is stopped at the deadline, not waited on forever
       local started=$SECONDS limit=${KINOWO_IDENTITY_SLICE_START_SECONDS:-900}
       until [ -S "$sock" ]; do
