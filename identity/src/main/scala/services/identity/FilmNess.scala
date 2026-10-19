@@ -22,7 +22,9 @@ private[identity] object FilmNess {
     val raw = listing.rawTitle.getOrElse(listing.title)
     val statesAFact = listing.year.isDefined || listing.runtime.isDefined || listing.directors.exists(_.trim.nonEmpty)
     if (statesAFact || agreement.NonFilmEvents.eventBilled(raw).isEmpty ||
-        ListingShape.relaysSpelled(raw.toLowerCase(java.util.Locale.ROOT), (listing.ownTitles).distinct, raw, listing.screeningsSeason)) Nil
+        // a relay by its broadcast's name or its stage work — never by a year alone, which a gig's "Tour 2026" bills too
+        services.cinemas.pl.NonMovieEventClassifier.isNamedBroadcast(raw) ||
+        StageRelays.billsStageWork(listing.ownTitles.distinct, raw)) Nil
     else IdentityMeasures.countedWords(raw).filter(isEventWord)
   }
 
