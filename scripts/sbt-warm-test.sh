@@ -15,6 +15,8 @@ scratch="$(mktemp -d)"; scratch="$(cd "$scratch" && pwd -P)"
 fakes=()
 trap 'kill ${fakes[@]+"${fakes[@]}"} 2>/dev/null; rm -rf "$scratch"' EXIT
 export KINOWO_SBT_WARM_STATE="$scratch/state" KINOWO_IDENTITY_CACHE="$scratch/identity"
+# the seeds this spec checks are its own scratch builds: a caller's seed (fail-before exports its built checkout) is none
+unset KINOWO_SBT_WARM_SEED
 # this checkout's gate, not local main's; a server's keeper polling fast, done 2 s after its server is gone
 export KINOWO_JVM_GATE_FOLLOW_MAIN=0 KINOWO_SBT_WARM_KEEPER_POLL=0.2 KINOWO_SBT_WARM_KEEPER_GRACE_SECONDS=2
 mkdir -p "$scratch/bin"
