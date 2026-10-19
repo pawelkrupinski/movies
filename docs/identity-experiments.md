@@ -39,6 +39,35 @@ reaches that replay: a final-stage 0 there means not seen, not refilled. Variant
   its re-read is outstanding (as `d006d2c3e` did for corrections). `IdentityBillingTakeOscillating` names it when it recurs.
 - **Code:** `experiment/broadcast-airable-year`.
 
+## 2026-10-19 — a venue's cast field naming none of a film's cast, as a NEGATIVE signal (branch `experiment-cast-mismatch`, tag `experiment/cast-mismatch`, recording 38713274617, base `experiment/cast-tiebreak` 1009a8c83)
+
+- **Rule** (`CastEvidence.mismatch`, a model-stage node denial in `FamilyScope.denialByNode`; never a weight): a candidate is
+  denied when every listing of the node whose venue lists a cast FIELD of its own (`Listing.listedCast`: no synopsis, no
+  kinoheld/kinoprogramm/Webedia/Cineamo copy; two names of two words or more, no one-word entry — a mononymous star, a
+  puppet, a role in brackets) names none of its Latin-script top-billed TMDB cast, matched order aside ("Li Gong" is
+  "Gong Li"); and no stated year (±1) or director agrees with it. Not read beside a stage work, relay, performance or
+  bill of several works (`castIsTheFilms`), for an animated film or documentary (TMDB genres 16/99: voice casts,
+  contributors), nor for a film of another original language than the venue country's (dubs, transliterations).
+  Variant "veto alone" (no own-fact exemption) not measured: offline it costs the four takes below the exemption spares.
+- **Offline, current takes** (1009a8c83's model + final takes joined to the recording's cast fields and TMDB credits):
+  1,663 listings / 51 billings with zero overlap before guards, judged 0 wrong / 10 right (US Spirited Away). Almost all
+  are right takes the guards above exist for: Ghibli English dubs (~1,400 listings), Korean/Chinese name order, Greek and
+  Japanese-script TMDB casts, a doc's contributors (UK "The Sixty-Year Mission"), the Muppets' characters, mononyms
+  (Jailer, Mercury). After the guards: 7 billings, 36 listings — ES "La maleta" ×14 → Objetos (2022) (wrong), US Met
+  "Tosca (2026 Encore)" ×17 (relay, guarded), and singles all spared by their own director (Mercury, Jailer, "The Short
+  Films of David Lynch", Muppets Take Manhattan) but UK "Mayhem 2026: The Whisper" (unjudged, no TMDB record of its cast).
+- **Offline, every judged row** (judgements × recording listings, zero overlap, guards in): 523 wrong / 2 right listings
+  (the right two ROH Carmen relays, guarded) — NT "Hay Fever" ×222 and other relays, "Fallen Angels by Noël Coward" →
+  Coward 2026 ×187, PL "Lalka" → Has 1968 ×72, "It (1990)" → And the Sea Will Tell, Escape Room 2, Gremlins → Innerspace.
+  None of these is a current take: the signal is mostly a guard against their return.
+- **Measure** (identity-measure-local 1009a8c83 → b62db4ce2, all countries): ES model 14 cured (Ocine ×14 "La maleta"
+  Objetos → Therón's 2026 film), 9 gained (Artesiete ×8 + Bahia Mar "LA MALETA" → 2026 film, judged right); 0 right lost,
+  0 new wrong; DE, PL, UK, US and every final stage unmoved. LANDABLE locally.
+- **Before landing:** prod's stored records (`TmdbNormalizer.minimal`) keep no genres, so the animation/documentary guard
+  would not fire there (dubbed Ghibli in US/UK is English-language-guarded only if `original_language` is filed); keep
+  genre ids in `minimal` first, and the prod cast backfill decides how often the rule can read at all. `Listing.listedCast`
+  is inside listing equality (the model reads it): a venue editing its cast re-resolves the listing.
+
 ## 2026-10-19 — cast as a positive tie-break among namesakes (branch `experiment-cast-tiebreak`, tag `experiment/cast-tiebreak`, recording 38713274617, base `f48ab8001`)
 
 Follows `experiment/cast-overlap` (coverage, not the rule, was the limit).
@@ -79,6 +108,345 @@ Follows `experiment/cast-overlap` (coverage, not the rule, was the limit).
 - **Next angle:** land the tie-break before (or with) the prod cast backfill and the next re-capture, which otherwise
   surface the Dolly Parton wrong take under today's rule.
 
+## 2026-10-19 — cast overlap, beyond the pinned `cast.venue` (branch `experiment-cast-overlap`, tag `experiment/cast-overlap`, recording 38713274617, base `a07939cf6`)
+
+### Coverage: why `cast.venue` gains 0
+- **Venue side** (recording, the venue's OWN text — kinoheld / kinoprogramm pages and Webedia / Cineamo ids left out, as
+  `namesAreVenues` does): a cast field on PL 23 %, UK 83 %, DE ~0 % (all 2,324 DE cast fields are kinoheld copies of
+  kinoheld's own match, as often of a WRONG film as a right one: 41 wrong / 32 right judged), ES 72 %, US 96 % of listings;
+  a synopsis on PL 41 %, UK 66 %, ES 97 %, US 1 %.
+- **Film side:** the recording's TMDB bodies carry credits for ~97 % of films, but prod's store (`tmdb_films`,
+  `local.credits.cast`) holds a cast for only 24 % (PL), 30 % (UK), 44 % (DE), 19 % (US) of records — filed before records
+  kept it — and the captures for 5 % (PL 68/1,379), 7 % (UK 254/3,753), 0 (DE, ES, US).
+- So `CastEvidence` ("any candidate's cast unknown → nothing") almost never fires where the unified rules were counted
+  (the captures), nor in prod. Not covered by other rules — gated out by unknown casts.
+
+### Separation on the judged set (`identity-judgements.tsv`, venue's own text, film cast non-empty)
+| level | right | wrong |
+|---|---|---|
+| none | 66 | 72 |
+| one | 31 | 6 |
+| two+ | 83 | 12 |
+The 12 wrong two+ are multi-film bills (Bear Hunt + Tiger Who Came to Tea, Gruffalo, LOTR triple), a tribute (Dolly
+Parton) and a recut (Manhunter: The Final Cut): cast confirms the film is IN the bill, not that it is the bill.
+Prose naming no cast is no evidence (prod takes, silver: log-LR −0.15); a cast FIELD naming none is (−3.29).
+Joined to prod's traces (takes prod still makes; 102 units with text and cast, only 6 wrong): CV AUC of today's logit
+0.705 → 0.781 with cast, log-loss 0.218 → 0.199 — too few wrong takes to trust. Silver candidate-level units (2,699 prod
+takes corroborated by director + exact year, 2,701 rivals; cast field only): two+ 2,438 / 307 (+2.07), one 77 / 461
+(−1.78: rivals share one actor — sequels, remakes), none 62 / 1,679 (−3.29). Nearly every such take is already decided
+by its director: of the judged takes prod makes whose text names two+ of the cast, 1,053 of 1,147 listings also have
+`director=same_person`; cast is new information mainly for the 849 prod takes billing no director (two+ 168, one 82,
+none 269, unknown 330).
+
+### A: a `cast` listing-film measure in the calibrated logistic — NOT LANDABLE
+- `IdentityMeasures.castRelation`: `two_plus` / `one` / `none` beside a cast field, `two_plus` or `missing:prose` beside
+  prose only, `missing:film` where TMDB credits nobody or the cast was not fetched; node listing side = union of its
+  listings' `VenueNames` (a marker hash records "had a cast field"). Weights the silver log-LRs above, NOT refit by
+  `scripts/identity-refit`: its units come from the captures, which hold casts for <7 % of candidates (0 in DE/ES/US),
+  so a relearn has nothing to fit. Memory: a `FilmCast` per candidate record (~10 int arrays, ~300 B), nothing per listing.
+- `identity-measure-local` (model stage; final stage unmoved, DE and PL unmoved): gained right 6 (UK 5, ES 1), plus
+  unjudged ES "La maleta" ×23 (14 off Objetos 2022 onto Therón's 2026 film — reads as a cure) and UK Crescendo
+  (L'Objet du délit), Stormy Waters (Remorques 1941), Out of the Woods ×2; LOST right 22 (UK 21: NT-style "Fallen Angels
+  by Noël Coward" ×13, NAZA + Q&A ×8 via family moves; US Reel Rock 19 by `cast=none`), unjudged lost 25 (US Met
+  "Tosca (2026 Encore)" ×17 by the 2018 record's cast); RIGHT→WRONG 3 (Fallen Angels → Lukas Dhont's "Coward" 2026).
+- **Failure modes seen:** stage relays and concerts whose record lists another season's or no cast; a dub's voice cast
+  (Spirited Away, Cars) naming none; pooled/family names spreading a rival's two+ across a cluster.
+
+### B: relax `CastEvidence` (unknown-cast candidates left out) — moves nothing
+Every country and stage 0 lost / 0 gained: the captures the final stage replays know almost no casts.
+
+- **Next angle:** backfill `credits.cast` into prod's stored records and the captures first (coverage, not the rule, is
+  the limit); then try cast only as a POSITIVE tie-break among same-title rivals with no director billed, never `none`
+  as a penalty, and keep it out of pooled/family names.
+
+## 2026-10-19 — take stability across scrapes: hysteresis and flip history (branch `experiment-take-stability`, base `b79c71a78`)
+
+### Hold a long-held take against a switch (hysteresis), or flag a flipped take low-confidence — not landed
+- **Tried:** (a) a listing that has held film X for ≥ H hours keeps it unless the switch comes with a resolver-closure
+  change (reset), H ∈ {6, 24, 48} h, holding "no film" too or not; (b) a take whose listing flipped in the last 8 days
+  (A→B→A reversal, ≥2 changes, or one change outside a deploy) as a low-confidence/suspect signal.
+- **Measured:** not by `identity-measure`: its corpus is ONE recording resolved fresh, with no per-listing take
+  history, so a prior on past takes has nothing to read there. Replayed instead over prod's own history: 8 days of
+  `identity take change` lines (VictoriaLogs, 5,791 changes) and the mirror's current `identity_traces` (173,632
+  listings), every take judged by `identity-judgements.tsv` (`label_of`). A change within 30 min of a build's first
+  projection in its country counts as closure-driven ("deploy"), the rest steady-state. Scripts:
+  `scripts/experiments/take-stability/` (`fetch.sh`, `analyse.py`, `signal.py`, `hyst.py`).
+- **How often takes flip:** 4,383 listings changed in 8 days (DE 2.8 %, UK 4.0 %, US 1.8 %, PL 0.8 %, ES 0.5 %); 1,083
+  changed ≥2 times, 971 reversed (A→B→A: DE 318, UK 621). 48 % of changes are steady-state (no deploy). Reversals are
+  a few event billings at many venues (UK "CBeebies Panto 2026: Treasure Island" 211 changes, BTS "Arirang" live viewing
+  166, Starlight Express 112, RBO Macbeth 52, LoL Worlds finals 63), mostly in changed-scope projections, median 10 h
+  between flips; basis OwnMatch↔BelowThreshold/Vetoed.
+- **Which side is right:** steady-state changes judged: right→wrong 209 vs wrong→right 181; gained wrong 288 vs gained
+  right 59; lost right 88 vs lost wrong 86. Deploy changes are mostly cures (lost wrong 631, gained right 334,
+  wrong→right 161, vs right lost 167, right→wrong 5). Steady churn is roughly a coin toss; closure changes cure.
+- **(a) Hysteresis, billings whose switch it would block** (harm blocked = a right take kept or a wrong one kept out;
+  cure blocked = a wrong take frozen or a right one kept out):
+
+  | H | reset on closure change | hold "none" | harm blocked | cure blocked | unjudged |
+  |---|---|---|---|---|---|
+  | 6 h | no | no | 63 | 191 | 152 |
+  | 24 h | no | no | 37 | 109 | 98 |
+  | 24 h | yes | no | 17 | 5 | 84 |
+  | 24 h | yes | yes | 21 | 15 | 158 |
+  | 48 h | yes | no | 16 | 2 | 65 |
+
+  Without the reset it freezes ~3 cures per harm prevented, every served known-wrong take too (9 billings served now,
+  all held 8 days+). With the reset it still blocks data-driven cures (DE "The Killer" losing tmdb:970347 at 4 venues,
+  "Das Boot - Director's Cut"), and the 84 unjudged billings it would freeze are unaudited.
+- **(b) Flip history as confidence, current matched takes:** per LISTING it looks decisive — reversed 221 wrong / 169
+  right (57 %) vs stable 46 / 2,992 (1.5 %) — but per BILLING (country, title, film) it is three billings (CBeebies
+  Panto, DE "The Killer", PL "Zniknięcie" tmdb:1644): reversed 3 wrong / 18 right (14 %), any steady-state flip 7 / 30
+  (19 %) vs stable 35 / 432 (7.5 %). ~2.5× lift on n=37, with the judgements themselves biased toward listings found by
+  take-change hunts. It flags 0 of the 9 served known-wrong billings (all stable).
+- **Why stopped:** the hysteresis prior trades cures for harm (no reset) or blocks little that the oscillation fixes
+  per billing would not (with reset), adds per-listing state the hermetic gates cannot measure (the corpus has no take
+  history, so CI would never see what it froze), and reverses the repo's stance that a resolve is a function of the
+  current corpus. The flip flag is a weak, small-n signal.
+- **Next angle:** treat a steady-state REVERSAL as a bug report, not a prior: alert on `TakeReversals` per billing
+  (the gauge exists) and fix the two rules undoing each other (as with "The Ties That Bind Us"); 3 billings explain
+  ~60 % of reversals. If a confidence feature is wanted, count reversals per billing across venues, not per listing.
+- **Code:** `experiment/take-stability` (the replay scripts; no resolver change).
+
+## 2026-10-19 — margin over the runner-up (recording 38713274617, base `a07939cf6`)
+
+### Take a candidate below the rating cut that dominates its rivals ("dominant") — dropped
+
+- **Tried:** a last alone rule, `dominant`: the best eligible candidate (priors lending) at probability ≥ floor F and ≥ R×
+  its runner-up's (or with none), no closer record — below `ratingCut` (37.5 %). Constants, no flag.
+- **Opportunity** (`scripts.MarginOpportunity`, the five captures, nodes still unmatched after the agreement stage):
+  1,173 nodes have a best candidate under the cut. F ≥ 0.5 is above the cut, so the grid is F ∈ {0.2, 0.25, 0.3}:
+  F 0.3 → 22 nodes at R 5 (16 at R 10) + 7 with no rival; F 0.25 → 75 + 15; F 0.2 → 80 (R 5) / 99 (R 2) + 16. The
+  probabilities cluster on class plateaus (0.2966, 0.2942, 0.3674 …) and runner-ups sit at ~0.03, so R barely
+  discriminates: almost every best candidate below the cut is ≥ 5× its runner-up (the `rivals` measure is already in
+  the probability).
+- **Measured** (`scripts/identity-measure-local`, all five countries; model + final stage; LOST = model lost + final
+  right-lost):
+
+  | point | gained | right | unjudged | NEW WRONG | right→wrong | lost |
+  |---|---|---|---|---|---|---|
+  | A F 0.30, R 5 | 183 model + 16 final | 29 | 45 | 125 (117 = UK "CBeebies Panto 2026: Treasure Island") | 3 | 6 |
+  | B F 0.25, R 5 | 239 model + 17 final | 54 | 64 | 138 | 3 | 7 |
+  | D = A + the billing is only the film's title | 31 model + 7 final | 18 | 17 | 3 | 2 | 1 |
+
+  Every point NOT LANDABLE. The wrong ones are the predicted kinds: a broadcast panto taking the 1950 or 2027 namesake,
+  MET relays taking a namesake film ("MET: Silent Night" → 2023), double bills ("The Tiger Who Came for Tea and …"),
+  events ("Boarding on Insanity + Director's Q&A" → a 9-minute short), a stage work ("Manon" → 2007), and bare
+  namesakes ("Unrest" → 2006, "Dernier été" → 2026, "Obsession (PG)"). Worse, the rule pre-empts better takes: an
+  alone take keeps a node apart from its cluster's pooled or agreed film — DE "CONFIDENTE" 2025 → 2016 and "WHEN PIGS FLY"
+  2026 → 1993 (both judged WRONG), UK "Andre Rieu: Let it Snow" → the 2019 film. The bare-billing guard (D) removes the
+  event/relay/bill class but not the bare namesakes or the pre-emption.
+- **Separation (does the margin help at all?)** On the 274 clusters of the unified training set
+  (`identity-unified/training.tsv.gz`, 2026-10-08) whose top-logit candidate `identity-judgements.tsv` judges (168 right,
+  106 wrong): AUC of the probability alone 0.72, of log(p1/p2) alone 0.76; 5-fold CV logistic AUC 0.69 → 0.75, log-loss
+  0.624 → 0.582, Brier 0.214 → 0.196 with the ratio added. Ratio quantiles p10/p25/p50: right 1.6/8.3/24, wrong
+  1.0/1.6/3.0. Below the cut the ratio does NOT separate (AUC 0.58, p1 0.48; 37 right vs 59 wrong), which is why the take
+  rule fails. Among takes the stack makes (147 judged, 17 wrong) it does: ratio < 2 holds 5 of 17 wrong for 13 of 130
+  right; over all 6,463 taken clusters ratio < 2 is 142 takes. The judged set is biased toward suspects; the training
+  rows predate several resolver changes.
+- **Why it stopped:** zero new wrong is unreachable — the wrong kinds below the cut look exactly like the right ones
+  on probability and margin.
+- **Next angle:** margin as a REFUSAL, not a take: refuse (or send to the agreement stage) a take whose runner-up is
+  within 2× (`LeanMargin`-like) unless a fact of the listing's own favours it — 142 takes to weigh against ~5 wrong
+  cured, within the trade rule if measured so on current code. It could also replace the pinned `leaning` conjunction
+  in `identity-unified-rules.json` only after that measure.
+- **Code:** `experiment/margin-take` (points A, B, C = F 0.2/R 2 unmeasured, D; `scripts.MarginOpportunity`).
+
+## 2026-10-19 — a listing-level "is this a film at all?" signal (branch `experiment-film-ness`, recording 38713274617, base `b79c71a78`)
+
+### Hold off a take whose billing reads as no film (film-ness) — not landed
+- **Inventory first:** `NonFilmEvents` (venue-aware, read only by the agreement stage, so the MODEL still takes an
+  event billing), `Acceptance.notPerformedBeside` (a performance piece beside the film's piece), `onNoReusedPage`
+  (needs a copied director), the scrape filter `NonMovieEventClassifier`. The brief's examples are mostly gone from the
+  served takes on this recording: Schöne Aussicht is absent, Wohnzimmerkonzerte and "Dave - Music in Motion" stay
+  BelowThreshold, SEVENTEEN's tours are concert films judged right; only "Giorgia Fumo - OUT OF OFFICE" (pooled 39%)
+  stands, and it carries no event word at all — no title signal reaches it.
+- **Offline (B), every base take × the judgements (4,715 judged, 17 wrong):** event vocabulary separates nothing
+  (AUC 0.47; 0 of 275 judged event-worded takes wrong). A grouped-CV logistic over confidence + listing shape (no
+  year/director/runtime/poster, one showing, the venue's take share, "Name – Show") drops log-loss 0.0252 → 0.0228
+  (Brier 0.00363 → 0.00357), but the gain is from FACTLESSNESS (no director AUC 0.78, no runtime 0.73), the class-2
+  bare-title story above, not event-ness. The venue's take share (< 0.5) concentrates the kinoheld gig venues
+  (Kaminwerk, Lagerhalle, Casablanca Zwickau) but is a whole-corpus quantity the resolver has no cheap pre-take form of.
+- **V1 (hand): `NonFilmEvents` at the model's acceptance rules** (venue-free `NonFilmEvents.Billing`), sparing a
+  record itself titled as a performance. 10 DE/UK/US model takes moved: 1 cure by side effect (Diessen "Island") for a
+  NEW wrong (Gröben "Island" → a 4-minute short), and right relays/concert films lost (NT Recorded Live ×2, SIX The
+  Musical Live ×2, "Where Dragons Live" read as a performer billed live, GIANT - The Play).
+- **V2 = V1 + "the record shares only the billing's event words"**: +38 right "BP: Silvesterkonzert 2026" (the billing's
+  only other word "BP" is too short to count, so every record "shared nothing").
+- **V3f (hand, kept form): V2's test alone** (`FilmNess`): a billing with event words (live, tour, show, band, gala,
+  stage, night, …konzert, …festival, …party, comedy, tribute…; none inside brackets nor in a compound naming film), no
+  named relay, no screening attached, and words beside them; refuse a record whose own or original title shares none
+  of those other words, unless the record is in another script (its alternatives count then) or shares a year the
+  billing states. Facts are NOT required: kinoheld's page copies the found record's runtime and year onto the gig.
+  Iterations: V3/V3b moved nothing (`isScreenedBroadcast` vetoes any " live"; "Tour 2026" read as a relay's season);
+  V3d needed the record's alternatives left out (TMDB 1419814 files "Tanzwut - Live Tour 2026 | Special Guest:
+  Sagenbringer" as an alternative title of the Number_i film) and lost ENHYPEN ×16, ELF (Pyjama Party) ×6, Centre
+  Stage, a 1972 alt title, Behind The Open Door, Pornfilmfestival's judged-right A Very Good Boy; V3e/V3f spared those.
+- **Result (V3f, identity-measure-local, every country):** DE model 9 lost, all event takes judged wrong here
+  (Goli "3-D-Show: Süd-Afrika" → VAPE SHOW; Comedy Buster Heidelberg LIVE!! ×2 → Peter Kay Live; Italo Cinema
+  Festival 2026 ×2 → The Cure - Maia North Festival; KILMINISTER - A Tribute to Motörhead ×2; One Stage, Five Bands;
+  Andreas Kümmert … live 2.0 → Allen Anders) = 9 cures, 0 right lost, 0 new wrong; ES/PL/UK/US and every final stage
+  unmoved. Tanzwut stays taken (its page copies a year within one of the record's). Cost: a few regexes per listing,
+  two lazy word lists, no state.
+- **Why not landed:** fitted round by round to one recording's listings (each refinement spared a loss it had just
+  caused) and its 9 cures are all one feed (kinoheld) — measure on a newer recording before trusting it; the
+  surviving wrong takes of the class (Giorgia Fumo, Auf Augenhöhe, Soul Kitchen Band, Purple Rising) share a real
+  word with their records, which no title rule reaches.
+- **Learned variant:** not built in the resolver (a listing-level feature in `identity-weights.json` needs the
+  refit and a recapture); offline it adds only the factlessness signal above.
+- **Re-check (2026-10-19, V3f unchanged, squashed onto main `7261d4558` as branch `film-ness-recheck`):** no
+  recording newer than 38713274617 exists locally, and GitHub's 403 blocks fetching one, so the out-of-sample check
+  ran on the OLDER full recording 38666576506 (never tuned on, ~8 h earlier, mostly the same listings):
+  identity-measure-local, every country — DE model 8 lost, all 8 cures already judged wrong (the same kinoheld set
+  minus one Italo Cinema Festival listing), 0 right lost, 0 new wrong, 0 unjudged moves; ES/PL/UK/US and every final
+  stage unmoved. So it holds, but this adds little independence: still one feed, no new cure. Separately, V3f breaks
+  `ResolverAllocationBudgetSpec` ("a title dated by the year…": 35,177 B vs the 35,000 budget; main passes) — its
+  three new lazy vals on `IdentityMeasures.Listing`. Re-run the measure on the next recording once GitHub is back.
+- **Code:** `experiment/film-ness` (V1 `b03ef128a`, V2 `10610e9db`, V3f `a0429af20`).
+- **Next angle:** a venue prior — the share of a venue's listings the model leaves unmatched or reads as events,
+  computed once per corpus (it singles out the gig venues), as a condition beside V3f's test or Giorgia Fumo's bare
+  "Name – Show"; and kinoheld's copied facts (runtime/year equal to the found record's) read as no facts.
+
+## 2026-10-19 — a venue's history as a prior (branch `experiment-venue-history`, prod mirror of 2026-10-19)
+
+### Score a candidate's film age against the venue's other takes ("Sparrows" 1926 at a silent house) — not landed
+- **Tried (offline, no resolver change):** per venue, the age buckets (0–1, 2–4, 5–14, 15–34, 35+ years) of the films
+  prod takes for its OTHER billings (leave-one-out by normalised raw title; Dirichlet-smoothed, α = 10, toward the
+  country), as a log-likelihood ratio `log P(bucket | venue) / P(bucket | country)` beside the candidate's calibrated
+  logit. Data: the local prod mirror's `identity_traces` (173k listings, 165k takes, 7,565 venues, every candidate with
+  its probability and year) and `tmdb_films`; labels `identity-judgements.tsv` via `label_of`: 10,540 judged
+  candidates of 5,748 listings (1,016 right), 452 judged current takes (348 right, 104 wrong). The documentary share
+  was not built: `tmdb_films.record` holds no genres. "Earlier dates only" was not built: the mirror holds current
+  screenings only. Code: `scripts/ml-identity/venue_profile_experiment.py`.
+- **Result (B, confidence):** the prior alone barely ranks (candidate AUC 0.571); on current takes it runs BACKWARDS
+  (AUC 0.376: the judged right takes are often old films at ordinary venues, the wrong ones current releases at
+  ordinary venues). Logistic beside the logit, 5-fold grouped by title, country dummies: log-loss 0.2770 → 0.2705,
+  Brier 0.0778 → 0.0763 — UK and DE better, PL and US worse. A fixed weight lowers the candidate ranking in every
+  country (same-title listings AUC 0.891 → 0.851). LLR < −1 flags 6 wrong takes (The Killer 2024 ×4, The Black Hole,
+  The Stranger 2025) and 3 right (It (2017) at US luxury chains, Pan Tadeusz 1999 at Bali-Kino).
+- **Result (A, takes, proxy):** the argmax over non-denied candidates of the judged listings, logit + w·LLR: w = 0.1
+  4 wrong→right / 2 right→wrong; 0.25: 7 / 5; 0.5: 9 / 10; 1.49 (the fitted ratio): 20 / 16. The losses are relays and
+  plays whose current record is right at a venue of older films (Fallen Angels by Noël Coward 2026 → the 1995 film ×5,
+  Met Opera Macbeth 2026 → 2014, Black Water 2025 → 2018, Norymberga 2025 → 2006). Every move but The Killer at
+  KommKino is between candidates at ~3%, which no rule takes. Not built into the resolver or run through
+  identity-measure: the proxy already moves right takes at every weight (zero new wrong is the bar), and a profile from
+  the venue's own takes needs a second resolve pass or stored takes as input.
+- **Same venue, same raw title, earlier take:** no use as a prior. Within one snapshot only 212 (venue, title) pairs
+  bill twice (206 agree, none judged wrong); across time it is what `StoredFilmSlots`/`IdSeeding` already inherit, and
+  a wrong take persists as itself (`expected-matches.tsv` only holds takes the ratchet called right, so it leaks the
+  label).
+- **Why stopped:** film age is the wrong axis. What a venue screens tells repertory from multiplex, but the hard cases
+  are relays, plays and remakes where the CURRENT record is right at a repertory house (or vice versa), and
+  `ReleaseVeto` and the copied-fact work already took The Killer's class.
+- **Next angle:** a venue prior over KINDS, not ages (share of relays / events / non-film billings, the "Auf
+  Augenhöhe" entry's next angle), used only to veto, never to choose; or the venue's catalogue-id coverage as a
+  reliability prior.
+
+## 2026-10-19 — language from format tokens, and genre (branch `experiment-language-genre`, recording 38713274617)
+
+### Weigh the listing's format tokens against TMDB `original_language`, and its genres against TMDB genres — not built (offline: no gain)
+- **Tried (offline only, no resolver code):** language constraints from the showtimes' `format` tokens and the title
+  (PL NAP/DUB/LEK/ORG/napisy/dubbing → not `pl`; DE OmU/OV/OmdU → not `de`, OmeU → not `en`; UK/US Subtitled/SUB/DUB
+  → not `en`, HINDI/TAMIL/… → that language; ES VOSE/VO/DOB → not `es`), levels match / contradicts / unknown against
+  the candidate's TMDB `original_language`; listing genres mapped onto TMDB ids (documentary 99, animation 16, plus
+  music, horror, comedy, family, sci-fi), levels agree / contradicts (venue says doc/anim, film neither) /
+  contradicts:film (film doc/anim, venue's genres not) / neutral / unknown. Code: `scripts/ml-identity/language-genre/`
+  (`run.sh`).
+- **Data:** neither field is in the resolver's data. `TmdbNormalizer.minimal` keeps neither `original_language` nor
+  `genres`, search hits keep id/title/original title/year/popularity only, the captures hold neither, and the prod
+  mirror's `tmdb_films.record` holds no genres. The recordings' raw `/movie` bodies (and search results:
+  `original_language`, `genre_ids`) do, so adding them needs NO new lookup: keep two fields in `minimal` (~8 bytes a
+  film: a 2-letter code and a genre bitmask), refill the captures from a recording, and let the stored records gain them
+  as they are re-fetched (or re-fetch). The listing side is free: formats and genres are already scraped (a byte and a
+  bitmask per listing).
+- **Coverage (listings carrying it):** language PL 5,645/10,593, DE 4,479/33,489, UK 3,359/36,748 (791 a named
+  language), US 246/100,152, ES 4,319/6,705; genres PL 1,647, DE 6,043, UK 25,855, US 97,063, ES 6,210 (doc/anim:
+  377 / 1,380 / 3,490 / 10,218 / 1,408). On the failure classes it is nearly absent: of the ratchet's (38420977752)
+  31 WRONG takes, 2 carry a language contradiction (DE "CLOSE YOUR EYES" OmeU vs `en`, "The Tea Alchemist" OmeU), 0
+  carry listing genres; the remake ("Sparrows" `xx`, "Hocus Pocus" `sk`) and translated-title ("BARWY OCHRONNE /
+  CAMOUFLAGE" OmeU vs `uk`: a *match*) classes bill no token that tells the namesakes apart.
+- **(B) confidence** (`identity-unified/training.tsv.gz`, 24,267 labelled contender rows, judgements override, grouped
+  5-fold logistic, hand ×5): base AUC 0.9987 / hand AUC 0.9643, LL 0.1837, Brier 0.0355; +language 0.9987 / 0.9643,
+  LL 0.1839, Brier 0.0354; +genre 0.9987 / 0.9640, LL 0.1849, Brier 0.0357; +both 0.9987 / 0.9645, LL 0.1846. Nothing.
+  The calibration's own counts make language perverse: contenders at `contradicts` are 31 right : 64 wrong, ABOVE the
+  prior (27 %), so a refit weighs a contradiction ~+0.3. Every one of today's 31 contradicted takes is right: German
+  films billed OmU/OmeU (dialect, Swiss, English-subtitled screenings: "Mittagsstunde", "Der Himmel über Berlin"), Polish
+  films with NAP/DUB (accessibility subtitles: "Ojczyzna", "Przytul mnie"), UK relays with SUB/Subtitled (NT Live, ROH).
+  Genre contradictions on today's takes: 220, all right (venues list animated films under "Family", music biopics under
+  "music").
+- **(A) takes, simulated at the model stage** (best contender, accept at logit ≥ 0.27 ≈ the showRatings cut):
+  language moves 1–2 clusters (right↔right); genre with its in-logit fit loses 78 right for 15 gained, 2 cured, 2 NEW
+  WRONG; with calibration-style weights gains 50 (weak-labelled, mostly what later stages take already) for 4 right
+  lost and 9 NEW WRONG (DE "München Mord: …" → "Der beste Papa der Welt", ES "Carmen (OPERA LIVE)" → Carmen 1921). Not
+  landable; identity-measure not run, since the data is not plumbed and the offline fit leaves nothing to measure.
+- **Why stopped:** neither signal separates right from wrong beyond what the model already reads; format tokens mean
+  "subtitled screening", not "foreign original", too often; genres are too coarse and inconsistently listed. Memory
+  would be cheap; the value is not there.
+- **Next angle:** only OmeU-vs-`en` held up on the judged set (13 wrong : 3 right contradicted) — as a narrow agreement
+  veto it would cure 2 WRONG + 2 UNJUDGED ("Pornfilmfestival: The more the merrier") for 1 right lost ("Shoshana"),
+  but a listing's showtimes mix OmU and OmeU and English-language documentaries screen OmeU: measure it per showtime,
+  and only after `original_language` is in `minimal`.
+
+## 2026-10-19 — OmeU listing vetoes an English-original film (branch `experiment-omeu-veto`, tag `experiment/omeu-veto`, base `b6e058316`)
+
+### Deny a candidate whose TMDB `original_language` is `en` when the listing's showtimes are (all / mostly) OmeU — not built (offline: loses far more than it cures)
+- **Idea:** the `experiment/language-genre` study's one surviving form — "OmeU" (original, ENGLISH subtitles) implies
+  the original is not English (13 wrong : 3 right contradicted among judgement rows) — as an agreement/unified veto,
+  measured per showtime as that entry asked. Code: `scripts/ml-identity/omeu-veto/` (`run.sh`): prod's served DE takes
+  from the local prod mirror (`screenings` → `movies.tmdbId`, 627 listings with an OmeU showtime: 570 all-OmeU, 12
+  majority, 45 minority), each film's `original_language` from recording 38713274617's TMDB bodies, verdicts from
+  `identity-judgements.tsv`.
+- **All-OmeU listings taking an `en` film: 72** — judged 6 wrong (5 "Pornfilmfestival: …" at Moviemento / Kino Central,
+  "The Killer" 2024 at Savoy), 2 right ("Shoshana", "LOVE & WAR"), 64 unjudged. By inspection the unjudged are almost
+  all right: BTS "ARIRANG" concert relays (26 listings), "NAZA" (Palestinian doc, TMDB `en`, 9), "Bridget Jones's
+  Diary", "Pride", "The Red Shoes" ×2, "Der Teufel trägt Prada 2", "Sonnenaufgang" (1927), "Mama", "Mārama", "Lady",
+  "Black Burns Fast", jazz docs (Monk, Ornette, Milford Graves); only 2 wrong (AFRIKAMERA / LT KINO shorts → tmdb 25132
+  "Shorts" 2009). German venues bill OmeU on English films (English subtitles for an international audience, or just
+  "OV"). **Majority variant:** +5 listings, all NAZA (right). The sibling's cures ("CLOSE YOUR EYES", "The Tea
+  Alchemist") are not among today's takes.
+- **Guard tried:** exempt documentary/music films (TMDB 99 / 10402): 27 listings left — 5 judged wrong + 2 unjudged
+  wrong vs Shoshana + ~19 unjudged right (Bridget Jones, Pride, Prada 2, Red Shoes, Mama, Mārama…). Still a net loss.
+  TMDB's own `original_language` is also wrong on small films ("Barrio Triste" and "Narciso, film esperienza" read `en`
+  though spoken es / it), so the signal is noisy on exactly the art-house titles OmeU marks.
+- **Why stopped:** right losses outnumber cures ~8:1 (guarded ~3:1); no resolver code written, identity-measure-local
+  not run. The cured wrongs have better-aimed fixes: "Pornfilmfestival:" is a festival programme prefix (a title rule,
+  then the bare title's own match), "The Killer" a remake-vs-original choice (year/director evidence).
+
+## 2026-10-19 — film ids in booking and detail URLs (investigation only; recording 38713274617 + prod mirror 10-19)
+
+- **Asked:** do `Showtime.bookingUrl` / `filmUrl` carry film ids (IMDb/TMDB/Filmweb, or a chain's own) the resolver
+  does not read yet, and would they settle takes — as `externalIds` (external) or as a listing-listing pooling key
+  (chain-internal)?
+- **Coverage (recording):** a booking URL on 96–99 % of listings everywhere (PL 96, UK 96, DE 98, ES 98, US 99); a
+  detail URL PL 89, UK 96, DE 10, ES 37, US 100. Id-shaped URL pieces were classed per host and position: a *film* id is
+  constant across a listing's showtimes and distinct between a venue's listings; most hosts' pieces are session ids.
+- **External ids:** IMDb in URLs only at US Majestic Theater Wayne (3–10 listings, all already taken right); none of
+  TMDB/Filmweb/EIDR anywhere. Detail pages linking IMDb: Kinoteka (read already), 2 Drafthouse, 1 Iluzjon Filmweb.
+  **Settles 0 takes.**
+- **Chain ids already captured** as `externalIds` (and must-linked by `ConstraintEdges.catalogueKey`): Multikino, Cinema
+  City, Vue, Odeon, Cineworld/Everyman/Showcase box office, Flicks, Taquilla, Ocine, Artesiete, Alamo, Landmark.
+  **Not captured:** Helios film id (PL, 1.8–2.1k listings, 52 venues), CinemaxX Vista HO code (DE ~1.4k, 31 venues),
+  kinoheld film slug (DE ~3k, 103 venues), Marcus FeatureCode, Cinemark `m=`, Harkins HO (US ~0.3–11k), biletyna
+  slug (PL). All stable: 99.4–100 % the same id for a (venue, title) between recordings 38666576506 and 38713274617.
+- **Value as a pooling key — nil:** the listings sharing an uncaptured chain id bill the same title in all but a
+  handful of groups (Helios 0 of 90 shared ids retitled, Marcus/Cinemark/Harkins 0, kinoheld 2 of 250), so title
+  pooling already joins them. Against prod's takes (mirror identity_traces) the groups where the id disagrees with
+  the takes are: CinemaxX 8 retitled (must-link would FILL "Panem-Mockingjay 1+2" and "Lord Of The Rings Triple"
+  — double bill / marathon, judged WRONG for its 2025 take — with the single film: 12 listings of NEW WRONG; BTS
+  "in Busan" under the Buenos Aires code at 3 venues: ambiguous, other chains bill Busan too), kinoheld "Emil und die
+  Detektive" (one slug, 1931 and 2026 films, BOTH judged right: a must-link loses a right take). As a cannot-link
+  ("different id → different film") it would split today's right pools: one TMDB film under 2+ ids in Helios 26,
+  kinoheld 37, Cinemark 13 titles (format/event variants). Cures found: 0 standing (the CinemaxX "Sinn und
+  Sinnlichkeit" 4584/1503762 split seen in the recording has since healed in prod).
+- **Why stopped:** no prototype built — the estimated payoff is 0 cures against ≥12 new wrong (must-link) or dozens
+  of split pools (cannot-link). Not worth an identity-measure run.
+- **Code:** the probes only, `experiment/booking-ids` (`scripts/experiments/booking-ids/`: `slots.py` over a
+  recording's corpus, `mirror.py` against a mirror export of cinema_scrapes + identity_traces, `stable.py` across two
+  recordings, `detail.py` for one slot's disagreeing groups).
+- **Next angle:** if CinemaxX ever matters, scope its HO code to CinemaxX-named venues (the disagreements come from
+  partner venues booking through cinemaxx.de, e.g. Kino am Raschplatz) and title-gate it as a feed id
+  (`SourceReliability.linkDecides` = false); the mirror's lean `cinema_scrapes` keeps few showtimes, so measure
+  coverage on a recording, not the mirror.
+
 ## 2026-10-15/17 — wrong-match classes, round 2 (recording 38713274617, base `d0d3ffb1c` unless noted)
 
 ### Class 2 strict: a take on a bare title needs a fact of the listing's own (variant H)
@@ -108,6 +476,31 @@ Follows `experiment/cast-overlap` (coverage, not the rule, was the limit).
 - **Code:** `experiment/identity-agreement-quorum` (`7c3a33657`).
 - **Next angle:** the 4 cures each had their own signal — Halstead's bare "Romeo and Juliet" is a relay on the RBO
   broadcast day (class 4); "Archiv Negativ: Turksib" is agreed on a record not titled "Turksib" (a title-guard gap).
+
+### Count the venue's poster, cast and certificate in the agreement quorum (2026-10-19, recording 38713274617, base `b79c71a78`)
+- **Tried:** `Agreement.weighed` reads the venue's own evidence on each film the families took (`AgreementTakes.venueEvidence`,
+  not waited on, like the cast and synopsis): (1) a venue poster within `VoteBits` of the film's TMDB poster, no poster
+  vetoing it, is one quorum vote; (2) the venue's text naming two whole names of its cast, no other candidate's, is one;
+  (3) both; (4) a poster veto, another candidate's cast named, or the venue's certificate `StepsBelow` under TMDB's is one
+  dissenting vote. Independence by provenance as the stage already draws it: a feed's poster shows nothing
+  (`PosterEvidence.shows`), a feed catalogue's text names nobody (`venueNames`). Variant 5 prints every weighed film's
+  support, quorum and venue evidence and applies nothing.
+- **Result:** every variant moved NOTHING (`identity-measure-local`, 5 countries: model and final 0 lost / 0 changed / 0
+  gained). Variant 5 over the capture's 702 weighed films: 133 sit one vote short, only 2 of those carry a venue poster
+  (PL Goplana "Johnny", already taken as `Poster`; Garden Cinema "Last Train Home" 2009, still refused by a title guard)
+  and none a cast vote; the poster/cast votes otherwise land on 12 agreements already at quorum (Candyman ×9,
+  Caravaggio, Pianista, The Cremator: all judged RIGHT). Dissent fires on 9 films, 8 of them already short of the quorum
+  (PL "Lalka" 1968 at three venues, UK "Resident Evil" 2002, "Fatherland" 1994 ×2, "Golden Boy" 2025 — each the losing
+  namesake of a right take) and the ninth (PL Fenomen "Dyrygent" → The Conductor 1980) already poster-vetoed after the
+  quorum. The certificate never fired.
+- **Why stopped:** the stage after the quorum already spends this evidence: the poster vote and the fill take the
+  one-short clusters, and the poster veto refuses what a poster dissent would. The one capture WRONG agreement (UK
+  Beehive "Into The Shadows", an event) shows no poster or cast. The "pooled vote" wrongs (Notre-Dame de Paris ×2,
+  Pornfilmfestival "The Dating Game") are model takes the quorum never weighs.
+- **Confidence (B):** venue votes 12/12 right, dissent 9/9 on films not right — consistent, but every one where the
+  outcome is already decided; no separation gained on the judged set.
+- **Code:** `experiment/quorum-votes` (variants are `Agreement.QuorumVariant` commits 1–5 on the branch).
+- **Next angle:** none here. Venue evidence would matter only for a model take's correction, where the quorum is not read.
 
 ### Refuse an uncorroborated take below a confidence threshold
 - **Tried (offline, over H's classified moves):** wrong uncorroborated takes sat at 3–62%; refuse below a threshold.
