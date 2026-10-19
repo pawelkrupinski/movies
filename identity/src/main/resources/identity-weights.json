@@ -1,9 +1,28 @@
 {
-  "version" : "calibration-2026-09-26-r5-monotone-runtime.delta+weighted-guards-certificate",
+  "version" : "calibration-2026-09-26-r5-monotone-runtime.delta+weighted-guards-both",
   "scopes" : {
     "listing-film" : {
       "prior" : -2.264109870948828,
       "signals" : {
+        "release.country" : {
+          "kind" : "categorical",
+          "categories" : {
+            "released" : 0.7316022708597942,
+            "unreleased" : -1.2447508382733758
+          },
+          "bins" : [ ],
+          "missing" : {
+            "film" : 0.0
+          },
+          "counts" : {
+            "missing:film" : [ 0, 62 ],
+            "released" : [ 13270, 154220 ],
+            "unreleased" : [ 2784, 233518 ]
+          },
+          "neutral" : {
+            "film" : "missing evidence, weighed by neither side"
+          }
+        },
         "certificate" : {
           "kind" : "categorical",
           "categories" : {
