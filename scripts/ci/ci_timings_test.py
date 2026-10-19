@@ -6,7 +6,9 @@ import datetime
 import http.server
 import io
 import json
+import os
 import shutil
+import signal
 import socket
 import subprocess
 import sys
@@ -276,24 +278,48 @@ class RealPrometheusTest(unittest.TestCase):
 
 
 class HungGhTest(unittest.TestCase):
-    """A gh that never answers must not hold the run's last job: json() raises at the bound, log() gives no log."""
+    """A gh that never answers must not hold the run's last job: json() raises at the bound, log() gives no log.
+
+    The stub never ends on its own (it records its pid and blocks until killed), so both calls return only by the bound
+    cutting gh off, and none is left running -- proven by that, never by elapsed wall time, which a loaded machine
+    stretches ~10x (scripts/shell-spec.sh's HUNG STUBS). An alarm only turns a call that does hang into a failure."""
 
     def setUp(self):
         self.bin = tempfile.mkdtemp()
+        self.hung = Path(self.bin, "hung")
         gh = Path(self.bin, "gh")
-        gh.write_text("#!/bin/sh\nexec sleep 30\n")
+        gh.write_text('#!/bin/sh\necho $$ >> "%s"\nexec sleep 86400\n' % self.hung)
         gh.chmod(0o755)
         self.addCleanup(shutil.rmtree, self.bin, True)
         self.path = mock_environ_path(self.bin)
 
     def test_bounded(self):
-        started = time.monotonic()
-        with self.path, mock_timeout(1):
-            github = timings.GitHub("o/r")
-            self.assertEqual(github.log(1), "")
-            with self.assertRaises(subprocess.TimeoutExpired):
-                github.json("actions/runs/1")
-        self.assertLess(time.monotonic() - started, 15)
+        def hung(signum, frame):
+            raise AssertionError("a gh call was not cut off by its bound")
+        previous = signal.signal(signal.SIGALRM, hung)
+        signal.alarm(int(os.environ.get("SPEC_HANG_BOUND", "600")))  # shell-spec.sh's outer bound
+        try:
+            with self.path, mock_timeout(1):
+                github = timings.GitHub("o/r")
+                self.assertEqual(github.log(1), "")
+                with self.assertRaises(subprocess.TimeoutExpired):
+                    github.json("actions/runs/1")
+        finally:
+            signal.alarm(0)
+            signal.signal(signal.SIGALRM, previous)
+        self.assertEqual([pid for pid in self.recorded_pids() if alive(pid)], [])
+
+    def recorded_pids(self):
+        return [int(line) for line in self.hung.read_text().split()] if self.hung.exists() else []
+
+
+def alive(pid):
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    os.kill(pid, signal.SIGKILL)  # a failing case strands nothing
+    return True
 
 
 def mock_timeout(seconds):

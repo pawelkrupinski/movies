@@ -8,32 +8,39 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 printf '\033[36m▸\033[0m in-background.sh\n'
 
 work="$(mktemp -d)"
-trap 'rm -rf "$work"' EXIT
+# the never-ending chore below is killed on the way out whatever happened, so a failing case strands nothing
+trap 'kill "$(cat "$work/hung" 2>/dev/null)" 2>/dev/null; rm -rf "$work"' EXIT
 export BACKGROUND_DIR="$work"
-bg="$REPO_ROOT/scripts/ci/in-background.sh"
+# Every call under shell-spec.sh's outer bound: a start or wait that broke into waiting on its chore fails the case,
+# never holds the spec (a broken start once ran the never-ending chore below in the foreground for hours).
+bg() { spec_bounded bash "$REPO_ROOT/scripts/ci/in-background.sh" "$@"; }
 
-started=$SECONDS
-bash "$bg" start slow bash -c 'sleep 2; echo "pulled the image"; exit 3'
-check "start returns at once rather than running the chore in the foreground" "true" \
-  "$([ $((SECONDS - started)) -lt 2 ] && echo true || echo false)"
-out="$(bash "$bg" wait slow 30)"; status=$?
+# The chore cannot end until it is let go, so start returning at all proves it did not run the chore in the
+# foreground -- and the chore not finished once start returns says so again. Proven so, never by elapsed wall time,
+# which a loaded machine stretches ~10x (shell-spec.sh's HUNG STUBS); the bound only fails a start that hangs.
+bg start slow bash -c 'until [ -e "$0" ]; do sleep 0.05; done; echo "pulled the image"; exit 3' "$work/let-go"
+check "start returns while its chore still runs, rather than running it in the foreground" "0 running" \
+  "$? $([ -e "$work/slow.rc" ] && echo finished || echo running)"
+touch "$work/let-go"
+out="$(bg wait slow 600)"; status=$?
 check "wait exits with the chore's own status" "3" "$status"
 check "...after printing its log" "pulled the image" "$out"
 
-bash "$bg" start quick true
-bash "$bg" wait quick 30 > /dev/null
+bg start quick true
+bg wait quick 30 > /dev/null
 check "a chore that succeeded waits green" "0" "$?"
 
-out="$(bash "$bg" wait never-started 30)"; status=$?
+out="$(bg wait never-started 30)"; status=$?
 check "a chore nobody started is reported at once, so the caller can do it itself" "2" "$status"
 
-bash "$bg" start hung bash -c 'echo "half way"; sleep 30'
-started=$SECONDS
-out="$(bash "$bg" wait hung 1)"; status=$?
+# A chore that never ends on its own, waited on once it is half way: wait returns only by its deadline, while the
+# chore runs on.
+bg start hung bash -c 'echo "half way"; echo $$ > "$0"; exec sleep 86400' "$work/hung"
+for _ in $(seq 1 600); do [ -s "$work/hung" ] && break; sleep 0.1; done
+out="$(bg wait hung 1)"; status=$?
 check "a chore past its deadline fails the wait" "1" "$status"
-check "...within the deadline, not the chore's own time" "true" \
-  "$([ $((SECONDS - started)) -lt 10 ] && echo true || echo false)"
+check "...on the deadline, not the chore's own end: it is still running" "true" \
+  "$(kill -0 "$(cat "$work/hung" 2>/dev/null)" 2>/dev/null && echo true || echo false)"
 check "...and shows how far it got" "true" "$(grep -q 'half way' <<<"$out" && echo true || echo false)"
-pkill -f 'echo "half way"; sleep 30' 2>/dev/null
 
 spec_summary

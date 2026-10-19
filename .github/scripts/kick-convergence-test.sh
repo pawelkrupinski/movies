@@ -14,11 +14,12 @@ work="$(mktemp -d)"
 trap 'rm -rf "$work"' EXIT
 mkdir -p "$work/bin" "$work/repo"
 
-# gh: `run list` answers $work/last (or hangs while $work/hang exists); `workflow run` records the suite dispatched
+# gh: `run list` answers $work/last (or, while $work/hang exists, records its pid there and never answers); `workflow run` records the suite dispatched
 cat > "$work/bin/gh" <<'STUB'
 #!/usr/bin/env bash
 case "$1 $2" in
-  "run list") [ -e "$STUB/hang" ] && sleep 30; cat "$STUB/last" 2>/dev/null ;;
+  "run list") [ -e "$STUB/hang" ] && { echo $$ >> "$STUB/hang"; exec sleep 86400; } # never answers: blocks until killed
+              cat "$STUB/last" 2>/dev/null ;;
   "workflow run") echo "$3" >> "$STUB/dispatched" ;;
 esac
 STUB
@@ -42,11 +43,11 @@ pipeline=$(scratch_git "$repo" rev-parse HEAD)
 
 kick() { # <head> [matcher] -> the suites dispatched, one line; the exit status in $work/status
   rm -f "$work/dispatched"
-  (cd "$repo" && env STUB="$work" PATH="$work/bin:$PATH" CONVERGENCE_PATHS_FILE="$work/paths" DISPATCH_RETRY_SECONDS=0 \
+  (cd "$repo" && spec_bounded env STUB="$work" PATH="$work/bin:$PATH" CONVERGENCE_PATHS_FILE="$work/paths" DISPATCH_RETRY_SECONDS=0 \
      KICK_CONVERGENCE_GH_TIMEOUT=1 ${2:+"CHANGED_PATHS_MATCHER=$2"} \
      bash "$REPO_ROOT/.github/scripts/kick-convergence.sh" "$1" main "Country convergence" > "$work/out" 2>&1)
   echo $? > "$work/status"
-  tr '\n' ' ' < "$work/dispatched" 2>/dev/null | sed 's/ $//'
+  tr '\n' ' ' 2>/dev/null < "$work/dispatched" | sed 's/ $//'
 }
 
 echo "$base" > "$work/last"
@@ -60,10 +61,12 @@ echo 0123456789abcdef0123456789abcdef01234567 > "$work/last"
 check "a base this checkout does not hold is dispatched" "Country convergence" "$(kick "$docs")"
 
 echo "$base" > "$work/last"
-touch "$work/hang"
-start=$SECONDS
+# The stub never answers, so the gate gets past it only by the read's bound (1 s here) cutting it off: its own exit and
+# no gh left running prove that, never elapsed time (shell-spec.sh's HUNG STUBS).
+: > "$work/hang"
 check "a hung read of the last run is no base: dispatched" "Country convergence" "$(kick "$docs")"
-check "...once the read's bound (1 s here) ends it, not gh's 30 s" "yes" "$([ $((SECONDS - start)) -lt 15 ] && echo yes || echo no)"
+check "...once the read's bound cuts it off: the gate exits 0, no gh left running" "0 0" \
+  "$(cat "$work/status") $(spec_still_running "$work/hang")"
 rm -f "$work/hang"
 
 printf '#!/usr/bin/env bash\nexit 1\n' > "$work/broken-matcher"; chmod +x "$work/broken-matcher"

@@ -34,7 +34,7 @@ mkdir -p "$work/bin"
 cat > "$work/bin/gh" <<EOF
 #!/usr/bin/env bash
 [ -n "\${HISTORY_FAILS:-}" ] && { echo "HTTP 502" >&2; exit 1; }
-[ -n "\${HISTORY_HANGS:-}" ] && exec sleep 30
+[ -n "\${HISTORY_HANGS:-}" ] && { echo \$\$ >> "\$HISTORY_HANGS"; exec sleep 86400; } # never answers: blocks until killed
 state() { cat "$work/status-\$1" 2>/dev/null || echo -; }
 case "\$*" in
   "api repos/o/r/commits/"*) short="\${2##*/}"; for c in $c1 $c2 $c3; do [ "\${c#\$short}" != "\$c" ] && { echo "\$c"; exit 0; }; done
@@ -48,7 +48,7 @@ EOF
 chmod +x "$work/bin/gh"
 
 run() { rm -rf "$work/out"; (cd "$work/job" && PATH="$work/bin:$PATH" GITHUB_REPOSITORY=o/r GITHUB_SHA=$c3 RUNNER_TEMP=$work \
-  "$script" pl "$work/out" > "$work/log" 2>&1); }
+  spec_bounded "$script" pl "$work/out" > "$work/log" 2>&1); }
 
 echo SUCCESS > "$work/status-$c1"
 run || true; check "the newest green commit is the base, past a red one" "$c1" "$(cat "$work/out/base.txt")"
@@ -70,10 +70,11 @@ rm "$work/status-$c2"
 
 code=0; HISTORY_FAILS=1 run || code=$?
 check "a failed history read stops the check" 2 "$code"
-started=$SECONDS
-code=0; HISTORY_HANGS=1 IDENTITY_TAKES_GH_TIMEOUT=1 run || code=$?
-check "a history read that hangs is cut off, and stops the check" 2 "$code"
-check "...within its bound" yes "$([ $((SECONDS - started)) -lt 15 ] && echo yes || echo "no: $((SECONDS - started))s")"
+# The stub never answers: the check stops only by its bound cutting the read off (shell-spec.sh's HUNG STUBS).
+: > "$work/hung"
+code=0; HISTORY_HANGS="$work/hung" IDENTITY_TAKES_GH_TIMEOUT=1 run || code=$?
+check "a history read that hangs is cut off by its bound, and stops the check, leaving no gh running" "2 0" \
+  "$code $(spec_still_running "$work/hung")"
 
 # Run 38533191835 was dispatched with takes-base=c2974e3aa: a fetch asks for a FULL object name, so every leg failed to
 # fetch it -- and passed. A short base is expanded through the API; one naming no commit, or one the fetch cannot reach,

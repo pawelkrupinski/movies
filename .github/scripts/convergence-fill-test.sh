@@ -35,7 +35,7 @@ release="$(dirname "$0")/../release"
 if [ "$1 $2" = "release view" ]; then
   echo x >> "$release/../views"
   [ -z "${STUB_UNREACHABLE:-}" ] || exit 1
-  [ -z "${STUB_HANGS:-}" ] || exec sleep 30
+  [ -z "${STUB_HANGS:-}" ] || { echo $$ >> "$STUB_HANGS"; exec sleep 86400; } # never answers: blocks until killed
   # A GitHub 5xx on the first listing only.
   if [ -n "${STUB_FAILS_ONCE:-}" ] && [ ! -e "$release/../failed-once" ]; then : > "$release/../failed-once"; exit 1; fi
   ls "$release"; exit 0
@@ -53,7 +53,7 @@ fi
 exit 1
 STUB
 chmod +x "$work/bin/gh"
-run() { PATH="$work/bin:$PATH" FIXTURE_RELEASE_TAG=convergence-fixtures CONVERGENCE_FILL_LIST_BACKOFF=0 bash "$fill" "$@"; }
+run() { PATH="$work/bin:$PATH" FIXTURE_RELEASE_TAG=convergence-fixtures CONVERGENCE_FILL_LIST_BACKOFF=0 spec_bounded bash "$fill" "$@"; }
 views() { wc -l < "$work/views" 2>/dev/null | tr -d ' '; }
 
 check "a pair's fills are its own country's and corpus's, oldest run first" \
@@ -82,11 +82,11 @@ STUB_UNREACHABLE=1 run fills us 100 > /dev/null 2>&1
 check "...but only after asking three times" "3" "$(views)"
 check "...and the gaps too, rather than reporting none" "1" \
   "$(STUB_UNREACHABLE=1 run gaps us 100 "$work/unreachable.tsv" > /dev/null 2>&1; echo "$?")"
-# A listing that hangs is a failed attempt, cut off, never a leg waiting out its job's timeout.
-started=$SECONDS
-check "a listing that hangs is cut off, and fails the fills after three attempts" "1" \
-  "$(STUB_HANGS=1 CONVERGENCE_FILL_GH_TIMEOUT=1 run fills us 100 > /dev/null 2>&1; echo "$?")"
-check "...within its bound" "yes" "$([ $((SECONDS - started)) -lt 15 ] && echo yes || echo "no: $((SECONDS - started))s")"
+# A listing that hangs is a failed attempt, cut off, never a leg waiting out its job's timeout. The stub never answers,
+# so the fills fail only by the bound cutting each listing off -- leaving none running (shell-spec.sh's HUNG STUBS).
+: > "$work/hung"
+check "a listing that hangs is cut off, and fails the fills after three attempts, leaving no gh running" "1 0" \
+  "$(STUB_HANGS="$work/hung" CONVERGENCE_FILL_GH_TIMEOUT=1 run fills us 100 > /dev/null 2>&1; echo "$?") $(spec_still_running "$work/hung")"
 # One GitHub 5xx is not a release that cannot be listed: a single failed listing must not fail the leg.
 rm -f "$work/views" "$work/failed-once"
 check "a listing that fails once and then answers gives the pair's fills" "0:fill-us-100-35.tar.zst fill-us-100-201.tar.zst" \
