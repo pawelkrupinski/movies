@@ -3,6 +3,7 @@ package services.alerts
 import play.api.Logging
 import services.fallback.FallbackEvent
 import tools.HttpFetch
+import tools.Whitespace.collapsedSpaces
 
 import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
@@ -50,13 +51,16 @@ trait TelegramNotificationRecorder {
  *
  * Every attempt leaves a trace, a delivered one included: an INFO
  * `Telegram notify sent` or a WARN `Telegram notify failed`, each naming the
- * kind and the country (one JVM runs several countries' wirings), and one
- * increment of `recorder`. Only failures used to log, so nobody could count what
- * had been paged.
+ * kind and the country (one JVM runs several countries' wirings) and quoting
+ * the message on one line, and one increment of `recorder`. Only failures used
+ * to log, so nobody could count what had been paged; and until the text rode
+ * along, a burst of 19 `fallback_enter` pages in a week could not be told apart
+ * as one flapping venue or nineteen.
  */
 class TelegramNotifier(http: HttpFetch, route: settings.TelegramRoute, country: String,
                        recorder: TelegramNotificationRecorder) extends Logging {
-  def send(kind: TelegramAlertKind)(text: String): Unit =
+  def send(kind: TelegramAlertKind)(text: String): Unit = {
+    val quoted = s"text=\"${text.collapsedSpaces}\""
     Try {
       http.get(s"https://api.telegram.org/bot${route.token.value}/sendMessage?chat_id=${route.chatId.value}" +
         route.topicId.fold("")(topic => s"&message_thread_id=${topic.value}") +
@@ -64,9 +68,10 @@ class TelegramNotifier(http: HttpFetch, route: settings.TelegramRoute, country: 
     } match {
       case Success(_) =>
         recorder.record(kind, TelegramOutcome.Sent)
-        logger.info(s"Telegram notify sent: kind=${kind.value} country=$country")
+        logger.info(s"Telegram notify sent: kind=${kind.value} country=$country $quoted")
       case Failure(exception) =>
         recorder.record(kind, TelegramOutcome.Failed)
-        logger.warn(s"Telegram notify failed: kind=${kind.value} country=$country: ${exception.getMessage}")
+        logger.warn(s"Telegram notify failed: kind=${kind.value} country=$country $quoted: ${exception.getMessage}")
     }
+  }
 }

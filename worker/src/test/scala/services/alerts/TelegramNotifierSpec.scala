@@ -28,7 +28,7 @@ class TelegramNotifierSpec extends AnyFlatSpec with Matchers {
     val registry = new PrometheusRegistry()
     val metrics  = new TelegramNotificationMetrics(Seq("pl", "us"), registry)
     val events   = LogCapture.thisThread(classOf[TelegramNotifier].getName, Some(Level.INFO)) {
-      new TelegramNotifier(http, route(), country, metrics.recorderFor(country)).send(kind)("x")
+      new TelegramNotifier(http, route(), country, metrics.recorderFor(country)).send(kind)("Kino Praha\n  down → Filmweb")
     }
     (PrometheusExposition.render(registry), events)
   }
@@ -55,12 +55,13 @@ class TelegramNotifierSpec extends AnyFlatSpec with Matchers {
     noException should be thrownBy new TelegramNotifier(failing, route(), "pl", (_, _) => ()).send(TelegramAlertKind.GoneVenue)("x")
   }
 
-  // A delivered page used to leave no trace at all, so nobody could count what was sent.
+  // A delivered page used to leave no trace at all, so nobody could count what was sent; and
+  // without its text on one line, nobody could say which venue a burst of pages was about.
   it should "log a delivered page at INFO and count it as sent, under its kind and country" in {
     val (metrics, events) = sendOnce(new CapturingFetch, "us", TelegramAlertKind.fallback("ENTER"))
 
     events.map(e => (e.getLevel, e.getFormattedMessage)) shouldBe
-      Seq((Level.INFO, "Telegram notify sent: kind=fallback_enter country=us"))
+      Seq((Level.INFO, """Telegram notify sent: kind=fallback_enter country=us text="Kino Praha down → Filmweb""""))
     metrics should include ("""kinowo_worker_telegram_notifications_total{country="us",kind="fallback_enter",outcome="sent"} 1""")
     metrics should include ("""kinowo_worker_telegram_notifications_total{country="us",kind="fallback_enter",outcome="failed"} 0""")
   }
@@ -69,7 +70,7 @@ class TelegramNotifierSpec extends AnyFlatSpec with Matchers {
     val (metrics, events) = sendOnce(failing, "pl", TelegramAlertKind.GoneVenue)
 
     events.map(e => (e.getLevel, e.getFormattedMessage)) shouldBe
-      Seq((Level.WARN, "Telegram notify failed: kind=gone_venue country=pl: network down"))
+      Seq((Level.WARN, """Telegram notify failed: kind=gone_venue country=pl text="Kino Praha down → Filmweb": network down"""))
     metrics should include ("""kinowo_worker_telegram_notifications_total{country="pl",kind="gone_venue",outcome="failed"} 1""")
     metrics should include ("""kinowo_worker_telegram_notifications_total{country="pl",kind="gone_venue",outcome="sent"} 0""")
   }
