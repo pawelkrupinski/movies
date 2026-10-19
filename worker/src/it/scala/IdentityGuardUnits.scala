@@ -12,7 +12,8 @@ import scala.collection.mutable
 /**
  * Experiment `weighted-guards` (docs/identity-experiments.md): every candidate of every node of a recorded full corpus, as
  * the shipped model scores it — its log-odds and probability, the film its node's cluster takes, and the levels of the two
- * guard signals the per-candidate model now measures (`release.country`, `certificate`) — written to
+ * guard signals the per-candidate model now measures (`release.country`, `certificate`) and the synopsis level the recording's
+ * TMDB overviews answer — written to
  * `<out>/units-<cc>.tsv` for the confidence study (`scripts/ml-identity/weighted_guards.py`). The corpus and lookups are
  * [[IdentityResolveDump]]'s:
  *
@@ -58,16 +59,19 @@ object IdentityGuardUnits {
         val first = node.keys.min(using Ordering.by(services.movies.ListingKey.serialised))
         val take  = node.keys.iterator.flatMap(k => scored.resolution.decisionOf(k).film).nextOption()
         val certificates = node.keys.flatMap(byKey.get).flatMap(_.certificate).distinct.mkString("/")
+        val shares   = scripts.IdentityGuardSignals.synopsisShares(node.keys.flatMap(byKey.get), node.candidates.map(c => c.tmdbId -> c.film),
+          id => lookups.overview(id).toOption.flatten)
+        val synopsis = scripts.IdentityGuardSignals.synopsisLevels(shares)
         node.candidates.map { cand =>
           Seq(c.country.code, first.venue, first.rawTitle.replace('\t', ' '), node.keys.size.toString, services.movies.ListingKey.serialised(first).hashCode.toString,
             cand.tmdbId.toString, take.fold("")(_.toString), cand.denied.toString,
             f"${calibration.logOdds(IdentityMeasures.ListingFilm, cand.measures)}%.5f", f"${cand.probability}%.6f",
             level(cand.measures.get("release.country")), level(cand.measures.get("certificate")), certificates,
-            cand.film.certificates.getOrElse("")).mkString("\t")
+            cand.film.certificates.getOrElse(""), synopsis(cand.tmdbId), shares(cand.tmdbId).fold("")(_.toString)).mkString("\t")
         }
       }
       Files.createDirectories(out)
-      val header = "country\tvenue\trawTitle\tlistings\tnode\ttmdbId\ttake\tdenied\tlogit\tprobability\trelease\tcertificate\tvenueCertificate\tfilmCertificate"
+      val header = "country\tvenue\trawTitle\tlistings\tnode\ttmdbId\ttake\tdenied\tlogit\tprobability\trelease\tcertificate\tvenueCertificate\tfilmCertificate\tsynopsis\tsynopsisShared"
       Files.writeString(out.resolve(s"units-${c.country.code}.tsv"), (header +: lines).mkString("", "\n", "\n"))
       println(s"[${c.label}] ${lines.size} candidate rows over ${scored.evidence.size} nodes")
     } finally storages.foreach(s => scala.util.Try(s.close()))

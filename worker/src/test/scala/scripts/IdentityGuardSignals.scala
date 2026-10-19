@@ -45,6 +45,18 @@ object IdentityGuardSignals {
   }
   val SynopsisWords = agreement.SynopsisEvidence.Words
 
+  /** How many of the words the node's synopses capitalise each candidate's TMDB overview holds — every title's words left
+   *  out, as [[agreement.SynopsisEvidence]] reads them; `None` where the listings state no synopsis or the film no overview. */
+  def synopsisShares(listings: Seq[Listing], films: Seq[(Int, IdentityMeasures.Film)], overview: Int => Option[ProseWords]): Map[Int, Option[Int]] = {
+    val words  = listings.foldLeft(ProseWords.None)(_ ++ _.words)
+    val titles = ProseWords.ofWords(listings.flatMap(l => Seq(l.rawTitle, l.title, l.cleanTitle)) ++ films.flatMap((_, f) => f.ownTitles ++ f.alternativeTitles))
+    films.map { (id, _) => id -> (if (words.isEmpty) None else overview(id).filterNot(_.isEmpty).map(o => ((words -- titles) & (o -- titles)).size)) }.toMap
+  }
+
+  /** Each candidate's synopsis level ([[synopsisLevel]]) from its [[synopsisShares]]. */
+  def synopsisLevels(shares: Map[Int, Option[Int]]): Map[Int, String] = shares.map { (id, n) =>
+    id -> synopsisLevel(n, shares.exists((other, m) => other != id && m.exists(_ >= SynopsisWords))) }
+
   private def level(m: Option[Measure]): String = m match {
     case Some(Category(v)) => v
     case Some(Missing(s))  => s"missing:$s"
@@ -73,21 +85,16 @@ object IdentityGuardSignals {
         val venueHashes = PosterEvidence.urls(listings).flatMap(url => posters.venue(url).toOption.flatten)
         def distance(u: IdentityRefit.LabelledUnit) =
           if (venueHashes.isEmpty) None else posters.film(u.tmdbId).toOption.filter(_.nonEmpty).flatMap(PosterEvidence.nearest(venueHashes, _))
-        val words = listings.foldLeft(ProseWords.None)(_ ++ _.words)
-        val titles = ProseWords.ofWords(listings.flatMap(l => Seq(l.rawTitle, l.title, l.cleanTitle)) ++ ofNode.flatMap(_.film.toSeq.flatMap(f => f.ownTitles ++ f.alternativeTitles)))
-        def shared(u: IdentityRefit.LabelledUnit) =
-          if (words.isEmpty) None else capture.overviews.get(u.tmdbId).flatten.filterNot(_.isEmpty).map(o => ((words -- titles) & (o -- titles)).size)
         val distances = ofNode.map(u => u.tmdbId -> distance(u)).toMap
-        val shares    = ofNode.map(u => u.tmdbId -> shared(u)).toMap
+        val shares    = synopsisShares(listings, ofNode.flatMap(u => u.film.map(u.tmdbId -> _)), id => capture.overviews.get(id).flatten)
         ofNode.foreach { u =>
           val logit = start.logOdds(IdentityMeasures.ListingFilm, u.measures)
           val posterOther   = distances.exists { case (id, d) => id != u.tmdbId && d.exists(_ <= PosterMatch) }
-          val synopsisOther = shares.exists { case (id, n) => id != u.tmdbId && n.exists(_ >= SynopsisWords) }
           rows += Seq(u.country, u.node.replace('\t', ' ').replace('\u0000', '|'), u.group, u.tmdbId.toString, u.same.toString,
             IdentityRefit.heldOut(u.group).toString, f"$logit%.5f", f"${start.probability(IdentityMeasures.ListingFilm, u.measures)}%.6f",
             level(u.measures.get("release.country")), level(u.measures.get("certificate")),
             posterLevel(distances(u.tmdbId), posterOther), distances(u.tmdbId).fold("")(_.toString),
-            synopsisLevel(shares(u.tmdbId), synopsisOther), shares(u.tmdbId).fold("")(_.toString)).mkString("\t")
+            synopsisLevels(shares)(u.tmdbId), shares(u.tmdbId).fold("")(_.toString)).mkString("\t")
         }
       }
       println(s"${capture.country.code}: ${found.size} labelled units")

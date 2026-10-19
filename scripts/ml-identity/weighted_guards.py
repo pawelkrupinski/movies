@@ -75,7 +75,8 @@ def corpus_units(paths):
                     continue
                 group = next(iter(right)) if right else ("tmdb:" + take if take else cc + node)
                 yield dict(group=group, node=cc + node, label=label, logit=float(r["logit"]), judged=judged,
-                           taken=r["tmdbId"] == take, levels={"release": r["release"], "certificate": r["certificate"]},
+                           taken=r["tmdbId"] == take, levels={"release": r["release"], "certificate": r["certificate"],
+                                                             **({"synopsis": r["synopsis"]} if "synopsis" in r else {})},
                            venue=first["venue"], rawTitle=first["rawTitle"], tmdb=r["tmdbId"], cc=cc)
 
 
