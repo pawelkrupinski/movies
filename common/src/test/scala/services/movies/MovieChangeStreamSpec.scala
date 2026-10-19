@@ -408,7 +408,7 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
     } finally { handle.close(); under.close() }
   }
 
-  // A prune sweep's heal verdict (`ReadModelProjector.awaitStreamApplied`) waits until the stream has
+  // A prune sweep's heal verdict (`ReadModelSweeper.awaitStreamApplied`) waits until the stream has
   // applied everything up to `liveness.lastTicket`. A re-read the debounce still holds was delivered
   // and is not applied, so it must hold that wait open: when it took no ticket until its hand-off, a
   // sweep healing a film whose burst the debounce was holding called the heal a stream miss, and

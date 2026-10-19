@@ -11,7 +11,7 @@ object WholeReconcile {
   val DefaultAttempts = 5
 
   def apply(projector: ReadModelProjector, attempts: Int = DefaultAttempts): Unit =
-    if (!Iterator.continually(projector.reconcile()).take(attempts).contains(true))
+    if (!Iterator.continually(projector.sweeper.reconcile()).take(attempts).contains(true))
       throw new IllegalStateException(s"read-model reconcile: no complete, wholly projected sweep in $attempts attempts — " +
         "Mongo reads or read-model writes kept failing, so the projected read model is not the corpus's")
 }

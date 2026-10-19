@@ -15,7 +15,7 @@ import java.time.LocalDateTime
   * (`movies` + `movie_slots` + `screenings`, ssh mongo-1) — this is what the rolling
   * content check will write the moment its slice reaches these ids, not an invented
   * example. If this passes, the mechanism WILL fix them; the only open question is
-  * WHEN their slice comes up (`ReadModelProjector.contentSliceOf`).
+  * WHEN their slice comes up (`ReadModelSweeper.contentSliceOf`).
   */
 class ProdDriftProofSpec extends AnyFlatSpec with Matchers {
   private def at(iso: String) = Showtime(LocalDateTime.parse(iso.stripSuffix("Z")), bookingUrl = Some("https://book"))
@@ -80,7 +80,7 @@ class ProdDriftProofSpec extends AnyFlatSpec with Matchers {
     */
   it should "name which of the 48 daily slices each drifted row falls in" in {
     val bySlice = Seq("troy|2004", "2046|2004", "glastonbury|2006")
-      .map(id => id -> ReadModelProjector.contentSliceOf(services.movies.FilmId(id)))
+      .map(id => id -> ReadModelSweeper.contentSliceOf(services.movies.FilmId(id)))
     info(s"slice assignment: $bySlice")
     bySlice.map(_._2).distinct.size should be <= 3 // just documents the assignment; no fixed expectation
   }

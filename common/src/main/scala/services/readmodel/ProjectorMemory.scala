@@ -106,7 +106,7 @@ private[readmodel] final class RowDriftLog {
 
   private def note(cause: String, ids: Seq[String]): Unit = if (ids.nonEmpty) {
     causes += cause -> ids.size
-    drifted += s"$cause ${ids.size} (${ReadModelProjector.idsForLog(ids)})"
+    drifted += s"$cause ${ids.size} (${ReadModelSweeper.idsForLog(ids)})"
   }
 
   /** The row's drift, when it had any. */

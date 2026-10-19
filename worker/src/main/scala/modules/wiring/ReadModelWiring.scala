@@ -5,7 +5,7 @@ import settings.ShareCardFirstHold
 import modules.WorkerWiring
 import services.identity.{EvidenceRatingGate, IdentityCalibration}
 import services.readmodel.RatingGate
-import services.readmodel.{BootCorpusStudy, MongoReadModelDerivationMarker, MongoReadModelRepository, ReadModelProjector, ReadModelReader, ReadModelWriter}
+import services.readmodel.{BootCorpusStudy, MongoReadModelDerivationMarker, MongoReadModelRepository, ReadModelProjector, ReadModelReader, ReadModelSweeper, ReadModelWriter}
 
 /** ── Denormalised read model (web_movies + web_screenings) ───────────────────
  *  The worker projects every `movies` write into the two read-model collections
@@ -18,8 +18,8 @@ trait ReadModelWiring { self: WorkerWiring =>
   lazy val readModelRepository: ReadModelReader & ReadModelWriter = new MongoReadModelRepository(mongoConnection.database, decodeFailures = taskMetrics)
   lazy val readModelProjector = managedResources.stopping(new ReadModelProjector(movieRepository, readModelRepository, readModelRepository, taskMetrics,
     shareCards = shareCardLedger, firstCardHold = configuration.shareCardFirstHold(ShareCardFirstHold(ReadModelProjector.DefaultFirstCardHold)), clock = clock,
-    pruneInterval  = configuration.readModelPruneInterval(ReadModelProjector.DefaultPruneInterval),
-    pruneBootDelay = configuration.readModelPruneBootDelay(ReadModelProjector.DefaultPruneBootDelay),
+    pruneInterval  = configuration.readModelPruneInterval(ReadModelSweeper.DefaultPruneInterval),
+    pruneBootDelay = configuration.readModelPruneBootDelay(ReadModelSweeper.DefaultPruneBootDelay),
     derivationMarker = new MongoReadModelDerivationMarker(mongoConnection.database, clock),
     ratingGate = ratingGate, bootStudy = Some(readModelBootStudy)))
   // What the projector's boot reads take from the cache's boot hydrate (see BootCorpusStudy).

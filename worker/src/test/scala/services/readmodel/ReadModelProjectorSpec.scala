@@ -10,43 +10,15 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.{FilmId, InMemoryMovieRepository, InMemoryScreeningsRepository, InMemorySlotsRepository, StoredMovieRecord}
 
-import java.time.LocalDateTime
-
 /**
  * The projector's minimal-write diff: the whole point of the read-model split
  * is that a showtime-only edit moves one screening document and a metadata-only edit
  * moves one movie document. Drives `onMovieUpsert` / `reconcile` directly against the
  * in-memory repos and asserts exactly which documents were written.
  */
-class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
-
-  private def at(d: String): Showtime = Showtime(LocalDateTime.parse(d), bookingUrl = Some("https://book"))
-
-  private val fid = s"${titleNormalizer.sanitize("Foo")}|2024"
-
-  private def slot(showtimes: Seq[Showtime]) =
-    SourceData(title = Some("Foo"), releaseYear = Some(2024), filmUrl = Some("https://mk/foo"), showtimes = showtimes)
-
-  // tmdbId set → `readyToProject` (TMDB concluded); the projector only
-  // publishes rows whose enrichment has settled.
-  // One tmdbId per FILM, as the repository's unique index holds it: a spec seeding a second
-  // film passes its own.
-  private def record(rating: Option[Double], showtimes: Seq[Showtime], tmdbId: Int = 1): MovieRecord =
-    MovieRecord(imdbRating = rating, tmdbId = Some(tmdbId), data = Map[Source, SourceData](Multikino -> slot(showtimes)))
+class ReadModelProjectorSpec extends AnyFlatSpec with Matchers with ReadModelProjectorFixtures {
 
   private def stored(record: MovieRecord): StoredMovieRecord = StoredMovieRecord.synthesised("Foo", Some(2024), record, services.movies.SingleCountryNormalizer.titleNormalizer)
-
-  /** The clock this spec's projectors run on unless a case pins its own: the rolling content
-   *  check's next sweeps start on the slice after Foo's, so a case counting projections across a
-   *  few sweeps never also counts the check re-projecting its row. */
-  private val specClock = clockSkippingSliceOf(FilmId(fid))
-
-  private def fixture(): (ReadModelProjector, InMemoryMovieRepository, InMemoryReadModelRepository) = {
-    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
-    val rm   = new InMemoryReadModelRepository()
-    (new ReadModelProjector(repository, rm, rm, clock = specClock), repository, rm)
-  }
-
 
   /** CPU clock that advances by a FIXED amount per reading, so a test can assert the
    *  recorded CPU cost exactly instead of racing a real one. Wall-clock keeps running
@@ -55,14 +27,6 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     private var current = 0L
     def nanos(): Long = { val n = current; current += stepNanos; n }
   }
-
-  /** A clock at which the rolling content check's next sweeps start on the slice AFTER `row`'s.
-   *  The slice a sweep checks is numbered by the clock, so a spec counting projections across a
-   *  few sweeps otherwise also counts the content check re-projecting its row — in the one or two
-   *  half-hours a day that slice comes up, and nowhere else. */
-  private def clockSkippingSliceOf(id: FilmId): java.time.Clock =
-    java.time.Clock.fixed(java.time.Instant.ofEpochSecond(1800L * (ReadModelProjector.contentSliceOf(id) + 1)),
-                          java.time.ZoneOffset.UTC)
 
   /** Fake scheduler that CAPTURES the fixed-rate tasks `start()` submits instead of
    *  running them on a timer, so a test can assert exactly what was scheduled and run
@@ -174,7 +138,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     repository.upsert("Bar", Some(2024), unresolved(Seq(at("2026-06-12T20:00"))).copy(
       data = Map[Source, SourceData](Multikino ->
         SourceData(title = Some("Bar"), releaseYear = Some(2024), showtimes = Seq(at("2026-06-12T20:00"))))))
-    projector.reconcile()
+    projector.sweeper.reconcile()
     rm.findAllMovies().map(_._id) should contain only fid  // Bar is held back
   }
 
@@ -186,9 +150,9 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
   "reconcile" should "prune off id-only projections, never a full findAllMovies/findAllScreenings" in {
     val (projector, repository, rm) = fixture()
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
-    projector.reconcile()                       // projects Foo
+    projector.sweeper.reconcile()                       // projects Foo
     repository.delete("Foo", Some(2024))         // source gone → next reconcile prunes
-    projector.reconcile()
+    projector.sweeper.reconcile()
     rm.movieDeletes should contain(fid)          // the prune actually ran
     rm.findAllMoviesCalls.get()     shouldBe 0   // …off id-only projections, not full decodes
     rm.findAllScreeningsCalls.get() shouldBe 0
@@ -214,13 +178,13 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     val rm         = new InMemoryReadModelRepository()
     val projector  = new ReadModelProjector(repository, rm, rm, clock = specClock)
 
-    projector.reconcile() shouldBe true                    // clean scan → Foo is projected
+    projector.sweeper.reconcile() shouldBe true                    // clean scan → Foo is projected
     rm.findAllMovies().map(_._id) should contain(fid)
     val deletesBefore = rm.movieDeletes.size
 
     repository.failScan = true                             // next scan dies mid-way (incomplete)
     // …and says so: a harness seeding a read model it then asserts on must know to reconcile again.
-    projector.reconcile() shouldBe false
+    projector.sweeper.reconcile() shouldBe false
 
     withClue("a live film was pruned from the read model on an INCOMPLETE source scan — the served-films flap: ") {
       rm.movieDeletes.size          shouldBe deletesBefore // no prune happened
@@ -235,10 +199,10 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     // served film with nothing under it — while the scan itself was complete.
     val (projector, rm) = timingOutProjector(timeouts = 1)
 
-    projector.reconcile() shouldBe false
+    projector.sweeper.reconcile() shouldBe false
     rm.findAllScreenings().map(_.filmId) should not contain fid   // the premise: the card is served bare
 
-    projector.reconcile() shouldBe true
+    projector.sweeper.reconcile() shouldBe true
     rm.findAllScreenings().map(_.filmId) should contain(fid)
   }
 
@@ -268,14 +232,14 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     }
     val projector = new ReadModelProjector(repository, rm, rm, clock = specClock)
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
-    projector.reconcile() shouldBe true
+    projector.sweeper.reconcile() shouldBe true
     repository.delete("Foo", Some(2024))
     refuseDeletes.set(1)
 
-    projector.reconcile() shouldBe false
+    projector.sweeper.reconcile() shouldBe false
     rm.findAllMovies().map(_._id) should contain(fid)   // the premise: the orphan is still served
 
-    projector.reconcile() shouldBe true
+    projector.sweeper.reconcile() shouldBe true
     rm.findAllMovies() shouldBe empty
   }
 
@@ -414,7 +378,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     val m       = new RecordingReadModelProjectionMetrics()
     val checker = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
     checker.start()
-    (1 to 48).foreach(_ => checker.pruneOrphans())
+    (1 to 48).foreach(_ => checker.sweeper.pruneOrphans())
     withClue("each sweep projection is counted under the trigger its project call was: ") {
       m.metadataProjections.map(_._1).toSeq shouldBe m.projectTriggers.toSeq
     }
@@ -432,9 +396,6 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
   private val venues = Cinema.all.distinct
     .flatMap(c => City.forCinema(c).map(_.slug -> c))
     .groupMap(_._1)(_._2).toSeq.sortBy(_._1).take(3).flatMap(_._2.take(2))
-
-  private def venueSlot(title: String, showtimes: Seq[Showtime], url: String = "https://x/foo") =
-    SourceData(title = Some(title), releaseYear = Some(2024), filmUrl = Some(url), showtimes = showtimes)
 
   "a showtime change at one venue of several" should "rebuild only that venue's screenings row" in {
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer); val rm = new InMemoryReadModelRepository()
@@ -545,7 +506,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
           case 3 => data.get(cinema).foreach(slot => data = data.updated(cinema, slot.copy(title = Some(titles(random.nextInt(titles.size))))))
           case 4 => if (data.sizeIs > 1) data = data - cinema
           case 5 => rating = Some(random.nextInt(10).toDouble)
-          case _ => projector.pruneOrphans()
+          case _ => projector.sweeper.pruneOrphans()
         }
         val row = stored(MovieRecord(imdbRating = rating, tmdbId = Some(1), data = data))
         repository.upsert(row.title, row.year, row.record)
@@ -583,7 +544,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     // a whole-corpus reconcile used to be).
     val (projector, repository, rm) = fixture()
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
-    projector.reconcile()                       // Foo carded
+    projector.sweeper.reconcile()                       // Foo carded
     repository.upsert("Bar", Some(2024), record(Some(7.0), Seq(at("2026-06-13T20:00")), tmdbId = 2))
     val before = rm.movieUpserts.size
     projector.start()
@@ -595,7 +556,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
 
     val (steady, repository2, rm2) = fixture()
     repository2.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
-    steady.reconcile()
+    steady.sweeper.reconcile()
     val carded = rm2.movieUpserts.size
     steady.start()
     rm2.movieUpserts should have size carded   // nothing missing → nothing projected at boot
@@ -610,7 +571,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     val (projector, repository, _) = fixture()
     (1 to 25).foreach(i => repository.upsert(s"Film$i", Some(2024), record(Some(7.0), Seq(at("2026-06-12T20:00")), tmdbId = 100 + i)))
     val ids = repository.findAll().map(_.id.value)
-    val lines = tools.LogCapture.capture(classOf[ReadModelProjector].getName)(projector.pruneOrphans())
+    val lines = tools.LogCapture.capture(classOf[ReadModelSweeper].getName)(projector.sweeper.pruneOrphans())
       .map(_.getFormattedMessage).filter(_.contains("missing a card"))
     lines should have size 1
     val named = ids.filter(id => lines.head.contains(id))
@@ -712,7 +673,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     }
     val rm = new InMemoryReadModelRepository()
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
-    new ReadModelProjector(repository, rm, rm, clock = specClock).reconcile()            // Foo carded by the last process
+    new ReadModelProjector(repository, rm, rm, clock = specClock).sweeper.reconcile()            // Foo carded by the last process
     repository.upsert("Bar", Some(2024), record(Some(7.0), Seq(at("2026-06-13T20:00")), tmdbId = 2))
     val before = rm.movieUpserts.size
     scans.set(0)
@@ -791,11 +752,11 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     projector.start()                                   // both uncarded → both healed at boot
     m.heals.toSeq shouldBe Seq(ReadModelProjectionMetrics.HealTrigger.Boot -> 2)
 
-    projector.pruneOrphans()                            // nothing missing → no heal to meter
+    projector.sweeper.pruneOrphans()                            // nothing missing → no heal to meter
     m.heals.toSeq shouldBe Seq(ReadModelProjectionMetrics.HealTrigger.Boot -> 2)
 
     rm.deleteMovie("bar|2024")                          // a card the stream lost
-    projector.pruneOrphans()
+    projector.sweeper.pruneOrphans()
     m.heals.last shouldBe (ReadModelProjectionMetrics.HealTrigger.Sweep -> 1)
     projector.stop()
   }
@@ -803,11 +764,11 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
   "reconcile" should "prune derived documents whose source film vanished" in {
     val (projector, repository, rm) = fixture()
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
-    projector.reconcile()
+    projector.sweeper.reconcile()
     rm.movieUpserts should have size 1
 
     repository.delete("Foo", Some(2024))
-    projector.reconcile()
+    projector.sweeper.reconcile()
     rm.movieDeletes     should contain(fid)
     rm.screeningDeletes should contain(s"$fid|poznan|Multikino Stary Browar")
   }
@@ -825,280 +786,11 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
   // churn — and the link-breaking film-prune events — is visible in Grafana.
   import ReadModelProjectionMetrics.{Op, ReconcileKind, Target}
 
-  // ── Split sweep: cheap prune vs expensive full re-projection ─────────────────
-  // The full re-projection (project EVERY row) was the ~1-core corpus burst that filled
-  // the heap → GC thrash → credit starvation; it has been retired (the change stream
-  // covers missed upserts). The remaining scheduled backstop is a cheap id-only prune
-  // that removes deleted/re-keyed rows WITHOUT re-projecting anything.
-  "pruneOrphans" should "prune a vanished film WITHOUT re-projecting live rows" in {
-    val (projector, repository, rm) = fixture()
-    repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
-    projector.reconcile()                     // full sweep: projects Foo
-    rm.movieUpserts should have size 1
-    // A live row's metadata changes: the CHEAP prune must NOT re-project it — that's
-    // the whole point (no per-row projection = no CPU burst).
-    repository.upsert("Foo", Some(2024), record(Some(9.9), Seq(at("2026-06-12T20:00"))))
-    projector.pruneOrphans()
-    rm.movieUpserts should have size 1        // unchanged — prune did not reproject
-    // …but a vanished film IS still pruned by the cheap sweep (the load-bearing job).
-    repository.delete("Foo", Some(2024))
-    projector.pruneOrphans()
-    rm.movieDeletes should contain(fid)
-  }
-
-  // The prune diffs the cards against the rows its scan saw, so it must diff the cards as they were
-  // BEFORE that scan: a card another process writes after the scan read its source is one the scan
-  // could not have seen the row of, and reading the cards again then pruned it as an orphan.
-  it should "not prune a card another process wrote after its scan had read the source" in {
-    val rm = new InMemoryReadModelRepository()
-    val written = new java.util.concurrent.atomic.AtomicBoolean(false)
-    lazy val repository: InMemoryMovieRepository = new InMemoryMovieRepository(normalizer = titleNormalizer) {
-      override def foreachRecordWithSlots(f: StoredMovieRecord => Unit): tools.ScanOutcome = {
-        val complete = super.foreachRecordWithSlots(f)
-        if (written.compareAndSet(false, true)) {
-          repository.upsert("Bar", Some(2024), record(Some(7.0), Seq(at("2026-06-13T20:00")), tmdbId = 2))
-          new ReadModelProjector(repository, rm, rm, clock = specClock)
-            .onMovieUpsert(repository.findAll().find(_.record.tmdbId.contains(2)).get)
-        }
-        complete
-      }
-    }
-    repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
-    val projector = new ReadModelProjector(repository, rm, rm, clock = specClock)
-    projector.reconcile()
-    val cards = rm.findAllMovieIds().toSet
-    projector.pruneOrphans()
-    written.get shouldBe true
-    rm.findAllMovieIds().toSet should have size (cards.size + 1L)
-    rm.movieDeletes shouldBe empty
-  }
-
-  // A VENUE THE SOURCE DROPPED, UNDER A CARD THAT STAYS. The prune removed screenings only of a
-  // card whose row was gone, so a venue row the stream missed the removal of — its film still
-  // screening elsewhere — was served until the rolling content check reached the row: Dracula: A
-  // Love Tale at the Music Box, pruned at 2026-09-30 08:55:22 while the projector was not yet
-  // attached, kept us/chicago a card over its corpus for 22 hours (the check's slice 14, 10-01
-  // 07:17). A venue the source no longer lists at all is now pruned by the next sweep.
-  it should "prune a venue row the source no longer lists, under a card that stays" in {
-    val (projector, repository, rm) = fixture()
-    def foo(venues: (Source, String)*) = MovieRecord(tmdbId = Some(1), data = venues.map { case (cinema, showtime) =>
-      cinema -> SourceData(title = Some("Foo"), showtimes = Seq(at(showtime))) }.toMap)
-    repository.upsert("Foo", Some(2024), foo(Multikino -> "2026-06-12T20:00", KinoMuranow -> "2026-06-13T18:00"))
-    projector.onMovieUpsert(repository.findAll().head)
-    rm.findAllScreenings() should have size 2
-    repository.upsert("Foo", Some(2024), foo(Multikino -> "2026-06-12T20:00"))   // a removal the stream never delivered
-
-    projector.pruneOrphans()
-
-    rm.findAllScreenings().map(_._id) shouldBe ReadModelProjection.screeningIds(repository.findAll().head, titleNormalizer)
-    rm.findAllMovies().map(_._id) shouldBe Seq(fid)
-    projector.stop()
-  }
-
-  // THE BLAST-RADIUS CAP. A missed removal comes a few at a time; a sweep finding many more is
-  // likelier a disagreement between the slots-only view and the projection, and pruning on it
-  // would blank the served venues of a country. Up to the cap (20 here: 1% of 22 rows is less)
-  // every one is pruned; one more, and none is, loudly and metered.
-  private def sweepAfterSilentlyDropping(dropped: Int): (InMemoryReadModelRepository, RecordingReadModelProjectionMetrics, Seq[String], Seq[String]) = {
-    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
-    val rm = new InMemoryReadModelRepository()
-    val m  = new RecordingReadModelProjectionMetrics()
-    val projector = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
-    val cinemas = Cinema.all.distinct.filter(City.forCinema(_).nonEmpty).take(22)
-    cinemas should have size 22
-    def foo(screening: Seq[Cinema]) = MovieRecord(tmdbId = Some(1), data = screening.map(c => (c: Source) -> venueSlot("Foo", Seq(at("2026-06-12T20:00")))).toMap)
-    repository.upsert("Foo", Some(2024), foo(cinemas))
-    projector.onMovieUpsert(repository.findAll().head)
-    val before = rm.findAllScreenings().map(_._id)
-    before should have size 22
-    repository.upsert("Foo", Some(2024), foo(cinemas.drop(dropped)))     // removals the stream never delivered
-    val lines = tools.LogCapture.capture(classOf[ReadModelProjector].getName)(projector.pruneOrphans())
-      .filter(_.getFormattedMessage.contains("no longer lists the venue")).map(e => s"${e.getLevel} ${e.getFormattedMessage}")
-    projector.stop()
-    (rm, m, before, lines)
-  }
-
-  it should "prune every unlisted venue row up to its cap" in {
-    val (rm, m, _, lines) = sweepAfterSilentlyDropping(20)
-    rm.findAllScreenings() should have size 2
-    m.unlistedVenues.toSeq shouldBe Seq(20 -> false)
-    lines.map(_.takeWhile(_ != ' ')) shouldBe Seq("WARN")
-  }
-
-  it should "prune none of them past its cap, and say so as an error" in {
-    val (rm, m, before, lines) = sweepAfterSilentlyDropping(21)
-    rm.findAllScreenings().map(_._id) should contain theSameElementsAs before
-    m.unlistedVenues.toSeq shouldBe Seq(21 -> true)
-    lines should have size 1
-    lines.head should startWith ("ERROR")
-    lines.head should include ("pruning NONE")
-  }
-
-  "the unlisted-venue cap" should "be 20, or 1% of the venue rows when that is more" in {
-    ReadModelProjector.unlistedPruneCap(0) shouldBe 20
-    ReadModelProjector.unlistedPruneCap(2_000) shouldBe 20
-    ReadModelProjector.unlistedPruneCap(150_000) shouldBe 1_500
-  }
-
-  // THE SELF-HEAL FOR A SILENT CHANGE STREAM. A cursor that is open and delivering nothing
-  // reopens nothing; the prune sweep healed a MISSING card or venue but never re-projected a
-  // CHANGED row, so the site served stale ratings and showtimes until a restart. The sweep
-  // now re-projects every row written after the movies cursor's last delivery — bounded to
-  // the rows that moved, never the corpus.
-  "the prune sweep" should "re-project a row written after the movies cursor's last delivery" in {
-    val clock      = new tools.MutableClock(java.time.Instant.parse("2026-09-07T10:00:00Z"))
-    val repository = new InMemoryMovieRepository(clock = clock, normalizer = titleNormalizer)
-    val rm         = new InMemoryReadModelRepository()
-    val m          = new RecordingReadModelProjectionMetrics()
-    val projector  = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
-    repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))   // delivered at t0
-    projector.reconcile()
-    rm.movieUpserts should have size 1
-
-    // The store changes after the last delivery and the cursor says nothing — the stall.
-    clock.advanceSeconds(60)
-    repository.putEmbeddedOutOfBand("Foo", Some(2024), record(Some(9.9), Seq(at("2026-06-12T20:00"))))
-    // Nothing subscribed to the cursor: nothing was promised, the sweep stays id-only.
-    projector.pruneOrphans()
-    rm.movieUpserts should have size 1
-    m.caughtUp shouldBe empty                                              // not even metered: no cursor, no catch-up
-
-    repository.changeStreamLiveness.watching(ChangeStreamLiveness.Movies)   // a cursor is open — and silent
-    projector.pruneOrphans()
-
-    withClue("the changed row must be re-projected by the sweep: ") {
-      rm.movieUpserts should have size 2
-      rm.movieUpserts.last.ratings.imdb shouldBe Some(9.9)
-    }
-    m.caughtUp shouldBe Seq(1)
-  }
-
-  // A cursor that stays silent does not move the delivery floor, so the sweep used to re-read
-  // and re-project the SAME rows every 30 minutes — and on a cursor subscribed after the corpus
-  // was written, the whole corpus, every sweep (the convergence legs' fixpoint tick, 2026-09-24).
-  it should "catch a silent cursor's missed row up once, then only rows written after that" in {
-    val clock      = new tools.MutableClock(java.time.Instant.parse("2026-09-07T10:00:00Z"))
-    val repository = new InMemoryMovieRepository(clock = clock, normalizer = titleNormalizer)
-    val rm         = new InMemoryReadModelRepository()
-    val m          = new RecordingReadModelProjectionMetrics()
-    val projector  = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
-    repository.changeStreamLiveness.watching(ChangeStreamLiveness.Movies)   // open, and never delivers:
-    // every write below goes past the cursor, as a stalled one lets it
-    clock.advanceSeconds(60)
-    repository.putEmbeddedOutOfBand("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
-    clock.advanceSeconds(60)
-    projector.pruneOrphans()
-    m.caughtUp.last shouldBe 1
-
-    clock.advanceSeconds(60)
-    projector.pruneOrphans()
-    withClue("nothing was written since the last catch-up, so there is nothing to catch up: ") {
-      m.caughtUp.last shouldBe 0
-    }
-
-    clock.advanceSeconds(60)
-    repository.putEmbeddedOutOfBand("Bar", Some(2024), record(Some(7.0), Seq(at("2026-06-12T20:00"))))
-    clock.advanceSeconds(60)
-    projector.pruneOrphans()
-    m.caughtUp.last shouldBe 1
-    rm.movieUpserts should have size 2                       // Foo once, then Bar — never Foo again
-  }
-
-  // THE WRITE IN FLIGHT ACROSS A SCAN. `updatedAt` is stamped before the write is sent, so a write
-  // stamped just under a catch-up's floor can land after that catch-up's scan — and the next one,
-  // reading only rows stamped past the floor, skipped it for good. Here the row is stamped five
-  // seconds before the first sweep's read began and becomes visible only after that sweep.
-  it should "catch up a row stamped before the last catch-up's floor but written after its scan" in {
-    val clock      = new tools.MutableClock(java.time.Instant.parse("2026-09-07T10:00:00Z"))
-    val repository = new InMemoryMovieRepository(clock = clock, normalizer = titleNormalizer)
-    val rm         = new InMemoryReadModelRepository()
-    val m          = new RecordingReadModelProjectionMetrics()
-    val projector  = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
-    repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
-    projector.reconcile()
-    clock.advanceSeconds(60)
-    repository.changeStreamLiveness.watching(ChangeStreamLiveness.Movies)
-    clock.advanceSeconds(60)
-    projector.pruneOrphans()                                 // the scan: nothing written since
-    val scannedAt = clock.instant()
-
-    clock.setTo(scannedAt.minusSeconds(5))                   // stamped before the scan began…
-    repository.putEmbeddedOutOfBand("Foo", Some(2024), record(Some(9.9), Seq(at("2026-06-12T20:00"))))
-    clock.setTo(scannedAt.plusSeconds(60))                   // …and visible only after it
-
-    projector.pruneOrphans()
-    withClue("a write that committed after the last scan must be caught up, whatever its stamp: ") {
-      rm.movieUpserts.last.ratings.imdb shouldBe Some(9.9)
-    }
-    m.caughtUp.last shouldBe 1
-
-    clock.advanceSeconds(1)
-    projector.pruneOrphans()
-    withClue("re-reading it inside the overlap writes nothing, so it is not counted again: ") {
-      m.caughtUp.last shouldBe 0
-      rm.movieUpserts should have size 2
-    }
-  }
-
-  // A LIVE cursor's backlog is not a silent cursor. The overlap re-reads rows stamped under the
-  // delivery floor — which are exactly the rows a live cursor has DELIVERED but whose apply is
-  // still queued behind a scrape burst. Projecting one there is harmless (the apply then writes
-  // nothing), but counting it books a delivered write as one the cursor failed to deliver: the
-  // catch-up metric and its "not delivering" warning, whose healthy reading is zero.
-  it should "not count an overlap row whose delivered event is still waiting to be applied" in {
-    val clock      = new tools.MutableClock(java.time.Instant.parse("2026-09-07T10:00:00Z"))
-    val repository = new InMemoryMovieRepository(clock = clock, normalizer = titleNormalizer)
-    val rm         = new InMemoryReadModelRepository()
-    val m          = new RecordingReadModelProjectionMetrics()
-    val projector  = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
-    repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
-    projector.reconcile()
-    val liveness = repository.changeStreamLiveness
-    liveness.watching(ChangeStreamLiveness.Movies)
-    clock.advance(services.movies.MovieRepository.CatchUpOverlap.multipliedBy(3))
-
-    repository.putEmbeddedOutOfBand("Foo", Some(2024), record(Some(9.9), Seq(at("2026-06-12T20:00"))))
-    clock.advanceSeconds(1)
-    liveness.delivered(ChangeStreamLiveness.Movies)           // the cursor delivered it…
-    val ticket = liveness.queued(ChangeStreamLiveness.Movies) // …and its apply waits in the queue
-    clock.advanceSeconds(1)
-
-    projector.pruneOrphans()
-    withClue("a delivered write whose apply is merely queued is not one the cursor missed: ") {
-      m.caughtUp.last shouldBe 0
-    }
-    liveness.applied(ChangeStreamLiveness.Movies, ticket)
-  }
-
-  it should "re-read a caught-up row whose projection failed on the next sweep" in {
-    val clock      = new tools.MutableClock(java.time.Instant.parse("2026-09-07T10:00:00Z"))
-    val repository = new InMemoryMovieRepository(clock = clock, normalizer = titleNormalizer)
-    var failing    = true
-    val rm = new InMemoryReadModelRepository {
-      override def upsertMovie(movie: ResolvedMovie): Unit =
-        if (failing) throw new RuntimeException("read model unreachable") else super.upsertMovie(movie)
-    }
-    val m         = new RecordingReadModelProjectionMetrics()
-    val projector = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
-    repository.changeStreamLiveness.watching(ChangeStreamLiveness.Movies)
-    clock.advanceSeconds(60)
-    repository.putEmbeddedOutOfBand("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
-    clock.advanceSeconds(60)
-    projector.pruneOrphans()                                 // the write throws: Foo is still stale
-
-    failing = false
-    clock.advanceSeconds(60)
-    projector.pruneOrphans()
-    withClue("a row the catch-up failed to project must be read again: ") {
-      rm.movieUpserts.map(_.title) should contain ("Foo")
-    }
-  }
-
   // The boot reads run on a background boot thread, with the watch after them: a boot read that
   // THREW (a Mongo error outside the read outcomes — a decode bug, a driver state error) skipped the
   // watch and the paced sweeps for the life of the process, with one error log to show for it — no
   // projection at all until a restart.
-  it should "still watch and project when its boot reads throw" in {
+  "the projector" should "still watch and project when its boot reads throw" in {
     val repository = new InMemoryMovieRepository(normalizer = titleNormalizer)
     val rm = new InMemoryReadModelRepository() {
       override def findAllMoviesChecked(): tools.ReadOutcome[Seq[ResolvedMovie]] = throw new IllegalStateException("the boot read blows up")
@@ -1109,36 +801,6 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
       repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
       rm.movieUpserts.map(_.title) should contain ("Foo")   // projected off the stream
     } finally projector.stop()
-  }
-
-  it should "not re-project a changed row the cursor did deliver" in {
-    val (projector, repository, rm) = fixture()
-    repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
-    projector.reconcile()
-    projector.start()                                        // subscribed: the next write is DELIVERED
-    try {
-      repository.upsert("Foo", Some(2024), record(Some(9.9), Seq(at("2026-06-12T20:00"))))
-      rm.movieUpserts should have size 2                     // projected off the stream
-      val before = rm.movieUpserts.size
-      projector.pruneOrphans()
-      rm.movieUpserts should have size before                // the sweep read nothing to catch up
-    } finally projector.stop()
-  }
-
-  // Only the PRUNE sweep is metered now — the reproject's did_work gate was retired, so
-  // reconcile() (the seed/backfill path) records nothing; every sweep row is kind=prune.
-  "the reconcile-sweep metric" should "meter only the prune sweep, never the reproject seed" in {
-    val repository = new InMemoryMovieRepository(normalizer = titleNormalizer); val rm = new InMemoryReadModelRepository()
-    val m = new RecordingReadModelProjectionMetrics()
-    val projector = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
-    repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
-    projector.reconcile()                                    // seed Foo — NOT metered
-    m.sweeps shouldBe empty
-    projector.pruneOrphans()                                 // nothing to prune (Foo live) → no-op
-    m.sweeps.last shouldBe (ReconcileKind.Prune -> false)
-    repository.delete("Foo", Some(2024))
-    projector.pruneOrphans()                                 // prunes Foo → did work
-    m.sweeps.last shouldBe (ReconcileKind.Prune -> true)
   }
 
   "the projector" should "meter the movie + screening upserts of a first projection" in {
@@ -1169,7 +831,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
 
     // A full reproject sweep projects the live row → one more timing.
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
-    projector.reconcile()
+    projector.sweeper.reconcile()
     m.projectCalls shouldBe 2
   }
 
@@ -1187,12 +849,12 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     m.projectTriggers.toSeq shouldBe Seq(ReadModelProjectionMetrics.ProjectTrigger.Stream)
 
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
-    projector.reconcile()
+    projector.sweeper.reconcile()
     m.projectTriggers.drop(1).toSet shouldBe Set(ReadModelProjectionMetrics.ProjectTrigger.Reproject)
 
     // Every row lands in exactly one of the 48 content slices, so 48 sweeps re-read each once.
     val before = m.projectCalls
-    (1 to ReadModelProjector.ContentSlices).foreach(_ => projector.pruneOrphans())
+    (1 to ReadModelSweeper.ContentSlices).foreach(_ => projector.sweeper.pruneOrphans())
     m.projectCalls(ReadModelProjectionMetrics.ProjectTrigger.Content) shouldBe m.projectCalls - before
     m.projectCalls(ReadModelProjectionMetrics.ProjectTrigger.Content) should be > 0
     m.projectCalls(ReadModelProjectionMetrics.ProjectTrigger.Stream) shouldBe 1
@@ -1220,7 +882,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     // A full reproject sweep reaches the write phase for the live row → one more timing, under ITS trigger:
     // a whole-film write is no measure of what the incremental path costs (ReadModelProjectionWritePerCallHigh).
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
-    projector.reconcile()
+    projector.sweeper.reconcile()
     m.writeBursts.map(_._1) shouldBe Seq(ProjectTrigger.Stream, ProjectTrigger.Reproject)
   }
 
@@ -1251,9 +913,9 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     val m = new RecordingReadModelProjectionMetrics()
     val projector = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
-    projector.reconcile()                       // projects the film
+    projector.sweeper.reconcile()                       // projects the film
     repository.delete("Foo", Some(2024))         // source row gone (re-keyed/removed)
-    projector.reconcile()                       // prunes its derived documents
+    projector.sweeper.reconcile()                       // prunes its derived documents
     m.prunes                            shouldBe 1
     m.writes((Target.Movie, Op.Delete)) shouldBe 1
   }
@@ -1270,7 +932,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
 
     val p1 = new ReadModelProjector(repository, rm, rm, clock = specClock)
     repository.upsert("Foo", Some(2025), recordYear(2025))
-    p1.reconcile()
+    p1.sweeper.reconcile()
     rm.findAllMovies().map(_._id) should contain(yearKey(2025))
     p1.stop()  // the worker dies, taking its in-memory state with it
 
@@ -1282,7 +944,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     // A fresh projector boots with an empty `lastMovie` and reconciles.
     val p2 = new ReadModelProjector(repository, rm, rm, clock = specClock)
     rm.movieDeletes.clear(); rm.screeningDeletes.clear()
-    p2.reconcile()
+    p2.sweeper.reconcile()
 
     rm.findAllMovies().map(_._id)                  should contain only yearKey(2026)
     rm.findAllScreenings().map(_.filmId).distinct  should contain only yearKey(2026)
@@ -1348,7 +1010,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     rm.findAllScreenings().filter(_.filmId == variant).foreach(s => rm.deleteScreening(s._id))
     rm.findAllMovieIds().toSet shouldBe (ids.toSet - variant)
 
-    projector.pruneOrphans()
+    projector.sweeper.pruneOrphans()
 
     rm.findAllMovieIds().toSet shouldBe ids.toSet
     rm.findAllScreenings().map(_.filmId).toSet shouldBe ids.toSet
@@ -1376,7 +1038,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     rm.findAllScreenings().map(_._id).toSet shouldBe ids.toSet
     rm.deleteScreening(ids.last)                      // the venue's row vanishes; the card stays
 
-    projector.pruneOrphans()
+    projector.sweeper.pruneOrphans()
 
     rm.findAllScreenings().map(_._id).toSet shouldBe ids.toSet
     projector.stop()
@@ -1411,20 +1073,20 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     repository.upsert("Foo", Some(2024), MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](
       Multikino   -> SourceData(title = Some("Foo"), showtimes = Seq(at("2026-06-12T20:00"))),
       KinoMuranow -> SourceData(title = Some("Foo"), showtimes = Nil))))
-    val sweeper = new ReadModelProjector(repository, rm, rm, m, clock = clockSkippingSliceOf(repository.findAll().head.id))
-    sweeper.onMovieUpsert(repository.findAll().head)
+    val projector = new ReadModelProjector(repository, rm, rm, m, clock = clockSkippingSliceOf(repository.findAll().head.id))
+    projector.onMovieUpsert(repository.findAll().head)
 
-    sweeper.pruneOrphans()                      // the first sweep may legitimately look
+    projector.sweeper.pruneOrphans()                      // the first sweep may legitimately look
     val looked = m.projectCalls
-    sweeper.pruneOrphans()
-    sweeper.pruneOrphans()
+    projector.sweeper.pruneOrphans()
+    projector.sweeper.pruneOrphans()
 
     // Counting PROJECTIONS, not writes: a heal that writes nothing is exactly the symptom,
     // so a write count cannot see the loop at all.
     withClue(s"the heal re-projected a row it had nothing to write for (${m.projectCalls - looked} times): ") {
       m.projectCalls shouldBe looked
     }
-    sweeper.stop()
+    projector.stop()
   }
 
   // …NOR AFTER A PROJECTION THAT CHANGED NOTHING. Every change-stream event for the row — a
@@ -1441,46 +1103,46 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
       Multikino   -> SourceData(title = Some("Foo"), showtimes = times),
       KinoMuranow -> SourceData(title = Some("Foo"), showtimes = Nil)))
     repository.upsert("Foo", Some(2024), film(Seq(at("2026-06-12T20:00"))))
-    val sweeper = new ReadModelProjector(repository, rm, rm, m, clock = clockSkippingSliceOf(repository.findAll().head.id))
-    sweeper.onMovieUpsert(repository.findAll().head)
-    sweeper.pruneOrphans()                      // the first sweep looks, and notes the phantom
+    val projector = new ReadModelProjector(repository, rm, rm, m, clock = clockSkippingSliceOf(repository.findAll().head.id))
+    projector.onMovieUpsert(repository.findAll().head)
+    projector.sweeper.pruneOrphans()                      // the first sweep looks, and notes the phantom
 
     // The live venue's showtimes move: a projection, but nothing about the spent venue changed.
     repository.upsert("Foo", Some(2024), film(Seq(at("2026-06-12T20:00"), at("2026-06-13T20:00"))))
-    sweeper.onMovieUpsert(repository.findAll().head)
+    projector.onMovieUpsert(repository.findAll().head)
     val looked = m.projectCalls
-    sweeper.pruneOrphans()
+    projector.sweeper.pruneOrphans()
 
     withClue(s"the heal re-projected the row for its spent slot again (${m.projectCalls - looked} times): ") {
       m.projectCalls shouldBe looked
     }
-    sweeper.stop()
+    projector.stop()
   }
 
   it should "heal a venue it had noted as spent once a projection has written it and it goes missing" in {
     val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository),
                                                  slots = Some(new InMemorySlotsRepository), normalizer = titleNormalizer)
     val rm = new InMemoryReadModelRepository()
-    val sweeper = new ReadModelProjector(repository, rm, rm, new RecordingReadModelProjectionMetrics(), clock = specClock)
+    val projector = new ReadModelProjector(repository, rm, rm, new RecordingReadModelProjectionMetrics(), clock = specClock)
     def film(muranow: Seq[Showtime]) = MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](
       Multikino   -> SourceData(title = Some("Foo"), showtimes = Seq(at("2026-06-12T20:00"))),
       KinoMuranow -> SourceData(title = Some("Foo"), showtimes = muranow)))
     repository.upsert("Foo", Some(2024), film(Nil))
-    sweeper.onMovieUpsert(repository.findAll().head)
-    sweeper.pruneOrphans()                      // Muranów noted as a phantom
+    projector.onMovieUpsert(repository.findAll().head)
+    projector.sweeper.pruneOrphans()                      // Muranów noted as a phantom
 
     // Muranów screens it after all — the projection writes its row, so the note is spent.
     repository.upsert("Foo", Some(2024), film(Seq(at("2026-06-14T20:00"))))
-    sweeper.onMovieUpsert(repository.findAll().head)
+    projector.onMovieUpsert(repository.findAll().head)
     val muranow = rm.findAllScreenings().filter(_.cinema == KinoMuranow.displayName)
     muranow should not be empty
     muranow.foreach(s => rm.deleteScreening(s._id))   // …and then the read model loses it
 
-    sweeper.pruneOrphans()
+    projector.sweeper.pruneOrphans()
     withClue("a venue that has screenings and went missing must be healed, whatever was noted before: ") {
       rm.findAllScreenings().exists(_.cinema == KinoMuranow.displayName) shouldBe true
     }
-    sweeper.stop()
+    projector.stop()
   }
 
   // …AND IT MUST NOT ASK TWICE PER BOOT. The boot check asks the same slots-only question and
@@ -1510,7 +1172,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
 
     booted.start()                              // the boot check may legitimately look once
     val looked = m.projectCalls
-    booted.pruneOrphans()
+    booted.sweeper.pruneOrphans()
 
     withClue(s"the first sweep re-projected a row the boot check had nothing to write for (${m.projectCalls - looked} times): ") {
       m.projectCalls shouldBe looked
@@ -1634,22 +1296,22 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
                                                  slots = Some(new InMemorySlotsRepository), normalizer = titleNormalizer)
     val rm = new InMemoryReadModelRepository()
     val m  = new RecordingReadModelProjectionMetrics()
-    val sweeper = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
+    val projector = new ReadModelProjector(repository, rm, rm, m, clock = specClock)
     def foo(showtime: String) = MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](
       Multikino   -> SourceData(title = Some("Foo"), showtimes = Seq(at(showtime))),
       KinoMuranow -> SourceData(title = Some("Foo"), showtimes = Nil)))
     repository.upsert("Foo", Some(2024), foo("2026-06-12T20:00"))
-    sweeper.onMovieUpsert(repository.findAll().head)
+    projector.onMovieUpsert(repository.findAll().head)
     // A showtime change the stream has delivered but not applied: queued behind the sweep.
     repository.upsert("Foo", Some(2024), foo("2026-06-13T18:00"))
 
-    sweeper.pruneOrphans()
+    projector.sweeper.pruneOrphans()
 
     withClue("the sweep may apply the queued change, but it repaired nothing that was missing: ") {
       m.heals.filter(_._2 > 0) shouldBe empty
     }
     rm.findAllScreenings().flatMap(_.showtimes).map(_.dateTime.toString) shouldBe Seq("2026-06-13T18:00")
-    sweeper.stop()
+    projector.stop()
   }
 
   // A HEAL IS A MISS THE STREAM DID NOT REPAIR ITSELF. The case above left out the other half:
@@ -1679,7 +1341,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     queued ++= repository.findAll().filter(_.id.value == fid)
     rm.deleteMovie("bar|2024")                           // and a card the stream really did lose
 
-    val lines = tools.LogCapture.capture(classOf[ReadModelProjector].getName)(projector.pruneOrphans())
+    val lines = tools.LogCapture.capture(classOf[ReadModelSweeper].getName)(projector.sweeper.pruneOrphans())
       .map(_.getFormattedMessage).filter(_.contains("missing a card"))
 
     rm.findAllScreenings().map(_._id) should contain allElementsOf ReadModelProjection.screeningIds(queued.head, titleNormalizer)
@@ -1715,7 +1377,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     // Bar's showtime moves and no event ever comes: real drift.
     repository.putEmbeddedOutOfBand("Bar", Some(2024), record(Some(7.0), Seq(at("2026-06-15T20:00")), tmdbId = 2))
 
-    val lines = tools.LogCapture.capture(classOf[ReadModelProjector].getName)((1 to 48).foreach(_ => projector.pruneOrphans()))
+    val lines = tools.LogCapture.capture(classOf[ReadModelSweeper].getName)((1 to 48).foreach(_ => projector.sweeper.pruneOrphans()))
       .map(_.getFormattedMessage).filter(_.contains("had drifted from its source"))
 
     rm.findAllScreenings().filter(_.filmId.startsWith("foo")).flatMap(_.showtimes).map(_.dateTime.toString).sorted shouldBe
@@ -1733,19 +1395,19 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     val repository = new InMemoryMovieRepository(screenings = Some(new InMemoryScreeningsRepository),
                                                  slots = Some(new InMemorySlotsRepository), normalizer = titleNormalizer)
     val rm = new InMemoryReadModelRepository()
-    val sweeper = new ReadModelProjector(repository, rm, rm, new RecordingReadModelProjectionMetrics(), clock = specClock)
+    val projector = new ReadModelProjector(repository, rm, rm, new RecordingReadModelProjectionMetrics(), clock = specClock)
     repository.upsert("Foo", Some(2024), MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](
       Multikino   -> SourceData(title = Some("Foo"), showtimes = Seq(at("2026-06-12T20:00"))),
       KinoMuranow -> SourceData(title = Some("Foo"), showtimes = Nil))))
-    sweeper.onMovieUpsert(repository.findAll().head)
-    sweeper.pruneOrphans()
+    projector.onMovieUpsert(repository.findAll().head)
+    projector.sweeper.pruneOrphans()
     rm.findAllMovies().foreach(c => rm.deleteMovie(c._id))     // the card goes missing after that
     val before = rm.movieUpserts.size
 
-    sweeper.pruneOrphans()
+    projector.sweeper.pruneOrphans()
 
     withClue("a genuinely missing card must still be healed: ") { rm.movieUpserts.size should be > before }
-    sweeper.stop()
+    projector.stop()
   }
 
   // A ROW THAT EXISTS AND IS WRONG is what every id-only backstop misses: the prune removes
@@ -1787,7 +1449,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
       rm.findAllScreenings().filter(_.filmId.startsWith("foo")).flatMap(_.showtimes).map(_.dateTime.toString) shouldBe Seq("2026-06-12T20:00")
     }
 
-    (1 to 48).foreach(_ => checker.pruneOrphans())   // one slice per sweep; 48 covers the corpus
+    (1 to 48).foreach(_ => checker.sweeper.pruneOrphans())   // one slice per sweep; 48 covers the corpus
 
     withClue("the drifted screenings must be rewritten from the source: ") {
       rm.findAllScreenings().filter(_.filmId.startsWith("foo")).flatMap(_.showtimes).map(_.dateTime.toString) shouldBe Seq("2026-07-20T18:00")
@@ -1815,7 +1477,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     (1 to 48).foreach { _ =>
       val booted = new ReadModelProjector(repository, rm, rm, clock = clock)
       booted.start()
-      booted.pruneOrphans()        // one sweep, then the next deploy
+      booted.sweeper.pruneOrphans()        // one sweep, then the next deploy
       booted.stop()
       clock.advance(java.time.Duration.ofMinutes(30))
     }
@@ -1841,7 +1503,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     }
     rm.findAllMovieIds().toSet shouldBe rows.map(r => s"${r.id.value}-old").toSet
 
-    projector.pruneOrphans()                       // straight to the prune: no start(), no boot heal
+    projector.sweeper.pruneOrphans()                       // straight to the prune: no start(), no boot heal
 
     rm.findAllMovieIds().toSet shouldBe rows.flatMap(ReadModelProjection.filmIds(_, titleNormalizer)).toSet
     rm.findAllScreenings().map(_.filmId).toSet shouldBe rows.map(_.id.value).toSet
@@ -1862,7 +1524,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     val before = blind.movieUpserts.size
 
     projector.start()                                // boot heal: cannot see the cards → nothing
-    projector.pruneOrphans()                         // sweep heal + prune: the same
+    projector.sweeper.pruneOrphans()                         // sweep heal + prune: the same
     blind.movieUpserts should have size before
     blind.movieDeletes shouldBe empty
     projector.stop()
@@ -1886,7 +1548,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     val projector = new ReadModelProjector(repository, blind, blind, m, scheduler = new CapturingScheduler, clock = specClock)
 
     projector.start()                                // boot heal: cannot see the venues → nothing
-    projector.pruneOrphans()                         // sweep heal: the same
+    projector.sweeper.pruneOrphans()                         // sweep heal: the same
 
     blind.screeningUpserts should have size before
     m.heals.filter(_._2 > 0) shouldBe empty
@@ -1928,11 +1590,11 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     val projector = new ReadModelProjector(repository, flaky, flaky, m, clock = specClock)
     repository.upsert("Bar", Some(2024), record(Some(7.0), Seq(at("2026-06-13T20:00")), tmdbId = 2))
     repository.upsert("Foo", Some(2024), record(Some(8.0), Seq(at("2026-06-12T20:00"))))
-    projector.reconcile()
+    projector.sweeper.reconcile()
     repository.delete("Bar", Some(2024))
     repository.delete("Foo", Some(2024))
 
-    noException should be thrownBy projector.pruneOrphans()
+    noException should be thrownBy projector.sweeper.pruneOrphans()
     flaky.findAllMovieIds() shouldBe Seq("bar|2024")          // only the refused one is left
     m.sweeps.last shouldBe (ReconcileKind.Prune -> true)
     projector.stop()
@@ -2020,8 +1682,8 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     val wholeScan = hitsOf(counting)(repository.foreachRecord(_ => ()))
 
     hitsOf(counting)(projector.onMovieUpsert(row)) shouldBe oneProjection               // the change stream: project once
-    hitsOf(counting)(projector.pruneOrphans())     shouldBe slotsScan + onePartition    // card ids + venue ids: one partition
-    hitsOf(counting)(projector.reconcile())        shouldBe wholeScan + onePartition    // card ids + a metadata-reusing projection: one partition
+    hitsOf(counting)(projector.sweeper.pruneOrphans())     shouldBe slotsScan + onePartition    // card ids + venue ids: one partition
+    hitsOf(counting)(projector.sweeper.reconcile())        shouldBe wholeScan + onePartition    // card ids + a metadata-reusing projection: one partition
     projector.stop()
   }
 
@@ -2043,7 +1705,7 @@ class ReadModelProjectorSpec extends AnyFlatSpec with Matchers {
     repository.upsert("Foo", Some(2024), MovieRecord(tmdbId = Some(1), data = Map[Source, SourceData](
       Multikino -> slot(showing), Helios -> slot(showing).copy(filmUrl = Some("https://helios/foo")),
       KinoMuza -> slot(showing).copy(filmUrl = Some("https://muza/foo")))))
-    projector.reconcile()
+    projector.sweeper.reconcile()
     rm.findAllScreenings() should have size 3
     singles.get shouldBe 0
     batches.toList shouldBe List(3)

@@ -114,7 +114,7 @@ class SlotsWatchProjectionIntegrationSpec extends AnyFlatSpec with Matchers with
         // The film's three writes reach the projector on three cursors, asynchronously. Let the
         // last of them land before counting, or a late first-pass projection reads as churn.
         awaitQuiet(metrics.registry)
-        projector.pruneOrphans()   // the FIRST sweep may legitimately look
+        projector.sweeper.pruneOrphans()   // the FIRST sweep may legitimately look
 
         val oplog = new tools.OplogWrites(mongoTarget.uri.value, databaseName)
         try new tools.ChurnLedger()
@@ -122,7 +122,7 @@ class SlotsWatchProjectionIntegrationSpec extends AnyFlatSpec with Matchers with
           .counter(s"oplog writes to $databaseName")(oplog.count())
           .assertNoChurn("re-landing a projected film unchanged and sweeping again") {
             repository.findAll().foreach(film => repository.upsert(film.id, film.title, film.year, film.record))
-            projector.pruneOrphans()
+            projector.sweeper.pruneOrphans()
           }
         finally oplog.close()
       } finally projecting.foreach(_.close())

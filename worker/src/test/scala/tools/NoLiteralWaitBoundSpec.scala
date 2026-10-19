@@ -174,7 +174,7 @@ class NoLiteralWaitBoundSpec extends AnyFlatSpec with Matchers {
     literalBoundLines("map.get(5)") shouldBe empty                                    // a lookup, not a wait
     literalBoundLines("clock.advance(5.seconds)") shouldBe empty
     literalBoundLines("new UptimeMonitor(db, ttl = 30.seconds)") shouldBe empty
-    literalBoundLines("ReadModelProjector.awaitStreamApplied(l, grace = 0.seconds, timeout = 200.millis)") shouldBe empty
+    literalBoundLines("ReadModelSweeper.awaitStreamApplied(l, grace = 0.seconds, timeout = 200.millis)") shouldBe empty
     literalBoundLines("timeoutMs == 5000") shouldBe empty
     literalBoundLines("sleepLines(\"latch.await(5, TimeUnit.SECONDS)\") shouldBe empty") shouldBe empty   // a string
     literalBoundLines("val DefaultBudget = 200") shouldBe empty                        // a count, not a time

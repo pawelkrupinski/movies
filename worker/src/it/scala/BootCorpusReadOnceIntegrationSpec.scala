@@ -113,7 +113,7 @@ class BootCorpusReadOnceIntegrationSpec extends AnyFlatSpec with Matchers with t
     // The last process projected the corpus: the boot's check finds nothing to heal, so every
     // `movies` document a boot reads is one of its corpus scans.
     val readModel = new MongoReadModelRepository(Some(db))
-    new ReadModelProjector(repository, readModel, readModel, clock = _root_.tools.SpecClock.Pinned).reconcile()
+    new ReadModelProjector(repository, readModel, readModel, clock = _root_.tools.SpecClock.Pinned).sweeper.reconcile()
     repository.close()
 
     boot(db, handOver = true)               // warm the JVM, so neither measured boot pays for it

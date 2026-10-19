@@ -87,7 +87,7 @@ class ReadModelContentAuditSpec extends AnyFlatSpec with Matchers {
     found should contain ("ratings")
     found.exists(_.endsWith(".showtimes")) shouldBe true
 
-    (1 to 48).foreach(_ => checker.pruneOrphans())   // the rolling content check, whole corpus
+    (1 to 48).foreach(_ => checker.sweeper.pruneOrphans())   // the rolling content check, whole corpus
     audit(card, repository, rm) shouldBe Some(Nil)
     checker.stop()
   }
@@ -119,7 +119,7 @@ class ReadModelContentAuditSpec extends AnyFlatSpec with Matchers {
     writer.dropping = true
     Try(projector.onMovieUpsert(repository.findAll().find(_.title == "Foo").get))   // the write fails
     writer.dropping = false
-    (1 to 48).foreach(_ => projector.pruneOrphans())                                // a whole day of content checks
+    (1 to 48).foreach(_ => projector.sweeper.pruneOrphans())                                // a whole day of content checks
     val found = audit(cardOf(repository), repository, rm)
     projector.stop()
     found

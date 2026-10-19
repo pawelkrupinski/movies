@@ -45,7 +45,7 @@ class ReadModelConvergenceSpec extends AnyFlatSpec with Matchers {
         rm.findAllScreenings().map(_._id).toSet shouldBe screenings
       }
       val prunedBefore = metrics.pruneReasons.size
-      projector.pruneOrphans()
+      projector.sweeper.pruneOrphans()
       withClue(s"after '$step' the prune must find nothing: ") {
         metrics.pruneReasons.drop(prunedBefore) shouldBe empty
         rm.findAllMovieIds().toSet shouldBe cards

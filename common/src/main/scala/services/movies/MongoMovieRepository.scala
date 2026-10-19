@@ -230,7 +230,7 @@ class MongoMovieRepository(
       val (pageScr, pageSlots) = readPageSides(ids, withShowtimes, timing)
       // A page whose side read failed is NOT handed on, stitched from the empty answer: its
       // films would arrive with no cinemas or no showtimes, and "incomplete" only stops a
-      // prune — `ReadModelProjector.reconcile` and the sweep's catch-up PROJECT every row they
+      // prune — `ReadModelSweeper.reconcile` and the sweep's catch-up PROJECT every row they
       // are given, so each film on the page lost every served showtime (the per-row
       // `MovieSideStitch.decode` declines for the same reason). The page is skipped and the scan
       // reported incomplete; the rows it could stitch are still delivered.
@@ -417,11 +417,11 @@ class MongoMovieRepository(
    *  (the 2026-06-29 served-films flap, where a batch blew its 60s budget under worker
    *  CPU throttle). Returns `true` only when the scan ran to the last page; `false` when
    *  a batch still fails after its retries — so a PRUNING caller
-   *  (`ReadModelProjector.reconcile`) doesn't treat the rows-so-far as the full corpus
+   *  (`ReadModelSweeper.reconcile`) doesn't treat the rows-so-far as the full corpus
    *  and delete the live rows it never reached.
    *
    *  Stitches split-read showtimes back in via the SAME [[scanStitched]] path as
-   *  [[findAll]] — its callers need them: `ReadModelProjector.reconcile` PROJECTS
+   *  [[findAll]] — its callers need them: `ReadModelSweeper.reconcile` PROJECTS
    *  screenings (un-stitched empty showtimes would make it prune every film's
    *  `web_screenings`), and `WorkerShowtimesMetrics` counts them. Prune-safety +
    *  bounded-heap guarantees live in `scanStitched`. */

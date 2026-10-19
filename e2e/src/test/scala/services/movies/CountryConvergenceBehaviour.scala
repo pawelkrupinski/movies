@@ -1777,7 +1777,7 @@ abstract class CountryConvergenceBehaviour(
         // the re-try sweep, which would otherwise search for a row with no cinema left.
         w.unscreenedCleanup.removeUnscreened()
         step("  read model")(tools.WholeReconcile(w.readModelProjector))
-        w.readModelProjector.pruneOrphans()
+        w.readModelProjector.sweeper.pruneOrphans()
         FixpointPass.awaitStreamsQuiet(w)
       }
 

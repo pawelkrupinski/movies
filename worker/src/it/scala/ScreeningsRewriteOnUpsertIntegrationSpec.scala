@@ -109,7 +109,7 @@ class ScreeningsRewriteOnUpsertIntegrationSpec extends AnyFlatSpec with Matchers
       repository.upsert(title, year, recordShowing(when))
       counting.reset(); countSlots.reset()
 
-      projector.pruneOrphans()
+      projector.sweeper.pruneOrphans()
 
       withClue("the prune read the screenings collection, which it never looks at: ") {
         counting.batchReadCalls.get() shouldBe 0
@@ -121,7 +121,7 @@ class ScreeningsRewriteOnUpsertIntegrationSpec extends AnyFlatSpec with Matchers
 
       // …and the expensive sweep, which really does re-project, still gets its showtimes.
       counting.reset()
-      projector.reconcile()
+      projector.sweeper.reconcile()
       withClue("the full reproject writes showtimes, so it must read them: ") {
         counting.batchReadCalls.get() should be > 0
       }

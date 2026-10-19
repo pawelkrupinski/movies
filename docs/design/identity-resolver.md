@@ -34,7 +34,7 @@ time by stages that each mutate stored state, and each stage reads what the prev
 | landing | `ScrapeLanding`, `ListingLanding`, `CorpusIndex`, `MovieCache.recordCinemaScrape` | which row a scraped listing is written to, or whether it is diverted to staging |
 | staging fold | `StagingFold.planGroup`, `MongoStagingFolder`, `FoldOnStagingEnriched` | which newcomer rows become which film, and which retire |
 | settle | `FilmCanonicalizer.groupByFilm` / `clusterByFilm`, `MixedFilmSplitter`, `SettleReaper`, `MovieCache.collapseCluster` / `settleResolved` / `backfillEmbeddedYears` | merges and splits after the fact |
-| re-key / backfill | `MovieCache.rekey`, `RekeyReason.*`, `SideCollectionMove`, `ReadModelProjector.healMissingCards` | moving a row, with its slots, screenings and card, to a new key |
+| re-key / backfill | `MovieCache.rekey`, `RekeyReason.*`, `SideCollectionMove`, `ReadModelSweeper.healMissingCards` | moving a row, with its slots, screenings and card, to a new key |
 | TMDB resolution | `MovieService.resolveStagingRecord` / `lookupTmdb`, `TmdbCandidateSearch`, `ResolutionCache` | which film a row *is* |
 | reapers | `UnresolvedTmdbReaper`, `StagingReaper`, `EnrichmentReaper` | re-asking, and concluding "no match" |
 | vetoes | now `ListingConstraints` (prerequisite b): the venue-denied candidate, the decoration veto, the bare-listing home, the Faust containment refusal, the same-title slot split | refusing a merge one of the above would make |

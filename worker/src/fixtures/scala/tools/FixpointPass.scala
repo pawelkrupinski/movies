@@ -128,7 +128,7 @@ object FixpointPass {
 
   /** One production tick over whatever the wiring's scrapers report: the runner's landing in the
    *  identity intake and one projection ([[TestWiring.cutoverTick]]). */
-  def run(w: TestWiring): Unit = { w.cutoverTick(); w.readModelProjector.pruneOrphans() }
+  def run(w: TestWiring): Unit = { w.cutoverTick(); w.readModelProjector.sweeper.pruneOrphans() }
 
   /** Wait until Mongo's change streams have delivered and applied what the last pass wrote:
    *  no event waiting on any cursor's apply thread or held by its debounce, and none delivered

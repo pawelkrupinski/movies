@@ -40,7 +40,7 @@ trait ReadModelProjectionMetrics {
 
   /** A prune sweep found `rows` venue rows whose film no longer lists the venue -- removals the
    *  change stream did not apply -- and pruned them, or `withheld` them all as over the cap
-   *  (`ReadModelProjector.unlistedPruneCap`). Zero is the healthy reading. */
+   *  (`ReadModelSweeper.unlistedPruneCap`). Zero is the healthy reading. */
   def recordUnlistedVenues(rows: Int, withheld: Boolean): Unit
 
   /** One `ReadModelProjection.projectAll` ran for a source row. Fed from
@@ -105,7 +105,7 @@ trait ReadModelProjectionMetrics {
    *  cursor's last delivered event — the catch-up for a cursor that is open and silent. Zero
    *  on every sweep is the healthy reading: a live cursor delivers a write within seconds, so
    *  nothing is ever newer than its last delivery. A sustained rate here is the read-model
-   *  side of `ChangeStreamMoviesCursorSilent`. Fed from [[ReadModelProjector.sweep]]. */
+   *  side of `ChangeStreamMoviesCursorSilent`. Fed from [[ReadModelSweeper.sweep]]. */
   def recordCatchUp(rows: Int): Unit
 
   /** `rows` ready rows were re-projected because the read model lacked one of their cards or
