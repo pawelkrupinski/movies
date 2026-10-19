@@ -698,7 +698,7 @@ object IdentityCalibrate {
   final case class Scope(name: String, signals: Seq[String], rows: Seq[Row])
 
   val LfSignals: Seq[String] = Seq("title", "numeral", "originalTitle", "year.delta", "titleYear.delta", "season.delta", "director",
-    "runtime.delta", "country", "search.rank", "popularity.log2", "rivals", "venues.corroborating")
+    "runtime.delta", "country", "search.rank", "popularity.log2", "rivals", "venues.corroborating", "certificate")
   val LlSignals: Seq[String] = Seq("title", "originalTitle", "year.delta", "titleYear.delta", "season.delta", "director",
     "runtime.delta", "venue", "chainId")
   /** The atoms the cannot-link rules are searched over, per scope. */
