@@ -25,7 +25,8 @@ import services.identity.IdentityMeasures.Measure
  *  - the film is a current release, of its screenings' year or the one before ([[IdentityResolver.CurrentRelease]]), or a foreign film
  *    TMDB knows by its original title alone, billed first ("Ekmek parası - Geld für's Brot"): the venue's subtitle or
  *    translation beside it — the namesakes a reading or a show is taken for are older catalogue films.
- *  A piece naming a STAGING beside the film — a theatre, a musical ([[ListingShape.StageWords]]) — outweighs all but a
+ *  A piece naming a STAGING beside the film — a theatre, a musical, a pantomime ([[ListingShape.StageWords]]); a pantomime even
+ *  in the banner's slot (UK "CBeebies Panto 2026: Treasure Island", not the 2027 film) — outweighs all but a
  *  stated fact: the widely screened film, the current release and the venue's town are no answer to a staging of its work.
  *  `measures`: the billing's against the film; `tmdbId`: the film's TMDB id, when it has one —
  *  never a family's own number, so the feed's link ([[FeedLink.linked]]) is read as TMDB's: a family's resolve decides no
@@ -84,7 +85,8 @@ private[identity] object BilledPiece {
     def staging(piece: Seq[String]) = piece.exists(word => ListingShape.StageWords(word) && !venues(word))
     lazy val filmWords = film.titles.flatMap(tokens).toSet
     lazy val staged = Option.when(staging(tokens(evidence.rawTitle).filterNot(filmWords)))(
-      ListingShape.billedBeside(listing, Seq(film), piece => !staging(piece))).flatten
+      ListingShape.billedBeside(listing, Seq(film), piece => !staging(piece),
+        bannerSlot = !tokens(evidence.rawTitle).exists(ListingShape.ShowWords))).flatten
       .map(Piece(_, staging = true))
     if (stated) None
     // a billing listing several works by name is a programme, whatever its first piece's film (DE "Retro - An Undiscovered
