@@ -160,7 +160,7 @@ object Agreement {
   /** EXPERIMENT (experiment/quorum-votes): which of the venue's own evidence counts in the quorum. 0 none (main);
    *  1 a venue poster matching the film's TMDB poster is a vote; 2 the venue naming two whole names of its cast (one
    *  candidate only) is a vote; 3 both; 4 a poster, cast or certificate CONTRADICTION is one dissenting vote. */
-  val QuorumVariant: Int = 3
+  val QuorumVariant: Int = 4
   /** The venue's own evidence on one film the families took, read beside the quorum ([[QuorumVariant]]). */
   final case class VenueEvidence(votes: Set[String], against: Int)
   object VenueEvidence { val Silent: VenueEvidence = VenueEvidence(Set.empty, 0) }
