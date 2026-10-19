@@ -39,7 +39,7 @@ reaches that replay: a final-stage 0 there means not seen, not refilled. Variant
   | point | gained | right | unjudged | NEW WRONG | right→wrong | lost |
   |---|---|---|---|---|---|---|
   | A F 0.30, R 5 | 183 model + 16 final | 29 | 45 | 125 (117 = UK "CBeebies Panto 2026: Treasure Island") | 3 | 6 |
-  | B F 0.25, R 5 | 239 model + 17 final | 54 | 64 | 138 | 3 | 6 |
+  | B F 0.25, R 5 | 239 model + 17 final | 54 | 64 | 138 | 3 | 7 |
   | D = A + the billing is only the film's title | 31 model + 7 final | 18 | 17 | 3 | 2 | 1 |
 
   Every point NOT LANDABLE. The wrong ones are the predicted kinds: a broadcast panto taking the 1950 or 2027 namesake,
