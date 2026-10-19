@@ -159,7 +159,7 @@ trait DetailEnricher {
    *  venue. */
   def enrichmentServiceOverride: Option[String] = None
   /** Whether the identity model should WAIT for this cinema's detail page before resolving a listing
-   *  of it ([[services.identity.VenuePageWait]]). True (the default) when the page supplies identity
+   *  of it (the worker's `services.identity.adapters.VenuePageWait`). True (the default) when the page supplies identity
    *  hints (director / original title / production year): resolving on the listing while the page
    *  carrying its year and director is in flight is how a guess gets made. Set false for a cinema whose
    *  listing already carries those hints and whose page is purely display enrichment (synopsis /
