@@ -2,10 +2,9 @@ package services.identity
 
 import services.movies.LatestTitleYear
 
-import models.{Cinema, CinemaMovie, CinemaShowing, Filmweb, FilmwebPages, Imdb, MovieRecord, Source, SourceData}
+import models.{Cinema, CinemaMovie, CinemaShowing, MovieRecord, Source, SourceData}
 import services.movies.{CacheKey, CinemaSlotBuilder, FilmId, LeanRecords, ListingKey, ScreeningTokens,
-  ShowtimesDigest, StoredMovieRecord, TitleNormalizer}
-import services.resolution.TmdbAttempt
+  StoredMovieRecord, TitleNormalizer}
 
 import java.time.Instant
 
@@ -213,196 +212,8 @@ object IdentityProjectionPlan {
   def draftOf(index: ProjectionIndex, scope: ProjectionScope, normalizer: TitleNormalizer, slots: CinemaSlotBuilder,
               tokens: ScreeningTokens, at: Instant, rowsOf: Set[Cinema] => Map[Cinema, Seq[CinemaMovie]],
               memo: VenueSlotMemo = VenueSlotMemo.none, shapes: FilmShapes = FilmShapes.none,
-              changed: Set[ListingKey] = Set.empty)(using LatestTitleYear): ProjectionDraft = {
-    import index.{byKey, storedById, covered}
-    // Within the scope: its stored films' listings, and its clusters. Everything outside it is a film no change reached,
-    // whose draft is the film as stored.
-    val within        = index.within(scope)
-    import within.{previousOf, stored}
-    val previousFilms = within.listingsOf.map { case (id, ls) => IdSeeding.Film(id, ls) }
-    val clusters      = within.clusters.map(c => c.members -> c.film)
-    val unmatchedOf   = within.clusters.filter(_.film.isEmpty).map(c => c.members -> c).toMap
-    val numbered      = previousFilms.map(f => covered.counterOf(f.id).get -> f.listings)
-
-    // 2. Ids by overlap.
-    val filmOf    = clusters.toMap
-    val assigned  = IdAssigner.assign(numbered, clusters.map(_._1), covered.nextCounter)
-    val previousIdOf: Long => Option[String] = c => Option.when(c < covered.nextCounter)(covered.filmIdOf(c)).flatten
-
-    // 3. Each film's record. Its venue slots are LEAN, each venue's from the memo when nothing it is built from
-    // moved, else built from the venue's rows, read a batch of venues at a time and let go.
-    // Each stored film's venue slots by venue, worked out once per film, not once per venue of every film it lends a
-    // listing to — a US film showing at hundreds of venues was scanned whole for each of them.
-    val slotsByFilm = scala.collection.mutable.HashMap.empty[String, Map[Cinema, Seq[(Source, SourceData)]]]
-    def slotsByVenueOf(id: String): Map[Cinema, Seq[(Source, SourceData)]] = slotsByFilm.getOrElseUpdate(id,
-      storedById.get(id).fold(Map.empty[Cinema, Seq[(Source, SourceData)]])(stored => VenueSlots.byVenue(stored.record)))
-    def priorsOf(id: String): Map[Cinema, Int] = storedById.get(id).fold(Map.empty[Cinema, Int])(r => shapes.priorsOf(id, r.record))
-    // One venue's listings on a film, and what its slots are built from.
-    def previousAt(keys: Seq[ListingKey]): Seq[Option[String]] = keys.map(k => index.previousOf.get(k).map(_.id))
-    def priorsAt(cinema: Cinema, previous: Seq[Option[String]]): Seq[Int] =
-      previous.flatten.distinct.sorted.map(id => priorsOf(id).getOrElse(cinema, 0))
-    // What the venue's pages for these listings said when last read: a slot carries its page-written detail from them.
-    def pagesAt(cinema: Cinema, keys: Seq[ListingKey]): Int = slots.pages.digest(cinema, keys)
-    def groupOf(cinema: Cinema, ofVenue: Seq[ProjectedListing], counter: Long): (VenueGroup, Seq[Option[String]], Seq[Int]) = {
-      // The prior slots any of these rows' previous films held at the venue: a superset of the one each built
-      // slot carries forward, so a change to any of them is a change to the key — and which film each row is on,
-      // since a slot carries forward its own listing's film's slot: two rows trading films trade the slot each
-      // carries, the set of priors unchanged. Left out, a slot built over one film's prior was taken from the memo
-      // for the other's (a venue's "Lalka" and "Lalka 2D" trading films kept the director only one of them had).
-      val previous = previousAt(ofVenue.map(_.listing.key))
-      val priors   = priorsAt(cinema, previous)
-      // Each row's film by its counter, which a film keeps for good and has from its first draft: what the key of a
-      // slot once written is worked out from ([[VenueSlotMemo.written]]), a film new to the store included.
-      (VenueGroup(cinema, ofVenue, VenueSlotMemo.keyOf(cinema.displayName, ofVenue, priors, previous.map(_.flatMap(covered.counterOf)),
-        pagesAt(cinema, ofVenue.map(_.listing.key))),
-        counter), previous, priors)
-    }
-    // A film drafted again with the listings it was last drafted with is drafted again only where it moved: a venue one of
-    // whose listings, or whose listings' previous films' stored slots, moved since ([[FilmShapes]]).
-    val reuse   = !scope.whole
-    lazy val placedAt: Map[ListingKey, Long] = assigned.idOfListing
-    val dirtyAt = if (!reuse) Map.empty[Long, Set[ListingKey]]
-                  else changed.iterator.filter(byKey.contains).flatMap(k => placedAt.get(k).map(_ -> k)).toSeq.groupMap(_._1)(_._2).view.mapValues(_.toSet).toMap
-    val planned = assigned.ids.map { case (counter, members) =>
-      // The same listings: the same keys in the same order, the same titles (a key holds its listing's title). An equal set
-      // of other key objects is the same listings read again — a venue's scrape reads every listing it prints, moved or not.
-      shapes.get(counter).filter(sh => reuse && ((sh.members eq members) || sh.members == members))
-        .map(_.over(members, k => byKey.get(k).fold(k)(_.listing.key))) match {
-        case Some(was) =>
-          val dirtyVenues = dirtyAt.getOrElse(counter, Set.empty).map(byKey(_).listing.cinema)
-          val groups = was.venues.toSeq.sortBy(_._1.displayName).map { case (cinema, venue) =>
-            // Moved: one of its listings did, or which film one is on, or the slots those films hold at the venue, or
-            // what one's page said.
-            val moved = dirtyVenues(cinema) || { val previous = previousAt(venue.keys)
-              VenueShape.inputs(previous, priorsAt(cinema, previous), pagesAt(cinema, venue.keys)) != venue.inputs }
-            if (!moved) cinema -> Left(venue)
-            else cinema -> Right(groupOf(cinema, venue.keys.map(byKey), counter))
-          }
-          Planned(counter, members, was.keys, was.titles, groups, Some(was))
-        case _ =>
-          val keys   = members.toSeq.sorted
-          val rows   = keys.map(byKey)
-          val titles = rows.groupMapReduce(_.listing.cleanTitle)(_ => 1)(_ + _)
-          val groups = rows.groupBy(_.listing.cinema).toSeq.sortBy(_._1.displayName).map { case (cinema, ofVenue) =>
-            cinema -> Right(groupOf(cinema, ofVenue, counter))
-          }
-          Planned(counter, members, keys, titles, groups, None)
-      }
-    }
-    val build: (Cinema, Seq[ListingKey], VenueSlots.VenueRows) => Seq[(Source, SourceData)] =
-      // Over the whole index: a slot's prior is its representative listing's film's, whichever of the venue's listings that is.
-      (cinema, keys, rows) => VenueSlots.buildVenue(cinema, keys, rows, index.previousOf, storedById, normalizer, slots, tokens)
-    val venueSlots = scala.collection.mutable.HashMap.empty[VenueSlotMemo.Key, Seq[(Source, SourceData)]]
-    // The slots the stored film of a group's listings holds at its venue: what a restarted worker's memo reuses
-    // when they are recorded as built from the group's key.
-    def storedAt(group: VenueGroup): Option[Seq[(Source, SourceData)]] =
-      group.rows.flatMap(r => previousOf.get(r.listing.key)).map(_.id).distinct match {
-        case Seq(id) => storedById.get(id).map(_ => slotsByVenueOf(id).getOrElse(group.cinema, Nil))
-        case _ => None
-      }
-    planned.foreach(_.groups.foreach { case (_, Left(venue)) => venueSlots(venue.memoKey) = venue.lean; case _ => () })
-    val pending    = planned.flatMap(_.groups.collect { case (_, Right((group, _, _))) => group }).filter(group =>
-      memo.lookup(group.key, storedAt(group)).fold(true) { lean => venueSlots(group.key) = lean; false })
-    pending.groupBy(_.cinema).toSeq.sortBy(_._1.displayName).grouped(RowBatch).foreach { batch =>
-      val fetched = rowsOf(batch.map(_._1).toSet)
-      batch.foreach { case (cinema, groups) =>
-        val rows = VenueSlots.rowsByKey(cinema, fetched.getOrElse(cinema, Nil))
-        groups.foreach { group =>
-          val lean = build(cinema, group.rows.map(_.listing.key), rows).map { case (source, slot) => source -> ShowtimesDigest.stripSlot(slot) }
-          venueSlots(group.key) = lean
-          memo.store(group.key, lean, keep = VenueSlots.readAsListed(cinema, group.rows, rows, normalizer), writtenAs = Some(group.counter))
-        }
-      }
-    }
-    val drafts = planned.map { plan =>
-      import plan.{counter, members, keys}
-      val previous = previousIdOf(counter).flatMap(storedById.get)
-      val film     = filmOf(members)
-      val anchor   = plan.titles.toSeq.sortBy { case (t, n) => (-n, t) }.headOption.map(_._1).getOrElse("")
-      // Each venue's slots — of a film drafted again, the venues it rebuilt replace theirs — and the film's as a whole.
-      // A venue drafted again alike is the one kept, and a film drafted again alike at every venue keeps its venues' map.
-      val kept        = shapes.get(counter)
-      val venueShapes = plan.groups.iterator.map {
-        case (cinema, Left(venue))            => cinema -> venue
-        case (cinema, Right((group, previous, priors))) => cinema -> FilmShape.reused(kept.flatMap(_.venues.get(cinema)),
-          VenueShape(group.rows.map(_.listing.key), group.key, venueSlots(group.key), VenueShape.inputs(previous, priors, group.key.pages)))
-      }.toMap
-      val venueData = venueShapes.valuesIterator.flatMap(_.lean).toMap
-      // Over the kept map: only a venue that is not the shape held is put in — a wide film moved at a few venues built its
-      // map of thousands anew each projection, kept until the next one (dead in the old generation, heap dump 2026-10-05).
-      // Its keys too, when they are the same listings in the same order.
-      shapes.put(counter, FilmShape(members, kept.map(_.keys).filter(k => (k eq keys) || k == keys).getOrElse(keys), plan.titles,
-        kept.fold(venueShapes)(k => FilmShapes.sharing(k.venues, venueShapes, _ eq _))))
-      val sameFilm = previous.exists(_.record.tmdbId == film)
-      val base = previous.filter(_ => sameFilm).map(_.record).getOrElse(
-        MovieRecord(retainedSynopses = previous.map(_.record.retainedSynopses).getOrElse(Map.empty)))
-      // A film TMDB has no record of carries the IMDb id of the fallback film the resolver took for it — else the one it
-      // held, when that is the TMDB film its listings' evidence leans to though no rule took it ([[ResolverDecision.Leaning]]:
-      // "Tatarak", Wajda's 2009 film below the rating cut), else none: an id a title search guessed (the pipeline's, the
-      // former TMDB-less enrichments') is not the resolver's answer — PL "Lalka" (2026) held the 1968 film's, and its 6.9.
-      // The rating and IMDb's slot go with an id that goes. A no-match reached before every question was answered is a
-      // gap, not a verdict: the record keeps what it holds.
-      // One standing on Filmweb's or Wikidata's own id (the agreement's, where no record links an IMDb id) links that
-      // record instead: its Filmweb page — replacing a page a title search guessed, with its rating and slot — or its
-      // Wikidata item.
-      val answered = unmatchedOf.get(members).filterNot(_.unanswered)
-      val imdb   = answered.map { cluster =>
-        cluster.fallback.filter(_.source == "imdb").map(_.id)
-          .orElse(base.imdbId.filter(id => cluster.leaning.exists(_.imdbNumber == IdentityMeasures.imdbNumber(id)))) }
-      val standsOn = answered.flatMap(_.fallback)
-      val linked = imdb.fold(base)(id => if (id == base.imdbId) base else base.copy(imdbId = id, imdbRating = None, data = base.data - Imdb))
-      val held   = standsOn.fold(linked) {
-        case ResolverDecision.Fallback("filmweb", id, _, title, year) if !linked.filmwebUrl.flatMap(FilmwebPages.idOf).map(_.toString).contains(id) =>
-          linked.copy(filmwebUrl = id.toIntOption.map(FilmwebPages.url(_, "film", title.getOrElse(anchor), year)), filmwebRating = None,
-            data = linked.data - Filmweb)
-        case ResolverDecision.Fallback("wikidata", id, _, _, _) => linked.copy(wikidataId = Some(id))
-        case _                                                  => linked
-      }
-      val nonVenue = held.data.filter { case (source, _) => Source.cinemaOf(source).isEmpty }
-      val networks = previous.fold(Map.empty[Source, SourceData])(_.record.data.filter { case (source, _) => Cinema.Networks.contains(source) })
-      val previousNonVenue = previous.fold(Set.empty[Source])(_.record.data.keysIterator.filter(Source.cinemaOf(_).isEmpty).toSet)
-      val record = held.copy(
-        tmdbId        = film,
-        tmdbAttempt   = if (film.isDefined) None else base.tmdbAttempt.orElse(Some(TmdbAttempt(ResolverVerdict, at))),
-        searchTitle   = base.searchTitle.orElse(Some(normalizer.apiQuery(normalizer.recase(anchor)))),
-        // A chain's network detail slot is venue source data no listing is published at: kept from the
-        // stored film whatever it is matched to, as its venue slots are rebuilt from theirs.
-        // The venue slots first, and the rest over them: no venue slot is a non-venue source or a chain's network one.
-        // Over the stored record's own map where a slot is the very one it holds (the cache keeps the projection's lean
-        // slots): a wide film written for a few venues built its whole map anew, kept until its next write — promoted
-        // and left to die old, every projection.
-        data          = previous.fold(venueData ++ nonVenue ++ networks)(p =>
-          FilmShapes.sharing(p.record.data, venueData ++ nonVenue ++ networks, _ eq _)))
-      // Of a film drafted again, what may differ from the last draft's write: its non-venue sources, and the venues it
-      // rebuilt — their slots as written then and as built now. Every other venue's slot is the one written.
-      val touched = plan.was.map { was =>
-        val rebuilt = plan.groups.collect { case (cinema, Right(_)) => cinema }
-        previousNonVenue ++ nonVenue.keySet ++ networks.keySet ++
-          rebuilt.flatMap(cinema => was.venues(cinema).lean.map(_._1) ++ venueShapes(cinema).lean.map(_._1))
-      }
-      FilmDraft(counter, previous.map(_.id), keys, record, anchor, touched)
-    }
-    val venues = planned.map(plan => plan.counter -> plan.groups.map {
-      case (cinema, Left(venue))           => cinema -> venue.keys
-      case (cinema, Right((group, _, _)))  => cinema -> group.rows.map(_.listing.key)
-    }.toMap).toMap
-
-    // Retired: a previous film no cluster kept, and a stored film none of whose listings is published.
-    val kept    = drafts.flatMap(_.inherited).toSet
-    val retired = stored.map(_.id).filterNot(kept).distinct.sortBy(_.value)
-
-    val newIdOf = assigned.idOfListing
-    val regroupings = Regroupings(
-      merges  = clusters.map { case (ms, _) => ms.flatMap(previousOf.get).map(_.id).size - 1 }.filter(_ > 0).sum,
-      splits  = previousFilms.count(f => f.listings.flatMap(newIdOf.get).sizeIs > 1),
-      moves   = previousOf.count { case (l, ref) => newIdOf.get(l).map(c => previousIdOf(c).getOrElse(s"#$c")) != Some(ref.id) },
-      fresh   = drafts.count(_.inherited.isEmpty),
-      retired = retired.size)
-    // The listings of the scope whose TMDB film moved — read off the index's clusters, so nothing is built per listing.
-    val takes = TakeChange.of(previousOf, l => index.clusterOf.get(l).flatMap(index.clusters.get).map(_.film))
-    ProjectionDraft(drafts, retired, retired.filterNot(id => index.placed(id.value)), covered, index.additions, regroupings,
-      venues, build, rowsOf, takes)
-  }
+              changed: Set[ListingKey] = Set.empty)(using LatestTitleYear): ProjectionDraft =
+    new ProjectionDrafting(index, scope, normalizer, slots, tokens, at, rowsOf, memo, shapes, changed).draft
 
   /** Choose every film's title, year and key, and mint the id of every fresh one. `taken` says
    *  whether an id is live already (a fresh id must not be one). */
@@ -437,12 +248,6 @@ object IdentityProjectionPlan {
 
   /** One film's listings at one venue, and what its slots are built from. */
   private[identity] final case class VenueGroup(cinema: Cinema, rows: Seq[ProjectedListing], key: VenueSlotMemo.Key, counter: Long)
-
-  /** A film [[draftOf]] plans: its venues' groups, each one kept from the last draft (`Left`) or worked out (`Right`, with
-   *  the stored records of the films its priors are from). */
-  private final case class Planned(counter: Long, members: Set[ListingKey], keys: Seq[ListingKey], titles: Map[String, Int],
-                                   groups: Seq[(Cinema, Either[VenueShape, (VenueGroup, Seq[Option[String]], Seq[Int])])],
-                                   was: Option[FilmShape])
 
 }
 

@@ -145,21 +145,31 @@ object UnifiedEvidence {
   /** Every film the cluster's evidence reaches — the TMDB candidates some node scored and did not deny, and each film a
    *  family took or leans to (joined to a TMDB candidate by a shared id, else by its facts, held apart from none of its
    *  records, as the agreement joins two families' picks: [[Agreement.joins]]) — with its signals. A family's film no id names is none: no film can be shown for it. */
-  def contenders(c: ClusterEvidence): Seq[Contender] = {
-    val scored   = c.nodes.flatMap(_.candidates).filterNot(candidate => FallbackIds.isFallback(candidate.tmdbId)).groupBy(_.tmdbId)
-    val eligible = scored.filter(_._2.exists(!_.denied)).toSeq.sortBy(_._1)
-    val built = scala.collection.mutable.ArrayBuffer.from(eligible.map { case (id, candidates) =>
+  def contenders(c: ClusterEvidence): Seq[Contender] = new Contending(c).contenders
+
+  /** One run of [[contenders]] over cluster `c`: the films its evidence reaches, then each one's signals. */
+  private final class Contending(c: ClusterEvidence) {
+    private val scored   = c.nodes.flatMap(_.candidates).filterNot(candidate => FallbackIds.isFallback(candidate.tmdbId)).groupBy(_.tmdbId)
+    private val eligible = scored.filter(_._2.exists(!_.denied)).toSeq.sortBy(_._1)
+    private val built = scala.collection.mutable.ArrayBuffer.from(eligible.map { case (id, candidates) =>
       val film = candidates.head.film
       new Building(Some(id), IdentityMeasures.imdbId(film.imdbNumber), SourceRecord.ofTmdb(id, film))
     })
-    // the families' films first, each family's record joined to every other naming the same film (as the agreement joins
-    // picks): a film IMDb names by its id alone and Wikidata by its TMDB id is one film, the TMDB candidate both name
-    val familyRecords = c.verdicts.sortBy(_.family.ordinal).flatMap(v => v.pick.map(pick => pick.record -> Option(pick)) ++ v.leaning.map(_ -> None))
-    val familyFilms = familyRecords.foldLeft(Vector.empty[Vector[(SourceRecord, Option[FamilyPick])]]) { (films, entry) =>
-      val (joined, apart) = films.partition(film => Agreement.joins(film.map(_._1), entry._1))
-      apart :+ (joined.flatten :+ entry)
+    familyFilms.foreach(joinFamilyFilm)
+
+    /** The families' films, each family's record joined to every other naming the same film (as the agreement joins
+     *  picks): a film IMDb names by its id alone and Wikidata by its TMDB id is one film, the TMDB candidate both name. */
+    private def familyFilms: Vector[Vector[(SourceRecord, Option[FamilyPick])]] = {
+      val familyRecords = c.verdicts.sortBy(_.family.ordinal).flatMap(v => v.pick.map(pick => pick.record -> Option(pick)) ++ v.leaning.map(_ -> None))
+      familyRecords.foldLeft(Vector.empty[Vector[(SourceRecord, Option[FamilyPick])]]) { (films, entry) =>
+        val (joined, apart) = films.partition(film => Agreement.joins(film.map(_._1), entry._1))
+        apart :+ (joined.flatten :+ entry)
+      }
     }
-    familyFilms.foreach { members =>
+
+    /** A family's film onto the contender it joins (a candidate its records join, else the TMDB film its ids name), or a
+     *  contender of its own where an id names it. */
+    private def joinFamilyFilm(members: Vector[(SourceRecord, Option[FamilyPick])]): Unit = {
       val records = members.map(_._1)
       val imdb = records.flatMap(_.crossIds.get("imdb")).headOption
       val tmdb = records.flatMap(_.crossIds.get("tmdb").flatMap(_.toIntOption)).headOption.orElse(records.flatMap(_.crossIds.get("imdb")).flatMap(c.tmdbOf).headOption)
@@ -170,76 +180,87 @@ object UnifiedEvidence {
         members.flatMap(_._2).foreach(pick => film.ids(pick.family.label) = pick.id)
       }
     }
+
     // the agreement's own verdict and the posters' vote, as the stage reaches them: signals beside the evidence they rest on
-    val modelVote = c.decision.leaning.orElse(c.decision.candidate).map(lean =>
+    private val modelVote = c.decision.leaning.orElse(c.decision.candidate).map(lean =>
       scored.get(lean.film).map(cs => SourceRecord.ofTmdb(lean.film, cs.head.film)).getOrElse(AgreementStage.leanRecord(lean)))
     // as the stage reads it: the listings as their venues' own pages state them, and a film only review sites take is none
-    val agreed    = (if (c.decision.film.isDefined) None else Agreement.agreed(c.listings, c.verdicts, modelVote, Some(c.thisYear), c.stated))
+    private val agreed    = (if (c.decision.film.isDefined) None else Agreement.agreed(c.listings, c.verdicts, modelVote, Some(c.thisYear), c.stated))
       .filter(_.families.exists(_.namesFilms))
-    val asStated  = if (c.stated.nonEmpty) c.stated else c.listings
+    private val asStated  = if (c.stated.nonEmpty) c.stated else c.listings
     // the stage relay's broadcast date: the one record of the cluster's undenied candidates its screening days name, as
     // the stage's take reads it (the productions credited, none while it waits on a record's day)
-    val broadcastTake = c.measured.filter(_ => c.listings.exists(!_.screenings.isEmpty)).flatMap(measured =>
+    private val broadcastTake = c.measured.filter(_ => c.listings.exists(!_.screenings.isEmpty)).flatMap(measured =>
       Broadcast.take(c.listings, measured, eligible.map { case (id, candidates) => id -> candidates.head.film }, c.productions)(c.undated)
         .toOption.flatten).map(_.film)
-    val posterVote = PosterEvidence.vote(c.posters).map(_._1)
-    val agreedImdb = agreed.flatMap(_.crossId("imdb"))
-    val agreedTmdb = agreed.flatMap(film => film.crossId("tmdb").flatMap(_.toIntOption).orElse(agreedImdb.flatMap(c.tmdbOf)))
-    val venues      = c.listings.map(_.venue).distinct.size
-    val stageWork   = c.listings.exists(ListingShape.stagesAWork)
-    val traced      = c.decision.trace.nodes.values.toSeq
+    private val posterVote = PosterEvidence.vote(c.posters).map(_._1)
+    private val agreedImdb = agreed.flatMap(_.crossId("imdb"))
+    private val agreedTmdb = agreed.flatMap(film => film.crossId("tmdb").flatMap(_.toIntOption).orElse(agreedImdb.flatMap(c.tmdbOf)))
+    private val venues      = c.listings.map(_.venue).distinct.size
+    private val stageWork   = c.listings.exists(ListingShape.stagesAWork)
+    private val traced      = c.decision.trace.nodes.values.toSeq
     // the one TMDB film the listings' TMDB-keyed feeds link, where they link one ([[PinnedSignals]]' family.feedLink)
-    val feedLinked = FeedLink.linked(c.listings).map(_._2)
+    private val feedLinked = FeedLink.linked(c.listings).map(_._2)
     // the CURRENT film (released this year or last) TMDB's search ranked first for a title naming it, which a node denied
     // on a year no venue states itself — the feed's copy, its entry's claim — with its year: where the feed links an older
     // film, a family whose take agrees with the link agrees with the copied year, no second source ([[PinnedSignals]]'
     // family.feedLink). DE Astor's "ATMOS: Michael": Cineamo links Dreyer's 1924 film and copies its year, which denied the
     // 2026 biopic sixteen venues bill; Filmweb's family took the 1924 film by that year. Not a link to the current film
     // over an older namesake (DE Gröben-Lichtspiele's "Camouflage OmU": Cineamo and Filmweb on the 2026 Ukrainian film).
-    val copiedYearDenied = if (c.listings.isEmpty || c.listings.exists(SourceReliability.decides(_, SourceReliability.Fact.Year))) Map.empty[Int, Int]
+    private val copiedYearDenied = if (c.listings.isEmpty || c.listings.exists(SourceReliability.decides(_, SourceReliability.Fact.Year))) Map.empty[Int, Int]
       else c.nodes.flatMap(_.candidates).filter(first => first.rank.contains(1) && first.denied && first.titleNamesIt &&
         first.film.year.exists(_ >= c.thisYear - 1) && first.measures.get("year.delta").exists(!_.isInstanceOf[IdentityMeasures.Missing]))
         .map(first => first.tmdbId -> first.film.year.get).toMap
     // the listings whose venue credits a director ([[PinnedSignals]]' family.director): a feed's credit is its entry's
-    val credited   = asStated.filter(listing => SourceReliability.decides(listing, SourceReliability.Fact.Directors) && listing.directors.nonEmpty)
+    private val credited   = asStated.filter(listing => SourceReliability.decides(listing, SourceReliability.Fact.Directors) && listing.directors.nonEmpty)
     // the namesakes the release veto kept beside one it took out ([[PinnedSignals]]' family.releaseKept)
-    val releaseKept = c.nodes.flatMap(_.candidates).flatMap(_.releasedBeside).toSet
+    private val releaseKept = c.nodes.flatMap(_.candidates).flatMap(_.releasedBeside).toSet
     // [[PinnedSignals]]' cast.venue: the one contender the venue's own text names two of the top-billed cast of, the cast
     // of no other contender — nor of a candidate the model denied — named at all ([[CastEvidence]]); a contender no TMDB
     // record holds has no cast known, and leaves it unread
-    val castTake = if (c.venueNames.isEmpty) None else {
+    private val castTake = if (c.venueNames.isEmpty) None else {
       val denied = scored.keys.filterNot(id => eligible.exists(_._1 == id)).toSeq.sorted.map(id => Option.empty[Building] -> c.cast(id))
       CastEvidence.take(c.venueNames, built.toSeq.map(b => Option(b) -> b.tmdb.flatMap(c.cast)) ++ denied).collect { case (Some(b), named) => b -> named }
     }
     // each candidate's titles as runs of the billing, found once for every contender's `title.anothersOwn` — a denied
     // candidate's too: the billing naming it more fully names another film than one it names only in part, whatever
     // ruled that one out (DE CineStar's "Herr der Ringe - Rückkehr des Königs (ext.)")
-    lazy val candidateFilms = built.toSeq.map(_.records.toSeq.map(_.film)) ++
+    private lazy val candidateFilms = built.toSeq.map(_.records.toSeq.map(_.film)) ++
       scored.collect { case (id, candidates) if !eligible.exists(_._1 == id) => Seq(candidates.head.film) }
-    lazy val candidateSpans = candidateFilms.map(Agreement.billedSpans(c.listings, _))
+    private lazy val candidateSpans = candidateFilms.map(Agreement.billedSpans(c.listings, _))
     // and as each listing bills it alone: a cluster can join a billing under two names to its neighbours billing one
-    lazy val listingSpans = c.listings.distinctBy(_.rawTitle).map(listing => listing -> candidateFilms.map(Agreement.billedSpans(Seq(listing), _)))
-    built.toSeq.map { contender =>
-      val records = contender.records.toSeq
-      val own     = contender.tmdb.flatMap(scored.get).getOrElse(Nil)
-      val open    = own.filterNot(_.denied)
-      val rules   = contender.tmdb.toSeq.flatMap { id =>
+    private lazy val listingSpans = c.listings.distinctBy(_.rawTitle).map(listing => listing -> candidateFilms.map(Agreement.billedSpans(Seq(listing), _)))
+
+    def contenders: Seq[Contender] = built.toSeq.map(contender => new Scoring(contender).signalled).sortBy(_.film)
+
+    /** One contender's signals. */
+    private final class Scoring(contender: Building) {
+      private val records = contender.records.toSeq
+      private val own     = contender.tmdb.flatMap(scored.get).getOrElse(Nil)
+      private val open    = own.filterNot(_.denied)
+      private val rules   = contender.tmdb.toSeq.flatMap { id =>
         traced.filter(_.candidate.contains(id)).flatMap(_.accepted).flatMap(RuleGroups.get) ++
           Option.when(c.decision.film.contains(id) && !traced.exists(node => node.candidate.contains(id) && node.accepted.isDefined))(
             c.decision.trace.pooled.flatMap(RuleGroups.get).getOrElse("rule.pooled"))
       }
-      def took(family: VoterFamily) = c.verdicts.exists(v => v.family == family && v.pick.exists(pick => contender.is(pick.record)))
-      def leans(family: VoterFamily) = c.verdicts.exists(v => v.family == family && v.pick.isEmpty && v.leaning.exists(contender.is))
-      val turnedDown = c.verdicts.count(Agreement.turnsDown(_, c.listings, records, contender.is))
-      val dissent = c.verdicts.count(v => v.pick.exists(pick => !contender.is(pick.record) && c.listings.nonEmpty &&
+      private def took(family: VoterFamily) = c.verdicts.exists(v => v.family == family && v.pick.exists(pick => contender.is(pick.record)))
+      private def leans(family: VoterFamily) = c.verdicts.exists(v => v.family == family && v.pick.isEmpty && v.leaning.exists(contender.is))
+      private val turnedDown = c.verdicts.count(Agreement.turnsDown(_, c.listings, records, contender.is))
+      private val dissent = c.verdicts.count(v => v.pick.exists(pick => !contender.is(pick.record) && c.listings.nonEmpty &&
         c.listings.forall(Agreement.namesIt(_, Seq(pick.record.film)))))
       // the venues' own facts: a feed's copied from its catalogue entry are one vote of the agreement's, no listing's ([[Agreement.factVotes]])
-      val votes  = Agreement.factVotes(asStated, records)
-      val namesIt = c.listings.nonEmpty && c.listings.forall(Agreement.namesIt(_, records.map(_.film)))
-      val nearest = contender.tmdb.toSeq.flatMap(id => c.posters.flatMap(_.get(id).flatten)).minOption
+      private val votes  = Agreement.factVotes(asStated, records)
+      private val namesIt = c.listings.nonEmpty && c.listings.forall(Agreement.namesIt(_, records.map(_.film)))
+      private val nearest = contender.tmdb.toSeq.flatMap(id => c.posters.flatMap(_.get(id).flatten)).minOption
       // released this year or last: a current release, not a one-off event an older namesake fits
-      val current = records.flatMap(_.film.year).maxOption.exists(_ >= c.thisYear - 1)
-      val flags: Seq[(String, Boolean)] = Seq(
+      private val current = records.flatMap(_.film.year).maxOption.exists(_ >= c.thisYear - 1)
+
+      private def flags: Seq[(String, Boolean)] = evidenceFlags ++ titleFlags ++
+        rules.distinct.map(_ -> true) ++
+        VoterFamily.values.toSeq.flatMap(f => Seq(s"family.${f.label}.took" -> took(f), s"family.${f.label}.leans" -> leans(f)))
+
+      /** The flags of the agreement, the posters, the broadcast, the model and the listings' facts. */
+      private def evidenceFlags: Seq[(String, Boolean)] = Seq(
         // as the stage takes it: by the TMDB id the agreed record links (or IMDb's find of its IMDb id), else as IMDb's
         // film — an agreed record linking neither is taken as nothing (DE "André Rieus Weihnachtskonzert 2026")
         "agreement.quorum"    -> (agreedTmdb.exists(contender.tmdb.contains) || (agreedTmdb.isEmpty && agreedImdb.exists(contender.imdb.contains))),
@@ -261,7 +282,10 @@ object UnifiedEvidence {
         "listing.runsShort"   -> Agreement.runsShort(c.listings, contender.record, Some(c.thisYear)).isDefined,
         // the venue's certificate well below the one TMDB records for the film in its country: another cut, another film
         "listing.certifiedBelow" -> own.headOption.exists(tmdbFilm => c.listings.exists(Certificates.below(_, tmdbFilm.film).isDefined)),
-        "venues.current"      -> (venues >= Agreement.WidelyBilled && current),
+        "venues.current"      -> (venues >= Agreement.WidelyBilled && current))
+
+      /** The flags of how the billing's title names it, and of its posters. */
+      private def titleFlags: Seq[(String, Boolean)] = Seq(
         "title.namesIt"       -> namesIt,
         "title.namesNone"     -> !namesIt,
         // another edition than the title numbers ("League of Legends Worlds 26" against the Worlds25 record)
@@ -277,42 +301,47 @@ object UnifiedEvidence {
         "stage.work"          -> stageWork,
         "poster.match"        -> nearest.exists(_ <= PosterEvidence.VoteBits),
         "poster.near"         -> nearest.exists(bits => bits > PosterEvidence.VoteBits && bits <= PosterEvidence.VetoMatchBits),
-        "poster.otherMatches" -> (c.posters.nonEmpty && PosterEvidence.veto(contender.tmdb, c.posters).isDefined)) ++
-        rules.distinct.map(_ -> true) ++
-        VoterFamily.values.toSeq.flatMap(f => Seq(s"family.${f.label}.took" -> took(f), s"family.${f.label}.leans" -> leans(f)))
-      val takers  = VoterFamily.values.count(took).toDouble
-      val leaning = VoterFamily.values.count(leans).toDouble
-      def and(on: Boolean) = if (on) takers else 0.0
-      // [[PinnedSignals]]' families.current and family.facts
-      val databaseTook    = VoterFamily.values.exists(f => f.namesFilms && took(f))
-      val familiesCurrent = takers >= 2 && databaseTook && current
-      val familyFacts     = databaseTook && votes(Agreement.ListingFacts)
-      val familyFeedLink  = databaseTook && contender.tmdb.exists(feedLinked.contains) && !copiedYearDenied.exists { case (id, year) =>
-        !contender.tmdb.contains(id) && records.flatMap(_.film.year).forall(_ < year) }
-      val familyDirector  = databaseTook && credited.nonEmpty &&
-        credited.forall(listing => records.exists(record => FactRelations.samePerson(listing.directors, record.film.directors.getOrElse(Nil))))
-      val familyReleased  = databaseTook && contender.tmdb.exists(releaseKept)
-      // [[PinnedSignals]]' model.vetoedAbove: a node's search for it ranked first a namesake the release veto took out
-      val vetoedAbove = contender.tmdb.exists(id => c.nodes.exists(node => node.candidates.exists(_.tmdbId == id) &&
-        node.candidates.exists(first => first.tmdbId != id && first.releasedBeside.isDefined && first.rank.contains(1))))
-      val castNamed       = castTake.collect { case (b, named) if b eq contender => named }.getOrElse(Nil)
-      val counts = Seq("count.takers" -> takers, "count.leaning" -> leaning, "count.takersLessDissent" -> math.max(0.0, takers - dissent),
-        "count.takers2" -> (if (takers >= 2) 1.0 else 0.0), "count.takers3" -> (if (takers >= 3) 1.0 else 0.0),
-        "and.takersNoDissent" -> and(dissent == 0), "and.factsTakers" -> and(votes(Agreement.ListingFacts)),
-        "and.posterTakers" -> and(nearest.exists(_ <= PosterEvidence.VoteBits)),
-        "and.leanTakers" -> and(contender.tmdb.exists(id => c.decision.leaning.exists(_.film == id))),
-        "families.current" -> (if (familiesCurrent) 1.0 else 0.0), "family.facts" -> (if (familyFacts) 1.0 else 0.0),
-        "family.feedLink" -> (if (familyFeedLink) 1.0 else 0.0), "family.director" -> (if (familyDirector) 1.0 else 0.0),
-        "family.releaseKept" -> (if (familyReleased) 1.0 else 0.0), "model.vetoedAbove" -> (if (vetoedAbove) 1.0 else 0.0),
-        "film.current" -> (if (current) 1.0 else 0.0),
-        "cast.venue" -> castNamed.size.toDouble).filter(_._2 != 0.0)
-      val signals = counts.toMap ++ flags.collect { case (name, true) => name -> 1.0 }.toMap ++
-        open.map(_.probability).maxOption.map(p => "model.logit" -> logit(p)).filter(_._2 != 0.0) ++
-        Seq("family.turnedDown" -> turnedDown.toDouble, "family.dissent" -> dissent.toDouble).filter(_._2 != 0.0)
-      val film  = contender.record.film
-      Contender(contender.film, contender.tmdb, contender.imdb, s"${film.title}${film.year.fold("")(y => s" ($y)")}", contender.ids.toMap, signals,
-        castNamed)
-    }.sortBy(_.film)
+        "poster.otherMatches" -> (c.posters.nonEmpty && PosterEvidence.veto(contender.tmdb, c.posters).isDefined))
+
+      private val takers  = VoterFamily.values.count(took).toDouble
+      private val leaning = VoterFamily.values.count(leans).toDouble
+      private def and(on: Boolean) = if (on) takers else 0.0
+      private val castNamed = castTake.collect { case (b, named) if b eq contender => named }.getOrElse(Nil)
+
+      private def counts: Seq[(String, Double)] = {
+        // [[PinnedSignals]]' families.current and family.facts
+        val databaseTook    = VoterFamily.values.exists(f => f.namesFilms && took(f))
+        val familiesCurrent = takers >= 2 && databaseTook && current
+        val familyFacts     = databaseTook && votes(Agreement.ListingFacts)
+        val familyFeedLink  = databaseTook && contender.tmdb.exists(feedLinked.contains) && !copiedYearDenied.exists { case (id, year) =>
+          !contender.tmdb.contains(id) && records.flatMap(_.film.year).forall(_ < year) }
+        val familyDirector  = databaseTook && credited.nonEmpty &&
+          credited.forall(listing => records.exists(record => FactRelations.samePerson(listing.directors, record.film.directors.getOrElse(Nil))))
+        val familyReleased  = databaseTook && contender.tmdb.exists(releaseKept)
+        // [[PinnedSignals]]' model.vetoedAbove: a node's search for it ranked first a namesake the release veto took out
+        val vetoedAbove = contender.tmdb.exists(id => c.nodes.exists(node => node.candidates.exists(_.tmdbId == id) &&
+          node.candidates.exists(first => first.tmdbId != id && first.releasedBeside.isDefined && first.rank.contains(1))))
+        Seq("count.takers" -> takers, "count.leaning" -> leaning, "count.takersLessDissent" -> math.max(0.0, takers - dissent),
+          "count.takers2" -> (if (takers >= 2) 1.0 else 0.0), "count.takers3" -> (if (takers >= 3) 1.0 else 0.0),
+          "and.takersNoDissent" -> and(dissent == 0), "and.factsTakers" -> and(votes(Agreement.ListingFacts)),
+          "and.posterTakers" -> and(nearest.exists(_ <= PosterEvidence.VoteBits)),
+          "and.leanTakers" -> and(contender.tmdb.exists(id => c.decision.leaning.exists(_.film == id))),
+          "families.current" -> (if (familiesCurrent) 1.0 else 0.0), "family.facts" -> (if (familyFacts) 1.0 else 0.0),
+          "family.feedLink" -> (if (familyFeedLink) 1.0 else 0.0), "family.director" -> (if (familyDirector) 1.0 else 0.0),
+          "family.releaseKept" -> (if (familyReleased) 1.0 else 0.0), "model.vetoedAbove" -> (if (vetoedAbove) 1.0 else 0.0),
+          "film.current" -> (if (current) 1.0 else 0.0),
+          "cast.venue" -> castNamed.size.toDouble).filter(_._2 != 0.0)
+      }
+
+      def signalled: Contender = {
+        val signals = counts.toMap ++ flags.collect { case (name, true) => name -> 1.0 }.toMap ++
+          open.map(_.probability).maxOption.map(p => "model.logit" -> logit(p)).filter(_._2 != 0.0) ++
+          Seq("family.turnedDown" -> turnedDown.toDouble, "family.dissent" -> dissent.toDouble).filter(_._2 != 0.0)
+        val film  = contender.record.film
+        Contender(contender.film, contender.tmdb, contender.imdb, s"${film.title}${film.year.fold("")(y => s" ($y)")}", contender.ids.toMap, signals,
+          castNamed)
+      }
+    }
   }
 }
 

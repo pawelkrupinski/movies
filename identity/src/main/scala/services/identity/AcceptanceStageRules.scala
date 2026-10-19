@@ -1,0 +1,116 @@
+package services.identity
+
+import services.identity.Scored.Accepted
+
+/** The acceptance rules of a stage relay: the house's and the stage's production, and the record of the season it is
+ *  broadcast in.
+ *  Part of [[Acceptance]], which mixes it in. */
+private[identity] trait AcceptanceStageRules { this: Acceptance =>
+  import weights.own
+  import Acceptance.Refused
+
+  /** The one eligible record billing the listing's work under the listing's OWN house
+   *  ([[Scored.houseProduction]]) that no published year or runtime contradicts: Flicks' "NT Live:
+   *  The Misanthrope" is the National Theatre's 2026 broadcast, "National Theatre Live: The
+   *  Misanthrope", though TMDB's search ranks three bare records of Molière's play above it — a
+   *  house's banner names its production as a season names one ([[seasonProduction]]). Two such
+   *  records (a broadcast and its encore) are no answer — nor are two records carrying one title,
+   *  however each reads as billed (US "NT Live: Hamlet": the National Theatre's 2010 and 2015
+   *  broadcasts) — and neither is one that another candidate
+   *  the title names fits at least as well on the listing's own facts: a banner is learned, not
+   *  known, and Everyman's "Cellar Door x ThoughtBubble presents: Terminator 2: Judgment Day",
+   *  publishing nothing but its title, is Cameron's film, not TMDB's making-of documentary. */
+  private[identity] def houseProductionWhy(ranked: Seq[Scored]): Verdict = {
+    val eligible = eligibleOf(ranked)
+    for {
+      // nor one from another year than the title dates the production: US "MetOpera: Carmen (2009)" ×513 is Eyre's
+      // 2009 staging, not the Met's 2024 record its house bills
+      house <- { val billed = eligible.filter(candidate => candidate.houseProduction && !contradicted(candidate))
+                 one(billed.filter(_.number("titleYear.delta").forall(FactRelations.nearDelta)),
+                   if (billed.isEmpty) "no record bills its work under its house" else "its house's record is from another year than its title dates",
+                   "two records bill its work under its house", billed.map(Acceptance.named).mkString("; ")) }
+      _     <- noneOf(eligible.find(other => (other ne house) &&
+                 (IdentityMeasures.key(other.candidate.film.title) == IdentityMeasures.key(house.candidate.film.title) ||
+                   (other.titleNamesIt && own(other) >= own(house)))), "another record carries its title or fits as well", house)
+    } yield atOwn(house)
+  }
+
+  /** A stage broadcast billed with no season but with its year — in its field or its title: the one eligible SEASON
+   *  record naming the same stage work ([[StageWorks]], in any language), billing the listing's house
+   *  ([[StageRelays.bannerNamesItsHouse]]), from the very year the venue publishes, that no running time contradicts. DE
+   *  "Royal Ballet & Opera im Kino: Manon" [2026] {Kenneth MacMillan} ×59 is "Royal Ballet & Opera 2026/27: Manon"
+   *  (October 2026), not the Met's 2026/27 Manon (April 2027), which "MET Opera Live im Kino: Manon" [2027] ×4 is; DE
+   *  "RBO live 2027: Tosca" is the RBO's 2026/27 record, not the ROH's 2011 one IMDb suggests. It pre-empts every rule
+   *  as [[seasonProduction]] does ([[datedOrBroadcastSeasonRecord]]). */
+  private[identity] def stageProduction(ranked: Seq[Scored]): Option[Accepted] = ownInstalment(stageProductionWhy(ranked)).toOption
+  private[identity] def stageProductionWhy(ranked: Seq[Scored]): Verdict =
+    for {
+      any    <- firstCandidate(ranked)
+      _      <- need(any.listing.seasonYear.isEmpty, "the title names its season")
+      year   <- any.listing.statedYear.orElse(StageRelays.bannerYear(any.listing)).toRight(Refused("the listing publishes no year"))
+      // a year before the season its screenings fall in dates the staging's premiere, not the broadcast
+      // ([[Listing.screenedSeason]]): UK Aldeburgh's "Royal Ballet: The Nutcracker" [2025], screening in the 2026/27
+      // season, is no 2025/26 record's, which the season rules then tell apart
+      _      <- need(any.listing.screenedSeason.forall(season => year >= season), "its year predates the season it screens in")
+      works   = StageRelays.stageWorks(any.listing)
+      _      <- need(works.nonEmpty, "the title names no stage work")
+      itsHouse = StageRelays.bannerNamesItsHouse(any.listing)
+      record <- one(eligibleOf(ranked).filter(scored => scored.candidate.film.season.isDefined &&
+                  StageRelays.stageWorks(scored.candidate.film).exists(works) && itsHouse(scored.candidate.film) &&
+                  scored.candidate.film.year.contains(year) && !contradicted(scored)),
+                  "no season record of its work from its year", "two season records of its work from its year", s"works ${works.toSeq.sorted.mkString(",")}, $year")
+    } yield atOwn(record)
+
+  /** The one SEASON record whose title is the listing's own once its season is taken out ("&" and "and" alike), when
+   *  the listing names no season: UK "Royal Ballet and Opera: Romeo and Juliet" {Kenneth MacMillan} ×127, screening
+   *  May–June 2027, is "Royal Ballet & Opera 2026/27: Romeo and Juliet" — the cut alone denied it, the season marker
+   *  reading as a title the listing does not carry. Two seasons of the title ("…: Tosca", 2025/26 and 2026/27) are told
+   *  apart by the season the listing's screenings broadcast it in ([[ofItsBroadcastSeason]]), and are no answer without
+   *  one; a fact contradicting it, or another director, refuses it.
+   *
+   *  So is the record of the very season the listing's screenings broadcast it in that names its stage work under its
+   *  house ([[StageRelays.bannerNamesItsHouse]]), however the venue shortens the banner: prod UK 2026-10-13 "MET:
+   *  Macbeth" (17 October 2026), "RBO: Tosca 27" and "Macbeth (Met Opera)" are the Met's and RBO's 2026/27 records. */
+  private[identity] def seasonRecord(ranked: Seq[Scored]): Option[Accepted] = ownInstalment(seasonRecordWhy(ranked)).toOption
+  /** [[seasonRecord]]'s answer when it is a record of the season the listing's screenings broadcast it in: it pre-empts
+   *  every rule, as [[seasonProduction]] does a season the title names — a house's other stagings of the work (the Met's
+   *  2014 "Macbeth", the Royal Ballet's 2013 "Romeo and Juliet") are other broadcasts than the one the venue screens. */
+  private[identity] def broadcastSeasonRecord(ranked: Seq[Scored]): Option[Accepted] = seasonRecord(ranked).filter { case (record, _) =>
+    record.listing.screenedSeason.exists(record.candidate.film.season.contains)
+  }
+  /** The season record a relay's own year ([[stageProduction]]) or its screenings' season ([[broadcastSeasonRecord]])
+   *  names, with the rule naming it: what pre-empts the rules after [[seasonProduction]]. */
+  private[identity] def datedOrBroadcastSeasonRecord(ranked: Seq[Scored]): Option[(Accepted, String)] =
+    stageProduction(ranked).map(_ -> "stage-production").orElse(broadcastSeasonRecord(ranked).map(_ -> "season-record"))
+  private[identity] def seasonRecordWhy(ranked: Seq[Scored]): Verdict = {
+    def plain(title: String) = IdentityMeasures.key(title.replace("&", " and "))
+    for {
+      any    <- firstCandidate(ranked)
+      listing = any.listing
+      _      <- need(listing.seasonYear.isEmpty, "the title names its season")
+      own     = (Seq(listing.title) ++ listing.rawTitle).map(plain).toSet
+      record <- one(ofItsBroadcastSeason(ranked.filter(scored => (isEligible(scored) || scored.deniedByCutOnly) &&
+                  scored.candidate.film.season.isDefined &&
+                  (scored.candidate.film.titles.exists(t => own(plain(IdentityMeasures.withoutSeasons(t)))) || StageRelays.screenedSeasonRecord(listing, scored.candidate.film)))),
+                  "no season record carries its title or its work under its house", "two seasons' records carry its title")
+      _      <- needOf(!contradicted(record), "a published fact contradicts it", record, contradiction(record))
+      // a season spans two years: a year the listing states outside them is another season's broadcast (UK Aldeburgh's
+      // "The Royal Ballet: Romeo & Juliet" [2025] is no "The Royal Ballet: Romeo and Juliet (2021/22)") — but for the
+      // record of the season its screenings broadcast it in, whose year it predates: that year dates the staging's premiere
+      // (Aldeburgh's, screening on 25 May 2027, is "Royal Ballet & Opera 2026/27: Romeo and Juliet", aired that day)
+      _      <- needOf(listing.year.forall(year => record.candidate.film.season.forall(season => year == season || year == season + 1)) ||
+                  StageRelays.screenedSeasonRecord(listing, record.candidate.film), "the year it states is another season's", record)
+      _      <- needOf(!record.category("director").exists(Set("different", "different_script")), "it credits another director", record)
+    } yield atOwn(record)
+  }
+
+  /** Of several season records of one stage work, the one season the listing's screenings broadcast it in
+   *  ([[IdentityMeasures.Listing.screenedSeason]]) when exactly that season's records are among them; all of them
+   *  otherwise. A relay airs on its house's published dates: UK "Royal Ballet & Opera: Swan Lake" (recording
+   *  38342304766, ~30 venues billing no season or year), screening on 22 April 2027, is the 2026/27 record, not the
+   *  house's 2024/25 one. */
+  private[identity] def ofItsBroadcastSeason(records: Seq[Scored]): Seq[Scored] =
+    records.headOption.flatMap(_.listing.screenedSeason).filter(_ => records.sizeIs > 1)
+      .map(season => records.filter(record => record.candidate.film.season.contains(season)))
+      .filter(_.nonEmpty).getOrElse(records)
+}
