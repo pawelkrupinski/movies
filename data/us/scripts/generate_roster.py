@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate common/src/main/scala/models/UsRosterData.scala from pages.json.
+"""Generate geodata/src/main/scala/models/UsRosterData.scala from pages.json.
 
 The JSON -> Scala step of the US roster, the counterpart of
 data/germany/scripts/generate_roster.py. Reads the PAGES (`pages.json`, built by
@@ -43,7 +43,7 @@ import seasonal_venues  # noqa: E402
 from town_pages import placement_problems  # noqa: E402
 
 ROOT = build_pages.ROOT
-OUT = ROOT / "common" / "src" / "main" / "scala" / "models" / "UsRosterData.scala"
+OUT = ROOT / "geodata" / "src" / "main" / "scala" / "models" / "UsRosterData.scala"
 
 CHUNK = 40
 

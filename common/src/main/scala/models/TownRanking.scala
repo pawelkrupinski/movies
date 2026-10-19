@@ -6,7 +6,7 @@ package models
  *  all use the whole list — a page heading and a meta description have room for
  *  a handful of names, and the towns worth spending them on are the ones with
  *  the cinemas. Shared because the rosters that count their own rank the same
- *  way: the UK and Poland off the venue table ([[VenueTowns.of]]), the US off the
+ *  way: the UK and Poland off the venue table ([[ofVenues]]), the US off the
  *  towns its venues give as their own (`UsRoster`). Germany and Spain arrive
  *  pre-ranked from their generators, which sort by this key on the Python side. */
 private[models] object TownRanking {
@@ -18,4 +18,11 @@ private[models] object TownRanking {
     perVenue.filter(_.nonEmpty).groupBy(identity).toSeq
       .sortBy { case (town, sharing) => (-sharing.size, town) }
       .map(_._1)
+
+  /** The towns a group of venues sits in, most venues first — the order
+   *  [[City.coveredPlaces]] promises. A venue the table ([[VenueTowns]]) does not
+   *  know is simply not counted, so a fresh cinema names no town until the next
+   *  sweep rather than blanking the ones around it. */
+  def ofVenues(cinemas: Seq[Cinema]): Seq[String] =
+    ranked(cinemas.flatMap(c => VenueTowns.byDisplayName.get(c.displayName)))
 }

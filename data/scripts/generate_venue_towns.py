@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate common/src/main/scala/models/VenueTowns.scala — the town each venue
+"""Generate geodata/src/main/scala/models/VenueTowns.scala — the town each venue
 in a HAND-WRITTEN roster sits in.
 
 Germany, Spain and the US generate their rosters, so each venue's town rides
@@ -27,7 +27,7 @@ import pathlib
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-OUT = ROOT / "common" / "src" / "main" / "scala" / "models" / "VenueTowns.scala"
+OUT = ROOT / "geodata" / "src" / "main" / "scala" / "models" / "VenueTowns.scala"
 
 # (country, source file, the floor its sweep must clear).
 SOURCES = [
@@ -108,13 +108,6 @@ def main() -> int:
         "   *  stored slots, the scrape catalog. */",
         "  val byDisplayName: Map[String, String] = ("
         + " ++ ".join(f"chunk{i}" for i in range(len(chunks))) + ").toMap",
-        "",
-        "  /** The towns a group of venues sits in, most venues first — the order",
-        "   *  [[City.coveredPlaces]] promises. A venue the table does not know is simply",
-        "   *  not counted, so a fresh cinema names no town until the next sweep rather",
-        "   *  than blanking the ones around it. */",
-        "  def of(cinemas: Seq[Cinema]): Seq[String] =",
-        "    TownRanking.ranked(cinemas.flatMap(c => byDisplayName.get(c.displayName)))",
         "}",
     ]
 

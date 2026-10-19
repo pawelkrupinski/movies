@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate common/src/main/scala/models/CitySlugIndexData.scala — every slug a
+"""Generate geodata/src/main/scala/models/CitySlugIndexData.scala — every slug a
 country answers to besides its pages'.
 
 Every country owns its own city slugs (`/uk/york/` is York, `/us/york/` York,
@@ -32,7 +32,7 @@ import pathlib
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-OUT = ROOT / "common" / "src" / "main" / "scala" / "models" / "CitySlugIndexData.scala"
+OUT = ROOT / "geodata" / "src" / "main" / "scala" / "models" / "CitySlugIndexData.scala"
 sys.path.insert(0, str(ROOT / "data" / "scripts"))
 import town_pages  # noqa: E402
 

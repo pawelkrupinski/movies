@@ -121,6 +121,7 @@ jobs:
                   # THE WEB TIER'S FILTER SET. Deliberately NOT the worker's — see the note above.
                   patterns: |
                       web/**
+                      geodata/**
                       common/**
                       identity/**
                       build.sbt
@@ -156,6 +157,7 @@ jobs:
                       !worker/src/test/**
                       !worker/src/it/**
                       !worker/src/fixtures/**
+                      geodata/**
                       common/**
                       !common/src/test/**
                       identity/**

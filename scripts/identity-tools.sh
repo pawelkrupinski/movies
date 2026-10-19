@@ -196,7 +196,7 @@ identity_tree_layout() {
 }
 
 # The source paths a compile reads: how far two commits' compiles stand apart is how many of these files differ.
-IDENTITY_COMPILED_PATHS=(common/src identity/src scrapers/src worker/src testkit/src build.sbt project)
+IDENTITY_COMPILED_PATHS=(geodata/src common/src identity/src scrapers/src worker/src testkit/src build.sbt project)
 # identity_seed_distance <tree> <sha> -> the source files the compiled <tree> differs from <sha> by (this checkout: its HEAD's)
 identity_seed_distance() {
   local from
@@ -306,7 +306,7 @@ identity_classpath_lock() { echo "classpath-$(printf '%s' "$1" | shasum | cut -c
 # identity_classpath_fresh <tree> -> whether the kept classpath is newer than every source
 identity_classpath_fresh() {
   local cp=$1/target/identity-tools/classpath
-  [ -s "$cp" ] && [ -z "$(find "$1/common/src" "$1/identity/src" "$1/scrapers/src" "$1/worker/src" "$1/testkit/src" "$1/build.sbt" -newer "$cp" -name '*.s*' -print -quit 2>/dev/null)" ]
+  [ -s "$cp" ] && [ -z "$(find "$1/geodata/src" "$1/common/src" "$1/identity/src" "$1/scrapers/src" "$1/worker/src" "$1/testkit/src" "$1/build.sbt" -newer "$cp" -name '*.s*' -print -quit 2>/dev/null)" ]
 }
 
 # identity_classpath_line <sbt log> -> the last line of it that IS a classpath (sbt prints more than `export` asked)

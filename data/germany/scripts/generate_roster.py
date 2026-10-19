@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Generate common/src/main/scala/models/GermanRosterData.scala from pages.json.
+"""Generate geodata/src/main/scala/models/GermanRosterData.scala from pages.json.
 
 The JSON -> Scala step of the German roster pipeline, the counterpart of
 data/spain/scripts/generate_roster.py. Reads the PAGES (`pages.json`, built by
@@ -31,7 +31,7 @@ from town_pages import placement_problems  # noqa: E402
 
 ROOT = build_pages.ROOT
 DATA = build_pages.DATA
-OUT = ROOT / "common" / "src" / "main" / "scala" / "models" / "GermanRosterData.scala"
+OUT = ROOT / "geodata" / "src" / "main" / "scala" / "models" / "GermanRosterData.scala"
 
 # One `Seq(...)` per 40 pages, so no single generated method approaches the JVM's
 # 64 KB method-size limit as the roster grows.

@@ -130,7 +130,7 @@ jobs:
                   path: infra/kubernetes
 
             # GENERATED ROSTER ARTEFACTS. Cinema.scala's venue annotations, data/**'s venue
-            # lists and the *RosterData/VenueTowns/PolishPages Scala + the apps' City lists
+            # lists and the *RosterData/VenueTowns/PolishPages Scala (geodata/, common/) + the apps' City lists
             # generated from them are all checked in; an edit that skips regenerating the
             # links below it compiles and passes every spec that reads the stale output. So
             # when the chain's sources change, regenerate it and fail on any difference
@@ -143,6 +143,7 @@ jobs:
               with:
                   patterns: |
                       common/src/main/scala/models/**
+                      geodata/src/main/scala/models/**
                       data/**
                       android/app/src/main/java/pl/kinowo/model/City.kt
                       ios/Kinowo/Models/City.swift

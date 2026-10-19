@@ -1,7 +1,10 @@
 // ── Multi-module layout ─────────────────────────────────────────────────────
 //
+//   geodata — the GENERATED roster and geography tables (`models.*RosterData`, `CitySlugIndexData`,
+//             `VenueTowns`): plain tuples and strings, written by data/**/generate_*.py and read
+//             only through common's typed rosters. dependsOn nothing.
 //   common  — shared domain + data layer (models, MovieRepository/MovieCache, Mongo,
-//             EventBus, UptimeMonitor, the HTTP-fetch family). Plain Scala lib.
+//             EventBus, UptimeMonitor, the HTTP-fetch family). Plain Scala lib. dependsOn(geodata).
 //   testkit — shared test fakes/helpers (not deployed). dependsOn(common).
 //   scrapers — the cinema scrapers (`services.cinemas`): every venue client, its catalogues and the
 //             scrape contract the worker drives them by. dependsOn(common, identity). A library, not
@@ -171,9 +174,20 @@ lazy val itReportSettings = Seq(
     ((LocalRootProject / baseDirectory).value / "target" / "test-reports" / "it").toString)
 )
 
+// ── Generated roster and geography data ──────────────────────────────────────
+//
+// ~20k lines of generated tables (`data/**/scripts/generate_*.py` write them; never edited by hand) in plain tuples
+// and strings, so they need nothing of common: common's typed rosters (`GermanRoster`, `SpanishRoster`, `UsRoster`,
+// `City`, `Country`) read them. A module of their own so an edit to common does not recompile them, and a
+// regenerated roster recompiles only them and what reads them.
+lazy val geodata = (project in file("geodata"))
+  .settings(name := "geodata")
+  .settings(noApiDocs)
+
 // ── Shared module ────────────────────────────────────────────────────────────
 
 lazy val common = (project in file("common"))
+  .dependsOn(geodata)
   .settings(
     name := "common",
     // standard sbt layout: src/main/scala, src/test/scala, src/test/resources
@@ -245,7 +259,8 @@ lazy val identity = (project in file("identity"))
       val repo     = (LocalRootProject / baseDirectory).value
       val modules  = Seq(
         IdentityRulesSources.Module("identity", (Compile / compile).value),
-        IdentityRulesSources.Module("common", (common / Compile / compile).value))
+        IdentityRulesSources.Module("common", (common / Compile / compile).value),
+        IdentityRulesSources.Module("geodata", (geodata / Compile / compile).value))
       Seq(("identity-rules", IdentityRulesSources.Roots, Set.empty[String]),
           ("venue-slot", IdentityRulesSources.VenueSlotRoots, IdentityRulesSources.VenueSlotLeaves),
           ("agreement-rules", IdentityRulesSources.AgreementRoots, Set.empty[String])).flatMap { case (name, roots, leaves) =>
@@ -492,7 +507,7 @@ lazy val e2e = (project in file("e2e"))
 // ── Root aggregator (no sources) ─────────────────────────────────────────────
 
 lazy val root = (project in file("."))
-  .aggregate(common, identity, scrapers, testkit, web, worker, e2e)
+  .aggregate(geodata, common, identity, scrapers, testkit, web, worker, e2e)
   .settings(
     name := "movies",
     publish / skip := true,

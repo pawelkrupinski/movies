@@ -63,6 +63,7 @@ check "the ESLint config runs ESLint" "eslint" "$(plan eslint.config.js)"
 check "a repo-local ESLint rule runs ESLint" "eslint" "$(plan eslint-rules/storage-access-in-try.js)"
 check "a roster source runs the generated-artefact drift check, and the roster generators' self-tests" "drift scripttests" "$(plan data/pl/venues.json)"
 check "a model file runs the drift check AND the sbt lints" "drift sbt" "$(plan common/src/main/scala/models/Cinema.scala)"
+check "a generated geodata table runs the drift check AND the sbt lints" "drift sbt" "$(plan geodata/src/main/scala/models/VenueTowns.scala)"
 check "the iOS City list runs the drift check and the iOS compile" "drift ios" "$(plan ios/Kinowo/Models/City.swift)"
 check "a recorded fixture runs the snapshot stamp check" "snapshot" \
   "$(plan test/resources/fixtures/08-06-2026/www.bilety24.pl/kino/organizator/x)"
@@ -117,6 +118,9 @@ check "an e2e spec compiles e2e alone" "e2e/Test/compile" "$(compiles e2e/src/te
 check "common compiles every module's test configs" \
   "common/Test/compile identity/Test/compile testkit/Test/compile scrapers/Test/compile worker/Test/compile worker/It/compile web/Test/compile web/It/compile web/Page/compile e2e/Test/compile" \
   "$(compiles common/src/main/scala/A.scala)"
+check "a generated geodata table compiles what common does, every module over it" \
+  "common/Test/compile identity/Test/compile testkit/Test/compile scrapers/Test/compile worker/Test/compile worker/It/compile web/Test/compile web/It/compile web/Page/compile e2e/Test/compile" \
+  "$(compiles geodata/src/main/scala/models/UsRosterData.scala)"
 check "the build compiles every module's test configs" \
   "common/Test/compile identity/Test/compile testkit/Test/compile scrapers/Test/compile worker/Test/compile worker/It/compile web/Test/compile web/It/compile web/Page/compile e2e/Test/compile" \
   "$(compiles build.sbt)"

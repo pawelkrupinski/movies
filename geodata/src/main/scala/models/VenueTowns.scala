@@ -1246,11 +1246,4 @@ private[models] object VenueTowns {
    *  venue is identified by everywhere else — `Source.byDisplayName`, the
    *  stored slots, the scrape catalog. */
   val byDisplayName: Map[String, String] = (chunk0 ++ chunk1 ++ chunk2 ++ chunk3 ++ chunk4 ++ chunk5 ++ chunk6 ++ chunk7 ++ chunk8).toMap
-
-  /** The towns a group of venues sits in, most venues first — the order
-   *  [[City.coveredPlaces]] promises. A venue the table does not know is simply
-   *  not counted, so a fresh cinema names no town until the next sweep rather
-   *  than blanking the ones around it. */
-  def of(cinemas: Seq[Cinema]): Seq[String] =
-    TownRanking.ranked(cinemas.flatMap(c => byDisplayName.get(c.displayName)))
 }

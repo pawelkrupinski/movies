@@ -61,7 +61,7 @@ sealed abstract class City(
    *  the UK and Poland. The generated rosters (Germany, Spain, the US) carry
    *  theirs in the tuple and override this; [[Trojmiasto]] is hand-written
    *  because its towns predate the table and are more complete than it. */
-  protected def extraPlaces: Seq[String] = VenueTowns.of(cinemas)
+  protected def extraPlaces: Seq[String] = TownRanking.ofVenues(cinemas)
   /** The covered towns OTHER than the city itself — empty for the ordinary
    *  one-town city, and the whole reason a multi-town page needs extra words. */
   final def otherCoveredPlaces: Seq[String] = coveredPlaces.filterNot(_ == labels.nominative)
@@ -193,7 +193,7 @@ case object Trojmiasto extends MajorPolishCity(
    *  Wejherowo, Pruszcz Gdański) are pages of their own now. Needed at all
    *  because "Trójmiasto" is a name nobody searches a cinema by: only "Gdańsk"
    *  appeared on the page, inside `Multikino Gdańsk`. */
-  override protected val extraPlaces: Seq[String] = (homeTowns ++ VenueTowns.of(cinemas)).distinct
+  override protected val extraPlaces: Seq[String] = (homeTowns ++ TownRanking.ofVenues(cinemas)).distinct
   /** No venue sits in "Trójmiasto": the unannotated ones are in its three towns. */
   override def homeTowns: Seq[String] = Seq("Gdańsk", "Gdynia", "Sopot")
 }
@@ -440,7 +440,7 @@ final class PolishPage private[models] (row: PolishPages.Row)
   /** The town the page is named after first, then the rest of its towns — the
    *  venue table alone would rank a cluster's one-venue towns alphabetically and
    *  could put Koło ahead of the Turek the page is named for. */
-  override protected def extraPlaces: Seq[String] = (row.name +: VenueTowns.of(cinemas)).distinct
+  override protected def extraPlaces: Seq[String] = (row.name +: TownRanking.ofVenues(cinemas)).distinct
   /** "w Turku i okolicach" for a cluster, plain "w Słubicach" for one town. */
   override def locativePhrase: String = super.locativePhrase + (if (row.multiTown) " i okolicach" else "")
   def voivodeship: String = row.voivodeship
@@ -468,7 +468,7 @@ final class UkPage private[models] (row: UkPages.Row)
   val cinemas: Seq[Cinema] = row.cinemas
   /** The town the page is named after first, then the rest of its towns, then
    *  the places its venues' addresses name. */
-  override protected val extraPlaces: Seq[String] = (row.towns ++ VenueTowns.of(cinemas)).distinct
+  override protected val extraPlaces: Seq[String] = (row.towns ++ TownRanking.ofVenues(cinemas)).distinct
   /** "in the Epsom area" — an area takes the article a town does not. */
   override def locativePhrase: String = if (row.multiTown) s"in the ${labels.nominative}" else super.locativePhrase
   /** The nation and county the picker files this page under: its anchor town's. */

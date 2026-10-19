@@ -185,7 +185,7 @@ plan() {
             web/src/main/assets/js/*.js|web/src/page/resources/*.js|eslint.config.js|eslint-rules/*.js|package.json|package-lock.json) eslint=1 ;;
         esac
         case "$path" in
-            common/src/main/scala/models/*|data/*|android/app/src/main/java/pl/kinowo/model/City.kt|ios/Kinowo/Models/City.swift|scripts/ci/generated-artefacts-drift.sh) drift=1 ;;
+            common/src/main/scala/models/*|geodata/src/main/scala/models/*|data/*|android/app/src/main/java/pl/kinowo/model/City.kt|ios/Kinowo/Models/City.swift|scripts/ci/generated-artefacts-drift.sh) drift=1 ;;
         esac
         case "$path" in
             test/resources/fixtures/08-06-2026/*|scripts/read-model-snapshot-inputs.sh) snapshot=1 ;;
@@ -240,14 +240,14 @@ plan() {
 # ── Which test configs a set of changed paths has to compile ────────────────────────────────────
 # One line per path on stdin; prints the sbt compile tasks, one per line, in dependency order. A
 # module's own test configs plus those of every module that depends on it (build.sbt's dependsOn):
-# common → identity → testkit → scrapers → worker (test->test on scrapers) → web (page->fixtures) → e2e. The build
+# geodata → common → identity → testkit → scrapers → worker (test->test on scrapers) → web (page->fixtures) → e2e. The build
 # itself touches them all.
 compile_plan() {
     local common=0 identity=0 testkit=0 scrapers=0 worker=0 web=0 e2e=0 path
     while IFS= read -r path; do
         case "$path" in
             build.sbt|project/*)  common=1 ;;
-            common/*.scala|common/*.java)   common=1 ;;
+            common/*.scala|common/*.java|geodata/*.scala)   common=1 ;;
             identity/*.scala|identity/*.java) identity=1 ;;
             testkit/*.scala|testkit/*.java) testkit=1 ;;
             scrapers/*.scala|scrapers/*.java) scrapers=1 ;;

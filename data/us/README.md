@@ -3,9 +3,9 @@
 `venues.json` is the checked-in harvest the US roster is generated from:
 
     venues.json + towns.json → scripts/build_pages.py → pages.json
-                             → scripts/generate_roster.py → common/src/main/scala/models/UsRosterData.scala
+                             → scripts/generate_roster.py → geodata/src/main/scala/models/UsRosterData.scala
 
-Nothing in `common/` reaches the network; `UsRosterData.scala` is a pure function
+Nothing in `geodata/` or `common/` reaches the network; `UsRosterData.scala` is a pure function
 of these files.
 
 ## Shape

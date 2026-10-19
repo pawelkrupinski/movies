@@ -115,7 +115,7 @@ jobs:
             - name: Check for wiring changes
               id: changed
               run: |
-                  if git diff --quiet -- common/src/main/scala/models/UkRosterData.scala scrapers/src/main/scala/services/cinemas/uk/UkSourcesData.scala common/src/main/scala/models/VenueTowns.scala data/uk; then
+                  if git diff --quiet -- common/src/main/scala/models/UkRosterData.scala scrapers/src/main/scala/services/cinemas/uk/UkSourcesData.scala geodata/src/main/scala/models/VenueTowns.scala data/uk; then
                       echo "wired=false" >> "$GITHUB_OUTPUT"
                   else
                       echo "wired=true" >> "$GITHUB_OUTPUT"
@@ -160,7 +160,7 @@ jobs:
                       data/uk/roster.json
                       common/src/main/scala/models/UkRosterData.scala
                       scrapers/src/main/scala/services/cinemas/uk/UkSourcesData.scala
-                      common/src/main/scala/models/VenueTowns.scala
+                      geodata/src/main/scala/models/VenueTowns.scala
                       common/src/main/scala/models/UkPages.scala
                       data/uk/venues.json
                       data/uk/towns.json

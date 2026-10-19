@@ -9,7 +9,7 @@ Webedia/AlloCiné platform's Spanish deployment), mirroring
 Since 2026-10 a Spanish page is not a province but Poland's shape of page
 (`data/pl/README.md`), built by the same rule — `data/scripts/town_pages.py`,
 called by `scripts/build_pages.py` into **`pages.json`** and generated into
-`common/.../models/SpanishRosterData.scala`:
+`geodata/.../models/SpanishRosterData.scala`:
 
 1. **A major city** — one of the **43 municipalities of 150,000 people or
    more** (GeoNames municipal population; Badajoz, 149,746, is the first one
@@ -175,7 +175,7 @@ A new page has no share card until it has deployed; list it in
 5. **Pages** — `build_venue_towns.py` and `build_pages.py`, see "Pages" above.
 6. **Generate the Scala** (`scripts/generate_roster.py`) — turns
    `pages.json` + `provinces.json` + `ocine.json` into
-   `common/src/main/scala/models/SpanishRosterData.scala`, the flat tuple data
+   `geodata/src/main/scala/models/SpanishRosterData.scala`, the flat tuple data
    `models.SpanishRoster` materialises into `City`/`Cinema` objects. It refuses
    to emit a duplicate `displayName` across the whole country, or a venue on no
    page or two — both silent downstream, the first as two cinemas sharing one
@@ -217,7 +217,7 @@ python3 data/spain/scripts/build_provinces_test.py
 
 ## What consumes this
 
-`scripts/generate_roster.py` → `common/src/main/scala/models/SpanishRosterData.scala`
+`scripts/generate_roster.py` → `geodata/src/main/scala/models/SpanishRosterData.scala`
 → `models.SpanishRoster`, which materialises the `RosterPage` cities and
 `SpanishCinema` venues once and hands them to `City.spanishCities`,
 `Cinema.byCity` and `CinemaScraperCatalog.spanishBaseByCity` (one

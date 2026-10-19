@@ -28,7 +28,7 @@ class DiscoveryPullRequestArtefactsSpec extends AnyFlatSpec with Matchers {
       "data/uk/roster.json", "common/src/main/scala/models/UkRosterData.scala",
       "scrapers/src/main/scala/services/cinemas/uk/UkSourcesData.scala",
       "data/uk/venues.json", "data/uk/towns.json", "data/uk/pages.json",
-      "common/src/main/scala/models/UkPages.scala", "common/src/main/scala/models/VenueTowns.scala",
+      "common/src/main/scala/models/UkPages.scala", "geodata/src/main/scala/models/VenueTowns.scala",
       "android/app/src/main/java/pl/kinowo/model/City.kt", "ios/Kinowo/Models/City.swift",
       "android/app/src/main/assets/catalog-seed.json", "ios/Kinowo/catalog-seed.json")
   }

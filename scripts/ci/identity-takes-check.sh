@@ -84,7 +84,7 @@ gh_download=${IDENTITY_TAKES_DOWNLOAD_TIMEOUT:-600}
 
 # The paths whose change can move a take. Anything else -- docs, the web, workflows -- cannot.
 # (IdentityResolveDumpIntegrationSpec: the resolve as a spec, before it was a tool -- still a base's)
-identity_paths=(common/src/main identity/src/main scrapers/src/main worker/src/main worker/src/it/scala/IdentityResolveDump.scala
+identity_paths=(geodata/src/main common/src/main identity/src/main scrapers/src/main worker/src/main worker/src/it/scala/IdentityResolveDump.scala
                 worker/src/it/scala/IdentityResolveDumpIntegrationSpec.scala worker/src/it/scala/IdentityShadow.scala testkit/src/main
                 build.sbt project)
 

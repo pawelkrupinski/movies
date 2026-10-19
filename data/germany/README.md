@@ -131,7 +131,7 @@ the town is pinned in `TOWN_COORDS`.
    then run `CatalogSeedSpec` twice (it rewrites the apps' seeds) and the
    `OgCardAssetsSpec`, which lists any new page as awaiting its first share card.
 
-`generate_roster.py` emits `common/src/main/scala/models/GermanRosterData.scala` —
+`generate_roster.py` emits `geodata/src/main/scala/models/GermanRosterData.scala` —
 the tuples `models.GermanRoster` materialises into `RosterPage` cities and
 `GermanCinema` venues. It refuses a duplicate `displayName` and a venue on no page
 or two. `scripts/ci/generated-artefacts-drift.sh` re-runs both scripts in CI, so a
