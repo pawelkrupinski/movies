@@ -218,10 +218,18 @@ object UnifiedEvidence {
     // [[PinnedSignals]]' cast.venue: the one contender the venue's own text names two of the top-billed cast of, the cast
     // of no other contender — nor of a candidate the model denied — named at all ([[CastEvidence]]); a contender no TMDB
     // record holds has no cast known, and leaves it unread
-    private val castTake = if (c.venueNames.isEmpty) None else {
-      val denied = scored.keys.filterNot(id => eligible.exists(_._1 == id)).toSeq.sorted.map(id => Option.empty[Building] -> c.cast(id))
-      CastEvidence.take(c.venueNames, built.toSeq.map(b => Option(b) -> b.tmdb.flatMap(c.cast)) ++ denied).collect { case (Some(b), named) => b -> named }
-    }
+    // — experiment `cast-tiebreak`: only a TIE-BREAK among the contenders and denied candidates the billing names alike
+    // ([[CastEvidence.tieBreak]]), and only where no listing bills a director (where one does, the director decides: cast
+    // repeats it for 1,053 of 1,147 listings) nor several works (a double bill names both films' casts)
+    private val castTake =
+      if (c.venueNames.isEmpty || c.listings.exists(_.directors.nonEmpty) || c.listings.exists(ListingShape.billsSeveral)) None
+      else {
+        def billed(films: Seq[IdentityMeasures.Film]) = c.listings.forall(Agreement.namesIt(_, films))
+        val denied = scored.toSeq.filterNot { case (id, _) => eligible.exists(_._1 == id) }.sortBy(_._1)
+          .collect { case (id, candidates) if billed(Seq(candidates.head.film)) => Option.empty[Building] -> c.cast(id) }
+        val sameTitled = built.toSeq.filter(b => billed(b.records.toSeq.map(_.film))).map(b => Option(b) -> b.tmdb.flatMap(c.cast))
+        CastEvidence.tieBreak(c.venueNames, sameTitled ++ denied).collect { case (Some(b), named) => b -> named }
+      }
     // each candidate's titles as runs of the billing, found once for every contender's `title.anothersOwn` — a denied
     // candidate's too: the billing naming it more fully names another film than one it names only in part, whatever
     // ruled that one out (DE CineStar's "Herr der Ringe - Rückkehr des Königs (ext.)")

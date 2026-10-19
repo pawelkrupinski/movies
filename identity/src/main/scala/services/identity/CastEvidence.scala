@@ -98,6 +98,18 @@ object CastEvidence {
   /** The whole names a venue's text must name of one candidate's cast. */
   val Names = 2
 
+  /** The TIE-BREAK (experiment `cast-tiebreak`): of the candidates the billing names alike (`sameTitled`, each with its
+   *  top-billed cast, `None` while not known), the one whose cast the venue's text names [[Names]] whole names of, no
+   *  other doing so — a preference among namesakes, never a take of a lone candidate. A rival named by one name does not
+   *  stand in its way (sequels and remakes share an actor), nor is a rival named by none held against it: only two names
+   *  decide. Nothing while fewer than two candidates tie, or one's cast is not known: it might be the one named. */
+  def tieBreak[K](venue: VenueNames, sameTitled: Seq[(K, Option[Seq[String]])]): Option[(K, Seq[String])] =
+    if (venue.isEmpty || sameTitled.sizeIs < 2 || sameTitled.exists(_._2.isEmpty)) Option.empty
+    else sameTitled.map { case (candidate, names) => candidate -> names.get.filter(venue.names).distinct }.filter(_._2.sizeIs >= Names) match {
+      case Seq(only) => Some(only)
+      case _         => Option.empty
+    }
+
   /** The one candidate of `cast` (each with its top-billed cast, `None` while not known) the venue's text names [[Names]]
    *  of, with the names it names — none while another candidate's cast is named at all, or one's is not known. */
   def take[K](venue: VenueNames, cast: Seq[(K, Option[Seq[String]])]): Option[(K, Seq[String])] =

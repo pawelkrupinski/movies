@@ -64,6 +64,22 @@ class CastEvidenceSpec extends AnyFlatSpec with Matchers {
     CastEvidence.take(VenueNames.of(Seq(ckLublin)), Seq(1321666 -> Some(doll2026), 81315 -> None)) shouldBe None
   }
 
+  "the tie-break" should "prefer the namesake whose cast the text names twice, a rival named once standing in no way" in {
+    val venue = VenueNames.of(Seq(ckLublin + " Jak niegdyś Tadeusz Fijewski."))
+    CastEvidence.tieBreak(venue, Seq(1321666 -> Some(doll2026), 81315 -> Some(doll1968))) shouldBe
+      Some(1321666 -> Seq("Marcin Dorociński", "Kamila Urzędowska", "Marek Kondrat"))
+  }
+
+  it should "take no lone candidate: there is no tie to break" in {
+    CastEvidence.tieBreak(VenueNames.of(Seq(ckLublin)), Seq(1321666 -> Some(doll2026))) shouldBe None
+  }
+
+  it should "break no tie a rival of unknown cast is in, nor one two namesakes' casts are both named in" in {
+    CastEvidence.tieBreak(VenueNames.of(Seq(ckLublin)), Seq(1321666 -> Some(doll2026), 81315 -> None)) shouldBe None
+    val both = VenueNames.of(Seq("Mariusz Dmochowski i Beata Tyszkiewicz u Hasa, Marcin Dorociński i Kamila Urzędowska u Kawalskiego."))
+    CastEvidence.tieBreak(both, Seq(1321666 -> Some(doll2026), 81315 -> Some(doll1968))) shouldBe None
+  }
+
   "no venue text" should "name nothing" in {
     VenueNames.of(Nil).isEmpty shouldBe true
     CastEvidence.take(VenueNames.None, Seq(1321666 -> Some(doll2026))) shouldBe None
