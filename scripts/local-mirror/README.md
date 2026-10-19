@@ -37,7 +37,9 @@ source of truth for both halves:
   and `identity_pins` (operator pins) — prod state no recording holds; and, for the scheduled
   white-cinema investigation (`docs/white-cinema-investigations.md`), `uptimeBuckets` (~24 h of
   15-minute scrape outcomes per service, the data `/uptime` classifies — the page itself is
-  admin-gated). A running mirror picks a newly
+  admin-gated) and `filmwebFallback` (each venue's fallback state, the `/uptime` fallback section:
+  one document per venue that ever fell back — PL's own-site → Filmweb, UK chains → Flicks; the
+  other countries hold none). A running mirror picks a newly
   listed collection up by itself: the tailers restart on the changed list and the
   staleness audit re-seeds a database missing one. A collection this list
   omits reads as permanently **empty**, not slowly-from-prod: the `/debug`
@@ -52,7 +54,12 @@ source of truth for both halves:
   collection, so each country's mirror takes one full re-copy at its next audit after
   the edit reaches the checkout the mirror service runs from (added `uptimeBuckets`
   2026-10-19: one full re-seed of all five, then steady tailing; prod upserts its
-  buckets every 10 s, so expect a constant trickle of change events).
+  buckets every 10 s, so expect a constant trickle of change events). Added
+  `filmwebFallback` 2026-10-20: re-seeds only the databases whose prod collection has
+  documents (PL; UK once Flicks has served a venue) — an empty one is never "missing". Size: one document per venue that
+  ever fell back, history capped at 50 short strings (~6.5 KB worst case), so at most
+  ~9 MB if every PL and UK venue (524 + 842) had fallen back, realistically a few hundred
+  KB; the re-seed's cost is the corpus re-copy, not this collection.
 - **Databases:** every `kinowo*` database the tunnel exposes, discovered at
   startup (override with `KINOWO_MIRROR_DBS`). So the navbar's country switch
   (`/debug?country=uk`) is LAN-fast too, not just the boot country.

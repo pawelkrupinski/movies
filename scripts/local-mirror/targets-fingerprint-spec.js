@@ -38,6 +38,9 @@ check("sees a renamed collection", digest(base) !== digest(["movies", "screening
 // (`uptimeBuckets` beside the snake_case corpus), so a case change is a rename.
 check("sees a camelCase collection added", digest(base) !== digest(base.concat("uptimeBuckets")));
 check("is case-sensitive", digest(["uptimeBuckets"]) !== digest(["uptimebuckets"]));
+check("sees filmwebFallback added beside uptimeBuckets",
+  digest(base.concat("uptimeBuckets")) !== digest(base.concat("uptimeBuckets", "filmwebFallback")));
+check("is case-sensitive on filmwebFallback", digest(["filmwebFallback"]) !== digest(["filmwebfallback"]));
 
 // Names that differ only by where the split falls must not collide — the digest
 // joins on a separator for exactly this reason.

@@ -2,6 +2,7 @@ package services
 
 import services.attempts.EnrichmentAttempts
 import services.cadence.RatingCadenceReader
+import services.fallback.MongoFallbackStore
 import services.movies.{MovieRepository, ScreeningsRepository, SlotsRepository}
 import services.readmodel.MongoReadModelRepository
 import services.scrapes.ScrapeArchiveRepository
@@ -27,7 +28,7 @@ import services.scrapes.ScrapeArchiveRepository
  *
  * The reverse does not hold: an entry here need not back a page. `cinema_scrapes`
  * is mirrored for INSPECTION and local replay rather than for a reader, and
- * `uptimeBuckets` for the white-cinema sweep — see their notes below. The rule is "a reader implies an entry", not "an entry implies a
+ * `uptimeBuckets` and `filmwebFallback` for the white-cinema sweep — see their notes below. The rule is "a reader implies an entry", not "an entry implies a
  * reader".
  *
  * `tasks` is deliberately absent: it is a WRITE path (the /debug row's ↻
@@ -87,6 +88,12 @@ object DebugMirror {
     // over them — `/uptime` itself is admin-gated — to find venues whose last three
     // buckets were all fetch-ok-but-empty, and to tell "was green hours ago" from
     // "never had a programme".
-    UptimeMonitor.Collection
+    UptimeMonitor.Collection,
+    // Each venue's fallback state (one document per venue that ever fell back: PL's
+    // own-site → Filmweb, UK chains → Flicks; other countries hold none). Backs no
+    // /debug page: the white-cinema sweep reads it for the same reason it reads the
+    // buckets — `/uptime`'s fallback section is admin-gated — to tell a venue
+    // served via its fallback from one that is genuinely white.
+    MongoFallbackStore.CollectionName
   )
 }

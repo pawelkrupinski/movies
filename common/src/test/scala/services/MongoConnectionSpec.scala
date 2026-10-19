@@ -369,4 +369,11 @@ class MongoConnectionSpec extends AnyFlatSpec with Matchers {
     // sync, every mirror holds none and the sweep silently loses its bucket history.
     DebugMirror.Collections should contain (UptimeMonitor.Collection)
   }
+
+  it should "mirror the venues' fallback state, so the white-cinema sweep can tell fallback-served from white" in {
+    // Read beside `uptimeBuckets` by the scheduled white-cinema investigation: `/uptime`'s
+    // fallback section is admin-gated, so without the mirror a venue served via Filmweb
+    // (or Flicks) is indistinguishable from one that lost its programme.
+    DebugMirror.Collections should contain (services.fallback.MongoFallbackStore.CollectionName)
+  }
 }
