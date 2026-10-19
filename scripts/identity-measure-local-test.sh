@@ -26,7 +26,10 @@ for command in "$@"; do
     *IdentityResolveDump*) while [ $# -gt 0 ]; do case "$1" in --out) out=$2 ;; --full) cc=$2 ;; esac; shift; done
                            echo '{}' > "$out/decisions-$cc.jsonl" ;;
     *UnmatchedClustersRatchet*) while [ $# -gt 0 ]; do [ "$1" = --out ] && out=$2; shift; done
-                                mkdir -p "$out" && echo takes > "$out/ratchet-takes.tsv" ;;
+                                if [ -f "$STUB/crash-ratchet" ]; then   # as sbt ran it on 2026-10-19: died, then [success]
+                                  printf '%s\n' 'Exception in thread "main" java.lang.NoClassDefFoundError: modules/wiring/IdentityCutoverWiring$' \
+                                    '	at tools.UnmatchedClusters$.familiesOf(UnmatchedClusters.scala:94)' '[success] Total time: 38 s'
+                                else mkdir -p "$out" && echo takes > "$out/ratchet-takes.tsv"; fi ;;
   esac
 done
 STUB
@@ -152,6 +155,21 @@ fifth=$(echo z > "$repo/fifth"; scratch_git "$repo" add -A; scratch_git "$repo" 
 KINOWO_MEMORY_GATE=1 KINOWO_MEMORY_GATE_PROBE='echo 99' KINOWO_MEMORY_GATE_FREE_PROBE='echo 0' KINOWO_MEMORY_GATE_MAX_WAIT=0 measure --base "$base" --head "$fifth" --countries pl --out "$work/gated"
 check "a resolve waits on the memory gate while the Mac is paging (deadline 0: warned, then resolved)" "0 yes" \
   "$(cat "$work/status") $(grep -q '\[identity-measure-local\] memory gate: still 99 GB' "$work/out" && echo yes || echo no)"
+
+sixth=$(echo w > "$repo/sixth"; scratch_git "$repo" add -A; scratch_git "$repo" -c user.email=t@t -c user.name=t commit -qm sixth; scratch_git "$repo" rev-parse --short=12 HEAD)
+# 2026-10-19: the ratchet died on a NoClassDefFoundError (an orphan class a seed carried in), sbt said [success], and the
+# measure printed "resolved (exit 0)", then NOT LANDABLE with no reason. A ref whose ratchet writes no takes did not
+# resolve: a setup error, naming what it died of.
+touch "$work/crash-ratchet"
+measure --base "$base" --head "$sixth" --countries pl --out "$work/crashed"
+rm -f "$work/crash-ratchet"
+check "a ratchet that dies writing no takes: a setup error naming the exception, no verdict" "2 yes yes no" \
+  "$(cat "$work/status") $(grep -q "the head did not resolve" "$work/out" && echo yes || echo no) \
+$(grep -q 'NoClassDefFoundError: modules/wiring/IdentityCutoverWiring\$' "$work/out" && echo yes || echo no) \
+$(grep -q 'LANDABLE' "$work/out" && echo yes || echo no)"
+measure --base "$base" --head "$sixth" --countries pl --out "$work/recovered"
+check "...and the next run resolves its ratchet again" "0 yes" \
+  "$(cat "$work/status") $(grep -q '^LANDABLE (local)' "$work/out" && echo yes || echo no)"
 
 measure --base "$base" --head "$head" --recording 99
 check "a recording with no laid pair is a setup error" "2" "$(cat "$work/status")"

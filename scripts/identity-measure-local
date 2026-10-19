@@ -131,7 +131,15 @@ resolve() { # <sha>: every country's model takes and the final ones, in the ref'
     [ -d "$dir/ratchet-$ratchet_key" ] && ln -sfn "ratchet-$ratchet_key" "$dir/ratchet"
   fi
   for cc in "${ccs[@]}"; do [ -s "$dir/decisions-$cc.jsonl" ] || { echo "identity-measure-local: $sha wrote no decisions-$cc.jsonl" >&2; return 1; }; done
-  [ -s "$dir/ratchet-$ratchet_key/ratchet-takes.tsv" ] || echo "identity-measure-local: $sha wrote no final takes ($dir/ratchet-$ratchet_key)" >&2
+  # no final takes is no resolve: on 2026-10-19 the ratchet died on a NoClassDefFoundError, sbt's runMain still said
+  # [success], and the measure went on to NOT LANDABLE with no reason given -- so say what it died of, and stop
+  if [ ! -s "$dir/ratchet-$ratchet_key/ratchet-takes.tsv" ]; then
+    echo "identity-measure-local: $sha wrote no final takes ($dir/ratchet-$ratchet_key)" >&2
+    local cause
+    cause=$(grep -m1 -A1 -E '([A-Za-z_$][A-Za-z0-9_$]*\.)+[A-Za-z0-9_$]*(Exception|Error)(: |$)|\[ratchet\] no takes written' "$dir.log" 2>/dev/null)
+    echo "  the ratchet ${cause:+died: }${cause:-left no exception in its log}" | sed '2,$s/^/    /' >&2
+    return 1
+  fi
   return 0
 }
 
@@ -146,13 +154,9 @@ for cc in "${ccs[@]}"; do
   echo "== $cc model"
   python3 "$here/scripts/ci/identity_takes_diff.py" "$cc" "$out/$base_sha/decisions-$cc.jsonl" "$out/$head_sha/decisions-$cc.jsonl" \
     --judgements "$judgements" --base-name "$base_sha" --head-name "$head_sha" || failed=1
-  if [ -s "$out/$base_sha/ratchet/ratchet-takes.tsv" ] && [ -s "$out/$head_sha/ratchet/ratchet-takes.tsv" ]; then
-    echo "== $cc final"
-    python3 "$here/scripts/ci/identity_takes_diff.py" "$cc" "$out/$base_sha/ratchet/ratchet-takes.tsv" "$out/$head_sha/ratchet/ratchet-takes.tsv" \
-      --final --judgements "$judgements" --base-name "$base_sha" --head-name "$head_sha" || failed=1
-  else
-    echo "== $cc final: not measured (a ratchet wrote no takes)"; failed=1
-  fi
+  echo "== $cc final"   # both refs' final takes are there: a ref without them did not resolve
+  python3 "$here/scripts/ci/identity_takes_diff.py" "$cc" "$out/$base_sha/ratchet/ratchet-takes.tsv" "$out/$head_sha/ratchet/ratchet-takes.tsv" \
+    --final --judgements "$judgements" --base-name "$base_sha" --head-name "$head_sha" || failed=1
 done
 # The verdict CI's measure prints: the moves split by the judgements (cure, right lost, new wrong, ...), from the two
 # refs' takes laid out as each takes row's artifact is.
@@ -163,7 +167,7 @@ for cc in "${ccs[@]}"; do
     dir="$classified/identity-takes-$cc/${side%%:*}"
     mkdir -p "$dir"
     ln -s "$out/${side#*:}/decisions-$cc.jsonl" "$dir/"
-    [ -s "$out/${side#*:}/ratchet/ratchet-takes.tsv" ] && ln -s "$out/${side#*:}/ratchet/ratchet-takes.tsv" "$dir/"
+    ln -s "$out/${side#*:}/ratchet/ratchet-takes.tsv" "$dir/"
   done
 done
 echo
