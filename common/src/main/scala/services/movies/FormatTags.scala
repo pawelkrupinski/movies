@@ -171,8 +171,8 @@ object FormatTags {
         .exists(FormatVersionWords.contains)
 
   /** The version words that are also a title's own last word: "Mexico DF" is Mexico City (Distrito Federal), not
-   *  Mexico's German version. */
-  private val TitleWordVersions = Set("df", "ov")
+   *  Mexico's German version. "OV" is no title's word: "Digger OV" is Digger in its original version. */
+  private val TitleWordVersions = Set("df")
 
   /** True when the trailing token is a bare [[TitleWordVersions]] word ending a one-word title: no separator, bracket
    *  or other format word marks it as a tag, and nothing but one word goes before it ("Mexico DF"). Behind a longer
