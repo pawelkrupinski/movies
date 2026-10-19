@@ -43,26 +43,26 @@ class ChangeStreamMalformedDocumentIntegrationSpec extends AnyFlatSpec with Matc
 
   "the movies change stream" should "deliver a valid write after a movies document it cannot decode" in
     survives("movies") { (db, failures) => seen =>
-      val repo = new MongoMovieRepository(Some(db), _root_.tools.SpecClock.Pinned, normalizer = titleNormalizer, decodeFailures = failures)
+      val repo = new MongoMovieRepository(Some(db), _root_.tools.SpecClock.Pinned, normalizer = titleNormalizer, decodeFailures = failures, stopwatch = _root_.tools.Stopwatch.System)
       repo.watchChanges(r => seen(r.id.value), _ => ()).get
     } { db =>
-      val repo = new MongoMovieRepository(Some(db), _root_.tools.SpecClock.Pinned, normalizer = titleNormalizer)
+      val repo = new MongoMovieRepository(Some(db), _root_.tools.SpecClock.Pinned, normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
       n => { repo.upsert(s"Valid $n", Some(2026), MovieRecord()); StoredMovieRecord.keyFor(s"Valid $n", Some(2026), titleNormalizer) }
     }(undecodableFilm)
 
   "the screenings change stream" should "deliver a valid row after a row with no filmId" in
     survives("screenings") { (db, failures) => seen =>
-      new MongoScreeningsRepository(Some(db), decodeFailures = failures).watchApplied((filmId, applied) => { seen(filmId); applied() }, ChangeStreamDemand.unbounded).get
+      new MongoScreeningsRepository(Some(db), decodeFailures = failures, clock = _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System).watchApplied((filmId, applied) => { seen(filmId); applied() }, ChangeStreamDemand.unbounded).get
     } { db =>
-      val screenings = new MongoScreeningsRepository(Some(db))
+      val screenings = new MongoScreeningsRepository(Some(db), clock = _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System)
       n => { screenings.upsertSlot(s"film$n", "Cinema", ListedShowtimes(Seq(Showtime(java.time.LocalDateTime.of(2099, 1, 1, 10, 0), None)), None)); s"film$n" }
     }(Document("_id" -> "__malformed__"))
 
   "the movie_slots change stream" should "deliver a valid row after a row with no filmId" in
     survives("movie_slots") { (db, failures) => seen =>
-      new MongoSlotsRepository(Some(db), decodeFailures = failures).watchApplied((filmId, applied) => { seen(filmId); applied() }, ChangeStreamDemand.unbounded).get
+      new MongoSlotsRepository(Some(db), decodeFailures = failures, clock = _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System).watchApplied((filmId, applied) => { seen(filmId); applied() }, ChangeStreamDemand.unbounded).get
     } { db =>
-      val slots = new MongoSlotsRepository(Some(db))
+      val slots = new MongoSlotsRepository(Some(db), clock = _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System)
       n => { slots.upsertSlot(s"film$n", "Cinema", SourceData(title = Some(s"Valid $n"))); s"film$n" }
     }(Document("_id" -> "__malformed__"))
 
@@ -73,17 +73,17 @@ class ChangeStreamMalformedDocumentIntegrationSpec extends AnyFlatSpec with Matc
 
   "the web_movies change stream" should "deliver a valid film after a document it cannot decode" in
     survives(MongoReadModelRepository.MoviesCollection) { (db, failures) => seen =>
-      new MongoReadModelRepository(Some(db), decodeFailures = failures).watchMovies(m => seen(m._id), _ => (), None).get
+      new MongoReadModelRepository(Some(db), decodeFailures = failures, stopwatch = _root_.tools.Stopwatch.System).watchMovies(m => seen(m._id), _ => (), None).get
     } { db =>
-      val readModel = new MongoReadModelRepository(Some(db))
+      val readModel = new MongoReadModelRepository(Some(db), stopwatch = _root_.tools.Stopwatch.System)
       n => { readModel.upsertMovie(film(s"film$n")); s"film$n" }
     }(Document("_id" -> "__malformed__", "ratings" -> "not a ratings document")) // a missing field defaults; a wrong type cannot
 
   "the web_screenings change stream" should "deliver a valid screening after a document it cannot decode" in
     survives(MongoReadModelRepository.ScreeningsCollection) { (db, failures) => seen =>
-      new MongoReadModelRepository(Some(db), decodeFailures = failures).watchScreenings(s => seen(s._id), _ => (), None).get
+      new MongoReadModelRepository(Some(db), decodeFailures = failures, stopwatch = _root_.tools.Stopwatch.System).watchScreenings(s => seen(s._id), _ => (), None).get
     } { db =>
-      val readModel = new MongoReadModelRepository(Some(db))
+      val readModel = new MongoReadModelRepository(Some(db), stopwatch = _root_.tools.Stopwatch.System)
       n => {
         readModel.upsertScreening(CityScreening(_id = s"screening$n", filmId = "film", city = "poznan", cinema = "Cinema",
           filmUrl = None, showtimes = Nil))

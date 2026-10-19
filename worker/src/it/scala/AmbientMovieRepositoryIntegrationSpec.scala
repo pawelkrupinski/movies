@@ -18,8 +18,8 @@ class AmbientMovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers wi
 
   "AmbientMovieRepository" should "read a film's title, slots and showtimes as the worker's split store wrote them" in {
     tools.IsolatedMongoDatabase.withDatabase(mongoTarget, "ambient-movie-repository") { db =>
-      val worker = new MongoMovieRepository(Some(db), _root_.tools.SpecClock.Pinned, screenings = Some(new MongoScreeningsRepository(Some(db))),
-        slots = Some(new MongoSlotsRepository(Some(db))), normalizer = titleNormalizer)
+      val worker = new MongoMovieRepository(Some(db), _root_.tools.SpecClock.Pinned, screenings = Some(new MongoScreeningsRepository(Some(db), clock = _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System)),
+        slots = Some(new MongoSlotsRepository(Some(db), clock = _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System)), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
       worker.upsert("Anora", Some(2024), MovieRecord(tmdbId = Some(1064213), data = Map[Source, SourceData](
         Multikino -> SourceData(title = Some("Anora"), filmUrl = Some("https://mk/anora"), showtimes = Seq(Showtime(when, None))))))
       val id: FilmId = worker.findAll().head.id

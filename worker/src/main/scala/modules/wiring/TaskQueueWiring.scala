@@ -52,7 +52,7 @@ trait TaskQueueWiring { self: WorkerWiring =>
   // Absent Mongo (local dev opt-out) → always-claim, i.e. run unlocked.
   lazy val scheduledRunStore: ScheduledRunStore =
     mongoConnection.database
-      .map(db => new MongoScheduledRunStore(db.getCollection[org.mongodb.scala.bson.collection.immutable.Document]("scheduled_runs")))
+      .map(db => new MongoScheduledRunStore(db.getCollection[org.mongodb.scala.bson.collection.immutable.Document]("scheduled_runs"), clock))
       .getOrElse(AlwaysClaimScheduledRunStore)
 
   // A fixed pool of workers, each fetching and running ONE task at a time — so

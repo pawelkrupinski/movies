@@ -31,7 +31,7 @@ object SnapshotProdTitlesToFixture {
 
   def main(args: Array[String]): Unit = {
     val connection = MongoConnection.forProcess(_root_.settings.ProcessConfiguration.resolve(), required = services.MongoRequirement.Required)
-    val repository = new MongoMovieRepository(connection.database, clock, normalizer = titleNormalizer)
+    val repository = new MongoMovieRepository(connection.database, clock, normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
     try {
       val records = repository.findAll()
       val titles = records

@@ -31,7 +31,7 @@ class MongoUserStateRepositoryOutcomesSpec extends AnyFlatSpec with Matchers {
 
   "a users store that never came up" should "report each refused write as unavailable, on its own endpoint" in {
     val (seen, outcomes) = recording()
-    val store = new MongoUserStateRepository(database = None, clock = _root_.tools.SpecClock.Pinned, writeOutcomes = outcomes)
+    val store = new MongoUserStateRepository(database = None, clock = _root_.tools.SpecClock.Pinned, writeOutcomes = outcomes, stopwatch = _root_.tools.Stopwatch.System)
     val now   = Instant.parse("2026-09-23T12:00:00Z")
 
     store.changeHiddenFilms("u", "pl", HiddenFilmsChange.Hide("Film", 10), now) shouldBe None
@@ -56,7 +56,7 @@ class MongoUserStateRepositoryOutcomesSpec extends AnyFlatSpec with Matchers {
     val registry = new PrometheusRegistry()
     val clock    = java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC)
     val store    = new MongoUserStateRepository(database = Some(db), clock = _root_.tools.SpecClock.Pinned,
-      writeOutcomes = new UserStateWriteMetrics(registry, "pl"))
+      writeOutcomes = new UserStateWriteMetrics(registry, "pl"), stopwatch = _root_.tools.Stopwatch.System)
     val users    = new InMemoryUserRepository
     users.upsert(User(id = "u", provider = "google", providerSub = "G-u", email = None, displayName = None,
       avatarUrl = None, createdAt = Instant.EPOCH, lastSeenAt = Instant.EPOCH))
@@ -80,7 +80,7 @@ class MongoUserStateRepositoryOutcomesSpec extends AnyFlatSpec with Matchers {
     client.close()
     val reported = mutable.ListBuffer.empty[Boolean]
     val store = new MongoUserStateRepository(database = Some(db), clock = _root_.tools.SpecClock.Pinned,
-      indexHealth = (present: Boolean) => reported += present)
+      indexHealth = (present: Boolean) => reported += present, stopwatch = _root_.tools.Stopwatch.System)
 
     store.enabled shouldBe true   // still serves: a missing index is not a reason to refuse every read
     reported.toList shouldBe List(false)

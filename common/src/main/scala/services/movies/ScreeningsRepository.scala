@@ -262,6 +262,10 @@ object StoredScreeningsDto {
  */
 class MongoScreeningsRepository(
   sharedDb: Option[MongoDatabase],
+  // The composition root's clock: what each row's `updatedAt` is stamped with.
+  clock:     java.time.Clock,
+  // The composition root's monotonic clock: the change stream's resume-token throttle and decoder log time on it.
+  stopwatch: tools.Stopwatch,
   // Cursor page size for the keyset-paged full-collection scan in `findAll`. Caps how
   // many rows any ONE async cursor delivers before the next `_id`-keyset page, so a
   // full `screenings` read can't recurse the async Mongo driver's read-completion chain
@@ -298,7 +302,7 @@ class MongoScreeningsRepository(
     c
   }
 
-  private val resumeToken = new ChangeStreamResumeToken(ScreeningsRepository.Collection, sharedDb, persistResumeToken)
+  private val resumeToken = new ChangeStreamResumeToken(ScreeningsRepository.Collection, sharedDb, persistResumeToken, stopwatch)
 
   private def idOf(filmId: String, slotKey: String): String = s"$filmId$IdSep$slotKey"
 
@@ -390,7 +394,7 @@ class MongoScreeningsRepository(
   def replaceFilm(filmId: String, slots: Map[String, ListedShowtimes],
                   stored: Option[Map[String, ListedShowtimes]] = None): WriteOutcome = coll.fold[WriteOutcome](WriteOutcome.Declined("no-store")) { c =>
     write("replaceFilm", s"ScreeningsRepository.replaceFilm($filmId)") {
-      val now     = Instant.now()
+      val now     = clock.instant()
       // Rewrite only the rows that MOVED. One indexed read on `filmId` — the same read the
       // delete half used to make before it became a server-side predicate — buys the whole
       // saving, because the redundant rows are not merely wasted writes: each one rings this
@@ -455,7 +459,7 @@ class MongoScreeningsRepository(
       val key = ListingKey.serialised(listingKey)
       val modified = Await.result(c.updateOne(
         Filters.and(Filters.eq("_id", idOf(filmId, slotKey)), Filters.ne(SlotKeyed.ListingKeyField, key)),
-        Updates.combine(Updates.set(SlotKeyed.ListingKeyField, key), Updates.set("updatedAt", Instant.now()))).toFuture(), 10.seconds).getModifiedCount
+        Updates.combine(Updates.set(SlotKeyed.ListingKeyField, key), Updates.set("updatedAt", clock.instant()))).toFuture(), 10.seconds).getModifiedCount
       metrics.recordWrite(if (modified > 0) ScreeningsMetrics.Outcome.Written else ScreeningsMetrics.Outcome.Unchanged, 1)
       WriteOutcome.Written
     }
@@ -510,7 +514,7 @@ class MongoScreeningsRepository(
   }
 
   private def upsertOne(c: MongoCollection[StoredScreeningsDto], filmId: String, slotKey: String, row: ListedShowtimes): Unit = {
-    val dto = StoredScreeningsDto.of(filmId, slotKey, row, Instant.now())
+    val dto = StoredScreeningsDto.of(filmId, slotKey, row, clock.instant())
     Await.result(c.replaceOne(Filters.eq("_id", dto._id), dto, new ReplaceOptions().upsert(true)).toFuture(), 10.seconds); ()
   }
 
@@ -523,7 +527,7 @@ class MongoScreeningsRepository(
    *  reopen, metrics, the delete's `_id` parse — is [[SideCollectionWatch]], shared with
    *  `movie_slots`. */
   private lazy val changes: Option[SideCollectionWatch[StoredScreeningsDto]] =
-    coll.map(c => new SideCollectionWatch(ScreeningsRepository.Collection, c, _.filmId, resumeToken, metrics, decodeFailures))
+    coll.map(c => new SideCollectionWatch(ScreeningsRepository.Collection, c, _.filmId, resumeToken, metrics, decodeFailures, stopwatch))
 
   override def watchApplied(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
     changes.map(_.watch((rowId, applied) => onChange(SlotKeyed.filmIdOf(rowId), applied), demand))

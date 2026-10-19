@@ -48,6 +48,8 @@ final class SideCollectionWatch[Dto: ClassTag](
   metrics:     SideCollectionChangeMetrics,
   // Where a row the codec refuses is counted, under this collection's `name`.
   decodeFailures: DecodeFailureMetrics,
+  // The store's monotonic clock: the decoder's log throttle times on it.
+  stopwatch:      tools.Stopwatch,
   // The reopen driver, keyed by `name`. Production schedules on a daemon thread; a spec
   // can hand over one that fires when it says so.
   reopenDriver: (String, () => Unit) => ChangeStreamReopen = ChangeStreamReopen.onDaemonScheduler
@@ -63,7 +65,7 @@ final class SideCollectionWatch[Dto: ClassTag](
 
   /** One watch's cursor, reopened on its backoff for as long as the watch lasts. */
   private final class Cursor(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand) {
-    private val decoder = ChangeEventDecoder.of[Dto](name, collection.codecRegistry, decodeFailures)
+    private val decoder = ChangeEventDecoder.of[Dto](name, collection.codecRegistry, decodeFailures, stopwatch)
     // The events this cursor has delivered and not yet had applied: the position moves only past
     // a contiguous run of applied ones — see [[AppliedPrefix]].
     private val appliedPrefix = new AppliedPrefix((token, generation) => { resumeToken.advance(token, generation); resumeToken.save(force = false) })

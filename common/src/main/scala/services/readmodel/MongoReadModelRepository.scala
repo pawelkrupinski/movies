@@ -33,6 +33,8 @@ import scala.util.{Failure, Success, Try}
  */
 class MongoReadModelRepository(
   sharedDb:             Option[MongoDatabase],
+  // The composition root's monotonic clock: each change stream's decoder log throttle times on it.
+  stopwatch:            tools.Stopwatch,
   // Cursor page size for the keyset-paged full scans (findAllMovies / findAllScreenings).
   // Injectable so tests force multiple pages with a handful of rows; see [[KeysetScan]].
   findAllBatchSize:     Int            = 500,
@@ -325,7 +327,7 @@ class MongoReadModelRepository(
                                  from: Option[StreamCheckpoint], pipeline: Seq[org.bson.conversions.Bson]): StreamSubscription = {
     val subRef = new AtomicReference[Subscription]()
     val alive  = new AtomicBoolean(true)
-    val decoder = services.movies.ChangeEventDecoder.of[T](label, coll.codecRegistry, decodeFailures)
+    val decoder = services.movies.ChangeEventDecoder.of[T](label, coll.codecRegistry, decodeFailures, stopwatch)
     val stream = coll.watch[org.bson.BsonDocument](pipeline).fullDocument(FullDocument.UPDATE_LOOKUP)
     from.fold(stream)(checkpoint => stream.startAtOperationTime(new BsonTimestamp(checkpoint.value)))
       .subscribe(new Observer[ChangeStreamDocument[org.bson.BsonDocument]] {

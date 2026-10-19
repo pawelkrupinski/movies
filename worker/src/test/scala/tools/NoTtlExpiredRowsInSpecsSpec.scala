@@ -44,8 +44,8 @@ class NoTtlExpiredRowsInSpecsSpec extends AnyFlatSpec with Matchers {
   /** it/ file → why it may pin a past time although it names a TTL-owning class. */
   private val Allowlist: Map[String, String] = Map(
     "worker/src/it/scala/TaskClaimsAcrossWorkersIntegrationSpec.scala" ->
-      ("its pinned Now feeds only MongoTaskQueue (no TTL index); the MongoScheduledRunStore it also races stamps " +
-        "claimedAt with the system clock, so its rows are never born expired")
+      ("its pinned Now feeds only MongoTaskQueue (no TTL index); the MongoScheduledRunStore it also races is handed " +
+        "MongoTtlSpecClock.Pinned, so its claims are never born expired")
   )
 
   // The helper that builds TTL indexes for its callers — the callers are the owners.

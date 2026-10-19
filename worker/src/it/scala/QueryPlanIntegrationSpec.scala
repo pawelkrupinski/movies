@@ -49,7 +49,7 @@ class QueryPlanIntegrationSpec extends AnyFlatSpec with Matchers with tools.Inte
   "the read model's drift counts" should "count index keys, never read a document" in {
     var counted = Option.empty[(Long, Long)]
     val recorded = plansOf("readmodel") { db =>
-      val rm = new MongoReadModelRepository(Some(db))
+      val rm = new MongoReadModelRepository(Some(db), stopwatch = _root_.tools.Stopwatch.System)
       tools.ReadModelSnapshot.loadInto(rm, tools.ReadModelSnapshot.read())
       counted = for (m <- rm.countMovies().answered; s <- rm.countScreenings().answered) yield (m, s)
       rm.close()
@@ -96,10 +96,10 @@ class QueryPlanIntegrationSpec extends AnyFlatSpec with Matchers with tools.Inte
 
   "the film store and its side collections" should "find, write, patch and delete a film by index" in {
     assertIndexed(plansOf("films") { db =>
-      val screenings = new MongoScreeningsRepository(Some(db))
-      val slots      = new MongoSlotsRepository(Some(db))
+      val screenings = new MongoScreeningsRepository(Some(db), clock = _root_.tools.MongoTtlSpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System)
+      val slots      = new MongoSlotsRepository(Some(db), clock = _root_.tools.MongoTtlSpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System)
       val repository = new MongoMovieRepository(Some(db), _root_.tools.MongoTtlSpecClock.Pinned, screenings = Some(screenings), slots = Some(slots),
-                                                normalizer = titleNormalizer)
+                                                normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
       val at   = LocalDateTime.of(2099, 3, 1, 18, 0)
       val shop = CinemaShowing(KinoMuranow, "belle")
       def record(title: String, tmdbId: Int, hours: Int*) = MovieRecord(tmdbId = Some(tmdbId), data = Map[Source, SourceData](
@@ -249,7 +249,7 @@ class QueryPlanIntegrationSpec extends AnyFlatSpec with Matchers with tools.Inte
       ledger.record("Kino Gone", services.closure.LedgerEntry(services.closure.LedgerKind.SourceDropped, Far, "evidence")); ledger.entries(); ledger.withdraw("Kino Gone")
       val fingerprints = new MongoVenueSlotFingerprints(db)
       fingerprints.update((1L to 10L).toSet, Set.empty); fingerprints.update(Set(11L), Set(1L)); fingerprints.all()
-      val token = new ChangeStreamResumeToken("movies", Some(db), enabled = true)
+      val token = new ChangeStreamResumeToken("movies", Some(db), enabled = true, stopwatch = _root_.tools.Stopwatch.System)
       token.advance(new org.bson.BsonDocument("_data", new org.bson.BsonString("826A")), token.generation)
       token.save(force = true)
       token.load().answered shouldBe defined

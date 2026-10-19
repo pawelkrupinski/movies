@@ -33,10 +33,10 @@ class MovieRepositoryUpdatedSinceIntegrationSpec extends AnyFlatSpec with Matche
 
   "the movies collection" should "index updatedAt and scan the rows written after an instant, stitched" in
     tools.IntegrationCorpusDatabase.withDatabase(mongoTarget, "updated-since") { db =>
-      val screenings = new MongoScreeningsRepository(Some(db))
-      val slots      = new MongoSlotsRepository(Some(db))
+      val screenings = new MongoScreeningsRepository(Some(db), clock = clock, stopwatch = _root_.tools.Stopwatch.System)
+      val slots      = new MongoSlotsRepository(Some(db), clock = clock, stopwatch = _root_.tools.Stopwatch.System)
       val repository = new MongoMovieRepository(Some(db), clock, screenings = Some(screenings), slots = Some(slots),
-        normalizer = titleNormalizer)
+        normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
       try {
         repository.enabled shouldBe true
         val indexes = Await.result(db.getCollection[Document]("movies").listIndexes().toFuture(), SpecTimeouts.Io)

@@ -327,6 +327,10 @@ object StoredSlotDto {
  */
 class MongoSlotsRepository(
   sharedDb: Option[MongoDatabase],
+  // The composition root's clock: what each row's `updatedAt` is stamped with.
+  clock:     java.time.Clock,
+  // The composition root's monotonic clock: the change stream's resume-token throttle and decoder log time on it.
+  stopwatch: tools.Stopwatch,
   // Keyset page size for the full-collection scan — same StackOverflow defence as
   // `screenings` (Sentry KINOWO-19). These docs are fatter than a screenings row, so
   // the page is smaller. Injectable so tests can force multiple pages.
@@ -357,7 +361,7 @@ class MongoSlotsRepository(
     c
   }
 
-  private val resumeToken = new ChangeStreamResumeToken(SlotsRepository.Collection, sharedDb, persistResumeToken)
+  private val resumeToken = new ChangeStreamResumeToken(SlotsRepository.Collection, sharedDb, persistResumeToken, stopwatch)
 
  /** A FAILED read is answered as one rather than passing an empty map off as "this film has
    *  no cinemas" — see the trait doc for what believing that emptiness costs. Logged too:
@@ -416,7 +420,7 @@ class MongoSlotsRepository(
   def replaceFilm(filmId: String, slots: Map[String, SourceData],
                   stored: Option[Map[String, SourceData]] = None): WriteOutcome = coll.fold[WriteOutcome](WriteOutcome.Declined("no-store")) { c =>
     write("replaceFilm", s"SlotsRepository.replaceFilm($filmId)") {
-      val now     = Instant.now()
+      val now     = clock.instant()
       // Rewrite only the rows that MOVED — the same guard `MongoScreeningsRepository.replaceFilm`
       // carries, and for the same reason one collection over: this method is film-wide while its
       // caller's change is one venue, so a wide release rewrote every row it had with nothing but
@@ -450,7 +454,7 @@ class MongoSlotsRepository(
     // A read that fails, and a row that is absent, both read as "differs" and write.
     write("upsertSlot", s"SlotsRepository.upsertSlot($filmId,$slotKey)") {
       if (roster.admitsWrite(SlotsRepository.Collection, filmId, slotKey) && !storedSlot(c, filmId, slotKey).contains(slot)) {
-        val dto = StoredSlotDto.of(filmId, slotKey, slot, Instant.now())
+        val dto = StoredSlotDto.of(filmId, slotKey, slot, clock.instant())
         Await.result(c.replaceOne(Filters.eq("_id", dto._id), dto, new ReplaceOptions().upsert(true)).toFuture(), 10.seconds)
       }
       WriteOutcome.Written
@@ -472,7 +476,7 @@ class MongoSlotsRepository(
           case tools.ReadOutcome.Answered(rows) => rows.get(slotKey).contains(slot)
           case _                                => false
         }
-        val now      = Instant.now()
+        val now      = clock.instant()
         val replaces = admitted.toSeq.collect { case (slotKey, slot) if !redundant(slotKey, slot) =>
           val dto = StoredSlotDto.of(filmId, slotKey, slot, now)
           ReplaceOneModel(Filters.eq("_id", dto._id), dto, new ReplaceOptions().upsert(true))
@@ -540,7 +544,7 @@ class MongoSlotsRepository(
    *  [[SideCollectionWatch]], shared with `screenings`, under this collection's own
    *  persisted resume token. */
   private lazy val changes: Option[SideCollectionWatch[StoredSlotDto]] =
-    coll.map(c => new SideCollectionWatch(SlotsRepository.Collection, c, _.filmId, resumeToken, metrics, decodeFailures))
+    coll.map(c => new SideCollectionWatch(SlotsRepository.Collection, c, _.filmId, resumeToken, metrics, decodeFailures, stopwatch))
 
   override def watchApplied(onChange: (String, () => Unit) => Unit, demand: ChangeStreamDemand): Option[AutoCloseable] =
     changes.map(_.watch((rowId, applied) => onChange(SlotKeyed.filmIdOf(rowId), applied), demand))

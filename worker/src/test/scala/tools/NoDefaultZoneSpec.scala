@@ -50,7 +50,8 @@ class NoDefaultZoneSpec extends AnyFlatSpec with Matchers {
   /** `file: Owner.parameter` → why that main-code parameter may still default to the live clock. */
   private val ClockDefaultAllowlist: Map[String, String] = Map.empty
 
-  private val StopwatchDefault = """\bStopwatch\.System\b""".r
+  /** A default that IS the process's stopwatch (not one that builds something handed it). */
+  private val StopwatchDefault = """^\s*(?:_root_\.)?(?:tools\.)?Stopwatch\.System\s*$""".r
   private val LiveClockDefault = ("""\bClock\.system(?:UTC|DefaultZone)\(|\bVenueClock\.system\b|""" + StopwatchDefault.regex).r
 
   // The testkit too: its fakes stand in for production classes, and one that defaults to the live clock
@@ -114,6 +115,7 @@ class NoDefaultZoneSpec extends AnyFlatSpec with Matchers {
     Seq("Clock.systemUTC()", "models.VenueClock.system", "tools.Stopwatch.System", "Stopwatch.System")
       .foreach(default => withClue(default)(LiveClockDefault.findFirstIn(default) shouldBe defined))
     LiveClockDefault.findFirstIn("SpecClock.Pinned") shouldBe None
+    LiveClockDefault.findFirstIn("new ChangeStreamResumeToken(\"movies\", None, enabled = false, stopwatch = Stopwatch.System)") shouldBe None
   }
 
   "production code" should "not default a parameter to the live clock — the composition root passes its own" in {

@@ -93,7 +93,7 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
    *  the listener it has just run and the position it moves next. A wait on that position must be
    *  a happens-before with the apply thread, not a bet on how long the gap lasts: this is the gap
    *  a 150 ms `eventually` lost under load. */
-  private final class StallingResumeToken extends ChangeStreamResumeToken("movies", database = None, enabled = false) {
+  private final class StallingResumeToken extends ChangeStreamResumeToken("movies", database = None, enabled = false, stopwatch = _root_.tools.Stopwatch.System) {
     override def advance(token: BsonDocument, deliveredAt: Long): Unit = { Thread.sleep(400); super.advance(token, deliveredAt) }
   }
 
@@ -110,7 +110,7 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
     changeStreamMetrics: ChangeStreamMetrics         = ChangeStreamMetrics.noop,
     clock:               Clock                       = _root_.tools.SpecClock.Pinned,
     decodeFailures:      services.readmodel.DecodeFailureMetrics = services.readmodel.DecodeFailureMetrics.noop,
-    resumeToken:         ChangeStreamResumeToken     = new ChangeStreamResumeToken("movies", database = None, enabled = false),
+    resumeToken:         ChangeStreamResumeToken     = new ChangeStreamResumeToken("movies", database = None, enabled = false, stopwatch = _root_.tools.Stopwatch.System),
     rereadRetryMillis:   Long                        = 20L,
     fence:               FilmWriteFence              = new FilmWriteFence(),
     debounce:            Option[MovieChangeStream.Debounce] = None,
@@ -138,7 +138,7 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
     decodeFailures      = decodeFailures,
     debounce            = debounce,
     readVenues          = readVenues,
-    debounceScheduler   = debounceScheduler.fold(() => tools.DaemonExecutors.scheduler("movie-change-debounce"))(timer => () => timer))
+    debounceScheduler   = debounceScheduler.fold(() => tools.DaemonExecutors.scheduler("movie-change-debounce"))(timer => () => timer), stopwatch = _root_.tools.Stopwatch.System)
 
   "MovieChangeStream" should "open one cursor for two listeners and fan each re-read upsert out to both" in {
     val source = new HandFedSource
@@ -204,7 +204,7 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
   it should "skip a post-image it cannot decode, counting it, and keep applying the events after it" in {
     val source    = new HandFedSource
     val counted   = mutable.Buffer.empty[String]
-    val token     = new ChangeStreamResumeToken("movies", database = None, enabled = false)
+    val token     = new ChangeStreamResumeToken("movies", database = None, enabled = false, stopwatch = _root_.tools.Stopwatch.System)
     val under     = stream(source, resumeToken = token, decodeFailures = collection => { counted.synchronized(counted += collection); () })
     val delivered = new CountDownLatch(1)
     val handle    = under.watch(r => if (r.id.value == "good|2024") delivered.countDown(), _ => ())
@@ -534,7 +534,7 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
   it should "keep its resume position before an event still held, even once a later event is applied" in {
     val source = new HandFedSource
     val slots  = new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned)
-    val token  = new ChangeStreamResumeToken("movies", database = None, enabled = false)
+    val token  = new ChangeStreamResumeToken("movies", database = None, enabled = false, stopwatch = _root_.tools.Stopwatch.System)
     val hour   = scala.concurrent.duration.Duration(1, "hour")
     val quiet  = mutable.Buffer.empty[String]
     val under  = stream(source, slots = Some(slots), resumeToken = token,
@@ -722,7 +722,7 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
   it should "retry an open whose saved position could not be read, rather than open past it at now" in {
     val saved  = new BsonDocument("_data", new BsonString("saved-position"))
     val reads  = new AtomicInteger(0)
-    val token  = new ChangeStreamResumeToken("movies", database = None, enabled = false) {
+    val token  = new ChangeStreamResumeToken("movies", database = None, enabled = false, stopwatch = _root_.tools.Stopwatch.System) {
       override def load(): tools.ReadOutcome[BsonDocument] =
         if (reads.incrementAndGet() == 1) tools.ReadOutcome.Failed(tools.ReadFailure.Thrown(new com.mongodb.MongoTimeoutException("slow")))
         else tools.ReadOutcome.Answered(saved)
@@ -743,7 +743,7 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
   // ~6 s of a blip instead of ~20 s.
   it should "leave a deferred open to its scheduled reopen when another consumer registers meanwhile" in {
     val reads  = new AtomicInteger(0)
-    val token  = new ChangeStreamResumeToken("movies", database = None, enabled = false) {
+    val token  = new ChangeStreamResumeToken("movies", database = None, enabled = false, stopwatch = _root_.tools.Stopwatch.System) {
       override def load(): tools.ReadOutcome[BsonDocument] = {
         reads.incrementAndGet(); tools.ReadOutcome.Failed(tools.ReadFailure.Thrown(new com.mongodb.MongoTimeoutException("slow")))
       }
@@ -762,7 +762,7 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
   // moves before the listeners do is persisted by a shutdown that cuts the fan-out short.
   it should "not move the resume position while the event's fan-out is still running" in {
     val source   = new HandFedSource
-    val token    = new ChangeStreamResumeToken("movies", database = None, enabled = false)
+    val token    = new ChangeStreamResumeToken("movies", database = None, enabled = false, stopwatch = _root_.tools.Stopwatch.System)
     val under    = stream(source, resumeToken = token)
     val entered  = new CountDownLatch(1)
     val release  = new CountDownLatch(1)
@@ -784,7 +784,7 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
   // the failure; advanced, it is lost for good.
   it should "hold the resume position once an event's re-read fails, even past later applied events" in {
     val source    = new HandFedSource
-    val token     = new ChangeStreamResumeToken("movies", database = None, enabled = false)
+    val token     = new ChangeStreamResumeToken("movies", database = None, enabled = false, stopwatch = _root_.tools.Stopwatch.System)
     val delivered = new java.util.concurrent.LinkedBlockingQueue[String]()
     val under     = stream(source, resumeToken = token,
       rereadChecked = Some(id => if (id == "broken|2024") (None, false) else (Some(recordOf(id)), true)))
@@ -810,7 +810,7 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
   // later, until a read answers, and only the POSITION stays held.
   it should "re-read a film whose re-read failed again later, and apply it once a read answers" in {
     val source    = new HandFedSource
-    val token     = new ChangeStreamResumeToken("movies", database = None, enabled = false)
+    val token     = new ChangeStreamResumeToken("movies", database = None, enabled = false, stopwatch = _root_.tools.Stopwatch.System)
     val delivered = new java.util.concurrent.LinkedBlockingQueue[String]()
     val failures  = new AtomicInteger(0)
     val under     = stream(source, resumeToken = token, rereadChecked = Some { id =>
@@ -834,7 +834,7 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
   // the process, and the next deploy replayed days of events, or found them out of the oplog.
   it should "release the held position once every film whose re-read failed has been applied" in {
     val source    = new HandFedSource
-    val token     = new ChangeStreamResumeToken("movies", database = None, enabled = false)
+    val token     = new ChangeStreamResumeToken("movies", database = None, enabled = false, stopwatch = _root_.tools.Stopwatch.System)
     val delivered = new java.util.concurrent.LinkedBlockingQueue[String]()
     val failures  = new AtomicInteger(0)
     val under     = stream(source, resumeToken = token, rereadChecked = Some { id =>
@@ -891,7 +891,7 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
   // a position whose event the dying JVM never finished. Close waits for the in-flight apply.
   it should "let an in-flight apply finish before close() returns" in {
     val source   = new HandFedSource
-    val token    = new ChangeStreamResumeToken("movies", database = None, enabled = false)
+    val token    = new ChangeStreamResumeToken("movies", database = None, enabled = false, stopwatch = _root_.tools.Stopwatch.System)
     val under    = stream(source, resumeToken = token)
     val entered  = new CountDownLatch(1)
     @volatile var finished = false
@@ -907,7 +907,7 @@ class MovieChangeStreamSpec extends AnyFlatSpec with Matchers with org.scalatest
 
   it should "not re-arm a token that an invalid-token error cleared while its event was still queued" in {
     val source = new HandFedSource
-    val token  = new ChangeStreamResumeToken("movies", database = None, enabled = false)
+    val token  = new ChangeStreamResumeToken("movies", database = None, enabled = false, stopwatch = _root_.tools.Stopwatch.System)
     val gate   = new CountDownLatch(1)
     val under  = stream(source, resumeToken = token, reread = id => { gate.await(SpecTimeouts.Io.toMillis, TimeUnit.MILLISECONDS); Some(recordOf(id)) })
     val applied = new CountDownLatch(1)

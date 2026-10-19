@@ -34,11 +34,18 @@ import scala.util.Try
  * blocks on a Mongo write per event; a clean shutdown forces one synchronous save so
  * a restart's resume is deterministic.
  */
-class ChangeStreamResumeToken(streamId: String, database: Option[MongoDatabase], enabled: Boolean) extends Logging {
+class ChangeStreamResumeToken(
+  streamId: String,
+  database: Option[MongoDatabase],
+  enabled:  Boolean,
+  // The owner's monotonic clock: what the save throttle times the gap since the last save on.
+  stopwatch: tools.Stopwatch
+) extends Logging {
   import ChangeStreamResumeToken.TokenSaveThrottleMs
 
-  private val lastToken       = new AtomicReference[BsonDocument](null)
-  private val lastTokenSaveMs = new AtomicLong(0L)
+  private val lastToken = new AtomicReference[BsonDocument](null)
+  // When the last throttled save went out — none yet, so the first is never throttled.
+  private val lastSave  = new AtomicReference[Option[tools.Stopwatch.Started]](None)
   private lazy val coll: Option[MongoCollection[Document]] =
     if (!enabled) None
     else database.map(_.getCollection[Document]("change_stream_tokens").withWriteConcern(WriteConcern.W1.withJournal(false)))
@@ -107,9 +114,8 @@ class ChangeStreamResumeToken(streamId: String, database: Option[MongoDatabase],
   def save(force: Boolean): Unit = {
     val token = lastToken.get()
     if (token != null) coll.foreach { c =>
-      val nowMs = System.currentTimeMillis()
-      if (force || nowMs - lastTokenSaveMs.get() >= TokenSaveThrottleMs) {
-        lastTokenSaveMs.set(nowMs)
+      if (force || lastSave.get().forall(_.millis >= TokenSaveThrottleMs)) {
+        lastSave.set(Some(stopwatch.start()))
         val write = c.replaceOne(Filters.eq("_id", streamId),
           Document("_id" -> streamId, "token" -> token), new ReplaceOptions().upsert(true)).toFuture()
         if (force) Try(Await.result(write, 5.seconds))

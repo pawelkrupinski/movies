@@ -17,8 +17,8 @@ import org.scalatest.matchers.should.Matchers
  */
 class SideRepositoryParitySpec extends AnyFlatSpec with Matchers {
 
-  private val screenings = new MongoScreeningsRepository(None)
-  private val slots      = new MongoSlotsRepository(None)
+  private val screenings = new MongoScreeningsRepository(None, clock = _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System)
+  private val slots      = new MongoSlotsRepository(None, clock = _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System)
 
   "an unwired side repository" should "report a per-film read as COMPLETE, not failed" in {
     withClue("screenings: ")(screenings.findForFilmChecked("film|2026") shouldBe tools.ReadOutcome.Answered(Map.empty))

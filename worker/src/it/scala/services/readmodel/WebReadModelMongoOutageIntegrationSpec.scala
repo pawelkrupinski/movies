@@ -27,7 +27,7 @@ class WebReadModelMongoOutageIntegrationSpec extends AnyFlatSpec with Matchers w
 
   "the web read model" should "serve its last good corpus through a Mongo outage, and catch up and stream again after it" in
     tools.IntegrationCorpusDatabase.withDatabase(mongoTarget, "web-readmodel-outage") { db =>
-      val writer = new MongoReadModelRepository(Some(db))
+      val writer = new MongoReadModelRepository(Some(db), stopwatch = _root_.tools.Stopwatch.System)
       writer.upsertMovie(movie("before"))
       writer.upsertScreening(screening("before|poznan", "before"))
 
@@ -36,7 +36,7 @@ class WebReadModelMongoOutageIntegrationSpec extends AnyFlatSpec with Matchers w
       val client    = MongoClient(s"mongodb://127.0.0.1:${forwarder.port}/?directConnection=true" +
         "&serverSelectionTimeoutMS=1000&connectTimeoutMS=500&socketTimeoutMS=3000")
       val reader = new MongoReadModelRepository(Some(client.getDatabase(db.name)), findAllBatchAttempts = 1,
-        findAllBatchBackoff = scala.concurrent.duration.Duration.Zero)
+        findAllBatchBackoff = scala.concurrent.duration.Duration.Zero, stopwatch = _root_.tools.Stopwatch.System)
       val model  = new WebReadModel(reader, clock = _root_.tools.SpecClock.Pinned)
       try {
         model.start()

@@ -48,9 +48,9 @@ class MoviesWriteSkippedWhenUnchangedIntegrationSpec extends AnyFlatSpec with Ma
   }
 
   private val repository = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(),
-    screenings = Some(new MongoScreeningsRepository(Some(db))),
-    slots      = Some(new MongoSlotsRepository(Some(db))),
-    normalizer = titleNormalizer)
+    screenings = Some(new MongoScreeningsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)),
+    slots      = Some(new MongoSlotsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)),
+    normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
 
   private val title = "__movies-write-skip-sentinel__"
   private val year  = Some(2026)

@@ -35,12 +35,12 @@ class ScanStitchedPagingSpec extends AnyFlatSpec with Matchers with tools.Integr
     // In a database of its own, dropped (and its client closed) even when a repository's
     // constructor throws — each opens a change-stream watcher, so construction can fail.
     tools.IsolatedMongoDatabase.withDatabase(mongoTarget, "scan-stitched-paging") { db =>
-      val screenings = new MongoScreeningsRepository(Some(db))
-      val realSlots  = new MongoSlotsRepository(Some(db))
+      val screenings = new MongoScreeningsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
+      val realSlots  = new MongoSlotsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
       val slots      = new CountingSlotsRepository(realSlots)
       // batchSize 2 so a handful of sentinels spans several pages
       val repository = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(screenings),
-        slots = Some(slots), findAllBatchSize = 2, normalizer = titleNormalizer)
+        slots = Some(slots), findAllBatchSize = 2, normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
       sentinels.zipWithIndex.foreach { case ((title, year), index) =>
         repository.upsert(title, year, MovieRecord(tmdbId = Some(6001 + index),
           data = Map[Source, SourceData](Multikino -> SourceData(
@@ -75,9 +75,9 @@ class ScanStitchedPagingSpec extends AnyFlatSpec with Matchers with tools.Integr
     // A scan holding the corpus (the boot's one read) decoded each showtime's afresh: worker-us held 1.2M
     // LocalDateTimes, each with its LocalDate and LocalTime, for a few thousand distinct instants.
     tools.IsolatedMongoDatabase.withDatabase(mongoTarget, "scan-stitched-sharing") { db =>
-      val screenings = new MongoScreeningsRepository(Some(db))
+      val screenings = new MongoScreeningsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
       val repository = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), screenings = Some(screenings),
-        slots = Some(new MongoSlotsRepository(Some(db))), findAllBatchSize = 2, normalizer = titleNormalizer)
+        slots = Some(new MongoSlotsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)), findAllBatchSize = 2, normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
       sentinels.zipWithIndex.foreach { case ((title, year), index) =>
         repository.upsert(title, year, MovieRecord(tmdbId = Some(6001 + index),
           data = Map[Source, SourceData](Multikino -> SourceData(title = Some(s"scan ${index + 1}"),

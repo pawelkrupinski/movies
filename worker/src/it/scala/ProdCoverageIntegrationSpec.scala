@@ -47,9 +47,9 @@ class ProdCoverageIntegrationSpec extends AnyFlatSpec with Matchers with BeforeA
 
   private val database = MongoClient(mongoTarget.uri.value).getDatabase(tools.RunScopedDatabaseName.fresh("prod_coverage_spec"))
 
-  private val movies     = new MongoMovieRepository(sharedDb = Some(database), clock = java.time.Clock.systemUTC(), normalizer = titleNormalizer)
-  private val slots      = new MongoSlotsRepository(Some(database))
-  private val screenings = new MongoScreeningsRepository(Some(database))
+  private val movies     = new MongoMovieRepository(sharedDb = Some(database), clock = java.time.Clock.systemUTC(), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
+  private val slots      = new MongoSlotsRepository(Some(database), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
+  private val screenings = new MongoScreeningsRepository(Some(database), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
 
   /** Two films, identical in every way that matters except WHERE their cinema slot is
    *  stored: one migrated to `movie_slots`, one still embedded on the row. */

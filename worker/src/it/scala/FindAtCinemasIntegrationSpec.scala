@@ -17,7 +17,7 @@ class FindAtCinemasIntegrationSpec extends AnyFlatSpec with Matchers with tools.
 
   "findAtCinemasChecked" should "read every row at a venue, an astral title key's included, and answer no venues as nothing" in {
     tools.IsolatedMongoDatabase.withDatabase(mongoTarget, "find-at-cinemas") { db =>
-      val screenings = new MongoScreeningsRepository(Some(db))
+      val screenings = new MongoScreeningsRepository(Some(db), clock = _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System)
       Seq("anora", "🎬 kino", "￿z").foreach(title => screenings.upsertSlot("film", s"$venue$title", listed))
       screenings.upsertSlot("film", s"Rialto${models.CinemaShowing.Separator}anora", listed)
 
@@ -25,7 +25,7 @@ class FindAtCinemasIntegrationSpec extends AnyFlatSpec with Matchers with tools.
       rows.keySet shouldBe Set(s"${venue}anora", s"$venue🎬 kino", s"$venue￿z")
 
       screenings.findAtCinemasChecked("film", Set.empty) shouldBe tools.ReadOutcome.Answered(Map.empty)
-      new MongoSlotsRepository(Some(db)).findAtCinemasChecked("film", Set.empty) shouldBe tools.ReadOutcome.Answered(Map.empty)
+      new MongoSlotsRepository(Some(db), clock = _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System).findAtCinemasChecked("film", Set.empty) shouldBe tools.ReadOutcome.Answered(Map.empty)
     }
   }
 }

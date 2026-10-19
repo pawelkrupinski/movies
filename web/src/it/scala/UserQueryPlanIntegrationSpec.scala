@@ -17,7 +17,7 @@ class UserQueryPlanIntegrationSpec extends AnyFlatSpec with Matchers with tools.
   "the users stores" should "find, write and delete an account and its state by index" in {
     val recorded = QueryPlans.of(mongoTarget, "users") { db =>
       val users  = new MongoUserRepository(Some(db))
-      val states = new MongoUserStateRepository(Some(db), _root_.tools.SpecClock.Pinned)
+      val states = new MongoUserStateRepository(Some(db), _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System)
       (1 to 10).foreach { i =>
         users.upsert(User(s"user-$i@example.com", "google", s"g-$i", Some(s"user-$i@example.com"), None, None, Now, Now))
         states.changeHiddenFilms(s"user-$i@example.com", "pl", HiddenFilmsChange.Hide(s"film-$i", bucketLimit = 100), Now)

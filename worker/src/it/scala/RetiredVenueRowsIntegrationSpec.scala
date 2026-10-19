@@ -27,8 +27,8 @@ class RetiredVenueRowsIntegrationSpec extends AnyFlatSpec with Matchers with too
 
   "RetiredVenueRows.sweep" should "remove exactly the rows of a venue the roster no longer lists" in
     tools.IntegrationCorpusDatabase.withDatabase(mongoTarget, "retired-venue-rows") { db =>
-      val screenings = new MongoScreeningsRepository(Some(db))
-      val slots      = new MongoSlotsRepository(Some(db))
+      val screenings = new MongoScreeningsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
+      val slots      = new MongoSlotsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
       def seed(filmId: String, slotKey: String): Unit = {
         screenings.upsertSlot(filmId, slotKey, ListedShowtimes(tomorrow, None))
         slots.upsertSlot(filmId, slotKey, SourceData(title = Some(filmId)))

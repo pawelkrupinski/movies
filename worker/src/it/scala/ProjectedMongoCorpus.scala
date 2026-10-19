@@ -16,11 +16,11 @@ import tools.{IntegrationCorpusDatabase, IntegrationMongoTarget}
 final class ProjectedMongoCorpus(db: MongoDatabase) {
   /** The corpus database's name — what an oplog count ([[tools.OplogWrites]]) is scoped to. */
   val databaseName: String = db.name
-  val screenings = new MongoScreeningsRepository(Some(db))
-  val slots      = new MongoSlotsRepository(Some(db))
+  val screenings = new MongoScreeningsRepository(Some(db), clock = _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System)
+  val slots      = new MongoSlotsRepository(Some(db), clock = _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System)
   val repository = new MongoMovieRepository(Some(db), _root_.tools.SpecClock.Pinned, screenings = Some(screenings), slots = Some(slots),
-    normalizer = titleNormalizer)
-  val readModel  = new MongoReadModelRepository(Some(db))
+    normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
+  val readModel  = new MongoReadModelRepository(Some(db), stopwatch = _root_.tools.Stopwatch.System)
   val projector  = new ReadModelProjector(repository, readModel, readModel, clock = tools.SpecClock.Pinned)
   val sweeper    = new ReadModelSweeper(projector.projection)
 

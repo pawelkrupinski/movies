@@ -59,7 +59,7 @@ class ScreeningsWriteMetricIntegrationSpec extends AnyFlatSpec with Matchers wit
   }
 
   private val counting   = new Counting
-  private val repository = new MongoScreeningsRepository(Some(db), metrics = counting)
+  private val repository = new MongoScreeningsRepository(Some(db), metrics = counting, clock = _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System)
   private val filmId     = "__screenings-write-metric-sentinel__|2026"
   private val showtimes  = Seq(Showtime(LocalDateTime.of(2026, 8, 1, 20, 0), None))
 

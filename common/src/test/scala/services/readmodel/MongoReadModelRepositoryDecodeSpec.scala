@@ -28,7 +28,7 @@ class MongoReadModelRepositoryDecodeSpec extends AnyFlatSpec with Matchers {
   private val codec = ReadModelCodecs.registry.get(classOf[ResolvedMovie])
   // sharedDb = None → a no-op repository (no Mongo I/O); only `decodeTolerant` is under test.
   private val skipped = scala.collection.mutable.ListBuffer.empty[String]
-  private val repo  = new MongoReadModelRepository(None, decodeFailures = collection => { skipped += collection; () })
+  private val repo  = new MongoReadModelRepository(None, decodeFailures = collection => { skipped += collection; () }, stopwatch = _root_.tools.Stopwatch.System)
 
   private def movie(id: String): ResolvedMovie = ResolvedMovie(
     _id = id, title = "T", originalTitle = None, posterUrl = None, fallbackPosterUrls = Seq.empty,

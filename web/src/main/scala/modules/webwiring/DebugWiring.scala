@@ -101,15 +101,15 @@ trait DebugWiring { self: Wiring =>
           processConfiguration.mirrorMongoUri,
           MongoConnection.mirrorForDb(_, country.mongoDb, sharedClient = Some(client)),
           MongoConnection.forDatabase(mongoAddress.uri, settings.MongoDatabaseName(country.mongoDb), required = services.MongoRequirement.Optional, mongoTuning, sharedClient = Some(client)))
-        val screenings = new services.movies.MongoScreeningsRepository(conn.database)
-        val slots      = new services.movies.MongoSlotsRepository(conn.database)
-        val reader     = new MongoReadModelRepository(conn.database)
+        val screenings = new services.movies.MongoScreeningsRepository(conn.database, clock = clock, stopwatch = stopwatch)
+        val slots      = new services.movies.MongoSlotsRepository(conn.database, clock = clock, stopwatch = stopwatch)
+        val reader     = new MongoReadModelRepository(conn.database, stopwatch = stopwatch)
         // THIS stack's country, not the serving one: /debug reads another
         // country's database, and folding its titles with the serving country's
         // rules would key rows the way no worker ever wrote them.
         val normalizer = services.movies.TitleNormalizer.forCountry(country)
         val repository = new MongoMovieRepository(conn.database, clock,
-          screenings = Some(screenings), slots = Some(slots), normalizer = normalizer)
+          screenings = Some(screenings), slots = Some(slots), normalizer = normalizer, stopwatch = stopwatch)
         val freshness  = mirrorFreshnessOf(conn)
         val listing    = debugSnapshot(s"/debug listing ${country.code}", freshness)(CorpusListing.read(repository))
         val cadence    = debugSnapshot(s"/debug/cadence ${country.code}", freshness)(

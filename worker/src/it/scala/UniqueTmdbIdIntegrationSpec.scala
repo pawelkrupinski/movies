@@ -23,7 +23,7 @@ class UniqueTmdbIdIntegrationSpec extends AnyFlatSpec with Matchers with tools.I
 
   "the movies collection" should "refuse a second document claiming a tmdbId another one holds, and leave unresolved rows alone" in
     tools.IntegrationCorpusDatabase.withDatabase(mongoTarget, "unique-tmdbid") { db =>
-      val repository = new MongoMovieRepository(Some(db), _root_.tools.SpecClock.Pinned, normalizer = titleNormalizer)
+      val repository = new MongoMovieRepository(Some(db), _root_.tools.SpecClock.Pinned, normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
       try {
         repository.enabled shouldBe true
         val indexes = Await.result(db.getCollection[Document]("movies").listIndexes().toFuture(), SpecTimeouts.Io)
@@ -50,7 +50,7 @@ class UniqueTmdbIdIntegrationSpec extends AnyFlatSpec with Matchers with tools.I
   // cache refuses a second at write time and the store refuses the one a race lets by.
   it should "refuse a second document under a key another film already holds" in
     tools.IntegrationCorpusDatabase.withDatabase(mongoTarget, "unique-key") { db =>
-      val repository = new MongoMovieRepository(Some(db), _root_.tools.SpecClock.Pinned, normalizer = titleNormalizer)
+      val repository = new MongoMovieRepository(Some(db), _root_.tools.SpecClock.Pinned, normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
       try {
         repository.enabled shouldBe true
         val indexes = Await.result(db.getCollection[Document]("movies").listIndexes().toFuture(), SpecTimeouts.Io)

@@ -40,7 +40,7 @@ trait UsersWiring { self: Wiring =>
   // these sequences.
   lazy val userRepository:      UserRepository      = new MongoUserRepository(usersConnection.database)
   lazy val userStateRepository: UserStateRepository = new MongoUserStateRepository(usersConnection.database, clock,
-    writeOutcomes = userStateWriteMetrics, indexHealth = userStateIndexMetrics, decodeFailures = webDecodeFailureMetrics)
+    writeOutcomes = userStateWriteMetrics, indexHealth = userStateIndexMetrics, decodeFailures = webDecodeFailureMetrics, stopwatch = stopwatch)
 
   // The last-1000-active-users change-time cache behind `hiddenFilms()`'s
   // fast path — see `CaffeineUserChangeTimeCache`'s doc comment for why it

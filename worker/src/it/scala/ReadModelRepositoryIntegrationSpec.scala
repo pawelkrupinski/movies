@@ -24,7 +24,7 @@ class ReadModelRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with 
 
   private val isolated = tools.IsolatedMongoDatabase.open(mongoTarget, "readmodel-repository")
   private val db       = isolated.database
-  private val rm       = new MongoReadModelRepository(Some(db))
+  private val rm       = new MongoReadModelRepository(Some(db), stopwatch = _root_.tools.Stopwatch.System)
 
   override protected def afterAll(): Unit = try { rm.close(); isolated.drop() } finally super.afterAll()
 
@@ -61,7 +61,7 @@ class ReadModelRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with 
     Seq("fitwide" -> java.awt.Color.RED, "fitnarrow" -> java.awt.Color.GREEN, "Diuna|2021" -> java.awt.Color.BLUE, "fitelsewhere" -> java.awt.Color.YELLOW)
       .foreach { case (film, colour) => store.writeAtomically(store.posterPath(film), poster(colour), film) }
     val read = collection.mutable.Buffer.empty[String]
-    val reading = new MongoReadModelRepository(Some(db)) {
+    val reading = new MongoReadModelRepository(Some(db), stopwatch = _root_.tools.Stopwatch.System) {
       override def findAllScreeningRefsChecked() = { val refs = super.findAllScreeningRefsChecked(); refs.answered.foreach(_.flatMap(_.citySlug).foreach(read += _)); refs }
     }
     val service = new services.sharecards.CityCardService(Country.Poland, store, reading, new services.tasks.InMemoryTaskQueue,
@@ -110,7 +110,7 @@ class ReadModelRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with 
   "findAllScreeningRefs" should "hand every row of a film the one filmId string" in {
     tools.IsolatedMongoDatabase.withDatabase(mongoTarget, "rm-refs-shared") { db =>
       import models.CityScreening
-      val rm = new MongoReadModelRepository(Some(db), findAllBatchSize = 2)
+      val rm = new MongoReadModelRepository(Some(db), findAllBatchSize = 2, stopwatch = _root_.tools.Stopwatch.System)
       Seq("a", "b", "c", "d", "e").foreach(v => rm.upsertScreening(CityScreening(_id = s"__it-rm-shared__|poznan|$v", filmId = "__it-rm-shared__",
         city = "poznan", cinema = v, filmUrl = None, showtimes = Nil)))
       val refs = rm.findAllScreeningRefsChecked().required.filter(_.filmId == "__it-rm-shared__")
@@ -123,7 +123,7 @@ class ReadModelRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with 
     import services.readmodel.ShareCardRef
     val ownDb   = tools.IntegrationCorpusDatabase.named(mongoTarget, "readmodel-sharecards")
     val client2 = MongoClient(mongoTarget.uri.value)
-    val fresh   = new MongoReadModelRepository(Some(client2.getDatabase(ownDb)))
+    val fresh   = new MongoReadModelRepository(Some(client2.getDatabase(ownDb)), stopwatch = _root_.tools.Stopwatch.System)
     try {
       val film = resolvedMovie("__it-rm-sharecard__").copy(posterUrl = Some("https://cdn.example/a.jpg"),
         fallbackPosterUrls = Seq("https://cdn.example/b.jpg"), shareCard = Some("f1.jpg?v=0123456789abcdef"),
@@ -149,7 +149,7 @@ class ReadModelRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with 
     import models.CityScreening
     val ownDb   = tools.IntegrationCorpusDatabase.named(mongoTarget, "readmodel-indexes")
     val client2 = MongoClient(mongoTarget.uri.value)
-    val fresh   = new MongoReadModelRepository(Some(client2.getDatabase(ownDb)))
+    val fresh   = new MongoReadModelRepository(Some(client2.getDatabase(ownDb)), stopwatch = _root_.tools.Stopwatch.System)
     try {
       // The collection does not exist until something is written to it.
       fresh.upsertScreening(CityScreening(_id = "__it-rm-index__", filmId = "__it-rm-index-film__",
@@ -170,7 +170,7 @@ class ReadModelRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with 
 
   "findAllScreenings" should "page across batch boundaries, returning every written screening exactly once in _id order" in {
     import models.CityScreening
-    val paged = new MongoReadModelRepository(Some(db), findAllBatchSize = 2)
+    val paged = new MongoReadModelRepository(Some(db), findAllBatchSize = 2, stopwatch = _root_.tools.Stopwatch.System)
     val ids   = (0 until 5).map(i => s"__it-rm-page-${i}__")
     val docs  = ids.map(id => CityScreening(_id = id, filmId = "__it-rm-page-film__",
       city = "poznan", cinema = "Cinema", filmUrl = None, showtimes = Nil))
@@ -189,7 +189,7 @@ class ReadModelRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with 
   // the same `pagedIds` helper, so this covers both.
   "findAllScreeningRefs" should "page across batch boundaries, returning every ref exactly once" in {
     import models.CityScreening
-    val paged = new MongoReadModelRepository(Some(db), findAllBatchSize = 2)
+    val paged = new MongoReadModelRepository(Some(db), findAllBatchSize = 2, stopwatch = _root_.tools.Stopwatch.System)
     val ids   = (0 until 5).map(i => s"__it-rm-ref-${i}__")
     val docs  = ids.map(id => CityScreening(_id = id, filmId = "__it-rm-ref-film__",
       city = "poznan", cinema = "Cinema", filmUrl = None, showtimes = Nil))
@@ -211,7 +211,7 @@ class ReadModelRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with 
   "a watch from a stream checkpoint" should "replay a write made after the checkpoint but before the watch opened" in
     tools.IsolatedMongoDatabase.withDatabase(mongoTarget, "readmodel-checkpoint") { own =>
       import models.CityScreening
-      val isolated   = new MongoReadModelRepository(Some(own))
+      val isolated   = new MongoReadModelRepository(Some(own), stopwatch = _root_.tools.Stopwatch.System)
       val id         = "__it-rm-checkpoint__"
       val seen       = new java.util.concurrent.ConcurrentLinkedQueue[String]()
       val checkpoint = isolated.streamCheckpoint().answered

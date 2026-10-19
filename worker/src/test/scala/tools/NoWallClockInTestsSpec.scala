@@ -44,8 +44,9 @@ class NoWallClockInTestsSpec extends AnyFlatSpec with Matchers {
   // it without a Clock seam — the spec's data has to be relative to that same clock — so the
   // way to shrink this list is to give that code a Clock, not to widen the list.
   private val MongoPath =
-    "the Mongo repositories stamp updatedAt and filter upcoming showtimes with the system clock (no Clock seam " +
-      "on the Mongo path), so rows are built relative to it"
+    "written while the Mongo repositories stamped updatedAt with the system clock: it still hands them " +
+      "Clock.systemUTC() and dates its showtimes off the wall clock — to move onto a pinned clock, which the " +
+      "repositories now take (2026-10-20)"
   private val FileAges =
     "the fixture enrichment cache ages entries by file mtime against the real clock (FileTime); it records live " +
       "responses, outside any spec's timeline"
@@ -188,11 +189,7 @@ class NoWallClockInTestsSpec extends AnyFlatSpec with Matchers {
   // wiring's `tools.Stopwatch`, handed down like its clock.
 
   /** `file:parameter` → why that main-source parameter may still default to the wall clock. */
-  private val MainDefaultAllowlist: Map[String, String] = Map(
-    "common/src/main/scala/services/movies/ChangeEventDecoder.scala:nanoTime" ->
-      ("its log throttle's monotonic source; a required Stopwatch would ride ChangeEventDecoder.of → MovieChangeStream → " +
-        "MongoMovieRepository (87 constructions) and MongoReadModelRepository (35) — a follow-up of its own")
-  )
+  private val MainDefaultAllowlist: Map[String, String] = Map.empty
 
   /** A time read: the wall clock's (`X.now()` / paren-less `X.now`, `currentTimeMillis`) or the monotonic one's
    *  (`System.nanoTime`, `Stopwatch.System`'s source) — a defaulted elapsed-time seam escapes the wiring's

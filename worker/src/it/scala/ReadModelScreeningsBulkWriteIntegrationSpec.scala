@@ -25,7 +25,7 @@ class ReadModelScreeningsBulkWriteIntegrationSpec extends AnyFlatSpec with Match
         override def commandStarted(event: CommandStartedEvent): Unit = { commands.add(event.getCommandName); () }
       }).build())
     val db = client.getDatabase(tools.IntegrationCorpusDatabase.named(mongoTarget, "readmodel-bulk-screenings"))
-    val rm = new MongoReadModelRepository(Some(db))
+    val rm = new MongoReadModelRepository(Some(db), stopwatch = _root_.tools.Stopwatch.System)
     def screening(i: Int, cinema: String) =
       CityScreening(_id = s"film|venue-$i", filmId = "film", city = "poznan", cinema = cinema, filmUrl = None, showtimes = Nil)
     try {

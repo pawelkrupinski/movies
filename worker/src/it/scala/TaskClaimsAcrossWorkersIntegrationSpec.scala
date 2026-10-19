@@ -79,7 +79,7 @@ class TaskClaimsAcrossWorkersIntegrationSpec extends AnyFlatSpec with Matchers w
   // worker claims the occurrence id, and only the first insert wins (7b83a67d8).
   "two workers claiming the same scheduled occurrences at once" should "each run a disjoint half, together all of them" in
     ConcurrentInstances.withInstances(mongoTarget, "scheduled-runs-two-workers") { instances =>
-      val stores = instances.map(instance => new MongoScheduledRunStore(instance.database.getCollection("scheduledRuns")))
+      val stores = instances.map(instance => new MongoScheduledRunStore(instance.database.getCollection("scheduledRuns"), clock = _root_.tools.MongoTtlSpecClock.Pinned))
       rounds(4, tools.ConcurrentInstances.baseSeed(configuration)) { round =>
         val occurrences = (1 to 25).map(i => s"sweep|round-${round.number}|$i")
         val claimed = successes(race(stores.map(store => () => occurrences.filter(store.claim)), Some(round)))

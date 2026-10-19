@@ -51,9 +51,9 @@ class ListingKeyDualWriteIntegrationSpec extends AnyFlatSpec with Matchers with 
 
   "every repository write path" should "stamp movie_slots and screenings with the row's listing key" in {
     IsolatedMongoDatabase.withDatabase(mongoTarget, "listing-key-dual-write") { db =>
-      val screenings = new MongoScreeningsRepository(Some(db))
-      val slots      = new MongoSlotsRepository(Some(db))
-      val repository = new MongoMovieRepository(Some(db), _root_.tools.SpecClock.Pinned, screenings = Some(screenings), slots = Some(slots), normalizer = titleNormalizer)
+      val screenings = new MongoScreeningsRepository(Some(db), clock = _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System)
+      val slots      = new MongoSlotsRepository(Some(db), clock = _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System)
+      val repository = new MongoMovieRepository(Some(db), _root_.tools.SpecClock.Pinned, screenings = Some(screenings), slots = Some(slots), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
       val (title, year) = ("Belle", Some(2013))
       val id = StoredMovieRecord.keyFor(title, year, titleNormalizer)
       def rowId(s: Source) = SlotKeyed.idOf(id, s.displayName)
@@ -92,8 +92,8 @@ class ListingKeyDualWriteIntegrationSpec extends AnyFlatSpec with Matchers with 
 
   "movie_slots and screenings" should "index listingKey, so a read by one listing is an index scan, not a collection scan" in {
     IsolatedMongoDatabase.withDatabase(mongoTarget, "listing-key-index") { db =>
-      val screenings = new MongoScreeningsRepository(Some(db))
-      val slots      = new MongoSlotsRepository(Some(db))
+      val screenings = new MongoScreeningsRepository(Some(db), clock = _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System)
+      val slots      = new MongoSlotsRepository(Some(db), clock = _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System)
       slots.upsertSlot("belle|2013", paged.displayName, pagedSlot)
       screenings.upsertSlot("belle|2013", paged.displayName, ListedShowtimes(pagedSlot.showtimes, Some(pagedKey)))
       Seq(SlotsRepository.Collection, ScreeningsRepository.Collection).foreach { collection =>

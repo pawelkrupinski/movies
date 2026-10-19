@@ -19,10 +19,10 @@ class ProjectedPatchIntegrationSpec extends AnyFlatSpec with Matchers with tools
         val opened    = scala.collection.mutable.ListBuffer.empty[MongoMovieRepository]
         def world(): ProjectedPatchCheck.World = {
           val db         = databases.dequeue()
-          val screenings = new CountingScreeningsRepository(new MongoScreeningsRepository(Some(db)))
-          val slots      = new CountingSlotsRepository(new MongoSlotsRepository(Some(db)))
+          val screenings = new CountingScreeningsRepository(new MongoScreeningsRepository(Some(db), clock = _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System))
+          val slots      = new CountingSlotsRepository(new MongoSlotsRepository(Some(db), clock = _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System))
           val repository = new MongoMovieRepository(Some(db), _root_.tools.SpecClock.Pinned, screenings = Some(screenings),
-            slots = Some(slots), normalizer = titleNormalizer)
+            slots = Some(slots), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
           opened += repository
           ProjectedPatchCheck.World(new CaffeineMovieCache(repository, normalizer = titleNormalizer, clock = _root_.tools.SpecClock.Pinned),
             repository, screenings, slots)

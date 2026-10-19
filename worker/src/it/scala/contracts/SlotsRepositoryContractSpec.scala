@@ -7,7 +7,7 @@ import org.mongodb.scala.SingleObservableFuture
 import org.scalatest.BeforeAndAfterAll
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
-import services.movies.{InMemorySlotsRepository, SlotsRepository, WriteOutcome}
+import services.movies.{InMemorySlotsRepository, SlotKeyed, SlotsRepository, WriteOutcome}
 import services.movies.InMemoryMovieRepository
 import tools.contracts.Implementations
 import tools.IsolatedMongoDatabase
@@ -28,13 +28,14 @@ class SlotsRepositoryContractSpec extends AnyFlatSpec with Matchers with BeforeA
   private lazy val database = isolatedDatabase.database
   override protected def afterAll(): Unit = try isolatedDatabase.drop() finally super.afterAll()
 
-  private def fresh(cls: Class[? <: SlotsRepository]): SlotsRepository = {
+  private def fresh(cls: Class[? <: SlotsRepository], clock: java.time.Clock): SlotsRepository = {
     Await.result(database.getCollection(SlotsRepository.Collection).drop().toFuture(), SpecTimeouts.Io)
     Implementations.construct(cls, _.getTypeName match {
       case "scala.Option<org.mongodb.scala.MongoDatabase>" => Some(Some(database))
-      case "java.time.Clock"                               => Some(_root_.tools.SpecClock.Pinned)
+      case "java.time.Clock"                               => Some(clock)
+      case "tools.Stopwatch"                               => Some(_root_.tools.Stopwatch.System)
       // A decorator (the fixpoint harness's write counter) is held to the contract over the in-memory store.
-      case "services.movies.SlotsRepository"              => Some(new InMemorySlotsRepository(_root_.tools.SpecClock.Pinned))
+      case "services.movies.SlotsRepository"              => Some(new InMemorySlotsRepository(clock))
       case _                                               => None
     }).fold(missing => fail(missing), identity)
   }
@@ -54,7 +55,7 @@ class SlotsRepositoryContractSpec extends AnyFlatSpec with Matchers with BeforeA
     val name = cls.getSimpleName
 
     it should s"[$name] set a film's slots to exactly what replaceFilm names, leaving other films alone" in {
-      val slots = fresh(cls)
+      val slots = fresh(cls, _root_.tools.SpecClock.Pinned)
       slots.replaceFilm("film|2026", Map("Helios" -> slot("Film"), "Multikino" -> slot("Film"))) shouldBe WriteOutcome.Written
       slots.replaceFilm("other|2026", Map("Helios" -> slot("Other"))) shouldBe WriteOutcome.Written
       slots.replaceFilm("film|2026", Map("Multikino" -> slot("Film (2D)"))) shouldBe WriteOutcome.Written
@@ -65,7 +66,7 @@ class SlotsRepositoryContractSpec extends AnyFlatSpec with Matchers with BeforeA
     }
 
     it should s"[$name] upsert, delete one, and delete a whole film's slots" in {
-      val slots = fresh(cls)
+      val slots = fresh(cls, _root_.tools.SpecClock.Pinned)
       slots.upsertSlot("film|2026", "Helios", slot("Film"))
       slots.upsertSlot("film|2026", "Multikino", slot("Film"))
       slots.upsertSlot("film|2026", "Helios", slot("Film, again"))
@@ -79,14 +80,29 @@ class SlotsRepositoryContractSpec extends AnyFlatSpec with Matchers with BeforeA
     }
 
     it should s"[$name] read several films at once, completely, and only those asked for" in {
-      val slots = fresh(cls)
+      val slots = fresh(cls, _root_.tools.SpecClock.Pinned)
       Seq("a|2026", "b|2026", "c|2026").foreach(id => slots.upsertSlot(id, "Helios", slot(id)))
       slots.findForFilmsChecked(Set("a|2026", "c|2026", "absent|2026")) shouldBe
         tools.ReadOutcome.Answered(Map("a|2026" -> Map("Helios" -> slot("a|2026")), "c|2026" -> Map("Helios" -> slot("c|2026"))))
     }
 
+    it should s"[$name] stamp each row a write changes with its own clock's instant, on every write path" in {
+      val clock = new _root_.tools.MutableClock(_root_.tools.SpecClock.Pinned.instant())
+      val slots = fresh(cls, clock)
+      val start = clock.instant()
+      slots.replaceFilm("a|2026", Map("Helios" -> slot("A")))
+      clock.advanceSeconds(60)
+      slots.upsertSlot("b|2026", "Helios", slot("B"))
+      clock.advanceSeconds(60)
+      slots.upsertSlots("c|2026", Map("Helios" -> slot("C")))
+      slots.rowWrittenAtChecked() shouldBe tools.ReadOutcome.Answered(Map(
+        SlotKeyed.idOf("a|2026", "Helios") -> start,
+        SlotKeyed.idOf("b|2026", "Helios") -> start.plusSeconds(60),
+        SlotKeyed.idOf("c|2026", "Helios") -> start.plusSeconds(120)))
+    }
+
     it should s"[$name] never keep a slot's cache-only fields" in {
-      val slots  = fresh(cls)
+      val slots  = fresh(cls, _root_.tools.SpecClock.Pinned)
       val cached = slot("Film").copy(showtimesDigest = Some(42), showtimeStartMinutes = Some(IArray(1, 2)))
       slots.upsertSlot("film|2026", "Helios", cached)
       slots.replaceFilm("other|2026", Map("Helios" -> cached))

@@ -49,10 +49,10 @@ class RepositoryWriteFailureIntegrationSpec extends AnyFlatSpec with Matchers wi
   }
   private val Recording = new Recorder
 
-  private val screenings = new MongoScreeningsRepository(Some(db), writeMetrics = Recording)
-  private val slots      = new MongoSlotsRepository(Some(db), writeMetrics = Recording)
+  private val screenings = new MongoScreeningsRepository(Some(db), writeMetrics = Recording, clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
+  private val slots      = new MongoSlotsRepository(Some(db), writeMetrics = Recording, clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
   private val repository = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(), normalizer = titleNormalizer,
-    screenings = Some(screenings), slots = Some(slots), writeMetrics = Recording)
+    screenings = Some(screenings), slots = Some(slots), writeMetrics = Recording, stopwatch = _root_.tools.Stopwatch.System)
 
   override protected def afterAll(): Unit = {
     repository.close()
@@ -102,8 +102,8 @@ class RepositoryWriteFailureIntegrationSpec extends AnyFlatSpec with Matchers wi
       await(viewDb.createView(SlotsRepository.Collection, "backing", Seq.empty).toFuture())
       await(viewDb.createView(ScreeningsRepository.Collection, "backing", Seq.empty).toFuture())
       val metrics = new Recorder
-      val viewSlots      = new MongoSlotsRepository(Some(viewDb), writeMetrics = metrics)
-      val viewScreenings = new MongoScreeningsRepository(Some(viewDb), writeMetrics = metrics)
+      val viewSlots      = new MongoSlotsRepository(Some(viewDb), writeMetrics = metrics, clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
+      val viewScreenings = new MongoScreeningsRepository(Some(viewDb), writeMetrics = metrics, clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
 
       viewSlots.deleteRows(Set("__repository-delete-failure-sentinel__␟Multikino")) shouldBe 0L
       viewSlots.deleteFilms(Set("__repository-delete-failure-sentinel__")) shouldBe 0L

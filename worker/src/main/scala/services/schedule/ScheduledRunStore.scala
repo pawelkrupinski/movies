@@ -9,7 +9,6 @@ import org.mongodb.scala.model.Indexes
 import play.api.Logging
 import services.MongoErrors
 
-import java.time.Instant
 import java.util.concurrent.TimeUnit
 import scala.concurrent.Await
 import scala.concurrent.duration._
@@ -50,12 +49,12 @@ object AlwaysClaimScheduledRunStore extends ScheduledRunStore {
  * (11000) error, caught and returned as `false` — the same dup-key-insert idiom
  * as `MongoTaskQueue` (see [[services.MongoErrors]]).
  *
- * A TTL index on `claimedAt` (`expireAfter` 48h) lets Mongo delete stale
+ * `claimedAt` is the wiring's clock's instant. A TTL index on it (`expireAfter` 48h) lets Mongo delete stale
  * occurrence documents, so the collection doesn't grow without bound (a document per
  * occurrence per window — ~1/min for the scrape reaper). Created fire-and-forget
  * at construction, matching `MongoTaskQueue`'s index init.
  */
-class MongoScheduledRunStore(coll: MongoCollection[Document]) extends ScheduledRunStore with Logging {
+class MongoScheduledRunStore(coll: MongoCollection[Document], clock: java.time.Clock) extends ScheduledRunStore with Logging {
 
   locally {
     val thread = new Thread(() => {
@@ -75,7 +74,7 @@ class MongoScheduledRunStore(coll: MongoCollection[Document]) extends ScheduledR
     Try {
       Await.result(coll.insertOne(Document(
         "_id"       -> BsonString(occurrenceId),
-        "claimedAt" -> BsonDateTime(Instant.now().toEpochMilli)
+        "claimedAt" -> BsonDateTime(clock.millis())
       )).toFuture(), 10.seconds)
       true
     }.recover {

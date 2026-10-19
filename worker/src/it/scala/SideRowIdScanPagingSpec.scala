@@ -38,8 +38,8 @@ class SideRowIdScanPagingSpec extends AnyFlatSpec with Matchers with tools.Integ
     val client = MongoClient(settings)
     val db     = client.getDatabase(tools.IntegrationCorpusDatabase.named(mongoTarget, "side-row-id-paging"))
     try {
-      val screenings = new MongoScreeningsRepository(Some(db), findAllBatchSize = PageSize)
-      val slots      = new MongoSlotsRepository(Some(db), findAllBatchSize = PageSize)
+      val screenings = new MongoScreeningsRepository(Some(db), findAllBatchSize = PageSize, clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
+      val slots      = new MongoSlotsRepository(Some(db), findAllBatchSize = PageSize, clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
       val when       = LocalDateTime.now().plusDays(2).withNano(0)
       (1 to Films).foreach { n =>
         screenings.upsertSlot(s"film$n|2026", s"Kino␟film $n", ListedShowtimes(Seq(Showtime(when, None)), None))
@@ -81,7 +81,7 @@ class SideRowIdScanPagingSpec extends AnyFlatSpec with Matchers with tools.Integ
     val client = MongoClient(settings)
     val db     = client.getDatabase(tools.IntegrationCorpusDatabase.named(mongoTarget, "side-row-exists"))
     try {
-      val screenings = new MongoScreeningsRepository(Some(db), findAllBatchSize = PageSize)
+      val screenings = new MongoScreeningsRepository(Some(db), findAllBatchSize = PageSize, clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
       val when       = LocalDateTime.now().plusDays(2).withNano(0)
       (1 to Films).foreach(n => screenings.upsertSlot(s"film$n|2026", s"Kino␟film $n", ListedShowtimes(Seq(Showtime(when, None)), None)))
       val asked = Set(SlotKeyed.idOf("film2|2026", "Kino␟film 2"), SlotKeyed.idOf("film5|2026", "Kino␟film 5"), SlotKeyed.idOf("film9|2026", "Kino␟film 9"))
@@ -114,8 +114,8 @@ class SideRowIdScanPagingSpec extends AnyFlatSpec with Matchers with tools.Integ
     val client = MongoClient(settings)
     val db     = client.getDatabase(tools.IntegrationCorpusDatabase.named(mongoTarget, "side-row-batches"))
     try {
-      val screenings = new MongoScreeningsRepository(Some(db), findAllBatchSize = PageSize)
-      val slots      = new MongoSlotsRepository(Some(db), findAllBatchSize = PageSize)
+      val screenings = new MongoScreeningsRepository(Some(db), findAllBatchSize = PageSize, clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
+      val slots      = new MongoSlotsRepository(Some(db), findAllBatchSize = PageSize, clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
       val when       = LocalDateTime.now().plusDays(2).withNano(0)
       (1 to Films).foreach { n =>
         screenings.upsertSlot(s"film$n|2026", s"Kino␟film $n", ListedShowtimes(Seq(Showtime(when, None)), None))

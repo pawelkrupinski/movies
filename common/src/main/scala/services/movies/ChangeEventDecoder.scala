@@ -35,12 +35,12 @@ final class ChangeEventDecoder[T](
   collection: String,
   decoder:    Decoder[T],
   failures:   DecodeFailureMetrics,
-  // Monotonic nanoseconds for the log's rate limit — injected so a spec can step it.
-  nanoTime:   () => Long = () => System.nanoTime()
+  // The wiring's monotonic clock, for the log's rate limit — a spec steps its own.
+  stopwatch:  tools.Stopwatch
 ) extends Logging {
   import ChangeEventDecoder.PostImage
 
-  private val throttle = new tools.LogThrottle(ChangeEventDecoder.LogIntervalNanos, new tools.Stopwatch(nanoTime))
+  private val throttle = new tools.LogThrottle(ChangeEventDecoder.LogIntervalNanos, stopwatch)
 
   /** The event's post-image, decoded — `Absent` when it carries none (a delete, a drop). */
   def postImage(change: ChangeStreamDocument[BsonDocument]): PostImage[T] =
@@ -87,8 +87,8 @@ object ChangeEventDecoder {
   private[movies] val LogIntervalNanos: Long = 60L * 1000 * 1000 * 1000
 
   /** The decoder for `T` out of the registry the collection itself decodes with. */
-  def of[T: ClassTag](collection: String, registry: CodecRegistry, failures: DecodeFailureMetrics): ChangeEventDecoder[T] =
-    new ChangeEventDecoder(collection, registry.get(implicitly[ClassTag[T]].runtimeClass.asInstanceOf[Class[T]]), failures)
+  def of[T: ClassTag](collection: String, registry: CodecRegistry, failures: DecodeFailureMetrics, stopwatch: tools.Stopwatch): ChangeEventDecoder[T] =
+    new ChangeEventDecoder(collection, registry.get(implicitly[ClassTag[T]].runtimeClass.asInstanceOf[Class[T]]), failures, stopwatch)
 
   private def idOf(raw: BsonDocument): String =
     Option(raw.get("_id")).map(v => if (v.isString) v.asString.getValue else v.toString).getOrElse("<none>")

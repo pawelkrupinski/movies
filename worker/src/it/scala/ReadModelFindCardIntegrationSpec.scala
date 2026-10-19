@@ -21,7 +21,7 @@ class ReadModelFindCardIntegrationSpec extends AnyFlatSpec with Matchers with to
 
   "findCard" should "read back every card of the corpus, its screenings and nothing else, and compare equal to what was written" in {
     IntegrationCorpusDatabase.withDatabase(mongoTarget, "readmodel-findcard") { db =>
-      val rm       = new MongoReadModelRepository(Some(db))
+      val rm       = new MongoReadModelRepository(Some(db), stopwatch = _root_.tools.Stopwatch.System)
       val snapshot = ReadModelSnapshot.parse(ReadModelSnapshot.read())
       ReadModelSnapshot.loadInto(rm, ReadModelSnapshot.read())
       val rowsByCard = snapshot.screenings.groupBy(_.filmId)

@@ -27,18 +27,34 @@ class ChangeStreamResumeTokenIntegrationSpec extends AnyFlatSpec with Matchers w
   private val token = new BsonDocument("_data", new BsonString("826A92A31D00000103"))
 
   "ChangeStreamResumeToken.load" should "answer absent when no position was ever saved" in {
-    new ChangeStreamResumeToken("never-saved", Some(isolated.database), enabled = true).load() shouldBe a[ReadOutcome.Absent]
+    new ChangeStreamResumeToken("never-saved", Some(isolated.database), enabled = true, stopwatch = _root_.tools.Stopwatch.System).load() shouldBe a[ReadOutcome.Absent]
   }
 
   it should "answer the position a save persisted" in {
-    val saved = new ChangeStreamResumeToken("saved", Some(isolated.database), enabled = true)
+    val saved = new ChangeStreamResumeToken("saved", Some(isolated.database), enabled = true, stopwatch = _root_.tools.Stopwatch.System)
     saved.advance(token, saved.generation)
     saved.save(force = true)
-    new ChangeStreamResumeToken("saved", Some(isolated.database), enabled = true).load() shouldBe ReadOutcome.Answered(token)
+    new ChangeStreamResumeToken("saved", Some(isolated.database), enabled = true, stopwatch = _root_.tools.Stopwatch.System).load() shouldBe ReadOutcome.Answered(token)
   }
 
-  it should "answer FAILED, not absent, when the position cannot be read" in {
-    val blind = new ChangeStreamResumeToken("blind", Some(unreachable.getDatabase("resume-token")), enabled = true)
+  "ChangeStreamResumeToken.save" should "time its throttle window on the stopwatch it is handed, not the process's clock" in {
+    var nanos     = 0L
+    val stopwatch = new _root_.tools.Stopwatch(() => nanos)
+    val throttled = new ChangeStreamResumeToken("throttled", Some(isolated.database), enabled = true, stopwatch = stopwatch)
+    def persisted = new ChangeStreamResumeToken("throttled", Some(isolated.database), enabled = true, stopwatch = _root_.tools.Stopwatch.System).load()
+    val later     = new BsonDocument("_data", new BsonString("826A92A31D00000104"))
+    throttled.advance(token, throttled.generation)
+    throttled.save(force = false)
+    tools.Eventually.eventually(persisted shouldBe ReadOutcome.Answered(token))
+    // The window has passed on the handed stopwatch, though barely any real time has: the next save goes out.
+    nanos += 5_000_000_000L
+    throttled.advance(later, throttled.generation)
+    throttled.save(force = false)
+    tools.Eventually.eventually(persisted shouldBe ReadOutcome.Answered(later))
+  }
+
+  "ChangeStreamResumeToken.load" should "answer FAILED, not absent, when the position cannot be read" in {
+    val blind = new ChangeStreamResumeToken("blind", Some(unreachable.getDatabase("resume-token")), enabled = true, stopwatch = _root_.tools.Stopwatch.System)
     blind.load() shouldBe a[ReadOutcome.Failed]
     // …so the open is deferred to the reopen backoff a few times — and then opens anyway, at
     // now: a cursor that never opens is worse than one that skips.

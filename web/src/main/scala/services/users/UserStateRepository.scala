@@ -99,6 +99,8 @@ class MongoUserStateRepository(
   database: Option[MongoDatabase],
   // The composition root's clock: the `userStates` cursor's liveness ages on it.
   clock: java.time.Clock,
+  // The composition root's monotonic clock: the cursor's decoder log throttle times on it.
+  stopwatch: tools.Stopwatch,
   // The reopen driver for the `userStates` cursor. Production schedules on a daemon
   // thread; a spec hands over one that fires when it says so.
   reopenDriver: (String, () => Unit) => ChangeStreamReopen = ChangeStreamReopen.onDaemonScheduler,
@@ -237,7 +239,7 @@ class MongoUserStateRepository(
    *  reports losing track again, once the new cursor is live. */
   private def subscribe(reopened: Boolean): Unit = coll.foreach { c =>
     // Decoded here rather than in the driver: one row the codec refuses used to END the cursor.
-    val decoder = ChangeEventDecoder.of[UserState](UserStateRepository.Collection, c.codecRegistry, decodeFailures)
+    val decoder = ChangeEventDecoder.of[UserState](UserStateRepository.Collection, c.codecRegistry, decodeFailures, stopwatch)
     c.watch[BsonDocument]().fullDocument(FullDocument.UPDATE_LOOKUP).subscribe(new Observer[ChangeStreamDocument[BsonDocument]] {
       override def onSubscribe(s: Subscription): Unit = {
         subscription = Some(s)

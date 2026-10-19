@@ -42,15 +42,15 @@ class BackfillReadModelStitchIntegrationSpec extends AnyFlatSpec with Matchers w
   private val Year  = Some(1904)
   private val id    = StoredMovieRecord.keyFor(Title, Year, titleNormalizer)
 
-  private val screeningsRepository = new MongoScreeningsRepository(Some(db))
-  private val slotsRepository      = new MongoSlotsRepository(Some(db))
+  private val screeningsRepository = new MongoScreeningsRepository(Some(db), clock = _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System)
+  private val slotsRepository      = new MongoSlotsRepository(Some(db), clock = _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System)
   // The film is written through a fully-split repository, so its showtimes land in
   // `screenings` and its slot in `movie_slots` — the shape every prod film has.
   private val writer = new MongoMovieRepository(
     Some(db), _root_.tools.SpecClock.Pinned, screenings = Some(screeningsRepository), slots = Some(slotsRepository),
     normalizer = titleNormalizer
-  )
-  private val readModel = new MongoReadModelRepository(Some(db))
+  , stopwatch = _root_.tools.Stopwatch.System)
+  private val readModel = new MongoReadModelRepository(Some(db), stopwatch = _root_.tools.Stopwatch.System)
 
   override protected def afterAll(): Unit =
     try { readModel.close(); writer.close(); isolated.drop() } finally super.afterAll()

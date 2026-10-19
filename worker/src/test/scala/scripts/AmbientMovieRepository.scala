@@ -22,8 +22,8 @@ object AmbientMovieRepository {
    *  venue-less, and a script patching such a row writes that back. */
   def over(database: Option[MongoDatabase], normalizer: TitleNormalizer, clock: java.time.Clock,
            onClose: () => Unit = () => ()): MongoMovieRepository =
-    new MongoMovieRepository(database, clock, screenings = Some(new MongoScreeningsRepository(database)),
-      slots = Some(new MongoSlotsRepository(database)), normalizer = normalizer) {
+    new MongoMovieRepository(database, clock, screenings = Some(new MongoScreeningsRepository(database, clock = clock, stopwatch = _root_.tools.Stopwatch.System)),
+      slots = Some(new MongoSlotsRepository(database, clock = clock, stopwatch = _root_.tools.Stopwatch.System)), normalizer = normalizer, stopwatch = _root_.tools.Stopwatch.System) {
       override def close(): Unit = try super.close() finally onClose()
     }
 }

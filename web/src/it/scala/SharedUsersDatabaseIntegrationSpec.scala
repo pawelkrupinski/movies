@@ -53,7 +53,7 @@ class SharedUsersDatabaseIntegrationSpec extends AnyFlatSpec with Matchers with 
     new MongoUserRepository(Some(usersDbFor(country, sharedUsersDb)))
 
   private def statesOn(country: Country, sharedUsersDb: Option[String]) =
-    new MongoUserStateRepository(Some(usersDbFor(country, sharedUsersDb)), _root_.tools.SpecClock.Pinned)
+    new MongoUserStateRepository(Some(usersDbFor(country, sharedUsersDb)), _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System)
 
   override protected def afterAll(): Unit = try {
     (Country.all.map(corpusDb) :+ SharedDb).distinct.foreach { db =>

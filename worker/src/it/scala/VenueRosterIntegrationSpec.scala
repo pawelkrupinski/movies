@@ -22,8 +22,8 @@ class VenueRosterIntegrationSpec extends AnyFlatSpec with Matchers with tools.In
   "A roster-scoped Mongo side store" should "never write a row under a venue outside the country" in
     tools.IntegrationCorpusDatabase.withDatabase(mongoTarget, "venue-roster") { db =>
       val roster     = VenueRoster.of(Country.Poland)
-      val screenings = new MongoScreeningsRepository(Some(db), roster = roster)
-      val slots      = new MongoSlotsRepository(Some(db), roster = roster)
+      val screenings = new MongoScreeningsRepository(Some(db), roster = roster, clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
+      val slots      = new MongoSlotsRepository(Some(db), roster = roster, clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
       try {
         screenings.replaceFilm(film, Map(polish -> ListedShowtimes(tomorrow, None), foreign -> ListedShowtimes(tomorrow, None)))
         screenings.upsertSlot(film, other, ListedShowtimes(tomorrow, None))
@@ -38,8 +38,8 @@ class VenueRosterIntegrationSpec extends AnyFlatSpec with Matchers with tools.In
   it should "keep a foreign row already on disk as it is, rather than prune or rewrite it" in
     tools.IntegrationCorpusDatabase.withDatabase(mongoTarget, "venue-roster-kept") { db =>
       val stale      = SourceData(title = Some("The Odyssey"))
-      val unscoped   = new MongoSlotsRepository(Some(db))
-      val slots      = new MongoSlotsRepository(Some(db), roster = VenueRoster.of(Country.Poland))
+      val unscoped   = new MongoSlotsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
+      val slots      = new MongoSlotsRepository(Some(db), roster = VenueRoster.of(Country.Poland), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)
       try {
         unscoped.replaceFilm(film, Map(polish -> SourceData(title = Some("Odyseja")), foreign -> stale))
         slots.replaceFilm(film, Map(polish -> SourceData(title = Some("Odyseja 2")), foreign -> SourceData(title = Some("rewritten"))))

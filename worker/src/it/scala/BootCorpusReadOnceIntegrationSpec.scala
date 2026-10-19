@@ -77,14 +77,14 @@ class BootCorpusReadOnceIntegrationSpec extends AnyFlatSpec with Matchers with t
   }
 
   private def repositoryOn(db: MongoDatabase) =
-    new MongoMovieRepository(Some(db), _root_.tools.SpecClock.Pinned, screenings = Some(new MongoScreeningsRepository(Some(db))),
-      slots = Some(new MongoSlotsRepository(Some(db))), normalizer = titleNormalizer)
+    new MongoMovieRepository(Some(db), _root_.tools.SpecClock.Pinned, screenings = Some(new MongoScreeningsRepository(Some(db), clock = _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System)),
+      slots = Some(new MongoSlotsRepository(Some(db), clock = _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System)), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
 
   /** One worker boot's corpus readers, as `WorkerWiring` builds and starts them, until `done`; how long it took. */
   private def boot(db: MongoDatabase, handOver: Boolean, done: () => Boolean = () => true): Long = {
     val started    = System.nanoTime()
     val repository = repositoryOn(db)
-    val readModel  = new MongoReadModelRepository(Some(db))
+    val readModel  = new MongoReadModelRepository(Some(db), stopwatch = _root_.tools.Stopwatch.System)
     val study      = new BootCorpusStudy(titleNormalizer)
     val projector  = new ReadModelProjector(repository, readModel, readModel, clock = _root_.tools.SpecClock.Pinned, bootStudy = Some(study))
     val sweeper    = new ReadModelSweeper(projector.projection)
@@ -113,7 +113,7 @@ class BootCorpusReadOnceIntegrationSpec extends AnyFlatSpec with Matchers with t
     }
     // The last process projected the corpus: the boot's check finds nothing to heal, so every
     // `movies` document a boot reads is one of its corpus scans.
-    val readModel = new MongoReadModelRepository(Some(db))
+    val readModel = new MongoReadModelRepository(Some(db), stopwatch = _root_.tools.Stopwatch.System)
     new ReadModelSweeper(new ReadModelProjector(repository, readModel, readModel, clock = _root_.tools.SpecClock.Pinned).projection).reconcile()
     repository.close()
 

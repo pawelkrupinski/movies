@@ -26,7 +26,7 @@ class ScheduledRunStoreIntegrationSpec extends AnyFlatSpec with Matchers with Be
   private val coll     = isolated.database
     .getCollection[Document]("__integration_test_scheduled_runs")
 
-  private val store: ScheduledRunStore = new MongoScheduledRunStore(coll)
+  private val store: ScheduledRunStore = new MongoScheduledRunStore(coll, clock = _root_.tools.MongoTtlSpecClock.Pinned)
 
   override protected def afterAll(): Unit = try isolated.drop() finally super.afterAll()
 
@@ -39,6 +39,12 @@ class ScheduledRunStoreIntegrationSpec extends AnyFlatSpec with Matchers with Be
   it should "grant distinct occurrence ids independently" in {
     store.claim("it-distinct-a") shouldBe true
     store.claim("it-distinct-b") shouldBe true
+  }
+
+  it should "stamp a claim's claimedAt — what its TTL ages it by — with the store's clock" in {
+    store.claim("it-stamped") shouldBe true
+    val claim = Await.result(coll.find(org.mongodb.scala.model.Filters.eq("_id", "it-stamped")).toFuture(), SpecTimeouts.Io)
+    claim.flatMap(_.get("claimedAt")).map(_.asDateTime().getValue) shouldBe Seq(_root_.tools.MongoTtlSpecClock.Pinned.millis())
   }
 
   it should "create a 48h TTL index on claimedAt so old claims self-expire" in {

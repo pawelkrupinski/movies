@@ -93,10 +93,10 @@ class PerPodCachesAcrossPodsIntegrationSpec extends AnyFlatSpec with Matchers wi
   "every web pod's per-city validator" should "move, and serve the change, when the worker writes that city" in
     ConcurrentInstances.withInstances(mongoTarget, "per-city-validator-two-pods", count = 3) { instances =>
       val Seq(podA, podB, worker) = instances
-      val writer = new MongoReadModelRepository(Some(worker.database))
+      val writer = new MongoReadModelRepository(Some(worker.database), stopwatch = _root_.tools.Stopwatch.System)
       writer.upsertMovie(film)
       writer.upsertScreening(screening(18))
-      val pods = Seq(podA, podB).map(pod => new WebReadModel(new MongoReadModelRepository(Some(pod.database)), clock = _root_.tools.SpecClock.Pinned))
+      val pods = Seq(podA, podB).map(pod => new WebReadModel(new MongoReadModelRepository(Some(pod.database), stopwatch = _root_.tools.Stopwatch.System), clock = _root_.tools.SpecClock.Pinned))
       try {
         pods.foreach(_.start())
         pods.foreach(pod => pod.screeningsForCity("poznan").flatMap(_.showtimes).map(_.dateTime.getHour) shouldBe Seq(18))

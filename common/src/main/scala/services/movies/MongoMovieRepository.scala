@@ -41,6 +41,9 @@ class MongoMovieRepository(
   // The composition root's clock. Every `updatedAt` is a stamp from one strictly increasing
   // sequence over it ([[stamps]]), never a bare reading.
   clock: java.time.Clock,
+  // The composition root's monotonic clock: the change stream's resume-token throttle and decoder log, and the
+  // corpus scan's timings.
+  stopwatch: tools.Stopwatch,
   // Cursor page size for the keyset-paged corpus scan shared by `findAll` and
   // `foreachRecord` — the cap on how many rows any ONE cursor delivers before the
   // next `_id`-keyset page. Bounds the async driver's synchronous read-completion
@@ -268,10 +271,10 @@ class MongoMovieRepository(
    *  restart's critical path runs through here, and a guess at its bottleneck already shipped once
    *  without moving it. */
   private final class ScanTiming {
-    private val wall   = tools.Stopwatch.start()
-    val slotReads      = tools.Stopwatch.total()
-    val screeningReads = tools.Stopwatch.total()
-    val stitching      = tools.Stopwatch.total()
+    private val wall   = stopwatch.start()
+    val slotReads      = stopwatch.total()
+    val screeningReads = stopwatch.total()
+    val stitching      = stopwatch.total()
 
     /** A whole-corpus scan (the hydrate, the backstop rehydrate) at info; a catch-up's
      *  updated-since slice, which runs on every read-model sweep, only at debug. */
@@ -734,13 +737,14 @@ class MongoMovieRepository(
       // this process was down — the gap the consumers' periodic backstops exist for. See
       // [[ChangeStreamResumeToken]]; the `screenings` and `movie_slots` streams each persist
       // their own sibling token.
-      resumeToken         = new ChangeStreamResumeToken("movies", database, persistResumeToken),
+      resumeToken         = new ChangeStreamResumeToken("movies", database, persistResumeToken, stopwatch),
       changeStreamMetrics = changeStreamMetrics,
       screeningsMetrics   = screeningsMetrics,
       slotsMetrics        = slotsMetrics,
       changeDemandWindow  = changeDemandWindow,
       clock               = clock,
       stamps              = stamps,
+      stopwatch           = stopwatch,
       decodeFailures      = decodeFailures,
       debounce            = changeDebounce,
       // Only where both side collections are split out is a venue readable alone.

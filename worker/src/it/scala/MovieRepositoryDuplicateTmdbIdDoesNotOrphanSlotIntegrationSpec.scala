@@ -33,11 +33,11 @@ class MovieRepositoryDuplicateTmdbIdDoesNotOrphanSlotIntegrationSpec extends Any
     super.afterAll()
   }
 
-  private val slots = new MongoSlotsRepository(Some(db))
+  private val slots = new MongoSlotsRepository(Some(db), clock = _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System)
   private val repository = new MongoMovieRepository(Some(db), _root_.tools.SpecClock.Pinned,
-    screenings = Some(new MongoScreeningsRepository(Some(db))),
+    screenings = Some(new MongoScreeningsRepository(Some(db), clock = _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System)),
     slots      = Some(slots),
-    normalizer = titleNormalizer)
+    normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
 
   private val titleA = "__dup-tmdbid-sentinel-a__"
   private val titleB = "__dup-tmdbid-sentinel-b__"

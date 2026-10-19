@@ -52,10 +52,10 @@ class ScreeningsRewriteOnUpsertIntegrationSpec extends AnyFlatSpec with Matchers
 
   it should "not rewrite a film's screenings when the upsert leaves its showtimes unchanged" in
     tools.IntegrationCorpusDatabase.withDatabase(mongoTarget, CorpusSuite) { db =>
-    val counting   = new CountingScreeningsRepository(new MongoScreeningsRepository(Some(db)))
+    val counting   = new CountingScreeningsRepository(new MongoScreeningsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System))
     val repository = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(),
-      screenings = Some(counting), slots = Some(new MongoSlotsRepository(Some(db))),
-      normalizer = titleNormalizer)
+      screenings = Some(counting), slots = Some(new MongoSlotsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System)),
+      normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
     val id         = StoredMovieRecord.keyFor(title, year, titleNormalizer)
     val record     = recordShowing(when)
     try {
@@ -99,11 +99,11 @@ class ScreeningsRewriteOnUpsertIntegrationSpec extends AnyFlatSpec with Matchers
   // `foreachRecordWithoutShowtimes` is the wrong tool and this asserts the slots are read.
   it should "prune the read model without reading a single showtime" in
     tools.IntegrationCorpusDatabase.withDatabase(mongoTarget, CorpusSuite) { db =>
-    val counting   = new CountingScreeningsRepository(new MongoScreeningsRepository(Some(db)))
-    val countSlots = new CountingSlotsRepository(new MongoSlotsRepository(Some(db)))
+    val counting   = new CountingScreeningsRepository(new MongoScreeningsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System))
+    val countSlots = new CountingSlotsRepository(new MongoSlotsRepository(Some(db), clock = java.time.Clock.systemUTC(), stopwatch = _root_.tools.Stopwatch.System))
     val repository = new MongoMovieRepository(Some(db), java.time.Clock.systemUTC(),
-      screenings = Some(counting), slots = Some(countSlots), normalizer = titleNormalizer)
-    val readModel  = new services.readmodel.MongoReadModelRepository(Some(db))
+      screenings = Some(counting), slots = Some(countSlots), normalizer = titleNormalizer, stopwatch = _root_.tools.Stopwatch.System)
+    val readModel  = new services.readmodel.MongoReadModelRepository(Some(db), stopwatch = _root_.tools.Stopwatch.System)
     val projector  = new services.readmodel.ReadModelProjector(repository, readModel, readModel, clock = tools.SpecClock.Pinned)
     val sweeper    = new services.readmodel.ReadModelSweeper(projector.projection)
     try {

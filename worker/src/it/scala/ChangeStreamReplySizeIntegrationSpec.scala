@@ -48,7 +48,7 @@ class ChangeStreamReplySizeIntegrationSpec extends AnyFlatSpec with Matchers wit
       .codecRegistry(MongoClient.DEFAULT_CODEC_REGISTRY).addCommandListener(new Replies).build())
     val db = client.getDatabase(tools.IntegrationCorpusDatabase.named(mongoTarget, "stream-replies"))
     try {
-      val screenings = new MongoScreeningsRepository(Some(db))
+      val screenings = new MongoScreeningsRepository(Some(db), clock = _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System)
       val seen   = new AtomicInteger
       val demand = new ChangeStreamDemand(ChangeStreamDemand.DefaultWindow)
       val handle = screenings.watchApplied((_, applied) => { seen.incrementAndGet(); applied(); demand.applied() }, demand).get

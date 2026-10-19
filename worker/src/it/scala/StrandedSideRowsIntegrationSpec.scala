@@ -21,11 +21,11 @@ class StrandedSideRowsIntegrationSpec extends AnyFlatSpec with Matchers with too
 
   "deleteStrandedSideRows" should "remove exactly the rows whose film has no movies document" in
     tools.IntegrationCorpusDatabase.withDatabase(mongoTarget, "stranded-side-rows") { db =>
-      val screenings = new MongoScreeningsRepository(Some(db))
-      val slots      = new MongoSlotsRepository(Some(db))
+      val screenings = new MongoScreeningsRepository(Some(db), clock = _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System)
+      val slots      = new MongoSlotsRepository(Some(db), clock = _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System)
       // One id per page, so the live-id scan has to page (two films ⇒ three fetches).
       val repository = new MongoMovieRepository(Some(db), _root_.tools.SpecClock.Pinned, normalizer = titleNormalizer,
-        screenings = Some(screenings), slots = Some(slots), findAllBatchSize = 1)
+        screenings = Some(screenings), slots = Some(slots), findAllBatchSize = 1, stopwatch = _root_.tools.Stopwatch.System)
       try {
         repository.enabled shouldBe true
         repository.upsert("__stranded-live-a__", Some(2026), film("__stranded-live-a__"))

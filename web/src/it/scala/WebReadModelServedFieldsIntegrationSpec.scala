@@ -71,7 +71,7 @@ class WebReadModelServedFieldsIntegrationSpec extends AnyFlatSpec with Matchers 
 
   "a web pod" should "read web_screenings without the worker-only listingKeys — at boot and from the change stream" in
     withDatabase { (db, rows) =>
-      val repository = new MongoReadModelRepository(Some(db), findAllBatchSize = 2)
+      val repository = new MongoReadModelRepository(Some(db), findAllBatchSize = 2, stopwatch = _root_.tools.Stopwatch.System)
       repository.upsertMovie(film)
       Seq("Kino A", "Kino B", "Kino C").map(row).foreach(repository.upsertScreening)
 

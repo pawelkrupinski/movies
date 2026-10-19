@@ -45,12 +45,12 @@ trait ReadModelWiring { self: Wiring =>
   // read-stitch — re-inject showtimes from `screenings` on the same connection it
   // reads `movies` from. The worker owns the backfill; here we just read.
   lazy val screeningsRepository: services.movies.ScreeningsRepository =
-    new services.movies.MongoScreeningsRepository(movieMirrorConnection.database)
+    new services.movies.MongoScreeningsRepository(movieMirrorConnection.database, clock = clock, stopwatch = stopwatch)
   // Same read-stitch seam for the slots split. The worker owns the writes; web only
   // needs the repository so a film whose slots have moved to `movie_slots` still reads
   // complete.
   lazy val slotsRepository: services.movies.SlotsRepository =
-    new services.movies.MongoSlotsRepository(movieMirrorConnection.database)
+    new services.movies.MongoSlotsRepository(movieMirrorConnection.database, clock = clock, stopwatch = stopwatch)
   /** The SERVING country's title rules. Passed explicitly so the web tier keys
    *  the same way the worker that wrote the corpus did; the per-country debug
    *  stacks (DebugWiring) each get their OWN, since they read another country's
@@ -61,8 +61,8 @@ trait ReadModelWiring { self: Wiring =>
   lazy val movieRepository: MovieRepository = new MongoMovieRepository(
     movieMirrorConnection.database, clock,
     screenings = Some(screeningsRepository), slots = Some(slotsRepository),
-    normalizer = titleNormalizer, decodeFailures = webDecodeFailureMetrics)
-  lazy val readModelRepository: ReadModelReader = new MongoReadModelRepository(mongoConnection.database, decodeFailures = webDecodeFailureMetrics)
+    normalizer = titleNormalizer, decodeFailures = webDecodeFailureMetrics, stopwatch = stopwatch)
+  lazy val readModelRepository: ReadModelReader = new MongoReadModelRepository(mongoConnection.database, decodeFailures = webDecodeFailureMetrics, stopwatch = stopwatch)
   lazy val webReadModel: WebReadModel = managedResources.stopping(new WebReadModel(readModelRepository,
     reloadInterval    = processConfiguration.readModelReloadInterval(WebReadModel.DefaultReloadInterval),
     coldRetryInterval = processConfiguration.readModelColdRetryInterval(WebReadModel.DefaultColdRetryInterval),

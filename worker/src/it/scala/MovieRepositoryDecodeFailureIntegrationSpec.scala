@@ -23,7 +23,7 @@ class MovieRepositoryDecodeFailureIntegrationSpec extends AnyFlatSpec with Match
       val counted    = scala.collection.mutable.ListBuffer.empty[String]
       val metrics: DecodeFailureMetrics = (collection: String) => { counted += collection; () }
       val repository = new MongoMovieRepository(Some(db), _root_.tools.SpecClock.Pinned, normalizer = titleNormalizer,
-        foreachRecordBatchAttempts = 1, decodeFailures = metrics)
+        foreachRecordBatchAttempts = 1, decodeFailures = metrics, stopwatch = _root_.tools.Stopwatch.System)
       repository.enabled shouldBe true
       // `sourceData` must be a document; a string cannot be decoded into one.
       Await.result(db.getCollection[Document]("movies").insertOne(

@@ -22,7 +22,7 @@ trait CorpusWiring { self: WorkerWiring =>
     // writes only `screenings`, so without this a restart drops showtime edits made while
     // down and only the full reproject catches them — the gap that kept it non-redundant.
     new MongoScreeningsRepository(mongoConnection.database, persistResumeToken = true,
-      metrics = taskMetrics, roster = VenueRoster.of(country), writeMetrics = taskMetrics, decodeFailures = taskMetrics)
+      metrics = taskMetrics, roster = VenueRoster.of(country), writeMetrics = taskMetrics, decodeFailures = taskMetrics, clock = clock, stopwatch = stopwatch)
   // Slot split: the per-cinema SourceData lives in `movie_slots`, one row per slot,
   // for the same reason showtimes moved to `screenings` — an UPDATE_LOOKUP change event
   // otherwise carries the whole film document, and those documents queue up on an
@@ -33,7 +33,7 @@ trait CorpusWiring { self: WorkerWiring =>
     // lands without a `movies` write whenever the film document is unchanged, so this is the
     // third cursor on the projector and a restart must replay it too.
     new MongoSlotsRepository(mongoConnection.database, persistResumeToken = true,
-      metrics = taskMetrics.slotsChangeMetrics, roster = VenueRoster.of(country), writeMetrics = taskMetrics, decodeFailures = taskMetrics)
+      metrics = taskMetrics.slotsChangeMetrics, roster = VenueRoster.of(country), writeMetrics = taskMetrics, decodeFailures = taskMetrics, clock = clock, stopwatch = stopwatch)
   /** This wiring's country's title rules — the ONE instance every component below
    *  keys through, so a worker running several countries cannot fold one country's
    *  titles with another's. Every component takes its normalizer as a required
@@ -51,7 +51,7 @@ trait CorpusWiring { self: WorkerWiring =>
     changeDebounce = MovieChangeStream.Debounce.forCountry(country),
     // The worker is the durable read-model/cache mirror: persist the change-stream resume
     // token so a restart replays events missed while down instead of leaning on the backstop.
-    persistResumeToken = true)
+    persistResumeToken = true, stopwatch = stopwatch)
 
   lazy val movieCache: CaffeineMovieCache = managedResources.stopping(
     new CaffeineMovieCache(movieRepository,

@@ -53,8 +53,8 @@ class SideRowReplySizeIntegrationSpec extends AnyFlatSpec with Matchers with too
       .codecRegistry(MongoClient.DEFAULT_CODEC_REGISTRY).addCommandListener(replies).build())
     val db = client.getDatabase(tools.IntegrationCorpusDatabase.named(mongoTarget, "side-row-replies"))
     try {
-      val screenings = new MongoScreeningsRepository(Some(db))
-      val slots      = new MongoSlotsRepository(Some(db))
+      val screenings = new MongoScreeningsRepository(Some(db), clock = _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System)
+      val slots      = new MongoSlotsRepository(Some(db), clock = _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System)
       val start      = java.time.LocalDateTime.parse("2031-06-12T10:00")
       // As a wide release's rows are: a fortnight of showtimes a venue, each with its booking link (~2 KB a row).
       val listed = (1 to Venues).map { v =>
@@ -83,7 +83,7 @@ class SideRowReplySizeIntegrationSpec extends AnyFlatSpec with Matchers with too
       .codecRegistry(MongoClient.DEFAULT_CODEC_REGISTRY).addCommandListener(replies).build())
     val db = client.getDatabase(tools.IntegrationCorpusDatabase.named(mongoTarget, "presale-replies"))
     try {
-      val screenings = new MongoScreeningsRepository(Some(db))
+      val screenings = new MongoScreeningsRepository(Some(db), clock = _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System)
       val start      = java.time.LocalDateTime.parse("2031-12-17T10:00")
       // ~55 KB a row, as the widest US presale's venues: 500 showtimes each.
       val listed = (1 to 400).map { v =>
@@ -102,7 +102,7 @@ class SideRowReplySizeIntegrationSpec extends AnyFlatSpec with Matchers with too
 
   "a film's row-size estimate" should "be let go once the film has no rows left" in {
     tools.IsolatedMongoDatabase.withDatabase(mongoTarget, "rowsize-forget") { db =>
-      val screenings = new MongoScreeningsRepository(Some(db))
+      val screenings = new MongoScreeningsRepository(Some(db), clock = _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System)
       val rows = Map("Venue 1 Cinema\u241ffilm" -> ListedShowtimes(Seq(Showtime(java.time.LocalDateTime.parse("2031-06-12T10:00"), None)), None))
       Seq("deleted", "emptied", "pruned").foreach(film => screenings.replaceFilm(film, rows))
       Seq("deleted", "emptied", "pruned").foreach(film => withClue(film)(screenings.knowsRowsOf(film) shouldBe true))

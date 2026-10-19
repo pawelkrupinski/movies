@@ -18,7 +18,7 @@ class ScreeningsFindAllIntegrationSpec extends AnyFlatSpec with Matchers with to
     tools.IsolatedMongoDatabase.withDatabase(mongoTarget, "screenings-find-all") { db =>
       Await.result(db.getCollection[Document](ScreeningsRepository.Collection)
         .insertOne(Document("_id" -> 42, "filmId" -> 7)).toFuture(), SpecTimeouts.Io)
-      val repository = new MongoScreeningsRepository(Some(db), findAllBatchAttempts = 1)
+      val repository = new MongoScreeningsRepository(Some(db), findAllBatchAttempts = 1, clock = _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System)
       an[Exception] should be thrownBy repository.findAll()
     }
   }

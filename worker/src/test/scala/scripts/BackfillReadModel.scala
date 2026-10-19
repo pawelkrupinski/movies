@@ -96,9 +96,9 @@ object BackfillReadModel {
   def corpusReader(db: org.mongodb.scala.MongoDatabase): MovieRepository =
     new MongoMovieRepository(
       Some(db), clock, normalizer = titleNormalizer,
-      screenings = Some(new MongoScreeningsRepository(Some(db))),
-      slots      = Some(new MongoSlotsRepository(Some(db)))
-    )
+      screenings = Some(new MongoScreeningsRepository(Some(db), clock = clock, stopwatch = _root_.tools.Stopwatch.System)),
+      slots      = Some(new MongoSlotsRepository(Some(db), clock = clock, stopwatch = _root_.tools.Stopwatch.System))
+    , stopwatch = _root_.tools.Stopwatch.System)
 
   def main(args: Array[String]): Unit = {
     val conn   = MongoConnection.forProcess(_root_.settings.ProcessConfiguration.resolve(), required = services.MongoRequirement.Required)
@@ -106,7 +106,7 @@ object BackfillReadModel {
     val dbName = db.name
     try {
       val movieRepository     = corpusReader(db)
-      val readModelRepository = new MongoReadModelRepository(Some(db))
+      val readModelRepository = new MongoReadModelRepository(Some(db), stopwatch = _root_.tools.Stopwatch.System)
       require(movieRepository.enabled,     s"movies repository not enabled for $dbName")
       require(readModelRepository.enabled, s"read-model repository not enabled for $dbName")
 

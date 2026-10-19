@@ -20,8 +20,8 @@ class SlotsBatchWriteIntegrationSpec extends AnyFlatSpec with Matchers with tool
     tools.IntegrationCorpusDatabase.withDatabase(mongoTarget, "slots-batch") { batchDb =>
       tools.IntegrationCorpusDatabase.withDatabase(mongoTarget, "slots-single") { singleDb =>
         val roster = VenueRoster.of(Country.Poland)
-        val batch  = new MongoSlotsRepository(Some(batchDb), roster = roster)
-        val single = new MongoSlotsRepository(Some(singleDb), roster = roster)
+        val batch  = new MongoSlotsRepository(Some(batchDb), roster = roster, clock = _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System)
+        val single = new MongoSlotsRepository(Some(singleDb), roster = roster, clock = _root_.tools.SpecClock.Pinned, stopwatch = _root_.tools.Stopwatch.System)
         try {
           val start = Map(etiuda -> SourceData(title = Some("Odyseja")), muza -> SourceData(title = Some("Odyseja")))
           Seq(batch, single).foreach(_.replaceFilm(film, start))

@@ -150,11 +150,13 @@ object ConvergenceStorage {
     // corpora through Polish rules — `minionsimonster` all over again, and the
     // convergence legs caught it.
     // …and debounced as the worker's country is, when the leg names it (`changeDebounce`).
-    override lazy val movies     = new MongoMovieRepository(shared, java.time.Clock.fixed(TestWiring.FixedInstant, java.time.ZoneOffset.UTC), normalizer = normalizer,
-      screenings = Some(screenings), slots = Some(slots), changeDebounce = changeDebounce)
-    override lazy val screenings = new MongoScreeningsRepository(shared)
-    override lazy val slots      = new MongoSlotsRepository(shared)
-    override lazy val readModel: ReadModelReader & ReadModelWriter = new MongoReadModelRepository(shared)
+    // The leg's frozen clock: every store it stamps rows with.
+    private lazy val clock       = java.time.Clock.fixed(TestWiring.FixedInstant, java.time.ZoneOffset.UTC)
+    override lazy val movies     = new MongoMovieRepository(shared, clock, normalizer = normalizer,
+      screenings = Some(screenings), slots = Some(slots), changeDebounce = changeDebounce, stopwatch = _root_.tools.Stopwatch.System)
+    override lazy val screenings = new MongoScreeningsRepository(shared, clock = clock, stopwatch = _root_.tools.Stopwatch.System)
+    override lazy val slots      = new MongoSlotsRepository(shared, clock = clock, stopwatch = _root_.tools.Stopwatch.System)
+    override lazy val readModel: ReadModelReader & ReadModelWriter = new MongoReadModelRepository(shared, stopwatch = _root_.tools.Stopwatch.System)
     override lazy val archive    = new MongoScrapeArchiveRepository(shared)
     override lazy val tasks: TaskQueue              = new MongoTaskQueue(shared)
     override lazy val freshness: FreshnessStore     = new MongoFreshnessStore(shared)

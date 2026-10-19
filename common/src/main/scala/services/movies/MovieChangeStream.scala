@@ -68,6 +68,8 @@ final class MovieChangeStream(
   // The sequence the repository stamps `updatedAt` from — the liveness takes every catch-up floor
   // from it, so a floor and a row's stamp are strictly ordered (see [[ChangeStreamLiveness.now]]).
   stamps:              tools.MonotonicStampSequence,
+  // The repository's monotonic clock: the post-image decoder's log throttle times on it.
+  stopwatch:           tools.Stopwatch,
   // How long after a failed re-read the film is read again — see `applyReread`. Doubled per
   // failure up to `RereadRetryMaxMillis`; a spec shortens it, production never passes it.
   rereadRetryMillis:   Long = MovieChangeStream.RereadRetryMillis,
@@ -93,7 +95,7 @@ final class MovieChangeStream(
 
   // Post-images arrive undecoded (see `Source`) and are decoded here, so a document the codec
   // refuses is one skipped event rather than the end of the cursor.
-  private val postImages   = ChangeEventDecoder.of[StoredMovieDto](ChangeStreamLiveness.Movies, MovieCodecs.registry, decodeFailures)
+  private val postImages   = ChangeEventDecoder.of[StoredMovieDto](ChangeStreamLiveness.Movies, MovieCodecs.registry, decodeFailures, stopwatch)
   private val movieChanges = new ChangeStreamFanout[MovieChangeStream.Delivery, MovieChangeStream.VenueDelivery]("MovieRepository")
   private val changeSub    = new AtomicReference[Subscription]()
   private val changeLock   = new AnyRef
