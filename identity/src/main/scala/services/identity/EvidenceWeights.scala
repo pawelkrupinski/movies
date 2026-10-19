@@ -9,10 +9,13 @@ import services.identity.IdentityMeasures.{ListingFilm, Measure}
 private[identity] final class EvidenceWeights(calibration: IdentityCalibration) {
 
   val Priors: Set[String] = IdentityMeasures.RankingPriors ++ IdentityMeasures.PooledMeasures
+  /** What the listing's own evidence leaves out: the [[Priors]] and the weighted guards ([[IdentityMeasures.GuardMeasures]]),
+   *  which weigh in the probability alone. */
+  private val NotOwn: Set[String] = Priors ++ IdentityMeasures.GuardMeasures
 
   /** What the listing's own facts contribute to the calibrated score of `measures`. */
   def ownContributions(measures: Map[String, Measure]): Double =
-    calibration.contributionSumWhere(ListingFilm, measures, (name, _) => !Priors(name))
+    calibration.contributionSumWhere(ListingFilm, measures, (name, _) => !NotOwn(name))
 
   def own(scored: Scored): Double = ownContributions(scored.measures)
 
@@ -27,7 +30,7 @@ private[identity] final class EvidenceWeights(calibration: IdentityCalibration) 
    *  alone) past the veto on that running time while the 1993 film stood released in Britain beside it. */
   def factsSupport(scored: Scored): Boolean = {
     val published = calibration.contributions(ListingFilm, scored.measures).filter { case (name, _) =>
-      !Priors(name) && name != "title" && !scored.measures.get(name).exists(_.isInstanceOf[IdentityMeasures.Missing]) }
+      !NotOwn(name) && name != "title" && !scored.measures.get(name).exists(_.isInstanceOf[IdentityMeasures.Missing]) }
     published.exists(_._2 > 0) && published.map(_._2).sum > 0
   }
 
@@ -44,7 +47,7 @@ private[identity] final class EvidenceWeights(calibration: IdentityCalibration) 
       case _                                   => false
     }
     val veto = calibration.contributionSumWhere(ListingFilm, measures, (name, weight) =>
-      !Priors(name) && !((IdentityMeasures.AgreesOnly(name) || (name == "title" && contains)) && weight < 0))
+      !NotOwn(name) && !((IdentityMeasures.AgreesOnly(name) || (name == "title" && contains)) && weight < 0))
     calibration.scopes(ListingFilm).calibration(calibration.scopes(ListingFilm).prior + veto)
   }
 
@@ -54,7 +57,7 @@ private[identity] final class EvidenceWeights(calibration: IdentityCalibration) 
   /** The published facts weighing against `scored` — what [[speaksAgainst]] finds — rendered as the trace's evidence is. */
   def against(scored: Scored): Seq[String] = {
     val names = calibration.contributions(ListingFilm, scored.measures).collect { case (name, weight)
-      if !Priors(name) && weight < 0 && !scored.measures.get(name).exists(_.isInstanceOf[IdentityMeasures.Missing]) => name }.toSet
+      if !NotOwn(name) && weight < 0 && !scored.measures.get(name).exists(_.isInstanceOf[IdentityMeasures.Missing]) => name }.toSet
     if (names.isEmpty) Nil else calibration.evidence(ListingFilm, scored.measures).filter(line => names(line.takeWhile(_ != '=')))
   }
 
@@ -82,7 +85,7 @@ private[identity] final class EvidenceWeights(calibration: IdentityCalibration) 
       // the map would — summed in place, `top`'s unanswered measures worked out once, not a filtered map per side and
       // the set again per entry.
       val unanswered = unansweredBy(top)
-      def answered(scored: Scored) = calibration.contributionSumWhere(ListingFilm, scored.measures, (name, _) => !Priors(name),
+      def answered(scored: Scored) = calibration.contributionSumWhere(ListingFilm, scored.measures, (name, _) => !NotOwn(name),
         (name, weight) => if (unanswered(name)) 0.0 else weight)
       answered(rival) > answered(top)
     }

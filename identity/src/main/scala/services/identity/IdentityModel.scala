@@ -365,7 +365,9 @@ final case class Evidence(title: String, cleanTitle: String, rawTitle: String, y
                            *  ([[services.movies.TitleSeason.near]]), never a fact it states. */
                           screeningsSeason: Option[Int] = None,
                           /** Its screening days, where the air-day test reads them ([[Listing.airDays]]); else empty. */
-                          airDays: Seq[java.time.LocalDate] = Nil) {
+                          airDays: Seq[java.time.LocalDate] = Nil,
+                          /** The venue's certificate ([[Listing.certificate]]): what the weighted `certificate` measure reads. */
+                          certificate: Option[String] = None) {
   lazy val key: String =
     Seq(title, cleanTitle, rawTitle, year.fold("")(_.toString), directors.sorted.mkString(","),
       runtime.fold("")(_.toString), originalTitle.getOrElse(""), countries.sorted.mkString(",")).mkString("\u0000") +
@@ -374,14 +376,16 @@ final case class Evidence(title: String, cleanTitle: String, rawTitle: String, y
       // only where it bounds what the title names, so every other listing keeps its key
       screeningsSeason.filter(_ => TitleSeason.of(Seq(title, rawTitle)) != TitleSeason.of(Seq(title, rawTitle), screeningsSeason))
         .fold("")(season => s"\u0000screenings:$season") +
-      (if (airDays.isEmpty) "" else airDays.mkString("\u0000aired:", ",", ""))
+      (if (airDays.isEmpty) "" else airDays.mkString("\u0000aired:", ",", "")) +
+      // only where a venue bills one, so every other listing keeps its key
+      certificate.fold("")(c => s"\u0000certificate:$c")
 
   /** The evidence as the calibrated measures read a listing, its title shapes undecorated by the
    *  resolve's learned `decorations` (the same for every listing of a resolve, so not in [[key]]). */
   lazy val measured: IdentityMeasures.Listing =
     IdentityMeasures.Listing(title, Some(rawTitle).filter(_ != title), originalTitle, year, runtime, directors, countries,
       decorations = decorations, searchTitles = searchTitle.toSeq ++ properTitle, broadcastSeason = broadcastSeason, screenedSeason = screenedSeason,
-      screeningsSeason = screeningsSeason, airDays = airDays)
+      screeningsSeason = screeningsSeason, airDays = airDays, certificate = certificate)
 
   /** [[measured]] with the title shapes the venue's own delimiters leave, no learned decoration nor search title
    *  stripped: what relates two LISTINGS (their families, title must-links and listing-listing
@@ -395,7 +399,7 @@ final case class Evidence(title: String, cleanTitle: String, rawTitle: String, y
 
   /** The evidence with its stated facts set aside — its titles alone: what a node whose facts a feed copied from an
    *  overruled link is read as ([[FeedLink]]). */
-  def titlesOnly: Evidence = copy(year = None, directors = Nil, runtime = None, originalTitle = None, countries = Nil)
+  def titlesOnly: Evidence = copy(year = None, directors = Nil, runtime = None, originalTitle = None, countries = Nil, certificate = None)
 }
 
 object Evidence {
@@ -416,7 +420,8 @@ object Evidence {
     broadcastSeason = listing.broadcastSeason.filter(_ => detail.flatMap(_.year).isEmpty),
     screenedSeason  = listing.screenedSeason.filter(_ => detail.flatMap(_.year).isEmpty),
     screeningsSeason = listing.screenings.season,
-    airDays         = listing.airDays.filter(_ => detail.flatMap(_.year).isEmpty))
+    airDays         = listing.airDays.filter(_ => detail.flatMap(_.year).isEmpty),
+    certificate     = listing.certificate.map(_.trim).filter(_.nonEmpty))
 }
 
 /** One film a lookup NAMED: a search result or a filmography credit. Only what the list itself

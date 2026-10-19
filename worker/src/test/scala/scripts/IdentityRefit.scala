@@ -137,7 +137,9 @@ object IdentityRefit {
 
   /** One listing-film pair the labels judge: the film's measures for the listing's node, same film or not, and the film
    *  the labels name for the listing (its fold's group). */
-  final case class LabelledUnit(country: String, node: String, tmdbId: Int, group: String, measures: Map[String, Measure], same: Boolean)
+  final case class LabelledUnit(country: String, node: String, tmdbId: Int, group: String, measures: Map[String, Measure], same: Boolean,
+                                /** The node's listings and the candidate's record: what a study of a signal outside the measures reads. */
+                                keys: Seq[services.movies.ListingKey] = Nil, film: Option[IdentityMeasures.Film] = None)
 
   /** The labelled units of one capture, measured as the resolver measures them under `calibration`: every candidate of a
    *  labelled listing's node — the film a right label names same, any other (or one a wrong label names) different. */
@@ -158,8 +160,8 @@ object IdentityRefit {
         if (right.size > 1) Nil // a node the labels give two films is no unit of either
         else node.candidates.flatMap { c =>
           val film = s"tmdb:${c.tmdbId}"
-          if (right.contains(film)) Some(LabelledUnit(code, name, c.tmdbId, group, c.measures, same = true))
-          else if (right.nonEmpty || wrong(film)) Some(LabelledUnit(code, name, c.tmdbId, group, c.measures, same = false))
+          if (right.contains(film)) Some(LabelledUnit(code, name, c.tmdbId, group, c.measures, same = true, node.keys, Some(c.film)))
+          else if (right.nonEmpty || wrong(film)) Some(LabelledUnit(code, name, c.tmdbId, group, c.measures, same = false, node.keys, Some(c.film)))
           else None
         }
       }.distinctBy(u => (u.country, u.node, u.tmdbId))
