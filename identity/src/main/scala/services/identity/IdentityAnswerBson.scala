@@ -23,6 +23,7 @@ object IdentityAnswerBson {
     f.certificates.foreach(codes => d.append("certificates", BsonString(codes)))
     f.originalLanguage.foreach(code => d.append("originalLanguage", BsonString(code)))
     if (f.genreBits != 0) d.append("genreBits", BsonInt32(f.genreBits))
+    f.cast.foreach(cast => d.append("castPairs", BsonArray.fromIterable(cast.pairs.map(name => BsonArray.fromIterable(name.map(BsonInt32(_)))))))
     d
   }
 
@@ -33,7 +34,8 @@ object IdentityAnswerBson {
       string(d, "released").flatMap(day => scala.util.Try(java.time.LocalDate.parse(day)).toOption), string(d, "releaseCountries"),
       Option(d.get("alternativeRuntimes")).fold(Seq.empty[Int])(BsonFields.intsOf),
       string(d, "releases"), int(d, "taglineKey").getOrElse(0), string(d, "certificates"), string(d, "originalLanguage").map(_.intern),
-      int(d, "genreBits").getOrElse(0))
+      int(d, "genreBits").getOrElse(0),
+      Option(d.get("castPairs")).flatMap(names => FilmCast.ofPairs({ import scala.jdk.CollectionConverters._; names.asArray.getValues.asScala.toSeq.map(BsonFields.intsOf) })))
   }
 
   private def strings(values: Seq[String]): BsonArray = BsonArray.fromIterable(values.map(BsonString(_)))

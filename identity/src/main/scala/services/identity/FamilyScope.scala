@@ -335,14 +335,19 @@ private[identity] final class FamilyScope(val members: Seq[EvidenceNode], scorin
       // a billing as a silent film dates it to the silent era, as the agreement reads it (DE "STUMMFILM MIT TOBIAS
       // RANK:CHARLIE CHAPLIN" is no 1999 "Charlie Chaplin")
       .orElse(Option.when(ListingShape.silentBillingDenies(candidateById(id).film.year, billingOf(node).silent))(
-        "it bills a silent film, and this one is of the sound era"))).map(Denial(_))
+        "it bills a silent film, and this one is of the sound era"))
+      // the venues' own cast fields name none of its cast, and none of their facts agrees with it
+      .orElse(CastEvidence.mismatch(node.listings, candidateById(id).film, node.country.flatMap(TitleRelationMeasures.languageOf),
+        billingOf(node).castIsTheFilms))).map(Denial(_))
 
   /** What `node`'s billing says it is beside a film, once per node — asked of every candidate of its pool: a film
-   *  festival billed by its name alone ([[ListingShape.billsAFilmFestival]]), a silent film ([[ListingShape.billsASilentFilm]]). */
-  private final case class Billing(festival: Boolean, silent: Boolean)
+   *  festival billed by its name alone ([[ListingShape.billsAFilmFestival]]), a silent film ([[ListingShape.billsASilentFilm]]),
+   *  a cast field listing the film's cast ([[CastEvidence.castIsTheFilms]]). */
+  private final case class Billing(festival: Boolean, silent: Boolean, castIsTheFilms: Boolean)
   private def billingOf(node: EvidenceNode): Billing = billingMemo.getOrElseUpdate(node.id, {
     val listing = node.evidence.published
-    Billing(ListingShape.billsAFilmFestival(listing.rawTitle.getOrElse(listing.title)), node.listings.exists(ListingShape.billsASilentFilm))
+    Billing(ListingShape.billsAFilmFestival(listing.rawTitle.getOrElse(listing.title)), node.listings.exists(ListingShape.billsASilentFilm),
+      node.listings.exists(_.listedCast.nonEmpty) && CastEvidence.castIsTheFilms(node.listings))
   })
   private val billingMemo = mutable.HashMap.empty[String, Billing]
 

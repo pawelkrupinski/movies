@@ -62,7 +62,11 @@ final case class Listing(
   /** The age certificate the venue bills it with (its `ageRating`, from its feed or peeled off its title at intake,
    *  `services.movies.TitleFacts`): which cut of which film it screens, as the fill's guard reads it ([[Certificates.below]]).
    *  OUTSIDE the listing's equality and hash, as the poster is: the model never reads it, only the stages after it. */
-  certificate:   Option[String] = None
+  certificate:   Option[String] = None,
+  /** The venue's own cast FIELD, as the cast mismatch reads it ([[ListedCast]]) — none for a
+   *  listing whose facts a feed catalogue states, as for [[names]]. The model reads it ([[CastEvidence.mismatch]]): inside
+   *  equality and hash. */
+  listedCast:    ListedCast = ListedCast.None
 ) {
   def venue: String = key.venue
 
@@ -118,7 +122,7 @@ final case class Listing(
     case that: Listing => (this eq that) || (key == that.key && rawTitle == that.rawTitle && title == that.title && cleanTitle == that.cleanTitle &&
       year == that.year && directors == that.directors && runtime == that.runtime && page == that.page && originalTitle == that.originalTitle &&
       countries == that.countries && catalogueIds == that.catalogueIds && searchTitle == that.searchTitle && properTitle == that.properTitle && cinema == that.cinema &&
-      screenedSeason == that.screenedSeason)
+      screenedSeason == that.screenedSeason && listedCast == that.listedCast)
     case _ => false
   }
   override def hashCode: Int = {
@@ -130,7 +134,8 @@ final case class Listing(
     while (i < fields.length) { h = mix(h, fields(i)); i += 1 }
     h = mix(h, searchTitle.##)
     h = mix(h, properTitle.##)
-    finalizeHash(mixLast(h, screenedSeason.##), fields.length + 3)
+    h = mix(h, listedCast.##)
+    finalizeHash(mixLast(h, screenedSeason.##), fields.length + 4)
   }
 
   /** A TOTAL order over listings, as text: the key first, then every published field, so two
@@ -251,7 +256,8 @@ object Listing {
       names         = venueNames(cinema, cm),
       words         = venueWords(cinema, cm),
       properTitle   = properTitle,
-      certificate   = cm.ageRating.map(_.trim).filter(_.nonEmpty))
+      certificate   = cm.ageRating.map(_.trim).filter(_.nonEmpty),
+      listedCast    = if (cm.cast.isEmpty || !namesAreVenues(cinema, cm)) ListedCast.None else ListedCast.of(cm.cast))
   }
 
   /** The titles external lookups are asked for besides the venue's own, if any: the one its rules ask

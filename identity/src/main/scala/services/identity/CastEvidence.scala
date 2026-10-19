@@ -111,4 +111,146 @@ object CastEvidence {
       case Seq(only) => Some(only)
       case _         => Option.empty
     }
+
+  /** The MISMATCH: why the venues' own cast FIELDS rule `film` out, if they do — each
+   *  listing listing a cast ([[ListedCast]]) names none of the film's top-billed cast ([[FilmCast]]), and no listing states
+   *  a fact of its own that agrees with the film (a year within one, a director the film credits): then the cast is
+   *  another film's. Read only where the cast is the film's: never beside a stage work, a relay, a performance (a
+   *  tribute's cast field lists its performers) or a bill of several works, only for a film of the venues' own language
+   *  (`language`) — a dub's cast field lists its voices, a foreign film's its transliterations — and only for a film whose
+   *  genres are known and say its cast is on screen ([[onScreenCast]]). Measured 2026-10-19 (recording 38713274617): ES
+   *  "La maleta" ×14 cured (Objetos 2022 → Therón's 2026 film), 9 right gained, nothing else moved. */
+  def mismatch(listings: Seq[Listing], film: IdentityMeasures.Film, language: Option[String], castIsTheFilms: => Boolean): Option[String] = {
+    val listing = listings.filter(_.listedCast.nonEmpty)
+    if (listing.isEmpty || film.cast.isEmpty || language.isEmpty || film.originalLanguage != language || !onScreenCast(film) || !castIsTheFilms) None
+    else {
+      def ownFact(l: Listing) = l.year.exists(y => film.year.exists(f => math.abs(f - y) <= 1)) ||
+        (l.directors.nonEmpty && FactRelations.samePerson(l.directors, film.directors.getOrElse(Nil)))
+      Option.when(listing.forall(l => film.cast.get.namedBy(l.listedCast) == 0) && !listings.exists(ownFact))(
+        "its venue's own cast field names none of its top-billed cast, and no fact the venue states agrees with it")
+    }
+  }
+
+  /** TMDB's genres whose cast is no on-screen cast of the film: Animation (a dub's voices), Documentary (whoever appears). */
+  val VoiceOrContributorGenres: Seq[Int] = Seq(16, 99)
+
+  /** Is the film's TMDB cast the people a venue's cast field would list — its genres KNOWN (a record filed before records
+   *  kept them reads as unknown, and the mismatch stands down) and none of [[VoiceOrContributorGenres]]? */
+  def onScreenCast(film: IdentityMeasures.Film): Boolean = film.genreBits != 0 && !VoiceOrContributorGenres.exists(film.hasGenre)
+
+  /** Is what the listings' cast fields list the film's cast — none billing a stage work, a relay, a performance or
+   *  several works ([[mismatch]])? */
+  def castIsTheFilms(listings: Seq[Listing]): Boolean = !listings.exists { l =>
+    ListingShape.stagesAWork(l) || ListingShape.relays(l, l.rawTitle.toLowerCase(java.util.Locale.ROOT)) || ListingShape.billsSeveral(l) ||
+      services.cinemas.pl.NonMovieEventClassifier.isPerformance(l.rawTitle)
+  }
+}
+
+/**
+ * A venue's own cast FIELD — never its synopsis — as the cast MISMATCH reads it: each entry's
+ * neighbouring words as UNORDERED pairs, folded as [[VenueNames]] folds them, so a name given family name first ("Gong
+ * Li", "Li Gong") names the same person. Held only where the field is evidence about the film at all: two entries of two
+ * words or more, and no entry of one word — a mononymous star ("Rajinikanth"), a puppet ("Animal") or a role in brackets
+ * ("Paul Marque (Romeo)") no pair can name. A part between commas, semicolons, slashes or brackets is an entry.
+ */
+final class ListedCast private (pairs: Array[Int]) extends SortedHashes[ListedCast](pairs) {
+  protected def holding(sorted: Array[Int]): ListedCast = if (sorted.isEmpty) ListedCast.None else new ListedCast(sorted)
+  protected def unit: String = "pairs"
+
+  /** Does the field name a name given as its unordered pairs ([[FilmCast]]'s)? */
+  def namesPairs(pairs: Array[Int]): Boolean = holdsAll(pairs)
+}
+
+object ListedCast {
+  val None: ListedCast = new ListedCast(Array.emptyIntArray)
+  /** The names a field must list for its silence about a film's cast to count. */
+  val Names = 2
+
+  /** The field `cast` lists, where it is evidence ([[ListedCast]]); none otherwise. Read char by char, as [[VenueNames]]
+   *  is: a corpus reads one per listing. */
+  def of(cast: Seq[String]): ListedCast = {
+    var found   = new Array[Int](16)
+    var count   = 0
+    var names   = 0
+    var oneWord = false
+    val it = cast.iterator
+    while (it.hasNext && !oneWord) {
+      val text = it.next()
+      var words = 0; var previous = 0
+      var i = 0
+      val n = text.length
+      while (i <= n && !oneWord) {
+        val c = if (i < n) text.charAt(i) else '\n'
+        if (Character.isLetterOrDigit(c)) {
+          var h = 0
+          while (i < n && Character.isLetterOrDigit(text.charAt(i))) { h = 31 * h + VenueNames.fold(text.charAt(i)); i += 1 }
+          if (words > 0) {
+            if (count == found.length) found = java.util.Arrays.copyOf(found, count * 2)
+            found(count) = pair(previous, h); count += 1
+          }
+          previous = h; words += 1
+        } else {
+          if (EntryEnds.indexOf(c) >= 0) {
+            if (words == 1) oneWord = true else if (words >= 2) names += 1
+            words = 0
+          }
+          i += 1
+        }
+      }
+    }
+    if (oneWord || names < Names) None else new ListedCast(SortedHashes.sortedDistinct(found, count))
+  }
+  private val EntryEnds = ",;/|()[]\r\n"
+
+  /** The folded words of `name`, each as its hash. */
+  private[identity] def wordsOf(name: String): Array[Int] = {
+    val found = scala.collection.mutable.ArrayBuilder.make[Int]
+    var i = 0
+    val n = name.length
+    while (i < n) {
+      if (Character.isLetterOrDigit(name.charAt(i))) {
+        var h = 0
+        while (i < n && Character.isLetterOrDigit(name.charAt(i))) { h = 31 * h + VenueNames.fold(name.charAt(i)); i += 1 }
+        found += h
+      } else i += 1
+    }
+    found.result()
+  }
+
+  /** The unordered pairs of neighbouring words, by hash. */
+  private[identity] def pairs(words: Array[Int]): Array[Int] = words.indices.drop(1).map(i => pair(words(i - 1), words(i))).toArray
+
+  /** One unordered pair of words, by hash: either order hashes alike. */
+  private def pair(a: Int, b: Int): Int =
+    MurmurHash3.finalizeHash(MurmurHash3.mixLast(MurmurHash3.mix(0x4c697374, math.min(a, b)), math.max(a, b)), 2)
+
+  /** `name`'s unordered pairs: none for a name of one word. */
+  private[identity] def pairsOf(name: String): Array[Int] = pairs(wordsOf(name)).distinct.sorted
+}
+
+/** A film's top-billed cast as the cast MISMATCH reads it: each name of two words or more in
+ *  Latin letters as its unordered pairs ([[ListedCast.pairsOf]]). */
+final class FilmCast private (private val names: Array[Array[Int]]) {
+  /** How many of its names `listed` names. */
+  def namedBy(listed: ListedCast): Int = names.count(listed.namesPairs)
+  /** Each name's pairs, as a stored record keeps them ([[FilmCast.ofPairs]]). */
+  def pairs: Seq[Seq[Int]] = names.toSeq.map(_.toSeq)
+  override def equals(other: Any): Boolean = other match {
+    case that: FilmCast => java.util.Arrays.deepEquals(names.asInstanceOf[Array[AnyRef]], that.names.asInstanceOf[Array[AnyRef]])
+    case _              => false
+  }
+  override def hashCode: Int = java.util.Arrays.deepHashCode(names.asInstanceOf[Array[AnyRef]])
+  override def toString: String = s"FilmCast(${names.length})"
+}
+
+object FilmCast {
+  /** A cast as [[FilmCast.pairs]] gave it. */
+  def ofPairs(pairs: Seq[Seq[Int]]): Option[FilmCast] = Option.when(pairs.nonEmpty)(new FilmCast(pairs.map(_.toArray).toArray))
+
+  /** `None` unless TMDB bills [[ListedCast.Names]] names or more in Latin letters: a Greek or Japanese record's cast is
+   *  another spelling of the names a venue transliterates. */
+  def of(names: Seq[String]): Option[FilmCast] = {
+    val latin = names.distinct.filter(_.forall(c => !Character.isLetter(c) || c < 0x0250)).map(ListedCast.pairsOf).filter(_.nonEmpty)
+    Option.when(latin.sizeIs >= ListedCast.Names)(new FilmCast(latin.toArray))
+  }
 }

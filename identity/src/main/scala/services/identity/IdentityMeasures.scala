@@ -218,7 +218,10 @@ object IdentityMeasures {
                         /** TMDB's genres of it, one bit each of [[Film.Genres]] (an Int, no collection per record): what the
                          *  cast evidence asks of a candidate — is its cast a voice cast (Animation) or its contributors'
                          *  (Documentary)? 0 for a record filed before records kept them, or one TMDB files under none. */
-                        genreBits: Int = 0) {
+                        genreBits: Int = 0,
+                        /** Its top-billed cast as the cast mismatch reads it ([[FilmCast]]); `None` where not fetched, or
+                         *  in other letters than a venue's. */
+                        cast: Option[FilmCast] = None) {
     /** TMDB's genre ids of the film ([[genreBits]]). */
     def genreIds: Set[Int] = Film.genreIdsOf(genreBits)
     /** Does TMDB file the film under the genre of TMDB id `genreId`? */

@@ -52,7 +52,8 @@ object TmdbFilmRecord {
         certificates      = main.flatMap(d => (d \ "release_dates").toOption.map(Certificates.ofReleaseDates)
           .getOrElse((d \ CertificatesField).asOpt[String])).headOption,
         originalLanguage  = originalLanguage(main),
-        genreBits         = genreBits(main)) -> imdbId)
+        genreBits         = genreBits(main),
+        cast              = cast(answers).flatMap(FilmCast.of)) -> imdbId)
     }
   }
 
