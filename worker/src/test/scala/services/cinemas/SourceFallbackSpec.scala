@@ -51,7 +51,7 @@ class SourceFallbackSpec extends AnyFlatSpec with Matchers with org.scalatest.Op
     def state  = store.get(cinema.displayName)
     def advance(d: FiniteDuration): Unit = clock = clock.plusMillis(d.toMillis)
     /** The Telegram pages that would actually go out — what each onEvent resolves
-     *  to via FallbackAlert (gated on `alerted`), in fire order. */
+     *  to via FallbackAlert, in fire order. */
     def alerts: Seq[String] = events.toList.flatMap { case (s, e) => FallbackAlert.messageFor(s, e, cinema.opening) }
     /** Drive one failing tick, swallowing the re-raised throw a grace tick emits. */
     def tickSwallowing(): Unit = try { scraper.fetch(); () } catch { case _: RuntimeException => () }
@@ -462,19 +462,38 @@ class SourceFallbackSpec extends AnyFlatSpec with Matchers with org.scalatest.Op
     secondNext.isAfter(firstNext) shouldBe true
   }
 
-  it should "page ENTER immediately on entering fallback (the grace window already filtered out blips)" in {
-    val h = new Harness(Seq(Left(boom)), Some(filmwebWith(OneMovie)))
-    h.tickSwallowing()             // grace — no page
-    h.alerts shouldBe empty
+  /** Fail through the grace window into fallback, then re-probe (still down) once an hour for `hours`. */
+  private def onFallbackFor(h: Harness, hours: Int): Unit = {
+    h.tickSwallowing()             // grace
     h.advance(6.hours + 1.minute)
-    h.scraper.fetch()              // ENTER → page at once
-    h.state.map(_.alerted) shouldBe Some(true)
+    h.scraper.fetch()              // ENTER
+    (1 to hours).foreach { _ => h.advance(1.hour); h.scraper.fetch() }   // past each backoff → PROBE_FAILED
+  }
+
+  // A venue on its fallback is still served, so entering it is nothing to act on; PL and UK spells in
+  // the week to 2026-10-19 paged ENTER, then RECOVERED four to seven hours later, with nobody doing
+  // anything in between. A spell that has lasted a day is the one worth a person's look.
+  it should "page a fallback spell once it has lasted a day, not on entering it, and only once" in {
+    val h = new Harness(Seq(Left(boom)), Some(filmwebWith(OneMovie)))
+    onFallbackFor(h, hours = 23)
+    h.events.map(_._2.event).head shouldBe FallbackEvent.Enter
+    h.alerts shouldBe empty
+    h.advance(1.hour)
+    h.scraper.fetch()              // a day on fallback → page
     h.alerts should have size 1
-    h.alerts.head should include ("serving via Filmweb fallback")
-    // Subsequent failed re-probes do NOT re-page.
+    h.alerts.head should include ("serving via Filmweb fallback for 24h")
     h.advance(1.hour)
     h.scraper.fetch()
-    h.alerts should have size 1
+    h.alerts should have size 1    // later re-probes do not re-page
+  }
+
+  it should "page nothing for a fallback spell that recovers within a day" in {
+    val h = new Harness(Seq.fill(5)(Left(boom)) :+ Right(OneMovie), Some(filmwebWith(OneMovie)))
+    onFallbackFor(h, hours = 3)
+    h.advance(1.hour)
+    h.scraper.fetch() shouldBe OneMovie   // primary back → RECOVERED, unpaged like its ENTER
+    h.events.map(_._2.event).last shouldBe FallbackEvent.Recovered
+    h.alerts shouldBe empty
   }
 
   it should "NOT page when a cinema recovers while still in the grace window (never entered fallback)" in {
@@ -486,11 +505,9 @@ class SourceFallbackSpec extends AnyFlatSpec with Matchers with org.scalatest.Op
     h.alerts shouldBe empty
   }
 
-  it should "page RECOVERED when the primary returns after we had entered fallback" in {
-    val h = new Harness(Seq(Left(boom), Left(boom), Right(OneMovie)), Some(filmwebWith(OneMovie)))
-    h.tickSwallowing()             // grace
-    h.advance(6.hours + 1.minute)
-    h.scraper.fetch()              // ENTER → page
+  it should "page RECOVERED when the primary returns after a spell that paged" in {
+    val h = new Harness(Seq.fill(27)(Left(boom)) :+ Right(OneMovie), Some(filmwebWith(OneMovie)))
+    onFallbackFor(h, hours = 25)
     h.advance(1.hour)              // past the extended backoff
     h.scraper.fetch() shouldBe OneMovie   // primary back → RECOVERED
     h.state.map(_.active) shouldBe Some(false)

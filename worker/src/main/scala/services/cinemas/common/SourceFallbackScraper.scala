@@ -201,7 +201,7 @@ class SourceFallbackScraper(
   private def ownSpell(state: FallbackState): FallbackState =
     if (state.fallbackSource == fallbackName) state
     else state.copy(
-      active = false, alerted = false, failingSince = None, failedRuns = 0, since = None, emptyFallback = None, droppedFallback = None,
+      active = false, failingSince = None, failedRuns = 0, since = None, emptyFallback = None, droppedFallback = None,
       consecutiveFailures = 0, lastPrimaryProbeAt = None, nextPrimaryProbeAt = None)
 
   /** Has the current failing spell, counting THIS failed run, reached [[fallbackAfter]]?
@@ -332,8 +332,9 @@ class SourceFallbackScraper(
     )
 
   /** Cross from the grace window into fallback: the primary has now been failing
-   *  for [[fallbackAfter]] and the fallback has data. Pages ENTER immediately — the
-   *  grace window already proved this is no brief blip. */
+   *  for [[fallbackAfter]] and the fallback has data. Fires ENTER, which pages nothing
+   *  by itself: the fallback is serving the venue, and `FallbackAlert` pages a spell
+   *  only once it has lasted a day. */
   private def enterFallback(previous: Option[FallbackState], nowI: Instant, reason: String): Unit = {
     val base  = previous.getOrElse(initialState)
     val event = FallbackEvent(nowI, FallbackEvent.Enter, reason)
@@ -349,7 +350,6 @@ class SourceFallbackScraper(
       nextPrimaryProbeAt  = Some(nowI.plusMillis(backoffFor(1).toMillis)),
       updatedAt           = nowI,
       history             = (event :: base.history).take(FallbackState.MaxHistory),
-      alerted             = true,
       emptyFallback       = None,
       droppedFallback     = None
     )
@@ -359,8 +359,8 @@ class SourceFallbackScraper(
 
   /** A re-probe while already on fallback found the primary still down: record a
    *  PROBE_FAILED, bump the failure count and push the next probe out with
-   *  exponential backoff. Routine backoff noise — no page (FallbackAlert ignores
-   *  PROBE_FAILED). */
+   *  exponential backoff. Routine backoff noise, except the one re-probe that finds
+   *  the spell a day old, which `FallbackAlert` pages. */
   private def markPrimaryDown(previous: Option[FallbackState], nowI: Instant, reason: String, answer: FallbackAnswer): Unit = {
     val base        = previous.getOrElse(initialState)
     val consecutive = base.consecutiveFailures + 1
@@ -382,8 +382,8 @@ class SourceFallbackScraper(
   }
 
   /** A healthy primary tick ends the current failing run. If we were on fallback,
-   *  mark RECOVERED and page (the entry paged, so the recovery is worth a page); if
-   *  we were merely in the grace window, clear the clock silently. */
+   *  mark RECOVERED (paged by `FallbackAlert` when the spell was long enough to have
+   *  paged); if we were merely in the grace window, clear the clock silently. */
   private def endFailingSpell(previous: Option[FallbackState], nowI: Instant): Unit = previous.foreach { p =>
     if (p.active) {
       val event = FallbackEvent(nowI, FallbackEvent.Recovered, "primary recovered")

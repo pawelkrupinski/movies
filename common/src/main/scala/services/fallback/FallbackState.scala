@@ -52,7 +52,6 @@ case class FallbackState(
   nextPrimaryProbeAt:  Option[Instant],   // before this, serve the fallback without re-probing the primary
   updatedAt:           Instant,
   history:             List[FallbackEvent],
-  alerted:             Boolean = false,   // ENTER page sent for the CURRENT spell — gates the recovery page so a grace-window recovery (never entered fallback) stays silent
   failedRuns:          Int = 0,           // separate failed primary runs in the CURRENT spell, for a run-counting grace (`FallbackAfter.FailedRuns`). Persisted like `failingSince`; cleared on any primary success.
   emptyFallback:       Option[FallbackState.EmptySpell] = None, // the fallback ANSWERED but listed nothing, while the primary was down: corroborates the primary's drop. Cleared when the fallback serves, drops the venue or the primary recovers; a fallback that errors leaves it as it was.
   droppedFallback:     Option[FallbackState.DroppedSpell] = None // the fallback's own page for the venue answered 404/410, while the primary was down: a second listing has dropped the venue. Cleared like `emptyFallback`.

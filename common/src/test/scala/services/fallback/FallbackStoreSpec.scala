@@ -15,8 +15,7 @@ class FallbackStoreSpec extends AnyFlatSpec with Matchers {
     since = Some(Instant.ofEpochMilli(1000)), lastReason = Some("down"),
     consecutiveFailures = 1, lastPrimaryProbeAt = Some(Instant.ofEpochMilli(1200)),
     nextPrimaryProbeAt = Some(Instant.ofEpochMilli(2000)), updatedAt = Instant.ofEpochMilli(3000),
-    history = List(FallbackEvent(Instant.ofEpochMilli(1000), FallbackEvent.Enter, "down")),
-    alerted = active   // exercise both true (active spell) and false through the codec
+    history = List(FallbackEvent(Instant.ofEpochMilli(1000), FallbackEvent.Enter, "down"))
   )
 
   "InMemoryFallbackStore" should "store, read back, overwrite and list states" in {
@@ -51,7 +50,7 @@ class FallbackStoreSpec extends AnyFlatSpec with Matchers {
         BsonString("1000\tENTER\tdown"),
         BsonString("1500\tPROBE_FAILED\tstill down")
       ),
-      "alerted"             -> true
+      "alerted"             -> true   // written before the field was dropped: ignored
     )
 
     MongoFallbackStore.fromDocument(document) shouldBe Some(FallbackState(
@@ -63,8 +62,7 @@ class FallbackStoreSpec extends AnyFlatSpec with Matchers {
       history = List(
         FallbackEvent(Instant.ofEpochMilli(1000), FallbackEvent.Enter, "down"),
         FallbackEvent(Instant.ofEpochMilli(1500), FallbackEvent.ProbeFailed, "still down")
-      ),
-      alerted = true
+      )
     ))
   }
 

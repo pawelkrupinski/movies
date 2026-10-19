@@ -10,33 +10,49 @@ import java.time.Instant
 
 class FallbackAlertSpec extends AnyFlatSpec with Matchers with OptionValues {
 
-  private val state = FallbackState(
-    cinema = "Kino Praha", active = true, fallbackSource = "Filmweb", fallbackRef = Some("2180"), since = Some(Instant.EPOCH),
+  private val entered = Instant.parse("2026-10-18T00:00:00Z")
+  private def at(hours: Long) = entered.plusSeconds(hours * 3600)
+
+  private def event(kind: String, hoursIn: Long = 0, reason: String = "down") = FallbackEvent(at(hoursIn), kind, reason)
+
+  /** The state a transition hands the alert: its own event at the head of the spell's history. */
+  private def stateWith(history: FallbackEvent*) = FallbackState(
+    cinema = "Kino Praha", active = true, fallbackSource = "Filmweb", fallbackRef = Some("2180"), since = Some(entered),
     lastReason = Some("RuntimeException: down"), consecutiveFailures = 1,
-    lastPrimaryProbeAt = None, nextPrimaryProbeAt = None, updatedAt = Instant.EPOCH, history = Nil,
-    alerted = true   // the scraper set this on entering fallback (i.e. after the grace window)
+    lastPrimaryProbeAt = None, nextPrimaryProbeAt = None, updatedAt = entered, history = history.toList
   )
 
-  private def event(kind: String, reason: String = "down") = FallbackEvent(Instant.EPOCH, kind, reason)
+  private def page(history: FallbackEvent*) = FallbackAlert.messageFor(stateWith(history*), history.head, Opening.YearRound)
 
-  "FallbackAlert" should "alert on ENTER with the cinema and reason once the spell is alerted" in {
-    val message = FallbackAlert.messageFor(state, event(FallbackEvent.Enter, "HTTP 503"), Opening.YearRound).value
+  private val enter = event(FallbackEvent.Enter, reason = "HTTP 503")
+
+  "FallbackAlert" should "stay quiet on ENTER: the fallback is serving the venue" in {
+    page(enter) shouldBe None
+  }
+
+  it should "page the re-probe that finds the venue a day on fallback, with the cinema and reason" in {
+    val probe23 = event(FallbackEvent.ProbeFailed, 23, "HTTP 503")
+    val probe24 = event(FallbackEvent.ProbeFailed, 24, "HTTP 503")
+    page(probe23, enter) shouldBe None
+    val message = page(probe24, probe23, enter).value
     message should include ("Kino Praha")
+    message should include ("serving via Filmweb fallback for 24h")
     message should include ("HTTP 503")
+    page(event(FallbackEvent.ProbeFailed, 25), probe24, probe23, enter) shouldBe None   // only the crossing pages
   }
 
-  it should "alert on RECOVERED once the spell is alerted" in {
-    FallbackAlert.messageFor(state, event(FallbackEvent.Recovered), Opening.YearRound).value should include ("recovered")
+  it should "page RECOVERED only for a spell that lasted long enough to have paged" in {
+    page(event(FallbackEvent.Recovered, 5), event(FallbackEvent.ProbeFailed, 4), enter) shouldBe None
+    page(event(FallbackEvent.Recovered, 30), event(FallbackEvent.ProbeFailed, 29), enter).value should include ("recovered")
   }
 
-  it should "stay quiet on PROBE_FAILED (routine backoff noise)" in {
-    FallbackAlert.messageFor(state, event(FallbackEvent.ProbeFailed), Opening.YearRound) shouldBe None
+  it should "count the day-long page as the spell's ENTER page, so its kind is the one the metrics seed" in {
+    FallbackAlert.kindOf(event(FallbackEvent.ProbeFailed, 24)) shouldBe TelegramAlertKind.fallback(FallbackEvent.Enter)
+    FallbackAlert.kindOf(event(FallbackEvent.Recovered, 30)) shouldBe TelegramAlertKind.fallback(FallbackEvent.Recovered)
   }
 
-  it should "stay quiet on ENTER and RECOVERED for a grace-window spell that never entered fallback (alerted=false)" in {
-    val unalerted = state.copy(alerted = false)
-    FallbackAlert.messageFor(unalerted, event(FallbackEvent.Enter), Opening.YearRound) shouldBe None
-    FallbackAlert.messageFor(unalerted, event(FallbackEvent.Recovered), Opening.YearRound) shouldBe None
+  it should "stay quiet on a PROBE_FAILED inside the first day (routine backoff noise)" in {
+    page(event(FallbackEvent.ProbeFailed, 2), enter) shouldBe None
   }
 
   // Nothing serving a drive-in in January is the drive-in's winter, not a venue that has gone.
@@ -44,8 +60,8 @@ class FallbackAlertSpec extends AnyFlatSpec with Matchers with OptionValues {
     val driveIn  = Opening.Seasonal(SeasonWindow.UnitedStates)    // April..October
     val january  = FallbackEvent(Instant.parse("2027-01-15T12:00:00Z"), FallbackEvent.Uncovered, "HTTP 404")
     val july     = january.copy(at = Instant.parse("2026-07-15T12:00:00Z"))
-    FallbackAlert.messageFor(state, january, Opening.YearRound).value should include ("nothing is covering it")
-    FallbackAlert.messageFor(state, january, driveIn) shouldBe None
-    FallbackAlert.messageFor(state, july, driveIn).value should include ("nothing is covering it")
+    FallbackAlert.messageFor(stateWith(january), january, Opening.YearRound).value should include ("nothing is covering it")
+    FallbackAlert.messageFor(stateWith(january), january, driveIn) shouldBe None
+    FallbackAlert.messageFor(stateWith(july), july, driveIn).value should include ("nothing is covering it")
   }
 }

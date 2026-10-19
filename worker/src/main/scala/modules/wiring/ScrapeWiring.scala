@@ -126,15 +126,15 @@ trait ScrapeWiring { self: WorkerWiring =>
     base ++ FilmwebShowtimesClient.resolveAll(filmwebClients)
   }
 
-  // Fired on each ENTER / PROBE_FAILED / RECOVERED transition: alerts on the
-  // page-worthy ones (FallbackAlert filters PROBE_FAILED out) when Telegram is
-  // configured, and (re)writes the cinema's /uptime tags so the FtFW chip appears
+  // Fired on each ENTER / PROBE_FAILED / RECOVERED / UNCOVERED transition: alerts on the
+  // page-worthy ones (FallbackAlert: a spell a day old, its recovery, and UNCOVERED) when
+  // Telegram is configured, and (re)writes the cinema's /uptime tags so the FtFW chip appears
   // on ENTER and clears on RECOVER. `state.active` is the post-transition truth
   // (put() runs before onEvent), so no store round-trip is needed.
   protected def filmwebFallbackOnEvent: (FallbackState, FallbackEvent) => Unit =
     (state, event) => {
       val opening = models.Cinema.byDisplayName.get(state.cinema).fold[models.Opening](models.Opening.YearRound)(_.opening)
-      FallbackAlert.messageFor(state, event, opening).foreach(fallbackPager(services.alerts.TelegramAlertKind.fallback(event.event)))
+      FallbackAlert.messageFor(state, event, opening).foreach(fallbackPager(FallbackAlert.kindOf(event)))
       uptimeMonitor.tagService(state.cinema, CinemaClientMarkers.tagsFor(clientMarkers.get(state.cinema), sourceUrls.get(state.cinema), state.active))
     }
 

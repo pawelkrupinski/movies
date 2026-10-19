@@ -19,7 +19,7 @@ trait AlertingWiring { self: WorkerWiring =>
 
   private def notifierFor(route: TelegramRoute): TelegramNotifier = new TelegramNotifier(httpFetch, route, country.code, workerMetrics.telegramNotifications.recorderFor(country.code))
 
-  // Telegram alerter for fallback ENTER / RECOVERED events. Posts to the dedicated
+  // Telegram alerter for fallback spells a day old, their recoveries, and uncovered venues. Posts to the dedicated
   // "Fallback to Filmweb" topic when a topic id is set.
   protected lazy val fallbackTelegramNotifier: Option[TelegramNotifier] =
     configuration.telegramRoute(AlertRoute.FilmwebFallback).toOption.map(notifierFor)
