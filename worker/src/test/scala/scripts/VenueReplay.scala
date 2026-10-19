@@ -105,7 +105,7 @@ object VenueReplay {
       s"fixtures:$abs" -> (new clients.tools.FakeHttpFetch(abs.getFileName.toString, strict = true, foldYear = true,
         root = settings.FixtureRoot(abs.getParent)): HttpFetch)
     }
-    val behind: HttpFetch = new FallbackHttpFetch(trees :+ ("lacks" -> leaf))
+    val behind: HttpFetch = new FallbackHttpFetch(trees :+ ("lacks" -> leaf), _root_.tools.Stopwatch.System)
     (corpus, recording.filter(r => Files.isDirectory(r.resolve(s"enrichment-${country.code}")))) match {
       case (Some(rows), Some(root)) =>
         val recorded = RecordedCorpus.open(country, rows, settings.FixtureRoot(root), _ => behind)

@@ -41,7 +41,7 @@ class UnscreenedCleanupSpec extends AnyFlatSpec with Matchers {
   /** A husk that is nonetheless still SHOWING: showtimes, no title. Prod holds one
    *  (`najswietszeserce|2025`), and it must survive. */
   private val untitledButShowing =
-    SourceData(showtimes = Seq(Showtime(java.time.LocalDateTime.now.plusDays(1), bookingUrl = None)))
+    SourceData(showtimes = Seq(Showtime(_root_.tools.SpecClock.PinnedDay.plusDays(1).atTime(12, 0), bookingUrl = None)))
 
   private def mkRecord(imdbId: String, cinemas: Map[models.Cinema, SourceData]): MovieRecord =
     MovieRecord(

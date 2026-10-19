@@ -1,7 +1,7 @@
 package services.cinemas
 
 import services.cinemas.pl.MultikinoClient
-import tools.{HttpFetch, ProxyChain}
+import tools.{HttpFetch, ProxyChain, Stopwatch}
 
 import java.time.Clock
 
@@ -53,14 +53,16 @@ object CinemaEgress {
    *  ([[ProxyChain.paidEgressChain]]). A diagnostic never builds a Zyte leg, nor wires
    *  a token harvester (so Odeon venues throw → flicks fallback). The UK routes stay on `http`: Decodo's
    *  IPs are Polish, and a diagnostic runs Poland. `clock` is what the proxy leg's circuit breaker is
-   *  judged on — the run's own, which a venue clock pinned to a day for the plan's sake is not. */
+   *  judged on — the run's own, which a venue clock pinned to a day for the plan's sake is not. A diagnostic's
+   *  elapsed time is the process's own monotonic [[Stopwatch.System]]: this shape is the catalog's diagnostic door,
+   *  which the identity tools compile into older refs, so it takes no stopwatch of its own. */
   def diagnostic(http: HttpFetch, clock: Clock, proxyShards: Option[IndexedSeq[HttpFetch]]): CinemaEgress = {
-    val paidRoute = ProxyChain.paidEgressChain(proxyShards, http, clock)
-    direct(http).copy(multikino = multikinoChain(proxyShards, http, clock),
+    val paidRoute = ProxyChain.paidEgressChain(proxyShards, http, clock, Stopwatch.System)
+    direct(http).copy(multikino = multikinoChain(proxyShards, http, clock, Stopwatch.System),
       biletyna = paidRoute, zyte = paidRoute)
   }
 
   /** Multikino's chain for a recording or diagnostic tool: proxy (warmed on the homepage) → `direct`. */
-  def multikinoChain(proxyShards: Option[IndexedSeq[HttpFetch]], direct: HttpFetch, clock: Clock): HttpFetch =
-    ProxyChain.paidEgressChain(proxyShards, direct, clock, Some(MultikinoClient.HomeUrl))
+  def multikinoChain(proxyShards: Option[IndexedSeq[HttpFetch]], direct: HttpFetch, clock: Clock, stopwatch: Stopwatch): HttpFetch =
+    ProxyChain.paidEgressChain(proxyShards, direct, clock, stopwatch, Some(MultikinoClient.HomeUrl))
 }

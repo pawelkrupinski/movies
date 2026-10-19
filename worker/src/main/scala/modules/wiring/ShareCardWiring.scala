@@ -61,7 +61,7 @@ trait ShareCardWiring { self: WorkerWiring =>
 
   lazy val shareCardService: ShareCardService = new ShareCardService(
     country, shareCardStore,
-    new ShareCardPosters(shareCardStore, posterDownload, posterShrinker, shareCardMetrics),
+    new ShareCardPosters(shareCardStore, posterDownload, posterShrinker, shareCardMetrics, stopwatch),
     taskQueue, shareCardRescrapes, shareCardMetrics, clock)
 
   /** The fleet database — one for every country's worker, on the same cluster (and, in a
@@ -98,7 +98,7 @@ trait ShareCardWiring { self: WorkerWiring =>
   /** This country's side of draining the fleet's re-scrape queue, on its own thread. */
   lazy val facebookRescrapeDrain: Option[FacebookRescrapeDrain] = managedResources.stoppingEach(
     for { store <- facebookRescrapeStore; graph <- facebookGraph if shareCardsEnabled; fetches <- facebookFetches }
-    yield new FacebookRescrapeDrain(store, graph, new FilmPageUrls(readModelRepository, country, clock), fetches, country.code, shareCardMetrics, clock))
+    yield new FacebookRescrapeDrain(store, graph, new FilmPageUrls(readModelRepository, country, clock), fetches, country.code, shareCardMetrics, clock, stopwatch))
 
   def startFacebookRescrapes(): Unit = facebookRescrapeDrain.foreach(_.start())
 

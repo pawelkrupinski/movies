@@ -23,6 +23,8 @@ import scala.collection.mutable
  */
 class FallbackHttpFetch(
   backends:  Seq[(String, HttpFetch)],
+  // Times the repeated-failure log's relog window (see RepeatedFailureLog) — the wiring's.
+  stopwatch: Stopwatch,
   // Fired per backend attempt with (name, error): None on success, Some(message)
   // on failure. Lets a caller meter which leg served vs fell through — the worker
   // records the "proxy" leg's outcome to the UptimeMonitor so /uptime shows when
@@ -40,7 +42,7 @@ class FallbackHttpFetch(
 ) extends HttpFetch with Logging {
   require(backends.nonEmpty, "FallbackHttpFetch needs at least one backend")
 
-  private val failureLog = new RepeatedFailureLog(logger, repeats)
+  private val failureLog = new RepeatedFailureLog(logger, repeats, stopwatch)
 
   override def get(url: String): String = tryEach("get", url, _.get(url))(identity)
 

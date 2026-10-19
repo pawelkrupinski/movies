@@ -48,7 +48,7 @@ class FacebookRescrapeDrainSpec extends AnyFlatSpec with Matchers {
     val graph = new RecordingGraph(clock, answer, latency, usage)
     val series = new ShareCardMetrics.Series(Seq("us", "uk"), new io.prometheus.metrics.model.registry.PrometheusRegistry)
     val drains: Map[String, FacebookRescrapeDrain] = Seq("us", "uk").map(cc =>
-      cc -> new FacebookRescrapeDrain(store, graph, pagesOf(_, cities, cc), fetches, cc, series.forCountry(cc), clock)).toMap
+      cc -> new FacebookRescrapeDrain(store, graph, pagesOf(_, cities, cc), fetches, cc, series.forCountry(cc), clock, _root_.tools.Stopwatch.System)).toMap
     /** A re-scrape of a film whose every page Facebook has fetched — shared, so holding a preview. */
     def request(country: String, filmId: String): Unit = {
       fetches.record(pagesOf(filmId, cities, country).map(_ -> clock.instant()).toMap)
@@ -208,7 +208,7 @@ class FacebookRescrapeDrainSpec extends AnyFlatSpec with Matchers {
     fetches.record(Map(pagesOf("film", 1).head -> T0))
     val drain = new FacebookRescrapeDrain(store, graph,
       id => if (readable) pagesOf(id, 1) else throw new IllegalStateException("read-model card unreadable"),
-      fetches, "us", ShareCardMetrics.noop, clock)
+      fetches, "us", ShareCardMetrics.noop, clock, _root_.tools.Stopwatch.System)
     new FacebookRescrapeQueue(store, "us").request("film", clock.instant())
     drain.tick()
     store.waiting.map(_.key) shouldBe Seq("film|us|film")
@@ -226,7 +226,7 @@ class FacebookRescrapeDrainSpec extends AnyFlatSpec with Matchers {
     var reads = 0
     val graph = new RecordingGraph(clock)
     val drain = new FacebookRescrapeDrain(store, graph,
-      _ => { reads += 1; throw new IllegalStateException("read-model card unreadable") }, new InMemoryFacebookFetches, "us", ShareCardMetrics.noop, clock)
+      _ => { reads += 1; throw new IllegalStateException("read-model card unreadable") }, new InMemoryFacebookFetches, "us", ShareCardMetrics.noop, clock, _root_.tools.Stopwatch.System)
     new FacebookRescrapeQueue(store, "us").request("film", clock.instant())
     (1 to MaxAttempts + 3).foreach { attempt =>
       drain.tick()

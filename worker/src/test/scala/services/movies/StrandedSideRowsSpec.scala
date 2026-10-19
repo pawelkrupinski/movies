@@ -7,7 +7,6 @@ import org.scalatest.matchers.should.Matchers
 import services.movies.SingleCountryNormalizer.titleNormalizer
 import tools.LogCapture
 
-import java.time.LocalDateTime
 
 /**
  * `MovieRepository.deleteStrandedSideRows` removes the `screenings` / `movie_slots` rows
@@ -21,7 +20,7 @@ import java.time.LocalDateTime
  */
 class StrandedSideRowsSpec extends AnyFlatSpec with Matchers {
 
-  private val tomorrow = Seq(Showtime(LocalDateTime.now.plusDays(1), bookingUrl = None))
+  private val tomorrow = Seq(Showtime(_root_.tools.SpecClock.PinnedDay.plusDays(1).atTime(12, 0), bookingUrl = None))
   private def slotKey(title: String) = s"helios␟$title"
 
   /** Production's storage shape — showtimes in `screenings`, cinema slots in `movie_slots`. */

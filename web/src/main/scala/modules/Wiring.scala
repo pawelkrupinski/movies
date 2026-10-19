@@ -53,6 +53,8 @@ trait Wiring
   // The one wall clock the serving app reads. Everything that asks "what time is it" takes
   // it by constructor; a test wiring overrides it to pin the time.
   lazy val clock: java.time.Clock = java.time.Clock.systemUTC()
+  /** The one monotonic source elapsed time is measured on — the clock's twin for durations, never a date. */
+  lazy val stopwatch: tools.Stopwatch = tools.Stopwatch.System
 
   /** The latest year a title may name, read off [[clock]] at each ask: what the record accessors the debug pages
    *  render (a venue's representative slot, the display title) cap a title's year by. */

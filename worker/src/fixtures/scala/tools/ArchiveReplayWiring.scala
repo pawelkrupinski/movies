@@ -328,5 +328,5 @@ object ArchiveReplayWiring {
     new FallbackHttpFetch(Seq(
       fixturesLabel -> new clients.tools.FakeHttpFetch(fixtureDirectory, strict = true, foldYear = false, root = root),
       liveLabel     -> new clients.tools.RecordingHttpFetch(
-        fixtureDirectory, cache.fold(live)(new CachingEnrichmentFetch(_, live, replayedFailure)), foldYear = false, root = root)))
+        fixtureDirectory, cache.fold(live)(new CachingEnrichmentFetch(_, live, replayedFailure)), foldYear = false, root = root)), Stopwatch.System)
 }

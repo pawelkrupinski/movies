@@ -8,20 +8,21 @@ object ProxyChain {
 
   /** The residential proxy first, `direct` behind it — and with no proxy, `direct` alone. */
   def paidEgressChain(proxyShards: Option[IndexedSeq[HttpFetch]], direct: HttpFetch,
-                      clock: java.time.Clock, warmUrl: Option[String] = None): HttpFetch =
-    proxyShards.fold(direct)(proxyPrimary(_, direct, clock, warmUrl))
+                      clock: java.time.Clock, stopwatch: Stopwatch, warmUrl: Option[String] = None): HttpFetch =
+    proxyShards.fold(direct)(proxyPrimary(_, direct, clock, stopwatch, warmUrl))
 
   /** The residential proxy (sticky across `shards`, each warmed on `warmUrl`
    *  when given, metered and circuit-broken) with `fallback` behind it — the
    *  chain `EgressWiring`'s `proxyPrimary` explains, shared with `tools.RosterAudit`. */
-  def proxyPrimary(shards: IndexedSeq[HttpFetch], fallback: HttpFetch, clock: java.time.Clock, warmUrl: Option[String] = None,
+  def proxyPrimary(shards: IndexedSeq[HttpFetch], fallback: HttpFetch, clock: java.time.Clock, stopwatch: Stopwatch,
+                   warmUrl: Option[String] = None,
                    keyOf: String => String = StickyShardHttpFetch.hostAndPath,
                    meter: HttpOutcomeRecorder = HttpOutcomeRecorder.noop,
                    onOutcome: (String, Option[String]) => Unit = FallbackHttpFetch.NoOutcome,
                    breakerMeter: CircuitBreakerMeter = CircuitBreakerMeter.noop): HttpFetch = {
     val legs = warmUrl.fold(shards)(u => shards.map(new SessionWarmingHttpFetch(_, u)))
     val proxyLeg = meteredProxyLeg(new StickyShardHttpFetch(legs, keyOf), meter, clock, breakerMeter)
-    new FallbackHttpFetch(Seq("proxy" -> proxyLeg, "fallback" -> fallback), onOutcome = onOutcome,
+    new FallbackHttpFetch(Seq("proxy" -> proxyLeg, "fallback" -> fallback), stopwatch, onOutcome = onOutcome,
                           endsChain = FallbackHttpFetch.OriginAnswered)
   }
 

@@ -44,7 +44,7 @@ class ProxyChainSpec extends AnyFlatSpec with Matchers {
     val fallback  = new GetOnlyHttpFetch {
       override def get(url: String): String = { working.incrementAndGet(); "ok" }
     }
-    val chain = new FallbackHttpFetch(Seq("proxy" -> ProxyChain.breakerGuarded(deadProxy, SpecClock.Pinned), "fallback" -> fallback))
+    val chain = new FallbackHttpFetch(Seq("proxy" -> ProxyChain.breakerGuarded(deadProxy, SpecClock.Pinned), "fallback" -> fallback), Stopwatch.System)
 
     // Trip the breaker.
     (1 to 4).foreach(_ => chain.get("https://vwc.odeon.co.uk/x") shouldBe "ok")
@@ -99,7 +99,7 @@ class ProxyChainSpec extends AnyFlatSpec with Matchers {
   "proxyPrimary" should "end the chain on the origin's not-found instead of masking it with a blocked fallback" in {
     val fallback = new CountingFailingFetch(url => new HttpStatusException(403, "GET", url, None))
     val originSaysGone = new CountingFailingFetch(url => new HttpStatusException(404, "GET", url, None))
-    val chain = ProxyChain.proxyPrimary(IndexedSeq(originSaysGone), fallback, SpecClock.Pinned)
+    val chain = ProxyChain.proxyPrimary(IndexedSeq(originSaysGone), fallback, SpecClock.Pinned, Stopwatch.System)
 
     val thrown = the[HttpStatusException] thrownBy chain.get("https://vwc.odeon.co.uk/showtimes/by-business-date/2026-10-02")
     thrown.code shouldBe 404
@@ -108,7 +108,7 @@ class ProxyChainSpec extends AnyFlatSpec with Matchers {
 
   it should "still fall through on a failure that is not the origin's answer" in {
     val working = new GetOnlyHttpFetch { override def get(url: String): String = "ok" }
-    val chain = ProxyChain.proxyPrimary(IndexedSeq(new CountingFailingFetch(tunnelFailed)), working, SpecClock.Pinned)
+    val chain = ProxyChain.proxyPrimary(IndexedSeq(new CountingFailingFetch(tunnelFailed)), working, SpecClock.Pinned, Stopwatch.System)
     chain.get("https://vwc.odeon.co.uk/x") shouldBe "ok"
   }
 }

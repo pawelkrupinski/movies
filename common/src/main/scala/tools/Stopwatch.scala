@@ -13,10 +13,14 @@ import scala.concurrent.duration.{Duration, FiniteDuration}
  *  - [[total]] — the time every run of a block took, summed from any thread (a prefetch's
  *    seconds across a take-up).
  *
- * `nanoTime` is injected so a spec drives the durations; production uses [[Stopwatch.System]].
+ * `source` is injected so a spec drives the durations; production uses [[Stopwatch.System]], handed
+ * down from the composition root like its `Clock`.
  */
-final class Stopwatch(nanoTime: () => Long) {
-  def start(): Stopwatch.Started = new Stopwatch.Started(nanoTime(), nanoTime)
+final class Stopwatch(source: () => Long) {
+  /** A raw monotonic reading, for a caller that keeps one to compare against a later one. */
+  def nanoTime(): Long = source()
+
+  def start(): Stopwatch.Started = new Stopwatch.Started(source(), source)
 
   def timed[A](body: => A): Stopwatch.Timed[A] = {
     val started = start()

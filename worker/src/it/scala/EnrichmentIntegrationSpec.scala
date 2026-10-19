@@ -40,9 +40,9 @@ class EnrichmentIntegrationSpec extends AnyFlatSpec with Matchers with ParallelT
   // asks the upstream whether it is answering at all before calling it a regression.
   private def probe(url: String): () => Unit = () => { new RealHttpFetch().get(url); () }
   private def viaTmdb[T](body: => T): T =
-    LiveUpstream.orCancel("TMDB", probe(LiveUpstream.Probes.tmdb(tmdbApiKey.get.value)))(body)
+    LiveUpstream.orCancel("TMDB", probe(LiveUpstream.Probes.tmdb(tmdbApiKey.get.value)), _root_.tools.Stopwatch.System)(body)
   private def viaImdb[T](body: => T): T =
-    LiveUpstream.orCancel("IMDb", probe(LiveUpstream.Probes.Imdb))(body)
+    LiveUpstream.orCancel("IMDb", probe(LiveUpstream.Probes.Imdb), _root_.tools.Stopwatch.System)(body)
 
   /** Guarded by BOTH, because the pipeline case needs both.
    *

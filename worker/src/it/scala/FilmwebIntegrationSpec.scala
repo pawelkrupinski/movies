@@ -22,7 +22,7 @@ class FilmwebIntegrationSpec extends AnyFlatSpec with Matchers with ParallelTest
   // block is indistinguishable from a lookup regression — see [[LiveUpstream]].
   private def viaFilmweb[T](body: => T): T =
     LiveUpstream.orCancel("Filmweb",
-      () => { new RealHttpFetch().get(LiveUpstream.Probes.Filmweb); () })(body)
+      () => { new RealHttpFetch().get(LiveUpstream.Probes.Filmweb); () }, _root_.tools.Stopwatch.System)(body)
 
   "FilmwebClient.lookup" should "resolve a recent Polish-titled film to a URL + rating" in viaFilmweb {
     val fw = client.lookup("Wartość sentymentalna", Some(2025))

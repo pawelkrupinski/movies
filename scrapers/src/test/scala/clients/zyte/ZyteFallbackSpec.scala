@@ -25,20 +25,20 @@ class ZyteFallbackSpec extends AnyFlatSpec with Matchers {
   private def unbuilt: HttpClient = fail("the Zyte client was built for a chain with no Zyte leg")
 
   "fetchFor without a Zyte key" should "return direct unchanged — no proxy in front" in {
-    ZyteFallback.fetchFor(direct, unbuilt, None) should be theSameInstanceAs direct
+    ZyteFallback.fetchFor(direct, unbuilt, None, _root_.tools.Stopwatch.System) should be theSameInstanceAs direct
   }
 
   it should "treat a blank key as no key" in {
-    ZyteFallback.fetchFor(direct, unbuilt, new _root_.settings.ProcessConfiguration(_root_.tools.Env.of("ZYTE_API_KEY" -> "")).zyteApiKey) should be theSameInstanceAs direct
+    ZyteFallback.fetchFor(direct, unbuilt, new _root_.settings.ProcessConfiguration(_root_.tools.Env.of("ZYTE_API_KEY" -> "")).zyteApiKey, _root_.tools.Stopwatch.System) should be theSameInstanceAs direct
   }
 
   "fetchFor with a Zyte key" should "front direct with a Zyte fallback chain" in {
-    ZyteFallback.fetchFor(direct, new RefusingHttpClient, Some(_root_.settings.ZyteApiKey("test-key"))) shouldBe a[FallbackHttpFetch]
+    ZyteFallback.fetchFor(direct, new RefusingHttpClient, Some(_root_.settings.ZyteApiKey("test-key")), _root_.tools.Stopwatch.System) shouldBe a[FallbackHttpFetch]
   }
 
   it should "call the Zyte API through the client it was handed" in {
     val client = new RefusingHttpClient
-    val chain  = ZyteFallback.fetchFor(direct, client, Some(_root_.settings.ZyteApiKey("test-key")))
+    val chain  = ZyteFallback.fetchFor(direct, client, Some(_root_.settings.ZyteApiKey("test-key")), _root_.tools.Stopwatch.System)
     chain.get("https://www.biletyna.pl/a") shouldBe "direct-body"
     chain.get("https://www.biletyna.pl/b") shouldBe "direct-body"
     client.sends.get() shouldBe 2
@@ -54,7 +54,7 @@ class ZyteFallbackSpec extends AnyFlatSpec with Matchers {
     val rejecting = new GetOnlyHttpFetch {
       override def get(url: String): String = throw new HttpStatusException(401, "GET", url, None)
     }
-    val chain = ZyteFallback.chain(Some(rejecting), direct, meter)
+    val chain = ZyteFallback.chain(Some(rejecting), direct, meter, _root_.tools.Stopwatch.System)
 
     chain.get("https://vwc.odeon.co.uk/a") shouldBe "direct-body"
     chain.get("https://vwc.odeon.co.uk/b") shouldBe "direct-body"
@@ -64,7 +64,7 @@ class ZyteFallbackSpec extends AnyFlatSpec with Matchers {
   it should "record a success when Zyte answers" in {
     val outcomes = mutable.ListBuffer.empty[String]
     val zyte = new GetOnlyHttpFetch { override def get(url: String): String = "zyte-body" }
-    ZyteFallback.chain(Some(zyte), direct, (o: String) => outcomes += o).get("https://x/") shouldBe "zyte-body"
+    ZyteFallback.chain(Some(zyte), direct, (o: String) => outcomes += o, _root_.tools.Stopwatch.System).get("https://x/") shouldBe "zyte-body"
     outcomes.toList shouldBe List(HttpOutcome.Success)
   }
 
@@ -80,7 +80,7 @@ class ZyteFallbackSpec extends AnyFlatSpec with Matchers {
         throw new services.cinemas.common.ZyteOriginStatusException(404, url, s"Zyte API call returned upstream status=404 for $url")
     }
     val thrown = the[HttpStatusException] thrownBy
-      ZyteFallback.chain(Some(zyte), blockedDirect, HttpOutcomeRecorder.noop).get("https://vwc.odeon.co.uk/d")
+      ZyteFallback.chain(Some(zyte), blockedDirect, HttpOutcomeRecorder.noop, _root_.tools.Stopwatch.System).get("https://vwc.odeon.co.uk/d")
     thrown.code shouldBe 404
     directCalls shouldBe 0
   }

@@ -66,7 +66,7 @@ class IdentityQueryCoverageIntegrationSpec extends AnyFlatSpec with Matchers wit
             override def loadAll(): Map[String, CachedResponse] = files.loadAll()
             override def put(key: String, response: CachedResponse): Unit = ()
           }
-          val cache = new EnrichmentCache(verdicts, persistSuccesses = false,
+          val cache = new EnrichmentCache(verdicts, _root_.tools.Stopwatch.System, persistSuccesses = false,
             transients = EnrichmentCache.Transients.Replayed)
           cache.preload()
           // The replay chain itself, over a wire that refuses and names each request.
@@ -141,7 +141,7 @@ class IdentityQueryCoverageIntegrationSpec extends AnyFlatSpec with Matchers wit
       services.movies.MovieChangeStream.Debounce.forCountry(country))
     storages.synchronized(storages += storage)
     CorpusFixture.seedInto(storage.archive, corpus.rows)
-    val cache = new EnrichmentCache(new FileEnrichmentCacheStore(FileEnrichmentCacheStore.beside(fixtureRoot, s"enrichment-${country.code}")),
+    val cache = new EnrichmentCache(new FileEnrichmentCacheStore(FileEnrichmentCacheStore.beside(fixtureRoot, s"enrichment-${country.code}")), _root_.tools.Stopwatch.System,
       persistSuccesses = false,
       transients = EnrichmentCache.Transients.Recorded)
     cache.preload()

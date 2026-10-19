@@ -22,16 +22,17 @@ object ZyteFallback {
     direct:  HttpFetch,
     zyteHttp: => HttpClient,
     apiKey:  Option[settings.ZyteApiKey],
+    stopwatch: tools.Stopwatch,
     meter:   HttpOutcomeRecorder = HttpOutcomeRecorder.noop
   ): HttpFetch =
-    chain(apiKey.map(key => new ZyteFetch(new ZyteClient(zyteHttp, key))), direct, meter)
+    chain(apiKey.map(key => new ZyteFetch(new ZyteClient(zyteHttp, key))), direct, meter, stopwatch)
 
   /** Zyte (when there is a Zyte leg) → `direct`, with every Zyte attempt's
    *  outcome going to `meter` — the paid-egress counter; `direct` is free and is
    *  not metered here. Split from [[fetchFor]] so the composition is testable
    *  without a key or a network. */
-  def chain(zyte: Option[HttpFetch], direct: HttpFetch, meter: HttpOutcomeRecorder): HttpFetch =
-    zyte.fold(direct)(z => new FallbackHttpFetch(Seq("zyte" -> new CountingHttpFetch(z, meter), "direct" -> direct),
+  def chain(zyte: Option[HttpFetch], direct: HttpFetch, meter: HttpOutcomeRecorder, stopwatch: tools.Stopwatch): HttpFetch =
+    zyte.fold(direct)(z => new FallbackHttpFetch(Seq("zyte" -> new CountingHttpFetch(z, meter), "direct" -> direct), stopwatch,
                                                   endsChain = FallbackHttpFetch.OriginAnswered))
 
   /** The client a wiring builds once and passes to every Zyte chain it composes. */

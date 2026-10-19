@@ -50,11 +50,11 @@ object LiveUpstream {
   def orCancel[T](
     upstream:    String,
     probe:       () => Unit,
+    stopwatch:   _root_.tools.Stopwatch,
     totalBudget: FiniteDuration = 30.seconds,
-    sleep:       Long => Unit   = Thread.sleep,
-    now:         () => Long     = () => System.nanoTime() / 1_000_000L   // monotonic: the budget is elapsed time
+    sleep:       Long => Unit   = Thread.sleep
   )(body: => T): T =
-    try RetryWithBackoff(totalBudget, sleep = sleep, now = now)(body)
+    try RetryWithBackoff(stopwatch, totalBudget, sleep = sleep)(body)
     catch {
       // A TRANSPORT failure needs no probe, and must not be judged by one.
       //

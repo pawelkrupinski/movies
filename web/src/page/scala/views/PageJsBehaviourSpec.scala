@@ -311,7 +311,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
       // never in the page itself.
       val readModelFixture = services.readmodel.TestReadModel.fromRecords(Seq(("Readmodel Film", Some(2024),
         MovieRecord(data = Map(CinemaCityWroclavia -> SourceData(title = Some("Readmodel Film"),
-          showtimes = Seq(Showtime(LocalDate.now.plusDays(2).atTime(18, 30), bookingUrl = Some("https://book.example/readmodel")))))))))
+          showtimes = Seq(Showtime(_root_.tools.SpecClock.PinnedDay.plusDays(2).atTime(18, 30), bookingUrl = Some("https://book.example/readmodel")))))))))
       val readModelHtml: String =
         views.html.debugReadModel(controllers.ReadModelDump.of(readModelFixture), current = models.Country.Poland).body
       readModelScreenings = id => controllers.ReadModelDump.screeningsOf(readModelFixture)(id)

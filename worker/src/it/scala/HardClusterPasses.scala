@@ -36,7 +36,7 @@ final class HardClusterPasses(target: IntegrationMongoTarget, fixtureRoot: setti
     country -> (
       if (recording) RecordedResponses.recording(new FallbackHttpFetch(Seq(
         "tree"       -> new clients.tools.FakeHttpFetch(s"enrichment-${country.code}", strict = true, foldYear = false, root = fixtureRoot),
-        "unrecorded" -> new clients.tools.FailingHttpFetch(404))), prior = Some(RecordedResponses.pathFor(country.code)))
+        "unrecorded" -> new clients.tools.FailingHttpFetch(404)), _root_.tools.Stopwatch.System), prior = Some(RecordedResponses.pathFor(country.code)))
       else RecordedResponses.replaying(RecordedResponses.pathFor(country.code)))
   }.toMap
 

@@ -29,10 +29,10 @@ import java.time.Duration
  *
  * State is per instance — each `FallbackHttpFetch` owns one.
  *
- * The relog window is ELAPSED time, so it is measured on `Settings.nanoTime` (monotonic, not a
+ * The relog window is ELAPSED time, so it is measured on `stopwatch` (monotonic, not a
  * date): no wall clock to disagree with the wiring's, and nothing for a pinned clock to freeze.
  */
-final class RepeatedFailureLog(logger: Logger, settings: RepeatedFailureLog.Settings) {
+final class RepeatedFailureLog(logger: Logger, settings: RepeatedFailureLog.Settings, stopwatch: Stopwatch) {
   import RepeatedFailureLog.Entry
 
   private val entries = new java.util.LinkedHashMap[String, Entry](16, 0.75f, true) {
@@ -48,7 +48,7 @@ final class RepeatedFailureLog(logger: Logger, settings: RepeatedFailureLog.Sett
   /** Records a failure of `key` with `detail`, warning unless it repeats the last one. */
   def failed(key: String, detail: String): Unit = {
     val hash = detail.hashCode
-    val at   = settings.nanoTime()
+    val at   = stopwatch.nanoTime()
     val line: Option[String] = entries.synchronized {
       Option(entries.get(key)) match {
         case Some(e) if e.detailHash == hash && at - e.loggedAt < settings.relogEvery.toNanos =>
@@ -88,8 +88,7 @@ object RepeatedFailureLog {
    *  lacks; at 1,024 that was ~235,000 warning lines in one 37 s phase (run 37595419218). An entry is a URL and
    *  a hash — a few hundred bytes — and only failing keys are held. */
   final case class Settings(maxEntries: Int = 16384,
-                            relogEvery: Duration = Duration.ofHours(1),
-                            nanoTime: () => Long = () => System.nanoTime()) {
+                            relogEvery: Duration = Duration.ofHours(1)) {
     require(maxEntries > 0, "maxEntries must be positive")
   }
 

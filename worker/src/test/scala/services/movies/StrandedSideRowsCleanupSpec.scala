@@ -5,7 +5,6 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 import services.movies.SingleCountryNormalizer.titleNormalizer
 
-import java.time.LocalDateTime
 import java.util.concurrent.{ScheduledFuture, ScheduledThreadPoolExecutor, TimeUnit}
 
 /**
@@ -26,7 +25,7 @@ class StrandedSideRowsCleanupSpec extends AnyFlatSpec with Matchers {
     }
   }
 
-  private val tomorrow = Seq(Showtime(LocalDateTime.now.plusDays(1), bookingUrl = None))
+  private val tomorrow = Seq(Showtime(_root_.tools.SpecClock.PinnedDay.plusDays(1).atTime(12, 0), bookingUrl = None))
 
   private def repositoryWithStrandedRow() = {
     val screenings = new InMemoryScreeningsRepository(_root_.tools.SpecClock.Pinned)

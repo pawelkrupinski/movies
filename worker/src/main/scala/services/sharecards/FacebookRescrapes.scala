@@ -244,7 +244,8 @@ class FacebookRescrapeQueue(store: FacebookRescrapeStore, country: String) exten
  * [[MaxAttempts]].
  */
 class FacebookRescrapeDrain(store: FacebookRescrapeStore, graph: FacebookGraph, pages: String => Seq[String],
-                            fetches: FacebookFetches, country: String, metrics: ShareCardMetrics, clock: Clock) extends services.Stoppable with Logging {
+                            fetches: FacebookFetches, country: String, metrics: ShareCardMetrics, clock: Clock,
+                            stopwatch: tools.Stopwatch) extends services.Stoppable with Logging {
   import FacebookRescrapeDrain.*
 
   private val brake = new FacebookUsageBrake(store, clock)
@@ -330,7 +331,7 @@ class FacebookRescrapeDrain(store: FacebookRescrapeStore, graph: FacebookGraph, 
 
   // One tick at a time on one thread; a failed tick (the fleet database unreachable) is logged
   // at most once per ten minutes and the next tick tries again.
-  private val failures = new LogThrottle(10.minutes.toNanos)
+  private val failures = new LogThrottle(10.minutes.toNanos, stopwatch)
   private var scheduler = Option.empty[ScheduledExecutorService]
 
   def start(): Unit = synchronized {

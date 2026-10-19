@@ -27,8 +27,8 @@ import scala.util.control.NonFatal
  */
 class EnrichmentCache(
   store: EnrichmentCacheStore,
-  // Monotonic nanoseconds: the write suspension is ELAPSED time, not a date, so it never reads the wall clock.
-  nanoTime: () => Long = () => System.nanoTime(),
+  // Times the write suspension — ELAPSED time, not a date, so a monotonic stopwatch rather than a clock.
+  stopwatch: Stopwatch,
   // False where a recording fixture tree is already writing every successful response
   // to disk, which makes a second copy here pure duplication: the fixtures are
   // consulted BEFORE the cache, so a URL the tree holds never reaches this lookup at
@@ -138,7 +138,7 @@ class EnrichmentCache(
    * report that it failed.
    */
   private def writeThrough(key: String, response: CachedResponse): Unit =
-    if (nanoTime() >= writesSuspendedUntil.get()) {
+    if (stopwatch.nanoTime() >= writesSuspendedUntil.get()) {
       try {
         store.put(key, response)
         if (consecutiveWriteFailures.getAndSet(0) > 0)
@@ -146,7 +146,7 @@ class EnrichmentCache(
       } catch {
         case NonFatal(failure) =>
           if (consecutiveWriteFailures.incrementAndGet() >= EnrichmentCache.MaxConsecutiveWriteFailures) {
-            writesSuspendedUntil.set(nanoTime() + EnrichmentCache.WriteSuspension.toNanos)
+            writesSuspendedUntil.set(stopwatch.nanoTime() + EnrichmentCache.WriteSuspension.toNanos)
             logger.warn(s"Enrichment cache write failed ${EnrichmentCache.MaxConsecutiveWriteFailures} times in a " +
               s"row (last: $key — ${failure.getMessage}) — suspending write-through for " +
               s"${EnrichmentCache.WriteSuspension.toSeconds}s; the run continues from memory")

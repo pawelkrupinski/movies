@@ -195,7 +195,7 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
   // not by crippling the fetch.
   "the archive replay wiring" should "fetch and record cinema detail pages through the tree" in {
     val leaf = new CountingLeaf
-    val wiring = wiringWith(Some(new EnrichmentCache(new InMemoryEnrichmentCacheStore())), leaf)
+    val wiring = wiringWith(Some(new EnrichmentCache(new InMemoryEnrichmentCacheStore(), Stopwatch.System)), leaf)
 
     wiring.httpFetch.get("https://cinema.test/film/dune") shouldBe "body for https://cinema.test/film/dune"
     leaf.calls shouldBe 1
@@ -204,7 +204,7 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
 
   it should "answer a repeated enrichment call from the tree instead of the wire" in {
     val leaf = new CountingLeaf
-    val wiring = wiringWith(Some(new EnrichmentCache(new InMemoryEnrichmentCacheStore())), leaf)
+    val wiring = wiringWith(Some(new EnrichmentCache(new InMemoryEnrichmentCacheStore(), Stopwatch.System)), leaf)
 
     wiring.enrichmentFetch.get("https://api.themoviedb.org/3/search?query=dune") shouldBe
       "body for https://api.themoviedb.org/3/search?query=dune"
@@ -269,7 +269,7 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
    *  the event. */
   it should "recover a missing IMDb id off the bus" in {
     val leaf   = new CountingLeaf
-    val wiring = wiringWith(Some(new EnrichmentCache(new InMemoryEnrichmentCacheStore())), leaf)
+    val wiring = wiringWith(Some(new EnrichmentCache(new InMemoryEnrichmentCacheStore(), Stopwatch.System)), leaf)
     seedUnidentifiedFilm(wiring)
 
     wiring.eventBus.publish(
@@ -283,7 +283,7 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
 
   it should "still attempt IMDb-id recovery after the enrichment pools have been drained once" in {
     val leaf   = new CountingLeaf
-    val wiring = wiringWith(Some(new EnrichmentCache(new InMemoryEnrichmentCacheStore())), leaf)
+    val wiring = wiringWith(Some(new EnrichmentCache(new InMemoryEnrichmentCacheStore(), Stopwatch.System)), leaf)
     seedUnidentifiedFilm(wiring)
 
     // What the boot does before any film is announced.
@@ -315,7 +315,7 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
   // first one made and never consult the cache, so the leaf count would prove nothing.
   it should "share one cache's answers across separate wirings" in {
     val leaf  = new CountingLeaf
-    val cache = new EnrichmentCache(new InMemoryEnrichmentCacheStore())
+    val cache = new EnrichmentCache(new InMemoryEnrichmentCacheStore(), Stopwatch.System)
 
     wiringWith(Some(cache), leaf).enrichmentFetch.get("https://api.themoviedb.org/3/shared")
     useFreshTree()
@@ -337,7 +337,7 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
 
   "a hermetic archive replay" should "refuse an unrecorded enrichment request and name its fixture" in {
     val missing = new MissingFixtures
-    val wiring  = hermeticWiring(Some(new EnrichmentCache(new InMemoryEnrichmentCacheStore())), missing)
+    val wiring  = hermeticWiring(Some(new EnrichmentCache(new InMemoryEnrichmentCacheStore(), Stopwatch.System)), missing)
     val url     = "https://www.omdbapi.com/?t=Dune&type=movie&apikey=secret"
 
     an [Exception] should be thrownBy wiring.enrichmentFetch.get(url)
@@ -349,7 +349,7 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
 
   it should "refuse an unrecorded cinema detail page the same way" in {
     val missing = new MissingFixtures
-    val wiring  = hermeticWiring(Some(new EnrichmentCache(new InMemoryEnrichmentCacheStore())), missing)
+    val wiring  = hermeticWiring(Some(new EnrichmentCache(new InMemoryEnrichmentCacheStore(), Stopwatch.System)), missing)
 
     an [Exception] should be thrownBy wiring.httpFetch.get("https://cinema.test/film/dune")
 
@@ -363,7 +363,7 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
   it should "refuse an unrecorded request to a paced host without waiting out its pace" in {
     val missing = new MissingFixtures
     val wiring  = new ArchiveReplayWiring(Country.UnitedKingdom, new InMemoryScrapeArchiveRepository,
-      Some(new EnrichmentCache(new InMemoryEnrichmentCacheStore())), new FetchOnlyStorage, fixtureTree,
+      Some(new EnrichmentCache(new InMemoryEnrichmentCacheStore(), Stopwatch.System)), new FetchOnlyStorage, fixtureTree,
       settings.FixtureRoot.RepositoryRelative, Some(missing))
     // Paced, n asks sleep at least (n - 1) x 200 ms — a floor a sleep never undercuts — so the bound
     // sits at that floor, not at a guess of how fast an unpaced run is on a loaded machine.
@@ -381,7 +381,7 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
   // named 12 of the ~2,300 Flicks and Drafthouse pages its tree lacked (run 37597662228).
   it should "name every unrecorded page of a host, never letting the refusals open its breaker" in {
     val missing = new MissingFixtures
-    val wiring  = hermeticWiring(Some(new EnrichmentCache(new InMemoryEnrichmentCacheStore())), missing)
+    val wiring  = hermeticWiring(Some(new EnrichmentCache(new InMemoryEnrichmentCacheStore(), Stopwatch.System)), missing)
     val pages   = (1 to 12).map(i => s"https://www.flicks.us/movie/unrecorded-$i/")
     pages.foreach { page =>
       val refused = the [Exception] thrownBy wiring.httpFetch.get(page)
@@ -395,7 +395,7 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
   // named none of the ~60 Wikidata lookups its tree lacked (run 37656742608). A request that is never sent paces nothing.
   it should "name every unrecorded request to a fleet-paced host, never pacing what it does not send" in {
     val missing = new MissingFixtures
-    val wiring  = hermeticWiring(Some(new EnrichmentCache(new InMemoryEnrichmentCacheStore())), missing)
+    val wiring  = hermeticWiring(Some(new EnrichmentCache(new InMemoryEnrichmentCacheStore(), Stopwatch.System)), missing)
     val asks    = (1 to 12).map(i => s"https://www.wikidata.org/wiki/Special:EntityData/Q$i.json")
     asks.foreach { url =>
       val refused = the [Exception] thrownBy wiring.enrichmentFetch.get(url)
@@ -411,7 +411,7 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
   // answer. (Remembered under the BYTES request, as the recorder fetches every response.)
   it should "name a request its recording remembers only a failure for, and never one with an answer" in {
     val missing = new MissingFixtures
-    val cache   = new EnrichmentCache(new InMemoryEnrichmentCacheStore(), transients = EnrichmentCache.Transients.Replayed)
+    val cache   = new EnrichmentCache(new InMemoryEnrichmentCacheStore(), Stopwatch.System, transients = EnrichmentCache.Transients.Replayed)
     val wiring  = hermeticWiring(Some(cache), missing)
     val passing = "https://www.wikidata.org/wiki/Special:EntityData/Q1.json"
     val refused = "https://www.wikidata.org/wiki/Special:EntityData/Q2.json"
@@ -460,11 +460,11 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
   it should "answer what the recording holds without refusing anything" in {
     // Record through a RECORDING wiring on the same tree, exactly as the recorder would.
     val leaf = new CountingLeaf
-    wiringWith(Some(new EnrichmentCache(new InMemoryEnrichmentCacheStore())), leaf)
+    wiringWith(Some(new EnrichmentCache(new InMemoryEnrichmentCacheStore(), Stopwatch.System)), leaf)
       .enrichmentFetch.get("https://api.themoviedb.org/3/search/movie?query=dune")
     val missing = new MissingFixtures
 
-    hermeticWiring(Some(new EnrichmentCache(new InMemoryEnrichmentCacheStore())), missing)
+    hermeticWiring(Some(new EnrichmentCache(new InMemoryEnrichmentCacheStore(), Stopwatch.System)), missing)
       .enrichmentFetch.get("https://api.themoviedb.org/3/search/movie?query=dune") shouldBe
       "body for https://api.themoviedb.org/3/search/movie?query=dune"
     missing.isEmpty shouldBe true
@@ -479,13 +479,13 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
     val throwing = new CountingLeaf {
       override def get(url: String): String = { super.get(url); throw new HttpStatusException(403, "GET", url, None) }
     }
-    val recording = wiringWith(Some(new EnrichmentCache(store, persistSuccesses = false,
+    val recording = wiringWith(Some(new EnrichmentCache(store, Stopwatch.System, persistSuccesses = false,
       transients = EnrichmentCache.Transients.Recorded)), throwing)
     an [Exception] should be thrownBy recording.httpFetch.get("https://www.cineworld.test/api/movies?ids=1")
     an [Exception] should be thrownBy recording.enrichmentFetch.get("https://www.omdbapi.com/?t=Dune")
     throwing.calls shouldBe 2
 
-    val replayed = new EnrichmentCache(store, persistSuccesses = false, transients = EnrichmentCache.Transients.Replayed)
+    val replayed = new EnrichmentCache(store, Stopwatch.System, persistSuccesses = false, transients = EnrichmentCache.Transients.Replayed)
     replayed.preload()
     val missing = new MissingFixtures
     val hermetic = hermeticWiring(Some(replayed), missing)
@@ -506,7 +506,7 @@ class ArchiveReplayEnrichmentWiringSpec extends AnyFlatSpec with Matchers with B
     val throwing = new CountingLeaf {
       override def get(url: String): String = { super.get(url); throw new HttpStatusException(404, "GET", url, None) }
     }
-    val wiring = wiringWith(Some(new EnrichmentCache(new InMemoryEnrichmentCacheStore())), throwing)
+    val wiring = wiringWith(Some(new EnrichmentCache(new InMemoryEnrichmentCacheStore(), Stopwatch.System)), throwing)
 
     an [Exception] should be thrownBy wiring.httpFetch.get("https://cinema.test/film/gone")
     an [Exception] should be thrownBy wiring.httpFetch.get("https://cinema.test/film/gone")

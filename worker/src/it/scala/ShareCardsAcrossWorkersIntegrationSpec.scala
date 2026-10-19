@@ -36,7 +36,7 @@ class ShareCardsAcrossWorkersIntegrationSpec extends AnyFlatSpec with Matchers w
     ConcurrentInstances.withInstances(mongoTarget, "share-cards-two-workers") { instances =>
       val store = tempStore()
       val services = instances.map { instance =>
-        val posters = new ShareCardPosters(store, new CountingDownload(), newJavaShrinker(), ShareCardMetrics.noop)
+        val posters = new ShareCardPosters(store, new CountingDownload(), newJavaShrinker(), ShareCardMetrics.noop, _root_.tools.Stopwatch.System)
         val queue   = new MongoTaskQueue(Some(instance.database))
         (new ShareCardService(Country.default, store, posters, queue, ShareCardRescrapes.disabled(ShareCardMetrics.noop), ShareCardMetrics.noop, clockAt(T0)), queue)
       }

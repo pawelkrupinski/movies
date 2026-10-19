@@ -14,8 +14,8 @@ class LiveUpstreamSpec extends AnyFlatSpec with Matchers {
 
   private val clock = new FakeClock(0L)
   private def fast[T](probe: () => Unit)(body: => T): T =
-    LiveUpstream.orCancel("Test upstream", probe, totalBudget = 1.second,
-      sleep = ms => clock.advance(ms), now = () => clock.now())(body)
+    LiveUpstream.orCancel("Test upstream", probe, clock.stopwatch, totalBudget = 1.second,
+      sleep = ms => clock.advance(ms))(body)
 
   "LiveUpstream" should "return the body's value and never probe when it succeeds" in {
     var probed = 0

@@ -96,7 +96,7 @@ class RetryClassificationSpec extends AnyFlatSpec with Matchers {
    *  route answering, however often it repeats. */
   private def fallsThroughProxyLeg(failure: Throwable): Boolean = {
     val fallback = new RequestLogHttpFetch(new ConstantHttpFetch("ok"))
-    val chain   = ProxyChain.proxyPrimary(IndexedSeq(throwing(failure)), fallback, SpecClock.Pinned)
+    val chain   = ProxyChain.proxyPrimary(IndexedSeq(throwing(failure)), fallback, SpecClock.Pinned, Stopwatch.System)
     val answers = (1 to 10).map(_ => Try(chain.get(Url)).toOption)
     answers.forall(_.contains("ok")) && fallback.calls.size == 10 &&
       !failure.isInstanceOf[HttpStatusException] && !ReadOutcome.isAbsent(failure)

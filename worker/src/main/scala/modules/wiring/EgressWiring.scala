@@ -73,7 +73,7 @@ trait EgressWiring { self: WorkerWiring =>
   // behind a doomed proxy attempt on every single call.
   private def proxyPrimary(fallback: HttpFetch, warmUrl: Option[String] = None,
                            keyOf: String => String = StickyShardHttpFetch.hostAndPath): HttpFetch =
-    proxyShards.fold(fallback)(ProxyChain.proxyPrimary(_, fallback, clock, warmUrl, keyOf, decodoMeter, recordProxyOutcome, decodoBreakerMeter))
+    proxyShards.fold(fallback)(ProxyChain.proxyPrimary(_, fallback, clock, stopwatch, warmUrl, keyOf, decodoMeter, recordProxyOutcome, decodoBreakerMeter))
 
   // Meter the residential-proxy leg to /uptime: a green "Residential proxy" bar
   // means the proxy served, a red one means it failed and we fell back to direct
@@ -109,12 +109,12 @@ trait EgressWiring { self: WorkerWiring =>
   // refuses through the proxy is not the proxy failing. Its own breaker too, so poster failures
   // never open the scrapes'. The paid-egress counters still see it: it is paid for.
   lazy val multikinoPosterFetch: HttpFetch =
-    proxyShards.fold(httpFetch)(ProxyChain.proxyPrimary(_, httpFetch, clock, Some(MultikinoClient.HomeUrl), meter = decodoMeter,
+    proxyShards.fold(httpFetch)(ProxyChain.proxyPrimary(_, httpFetch, clock, stopwatch, Some(MultikinoClient.HomeUrl), meter = decodoMeter,
       breakerMeter = decodoBreakerMeter))
   // Zyte residential egress → direct fallback (Zyte only when ZYTE_API_KEY is set), for
   // the one venue whose origin blocks the Decodo proxy too (see CinemaScraperCatalog).
   // Never a fallback behind the proxy — see feedback_zyte_is_decodo_fallback_only.
-  lazy val zyteFetch: HttpFetch = ZyteFallback.fetchFor(httpFetch, zyteHttpClient, zyteApiKey, zyteMeter)
+  lazy val zyteFetch: HttpFetch = ZyteFallback.fetchFor(httpFetch, zyteHttpClient, zyteApiKey, stopwatch, zyteMeter)
   // biletyna.pl 403s our datacenter IP; residential proxy primary, direct fallback.
   lazy val biletynaFetch: HttpFetch = proxyPrimary(httpFetch)
   // www.flicks.co.uk 403s our datacenter IP behind Cloudflare (verified 2026-07-26

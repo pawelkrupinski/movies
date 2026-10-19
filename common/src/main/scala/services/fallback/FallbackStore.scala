@@ -44,7 +44,7 @@ class InMemoryFallbackStore extends FallbackStore {
  */
 class MongoFallbackStore(
   db: Option[MongoDatabase],
-  nanoTime: () => Long = () => System.nanoTime(),
+  stopwatch: tools.Stopwatch,
   collectionName: String = MongoFallbackStore.CollectionName
 ) extends FallbackStore with Logging {
   import MongoFallbackStore._
@@ -71,12 +71,12 @@ class MongoFallbackStore(
   private def attemptHydrate(c: MongoCollection[Document]): Unit = {
     attempts += 1
     hydrated = hydrate(c)
-    nextHydrateAt = nanoTime() + HydrateRetry.toNanos
+    nextHydrateAt = stopwatch.nanoTime() + HydrateRetry.toNanos
   }
 
   private def ensureHydrated(): Unit =
     if (!hydrated) coll.foreach { c =>
-      synchronized { if (!hydrated && nanoTime() - nextHydrateAt >= 0) attemptHydrate(c) }
+      synchronized { if (!hydrated && stopwatch.nanoTime() - nextHydrateAt >= 0) attemptHydrate(c) }
       if (!hydrated) throw new IllegalStateException(s"$collectionName could not be read — fallback state unknown")
     }
 

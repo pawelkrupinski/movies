@@ -16,7 +16,7 @@ class IdentityShadowReplayChainSpec extends AnyFlatSpec with Matchers {
     def post(url: String, body: String, contentType: String): String = throw new IllegalStateException(s"not recorded: $url")
   }
   private def cache(held: (String, CachedResponse)*) = {
-    val c = new EnrichmentCache(new InMemoryEnrichmentCacheStore(held.toMap))
+    val c = new EnrichmentCache(new InMemoryEnrichmentCacheStore(held.toMap), _root_.tools.Stopwatch.System)
     c.preload(); c
   }
 

@@ -44,7 +44,7 @@ class FallbackHttpFetchLoggingSpec extends AnyFlatSpec with Matchers {
   private val answering: HttpFetch = new ConstantHttpFetch("answer")
 
   "a fallback chain" should "not warn when a later backend answers" in {
-    val chain = new FallbackHttpFetch(Seq("fixtures" -> failing("no fixture file"), "cache-or-live" -> answering))
+    val chain = new FallbackHttpFetch(Seq("fixtures" -> failing("no fixture file"), "cache-or-live" -> answering), Stopwatch.System)
 
     val url = uniqueUrl("answered")
     val (result, events) = capture(chain.get(url))
@@ -59,7 +59,7 @@ class FallbackHttpFetchLoggingSpec extends AnyFlatSpec with Matchers {
   // Still recorded, just not shouted: the fall-through is exactly what you want when
   // diagnosing why a fixture wasn't used.
   it should "still record the fall-through at debug" in {
-    val chain = new FallbackHttpFetch(Seq("fixtures" -> failing("no fixture file"), "cache-or-live" -> answering))
+    val chain = new FallbackHttpFetch(Seq("fixtures" -> failing("no fixture file"), "cache-or-live" -> answering), Stopwatch.System)
 
     val url = uniqueUrl("debug")
     val (_, events) = capture(chain.get(url))
@@ -69,7 +69,7 @@ class FallbackHttpFetchLoggingSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "warn once, naming every backend, when they all fail" in {
-    val chain = new FallbackHttpFetch(Seq("fixtures" -> failing("no fixture file"), "live" -> failing("connection refused")))
+    val chain = new FallbackHttpFetch(Seq("fixtures" -> failing("no fixture file"), "live" -> failing("connection refused")), Stopwatch.System)
 
     val url = uniqueUrl("gone")
     val (_, events) = capture(a [RuntimeException] should be thrownBy chain.get(url))
@@ -97,7 +97,7 @@ class FallbackHttpFetchLoggingSpec extends AnyFlatSpec with Matchers {
       },
       "live" -> new GetOnlyHttpFetch {
         override def get(url: String): String = throw new HttpStatusException(404, "GET", url, None)
-      }))
+      }), Stopwatch.System)
 
     // The shape the slug ladders depend on: absent, not broken.
     ReadOutcome.of(chain.get("https://www.metacritic.com/movie/nope")).toOptionOrThrow shouldBe None
@@ -112,7 +112,7 @@ class FallbackHttpFetchLoggingSpec extends AnyFlatSpec with Matchers {
       },
       "live" -> new GetOnlyHttpFetch {
         override def get(url: String): String = throw new HttpStatusException(503, "GET", url, None)
-      }))
+      }), Stopwatch.System)
 
     a [RuntimeException] should be thrownBy
       ReadOutcome.of(chain.get("https://www.metacritic.com/movie/nope")).toOptionOrThrow
@@ -134,7 +134,7 @@ class FallbackHttpFetchLoggingSpec extends AnyFlatSpec with Matchers {
     (1 to times).foreach(_ => a [RuntimeException] should be thrownBy chain.get(url))
 
   it should "warn once for a failure repeated identically on every ask, still throwing it every time" in {
-    val chain = new FallbackHttpFetch(Seq("fixtures" -> failing("no fixture file"), "live" -> status(403)))
+    val chain = new FallbackHttpFetch(Seq("fixtures" -> failing("no fixture file"), "live" -> status(403)), Stopwatch.System)
     val url   = uniqueUrl("repeated")
 
     val (_, events) = capture {
@@ -151,7 +151,7 @@ class FallbackHttpFetchLoggingSpec extends AnyFlatSpec with Matchers {
   it should "warn again when the same URL fails DIFFERENTLY, naming the repeats it held back" in {
     var code  = 403
     val live  = new FailingHttpFetch((method, url) => new HttpStatusException(code, method, url, None))
-    val chain = new FallbackHttpFetch(Seq("fixtures" -> failing("no fixture file"), "live" -> live))
+    val chain = new FallbackHttpFetch(Seq("fixtures" -> failing("no fixture file"), "live" -> live), Stopwatch.System)
     val url   = uniqueUrl("changed")
 
     val (_, events) = capture {
@@ -172,7 +172,7 @@ class FallbackHttpFetchLoggingSpec extends AnyFlatSpec with Matchers {
     val live  = new GetOnlyHttpFetch {
       override def get(url: String): String = if (up) "answer" else throw new HttpStatusException(403, "GET", url, None)
     }
-    val chain = new FallbackHttpFetch(Seq("fixtures" -> failing("no fixture file"), "live" -> live))
+    val chain = new FallbackHttpFetch(Seq("fixtures" -> failing("no fixture file"), "live" -> live), Stopwatch.System)
     val url   = uniqueUrl("recovered")
 
     val (_, events) = capture {
@@ -190,8 +190,8 @@ class FallbackHttpFetchLoggingSpec extends AnyFlatSpec with Matchers {
 
   it should "re-warn a persisting failure once per window, with its count" in {
     var nanos = 0L
-    val chain = new FallbackHttpFetch(Seq("fixtures" -> failing("no fixture file"), "live" -> status(403)),
-      repeats = RepeatedFailureLog.Settings(relogEvery = java.time.Duration.ofHours(1), nanoTime = () => nanos))
+    val chain = new FallbackHttpFetch(Seq("fixtures" -> failing("no fixture file"), "live" -> status(403)), new Stopwatch(() => nanos),
+      repeats = RepeatedFailureLog.Settings(relogEvery = java.time.Duration.ofHours(1)))
     val url   = uniqueUrl("window")
 
     val (_, events) = capture {
@@ -206,7 +206,7 @@ class FallbackHttpFetchLoggingSpec extends AnyFlatSpec with Matchers {
   }
 
   it should "track at most maxEntries URLs, warning an evicted one afresh" in {
-    val log   = new RepeatedFailureLog(play.api.Logger(classOf[FallbackHttpFetch]), RepeatedFailureLog.Settings(maxEntries = 2))
+    val log   = new RepeatedFailureLog(play.api.Logger(classOf[FallbackHttpFetch]), RepeatedFailureLog.Settings(maxEntries = 2), Stopwatch.System)
     val urls  = (1 to 3).map(i => uniqueUrl(s"bounded-$i"))
 
     val events = LogCapture.capture(classOf[FallbackHttpFetch].getName, Some(Level.TRACE)) {
@@ -222,7 +222,7 @@ class FallbackHttpFetchLoggingSpec extends AnyFlatSpec with Matchers {
   // the old 1,024-key default each was evicted before it came round again, and every ask of every pass warned
   // in full — ~235,000 log lines in one 37 s phase of a US order-independence leg (run 37595419218).
   it should "hold back the repeats of a few thousand distinct failing URLs asked round and round" in {
-    val log  = new RepeatedFailureLog(play.api.Logger(classOf[FallbackHttpFetch]), RepeatedFailureLog.Settings())
+    val log  = new RepeatedFailureLog(play.api.Logger(classOf[FallbackHttpFetch]), RepeatedFailureLog.Settings(), Stopwatch.System)
     val urls = (1 to 5000).map(i => uniqueUrl(s"round-$i"))
 
     val events = LogCapture.capture(classOf[FallbackHttpFetch].getName, Some(Level.TRACE)) {
@@ -238,7 +238,7 @@ class FallbackHttpFetchLoggingSpec extends AnyFlatSpec with Matchers {
   it should "never write a URL's credential into a log line or the failure it throws" in {
     val chain = new FallbackHttpFetch(Seq(
       "direct" -> new FailingHttpFetch((_, url) => new java.io.IOException(s"timed out asking $url")),
-      "proxy"  -> new FailingHttpFetch((_, url) => new java.io.IOException(s"tunnel refused for $url"))))
+      "proxy"  -> new FailingHttpFetch((_, url) => new java.io.IOException(s"tunnel refused for $url"))), Stopwatch.System)
     val url = s"${uniqueUrl("signed")}?query=heat&api_key=s3cr3t-tmdb-key"
 
     val (thrown, events) = capture(the [RuntimeException] thrownBy chain.get(url))

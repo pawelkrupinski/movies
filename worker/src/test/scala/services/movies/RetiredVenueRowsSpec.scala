@@ -18,11 +18,10 @@ import java.time.{Instant, LocalDateTime}
  */
 class RetiredVenueRowsSpec extends AnyFlatSpec with Matchers {
 
-  private val tomorrow = Seq(Showtime(LocalDateTime.now.plusDays(1), bookingUrl = None))
-
   /** The stores' clock: every row is written at `T0`, and every sweep runs past the grace
    *  period unless a case says otherwise. */
   private val T0 = Instant.parse("2026-09-20T12:00:00Z")
+  private val tomorrow = Seq(Showtime(LocalDateTime.ofInstant(T0, java.time.ZoneOffset.UTC).plusDays(1), bookingUrl = None))
   private val clock = new tools.MutableClock(T0)
   private val later = T0.plusSeconds(RetiredVenueRows.Grace.toSeconds + 3600)
   private def sweep(screenings: Option[SlotKeyedRows], slots: Option[SlotKeyedRows], roster: Set[String]) =

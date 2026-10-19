@@ -4,7 +4,6 @@ import models.{CinemaCityChain, CinemaShowing, CineworldFeltham, Country, KinoEt
 import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
-import java.time.LocalDateTime
 
 /**
  * A side-collection store scoped to a country's [[VenueRoster]] never WRITES a row under a
@@ -21,7 +20,7 @@ class VenueRosterSpec extends AnyFlatSpec with Matchers {
   private val roster   = VenueRoster.of(Country.Poland)
   private val polish   = CinemaShowing(KinoEtiuda, "odyseja").displayName
   private val foreign  = CinemaShowing(CineworldFeltham, "odyseja").displayName
-  private val tomorrow = Seq(Showtime(LocalDateTime.now.plusDays(1).withNano(0), bookingUrl = None))
+  private val tomorrow = Seq(Showtime(_root_.tools.SpecClock.PinnedDay.plusDays(1).atTime(12, 0), bookingUrl = None))
   private val film     = "odyseja|2026"
 
   "VenueRoster.of" should "admit the country's own venues and the non-venue sources, and nothing foreign" in {

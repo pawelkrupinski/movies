@@ -40,7 +40,7 @@ trait AdminWiring { self: Wiring =>
 
   // Read-only on the web side: the worker writes fallback state; the /uptime page's
   // Filmweb-fallback section reads it (hydrated from Mongo at boot).
-  lazy val filmwebFallbackStore: FallbackStore = new MongoFallbackStore(mongoConnection.database)
+  lazy val filmwebFallbackStore: FallbackStore = new MongoFallbackStore(mongoConnection.database, stopwatch)
   /** The worker's closure sweep's verdicts (`venue_closures`), for /uptime's dropped-venue section. */
   lazy val closureLedger: services.closure.ClosureLedgerReader =
     mongoConnection.database.fold[services.closure.ClosureLedgerReader](new services.closure.InMemoryClosureLedger)(new services.closure.MongoClosureLedger(_))

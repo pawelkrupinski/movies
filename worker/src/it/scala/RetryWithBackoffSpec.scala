@@ -12,7 +12,7 @@ class RetryWithBackoffSpec extends AnyFlatSpec with Matchers {
     val clock = new FakeClock(0L)
     val sleeps = ArrayBuffer.empty[Long]
     var calls = 0
-    val result = RetryWithBackoff(sleep = sleeps += _, now = () => clock.now())({
+    val result = RetryWithBackoff(sleep = sleeps += _, stopwatch = clock.stopwatch)({
       calls += 1
       "ok"
     })
@@ -27,7 +27,7 @@ class RetryWithBackoffSpec extends AnyFlatSpec with Matchers {
     var calls = 0
     val result = RetryWithBackoff(
       sleep = ms => { sleeps += ms; clock.advance(ms) },
-      now = () => clock.now(),
+      stopwatch = clock.stopwatch,
     )({
       calls += 1
       if (calls < 4) throw new RuntimeException(s"fail $calls") else "ok"
@@ -45,7 +45,7 @@ class RetryWithBackoffSpec extends AnyFlatSpec with Matchers {
       RetryWithBackoff(
         totalBudget = 1.second,
         sleep = ms => { sleeps += ms; clock.advance(ms) },
-        now = () => clock.now(),
+        stopwatch = clock.stopwatch,
       )({
         calls += 1
         throw new RuntimeException(s"fail $calls")
@@ -67,7 +67,7 @@ class RetryWithBackoffSpec extends AnyFlatSpec with Matchers {
       RetryWithBackoff(
         totalBudget = 10.millis,
         sleep = ms => { sleeps += ms; clock.advance(ms) },
-        now = () => { val t = clock.now(); clock.advance(50); t },
+        stopwatch = new _root_.tools.Stopwatch(() => { val t = clock.now(); clock.advance(50); t * 1_000_000L }),
       )({
         throw new RuntimeException("boom")
       })
@@ -86,7 +86,7 @@ class RetryWithBackoffSpec extends AnyFlatSpec with Matchers {
     val clock = new FakeClock(0L)
     val result = RetryWithBackoff(
       sleep = ms => clock.advance(ms),
-      now = () => clock.now(),
+      stopwatch = clock.stopwatch,
     )({
       if (clock.now() < 25000L) throw new RuntimeException("transient 502") else "ok"
     })

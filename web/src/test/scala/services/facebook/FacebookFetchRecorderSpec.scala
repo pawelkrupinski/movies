@@ -17,7 +17,7 @@ class FacebookFetchRecorderSpec extends AnyFlatSpec with Matchers {
 
   private final class Rig(store: FacebookFetches = new InMemoryFacebookFetches) {
     val clock    = new MutableClock(T0)
-    val recorder = new FacebookFetchRecorder(store, clock)
+    val recorder = new FacebookFetchRecorder(store, clock, _root_.tools.Stopwatch.System)
   }
 
   "A film page Facebook's crawler fetched" should "be recorded with its latest fetch, once a batch is written" in {

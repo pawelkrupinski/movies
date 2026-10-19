@@ -422,10 +422,10 @@ object PosterPipeline {
  * lists it, not the smaller rendition fetched in its place), which is how a changed poster is told.
  */
 class ShareCardPosters(store: ShareCardStore, download: PosterDownload, shrinker: PosterShrinker,
-                       metrics: ShareCardMetrics) extends Logging {
+                       metrics: ShareCardMetrics, stopwatch: tools.Stopwatch) extends Logging {
 
   // One INFO line per failed poster, at most one a second (the rest at DEBUG).
-  private val failureLog = new tools.LogThrottle(1000000000L)
+  private val failureLog = new tools.LogThrottle(1000000000L, stopwatch)
 
   /** The first usable candidate — its URL, which the card's version hashes, and its slot image — or
    *  None when none can be had. `retry` marks the re-try of a card drawn without its poster. */

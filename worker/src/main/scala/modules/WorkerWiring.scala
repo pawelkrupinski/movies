@@ -331,6 +331,8 @@ class WorkerWiring(
    *  bucket, a scheduled run. The fixture harness pins it, so a replayed corpus is byte-identical
    *  across arrival orders. */
   lazy val clock: java.time.Clock = java.time.Clock.systemUTC()
+  /** The one monotonic source elapsed time is measured on — the clock's twin for durations, never a date. */
+  lazy val stopwatch: tools.Stopwatch = tools.Stopwatch.System
 
   /** The latest year a title may name, read off [[clock]] at each ask: what every title reader this wiring builds
    *  (and the record accessors they reach) caps a year by. */

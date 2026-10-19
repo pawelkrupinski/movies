@@ -90,9 +90,9 @@ final class RecordAllDataToFixture(configuration: _root_.settings.ProcessConfigu
   private lazy val processProxyShards: Option[IndexedSeq[HttpFetch]] =
     modules.wiring.EgressWiring.residentialShards(ResidentialProxy.fromConfiguration(configuration), tlsContext)
   override lazy val multikinoFetch: HttpFetch =
-    new RecordingHttpFetch(captureDate, services.cinemas.CinemaEgress.multikinoChain(processProxyShards, new RealHttpFetch(), clock))
+    new RecordingHttpFetch(captureDate, services.cinemas.CinemaEgress.multikinoChain(processProxyShards, new RealHttpFetch(), clock, _root_.tools.Stopwatch.System))
   override lazy val biletynaFetch: HttpFetch =
-    new RecordingHttpFetch(captureDate, ProxyChain.paidEgressChain(processProxyShards, new RealHttpFetch(), clock))
+    new RecordingHttpFetch(captureDate, ProxyChain.paidEgressChain(processProxyShards, new RealHttpFetch(), clock, _root_.tools.Stopwatch.System))
 
   // TestWiring stubs the TMDB key to "test-api-key" (fine for replay, where the
   // fixture filename strips api_key). But RECORDING fires the real request, so

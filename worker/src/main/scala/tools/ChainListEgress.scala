@@ -16,14 +16,15 @@ import services.cinemas.roster.RosterFinding.DirectoryNotRead
  * @param proxyShards one fetch per Decodo pool IP, or None when the proxy isn't
  *                    configured
  */
-final class ChainListEgress(direct: HttpFetch, proxyShards: Option[IndexedSeq[HttpFetch]], clock: java.time.Clock) {
+final class ChainListEgress(direct: HttpFetch, proxyShards: Option[IndexedSeq[HttpFetch]], clock: java.time.Clock,
+                            stopwatch: Stopwatch) {
 
   /** The list's fetch. A list that wants a session ([[ChainDirectory.warmUpUrl]])
    *  warms it only when a call fails, then retries — once per egress, the way the
    *  worker's own Multikino scrapes do, never up front as well. */
   def fetchFor(directory: ChainDirectory): String => FetchedPage = {
     val directLeg = directory.warmUpUrl.fold(direct)(new SessionWarmingHttpFetch(direct, _))
-    val http      = proxyShards.fold(directLeg)(ProxyChain.proxyPrimary(_, directLeg, clock, directory.warmUpUrl))
+    val http      = proxyShards.fold(directLeg)(ProxyChain.proxyPrimary(_, directLeg, clock, stopwatch, directory.warmUpUrl))
     url => FetchedPage(url, http.get(url))
   }
 
@@ -36,6 +37,8 @@ final class ChainListEgress(direct: HttpFetch, proxyShards: Option[IndexedSeq[Ht
 }
 
 object ChainListEgress {
-  def fromConfiguration(direct: HttpFetch, configuration: settings.ProcessConfiguration, clock: java.time.Clock): ChainListEgress =
-    new ChainListEgress(direct, EgressWiring.residentialShards(ResidentialProxy.fromConfiguration(configuration), TlsTrust.newContext()), clock)
+  def fromConfiguration(direct: HttpFetch, configuration: settings.ProcessConfiguration, clock: java.time.Clock,
+                        stopwatch: Stopwatch): ChainListEgress =
+    new ChainListEgress(direct, EgressWiring.residentialShards(ResidentialProxy.fromConfiguration(configuration), TlsTrust.newContext()),
+      clock, stopwatch)
 }

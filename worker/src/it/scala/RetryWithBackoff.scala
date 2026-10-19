@@ -11,19 +11,18 @@ object RetryWithBackoff {
   // build (Metacritic, "Yu-Gi-Oh! The Dark Side of Dimensions"). 30s clears the
   // typical burst while still failing fast on a genuine slug-convention regression.
   def apply[T](
+    stopwatch: _root_.tools.Stopwatch,   // the budget is elapsed time, not a date
     totalBudget: FiniteDuration = 30.seconds,
     initialDelay: FiniteDuration = 100.millis,
     sleep: Long => Unit = Thread.sleep,
-    // Monotonic milliseconds: the budget is elapsed time, not a date.
-    now: () => Long = () => System.nanoTime() / 1_000_000L,
   )(block: => T): T = {
-    val deadline = now() + totalBudget.toMillis
+    val started = stopwatch.start()
     var delayMs = initialDelay.toMillis
     while (true) {
       try return block
       catch {
         case t: Throwable =>
-          val remaining = deadline - now()
+          val remaining = totalBudget.toMillis - started.millis
           if (remaining <= 0) throw t
           sleep(math.min(delayMs, remaining))
           delayMs *= 2

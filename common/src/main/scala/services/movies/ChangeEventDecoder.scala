@@ -40,7 +40,7 @@ final class ChangeEventDecoder[T](
 ) extends Logging {
   import ChangeEventDecoder.PostImage
 
-  private val throttle = new tools.LogThrottle(ChangeEventDecoder.LogIntervalNanos, nanoTime)
+  private val throttle = new tools.LogThrottle(ChangeEventDecoder.LogIntervalNanos, new tools.Stopwatch(nanoTime))
 
   /** The event's post-image, decoded — `Absent` when it carries none (a delete, a drop). */
   def postImage(change: ChangeStreamDocument[BsonDocument]): PostImage[T] =

@@ -26,7 +26,7 @@ class EnrichmentFixtureReplaySpec extends AnyFlatSpec with Matchers {
     new RecordingHttpFetch(directory,
       new FallbackHttpFetch(Seq(
         "fixtures" -> new FakeHttpFetch(directory, strict = true, foldYear = false),
-        "live"     -> live)),
+        "live"     -> live), Stopwatch.System),
       foldYear = false)
 
   private val searchUrl = "https://api.themoviedb.org/3/search/movie?query=Cicha+noc&api_key=k"

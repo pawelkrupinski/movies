@@ -26,9 +26,9 @@ class MovieSitesIntegrationSpec extends AnyFlatSpec with Matchers with ParallelT
 
   private def probe(url: String): () => Unit = () => { new RealHttpFetch().get(url); () }
   private def metacritic[T](body: => T): T =
-    LiveUpstream.orCancel("Metacritic", probe(LiveUpstream.Probes.Metacritic))(body)
+    LiveUpstream.orCancel("Metacritic", probe(LiveUpstream.Probes.Metacritic), _root_.tools.Stopwatch.System)(body)
   private def rottenTomatoes[T](body: => T): T =
-    LiveUpstream.orCancel("Rotten Tomatoes", probe(LiveUpstream.Probes.RottenTomatoes))(body)
+    LiveUpstream.orCancel("Rotten Tomatoes", probe(LiveUpstream.Probes.RottenTomatoes), _root_.tools.Stopwatch.System)(body)
 
   "MetacriticClient.canonicalUrl" should "resolve The Dark Knight to its canonical page" in {
     val c = new MetacriticClient(new RealHttpFetch)

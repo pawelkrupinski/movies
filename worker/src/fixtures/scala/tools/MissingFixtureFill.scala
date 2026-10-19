@@ -98,7 +98,7 @@ object MissingFixtureFill {
    *  address so, run 37670426810). An answer, a 404 included, ends it; without a proxy, `direct` alone. Only what needs
    *  the paid egress uses it. */
   def route(direct: HttpFetch, proxy: Option[HttpFetch]): HttpFetch =
-    proxy.fold(direct)(p => new FallbackHttpFetch(Seq("direct" -> direct, "proxy" -> p), endsChain = FallbackHttpFetch.OriginAnswered))
+    proxy.fold(direct)(p => new FallbackHttpFetch(Seq("direct" -> direct, "proxy" -> p), Stopwatch.System, endsChain = FallbackHttpFetch.OriginAnswered))
 
   /** The residential proxy [[route]] falls back to — sticky per host and path across the pool's IPs — when
    *  `configuration` holds its credentials; None otherwise. The fill's and a recording's alike. */
@@ -111,7 +111,7 @@ object MissingFixtureFill {
    *  (a 404) is remembered beside it as a recording remembers one. A transient failure is not: the next
    *  leg's fill asks again. */
   def recordingInto(root: settings.FixtureRoot, tree: String, live: HttpFetch): HttpFetch = {
-    val cache = new EnrichmentCache(new FileEnrichmentCacheStore(FileEnrichmentCacheStore.beside(root, tree)),
+    val cache = new EnrichmentCache(new FileEnrichmentCacheStore(FileEnrichmentCacheStore.beside(root, tree)), Stopwatch.System,
       persistSuccesses = false, transients = EnrichmentCache.Transients.Forgotten)
     ArchiveReplayWiring.recordedChain(tree, root, Some(cache), live, "fill-fixtures", "fill-live")
   }
@@ -123,7 +123,7 @@ object MissingFixtureFill {
   def heldIn(root: settings.FixtureRoot, tree: String): MissingFixtures.Refetch => Boolean = {
     val recorded = new clients.tools.FakeHttpFetch(tree, strict = true, foldYear = false, root = root)
     val verdicts = new EnrichmentCache(new FileEnrichmentCacheStore(FileEnrichmentCacheStore.beside(root, tree),
-      FileEnrichmentCacheStore.NeverExpires), transients = EnrichmentCache.Transients.Replayed)
+      FileEnrichmentCacheStore.NeverExpires), Stopwatch.System, transients = EnrichmentCache.Transients.Replayed)
     verdicts.preload()
     gap => gap.body match {
       case Some(body) =>

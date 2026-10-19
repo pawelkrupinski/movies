@@ -47,7 +47,7 @@ class RecorderChainCaptureSpec extends AnyFlatSpec with Matchers with BeforeAndA
     // The proxy serves first, so the `direct` recorder is never consulted.
     val chain = new FallbackHttpFetch(Seq(
       "proxy"  -> proxyServing("films-json-from-proxy"),
-      "direct" -> recorderAsDirect))
+      "direct" -> recorderAsDirect), _root_.tools.Stopwatch.System)
 
     chain.get(MultikinoFilmsUrl) shouldBe "films-json-from-proxy"
     filmsFixture("inner-direct").exists shouldBe false
@@ -57,7 +57,7 @@ class RecorderChainCaptureSpec extends AnyFlatSpec with Matchers with BeforeAndA
     "capture the proxy-served response keyed by the target URL" in {
     val chain: HttpFetch = new FallbackHttpFetch(Seq(
       "proxy"  -> proxyServing("films-json-from-proxy"),
-      "direct" -> proxyServing("unused")))
+      "direct" -> proxyServing("unused")), _root_.tools.Stopwatch.System)
     // Compiles only because RecordingHttpFetch's delegate was widened from
     // RealHttpFetch to HttpFetch — the change that lets the recorder wrap the
     // proxy chain at all.
@@ -90,20 +90,20 @@ class RecorderChainCaptureSpec extends AnyFlatSpec with Matchers with BeforeAndA
 
   "The recorder's paid-egress chain" should "be `direct` alone when there is no residential proxy" in {
     val direct = new Leg(Some("from-direct"))
-    _root_.tools.ProxyChain.paidEgressChain(None, direct, _root_.tools.SpecClock.Pinned) should be theSameInstanceAs direct
+    _root_.tools.ProxyChain.paidEgressChain(None, direct, _root_.tools.SpecClock.Pinned, _root_.tools.Stopwatch.System) should be theSameInstanceAs direct
   }
 
   it should "ask the proxy first and leave `direct` unasked when the proxy answers" in {
     val proxy  = new Leg(Some("from-proxy"))
     val direct = new Leg(Some("from-direct"))
-    _root_.tools.ProxyChain.paidEgressChain(Some(IndexedSeq(proxy)), direct, _root_.tools.SpecClock.Pinned)
+    _root_.tools.ProxyChain.paidEgressChain(Some(IndexedSeq(proxy)), direct, _root_.tools.SpecClock.Pinned, _root_.tools.Stopwatch.System)
       .get(MultikinoFilmsUrl) shouldBe "from-proxy"
     direct.calls.get shouldBe 0
   }
 
   it should "fall straight back to `direct` behind a proxy that failed" in {
     val direct = new Leg(Some("from-direct"))
-    _root_.tools.ProxyChain.paidEgressChain(Some(IndexedSeq(new Leg(None))), direct, _root_.tools.SpecClock.Pinned)
+    _root_.tools.ProxyChain.paidEgressChain(Some(IndexedSeq(new Leg(None))), direct, _root_.tools.SpecClock.Pinned, _root_.tools.Stopwatch.System)
       .get(MultikinoFilmsUrl) shouldBe "from-direct"
     direct.calls.get shouldBe 1
   }

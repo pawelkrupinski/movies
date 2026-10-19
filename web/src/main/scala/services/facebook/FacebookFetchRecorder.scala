@@ -19,11 +19,11 @@ import scala.util.Try
  * every page cannot grow the heap between writes. A batch the store refuses is dropped and logged:
  * losing a fetch only means that page's next card change is not re-scraped.
  */
-final class FacebookFetchRecorder(store: FacebookFetches, clock: Clock) extends services.Stoppable with Logging {
+final class FacebookFetchRecorder(store: FacebookFetches, clock: Clock, stopwatch: tools.Stopwatch) extends services.Stoppable with Logging {
   import FacebookFetchRecorder.*
 
   private val pending  = new ConcurrentHashMap[String, Instant]()
-  private val failures = new LogThrottle(10.minutes.toNanos)
+  private val failures = new LogThrottle(10.minutes.toNanos, stopwatch)
 
   private val scheduler = DaemonExecutors.scheduler("facebook-fetches")
   scheduler.scheduleWithFixedDelay(() => flush(), FlushEvery.toMillis, FlushEvery.toMillis, TimeUnit.MILLISECONDS)

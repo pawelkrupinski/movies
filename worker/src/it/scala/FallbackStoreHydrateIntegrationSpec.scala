@@ -27,12 +27,12 @@ class FallbackStoreHydrateIntegrationSpec extends AnyFlatSpec with Matchers with
     val state = FallbackState(cinema = "Kino Test", active = true, fallbackSource = "Filmweb", fallbackRef = None,
       since = Some(at), lastReason = None, consecutiveFailures = 2, lastPrimaryProbeAt = None, nextPrimaryProbeAt = None,
       updatedAt = at, history = Nil)
-    new MongoFallbackStore(Some(isolated.database)).put(state)
-    new MongoFallbackStore(Some(isolated.database)).get("Kino Test").map(_.active) shouldBe Some(true)
+    new MongoFallbackStore(Some(isolated.database), _root_.tools.Stopwatch.System).put(state)
+    new MongoFallbackStore(Some(isolated.database), _root_.tools.Stopwatch.System).get("Kino Test").map(_.active) shouldBe Some(true)
   }
 
   it should "throw, not answer 'not on fallback', while its hydrate cannot read the collection" in {
-    val blind = new MongoFallbackStore(Some(unreachable.getDatabase("fallback-hydrate")))
+    val blind = new MongoFallbackStore(Some(unreachable.getDatabase("fallback-hydrate")), _root_.tools.Stopwatch.System)
     an[IllegalStateException] should be thrownBy blind.get("Kino Test")
     an[IllegalStateException] should be thrownBy blind.findAll()
   }
@@ -41,7 +41,7 @@ class FallbackStoreHydrateIntegrationSpec extends AnyFlatSpec with Matchers with
   // hydrate come due again.
   it should "throw at once between hydrate retries, and retry once the monotonic ticker has moved on" in {
     val ticks = new java.util.concurrent.atomic.AtomicLong(0L)
-    val blind = new MongoFallbackStore(Some(unreachable.getDatabase("fallback-hydrate")), () => ticks.get())
+    val blind = new MongoFallbackStore(Some(unreachable.getDatabase("fallback-hydrate")), new _root_.tools.Stopwatch(() => ticks.get()))
     (1 to 5).foreach(_ => an[IllegalStateException] should be thrownBy blind.get("Kino Test"))
     blind.hydrateAttempts shouldBe 1
     ticks.addAndGet(MongoFallbackStore.HydrateRetry.toNanos)

@@ -41,7 +41,7 @@ object RecordedCorpus {
       override def loadAll(): Map[String, CachedResponse] = files.loadAll()
       override def put(key: String, response: CachedResponse): Unit = ()
     }
-    val cache = new EnrichmentCache(store)
+    val cache = new EnrichmentCache(store, Stopwatch.System)
     val leaf  = new GapLeaf(missing)
     cache.preload()
     val fetch = replayChain(new clients.tools.FakeHttpFetch(tree, strict = true, foldYear = false, root = root), cache, leafOf(leaf))
@@ -51,7 +51,7 @@ object RecordedCorpus {
   /** A full corpus's chain: the recorded `tree`, then the remembered verdicts in `cache` ([[RememberedVerdicts]],
    *  read-only), then `leaf` for a request neither answers. */
   def replayChain(tree: HttpFetch, cache: EnrichmentCache, leaf: HttpFetch): HttpFetch =
-    new FallbackHttpFetch(Seq("tree" -> tree, "verdicts" -> new RememberedVerdicts(cache, leaf)))
+    new FallbackHttpFetch(Seq("tree" -> tree, "verdicts" -> new RememberedVerdicts(cache, leaf)), Stopwatch.System)
 
   /** The verdicts a recording remembered beside its tree, READ-ONLY: a remembered answer is answered, a remembered failure
    *  thrown as it was, and anything else asked of `leaf` every time. Never a [[CachingEnrichmentFetch]], which remembers

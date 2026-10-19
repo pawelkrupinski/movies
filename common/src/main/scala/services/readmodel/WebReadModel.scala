@@ -397,7 +397,7 @@ class WebReadModel(
   // outage's first failure logs at once and counts only its own ticks. On the injected clock, so
   // a spec steps it. Only the tick's own thread touches it.
   private def freshCheckpointFailureLog() =
-    new tools.LogThrottle(reloadInterval.value.toNanos, () => clock.millis() * 1000000L)
+    new tools.LogThrottle(reloadInterval.value.toNanos, new tools.Stopwatch(() => clock.millis() * 1000000L))
   private var checkpointFailureLog = freshCheckpointFailureLog()
   private val MaxTicksBetweenReopens =
     math.max(1L, reloadInterval.value.toSeconds / math.max(1L, coldRetryInterval.value.toSeconds))

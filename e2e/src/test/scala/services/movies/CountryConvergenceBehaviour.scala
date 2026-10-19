@@ -301,7 +301,7 @@ abstract class CountryConvergenceBehaviour(
     // Transient failures are RECORDED by a recording run and REPLAYED by a hermetic one: the
     // recording is only a complete record of what the pipeline asked if it holds the
     // requests that failed as well as those that answered.
-    val cache  = new EnrichmentCache(store, persistSuccesses = false,
+    val cache  = new EnrichmentCache(store, _root_.tools.Stopwatch.System, persistSuccesses = false,
       transients = if (replaysRecording) EnrichmentCache.Transients.Replayed else EnrichmentCache.Transients.Recorded)
     val loaded = step("preloadEnrichmentCache")(cache.preload())
     info(s"${country.displayName}: enrichment cache preloaded with $loaded entries from ${store.root}")
