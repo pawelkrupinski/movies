@@ -66,12 +66,18 @@ scratch_git "$root" fetch -q origin
 sleep 300 & victim=$!
 sleep 300 & bystander=$!
 sleep 300 & session=$!   # listed below as an agent session (`claude`) sitting in wt-orphan
+sleep 300 & mcp=$!       # ...an MCP server that session started (its direct child, no shell between)
+sleep 300 & toolshell=$! # ...and a tool call's shell of that session, running real work
+sleep 300 & toolwork=$!
 
 {
   printf '%s 1 4096 0:01.00 05:00 /bin/zsh\n' "$$"
   printf '%s %s 800000 3:00.00 01:00:00 /jdk/bin/java -Xmx4g sbt-launch.jar\n' "$victim" "$$"
   printf '%s 1 90000 0:01.00 10:00 sleep 300\n' "$bystander"
   printf '%s 1 400000 9:00.00 02:00:00 claude --resume\n' "$session"
+  printf '%s %s 60000 0:05.00 02:00:00 node /npx/mongodb-mcp-server\n' "$mcp" "$session"
+  printf '%s %s 4096 0:00.10 01:00 /bin/zsh -c eval scripts/sbt-warm\n' "$toolshell" "$session"
+  printf '%s %s 900000 1:00.00 01:00 /jdk/bin/java -Xmx4g sbt-launch.jar\n' "$toolwork" "$toolshell"
   printf '9001 1 2500000 1:00.00 2-00:00:00 /jdk/bin/java -Xmx6g strayer\n'
   printf '9002 1 200000 0:10.00 2-00:00:00 /jdk/bin/java -Xmx1g small\n'
   printf '9003 1 100000 50:00.00 01:00:00 python3 busy.py\n'
@@ -82,6 +88,9 @@ sleep 300 & session=$!   # listed below as an agent session (`claude`) sitting i
   printf 'p%s\nfcwd\nn%s/subdir\n' "$victim" "$work/wt-orphan"
   printf 'p%s\nfcwd\nn%s\n' "$bystander" "$work/wt-other"
   printf 'p%s\nfcwd\nn%s\n' "$session" "$work/wt-orphan"
+  printf 'p%s\nfcwd\nn%s\n' "$mcp" "$work/wt-orphan"
+  printf 'p%s\nfcwd\nn%s\n' "$toolshell" "$work/wt-orphan"
+  printf 'p%s\nfcwd\nn%s\n' "$toolwork" "$work/wt-orphan"
   printf 'p9004\nfcwd\nn%s\n' "$work/wt-live"
   printf 'p9001\nfcwd\nn/\n'
 } > "$work/lsof.txt"
@@ -137,9 +146,15 @@ check "...and leaves another worktree's process alone" "yes" "$(kill -0 "$bystan
 # session's `claude` and its MCP servers sit: it SIGTERMed one. An agent session or shell is never a victim, and
 # --mine refuses the root checkout outright: no one owns what runs there.
 check "...and never an agent session sitting in it" "yes" "$(kill -0 "$session" 2>/dev/null && echo yes || echo no)"
+check "...nor the MCP servers it started, though they run node" "yes" "$(kill -0 "$mcp" 2>/dev/null && echo yes || echo no)"
+check "...but still the work its tool calls' shells run" "no" "$(kill -0 "$toolwork" 2>/dev/null && echo yes || echo no)"
+kill "$mcp" "$toolshell" 2>/dev/null
 refused="$(cd "$root" && "$TOOL" kill --mine 2>&1; echo "exit=$?")"
 check "kill --mine refuses the shared root checkout" "1" "$(printf '%s\n' "$refused" | grep -c 'root checkout')"
 check "...exiting non-zero" "1" "$(printf '%s\n' "$refused" | grep -c '^exit=[1-9]')"
+refused="$(cd "$work/wt-other" && "$TOOL" kill --worktree "$root" 2>&1; echo "exit=$?")"
+check "...and so does kill --worktree naming it" "1 1" \
+  "$(printf '%s\n' "$refused" | grep -c 'root checkout') $(printf '%s\n' "$refused" | grep -c '^exit=[1-9]')"
 # The caller's shell is spared even where `ps -p <pid>` cannot read a parent (a sandboxed agent shell): the
 # ancestry comes from the real process table already read, not one ps call per hop. Real ps and lsof here.
 mkdir -p "$work/bin"
