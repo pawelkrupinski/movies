@@ -12,6 +12,7 @@ in
     ../../modules/roles/k3s-agent.nix
     ../../modules/roles/public-proxy.nix
     ../../modules/roles/google-sso.nix
+    ../../modules/roles/registry.nix
 
     # See the note on the same import in hosts/monitoring-1: this belongs in
     # modules/fleet/default.nix's `imports`, and is repeated per host only because that list could
