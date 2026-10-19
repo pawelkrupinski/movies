@@ -56,9 +56,9 @@ object UnifiedEvidence {
    *  (`listing.facts`) — two independent sources naming one film, where either alone is a weak signal: a single family's
    *  take as a fill adds wrong films (§20.6), and a venue's facts alone name no film (PL "11. UFF - Dowżenko. Pierwsze
    *  spojrzenie": Wikidata takes Konovalov's 2026 film, the festival dates and credits it; docs/design/identity-resolver.md §20.12).
-   *  `cast.venue`: the venue's own synopsis and cast field name two whole names of the film's top-billed TMDB cast, and
-   *  none of any other candidate's ([[CastEvidence]]; its value, how many) — PL Kino CK Lublin's "Lalka" names
-   *  Dorociński, Urzędowska and Kondrat of Kawalski's 2026 film.
+   *  `cast.venue`: of namesakes, the venue's own synopsis and cast field name two whole names of the film's top-billed
+   *  TMDB cast, and of no other candidate's, where no listing bills a director nor several works ([[CastEvidence.tieBreak]];
+   *  its value, how many) — PL Kino CK Lublin's "Lalka" names Dorociński, Urzędowska and Kondrat of Kawalski's 2026 film.
    *  `film.current`: the film released this year or last — what a fill on weak signals asks besides, as `venues.current`
    *  and `families.current` do: an older namesake fits a one-off event as well as a title (PL Kino Kosmos "Człowiek
    *  znikąd | uroczysty pokaz odrestaurowanego filmu", Kłyk's restored western: the model's and Filmweb's lean, and
@@ -215,13 +215,20 @@ object UnifiedEvidence {
     private val credited   = asStated.filter(listing => SourceReliability.decides(listing, SourceReliability.Fact.Directors) && listing.directors.nonEmpty)
     // the namesakes the release veto kept beside one it took out ([[PinnedSignals]]' family.releaseKept)
     private val releaseKept = c.nodes.flatMap(_.candidates).flatMap(_.releasedBeside).toSet
-    // [[PinnedSignals]]' cast.venue: the one contender the venue's own text names two of the top-billed cast of, the cast
-    // of no other contender — nor of a candidate the model denied — named at all ([[CastEvidence]]); a contender no TMDB
-    // record holds has no cast known, and leaves it unread
-    private val castTake = if (c.venueNames.isEmpty) None else {
-      val denied = scored.keys.filterNot(id => eligible.exists(_._1 == id)).toSeq.sorted.map(id => Option.empty[Building] -> c.cast(id))
-      CastEvidence.take(c.venueNames, built.toSeq.map(b => Option(b) -> b.tmdb.flatMap(c.cast)) ++ denied).collect { case (Some(b), named) => b -> named }
-    }
+    // [[PinnedSignals]]' cast.venue: a TIE-BREAK among the contenders and denied candidates the billing names alike — the
+    // one whose top-billed cast the venue's own text names two whole names of, no other's twice ([[CastEvidence.tieBreak]];
+    // a contender no TMDB record holds has no cast known, and leaves it unread) — and only where no listing bills a
+    // director (where one does, the director decides: cast repeats it for 1,053 of 1,147 listings) nor several works (a
+    // double bill names both films' casts)
+    private val castTake =
+      if (c.venueNames.isEmpty || c.listings.exists(_.directors.nonEmpty) || c.listings.exists(ListingShape.billsSeveral)) None
+      else {
+        def billed(films: Seq[IdentityMeasures.Film]) = c.listings.forall(Agreement.namesIt(_, films))
+        val denied = scored.toSeq.filterNot { case (id, _) => eligible.exists(_._1 == id) }.sortBy(_._1)
+          .collect { case (id, candidates) if billed(Seq(candidates.head.film)) => Option.empty[Building] -> c.cast(id) }
+        val sameTitled = built.toSeq.filter(b => billed(b.records.toSeq.map(_.film))).map(b => Option(b) -> b.tmdb.flatMap(c.cast))
+        CastEvidence.tieBreak(c.venueNames, sameTitled ++ denied).collect { case (Some(b), named) => b -> named }
+      }
     // each candidate's titles as runs of the billing, found once for every contender's `title.anothersOwn` — a denied
     // candidate's too: the billing naming it more fully names another film than one it names only in part, whatever
     // ruled that one out (DE CineStar's "Herr der Ringe - Rückkehr des Königs (ext.)")

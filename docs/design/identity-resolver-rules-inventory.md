@@ -121,7 +121,7 @@ decorated, fragment, overlap, none); `numeralRelation` :1097; `namesSeasonProduc
 `directorRelation`/`creditRelation` :647/667 (+ `creditedBySearch`); `countryRelation` :1140; `runtimeDelta` :1170
 (+ `FilmCuts`, `billsAnEdition`); `runtimeContradicts` :1461 (30 min); `VenueBacking.corroborating`; `StageRelays.billsStageWork`;
 `MultiFilmBill.billsTwoWorks`/`billsTwoWholeWorks`; `MultiFilmBill.marker`/`billedOne`/`namedBy`/`billsBeside`;
-`TitleLinks.titleLinked`/`titlesBeside`/`Cut`; `CastEvidence.take` (≥2 names). All pinned by IdentityMeasuresSpec /
+`TitleLinks.titleLinked`/`titlesBeside`/`Cut`; `CastEvidence.tieBreak` (≥2 names, namesakes only). All pinned by IdentityMeasuresSpec /
 IRC / TitleDecorationsSpec / MultiFilmBillSpec / FilmCutsSpec / CastEvidenceSpec.
 
 ## 2. The agreement stage (`agreement/`)

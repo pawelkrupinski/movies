@@ -4,8 +4,8 @@ import org.scalatest.flatspec.AnyFlatSpec
 import org.scalatest.matchers.should.Matchers
 
 /**
- * The cast evidence on the real cases its offline measure met (2026-10-06, 244 labelled clusters: 24 decided, 24 right):
- * the venue's own text naming two whole names or more of ONE candidate's top-billed TMDB cast, and none of any other's.
+ * The cast tie-break on the real cases its offline measure met (2026-10-06, 244 labelled clusters: 24 decided, 24 right):
+ * of namesakes, the venue's own text naming two whole names or more of ONE candidate's top-billed TMDB cast, no other's twice.
  * Casts are TMDB's own, as recorded for the measure.
  */
 class CastEvidenceSpec extends AnyFlatSpec with Matchers {
@@ -22,7 +22,7 @@ class CastEvidenceSpec extends AnyFlatSpec with Matchers {
 
   "a venue's text" should "name the 2026 'Lalka' by three of its cast, and not Has's — whose Tadeusz Kondrat shares only a surname" in {
     val venue = VenueNames.of(Seq(ckLublin))
-    CastEvidence.take(venue, Seq(1321666 -> Some(doll2026), 81315 -> Some(doll1968))) shouldBe
+    CastEvidence.tieBreak(venue, Seq(1321666 -> Some(doll2026), 81315 -> Some(doll1968))) shouldBe
       Some(1321666 -> Seq("Marcin Dorociński", "Kamila Urzędowska", "Marek Kondrat"))
   }
 
@@ -44,29 +44,41 @@ class CastEvidenceSpec extends AnyFlatSpec with Matchers {
     VenueNames.of(Seq("Kondrat, Marcin Dorociński")).names("Kondrat Marcin") shouldBe false
   }
 
-  "one name of a candidate's cast" should "take nothing: US 'MetOpera: Medea (2022–23)' names Radvanovsky, who sings another production's Medea" in {
+  "one name of a candidate's cast" should "break no tie: US 'MetOpera: Medea (2022–23)' names Radvanovsky, who sings another production's Medea" in {
     // flicks.us's text of the Met's 2022–23 Medea (TMDB 1737985, no cast on TMDB); TMDB 1601989 is the 2025 Naples production
     val venue = VenueNames.of(Seq("Having triumphed at the Met in some of the repertory’s fiercest soprano roles, Sondra Radvanovsky stars as the " +
       "mythic sorceress who will stop at nothing in her quest for vengeance. Joining Radvanovsky in the Met-premiere production of Cherubini’s " +
       "rarely performed masterpiece is tenor Matthew Polenzani as Medea’s Argonaut husband, Giasone; soprano Janai Brugger as her rival."),
       cast = Seq("Matthew Polenzani", "Sondra Radvanovsky", "Ekaterina Gubanova", "Michele Pertusi", "Janai Brugger"))
     val naples = Seq("Sondra Radvanovsky", "Francesco Demuro", "Giorgi Manoshvili", "Désirée Giove", "Anita Rachvelishvili")
-    CastEvidence.take(venue, Seq(1601989 -> Some(naples), 1737985 -> Some(Nil))) shouldBe None
+    CastEvidence.tieBreak(venue, Seq(1601989 -> Some(naples), 1737985 -> Some(Nil))) shouldBe None
   }
 
   "a double bill naming two films' casts" should "take neither" in {
     val venue = VenueNames.of(Seq("Dwie „Lalki” jednego wieczoru: Mariusz Dmochowski i Beata Tyszkiewicz u Hasa, " +
       "Marcin Dorociński i Kamila Urzędowska u Kawalskiego."))
-    CastEvidence.take(venue, Seq(1321666 -> Some(doll2026), 81315 -> Some(doll1968))) shouldBe None
+    CastEvidence.tieBreak(venue, Seq(1321666 -> Some(doll2026), 81315 -> Some(doll1968))) shouldBe None
   }
 
-  "a candidate whose cast is not known" should "leave the evidence unread: it might be the one the text names" in {
-    CastEvidence.take(VenueNames.of(Seq(ckLublin)), Seq(1321666 -> Some(doll2026), 81315 -> None)) shouldBe None
+  "the tie-break" should "prefer the namesake whose cast the text names twice, a rival named once standing in no way" in {
+    val venue = VenueNames.of(Seq(ckLublin + " Jak niegdyś Tadeusz Fijewski."))
+    CastEvidence.tieBreak(venue, Seq(1321666 -> Some(doll2026), 81315 -> Some(doll1968))) shouldBe
+      Some(1321666 -> Seq("Marcin Dorociński", "Kamila Urzędowska", "Marek Kondrat"))
+  }
+
+  it should "take no lone candidate: there is no tie to break" in {
+    CastEvidence.tieBreak(VenueNames.of(Seq(ckLublin)), Seq(1321666 -> Some(doll2026))) shouldBe None
+  }
+
+  it should "break no tie a rival of unknown cast is in, nor one two namesakes' casts are both named in" in {
+    CastEvidence.tieBreak(VenueNames.of(Seq(ckLublin)), Seq(1321666 -> Some(doll2026), 81315 -> None)) shouldBe None
+    val both = VenueNames.of(Seq("Mariusz Dmochowski i Beata Tyszkiewicz u Hasa, Marcin Dorociński i Kamila Urzędowska u Kawalskiego."))
+    CastEvidence.tieBreak(both, Seq(1321666 -> Some(doll2026), 81315 -> Some(doll1968))) shouldBe None
   }
 
   "no venue text" should "name nothing" in {
     VenueNames.of(Nil).isEmpty shouldBe true
-    CastEvidence.take(VenueNames.None, Seq(1321666 -> Some(doll2026))) shouldBe None
+    CastEvidence.tieBreak(VenueNames.None, Seq(1321666 -> Some(doll2026))) shouldBe None
   }
 
   // A corpus holds a listing per film and venue (worker-us: ~100k): what each holds of its text is a handful of hashes,

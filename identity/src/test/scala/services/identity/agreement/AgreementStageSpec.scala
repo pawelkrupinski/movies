@@ -158,7 +158,7 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
       ResolverDecision.Basis.BelowThreshold
   }
 
-  it should "take, by the pinned cast.venue rule, the one candidate two of whose top-billed cast the venue's own text names" in {
+  it should "take, by the pinned cast.venue rule, of two namesakes the one two of whose top-billed cast the venue's own text names" in {
     // PL Kino CK Lublin "Lalka" (fixture identity-unmatched; its own page, ck-lublin.bilety24.pl/wydarzenie/?id=162455): the
     // model weighs Kawalski's 2026 film and Has's 1968 one alike; the page names Dorociński, Urzędowska and Kondrat
     import services.identity.{CandidateQuery, DetailFacts, Hit, IdentityLookups, Listing, VenueNames}
@@ -170,12 +170,12 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
     val casts = Map(
       1321666 -> Seq("Marcin Dorociński", "Kamila Urzędowska", "Marek Kondrat", "Andrzej Seweryn", "Krystyna Janda", "Maria Dębska"),
       81315   -> Seq("Mariusz Dmochowski", "Beata Tyszkiewicz", "Tadeusz Fijewski", "Kalina Jędrusik", "Tadeusz Kondrat"))
-    def tmdb(page: Option[String], castOf: Int => Option[Seq[String]]) = new IdentityLookups {
+    val namesakes = Seq(Hit(1321666, "Lalka", Some("Lalka"), Some(2026), 20.0), Hit(81315, "Lalka", Some("Lalka"), Some(1968), 3.0))
+    def tmdb(page: Option[String], castOf: Int => Option[Seq[String]], hits: Seq[Hit] = namesakes) = new IdentityLookups {
       def hasDetail(listing: Listing): Boolean = page.isDefined
       def detail(listing: Listing) = Answer.Known(page.map(text => DetailFacts(None, Nil, None, None, synopsis = Some(text))))
       def candidates(query: CandidateQuery) = query match {
-        case CandidateQuery.Title(title) if title.equalsIgnoreCase("Lalka") =>
-          Answer.Known(Seq(Hit(1321666, "Lalka", Some("Lalka"), Some(2026), 20.0), Hit(81315, "Lalka", Some("Lalka"), Some(1968), 3.0)))
+        case CandidateQuery.Title(title) if title.equalsIgnoreCase("Lalka") => Answer.Known(hits)
         case _ => Answer.Known(Nil)
       }
       def film(tmdbId: Int) = Answer.Known(records.get(tmdbId))
@@ -205,6 +205,12 @@ class AgreementStageSpec extends AnyFlatSpec with Matchers {
       ResolverDecision.Basis.BelowThreshold
     val shipped = services.identity.UnifiedRules.resolver
     decided(stated, known, shipped.copy(pinned = shipped.pinned.filterNot(_ == "cast.venue"))).basis shouldBe ResolverDecision.Basis.BelowThreshold
+    // a tie-break, never a take: a lone candidate the text names is no tie (UK Electric Palace Hastings' "Straight Talk: A
+    // Tribute to Dolly Parton" named the 1992 film's cast and was taken as it), nor is a listing billing a director one —
+    // the director decides there
+    def byCast(decision: ResolverDecision) = decision.explanation.lastOption.exists(_.startsWith("filled by cast.venue"))
+    byCast(decided(stated, tmdb(None, casts.get, hits = namesakes.take(1)))) shouldBe false
+    byCast(decided(stated.copy(directors = Seq("Maciej Kawalski")), known)) shouldBe false
   }
 
   "an unmatched cluster its families agree on" should "take the TMDB film the agreed IMDb id finds, and name the families" in {

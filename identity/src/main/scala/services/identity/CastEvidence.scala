@@ -85,25 +85,30 @@ object VenueNames {
 }
 
 /**
- * The CAST signal: the one candidate whose top-billed TMDB cast the venue's own text names two whole names of
- * ([[VenueNames]]), no other candidate's cast named at all. Measured offline 2026-10-06 over 244 labelled clusters of the
+ * The CAST signal, a tie-break between namesakes: of the candidates a billing names alike, the one whose top-billed TMDB
+ * cast the venue's own text names two whole names of ([[VenueNames]]), no other's twice. Measured offline 2026-10-06 over 244 labelled clusters of the
  * five corpora (the venue pages fetched, every candidate's TMDB credits): 24 decided, 24 right, 0 wrong, 11 of them
  * clusters the resolver left unmatched (PL Kino CK Lublin's "Lalka": Dorociński, Urzędowska and Kondrat name Kawalski's
  * 2026 film). ONE name is no evidence — it took 2 wrong films there: performers sing and act in several productions
  * (US "MetOpera: Medea (2022–23)" names Sondra Radvanovsky, the Naples Medea's lead too). A double bill naming each
  * film's cast names more than one candidate: nothing. A candidate whose cast is not known might be the one named:
- * nothing either.
+ * nothing either. Narrowed to the tie-break 2026-10-19 (docs/identity-experiments.md, `cast-tiebreak`): once the
+ * captures held casts, the wider rule took a tribute named after a film ("Straight Talk: A Tribute to Dolly Parton") as
+ * the film; the tie-break took 6 UK no-director ties right, none wrong.
  */
 object CastEvidence {
   /** The whole names a venue's text must name of one candidate's cast. */
   val Names = 2
 
-  /** The one candidate of `cast` (each with its top-billed cast, `None` while not known) the venue's text names [[Names]]
-   *  of, with the names it names — none while another candidate's cast is named at all, or one's is not known. */
-  def take[K](venue: VenueNames, cast: Seq[(K, Option[Seq[String]])]): Option[(K, Seq[String])] =
-    if (venue.isEmpty || cast.isEmpty || cast.exists(_._2.isEmpty)) Option.empty
-    else cast.map { case (candidate, names) => candidate -> names.get.filter(venue.names).distinct }.filter(_._2.nonEmpty) match {
-      case Seq((candidate, named)) if named.sizeIs >= Names => Some(candidate -> named)
-      case _                                                => Option.empty
+  /** The TIE-BREAK: of the candidates the billing names alike (`sameTitled`, each with its
+   *  top-billed cast, `None` while not known), the one whose cast the venue's text names [[Names]] whole names of, no
+   *  other doing so — a preference among namesakes, never a take of a lone candidate. A rival named by one name does not
+   *  stand in its way (sequels and remakes share an actor), nor is a rival named by none held against it: only two names
+   *  decide. Nothing while fewer than two candidates tie, or one's cast is not known: it might be the one named. */
+  def tieBreak[K](venue: VenueNames, sameTitled: Seq[(K, Option[Seq[String]])]): Option[(K, Seq[String])] =
+    if (venue.isEmpty || sameTitled.sizeIs < 2 || sameTitled.exists(_._2.isEmpty)) Option.empty
+    else sameTitled.map { case (candidate, names) => candidate -> names.get.filter(venue.names).distinct }.filter(_._2.sizeIs >= Names) match {
+      case Seq(only) => Some(only)
+      case _         => Option.empty
     }
 }
