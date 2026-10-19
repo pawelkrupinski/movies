@@ -2888,6 +2888,15 @@
           },
           "expr": "sum by (country) (increase(kinowo_worker_identity_take_reversals_total{country=~\"$country\"}[1h]))",
           "legendFormat": "{{country}} take reversals /h"
+        },
+        {
+          "refId": "H",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "local-prometheus"
+          },
+          "expr": "topk(5, sum by (country, billing) (increase(kinowo_worker_identity_billing_reversals_total{country=~\"$country\"}[1h])))",
+          "legendFormat": "{{country}} {{billing}} reversed /h"
         }
       ]
     },
