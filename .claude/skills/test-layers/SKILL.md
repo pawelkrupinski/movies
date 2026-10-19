@@ -38,8 +38,10 @@ is that the local toolchain is missing (e.g. no full Xcode for
 - **`cd page-tests-playwright && npx playwright test [--project …]`**
   — mobile + desktop × Chromium / WebKit / Firefox / Edge. `--project`
   narrows to one engine; the default `--list` shows which exist.
-- **iOS LocalServer** — `sbt 'web/PageTest/runMain tools.FixtureServerMain
-  <port-file>'` in one shell, `KINOWO_LOCAL_URL=http://127.0.0.1:$(cat
+- **iOS LocalServer** — `scripts/sbt-warm --serve 'web/PageTest/runMain
+  tools.FixtureServerMain <port-file>'` in the background (`--serve`: a server
+  running until stopped holds no JVM slot, so it never queues other agents'
+  tests behind it), `KINOWO_LOCAL_URL=http://127.0.0.1:$(cat
   <port-file>) swift test --package-path ios --filter LocalServer`
   in another. Decodes the live `/{city}/api/repertoire`, `/api/details`
   and `/api/cinemas` JSON through the app's own `Codable` models with the
