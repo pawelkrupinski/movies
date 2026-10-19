@@ -98,8 +98,9 @@ if command -v script > /dev/null; then
   # gone prove the Ctrl-C did it, never elapsed wall time (shell-spec.sh's HUNG STUBS)
   check "...a Ctrl-C there ends the command's whole group and its caller" "gone" \
     "$(in_terminal ctrl-c 'bounded '$((SPEC_HANG_BOUND * 2))' sh -c "sleep 86400 & echo \$! > $2/grandchild; touch $2/ready; sleep 86400"; echo carried-on' > "$work/terminal"
+       left=$(spec_still_running "$work/grandchild") # killed whichever way the case goes: a failure strands nothing
        if grep -q carried-on "$work/terminal"; then echo "the caller carried on"
-       elif [ "$(spec_still_running "$work/grandchild")" != 0 ]; then echo alive
+       elif [ "$left" != 0 ]; then echo alive
        else echo gone; fi)"
 else
   echo "  - no script(1): bounded under a terminal not checked"
