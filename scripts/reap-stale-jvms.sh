@@ -12,7 +12,11 @@
 #   Rule B (hog) — any sbt/java process that is both old and has burned a
 #     real share of a core over its whole life. Catches wedged JVMs that are
 #     still correctly parented (e.g. a detached sbt server whose ZIO/Pekko
-#     scheduler threads are spinning).
+#     scheduler threads are spinning). Never a server scripts/sbt-warm KEEPS
+#     (a live `sbt-warm --keep` in its directory): one in use compiles and tests
+#     for hours, past the hog bar on lifetime CPU alone, and 2026-10-19 this rule
+#     killed one mid-use -- a "vanished" server sbt-warm logged nothing about.
+#     Its keeper stops it after 10 idle minutes, spinning or not.
 #
 #   Rule C (duplicate sbt server) — detached `sbt-launch` SERVERS (PPID 1 by
 #     design, so Rule A cannot tell them from live ones; recognised by
@@ -124,6 +128,10 @@ fi
 CWD_COMMAND=${CWD_COMMAND:-"lsof -nP -a -d cwd -c java -Fpn 2>/dev/null | awk '/^p/{p=substr(\$0,2)} /^n/{print p, substr(\$0,2)}'"}
 export CWD_MAP
 CWD_MAP=$(eval "$CWD_COMMAND" 2>/dev/null)
+# Overridable like PS_COMMAND: the directories (one a line) where a scripts/sbt-warm keeper lives, for Rule B.
+KEPT_COMMAND=${KEPT_COMMAND:-"for p in \$(pgrep -f 'sbt-warm --keep'); do lsof -a -p \$p -d cwd -Fn 2>/dev/null | sed -n 's/^n//p'; done | sort -u"}
+export KEPT_DIRS
+KEPT_DIRS=$(eval "$KEPT_COMMAND" 2>/dev/null)
 
 candidates=$(
   eval "$PS_COMMAND" 2>/dev/null | awk \
@@ -150,6 +158,8 @@ candidates=$(
         sp = index(lines[i], " ")
         if (sp > 0) cwd[substr(lines[i], 1, sp - 1)] = substr(lines[i], sp + 1)
       }
+      n = split(ENVIRON["KEPT_DIRS"], lines, "\n")
+      for (i = 1; i <= n; i++) if (lines[i] != "") kept[lines[i]] = 1
     }
     function tosec(t,   dd, a, p, n, s) {
       dd = 0
@@ -182,7 +192,7 @@ candidates=$(
       rule = ""
       if (args ~ orphan_re && ppid == 1 && age >= orphan_age) {
         rule = "orphan"
-      } else if (age >= hog_age && pct >= hog_cpu) {
+      } else if (age >= hog_age && pct >= hog_cpu && !(args ~ /--detach-stdio/ && (pid in cwd) && (cwd[pid] in kept))) {
         if (require_no_tty == 1 && tty != "??" && tty != "?" && tty != "-") next
         rule = "hog"
       }

@@ -37,4 +37,17 @@ reaped() { PS_COMMAND="cat $scratch/ps" CWD_COMMAND="cat $scratch/cwd" PORT_LIST
 check "only the older duplicate server and the server of a removed dir are reaped" "101:dup-sbt-server 106:dup-sbt-gone-dir " "$(reaped)"
 check "a one-shot sbt run sharing a cwd is never a candidate" "no" "$(reaped | grep -qE '10[34]:' && echo yes || echo no)"
 check "a server whose .part dir was renamed to the final one is not 'gone'" "no" "$(reaped | grep -q '105:' && echo yes || echo no)"
+
+# Rule B (hog) and scripts/sbt-warm's KEPT servers: a kept server compiles and tests for hours, so its lifetime CPU share
+# passes the hog bar, and 2026-10-19 15:14 the reaper killed one mid-use (pid 37041, 1h42m, 35% of a core) -- a "vanished"
+# server nothing on sbt-warm's side logged. Its keeper stops it once it is idle; while one lives, the server is spared.
+mkdir -p "$scratch/kept" "$scratch/unkept"
+cat > "$scratch/ps" <<PS
+ 201 1 ?? 02:00:00 00:40:00 $SERVER
+ 202 1 ?? 02:00:00 00:40:00 $SERVER
+ 203 1 ?? 02:00:00 00:40:00 $ONESHOT
+PS
+printf '201 %s\n202 %s\n203 %s\n' "$scratch/kept" "$scratch/unkept" "$scratch/kept" > "$scratch/cwd"
+check "a hogging server whose checkout has a live sbt-warm keeper is spared; an unkept one, or a one-shot run, is not" \
+  "202:hog 203:hog " "$(KEPT_COMMAND="echo $scratch/kept" reaped)"
 spec_summary
