@@ -82,4 +82,16 @@ class NoDefaultLocaleCaseMappingSpec extends AnyFlatSpec with Matchers {
       offenders shouldBe empty
     }
   }
+
+  // The rule is the JVM's: JavaScript's `toLowerCase()` takes no Locale. A mechanical sweep once wrote
+  // `toLowerCase(java.util.Locale.ROOT)` into page JS (grid.js, reference-template.html), a ReferenceError
+  // in the browser that broke the PageTest card filter.
+  "Browser sources" should "never name a Java Locale" in {
+    val offenders = browserFiles(MainRoots ++ TestRoots).flatMap { path =>
+      read(path).linesIterator.zipWithIndex.collect { case (line, index) if line.contains("java.util.Locale") => s"$path:${index + 1}" }
+    }
+    withClue("JavaScript has no java.util.Locale; use plain toLowerCase() / toUpperCase() here:\n" + offenders.mkString("\n") + "\n") {
+      offenders shouldBe empty
+    }
+  }
 }

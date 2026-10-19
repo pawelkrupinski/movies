@@ -51,6 +51,10 @@ object ScalaSourceScan {
   /** The Twirl templates under `roots` — Scala expressions spliced into HTML and JS. */
   def twirlFiles(roots: Seq[String]): Seq[Path] = filesEndingWith(roots, ".scala.html")
 
+  /** The browser-side sources under `roots` — plain `.js` and non-Twirl `.html`, which run as JavaScript, not Scala. */
+  def browserFiles(roots: Seq[String]): Seq[Path] =
+    (filesEndingWith(roots, ".js") ++ filesEndingWith(roots, ".html").filterNot(_.toString.endsWith(".scala.html"))).sortBy(_.toString)
+
   private def filesEndingWith(roots: Seq[String], suffix: String): Seq[Path] =
     roots.map(Paths.get(_)).filter(Files.isDirectory(_)).flatMap { root =>
       // `Files.walk` holds a directory handle open per level until the stream is closed.
