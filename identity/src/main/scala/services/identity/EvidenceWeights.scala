@@ -29,11 +29,12 @@ private[identity] final class EvidenceWeights(calibration: IdentityCalibration) 
    *  [2026] [96′], its year the screening's, took the Slovak "Hocus-pocus" (2025, 101′, released in Czechia and Slovakia
    *  alone) past the veto on that running time while the 1993 film stood released in Britain beside it. */
   def factsSupport(scored: Scored): Boolean = {
-    val published = calibration.contributions(ListingFilm, scored.measures).filter { case (name, _) =>
-      !NotOwn(name) && name != "title" && !scored.measures.get(name).exists(_.isInstanceOf[IdentityMeasures.Missing]) }
-    published.exists(_._2 > 0) && published.map(_._2).sum > 0
+    // summed in place, as every rule asks it per candidate: no tuple or option per signal
+    val published: IdentityCalibration.Weighed = (name, _) => !NotOwn(name) && name != "title" && !missing(scored, name)
+    calibration.contributionSumWhere(ListingFilm, scored.measures, (name, weight) => weight > 0 && published(name, weight), (_, _) => 1.0) > 0 &&
+      calibration.contributionSumWhere(ListingFilm, scored.measures, published) > 0
   }
-
+  private def missing(scored: Scored, name: String): Boolean = scored.measures.getOrElse(name, null).isInstanceOf[IdentityMeasures.Missing]
   /** The calibrated probability on the listing's own facts alone — what a cannot-link reads. A
    *  film the listing's facts do not contradict is never vetoed merely for ranking second in
    *  TMDB's search or for having same-titled rivals: that is ambiguity, not evidence of a
@@ -53,7 +54,10 @@ private[identity] final class EvidenceWeights(calibration: IdentityCalibration) 
 
   /** Does anything the listing PUBLISHED weigh against the film — an own-fact measure the listing
    *  did not leave missing, with a negative weight? */
-  def speaksAgainst(scored: Scored): Boolean = against(scored).nonEmpty
+  def speaksAgainst(scored: Scored): Boolean =
+    // counted in place, as [[against]] finds them: every rule asks it per candidate
+    calibration.contributionSumWhere(ListingFilm, scored.measures, (name, weight) => !NotOwn(name) && weight < 0 && !missing(scored, name),
+      (_, _) => 1.0) > 0
   /** The published facts weighing against `scored` — what [[speaksAgainst]] finds — rendered as the trace's evidence is. */
   def against(scored: Scored): Seq[String] = {
     val names = calibration.contributions(ListingFilm, scored.measures).collect { case (name, weight)
