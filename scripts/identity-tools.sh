@@ -180,6 +180,9 @@ identity_tree_layout() {
   for t in project/target common/target identity/target testkit/target worker/target target; do
     if [ -n "$seed" ] && [ -d "$seed/$t" ]; then mkdir -p "$part/$(dirname "$t")"; cp -cR "$seed/$t" "$part/$t" 2>/dev/null || cp -R "$seed/$t" "$part/$t"; fi
   done
+  # Zinc never deletes a class file it did not produce: one another build wrote into the seed's classes/ (IntelliJ's JPS,
+  # 2026-10-18) would shadow the real class here for good
+  [ -z "$seed" ] || python3 "$IDENTITY_REPO/scripts/zinc_orphans.py" "$part"
   rm -rf "$part/target/identity-tools"
   # The very sources of a compiled ref (a commit changing no source: a judgement, a doc): its classes ARE this ref's, so
   # its classpath is kept, pointed here -- no sbt start to find nothing to compile (~15 s). The tool files dropped in

@@ -9,6 +9,7 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # the scratch repository below is built only through the isolating helper: run from a hook, a bare git would act on
 # the repository being pushed
 . "$REPO_ROOT/scripts/scratch-git.sh"
+. "$REPO_ROOT/scripts/scratch-zinc.sh"
 
 printf '\033[36m▸\033[0m identity-slice\n'
 
@@ -33,7 +34,7 @@ chmod +x "$work/bin/xargs"
 repo="$work/repo"
 mkdir -p "$repo/scripts" "$repo/worker/src/test/scala/scripts" "$repo/worker/src/test/scala/services/identity" \
   "$repo/worker/src/fixtures/scala/tools" "$repo/common/src" "$repo/identity/src" "$repo/testkit/src" "$repo/test/resources/fixtures/identity-unmatched"
-cp "$REPO_ROOT/scripts/identity-slice" "$REPO_ROOT/scripts/identity-explain" "$REPO_ROOT/scripts/identity-tools.sh" "$REPO_ROOT/scripts/tool-conventions.sh" "$REPO_ROOT/scripts/jvm-gate.sh" "$REPO_ROOT/scripts/identity_slice_diff.py" "$repo/scripts/"
+cp "$REPO_ROOT/scripts/identity-slice" "$REPO_ROOT/scripts/identity-explain" "$REPO_ROOT/scripts/identity-tools.sh" "$REPO_ROOT/scripts/tool-conventions.sh" "$REPO_ROOT/scripts/jvm-gate.sh" "$REPO_ROOT/scripts/identity_slice_diff.py" "$REPO_ROOT/scripts/zinc_orphans.py" "$repo/scripts/"
 mkdir -p "$repo/scripts/ci" && cp "$REPO_ROOT"/scripts/ci/identity_*.py "$repo/scripts/ci/"  # the shared modules the diff imports
 for f in worker/src/test/scala/scripts/IdentitySlice.scala worker/src/test/scala/scripts/IdentityExplain.scala \
   worker/src/test/scala/services/identity/IdentitySlicing.scala worker/src/fixtures/scala/tools/RecordedCorpus.scala \
@@ -198,7 +199,13 @@ scratch_git "$repo" checkout -q -- worker/src/test/scala/scripts/IdentitySlice.s
 slice de --recording 777 --key 'Kino|Lalka' --ref "$docs" > /dev/null   # its tree's tool files this checkout's again
 echo "docs again" >> "$repo/README.md"; scratch_git "$repo" commit -qam "no code again"
 again=$(scratch_git "$repo" rev-parse HEAD)
+# ...never with the class files no build of the seed's produced (IntelliJ's JPS wrote fixtures classes into worker's main
+# classes/ on 2026-10-18: a measure's ratchet died on NoClassDefFoundError naming a class renamed away the day before)
+scratch_zinc_build "$cache/refs/$docs" worker tools/Kept.class
+echo orphan > "$cache/refs/$docs/worker/target/scala-3.9.0/classes/tools/Orphan.class"
 rm -f "$work/calls"; slice de --recording 777 --key 'Kino|Lalka' --ref "$again" > /dev/null
+check "a new ref's seed carries only the class files its analysis lists" "Kept.class Kept.tasty" \
+  "$(cd "$cache/refs/$again/worker/target/scala-3.9.0/classes/tools" 2>/dev/null && echo *)"
 check "a new ref is seeded from the nearest compiled ref" "1" "$(grep -c "seeding its compile from $cache/refs/$docs (0 source file(s) apart)" "$work/err")"
 check "...and, its sources the seed's, compiles nothing" "0" "$(grep -c "^sbt $cache/refs/$again" "$work/calls")"
 check "...its classpath the seed's, pointed at its own tree" "1" \
