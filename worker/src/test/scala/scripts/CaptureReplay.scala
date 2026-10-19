@@ -91,9 +91,8 @@ object CaptureReplay {
   /** Every ask run, [[AskConcurrency]] at a time, returning once all have: a control's hundreds of unanswered questions
    *  asked one after another were most of a CI run's control (1,308 of them, ~9 minutes, 2026-10-15). */
   private[scripts] def asked(asks: Seq[() => Unit]): Unit = {
-    import scala.concurrent.{Await, Future}
     given scala.concurrent.ExecutionContext = askPool
-    Await.result(Future.traverse(asks)(ask => Future(ask())), scala.concurrent.duration.Duration.Inf)
+    ParallelTasks.all(asks)(_())
   }
 
   /** A calibration's measure over one capture ([[CaptureReplay.measure]]). */

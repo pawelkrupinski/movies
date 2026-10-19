@@ -9,8 +9,7 @@ import tools.{CommandLine, UnmatchedClusters}
 import java.nio.charset.StandardCharsets
 import java.nio.file.{Files, Path}
 import java.util.concurrent.{Executors, TimeUnit}
-import scala.concurrent.duration.Duration
-import scala.concurrent.{Await, ExecutionContext, Future}
+import scala.concurrent.ExecutionContext
 import scala.jdk.CollectionConverters._
 import scala.util.hashing.MurmurHash3
 
@@ -304,7 +303,7 @@ object IdentityRefit {
   /** The ratchet as captured, under `calibration`: every capture's decisions, the agreement replayed — the captures
    *  measured side by side on `ec`. */
   def baseline(replays: Seq[CaptureReplay], calibration: IdentityCalibration)(using ec: ExecutionContext = ExecutionContext.parasitic): Baseline =
-    Baseline(calibration, Await.result(Future.traverse(replays)(r => Future(r.measure(r.capture.decisions, r.resolved(calibration), calibration))), Duration.Inf))
+    Baseline(calibration, ParallelTasks.all(replays)(r => r.measure(r.capture.decisions, r.resolved(calibration), calibration)))
 
   /** Every capture measured under `calibration` on top of `base` ([[CaptureReplay.measure]]). */
   def measureOn(replays: Seq[CaptureReplay], base: Baseline, calibration: IdentityCalibration): Seq[CaptureReplay.Measure] =
@@ -315,8 +314,9 @@ object IdentityRefit {
    *  order, each with its captures in `replays`' order. */
   def measureAll(replays: Seq[CaptureReplay], base: Baseline, changes: Seq[Change])(using ec: ExecutionContext): Seq[Seq[CaptureReplay.Measure]] = {
     val tasks = for (change <- changes; calibration = change.applyTo(base.calibration); (r, b) <- replays.zip(base.captures))
-      yield Future(r.measure(b.decisions, b.resolved, calibration))
-    Await.result(Future.sequence(tasks), Duration.Inf).grouped(math.max(1, replays.size)).toSeq.padTo(changes.size, Nil)
+      yield (r, b, calibration)
+    ParallelTasks.all(tasks)((r, b, calibration) => r.measure(b.decisions, b.resolved, calibration))
+      .grouped(math.max(1, replays.size)).toSeq.padTo(changes.size, Nil)
   }
 
   private def byListing(takes: Seq[UnmatchedClusters.Take]) = takes.groupMapReduce(t => (t.country, t.venue, t.rawTitle))(identity)((a, _) => a)
