@@ -57,10 +57,10 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
     val scored = accepted._1
     val listing = scored.listing
     // V2: an event-worded billing whose record shares none of its other words — found by the event's words alone
-    lazy val byEventWordsAlone = listing.eventWords.nonEmpty &&
+    // V3: V2 alone (V1's NonFilmEvents reading dropped), and only where the billing has words beside the event's
+    val byEventWordsAlone = listing.eventWords.nonEmpty && listing.nonEventWords.nonEmpty &&
       !scored.candidate.film.titles.exists(t => IdentityMeasures.countedWords(t).exists(listing.nonEventWords))
-    listing.eventBilled.filterNot(_ => scored.candidate.film.titles.exists(NonMovieEventClassifier.isPerformance(_)))
-      .orElse(Option.when(byEventWordsAlone)(s"its record shares only the event's words (${listing.eventWords.mkString(", ")})"))
+    Option.when(byEventWordsAlone)(s"its record shares only the event's words (${listing.eventWords.mkString(", ")})")
       .fold[Verdict](Right(accepted)) { why =>
       Left(Acceptance.Refused("the billing reads as no film", Some(scored.candidate.tmdbId), s"${Acceptance.named(scored)}: $why"))
     }
