@@ -58,28 +58,8 @@ class ScrapeCinemaHandler(
     if (!dueWindow.isDue(key, freshness.lastFetchedAt(key), clock.instant())) return Skipped
 
     val cinemaName = task.payload.getOrElse(CinemaKey, "")
-    chunkPlanner.filter(_.isChunked(cinemaName)) match {
-      case Some(planner) =>
-        // Chunked cinema: fan out into ScrapeChunk tasks (or no-op if a run is
-        // already active). Freshness is marked by whichever step TERMINATES the
-        // scrape — the reduce on success, the planner itself on an empty or failed
-        // plan — not here. The run doc is the per-cinema mutex, so a duplicate
-        // ScrapeCinema while a run is in flight just no-ops. A plan records a failed
-        // fetch itself; what still escapes (a store write that failed) leaves the venue
-        // due for the next tick, so the queue never reschedules. A shutdown's interrupt
-        // is no fault: kept set for the task loop to stop on.
-        try { val _ = planner.plan(cinemaName) }
-        catch {
-          case _: InterruptedException =>
-            Thread.currentThread().interrupt()
-            logger.info(s"chunked plan for $cinemaName interrupted — the worker is stopping")
-          case e: Exception => logger.error(s"chunked plan for $cinemaName threw", e)
-        }
-        return Done
-      case None =>
-    }
-
-    scrapersByKey.get(cinemaName) match {
+    val chunked = chunkPlanner.flatMap(planner => planner.scraper(cinemaName).map(planner -> _))
+    chunked.map(_._2).orElse(scrapersByKey.get(cinemaName)) match {
       case None =>
         // Cinema no longer in the catalogue (deploy changed it) — drop the task.
         logger.warn(s"No scraper for task $key; dropping.")
@@ -92,13 +72,35 @@ class ScrapeCinemaHandler(
         // aggregators keep dead venues in the sitemaps we harvest from), so every
         // attempt in between is a request that cannot succeed. Stamped as it skips
         // — an unstamped cinema is what makes the reaper re-enqueue it every tick
-        // and jump the queue ahead of healthy ones.
+        // and jump the queue ahead of healthy ones. Checked before the chunked branch:
+        // every Filmstarts venue is chunked, and planning first kept 28 gone German
+        // pages probed ~7 times a day (2026-10).
         val now = clock.instant()
         if (scrapeArchive.find(cinema).exists(row => GoneUpstream.skipScrape(row, scraper.sourceKey, now))) {
           logger.info(s"Skipping ${cinema.displayName}: its page has been 404ing for over " +
             s"${GoneUpstream.MinimumAge.toHours}h; next probe in ${GoneUpstream.RecheckInterval.toHours}h.")
           outcome.skipped(key)
           return Done
+        }
+        chunked match {
+          case Some((planner, _)) =>
+            // Chunked cinema: fan out into ScrapeChunk tasks (or no-op if a run is
+            // already active). Freshness is marked by whichever step TERMINATES the
+            // scrape — the reduce on success, the planner itself on an empty or failed
+            // plan — not here. The run doc is the per-cinema mutex, so a duplicate
+            // ScrapeCinema while a run is in flight just no-ops. A plan records a failed
+            // fetch itself; what still escapes (a store write that failed) leaves the venue
+            // due for the next tick, so the queue never reschedules. A shutdown's interrupt
+            // is no fault: kept set for the task loop to stop on.
+            try { val _ = planner.plan(cinemaName) }
+            catch {
+              case _: InterruptedException =>
+                Thread.currentThread().interrupt()
+                logger.info(s"chunked plan for $cinemaName interrupted — the worker is stopping")
+              case e: Exception => logger.error(s"chunked plan for $cinemaName threw", e)
+            }
+            return Done
+          case None =>
         }
         val t0     = tools.Stopwatch.start()
         try {

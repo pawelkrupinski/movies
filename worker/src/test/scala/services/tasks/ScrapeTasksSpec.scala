@@ -211,6 +211,52 @@ class ScrapeTasksSpec extends AnyFlatSpec with Matchers {
     scraper.calls shouldBe 1
   }
 
+  // Filmstarts venues are CHUNKED, and the chunked branch ran before the gone check: 28 German
+  // open-air pages 404'd since 2026-08-31 and were still planned ~7 times a day on 10-19 (Open Air
+  // Kelkheim, A2767: every ~10h, three retries each) — ~450 WARNs a week for pages that cannot answer.
+  it should "skip a CHUNKED venue whose page has 404'd for over a day, without planning it" in {
+    var plans   = 0
+    val scraper = new FakeChunkedScraper(Map("k" -> movieAt(Multikino))) {
+      override def sourceUrl: Option[String] = Some(FlicksPage)
+      override def planChunks(): Seq[String] = { plans += 1; super.planChunks() }
+    }
+    val clock   = Clock.fixed(GoneNow, ZoneOffset.UTC)
+    val fresh   = new InMemoryFreshnessStore
+    val planner = new ChunkScrapePlanner(Map(Multikino.displayName -> scraper), new InMemoryChunkScrapeStore,
+      new InMemoryTaskQueue, _ => (), new ScrapeFreshnessPolicy(fresh, clock = clock), clock = clock)
+    val archive = goneArchive(Multikino, since = GoneNow.minusSeconds(5 * 86400), lastAttempt = GoneNow.minusSeconds(3600))
+    val handler = new ScrapeCinemaHandler(Map(ScrapeCinemaHandler.scraperKey(Multikino) -> scraper), freshRunner(), fresh,
+      new DueWindow(60.minutes), clock, chunkPlanner = Some(planner), scrapeArchive = archive)
+
+    handler.handle(task(Multikino)) shouldBe HandlerOutcome.Done
+    plans shouldBe 0
+    fresh.isFresh(ScrapeCinemaHandler.dedupKey(Multikino), FreshnessKind.CinemaScrape, GoneNow) shouldBe true
+  }
+
+  // Filmstarts takes an open-air venue's page down off-season: in October all 28 of those German
+  // 404s were seasonal venues, which the closure sweep rightly leaves alone ("out of season"). A gone
+  // page there is the season, not a fault — so its daily probe says so at INFO, not as a WARN. The
+  // same 404 in season, or at a year-round venue, still warns.
+  it should "have the chunked planner log an off-season venue's gone page as the season, and warn for it in season" in {
+    val openAir = new models.GermanCinema("Open Air Spec", "Open Air Spec", models.Opening.Seasonal(models.SeasonWindow.Germany))
+    def planWarnings(cinema: Cinema, at: String): Seq[String] = {
+      val clock   = Clock.fixed(Instant.parse(at), ZoneOffset.UTC)
+      val scraper = new FakeChunkedScraper(Map.empty, cinema = cinema) {
+        override def planChunks(): Seq[String] =
+          throw new tools.HttpStatusException(404, "GET", "https://www.filmstarts.de/kinoprogramm/kino/A2767/", None)
+      }
+      val planner = new ChunkScrapePlanner(Map(cinema.displayName -> scraper), new InMemoryChunkScrapeStore,
+        new InMemoryTaskQueue, _ => throw new RuntimeException("no fallback"),
+        new ScrapeFreshnessPolicy(new InMemoryFreshnessStore, clock = clock), clock = clock)
+      tools.LogCapture.thisThread(classOf[ChunkScrapePlanner].getName) { planner.plan(cinema.displayName) shouldBe 0 }
+        .filter(_.getLevel == ch.qos.logback.classic.Level.WARN).map(_.getFormattedMessage)
+    }
+
+    planWarnings(openAir, "2026-10-19T12:00:00Z") shouldBe empty
+    planWarnings(openAir, "2026-07-19T12:00:00Z") should have size 1
+    planWarnings(Multikino, "2026-10-19T12:00:00Z") should have size 1
+  }
+
   // A venue that is merely BROKEN keeps its normal cadence: a 503 or a timeout is
   // a page that exists, and the fast retry is what recovers it.
   it should "keep scraping a venue that is failing for any other reason" in {

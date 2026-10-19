@@ -3,6 +3,7 @@ package services.tasks
 import settings.ScrapeChunkSpread
 
 import play.api.Logging
+import services.scrapes.GoneUpstream
 import services.cinemas.common.{ChunkedCinemaScraper, CinemaMovieJson, CinemaScraper, ListingReads, PreScrapedCinemaScraper}
 
 import java.time.Clock
@@ -57,7 +58,8 @@ class ChunkScrapePlanner(
   runStarted:    ChunkRun => Unit = _ => ()
 ) extends Logging {
 
-  def isChunked(cinema: String): Boolean = chunkScrapers.contains(cinema)
+  /** The chunked scraper for `cinema`, when it is scraped in chunks. */
+  def scraper(cinema: String): Option[ChunkedCinemaScraper] = chunkScrapers.get(cinema)
 
   /** Returns the number of `ScrapeChunk` tasks enqueued (0 when a run was already
    *  active, or when the plan was published directly as empty/failed). */
@@ -134,7 +136,12 @@ class ChunkScrapePlanner(
   }
 
   private def publishFailure(scraper: ChunkedCinemaScraper, e: Exception): Unit = {
-    logger.warn(s"chunked plan for ${scraper.cinema.displayName} failed: ${e.getMessage}")
+    // A seasonal venue whose page is gone OFF its season is the season, not a fault: Filmstarts
+    // takes open-air pages down for the winter (all 28 German 404s in 2026-10 were seasonal),
+    // and the closure sweep leaves such a venue alone until its season opens.
+    if (scraper.cinema.opening.offSeasonAt(clock.instant()) && GoneUpstream.saysPageIsGone(e.getMessage))
+      logger.info(s"chunked plan for ${scraper.cinema.displayName} found its page gone off-season: ${e.getMessage}")
+    else logger.warn(s"chunked plan for ${scraper.cinema.displayName} failed: ${e.getMessage}")
     // The recording wrapper re-raises the failure — unless the venue's fallback
     // served it instead, which is the scrape succeeding, as on the plain path. Kept
     // due, it would be re-run on the next ticks and re-walk the fallback each time.
