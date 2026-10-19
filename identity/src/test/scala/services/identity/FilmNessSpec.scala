@@ -11,8 +11,7 @@ class FilmNessSpec extends AnyFunSuite {
     assert(tanzwut.nonEventWords == Set("tanzwut", "special", "guest", "sagenbringer"))
   }
 
-  test("a billing stating a film's fact, or relaying a broadcast, reads none") {
-    assert(listing("Tanzwut - Live Tour 2026", year = Some(2026)).eventWords.isEmpty)
+  test("a billing relaying a broadcast reads none") {
     assert(listing("NT Live: Hay Fever").eventWords.isEmpty)
   }
 }

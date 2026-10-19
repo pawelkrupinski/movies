@@ -20,8 +20,9 @@ private[identity] object FilmNess {
   /** The billing's event words — none when it states a fact of a film, names a relay or attaches a screening. */
   def eventWords(listing: IdentityMeasures.Listing): Seq[String] = {
     val raw = listing.rawTitle.getOrElse(listing.title)
-    val statesAFact = listing.year.isDefined || listing.runtime.isDefined || listing.directors.exists(_.trim.nonEmpty)
-    if (statesAFact || agreement.NonFilmEvents.eventBilled(raw).isEmpty ||
+    // V3c: no fact condition — a feed's page copies the found record's year and running time onto a gig's listing
+    // (kinoheld's "Tanzwut - Live Tour 2026" carries the Number_i film's 108 minutes), so a stated fact proves nothing here
+    if (agreement.NonFilmEvents.eventBilled(raw).isEmpty ||
         // a relay by its broadcast's name or its stage work — never by a year alone, which a gig's "Tour 2026" bills too
         services.cinemas.pl.NonMovieEventClassifier.isNamedBroadcast(raw) ||
         StageRelays.billsStageWork(listing.ownTitles.distinct, raw)) Nil
