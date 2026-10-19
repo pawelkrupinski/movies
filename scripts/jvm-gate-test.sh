@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # jvm-gate.sh: a JVM start waits while too much memory is paged out (the reading stubbed), then for one of the
 # machine's slots; a child rides its parent's slot; a slot (a kernel lock) is free the moment its holder is killed, and
-# held by one process at a time however many race for it; each gives up warned at its deadline; a tool's JVM is sized for a share of the cores on macOS only.
+# held by one process at a time however many race for it; neither goes ahead on time alone while memory is short (the
+# memory deadline only when set, the slot deadline only when memory is fine), and a riding child waits on neither; a
+# tool's JVM is sized for a share of the cores on macOS only.
 # Run: bash scripts/jvm-gate-test.sh
 set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -37,6 +39,23 @@ check "...saying so once, and when it opens" "1 1" \
 probe 48 48 48 48 48 48 48 48 48 48 48 48 48 48 48 48 48 48 48 48
 KINOWO_MEMORY_GATE_MAX_WAIT=0 memory_gate t 2> "$work/err"; status=$?
 check "past its deadline: goes ahead, warned, never fails the tool" "0 1" "$status $(grep -c 'starting anyway' "$work/err")"
+check "...the deadline named: KINOWO_MEMORY_GATE_MAX_WAIT is the escape hatch" "1" \
+  "$(grep -c 'starting anyway (KINOWO_MEMORY_GATE_MAX_WAIT=0)' "$work/err")"
+probe 48 48 48 48 48 48 48 48 48 48 48 48 48 48 48 48 48 48 48 48
+KINOWO_MEMORY_GATE_POLL=0.001 KINOWO_MEMORY_GATE_MAX_WAIT=5 memory_gate t 2> "$work/err"
+check "...KINOWO_MEMORY_GATE_MAX_WAIT=<s>: goes ahead after that long" "6 1" \
+  "$(wc -l < "$work/calls" | tr -d ' ') $(grep -c 'starting anyway (KINOWO_MEMORY_GATE_MAX_WAIT=5)' "$work/err")"
+# 2026-10-19: under sustained pressure the 600 s deadline let every queued tool start anyway (load ~100, 29 of 30 GB of
+# swap, 0.1 GB free): while memory is short, time alone never opens the gate
+# (a probe of shell builtins only: 650 polls of the file-reading one take half a minute)
+echo 0 > "$work/count"
+# shellcheck disable=SC2016 # the probe's $n and $((...)) expand when the gate evaluates it
+KINOWO_MEMORY_GATE_PROBE='read -r n < "'"$work"'/count"; echo $((n + 1)) > "'"$work"'/count"; [ "$n" -lt 650 ] && echo 48 || echo 12' \
+  KINOWO_MEMORY_GATE_POLL=0.001 KINOWO_MEMORY_GATE_STATUS_SECONDS=200 memory_gate t 2> "$work/err"
+check "no deadline set: waits as long as memory is short (650 polls past the old 600 s), then opens" "651 0 1" \
+  "$(cat "$work/count") $(grep -c 'starting anyway' "$work/err") $(grep -c 'open after 650s' "$work/err")"
+check "...saying how to go ahead, then a status line every KINOWO_MEMORY_GATE_STATUS_SECONDS: paged, free, waited, biggest" "1 3" \
+  "$(grep -c 'KINOWO_MEMORY_GATE_MAX_WAIT=<seconds> goes ahead' "$work/err") $(grep -c 'still waiting after [0-9]*s: 48 GB paged out, 1 GB free; biggest: ' "$work/err")"
 
 probe 48
 KINOWO_MEMORY_GATE=0 memory_gate t 2> "$work/err"
@@ -47,7 +66,7 @@ memory_gate t 2> "$work/err"; status=$?
 check "nothing readable (Linux CI): starts at once" "0|" "$status|$(cat "$work/err")"
 
 # --- the machine's JVM slots
-unset KINOWO_MEMORY_GATE_PROBE; export KINOWO_MEMORY_GATE=0 KINOWO_IDENTITY_CACHE="$work/cache" KINOWO_JVM_SLOTS=2 KINOWO_JVM_SLOT_POLL=0.05
+probe_cmd=$KINOWO_MEMORY_GATE_PROBE; unset KINOWO_MEMORY_GATE_PROBE; export KINOWO_MEMORY_GATE=0 KINOWO_IDENTITY_CACHE="$work/cache" KINOWO_JVM_SLOTS=2 KINOWO_JVM_SLOT_POLL=0.05
 slots="$work/cache/jvm-slots"
 ( jvm_slot_take t; echo "$JVM_SLOT $KINOWO_JVM_SLOT_HELD" > "$work/held"; cat "$slots/1.flock" > "$work/pid1"; echo $$ > "$work/me"
   bash -c '. "'"$REPO_ROOT"'/scripts/jvm-gate.sh"; jvm_slot_take child; echo "${JVM_SLOT:-rode}"' > "$work/child"
@@ -56,6 +75,12 @@ slots="$work/cache/jvm-slots"
 check "a free slot is taken, held by this process, and named to its children" "$slots/1.flock $slots/1.flock yes held" \
   "$(cat "$work/held") $([ "$(cat "$work/pid1")" = "$(cat "$work/me")" ] && echo yes || echo no) $(cat "$work/during")"
 check "...a child tool rides it rather than waiting on its own parent" "rode" "$(cat "$work/child")"
+# a child riding its parent's slot never waits on memory either: the memory it would wait for is its parent's JVM's
+( jvm_slot_take t
+  KINOWO_MEMORY_GATE=1 KINOWO_MEMORY_GATE_PROBE='echo 99' KINOWO_MEMORY_GATE_FREE_PROBE='echo 0' KINOWO_MEMORY_GATE_MAX_WAIT=1 \
+    bash -c '. "'"$REPO_ROOT"'/scripts/jvm-gate.sh"; memory_gate child; jvm_slot_take child' 2> "$work/child-err"
+  jvm_slot_release )
+check "...nor on memory, short as it is (no deadlock against its own parent)" "" "$(cat "$work/child-err")"
 check "...and it is given back on release" "free" "$(cat "$work/after")"
 # a process started with the lock descriptors closed (an sbt server, a kept JVM: jvm-gate.sh) still has the name in its
 # environment, but holds no slot: it takes one of its own rather than riding one it does not hold
@@ -76,7 +101,18 @@ check "...and a slot whose holder is killed (kill -9: no trap, no clean-up) is f
 spec_lock_holder "$slots/2.flock"; c=$SPEC_LOCK_HOLDER
 ( KINOWO_JVM_SLOT_MAX_WAIT=0 jvm_slot_take t; echo "${JVM_SLOT:-none}" > "$work/got" ) 2> "$work/err"
 check "past the slot deadline: goes ahead without one, warned" "none 1" "$(cat "$work/got") $(grep -c 'starting anyway' "$work/err")"
-kill "$a" "$c"; wait "$a" "$c" 2>/dev/null
+# ...but not while memory is short: a slot holder may be hung, yet another JVM is what memory cannot take. Memory reads
+# fine at the gate (5 GB paged), then short (99) at the slot deadline: it waits on until the slot frees
+readings=(5); for _ in $(seq 1 400); do readings+=(99); done
+probe "${readings[@]}"
+( KINOWO_MEMORY_GATE=1 KINOWO_MEMORY_GATE_PROBE="$probe_cmd" KINOWO_MEMORY_GATE_FREE_PROBE='echo 0' KINOWO_JVM_SLOT_MAX_WAIT=0 \
+    KINOWO_MEMORY_GATE_STATUS_SECONDS=1 jvm_slot_take t; echo "${JVM_SLOT##*/}" > "$work/got" ) 2> "$work/err" &
+waiter=$!
+for _ in $(seq 1 100); do grep -q 'still waiting' "$work/err" 2>/dev/null && break; sleep 0.05; done
+kill "$c"; wait "$c" 2>/dev/null; wait "$waiter"
+check "...but while memory is short it keeps waiting past the slot deadline, saying why, until a slot frees" "2.flock 0 yes" \
+  "$(cat "$work/got") $(grep -c 'starting anyway' "$work/err") $(grep -q 'past KINOWO_JVM_SLOT_MAX_WAIT=0, but 99 GB paged out, 0 GB free: still waiting' "$work/err" && echo yes || echo no)"
+kill "$a"; wait "$a" 2>/dev/null
 spec_lock_holder "$work/killed"; held=$SPEC_LOCK_HOLDER
 kill -9 "$held"; wait "$held" 2>/dev/null
 check "a lock is free the moment its holder is killed: no take-over, nothing to wait out" "0 $$" \

@@ -9,21 +9,34 @@
 #   memory_gate <label>    waits while memory_paged_gb > KINOWO_MEMORY_GATE_GB (default 20) AND memory_free_gb <
 #                          KINOWO_MEMORY_GATE_FREE_GB (default 6, about one tool heap): swap holds idle apps' stale pages
 #                          long after RAM frees up (20 GB "paged" beside 9.6 GB free on 2026-10-18), so paging alone kept
-#                          tools waiting on nothing. Says so once, polls every KINOWO_MEMORY_GATE_POLL seconds (15); after
-#                          KINOWO_MEMORY_GATE_MAX_WAIT seconds (600) goes ahead, warned. KINOWO_MEMORY_GATE=0 turns it
-#                          off; a no-op where paging cannot be read.
+#                          tools waiting on nothing. Polls every KINOWO_MEMORY_GATE_POLL seconds (15). While memory is
+#                          short it NEVER goes ahead on time alone: a 600 s deadline let every queued tool start under
+#                          sustained pressure (2026-10-19: load ~100, 29 of 30 GB swap, 0.1 GB free). It says so once, then
+#                          every KINOWO_MEMORY_GATE_STATUS_SECONDS (180) prints how long, the paged and free GB, and the
+#                          biggest processes. The escape hatch: KINOWO_MEMORY_GATE_MAX_WAIT=<seconds> goes ahead, warned,
+#                          after that long (unset: no limit); KINOWO_MEMORY_GATE=0 turns the gate off. A no-op where
+#                          paging cannot be read, and for a process riding a held slot (below): its parent's JVM is the
+#                          memory it would wait on, so it would wait on itself forever.
 #   memory_paged_gb        the GB already pushed out of RAM: swap used plus the compressor's pages (macOS);
 #                          KINOWO_MEMORY_GATE_PROBE's output instead when set (the self-test's seam)
 #   memory_free_gb         the GB of RAM a new heap can have now: free, inactive and speculative pages (macOS);
 #                          KINOWO_MEMORY_GATE_FREE_PROBE's output instead when set; none readable counts as short
 #   jvm_slot_take <label>  the memory gate, then one of the machine's KINOWO_JVM_SLOTS (default 4) slots (a lock, below,
 #                          on descriptor 7), held until jvm_slot_release, or until this process and the children it
-#                          started meanwhile (the JVM) end; waits for one (saying so once, polling every
-#                          KINOWO_JVM_SLOT_POLL seconds, 5) and after KINOWO_JVM_SLOT_MAX_WAIT seconds (1800) goes ahead,
-#                          warned. A child of a holder rides its slot (KINOWO_JVM_SLOT_HELD, exported, and descriptor 7
-#                          inherited open): a tool run by a tool never waits on its own parent. A child started with the
-#                          descriptors closed (below) holds no slot, whatever its environment names, so it takes its own.
+#                          started meanwhile (the JVM) end; waits for one (saying so once, then every
+#                          KINOWO_MEMORY_GATE_STATUS_SECONDS, polling every KINOWO_JVM_SLOT_POLL seconds, 5). After
+#                          KINOWO_JVM_SLOT_MAX_WAIT seconds (1800) it goes ahead without one, warned -- but only while memory
+#                          is NOT short: a slot's holder may be hung, holding no memory worth waiting for, yet while memory
+#                          is short another JVM is exactly what the slots are there to stop. A child of a holder rides its
+#                          slot (KINOWO_JVM_SLOT_HELD, exported, and descriptor 7 inherited open): a tool run by a tool
+#                          never waits on its own parent, for a slot or for memory. A child started with the descriptors
+#                          closed (below) holds no slot, whatever its environment names, so it takes its own.
 #                          KINOWO_JVM_SLOTS=0 turns the slots off.
+#   jvm_slot_try           one pass over the slots, never waiting: 0 holding one (as jvm_slot_take), 1 when all are busy
+#   jvm_slot_riding        0 while this process holds a slot, its own or its parent's (descriptor 7 open)
+#   jvm_slot_hand_off <pid>  the slot now belongs to <pid>, a process this one started with descriptor 7 open that
+#                          outlives it (sbt-warm's keeper of a kept server): <pid> written in, this process's descriptor
+#                          closed. The slot is held until <pid> and every process holding the descriptor have ended
 #   jvm_slot_release       gives this process's slot back
 #   jvm_cpu_options        the JVM options sizing a tool's JVM for KINOWO_JVM_CPUS cores (default 4) on macOS, where
 #                          agents share the cores; none on Linux (CI's runner is the JVM's alone) or with KINOWO_JVM_CPUS=0
@@ -101,16 +114,30 @@ memory_short() {
 # _jvm_waited <seconds waited> <poll> -> the seconds waited after one more poll (a fractional poll counted whole)
 _jvm_waited() { awk -v w="$1" -v p="$2" 'BEGIN { printf "%d\n", w + p + 0.999 }'; }
 
+# memory_top_holders -> the three biggest processes by resident memory, "name GB (pid N)", for the gate's status lines
+memory_top_holders() {
+  ps -axo rss=,pid=,comm= 2>/dev/null | sort -rn | head -3 |
+    awk '{ n = $3; sub(/.*\//, "", n); printf "%s%s %.1f GB (pid %s)", (NR > 1 ? ", " : ""), n, $1 / 2^20, $2 }'
+}
+
 memory_gate() { # <label>
   [ "${KINOWO_MEMORY_GATE:-1}" = 0 ] && return 0
-  local label=${1:-tool} budget=${KINOWO_MEMORY_GATE_GB:-20} max=${KINOWO_MEMORY_GATE_MAX_WAIT:-600}
-  local poll=${KINOWO_MEMORY_GATE_POLL:-15} state waited=0 said=""
+  jvm_slot_riding && return 0
+  local label=${1:-tool} budget=${KINOWO_MEMORY_GATE_GB:-20} max=${KINOWO_MEMORY_GATE_MAX_WAIT:-}
+  local poll=${KINOWO_MEMORY_GATE_POLL:-15} every=${KINOWO_MEMORY_GATE_STATUS_SECONDS:-180} state waited=0 said="" next
+  next=$every
   while state=$(memory_short); do
-    if [ "$waited" -ge "$max" ]; then
-      echo "[$label] memory gate: still ${state} after ${waited}s: starting anyway" >&2
+    if [ -n "$max" ] && [ "$waited" -ge "$max" ]; then
+      echo "[$label] memory gate: still ${state} after ${waited}s: starting anyway (KINOWO_MEMORY_GATE_MAX_WAIT=$max)" >&2
       return 0
     fi
-    [ -n "$said" ] || { echo "[$label] memory gate: ${state} (over KINOWO_MEMORY_GATE_GB=$budget, under KINOWO_MEMORY_GATE_FREE_GB=${KINOWO_MEMORY_GATE_FREE_GB:-6}): waiting for other JVMs to finish before starting one (up to ${max}s)" >&2; said=1; }
+    if [ -z "$said" ]; then
+      echo "[$label] memory gate: ${state} (over KINOWO_MEMORY_GATE_GB=$budget, under KINOWO_MEMORY_GATE_FREE_GB=${KINOWO_MEMORY_GATE_FREE_GB:-6}): waiting for other JVMs to finish before starting one ($([ -n "$max" ] && echo "up to ${max}s" || echo "for as long as memory is short; KINOWO_MEMORY_GATE_MAX_WAIT=<seconds> goes ahead after that long"))" >&2
+      said=1
+    elif [ "$waited" -ge "$next" ]; then
+      echo "[$label] memory gate: still waiting after ${waited}s: ${state}; biggest: $(memory_top_holders)" >&2
+      next=$((waited + every))
+    fi
     sleep "$poll"
     waited=$(_jvm_waited "$waited" "$poll")
   done
@@ -119,28 +146,49 @@ memory_gate() { # <label>
 }
 
 JVM_SLOT=""
+jvm_slot_riding() { [ -n "${KINOWO_JVM_SLOT_HELD:-}" ] && { : >&7; } 2> /dev/null; }
+jvm_slot_try() {
+  local slots=${KINOWO_JVM_SLOTS:-4} dir n
+  dir="${KINOWO_IDENTITY_CACHE:-$HOME/.cache/kinowo-identity}/jvm-slots"
+  mkdir -p "$dir"
+  for n in $(seq 1 "$slots"); do
+    if lock_take 7 "$dir/$n.flock"; then
+      JVM_SLOT="$dir/$n.flock"; export KINOWO_JVM_SLOT_HELD="$JVM_SLOT"
+      return 0
+    fi
+  done
+  return 1
+}
 jvm_slot_take() { # <label>
   # riding needs the slot's descriptor itself: a process outliving its starter has the name but not the lock
-  [ -n "${KINOWO_JVM_SLOT_HELD:-}" ] && { : >&7; } 2> /dev/null && return 0
+  jvm_slot_riding && return 0
   local label=${1:-tool} slots=${KINOWO_JVM_SLOTS:-4} max=${KINOWO_JVM_SLOT_MAX_WAIT:-1800}
-  local poll=${KINOWO_JVM_SLOT_POLL:-5} dir n waited=0 said=""
+  local poll=${KINOWO_JVM_SLOT_POLL:-5} every=${KINOWO_MEMORY_GATE_STATUS_SECONDS:-180} dir n waited=0 said="" next state
   memory_gate "$label"
   [ "$slots" = 0 ] && return 0
   dir="${KINOWO_IDENTITY_CACHE:-$HOME/.cache/kinowo-identity}/jvm-slots"
-  mkdir -p "$dir"
+  next=$every
   while :; do
-    for n in $(seq 1 "$slots"); do
-      if lock_take 7 "$dir/$n.flock"; then
-        JVM_SLOT="$dir/$n.flock"; export KINOWO_JVM_SLOT_HELD="$JVM_SLOT"
-        [ -z "$said" ] || echo "[$label] JVM slot $n of $slots after ${waited}s" >&2
-        return 0
-      fi
-    done
-    if [ "$waited" -ge "$max" ]; then
-      echo "[$label] every JVM slot still busy after ${waited}s: starting anyway" >&2
+    if jvm_slot_try; then
+      [ -z "$said" ] || echo "[$label] JVM slot ${JVM_SLOT##*/} of $slots after ${waited}s" >&2
       return 0
     fi
-    [ -n "$said" ] || { echo "[$label] all $slots JVM slots busy (KINOWO_JVM_SLOTS; holders: $(for n in $(seq 1 "$slots"); do cat "$dir/$n.flock" 2>/dev/null; done | paste -sd, -)): waiting (up to ${max}s)" >&2; said=1; }
+    if [ "$waited" -ge "$max" ]; then
+      if [ "${KINOWO_MEMORY_GATE:-1}" != 0 ] && state=$(memory_short); then
+        if [ -z "$said" ] || [ "$waited" -ge "$next" ]; then
+          echo "[$label] every JVM slot still busy after ${waited}s, past KINOWO_JVM_SLOT_MAX_WAIT=$max, but ${state}: still waiting; biggest: $(memory_top_holders)" >&2
+          said=1; next=$((waited + every))
+        fi
+      else
+        echo "[$label] every JVM slot still busy after ${waited}s: starting anyway" >&2
+        return 0
+      fi
+    elif [ -z "$said" ]; then
+      echo "[$label] all $slots JVM slots busy (KINOWO_JVM_SLOTS; holders: $(for n in $(seq 1 "$slots"); do cat "$dir/$n.flock" 2>/dev/null; done | paste -sd, -)): waiting (up to ${max}s, longer while memory is short)" >&2; said=1
+    elif [ "$waited" -ge "$next" ]; then
+      echo "[$label] all $slots JVM slots still busy after ${waited}s (holders: $(for n in $(seq 1 "$slots"); do cat "$dir/$n.flock" 2>/dev/null; done | paste -sd, -))" >&2
+      next=$((waited + every))
+    fi
     sleep "$poll"
     waited=$(_jvm_waited "$waited" "$poll")
   done
@@ -148,6 +196,11 @@ jvm_slot_take() { # <label>
 jvm_slot_release() {
   [ -n "$JVM_SLOT" ] || return 0
   lock_give 7 "$JVM_SLOT"; JVM_SLOT=""; unset KINOWO_JVM_SLOT_HELD
+  return 0
+}
+jvm_slot_hand_off() { # <pid>
+  [ -n "$JVM_SLOT" ] || return 0
+  echo "$1" > "$JVM_SLOT"; exec 7>&-; JVM_SLOT=""; unset KINOWO_JVM_SLOT_HELD
   return 0
 }
 
