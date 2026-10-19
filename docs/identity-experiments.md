@@ -42,7 +42,7 @@ reaches that replay: a final-stage 0 there means not seen, not refilled. Variant
   «Sexy Beast - Presented by Jackie Treehorn», «Revenge with Introduction by Dylan Mayer», «THE GENERAL - Stummfilm mit
   Klavierbegleitung von Andreas Benz», all-caps «NEUES VON PETTERSON UND FINDUS».
 - **V2 (landed) — an acceptance refusal, the work naming the film whole:** `scripts/identity-measure-local --base
-  78d0f8215 --head 0c86932e4 --recording 38713274617` (0c86932e4: the code as landed in `568fd15b1`)
+  78d0f8215 --head 0c86932e4 --recording 38713274617` (0c86932e4: the code as landed in `76a4ac679`)
 
   | cc | model lost | changed | gained | right lost | right→wrong | new wrong | unjudged |
   |---|---|---|---|---|---|---|---|
