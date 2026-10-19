@@ -24,6 +24,56 @@ object ListingShape {
   def stagesAWork(listing: Listing): Boolean =
     StageRelays.billsStageWork(spellingsOf(listing), listing.rawTitle)
 
+  // ── an author's credit ─────────────────────────────────────────────────────────────────────
+
+  /** A billing's WORK and the author it credits it to, after an authorship word closing its title — "Fallen Angels by
+   *  Noël Coward", "Die Physiker von Friedrich Dürrenmatt", "Wesele autorstwa Stanisława Wyspiańskiego": a playwright's
+   *  or an author's whole name (two words or more; "Vertigo by Hitchcock" credits nobody). */
+  final case class AuthorCredit(work: String, person: String)
+
+  /** The [[AuthorCredit]] `title` closes on, if any. Allocates nothing on a title holding no authorship word: asked of
+   *  every accepted take ([[Acceptance]]). */
+  def authorCredited(title: String): Option[AuthorCredit] =
+    if (!holdsAuthorshipWord(title)) None
+    else AuthorCredited.findFirstMatchIn(title).map(m => AuthorCredit(m.group("work").trim, m.group("person").trim))
+
+  /** Does a billing crediting its work to an author ([[authorCredited]]) rule `film` out: the film its work's title names
+   *  word for word, made two seasons or more before the one the billing screens in (`screenedIn`), which the author did
+   *  not direct, and whose own titles do not carry the credit ("Mary Shelley's Frankenstein")? The billing stages the
+   *  author's work — a play's capture or relay, its current record — not an older namesake film (DE Cineplex "Fallen
+   *  Angels by Noël Coward", the 2026 capture of Coward's play, took Wong Kar-wai's 1995 "Fallen Angels"). A billing
+   *  crediting a host or a score ("Blow-Up + Intro by …", "Nosferatu with Live Score by …") names no work its film is. */
+  def creditDenies(credit: AuthorCredit, film: IdentityMeasures.Film, screenedIn: Option[Int]): Boolean =
+    film.year.exists(year => screenedIn.exists(_ - year >= CreditedNamesakeSeasons)) && {
+      val work     = IdentityMeasures.key(credit.work)
+      val credited = IdentityMeasures.key(credit.person)
+      val titles   = film.titles.map(IdentityMeasures.key)
+      titles.contains(work) && !titles.exists(_.contains(credited)) &&
+        film.directors.exists(directors => directors.nonEmpty && FactRelations.otherPeople(Seq(credit.person), directors))
+    }
+
+  /** How many seasons before its screening a film credited to another author is an older namesake. */
+  private val CreditedNamesakeSeasons = 2
+
+  private val AuthorshipWords = Array(" by ", " von ", " de ", " autorstwa ")
+  /** Does `title` hold an authorship word ([[AuthorshipWords]]), case aside — by index alone, no allocation. */
+  private def holdsAuthorshipWord(title: String): Boolean = {
+    var w = 0
+    while (w < AuthorshipWords.length) {
+      val word = AuthorshipWords(w)
+      var at   = 0
+      while (at <= title.length - word.length) { if (title.regionMatches(true, at, word, 0, word.length)) return true; at += 1 }
+      w += 1
+    }
+    false
+  }
+  private val AuthorCredited = {
+    val part     = """\p{Lu}[\p{L}'’.-]*"""
+    val particle = """(?:(?:van|von)(?:\s+(?:der|den))?|de(?:\s+la)?|da|del|della|di|du|la|le)"""
+    (s"""(?U)^(?<work>.+?)\\s+(?i:by|von|de|autorstwa)\\s+(?<person>$part(?:\\s+(?:$particle\\s+)?$part)+)""" +
+      """(?:\s*[(\[][^)\]]*[)\]])*\s*$""").r
+  }
+
   // ── a silent film ──────────────────────────────────────────────────────────────────────────
 
   /** Does the listing bill its film as a SILENT one ("Stummfilm mit Live-Musik", "film niemy", "cine mudo", "film

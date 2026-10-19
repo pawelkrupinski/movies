@@ -25,7 +25,7 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
    *  another film of its director the title names, or the listing's year dates as closely ([[anotherOfItsDirector]]). */
   private[identity] final case class Rule(name: String, why: Seq[Scored] => Verdict) {
     def accepts(ranked: Seq[Scored]): Verdict =
-      ownInstalment(why(ranked)).flatMap(pickedByItsTitle(ranked)).flatMap(takeable).flatMap(onNoReusedPage(ranked)).flatMap(notPerformedBeside) match {
+      ownInstalment(why(ranked)).flatMap(pickedByItsTitle(ranked)).flatMap(takeable).flatMap(onNoReusedPage(ranked)).flatMap(notPerformedBeside).flatMap(notAnAuthorsNamesake) match {
         case Right(accepted) if readsAsNoFilm(accepted._1) => Left(refusedAsNoFilm(accepted._1))
         case verdict                                       => verdict
       }
@@ -50,6 +50,22 @@ private[identity] final class Acceptance(private[identity] val calibration: Iden
     if (performed.isEmpty || film.titles.exists(NonMovieEventClassifier.isPerformance(_))) Right(accepted)
     else Left(Acceptance.Refused("another piece of its billing is a performance the film is not", Some(scored.candidate.tmdbId),
       s"${Acceptance.named(scored)} beside: ${performed.mkString(", ")}"))
+  }
+  /** Refuses the older namesake of a work a billing credits to its author ([[ListingShape.creditDenies]]): DE Cineplex's
+   *  "Fallen Angels by Noël Coward", the 2026 capture of Coward's play, is not Wong Kar-wai's 1995 "Fallen Angels". A
+   *  refusal, not a denial: the billing's siblings stay free to join the namesake's listings (a denial's cannot-link split
+   *  UK's 92-venue cluster of the capture, losing 16 of its takes). Asked of every accepted take, so a billing with no
+   *  authorship word allocates nothing ([[ResolverAllocationSpec]]'s dated-title budget). */
+  private[identity] def notAnAuthorsNamesake(accepted: Accepted): Verdict = {
+    val scored  = accepted._1
+    val listing = scored.listing
+    val billed  = listing.rawTitle match { case Some(raw) => raw; case None => listing.title }
+    ListingShape.authorCredited(billed) match {
+      case Some(credit) if ListingShape.creditDenies(credit, scored.candidate.film, listing.screeningsSeason) =>
+        Left(Acceptance.Refused("its billing credits its work to an author who made no such film", Some(scored.candidate.tmdbId),
+          s"${Acceptance.named(scored)}: ${credit.work} by ${credit.person}"))
+      case _ => Right(accepted)
+    }
   }
   /** A billing that reads as no film at all ([[FilmNess]]: event words — a gig, a tour, a festival, a show — and no relay
    *  or screening attached) whose record shares none of its other words: the namesake a search for the event's words

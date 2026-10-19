@@ -1363,6 +1363,40 @@ class IdentityResolverCasesSpec extends AnyFlatSpec with Matchers {
     withClue(shipped(Seq(murnau), Seq(nosferatu)).decisionOf(murnau.key).render)(shipped(Seq(murnau), Seq(nosferatu)).decisionOf(murnau.key).film shouldBe Some(653))
   }
 
+  "A billing crediting its work to an author" should "take no older namesake its author did not direct" in {
+    // DE Cineplex ×5 "Fallen Angels by Noël Coward" (prod 2026-10-19): the 2026 capture of Coward's play, which prod took
+    // as Wong Kar-wai's 1995 "Fallen Angels" by its runtime and popularity; "by Noël Coward" credits the play's author
+    val october  = ScreeningDays.of(Seq(java.time.LocalDate.of(2026, 10, 22)))
+    val wong     = F(11220, "Gefallene Engel", 1995, "Wong Kar-wai", 99, 30, original = Some("Fallen Angels"), alternatives = Seq("Fallen Angels"))
+    val capture  = F(1702350, "Fallen Angels", 2026, "Scott Ellis", 97, 1)
+    val coward   = listing(models.KinoMuza, "Fallen Angels by Noël Coward", runtime = Some(97)).copy(originalTitle = Some("Fallen Angels"), screenings = october)
+    def took(l: Listing, films: Seq[F]) = { val d = shipped(Seq(l), films).decisionOf(l.key); withClue(d.render)(d.film) }
+    took(coward, Seq(wong)) shouldBe None
+    // beside the capture's record the namesake still outranks it on the billing's own facts: no film, never the namesake
+    took(coward, Seq(wong, capture)) should not contain 11220
+    // the author's own film, the credit inside the film's own title, an author named by a lone surname, a host or a
+    // score credited beside the film, a namesake of the season itself: none is ruled out
+    def recordOf(film: F) = new FilmTable(Seq(film), normalizer).film(film.id) match {
+      case Answer.Known(Some(record)) => record
+      case other                      => fail(s"no record of ${film.id}: $other")
+    }
+    def deniesIt(title: String, film: F, season: Int = 2026) = ListingShape.authorCredited(title).exists(credit =>
+      ListingShape.creditDenies(credit, recordOf(film), Some(season)))
+    deniesIt("Fallen Angels by Noël Coward", wong) shouldBe true
+    deniesIt("Fallen Angels By Noël Coward (OV)", wong) shouldBe true
+    deniesIt("Fallen Angels by Noël Coward", wong, season = 1996) shouldBe false
+    deniesIt("Fallen Angels by Noël Coward", capture) shouldBe false
+    deniesIt("Vertigo by Alfred Hitchcock", F(426, "Vertigo", 1958, "Alfred Hitchcock", 128, 20)) shouldBe false
+    deniesIt("Vertigo by Hitchcock", F(426, "Vertigo", 1958, "Somebody Else", 128, 20)) shouldBe false
+    deniesIt("Lawrence von Arabien", F(947, "Lawrence", 1962, "David Lean", 216, 20)) shouldBe false
+    deniesIt("Der Graf von Monte Cristo", F(11362, "Der Graf", 2002, "Kevin Reynolds", 131, 20)) shouldBe true
+    deniesIt("Mary Shelley's Frankenstein by Mary Shelley", F(3036, "Mary Shelley's Frankenstein", 1994, "Kenneth Branagh", 123, 15)) shouldBe false
+    deniesIt("Blow-Up + Intro by Mik Wilkojc", F(1052, "Blow-Up", 1966, "Michelangelo Antonioni", 111, 15)) shouldBe false
+    deniesIt("Nosferatu (1922) with Live Score by Hugo Max", F(653, "Nosferatu", 1922, "F.W. Murnau", 94, 10)) shouldBe false
+    deniesIt("Sexy Beast - Presented by Jackie Treehorn", F(11826, "Sexy Beast", 2000, "Jonathan Glazer", 89, 10)) shouldBe false
+    ListingShape.authorCredited("Stand by Me") shouldBe None
+  }
+
   "A film festival billed by its own name" should "name no film, not even one whose alternative title it is, nor one a feed links" in {
     // DE "Alpen Film Festival 2026" at nine venues (2026-10-13 suspect audit): the festival's programme; Cineamo linked
     // it to the 13-minute short "How I Started A Film Festival", whose TMDB record carries the billing as an alternative
