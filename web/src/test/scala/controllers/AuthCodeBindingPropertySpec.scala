@@ -31,12 +31,22 @@ class AuthCodeBindingPropertySpec extends AnyFlatSpec with Matchers {
 
   private val UserId = "alice@example.com"
 
-  private def fixture(): (AuthController, AuthExchangeCodes) = {
+  /** A user store holding [[UserId]], and an empty code store. */
+  private def stores(): (InMemoryUserRepository, AuthExchangeCodes) = {
     val users = new InMemoryUserRepository
     users.upsert(User(id = UserId, provider = "google", providerSub = "G-1", email = Some(UserId),
       displayName = None, avatarUrl = None, createdAt = Instant.EPOCH, lastSeenAt = Instant.EPOCH))
-    val codes = new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, clock = _root_.tools.SpecClock.Pinned)
+    (users, new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, clock = _root_.tools.SpecClock.Pinned))
+  }
+
+  private def fixture(): (AuthController, AuthExchangeCodes) = {
+    val (users, codes) = stores()
     (new AuthController(Helpers.stubControllerComponents(), Map.empty, users, codes, models.Country.Poland, clock = _root_.tools.SpecClock.Pinned), codes)
+  }
+
+  private def ssoFixture(): (SsoController, AuthExchangeCodes) = {
+    val (users, codes) = stores()
+    (new SsoController(Helpers.stubControllerComponents(), users, codes, models.Country.Poland), codes)
   }
 
   private val Bindings: Seq[Option[String]] = Seq(None, Some("browser-A"), Some("browser-B"))
@@ -55,16 +65,16 @@ class AuthCodeBindingPropertySpec extends AnyFlatSpec with Matchers {
 
   // ── /auth/sso/finish — the cross-domain handoff ─────────────────────────────
 
-  private def finish(ctl: AuthController, code: String, sessionBinding: Option[String]) =
+  private def finish(ctl: SsoController, code: String, sessionBinding: Option[String]) =
     ctl.ssoFinish()(FakeRequest("GET", s"/auth/sso/finish?code=$code")
-      .withSession(sessionBinding.map(AuthController.SsoBindingKey -> _).toSeq*))
+      .withSession(sessionBinding.map(SsoController.SsoBindingKey -> _).toSeq*))
 
   private val finishCases = Table(("code binding", "session binding", "code challenge"),
     (for { c <- Bindings; s <- Bindings; ch <- Challenges.take(2) } yield (c, s, ch))*)
 
   "ssoFinish" should "sign in exactly when the code and the session hold the same, non-empty binding" in {
     forAll(finishCases) { (codeBinding, sessionBinding, challenge) =>
-      val (ctl, codes) = fixture()
+      val (ctl, codes) = ssoFixture()
       val code         = codes.mint(UserId, codeBinding, challenge)
       // A handoff code is minted by `ssoStart` for a binding and never with a
       // challenge — a challenged code is a native deep-link code, and a browser
@@ -84,10 +94,10 @@ class AuthCodeBindingPropertySpec extends AnyFlatSpec with Matchers {
 
   it should "never leave the browser holding its binding, whatever the outcome" in {
     forAll(finishCases) { (codeBinding, sessionBinding, challenge) =>
-      val (ctl, codes) = fixture()
+      val (ctl, codes) = ssoFixture()
       val result       = finish(ctl, codes.mint(UserId, codeBinding, challenge), sessionBinding)
       withClue(s"code=$codeBinding session=$sessionBinding challenge=$challenge: ") {
-        session(result).get(AuthController.SsoBindingKey) shouldBe None
+        session(result).get(SsoController.SsoBindingKey) shouldBe None
       }
     }
   }

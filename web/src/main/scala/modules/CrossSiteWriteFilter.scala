@@ -89,8 +89,8 @@ object CrossSiteWriteFilter {
   private def refusedOnward(request: RequestHeader): String = {
     val next = request.getQueryString("next")
     if (request.session.get(controllers.SignedInUser.UserIdKey).isDefined)
-      controllers.routes.AuthController.ssoLogoutConfirm(controllers.AuthController.ssoLogoutNext(next)).url
-    else controllers.AuthController.ssoLogoutOnward(next)
+      controllers.routes.SsoController.ssoLogoutConfirm(controllers.SsoController.ssoLogoutNext(next)).url
+    else controllers.SsoController.ssoLogoutOnward(next)
   }
 
   /** The origin of the page `request` says it came from: `Origin`, else the

@@ -25,13 +25,15 @@ class UnreadableSignedInUserSpec extends AnyFlatSpec with Matchers {
   private val users = new FailingReadUserRepository
   private val auth  = new AuthController(Helpers.stubControllerComponents(), Map.empty, users,
     new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, clock), Country.Poland, clock = clock)
+  private val sso   = new SsoController(Helpers.stubControllerComponents(), users,
+    new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, clock), Country.Poland)
   private def signedIn(method: String, path: String) =
     FakeRequest(method, path).withSession(SignedInUser.UserIdKey -> "alice@example.com")
 
   "every session lookup" should "answer a per-user 503 when the user cannot be read" in {
     Seq(
       "me"             -> auth.me()(signedIn("GET", "/api/me")),
-      "ssoStart"       -> auth.ssoStart()(signedIn("GET", s"/auth/sso/start?to=${Country.UnitedKingdom.webUrl.get}")),
+      "ssoStart"       -> sso.ssoStart()(signedIn("GET", s"/auth/sso/start?to=${Country.UnitedKingdom.webUrl.get}")),
       "admin"          -> new AdminAction(Helpers.stubBodyParser(), users, settings.AdminAllowlist(Set("alice@example.com")))
                             .async(_ => Future.successful(Results.Ok("admin")))(signedIn("GET", "/admin"))
     ).foreach { case (name, result) =>

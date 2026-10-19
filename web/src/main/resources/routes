@@ -118,8 +118,8 @@ POST    /:city/debug/rehydrate      controllers.DebugController.rehydrate(city: 
 # deployment that HAS the session, `finish` spends it on the one being switched
 # to. `to` is matched against the deployed countries' own base URLs and nothing
 # else, so the redirect cannot be aimed off-brand.
-GET     /auth/sso/start             controllers.AuthController.ssoStart()
-GET     /auth/sso/finish            controllers.AuthController.ssoFinish()
+GET     /auth/sso/start             controllers.SsoController.ssoStart()
+GET     /auth/sso/finish            controllers.SsoController.ssoFinish()
 # The far half of a logout. The sign-in pairing establishes a session on BOTH
 # domains, so clearing one would leave the visitor signed out where they pressed
 # the button and signed in a domain away. `siteonly`: a GET any page can embed, so
@@ -127,10 +127,10 @@ GET     /auth/sso/finish            controllers.AuthController.ssoFinish()
 # — refused, it still redirects on to `next`, just without signing out
 # (`RouteProtectionMatrixSpec` pins which GETs carry it).
 + siteonly
-GET     /auth/sso/logout            controllers.AuthController.ssoLogout()
+GET     /auth/sso/logout            controllers.SsoController.ssoLogout()
 # Where a REFUSED far half sends a visitor still signed in here: asked, not silently
 # left signed in on this domain. A page, not a state change.
-GET     /auth/sso/logout/confirm    controllers.AuthController.ssoLogoutConfirm(next: Option[String] ?= None)
+GET     /auth/sso/logout/confirm    controllers.SsoController.ssoLogoutConfirm(next: Option[String] ?= None)
 
 GET     /auth/:provider/start       controllers.AuthController.start(provider: String)
 GET     /auth/:provider/callback    controllers.AuthController.callback(provider: String)

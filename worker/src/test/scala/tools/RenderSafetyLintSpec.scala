@@ -133,8 +133,8 @@ object RenderSafetyLintSpec {
       "configuration: the App Store URL, validated as https in models.ClientSupport",
     ("_appBanner.scala.html", "models.ClientSupport.android.storeUrl.getOrElse(\"#\")") ->
       "configuration: the Play Store URL, validated as https in models.ClientSupport",
-    ("ssoLogoutConfirm.scala.html", "signOutHref")   -> "an app route plus a `next` AuthController.ssoLogoutNext validated",
-    ("ssoLogoutConfirm.scala.html", "stayHref")      -> "AuthController.ssoLogoutOnward: a validated `next` or our own root",
+    ("ssoLogoutConfirm.scala.html", "signOutHref")   -> "an app route plus a `next` SsoController.ssoLogoutNext validated",
+    ("ssoLogoutConfirm.scala.html", "stayHref")      -> "SsoController.ssoLogoutOnward: a validated `next` or our own root",
   )
 
   /** Web Scala that builds raw HTML or writes an `href`/`src` by hand. (file, site) → why. */

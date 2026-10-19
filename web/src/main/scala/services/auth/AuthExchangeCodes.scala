@@ -21,7 +21,7 @@ import java.util.concurrent.ConcurrentHashMap
  *
  * `binding` ties a cross-domain handoff code to the ONE browser meant to spend
  * it: a random value that browser's own session on the receiving domain holds
- * (see `AuthController.ssoFinish`). Without it a code is a bearer token for
+ * (see `SsoController.ssoFinish`). Without it a code is a bearer token for
  * whoever follows the link, and a signed-in attacker can mint one for their own
  * account and send it to a victim. The deep-link codes the native apps redeem
  * carry none — the app itself received the deep link.
@@ -101,7 +101,7 @@ class AuthExchangeCodes(
       .filter(pending => AuthExchangeCodes.answers(pending.challenge, verifier))
       .map(_.userId)
 
-  /** [[redeem]] for a cross-domain handoff code (see `AuthController.ssoFinish`),
+  /** [[redeem]] for a cross-domain handoff code (see `SsoController.ssoFinish`),
    *  spent by the browser whose session holds `binding`. A browser holding NO
    *  binding never matches: "no binding" is not "minted without one", and anyone
    *  can mint an unbound code for their own account through the native apps'

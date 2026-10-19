@@ -146,7 +146,9 @@ class RouteProtectionMatrixSpec extends AnyFlatSpec with Matchers with BeforeAnd
     given Messages  = testsupport.TestMessages.deployment
     val debug       = new DebugController(cc, null, null, adminAction, Mode.Prod, servingCountry = models.Country.Poland,
       normalizer = services.movies.SingleCountryNormalizer.titleNormalizer, clock = _root_.tools.SpecClock.Pinned)
-    val auth        = new AuthController(cc, Map.empty, users, new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, clock = _root_.tools.SpecClock.Pinned), models.Country.Poland, clock = _root_.tools.SpecClock.Pinned)
+    val codes       = new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, clock = _root_.tools.SpecClock.Pinned)
+    val auth        = new AuthController(cc, Map.empty, users, codes, models.Country.Poland, clock = _root_.tools.SpecClock.Pinned)
+    val sso         = new SsoController(cc, users, codes, models.Country.Poland)
     val userState   = new UserStateController(cc, null, null, null,
       users, java.time.Clock.fixed(java.time.Instant.EPOCH, java.time.ZoneOffset.UTC))
     val uptime      = new UptimeController(cc, adminAction, null, null, null, models.Country.Poland, clock = _root_.tools.SpecClock.Pinned)
@@ -155,7 +157,7 @@ class RouteProtectionMatrixSpec extends AnyFlatSpec with Matchers with BeforeAnd
     val envConfig   = new EnvConfigController(cc, adminAction, null)
     val identity    = new IdentityAdminController(cc, adminAction, users, null, null)
     val review      = new ReviewController(cc, Mode.Prod, Map.empty, null, java.nio.file.Paths.get("labels.tsv"), _root_.tools.SpecClock.Pinned)
-    new router.Routes(Components.httpErrorHandler, null, null, null, null, null, null, debug, null, auth, userState,
+    new router.Routes(Components.httpErrorHandler, null, null, null, null, null, null, debug, null, sso, auth, userState,
       null, null, uptime, tasks, null, null, facebook, envConfig, identity, null, review, null)
   }
 

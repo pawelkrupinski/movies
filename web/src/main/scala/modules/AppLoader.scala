@@ -207,7 +207,7 @@ class AppComponents(context: Context, val env: Env, val country: Country, val mo
   // asset URLs in every template) emits the deployment's mount point too.
   lazy val router: Router =
     AppLoader.rootOperationalRoutes(healthController.check, healthController.ready, metricsController.metrics)
-      .orElse(new Routes(httpErrorHandler, landingController, wellKnownController, movieController, catalogController, clientSupportController, pickerController, debugController, debugStreamController, authController, userStateController, healthController, metricsController, uptimeController, tasksController, legalController, supportController, facebookDataDeletionController, envConfigController, identityAdminController, shareCardGalleryController, reviewController, assets)
+      .orElse(new Routes(httpErrorHandler, landingController, wellKnownController, movieController, catalogController, clientSupportController, pickerController, debugController, debugStreamController, ssoController, authController, userStateController, healthController, metricsController, uptimeController, tasksController, legalController, supportController, facebookDataDeletionController, envConfigController, identityAdminController, shareCardGalleryController, reviewController, assets)
         .withPrefix(httpConfiguration.context))
 
   // The routes inventory the "longest uncalled route" panel ranks against — a

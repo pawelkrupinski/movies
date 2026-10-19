@@ -314,7 +314,7 @@ class LandingViewSpec extends AnyFlatSpec with Matchers {
   }
 
   // The slug rides along so "use my location" lands on the NEAREST city on
-  // that site (through `AuthController.validatedCitySlug`), not on its landing,
+  // that site (through `SsoController.validatedCitySlug`), not on its landing,
   // where a `city` cookie would bounce the visitor to some other city.
   "a handed-off country's points" should "be its places' coordinates and slugs, and nothing else" in {
     val points = controllers.LandingController.handoffPoints(models.Country.Poland).split(';').toSeq

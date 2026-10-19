@@ -26,7 +26,7 @@
    session crossing the origin, and carries either a city's slug — re-validated
    against that country's own cities before being trusted — or the bare
    "named this country" marker (see `crossCountryUrl` /
-   `AuthController.validatedCitySlug`).
+   `SsoController.validatedCitySlug`).
 
    THE PLACES ARE SERVER-RENDERED, ONE COUNTRY AT A TIME. The country the
    picker opens on arrives inside this page as real markup
@@ -621,11 +621,11 @@
     // first, with the picked city's slug riding ALONGSIDE `to` (never inside
     // it: `to` is matched verbatim against the deployed base URLs for
     // open-redirect safety, so a query string on it is not a deployed
-    // country). `AuthController.validatedCitySlug` re-checks that slug
+    // country). `SsoController.validatedCitySlug` re-checks that slug
     // against the TARGET country's own cities before trusting it, then the
     // handoff lands on the exact city rather than dropping the visitor at
     // that country's picker. Signed OUT is not an error there: it is just
-    // the link this would have followed anyway (see `AuthController.ssoStart`),
+    // the link this would have followed anyway (see `SsoController.ssoStart`),
     // so it is always safe to route through it rather than needing to know
     // client-side whether anyone is signed in.
     //

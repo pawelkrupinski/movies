@@ -28,6 +28,7 @@ class AuthNoStoreSpec extends AnyFlatSpec with Matchers {
   private val codes = new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, clock = _root_.tools.SpecClock.Pinned)
   private val ctl   = new AuthController(Helpers.stubControllerComponents(), Map("google" -> Google), users, codes,
     models.Country.Poland, clock = _root_.tools.SpecClock.Pinned)
+  private val sso   = new SsoController(Helpers.stubControllerComponents(), users, codes, models.Country.Poland)
 
   "POST /auth/token" should "forbid keeping a copy of a successful sign-in" in {
     val result = ctl.token()(FakeRequest("POST", "/auth/token")
@@ -60,13 +61,13 @@ class AuthNoStoreSpec extends AnyFlatSpec with Matchers {
     users.upsert(models.User(id = "carol@example.com", provider = "google", providerSub = "G-3", email = Some("carol@example.com"),
       displayName = None, avatarUrl = None, createdAt = Instant.EPOCH, lastSeenAt = Instant.EPOCH))
     val uk     = models.Country.UnitedKingdom.webUrl.get
-    val result = ctl.ssoStart()(FakeRequest("GET", s"/auth/sso/start?to=$uk&bind=b").withSession("userId" -> "carol@example.com"))
+    val result = sso.ssoStart()(FakeRequest("GET", s"/auth/sso/start?to=$uk&bind=b").withSession("userId" -> "carol@example.com"))
     redirectLocation(result).get should include ("code=")
     header("Cache-Control", result) shouldBe Some(PerUserResponse.CacheControl)
   }
 
   "GET /auth/sso/finish" should "forbid keeping a copy of the signed-out landing for a dead code" in {
-    val result = ctl.ssoFinish()(FakeRequest("GET", "/auth/sso/finish?code=dead"))
+    val result = sso.ssoFinish()(FakeRequest("GET", "/auth/sso/finish?code=dead"))
     status(result) shouldBe SEE_OTHER
     header("Cache-Control", result) shouldBe Some(PerUserResponse.CacheControl)
   }

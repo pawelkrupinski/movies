@@ -23,23 +23,11 @@ import scala.util.{Failure, Success, Try}
  *     for a profile via `OauthProvider.exchangeCode`, upsert the
  *     `User`, set `userId` in the session, redirect home.
  *
- * Plus a single logout endpoint that signs the account out on every device, and the pair that hands
- * a live session to a deployment the cookie cannot reach:
- *
- *   - GET `/auth/sso/start?to=<base url>` — on the deployment the visitor is
- *     signed in to: send the browser to `to`'s `finish` for a binding, and —
- *     back with `&bind=…` — mint a one-shot code for that binding alone.
- *   - GET `/auth/sso/finish` — on the deployment being handed the session:
- *     codeless, stamp a random binding into this browser's session and ask
- *     back; with `?code=…`, spend it only if the bindings match, set `userId`,
- *     land on that country's home. The binding is what stops a signed-in
- *     attacker's code from signing a victim in (login CSRF).
- *
- * That pair exists for ONE boundary. `/uk`, `/de` and `/us` share an origin and
- * so share the session cookie outright (`AppLoader.mountedAt` leaves its path at
- * the host root); Poland is on `kinowo.net`, a different registrable domain,
- * where no cookie can follow. `to` is matched against the deployed countries'
- * own base URLs and nothing else, so it cannot be pointed anywhere off-brand.
+ * Plus a single logout endpoint that signs the account out on every device, the
+ * native apps' token sign-in and code exchange, and `/api/me`. The legs that hand a
+ * live session to a deployment the cookie cannot reach (under `/auth/sso`) are
+ * [[SsoController]]'s; this controller sends a finished sign-in, and a sign-out,
+ * through them.
  *
  * `providers` is keyed by `OauthProvider.name` so the `:provider`
  * route segment indexes directly into it. An unknown provider name
@@ -54,8 +42,6 @@ import scala.util.{Failure, Success, Try}
  *     mixing state from /auth/google/start with a callback to
  *     /auth/facebook/callback)
  *   - `userId`        — set on successful callback, dropped on logout
- *   - `ssoBinding`    — set by a codeless `/auth/sso/finish`, spent by the
- *     next one that carries a code
  *   - `mobileChallenge` — a native start's PKCE-style `challenge`, stamped
  *     onto the deep-link code the callback mints
  */
@@ -76,6 +62,7 @@ class AuthController(
   appleTokenValidator:    Option[AppleTokenValidator] = None,
   clock:                  Clock
 ) extends AbstractController(cc) with Logging {
+  import AuthController.{signedOut, uncacheable}
 
   // OAuth state cookie expires after this — long enough that the user
   // can take a couple of minutes on the provider's consent screen,
@@ -237,12 +224,12 @@ class AuthController(
    *  Safari and increasingly in Chrome.
    *
    *  Codeless: the sibling gives the browser a binding and asks back here for a
-   *  code minted for it (see [[ssoFinish]]).
+   *  code minted for it (see [[SsoController.ssoFinish]]).
    *
    *  No pairing without a sibling, and none FROM the pairing leg itself —
-   *  [[ssoFinish]] never calls this, so the chain is one hop by construction. */
+   *  [[SsoController.ssoFinish]] never calls this, so the chain is one hop by construction. */
   private def pairSiblingThen(landing: String, request: RequestHeader): String =
-    viaSibling(AuthController.SsoFinishPath, landing, request)
+    viaSibling(SsoController.SsoFinishPath, landing, request)
 
   /** `landing` by way of the other domain's `path`, which sends the visitor on to
    *  it — or `landing` itself when this origin has no sibling. */
@@ -251,29 +238,6 @@ class AuthController(
       case None          => landing
       case Some(sibling) => s"$sibling$path${AuthController.query(Seq("next" -> absolute(landing, request)))}"
     }
-
-  /** An auth transition nothing may keep a copy of.
-   *
-   *  These responses hand out or tear down a session, so a cached one is either
-   *  a stale sign-in or a logout that appears not to have happened. Cheap
-   *  insurance: they are redirects nobody benefits from re-using. */
-  private def uncacheable(result: Result): Result = PerUserResponse(result)
-
-  /** A sign-out, plus an instruction to forget what this origin looked like
-   *  while signed in.
-   *
-   *  Clearing the cookie is not enough on its own, and the gap is exactly what a
-   *  logout that "doesn't carry" looks like: the far domain's session is gone,
-   *  but the browser still holds a page it rendered while that session was
-   *  alive, so the next visit shows an avatar for an account it no longer has.
-   *  `no-store` stops NEW signed-in pages being kept; it cannot reach the ones
-   *  already in the cache, and this is the only thing that can.
-   *
-   *  `"cache"` alone, deliberately — `"cookies"` would take the remembered city
-   *  with it, and the session cookie is already discarded precisely. Ignored by
-   *  browsers that do not implement it, which lose nothing they had before. */
-  private def signedOut(result: Result): Result =
-    uncacheable(result).withHeaders("Clear-Site-Data" -> "\"cache\"")
 
   /** `landing` as an absolute URL, so the far side can send the visitor back to
    *  it across the domain boundary — see [[AuthController.absoluteLanding]]. */
@@ -350,12 +314,12 @@ class AuthController(
    *
    *  The version bump already reaches the other domain's session, but its
    *  cookie still names the account until it is next checked, so the visitor
-   *  is sent through that domain's [[ssoLogout]] too: the pairing at sign-in
+   *  is sent through that domain's [[SsoController.ssoLogout]] too: the pairing at sign-in
    *  establishes a session on both, and "log out" has to mean the far cookie
    *  is gone, not merely dead. Same one hop, in the other direction. */
   def logout(): Action[AnyContent] = Action { request =>
     revokeEverySession(request)
-    val target = viaSibling(AuthController.SsoLogoutPath, routes.LandingController.index().url, request)
+    val target = viaSibling(SsoController.SsoLogoutPath, routes.LandingController.index().url, request)
     // `withNewSession` DISCARDS the cookie rather than re-signing a smaller one.
     // Removing the keys would leave a valid session cookie behind holding
     // nothing, which is the same thing to this application and not the same
@@ -372,36 +336,6 @@ class AuthController(
         logger.warn(s"logout: user unreadable, only this cookie is dropped: ${exception.getMessage}")
     }
 
-  /** The far half of [[logout]]: drop the session on this domain and send the
-   *  visitor back where they pressed the button.
-   *
-   *  Never propagates onwards — this IS the propagation — so the pair cannot
-   *  ping-pong. Reachable by GET because it is the second leg of a redirect —
-   *  which any page could otherwise embed, so the route is `siteonly` and
-   *  `CrossSiteWriteFilter` sends it on to the same place WITHOUT signing out
-   *  unless it came from one of our own pages. */
-  def ssoLogout(): Action[AnyContent] = Action { request =>
-    signedOut(Redirect(AuthController.ssoLogoutOnward(request.getQueryString("next"))).withNewSession)
-  }
-
-  /** The question a refused far half of a logout asks a visitor still signed in
-   *  here (see `ssoLogoutConfirm.scala.html`): sign out here too — a click on this
-   *  page, which `CrossSiteWriteFilter` can prove is ours — or go on signed in.
-   *  Only a validated `next` is carried; one not signed in here is just sent on. */
-  def ssoLogoutConfirm(next: Option[String]): Action[AnyContent] = Action { request =>
-    val onward    = AuthController.ssoLogoutOnward(next)
-    val validNext = AuthController.ssoLogoutNext(next)
-    PerUserResponse(request.session.get(SignedInUser.UserIdKey) match {
-      case None    => Redirect(onward)
-      case Some(_) =>
-        val signOut = routes.AuthController.ssoLogout().url + AuthController.query(validNext.map("next" -> _).toSeq)
-        Ok(views.html.ssoLogoutConfirm(signOut, onward)(using deploymentMessages))
-    })
-  }
-
-  private val deploymentMessages: play.api.i18n.Messages =
-    cc.messagesApi.preferred(Seq(play.api.i18n.Lang(country.language.getLanguage)))
-
   def exchange(): Action[JsValue] = Action(parse.json) { request => PerUserResponse(redeemExchangeCode(request.body)) }
 
   private def redeemExchangeCode(body: JsValue): Result = {
@@ -415,164 +349,6 @@ class AuthController(
           case Some(user) => signedInJson(user)
         }
     }
-  }
-
-  /** Hand this visitor's signed-in session to another country's deployment.
-   *
-   *  Only needed across an ORIGIN boundary — the Showtimes countries share one
-   *  and so share the cookie — so a `to` on this request's own origin is just
-   *  the plain link, and the switcher does not have to know which pairs those are.
-   *
-   *  Signed OUT is not an error: there is nothing to hand over, so this is just
-   *  the link the switcher would have followed anyway, and the visitor lands
-   *  where they asked to go. An unknown `to` IS an error, and a loud one: it can
-   *  only be a hand-crafted URL, since the only thing that builds these is a
-   *  `<select>` of the deployed countries.
-   *
-   *  TWO LEGS, because the code must be bound to the browser that will spend it
-   *  (see [[ssoFinish]]). Without `bind` this only sends the visitor to the far
-   *  side's finish, codeless, to be given a binding there; it comes back here
-   *  with `bind` and only then is a code minted, for that binding alone.
-   *
-   *  The code rides in the query string, which is the one thing worth being
-   *  uncomfortable about — mitigated by making it single-use, two minutes long,
-   *  bound to one browser, and redeemed by a URL that only ever answers with a
-   *  redirect, so no page ever renders (and no subresource sends a `Referer`)
-   *  while it is still in the address bar. */
-  def ssoStart(): Action[AnyContent] = Action { request =>
-    SignedInUser.answering(AuthController.handoffTarget(request.getQueryString("to")) match {
-      case None =>
-        logger.warn(s"SSO start refused: '${request.getQueryString("to").getOrElse("")}' is not a deployed country.")
-        BadRequest("Unknown country")
-      case Some(target) => handOffTo(target, request)
-    })
-  }
-
-  /** [[ssoStart]] toward an allowlisted `target`: its landing when there is no
-   *  session to hand over (or none needed), else the next leg of the handoff. */
-  private def handOffTo(target: String, request: RequestHeader): Result = {
-    // Rides ALONGSIDE `to` rather than inside it: `to` is matched against the
-    // deployed base URLs verbatim, so a query string on it is not a deployed
-    // country. Carried across the hop so a signed-in visitor switching country
-    // reaches the far landing knowing they chose it — same as the signed-out
-    // switch, which navigates there directly. A `city=` the target does not
-    // have counts too: the visitor still named the country, so the fallback is
-    // its picker rather than a bare landing a stale `city` cookie would bounce.
-    val namedCountry = LandingController.picksCity(request) ||
-      request.getQueryString(LandingController.CityParam).exists(_.nonEmpty)
-    val pick = if (namedCountry) LandingController.PickCityQuery else ""
-    // A picker that already knows WHICH city was picked hands its slug
-    // through `city=` instead of the bare "ask again" `pick=city` marker,
-    // re-validated here against the TARGET country's own cities — never
-    // trusted verbatim, since it arrives on a query string a visitor
-    // controls — so the handoff below lands on the exact city rather than
-    // dropping the visitor at that country's picker.
-    val citySlug = AuthController.validatedCitySlug(target, request.getQueryString(LandingController.CityParam))
-    val onward = citySlug.map(LandingController.CityParam -> _).toSeq ++
-      (if (citySlug.isEmpty && pick.nonEmpty) Seq(LandingController.PickCityParam -> LandingController.PickCityValue) else Nil) ++
-      AuthController.switchTarget(request.getQueryString("next")).map("next" -> _)
-    val landing = Redirect(citySlug.map(s => s"$target/$s/").getOrElse(s"$target/$pick"))
-    SignedInUser(request, userRepository) match {
-      // NOTHING TO HAND OVER, and the marker matters. This endpoint is now
-      // also reached unprompted, by a signed-out arrival probing whether the
-      // visitor has a session on the other domain; sending it back to a bare
-      // landing would leave the page it lands on unable to tell a first visit
-      // from one that has just been answered, and it would probe again. The
-      // probe's own cookie guard is the durable half; this is what holds when
-      // a browser is refusing cookies, which is also a browser that can never
-      // hold a session and must not be put in a loop chasing one.
-      case None => landing
-      // Same origin: the cookie is already there, and the far side's sibling
-      // is not this origin, so a binding round trip would go astray.
-      case Some(_) if ForwardedUrl.originOf(target) == ForwardedUrl.base(request) => landing
-      case Some(user) => handOffSession(user, target, onward, request)
-    }
-  }
-
-  /** The two legs of a signed-in handoff: without `bind`, send the browser to the
-   *  far side's finish to be given a binding; back with one, mint a code for it. */
-  private def handOffSession(user: User, target: String, onward: Seq[(String, String)], request: RequestHeader): Result =
-    request.getQueryString(AuthController.BindParam).filter(_.nonEmpty) match {
-      case None =>
-        Redirect(s"$target${AuthController.SsoFinishPath}${AuthController.query(onward)}")
-      case Some(binding) =>
-        // The Location carries a live code: nothing may keep a copy of it.
-        val code = exchangeCodes.mint(user.id, Some(binding))
-        uncacheable(Redirect(s"$target${AuthController.SsoFinishPath}${AuthController.query(("code" -> code) +: onward)}"))
-    }
-
-  /** Receive a session handed over by [[ssoStart]] on another domain.
-   *
-   *  CODELESS, this is the first leg: stamp a fresh random binding into THIS
-   *  browser's session here and send it back to the other domain's `ssoStart`
-   *  carrying that binding, so the code it mints can only be spent by a request
-   *  whose session holds the same value. That is the login-CSRF defence: a
-   *  signed-in attacker can still mint a code for their own account, but only
-   *  bound to their own browser — a victim sent the finish link holds a
-   *  different binding (or none) and lands signed out.
-   *
-   *  A code that does not redeem lands the visitor on this country's home page
-   *  signed out rather than on an error: by the time they are here they have
-   *  already left the page they came from, and the only thing they can do about
-   *  a stale code is sign in again — which is exactly what the home page offers.
-   *  The warning is for us, not them. */
-  def ssoFinish(): Action[AnyContent] = Action { request =>
-    val here = ForwardedUrl.base(request)
-    (request.getQueryString("code"), models.DeploymentOrigins.siblingOfOrigin(here)) match {
-      case (None, Some(sibling)) => askForBinding(sibling, here, request)
-      case (code, _)             => spendHandoffCode(code, request)
-    }
-  }
-
-  /** The codeless first leg of [[ssoFinish]]: a fresh binding in this browser's
-   *  session, and back to the sibling's `ssoStart` carrying it. */
-  private def askForBinding(sibling: String, here: String, request: RequestHeader): Result = {
-    val binding = UUID.randomUUID().toString
-    val self    = here + request.path.stripSuffix(AuthController.SsoFinishPath)
-    val onward  = Seq(LandingController.CityParam, LandingController.PickCityParam, "next")
-      .flatMap(key => request.getQueryString(key).map(key -> _))
-    uncacheable(Redirect(s"$sibling${AuthController.SsoStartPath}${AuthController.query(
-      Seq("to" -> self, AuthController.BindParam -> binding) ++ onward)}")
-      .withSession(request.session + (AuthController.SsoBindingKey -> binding)))
-  }
-
-  /** The second leg of [[ssoFinish]]: spend `code` against this browser's binding
-   *  and land signed in — or signed out, when it does not redeem. */
-  private def spendHandoffCode(code: Option[String], request: RequestHeader): Result = {
-    val home = ssoFinishLanding(request)
-    // Spent either way: a binding is good for one handoff, like its code.
-    // `exchangeCodes.redeemHandoff` refuses a browser holding no binding at all.
-    val binding = request.session.get(AuthController.SsoBindingKey)
-    val cleared = request.session - AuthController.SsoBindingKey
-    code.flatMap(exchangeCodes.redeemHandoff(_, binding)).flatMap(userRepository.findById) match {
-      case None =>
-        logger.warn("SSO handoff arrived without a code redeemable by this browser — landing signed out.")
-        uncacheable(home.withSession(cleared))
-      case Some(user) =>
-        // Deliberately does NOT pair onwards: this IS the pairing leg, and a
-        // second hop from here is the loop.
-        uncacheable(home.withSession(SignedInUser.establish(cleared, user)))
-    }
-  }
-
-  // `next` is where the visitor was actually going — set when this is the
-  // pairing leg of a sign-in that happened on the other domain, so they land
-  // back where they started rather than on this country's home page. Matched
-  // against the deployed countries and nothing else: it is a redirect target
-  // named in a URL, which is an open redirect the moment it is trusted.
-  // A country switch that came through the handover still owes its landing the
-  // marker: the visitor chose this country and should be asked which city,
-  // not bounced to a cookie'd one — UNLESS `ssoStart` already knew which city
-  // and handed its slug through `city=`, re-validated here against THIS
-  // deployment's own cities (this process serves exactly `country`), in
-  // which case the visitor lands directly on it instead of being asked again.
-  private def ssoFinishLanding(request: RequestHeader): Result = {
-    val pick = if (LandingController.picksCity(request)) LandingController.PickCityQuery else ""
-    val citySlug = request.getQueryString(LandingController.CityParam).filter(country.bySlug.contains)
-    Redirect(
-      citySlug.map(s => s"${country.pathPrefix}/$s/").getOrElse(
-        AuthController.switchTarget(request.getQueryString("next")).map(_ + "/")
-          .getOrElse(routes.LandingController.index().url) + pick))
   }
 
   /** The `redirect_uri` handed to the provider, and handed back at exchange —
@@ -591,6 +367,29 @@ class AuthController(
 }
 
 object AuthController {
+
+  /** An auth transition nothing may keep a copy of.
+   *
+   *  These responses hand out or tear down a session, so a cached one is either
+   *  a stale sign-in or a logout that appears not to have happened. Cheap
+   *  insurance: they are redirects nobody benefits from re-using. */
+  private[controllers] def uncacheable(result: Result): Result = PerUserResponse(result)
+
+  /** A sign-out, plus an instruction to forget what this origin looked like
+   *  while signed in.
+   *
+   *  Clearing the cookie is not enough on its own, and the gap is exactly what a
+   *  logout that "doesn't carry" looks like: the far domain's session is gone,
+   *  but the browser still holds a page it rendered while that session was
+   *  alive, so the next visit shows an avatar for an account it no longer has.
+   *  `no-store` stops NEW signed-in pages being kept; it cannot reach the ones
+   *  already in the cache, and this is the only thing that can.
+   *
+   *  `"cache"` alone, deliberately — `"cookies"` would take the remembered city
+   *  with it, and the session cookie is already discarded precisely. Ignored by
+   *  browsers that do not implement it, which lose nothing they had before. */
+  private[controllers] def signedOut(result: Result): Result =
+    uncacheable(result).withHeaders("Clear-Site-Data" -> "\"cache\"")
 
   /** Who a signed-in response says is signed in — the one shape `/api/me`,
    *  `/auth/token` and `/auth/exchange` all answer with. */
@@ -650,22 +449,6 @@ object AuthController {
   private[controllers] def relayQuery(request: RequestHeader): String =
     query(request.queryString.toSeq.sortBy(_._1).flatMap { case (key, values) => values.map(key -> _) })
 
-  /** The SSO legs' paths, as the OTHER domain has to spell them.
-   *
-   *  Literals rather than reverse routes for the same reason as
-   *  [[callbackPath]]: these address a DIFFERENT deployment, whose mount point is
-   *  not ours, and the reverse route would helpfully prepend ours.
-   *  `AuthCallbackRelaySpec` pins them against a root-mounted reverse route. */
-  val SsoStartPath  = "/auth/sso/start"
-  val SsoFinishPath = "/auth/sso/finish"
-  val SsoLogoutPath = "/auth/sso/logout"
-
-  /** Session key (on the RECEIVING domain) and query parameter (on the way back
-   *  to the handing-over one) for the value that binds a handoff code to one
-   *  browser — see [[AuthController.ssoFinish]]. */
-  val SsoBindingKey = "ssoBinding"
-  val BindParam     = "bind"
-
   /** Session key holding a native flow's `challenge` from start to callback. */
   val MobileChallengeKey = "mobileChallenge"
 
@@ -673,14 +456,6 @@ object AuthController {
   private[controllers] def query(params: Seq[(String, String)]): String =
     if (params.isEmpty) ""
     else params.map { case (k, v) => s"${URLEncoder.encode(k, UTF_8)}=${URLEncoder.encode(v, UTF_8)}" }.mkString("?", "&", "")
-
-  /** Where [[AuthController.ssoStart]] may send a handoff: a deployed country's
-   *  base URL (the country switch), or a deployed ORIGIN — the pairing leg of a
-   *  sign-in asks from the far domain's root, where its `/auth` routes live.
-   *  Still an exact-match allowlist of addresses we deploy, never a shape test. */
-  private[controllers] def handoffTarget(to: Option[String]): Option[String] =
-    switchTarget(to).orElse(
-      to.map(_.trim.stripSuffix("/")).filter(models.DeploymentOrigins.deployedOrigins.contains))
 
   /** A landing as an absolute URL on `origin`.
    *
@@ -695,46 +470,4 @@ object AuthController {
    *  deployment is configured, so the doubling is unreachable through a request. */
   private[controllers] def absoluteLanding(origin: String, landing: String): String =
     if (landing.startsWith("http")) landing else origin + landing
-
-  /** Where the far half of a logout sends the visitor: `next` when it is one
-   *  of the deployed countries' base URLs, else this deployment's landing.
-   *  Shared with `CrossSiteWriteFilter`, which sends a REFUSED far half to the
-   *  same place, just without the sign-out. */
-  def ssoLogoutOnward(next: Option[String]): String =
-    ssoLogoutNext(next).map(_ + "/").getOrElse(routes.LandingController.index().url)
-
-  /** A logout leg's `next`, when it is one of the deployed countries' base URLs —
-   *  the only `next` a leg, or the question a refused leg asks, carries on. */
-  def ssoLogoutNext(next: Option[String]): Option[String] = switchTarget(next)
-
-  /** Where [[AuthController.ssoStart]] is willing to send a session: an EXACT
-   *  match against a deployed country's own base URL (`Country.webUrl`), and
-   *  nothing else.
-   *
-   *  An allowlist rather than a validated URL because this redirect carries a
-   *  credential. Any rule of the shape "same host" or "https and one of our
-   *  domains" is one open-redirect away from handing a live sign-in code to
-   *  somebody else's server; a list of the addresses we actually deploy is
-   *  not. A trailing slash is tolerated because the switcher's `<option>` values
-   *  are base URLs and callers append to them.
-   *
-   *  Pure, so the refusal can be asserted without a request. */
-  private[controllers] def switchTarget(to: Option[String]): Option[String] =
-    to.map(_.trim.stripSuffix("/")).filter(_.nonEmpty)
-      .flatMap(candidate => models.Country.switchable.flatMap(_.webUrl).find(_ == candidate))
-
-  /** A `city=` query value passed to [[AuthController.ssoStart]], trusted only
-   *  once it names a real city of the country `target` (one of
-   *  [[switchTarget]]'s own allowlisted base URLs) belongs to — never taken
-   *  verbatim, since it arrives on a query string a visitor controls. `None`
-   *  for a missing, unknown, or mismatched slug, which callers fall back from
-   *  rather than propagate.
-   *
-   *  Pure, so the validation can be asserted without a request. */
-  private[controllers] def validatedCitySlug(target: String, slug: Option[String]): Option[String] =
-    for {
-      s       <- slug
-      country <- models.Country.switchable.find(_.webUrl.contains(target))
-      if country.bySlug.contains(s)
-    } yield s
 }

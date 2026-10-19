@@ -257,15 +257,11 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
   }
 
   /** The session of a browser the far side has already given a binding. */
-  private val bound = Seq(AuthController.SsoBindingKey -> "this-browser")
+  private val bound = Seq(SsoController.SsoBindingKey -> "this-browser")
 
   /** A repository holding one signed-in person, and their id. */
-  private def signedIn(repository: InMemoryUserRepository, email: String): String = {
-    repository.upsert(models.User(
-      id = email, provider = "google", providerSub = s"sub-$email", email = Some(email),
-      displayName = Some("Alice"), avatarUrl = None, createdAt = Now, lastSeenAt = Now))
-    email
-  }
+  private def signedIn(repository: InMemoryUserRepository, email: String): String =
+    SignedInVisitors.signedIn(repository, email, Now)
 
   /** A deployment serving `country`, with the repository and code store exposed
    *  so a test can seed a person or watch a code being spent. */
@@ -276,6 +272,13 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
      repository, codes)
   }
 
+  /** As [[podWith]], for the deployment's `/auth/sso` legs. */
+  private def ssoPodWith(country: Country): (SsoController, InMemoryUserRepository, AuthExchangeCodes) = {
+    val repository = new InMemoryUserRepository
+    val codes      = new AuthExchangeCodes(new InMemoryAuthExchangeCodeStore, fixedClk)
+    (new SsoController(Helpers.stubControllerComponents(), repository, codes, country), repository, codes)
+  }
+
   "A finished sign-in" should "route home through the other domain, so both end up signed in" in {
     val state  = AuthController.newState(Country.Poland)
     val result = podFor(Country.Poland).callback("google")(
@@ -284,7 +287,7 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
     status(result) shouldBe SEE_OTHER
     val location = redirectLocation(result).value
     // Codeless: the far side first gives that browser a binding, then asks back
-    // for a code minted for it alone (see `AuthController.ssoFinish`).
+    // for a code minted for it alone (see `SsoController.ssoFinish`).
     location should startWith (s"$SiblingOfPoland/auth/sso/finish?")
     location should not include "code="
     // ...and it carries where the visitor was actually going, so the far side
@@ -314,9 +317,8 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
   "The pairing leg" should "sign the visitor in and hand them back where they were going" in {
     val repository = new InMemoryUserRepository
     val store      = new InMemoryAuthExchangeCodeStore
-    def pod(country: Country) = new AuthController(
-      Helpers.stubControllerComponents(), Map.empty, repository,
-      new AuthExchangeCodes(store, fixedClk), country, clock = fixedClk)
+    def pod(country: Country) = new SsoController(
+      Helpers.stubControllerComponents(), repository, new AuthExchangeCodes(store, fixedClk), country)
 
     val userId = signedIn(repository, "alice@example.com")
     val code   = new AuthExchangeCodes(store, fixedClk).mint(userId, Some("this-browser"))
@@ -337,20 +339,23 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
     def pod(country: Country) = new AuthController(
       Helpers.stubControllerComponents(), Map("google" -> new FakeProvider("google")), repository,
       new AuthExchangeCodes(store, fixedClk), country, clock = fixedClk)
+    def ssoPod(country: Country) = new SsoController(
+      Helpers.stubControllerComponents(), repository, new AuthExchangeCodes(store, fixedClk), country)
     def follow(result: scala.concurrent.Future[play.api.mvc.Result]) = {
       val url    = redirectLocation(result).value
       val origin = ForwardedUrl.originOf(url)
       arrivingAt(origin, url.drop(origin.length))
     }
-    val kinowo = pod(Country.Poland)
-    val apex   = pod(Country.Poland)   // the process mounted at showtimes.cc's root
+    val kinowo    = pod(Country.Poland)
+    val kinowoSso = ssoPod(Country.Poland)
+    val apex      = ssoPod(Country.Poland)   // the process mounted at showtimes.cc's root
 
     val state    = AuthController.newState(Country.Poland)
     val signedIn = kinowo.callback("google")(
       arrivingAt(PlOrigin, s"/auth/google/callback?code=C&state=$state").withSession(sessionFor(state)*))
     val onKinowo = session(signedIn).data.toSeq
     val ask      = apex.ssoFinish()(follow(signedIn))
-    val minted   = kinowo.ssoStart()(follow(ask).withSession(onKinowo*))
+    val minted   = kinowoSso.ssoStart()(follow(ask).withSession(onKinowo*))
     val landed   = apex.ssoFinish()(follow(minted).withSession(session(ask).data.toSeq*))
 
     session(landed).get("userId").value shouldBe "alice@example.com"
@@ -360,7 +365,7 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
   // `next` is a redirect target named in a URL, which is an open redirect the
   // moment it is trusted. Same allowlist as the country switcher's `to`.
   it should "refuse to hand the visitor anywhere but a deployed country" in {
-    val (ctl, repository, codes) = podWith(Country.Poland)
+    val (ctl, repository, codes) = ssoPodWith(Country.Poland)
     val userId = signedIn(repository, "alice@example.com")
     val landed = ctl.ssoFinish()(
       arrivingAt(PlOrigin, s"/auth/sso/finish?code=${codes.mint(userId, Some("this-browser"))}&next=https://evil.example.com")
@@ -373,7 +378,7 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
   // ONE HOP, BY CONSTRUCTION: the pairing leg never pairs onwards, or the two
   // domains would hand the visitor back and forth forever.
   it should "not pair onwards from itself" in {
-    val (ctl, repository, codes) = podWith(Country.Poland)
+    val (ctl, repository, codes) = ssoPodWith(Country.Poland)
     val userId = signedIn(repository, "alice@example.com")
     val landed = ctl.ssoFinish()(
       arrivingAt(PlOrigin, s"/auth/sso/finish?code=${codes.mint(userId, Some("this-browser"))}").withSession(bound*))
@@ -399,7 +404,7 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
   }
 
   "The far half of a logout" should "clear the session there and send the visitor back" in {
-    val (ctl, _, _) = podWith(Country.Poland)
+    val (ctl, _, _) = ssoPodWith(Country.Poland)
     val result = ctl.ssoLogout()(
       arrivingAt(PlOrigin, s"/auth/sso/logout?next=$UkBase").withSession("userId" -> "alice@example.com"))
 
@@ -408,7 +413,7 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
   }
 
   it should "not hand the logout onwards, or the pair would ping-pong" in {
-    val (ctl, _, _) = podWith(Country.Poland)
+    val (ctl, _, _) = ssoPodWith(Country.Poland)
     val result = ctl.ssoLogout()(
       arrivingAt(PlOrigin, "/auth/sso/logout").withSession("userId" -> "alice@example.com"))
 
@@ -416,7 +421,7 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
   }
 
   it should "refuse to hand the visitor anywhere but a deployed country" in {
-    val (ctl, _, _) = podWith(Country.Poland)
+    val (ctl, _, _) = ssoPodWith(Country.Poland)
     val result = ctl.ssoLogout()(
       arrivingAt(PlOrigin, "/auth/sso/logout?next=https://evil.example.com"))
 
@@ -427,7 +432,7 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
   // other domain, when the visitor is signed in here: a question, not a silent
   // "you are signed out" that left this domain's session alive.
   "The question a refused far half asks" should "offer signing out here too, or going on signed in" in {
-    val (ctl, _, _) = podWith(Country.Poland)
+    val (ctl, _, _) = ssoPodWith(Country.Poland)
     val result = ctl.ssoLogoutConfirm(Some(UkBase))(
       arrivingAt(PlOrigin, s"/auth/sso/logout/confirm?next=$UkBase").withSession("userId" -> "alice@example.com"))
 
@@ -440,7 +445,7 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
   }
 
   it should "not ask a visitor who is not signed in here, nor carry an unlisted `next`" in {
-    val (ctl, _, _) = podWith(Country.Poland)
+    val (ctl, _, _) = ssoPodWith(Country.Poland)
     redirectLocation(ctl.ssoLogoutConfirm(Some(UkBase))(arrivingAt(PlOrigin, "/auth/sso/logout/confirm"))).value shouldBe s"$UkBase/"
     val html = contentAsString(ctl.ssoLogoutConfirm(Some("https://evil.example.com"))(
       arrivingAt(PlOrigin, "/auth/sso/logout/confirm").withSession("userId" -> "alice@example.com")))
@@ -451,8 +456,8 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
   // `callbackPath`: these address ANOTHER deployment, whose mount point is not
   // ours, so they are literals that must not drift from the routes file.
   "The SSO leg paths" should "match the routes the application serves at the root" in {
-    AuthController.SsoFinishPath shouldBe new controllers.ReverseAuthController("/").ssoFinish().url
-    AuthController.SsoLogoutPath shouldBe new controllers.ReverseAuthController("/").ssoLogout().url
+    SsoController.SsoFinishPath shouldBe new controllers.ReverseSsoController("/").ssoFinish().url
+    SsoController.SsoLogoutPath shouldBe new controllers.ReverseSsoController("/").ssoLogout().url
   }
 
 
@@ -495,8 +500,8 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
 
   // ...and being a real deployed base URL is what lets the far side accept it.
   it should "survive the allowlist the far side checks it against" in {
-    AuthController.switchTarget(Some(AuthController.absoluteLanding(Apex, "/uk/"))).value shouldBe UkBase
-    AuthController.switchTarget(Some(AuthController.absoluteLanding(PlOrigin, "/"))).value shouldBe PlOrigin
+    SsoController.switchTarget(Some(AuthController.absoluteLanding(Apex, "/uk/"))).value shouldBe UkBase
+    SsoController.switchTarget(Some(AuthController.absoluteLanding(PlOrigin, "/"))).value shouldBe PlOrigin
   }
 
   it should "leave an already-absolute landing alone" in {
@@ -529,7 +534,7 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
   }
 
   it should "do the same on the far side of the hop" in {
-    val (ctl, _, _) = podWith(Country.Poland)
+    val (ctl, _, _) = ssoPodWith(Country.Poland)
     val result = ctl.ssoLogout()(
       arrivingAt(PlOrigin, s"/auth/sso/logout?next=$UkBase").withSession("userId" -> "alice@example.com"))
 
@@ -546,7 +551,7 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
   }
 
   "The pairing leg" should "not be a response anything may keep either" in {
-    val (ctl, repository, codes) = podWith(Country.Poland)
+    val (ctl, repository, codes) = ssoPodWith(Country.Poland)
     val userId = signedIn(repository, "alice@example.com")
     val result = ctl.ssoFinish()(
       arrivingAt(PlOrigin, s"/auth/sso/finish?code=${codes.mint(userId)}"))
@@ -569,7 +574,7 @@ class AuthCallbackRelaySpec extends AnyFlatSpec with Matchers {
   }
 
   it should "do the same on the far side, which is the side that holds the stale page" in {
-    val (ctl, _, _) = podWith(Country.Poland)
+    val (ctl, _, _) = ssoPodWith(Country.Poland)
     val result = ctl.ssoLogout()(
       arrivingAt(PlOrigin, s"/auth/sso/logout?next=$UkBase").withSession("userId" -> "alice@example.com"))
 

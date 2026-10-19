@@ -1,6 +1,6 @@
 package modules.webwiring
 
-import controllers.{AuthController, FacebookDataDeletionController, UserStateController}
+import controllers.{AuthController, FacebookDataDeletionController, SsoController, UserStateController}
 import modules.Wiring
 import services.auth.{AppleTokenValidator, AuthExchangeCodeStore, AuthExchangeCodes, FacebookGraphFetch, FacebookOauthProvider, FacebookTokenValidator, GoogleOauthProvider, GoogleTokenValidator, InMemoryAuthExchangeCodeStore, MongoAuthExchangeCodeStore, OauthProvider}
 import services.users.{AccountDeletion, CaffeineUserChangeTimeCache, MongoUserRepository, MongoUserStateRepository, UserRepository, UserStateRepository}
@@ -91,6 +91,7 @@ trait UsersWiring { self: Wiring =>
       database => new MongoAuthExchangeCodeStore(Some(database))), clock)
 
   lazy val authController   = new AuthController(controllerComponents, oauthProviders, userRepository, authExchangeCodes, country, googleTokenValidator, facebookTokenValidator, appleTokenValidator, clock)
+  lazy val ssoController    = new SsoController(controllerComponents, userRepository, authExchangeCodes, country)
   lazy val accountDeletion   = new AccountDeletion(userRepository, userStateRepository)
   lazy val userStateController = new UserStateController(controllerComponents, userStateRepository, accountDeletion, userChangeTimeCache, userRepository, clock)
   lazy val facebookDataDeletionController =

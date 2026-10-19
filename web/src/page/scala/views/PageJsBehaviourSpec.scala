@@ -5675,7 +5675,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // decision: a same-origin target gets a plain link to the exact city; a
   // genuine origin crossing always goes through `/auth/sso/start` FIRST —
   // unconditionally, not gated on a signed-in check, because
-  // `AuthController.ssoStart` is a documented safe no-op when there is
+  // `SsoController.ssoStart` is a documented safe no-op when there is
   // nothing to hand over (it just redirects on through), and the picker has
   // no navbar/`#auth-menu` to read a signed-in flag off in the first place
   // (unlike the repertoire pages the retired `#country-select` lived on).
@@ -5708,7 +5708,7 @@ class PageJsBehaviourSpec extends AnyFlatSpec with Matchers with BeforeAndAfterA
   // inside it would be refused as "not a deployed country". The slug rides
   // BESIDE `to` instead, as its own `city=` parameter — `AuthController`
   // re-validates it against the TARGET country's own cities before trusting
-  // it (see `AuthController.validatedCitySlug`), so the handoff still lands
+  // it (see `SsoController.validatedCitySlug`), so the handoff still lands
   // on the exact city rather than bouncing to a cookie'd one.
   it should "carry the picked city's slug alongside `to`, since the handoff can't carry it inside `to`" in {
     onLanding { page =>
