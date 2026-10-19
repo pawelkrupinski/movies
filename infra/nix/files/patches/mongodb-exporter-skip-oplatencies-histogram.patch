@@ -1,0 +1,15 @@
+--- a/exporter/metrics.go
++++ b/exporter/metrics.go
+@@ -313,8 +313,10 @@
+ 	}
+ 
+ 	for k, val := range m {
+-		// histogram metrics are currently unsupported (PMM-14337)
+-		if k == "histograms" {
++		// histogram metrics are currently unsupported (PMM-14337); MongoDB 8.3 added the
++		// singular `histogram` under opLatencies, whose buckets would otherwise flatten to
++		// one name and label set and be rejected by the registry on every scrape.
++		if k == "histograms" || k == "histogram" {
+ 			continue
+ 		}
+ 		nextPrefix := prefix + k

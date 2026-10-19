@@ -48,11 +48,20 @@ in
 
     package = lib.mkOption {
       type = lib.types.package;
-      default = pkgs.prometheus-mongodb-exporter;
-      defaultText = "pkgs.prometheus-mongodb-exporter";
+      default = pkgs.prometheus-mongodb-exporter.overrideAttrs (old: {
+        patches = (old.patches or [ ]) ++ [ ../../files/patches/mongodb-exporter-skip-oplatencies-histogram.patch ];
+      });
+      defaultText = "pkgs.prometheus-mongodb-exporter, patched";
       description = ''
         Percona's mongodb_exporter, pinned by this flake's nixpkgs lock like everything else here --
         there is no image tag to forget to pin because there is no image.
+
+        PATCHED to skip the `histogram` arrays MongoDB 8.3 added under opLatencies, as 0.51.0 already
+        skips `histograms`: unpatched, every bucket flattened to one series, so each scrape logged 64
+        "was collected before with the same name and label values" errors (~187k journal lines a day,
+        2026-10) and served 0. Upstream fixed it in percona/mongodb_exporter#1356 (unreleased as of
+        v0.53.0); drop the patch once nixpkgs ships a release with it --
+        infra/test/test_mongodb_exporter_patch.sh then fails on a patch that no longer applies.
 
         THE BINARY IS `mongodb_exporter`, WITH AN UNDERSCORE, while the nixpkgs attribute is
         hyphenated. Said out loud because the ExecStart below is the one place that has to spell it

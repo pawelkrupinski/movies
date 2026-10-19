@@ -185,6 +185,16 @@ else
   failed=1
 fi
 
+step "mongodb_exporter patch"
+# The exporter mongo-1 builds, patched, run against MongoDB 8.3's opLatencies histogram shape:
+# fails on a patch that stops applying (a nixpkgs bump) or stops skipping the arrays.
+if out="$(bash test/test_mongodb_exporter_patch.sh 2>&1)"; then
+  echo "$out"
+else
+  echo "$out"
+  failed=1
+fi
+
 step "synthetic probes"
 if out="$(bash test/test_synthetic_probes.sh 2>&1)"; then
   echo "$out" | tail -1
