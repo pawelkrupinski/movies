@@ -386,7 +386,7 @@ private[identity] object Acceptance {
    *  between namesakes is no lean. */
   val LeanMargin = 1.25
   /** EXPERIMENT `experiment/margin-take`: the floor and the margin over its runner-up a candidate below the cut is taken at. */
-  val DominanceFloor = 0.30
+  val DominanceFloor = 0.25
   val DominanceRatio = 5.0
   /** A candidate as a refusal names it: "1365683 Primavera (2025)". */
   def named(scored: Scored): String =
