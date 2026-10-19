@@ -11,7 +11,7 @@ import services.movies.SingleCountryNormalizer.titleNormalizer
 /**
  * The `movies` collection and the derived read-model collections are written with
  * a relaxed `w:1, j:false` write concern: both are cheaply rebuildable (`movies`
- * by the next scrape, the read model by the projector's reconcile), so skipping
+ * by the next scrape, the read model by the read-model sweeper's reconcile), so skipping
  * the journal sync cuts per-write cost on the shared-CPU Mongo without risking
  * unrecoverable data. Mirrors the trade `MongoTaskQueue` already makes.
  *

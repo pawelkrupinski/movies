@@ -237,7 +237,7 @@ object SsoController {
   /** The SSO legs' paths, as the OTHER domain has to spell them.
    *
    *  Literals rather than reverse routes for the same reason as
-   *  [[callbackPath]]: these address a DIFFERENT deployment, whose mount point is
+   *  [[AuthController.callbackPath]]: these address a DIFFERENT deployment, whose mount point is
    *  not ours, and the reverse route would helpfully prepend ours.
    *  `AuthCallbackRelaySpec` pins them against a root-mounted reverse route. */
   val SsoStartPath  = "/auth/sso/start"

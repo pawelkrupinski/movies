@@ -493,7 +493,7 @@ final class MovieChangeStream(
    *  decoded once and fanned out to every listener; a delete (no post-image) is
    *  surfaced by `_id`. A terminal error clears the subscription and schedules a
    *  reopen on a backoff (a later registration re-opens too), and existing listeners
-   *  fall back to their periodic backstop (cache rehydrate / projector reconcile)
+   *  fall back to their periodic backstop (cache rehydrate / sweeper reconcile)
    *  meanwhile. */
   private def ensureWatching(): Unit = changeLock.synchronized {
     if (changeSub.get() == null && !openDeferred.get()) {

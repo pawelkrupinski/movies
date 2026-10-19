@@ -1,7 +1,7 @@
 import XCTest
 @testable import KinowoCore
 
-/// The Swift mirror of Scala `models.ClientVersion` (common/…/ClientSupport.scala):
+/// The Swift mirror of Scala `models.ClientVersion` (web/…/ClientSupport.scala):
 /// the same cases `ClientSupportSpec` pins, so the two gates can't drift.
 final class ClientSupportTests: XCTestCase {
 

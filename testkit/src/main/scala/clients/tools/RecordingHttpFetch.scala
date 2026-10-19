@@ -21,7 +21,7 @@ import java.nio.charset.StandardCharsets
  *  the imdbId, so one file per id is what we want.
  *
  *  The delegate is any `HttpFetch`, not just `RealHttpFetch`: a
- *  residential-proxy chain (`EgressWiring.paidEgressChain`)
+ *  residential-proxy chain (`ProxyChain.paidEgressChain`)
  *  is an `HttpFetch` whose proxy leg fetches through its own client, bypassing
  *  the recorder when recording sits *inside* the chain as the direct fallback.
  *  Wrapping the whole chain instead records the response keyed by the request

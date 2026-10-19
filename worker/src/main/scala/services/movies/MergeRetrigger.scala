@@ -18,10 +18,10 @@ object RetriggerKind {
 }
 
 /** Sink the cache calls after a merge to re-kick the enrichments whose inputs
- *  changed. A narrow port (DIP): the cache (in `common`) stays unaware of the
- *  task queue + freshness store; the worker wires the real
- *  `QueueEnrichmentRetrigger`, tests a capturing fake. Default no-op for the
- *  unit tests + non-worker builds that drive the cache directly. */
+ *  changed. A narrow port (DIP): the cache stays unaware of the task queue +
+ *  freshness store; the wiring binds the real `QueueEnrichmentRetrigger`,
+ *  tests a capturing fake. Default no-op for the unit tests that drive the
+ *  cache directly. */
 trait EnrichmentRetrigger {
   def retrigger(key: CacheKey, record: MovieRecord, kinds: Set[RetriggerKind]): Unit
 }

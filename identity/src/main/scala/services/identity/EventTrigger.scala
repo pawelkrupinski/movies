@@ -7,10 +7,10 @@ import java.util.concurrent.{RejectedExecutionException, ScheduledExecutorServic
 import scala.concurrent.duration._
 
 /**
- * Runs `run` a short while after it is asked to, as events arrive — the identity projection of what moved
- * ([[IdentityProjection.tickChanged]]) and the fill of the gaps the model found ([[LookupFill]]): each request pushes
- * the run to `debounce.quiet` after it, never past `debounce.cap` after the first request it gathers (the read model's
- * change debounce, `MovieChangeStream.Debounce`). What an event moved is acted on within the cap, a burst in one run,
+ * Runs `run` a short while after it is asked to, as events arrive — the identity projection of what moved (the
+ * worker's `adapters.IdentityProjection.tickChanged`) and the fill of the gaps the model found (`adapters.LookupFill`):
+ * each request pushes the run to `debounce.quiet` after it, never past `debounce.cap` after the first request it gathers
+ * (the read model's change debounce, `MovieChangeStream.Debounce`). What an event moved is acted on within the cap, a burst in one run,
  * with no period between.
  *
  * A run that did not settle (a projection refused, failed, a write declined, a film's TMDB details still missing) runs again after

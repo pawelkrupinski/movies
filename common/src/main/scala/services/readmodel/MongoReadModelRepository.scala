@@ -43,7 +43,7 @@ class MongoReadModelRepository(
 ) extends ReadModelReader with ReadModelWriter with Logging {
 
   // Relaxed write concern (w:1, j:false): the read model is a pure projection of
-  // `movies` — every document is re-derived by the projector's reconcile, so a write
+  // `movies` — every document is re-derived by the read-model sweeper's reconcile, so a write
   // lost to a crash is self-healing. Skipping the journal sync cuts per-write cost
   // on the shared-CPU Mongo, which the worker's projection cascade was saturating.
   private val RelaxedWrites = WriteConcern.W1.withJournal(false)

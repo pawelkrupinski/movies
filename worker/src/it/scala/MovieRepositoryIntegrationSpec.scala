@@ -328,7 +328,7 @@ class MovieRepositoryIntegrationSpec extends AnyFlatSpec with Matchers with Befo
   // Resume-token persistence: the shared cursor reopens from the last persisted token
   // (a WORKER RESTART / terminal error) instead of "now", so writes that landed while
   // this process was DOWN are REPLAYED — closing the downtime gap the consumers' periodic
-  // backstops (cache rehydrate / projector reconcile) exist for. Simulated with two repo
+  // backstops (cache rehydrate / sweeper reconcile) exist for. Simulated with two repo
   // instances sharing the token collection: repo1 sees A then "dies"; B and C are written
   // while nothing watches; a fresh repo2 resumes from the token and replays B and C.
   it should "resume the change stream from the persisted token, replaying events missed while down" in {

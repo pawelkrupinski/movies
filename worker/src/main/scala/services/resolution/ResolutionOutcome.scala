@@ -23,9 +23,8 @@ package services.resolution
  *    at a high `miss_unresolved` rate with no hits is one whose keys are churning
  *    (different hints every cycle), not one the policy failed to help.
  *
- * Kept in `common` alongside the cache because the taxonomy is generic; the
- * worker supplies the [[ResolutionOutcomeRecorder]] that turns an outcome into a
- * Prometheus increment, so `common` stays free of any metrics dependency (same
+ * The cache reports each outcome to a [[ResolutionOutcomeRecorder]], which the
+ * wiring binds to a Prometheus counter and the specs to a capturing one (same
  * seam as [[tools.HttpOutcome]] / [[tools.HttpOutcomeRecorder]]).
  */
 object ResolutionOutcome {
@@ -45,9 +44,9 @@ object ResolutionOutcome {
 }
 
 /**
- * Sink for resolution-cache outcomes. The worker binds one of these per
- * (country, source) — baking both labels — onto its Prometheus counter; `common`
- * sees only this narrow interface.
+ * Sink for resolution-cache outcomes. The wiring binds one of these per
+ * (country, source) — baking both labels — onto its Prometheus counter; the
+ * cache sees only this narrow interface.
  */
 trait ResolutionOutcomeRecorder {
   def record(outcome: String): Unit

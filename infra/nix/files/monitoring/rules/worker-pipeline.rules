@@ -411,7 +411,7 @@ groups:
             that film or screening. The WARN line names each one ("skipping undecodable document
             _id=..."), with the exception; the worker diagnostics dashboard ("Documents skipped as
             UNDECODABLE") says whether the worker, the web or both saw it. A wrong-typed field is
-            usually a writer that changed shape: the projector's reconcile rewrites the document
+            usually a writer that changed shape: the read-model sweeper's reconcile rewrites the document
             once the writer is fixed. In `movies` nothing is skipped: every read that meets the
             document FAILS (its film's point read, and the whole corpus scan), and the WARN line is
             that read's failure — fix or remove the document by hand. A change stream that meets

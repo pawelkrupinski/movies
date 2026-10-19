@@ -23,8 +23,8 @@ trait TestWiring extends WorkerWiring {
 
   // Scrape every city in tests, independent of any KINOWO_SCRAPE_CITIES the
   // local/CI env might set, so the recorded fixtures and the coverage spec
-  // always see the full catalogue. (Production already defaults to every city;
-  // this pin just makes the test set immune to a narrowing override.)
+  // always see the full catalogue. (Production defaults to its country's own
+  // cities; the test wiring spans every country's.)
   override def scrapeCities: Set[String] = City.all.map(_.slug).toSet
 
   // Pin a DISABLED Mongo connection. Tests get their movie data from

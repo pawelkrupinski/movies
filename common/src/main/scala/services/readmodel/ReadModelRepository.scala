@@ -110,7 +110,7 @@ trait ReadModelReader {
    *  hydrate. The Mongo store leaves the worker-only fields on the server; the default strips them. */
   def foreachServedScreening(f: CityScreening => Unit): tools.ScanOutcome = foreachScreening(row => f(ServedScreening(row)))
 
-  /** Just the `_id`s of every read-model movie — the projector's reconcile prune
+  /** Just the `_id`s of every read-model movie — the read-model sweeper's reconcile prune
    *  needs only the id set to spot orphaned films, never the full `ResolvedMovie`
    *  payload. Default derives from [[findAllMovies]] (fine for the in-memory
    *  store); the Mongo store projects `{_id}` so the worker's 30-min reconcile

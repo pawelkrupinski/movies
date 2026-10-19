@@ -19,7 +19,7 @@ import scala.util.Try
  * streamId`) so the cursor reopens — after a terminal error, and the big win, after
  * a WORKER RESTART — from where it left off, REPLAYING events that landed while the
  * process was down. That closes the downtime gap the consumers' periodic backstops
- * (cache rehydrate / projector reconcile) exist for.
+ * (cache rehydrate / sweeper reconcile) exist for.
  *
  * One instance per watched collection: `MongoMovieRepository` owns the `"movies"`
  * token, `MongoScreeningsRepository` the `"screenings"` one — a showtime change
@@ -60,7 +60,7 @@ class ChangeStreamResumeToken(streamId: String, database: Option[MongoDatabase],
    *
    *  A position that could not be READ is not "none saved": opened at now, the cursor skips every
    *  change since the last save, which then reaches the consumers only through their backstops
-   *  (cache rehydrate, projector reconcile — hours). So the open is [[ChangeStreamResumeToken.Position.Deferred]]
+   *  (cache rehydrate, sweeper reconcile — hours). So the open is [[ChangeStreamResumeToken.Position.Deferred]]
    *  and the caller retries it on its reopen backoff; only after
    *  [[ChangeStreamResumeToken.MaxDeferredOpens]] deferrals in a row does it open at now — a cursor
    *  that never opens is worse than one that skips — said at WARN, unlike a first-ever open. */

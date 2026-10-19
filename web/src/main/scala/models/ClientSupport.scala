@@ -69,8 +69,8 @@ object ClientSupport {
    * Canonical, deterministic JSON: `{"android":{…},"ios":{…}}`. An ungated
    * platform still appears, with nulls, so a client can tell "no rule" from "I
    * failed to parse the response" — the two must not look alike when the answer
-   * decides whether the app is usable. Hand-built, like [[Catalog.json]]: `common`
-   * has no play-json, and none of these values need escaping (the URLs are
+   * decides whether the app is usable. Hand-built, like [[Catalog.json]], so its
+   * bytes are exactly these; none of the values need escaping (the URLs are
    * validated as https above).
    */
   val json: String = {

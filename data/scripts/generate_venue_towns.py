@@ -7,7 +7,7 @@ along in the generated tuple. The UK's ~840 venues and Poland's ~300 are
 hand-written `case object`s in Cinema.scala with a display name and nothing
 else, and there is nowhere in them for a town to live. This is that place: one
 table, keyed on the display name every other part of the codebase identifies a
-venue by, read by `City.extraPlaces` for both countries.
+venue by, read by `TownRanking.ofVenues` (behind `City.extraPlaces`) for both countries.
 
 Two sources, because the two countries knew their towns in different ways — the
 UK's are harvested from Flicks' addresses, Poland's read off the annotations
@@ -89,7 +89,7 @@ def main() -> int:
         "/** The town each venue of a HAND-WRITTEN roster sits in — the roster fact",
         " *  Germany, Spain and the US carry in their generated rosters, and the UK and",
         " *  Poland, whose venues are hand-written, have to keep beside them. Read by",
-        " *  [[City.extraPlaces]], so `/london/` names Croydon and `/tarnow/`",
+        " *  `TownRanking.ofVenues` (behind `City.extraPlaces`), so `/london/` names Croydon and `/tarnow/`",
         " *  names Bochnia rather than each naming only itself. */",
         "private[models] object VenueTowns {",
         "",
