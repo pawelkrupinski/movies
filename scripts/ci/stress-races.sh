@@ -77,8 +77,8 @@ for i in $(seq 1 "$iterations"); do
     done
     if [ "$iteration_failed" -eq 1 ]; then
         failed_iterations=$((failed_iterations + 1))
-        python3 "$here/flake_verdict.py" failed target/test-reports/unit target/test-reports/it \
-            | tr '\037' '\t' | cut -f2- | awk -v i="$i" '{ print i "\t" $0 }' >> "$out/failures.tsv"
+        python3 "$here/junit_failures.py" target/test-reports/unit target/test-reports/it \
+            | awk -v i="$i" '{ print i "\t" $0 }' >> "$out/failures.tsv"
         mkdir -p "$out/iteration-$i" && cp -R target/test-reports/. "$out/iteration-$i/" 2>/dev/null || true
     fi
     echo "iteration $i/$iterations: $([ "$iteration_failed" -eq 1 ] && echo FAILED || echo ok)"

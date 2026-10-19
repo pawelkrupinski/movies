@@ -107,11 +107,12 @@ export default defineConfig({
   // waiting — navigation, `expect` polling, transitions — not burning CPU, so a
   // mild oversubscription converts that idle into throughput on the WebKit rows,
   // which are the build's long pole. Deliberately mild: the fixture server's JVM
-  // shares those 4 cores, `retries` is 0 against it (below), and `expect` gives
+  // shares those 4 cores, nothing is retried (below), and `expect` gives
   // an assertion only 5s, so contention buys flakes rather than speed past this
   // point. Local runs stay at one worker per core.
   workers: process.env.CI ? '125%' : '100%',
-  retries: IS_LOCAL_FIXTURE ? 0 : 1,
+  // Never 1: a failed test is investigated and fixed, not retried into green (NoTestRerunSpec).
+  retries: 0,
   timeout: 30_000,
   expect: { timeout: 5_000 },
   // Keep the git COMMIT metadata in the report, but never capture the git
@@ -145,7 +146,7 @@ export default defineConfig({
     // reference-playwright-base-url-defaults-to-prod) hits real fixtures
     // instead of a Cloudflare bot challenge on kinowo.net/showtimes.cc.
     extraHTTPHeaders: { 'X-Kinowo-Page-Tests': '1' },
-    trace: 'on-first-retry',
+    trace: 'retain-on-failure',
     // Capture a screenshot on failure so a CI-only break is visible in
     // the uploaded report without re-running locally.
     screenshot: 'only-on-failure',
