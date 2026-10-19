@@ -92,7 +92,7 @@ header of `scripts/hooks/pre-push`. Run it without pushing: `scripts/hooks/pre-p
 ## sbt: `scripts/sbt-warm`
 
 - Run sbt through `scripts/sbt-warm "<command>"`: one kept server per worktree (extras stopped on the next call;
-  stopped by its keeper after 10 idle minutes, `KINOWO_SBT_WARM_IDLE_MINUTES`), a fresh worktree's targets seeded from the newest local main build (a cold 232 s spec
+  stopped by its keeper after 10 idle minutes, `KINOWO_SBT_WARM_IDLE_MINUTES`, never under a running command), a fresh worktree's targets seeded from the newest local main build (a cold 232 s spec
   run becomes ~50 s). Don't mix with a plain `sbt` in the same checkout while the server lives. Details: `test-layers`.
 - **Long-lived servers** (the fixture server, any `runMain` that serves until stopped):
   `scripts/sbt-warm --serve '<command>'` — it keeps the checkout's server (and so its slot) in use until stopped, so

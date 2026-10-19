@@ -39,10 +39,15 @@
 # held) takes no slot; one that finds none takes a slot (waiting for one like any tool) and starts the keeper with it.
 # A keeper that starts without a slot (KINOWO_JVM_SLOTS=0 then, or past the slot deadline) takes one as soon as one is
 # free. The keeper ends -- and its slot is free -- once the checkout has had no server for
-# KINOWO_SBT_WARM_KEEPER_GRACE_SECONDS (60; a server's start or restart falls inside it).
+# KINOWO_SBT_WARM_KEEPER_GRACE_SECONDS (60; a server's start or restart falls inside it) with no call running.
 #
-# IDLE EXIT: the keeper stops the server after $KINOWO_SBT_WARM_IDLE_MINUTES (default 10: an idle server holds its ~5 GB
-# heap) minutes without a call running through this script, or when the checkout is removed.
+# IDLE EXIT: the keeper stops the server after $KINOWO_SBT_WARM_IDLE_MINUTES (default 10) minutes without a call running
+# through this script, freeing its heap and its slot; the next call starts a fresh one (~40 s of JVM start, the compile
+# kept on disk). 10, not 20-30: now that an idle server holds one of 4 slots, every idle minute is a minute another
+# agent's test may queue, and an agent's edit-test loop calls far more often than that. It never stops a server under a
+# running command: every call holds $key.busy's lock SHARED for its life, and the keeper stops the server only holding
+# it EXCLUSIVELY (so a call arriving meanwhile waits for the stop, then starts a fresh server, counted); the last-used
+# mark is also kept fresh by a heartbeat while a command runs. It stops the server when the checkout is removed, too.
 #
 # A plain `sbt -batch` in the same checkout while the server lives would compile into the same target/ — two Zincs over
 # one classes dir delete each other's classes (the pre-push hook steps around a live one). Use this script, or --stop.
@@ -188,6 +193,7 @@ build_digest() { (cd "$root" && cat build.sbt project/*.sbt project/*.scala proj
 # THE KEEPER (--keep, run in the checkout, holding its slot on descriptor 7 and $key.keep.flock on 5): see the header.
 keep() {
   local poll=${KINOWO_SBT_WARM_KEEPER_POLL:-10} grace=${KINOWO_SBT_WARM_KEEPER_GRACE_SECONDS:-60} absent=0 pid="" p
+  local busy="$State/$key.busy"
   log "keeper of $root: pid $$, $(jvm_slot_riding && echo "holding JVM slot ${KINOWO_JVM_SLOT_HELD##*/}" || echo "no JVM slot yet")"
   while :; do
     if [ ! -d "$root" ]; then
@@ -198,7 +204,7 @@ keep() {
     if p=$(server_pid "$root"); then
       pid=$p; absent=0
       [ "$(cat "$State/$key.pid" 2>/dev/null)" = "$pid" ] || echo "$pid" > "$State/$key.pid"
-      if [ -n "$(find "$State/$key.used" -mmin +"$IdleMinutes" 2>/dev/null)" ]; then
+      if [ -n "$(find "$State/$key.used" -mmin +"$IdleMinutes" 2>/dev/null)" ] && lock_take 4 "$busy"; then
         log "server pid $pid idle for $IdleMinutes minutes: stopping it"
         kill "$pid" 2>/dev/null
         for _ in $(seq 1 30); do [ -z "$(server_pids "$root")" ] && break; sleep 1; done
@@ -207,7 +213,7 @@ keep() {
       fi
     else
       absent=$(_jvm_waited "$absent" "$poll")
-      [ "$absent" -ge "$grace" ] && { log "no server of $root for ${absent}s: done"; exit 0; }
+      [ "$absent" -ge "$grace" ] && lock_take 4 "$busy" && { log "no server of $root for ${absent}s: done"; exit 0; }
     fi
     sleep "$poll"
   done
@@ -241,7 +247,12 @@ fi
 # not. Calls reaching a live server take no lock.
 LockFile="$State/$key.flock"
 KeepFile="$State/$key.keep.flock"
-
+# IN USE: this call holds $key.busy shared until it ends (descriptor 9), so the keeper never stops the server under it
+exec 9>> "$State/$key.busy"
+if ! python3 -I -c 'import fcntl; fcntl.flock(9, fcntl.LOCK_SH | fcntl.LOCK_NB)' 2> /dev/null; then
+  log "the keeper of $root is stopping its idle server: waiting for it"
+  python3 -I -c 'import fcntl; fcntl.flock(9, fcntl.LOCK_SH)'
+fi
 lock_start() {
   local waited=0
   until jvm_lock "$LockFile"; do

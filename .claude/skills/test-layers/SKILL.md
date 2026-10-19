@@ -125,7 +125,8 @@ checkout (`sbt --client`), and seeds a fresh worktree's `project/target` and `*/
 from the newest local build of a main commit (another worktree's, the root checkout's, or an
 identity tool's ref tree; APFS clones), so the first compile is incremental. The server holds one
 of the machine's JVM slots for its life (its keeper's; commands in it take none), and its keeper
-stops it when the worktree is removed or after 10 idle minutes (`KINOWO_SBT_WARM_IDLE_MINUTES`);
+stops it when the worktree is removed or after 10 idle minutes (`KINOWO_SBT_WARM_IDLE_MINUTES`),
+never under a running command;
 `--status`, `--stop`, `--reap`, `--seed`. The pre-push hook runs its sbt check through the kept
 server too (3–5 s instead of a ~55 s sbt JVM). Don't mix it with a plain `sbt` in the same
 checkout while the server lives: two compilers over one target/ delete each other's classes.

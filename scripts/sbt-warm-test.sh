@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # scripts/sbt-warm: a fresh checkout is seeded from the newest local build of a main commit (never a branch's, never
-# its own), the commands reach this checkout's server, a removed checkout's server is stopped, and a live server holds one JVM
-# slot through its keeper. sbt is a stub.
+# its own), the commands reach this checkout's server, a removed checkout's server is stopped, a live server holds one JVM
+# slot through its keeper, and an idle one is stopped by it, never under a running command. sbt is a stub.
 # Run: bash scripts/sbt-warm-test.sh
 set -uo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -288,5 +288,26 @@ kill "$server"; wait "$server" 2>/dev/null
 for _ in $(seq 1 50); do kill -0 "${keeper:-0}" 2>/dev/null || break; sleep 0.1; done
 check "...and once the server is gone, its keeper ends and the slot is free" "gone free" \
   "$(kill -0 "${keeper:-0}" 2>/dev/null && echo alive || echo gone) $(spec_lock_state "$one_slot")"
+
+# IDLE EXIT: the keeper stops a server idle past KINOWO_SBT_WARM_IDLE_MINUTES, freeing its heap and slot -- but never
+# under a running command, even one whose last-used mark has aged past the timeout (the heartbeat slowed here to 100 s)
+scratch_git "$repo" worktree add -q -b idler "$scratch/idler" origin/main
+idler_key="$KINOWO_SBT_WARM_STATE/$(printf '%s' "$scratch/idler" | shasum | cut -c1-12)"
+fake_server "$scratch/idler"; server=$!; await_server "$server"
+rm -f "$scratch/busy"
+(cd "$scratch/idler" && KINOWO_SBT_WARM_HEARTBEAT_SECONDS=100 STUB_AGE_USED="$idler_key.used" "$REPO_ROOT/scripts/sbt-warm" testUnit >/dev/null 2>&1)
+keeper=$(cat "$idler_key.keep.flock" 2>/dev/null)
+check "a server whose last-used mark aged past the idle timeout under a running command is not stopped" "idle running" \
+  "$(cat "$scratch/busy" 2>/dev/null) $(kill -0 "$server" 2>/dev/null && echo running || echo stopped)"
+touch -t 202001010000 "$idler_key.used"
+for _ in $(seq 1 50); do kill -0 "$server" 2>/dev/null || break; sleep 0.1; done
+wait "$server" 2>/dev/null
+for _ in $(seq 1 50); do kill -0 "${keeper:-0}" 2>/dev/null || break; sleep 0.1; done
+check "...an idle one is: stopped by its keeper, which ends, its slot free" "stopped gone" \
+  "$(kill -0 "$server" 2>/dev/null && echo running || echo stopped) $(kill -0 "${keeper:-0}" 2>/dev/null && echo alive || echo gone)"
+: > "$scratch/sbt-calls"
+(cd "$scratch/idler" && "$REPO_ROOT/scripts/sbt-warm" compile >/dev/null 2>&1)
+check "...and the next call goes ahead with a fresh server and keeper" "1 alive" \
+  "$(grep -c "$scratch/idler|--client compile" "$scratch/sbt-calls") $(kill -0 "$(cat "$idler_key.keep.flock" 2>/dev/null || echo 0)" 2>/dev/null && echo alive || echo gone)"
 
 spec_summary
