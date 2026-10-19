@@ -13,7 +13,7 @@ class TrackedLookupsSpec extends AnyFlatSpec with Matchers {
 
   /** A store: every question reads the key `q:<sortKey>`, on whatever thread asks, and answers
    *  what `answers` says now. */
-  private final class Store(reads: ObservationReads) extends IdentityLookups {
+  private class Store(reads: ObservationReads) extends IdentityLookups {
     @volatile var answers: Map[CandidateQuery, Seq[Hit]] = Map.empty
     val askedOn = new ConcurrentLinkedQueue[(CandidateQuery, String)]()
     def hasDetail(listing: Listing): Boolean = false
@@ -84,5 +84,20 @@ class TrackedLookupsSpec extends AnyFlatSpec with Matchers {
     line should include ("film records 3 in ")
     line should include ("detail pages 1 in ")
     line should include ("store batches ")
+  }
+
+  // TrackedLookups forwarded the trait by hand and dropped the release day and how the source numbers its films: the
+  // trait's defaults stood in, a day read off the record and TMDB numbering, whatever the wrapped source said.
+  "the tracked lookups" should "answer every question it does not track as the source it wraps does" in {
+    val reads = new ObservationReads
+    val day   = java.time.LocalDate.of(2026, 12, 8)
+    val source = new Store(reads) {
+      override def releaseDay(tmdbId: Int): Answer[Option[java.time.LocalDate]] = if (tmdbId == 7) Answer.Known(Some(day)) else Answer.Unknown
+      override def numbersFilmsByTmdbId: Boolean = false
+    }
+    val lookups = new TrackedLookups(source, reads)
+    lookups.releaseDay(7) shouldBe Answer.Known(Some(day))
+    lookups.releaseDay(8) shouldBe Answer.Unknown
+    lookups.numbersFilmsByTmdbId shouldBe false
   }
 }
