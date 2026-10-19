@@ -8,6 +8,7 @@
           "kind" : "categorical",
           "categories" : {
             "decoration" : -4.7,
+            "head" : 4.7,
             "inner" : -6.0
           },
           "bins" : [ ],
