@@ -79,7 +79,7 @@ echo "java \$PWD \$*" >> "$work/calls"
 out="" ref="" serve=""
 while [ "\$#" -gt 0 ]; do case "\$1" in --out) out=\$2 ;; --ref) ref=\$2 ;; --serve) serve=\$2 ;; esac; shift; done
 # --serve: a kept JVM, answering each request on its socket (the batch's own arguments) until it is stopped
-[ -z "\$serve" ] || [ -z "\${STUB_SERVE_HANG:-}" ] || exec sleep 60   # alive, never listening
+[ -z "\$serve" ] || [ -z "\${STUB_SERVE_HANG:-}" ] || { echo \$\$ >> "\$STUB_SERVE_HANG"; exec perl -e 'sleep 86400' scripts.IdentitySlice; } # alive, never listening, until killed -- a JVM by its args, as the tool's is_kept checks
 [ -z "\$serve" ] || exec python3 -I "$work/serve.py" "\$serve" "$work/calls" scripts.IdentitySlice   # a kept JVM's command line names its main class
 [ -n "\$out" ] || { echo "explained"; exit 0; }
 h='selector\tkey\tvenue\trawTitle\tfilm\ttitle\tbasis\tconfidence\tmodel\trules\tblocker\trunnerUp\tverdict\texplanation'
@@ -117,7 +117,7 @@ while True:
 PY
 chmod +x "$work/bin/sbt" "$work/bin/java"
 
-slice() { STUB="$work" PATH="$work/bin:$PATH" KINOWO_IDENTITY_CACHE="$cache" KINOWO_IDENTITY_SLICE_KEEPER_POLL=0.1 "$repo/scripts/identity-slice" "$@" 2> "$work/err"; }
+slice() { STUB="$work" PATH="$work/bin:$PATH" KINOWO_IDENTITY_CACHE="$cache" KINOWO_IDENTITY_SLICE_KEEPER_POLL=0.1 spec_bounded "$repo/scripts/identity-slice" "$@" 2> "$work/err"; }
 
 out=$(slice de --recording 777 --key 'Kino|Lalka' --ref HEAD~1 --ref HEAD)
 check "both refs are laid out once in the cache" "2" "$(find "$cache/refs" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')"
@@ -273,11 +273,12 @@ check "an edit's kept JVM stops the one of the checkout's older state" "1 1" \
   "$(grep -c 'stopped the kept JVM of an older state' "$work/err") $(find "$cache/serve" -name '*.pid' | wc -l | tr -d ' ')"
 rm -rf "$repo/identity/src/main"
 STUB="$work" PATH="$work/bin:$PATH" KINOWO_IDENTITY_CACHE="$cache" "$repo/scripts/identity-slice" --stop-served 2> /dev/null
-started=$SECONDS
-code=$(STUB_SERVE_HANG=1 KINOWO_IDENTITY_SLICE_START_SECONDS=2 slice de --recording 777 --key 'Kino|Lalka' --ref HEAD~1 --serve > /dev/null; echo $?)
-check "a kept JVM that never listens is stopped at the deadline, and the call fails" "1 1 0" \
-  "$code $(grep -c 'did not listen within 2s' "$work/err") $(find "$cache/serve" -name '*.pid' | wc -l | tr -d ' ')"
-check "...within it" "yes" "$([ $(( SECONDS - started )) -lt 20 ] && echo yes || echo "no: $(( SECONDS - started ))s")"
+# The stub JVM never listens and never ends on its own: the call fails only by its start deadline, and stops it --
+# proven so, never by elapsed wall time (shell-spec.sh's HUNG STUBS).
+: > "$work/serve-hung"
+code=$(STUB_SERVE_HANG="$work/serve-hung" KINOWO_IDENTITY_SLICE_START_SECONDS=2 slice de --recording 777 --key 'Kino|Lalka' --ref HEAD~1 --serve > /dev/null; echo $?)
+check "a kept JVM that never listens is stopped at the deadline, and the call fails" "1 1 0 0" \
+  "$code $(grep -c 'did not listen within 2s' "$work/err") $(find "$cache/serve" -name '*.pid' | wc -l | tr -d ' ') $(spec_still_running "$work/serve-hung")"
 
 # ONE JVM, ONE SLOT: a kept JVM holds one of the machine's JVM slots (jvm-gate.sh) for its whole life, idle or not,
 # through a keeper beside it, as sbt-warm's kept server does -- uncounted, they were up to 6 GB each the slots never saw.
@@ -322,11 +323,12 @@ kill "$jvm"; wait "$jvm" 2>/dev/null
 check "...and ends once it is gone" "gone" "$(gone_within "$keeper" && echo gone || echo alive)"
 
 # --faithfulness RUN: the leg's artifact and log are read through a bounded gh, and a gh that hangs fails the call
-printf '#!/usr/bin/env bash\nsleep 20\n' > "$work/bin/gh"; chmod +x "$work/bin/gh"
-started=$SECONDS
+# (the stub never answers: the call fails only by the download's bound, 124, leaving no gh running -- HUNG STUBS)
+printf '#!/usr/bin/env bash\necho $$ >> "%s"\nexec sleep 86400\n' "$work/gh-hung" > "$work/bin/gh"; chmod +x "$work/bin/gh"; : > "$work/gh-hung"
 code=$(GH_DOWNLOAD_ATTEMPTS=1 KINOWO_IDENTITY_DOWNLOAD_TIMEOUT=1 slice de --faithfulness 123456789 > /dev/null; echo $?)
 check "--faithfulness RUN with a gh that hangs fails, saying so" "1 1" "$code $(grep -c 'could not download run 123456789' "$work/err")"
-check "...within the timeout" "yes" "$([ $(( SECONDS - started )) -lt 10 ] && echo yes || echo "no: $(( SECONDS - started ))s")"
+check "...cut off by its bound, leaving no gh running" "1 0" \
+  "$(grep -c 'failed after 1 attempt(s) (exit 124)' "$work/err") $(spec_still_running "$work/gh-hung")"
 # a throttled artifact read is asked again (gh_download), as every other download is: the first answers 502
 cat > "$work/bin/gh" <<'STUB'
 #!/usr/bin/env bash

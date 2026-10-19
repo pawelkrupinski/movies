@@ -58,7 +58,7 @@ echo "listings at \$ref"
 STUB
 chmod +x "$work/bin/sbt" "$work/bin/java"
 
-replay() { STUB="$work" PATH="$work/bin:$PATH" KINOWO_IDENTITY_CACHE="$cache" "$repo/scripts/venue-replay" "$@" 2> "$work/err"; }
+replay() { STUB="$work" PATH="$work/bin:$PATH" KINOWO_IDENTITY_CACHE="$cache" spec_bounded "$repo/scripts/venue-replay" "$@" 2> "$work/err"; }
 
 out=$(replay pl "ziemi rybnickiej" --recording 777 --title trzy --ref HEAD~1 --ref HEAD)
 check "both refs are laid out once in the cache" "2" "$(find "$cache/refs" -mindepth 1 -maxdepth 1 -type d | wc -l | tr -d ' ')"
@@ -83,13 +83,14 @@ rm -f "$work/calls"
 replay pl kino --recording 777 --prod > /dev/null
 check "--prod with no local mirror is skipped, by name" "1 0" "$(grep -c 'no local prod mirror for pl' "$work/err") $(grep -c -- '--prod' "$work/calls")"
 
-# a mirror that is there but whose mongosh hangs: the read is cut off at its bound, and the tool fails saying so
+# a mirror that is there but whose mongosh hangs: the read is cut off at its bound, and the tool fails saying so. The
+# stub never answers, so the tool gets past it only by that bound, leaving none running (shell-spec.sh's HUNG STUBS).
 printf '#!/usr/bin/env bash\nexit 0\n' > "$repo/scripts/local-mirror/freshness"
-printf '#!/usr/bin/env bash\nexec sleep 30\n' > "$work/bin/mongosh"; chmod +x "$work/bin/mongosh"
-started=$SECONDS
+printf '#!/usr/bin/env bash\necho $$ >> "%s"\nexec sleep 86400\n' "$work/mongosh-hung" > "$work/bin/mongosh"; chmod +x "$work/bin/mongosh"
+: > "$work/mongosh-hung"
 code=$(KINOWO_VENUE_REPLAY_MONGOSH_SECONDS=1 replay pl kino --recording 777 --prod > /dev/null; echo $?)
 check "a mongosh that hangs is cut off at its bound, and the tool fails" "1 1" "$code $(grep -c 'mongosh read failed or took over 1s' "$work/err")"
-check "...within it" "yes" "$([ $(( SECONDS - started )) -lt 15 ] && echo yes || echo "no: $(( SECONDS - started ))s")"
+check "...leaving no mongosh running" "0" "$(spec_still_running "$work/mongosh-hung")"
 printf '#!/usr/bin/env bash\necho "no mirror" >&2\nexit 2\n' > "$repo/scripts/local-mirror/freshness"
 rm -f "$work/bin/mongosh"
 

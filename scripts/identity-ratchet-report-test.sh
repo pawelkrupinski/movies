@@ -37,7 +37,7 @@ echo "$*" >> "$STUB/calls"
 case "$1 $2" in
   "run download") run=$3; while [ "$#" -gt 0 ]; do case "$1" in --dir) dir="$2" ;; esac; shift; done
                   [ -z "${GH_DOWN:-}" ] || { echo "HTTP 502: Bad Gateway" >&2; exit 1; }
-                  [ -z "${GH_HANGS:-}" ] || sleep 20
+                  [ -z "${GH_HANGS:-}" ] || { echo $$ >> "$GH_HANGS"; exec sleep 86400; } # never answers: blocks until killed
                   [ -d "$STUB/artifacts/$run" ] || { echo "no artifact matches any of the names or patterns provided" >&2; exit 1; }
                   cp "$STUB/artifacts/$run/"* "$dir/" ;;
   "pr view")      echo '{"body":"The weekly recapture (identity-capture.yml, run 111111).\n\nTo land: judge"}' ;;
@@ -48,7 +48,7 @@ esac
 STUB
 chmod +x "$work/bin/gh"
 
-report() { STUB="$work" KINOWO_IDENTITY_CACHE="$work/cache" PATH="$work/bin:$PATH" python3 -I "$REPO_ROOT/scripts/identity-ratchet-report" "$@" > "$work/out" 2>&1; echo $?; }
+report() { STUB="$work" KINOWO_IDENTITY_CACHE="$work/cache" PATH="$work/bin:$PATH" spec_bounded python3 -I "$REPO_ROOT/scripts/identity-ratchet-report" "$@" > "$work/out" 2>&1; echo $?; }
 
 check "a run's artifact is printed" "0" "$(report 111111)"
 check "...counting every status" "1" "$(grep -c '^findings: WRONG 1, UNJUDGED 1, RIGHT 1$' "$work/out")"
@@ -74,9 +74,11 @@ check "a download that fails is not read as an absent artifact" "1 0" "$(GH_DOWN
 check "...it says it could not download, and keeps no findings" "1 no" \
   "$(grep -c "could not download run 333333's identity-ratchet artifact: HTTP 502" "$work/out") \
 $([ -e "$work/cache/ratchet/333333/ratchet-takes.tsv" ] && echo yes || echo no)"
-started=$SECONDS
-check "a gh that hangs is cut off, and fails" "1" "$(GH_HANGS=1 KINOWO_IDENTITY_DOWNLOAD_TIMEOUT=1 report 444444)"
-check "...within its timeout" "yes" "$([ $(( SECONDS - started )) -lt 10 ] && echo yes || echo "no: $(( SECONDS - started ))s")"
+# The stub never answers: the report gets past it only by its timeout cutting gh off -- said, and no gh left running
+# prove that, never elapsed wall time (shell-spec.sh's HUNG STUBS).
+: > "$work/hung"
+check "a gh that hangs is cut off, and fails" "1" "$(GH_HANGS="$work/hung" KINOWO_IDENTITY_DOWNLOAD_TIMEOUT=1 report 444444)"
+check "...saying it timed out, leaving no gh running" "1 0" "$(grep -c 'timed out after 1s' "$work/out") $(spec_still_running "$work/hung")"
 check "--help prints the usage" "0" "$(report --help)"
 check "...naming the sources" "1" "$(grep -c 'run id | PR number' "$work/out")"
 check "an unknown source is a usage error" "2" "$(report nonsense)"

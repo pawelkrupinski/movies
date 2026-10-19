@@ -48,7 +48,7 @@ scratch_git "$repo" add -A && scratch_git "$repo" commit -qm "the judgements, on
 echo "labels-here" > "$repo/test/resources/fixtures/identity-judgements.tsv"
 
 tools() {
-  KINOWO_JVM_GATE_FOLLOW_MAIN=0 STUB="$work" PATH="$work/bin:$PATH" KINOWO_IDENTITY_CACHE="$work/cache" GH_DOWNLOAD_BACKOFF=0 bash -c \
+  KINOWO_JVM_GATE_FOLLOW_MAIN=0 STUB="$work" PATH="$work/bin:$PATH" KINOWO_IDENTITY_CACHE="$work/cache" GH_DOWNLOAD_BACKOFF=0 spec_bounded bash -c \
     '. "$1"; IDENTITY_REPO="$2"; shift 2; "$@"' _ "$REPO_ROOT/scripts/identity-tools.sh" "$repo" "$@" 2> "$work/err"
 }
 
@@ -108,10 +108,11 @@ esac
 STUB
 check "a run whose artifacts cannot be read fails, never falling back to an older one" "1 1" \
   "$(tools identity_newest_recording uk > /dev/null; echo $?) $(grep -c 'could not read recording 300' "$work/err")"
-printf '#!/usr/bin/env bash\nsleep 20\n' > "$work/bin/gh"
-started=$SECONDS
-check "a gh that hangs is cut off, and fails" "1" "$(KINOWO_IDENTITY_GH_TIMEOUT=1 tools identity_newest_recording uk > /dev/null; echo $?)"
-check "...within its timeout" "yes" "$([ $(( SECONDS - started )) -lt 10 ] && echo yes || echo "no: $(( SECONDS - started ))s")"
+# (the stub never answers: the read fails only by its bound, leaving no gh running -- shell-spec.sh's HUNG STUBS)
+printf '#!/usr/bin/env bash\necho $$ >> "%s"\nexec sleep 86400\n' "$work/gh-hung" > "$work/bin/gh"; : > "$work/gh-hung"
+check "a gh that hangs is cut off, and fails, saying so" "1 1" \
+  "$(KINOWO_IDENTITY_GH_TIMEOUT=1 tools identity_newest_recording uk > /dev/null; echo $?) $(grep -c 'could not list .*(gh failed or timed out)' "$work/err")"
+check "...leaving no gh running" "0" "$(spec_still_running "$work/gh-hung")"
 
 # identity_recording: the fetch (a stub of scripts/identity-fetch-recording.sh) lays the corpus out last, as the real one does
 mkdir -p "$repo/scripts"
@@ -207,9 +208,10 @@ check "a run's capture that cannot be downloaded fails" "1" "$(tools identity_ca
 # first user, rather than in a self-test of its own).
 printf '\033[36m▸\033[0m tool-conventions.sh\n'
 conventions="$REPO_ROOT/scripts/tool-conventions.sh"
-started=$SECONDS
-check "bounded ends a command that outlasts it, 124" "124" "$(bash -c '. "$1"; bounded 1 sleep 20' _ "$conventions"; echo $?)"
-check "...within its bound" "yes" "$([ $(( SECONDS - started )) -lt 8 ] && echo yes || echo "no: $(( SECONDS - started ))s")"
+# a command that never ends on its own, so bounded returns only by its bound -- reported from inside the outer bound,
+# whose own 124 would otherwise look the same (shell-spec.sh's HUNG STUBS)
+check "bounded ends a command that outlasts it, 124" "inner 124" \
+  "$(spec_bounded bash -c '. "$1"; bounded 1 sleep 86400; echo "inner $?"' _ "$conventions")"
 # stock macOS: no timeout(1) on the PATH, only perl
 mkdir -p "$work/bare"
 for c in perl sleep bash; do ln -sf "$(command -v "$c")" "$work/bare/$c"; done
