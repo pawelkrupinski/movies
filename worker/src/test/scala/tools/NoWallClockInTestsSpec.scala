@@ -32,6 +32,10 @@ import java.time.{LocalDate, ZoneOffset}
  *     This rule reads today's date itself, deliberately: a literal already in the past can
  *     only stay past, so the verdict can go from failing to passing over time, never back.
  *
+ * Rule 5 holds production code to the same: main sources read the time — wall or monotonic — only at a
+ * composition root (`Wiring`, `WorkerWiring`, `WorkerMain`, a tool's `main`), which hands its `clock` and
+ * `stopwatch` down; every other class takes them as parameters.
+ *
  * Runnable programs under the test trees (`def main` — backfills, recorders, probes) talk to the
  * live world, so rules 1–2 do not fit them; rule 4 holds them instead: a program reads the wall
  * clock through ONE `Clock.systemUTC()`, built where it is wired and handed to everything that
@@ -236,6 +240,117 @@ class NoWallClockInTestsSpec extends AnyFlatSpec with Matchers {
   it should "keep every allowlisted parameter still defaulting to the wall clock" in {
     val live = mainClockDefaults.map(_._1).toSet
     (MainDefaultAllowlist.keySet -- live) shouldBe empty
+  }
+
+  // ── rule 5 ─────────────────────────────────────────────────────────────────
+  //
+  // A class that reads the process's time itself — `Instant.now()` stamping a Mongo row, a throttle on
+  // `System.currentTimeMillis()`, `Stopwatch.System` reached for in place of a passed stopwatch — is one a spec
+  // cannot pin and a replay cannot freeze: the screenings and slots stores stamped `updatedAt` that way until
+  // 2026-10-20, so every it/ spec over them had to build its rows relative to the real clock. Production reads
+  // the time only where it is wired, and passes it down.
+
+  private val CompositionRoot = "a composition root: reads the process's clock and stopwatch once and hands them down"
+  private val WaitPrimitive   =
+    "a blocking wait's deadline (Object.wait / Thread.sleep): it must be read on the real time the wait blocks on, so a " +
+      "passed stopwatch a spec steps would only desynchronise the two"
+
+  /** Main-source file → why it may read the process's time directly. */
+  private val MainTimeSources: Map[String, String] = Map(
+    "web/src/main/scala/modules/Wiring.scala"            -> CompositionRoot,
+    "worker/src/main/scala/modules/WorkerWiring.scala"   -> CompositionRoot,
+    "worker/src/main/scala/modules/WorkerMain.scala"     -> CompositionRoot,
+    "common/src/main/scala/tools/Stopwatch.scala"        -> "defines Stopwatch.System, the process's monotonic source",
+    "common/src/main/scala/models/VenueClock.scala"      -> "defines VenueClock.system, a launcher's venue clock over Clock.systemUTC()",
+    "worker/src/main/scala/tools/ThreadCpuClock.scala"   -> "a time source itself: thread CPU time, the monotonic clock where that is unsupported",
+    "scrapers/src/main/scala/services/cinemas/CinemaEgress.scala" ->
+      "CinemaEgress.diagnostic: the catalog's diagnostic door, which the identity tools compile into older refs, so it takes no stopwatch",
+    "scrapers/src/main/scala/tools/ParallelDetailFetch.scala" ->
+      ("FetchClock.System: a fetch timeout's deadline, read on the time its blocking get waits on (a spec swaps both through " +
+        "`timed`), and reached from every client of that same diagnostic door"),
+    "worker/src/main/scala/services/tasks/TaskWorker.scala"         -> WaitPrimitive,
+    "worker/src/main/scala/services/readmodel/ReadModelSweeper.scala" -> WaitPrimitive
+  )
+
+  /** A read of the process's time in production code: the wall clock's, or the monotonic one's. */
+  private val ProcessTime = """System\.nanoTime\(|\bStopwatch\.System\b|\bVenueClock\.system\b|\bClock\.system\(""".r
+
+  private[tools] def processTimeReads(line: String): Seq[Int] =
+    (wallClockReads(line) ++ ProcessTime.findAllMatchIn(line).map(_.start)).distinct
+
+  /** The companion's `Stopwatch.start()` / `timed` / `total()`: [[Stopwatch.System]] by another name. */
+  private val SystemStopwatchHelper = """\bStopwatch\.(?:start|timed|total)\b""".r
+
+  /** Main-source files still timing work on the companion's helpers rather than a passed stopwatch — the backlog
+   *  this rule froze on 2026-10-20 (it only shrinks). The identity resolver's (AgreementStage, IncrementalResolver,
+   *  ObservationReads) change the resolver closure, which re-resolves every worker on deploy (batch them); the scrape
+   *  decorators sit behind the catalog's diagnostic door. */
+  private val SystemStopwatchBacklog: Set[String] = Set(
+    "common/src/main/scala/tools/RetryWithBackoff.scala",
+    "common/src/main/scala/tools/MonitoringHttpFetch.scala",
+    "identity/src/main/scala/services/identity/ObservationReads.scala",
+    "identity/src/main/scala/services/identity/IncrementalResolver.scala",
+    "identity/src/main/scala/services/identity/agreement/AgreementStage.scala",
+    "scrapers/src/main/scala/services/cinemas/common/CinemaScrapeRunner.scala",
+    "scrapers/src/main/scala/services/cinemas/common/AdaptiveTimeoutScraper.scala",
+    "scrapers/src/main/scala/services/cinemas/common/UptimeRecordingScraper.scala",
+    "scrapers/src/main/scala/services/cinemas/common/SourceFallbackScraper.scala",
+    "worker/src/main/scala/tools/AdaptiveParallel.scala",
+    "worker/src/main/scala/services/tasks/ScrapeCinemaHandler.scala",
+    "worker/src/main/scala/services/tasks/TaskWorker.scala",
+    "worker/src/main/scala/services/identity/adapters/IdentityProjection.scala",
+    "worker/src/main/scala/services/identity/adapters/IdentityModelService.scala",
+    "worker/src/main/scala/services/readmodel/ReadModelProjector.scala",
+    "worker/src/main/scala/services/movies/CaffeineMovieCache.scala",
+    "worker/src/main/scala/services/enrichment/CacheRefresher.scala",
+    "worker/src/main/scala/services/enrichment/ImdbRatings.scala"
+  )
+
+  private lazy val mainFiles: Seq[Path] = scalaFiles(ScalaSourceScan.MainRoots)
+
+  private def offendingLines(path: Path, reads: String => Seq[Int]): Seq[String] =
+    read(path).linesIterator.zipWithIndex.collect {
+      case (line, index) if reads(code(line)).nonEmpty => s"$path:${index + 1}: ${line.trim}"
+    }.toSeq
+
+  "the production time matcher" should "see every way of reading the process's time, and not a passed clock's" in {
+    Seq("val at = Instant.now()", "val t0 = System.nanoTime()", "if (System.currentTimeMillis() - last > 5000L)",
+      "new LogThrottle(interval, Stopwatch.System)", "val today = VenueClock.system.todayInPoland",
+      "val zoned = Clock.system(zone)", "val clock = Clock.systemUTC()", "val at = Instant.now")
+      .foreach(line => withClue(line)(processTimeReads(line) should have size 1))
+    Seq("val at = clock.instant()", "val started = stopwatch.start()", "LocalDate.now(clock)", "venueClock.todayInPoland")
+      .foreach(line => withClue(line)(processTimeReads(line) shouldBe empty))
+    SystemStopwatchHelper.findFirstIn("val handled = tools.Stopwatch.timed(Try(h.handle(task)))") shouldBe defined
+    SystemStopwatchHelper.findFirstIn("val handled = stopwatch.timed(Try(h.handle(task)))") shouldBe None
+  }
+
+  "Main sources" should "read the process's time only at a composition root, which passes its clock and stopwatch down" in {
+    val offenders = mainFiles.filterNot(p => MainTimeSources.contains(p.toString)).flatMap { path =>
+      if (ScalaSourceScan.definesMain(read(path))) programOffenders(path.toString, read(path))
+      else offendingLines(path, processTimeReads)
+    }
+    withClue("These production lines read the process's time themselves. Take a `clock: java.time.Clock` or a " +
+      "`stopwatch: tools.Stopwatch` parameter, passed from the composition root (Wiring / WorkerWiring), or name the " +
+      "file in MainTimeSources with why it cannot:\n" + offenders.mkString("\n") + "\n") {
+      offenders shouldBe empty
+    }
+  }
+
+  it should "time work on a passed stopwatch, not the companion's helpers (the backlog only shrinks)" in {
+    val users = mainFiles.filter(p => offendingLines(p, line => SystemStopwatchHelper.findAllMatchIn(line).map(_.start).toSeq).nonEmpty)
+      .map(_.toString).filterNot(_.endsWith("tools/Stopwatch.scala")).toSet
+    withClue("New users of Stopwatch.start()/timed/total() — take the wiring's `stopwatch` and call it instead:\n")(
+      (users -- SystemStopwatchBacklog).toSeq.sorted shouldBe empty)
+    withClue("No longer using the companion's helpers — drop from SystemStopwatchBacklog:\n")(
+      (SystemStopwatchBacklog -- users).toSeq.sorted shouldBe empty)
+  }
+
+  it should "keep every MainTimeSources entry pointing at a file that still reads the time" in {
+    val stale = MainTimeSources.keys.toSeq.sorted.filterNot { file =>
+      val path = Paths.get(file)
+      Files.exists(path) && offendingLines(path, processTimeReads).nonEmpty
+    }
+    withClue("Listed in MainTimeSources but no longer reading the time — drop the entry:\n" + stale.mkString("\n") + "\n")(stale shouldBe empty)
   }
 
   // ── rule 2 ─────────────────────────────────────────────────────────────────

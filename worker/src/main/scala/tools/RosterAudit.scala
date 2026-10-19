@@ -45,14 +45,16 @@ object RosterAudit {
 
   def main(args: Array[String]): Unit = {
     val reportFile = reportPath(args.toSeq).fold(why => { System.err.println(s"RosterAudit: $why"); sys.exit(2) }, identity)
-    val clock = java.time.Clock.systemUTC()   // the tool's composition root: its one clock, handed down
+    val clock      = java.time.Clock.systemUTC()   // the tool's composition root: its one clock, handed down
+    val venueClock = new models.VenueClock(clock)
+    val stopwatch  = Stopwatch.System
     // Before the ~170 direct reads below: the chain lists that follow them tunnel through
     // the residential proxy, and the JDK reads this once — see ProxyTunnelAuthentication.
     ProxyTunnelAuthentication.BasicAllowed.applyToJvm()
     IssuerCertificateFetching.Enabled.applyToJvm()
     val process = settings.ProcessConfiguration.resolve()
     val http    = new RealHttpFetch()
-    val catalog = new CinemaScraperCatalog(http, models.VenueClock.system, clock)
+    val catalog = new CinemaScraperCatalog(http, venueClock, clock)
     val venues  = RosterSourceReader.venuesOf(Country.Poland.cities, city => catalog.byCity.getOrElse(city, Nil))
     println(s"RosterAudit: ${venues.size} Polish venue source pages to read")
 
@@ -63,10 +65,10 @@ object RosterAudit {
       case (venue, Failure(e))       => venue -> SourceReading.Unreachable(s"gave up: ${e.getMessage}")
     }
 
-    val today       = models.VenueClock.system.todayInPoland
+    val today       = venueClock.todayInPoland
     val chainVenues = RosterSourceReader.chainVenuesOf(Country.Poland.cities, city => catalog.byCity.getOrElse(city, Nil), today)
     println(s"RosterAudit: ${chainVenues.size} Polish chain venues to look up in ${ChainDirectory.all.size} chain venue lists")
-    val chainEgress = ChainListEgress.fromConfiguration(http, process, clock, Stopwatch.System)
+    val chainEgress = ChainListEgress.fromConfiguration(http, process, clock, stopwatch)
     val chainResults = chainVenues.groupMap(_._1)(v => v._2 -> v._3).toSeq.map { case (directory, venues) =>
       RosterSourceReader.readDirectory(chainEgress.fetchFor(directory), today)(directory, venues).left.map(chainEgress.judged)
     }

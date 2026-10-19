@@ -412,7 +412,7 @@ class WorkerWiring(
   }
 
   def start(): Unit = {
-    bootStarted.set(Some(tools.Stopwatch.start()))
+    bootStarted.set(Some(stopwatch.start()))
     val boot = new BootSteps(country.code, stopwatch)
     startStores(boot)
     // Publish this country's cache occupancy. Here rather than at construction

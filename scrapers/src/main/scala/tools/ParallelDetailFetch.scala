@@ -104,7 +104,13 @@ object ParallelDetailFetch extends Logging {
   }
 }
 
-/** Where [[ParallelDetailFetch]] reads the time and waits out a fetch's budget. */
+/** Where [[ParallelDetailFetch]] reads the time and waits out a fetch's budget.
+ *
+ *  Not threaded from the wiring: the one in production is a timeout primitive whose reading must be the
+ *  real monotonic time the blocking `get` waits on — a stepped stopwatch would desynchronise the two, so
+ *  a spec replaces BOTH through [[ParallelDetailFetch.timed]] — and the catalog that reaches every
+ *  client calling it is the diagnostic door the identity tools compile into older refs (see
+ *  `CinemaEgress.diagnostic`). Monotonic, never the wall clock: an NTP step must not cut a fetch short. */
 private[tools] trait FetchClock {
   def nowMillis(): Long
   /** `attempt`'s result, or a [[TimeoutException]] if it is not done by `deadlineMillis`. */
@@ -113,7 +119,7 @@ private[tools] trait FetchClock {
 
 private[tools] object FetchClock {
   val System: FetchClock = new FetchClock {
-    def nowMillis(): Long = java.lang.System.currentTimeMillis()
+    def nowMillis(): Long = Stopwatch.System.nanoTime() / 1_000_000L
     def await[T](attempt: JavaFuture[T], deadlineMillis: Long): T =
       attempt.get(math.max(0L, deadlineMillis - nowMillis()), TimeUnit.MILLISECONDS)
   }
