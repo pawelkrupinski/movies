@@ -99,9 +99,9 @@ class WorkerDurableDiagnosticsConfigSpec extends AnyFlatSpec with Matchers {
   // (or a jlink list that loses them) would leave a hot pod unprofilable again. Building the `jdk` stage and attaching
   // its `jcmd` to a running JVM is what proved the list works; this keeps it from being dropped.
   "the runtime the image ships" should "carry jcmd, linked with the attach module it drives" in {
-    val linked = """(?s)jlink --output /opt/java/openjdk.*?--add-modules (\S+)""".r.findFirstMatchIn(dockerfile)
-      .map(_.group(1).split(',').toSet).getOrElse(fail("the Dockerfile no longer jlinks the runtime"))
+    val (output, linked) = """(?s)jlink --output (\S+).*?--add-modules (\S+)""".r.findFirstMatchIn(dockerfile)
+      .map(m => m.group(1) -> m.group(2).split(',').toSet).getOrElse(fail("the Dockerfile no longer jlinks the runtime"))
     linked should contain allOf ("jdk.jcmd", "jdk.attach", "jdk.jfr", "java.se")
-    dockerfile should include ("COPY --from=jdk /opt/java/openjdk /opt/java/openjdk")
+    dockerfile should include (s"COPY --from=jdk $output /opt/java/openjdk")
   }
 }

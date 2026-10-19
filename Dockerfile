@@ -5,7 +5,7 @@
 # that directory, so the build context holds just the staged JARs +
 # startup scripts — no JDK, no sbt, no source.
 #
-# Eclipse Temurin (HotSpot) JRE 27 — the current feature release (25 is the
+# Eclipse Temurin (HotSpot) 27 — the current feature release (25 is the
 # LTS; 27 is supported until JDK 28 ships in March 2027, which is the next
 # move). Scala 3.9 emits Java 21 bytecode (the highest output version it
 # accepts); JRE 27 loads those class files unchanged. CI builds on the same
@@ -17,37 +17,19 @@
 # `COPY stage/` stays a single fixed path and only the launcher name differs.
 # The Play `-D` props below are harmless no-op system properties for the
 # worker (it isn't a Play app).
-# THE RUNTIME: Temurin's JRE modules plus `jcmd`, jlinked from the Temurin JDK here because
-# `eclipse-temurin:27-jre` is not published yet (JDK 27 went GA on 2026-09-15; Docker Hub's official
-# image lags) and because the JRE has no `jcmd`. The modules are exactly the JRE tarball's
-# (`java --list-modules` on it) plus `jdk.jcmd` and `jdk.attach`, which `jcmd` needs to start JFR,
-# take a heap histogram or read a flag on a live pod (`kubectl exec ... -- jcmd 1 JFR.start ...`).
-# The tarball's SHA-256 is pinned here instead of a GPG check against a keyserver on every build.
-# Once the official tag exists this stage could become `FROM eclipse-temurin:27-jdk` — but not the
-# runtime `-jre` image, which would drop `jcmd` again.
-# JdkVersionParitySpec holds JAVA_VERSION's major to the JDK CI builds the stage with.
-# BUILD IT NATIVELY. A `--platform linux/amd64` build on Apple Silicon fails at the `tar` below with
-# `Cannot open: Function not implemented` for every file in a subdirectory: 26.04's GNU tar makes a
-# syscall neither QEMU nor Rosetta translates. A real amd64 kernel has it (checked on k3s-worker-1,
-# 2026-09-27), and CI builds on one. Locally, build for the Mac's own arm64.
+# THE RUNTIME: Temurin's JRE modules plus `jcmd`, jlinked out of Temurin's official JDK image. Not the
+# `-jre` image: it has no `jcmd`. The modules are exactly the JRE's (`java --list-modules` on it) plus
+# `jdk.jcmd` and `jdk.attach`, which `jcmd` needs to start JFR, take a heap histogram or read a flag on
+# a live pod (`kubectl exec ... -- jcmd 1 JFR.start ...`). The image is pinned by its manifest-list
+# digest (amd64 + arm64 under one digest), which stands in for the hand-pinned tarball SHA-256s this
+# stage used before the official 27 tag existed; JdkVersionParitySpec keeps the tarball from returning.
+# The image's JAVA_HOME is /opt/java/openjdk, so the link goes to /opt/jre (jlink refuses an existing
+# directory) and lands at /opt/java/openjdk in the runtime stage.
+# JdkVersionParitySpec holds JAVA_VERSION's major to the JDK CI builds the stage with, and to this tag.
 # Both stages' base comes through mirror.gcr.io, Docker Hub's pull-through cache: CI's anonymous
 # pulls from Docker Hub hit its rate limit and its token endpoint's 504s (CiImageMirrorSpec).
-FROM mirror.gcr.io/library/ubuntu:26.04 AS jdk
-RUN set -eux; \
-    apt-get update; \
-    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends ca-certificates wget; \
-    case "$(dpkg --print-architecture)" in \
-      amd64) ESUM='1cf69a4848ffb728b3b260dfd45206a51566ab571a02a30092271d4c580bccbc'; \
-             BINARY_URL='https://github.com/adoptium/temurin27-binaries/releases/download/jdk-27%2B35/OpenJDK27U-jdk_x64_linux_hotspot_27_35.tar.gz' ;; \
-      arm64) ESUM='e4ec5c7276290c7bde0baecba9a29be4962f5388684296406a9799d465936087'; \
-             BINARY_URL='https://github.com/adoptium/temurin27-binaries/releases/download/jdk-27%2B35/OpenJDK27U-jdk_aarch64_linux_hotspot_27_35.tar.gz' ;; \
-      *) echo "Unsupported arch: $(dpkg --print-architecture)"; exit 1 ;; \
-    esac; \
-    wget --progress=dot:giga -O /tmp/openjdk.tar.gz "$BINARY_URL"; \
-    echo "$ESUM */tmp/openjdk.tar.gz" | sha256sum -c -; \
-    mkdir -p /tmp/jdk; \
-    tar --extract --file /tmp/openjdk.tar.gz --directory /tmp/jdk --strip-components 1 --no-same-owner; \
-    /tmp/jdk/bin/jlink --output /opt/java/openjdk --no-man-pages --no-header-files \
+FROM mirror.gcr.io/library/eclipse-temurin:27-jdk@sha256:4a02e0ee713d13bb7974f4e19b7bea1746668603c3557fe09c4681784a86bb52 AS jdk
+RUN $JAVA_HOME/bin/jlink --output /opt/jre --no-man-pages --no-header-files \
       --add-modules java.base,java.compiler,java.datatransfer,java.desktop,java.instrument,java.logging,java.management,java.management.rmi,java.naming,java.net.http,java.prefs,java.rmi,java.scripting,java.se,java.security.jgss,java.security.sasl,java.smartcardio,java.sql,java.sql.rowset,java.transaction.xa,java.xml,java.xml.crypto,jdk.accessibility,jdk.charsets,jdk.crypto.cryptoki,jdk.dynalink,jdk.httpserver,jdk.incubator.vector,jdk.jdwp.agent,jdk.jfr,jdk.localedata,jdk.management,jdk.management.agent,jdk.management.jfr,jdk.naming.dns,jdk.naming.rmi,jdk.net,jdk.nio.mapmode,jdk.sctp,jdk.security.auth,jdk.security.jgss,jdk.unsupported,jdk.xml.dom,jdk.zipfs,jdk.jcmd,jdk.attach
 
 FROM mirror.gcr.io/library/ubuntu:26.04
@@ -56,8 +38,10 @@ FROM mirror.gcr.io/library/ubuntu:26.04
 ENV JAVA_HOME=/opt/java/openjdk
 ENV PATH=$JAVA_HOME/bin:$PATH
 ENV LANG='en_US.UTF-8' LANGUAGE='en_US:en' LC_ALL='en_US.UTF-8'
+# The `jdk` stage's base sets JAVA_VERSION too, but ENV does not cross stages: restated here, and the
+# `grep` after `java --version` below fails the build when the linked runtime is another release.
 ENV JAVA_VERSION=jdk-27+35
-COPY --from=jdk /opt/java/openjdk /opt/java/openjdk
+COPY --from=jdk /opt/jre /opt/java/openjdk
 RUN set -eux; \
     apt-get update; \
     DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
@@ -68,7 +52,7 @@ RUN set -eux; \
     find "$JAVA_HOME/lib" -name '*.so' -exec dirname '{}' ';' | sort -u > /etc/ld.so.conf.d/docker-openjdk.conf; \
     ldconfig; \
     java -Xshare:dump; \
-    java --version
+    java --version | grep -F "(build ${JAVA_VERSION#jdk-})"
 ARG BIN=web
 ENV BIN=$BIN
 # libvips for the WORKER only: it shrinks share-card posters of any size in a capped subprocess
