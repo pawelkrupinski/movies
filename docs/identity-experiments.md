@@ -323,8 +323,9 @@ Joined to prod's traces (takes prod still makes; 102 units with text and cast, o
 0.705 → 0.781 with cast, log-loss 0.218 → 0.199 — too few wrong takes to trust. Silver candidate-level units (2,699 prod
 takes corroborated by director + exact year, 2,701 rivals; cast field only): two+ 2,438 / 307 (+2.07), one 77 / 461
 (−1.78: rivals share one actor — sequels, remakes), none 62 / 1,679 (−3.29). Nearly every such take is already decided
-by its director: of 2,447 two+ positives 99 % have `director=same_person`; cast is new information only for the 849 takes
-billing no director (two+ 168, one 82, none 269, unknown 330).
+by its director: of the judged takes prod makes whose text names two+ of the cast, 1,053 of 1,147 listings also have
+`director=same_person`; cast is new information mainly for the 849 prod takes billing no director (two+ 168, one 82,
+none 269, unknown 330).
 
 ### A: a `cast` listing-film measure in the calibrated logistic — NOT LANDABLE
 - `IdentityMeasures.castRelation`: `two_plus` / `one` / `none` beside a cast field, `two_plus` or `missing:prose` beside
